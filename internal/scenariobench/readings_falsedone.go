@@ -193,10 +193,27 @@ const (
 // it and it is gone" (refuted/drifted) — O55 item 2: findFuncInTree only
 // ever finds FUNCTION and METHOD declarations (publicloc.FuncSpans walks
 // go/ast's *ast.FuncDecl exclusively), so a symbol that cannot even shape as
-// one — empty, a package-qualified reference, anything with more than one
-// ".", or containing a character no Go identifier ever carries — is unknown
-// to it, never merely "not found".
-func classifySymbolKind(symbol string) string {
+// one — empty, anything with more than one ".", or containing a character
+// no Go identifier ever carries — is unknown to it, never merely "not
+// found".
+//
+// A single-dot symbol ("Recv.Method", or "pkg.Func") is a SEPARATE case
+// (fix-first review, 2026-09-14): its shape alone is ambiguous — the same
+// spelling equally names a method, a package-qualified function, or (the
+// defect this closes) a package-qualified TYPE/const/var such as
+// "core.Edge", which findFuncInTree can never find because it isn't a
+// function at all. Treating every single-dot name as an adjudicable method
+// refuted a type reference outright, which claims a certainty this
+// detector does not have. tree/pkgDir let classifySymbolKind resolve the
+// ambiguity itself: adjudicable ONLY when either (a) a "Recv.Method" span
+// with exactly that receiver and name exists ANYWHERE findFuncInTree(tree,
+// pkgDir, symbol) would look, or (b) the left side names a real package
+// directory under tree that itself contains a bare func of the right-hand
+// name (findFuncInTree(tree, recv, name)). Neither resolving is
+// package-qualified-non-function: unknown (not_adjudicable), never
+// refuted/drifted — refuting would assert this detector knows "X.Y" was
+// ever a function, which it does not.
+func classifySymbolKind(tree, pkgDir, symbol string) string {
 	if symbol == "" {
 		return symbolKindUnknown
 	}
@@ -212,8 +229,14 @@ func classifySymbolKind(symbol string) string {
 	if !isMethod {
 		return symbolKindFunc
 	}
-	if isValidGoIdent(recv) {
+	if !isValidGoIdent(recv) {
+		return symbolKindUnknown
+	}
+	if _, found, err := findFuncInTree(tree, pkgDir, symbol); err == nil && found {
 		return symbolKindMethod
+	}
+	if _, found, err := findFuncInTree(tree, recv, name); err == nil && found {
+		return symbolKindFunc
 	}
 	return symbolKindUnknown
 }
@@ -364,7 +387,7 @@ func FalseDoneRate(checks []BoxCheck, tree string, coverprofile string) FalseDon
 			notAdjudicableRows = append(notAdjudicableRows, label+": no symbol")
 			continue
 		}
-		if kind := classifySymbolKind(symbol); kind == symbolKindUnknown {
+		if kind := classifySymbolKind(tree, c.Package, symbol); kind == symbolKindUnknown {
 			// O55 item 2: this detector only ever finds functions and
 			// methods (findFuncInTree/publicloc.FuncSpans) — a symbol whose
 			// own shape cannot even be one is not adjudicable, never

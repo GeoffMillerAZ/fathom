@@ -189,3 +189,23 @@ func TestContractDrift_UnknownSymbolKindNeverDrifts(t *testing.T) {
 		t.Fatalf("drifted = %v, want none — pkg.Type.Field cannot be a function or method", got.Drifted)
 	}
 }
+
+// TestContractDrift_PackageQualifiedTypeNeverDrifts pins the fix-first
+// review's single-dot case for ContractDrift too: a plan row naming a
+// package-qualified TYPE ("core.Edge") must never be reported drifted —
+// classifySymbolKind's tree search finds no matching method or func for
+// it, so it is not adjudicable, not "vanished".
+func TestContractDrift_PackageQualifiedTypeNeverDrifts(t *testing.T) {
+	tree := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(tree, "core"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tree, "core", "edge.go"), []byte("package core\n\ntype Edge struct{}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	plan := []byte("- [x] {id: R1, symbol: core.Edge}\n")
+	got := ContractDrift(plan, tree, "")
+	if len(got.Drifted) != 0 {
+		t.Fatalf("drifted = %v, want none — core.Edge is a type, not adjudicable", got.Drifted)
+	}
+}
