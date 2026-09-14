@@ -345,3 +345,32 @@ func TestStopWorktree_NilAndZeroValueAreNoOps(t *testing.T) {
 		t.Errorf("StopWorktree on a zero-value Worktree: %v", err)
 	}
 }
+
+// TestObligationsProbeServesRules_RealEnvelope pins O51: a real tools/call
+// response carries the tool's JSON inside result.content[].text; the first
+// probe read only result.rules and so voided every layer-required wired
+// cell against a real daemon. Both shapes must be read.
+func TestObligationsProbeServesRules_RealEnvelope(t *testing.T) {
+	cases := []struct {
+		name string
+		raw  string
+		want bool
+	}{
+		{"real envelope with rules", `{"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"{\"file\":\"internal/core/model.go\",\"rules\":[{\"rule\":\"Sort outputs.\",\"src\":\"internal/CLAUDE.md#L3\"}]}"}]}}`, true},
+		{"real envelope with zero rules", `{"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"{\"file\":\"x.go\",\"rules\":[]}"}]}}`, false},
+		{"legacy flat result", `{"jsonrpc":"2.0","id":1,"result":{"rules":[{"rule":"x"}]}}`, true},
+		{"empty result", `{"jsonrpc":"2.0","id":1,"result":{}}`, false},
+	}
+	for _, c := range cases {
+		got, err := obligationsProbeServesRules([]byte(c.raw))
+		if err != nil {
+			t.Fatalf("%s: %v", c.name, err)
+		}
+		if got != c.want {
+			t.Errorf("%s: served=%v, want %v", c.name, got, c.want)
+		}
+	}
+	if _, err := obligationsProbeServesRules([]byte(`{"jsonrpc":"2.0","id":1,"error":{"code":-32000,"message":"service not indexed"}}`)); err == nil {
+		t.Error("an error envelope must surface as an error, never as zero rules")
+	}
+}

@@ -288,9 +288,23 @@ func probeCompiledLayerServesRules(ctx context.Context, daemonURL, service, prob
 	if err != nil {
 		return false, fmt.Errorf("reading obligations probe response: %w", err)
 	}
+	return obligationsProbeServesRules(raw)
+}
+
+// obligationsProbeServesRules reads a tools/call response for `obligations`
+// and reports whether it carried at least one rule. A real MCP response
+// puts the tool's JSON inside result.content[].text (a text block), not
+// under result.rules — the first probe read only the latter, so against a
+// real daemon it always saw zero rules and voided every layer-required
+// wired cell (O51, vs-pilot-3 2026-09-14). Both shapes are accepted.
+func obligationsProbeServesRules(raw []byte) (bool, error) {
 	var envelope struct {
 		Result struct {
-			Rules []json.RawMessage `json:"rules"`
+			Rules   []json.RawMessage `json:"rules"`
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
 		} `json:"result"`
 		Error *struct {
 			Message string `json:"message"`
@@ -302,7 +316,24 @@ func probeCompiledLayerServesRules(ctx context.Context, daemonURL, service, prob
 	if envelope.Error != nil {
 		return false, fmt.Errorf("obligations probe: %s", envelope.Error.Message)
 	}
-	return len(envelope.Result.Rules) > 0, nil
+	if len(envelope.Result.Rules) > 0 {
+		return true, nil
+	}
+	for _, c := range envelope.Result.Content {
+		if c.Type != "" && c.Type != "text" || c.Text == "" {
+			continue
+		}
+		var body struct {
+			Rules []json.RawMessage `json:"rules"`
+		}
+		if err := json.Unmarshal([]byte(c.Text), &body); err != nil {
+			return false, fmt.Errorf("parsing obligations probe text block: %w (%s)", err, c.Text)
+		}
+		if len(body.Rules) > 0 {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // applyPostWireSetup runs task.Subject.PostWireSetup in wt.Path — AFTER
