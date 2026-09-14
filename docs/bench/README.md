@@ -749,6 +749,11 @@ Voided: 4 row(s) carry `instrument_defect` and are excluded from the numbers abo
 control 3/8 (surface calls 0).
 Voided: 4 row(s) carry `instrument_defect` and are excluded from the numbers above — RE-SB-cli__cli-10043-K1/full, RE-SB-cli__cli-10043/full, RE-SB-cli__cli-10048/full, RE-SB-cli__cli-10124/full.
 
+**reuse-pilot-3** — full vs control: success 2/8 vs 2/8, tokens 1.712×, cost 1.455×.
+Surface calls: control=0, full=29.
+On reuse-pilot-3, fathom's arm matched control on success (2 v 2) at 1.712× the tokens; the tools were called 29 time(s). Registered criterion M5-1: fail (tokens-per-success ratio 1.712× exceeds the registered bar of 1.000×).
+gold source: Bash earned 2 of 2 passes.
+
 **vs-pilot-1**: every row is voided — nothing sound to measure.
 Voided: 30 row(s) carry `instrument_defect` and are excluded from the numbers above — FRESH-M7-01/full, FRESH-M7-01/gopls, FRESH-M7-01/graphify, FRESH-M7-01/grep, FRESH-M7-01/serena, H1-T01/full, H1-T01/gopls, H1-T01/graphify, H1-T01/grep, H1-T01/serena, H1-T03/full, H1-T03/gopls, H1-T03/graphify, H1-T03/grep, H1-T03/serena, H1-T06/full, H1-T06/gopls, H1-T06/graphify, H1-T06/grep, H1-T06/serena, H1-T07/full, H1-T07/gopls, H1-T07/graphify, H1-T07/grep, H1-T07/serena, H1-T10/full, H1-T10/gopls, H1-T10/graphify, H1-T10/grep, H1-T10/serena.
 
@@ -1001,20 +1006,28 @@ gold source: none earned 6 of 26 passes.
 | vs-pilot-3 | c36bd4f | H1-T13 | staleness | graphify | sonnet | 2 | 0 | below fathom, plausible partial credit: the prompt supplies the historical citation, so a direct read of ADR.md#L158-L159 versus the rule's wording answers the verdict; finding where the text moved to (ADR.md:176) is a plain text search available to every arm. | 0 (unused) | – | – | – | – | – | – | – | – | 0.0687 |  |
 | vs-pilot-3 | c36bd4f | H1-T13 | staleness | grep | sonnet | 2 | 1 | below fathom, plausible partial credit: the prompt hands every arm the historical citation; grep for the rule's distinctive phrase finds where it moved to. | 0 | – | – | – | – | – | – | – | – | 0.1231 |  |
 | vs-pilot-3 | c36bd4f | H1-T13 | staleness | serena | sonnet | 2 | 2 | below fathom, plausible partial credit — same reasoning as graphify. | 0 (unused) | – | – | – | – | – | – | – | – | 0.1546 |  |
+| reuse-pilot-3 | c36bd4f | RE-SB-cli__cli-10043 | cross_package_feature | control | sonnet | 2 | 2 | planner explores with grep/Read and writes prose rows; each worker re-explores the same files — overlap high | 0 | – | – | – | 0.34 (n=2) | – | 882849 (n=2) | 3/4 refuted | 1.00 | 1.2150 |  |
+| reuse-pilot-3 | c36bd4f | RE-SB-cli__cli-10043 | cross_package_feature | full | sonnet | 2 | 2 | planner explores once through repo_map/pack_context/blast radius; workers start from the row's ctx pack — overlap low, workers reach first edit sooner | 9 | 181 | – | – | 0.68 (n=2) | – | 2422608 (n=2) | 7/7 refuted | 1.00 | 2.2655 |  |
+| reuse-pilot-3 | c36bd4f | RE-SB-cli__cli-10043-K1 | cross_package_feature | control | sonnet | 2 | 0 | no effect for the same reason; this variant is the matrix's no-effect cell | 0 | – | – | – | 0.76 (n=2) | – | 375114 (n=2) | 2/2 refuted | 1.00 | 0.5724 |  |
+| reuse-pilot-3 | c36bd4f | RE-SB-cli__cli-10043-K1 | cross_package_feature | full | sonnet | 2 | 0 | no effect: with one worker there is nothing to reuse across workers — the overlap reading is defined only against the planner, and vision 27 M5 predicts the pack advantage vanishes at K = 1 | 3 | 67 | – | – | 0.14 (n=1) | – | 768032 (n=2) | 2/2 refuted | 1.00 | 0.6048 |  |
+| reuse-pilot-3 | c36bd4f | RE-SB-cli__cli-10048 | cross_package_feature | control | sonnet | 2 | 0 | planner explores with grep/Read and writes prose rows; each worker re-explores the same files — overlap high | 0 | – | – | – | 0.83 (n=2) | – | 914176 (n=2) | 0/3 refuted | 0.50 | 1.3063 |  |
+| reuse-pilot-3 | c36bd4f | RE-SB-cli__cli-10048 | cross_package_feature | full | sonnet | 2 | 0 | planner explores once through repo_map/pack_context/blast radius; workers start from the row's ctx pack — overlap low, workers reach first edit sooner | 9 | 149 | – | – | 0.74 (n=2) | – | 1155936 (n=2) | 5/7 refuted | 0.00 | 1.7310 |  |
+| reuse-pilot-3 | c36bd4f | RE-SB-cli__cli-10124 | cross_package_feature | control | sonnet | 2 | 0 | planner explores with grep/Read and writes prose rows; each worker re-explores the same files — overlap high | 0 | – | – | – | 0.08 (n=2) | – | 1233100 (n=2) | – | 0.00 | 1.8379 |  |
+| reuse-pilot-3 | c36bd4f | RE-SB-cli__cli-10124 | cross_package_feature | full | sonnet | 2 | 0 | planner explores once through repo_map/pack_context/blast radius; workers start from the row's ctx pack — overlap low, workers reach first edit sooner | 8 | 168 | – | – | 0.58 (n=2) | – | 2930200 (n=2) | 2/6 refuted | 0.00 | 2.5734 |  |
 
 ### Gold source by question shape
 
-| category | Bash | Grep | Read | mcp__fathom__find_callers | mcp__fathom__find_symbol | mcp__fathom__query_symbols | mcp__fathom__read_source | mcp__fathom__search | mcp__fathom__verify_plan | mcp__graphify__query_graph | mcp__serena__find_referencing_symbols | mcp__serena__find_symbol | none | not_measured |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| blast_radius | 0.05 | 0.80 | 0.03 | 0.07 | 0.03 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.03 | 0.00 | 0.00 | 0.00 |
-| claim_provenance | 0.00 | 0.00 | 0.03 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.97 | 0.00 |
-| concern_search | 0.08 | 0.61 | 0.14 | 0.00 | 0.00 | 0.03 | 0.03 | 0.11 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
-| contradiction | 0.70 | 0.15 | 0.15 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
-| cross_package_feature | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 1.00 |
-| freshness | 0.15 | 0.00 | 0.85 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
-| governance_bound | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 1.00 |
-| obligations | 0.33 | 0.10 | 0.45 | 0.00 | 0.00 | 0.00 | 0.03 | 0.05 | 0.00 | 0.03 | 0.00 | 0.00 | 0.03 | 0.00 |
-| staleness | 0.50 | 0.23 | 0.10 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.17 | 0.00 |
-| verify | 0.30 | 0.20 | 0.38 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.10 | 0.00 | 0.00 | 0.03 | 0.00 | 0.00 |
+| category | Bash | Glob | Grep | Read | mcp__fathom__find_callers | mcp__fathom__find_symbol | mcp__fathom__query_symbols | mcp__fathom__read_source | mcp__fathom__search | mcp__fathom__verify_plan | mcp__graphify__query_graph | mcp__serena__find_referencing_symbols | mcp__serena__find_symbol | none | not_measured |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| blast_radius | 0.05 | 0.00 | 0.80 | 0.03 | 0.07 | 0.03 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.03 | 0.00 | 0.00 | 0.00 |
+| claim_provenance | 0.00 | 0.00 | 0.00 | 0.03 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.97 | 0.00 |
+| concern_search | 0.08 | 0.00 | 0.61 | 0.14 | 0.00 | 0.00 | 0.03 | 0.03 | 0.11 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
+| contradiction | 0.70 | 0.00 | 0.15 | 0.15 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
+| cross_package_feature | 0.25 | 0.12 | 0.09 | 0.00 | 0.00 | 0.03 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.50 |
+| freshness | 0.15 | 0.00 | 0.00 | 0.85 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
+| governance_bound | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 1.00 |
+| obligations | 0.33 | 0.00 | 0.10 | 0.45 | 0.00 | 0.00 | 0.00 | 0.03 | 0.05 | 0.00 | 0.03 | 0.00 | 0.00 | 0.03 | 0.00 |
+| staleness | 0.50 | 0.00 | 0.23 | 0.10 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.17 | 0.00 |
+| verify | 0.30 | 0.00 | 0.20 | 0.38 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.10 | 0.00 | 0.00 | 0.03 | 0.00 | 0.00 |
 
 <!-- END scenario ledger -->
