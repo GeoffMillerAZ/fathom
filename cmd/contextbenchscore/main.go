@@ -170,6 +170,8 @@ func cmdScore(args []string) int {
 	trial := fs.Int("trial", 0, "1-based repetition index within this run (0 = single-trial run)")
 	scoring := fs.String("scoring", contextbench.ScoringSubstring, "substring (H2-1) or precision (H2-2: fenced answer block within max_predicted)")
 	transcript := fs.String("transcript", "", "optional stream-json transcript; fills tokens_to_first_gold_hit, tool_calls and the H2-3 metrics")
+	liveCheckout := fs.String("live-checkout", "", "VB-36: the dev tree's own absolute path; when set (and -transcript is given), a served payload naming it sets path_leak")
+	sessionRoot := fs.String("session-root", "", "VB-36: the absolute path sessions ran in; when set (and -transcript is given), a Bash/Read input naming an absolute path outside it counts toward out_of_root_reads")
 	cells := fs.String("cells", "", "content-addressed cell store to file this cell in (ADR-032 §2)")
 	runID := fs.String("run-id", "", "the run that paid for this cell (recorded as its provenance)")
 	cell := cellFlags(fs)
@@ -231,6 +233,7 @@ func cmdScore(args []string) int {
 			ar.TokensToFirstGoldHit = hit.TokensToFirstHit
 		}
 		applyTranscriptMetrics(&ar, tr, task.GroundTruth)
+		applyPathChecks(&ar, tr, *liveCheckout, *sessionRoot)
 	}
 
 	// The cell's identity (ADR-032 §2). It is stamped whenever the runner
@@ -483,6 +486,8 @@ func cmdLedger(args []string) int {
 	row.GoldSourceRates = contextbench.GoldSourceRateByArm(results)
 	row.GoldSourceByShape = contextbench.GoldSourceByShape(results, tasks)
 	row.TrustedWithoutRecheck = contextbench.AggregateTrustedWithoutRecheck(results)
+	row.OutOfRootReads = contextbench.SumOutOfRootReads(results)
+	row.FlaggedCells = contextbench.FlaggedCells(results)
 	// Reported, never gating (PB-10): the verdict above is already fixed;
 	// the figures describe how much evidence stands behind it. A run with
 	// no paired task has nothing to resample and carries none.

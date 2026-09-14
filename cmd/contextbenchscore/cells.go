@@ -178,6 +178,27 @@ func applyTranscriptMetrics(ar *contextbench.ArmResult, transcript []byte, gold 
 	}
 }
 
+// applyPathChecks fills the VB-36 (O47) safety readings on a scored cell
+// from its stream transcript: liveCheckout/sessionRoot are the runner's own
+// absolute paths, and either may be "" when the runner has nothing to
+// check against (a control run, or an operator run against a daemon it
+// does not know the checkout path for) — in which case the corresponding
+// reading is left at its zero value, "not checked", never a false "clean".
+func applyPathChecks(ar *contextbench.ArmResult, transcript []byte, liveCheckout, sessionRoot string) {
+	if liveCheckout != "" {
+		leak := contextbench.DetectPathLeak(transcript, liveCheckout)
+		ar.PathLeak = leak.Leaked
+		ar.PathLeakPaths = leak.Paths
+	}
+	if sessionRoot != "" {
+		reads := contextbench.DetectOutOfRootReads(transcript, sessionRoot)
+		ar.OutOfRootReads = len(reads)
+		for _, r := range reads {
+			ar.OutOfRootPaths = append(ar.OutOfRootPaths, r.Tool+": "+r.Path)
+		}
+	}
+}
+
 // hasBorrowed reports whether any cell in results was inherited from an
 // earlier run rather than paid for by this one.
 func hasBorrowed(results []contextbench.ArmResult) bool {

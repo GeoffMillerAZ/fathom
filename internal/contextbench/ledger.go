@@ -117,6 +117,16 @@ type LedgerRow struct {
 	// run recorded a fathom call (see AggregateTrustedWithoutRecheck).
 	TrustedWithoutRecheck *TrustedWithoutRecheckStats `json:"trusted_without_recheck,omitempty"`
 
+	// VB-36 additions (O47): the scratch-daemon-default safety checks,
+	// summed/listed across every cell in the run (SumOutOfRootReads,
+	// FlaggedCells). OutOfRootReads is the total count of Bash/Read tool
+	// inputs that named an absolute path outside a session's root;
+	// FlaggedCells names every task/arm/trial cell that carries a
+	// path_leak or an out_of_root_reads > 0, so a leak or an escape is
+	// visible on the row rather than averaged away by the verdict.
+	OutOfRootReads int      `json:"out_of_root_reads,omitempty"`
+	FlaggedCells   []string `json:"flagged_cells,omitempty"`
+
 	// Reliability carries the PB-10 figures (ci_success_diff, wilcoxon_p,
 	// a12, pass_at_1, pass_pow_3, and the seed that produced them),
 	// flattened into the row. Reported, never gating: Evaluation is computed
@@ -292,6 +302,12 @@ func RenderLedgerMarkdown(rows []LedgerRow) string {
 		}
 		if r.TrustedWithoutRecheck != nil && r.TrustedWithoutRecheck.Calls > 0 {
 			caveat += fmt.Sprintf(" trusted=%.0f%%(n=%d)", r.TrustedWithoutRecheck.Rate*100, r.TrustedWithoutRecheck.Calls)
+		}
+		if r.OutOfRootReads > 0 {
+			caveat += fmt.Sprintf(" out_of_root=%d", r.OutOfRootReads)
+		}
+		if len(r.FlaggedCells) > 0 {
+			caveat += fmt.Sprintf(" flagged=%d", len(r.FlaggedCells))
 		}
 		// A backfilled row has no per-task ratios, so its median is not
 		// recorded — shown as such, never as 0.000×.
