@@ -175,18 +175,27 @@ func compileViaStore(storePath, service, layer, profileFlag string, dryRun, forc
 				// the kill criteria read (bounce finding 4).
 				completedClean := !latest.Refused && !latest.BudgetStopped && latest.SectionsFailed == 0
 				if completedClean && latest.CorpusWatermark == watermark && latest.PromptVersion == promptIdentity {
-					if !force {
-						fmt.Fprintf(stderr, "error: refusing idempotent recompile: compile_run %s for (%s, %s) already ran at corpus watermark %q and prompt identity %q (ran_at=%s) — nothing has changed since. Pass --force to override; the override is logged into compile_runs.\n",
+					switch {
+					case resume:
+						// O54 NIT: --continue is itself the "yes, proceed"
+						// signal for a layer that turns out to already be
+						// complete — no --force, no escape note. The compile
+						// below finds nothing left to do (every section's
+						// digest still matches) and says so plainly instead
+						// of this guard refusing outright.
+					case force:
+						note := fmt.Sprintf("force: idempotent recompile of run %s (watermark=%q, prompt=%q)", latest.RunID, watermark, promptIdentity)
+						if escape != "" {
+							escape += "; " + note
+						} else {
+							escape = note
+						}
+						fmt.Fprintf(stderr, "warning: --force: recompiling despite an unchanged watermark/prompt identity (prior run %s)\n", latest.RunID)
+					default:
+						fmt.Fprintf(stderr, "error: refusing idempotent recompile: compile_run %s for (%s, %s) already ran at corpus watermark %q and prompt identity %q (ran_at=%s) — nothing has changed since. Pass --force to override (logged into compile_runs), or --continue to confirm there is nothing left to resume.\n",
 							latest.RunID, service, layer, watermark, promptIdentity, latest.RanAt.UTC().Format(time.RFC3339))
 						return 1
 					}
-					note := fmt.Sprintf("force: idempotent recompile of run %s (watermark=%q, prompt=%q)", latest.RunID, watermark, promptIdentity)
-					if escape != "" {
-						escape += "; " + note
-					} else {
-						escape = note
-					}
-					fmt.Fprintf(stderr, "warning: --force: recompiling despite an unchanged watermark/prompt identity (prior run %s)\n", latest.RunID)
 				}
 			}
 		}
@@ -214,6 +223,16 @@ func compileViaStore(storePath, service, layer, profileFlag string, dryRun, forc
 	if compErr != nil {
 		fmt.Fprintf(stderr, "error: compile layer %q: %v\n", layer, compErr)
 		return 1
+	}
+
+	// O54 NIT: --continue against a layer that turns out to already be
+	// fully compiled (every section's digest still matches — ResumedFrom
+	// stays "" exactly in that case, CompileInput.Resume's own doc
+	// comment) prints one plain line instead of the full run dump; a
+	// DryRun estimate never counts as "nothing to resume".
+	if resume && !dryRun && !run.Refused && run.ResumedFrom == "" {
+		fmt.Fprintf(stdout, "layer %s is complete: %d/%d sections compiled; nothing to resume\n", layer, run.SectionsTotal, run.SectionsTotal)
+		return 0
 	}
 
 	printCompileRunCore(stdout, run)

@@ -386,6 +386,87 @@ func TestCmdCompile_Continue_RecordsResumedFrom(t *testing.T) {
 	}
 }
 
+// TestCmdCompile_Continue_AfterFullCompile_PrintsNothingToResume is O54's
+// NIT: a second --continue against a layer that already fully compiled —
+// same corpus watermark, same prompt identity as the run before it —
+// bypasses the idempotency guard (resume IS the "yes, proceed" signal) and
+// the compile itself finds nothing left to do, so the CLI prints one
+// plain line instead of the full run dump.
+//
+// Unlike the other guard tests, this needs the FIRST run to actually
+// WRITE a claim (newFakeClaudeCLIClaims's shared script always returns
+// empty claims, which the OTHER tests don't care about but this one
+// does — an empty-claims "compile" leaves nothing for the digest gate to
+// match against, so the second call would recompile instead of finding
+// nothing to resume). A dedicated fixture with one real indexed source
+// file and a script that returns one valid, in-scope claim.
+func TestCmdCompile_Continue_AfterFullCompile_PrintsNothingToResume(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "CLAUDE.md"), []byte("# Rules\n\n- Run tests before committing.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, "pkg"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "pkg", "foo.go"), []byte("package pkg\n\nfunc Foo() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	storePath := filepath.Join(t.TempDir(), "nit.sqlite")
+	st, err := store.Open(storePath)
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+	c := client.New(connector.NewLocalConnector(), st)
+	if _, err := c.Ingest(context.Background(), client.ServiceRef{ID: "svc", Path: root}); err != nil {
+		t.Fatalf("Ingest: %v", err)
+	}
+	c.Close()
+	st.Close()
+
+	claimScript := `#!/bin/sh
+cat > /dev/null
+printf '%s' '{"type":"result","subtype":"success","is_error":false,"api_error_status":null,"result":"{\"claims\":[{\"rule\":\"Run tests before committing.\",\"scope\":[\"pkg/**\"],\"cite_start\":3,\"cite_end\":3}]}","stop_reason":"end_turn","usage":{"input_tokens":1,"output_tokens":1,"cache_creation_input_tokens":0,"cache_read_input_tokens":0}}'
+exit 0
+`
+	binPath := filepath.Join(t.TempDir(), "claude")
+	if err := os.WriteFile(binPath, []byte(claimScript), 0o755); err != nil {
+		t.Fatalf("write fake claude script: %v", err)
+	}
+	t.Setenv("FATHOM_LLM_PROVIDER", "claude-cli")
+	t.Setenv("FATHOM_CLAUDE_BIN", binPath)
+
+	var stdout1, stderr1 bytes.Buffer
+	if code := cmdCompile([]string{
+		"--service", "svc", "--layer", "obligations", "--store", storePath, "--dry-run=false",
+	}, &stdout1, &stderr1); code != 0 {
+		t.Fatalf("first compile: exit %d; stdout=%q stderr=%q", code, stdout1.String(), stderr1.String())
+	}
+
+	var stdout2, stderr2 bytes.Buffer
+	code := cmdCompile([]string{
+		"--service", "svc", "--layer", "obligations", "--store", storePath, "--dry-run=false", "--continue",
+	}, &stdout2, &stderr2)
+	if code != 0 {
+		t.Fatalf("second --continue: exit %d; stdout=%q stderr=%q", code, stdout2.String(), stderr2.String())
+	}
+	want := "layer obligations is complete: 1/1 sections compiled; nothing to resume\n"
+	if stdout2.String() != want {
+		t.Fatalf("stdout = %q, want %q", stdout2.String(), want)
+	}
+	if stderr2.String() != "" {
+		t.Errorf("stderr = %q, want empty — bypassing the idempotency guard via --continue is not an error path", stderr2.String())
+	}
+
+	// Both runs recorded; the second neither refused nor emitted a
+	// (misleading, since nothing was overridden) --force escape note.
+	if n := countCompileRuns(t, storePath, "svc", "obligations"); n != 2 {
+		t.Fatalf("compile_runs rows = %d, want 2", n)
+	}
+	if escape := latestCompileRunEscape(t, storePath, "svc", "obligations"); escape != "" {
+		t.Errorf("second run's Escape = %q, want empty — --continue is not an override", escape)
+	}
+}
+
 // ─── HTTP mode refuses the guard flags outright ───────────────────────────
 
 // TestCmdCompile_GuardFlagsRefusedWithoutStore (bounce finding 6): the
