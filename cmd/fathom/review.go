@@ -49,6 +49,7 @@ func runReview(args []string, gitRunner func(args ...string) ([]byte, error), st
 	service := fs.String("service", "", "service ID (required)")
 	since := fs.String("since", "", "git ref to diff against (required; e.g. origin/main)")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a human-readable summary")
+	format := fs.String("format", "text", "output format: \"text\" (default) or \"github\" (VB-22: one deterministic Markdown PR comment — changed symbols with resolved callers and tier, call-site completeness, governing rules, a verify line for touched plan rows, affected tests/test gap, coverage; overrides --json)")
 	noPersist := fs.Bool("no-persist", false, "report only: never write findings to the claims store (the pre-push summary hook uses this)")
 	budgetSeconds := fs.Int("budget-seconds", 0, "advisory time budget: on excess, print a named skip and exit 0 (requires --no-persist — a bounded run must never be a store writer); 0 = unbounded")
 	callLogFlag := fs.String("call-log", "", "MCP-format call log (JSONL) to append this run's verdict outcome to (T5-7); default: [daemon].call_log in config.toml, else "+defaultCallLogPath())
@@ -62,13 +63,17 @@ func runReview(args []string, gitRunner func(args ...string) ([]byte, error), st
 		fs.Usage()
 		return 1
 	}
+	if *format != "text" && *format != "github" {
+		fmt.Fprintf(stderr, "error: --format must be \"text\" or \"github\", got %q\n", *format)
+		return 1
+	}
 	if *budgetSeconds > 0 && !*noPersist {
 		fmt.Fprintln(stderr, "error: --budget-seconds requires --no-persist — a budget-bounded run can be cut off mid-flight, and a run that can be cut off must never be a store writer")
 		return 1
 	}
 
 	body := func() int {
-		return runReviewBody(gitRunner, *storePath, *service, *since, *jsonOut, *noPersist, *callLogFlag, coverageProfileFlags, stdout, stderr)
+		return runReviewBody(gitRunner, *storePath, *service, *since, *format, *jsonOut, *noPersist, *callLogFlag, coverageProfileFlags, stdout, stderr)
 	}
 	if *budgetSeconds > 0 {
 		// The whole body races the budget. On excess the process prints a
@@ -92,8 +97,8 @@ func runReview(args []string, gitRunner func(args ...string) ([]byte, error), st
 	return body()
 }
 
-func runReviewBody(gitRunner func(args ...string) ([]byte, error), storePathV, serviceV, sinceV string, jsonOutV, noPersistV bool, callLogFlagV string, coverageProfilesV []string, stdout, stderr io.Writer) int {
-	storePath, service, since, jsonOut, noPersist, callLogFlag := &storePathV, &serviceV, &sinceV, &jsonOutV, &noPersistV, &callLogFlagV
+func runReviewBody(gitRunner func(args ...string) ([]byte, error), storePathV, serviceV, sinceV, formatV string, jsonOutV, noPersistV bool, callLogFlagV string, coverageProfilesV []string, stdout, stderr io.Writer) int {
+	storePath, service, since, format, jsonOut, noPersist, callLogFlag := &storePathV, &serviceV, &sinceV, &formatV, &jsonOutV, &noPersistV, &callLogFlagV
 
 	out, err := gitRunner("diff", "--name-only", *since)
 	if err != nil {
@@ -158,9 +163,10 @@ func runReviewBody(gitRunner func(args ...string) ([]byte, error), storePathV, s
 	// findings, and compute the fixed-findings reconcile. With --no-persist
 	// the same computation runs for the labels but nothing is written.
 	existing, _ := c.ClaimsForService(ctx, *service, review.ClaimsLayer)
-	watermark := ""
-	if _, indexedCommit, found, merr := c.ServiceMeta(ctx, *service); merr == nil && found {
+	watermark, corpusRoot := "", ""
+	if path, indexedCommit, found, merr := c.ServiceMeta(ctx, *service); merr == nil && found {
 		watermark = indexedCommit
+		corpusRoot = path
 	}
 	content := make(map[string][]byte, len(sources))
 	for _, f := range sources {
@@ -230,6 +236,24 @@ func runReviewBody(gitRunner func(args ...string) ([]byte, error), storePathV, s
 	// test gap too — --json carries the identical block, text gets
 	// renderTestGap.
 	gap := impact.TestGap(in.Nodes, in.ChangedFiles, in.TypedEdges)
+
+	// VB-22 (docs/plans/verbs.md; docs/vision/29-verbs-not-lookups.md §3
+	// wave F): --format github renders ONE deterministic Markdown PR
+	// comment over the SAME verdict/gap this run already computed —
+	// review.RenderGitHubReview does no I/O itself, so every dependency
+	// (changed-symbol/caller detail, touched plan rows) is resolved here
+	// first.
+	if *format == "github" {
+		fmt.Fprint(stdout, review.RenderGitHubReview(review.GitHubReviewInput{
+			Verdict:         v,
+			TestGap:         gap,
+			IndexCommit:     watermark,
+			DiffRange:       *since + "..HEAD",
+			ChangedSymbols:  review.ChangedSymbolReviews(in.Nodes, in.TypedEdges, in.ChangedFiles),
+			TouchedPlanRows: resolveTouchedPlanRows(corpusRoot, in),
+		}))
+		return 0
+	}
 
 	if *jsonOut {
 		payload := v.Payload(persisted)

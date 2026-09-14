@@ -10,9 +10,12 @@ what is not. The full guides are
 [codex.md](codex.md), [other-harnesses.md](other-harnesses.md) (the
 registry-generated adoption matrix: Gemini CLI, the generic `AGENTS.md`
 tier, and what is verified vs. not),
-[spec-driven-development.md](spec-driven-development.md), and
+[spec-driven-development.md](spec-driven-development.md),
 [github-rulesets.md](github-rulesets.md) (making `fathom verify` and the
-compiled layer rules required GitHub checks).
+compiled layer rules required GitHub checks), and
+[github-action.md](github-action.md) (`fathom review --format github`: one
+deterministic PR comment, kept up to date in place, plus a `fathom / review`
+check the same Ruleset can require).
 
 ## Get it running
 
