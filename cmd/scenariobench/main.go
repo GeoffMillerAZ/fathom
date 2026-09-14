@@ -647,8 +647,13 @@ func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench
 	// SHARED across every trial of this (task, arm)); everything captured
 	// from here on (agent.diff, oracle-test-output, detector logs,
 	// plan.md) goes into this trial's own subdirectory instead. "" for
-	// attemptDir until wave-n1's own attempt-layout directory (if any) is
-	// threaded through here.
+	// attemptDir, not wave-n1's allocateRawAttemptDir (sessions.go): that
+	// attempt-<k> dir is allocated INSIDE RunSessions below, on a
+	// different root (-raw-dir) for a different purpose (raw transcript
+	// retry-safety), and isn't known until after this line runs — but
+	// wt.CellDir must be final before RunSessions runs, since it derives
+	// this trial's own clean-room env (FATHOM_THREADS, the
+	// baseline-isolation shim). See PerTrialCellDir's own doc comment.
 	wt.CellDir = scenariobench.PerTrialCellDir(wt.CellDir, "", cp.trial)
 	if err := os.MkdirAll(wt.CellDir, 0o755); err != nil {
 		return scenariobench.CellResult{}, fmt.Errorf("creating per-trial cell dir %s: %w", wt.CellDir, err)
@@ -759,21 +764,21 @@ func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench
 		// localization-only (VB-25, the LCA bug-localization track), or
 		// refusal-aware (O57 finding 2) — in each of these three shapes,
 		// nothing was ever necessarily meant to be edited.
-		Success:        oracle.Passed && (scenariobench.AnswerOnly(cp.task) || scenariobench.LocalizationOnly(cp.task) || scenariobench.RefusalAware(cp.task) || scenariobench.AnyEdits(sessions)),
-		CellKey:        cp.key,
-		CorpusSHA256:   cp.inv.CorpusSHA256,
-		ModelID:        cp.inv.ModelID,
-		HarnessVersion: cp.inv.HarnessVersion,
-		ArmSurface:     cp.inv.ArmSurface,
-		Surface:        arm.Surface,
-		Gold:           cp.task.Gold,
-		PlanPath:       planPath,
-		AgentDiffPath:  diffPath,
-		RunID:          runID,
-		StartedAt:      "", // TODO(SB-19 follow-up): inject a clock; not needed for wave 2's own tests
-		WorktreePath:   wt.Path,
-		SubjectClone:   wt.SubjectClone,
-		BaseCommit:     cp.task.Subject.BaseCommit,
+		Success:                 oracle.Passed && (scenariobench.AnswerOnly(cp.task) || scenariobench.LocalizationOnly(cp.task) || scenariobench.RefusalAware(cp.task) || scenariobench.AnyEdits(sessions)),
+		CellKey:                 cp.key,
+		CorpusSHA256:            cp.inv.CorpusSHA256,
+		ModelID:                 cp.inv.ModelID,
+		HarnessVersion:          cp.inv.HarnessVersion,
+		ArmSurface:              cp.inv.ArmSurface,
+		Surface:                 arm.Surface,
+		Gold:                    cp.task.Gold,
+		PlanPath:                planPath,
+		AgentDiffPath:           diffPath,
+		RunID:                   runID,
+		StartedAt:               "", // TODO(SB-19 follow-up): inject a clock; not needed for wave 2's own tests
+		WorktreePath:            wt.Path,
+		SubjectClone:            wt.SubjectClone,
+		BaseCommit:              cp.task.Subject.BaseCommit,
 		RowsAssigned:            rowsAssigned,
 		RowsUnassigned:          rowsUnassigned,
 		InstrumentFilesExcluded: instrumentFilesExcluded,

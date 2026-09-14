@@ -674,8 +674,8 @@ func TestPathIsInstrumentOwned(t *testing.T) {
 		{".fathomignore", true},
 		{"CLAUDE.md", true},
 		{".fathom/receipts.jsonl", true},
-		{"workspace/tmp/x.log", true},   // named in gitIgnoredWorkspace
-		{"workspace", false},            // not named — bare prefix alone proves nothing now
+		{"workspace/tmp/x.log", true},    // named in gitIgnoredWorkspace
+		{"workspace", false},             // not named — bare prefix alone proves nothing now
 		{"workspace/pkg/real.go", false}, // a real subject file under workspace/, not gitignored
 		{"real.go", false},
 		{"workspace-lookalike/real.go", false},

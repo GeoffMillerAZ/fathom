@@ -15,9 +15,22 @@ import (
 // PerTrialCellDir returns the per-TRIAL artifact directory a cell's
 // caller should use for wt.CellDir from this point on (agent.diff,
 // oracle-test-output, detector logs, plan.md — everything captured AFTER
-// PrepareSubject returns): attemptDir verbatim when non-empty (wave-n1's
-// own per-session attempt-layout directory for this trial, when the
-// caller has one), else a `trial-<n>` subdirectory of cellDir.
+// PrepareSubject returns): attemptDir verbatim when non-empty, else a
+// `trial-<n>` subdirectory of cellDir.
+//
+// attemptDir is NOT wave-n1's allocateRawAttemptDir (sessions.go),
+// checked post-rebase (wave-n6/wave-n4, 2026-09-14): that attempt-<k>
+// directory lives under a different root (-raw-dir, raw session
+// transcripts) than wt.CellDir (workspace/artifacts/.../worktrees, oracle
+// and diff/plan capture), is allocated INSIDE RunSessions and never
+// returned to its caller, and — the hard blocker — cannot be known before
+// RunSessions runs, while wt.CellDir must already be final before then:
+// sessionEnv reads wt.CellDir to build the clean-room env (FATHOM_THREADS,
+// the baseline-isolation shim) for the very sessions that dir would
+// belong to. Unifying the two would mean threading the allocated attempt
+// dir back out of RunSessions and moving env construction off wt.CellDir
+// — a real API change, not a wiring fix; left as a caller-supplied
+// parameter for whichever future layout can satisfy that ordering.
 func PerTrialCellDir(cellDir, attemptDir string, trial int) string {
 	if attemptDir != "" {
 		return attemptDir
