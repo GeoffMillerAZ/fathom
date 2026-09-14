@@ -14,6 +14,15 @@
 # Run: task clean-clone-check
 set -euo pipefail
 
+# A git hook (lefthook's pre-push runs `task validate`, which runs this)
+# exports GIT_DIR and friends to every child. Left in place they point
+# every `git` call below at the PUSHING repository, so the scratch copy's
+# `git init && git add && git commit` re-initialises the real checkout
+# instead (O48: it reported "nothing to commit" against the worktree and
+# once committed another editor's files as "initial commit"). Scrub them
+# before the first git call; the copy must be its own repository.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX GIT_COMMON_DIR GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES LEFTHOOK
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${REPO_ROOT}"

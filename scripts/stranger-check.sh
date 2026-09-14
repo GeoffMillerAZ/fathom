@@ -20,6 +20,15 @@
 # validate` only if that number stays under two minutes)
 set -euo pipefail
 
+# A git hook (lefthook's pre-push runs `task validate`, which runs this)
+# exports GIT_DIR and friends to every child. Left in place they point
+# every `git` call below at the PUSHING repository, so the scratch copy's
+# `git init && git add && git commit` re-initialises the real checkout
+# instead (O48: it reported "nothing to commit" against the worktree and
+# once committed another editor's files as "initial commit"). Scrub them
+# before the first git call; the copy must be its own repository.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX GIT_COMMON_DIR GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES LEFTHOOK
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${REPO_ROOT}"
@@ -54,7 +63,11 @@ rm -f "${work}/.tracked"
   git init -q
   git add .
   git -c user.name=stranger -c user.email=stranger@example.invalid commit -q -m "stranger-check: the tracked tree" --no-verify
-) >"${work}/git.log" 2>&1
+) >"${work}/git.log" 2>&1 || {
+  echo "stranger-check: FAIL could not make the copy its own repository:" >&2
+  cat "${work}/git.log" >&2
+  exit 1
+}
 
 # 2. Build standalone.
 if ! (cd "${tree}" && GOWORK=off CGO_ENABLED=1 go build -o bin/fathom ./cmd/fathom >"${work}/build.log" 2>&1); then
