@@ -159,7 +159,7 @@ func oracleCalibrationFixtureRepo(t *testing.T) (repoPath, commit string) {
 		cmd := exec.Command("git", args...)
 		cmd.Dir = dir
 		cmd.Env = append(
-			os.Environ(),
+			gitEnv(),
 			"GIT_AUTHOR_NAME=test", "GIT_AUTHOR_EMAIL=test@example.invalid",
 			"GIT_COMMITTER_NAME=test", "GIT_COMMITTER_EMAIL=test@example.invalid",
 		)
@@ -361,7 +361,7 @@ func testPatchTargetFixtureRepo(t *testing.T) (repoPath, baseCommit, testPatch s
 		cmd := exec.Command("git", args...)
 		cmd.Dir = dir
 		cmd.Env = append(
-			os.Environ(),
+			gitEnv(),
 			"GIT_AUTHOR_NAME=test", "GIT_AUTHOR_EMAIL=test@example.invalid",
 			"GIT_COMMITTER_NAME=test", "GIT_COMMITTER_EMAIL=test@example.invalid",
 		)

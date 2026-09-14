@@ -423,7 +423,7 @@ func runIn(ctx context.Context, dir string, name string, args ...string) (string
 // extra map, which wins on a key collision with the inherited operator
 // environment) — workerDiscoveryBrief (sessions.go) uses this to point a
 // wired cell's own `fathom discoveries` subprocess at the CELL's threads
-// file and daemon, never the operator's real ones that a bare os.Environ()
+// file and daemon, never the operator's real ones that a bare gitEnv()
 // inheritance would otherwise silently expose it to.
 func runInEnv(ctx context.Context, dir string, extra map[string]string, name string, args ...string) (string, error) {
 	cmd := exec.CommandContext(ctx, name, args...)
@@ -580,9 +580,13 @@ func buildFathomFromExport(ctx context.Context, root, sha, dest string) (string,
 	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
 		return "", fmt.Errorf("building fathom: %w", err)
 	}
-	cmd := exec.CommandContext(ctx, "go", "build", "-o", dest, "./cmd/fathom")
+	// -buildvcs=false: the export is not a repository, yet it sits under
+	// the checkout's tree, so go would try to read git's status for the
+	// version stamp and fail under a wedged volume (dry-r3, 2026-09-14). The
+	// cell records the fathom commit itself.
+	cmd := exec.CommandContext(ctx, "go", "build", "-buildvcs=false", "-o", dest, "./cmd/fathom")
 	cmd.Dir = tmp
-	cmd.Env = append(os.Environ(), "GOWORK=off", "CGO_ENABLED=1")
+	cmd.Env = append(gitEnv(), "GOWORK=off", "CGO_ENABLED=1")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		_ = os.Remove(dest)
@@ -695,7 +699,7 @@ func compileLayers(ctx context.Context, root string, task Task, wt Worktree) (*C
 // "violated" (dry cells, 2026-09-13). With a go.work present the worktree
 // builds from its own go.mod (GOWORK=off); extra is merged in sorted order.
 func SubjectEnv(worktree string, extra map[string]string) []string {
-	env := os.Environ()
+	env := gitEnv()
 	// Always off, not only when the subject has a go.work: a subject
 	// worktree lives under workspace/ of THIS repo, and Go walks up from
 	// it to this repo's go.work, whose main module then "does not contain

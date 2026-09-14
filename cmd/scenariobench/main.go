@@ -54,6 +54,13 @@ import (
 )
 
 func main() {
+	// A bench driver never wants the repository of a git hook it may be
+	// running under: scrub what git exports to hooks before any subprocess
+	// (internal/scenariobench/gitenv.go explains the 2026-09-14 incident).
+	for _, k := range []string{"GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_PREFIX", "GIT_COMMON_DIR"} {
+		os.Unsetenv(k)
+	}
+	os.Setenv("LEFTHOOK", "0")
 	os.Exit(run(os.Args[1:]))
 }
 
