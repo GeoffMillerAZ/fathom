@@ -120,6 +120,15 @@ func (h ClaudeHarness) RunSession(req SessionRequest) (SessionResult, error) {
 		runErr = startErr
 	} else {
 		pgid := cmd.Process.Pid
+		// A driver that dies in the sliver between Start() succeeding and
+		// this line (nothing in-memory knows pgid yet) is covered by the
+		// SAME pidfile sweep that covers every other crash window here
+		// (ReapOrphanSessionsUnder / RefuseIfLiveSessionInWorktree,
+		// sessionpid.go) once writeSessionPIDFiles lands two lines down —
+		// registerLiveProcessGroup is this process's own fast, in-memory
+		// path (KillAllLiveProcessGroups on ITS OWN shutdown); the pidfile
+		// is the durable one a LATER driver invocation reads, and never
+		// depends on this line having run at all.
 		registerLiveProcessGroup(pgid, "session:"+req.Worktree)
 		if err := writeSessionPIDFiles(req.RawDir, req.Worktree, pgid); err != nil {
 			// A pidfile write failing is an instrument nuisance, not a
