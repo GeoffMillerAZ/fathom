@@ -40,9 +40,10 @@ names the commit of the last full re-sweep.
 Tasks whose premise is what the LLM-compiled obligations layer serves
 declare `requires: [compiled-layer]` (PB-12). The runner skips them — never
 scores them as misses — when its environment lacks the capability
-(`--env`), which is the DEFAULT for a scratch daemon (VB-36) unless the
-operator explicitly passes `--env compiled-layer` — see "Scratch daemon by
-default" below.
+(`--env`). `--env` defaults to `compiled-layer` (VB-36) — a default run
+covers all thirteen home tasks, eight deterministic and five
+`requires: [compiled-layer]` — unless the operator passes `--env raw` to
+opt out; see "Scratch daemon by default" below.
 
 ### Two criteria, one bar
 
@@ -321,9 +322,12 @@ than a quiet one. Nothing else may declare a win.
 diff can move and borrows the rest. `task bench-home` — **this spends real
 LLM tokens**, roughly three times the
 2026-07-24 run at the default `--repeat 3` (~13M tokens, ~$13 at 2026-09
-prices; add a third for the `none` arm). It is operator-initiated: never in
-`validate`, never in a hook, never in CI (`docs/intent/autonomy.md`: ask
-before LLM spend).
+prices; add a third for the `none` arm), **plus a small, one-time,
+cheap/haiku-tier spend to compile the obligations layer** for the export
+being measured (see "Scratch daemon by default" below; cached thereafter,
+so only the FIRST run against a given commit pays it). It is
+operator-initiated: never in `validate`, never in a hook, never in CI
+(`docs/intent/autonomy.md`: ask before LLM spend).
 
 ### Scratch daemon by default (VB-36, O47)
 
@@ -336,43 +340,62 @@ scratch fathom binary is built FROM THAT EXPORT with `-buildvcs=false`
 ingested from it — never from the live dev tree. This closes O47: a daemon
 built or ingested from the live checkout can serve an answer that cites
 the live checkout's own absolute path, a path a live editor may be
-changing mid-run. The binary and store are cached under `workspace/tmp/`,
-keyed by the export's own commit, and REUSED across cells, across
-`--repeat`, and across separate invocations of this script for the same
-commit — the obligations-layer compile below is the expensive part this
-protects, so a repeated run pays it once. `--no-scratch-daemon` (or
-`--daemon-url`, an alias of `--fathom-url`) opts back into the old
-fleet-daemon behavior for a deliberate operator run against a daemon you
-already run.
+changing mid-run.
 
-A scratch daemon has no LLM-compiled obligations layer **until one is
-compiled**: `--env` still defaults to `""` there, so `requires:
-[compiled-layer]` tasks are skipped (never scored as misses) unless the
-operator explicitly passes `--env compiled-layer` — which both admits
-those tasks AND (**COSTS LLM TOKENS**) compiles the layer for real, once
-per export, cached exactly like the binary/store above. This is the same
-"I accept LLM spend for this run" signal `task bench-home` already uses;
-a default invocation never triggers it. Against the fleet daemon
-(`--no-scratch-daemon`/`--daemon-url`), `--env` defaults to
-`"compiled-layer"`, as before.
+The export, and the scratch binary/store, live under
+`${TMPDIR:-/tmp}/fathom-context-bench/` — OUTSIDE this checkout, a
+deliberate DIVERGENCE from CLAUDE.md's workspace/ convention (the
+`scripts/stranger-check.sh` precedent). A first cut put them under
+`workspace/tmp/`, nested inside the checkout; every honest served path
+inside a nested export also carries the live checkout's own path as a
+string PREFIX, so the path-leak check below (naively implemented) flagged
+every answer as a leak. Moving the export out fixes the common case, and
+`DetectPathLeak`/`DetectOutOfRootReads` also canonicalize both roots
+(`realpath`, so a symlinked temp dir or checkout compares equal) and
+exclude anything under the session's own root regardless of layout — so
+either arrangement scores correctly. Keyed by the export's own commit
+sha, and REUSED across cells, across `--repeat`, and across separate
+invocations of this script for the same commit — the obligations-layer
+compile below is the expensive part this protects, so a repeated run pays
+it once. `--no-scratch-daemon` (or `--daemon-url`, an alias of
+`--fathom-url`) opts back into the old fleet-daemon behavior for a
+deliberate operator run against a daemon you already run.
+
+**`--env` defaults to `compiled-layer`** (VB-36) — restored as the
+default for every wired-arm run, scratch daemon or fleet, so a default
+`task bench-home` covers all thirteen home tasks (eight deterministic,
+five `requires: [compiled-layer]`), matching the pre-scratch-default
+behavior. With the (default) scratch daemon, admitting compiled-layer
+tasks also means COMPILING THE LAYER FOR REAL when none is cached yet:
+`fathom compile -dry-run=false` against the cheap/haiku-tier model
+(`claude-haiku-4-5-...`, `cmd/fathom/compile.go`'s `defaultCompileModel`)
+— **this spends a small amount of real LLM money**, once per export,
+cached exactly like the binary/store above (a second cell, a `--repeat`,
+or a later run against the same export reuses it). `--env raw` opts out:
+deterministic tasks only, no compile, no spend — the prior default. The
+run's final summary prints the env in effect and whether the compile was
+cached, paid just now, failed, or not applicable (`--env raw` /
+`--no-scratch-daemon`).
 
 Two safety checks run on every wired-arm cell now, from the stream-json
 transcript every cell captures (see "How to read a row" for the columns):
-a served tool_result payload naming the live checkout's own absolute path
-sets `path_leak: true`; a Bash/Read tool input naming an absolute path
-outside the session's own root (`--restricted` confines Read/Glob/Grep to
-it, but a shell command naming an absolute path escapes completely — the
-exact O47 repro) is counted on `out_of_root_reads` and named in
-`out_of_root_paths`. Both are recorded on the cell — never silently — and
-summed/listed on the ledger row (`out_of_root_reads`, `flagged_cells`).
+a served tool_result payload naming the live checkout's own absolute
+path, EXCLUDING anything under the session's own root (an honest
+reference into the export is not a leak), sets `path_leak: true`; a
+Bash/Read tool input naming an absolute path outside the session's own
+root (`--restricted` confines Read/Glob/Grep to it, but a shell command
+naming an absolute path escapes completely — the exact O47 repro) is
+counted on `out_of_root_reads` and named in `out_of_root_paths`. Both are
+recorded on the cell — never silently — and summed/listed on the ledger
+row (`out_of_root_reads`, `flagged_cells`).
 
 Against another repo: `scripts/context-bench.sh --subject-root <dir>
 --service <id> --prompt-subject 'the acme codebase'` builds the scratch
 fathom binary from THIS tree, ingests the subject into a store under
-`workspace/tmp/` (never the fleet store, never a post-fix tree), serves it
-on a free loopback port for the run, and stops it at exit. `--fathom-url`
-(or `--daemon-url`) points the fathom arm at a daemon you already run
-instead, opting out of the scratch default.
+`${TMPDIR:-/tmp}/fathom-context-bench/` (never the fleet store, never a
+post-fix tree), serves it on a free loopback port for the run, and stops
+it at exit. `--fathom-url` (or `--daemon-url`) points the fathom arm at a
+daemon you already run instead, opting out of the scratch default.
 
 **Clean room (RC-7, vision 28 §2.2).** A smoke test proved the earlier
 scratch `CLAUDE_CONFIG_DIR` approach loses the login ("Not logged in"), so

@@ -67,31 +67,46 @@
 #     never from the live dev tree. This closes O47: a fleet daemon or a
 #     scratch daemon built/ingested from the live checkout can serve an
 #     answer that cites the live checkout's own absolute path, which is
-#     also a path a live editor may be changing mid-run. The binary+store
-#     are cached under workspace/tmp/ keyed by the export's own commit sha
-#     and REUSED across cells, across `--repeat`, and across separate
-#     invocations of this script for the same export — the obligations-
-#     layer compile (below) is the expensive part this protects, so a
-#     repeated run pays it once. `--no-scratch-daemon` (or `--daemon-url`,
-#     an alias of `--fathom-url`) keeps the old behavior for a deliberate
-#     operator run against a daemon they already run. A scratch daemon has
-#     no LLM-compiled obligations layer UNTIL ONE IS COMPILED: --env
-#     defaults to "" there and tasks that declare `requires:
-#     [compiled-layer]` are skipped (never scored as misses) unless the
-#     operator explicitly passes `--env compiled-layer`, which both admits
-#     those tasks AND (COSTS LLM TOKENS) compiles the layer for real,
-#     once per export, cached exactly like the binary/store above. Against
-#     the fleet daemon (`--no-scratch-daemon`/`--daemon-url`) --env
-#     defaults to "compiled-layer", as before.
+#     also a path a live editor may be changing mid-run. The export (and
+#     the scratch binary+store) live under `${TMPDIR:-/tmp}/fathom-context-
+#     bench/` — OUTSIDE this checkout, a deliberate DIVERGENCE from
+#     CLAUDE.md's workspace/ convention (the scripts/stranger-check.sh
+#     precedent): nested under $ROOT, every honest served path inside the
+#     export also carries $ROOT as a string prefix, which false-positived
+#     the path-leak check below on every answer (see prepare_session_root).
+#     Keyed by the export's own commit sha and REUSED across cells, across
+#     `--repeat`, and across separate invocations of this script for the
+#     same export — the obligations-layer compile (below) is the expensive
+#     part this protects, so a repeated run pays it once. `--no-scratch-
+#     daemon` (or `--daemon-url`, an alias of `--fathom-url`) keeps the old
+#     behavior for a deliberate operator run against a daemon they already
+#     run.
+#   - compiled-layer-by-default (VB-36): `--env` defaults to
+#     "compiled-layer" for every wired-arm run now, scratch daemon or
+#     fleet — restoring the pre-scratch-default behavior (a default `task
+#     bench-home` runs all thirteen home tasks, the eight deterministic
+#     ones and the five `requires: [compiled-layer]` ones) and extending it
+#     to the scratch daemon: when the scratch daemon has no compiled
+#     obligations layer yet, this script now COMPILES ONE FOR REAL
+#     (`fathom compile -dry-run=false`, cheap-tier/haiku model — COSTS A
+#     SMALL AMOUNT OF LLM MONEY, see docs/bench/README.md), once per
+#     export, cached by the same export sha as the binary/store (the
+#     SCRATCH_COMPILED_MARKER file) — a second cell, a `--repeat`, or a
+#     later invocation against the same export reuses it, never
+#     recompiling. `--env raw` opts out (deterministic tasks only, no
+#     compile, no spend) — the prior default. The run summary prints the
+#     env in effect and whether the compile was cached, paid, or skipped.
 #   - Every served payload in a transcript is checked against the live
-#     checkout's own absolute path (DetectPathLeak): a hit sets
-#     `path_leak: true` on the cell. Every Bash/Read tool input is checked
-#     against the session's own root (DetectOutOfRootReads, the O47 shape:
-#     `--restricted` confines Read/Glob/Grep to the session root, but a
-#     Bash command naming an absolute path escapes it completely): a hit
-#     is counted on `out_of_root_reads` and named in `out_of_root_paths`.
-#     Both are recorded on the cell (never silently), summed/listed on the
-#     ledger row, and documented in docs/bench/README.md.
+#     checkout's own absolute path, EXCLUDING anything under the session's
+#     own root — an honest reference to the export is not a leak
+#     (DetectPathLeak): a hit sets `path_leak: true` on the cell. Every
+#     Bash/Read tool input is checked against the session's own root
+#     (DetectOutOfRootReads, the O47 shape: `--restricted` confines
+#     Read/Glob/Grep to the session root, but a Bash command naming an
+#     absolute path escapes it completely): a hit is counted on
+#     `out_of_root_reads` and named in `out_of_root_paths`. Both are
+#     recorded on the cell (never silently), summed/listed on the ledger
+#     row, and documented in docs/bench/README.md.
 #
 # Output: workspace/artifacts/context-bench/run-<ts>/ (raw claude -p JSON
 # per cell + scored ArmResult JSON per cell) and, at the top level,
@@ -148,10 +163,14 @@
 #   scripts/context-bench.sh --subject-root <dir> --service <id> \
 #                            --prompt-subject 'the acme codebase'   # scratch-daemon-default: on by default
 #   scripts/context-bench.sh --no-scratch-daemon --fathom-url <url>  # talk to a daemon you already run
-#   scripts/context-bench.sh --env compiled-layer  # admits compiled-layer tasks; with the
-#                                                  # (default) scratch daemon this ALSO
-#                                                  # compiles the layer for real (COSTS
-#                                                  # LLM TOKENS), once per export, cached
+#   scripts/context-bench.sh                       # --env compiled-layer is now the DEFAULT:
+#                                                  # with the (default) scratch daemon this
+#                                                  # compiles the layer for real the first
+#                                                  # time (COSTS A SMALL AMOUNT OF LLM
+#                                                  # MONEY, cheap/haiku-tier), once per
+#                                                  # export, cached thereafter
+#   scripts/context-bench.sh --env raw             # opt OUT: deterministic tasks only,
+#                                                  # no compile, no spend
 #   scripts/context-bench.sh --only 'H1-T01 H1-T05' --scope targeted
 #   scripts/context-bench.sh --no-reuse-cells      # never borrow a stored cell
 #
@@ -312,12 +331,14 @@ if [ "$FATHOM_URL_SET" -eq 1 ] && [ "$SCRATCH_DAEMON_SET" -eq 0 ]; then
 fi
 
 # The environment's capabilities decide which tasks are runnable
-# (`requires`, PB-12). A scratch daemon has no compiled layer UNTIL one is
-# compiled (see the header and the scratch-daemon block below) — so --env
-# still defaults to "" there, admitting compiled-layer tasks only when the
-# operator explicitly asks (which then also triggers the real compile).
+# (`requires`, PB-12). compiled-layer-by-default (VB-36): --env defaults
+# to "compiled-layer" unconditionally now — scratch daemon or fleet — a
+# default `task bench-home` runs all thirteen home tasks. With the
+# (default) scratch daemon this also triggers a real, one-per-export
+# compile below (see the header) unless the operator passes `--env raw`
+# to opt out (deterministic tasks only, no compile, no spend).
 if [ "$ENV_SET" -eq 0 ]; then
-  if [ "$SCRATCH_DAEMON" -eq 1 ]; then ENV=""; else ENV="compiled-layer"; fi
+  ENV="compiled-layer"
 fi
 
 ARTIFACTS_DIR="$ROOT/workspace/artifacts/context-bench"
@@ -380,11 +401,22 @@ fi
 # scratch daemon (scratch-daemon-default, VB-36) ingests THIS SAME export,
 # never the live checkout, so a session and the daemon answering it read
 # identical bytes.
+#
+# DIVERGENCE from CLAUDE.md's workspace/ convention (the stranger-check.sh
+# precedent, scripts/stranger-check.sh): the export lives under
+# `${TMPDIR:-/tmp}/fathom-context-bench/`, OUTSIDE this checkout, not
+# `workspace/tmp/`. Nested under $ROOT (workspace/tmp/'s literal meaning),
+# every honest served path inside the export also carries $ROOT as a
+# string PREFIX — a served answer citing a file in the legitimate export
+# would then also "contain the live checkout's absolute path", which is
+# exactly the string DetectPathLeak (-live-checkout) is told to flag. That
+# false-positived on every answer once path_leak shipped. The export is
+# still keyed by commit sha exactly as before; only its parent moved.
 prepare_session_root() {
   local sha
   sha="$(git -C "$SUBJECT_ROOT" rev-parse --short HEAD 2>/dev/null || echo nogit)"
   SESSION_SHA="$sha"
-  SESSION_ROOT="$ROOT/workspace/tmp/bench-subject-$sha"
+  SESSION_ROOT="${TMPDIR:-/tmp}/fathom-context-bench/subject-$sha"
   if [ ! -d "$SESSION_ROOT" ]; then
     mkdir -p "$SESSION_ROOT"
     if git -C "$SUBJECT_ROOT" rev-parse HEAD >/dev/null 2>&1; then
@@ -418,6 +450,9 @@ trap cleanup EXIT
 # against the fleet daemon is EXPECTED to answer from the live checkout —
 # that is not a leak, it is the operator's own choice.
 LIVE_CHECKOUT_FOR_LEAK_CHECK=""
+# COMPILE_STATUS feeds the run's final summary (VB-36); overwritten inside
+# the scratch-daemon branch below when it actually runs.
+COMPILE_STATUS="n/a (no scratch daemon this run)"
 # Only the wired arms ("fathom", "full") ever talk to a daemon at all — a
 # --arms grep or --arms none run has no use for one, so the default flip
 # to SCRATCH_DAEMON=1 must not start building/ingesting/serving one it
@@ -434,7 +469,7 @@ if [ "$SCRATCH_DAEMON" -eq 1 ] && { echo "$ARMS" | grep -qw fathom || echo "$ARM
     FATHOM_SRC_EXPORT="$SESSION_ROOT"
   else
     FATHOM_SRC_SHA="$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo nogit)"
-    FATHOM_SRC_EXPORT="$ROOT/workspace/tmp/bench-scratch-src-$FATHOM_SRC_SHA"
+    FATHOM_SRC_EXPORT="${TMPDIR:-/tmp}/fathom-context-bench/src-$FATHOM_SRC_SHA"
     if [ ! -d "$FATHOM_SRC_EXPORT" ]; then
       mkdir -p "$FATHOM_SRC_EXPORT"
       if git -C "$ROOT" rev-parse HEAD >/dev/null 2>&1; then
@@ -445,12 +480,15 @@ if [ "$SCRATCH_DAEMON" -eq 1 ] && { echo "$ARMS" | grep -qw fathom || echo "$ARM
     fi
   fi
 
-  # scratch-daemon-default: binary + store are cached under workspace/tmp/,
-  # keyed by BOTH the fathom source's commit (what the binary can do) and
-  # the subject export's commit (what the store contains) — reused across
-  # cells, across --repeat, and across separate invocations of this script
-  # for the same two shas, so a rebuild only happens when either changes.
-  SCRATCH_CACHE_DIR="$ROOT/workspace/tmp/bench-scratch-$FATHOM_SRC_SHA-$SESSION_SHA"
+  # scratch-daemon-default: binary + store are cached OUTSIDE the checkout
+  # (same DIVERGENCE as SESSION_ROOT above — the store's own content is
+  # sqlite/binary, not leak-checked text, but keeping every export under
+  # one root is simpler to reason about), keyed by BOTH the fathom
+  # source's commit (what the binary can do) and the subject export's
+  # commit (what the store contains) — reused across cells, across
+  # --repeat, and across separate invocations of this script for the same
+  # two shas, so a rebuild only happens when either changes.
+  SCRATCH_CACHE_DIR="${TMPDIR:-/tmp}/fathom-context-bench/scratch-$FATHOM_SRC_SHA-$SESSION_SHA"
   SCRATCH_BIN="$SCRATCH_CACHE_DIR/fathom"
   SCRATCH_STORE="$SCRATCH_CACHE_DIR/store.sqlite"
   SCRATCH_COMPILED_MARKER="$SCRATCH_CACHE_DIR/.compiled-obligations"
@@ -477,23 +515,28 @@ if [ "$SCRATCH_DAEMON" -eq 1 ] && { echo "$ARMS" | grep -qw fathom || echo "$ARM
     fi
   fi
 
-  # The obligations layer (PB-12's compiled-layer capability) is compiled
-  # for real ONLY when the operator explicitly asked for compiled-layer
-  # tasks (--env compiled-layer) — that flag is the existing "I accept LLM
-  # spend for this run" signal (see `task bench-home`'s own COSTS TOKENS
-  # warning), never triggered by a default invocation. Cached by the same
-  # two shas as the binary/store above (SCRATCH_COMPILED_MARKER), so a
-  # second cell, a --repeat, or a re-run of this script for the same
-  # export never re-pays for the compile.
+  # compiled-layer-by-default (VB-36): the obligations layer is compiled
+  # for real whenever --env admits compiled-layer — the default now,
+  # restoring the pre-scratch-default behavior — unless the operator
+  # passed `--env raw` to opt out (deterministic tasks only, no spend).
+  # COSTS A SMALL AMOUNT OF LLM MONEY the first time (cheap/haiku-tier
+  # model, see docs/bench/README.md): cached by the same two shas as the
+  # binary/store above (SCRATCH_COMPILED_MARKER), so a second cell, a
+  # --repeat, or a re-run of this script for the same export never
+  # re-pays for the compile. COMPILE_STATUS feeds the run's final summary.
+  COMPILE_STATUS="n/a (--env '$ENV' has no compiled-layer)"
   if echo "$ENV" | tr ',' ' ' | grep -qw compiled-layer; then
     if [ -s "$SCRATCH_COMPILED_MARKER" ]; then
       echo "context-bench: obligations layer already compiled for fathom@$FATHOM_SRC_SHA / subject@$SESSION_SHA (compiled once per export) — reusing"
+      COMPILE_STATUS="cached ($SCRATCH_COMPILED_MARKER)"
     else
-      echo "context-bench: COSTS LLM TOKENS — compiling the obligations layer once for fathom@$FATHOM_SRC_SHA / subject@$SESSION_SHA (cached for every later cell/run against this export)"
+      echo "context-bench: COSTS LLM TOKENS (cheap/haiku-tier) — compiling the obligations layer once for fathom@$FATHOM_SRC_SHA / subject@$SESSION_SHA (cached for every later cell/run against this export)"
       if ! "$SCRATCH_BIN" compile -service "$SERVICE" -layer obligations -store "$SCRATCH_STORE" -dry-run=false > "$RUN_DIR/scratch-compile.log" 2>&1; then
         echo "context-bench: obligations-layer compile failed (see $RUN_DIR/scratch-compile.log) — compiled-layer tasks will score as misses" >&2
+        COMPILE_STATUS="failed (see $RUN_DIR/scratch-compile.log)"
       else
         date -u +%Y%m%dT%H%M%SZ > "$SCRATCH_COMPILED_MARKER"
+        COMPILE_STATUS="paid just now ($RUN_DIR/scratch-compile.log)"
       fi
     fi
   fi
@@ -848,6 +891,7 @@ else
 fi
 
 echo "context-bench: done"
+echo "  env in effect:                     $ENV (obligations compile: $COMPILE_STATUS)"
 echo "  raw transcripts + per-task scores: $RUN_DIR"
 echo "  results:                           $RESULTS_JSON"
 echo "  summary:                           $SUMMARY_MD"
