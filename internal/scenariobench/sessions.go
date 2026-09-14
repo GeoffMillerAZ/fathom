@@ -205,6 +205,12 @@ func runSingle(ctx context.Context, h Harness, task Task, armName string, arm Ar
 	return results, nil
 }
 
+// defaultMaxWorkersTotalFactor is runPlannerWorkers' own default cap on
+// total worker sessions (task.Sessions.MaxWorkersTotal unset, 0): three
+// times the nominal worker count, generous enough to clear a plan with
+// noticeably more rows than workers without ever running unbounded.
+const defaultMaxWorkersTotalFactor = 3
+
 func runPlannerWorkers(ctx context.Context, h Harness, task Task, armName string, arm Arm, wt Worktree, opts RunOptions, cellRawDir string) ([]SessionResult, error) {
 	var results []SessionResult
 	// RC-32 (docs/vision/28-receipts.md §4): the planner's own session
@@ -225,46 +231,112 @@ func runPlannerWorkers(ctx context.Context, h Harness, task Task, armName string
 		return results, nil
 	}
 
-	rows, err := readPlanRows(wt.Path)
-	if err != nil {
-		return results, fmt.Errorf("task %s arm %s: reading the planner's plan file: %w", task.ID, armName, err)
-	}
-	n := task.Sessions.Workers
-	if len(rows) < n {
-		n = len(rows)
+	maxTotal := task.Sessions.MaxWorkersTotal
+	if maxTotal <= 0 {
+		maxTotal = task.Sessions.Workers * defaultMaxWorkersTotalFactor
 	}
 	// RC-32: on a wired arm, the same discoveries brief SubagentStart
 	// renders (cmd/fathom's subagentDiscoveries) — run once, against the
 	// cell's own scratch daemon, and prepended to every worker's prompt so
 	// M5 measures the feature, not the prompt.
 	brief, pointers := workerDiscoveryBrief(ctx, wt, arm, sessionStart)
-	for i := 0; i < n; i++ {
-		row := rows[i]
+
+	// O55 item 3: one plan row per worker, never reassigned, left every row
+	// past task.Sessions.Workers permanently unchecked. Both arms share
+	// this loop — nothing here is arm-conditional. A worker session is
+	// followed by a new worker session on the NEXT unchecked row (re-read
+	// every iteration, since a worker's own session may have checked rows
+	// besides its own) until either no unchecked row remains or maxTotal
+	// worker sessions have run. The row this iteration assigns is marked
+	// done in the plan file right after its session returns — scheduling
+	// bookkeeping only, never a completion claim: FalseDoneRate/
+	// PlanCoverage read BoxChecks off the session TRANSCRIPT, never this
+	// file's own content, so marking a row here cannot manufacture a false
+	// claim — it only keeps readPlanRows from handing the same row to a
+	// second worker.
+	assigned := 0
+	for assigned < maxTotal {
+		rows, err := readPlanRows(wt.Path)
+		if err != nil {
+			return results, fmt.Errorf("task %s arm %s: reading the planner's plan file: %w", task.ID, armName, err)
+		}
+		if len(rows) == 0 {
+			break
+		}
+		row := rows[0]
+		assigned++
 		rowID := row.id
 		if rowID == "" {
-			rowID = fmt.Sprintf("worker-%d", i+1)
+			rowID = fmt.Sprintf("worker-%d", assigned)
 		}
 		prompt := fmt.Sprintf(workerRowPromptFmt, task.Prompt, row.text)
 		if brief != "" {
 			prompt = brief + "\n\n" + prompt
 		}
-		req, err := newSessionRequest(task, armName, arm, wt, opts, cellRawDir, i+1, "worker", rowID, prompt)
+		req, err := newSessionRequest(task, armName, arm, wt, opts, cellRawDir, assigned, "worker", rowID, prompt)
 		if err != nil {
 			return results, err
 		}
 		res, err := runOneSession(h, req, wt.Arm.MCPServerNames, task.Subject.ExcludePaths)
 		if err != nil {
-			return append(results, res), fmt.Errorf("task %s arm %s worker %d: %w", task.ID, armName, i+1, err)
+			return append(results, res), fmt.Errorf("task %s arm %s worker %d: %w", task.ID, armName, assigned, err)
 		}
 		if len(pointers) > 0 && factsReusedHook != nil {
 			factsReusedHook(&res, pointers)
 		}
 		results = append(results, res)
+		if err := markPlanRowDone(wt.Path, row); err != nil {
+			return results, fmt.Errorf("task %s arm %s: marking row %s done: %w", task.ID, armName, rowID, err)
+		}
 		if res.Error != "" {
 			return results, nil
 		}
 	}
 	return results, nil
+}
+
+// markPlanRowDone flips row's own checklist line in its plan file (row.file,
+// worktree-relative, as readPlanRows recorded it) from `- [ ]` to `- [x]` —
+// O55 item 3's reassignment bookkeeping: the FIRST line whose captured text
+// (via planRowRE, the same parse readPlanRows uses) equals row.text exactly,
+// so two identical row texts are disambiguated by file order, never by
+// content. This is scheduling state only, read by nothing but the next
+// readPlanRows call in this same loop — it is not, and must never become, a
+// completion claim (see runPlannerWorkers' own comment).
+func markPlanRowDone(worktree string, row planRow) error {
+	path := filepath.Join(worktree, filepath.FromSlash(row.file))
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("reading plan file %s: %w", path, err)
+	}
+	lines := strings.Split(string(raw), "\n")
+	for i, line := range lines {
+		m := planRowRE.FindStringSubmatch(line)
+		if m == nil || strings.TrimSpace(m[1]) != row.text {
+			continue
+		}
+		idx := strings.Index(line, "[ ]")
+		if idx < 0 {
+			continue
+		}
+		lines[i] = line[:idx] + "[x]" + line[idx+3:]
+		return os.WriteFile(path, []byte(strings.Join(lines, "\n")), 0o644)
+	}
+	return fmt.Errorf("plan row %q not found verbatim in %s", row.text, path)
+}
+
+// RemainingPlanRows reports how many of a plan file's rows are still
+// unchecked in worktree right now — cmd/scenariobench's own source for a
+// planner-workers cell's rows_unassigned (RunSessions returns only
+// sessions, never a cell-level field, so the driver reads this itself
+// after RunSessions returns). 0, never an error, when there is no plan
+// file at all — the same "nothing to report" readPlanRows already gives.
+func RemainingPlanRows(worktree string) (int, error) {
+	rows, err := readPlanRows(worktree)
+	if err != nil {
+		return 0, err
+	}
+	return len(rows), nil
 }
 
 // workerDiscoveryBrief runs `fathom discoveries` against a wired cell's

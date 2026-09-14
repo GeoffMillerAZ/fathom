@@ -656,9 +656,26 @@ func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench
 	drift := scenariobench.ContractDrift(planBytes, wt.Path, oracle.CoverProfile)
 	readings.Drift = &drift
 
+	var rowsAssigned, rowsUnassigned *int
 	if cp.task.Sessions.Mode == scenariobench.ModePlannerWorkers {
 		overlap := scenariobench.ReexplorationOverlap(sessions)
 		readings.Overlap = &overlap
+
+		// O55 item 3: rows_assigned counts the worker sessions RunSessions'
+		// reassignment loop actually ran (every session but the planner);
+		// rows_unassigned re-reads the plan file AFTER sessions finished —
+		// whatever RunSessions' own maxTotal cap (or an errored worker)
+		// left unchecked.
+		assigned := 0
+		for _, s := range sessions {
+			if s.Role == "worker" {
+				assigned++
+			}
+		}
+		rowsAssigned = &assigned
+		if n, err := scenariobench.RemainingPlanRows(wt.Path); err == nil {
+			rowsUnassigned = &n
+		}
 	}
 
 	if cp.task.Rule != nil {
@@ -707,6 +724,8 @@ func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench
 		WorktreePath:   wt.Path,
 		SubjectClone:   wt.SubjectClone,
 		BaseCommit:     cp.task.Subject.BaseCommit,
+		RowsAssigned:   rowsAssigned,
+		RowsUnassigned: rowsUnassigned,
 	}, nil
 }
 
