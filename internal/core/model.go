@@ -386,6 +386,32 @@ type Edge struct {
 	Kind        EdgeKind // "" for legacy/syntax-only edges; set for typed edges
 }
 
+// CrossRepoEdgeKind classifies WHAT KIND of cross-repo relationship an edge
+// records. It is additive (vision 02 §4.7: edge kinds grow one at a time)
+// and defaults to the zero value for every CrossRepoEdge ever produced
+// before this field existed, so no existing producer or consumer changes
+// behavior.
+type CrossRepoEdgeKind string
+
+const (
+	// CrossRepoEdgeCall is the original cross-repo relationship
+	// (platformlink.BuildFromSymbols): a caller in FromService invokes a
+	// symbol ("pkg.Name") that resolves to a definition in ToService. The
+	// zero value, named explicitly so a reader need not infer "empty means
+	// call".
+	CrossRepoEdgeCall CrossRepoEdgeKind = ""
+	// CrossRepoEdgeServiceRef (VB-30, docs/vision/29-verbs-not-lookups.md
+	// §I; internal/analysis/serviceref) is a client->handler join:
+	// FromService issues an outbound HTTP call whose normalized (method,
+	// path template) matches a route ToService registers. ToKey carries
+	// "METHOD /normalized/template" — the same "METHOD path" convention
+	// internal/mcp's traverse tool already uses for graph.KindRoute — never
+	// a bare symbol name. Always EdgeConfidenceHeuristic
+	// (CrossRepoEdgeConfidenceOf): a normalized-string match across
+	// repositories is never confirmed by a compiler-grade resolver.
+	CrossRepoEdgeServiceRef CrossRepoEdgeKind = "service_ref"
+)
+
 // CrossRepoEdge is the atomic unit of cross-repo knowledge (platform graph).
 type CrossRepoEdge struct {
 	FromService string
@@ -393,6 +419,9 @@ type CrossRepoEdge struct {
 	ToService   string
 	ToKey       string
 	ToFile      string
+	// Kind classifies the edge (additive; "" == CrossRepoEdgeCall, the
+	// original and only kind before VB-30).
+	Kind CrossRepoEdgeKind
 }
 
 // Query is a concern-scoped lookup. ConcernID is mandatory (ADR-006).

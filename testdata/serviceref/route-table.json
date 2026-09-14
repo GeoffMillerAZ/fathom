@@ -1,0 +1,44 @@
+{
+  "_comment": "VB-31 (docs/plans/verbs.md): hand-verified ground truth for internal/analysis/serviceref's (method, path template) join. Each row is a fact a human read off the fixture source and confirmed by hand, independent of the extractor. precision = (rows the extractor correctly reports as should_join:true) / (all rows the extractor reports as joined); recall = (rows the extractor correctly reports as should_join:true) / (all should_join:true rows here). docs/bench/serviceref.md explains the full measurement procedure. 'real_pair' rows are the one hand-verified non-fixture pair VB-31 asks for; empty until a real fleet repo pair is documented (ADR-011: no org-specific names/hosts — a real pair must be sourced from a public or org-agnostic example before it can be added here).",
+  "fixture_fleet": "internal/connector/testdata/fauxtown",
+  "pairs": [
+    {
+      "id": "fixture-1-match",
+      "should_join": true,
+      "from_service": "checkout-service",
+      "from_file": "checkout-service/checkout.go",
+      "from_symbol": "FetchItem",
+      "from_call": "http.NewRequestWithContext(ctx, \"GET\", fmt.Sprintf(\"http://catalog-service/items/%s\", id), nil)",
+      "to_service": "catalog-service",
+      "to_file": "catalog-service/catalog.go",
+      "to_handler": "getItemHandler",
+      "to_registration": "r.GET(\"/items/:id\", getItemHandler)",
+      "method": "GET",
+      "normalized_template": "/items/{}",
+      "note": "GET /items/%s (client) and GET /items/:id (route) normalize to the same template — the fixture's one true cross-repo service_ref edge."
+    },
+    {
+      "id": "fixture-2-decoy-call",
+      "should_join": false,
+      "from_service": "checkout-service",
+      "from_file": "checkout-service/checkout.go",
+      "from_symbol": "HoldItem",
+      "from_call": "http.NewRequestWithContext(ctx, \"DELETE\", fmt.Sprintf(\"http://catalog-service/items/%s/hold\", id), nil)",
+      "method": "DELETE",
+      "normalized_template": "/items/{}/hold",
+      "note": "No route anywhere in the fixture fleet registers DELETE /items/{}/hold — the join must not manufacture an edge for this call."
+    },
+    {
+      "id": "fixture-3-decoy-route",
+      "should_join": false,
+      "to_service": "catalog-service",
+      "to_file": "catalog-service/catalog.go",
+      "to_handler": "createItemHandler",
+      "to_registration": "r.POST(\"/items\", createItemHandler)",
+      "method": "POST",
+      "normalized_template": "/items",
+      "note": "No client call anywhere in the fixture fleet targets POST /items — a route with no matching caller must not appear as a hop either."
+    }
+  ],
+  "real_pairs": []
+}

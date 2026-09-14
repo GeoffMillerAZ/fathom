@@ -33,6 +33,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/impact"
 	"github.com/geoffmilleraz/fathom/internal/analysis/proto"
 	"github.com/geoffmilleraz/fathom/internal/analysis/routes"
+	"github.com/geoffmilleraz/fathom/internal/analysis/serviceref"
 	"github.com/geoffmilleraz/fathom/internal/concern"
 	"github.com/geoffmilleraz/fathom/internal/context/packer"
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -95,6 +96,54 @@ func registerExtraTools(s *Server, backend QueryInterface) {
 
 	// ── investigation: history ───────────────────────────────────────────────────
 	registerHistory(s, backend)
+}
+
+// ─── platform: service_ref hops (VB-30) ──────────────────────────────────────
+
+// serviceRefHopsPayload renders hops via serviceref.Hop.Payload() — shared
+// by blast_radius, cross_repo_blast_radius and review_diff so their
+// service_ref reporting never drifts into three slightly different shapes.
+// Always kind:"service_ref", tier:"heuristic" per hop (core.
+// CrossRepoEdgeConfidenceOf's meaning: a normalized-string match across
+// repositories, never confirmed by a compiler-grade resolver).
+func serviceRefHopsPayload(hops []serviceref.Hop) []any {
+	out := make([]any, len(hops))
+	for i, h := range hops {
+		out[i] = h.Payload()
+	}
+	return out
+}
+
+// serviceRefHopsInto reports the service_ref hops (VB-30) whose ToService
+// is service and whose ToFile is one of changedFiles: another service's
+// client call joins a route THIS change touches, so that OTHER service's
+// call site is part of the blast radius even though no same-process call
+// graph connects them. Computed fleet-wide (serviceref.BuildFromStore
+// across every known service) each call — the same no-caching precedent
+// cross_repo_blast_radius already sets by re-listing every service's
+// symbols on every call. Best-effort: a fleet of fewer than two services,
+// or any backend error, degrades to no hops rather than failing the whole
+// tool.
+func serviceRefHopsInto(ctx context.Context, backend QueryInterface, service string, changedFiles []string) []serviceref.Hop {
+	services, err := backend.Services(ctx)
+	if err != nil || len(services) < 2 {
+		return nil
+	}
+	hops, err := serviceref.BuildFromStore(ctx, backend, services)
+	if err != nil {
+		return nil
+	}
+	changed := make(map[string]bool, len(changedFiles))
+	for _, f := range changedFiles {
+		changed[f] = true
+	}
+	var out []serviceref.Hop
+	for _, h := range hops {
+		if h.ToService == service && changed[h.ToFile] {
+			out = append(out, h)
+		}
+	}
+	return out
 }
 
 // ─── investigation: blast_radius ─────────────────────────────────────────────
@@ -161,6 +210,12 @@ func registerBlastRadius(s *Server, backend QueryInterface) {
 			// resolution (VB-19): the same by_depth counts, summed to one
 			// envelope-level typed/heuristic mix.
 			"resolution": resolutionFromBlastBuckets(res.Buckets),
+			// VB-30: other services whose outbound HTTP client call joins a
+			// route one of changed_files registers — a hop no same-process
+			// call graph can see. Each entry kind:"service_ref",
+			// tier:"heuristic". Empty (never omitted) when the fleet has
+			// fewer than two services or no such hop exists.
+			"service_ref_hops": serviceRefHopsPayload(serviceRefHopsInto(ctx, backend, p.Service, p.ChangedFiles)),
 		}
 		if ic := indexCommitFor(ctx, backend, p.Service); ic != "" {
 			result["index_commit"] = ic
@@ -1097,7 +1152,26 @@ func registerCrossRepoBlastRadius(s *Server, backend QueryInterface) {
 				"file":    h.File,
 			}
 		}
-		return map[string]any{"hits": out, "count": len(out)}, nil
+
+		// VB-30: also report every service_ref hop whose ToHandler matches
+		// the requested symbol by bare name — the same fleet-wide,
+		// bare-name matching style this tool already uses for hits above
+		// (the intra-service ListAllSymbols loop), extended across the
+		// process boundary a call-graph-only search cannot see.
+		var hopHits []serviceref.Hop
+		if allHops, err := serviceref.BuildFromStore(ctx, backend, services); err == nil {
+			for _, h := range allHops {
+				if h.ToHandler == p.Symbol {
+					hopHits = append(hopHits, h)
+				}
+			}
+		}
+
+		return map[string]any{
+			"hits":             out,
+			"count":            len(out),
+			"service_ref_hops": serviceRefHopsPayload(hopHits),
+		}, nil
 	})
 }
 

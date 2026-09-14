@@ -315,6 +315,10 @@ type blastRadiusResult struct {
 	// by_depth, and the daemon's watermark for the service.
 	Resolution  resolutionMix `json:"resolution"`
 	IndexCommit string        `json:"index_commit,omitempty"`
+	// ServiceRefHops (VB-30) is `any` rather than a fully reflected type —
+	// each element is serviceref.Hop.Payload()'s ad-hoc map, the same
+	// reason reviewDiffResult.Dimensions stays `any`.
+	ServiceRefHops any `json:"service_ref_hops"`
 }
 
 // reviewDiffResult mirrors review_diff's payload (review_tool.go): the
@@ -335,6 +339,8 @@ type reviewDiffResult struct {
 	// impact dimension's blast radius, and the daemon's watermark.
 	Resolution  resolutionMix `json:"resolution"`
 	IndexCommit string        `json:"index_commit,omitempty"`
+	// ServiceRefHops (VB-30): see blastRadiusResult.ServiceRefHops.
+	ServiceRefHops any `json:"service_ref_hops"`
 }
 
 // safeDeleteCheckResult mirrors safe_delete_check's payload (safe_delete.go).

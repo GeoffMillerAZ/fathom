@@ -356,11 +356,56 @@ type CrossRepoEdge struct {
     ToService   string
     ToKey       string
     ToFile      string
+    Kind        CrossRepoEdgeKind // "" (call) or "service_ref" (VB-30)
 }
 ```
 
 The `platform-callers` CLI subcommand and the `cross_repo_callers` / `platform_callers`
 MCP tools use this graph to answer "which services call this symbol?"
+
+### Edge kinds (vision 02 §4.7: one at a time)
+
+`CrossRepoEdge.Kind` classifies the relationship an edge records. It is additive —
+every edge produced before the field existed carries the zero value — and grows one kind
+at a time:
+
+| Kind | Value | Producer | Join key | Tier |
+|---|---|---|---|---|
+| call | `""` (`core.CrossRepoEdgeCall`) | `platformlink.BuildFromSymbols` | bare `pkg.Name` string equality | heuristic (`core.CrossRepoEdgeConfidenceOf`) |
+| service_ref | `"service_ref"` (`core.CrossRepoEdgeServiceRef`) | `internal/analysis/serviceref.ServiceRefEdges` (VB-30) | normalized `(HTTP method, path template)` | heuristic, never typed |
+
+`service_ref` (docs/vision/29-verbs-not-lookups.md §I) is the edge that lets blast radius
+cross a *process* boundary rather than only a *repo* boundary within one call graph: a
+client in one service issues an HTTP request whose method + path template matches a
+route another service registers, and `internal/analysis/serviceref` joins the two sides
+across the whole fleet (never within the same service — that is an ordinary intra-service
+call, not a cross-repo reference). `ToKey` carries `"METHOD /normalized/template"` (the
+same `"METHOD path"` convention `internal/mcp`'s `traverse` tool already uses for
+`graph.KindRoute`), never a bare symbol name.
+
+Extraction is two-sided:
+
+- **Server side** — `internal/analysis/routes.Extract` (already used by the `endpoints`
+  analyzer and the `traverse` MCP tool): `net/http`, chi, gin and echo route
+  registrations, language-agnostic across Go/JS/TS/Python.
+- **Client side** — `internal/analysis/serviceref.ExtractClientCalls`: Go-only for VB-30
+  (language coverage for a brand-new edge kind grows one language at a time, same rule as
+  the edge kind itself), detecting `http.NewRequest[WithContext]` / `http.Get` /
+  `http.Post` / `http.Head` / `http.PostForm` call sites and resolving the URL argument —
+  a string literal, or the first `%`-verb literal of an inline `fmt.Sprintf(...)` — to a
+  path template.
+
+`NormalizeTemplate` collapses `:param` (chi/gin/express), `{param}` (gorilla/echo,
+including a `{param:regex}` constraint), a trailing `*`/`*wildcard`, and a printf verb
+(`%s`, `%d`, `%02d`, …) into one placeholder, `"{}"`, and strips a leading scheme+host, so
+`"/items/:id"` and `"http://host/items/%s"` compare equal.
+
+`blast_radius`, `cross_repo_blast_radius` and `review_diff` each report matching
+`service_ref` hops as an additive `service_ref_hops` array (one object per hop, always
+`"kind":"service_ref"`, `"tier":"heuristic"`) — computed fleet-wide via
+`serviceref.BuildFromStore`, the same no-caching-layer precedent
+`cross_repo_blast_radius` already sets for the `call`-kind graph. `docs/bench/` documents
+how VB-31 (precision/recall ≥ 0.90 against a hand-verified route table) will be measured.
 
 `PlatformStore` (`internal/store/platform_store.go`) loads many store files
 (`*.sqlite`/`*.db`, plus `*.duckdb` recognized only so a pre-SS-8 leftover can lose a
