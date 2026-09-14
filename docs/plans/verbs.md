@@ -39,8 +39,8 @@ Verify: `fathom verify --service fathom --plan docs/plans/verbs.md`.
 
 ## Wave E — receipts a stranger can check (R6)
 
-- [ ] Every edge carries a resolution tier — `typed`, `heuristic`, or `external(<indexer>@<version>)` — and every answer's envelope reports the mix, the index commit, and per-fact anchors (file, symbol fingerprint, content hash) {id: VB-19, symbol: resolutionTierOf, package: internal/core}
-- [ ] `fathom receipt verify <receipt>` re-derives a served claim from a bare checkout at the named commit with go/types and git alone — no daemon, no index — so exit 0 means a third party reproduced it {id: VB-20, symbol: cmdReceiptVerify, package: cmd/fathom}
+- [x] Every edge carries a resolution tier — `typed`, `heuristic`, or `external(<indexer>@<version>)` — and every answer's envelope reports the mix, the index commit, and per-fact anchors (file, symbol fingerprint, content hash) {id: VB-19, symbol: resolutionTierOf, package: internal/core}
+- [x] `fathom receipt verify <receipt>` re-derives a served claim from a bare checkout at the named commit with go/types and git alone — no daemon, no index — so exit 0 means a third party reproduced it {id: VB-20, symbol: cmdReceiptVerify, package: cmd/fathom}
 - [ ] (op) M11b: fifty sampled receipts re-derived independently at ≥ 95 %, and the envelope under 10 % of median payload in the L1 replay, else the envelope is removed {id: VB-21, skip_test: true, skip: "sampling run; evidence is the report under workspace/ and the L1 replay goldens", needs: VB-20}
 
 ## Wave F — the review a human sees (R11)
@@ -57,7 +57,7 @@ Verify: `fathom verify --service fathom --plan docs/plans/verbs.md`.
 
 ## Wave H — the custodian over harness memory (R8)
 
-- [ ] `fathom config audit` classifies code-fact-shaped sentences in every auto-loaded file — CLAUDE.md, AGENTS.md, the harness's memory files — as anchored-fresh, drifted (with the receipt), or unanchorable, behind a flag until precision ≥ 0.8 on twenty real files {id: VB-28, symbol: auditCodeFactSentences, package: internal/custodian}
+- [x] `fathom config audit` classifies code-fact-shaped sentences in every auto-loaded file — CLAUDE.md, AGENTS.md, the harness's memory files — as anchored-fresh, drifted (with the receipt), or unanchorable, behind a flag until precision ≥ 0.8 on twenty real files {id: VB-28, symbol: auditCodeFactSentences, package: internal/custodian}
 - [ ] (op) M14 written from a hand label over ~100 sentences from ≥ 20 files across two harnesses {id: VB-29, skip_test: true, skip: "labelling run; evidence is the labelled set under testdata/custodian/ and the report", needs: VB-28}
 
 ## Wave I — across the process boundary, and out of the index (R7, R9)
