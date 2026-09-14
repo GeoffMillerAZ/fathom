@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
@@ -38,6 +39,7 @@ func cmdCompile(args []string, stdout, stderr io.Writer) int {
 	profile := fs.String("profile", "", "named LLM profile from ~/.fathom/config.toml or project .fathom/config.toml (direct --store mode only; HTTP mode uses the daemon's own configured profile — CF-3, docs/plans/config-experience.md); default: the config's default_profile, or the env-only lanes when no config file defines one")
 	force := fs.Bool("force", false, "A2-1 (docs/plans/activation.md): override the idempotency guard and recompile even when the store's latest compile_run for (service, layer) already ran at the same corpus watermark and prompt identity (direct --store mode only). Logged into the new compile_runs row.")
 	unsafeSkipEvalGate := fs.Bool("unsafe-skip-eval-gate", false, "D3-1 (docs/plans/expert-depth.md): override the eval-gate refusal and compile a layer with no passing eval/RESULTS.md record (direct --store mode only). Logged into the new compile_runs row.")
+	resume := fs.Bool("continue", false, "O54 deliverable 3: resume a budget-stopped compile of this (service, layer) from the first not-yet-compiled section instead of restarting — skips the pre-flight refusal that otherwise fires whenever the REMAINING corpus alone still estimates over this SAME run's max_tokens_per_run budget (direct --store mode only). The recorded compile_runs row's resumed_from names the section.")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
@@ -80,9 +82,15 @@ func cmdCompile(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "error: --force and --unsafe-skip-eval-gate apply to direct --store mode only (the A2-1/D3-1 compile guards reason about the local store). Pass --store, or omit these flags for an unguarded HTTP-mode compile.")
 		return 1
 	}
+	// --continue shares the same direct-store-only constraint (HTTP mode has
+	// no guard/resume plumbing into the daemon).
+	if *resume && *storePath == "" {
+		fmt.Fprintln(stderr, "error: --continue applies to direct --store mode only. Pass --store.")
+		return 1
+	}
 
 	if *storePath != "" {
-		return compileViaStore(*storePath, *service, *layer, *profile, *dryRun, *force, *unsafeSkipEvalGate, stdout, stderr)
+		return compileViaStore(*storePath, *service, *layer, *profile, *dryRun, *force, *unsafeSkipEvalGate, *resume, stdout, stderr)
 	}
 	return compileViaHTTP(*url, *service, *layer, *dryRun, stdout, stderr)
 }
@@ -102,7 +110,7 @@ func cmdCompile(args []string, stdout, stderr io.Writer) int {
 // criteria (docs/vision/11-dial-to-eleven.md Phase D) count against. Both
 // guards are pure pre-flight: a refusal never opens an LLM client and never
 // writes a compile_runs row.
-func compileViaStore(storePath, service, layer, profileFlag string, dryRun, force, unsafeSkipEvalGate bool, stdout, stderr io.Writer) int {
+func compileViaStore(storePath, service, layer, profileFlag string, dryRun, force, unsafeSkipEvalGate, resume bool, stdout, stderr io.Writer) int {
 	st, err := store.Open(storePath)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: open store %q: %v\n", storePath, err)
@@ -167,18 +175,27 @@ func compileViaStore(storePath, service, layer, profileFlag string, dryRun, forc
 				// the kill criteria read (bounce finding 4).
 				completedClean := !latest.Refused && !latest.BudgetStopped && latest.SectionsFailed == 0
 				if completedClean && latest.CorpusWatermark == watermark && latest.PromptVersion == promptIdentity {
-					if !force {
-						fmt.Fprintf(stderr, "error: refusing idempotent recompile: compile_run %s for (%s, %s) already ran at corpus watermark %q and prompt identity %q (ran_at=%s) — nothing has changed since. Pass --force to override; the override is logged into compile_runs.\n",
+					switch {
+					case resume:
+						// O54 NIT: --continue is itself the "yes, proceed"
+						// signal for a layer that turns out to already be
+						// complete — no --force, no escape note. The compile
+						// below finds nothing left to do (every section's
+						// digest still matches) and says so plainly instead
+						// of this guard refusing outright.
+					case force:
+						note := fmt.Sprintf("force: idempotent recompile of run %s (watermark=%q, prompt=%q)", latest.RunID, watermark, promptIdentity)
+						if escape != "" {
+							escape += "; " + note
+						} else {
+							escape = note
+						}
+						fmt.Fprintf(stderr, "warning: --force: recompiling despite an unchanged watermark/prompt identity (prior run %s)\n", latest.RunID)
+					default:
+						fmt.Fprintf(stderr, "error: refusing idempotent recompile: compile_run %s for (%s, %s) already ran at corpus watermark %q and prompt identity %q (ran_at=%s) — nothing has changed since. Pass --force to override (logged into compile_runs), or --continue to confirm there is nothing left to resume.\n",
 							latest.RunID, service, layer, watermark, promptIdentity, latest.RanAt.UTC().Format(time.RFC3339))
 						return 1
 					}
-					note := fmt.Sprintf("force: idempotent recompile of run %s (watermark=%q, prompt=%q)", latest.RunID, watermark, promptIdentity)
-					if escape != "" {
-						escape += "; " + note
-					} else {
-						escape = note
-					}
-					fmt.Fprintf(stderr, "warning: --force: recompiling despite an unchanged watermark/prompt identity (prior run %s)\n", latest.RunID)
 				}
 			}
 		}
@@ -196,10 +213,26 @@ func compileViaStore(storePath, service, layer, profileFlag string, dryRun, forc
 		c.WithLLM(llmCl, compileModelForProfile(p), 0.001, 0.005)
 	}
 
-	run, compErr := c.CompileLayerWithEscape(ctx, service, layer, dryRun, escape)
+	var run core.CompileRun
+	var compErr error
+	if resume {
+		run, compErr = c.CompileLayerResume(ctx, service, layer, dryRun, escape)
+	} else {
+		run, compErr = c.CompileLayerWithEscape(ctx, service, layer, dryRun, escape)
+	}
 	if compErr != nil {
 		fmt.Fprintf(stderr, "error: compile layer %q: %v\n", layer, compErr)
 		return 1
+	}
+
+	// O54 NIT: --continue against a layer that turns out to already be
+	// fully compiled (every section's digest still matches — ResumedFrom
+	// stays "" exactly in that case, CompileInput.Resume's own doc
+	// comment) prints one plain line instead of the full run dump; a
+	// DryRun estimate never counts as "nothing to resume".
+	if resume && !dryRun && !run.Refused && run.ResumedFrom == "" {
+		fmt.Fprintf(stdout, "layer %s is complete: %d/%d sections compiled; nothing to resume\n", layer, run.SectionsTotal, run.SectionsTotal)
+		return 0
 	}
 
 	printCompileRunCore(stdout, run)
@@ -471,13 +504,19 @@ func printCompileRunCore(w io.Writer, run core.CompileRun) {
 		fmt.Fprintf(w, "sections_failed:   %d (malformed/truncated model responses — re-run compiles just these)\n", run.SectionsFailed)
 	}
 	if run.BudgetStopped {
-		fmt.Fprintf(w, "budget_stopped:    true (%s — re-run to resume; the digest gate skips completed sections)\n", run.RefusalReason)
+		fmt.Fprintf(w, "budget_stopped:    true (%s — re-run to resume; the digest gate skips completed sections. If the REMAINING corpus alone still exceeds this same budget, a plain re-run refuses at the pre-flight gate — pass --continue to keep making progress without restarting: `fathom compile --service %s --layer %s --dry-run=false --continue`)\n", run.RefusalReason, run.ServiceID, run.Layer)
 	}
 	if run.Refused {
 		fmt.Fprintf(w, "refused:           true (%s)\n", run.RefusalReason)
 	}
 	if run.Escape != "" {
 		fmt.Fprintf(w, "escape:            %s\n", run.Escape)
+	}
+	if run.ResumedFrom != "" {
+		fmt.Fprintf(w, "resumed_from:      %s\n", run.ResumedFrom)
+	}
+	if len(run.UncompiledScopes) > 0 {
+		fmt.Fprintf(w, "uncompiled_scopes: %s\n", strings.Join(run.UncompiledScopes, ", "))
 	}
 	fmt.Fprintf(w, "claims_emitted:    %d\n", run.ClaimsEmitted)
 	fmt.Fprintf(w, "claims_rejected:   %d\n", run.ClaimsRejected)

@@ -266,6 +266,26 @@ type CompileRun struct {
 	// breakdown. Sorted deterministically by Cause (internal/semantic's
 	// buildRejectionReasons).
 	RejectionReasons []RejectionBreakdown
+
+	// ResumedFrom is O54 deliverable 3 (`fathom compile --layer obligations
+	// --continue`): the subject ("<doc>#<slug>") of the first
+	// not-yet-compiled section in compile order this run picked up from,
+	// set only when the caller asked to resume (semantic.CompileInput.
+	// Resume). Empty on every normal run, and empty on a resume request
+	// whose corpus was already fully compiled — proof the run actually
+	// continued rather than restarted, not a claim.
+	ResumedFrom string
+	// UncompiledScopes is O54 deliverable 2's layer_coverage.
+	// uncompiled_scopes source: the sorted, deduplicated document paths
+	// this run's compile order (internal/semantic's
+	// orderSectionsByGoverningScope) never reached — the tail after a
+	// BudgetStopped break, nil when the run walked its whole ordered
+	// corpus (nothing left uncompiled by THIS run). A caller reads this
+	// off the LATEST compile_runs row for (service, layer), not off
+	// whether any given section has a claim — a section skipped by the
+	// digest gate already has one from an earlier run and is never in
+	// this tail.
+	UncompiledScopes []string `json:"uncompiled_scopes,omitempty"`
 }
 
 // RejectionBreakdown is one compile run's rejection-cause bucket (O19's

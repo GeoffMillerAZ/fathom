@@ -281,6 +281,58 @@ func TestSQLiteStore_RecordCompileRun_EmptyRejectionReasons_RoundTripsAsEmptySli
 	}
 }
 
+// TestSQLiteStore_RecordCompileRun_PersistsResumedFromAndUncompiledScopes
+// (O54): a run's ResumedFrom and UncompiledScopes round-trip through
+// RecordCompileRun/CompileRuns unchanged, and a run that never resumed
+// (the common case) round-trips with an empty ResumedFrom and a nil
+// UncompiledScopes — never a fabricated value.
+func TestSQLiteStore_RecordCompileRun_PersistsResumedFromAndUncompiledScopes(t *testing.T) {
+	s, err := NewSQLiteStore("")
+	if err != nil {
+		t.Fatalf("NewSQLiteStore: %v", err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+	ctx := context.Background()
+
+	wantScopes := []string{"ADR.md", "docs/plans/README.md"}
+	if err := s.RecordCompileRun(ctx, core.CompileRun{
+		RunID: "run-partial", ServiceID: "svc", Layer: "obligations",
+		CorpusWatermark: "wm-1", PromptVersion: "obligations/v1",
+		RanAt: time.Unix(1, 0).UTC(), SectionsTotal: 60, SectionsCompiled: 18,
+		BudgetStopped: true, UncompiledScopes: wantScopes,
+	}); err != nil {
+		t.Fatalf("RecordCompileRun (partial): %v", err)
+	}
+	if err := s.RecordCompileRun(ctx, core.CompileRun{
+		RunID: "run-resumed", ServiceID: "svc", Layer: "obligations",
+		CorpusWatermark: "wm-1", PromptVersion: "obligations/v1",
+		RanAt: time.Unix(2, 0).UTC(), SectionsTotal: 60, SectionsCompiled: 42,
+		ResumedFrom: "internal/CLAUDE.md#adding-things",
+	}); err != nil {
+		t.Fatalf("RecordCompileRun (resumed): %v", err)
+	}
+	got, err := s.CompileRuns(ctx, "svc", "")
+	if err != nil {
+		t.Fatalf("CompileRuns: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("got %d runs, want 2", len(got))
+	}
+	// Newest-first: run-resumed, then run-partial.
+	if got[0].ResumedFrom != "internal/CLAUDE.md#adding-things" {
+		t.Errorf("got[0].ResumedFrom = %q, want %q", got[0].ResumedFrom, "internal/CLAUDE.md#adding-things")
+	}
+	if got[0].UncompiledScopes != nil {
+		t.Errorf("got[0].UncompiledScopes = %v, want nil (this run never left an uncompiled tail)", got[0].UncompiledScopes)
+	}
+	if got[1].ResumedFrom != "" {
+		t.Errorf("got[1].ResumedFrom = %q, want empty (this run never resumed)", got[1].ResumedFrom)
+	}
+	if !reflect.DeepEqual(got[1].UncompiledScopes, wantScopes) {
+		t.Errorf("got[1].UncompiledScopes = %v, want %v", got[1].UncompiledScopes, wantScopes)
+	}
+}
+
 // TestSQLiteStore_CompileRuns_LegacyRowMissingColumn_DegradesToNil (Q-3):
 // a store created before rejection_reasons_json existed — the migration
 // adds the column, and the pre-existing row (which has no value for it,
@@ -343,6 +395,13 @@ CREATE TABLE compile_runs (
 	}
 	if len(got) != 1 || got[0].RunID != "legacy-run" || got[0].RejectionReasons != nil {
 		t.Fatalf("legacy run: got %+v, want 1 row with nil RejectionReasons", got)
+	}
+	// O54: this legacy DDL also predates resumed_from/uncompiled_scopes_json
+	// — the SAME migration pass must add both without erroring, and the
+	// pre-existing row reads back with a zero-value ResumedFrom and a nil
+	// UncompiledScopes.
+	if got[0].ResumedFrom != "" || got[0].UncompiledScopes != nil {
+		t.Fatalf("legacy run: got ResumedFrom=%q UncompiledScopes=%v, want empty/nil", got[0].ResumedFrom, got[0].UncompiledScopes)
 	}
 }
 

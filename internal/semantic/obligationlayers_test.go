@@ -148,3 +148,48 @@ func TestDisplacedByTier_VB10(t *testing.T) {
 		t.Fatalf("root-scope answer must never carry a tier breakdown: %+v", rootAns.DisplacedByTier)
 	}
 }
+
+// TestObligationsFor_NearestGuideOutranksRootADR is O54 deliverable 4
+// (VB-8, once a nested guide's claims actually get compiled): a file
+// under internal/extractor/ must find the internal/CLAUDE.md rule that
+// governs it in the top three served rules, ahead of root ADR.md rules —
+// and the cap's eviction must never take the nearer-scope guide rule in
+// favour of a root one.
+func TestObligationsFor_NearestGuideOutranksRootADR(t *testing.T) {
+	ctx := context.Background()
+	st := bpStore(t)
+	seedRoleClaim(t, st, "guide", "bp-governs", "Register every extractor in fusion.New.",
+		[]string{"internal/extractor/**"}, core.ClaimFresh, "internal/CLAUDE.md#L4-L4", "")
+	for _, id := range []string{"adr1", "adr2", "adr3", "adr4", "adr5", "adr6"} {
+		seedRoleClaim(t, st, id, "bp-governs", "Root rule "+id+".", []string{"**"}, core.ClaimFresh, "ADR.md#L2-L2", "")
+	}
+
+	got, err := ObligationsFor(ctx, st, "svc", "internal/extractor/goextract.go", 0)
+	if err != nil {
+		t.Fatalf("ObligationsFor: %v", err)
+	}
+	if len(got.Rules) == 0 {
+		t.Fatal("no rules served")
+	}
+	pos := -1
+	for i, r := range got.Rules {
+		if r.Src == "internal/CLAUDE.md#L4-L4" {
+			pos = i
+			break
+		}
+	}
+	if pos < 0 {
+		t.Fatalf("internal/CLAUDE.md rule not served at all: %+v", got.Rules)
+	}
+	if pos >= 3 {
+		t.Fatalf("internal/CLAUDE.md rule at position %d, want top three (rules=%+v)", pos, got.Rules)
+	}
+	// The 7 eligible claims (1 guide + 6 root) overflow the 6-rule cap —
+	// the guide must never be the one displaced in favour of a root rule.
+	if got.DisplacedByTier["package"] != 0 {
+		t.Fatalf("DisplacedByTier = %+v, the nearer-scope (package) rule must never be displaced in favour of a root one under the cap", got.DisplacedByTier)
+	}
+	if got.DisplacedByTier["root"] == 0 {
+		t.Fatalf("DisplacedByTier = %+v, want a non-zero root count (7 eligible, cap 6)", got.DisplacedByTier)
+	}
+}
