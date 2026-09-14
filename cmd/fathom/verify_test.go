@@ -741,3 +741,18 @@ func TestCmdVerify_Mutation_RequiresStore(t *testing.T) {
 		t.Fatalf("--mutation without --store must be an operational error (exit 2), got %d; stderr=%q", code, errBuf.String())
 	}
 }
+
+func TestCmdVerify_Mutation_MissingFile(t *testing.T) {
+	storePath, service, _ := mutationFixture(t)
+	pf := writeTempPlan(t, "- [x] widget works {symbol: Widget}\n")
+	missing := filepath.Join(t.TempDir(), "does-not-exist.json")
+
+	var out, errBuf bytes.Buffer
+	code := run([]string{
+		"verify", "--service", service, "--plan", pf, "--store", storePath,
+		"--mutation", missing,
+	}, &out, &errBuf)
+	if code != 2 {
+		t.Fatalf("an unreadable --mutation file must be an operational error (exit 2), got %d; stdout=%s stderr=%q", code, out.String(), errBuf.String())
+	}
+}

@@ -15,10 +15,7 @@ package verify
 // MutationScore below before calling OverlayMutation, the same boundary
 // DetailedEvidence keeps for callgraph.ReachDetail.
 
-import (
-	"fmt"
-	"strings"
-)
+import "fmt"
 
 // MutationScore is one symbol's joined mutation-testing result — see
 // internal/analysis/coverage.SymbolMutation, which this mirrors.
@@ -32,40 +29,14 @@ type MutationScore struct {
 }
 
 // mutationLocKey is the (file, line) join key OverlayMutation matches a
-// task's already-resolved symbol location against — the location is
-// parsed back out of the task's own symbol_present Pass detail (see
-// symbolPresentLoc) rather than re-resolving the symbol, so OverlayMutation
-// needs no Evidence access at all: it is a pure function of an already
-// computed Report, mirroring OverlayLocal's own re-evaluate-in-place shape.
+// task's already-resolved symbol location (TaskVerdict.EvidenceFile /
+// EvidenceLine — verifyTask's own typed record of where symbol_present's
+// match lives, set at the same point its Pass detail is built) against.
+// OverlayMutation needs no Evidence access at all: it is a pure function
+// of an already computed Report, mirroring OverlayLocal's own
+// re-evaluate-in-place shape.
 func mutationLocKey(file string, line int) string {
 	return fmt.Sprintf("%s:%d", file, line)
-}
-
-// symbolPresentLoc extracts the (file, line) a task's Pass'd symbol_present
-// criterion recorded — verifyTask's own pass("symbol_present", "%s at
-// %s:%d", ...) format — or ok=false when the task has no such criterion
-// (an unclaimed/no-contract row, or one whose symbol_present did not pass).
-func symbolPresentLoc(criteria []Criterion) (file string, line int, ok bool) {
-	for _, c := range criteria {
-		if c.Name != "symbol_present" || c.Status != Pass {
-			continue
-		}
-		idx := strings.LastIndexByte(c.Detail, ':')
-		if idx < 0 {
-			return "", 0, false
-		}
-		atIdx := strings.Index(c.Detail, " at ")
-		if atIdx < 0 || atIdx+4 >= idx {
-			return "", 0, false
-		}
-		file = c.Detail[atIdx+4 : idx]
-		var n int
-		if _, err := fmt.Sscanf(c.Detail[idx+1:], "%d", &n); err != nil {
-			return "", 0, false
-		}
-		return file, n, true
-	}
-	return "", 0, false
 }
 
 // OverlayMutation re-evaluates every task's Pass'd test_reaches criterion
@@ -87,11 +58,10 @@ func OverlayMutation(rep *Report, scores []MutationScore, strict bool) {
 
 	for i := range rep.Tasks {
 		tv := &rep.Tasks[i]
-		file, line, ok := symbolPresentLoc(tv.Criteria)
-		if !ok {
+		if tv.EvidenceFile == "" {
 			continue
 		}
-		sc, found := byLoc[mutationLocKey(file, line)]
+		sc, found := byLoc[mutationLocKey(tv.EvidenceFile, tv.EvidenceLine)]
 		if !found {
 			continue
 		}

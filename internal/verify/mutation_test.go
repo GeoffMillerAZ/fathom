@@ -11,6 +11,7 @@ func sampleMutationReport() Report {
 		Tasks: []TaskVerdict{
 			{
 				TaskID: "T1", Title: "task one", Status: Pass, Label: "verified", Claimed: true,
+				EvidenceFile: "internal/widget/widget.go", EvidenceLine: 10,
 				Criteria: []Criterion{
 					{Name: "symbol_present", Status: Pass, Detail: "pkg.Foo at internal/widget/widget.go:10"},
 					{Name: "tier", Status: Pass, Detail: "verified"},
