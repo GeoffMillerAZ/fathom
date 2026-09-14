@@ -63,6 +63,12 @@ budget with a receipt, discoveries reach workers and the next session as fresh-r
 pointers, and coverage is a code fact by layer. Done when the reruns in `docs/plans/receipts.md`
 wave 5 carry readings with `surface_calls > 0` and the discoveries kill criteria are decided.
 
+**G12. The surface leads with the answers grep cannot give, and every answer is falsifiable (ADR-035).** The
+four impact verbs and a safe-delete check join the agent surface, obligations names the rule that
+governs, a layer rule compiles to a test, receipts carry a resolution tier a stranger can
+re-derive, and fathom is measured on a corpus it did not write. Done when `docs/plans/verbs.md`
+waves A–D are proven and M10, M11, M12 and M13 carry readings, honest either way.
+
 **G7. The evidence plane's waves 1–2 ship and its oracle gate is read (ADR-026).** Waves 1
 and 2 shipped 2026-08-27: the verb, the ledger, the doctor rows, the clock, the shared
 attention line, the capped primer, the guard proposal with provenance, U12/U13, the fleet

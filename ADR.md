@@ -1502,3 +1502,50 @@ read). Building test-quality judgment into fathom (the review kit's lane; ADR-01
 `surface_unused` cell; the discoveries kill criteria fire; the rerun with every tool present
 still shows the lookup surface above 1.0× grep on payload at equal success (the token claim
 is withdrawn, the tools kept for review and verify).
+
+## ADR-035: Verbs, not lookups — the agent surface leads with the answers grep cannot give; governance compiles to tests; every answer is falsifiable without fathom (2026-09-14)
+
+**Status.** Accepted. Vision: `docs/vision/29-verbs-not-lookups.md`. Plan: `docs/plans/verbs.md`.
+
+**Context.** With the tools present (the receipts rerun) the readings and the literature agree:
+agents grep first, five arms are indistinguishable on lookup accuracy, grep is cheapest, and
+fathom's lead is on blast radius, concern search and verify-shaped questions — the shapes grep
+cannot answer — while its own governance lookup served the wrong rules (O23). The index is
+graded by go/types as level with gopls and ahead of Serena and graphify, so the asset is the
+layer above the index, not the index. `blast_radius`, `review_diff`, `test_impact` and
+`rename_impact` exist and are not on the agent surface. Advisory governance produced zero
+violations on either arm twice. Typed edges are Go-only and carry no visible tier elsewhere.
+Fleet blast radius cannot cross a process. The harness's own memory carried a code claim the
+custodian never saw. BC-15 (a corpus fathom does not own) is still open.
+
+**Decision.**
+1. The agent surface leads with verbs: the four impact verbs join it, `safe_delete_check` is
+   added, the opening moves name a verb first. A new agent-surface tool must claim precision,
+   completeness, freshness, governance or falsifiability — never token savings versus grep.
+2. `obligations` ranks by governing scope, splits human rules from plan-row claims, inlines
+   the cited lines, and reports what it displaced by tier; measured on forty hand-labelled
+   files by a free oracle before any positioning claim.
+3. Governance that can compile does: a `layer-rule` kind is served at the edit and emitted as
+   a generated test; advice stays for prose that cannot compile.
+4. Every edge and answer carries a resolution tier and an anchor; `fathom receipt verify`
+   re-derives a claim from a bare checkout without fathom.
+5. `gold_source_tool` rides every bench cell; a tool is a strength only when it earned the
+   pass. The L0 index oracle and an L1 payload replay run in `task validate`.
+6. fathom enters a corpus it does not own (Long Code Arena bug localization) with instrument
+   truth, publishes raw cells, and closes BC-15 on the reading either way.
+7. The custodian audits code-fact sentences in every auto-loaded file, including harness
+   memory. A `service_ref` edge kind and a SCIP export follow, one edge kind at a time.
+
+**Consequences.** Ten waves with kill criteria in the plan; free gates first. Positioning
+drops any lookup-cost claim until a two-arm payload reading exists. The do-not list in vision
+29 §4 is doctrine: no mutating tools, no ontology or query DSL, no embeddings as primary
+retrieval, no taint engine, no language-count headline, no voided citation.
+
+**Alternatives rejected.** Another payload trim on the lookups (tried; payload rose). Adopting
+Serena's mutating verbs and self-attestation checkpoints. A human-browsable graph as the
+adoption wedge. A standalone memory product.
+
+**Revisit when.** The promoted verbs are the gold source on under one in five of their tasks;
+the repaired `obligations` misses the top-three bar; a compiled rule catches nothing in 200
+commits and thirty days; re-derivation reproduces under 95 % of receipts; the external corpus
+shows no lift.
