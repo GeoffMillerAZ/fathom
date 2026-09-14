@@ -21,7 +21,7 @@ both halves land.
 ### Setup
 
 - graphify **0.9.61** (`uv tool list`: `graphifyy v0.9.61` providing `graphify`
-  and `graphify-mcp`), installed at `/Users/geoff/.local/bin/graphify`.
+  and `graphify-mcp`), installed at the operator's uv tool install.
 - Fixture: `internal/connector/testdata/fauxtown/ledger-service` (the same
   fixture `FreshnessProbe` stages), copied to a scratch dir outside the repo
   with a bare `go.mod` added (`module ledger`).
@@ -34,7 +34,7 @@ both halves land.
   uv tool venv is isolated, a system/user `pip install watchdog` would not
   have reached it; it had to be installed directly into the tool's own venv
   (`uv pip install --python
-  /Users/geoff/.local/share/uv/tools/graphifyy/bin/python watchdog`). This is
+  <uv-tool-venv>/bin/python watchdog`). This is
   a first-run friction point for anyone following the docs' `graphify
   --watch` invocation literally.
 - `OPENAI_API_KEY`, `ANTHROPIC_DEFAULT_KEY`, `AZURE_OPENAI_KEY`,
