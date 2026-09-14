@@ -129,6 +129,16 @@ type Oracle struct {
 	// SessionResult.FinalAnswer. A task may carry this ALONE — no
 	// tree-level check at all — see AnswerOnly (oracle.go).
 	AnswerAllOf []string `json:"answer_all_of,omitempty"`
+	// Localization is VB-25's "files" oracle (vision 29 Wave G, the LCA
+	// bug-localization track): the LAST session's FinalAnswer is parsed
+	// for a file set (ParseAnswerFiles) and scored against Gold.Files
+	// (ScoreLocalization) — precision, recall, hit@1, hit@5 — instead of
+	// a test run. Like AnswerAllOf, a task may carry this ALONE with no
+	// tree-level check at all; unlike AnswerAllOf, success is decided by
+	// the top-ranked file matching gold (LocalizationOnly, oracle.go), not
+	// substring containment. Never combined with AnswerAllOf on the same
+	// task — the two answer-only oracles ask different questions.
+	Localization bool `json:"localization,omitempty"`
 }
 
 // Gold is what the accepted change touched, from the pinned patch.
@@ -179,6 +189,11 @@ const (
 	CategoryUpgrade     Category = "dependency_upgrade"
 	CategoryOrientation Category = "orientation"
 	CategoryFreshness   Category = "freshness"
+	// CategoryLocalization is VB-25 (vision 29 Wave G): a bug-localization
+	// task (Oracle.Localization) — "which files does the fix need", never
+	// an edit — distinct from every other category here, all of which
+	// either ARE an edit or assess one.
+	CategoryLocalization Category = "localization"
 )
 
 // Task is one scenario.
@@ -360,6 +375,27 @@ type OracleResult struct {
 	// even eligible to be broken (the rest already failed at base —
 	// environment, not the agent).
 	Calibration *CalibrationSummary `json:"calibration,omitempty"`
+	// Localization is set only for a task carrying Oracle.Localization —
+	// ScoreLocalization's own verdict (oracle.go), computed from the LAST
+	// session's FinalAnswer against Gold.Files.
+	Localization *LocalizationReading `json:"localization,omitempty"`
+}
+
+// LocalizationReading is VB-25 (vision 29 Wave G): how a bug-localization
+// answer's own parsed file set (ParseAnswerFiles) scored against
+// Gold.Files — computed once, from the FinalAnswer text, never at record
+// time (no tree exists to confirm anything, the same reason FalseDoneRate
+// defers its own backtick fallback to scoring). HitAt1/HitAt5 are ranked
+// on ParseAnswerFiles' own order (first-mentioned first); Recall/Precision
+// are set-based and order-independent.
+type LocalizationReading struct {
+	HitAt1        bool    `json:"hit_at_1"`
+	HitAt5        bool    `json:"hit_at_5"`
+	Recall        float64 `json:"recall"`
+	Precision     float64 `json:"precision"`
+	GoldFiles     int     `json:"gold_files"`
+	AnsweredFiles int     `json:"answered_files"`
+	NotMeasurable string  `json:"not_measurable,omitempty"`
 }
 
 // CalibrationSummary is the counted (never per-test) shape of one task's
@@ -497,6 +533,10 @@ type Readings struct {
 	// GoldSourceEvidence is the matched token, file, or rule path that
 	// decided GoldSourceTool.
 	GoldSourceEvidence string `json:"gold_source_evidence,omitempty"`
+	// Localization is VB-25: OracleResult.Localization carried onto the
+	// cell's own Readings verbatim, so a stored CellResult and a ledger
+	// row's PerTrial both carry it without a separate lookup into Oracle.
+	Localization *LocalizationReading `json:"localization,omitempty"`
 
 	// --- row-only aggregates (AggregateRowReadings, cell.go) ---
 	// A single cell/trial never sets these — they summarize what cannot
@@ -522,6 +562,19 @@ type Readings struct {
 	// TokensToFirstEditAll across the row's own trials that measured it.
 	ResumptionTokensToFirstEditMean float64 `json:"resumption_tokens_to_first_edit_mean,omitempty"`
 	ResumptionTokensToFirstEditN    int     `json:"resumption_tokens_to_first_edit_n,omitempty"`
+	// LocalizationHitAt1Rate/LocalizationHitAt5Rate/LocalizationFileRecallMean
+	// average Localization's own HitAt1/HitAt5/Recall across the row's own
+	// trials that measured it (Localization != nil, NotMeasurable empty);
+	// LocalizationN is the trial count the means were taken over — 0 means
+	// no trial in the row measured it, the same not-measured convention
+	// every other row-only aggregate here uses. These are VB-25's own
+	// headline numbers (docs/bench/scenarios.md "External corpus (LCA bug
+	// localization)"): localization_hit_at_1, localization_hit_at_5, and
+	// the mean file recall.
+	LocalizationHitAt1Rate     float64 `json:"localization_hit_at_1,omitempty"`
+	LocalizationHitAt5Rate     float64 `json:"localization_hit_at_5,omitempty"`
+	LocalizationFileRecallMean float64 `json:"file_recall,omitempty"`
+	LocalizationN              int     `json:"localization_n,omitempty"`
 }
 
 // CompileCostReading is the wave-0 receipt (RC-10) of what a wired,

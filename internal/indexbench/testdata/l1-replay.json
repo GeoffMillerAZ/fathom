@@ -144,5 +144,18 @@
     "bytes": 345,
     "result_count": 1,
     "displaced": 0
+  },
+  {
+    "id": "localize-post",
+    "tool": "localize",
+    "args": {
+      "service": "ledger-service",
+      "stack_trace": "panic: nil ledger\n\tat ledger-service/ledger.go:22\n\tin Post"
+    },
+    "count_field": "candidates",
+    "budget_ms": 250,
+    "bytes": 1157,
+    "result_count": 3,
+    "displaced": 0
   }
 ]

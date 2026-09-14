@@ -349,6 +349,34 @@ type safeDeleteCheckResult struct {
 	Resolution resolutionMix `json:"resolution"`
 }
 
+// localizeCandidateResult mirrors one entry of localize's own "candidates"
+// list (localize_tool.go).
+type localizeCandidateResult struct {
+	File   string   `json:"file"`
+	Symbol string   `json:"symbol"`
+	Score  float64  `json:"score"`
+	Tier   string   `json:"tier"`
+	Why    []string `json:"why"`
+}
+
+// localizeBudgetResult mirrors localize's own "budget" envelope.
+type localizeBudgetResult struct {
+	Allowed int `json:"allowed"`
+	Used    int `json:"used"`
+}
+
+// localizeResult mirrors localize's payload (localize_tool.go).
+type localizeResult struct {
+	Candidates  []localizeCandidateResult `json:"candidates"`
+	Hops        []localizeHop             `json:"hops"`
+	Budget      localizeBudgetResult      `json:"budget"`
+	IndexCommit string                    `json:"index_commit,omitempty"`
+	// Note is set only for an unindexed service (ADR-014 execute-and-
+	// flag): an empty diagnosis with no note means genuinely nothing was
+	// found, never "the service does not exist".
+	Note string `json:"note,omitempty"`
+}
+
 type capabilitiesResult struct {
 	Tools             []string `json:"tools"`
 	ActiveSurface     string   `json:"active_surface"`
@@ -370,6 +398,7 @@ var agentResultTypes = map[string]reflect.Type{
 	"find_symbol":       reflect.TypeOf(findSymbolResult{}),
 	"ingest":            reflect.TypeOf(ingestResult{}),
 	"list_services":     reflect.TypeOf(listServicesResult{}),
+	"localize":          reflect.TypeOf(localizeResult{}),
 	"memory_search":     reflect.TypeOf(memorySearchResult{}),
 	"obligations":       reflect.TypeOf(obligationsResult{}),
 	"outline":           reflect.TypeOf(outlineResult{}),

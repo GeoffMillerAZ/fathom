@@ -64,7 +64,7 @@ const SurfaceModules = "modules"
 // VB-1/VB-2) adds the four verbs promotedVerbs() names plus
 // safe_delete_check, its read-only sibling: the agent surface leads with
 // the answers grep cannot give, not another lookup pitched on token
-// savings.
+// savings. Wave G (plan VB-26) adds a fifth promoted verb, localize.
 var companionTools = func() map[string]bool {
 	m := map[string]bool{
 		"capabilities":     true,

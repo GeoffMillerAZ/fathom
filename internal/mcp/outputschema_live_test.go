@@ -83,6 +83,7 @@ func TestOutputSchemasMatchLiveResults(t *testing.T) {
 		"find_symbol":       {"service": "svc", "name": "A"},
 		"ingest":            {"service": "svc"},
 		"list_services":     {},
+		"localize":          {"service": "svc", "concern": "billing"},
 		"memory_search":     {"service": "svc", "query": "A"},
 		"obligations":       {"service": "svc", "file": "pkg/a.go"},
 		"outline":           {"service": "svc", "file": "pkg/a.go"},

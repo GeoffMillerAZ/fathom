@@ -125,8 +125,29 @@ func RunOracle(ctx context.Context, wt Worktree, task Task, sessions []SessionRe
 		answerOK = answerMatchesAllOf(lastFinalAnswer(sessions), task.Oracle.AnswerAllOf)
 	}
 
-	result.Passed = result.FailToPassOK && result.PassToPassOK && !anyViolated(result.Detectors) && answerOK
+	localizationOK := true
+	if task.Oracle.Localization {
+		loc := ScoreLocalization(lastFinalAnswer(sessions), task.Gold.Files)
+		result.Localization = &loc
+		// Success is the standard file-level accuracy@1 bar the
+		// literature reports (R10: LocAgent 92.7% file-level) — the
+		// top-ranked file in the answer must be a gold file. HitAt5/
+		// Recall/Precision are still readings on every cell regardless
+		// of this verdict (VB-25's own ledger fields), never gated on it.
+		localizationOK = loc.NotMeasurable == "" && loc.HitAt1
+	}
+
+	result.Passed = result.FailToPassOK && result.PassToPassOK && !anyViolated(result.Detectors) && answerOK && localizationOK
 	return result, nil
+}
+
+// LocalizationOnly reports whether task's oracle is localization-only: an
+// Oracle.Localization with no tree-level check at all (fail_to_pass,
+// pass_to_pass, detectors) — the LCA bug-localization shape, where
+// nothing was ever meant to be edited (mirrors AnswerOnly).
+func LocalizationOnly(task Task) bool {
+	o := task.Oracle
+	return o.Localization && len(o.FailToPass) == 0 && len(o.PassToPass) == 0 && len(o.Detectors) == 0
 }
 
 // AnswerOnly reports whether task's oracle is answer-only: an

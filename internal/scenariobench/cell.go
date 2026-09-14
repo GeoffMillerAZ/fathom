@@ -280,6 +280,8 @@ func AggregateRowReadings(cells []CellResult) (Readings, []TrialReading) {
 	var overlapN int
 	var resumptionSum int64
 	var resumptionN int
+	var hitAt1Sum, hitAt5Sum, recallSum float64
+	var localizationN int
 	trials := make([]TrialReading, 0, len(cells))
 
 	for _, c := range cells {
@@ -328,6 +330,16 @@ func AggregateRowReadings(cells []CellResult) (Readings, []TrialReading) {
 			resumptionSum += cr.Resumption.TokensToFirstEditAll
 			resumptionN++
 		}
+		if cr.Localization != nil && cr.Localization.NotMeasurable == "" {
+			if cr.Localization.HitAt1 {
+				hitAt1Sum++
+			}
+			if cr.Localization.HitAt5 {
+				hitAt5Sum++
+			}
+			recallSum += cr.Localization.Recall
+			localizationN++
+		}
 		trials = append(trials, TrialReading{
 			Trial:          c.Trial,
 			GoldSourceTool: cr.GoldSourceTool,
@@ -336,6 +348,7 @@ func AggregateRowReadings(cells []CellResult) (Readings, []TrialReading) {
 			Drift:          cr.Drift,
 			Resumption:     cr.Resumption,
 			Overlap:        cr.Overlap,
+			Localization:   cr.Localization,
 		})
 	}
 
@@ -354,6 +367,12 @@ func AggregateRowReadings(cells []CellResult) (Readings, []TrialReading) {
 	if resumptionN > 0 {
 		r.ResumptionTokensToFirstEditMean = float64(resumptionSum) / float64(resumptionN)
 		r.ResumptionTokensToFirstEditN = resumptionN
+	}
+	if localizationN > 0 {
+		r.LocalizationHitAt1Rate = hitAt1Sum / float64(localizationN)
+		r.LocalizationHitAt5Rate = hitAt5Sum / float64(localizationN)
+		r.LocalizationFileRecallMean = recallSum / float64(localizationN)
+		r.LocalizationN = localizationN
 	}
 	sort.Slice(trials, func(i, j int) bool { return trials[i].Trial < trials[j].Trial })
 	return r, trials

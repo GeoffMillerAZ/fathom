@@ -29,7 +29,9 @@ import (
 // A, plan VB-1/VB-2) promotes blast_radius, review_diff, test_impact and
 // rename_impact — the answers grep cannot give, never another lookup
 // pitched on token savings — and adds safe_delete_check, rename_impact's
-// read-only sibling — 24 total, companionWantCount below).
+// read-only sibling — 24 total; wave G (plan VB-26) promotes localize,
+// the bounded/budgeted/logged localization walk — 25 total,
+// companionWantCount below).
 // Changing the surface is deliberate: update this list and docs/mcp-tools.md
 // together. Served identically at both /rpc/agent (the primary path) and
 // /rpc/companion (a compatible alias).
@@ -42,6 +44,7 @@ var companionWant = []string{
 	"find_symbol",
 	"ingest",
 	"list_services",
+	"localize",
 	"memory_search",
 	"obligations",
 	"outline",
@@ -109,7 +112,7 @@ func toolNames(t *testing.T, resp map[string]any) []string {
 // a checked fact; docs/mcp-tools.md, docs/CLAUDE.md, internal/CLAUDE.md and
 // every other prose mention are asserted equal to companionWant's own
 // length here, never independently counted by hand.
-const companionWantCount = 24
+const companionWantCount = 25
 
 func TestCompanionSurfaceToolsList(t *testing.T) {
 	if len(companionWant) != companionWantCount {

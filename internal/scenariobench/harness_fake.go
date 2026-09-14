@@ -43,6 +43,17 @@ func NewFakeHarness(streamsDir string, streams map[string]string, def string) *F
 	return &FakeHarness{StreamsDir: streamsDir, Streams: streams, Default: def, version: "fake-1"}
 }
 
+// SetIdentity sets TaskID/ArmName — the (task, arm) this harness is about
+// to run next. cmd/scenariobench's own resolveHarness instead constructs a
+// fresh FakeHarness per cell with these preset; a caller that shares ONE
+// harness value across many (task, arm) pairs (RunExternalCorpus) calls
+// this before each RunSessions instead, via the HarnessIdentitySetter
+// interface.
+func (h *FakeHarness) SetIdentity(taskID, armName string) {
+	h.TaskID = taskID
+	h.ArmName = armName
+}
+
 func (h *FakeHarness) Name() string { return "fake" }
 
 func (h *FakeHarness) Version() string {

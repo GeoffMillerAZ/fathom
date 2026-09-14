@@ -480,6 +480,10 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 	// (ADR-035 decision 1, plan VB-2).
 	registerSafeDeleteCheck(s, backend)
 
+	// Register localize — the bounded, budgeted, logged localization walk
+	// (ADR-035 decision 1 follow-on, vision 29 Wave G, plan VB-26).
+	registerLocalize(s, backend)
+
 	// Register navigation and structural analysis tools.
 	registerNavTools(s, backend, fleet)
 

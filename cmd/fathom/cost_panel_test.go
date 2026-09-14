@@ -93,7 +93,11 @@ const (
 	// rename_impact/test_impact/review_diff gained `resolution: {typed,
 	// heuristic}` and `index_commit` — still 24 tools, a widened result
 	// shape, not a new one: 54,872 bytes measured.
-	agentSurfaceSchemaByteCeiling = 56000 // 54,872 measured 2026-09-14 after VB-19's resolution/index_commit fields on 8 tools (24-tool surface, VB-1/2)
+	// Re-pinned once more for wave G (plan VB-26): `localize` joins the
+	// surface — where a bug lives before anyone knows the file, R10's own
+	// case (LocAgent/SHERLOC) — 56,655 bytes measured at 25 tools
+	// (TestAgentSurfaceDiet's own pin moved to 25 alongside it).
+	agentSurfaceSchemaByteCeiling = 59000 // 54,872 measured 2026-09-14 after VB-19's resolution/index_commit fields (24 tools); 56,655 after localize (VB-26) on 25 tools before VB-19; the merged surface is re-measured below this pin's history
 )
 
 // TestNarrowProfileSchemaBytes is BA-7: the narrow/agent surface profile
@@ -105,8 +109,8 @@ func TestNarrowProfileSchemaBytes(t *testing.T) {
 	hc := &http.Client{}
 
 	tools, schemaBytes := surfaceSchemaTax(hc, ts.URL)
-	if tools != 24 {
-		t.Errorf("agent surface tools = %d, want 24 (TestAgentSurfaceDiet's own pin: 19 + the four ADR-035 verbs + safe_delete_check)", tools)
+	if tools != 25 {
+		t.Errorf("agent surface tools = %d, want 25 (TestAgentSurfaceDiet's own pin: 19 + the four ADR-035 verbs + safe_delete_check + localize)", tools)
 	}
 	if schemaBytes < agentSurfaceSchemaByteFloor || schemaBytes > agentSurfaceSchemaByteCeiling {
 		t.Errorf("agent surface schema bytes = %d, want between %d and %d — "+
