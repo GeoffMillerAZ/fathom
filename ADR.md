@@ -1556,3 +1556,25 @@ adoption wedge. A standalone memory product.
 the repaired `obligations` misses the top-three bar; a compiled rule catches nothing in 200
 commits and thirty days; re-derivation reproduces under 95 % of receipts; the external corpus
 shows no lift.
+
+## ADR-036: Prompt-scoped obligations before the first edit — supersedes vision 21's hold on UserPromptSubmit in one narrow case (2026-09-14)
+
+**Status.** Accepted. Vision: `docs/vision/21-continuity-threads.md` (supersedes its held
+UserPromptSubmit paragraph); `docs/vision/27-strengths-bench.md` (guards-pilot).
+
+**Context.** guards-pilot-5's second reading (O57) found the served obligation never named
+the governing rule before the relevant edit in any wired trial, and six wired trials made no
+edit at all, so the edit hook could not fire; a refusal-shaped task needs the rule before any
+edit.
+
+**Decision.** `fathom prompt-hook` on UserPromptSubmit serves only the rules governing the
+paths, packages and symbols the prompt names — never a per-prompt digest, never a general
+injection — capped at the obligations cap and an 8-second deadline, printing nothing when the
+prompt names nothing.
+
+**Consequences.** Vision 21's schema-tax objection stands for the general case; this narrow
+case is priced by the cap and measured by the M1 rerun on the repaired instrument
+(guards-pilot-6).
+
+**Revisit when.** The measured injection cost per prompt exceeds the edit hook's, or
+guards-pilot-6 shows no change in rule_reached_agent.
