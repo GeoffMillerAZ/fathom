@@ -16,7 +16,19 @@
 // CLAUDE_CONFIG_DIR in this environment. `--restricted` needs no config-dir
 // copying at all: its own smoke test (docs/bench/scenarios.md "The clean
 // room") proved auth, a per-arm `--settings` hook firing, and the absence
-// of the operator's stanza together in one real (paid) run.
+// of the operator's stanza together in one real (paid) run — but that
+// smoke test only ever exercised SessionStart. Clean room v3 (2026-09-13
+// experiment matrix, same doc) found `--restricted` itself was never the
+// gap: six configurations of --settings source/matcher/event all showed
+// it excludes the operator's real hooks/plugins/slash-commands, always,
+// with the cell's OWN project-scope settings.json requiring the same
+// explicit `--settings <path>` either way. The actual gap was
+// `--include-hook-events` (buildClaudeArgs) — without it, EVERY
+// PreToolUse/PostToolUse/Stop hook (operator's or the cell's own) fires as
+// a real subprocess but is invisible to the stream-json transcript this
+// package parses; only SessionStart's hook_response ever appeared without
+// it, because it rides the system-prompt-seeding path, not the generic
+// hook-lifecycle stream.
 //
 // This file's only remaining job is the per-cell FATHOM_THREADS env var,
 // so two tasks sharing a worktree basename never share a thread scope

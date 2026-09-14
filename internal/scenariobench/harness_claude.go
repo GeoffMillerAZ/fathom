@@ -176,6 +176,29 @@ func restrictedToolsList(allowed []string) []string {
 // gets `--permission-mode default`, since "auto" (Claude Code's default)
 // approves outside an allow-list too — 35 writes from
 // allowedTools:[Read,Grep,Bash] arms in the second reading.
+//
+// Clean room v3 (2026-09-13 experiment matrix, docs/bench/scenarios.md
+// "The clean room"): `--include-hook-events` is REQUIRED or every
+// PreToolUse/PostToolUse/Stop hook — the cell's own obligations injection
+// included — runs (a real subprocess, real side effects) but is INVISIBLE
+// to the stream-json transcript this package parses: no hook_started, no
+// hook_response, for either the operator's or the cell's own hooks, with
+// or without --restricted, with or without --settings, matcher present or
+// not. Only SessionStart's hook_response was ever streamed without this
+// flag (it rides a different code path — the additionalContext that seeds
+// the system prompt — not the generic hook-lifecycle stream). This is the
+// root cause of "dry-r4-change: a Write with only SessionStart events":
+// the PostToolUse hook fired the whole time; the transcript just never
+// said so. `--restricted` itself was already sound — six configurations
+// tried (settings-file vs project-scope settings.json, matcher present vs
+// omitted, PostToolUse vs PreToolUse, inline-JSON --settings) all confirm
+// it excludes the operator's real user-scope hooks/plugins/slash-commands
+// with zero leakage, and that reaching the CELL's own project-scope
+// settings.json under --restricted still requires naming it via
+// `--settings <path>` (exactly what SessionRequest.SettingsPath already
+// does) — a project settings.json present only via cwd, with no
+// `--settings` flag, is invisible under --restricted, hook-events flag or
+// not.
 // sessionAllowList is what --allowedTools names for req: the arm's own
 // allow-list when it has one (already carrying mcp__<server> entries from
 // RenderArm), else the restricted tool list plus mcp__<server> for each of
@@ -201,6 +224,11 @@ func buildClaudeArgs(req SessionRequest, mcpConfigPath string) []string {
 		"--strict-mcp-config",
 		"--restricted",
 		"--disable-slash-commands",
+		// Clean room v3: without this, PreToolUse/PostToolUse/Stop hook
+		// lifecycle events never reach the stream this package parses —
+		// see the package comment above and docs/bench/scenarios.md "The
+		// clean room" for the 2026-09-13 experiment matrix that found it.
+		"--include-hook-events",
 	}
 	if req.SettingsPath != "" {
 		args = append(args, "--settings", req.SettingsPath)

@@ -457,6 +457,9 @@ func runOneSession(h Harness, req SessionRequest, wantServers []string) (Session
 		if msg == "" {
 			msg = primerInstrumentError(req.Arm.Wired, res)
 		}
+		if msg == "" {
+			msg = postToolUseInstrumentError(req.Arm.Wired, res)
+		}
 		if msg != "" {
 			res.Error = msg
 			res.InstrumentError = msg
@@ -478,6 +481,33 @@ func runOneSession(h Harness, req SessionRequest, wantServers []string) (Session
 // whose SessionStart hook never fired at all (hooksInstrumentError already
 // gates that case, so this function is never reached with an empty
 // primer for that reason).
+// postToolUseInstrumentError (clean room v3, 2026-09-13 experiment matrix,
+// docs/bench/scenarios.md "The clean room") reports whether a wired
+// session that edited a file was actually measured with the PostToolUse
+// obligations hook fathom's stack wires for every Edit/Write/MultiEdit —
+// the hook fires (and, when the touched file is governed, injects
+// obligations text) unconditionally on that tool-call class; governance
+// only decides whether it has anything to say, never whether it runs.
+// "" whenever there is nothing to check: an unwired arm (no hook is
+// expected), or a session that never edited anything at all (there is no
+// governed-or-not edit for a hook to have answered).
+//
+// Reading "" here does NOT mean obligations were injected — only that the
+// hook itself ran; obligations_injected (stream.go's own synthetic
+// HooksFired key) is the separate, weaker-guarantee count of how many of
+// those PostToolUse firings actually carried the obligations marker, and
+// is not gated here because an edit of a genuinely ungoverned path is a
+// legitimate zero.
+func postToolUseInstrumentError(wired bool, res SessionResult) string {
+	if !wired || len(res.FilesEdited) == 0 {
+		return ""
+	}
+	if res.HooksFired["PostToolUse"] > 0 {
+		return ""
+	}
+	return "instrument: no PostToolUse hook fired despite an edit"
+}
+
 func primerInstrumentError(wired bool, res SessionResult) string {
 	if !wired {
 		return ""
