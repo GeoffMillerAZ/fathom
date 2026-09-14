@@ -64,3 +64,6 @@ go.work.sum
 # competitor artifacts written by their own CLIs during bench runs (vision 27 §6)
 .serena/
 graphify-out/
+
+# go build ./cmd/scenariobench drops its binary at the root (workspace/ convention)
+/scenariobench

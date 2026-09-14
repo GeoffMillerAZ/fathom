@@ -447,6 +447,14 @@ func cmdRun(args []string) int {
 				// startup were stored, then borrowed by the re-run).
 				lost++
 				fmt.Fprintf(os.Stderr, "%s/%s/t%d: LOST — %s\n", oc.cp.task.ID, oc.cp.arm, oc.cp.trial, oc.lostReason)
+				if strings.Contains(oc.lostReason, "operation not permitted") {
+					// A wedged volume verdict sticks to this process: every
+					// later cell would be LOST the same way (vs-pilot-2 lost
+					// 28 in a row, 2026-09-13). Stop; a relaunch borrows every
+					// stored cell and re-runs only the lost ones.
+					fmt.Fprintln(os.Stderr, "scenariobench run: the volume refused a read or write (a wedged TCC verdict) — stopping; reset it and relaunch with the same -run-id")
+					return 4
+				}
 			default:
 				ran++
 				status := "FAIL"
