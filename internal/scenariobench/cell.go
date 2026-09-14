@@ -136,6 +136,75 @@ func StoreScenarioCell(cellsDir string, r CellResult) error {
 	return nil
 }
 
+// OverwriteScenarioCell rewrites an EXISTING cell record in place — the
+// one place the content-addressed store is not write-once
+// (StoreScenarioCell's own "first writer owns it" contract stands for
+// every other caller). O53 defect 7's `scenariobench void` is the only
+// caller: marking a filed cell's own InstrumentDefect after the fact.
+// Unlike StoreScenarioCell, it refuses when the file does NOT already
+// exist — nothing to overwrite — rather than silently creating one.
+func OverwriteScenarioCell(cellsDir string, r CellResult) error {
+	if r.CellKey == "" {
+		return fmt.Errorf("overwriting scenario cell %s/%s: no cell_key", r.TaskID, r.Arm)
+	}
+	path := ScenarioCellPath(cellsDir, r.CellKey, r.Trial)
+	if _, err := os.Stat(path); err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return fmt.Errorf("overwriting scenario cell %s: no such cell on disk", path)
+		}
+		return fmt.Errorf("overwriting scenario cell %s: %w", path, err)
+	}
+	raw, err := json.MarshalIndent(r, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshaling cell %s: %w", r.CellKey, err)
+	}
+	if err := os.WriteFile(path, append(raw, '\n'), 0o644); err != nil {
+		return fmt.Errorf("writing cell %s: %w", path, err)
+	}
+	return nil
+}
+
+// FindScenarioCellsByRun walks cellsDir for every stored cell record
+// whose TaskID, Arm and RunID match — O53 defect 7's own lookup for
+// `scenariobench void`, which has no corpus (and so no cell_key) to hand
+// BorrowScenarioCell directly; it only has the ledger row's own
+// (run_id, task_id, arm). Returned in trial order. An empty cellsDir (or
+// one that does not exist yet) is zero results, not an error.
+func FindScenarioCellsByRun(cellsDir, taskID, arm, runID string) ([]CellResult, error) {
+	var out []CellResult
+	err := filepath.WalkDir(cellsDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			if errors.Is(err, fs.ErrNotExist) {
+				return nil
+			}
+			return err
+		}
+		if d.IsDir() || !strings.HasSuffix(path, ".json") {
+			return nil
+		}
+		raw, rerr := os.ReadFile(path)
+		if rerr != nil {
+			return fmt.Errorf("reading %s: %w", path, rerr)
+		}
+		var r CellResult
+		if uerr := json.Unmarshal(raw, &r); uerr != nil {
+			return fmt.Errorf("parsing %s: %w", path, uerr)
+		}
+		if r.TaskID == taskID && r.Arm == arm && r.RunID == runID {
+			out = append(out, r)
+		}
+		return nil
+	})
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("finding cells for run %s task %s arm %s: %w", runID, taskID, arm, err)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Trial < out[j].Trial })
+	return out, nil
+}
+
 // BorrowScenarioCell returns the stored cell for (key, trial) marked
 // Borrowed, with the run that paid for it named in SourceRunID. The second
 // return is false when no such cell exists — the caller then runs the cell

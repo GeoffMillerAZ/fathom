@@ -485,3 +485,112 @@ func TestBorrowedScenarioCellsOf_SortedByTaskArmTrial(t *testing.T) {
 		}
 	}
 }
+
+// TestOverwriteScenarioCell_RewritesInPlace is O53 defect 7's own proof
+// at the cell-store layer: an EXISTING cell record can be rewritten
+// (unlike StoreScenarioCell's write-once contract).
+func TestOverwriteScenarioCell_RewritesInPlace(t *testing.T) {
+	dir := t.TempDir()
+	key := ScenarioCellKey(testInvariants())
+	cell := CellResult{TaskID: "T1", Arm: "full", Trial: 1, CellKey: key, RunID: "run-1", Success: true}
+	if err := StoreScenarioCell(dir, cell); err != nil {
+		t.Fatalf("StoreScenarioCell: %v", err)
+	}
+
+	cell.InstrumentDefect = "the operator daemon was reachable"
+	if err := OverwriteScenarioCell(dir, cell); err != nil {
+		t.Fatalf("OverwriteScenarioCell: %v", err)
+	}
+
+	got, ok, err := BorrowScenarioCell(dir, key, 1)
+	if err != nil || !ok {
+		t.Fatalf("borrowing after overwrite: ok=%v err=%v", ok, err)
+	}
+	if got.InstrumentDefect != "the operator daemon was reachable" {
+		t.Errorf("InstrumentDefect = %q, want it set", got.InstrumentDefect)
+	}
+	if !got.Success {
+		t.Error("expected every other field (Success) to survive the overwrite untouched")
+	}
+}
+
+// TestOverwriteScenarioCell_RefusesWhenAbsent: unlike StoreScenarioCell,
+// there is nothing to silently create — a cell that was never stored
+// cannot be overwritten.
+func TestOverwriteScenarioCell_RefusesWhenAbsent(t *testing.T) {
+	dir := t.TempDir()
+	key := ScenarioCellKey(testInvariants())
+	cell := CellResult{TaskID: "T1", Arm: "full", Trial: 1, CellKey: key, RunID: "run-1"}
+	if err := OverwriteScenarioCell(dir, cell); err == nil {
+		t.Fatal("expected an error overwriting a cell that was never stored")
+	}
+}
+
+// TestOverwriteScenarioCell_RequiresKey mirrors StoreScenarioCell's own
+// requirement.
+func TestOverwriteScenarioCell_RequiresKey(t *testing.T) {
+	dir := t.TempDir()
+	if err := OverwriteScenarioCell(dir, CellResult{TaskID: "T1", Arm: "full"}); err == nil {
+		t.Fatal("expected an error for a cell with no CellKey")
+	}
+}
+
+// TestFindScenarioCellsByRun_MatchesExactTriple is O53 defect 7's own
+// lookup proof: only cells matching (task_id, arm, run_id) EXACTLY come
+// back, sorted by trial — a same-task different-arm cell, a same-arm
+// different-task cell, and a same-(task,arm) different-run cell are all
+// excluded.
+func TestFindScenarioCellsByRun_MatchesExactTriple(t *testing.T) {
+	dir := t.TempDir()
+	key := ScenarioCellKey(testInvariants())
+	otherArmKey := ScenarioCellKey(CellInvariants{CorpusSHA256: "abc123", TaskID: "T1", Arm: "control", ModelID: "sonnet", HarnessVersion: "2.1.0", Scoring: "oracle-v1", PromptSubject: "x"})
+	otherTaskKey := ScenarioCellKey(CellInvariants{CorpusSHA256: "abc123", TaskID: "T2", Arm: "full", ModelID: "sonnet", HarnessVersion: "2.1.0", Scoring: "oracle-v1", PromptSubject: "x"})
+
+	for _, c := range []CellResult{
+		{TaskID: "T1", Arm: "full", Trial: 2, CellKey: key, RunID: "run-1"},
+		{TaskID: "T1", Arm: "full", Trial: 1, CellKey: key, RunID: "run-1"},
+		{TaskID: "T1", Arm: "control", Trial: 1, CellKey: otherArmKey, RunID: "run-1"},
+		{TaskID: "T2", Arm: "full", Trial: 1, CellKey: otherTaskKey, RunID: "run-1"},
+		{TaskID: "T1", Arm: "full", Trial: 1, CellKey: key, RunID: "run-2"},
+	} {
+		if err := StoreScenarioCell(dir, c); err != nil {
+			t.Fatalf("StoreScenarioCell %+v: %v", c, err)
+		}
+	}
+
+	got, err := FindScenarioCellsByRun(dir, "T1", "full", "run-1")
+	if err != nil {
+		t.Fatalf("FindScenarioCellsByRun: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("expected 2 matching cells, got %d: %+v", len(got), got)
+	}
+	if got[0].Trial != 1 || got[1].Trial != 2 {
+		t.Errorf("expected trial order [1,2], got [%d,%d]", got[0].Trial, got[1].Trial)
+	}
+}
+
+// TestFindScenarioCellsByRun_NoMatchIsEmptyNotError covers the miss case.
+func TestFindScenarioCellsByRun_NoMatchIsEmptyNotError(t *testing.T) {
+	dir := t.TempDir()
+	got, err := FindScenarioCellsByRun(dir, "T1", "full", "run-1")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("expected no matches, got %v", got)
+	}
+}
+
+// TestFindScenarioCellsByRun_MissingCellsDirIsEmptyNotError: a cellsDir
+// that does not exist yet (no cell has ever been stored) is zero
+// results, not an error.
+func TestFindScenarioCellsByRun_MissingCellsDirIsEmptyNotError(t *testing.T) {
+	got, err := FindScenarioCellsByRun(filepath.Join(t.TempDir(), "does-not-exist"), "T1", "full", "run-1")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("expected no matches, got %v", got)
+	}
+}

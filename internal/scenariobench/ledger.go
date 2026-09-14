@@ -130,6 +130,59 @@ func AppendScenarioLedger(path string, row ScenarioLedgerRow) error {
 	return nil
 }
 
+// WriteScenarioLedger overwrites the JSONL ledger at path with rows, one
+// per line, in the given order — the one place this ledger is not purely
+// append-only: `scenariobench void` (O53 defect 7) rewriting a single
+// row's InstrumentDefect after it was already filed. Every other writer
+// stays on AppendScenarioLedger.
+func WriteScenarioLedger(path string, rows []ScenarioLedgerRow) error {
+	var b strings.Builder
+	for _, r := range rows {
+		line, err := json.Marshal(r)
+		if err != nil {
+			return fmt.Errorf("marshaling scenario ledger row %s/%s: %w", r.TaskID, r.Arm, err)
+		}
+		b.Write(line)
+		b.WriteByte('\n')
+	}
+	if dir := filepath.Dir(path); dir != "." {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return fmt.Errorf("creating %s: %w", dir, err)
+		}
+	}
+	if err := os.WriteFile(path, []byte(b.String()), 0o644); err != nil {
+		return fmt.Errorf("writing scenario ledger %s: %w", path, err)
+	}
+	return nil
+}
+
+// VoidScenarioLedgerRow is O53 defect 7's `scenariobench void`: it marks
+// EVERY filed row at (runID, taskID, arm) in the ledger at ledgerPath with
+// reason as InstrumentDefect (ADR-034 decision 2, RC-36) and rewrites the
+// whole file (WriteScenarioLedger) — a normally append-only JSONL ledger,
+// but a defect discovered after filing must still be voidable without
+// deleting history. Refuses — an error, the file left untouched — when no
+// row matches (RunID, TaskID) or when the row matched must first be
+// filed: a stranger voiding a row that was never there would silently
+// invent a defect claim for something that does not exist.
+func VoidScenarioLedgerRow(ledgerPath, runID, taskID, arm, reason string) error {
+	rows, err := LoadScenarioLedger(ledgerPath)
+	if err != nil {
+		return err
+	}
+	found := false
+	for i := range rows {
+		if rows[i].RunID == runID && rows[i].TaskID == taskID && rows[i].Arm == arm {
+			rows[i].InstrumentDefect = reason
+			found = true
+		}
+	}
+	if !found {
+		return fmt.Errorf("void: no ledger row for run %q task %q arm %q in %s", runID, taskID, arm, ledgerPath)
+	}
+	return WriteScenarioLedger(ledgerPath, rows)
+}
+
 // LoadScenarioLedger reads every row from the JSONL ledger at path, in
 // file order. A ledger that does not exist yet is empty, not an error — the
 // first run creates it. An unparseable line IS an error naming its line

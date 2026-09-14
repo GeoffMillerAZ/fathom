@@ -676,6 +676,13 @@ type CellResult struct {
 	// SHARED, REUSED directory has already been reset by a later cell.
 	SubjectClone string `json:"subject_clone,omitempty"`
 	BaseCommit   string `json:"base_commit,omitempty"`
+	// InstrumentDefect mirrors ScenarioLedgerRow's own field (ADR-034
+	// decision 2, RC-36): O53 defect 7's `scenariobench void` command sets
+	// it on every stored cell record filed under the voided
+	// (run_id, task_id, arm), so the cell store itself — not only the
+	// ledger row — carries the fact that this reading measured an
+	// instrument defect, not the thing it claims. Empty for a sound cell.
+	InstrumentDefect string `json:"instrument_defect,omitempty"`
 }
 
 // Harness runs one session and returns what happened; the Claude Code

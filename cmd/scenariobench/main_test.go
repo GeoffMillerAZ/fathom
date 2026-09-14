@@ -987,3 +987,134 @@ func TestCmdScore_GoldSourceToolCorpusFlag(t *testing.T) {
 		}
 	})
 }
+
+// TestCmdVoid_MissingFlags mirrors TestCmdLedger_MissingFlags.
+func TestCmdVoid_MissingFlags(t *testing.T) {
+	if rc := run([]string{"void"}); rc != 2 {
+		t.Errorf("void with no flags: exit %d, want 2", rc)
+	}
+}
+
+// scenarioLedgerReadmeFixture writes a minimal README carrying the
+// marker-fenced scenario-ledger section RewriteScenarioLedgerSection
+// requires, and returns its path.
+func scenarioLedgerReadmeFixture(t *testing.T, dir string) string {
+	t.Helper()
+	path := filepath.Join(dir, "README.md")
+	content := "# bench\n\n" +
+		"<!-- BEGIN scenario ledger (task bench-scenario-ledger) -->\n" +
+		"(placeholder)\n" +
+		"<!-- END scenario ledger -->\n"
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+// TestCmdVoid_RefusesWhenRowAbsent is O53 defect 7's own refusal proof at
+// the CLI layer: no ledger row for (run_id, task_id, arm) is a non-zero
+// exit, and neither the ledger nor the README are touched.
+func TestCmdVoid_RefusesWhenRowAbsent(t *testing.T) {
+	dir := t.TempDir()
+	ledgerPath := filepath.Join(dir, "ledger.jsonl")
+	if err := scenariobench.AppendScenarioLedger(ledgerPath, scenariobench.ScenarioLedgerRow{RunID: "run-1", TaskID: "T1", Arm: "full"}); err != nil {
+		t.Fatal(err)
+	}
+	readmePath := scenarioLedgerReadmeFixture(t, dir)
+	readmeBefore, err := os.ReadFile(readmePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rc := run([]string{
+		"void",
+		"-ledger", ledgerPath,
+		"-readme", readmePath,
+		"-cells", filepath.Join(dir, "cells"),
+		"-corpus-glob", filepath.Join(dir, "no-such-corpus", "*.json"),
+		"-run-id", "run-1", "-task", "T1", "-arm", "control", // "control" was never filed
+		"-reason", "should be refused",
+	})
+	if rc == 0 {
+		t.Fatal("expected a non-zero exit voiding a row that was never filed")
+	}
+
+	rows, err := scenariobench.LoadScenarioLedger(ledgerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 || rows[0].InstrumentDefect != "" {
+		t.Errorf("expected the ledger untouched by a refused void, got %+v", rows)
+	}
+	readmeAfter, err := os.ReadFile(readmePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(readmeBefore) != string(readmeAfter) {
+		t.Error("expected the README untouched by a refused void")
+	}
+}
+
+// TestCmdVoid_MarksRowCellAndRerendersReadme is O53 defect 7's end-to-end
+// proof: a filed ledger row AND its stored cell record both carry the
+// void reason afterward, and the README's marker-fenced section is
+// re-rendered exactly as `ledger` does (the table now shows VOIDED).
+func TestCmdVoid_MarksRowCellAndRerendersReadme(t *testing.T) {
+	dir := t.TempDir()
+	ledgerPath := filepath.Join(dir, "ledger.jsonl")
+	if err := scenariobench.AppendScenarioLedger(ledgerPath, scenariobench.ScenarioLedgerRow{
+		RunID: "run-1", TaskID: "T1", Arm: "full", Trials: 3, Successes: 3, ModelID: "sonnet",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	readmePath := scenarioLedgerReadmeFixture(t, dir)
+
+	cellsDir := filepath.Join(dir, "cells")
+	inv := scenariobench.CellInvariants{
+		CorpusSHA256: "abc123", TaskID: "T1", Arm: "full", ModelID: "sonnet",
+		HarnessVersion: "2.1.0", Scoring: "oracle-v1", PromptSubject: "x",
+	}
+	key := scenariobench.ScenarioCellKey(inv)
+	if err := scenariobench.StoreScenarioCell(cellsDir, scenariobench.CellResult{
+		TaskID: "T1", Arm: "full", Trial: 1, CellKey: key, RunID: "run-1", Success: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	rc := run([]string{
+		"void",
+		"-ledger", ledgerPath,
+		"-readme", readmePath,
+		"-cells", cellsDir,
+		"-corpus-glob", filepath.Join(dir, "no-such-corpus", "*.json"),
+		"-run-id", "run-1", "-task", "T1", "-arm", "full",
+		"-reason", "the operator daemon was reachable",
+	})
+	if rc != 0 {
+		t.Fatalf("void exited %d, want 0", rc)
+	}
+
+	rows, err := scenariobench.LoadScenarioLedger(ledgerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 || rows[0].InstrumentDefect != "the operator daemon was reachable" {
+		t.Fatalf("expected the ledger row voided, got %+v", rows)
+	}
+
+	cell := readStoredCell(t, scenariobench.ScenarioCellPath(cellsDir, key, 1))
+	if cell.InstrumentDefect != "the operator daemon was reachable" {
+		t.Errorf("cell InstrumentDefect = %q, want it voided too", cell.InstrumentDefect)
+	}
+	if !cell.Success {
+		t.Error("expected every other field on the cell record to survive untouched")
+	}
+
+	readme, err := os.ReadFile(readmePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(readme), "VOIDED (the operator daemon was reachable)") {
+		t.Errorf("expected the re-rendered README table to show the voided row, got:\n%s", readme)
+	}
+}
