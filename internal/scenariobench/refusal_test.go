@@ -190,5 +190,10 @@ func checkoutAt(t *testing.T, repoPath, commit string) Worktree {
 	if out, err := reset.CombinedOutput(); err != nil {
 		t.Fatalf("git reset: %v (%s)", err, out)
 	}
-	return Worktree{Path: dir, CellDir: t.TempDir()}
+	// Unlike a real PrepareSubject worktree (checkoutCommitIntoWorktree),
+	// this is a plain full-history clone hard-reset to commit — commit
+	// IS a valid, resolvable ref here, so LocalBase is simply commit
+	// itself (fix-first review: ScoreRefusal now reads wt.LocalBase, not
+	// task.Subject.BaseCommit).
+	return Worktree{Path: dir, CellDir: t.TempDir(), LocalBase: commit}
 }

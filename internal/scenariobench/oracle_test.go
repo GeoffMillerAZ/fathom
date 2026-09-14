@@ -240,7 +240,7 @@ func TestOracle_TestPatchAndCalibration(t *testing.T) {
 
 	t.Run("fails at base, broken p2p excluded", func(t *testing.T) {
 		wtPath := cloneAtCommit(t, repoPath, commit)
-		wt := Worktree{Path: wtPath, SubjectClone: repoPath, CellDir: t.TempDir()}
+		wt := Worktree{Path: wtPath, SubjectClone: repoPath, CellDir: t.TempDir(), LocalBase: commit} // cloneAtCommit: full history, commit IS resolvable
 
 		result, err := RunOracle(context.Background(), wt, task, nil, root)
 		if err != nil {
@@ -276,7 +276,7 @@ func TestOracle_TestPatchAndCalibration(t *testing.T) {
 		// order RunOracle enforces (sessions, then ApplyTestPatch, then
 		// tests).
 		writeTestFile(t, filepath.Join(wtPath, "thing.go"), "package thing\n\nfunc Add(a, b int) int { return a + b }\n")
-		wt := Worktree{Path: wtPath, SubjectClone: repoPath, CellDir: t.TempDir()}
+		wt := Worktree{Path: wtPath, SubjectClone: repoPath, CellDir: t.TempDir(), LocalBase: commit} // cloneAtCommit: full history, commit IS resolvable
 
 		result, err := RunOracle(context.Background(), wt, task, nil, root)
 		if err != nil {
@@ -436,7 +436,7 @@ func TestBroken(t *testing.T) {
 	// A non-test file the patch does NOT name — must survive untouched.
 	writeTestFile(t, filepath.Join(wtPath, "NOTES.md"), "agent's own scratch notes\n")
 
-	wt := Worktree{Path: wtPath, SubjectClone: repoPath, CellDir: t.TempDir()}
+	wt := Worktree{Path: wtPath, SubjectClone: repoPath, CellDir: t.TempDir(), LocalBase: baseCommit} // cloneAtCommit: full history, baseCommit IS resolvable
 	task := Task{
 		ID:      "T-RESET",
 		Subject: Subject{RepoURL: repoPath, BaseCommit: baseCommit},
