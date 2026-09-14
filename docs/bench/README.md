@@ -295,15 +295,22 @@ comments, exactly as `bench-ledger-render.sh` does today, so this slot is
 where a reader gets the plain-language reading a machine render cannot make:
 which claims are actually load-bearing right now, and which are not.
 
-As of 2026-09-13 (O41): every row of `docs/bench/scenarios-ledger.jsonl` — all
-five pilot runs of the first strengths-matrix round — carries
-`instrument_defect` and is excluded from every verdict; the wired arm ran
-without fathom's own MCP server, so the round measured prompt text, not the
-surface (vision 27 §0, ADR-034). The home bench's H2-1/H2-3 readings on
-`docs/bench/ledger.jsonl` stand as measured (not voided) but currently show
-the uncapped tools over budget — see "## The pyramid" and the ledger rows
-themselves. No scenario or lookup claim is proven until the wave-5 reruns
-(`docs/plans/receipts.md`) land in a clean room with tools actually present.
+As of 2026-09-14 (O53): the first clean-room lookup pilot with every tool
+present, vs-pilot-3, is filed in full (70 rows, nothing lost) and then read
+transcript by transcript before it was believed. The ledger shows fathom's
+arm 26 of 28 at $1.57 against gopls 24 ($2.83), grep 23 ($2.67), graphify
+22 ($3.11) and serena 21 ($3.08). The second reading found the instrument
+decided most of that gap: the competitor arms' worktrees had lost the
+repository's own CLAUDE.md, the answer key sat inside every worktree, the
+grep baseline could reach the live daemon, the oracle was a substring
+check, and the competitor stanzas told the model not to use their tools.
+After the conservative correction fathom, gopls and grep tie at 88
+percent; what survives is roughly half the cost per pass and one clean
+mechanism win, `verify_plan` on the verify-gate task. The earlier
+strengths-matrix rows (O41) remain voided. No lookup claim is proven until
+vs-pilot-4 runs on the repaired instrument (waves N1-N3); the scenario
+pilots on the guards and reuse corpora, whose control arms were never
+altered, stand as measured.
 
 `pass` and `fail` are both measured results and both belong in the ledger; a
 recorded refutation is the instrument working. `indeterminate` is different —

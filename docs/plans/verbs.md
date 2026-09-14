@@ -62,9 +62,9 @@ Verify: `fathom verify --service fathom --plan docs/plans/verbs.md`.
 
 ## Wave I — across the process boundary, and out of the index (R7, R9)
 
-- [ ] A `service_ref` edge kind keyed on route template and method, grown from the existing HTTP-client detections and `net/http`, chi, gin and echo handler registrations, joined across repositories in the fleet store, tier `heuristic`; `blast_radius`, `cross_repo_blast_radius` and `review_diff` walk it {id: VB-30, symbol: ServiceRefEdges, package: internal/analysis}
+- [x] A `service_ref` edge kind keyed on route template and method, grown from the existing HTTP-client detections and `net/http`, chi, gin and echo handler registrations, joined across repositories in the fleet store, tier `heuristic`; `blast_radius`, `cross_repo_blast_radius` and `review_diff` walk it {id: VB-30, symbol: ServiceRefEdges, package: internal/analysis/serviceref}
 - [ ] (op) M8: precision ≥ 0.90 and recall ≥ 0.90 on a hand-verified route table over the fixture fleet and one real pair, else it stays a finding {id: VB-31, skip_test: true, skip: "hand-verified route table; evidence under testdata/ and the ledger row", needs: VB-30}
-- [ ] `fathom export scip` writes the symbol and typed-edge tables as a SCIP index carrying the resolution tier, round-tripped against scip-go on the fixture; `ingest --scip` is a later, separate decision {id: VB-32, symbol: cmdExportSCIP, package: cmd/fathom}
+- [x] `fathom export scip` writes the symbol and typed-edge tables as a SCIP index carrying the resolution tier, round-tripped against scip-go on the fixture; `ingest --scip` is a later, separate decision {id: VB-32, symbol: cmdExportSCIP, package: cmd/fathom}
 
 ## Wave J — tests that adjudicate (M2)
 
