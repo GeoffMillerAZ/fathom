@@ -175,6 +175,73 @@ func TestObligationsFor_DisplacedCountAndLayerLabels(t *testing.T) {
 	}
 }
 
+// TestObligationsFor_NearestTierListedFirstUnderCap is O57 item 4's own
+// reproduction: six root-scoped (tier 3) rules plus one package-scoped
+// (tier 1) guide rule, all fresh, all governs-role, under the default
+// cap of 6 — the guide rule must be the FIRST rule listed, not merely
+// somewhere inside the cap.
+func TestObligationsFor_NearestTierListedFirstUnderCap(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	for _, r := range []string{"R1", "R2", "R3", "R4", "R5", "R6"} {
+		seedServed(t, st, "c-"+r, "Root rule "+r+".", []string{"**"}, core.ClaimFresh)
+	}
+	seedServed(t, st, "c-guide", "Register every tool in the mcp registry.", []string{"internal/mcp/**"}, core.ClaimFresh)
+
+	got, err := ObligationsFor(ctx, st, "svc", "internal/mcp/foo.go", 0)
+	if err != nil {
+		t.Fatalf("ObligationsFor: %v", err)
+	}
+	if len(got.Rules) != MaxObligations {
+		t.Fatalf("got %d rules, want cap %d", len(got.Rules), MaxObligations)
+	}
+	if got.Displaced != 1 {
+		t.Fatalf("Displaced = %d, want 1 (7 eligible - cap 6)", got.Displaced)
+	}
+	if got.Rules[0].Rule != "Register every tool in the mcp registry." {
+		t.Fatalf("guide rule not listed first: %+v", got.Rules)
+	}
+}
+
+// TestObligationsFor_NearestTierReservedEvenWhenStale is the property
+// VB-8's proximity tie-break alone does NOT provide, and reserveNearestTier
+// (O57 item 4) exists to add: the tie-break only ever runs INSIDE the same
+// freshness/role bucket, so a STALE nearest-tier rule has no protection
+// against seven FRESH root rules filling the entire cap before it is ever
+// considered. The reservation guarantees the nearest tier a look at the
+// first nearestTierReserveSlots slots regardless of freshness or role, so
+// the stale package rule must still be served (flagged stale), even though
+// plain freshness-first ordering would otherwise bury it under six fresher
+// root rules and displace it entirely.
+func TestObligationsFor_NearestTierReservedEvenWhenStale(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	for _, r := range []string{"R1", "R2", "R3", "R4", "R5", "R6", "R7"} {
+		seedServed(t, st, "c-"+r, "Root rule "+r+".", []string{"**"}, core.ClaimFresh)
+	}
+	seedServed(t, st, "c-guide", "Register every tool in the mcp registry.", []string{"internal/mcp/**"}, core.ClaimStale)
+
+	got, err := ObligationsFor(ctx, st, "svc", "internal/mcp/foo.go", 0)
+	if err != nil {
+		t.Fatalf("ObligationsFor: %v", err)
+	}
+	if len(got.Rules) != MaxObligations {
+		t.Fatalf("got %d rules, want cap %d", len(got.Rules), MaxObligations)
+	}
+	found := false
+	for _, r := range got.Rules {
+		if r.Rule == "Register every tool in the mcp registry." {
+			found = true
+			if r.Status != string(core.ClaimStale) {
+				t.Errorf("guide rule served with status %q, want %q", r.Status, core.ClaimStale)
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("stale but nearest-tier guide rule was displaced entirely by fresher, farther root rules: %+v", got.Rules)
+	}
+}
+
 // ─── RootObligationsFor: selection by scope breadth (review finding, MAJOR:
 // the old literal-probe approach matched a claim's scope glob against the
 // bare string "CLAUDE.md", so a genuinely repo-wide "**/*.go" rule from the
