@@ -24,8 +24,8 @@ import (
 // It is deliberately UNDER the serving cap: every replayed file matches at
 // most four claims against a cap of six, so a `displaced` count in the
 // golden means a real regression in scoping or ranking, never fixture
-// crowding. TestPayloadReplayMatchesGolden fails on any displaced count for
-// exactly that reason.
+// crowding. TestPayloadReplay fails on any displaced count for exactly that
+// reason.
 
 // fixtureClaim is one seeded claim, authored here so the fixture layer reads
 // as a list rather than as a loop with a switch in it.

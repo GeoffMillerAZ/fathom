@@ -1,0 +1,17 @@
+{
+  "blast_radius": {
+    "precision": 1,
+    "recall": 1,
+    "n": 2
+  },
+  "find_callers": {
+    "precision": 1,
+    "recall": 1,
+    "n": 7
+  },
+  "references": {
+    "precision": 1,
+    "recall": 1,
+    "n": 7
+  }
+}

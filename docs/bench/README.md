@@ -171,12 +171,21 @@ never re-asks what a cheaper layer already answered.
 
 | Layer | Question | Oracle | LLM cost | Runs on | Where |
 |---|---|---|---|---|---|
-| **L0** index oracle | Is the index right? callers, references, blast-radius closure vs `go/types` | `internal/contextbench/publicloc` walker (loctruth) | 0 | every commit (`task validate`, fixture fleet); `task bench-l0-self` on demand | `internal/indexbench` |
-| **L1** payload replay | Is each tool's answer small and stable? bytes, count, latency per (tool, query) | committed goldens against the fixture store | 0 | every commit | `internal/indexbench/replay` |
+| **L0** index oracle | Is the index right? callers, references, blast-radius closure vs `go/types` | `internal/contextbench/publicloc` walker (loctruth) | 0 | every commit (`task validate` → `bench-l0-gate`, fixture fleet); `task bench-l0-self` on demand | `internal/indexbench` |
+| **L1** payload replay | Is each tool's answer small and stable? bytes, count, latency per (tool, query) | committed goldens against the fixture store | 0 | every commit (`task validate` → `bench-l0-gate`) | `internal/indexbench` |
 | **L2** corpus gate | Is the corpus clean? truth at HEAD; no gold token in an auto-loaded file; no prompt naming its own answer | static walk | 0 | every commit | `TestHomeCorpusTruthAtHead` |
 | **L3** targeted agent | Did this change move the tasks it could move? fathom arm only, tasks by `exercises:` | H2-3 per task, no verdict | 1–4M tokens | a commit touching a tool handler (`task bench-targeted RANGE=…`) | `contextbenchscore select`, `--only`, `--scope targeted` |
 | **L4** full agent | Does fathom beat grep on its home turf at n≥3? | H2-1 (history), H2-3 (registered) | ~15M tokens | release tag; corpus, criterion or surface change | `task bench-home` |
 | **L5** sessions | Do real sessions go better with the channels on? | A/B arm, verify-gate catches, thread bet | ambient | continuously | `fathom flywheel`, `fathom research report` |
+
+L0 and L1 now run on every commit as their own named `task validate`
+dependency, `bench-l0-gate` (ADR-035 decision 5, VB-6/VB-7), rather than
+only being swept in by the package-wide test run. `TestIndexOracleGoldens`
+gates the per-tool precision/recall floor at
+`internal/indexbench/testdata/l0-goldens.json`; `TestPayloadReplay` gates
+bytes (±5%), result counts and `obligations`' `displaced` count at
+`internal/indexbench/testdata/l1-replay.json` — both scored on the
+fauxtown fixture fleet in under a second.
 
 ### What each layer shows about fathom
 

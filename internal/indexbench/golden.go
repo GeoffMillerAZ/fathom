@@ -23,7 +23,15 @@ const RegenerateCommand = "go test ./internal/indexbench/... -update"
 // Paths of the committed goldens, relative to this package directory.
 const (
 	fauxtownGoldenPath = "testdata/fauxtown.golden.json"
-	replayGoldenPath   = "replay/golden.json"
+	// l0GoldensPath is VB-6's compact regression floor (docs/plans/
+	// verbs.md, ADR-035 decision 5): the micro-averaged precision/recall/n
+	// IndexOracleGoldens reports per tool, distinct from fauxtownGoldenPath's
+	// richer per-service Report (which the self-run/diagnostic path keeps).
+	l0GoldensPath = "testdata/l0-goldens.json"
+	// l1ReplayPath is VB-7's committed (tool, args) list AND golden: the
+	// authored half is hand-written, the measured half (bytes, result_count,
+	// displaced) is rewritten by PayloadReplay/ReplayGolden with -update.
+	l1ReplayPath = "testdata/l1-replay.json"
 )
 
 // packageDir resolves this package's directory from the compiled-in source

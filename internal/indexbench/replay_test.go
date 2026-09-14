@@ -1,21 +1,23 @@
 package indexbench
 
 import (
-	"context"
 	"testing"
 )
 
-// growthBudget is how much a payload may grow before the gate calls it a
-// regression. Ten percent is loose enough that a one-field addition to a
-// response does not fail the build and tight enough that the O23 shape — a
-// payload quietly doubling as a new layer blends in — cannot pass.
-const growthBudget = 1.10
+// byteTolerance is how far a payload may drift, either direction, before
+// the gate calls it a regression (VB-7, docs/plans/verbs.md): "bytes within
+// ±5%". Tight enough that the O23 shape — a payload quietly doubling as a
+// new layer blends in — cannot pass, and symmetric on purpose: a payload
+// that SHRANK by more than the tolerance moved for a reason just as much as
+// one that grew, and a re-baseline (`-update`) needs the same conscious,
+// commit-message-justified step either way.
+const byteTolerance = 0.05
 
-// TestPayloadReplayMatchesGolden is the L1 gate (bench-pyramid BP-16). Three
+// TestPayloadReplay is the L1 gate (bench-pyramid BP-16, VB-7). Three
 // things fail it, each naming the tool:
 //
-//   - a payload more than 10% larger than the golden: the discovery cost
-//     fathom controls went up and nobody decided to spend it;
+//   - a payload more than ±5% off the golden: the discovery cost fathom
+//     controls moved and nobody decided to spend (or bank) it;
 //   - a result count that moved: the tool is answering a different question
 //     than the one the golden pinned;
 //   - any `displaced` count on an obligations entry: the fixture layer is
@@ -27,27 +29,22 @@ const growthBudget = 1.10
 //
 //	go test ./internal/indexbench/... -update
 //
+// A re-baseline must be justified in the commit message that carries it —
+// this golden moving is itself the signal a reviewer is meant to see.
 // BP-21 will need exactly that: changing obligations ranking changes these
 // bytes by design.
-func TestPayloadReplayMatchesGolden(t *testing.T) {
-	ctx := context.Background()
-
-	var entries []ReplayEntry
-	if err := readGolden(replayGoldenPath, &entries); err != nil {
+func TestPayloadReplay(t *testing.T) {
+	var entries []ReplayRow
+	if err := readGolden(l1ReplayPath, &entries); err != nil {
 		t.Fatal(err)
 	}
 	if len(entries) == 0 {
-		t.Fatalf("%s has no entries", replayGoldenPath)
+		t.Fatalf("%s has no entries", l1ReplayPath)
 	}
 
-	srv, err := NewFixtureServer(ctx)
+	got, err := PayloadReplay(t.TempDir())
 	if err != nil {
-		t.Fatalf("build fixture server: %v", err)
-	}
-
-	got, err := ReplayGolden(ctx, srv, entries)
-	if err != nil {
-		t.Fatalf("ReplayGolden: %v", err)
+		t.Fatalf("PayloadReplay: %v", err)
 	}
 
 	// Latency is checked BEFORE the timings are zeroed, and only against the
@@ -62,10 +59,10 @@ func TestPayloadReplayMatchesGolden(t *testing.T) {
 
 	if *update {
 		ZeroReplayTimings(got)
-		if err := writeGolden(replayGoldenPath, got); err != nil {
+		if err := writeGolden(l1ReplayPath, got); err != nil {
 			t.Fatalf("write golden: %v", err)
 		}
-		t.Logf("wrote %s", replayGoldenPath)
+		t.Logf("wrote %s", l1ReplayPath)
 		return
 	}
 
@@ -79,13 +76,12 @@ func TestPayloadReplayMatchesGolden(t *testing.T) {
 			t.Errorf("%s (%s): result_count %d, golden %d — the tool is answering a different question. If that is deliberate: %s",
 				g.ID, g.Tool, g.ResultCount, w.ResultCount, RegenerateCommand)
 		}
-		if w.Bytes > 0 && float64(g.Bytes) > float64(w.Bytes)*growthBudget {
-			t.Errorf("%s (%s): payload grew to %d bytes from %d (+%.1f%%, budget +%.0f%%) — this is the discovery cost an agent pays on every call. If that is deliberate: %s",
-				g.ID, g.Tool, g.Bytes, w.Bytes,
-				100*(float64(g.Bytes)/float64(w.Bytes)-1), 100*(growthBudget-1), RegenerateCommand)
-		}
-		if g.Bytes < w.Bytes {
-			t.Logf("%s (%s): payload SHRANK to %d bytes from %d. Bank it: %s", g.ID, g.Tool, g.Bytes, w.Bytes, RegenerateCommand)
+		if w.Bytes > 0 {
+			drift := float64(g.Bytes)/float64(w.Bytes) - 1
+			if drift > byteTolerance || drift < -byteTolerance {
+				t.Errorf("%s (%s): payload %d bytes vs golden %d (%+.1f%%, budget ±%.0f%%) — this is the discovery cost an agent pays on every call. If that is deliberate: %s",
+					g.ID, g.Tool, g.Bytes, w.Bytes, 100*drift, 100*byteTolerance, RegenerateCommand)
+			}
 		}
 	}
 }

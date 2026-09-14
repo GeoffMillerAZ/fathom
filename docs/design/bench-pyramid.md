@@ -58,8 +58,8 @@ never re-asks a question a cheaper layer already answered.
 
 | Layer | Question | Oracle | LLM cost | Runs on | Exists today |
 |---|---|---|---|---|---|
-| **L0 Index oracle** | Is the index *right*? callers / references / definitions / blast-radius closure vs `go/types`; extraction coverage per language | `cmd/loctruth`, the lang-truth calibration corpus | 0 | every commit, in `task validate` | loctruth exists; **not wired as a bench against fathom's own index** |
-| **L1 Payload replay** | Is each tool's answer *small and stable*? bytes, result count, latency per (tool, fixed query) against a pinned store | committed golden responses | 0 | every commit | **missing** |
+| **L0 Index oracle** | Is the index *right*? callers / references / definitions / blast-radius closure vs `go/types`; extraction coverage per language | `cmd/loctruth`, the lang-truth calibration corpus | 0 | every commit, in `task validate` | **wired (VB-6)**: `IndexOracleGoldens`/`TestIndexOracleGoldens` gate `internal/indexbench/testdata/l0-goldens.json` as `task bench-l0-gate` |
+| **L1 Payload replay** | Is each tool's answer *small and stable*? bytes, result count, latency per (tool, fixed query) against a pinned store | committed golden responses | 0 | every commit | **wired (VB-7)**: `PayloadReplay`/`TestPayloadReplay` gate `internal/indexbench/testdata/l1-replay.json` as `task bench-l0-gate` |
 | **L2 Corpus gate** | Is the corpus *clean*? truth at HEAD; no truth token in any auto-loaded file; prompts name the target, never the governing file | static walk | 0 | every commit | `TestHomeCorpusTruthAtHead` exists; **baseline-absence check missing** |
 | **L3 Targeted agent** | Did *this change* move the tasks it could move? fathom arm only, tasks selected by the tools the diff touched | H2-1 / H2-3 per task, no verdict | 1–4M | a commit touching an MCP tool handler | **missing** (needs `exercises:` per task, `--only`, composed rows) |
 | **L4 Full agent** | Does fathom beat grep on its home turf at n≥3? | H2-1 (history), H2-3 (registered next) | ~15M | release tag; corpus, criterion or surface change | exists (BC-14 in flight) |

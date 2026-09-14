@@ -90,7 +90,7 @@
     },
     "count_field": "callees",
     "budget_ms": 250,
-    "bytes": 342,
+    "bytes": 356,
     "result_count": 2,
     "displaced": 0
   },
@@ -118,6 +118,31 @@
     "budget_ms": 250,
     "bytes": 457,
     "result_count": 0,
+    "displaced": 0
+  },
+  {
+    "id": "outline-ledger",
+    "tool": "outline",
+    "args": {
+      "file": "ledger-service/ledger.go",
+      "service": "ledger-service"
+    },
+    "count_field": "symbols",
+    "budget_ms": 250,
+    "bytes": 1320,
+    "result_count": 7,
+    "displaced": 0
+  },
+  {
+    "id": "staleness-report-ledger",
+    "tool": "staleness_report",
+    "args": {
+      "service": "ledger-service"
+    },
+    "count_field": "sources",
+    "budget_ms": 250,
+    "bytes": 345,
+    "result_count": 1,
     "displaced": 0
   }
 ]

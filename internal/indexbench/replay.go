@@ -169,3 +169,30 @@ func NewFixtureServer(ctx context.Context) (*mcp.Server, error) {
 	}
 	return mcp.NewServer(c), nil
 }
+
+// ReplayRow is VB-7's anchor name (docs/plans/verbs.md) for one replayed
+// entry — literally ReplayEntry, which predates the plan row's own naming.
+// A type alias keeps the two names interchangeable rather than forking the
+// shape a call log and every golden already commit to.
+type ReplayRow = ReplayEntry
+
+// PayloadReplay is VB-7's `task validate` entry point (ADR-035 decision 5):
+// it reads the committed (service, tool, args) list at
+// internal/indexbench/testdata/l1-replay.json, replays every entry against
+// a fresh fixture server the way NewFixtureServer/ReplayGolden already do,
+// and returns the measured rows. root is accepted for signature parity
+// with IndexOracleGoldens — L1 needs no staged go/types module (the
+// fixture server never loads one), so it is unused.
+func PayloadReplay(root string) ([]ReplayRow, error) {
+	_ = root
+	ctx := context.Background()
+	var entries []ReplayRow
+	if err := readGolden(l1ReplayPath, &entries); err != nil {
+		return nil, err
+	}
+	srv, err := NewFixtureServer(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return ReplayGolden(ctx, srv, entries)
+}

@@ -18,6 +18,7 @@ package indexbench
 import (
 	"context"
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 	"time"
@@ -309,6 +310,85 @@ func IndexOracleReport(ctx context.Context, be Backend, subjects []Subject) (Rep
 	}
 	sort.Slice(rep.Services, func(i, j int) bool { return rep.Services[i].Service < rep.Services[j].Service })
 	return rep, nil
+}
+
+// IndexOracleGoldens is VB-6's `task validate` entry point (docs/plans/
+// verbs.md, ADR-035 decision 5): it stages the fauxtown fixture fleet's Go
+// services under root exactly the way FauxtownSubjects/TestIndexOracleMatchesGolden
+// already do, builds a fresh fixture index, and scores it with
+// IndexOracleReport. root is the caller's scratch directory for the staged
+// modules (a test passes t.TempDir()) — go/types loads a MODULE, and the
+// fixture services on disk are deliberately not modules (see
+// StageFauxtownModule).
+//
+// The returned Report is the same rich per-service, per-tool shape
+// IndexOracleReport and the self-run (`task bench-l0-self`) use.
+// TestIndexOracleGoldens derives the compact, micro-averaged per-tool
+// summary that internal/indexbench/testdata/l0-goldens.json commits — the
+// literal {tool: {precision, recall, n}} golden VB-6 gates on — via
+// aggregateL0Goldens, so the two committed goldens (this package's richer
+// per-service fauxtown.golden.json, and l0-goldens.json's compact
+// regression floor) are two views of one scored run, never two divergent
+// computations.
+func IndexOracleGoldens(root string) (Report, error) {
+	ctx := context.Background()
+	subjects, err := FauxtownSubjects(root)
+	if err != nil {
+		return Report{}, err
+	}
+	c, _, err := NewFauxtownIndex(ctx)
+	if err != nil {
+		return Report{}, err
+	}
+	defer func() { _ = c.Close() }()
+	rep, err := IndexOracleReport(ctx, c, subjects)
+	if err != nil {
+		return Report{}, err
+	}
+	rep.Corpus = "fauxtown"
+	return rep, nil
+}
+
+// L0Golden is one tool's committed regression floor at
+// internal/indexbench/testdata/l0-goldens.json: precision and recall
+// MICRO-averaged across every fixture service (summed correct/predicted/
+// truth, then divided once — the same accumulation ToolScore.finish uses
+// per service, extended across services), with N the total queries asked.
+// A rate with N at 0 asked nothing and is not a claim (ADR-031's rule,
+// same as ToolScore.Queries/Population).
+type L0Golden struct {
+	Precision float64 `json:"precision"`
+	Recall    float64 `json:"recall"`
+	N         int     `json:"n"`
+}
+
+// aggregateL0Goldens collapses a Report's per-service ToolScores into the
+// compact per-tool L0Golden map l0-goldens.json commits.
+func aggregateL0Goldens(rep Report) map[string]L0Golden {
+	type accum struct{ correct, predicted, truth, n int }
+	acc := map[string]*accum{}
+	for _, svc := range rep.Services {
+		for _, t := range svc.Tools {
+			a, ok := acc[t.Tool]
+			if !ok {
+				a = &accum{}
+				acc[t.Tool] = a
+			}
+			a.correct += t.Correct
+			a.predicted += t.Predicted
+			a.truth += t.Truth
+			a.n += t.Queries
+		}
+	}
+	out := make(map[string]L0Golden, len(acc))
+	for tool, a := range acc {
+		out[tool] = L0Golden{
+			Precision: round4(rate(a.correct, a.predicted)),
+			Recall:    round4(rate(a.correct, a.truth)),
+			N:         a.n,
+		}
+	}
+	return out
 }
 
 // declaredNames is every qualified function name the module declares, sorted.
@@ -662,6 +742,12 @@ func rate(num, den int) float64 {
 	}
 	return float64(num) / float64(den)
 }
+
+// round4 is the comparison precision every committed golden in this package
+// rounds to before it is compared or written: four decimals is fine enough
+// to catch a single lost edge in a corpus of a few hundred and coarse
+// enough that float noise never fails a gate.
+func round4(f float64) float64 { return math.Round(f*10000) / 10000 }
 
 // addGoFile records path in the predicted set only when it is Go source.
 // The truth is a go/types use set, so a .md or .yaml hit is outside the

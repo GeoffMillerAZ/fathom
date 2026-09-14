@@ -123,19 +123,23 @@ tasks:
       - go run github.com/geoffmilleraz/app-kit/cmd/appkit css -i cmd/fathom/ui/input.css -o cmd/fathom/ui/app.css
 
   validate:
-    desc: Full gate — fmt-check, vet, cue-vet, vendor-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, test
+    desc: Full gate — fmt-check, vet, cue-vet, vendor-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, bench-l0-gate, test
     # clean-clone-check is IN the gate, not a nice-to-have: the adopter build
     # broke silently once (go.work committed, app-kit unmirrored) and stayed
     # broken because every machine that ran validate had the siblings.
     # stranger-check (RP-23) is the same lesson one step further: the copy
     # must init and pass doctor for someone who is not the author. Measured
     # 26–43s on 2026-09-02, under the two-minute budget that admits it here.
-    deps: [fmt-check, vet, cue-vet, vendor-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, scenariobench]
+    deps: [fmt-check, vet, cue-vet, vendor-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, scenariobench, bench-l0-gate]
     cmds: [{ task: test }]
 
   scenariobench:
     desc: "Free — internal/scenariobench (the change-bench driver, vision 27/ADR-033): corpus load, category/prediction gate, fake-harness driver tests. TestPublicScenarioCorpusIsDerived skips (never fails) when workspace/bench/sources/ is empty, the normal case on a fresh clone or CI."
     cmds: ["CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 {{.GO}} test -race ./internal/scenariobench/..."]
+
+  bench-l0-gate:
+    desc: "Free, every commit (ADR-035 decision 5; docs/plans/verbs.md VB-6/VB-7): the L0 index oracle (TestIndexOracleGoldens, internal/indexbench/testdata/l0-goldens.json) and L1 payload replay (TestPayloadReplay, internal/indexbench/testdata/l1-replay.json) over the fauxtown fixture fleet, named as its own validate dependency rather than left to be swept in by the package-wide `go test ./...`. Fauxtown is three tiny services — measured well under a second — so no subset is pinned; if a future fixture fleet makes this slow, pin a subset here and say so in the golden's comment instead of dropping the gate."
+    cmds: ["CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 {{.GO}} test -race -run 'TestIndexOracleGoldens|TestPayloadReplay' ./internal/indexbench/..."]
 
   config-audit:
     desc: Custodian gate (invariants I16/I34/I37, PC-14) — this repo's own agent config holds every concern in .fathom/concerns.cue; a down daemon reads unable-to-check, never a violation
@@ -243,9 +247,11 @@ tasks:
 
   # ─── bench pyramid L0/L1 (FREE — no tokens, no daemon) ─────────────────
   # L0 (index oracle) and L1 (payload replay) over the fixture fleet are
-  # plain Go tests in internal/indexbench, so `task test` — and therefore
-  # `validate` — already runs them on every commit. Only the self run is
-  # on demand: it type-checks and ingests the whole module, which is a
+  # plain Go tests in internal/indexbench, so `task test` already runs
+  # them on every commit; `bench-l0-gate` above names the exact two tests
+  # as their own `validate` dependency (ADR-035 decision 5, VB-6/VB-7), so
+  # the gate is visible and runnable standalone. Only the self run below
+  # is on demand: it type-checks and ingests the whole module, which is a
   # minute-scale cost the per-commit gate should not pay (ADR-032 §3.6).
 
   bench-l0-self:
