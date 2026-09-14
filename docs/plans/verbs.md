@@ -15,7 +15,7 @@ Verify: `fathom verify --service fathom --plan docs/plans/verbs.md`.
 - [x] The home bench publishes `gold_source_rate` per tool per question shape beside `trusted_without_recheck`, including the tools that score zero {id: VB-5, symbol: GoldSourceRate, package: internal/contextbench}
 - [x] The L0 index oracle runs in `task validate`: precision and recall of `find_callers`, `references` and `blast_radius` against go/types over the fixture fleet, committed as goldens, a regression is a failing test {id: VB-6, symbol: IndexOracleGoldens, package: internal/indexbench}
 - [x] The L1 payload replay runs in `task validate`: a committed list of (tool, args) against the fixture store with golden bytes, result counts, elision counts and a latency budget per entry, seeded with the five formerly uncapped tools and `obligations` with its `displaced` count {id: VB-7, symbol: PayloadReplay, package: internal/indexbench}
-- [ ] The home bench's wired arm runs against a scratch daemon of the exported subject (the layer compiled once per export), so no served path names the live checkout; the scorer accepts spelling-equivalent tokens (`answer_any_of` groups); a Bash read outside the session root is noted on the cell {id: VB-36, oracle: lexical, path: scripts/context-bench.sh, pattern: scratch-daemon-default}
+- [x] The home bench's wired arm runs against a scratch daemon of the exported subject (the layer compiled once per export), so no served path names the live checkout; the scorer accepts spelling-equivalent tokens (`answer_any_of` groups); a Bash read outside the session root is noted on the cell {id: VB-36, oracle: lexical, path: scripts/context-bench.sh, pattern: scratch-daemon-default}
 
 ## Wave B — obligations names the rule that governs (R3)
 
