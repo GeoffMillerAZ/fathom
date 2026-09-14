@@ -938,3 +938,16 @@ triage if it matters.
 - **Fix:** VB-36: the home bench runs its wired arm against a scratch daemon of the export (the script already has --scratch-daemon; make it the default and compile the layer once per export); the scorer accepts alternatives (`answer_any_of` groups) for spelling-equivalent tokens; a Bash read of a path outside the session root counts as an instrument note on the cell.
 - **Status:** open — plan row VB-36
 - **Impact:** two of the three tasks fathom lost to grep on this run were lost to the instrument, not to the tools; the run still carries the honest payload reading (0.86×) and the trust rate (92.6 %).
+
+### O48 — Pushing from a detached worktree flipped the main checkout to core.bare=true twice and the gate's stranger-check failed with 'git [commit -q -m initial commit]: exit status 1 (No config files with names [lefthook …] have been found in /Volumes/m2ext/tmp/fathom-build/…)' and 'building fathom from export: error obtaining VCS status'. Reproducing the leak against the real checkout committed 31 files (another editor's work included) as 'initial commit'; undone with git reset --soft/--mixed.
+
+- **Symptom:** Pushing from a detached worktree flipped the main checkout to core.bare=true twice and the gate's stranger-check failed with 'git [commit -q -m initial commit]: exit status 1 (No config files with names [lefthook …] have been found in /Volumes/m2ext/tmp/fathom-build/…)' and 'building fathom from export: error obtaining VCS status'. Reproducing the leak against the real checkout committed 31 files (another editor's work included) as 'initial commit'; undone with git reset --soft/--mixed.
+- **Evidence:**
+  - **Tool:** lefthook pre-push gate (task validate → stranger-check) running internal/scenariobench tests inside a git hook
+  - **Expected:** A test fixture's git init/commit acts on the fixture directory; a bench driver never sees the hook's repository; the export build needs no VCS stamp.
+  - **Actual:** git exports GIT_DIR/GIT_WORK_TREE to hook processes; the suite inherited them, so the fixture's git init re-initialised the checkout as bare and its commit ran the checkout's lefthook stack; go build in the export (under the checkout's tree) asked git for a VCS stamp and failed.
+  - **Repro:** GIT_DIR=<a throwaway repo>/.git go test ./internal/scenariobench/ (never the real checkout); watch core.bare
+- **Root cause:** fixtures and the driver inherited the hook's GIT_DIR/GIT_WORK_TREE; `go build` inside the checkout tree wants a VCS stamp.
+- **Fix:** c567901 — TestMain in both scenariobench packages and the driver's main scrub GIT_DIR, GIT_WORK_TREE, GIT_INDEX_FILE, GIT_PREFIX, GIT_COMMON_DIR and set LEFTHOOK=0; every explicit env goes through gitEnv(); the export builds with -buildvcs=false.
+- **Status:** fixed
+- **Impact:** four failed push attempts and one accidental commit (undone without touching the working tree; files that were staged came back unstaged). Rule for this repo: never simulate a hook environment against the real checkout.
