@@ -262,6 +262,61 @@ falsifiable. Deriving many at once from a pinned public dataset: extend
 already reads Multi-SWE-bench, and add the new source's pin to the table
 above.
 
+## The guards-m1 corpus (`testdata/scenariobench/guards-m1.json`, RC-50)
+
+A third guards corpus, redesigned after `guards-fathom.json` (SB-24) and
+`guards-adr.json` (SB-49): `guards-pilot-3`/`guards-pilot-4` and
+`guards-adr-pilot-1` (`.fathom/observations.md`, "The guards pilot, read")
+found the no-effect condition dominating because every rule sat in a
+CLAUDE.md both arms could read, and even `guards-adr.json`'s ADR-only
+rules left five of eight edit sites carrying an adjacent comment naming
+the same rule. `guards-m1.json`'s six tasks were each checked for that
+while being derived, and go one step further on placement: (a) a
+determinism rule stated only in `internal/CLAUDE.md`, edited nowhere near
+the package it governs; (b) ADR-011's org-agnostic rule, which names no
+package, applied to a prompt that names no file either; (c) ADR-020/025's
+CGO-purity rule, where the edited file's OWN comment argues the opposite
+of the rule (a CGO accelerator here is "free" since the binary already
+pays for CGO elsewhere -- true of the binary, false of this package); (d)
+a rule that exists ONLY in the compiled `.fathom/guard.cue` layer and its
+generated test (`rules/layer_rules_test.go`) -- no CLAUDE.md or ADR states
+it in prose at all (the corpus's lexical-verify token, `served-only`, sits
+in this task's own id); (e) one `docs/CLAUDE.md` bullet that governs three
+separate files at once (a tool's registration, its catalog entry, and a
+use-case doc's own `## Maintained` line) from a fourth directory the edit
+never touches; and (f) a process rule -- a commit's own `Verified:`
+trailer -- that fires at a `git commit` Bash call a `PostToolUse`
+Edit/Write hook was never wired to gate, registered honestly as a
+no-effect boundary case on both arms rather than a win.
+
+Tasks (a) and (c) need an edit site this repo does not actually carry
+(a small analyzer package, a store search helper with a deliberately
+misleading CGO comment) — committing either to this repo would mislead a
+real contributor reading `internal/analysis` or `internal/store`, so
+instead each task's own `subject.setup` (`Subject.Setup`, `types.go`;
+`PrepareSubject` runs it in the worktree BEFORE the first ingest, per its
+own doc comment) materializes the scaffold with a heredoc the moment a
+cell's worktree is prepared — real for the length of that one worktree's
+life, never real on `main`. Tasks (b), (d), (e) and (f) need no scaffold:
+they touch files this repo already carries.
+
+Every task also carries a `violation_probe` (`ViolationProbe`,
+`types.go`): a tiny scripted edit — a `sed`, a heredoc, or (for the
+commit task) a real `git commit` — that violates the rule.
+`internal/scenariobench/guardsm1_probe_test.go`
+(`TestGuardsM1ViolationProbesFireAndClear`) applies each task's own
+`subject.setup` (when it has one) to a disposable `git archive HEAD` copy
+of the tree, then proves the primary detector actually discriminates:
+green once the scaffold is in place as committed, red once probed (the
+four "breakage" tasks), or red on a plausible partial completion and
+green once the omitted piece is finished (the two "omission" tasks, e and
+f, whose untouched-tree reading is never green — see that file's own
+package doc comment for why). This is the corpus's own proof that its
+detectors detect, not merely that `TestGuardsCorpusDetectorsExist`
+(`guards_test.go`) proves they run. `task bench-scenario-guards-m1` is the
+paid tier (`-trials 3`, matching RC-51's pilot); RC-51 is the
+operator-run pilot itself.
+
 ## Layer-dependent tasks and post-wire drift (O45)
 
 Four corpus keys exist because a task's prompt can assume more than an

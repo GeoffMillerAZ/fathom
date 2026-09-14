@@ -343,6 +343,11 @@ tasks:
     cmds:
       - GOWORK=off CGO_ENABLED=1 go run ./cmd/scenariobench run -corpus testdata/scenariobench/guards-adr.json -trials 2 {{.CLI_ARGS}}
 
+  bench-scenario-guards-m1:
+    desc: "COSTS TOKENS (targeted tier, ~$20-40 — vision 27 §9). Guards pilot #3 (M1 redesign): six rules placed far from their edit site by construction (a package guide, an unnamed-package ADR, a decoy comment, a served-only compiled rule, a three-file docs contract, a commit-message rule); two tasks materialize their own edit-site scaffold via subject.setup rather than committing it here. Arms full vs control, n=3 (RC-50/RC-51; testdata/scenariobench/guards-m1.json)."
+    cmds:
+      - GOWORK=off CGO_ENABLED=1 go run ./cmd/scenariobench run -corpus testdata/scenariobench/guards-m1.json -trials 3 {{.CLI_ARGS}}
+
   bench-scenario-pilot:
     desc: "COSTS TOKENS (pilot tier, ~$90-130 — vision 27 §9). Change-bench pilot over the public Go corpus: arms full vs control, 2 trials, 2 sessions/cell (SB-38)."
     cmds:

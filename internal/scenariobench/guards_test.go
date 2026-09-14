@@ -156,8 +156,12 @@ func TestGuardsCorpusDetectorsExist(t *testing.T) {
 
 func checkGuardsCorpusDetectors(t *testing.T, c Corpus) {
 	t.Helper()
-	if len(c.Tasks) < 8 {
-		t.Fatalf("guards corpus has %d tasks, want >= 8", len(c.Tasks))
+	// >= 6: guards-fathom.json and guards-adr.json carry 8 rules each;
+	// guards-m1.json (RC-50) is a deliberately smaller, harder-to-derive
+	// six — each rule placed far from its edit site by construction, which
+	// costs more per task to source honestly than a wider, easier eight.
+	if len(c.Tasks) < 6 {
+		t.Fatalf("guards corpus has %d tasks, want >= 6", len(c.Tasks))
 	}
 	if c.Criterion.ID == "" {
 		t.Fatalf("guards corpus has no criterion")
@@ -187,6 +191,18 @@ func checkGuardsCorpusDetectors(t *testing.T, c Corpus) {
 					}
 				}
 				if pkgDir, testName, ok := parseGoTestDetector(d.Command); ok {
+					if len(task.Subject.Setup) > 0 {
+						// RC-50: a task whose subject.setup materializes its
+						// own edit-site scaffold (a package this repo does
+						// not actually commit, e.g. guards-m1's
+						// fanout-determinism/store-search-accelerator) has
+						// nothing for a static tree search to find — the
+						// package exists only inside a prepared worktree.
+						// TestGuardsM1ViolationProbesFireAndClear is the
+						// real proof for these: it runs task.Subject.Setup
+						// and then this exact detector command for real.
+						continue
+					}
 					if found, err := testFuncExistsInTree(moduleRoot, pkgDir, testName); err != nil {
 						t.Errorf("task %s: detector %s: searching for %s in %q: %v", task.ID, d.Name, testName, pkgDir, err)
 					} else if !found {

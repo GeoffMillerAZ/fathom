@@ -153,6 +153,20 @@ type Rule struct {
 	Source string `json:"source"`
 }
 
+// ViolationProbe (RC-50, docs/plans/receipts.md) is a tiny scripted edit
+// that violates a guards task's own Rule — the corpus's mechanical proof
+// that its detectors actually detect, not merely that they run. A probe
+// test (internal/scenariobench/guardsm1_probe_test.go) applies task's own
+// Subject.Setup (if any — some tasks materialize their edit-site scaffold
+// there rather than committing it to this repo) and then Commands to a
+// throwaway copy of the subject tree, and asserts the task's rule
+// detector goes from green to red. Commands are self-contained shell (a
+// sed, a heredoc, a git commit) — never a model call.
+type ViolationProbe struct {
+	Description string   `json:"description"`
+	Commands    []string `json:"commands"`
+}
+
 // Category is the change's shape, assigned by ClassifyChange or by hand
 // with a derivation note.
 type Category string
@@ -169,18 +183,19 @@ const (
 
 // Task is one scenario.
 type Task struct {
-	ID          string            `json:"id"`
-	Category    Category          `json:"category"`
-	Prompt      string            `json:"prompt"`
-	Subject     Subject           `json:"subject"`
-	Sessions    Sessions          `json:"sessions"`
-	Oracle      Oracle            `json:"oracle"`
-	Gold        Gold              `json:"gold,omitzero"`
-	Rule        *Rule             `json:"rule,omitempty"`
-	Predictions map[string]string `json:"predictions"`
-	Derivation  string            `json:"derivation"`
-	Requires    []string          `json:"requires,omitempty"`
-	MergedAt    string            `json:"merged_at,omitempty"`
+	ID             string            `json:"id"`
+	Category       Category          `json:"category"`
+	Prompt         string            `json:"prompt"`
+	Subject        Subject           `json:"subject"`
+	Sessions       Sessions          `json:"sessions"`
+	Oracle         Oracle            `json:"oracle"`
+	Gold           Gold              `json:"gold,omitzero"`
+	Rule           *Rule             `json:"rule,omitempty"`
+	ViolationProbe *ViolationProbe   `json:"violation_probe,omitempty"`
+	Predictions    map[string]string `json:"predictions"`
+	Derivation     string            `json:"derivation"`
+	Requires       []string          `json:"requires,omitempty"`
+	MergedAt       string            `json:"merged_at,omitempty"`
 	// Disposition marks a task the driver must not run: "dropped" — an
 	// oracle that cannot be won from the task text (RC-15, vision 28 §2
 	// F10: SB-cli__cli-10009's fail_to_pass names tests of a package
