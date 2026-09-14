@@ -435,6 +435,128 @@ func TestRenderArm_InstructionsTextCreatesClaudeMDWhenAbsent(t *testing.T) {
 	}
 }
 
+// TestRenderArm_InstructionsTextIdempotent is the fix-first review's own
+// proof: appendInstructionsText is not idempotent if a second RenderArm
+// on the SAME worktree (a retried session, a re-run of the same cell)
+// appends a SECOND region. Two renders with the same InstructionsText
+// must leave exactly one region in CLAUDE.md.
+func TestRenderArm_InstructionsTextIdempotent(t *testing.T) {
+	dir := t.TempDir()
+	original := "# subject's own\n\nDo not break the build.\n"
+	writeTestFile(t, filepath.Join(dir, "CLAUDE.md"), original)
+	arm := Arm{Instructions: "text", InstructionsText: "## routing stanza\n\nwhere: find_symbol\n"}
+
+	if _, err := RenderArm(arm, dir); err != nil {
+		t.Fatalf("RenderArm (1st): %v", err)
+	}
+	first, err := os.ReadFile(filepath.Join(dir, "CLAUDE.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := RenderArm(arm, dir); err != nil {
+		t.Fatalf("RenderArm (2nd): %v", err)
+	}
+	second, err := os.ReadFile(filepath.Join(dir, "CLAUDE.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if string(first) != string(second) {
+		t.Errorf("a second render with the same text changed the file:\nfirst:  %q\nsecond: %q", first, second)
+	}
+	if n := strings.Count(string(second), textInstructionsMarkerPrefix); n != 1 {
+		t.Errorf("expected exactly 1 region marker after two renders, got %d:\n%s", n, second)
+	}
+	if !strings.Contains(string(second), original) {
+		t.Errorf("expected the subject's original content to survive: %s", second)
+	}
+}
+
+// TestRenderArm_InstructionsTextReplacesChangedRegion covers the other
+// half: a SECOND render with DIFFERENT InstructionsText replaces the
+// region's own body in place — still exactly one region, now holding the
+// new text, not the old one.
+func TestRenderArm_InstructionsTextReplacesChangedRegion(t *testing.T) {
+	dir := t.TempDir()
+	original := "# subject's own\n"
+	writeTestFile(t, filepath.Join(dir, "CLAUDE.md"), original)
+
+	arm1 := Arm{Instructions: "text", InstructionsText: "## routing stanza v1\n"}
+	if _, err := RenderArm(arm1, dir); err != nil {
+		t.Fatalf("RenderArm (1st): %v", err)
+	}
+
+	arm2 := Arm{Instructions: "text", InstructionsText: "## routing stanza v2\n"}
+	if _, err := RenderArm(arm2, dir); err != nil {
+		t.Fatalf("RenderArm (2nd): %v", err)
+	}
+
+	raw, err := os.ReadFile(filepath.Join(dir, "CLAUDE.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(raw)
+	if n := strings.Count(got, textInstructionsMarkerPrefix); n != 1 {
+		t.Errorf("expected exactly 1 region marker, got %d:\n%s", n, got)
+	}
+	if strings.Contains(got, arm1.InstructionsText) {
+		t.Errorf("expected the OLD text to be gone, got: %s", got)
+	}
+	if !strings.Contains(got, arm2.InstructionsText) {
+		t.Errorf("expected the NEW text to be present, got: %s", got)
+	}
+	if !strings.Contains(got, original) {
+		t.Errorf("expected the subject's original content to survive: %s", got)
+	}
+}
+
+// TestFindInstructionsRegion_RoundTripsDigest proves the parser directly:
+// re-parsing renderInstructionsRegion's own output reports the SAME
+// digest renderInstructionsRegion computed.
+func TestFindInstructionsRegion_RoundTripsDigest(t *testing.T) {
+	rendered, digest := renderInstructionsRegion("## stanza\n")
+	region, err := findInstructionsRegion(rendered)
+	if err != nil {
+		t.Fatalf("findInstructionsRegion: %v", err)
+	}
+	if !region.present {
+		t.Fatal("expected a region to be found")
+	}
+	if region.digest != digest {
+		t.Errorf("region.digest = %q, want %q", region.digest, digest)
+	}
+	if region.start != 0 || region.end != len(rendered) {
+		t.Errorf("region span = [%d:%d], want [0:%d]", region.start, region.end, len(rendered))
+	}
+}
+
+// TestFindInstructionsRegion_AbsentIsNotAnError covers the "file
+// RenderArm has not touched yet" shape.
+func TestFindInstructionsRegion_AbsentIsNotAnError(t *testing.T) {
+	region, err := findInstructionsRegion("# just a normal CLAUDE.md\n")
+	if err != nil {
+		t.Fatalf("findInstructionsRegion: %v", err)
+	}
+	if region.present {
+		t.Error("expected present=false for content with no marker at all")
+	}
+}
+
+// TestDigestInstructionsBody_DiffersOnContent is a basic sanity check —
+// different bodies get different digests, the same body gets the same
+// one.
+func TestDigestInstructionsBody_DiffersOnContent(t *testing.T) {
+	a := digestInstructionsBody("## v1\n")
+	b := digestInstructionsBody("## v2\n")
+	if a == b {
+		t.Error("expected different bodies to hash differently")
+	}
+	if digestInstructionsBody("## v1\n") != a {
+		t.Error("expected the same body to hash the same way")
+	}
+}
+
 func TestRenderArm_InstructionsTextRequiresText(t *testing.T) {
 	dir := t.TempDir()
 	arm := Arm{Instructions: "text"}

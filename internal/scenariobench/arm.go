@@ -6,7 +6,8 @@
 package scenariobench
 
 import (
-	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -419,51 +420,146 @@ func sortedCopy(in []string) []string {
 	return out
 }
 
-// textInstructionsMarkerBegin/End delimit the competitor arm's own routing
-// stanza appended to CLAUDE.md by appendInstructionsText — a marker
-// comment, so the append is visibly attributable and never mistaken for
-// part of the subject's own text, exactly parallel to the marker `fathom
-// init` wraps its own stanza in (internal/wiring's HTMLMarkers) for
-// Instructions == "stanza". A distinct marker text ("scenariobench",
-// never "fathom") because this region is NOT fathom's — it is whatever
-// arm.InstructionsText the corpus author supplied for a competing tool.
+// textInstructionsMarkerPrefix/Suffix/End delimit the competitor arm's
+// own routing stanza appended to CLAUDE.md by appendInstructionsText — a
+// marker comment, so the append is visibly attributable and never
+// mistaken for part of the subject's own text, exactly parallel to the
+// marker `fathom init` wraps its own stanza in (internal/wiring's
+// HTMLMarkers) for Instructions == "stanza". A distinct marker text
+// ("scenariobench", never "fathom") because this region is NOT fathom's
+// — it is whatever arm.InstructionsText the corpus author supplied for a
+// competing tool.
+//
+// The begin marker also carries a template version and a sha256 digest
+// of the region's own body, mirroring internal/wiring/region.go's own
+// marker-format discipline (never that package's full ownership/drift/
+// receipt machinery, which a transient competitor-arm text has no use
+// for): appendInstructionsText re-parses this on every call, so a SECOND
+// RenderArm on the same worktree recognizes its own region by the digest
+// and either leaves the file untouched (unchanged) or replaces just that
+// region's body (arm.InstructionsText changed) — never appending a
+// second region (fix-first review, wave-n1).
 const (
-	textInstructionsMarkerBegin = "<!-- scenariobench:begin arm-instructions -->"
-	textInstructionsMarkerEnd   = "<!-- scenariobench:end arm-instructions -->"
+	textInstructionsMarkerPrefix  = "<!-- scenariobench:begin arm-instructions"
+	textInstructionsMarkerSuffix  = " -->"
+	textInstructionsMarkerEnd     = "<!-- scenariobench:end arm-instructions -->"
+	textInstructionsMarkerVersion = "v1"
 )
 
-// appendInstructionsText appends text to the CLAUDE.md at path under a
-// marker comment, creating the file only when it does not already exist —
-// the fix for RenderArm's "text" instructions mode once REPLACING
-// whatever CLAUDE.md a subject already had, which silently cost a
-// competitor arm the repository's real operating instructions while
-// "plain" and "stanza" arms kept theirs. Existing content survives
-// byte-for-byte; the marked region is always appended last.
-func appendInstructionsText(path, text string) error {
-	existing, err := os.ReadFile(path)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return fmt.Errorf("reading %s: %w", path, err)
-		}
-		existing = nil
+// digestInstructionsBody hashes body's exact bytes, "sha256:" prefixed —
+// the same digest spelling internal/wiring/region.go uses, so the two
+// marker formats read as the same idea even though this file does not
+// import that package.
+func digestInstructionsBody(body string) string {
+	sum := sha256.Sum256([]byte(body))
+	return "sha256:" + hex.EncodeToString(sum[:])
+}
+
+// renderInstructionsRegion renders body (already newline-terminated) as
+// a marker-fenced region: the begin marker line carries the template
+// version and the digest of body, then body, then the end marker —
+// re-parsing this exact output (findInstructionsRegion) reports the same
+// digest, proving the body is unchanged.
+func renderInstructionsRegion(body string) (rendered, digest string) {
+	digest = digestInstructionsBody(body)
+	rendered = textInstructionsMarkerPrefix + " " + textInstructionsMarkerVersion + " " + digest + textInstructionsMarkerSuffix +
+		"\n" + body + textInstructionsMarkerEnd + "\n"
+	return rendered, digest
+}
+
+// instructionsRegion is one CLAUDE.md's own scenariobench-owned region,
+// as findInstructionsRegion found it.
+type instructionsRegion struct {
+	present    bool
+	start, end int // content[start:end] spans the WHOLE region, both markers included
+	digest     string
+}
+
+// findInstructionsRegion locates the scenariobench-owned region in
+// content, if any, and reports its byte range and the digest its begin
+// marker recorded. present is false (not an error) when content carries
+// no such marker at all — a file appendInstructionsText has not touched
+// yet.
+func findInstructionsRegion(content string) (instructionsRegion, error) {
+	begin := strings.Index(content, textInstructionsMarkerPrefix)
+	if begin < 0 {
+		return instructionsRegion{}, nil
+	}
+	lineEnd := strings.IndexByte(content[begin:], '\n')
+	if lineEnd < 0 {
+		return instructionsRegion{}, fmt.Errorf("the %q line has no terminator", textInstructionsMarkerPrefix)
+	}
+	markerLine := content[begin : begin+lineEnd]
+	bodyStart := begin + lineEnd + 1
+
+	rel := strings.Index(content[bodyStart:], textInstructionsMarkerEnd)
+	if rel < 0 {
+		return instructionsRegion{}, fmt.Errorf("a begin marker with no matching %q", textInstructionsMarkerEnd)
+	}
+	bodyEnd := bodyStart + rel
+	end := bodyEnd + len(textInstructionsMarkerEnd)
+	if end < len(content) && content[end] == '\n' {
+		end++
 	}
 
-	region := textInstructionsMarkerBegin + "\n" + text
-	if !strings.HasSuffix(region, "\n") {
-		region += "\n"
+	attrs := strings.TrimSuffix(markerLine, textInstructionsMarkerSuffix)
+	attrs = strings.TrimPrefix(attrs, textInstructionsMarkerPrefix)
+	digest := ""
+	for _, tok := range strings.Fields(attrs) {
+		if strings.HasPrefix(tok, "sha256:") {
+			digest = tok
+		}
 	}
-	region += textInstructionsMarkerEnd + "\n"
+
+	return instructionsRegion{present: true, start: begin, end: end, digest: digest}, nil
+}
+
+// appendInstructionsText appends text to the CLAUDE.md at path under a
+// digest-marked region, creating the file only when it does not already
+// exist — the fix for RenderArm's "text" instructions mode once
+// REPLACING whatever CLAUDE.md a subject already had, which silently
+// cost a competitor arm the repository's real operating instructions
+// while "plain" and "stanza" arms kept theirs. Existing content outside
+// the region survives byte-for-byte. A SECOND call — a retried session, a
+// re-run of the same cell — recognizes its own region (findInstructionsRegion)
+// and either short-circuits (the digest already matches text) or replaces
+// just that region's body in place, never appending a second region.
+func appendInstructionsText(path, text string) error {
+	body := text
+	if !strings.HasSuffix(body, "\n") {
+		body += "\n"
+	}
+	rendered, wantDigest := renderInstructionsRegion(body)
+
+	existing, err := os.ReadFile(path)
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("reading %s: %w", path, err)
+	}
+	content := string(existing)
+
+	region, ferr := findInstructionsRegion(content)
+	if ferr != nil {
+		return fmt.Errorf("%s: %w", path, ferr)
+	}
+
+	if region.present {
+		if region.digest == wantDigest {
+			return nil
+		}
+		out := content[:region.start] + rendered + content[region.end:]
+		return os.WriteFile(path, []byte(out), 0o644)
+	}
 
 	var out []byte
-	if len(existing) == 0 {
-		out = []byte(region)
+	if len(content) == 0 {
+		out = []byte(rendered)
 	} else {
-		base := existing
-		if !bytes.HasSuffix(base, []byte("\n")) {
+		base := []byte(content)
+		if base[len(base)-1] != '\n' {
 			base = append(base, '\n')
 		}
 		out = append(base, '\n')
-		out = append(out, []byte(region)...)
+		out = append(out, []byte(rendered)...)
 	}
 	return os.WriteFile(path, out, 0o644)
 }
