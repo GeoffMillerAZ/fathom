@@ -6,6 +6,7 @@
 package scenariobench
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -46,6 +47,13 @@ type ArmFiles struct {
 	// InstructionsPath is the worktree's CLAUDE.md path; empty when
 	// Instructions == "none" removed it.
 	InstructionsPath string `json:"instructions_path,omitempty"`
+	// InstructionsAppended is true when Instructions == "text" appended
+	// arm.InstructionsText to an existing CLAUDE.md (or created one that
+	// did not exist) rather than replacing it — the fix for the defect
+	// where "text" mode overwrote a subject's real CLAUDE.md outright,
+	// leaving that arm unable to answer any task whose answer lived only
+	// in the repository's own instructions.
+	InstructionsAppended bool `json:"instructions_appended,omitempty"`
 	// SystemAppend is the arm-declared text every session's system prompt
 	// carries in addition to the task prompt: the notes-file instruction
 	// when arm.NotesFile is set, else empty. This — and nothing else — is
@@ -72,9 +80,12 @@ const notesInstructionText = "Keep a running log of your plan and progress in NO
 //     leaves the subject's own CLAUDE.md untouched, "none" removes it,
 //     "stanza" requires arm.Wired (only a wired arm's `fathom init`
 //     run puts a real stanza there — RenderArm just asserts the
-//     precondition and reports the path), and "text" writes
-//     arm.InstructionsText verbatim (a competitor arm's own routing
-//     stanza, RC-8);
+//     precondition and reports the path), and "text" APPENDS
+//     arm.InstructionsText under a marker comment (creating CLAUDE.md
+//     only when absent), exactly parallel to how `fathom init` appends
+//     fathom's own stanza for "stanza" mode — a competitor arm's own
+//     routing stanza, RC-8, must never cost that arm the subject's real
+//     CLAUDE.md, the way REPLACING it once did;
 //   - the notes-file instruction text, when arm.NotesFile is set.
 func RenderArm(arm Arm, worktree string) (ArmFiles, error) {
 	var out ArmFiles
@@ -149,16 +160,22 @@ func RenderArm(arm Arm, worktree string) (ArmFiles, error) {
 		out.InstructionsPath = claudeMD
 	case "text":
 		// A competitor arm's own routing stanza (RC-8): arm.InstructionsText
-		// verbatim, so its tool is never measured as unused for want of a
-		// name (vision 28 §2 F2) — the same mechanism "stanza" gives a
-		// wired arm, without requiring `fathom init`.
+		// appended under a marker, so its tool is never measured as unused
+		// for want of a name (vision 28 §2 F2) — the same mechanism
+		// "stanza" gives a wired arm, without requiring `fathom init`. The
+		// defect this closes: writing arm.InstructionsText verbatim
+		// REPLACED the subject's real CLAUDE.md, so a competitor arm lost
+		// the repository's own instructions that the "plain" and "stanza"
+		// arms kept, making any task whose answer lived there unanswerable
+		// for three arms at once.
 		if arm.InstructionsText == "" {
 			return ArmFiles{}, fmt.Errorf("rendering arm: instructions %q requires arm.InstructionsText", arm.Instructions)
 		}
-		if err := os.WriteFile(claudeMD, []byte(arm.InstructionsText), 0o644); err != nil {
-			return ArmFiles{}, fmt.Errorf("rendering arm: writing %s: %w", claudeMD, err)
+		if err := appendInstructionsText(claudeMD, arm.InstructionsText); err != nil {
+			return ArmFiles{}, fmt.Errorf("rendering arm: %w", err)
 		}
 		out.InstructionsPath = claudeMD
+		out.InstructionsAppended = true
 	default:
 		return ArmFiles{}, fmt.Errorf("rendering arm: unknown instructions %q (want stanza, plain, or none)", arm.Instructions)
 	}
@@ -400,6 +417,55 @@ func sortedCopy(in []string) []string {
 	out := append([]string(nil), in...)
 	sort.Strings(out)
 	return out
+}
+
+// textInstructionsMarkerBegin/End delimit the competitor arm's own routing
+// stanza appended to CLAUDE.md by appendInstructionsText — a marker
+// comment, so the append is visibly attributable and never mistaken for
+// part of the subject's own text, exactly parallel to the marker `fathom
+// init` wraps its own stanza in (internal/wiring's HTMLMarkers) for
+// Instructions == "stanza". A distinct marker text ("scenariobench",
+// never "fathom") because this region is NOT fathom's — it is whatever
+// arm.InstructionsText the corpus author supplied for a competing tool.
+const (
+	textInstructionsMarkerBegin = "<!-- scenariobench:begin arm-instructions -->"
+	textInstructionsMarkerEnd   = "<!-- scenariobench:end arm-instructions -->"
+)
+
+// appendInstructionsText appends text to the CLAUDE.md at path under a
+// marker comment, creating the file only when it does not already exist —
+// the fix for RenderArm's "text" instructions mode once REPLACING
+// whatever CLAUDE.md a subject already had, which silently cost a
+// competitor arm the repository's real operating instructions while
+// "plain" and "stanza" arms kept theirs. Existing content survives
+// byte-for-byte; the marked region is always appended last.
+func appendInstructionsText(path, text string) error {
+	existing, err := os.ReadFile(path)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("reading %s: %w", path, err)
+		}
+		existing = nil
+	}
+
+	region := textInstructionsMarkerBegin + "\n" + text
+	if !strings.HasSuffix(region, "\n") {
+		region += "\n"
+	}
+	region += textInstructionsMarkerEnd + "\n"
+
+	var out []byte
+	if len(existing) == 0 {
+		out = []byte(region)
+	} else {
+		base := existing
+		if !bytes.HasSuffix(base, []byte("\n")) {
+			base = append(base, '\n')
+		}
+		out = append(base, '\n')
+		out = append(out, []byte(region)...)
+	}
+	return os.WriteFile(path, out, 0o644)
 }
 
 func writeJSONFile(path string, v any) error {

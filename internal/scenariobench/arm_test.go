@@ -374,9 +374,16 @@ func TestRenderArm_InstructionsPlainLeavesFileUntouched(t *testing.T) {
 	}
 }
 
-func TestRenderArm_InstructionsTextWritesInstructionsTextVerbatim(t *testing.T) {
+// TestRenderArm_InstructionsTextAppendsToExistingClaudeMD is O53 defect 1's
+// own proof: "text" mode used to REPLACE the subject's real CLAUDE.md with
+// arm.InstructionsText, so a competitor arm's worktree lost the
+// repository's real operating instructions while "plain" and "stanza" arms
+// kept them. The original content must survive, followed by the stanza
+// under a marker, and ArmFiles must say so.
+func TestRenderArm_InstructionsTextAppendsToExistingClaudeMD(t *testing.T) {
 	dir := t.TempDir()
-	writeTestFile(t, filepath.Join(dir, "CLAUDE.md"), "# subject's own\n")
+	original := "# subject's own\n\nDo not break the build.\n"
+	writeTestFile(t, filepath.Join(dir, "CLAUDE.md"), original)
 	arm := Arm{Instructions: "text", InstructionsText: "## routing stanza\n\nwhere: find_symbol\n"}
 	files, err := RenderArm(arm, dir)
 	if err != nil {
@@ -385,9 +392,46 @@ func TestRenderArm_InstructionsTextWritesInstructionsTextVerbatim(t *testing.T) 
 	if files.InstructionsPath == "" {
 		t.Error("expected InstructionsPath to be set")
 	}
+	if !files.InstructionsAppended {
+		t.Error("expected InstructionsAppended = true")
+	}
 	raw, err := os.ReadFile(filepath.Join(dir, "CLAUDE.md"))
-	if err != nil || string(raw) != arm.InstructionsText {
-		t.Errorf("CLAUDE.md = %q, err=%v, want %q", raw, err, arm.InstructionsText)
+	if err != nil {
+		t.Fatalf("reading CLAUDE.md: %v", err)
+	}
+	got := string(raw)
+	if !strings.Contains(got, original) {
+		t.Errorf("CLAUDE.md lost the subject's original content: %q", got)
+	}
+	if !strings.Contains(got, arm.InstructionsText) {
+		t.Errorf("CLAUDE.md missing arm.InstructionsText: %q", got)
+	}
+	origIdx := strings.Index(got, original)
+	stanzaIdx := strings.Index(got, arm.InstructionsText)
+	if origIdx < 0 || stanzaIdx < 0 || stanzaIdx < origIdx {
+		t.Errorf("expected the stanza to follow the original content, got %q", got)
+	}
+}
+
+// TestRenderArm_InstructionsTextCreatesClaudeMDWhenAbsent covers the other
+// half of the fix: no pre-existing CLAUDE.md means "text" mode creates one
+// (never errors), holding just the marked stanza.
+func TestRenderArm_InstructionsTextCreatesClaudeMDWhenAbsent(t *testing.T) {
+	dir := t.TempDir()
+	arm := Arm{Instructions: "text", InstructionsText: "## routing stanza\n\nwhere: find_symbol\n"}
+	files, err := RenderArm(arm, dir)
+	if err != nil {
+		t.Fatalf("RenderArm: %v", err)
+	}
+	if !files.InstructionsAppended {
+		t.Error("expected InstructionsAppended = true")
+	}
+	raw, err := os.ReadFile(filepath.Join(dir, "CLAUDE.md"))
+	if err != nil {
+		t.Fatalf("reading CLAUDE.md: %v", err)
+	}
+	if !strings.Contains(string(raw), arm.InstructionsText) {
+		t.Errorf("CLAUDE.md = %q, want it to contain %q", raw, arm.InstructionsText)
 	}
 }
 
