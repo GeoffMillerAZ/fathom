@@ -124,11 +124,30 @@ func (c *Client) CompileLayerResume(ctx context.Context, service, layerName stri
 	return c.compileLayer(ctx, service, layerName, dryRun, escape, true)
 }
 
-// ObligationsLayerCoverage reports the obligations layer's LATEST compile
-// run completeness for service (O54 deliverable 2) — see
-// semantic.ObligationsLayerCoverage.
+// ObligationsLayerCoverage reports the obligations layer's LIVE compile
+// completeness for service (O54 deliverable 2, second review round): the
+// CURRENT corpus, not the possibly-stale numbers the latest compile_runs
+// row recorded — see semantic.LiveLayerCoverage. Resolves the layer
+// definition and its corpus the same way a real compile does
+// (compileLayer); a resolution failure at either step degrades to the
+// store-only semantic.ObligationsLayerCoverage rather than failing
+// obligations serving outright — this is a serve-time enrichment, never a
+// hard dependency.
 func (c *Client) ObligationsLayerCoverage(ctx context.Context, service string) (semantic.LayerCoverage, bool, error) {
-	return semantic.ObligationsLayerCoverage(ctx, c.st, service, semantic.LayerObligations)
+	root := ""
+	if meta, found, merr := c.st.GetServiceMeta(ctx, service); merr == nil && found {
+		root = meta.Path
+	}
+	layerDef, err := semantic.LoadLayerIn(root, semantic.LayerObligations)
+	if err != nil {
+		return semantic.ObligationsLayerCoverage(ctx, c.st, service, semantic.LayerObligations)
+	}
+	files, err := c.Sources(ctx, service)
+	if err != nil {
+		return semantic.ObligationsLayerCoverage(ctx, c.st, service, semantic.LayerObligations)
+	}
+	corpus := semantic.SelectCorpus(files, layerDef.CorpusInclude, layerDef.CorpusExclude)
+	return semantic.LiveLayerCoverage(ctx, c.st, service, layerDef, corpus)
 }
 
 func (c *Client) compileLayer(ctx context.Context, service, layerName string, dryRun bool, escape string, resume bool) (core.CompileRun, error) {

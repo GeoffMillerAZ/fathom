@@ -1426,13 +1426,18 @@ func TestObligationsCorpusIncludesNestedInstructionFiles(t *testing.T) {
 // ─── O54: nearest-scope-first compile order, layer coverage, resume ────────
 
 // TestCompile_BudgetStopLeavesNearestGuidesCompiledRootTailUncompiled is
-// O54 deliverable 1's integration proof: a fixture corpus shaped exactly
-// like the obligations layer's real one (a root document plus nested
-// package guides) compiled under a small budget leaves the NESTED GUIDES
-// compiled and the ROOT document the uncompiled tail — never the reverse,
-// which is what plain alphabetical doc order produced (ADR.md sorts before
-// every nested CLAUDE.md). Also pins deliverable 2's UncompiledScopes
-// source data.
+// O54 deliverable 1's integration proof: a fixture corpus shaped like the
+// obligations layer's real one (nested package guides, the root's own
+// CLAUDE.md, and ADR.md) compiled under a small budget leaves the NESTED
+// GUIDES and the ROOT CLAUDE.md's own Non-negotiables section compiled,
+// and ADR.md the uncompiled tail — never the reverse, which is what plain
+// alphabetical doc order produced (ADR.md sorts before every CLAUDE.md).
+// Second review round: a two-tier split alone still starved the root
+// CLAUDE.md's own governing section by sorting it into the same
+// size-ordered bucket as ADR.md — this corpus's root Non-negotiables
+// section is the LARGEST section in the whole corpus, and the assertion
+// below is exactly "it compiles before any ADR.md section regardless".
+// Also pins deliverable 2's UncompiledScopes source data.
 func TestCompile_BudgetStopLeavesNearestGuidesCompiledRootTailUncompiled(t *testing.T) {
 	ctx := context.Background()
 	st := store.NewMemoryStore()
@@ -1441,11 +1446,16 @@ func TestCompile_BudgetStopLeavesNearestGuidesCompiledRootTailUncompiled(t *test
 		ServiceID: "svc",
 		Docs: []core.SourceFile{
 			// Alphabetically FIRST (would compile first under the old,
-			// plain doc-sort order) but ROOT tier — must compile LAST.
+			// plain doc-sort order) but ROOT-OTHER tier — must compile LAST.
 			{Path: "ADR.md", Content: []byte("# Decisions\n\n- Some root decision.\n")},
-			// Nested guides — NEAREST-SCOPE tier, must compile first,
-			// smaller section (internal/CLAUDE.md) before the larger one.
-			{Path: "cmd/fathom/CLAUDE.md", Content: []byte("# cmd fathom\n\n- Wire every new verb into verbs.go and keep the registry sorted and documented end to end for the CLI help text, covering every edge case thoroughly and with care.\n")},
+			// The root's OWN guide: a single large Non-negotiables section
+			// (the largest section in this whole corpus by byte count) —
+			// ROOT-GUIDE tier, ahead of ADR.md regardless of size.
+			{Path: "CLAUDE.md", Content: []byte("## Non-negotiables\n\n- Deploy = task deploy, never a raw cp; an unsigned binary loses the daemon's TCC grant.\n")},
+			// Nested guides — NEAREST-SCOPE tier, must compile before both
+			// root tiers. Document order (path) is the tier's own
+			// tie-break now, not size: cmd/fathom sorts before internal.
+			{Path: "cmd/fathom/CLAUDE.md", Content: []byte("# cmd fathom\n\n- Wire every new verb into verbs.go.\n")},
 			{Path: "internal/CLAUDE.md", Content: []byte("# internal\n\n- Register every extractor in fusion.New.\n")},
 		},
 		IndexedFiles: []string{
@@ -1459,16 +1469,22 @@ func TestCompile_BudgetStopLeavesNearestGuidesCompiledRootTailUncompiled(t *test
 	}
 
 	mock := llmclient.NewMockClient(
-		// internal/CLAUDE.md's section: smallest, nested tier — compiles FIRST.
+		// cmd/fathom/CLAUDE.md's section: nested tier, first by path.
+		llmclient.MockEntry{Response: llmclient.Response{
+			Text:  `{"claims":[{"rule":"Wire every new verb into verbs.go.","scope":["cmd/fathom/**"],"cite_start":3,"cite_end":3}]}`,
+			Usage: llmclient.Usage{InputTokens: 100, OutputTokens: 50},
+		}},
+		// internal/CLAUDE.md's section: nested tier, second by path.
 		llmclient.MockEntry{Response: llmclient.Response{
 			Text:  `{"claims":[{"rule":"Register every extractor in fusion.New.","scope":["internal/**"],"cite_start":3,"cite_end":3}]}`,
 			Usage: llmclient.Usage{InputTokens: 100, OutputTokens: 50},
 		}},
-		// cmd/fathom/CLAUDE.md's section: still nested tier, next smallest —
-		// compiles SECOND, and its real usage crosses the budget.
+		// CLAUDE.md's Non-negotiables section: root-GUIDE tier, ahead of
+		// ADR.md regardless of being the largest section in the corpus —
+		// its real usage is what crosses the budget.
 		llmclient.MockEntry{Response: llmclient.Response{
-			Text:  `{"claims":[{"rule":"Wire every new verb into verbs.go and keep the registry sorted.","scope":["cmd/fathom/**"],"cite_start":3,"cite_end":3}]}`,
-			Usage: llmclient.Usage{InputTokens: 800, OutputTokens: 100},
+			Text:  `{"claims":[{"rule":"Deploy = task deploy, never a raw cp.","scope":["docs/x.md"],"cite_start":3,"cite_end":3}]}`,
+			Usage: llmclient.Usage{InputTokens: 5000, OutputTokens: 100},
 		}},
 		// ADR.md must NEVER be reached — no entry scripted for it; a call
 		// here would still return the mock's harmless fallback text, so
@@ -1478,7 +1494,11 @@ func TestCompile_BudgetStopLeavesNearestGuidesCompiledRootTailUncompiled(t *test
 	if err != nil {
 		t.Fatalf("LoadLayer(obligations): %v", err)
 	}
-	layer.Budgets = LayerBudgets{MaxTokensPerRun: 1000, MaxUSDPerRun: 1000}
+	// A generous budget so the PRE-FLIGHT estimate (a cheap bytes/4
+	// heuristic over all 4 sections' text, including the deliberately
+	// verbose Non-negotiables section) never refuses the run outright —
+	// only the REAL usage scripted above crosses it, mid-run.
+	layer.Budgets = LayerBudgets{MaxTokensPerRun: 5000, MaxUSDPerRun: 100000}
 	c := &Compiler{
 		St:            st,
 		LLM:           mock,
@@ -1494,14 +1514,14 @@ func TestCompile_BudgetStopLeavesNearestGuidesCompiledRootTailUncompiled(t *test
 	if !run.BudgetStopped {
 		t.Fatalf("run.BudgetStopped = false, want true")
 	}
-	if run.SectionsTotal != 3 {
-		t.Fatalf("run.SectionsTotal = %d, want 3", run.SectionsTotal)
+	if run.SectionsTotal != 4 {
+		t.Fatalf("run.SectionsTotal = %d, want 4", run.SectionsTotal)
 	}
-	if run.SectionsCompiled != 2 {
-		t.Fatalf("run.SectionsCompiled = %d, want 2 (both nested guides — ADR.md never reached)", run.SectionsCompiled)
+	if run.SectionsCompiled != 3 {
+		t.Fatalf("run.SectionsCompiled = %d, want 3 (both nested guides plus the root's own Non-negotiables — ADR.md never reached)", run.SectionsCompiled)
 	}
-	if mock.CallCount() != 2 {
-		t.Fatalf("mock.CallCount() = %d, want 2 — ADR.md must never be reached", mock.CallCount())
+	if mock.CallCount() != 3 {
+		t.Fatalf("mock.CallCount() = %d, want 3 — ADR.md must never be reached", mock.CallCount())
 	}
 	if want := []string{"ADR.md"}; len(run.UncompiledScopes) != 1 || run.UncompiledScopes[0] != want[0] {
 		t.Fatalf("run.UncompiledScopes = %v, want %v", run.UncompiledScopes, want)
@@ -1511,13 +1531,20 @@ func TestCompile_BudgetStopLeavesNearestGuidesCompiledRootTailUncompiled(t *test
 	if err != nil {
 		t.Fatalf("ClaimsForService: %v", err)
 	}
-	if len(claims) != 2 {
-		t.Fatalf("len(claims) = %d, want 2", len(claims))
+	if len(claims) != 3 {
+		t.Fatalf("len(claims) = %d, want 3", len(claims))
 	}
+	var sawNonNegotiables bool
 	for _, cl := range claims {
 		if strings.HasPrefix(cl.Subject, "ADR.md#") {
-			t.Fatalf("claim %s compiled from ADR.md — the root tail must never compile before a budget stop that starves the nested guides", cl.ClaimID)
+			t.Fatalf("claim %s compiled from ADR.md — the root-other tail must never compile before a budget stop that starves the guides", cl.ClaimID)
 		}
+		if cl.Subject == "CLAUDE.md#non-negotiables" {
+			sawNonNegotiables = true
+		}
+	}
+	if !sawNonNegotiables {
+		t.Fatalf("the root CLAUDE.md's Non-negotiables section never compiled: claims=%+v", claims)
 	}
 
 	// The recorded compile_runs row is what layer_coverage (O54 deliverable
@@ -1526,13 +1553,167 @@ func TestCompile_BudgetStopLeavesNearestGuidesCompiledRootTailUncompiled(t *test
 	if cerr != nil || !found {
 		t.Fatalf("ObligationsLayerCoverage: found=%v err=%v", found, cerr)
 	}
-	if cov.SectionsTotal != 3 || cov.SectionsCompiled != 2 || !cov.BudgetStopped {
-		t.Fatalf("coverage = %+v, want {3 2 true ...}", cov)
+	if cov.SectionsTotal != 4 || cov.SectionsCompiled != 3 || !cov.BudgetStopped {
+		t.Fatalf("coverage = %+v, want {4 3 true ...}", cov)
 	}
-	// The uncompiled tail is ADR.md alone — root tier, never a "nearest
-	// guide" for any file. NearestUncompiledGuide must say so.
+	// The uncompiled tail is ADR.md alone — root-OTHER tier, never a
+	// "nearest guide" for any file. NearestUncompiledGuide must say so.
 	if guide, ok := NearestUncompiledGuide(cov, "internal/extractor/goextract.go"); ok {
-		t.Fatalf("NearestUncompiledGuide = (%q, true), want ok=false — internal/CLAUDE.md itself DID compile; only the root ADR.md tail is uncompiled", guide)
+		t.Fatalf("NearestUncompiledGuide = (%q, true), want ok=false — internal/CLAUDE.md and the root CLAUDE.md both DID compile; only the root-other ADR.md tail is uncompiled", guide)
+	}
+}
+
+// TestCompile_RepoShapedCorpus_EighteenSectionBudget_CoversEveryGuide is
+// the second review round's own reproduction target: a corpus shaped like
+// THIS repository's own obligations corpus (4 nested guides, a root
+// CLAUDE.md with 7 sections, ADR.md with 37) under an 18-section budget.
+// Measured on this repository (see this round's review), the root
+// CLAUDE.md's Non-negotiables section alone is 1,742 bytes — larger than
+// every one of ADR.md's individual sections — and a size-only sort over
+// "everything root-scoped" ranked it 65th of 65, well outside an 18-section
+// budget. With the three-tier fix: every nested guide section AND every
+// root CLAUDE.md section (11 total) compile before a single ADR.md
+// section, and the remaining 7 sections of budget land on ADR.md's own
+// first 7 sections (document order, since they are byte-length ties) —
+// ADR.md is the part that stops, never a guide.
+func TestCompile_RepoShapedCorpus_EighteenSectionBudget_CoversEveryGuide(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+
+	const (
+		nestedGuides  = 4
+		rootSections  = 7
+		adrSections   = 37
+		wantCompiled  = 18
+		wantFromGuide = nestedGuides + rootSections // 11
+	)
+
+	var docs []core.SourceFile
+	nestedDirs := []string{"aaa", "bbb", "ccc", "ddd"}
+	for _, dir := range nestedDirs {
+		docs = append(docs, core.SourceFile{
+			Path:    dir + "/CLAUDE.md",
+			Content: []byte(fmt.Sprintf("# guide\n\n- A rule governing %s.\n\n", dir)),
+		})
+	}
+	var rootBuf strings.Builder
+	for i := 1; i <= rootSections; i++ {
+		fmt.Fprintf(&rootBuf, "## Root section %d\n\n- Root rule %d.\n\n", i, i)
+	}
+	docs = append(docs, core.SourceFile{Path: "CLAUDE.md", Content: []byte(rootBuf.String())})
+	var adrBuf strings.Builder
+	for i := 1; i <= adrSections; i++ {
+		fmt.Fprintf(&adrBuf, "## Decision %d\n\n- Decision rule %d.\n\n", i, i)
+	}
+	docs = append(docs, core.SourceFile{Path: "ADR.md", Content: []byte(adrBuf.String())})
+
+	indexedFiles := []string{"aaa/x.go", "bbb/x.go", "ccc/x.go", "ddd/x.go", "pkg/y.go", "docs/z.md"}
+
+	// Reconstruct the EXACT order Compile() will use, so the scripted mock
+	// lines up 1:1 with the real compile order regardless of any future
+	// ordering-detail change — this test asserts on the PRODUCTION
+	// function's own answer, never a hand-predicted guess.
+	var all []docSections
+	for _, d := range docs {
+		all = append(all, docSections{doc: d, sections: SplitMarkdownSections(d.Path, d.Content)})
+	}
+	ordered := orderSectionsByGoverningScope(all)
+	if len(ordered) != nestedGuides+rootSections+adrSections {
+		t.Fatalf("total sections = %d, want %d", len(ordered), nestedGuides+rootSections+adrSections)
+	}
+	for i := 0; i < wantFromGuide; i++ {
+		if docCompileTier(ordered[i].sec.Path) == docTierRootOther {
+			t.Fatalf("ordered[%d] = %s is root-OTHER tier, want every one of the first %d sections to be a guide (nested or root)", i, ordered[i].sec.Path, wantFromGuide)
+		}
+	}
+	for i := wantFromGuide; i < wantCompiled; i++ {
+		if ordered[i].sec.Path != "ADR.md" {
+			t.Fatalf("ordered[%d] = %s, want ADR.md filling the remaining budget after every guide section", i, ordered[i].sec.Path)
+		}
+	}
+
+	scopeFor := func(docPath string) []string {
+		switch docPath {
+		case "CLAUDE.md":
+			return []string{"pkg/y.go"}
+		case "ADR.md":
+			return []string{"docs/z.md"}
+		default:
+			return []string{strings.TrimSuffix(docPath, "/CLAUDE.md") + "/**"}
+		}
+	}
+	entries := make([]llmclient.MockEntry, len(ordered))
+	for i, item := range ordered {
+		usage := llmclient.Usage{InputTokens: 10, OutputTokens: 0}
+		if i == wantCompiled-1 {
+			// The 18th section's real usage is what crosses the budget.
+			usage = llmclient.Usage{InputTokens: 100000, OutputTokens: 0}
+		}
+		scope, _ := json.Marshal(scopeFor(item.sec.Path))
+		claim := fmt.Sprintf(`{"claims":[{"rule":"Rule for section %d.","scope":%s,"cite_start":%d,"cite_end":%d}]}`,
+			i, scope, item.sec.StartLine+2, item.sec.StartLine+2)
+		entries[i] = llmclient.MockEntry{Response: llmclient.Response{Text: claim, Usage: usage}}
+	}
+	mock := llmclient.NewMockClient(entries...)
+
+	layer, err := LoadLayer(LayerObligations)
+	if err != nil {
+		t.Fatalf("LoadLayer(obligations): %v", err)
+	}
+	layer.Budgets = LayerBudgets{MaxTokensPerRun: 50000, MaxUSDPerRun: 1e9}
+	c := &Compiler{St: st, LLM: mock, Model: "mock-model", Layer: layer, InRatePerKTok: 0, Now: fixedNow}
+	run, err := c.Compile(ctx, CompileInput{
+		ServiceID: "svc", Docs: docs, IndexedFiles: indexedFiles, Watermark: "manifest:aaa",
+	})
+	if err != nil {
+		t.Fatalf("a clean mid-run budget stop must not return an error: %v", err)
+	}
+	if !run.BudgetStopped {
+		t.Fatalf("run.BudgetStopped = false, want true")
+	}
+	if run.SectionsTotal != nestedGuides+rootSections+adrSections {
+		t.Fatalf("run.SectionsTotal = %d, want %d", run.SectionsTotal, nestedGuides+rootSections+adrSections)
+	}
+	if run.SectionsCompiled != wantCompiled {
+		t.Fatalf("run.SectionsCompiled = %d, want %d", run.SectionsCompiled, wantCompiled)
+	}
+	if mock.CallCount() != wantCompiled {
+		t.Fatalf("mock.CallCount() = %d, want %d — ADR.md's remaining sections must never be reached", mock.CallCount(), wantCompiled)
+	}
+	if want := []string{"ADR.md"}; len(run.UncompiledScopes) != 1 || run.UncompiledScopes[0] != want[0] {
+		t.Fatalf("run.UncompiledScopes = %v, want %v — ADR.md is the part that stops, never a guide", run.UncompiledScopes, want)
+	}
+
+	claims, err := st.ClaimsForService(ctx, "svc", LayerObligations)
+	if err != nil {
+		t.Fatalf("ClaimsForService: %v", err)
+	}
+	if len(claims) != wantCompiled {
+		t.Fatalf("len(claims) = %d, want %d", len(claims), wantCompiled)
+	}
+	wantSubjects := map[string]bool{}
+	for _, item := range ordered[:wantCompiled] {
+		wantSubjects[item.sec.Subject] = true
+	}
+	for _, cl := range claims {
+		if !wantSubjects[cl.Subject] {
+			t.Errorf("unexpected claim compiled: %s (subject %s)", cl.ClaimID, cl.Subject)
+		}
+		delete(wantSubjects, cl.Subject)
+	}
+	if len(wantSubjects) != 0 {
+		t.Errorf("sections that should have compiled but produced no claim: %v", wantSubjects)
+	}
+	// Every nested guide and every root CLAUDE.md section — all 11 — must
+	// be among the compiled claims.
+	var guideClaims int
+	for _, cl := range claims {
+		if docCompileTier(strings.SplitN(cl.Subject, "#", 2)[0]) != docTierRootOther {
+			guideClaims++
+		}
+	}
+	if guideClaims != wantFromGuide {
+		t.Fatalf("guide-tier claims compiled = %d, want %d (every nested guide + every root CLAUDE.md section)", guideClaims, wantFromGuide)
 	}
 }
 
@@ -1677,5 +1858,89 @@ func TestCompile_Resume_NamesFirstNotYetCompiledSection_DryRun(t *testing.T) {
 	}
 	if run.SectionsCompiled != 1 {
 		t.Fatalf("run.SectionsCompiled = %d, want 1 (only the not-yet-compiled section counts, even in estimate mode)", run.SectionsCompiled)
+	}
+}
+
+// TestCompile_UncompiledScopes_ExcludesAlreadyCompiledSectionsInTheTail is
+// the second review round's fix for deliverable 2/3's own bug: labelling
+// every doc in ordered[stoppedAt+1:] uncompiled, with no digest-gate
+// check, fabricated a claim in the OTHER direction — an already-compiled
+// doc later in the compile order got reported uncompiled just because
+// THIS run's stop point happened to land before it.
+//
+// Run 1 compiles A, B, C (three nested guides) in full. A small guide D is
+// then added whose path sorts BETWEEN B and C — so the compile order
+// becomes A, B, D, C. Run 2's budget stops right after D (A and B are
+// digest-gated, spending nothing; D is the only section that actually
+// compiles and its real usage crosses the budget) — the ordered TAIL is
+// exactly [C], but C already has a valid, digest-matching claim from run
+// 1: UncompiledScopes must not name it.
+func TestCompile_UncompiledScopes_ExcludesAlreadyCompiledSectionsInTheTail(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+
+	docA := core.SourceFile{Path: "aaa/CLAUDE.md", Content: []byte("# guide\n\n- A rule for aaa.\n")}
+	docB := core.SourceFile{Path: "bbb/CLAUDE.md", Content: []byte("# guide\n\n- A rule for bbb.\n")}
+	docC := core.SourceFile{Path: "zzz/CLAUDE.md", Content: []byte("# guide\n\n- A rule for zzz.\n")}
+	// D sorts between B and C alphabetically (aaa < bbb < ccc < zzz).
+	docD := core.SourceFile{Path: "ccc/CLAUDE.md", Content: []byte("# guide\n\n- A rule for ccc.\n")}
+
+	indexed := []string{"aaa/x.go", "bbb/x.go", "ccc/x.go", "zzz/x.go", "pkg/y.go", "docs/z.md"}
+
+	// Run 1: A, B, C compile in full (no budget).
+	mock1 := llmclient.NewMockClient(
+		llmclient.MockEntry{Response: llmclient.Response{Text: `{"claims":[{"rule":"Rule A.","scope":["aaa/**"],"cite_start":3,"cite_end":3}]}`}},
+		llmclient.MockEntry{Response: llmclient.Response{Text: `{"claims":[{"rule":"Rule B.","scope":["bbb/**"],"cite_start":3,"cite_end":3}]}`}},
+		llmclient.MockEntry{Response: llmclient.Response{Text: `{"claims":[{"rule":"Rule C.","scope":["zzz/**"],"cite_start":3,"cite_end":3}]}`}},
+	)
+	c1 := &Compiler{St: st, LLM: mock1, Model: "mock-model", Now: fixedNow}
+	run1, err := c1.Compile(ctx, CompileInput{
+		ServiceID: "svc", Docs: []core.SourceFile{docA, docB, docC}, IndexedFiles: indexed, Watermark: "manifest:aaa",
+	})
+	if err != nil || run1.SectionsCompiled != 3 {
+		t.Fatalf("run1: %+v, %v", run1, err)
+	}
+
+	// Run 2: A, B, C, D — A and B are digest-gated (free), D compiles and
+	// its real usage crosses a small budget, stopping before C is reached.
+	layer, err := LoadLayer(LayerObligations)
+	if err != nil {
+		t.Fatalf("LoadLayer(obligations): %v", err)
+	}
+	layer.Budgets = LayerBudgets{MaxTokensPerRun: 300, MaxUSDPerRun: 1000}
+	mock2 := llmclient.NewMockClient(llmclient.MockEntry{Response: llmclient.Response{
+		Text:  `{"claims":[{"rule":"Rule D.","scope":["ccc/**"],"cite_start":3,"cite_end":3}]}`,
+		Usage: llmclient.Usage{InputTokens: 500, OutputTokens: 100},
+	}})
+	c2 := &Compiler{St: st, LLM: mock2, Model: "mock-model", Layer: layer, InRatePerKTok: 0.001, Now: fixedNow}
+	run2, err := c2.Compile(ctx, CompileInput{
+		ServiceID: "svc", Docs: []core.SourceFile{docA, docB, docC, docD}, IndexedFiles: indexed, Watermark: "manifest:aaa",
+	})
+	if err != nil {
+		t.Fatalf("run2: a clean mid-run budget stop must not return an error: %v", err)
+	}
+	if !run2.BudgetStopped {
+		t.Fatalf("run2.BudgetStopped = false, want true")
+	}
+	if run2.SectionsCompiled != 1 {
+		t.Fatalf("run2.SectionsCompiled = %d, want 1 (only D — A/B are digest-gated, C never reached)", run2.SectionsCompiled)
+	}
+	if mock2.CallCount() != 1 {
+		t.Fatalf("mock2.CallCount() = %d, want 1 (only D)", mock2.CallCount())
+	}
+	// The bug: C (zzz/CLAUDE.md), the ordered tail after D, already has a
+	// valid claim from run 1 — it must NOT be reported uncompiled.
+	for _, doc := range run2.UncompiledScopes {
+		if doc == "zzz/CLAUDE.md" {
+			t.Fatalf("run2.UncompiledScopes = %v, must not name zzz/CLAUDE.md — it already compiled in run 1 and its digest is unchanged", run2.UncompiledScopes)
+		}
+	}
+	if len(run2.UncompiledScopes) != 0 {
+		t.Fatalf("run2.UncompiledScopes = %v, want empty — D compiled this run and C was already compiled in run 1; nothing is actually left uncompiled", run2.UncompiledScopes)
+	}
+
+	all, err := st.ClaimsForService(ctx, "svc", LayerObligations)
+	if err != nil || len(all) != 4 {
+		t.Fatalf("total claims = %d, %v; want 4 (A, B, C from run 1 plus D from run 2)", len(all), err)
 	}
 }

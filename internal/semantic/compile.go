@@ -460,11 +460,23 @@ sectionLoop:
 	if stoppedAt >= 0 {
 		// O54 deliverable 2: the tail of the deterministic order this run
 		// never reached, by document — exactly what layer_coverage.
-		// uncompiled_scopes discloses at serve time. Sections skipped via
-		// the digest gate above are NOT in this tail (they already have a
-		// compiled claim, from this run's corpus or an earlier one) —
-		// only sections the loop never got to at all.
-		run.UncompiledScopes = uncompiledDocScopes(ordered[stoppedAt+1:])
+		// uncompiled_scopes discloses at serve time. Second review round:
+		// the tail alone is not enough — a RESUMED run can stop again
+		// before reaching a section LATER in order that a PRIOR run
+		// already compiled (a small guide inserted between two already-
+		// compiled sections, say), and that section's doc must not be
+		// reported uncompiled just because this call never revisited it.
+		// Filter through needsCompile (the same digest-gate predicate the
+		// loop above uses) so only sections that ACTUALLY still need
+		// compiling — never reached this run AND no matching prior claim
+		// — count.
+		var stillUncompiled []orderedSection
+		for _, item := range ordered[stoppedAt+1:] {
+			if needsCompile(item.sec) {
+				stillUncompiled = append(stillUncompiled, item)
+			}
+		}
+		run.UncompiledScopes = uncompiledDocScopes(stillUncompiled)
 	}
 	run.RejectionReasons = buildRejectionReasons(rejectionCounts, rejectionSamples)
 	run.CostUSD = cost.PriceUSD(run.TokensIn, c.InRatePerKTok) + cost.PriceUSD(run.TokensOut, c.OutRatePerKTok)

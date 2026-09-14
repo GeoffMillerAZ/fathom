@@ -8,6 +8,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
@@ -81,12 +82,150 @@ func TestNearestUncompiledGuide(t *testing.T) {
 }
 
 // TestNearestUncompiledGuide_RootTailNeverCountsAsAGuide: when the only
-// uncompiled scope is a root document (never a nested guide), NO file ever
-// gets a coverage note from it — a root tail is not "the nearest guide"
-// for anything.
+// uncompiled scope is a root-OTHER document (ADR.md — never the repo's own
+// CLAUDE.md/AGENTS.md), NO file ever gets a coverage note from it — a
+// root-other tail is not "the nearest guide" for anything, and there is no
+// root GUIDE in the uncompiled set to fall back to either.
 func TestNearestUncompiledGuide_RootTailNeverCountsAsAGuide(t *testing.T) {
 	cov := LayerCoverage{SectionsTotal: 3, SectionsCompiled: 2, BudgetStopped: true, UncompiledScopes: []string{"ADR.md"}}
 	if guide, ok := NearestUncompiledGuide(cov, "internal/extractor/goextract.go"); ok {
 		t.Fatalf("NearestUncompiledGuide = (%q, true), want ok=false", guide)
+	}
+}
+
+// TestNearestUncompiledGuide_RootGuideFallback is the second review
+// round's fix: a file with NO nested guide above it at all (most files in
+// most repos) still gets a note when the repo ROOT's own CLAUDE.md/
+// AGENTS.md is among the uncompiled scopes — the root guide governs every
+// file by construction, so its own incompleteness is worth naming even
+// with no nearer guide to blame instead. A nested guide, when one governs
+// the path, still wins over the root fallback.
+func TestNearestUncompiledGuide_RootGuideFallback(t *testing.T) {
+	cov := LayerCoverage{
+		UncompiledScopes: []string{"ADR.md", "CLAUDE.md", "internal/extractor/CLAUDE.md"},
+	}
+	cases := []struct {
+		name      string
+		file      string
+		wantGuide string
+		wantOK    bool
+	}{
+		{"a nested guide governs: it wins over the root fallback", "internal/extractor/goextract.go", "internal/extractor/CLAUDE.md", true},
+		{"no nested guide governs anywhere: the root guide is the fallback", "pkg/random/thing.go", "CLAUDE.md", true},
+		{"root-scope call: still no file to be nearest to", "", "", false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			guide, ok := NearestUncompiledGuide(cov, c.file)
+			if ok != c.wantOK || guide != c.wantGuide {
+				t.Errorf("NearestUncompiledGuide(file=%q) = (%q, %v), want (%q, %v)", c.file, guide, ok, c.wantGuide, c.wantOK)
+			}
+		})
+	}
+}
+
+// TestNearestUncompiledGuide_NoRootFallbackWhenRootGuideItselfIsCompiled:
+// the root guide is NOT in UncompiledScopes (it compiled fine) — only
+// ADR.md (root-other) is uncompiled, and no nested guide governs the file
+// either. There is nothing left to fall back to.
+func TestNearestUncompiledGuide_NoRootFallbackWhenRootGuideItselfIsCompiled(t *testing.T) {
+	cov := LayerCoverage{UncompiledScopes: []string{"ADR.md"}}
+	if guide, ok := NearestUncompiledGuide(cov, "pkg/random/thing.go"); ok {
+		t.Fatalf("NearestUncompiledGuide = (%q, true), want ok=false — the root guide already compiled; ADR.md is never a guide", guide)
+	}
+}
+
+// ─── O54 second review round: LiveLayerCoverage / corpus_grew ─────────────
+
+func TestLiveLayerCoverage_AbsentWhenNeverCompiled(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	layer, err := LoadLayer(LayerObligations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cov, found, err := LiveLayerCoverage(ctx, st, "svc", layer, nil)
+	if err != nil {
+		t.Fatalf("LiveLayerCoverage: %v", err)
+	}
+	if found {
+		t.Fatalf("found = true, want false (no compile_runs row at all) — cov=%+v", cov)
+	}
+}
+
+// TestLiveLayerCoverage_CorpusGrowsAfterAFullCompile is the second review
+// round's fix: sections_total/sections_compiled from the LATEST
+// compile_runs row go stale the moment the corpus grows past what that
+// run counted — a full compile of a 1-section corpus reads back as
+// "100% covered" forever, even after a second CLAUDE.md is added and
+// never compiled at all. LiveLayerCoverage recomputes from the CURRENT
+// corpus and reports the new section under CorpusGrew and
+// UncompiledScopes; NearestUncompiledGuide treats it exactly like any
+// other uncompiled guide.
+func TestLiveLayerCoverage_CorpusGrowsAfterAFullCompile(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+
+	original := core.SourceFile{Path: "cmd/fathom/CLAUDE.md", Content: []byte("# guide\n\n- Wire every new verb into verbs.go.\n")}
+	indexed := []string{"cmd/fathom/compile.go", "internal/extractor/goextract.go", "docs/x.md"}
+
+	mock := llmclient.NewMockClient(llmclient.MockEntry{Response: llmclient.Response{
+		Text: `{"claims":[{"rule":"Wire every new verb into verbs.go.","scope":["cmd/fathom/**"],"cite_start":3,"cite_end":3}]}`,
+	}})
+	c := &Compiler{St: st, LLM: mock, Model: "mock-model", Now: fixedNow}
+	run, err := c.Compile(ctx, CompileInput{
+		ServiceID: "svc", Docs: []core.SourceFile{original}, IndexedFiles: indexed, Watermark: "manifest:aaa",
+	})
+	if err != nil || run.SectionsCompiled != 1 {
+		t.Fatalf("seed compile: run=%+v err=%v", run, err)
+	}
+
+	layer, err := LoadLayer(LayerObligations)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The corpus has not grown yet: live coverage matches the recorded run.
+	cov, found, err := LiveLayerCoverage(ctx, st, "svc", layer, []core.SourceFile{original})
+	if err != nil || !found {
+		t.Fatalf("found=%v err=%v", found, err)
+	}
+	if cov.SectionsTotal != 1 || cov.SectionsCompiled != 1 || cov.CorpusGrew != 0 {
+		t.Fatalf("cov = %+v, want {SectionsTotal:1 SectionsCompiled:1 CorpusGrew:0 ...}", cov)
+	}
+	if len(cov.UncompiledScopes) != 0 {
+		t.Fatalf("cov.UncompiledScopes = %v, want empty", cov.UncompiledScopes)
+	}
+
+	// A new guide is added to the corpus AFTER the compile — a stale,
+	// store-only ObligationsLayerCoverage would still report 1/1 (100%
+	// covered) here; LiveLayerCoverage must not.
+	grown := core.SourceFile{Path: "internal/CLAUDE.md", Content: []byte("# guide\n\n- Register every extractor in fusion.New.\n")}
+	cov2, found, err := LiveLayerCoverage(ctx, st, "svc", layer, []core.SourceFile{original, grown})
+	if err != nil || !found {
+		t.Fatalf("found=%v err=%v", found, err)
+	}
+	if cov2.SectionsTotal != 2 {
+		t.Fatalf("cov2.SectionsTotal = %d, want 2 (live, not the stale recorded 1)", cov2.SectionsTotal)
+	}
+	if cov2.SectionsCompiled != 1 {
+		t.Fatalf("cov2.SectionsCompiled = %d, want 1 (only the original doc)", cov2.SectionsCompiled)
+	}
+	if cov2.CorpusGrew != 1 {
+		t.Fatalf("cov2.CorpusGrew = %d, want 1 (the new guide has never been seen by any run)", cov2.CorpusGrew)
+	}
+	if want := "internal/CLAUDE.md"; len(cov2.UncompiledScopes) != 1 || cov2.UncompiledScopes[0] != want {
+		t.Fatalf("cov2.UncompiledScopes = %v, want [%q]", cov2.UncompiledScopes, want)
+	}
+
+	// A never-seen guide counts as uncompiled for NearestUncompiledGuide
+	// too — corpus growth is not a special case at that layer.
+	if guide, ok := NearestUncompiledGuide(cov2, "internal/extractor/goextract.go"); !ok || guide != "internal/CLAUDE.md" {
+		t.Fatalf("NearestUncompiledGuide = (%q, %v), want (\"internal/CLAUDE.md\", true)", guide, ok)
+	}
+	// The ORIGINAL doc's own file is unaffected — its guide is fully
+	// covered, so no note fires for it.
+	if guide, ok := NearestUncompiledGuide(cov2, "cmd/fathom/compile.go"); ok {
+		t.Fatalf("NearestUncompiledGuide(cmd/fathom/compile.go) = (%q, true), want ok=false", guide)
 	}
 }
