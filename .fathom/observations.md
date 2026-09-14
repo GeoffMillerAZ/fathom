@@ -886,3 +886,42 @@ triage if it matters.
 - **Fix:** 17f6345 — every session gets `--allowedTools` (the arm's list, else every session tool plus `mcp__<server>`), `--permission-mode default` and `--add-dir <worktree>`; raw transcripts keyed by run id. Discipline: the real dry cell must include a change-shaped task (RC-43 restated).
 - **Status:** fixed; pilots rerun
 - **Impact:** ≈ $9 and one hour; no reading was published from the void cells.
+
+### O44 — Historical database-removal tasks displace current UI contracts on Observatory renderer
+
+- **Symptom:** Historical database-removal tasks displace current UI contracts on Observatory renderer
+- **Evidence:**
+  - **Tool:** obligations
+  - **Expected:** Current app-kit UI, missingness, escaping, generated CSS and browser obligations for observatory_render.go
+  - **Actual:** Three of six returned rules instruct deleting DuckStore or migrate-store; two are generic plan rules; displaced=247. Only one rule names the current UI doctrine.
+  - **Repro:** obligations({"service":"fathom","file":"cmd/fathom/observatory_render.go","include_snippets":false}) returned compiled_at_watermark 976134c4829315406619eb13c976ab055cbee916 on 2026-09-13 after ingest; sources ADR.md lines814-846 are historical deletion tasks.
+- **Root cause:** TODO
+- **Fix:** TODO
+- **Status:** open
+- **Impact:** TODO
+
+### O45 — vs-pilot-2's second reading: every file-scoped obligations call on the wired arm returned {file, service} with no rules (15/15) — the lookups corpus's full arm has no compile_layers, so the scratch daemon served an empty obligations layer to tasks that begin 'Per fathom's compiled obligations layer …'; every arm's first session carried the plan-first instruction on pure lookup tasks and 85% of fathom's and grep's failures were error_max_turns after the agent had already stated the exact gold answer; the staleness tasks' drift was injected by setup BEFORE the index was built, so staleness_report saw no drift; H1-T03 passed 0 of 10 cells on every arm.
+
+- **Symptom:** vs-pilot-2's second reading: every file-scoped obligations call on the wired arm returned {file, service} with no rules (15/15) — the lookups corpus's full arm has no compile_layers, so the scratch daemon served an empty obligations layer to tasks that begin 'Per fathom's compiled obligations layer …'; every arm's first session carried the plan-first instruction on pure lookup tasks and 85% of fathom's and grep's failures were error_max_turns after the agent had already stated the exact gold answer; the staleness tasks' drift was injected by setup BEFORE the index was built, so staleness_report saw no drift; H1-T03 passed 0 of 10 cells on every arm.
+- **Evidence:**
+  - **Tool:** cmd/scenariobench run (lookups-vs.json wired arm; runSingle; oracle final answer)
+  - **Expected:** A lookup task on a wired arm runs against a daemon that holds what the task assumes (the compiled layer); a lookup session is asked only for its answer; a correct answer stated before the turn budget ends counts; drift for staleness and freshness tasks is injected after ingest.
+  - **Actual:** Obligations, claim-provenance and staleness categories measured an empty layer plus plan-writing overhead; the five-arm comparison is mostly plain Read/Grep/Bash wearing each arm's badge (graphify called its tool in 3/28 cells, gopls in 8/28).
+  - **Repro:** python3 over workspace/artifacts/scenariobench/raw/vs-pilot-2/*-full-t*/session-0-single.stream.jsonl: mcp__fathom__obligations results carry no rules; count result subtype error_max_turns per arm; testdata/scenariobench/lookups-vs.json arms.full lacks compile_layers
+- **Root cause:** the corpus wires the arm but does not compile the layer (`compile_layers` unset on lookups-vs.json full); `runSingle` appends `PlanFirstInstruction` to the first session of every single-mode task, lookups included; subject setup runs before `wireScratchDaemon` ingests; the oracle scores only the terminal result, never the last assistant text.
+- **Fix:** wave-a5 (docs/plans/verbs.md VB-36..VB-39): compile the layer for any wired arm whose corpus has layer-dependent categories and refuse the cell when a governed probe file yields no rules; plan-first only on change-shaped tasks; the last assistant text is the answer when a session ends on its turn budget; `post_wire_setup` for staleness and freshness tasks; H1-T03 reviewed. vs-pilot-2 rows carry instrument_defect and vs-pilot-3 replaces them.
+- **Status:** fix in flight; vs-pilot-2 voided for the layer-dependent categories
+- **Impact:** ≈ $35 of lookup spend measured an empty layer and plan-writing overhead; the standings quoted to the owner mid-run (fathom ahead on blast radius, concern search, verify) do not survive the full reading: fathom ties grep at 15/28, the three competitors 17/28, differences within noise at n=2.
+
+### O46 — In every wired scenario cell of reuse-pilot-2, guards-pilot-4 and public-pilot-3 the SessionStart primer read 'fathom code-intelligence is live, but this repo (…) is not an indexed service — Grep/Read discovery is expected here', and no PostToolUse obligations injection ever fired: the subject worktree has no .fathom/config.toml and the cell env carries no FATHOM_HTTP, so the cell's hooks resolved the operator's daemon on 127.0.0.1:7575, which does not know the worktree.
+
+- **Symptom:** In every wired scenario cell of reuse-pilot-2, guards-pilot-4 and public-pilot-3 the SessionStart primer read 'fathom code-intelligence is live, but this repo (…) is not an indexed service — Grep/Read discovery is expected here', and no PostToolUse obligations injection ever fired: the subject worktree has no .fathom/config.toml and the cell env carries no FATHOM_HTTP, so the cell's hooks resolved the operator's daemon on 127.0.0.1:7575, which does not know the worktree.
+- **Evidence:**
+  - **Tool:** cmd/scenariobench (cleanRoomEnv / sessionEnv; cmd/fathom session-hook daemon resolution)
+  - **Expected:** A wired cell's hooks and CLI calls reach the cell's own scratch daemon and name the subject's service in the primer.
+  - **Actual:** The wired arm was told at session start that the index did not cover the repository; zero fathom tool calls followed in reuse-pilot-2 and guards-pilot-4, and the M1/M5 rows measured a primer that said 'grep'.
+  - **Repro:** grep -l 'not an indexed service' workspace/artifacts/scenariobench/raw/reuse-pilot-2/*-full-*/session-0-*.stream.jsonl; ls <worktree>/.fathom/config.toml (absent); grep -n FATHOM_HTTP cmd/fathom/sessionhook.go
+- **Root cause:** `cleanRoomEnv` set only FATHOM_THREADS; the session hook falls back to the default daemon when FATHOM_HTTP is unset and the worktree carries no config; the instrument-truth gate checked that hooks fired, not what the primer said.
+- **Fix:** wave-a5: FATHOM_HTTP (and the service) in every wired cell's env; a primer that says "not an indexed service" is an instrument error ⇒ LOST; `obligations_injected` counted from PostToolUse responses. The wired rows of reuse-pilot-2, guards-pilot-4 and vs-pilot-2 carry instrument_defect; public-pilot-3 was stopped before its wired cells could be stored.
+- **Status:** fix in flight (wave-a5); pilots rerun after it
+- **Impact:** the fourth defect of one class in one day — the wired arm not wired end to end — each caught only by reading transcripts. Roughly $60 of scenario spend measured a primer that said grep. The home bench (the operator's daemon, the fathom repo) is unaffected.
