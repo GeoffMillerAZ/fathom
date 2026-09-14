@@ -148,6 +148,39 @@ func TestLoadScenarioCorpus_AnswerOnlyOracleIsValid(t *testing.T) {
 	}
 }
 
+// TestLoadScenarioCorpus_RefusesLocalizationCombinedWithAnswerAllOf pins
+// the doc's own rule (types.go, Oracle.Localization): the two answer-only
+// oracles ask different questions and never combine on one task.
+func TestLoadScenarioCorpus_RefusesLocalizationCombinedWithAnswerAllOf(t *testing.T) {
+	dir := t.TempDir()
+	bad := `{
+  "version": 1,
+  "description": "test corpus",
+  "arms": {
+    "full": {"wired": true, "instructions": "stanza", "surface": "fathom"},
+    "control": {"wired": false, "instructions": "none", "surface": ""}
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "category": "localization",
+      "prompt": "name the files",
+      "derivation": "hand-authored",
+      "subject": {"repo_url": "https://example.invalid/repo.git", "base_commit": "deadbeef"},
+      "sessions": {"mode": "single", "count": 1, "max_turns": 10},
+      "oracle": {"localization": true, "answer_all_of": ["tok1"]},
+      "gold": {"files": ["a.go"]},
+      "predictions": {"full": "wins", "control": "loses"}
+    }
+  ],
+  "criterion": {"id": "C1", "treatment": "full", "control": "control", "min_trials": 1, "require_success_at_least_equal": true, "max_tokens_per_success_ratio": 1.0, "registered": "2026-09-01"}
+}`
+	path := writeCorpusFixture(t, dir, "corpus.json", bad)
+	if _, err := LoadScenarioCorpus(path); err == nil {
+		t.Fatal("expected an error for a task carrying both localization and answer_all_of")
+	}
+}
+
 func TestCorpusSHA256_Deterministic(t *testing.T) {
 	dir := t.TempDir()
 	path := writeCorpusFixture(t, dir, "corpus.json", validCorpusJSON())

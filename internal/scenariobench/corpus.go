@@ -78,6 +78,9 @@ func validateScenarioTask(t Task, armNames []string) error {
 	if !hasOracle(t.Oracle) {
 		return fmt.Errorf("task %s: no oracle (fail_to_pass, pass_to_pass, or detectors) — nothing would decide success", t.ID)
 	}
+	if t.Oracle.Localization && len(t.Oracle.AnswerAllOf) > 0 {
+		return fmt.Errorf("task %s: oracle carries both localization and answer_all_of — the two answer-only oracles ask different questions and never combine on one task", t.ID)
+	}
 	for _, arm := range armNames {
 		if t.Predictions[arm] == "" {
 			return fmt.Errorf("task %s: missing a registered prediction for arm %q", t.ID, arm)

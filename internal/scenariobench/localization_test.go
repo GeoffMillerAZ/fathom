@@ -49,6 +49,24 @@ func TestParseAnswerFiles_Empty(t *testing.T) {
 	}
 }
 
+func TestParseAnswerFiles_NegatedMentionDemoted(t *testing.T) {
+	answer := "The bug is not in ledger.go, check handler.go."
+	got := ParseAnswerFiles(answer)
+	want := []string{"handler.go", "ledger.go"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("ParseAnswerFiles = %v, want %v (the negated mention demoted below the non-negated one)", got, want)
+	}
+}
+
+func TestParseAnswerFiles_NumberedListOverridesProseOrder(t *testing.T) {
+	answer := "Possibly related: payment.go was touched recently.\n1. ledger.go\n2. errors.go"
+	got := ParseAnswerFiles(answer)
+	want := []string{"ledger.go", "errors.go", "payment.go"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("ParseAnswerFiles = %v, want %v (the explicit list leads; the earlier prose mention trails)", got, want)
+	}
+}
+
 func TestParseAnswerFiles_Deterministic(t *testing.T) {
 	answer := "Check ledger.go, then errors.go, then payment.go."
 	a := ParseAnswerFiles(answer)
@@ -78,6 +96,17 @@ func TestScoreLocalization_HitAt1(t *testing.T) {
 	}
 	if reading.Precision != 1.0 {
 		t.Errorf("Precision = %v, want 1.0", reading.Precision)
+	}
+}
+
+func TestScoreLocalization_NegatedMentionNeverHitAt1(t *testing.T) {
+	gold := []string{"handler.go"}
+	reading := ScoreLocalization("The bug is not in ledger.go, check handler.go.", gold)
+	if !reading.HitAt1 {
+		t.Error("expected HitAt1 true — the negated mention (ledger.go) must rank below handler.go, the answer's real top pick")
+	}
+	if reading.Recall != 1.0 {
+		t.Errorf("Recall = %v, want 1.0 (handler.go is still named and matched)", reading.Recall)
 	}
 }
 

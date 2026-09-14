@@ -6,7 +6,10 @@
 // `scenariobench score`) can score an answer directly.
 package scenariobench
 
-import "regexp"
+import (
+	"regexp"
+	"strings"
+)
 
 // codeFileExtensions is the fixed allow-list a BARE filename (no "/") must
 // match to be accepted by ParseAnswerFiles — chosen to admit ordinary
@@ -35,30 +38,148 @@ var codeFileExtensions = map[string]bool{
 // deterministic heuristic, not a guarantee.
 var pathTokenRE = regexp.MustCompile(`[A-Za-z0-9_][A-Za-z0-9_/-]*\.[A-Za-z0-9]+(?:\.[A-Za-z0-9]+)*`)
 
-// ParseAnswerFiles extracts a candidate file set from answer, in
-// FIRST-MENTION order, deduplicated on the exact matched string — the
-// order a bug-localization answer names its files IS its own ranking
-// (most-likely first), which HitAt1/HitAt5 (ScoreLocalization) read
-// directly. A token survives only when it contains "/" (a path
-// separator — strong evidence on its own) or its extension is in
-// codeFileExtensions (a bare filename with a recognized code/config/doc
-// extension); this is the SAME shape check for every caller (never a
-// second, looser pass for "surely this one counts too") — determinism
-// over recall.
+// negationMarkers, each checked case-insensitively against a path
+// mention's own CLAUSE (back to the nearest sentence boundary or comma,
+// clauseIsNegated): present there, the mention is demoted below every
+// non-negated one — the answer named this file only to rule it out
+// ("not in", "isn't", "rather than", …), kept for recall (it still
+// counts toward Recall/Precision), never for HitAt1.
+var negationMarkers = []string{
+	"not in", "isn't", "is not", "rather than", "instead of",
+	"unrelated", "no longer", "exclude",
+}
+
+// listLineRE matches a numbered ("1.", "2)") or bulleted ("-", "*", "•")
+// marker opening a line (after leading whitespace), optionally followed
+// by a backtick, immediately before the path itself — the shape an
+// explicit ranked answer uses ("1. ledger.go", "- `errors.go`").
+var listLineRE = regexp.MustCompile("^[ \t]*(?:[0-9]+[.)]|[-*•])[ \t]+`?")
+
+// ParseAnswerFiles extracts a candidate file set from answer, RANKED —
+// HitAt1/HitAt5 (ScoreLocalization) read the order directly:
+//
+//  1. An explicit ranked list — one or more lines each opening with a
+//     numbered or bulleted marker immediately followed by a path
+//     (listOrderFiles) — leads: an agent that took the trouble to rank
+//     its own answer is not outranked by an incidental earlier prose
+//     mention (e.g. "payment.go was also touched recently" ahead of a
+//     numbered list further down). Every other path mentioned in prose
+//     (never on a list line) is appended after, in first-mention order,
+//     for recall.
+//  2. With no list, plain first-mention order.
+//  3. Within that order, a path negated in its own clause
+//     (clauseIsNegated) is demoted below every non-negated path — a
+//     STABLE partition (demoteNegated): the relative order within each
+//     group is unchanged.
+//
+// A token survives at all only when it contains "/" (a path separator —
+// strong evidence on its own) or its extension is in codeFileExtensions
+// (a bare filename with a recognized code/config/doc extension); this is
+// the SAME shape check for every caller (never a second, looser pass for
+// "surely this one counts too") — determinism over recall. Deduplicated
+// throughout on the exact matched string.
 func ParseAnswerFiles(answer string) []string {
-	var out []string
-	seen := make(map[string]bool)
-	for _, tok := range pathTokenRE.FindAllString(answer, -1) {
+	firstPos := map[string]int{}
+	var prose []string
+	for _, loc := range pathTokenRE.FindAllStringIndex(answer, -1) {
+		tok := answer[loc[0]:loc[1]]
 		if !looksLikeFilePath(tok) {
 			continue
 		}
-		if seen[tok] {
+		if _, ok := firstPos[tok]; !ok {
+			firstPos[tok] = loc[0]
+			prose = append(prose, tok)
+		}
+	}
+
+	list := listOrderFiles(answer)
+
+	seen := make(map[string]bool, len(list)+len(prose))
+	ordered := make([]string, 0, len(list)+len(prose))
+	for _, f := range list {
+		if seen[f] {
+			continue
+		}
+		seen[f] = true
+		ordered = append(ordered, f)
+	}
+	for _, f := range prose {
+		if seen[f] {
+			continue
+		}
+		seen[f] = true
+		ordered = append(ordered, f)
+	}
+
+	return demoteNegated(answer, ordered, firstPos)
+}
+
+// listOrderFiles returns, in line order, the first path-shaped token
+// opening each list-marker line (listLineRE) — the answer's own explicit
+// ranking, when it gave one; nil when the answer contains no such line.
+// Deduplicated, first occurrence kept.
+func listOrderFiles(answer string) []string {
+	var out []string
+	seen := map[string]bool{}
+	for _, line := range strings.Split(answer, "\n") {
+		markerEnd := listLineRE.FindStringIndex(line)
+		if markerEnd == nil {
+			continue
+		}
+		rest := line[markerEnd[1]:]
+		m := pathTokenRE.FindStringIndex(rest)
+		if m == nil || m[0] != 0 {
+			continue // the marker must be followed directly by the path
+		}
+		tok := rest[m[0]:m[1]]
+		if !looksLikeFilePath(tok) || seen[tok] {
 			continue
 		}
 		seen[tok] = true
 		out = append(out, tok)
 	}
 	return out
+}
+
+// demoteNegated stable-partitions ordered into every non-negated path (in
+// its own relative order) followed by every negated one (in its own
+// relative order): clauseIsNegated checks each path's own first-
+// occurrence position (firstPos) for a negationMarkers phrase before it.
+func demoteNegated(answer string, ordered []string, firstPos map[string]int) []string {
+	out := make([]string, 0, len(ordered))
+	var negated []string
+	for _, f := range ordered {
+		if clauseIsNegated(answer, firstPos[f]) {
+			negated = append(negated, f)
+			continue
+		}
+		out = append(out, f)
+	}
+	return append(out, negated...)
+}
+
+// clauseIsNegated reports whether the clause ending at pos (a mention's
+// own first-occurrence start index) — from the nearest sentence boundary
+// (. ! ?) or comma strictly before pos, or the start of text when there
+// is none — contains a negationMarkers phrase, checked case-
+// insensitively.
+func clauseIsNegated(text string, pos int) bool {
+	if pos < 0 || pos > len(text) {
+		return false
+	}
+	start := strings.LastIndexAny(text[:pos], ".!?,")
+	if start < 0 {
+		start = 0
+	} else {
+		start++
+	}
+	clause := strings.ToLower(text[start:pos])
+	for _, m := range negationMarkers {
+		if strings.Contains(clause, m) {
+			return true
+		}
+	}
+	return false
 }
 
 // looksLikeFilePath applies the slash-or-known-extension rule ParseAnswerFiles
