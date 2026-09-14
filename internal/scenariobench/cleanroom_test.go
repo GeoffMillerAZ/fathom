@@ -37,6 +37,35 @@ func TestSessionEnv_EmptyCellDirSkipsCleanRoom(t *testing.T) {
 	}
 }
 
+// TestSessionEnv_WiredCellSetsFathomHTTP is O45 item 6: a wired cell's own
+// scratch daemon URL must reach every subprocess the session spawns
+// (fathom's SessionStart/PostToolUse hooks, any `fathom` CLI call), or
+// they silently talk to the operator's real daemon instead.
+func TestSessionEnv_WiredCellSetsFathomHTTP(t *testing.T) {
+	wt := Worktree{CellDir: filepath.Join(t.TempDir(), "cell"), DaemonURL: "http://127.0.0.1:53219"}
+	env, err := sessionEnv(wt, RunOptions{})
+	if err != nil {
+		t.Fatalf("sessionEnv: %v", err)
+	}
+	if env["FATHOM_HTTP"] != wt.DaemonURL {
+		t.Errorf("FATHOM_HTTP = %q, want %q", env["FATHOM_HTTP"], wt.DaemonURL)
+	}
+}
+
+// TestSessionEnv_UnwiredCellSetsNoFathomHTTP is the converse: an unwired
+// cell (no DaemonURL) must not set FATHOM_HTTP at all, so it keeps
+// whatever the environment (or nothing) already resolves to.
+func TestSessionEnv_UnwiredCellSetsNoFathomHTTP(t *testing.T) {
+	wt := Worktree{CellDir: filepath.Join(t.TempDir(), "cell")}
+	env, err := sessionEnv(wt, RunOptions{})
+	if err != nil {
+		t.Fatalf("sessionEnv: %v", err)
+	}
+	if _, ok := env["FATHOM_HTTP"]; ok {
+		t.Errorf("expected no FATHOM_HTTP for an unwired cell, got %q", env["FATHOM_HTTP"])
+	}
+}
+
 func TestSessionEnv_MergesCleanRoomUnderExplicitEnv(t *testing.T) {
 	wt := Worktree{CellDir: filepath.Join(t.TempDir(), "cell")}
 	opts := RunOptions{

@@ -3,6 +3,8 @@ package scenariobench
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -199,6 +201,138 @@ func TestPrepareSubject_UnknownCommitIsAnError(t *testing.T) {
 	task := Task{ID: "T1", Subject: Subject{RepoURL: repoPath, BaseCommit: strings.Repeat("0", 40)}}
 	if _, err := PrepareSubject(context.Background(), task, Arm{Instructions: "none"}, root); err == nil {
 		t.Fatal("expected an error for a base_commit that does not exist")
+	}
+}
+
+// TestRequiresCompiledLayer covers the O45 item 1 default: a task's own
+// RequiresLayer wins when set; otherwise it defaults true for the
+// lookup-corpus categories whose prompts assume a compiled layer, false
+// otherwise.
+func TestRequiresCompiledLayer(t *testing.T) {
+	yes, no := true, false
+	cases := []struct {
+		name string
+		task Task
+		want bool
+	}{
+		{"obligations category defaults true", Task{Category: "obligations"}, true},
+		{"staleness category defaults true", Task{Category: "staleness"}, true},
+		{"claim_provenance category defaults true", Task{Category: "claim_provenance"}, true},
+		{"verify category defaults true", Task{Category: "verify"}, true},
+		{"blast_radius category defaults false", Task{Category: "blast_radius"}, false},
+		{"unrelated category defaults false", Task{Category: "cross_package_feature"}, false},
+		{"explicit false overrides an obligations default", Task{Category: "obligations", RequiresLayer: &no}, false},
+		{"explicit true overrides a non-default category", Task{Category: "blast_radius", RequiresLayer: &yes}, true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := requiresCompiledLayer(c.task); got != c.want {
+				t.Errorf("requiresCompiledLayer = %v, want %v", got, c.want)
+			}
+		})
+	}
+}
+
+// fakeObligationsDaemon returns an httptest.Server standing in for the
+// scratch daemon's /rpc/agent, replying to a tools/call "obligations"
+// request with rules (a JSON array of arbitrary objects, one per rule).
+func fakeObligationsDaemon(t *testing.T, rules []string) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		rulesJSON := "[" + strings.Join(rules, ",") + "]"
+		fmt.Fprintf(w, `{"jsonrpc":"2.0","id":1,"result":{"service":"fathom","file":"internal/core/model.go","rules":%s}}`, rulesJSON)
+	}))
+}
+
+func TestProbeCompiledLayerServesRules_RulesPresent(t *testing.T) {
+	srv := fakeObligationsDaemon(t, []string{`{"id":"R1","text":"some rule"}`})
+	defer srv.Close()
+
+	ok, err := probeCompiledLayerServesRules(context.Background(), srv.URL, "fathom", "internal/core/model.go")
+	if err != nil {
+		t.Fatalf("probeCompiledLayerServesRules: %v", err)
+	}
+	if !ok {
+		t.Error("expected ok=true when the fake daemon returns a rule")
+	}
+}
+
+func TestProbeCompiledLayerServesRules_ZeroRules(t *testing.T) {
+	srv := fakeObligationsDaemon(t, nil)
+	defer srv.Close()
+
+	ok, err := probeCompiledLayerServesRules(context.Background(), srv.URL, "fathom", "internal/core/model.go")
+	if err != nil {
+		t.Fatalf("probeCompiledLayerServesRules: %v", err)
+	}
+	if ok {
+		t.Error("expected ok=false when the fake daemon returns zero rules")
+	}
+}
+
+func TestProbeCompiledLayerServesRules_DaemonError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"jsonrpc":"2.0","id":1,"error":{"code":-32000,"message":"service not indexed"}}`)
+	}))
+	defer srv.Close()
+
+	if _, err := probeCompiledLayerServesRules(context.Background(), srv.URL, "fathom", "internal/core/model.go"); err == nil {
+		t.Fatal("expected an error when the daemon's own response carries an error")
+	}
+}
+
+// TestApplyPostWireSetup_RunsSetupThenIngest proves the order O45 item 4
+// requires: PostWireSetup's own commands run BEFORE runIngest is called —
+// a fake "daemon" here is just runIngest recording what it saw, so no
+// real binary or daemon is needed.
+func TestApplyPostWireSetup_RunsSetupThenIngest(t *testing.T) {
+	dir := t.TempDir()
+	orderFile := filepath.Join(dir, "order.log")
+	if err := os.WriteFile(orderFile, []byte("ingest-would-have-run-here\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	wt := Worktree{Path: dir, CellDir: dir}
+	task := Task{Subject: Subject{PostWireSetup: []string{"echo drift >> order.log"}}}
+
+	var reingested bool
+	runIngest := func(ctx context.Context) error {
+		reingested = true
+		raw, err := os.ReadFile(orderFile)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(raw), "ingest-would-have-run-here\ndrift") {
+			t.Errorf("expected post_wire_setup's drift line AFTER the earlier ingest marker, got %q", raw)
+		}
+		return nil
+	}
+	if err := applyPostWireSetup(context.Background(), wt, task, runIngest); err != nil {
+		t.Fatalf("applyPostWireSetup: %v", err)
+	}
+	if !reingested {
+		t.Error("expected runIngest to be called for a wired cell")
+	}
+}
+
+func TestApplyPostWireSetup_UnwiredCellSkipsReingest(t *testing.T) {
+	dir := t.TempDir()
+	wt := Worktree{Path: dir, CellDir: dir}
+	task := Task{Subject: Subject{PostWireSetup: []string{"true"}}}
+	if err := applyPostWireSetup(context.Background(), wt, task, nil); err != nil {
+		t.Fatalf("applyPostWireSetup: %v", err)
+	}
+}
+
+func TestApplyPostWireSetup_EmptyIsNoop(t *testing.T) {
+	called := false
+	wt := Worktree{Path: t.TempDir(), CellDir: t.TempDir()}
+	if err := applyPostWireSetup(context.Background(), wt, Task{}, func(context.Context) error { called = true; return nil }); err != nil {
+		t.Fatalf("applyPostWireSetup: %v", err)
+	}
+	if called {
+		t.Error("expected no re-ingest when PostWireSetup is empty")
 	}
 }
 

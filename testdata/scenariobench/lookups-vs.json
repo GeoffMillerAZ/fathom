@@ -1,9 +1,10 @@
 {
   "version": 1,
-  "description": "M6/M7 vs. the alternative (docs/vision/27-strengths-bench.md §6, plan docs/plans/strengths-bench.md SB-32): the home lookup corpus (testdata/contextbench/tasks-home.json, ids kept, prompts and ground truth copied verbatim) run as scenariobench tasks with five arms — full (fathom, wired), graphify, serena, gopls (each a competitor's own MCP tool documented in docs/bench/competitors.md), and grep (no MCP at all). Every arm gets Read/Grep/Bash; only 'full' is wired and gets the fathom stanza ('stanza'); every other arm's instructions variant is 'plain' — the subject's own files, untouched. This corpus's tasks are LOOKUPS, not code changes, so Oracle (fail_to_pass/pass_to_pass/coverage) is deliberately left empty for every task: the graded answer is a short string, not a test result. The expected ground truth for each task lives in notes.gold (SB-32's instruction: 'put gold under notes'), keyed by task id, copied from tasks-home.json's own ground_truth/scoring_rule/class fields — see notes.gold_source for the exact pointer instead of duplicating tasks-home.json's multi-paragraph provenance essays here. A FRESHNESS task (id FRESH-M7-01, category 'freshness', M7) is added: its Subject.Setup writes a brand-new file and function AFTER the arm's own setup has already run — see notes.freshness_run_order for the ordering assumption this task depends on, flagged for whoever implements PrepareSubject/RenderArm (plan wave 2, SB-11/SB-12, not built yet). Task categories for the 13 lookup tasks are hand-assigned from tasks-home.json's own class taxonomy (obligations, verify, blast_radius, claim_provenance, concern_search, contradiction, staleness) per types.go's 'Category ... assigned by ... hand with a derivation note' allowance — none of them are a ClassifyChange shape, because none of them is a code change.",
+  "description": "M6/M7 vs. the alternative (docs/vision/27-strengths-bench.md §6, plan docs/plans/strengths-bench.md SB-32): the home lookup corpus (testdata/contextbench/tasks-home.json, ids kept, prompts and ground truth copied verbatim) run as scenariobench tasks with five arms — full (fathom, wired), graphify, serena, gopls (each a competitor's own MCP tool documented in docs/bench/competitors.md), and grep (no MCP at all). Every arm gets Read/Grep/Bash; only 'full' is wired and gets the fathom stanza ('stanza'); every other arm's instructions variant is 'plain' — the subject's own files, untouched. This corpus's tasks are LOOKUPS, not code changes, so Oracle (fail_to_pass/pass_to_pass/coverage) is deliberately left empty for every task: the graded answer is a short string, not a test result. The expected ground truth for each task lives in notes.gold (SB-32's instruction: 'put gold under notes'), keyed by task id, copied from tasks-home.json's own ground_truth/scoring_rule/class fields — see notes.gold_source for the exact pointer instead of duplicating tasks-home.json's multi-paragraph provenance essays here. A FRESHNESS task (id FRESH-M7-01, category 'freshness', M7) is added: its Subject.PostWireSetup writes a brand-new file and function AFTER the arm's own setup AND the wired arm's first ingest have already run (O45 item 4) — see notes.freshness_run_order for the ordering this task depends on. Task categories for the 13 lookup tasks are hand-assigned from tasks-home.json's own class taxonomy (obligations, verify, blast_radius, claim_provenance, concern_search, contradiction, staleness) per types.go's 'Category ... assigned by ... hand with a derivation note' allowance — none of them are a ClassifyChange shape, because none of them is a code change.",
   "arms": {
     "full": {
       "wired": true,
+      "compile_layers": true,
       "allowed_tools": [
         "Read",
         "Grep",
@@ -167,7 +168,7 @@
     {
       "id": "H1-T03",
       "category": "verify",
-      "prompt": "In the fathom repo's docs/plans/falsifiability.md, task B3-1 is claimed [x] with contract {symbol: cmdVerify, package: cmd/fathom} and carries NO skip_test annotation — meaning fathom's verify gate requires some Test* function to statically REACH cmdVerify via the call graph, not necessarily call it directly by name. A literal grep for the substring \"cmdVerify(\" inside any _test.go file in this repo returns zero matches. Name one Test* function that nonetheless satisfies the test-reach requirement, by calling run() with \"verify\" as the first CLI argument — which cmd/fathom/main.go's subcommand switch then dispatches to cmdVerify.",
+      "prompt": "In the fathom repo's cmd/fathom/verify_test.go, cmdVerify's HTTP mode (cmd/fathom/verify.go) is reached only when a test passes --url to run() instead of --store, and it alone calls the helper function verifyViaHTTP. Name every Test* function in verify_test.go that passes --url to run(), thereby exercising this HTTP-mode path.",
       "subject": {
         "repo_url": "https://github.com/geoffmilleraz/fathom",
         "base_commit": "1b8765d",
@@ -181,32 +182,21 @@
       },
       "oracle": {
         "answer_all_of": [
-          "TestCmdVerify_MissingPlan",
-          "TestCmdVerify_MissingService",
-          "TestCmdVerify_UnreadablePlan",
-          "TestCmdVerify_Store_Pass",
-          "TestCmdVerify_Store_GateFail",
-          "TestCmdVerify_Store_OpenTask_NoGate",
-          "TestCmdVerify_Store_Strict",
-          "TestCmdVerify_Store_JSON",
-          "TestCmdVerify_OperationalError_BadStore",
           "TestCmdVerify_HTTP_ServiceNotIndexed",
-          "TestCmdVerify_Store_EmptyIndex",
           "TestCmdVerify_HTTP_Pass",
           "TestCmdVerify_HTTP_GateFail",
           "TestCmdVerify_HTTP_FailNotGated_OpenTask",
-          "TestCmdVerify_HTTP_OperationalError",
-          "TestCmdVerify_InMainSwitch"
+          "TestCmdVerify_HTTP_OperationalError"
         ]
       },
       "predictions": {
-        "full": "wins: references/find_callers on run() (or verify_plan's own reachability check) surfaces a qualifying Test* function directly.",
-        "graphify": "ties grep, below fathom: its calls-relation graph could in principle surface a caller of run(), but this arm's tool list here is limited to references-style queries the same way serena/gopls are used, so no advantage over reading verify_test.go directly is predicted.",
-        "serena": "ties grep, below fathom: find_referencing_symbols on run() finds the same 16 candidates a direct read does — no edge over reading the file.",
-        "gopls": "ties grep, below fathom: go_symbol_references on run() finds the same candidates — no edge over reading the file.",
-        "grep": "below fathom only in directness, not in reachability: `grep -n 'run(\"verify'` finds a correct answer readily; predicted a near-tie with the competitor arms and slightly below fathom."
+        "full": "wins: find_symbol's own record of verifyViaHTTP plus find_callers/references over run() and cmdVerify surfaces the 5 --url-passing tests directly, without reading the whole file.",
+        "graphify": "ties grep, below fathom: its calls-relation graph could in principle surface verifyViaHTTP's callers, but this arm's tool list here is limited the same way serena/gopls's is, so no advantage over reading verify_test.go directly is predicted.",
+        "serena": "ties grep, below fathom: find_referencing_symbols on verifyViaHTTP finds the same 5 candidates a direct read does — no edge over reading the file.",
+        "gopls": "ties grep, below fathom: go_symbol_references on verifyViaHTTP finds the same candidates — no edge over reading the file.",
+        "grep": "near-tie with fathom: `grep -n -- \"--url\" cmd/fathom/verify_test.go` finds all 5 directly — a distinctive, grep-friendly flag name."
       },
-      "derivation": "Copied verbatim from testdata/contextbench/tasks-home.json id H1-T03 (all-16-name any-of answer set kept in full). category hand-assigned ('verify'); not a ClassifyChange shape."
+      "derivation": "O45 item 5 (2026-09-13): the ORIGINAL H1-T03 (copied verbatim from testdata/contextbench/tasks-home.json id H1-T03) asked to name ONE Test* function reaching cmdVerify via run(), but its oracle demanded ALL 16 candidate names as an answer_all_of set (scenariobench has no any-of oracle) — unanswerable as asked (a prompt asking for one name, an oracle requiring sixteen) and the task scored 0/10 on every arm in vs-pilot-2. Narrowed to a decidable question over the SAME file and category: the 5 Test* functions that pass --url to run(), reaching the distinct, real helper verifyViaHTTP (cmd/fathom/verify.go) — confirmed by reading verify_test.go directly (grep -n -- '--url' cmd/fathom/verify_test.go) rather than the full 16-name enumeration, which stays true to the task's own reachability premise (a named symbol only a SUBSET of the 16 reaches) while being answerable within the 20-turn budget."
     },
     {
       "id": "H1-T04",
@@ -523,8 +513,8 @@
         "base_commit": "1b8765d",
         "service": "fathom",
         "language": "go",
-        "setup": [
-          "mkdir -p internal/store && printf '%s\\n' 'package store' '' '// FreshnessMarkerValue exists only for the M7 freshness scenario (vision 27 §6):' '// it is written by Subject.Setup AFTER each arm has built its artifact or ingested' '// the worktree, so a precomputed artifact answers stale and a live query does not.' 'func FreshnessMarkerValue() int { return 42 }' > internal/store/freshnessmarker.go && grep -q 'return 42' internal/store/freshnessmarker.go"
+        "post_wire_setup": [
+          "mkdir -p internal/store && printf '%s\\n' 'package store' '' '// FreshnessMarkerValue exists only for the M7 freshness scenario (vision 27 §6):' '// it is written by Subject.PostWireSetup AFTER each arm has built its artifact or ingested' '// the worktree, so a precomputed artifact answers stale and a live query does not.' 'func FreshnessMarkerValue() int { return 42 }' > internal/store/freshnessmarker.go && grep -q 'return 42' internal/store/freshnessmarker.go"
         ]
       },
       "sessions": {
@@ -603,24 +593,13 @@
       },
       "H1-T03": {
         "ground_truth": [
-          "TestCmdVerify_MissingPlan",
-          "TestCmdVerify_MissingService",
-          "TestCmdVerify_UnreadablePlan",
-          "TestCmdVerify_Store_Pass",
-          "TestCmdVerify_Store_GateFail",
-          "TestCmdVerify_Store_OpenTask_NoGate",
-          "TestCmdVerify_Store_Strict",
-          "TestCmdVerify_Store_JSON",
-          "TestCmdVerify_OperationalError_BadStore",
           "TestCmdVerify_HTTP_ServiceNotIndexed",
-          "TestCmdVerify_Store_EmptyIndex",
           "TestCmdVerify_HTTP_Pass",
           "TestCmdVerify_HTTP_GateFail",
           "TestCmdVerify_HTTP_FailNotGated_OpenTask",
-          "TestCmdVerify_HTTP_OperationalError",
-          "TestCmdVerify_InMainSwitch"
+          "TestCmdVerify_HTTP_OperationalError"
         ],
-        "scoring_rule": "any-of"
+        "scoring_rule": "all-of"
       },
       "H1-T04": {
         "ground_truth": [
@@ -696,6 +675,6 @@
         "scoring_rule": "exact-match"
       }
     },
-    "freshness_run_order": "FRESH-M7-01 depends on a run-order guarantee that is not yet enforced by any built code (PrepareSubject/RenderArm are plan wave 2, SB-11/SB-12, not implemented as of this corpus's authoring): each arm's OWN setup — graphify's '/graphify .' build, or the wired arm's fathom-init worktree ingest — must run BEFORE this task's Subject.Setup writes internal/store/freshnessmarker.go. If Subject.Setup instead ran first, every arm (including graphify) would see the new file at build/ingest time and the freshness comparison would measure nothing. Flagged here for the wave-2 implementer rather than silently assumed."
+    "freshness_run_order": "FRESH-M7-01's run-order guarantee (O45 item 4, PrepareSubject/applyPostWireSetup): each arm's OWN setup — graphify's '/graphify .' build — and the wired arm's FIRST ingest both run BEFORE Subject.PostWireSetup writes internal/store/freshnessmarker.go, so a precomputed artifact (graphify's graph.json) never sees the new file; the wired arm then RE-ingests after PostWireSetup runs, so its own symbol index does. Had this instead lived in Subject.Setup (which runs before any of that), every arm — including graphify — would see the new file at build/ingest time and the freshness comparison would measure nothing."
   }
 }

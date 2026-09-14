@@ -87,17 +87,34 @@ func RunSessions(ctx context.Context, h Harness, task Task, armName string, arm 
 	}
 }
 
+// isChangeShaped reports whether task expects an edit at all: gold files,
+// a hidden test patch, or a detector name the shape PlanFirstInstruction
+// exists for — a multi-session task that needs a checklist to hand its
+// work off across cold sessions. A pure lookup task (SB-32's
+// lookups-vs.json, Oracle.AnswerAllOf with none of these) has nothing to
+// plan: appending the instruction there only spent the turn budget on a
+// plan the oracle never reads (O45 item 2).
+func isChangeShaped(task Task) bool {
+	return len(task.Gold.Files) > 0 || task.Gold.TestPatch != "" || len(task.Oracle.Detectors) > 0
+}
+
 func runSingle(ctx context.Context, h Harness, task Task, armName string, arm Arm, wt Worktree, opts RunOptions) ([]SessionResult, error) {
 	var results []SessionResult
+	changeShaped := isChangeShaped(task)
 	for i := 0; i < task.Sessions.Count; i++ {
 		var prompt string
 		switch {
-		case i == 0:
-			// A single-session task never asked for a plan before —
+		case i == 0 && changeShaped:
+			// A single-session CHANGE task never asked for a plan before —
 			// nothing for PlanCoverage/FalseDoneRate to read. Same
 			// instruction planner-workers gives its planner, appended
 			// here instead of replacing the task prompt.
 			prompt = task.Prompt + planFirstInstructionFor(arm)
+		case i == 0:
+			// A pure-lookup task (isChangeShaped false): the prompt IS the
+			// whole ask, verbatim — no plan to write, no checklist to hand
+			// off.
+			prompt = task.Prompt
 		default:
 			prompt = scenarioContinuationPrompt
 		}
@@ -296,6 +313,21 @@ func sessionEnv(wt Worktree, opts RunOptions) (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	if wt.DaemonURL != "" {
+		// A wired cell's own scratch daemon (subject.go's wireScratchDaemon)
+		// ingested ONLY this worktree — never the operator's fleet index
+		// at FATHOM_HTTP's default localhost:7575 (O45 item 6). Every
+		// `fathom` subprocess the session spawns — its own SessionStart/
+		// PostToolUse hooks, any `fathom` CLI call — resolves this URL via
+		// defaultFathomURL (cmd/fathom/sessionhook.go) and must reach THIS
+		// daemon, or the primer reads "not an indexed service" and no
+		// obligation is ever injected (primerInstrumentError catches the
+		// residual case where it still does not). Service identity itself
+		// needs no separate env var: resolution is by INGESTED PATH
+		// (resolveFromServices, cmd/fathom/serviceident.go), and this
+		// daemon ingested exactly wt.Path.
+		cr["FATHOM_HTTP"] = wt.DaemonURL
+	}
 	merged := make(map[string]string, len(cr)+len(opts.Env))
 	for k, v := range cr {
 		merged[k] = v
@@ -422,12 +454,44 @@ func runOneSession(h Harness, req SessionRequest, wantServers []string) (Session
 		if msg == "" {
 			msg = hooksInstrumentError(req.Arm.Wired, res)
 		}
+		if msg == "" {
+			msg = primerInstrumentError(req.Arm.Wired, res)
+		}
 		if msg != "" {
 			res.Error = msg
 			res.InstrumentError = msg
 		}
 	}
 	return res, nil
+}
+
+// primerInstrumentError (O45 item 7) reports whether a wired session's own
+// SessionStart primer proves it actually reached the CELL's scratch
+// daemon: cmd/fathom's buildSessionContext names the indexed service by
+// its own resolved identity ("… this repo is the indexed service …") only
+// when a live daemon at FATHOM_HTTP recognizes the worktree's path as one
+// it ingested; a session whose FATHOM_HTTP still pointed at the
+// operator's real daemon (or none) gets back "… this repo (…) is not an
+// indexed service …" instead — the same worktree that never wires an
+// obligation, since the PostToolUse hook resolves identity the same way.
+// "" for an unwired arm (no primer is expected at all) or a wired session
+// whose SessionStart hook never fired at all (hooksInstrumentError already
+// gates that case, so this function is never reached with an empty
+// primer for that reason).
+func primerInstrumentError(wired bool, res SessionResult) string {
+	if !wired {
+		return ""
+	}
+	if res.HooksFired["SessionStart"] == 0 {
+		return ""
+	}
+	switch {
+	case strings.Contains(res.SessionStartContext, "not an indexed service"):
+		return "instrument: SessionStart primer reports this worktree is not an indexed service"
+	case !strings.Contains(res.SessionStartContext, "is the indexed service"):
+		return "instrument: SessionStart primer named no indexed service"
+	}
+	return ""
 }
 
 // instrumentTruthError reports the first wantServers entry (in the given,

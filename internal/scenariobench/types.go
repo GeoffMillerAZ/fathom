@@ -92,6 +92,18 @@ type Subject struct {
 	Service    string   `json:"service"`
 	Language   string   `json:"language"`
 	Setup      []string `json:"setup,omitempty"`
+	// PostWireSetup (O45 item 4) runs AFTER the wired arm's own scratch
+	// daemon is up, has ingested once, and (when CompileLayers) has
+	// compiled — the correct place for a staleness/freshness task's own
+	// injected drift. Setup runs before any of that, so drift placed there
+	// is already visible to the first ingest and a compiled claim's
+	// citation, defeating the very staleness/freshness comparison the task
+	// exists to make (H1-T12/H1-T13/FRESH-M7-01, docs/bench/scenarios.md).
+	// Runs for EVERY arm (wired or not) via PrepareSubject's
+	// applyPostWireSetup, in wt.Path, after the (unwired) arm's own Setup
+	// has already had its chance to build a precomputed artifact from the
+	// pre-drift tree.
+	PostWireSetup []string `json:"post_wire_setup,omitempty"`
 	// TestCommand runs the oracle's test selection; {{tests}} is replaced
 	// by the regex of test names. Default: go test -run '{{tests}}' ./...
 	TestCommand string `json:"test_command,omitempty"`
@@ -177,6 +189,18 @@ type Task struct {
 	// Reason names why Disposition was set — required whenever Disposition
 	// is non-empty, so a dropped task is never silent about why.
 	Reason string `json:"reason,omitempty"`
+	// RequiresLayer (O45 item 1) says this task's prompt assumes a wired
+	// arm's compiled obligations layer already serves rules — nil defaults
+	// to true for Category obligations/staleness/claim_provenance/verify
+	// (requiresCompiledLayer, subject.go), false otherwise. Set explicitly
+	// to override either direction.
+	RequiresLayer *bool `json:"requires_layer,omitempty"`
+	// ProbeFile (O45 item 1) is the file PrepareSubject asks a wired,
+	// layer-requiring task's own scratch daemon to serve obligations for,
+	// after compiling: zero rules back means the compiled layer is not
+	// actually reachable and the cell is LOST rather than measuring an
+	// empty layer. "" defaults to DefaultProbeFile.
+	ProbeFile string `json:"probe_file,omitempty"`
 }
 
 // Criterion is the pre-registered bar for a corpus.
@@ -254,14 +278,41 @@ type SessionResult struct {
 	// Nil when the transcript carried no hook_response event at all — a
 	// wired session with nil/zero SessionStart is the instrument error
 	// runOneSession gates on, exactly like an absent MCP server.
+	//
+	// "obligations_injected" (O45 item 8) is a SYNTHETIC key sharing this
+	// same map rather than a real hook_event name: it counts, among the
+	// "PostToolUse" hook_response events already counted above, how many
+	// carried the obligations marker ("Obligations — governing rules" /
+	// "⚖️ fathom obligations —") in their own rendered text
+	// (hookResponseAdditionalContext) — a PostToolUse hook can fire for
+	// reasons other than obligations injection, so this is always <= the
+	// "PostToolUse" count, never a separate event class of its own.
 	HooksFired map[string]int `json:"hooks_fired,omitempty"`
 	// BudgetHit is true when the turn cap ended the session (Claude Code's
 	// error_max_turns): the designed hand-off, never counted as an error.
 	BudgetHit bool `json:"budget_hit,omitempty"`
 	// FinalAnswer is the terminal `result` stream event's own text (SB-32's
 	// answer-only oracle) — set whenever the harness's transcript carries
-	// one, never inferred from FilesRead/FilesEdited.
+	// one, never inferred from FilesRead/FilesEdited. When the session
+	// ended on its turn budget (BudgetHit) and the result event carried no
+	// text of its own, this falls back to the last assistant text block in
+	// the transcript (O45 item 3) — AnswerFrom names which.
 	FinalAnswer string `json:"final_answer,omitempty"`
+	// AnswerFrom names where FinalAnswer came from: "result" (the terminal
+	// result event's own text) or "last_text" (the error_max_turns
+	// fallback) — "" only when FinalAnswer is itself empty. Kept so a
+	// stored cell is honest about having used the fallback, never silently
+	// indistinguishable from a session that answered before its budget hit.
+	AnswerFrom string `json:"answer_from,omitempty"`
+	// SessionStartContext is the FIRST "system"/"hook_response" event's own
+	// rendered text for hook_event "SessionStart" (hookResponseAdditionalContext,
+	// stream.go) — fathom's session primer, captured verbatim so
+	// primerInstrumentError (sessions.go, O45 item 7) can tell a wired
+	// session whose primer honestly named the indexed service from one
+	// that silently talked to the wrong (or no) daemon. "" when no
+	// SessionStart hook_response was seen at all, or its own text could
+	// not be extracted.
+	SessionStartContext string `json:"session_start_context,omitempty"`
 	// Error is the harness's or Claude's own reported session failure, or
 	// (runOneSession) the instrument-truth gate's message — kept for the
 	// existing "stop after an errored session" behavior. InstrumentError

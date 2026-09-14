@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -109,6 +110,43 @@ func TestRuleServedBeforeEdit_NoEditOfGovernedPathIsNotMeasurable(t *testing.T) 
 	got := RuleServedBeforeEdit(session, []string{"internal/store/db.go"})
 	if got != nil {
 		t.Fatalf("got %v, want nil (session never edited a governed path)", got)
+	}
+}
+
+// hookResponseLineUnicodeEscaped renders a real "system"/"hook_response"
+// event whose own additionalContext JSON-escapes the marker's em dash as
+// a — sequence (as some JSON encoders emit) rather than the literal
+// UTF-8 character, so the OUTER line's raw bytes never contain the
+// marker's literal em-dash byte sequence at all — only its DECODED text
+// does. This is the shape O45 item 8 exists for: RuleServedBeforeEdit's
+// plain bytes.Contains scan cannot find this one; only decoding the event
+// and checking its own additionalContext can.
+func hookResponseLineUnicodeEscaped(hookEvent string) string {
+	inner := `{"hookSpecificOutput":{"hookEventName":"` + hookEvent + `","additionalContext":"Obligations \u2014 governing rules for the file you are about to touch"}}`
+	b, _ := json.Marshal(map[string]any{
+		"type": "system", "subtype": "hook_response", "hook_event": hookEvent, "output": inner,
+	})
+	return string(b)
+}
+
+// TestRuleServedBeforeEdit_MarkerOnlyInHookResponseEnvelope is O45 item 8:
+// a served-rule marker findable only by DECODING the hook_response's own
+// additionalContext (never as a bare substring on the raw transcript
+// line) must still be found.
+func TestRuleServedBeforeEdit_MarkerOnlyInHookResponseEnvelope(t *testing.T) {
+	dir := t.TempDir()
+	line := hookResponseLineUnicodeEscaped("PostToolUse")
+	if strings.Contains(line, "Obligations — governing rules") {
+		t.Fatal("test setup bug: the raw line must NOT contain the marker's literal em dash")
+	}
+	path := writeRawLines(t, dir, "session.jsonl", []string{
+		line,
+		editLine("tu1", "internal/store/db.go"),
+	})
+	session := SessionResult{RawPath: path}
+	got := RuleServedBeforeEdit(session, []string{"internal/store/db.go"})
+	if got == nil || !*got {
+		t.Fatalf("got %v, want true (the hook_response's own decoded additionalContext carries the marker)", got)
 	}
 }
 

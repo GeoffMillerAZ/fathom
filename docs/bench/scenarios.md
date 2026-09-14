@@ -172,6 +172,15 @@ the scratch daemon stops afterwards (`pgrep -fl serve-http`). Five driver
 defects were found this way on 2026-09-13 (O35) before a dollar of pilot
 spend.
 
+A layer-dependent corpus (any task with `requires_layer` true, explicit or
+defaulted) adds one more thing the dry cell must prove: the probe must
+return rules. `PrepareSubject` calls the scratch daemon's own
+`obligations` for the arm's `probe_file` right after compiling and
+`post_wire_setup`; a `compiled layer serves no rules for <file>` refusal
+here is the dry cell doing its job — it means `compile_layers` is unset,
+the compile produced nothing reachable, or `probe_file` names a path the
+layer never governs — never a bug in the dry cell itself (O45).
+
 **Two real dry cells before the pilots.** The replayed cell proves the
 driver; it cannot prove the session. Run one real session per arm on a
 lookup task (`-only H1-T10 -trials 1 -model claude-haiku-4-5-20251001`,
@@ -253,6 +262,62 @@ falsifiable. Deriving many at once from a pinned public dataset: extend
 already reads Multi-SWE-bench, and add the new source's pin to the table
 above.
 
+## Layer-dependent tasks and post-wire drift (O45)
+
+Four corpus keys exist because a task's prompt can assume more than an
+ingested index — a **compiled** layer, or a tree that has drifted since
+the wired arm's own daemon last looked at it:
+
+- **`compile_layers`** (an arm field): a wired arm sets this to actually
+  run `fathom compile -layer obligations` after its first ingest, once per
+  (subject, commit, arm) store. Without it a wired arm still serves an
+  EMPTY obligations layer — every file-scoped `obligations` call returns
+  no rules — so a task whose prompt opens "Per fathom's compiled
+  obligations layer …" measures nothing (`lookups-vs.json`'s `full` arm
+  sets this for exactly that reason).
+- **`requires_layer`** (a task field, `*bool`): declares that this task's
+  prompt assumes a compiled layer already serves rules. Unset defaults to
+  `true` for `category` `obligations`/`staleness`/`claim_provenance`/
+  `verify`, `false` otherwise (`requiresCompiledLayer`, `subject.go`); set
+  it explicitly to override either direction.
+- **`probe_file`** (a task field): the file `PrepareSubject` asks the
+  wired cell's own scratch daemon to serve `obligations` for, right after
+  compiling — a `requires_layer` task whose probe comes back with zero
+  rules loses its cell (`compiled layer serves no rules for <file>`)
+  rather than being stored as a reading against an empty layer. Unset
+  defaults to `DefaultProbeFile` (`internal/core/model.go` in this repo).
+- **`post_wire_setup`** (a `subject` field, alongside `setup`): commands
+  that run AFTER the wired arm's scratch daemon has ingested once — and,
+  when `compile_layers` is set, after it has compiled — never before.
+  `setup` runs before any of that, so drift placed there is already
+  visible to the first ingest and to a compiled claim's own citation,
+  defeating the very staleness/freshness comparison the task exists to
+  make. `PrepareSubject` re-ingests after `post_wire_setup` runs (for a
+  wired cell) so the symbol index reflects the drift; a compiled
+  obligations layer is deliberately NOT recompiled, so a staleness task's
+  claim stays pinned to its pre-drift citation. `lookups-vs.json`'s
+  `FRESH-M7-01` is the worked example.
+
+## Plan-first only on change-shaped tasks (O45)
+
+`runSingle`'s first session appends `PlanFirstInstruction` (and, on a
+wired arm, its plan-grammar addendum) only when the task is
+change-shaped — `Gold.Files`, `Gold.TestPatch`, or `Oracle.Detectors`
+non-empty (`isChangeShaped`, `sessions.go`). A pure lookup task
+(`Oracle.AnswerAllOf` alone, `lookups-vs.json`'s shape) has nothing to
+plan and nothing for a plan to hand off across sessions; asking one to
+plan before answering only spent its turn budget on a checklist no oracle
+ever reads. `planner-workers` mode is unaffected — its planner session
+always needs to write the plan its workers pick up.
+
+An answer-only task's oracle scores `SessionResult.FinalAnswer` — normally
+the terminal `result` event's own text, but a session that stated its
+answer and then ran out of turns (`error_max_turns`) carries an EMPTY
+result text; `FinalAnswer` falls back to the last assistant text block in
+that case, and `AnswerFrom` (`"result"` or `"last_text"`) records which,
+so a cell scored via the fallback is never silently indistinguishable from
+one that answered inside its budget (O45 item 3).
+
 ## How to add an arm (arms are data)
 
 An `Arm` (`types.go`) is never code — it is what varies between
@@ -295,6 +360,26 @@ true` on the ledger row; `scenariobench score` prints one warning line to
 stderr for a cell in that state, and `scenariobench ledger`'s rendered
 table shows a "surface calls" column (`N (unused)` when flagged) so the
 gap is visible without opening the raw cells.
+
+**The daemon URL itself is instrument truth too (O45 items 6–8).** A wired
+cell's scratch daemon ingests ONLY that worktree, at a path no other
+daemon (least of all the operator's own fleet index at
+`FATHOM_HTTP`'s default `localhost:7575`) recognizes — so every `fathom`
+subprocess the session spawns (its own SessionStart/PostToolUse hooks, any
+`fathom` CLI call) must have `FATHOM_HTTP` pointed at the cell's own
+daemon, which `sessionEnv` now sets whenever `Worktree.DaemonURL` is set
+(no separate service-identity variable is needed — resolution is by
+INGESTED PATH, `cmd/fathom/serviceident.go`, and the scratch daemon
+ingested exactly `wt.Path`). Even with that set, `runOneSession` checks a
+THIRD thing beyond MCP-connected and SessionStart-fired: the SessionStart
+hook_response's own rendered primer must actually name the indexed
+service (`primerInstrumentError`) — a primer reading "this repo (…) is not
+an indexed service", or naming no service at all, means the session never
+really reached its own daemon, and the cell is **LOST** exactly like an
+absent MCP server. Separately, `readings.hooks_fired` gains a synthetic
+`obligations_injected` key: among the `PostToolUse` hook_response events
+already counted there, how many carried the obligations marker in their
+own rendered text — always `<= PostToolUse`, never a new event class.
 
 ## The clean room
 

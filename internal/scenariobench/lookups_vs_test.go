@@ -141,8 +141,15 @@ func TestLookupsVSCorpus_ParsesAgainstContract(t *testing.T) {
 	if fresh.Category != CategoryFreshness {
 		t.Errorf("FRESH-M7-01 category = %q, want %q", fresh.Category, CategoryFreshness)
 	}
-	if len(fresh.Subject.Setup) == 0 {
-		t.Error("FRESH-M7-01 must carry a subject.setup step that edits a file")
+	// O45 item 4: the drift belongs in post_wire_setup (after the daemon's
+	// first ingest), never subject.setup (before it) — moving it here is
+	// exactly the fix, so subject.setup itself must now be EMPTY for this
+	// task.
+	if len(fresh.Subject.PostWireSetup) == 0 {
+		t.Error("FRESH-M7-01 must carry a subject.post_wire_setup step that edits a file")
+	}
+	if len(fresh.Subject.Setup) != 0 {
+		t.Errorf("FRESH-M7-01 must carry no subject.setup (the drift belongs in post_wire_setup), got %v", fresh.Subject.Setup)
 	}
 
 	if c.Criterion.ID != "M6-1" || c.Criterion.Treatment != "full" || c.Criterion.Control != "grep" {

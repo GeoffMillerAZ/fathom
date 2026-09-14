@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"os"
+	"strings"
 )
 
 // ruleserved_before_edit.go is RC-12 (vision 28 §2.4, F12): "guards
@@ -101,6 +102,25 @@ func RuleServedBeforeEdit(session SessionResult, governedPaths []string) *bool {
 				if bytes.Contains(line, []byte(marker)) {
 					servedAtLine = lineNo
 					break
+				}
+			}
+		}
+
+		// O45 item 8: a hook_response's own additionalContext can arrive
+		// JSON-escaped inside the outer transcript line in a way the raw
+		// bytes.Contains scan above cannot be relied on to see through —
+		// decode the event and check its DECODED text too, so this stays
+		// correct regardless of how a harness nests/escapes it.
+		if servedAtLine == -1 && line[0] == '{' {
+			var hev streamEvent
+			if err := json.Unmarshal(line, &hev); err == nil && hev.Type == "system" && hev.Subtype == "hook_response" {
+				if ctx := hookResponseAdditionalContext(hev); ctx != "" {
+					for _, marker := range obligationsHookMarkers {
+						if strings.Contains(ctx, marker) {
+							servedAtLine = lineNo
+							break
+						}
+					}
 				}
 			}
 		}

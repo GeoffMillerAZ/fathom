@@ -57,7 +57,16 @@ type streamEvent struct {
 	// "hook_event" (distinct from "hook_name", which is "Event:matcher",
 	// e.g. "SessionStart:startup").
 	HookEvent string `json:"hook_event"`
-	Message   struct {
+	// Output / Stdout are the "system"/"hook_response" event's own raw
+	// process output. fathom's own hook subcommands print a
+	// {"hookSpecificOutput":{"additionalContext":"…"}} envelope
+	// (internal/harness/codec.go) to stdout; the clean-room smoke test
+	// (docs/bench/scenarios.md) found the field housing it ambiguous
+	// between these two names depending on harness version, so
+	// hookResponseAdditionalContext tries both.
+	Output  string `json:"output"`
+	Stdout  string `json:"stdout"`
+	Message struct {
 		Content []streamContentBlock `json:"content"`
 		Usage   struct {
 			InputTokens              int64 `json:"input_tokens"`
@@ -124,8 +133,17 @@ type parsedStream struct {
 	mcpTools   int
 	// hooksFired mirrors mcpServers' nil-means-unseen convention: nil when
 	// no "system"/"hook_response" event was seen at all, else event name
-	// to count (handleHookResponse).
+	// to count (handleHookResponse). Also carries the synthetic
+	// "obligations_injected" key — see SessionResult.HooksFired's doc
+	// comment.
 	hooksFired map[string]int
+	// sessionStartContext is the FIRST SessionStart hook_response's own
+	// rendered text (handleHookResponse) — SessionResult.SessionStartContext.
+	sessionStartContext string
+	// lastAssistantText is the most recent non-empty assistant "text"
+	// content block seen so far — O45 item 3's error_max_turns fallback
+	// source for FinalAnswer.
+	lastAssistantText string
 }
 
 // ParseSessionStream reads a captured `claude -p --output-format
@@ -192,6 +210,11 @@ func (ps *parsedStream) handleAssistant(ev streamEvent, checkedLines map[string]
 	turnTokens := ev.Message.Usage.InputTokens + ev.Message.Usage.CacheCreationInputTokens +
 		ev.Message.Usage.CacheReadInputTokens + ev.Message.Usage.OutputTokens
 	for _, c := range ev.Message.Content {
+		if c.Type == "text" {
+			if t := strings.TrimSpace(c.Text); t != "" {
+				ps.lastAssistantText = t
+			}
+		}
 		if c.Type != "tool_use" {
 			continue
 		}
@@ -282,6 +305,55 @@ func (ps *parsedStream) handleHookResponse(ev streamEvent) {
 		ps.hooksFired = map[string]int{}
 	}
 	ps.hooksFired[ev.HookEvent]++
+
+	ctx := hookResponseAdditionalContext(ev)
+	if ev.HookEvent == "SessionStart" && ps.sessionStartContext == "" {
+		ps.sessionStartContext = ctx
+	}
+	if ev.HookEvent == "PostToolUse" && obligationsMarkerIn(ctx) {
+		ps.hooksFired["obligations_injected"]++
+	}
+}
+
+// obligationsMarkerIn reports whether ctx carries either of the two
+// obligations-injection marker texts (O45 item 8) — the SessionStart
+// stanza's own wording and the PostToolUse render's own header (see
+// ruleserved_before_edit.go's obligationsHookMarkers for the full set this
+// mirrors, minus the PreToolUse guard marker, which is not an obligations
+// injection).
+func obligationsMarkerIn(ctx string) bool {
+	return strings.Contains(ctx, "Obligations — governing rules") || strings.Contains(ctx, "⚖️ fathom obligations —")
+}
+
+// hookResponseAdditionalContext extracts one "system"/"hook_response"
+// event's own rendered text: fathom's hook subcommands print a
+// {"hookSpecificOutput":{"additionalContext":"…"}} envelope
+// (internal/harness/codec.go) to stdout, echoed back by Claude Code on one
+// of "output"/"stdout" (the real field is ambiguous between harness
+// versions per docs/bench/scenarios.md's clean-room smoke test) — tried in
+// that order, first non-empty wins. When the field parses as that
+// envelope, its own additionalContext string is returned; otherwise the
+// raw field text itself, trimmed, so a hook that printed plain text (a
+// non-fathom hook, or a fixture) still yields something to match markers
+// against.
+func hookResponseAdditionalContext(ev streamEvent) string {
+	raw := ev.Output
+	if strings.TrimSpace(raw) == "" {
+		raw = ev.Stdout
+	}
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+	var envelope struct {
+		HookSpecificOutput struct {
+			AdditionalContext string `json:"additionalContext"`
+		} `json:"hookSpecificOutput"`
+	}
+	if err := json.Unmarshal([]byte(raw), &envelope); err == nil && envelope.HookSpecificOutput.AdditionalContext != "" {
+		return envelope.HookSpecificOutput.AdditionalContext
+	}
+	return raw
 }
 
 // recordBoxChecks scans an edit tool_use's new content for markdown
@@ -366,6 +438,7 @@ func (ps *parsedStream) toSessionResult() SessionResult {
 	r.MCPServers = ps.mcpServers
 	r.MCPTools = ps.mcpTools
 	r.HooksFired = ps.hooksFired
+	r.SessionStartContext = ps.sessionStartContext
 	r.PayloadBytes = ps.payloadBytes
 	if ps.sawResult {
 		u := ps.result.Usage
@@ -377,12 +450,25 @@ func (ps *parsedStream) toSessionResult() SessionResult {
 		r.CostUSD = ps.result.TotalCostUSD
 		r.WallTime = time.Duration(ps.result.DurationMS) * time.Millisecond
 		r.FinalAnswer = ps.result.Result
+		if r.FinalAnswer != "" {
+			r.AnswerFrom = "result"
+		}
 		switch {
 		case ps.result.IsError && ps.result.Subtype == "error_max_turns":
 			// The turn budget ended the session: that is the designed
 			// hand-off (vision 27 §2), not an error. The tree the agent
 			// left is the reading; the next session starts cold from it.
 			r.BudgetHit = true
+			// O45 item 3: a session that stated its answer and THEN ran
+			// out of turns (e.g. writing a plan it was never going to
+			// need) must not score as a blank FAIL — the result event's
+			// own "result" text is empty on error_max_turns, so fall back
+			// to the last assistant text block the transcript actually
+			// carries.
+			if r.FinalAnswer == "" && ps.lastAssistantText != "" {
+				r.FinalAnswer = ps.lastAssistantText
+				r.AnswerFrom = "last_text"
+			}
 		case ps.result.IsError:
 			r.Error = "claude reported is_error for this session (" + ps.result.Subtype + ")"
 		}

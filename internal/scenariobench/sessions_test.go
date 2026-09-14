@@ -2,7 +2,9 @@ package scenariobench
 
 import (
 	"context"
+	"encoding/json"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -375,14 +377,18 @@ func (h *recordingHarness) RunSession(req SessionRequest) (SessionResult, error)
 	return h.FakeHarness.RunSession(req)
 }
 
-// TestRunSessions_SingleModeFirstSessionGetsPlanFirstInstruction is SB-XX:
-// a single-session task never asked for a plan, so the M2/M3 (plan
-// coverage, false-done) readings had nothing to read. The FIRST session's
-// prompt must now carry the same PlanFirstInstruction planner-workers'
-// planner gets; later sessions keep the cold-continuation prompt
-// untouched.
+// TestRunSessions_SingleModeFirstSessionGetsPlanFirstInstruction is SB-XX,
+// narrowed by O45 item 2: a single-session CHANGE task (here, one naming
+// Gold.Files) never asked for a plan, so the M2/M3 (plan coverage,
+// false-done) readings had nothing to read. The FIRST session's prompt
+// must now carry the same PlanFirstInstruction planner-workers' planner
+// gets; later sessions keep the cold-continuation prompt untouched.
 func TestRunSessions_SingleModeFirstSessionGetsPlanFirstInstruction(t *testing.T) {
-	task := Task{ID: "T1", Prompt: "do the thing", Sessions: Sessions{Mode: ModeSingle, Count: 2, MaxTurns: 10}}
+	task := Task{
+		ID: "T1", Prompt: "do the thing",
+		Sessions: Sessions{Mode: ModeSingle, Count: 2, MaxTurns: 10},
+		Gold:     Gold{Files: []string{"foo.go"}},
+	}
 	h := &recordingHarness{FakeHarness: &FakeHarness{
 		StreamsDir: streamsDir, TaskID: "T1", ArmName: "full",
 		Streams: map[string]string{"T1/full": "single-session.jsonl"},
@@ -402,4 +408,130 @@ func TestRunSessions_SingleModeFirstSessionGetsPlanFirstInstruction(t *testing.T
 	if h.prompts[1] != scenarioContinuationPrompt {
 		t.Errorf("session 1 prompt = %q, want the unchanged continuation prompt %q", h.prompts[1], scenarioContinuationPrompt)
 	}
+}
+
+// TestRunSessions_SingleModeLookupTaskSkipsPlanFirstInstruction is O45 item
+// 2's own converse: a pure-lookup task (Oracle.AnswerAllOf, no Gold files,
+// no test patch, no detectors — SB-32's lookups-vs.json shape) has nothing
+// to plan, so its first session's prompt must be the task prompt verbatim
+// — appending PlanFirstInstruction here only spent the turn budget writing
+// a plan the answer-only oracle never reads.
+func TestRunSessions_SingleModeLookupTaskSkipsPlanFirstInstruction(t *testing.T) {
+	task := Task{
+		ID: "T1", Prompt: "what does FreshnessMarkerValue return?",
+		Sessions: Sessions{Mode: ModeSingle, Count: 1, MaxTurns: 10},
+		Oracle:   Oracle{AnswerAllOf: []string{"42"}},
+	}
+	h := &recordingHarness{FakeHarness: &FakeHarness{
+		StreamsDir: streamsDir, TaskID: "T1", ArmName: "full",
+		Streams: map[string]string{"T1/full": "single-session.jsonl"},
+	}}
+	opts := RunOptions{Trial: 1, Model: "sonnet", RawDir: filepath.Join(t.TempDir(), "raw")}
+
+	if _, err := RunSessions(context.Background(), h, task, "full", Arm{}, Worktree{Path: t.TempDir()}, opts); err != nil {
+		t.Fatalf("RunSessions: %v", err)
+	}
+	if len(h.prompts) != 1 {
+		t.Fatalf("expected 1 recorded prompt, got %d", len(h.prompts))
+	}
+	if h.prompts[0] != task.Prompt {
+		t.Errorf("session 0 prompt = %q, want the task prompt verbatim %q (no plan-first instruction for a lookup task)", h.prompts[0], task.Prompt)
+	}
+}
+
+// TestPrimerInstrumentError covers primerInstrumentError directly: only a
+// wired session whose SessionStart primer either names "not an indexed
+// service" or fails to name any indexed service at all is an instrument
+// error; an unwired arm never is, and a wired session with no SessionStart
+// hook at all defers to hooksInstrumentError (returns "" here).
+func TestPrimerInstrumentError(t *testing.T) {
+	cases := []struct {
+		name    string
+		wired   bool
+		fired   map[string]int
+		primer  string
+		wantMsg string
+	}{
+		{"unwired, any primer text", false, map[string]int{"SessionStart": 1}, "this repo (\"x\") is not an indexed service", ""},
+		{"wired, no SessionStart hook at all", true, nil, "", ""},
+		{
+			"wired, primer names the indexed service", true,
+			map[string]int{"SessionStart": 1},
+			`fathom code-intelligence is live — this repo is the indexed service "fathom" (100 symbols)`, "",
+		},
+		{
+			"wired, primer reports not indexed", true,
+			map[string]int{"SessionStart": 1},
+			`fathom code-intelligence is live, but this repo ("1b8765d-abc123") is not an indexed service — its symbols aren't in the index`,
+			"instrument: SessionStart primer reports this worktree is not an indexed service",
+		},
+		{
+			"wired, primer names no service at all (daemon down)", true,
+			map[string]int{"SessionStart": 1},
+			"fathom code-intelligence daemon is not responding",
+			"instrument: SessionStart primer named no indexed service",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := primerInstrumentError(c.wired, SessionResult{HooksFired: c.fired, SessionStartContext: c.primer})
+			if got != c.wantMsg {
+				t.Errorf("primerInstrumentError = %q, want %q", got, c.wantMsg)
+			}
+		})
+	}
+}
+
+// TestRunSessions_WiredArmNotIndexedPrimer_LosesTheCell is the primer
+// instrument-truth gate's own end-to-end proof (O45 item 7): a wired
+// session whose transcript's own SessionStart hook_response says the
+// worktree is not an indexed service must not pass as a reading.
+func TestRunSessions_WiredArmNotIndexedPrimer_LosesTheCell(t *testing.T) {
+	dir := t.TempDir()
+	notIndexedEnvelope := mustJSON(map[string]any{
+		"hookSpecificOutput": map[string]any{
+			"hookEventName":     "SessionStart",
+			"additionalContext": `fathom code-intelligence is live, but this repo ("wt") is not an indexed service — its symbols aren't in the index`,
+		},
+	})
+	path := writeRawLines(t, dir, "session.jsonl", []string{
+		mustJSON(map[string]any{
+			"type": "system", "subtype": "hook_response", "hook_event": "SessionStart", "output": notIndexedEnvelope,
+		}),
+		mustJSON(map[string]any{
+			"type": "result", "is_error": false, "num_turns": 1, "duration_ms": 10, "total_cost_usd": 0.001,
+		}),
+	})
+	streamName := filepath.Base(path)
+	task := Task{ID: "T1", Prompt: "do the thing", Sessions: Sessions{Mode: ModeSingle, Count: 1, MaxTurns: 10}}
+	wt := Worktree{Path: t.TempDir(), Arm: ArmFiles{MCPServerNames: nil}}
+	h := &FakeHarness{
+		StreamsDir: dir, TaskID: "T1", ArmName: "full",
+		Streams: map[string]string{"T1/full": streamName},
+	}
+	opts := RunOptions{Trial: 1, Model: "sonnet", RawDir: filepath.Join(t.TempDir(), "raw")}
+
+	results, err := RunSessions(context.Background(), h, task, "full", Arm{Wired: true}, wt, opts)
+	if err != nil {
+		t.Fatalf("RunSessions: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 session, got %d", len(results))
+	}
+	if !strings.Contains(results[0].Error, "not an indexed service") {
+		t.Errorf("Error = %q, want it to mention the not-indexed primer", results[0].Error)
+	}
+	if reason := CellLost(results); reason == "" {
+		t.Error("expected CellLost to report this cell as lost")
+	}
+}
+
+// mustJSON marshals v — panics on error rather than failing a *testing.T,
+// since every call site here passes a fixed, known-good literal.
+func mustJSON(v any) string {
+	b, err := json.Marshal(v)
+	if err != nil {
+		panic(err)
+	}
+	return string(b)
 }

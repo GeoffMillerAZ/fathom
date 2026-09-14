@@ -8,6 +8,7 @@
 package scenariobench
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -68,6 +69,11 @@ type Worktree struct {
 	CompileCost *CompileCost
 
 	daemon *exec.Cmd // unexported: StopWorktree's handle on the scratch daemon, if one was started
+	// fathomBin is the built fathom binary wireScratchDaemon used for the
+	// first ingest — unexported: applyPostWireSetup's re-ingest (O45 item
+	// 4) reuses it rather than rebuilding, and it is "" for an unwired
+	// cell.
+	fathomBin string
 }
 
 // PrepareSubject clones task.Subject.RepoURL once under
@@ -156,7 +162,157 @@ func PrepareSubject(ctx context.Context, task Task, arm Arm, root string) (Workt
 		wt.CompileCost = cost
 	}
 
+	// O45 item 4: drift belongs HERE, after the first ingest/compile above
+	// — never in Subject.Setup, which ran before any of it and would
+	// already be visible to both. A wired cell also re-ingests afterward
+	// so its symbol index reflects the drift; a compiled obligations layer
+	// is deliberately NOT recompiled, so a staleness task's claim stays
+	// pinned to the pre-drift citation.
+	var runIngest func(context.Context) error
+	if arm.Wired && wt.fathomBin != "" {
+		runIngest = func(ctx context.Context) error {
+			_, err := runIn(ctx, wt.Path, wt.fathomBin, "ingest", "-service", wt.Service, "-path", wt.Path, "-store", wt.StorePath)
+			return err
+		}
+	}
+	if err := applyPostWireSetup(ctx, wt, task, runIngest); err != nil {
+		_ = StopWorktree(&wt)
+		return Worktree{}, fmt.Errorf("preparing subject: %w", err)
+	}
+
+	// O45 item 1: a task whose prompt assumes a compiled obligations layer
+	// already serves rules must never silently run against one that
+	// doesn't (compile_layers unset on the arm, or a compile that
+	// produced nothing reachable for this repo) — probe it and refuse the
+	// cell rather than measure an empty layer.
+	if arm.Wired && requiresCompiledLayer(task) {
+		probeFile := task.ProbeFile
+		if probeFile == "" {
+			probeFile = DefaultProbeFile
+		}
+		ok, err := probeCompiledLayerServesRules(ctx, wt.DaemonURL, wt.Service, probeFile)
+		if err != nil {
+			_ = StopWorktree(&wt)
+			return Worktree{}, fmt.Errorf("preparing subject: probing compiled layer: %w", err)
+		}
+		if !ok {
+			_ = StopWorktree(&wt)
+			return Worktree{}, fmt.Errorf("compiled layer serves no rules for %s", probeFile)
+		}
+	}
+
 	return wt, nil
+}
+
+// DefaultProbeFile is the probe target a layer-requiring task uses when it
+// names no ProbeFile of its own (O45 item 1): this repo's own convention
+// (root CLAUDE.md's "extend internal/core additively") reaches every file
+// under internal/core, so a freshly compiled obligations layer almost
+// always serves at least one rule for it.
+const DefaultProbeFile = "internal/core/model.go"
+
+// layerRequiredCategories are the lookup-corpus category strings (SB-32,
+// lookups-vs.json) whose prompts assume a wired arm's compiled obligations
+// layer already serves rules ("Per fathom's compiled obligations layer
+// …", or a staleness verdict against one) — requiresCompiledLayer's
+// default when a task sets no RequiresLayer of its own (O45 item 1). None
+// of these collide with the change-bench's own Category consts
+// (CategoryBugFix etc.), which use different literal strings.
+var layerRequiredCategories = map[Category]bool{
+	"obligations":      true,
+	"staleness":        true,
+	"claim_provenance": true,
+	"verify":           true,
+}
+
+// requiresCompiledLayer reports whether task assumes a wired arm's
+// compiled obligations layer already serves rules — task.RequiresLayer
+// verbatim when set, else layerRequiredCategories' default for its
+// Category.
+func requiresCompiledLayer(task Task) bool {
+	if task.RequiresLayer != nil {
+		return *task.RequiresLayer
+	}
+	return layerRequiredCategories[task.Category]
+}
+
+// probeCompiledLayerServesRules calls daemonURL's own "obligations" MCP
+// tool for probeFile and reports whether it served at least one rule
+// (O45 item 1's instrument-truth probe): a wired cell whose compiled
+// layer serves zero rules for a file the corpus expects it to govern
+// means every layer-dependent task in the cell would measure an empty
+// layer, not fathom's obligations feature — PrepareSubject refuses the
+// cell instead.
+func probeCompiledLayerServesRules(ctx context.Context, daemonURL, service, probeFile string) (bool, error) {
+	reqBody, err := json.Marshal(map[string]any{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name": "obligations",
+			"arguments": map[string]any{
+				"service":          service,
+				"file":             probeFile,
+				"include_snippets": false,
+			},
+		},
+	})
+	if err != nil {
+		return false, fmt.Errorf("encoding obligations probe request: %w", err)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, daemonURL+"/rpc/agent", bytes.NewReader(reqBody))
+	if err != nil {
+		return false, fmt.Errorf("building obligations probe request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return false, fmt.Errorf("calling obligations for probe file %s: %w", probeFile, err)
+	}
+	defer resp.Body.Close()
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return false, fmt.Errorf("reading obligations probe response: %w", err)
+	}
+	var envelope struct {
+		Result struct {
+			Rules []json.RawMessage `json:"rules"`
+		} `json:"result"`
+		Error *struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(raw, &envelope); err != nil {
+		return false, fmt.Errorf("parsing obligations probe response: %w (%s)", err, string(raw))
+	}
+	if envelope.Error != nil {
+		return false, fmt.Errorf("obligations probe: %s", envelope.Error.Message)
+	}
+	return len(envelope.Result.Rules) > 0, nil
+}
+
+// applyPostWireSetup runs task.Subject.PostWireSetup in wt.Path — AFTER
+// the daemon's first ingest/compile has already happened, the correct
+// place for staleness/freshness drift (O45 item 4) — then, when runIngest
+// is non-nil (a wired cell), re-ingests so the symbol index reflects it.
+// runIngest is a seam (the real one shells out to the built binary's own
+// "ingest" subcommand) so this ordering is testable without a real daemon
+// or binary. A task with no PostWireSetup is a no-op, regardless of
+// runIngest.
+func applyPostWireSetup(ctx context.Context, wt Worktree, task Task, runIngest func(context.Context) error) error {
+	if len(task.Subject.PostWireSetup) == 0 {
+		return nil
+	}
+	if err := runSetup(ctx, wt.Path, task.Subject.PostWireSetup, filepath.Join(wt.CellDir, "post-wire-setup.log")); err != nil {
+		return fmt.Errorf("post-wire setup: %w", err)
+	}
+	if runIngest == nil {
+		return nil
+	}
+	if err := runIngest(ctx); err != nil {
+		return fmt.Errorf("post-wire setup: re-ingesting: %w", err)
+	}
+	return nil
 }
 
 // StopWorktree stops a wired cell's scratch daemon (SB-12: "stop it after
@@ -291,6 +447,7 @@ func wireScratchDaemon(ctx context.Context, wt *Worktree, task Task, renderedArm
 	if out, err := buildFathomBinary(ctx, root, bin); err != nil {
 		return fmt.Errorf("wiring scratch daemon: %w (%s)", err, out)
 	}
+	wt.fathomBin = bin
 
 	storeDir := filepath.Join(root, "workspace", "scenariobench", "stores", filepath.Base(wt.Path))
 	if err := os.MkdirAll(storeDir, 0o755); err != nil {

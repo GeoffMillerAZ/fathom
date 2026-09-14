@@ -2,6 +2,7 @@ package scenariobench
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -154,6 +155,37 @@ func TestParseSessionStream_HookResponseEvents(t *testing.T) {
 	}
 }
 
+// TestParseSessionStream_ObligationsInjectedCount is O45 item 8: a
+// PostToolUse hook_response whose own additionalContext carries the
+// obligations marker increments the synthetic "obligations_injected" key
+// alongside the real "PostToolUse" count; a SessionStart hook_response
+// (present in the same fixture, with no such marker) must not.
+func TestParseSessionStream_ObligationsInjectedCount(t *testing.T) {
+	r, err := ParseSessionStream(filepath.Join(streamsDir, "obligations-injected.jsonl"))
+	if err != nil {
+		t.Fatalf("ParseSessionStream: %v", err)
+	}
+	if r.HooksFired["obligations_injected"] != 1 {
+		t.Errorf("HooksFired[obligations_injected] = %d, want 1", r.HooksFired["obligations_injected"])
+	}
+	if r.HooksFired["PostToolUse"] != 1 {
+		t.Errorf("HooksFired[PostToolUse] = %d, want 1", r.HooksFired["PostToolUse"])
+	}
+}
+
+// TestParseSessionStream_SessionStartContextCaptured proves
+// SessionResult.SessionStartContext is the FIRST SessionStart
+// hook_response's own decoded additionalContext.
+func TestParseSessionStream_SessionStartContextCaptured(t *testing.T) {
+	r, err := ParseSessionStream(filepath.Join(streamsDir, "hooks-fired.jsonl"))
+	if err != nil {
+		t.Fatalf("ParseSessionStream: %v", err)
+	}
+	if !strings.Contains(r.SessionStartContext, "is the indexed service") {
+		t.Errorf("SessionStartContext = %q, want it to contain %q", r.SessionStartContext, "is the indexed service")
+	}
+}
+
 // TestParseSessionStream_NoHookResponseLeavesHooksFiredNil mirrors
 // TestParseSessionStream_NoInitEventLeavesMCPServersNil: a transcript with
 // no hook_response event at all must report nil, never an empty-but-non-nil
@@ -202,6 +234,34 @@ func TestParseSessionStream_FinalAnswer(t *testing.T) {
 	}
 	if r.Error != "" {
 		t.Errorf("Error = %q, want empty", r.Error)
+	}
+	if r.AnswerFrom != "result" {
+		t.Errorf("AnswerFrom = %q, want %q", r.AnswerFrom, "result")
+	}
+}
+
+// TestParseSessionStream_FinalAnswerFallsBackToLastTextOnBudgetHit is O45
+// item 3: a session that stated its answer and THEN ran out of turns
+// (error_max_turns) must not score as blank — the terminal result event's
+// own "result" text is empty on error_max_turns, so FinalAnswer falls back
+// to the last assistant text block, and AnswerFrom records the fallback.
+func TestParseSessionStream_FinalAnswerFallsBackToLastTextOnBudgetHit(t *testing.T) {
+	r, err := ParseSessionStream(filepath.Join(streamsDir, "answer-budget-fallback.jsonl"))
+	if err != nil {
+		t.Fatalf("ParseSessionStream: %v", err)
+	}
+	const want = "The answer is fusion.New and also golden-test appear here."
+	if r.FinalAnswer != want {
+		t.Errorf("FinalAnswer = %q, want %q", r.FinalAnswer, want)
+	}
+	if r.AnswerFrom != "last_text" {
+		t.Errorf("AnswerFrom = %q, want %q", r.AnswerFrom, "last_text")
+	}
+	if !r.BudgetHit {
+		t.Error("expected BudgetHit true for an error_max_turns result")
+	}
+	if r.Error != "" {
+		t.Errorf("Error = %q, want empty (a turn-budget hand-off is not an error)", r.Error)
 	}
 }
 
