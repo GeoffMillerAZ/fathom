@@ -219,10 +219,12 @@ hooks are the conveyor that advances it without ceremony:
 
 Two hook opportunities deliberately HELD, with reasons:
 
-- **UserPromptSubmit** (exists in Claude Code) could match a prompt against
-  open threads and inject the relevant one mid-session. Held until phase X
-  can price it: it fires on every prompt, and an unbudgeted per-prompt
-  injection is the schema-tax mistake in a new costume.
+- **UserPromptSubmit** (exists in Claude Code): this hold is SUPERSEDED for
+  one narrow case — `fathom prompt-hook` now serves obligations for only
+  the paths, packages and symbols a prompt itself names, never a
+  thread-matching digest or any other general per-prompt injection. See
+  ADR-036 for the finding that forced this, the decision's exact scope,
+  and its revisit trigger.
 - **Per-edit plan-drift flags** (PostToolUse knows the file; verify knows
   which contracts anchor it) could warn "this edit touches plan row X"
   live. Held: the Stop hook's session-end verify already carries this at

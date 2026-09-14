@@ -52,12 +52,21 @@ var waveThreeHookSpecAdditions = []hookSpec{
 	{event: "Setup", matcher: "", marker: "fathom doctor --brief", sub: "doctor --brief", timeout: 15},
 }
 
+// promptHookSpecAddition is O57 items 4/5's two rows, appended after
+// waveThreeHookSpecAdditions for the same reason that group was appended
+// after the vision 26 §4 pair. internal/harness/harness_test.go carries
+// the registry-side twin.
+var promptHookSpecAddition = []hookSpec{
+	{event: "UserPromptSubmit", matcher: "", marker: "fathom prompt-hook", sub: "prompt-hook", timeout: 10},
+	{event: "PostToolUse", matcher: "Bash", marker: "fathom edit-hook", sub: "edit-hook", timeout: 5},
+}
+
 // TestHookSpecsForClaude pins HP-2: init, plugin render, reconcile and
 // doctor all read fathomHookSpecs, and fathomHookSpecs is now
 // hookSpecsFor("claude-code") — the pre-seam literal as a byte-identical
 // prefix, followed by the vision 26 §4 additions.
 func TestHookSpecsForClaude(t *testing.T) {
-	want := append(append(append([]hookSpec{}, preSeamFathomHookSpecs...), claimHookSpecAdditions...), waveThreeHookSpecAdditions...)
+	want := append(append(append(append([]hookSpec{}, preSeamFathomHookSpecs...), claimHookSpecAdditions...), waveThreeHookSpecAdditions...), promptHookSpecAddition...)
 	got := hookSpecsFor(harness.ClaudeCode)
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("hookSpecsFor(claude-code) drifted from the pre-seam table + the vision 26 §4 + wave 3 additions:\n got %+v\nwant %+v", got, want)

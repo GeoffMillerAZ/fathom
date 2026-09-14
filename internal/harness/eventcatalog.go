@@ -31,7 +31,13 @@ var claudeEventCatalog = []EventCatalogEntry{
 	{Event: "SessionStart", Wired: true},
 	{Event: "Setup", Wired: true},
 	{Event: "InstructionsLoaded", Wired: true},
-	{Event: "UserPromptSubmit", Wired: false, Reason: "fathom has nothing to add to a prompt it has not read: the session primer already carried the identity, and a per-prompt injection is the schema tax vision 21 refused. The pull tier (`fathom prime`) covers the case where a session wants it again"},
+	// Wired 2026-09-14 (O57 items 4/5): this row read "nothing true to add
+	// per prompt" until the guards pilot's second reading found the
+	// opposite — a prompt naming a concrete path, package or symbol has
+	// something true and specific to add (the rules governing exactly
+	// what it named), a materially different payload from the generic
+	// per-prompt injection vision 21 declined. fathom prompt-hook.
+	{Event: "UserPromptSubmit", Wired: true},
 	{Event: "UserPromptExpansion", Wired: false, Reason: reasonNoSignal},
 	{Event: "PreToolUse", Wired: true},
 	{Event: "PermissionRequest", Wired: false, Reason: reasonBlockOnly},

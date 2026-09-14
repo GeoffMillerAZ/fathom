@@ -111,6 +111,8 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return 1
 	case "edit-hook":
 		return cmdEditHook(args[1:], stdout, stderr)
+	case "prompt-hook":
+		return cmdPromptHook(args[1:], stdout, stderr)
 	case "instrument":
 		return cmdInstrument(args[1:], stdout, stderr)
 	case "observe":
