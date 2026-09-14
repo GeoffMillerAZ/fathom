@@ -103,6 +103,11 @@ fact by layer, judgment left to the review kit).
    was known" names `staleness_report`; "what governs this repository"
    is `obligations` with no path (root conventions); a doc-versus-doc
    contradiction is grep's, and the text says so.
+6. **A receipt a stranger can check without fathom** (VB-19/VB-20, vision
+   29 §3 wave E, ADR-035 decision 4): every edge-derived answer's envelope
+   carries a `resolution` tier mix and `index_commit`, and `fathom receipt
+   verify <receipt.json>` re-derives the claim from a bare git checkout
+   with go/types and git alone.
 
 ## 4. Receipts on the hand-off — discoveries
 

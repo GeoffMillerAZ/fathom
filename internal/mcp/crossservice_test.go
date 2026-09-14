@@ -163,6 +163,19 @@ func TestSymbolContext_CrossServiceCallees(t *testing.T) {
 			t.Errorf("cross-service callee leaked into same-service \"callees\": %v", callees)
 		}
 	}
+	// review F4 (VB-19): resolution must count the 3 cross-service
+	// callees too — every one heuristic, since no typed pass crosses a
+	// service boundary — not just the (empty) same-service tally.
+	resolution, ok := p["resolution"].(map[string]any)
+	if !ok {
+		t.Fatalf("resolution missing or wrong type: %v", p)
+	}
+	if typed, _ := resolution["typed"].(float64); typed != 0 {
+		t.Errorf("resolution.typed = %v, want 0", resolution["typed"])
+	}
+	if heuristic, _ := resolution["heuristic"].(float64); heuristic != 3 {
+		t.Errorf("resolution.heuristic = %v, want 3 (the 3 cross-service callees, same-service tally is empty)", resolution["heuristic"])
+	}
 }
 
 // ─── find_callers: cross-service callers ──────────────────────────────────────

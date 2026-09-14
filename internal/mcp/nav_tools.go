@@ -17,6 +17,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/complexity"
 	"github.com/geoffmilleraz/fathom/internal/analysis/godobject"
 	"github.com/geoffmilleraz/fathom/internal/analysis/symbolnav"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // registerNavTools is called from registerTools (tools.go). fleet may be
@@ -153,6 +154,41 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 			result["elision"] = line
 		}
 
+		// resolution (VB-19, docs/vision/29-verbs-not-lookups.md §3 wave E):
+		// the typed/heuristic mix behind exactly the "callers" and
+		// "callees" this response returned (post-budget), tallied from a
+		// graph augmented with typed edges (best-effort — a non-Go service
+		// or one with no typed edges tallies every row heuristic). typed
+		// is fetched ONCE and reused below for typed_edges too (review F5
+		// — this handler previously called backend.TypedEdges twice).
+		typedEdges, typedErr := backend.TypedEdges(ctx, p.Service)
+		var mix resolutionMix
+		var tg *callgraph.Graph
+		if typedErr == nil && len(typedEdges) > 0 {
+			tg = callgraph.Build(nodes)
+			callgraph.AddTypedEdges(tg, typedEdges)
+		} else {
+			tg = g
+		}
+		kindOf := func(details []callgraph.EdgeInfo) map[string]core.EdgeKind {
+			m := make(map[string]core.EdgeKind, len(details))
+			for _, d := range details {
+				m[d.Key] = d.Kind
+			}
+			return m
+		}
+		callerKinds := kindOf(callgraph.CallersDetail(tg, p.Symbol))
+		calleeKinds := kindOf(callgraph.CalleesDetail(tg, p.Symbol))
+		for _, k := range callers {
+			mix.addKind(callerKinds[k])
+		}
+		for _, k := range callees {
+			mix.addKind(calleeKinds[k])
+		}
+		if ic := indexCommitFor(ctx, backend, p.Service); ic != "" {
+			result["index_commit"] = ic
+		}
+
 		// Inline definition snippet (T5-6): additive, honest-absence field —
 		// omitted (never faked) when the definition has no file/line, its
 		// source is not retrievable (no ServiceMeta corpus root, file
@@ -175,14 +211,13 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 			}
 		}
 
-		// Typed Go call edges (ADR-021 §3): kind-labeled callers/callees on a
-		// SEPARATE graph (never mutating g/sctx above, so the existing
-		// syntax-only "callers"/"callees" fields keep their exact contract).
-		// Best-effort — a non-Go service, or one with no typed edges yet,
-		// simply omits this field.
-		if typed, tErr := backend.TypedEdges(ctx, p.Service); tErr == nil && len(typed) > 0 {
-			tg := callgraph.Build(nodes)
-			callgraph.AddTypedEdges(tg, typed)
+		// Typed Go call edges (ADR-021 §3): kind-labeled callers/callees,
+		// read from the SAME typed-augmented graph (tg) the resolution
+		// tally above already built — never mutating g/sctx, so the
+		// existing syntax-only "callers"/"callees" fields keep their exact
+		// contract. Best-effort — a non-Go service, or one with no typed
+		// edges yet, simply omits this field.
+		if len(typedEdges) > 0 {
 			if edges := typedEdgeContext(tg, p.Symbol); edges != nil {
 				result["typed_edges"] = edges
 			}
@@ -206,14 +241,24 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 		// are never silently merged; each cross-service hit also carries
 		// an explicit "scope":"cross-service" tag. nil fleet or no
 		// cross-service hits omit the fields entirely.
+		// resolution (review F4): cross-service hits count too, every one
+		// heuristic — no typed pass crosses a process boundary today
+		// (ADR-021 is Go-only within one service; vision 29 §1 R7, VB-30's
+		// service_ref edges are still a future wave), so a cross-service
+		// callee/caller can never be anything but heuristic evidence. This
+		// runs AFTER cross_service_callees/callers below are computed so
+		// the mix always matches every row this response actually returns.
 		if sctx.Def.Name != "" {
 			if callees := crossServiceCallees(fleet, p.Service, sctx.Def); len(callees) > 0 {
 				result["cross_service_callees"] = callees
+				mix.Heuristic += len(callees)
 			}
 		}
 		if callers := crossServiceCallers(fleet, p.Service, p.Symbol); len(callers) > 0 {
 			result["cross_service_callers"] = callers
+			mix.Heuristic += len(callers)
 		}
+		result["resolution"] = mix
 		return result, nil
 	})
 }

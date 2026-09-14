@@ -192,7 +192,7 @@ func TestOutputSchemaGeneration(t *testing.T) {
 		t.Errorf("find_callers schema properties = %v", props)
 	}
 	req := s["required"].([]string)
-	if strings.Join(req, ",") != "by_depth,callers" {
+	if strings.Join(req, ",") != "by_depth,callers,resolution" {
 		t.Errorf("required = %v (omitempty fields must be optional, required sorted)", req)
 	}
 	// SB-47: find_callers' "callers" items are the compact callerEntry wire
@@ -210,7 +210,7 @@ func TestOutputSchemaGeneration(t *testing.T) {
 		t.Errorf("embedded struct fields not inlined: %v", ms)
 	}
 	// Validator sanity.
-	if msg := validateAgainstSchema("$", s, map[string]any{"callers": []any{}, "by_depth": []any{}}); msg != "" {
+	if msg := validateAgainstSchema("$", s, map[string]any{"callers": []any{}, "by_depth": []any{}, "resolution": map[string]any{"typed": float64(0), "heuristic": float64(0)}}); msg != "" {
 		t.Errorf("conforming value rejected: %s", msg)
 	}
 	if msg := validateAgainstSchema("$", s, map[string]any{"callers": "nope"}); msg == "" {

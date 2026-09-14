@@ -52,6 +52,12 @@ type findCallersResult struct {
 	ScopeRequired bool           `json:"scope_required,omitempty"`
 	TopPackages   []packageCount `json:"top_packages,omitempty"`
 	Message       string         `json:"message,omitempty"`
+	// Resolution/IndexCommit (VB-19, docs/vision/29-verbs-not-lookups.md §3
+	// wave E): the typed/heuristic mix behind callers+transitive_callers,
+	// and the daemon's watermark for the service (omitted when the
+	// backend cannot name one).
+	Resolution  resolutionMix `json:"resolution"`
+	IndexCommit string        `json:"index_commit,omitempty"`
 }
 
 // typedEdgeRef is one kind-labeled typed edge ({key, kind}).
@@ -172,6 +178,11 @@ type referencesResult struct {
 	// declares (interfaceMethodQuery) — the implementing types, ahead of
 	// occurrences, reusing find_symbol's implementationEntry shape.
 	Implementations []implementationEntry `json:"implementations,omitempty"`
+	// Resolution/IndexCommit (VB-19): the typed/heuristic mix behind
+	// definitions+occurrences, and the commit every scanned service shares
+	// (omitted on a mixed-commit fleet-wide scan).
+	Resolution  resolutionMix `json:"resolution"`
+	IndexCommit string        `json:"index_commit,omitempty"`
 }
 
 // referenceDegradedService is one references degraded-service row (O36,
@@ -241,6 +252,10 @@ type symbolContextResult struct {
 	// Elision (RC-19): present only when fitToolBudget cut "callers" or
 	// "callees".
 	Elision string `json:"elision,omitempty"`
+	// Resolution/IndexCommit (VB-19): the typed/heuristic mix behind
+	// callers+callees (post-elision), and the daemon's watermark.
+	Resolution  resolutionMix `json:"resolution"`
+	IndexCommit string        `json:"index_commit,omitempty"`
 }
 
 type verifyPlanResult struct {
@@ -270,11 +285,19 @@ type verifyPlanTask struct {
 // renameImpactResult mirrors rename_impact's payload (analysis_tools.go).
 type renameImpactResult struct {
 	Callers []string `json:"callers"`
+	// Resolution/IndexCommit (VB-19): the typed/heuristic mix behind
+	// callers, and the daemon's watermark for the service.
+	Resolution  resolutionMix `json:"resolution"`
+	IndexCommit string        `json:"index_commit,omitempty"`
 }
 
 // testImpactResult mirrors test_impact's payload (analysis_tools.go).
 type testImpactResult struct {
 	Tests []string `json:"tests"`
+	// Resolution/IndexCommit (VB-19): the typed/heuristic mix behind
+	// tests, and the daemon's watermark for the service.
+	Resolution  resolutionMix `json:"resolution"`
+	IndexCommit string        `json:"index_commit,omitempty"`
 }
 
 // blastRadiusResult mirrors blast_radius' payload (extra_tools.go).
@@ -288,6 +311,10 @@ type blastRadiusResult struct {
 	DepthCapped  bool          `json:"depth_capped"`
 	MaxDepth     int           `json:"max_depth"`
 	ByDepth      []blastBucket `json:"by_depth"`
+	// Resolution/IndexCommit (VB-19): the typed/heuristic mix behind
+	// by_depth, and the daemon's watermark for the service.
+	Resolution  resolutionMix `json:"resolution"`
+	IndexCommit string        `json:"index_commit,omitempty"`
 }
 
 // reviewDiffResult mirrors review_diff's payload (review_tool.go): the
@@ -304,6 +331,10 @@ type reviewDiffResult struct {
 	FindingsPersisted bool     `json:"findings_persisted"`
 	VerdictOutcome    any      `json:"verdict_outcome,omitempty"`
 	TestImpact        any      `json:"test_impact"`
+	// Resolution/IndexCommit (VB-19): the typed/heuristic mix behind the
+	// impact dimension's blast radius, and the daemon's watermark.
+	Resolution  resolutionMix `json:"resolution"`
+	IndexCommit string        `json:"index_commit,omitempty"`
 }
 
 // safeDeleteCheckResult mirrors safe_delete_check's payload (safe_delete.go).
@@ -313,6 +344,9 @@ type safeDeleteCheckResult struct {
 	CheckedEdges  string               `json:"checked_edges"`
 	TestReferents []safeDeleteReferent `json:"test_referents,omitempty"`
 	IndexCommit   string               `json:"index_commit,omitempty"`
+	// Resolution (VB-19, docs/vision/29-verbs-not-lookups.md §3 wave E):
+	// the typed/heuristic mix behind referents+test_referents.
+	Resolution resolutionMix `json:"resolution"`
 }
 
 type capabilitiesResult struct {

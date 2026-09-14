@@ -242,6 +242,7 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 				"callers":        []any{},
 				"edge_filter":    edgeFilter,
 				"by_depth":       []any{},
+				"resolution":     resolutionMix{},
 				"scope_required": true,
 				"count":          sum.Count,
 				"top_packages":   sum.TopPackages,
@@ -287,6 +288,17 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 		// budget line at all before this row.
 		var elidedCount int
 		wireCallers, elidedCount = fitToolBudget(wireCallers, defaultCharBudget)
+		// infos and wireCallers were built 1:1 from the SAME "callers"
+		// order above, and fitToBudget's own contract is a deterministic
+		// PREFIX — never a reordering or arbitrary subset — so trimming
+		// infos to the survivors' length keeps by_depth/resolution
+		// describing exactly the depth-1 rows this response returns,
+		// never a wider set the budget already cut (the same discipline
+		// blastBucketsOf's `include` filter and references_tool.go's own
+		// post-elision infos already apply). transitive_callers (added
+		// below) is never itself budgeted, so its own infos entries
+		// already match what it returns.
+		infos = infos[:len(wireCallers)]
 		result := map[string]any{"callers": wireCallers, "edge_filter": edgeFilter}
 		if line := elisionLine(elidedCount, "package or file"); line != "" {
 			result["elision"] = line
@@ -313,7 +325,8 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 			}
 			result["transitive_callers"] = sortedDepthRows(transitive)
 		}
-		result["by_depth"] = withDepthBuckets(infos)
+		byDepth := withDepthBuckets(infos)
+		result["by_depth"] = byDepth
 
 		// Typed Go call edges (ADR-021 §3): kind-labeled callers, including
 		// any reachable ONLY via typed dispatch — never visible in the
@@ -323,6 +336,16 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 		// simply omits this field.
 		if typedCallers := typedCallersFor(g, p.Symbol); len(typedCallers) > 0 {
 			result["typed_callers"] = typedCallers
+		}
+
+		// resolution/index_commit (VB-19, docs/vision/29-verbs-not-lookups.md
+		// §3 wave E): the typed/heuristic mix is the same tally by_depth
+		// above already carries (infos) — every fact returned in
+		// "callers"/"transitive_callers" — plus the daemon's watermark for
+		// the service, when the backend can name one.
+		result["resolution"] = resolutionFromDepthBuckets(byDepth)
+		if ic := indexCommitFor(ctx, backend, p.Service); ic != "" {
+			result["index_commit"] = ic
 		}
 
 		// Cross-service callers (P1-2, closing O12(a)): the QueryInterface

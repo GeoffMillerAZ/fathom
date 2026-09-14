@@ -97,6 +97,7 @@ func registerSafeDeleteCheck(s *Server, backend QueryInterface) {
 
 		referents := []safeDeleteReferent{}
 		var testReferents []safeDeleteReferent
+		var mix resolutionMix
 		for key, conf := range tierOf {
 			n, ok := byKey[key]
 			if !ok {
@@ -111,6 +112,7 @@ func registerSafeDeleteCheck(s *Server, backend QueryInterface) {
 				continue
 			}
 			r := safeDeleteReferent{File: n.FilePath, Line: n.Line, Symbol: n.Name, Tier: tierLabel(conf)}
+			mix.addConfidence(core.EdgeConfidence(conf))
 			if strings.HasPrefix(n.Name, "Test") {
 				testReferents = append(testReferents, r)
 			} else {
@@ -127,6 +129,11 @@ func registerSafeDeleteCheck(s *Server, backend QueryInterface) {
 				tier = "typed"
 			}
 			referents = append(referents, safeDeleteReferent{File: im.FilePath, Line: im.Line, Symbol: im.Name, Tier: tier})
+			if tier == "typed" {
+				mix.Typed++
+			} else {
+				mix.Heuristic++
+			}
 		}
 
 		sortSafeDeleteReferents(referents)
@@ -151,10 +158,14 @@ func registerSafeDeleteCheck(s *Server, backend QueryInterface) {
 		// name one) anchors it to a commit a stranger can re-derive
 		// against. Always the same three fields either way, never a
 		// field that changes shape between zero and non-zero.
+		// resolution (VB-19): the typed/heuristic mix behind referents +
+		// test_referents (interface implementers included) — always
+		// present, even {0,0} on a proven-zero answer.
 		resp := map[string]any{
 			"referents":      referents,
 			"referent_count": len(referents),
 			"checked_edges":  checkedEdges,
+			"resolution":     mix,
 		}
 		if len(testReferents) > 0 {
 			resp["test_referents"] = testReferents

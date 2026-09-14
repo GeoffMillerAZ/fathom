@@ -1260,6 +1260,49 @@ the deterministic-oracle findings to the claims store unless `--no-persist`
 excess it prints a named skip and exits 0; it requires `--no-persist` (a
 bounded run must never be a store writer).
 
+### `receipt` — a stranger's re-derivation (VB-20)
+
+```sh
+fathom receipt verify [--repo <path>] <receipt.json>
+```
+
+Flags precede the positional argument (Go's `flag` package stops parsing
+flags at the first bare argument, the same convention `fleet undo` already
+uses) — `--repo` before `<receipt.json>`, never after.
+
+Re-derives a saved agent-surface answer's claim from a bare checkout of the
+receipt's own `index_commit` (the envelope field VB-19 adds to `find_callers`,
+`references`, `blast_radius`, `symbol_context`, `safe_delete_check`,
+`rename_impact`, `test_impact` and `review_diff`) using
+`golang.org/x/tools/go/packages` and `git` alone — it never opens `internal/
+mcp`, a fathom store, or the daemon, so a stranger with the Go toolchain and
+this repository's git history gets the same verdict fathom's own gate does
+(ADR-034 receipts; ADR-035 decision 4, `docs/vision/29-verbs-not-lookups.md`
+§3 wave E).
+
+A receipt is a small JSON file the caller saves from an answer's envelope —
+`kind` (`callers` | `references` | `symbol_location`), the queried `symbol`
+(bare name or `Recv.Method` — go/types' own vocabulary), `index_commit`, and
+the facts to check (`callers`, `files`, or `file`/`line`):
+
+```json
+{
+  "kind": "callers",
+  "tool": "find_callers",
+  "symbol": "validateCharge",
+  "index_commit": "a1b2c3d...",
+  "callers": ["Charge"]
+}
+```
+
+`--repo` names the git checkout to `git archive` from (default: the current
+directory). Exit codes: **0** the claim reproduced; **1** it did not — stdout
+names the difference (a missing/extra caller, a file no longer mentioning the
+symbol, a moved definition line); **2** it could not run at all — no git
+repository at `--repo`, the commit is missing, the checkout has no `go.mod`,
+or the receipt file is missing/invalid — an operational refusal, never a
+false pass or fail.
+
 ### `gen-plan-cue`
 
 ```sh

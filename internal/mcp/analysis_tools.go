@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // registerAnalysisTools is called from registerTools (tools.go) and adds the
@@ -76,13 +77,37 @@ func registerRenameImpact(s *Server, backend QueryInterface) {
 		if p.Symbol == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "rename_impact: symbol required"}
 		}
-		g, rpcErr := buildGraph(ctx, backend, p.Service)
-		if rpcErr != nil {
-			return nil, rpcErr
+		nodes, err := backend.ListAllSymbols(ctx, p.Service)
+		if err != nil {
+			return nil, &rpcError{Code: ErrCodeInternal, Message: "list symbols: " + err.Error()}
 		}
+		g := callgraph.Build(nodes)
 		callers := callgraph.RenameImpact(g, p.Symbol)
+
+		// resolution/index_commit (VB-19, docs/vision/29-verbs-not-lookups.md
+		// §3 wave E): tally each RETURNED caller's tier against a SEPARATE
+		// typed-edge-augmented graph — never the one RenameImpact itself
+		// walked, since AddTypedEdges can introduce callers the syntax pass
+		// never had (BP-26) and rename_impact's caller SET must stay
+		// exactly what it always was; only the tier annotation is additive.
+		typed, _ := backend.TypedEdges(ctx, p.Service)
+		tg := callgraph.Build(nodes)
+		callgraph.AddTypedEdges(tg, typed)
+		kinds := make(map[string]core.EdgeKind, len(callers))
+		for _, d := range callgraph.CallersDetail(tg, p.Symbol) {
+			kinds[d.Key] = d.Kind
+		}
+		var mix resolutionMix
+		for _, c := range callers {
+			mix.addKind(kinds[c])
+		}
+
 		// Return as []any so JSON serialises to an array of strings.
-		return map[string]any{"callers": stringsToAny(callers)}, nil
+		result := map[string]any{"callers": stringsToAny(callers), "resolution": mix}
+		if ic := indexCommitFor(ctx, backend, p.Service); ic != "" {
+			result["index_commit"] = ic
+		}
+		return result, nil
 	})
 }
 
@@ -178,12 +203,38 @@ func registerTestImpact(s *Server, backend QueryInterface) {
 		if p.Symbol == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "test_impact: symbol required"}
 		}
-		g, rpcErr := buildGraph(ctx, backend, p.Service)
-		if rpcErr != nil {
-			return nil, rpcErr
+		nodes, err := backend.ListAllSymbols(ctx, p.Service)
+		if err != nil {
+			return nil, &rpcError{Code: ErrCodeInternal, Message: "list symbols: " + err.Error()}
 		}
+		g := callgraph.Build(nodes)
 		tests := callgraph.TestImpact(g, p.Symbol)
-		return map[string]any{"tests": stringsToAny(tests)}, nil
+
+		// resolution/index_commit (VB-19, docs/vision/29-verbs-not-lookups.md
+		// §3 wave E): tally each RETURNED test's tier — the confidence of
+		// the edge it was first reached through, callerDepths' own BD-2
+		// semantics — against a SEPARATE typed-edge-augmented graph, never
+		// the one TestImpact itself walked (AddTypedEdges can introduce
+		// reachability the syntax pass never had, BP-26); test_impact's
+		// returned SET must stay exactly what it always was.
+		typed, _ := backend.TypedEdges(ctx, p.Service)
+		tg := callgraph.Build(nodes)
+		callgraph.AddTypedEdges(tg, typed)
+		infos := callerDepths(tg, p.Symbol, 0)
+		var mix resolutionMix
+		for _, t := range tests {
+			if info, ok := infos[t]; ok {
+				mix.addConfidence(info.Confidence)
+			} else {
+				mix.Heuristic++
+			}
+		}
+
+		result := map[string]any{"tests": stringsToAny(tests), "resolution": mix}
+		if ic := indexCommitFor(ctx, backend, p.Service); ic != "" {
+			result["index_commit"] = ic
+		}
+		return result, nil
 	})
 }
 
