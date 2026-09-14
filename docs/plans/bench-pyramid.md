@@ -35,7 +35,7 @@ Verify: `fathom verify --service fathom --plan docs/plans/bench-pyramid.md`.
 ## L1 — payload replay (free)
 
 - [x] `internal/indexbench/replay`: a committed list of (tool, args) against the fixture store with golden `bytes`, `result_count` and a latency budget; `obligations` on fixture files first, then `find_callers`, `references`, `blast_radius`, `symbol_context`, `pack_context`, `repo_map` (`ReplayGolden`) {id: BP-15, symbol: ReplayGolden, package: internal/indexbench}
-- [x] `TestPayloadReplayMatchesGolden` in `task validate`; a byte-count growth over 10% or a `displaced` count on any fixture file is a failing test naming the tool {id: BP-16, symbol: TestPayloadReplayMatchesGolden, package: internal/indexbench, skip_test: true, skip: "the test is the anchor"}
+- [x] `TestPayloadReplay` in `task validate` (VB-7 refactored `TestPayloadReplayMatchesGolden` onto it, 2026-09-14); a byte drift over 5% or a `displaced` count on any fixture file is a failing test naming the tool {id: BP-16, symbol: TestPayloadReplay, package: internal/indexbench, skip_test: true, skip: "the test is the anchor"}
 
 ## The fixes the bench found (D1, D2, D3, D5 of the design)
 
