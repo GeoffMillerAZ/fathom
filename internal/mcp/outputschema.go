@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/semantic"
 )
 
 // ─── output schemas (RP-11, docs/plans/reach-parity.md) ─────────────────────
@@ -103,22 +104,30 @@ type listServicesEntry struct {
 }
 
 type obligationsResult struct {
-	Service             string `json:"service"`
-	File                string `json:"file,omitempty"`
-	Rules               []any  `json:"rules,omitempty"`
-	CompiledAtWatermark string `json:"compiled_at_watermark,omitempty"`
-	Displaced           int    `json:"displaced,omitempty"`
-	DisplacedRepo       int    `json:"displaced_repo,omitempty"`
-	DisplacedModule     int    `json:"displaced_module,omitempty"`
-	ModuleNotes         []any  `json:"module_notes,omitempty"`
-	IndexStale          bool   `json:"index_stale,omitempty"`
-	ClaimID             string `json:"claim_id,omitempty"`
-	Action              string `json:"action,omitempty"`
+	Service             string         `json:"service"`
+	File                string         `json:"file,omitempty"`
+	Rules               []any          `json:"rules,omitempty"`
+	CompiledAtWatermark string         `json:"compiled_at_watermark,omitempty"`
+	Displaced           int            `json:"displaced,omitempty"`
+	DisplacedByTier     map[string]int `json:"displaced_by_tier,omitempty"`
+	DisplacedRepo       int            `json:"displaced_repo,omitempty"`
+	DisplacedModule     int            `json:"displaced_module,omitempty"`
+	ModuleNotes         []any          `json:"module_notes,omitempty"`
+	IndexStale          bool           `json:"index_stale,omitempty"`
+	ClaimID             string         `json:"claim_id,omitempty"`
+	Action              string         `json:"action,omitempty"`
 	// Root/Note (RC-22, docs/vision/28-receipts.md §3.5): present only on a
 	// fileless call — "what governs this repository" — never together with
-	// File, which the handler omits (empty) for that same call.
+	// File, which the handler omits (empty) for that same call. Note is
+	// ALSO O54 deliverable 2's coverage note (mutually exclusive with the
+	// root-scope note — see renderObligationReceipt's doc comment).
 	Root bool   `json:"root,omitempty"`
 	Note string `json:"note,omitempty"`
+	// LayerCoverage is O54 deliverable 2: the obligations layer's LATEST
+	// compile run completeness, present whenever the backend can report it
+	// (layerCoverageBackend) — absent for a backend that cannot (an older
+	// module, a minimal test fake), never a fabricated full-coverage claim.
+	LayerCoverage *semantic.LayerCoverage `json:"layer_coverage,omitempty"`
 }
 
 type packContextResult struct {

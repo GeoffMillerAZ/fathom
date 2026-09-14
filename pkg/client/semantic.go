@@ -107,6 +107,31 @@ func (c *Client) CompileLayer(ctx context.Context, service, layerName string, dr
 // compile_runs" audit trail both flags' kill criteria count against. Pass ""
 // for a normal run (CompileLayer's contract, unchanged).
 func (c *Client) CompileLayerWithEscape(ctx context.Context, service, layerName string, dryRun bool, escape string) (core.CompileRun, error) {
+	return c.compileLayer(ctx, service, layerName, dryRun, escape, false)
+}
+
+// CompileLayerResume is O54 deliverable 3 (`fathom compile --layer
+// obligations --continue`): CompileLayerWithEscape with
+// semantic.CompileInput.Resume wired true — see that field's doc comment.
+// A budget-stopped layer at a fixed max_tokens_per_run otherwise refuses at
+// the PRE-FLIGHT gate forever once the remaining corpus alone estimates
+// over budget; this skips that refusal so the SAME per-run budget keeps
+// making incremental progress call over call, the mid-run gate capping
+// each call exactly as it always has. The returned CompileRun's
+// ResumedFrom names the first not-yet-compiled section this call picked up
+// from.
+func (c *Client) CompileLayerResume(ctx context.Context, service, layerName string, dryRun bool, escape string) (core.CompileRun, error) {
+	return c.compileLayer(ctx, service, layerName, dryRun, escape, true)
+}
+
+// ObligationsLayerCoverage reports the obligations layer's LATEST compile
+// run completeness for service (O54 deliverable 2) — see
+// semantic.ObligationsLayerCoverage.
+func (c *Client) ObligationsLayerCoverage(ctx context.Context, service string) (semantic.LayerCoverage, bool, error) {
+	return semantic.ObligationsLayerCoverage(ctx, c.st, service, semantic.LayerObligations)
+}
+
+func (c *Client) compileLayer(ctx context.Context, service, layerName string, dryRun bool, escape string, resume bool) (core.CompileRun, error) {
 	if !dryRun && c.llm == nil {
 		return core.CompileRun{}, fmt.Errorf("client: no LLM configured for CompileLayer (set ANTHROPIC_API_KEY and call WithLLM, or use dry_run:true to estimate cost)")
 	}
@@ -172,6 +197,7 @@ func (c *Client) CompileLayerWithEscape(ctx context.Context, service, layerName 
 		Watermark:    watermark,
 		DryRun:       dryRun,
 		Escape:       escape,
+		Resume:       resume,
 	})
 }
 
