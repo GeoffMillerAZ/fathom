@@ -241,29 +241,36 @@ func runPlannerWorkers(ctx context.Context, h Harness, task Task, armName string
 	// M5 measures the feature, not the prompt.
 	brief, pointers := workerDiscoveryBrief(ctx, wt, arm, sessionStart)
 
-	// O55 item 3: one plan row per worker, never reassigned, left every row
-	// past task.Sessions.Workers permanently unchecked. Both arms share
-	// this loop — nothing here is arm-conditional. A worker session is
-	// followed by a new worker session on the NEXT unchecked row (re-read
-	// every iteration, since a worker's own session may have checked rows
-	// besides its own) until either no unchecked row remains or maxTotal
-	// worker sessions have run. The row this iteration assigns is marked
-	// done in the plan file right after its session returns — scheduling
-	// bookkeeping only, never a completion claim: FalseDoneRate/
-	// PlanCoverage read BoxChecks off the session TRANSCRIPT, never this
-	// file's own content, so marking a row here cannot manufacture a false
-	// claim — it only keeps readPlanRows from handing the same row to a
-	// second worker.
+	// O55 item 3 (fix-first review, 2026-09-14): one plan row per worker,
+	// never reassigned, left every row past task.Sessions.Workers
+	// permanently unchecked. Both arms share this loop — nothing here is
+	// arm-conditional. THE DRIVER NEVER WRITES INTO THE AGENT'S OWN PLAN
+	// FILE: the worker prompt (workerRowPromptFmt) itself instructs the
+	// agent to mark its own row `[x]` when done, and a first attempt at
+	// this fix had runPlannerWorkers ALSO rewrite that same box afterward
+	// — a worker that faithfully did what it was told left no `- [ ]`
+	// line left to rewrite, markPlanRowDone errored, and that error was
+	// not errSubjectPrep, so `scenariobench run` hard-exited 2 and
+	// discarded every other cell in the invocation. Assignment is tracked
+	// IN MEMORY instead (assignedCount, nextUnassignedRow): a row the
+	// worker checked itself simply stops appearing in readPlanRows' own
+	// unchecked list on the next iteration; a row that stays unchecked
+	// (the worker never checked it, or ran under a harness — FakeHarness —
+	// that never touches disk at all) is still never handed to a SECOND
+	// worker, because it is already counted as assigned. No plan-file
+	// write, no error path.
+	assignedCount := map[string]int{}
 	assigned := 0
 	for assigned < maxTotal {
 		rows, err := readPlanRows(wt.Path)
 		if err != nil {
 			return results, fmt.Errorf("task %s arm %s: reading the planner's plan file: %w", task.ID, armName, err)
 		}
-		if len(rows) == 0 {
+		row, ok := nextUnassignedRow(rows, assignedCount)
+		if !ok {
 			break
 		}
-		row := rows[0]
+		assignedCount[row.text]++
 		assigned++
 		rowID := row.id
 		if rowID == "" {
@@ -285,9 +292,6 @@ func runPlannerWorkers(ctx context.Context, h Harness, task Task, armName string
 			factsReusedHook(&res, pointers)
 		}
 		results = append(results, res)
-		if err := markPlanRowDone(wt.Path, row); err != nil {
-			return results, fmt.Errorf("task %s arm %s: marking row %s done: %w", task.ID, armName, rowID, err)
-		}
 		if res.Error != "" {
 			return results, nil
 		}
@@ -295,34 +299,22 @@ func runPlannerWorkers(ctx context.Context, h Harness, task Task, armName string
 	return results, nil
 }
 
-// markPlanRowDone flips row's own checklist line in its plan file (row.file,
-// worktree-relative, as readPlanRows recorded it) from `- [ ]` to `- [x]` —
-// O55 item 3's reassignment bookkeeping: the FIRST line whose captured text
-// (via planRowRE, the same parse readPlanRows uses) equals row.text exactly,
-// so two identical row texts are disambiguated by file order, never by
-// content. This is scheduling state only, read by nothing but the next
-// readPlanRows call in this same loop — it is not, and must never become, a
-// completion claim (see runPlannerWorkers' own comment).
-func markPlanRowDone(worktree string, row planRow) error {
-	path := filepath.Join(worktree, filepath.FromSlash(row.file))
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return fmt.Errorf("reading plan file %s: %w", path, err)
-	}
-	lines := strings.Split(string(raw), "\n")
-	for i, line := range lines {
-		m := planRowRE.FindStringSubmatch(line)
-		if m == nil || strings.TrimSpace(m[1]) != row.text {
-			continue
+// nextUnassignedRow returns the first row among rows (already
+// unchecked-only, in file order — readPlanRows) whose own occurrence,
+// among rows sharing its exact text, has not yet been claimed by
+// assignedCount — so two rows with identical text are disambiguated by
+// position, never conflated with a row already handed to a worker. false
+// when every row in rows has already been assigned (nothing left to do,
+// whether because it was checked off or merely already attempted).
+func nextUnassignedRow(rows []planRow, assignedCount map[string]int) (planRow, bool) {
+	seen := map[string]int{}
+	for _, r := range rows {
+		seen[r.text]++
+		if seen[r.text] > assignedCount[r.text] {
+			return r, true
 		}
-		idx := strings.Index(line, "[ ]")
-		if idx < 0 {
-			continue
-		}
-		lines[i] = line[:idx] + "[x]" + line[idx+3:]
-		return os.WriteFile(path, []byte(strings.Join(lines, "\n")), 0o644)
 	}
-	return fmt.Errorf("plan row %q not found verbatim in %s", row.text, path)
+	return planRow{}, false
 }
 
 // RemainingPlanRows reports how many of a plan file's rows are still
