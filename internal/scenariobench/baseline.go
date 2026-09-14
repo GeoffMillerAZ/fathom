@@ -5,19 +5,29 @@
 // live index, measuring an arm that was never supposed to have fathom
 // available at all. Two mechanisms close it: constructing a session
 // environment for every non-wired arm that cannot reach fathom even if
-// invoked (baselinePathExcludingFathom, unroutableFathomURL — wired into
+// invoked (a `fathom` SHIM on PATH, unroutableFathomURL — wired into
 // sessionEnv, sessions.go), and a post-session scan that proves isolation
 // actually held (BaselineRanFathomScan) rather than trusting it on faith.
+//
+// Fix-first review (wave-n1): the first version of the PATH half
+// (baselinePathExcludingFathom) dropped every PATH directory that
+// contained a file named "fathom" — blunt enough to also drop any OTHER
+// tool sharing that directory (a dev machine's ~/bin holding both
+// `fathom` and `claude`, say), breaking the very session it was meant to
+// isolate. A shim replaces it: a per-cell directory holding nothing but
+// an executable `fathom` that refuses and exits 127, prepended to PATH —
+// every other directory (and every other tool in it) stays exactly where
+// it was.
 package scenariobench
 
 import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
-	"strings"
 )
 
 // unroutableFathomURL is what FATHOM_HTTP/FATHOM_HTTP_URL are pinned to
@@ -29,30 +39,47 @@ import (
 // default localhost:7575.
 const unroutableFathomURL = "http://127.0.0.1:1"
 
-// baselinePathExcludingFathom returns currentPath (a PATH-shaped,
-// os.PathListSeparator-joined value) with every directory removed that
-// either equals cellBinDir (a wired cell's own binary lives there;
-// excluded defensively for every arm, even though wireScratchDaemon execs
-// it by absolute path, never through PATH) or itself contains a file
-// literally named "fathom" — so a non-wired arm's session can never
-// resolve a bare `fathom` invocation to a real binary, however it reached
-// PATH (the operator's shell, a Go bin directory, a previous cell's
-// build).
-func baselinePathExcludingFathom(currentPath, cellBinDir string) string {
-	var kept []string
-	for _, dir := range filepath.SplitList(currentPath) {
-		if dir == "" {
-			continue
-		}
-		if cellBinDir != "" && dir == cellBinDir {
-			continue
-		}
-		if _, err := os.Stat(filepath.Join(dir, "fathom")); err == nil {
-			continue
-		}
-		kept = append(kept, dir)
+// fathomShimRefusal is both the shim script's own stderr line and the
+// text BaselineRanFathomScan-adjacent tooling can grep a session's
+// transcript for to confirm the shim (not a real binary) is what
+// answered.
+const fathomShimRefusal = "fathom is not available to this arm (scenariobench baseline isolation)"
+
+// fathomShimScript is the executable placed at <shimDir>/fathom for
+// every non-wired arm's session: refuse loudly (stderr) and exit 127 —
+// the shell's own "command not found" convention — so a bare `fathom`
+// invocation fails fast and distinguishably, never silently succeeding
+// against a real binary and never merely timing out against nothing.
+const fathomShimScript = "#!/bin/sh\n" +
+	"echo '" + fathomShimRefusal + "' >&2\n" +
+	"exit 127\n"
+
+// installFathomShim writes the fathom shim executable into shimDir
+// (creating the directory if needed) and returns shimDir for the caller
+// to prepend to PATH. Idempotent — re-installing (a retried session, a
+// re-run of the same cell) just overwrites the same file with the same
+// bytes.
+func installFathomShim(shimDir string) (string, error) {
+	if err := os.MkdirAll(shimDir, 0o755); err != nil {
+		return "", fmt.Errorf("baseline isolation: creating shim dir %s: %w", shimDir, err)
 	}
-	return strings.Join(kept, string(os.PathListSeparator))
+	path := filepath.Join(shimDir, "fathom")
+	if err := os.WriteFile(path, []byte(fathomShimScript), 0o755); err != nil {
+		return "", fmt.Errorf("baseline isolation: writing fathom shim %s: %w", path, err)
+	}
+	return shimDir, nil
+}
+
+// baselinePathWithFathomShim returns currentPath with shimDir PREPENDED —
+// so PATH resolution finds the shim's own `fathom` before any real one
+// that might sit later in PATH — leaving every other directory (and every
+// other tool in it) exactly where it was. "" currentPath is the edge
+// case of a session with no inherited PATH at all: shimDir alone.
+func baselinePathWithFathomShim(currentPath, shimDir string) string {
+	if currentPath == "" {
+		return shimDir
+	}
+	return shimDir + string(os.PathListSeparator) + currentPath
 }
 
 // fathomCommandRE matches "fathom" invoked as a COMMAND: at the shell
@@ -69,10 +96,13 @@ var fathomCommandRE = regexp.MustCompile("(?:^|[;&|`(\n])\\s*(?:\\.{1,2}/|[\\w./
 
 // BaselineRanFathomScan scans session's raw transcript (session.RawPath)
 // for a Bash tool_use whose "command" input invokes fathom
-// (fathomCommandRE) — the backstop for baselinePathExcludingFathom: proof
-// that isolation held (or did not), read from what the agent actually
-// ran rather than trusted on faith. false whenever there is nothing to
-// scan (no raw transcript) or nothing was found.
+// (fathomCommandRE) — the backstop for the PATH shim: proof that
+// isolation held (or did not), read from what the agent actually ran
+// rather than trusted on faith. A shimmed invocation still matches here
+// (the shim IS "fathom" on PATH, so the command text still names it) —
+// this scan is about whether the agent TRIED to run fathom at all, not
+// whether the attempt reached a real binary. false whenever there is
+// nothing to scan (no raw transcript) or nothing was found.
 func BaselineRanFathomScan(session SessionResult) bool {
 	if session.RawPath == "" {
 		return false

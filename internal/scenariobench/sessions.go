@@ -388,7 +388,10 @@ func newSessionRequest(task Task, armName string, arm Arm, wt Worktree, opts Run
 // SUPPOSED to reach fathom, and wt.DaemonURL below points it at the
 // cell's own scratch daemon, never the unroutable placeholder.
 func sessionEnv(arm Arm, wt Worktree, opts RunOptions) (map[string]string, error) {
-	overrides := baselineIsolationEnv(arm, wt.CellDir)
+	overrides, err := baselineIsolationEnv(arm, wt.CellDir)
+	if err != nil {
+		return nil, err
+	}
 
 	if wt.CellDir == "" {
 		return mergeStringMaps(overrides, opts.Env), nil
@@ -417,16 +420,27 @@ func sessionEnv(arm Arm, wt Worktree, opts RunOptions) (map[string]string, error
 
 // baselineIsolationEnv returns the PATH/FATHOM_HTTP overrides a non-wired
 // arm's session must run with (O53 defect 4); nil for a wired arm, which
-// is supposed to reach fathom.
-func baselineIsolationEnv(arm Arm, cellBinDir string) map[string]string {
+// is supposed to reach fathom. FATHOM_HTTP/FATHOM_HTTP_URL are pinned
+// unconditionally; the PATH shim additionally needs a real directory to
+// write into (cellDir) — "" (a hand-built Worktree with no CellDir, every
+// existing test fixture that predates RC-6) skips the shim rather than
+// erroring, leaving PATH exactly as inherited.
+func baselineIsolationEnv(arm Arm, cellDir string) (map[string]string, error) {
 	if arm.Wired {
-		return nil
+		return nil, nil
 	}
-	return map[string]string{
-		"PATH":            baselinePathExcludingFathom(os.Getenv("PATH"), cellBinDir),
+	env := map[string]string{
 		"FATHOM_HTTP":     unroutableFathomURL,
 		"FATHOM_HTTP_URL": unroutableFathomURL,
 	}
+	if cellDir != "" {
+		shimDir, err := installFathomShim(filepath.Join(cellDir, "baseline-fathom-shim"))
+		if err != nil {
+			return nil, err
+		}
+		env["PATH"] = baselinePathWithFathomShim(os.Getenv("PATH"), shimDir)
+	}
+	return env, nil
 }
 
 // mergeStringMaps merges maps left to right — a later map's keys win over

@@ -4,57 +4,160 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 )
 
-// TestBaselinePathExcludingFathom_DropsDirsContainingFathom is O53 defect
-// 4's PATH-construction proof: any directory on PATH that contains a file
-// literally named "fathom" must be dropped, whatever its position, while
-// unrelated directories survive in their original order.
-func TestBaselinePathExcludingFathom_DropsDirsContainingFathom(t *testing.T) {
-	root := t.TempDir()
-	hasFathom := filepath.Join(root, "has-fathom")
-	clean1 := filepath.Join(root, "clean1")
-	clean2 := filepath.Join(root, "clean2")
-	for _, d := range []string{hasFathom, clean1, clean2} {
-		if err := os.MkdirAll(d, 0o755); err != nil {
-			t.Fatal(err)
-		}
+// TestInstallFathomShim_WritesExecutableRefusal is the fix-first review's
+// own proof of the shim script itself: an executable "fathom" that runs,
+// exits 127 (the shell's "command not found" convention), and refuses on
+// stderr.
+func TestInstallFathomShim_WritesExecutableRefusal(t *testing.T) {
+	shimDir := filepath.Join(t.TempDir(), "shim")
+	got, err := installFathomShim(shimDir)
+	if err != nil {
+		t.Fatalf("installFathomShim: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(hasFathom, "fathom"), []byte("#!/bin/sh\n"), 0o755); err != nil {
-		t.Fatal(err)
+	if got != shimDir {
+		t.Errorf("installFathomShim returned %q, want %q", got, shimDir)
 	}
-	currentPath := strings.Join([]string{clean1, hasFathom, clean2}, string(os.PathListSeparator))
 
-	got := baselinePathExcludingFathom(currentPath, "")
+	path := filepath.Join(shimDir, "fathom")
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("stat shim: %v", err)
+	}
+	if info.Mode()&0o111 == 0 {
+		t.Error("expected the shim to be executable")
+	}
 
-	gotDirs := strings.Split(got, string(os.PathListSeparator))
-	if len(gotDirs) != 2 || gotDirs[0] != clean1 || gotDirs[1] != clean2 {
-		t.Errorf("baselinePathExcludingFathom = %q, want %s%c%s (order preserved, hasFathom dropped)", got, clean1, os.PathListSeparator, clean2)
+	out, err := exec.Command(path).CombinedOutput()
+	if err == nil {
+		t.Fatal("expected the shim to exit non-zero")
+	}
+	if exitErr, ok := err.(*exec.ExitError); !ok || exitErr.ExitCode() != 127 {
+		t.Errorf("expected exit 127, got err=%v", err)
+	}
+	if !strings.Contains(string(out), fathomShimRefusal) {
+		t.Errorf("expected the refusal text on stderr, got %q", out)
 	}
 }
 
-// TestBaselinePathExcludingFathom_DropsCellBinDir covers the second
-// exclusion: the cell's own bin dir, even when it carries no "fathom"
-// file (a non-wired arm never builds one there) — defensive, per the
-// defect's own wording.
-func TestBaselinePathExcludingFathom_DropsCellBinDir(t *testing.T) {
-	root := t.TempDir()
-	cellBin := filepath.Join(root, "cell-bin")
-	other := filepath.Join(root, "other")
-	for _, d := range []string{cellBin, other} {
-		if err := os.MkdirAll(d, 0o755); err != nil {
+// TestInstallFathomShim_Idempotent proves a re-install (a retried
+// session, a re-run of the same cell) just overwrites the same file
+// rather than erroring.
+func TestInstallFathomShim_Idempotent(t *testing.T) {
+	shimDir := filepath.Join(t.TempDir(), "shim")
+	if _, err := installFathomShim(shimDir); err != nil {
+		t.Fatalf("first installFathomShim: %v", err)
+	}
+	if _, err := installFathomShim(shimDir); err != nil {
+		t.Fatalf("second installFathomShim: %v", err)
+	}
+}
+
+// TestBaselinePathWithFathomShim_PrependsAndKeepsRest is the
+// PATH-construction proof: shimDir goes FIRST, every other directory
+// survives untouched — no stripping (fix-first review, wave-n1: the
+// earlier design dropped a whole PATH directory for containing a
+// "fathom" file, which could also remove an unrelated tool sharing it).
+func TestBaselinePathWithFathomShim_PrependsAndKeepsRest(t *testing.T) {
+	current := strings.Join([]string{"/a", "/b", "/c"}, string(os.PathListSeparator))
+	got := baselinePathWithFathomShim(current, "/shim")
+	want := strings.Join([]string{"/shim", "/a", "/b", "/c"}, string(os.PathListSeparator))
+	if got != want {
+		t.Errorf("baselinePathWithFathomShim = %q, want %q", got, want)
+	}
+}
+
+// TestBaselinePathWithFathomShim_EmptyCurrentPath covers the edge case of
+// a session with no inherited PATH at all.
+func TestBaselinePathWithFathomShim_EmptyCurrentPath(t *testing.T) {
+	if got := baselinePathWithFathomShim("", "/shim"); got != "/shim" {
+		t.Errorf("got %q, want /shim", got)
+	}
+}
+
+// resolveOnPath mimics shell PATH resolution: the first directory (in
+// order) on pathValue containing an executable file named name, or "" if
+// none does — used to assert on what a real shell would actually run,
+// not merely on the PATH string's own shape.
+func resolveOnPath(pathValue, name string) string {
+	for _, dir := range filepath.SplitList(pathValue) {
+		p := filepath.Join(dir, name)
+		if info, err := os.Stat(p); err == nil && !info.IsDir() {
+			return p
+		}
+	}
+	return ""
+}
+
+// TestBaselineIsolationEnv_SharedDirKeepsClaudeShimsFathom is the
+// fix-first review's own required proof: a directory holding BOTH a real
+// `fathom` and a real `claude` executable must not lose `claude` — only
+// `fathom` resolves to something else (the shim, ahead of it on PATH),
+// because the earlier design dropped the WHOLE directory for containing
+// a "fathom" file.
+func TestBaselineIsolationEnv_SharedDirKeepsClaudeShimsFathom(t *testing.T) {
+	shared := t.TempDir()
+	for _, bin := range []string{"fathom", "claude"} {
+		if err := os.WriteFile(filepath.Join(shared, bin), []byte("#!/bin/sh\necho real\n"), 0o755); err != nil {
 			t.Fatal(err)
 		}
 	}
-	currentPath := strings.Join([]string{cellBin, other}, string(os.PathListSeparator))
+	oldPath, hadPath := os.LookupEnv("PATH")
+	defer func() {
+		if hadPath {
+			os.Setenv("PATH", oldPath)
+		} else {
+			os.Unsetenv("PATH")
+		}
+	}()
+	os.Setenv("PATH", shared)
 
-	got := baselinePathExcludingFathom(currentPath, cellBin)
+	cellDir := t.TempDir()
+	env, err := baselineIsolationEnv(Arm{Wired: false}, cellDir)
+	if err != nil {
+		t.Fatalf("baselineIsolationEnv: %v", err)
+	}
 
-	if got != other {
-		t.Errorf("baselinePathExcludingFathom = %q, want %q", got, other)
+	wantClaude := filepath.Join(shared, "claude")
+	if got := resolveOnPath(env["PATH"], "claude"); got != wantClaude {
+		t.Errorf("claude resolved to %q, want the real one at %q", got, wantClaude)
+	}
+	wantShim := filepath.Join(cellDir, "baseline-fathom-shim", "fathom")
+	if got := resolveOnPath(env["PATH"], "fathom"); got != wantShim {
+		t.Errorf("fathom resolved to %q, want the shim at %q (never the real one at %s)", got, wantShim, filepath.Join(shared, "fathom"))
+	}
+}
+
+// TestBaselineIsolationEnv_WiredArmGetsNoOverrides proves the shim (and
+// the unroutable FATHOM_HTTP) are scoped to non-wired arms only.
+func TestBaselineIsolationEnv_WiredArmGetsNoOverrides(t *testing.T) {
+	env, err := baselineIsolationEnv(Arm{Wired: true}, t.TempDir())
+	if err != nil {
+		t.Fatalf("baselineIsolationEnv: %v", err)
+	}
+	if env != nil {
+		t.Errorf("expected nil overrides for a wired arm, got %v", env)
+	}
+}
+
+// TestBaselineIsolationEnv_EmptyCellDirSkipsShim covers the documented
+// edge case: no CellDir (a hand-built test-fixture Worktree) skips the
+// shim rather than erroring, but still pins FATHOM_HTTP.
+func TestBaselineIsolationEnv_EmptyCellDirSkipsShim(t *testing.T) {
+	env, err := baselineIsolationEnv(Arm{Wired: false}, "")
+	if err != nil {
+		t.Fatalf("baselineIsolationEnv: %v", err)
+	}
+	if _, ok := env["PATH"]; ok {
+		t.Errorf("expected no PATH override with no CellDir, got %q", env["PATH"])
+	}
+	if env["FATHOM_HTTP"] != unroutableFathomURL {
+		t.Errorf("FATHOM_HTTP = %q, want %q", env["FATHOM_HTTP"], unroutableFathomURL)
 	}
 }
 
