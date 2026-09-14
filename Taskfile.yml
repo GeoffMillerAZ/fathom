@@ -269,7 +269,7 @@ tasks:
   bench-home:
     desc: "COSTS TOKENS. Home-turf bench, 3 trials/cell, scored against the committed criterion (override: -- --trials 1)"
     cmds:
-      - bash scripts/context-bench.sh --tasks testdata/contextbench/tasks-home.json --trials 3 {{.CLI_ARGS}}
+      - bash scripts/context-bench.sh --tasks testdata/contextbench/tasks-home.json --repeat 3 {{.CLI_ARGS}}
 
   bench-select:
     desc: "Free. Which home tasks a diff makes worth re-running (RANGE=origin/main...HEAD): the committed handler table maps changed files to agent-surface tools, tools to tasks."
@@ -291,7 +291,7 @@ tasks:
           exit 0
         fi
         echo "bench-targeted: running $ONLY (fathom arm only; the control arms' cells are borrowed by key)"
-        bash scripts/context-bench.sh --tasks testdata/contextbench/tasks-home.json --trials 3 \
+        bash scripts/context-bench.sh --tasks testdata/contextbench/tasks-home.json --repeat 3 \
           --only "$ONLY" --scope targeted --arms 'fathom' --stream {{.CLI_ARGS}}
 
   bench-lookup:
