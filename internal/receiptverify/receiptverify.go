@@ -11,6 +11,14 @@
 // doc comment says so — it is cmd/loctruth's and the L0 index oracle's
 // independent ground truth), and its GoTruth already carries exactly the
 // two shapes a callers/references claim needs (CallersByName, UsesByName).
+//
+// Scope: LoadGoTruthTests, not LoadGoTruth. The live find_callers/
+// references answers a receipt is built from correctly include _test.go
+// callers and occurrences — they are real, indexed facts — so the
+// independent oracle a receipt is checked against must cover the same
+// scope, or every receipt for a tested symbol reports a spurious
+// difference (docs/bench/readings/vb21-receipts-m11b.md: the M11b sample's
+// one and only defect, 36/50 non-reproductions, all one cause).
 package receiptverify
 
 import (
@@ -38,7 +46,7 @@ type Outcome struct {
 
 // Verify checks out receipt.IndexCommit from the git repository at
 // repoRoot via `git archive` into a fresh temporary directory, loads it
-// with go/packages+go/types (publicloc.LoadGoTruth — independent of
+// with go/packages+go/types (publicloc.LoadGoTruthTests — independent of
 // fathom's own extractor/fusion pipeline), and compares the re-derived
 // facts against the receipt's own.
 //
@@ -67,13 +75,13 @@ func Verify(ctx context.Context, repoRoot string, receipt core.Receipt) (Outcome
 
 	switch receipt.Kind {
 	case core.ReceiptKindCallers:
-		truth, loadErr := publicloc.LoadGoTruth(dir)
+		truth, loadErr := publicloc.LoadGoTruthTests(dir)
 		if loadErr != nil {
 			return Outcome{}, fmt.Errorf("receipt: go/types load: %w", loadErr)
 		}
 		return verifyCallers(receipt, truth), nil
 	case core.ReceiptKindReferences:
-		truth, loadErr := publicloc.LoadGoTruth(dir)
+		truth, loadErr := publicloc.LoadGoTruthTests(dir)
 		if loadErr != nil {
 			return Outcome{}, fmt.Errorf("receipt: go/types load: %w", loadErr)
 		}

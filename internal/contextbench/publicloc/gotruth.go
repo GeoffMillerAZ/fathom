@@ -81,8 +81,30 @@ func CallersTruth(root string) (CallersFile, error) {
 }
 
 // LoadGoTruth type-checks the module rooted at root once and derives every
-// truth shape from that single load.
+// truth shape from that single load. Scope: non-test packages only (see
+// GoTruth's doc comment) — this is cmd/loctruth's public-corpus ground
+// truth and internal/indexbench's L0 index-oracle truth, both of which
+// score a subject's PRODUCTION symbols and must not have a scope wider
+// than either's own answers. A caller whose claim is scored against
+// answers that correctly include test files (VB-20 receipts — the daemon's
+// find_callers/references answers do) wants LoadGoTruthTests instead.
 func LoadGoTruth(root string) (GoTruth, error) {
+	return loadGoTruth(root, false)
+}
+
+// LoadGoTruthTests is LoadGoTruth with test files (`_test.go`, both
+// internal and external `_test` packages) included in the load and
+// therefore in every truth shape's callers/decls/uses. internal/
+// receiptverify is the one consumer: `fathom receipt verify`'s independent
+// oracle must cover exactly the scope the live answer it re-derives does
+// (docs/bench/readings/vb21-receipts-m11b.md) — the daemon's find_callers
+// and references answers correctly include `_test.go` callers and
+// occurrences, so the truth a receipt is checked against must too.
+func LoadGoTruthTests(root string) (GoTruth, error) {
+	return loadGoTruth(root, true)
+}
+
+func loadGoTruth(root string, tests bool) (GoTruth, error) {
 	abs, err := filepath.Abs(root)
 	if err != nil {
 		return GoTruth{}, err
@@ -94,7 +116,7 @@ func LoadGoTruth(root string) (GoTruth, error) {
 		// The subject is its own module; a go.work above it (the
 		// developer's, never the subject's) must not redirect the load.
 		Env:   append(os.Environ(), "GOWORK=off"),
-		Tests: false,
+		Tests: tests,
 	}
 	pkgs, err := packages.Load(cfg, "./...")
 	if err != nil {
