@@ -148,7 +148,7 @@ func cmdModuleCompile(args []string, stdout, stderr io.Writer) int {
 	if *jsonOut {
 		outW = &buf
 	}
-	rc := compileViaStore(*storePath, svc, m.Name, *profile, *dryRun, *force, *unsafeSkipEvalGate, outW, stderr)
+	rc := compileViaStore(*storePath, svc, m.Name, *profile, *dryRun, *force, *unsafeSkipEvalGate, false, outW, stderr)
 	if !*jsonOut {
 		return rc
 	}

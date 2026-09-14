@@ -349,6 +349,43 @@ func TestCmdCompile_Idempotency_AllowsResumeAfterBudgetStop(t *testing.T) {
 	}
 }
 
+// ─── O54 deliverable 3: --continue ─────────────────────────────────────────
+
+// TestCmdCompile_Continue_RecordsResumedFrom: `--continue` routes through
+// CompileLayerResume and the recorded compile_runs row names the section
+// it resumed from — proof, not a claim, that the CLI verb actually reached
+// semantic.CompileInput.Resume.
+func TestCmdCompile_Continue_RecordsResumedFrom(t *testing.T) {
+	storePath, _ := newGuardTestStore(t)
+	t.Setenv("FATHOM_LLM_PROVIDER", "claude-cli")
+	t.Setenv("FATHOM_CLAUDE_BIN", newFakeClaudeCLIClaims(t))
+
+	var stdout, stderr bytes.Buffer
+	code := cmdCompile([]string{
+		"--service", "svc", "--layer", "obligations", "--store", storePath, "--dry-run=false", "--continue",
+	}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("--continue: exit code = %d, want 0; stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	}
+	wantSubject := "CLAUDE.md#rules"
+	if !strings.Contains(stdout.String(), "resumed_from:      "+wantSubject) {
+		t.Errorf("stdout must print resumed_from naming %q, got %q", wantSubject, stdout.String())
+	}
+
+	st, err := store.Open(storePath)
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+	defer st.Close()
+	runs, err := st.CompileRuns(context.Background(), "svc", "obligations")
+	if err != nil || len(runs) != 1 {
+		t.Fatalf("CompileRuns: %d, %v", len(runs), err)
+	}
+	if runs[0].ResumedFrom != wantSubject {
+		t.Errorf("recorded run.ResumedFrom = %q, want %q", runs[0].ResumedFrom, wantSubject)
+	}
+}
+
 // ─── HTTP mode refuses the guard flags outright ───────────────────────────
 
 // TestCmdCompile_GuardFlagsRefusedWithoutStore (bounce finding 6): the
@@ -356,7 +393,7 @@ func TestCmdCompile_Idempotency_AllowsResumeAfterBudgetStop(t *testing.T) {
 // flag in HTTP mode must refuse loudly (naming --store) rather than
 // silently ignoring the flag — before any HTTP request is attempted.
 func TestCmdCompile_GuardFlagsRefusedWithoutStore(t *testing.T) {
-	for _, flag := range []string{"--force", "--unsafe-skip-eval-gate"} {
+	for _, flag := range []string{"--force", "--unsafe-skip-eval-gate", "--continue"} {
 		t.Run(flag, func(t *testing.T) {
 			var stdout, stderr bytes.Buffer
 			code := cmdCompile([]string{
