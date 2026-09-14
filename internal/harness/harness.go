@@ -81,6 +81,12 @@ const (
 	// CapSetupDoctor is `fathom doctor --brief` on the harness's setup
 	// event: FAIL rows only, ≤5 lines, exit 0 (HP-31).
 	CapSetupDoctor Capability = "setup-doctor"
+	// CapPromptObligations is the rules governing the paths, packages and
+	// symbols the user's OWN prompt names, served before the first tool
+	// call (O57 items 4/5: governance before the first edit, not only
+	// after it — edit-hook can only answer for a file once something has
+	// already been written to it).
+	CapPromptObligations Capability = "prompt-obligations"
 )
 
 // Capabilities is the fixed rendering order of every capability — the
@@ -92,6 +98,8 @@ var Capabilities = []Capability{
 	CapStanzaLoaded, CapConfigAudit,
 	// Wave 3, appended so every existing table row keeps its position.
 	CapSubagentPrime, CapToolFailureAdvice, CapWorktreeAdvice, CapCwdPrime, CapSetupDoctor,
+	// O57 items 4/5, appended for the same reason.
+	CapPromptObligations,
 }
 
 // Vehicle is HOW a capability reaches a session on one harness.
@@ -145,6 +153,9 @@ const (
 	// EventSetup fires once when the harness sets a project up (Claude
 	// Code: Setup).
 	EventSetup Event = "setup"
+	// EventUserPromptSubmit fires with the user's own prompt text, before
+	// any tool call (Claude Code: UserPromptSubmit) — O57 items 4/5.
+	EventUserPromptSubmit Event = "user-prompt-submit"
 )
 
 // ToolClass normalizes a harness's tool names (vision 25 §2.1): the guard

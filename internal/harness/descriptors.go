@@ -151,6 +151,19 @@ var claudeCode = Descriptor{
 			Input: withKey(claudeCommonIn, "triggered_by", "triggered_by"),
 			Note:  "FAIL rows only, at most 5 lines, exit 0 whatever doctor finds — a setup diagnosis that fails setup is worse than no diagnosis",
 		},
+		// O57 items 4/5, appended after wave 3 for the same reason that
+		// group was appended after the vision 26 §4 pair: a repo wired
+		// before this change gains exactly this one entry on its next
+		// init/reconcile and loses nothing. DELIBERATE GOLDEN CHANGE
+		// (2026-09-14): cmd/fathom/hookspecs_test.go and this file's own
+		// TestLookupClaudeCodeReproducesHookTable/TestClaudeHookTableAdditions
+		// twin were updated together.
+		{
+			Capability: CapPromptObligations, Event: EventUserPromptSubmit, Harness: "UserPromptSubmit", Matcher: "", Verb: "prompt-hook", Marker: "fathom prompt-hook", TimeoutSec: 10, Vehicle: VehicleHookInject,
+			Input:  withKey(claudeCommonIn, "prompt", "prompt"),
+			Output: claudeContextOut,
+			Note:   "resolves the paths, packages and symbols the prompt itself names through the index and serves the union of rules governing them, capped — governance before the first edit, not only after it (edit-hook can only answer once a file has already been written to)",
+		},
 	},
 	// The full event surface of Claude Code 2.1.270, as the hooks
 	// reference lists it (fetched 2026-09-12). Every row fathom does not
@@ -185,6 +198,7 @@ var claudeCode = Descriptor{
 		CapWorktreeAdvice:      VehicleAbsent,
 		CapCwdPrime:            VehicleHookSilent,
 		CapSetupDoctor:         VehicleHookSilent,
+		CapPromptObligations:   VehicleHookInject,
 	},
 	Notes: map[Capability]string{
 		CapPrime:             "SessionStart, gated to startup/clear (resume and compact keep their context)",
@@ -201,6 +215,7 @@ var claudeCode = Descriptor{
 		CapWorktreeAdvice:    "not hooked: WorktreeCreate is a CREATION hook in Claude Code — a registered hook must create the worktree and print its path, and any other stdout is refused (O34); the worktree line rides on SubagentStart when the subagent's cwd is a worktree",
 		CapCwdPrime:          "CwdChanged / DirectoryAdded record the new root's service identity; no additionalContext on either event, so the line is a beat",
 		CapSetupDoctor:       "Setup runs `fathom doctor --brief` (FAIL rows only, ≤5 lines, exit 0); the event documents no additionalContext",
+		CapPromptObligations: "UserPromptSubmit resolves the paths/packages/symbols the prompt names through the index and injects the union of rules governing them, capped (O57 items 4/5)",
 	},
 	FailMode:    "exit 2 blocks on blockable events; on exit 0 the JSON decides; a timed-out or crashed hook's output is discarded and the action proceeds (fail-open)",
 	GatePosture: "advisory, fail-open (§5.3)",
@@ -341,6 +356,7 @@ var codex = Descriptor{
 		CapWorktreeAdvice:      VehicleAbsent,
 		CapCwdPrime:            VehicleAbsent,
 		CapSetupDoctor:         VehicleAbsent,
+		CapPromptObligations:   VehicleAbsent,
 	},
 	Notes: map[Capability]string{
 		CapPrime:               "SessionStart entry in CODEX_HOME/hooks.json, gated to startup/clear; runs only after `/hooks` trust. MEASURED firing 2026-09-12 — `fathom prime` stays the fallback for an untrusted or unwired install",
@@ -361,6 +377,7 @@ var codex = Descriptor{
 		CapWorktreeAdvice:      "Codex documents no worktree event",
 		CapCwdPrime:            "Codex documents no cwd-change or directory-added event",
 		CapSetupDoctor:         "Codex documents no setup event — run `fathom doctor --brief` by hand after wiring",
+		CapPromptObligations:   "Codex documents a UserPromptSubmit-shaped event but fathom has not ported prompt-hook to it yet — `fathom prime` covers identity/freshness, and `obligations` is a call away",
 	},
 	FailMode:    "exit 2 + stderr blocks PreToolUse and UserPromptSubmit and continues Stop; other non-zero exits and timeouts are reported as hook failures and the action proceeds (fail-open); a non-managed hook runs only after /hooks trust of its exact hash; features.hooks gates all; SessionEnd's timeout is clamped to 3s with a notice (measured)",
 	GatePosture: "advisory, fail-open (§5.3); the hooks run only after /hooks trust — the git-native verify gate is the only enforcement",
@@ -494,6 +511,7 @@ var geminiCLI = Descriptor{
 		CapWorktreeAdvice:      VehicleAbsent,
 		CapCwdPrime:            VehicleAbsent,
 		CapSetupDoctor:         VehicleAbsent,
+		CapPromptObligations:   VehicleAbsent,
 	},
 	Notes: map[Capability]string{
 		CapSubagentPrime:       geminiWave3Note,
@@ -501,6 +519,7 @@ var geminiCLI = Descriptor{
 		CapWorktreeAdvice:      geminiWave3Note,
 		CapCwdPrime:            geminiWave3Note,
 		CapSetupDoctor:         geminiWave3Note,
+		CapPromptObligations:   "not ported to Gemini CLI yet — `fathom prime` covers identity/freshness, and `obligations` is a call away",
 		CapPrime:               "SessionStart entry in .gemini/settings.json (all sources; the verb gates to startup/clear); runs once accepted in `/hooks` — `fathom prime` is the fallback",
 		CapObligationsPostEdit: "AfterTool on write_file|replace via additionalContext; the `obligations` MCP tool is the fallback until the hook is accepted",
 		CapGuardPreEdit:        "BeforeTool on write_file|replace as systemMessage (terminal, not model context) — additionalContext on BeforeTool is UNSHOWN",
@@ -612,6 +631,7 @@ func pullTierVehicles() map[Capability]Vehicle {
 		CapWorktreeAdvice:    VehicleAbsent,
 		CapCwdPrime:          VehicleAbsent,
 		CapSetupDoctor:       VehicleAbsent,
+		CapPromptObligations: VehicleAbsent,
 	}
 }
 

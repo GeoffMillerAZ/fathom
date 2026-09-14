@@ -56,6 +56,7 @@ registry: #Registry & [
 			"worktree-advice":       "absent"
 			"cwd-prime":             "absent"
 			"setup-doctor":          "absent"
+			"prompt-obligations":    "absent"
 		}
 		notes: {"claim-gate": "not built"}
 		fail_mode:    "fail-open"

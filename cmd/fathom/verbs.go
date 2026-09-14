@@ -47,6 +47,7 @@ var verbTable = []verb{
 	{Name: "discoveries", Summary: "Receipts on the hand-off: this repo's recent call-log pointers, resolved fresh against the live index (docs/vision/28-receipts.md §4)"},
 	{Name: "routes", Summary: "Long-lived discovery paths: pointers established in 2+ sessions over 30 days, grouped by package"},
 	{Name: "edit-hook", Summary: "PostToolUse hook: inject obligations into session context"},
+	{Name: "prompt-hook", Summary: "UserPromptSubmit hook: resolve the paths/packages/symbols the prompt names through the index and inject the rules that govern them, before the first edit (O57 items 4/5)"},
 	{Name: "stop-hook", Summary: "Stop hook: flag tasks claimed [x] this session that fail verification"},
 	{Name: "session-end-hook", Summary: "SessionEnd hook: deposit one continuity item only when the session leaves uncommitted work, stashes, or claimed-unproven rows"},
 	{Name: "pre-compact-hook", Summary: "PreCompact hook: file one pointer to the pre-compaction span (the transcript itself is never read)"},

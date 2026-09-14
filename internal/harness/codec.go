@@ -50,6 +50,10 @@ type HookInput struct {
 	// own tool_input.path argument (RC-56, the file/dir the call searched
 	// — never its pattern, which is not a location).
 	Path string
+	// Prompt is the user's own submitted text on the user-prompt-submit
+	// event (Claude Code: UserPromptSubmit) — O57 items 4/5. Empty on
+	// every other event; the harness does not document it elsewhere.
+	Prompt string
 }
 
 // HookOutput is what a hook verb wants the harness to do with its payload.
@@ -142,6 +146,7 @@ type claudeEnvelope struct {
 	DirPath      string `json:"directory_path"` // DirectoryAdded
 	HowAdded     string `json:"how_added"`      // DirectoryAdded
 	TriggeredBy  string `json:"triggered_by"`   // Setup
+	Prompt       string `json:"prompt"`         // UserPromptSubmit
 }
 
 func (c claudeCodec) DecodeInput(ev Event, raw []byte) (HookInput, error) {
@@ -192,6 +197,8 @@ func (c claudeCodec) DecodeInput(ev Event, raw []byte) (HookInput, error) {
 		}
 	case EventSetup:
 		in.Trigger = env.TriggeredBy
+	case EventUserPromptSubmit:
+		in.Prompt = env.Prompt
 	}
 	return in, nil
 }
@@ -258,10 +265,11 @@ var claudeStdoutIsData = map[Event]bool{
 // gets systemMessage. Extending this set without the harness documenting
 // the field re-creates O34.
 var claudeContextEvents = map[Event]bool{
-	EventSessionStart:  true,
-	EventPreTool:       true,
-	EventPostTool:      true,
-	EventStop:          true,
-	EventSubagentStart: true,
-	EventToolFailure:   true,
+	EventSessionStart:     true,
+	EventPreTool:          true,
+	EventPostTool:         true,
+	EventStop:             true,
+	EventSubagentStart:    true,
+	EventToolFailure:      true,
+	EventUserPromptSubmit: true,
 }
