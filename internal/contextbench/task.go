@@ -95,6 +95,20 @@ type Task struct {
 	// were spent. Optional: the grep-native B1 corpus predates it.
 	TruthAtHead []TruthAnchor `json:"truth_at_head,omitempty"`
 
+	// AnswerAnyOf declares groups of spelling-equivalent gold tokens
+	// (VB-36, O47): each inner slice is one required fact, satisfied by
+	// ANY member appearing in the answer. O47 lost two otherwise-correct
+	// wired trials on H1-T02 to exactly this — the model answered
+	// "Edge struct", the corpus demanded the literal "core.Edge" — so the
+	// scorer needed a way to accept a spelling variant of a fact without
+	// loosening the fact itself. Groups are required exactly like
+	// GroundTruth's own tokens: under exact-match/all-of every group (and
+	// every plain GroundTruth token) must be satisfied; under any-of,
+	// satisfying one plain token OR one group is enough. GroundTruth keeps
+	// working completely unchanged — AnswerAnyOf only ADDS grouped
+	// alternatives; see Score.
+	AnswerAnyOf [][]string `json:"answer_any_of,omitempty"`
+
 	// Requires lists environment capabilities the task cannot be scored
 	// without (PB-12) — e.g. "compiled-layer" for a task whose premise is
 	// what the LLM-compiled obligations layer serves. RequiresSatisfied
@@ -208,21 +222,31 @@ func (t Task) Validate() error {
 	if t.Prompt == "" {
 		return fmt.Errorf("task %s: empty prompt", t.ID)
 	}
-	if len(t.GroundTruth) == 0 {
-		return fmt.Errorf("task %s: empty ground_truth", t.ID)
+	if len(t.GroundTruth) == 0 && len(t.AnswerAnyOf) == 0 {
+		return fmt.Errorf("task %s: empty ground_truth (and no answer_any_of groups)", t.ID)
 	}
 	for _, g := range t.GroundTruth {
 		if g == "" {
 			return fmt.Errorf("task %s: ground_truth contains an empty string", t.ID)
 		}
 	}
+	for i, group := range t.AnswerAnyOf {
+		if len(group) == 0 {
+			return fmt.Errorf("task %s: answer_any_of[%d] is empty", t.ID, i)
+		}
+		for _, alt := range group {
+			if alt == "" {
+				return fmt.Errorf("task %s: answer_any_of[%d] contains an empty string", t.ID, i)
+			}
+		}
+	}
 	switch t.ScoringRule {
 	case ExactMatch:
-		if len(t.GroundTruth) != 1 {
-			return fmt.Errorf("task %s: scoring_rule exact-match requires exactly one ground_truth string, got %d", t.ID, len(t.GroundTruth))
+		if n := len(t.GroundTruth) + len(t.AnswerAnyOf); n != 1 {
+			return fmt.Errorf("task %s: scoring_rule exact-match requires exactly one required item (ground_truth + answer_any_of combined), got %d", t.ID, n)
 		}
 	case AllOf, AnyOf:
-		// any non-empty ground_truth list is valid
+		// any non-empty combination of ground_truth/answer_any_of is valid
 	default:
 		return fmt.Errorf("task %s: unknown scoring_rule %q (want exact-match, all-of, or any-of)", t.ID, t.ScoringRule)
 	}

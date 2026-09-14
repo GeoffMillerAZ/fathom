@@ -94,6 +94,20 @@ type ArmResult struct {
 	// a stream transcript or made no fathom tool call — see
 	// TrustedWithoutRecheck.
 	TrustedWithoutRecheck *TrustedWithoutRecheckStats `json:"trusted_without_recheck,omitempty"`
+
+	// Additive since VB-36 (O47): the scratch-daemon-default safety
+	// checks. PathLeak/PathLeakPaths come from DetectPathLeak — a served
+	// tool_result payload named the live checkout's absolute path instead
+	// of the export the session ran against. OutOfRootReads/OutOfRootPaths
+	// come from DetectOutOfRootReads — a Bash/Read tool input named an
+	// absolute path outside the session root the arm was confined to.
+	// Both are false/zero when the cell had no transcript, or no
+	// live-checkout/session-root path to check against — "not checked",
+	// never asserted as "clean".
+	PathLeak       bool     `json:"path_leak,omitempty"`
+	PathLeakPaths  []string `json:"path_leak_paths,omitempty"`
+	OutOfRootReads int      `json:"out_of_root_reads,omitempty"`
+	OutOfRootPaths []string `json:"out_of_root_paths,omitempty"`
 }
 
 // claudeEnvelope is the subset of `claude -p --output-format json`'s result

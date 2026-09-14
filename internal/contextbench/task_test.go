@@ -98,6 +98,38 @@ func TestTaskValidate(t *testing.T) {
 			task:    Task{ID: "T1", Prompt: "p", GroundTruth: []string{"a"}, ScoringRule: AllOf, Class: "not-a-real-class"},
 			wantErr: true,
 		},
+		{
+			name: "answer_any_of alone (no ground_truth) is valid",
+			task: Task{ID: "T1", Prompt: "p", AnswerAnyOf: [][]string{{"core.Edge", "Edge struct"}}, ScoringRule: AllOf},
+		},
+		{
+			name: "ground_truth plus answer_any_of is valid",
+			task: Task{ID: "T1", Prompt: "p", GroundTruth: []string{"ADR-021"}, AnswerAnyOf: [][]string{{"core.Edge", "Edge struct"}}, ScoringRule: AllOf},
+		},
+		{
+			name:    "empty ground_truth and no answer_any_of is invalid",
+			task:    Task{ID: "T1", Prompt: "p", ScoringRule: AllOf},
+			wantErr: true,
+		},
+		{
+			name:    "empty answer_any_of group is invalid",
+			task:    Task{ID: "T1", Prompt: "p", GroundTruth: []string{"a"}, AnswerAnyOf: [][]string{{}}, ScoringRule: AllOf},
+			wantErr: true,
+		},
+		{
+			name:    "answer_any_of group with an empty string is invalid",
+			task:    Task{ID: "T1", Prompt: "p", GroundTruth: []string{"a"}, AnswerAnyOf: [][]string{{"core.Edge", ""}}, ScoringRule: AllOf},
+			wantErr: true,
+		},
+		{
+			name: "exact-match with one answer_any_of group and no ground_truth is valid",
+			task: Task{ID: "T1", Prompt: "p", AnswerAnyOf: [][]string{{"core.Edge", "Edge struct"}}, ScoringRule: ExactMatch},
+		},
+		{
+			name:    "exact-match with a ground_truth item AND an answer_any_of group is invalid (two required items)",
+			task:    Task{ID: "T1", Prompt: "p", GroundTruth: []string{"a"}, AnswerAnyOf: [][]string{{"core.Edge", "Edge struct"}}, ScoringRule: ExactMatch},
+			wantErr: true,
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

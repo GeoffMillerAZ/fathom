@@ -45,7 +45,15 @@ func TestHomeCorpusTruthAtHead(t *testing.T) {
 	}
 
 	for _, task := range tasks {
-		for _, tok := range task.GroundTruth {
+		// VB-36/O47: every plain token AND every answer_any_of alternative
+		// is a candidate "the none arm could just quote this" leak — a
+		// spelling variant sitting verbatim in the baseline is exactly as
+		// much a recall shortcut as the canonical token would be.
+		allTokens := append([]string(nil), task.GroundTruth...)
+		for _, group := range task.AnswerAnyOf {
+			allTokens = append(allTokens, group...)
+		}
+		for _, tok := range allTokens {
 			for path, body := range baselines {
 				if strings.Contains(body, tok) {
 					t.Errorf("%s: ground-truth token %q appears verbatim in %s, which every `claude -p` session loads before the prompt — the task scores recall, not discovery (O25); re-derive the truth",
@@ -72,15 +80,37 @@ func TestHomeCorpusTruthAtHead(t *testing.T) {
 				t.Errorf("%s: %v", task.ID, err)
 			}
 		}
-		for tok := range anchors {
-			found := false
-			for _, g := range task.GroundTruth {
-				if g == tok {
-					found = true
+		// VB-36: an answer_any_of group is satisfied by ANY member, so only
+		// one of its members needs a derivation anchor — the other
+		// spellings are the same fact, not independently-derived ones. The
+		// group as a whole must still be anchored to something, or its
+		// premise could quietly go false with nothing to catch it.
+		for i, group := range task.AnswerAnyOf {
+			anchored := false
+			for _, tok := range group {
+				if a, ok := anchors[tok]; ok {
+					anchored = true
+					if err := checkAnchor(root, a); err != nil {
+						t.Errorf("%s: %v", task.ID, err)
+					}
 				}
 			}
-			if !found {
-				t.Errorf("%s: truth_at_head names %q, which is not a ground-truth token", task.ID, tok)
+			if !anchored {
+				t.Errorf("%s: answer_any_of[%d] %v has no truth_at_head anchor on any member — say which file the fact was derived from", task.ID, i, group)
+			}
+		}
+		known := map[string]bool{}
+		for _, g := range task.GroundTruth {
+			known[g] = true
+		}
+		for _, group := range task.AnswerAnyOf {
+			for _, tok := range group {
+				known[tok] = true
+			}
+		}
+		for tok := range anchors {
+			if !known[tok] {
+				t.Errorf("%s: truth_at_head names %q, which is not a ground-truth token or answer_any_of member", task.ID, tok)
 			}
 		}
 	}
