@@ -1,0 +1,58 @@
+Enable mutator "branch/case"
+Enable mutator "branch/else"
+Enable mutator "branch/if"
+Enable mutator "expression/comparison"
+Enable mutator "expression/remove"
+Enable mutator "statement/remove"
+Save mutations into "/var/folders/2r/2zrkv4fd549bnlc5vwfzd4b00000gn/T/go-mutesting-3963047093"
+Mutate "widget.go"
+Save original into "/var/folders/2r/2zrkv4fd549bnlc5vwfzd4b00000gn/T/go-mutesting-3963047093/widget.go.original"
+Mutator branch/case
+Mutator branch/else
+Mutator branch/if
+Save mutation into "/var/folders/2r/2zrkv4fd549bnlc5vwfzd4b00000gn/T/go-mutesting-3963047093/widget.go.0" with checksum c604d4cb8426eeb597ad082e834668b5
+Execute built-in exec command for mutation
+--- FAIL: TestAdd (0.00s)
+    widget_test.go:7: Add(2,3) = 3, want 5
+FAIL
+FAIL	widget	0.233s
+FAIL
+
+--- widget.go	2026-09-13 23:10:54
++++ /var/folders/2r/2zrkv4fd549bnlc5vwfzd4b00000gn/T/go-mutesting-3963047093/widget.go.0	2026-09-13 23:14:57
+@@ -2,7 +2,8 @@
+ 
+ func Add(a, b int) int {
+ 	if a > 0 {
+-		return a + b
++		_, _ = a, b
++
+ 	}
+ 	return b
+ }
+
+Exited with 0
+PASS "/var/folders/2r/2zrkv4fd549bnlc5vwfzd4b00000gn/T/go-mutesting-3963047093/widget.go.0" with checksum c604d4cb8426eeb597ad082e834668b5
+Mutator expression/comparison
+Save mutation into "/var/folders/2r/2zrkv4fd549bnlc5vwfzd4b00000gn/T/go-mutesting-3963047093/widget.go.1" with checksum db59d12d58ace85e22fcfce9f159259c
+Execute built-in exec command for mutation
+ok  	widget	0.260s
+
+--- widget.go	2026-09-13 23:10:54
++++ /var/folders/2r/2zrkv4fd549bnlc5vwfzd4b00000gn/T/go-mutesting-3963047093/widget.go.1	2026-09-13 23:15:01
+@@ -1,7 +1,7 @@
+ package widget
+ 
+ func Add(a, b int) int {
+-	if a > 0 {
++	if a >= 0 {
+ 		return a + b
+ 	}
+ 	return b
+
+Exited with 1
+FAIL "/var/folders/2r/2zrkv4fd549bnlc5vwfzd4b00000gn/T/go-mutesting-3963047093/widget.go.1" with checksum db59d12d58ace85e22fcfce9f159259c
+Mutator expression/remove
+Mutator statement/remove
+Remove "/var/folders/2r/2zrkv4fd549bnlc5vwfzd4b00000gn/T/go-mutesting-3963047093"
+The mutation score is 0.500000 (1 passed, 1 failed, 0 duplicated, 0 skipped, total is 2)

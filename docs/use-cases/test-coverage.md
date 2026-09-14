@@ -183,14 +183,29 @@ run to symbols exactly like a cover profile does, producing per-symbol
 Two input shapes are accepted, detected by content:
 
 - **go-mutesting's own log output** (`github.com/zimmski/go-mutesting`) —
-  its `Executing mutation for <file>:<line>...` / `Mutation is (NOT) killed`
-  runner messages.
+  its per-mutant outcome line, `PASS "<tmpfile>" with checksum <hex>` (the
+  mutant was KILLED: the exec step's tests failed) or `FAIL "..."` (the
+  mutant SURVIVED: tests still passed) or `SKIP "..."` (didn't compile — no
+  evidence either way, counted separately, never joined). A FAIL record
+  always carries the `diff -u` block go-mutesting prints before it, which is
+  how the file and line are recovered; a PASS/SKIP record only carries one
+  under `go-mutesting --debug` — **run it with `--debug` for symbol-level
+  attribution** (`go-mutesting --debug ./... > workspace/artifacts/mutation.txt`).
+  Without `--debug`, a killed mutant's location can still often be recovered
+  from its own temp-file path, but never its line — such a mutant is kept
+  (never dropped) and counted in `--json`'s `mutation_summary.unattributed`
+  (`mutation_summary.skipped` counts the SKIP records; the table form
+  prints the same two counts as a line when either is non-zero).
+  The trailing `The mutation score is F (P passed, F failed, D duplicated,
+  S skipped, total is T)` summary line is cross-checked against what was
+  parsed; a mismatch, or its absence when records were found, is a parse
+  error, not a silent partial report.
 - **fathom's own JSON shape**, for any other tool a caller adapts to it:
   `{"mutants":[{"file":"path/to/x.go","line":42,"killed":true}]}` (a bare
   top-level array of the same records is accepted too).
 
 ```
-fathom tests coverage --profile workspace/cov/unit.out --mutation workspace/mutation.log --service myapp
+fathom tests coverage --profile workspace/cov/unit.out --mutation workspace/artifacts/mutation.txt --service myapp
 ```
 
 adds a `MUTATION` score column (0.0-1.0) next to the coverage table, and a

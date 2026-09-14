@@ -217,9 +217,9 @@ func runTestsCoverage(args []string, gitRunner func(args ...string) ([]byte, err
 	}
 
 	if *jsonOut {
-		return renderTestsCoverageJSON(stdout, profiles, symbols, nodes, changedFiles, *diffBase, mutationsBySymbol)
+		return renderTestsCoverageJSON(stdout, profiles, symbols, nodes, changedFiles, *diffBase, mutationsBySymbol, mutationReport)
 	}
-	renderTestsCoverageTable(stdout, profiles, symbols, nodes, changedFiles, *diffBase, mutationsBySymbol)
+	renderTestsCoverageTable(stdout, profiles, symbols, nodes, changedFiles, *diffBase, mutationsBySymbol, mutationReport)
 	return 0
 }
 
@@ -304,7 +304,7 @@ func layerColumns(profiles []coverage.LabeledProfile) []string {
 	return out
 }
 
-func renderTestsCoverageTable(w io.Writer, profiles []coverage.LabeledProfile, symbols []coverage.SymbolLayerCoverage, nodes []core.SymbolNode, changedFiles []string, diffBase string, mutations map[string]coverage.SymbolMutation) {
+func renderTestsCoverageTable(w io.Writer, profiles []coverage.LabeledProfile, symbols []coverage.SymbolLayerCoverage, nodes []core.SymbolNode, changedFiles []string, diffBase string, mutations map[string]coverage.SymbolMutation, mutationReport coverage.MutationReport) {
 	if diffBase != "" {
 		gaps := changedCoverageGap(nodes, changedFiles, symbols)
 		fmt.Fprintf(w, "tests coverage --diff %s: %d changed symbol(s) with no covering test in any layer\n", diffBase, len(gaps))
@@ -347,6 +347,10 @@ func renderTestsCoverageTable(w io.Writer, profiles []coverage.LabeledProfile, s
 		}
 		fmt.Fprintln(w)
 	}
+	if mutations != nil && (mutationReport.Skipped > 0 || mutationReport.Unattributed > 0) {
+		fmt.Fprintf(w, "mutation report: %d skipped (did not compile), %d unattributed (no line recovered — see docs/use-cases/test-coverage.md's --debug note)\n",
+			mutationReport.Skipped, mutationReport.Unattributed)
+	}
 }
 
 // nonNilStrList normalizes a nil string slice to an empty (never-null)
@@ -359,7 +363,7 @@ func nonNilStrList(ss []string) []string {
 	return ss
 }
 
-func renderTestsCoverageJSON(w io.Writer, profiles []coverage.LabeledProfile, symbols []coverage.SymbolLayerCoverage, nodes []core.SymbolNode, changedFiles []string, diffBase string, mutations map[string]coverage.SymbolMutation) int {
+func renderTestsCoverageJSON(w io.Writer, profiles []coverage.LabeledProfile, symbols []coverage.SymbolLayerCoverage, nodes []core.SymbolNode, changedFiles []string, diffBase string, mutations map[string]coverage.SymbolMutation, mutationReport coverage.MutationReport) int {
 	symItems := make([]any, len(symbols))
 	for i, s := range symbols {
 		byLayer := make(map[string]any, len(s.ByLayer))
@@ -398,6 +402,12 @@ func renderTestsCoverageJSON(w io.Writer, profiles []coverage.LabeledProfile, sy
 		}
 		payload["diff_base"] = diffBase
 		payload["gap"] = gapItems
+	}
+	if mutations != nil {
+		payload["mutation_summary"] = map[string]any{
+			"skipped":      mutationReport.Skipped,
+			"unattributed": mutationReport.Unattributed,
+		}
 	}
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
