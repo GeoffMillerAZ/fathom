@@ -83,6 +83,13 @@ type Sessions struct {
 	MaxTurns int  `json:"max_turns"`
 	Workers  int  `json:"workers,omitempty"`
 	Mode     Mode `json:"mode"`
+	// MaxWorkersTotal caps how many worker sessions ModePlannerWorkers may
+	// run in total across the whole cell (O55 item 3): after a worker
+	// finishes its row, runPlannerWorkers assigns the next unchecked plan
+	// row to a new worker session rather than stopping at Workers sessions
+	// — a plan with more rows than Workers used to leave the extra rows
+	// unassigned forever. 0 defaults to Workers*3 (runPlannerWorkers).
+	MaxWorkersTotal int `json:"max_workers_total,omitempty"`
 }
 
 // Subject is the pinned repository a task runs against.
@@ -683,6 +690,26 @@ type CellResult struct {
 	// ledger row — carries the fact that this reading measured an
 	// instrument defect, not the thing it claims. Empty for a sound cell.
 	InstrumentDefect string `json:"instrument_defect,omitempty"`
+	// RowsAssigned / RowsUnassigned are ModePlannerWorkers' own accounting
+	// (O55 item 3): how many plan rows actually got a worker session
+	// (RunSessions' reassignment loop, sessions.go) versus how many were
+	// still unchecked when it stopped (task.Sessions.MaxWorkersTotal
+	// reached, or a worker session errored). nil for ModeSingle — there is
+	// no plan-row assignment to report.
+	RowsAssigned   *int `json:"rows_assigned,omitempty"`
+	RowsUnassigned *int `json:"rows_unassigned,omitempty"`
+	// InstrumentFilesExcluded is how many whole-file sections
+	// FilterInstrumentOwnedDiff dropped from agent.diff (O55 item 4) —
+	// `fathom init`'s own writes, never the agent's — so the exclusion is
+	// visible on the cell rather than a silent shrink of AgentDiffPath. 0
+	// (the common unwired-arm case) is a real, reported count, not absence
+	// — always present, never omitempty.
+	InstrumentFilesExcluded int `json:"instrument_files_excluded"`
+	// StoreRoot is set only by BorrowScenarioCell (O55 item 5), to the
+	// cellsDir the cell was actually read from — ephemeral like Borrowed/
+	// SourceRunID (StoreScenarioCell never writes a borrowed cell back), so
+	// this is never present on a cell as originally stored.
+	StoreRoot string `json:"store_root,omitempty"`
 }
 
 // Harness runs one session and returns what happened; the Claude Code

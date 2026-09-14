@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -592,5 +593,178 @@ func TestFindScenarioCellsByRun_MissingCellsDirIsEmptyNotError(t *testing.T) {
 	}
 	if len(got) != 0 {
 		t.Errorf("expected no matches, got %v", got)
+	}
+}
+
+// unifiedDiffFile builds one `git diff` file section (just enough shape for
+// FilterInstrumentOwnedDiff to parse the header) for path.
+func unifiedDiffFile(path, body string) string {
+	return "diff --git a/" + path + " b/" + path + "\n" +
+		"index 0000000..1111111 100644\n" +
+		"--- a/" + path + "\n" +
+		"+++ b/" + path + "\n" +
+		body
+}
+
+// TestFilterInstrumentOwnedDiff_DropsOwnedFileSections pins O55 item 4: a
+// diff naming both an instrument-owned file and a real one keeps only the
+// real one's section, and reports how many were dropped. workspace/
+// artifacts/scratch.json is dropped only because it is named in
+// gitIgnoredWorkspace (fix-first review: workspace/ is gated, never a
+// blanket exclusion — see TestFilterInstrumentOwnedDiff_WorkspaceIsGated).
+func TestFilterInstrumentOwnedDiff_DropsOwnedFileSections(t *testing.T) {
+	diff := unifiedDiffFile("CLAUDE.md", "@@ -1 +1,2 @@\n+<!-- fathom:begin v3 sha256:x -->\n") +
+		unifiedDiffFile("real.go", "@@ -1 +1 @@\n-func Old() {}\n+func New() {}\n") +
+		unifiedDiffFile("workspace/artifacts/scratch.json", "@@ -0,0 +1 @@\n+{}\n")
+	owned := map[string]bool{"CLAUDE.md": true}
+	gitIgnored := map[string]bool{"workspace/artifacts/scratch.json": true}
+
+	got, excluded := FilterInstrumentOwnedDiff([]byte(diff), owned, gitIgnored)
+	if excluded != 2 {
+		t.Fatalf("excluded = %d, want 2 (CLAUDE.md by the owned set, workspace/... by the subject's own .gitignore)", excluded)
+	}
+	s := string(got)
+	if strings.Contains(s, "CLAUDE.md") {
+		t.Errorf("expected CLAUDE.md's section dropped, got:\n%s", s)
+	}
+	if strings.Contains(s, "workspace/artifacts") {
+		t.Errorf("expected the workspace/ section dropped, got:\n%s", s)
+	}
+	if !strings.Contains(s, "real.go") || !strings.Contains(s, "func New()") {
+		t.Errorf("expected real.go's section to survive, got:\n%s", s)
+	}
+}
+
+// TestFilterInstrumentOwnedDiff_WorkspaceIsGated pins the fix-first review
+// directly: a workspace/ path the SUBJECT's own .gitignore does NOT ignore
+// (gitIgnoredWorkspace silent about it) is a real subject file and must
+// survive — workspace/ is this repo's own convention, never assumed of an
+// arbitrary subject (ADR-011).
+func TestFilterInstrumentOwnedDiff_WorkspaceIsGated(t *testing.T) {
+	diff := []byte(unifiedDiffFile("workspace/pkg/real_source.go", "@@ -1 +1 @@\n-func Old() {}\n+func New() {}\n"))
+	got, excluded := FilterInstrumentOwnedDiff(diff, map[string]bool{".fathomignore": true}, nil)
+	if excluded != 0 {
+		t.Fatalf("excluded = %d, want 0 — no .gitignore entry named this workspace/ path", excluded)
+	}
+	if !strings.Contains(string(got), "func New()") {
+		t.Errorf("expected the un-ignored workspace/ file to survive, got:\n%s", got)
+	}
+}
+
+// TestFilterInstrumentOwnedDiff_EmptyInputsAreNoops covers the two
+// degenerate cases: an empty diff, and every owned set empty.
+func TestFilterInstrumentOwnedDiff_EmptyInputsAreNoops(t *testing.T) {
+	if got, n := FilterInstrumentOwnedDiff(nil, map[string]bool{"x": true}, nil); got != nil || n != 0 {
+		t.Errorf("empty diff: got %q, %d", got, n)
+	}
+	diff := []byte(unifiedDiffFile("real.go", "@@ -1 +1 @@\n-a\n+b\n"))
+	got, n := FilterInstrumentOwnedDiff(diff, nil, nil)
+	if n != 0 || string(got) != string(diff) {
+		t.Errorf("nil owned/gitIgnoredWorkspace should pass the diff through unchanged, got %q, %d", got, n)
+	}
+}
+
+func TestPathIsInstrumentOwned(t *testing.T) {
+	owned := map[string]bool{".fathomignore": true, "CLAUDE.md": true}
+	gitIgnoredWorkspace := map[string]bool{"workspace/tmp/x.log": true}
+	cases := []struct {
+		path string
+		want bool
+	}{
+		{".fathomignore", true},
+		{"CLAUDE.md", true},
+		{".fathom/receipts.jsonl", true},
+		{"workspace/tmp/x.log", true},   // named in gitIgnoredWorkspace
+		{"workspace", false},            // not named — bare prefix alone proves nothing now
+		{"workspace/pkg/real.go", false}, // a real subject file under workspace/, not gitignored
+		{"real.go", false},
+		{"workspace-lookalike/real.go", false},
+	}
+	for _, c := range cases {
+		if got := pathIsInstrumentOwned(owned, gitIgnoredWorkspace, c.path); got != c.want {
+			t.Errorf("pathIsInstrumentOwned(%q) = %v, want %v", c.path, got, c.want)
+		}
+	}
+}
+
+// TestStripFathomRegionsFromDiff_WholeHunkIsRegionIsDropped pins O55 item
+// 4 (fix-first review): a hunk whose ENTIRE own change is the fathom
+// region (nothing else in the hunk changed) is dropped in full — header
+// included — never left behind as a hunk-less "diff --git" stub.
+func TestStripFathomRegionsFromDiff_WholeHunkIsRegionIsDropped(t *testing.T) {
+	diff := "diff --git a/CLAUDE.md b/CLAUDE.md\n" +
+		"index aaa..bbb 100644\n" +
+		"--- a/CLAUDE.md\n" +
+		"+++ b/CLAUDE.md\n" +
+		"@@ -1,2 +1,6 @@\n" +
+		" # notes\n" +
+		" human content\n" +
+		"+<!-- fathom:begin v3 sha256:x -->\n" +
+		"+stanza line 1\n" +
+		"+stanza line 2\n" +
+		"+<!-- fathom:end -->\n" +
+		unifiedDiffFile("real.go", "@@ -1 +1 @@\n-func Old() {}\n+func New() {}\n")
+	ranges := map[string]regionRange{"CLAUDE.md": {newStart: 3, newEnd: 6}}
+
+	got, excluded := stripFathomRegionsFromDiff([]byte(diff), ranges)
+	if excluded != 1 {
+		t.Fatalf("excluded = %d, want 1", excluded)
+	}
+	s := string(got)
+	if strings.Contains(s, "CLAUDE.md") {
+		t.Errorf("expected CLAUDE.md's whole section dropped (its only change was the region), got:\n%s", s)
+	}
+	if !strings.Contains(s, "real.go") || !strings.Contains(s, "func New()") {
+		t.Errorf("expected real.go's own section to survive untouched, got:\n%s", s)
+	}
+}
+
+// TestStripFathomRegionsFromDiff_MixedHunkKeepsTheRealEdit pins the other
+// half: a hunk that mixes the fathom region with a genuine agent edit to
+// the SAME file keeps the real edit and drops only the region's own
+// lines, with a correctly recomputed hunk header.
+func TestStripFathomRegionsFromDiff_MixedHunkKeepsTheRealEdit(t *testing.T) {
+	diff := "diff --git a/CLAUDE.md b/CLAUDE.md\n" +
+		"index aaa..bbb 100644\n" +
+		"--- a/CLAUDE.md\n" +
+		"+++ b/CLAUDE.md\n" +
+		"@@ -1,2 +1,6 @@\n" +
+		" # notes\n" +
+		"-old human content\n" +
+		"+new human content\n" +
+		"+<!-- fathom:begin v3 sha256:x -->\n" +
+		"+stanza line 1\n" +
+		"+stanza line 2\n" +
+		"+<!-- fathom:end -->\n"
+	// New-file line numbers: 1 "# notes" (context), 2 "new human content",
+	// 3 begin marker, 4-5 stanza body, 6 end marker — the region spans
+	// new-file lines 3-6.
+	ranges := map[string]regionRange{"CLAUDE.md": {newStart: 3, newEnd: 6}}
+
+	got, excluded := stripFathomRegionsFromDiff([]byte(diff), ranges)
+	if excluded != 1 {
+		t.Fatalf("excluded = %d, want 1", excluded)
+	}
+	s := string(got)
+	if strings.Contains(s, "stanza line") || strings.Contains(s, "fathom:begin") {
+		t.Errorf("expected the region's own lines stripped, got:\n%s", s)
+	}
+	if !strings.Contains(s, "-old human content") || !strings.Contains(s, "+new human content") {
+		t.Errorf("expected the genuine agent edit to CLAUDE.md to survive, got:\n%s", s)
+	}
+	if !strings.Contains(s, "@@ -1,2 +1,2 @@") {
+		t.Errorf("expected the hunk header recomputed to 2 old/2 new lines, got:\n%s", s)
+	}
+}
+
+// TestStripFathomRegionsFromDiff_NoRangesIsNoop covers the common case —
+// an unwired arm, or a wired one whose CLAUDE.md/AGENTS.md never changed
+// at all (InstrumentRegionRanges found nothing) — passes the diff through
+// byte for byte.
+func TestStripFathomRegionsFromDiff_NoRangesIsNoop(t *testing.T) {
+	diff := []byte(unifiedDiffFile("real.go", "@@ -1 +1 @@\n-a\n+b\n"))
+	got, excluded := stripFathomRegionsFromDiff(diff, nil)
+	if excluded != 0 || string(got) != string(diff) {
+		t.Errorf("expected a no-op pass-through, got %q, %d", got, excluded)
 	}
 }

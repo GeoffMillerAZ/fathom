@@ -1,10 +1,14 @@
 // PrepareSubject (SB-12) turns a Task's pinned subject into a git worktree
 // ready for sessions: a shared clone under
-// workspace/scenariobench/subjects/<sha256(repo_url)>, one `git worktree
-// add` per cell at base_commit, the subject's and the arm's setup commands,
-// and — for a wired arm — a scratch daemon that ingests ONLY that worktree
-// (never the fleet store) so `fathom init --harness claude-code --json` can
-// wire it for real.
+// workspace/scenariobench/subjects/<sha256(repo_url)>, one cell worktree
+// per (base_commit, arm) checked out from that clone at base_commit and
+// given its own single-commit history (O55 item 1 — see
+// checkoutCommitIntoWorktree: a cell worktree must have NO future, so
+// `git log --all` inside it can
+// never resolve a commit that only merged after base_commit), the subject's
+// and the arm's setup commands, and — for a wired arm — a scratch daemon
+// that ingests ONLY that worktree (never the fleet store) so `fathom init
+// --harness claude-code --json` can wire it for real.
 package scenariobench
 
 import (
@@ -26,6 +30,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/wiring"
 )
 
 // CompileCost is what PrepareSubject spent compiling a semantic layer for a
@@ -132,7 +138,18 @@ func PrepareSubject(ctx context.Context, task Task, arm Arm, root string) (Workt
 			// live git process owns.
 			reapStaleScratchDaemon(wtPath)
 			removeStaleIndexLock(ctx, wtPath)
-			if out, err := runIn(ctx, wtPath, "git", "reset", "--hard", task.Subject.BaseCommit); err != nil {
+			// wtPath is its own repository (checkoutCommitIntoWorktree) whose
+			// history starts at its own root commit — that commit's sha is
+			// NOT task.Subject.BaseCommit (it was re-committed by `git
+			// commit`, never `git reset` to the original sha, which this
+			// repo's object store does not even contain). A session may have
+			// added commits on top since the last cell; the root commit is
+			// always the one to reset back to, regardless of how many.
+			root, err := runIn(ctx, wtPath, "git", "rev-list", "--max-parents=0", "HEAD")
+			if err != nil {
+				return fmt.Errorf("preparing subject: finding the worktree's base commit: %w (%s)", err, root)
+			}
+			if out, err := runIn(ctx, wtPath, "git", "reset", "--hard", strings.TrimSpace(root)); err != nil {
 				return fmt.Errorf("preparing subject: resetting the shared worktree: %w (%s)", err, out)
 			}
 			if out, err := runIn(ctx, wtPath, "git", "clean", "-fdx"); err != nil {
@@ -140,9 +157,12 @@ func PrepareSubject(ctx context.Context, task Task, arm Arm, root string) (Workt
 			}
 			return nil
 		}
-		_, _ = runIn(ctx, cloneDir, "git", "worktree", "prune")
-		if out, err := runIn(ctx, cloneDir, "git", "worktree", "add", "--detach", wtPath, task.Subject.BaseCommit); err != nil {
-			return fmt.Errorf("preparing subject: git worktree add: %w (%s)", err, out)
+		if err := os.MkdirAll(wtPath, 0o755); err != nil {
+			return fmt.Errorf("preparing subject: creating %s: %w", wtPath, err)
+		}
+		if err := checkoutCommitIntoWorktree(ctx, cloneDir, task.Subject.BaseCommit, wtPath); err != nil {
+			_ = os.RemoveAll(wtPath)
+			return err
 		}
 		return nil
 	}(); err != nil {
@@ -502,6 +522,79 @@ func ensureClone(ctx context.Context, repoURL, cloneDir string) error {
 	return nil
 }
 
+// checkoutCommitIntoWorktree makes wtPath (an existing, empty directory)
+// its own git repository containing exactly base's tree, in exactly one
+// commit with no parents — O55 item 1: a full clone's worktree carries the
+// WHOLE history, including any merge that lands after base (a control
+// planner ran `git log --all | grep -i autolink` against a shared-clone
+// worktree and found the very fix PR #10124 the task was measuring), so a
+// cell worktree built off one can leak the answer.
+//
+// Its own source of base's tree is checkoutCommitTree (read-tree +
+// checkout-index against a TEMPORARY index), never `git archive`
+// (fix-first review, 2026-09-14): archive
+// honors .gitattributes' export-ignore, silently DROPPING any file a
+// subject marks that way from the tarball — export-ignore exists
+// specifically to shape distribution archives, and a real checkout
+// (`git worktree add`, `checkout-index`) never consults it, so the first
+// version of this fix (archive-based) could silently lose files a normal
+// `git worktree add` would have kept. `git init` + `add -A` + `commit`
+// then gives wtPath a single root commit, authored "bench
+// <bench@example.invalid>" so it is never mistaken for a real contributor.
+// cloneDir is read here only as the checkout source — the worktree shares
+// none of its history, refs, or object store afterward.
+func checkoutCommitIntoWorktree(ctx context.Context, cloneDir, base, wtPath string) error {
+	if err := checkoutCommitTree(ctx, cloneDir, base, wtPath); err != nil {
+		return err
+	}
+	if out, err := runIn(ctx, wtPath, "git", "init", "-q", "-b", "bench"); err != nil {
+		return fmt.Errorf("preparing subject: git init: %w (%s)", err, out)
+	}
+	if out, err := runIn(ctx, wtPath, "git", "add", "-A"); err != nil {
+		return fmt.Errorf("preparing subject: git add: %w (%s)", err, out)
+	}
+	commitEnv := map[string]string{
+		"GIT_AUTHOR_NAME": "bench", "GIT_AUTHOR_EMAIL": "bench@example.invalid",
+		"GIT_COMMITTER_NAME": "bench", "GIT_COMMITTER_EMAIL": "bench@example.invalid",
+	}
+	if out, err := runInEnv(ctx, wtPath, commitEnv, "git", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "base "+base); err != nil {
+		return fmt.Errorf("preparing subject: git commit: %w (%s)", err, out)
+	}
+	return nil
+}
+
+// checkoutCommitTree populates wtPath (an existing, empty directory) with
+// base's FULL tree read from cloneDir, via `git read-tree` + `git
+// checkout-index` against a TEMPORARY index file (GIT_INDEX_FILE) —
+// never cloneDir's own main index, so this never interferes with anything
+// else the shared clone's index is used for (concurrent cells already
+// serialize on lockClone(cloneDir), but there is no reason to touch
+// persistent state here at all when a throwaway index does the same job).
+// Unlike `git archive`, checkout-index never consults .gitattributes'
+// export-ignore — it is a real checkout, the same shape `git worktree add`
+// would have produced.
+func checkoutCommitTree(ctx context.Context, cloneDir, base, wtPath string) error {
+	gitDir := filepath.Join(cloneDir, ".git")
+	tmpIndex, err := os.CreateTemp("", "fathom-scenariobench-index-")
+	if err != nil {
+		return fmt.Errorf("preparing subject: creating a temporary index: %w", err)
+	}
+	tmpIndexPath := tmpIndex.Name()
+	if err := tmpIndex.Close(); err != nil {
+		return fmt.Errorf("preparing subject: closing the temporary index: %w", err)
+	}
+	defer os.Remove(tmpIndexPath)
+	extra := map[string]string{"GIT_INDEX_FILE": tmpIndexPath}
+
+	if out, err := runInEnv(ctx, cloneDir, extra, "git", "--git-dir="+gitDir, "read-tree", base); err != nil {
+		return fmt.Errorf("preparing subject: reading %s's tree: %w (%s)", base, err, out)
+	}
+	if out, err := runInEnv(ctx, cloneDir, extra, "git", "--git-dir="+gitDir, "--work-tree="+wtPath, "checkout-index", "-a", "-f"); err != nil {
+		return fmt.Errorf("preparing subject: checking out %s into %s: %w (%s)", base, wtPath, err, out)
+	}
+	return nil
+}
+
 func ensureCommit(ctx context.Context, cloneDir, commit string) error {
 	if _, err := runIn(ctx, cloneDir, "git", "cat-file", "-e", commit+"^{commit}"); err == nil {
 		return nil
@@ -819,6 +912,175 @@ func compileLayers(ctx context.Context, root string, task Task, wt Worktree) (*C
 		}
 	}
 	return cost, nil
+}
+
+// InstrumentOwnedPaths returns the repo-relative paths (slash-separated,
+// matching `git diff --name-only`'s own spelling) that PrepareSubject's own
+// instrument — `fathom init`'s wiring, never the agent — OWNS OUTRIGHT
+// (O55 item 4): every file internal/wiring's own ledger
+// (`.fathom/owned.json`) records a key for — a whole owned file (KindFile)
+// or a structured key in a file like `.claude/settings.json`/lefthook.yml
+// (KindKey) — plus `.fathomignore` and the ledger file itself, which carry
+// no entry of their own. A MARKED REGION (KindRegion — CLAUDE.md/
+// AGENTS.md's own fathom stanza) is deliberately NOT here: apply.go only
+// calls ledger.Record for KindKey/KindFile, so a region's ownership lives
+// entirely in-band (the marker line's own digest, region.go) and never
+// touches this ledger at all (fix-first review, 2026-09-14: the original
+// version of this fix assumed it did, and so never actually excluded a
+// real wired cell's stanza). cell.go's FilterInstrumentOwnedDiff uses this
+// set for whole-file exclusion; InstrumentRegionRanges below is the
+// separate, region-aware path captureAgentDiff also runs, which strips
+// only a region's own lines rather than the whole file. A worktree
+// PrepareSubject never wired (no `.fathom/owned.json` at all, an unwired
+// arm's ordinary case) returns just the two static entries, never an
+// error.
+func InstrumentOwnedPaths(wt Worktree) (map[string]bool, error) {
+	// The ledger names what it records ownership of — never itself — but
+	// it is exactly as instrument-written as anything it lists.
+	owned := map[string]bool{".fathomignore": true, ".fathom/owned.json": true}
+	ledger, err := wiring.LoadLedger(wt.Path)
+	if err != nil {
+		return nil, fmt.Errorf("finding instrument-owned files: %w", err)
+	}
+	for file := range ledger.Files {
+		owned[filepath.ToSlash(file)] = true
+	}
+	return owned, nil
+}
+
+// instrumentRegionFiles are the only files internal/wiring ever places a
+// MARKED REGION into, always with wiring.HTMLMarkers (region.go's own
+// doc comment: "HTMLMarkers delimits regions in Markdown files (CLAUDE.md,
+// AGENTS.md)").
+var instrumentRegionFiles = []string{"CLAUDE.md", "AGENTS.md"}
+
+// InstrumentRegionRanges returns, for each of instrumentRegionFiles that
+// currently carries fathom's own marked region on either side of the
+// change, the 1-based inclusive line range that region occupies in the
+// BASE commit's version of the file and in the worktree's CURRENT version
+// — cell.go's stripFathomRegionsFromDiff strips exactly those lines from
+// agent.diff's hunks for that file, keeping any other edit to it byte for
+// byte. Base content comes from `git show HEAD:<path>` run IN wt.Path,
+// which — since PrepareSubject gives every cell worktree a single root
+// commit at base_commit (O55 item 1) — is always base_commit's own
+// content, regardless of what the shared clone's own history looks like.
+// A file absent at base, or carrying no region on EITHER side, is simply
+// omitted from the result (nothing to strip for it); this never errors —
+// an unreadable git show or a missing file are both "no base region",
+// exactly as intended for a file that did not exist yet.
+func InstrumentRegionRanges(ctx context.Context, wt Worktree) map[string]regionRange {
+	out := map[string]regionRange{}
+	for _, name := range instrumentRegionFiles {
+		var rng regionRange
+		if base, err := runIn(ctx, wt.Path, "git", "show", "HEAD:"+name); err == nil {
+			if start, end, ok := regionLineRange(base, wiring.HTMLMarkers); ok {
+				rng.oldStart, rng.oldEnd = start, end
+			}
+		}
+		if cur, err := os.ReadFile(filepath.Join(wt.Path, name)); err == nil {
+			if start, end, ok := regionLineRange(string(cur), wiring.HTMLMarkers); ok {
+				rng.newStart, rng.newEnd = start, end
+			}
+		}
+		if rng.oldStart == 0 && rng.newStart == 0 {
+			continue
+		}
+		out[name] = rng
+	}
+	return out
+}
+
+// GitIgnoredWorkspacePaths reports which of the workspace/-prefixed paths
+// diff names (in its own "diff --git a/X b/X" headers) are actually
+// ignored by the SUBJECT's own .gitignore, checked with `git check-ignore
+// --stdin` run in wt.Path (O55 item 4, fix-first review): workspace/ is
+// THIS repo's own convention (root CLAUDE.md), never assumed of an
+// arbitrary subject repo (ADR-011 keeps fathom itself org/repo-agnostic) —
+// a subject that genuinely tracks real source under its own workspace/
+// directory must not lose it wholesale. Only a workspace/ path the
+// subject's own .gitignore actually ignores is reported; paths outside
+// workspace/ are never queried at all. A git failure (not a repository,
+// check-ignore unavailable) reports no paths ignored, never an error — the
+// safer default is to KEEP a path in the diff, not silently drop a
+// subject's real source over a git failure. nil when diff names no
+// workspace/ path at all.
+func GitIgnoredWorkspacePaths(ctx context.Context, wt Worktree, diff []byte) map[string]bool {
+	var candidates []string
+	for _, line := range strings.Split(string(diff), "\n") {
+		if !strings.HasPrefix(line, "diff --git ") {
+			continue
+		}
+		if p := diffGitHeaderPath(line); p == "workspace" || strings.HasPrefix(p, "workspace/") {
+			candidates = append(candidates, p)
+		}
+	}
+	if len(candidates) == 0 {
+		return nil
+	}
+	// --no-index: a pure gitignore-pattern question ("would the subject's
+	// own rules ignore this pathname"), not an index-state one. Without
+	// it, git check-ignore reports an ALREADY-TRACKED path as "not
+	// ignored" regardless of matching a pattern (its own documented
+	// behavior — a later .gitignore rule does not retroactively un-track
+	// a file already in the index), which would silently defeat this
+	// filter for the realistic case captureAgentDiff hits: a workspace/
+	// path that was tracked before a .gitignore rule started covering it,
+	// then the agent edits it again.
+	cmd := exec.CommandContext(ctx, "git", "check-ignore", "--no-index", "--stdin")
+	cmd.Dir = wt.Path
+	cmd.Stdin = strings.NewReader(strings.Join(candidates, "\n") + "\n")
+	// git check-ignore exits 1 when NONE of the stdin paths are ignored —
+	// not a failure worth reporting, just an empty result; its stdout
+	// (the ignored subset, one per line) is populated regardless of exit
+	// code, so the error return is deliberately ignored here.
+	out, _ := cmd.Output()
+	ignored := map[string]bool{}
+	for _, line := range strings.Split(string(out), "\n") {
+		if line = strings.TrimSpace(line); line != "" {
+			ignored[line] = true
+		}
+	}
+	return ignored
+}
+
+// StripInstrumentRegions is InstrumentRegionRanges +
+// stripFathomRegionsFromDiff (cell.go) as one exported call —
+// cmd/scenariobench's captureAgentDiff's entry point for the region-aware
+// half of O55 item 4, so regionRange and stripFathomRegionsFromDiff itself
+// can stay package-private.
+func StripInstrumentRegions(ctx context.Context, wt Worktree, diff []byte) ([]byte, int) {
+	return stripFathomRegionsFromDiff(diff, InstrumentRegionRanges(ctx, wt))
+}
+
+// regionLineRange finds internal/wiring's own marker pair (syn —
+// wiring.HTMLMarkers for CLAUDE.md/AGENTS.md) in content and returns the
+// 1-based inclusive line range from the begin marker line through the end
+// marker line — exactly the lines a region occupies on disk. ok is false
+// when no complete marker pair is present (content carries no region at
+// all, or — treated the same here — an unterminated one; a malformed
+// marker is internal/wiring's own concern to refuse at write time, not
+// this read-only filter's).
+func regionLineRange(content string, syn wiring.MarkerSyntax) (start, end int, ok bool) {
+	if content == "" {
+		return 0, 0, false
+	}
+	lines := strings.Split(content, "\n")
+	begin := -1
+	for i, line := range lines {
+		if strings.HasPrefix(line, syn.BeginPrefix) {
+			begin = i
+			break
+		}
+	}
+	if begin < 0 {
+		return 0, 0, false
+	}
+	for i := begin; i < len(lines); i++ {
+		if strings.HasPrefix(lines[i], syn.End) {
+			return begin + 1, i + 1, true
+		}
+	}
+	return 0, 0, false
 }
 
 // SubjectEnv is the environment every subprocess that runs INSIDE a subject

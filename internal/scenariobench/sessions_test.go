@@ -88,7 +88,13 @@ func TestRunSessions_FakeHarnessReplays(t *testing.T) {
 		}
 	})
 
-	t.Run("planner-workers mode caps workers at Sessions.Workers", func(t *testing.T) {
+	// O55 item 3: a worker, once it finishes its row, is followed by a
+	// new worker session on the next unchecked row — Workers=1 no longer
+	// caps how many ROWS get a session, only that the driver runs them
+	// one at a time. With MaxWorkersTotal unset, the default cap
+	// (Workers*3 = 3) exactly covers this plan's 3 rows, so all three get
+	// assigned in row order.
+	t.Run("planner-workers mode reassigns a worker to every row, not just Sessions.Workers of them", func(t *testing.T) {
 		wtDir := t.TempDir()
 		writeTestFile(t, filepath.Join(wtDir, "NOTES.md"),
 			"- [ ] {id: row-1} a\n- [ ] {id: row-2} b\n- [ ] {id: row-3} c\n")
@@ -104,8 +110,102 @@ func TestRunSessions_FakeHarnessReplays(t *testing.T) {
 		if err != nil {
 			t.Fatalf("RunSessions: %v", err)
 		}
-		if len(results) != 2 {
-			t.Fatalf("expected 1 planner + 1 worker (capped by Workers=1) = 2, got %d", len(results))
+		if len(results) != 4 {
+			t.Fatalf("expected 1 planner + 3 workers (all rows assigned) = 4, got %d", len(results))
+		}
+		wantRowIDs := []string{"row-1", "row-2", "row-3"}
+		for i, want := range wantRowIDs {
+			got := results[i+1]
+			if got.Role != "worker" || got.RowID != want {
+				t.Errorf("session %d: role=%q rowID=%q, want worker/%s", i+1, got.Role, got.RowID, want)
+			}
+		}
+		// O55 item 3 (fix-first review): reassignment is tracked in memory
+		// now, never by writing into the plan file — FakeHarness never
+		// touches disk, so every row is STILL literally unchecked on disk
+		// even though all three were assigned. Writing any of them would
+		// be the very regression this test now guards against.
+		n, err := RemainingPlanRows(wtDir)
+		if err != nil {
+			t.Fatalf("RemainingPlanRows: %v", err)
+		}
+		if n != 3 {
+			t.Errorf("expected the driver to leave the plan file untouched (3 still unchecked on disk), got %d", n)
+		}
+	})
+
+	// The explicit fixture from the finding: a 5-row plan and workers=2
+	// assigns all 5 (default MaxWorkersTotal = 2*3 = 6 >= 5).
+	t.Run("a 5-row plan and workers=2 assigns all 5", func(t *testing.T) {
+		wtDir := t.TempDir()
+		writeTestFile(t, filepath.Join(wtDir, "NOTES.md"),
+			"- [ ] {id: row-1} a\n- [ ] {id: row-2} b\n- [ ] {id: row-3} c\n- [ ] {id: row-4} d\n- [ ] {id: row-5} e\n")
+		task := Task{ID: "T3b", Prompt: "p", Sessions: Sessions{Mode: ModePlannerWorkers, Workers: 2, MaxTurns: 10}}
+		wt := Worktree{Path: wtDir}
+		h := &FakeHarness{
+			StreamsDir: streamsDir, TaskID: "T3b", ArmName: "full",
+			Streams: map[string]string{"T3b/full/planner": "planner.jsonl", "T3b/full/worker": "worker.jsonl"},
+		}
+		opts := RunOptions{Trial: 1, RawDir: filepath.Join(t.TempDir(), "raw")}
+
+		results, err := RunSessions(context.Background(), h, task, "full", Arm{}, wt, opts)
+		if err != nil {
+			t.Fatalf("RunSessions: %v", err)
+		}
+		if len(results) != 6 {
+			t.Fatalf("expected 1 planner + 5 workers = 6, got %d", len(results))
+		}
+		workers := 0
+		for _, r := range results {
+			if r.Role == "worker" {
+				workers++
+			}
+		}
+		if workers != 5 {
+			t.Errorf("expected all 5 rows assigned a worker, got %d", workers)
+		}
+	})
+
+	// MaxWorkersTotal, when set, caps total worker sessions below what the
+	// plan's own row count would otherwise get — the row(s) past the cap
+	// stay unassigned, and RunSessions reports no error (a budget cap is
+	// not a failure).
+	t.Run("MaxWorkersTotal caps total worker sessions", func(t *testing.T) {
+		wtDir := t.TempDir()
+		writeTestFile(t, filepath.Join(wtDir, "NOTES.md"),
+			"- [ ] {id: row-1} a\n- [ ] {id: row-2} b\n- [ ] {id: row-3} c\n")
+		task := Task{ID: "T3c", Prompt: "p", Sessions: Sessions{Mode: ModePlannerWorkers, Workers: 1, MaxWorkersTotal: 2, MaxTurns: 10}}
+		wt := Worktree{Path: wtDir}
+		h := &FakeHarness{
+			StreamsDir: streamsDir, TaskID: "T3c", ArmName: "full",
+			Streams: map[string]string{"T3c/full/planner": "planner.jsonl", "T3c/full/worker": "worker.jsonl"},
+		}
+		opts := RunOptions{Trial: 1, RawDir: filepath.Join(t.TempDir(), "raw")}
+
+		results, err := RunSessions(context.Background(), h, task, "full", Arm{}, wt, opts)
+		if err != nil {
+			t.Fatalf("RunSessions: %v", err)
+		}
+		if len(results) != 3 {
+			t.Fatalf("expected 1 planner + 2 workers (capped by MaxWorkersTotal=2) = 3, got %d", len(results))
+		}
+		wantRowIDs := []string{"row-1", "row-2"}
+		for i, want := range wantRowIDs {
+			got := results[i+1]
+			if got.Role != "worker" || got.RowID != want {
+				t.Errorf("session %d: role=%q rowID=%q, want worker/%s", i+1, got.Role, got.RowID, want)
+			}
+		}
+		// The driver never writes into the plan file (O55 item 3, fix-first
+		// review) — all 3 rows are still unchecked on disk regardless of
+		// the cap; row-3 was simply never assigned, which the session
+		// count above already proves.
+		n, err := RemainingPlanRows(wtDir)
+		if err != nil {
+			t.Fatalf("RemainingPlanRows: %v", err)
+		}
+		if n != 3 {
+			t.Errorf("expected the driver to leave the plan file untouched (3 still unchecked on disk), got %d", n)
 		}
 	})
 
@@ -137,6 +237,113 @@ func TestRunSessions_FakeHarnessReplays(t *testing.T) {
 			t.Fatal("expected an error for an unknown session mode")
 		}
 	})
+}
+
+// checkingHarness wraps a FakeHarness and, after a worker session, checks
+// off the first still-unchecked row in the plan file — standing in for a
+// REAL harness's own file edits (FakeHarness itself never touches disk):
+// the worker prompt (workerRowPromptFmt) instructs the agent to mark its
+// own row `[x]` when finished, exactly what a real agent following that
+// instruction would do to the tree. This is what
+// TestRunSessions_WorkerCheckingItsOwnRowIsNeverReassignedOrAnError
+// exercises — the O55 (fix-first review) regression: a first attempt at
+// item 3 had the DRIVER also rewrite that same box, which errored when a
+// worker had already checked it, and that error was not errSubjectPrep, so
+// `scenariobench run` hard-exited 2 and discarded every other cell.
+type checkingHarness struct {
+	t *testing.T
+	*FakeHarness
+}
+
+func (h *checkingHarness) RunSession(req SessionRequest) (SessionResult, error) {
+	res, err := h.FakeHarness.RunSession(req)
+	if err != nil || req.Role != "worker" {
+		return res, err
+	}
+	checkFirstUncheckedRow(h.t, req.Worktree)
+	return res, nil
+}
+
+// checkFirstUncheckedRow marks the plan file's own first unchecked row
+// `[x]` — the real-harness-shaped side effect checkingHarness simulates.
+func checkFirstUncheckedRow(t *testing.T, worktree string) {
+	t.Helper()
+	rows, err := readPlanRows(worktree)
+	if err != nil {
+		t.Fatalf("readPlanRows: %v", err)
+	}
+	if len(rows) == 0 {
+		return
+	}
+	row := rows[0]
+	path := filepath.Join(worktree, filepath.FromSlash(row.file))
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("reading plan file %s: %v", path, err)
+	}
+	lines := strings.Split(string(raw), "\n")
+	for i, line := range lines {
+		m := planRowRE.FindStringSubmatch(line)
+		if m == nil || strings.TrimSpace(m[1]) != row.text {
+			continue
+		}
+		idx := strings.Index(line, "[ ]")
+		if idx < 0 {
+			continue
+		}
+		lines[i] = line[:idx] + "[x]" + line[idx+3:]
+		if err := os.WriteFile(path, []byte(strings.Join(lines, "\n")), 0o644); err != nil {
+			t.Fatalf("writing plan file %s: %v", path, err)
+		}
+		return
+	}
+	t.Fatalf("row %q not found verbatim in %s", row.text, path)
+}
+
+// TestRunSessions_WorkerCheckingItsOwnRowIsNeverReassignedOrAnError pins
+// the O55 fix-first review defect directly: a worker that does what its
+// own prompt instructs (checks its row `[x]`) must never make
+// runPlannerWorkers error, and the row it checked must never be handed to
+// a second worker — the driver reads the tree's own state (readPlanRows)
+// rather than writing to it.
+func TestRunSessions_WorkerCheckingItsOwnRowIsNeverReassignedOrAnError(t *testing.T) {
+	wtDir := t.TempDir()
+	writeTestFile(t, filepath.Join(wtDir, "NOTES.md"),
+		"- [ ] {id: row-1} a\n- [ ] {id: row-2} b\n")
+	task := Task{ID: "T6", Prompt: "p", Sessions: Sessions{Mode: ModePlannerWorkers, Workers: 2, MaxTurns: 10}}
+	wt := Worktree{Path: wtDir}
+	fake := &FakeHarness{
+		StreamsDir: streamsDir, TaskID: "T6", ArmName: "full",
+		Streams: map[string]string{"T6/full/planner": "planner.jsonl", "T6/full/worker": "worker.jsonl"},
+	}
+	h := &checkingHarness{t: t, FakeHarness: fake}
+	opts := RunOptions{Trial: 1, RawDir: filepath.Join(t.TempDir(), "raw")}
+
+	results, err := RunSessions(context.Background(), h, task, "full", Arm{}, wt, opts)
+	if err != nil {
+		t.Fatalf("RunSessions: %v", err)
+	}
+	if len(results) != 3 {
+		t.Fatalf("expected 1 planner + 2 workers = 3, got %d", len(results))
+	}
+	wantRowIDs := []string{"row-1", "row-2"}
+	for i, want := range wantRowIDs {
+		got := results[i+1]
+		if got.Role != "worker" || got.RowID != want {
+			t.Errorf("session %d: role=%q rowID=%q, want worker/%s", i+1, got.Role, got.RowID, want)
+		}
+	}
+	// Both rows were genuinely checked (by the harness, standing in for
+	// the agent) — nothing left unchecked, and no row was ever assigned
+	// twice (which len(results)==3 and the two distinct rowIDs above
+	// already rule out).
+	n, err := RemainingPlanRows(wtDir)
+	if err != nil {
+		t.Fatalf("RemainingPlanRows: %v", err)
+	}
+	if n != 0 {
+		t.Errorf("expected both rows checked by the harness, %d still unchecked", n)
+	}
 }
 
 // TestInstrumentTruthError covers the gate directly: every wantServers

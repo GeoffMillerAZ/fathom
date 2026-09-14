@@ -205,6 +205,12 @@ func runSingle(ctx context.Context, h Harness, task Task, armName string, arm Ar
 	return results, nil
 }
 
+// defaultMaxWorkersTotalFactor is runPlannerWorkers' own default cap on
+// total worker sessions (task.Sessions.MaxWorkersTotal unset, 0): three
+// times the nominal worker count, generous enough to clear a plan with
+// noticeably more rows than workers without ever running unbounded.
+const defaultMaxWorkersTotalFactor = 3
+
 func runPlannerWorkers(ctx context.Context, h Harness, task Task, armName string, arm Arm, wt Worktree, opts RunOptions, cellRawDir string) ([]SessionResult, error) {
 	var results []SessionResult
 	// RC-32 (docs/vision/28-receipts.md §4): the planner's own session
@@ -225,36 +231,62 @@ func runPlannerWorkers(ctx context.Context, h Harness, task Task, armName string
 		return results, nil
 	}
 
-	rows, err := readPlanRows(wt.Path)
-	if err != nil {
-		return results, fmt.Errorf("task %s arm %s: reading the planner's plan file: %w", task.ID, armName, err)
-	}
-	n := task.Sessions.Workers
-	if len(rows) < n {
-		n = len(rows)
+	maxTotal := task.Sessions.MaxWorkersTotal
+	if maxTotal <= 0 {
+		maxTotal = task.Sessions.Workers * defaultMaxWorkersTotalFactor
 	}
 	// RC-32: on a wired arm, the same discoveries brief SubagentStart
 	// renders (cmd/fathom's subagentDiscoveries) — run once, against the
 	// cell's own scratch daemon, and prepended to every worker's prompt so
 	// M5 measures the feature, not the prompt.
 	brief, pointers := workerDiscoveryBrief(ctx, wt, arm, sessionStart)
-	for i := 0; i < n; i++ {
-		row := rows[i]
+
+	// O55 item 3 (fix-first review, 2026-09-14): one plan row per worker,
+	// never reassigned, left every row past task.Sessions.Workers
+	// permanently unchecked. Both arms share this loop — nothing here is
+	// arm-conditional. THE DRIVER NEVER WRITES INTO THE AGENT'S OWN PLAN
+	// FILE: the worker prompt (workerRowPromptFmt) itself instructs the
+	// agent to mark its own row `[x]` when done, and a first attempt at
+	// this fix had runPlannerWorkers ALSO rewrite that same box afterward
+	// — a worker that faithfully did what it was told left no `- [ ]`
+	// line left to rewrite, markPlanRowDone errored, and that error was
+	// not errSubjectPrep, so `scenariobench run` hard-exited 2 and
+	// discarded every other cell in the invocation. Assignment is tracked
+	// IN MEMORY instead (assignedCount, nextUnassignedRow): a row the
+	// worker checked itself simply stops appearing in readPlanRows' own
+	// unchecked list on the next iteration; a row that stays unchecked
+	// (the worker never checked it, or ran under a harness — FakeHarness —
+	// that never touches disk at all) is still never handed to a SECOND
+	// worker, because it is already counted as assigned. No plan-file
+	// write, no error path.
+	assignedCount := map[string]int{}
+	assigned := 0
+	for assigned < maxTotal {
+		rows, err := readPlanRows(wt.Path)
+		if err != nil {
+			return results, fmt.Errorf("task %s arm %s: reading the planner's plan file: %w", task.ID, armName, err)
+		}
+		row, ok := nextUnassignedRow(rows, assignedCount)
+		if !ok {
+			break
+		}
+		assignedCount[row.text]++
+		assigned++
 		rowID := row.id
 		if rowID == "" {
-			rowID = fmt.Sprintf("worker-%d", i+1)
+			rowID = fmt.Sprintf("worker-%d", assigned)
 		}
 		prompt := fmt.Sprintf(workerRowPromptFmt, task.Prompt, row.text)
 		if brief != "" {
 			prompt = brief + "\n\n" + prompt
 		}
-		req, err := newSessionRequest(task, armName, arm, wt, opts, cellRawDir, i+1, "worker", rowID, prompt)
+		req, err := newSessionRequest(task, armName, arm, wt, opts, cellRawDir, assigned, "worker", rowID, prompt)
 		if err != nil {
 			return results, err
 		}
 		res, err := runOneSession(h, req, wt.Arm.MCPServerNames, task.Subject.ExcludePaths)
 		if err != nil {
-			return append(results, res), fmt.Errorf("task %s arm %s worker %d: %w", task.ID, armName, i+1, err)
+			return append(results, res), fmt.Errorf("task %s arm %s worker %d: %w", task.ID, armName, assigned, err)
 		}
 		if len(pointers) > 0 && factsReusedHook != nil {
 			factsReusedHook(&res, pointers)
@@ -265,6 +297,38 @@ func runPlannerWorkers(ctx context.Context, h Harness, task Task, armName string
 		}
 	}
 	return results, nil
+}
+
+// nextUnassignedRow returns the first row among rows (already
+// unchecked-only, in file order — readPlanRows) whose own occurrence,
+// among rows sharing its exact text, has not yet been claimed by
+// assignedCount — so two rows with identical text are disambiguated by
+// position, never conflated with a row already handed to a worker. false
+// when every row in rows has already been assigned (nothing left to do,
+// whether because it was checked off or merely already attempted).
+func nextUnassignedRow(rows []planRow, assignedCount map[string]int) (planRow, bool) {
+	seen := map[string]int{}
+	for _, r := range rows {
+		seen[r.text]++
+		if seen[r.text] > assignedCount[r.text] {
+			return r, true
+		}
+	}
+	return planRow{}, false
+}
+
+// RemainingPlanRows reports how many of a plan file's rows are still
+// unchecked in worktree right now — cmd/scenariobench's own source for a
+// planner-workers cell's rows_unassigned (RunSessions returns only
+// sessions, never a cell-level field, so the driver reads this itself
+// after RunSessions returns). 0, never an error, when there is no plan
+// file at all — the same "nothing to report" readPlanRows already gives.
+func RemainingPlanRows(worktree string) (int, error) {
+	rows, err := readPlanRows(worktree)
+	if err != nil {
+		return 0, err
+	}
+	return len(rows), nil
 }
 
 // workerDiscoveryBrief runs `fathom discoveries` against a wired cell's

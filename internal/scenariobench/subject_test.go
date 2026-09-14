@@ -11,6 +11,9 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/wiring"
 )
 
 // gitFixtureRepo creates a local git repository with one commit (a file
@@ -128,6 +131,171 @@ func TestPrepareSubject_RemovesExcludedPathsBeforeSetup(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(wt.Path, "marker.txt")); err != nil {
 		t.Errorf("expected the subject's own file to survive: %v", err)
+	}
+}
+
+// gitFixtureRepoWithFuture is gitFixtureRepo plus a SECOND commit after the
+// base commit — the shape a repo with a merged fix has: the fix (or, as in
+// O55, a control planner's discovery of it) lives strictly after base in
+// `git log`. Returns the repo path, base's sha, and the future commit's own
+// sha.
+func gitFixtureRepoWithFuture(t *testing.T) (repoPath, base, future string) {
+	t.Helper()
+	dir, baseSHA := gitFixtureRepo(t)
+	run := func(args ...string) string {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		cmd.Env = append(
+			gitEnv(),
+			"GIT_AUTHOR_NAME=test", "GIT_AUTHOR_EMAIL=test@example.invalid",
+			"GIT_COMMITTER_NAME=test", "GIT_COMMITTER_EMAIL=test@example.invalid",
+		)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v: %v (%s)", args, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	writeTestFile(t, filepath.Join(dir, "future.txt"), "PR #10124's merged fix\n")
+	run("add", "future.txt")
+	run("commit", "-q", "-m", "merge: PR #10124 the fix the task is measuring")
+	futureSHA := run("rev-parse", "HEAD")
+	return dir, baseSHA, futureSHA
+}
+
+// TestPrepareSubject_WorktreeHasNoFuture pins O55 item 1: a cell worktree
+// built off a full clone must never let `git log --all` (or any other
+// means) resolve a commit that only exists after base_commit — a control
+// planner found the task's own merged fix that way. After PrepareSubject,
+// the worktree's own history is exactly one commit and the future commit's
+// sha is unresolvable inside it.
+func TestPrepareSubject_WorktreeHasNoFuture(t *testing.T) {
+	repoPath, base, future := gitFixtureRepoWithFuture(t)
+	root := t.TempDir()
+	task := Task{ID: "T1", Subject: Subject{RepoURL: repoPath, BaseCommit: base}}
+	arm := Arm{Instructions: "none"}
+
+	wt, err := PrepareSubject(context.Background(), task, arm, root)
+	if err != nil {
+		t.Fatalf("PrepareSubject: %v", err)
+	}
+	defer StopWorktree(&wt)
+
+	out, err := exec.Command("git", "-C", wt.Path, "log", "--all", "--oneline").CombinedOutput()
+	if err != nil {
+		t.Fatalf("git log --all: %v (%s)", err, out)
+	}
+	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+	if len(lines) != 1 || lines[0] == "" {
+		t.Errorf("expected exactly one commit in the cell worktree's history, got %d: %q", len(lines), out)
+	}
+	if _, err := os.Stat(filepath.Join(wt.Path, "future.txt")); err == nil {
+		t.Error("the future commit's own file must not be present in the cell worktree's tree")
+	}
+	resolve, err := exec.Command("git", "-C", wt.Path, "cat-file", "-e", future+"^{commit}").CombinedOutput()
+	if err == nil {
+		t.Errorf("expected the future commit's sha to be unresolvable in the cell worktree, but it resolved: %s", resolve)
+	}
+
+	// Reuse (the same subject+base_commit+arm cell prepared again) must
+	// still land on a single-commit history, not accumulate one per call.
+	wt2, err := PrepareSubject(context.Background(), task, arm, root)
+	if err != nil {
+		t.Fatalf("PrepareSubject (2nd): %v", err)
+	}
+	defer StopWorktree(&wt2)
+	out2, err := exec.Command("git", "-C", wt2.Path, "log", "--all", "--oneline").CombinedOutput()
+	if err != nil {
+		t.Fatalf("git log --all (2nd): %v (%s)", err, out2)
+	}
+	lines2 := strings.Split(strings.TrimSpace(string(out2)), "\n")
+	if len(lines2) != 1 || lines2[0] == "" {
+		t.Errorf("expected exactly one commit after reuse, got %d: %q", len(lines2), out2)
+	}
+}
+
+// gitFixtureRepoWithExportIgnore builds a local git repository whose
+// .gitattributes marks one committed file export-ignore — `git archive`
+// silently drops such a file from its own output, a real checkout
+// (`git worktree add`, `checkout-index`) never does. Returns the repo path
+// and the commit's sha.
+func gitFixtureRepoWithExportIgnore(t *testing.T) (repoPath, commit string) {
+	t.Helper()
+	dir := t.TempDir()
+	run := func(args ...string) string {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		cmd.Env = append(
+			gitEnv(),
+			"GIT_AUTHOR_NAME=test", "GIT_AUTHOR_EMAIL=test@example.invalid",
+			"GIT_COMMITTER_NAME=test", "GIT_COMMITTER_EMAIL=test@example.invalid",
+		)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v: %v (%s)", args, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	run("init", "-q", "-b", "main")
+	writeTestFile(t, filepath.Join(dir, "normal.txt"), "normal content\n")
+	writeTestFile(t, filepath.Join(dir, "secret.txt"), "export-ignore'd content\n")
+	writeTestFile(t, filepath.Join(dir, ".gitattributes"), "secret.txt export-ignore\n")
+	run("add", "-A")
+	run("commit", "-q", "-m", "initial commit")
+	sha := run("rev-parse", "HEAD")
+	return dir, sha
+}
+
+// TestCheckoutCommitTree_KeepsExportIgnoredFiles pins O55 item 1's
+// fix-first review directly: checkoutCommitTree's own read-tree +
+// checkout-index must keep an export-ignore'd file that `git archive`
+// would silently drop.
+func TestCheckoutCommitTree_KeepsExportIgnoredFiles(t *testing.T) {
+	repoPath, commit := gitFixtureRepoWithExportIgnore(t)
+	wtPath := filepath.Join(t.TempDir(), "wt")
+	if err := os.MkdirAll(wtPath, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := checkoutCommitTree(context.Background(), repoPath, commit, wtPath); err != nil {
+		t.Fatalf("checkoutCommitTree: %v", err)
+	}
+	raw, err := os.ReadFile(filepath.Join(wtPath, "secret.txt"))
+	if err != nil {
+		t.Fatalf("expected secret.txt (export-ignore'd) to be present — git archive would have dropped it: %v", err)
+	}
+	if string(raw) != "export-ignore'd content\n" {
+		t.Errorf("secret.txt content = %q, want the committed content", raw)
+	}
+	if _, err := os.Stat(filepath.Join(wtPath, "normal.txt")); err != nil {
+		t.Errorf("expected normal.txt present: %v", err)
+	}
+	// checkoutCommitTree must never mutate the CLONE's own main index —
+	// only a temporary one.
+	if _, err := os.Stat(filepath.Join(repoPath, ".git", "index")); err != nil {
+		t.Fatalf("the clone's own index vanished: %v", err)
+	}
+}
+
+// TestPrepareSubject_ExportIgnoredFilesSurvive is the end-to-end proof:
+// PrepareSubject's own cell worktree still carries a subject's
+// export-ignore'd file, not just checkoutCommitTree in isolation.
+func TestPrepareSubject_ExportIgnoredFilesSurvive(t *testing.T) {
+	repoPath, commit := gitFixtureRepoWithExportIgnore(t)
+	root := t.TempDir()
+	task := Task{ID: "T1", Subject: Subject{RepoURL: repoPath, BaseCommit: commit}}
+	arm := Arm{Instructions: "none"}
+
+	wt, err := PrepareSubject(context.Background(), task, arm, root)
+	if err != nil {
+		t.Fatalf("PrepareSubject: %v", err)
+	}
+	defer StopWorktree(&wt)
+
+	if _, err := os.Stat(filepath.Join(wt.Path, "secret.txt")); err != nil {
+		t.Errorf("expected the export-ignore'd file to survive PrepareSubject's checkout, got: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(wt.Path, "normal.txt")); err != nil {
+		t.Errorf("expected the ordinary file present: %v", err)
 	}
 }
 
@@ -432,6 +600,150 @@ func TestStopWorktree_NilAndZeroValueAreNoOps(t *testing.T) {
 	wt := Worktree{}
 	if err := StopWorktree(&wt); err != nil {
 		t.Errorf("StopWorktree on a zero-value Worktree: %v", err)
+	}
+}
+
+// TestInstrumentOwnedPaths_ReadsTheLedgerPlusStatics pins O55 item 4:
+// every file internal/wiring's own ledger (.fathom/owned.json) records a
+// KEY for (KindKey — a structured file like .claude/settings.json's own
+// hooks block, or another lefthook.yml-shaped entry) is instrument-owned,
+// plus the two paths that carry no ledger entry of their own —
+// .fathomignore and the ledger file itself. CLAUDE.md/AGENTS.md's own
+// fathom stanza is deliberately NOT exercised here — it is a KindREGION,
+// which apply.go never records in this ledger at all (fix-first review,
+// 2026-09-14); TestInstrumentRegionRanges_* below covers that path.
+func TestInstrumentOwnedPaths_ReadsTheLedgerPlusStatics(t *testing.T) {
+	dir := t.TempDir()
+	ledger := wiring.NewLedger()
+	ledger.Record(".claude/settings.json", wiring.OwnedKey{ID: "hooks", Digest: "sha256:y", Wrote: "2026-09-14T00:00:00Z"})
+	ledger.Record(".claude/skills/foo/SKILL.md", wiring.OwnedKey{ID: "file", Digest: "sha256:z", Wrote: "2026-09-14T00:00:00Z"})
+	if err := wiring.SaveLedger(dir, ledger); err != nil {
+		t.Fatal(err)
+	}
+
+	owned, err := InstrumentOwnedPaths(Worktree{Path: dir})
+	if err != nil {
+		t.Fatalf("InstrumentOwnedPaths: %v", err)
+	}
+	for _, want := range []string{".claude/settings.json", ".claude/skills/foo/SKILL.md", ".fathomignore", ".fathom/owned.json"} {
+		if !owned[want] {
+			t.Errorf("expected %q to be instrument-owned, got %v", want, owned)
+		}
+	}
+	if owned["real_agent_file.go"] {
+		t.Error("a file the ledger never mentions must not be reported owned")
+	}
+	if owned["CLAUDE.md"] {
+		t.Error("CLAUDE.md must never be reported owned via the ledger — its stanza is a KindRegion, never ledger-tracked")
+	}
+}
+
+// TestInstrumentRegionRanges_RealRegionFromWiring pins O55 item 4
+// (fix-first review): InstrumentRegionRanges must find a region internal
+// wiring's OWN production code actually wrote — wiring.ApplyWiring, never
+// a hand-crafted marker string standing in for it — and report exactly the
+// lines its own markers (wiring.HTMLMarkers) delimit.
+// TestGitIgnoredWorkspacePaths_RealGitignore pins O55 item 4 (fix-first
+// review) end to end: a real .gitignore that ignores one workspace/ path
+// but not another is respected exactly — the ignored path is reported,
+// real subject source under workspace/ is not (ADR-011: workspace/ is
+// this repo's own convention, never assumed of an arbitrary subject).
+func TestGitIgnoredWorkspacePaths_RealGitignore(t *testing.T) {
+	dir := t.TempDir()
+	run := func(args ...string) {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		cmd.Env = append(
+			gitEnv(),
+			"GIT_AUTHOR_NAME=test", "GIT_AUTHOR_EMAIL=test@example.invalid",
+			"GIT_COMMITTER_NAME=test", "GIT_COMMITTER_EMAIL=test@example.invalid",
+		)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v (%s)", args, err, out)
+		}
+	}
+	run("init", "-q", "-b", "main")
+	writeTestFile(t, filepath.Join(dir, ".gitignore"), "workspace/artifacts/\n")
+	run("add", "-A")
+	run("commit", "-q", "-m", "base")
+
+	diff := []byte("diff --git a/workspace/artifacts/scratch.json b/workspace/artifacts/scratch.json\n" +
+		"new file mode 100644\n" +
+		"--- /dev/null\n" +
+		"+++ b/workspace/artifacts/scratch.json\n" +
+		"@@ -0,0 +1 @@\n+{}\n" +
+		"diff --git a/workspace/pkg/real_source.go b/workspace/pkg/real_source.go\n" +
+		"new file mode 100644\n" +
+		"--- /dev/null\n" +
+		"+++ b/workspace/pkg/real_source.go\n" +
+		"@@ -0,0 +1 @@\n+package pkg\n")
+
+	ignored := GitIgnoredWorkspacePaths(context.Background(), Worktree{Path: dir}, diff)
+	if !ignored["workspace/artifacts/scratch.json"] {
+		t.Errorf("expected workspace/artifacts/scratch.json to be reported gitignored, got %v", ignored)
+	}
+	if ignored["workspace/pkg/real_source.go"] {
+		t.Errorf("expected workspace/pkg/real_source.go (real subject source, not gitignored) to NOT be reported, got %v", ignored)
+	}
+}
+
+// TestGitIgnoredWorkspacePaths_NoGitRepoReportsNothing covers the safe
+// default: a git failure (no repository at all) reports no paths ignored
+// rather than erroring — never a reason to silently drop a subject's real
+// source.
+func TestGitIgnoredWorkspacePaths_NoGitRepoReportsNothing(t *testing.T) {
+	diff := []byte(unifiedDiffFile("workspace/pkg/real.go", "@@ -1 +1 @@\n-a\n+b\n"))
+	ignored := GitIgnoredWorkspacePaths(context.Background(), Worktree{Path: t.TempDir()}, diff)
+	if len(ignored) != 0 {
+		t.Errorf("expected no ignored paths when wt.Path is not a git repo at all, got %v", ignored)
+	}
+}
+
+func TestInstrumentRegionRanges_RealRegionFromWiring(t *testing.T) {
+	dir := t.TempDir()
+	fixedNow := func() time.Time { return time.Date(2026, 9, 14, 0, 0, 0, 0, time.UTC) }
+	spec := wiring.Spec{Regions: []wiring.Region{{
+		File: "CLAUDE.md", Syntax: wiring.HTMLMarkers, Version: "v3",
+		Body: "line one of the real stanza\nline two of the real stanza",
+	}}}
+	if _, err := wiring.ApplyWiring(dir, spec, wiring.ApplyOptions{Now: fixedNow}); err != nil {
+		t.Fatalf("wiring.ApplyWiring: %v", err)
+	}
+
+	ranges := InstrumentRegionRanges(context.Background(), Worktree{Path: dir})
+	rng, ok := ranges["CLAUDE.md"]
+	if !ok {
+		t.Fatalf("expected CLAUDE.md to carry a detected region, got %v", ranges)
+	}
+	if rng.oldStart != 0 || rng.oldEnd != 0 {
+		t.Errorf("expected no base-side region (no git repo/base commit here), got old=[%d,%d]", rng.oldStart, rng.oldEnd)
+	}
+	if rng.newStart == 0 || rng.newEnd < rng.newStart {
+		t.Fatalf("expected a real new-side region range, got %+v", rng)
+	}
+	raw, err := os.ReadFile(filepath.Join(dir, "CLAUDE.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(string(raw), "\n")
+	if !strings.HasPrefix(lines[rng.newStart-1], wiring.HTMLMarkers.BeginPrefix) {
+		t.Errorf("line %d = %q, want the begin marker", rng.newStart, lines[rng.newStart-1])
+	}
+	if !strings.HasPrefix(lines[rng.newEnd-1], wiring.HTMLMarkers.End) {
+		t.Errorf("line %d = %q, want the end marker", rng.newEnd, lines[rng.newEnd-1])
+	}
+}
+
+// TestInstrumentOwnedPaths_NoLedgerIsJustTheStatics covers the ordinary
+// unwired-arm case: no .fathom/owned.json at all is not an error, and the
+// two static entries are still reported.
+func TestInstrumentOwnedPaths_NoLedgerIsJustTheStatics(t *testing.T) {
+	owned, err := InstrumentOwnedPaths(Worktree{Path: t.TempDir()})
+	if err != nil {
+		t.Fatalf("InstrumentOwnedPaths: %v", err)
+	}
+	if len(owned) != 2 || !owned[".fathomignore"] || !owned[".fathom/owned.json"] {
+		t.Errorf("expected just the two static entries, got %v", owned)
 	}
 }
 

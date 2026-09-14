@@ -14,6 +14,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -236,6 +237,13 @@ func BorrowScenarioCell(cellsDir, key string, trial int) (CellResult, bool, erro
 		// hand-migrated from elsewhere).
 		r.SourceRunID = orUnrecordedScenario(r.RunID)
 	}
+	// O55 item 5: cellsDir verbatim, exactly as the caller passed it — the
+	// store this borrow actually resolved against, so a later consumer
+	// (the ledger's own Borrowed list, cmdLedger's -strict-borrow error)
+	// can name it. Ephemeral like Borrowed/SourceRunID above: never
+	// written back (StoreScenarioCell already refuses to write a borrowed
+	// cell at all).
+	r.StoreRoot = cellsDir
 	return r, true, nil
 }
 
@@ -296,6 +304,11 @@ type BorrowedScenarioCell struct {
 	Trial       int    `json:"trial"`
 	CellKey     string `json:"cell_key"`
 	SourceRunID string `json:"source_run_id"`
+	// StoreRoot is the cell store (cellsDir) this reading was actually
+	// borrowed from (O55 item 5, BorrowScenarioCell's own CellResult.
+	// StoreRoot) — named on the ledger row so a reader can tell WHICH
+	// store a borrowed cell's provenance points at, not just which run.
+	StoreRoot string `json:"store_root,omitempty"`
 }
 
 // AggregateReadings computes the basic, always-available Readings fields
@@ -541,6 +554,278 @@ func SurfaceCallCount(toolCalls map[string]int, surface string) int {
 	return n
 }
 
+// pathIsInstrumentOwned reports whether repoRelPath (as `git diff
+// --name-only`/a `diff --git a/X b/X` header spells it) is one
+// PrepareSubject's own instrument wrote (O55 item 4): owned outright
+// (InstrumentOwnedPaths, subject.go — internal/wiring's ledger plus
+// .fathomignore), or anywhere under workspace/ — this repo's own
+// convention (root CLAUDE.md's workspace/ rule) for instrument/runtime
+// state, which never carries a ledger entry of its own and is never a
+// subject's tracked source.
+// pathIsInstrumentOwned reports whether repoRelPath (as `git diff
+// --name-only`/a `diff --git a/X b/X` header spells it) is one
+// PrepareSubject's own instrument wrote (O55 item 4): owned outright
+// (owned — InstrumentOwnedPaths' ledger-driven set), anywhere under the
+// whole .fathom/ namespace (fathom's own reserved directory in ANY repo it
+// wires — this is a fathom-tool convention, not a subject-repo one, so it
+// is excluded unconditionally), or under workspace/ — BUT ONLY when
+// gitIgnoredWorkspace says the SUBJECT's own .gitignore actually ignores
+// that path (fix-first review, 2026-09-14: workspace/ is THIS repo's own
+// convention, not a universal one — ADR-011 keeps fathom itself org/repo-
+// agnostic, and a subject that genuinely tracks real source under its own
+// workspace/ directory must not lose it wholesale just because this repo
+// happens to reserve that name for build artifacts).
+// gitIgnoredWorkspace (GitIgnoredWorkspacePaths) is nil-safe: an absent or
+// empty map means no workspace/ path is excluded on that basis alone —
+// the ledger's own owned set can still name one explicitly.
+func pathIsInstrumentOwned(owned, gitIgnoredWorkspace map[string]bool, repoRelPath string) bool {
+	repoRelPath = filepath.ToSlash(repoRelPath)
+	if owned[repoRelPath] {
+		return true
+	}
+	if repoRelPath == ".fathom" || strings.HasPrefix(repoRelPath, ".fathom/") {
+		// The whole .fathom/ namespace is fathom's own reserved runtime
+		// state — not just owned.json: internal/wiring's own ApplyWiring
+		// also writes .fathom/receipts.jsonl (undo receipts) unprompted,
+		// found leaking into agent.diff while testing the region-aware
+		// fix (O55 item 4) — never a subject's own tracked source by
+		// convention, so excluded wholesale like workspace/ rather than
+		// enumerated file by file.
+		return true
+	}
+	if repoRelPath == "workspace" || strings.HasPrefix(repoRelPath, "workspace/") {
+		return gitIgnoredWorkspace[repoRelPath]
+	}
+	return false
+}
+
+// diffGitHeaderPath extracts the "b/" (destination) path from one `diff
+// --git a/X b/X` header line.
+func diffGitHeaderPath(headerLine string) string {
+	const marker = " b/"
+	i := strings.LastIndex(headerLine, marker)
+	if i < 0 {
+		return ""
+	}
+	return headerLine[i+len(marker):]
+}
+
+// FilterInstrumentOwnedDiff drops every whole-file section of a unified
+// diff (as `git diff` emits it, one "diff --git a/X b/X" header per file)
+// whose path is instrument-owned (O55 item 4: everything internal/wiring's
+// ledger records — KindKey/KindFile, never a KindRegion stanza, see
+// stripFathomRegionsFromDiff for that — .fathomignore, the whole .fathom/
+// namespace, and any workspace/ path gitIgnoredWorkspace confirms the
+// SUBJECT's own .gitignore actually ignores (GitIgnoredWorkspacePaths;
+// fix-first review, 2026-09-14 — workspace/ is THIS repo's own convention,
+// never assumed of an arbitrary subject) — must never be credited to the
+// agent as agent.diff or counted toward any byte metric derived from it).
+// Returns the filtered diff and how many file sections were dropped, so
+// the caller can record instrument_files_excluded. gitIgnoredWorkspace may
+// be nil (no workspace/ path is excluded on that basis alone). An empty
+// diff, or both owned and gitIgnoredWorkspace empty, returns diff
+// unchanged with 0 excluded.
+func FilterInstrumentOwnedDiff(diff []byte, owned, gitIgnoredWorkspace map[string]bool) ([]byte, int) {
+	if len(diff) == 0 || (len(owned) == 0 && len(gitIgnoredWorkspace) == 0) {
+		return diff, 0
+	}
+	lines := strings.Split(string(diff), "\n")
+	out := make([]string, 0, len(lines))
+	excluded := 0
+	keep := true
+	for _, line := range lines {
+		if strings.HasPrefix(line, "diff --git ") {
+			path := diffGitHeaderPath(line)
+			keep = !(path != "" && pathIsInstrumentOwned(owned, gitIgnoredWorkspace, path))
+			if !keep {
+				excluded++
+			}
+		}
+		if keep {
+			out = append(out, line)
+		}
+	}
+	return []byte(strings.Join(out, "\n")), excluded
+}
+
+// regionRange is one file's fathom-region line span (regionLineRange,
+// subject.go), separately on each side of a diff: the base commit's own
+// version (old) and the worktree's current version (new). 0 in either
+// field means that side carries no region at all.
+type regionRange struct {
+	oldStart, oldEnd int
+	newStart, newEnd int
+}
+
+// hunkHeaderRe parses one unified-diff hunk header: `@@ -oldStart[,oldLen]
+// +newStart[,newLen] @@ optional trailer`. A missing ",len" means length 1
+// (diff's own convention); the capture groups here only need the starts —
+// stripRegionFromDiffSection recomputes the lengths itself from what it
+// keeps.
+var hunkHeaderRe = regexp.MustCompile(`^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@(.*)$`)
+
+// stripFathomRegionsFromDiff rewrites diff so that, for every file named in
+// ranges, the lines internal/wiring's own marker pair delimits (region.go's
+// HTMLMarkers) are removed from its hunks — never the whole file, so a
+// genuine agent edit anywhere else in CLAUDE.md/AGENTS.md survives byte for
+// byte (O55 item 4, fix-first review: a KindRegion stanza carries no ledger
+// entry at all — apply.go only records KindKey/KindFile — so
+// FilterInstrumentOwnedDiff's ledger-driven, whole-file exclusion can never
+// catch it; the old approach silently never excluded a real wired cell's
+// stanza). A hunk whose only content was the region is dropped entirely;
+// one that mixes region and non-region lines keeps the latter with a
+// recomputed header. Returns the rewritten diff and how many files had at
+// least one hunk actually changed by this pass — added to
+// instrument_files_excluded alongside FilterInstrumentOwnedDiff's own
+// count, since the two operate on disjoint files.
+func stripFathomRegionsFromDiff(diff []byte, ranges map[string]regionRange) ([]byte, int) {
+	if len(diff) == 0 || len(ranges) == 0 {
+		return diff, 0
+	}
+	lines := strings.Split(string(diff), "\n")
+	var out []string
+	excludedFiles := 0
+	i := 0
+	for i < len(lines) {
+		line := lines[i]
+		if !strings.HasPrefix(line, "diff --git ") {
+			out = append(out, line)
+			i++
+			continue
+		}
+		start := i
+		i++
+		for i < len(lines) && !strings.HasPrefix(lines[i], "diff --git ") {
+			i++
+		}
+		section := lines[start:i]
+		rng, ok := ranges[diffGitHeaderPath(line)]
+		if !ok || (rng.oldStart == 0 && rng.newStart == 0) {
+			out = append(out, section...)
+			continue
+		}
+		stripped, changed := stripRegionFromDiffSection(section, rng)
+		if changed {
+			excludedFiles++
+		}
+		if changed && !hasHunk(stripped) {
+			// Nothing real survived this file's diff at all (its ENTIRE
+			// change was the region) — drop the whole section, header
+			// included, rather than emit a hunk-less "diff --git" stub.
+			continue
+		}
+		out = append(out, stripped...)
+	}
+	return []byte(strings.Join(out, "\n")), excludedFiles
+}
+
+// hasHunk reports whether section (a file's own diff lines) still carries
+// at least one "@@ " hunk header.
+func hasHunk(section []string) bool {
+	for _, l := range section {
+		if strings.HasPrefix(l, "@@ ") {
+			return true
+		}
+	}
+	return false
+}
+
+// stripRegionFromDiffSection removes rng's region lines from one file's
+// own diff section (header lines through its hunks): a '-' line is dropped
+// when its OLD-file line number falls in [rng.oldStart, rng.oldEnd], a '+'
+// line when its NEW-file line number falls in [rng.newStart, rng.newEnd];
+// context lines are always kept (a region is either pure addition or pure
+// replacement in every case this filter needs to handle — a context line
+// inside one would mean an unchanged line sat inside a region fathom
+// rewrote wholesale, which region.go's own render never produces). Each
+// hunk's header is rewritten with the surviving counts; a hunk left with
+// no '+'/'-' line at all (it WAS the region) is dropped outright rather
+// than emitted as a no-op hunk. changed reports whether anything in this
+// section was actually touched.
+func stripRegionFromDiffSection(section []string, rng regionRange) (out []string, changed bool) {
+	i := 0
+	for i < len(section) && !strings.HasPrefix(section[i], "@@ ") {
+		out = append(out, section[i])
+		i++
+	}
+	for i < len(section) {
+		header := section[i]
+		m := hunkHeaderRe.FindStringSubmatch(header)
+		if m == nil {
+			out = append(out, header)
+			i++
+			continue
+		}
+		oldStart, _ := strconv.Atoi(m[1])
+		newStart, _ := strconv.Atoi(m[2])
+		trailer := m[3]
+		i++
+		var body []string
+		for i < len(section) && !strings.HasPrefix(section[i], "@@ ") {
+			body = append(body, section[i])
+			i++
+		}
+
+		oldLine, newLine := oldStart, newStart
+		var kept []string
+		keptOld, keptNew := 0, 0
+		hunkChanged := false
+		for _, l := range body {
+			if l == "" {
+				kept = append(kept, l)
+				continue
+			}
+			switch l[0] {
+			case ' ':
+				kept = append(kept, l)
+				keptOld++
+				keptNew++
+				oldLine++
+				newLine++
+			case '-':
+				if rng.oldStart > 0 && oldLine >= rng.oldStart && oldLine <= rng.oldEnd {
+					hunkChanged = true
+				} else {
+					kept = append(kept, l)
+					keptOld++
+				}
+				oldLine++
+			case '+':
+				if rng.newStart > 0 && newLine >= rng.newStart && newLine <= rng.newEnd {
+					hunkChanged = true
+				} else {
+					kept = append(kept, l)
+					keptNew++
+				}
+				newLine++
+			default:
+				// "\ No newline at end of file" and anything else unified
+				// diff can emit mid-hunk: keep verbatim, no line advance.
+				kept = append(kept, l)
+			}
+		}
+		if !hunkChanged {
+			out = append(out, header)
+			out = append(out, body...)
+			continue
+		}
+		changed = true
+		hasRealChange := false
+		for _, l := range kept {
+			if l != "" && (l[0] == '+' || l[0] == '-') {
+				hasRealChange = true
+				break
+			}
+		}
+		if !hasRealChange {
+			continue // the whole hunk WAS the region — drop it outright
+		}
+		out = append(out, fmt.Sprintf("@@ -%d,%d +%d,%d @@%s", oldStart, keptOld, newStart, keptNew, trailer))
+		out = append(out, kept...)
+	}
+	return out, changed
+}
+
 // BorrowedScenarioCellsOf lists every borrowed reading in results, sorted
 // by (task, arm, trial).
 func BorrowedScenarioCellsOf(results []CellResult) []BorrowedScenarioCell {
@@ -549,7 +834,7 @@ func BorrowedScenarioCellsOf(results []CellResult) []BorrowedScenarioCell {
 		if !r.Borrowed {
 			continue
 		}
-		out = append(out, BorrowedScenarioCell{TaskID: r.TaskID, Arm: r.Arm, Trial: r.Trial, CellKey: r.CellKey, SourceRunID: orUnrecordedScenario(r.SourceRunID)})
+		out = append(out, BorrowedScenarioCell{TaskID: r.TaskID, Arm: r.Arm, Trial: r.Trial, CellKey: r.CellKey, SourceRunID: orUnrecordedScenario(r.SourceRunID), StoreRoot: r.StoreRoot})
 	}
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].TaskID != out[j].TaskID {

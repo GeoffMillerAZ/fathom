@@ -519,14 +519,26 @@ func reshapeForReuse(base Task, workers int, k1 bool) Task {
 	id := "RE-" + base.ID
 	derivation := base.Derivation + " | RE-: re-shaped for planner-workers mode (K=3, one planning session, one worker per row) by the exploration-reuse derivation; oracle and gold unchanged."
 	predictions := reusePredictionsK()
+	maxWorkersTotal := 0
 	if k1 {
 		id += "-K1"
 		derivation += " | -K1: the same task with one worker, the pre-registered no-effect cell for M5."
 		predictions = reusePredictionsK1()
+		// O55 item 3/item 6 (fix-first review, 2026-09-14): a workers=1
+		// task whose gold touches more than one package would otherwise be
+		// a null cell by construction (one worker session can only ever
+		// finish one row) — the reassignment loop (sessions.go's
+		// runPlannerWorkers) needs an explicit budget here rather than a
+		// silent runtime default, so the corpus itself states it: this
+		// matches defaultMaxWorkersTotalFactor's own default (workers*3),
+		// just spelled out so TestCrossPackageTaskHasEnoughWorkerBudget can
+		// prove the K1 cell can reach both of its packages' rows.
+		maxWorkersTotal = 3
+		derivation += " | max_workers_total: 3 (O55 item 3's reassignment loop) so the one worker still reaches both packages' rows across sequential sessions, never in parallel."
 	}
 	t := base
 	t.ID = id
-	t.Sessions = Sessions{Count: 1, MaxTurns: reuseSessionMaxTurns, Workers: workers, Mode: ModePlannerWorkers}
+	t.Sessions = Sessions{Count: 1, MaxTurns: reuseSessionMaxTurns, Workers: workers, MaxWorkersTotal: maxWorkersTotal, Mode: ModePlannerWorkers}
 	t.Predictions = predictions
 	t.Derivation = derivation
 	return t
