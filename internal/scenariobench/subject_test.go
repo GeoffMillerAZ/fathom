@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/wiring"
 )
 
 // gitFixtureRepo creates a local git repository with one commit (a file
@@ -512,6 +514,46 @@ func TestStopWorktree_NilAndZeroValueAreNoOps(t *testing.T) {
 	wt := Worktree{}
 	if err := StopWorktree(&wt); err != nil {
 		t.Errorf("StopWorktree on a zero-value Worktree: %v", err)
+	}
+}
+
+// TestInstrumentOwnedPaths_ReadsTheLedgerPlusStatics pins O55 item 4:
+// every file internal/wiring's own ledger (.fathom/owned.json) records a
+// key for is instrument-owned, plus the two paths that carry no ledger
+// entry of their own — .fathomignore and the ledger file itself.
+func TestInstrumentOwnedPaths_ReadsTheLedgerPlusStatics(t *testing.T) {
+	dir := t.TempDir()
+	ledger := wiring.NewLedger()
+	ledger.Record("CLAUDE.md", wiring.OwnedKey{ID: "stanza", Digest: "sha256:x", Wrote: "2026-09-14T00:00:00Z"})
+	ledger.Record(".claude/settings.json", wiring.OwnedKey{ID: "hooks", Digest: "sha256:y", Wrote: "2026-09-14T00:00:00Z"})
+	if err := wiring.SaveLedger(dir, ledger); err != nil {
+		t.Fatal(err)
+	}
+
+	owned, err := InstrumentOwnedPaths(Worktree{Path: dir})
+	if err != nil {
+		t.Fatalf("InstrumentOwnedPaths: %v", err)
+	}
+	for _, want := range []string{"CLAUDE.md", ".claude/settings.json", ".fathomignore", ".fathom/owned.json"} {
+		if !owned[want] {
+			t.Errorf("expected %q to be instrument-owned, got %v", want, owned)
+		}
+	}
+	if owned["real_agent_file.go"] {
+		t.Error("a file the ledger never mentions must not be reported owned")
+	}
+}
+
+// TestInstrumentOwnedPaths_NoLedgerIsJustTheStatics covers the ordinary
+// unwired-arm case: no .fathom/owned.json at all is not an error, and the
+// two static entries are still reported.
+func TestInstrumentOwnedPaths_NoLedgerIsJustTheStatics(t *testing.T) {
+	owned, err := InstrumentOwnedPaths(Worktree{Path: t.TempDir()})
+	if err != nil {
+		t.Fatalf("InstrumentOwnedPaths: %v", err)
+	}
+	if len(owned) != 2 || !owned[".fathomignore"] || !owned[".fathom/owned.json"] {
+		t.Errorf("expected just the two static entries, got %v", owned)
 	}
 }
 

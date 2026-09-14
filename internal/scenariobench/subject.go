@@ -29,6 +29,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/wiring"
 )
 
 // CompileCost is what PrepareSubject spent compiling a semantic layer for a
@@ -869,6 +871,34 @@ func compileLayers(ctx context.Context, root string, task Task, wt Worktree) (*C
 		}
 	}
 	return cost, nil
+}
+
+// InstrumentOwnedPaths returns the repo-relative paths (slash-separated,
+// matching `git diff --name-only`'s own spelling) that PrepareSubject's own
+// instrument — `fathom init`'s wiring, never the agent — wrote into wt
+// (O55 item 4): every file internal/wiring's own ledger
+// (`.fathom/owned.json`) records a key for (a whole owned file, a marked
+// CLAUDE.md/AGENTS.md stanza, or a structured key in a file like
+// lefthook.yml — every kind fathom's own ownership tracking recognizes),
+// plus `.fathomignore` and everything under workspace/, which carry no
+// ledger entry of their own. cell.go's FilterInstrumentOwnedDiff and
+// captureAgentDiff (cmd/scenariobench) use this so the instrument's own
+// footprint is never credited to the agent as its diff. A worktree
+// PrepareSubject never wired (no `.fathom/owned.json` at all, an unwired
+// arm's ordinary case) returns just the two static entries, never an
+// error.
+func InstrumentOwnedPaths(wt Worktree) (map[string]bool, error) {
+	// The ledger names what it records ownership of — never itself — but
+	// it is exactly as instrument-written as anything it lists.
+	owned := map[string]bool{".fathomignore": true, ".fathom/owned.json": true}
+	ledger, err := wiring.LoadLedger(wt.Path)
+	if err != nil {
+		return nil, fmt.Errorf("finding instrument-owned files: %w", err)
+	}
+	for file := range ledger.Files {
+		owned[filepath.ToSlash(file)] = true
+	}
+	return owned, nil
 }
 
 // SubjectEnv is the environment every subprocess that runs INSIDE a subject

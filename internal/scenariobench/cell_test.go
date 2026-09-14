@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -592,5 +593,73 @@ func TestFindScenarioCellsByRun_MissingCellsDirIsEmptyNotError(t *testing.T) {
 	}
 	if len(got) != 0 {
 		t.Errorf("expected no matches, got %v", got)
+	}
+}
+
+// unifiedDiffFile builds one `git diff` file section (just enough shape for
+// FilterInstrumentOwnedDiff to parse the header) for path.
+func unifiedDiffFile(path, body string) string {
+	return "diff --git a/" + path + " b/" + path + "\n" +
+		"index 0000000..1111111 100644\n" +
+		"--- a/" + path + "\n" +
+		"+++ b/" + path + "\n" +
+		body
+}
+
+// TestFilterInstrumentOwnedDiff_DropsOwnedFileSections pins O55 item 4: a
+// diff naming both an instrument-owned file and a real one keeps only the
+// real one's section, and reports how many were dropped.
+func TestFilterInstrumentOwnedDiff_DropsOwnedFileSections(t *testing.T) {
+	diff := unifiedDiffFile("CLAUDE.md", "@@ -1 +1,2 @@\n+<!-- fathom:begin v3 sha256:x -->\n") +
+		unifiedDiffFile("real.go", "@@ -1 +1 @@\n-func Old() {}\n+func New() {}\n") +
+		unifiedDiffFile("workspace/artifacts/scratch.json", "@@ -0,0 +1 @@\n+{}\n")
+	owned := map[string]bool{"CLAUDE.md": true}
+
+	got, excluded := FilterInstrumentOwnedDiff([]byte(diff), owned)
+	if excluded != 2 {
+		t.Fatalf("excluded = %d, want 2 (CLAUDE.md by the owned set, workspace/ by convention)", excluded)
+	}
+	s := string(got)
+	if strings.Contains(s, "CLAUDE.md") {
+		t.Errorf("expected CLAUDE.md's section dropped, got:\n%s", s)
+	}
+	if strings.Contains(s, "workspace/artifacts") {
+		t.Errorf("expected the workspace/ section dropped, got:\n%s", s)
+	}
+	if !strings.Contains(s, "real.go") || !strings.Contains(s, "func New()") {
+		t.Errorf("expected real.go's section to survive, got:\n%s", s)
+	}
+}
+
+// TestFilterInstrumentOwnedDiff_EmptyInputsAreNoops covers the two
+// degenerate cases: an empty diff, and a nil/empty owned set.
+func TestFilterInstrumentOwnedDiff_EmptyInputsAreNoops(t *testing.T) {
+	if got, n := FilterInstrumentOwnedDiff(nil, map[string]bool{"x": true}); got != nil || n != 0 {
+		t.Errorf("empty diff: got %q, %d", got, n)
+	}
+	diff := []byte(unifiedDiffFile("real.go", "@@ -1 +1 @@\n-a\n+b\n"))
+	got, n := FilterInstrumentOwnedDiff(diff, nil)
+	if n != 0 || string(got) != string(diff) {
+		t.Errorf("nil owned set should pass the diff through unchanged, got %q, %d", got, n)
+	}
+}
+
+func TestPathIsInstrumentOwned(t *testing.T) {
+	owned := map[string]bool{".fathomignore": true, "CLAUDE.md": true}
+	cases := []struct {
+		path string
+		want bool
+	}{
+		{".fathomignore", true},
+		{"CLAUDE.md", true},
+		{"workspace", true},
+		{"workspace/tmp/x.log", true},
+		{"real.go", false},
+		{"workspace-lookalike/real.go", false},
+	}
+	for _, c := range cases {
+		if got := pathIsInstrumentOwned(owned, c.path); got != c.want {
+			t.Errorf("pathIsInstrumentOwned(%q) = %v, want %v", c.path, got, c.want)
+		}
 	}
 }

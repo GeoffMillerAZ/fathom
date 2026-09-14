@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/scenariobench"
+	"github.com/geoffmilleraz/fathom/internal/wiring"
 )
 
 // captureStderr redirects os.Stderr for the duration of fn and returns
@@ -1116,5 +1118,68 @@ func TestCmdVoid_MarksRowCellAndRerendersReadme(t *testing.T) {
 	}
 	if !strings.Contains(string(readme), "VOIDED (the operator daemon was reachable)") {
 		t.Errorf("expected the re-rendered README table to show the voided row, got:\n%s", readme)
+	}
+}
+
+// TestCaptureAgentDiff_ExcludesInstrumentOwnedFiles pins O55 item 4, in the
+// finding's own words: a worktree with a fathom-owned file and a real edit
+// yields a one-file diff. CLAUDE.md is recorded in the worktree's own
+// .fathom/owned.json ledger (as `fathom init` would leave it after writing
+// its stanza) and edited alongside a genuine source change; only the real
+// edit's section survives, and InstrumentFilesExcluded reports the drop.
+func TestCaptureAgentDiff_ExcludesInstrumentOwnedFiles(t *testing.T) {
+	wtDir := t.TempDir()
+	runGit(t, wtDir, "init", "-q", "-b", "main")
+	if err := os.WriteFile(filepath.Join(wtDir, "CLAUDE.md"), []byte("# original\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(wtDir, "real.go"), []byte("package thing\n\nfunc Old() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, wtDir, "add", "-A")
+	runGit(t, wtDir, "commit", "-q", "-m", "base")
+
+	// The instrument's own writes: a CLAUDE.md stanza, recorded in the
+	// ledger it also writes — exactly what wireScratchDaemon's `fathom
+	// init` call leaves behind in a real wired cell.
+	if err := os.WriteFile(filepath.Join(wtDir, "CLAUDE.md"), []byte("# original\n\n<!-- fathom:begin v3 sha256:x -->\nstanza\n<!-- fathom:end -->\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	ledger := wiring.NewLedger()
+	ledger.Record("CLAUDE.md", wiring.OwnedKey{ID: "stanza", Digest: "sha256:x", Wrote: "2026-09-14T00:00:00Z"})
+	if err := wiring.SaveLedger(wtDir, ledger); err != nil {
+		t.Fatal(err)
+	}
+	// The agent's own, real edit.
+	if err := os.WriteFile(filepath.Join(wtDir, "real.go"), []byte("package thing\n\nfunc New() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	wt := scenariobench.Worktree{Path: wtDir, CellDir: t.TempDir()}
+	diffPath, excluded := captureAgentDiff(context.Background(), wt)
+	if diffPath == "" {
+		t.Fatal("expected a non-empty diff path")
+	}
+	// The ledger file itself is also instrument-written, so both it and
+	// CLAUDE.md's section are dropped — a one-file (real.go) diff.
+	if excluded != 2 {
+		t.Errorf("instrumentFilesExcluded = %d, want 2 (CLAUDE.md, .fathom/owned.json)", excluded)
+	}
+	raw, err := os.ReadFile(diffPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	diff := string(raw)
+	if strings.Contains(diff, "CLAUDE.md") {
+		t.Errorf("expected CLAUDE.md's section excluded from agent.diff, got:\n%s", diff)
+	}
+	if strings.Contains(diff, "owned.json") {
+		t.Errorf("expected the ledger's own section excluded from agent.diff, got:\n%s", diff)
+	}
+	if !strings.Contains(diff, "real.go") || !strings.Contains(diff, "func New()") {
+		t.Errorf("expected real.go's section to survive, got:\n%s", diff)
+	}
+	if strings.Count(diff, "diff --git ") != 1 {
+		t.Errorf("expected exactly one file section in the diff, got:\n%s", diff)
 	}
 }

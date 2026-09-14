@@ -541,6 +541,66 @@ func SurfaceCallCount(toolCalls map[string]int, surface string) int {
 	return n
 }
 
+// pathIsInstrumentOwned reports whether repoRelPath (as `git diff
+// --name-only`/a `diff --git a/X b/X` header spells it) is one
+// PrepareSubject's own instrument wrote (O55 item 4): owned outright
+// (InstrumentOwnedPaths, subject.go — internal/wiring's ledger plus
+// .fathomignore), or anywhere under workspace/ — this repo's own
+// convention (root CLAUDE.md's workspace/ rule) for instrument/runtime
+// state, which never carries a ledger entry of its own and is never a
+// subject's tracked source.
+func pathIsInstrumentOwned(owned map[string]bool, repoRelPath string) bool {
+	repoRelPath = filepath.ToSlash(repoRelPath)
+	if owned[repoRelPath] {
+		return true
+	}
+	return repoRelPath == "workspace" || strings.HasPrefix(repoRelPath, "workspace/")
+}
+
+// diffGitHeaderPath extracts the "b/" (destination) path from one `diff
+// --git a/X b/X` header line.
+func diffGitHeaderPath(headerLine string) string {
+	const marker = " b/"
+	i := strings.LastIndex(headerLine, marker)
+	if i < 0 {
+		return ""
+	}
+	return headerLine[i+len(marker):]
+}
+
+// FilterInstrumentOwnedDiff drops every whole-file section of a unified
+// diff (as `git diff` emits it, one "diff --git a/X b/X" header per file)
+// whose path is instrument-owned (O55 item 4: `fathom init`'s own writes —
+// the CLAUDE.md/AGENTS.md stanza, everything internal/wiring's ledger
+// records, .fathomignore, anything under workspace/ — must never be
+// credited to the agent as agent.diff or counted toward any byte metric
+// derived from it). Returns the filtered diff and how many file sections
+// were dropped, so the caller can record instrument_files_excluded. A nil
+// or empty owned set, or an empty diff, returns diff unchanged with 0
+// excluded.
+func FilterInstrumentOwnedDiff(diff []byte, owned map[string]bool) ([]byte, int) {
+	if len(diff) == 0 || len(owned) == 0 {
+		return diff, 0
+	}
+	lines := strings.Split(string(diff), "\n")
+	out := make([]string, 0, len(lines))
+	excluded := 0
+	keep := true
+	for _, line := range lines {
+		if strings.HasPrefix(line, "diff --git ") {
+			path := diffGitHeaderPath(line)
+			keep = !(path != "" && pathIsInstrumentOwned(owned, path))
+			if !keep {
+				excluded++
+			}
+		}
+		if keep {
+			out = append(out, line)
+		}
+	}
+	return []byte(strings.Join(out, "\n")), excluded
+}
+
 // BorrowedScenarioCellsOf lists every borrowed reading in results, sorted
 // by (task, arm, trial).
 func BorrowedScenarioCellsOf(results []CellResult) []BorrowedScenarioCell {

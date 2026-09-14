@@ -632,7 +632,7 @@ func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench
 	// still the last thing to touch it, and these two files must record
 	// only what the AGENT produced.
 	planPath, planBytes := captureAgentPlan(wt, sessionsStart)
-	diffPath := captureAgentDiff(ctx, wt)
+	diffPath, instrumentFilesExcluded := captureAgentDiff(ctx, wt)
 
 	oracle, err := scenariobench.RunOracle(ctx, wt, cp.task, sessions, root)
 	if err != nil {
@@ -724,8 +724,9 @@ func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench
 		WorktreePath:   wt.Path,
 		SubjectClone:   wt.SubjectClone,
 		BaseCommit:     cp.task.Subject.BaseCommit,
-		RowsAssigned:   rowsAssigned,
-		RowsUnassigned: rowsUnassigned,
+		RowsAssigned:            rowsAssigned,
+		RowsUnassigned:          rowsUnassigned,
+		InstrumentFilesExcluded: instrumentFilesExcluded,
 	}, nil
 }
 
@@ -877,27 +878,37 @@ func findAgentPlanFile(worktree string, sessionsStart time.Time) string {
 // captureAgentDiff writes wt.CellDir/agent.diff: `git add -N .` (so an
 // untracked file the agent created shows up as a new-file hunk, not as
 // nothing) followed by `git diff` against the index, covering everything
-// the sessions changed since PrepareSubject reset the tree to base_commit.
-// Best-effort: an error returns "" rather than failing the cell — a
-// captured diff is a convenience for later re-scoring, not a precondition
-// for the readings computed here (which read the live worktree directly).
-func captureAgentDiff(ctx context.Context, wt scenariobench.Worktree) string {
+// the sessions changed since PrepareSubject reset the tree to base_commit
+// — MINUS whatever PrepareSubject's own instrument wrote (O55 item 4:
+// `fathom init`'s wiring — the CLAUDE.md/AGENTS.md stanza, everything
+// internal/wiring's ledger records, .fathomignore, anything under
+// workspace/ — is never the agent's own work and must never be credited to
+// it in agent.diff or any byte count derived from it). Returns the
+// captured diff's path ("" on any error — a captured diff is a convenience
+// for later re-scoring, not a precondition for the readings computed here,
+// which read the live worktree directly) and how many whole-file sections
+// were excluded, for CellResult.InstrumentFilesExcluded.
+func captureAgentDiff(ctx context.Context, wt scenariobench.Worktree) (path string, instrumentFilesExcluded int) {
 	add := exec.CommandContext(ctx, "git", "add", "-N", ".")
 	add.Dir = wt.Path
 	if _, err := add.CombinedOutput(); err != nil {
-		return ""
+		return "", 0
 	}
 	diff := exec.CommandContext(ctx, "git", "diff")
 	diff.Dir = wt.Path
 	out, err := diff.Output()
 	if err != nil {
-		return ""
+		return "", 0
+	}
+	owned, err := scenariobench.InstrumentOwnedPaths(wt)
+	if err == nil {
+		out, instrumentFilesExcluded = scenariobench.FilterInstrumentOwnedDiff(out, owned)
 	}
 	dest := filepath.Join(wt.CellDir, "agent.diff")
 	if err := os.WriteFile(dest, out, 0o644); err != nil {
-		return ""
+		return "", 0
 	}
-	return dest
+	return dest, instrumentFilesExcluded
 }
 
 // reconstructFinalTree rebuilds cell's final tree when its shared

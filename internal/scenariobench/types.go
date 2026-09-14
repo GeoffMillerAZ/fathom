@@ -698,6 +698,13 @@ type CellResult struct {
 	// no plan-row assignment to report.
 	RowsAssigned   *int `json:"rows_assigned,omitempty"`
 	RowsUnassigned *int `json:"rows_unassigned,omitempty"`
+	// InstrumentFilesExcluded is how many whole-file sections
+	// FilterInstrumentOwnedDiff dropped from agent.diff (O55 item 4) —
+	// `fathom init`'s own writes, never the agent's — so the exclusion is
+	// visible on the cell rather than a silent shrink of AgentDiffPath. 0
+	// (the common unwired-arm case) is a real, reported count, not absence
+	// — always present, never omitempty.
+	InstrumentFilesExcluded int `json:"instrument_files_excluded"`
 }
 
 // Harness runs one session and returns what happened; the Claude Code
