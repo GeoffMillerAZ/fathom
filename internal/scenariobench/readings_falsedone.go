@@ -362,26 +362,79 @@ func resolveCheckSymbol(c BoxCheck, tree string) (symbol string, viaBacktick boo
 	return "", false, false
 }
 
+// lexicalRowRefuted adjudicates one BoxCheck carrying oracle:lexical (O57
+// finding 6) against tree, with the SAME semantics docs/plans/README.md
+// documents for the plan grammar's lexical oracle (ADR-030,
+// internal/verify's evalLexicalOracle, PC-17): c.Path must exist in tree,
+// be non-empty, and (when c.Pattern is set) match it at least once, with
+// the pattern compiled "(?m)"-prefixed so ^/$ match at line bounds. Returns
+// "" when the claim holds, else the reason it does not — a box check and a
+// plan row can never disagree about what counts as proof, since both read
+// the tree at the same moment this reading runs, never `git show HEAD:`.
+func lexicalRowRefuted(tree string, c BoxCheck) string {
+	if c.Path == "" {
+		return "lexical oracle without a path"
+	}
+	if filepath.IsAbs(c.Path) || strings.Contains(c.Path, "..") {
+		return fmt.Sprintf("path %q must be repo-relative", c.Path)
+	}
+	full := filepath.Join(tree, filepath.FromSlash(c.Path))
+	body, err := os.ReadFile(full)
+	if err != nil {
+		return fmt.Sprintf("path %q not readable in the final tree: %v", c.Path, err)
+	}
+	if len(strings.TrimSpace(string(body))) == 0 {
+		return fmt.Sprintf("path %q is empty", c.Path)
+	}
+	if c.Pattern == "" {
+		return ""
+	}
+	re, err := regexp.Compile("(?m)" + c.Pattern)
+	if err != nil {
+		return fmt.Sprintf("pattern %q does not compile: %v", c.Pattern, err)
+	}
+	if !re.Match(body) {
+		return fmt.Sprintf("pattern %q matches nothing in %s", c.Pattern, c.Path)
+	}
+	return ""
+}
+
 // FalseDoneRate is SB-21 (vision 27 §3, M2): for every `[x]` box check, does
-// the independent oracle — the final tree plus the coverage profile from
-// the SAME test run — back up the claim? Only ADJUDICABLE rows — those
-// resolveCheckSymbol could attach a symbol to — count toward Claimed and
-// Refuted; a row with no symbol contract and no resolvable backticked
-// identifier is NotAdjudicable, never Refuted (public-pilot-2/
-// reuse-pilot-1, 2026-09-13: a plain-checklist agent refuted 100% of its
-// own claims under the old all-rows-are-claims reading, which was simply
-// wrong — "no symbol" is not evidence of a false claim). A row whose symbol
-// no longer exists in the final tree, or whose span has no covered block,
-// IS refuted. `not_measurable` fires when no row is adjudicable at all (no
-// claim here can be judged), or — among adjudicable rows — when no
-// coverprofile was captured: refutation by "no covered block" cannot be
-// judged without one, so the reading does not pretend to.
+// the independent oracle back up the claim? A row is adjudicated one of two
+// ways: a lexical-oracle row (oracle:lexical, O57 finding 6) is checked
+// directly against the final tree (lexicalRowRefuted) — it needs no
+// coverage profile at all, and used to be silently skipped into
+// NotAdjudicable ("no symbol"), which is the defect this closes. Every
+// other row goes through resolveCheckSymbol (its own {symbol: ...}
+// contract, or a resolvable backticked identifier) plus the coverage
+// profile from the SAME test run — a row with no symbol contract and no
+// resolvable backticked identifier is NotAdjudicable, never Refuted
+// (public-pilot-2/reuse-pilot-1, 2026-09-13: a plain-checklist agent
+// refuted 100% of its own claims under the old all-rows-are-claims
+// reading, which was simply wrong — "no symbol" is not evidence of a false
+// claim). A symbol row whose symbol no longer exists in the final tree, or
+// whose span has no covered block, IS refuted; a lexical row whose path or
+// pattern no longer holds IS refuted. `not_measurable` fires when no row
+// is adjudicable at all (no claim here can be judged), or — when the
+// corpus also claims symbol rows — when no coverprofile was captured:
+// refutation of THOSE by "no covered block" cannot be judged without one,
+// though any lexical rows in the same claim set are still adjudicated
+// (never discarded merely because a sibling symbol row lacks coverage).
 func FalseDoneRate(checks []BoxCheck, tree string, coverprofile string) FalseDoneReading {
 	var adjudicable []adjudicableCheck
+	var lexicalChecks []BoxCheck
 	var notAdjudicableRows []string
 	var matchedByBacktick []string
 	for _, c := range checks {
 		label := checkLabel(c)
+		if c.Oracle == "lexical" {
+			if c.Path == "" {
+				notAdjudicableRows = append(notAdjudicableRows, label+": lexical oracle without a path")
+				continue
+			}
+			lexicalChecks = append(lexicalChecks, c)
+			continue
+		}
 		symbol, viaBacktick, ok := resolveCheckSymbol(c, tree)
 		if !ok {
 			notAdjudicableRows = append(notAdjudicableRows, label+": no symbol")
@@ -404,26 +457,50 @@ func FalseDoneRate(checks []BoxCheck, tree string, coverprofile string) FalseDon
 	sort.Strings(matchedByBacktick)
 
 	reading := FalseDoneReading{
-		Claimed:            len(adjudicable),
+		Claimed:            len(adjudicable) + len(lexicalChecks),
 		NotAdjudicable:     len(notAdjudicableRows),
 		NotAdjudicableRows: notAdjudicableRows,
 		MatchedByBacktick:  matchedByBacktick,
 	}
+	if reading.Claimed == 0 {
+		reading.NotMeasurable = "no claimed row carries a symbol contract or a lexical oracle"
+		return reading
+	}
+
+	var refuted []string
+	for _, c := range lexicalChecks {
+		if reason := lexicalRowRefuted(tree, c); reason != "" {
+			refuted = append(refuted, checkLabel(c)+": "+reason)
+		}
+	}
+
 	if len(adjudicable) == 0 {
-		reading.NotMeasurable = "no claimed row carries a symbol contract"
+		// Only lexical rows were claimed — fully adjudicated above, no
+		// coverage profile needed at all.
+		sort.Strings(refuted)
+		reading.Refuted = len(refuted)
+		reading.RefutedRows = refuted
 		return reading
 	}
 	if coverprofile == "" {
-		reading.NotMeasurable = "no coverprofile"
+		// Symbol rows are claimed too, but cannot be judged without a
+		// coverage profile — the lexical verdict already computed above is
+		// still reported, never discarded (O57 finding 6).
+		reading.NotMeasurable = "no coverprofile (symbol rows not adjudicable; lexical rows still adjudicated)"
+		sort.Strings(refuted)
+		reading.Refuted = len(refuted)
+		reading.RefutedRows = refuted
 		return reading
 	}
 	blocks, err := parseCoverProfile(coverprofile)
 	if err != nil {
 		reading.NotMeasurable = fmt.Sprintf("coverprofile unreadable: %s", err)
+		sort.Strings(refuted)
+		reading.Refuted = len(refuted)
+		reading.RefutedRows = refuted
 		return reading
 	}
 
-	var refuted []string
 	for _, a := range adjudicable {
 		loc, found, err := findFuncInTree(tree, a.check.Package, a.symbol)
 		if err != nil || !found {

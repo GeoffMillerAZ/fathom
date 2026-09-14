@@ -302,7 +302,7 @@ func TestCmdRun_FakeHarnessControlArm(t *testing.T) {
 	// not_measurable (no claimed row to judge at all), not a false 0/0.
 	if cell.Readings.FalseDone == nil {
 		t.Error("expected Readings.FalseDone to be present")
-	} else if cell.Readings.FalseDone.NotMeasurable != "no claimed row carries a symbol contract" {
+	} else if cell.Readings.FalseDone.NotMeasurable != "no claimed row carries a symbol contract or a lexical oracle" {
 		t.Errorf("expected FalseDone not_measurable (no box checks were ever recorded): got %q", cell.Readings.FalseDone.NotMeasurable)
 	}
 	if cell.Readings.Resumption == nil {
@@ -328,7 +328,7 @@ func TestCmdRun_FakeHarnessControlArm(t *testing.T) {
 		rescored.Readings.Resumption == nil || rescored.Readings.Drift == nil {
 		t.Errorf("expected score to recompute every SDD reading too, got %+v", rescored.Readings)
 	}
-	if rescored.Readings.FalseDone.NotMeasurable != "no claimed row carries a symbol contract" {
+	if rescored.Readings.FalseDone.NotMeasurable != "no claimed row carries a symbol contract or a lexical oracle" {
 		t.Errorf("expected score's FalseDone reading to be recomputed the same way: got not_measurable=%q", rescored.Readings.FalseDone.NotMeasurable)
 	}
 

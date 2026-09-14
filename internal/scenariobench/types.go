@@ -307,6 +307,18 @@ type BoxCheck struct {
 	// checklist with no contract) — never at record time, since no tree
 	// exists yet to confirm a backticked identifier names a real function.
 	Text string `json:"text,omitempty"`
+	// Oracle/Path/Pattern (O57 finding 6) mirror the plan-grammar-v2
+	// lexical-oracle contract (docs/plans/README.md, ADR-030) parsed off
+	// the SAME {...} annotation Symbol/Package come from: a row carrying
+	// `oracle: lexical, path: ..., pattern: ...` instead of a symbol
+	// contract. FalseDoneRate adjudicates it directly (a regexp match
+	// against the final tree), never folding it into "no symbol"
+	// (NotAdjudicable) the way a plain checklist row does — the defect
+	// O57 named: "the false_done reading skips rows with a lexical
+	// oracle". Oracle is "" for an ordinary symbol-contract or plain row.
+	Oracle  string `json:"oracle,omitempty"`
+	Path    string `json:"path,omitempty"`
+	Pattern string `json:"pattern,omitempty"`
 }
 
 // SessionResult is the harness-independent record of one session.

@@ -397,18 +397,21 @@ func (ps *parsedStream) recordBoxChecks(c streamContentBlock, path string, turn 
 			}
 			checkedLines[path][trimmed] = true
 			bc := BoxCheck{Turn: turn, File: path, Text: trimmed}
-			bc.RowID, bc.Symbol, bc.Package = parseBoxCheckAnnotation(trimmed)
+			bc.RowID, bc.Symbol, bc.Package, bc.Oracle, bc.Path, bc.Pattern = parseBoxCheckAnnotation(trimmed)
 			ps.boxChecks = append(ps.boxChecks, bc)
 		}
 	}
 }
 
 // parseBoxCheckAnnotation reads a plan-grammar-v2-shaped {id: ..., symbol:
-// ..., package: ...} annotation off a checklist line, if present.
-func parseBoxCheckAnnotation(line string) (rowID, symbol, pkg string) {
+// ..., package: ...} annotation off a checklist line, if present — or, for
+// a non-code row (docs/plans/README.md, ADR-030), {id: ..., oracle:
+// lexical, path: ..., pattern: ...} (O57 finding 6: FalseDoneRate must
+// adjudicate this shape too, not fold it into "no symbol").
+func parseBoxCheckAnnotation(line string) (rowID, symbol, pkg, oracle, path, pattern string) {
 	m := boxCheckRE.FindStringSubmatch(line)
 	if m == nil {
-		return "", "", ""
+		return "", "", "", "", "", ""
 	}
 	for _, kv := range boxCheckKV.FindAllStringSubmatch(m[1], -1) {
 		key, val := strings.TrimSpace(kv[1]), strings.TrimSpace(kv[2])
@@ -419,9 +422,15 @@ func parseBoxCheckAnnotation(line string) (rowID, symbol, pkg string) {
 			symbol = val
 		case "package":
 			pkg = val
+		case "oracle":
+			oracle = val
+		case "path":
+			path = val
+		case "pattern":
+			pattern = val
 		}
 	}
-	return rowID, symbol, pkg
+	return rowID, symbol, pkg, oracle, path, pattern
 }
 
 func (ps *parsedStream) toSessionResult() SessionResult {
