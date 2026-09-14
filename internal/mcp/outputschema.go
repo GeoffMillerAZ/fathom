@@ -337,6 +337,10 @@ type localizeResult struct {
 	Hops        []localizeHop             `json:"hops"`
 	Budget      localizeBudgetResult      `json:"budget"`
 	IndexCommit string                    `json:"index_commit,omitempty"`
+	// Note is set only for an unindexed service (ADR-014 execute-and-
+	// flag): an empty diagnosis with no note means genuinely nothing was
+	// found, never "the service does not exist".
+	Note string `json:"note,omitempty"`
 }
 
 type capabilitiesResult struct {

@@ -8,6 +8,9 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
+	"sort"
+	"strings"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -26,6 +29,9 @@ type localizeFakeBackend struct {
 	svcPath     string
 	indexCommit string
 	governed    map[string]semantic.Obligation // file -> the one rule it carries
+	// notIndexed makes ServiceMeta report found=false — an unknown or
+	// never-ingested service, for the ADR-014 execute-and-flag test.
+	notIndexed bool
 }
 
 func (f *localizeFakeBackend) QuerySymbols(context.Context, core.Query) (core.QueryResult, error) {
@@ -55,6 +61,9 @@ func (f *localizeFakeBackend) Sources(context.Context, string) ([]core.SourceFil
 }
 func (f *localizeFakeBackend) IngestService(context.Context, string) error { return nil }
 func (f *localizeFakeBackend) ServiceMeta(context.Context, string) (string, string, bool, error) {
+	if f.notIndexed {
+		return "", "", false, nil
+	}
 	return f.svcPath, f.indexCommit, true, nil
 }
 
@@ -179,6 +188,45 @@ func TestLocalize_FailingTestSeedsSymbolAndItsCallees(t *testing.T) {
 	if !containsStr(files, "ledger.go") {
 		t.Errorf("expected ledger.go (Balance, TestBalance's callee via graph proximity), got %v", files)
 	}
+}
+
+// TestLocalize_FailingTestStripsRunnerFormatting is the review's own
+// fix-first item: go test runner formatting around a failing test name
+// must not change the candidate set — only the bare name matters.
+func TestLocalize_FailingTestStripsRunnerFormatting(t *testing.T) {
+	baseline := sortedUnique(localizeCandidateFiles(t, localizeCall(t, mcp.NewServer(localizeFixture(t)), map[string]any{
+		"service": "svc", "failing_test": "TestBalance",
+	})))
+
+	shapes := []string{
+		"--- FAIL: TestBalance (0.00s)",
+		"=== RUN   TestBalance/sub",
+		"FAIL: TestBalance",
+		"TestBalance/subcase",
+	}
+	for _, shape := range shapes {
+		t.Run(shape, func(t *testing.T) {
+			got := sortedUnique(localizeCandidateFiles(t, localizeCall(t, mcp.NewServer(localizeFixture(t)), map[string]any{
+				"service": "svc", "failing_test": shape,
+			})))
+			if !reflect.DeepEqual(got, baseline) {
+				t.Errorf("candidate files for %q = %v, want the same set as bare TestBalance: %v", shape, got, baseline)
+			}
+		})
+	}
+}
+
+func sortedUnique(in []string) []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, s := range in {
+		if !seen[s] {
+			seen[s] = true
+			out = append(out, s)
+		}
+	}
+	sort.Strings(out)
+	return out
 }
 
 func TestLocalize_ErrorSeedsFrameAndQuotedLiteral(t *testing.T) {
@@ -385,6 +433,31 @@ func TestLocalize_Deterministic(t *testing.T) {
 	}
 	if string(raw1) != string(raw2) {
 		t.Errorf("localize is not deterministic:\n%s\nvs\n%s", raw1, raw2)
+	}
+}
+
+// ─── ADR-014 execute-and-flag: an unindexed service, never a silent empty ──
+
+func TestLocalize_UnknownServiceReturnsEmptyDiagnosisWithNote(t *testing.T) {
+	be := localizeFixture(t)
+	be.notIndexed = true
+	srv := mcp.NewServer(be)
+	got := localizeCall(t, srv, map[string]any{"service": "nope", "concern": "anything at all"})
+
+	cands, ok := got["candidates"].([]any)
+	if !ok || len(cands) != 0 {
+		t.Errorf("expected an empty candidates array, got %v (%T)", got["candidates"], got["candidates"])
+	}
+	hops, ok := got["hops"].([]any)
+	if !ok || len(hops) != 0 {
+		t.Errorf("expected no hops attempted against an unindexed service, got %v", got["hops"])
+	}
+	note, _ := got["note"].(string)
+	if note == "" {
+		t.Fatal("expected a note naming the unindexed service, got none")
+	}
+	if !strings.Contains(note, "nope") {
+		t.Errorf("note = %q, want it to name the unindexed service %q", note, "nope")
 	}
 }
 

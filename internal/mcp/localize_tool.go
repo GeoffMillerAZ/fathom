@@ -116,6 +116,15 @@ var localizeFuncNameRE = regexp.MustCompile(`\b([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za
 // quoted), at least 2 characters, the seed shape for the search hop.
 var localizeQuotedRE = regexp.MustCompile("\"([^\"]{2,})\"|`([^`]{2,})`|'([^']{2,})'")
 
+// failingTestNameRE extracts a go test name (optionally with a "/"
+// subtest path) out of whatever `go test` runner formatting the caller
+// pasted verbatim — "--- FAIL: TestBalance (0.00s)", "=== RUN
+// TestBalance/sub", "FAIL: TestBalance" — and out of a bare name too: it
+// just finds the "TestXxx[/subpath]" token wherever it sits, ignoring
+// every other character around it, so no per-prefix-shape parsing is
+// needed at all.
+var failingTestNameRE = regexp.MustCompile(`Test[A-Za-z0-9_]*(?:/[^\s()]+)?`)
+
 // localizeWordRE matches a candidate concern TERM: an identifier-shaped
 // word of at least 4 characters.
 var localizeWordRE = regexp.MustCompile(`[A-Za-z_][A-Za-z0-9_]{3,}`)
@@ -188,10 +197,13 @@ func localizeSeedsFromFrames(text string) []localizeSeed {
 // localizeSeedsFor builds the seed set for one of the four input shapes.
 // stack_trace and error both seed from frames (file:line, function
 // names); error additionally seeds from quoted literals (an error string
-// often quotes the offending value); failing_test seeds the base test
-// name (subtests split at the first "/") as BOTH a symbol lookup and a
-// literal (a non-Go test framework may not be in the typed index at
-// all); concern seeds from its own significant words.
+// often quotes the offending value); failing_test strips whatever `go
+// test` runner formatting the caller pasted verbatim (failingTestNameRE
+// — "--- FAIL: TestBalance (0.00s)", "=== RUN   TestBalance/sub", "FAIL:
+// TestBalance", or a bare name all reduce to the same test name) and
+// seeds the base test name (subtests split at the first "/") as BOTH a
+// symbol lookup and a literal (a non-Go test framework may not be in the
+// typed index at all); concern seeds from its own significant words.
 func localizeSeedsFor(kind, text string) []localizeSeed {
 	var out []localizeSeed
 	switch kind {
@@ -199,6 +211,9 @@ func localizeSeedsFor(kind, text string) []localizeSeed {
 		out = localizeSeedsFromFrames(text)
 	case "failing_test":
 		name := strings.TrimSpace(text)
+		if m := failingTestNameRE.FindString(name); m != "" {
+			name = m
+		}
 		if name != "" {
 			base := name
 			if i := strings.Index(base, "/"); i >= 0 {
@@ -263,6 +278,21 @@ func findFileByPathSuffix(byFile map[string][]core.SymbolNode, target string) (s
 // runLocalize is registerLocalize's own testable core.
 func runLocalize(ctx context.Context, s *Server, backend QueryInterface, service, kind, text string, budgetIn int) map[string]any {
 	allowed := clampLocalizeBudget(budgetIn)
+
+	// ADR-014 execute-and-flag: an unindexed service is never a silent
+	// empty — every hop would degrade to added:0 anyway (no symbols, no
+	// corpus root to grep), so say so directly instead of making the
+	// caller infer "not indexed" from a diagnosis that looks identical to
+	// "no bug found here".
+	if _, _, found, _ := backend.ServiceMeta(ctx, service); !found {
+		return map[string]any{
+			"candidates": []map[string]any{},
+			"hops":       []localizeHop{},
+			"budget":     map[string]any{"allowed": allowed, "used": 0},
+			"note":       fmt.Sprintf("service %q is not indexed — nothing to localize against; ingest it first", service),
+		}
+	}
+
 	used := 0
 	var hops []localizeHop
 	candidates := map[string]*localizeCandidate{}
@@ -491,7 +521,7 @@ var localizeInputKinds = []string{"stack_trace", "failing_test", "error", "conce
 func registerLocalize(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "localize",
-		Description: "The answer grep cannot give when you don't yet know which file: one bounded, budgeted, LOGGED walk of the index from a stack trace, a failing test name, an error string, or a concern — never a bare list, a diagnosis object. Exactly one of stack_trace, failing_test, error, concern must be given (checked at call time, not the schema's own required list). Seeds from parsed stack frames (file:line, function names), quoted literals (the same grep engine `search` runs), or a concern's own significant terms; expands by graph proximity (callers/callees over the typed/syntax call graph — internal/analysis/callgraph), open obligations (a governed file ranks higher, cited, never a discovery path on its own), and recency (skipped with a note today — no churn analysis is wired in yet). Every hop is logged (tool, arg, how many candidates it added) whether or not it found anything. Response: candidates (file, symbol, score, tier — typed when a call-graph or index lookup confirmed it, heuristic when only a text match did — and why, the citation strings naming which hop produced it), hops, budget ({allowed, used}), and index_commit when the backend can name one. Deterministic: identical input against an unchanged index returns byte-identical results. Reach for it when you have a crash, a failing test, or a described problem and do not yet know which file it lives in — a literal string with a KNOWN location is search's job instead. Required: service.",
+		Description: "The answer grep cannot give when you don't yet know which file: one bounded, budgeted, LOGGED walk of the index from a stack trace, a failing test name, an error string, or a concern — never a bare list, a diagnosis object. Exactly one of stack_trace, failing_test, error, concern must be given (checked at call time, not the schema's own required list). Seeds from parsed stack frames (file:line, function names), quoted literals (the same grep engine `search` runs), or a concern's own significant terms; expands by graph proximity (callers/callees over the typed/syntax call graph — internal/analysis/callgraph), open obligations (a governed file ranks higher, cited, never a discovery path on its own), and recency (skipped with a note today — no churn analysis is wired in yet). Every hop is logged (tool, arg, how many candidates it added) whether or not it found anything. Response: candidates (file, symbol, score, tier — typed when a call-graph or index lookup confirmed it, heuristic when only a text match did — and why, the citation strings naming which hop produced it), hops, budget ({allowed, used}), and index_commit when the backend can name one. An unindexed service returns an empty diagnosis with a note naming it, never a silent empty that reads as \"no bug found\". Deterministic: identical input against an unchanged index returns byte-identical results. Reach for it when you have a crash, a failing test, or a described problem and do not yet know which file it lives in — a literal string with a KNOWN location is search's job instead. Required: service.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{

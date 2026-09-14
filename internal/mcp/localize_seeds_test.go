@@ -60,6 +60,30 @@ func TestLocalizeSeedsFor_FailingTest(t *testing.T) {
 	}
 }
 
+// TestLocalizeSeedsFor_FailingTestStripsRunnerFormatting is the review's
+// fix-first item: go test runner formatting around a failing test name
+// must reduce to the same base function seed as the bare name.
+func TestLocalizeSeedsFor_FailingTestStripsRunnerFormatting(t *testing.T) {
+	cases := []struct {
+		text     string
+		wantBase string
+	}{
+		{"--- FAIL: TestBalance (0.00s)", "TestBalance"},
+		{"=== RUN   TestBalance/sub", "TestBalance"},
+		{"FAIL: TestBalance", "TestBalance"},
+		{"TestBalance/subcase", "TestBalance"},
+		{"TestBalance", "TestBalance"},
+	}
+	for _, c := range cases {
+		t.Run(c.text, func(t *testing.T) {
+			got := localizeSeedsFor("failing_test", c.text)
+			if len(got) == 0 || got[0].Kind != localizeSeedFunction || got[0].Value != c.wantBase {
+				t.Errorf("localizeSeedsFor(failing_test, %q) = %+v, want a function seed %q first", c.text, got, c.wantBase)
+			}
+		})
+	}
+}
+
 func TestLocalizeSeedsFor_Error(t *testing.T) {
 	text := `ledger: validation failed at ledger.go:5: "errMissingAccount"`
 	got := localizeSeedsFor("error", text)
