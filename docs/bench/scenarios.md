@@ -388,6 +388,73 @@ every task has predicted the new arm's outcome. Nothing about the harness
 changes; `RunSessions`/`ClaudeHarness` (wave 2, another file) read the arm
 the same way regardless of what it contains.
 
+## Competitor arm parity (O53)
+
+A second reading of pilot vs-pilot-3 found the comparison itself
+instruction-limited, not merely instrument-limited: gopls made 0 MCP calls
+in 28 trials, graphify 1, serena 1, because every competitor arm's own
+`instructions_text` named its tools for where-defined / who-calls /
+implements and then added a disclaimer — "has no view onto documented
+conventions, decision records, or repository-wide freshness" / "is grep's
+job, not `<tool>`'s" — that routed the model away from the tool on 22 of 28
+trials per arm before it ever read the prompt, while the `full` arm alone
+carried a full routing stanza (`fathom init`'s own template,
+`cmd/fathom/init.go`'s `fathomStanzaTemplate` + `openingMovesTable`) with no
+disclaimer at all. Parity by construction fixes this: every competitor
+arm's `instructions_text` now follows ONE template —
+
+- an opening line naming the tool, by its real tool names
+  (`docs/bench/competitors.md`), as the way to answer where / who-calls /
+  what-breaks / what-governs / what-changed questions in this repository;
+- an "Opening moves by task shape" list keyed to the corpus's OWN eight
+  categories (`obligations`, `claim_provenance`, `concern_search`,
+  `contradiction`, `freshness`, `staleness`, `verify`, `blast_radius` — not
+  fathom's own four dev-task shapes from `openingMovesTable`, which this
+  corpus never asks), naming the competitor's own tool first and `grep`
+  second on every line, even where the competitor has no real tool for
+  that shape (the nearest structural/symbol/workspace query is still named
+  first — a graph query for graphify, a symbol lookup for serena, a
+  workspace query for gopls);
+- no sentence that routes away from the tool. Where a tool is genuinely
+  expected to lose a category, that expectation lives in the task's own
+  `predictions` field, never in the stanza a session reads.
+
+Length parity is a proof, not a promise:
+`TestLookupsVSCorpus_CompetitorStanzaParity`
+(`internal/scenariobench/lookups_vs_test.go`) measures each competitor's
+routing section (everything after the `## <tool> ... navigation` header),
+fails on any banned disclaimer phrase, fails if any opening-move line does
+not end `-> grep`, and fails if a routing section sits outside ±15% of the
+other two competitors' or of fathom's own stanza's routing section (the
+paragraph plus `openingMovesTable`, `cmd/fathom/init.go` — 1,052 bytes,
+hardcoded in the test with a comment to keep in sync, since
+`internal/scenariobench` cannot import `cmd/fathom`, `package main`).
+
+**Delivery assumes append (wave-n1).** `RenderArm`'s `"text"` mode is
+changing from overwriting the subject's CLAUDE.md to APPENDING
+`InstructionsText` to it, so a competitor arm's session reads the subject's
+real CLAUDE.md (including fathom's own stanza, inert on an arm with no
+fathom MCP entry) followed by the competitor's own block. Every
+`instructions_text` in `lookups-vs.json` is written as a standalone,
+`##`-headed appendable section for exactly this reason — never as a
+full-file replacement.
+
+**`exclude_paths` (wave-n1 adds enforcement).** Every task's `subject` now
+carries `exclude_paths: ["testdata/contextbench/**",
+"testdata/scenariobench/**", "docs/bench/**"]` — the home corpus's own test
+data and this bench's own docs, so no arm's session can read its way to the
+gold answer or a competitor's predicted score instead of answering the
+prompt. The field is declared on `Subject` (`types.go`) today; the loader
+rule that actually denies a session those paths is wave-n1's.
+
+**Turn budget is part of the instrument.** The 20-turn cap ended six
+competitor cells with the answer already in hand but no turns left to
+state it (`FinalAnswer`'s `error_max_turns` fallback, "Plan-first only on
+change-shaped tasks" above) — raised to 30 for every task in this corpus.
+A turn cap is itself something the bench is measuring, not a fixed
+constant: change it deliberately, and note the change here, never
+silently.
+
 ## Instrument truth
 
 A wired or MCP-carrying arm's cell is only a reading if the tools it was
@@ -586,6 +653,26 @@ staleness gap already predicts loses; a graphify arm run in its own
 `--watch` mode (docs/vision/27-strengths-bench.md §3 wave D) is the paid
 reading still to add, once per release, before this row can credit
 graphify with the live-refresh mode its own docs recommend.
+
+`FRESH-M7-01` was redesigned (SB-51, `docs/plans/verbs.md` VB-17/18) after
+every arm answered the ORIGINAL version — "what integer does the function
+FreshnessMarkerValue in internal/store/freshnessmarker.go return?" —
+with a plain `Read` of the file the prompt named directly: no tool of any
+kind is needed to answer a literal read once both the file and the
+function are already named, so the freshness discriminator never fired.
+The task now asks a call-graph fact instead, the same question shape as
+`FreshnessProbe`'s own `add_param` edit ("how many callers does
+applyEntry have now") above: `internal/metrics.IsPlumbingTool` already has
+exactly one committed caller (`AggregateTraffic`,
+`internal/metrics/traffic.go`); `Subject.PostWireSetup` adds a SECOND call
+site in a brand-new file the prompt never names
+(`internal/metrics/toolkind_freshprobe.go`), and asks which function now
+calls it. A graphify graph built during this arm's own setup — before the
+edit lands — still reports only the one pre-existing caller; a live gopls
+query (serena, gopls) or a re-ingested fathom index sees both; grep across
+the tree for `IsPlumbingTool(` finds both regardless of any artifact's
+staleness, since the new caller is textually present in the tree the
+moment it lands.
 
 ## Dropped tasks
 
