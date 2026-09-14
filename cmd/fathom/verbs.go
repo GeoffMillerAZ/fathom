@@ -72,6 +72,7 @@ var verbTable = []verb{
 	{Name: "fleet", Summary: "Fleet operations: report | reconcile [--apply] | receipts | undo <receipt> (every write receipted, every receipt reversible)"},
 	{Name: "research", Summary: "The research flywheel: report (aggregate local evidence) | bundle (sanitized, shareable summary)"},
 	{Name: "module", Summary: "Expert-module lifecycle: init | sources | map | compile | eval | doctor | pack | runs"},
+	{Name: "rules", Summary: "Compiled governance (VB-13/VB-14): gen-test [--root DIR] [--out DIR] emits a Go test from .fathom/guard.cue's layer_rules"},
 	{Name: "metrics", Summary: "Observability surfaces: spend | traffic | channels | interventions | series | rollup | rotate"},
 	{Name: "findings", Summary: "Findings as evidence: near <symbol|file> (call-graph precedent) | status (entry-condition progress)"},
 	{Name: "memory", Summary: "Anchored memory: add | list | review | show — a memory with no anchor is refused, and drift expires it"},

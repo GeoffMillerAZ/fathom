@@ -182,6 +182,8 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return cmdResearch(args[1:], stdout, stderr)
 	case "module":
 		return cmdModule(args[1:], stdout, stderr)
+	case "rules":
+		return cmdRules(args[1:], stdout, stderr)
 	case "metrics":
 		return cmdMetrics(args[1:], stdout, stderr)
 	case "findings":

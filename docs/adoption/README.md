@@ -9,8 +9,10 @@ what is not. The full guides are
 [claude-code.md](claude-code.md) (canonical, build-through-verify),
 [codex.md](codex.md), [other-harnesses.md](other-harnesses.md) (the
 registry-generated adoption matrix: Gemini CLI, the generic `AGENTS.md`
-tier, and what is verified vs. not), and
-[spec-driven-development.md](spec-driven-development.md).
+tier, and what is verified vs. not),
+[spec-driven-development.md](spec-driven-development.md), and
+[github-rulesets.md](github-rulesets.md) (making `fathom verify` and the
+compiled layer rules required GitHub checks).
 
 ## Get it running
 

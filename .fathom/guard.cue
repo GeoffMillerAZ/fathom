@@ -22,3 +22,34 @@ guards: [
 		note: "No Node toolchain in this repo (app-kit ADR-0017 §3: fathom's artifact is a Go binary). The observatory CSS builds via task ui:css — the pinned Tailwind standalone binary. If you think you need npm here, re-read cmd/fathom/ui/input.css first."
 	},
 ]
+
+// fathom's own first compiled governance rules (VB-13, docs/vision/29-
+// verbs-not-lookups.md §3 wave C; ADR-035 decision 3) — `fathom rules
+// gen-test --out rules` compiles these to rules/layer_rules_test.go
+// (VB-14), so the same three sentences below fail `task validate` and CI
+// on an actual regression, not just an agent's edit. Package identity is
+// the repo-relative DIRECTORY ("internal/store"), matching both
+// producers: the call-derived index (live obligations serving) and
+// go/packages' true import graph (the generated test).
+layer_rules: [
+	{
+		id:       "store-no-cgo"
+		kind:     "import_direction"
+		sentence: "internal/store must not import cgo-backed packages (ADR-020/025: the store stays pure Go; CGO comes only from the tree-sitter extractor bindings, ADR-013)."
+		from: ["internal/store"]
+		to: ["internal/extractor", "internal/extractor/treesitter"]
+	},
+	{
+		id:       "core-no-mcp-or-cmd"
+		kind:     "import_direction"
+		sentence: "internal/core imports nothing from internal/mcp or cmd/ — the domain model is the keystone (CLAUDE.md), never a consumer of the surfaces built on it."
+		from: ["internal/core"]
+		to: ["internal/mcp", "cmd/**"]
+	},
+	{
+		id:       "internal-no-cycles"
+		kind:     "no_cycles"
+		sentence: "no import cycles under internal/ — the connector/fusion/query layering (ADR.md) is acyclic by construction."
+		scope: ["internal/**"]
+	},
+]

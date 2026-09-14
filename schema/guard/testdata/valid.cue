@@ -24,3 +24,39 @@ minimalDefaults: #Guards & {
 		scopes: ["**/*.go"]
 	}]
 }
+
+// One layer_rule per kind (VB-13) — the same worked shapes
+// internal/guardspec's golden tests exercise.
+layerRules: #Guards & {
+	guards: []
+	layer_rules: [
+		{
+			id:       "store-no-cgo"
+			kind:     "import_direction"
+			sentence: "internal/store must not import cgo-backed packages."
+			from: ["store"]
+			to: ["extractor"]
+		},
+		{
+			id:       "internal-no-cycles"
+			kind:     "no_cycles"
+			sentence: "no import cycles under internal/."
+			scope: ["internal/**"]
+		},
+		{
+			id:       "ledger-boundary"
+			kind:     "boundary"
+			sentence: "only payment may import ledger."
+			allow: ["payment"]
+			guarded: ["ledger"]
+		},
+		{
+			id:          "payment-not-ledger"
+			kind:        "cross_service_direction"
+			sentence:    "payment-service never depends on ledger-service."
+			severity:    "warn"
+			from_service: "payment-service"
+			to_service:   "ledger-service"
+		},
+	]
+}

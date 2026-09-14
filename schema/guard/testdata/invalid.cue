@@ -25,3 +25,21 @@ package guard
 // bad4: #Guards & {
 // 	guards: [{command_scopes: []}]
 // }
+//
+// 5. Unknown layer_rule kind (VB-13):
+// bad5: #Guards & {
+// 	guards: []
+// 	layer_rules: [{id: "x", kind: "bogus", sentence: "s"}]
+// }
+//
+// 6. Unknown layer_rule severity:
+// bad6: #Guards & {
+// 	guards: []
+// 	layer_rules: [{id: "x", kind: "no_cycles", sentence: "s", severity: "critical"}]
+// }
+//
+// 7. layer_rule id must be lowercase-kebab:
+// bad7: #Guards & {
+// 	guards: []
+// 	layer_rules: [{id: "Not Valid", kind: "no_cycles", sentence: "s"}]
+// }

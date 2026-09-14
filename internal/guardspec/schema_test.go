@@ -71,6 +71,21 @@ bad3: #Guards & {
 bad4: #Guards & {
 	guards: [{command_scopes: []}]
 }`, "command_scopes"},
+		{"unknown layer_rule kind", `
+bad5: #Guards & {
+	guards: []
+	layer_rules: [{id: "x", kind: "bogus", sentence: "s"}]
+}`, "layer_rules"},
+		{"unknown layer_rule severity", `
+bad6: #Guards & {
+	guards: []
+	layer_rules: [{id: "x", kind: "no_cycles", sentence: "s", severity: "critical"}]
+}`, "layer_rules"},
+		{"layer_rule id must be lowercase-kebab", `
+bad7: #Guards & {
+	guards: []
+	layer_rules: [{id: "Not Valid", kind: "no_cycles", sentence: "s"}]
+}`, "layer_rules"},
 	}
 	cctx := cuecontext.New()
 	if v := cctx.CompileString(schema); v.Err() != nil || v.Validate() != nil {
