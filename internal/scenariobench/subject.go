@@ -21,8 +21,10 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -123,6 +125,13 @@ func PrepareSubject(ctx context.Context, task Task, arm Arm, root string) (Workt
 		unlock := lockClone(cloneDir)
 		defer unlock()
 		if _, err := os.Stat(filepath.Join(wtPath, ".git")); err == nil {
+			// O52: a scratch daemon that outlived its cell (a driver killed
+			// mid-run, a teardown that never ran) keeps running git in this
+			// shared worktree and holds index.lock while the next cell
+			// resets it. Reap it by pidfile first, then clear a lock no
+			// live git process owns.
+			reapStaleScratchDaemon(wtPath)
+			removeStaleIndexLock(ctx, wtPath)
 			if out, err := runIn(ctx, wtPath, "git", "reset", "--hard", task.Subject.BaseCommit); err != nil {
 				return fmt.Errorf("preparing subject: resetting the shared worktree: %w (%s)", err, out)
 			}
@@ -367,12 +376,70 @@ func StopWorktree(wt *Worktree) error {
 	if wt == nil || wt.daemon == nil || wt.daemon.Process == nil {
 		return nil
 	}
-	if err := wt.daemon.Process.Kill(); err != nil {
+	pid := wt.daemon.Process.Pid
+	_ = syscall.Kill(-pid, syscall.SIGKILL) // the process group (O52)
+	if err := wt.daemon.Process.Kill(); err != nil && !strings.Contains(err.Error(), "process already finished") {
 		return fmt.Errorf("stopping scratch daemon: %w", err)
 	}
 	_ = wt.daemon.Wait()
 	wt.daemon = nil
+	_ = os.Remove(scratchDaemonPIDFile(wt.Path))
 	return nil
+}
+
+// scratchDaemonPIDFile is the pidfile a wired cell's scratch daemon leaves
+// beside the SHARED worktree it runs in — shared across every cell on the
+// same (subject, commit, arm), which is exactly the scope a leftover
+// daemon damages.
+func scratchDaemonPIDFile(wtPath string) string {
+	return strings.TrimSuffix(wtPath, "/") + ".scratch-daemon.pid"
+}
+
+// scratchDaemonCommandMarker is the substring a reaped process's command
+// line must carry; a pid recycled by an unrelated process is left alone.
+// Tests point it at their own fake daemon.
+var scratchDaemonCommandMarker = "serve-http"
+
+// reapStaleScratchDaemon kills a scratch daemon a previous cell left
+// running in wtPath (O52) and removes its pidfile. A missing pidfile, a
+// dead pid, or a recycled pid are all no-ops.
+func reapStaleScratchDaemon(wtPath string) {
+	pidfile := scratchDaemonPIDFile(wtPath)
+	data, err := os.ReadFile(pidfile)
+	if err != nil {
+		return
+	}
+	defer os.Remove(pidfile)
+	pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
+	if err != nil || pid <= 1 {
+		return
+	}
+	out, err := exec.Command("ps", "-o", "command=", "-p", strconv.Itoa(pid)).Output()
+	if err != nil || !strings.Contains(string(out), scratchDaemonCommandMarker) {
+		return
+	}
+	_ = syscall.Kill(-pid, syscall.SIGKILL)
+	_ = syscall.Kill(pid, syscall.SIGKILL)
+	for i := 0; i < 50; i++ {
+		if syscall.Kill(pid, 0) != nil {
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+}
+
+// removeStaleIndexLock clears wtPath's git index.lock when it is older
+// than ten seconds — a lock no live git command is holding (a reaped
+// daemon's, or a driver killed mid-reset). A young lock is left alone.
+func removeStaleIndexLock(ctx context.Context, wtPath string) {
+	gitDir, err := runIn(ctx, wtPath, "git", "rev-parse", "--absolute-git-dir")
+	if err != nil {
+		return
+	}
+	lock := filepath.Join(strings.TrimSpace(gitDir), "index.lock")
+	if st, err := os.Stat(lock); err == nil && time.Since(st.ModTime()) > 10*time.Second {
+		_ = os.Remove(lock)
+	}
 }
 
 // ─── clone / worktree plumbing ──────────────────────────────────────────
@@ -516,6 +583,11 @@ func wireScratchDaemon(ctx context.Context, wt *Worktree, task Task, renderedArm
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
 	daemon := exec.Command(bin, "serve-http", "-store", wt.StorePath, "-addr", addr, "-auto-refresh=false", "-call-log", "")
 	daemon.Dir = wt.Path
+	// A scratch daemon never watches its binary for a deploy (it would exit
+	// and nothing relaunches it), and it runs in its own process group so
+	// StopWorktree can take down anything it spawned (O52).
+	daemon.Env = append(os.Environ(), "FATHOM_SELF_RESTART=off")
+	daemon.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	logFile, err := os.Create(filepath.Join(wt.CellDir, "scratch-daemon.log"))
 	if err == nil {
 		daemon.Stdout = logFile
@@ -526,6 +598,7 @@ func wireScratchDaemon(ctx context.Context, wt *Worktree, task Task, renderedArm
 	}
 	wt.daemon = daemon
 	wt.DaemonURL = "http://" + addr
+	_ = os.WriteFile(scratchDaemonPIDFile(wt.Path), []byte(strconv.Itoa(daemon.Process.Pid)+"\n"), 0o644)
 
 	if err := waitDaemonReady(wt.DaemonURL, 30*time.Second); err != nil {
 		_ = StopWorktree(wt)
