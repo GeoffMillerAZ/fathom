@@ -364,6 +364,9 @@ On 20260913T094546Z, fathom's arm matched grep on success (28 v 28) at 1.375× t
 **20260913T154217Z** — full vs grep: success 35/39 vs 34/39, tokens 1.810×, cost 1.604×.
 On 20260913T154217Z, fathom's arm beat grep on success (35 v 34) at 1.810× the tokens; registered criterion H2-3: fail (aggregate payload_bytes ratio 1.615× exceeds the pre-registered cap of 1.000×).
 
+**20260914T035806Z** — full vs grep: success 41/47 vs 44/47, tokens 1.808×, cost 1.095×.
+On 20260914T035806Z, fathom's arm lost to grep on success (41 v 44) at 1.808× the tokens; registered criterion H2-3: fail (success 41 vs 44 — not strictly greater).
+
 
 | run | commit | corpus | model | tasks | n | success (t/c) | tokens agg | tokens median | Δsuccess 95% CI | criterion | verdict | why |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -372,6 +375,7 @@ On 20260913T154217Z, fathom's arm beat grep on success (35 v 34) at 1.810× the 
 | 20260913T002832Z | a75e64e | tasks-home.json | sonnet | 11 | 3 | 31/28 | 1.444× | 1.542× | +0.091 [-0.061, +0.242] p=0.042 A12=0.60 | H2-3 | fail | aggregate payload_bytes ratio 1.901× exceeds the pre-registered cap of 1.000× flaky=5 leaked=2 payload=1.901× |
 | 20260913T094546Z | 68a5348 | tasks-home.json | sonnet | 11 | 3 | 28/28 | 1.375× | 1.193× | +0.000 [-0.121, +0.152] p=0.240 A12=0.48 | H2-3 | fail | success 28 vs 28 — not strictly greater flaky=6 leaked=2 borrowed=66 payload=2.656× |
 | 20260913T154217Z | 47ee05f | tasks-home.json | sonnet | 13 | 3 | 35/34 | 1.810× | 1.750× | +0.026 [-0.103, +0.154] p=0.013 A12=0.54 | H2-3 | fail | aggregate payload_bytes ratio 1.615× exceeds the pre-registered cap of 1.000× flaky=5 borrowed=39 payload=1.615× |
+| 20260914T035806Z | 13161ff | tasks-home.json | sonnet | 13 | 3 | 41/44 | 1.808× | 2.972× | -0.067 [-0.190, +0.031] p=0.027 A12=0.45 | H2-3 | fail | success 41 vs 44 — not strictly greater flaky=4 payload=0.864× trusted=93%(n=122) |
 
 <!-- END ledger table -->
 
