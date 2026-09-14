@@ -3,6 +3,7 @@ package scenariobench
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -178,6 +179,96 @@ func TestLoadScenarioCorpus_RefusesLocalizationCombinedWithAnswerAllOf(t *testin
 	path := writeCorpusFixture(t, dir, "corpus.json", bad)
 	if _, err := LoadScenarioCorpus(path); err == nil {
 		t.Fatal("expected an error for a task carrying both localization and answer_all_of")
+	}
+}
+
+// TestLoadScenarioCorpus_RefusesHomeCorpusDerivationWithoutExcludePaths is
+// O53 defect 3's loader-refusal proof: a task whose derivation names the
+// home corpus (testdata/contextbench/tasks-home.json) but declares no
+// subject.exclude_paths must be refused, naming what is missing — the
+// answer-key contamination that reached 41 scored cells in pilot
+// vs-pilot-3 must never load silently again.
+func TestLoadScenarioCorpus_RefusesHomeCorpusDerivationWithoutExcludePaths(t *testing.T) {
+	dir := t.TempDir()
+	bad := `{
+  "arms": {"full": {"wired": true, "instructions": "stanza"}},
+  "tasks": [{
+    "id": "T1", "prompt": "p",
+    "derivation": "Copied verbatim from testdata/contextbench/tasks-home.json id H1-T01.",
+    "subject": {"repo_url": "u", "base_commit": "c"},
+    "sessions": {"mode": "single", "count": 1, "max_turns": 5},
+    "oracle": {"answer_all_of": ["tok"]},
+    "predictions": {"full": "wins"}
+  }],
+  "criterion": {"id": "C1", "treatment": "full", "control": "control", "min_trials": 1}
+}`
+	path := writeCorpusFixture(t, dir, "corpus.json", bad)
+	_, err := LoadScenarioCorpus(path)
+	if err == nil {
+		t.Fatal("expected an error for a home-corpus-derived task with no exclude_paths")
+	}
+	if !strings.Contains(err.Error(), "exclude_paths") {
+		t.Errorf("error %q does not name exclude_paths", err)
+	}
+}
+
+// TestLoadScenarioCorpus_RefusesHomeCorpusDerivationWithPartialExcludePaths
+// covers the "cover" requirement, not just "declare something": all three
+// globs are required, not just one.
+func TestLoadScenarioCorpus_RefusesHomeCorpusDerivationWithPartialExcludePaths(t *testing.T) {
+	dir := t.TempDir()
+	bad := `{
+  "arms": {"full": {"wired": true, "instructions": "stanza"}},
+  "tasks": [{
+    "id": "T1", "prompt": "p",
+    "derivation": "Copied verbatim from testdata/contextbench/tasks-home.json id H1-T01.",
+    "subject": {"repo_url": "u", "base_commit": "c", "exclude_paths": ["testdata/contextbench/**"]},
+    "sessions": {"mode": "single", "count": 1, "max_turns": 5},
+    "oracle": {"answer_all_of": ["tok"]},
+    "predictions": {"full": "wins"}
+  }],
+  "criterion": {"id": "C1", "treatment": "full", "control": "control", "min_trials": 1}
+}`
+	path := writeCorpusFixture(t, dir, "corpus.json", bad)
+	if _, err := LoadScenarioCorpus(path); err == nil {
+		t.Fatal("expected an error: exclude_paths covers only one of the three required globs")
+	}
+}
+
+// TestLoadScenarioCorpus_AcceptsHomeCorpusDerivationWithExcludePaths is the
+// converse: all three required globs present, task loads clean.
+func TestLoadScenarioCorpus_AcceptsHomeCorpusDerivationWithExcludePaths(t *testing.T) {
+	dir := t.TempDir()
+	good := `{
+  "arms": {"full": {"wired": true, "instructions": "stanza"}},
+  "tasks": [{
+    "id": "T1", "prompt": "p",
+    "derivation": "Copied verbatim from testdata/contextbench/tasks-home.json id H1-T01.",
+    "subject": {"repo_url": "u", "base_commit": "c", "exclude_paths": ["testdata/contextbench/**", "testdata/scenariobench/**", "docs/bench/**"]},
+    "sessions": {"mode": "single", "count": 1, "max_turns": 5},
+    "oracle": {"answer_all_of": ["tok"]},
+    "predictions": {"full": "wins"}
+  }],
+  "criterion": {"id": "C1", "treatment": "full", "control": "control", "min_trials": 1}
+}`
+	path := writeCorpusFixture(t, dir, "corpus.json", good)
+	c, err := LoadScenarioCorpus(path)
+	if err != nil {
+		t.Fatalf("LoadScenarioCorpus: %v", err)
+	}
+	if len(c.Tasks) != 1 {
+		t.Fatalf("unexpected tasks: %+v", c.Tasks)
+	}
+}
+
+// TestLoadScenarioCorpus_TaskNotDerivedFromHomeCorpusNeedsNoExcludePaths
+// proves the requirement is scoped to home-corpus derivations only — an
+// ordinary task with no exclude_paths at all still loads.
+func TestLoadScenarioCorpus_TaskNotDerivedFromHomeCorpusNeedsNoExcludePaths(t *testing.T) {
+	dir := t.TempDir()
+	path := writeCorpusFixture(t, dir, "corpus.json", validCorpusJSON())
+	if _, err := LoadScenarioCorpus(path); err != nil {
+		t.Fatalf("LoadScenarioCorpus: %v", err)
 	}
 }
 

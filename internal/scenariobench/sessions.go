@@ -193,7 +193,7 @@ func runSingle(ctx context.Context, h Harness, task Task, armName string, arm Ar
 		if err != nil {
 			return results, err
 		}
-		res, err := runOneSession(h, req, wt.Arm.MCPServerNames)
+		res, err := runOneSession(h, req, wt.Arm.MCPServerNames, task.Subject.ExcludePaths)
 		if err != nil {
 			return append(results, res), fmt.Errorf("task %s arm %s session %d: %w", task.ID, armName, i, err)
 		}
@@ -216,7 +216,7 @@ func runPlannerWorkers(ctx context.Context, h Harness, task Task, armName string
 	if err != nil {
 		return results, err
 	}
-	plannerRes, err := runOneSession(h, plannerReq, wt.Arm.MCPServerNames)
+	plannerRes, err := runOneSession(h, plannerReq, wt.Arm.MCPServerNames, task.Subject.ExcludePaths)
 	if err != nil {
 		return append(results, plannerRes), fmt.Errorf("task %s arm %s planner session: %w", task.ID, armName, err)
 	}
@@ -252,7 +252,7 @@ func runPlannerWorkers(ctx context.Context, h Harness, task Task, armName string
 		if err != nil {
 			return results, err
 		}
-		res, err := runOneSession(h, req, wt.Arm.MCPServerNames)
+		res, err := runOneSession(h, req, wt.Arm.MCPServerNames, task.Subject.ExcludePaths)
 		if err != nil {
 			return append(results, res), fmt.Errorf("task %s arm %s worker %d: %w", task.ID, armName, i+1, err)
 		}
@@ -517,7 +517,7 @@ func findPlanFile(worktree string) (string, error) {
 // disqualifying the whole cell regardless of how the other sessions in it
 // went. err is non-nil only when the harness failed to even start the
 // process.
-func runOneSession(h Harness, req SessionRequest, wantServers []string) (SessionResult, error) {
+func runOneSession(h Harness, req SessionRequest, wantServers []string, excludePaths []string) (SessionResult, error) {
 	res, err := h.RunSession(req)
 	if err != nil {
 		return res, err
@@ -537,6 +537,12 @@ func runOneSession(h Harness, req SessionRequest, wantServers []string) (Session
 			res.Error = msg
 			res.InstrumentError = msg
 		}
+	}
+	// O53 defect 3: independent of whatever the harness itself reported —
+	// an answer-key leak is a fact about the transcript, not the session's
+	// own success/failure.
+	if AnswerKeyLeakScan(res, excludePaths) {
+		res.AnswerKeyLeak = true
 	}
 	return res, nil
 }
@@ -634,15 +640,27 @@ func hooksInstrumentError(wired bool, res SessionResult) string {
 }
 
 // CellLost reports why a cell is not a reading: any session carrying an
-// instrument error (instrumentTruthError/hooksInstrumentError, via
-// runOneSession), every session errored some other way, or no session
-// ever produced a turn. A single instrument-broken session voids the
-// whole cell regardless of how the other sessions in it went — unlike a
-// session that merely errored in-band, which only loses the cell when
-// EVERY session did. A lost cell is never stored or scored.
+// answer-key leak (AnswerKeyLeakScan), a baseline that ran fathom
+// (BaselineRanFathomScan), an instrument error
+// (instrumentTruthError/hooksInstrumentError, via runOneSession), every
+// session errored some other way, or no session ever produced a turn. A
+// single such session voids the whole cell regardless of how the other
+// sessions in it went — unlike a session that merely errored in-band,
+// which only loses the cell when EVERY session did. A lost cell is never
+// stored or scored.
 func CellLost(sessions []SessionResult) string {
 	if len(sessions) == 0 {
 		return "no sessions ran"
+	}
+	for _, s := range sessions {
+		if s.AnswerKeyLeak {
+			return "answer_key_leak: a tool result named a path subject.exclude_paths should have removed from the worktree"
+		}
+	}
+	for _, s := range sessions {
+		if s.BaselineRanFathom {
+			return "baseline_ran_fathom: a Bash call invoked the fathom binary despite this arm's PATH exclusion"
+		}
 	}
 	for _, s := range sessions {
 		if s.InstrumentError != "" {

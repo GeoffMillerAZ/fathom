@@ -92,6 +92,15 @@ func validateScenarioTask(t Task, armNames []string) error {
 	if t.Subject.BaseCommit == "" {
 		return fmt.Errorf("task %s: subject has no base_commit", t.ID)
 	}
+	// O53 defect 3: a task copied from the home corpus must exclude the
+	// home corpus (and its scenariobench/docs siblings) from its own
+	// worktree, or the answer key it was derived from sits inside the
+	// very worktree the agent can Read/Grep/Bash.
+	if derivesFromHomeCorpus(t) {
+		if missing := excludePathsCoverHomeCorpus(t.Subject.ExcludePaths); len(missing) > 0 {
+			return fmt.Errorf("task %s: derivation names the home corpus (%s) but subject.exclude_paths is missing %v — the answer key it was derived from must never sit inside this task's own worktree", t.ID, homeCorpusMarker, missing)
+		}
+	}
 	if t.Sessions.MaxTurns <= 0 {
 		return fmt.Errorf("task %s: sessions.max_turns must be > 0", t.ID)
 	}

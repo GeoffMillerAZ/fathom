@@ -42,6 +42,95 @@ func gitFixtureRepo(t *testing.T) (repoPath, commit string) {
 	return dir, sha
 }
 
+// gitFixtureRepoWithFiles is gitFixtureRepo plus extra tracked files
+// (relative path -> content) committed in the same initial commit — for
+// tests that need an answer-key-shaped file already present in the
+// subject before PrepareSubject ever runs.
+func gitFixtureRepoWithFiles(t *testing.T, extra map[string]string) (repoPath, commit string) {
+	t.Helper()
+	dir := t.TempDir()
+	run := func(args ...string) string {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		cmd.Env = append(
+			gitEnv(),
+			"GIT_AUTHOR_NAME=test", "GIT_AUTHOR_EMAIL=test@example.invalid",
+			"GIT_COMMITTER_NAME=test", "GIT_COMMITTER_EMAIL=test@example.invalid",
+		)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v: %v (%s)", args, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	run("init", "-q", "-b", "main")
+	writeTestFile(t, filepath.Join(dir, "marker.txt"), "hello from the fixture subject\n")
+	for rel, content := range extra {
+		full := filepath.Join(dir, rel)
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			t.Fatalf("mkdir for %s: %v", rel, err)
+		}
+		writeTestFile(t, full, content)
+	}
+	run("add", "-A")
+	run("commit", "-q", "-m", "initial commit")
+	sha := run("rev-parse", "HEAD")
+	return dir, sha
+}
+
+// TestPrepareSubject_RemovesExcludedPathsBeforeSetup is O53 defect 3's
+// prepare-time-removal proof: a Subject.ExcludePaths glob must be gone
+// from the worktree BEFORE the subject's own Setup command runs (so a
+// script cannot depend on the excluded file's presence), for an unwired
+// arm exactly like a wired one — nothing about this removal is
+// wired-arm-specific. A file NOT matching any exclude pattern must
+// survive untouched.
+func TestPrepareSubject_RemovesExcludedPathsBeforeSetup(t *testing.T) {
+	repoPath, commit := gitFixtureRepoWithFiles(t, map[string]string{
+		"testdata/contextbench/tasks-home.json": `{"H1-T01":{"ground_truth":"the answer key"}}`,
+		"docs/bench/scenarios.md":               "# bench scenarios\n",
+		"keep/me.txt":                           "not excluded\n",
+	})
+	root := t.TempDir()
+	task := Task{
+		ID: "T1",
+		Subject: Subject{
+			RepoURL:    repoPath,
+			BaseCommit: commit,
+			ExcludePaths: []string{
+				"testdata/contextbench/**",
+				"testdata/scenariobench/**",
+				"docs/bench/**",
+			},
+			// If exclusion ran AFTER Setup instead of before, this command
+			// (which fails when the excluded file is still present) would
+			// catch it too — belt and suspenders on top of the direct
+			// os.Stat assertions below.
+			Setup: []string{"test ! -e testdata/contextbench/tasks-home.json"},
+		},
+	}
+	arm := Arm{Instructions: "none"}
+
+	wt, err := PrepareSubject(context.Background(), task, arm, root)
+	if err != nil {
+		t.Fatalf("PrepareSubject: %v", err)
+	}
+	defer StopWorktree(&wt)
+
+	if _, err := os.Stat(filepath.Join(wt.Path, "testdata", "contextbench", "tasks-home.json")); !os.IsNotExist(err) {
+		t.Errorf("expected the excluded answer-key file to be removed, got err=%v", err)
+	}
+	if _, err := os.Stat(filepath.Join(wt.Path, "docs", "bench")); !os.IsNotExist(err) {
+		t.Errorf("expected docs/bench to be removed, got err=%v", err)
+	}
+	if _, err := os.Stat(filepath.Join(wt.Path, "keep", "me.txt")); err != nil {
+		t.Errorf("expected a non-excluded file to survive: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(wt.Path, "marker.txt")); err != nil {
+		t.Errorf("expected the subject's own file to survive: %v", err)
+	}
+}
+
 func TestPrepareSubject_UnwiredArm(t *testing.T) {
 	repoPath, commit := gitFixtureRepo(t)
 	root := t.TempDir()

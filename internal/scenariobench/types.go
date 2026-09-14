@@ -107,6 +107,16 @@ type Subject struct {
 	// TestCommand runs the oracle's test selection; {{tests}} is replaced
 	// by the regex of test names. Default: go test -run '{{tests}}' ./...
 	TestCommand string `json:"test_command,omitempty"`
+	// ExcludePaths (O53 defect 3) are glob patterns, relative to the
+	// worktree root, that PrepareSubject removes from the worktree at
+	// prepare time — after checkout, before any ingest, for EVERY arm —
+	// so a file the corpus itself was derived from (an answer key) never
+	// sits inside the worktree an agent can Read/Grep/Bash its way into.
+	// The corpus loader (corpus.go) requires this to cover
+	// "testdata/contextbench/**", "testdata/scenariobench/**" and
+	// "docs/bench/**" for any task whose derivation names the home lookup
+	// corpus (testdata/contextbench/tasks-home.json).
+	ExcludePaths []string `json:"exclude_paths,omitempty"`
 }
 
 // Detector is a rule's own enforcement: a command whose exit code decides.
@@ -351,6 +361,21 @@ type SessionResult struct {
 	// every session in it errored.
 	Error           string `json:"error,omitempty"`
 	InstrumentError string `json:"instrument_error,omitempty"`
+	// AnswerKeyLeak (O53 defect 3) is set when a post-session scan
+	// (AnswerKeyLeakScan) found a tool_result in this session's raw
+	// transcript naming a path Subject.ExcludePaths was supposed to have
+	// removed from the worktree before any session ran — proof the answer
+	// key the task was derived from reached the agent anyway. CellLost
+	// treats any ONE such session as voiding the whole cell, exactly like
+	// InstrumentError.
+	AnswerKeyLeak bool `json:"answer_key_leak,omitempty"`
+	// BaselineRanFathom (O53 defect 4) is set when a post-session scan
+	// (BaselineRanFathomScan) found a Bash tool_use in this session's raw
+	// transcript invoking the fathom binary despite this arm's PATH
+	// exclusion — proof the "no fathom on PATH" isolation a non-wired arm
+	// depends on did not hold. CellLost treats any ONE such session as
+	// voiding the whole cell, exactly like InstrumentError.
+	BaselineRanFathom bool `json:"baseline_ran_fathom,omitempty"`
 }
 
 // DetectorResult is one detector's verdict.
