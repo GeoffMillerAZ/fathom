@@ -43,7 +43,7 @@
       "surface": "graphify@v0.9.61",
       "prediction": "Its query_graph/get_neighbors/shortest_path tools answer code structure, not documented governance rules, so it is predicted to tie the grep arm (not fathom) on every obligations/verify/staleness lookup; a plausible tie with fathom on the 2-hop caller lookup (a direct calls-relation edge, its home turf); a predicted loss on the interface-implementers lookup (no type-checker, so implicit Go interface satisfaction is outside what tree-sitter extraction can encode); a predicted loss on the freshness task (its graph.json is a precomputed artifact built during this arm's own setup, before the freshness edit lands, and this arm's setup runs no --update afterward).",
       "notes": "setup is the headless CLI build (graphify update <path> --no-cluster: tree-sitter only, no LLM, no plugin install) — `graphify install` writes a Claude Code skill into the user's global config and `/graphify .` is an in-session slash command, neither of which a bench may run (docs/bench/competitors.md)",
-      "instructions_text": "## graphify code navigation\n\nThis repository's code structure is available via graphify's MCP\ntools, backed by a precomputed graph.json. Route by question shape: a\nnode's own edges resolve via `get_neighbors`; a path between two\nsymbols resolves via `shortest_path`; a free-form structural question\nresolves via `query_graph`; a specific node's own record resolves via\n`get_node`. graphify's graph is a precomputed artifact with no view\nonto documented conventions, decision records, or live freshness —\nthose are not its job. A literal string, a config value, a log line,\nor a repository convention is grep's job, not graphify's.\nRead files to *edit* them, not to discover them.\n\nOpening moves by task shape (first 1-2 calls, then edit):\n- debug/trace: get_neighbors -> get_node\n- feature/change: query_graph -> get_neighbors\n- refactor: shortest_path -> get_neighbors"
+      "instructions_text": "## graphify code navigation\n\nGraphify's own MCP tools are this repository's way to answer where a\nsymbol is defined, who calls it, what breaks if it changes, what\ngoverns its conventions, and what changed since a prior citation —\n`query_graph`, `get_node`, `get_neighbors`, `shortest_path`, and\n`graph_stats`, backed by a precomputed graph.json. Read files to\n*edit* them, not to discover them.\n\nReach for these before Read/Grep on every one of the shapes below; where a shape has no exact match, the nearest structural query is still the first move, grep the fallback.\n\nOpening moves by task shape (first 1-2 calls, then edit):\n- obligations: query_graph (a free-form structural query) -> grep\n- claim_provenance: get_node (a single node's own record) -> grep\n- concern_search: query_graph (a pattern over node labels) -> grep\n- contradiction: query_graph (a pattern over node labels) -> grep\n- freshness: graph_stats (the artifact's own build metadata) -> grep\n- staleness: graph_stats (the artifact's own build metadata) -> grep\n- verify: query_graph (a symbol's presence in the graph) -> grep\n- blast_radius: get_neighbors -> shortest_path (edges chained twice) -> grep"
     },
     "serena": {
       "mcp": {
@@ -66,7 +66,7 @@
       "instructions": "text",
       "surface": "serena@v1.7.0",
       "prediction": "find_symbol/find_referencing_symbols/find_implementations answer code structure, not documented governance rules, so it is predicted to tie the grep arm (not fathom) on every obligations/verify/staleness lookup; a plausible tie with fathom on the 2-hop caller lookup (find_referencing_symbols chained twice) and the interface-implementers lookup (find_implementations is backed by gopls's real type-checker — single-language references and implementations are its home turf, docs/vision/27-strengths-bench.md §6); a predicted tie with fathom on the freshness task, since its gopls backend re-analyzes the file on disk on every call — no precomputed artifact to go stale.",
-      "instructions_text": "## serena code navigation\n\nThis repository's code structure is available via Serena's MCP tools\n(gopls-backed for Go). Route by question shape: where a symbol is\ndefined resolves via `find_symbol`; who calls it resolves via\n`find_referencing_symbols`; which types implement an interface\nresolves via `find_implementations`; a file's own symbol outline\nresolves via `get_symbols_overview`. Serena has no view onto\ndocumented conventions, decision records, or repository-wide\nfreshness — those are not its job. A literal string, a config value,\na log line, or a repository convention is grep's job, not Serena's.\nRead files to *edit* them, not to discover them.\n\nOpening moves by task shape (first 1-2 calls, then edit):\n- debug/trace: find_symbol -> find_referencing_symbols\n- feature/change: get_symbols_overview -> find_symbol\n- refactor: find_referencing_symbols -> find_implementations"
+      "instructions_text": "## serena code navigation\n\nSerena's own MCP tools are this repository's way to answer where a\nsymbol is defined, who calls it, what breaks if it changes, what\ngoverns its conventions, and what changed since a prior citation —\n`find_symbol`, `find_referencing_symbols`, `find_implementations`,\nand `find_declaration`, gopls-backed for Go. Read files to *edit*\nthem, not to discover them.\n\nReach for these before Read/Grep on every one of the shapes below; where a shape has no exact match, the nearest symbol lookup is still the first move, grep the fallback.\n\nOpening moves by task shape (first 1-2 calls, then edit):\n- obligations: find_symbol (locates the governing file) -> grep\n- claim_provenance: find_declaration (the symbol's declaration site) -> grep\n- concern_search: find_symbol (search by name pattern) -> grep\n- contradiction: find_symbol (search by name pattern) -> grep\n- freshness: find_referencing_symbols (a live gopls query) -> grep\n- staleness: find_declaration (a live gopls query) -> grep\n- verify: find_symbol (a symbol's presence) -> grep\n- blast_radius: find_referencing_symbols -> find_implementations (chained references) -> grep"
     },
     "gopls": {
       "mcp": {
@@ -85,7 +85,7 @@
       "instructions": "text",
       "surface": "gopls@v0.20+",
       "prediction": "go_symbol_references/go_references answer code structure, not documented governance rules, so it is predicted to tie the grep arm (not fathom) on every obligations/verify/staleness lookup; a plausible tie with fathom on the 2-hop caller lookup (go_symbol_references chained twice) — single-language references is its home turf; a predicted tie with fathom on the freshness task, since it re-analyzes the file on disk on every call — no precomputed artifact to go stale. No find_implementations-equivalent is in its tool list here, so the interface-implementers lookup is predicted weaker than serena's, closer to a textual match.",
-      "instructions_text": "## gopls code navigation\n\nThis repository's Go structure is available via gopls's MCP tools.\nRoute by question shape: where a symbol is defined and who calls it\nresolve via `go_symbol_references`; a free-form structural search\nresolves via `go_search`; a file's own symbols and imports resolve via\n`go_file_context`; a package's exported API resolves via\n`go_package_api`. gopls has no view onto documented conventions,\ndecision records, or repository-wide freshness — those are not its\njob. A literal string, a config value, a log line, or a repository\nconvention is grep's job, not gopls's.\nRead files to *edit* them, not to discover them.\n\nOpening moves by task shape (first 1-2 calls, then edit):\n- debug/trace: go_symbol_references -> go_file_context\n- feature/change: go_package_api -> go_symbol_references\n- refactor: go_search -> go_symbol_references -> go_file_context"
+      "instructions_text": "## gopls code navigation\n\ngopls's own MCP tools are this repository's way to answer where a\nsymbol is defined, who calls it, what breaks if it changes, what\ngoverns its conventions, and what changed since a prior citation —\n`go_search`, `go_symbol_references`, `go_references`, and\n`go_file_metadata`, backed by a real type-checker. Read files to\n*edit* them, not to discover them.\n\nReach for these before Read/Grep on every one of the shapes below; where a shape has no exact match, the nearest workspace query is still the first move, grep the fallback.\n\nOpening moves by task shape (first 1-2 calls, then edit):\n- obligations: go_search (a free-form workspace query) -> grep\n- claim_provenance: go_file_metadata (the file's own record) -> grep\n- concern_search: go_search (a free-form workspace query) -> grep\n- contradiction: go_search (a free-form workspace query) -> grep\n- freshness: go_symbol_references (a live on-disk query) -> grep\n- staleness: go_file_metadata (a live on-disk query) -> grep\n- verify: go_diagnostics (the file's own diagnostics) -> grep\n- blast_radius: go_symbol_references -> go_references (chained references) -> grep"
     },
     "grep": {
       "allowed_tools": [
@@ -116,7 +116,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 20,
+        "max_turns": 30,
         "mode": "single"
       },
       "oracle": {
@@ -154,7 +154,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 20,
+        "max_turns": 30,
         "mode": "single"
       },
       "oracle": {
@@ -197,7 +197,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 20,
+        "max_turns": 30,
         "mode": "single"
       },
       "oracle": {
@@ -235,7 +235,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 20,
+        "max_turns": 30,
         "mode": "single"
       },
       "oracle": {
@@ -270,7 +270,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 20,
+        "max_turns": 30,
         "mode": "single"
       },
       "oracle": {
@@ -305,7 +305,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 20,
+        "max_turns": 30,
         "mode": "single"
       },
       "oracle": {
@@ -340,7 +340,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 20,
+        "max_turns": 30,
         "mode": "single"
       },
       "oracle": {
@@ -377,7 +377,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 20,
+        "max_turns": 30,
         "mode": "single"
       },
       "oracle": {
@@ -411,7 +411,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 20,
+        "max_turns": 30,
         "mode": "single"
       },
       "oracle": {
@@ -445,7 +445,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 20,
+        "max_turns": 30,
         "mode": "single"
       },
       "oracle": {
@@ -480,7 +480,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 20,
+        "max_turns": 30,
         "mode": "single"
       },
       "oracle": {
@@ -515,7 +515,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 20,
+        "max_turns": 30,
         "mode": "single"
       },
       "oracle": {
@@ -553,7 +553,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 20,
+        "max_turns": 30,
         "mode": "single"
       },
       "oracle": {
@@ -577,42 +577,48 @@
     {
       "id": "FRESH-M7-01",
       "category": "freshness",
-      "prompt": "In this repository, what integer does the function FreshnessMarkerValue in internal/store/freshnessmarker.go return?",
+      "prompt": "In this repository, internal/metrics.IsPlumbingTool (internal/metrics/discovery.go) already has exactly one caller committed in this tree: AggregateTraffic (internal/metrics/traffic.go). A second call site to IsPlumbingTool has just been added elsewhere in this repository, in a file this prompt does not name. Name the function that contains this NEW call site, and the file it lives in.",
       "subject": {
         "repo_url": "https://github.com/geoffmilleraz/fathom",
         "base_commit": "1b8765d",
         "service": "fathom",
         "language": "go",
         "post_wire_setup": [
-          "mkdir -p internal/store && printf '%s\\n' 'package store' '' '// FreshnessMarkerValue exists only for the M7 freshness scenario (vision 27 §6):' '// it is written by Subject.PostWireSetup AFTER each arm has built its artifact or ingested' '// the worktree, so a precomputed artifact answers stale and a live query does not.' 'func FreshnessMarkerValue() int { return 42 }' > internal/store/freshnessmarker.go && grep -q 'return 42' internal/store/freshnessmarker.go"
+          "mkdir -p internal/metrics && printf '%s\\n' 'package metrics' '' '// ToolKindForTrafficRollup exists only for the FRESH-M7-01 freshness scenario' '// (SB-51, docs/plans/verbs.md VB-17/18): Subject.PostWireSetup writes it AFTER' '// each arm has already run its own setup/first ingest, adding a SECOND call' '// site to IsPlumbingTool that a graph built before this edit cannot see.' 'func ToolKindForTrafficRollup(tool string) string { if IsPlumbingTool(tool) { return `plumbing` }; return `other` }' > internal/metrics/toolkind_freshprobe.go && grep -q 'ToolKindForTrafficRollup' internal/metrics/toolkind_freshprobe.go"
+        ],
+        "exclude_paths": [
+          "testdata/contextbench/**",
+          "testdata/scenariobench/**",
+          "docs/bench/**"
         ]
       },
       "sessions": {
         "count": 1,
-        "max_turns": 20,
+        "max_turns": 30,
         "mode": "single"
       },
       "oracle": {
         "answer_all_of": [
-          "42"
+          "ToolKindForTrafficRollup",
+          "internal/metrics/toolkind_freshprobe.go"
         ]
       },
       "gold": {
         "files": [
-          "internal/store/freshnessmarker.go"
+          "internal/metrics/toolkind_freshprobe.go"
         ],
         "functions": [
-          "FreshnessMarkerValue"
+          "ToolKindForTrafficRollup"
         ]
       },
       "predictions": {
-        "full": "wins: the wired arm's worktree is (re-)ingested after this setup step lands, so the index reflects the new file and function at answer time.",
-        "graphify": "predicted loses: graph.json is a precomputed artifact built during this arm's own setup, BEFORE this task's Subject.Setup writes the new file; without an --update re-run (not part of this arm's setup), it has no node for FreshnessMarkerValue at all.",
-        "serena": "predicted ties fathom: gopls-backed queries re-analyze the file on disk on every call, so a query issued after the setup step sees the new function.",
-        "gopls": "predicted ties fathom: same live-query mechanism as serena — no precomputed artifact to go stale.",
-        "grep": "predicted ties fathom: a direct file read always reflects the file's current on-disk content, so grep is never disadvantaged by staleness."
+        "full": "wins: find_callers/references on IsPlumbingTool, called after the wired arm's post-wire re-ingest (O45 item 4), returns both the committed caller AND the new one; the index reflects the edit because the daemon re-ingests after post_wire_setup runs.",
+        "graphify": "predicted loses: graph.json is built during this arm's own setup, BEFORE post_wire_setup adds the new call site; without a subsequent --update (not part of this arm's setup), get_neighbors/shortest_path over IsPlumbingTool's node returns only the pre-existing edge from AggregateTraffic, never the new one.",
+        "serena": "predicted ties fathom: find_referencing_symbols re-asks gopls against the file on disk on every call, so a query issued after the setup step sees the new function — no precomputed artifact to go stale.",
+        "gopls": "predicted ties fathom: same live-query mechanism as serena (go_symbol_references re-analyzes on demand, so the new call site is visible the moment it exists on disk).",
+        "grep": "predicted ties fathom: `grep -rn \"IsPlumbingTool(\" .` finds both call sites directly from the current on-disk tree, including the new one — a live grep is never disadvantaged by artifact staleness, only by not being told which file to look in, which this task does not do either."
       },
-      "derivation": "New task, not from tasks-home.json: constructed for M7 (docs/vision/27-strengths-bench.md §6) per SB-32's instruction. category is CategoryFreshness (types.go), the one existing const this corpus uses as-is. Uses a brand-new file rather than editing an existing one so the scripted change never depends on any existing file's current line numbers drifting. | setup rewritten 2026-09-13: the first form used shell-escaped apostrophes inside a JSON string and wrote a 208-byte truncated file, so every arm truthfully answered \"no such function\" (vs-pilot-1); the new form is printf with one-line arguments and a grep that fails the setup if the file is not whole."
+      "derivation": "New task, not from tasks-home.json (M7, docs/vision/27-strengths-bench.md §6). Redesigned 2026-09-14 (SB-51, docs/plans/verbs.md VB-17/18) after the ORIGINAL version — 'what integer does FreshnessMarkerValue return', naming the new file AND function directly in the prompt — was answered by every arm with a plain Read of the named file, so the freshness discriminator never fired (no tool of any kind is needed to answer a literal read once both the file and the function are named). The new version asks a call-graph fact instead of a literal read: internal/metrics.IsPlumbingTool is a real, already-indexed function with exactly one committed caller (AggregateTraffic, internal/metrics/traffic.go, confirmed by `grep -rn 'IsPlumbingTool(' internal/metrics` against base_commit 1b8765d); Subject.PostWireSetup adds a SECOND caller in a brand-new file the prompt never names, and the task asks which function now calls it — the same shape as VB-17's free FreshnessProbe's own add_param edit ('how many callers does applyEntry have now'), scored here through a live agent session instead of the in-process query surface. category is CategoryFreshness (types.go), unchanged. Uses a brand-new file (never an existing one) so the scripted change never depends on any existing file's current line numbers drifting."
     }
   ],
   "criterion": {
@@ -740,11 +746,12 @@
       },
       "FRESH-M7-01": {
         "ground_truth": [
-          "42"
+          "ToolKindForTrafficRollup",
+          "internal/metrics/toolkind_freshprobe.go"
         ],
-        "scoring_rule": "exact-match"
+        "scoring_rule": "all-of"
       }
     },
-    "freshness_run_order": "FRESH-M7-01's run-order guarantee (O45 item 4, PrepareSubject/applyPostWireSetup): each arm's OWN setup — graphify's '/graphify .' build — and the wired arm's FIRST ingest both run BEFORE Subject.PostWireSetup writes internal/store/freshnessmarker.go, so a precomputed artifact (graphify's graph.json) never sees the new file; the wired arm then RE-ingests after PostWireSetup runs, so its own symbol index does. Had this instead lived in Subject.Setup (which runs before any of that), every arm — including graphify — would see the new file at build/ingest time and the freshness comparison would measure nothing."
+    "freshness_run_order": "FRESH-M7-01's run-order guarantee (O45 item 4, PrepareSubject/applyPostWireSetup): each arm's OWN setup — graphify's '/graphify .' build — and the wired arm's FIRST ingest both run BEFORE Subject.PostWireSetup adds the new call site to internal/metrics.IsPlumbingTool (internal/metrics/toolkind_freshprobe.go, SB-51), so a precomputed artifact (graphify's graph.json) never sees the new caller; the wired arm then RE-ingests after PostWireSetup runs, so its own symbol index does. Had this instead lived in Subject.Setup (which runs before any of that), every arm — including graphify — would see the new caller at build/ingest time and the freshness comparison would measure nothing. SB-51 redesign note: the prompt never names the new file or function (the ORIGINAL version did, and every arm just Read it — the freshness discriminator never fired), and the question asks a call-graph fact ('which function calls IsPlumbingTool now') rather than a literal read, so a precomputed graph answers from its pre-edit edge set and a plain grep of the function name across the tree is the only non-index route that still gets it right."
   }
 }
