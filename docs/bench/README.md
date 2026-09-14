@@ -310,7 +310,16 @@ mechanism win, `verify_plan` on the verify-gate task. The earlier
 strengths-matrix rows (O41) remain voided. No lookup claim is proven until
 vs-pilot-4 runs on the repaired instrument (waves N1-N3); the scenario
 pilots on the guards and reuse corpora, whose control arms were never
-altered, stand as measured.
+altered, stand as measured. reuse-pilot-3 (four change tasks on a public
+Go CLI, 16 cells, nothing lost) is a second null: fathom's arm 2 of 8
+against control 2 of 8 at 1.7 times the tokens, M5-1 failing on cost; its
+second reading (O55) found no fathom tool changing an outcome, the gate
+bypassed by a worker writing `skip_test` into its own row (O56), and the
+subject clone carrying the merged fix in its history. On this evidence
+fathom does not help a capable model make a change on a repository it has
+never seen, and costs more; the case for the tools rests on the verify
+gate, on governance that bites, and on the answers a type-checked index
+gives that grep cannot, not on lookup or change speed.
 
 `pass` and `fail` are both measured results and both belong in the ledger; a
 recorded refutation is the instrument working. `indeterminate` is different —
