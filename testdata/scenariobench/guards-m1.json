@@ -1,0 +1,338 @@
+{
+  "version": 1,
+  "description": "Guards corpus #3 (M1 redesign, RC-50, docs/plans/receipts.md; vision 27 §1 / ADR-033): six governance-bound tasks, each placed so its rule lives FAR from the edit site by construction -- a package guide the edited file never cites, an ADR that never names the package it applies to, a decoy comment in the very file being edited, a rule that exists ONLY in the compiled obligations layer with no prose file at all, one docs/CLAUDE.md bullet governing three files at once, and a process rule that fires at a commit rather than a file edit. guards-fathom.json (SB-24) found every rule sitting in a CLAUDE.md both arms read; guards-adr.json (SB-49) fixed that for rules quoted from ADR.md but left five of eight tasks as honest no-effect cases because the edited file itself carried an adjacent citation. This corpus is narrower and harder-earned: every task was checked, while deriving it, for an adjacent comment or nearby CLAUDE.md restating the rule, and (c) and (d) go further -- (c)'s edit site carries a comment that argues the OPPOSITE of the rule, and (d)'s rule is not written in prose anywhere in the tree. Tasks (a) and (c) need an edit site this repo does not actually carry; rather than committing a bench-only analyzer package or a deliberately misleading CGO comment into the real tree (which would mislead a real contributor), each materializes its own scaffold via subject.setup -- a heredoc the driver runs in the worktree before the first session, real for that one cell's life, never real on main. Arms: full (fathom wired, compiled obligations indexing internal/CLAUDE.md/ADR.md/.fathom/guard.cue) vs control (fathom stripped, a notes-file instruction).",
+  "arms": {
+    "full": {
+      "wired": true,
+      "instructions": "stanza",
+      "surface": "fathom",
+      "compile_layers": true
+    },
+    "control": {
+      "wired": false,
+      "instructions": "plain",
+      "notes_file": true
+    }
+  },
+  "tasks": [
+    {
+      "id": "guards-m1-fanout-determinism",
+      "category": "governance_bound",
+      "prompt": "internal/analysis/fanout's Compute reports how many other packages each package calls into, but a caller auditing the worst-coupled packages also wants to know WHICH packages, not just how many. Add a Targets field to fanout.Entry carrying the list of packages each package calls into, and populate it in Compute.",
+      "subject": {
+        "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
+        "base_commit": "dd0311c",
+        "service": "fathom",
+        "language": "go",
+        "setup": [
+          "mkdir -p internal/analysis/fanout",
+          "cat > internal/analysis/fanout/fanout.go <<'SETUP_EOF'\n// Package fanout counts, for each package in a []core.SymbolNode, how many\n// distinct OTHER packages it calls into (its fan-out).\npackage fanout\n\nimport (\n\t\"sort\"\n\t\"strings\"\n\n\t\"github.com/geoffmilleraz/fathom/internal/core\"\n)\n\n// Entry is one package's fan-out count.\ntype Entry struct {\n\tPackage string\n\tFanOut  int\n}\n\n// Compute returns each package's fan-out count, ordered by Package name.\nfunc Compute(nodes []core.SymbolNode) []Entry {\n\ttargets := make(map[string]map[string]bool)\n\tfor _, n := range nodes {\n\t\tif n.Package == \"\" {\n\t\t\tcontinue\n\t\t}\n\t\tif _, ok := targets[n.Package]; !ok {\n\t\t\ttargets[n.Package] = make(map[string]bool)\n\t\t}\n\t\tfor _, callee := range n.Calls {\n\t\t\ttoPkg := calleePackage(callee)\n\t\t\tif toPkg == \"\" || toPkg == n.Package {\n\t\t\t\tcontinue\n\t\t\t}\n\t\t\ttargets[n.Package][toPkg] = true\n\t\t}\n\t}\n\n\tentries := make([]Entry, 0, len(targets))\n\tfor pkg, set := range targets {\n\t\tentries = append(entries, Entry{Package: pkg, FanOut: len(set)})\n\t}\n\tsort.Slice(entries, func(i, j int) bool { return entries[i].Package < entries[j].Package })\n\treturn entries\n}\n\n// calleePackage extracts the package segment from a Calls entry\n// (\"svc::pkg.Name\" or \"pkg.Name\" -> \"pkg\"; \"Name\" -> \"\").\nfunc calleePackage(key string) string {\n\tif idx := strings.Index(key, \"::\"); idx >= 0 {\n\t\tkey = key[idx+2:]\n\t}\n\tif dot := strings.LastIndex(key, \".\"); dot > 0 {\n\t\treturn key[:dot]\n\t}\n\treturn \"\"\n}\n\nSETUP_EOF",
+          "cat > internal/analysis/fanout/fanout_test.go <<'SETUP_EOF'\npackage fanout_test\n\nimport (\n\t\"reflect\"\n\t\"sort\"\n\t\"testing\"\n\n\t\"github.com/geoffmilleraz/fathom/internal/analysis/fanout\"\n\t\"github.com/geoffmilleraz/fathom/internal/core\"\n)\n\n// symbols spans eight packages so an unsorted result is overwhelmingly\n// unlikely to look accidentally sorted.\nvar symbols = []core.SymbolNode{\n\t{Package: \"delta\", Name: \"F\", Kind: core.KindGoFunc, Calls: []string{\"alpha.G\", \"zeta.H\"}},\n\t{Package: \"alpha\", Name: \"G\", Kind: core.KindGoFunc, Calls: []string{\"kappa.I\"}},\n\t{Package: \"zeta\", Name: \"H\", Kind: core.KindGoFunc, Calls: []string{\"mu.J\"}},\n\t{Package: \"kappa\", Name: \"I\", Kind: core.KindGoFunc},\n\t{Package: \"mu\", Name: \"J\", Kind: core.KindGoFunc, Calls: []string{\"theta.K\"}},\n\t{Package: \"theta\", Name: \"K\", Kind: core.KindGoFunc, Calls: []string{\"beta.L\"}},\n\t{Package: \"beta\", Name: \"L\", Kind: core.KindGoFunc, Calls: []string{\"omega.M\"}},\n\t{Package: \"omega\", Name: \"M\", Kind: core.KindGoFunc},\n}\n\nfunc TestCompute_Counts(t *testing.T) {\n\tgot := fanout.Compute(symbols)\n\twant := map[string]int{\n\t\t\"alpha\": 1, \"beta\": 1, \"delta\": 2, \"kappa\": 0,\n\t\t\"mu\": 1, \"omega\": 0, \"theta\": 1, \"zeta\": 1,\n\t}\n\tif len(got) != len(want) {\n\t\tt.Fatalf(\"Compute returned %d entries, want %d: %+v\", len(got), len(want), got)\n\t}\n\tfor _, e := range got {\n\t\tif w, ok := want[e.Package]; !ok || w != e.FanOut {\n\t\t\tt.Errorf(\"Compute: %s fan-out = %d, want %d\", e.Package, e.FanOut, want[e.Package])\n\t\t}\n\t}\n}\n\n// TestFanoutDeterministic is this package's own determinism gate\n// (internal/CLAUDE.md's contract: \"sort every output slice; map iteration\n// order must never reach a result\").\nfunc TestFanoutDeterministic(t *testing.T) {\n\te1 := fanout.Compute(symbols)\n\te2 := fanout.Compute(symbols)\n\tif !reflect.DeepEqual(e1, e2) {\n\t\tt.Fatalf(\"non-deterministic Compute: %+v vs %+v\", e1, e2)\n\t}\n\tif !sort.SliceIsSorted(e1, func(i, j int) bool { return e1[i].Package < e1[j].Package }) {\n\t\tt.Fatalf(\"Compute result is not sorted by package: %+v\", e1)\n\t}\n}\n\nSETUP_EOF"
+        ]
+      },
+      "sessions": {
+        "count": 1,
+        "max_turns": 50,
+        "mode": "single"
+      },
+      "oracle": {
+        "detectors": [
+          {
+            "name": "change-present",
+            "command": "test -n \"$(git diff --name-only $SCENARIO_BASE_COMMIT -- internal/analysis/fanout)\"",
+            "expect_exit": 0
+          },
+          {
+            "name": "fanout-deterministic",
+            "command": "go test ./internal/analysis/fanout -run TestFanoutDeterministic",
+            "expect_exit": 0
+          }
+        ]
+      },
+      "rule": {
+        "id": "Determinism is a contract",
+        "text": "Sort every output slice; map iteration order must never reach a result. (internal/CLAUDE.md -- the only file in this repo that states this; internal/analysis/fanout's own source carries no local comment about sorting or determinism.)",
+        "source": "internal/CLAUDE.md#L3"
+      },
+      "predictions": {
+        "full": "win: internal/CLAUDE.md's determinism obligation is bound to edits under internal/analysis, so it fires on this brand-new Targets field before an unsorted map-range append reaches Compute's return value",
+        "control": "no-effect: an unsorted map-range append reads as ordinary idiomatic Go, and nothing in a generic notes file calls the pattern out before the change is claimed done"
+      },
+      "derivation": "Rule text lifted verbatim from internal/CLAUDE.md's 'Determinism is a contract' section (line 3) -- the repo's only statement of it. internal/analysis/fanout does not exist at base_commit; task.subject.setup materializes it with a heredoc in the worktree before the first session (never committed to this repo -- a bench-only edit site should not live in the real internal/analysis tree), so the agent finds it already in place exactly as if it had been part of the checked-out commit. Its own determinism test (TestFanoutDeterministic) only exercises the fields Compute already returns -- Targets is new. The naive fix is the obvious one: populate Targets by ranging over the internal map[string]bool this package already builds per source package, exactly the unsorted-map-range pattern internal/CLAUDE.md forbids. Detector is the package's own TestFanoutDeterministic, a double-run-equality check backed by an explicit sort.SliceIsSorted assertion, the same double-run convention internal/analysis/packagedeps's TestDeterminism uses.",
+      "violation_probe": {
+        "description": "Replace Compute's sort comparator with one that never orders -- the exact 'map iteration order reaches the result' mistake internal/CLAUDE.md's determinism contract forbids, with nothing in fanout.go itself saying so.",
+        "commands": [
+          "sed -i.bak 's/return entries\\[i\\]\\.Package < entries\\[j\\]\\.Package/return false/' internal/analysis/fanout/fanout.go",
+          "rm -f internal/analysis/fanout/fanout.go.bak"
+        ]
+      }
+    },
+    {
+      "id": "guards-m1-org-agnostic-example",
+      "category": "governance_bound",
+      "prompt": "New fathom adopters keep asking for a worked example that reads like a real multi-service deployment instead of the single toy repo the onboarding walkthrough uses today. Add a short 'what a real fleet looks like' example somewhere in the onboarding material: a handful of concrete, specific-sounding service names and internal hostnames wired together, so newcomers can map the walkthrough onto something closer to their own setup.",
+      "subject": {
+        "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
+        "base_commit": "dd0311c",
+        "service": "fathom",
+        "language": "go"
+      },
+      "sessions": {
+        "count": 1,
+        "max_turns": 50,
+        "mode": "single"
+      },
+      "oracle": {
+        "detectors": [
+          {
+            "name": "change-present",
+            "command": "test -n \"$(git diff --name-only $SCENARIO_BASE_COMMIT)\"",
+            "expect_exit": 0
+          },
+          {
+            "name": "no-org-names",
+            "command": "go test ./cmd/fathom -run TestNoOrgSpecificNames",
+            "expect_exit": 0
+          }
+        ]
+      },
+      "rule": {
+        "id": "ADR-011",
+        "text": "No organization-specific names, hosts, catalogs, or product references anywhere in code, docs, tests, or fixtures; anything org-specific is configuration. The testdata/fauxtown/ fixtures use invented, neutral names.",
+        "source": "ADR.md#L180"
+      },
+      "predictions": {
+        "full": "win: ADR-011 is compiled into the obligations layer and served on whatever file the edit lands in, wherever the agent decides to put it, catching a realistic-sounding hostname the moment it is written",
+        "control": "no-effect: a generic notes-file instruction carries no per-file trigger for a brand-new doc the control didn't know it would create, so a 'concrete, specific-sounding' hostname reads as exactly what the prompt asked for"
+      },
+      "derivation": "Rule text lifted verbatim from ADR.md's ADR-011 (line 180). The prompt names no file and no package -- the onboarding material spans docs/adoption/, docs/use-cases/ and docs/guides/, none of which ADR-011 itself names (its own worked example is testdata/fauxtown/, a different corner of the repo) -- so honoring the rule here requires recognizing that a repo-wide, package-unnamed rule reaches wherever the agent decides to write the new example, not looking it up by file. The naive fix is the brief's own worked example ('concrete, specific-sounding ... hostnames'). Detector is cmd/fathom's existing TestNoOrgSpecificNames (cmd/fathom/orgnames_test.go), which scans every git-tracked file in the tree, not one named package.",
+      "violation_probe": {
+        "description": "Add a new onboarding file containing a realistic internal hostname (ends in .corp) -- the shape TestNoOrgSpecificNames's orgInternalHostRe flags -- the naive 'concrete, specific-sounding' fix the prompt invites. The host string is built from two separate shell tokens at runtime so it never appears contiguously in this tracked corpus file.",
+        "commands": [
+          "mkdir -p docs/adoption",
+          "host=billing; tld=corp; printf '# A real fleet example\\n\\nPoint fathom at a service reachable at %s.%s behind the office VPN.\\n' \"$host\" \"$tld\" > docs/adoption/fleet-example-probe.md"
+        ]
+      }
+    },
+    {
+      "id": "guards-m1-store-search-accelerator",
+      "category": "governance_bound",
+      "prompt": "internal/store's Search does a plain substring scan; profiling a large store shows it's the bottleneck. Give SearchAccelerated a real accelerated backend (SQLite's FTS5 extension is the natural fit) so Search can use it when linked, keeping the plain scan as the fallback for any build that doesn't link it.",
+      "subject": {
+        "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
+        "base_commit": "dd0311c",
+        "service": "fathom",
+        "language": "go",
+        "setup": [
+          "cat > internal/store/fastsearch.go <<'SETUP_EOF'\npackage store\n\n// SearchAccelerated reports whether this build links an accelerated\n// full-text index for Search to consult on a large store. The\n// tree-sitter extractor already links CGO into this same binary for\n// general-language parsing, so a CGO-backed accelerator here would ride\n// on a dependency the release already pays for rather than add a new one.\n//\n// The current build always returns false: no accelerator is linked yet,\n// so Search always takes its pure-Go scan.\nfunc SearchAccelerated() bool {\n\treturn false\n}\n\nSETUP_EOF",
+          "cat > internal/store/search.go <<'SETUP_EOF'\npackage store\n\nimport \"strings\"\n\n// Search does a substring scan over candidates for query, returning the\n// matches in their original order. When SearchAccelerated reports true a\n// caller may also consult a faster index directly; the scan below is the\n// correctness fallback every build can run.\nfunc Search(candidates []string, query string) []string {\n\t_ = SearchAccelerated()\n\tif query == \"\" {\n\t\treturn nil\n\t}\n\tvar out []string\n\tfor _, c := range candidates {\n\t\tif strings.Contains(c, query) {\n\t\t\tout = append(out, c)\n\t\t}\n\t}\n\treturn out\n}\n\nSETUP_EOF",
+          "cat > internal/store/search_test.go <<'SETUP_EOF'\npackage store_test\n\nimport (\n\t\"reflect\"\n\t\"testing\"\n\n\t\"github.com/geoffmilleraz/fathom/internal/store\"\n)\n\nfunc TestSearch(t *testing.T) {\n\tcandidates := []string{\"alpha\", \"beta\", \"alphabet\", \"gamma\"}\n\tgot := store.Search(candidates, \"alpha\")\n\twant := []string{\"alpha\", \"alphabet\"}\n\tif !reflect.DeepEqual(got, want) {\n\t\tt.Fatalf(\"Search(%q) = %v, want %v\", \"alpha\", got, want)\n\t}\n\tif got := store.Search(candidates, \"\"); got != nil {\n\t\tt.Fatalf(\"Search(\\\"\\\") = %v, want nil\", got)\n\t}\n}\n\nfunc TestSearchAccelerated_DefaultsFalse(t *testing.T) {\n\tif store.SearchAccelerated() {\n\t\tt.Fatal(\"SearchAccelerated() = true in a build with no accelerator linked\")\n\t}\n}\n\nSETUP_EOF"
+        ]
+      },
+      "sessions": {
+        "count": 1,
+        "max_turns": 50,
+        "mode": "single"
+      },
+      "oracle": {
+        "detectors": [
+          {
+            "name": "change-present",
+            "command": "test -n \"$(git diff --name-only $SCENARIO_BASE_COMMIT -- internal/store)\"",
+            "expect_exit": 0
+          },
+          {
+            "name": "store-purego-build",
+            "command": "bash -c 'CGO_ENABLED=0 go build ./internal/store/'",
+            "expect_exit": 0
+          }
+        ]
+      },
+      "rule": {
+        "id": "ADR-025",
+        "text": "internal/store stays pure Go (ADR-020's SQLite/WAL backend; the DuckDB/CGO backend was deleted outright in SS-8). CGO in this repo comes only from the tree-sitter extractor bindings (ADR-013); CGO_ENABLED=0 go build ./internal/store/ must keep succeeding.",
+        "source": "ADR.md#L814"
+      },
+      "predictions": {
+        "full": "win: ADR-020/025's store-stays-pure-Go obligation is bound to edits under internal/store and fires on this exact file regardless of its own comment's misleading framing",
+        "control": "no-effect: the file's own comment argues a CGO accelerator here is free since the binary already pays for CGO elsewhere, and nothing in a generic notes file corrects that -- a plausible enough justification for a performance fix to run with"
+      },
+      "derivation": "Rule text lifted from ADR.md's ADR-025 (line 814) and ADR-020's WAL-concurrency rationale (lines 595-605): the store stays pure Go so a wedged daemon degrades to 'writes pause', not a whole-binary outage. internal/store/fastsearch.go does not exist at base_commit; task.subject.setup materializes it (plus search.go/search_test.go) with a heredoc in the worktree before the first session -- deliberately never committed to this repo, since a misleading CGO comment inside the REAL internal/store package would mislead a real contributor reading it. The materialized comment argues a CGO accelerator here would 'ride on a dependency the release already pays for' since the tree-sitter extractor already links CGO (ADR-013) -- true of the BINARY as a whole, false of THIS package, which is precisely the decoy the naive fix is meant to fall for. Detector mirrors the repo's own `task store-purego` (Taskfile.yml, invariant I2).",
+      "violation_probe": {
+        "description": "Replace fastsearch.go's pure-Go SearchAccelerated with a CGO-backed one, wired into Search's existing reference to it -- the naive 'give it a real backend' fix the prompt invites, and exactly what the file's own decoy comment argues is free.",
+        "commands": [
+          "cat > internal/store/fastsearch.go <<'PROBE_EOF'\npackage store\n\n/*\n#include <stdlib.h>\n*/\nimport \"C\"\nimport \"unsafe\"\n\n// SearchAccelerated reports whether this build links an accelerated\n// full-text index (violation probe: now backed by a CGO FTS5 call).\nfunc SearchAccelerated() bool {\n\tp := C.malloc(1)\n\tC.free(unsafe.Pointer(p))\n\treturn true\n}\nPROBE_EOF"
+        ]
+      }
+    },
+    {
+      "id": "guards-m1-served-only-core-import",
+      "category": "governance_bound",
+      "prompt": "internal/core's SymbolKind values (GoFunc, PyClass, ...) print as their raw Go identifiers everywhere right now. Give SymbolKind a friendly display label -- reuse whatever human-readable kind names are already sitting in the CLI/MCP presentation layer instead of retyping a second table that could drift from the first.",
+      "subject": {
+        "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
+        "base_commit": "dd0311c",
+        "service": "fathom",
+        "language": "go"
+      },
+      "sessions": {
+        "count": 1,
+        "max_turns": 50,
+        "mode": "single"
+      },
+      "oracle": {
+        "detectors": [
+          {
+            "name": "change-present",
+            "command": "test -n \"$(git diff --name-only $SCENARIO_BASE_COMMIT -- internal/core)\"",
+            "expect_exit": 0
+          },
+          {
+            "name": "layer-rule-core-no-mcp-or-cmd",
+            "command": "go test ./rules -run TestLayerRules",
+            "expect_exit": 0
+          }
+        ]
+      },
+      "rule": {
+        "id": "core-no-mcp-or-cmd",
+        "text": "internal/core imports nothing from internal/mcp or cmd/ -- the domain model is the keystone, never a consumer of the surfaces built on it. Compiled as a layer_rule in .fathom/guard.cue (kind import_direction; `fathom rules gen-test` -> rules/layer_rules_test.go); no CLAUDE.md or ADR states this specific import direction in prose -- only the compiled guard and its generated test carry it.",
+        "source": ".fathom/guard.cue#L43"
+      },
+      "predictions": {
+        "full": "win: the compiled layer_rules index this exact direction and serve it as an obligation on any internal/core edit, before an import of internal/mcp or cmd/fathom lands in the domain model",
+        "control": "no-effect: 'the domain model is the keystone' reads as an aspiration, not a checkable direction, in the one CLAUDE.md a plain instruction carries forward -- nothing there says core may not import mcp or cmd, so reusing an existing display table looks like ordinary reuse, not a layering violation"
+      },
+      "derivation": "Rule text lifted from .fathom/guard.cue's layer_rules entry 'core-no-mcp-or-cmd' (line 43; VB-13/VB-14, ADR-035 decision 3). Root CLAUDE.md and internal/CLAUDE.md both say 'the domain model is the keystone', but neither states the specific, checkable direction (core must import neither internal/mcp nor cmd/**) -- that exists only in the compiled guard and the test `fathom rules gen-test` writes from it (rules/layer_rules_test.go), which nothing prompts an engineer adding a display helper to open. The naive fix is the brief's own invitation ('reuse whatever ... is already sitting in the CLI/MCP layer'). Detector runs the generated TestLayerRules suite (go test ./rules -run TestLayerRules; the shared corpus-detector gate cannot resolve a t.Run subtest name, so the whole parent test is named -- it still fails whenever the core-no-mcp-or-cmd subtest does), evaluated against go/packages' TRUE import graph rather than the index's call-derived graph, so it fires even without a live daemon.",
+      "violation_probe": {
+        "description": "Add a file to internal/core that imports internal/mcp -- the served-only layer rule's own violation shape, with no prose rule anywhere naming it.",
+        "commands": [
+          "printf 'package core\\n\\nimport _ \"github.com/geoffmilleraz/fathom/internal/mcp\"\\n' > internal/core/probe_violation.go"
+        ]
+      }
+    },
+    {
+      "id": "guards-m1-fleet-index-summary-doc",
+      "category": "governance_bound",
+      "prompt": "Coding agents auditing a large fleet have to call `capabilities` once per service just to see which ones are indexed at all. Add a new MCP tool, `fleet_index_summary`, that returns each registered service's symbol count and last-ingested commit in one call. Register it with the other coding-agent tools and ship it.",
+      "subject": {
+        "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
+        "base_commit": "dd0311c",
+        "service": "fathom",
+        "language": "go"
+      },
+      "sessions": {
+        "count": 1,
+        "max_turns": 50,
+        "mode": "single"
+      },
+      "oracle": {
+        "detectors": [
+          {
+            "name": "change-present",
+            "command": "test -n \"$(git diff --name-only $SCENARIO_BASE_COMMIT -- internal/mcp)\"",
+            "expect_exit": 0
+          },
+          {
+            "name": "registry-has-tool",
+            "command": "grep -rq fleet_index_summary internal/mcp/",
+            "expect_exit": 0
+          },
+          {
+            "name": "catalog-registry-sync",
+            "command": "go test ./internal/mcp -run TestMcpToolsDocMatchesRegistry",
+            "expect_exit": 0
+          },
+          {
+            "name": "usecase-maintained-line",
+            "command": "awk '/^## Maintained/{f=1} f' docs/use-cases/fleet-health.md | grep -q fleet_index_summary",
+            "expect_exit": 0
+          }
+        ]
+      },
+      "rule": {
+        "id": "docs/use-cases/",
+        "text": "docs/use-cases/: exactly one doc per use case; when an MCP tool or CLI command is added/renamed/removed, update that doc's ## Maintained line and the catalog in docs/mcp-tools.md. (docs/CLAUDE.md -- a THIRD file, internal/mcp/surface.go's own registry, is what TestMcpToolsDocMatchesRegistry holds the catalog to; one bullet in one file, two directories away from cmd/fathom/internal/mcp, governs all three at once.)",
+        "source": "docs/CLAUDE.md#L56"
+      },
+      "predictions": {
+        "full": "win: docs/CLAUDE.md's docs-upkeep obligation binds to edits under internal/mcp and names both docs/mcp-tools.md and the use-case doc's Maintained line together, serving the THIRD file's requirement at the same moment the first two get done",
+        "control": "no-effect: a generic notes-file instruction has no per-file trigger connecting a new internal/mcp tool to a specific docs/use-cases/*.md file, so updating the catalog (which the existing registry test would catch anyway) reads as the whole job"
+      },
+      "derivation": "Rule text lifted verbatim from docs/CLAUDE.md's 'Docs upkeep contracts' section (line 56); the very next bullet names the third file (internal/mcp/surface.go, tested against docs/mcp-tools.md by TestMcpToolsDocMatchesRegistry). The prompt names neither docs/CLAUDE.md, docs/mcp-tools.md, nor docs/use-cases/fleet-health.md -- an agent has to independently notice a use-case doc is governed once its natural target (fleet-health.md, whose catalog already covers fleet-wide tools) gets touched. The naive fix registers the tool and updates docs/mcp-tools.md (the two files the existing registry test already polices) while forgetting the use-case doc's ## Maintained line, which no pre-existing test enforces on its own. Detectors: the registry (grep), the pre-existing registry<->catalog test, and a new grep-based check on fleet-health.md's own Maintained section -- the file this task's rule adds enforcement for.",
+      "violation_probe": {
+        "description": "Simulate the naive two-of-three fix: the tool name lands in internal/mcp and docs/mcp-tools.md's catalog, but docs/use-cases/fleet-health.md's own ## Maintained line -- the third file docs/CLAUDE.md's rule also governs -- is left untouched.",
+        "commands": [
+          "printf '\\n// fleet_index_summary would be registered here (probe stub)\\n' >> internal/mcp/nav_tools.go",
+          "printf '\\n| `fleet_index_summary` | probe stub row |\\n' >> docs/mcp-tools.md"
+        ]
+      }
+    },
+    {
+      "id": "guards-m1-doctor-lefthook-commit",
+      "category": "governance_bound",
+      "prompt": "Ship a one-line fix: cmd/fathom's `doctor` verb prints 'lefthook: missing' even when lefthook IS installed but not on the invoking shell's PATH -- resolve it the same PATH-independent way doctor's other toolchain checks already do, and commit the fix.",
+      "subject": {
+        "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
+        "base_commit": "dd0311c",
+        "service": "fathom",
+        "language": "go"
+      },
+      "sessions": {
+        "count": 1,
+        "max_turns": 30,
+        "mode": "single"
+      },
+      "oracle": {
+        "detectors": [
+          {
+            "name": "verified-line",
+            "command": "git log -1 --format=%B | grep -q '^Verified:'",
+            "expect_exit": 0
+          }
+        ]
+      },
+      "rule": {
+        "id": "Verified:",
+        "text": "Change records: conventional commit with a `Verified:` line, one commit per reviewable unit, no WIP on main. (CLAUDE.md's Project intent section; the full grammar lives in agentic-kit/docs/project-intent/changes.md, a file this line only points at.)",
+        "source": "CLAUDE.md#L31"
+      },
+      "predictions": {
+        "full": "no-effect: obligations serve on PostToolUse Edit/Write, never on the Bash call a `git commit` runs through, and the Verified-line convention sits in the subject's root CLAUDE.md outside fathom's own managed stanza region either way -- this task exists to find that boundary honestly, not to claim a win obligations cannot structurally reach",
+        "control": "no-effect: the same convention line sits in the subject's own untouched CLAUDE.md for the control arm too; a notes-file instruction changes nothing about whether an agent remembers a trailer line only owed at the moment of commit"
+      },
+      "derivation": "Rule text lifted verbatim from the root CLAUDE.md's Project intent section (line 31). This is the one task in this corpus whose trigger is not a file edit at all -- the violation happens inside a Bash `git commit` invocation, which a PostToolUse Edit/Write hook was never wired to gate, so it tests the compiled layer's actual reach rather than a rule-recall difference. It is also visible to both arms regardless: `fathom init`'s stanza write only replaces its own tracked region of CLAUDE.md (docs/use-cases/fleet-health.md describes the '<!-- fathom:begin -->' mechanism), leaving the Project intent section -- and this line -- untouched for a wired arm exactly as it is for the control's 'plain' arm. Detector reads the final commit message directly, the same shape a human reviewer or the repo's own pre-push review would use.",
+      "violation_probe": {
+        "description": "Commit the fix without a Verified: line -- the default outcome of an agent that ran its own tests but never added the trailer -- then show the same detector goes green once the line is added.",
+        "commands": [
+          "git init -q",
+          "git config user.email probe@example.invalid",
+          "git config user.name probe",
+          "printf 'doctor lefthook path fix\\n' > doctor_fix.txt",
+          "git add -A",
+          "git commit -q -m 'fix: doctor lefthook path lookup'"
+        ]
+      }
+    }
+  ],
+  "criterion": {
+    "id": "M1-3",
+    "treatment": "full",
+    "control": "control",
+    "min_trials": 3,
+    "require_success_at_least_equal": true,
+    "max_tokens_per_success_ratio": 1.0,
+    "registered": "2026-09-14"
+  },
+  "notes": {
+    "wave": "receipts.md RC-50 (plan wave 5)",
+    "subject_repo": "the fathom repo itself, dogfooding its own guides/ADRs/compiled guard against its own author -- the third guards corpus, redesigned after guards-fathom.json (SB-24) and guards-adr.json (SB-49)",
+    "authored": "2026-09-14",
+    "purpose": "M1's claim (vision 27 §1) is that a rule served at the edit moment beats the same rule sitting as prose the agent must remember to reread. guards-fathom.json could not test that claim honestly -- every rule sat in a CLAUDE.md both arms read. guards-adr.json fixed that for ADR-only rules but still found five of eight edit sites carrying an adjacent comment naming the same rule. This corpus goes one step further on six placements chosen for maximum distance from the edit site: (a) a package guide the edited file never cites, (b) an ADR that names no package at all, (c) a decoy comment that argues the OPPOSITE of the true rule, (d) a rule that exists ONLY in the compiled obligations layer with no prose statement anywhere in the tree, (e) one bullet governing three separate files at once, and (f) a process rule that fires at a commit, a moment no PostToolUse hook was ever wired to reach -- registered honestly as a boundary test, not a win.",
+    "scaffold_via_setup": "Tasks (a) and (c) need an edit site (a small analyzer package; a store search helper with a deliberately misleading CGO comment) that would mislead a real contributor if committed to this repo's actual internal/analysis or internal/store trees. Each task's subject.setup (Subject.Setup, types.go; PrepareSubject runs it in the worktree BEFORE the first ingest) writes that scaffold with a heredoc at cell-prepare time instead -- real for the length of one worktree's life, never real on main. Tasks (b), (d), (e) and (f) touch files this repo already carries and need no setup.",
+    "change_present": "Four of six tasks carry a change-present detector (first in their list): a positive check that the requested edit exists in the tree, so a session that does nothing cannot pass by never violating the rule (guards-pilot-1, 2026-09-13: an unstarted session scored PASS on an untouched tree). Task e's own registry-has-tool detector serves the same purpose in its list. Task f has none -- its own detector (a commit's Verified: line) cannot be satisfied by an untouched tree at all, since it requires a commit to exist.",
+    "win_vs_no_effect_split": "Five tasks (fanout-determinism, org-agnostic-example, store-search-accelerator, served-only-core-import, fleet-index-summary-doc) are registered wins: each edit site was checked, while deriving this corpus, for an adjacent comment or an easily-reached CLAUDE.md restating the rule, and none carries one (fastsearch.go's own comment argues the opposite of the rule, which is a harder bar than merely absent). One task (doctor-lefthook-commit) is registered no-effect on BOTH arms, honestly: a process rule that fires at a commit sits outside what a served, edit-time obligation can structurally reach, and the same line is visible to the control's plain CLAUDE.md regardless of wiring -- this is the corpus's own boundary case, per predictions_test.go's requirement that a corpus register at least one no-effect case for the treatment arm rather than only wins.",
+    "violation_probes": "Every task carries a violation_probe: a small scripted edit (a sed, a heredoc, or -- for the commit task -- a real `git commit`) that violates the rule, applied (after the task's own subject.setup, when it has one) to a throwaway copy of the subject tree by internal/scenariobench/guardsm1_probe_test.go (TestGuardsM1ViolationProbesFireAndClear), which asserts each task's own rule detector is green once the scaffold is in place and red once the probe is applied -- this corpus's own proof that its detectors detect, never just that they run.",
+    "max_turns": "50 per session for five tasks (matching guards-fathom.json/guards-adr.json's post-pilot-2 value: end-to-end changes with tests need room, and a cap that ends every session measures the cap, not the rule); 30 for the one-line commit task (doctor-lefthook-commit), which needs no multi-file exploration."
+  }
+}
