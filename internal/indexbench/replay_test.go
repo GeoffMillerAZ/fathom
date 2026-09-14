@@ -50,10 +50,24 @@ func TestPayloadReplay(t *testing.T) {
 	// Latency is checked BEFORE the timings are zeroed, and only against the
 	// authored budget — never against the golden's own previous number,
 	// which would make a fast machine's run the standard every slower
-	// machine fails.
+	// machine fails. The gate runs `go test -race ./...` beside vet, the
+	// stranger-check and whatever else the machine carries, so the ceiling
+	// applied is the same one the freshness probe uses: ten times the
+	// authored budget with a one-second floor (a 250ms budget tripped at
+	// 383ms under four concurrent workers, 2026-09-13). Bytes, counts and
+	// elisions below are the gate; time is a smoke alarm.
 	for _, e := range got {
-		if e.BudgetMS > 0 && e.ElapsedMS > e.BudgetMS {
-			t.Errorf("%s (%s): %dms over the %dms budget", e.ID, e.Tool, e.ElapsedMS, e.BudgetMS)
+		if e.BudgetMS <= 0 {
+			continue
+		}
+		allowed := e.BudgetMS * 10
+		if allowed < 1000 {
+			allowed = 1000
+		}
+		if e.ElapsedMS > allowed {
+			t.Errorf("%s (%s): %dms over the %dms budget (%dms allowed under load)", e.ID, e.Tool, e.ElapsedMS, e.BudgetMS, allowed)
+		} else if e.ElapsedMS > e.BudgetMS {
+			t.Logf("%s (%s): %dms over the %dms budget, inside the loaded-machine ceiling", e.ID, e.Tool, e.ElapsedMS, e.BudgetMS)
 		}
 	}
 
