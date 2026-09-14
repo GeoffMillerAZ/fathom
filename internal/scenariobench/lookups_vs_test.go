@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -132,6 +133,24 @@ func TestLookupsVSCorpus_ParsesAgainstContract(t *testing.T) {
 				t.Errorf("task %q missing a prediction for arm %q", id, arm)
 			}
 		}
+		// O53: every task derived from the home corpus excludes the
+		// corpus's own fixtures/docs, so no arm's session can read its way
+		// to the gold answer instead of answering the prompt. Enforcement
+		// is wave-n1's loader rule; this pins the DATA half today.
+		wantExclude := []string{
+			"testdata/contextbench/**",
+			"testdata/scenariobench/**",
+			"docs/bench/**",
+		}
+		if got := task.Subject.ExcludePaths; !reflect.DeepEqual(got, wantExclude) {
+			t.Errorf("task %q subject.exclude_paths = %v, want %v", id, got, wantExclude)
+		}
+		// The 20-turn cap ended six competitor cells with the answer
+		// already in hand but no turns left to state it — raised to 30 for
+		// every task in this corpus (docs/bench/scenarios.md).
+		if task.Sessions.MaxTurns != 30 {
+			t.Errorf("task %q sessions.max_turns = %d, want 30", id, task.Sessions.MaxTurns)
+		}
 	}
 
 	fresh, ok := byID["FRESH-M7-01"]
@@ -218,5 +237,153 @@ func TestLookupsVSCorpus_ContainsGraphifyLiteral(t *testing.T) {
 	}
 	if !bytes.Contains(data, []byte(`"graphify"`)) {
 		t.Error(`lookups-vs.json must contain the literal string "graphify"`)
+	}
+}
+
+// fathomStanzaRoutingSectionLen mirrors the byte length of cmd/fathom/init.go's
+// own routing section: fathomStanzaTemplate's paragraph ("This repo is
+// indexed by fathom...") through "Read files to *edit* them, not to discover
+// them.", a blank line, then openingMovesTable — the portion BEFORE the
+// "Refresh the index..." paragraph, which has no competitor equivalent
+// (ingest, obligations hooks, the verify gate). internal/scenariobench
+// cannot import cmd/fathom (package main), so this is pinned by length
+// alone; recompute it if that template changes.
+const fathomStanzaRoutingSectionLen = 1052
+
+// stanzaRoutingSection strips a competitor arm's "## <tool> ... navigation"
+// header (the first line, plus the blank line after it) from its
+// instructions_text, leaving the same "routing section" shape
+// fathomStanzaRoutingSectionLen measures for fathom's own stanza.
+func stanzaRoutingSection(t *testing.T, instructionsText string) string {
+	t.Helper()
+	idx := strings.Index(instructionsText, "\n\n")
+	if idx < 0 {
+		t.Fatalf("instructions_text has no header/body separator: %q", instructionsText)
+	}
+	return instructionsText[idx+2:]
+}
+
+// withinFifteenPercent reports whether a is within +/-15% of b (SB-32's own
+// parity bar, docs/bench/scenarios.md).
+func withinFifteenPercent(a, b int) bool {
+	lo, hi := float64(b)*0.85, float64(b)*1.15
+	return float64(a) >= lo && float64(a) <= hi
+}
+
+// stanzaIntroParagraph returns a competitor's own opening capability claim —
+// the first paragraph after the "## <tool> ... navigation" header, before
+// the "Reach for these..." sentence and the "Opening moves" list — the one
+// place review fix-first (2026-09-14) says an overclaim must not appear.
+func stanzaIntroParagraph(t *testing.T, instructionsText string) string {
+	t.Helper()
+	section := stanzaRoutingSection(t, instructionsText)
+	idx := strings.Index(section, "\n\n")
+	if idx < 0 {
+		t.Fatalf("instructions_text routing section has no intro/body separator: %q", section)
+	}
+	return section[:idx]
+}
+
+// TestLookupsVSCorpus_CompetitorStanzaParity is O53's own proof: a second
+// reading of pilot vs-pilot-3 found gopls making 0 MCP calls in 28 trials,
+// graphify 1, serena 1, because every competitor arm's own instructions_text
+// named its tools and then added a disclaimer ("has no view onto documented
+// conventions ... that's grep's job") that routed the model away from the
+// tool before it ever read the prompt. This pins the fix: one shared
+// template, instantiated per competitor, with (a) no disclaimer phrasing,
+// (b) no overclaim in the intro sentence (a competitor's real capability is
+// where-defined/who-calls/what-breaks only — never governance, provenance,
+// or freshness, which fathom's own stanza routes to different tools
+// entirely), (c) grep named second on every opening move whose category
+// falls outside that real capability, (d) all eight of the corpus's own
+// task-shape categories covered, and (e) length parity within +/-15% of
+// the other two competitors and of fathom's own stanza's routing section.
+// Review fix-first (2026-09-14) found the FIRST version of this test still
+// passing an intro sentence that claimed "what governs its conventions"
+// and "what changed since a prior citation" — capabilities none of these
+// three tools has — and a dead, never-matching banned phrase
+// ("not <tool>'s job", literally containing the placeholder). Both are
+// fixed here.
+func TestLookupsVSCorpus_CompetitorStanzaParity(t *testing.T) {
+	c, err := LoadScenarioCorpus(lookupsVSPath(t))
+	if err != nil {
+		t.Fatalf("LoadScenarioCorpus: %v", err)
+	}
+
+	competitors := []string{"graphify", "serena", "gopls"}
+	// blastRadius is the one category a competitor's real capability
+	// (who-calls/what-breaks) actually covers, so its line names the
+	// closest chained query alone — no "grep second" hedge required.
+	const blastRadius = "blast_radius"
+	wantCategories := []string{
+		"obligations", "claim_provenance", "concern_search", "contradiction",
+		"freshness", "staleness", "verify", blastRadius,
+	}
+	introBannedPhrases := []string{
+		"what governs", "what changed since", "governs its conventions",
+		"decision records",
+	}
+	textBannedPhrases := []string{
+		"no view onto", "has no view", "not its job", "is grep's job, not",
+		"those are not its job",
+	}
+
+	lens := map[string]int{}
+	for _, name := range competitors {
+		arm, ok := c.Arms[name]
+		if !ok || arm.InstructionsText == "" {
+			t.Fatalf("arm %q missing instructions_text", name)
+		}
+		text := arm.InstructionsText
+		lower := strings.ToLower(text)
+		for _, banned := range textBannedPhrases {
+			if strings.Contains(lower, banned) {
+				t.Errorf("arm %q instructions_text contains disclaimer phrase %q, routing away from its own tool", name, banned)
+			}
+		}
+		// The dead placeholder "not <tool>'s job" never matched real text;
+		// substitute this arm's own name so the check can actually fire.
+		if perTool := "not " + strings.ToLower(name) + "'s job"; strings.Contains(lower, perTool) {
+			t.Errorf("arm %q instructions_text contains disclaimer phrase %q, routing away from its own tool", name, perTool)
+		}
+		intro := strings.ToLower(stanzaIntroParagraph(t, text))
+		for _, banned := range introBannedPhrases {
+			if strings.Contains(intro, banned) {
+				t.Errorf("arm %q intro paragraph contains overclaim phrase %q — this tool has no documented-governance or citation-freshness capability", name, banned)
+			}
+		}
+		for _, cat := range wantCategories {
+			line := "- " + cat + ":"
+			if !strings.Contains(text, line) {
+				t.Errorf("arm %q instructions_text missing an opening move for category %q", name, cat)
+				continue
+			}
+			for _, raw := range strings.Split(text, "\n") {
+				if !strings.HasPrefix(raw, line) {
+					continue
+				}
+				// Every category but blast_radius is hedged: the tool's
+				// closest query is named first, but grep still appears in
+				// the same line as the (non-asserted) fallback.
+				if cat != blastRadius && !strings.Contains(raw, "grep") {
+					t.Errorf("arm %q category %q line %q does not name grep as a fallback", name, cat, raw)
+				}
+			}
+		}
+		lens[name] = len(stanzaRoutingSection(t, text))
+	}
+
+	for _, name := range competitors {
+		if !withinFifteenPercent(lens[name], fathomStanzaRoutingSectionLen) {
+			t.Errorf("arm %q routing section = %d bytes, want within +/-15%% of fathom's %d bytes", name, lens[name], fathomStanzaRoutingSectionLen)
+		}
+		for _, other := range competitors {
+			if other == name {
+				continue
+			}
+			if !withinFifteenPercent(lens[name], lens[other]) {
+				t.Errorf("arm %q routing section = %d bytes, not within +/-15%% of arm %q's %d bytes", name, lens[name], other, lens[other])
+			}
+		}
 	}
 }
