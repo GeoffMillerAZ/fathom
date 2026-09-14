@@ -461,6 +461,19 @@ func cmdRun(args []string) int {
 	lost := 0
 	absRawDir, _ := filepath.Abs(*rawDir) // claude -p runs in the worktree and resolves --mcp-config against ITS cwd
 
+	// O57 finding 1: "a driver kills what it started" — arm the
+	// SIGTERM/SIGINT handler before any session or scratch daemon can
+	// start, and reap whatever an EARLIER, killed driver invocation left
+	// running under this exact -raw-dir/-run-id (sessionAttemptPIDFile's
+	// own sibling-of-rawDir convention, sessions.go's newSessionRequest —
+	// the O52 pidfile pattern, applied to sessions) before this one begins.
+	stopKillSwitch := installKillSwitch()
+	defer stopKillSwitch()
+	runRawDir := filepath.Join(absRawDir, *runID)
+	if reaped := scenariobench.ReapOrphanSessionsUnder(runRawDir); len(reaped) > 0 {
+		fmt.Fprintf(os.Stderr, "scenariobench run: reaped %d orphaned session(s) from a previous run under %s: %v\n", len(reaped), runRawDir, reaped)
+	}
+
 	var selected []cellPlan
 	for _, cp := range cells {
 		if len(onlyTasks) > 0 && !onlyTasks[cp.task.ID] {

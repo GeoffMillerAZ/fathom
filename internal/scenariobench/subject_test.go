@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -399,6 +400,70 @@ func TestPrepareSubject_ReusesSharedClone(t *testing.T) {
 	defer StopWorktree(&other)
 	if other.Path == wt1.Path {
 		t.Error("a different arm must get its own worktree")
+	}
+}
+
+// TestPrepareSubject_RefusesResetWithLiveSessionInWorktree is O57 finding
+// 1's second half: a shared worktree whose own session pidfile names a
+// STILL LIVE process refuses the reset (an error, which cmd/scenariobench
+// turns into a LOST cell) rather than resetting out from under a live
+// agent; once that pidfile names a DEAD process, the next prepare succeeds
+// and clears it, exactly like a normal reused worktree.
+func TestPrepareSubject_RefusesResetWithLiveSessionInWorktree(t *testing.T) {
+	old := sessionCommandMarker
+	sessionCommandMarker = "sleep"
+	t.Cleanup(func() { sessionCommandMarker = old })
+
+	repoPath, commit := gitFixtureRepo(t)
+	root := t.TempDir()
+	task := Task{ID: "T1", Subject: Subject{RepoURL: repoPath, BaseCommit: commit}}
+	arm := Arm{Instructions: "none"}
+
+	wt1, err := PrepareSubject(context.Background(), task, arm, root)
+	if err != nil {
+		t.Fatalf("PrepareSubject (1st): %v", err)
+	}
+	defer StopWorktree(&wt1)
+
+	stray := exec.Command("sleep", "300")
+	stray.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	if err := stray.Start(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = stray.Process.Kill(); _, _ = stray.Process.Wait() })
+	pidfile := sessionWorktreePIDFile(wt1.Path)
+	if err := os.WriteFile(pidfile, []byte(fmt.Sprintf("%d\n", stray.Process.Pid)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := PrepareSubject(context.Background(), task, arm, root); err == nil {
+		t.Fatal("expected PrepareSubject to refuse the reset with a live session pidfile in place")
+	} else if !strings.Contains(err.Error(), "refusing to reset") {
+		t.Errorf("PrepareSubject error = %v, want it to name the refusal", err)
+	}
+
+	// The refusal must not have touched the live process or its pidfile.
+	if syscall.Kill(stray.Process.Pid, 0) != nil {
+		t.Error("a live session must not be killed by a refused reset")
+	}
+
+	// Once the process is gone, the next prepare succeeds and clears the
+	// stale pidfile.
+	_ = stray.Process.Kill()
+	waited := make(chan error, 1)
+	go func() { _, err := stray.Process.Wait(); waited <- err }()
+	select {
+	case <-waited:
+	case <-time.After(5 * time.Second):
+		t.Fatal("stray session did not die")
+	}
+	wt2, err := PrepareSubject(context.Background(), task, arm, root)
+	if err != nil {
+		t.Fatalf("PrepareSubject after the session died: %v", err)
+	}
+	defer StopWorktree(&wt2)
+	if _, err := os.Stat(pidfile); !os.IsNotExist(err) {
+		t.Errorf("stale session pidfile should be cleared once prepare succeeds: %v", err)
 	}
 }
 

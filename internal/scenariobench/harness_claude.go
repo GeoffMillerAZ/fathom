@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"syscall"
 )
 
 // ClaudeHarness runs one session via the real `claude` CLI.
@@ -97,7 +98,38 @@ func (h ClaudeHarness) RunSession(req SessionRequest) (SessionResult, error) {
 	var stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
-	runErr := cmd.Run()
+	// O57 finding 1: "a driver kills what it started" — this session's own
+	// `claude` runs in its OWN process group (never the driver's), so
+	// KillAllLiveProcessGroups can take it down without also taking down
+	// the driver itself, and a pidfile is written beside both this
+	// session's raw attempt dir and the shared worktree it runs in
+	// (writeSessionPIDFiles) so a later driver invocation can find and
+	// reap an orphan (ReapOrphanSession/ReapOrphanSessionsUnder), and
+	// PrepareSubject's own shared-worktree reset can refuse rather than
+	// race a live one (RefuseIfLiveSessionInWorktree).
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	// Start()+Wait() (never the shorthand Run()) so the pid is known, and
+	// registered/pidfiled, before the (possibly long) session actually
+	// runs — a start FAILURE (bad binary, bad args) is still folded into
+	// runErr exactly as Run()'s would have been, preserving RunSession's
+	// existing contract that only a transcript-write failure returns a
+	// hard Go error; every other outcome is data on SessionResult.
+	startErr := cmd.Start()
+	var runErr error
+	if startErr != nil {
+		runErr = startErr
+	} else {
+		pgid := cmd.Process.Pid
+		registerLiveProcessGroup(pgid, "session:"+req.Worktree)
+		if err := writeSessionPIDFiles(req.RawDir, req.Worktree, pgid); err != nil {
+			// A pidfile write failing is an instrument nuisance, not a
+			// reason to abandon a session already under way.
+			fmt.Fprintf(os.Stderr, "claude harness: %v\n", err)
+		}
+		runErr = cmd.Wait()
+		unregisterLiveProcessGroup(pgid)
+		removeSessionPIDFiles(req.RawDir, req.Worktree)
+	}
 	if err := os.WriteFile(streamPath, stdout.Bytes(), 0o644); err != nil {
 		if errors.Is(err, os.ErrPermission) {
 			// A wedged external-volume TCC verdict (EPERM on a path that

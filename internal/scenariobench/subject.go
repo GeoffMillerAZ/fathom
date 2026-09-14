@@ -138,6 +138,13 @@ func PrepareSubject(ctx context.Context, task Task, arm Arm, root string) (Workt
 			// live git process owns.
 			reapStaleScratchDaemon(wtPath)
 			removeStaleIndexLock(ctx, wtPath)
+			// O57 finding 1: unlike a stray scratch daemon (fathom's own
+			// process, safe to kill on sight), a live SESSION pidfile here
+			// names an agent process that may still be actively editing —
+			// refuse the reset (LOST) rather than race or destroy it.
+			if reason := RefuseIfLiveSessionInWorktree(wtPath); reason != "" {
+				return fmt.Errorf("preparing subject: refusing to reset the shared worktree: %s", reason)
+			}
 			// wtPath is its own repository (checkoutCommitIntoWorktree) whose
 			// history starts at its own root commit — that commit's sha is
 			// NOT task.Subject.BaseCommit (it was re-committed by `git
@@ -410,6 +417,7 @@ func StopWorktree(wt *Worktree) error {
 		return fmt.Errorf("stopping scratch daemon: %w", err)
 	}
 	_ = wt.daemon.Wait()
+	unregisterLiveProcessGroup(pid) // O57 finding 1
 	wt.daemon = nil
 	_ = os.Remove(scratchDaemonPIDFile(wt.Path))
 	return nil
@@ -700,6 +708,7 @@ func wireScratchDaemon(ctx context.Context, wt *Worktree, task Task, renderedArm
 	wt.daemon = daemon
 	wt.DaemonURL = "http://" + addr
 	_ = os.WriteFile(scratchDaemonPIDFile(wt.Path), []byte(strconv.Itoa(daemon.Process.Pid)+"\n"), 0o644)
+	registerLiveProcessGroup(daemon.Process.Pid, "scratch-daemon:"+wt.Path) // O57 finding 1
 
 	if err := waitDaemonReady(wt.DaemonURL, 30*time.Second); err != nil {
 		_ = StopWorktree(wt)
