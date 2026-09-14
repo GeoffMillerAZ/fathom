@@ -52,7 +52,7 @@ func RunBaselineDetectors(ctx context.Context, wt Worktree, task Task) (map[stri
 // from the (possibly now all-clear) detector set plus the SAME
 // FailToPassOK/PassToPassOK/answer/localization terms RunOracle itself
 // computed — task and sessions are needed only to re-derive those last
-// two exactly as RunOracle did (answerMatchesAllOf, ScoreLocalization's
+// two exactly as RunOracle did (oracleAnswerMatches, ScoreLocalization's
 // own HitAt1 verdict already sitting on result.Localization). A no-op
 // when baseline is empty or nothing on result was actually voided.
 func VoidBaselineRedDetectors(result *OracleResult, baseline map[string]BaselineDetectorResult, task Task, sessions []SessionResult) {
@@ -88,8 +88,8 @@ func VoidBaselineRedDetectors(result *OracleResult, baseline map[string]Baseline
 	}
 
 	answerOK := true
-	if len(task.Oracle.AnswerAllOf) > 0 {
-		answerOK = answerMatchesAllOf(lastFinalAnswer(sessions), task.Oracle.AnswerAllOf)
+	if len(task.Oracle.AnswerAllOf) > 0 || len(task.Oracle.AnswerAnyOf) > 0 {
+		answerOK = oracleAnswerMatches(lastFinalAnswer(sessions), task.Oracle.AnswerAllOf, task.Oracle.AnswerAnyOf)
 	}
 	localizationOK := true
 	if result.Localization != nil {
