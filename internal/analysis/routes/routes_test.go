@@ -266,6 +266,137 @@ func TestExtractPythonAlias(t *testing.T) {
 }
 
 // -----------------------------------------------------------------
+// Go — gorilla/mux call chains (VB-31 M8)
+// -----------------------------------------------------------------
+
+const goGorillaSrc = `package main
+
+import (
+	"net/http"
+
+	"github.com/gorilla/mux"
+)
+
+const NameExpression = "-a-zA-Z_0-9."
+
+func register(r *mux.Router) {
+	r.HandleFunc("/system/functions", handleList).Methods(http.MethodGet)
+	r.HandleFunc("/system/functions", handleCreate).Methods(http.MethodPost)
+	r.HandleFunc("/system/function/{name:["+NameExpression+"]+}", handleStatus).Methods(http.MethodGet)
+	r.Methods("POST").Path("/legacy/scale").HandlerFunc(handleScale)
+	r.HandleFunc("/healthz", handleHealth).Methods(http.MethodGet, http.MethodHead)
+	r.HandleFunc("/open", handleOpen)
+}
+`
+
+func TestExtractGoGorillaChain(t *testing.T) {
+	got := routes.Extract("go", "server.go", []byte(goGorillaSrc))
+	byKey := make(map[string]routes.Route)
+	for _, r := range got {
+		byKey[r.Method+" "+r.Path] = r
+	}
+
+	checks := []struct{ method, path string }{
+		{"GET", "/system/functions"},
+		{"POST", "/system/functions"},
+		// Concatenated path folded via the package-level const NameExpression.
+		{"GET", "/system/function/{name:[-a-zA-Z_0-9.]+}"},
+		// Reversed chain order: Methods().Path().HandlerFunc().
+		{"POST", "/legacy/scale"},
+		// A single .Methods() call with two methods fans out to two Routes.
+		{"GET", "/healthz"},
+		{"HEAD", "/healthz"},
+		// HandleFunc with no .Methods() chain defaults to ANY.
+		{"ANY", "/open"},
+	}
+	for _, c := range checks {
+		key := c.method + " " + c.path
+		if _, ok := byKey[key]; !ok {
+			t.Errorf("missing route %q; got %v", key, got)
+		}
+	}
+	if _, ok := byKey["POST /healthz"]; ok {
+		t.Errorf("spurious POST /healthz: .Methods(GET, HEAD) must not fan out to POST")
+	}
+}
+
+// -----------------------------------------------------------------
+// Go — gorilla/mux PathPrefix subrouters (VB-31 M8)
+// -----------------------------------------------------------------
+
+const goSubrouterSrc = `package main
+
+import (
+	"net/http"
+
+	"github.com/gorilla/mux"
+)
+
+func register(r *mux.Router) {
+	sub := r.PathPrefix("/system").Subrouter()
+	sub.HandleFunc("/functions", handleList).Methods(http.MethodGet)
+
+	v2 := sub.PathPrefix("/v2").Subrouter()
+	v2.HandleFunc("/functions", handleListV2).Methods(http.MethodGet)
+}
+`
+
+func TestExtractGoPathPrefixSubrouter(t *testing.T) {
+	got := routes.Extract("go", "server.go", []byte(goSubrouterSrc))
+	byKey := make(map[string]routes.Route)
+	for _, r := range got {
+		byKey[r.Method+" "+r.Path] = r
+	}
+	checks := []string{
+		"GET /system/functions",
+		// Nested subrouter accumulates both prefixes.
+		"GET /system/v2/functions",
+	}
+	for _, key := range checks {
+		if _, ok := byKey[key]; !ok {
+			t.Errorf("missing route %q; got %v", key, got)
+		}
+	}
+}
+
+// -----------------------------------------------------------------
+// Go — a route path built from a plain variable is skipped, not guessed
+// with a bogus method/path combination that could false-match
+// -----------------------------------------------------------------
+
+const goUnresolvedPathSrc = `package main
+
+func register(mux *ServeMux, dynamicPath string) {
+	mux.HandleFunc(dynamicPath, handleDynamic)
+	mux.HandleFunc("/static", handleStatic)
+}
+`
+
+func TestExtractGoUnresolvedPathNormalizesToWildcard(t *testing.T) {
+	// A path built from a bare variable reference folds to the "{}"
+	// placeholder (parity with ExtractClientCalls's own "parameters
+	// normalize to {}" rule) rather than being skipped outright — it can
+	// never spuriously MATCH a concrete client call (no client call's
+	// method is ever "ANY"), so this costs nothing on precision.
+	got := routes.Extract("go", "server.go", []byte(goUnresolvedPathSrc))
+	var sawWildcard, sawStatic bool
+	for _, r := range got {
+		if r.Path == "{}" {
+			sawWildcard = true
+		}
+		if r.Path == "/static" {
+			sawStatic = true
+		}
+	}
+	if !sawWildcard {
+		t.Errorf("expected a wildcarded route for the unresolved path, got %v", got)
+	}
+	if !sawStatic {
+		t.Errorf("expected /static, got %v", got)
+	}
+}
+
+// -----------------------------------------------------------------
 // Unknown language
 // -----------------------------------------------------------------
 
