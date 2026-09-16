@@ -20,10 +20,22 @@ import (
 
 // ScenarioLedgerRow is one task's outcome for one arm, in one run.
 type ScenarioLedgerRow struct {
-	RunID          string   `json:"run_id"`
-	GeneratedAt    string   `json:"generated_at"`
-	Commit         string   `json:"commit"`
-	CorpusSHA256   string   `json:"corpus_sha256"`
+	RunID        string `json:"run_id"`
+	GeneratedAt  string `json:"generated_at"`
+	Commit       string `json:"commit"`
+	CorpusSHA256 string `json:"corpus_sha256"`
+	// CriterionID names the corpus's registered Criterion.ID as it stood
+	// at FILING time (stamped by cmdLedger / buildExternalLedgerRow from
+	// the corpus they just loaded) — carried alongside CorpusSHA256, never
+	// instead of it, so a row stays citable by its criterion even after a
+	// later corpus rewrite changes CorpusSHA256's own content hash (the
+	// wave N2 defect: testdata/scenariobench/lookups-vs.json was rewritten,
+	// and vs-pilot-3's already-filed rows could no longer be looked up by
+	// their recorded sha). renderRunVerdict (verdict.go) prefers this ID
+	// over the sha-keyed lookup and falls back to the sha lookup only when
+	// a row carries no CriterionID (every row filed before this field
+	// existed). Empty for such old rows — never guessed at.
+	CriterionID    string   `json:"criterion_id,omitempty"`
 	TaskID         string   `json:"task_id"`
 	Category       Category `json:"category"`
 	Arm            string   `json:"arm"`

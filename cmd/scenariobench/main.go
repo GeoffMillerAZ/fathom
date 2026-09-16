@@ -1383,10 +1383,15 @@ func cmdLedger(args []string) int {
 		group := byTaskArm[k]
 		allCells = append(allCells, group...)
 		row := scenariobench.ScenarioLedgerRow{
-			RunID:          *runID,
-			GeneratedAt:    generatedAt,
-			Commit:         resolvedCommit,
-			CorpusSHA256:   sha,
+			RunID:        *runID,
+			GeneratedAt:  generatedAt,
+			Commit:       resolvedCommit,
+			CorpusSHA256: sha,
+			// CriterionID (RC-35 follow-up): stamped from the corpus this
+			// invocation just loaded, so this row stays citable by its
+			// criterion even after a later corpus rewrite changes sha's
+			// own content hash — see ScenarioLedgerRow.CriterionID.
+			CriterionID:    corpus.Criterion.ID,
 			TaskID:         k.task,
 			Category:       taskByID[k.task].Category,
 			Arm:            k.arm,

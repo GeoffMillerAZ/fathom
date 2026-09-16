@@ -93,7 +93,7 @@ func TestLoadLayer_Obligations(t *testing.T) {
 	if !reflect.DeepEqual(def.CorpusInclude, wantInclude) {
 		t.Errorf("CorpusInclude = %v, want %v", def.CorpusInclude, wantInclude)
 	}
-	wantExclude := []string{"third_party/**", ".claude/worktrees/**", "workspace/**", "node_modules/**"}
+	wantExclude := []string{"third_party/**", ".claude/worktrees/**", "workspace/**", "node_modules/**", "**/testdata/**"}
 	if !reflect.DeepEqual(def.CorpusExclude, wantExclude) {
 		t.Errorf("CorpusExclude = %v, want %v", def.CorpusExclude, wantExclude)
 	}

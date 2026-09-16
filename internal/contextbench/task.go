@@ -166,6 +166,15 @@ const (
 	// "verdict: stale") or a value the prompt itself supplies; nothing on
 	// disk can confirm it, so Why must say what does.
 	AnchorForm TruthAnchorKind = "form"
+	// AnchorHeading: Token cites File by the heading id in Needle (e.g.
+	// Token "ADR.md#ADR-025", Needle "ADR-025") — the record's own
+	// "## ADR-025 …" heading, resolved to wherever it CURRENTLY sits
+	// (resolveHeadingLine, citation.go) rather than a hardcoded line
+	// number. Item 3, wave N8: an AnchorLine citation into an ADR record
+	// breaks on every ADR.md insertion above it; AnchorHeading survives
+	// one, because the heading is looked up fresh on every check instead
+	// of comparing against a line baked into the corpus.
+	AnchorHeading TruthAnchorKind = "heading"
 )
 
 // TruthAnchor ties one ground-truth token to the evidence it was derived
@@ -274,8 +283,12 @@ func (t Task) Validate() error {
 			if a.Why == "" {
 				return fmt.Errorf("task %s: truth_at_head[%d] (form) must say why nothing on disk confirms it", t.ID, i)
 			}
+		case AnchorHeading:
+			if a.File == "" || a.Needle == "" {
+				return fmt.Errorf("task %s: truth_at_head[%d] (heading) needs file and needle (the heading id, e.g. ADR-025)", t.ID, i)
+			}
 		default:
-			return fmt.Errorf("task %s: truth_at_head[%d] unknown kind %q (want file, path, line, or form)", t.ID, i, a.Kind)
+			return fmt.Errorf("task %s: truth_at_head[%d] unknown kind %q (want file, path, line, heading, or form)", t.ID, i, a.Kind)
 		}
 	}
 	if err := validateExercises(t); err != nil {

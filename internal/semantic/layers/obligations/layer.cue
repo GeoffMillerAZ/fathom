@@ -28,7 +28,18 @@ corpus: include: ["CLAUDE.md", "ADR.md", "docs/plans/README.md", "**/CLAUDE.md"]
 // byte-duplicate of text CLAUDE.md already contributes — double spend, two
 // claim sets, one rule. A repo whose AGENTS.md carries rules its CLAUDE.md
 // does not is a project-local pack override, not a default.
-corpus: exclude: ["third_party/**", ".claude/worktrees/**", "workspace/**", "node_modules/**"]
+corpus: exclude: ["third_party/**", ".claude/worktrees/**", "workspace/**", "node_modules/**", "**/testdata/**"]
+// **/testdata/** (O54 addendum, .fathom/observations.md): a fixture
+// CLAUDE.md/ADR.md staged under a package's testdata/ to exercise THAT
+// package's own tests (e.g. internal/custodian/testdata/codefacts/fixture/
+// CLAUDE.md) is not a governing document a human wrote about the
+// surrounding tree — it is test input. The connector's own Discover already
+// prunes "testdata" directories from the indexed corpus (skipDir,
+// internal/connector/connector.go), so this exclude is belt-and-braces for
+// any caller that hands SelectCorpus a []core.SourceFile list assembled by
+// another route (a stored/cached listing, a synthetic test corpus) — the
+// obligations corpus must never depend on the connector's skip list alone
+// to keep a test fixture out of a compiled rule.
 // docs/intent/** is served DETERMINISTICALLY by `fathom intent audit`
 // (ADR-026), never compiled here: an LLM restating rules that are already
 // rules pays compile cost for no precision, and ADR.md is already

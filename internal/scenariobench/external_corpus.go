@@ -298,9 +298,12 @@ func runExternalCell(ctx context.Context, root string, task Task, armName string
 // like one `scenariobench ledger` files by hand.
 func buildExternalLedgerRow(opts RunExternalCorpusOptions, taskID, armName string, group []CellResult, task Task, arm Arm) ScenarioLedgerRow {
 	row := ScenarioLedgerRow{
-		RunID:          opts.RunID,
-		Commit:         opts.Commit,
-		CorpusSHA256:   opts.CorpusSHA256,
+		RunID:        opts.RunID,
+		Commit:       opts.Commit,
+		CorpusSHA256: opts.CorpusSHA256,
+		// CriterionID mirrors cmdLedger's own stamp — see
+		// ScenarioLedgerRow.CriterionID.
+		CriterionID:    opts.Corpus.Criterion.ID,
 		TaskID:         taskID,
 		Category:       task.Category,
 		Arm:            armName,

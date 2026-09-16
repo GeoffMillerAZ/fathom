@@ -99,7 +99,7 @@
       "rule": {
         "id": "ADR-011",
         "text": "No organization-specific names, hosts, catalogs, or product references anywhere in code, docs, tests, or fixtures; anything org-specific is configuration. The testdata/fauxtown/ fixtures use invented, neutral names.",
-        "source": "ADR.md#L180"
+        "source": "ADR.md#ADR-011"
       },
       "predictions": {
         "full": "win: ADR-011 is compiled into the obligations layer and served on whatever file the edit lands in, wherever the agent decides to put it, catching a realistic-sounding hostname the moment it is written",
@@ -151,7 +151,7 @@
       "rule": {
         "id": "ADR-025",
         "text": "internal/store stays pure Go (ADR-020's SQLite/WAL backend; the DuckDB/CGO backend was deleted outright in SS-8). CGO in this repo comes only from the tree-sitter extractor bindings (ADR-013); CGO_ENABLED=0 go build ./internal/store/ must keep succeeding.",
-        "source": "ADR.md#L823"
+        "source": "ADR.md#ADR-025"
       },
       "predictions": {
         "full": "win: ADR-020/025's store-stays-pure-Go obligation is bound to edits under internal/store and fires on this exact file regardless of its own comment's misleading framing",
