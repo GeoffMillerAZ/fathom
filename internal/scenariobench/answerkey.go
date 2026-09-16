@@ -10,11 +10,33 @@
 // and this file's post-session scan, which catches the case both of those
 // missed — a subject setup command that re-creates an excluded path, a
 // symlink, or a corpus that forgot to name a path the removal needed.
+//
+// O61 (wave N10): removeExcludedPaths used to delete the excluded paths
+// outright with os.RemoveAll — indistinguishable, to `git status`, from
+// the agent deleting a tracked file itself. vs-pilot-4's first `git
+// status` in a cell printed `deleted: docs/bench/README.md`, `deleted:
+// testdata/contextbench/tasks-home.json`, … and the leak scanner below
+// correctly read those literal names out of the tool_result and voided
+// the cell — so the removal MECHANISM lost two of the first ten cells,
+// not the tools under test. removeExcludedPaths now applies a git sparse
+// checkout in non-cone mode instead: `git sparse-checkout set --no-cone
+// '/*' '!<pattern>'…` (verified against a real git — subject_test.go)
+// leaves the excluded paths simply absent from the working tree, with
+// `git status` clean of them, no synthetic commit, and HEAD/LocalBase
+// unchanged. This closes the WORKING-TREE leak; it does not and cannot
+// close history mining — `git show HEAD:<excluded>` (or `git log -p`,
+// `git cat-file`) still resolves the blob, because checkoutCommitIntoWorktree
+// gives every cell worktree a real commit whose tree contains it. That
+// mining command still gets caught below (its own text names the excluded
+// path, scanned via toolUseInputText), but closing the vector itself would
+// need a subject with no history at all for the excluded blobs to hide
+// in — a corpus-level decision, not this fix's.
 package scenariobench
 
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -213,67 +235,153 @@ func isPathIdentByte(b byte) bool {
 		(b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || (b >= '0' && b <= '9')
 }
 
-// removeExcludedPaths deletes every path under root matching one of
-// patterns (gitignore-style globs, internal/filter) — PrepareSubject's own
-// call, run after checkout and before any ingest, for EVERY arm, so an
-// answer-key file a corpus was derived from never sits inside the
-// worktree an agent's Read/Grep/Bash tools can reach. root's own ".git"
-// is never descended into or considered for removal, whatever patterns
-// says. A nil/empty patterns is a no-op.
-func removeExcludedPaths(root string, patterns []string) error {
+// removeExcludedPaths hides every path under root matching one of patterns
+// (gitignore-style globs, internal/filter) from the git WORKING TREE — via
+// a git sparse checkout in non-cone mode, never deletion (O61: deleting a
+// tracked path is indistinguishable, to `git status`, from the agent doing
+// it, and voided cells on that alone) — PrepareSubject's own call, run
+// after checkout and before any ingest, for EVERY arm, so an answer-key
+// file a corpus was derived from never sits inside the worktree an agent's
+// Read/Grep/Bash tools can reach. root must already be a git repository
+// (PrepareSubject's checkoutCommitIntoWorktree/reuse-reset guarantee this
+// before removeExcludedPaths ever runs); a nil/empty patterns disables
+// sparse-checkout instead of doing nothing — root's OWN worktree directory
+// is reused across the tasks and trials that share a (base_commit, arm)
+// (subject.go's own comment), so a task declaring no exclusions must still
+// see the full tree even when an earlier cell in the same shared worktree
+// left sparse-checkout active with a different exclusion set; `git
+// sparse-checkout disable` is a verified no-op when nothing was ever
+// excluded.
+func removeExcludedPaths(ctx context.Context, root string, patterns []string) error {
 	if len(patterns) == 0 {
+		if out, err := runIn(ctx, root, "git", "sparse-checkout", "disable"); err != nil {
+			return fmt.Errorf("removing excluded paths: disabling sparse-checkout: %w (%s)", err, out)
+		}
 		return nil
 	}
+
+	args := append([]string{"sparse-checkout", "set", "--no-cone"}, sparseCheckoutPatternsFor(patterns)...)
+	if out, err := runIn(ctx, root, "git", args...); err != nil {
+		return fmt.Errorf("removing excluded paths: git sparse-checkout set: %w (%s)", err, out)
+	}
+
+	// Belt-and-braces (the fix's own requirement, not a duplicate of the
+	// post-session leak scan below): sparse-checkout's own pattern
+	// semantics track internal/filter's — verified against a real git — but
+	// a subject worktree must never simply trust that. A path still on disk
+	// after this call fails the subject preparation loudly, as an
+	// instrument error PrepareSubject's own caller surfaces immediately,
+	// rather than as a LOST cell discovered only after a session ran.
+	if found, err := findExcludedPathStillPresent(root, patterns); err != nil {
+		return err
+	} else if found != "" {
+		return fmt.Errorf("removing excluded paths: %s matches an exclude_paths pattern but is still present after `git sparse-checkout set` — refusing rather than risk it reaching an agent", found)
+	}
+	return nil
+}
+
+// sparseCheckoutPatternsFor turns patterns into `git sparse-checkout set
+// --no-cone` arguments: "/*" first — non-cone sparse-checkout patterns are
+// a WHITELIST (a bare exclude negation with nothing else would check out
+// NOTHING, not "everything except"), verified against a real git
+// (subject_test.go) — then one "!"-negated pattern per exclude via
+// excludeGlobToSparsePattern.
+func sparseCheckoutPatternsFor(patterns []string) []string {
+	out := make([]string, 0, len(patterns)+1)
+	out = append(out, "/*")
+	for _, p := range patterns {
+		if sp := excludeGlobToSparsePattern(p); sp != "" {
+			out = append(out, sp)
+		}
+	}
+	return out
+}
+
+// excludeGlobToSparsePattern translates one exclude_paths glob (relative
+// to the worktree root — types.go's own doc comment) into a negated
+// sparse-checkout pattern, matching internal/filter's own anchoring rule
+// (compile()): a pattern containing "/" anywhere is root-anchored, a bare
+// name matches at any depth. "testdata/contextbench/**" becomes
+// "!/testdata/contextbench/**" — verified against a real git to remove the
+// directory itself, not just its contents, leaving git status clean and
+// HEAD unmoved (subject_test.go). A leading "/" the caller already
+// supplied is stripped first so this never doubles it. "" (never a valid
+// sparse pattern) for a blank/whitespace-only input, which
+// sparseCheckoutPatternsFor then simply omits.
+func excludeGlobToSparsePattern(pattern string) string {
+	p := strings.TrimSpace(pattern)
+	p = strings.TrimPrefix(p, "/")
+	if p == "" {
+		return ""
+	}
+	if strings.Contains(p, "/") {
+		return "!/" + p
+	}
+	return "!" + p
+}
+
+// findExcludedPathStillPresent is removeExcludedPaths' own belt-and-braces
+// check: it walks root (never descending into ".git") and returns the
+// first path (relative to root) that STILL matches one of patterns after
+// the sparse checkout was applied — "" when nothing does. Read-only; unlike
+// the deletion-era removeExcludedWalk this never removes anything, so it
+// can also be used to prove a match exists without mutating the tree.
+func findExcludedPathStillPresent(root string, patterns []string) (string, error) {
 	m := filter.New(patterns)
 	entries, err := os.ReadDir(root)
 	if err != nil {
-		return fmt.Errorf("removing excluded paths: reading %s: %w", root, err)
+		return "", fmt.Errorf("removing excluded paths: reading %s: %w", root, err)
 	}
 	for _, e := range entries {
 		if e.Name() == ".git" {
 			continue
 		}
-		if err := removeExcludedWalk(root, e.Name(), m); err != nil {
-			return err
+		found, err := findExcludedWalk(root, e.Name(), m)
+		if err != nil {
+			return "", err
+		}
+		if found != "" {
+			return found, nil
 		}
 	}
-	return nil
+	return "", nil
 }
 
-// removeExcludedWalk checks rel (a path relative to root) against m and,
-// on a match, removes it outright; otherwise, for a directory, recurses
-// into it so a pattern anchored to a nested path (rather than one of
-// root's own top-level entries) is still found.
-func removeExcludedWalk(root, rel string, m *filter.Matcher) error {
+// findExcludedWalk checks rel (a path relative to root) against m and
+// returns it when matched; otherwise, for a directory, recurses into it so
+// a pattern anchored to a nested path (rather than one of root's own
+// top-level entries) is still found.
+func findExcludedWalk(root, rel string, m *filter.Matcher) (string, error) {
 	full := root + "/" + rel
 	info, err := os.Lstat(full)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil
+			return "", nil
 		}
-		return fmt.Errorf("removing excluded paths: statting %s: %w", full, err)
+		return "", fmt.Errorf("removing excluded paths: statting %s: %w", full, err)
 	}
 	target := rel
 	if info.IsDir() {
 		target += "/"
 	}
 	if m.Match(target) {
-		if err := os.RemoveAll(full); err != nil {
-			return fmt.Errorf("removing excluded path %s: %w", rel, err)
-		}
-		return nil
+		return rel, nil
 	}
 	if !info.IsDir() {
-		return nil
+		return "", nil
 	}
 	entries, err := os.ReadDir(full)
 	if err != nil {
-		return fmt.Errorf("removing excluded paths: reading %s: %w", full, err)
+		return "", fmt.Errorf("removing excluded paths: reading %s: %w", full, err)
 	}
 	for _, e := range entries {
-		if err := removeExcludedWalk(root, rel+"/"+e.Name(), m); err != nil {
-			return err
+		found, err := findExcludedWalk(root, rel+"/"+e.Name(), m)
+		if err != nil {
+			return "", err
+		}
+		if found != "" {
+			return found, nil
 		}
 	}
-	return nil
+	return "", nil
 }
