@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -249,6 +250,100 @@ func TestVerify_SymbolLocationReceipt_DoesNotReproduce(t *testing.T) {
 	if !strings.Contains(outcome.Diff, "999") {
 		t.Errorf("diff does not name the tampered line: %s", outcome.Diff)
 	}
+}
+
+// TestVerify_CallersReceipt_TestFileCaller_Reproduces is the M11b defect
+// (docs/bench/readings/vb21-receipts-m11b.md): find_callers/references
+// correctly include _test.go callers/occurrences in their live answers —
+// they are real, indexed facts, not noise — but publicloc.LoadGoTruth
+// (this package's independent oracle) was loading with Tests: false, so
+// ANY receipt built verbatim from a live answer for a symbol with a
+// test-file caller reported a spurious DIFFERENCE. A stand-alone fixture
+// module (not fauxtown, which no other test's goldens should have to grow
+// a _test.go file to accommodate) with one production function and one
+// internal _test.go file calling it pins the fix: a receipt naming the
+// test function as a caller must reproduce (exit 0).
+func TestVerify_CallersReceipt_TestFileCaller_Reproduces(t *testing.T) {
+	root := stageTestCallerModule(t)
+	commit := initGitRepo(t, root)
+
+	r := core.Receipt{
+		Kind:        core.ReceiptKindCallers,
+		Tool:        "find_callers",
+		Symbol:      "Build",
+		IndexCommit: commit,
+		Callers:     []string{"TestBuild"},
+	}
+	outcome, err := receiptverify.Verify(context.Background(), root, r)
+	if err != nil {
+		t.Fatalf("Verify: %v", err)
+	}
+	if !outcome.OK {
+		t.Fatalf("expected a receipt naming a _test.go caller to reproduce, got a difference: %s", outcome.Diff)
+	}
+}
+
+// TestVerify_ReferencesReceipt_TestFileReference_Reproduces is the
+// references-kind half of the same defect: a receipt naming the _test.go
+// file among Symbol's referencing files must reproduce.
+func TestVerify_ReferencesReceipt_TestFileReference_Reproduces(t *testing.T) {
+	root := stageTestCallerModule(t)
+	commit := initGitRepo(t, root)
+
+	r := core.Receipt{
+		Kind:        core.ReceiptKindReferences,
+		Tool:        "references",
+		Symbol:      "Build",
+		IndexCommit: commit,
+		Files:       []string{"widget.go", "widget_test.go"},
+	}
+	outcome, err := receiptverify.Verify(context.Background(), root, r)
+	if err != nil {
+		t.Fatalf("Verify: %v", err)
+	}
+	if !outcome.OK {
+		t.Fatalf("expected a receipt naming a _test.go reference to reproduce, got a difference: %s", outcome.Diff)
+	}
+}
+
+// stageTestCallerModule writes a two-file fixture module — one production
+// function (Build, in widget.go) and one internal _test.go file
+// (widget_test.go, `package widget`) whose TestBuild calls and mentions
+// it — into a fresh temp dir and returns its root. Kept separate from
+// indexbench.StageFauxtownModule on purpose: fauxtown is a shared fixture
+// many other benches' committed goldens are pinned against, and this
+// defect's fix needs a _test.go file that fixture has never carried.
+func stageTestCallerModule(t *testing.T) string {
+	t.Helper()
+	root := t.TempDir()
+	files := map[string]string{
+		"go.mod": "module receiptverify.test/testcaller\n\ngo 1.21\n",
+		"widget.go": `package widget
+
+// Build returns the widget's name.
+func Build() string {
+	return "widget"
+}
+`,
+		"widget_test.go": `package widget
+
+import "testing"
+
+// TestBuild calls and references Build — the test-file caller/reference
+// the live daemon's find_callers/references correctly include.
+func TestBuild(t *testing.T) {
+	if Build() == "" {
+		t.Fatal("Build returned empty")
+	}
+}
+`,
+	}
+	for name, content := range files {
+		if err := os.WriteFile(filepath.Join(root, name), []byte(content), 0o644); err != nil {
+			t.Fatalf("write %s: %v", name, err)
+		}
+	}
+	return root
 }
 
 func TestBareSymbolName(t *testing.T) {

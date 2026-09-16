@@ -41,7 +41,7 @@ Verify: `fathom verify --service fathom --plan docs/plans/verbs.md`.
 
 - [x] Every edge carries a resolution tier — `typed`, `heuristic`, or `external(<indexer>@<version>)` — and every answer's envelope reports the mix, the index commit, and per-fact anchors (file, symbol fingerprint, content hash) {id: VB-19, symbol: resolutionTierOf, package: internal/core}
 - [x] `fathom receipt verify <receipt>` re-derives a served claim from a bare checkout at the named commit with go/types and git alone — no daemon, no index — so exit 0 means a third party reproduced it {id: VB-20, symbol: cmdReceiptVerify, package: cmd/fathom}
-- [ ] (op) M11b: fifty sampled receipts re-derived independently at ≥ 95 %, and the envelope under 10 % of median payload in the L1 replay, else the envelope is removed {id: VB-21, skip_test: true, skip: "sampling run; evidence is the report under workspace/ and the L1 replay goldens", needs: VB-20}
+- [x] (op) M11b: fifty sampled receipts re-derived independently at ≥ 95 %, and the envelope under 10 % of median payload in the L1 replay, else the envelope is removed {id: VB-21, skip_test: true, skip: "sampling run; evidence is the report under workspace/ and the L1 replay goldens", needs: VB-20} — 2026-09-16: 50/50 re-derived after the verifier loaded test files (first pass 14/50, verifier defect); envelope 7.6 % of median payload (docs/bench/readings/vb21-receipts-m11b.md)
 
 ## Wave F — the review a human sees (R11)
 
