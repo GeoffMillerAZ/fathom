@@ -58,7 +58,7 @@ Verify: `fathom verify --service fathom --plan docs/plans/verbs.md`.
 ## Wave H — the custodian over harness memory (R8)
 
 - [x] `fathom config audit` classifies code-fact-shaped sentences in every auto-loaded file — CLAUDE.md, AGENTS.md, the harness's memory files — as anchored-fresh, drifted (with the receipt), or unanchorable, behind a flag until precision ≥ 0.8 on twenty real files {id: VB-28, symbol: auditCodeFactSentences, package: internal/custodian}
-- [ ] (op) M14 written from a hand label over ~100 sentences from ≥ 20 files across two harnesses {id: VB-29, skip_test: true, skip: "labelling run; evidence is the labelled set under testdata/custodian/ and the report", needs: VB-28}
+- [x] (op) M14 written from a hand label over ~100 sentences from ≥ 20 files across two harnesses — 2026-09-14: precision 0.649 over 100 sentences (37 committed) / 29 files (docs/bench/readings/vb29-codefacts-m14.md); flag stays {id: VB-29, skip_test: true, skip: "labelling run; evidence is the labelled set under testdata/custodian/ and the report", needs: VB-28}
 
 ## Wave I — across the process boundary, and out of the index (R7, R9)
 
