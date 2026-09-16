@@ -209,6 +209,180 @@ func TestExtractClientCalls_NonGoLangIsEmpty(t *testing.T) {
 	}
 }
 
+// ---------------------------------------------------------------------
+// ExtractClientCalls — bounded intra-function dataflow (VB-31 M8)
+// ---------------------------------------------------------------------
+
+func TestExtractClientCalls_SprintfAssignedToVariable(t *testing.T) {
+	// The fmt.Sprintf call is NOT inline at the argument position — it's
+	// assigned to a local variable first, then that variable is used
+	// later. Also exercises the leading-verb-is-a-base heuristic: the
+	// format's first %s pairs with a `.String()` call, so it's treated as
+	// an interpolated host (stripped to "/"), not an ordinary "{}"
+	// placeholder.
+	src := []byte(`package demo
+
+import (
+	"fmt"
+	"net/http"
+	"net/url"
+)
+
+func Scale(base url.URL, name string) error {
+	urlPath := fmt.Sprintf("%ssystem/scale-function/%s?namespace=%s", base.String(), name, "default")
+	req, err := http.NewRequest(http.MethodPost, urlPath, nil)
+	if err != nil {
+		return err
+	}
+	_, err = http.DefaultClient.Do(req)
+	return err
+}
+`)
+	calls := ExtractClientCalls("go", "demo.go", src)
+	if len(calls) != 1 {
+		t.Fatalf("ExtractClientCalls = %+v, want exactly one call", calls)
+	}
+	if calls[0].Method != "POST" || calls[0].Template != "/system/scale-function/{}" {
+		t.Errorf("call = %+v, want Method POST, Template /system/scale-function/{}", calls[0])
+	}
+}
+
+func TestExtractClientCalls_PathJoinOnURLStringer(t *testing.T) {
+	// endpointURL.Path is extended via path.Join BEFORE .String() is
+	// called on it — the self-referential path.Join(endpointURL.Path, …)
+	// argument is the pre-existing base, not a substituted value, and is
+	// dropped rather than turned into a "{}" wildcard.
+	src := []byte(`package demo
+
+import (
+	"net/http"
+	"net/url"
+	"path"
+)
+
+func Get(endpointURL url.URL) error {
+	endpointURL.Path = path.Join(endpointURL.Path, "/system/functions")
+	req, err := http.NewRequest(http.MethodGet, endpointURL.String(), nil)
+	if err != nil {
+		return err
+	}
+	_, err = http.DefaultClient.Do(req)
+	return err
+}
+`)
+	calls := ExtractClientCalls("go", "demo.go", src)
+	if len(calls) != 1 {
+		t.Fatalf("ExtractClientCalls = %+v, want exactly one call", calls)
+	}
+	if calls[0].Method != "GET" || calls[0].Template != "/system/functions" {
+		t.Errorf("call = %+v, want Method GET, Template /system/functions", calls[0])
+	}
+}
+
+func TestExtractClientCalls_URLStringerWithNoVisiblePathIsUnresolved(t *testing.T) {
+	// No `.Path = …` assignment and no composite-literal initializer
+	// anywhere in the function — the base is not "visible", so this
+	// resolves nothing rather than guessing (precision over recall).
+	src := []byte(`package demo
+
+import (
+	"net/http"
+	"net/url"
+)
+
+func Get(endpointURL url.URL) error {
+	req, err := http.NewRequest(http.MethodGet, endpointURL.String(), nil)
+	if err != nil {
+		return err
+	}
+	_, err = http.DefaultClient.Do(req)
+	return err
+}
+`)
+	if calls := ExtractClientCalls("go", "demo.go", src); len(calls) != 0 {
+		t.Fatalf("ExtractClientCalls = %+v, want none (base URL not visible)", calls)
+	}
+}
+
+func TestExtractClientCalls_URLCompositeLiteralPath(t *testing.T) {
+	src := []byte(`package demo
+
+import (
+	"net/http"
+	"net/url"
+)
+
+func Get() error {
+	u := url.URL{Scheme: "http", Host: "catalog-service", Path: "/items"}
+	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
+	if err != nil {
+		return err
+	}
+	_, err = http.DefaultClient.Do(req)
+	return err
+}
+`)
+	calls := ExtractClientCalls("go", "demo.go", src)
+	if len(calls) != 1 {
+		t.Fatalf("ExtractClientCalls = %+v, want exactly one call", calls)
+	}
+	if calls[0].Method != "GET" || calls[0].Template != "/items" {
+		t.Errorf("call = %+v, want Method GET, Template /items", calls[0])
+	}
+}
+
+func TestExtractClientCalls_ConstConcatenation(t *testing.T) {
+	src := []byte(`package demo
+
+import (
+	"context"
+	"net/http"
+)
+
+const basePath = "/system/function/"
+
+func Fetch(ctx context.Context, id string) error {
+	req, err := http.NewRequestWithContext(ctx, "GET", "http://svc"+basePath+id, nil)
+	if err != nil {
+		return err
+	}
+	_, err = http.DefaultClient.Do(req)
+	return err
+}
+`)
+	calls := ExtractClientCalls("go", "demo.go", src)
+	if len(calls) != 1 {
+		t.Fatalf("ExtractClientCalls = %+v, want exactly one call", calls)
+	}
+	if calls[0].Method != "GET" || calls[0].Template != "/system/function/{}" {
+		t.Errorf("call = %+v, want Method GET, Template /system/function/{}", calls[0])
+	}
+}
+
+func TestExtractClientCalls_BareConcatenationOfTwoUnknownsIsUnresolved(t *testing.T) {
+	// Neither side of the concatenation resolves to genuine literal
+	// content (both a plain variable) — indistinguishable from arbitrary
+	// string arithmetic, so this must NOT manufacture a call (regression
+	// guard: an httptest-style `ts.URL + path` pattern, as found in
+	// internal/fusion/testdata/reachfix/server_test.go, must stay silent).
+	src := []byte(`package demo
+
+import "net/http"
+
+func Get(base, path string) error {
+	resp, err := http.Get(base + path)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	return nil
+}
+`)
+	if calls := ExtractClientCalls("go", "demo.go", src); len(calls) != 0 {
+		t.Fatalf("ExtractClientCalls = %+v, want none (two unresolved fragments)", calls)
+	}
+}
+
 func TestExtractClientCalls_Fixture(t *testing.T) {
 	root := fauxtownRoot(t)
 	src := readFixture(t, root, "checkout-service", "checkout.go")

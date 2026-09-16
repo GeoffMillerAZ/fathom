@@ -73,3 +73,111 @@ This is not a fixture artifact — it is `internal/analysis/routes` and `Extract
 Overall precision 1.00 ≥ 0.90 (met). Overall recall 0.20 < 0.90 (not met — the gate is `P ≥ 0.90 AND R ≥ 0.90`). **The row stays unchecked.** Per the row's own text ("else it stays a finding"), `docs/plans/verbs.md` VB-31 is edited to `[ ]` with a one-line measured note; it does not flip to `[x]`.
 
 The concrete, scoped next step if this is picked back up: (a) client side — resolve a single-assignment local variable back to its `fmt.Sprintf`/literal definition before giving up (a small, bounded dataflow step, not a general SSA pass); (b) server side — teach `routes.Extract` to see a chained `.Methods(...)` call after `HandleFunc(...)`/`Handle(...)`, and to concatenate adjacent quoted segments joined by `+` before treating the result as one path. Both are `internal/analysis/routes` changes, outside VB-30/31's stated scope, and neither was attempted here — this reading only measures and reports.
+
+## Rerun after wave I2 (2026-09-16)
+
+Wave I2 picked up exactly the two next-steps named above and implemented
+both as real `go/ast` walks (no line regexes anywhere in the Go path of
+either package). The hand-verified table (`testdata/serviceref/
+route-table.json`) was **not edited** — same file, same 22 rows, same
+`written_before_extractor_run: true` provenance from 2026-09-14. Only the
+extractor changed; the table was re-read against it.
+
+### What changed
+
+- **Client side** (`internal/analysis/serviceref/serviceref.go`,
+  `templateFromExpr` + new `clientResolver`): a URL argument that is a local
+  identifier now resolves back to its own most recent assignment within the
+  enclosing function (`findLastAssign`) — bounded, single-hop, no general
+  SSA pass. A `*url.URL.String()` call resolves by finding the last
+  assignment to that receiver's `.Path` field earlier in the same function
+  (`findLastFieldAssign`) — including through `path.Join`/`url.JoinPath`,
+  which fold their arguments and specifically DROP a self-referential
+  `X.Path` argument (`path.Join(endpointURL.Path, "/system/functions")`)
+  rather than wildcarding it, since that argument is the pre-existing
+  accumulator, not a substituted value. A `url.URL{Path: "…"}` composite
+  literal is also recognized as an initializer. Separately, a `fmt.Sprintf`
+  format string that begins with a printf verb whose paired argument is
+  itself a `.String()` call (`fmt.Sprintf("%ssystem/function/%s", s.URL.
+  String(), name)`) is now recognized as an interpolated host/base and
+  stripped to a path-root marker rather than becoming an ordinary `"{}"`
+  path-segment placeholder — without this, `"%ssystem/function/%s"` would
+  normalize to `"/{}system/function/{}"` (wrong: no separator before
+  "system") instead of the correct `"/system/function/{}"`. A bare
+  concatenation (`a + b`) at the top level now requires at least one side to
+  resolve to genuine literal content — two unresolved placeholders glued
+  together (an `httptest`-style `ts.URL + path`, found by this exact change
+  surfacing it in `internal/fusion/testdata/reachfix/server_test.go`) is not
+  distinguishable from arbitrary string arithmetic and produces no
+  `ClientCall`, preserving precision.
+- **Server side** (`internal/analysis/routes/routes.go`, new `extractGo` +
+  `goRouteExtractor`): the Go path no longer uses `regexp` at all — JS/TS and
+  Python are unchanged. A call chain is decomposed into its full sequence of
+  `.Name(args)` links regardless of order, so `r.HandleFunc(path,
+  handler).Methods(http.MethodGet)` and the reversed `r.Methods("POST").
+  Path(path).HandlerFunc(handler)` both resolve; a `.Methods(a, b)` call
+  fans out to one `Route` per method instead of losing every method to the
+  regex-invisible chain (the 2026-09-14 reading's "every extracted route
+  reads `Method: "ANY"`" failure mode). `PathPrefix(prefix).Subrouter()`
+  assigned to a variable propagates its prefix to every route later
+  registered through that variable (tracked across statements in one
+  top-to-bottom pass). A concatenated path
+  (`"/system/function/{name:["+NameExpression+"]+}"`) folds through
+  package-level string consts the way `go/constant` would evaluate the
+  expression, instead of the old regex truncating at the first embedded
+  quote; a genuinely non-constant fragment normalizes to `"{}"` rather than
+  either guessing or abandoning the route.
+
+### Rerun results
+
+| Corpus | TP | FP | FN | Precision | Recall |
+|---|---:|---:|---:|---:|---:|
+| `fauxtown` | 1 | 0 | 0 | 1.00 | 1.00 |
+| `real_pair` | 4 | 0 | 0 | 1.00 | 1.00 |
+| **Overall** | **5** | **0** | **0** | **1.00** | **1.00** |
+
+`fauxtown` was re-measured via the same in-repo golden test
+(`TestGoldenCorpus_Fauxtown`, unchanged): `tp=1 fp=0 fn=0`. `real_pair` was
+re-measured via the same throwaway program
+(`workspace/tmp/vb31realpair/main.go`, unchanged) over the same two shallow
+clones at the same commits (`faas-provider@f53fe63`, `faas@8d803bf`): the
+extractor now produces exactly the 4 hops the table's `match` rows name —
+
+```
+faas-gateway GET /system/function/{} -> faas-provider     (plugin/external.go:76  -> serve.go:71)
+faas-gateway GET /system/functions -> faas-provider        (metrics/exporter.go:152 -> serve.go:66)
+faas-gateway GET /system/namespaces -> faas-provider        (metrics/exporter.go:190 -> serve.go:85)
+faas-gateway POST /system/scale-function/{} -> faas-provider (plugin/external.go:156 -> serve.go:73)
+```
+
+— and no others: the Prometheus call (`client_only`, targets a third service
+outside the pair) still correctly produces no hop, and the `excluded` row
+(`buildUpstreamRequest`, method forwarded verbatim from the incoming
+request) still correctly cannot resolve a method and is skipped.
+`reachfix-fp-control` still contributes zero hops (`TestGoldenCorpus_
+Fauxtown`'s hard assertion continues to pass) — its one previously-documented
+gap (`mux.Handle(r.path, ...)`, a struct-field path with no literal content)
+now extracts as a wildcarded `Method: "ANY", Path: "{}"` route rather than
+nothing at all, which cannot manufacture a match since no client call in
+either corpus ever carries method `"ANY"`.
+
+### Remaining known misses
+
+None against this table. The two out-of-scope-for-VB-30/31 gaps named in the
+original reading (self-referential local dataflow, chained `.Methods()`, and
+concatenated paths) are exactly what this wave closed. What is still NOT
+handled, named honestly rather than claimed clean: a route path or client URL
+built across more than one hop of indirection (e.g. a variable assigned from
+a function call whose own return value is itself indirect), branch-sensitive
+resolution (an `if`/`else` assigning two different values to the same `.Path`
+— the LAST textual assignment wins, which is a heuristic, not control-flow
+analysis), and any construct outside the specific shapes enumerated above.
+All of these still resolve to "no edge" (client side) or "no route" (server
+side, for an unrecognized path expression shape) rather than a guess, so they
+cost recall on some hypothetical future corpus, never precision on this one.
+
+### Verdict against the row (rerun)
+
+Overall precision 1.00 ≥ 0.90 (met). Overall recall 1.00 ≥ 0.90 (met). **The
+row is checked.** `docs/plans/verbs.md` VB-31 is edited to `[x]` with a
+one-line note pointing here.
