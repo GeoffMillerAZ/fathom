@@ -961,16 +961,26 @@ func editHookBeatCount(phase, target string) int {
 // repo and reporting a false negative as if it were conclusive.
 func originCallCount(root, origin string) int {
 	logPath, explicit := configuredCallLogPath()
-	if !explicit {
-		logPath = workspaceCallLogRel // PC-15: never the caller's cwd (O23)
-	}
-	if !filepath.IsAbs(logPath) {
+	var resolvedPath string
+	switch {
+	case explicit && filepath.IsAbs(logPath):
+		resolvedPath = logPath
+	case explicit:
 		if !isFathomSourceTree(root) {
 			return 0
 		}
-		logPath = filepath.Join(root, logPath)
+		resolvedPath = filepath.Join(root, logPath)
+	default:
+		// O63 item 5: the unconfigured default is state-dir-aware
+		// (callLogPathFor), never a literal workspace/ join — same
+		// PC-15/O23 gate: only trust it against a root verifiably the
+		// daemon's own working directory.
+		if !isFathomSourceTree(root) {
+			return 0
+		}
+		resolvedPath = callLogPathFor(root)
 	}
-	entries, _, read := readCallLog(logPath)
+	entries, _, read := readCallLog(resolvedPath)
 	if !read {
 		return 0
 	}
@@ -1108,14 +1118,12 @@ func fathomServicePath(hc *http.Client, baseURL string) (string, bool) {
 func resolveCallLogCandidates(hc *http.Client, baseURL string, daemonUp bool, root string) []string {
 	// PC-15: the unconfigured default now resolves to an absolute path
 	// from the CALLER's cwd, which is exactly the wrong repo here (O23) —
-	// so an unconfigured log is the daemon-relative literal, joined below
-	// against roots known to be the daemon's working directory.
+	// so an unconfigured log is resolved below against roots known to be
+	// the daemon's working directory: state-dir-aware (callLogPathFor,
+	// O63 item 5) rather than a literal workspace/ join.
 	logPath, explicit := configuredCallLogPath()
 	if explicit && filepath.IsAbs(logPath) {
 		return []string{logPath}
-	}
-	if !explicit {
-		logPath = workspaceCallLogRel
 	}
 
 	var out []string
@@ -1124,7 +1132,12 @@ func resolveCallLogCandidates(hc *http.Client, baseURL string, daemonUp bool, ro
 		if base == "" {
 			return
 		}
-		p := filepath.Join(base, logPath)
+		p := logPath
+		if explicit {
+			p = filepath.Join(base, logPath)
+		} else {
+			p = callLogPathFor(base)
+		}
 		if !seen[p] {
 			seen[p] = true
 			out = append(out, p)

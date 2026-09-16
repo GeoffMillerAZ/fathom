@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/statedir"
 )
 
 // TestNarrateExpiry pins IO-21: narrate is bounded, auto-expiring, and off
@@ -43,7 +45,7 @@ func TestStoryRows(t *testing.T) {
 	repo := t.TempDir()
 
 	recordStoryRow(repo, "obligation-served", map[string]any{"file": "a.go"})
-	if entries, _ := os.ReadDir(filepath.Join(repo, "workspace", "artifacts", "narrate")); len(entries) != 0 {
+	if entries, _ := os.ReadDir(filepath.Join(statedir.Resolve(repo), "artifacts", "narrate")); len(entries) != 0 {
 		t.Fatal("inactive narrate must write nothing")
 	}
 
@@ -52,7 +54,7 @@ func TestStoryRows(t *testing.T) {
 		t.Fatal(stderr.String())
 	}
 	recordStoryRow(repo, "obligation-served", map[string]any{"file": "a.go", "rules": 3})
-	dir := filepath.Join(repo, "workspace", "artifacts", "narrate")
+	dir := filepath.Join(statedir.Resolve(repo), "artifacts", "narrate")
 	entries, err := os.ReadDir(dir)
 	if err != nil || len(entries) != 1 {
 		t.Fatalf("want one story file, got %v (%v)", entries, err)

@@ -82,6 +82,21 @@ package config
 	call_log?:        string
 	auto_refresh?:    bool
 	default_profile?: string
+
+	// state_dir overrides where fathom's runtime state (session logs,
+	// observed-discovery logs, retro/narrate artifacts, the receipts log,
+	// MCP call logs) is written for this repository (O63 item 5). The
+	// default — no state_dir set — is OUTSIDE the repo tree entirely
+	// ($XDG_STATE_HOME/fathom/<repo-id>/, internal/statedir.Dir), so a
+	// fresh adopter's `git status` after `fathom init` + a session hook +
+	// an edit hook never shows hook output. The one recognised value is
+	// "workspace": it restores the pre-O63 in-tree convention
+	// (<repo>/workspace/...) — for fathom's own repository (whose
+	// Taskfile and docs still reference workspace/ paths for its own dev
+	// loop) or any repo that wants the old, versionable-by-choice layout
+	// back. FATHOM_STATE_DIR (an env var, not a config key — the hooks'
+	// fixed-command-line callers cannot set a flag) overrides both.
+	state_dir?: "workspace"
 }
 
 // #Config is the top-level shape of one config.toml layer (user or

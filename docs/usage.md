@@ -45,6 +45,19 @@ repo root. This directory is gitignored. Never write generated files elsewhere i
 
 `store.Open` auto-creates the parent directory when it does not exist.
 
+This is fathom's own dev-loop convention — its `.fathom/config.toml` opts into it
+(`[daemon] state_dir = "workspace"`). It is NOT the default for a repo fathom adopts
+(O63 item 5, `internal/statedir`): a hook's own runtime state (session/observed-discovery
+logs, retro/narrate artifacts, the receipts log, MCP call logs) defaults to OUTSIDE the
+subject repository entirely, under `$XDG_STATE_HOME/fathom/<repo-id>/` (default
+`~/.local/state/fathom/<repo-id>/`), so a fresh adopter's `git status` after `fathom init`
+and normal use never shows fathom's own hook output. A repo opts back into the old
+in-tree layout the same way this one does — `[daemon] state_dir = "workspace"` in its own
+`.fathom/config.toml` — or `FATHOM_STATE_DIR` overrides the directory directly for one
+invocation (hooks' fixed command lines can't pass a flag). The code index (`-store` /
+`workspace/db/`) is unaffected either way — it is the artifact fathom exists to produce,
+not runtime state, and stays under the repo's `workspace/` regardless.
+
 ---
 
 ## Quickstart

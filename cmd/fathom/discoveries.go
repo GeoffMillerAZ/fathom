@@ -20,6 +20,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/statedir"
 )
 
 // discoveriesDefaultBudget mirrors the "discoveries" MCP tool's default
@@ -28,11 +30,12 @@ const discoveriesDefaultBudget = 4000
 
 // ─── session windows (design point 2) ───────────────────────────────────
 
-// sessionWindowRow is one JSONL row of workspace/logs/sessions.jsonl:
-// SessionStart's own mechanical fact — when a session began, in which
-// directory, against which resolved service (best-effort; "" when none
-// resolved). Never mined from a transcript; written once, at start, by
-// cmdSessionHook.
+// sessionWindowRow is one JSONL row of logs/sessions.jsonl under root's
+// state directory (statedir.Resolve — outside the repo tree by default,
+// O63 item 5): SessionStart's own mechanical fact — when a session began,
+// in which directory, against which resolved service (best-effort; ""
+// when none resolved). Never mined from a transcript; written once, at
+// start, by cmdSessionHook.
 type sessionWindowRow struct {
 	SchemaVersion int    `json:"schema_version"`
 	SessionID     string `json:"session_id"`
@@ -41,11 +44,12 @@ type sessionWindowRow struct {
 	Started       string `json:"started"` // RFC3339
 }
 
-// sessionsLogPathFor is workspace/logs/sessions.jsonl under root's git
-// toplevel (or root itself outside a repo) — the same workspace/
-// convention every other fathom artifact uses (docs/usage.md).
-// FATHOM_SESSIONS_LOG overrides it (tests; an operator replaying a
-// capture against a scratch tree).
+// sessionsLogPathFor is logs/sessions.jsonl under root's state directory
+// (statedir.Resolve(root's git toplevel, or root itself outside a repo) —
+// outside the repo tree by default, O63 item 5; root/workspace/logs/… when
+// root's own config opts into the in-tree convention). FATHOM_SESSIONS_LOG
+// overrides it directly (tests; an operator replaying a capture against a
+// scratch tree) — it wins over even FATHOM_STATE_DIR.
 func sessionsLogPathFor(root string) string {
 	if p := os.Getenv("FATHOM_SESSIONS_LOG"); p != "" {
 		return p
@@ -54,7 +58,7 @@ func sessionsLogPathFor(root string) string {
 	if top := gitToplevel(root); top != "" {
 		base = top
 	}
-	return filepath.Join(base, "workspace", "logs", "sessions.jsonl")
+	return filepath.Join(statedir.Resolve(base), "logs", "sessions.jsonl")
 }
 
 // recordSessionWindow appends row to root's sessions log under a
@@ -373,14 +377,15 @@ func renderDiscoveryLines(idx ctxIndex, idxErr error, ptrs []discoveryPointerAgg
 }
 
 // callLogPathFor is the default call log discoveries reads: the daemon's
-// own default (workspace/logs/mcp-calls.jsonl under root), matching
-// defaultCallLogPath()'s convention without depending on process cwd.
+// own default (logs/mcp-calls.jsonl under root's state directory —
+// statedir.Resolve, O63 item 5), matching defaultCallLogPath()'s
+// convention without depending on process cwd.
 func callLogPathFor(root string) string {
 	base := root
 	if top := gitToplevel(root); top != "" {
 		base = top
 	}
-	return filepath.Join(base, workspaceCallLogRel)
+	return filepath.Join(statedir.Resolve(base), "logs", "mcp-calls.jsonl")
 }
 
 // parseSinceFlag accepts an RFC3339 timestamp or a bare Go duration

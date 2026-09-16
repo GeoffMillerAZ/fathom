@@ -14,6 +14,7 @@ import (
 	"time"
 
 	skillsdist "github.com/geoffmilleraz/fathom/dist/agents/skills"
+	"github.com/geoffmilleraz/fathom/internal/statedir"
 )
 
 // ─── test helpers ───────────────────────────────────────────────────────────
@@ -223,7 +224,7 @@ func writeAllPassFixture(t *testing.T, root, svc string) string {
 		}
 	}
 
-	logDir := filepath.Join(root, "workspace", "logs")
+	logDir := filepath.Join(statedir.Resolve(root), "logs")
 	if err := os.MkdirAll(logDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -705,7 +706,7 @@ func TestCheckHooksInstalled(t *testing.T) {
 
 		// Heavy POST-channel call-log traffic — exactly what the live repro
 		// showed (thousands of obligations calls with origin "edit-hook").
-		logDir := filepath.Join(dir, "workspace", "logs")
+		logDir := filepath.Join(statedir.Resolve(dir), "logs")
 		if err := os.MkdirAll(logDir, 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -903,7 +904,7 @@ func TestCheckHooksFiring(t *testing.T) {
 	t.Run("call log with no edit-hook origin still fails", func(t *testing.T) {
 		dir := t.TempDir()
 		writeFathomGoMod(t, dir)
-		logDir := filepath.Join(dir, "workspace", "logs")
+		logDir := filepath.Join(statedir.Resolve(dir), "logs")
 		if err := os.MkdirAll(logDir, 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -920,7 +921,7 @@ func TestCheckHooksFiring(t *testing.T) {
 	t.Run("edit-hook traffic passes", func(t *testing.T) {
 		dir := t.TempDir()
 		writeFathomGoMod(t, dir)
-		logDir := filepath.Join(dir, "workspace", "logs")
+		logDir := filepath.Join(statedir.Resolve(dir), "logs")
 		if err := os.MkdirAll(logDir, 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -943,7 +944,7 @@ func TestCheckHooksFiring(t *testing.T) {
 	t.Run("O23: adopter repo resolves the daemon's own call log via the fathom service path", func(t *testing.T) {
 		adopter := t.TempDir()
 		fathomTree := t.TempDir()
-		logDir := filepath.Join(fathomTree, "workspace", "logs")
+		logDir := filepath.Join(statedir.Resolve(fathomTree), "logs")
 		if err := os.MkdirAll(logDir, 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -958,8 +959,13 @@ func TestCheckHooksFiring(t *testing.T) {
 		if got.Status != doctorPass {
 			t.Fatalf("got %+v, want pass — the call log lives at the daemon's own \"fathom\" service path, not the adopter root", got)
 		}
-		if !strings.Contains(got.Reason, fathomTree) {
-			t.Errorf("reason should name the actual (daemon-side) call-log path: %s", got.Reason)
+		// O63 item 5: the resolved call-log path is state-dir-based, not a
+		// literal join under fathomTree — it must no longer leak the
+		// repo's own path (that's the point), so the reason is checked
+		// against callLogPathFor(fathomTree), the SAME resolution
+		// resolveCallLogCandidates used to find it.
+		if want := callLogPathFor(fathomTree); !strings.Contains(got.Reason, want) {
+			t.Errorf("reason should name the actual (daemon-side) call-log path %q: %s", want, got.Reason)
 		}
 	})
 }
@@ -1618,11 +1624,17 @@ func TestCmdDoctor_AdopterRepoIsNotFathom(t *testing.T) {
 
 	// The fathom tree stand-in: a DIFFERENT directory — the one the daemon
 	// (and the doctor binary) actually came from — with its own HEAD and
-	// the REAL call log carrying edit-hook traffic.
+	// the REAL call log carrying edit-hook traffic. Resolved through
+	// symlinks up front (macOS: /var -> /private/var) so it matches what
+	// gitToplevel(fathomTree) returns once gitRepo below makes it a real
+	// repo — callLogPathFor resolves through gitToplevel too, and the
+	// state dir's repo-id must be computed from the SAME string on both
+	// the write (here) and read (checkHooksFiring) sides.
 	fathomTree := t.TempDir()
+	fathomTree, _ = filepath.EvalSymlinks(fathomTree)
 	writeFathomGoMod(t, fathomTree)
 	fathomHead := gitRepo(t, fathomTree)
-	logDir := filepath.Join(fathomTree, "workspace", "logs")
+	logDir := filepath.Join(statedir.Resolve(fathomTree), "logs")
 	if err := os.MkdirAll(logDir, 0o755); err != nil {
 		t.Fatal(err)
 	}

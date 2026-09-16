@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/harness"
+	"github.com/geoffmilleraz/fathom/internal/statedir"
 )
 
 // observedDiscoverySchemaVersion identifies observed-discoveries.jsonl's
@@ -212,10 +213,11 @@ func bashObservedReadPath(command string) (target, tool string) {
 
 // ─── write path (item 2) ──────────────────────────────────────────────────
 
-// observedDiscoveriesLogPathFor is workspace/logs/observed-discoveries.jsonl
-// under root's git toplevel (or root itself outside a repo) — the same
-// workspace/ convention sessionsLogPathFor and callLogPathFor already use.
-// FATHOM_OBSERVED_DISCOVERIES_LOG overrides it (tests).
+// observedDiscoveriesLogPathFor is logs/observed-discoveries.jsonl under
+// root's state directory (statedir.Resolve — outside the repo tree by
+// default, O63 item 5) — the same convention sessionsLogPathFor and
+// callLogPathFor already use. FATHOM_OBSERVED_DISCOVERIES_LOG overrides it
+// directly (tests) — it wins over even FATHOM_STATE_DIR.
 func observedDiscoveriesLogPathFor(root string) string {
 	if p := os.Getenv("FATHOM_OBSERVED_DISCOVERIES_LOG"); p != "" {
 		return p
@@ -224,7 +226,7 @@ func observedDiscoveriesLogPathFor(root string) string {
 	if top := gitToplevel(root); top != "" {
 		base = top
 	}
-	return filepath.Join(base, "workspace", "logs", "observed-discoveries.jsonl")
+	return filepath.Join(statedir.Resolve(base), "logs", "observed-discoveries.jsonl")
 }
 
 // observedDiscoveryRotateBytes bounds the observed-discoveries log's

@@ -74,6 +74,10 @@ type Daemon struct {
 	CallLog        string
 	AutoRefresh    *bool // nil = unset at every layer; caller applies its own default
 	DefaultProfile string
+	// StateDir is "" (default: state lives outside the repo tree,
+	// internal/statedir.Dir) or "workspace" (O63 item 5's in-tree opt-out
+	// — see schema.cue #Daemon.state_dir).
+	StateDir string
 }
 
 // Config is the merged, in-memory form of one or more config.toml layers.
