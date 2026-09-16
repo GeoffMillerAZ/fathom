@@ -150,7 +150,7 @@
       "id": "H1-T01",
       "class": "obligations",
       "category": "what_governs",
-      "prompt": "Per fathom's compiled obligations layer, which repository convention governs internal/extractor/goextract.go regarding how a NEW extractor implementation must be wired into the pipeline? Name the two things it must be registered into (in prose or code-identifier form), quoting enough of the rule to be unambiguous.",
+      "prompt": "Which repository convention governs internal/extractor/goextract.go regarding how a NEW extractor implementation must be wired into the pipeline? Name the two things it must be registered into (in prose or code-identifier form), quoting enough of the rule to be unambiguous.",
       "ground_truth": [
         "fusion.New",
         "golden-test"
@@ -183,7 +183,7 @@
       "min_trials": 5,
       "class": "obligations",
       "category": "what_governs",
-      "prompt": "Per fathom's compiled obligations layer, a decision-record rule governs internal/core/model.go about where typed call-edge kinds must be carried. Name the Go type they must reside on, and the identifier of the decision record that rule comes from.",
+      "prompt": "Which decision-record rule governs internal/core/model.go about where typed call-edge kinds must be carried? Name the Go type they must reside on, and the identifier of the decision record that rule comes from.",
       "ground_truth": [
         "ADR-021"
       ],
@@ -221,7 +221,7 @@
       "id": "H1-T03",
       "class": "verify",
       "category": "is_proven",
-      "prompt": "In the fathom repo's docs/plans/falsifiability.md, task B3-1 is claimed [x] with contract {symbol: cmdVerify, package: cmd/fathom} and carries NO skip_test annotation — meaning fathom's verify gate requires some Test* function to statically REACH cmdVerify via the call graph, not necessarily call it directly by name. A literal grep for the substring \"cmdVerify(\" inside any _test.go file in this repo returns zero matches. Name one Test* function that nonetheless satisfies the test-reach requirement, by calling run() with \"verify\" as the first CLI argument — which cmd/fathom/main.go's subcommand switch then dispatches to cmdVerify.",
+      "prompt": "In the fathom repo's docs/plans/falsifiability.md, task B3-1 is claimed [x] with contract {symbol: cmdVerify, package: cmd/fathom} and carries NO skip_test annotation — meaning the claim requires some Test* function to statically REACH cmdVerify via the call graph, not necessarily call it directly by name. A literal grep for the substring \"cmdVerify(\" inside any _test.go file in this repo returns zero matches. Name one Test* function that nonetheless satisfies the test-reach requirement, by calling run() with \"verify\" as the first CLI argument — which cmd/fathom/main.go's subcommand switch then dispatches to cmdVerify.",
       "ground_truth": [
         "TestCmdVerify_MissingPlan",
         "TestCmdVerify_MissingService",
@@ -334,7 +334,7 @@
       "id": "H1-T04",
       "class": "verify",
       "category": "which_rows_fail",
-      "prompt": "Given this two-row scratch plan for the fathom repo (evaluate it fresh against the current index — it is not a committed plan):\n```\n- [x] Row A: Ghost accessor is wired {id: DEMO-H1, symbol: GetGovernedClaimByRepro, package: internal/store}\n- [x] Row B: verify CLI exists {id: DEMO-H2, symbol: cmdVerify, package: cmd/fathom, skip_test: true}\n```\nWhich row ID FAILS fathom's verify gate against the current index, and what is the one-phrase reason fathom's gate gives for the failure?",
+      "prompt": "Given this two-row scratch plan for the fathom repo (it is not a committed plan; check each row against the code at HEAD, not against any claim):\n```\n- [x] Row A: Ghost accessor is wired {id: DEMO-H1, symbol: GetGovernedClaimByRepro, package: internal/store}\n- [x] Row B: verify CLI exists {id: DEMO-H2, symbol: cmdVerify, package: cmd/fathom, skip_test: true}\n```\nWhich row ID's claim does not hold up against the code, and what is the one-phrase reason a rigorous symbol check would give for the failure?",
       "ground_truth": [
         "DEMO-H1",
         "not found"
@@ -421,7 +421,7 @@
       "min_trials": 5,
       "class": "claim_provenance",
       "category": "which_sources_feed_claim",
-      "prompt": "internal/store/duckdb.go was deleted outright by SS-8/ADR-025 (the DuckDB backend removal); its closest living successor for store-backend governance is internal/store/backend.go. Per fathom's compiled obligations layer, the rules currently governing internal/store/backend.go are fed by exactly ONE governing document in this repo. Cite the line of that document on which the rule requiring a single shared, extension-based backend-selection helper begins, in the citation form `<file>#L<n>` (e.g. `docs/example.md#L7`).",
+      "prompt": "internal/store/duckdb.go was deleted outright by SS-8/ADR-025 (the DuckDB backend removal); its closest living successor for store-backend governance is internal/store/backend.go. Which repository convention governs internal/store/backend.go, fed by exactly ONE governing document in this repo? Cite the line of that document on which the rule requiring a single shared, extension-based backend-selection helper begins, in the citation form `<file>#L<n>` (e.g. `docs/example.md#L7`).",
       "ground_truth": [
         "ADR.md#L597"
       ],
@@ -475,7 +475,7 @@
       "id": "H1-T09",
       "class": "concern_search",
       "category": "concern_scoped_search",
-      "prompt": "Concern-scoped search: find the function in fathom's store layer whose doc comment explicitly promises \"never a silent fallback\" for an unrecognized input — the deliberate error-handling design for store backend selection by file extension. Name the function.",
+      "prompt": "In fathom's store layer, find the function whose doc comment explicitly promises \"never a silent fallback\" for an unrecognized input — the deliberate error-handling design for store backend selection by file extension. Name the function.",
       "ground_truth": [
         "BackendForPath"
       ],
@@ -498,7 +498,7 @@
       "id": "H1-T10",
       "class": "concern_search",
       "category": "concern_scoped_search",
-      "prompt": "Concern-scoped search: fathom's internal/mcp package has a generic helper function that truncates a list-returning tool's JSON payload to stay within a token budget. Its doc comment cites a real incident as the reason it exists — a specific MCP tool whose oversized (~57KB) result was truncated by the client and saved to a file, eroding trust. Name the helper function AND the tool named in that incident.",
+      "prompt": "Fathom's internal/mcp package has a generic helper function that truncates a list-returning tool's JSON payload to stay within a token budget. Its doc comment cites a real incident as the reason it exists — a specific MCP tool whose oversized (~57KB) result was truncated by the client and saved to a file, eroding trust. Name the helper function AND the tool named in that incident.",
       "ground_truth": [
         "fitToBudget",
         "query_symbols"
@@ -557,7 +557,7 @@
       "id": "H1-T12",
       "class": "staleness",
       "category": "citation_drift",
-      "prompt": "Fathom's compiled obligations layer serves a rule governing internal/core/model.go that reads 'Maintain shared types in `internal/core` and extend them additively.', cited to CLAUDE.md#L83-L84. (a) Determine whether that citation still resolves to this rule's text at the current HEAD, and state the claim's serving status in exactly the form 'verdict: stale' or 'verdict: fresh'. (b) Cite the line on which the rule's text actually appears today, in the citation form `<file>#L<n>` (e.g. `docs/example.md#L7`).",
+      "prompt": "A rule governing internal/core/model.go reads 'Maintain shared types in `internal/core` and extend them additively.', cited to CLAUDE.md#L83-L84. (a) Check whether CLAUDE.md#L83-L84 still contains this rule's text at the current HEAD; answer in exactly the form 'verdict: stale' or 'verdict: fresh'. (b) If it moved, cite the line on which the rule's text actually appears today, in the citation form `<file>#L<n>` (e.g. `docs/example.md#L7`).",
       "ground_truth": [
         "verdict: stale",
         "CLAUDE.md#L48"
@@ -593,7 +593,7 @@
       "min_trials": 5,
       "class": "staleness",
       "category": "citation_still_fresh",
-      "prompt": "Per fathom's compiled obligations layer, the rule 'Add new hot-loop tools to the companion allowlist' governing internal/core/model.go cites ADR.md#L158-L159 (as served on 2026-07-24, when it carried no staleness flag). At the current HEAD commit, does that citation still resolve to the rule's text? State the claim's serving status in exactly the form 'verdict: fresh' or 'verdict: stale', and quote the distinctive ADR identifier that appears on the line where the rule's own words ('new hot-loop tool must be added') live today.",
+      "prompt": "A rule, 'Add new hot-loop tools to the companion allowlist', governing internal/core/model.go cites ADR.md#L158-L159 (as recorded on 2026-07-24). At the current HEAD commit, does ADR.md#L158-L159 still contain the rule's text? Answer in exactly the form 'verdict: fresh' or 'verdict: stale', and quote the distinctive ADR identifier that appears on the line where the rule's own words ('new hot-loop tool must be added') live today.",
       "ground_truth": [
         "verdict: stale",
         "ADR-010"
