@@ -6,10 +6,11 @@
 //
 // Two extraction halves feed the join:
 //
-//   - Server side: internal/analysis/routes.Extract (net/http, chi, gin,
-//     echo route registrations) — reused unchanged, since it already
-//     resolves method + path + handler + file:line for every fauxtown
-//     language routes.Extract supports.
+//   - Server side: internal/analysis/routes.Extract — AST-based for Go
+//     (net/http, chi, gin, echo, gorilla/mux chains), regex-based for
+//     JS/TS/Python — reused unchanged from this package's side, since it
+//     already resolves method + path + handler + file:line for every
+//     fauxtown language routes.Extract supports.
 //   - Client side: ExtractClientCalls in this package — Go only for VB-30
 //     (vision 02 §4.7: edge kinds grow one at a time, and so does language
 //     coverage for a brand-new one), parsed with go/parser and walked as
@@ -19,9 +20,17 @@
 //     http.NewRequest / http.NewRequestWithContext / http.Get / http.Post /
 //     http.Head / http.PostForm call sites. The method argument accepts a
 //     quoted literal ("GET") or a net/http Method* constant
-//     (http.MethodGet); the URL argument accepts a string literal or an
-//     inline fmt.Sprintf("template", args...) call, whose %-verbs
-//     NormalizeTemplate collapses to "{}".
+//     (http.MethodGet); the URL argument accepts a string literal, an
+//     inline fmt.Sprintf/fmt.Sprint call, a package-level string const, a
+//     path.Join/url.JoinPath call, a `*url.URL.String()` call whose
+//     receiver's .Path field was built earlier in the SAME function
+//     (bounded intra-function dataflow — templateFromExpr's doc comment),
+//     or a local variable resolved back to its own most recent assignment
+//     of one of those shapes. Any %-verb, and any value substituted via a
+//     resolved-but-unknown fragment (a parameter, a field access),
+//     collapses to "{}" — an expression this doesn't recognize at all
+//     resolves nothing rather than guessing (precision over recall): no
+//     ClientCall is produced for it.
 //
 // NormalizeTemplate collapses `:param` (segment-anchored), `{param}`, a
 // `*wildcard` segment (anywhere in the path, not only the last one), and
@@ -52,6 +61,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	stdpath "path"
 	"regexp"
 	"sort"
 	"strconv"
@@ -418,10 +428,14 @@ func ExtractClientCalls(lang, path string, src []byte) []ClientCall {
 		return nil
 	}
 
+	consts := collectStringConsts(file)
+
 	var ranges []funcRange
+	var decls []*ast.FuncDecl
 	ast.Inspect(file, func(n ast.Node) bool {
 		if fd, ok := n.(*ast.FuncDecl); ok {
 			ranges = append(ranges, funcRange{name: fd.Name.Name, start: fd.Pos(), end: fd.End()})
+			decls = append(decls, fd)
 		}
 		return true
 	})
@@ -459,9 +473,10 @@ func ExtractClientCalls(lang, path string, src []byte) []ClientCall {
 		if pat.urlArg >= len(call.Args) {
 			return true
 		}
-		rawURL, template, ok := templateFromExpr(call.Args[pat.urlArg], src, fset)
+		fn := enclosingFuncDecl(decls, call.Pos())
+		rawURL, template, ok := templateFromExpr(call.Args[pat.urlArg], fn, consts, src, fset)
 		if !ok {
-			return true // URL expression not resolvable to a literal/Sprintf template — skip
+			return true // URL expression not resolvable — skip rather than guess
 		}
 
 		out = append(out, ClientCall{
@@ -502,6 +517,19 @@ func enclosingFuncName(ranges []funcRange, pos token.Pos) string {
 	return ""
 }
 
+// enclosingFuncDecl returns the *ast.FuncDecl whose range contains pos, or
+// nil (a call at file scope, or inside a FuncLit closure — the bounded
+// dataflow resolver below only looks within a named enclosing function,
+// same non-goal as enclosingFuncName's own closure carve-out).
+func enclosingFuncDecl(decls []*ast.FuncDecl, pos token.Pos) *ast.FuncDecl {
+	for _, d := range decls {
+		if pos >= d.Pos() && pos < d.End() {
+			return d
+		}
+	}
+	return nil
+}
+
 // methodFromExpr resolves a call argument to an HTTP method string: a
 // quoted string literal ("GET"), or a net/http Method* constant referenced
 // as http.MethodGet (see httpMethodConstants's doc comment for the
@@ -525,47 +553,414 @@ func methodFromExpr(e ast.Expr) (string, bool) {
 	return "", false
 }
 
-// templateFromExpr resolves a client call's URL argument expression to a
-// (rawText, template) pair:
-//
-//   - A plain string literal is used as-is.
-//   - An inline fmt.Sprintf("template", args...) call resolves to its own
-//     first argument (the format-string literal) — the args themselves
-//     become printf verbs NormalizeTemplate collapses to "{}".
-//
-// rawText is the expression's exact original source text (ClientCall.RawURL,
-// debugging/docs only, never used for extraction logic). Any other
-// expression shape (a bare identifier, a multi-line concat, a non-Sprintf
-// helper) is out of scope for VB-30 and returns ("", "", false) rather than
-// guessing.
-func templateFromExpr(e ast.Expr, src []byte, fset *token.FileSet) (raw string, template string, ok bool) {
+// maxResolveDepth bounds the client-URL resolver's recursion — a small,
+// bounded intra-function dataflow step (chasing a handful of local
+// assignments and nested helper calls), never a general SSA/points-to
+// pass. Generous enough for any realistic call chain (Ident -> Sprintf ->
+// arg -> …) while still guaranteeing termination on adversarial input.
+const maxResolveDepth = 8
+
+// templateFromExpr resolves a client call's URL argument expression e to a
+// (rawText, template) pair. rawText is e's own exact original source text
+// (ClientCall.RawURL, debugging/docs only, never used for extraction
+// logic) — captured once, regardless of how deep the resolution below
+// goes. See clientResolver.resolveTemplate for the resolvable shapes.
+// Anything else returns ("", "", false) — precision over recall: no
+// ClientCall is produced rather than a guessed template.
+func templateFromExpr(e ast.Expr, fn *ast.FuncDecl, consts map[string]string, src []byte, fset *token.FileSet) (raw string, template string, ok bool) {
+	r := &clientResolver{fn: fn, consts: consts, src: src, fset: fset}
+	template, ok = r.resolveTemplate(e, 0)
+	if !ok {
+		return "", "", false
+	}
+	return sourceText(src, fset, e), template, true
+}
+
+// clientResolver resolves a client call's URL argument expression within
+// ONE enclosing function — the "bounded intra-function dataflow" VB-31's
+// M8 fix calls for: local assignments, fmt.Sprintf/fmt.Sprint, constant
+// concatenation, url.URL{Path:…}-style field assignment, path.Join /
+// url.JoinPath, and *url.URL.String() when that receiver's .Path field was
+// built earlier in the SAME function. No cross-function, no branch/loop
+// modeling, no go/types — just enough to see through the handful of
+// idioms real Go client code writes to build a URL.
+type clientResolver struct {
+	fn     *ast.FuncDecl // enclosing function; nil disables Ident/`.String()` dataflow (no scope to search)
+	consts map[string]string
+	src    []byte
+	fset   *token.FileSet
+}
+
+// resolveTemplate resolves e as the WHOLE url argument (or a variable's
+// RHS while chasing an Ident): the shapes it accepts either fully resolve
+// or make it fail outright (false) — never a "{}"-padded guess. Compare
+// resolveFragment, used for a sub-piece already known to sit inside a
+// larger recognized construct (a Join/Sprint argument, one side of a
+// concatenation), which always succeeds.
+func (r *clientResolver) resolveTemplate(e ast.Expr, depth int) (string, bool) {
+	if depth > maxResolveDepth {
+		return "", false
+	}
 	switch v := e.(type) {
+	case *ast.ParenExpr:
+		return r.resolveTemplate(v.X, depth+1)
 	case *ast.BasicLit:
 		if v.Kind == token.STRING {
 			if s, err := strconv.Unquote(v.Value); err == nil {
-				return sourceText(src, fset, e), s, true
+				return s, true
 			}
 		}
-	case *ast.CallExpr:
-		sel, ok := v.Fun.(*ast.SelectorExpr)
+		return "", false
+	case *ast.Ident:
+		if s, ok := r.consts[v.Name]; ok {
+			return s, true
+		}
+		if r.fn == nil {
+			return "", false
+		}
+		rhs, ok := findLastAssign(r.fn, v.Name, v.Pos())
 		if !ok {
-			return "", "", false
+			return "", false // unresolved — no edge, rather than guess
 		}
-		ident, ok := sel.X.(*ast.Ident)
-		if !ok || ident.Name != "fmt" || sel.Sel.Name != "Sprintf" || len(v.Args) == 0 {
-			return "", "", false
+		return r.resolveTemplate(rhs, depth+1)
+	case *ast.BinaryExpr:
+		if v.Op != token.ADD {
+			return "", false
 		}
-		lit, ok := v.Args[0].(*ast.BasicLit)
-		if !ok || lit.Kind != token.STRING {
-			return "", "", false
+		// A bare top-level concatenation is a much weaker signal than a
+		// recognized wrapping call (Sprintf/Sprint/Join all commit to
+		// "this IS URL-building" before any fragment gets wildcarded) — so
+		// require at least ONE side to resolve to genuine literal content;
+		// two placeholders glued together (e.g. a test helper's
+		// `ts.URL + path`, neither side statically known) is not
+		// distinguishable from arbitrary, unrelated string arithmetic, and
+		// precision wins the tie: no edge.
+		lhs, lok := r.resolveFragmentOk(v.X, depth+1)
+		rhs, rok := r.resolveFragmentOk(v.Y, depth+1)
+		if !lok && !rok {
+			return "", false
 		}
-		s, err := strconv.Unquote(lit.Value)
-		if err != nil {
-			return "", "", false
-		}
-		return sourceText(src, fset, e), s, true
+		return lhs + rhs, true
+	case *ast.CallExpr:
+		return r.resolveCall(v, depth)
 	}
-	return "", "", false
+	return "", false
+}
+
+// resolveFragment resolves e as ONE piece of an already-recognized
+// URL-building construct — always succeeds: a literal/const resolves to
+// its value, a real (but statically unknown) value — a parameter, a field
+// access — normalizes to the placeholder "{}" (parity with a printf verb),
+// and anything else falls back to resolveTemplate, itself defaulting to
+// "{}" on failure.
+func (r *clientResolver) resolveFragment(e ast.Expr, depth int) string {
+	s, _ := r.resolveFragmentOk(e, depth)
+	return s
+}
+
+// resolveFragmentOk is resolveFragment plus whether the result reflects
+// genuine literal content (true) rather than a placeholder fallback
+// (false) — used by resolveTemplate's bare-concatenation case to tell
+// "a real base plus a substituted value" from "two unknowns glued
+// together".
+func (r *clientResolver) resolveFragmentOk(e ast.Expr, depth int) (string, bool) {
+	switch v := e.(type) {
+	case *ast.ParenExpr:
+		return r.resolveFragmentOk(v.X, depth)
+	case *ast.BasicLit:
+		if v.Kind == token.STRING {
+			if s, err := strconv.Unquote(v.Value); err == nil {
+				return s, true
+			}
+		}
+		return "{}", false
+	case *ast.BinaryExpr:
+		if v.Op == token.ADD {
+			l, lok := r.resolveFragmentOk(v.X, depth)
+			rr, rok := r.resolveFragmentOk(v.Y, depth)
+			return l + rr, lok || rok
+		}
+		return "{}", false
+	case *ast.Ident:
+		if s, ok := r.consts[v.Name]; ok {
+			return s, true
+		}
+		return "{}", false
+	case *ast.SelectorExpr:
+		return "{}", false
+	default:
+		if depth < maxResolveDepth {
+			if s, ok := r.resolveTemplate(e, depth+1); ok {
+				return s, true
+			}
+		}
+		return "{}", false
+	}
+}
+
+// resolveCall resolves a CallExpr URL argument: fmt.Sprintf, fmt.Sprint,
+// path.Join, url.JoinPath (package function or *url.URL method), or a
+// `.String()` call.
+func (r *clientResolver) resolveCall(call *ast.CallExpr, depth int) (string, bool) {
+	sel, ok := call.Fun.(*ast.SelectorExpr)
+	if !ok {
+		return "", false
+	}
+	pkgIdent, isIdent := sel.X.(*ast.Ident)
+
+	switch {
+	case isIdent && pkgIdent.Name == "fmt" && sel.Sel.Name == "Sprintf":
+		return r.resolveSprintf(call)
+	case isIdent && pkgIdent.Name == "fmt" && sel.Sel.Name == "Sprint":
+		var b strings.Builder
+		for _, a := range call.Args {
+			b.WriteString(r.resolveFragment(a, depth+1))
+		}
+		return b.String(), true
+	case isIdent && pkgIdent.Name == "path" && sel.Sel.Name == "Join":
+		return r.resolveJoin(call.Args, "", depth), true
+	case sel.Sel.Name == "JoinPath":
+		// url.JoinPath(base, elem...) (package func) or u.JoinPath(elem...)
+		// (*url.URL method) — either way every argument is a path element.
+		return r.resolveJoin(call.Args, "", depth), true
+	case sel.Sel.Name == "String" && len(call.Args) == 0:
+		return r.resolveStringer(sel.X, depth)
+	}
+	return "", false
+}
+
+// leadingVerbRe matches a printf verb anchored at a string's very start.
+var leadingVerbRe = regexp.MustCompile(`^%[-+ 0#]*[0-9]*(?:\.[0-9]+)?[a-zA-Z]`)
+
+// resolveSprintf resolves fmt.Sprintf(format, args...): format must be a
+// plain string literal (a computed format string is out of scope — the
+// verbs it contains matter, not the argument values, which NormalizeTemplate
+// collapses uniformly later). One exception: a format beginning with a
+// printf verb whose paired argument is itself a `.String()` call is
+// idiomatic Go for building on top of a *url.URL/fmt.Stringer base (e.g.
+// fmt.Sprintf("%ssystem/functions", base.URL.String())) — such a base
+// conventionally supplies its own trailing "/", so that leading verb is
+// replaced with a path-root marker rather than the ordinary "{}"
+// placeholder (which would wrongly claim a real path segment sits at the
+// template's start). Anchored at position 0 only, mirroring
+// NormalizeTemplate's own scheme-stripping anchor rule — a verb appearing
+// later in the format is an ordinary path-segment placeholder.
+func (r *clientResolver) resolveSprintf(call *ast.CallExpr) (string, bool) {
+	if len(call.Args) == 0 {
+		return "", false
+	}
+	lit, ok := call.Args[0].(*ast.BasicLit)
+	if !ok || lit.Kind != token.STRING {
+		return "", false
+	}
+	format, err := strconv.Unquote(lit.Value)
+	if err != nil {
+		return "", false
+	}
+	if loc := leadingVerbRe.FindStringIndex(format); loc != nil && len(call.Args) > 1 && isStringerCall(call.Args[1]) {
+		format = "/" + format[loc[1]:]
+	}
+	return format, true
+}
+
+// isStringerCall reports whether e is a zero-argument `.String()` call —
+// the shape resolveSprintf treats as evidence a leading printf verb
+// interpolates a URL/host base rather than an ordinary path segment.
+func isStringerCall(e ast.Expr) bool {
+	call, ok := e.(*ast.CallExpr)
+	if !ok || len(call.Args) != 0 {
+		return false
+	}
+	sel, ok := call.Fun.(*ast.SelectorExpr)
+	return ok && sel.Sel.Name == "String"
+}
+
+// resolveJoin folds the arguments of a path.Join/url.JoinPath call into one
+// joined path via the real stdlib path.Join (so "clean" duplicate-slash /
+// dot-segment behavior matches exactly what the resolved code would do at
+// runtime). selfRef, when non-empty, is the exact source text of a
+// self-referential accumulator argument to drop rather than fold (see
+// resolveStringer): `X.Path = path.Join(X.Path, "literal")` is idiomatic
+// "extend the existing path", and the pre-existing base is not a
+// substituted value worth wildcarding — it contributes nothing, not "{}".
+func (r *clientResolver) resolveJoin(args []ast.Expr, selfRef string, depth int) string {
+	var parts []string
+	for _, a := range args {
+		if selfRef != "" && sourceText(r.src, r.fset, a) == selfRef {
+			continue
+		}
+		parts = append(parts, r.resolveFragment(a, depth+1))
+	}
+	return stdpath.Join(parts...)
+}
+
+// resolveStringer resolves a `<recv>.String()` call by finding the LAST
+// assignment to `<recv>.Path` textually preceding it in the SAME function
+// (findLastFieldAssign) and folding that assignment's RHS — the
+// "*url.URL.String() when Path/JoinPath is visible in the function" shape.
+// Falls back to a `recv := url.URL{Path: "…"}` composite-literal
+// initializer when no field assignment is found. When neither is visible,
+// this resolves nothing (false) rather than guessing what the receiver
+// holds.
+func (r *clientResolver) resolveStringer(recv ast.Expr, depth int) (string, bool) {
+	if r.fn == nil {
+		return "", false
+	}
+	recvText := sourceText(r.src, r.fset, recv)
+	if recvText == "" {
+		return "", false
+	}
+	if rhs, ok := findLastFieldAssign(r.fn, recvText, "Path", recv.Pos(), r.src, r.fset); ok {
+		return r.resolvePathAssignRHS(rhs, recvText+".Path", depth+1), true
+	}
+	if id, ok := recv.(*ast.Ident); ok {
+		if init, ok := findLastAssign(r.fn, id.Name, recv.Pos()); ok {
+			if lit, ok := init.(*ast.CompositeLit); ok {
+				if pathExpr, ok := compositeLitField(lit, "Path"); ok {
+					return r.resolvePathAssignRHS(pathExpr, "", depth+1), true
+				}
+			}
+		}
+	}
+	return "", false
+}
+
+// compositeLitField returns the value expression keyed by field in a
+// keyed composite literal (e.g. `url.URL{Path: "…"}`), false if absent.
+func compositeLitField(lit *ast.CompositeLit, field string) (ast.Expr, bool) {
+	for _, elt := range lit.Elts {
+		kv, ok := elt.(*ast.KeyValueExpr)
+		if !ok {
+			continue
+		}
+		if key, ok := kv.Key.(*ast.Ident); ok && key.Name == field {
+			return kv.Value, true
+		}
+	}
+	return nil, false
+}
+
+// resolvePathAssignRHS folds the RHS of an `X.Path = …` assignment found by
+// resolveStringer, understanding path.Join/url.JoinPath specially (so the
+// selfRef accumulator-drop rule applies to their arguments) and falling
+// back to resolveFragment (with the same selfRef check) for everything
+// else — a bare `X.Path = "literal"` or `X.Path = X.Path + "/literal"`.
+func (r *clientResolver) resolvePathAssignRHS(e ast.Expr, selfRef string, depth int) string {
+	if depth > maxResolveDepth {
+		return "{}"
+	}
+	switch v := e.(type) {
+	case *ast.ParenExpr:
+		return r.resolvePathAssignRHS(v.X, selfRef, depth)
+	case *ast.BinaryExpr:
+		if v.Op == token.ADD {
+			return r.resolvePathAssignRHS(v.X, selfRef, depth) + r.resolvePathAssignRHS(v.Y, selfRef, depth)
+		}
+	case *ast.CallExpr:
+		if sel, ok := v.Fun.(*ast.SelectorExpr); ok {
+			if id, ok := sel.X.(*ast.Ident); ok && id.Name == "path" && sel.Sel.Name == "Join" {
+				return r.resolveJoin(v.Args, selfRef, depth)
+			}
+			if sel.Sel.Name == "JoinPath" {
+				return r.resolveJoin(v.Args, selfRef, depth)
+			}
+		}
+	}
+	if sourceText(r.src, r.fset, e) == selfRef {
+		return ""
+	}
+	return r.resolveFragment(e, depth)
+}
+
+// findLastAssign returns the RHS of the LAST simple (`len(Lhs)==len(Rhs)`)
+// assignment to the identifier name, textually before pos, within fn's
+// body — the bounded, single-hop "resolve a local variable back to its own
+// definition" step. false when no such assignment exists (name is a
+// parameter that's never reassigned, or genuinely unresolvable).
+func findLastAssign(fn *ast.FuncDecl, name string, before token.Pos) (ast.Expr, bool) {
+	if fn.Body == nil {
+		return nil, false
+	}
+	var best ast.Expr
+	bestPos := token.NoPos
+	ast.Inspect(fn.Body, func(n ast.Node) bool {
+		as, ok := n.(*ast.AssignStmt)
+		if !ok || as.Pos() >= before || len(as.Lhs) != len(as.Rhs) {
+			return true
+		}
+		for i, lhs := range as.Lhs {
+			id, ok := lhs.(*ast.Ident)
+			if ok && id.Name == name && as.Pos() >= bestPos {
+				bestPos = as.Pos()
+				best = as.Rhs[i]
+			}
+		}
+		return true
+	})
+	return best, best != nil
+}
+
+// findLastFieldAssign returns the RHS of the LAST assignment to
+// `<recvText>.<field>` (matched by exact source text of the assignment's
+// own selector receiver) textually before pos, within fn's body.
+func findLastFieldAssign(fn *ast.FuncDecl, recvText, field string, before token.Pos, src []byte, fset *token.FileSet) (ast.Expr, bool) {
+	if fn.Body == nil {
+		return nil, false
+	}
+	var best ast.Expr
+	bestPos := token.NoPos
+	ast.Inspect(fn.Body, func(n ast.Node) bool {
+		as, ok := n.(*ast.AssignStmt)
+		if !ok || as.Pos() >= before || len(as.Lhs) != 1 || len(as.Rhs) != 1 {
+			return true
+		}
+		sel, ok := as.Lhs[0].(*ast.SelectorExpr)
+		if !ok || sel.Sel.Name != field {
+			return true
+		}
+		if sourceText(src, fset, sel.X) != recvText {
+			return true
+		}
+		if as.Pos() >= bestPos {
+			bestPos = as.Pos()
+			best = as.Rhs[0]
+		}
+		return true
+	})
+	return best, best != nil
+}
+
+// collectStringConsts gathers every package-level `const Name = "literal"`
+// declaration in file — used to fold a URL template's string concatenation
+// or constant reference (e.g. a shared path-segment const). Consts defined
+// via anything other than a plain string literal are not resolved.
+func collectStringConsts(file *ast.File) map[string]string {
+	out := map[string]string{}
+	for _, decl := range file.Decls {
+		gd, ok := decl.(*ast.GenDecl)
+		if !ok || gd.Tok != token.CONST {
+			continue
+		}
+		for _, spec := range gd.Specs {
+			vs, ok := spec.(*ast.ValueSpec)
+			if !ok {
+				continue
+			}
+			for i, name := range vs.Names {
+				if i >= len(vs.Values) {
+					continue
+				}
+				lit, ok := vs.Values[i].(*ast.BasicLit)
+				if !ok || lit.Kind != token.STRING {
+					continue
+				}
+				if s, err := strconv.Unquote(lit.Value); err == nil {
+					out[name.Name] = s
+				}
+			}
+		}
+	}
+	return out
 }
 
 // sourceText returns e's exact original source text via its recorded file
