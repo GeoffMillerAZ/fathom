@@ -107,6 +107,20 @@ type Task struct {
 	OracleMinTrials     string
 	OracleCriterion     string
 	OracleAcceptVerdict string
+
+	// SelfSkipped is set externally by AnnotateSelfSkip — NEVER by
+	// ParseMarkdownPlan, there is no `{self_skipped: …}` annotation key.
+	// O56 (docs/dogfood-observations.md / .fathom/observations.md): a
+	// worker told its row was present-but-untested added `skip_test: true`
+	// to its OWN row "to make the automated verifier pass cleanly." An
+	// agent may not grade its own row: when a git-based comparison finds
+	// this row's skip_test/skip was ADDED in the same edit (working tree
+	// vs HEAD) or the same commit (HEAD vs its first parent) that flipped
+	// its box to [x], AnnotateSelfSkip sets this true and verifyTask fails
+	// the row outright — self-skipped — regardless of what the skip:
+	// reason says. A skip that predates the claim (already present at the
+	// comparison point) leaves this false and the row stands.
+	SelfSkipped bool
 }
 
 // Expect is a task's acceptance contract. The zero value is the STRICTEST
@@ -429,15 +443,32 @@ func verifyTask(t Task, ev Evidence, files FileEvidence, contraBySymbol map[stri
 			}
 		}
 
-		// test_reaches (static). When ev additionally implements
-		// DetailedEvidence (ADR-021 §3), a path crossing a typed
+		// test_reaches (static) — or, when the row claims skip_test, the
+		// skip_test escape contract itself (O56). A skip_test exemption is
+		// never free: it requires a `skip:` reason (a bare skip_test is
+		// refused as skip-without-reason, same as an absent contract would
+		// be) AND it may not be self-graded (a skip AnnotateSelfSkip found
+		// was added in the same edit/commit that claims the row done is
+		// refused as self-skipped, regardless of what the reason says —
+		// the agent may not grade its own row). When ev additionally
+		// implements DetailedEvidence (ADR-021 §3), a path crossing a typed
 		// interface-dispatch edge counts as reached — strictly better
 		// evidence than the old blanket refusal for an ambiguous method
 		// name — and is labeled distinctly in the pass detail.
-		if !e.SkipTest {
-			if len(matches) == 0 {
-				na("test_reaches", "symbol absent")
-			} else if de, ok := ev.(DetailedEvidence); ok {
+		switch {
+		case e.SkipTest && e.SkipReason == "":
+			fail("skip_test", "skip_test: true with no skip: reason — bare skips are refused", "skip-without-reason")
+		case e.SkipTest && t.SelfSkipped:
+			fail("skip_test", fmt.Sprintf(
+				"skip_test/skip was added in the same edit or commit that claims this row done — an agent may not grade its own row (self-skipped); skip: %q",
+				e.SkipReason,
+			), "self-skipped")
+		case e.SkipTest:
+			pass("skip_test", fmt.Sprintf("test-reach requirement waived: %s", e.SkipReason))
+		case len(matches) == 0:
+			na("test_reaches", "symbol absent")
+		default:
+			if de, ok := ev.(DetailedEvidence); ok {
 				if details := de.TestReachesDetail(querySym); len(details) > 0 {
 					pass("test_reaches", testReachesDetail(details))
 				} else {

@@ -6,11 +6,15 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/statedir"
 )
 
 // TestDefaultStorePathNeverTheCwd pins PC-15 / I31: inside a git repo the
-// default lands under <toplevel>/workspace even from a subdirectory; outside
-// any repo it lands under ~/.fathom; it is never the bare cwd-relative
+// store default lands under <toplevel>/workspace even from a
+// subdirectory; the call-log default lands under the repo's state
+// directory (O63 item 5 — outside the repo tree by default); outside any
+// repo both land under ~/.fathom; neither is ever the bare cwd-relative
 // literal (O11/O12).
 func TestDefaultStorePathNeverTheCwd(t *testing.T) {
 	home := t.TempDir()
@@ -37,7 +41,7 @@ func TestDefaultStorePathNeverTheCwd(t *testing.T) {
 	if got := defaultStorePath(); got != wantStore {
 		t.Errorf("in <repo>/deploy: defaultStorePath() = %q, want %q", got, wantStore)
 	}
-	wantLog := filepath.Join(repo, "workspace", "logs", "mcp-calls.jsonl")
+	wantLog := filepath.Join(statedir.Resolve(repo), "logs", "mcp-calls.jsonl")
 	if got := defaultCallLogPath(); got != wantLog {
 		t.Errorf("in <repo>/deploy: defaultCallLogPath() = %q, want %q", got, wantLog)
 	}

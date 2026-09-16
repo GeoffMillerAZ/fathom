@@ -26,6 +26,7 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 				"service":       map[string]any{"type": "string", "description": "Service / repo identifier"},
 				"concern":       map[string]any{"type": "string", "description": "Optional concern to scope contradiction detection"},
 				"plan_markdown": map[string]any{"type": "string", "description": "Markdown checklist alternative to tasks: each '- [ ] title [SPEC-ID] {symbol: Foo, package: dir/of/foo, reachable_from: Bar, min_tier: verified}' line becomes a task. Annotations must sit on the checkbox line itself."},
+				"plan_path":     map[string]any{"type": "string", "description": "Repo-relative path plan_markdown was read from. Optional; when given and the service's recorded corpus root is a real git checkout, a claimed row's skip_test is checked against git history — a skip added in the same edit/commit that claims the row done is refused as self-skipped (O56), never graded by the agent's own hand."},
 				"tasks": map[string]any{
 					"type":        "array",
 					"description": "Plan tasks with acceptance contracts",
@@ -57,6 +58,7 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 			Service      string `json:"service"`
 			Concern      string `json:"concern"`
 			PlanMarkdown string `json:"plan_markdown"`
+			PlanPath     string `json:"plan_path"`
 			Tasks        []struct {
 				ID                 string   `json:"id"`
 				Title              string   `json:"title"`
@@ -115,6 +117,16 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 		var plan verify.Plan
 		if p.PlanMarkdown != "" && len(p.Tasks) == 0 {
 			plan = verify.ParseMarkdownPlan(p.Service, []byte(p.PlanMarkdown))
+			// O56: self-skip needs one prior plan version to compare
+			// against — only available when the caller names the file
+			// (plan_path) AND the service's recorded corpus root is a real
+			// git checkout on this filesystem. Best-effort; see selfskip.go.
+			if p.PlanPath != "" {
+				if repoPath, _, found, merr := backend.ServiceMeta(ctx, p.Service); merr == nil && found && repoPath != "" {
+					prior := selfSkipPriorPlan(repoPath, p.PlanPath, p.Service, []byte(p.PlanMarkdown))
+					plan = verify.AnnotateSelfSkip(plan, prior)
+				}
+			}
 		} else {
 			plan = verify.Plan{Service: p.Service}
 			for _, t := range p.Tasks {

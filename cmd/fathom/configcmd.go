@@ -144,6 +144,7 @@ func printConfigText(w io.Writer, loaded config.Loaded, profile config.Profile, 
 	}
 	printDaemonRow(w, "auto_refresh", autoRefresh, loaded.Provenance["daemon.auto_refresh"], explain)
 	printDaemonRow(w, "default_profile", loaded.Config.Daemon.DefaultProfile, loaded.Provenance["daemon.default_profile"], explain)
+	printDaemonRow(w, "state_dir", loaded.Config.Daemon.StateDir, loaded.Provenance["daemon.state_dir"], explain)
 }
 
 // SourceDefaultLabel is what --explain prints for a key no layer set.
@@ -188,6 +189,7 @@ func printConfigJSON(w io.Writer, loaded config.Loaded, profile config.Profile, 
 		"addr":            loaded.Config.Daemon.Addr,
 		"call_log":        loaded.Config.Daemon.CallLog,
 		"default_profile": loaded.Config.Daemon.DefaultProfile,
+		"state_dir":       loaded.Config.Daemon.StateDir,
 	}
 	if loaded.Config.Daemon.AutoRefresh != nil {
 		daemonMap["auto_refresh"] = *loaded.Config.Daemon.AutoRefresh

@@ -90,7 +90,9 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 
 	// Session windows (design point 2, docs/vision/28-receipts.md §4): a
 	// mechanical {session_id, cwd, service, started} row under
-	// workspace/logs/sessions.jsonl — SubagentStart looks its parent's
+	// logs/sessions.jsonl in the repo's state directory (statedir.Resolve
+	// — outside the repo tree by default, O63 item 5) — SubagentStart
+	// looks its parent's
 	// start up here (subagentDiscoveries), and the session-end hook looks
 	// its OWN start up here (sessionEndPointers). Best-effort: the service
 	// resolution reuses the same daemon-backed lookup the advisory events

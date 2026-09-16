@@ -42,10 +42,12 @@ import (
 //
 // RC-56 (vision 28 §4, "every discovery action counts"): alongside the
 // beat, the observer also records what the call FOUND — recordObservedDiscoveryIfAny
-// appends a pointer row to workspace/logs/observed-discoveries.jsonl so a
-// planner that only grepped or read still leaves its workers a brief
-// (gatherDiscoveryPointers, discoveries.go). Same local-only, zero-daemon
-// discipline; armOff never gates it either, for the same reason.
+// appends a pointer row to logs/observed-discoveries.jsonl under the repo's
+// state directory (statedir.Resolve — outside the repo tree by default,
+// O63 item 5) so a planner that only grepped or read still leaves its
+// workers a brief (gatherDiscoveryPointers, discoveries.go). Same
+// local-only, zero-daemon discipline; armOff never gates it either, for
+// the same reason.
 func cmdEditHookPreDiscovery(in harness.HookInput, armOff bool) int {
 	if in.Tool == harness.ToolDiscoveryRead && fileInEditSet(in.FilePath, in.Cwd, in.SessionID) {
 		return 0 // verification read of a just-edited file — excluded, not discovery

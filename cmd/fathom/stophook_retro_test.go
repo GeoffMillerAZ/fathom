@@ -9,6 +9,7 @@ import (
 	"time"
 
 	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
+	"github.com/geoffmilleraz/fathom/internal/statedir"
 )
 
 // TestStopHookLandsRetroArtifact pins IT-13: the Stop hook mechanically
@@ -51,7 +52,7 @@ func TestStopHookLandsRetroArtifact(t *testing.T) {
 	if len(name) > 8 {
 		name = name[:8]
 	}
-	artifact := filepath.Join(repo, "workspace", "artifacts", "retros", name+".json")
+	artifact := filepath.Join(statedir.Resolve(repo), "artifacts", "retros", name+".json")
 	data, err := os.ReadFile(artifact)
 	if err != nil {
 		t.Fatalf("expected a retro artifact at %s: %v", artifact, err)
@@ -93,7 +94,7 @@ func TestStopHookRetroFailureNeverBreaksHook(t *testing.T) {
 	if code := cmdStopHook(nil, &out, &errb); code != 0 {
 		t.Fatalf("a hook with nothing to retro must still exit 0: %d, %s", code, errb.String())
 	}
-	if _, err := os.Stat(filepath.Join(repo, "workspace", "artifacts", "retros")); err == nil {
+	if _, err := os.Stat(filepath.Join(statedir.Resolve(repo), "artifacts", "retros")); err == nil {
 		t.Error("no beats existed for this project — no retro artifact should have been written")
 	}
 }

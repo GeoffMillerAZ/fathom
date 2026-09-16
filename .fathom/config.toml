@@ -1,0 +1,14 @@
+# fathom's own project config.toml (docs/plans/config-experience.md CF-1).
+#
+# O63 item 5 / internal/statedir: runtime state (session logs, observed-
+# discovery logs, retro/narrate artifacts, the receipts log, MCP call
+# logs) defaults to OUTSIDE a repository's own tree
+# ($XDG_STATE_HOME/fathom/<repo-id>/) so a fresh adopter's `git status`
+# never shows hook output. fathom's own repository is the one deliberate
+# exception: its Taskfile and docs (docs/usage.md's workspace/ convention)
+# already treat workspace/ as the gitignored home for every fathom
+# artifact, including its own call log (doctor.go's isFathomSourceTree
+# self-hosting checks read it there). Restoring the pre-O63 in-tree
+# location here keeps that dev loop working unchanged.
+[daemon]
+state_dir = "workspace"

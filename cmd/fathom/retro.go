@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/custodian"
+	"github.com/geoffmilleraz/fathom/internal/statedir"
 )
 
 type retroBeat struct {
@@ -62,7 +63,7 @@ func cmdRetro(args []string, stdout, stderr io.Writer) int {
 	session := fs.String("session", "", "session id (default: the most recent stamped session for --project)")
 	project := fs.String("project", ".", "project root")
 	asJSON := fs.Bool("json", false, "emit JSON instead of text")
-	write := fs.Bool("write", false, "also write the retro under workspace/artifacts/retros/")
+	write := fs.Bool("write", false, "also write the retro under artifacts/retros/ in the project's state directory (outside the repo tree by default)")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
@@ -294,7 +295,7 @@ func ledgerArmFor(sid string) string {
 }
 
 func writeRetroArtifact(root string, m retroModel) (string, error) {
-	dir := filepath.Join(root, "workspace", "artifacts", "retros")
+	dir := filepath.Join(statedir.Resolve(root), "artifacts", "retros")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", err
 	}

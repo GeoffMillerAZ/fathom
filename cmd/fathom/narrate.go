@@ -10,14 +10,17 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/buildinfo"
+	"github.com/geoffmilleraz/fathom/internal/statedir"
 )
 
 // Narrate mode (vision 14 §6, plan IO-21/22): the enhanced-understanding
 // dial — explicitly costly, auto-expiring, off by default. While active,
 // the hooks append STORY ROWS: per-intervention records (the rule served
 // and where; the verify catch and what it blocked; the guard note that
-// fired) to a per-repo JSONL under workspace/artifacts/narrate/. Story
-// rows are a LENS over mechanism-labeled events, never a source of truth
+// fired) to a per-repo JSONL under artifacts/narrate/ in the repo's state
+// directory (statedir.Resolve — outside the repo tree by default, O63
+// item 5). Story rows are a LENS over mechanism-labeled events, never a
+// source of truth
 // (law 14 candidate): nothing downstream — gates, metrics, bundles — may
 // consume them as evidence, and they never enter the research bundle.
 // The LLM weekly narrative is a later wave; v0 is capture only.
@@ -81,13 +84,15 @@ func narrateActive() bool {
 
 // recordStoryRow appends one story row while narrate is active. Best-effort
 // and silent, exactly like emitBeat — narration must never break a hook.
-// Rows land per-repo (workspace/artifacts/narrate/story-<date>.jsonl) so
-// they stay with the code they narrate and never leave the machine.
+// Rows land per-repo (artifacts/narrate/story-<date>.jsonl under projDir's
+// state directory — statedir.Resolve, outside the repo tree by default,
+// O63 item 5) so they stay with the code they narrate and never leave the
+// machine.
 func recordStoryRow(projDir, kind string, detail map[string]any) {
 	if !narrateActive() || projDir == "" {
 		return
 	}
-	dir := filepath.Join(projDir, "workspace", "artifacts", "narrate")
+	dir := filepath.Join(statedir.Resolve(projDir), "artifacts", "narrate")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return
 	}
@@ -161,7 +166,7 @@ func cmdNarrate(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintf(stderr, "error: %v\n", err)
 			return 1
 		}
-		fmt.Fprintln(stdout, "narrate: ON (story rows) — hooks now append per-intervention rows under workspace/artifacts/narrate/ in each active repo; expires by its bound, or `fathom narrate off` ends it early")
+		fmt.Fprintln(stdout, "narrate: ON (story rows) — hooks now append per-intervention rows under artifacts/narrate/ in each active repo's state directory (outside the repo tree by default); expires by its bound, or `fathom narrate off` ends it early")
 		return 0
 	case "off":
 		if path := narrateStatePath(); path != "" {

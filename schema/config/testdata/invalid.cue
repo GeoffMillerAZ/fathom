@@ -35,3 +35,11 @@ package config
 // 		model: "gpt-4o"
 // 	}
 // }
+//
+// 5. An unrecognised daemon.state_dir value (O63 item 5) — the only
+//    recognised value is "workspace" (the in-tree opt-out); anything else,
+//    including an absolute path, is rejected rather than silently
+//    misinterpreted:
+// bad5: #Config & {
+// 	daemon: state_dir: "/abs/path"
+// }

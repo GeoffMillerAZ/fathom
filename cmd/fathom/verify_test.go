@@ -69,7 +69,7 @@ func TestCmdVerify_Store_Pass(t *testing.T) {
 	}
 
 	// Plan: one claimed task for a symbol that exists.
-	plan := "- [x] Charge handler {symbol: Charge, skip_test: true}\n"
+	plan := "- [x] Charge handler {symbol: Charge, skip_test: true, skip: \"test fixture\"}\n"
 	pf := writeTempPlan(t, plan)
 
 	var out, errBuf bytes.Buffer
@@ -96,7 +96,7 @@ func TestCmdVerify_Store_GateFail(t *testing.T) {
 	}
 
 	// Claimed task for a non-existent symbol.
-	plan := "- [x] Missing ghost {symbol: GhostSymbol, skip_test: true}\n"
+	plan := "- [x] Missing ghost {symbol: GhostSymbol, skip_test: true, skip: \"test fixture\"}\n"
 	pf := writeTempPlan(t, plan)
 
 	var out, errBuf bytes.Buffer
@@ -130,7 +130,7 @@ func TestCmdVerify_Store_OpenTask_NoGate(t *testing.T) {
 	}
 
 	// Open task for a missing symbol — should not gate.
-	plan := "- [ ] Missing ghost {symbol: GhostSymbol, skip_test: true}\n"
+	plan := "- [ ] Missing ghost {symbol: GhostSymbol, skip_test: true, skip: \"test fixture\"}\n"
 	pf := writeTempPlan(t, plan)
 
 	var out, errBuf bytes.Buffer
@@ -199,7 +199,7 @@ func TestVerifyQuietPrintsFailingOnly(t *testing.T) {
 	}
 
 	// Passing plan: one claimed task for a symbol that exists.
-	passPlan := writeTempPlan(t, "- [x] Charge handler {symbol: Charge, skip_test: true}\n")
+	passPlan := writeTempPlan(t, "- [x] Charge handler {symbol: Charge, skip_test: true, skip: \"test fixture\"}\n")
 	var passOut, passErr bytes.Buffer
 	code = run([]string{
 		"verify", "--service", "payment-service",
@@ -217,8 +217,8 @@ func TestVerifyQuietPrintsFailingOnly(t *testing.T) {
 	}
 	// Failing plan: one passing task + one claimed task for a missing symbol.
 	failPlan := writeTempPlan(t, ""+
-		"- [x] Charge handler {symbol: Charge, skip_test: true}\n"+
-		"- [x] Missing ghost {symbol: GhostSymbol, skip_test: true}\n")
+		"- [x] Charge handler {symbol: Charge, skip_test: true, skip: \"test fixture\"}\n"+
+		"- [x] Missing ghost {symbol: GhostSymbol, skip_test: true, skip: \"test fixture\"}\n")
 	var failOut, failErr bytes.Buffer
 	code = run([]string{
 		"verify", "--service", "payment-service",
@@ -272,7 +272,7 @@ func TestCmdVerify_Store_JSON(t *testing.T) {
 		t.Fatalf("ingest failed: %s", ing.String())
 	}
 
-	plan := "- [x] Charge {symbol: Charge, skip_test: true}\n"
+	plan := "- [x] Charge {symbol: Charge, skip_test: true, skip: \"test fixture\"}\n"
 	pf := writeTempPlan(t, plan)
 
 	var out, errBuf bytes.Buffer
@@ -299,7 +299,7 @@ func TestCmdVerify_Store_JSON(t *testing.T) {
 // TestCmdVerify_OperationalError_BadStore: a non-existent store parent dir
 // causes client open to fail → exit 2.
 func TestCmdVerify_OperationalError_BadStore(t *testing.T) {
-	pf := writeTempPlan(t, "- [x] task {symbol: Foo, skip_test: true}\n")
+	pf := writeTempPlan(t, "- [x] task {symbol: Foo, skip_test: true, skip: \"test fixture\"}\n")
 	var out, errBuf bytes.Buffer
 	code := run([]string{
 		"verify", "--service", "svc",
@@ -422,7 +422,7 @@ func TestCmdVerify_HTTP_Pass(t *testing.T) {
 	defer ts.Close()
 
 	// Local plan: [x] claimed → Claimed=true locally
-	pf := writeTempPlan(t, "- [x] test task {symbol: Foo, skip_test: true}\n")
+	pf := writeTempPlan(t, "- [x] test task {symbol: Foo, skip_test: true, skip: \"test fixture\"}\n")
 
 	var out, errBuf bytes.Buffer
 	code := run([]string{
@@ -439,7 +439,7 @@ func TestCmdVerify_HTTP_GateFail(t *testing.T) {
 	ts := cannedVerifyServer(t, "fail", "claimed-but-absent", true)
 	defer ts.Close()
 
-	pf := writeTempPlan(t, "- [x] missing ghost {symbol: Ghost, skip_test: true}\n")
+	pf := writeTempPlan(t, "- [x] missing ghost {symbol: Ghost, skip_test: true, skip: \"test fixture\"}\n")
 
 	var out, errBuf bytes.Buffer
 	code := run([]string{
@@ -458,7 +458,7 @@ func TestCmdVerify_HTTP_FailNotGated_OpenTask(t *testing.T) {
 	ts := cannedVerifyServer(t, "fail", "claimed-but-absent", false)
 	defer ts.Close()
 
-	pf := writeTempPlan(t, "- [ ] missing ghost {symbol: Ghost, skip_test: true}\n")
+	pf := writeTempPlan(t, "- [ ] missing ghost {symbol: Ghost, skip_test: true, skip: \"test fixture\"}\n")
 
 	var out, errBuf bytes.Buffer
 	code := run([]string{
@@ -472,7 +472,7 @@ func TestCmdVerify_HTTP_FailNotGated_OpenTask(t *testing.T) {
 
 // TestCmdVerify_HTTP_OperationalError: daemon unreachable → exit 2 (fail-open).
 func TestCmdVerify_HTTP_OperationalError(t *testing.T) {
-	pf := writeTempPlan(t, "- [x] task {symbol: Foo, skip_test: true}\n")
+	pf := writeTempPlan(t, "- [x] task {symbol: Foo, skip_test: true, skip: \"test fixture\"}\n")
 	var out, errBuf bytes.Buffer
 	// Port 1 is unprivileged and almost certainly not listening.
 	code := run([]string{
@@ -731,7 +731,7 @@ func TestCmdVerify_Mutation_KilledScore_NeverFails(t *testing.T) {
 }
 
 func TestCmdVerify_Mutation_RequiresStore(t *testing.T) {
-	pf := writeTempPlan(t, "- [x] task {symbol: Widget, skip_test: true}\n")
+	pf := writeTempPlan(t, "- [x] task {symbol: Widget, skip_test: true, skip: \"test fixture\"}\n")
 	var out, errBuf bytes.Buffer
 	code := run([]string{
 		"verify", "--service", "svc", "--plan", pf,

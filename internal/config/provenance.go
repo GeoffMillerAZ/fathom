@@ -105,6 +105,7 @@ func mergeDaemonFields(d *Daemon, raw map[string]any, source Source, path string
 	set("addr", &d.Addr)
 	set("call_log", &d.CallLog)
 	set("default_profile", &d.DefaultProfile)
+	set("state_dir", &d.StateDir)
 
 	if v, ok := raw["auto_refresh"]; ok {
 		if b, ok := v.(bool); ok {

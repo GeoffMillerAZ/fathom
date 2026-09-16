@@ -333,8 +333,10 @@ stale derived data.
 
 `serve-http` appends one JSONL record per tool call (tool, service, group, surface,
 latency, error; `batch` sub-calls are logged individually with `via:"batch"`) to the
-`--call-log` path, default `workspace/logs/mcp-calls.jsonl`. The writer is injectable
-for testing.
+`--call-log` path, default `logs/mcp-calls.jsonl` under the repo's state directory
+(`internal/statedir`, O63 item 5) — outside the repo tree unless that repo's own
+`.fathom/config.toml` sets `[daemon] state_dir = "workspace"` (fathom's own repo does;
+see `docs/usage.md` §workspace/ convention). The writer is injectable for testing.
 
 ---
 

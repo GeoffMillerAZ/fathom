@@ -87,6 +87,10 @@ bad4: #Config & {
 		model: "gpt-4o"
 	}
 }`},
+		{"unrecognised daemon.state_dir value", `
+bad5: #Config & {
+	daemon: state_dir: "/abs/path"
+}`},
 	}
 
 	cctx := cuecontext.New()

@@ -42,6 +42,14 @@ is out of gate scope. Essentials:
   values containing commas). Doc-only rows: `skip_test: true` with a `skip:`
   reason naming the real acceptance evidence — never a fabricated `Test*`
   claim.
+- `skip_test: true` is never free (O56): a bare one with no `skip:` reason is
+  a grammar error (`skip-without-reason`), and a reasoned one on a `[x]` row
+  is still refused (`self-skipped`) when the `skip_test`/`skip` was added by
+  the SAME edit or commit that claimed the row done — an agent may not grade
+  its own row. `fathom verify` and `verify_plan` check both, against a
+  single bounded git read (working tree vs HEAD, or HEAD vs its first
+  parent — never `git log -L`/`git blame`); a skip that predates the claim
+  stands. Full spec: `docs/plans/README.md` §Self-skip.
 - Boxes flip to `[x]` only on proof:
   `fathom verify --service fathom --plan docs/plans/<plan>.md` —
   exit 0 verified; 1 claimed-unproven (fix the code or uncheck the box);

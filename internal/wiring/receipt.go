@@ -12,6 +12,13 @@ package wiring
 // Receipts are append-only, local, and never leave the machine (law 13).
 // They are pruned by COUNT, not by age, so an undo is always available for
 // the last N applies regardless of how long ago they happened.
+//
+// O63 item 5: the receipts log is fathom's own runtime state, not
+// something a subject repository should find in its working tree (a
+// wired bench arm's diff carried it as one of fourteen to sixteen
+// fathom-owned files an adopter would otherwise see). It lives under
+// receiptsPath(root) — internal/statedir.Resolve(root), outside the repo
+// by default — never a fixed root-relative join.
 
 import (
 	"bufio"
@@ -24,12 +31,21 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/buildinfo"
+	"github.com/geoffmilleraz/fathom/internal/statedir"
 )
 
 const (
-	receiptsRelPath   = ".fathom/receipts.jsonl"
+	receiptsFileName  = "receipts.jsonl"
 	defaultMaxReceipt = 50
 )
+
+// receiptsPath is where root's receipts log lives: statedir.Resolve(root)
+// — outside the repo tree by default, or root/workspace when root's own
+// .fathom/config.toml opts into the in-tree convention — plus the leaf
+// file name.
+func receiptsPath(root string) string {
+	return filepath.Join(statedir.Resolve(root), receiptsFileName)
+}
 
 // ErrUndoRefused is returned when any file in a receipt has changed since
 // the receipt was written. Undo is all-or-nothing: a partial restore across
@@ -101,7 +117,7 @@ func AppendReceipt(root string, r Receipt, max int) (Receipt, error) {
 		return Receipt{}, err
 	}
 
-	p := filepath.Join(root, filepath.FromSlash(receiptsRelPath))
+	p := receiptsPath(root)
 	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 		return Receipt{}, err
 	}
@@ -154,7 +170,8 @@ func receiptLines(path string) ([]string, error) {
 // LoadReceipts returns root's receipts NEWEST FIRST — the order a human
 // asking "what did fathom just do here?" needs.
 func LoadReceipts(root string) ([]Receipt, error) {
-	lines, err := receiptLines(filepath.Join(root, filepath.FromSlash(receiptsRelPath)))
+	path := receiptsPath(root)
+	lines, err := receiptLines(path)
 	if err != nil {
 		return nil, err
 	}
@@ -162,7 +179,7 @@ func LoadReceipts(root string) ([]Receipt, error) {
 	for i := len(lines) - 1; i >= 0; i-- {
 		var r Receipt
 		if err := json.Unmarshal([]byte(lines[i]), &r); err != nil {
-			return nil, fmt.Errorf("parsing %s line %d: %w", receiptsRelPath, i+1, err)
+			return nil, fmt.Errorf("parsing %s line %d: %w", path, i+1, err)
 		}
 		out = append(out, r)
 	}
@@ -177,7 +194,7 @@ func FindReceipt(root, id string) (Receipt, error) {
 		return Receipt{}, err
 	}
 	if len(all) == 0 {
-		return Receipt{}, fmt.Errorf("no receipts in %s — fathom has written nothing here", receiptsRelPath)
+		return Receipt{}, fmt.Errorf("no receipts in %s — fathom has written nothing here", receiptsPath(root))
 	}
 	if id == "" {
 		return all[0], nil
