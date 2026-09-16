@@ -97,9 +97,16 @@ func TestObligationsTool_LayerCoverage_NoNoteWhenFileGovernedByCompiledGuide(t *
 }
 
 // TestObligationsTool_LayerCoverage_AbsentWhenBackendCannotReportIt: a
-// backend that never implements layerCoverageBackend, or reports
-// found:false (never compiled), carries no layer_coverage at all — an
-// honest absence, never a fabricated full-coverage claim.
+// backend that never implements layerCoverageBackend at all (an older
+// module, a minimal test fake with no ObligationsLayerCoverage method)
+// carries no layer_coverage at all — an honest absence, never a fabricated
+// full-coverage claim. A backend that DOES implement it but reports
+// found:false (a real store with no compile_runs row for the service) is
+// the distinct O60 case covered by
+// TestObligationsTool_LayerCoverage_UnknownWhenNoCompileRunsRow below —
+// that one now DOES carry a layer_coverage key, status "unknown", so a
+// stranger reading the envelope can tell a complete layer from an
+// unrecorded one instead of the two looking identical.
 func TestObligationsTool_LayerCoverage_AbsentWhenBackendCannotReportIt(t *testing.T) {
 	fake := &semanticFakeBackend{obligations: semantic.Obligations{Service: "svc", File: "a.go"}}
 	srv := mcp.NewServer(fake)
@@ -116,6 +123,50 @@ func TestObligationsTool_LayerCoverage_AbsentWhenBackendCannotReportIt(t *testin
 	payload := extractPayload(t, resp)
 	if _, ok := payload["layer_coverage"]; ok {
 		t.Errorf("payload[layer_coverage] = %v, want absent", payload["layer_coverage"])
+	}
+}
+
+// TestObligationsTool_LayerCoverage_UnknownWhenNoCompileRunsRow (O60): the
+// obligations layer compiled fine (rules serve) but the store has no
+// compile_runs row for the service — semantic.ObligationsLayerCoverage's
+// own honest found:false, e.g. a layer compiled before compile_runs
+// tracking existed. Before this fix the envelope carried NO layer_coverage
+// key at all in this case, identical to a backend that cannot report
+// coverage — observed live on the operator daemon: an obligations response
+// with keys compiled_at_watermark, displaced, file, layer, note, root,
+// rules, service and no layer_coverage anywhere. A stranger could not tell
+// a complete layer from an unrecorded one. Now the key is always present
+// when the backend implements layerCoverageBackend: real numbers when
+// found, {"status":"unknown", "note":…} when not.
+func TestObligationsTool_LayerCoverage_UnknownWhenNoCompileRunsRow(t *testing.T) {
+	fake := &coverageFakeBackend{
+		semanticFakeBackend: semanticFakeBackend{
+			obligations: semantic.Obligations{Service: "svc", File: "internal/extractor/goextract.go"},
+		},
+		coverageFound: false, // no compile_runs row — not the same as an error
+	}
+	srv := mcp.NewServer(fake)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "obligations",
+			"arguments": map[string]any{"service": "svc", "file": "internal/extractor/goextract.go"},
+		},
+	})
+	if resp["error"] != nil {
+		t.Fatalf("unexpected error: %v", resp["error"])
+	}
+	payload := extractPayload(t, resp)
+	cov, ok := payload["layer_coverage"].(map[string]any)
+	if !ok {
+		t.Fatalf("payload[layer_coverage] missing or wrong shape: %#v", payload["layer_coverage"])
+	}
+	if cov["status"] != "unknown" {
+		t.Errorf("layer_coverage[status] = %v, want %q", cov["status"], "unknown")
+	}
+	wantNote := "layer compiled before coverage was recorded; recompile to record coverage"
+	if cov["note"] != wantNote {
+		t.Errorf("layer_coverage[note] = %v, want %q", cov["note"], wantNote)
 	}
 }
 

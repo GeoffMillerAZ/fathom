@@ -275,14 +275,35 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 	if indexStale {
 		result["index_stale"] = true
 	}
-	// O54 deliverable 2: coverage disclosure on every response, when the
-	// backend can report it — the same execute-and-flag doctrine ADR-014
-	// already applies elsewhere, applied to the compiled layer's OWN corpus
-	// completeness. A backend that cannot report it (an older module, a
-	// minimal test fake) simply carries no layer_coverage — an honest
-	// "coverage unknown", never a fabricated full-coverage claim.
+	// O54 deliverable 2 / O60: coverage disclosure on every response, when
+	// the backend can report it — the same execute-and-flag doctrine
+	// ADR-014 already applies elsewhere, applied to the compiled layer's
+	// OWN corpus completeness. A backend that never implements this
+	// capability at all (an older module, a minimal test fake) carries no
+	// layer_coverage — an honest "coverage unknown" by omission, never a
+	// fabricated full-coverage claim. But a REAL backend that implements it
+	// and answers found:false (no compile_runs row for this service — a
+	// layer compiled before that tracking existed is the live case) must
+	// NOT collapse into that same silent omission: without a key at all, a
+	// stranger reading the envelope cannot tell a complete layer from an
+	// unrecorded one. Observed live on the operator daemon: an obligations
+	// response carrying compiled_at_watermark, displaced, file, layer,
+	// note, root, rules, service — no layer_coverage anywhere, even though
+	// rules were serving fine. So that case gets an explicit
+	// status:"unknown" placeholder instead of silence.
 	if cb, ok := backend.(layerCoverageBackend); ok {
-		if cov, found, cerr := cb.ObligationsLayerCoverage(ctx, service); cerr == nil && found {
+		cov, found, cerr := cb.ObligationsLayerCoverage(ctx, service)
+		switch {
+		case cerr != nil:
+			// An actual RPC/store error answering the coverage question is
+			// left exactly as before: no layer_coverage key. Distinct from
+			// found:false, which is an honest answer, not a failure.
+		case !found:
+			result["layer_coverage"] = map[string]any{
+				"status": "unknown",
+				"note":   "layer compiled before coverage was recorded; recompile to record coverage",
+			}
+		default:
 			result["layer_coverage"] = cov
 			// The queried file's nearest guide was never compiled: name it,
 			// with the resume command, rather than let a caller read a

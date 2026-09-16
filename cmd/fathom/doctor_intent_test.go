@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -40,4 +41,63 @@ func TestDoctorIntentRowsNeverFail(t *testing.T) {
 			t.Errorf("unproven_claims must warn at worst: %+v", claims)
 		}
 	})
+}
+
+// TestDoctorIntentRowsSkipOnUnreadableRouter (O59, ADR-027): a router that
+// EXISTS but could not be read (a wedged TCC verdict on an external volume
+// is the live case) is not the same fact as a router that genuinely is not
+// there. Both checkIntent and checkUnprovenClaims funnel through
+// intent.Load and its `c.Tier == intent.TierNone` disjunct, which is true
+// in BOTH cases — the read failure must be told apart via c.Coverage, not
+// silently reported as "not adopted, which is a choice". Live evidence,
+// 2026-09-14: the same tree reported WARN "127 unproven claim(s)" twice
+// and PASS "no intent corpus" once in between, purely because the router
+// read raced a TCC wedge.
+func TestDoctorIntentRowsSkipOnUnreadableRouter(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("running as root: chmod 000 does not block reads")
+	}
+	root := t.TempDir()
+	dir := filepath.Join(root, "docs", "intent")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	router := filepath.Join(dir, "README.md")
+	if err := os.WriteFile(router, []byte("# router\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(router, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(router, 0o644) })
+
+	got := checkIntent(root)
+	if got.Status != doctorSkipped {
+		t.Errorf("intent row status = %v, want skipped for an unreadable router (never a guessed pass): %+v", got.Status, got)
+	}
+	if !strings.Contains(got.Reason, "README.md") {
+		t.Errorf("skip reason must name the unreadable path: %q", got.Reason)
+	}
+
+	claims := checkUnprovenClaims(root, "http://127.0.0.1:1", "svc")
+	if claims.Status != doctorSkipped {
+		t.Errorf("unproven_claims status = %v, want skipped for an unreadable router: %+v", claims.Status, claims)
+	}
+	if !strings.Contains(claims.Reason, "README.md") {
+		t.Errorf("skip reason must name the unreadable path: %q", claims.Reason)
+	}
+}
+
+// TestDoctorIntentRowsPassOnGenuinelyAbsentCorpus: the control — no
+// docs/intent/ at all (a not-exist error on the router, or none) must stay
+// an honest PASS, never downgraded to SKIP by the fix above.
+func TestDoctorIntentRowsPassOnGenuinelyAbsentCorpus(t *testing.T) {
+	root := t.TempDir()
+	if got := checkIntent(root); got.Status != doctorPass {
+		t.Errorf("intent row status = %v, want pass for a genuinely absent corpus: %+v", got.Status, got)
+	}
+	claims := checkUnprovenClaims(root, "http://127.0.0.1:1", "svc")
+	if claims.Status != doctorPass {
+		t.Errorf("unproven_claims status = %v, want pass for a genuinely absent corpus: %+v", claims.Status, claims)
+	}
 }
