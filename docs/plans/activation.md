@@ -44,7 +44,7 @@ Design (normative):
 
 ## Tasks
 
-- [x] server_stats surface_traffic block: per-surface {calls, last_ts} from the call-log counters, covered by fake-backend test {id: A1-1, symbol: registerServerStats, package: internal/mcp}
+- [x] server_stats surface_traffic block: per-surface {calls, last_ts} from the call-log counters, covered by fake-backend test {id: A1-1, symbol: registerServerStats, package: internal/mcp, reachable_from: TestAdoptionServiceScoped}
 - [x] CLAUDE.md registration URL corrected to /rpc/agent + restart caveat; adoption-clock t0 stamp convention documented in the plan + vision doc {id: A1-2, symbol: registerServerStats, package: internal/mcp, skip_test: true, skip: "docs-only row anchored to the feature it documents; A1-1's test is the code coverage"}
 - [x] Compile idempotency guard: same (service, layer, watermark, prompt identity) → refuse with citation; --force logged escape; unit-tested against a fake store {id: A2-1, symbol: cmdCompile, package: cmd/fathom}
 - [x] scripts/recompile-fleet.sh: 11 service·packs, claude-cli lane default, per-pack failure isolation, completion stamp {id: A2-2, symbol: cmdCompile, package: cmd/fathom, skip_test: true, skip: "operator shell script exercising the gated CLI; A2-1 covers the code path; script syntax-checked by bash -n in CI"}
