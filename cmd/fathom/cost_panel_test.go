@@ -97,7 +97,11 @@ const (
 	// surface — where a bug lives before anyone knows the file, R10's own
 	// case (LocAgent/SHERLOC) — 56,655 bytes measured at 25 tools
 	// (TestAgentSurfaceDiet's own pin moved to 25 alongside it).
-	agentSurfaceSchemaByteCeiling = 59000 // 54,872 measured 2026-09-14 after VB-19's resolution/index_commit fields (24 tools); 56,655 after localize (VB-26) on 25 tools before VB-19; the merged surface is re-measured below this pin's history
+	// Re-pinned once more integrating wave N5 with the concurrently merged
+	// waves N8/N10/N11 (O54 addendum, O60's `layer_coverage` unknown-status
+	// shape on `obligations`, and other sibling-wave description growth) —
+	// still 25 tools, no new tool: 59,094 bytes measured.
+	agentSurfaceSchemaByteCeiling = 60000 // 54,872 measured 2026-09-14 after VB-19's resolution/index_commit fields (24 tools); 56,655 after localize (VB-26) on 25 tools before VB-19; 59,094 after merging waves N5/N8/N10/N11 (still 25 tools) — the merged surface is re-measured below this pin's history
 )
 
 // TestNarrowProfileSchemaBytes is BA-7: the narrow/agent surface profile
