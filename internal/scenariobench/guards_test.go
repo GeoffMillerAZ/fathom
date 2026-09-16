@@ -6,9 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -82,9 +80,6 @@ func parseGoTestDetector(cmd string) (pkgDir, testName string, ok bool) {
 	return pkgDir, testName, testName != ""
 }
 
-// ruleSourceRe parses a "path/to/file#Lnn" rule source citation.
-var ruleSourceRe = regexp.MustCompile(`^(.+)#L(\d+)$`)
-
 // testFuncExistsInTree reports whether some "func <name>(" declaration
 // exists among the *_test.go files under root/pkgDir (root's whole tree,
 // skipping skipTreeDir, when pkgDir is ""). Unlike findFuncInTree (which
@@ -146,8 +141,10 @@ func testFuncExistsInTree(root, pkgDir, name string) (bool, error) {
 // TestGuardsCorpusDetectorsExist is SB-24's anchor: every task's detector
 // command is runnable in this tree (a go/task/cue/bash verb, or something
 // on PATH), every `go test -run TestX` detector names a TestX this tree
-// actually declares, and every rule's `source` citation ("file#Lnn") names
-// a line that actually carries that rule's id.
+// actually declares, and every rule's `source` citation — "file#Lnn" or,
+// for an ADR record, the heading-anchored "file#ADR-nnn" (item 3, wave N8,
+// ResolveCitationLine in citation.go) — names a line that actually carries
+// that rule's id.
 func TestGuardsCorpusDetectorsExist(t *testing.T) {
 	for _, path := range guardsCorpora(t) {
 		t.Run(filepath.Base(path), func(t *testing.T) { checkGuardsCorpusDetectors(t, loadGuardsCorpusAt(t, path)) })
@@ -211,14 +208,15 @@ func checkGuardsCorpusDetectors(t *testing.T, c Corpus) {
 				}
 			}
 
-			m := ruleSourceRe.FindStringSubmatch(task.Rule.Source)
-			if m == nil {
-				t.Fatalf("task %s: rule source %q is not \"path#Lnn\"", task.ID, task.Rule.Source)
-			}
-			path, lineStr := m[1], m[2]
-			line, err := strconv.Atoi(lineStr)
+			// ResolveCitationLine (citation.go, item 3) accepts both the
+			// original "path#Lnn" form and the heading-anchored
+			// "path#ADR-nnn" form, resolving the latter to wherever the
+			// "## ADR-nnn …" heading CURRENTLY sits — so a citation into
+			// an ADR record survives an insertion above it, unlike a
+			// hardcoded line number.
+			path, line, err := ResolveCitationLine(moduleRoot, task.Rule.Source)
 			if err != nil {
-				t.Fatalf("task %s: rule source line %q: %v", task.ID, lineStr, err)
+				t.Fatalf("task %s: rule source %q: %v", task.ID, task.Rule.Source, err)
 			}
 			data, err := os.ReadFile(moduleRoot + "/" + path)
 			if err != nil {

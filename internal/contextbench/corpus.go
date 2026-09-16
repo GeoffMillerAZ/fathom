@@ -59,10 +59,11 @@ func corpusBaselineFiles(root string) []string {
 
 // citationRE matches a source citation of the shape the compiled layer
 // serves and the corpus quotes as a premise: `CLAUDE.md#L83-L84`,
-// `docs/plans/callgraph-types.md#L45`. A prompt may name a file inside one
+// `docs/plans/callgraph-types.md#L45`, or the heading-anchored form item 3
+// (wave N8) added, `ADR.md#ADR-025`. A prompt may name a file inside one
 // of these — a staleness task cannot ask whether a citation still resolves
 // without quoting the citation — but nowhere else.
-var citationRE = regexp.MustCompile(`[A-Za-z0-9_./-]+#L[0-9]+(?:-L[0-9]+)?`)
+var citationRE = regexp.MustCompile(`[A-Za-z0-9_./-]+#(?:L[0-9]+(?:-L[0-9]+)?|ADR-[0-9]+)`)
 
 // anchorFiles returns the repo files a task's ground truth is derived
 // from: the File of every file/line anchor, and the Token of a path anchor
@@ -79,7 +80,7 @@ func anchorFiles(t Task) []string {
 	}
 	for _, a := range t.TruthAtHead {
 		switch a.Kind {
-		case AnchorFile, AnchorLine:
+		case AnchorFile, AnchorLine, AnchorHeading:
 			add(a.File)
 		case AnchorPath:
 			if a.File != "" {

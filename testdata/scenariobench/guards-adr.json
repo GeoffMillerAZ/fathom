@@ -47,7 +47,7 @@
       "rule": {
         "id": "ADR-006§concern-required",
         "text": "The concern is a required parameter of `Engine.Query` (`query_symbols`, `fathom query`, `pkg/client.Query`) and becomes a keyword only when the store is unscoped — never silently defaulted or made optional for a scoped store.",
-        "source": "ADR.md#L91"
+        "source": "ADR.md#ADR-006"
       },
       "predictions": {
         "full": "win: the compiled obligations layer indexes ADR.md and serves ADR-006's concern-required contract on any edit to cmd/fathom/query.go's flag parsing, before a --raw shortcut loosens or bypasses the existing `if *concern == \"\"` guard for the rest of the command",
@@ -87,7 +87,7 @@
       "rule": {
         "id": "ADR-008§staleness-always",
         "text": "Every query result includes a staleness assessment (which sources, when last ingested, whether re-ingest is recommended); silent staleness is a correctness trap for AI consumers, so no query path may return results without it.",
-        "source": "ADR.md#L114"
+        "source": "ADR.md#ADR-008"
       },
       "predictions": {
         "full": "win: the compiled obligations layer serves ADR-008's staleness-always-reported contract on any edit to internal/query/engine.go's Query method, before the shared `staleness := e.buildStalenessReport(obs)` line and the QueryResult.Staleness field it fills are removed for every caller",
@@ -167,7 +167,7 @@
       "rule": {
         "id": "ADR-017§repo-relative-anchors",
         "text": "Every connector emits slash-separated, root-relative `SourceRef.Path`s; `LocalConnector.Fetch` resolves them against the root recorded at Discover. The store never records a machine-local absolute path.",
-        "source": "ADR.md#L354"
+        "source": "ADR.md#ADR-017"
       },
       "predictions": {
         "full": "no-effect: internal/connector/local.go's own doc-comment sits directly above the Discover/Fetch pair ('ADR-017: stores must never record machine-local absolute anchors'), naming the ADR at the exact edit site — obligations add nothing a careful read of the file being touched didn't already say",
@@ -207,7 +207,7 @@
       "rule": {
         "id": "ADR-018§derived-not-persisted",
         "text": "SDD (and fathom's own process state generally) is derived, never driven: persisted process state is rejected outright — each run stays a pure re-derivation from the underlying evidence, never a stored lifecycle/status field.",
-        "source": "ADR.md#L430"
+        "source": "ADR.md#ADR-018"
       },
       "predictions": {
         "full": "no-effect: cmd/fathom/leases.go's own file-header comment states the rule directly ('\"leased\" is never a stored status — it is always recomputed from the rows at read time') above the exact leaseRow type the naive status-field fix would edit — obligations add nothing a careful read of the file being touched didn't already say",
@@ -247,7 +247,7 @@
       "rule": {
         "id": "ADR-027§coverage-before-conclusion",
         "text": "No failure mode may make the repository look healthier than it is: every read in the reporting/audit layer goes through the coverage instrument (`internal/readcoverage`), recording read|absent|unreadable(errno)|skipped — a read that silently swallows a failure and reports a normal-looking result is the anti-pattern this ADR closes.",
-        "source": "ADR.md#L994"
+        "source": "ADR.md#ADR-027"
       },
       "predictions": {
         "full": "no-effect: internal/intent/parse.go's own comment sits directly above the shared tracked-read helper ('read routes a corpus read through the coverage recorder, so a file that exists and cannot be opened is accounted for rather than silently dropped (ADR-027)'), naming the ADR right where a bypass would have to be introduced — obligations add nothing a careful read of the surrounding code didn't already say",
@@ -287,7 +287,7 @@
       "rule": {
         "id": "ADR-028§authority-boundary",
         "text": "The authority boundary is the load-bearing clause: retrieved/self-reported memory may recall and may suggest; it may not assert a fact about code. Any future integration keeps fathom's own claims (tier-derived, ceiling-capped) authoritative over an external or self-reported one.",
-        "source": "ADR.md#L1066"
+        "source": "ADR.md#ADR-028"
       },
       "predictions": {
         "full": "win: the compiled obligations layer serves ADR-028's authority-boundary rule on any edit to internal/memory's write path, before a caller-trusted-tier exception for 'confident' model authors lands in WriteMemory",
@@ -327,7 +327,7 @@
       "rule": {
         "id": "ADR-032§cell-key-invariants",
         "text": "A scored cell carries `cell_key = sha256(corpus_sha256 · task_id · arm · model_id · harness_version · scoring · prompt_subject · arm_surface)`; a changed invariant must produce a different key, never a silent reuse — the evaluator accepts a borrowed cell only by full key equality.",
-        "source": "ADR.md#L1327"
+        "source": "ADR.md#ADR-032"
       },
       "predictions": {
         "full": "no-effect: internal/scenariobench/cell.go's own CellInvariants doc-comment sits directly above the struct the naive trim would edit ('Every field is part of the key; a cell whose inputs differ in any of them is a different cell, not the same cell measured again') — obligations add nothing a careful read of the file being touched didn't already say",
