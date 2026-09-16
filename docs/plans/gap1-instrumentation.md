@@ -18,11 +18,11 @@ number. Composes agentic-kit v0.7.0 `telemetry/heartbeat`.
 ## Origin (clean demand numbers)
 
 - [x] Every hook/CLI HTTP call sends X-Fathom-Origin (edit-hook, session-hook, stop-hook, verify-cli); the daemon call log records it {id: GI-5, symbol: originHeader, package: cmd/fathom}
-- [x] Call-log entries carry origin so kill clocks and adoption numbers separate agent choice from plumbing {id: GI-6, symbol: WithOrigin, package: internal/mcp}
+- [x] Call-log entries carry origin so kill clocks and adoption numbers separate agent choice from plumbing {id: GI-6, symbol: WithOrigin, package: internal/mcp, reachable_from: TestAnsweredBeatCarriesDisplacedCount}
 
 ## Grammar hardening (today's kit-corpus lessons)
 
-- [x] Annotation parser takes the TRAILING brace block, so prose braces in titles no longer hijack contracts; documented one-annotation-per-line stays {id: GI-7, symbol: parseAnnotation, package: internal/verify}
+- [x] Annotation parser takes the TRAILING brace block, so prose braces in titles no longer hijack contracts; documented one-annotation-per-line stays {id: GI-7, symbol: parseAnnotation, package: internal/verify, reachable_from: TestBind_DriftedModule_FlagsRules}
 
 ## Deferred
 

@@ -277,7 +277,7 @@ the relayed review and not independently actioned.
     `TestBind_StalenessLookupFailure_FailsOpen` (critic finding 2a),
     `TestBind_MalformedBindingFile_FailsOpen`.
 
-- [x] `internal/mcp`: `registerSemanticTools` gains a `modules moduleBackend` parameter (threaded from `newServer`/`registerTools`, nil on every daemon started without `--module`); the `obligations` tool handler resolves the service's on-disk root via the EXISTING `ServiceMeta` (the O15 mechanism) and calls `modserve.Bind`; the wire response gains `displaced_repo`/`displaced_module`/`module_notes` (additive, present only when non-zero/non-empty) {id: O-7, symbol: registerSemanticTools, package: internal/mcp}
+- [x] `internal/mcp`: `registerSemanticTools` gains a `modules moduleBackend` parameter (threaded from `newServer`/`registerTools`, nil on every daemon started without `--module`); the `obligations` tool handler resolves the service's on-disk root via the EXISTING `ServiceMeta` (the O15 mechanism) and calls `modserve.Bind`; the wire response gains `displaced_repo`/`displaced_module`/`module_notes` (additive, present only when non-zero/non-empty) {id: O-7, symbol: registerSemanticTools, package: internal/mcp, reachable_from: TestAdoptionServiceScoped}
   - `modules == nil` (the pre-phase-O default, and every daemon with no
     `--module` flags) makes this a complete, byte-identical no-op —
     proven directly.

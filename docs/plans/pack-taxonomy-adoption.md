@@ -71,7 +71,7 @@ Design (normative):
 ## Tasks
 
 - [x] docs/design/pack-taxonomy.md + ADR-024 recording strata, trust models, the two parked pack types with triggers {id: TX-1, symbol: LoadLayerIn, package: internal/semantic, skip_test: true, skip: "design doc + ADR anchored to the union loader the taxonomy organizes; TX-2 carries the code coverage"}
-- [x] #Layer stratum field (schema + embedded mirror + drift test), embedded packs annotated, layers CLI + docs/layers.md display it {id: TX-2, symbol: LoadLayerIn, package: internal/semantic}
+- [x] #Layer stratum field (schema + embedded mirror + drift test), embedded packs annotated, layers CLI + docs/layers.md display it {id: TX-2, symbol: LoadLayerIn, package: internal/semantic, reachable_from: TestAdoptionServiceScoped}
 - [x] dist/agents/skills: fathom-plan, fathom-verify, fathom-onboard skills (Claude Code SKILL.md format + Codex prompt variant from one source); every referenced command verified against shipped code {id: AK-1, symbol: cmdInit, package: cmd/fathom, skip_test: true, skip: "skill sources are data verified by AK-2's install tests + the critic's command-accuracy pass"}
 - [x] fathom init --skills installs skills for the detected/selected harness; idempotent; tested against scratch target repos {id: AK-2, symbol: cmdInit, package: cmd/fathom}
 - [x] fathom init scaffolds marker-delimited fathom sections into CLAUDE.md and AGENTS.md (create-or-append, idempotent, user content never clobbered); tested incl. re-run and pre-existing-content cases {id: AK-3, symbol: cmdInit, package: cmd/fathom}

@@ -56,10 +56,10 @@ Design (normative):
 
 ## Tasks
 
-- [x] Pass-3 classifier + sibling index; extractors keyed by ToolKind; ext table demoted to candidate pre-filter {id: TI-1, symbol: Classify, package: internal/fusion}
+- [x] Pass-3 classifier + sibling index; extractors keyed by ToolKind; ext table demoted to candidate pre-filter {id: TI-1, symbol: Classify, package: internal/fusion, reachable_from: TestAdoptionServiceScoped}
 - [x] Helm chart understanding: template placeholder-parse, Chart/values symbols, values-key references; a real minimal chart golden fixture {id: TI-2, symbol: Classify, package: internal/fusion, skip_test: true, skip: "helm extraction fans out through the classifier dispatch; behavior pinned by the golden fixture tests in internal/extractor which call the extractors directly"}
-- [x] Compose/k8s/CRD/OpenAPI/kustomize content-signal routing + meaningful symbols per design; misroute regression fixtures (compose override file, non-k8s yaml, OpenAPI doc) {id: TI-3, symbol: NewYAMLExtractor, package: internal/extractor}
-- [x] CUE module + timoni awareness (ancestor cue.mod/, timoni markers) layered on LT-4 packages {id: TI-4, symbol: NewCUEExtractor, package: internal/extractor}
+- [x] Compose/k8s/CRD/OpenAPI/kustomize content-signal routing + meaningful symbols per design; misroute regression fixtures (compose override file, non-k8s yaml, OpenAPI doc) {id: TI-3, symbol: NewYAMLExtractor, package: internal/extractor, reachable_from: TestAdoptionServiceScoped}
+- [x] CUE module + timoni awareness (ancestor cue.mod/, timoni markers) layered on LT-4 packages {id: TI-4, symbol: NewCUEExtractor, package: internal/extractor, reachable_from: TestAdoptionServiceScoped}
 - [x] Generated-file detection: marker on observations, cloc generated bucket, header-regex fixtures (protoc/mockgen/stringer) {id: TI-5, symbol: Classify, package: internal/fusion, skip_test: true, skip: "classifier-internal branch pinned by direct classifier tests; dispatch indirection is the documented residue"}
 - [x] Unclassified/oversize visibility: per-ingest counters in ingest output + server_stats; 2MB extraction cap {id: TI-6, symbol: Ingest, package: internal/fusion, skip_test: true, skip: "Ingest is the long-lived pipeline entry reached via the full-pipeline tests; counter behavior pinned by direct assertions there"}
 - [x] Cross-refs cheap tier: image↔Dockerfile, values↔usage as reference observations; queryable via references {id: TI-7, symbol: Classify, package: internal/fusion, skip_test: true, skip: "emitted as observations through the same dispatch; pinned by fixture-driven pipeline tests"}

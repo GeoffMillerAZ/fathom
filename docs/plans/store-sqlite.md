@@ -46,15 +46,15 @@ Design constraints (normative):
 
 ## Tasks
 
-- [x] SQLite backend implementing all 26 Store methods, fresh final-column DDL, WAL pragmas, uncapped readers {id: SS-1, symbol: NewSQLiteStore, package: internal/store}
+- [x] SQLite backend implementing all 26 Store methods, fresh final-column DDL, WAL pragmas, uncapped readers {id: SS-1, symbol: NewSQLiteStore, package: internal/store, reachable_from: TestAdoptionServiceScoped}
 - [x] Contract-suite registration for the SQLite backend — every existing contract subtest green on it unmodified {id: SS-2, symbol: NewSQLiteStore, package: internal/store, skip_test: true, skip: "the deliverable IS the test suite passing on the new backend; the contract tests exercise it via the suite runner, an indirect path the callgraph cannot attribute"}
 - [x] Cross-process concurrency proof: reader succeeds while writer transaction is open (the property DuckDB lacks, the reason for the swap) {id: SS-3, symbol: TestSQLite_ReaderDuringWriter, package: internal/store, skip_test: true, skip: "the test IS the anchor; nothing reaches a Test* symbol"}
-- [x] store.BackendForPath shared dispatch replacing all four .duckdb hardcodes; PlatformStore loads mixed-backend fleets {id: SS-4, symbol: BackendForPath, package: internal/store}
+- [x] store.BackendForPath shared dispatch replacing all four .duckdb hardcodes; PlatformStore loads mixed-backend fleets {id: SS-4, symbol: BackendForPath, package: internal/store, reachable_from: TestAdoptionServiceScoped}
 - [-] migrate-store command: non-derivable tables ported with per-table verification, derived tables re-ingest instruction, non-empty-target refusal {id: SS-5, disposition: refused, reason: "shipped, used to migrate the fleet successfully (workspace/logs/store-migration-stamp.txt), then deleted outright by SS-8/ADR-025 once the migration completed and the command's only purpose (reading DuckDB as a source) had no live consumer left — cmdMigrateStore no longer exists in cmd/fathom; a pre-SS-8 build is the historical reference"}
 - [x] Doc-comment truth fix on PutObservations (purge-then-insert contract stated; DB-idempotency implication removed) {id: SS-6, symbol: PutObservations, package: internal/store, skip_test: true, skip: "interface-method doc fix; PutObservations is contract-suite-reached via the runner, the documented indirect-dispatch residue"}
 - [x] Defaults + docs flip to sqlite (CLI default path, init scaffold, configuration.md incl. daemon guidance, distribution.md CGO note updated to 'gone after SS-8') {id: SS-7, symbol: cmdInit, package: cmd/fathom, skip_test: true, skip: "docs + default-string deliverable anchored to the verb that scaffolds it"}
 
-- [x] DuckDB backend + CGO removal (deletes duckdb driver, bindings, GOTMPDIR/deployment-target workarounds; vendor probe shrinks ~540MB) {id: SS-8, symbol: BackendForPath, package: internal/store}
+- [x] DuckDB backend + CGO removal (deletes duckdb driver, bindings, GOTMPDIR/deployment-target workarounds; vendor probe shrinks ~540MB) {id: SS-8, symbol: BackendForPath, package: internal/store, reachable_from: TestAdoptionServiceScoped}
   - **Trigger fired 2026-07-23**: operator ran `migrate-store` on the fleet
     DB and the daemon ran a full day green on sqlite
     (`workspace/logs/store-migration-stamp.txt`: `2026-07-23T01:56:17Z`,

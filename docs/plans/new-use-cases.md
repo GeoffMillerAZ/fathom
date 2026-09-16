@@ -33,7 +33,7 @@ Design (normative):
 
 ## Tasks
 
-- [x] Commit ingestion captures full message body; store round-trip in the contract suite; backfill on re-ingest proven {id: E2-1, symbol: parseGitLog, package: internal/fusion}
+- [x] Commit ingestion captures full message body; store round-trip in the contract suite; backfill on re-ingest proven {id: E2-1, symbol: parseGitLog, package: internal/fusion, reachable_from: TestAdoptionServiceScoped}
 - [x] Authorship trailer oracle → verified-tier claims; deterministic; golden-tested on fixture history {id: E2-2, symbol: CompileClaims, package: internal/authorship}
 - [x] authorship report joining share × staleness × complexity; fleet numbers recorded here on first run (see "Authorship report — fleet numbers" below) {id: E2-3, symbol: cmdReport, package: cmd/fathom}
 - [x] plans status: computed rollup via the verify engine; golden-tested against a fixture plan set {id: E3-1, symbol: cmdPlans, package: cmd/fathom}

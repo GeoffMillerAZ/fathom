@@ -31,7 +31,7 @@ Design (normative):
 
 ## Tasks
 
-- [x] wazero engine + grammar/query registry + TSExtractor implementing extractor.Extractor {id: XT-1, symbol: NewTSExtractor, package: internal/extractor}
+- [x] wazero engine + grammar/query registry + TSExtractor implementing extractor.Extractor {id: XT-1, symbol: NewTSExtractor, package: internal/extractor, reachable_from: TestAdoptionServiceScoped}
 - [x] TypeScript/JS: grammar + queries + fixtures; calibration beats incumbent (scores recorded here) {id: XT-2, symbol: NewTSExtractor, package: internal/extractor, skip_test: true, skip: "language onboarding = data + calibration evidence; engine symbol already anchored by XT-1"}
 - [x] Python: same bar {id: XT-3, symbol: NewTSExtractor, package: internal/extractor, skip_test: true, skip: "same rationale as XT-2"}
 - [x] Ruby: same bar {id: XT-4, symbol: NewTSExtractor, package: internal/extractor, skip_test: true, skip: "same rationale as XT-2"}
