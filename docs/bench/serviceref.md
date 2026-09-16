@@ -2,10 +2,14 @@
 
 Row VB-31 (`docs/plans/verbs.md`, `needs: VB-30`): M8 is "precision ≥ 0.90 and
 recall ≥ 0.90 on a hand-verified route table over the fixture fleet and one
-real pair, else it stays a finding". **Measured 2026-09-14: P=1.00, R=0.20
-overall — the row stays a finding.** Full numbers, the FP/FN list and causes:
-`docs/bench/readings/vb31-service-ref-m8.md`. This note is now a pointer plus
-the ground-truth summary, not a measurement plan — the plan described below
+real pair, else it stays a finding". **First measured 2026-09-14: P=1.00,
+R=0.20 overall — the row stayed a finding.** Wave I2 (2026-09-16) rewrote both
+extraction halves as real `go/ast` walks (no line regexes) to close the four
+misses named below, then re-ran the SAME hand-verified table unchanged:
+**P=1.00, R=1.00 overall — M8 is met, the row is checked.** Full numbers, the
+FP/FN list, causes, and the rerun: `docs/bench/readings/vb31-service-ref-m8.md`
+(§rerun for the wave I2 numbers). This note is now a pointer plus the
+ground-truth summary, not a measurement plan — the plan described below
 (§ Measurement procedure) is what was actually run.
 
 ## Ground truth
@@ -37,8 +41,8 @@ Three corpora:
   over HTTP, the one hand-verified non-fixture pair M8 asks for, sourced
   org-agnostically (ADR-011) from a public project, shallow-cloned into a
   scratch directory (never committed here). 4 genuine cross-repo edges
-  hand-verified; the extractor found 0 of them. P=n/a (zero predictions
-  made), R=0.00.
+  hand-verified. First run: the extractor found 0 of them (P=n/a, R=0.00).
+  After wave I2's AST rewrite: all 4 found, 0 extra hops — P=1.00, R=1.00.
 - **`reachfix-fp-control`** (unscored) — `internal/fusion/testdata/reachfix`
   (a different plan's fixture, discovered by grepping every `testdata/` for
   route shapes) has route registrations but zero client calls; folded into
@@ -70,25 +74,53 @@ verdict, not the test) — it does hard-assert `fauxtown`'s FP/FN stay at zero
 and that `reachfix-fp-control` contributes zero hops, both of which are
 correctness invariants, not threshold calls.
 
-## Why the row stays a finding
+## Why the row first stayed a finding (2026-09-14 reading)
 
-The fixture proves the extractor's *mechanics* (normalization, cross-repo
-join, decoy rejection) — P=1.00, R=1.00, cleanly. It does not prove *external
+The fixture proved the extractor's *mechanics* (normalization, cross-repo
+join, decoy rejection) — P=1.00, R=1.00, cleanly. It did not prove *external
 validity*: on `openfaas/faas` ↔ `openfaas/faas-provider`, ordinary
 unremarkable Go code that nobody wrote to be extraction-friendly, the client
 detector missed every real call because none of them passed a literal or an
 *inline* `fmt.Sprintf(...)` straight to `http.NewRequest` (real code builds
 the URL in a variable first), and the reused route detector
 (`internal/analysis/routes`) lost every real method to gorilla/mux's chained
-`.Methods(...)` (invisible to its regex, so every extracted route reads
+`.Methods(...)` (invisible to its regex, so every extracted route read
 `Method: "ANY"`) and truncated every route whose path is built by Go string
 concatenation. Overall R=0.20 (1 of 5 true edges found across both corpora).
-See `docs/bench/readings/vb31-service-ref-m8.md` for the full FP/FN list,
-causes, and the two concrete (out-of-scope-for-VB-31) fixes that would move
-this number: resolve a single local-variable assignment back to its
-`fmt.Sprintf`/literal definition on the client side, and recognize a chained
-`.Methods(...)` call plus adjacent `+`-joined string literals on the server
-side.
+
+## Why the row now clears M8 (wave I2, 2026-09-16)
+
+Both extraction halves became real `go/ast` walks — no line regexes for Go,
+JS/TS and Python untouched:
+
+- **Client side** (`ExtractClientCalls`/`templateFromExpr` in
+  `internal/analysis/serviceref/serviceref.go`) gained bounded,
+  intra-function dataflow: a local variable's URL argument resolves back to
+  its own most recent assignment (`urlPath := fmt.Sprintf(...)` used on a
+  later line), `path.Join`/`url.JoinPath` calls fold (dropping a
+  self-referential `X.Path` accumulator argument rather than wildcarding
+  it), a `*url.URL.String()` call resolves via a `.Path` field assignment
+  (or a `url.URL{Path: …}` composite literal) visible earlier in the same
+  function, and a printf format beginning with a verb paired with a
+  `.String()` argument is treated as an interpolated host (stripped),
+  distinguishing `fmt.Sprintf("%ssystem/functions", base.String())` from an
+  ordinary path-segment placeholder.
+- **Server side** (`internal/analysis/routes.extractGo`) walks real call
+  chains: `r.HandleFunc(path, handler).Methods("GET", ...)` and the reversed
+  `r.Methods(...).Path(...).HandlerFunc(...)` both resolve their methods and
+  path regardless of chain order, a `.Methods(a, b)` call fans out to one
+  `Route` per method, `PathPrefix(...).Subrouter()` propagates its prefix to
+  every route later registered through that variable, and a concatenated
+  path (`"/x/{name:["+NameExpression+"]+}"`) folds through package-level
+  string consts the way `go/constant` would evaluate it — a non-constant
+  fragment normalizes to `{}` instead of truncating the path.
+
+Re-run over the SAME hand-verified table (`testdata/serviceref/
+route-table.json`, unedited): `fauxtown` stayed P=1.00/R=1.00; `real_pair`
+went from 0/4 to 4/4 true edges found with 0 false positives (P=1.00,
+R=1.00); `reachfix-fp-control` still contributes zero hops. Overall P=1.00,
+R=1.00 — both thresholds met. Full before/after numbers and the rerun
+methodology: `docs/bench/readings/vb31-service-ref-m8.md` §rerun.
 
 VB-31's plan row still carries `skip_test: true` with a `skip:` reason rather
 than an `oracle: ledger` binding (`docs/plans/README.md`) — this measurement
