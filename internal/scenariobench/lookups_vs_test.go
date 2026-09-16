@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -383,6 +384,64 @@ func TestLookupsVSCorpus_CompetitorStanzaParity(t *testing.T) {
 			}
 			if !withinFifteenPercent(lens[name], lens[other]) {
 				t.Errorf("arm %q routing section = %d bytes, not within +/-15%% of arm %q's %d bytes", name, lens[name], other, lens[other])
+			}
+		}
+	}
+}
+
+// mechanismNamingPatterns are phrases that frame a lookup prompt in terms of
+// fathom's OWN mechanism — a tool/verb/artifact only the wired "full" arm can
+// reach — as the MEANS to answer, rather than naming the underlying question.
+// O62 (2026-09-16): vs-pilot-4 aborted at 31/140 cells because 12 of the 14
+// lookups-vs.json prompts did exactly this ("Per fathom's compiled
+// obligations layer, which repository convention governs …", "evaluate it
+// fresh against the current index", "Fathom's compiled obligations layer
+// serves a rule …"), so every competitor arm (grep/gopls/graphify/serena)
+// hunted for a layer/index/gate it had no tool for — H1-T04's serena-arm
+// agent went as far as building fathom from source and running `fathom
+// verify` (cell LOST by the baseline_ran_fathom detector). "the fathom repo"
+// as a LOCATION is fine ("In the fathom repo, ..."); a fathom CLI verb named
+// as the PRODUCT under test is fine too ("Add a `fathom debug-dump` CLI
+// verb" — that names what's being built, not how to look up the answer).
+// These patterns catch the MEANS framing only.
+var mechanismNamingPatterns = []*regexp.Regexp{
+	// "Per fathom's compiled obligations layer, ..." / "Fathom's compiled
+	// obligations layer serves a rule ..." (H1-T01/T02/T07/T12/T13).
+	regexp.MustCompile(`(?i)compiled obligations layer`),
+	// "FAILS fathom's verify gate" / "fathom's gate gives" (H1-T04).
+	regexp.MustCompile(`(?i)fathom's (verify )?gate`),
+	// "evaluate it fresh against the current index" / "against the current
+	// index" (H1-T04).
+	regexp.MustCompile(`(?i)\bthe current index\b`),
+	// "Concern-scoped search: ..." used as a prompt-opening directive
+	// (H1-T09/T10) rather than the category label it also happens to share.
+	regexp.MustCompile(`(?i)concern-scoped search`),
+	// "state the claim's serving status" (H1-T12/T13) — fathom's own
+	// staleness vocabulary, not a phrase any competitor tool emits.
+	regexp.MustCompile(`(?i)claim'?s serving status`),
+	// Defensive: fathom's own MCP tool names/verbs, not currently present in
+	// any prompt but exactly the kind of phrase this defect reintroduces.
+	regexp.MustCompile(`(?i)staleness_report`),
+	regexp.MustCompile(`(?i)verify_plan`),
+	regexp.MustCompile(`(?i)obligations tool`),
+	regexp.MustCompile(`(?i)\bfathom's (verify|obligations|index)\b`),
+}
+
+// TestLookupsVSCorpus_PromptsAreToolNeutral is O62's regression pin: every
+// prompt in lookups-vs.json must ask the QUESTION, never name fathom's own
+// mechanism as the way to answer it (see mechanismNamingPatterns' doc for
+// the full defect). Written against the pre-fix corpus this test failed on
+// H1-T01, T02, T04, T07, T09, T10, T12, T13 — proving the defect — before
+// the corpus was rewritten to fix it.
+func TestLookupsVSCorpus_PromptsAreToolNeutral(t *testing.T) {
+	c, err := LoadScenarioCorpus(lookupsVSPath(t))
+	if err != nil {
+		t.Fatalf("LoadScenarioCorpus: %v", err)
+	}
+	for _, task := range c.Tasks {
+		for _, pat := range mechanismNamingPatterns {
+			if pat.MatchString(task.Prompt) {
+				t.Errorf("task %q prompt names fathom's own mechanism via pattern %s (a competitor arm has no tool to reach it): %q", task.ID, pat.String(), task.Prompt)
 			}
 		}
 	}
