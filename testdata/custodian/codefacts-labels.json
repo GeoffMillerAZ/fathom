@@ -1,0 +1,1902 @@
+[
+  {
+    "id": "S001",
+    "file": "CLAUDE.md",
+    "harness": "claude-code",
+    "line": 7,
+    "text": "Surfaces: Go client (`pkg/client`), CLI (`cmd/fathom`), MCP server (stdio + HTTP).",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "anchored-fresh",
+    "classifier_class_normalized": "anchored-fresh",
+    "correct": true,
+    "receipt": "pkg/client resolves under <repo-root>"
+  },
+  {
+    "id": "S002",
+    "file": "CLAUDE.md",
+    "harness": "claude-code",
+    "line": 8,
+    "text": "Built on **agentic-kit** (`../agentic-kit`, via `go.work` + `replace`).",
+    "gold": "anchored-drifted",
+    "votes": [
+      "anchored-drifted",
+      "anchored-drifted",
+      "anchored-drifted"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "unanchorable-code-claim",
+    "classifier_class_normalized": "unanchorable",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S003",
+    "file": "CLAUDE.md",
+    "harness": "claude-code",
+    "line": 18,
+    "text": "cp truncates a running executable, and an unsigned binary loses the daemon's TCC grant (deploy signs with the `fathom-dev` identity, then asserts the daemon serves HEAD)",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S004",
+    "file": "CLAUDE.md",
+    "harness": "claude-code",
+    "line": 19,
+    "text": "a literal string, a config value, or a log line is grep's job",
+    "gold": "unanchorable",
+    "votes": [
+      "unanchorable",
+      "unanchorable",
+      "unanchorable"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S005",
+    "file": "CLAUDE.md",
+    "harness": "claude-code",
+    "line": 47,
+    "text": "`internal/store` stays pure Go (ADR-020/025).",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "anchored-fresh",
+    "classifier_class_normalized": "anchored-fresh",
+    "correct": true,
+    "receipt": "internal/store resolves under <repo-root>"
+  },
+  {
+    "id": "S006",
+    "file": "CLAUDE.md",
+    "harness": "claude-code",
+    "line": 48,
+    "text": "shared types live in `internal/core`, extended additively",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "anchored-fresh",
+    "classifier_class_normalized": "anchored-fresh",
+    "correct": true,
+    "receipt": "internal/core resolves under <repo-root>"
+  },
+  {
+    "id": "S007",
+    "file": "CLAUDE.md",
+    "harness": "claude-code",
+    "line": 98,
+    "text": "Refresh the index via the `ingest` MCP tool (`{\"service\":\"fathom\"}`) at session start and after each commit; it is hash-gated, so a clean repo refreshes in well under a second.",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S008",
+    "file": "CLAUDE.md",
+    "harness": "claude-code",
+    "line": 117,
+    "text": "Exit 0 = every claimed task verifies. Exit 1 = a claimed task is unproven — fix the code or uncheck the box. Exit 2 = operational (daemon down / index stale) — fail-open, not a verification failure.",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S009",
+    "file": "internal/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 13,
+    "text": "`internal/connector/testdata/fauxtown/` is the deterministic fixture fleet",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "anchored-fresh",
+    "classifier_class_normalized": "anchored-fresh",
+    "correct": true,
+    "receipt": "internal/connector/testdata/fauxtown resolves under <repo-root>"
+  },
+  {
+    "id": "S010",
+    "file": "internal/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 22,
+    "text": "`internal/store` is pure Go (`modernc.org/sqlite`) — no CGO.",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "anchored-fresh",
+    "classifier_class_normalized": "anchored-fresh",
+    "correct": true,
+    "receipt": "internal/store resolves under <repo-root>"
+  },
+  {
+    "id": "S011",
+    "file": "internal/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 22,
+    "text": "CGO in this repo comes only from the tree-sitter extractor bindings (ADR-013).",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S012",
+    "file": "internal/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 24,
+    "text": "`task store-purego` (`CGO_ENABLED=0 go test -race ./internal/store/`, a `task validate` dep) fails the gate if you do (invariant I2).",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S013",
+    "file": "internal/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 31,
+    "text": "`pkg/client` re-exports for external consumers.",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "anchored-fresh",
+    "classifier_class_normalized": "anchored-fresh",
+    "correct": true,
+    "receipt": "pkg/client resolves under <repo-root>"
+  },
+  {
+    "id": "S014",
+    "file": "internal/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 35,
+    "text": "implement `extractor.Extractor`, register by extension in `fusion.New()`, add its ext→kind in `connector`, golden-test it.",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S015",
+    "file": "internal/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 42,
+    "text": "add it to the `companionTools` allowlist in `internal/mcp/surface.go` (25 tools) and the pinned `TestCompanionSurfaceToolsList`",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "anchored-fresh",
+    "classifier_class_normalized": "anchored-fresh",
+    "correct": true,
+    "receipt": "`companionTools` is declared under <repo-root>"
+  },
+  {
+    "id": "S016",
+    "file": "internal/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 44,
+    "text": "`docs/mcp-tools.md` — `TestMcpToolsDocMatchesRegistry` (`surface_prune_test.go`) fails until the doc matches the registry",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "anchored-drifted",
+    "classifier_class_normalized": "anchored-drifted",
+    "correct": false,
+    "receipt": "surface_prune_test.go: no such file or directory under <repo-root>"
+  },
+  {
+    "id": "S017",
+    "file": "docs/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 14,
+    "text": "`symbol:` anchors name FUNCTIONS/METHODS only — never struct/type names, and never a method name shared by two receivers in the same package",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "unanchorable"
+    ],
+    "majority": 2,
+    "unanimous": false,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S018",
+    "file": "docs/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 21,
+    "text": "Non-code rows carry an `oracle:` instead of a `symbol:`. `lexical` (ADR-030) proves a file exists and matches a pattern.",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S019",
+    "file": "docs/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 22,
+    "text": "`ledger` (ADR-034 decision 2, RC-34) proves a *published bench reading*",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S020",
+    "file": "docs/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 39,
+    "text": "Give every gated row an author-owned `id:` — positional `md-NNN` renumbers when lines are inserted.",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S021",
+    "file": "docs/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 41,
+    "text": "`[-]` skips carry `disposition: refused|deferred` + `reason` (double-quote values containing commas).",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S022",
+    "file": "docs/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 50,
+    "text": "`plans context --row <id>` renders a row's `ctx:` pack",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S023",
+    "file": "docs/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 59,
+    "text": "The agent-surface tool list is `internal/mcp/surface.go` (25 tools); `TestMcpToolsDocMatchesRegistry` holds `docs/mcp-tools.md` to the registry.",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "anchored-fresh",
+    "classifier_class_normalized": "anchored-fresh",
+    "correct": true,
+    "receipt": "internal/mcp/surface.go resolves under <repo-root>"
+  },
+  {
+    "id": "S024",
+    "file": "docs/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 63,
+    "text": "`docs/dogfood-observations.md` is frozen as the narrative record (O1–O29; no new entries; its ids stay historical).",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "anchored-fresh",
+    "classifier_class_normalized": "anchored-fresh",
+    "correct": true,
+    "receipt": "docs/dogfood-observations.md resolves under <repo-root>"
+  },
+  {
+    "id": "S025",
+    "file": "docs/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 66,
+    "text": "Root `CLAUDE.md` is a router (≤120 lines) with resolving pointers — `fathom config audit` (`.fathom/concerns.cue`) polices both.",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "anchored-drifted",
+    "classifier_class_normalized": "anchored-drifted",
+    "correct": false,
+    "receipt": "CLAUDE.md is 67 lines now, not 120"
+  },
+  {
+    "id": "S026",
+    "file": "cmd/fathom/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 3,
+    "text": "The web surfaces (`/`, `/observatory*`, served by serve-http) are rendered by Go files here (`observatory_*.go`, `brief.go`, `statusz.go`)",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "anchored-fresh",
+    "classifier_class_normalized": "anchored-fresh",
+    "correct": true,
+    "receipt": "brief.go resolves under <repo-root>"
+  },
+  {
+    "id": "S027",
+    "file": "cmd/fathom/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 5,
+    "text": "`appkit/ui/dashboard` for layout, `appkit/ui/stat` for KPIs (`stat.Absent` for uninstrumented metrics — law 3), `appkit/ui/viz` for charts (Sparkline, Gauge, Bars).",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "unanchorable-code-claim",
+    "classifier_class_normalized": "unanchorable",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S028",
+    "file": "cmd/fathom/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 12,
+    "text": "this repo already deleted one hand-rolled tile set the same day it was written (2026-08-08).",
+    "gold": "unanchorable",
+    "votes": [
+      "unanchorable",
+      "unanchorable",
+      "unanchorable"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S029",
+    "file": "cmd/fathom/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 19,
+    "text": "The build reads `cmd/fathom/ui/input.css` whose **@source globs are load-bearing**: any new file that renders kit utilities must be listed there or its classes silently never render.",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "anchored-fresh",
+    "classifier_class_normalized": "anchored-fresh",
+    "correct": true,
+    "receipt": "cmd/fathom/ui/input.css resolves under <repo-root>"
+  },
+  {
+    "id": "S030",
+    "file": "cmd/fathom/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 27,
+    "text": "No call-log rows for a day, or an unreadable store/log, renders `stat.Absent` with a reason; sparklines never draw across an absent day (`observatory_series.go`)",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "anchored-fresh",
+    "classifier_class_normalized": "anchored-fresh",
+    "correct": true,
+    "receipt": "observatory_series.go resolves under <repo-root>"
+  },
+  {
+    "id": "S031",
+    "file": "cmd/fathom/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 30,
+    "text": "`/observatory/wiring/*` (`observatory_apply.go`) writes only via `internal/wiring` behind `requireLocalMutation`",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "anchored-fresh",
+    "classifier_class_normalized": "anchored-fresh",
+    "correct": true,
+    "receipt": "observatory_apply.go resolves under <repo-root>"
+  },
+  {
+    "id": "S032",
+    "file": "schema/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 3,
+    "text": "A new schema is a `schema.cue` package with `<package>/testdata/valid.cue` (positive) and a commented `<package>/testdata/invalid.cue` (negative)",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "anchored-drifted",
+    "classifier_class_normalized": "anchored-drifted",
+    "correct": false,
+    "receipt": "schema.cue: no such file or directory under <repo-root>"
+  },
+  {
+    "id": "S033",
+    "file": "schema/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 7,
+    "text": "`task cue-vet` runs `cue vet ./...` over every schema package (+ its testdata)",
+    "gold": "anchored-drifted",
+    "votes": [
+      "anchored-drifted",
+      "anchored-drifted",
+      "anchored-fresh"
+    ],
+    "majority": 2,
+    "unanimous": false,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S034",
+    "file": "schema/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 11,
+    "text": "`task cue-vet` is part of `task validate`.",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S035",
+    "file": ".claude/skills/fathom-doctor/SKILL.md",
+    "harness": "claude-code",
+    "line": 19,
+    "text": "fathom doctor [--harness=claude|codex|auto|<registry id>] [--path <dir>] [--service <id>] [--url <base>] [--json]",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S036",
+    "file": ".claude/skills/fathom-doctor/SKILL.md",
+    "harness": "claude-code",
+    "line": 24,
+    "text": "`--url` defaults to `http://localhost:7575` (or `$FATHOM_HTTP`) — the daemon doctor queries read-only.",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S037",
+    "file": ".claude/skills/fathom-doctor/SKILL.md",
+    "harness": "claude-code",
+    "line": 27,
+    "text": "Exit codes: `0` every check passed; `1` at least one check failed (a real, fixable problem); `2` doctor itself could not run (bad flags, unresolvable `--path`)",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S038",
+    "file": ".claude/skills/fathom-doctor/SKILL.md",
+    "harness": "claude-code",
+    "line": 45,
+    "text": "The full fathom hook stack (session-start, session-end + pre-compact continuity deposits, edit, guard-pre, stop) is wired in SOME settings scope",
+    "gold": "anchored-drifted",
+    "votes": [
+      "anchored-drifted",
+      "anchored-drifted",
+      "anchored-fresh"
+    ],
+    "majority": 2,
+    "unanimous": false,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S039",
+    "file": ".claude/skills/fathom-doctor/SKILL.md",
+    "harness": "claude-code",
+    "line": 49,
+    "text": "Claude Code: 33 offered, 15 wired; Codex: 12 offered, 7 wired",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S040",
+    "file": ".claude/skills/fathom-verify/SKILL.md",
+    "harness": "claude-code",
+    "line": 20,
+    "text": "`--service` is required — the service ID fathom indexed this repo under (defaults to the repo directory's lowercased basename if you used `fathom init` with no `--service` override).",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-drifted",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 2,
+    "unanimous": false,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S041",
+    "file": ".claude/skills/fathom-verify/SKILL.md",
+    "harness": "claude-code",
+    "line": 23,
+    "text": "`--plan` is repeatable — pass it more than once to gate several plans in one invocation.",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S042",
+    "file": ".claude/skills/fathom-verify/SKILL.md",
+    "harness": "claude-code",
+    "line": 36,
+    "text": "`--require-all`: the wave gate (ADR-018 §2) — additionally fails on any `[ ]` open or `[~]` in-progress task",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S043",
+    "file": ".claude/skills/fathom-onboard/SKILL.md",
+    "harness": "claude-code",
+    "line": 29,
+    "text": "bin/fathom version   # sanity check — prints the commit it was built from",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S044",
+    "file": ".claude/skills/fathom-onboard/SKILL.md",
+    "harness": "claude-code",
+    "line": 35,
+    "text": "bin/fathom daemon install    # writes ~/Library/LaunchAgents/dev.fathom.serve-http.plist",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S045",
+    "file": ".claude/skills/fathom-rewire/SKILL.md",
+    "harness": "claude-code",
+    "line": 32,
+    "text": "plans the nine shipped skills in BOTH repo-scoped shapes (`.claude/skills` and `.agents/skills`, the Agent Skills standard path)",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "anchored-fresh",
+    "classifier_class_normalized": "anchored-fresh",
+    "correct": true,
+    "receipt": ".claude/skills resolves under <repo-root>"
+  },
+  {
+    "id": "S046",
+    "file": ".claude/skills/fathom-rewire/SKILL.md",
+    "harness": "claude-code",
+    "line": 40,
+    "text": "every hook verb takes `--harness <id>` and is wired for `claude-code` in this build.",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S047",
+    "file": ".claude/skills/fathom-activate/SKILL.md",
+    "harness": "claude-code",
+    "line": 13,
+    "text": "**Guards** (`.fathom/guard.cue`): author 3–7 from this repo's own binding docs, each citing its decision",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "anchored-fresh",
+    "classifier_class_normalized": "anchored-fresh",
+    "correct": true,
+    "receipt": ".fathom/guard.cue resolves under <repo-root>"
+  },
+  {
+    "id": "S048",
+    "file": ".claude/skills/fathom-activate/SKILL.md",
+    "harness": "claude-code",
+    "line": 18,
+    "text": "check the kits this repo consumes for a shipped `fathom-pack/` (app-kit and agentic-kit carry one — README inside)",
+    "gold": "anchored-fresh",
+    "votes": [
+      "unanchorable",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 2,
+    "unanimous": false,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S049",
+    "file": ".claude/skills/fathom-custodian/SKILL.md",
+    "harness": "claude-code",
+    "line": 26,
+    "text": "fathom config audit [--repo .] [--json]",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S050",
+    "file": ".claude/skills/fathom-custodian/SKILL.md",
+    "harness": "claude-code",
+    "line": 32,
+    "text": "Exit `1` iff anything is violated. Zero concerns registered exits `0` with the absence named",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-drifted",
+      "anchored-fresh"
+    ],
+    "majority": 2,
+    "unanimous": false,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S051",
+    "file": ".claude/skills/fathom-plan/SKILL.md",
+    "harness": "claude-code",
+    "line": 29,
+    "text": "`find_symbol` / `pack_context` to confirm a symbol exists and see its real package directory.",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S052",
+    "file": ".claude/skills/fathom-plan/SKILL.md",
+    "harness": "claude-code",
+    "line": 35,
+    "text": "get the spec's bracketed ID(s) (`[US-042]`, `[EP-013]`, `[FR-7]`, or a milestone form like `M18.2`)",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S053",
+    "file": ".claude/skills/fathom-impact/SKILL.md",
+    "harness": "claude-code",
+    "line": 18,
+    "text": "fathom flywheel          # exit 1 if any feedback loop is OPEN",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S054",
+    "file": ".claude/skills/fathom-impact/SKILL.md",
+    "harness": "claude-code",
+    "line": 23,
+    "text": "On 2026-08-08 that gap cost fourteen hours of measurement twice in one day: the OFF arm stopped recording entirely",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S055",
+    "file": ".claude/skills/fathom-impact/SKILL.md",
+    "harness": "claude-code",
+    "line": 39,
+    "text": "Nine loops: `continuity` (the thread bet — **experimental**, 4 of the 20 sessions its keep/retract verdict needs), `session-ledger`,",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S056",
+    "file": ".claude/skills/fathom-feedback/SKILL.md",
+    "harness": "claude-code",
+    "line": 40,
+    "text": "This appends a structured entry to `.fathom/observations.md` at the repo",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "anchored-fresh",
+    "classifier_class_normalized": "anchored-fresh",
+    "correct": true,
+    "receipt": ".fathom/observations.md resolves under <repo-root>"
+  },
+  {
+    "id": "S057",
+    "file": "third_party/agentic-kit/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 9,
+    "text": "`task validate` = `fmt-check` + `vet` + `cue-vet` + `go test -race ./...`.",
+    "gold": "anchored-drifted",
+    "votes": [
+      "anchored-drifted",
+      "anchored-drifted",
+      "anchored-drifted"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S058",
+    "file": "third_party/agentic-kit/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 17,
+    "text": "**stdlib only.** Zero external Go dependencies, ever. `go.mod` has no `require` block",
+    "gold": "anchored-drifted",
+    "votes": [
+      "anchored-drifted",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 2,
+    "unanimous": false,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S059",
+    "file": "third_party/agentic-kit/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 20,
+    "text": "**Layering.** foundations import only stdlib + sibling foundations. kits compose foundations. runtimes/surfaces/toolchains build on both. Imports point downward only",
+    "gold": "anchored-drifted",
+    "votes": [
+      "anchored-drifted",
+      "anchored-drifted",
+      "anchored-drifted"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S060",
+    "file": "third_party/agentic-kit/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 22,
+    "text": "Dirs are kebab-case; package names collapse the hyphen (`rate-limiter` → `package ratelimiter`).",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S061",
+    "file": "third_party/agentic-kit/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 23,
+    "text": "`foundations/governance/*` must stay WASM-safe (compiles to `GOOS=wasip1` / `js`): no file I/O, no goroutine leaks.",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S062",
+    "file": "third_party/agentic-kit/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 41,
+    "text": "`kits/` — high-order workflows composed from foundations (agent-harness, mcp-server, investigation, command-center, endpoint-guard, governed-prose-kit)",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-drifted",
+      "anchored-fresh"
+    ],
+    "majority": 2,
+    "unanimous": false,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S063",
+    "file": "third_party/agentic-kit/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 71,
+    "text": "The fleet index (throughline · agentic-kit · app-kit · fathom) lives in `../sextant/workspace/db/fleet.sqlite`",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "unanchorable",
+      "anchored-fresh"
+    ],
+    "majority": 2,
+    "unanimous": false,
+    "classifier_class": "unanchorable-code-claim",
+    "classifier_class_normalized": "unanchorable",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S064",
+    "file": "third_party/app-kit/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 14,
+    "text": "A `package.json` anywhere in **this repo** outside `apps/gallery/visreg/` is a build failure by policy.",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "anchored-drifted",
+    "classifier_class_normalized": "anchored-drifted",
+    "correct": false,
+    "receipt": "package.json: no such file or directory under <app-kit-root>"
+  },
+  {
+    "id": "S065",
+    "file": "third_party/app-kit/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 16,
+    "text": "it does not forbid hand-authored kit browser JS (`chat.js`, `overlay.js`, `router.js`, `motion.js` are all L2 artifacts — ADR-0017 §3 retired ADR-0002 §3's first clause)",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S066",
+    "file": "third_party/app-kit/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 22,
+    "text": "`task check` fails if regeneration isn't byte-identical.",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S067",
+    "file": "third_party/app-kit/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 25,
+    "text": "`internal/tailwind/manifest.cue` pins the binary per platform from the release's official `sha256sums.txt`.",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "anchored-drifted",
+    "classifier_class_normalized": "anchored-drifted",
+    "correct": false,
+    "receipt": "sha256sums.txt: no such file or directory under <app-kit-root>"
+  },
+  {
+    "id": "S068",
+    "file": "third_party/app-kit/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 33,
+    "text": "every kit app is one Go `http.Handler`; shells are chrome. No shell-specific JS bindings in app code, ever.",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S069",
+    "file": "third_party/app-kit/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 36,
+    "text": "`data/tailwindplus/*.json` is licensed, gitignored, never redistributed; its tooling lives under `internal/twplus/`",
+    "gold": "anchored-drifted",
+    "votes": [
+      "anchored-fresh",
+      "anchored-drifted",
+      "anchored-drifted"
+    ],
+    "majority": 2,
+    "unanimous": false,
+    "classifier_class": "anchored-fresh",
+    "classifier_class_normalized": "anchored-fresh",
+    "correct": false,
+    "receipt": "internal/twplus resolves under <app-kit-root>"
+  },
+  {
+    "id": "S070",
+    "file": "third_party/app-kit/CLAUDE.md",
+    "harness": "claude-code",
+    "line": 51,
+    "text": "`task gen` — regenerate token artifacts. `task check` — the full gate (vet, tests, cue vet, regen cleanliness). `task css:build` — kit CSS.",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S071",
+    "file": "<memory>/go-builds-need-external-gotmpdir.md",
+    "harness": "claude-code",
+    "line": 10,
+    "text": "Go writes link/strip scratch to `$GOTMPDIR` → else `$TMPDIR` (internal disk).",
+    "gold": "unanchorable",
+    "votes": [
+      "unanchorable",
+      "unanchorable",
+      "unanchorable"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S072",
+    "file": "<memory>/go-builds-need-external-gotmpdir.md",
+    "harness": "claude-code",
+    "line": 11,
+    "text": "Big CGO test-binary links (fathom.test with DuckDB static libs) then die with `no space left on device` writing `$WORK/...`",
+    "gold": "anchored-drifted",
+    "votes": [
+      "anchored-drifted",
+      "anchored-drifted",
+      "anchored-drifted"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S073",
+    "file": "<memory>/sextant-daemon-restart.md",
+    "harness": "claude-code",
+    "line": 28,
+    "text": "`store.Open` on the fleet DuckDB takes **10–30s** (WAL replay).",
+    "gold": "anchored-drifted",
+    "votes": [
+      "anchored-drifted",
+      "anchored-drifted",
+      "anchored-drifted"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S074",
+    "file": "<memory>/sextant-daemon-restart.md",
+    "harness": "claude-code",
+    "line": 37,
+    "text": "the daemon pins its binary at start — after Go changes land, rebuild (post-commit hook does) AND cycle the daemon, or committed fixes never reach consumers.",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-drifted",
+      "anchored-fresh"
+    ],
+    "majority": 2,
+    "unanimous": false,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S075",
+    "file": "<memory>/gate-hooks-and-worktrees.md",
+    "harness": "claude-code",
+    "line": 8,
+    "text": "When the fathom push gate (lefthook pre-push → task validate → stranger-check) runs the Go test suite, it runs inside a git hook, so git exports GIT_DIR/GIT_WORK_TREE to every child.",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S076",
+    "file": "<memory>/gate-hooks-and-worktrees.md",
+    "harness": "claude-code",
+    "line": 12,
+    "text": "shell scripts the gate runs (`scripts/stranger-check.sh`, `scripts/clean-clone-check.sh`) also inherit GIT_DIR",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "anchored-fresh",
+    "classifier_class_normalized": "anchored-fresh",
+    "correct": true,
+    "receipt": "scripts/stranger-check.sh resolves under <repo-root>"
+  },
+  {
+    "id": "S077",
+    "file": "<memory>/app-kit-architecture.md",
+    "harness": "claude-code",
+    "line": 11,
+    "text": "three pillars — **the Kit** (Go library: platform contract, templ+Datastar UI, embedded NATS spine, SQLite store), **the Gallery** (living style guide, a kit app, replaces Storybook), **the Assistant** (`appkit-mcp`, MCP server on the official go-sdk, injected into every project via `.mcp.json`).",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S078",
+    "file": "<memory>/app-kit-architecture.md",
+    "harness": "claude-code",
+    "line": 16,
+    "text": "The load-bearing decision is the **Loopback Invariant** (ADR-0005): every app is one Go `http.Handler` on a real `127.0.0.1:0` listener with per-launch token",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S079",
+    "file": "<memory>/app-kit-architecture.md",
+    "harness": "claude-code",
+    "line": 19,
+    "text": "Forced by: Windows WebView2 buffers whole responses through interception (no SSE; upstream bug #3519), Android WebView drops intercepted POST bodies, Wails asset server 501s WebSockets.",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S080",
+    "file": "<memory>/app-kit-architecture.md",
+    "harness": "claude-code",
+    "line": 23,
+    "text": "Go + CUE v0.16.1 only, no Node ever (Tailwind v4.3 standalone binary, SHA-pinned); templ v0.3.1020; Datastar v1.0.2 + datastar-go v1.2.2",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S081",
+    "file": "<memory>/fathom-fleet-ops.md",
+    "harness": "claude-code",
+    "line": 11,
+    "text": "installed copy at `~/.local/libexec/fathom/fathom`, HTTP MCP `localhost:7575/rpc/agent` (16-tool surface), store `workspace/db/fleet.sqlite`.",
+    "gold": "anchored-drifted",
+    "votes": [
+      "anchored-drifted",
+      "anchored-drifted",
+      "anchored-drifted"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "unanchorable-code-claim",
+    "classifier_class_normalized": "unanchorable",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S082",
+    "file": "<memory>/fathom-fleet-ops.md",
+    "harness": "claude-code",
+    "line": 14,
+    "text": "two services (`fathom`+`sextant`) shared one corpus root → Go-map-order coin-flip resolution → 36% of edits got zero obligations, empty callgraph.",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S083",
+    "file": "<memory>/fathom-fleet-ops.md",
+    "harness": "claude-code",
+    "line": 15,
+    "text": "`scripts/reingest-fleet.sh` DESTROYS compiled semantic_claims/compile_runs (LLM-paid); use `fathom remap` for path moves",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "anchored-fresh",
+    "classifier_class_normalized": "anchored-fresh",
+    "correct": true,
+    "receipt": "scripts/reingest-fleet.sh resolves under <repo-root>"
+  },
+  {
+    "id": "S084",
+    "file": "AGENTS.md",
+    "harness": "codex-family",
+    "line": 53,
+    "text": "cp truncates a running executable and an unsigned binary loses the daemon's TCC grant",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S085",
+    "file": "AGENTS.md",
+    "harness": "codex-family",
+    "line": 64,
+    "text": "Full agent guidance (conventions, source-of-truth map): `CLAUDE.md`.",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "anchored-fresh",
+    "classifier_class_normalized": "anchored-fresh",
+    "correct": true,
+    "receipt": "CLAUDE.md resolves under <repo-root>"
+  },
+  {
+    "id": "S086",
+    "file": "third_party/agentic-kit/AGENTS.md",
+    "harness": "codex-family",
+    "line": 4,
+    "text": "This repo is indexed by fathom as service \"agentic-kit\".",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "unanchorable",
+      "anchored-fresh"
+    ],
+    "majority": 2,
+    "unanimous": false,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S087",
+    "file": "third_party/agentic-kit/AGENTS.md",
+    "harness": "codex-family",
+    "line": 18,
+    "text": "Continuity: run `fathom thread brief` at session start if your harness has no SessionStart hook (Codex does not) — it prints the open threads, or nothing.",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-drifted",
+      "anchored-fresh"
+    ],
+    "majority": 2,
+    "unanimous": false,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S088",
+    "file": "third_party/agentic-kit/AGENTS.md",
+    "harness": "codex-family",
+    "line": 25,
+    "text": "fathom verify --service agentic-kit --plan docs/plans/<plan>.md",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S089",
+    "file": "third_party/agentic-kit/AGENTS.md",
+    "harness": "codex-family",
+    "line": 35,
+    "text": "Decisions: `docs/intent/decisions/` (index at `docs/intent/decisions/README.md`; D1–D10 point at the uplift plan).",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "anchored-fresh",
+    "classifier_class_normalized": "anchored-fresh",
+    "correct": true,
+    "receipt": "docs/intent/decisions resolves under <agentic-kit-root>"
+  },
+  {
+    "id": "S090",
+    "file": "third_party/app-kit/AGENTS.md",
+    "harness": "codex-family",
+    "line": 36,
+    "text": "**Packages:** `starterkit` (turnkey template), `main` (full UI components/views/dashboards), `dark`, `horizontal`, `mini-sidebar`, `rtl`, `jwt-firebase`.",
+    "gold": "unanchorable",
+    "votes": [
+      "anchored-fresh",
+      "unanchorable",
+      "unanchorable"
+    ],
+    "majority": 2,
+    "unanimous": false,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S091",
+    "file": "third_party/app-kit/AGENTS.md",
+    "harness": "codex-family",
+    "line": 37,
+    "text": "**Searchable Index:** Indexed in `data/matdash/index/components.sqlite` (762+ records) and queried via the `appkit` MCP server (`search_components`, `get_component`).",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "anchored-drifted",
+    "classifier_class_normalized": "anchored-drifted",
+    "correct": false,
+    "receipt": "data/matdash/index/components.sqlite: no such file or directory under <app-kit-root>"
+  },
+  {
+    "id": "S092",
+    "file": "third_party/app-kit/AGENTS.md",
+    "harness": "codex-family",
+    "line": 38,
+    "text": "**Go/HTML Primitives:** Pure Go layout primitives in `appkit/ui/dashboard` (`Shell`, `WidgetGrid`) adapted from MatDash's `FullLayout`.",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "anchored-drifted",
+    "classifier_class_normalized": "anchored-drifted",
+    "correct": false,
+    "receipt": "no declaration of `WidgetGrid` found under <app-kit-root>"
+  },
+  {
+    "id": "S093",
+    "file": "third_party/app-kit/AGENTS.md",
+    "harness": "codex-family",
+    "line": 44,
+    "text": "`list_component_names` / `search_component_names`: Discover Tailwind UI / TailwindPlus components (pass `search_term`).",
+    "gold": "unanchorable",
+    "votes": [
+      "unanchorable",
+      "unanchorable",
+      "unanchorable"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S094",
+    "file": "third_party/app-kit/AGENTS.md",
+    "harness": "codex-family",
+    "line": 50,
+    "text": "**`appkit` MCP Server (`cmd/appkit-mcp`):** Integrates TailwindPlus + MatDash + Kit guidance via `search_components`, `get_component`, `list_sections`, and `get_kit_css_setup`.",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "anchored-fresh",
+    "classifier_class_normalized": "anchored-fresh",
+    "correct": true,
+    "receipt": "cmd/appkit-mcp resolves under <app-kit-root>"
+  },
+  {
+    "id": "S095",
+    "file": "third_party/app-kit/AGENTS.md",
+    "harness": "codex-family",
+    "line": 54,
+    "text": "**cli-kit (`appkit/cli/*`):** The terminal target (ADR-0018/D18) — token-themed cobra+fang chrome, output discipline, layered CUE config, TUI runner.",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S096",
+    "file": "basecheck/AGENTS.md",
+    "harness": "codex-family",
+    "line": 4,
+    "text": "Before any Grep/Read sweep, resolve where/what/who-calls via the fathom MCP tools: `find_symbol`, `references`, `symbol_context`, `outline`, `repo_map`, `pack_context`, `verify_plan`.",
+    "gold": "anchored-drifted",
+    "votes": [
+      "anchored-drifted",
+      "anchored-drifted",
+      "anchored-fresh"
+    ],
+    "majority": 2,
+    "unanimous": false,
+    "classifier_class": "unanchorable-code-claim",
+    "classifier_class_normalized": "unanchorable",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S097",
+    "file": "vb31/AGENTS.md",
+    "harness": "codex-family",
+    "line": 68,
+    "text": "Durable intent lives at `docs/intent/README.md` (router).",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "anchored-fresh",
+    "classifier_class_normalized": "anchored-fresh",
+    "correct": true,
+    "receipt": "docs/intent/README.md resolves under <repo-root>"
+  },
+  {
+    "id": "S098",
+    "file": "wave-n4/AGENTS.md",
+    "harness": "codex-family",
+    "line": 69,
+    "text": "Decisions: `ADR.md` (general decision records, not only architecture; index at `docs/intent/decisions/README.md`).",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "anchored-fresh",
+    "classifier_class_normalized": "anchored-fresh",
+    "correct": true,
+    "receipt": "ADR.md resolves under <repo-root>"
+  },
+  {
+    "id": "S099",
+    "file": "wave-n5/AGENTS.md",
+    "harness": "codex-family",
+    "line": 79,
+    "text": "commit and push to `main` freely (the integration branch from v0.5.0)",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "preference",
+    "classifier_class_normalized": "preference",
+    "correct": false,
+    "receipt": ""
+  },
+  {
+    "id": "S100",
+    "file": "benchroot/AGENTS.md",
+    "harness": "codex-family",
+    "line": 68,
+    "text": "Vision: `docs/design/product-vision.md`.",
+    "gold": "anchored-fresh",
+    "votes": [
+      "anchored-fresh",
+      "anchored-fresh",
+      "anchored-fresh"
+    ],
+    "majority": 3,
+    "unanimous": true,
+    "classifier_class": "anchored-fresh",
+    "classifier_class_normalized": "anchored-fresh",
+    "correct": true,
+    "receipt": "docs/design/product-vision.md resolves under <repo-root>"
+  }
+]
