@@ -111,7 +111,7 @@ precedent item 2's vocabulary mirrors), `docs/design/product-vision.md` §3
 
 ### A — O20's count audit + fix (docs/design/findings-as-evidence.md §6 item 1, BLOCKING)
 
-- [x] `LatestReviewActiveFindings` reports the most recent review call's own active-finding snapshot, never a sum across the window — pinned against a 50-call fixture of known size {id: R-1, symbol: LatestReviewActiveFindings, package: internal/metrics}
+- [x] `LatestReviewActiveFindings` reports the most recent review call's own active-finding snapshot, never a sum across the window — pinned against a 50-call fixture of known size {id: R-1, symbol: LatestReviewActiveFindings, package: internal/metrics, reachable_from: TestAggregateBundleInput_HashesServiceNames}
   - `internal/metrics/reviewfindings.go`: `ReviewCallSnapshot{At,
     Outcome}`, `LatestReviewActiveFindings(snapshots
     []ReviewCallSnapshot) (count, sampleSize int, ok bool)`.
@@ -143,7 +143,7 @@ precedent item 2's vocabulary mirrors), `docs/design/product-vision.md` §3
 
 ### B — typed failure classes (docs/design/findings-as-evidence.md §6 item 2)
 
-- [x] The closed finding-class vocabulary: Go-authoritative (`core.ValidFindingClasses`), CUE-derived (`or()` over the same list), cross-checked by a test that fails the moment the two diverge {id: R-4, symbol: verifyDraft, package: internal/semantic}
+- [x] The closed finding-class vocabulary: Go-authoritative (`core.ValidFindingClasses`), CUE-derived (`or()` over the same list), cross-checked by a test that fails the moment the two diverge {id: R-4, symbol: verifyDraft, package: internal/semantic, reachable_from: TestBuild_PropagatesListError}
   - `internal/core/findingclass.go`: `FindingClass` + 10 consts +
     `ValidFindingClasses` + `Valid() bool`.
   - `schema/semantic/findingclass.cue`: `FindingClasses` list,
@@ -178,7 +178,7 @@ precedent item 2's vocabulary mirrors), `docs/design/product-vision.md` §3
     Class assertion), `TestRun_SpecCoverage_FlagsUncoveredRefWithLineCitation`
     (same), `TestAttachClaims_OnlyOracleDimensionsPersist` (same).
 
-- [x] `class` persists additively on `semantic_claims` (a pre-existing store predates the column) {id: R-6, symbol: scanClaims, package: internal/store}
+- [x] `class` persists additively on `semantic_claims` (a pre-existing store predates the column) {id: R-6, symbol: scanClaims, package: internal/store, reachable_from: TestAdoptionServiceScoped}
   - `internal/store/sqlite.go`: `class TEXT NOT NULL DEFAULT ''` on the
     CREATE TABLE shape AND the conditional-migration list;
     `PutClaims`/`ClaimsForService`/`scanClaims` read/write it.
@@ -247,7 +247,7 @@ precedent item 2's vocabulary mirrors), `docs/design/product-vision.md` §3
     event must carry `ResolutionKind=="code-change"` and a non-empty
     `ResolutionCommit`).
 
-- [x] `resolution_kind`/`resolution_commit` persist additively on `claim_events` {id: R-11, symbol: queryClaimEventsSince, package: internal/store}
+- [x] `resolution_kind`/`resolution_commit` persist additively on `claim_events` {id: R-11, symbol: queryClaimEventsSince, package: internal/store, reachable_from: TestCmdFindingsStatus_JSON}
   - `internal/store/sqlite.go`: two new columns on the CREATE TABLE shape
     AND the conditional-migration list;
     `AppendClaimEvent`/`ClaimEvents`/`ClaimEventsSince`/
@@ -323,7 +323,7 @@ precedent item 2's vocabulary mirrors), `docs/design/product-vision.md` §3
     `_MissingFlags_ErrorExit`; `TestCmdFindings_UnknownVerb_ErrorExit`,
     `_NoVerb_ErrorExit`.
 
-- [x] `findings_near` MCP tool on the INVESTIGATION surface only — no net agent-surface tool growth {id: R-17, symbol: registerFindingsNear, package: internal/mcp}
+- [x] `findings_near` MCP tool on the INVESTIGATION surface only — no net agent-surface tool growth {id: R-17, symbol: registerFindingsNear, package: internal/mcp, reachable_from: TestAdoptionServiceScoped}
   - `internal/mcp/findings_tools.go`: `findingsBackend` (optional
     capability, `ClaimsForService`), `registerFindingsNear(s,
     backend)` — `group: GroupInvestigation`; degrades honestly
