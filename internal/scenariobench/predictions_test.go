@@ -3,7 +3,9 @@ package scenariobench
 import (
 	"encoding/json"
 	"os"
+	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -85,4 +87,71 @@ func TestEveryScenarioTaskHasPredictions(t *testing.T) {
 func isNoEffectPrediction(pred string) bool {
 	lower := strings.ToLower(pred)
 	return strings.Contains(lower, "no effect") || strings.Contains(lower, "no-effect")
+}
+
+// goldPackageDirs returns the distinct, sorted package directories
+// (path.Dir — gold.Files are repo-relative, slash-separated, never
+// OS-native) task.Gold.Files names.
+func goldPackageDirs(files []string) []string {
+	set := map[string]bool{}
+	for _, f := range files {
+		set[path.Dir(f)] = true
+	}
+	dirs := make([]string, 0, len(set))
+	for d := range set {
+		dirs = append(dirs, d)
+	}
+	sort.Strings(dirs)
+	return dirs
+}
+
+// TestCrossPackageTaskHasEnoughWorkerBudget pins O55 item 6: a
+// planner-workers task whose gold touches more than one Go package needs a
+// worker budget that can actually reach every package's own row — either
+// Sessions.Workers >= 2, or an EXPLICIT Sessions.MaxWorkersTotal at least
+// as high as the package count, declared on the CORPUS ITSELF rather than
+// left to RunSessions' own runtime default (Workers*3, O55 item 3) to
+// happen to cover it.
+//
+// RE-SB-cli__cli-10043-K1 (testdata/scenariobench/reuse-go.json) is
+// workers=1 for a two-package fix with no max_workers_total set — a null
+// cell by construction before item 3's reassignment fix, and still an
+// UNDER-DECLARED one after it (the runtime default of 3 happens to cover
+// 2 packages here, but the corpus never says so, and would silently fall
+// short for a wider fix). This test is meant to fail loudly for K1 until
+// the corpus owner sets workers or max_workers_total explicitly on it —
+// the corpus is deliberately left as-is here; do not silence this failure
+// by editing the corpus in this wave.
+func TestCrossPackageTaskHasEnoughWorkerBudget(t *testing.T) {
+	for _, path := range scenarioCorpusFiles(t) {
+		path := path
+		t.Run(filepath.Base(path), func(t *testing.T) {
+			if strings.Contains(filepath.ToSlash(path), "/streams/") {
+				t.Skip("raw transcript fixtures, not a corpus")
+			}
+			data, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatalf("read %s: %v", path, err)
+			}
+			var c Corpus
+			if err := json.Unmarshal(data, &c); err != nil {
+				t.Fatalf("parse %s: %v", path, err)
+			}
+			for _, task := range c.Tasks {
+				if task.Sessions.Mode != ModePlannerWorkers {
+					continue
+				}
+				dirs := goldPackageDirs(task.Gold.Files)
+				packages := len(dirs)
+				if packages <= 1 {
+					continue
+				}
+				if task.Sessions.Workers >= 2 || task.Sessions.MaxWorkersTotal >= packages {
+					continue
+				}
+				t.Errorf("%s: task %s touches %d packages %v but declares workers=%d, max_workers_total=%d — neither workers>=2 nor max_workers_total>=packages, so the reassignment loop (O55 item 3) is not guaranteed to reach every package's row",
+					path, task.ID, packages, dirs, task.Sessions.Workers, task.Sessions.MaxWorkersTotal)
+			}
+		})
+	}
 }

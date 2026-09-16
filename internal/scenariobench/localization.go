@@ -161,8 +161,10 @@ func demoteNegated(answer string, ordered []string, firstPos map[string]int) []s
 // clauseIsNegated reports whether the clause ending at pos (a mention's
 // own first-occurrence start index) — from the nearest sentence boundary
 // (. ! ?) or comma strictly before pos, or the start of text when there
-// is none — contains a negationMarkers phrase, checked case-
-// insensitively.
+// is none — contains a negationMarkers phrase (checked case-
+// insensitively), OR carries a bare negation clauseHasBareNegationBefore
+// recognizes (fix-first review, wave-n1: negationMarkers alone missed a
+// bare "not X but Y" — "not ADR-010 but ADR-014" passed for ADR-010).
 func clauseIsNegated(text string, pos int) bool {
 	if pos < 0 || pos > len(text) {
 		return false
@@ -173,13 +175,52 @@ func clauseIsNegated(text string, pos int) bool {
 	} else {
 		start++
 	}
-	clause := strings.ToLower(text[start:pos])
+	clause := text[start:pos]
+	lowerClause := strings.ToLower(clause)
 	for _, m := range negationMarkers {
-		if strings.Contains(clause, m) {
+		if strings.Contains(lowerClause, m) {
 			return true
 		}
 	}
-	return false
+	return clauseHasBareNegationBefore(clause)
+}
+
+// bareNegationRE matches "not", "never", or "nor" as a whole word —
+// negation words plain enough that they need no fixed phrase
+// (negationMarkers' own "not in", "isn't", …) to be recognized.
+var bareNegationRE = regexp.MustCompile(`(?i)\b(not|never|nor)\b`)
+
+// correctionRE matches "but", "rather", or "instead" as a whole word —
+// the words a "not X but Y" construction uses to hand off from what is
+// rejected (X) to what is meant instead (Y).
+var correctionRE = regexp.MustCompile(`(?i)\b(but|rather|instead)\b`)
+
+// clauseHasBareNegationBefore reports whether clause — the text strictly
+// BEFORE one mention's own position, already sliced to its own clause by
+// clauseIsNegated — carries a bareNegationRE word with no correctionRE
+// word appearing after it (still within clause): "not X but Y" —
+// X's own clause slice ends right before "but" ever appears, so its
+// negation stands; Y's own clause slice runs past "but", so the
+// correction cancels the earlier "not" and Y is NOT negated. "not only X
+// but also Y" is the one named exception (a correlative idiom meaning
+// "both X and Y", never a rejection of X): a "not" immediately followed
+// by "only" is skipped, never itself counted as a negation trigger, so
+// neither X nor Y in that construction comes out negated.
+func clauseHasBareNegationBefore(clause string) bool {
+	lower := strings.ToLower(clause)
+	for {
+		loc := bareNegationRE.FindStringIndex(lower)
+		if loc == nil {
+			return false
+		}
+		word := lower[loc[0]:loc[1]]
+		rest := lower[loc[1]:]
+		if word == "not" && strings.HasPrefix(strings.TrimLeft(rest, " \t"), "only") {
+			lower = rest
+			continue
+		}
+		return !correctionRE.MatchString(rest)
+	}
 }
 
 // looksLikeFilePath applies the slash-or-known-extension rule ParseAnswerFiles

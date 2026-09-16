@@ -237,6 +237,8 @@ func TestClaudeFieldMapsAgreeWithCodec(t *testing.T) {
 		"agent_id": true, "agent_type": true, "tool_error": true, "tool_use_id": true,
 		"worktree_path": true, "previous_cwd": true, "directory_path": true,
 		"how_added": true, "triggered_by": true,
+		// O57 items 4/5.
+		"prompt": true,
 	}
 	writes := map[string]bool{
 		"hookSpecificOutput.additionalContext": true, "hookSpecificOutput.hookEventName": true,

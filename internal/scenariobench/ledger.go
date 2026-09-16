@@ -20,10 +20,22 @@ import (
 
 // ScenarioLedgerRow is one task's outcome for one arm, in one run.
 type ScenarioLedgerRow struct {
-	RunID          string   `json:"run_id"`
-	GeneratedAt    string   `json:"generated_at"`
-	Commit         string   `json:"commit"`
-	CorpusSHA256   string   `json:"corpus_sha256"`
+	RunID        string `json:"run_id"`
+	GeneratedAt  string `json:"generated_at"`
+	Commit       string `json:"commit"`
+	CorpusSHA256 string `json:"corpus_sha256"`
+	// CriterionID names the corpus's registered Criterion.ID as it stood
+	// at FILING time (stamped by cmdLedger / buildExternalLedgerRow from
+	// the corpus they just loaded) — carried alongside CorpusSHA256, never
+	// instead of it, so a row stays citable by its criterion even after a
+	// later corpus rewrite changes CorpusSHA256's own content hash (the
+	// wave N2 defect: testdata/scenariobench/lookups-vs.json was rewritten,
+	// and vs-pilot-3's already-filed rows could no longer be looked up by
+	// their recorded sha). renderRunVerdict (verdict.go) prefers this ID
+	// over the sha-keyed lookup and falls back to the sha lookup only when
+	// a row carries no CriterionID (every row filed before this field
+	// existed). Empty for such old rows — never guessed at.
+	CriterionID    string   `json:"criterion_id,omitempty"`
 	TaskID         string   `json:"task_id"`
 	Category       Category `json:"category"`
 	Arm            string   `json:"arm"`
@@ -98,6 +110,10 @@ type TrialReading struct {
 	// preserved verbatim (the row's own LocalizationHitAt1Rate etc. only
 	// average it away).
 	Localization *LocalizationReading `json:"localization,omitempty"`
+	// RefusalOutcome is O57 finding 2: this trial's own
+	// Readings.RefusalOutcome, preserved verbatim (the row's own
+	// RefusalOutcomes map only counts it).
+	RefusalOutcome string `json:"refusal_outcome,omitempty"`
 }
 
 // GoldSourceNotMeasured is the gold_source_rate bucket for a cell whose
@@ -128,6 +144,59 @@ func AppendScenarioLedger(path string, row ScenarioLedgerRow) error {
 		return fmt.Errorf("appending to scenario ledger %s: %w", path, err)
 	}
 	return nil
+}
+
+// WriteScenarioLedger overwrites the JSONL ledger at path with rows, one
+// per line, in the given order — the one place this ledger is not purely
+// append-only: `scenariobench void` (O53 defect 7) rewriting a single
+// row's InstrumentDefect after it was already filed. Every other writer
+// stays on AppendScenarioLedger.
+func WriteScenarioLedger(path string, rows []ScenarioLedgerRow) error {
+	var b strings.Builder
+	for _, r := range rows {
+		line, err := json.Marshal(r)
+		if err != nil {
+			return fmt.Errorf("marshaling scenario ledger row %s/%s: %w", r.TaskID, r.Arm, err)
+		}
+		b.Write(line)
+		b.WriteByte('\n')
+	}
+	if dir := filepath.Dir(path); dir != "." {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return fmt.Errorf("creating %s: %w", dir, err)
+		}
+	}
+	if err := os.WriteFile(path, []byte(b.String()), 0o644); err != nil {
+		return fmt.Errorf("writing scenario ledger %s: %w", path, err)
+	}
+	return nil
+}
+
+// VoidScenarioLedgerRow is O53 defect 7's `scenariobench void`: it marks
+// EVERY filed row at (runID, taskID, arm) in the ledger at ledgerPath with
+// reason as InstrumentDefect (ADR-034 decision 2, RC-36) and rewrites the
+// whole file (WriteScenarioLedger) — a normally append-only JSONL ledger,
+// but a defect discovered after filing must still be voidable without
+// deleting history. Refuses — an error, the file left untouched — when no
+// row matches (RunID, TaskID) or when the row matched must first be
+// filed: a stranger voiding a row that was never there would silently
+// invent a defect claim for something that does not exist.
+func VoidScenarioLedgerRow(ledgerPath, runID, taskID, arm, reason string) error {
+	rows, err := LoadScenarioLedger(ledgerPath)
+	if err != nil {
+		return err
+	}
+	found := false
+	for i := range rows {
+		if rows[i].RunID == runID && rows[i].TaskID == taskID && rows[i].Arm == arm {
+			rows[i].InstrumentDefect = reason
+			found = true
+		}
+	}
+	if !found {
+		return fmt.Errorf("void: no ledger row for run %q task %q arm %q in %s", runID, taskID, arm, ledgerPath)
+	}
+	return WriteScenarioLedger(ledgerPath, rows)
 }
 
 // LoadScenarioLedger reads every row from the JSONL ledger at path, in

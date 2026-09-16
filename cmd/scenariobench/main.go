@@ -43,6 +43,16 @@
 //	    a cell key with more trials actually stored is still counted in
 //	    full. Exit 0 pass, 1 fail (a measured refutation — recorded, not
 //	    excused), 3 indeterminate (re-run: not enough was measured).
+//
+//	scenariobench void -run-id <id> -task <id> -arm <name> -reason <text> [-cells <dir>] [-ledger <path.jsonl>] [-readme <path>] [-corpus-glob <glob>]
+//	    Marks a FILED ledger row's own InstrumentDefect (and every stored
+//	    cell record filed under that same run/task/arm) with -reason —
+//	    ADR-034 decision 2's own retroactive voiding, for an instrument
+//	    defect discovered only after the numbers were already read — then
+//	    re-renders -readme's marker-fenced section exactly as `ledger`
+//	    does. Refuses, changing nothing, when no ledger row matches
+//	    (run_id, task_id, arm): voiding a row that was never filed would
+//	    invent a defect claim for a reading that does not exist.
 package main
 
 import (
@@ -74,7 +84,7 @@ func main() {
 
 func run(args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: scenariobench <plan|run|score|ledger> [flags]")
+		fmt.Fprintln(os.Stderr, "usage: scenariobench <plan|run|score|ledger|void> [flags]")
 		return 2
 	}
 	switch args[0] {
@@ -86,8 +96,10 @@ func run(args []string) int {
 		return cmdScore(args[1:])
 	case "ledger":
 		return cmdLedger(args[1:])
+	case "void":
+		return cmdVoid(args[1:])
 	default:
-		fmt.Fprintf(os.Stderr, "unknown subcommand %q (want plan, run, score, or ledger)\n", args[0])
+		fmt.Fprintf(os.Stderr, "unknown subcommand %q (want plan, run, score, ledger, or void)\n", args[0])
 		return 2
 	}
 }
@@ -449,6 +461,19 @@ func cmdRun(args []string) int {
 	lost := 0
 	absRawDir, _ := filepath.Abs(*rawDir) // claude -p runs in the worktree and resolves --mcp-config against ITS cwd
 
+	// O57 finding 1: "a driver kills what it started" — arm the
+	// SIGTERM/SIGINT handler before any session or scratch daemon can
+	// start, and reap whatever an EARLIER, killed driver invocation left
+	// running under this exact -raw-dir/-run-id (sessionAttemptPIDFile's
+	// own sibling-of-rawDir convention, sessions.go's newSessionRequest —
+	// the O52 pidfile pattern, applied to sessions) before this one begins.
+	stopKillSwitch := installKillSwitch()
+	defer stopKillSwitch()
+	runRawDir := filepath.Join(absRawDir, *runID)
+	if reaped := scenariobench.ReapOrphanSessionsUnder(runRawDir); len(reaped) > 0 {
+		fmt.Fprintf(os.Stderr, "scenariobench run: reaped %d orphaned session(s) from a previous run under %s: %v\n", len(reaped), runRawDir, reaped)
+	}
+
 	var selected []cellPlan
 	for _, cp := range cells {
 		if len(onlyTasks) > 0 && !onlyTasks[cp.task.ID] {
@@ -548,6 +573,13 @@ func cmdRun(args []string) int {
 // turn it into a LOST cell instead of aborting the run.
 var errSubjectPrep = errors.New("preparing subject")
 
+// ledgerClock is cmdLedger's own injected clock (internal/CLAUDE.md's
+// determinism contract: inject clocks, never call time.Now() directly in
+// logic a test needs to pin) — GeneratedAt on every row cmdLedger files
+// (O55 item 5). Tests override it for a deterministic timestamp; production
+// leaves it as time.Now.
+var ledgerClock = time.Now
+
 type cellOutcome struct {
 	cp         cellPlan
 	borrowed   bool
@@ -600,6 +632,33 @@ func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench
 	}
 	defer scenariobench.StopWorktree(&wt)
 
+	// O57 finding 3: "an instrument-caused violation is voided, never
+	// scored" — run every detector once against the worktree AS PREPARED
+	// (post-wire, before any session), so a detector PrepareSubject's own
+	// wiring left red (a scratch daemon, a compiled layer, PostWireSetup
+	// drift) can be told apart from one the agent's session actually broke.
+	baseline, err := scenariobench.RunBaselineDetectors(ctx, wt, cp.task)
+	if err != nil {
+		return scenariobench.CellResult{}, fmt.Errorf("running baseline detectors: %w", err)
+	}
+
+	// O57 finding 6: "per-arm artifacts are shared across trials" —
+	// PrepareSubject's own wt.CellDir carries no trial component (it is
+	// SHARED across every trial of this (task, arm)); everything captured
+	// from here on (agent.diff, oracle-test-output, detector logs,
+	// plan.md) goes into this trial's own subdirectory instead. "" for
+	// attemptDir, not wave-n1's allocateRawAttemptDir (sessions.go): that
+	// attempt-<k> dir is allocated INSIDE RunSessions below, on a
+	// different root (-raw-dir) for a different purpose (raw transcript
+	// retry-safety), and isn't known until after this line runs — but
+	// wt.CellDir must be final before RunSessions runs, since it derives
+	// this trial's own clean-room env (FATHOM_THREADS, the
+	// baseline-isolation shim). See PerTrialCellDir's own doc comment.
+	wt.CellDir = scenariobench.PerTrialCellDir(wt.CellDir, "", cp.trial)
+	if err := os.MkdirAll(wt.CellDir, 0o755); err != nil {
+		return scenariobench.CellResult{}, fmt.Errorf("creating per-trial cell dir %s: %w", wt.CellDir, err)
+	}
+
 	// The clean room (RC-6) is Claude Code's own --restricted mode
 	// (buildClaudeArgs) plus --settings <wt.Arm.SettingsPath> — both
 	// derived from req/wt.Arm inside RunSessions/buildClaudeArgs, nothing
@@ -620,12 +679,16 @@ func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench
 	// still the last thing to touch it, and these two files must record
 	// only what the AGENT produced.
 	planPath, planBytes := captureAgentPlan(wt, sessionsStart)
-	diffPath := captureAgentDiff(ctx, wt)
+	diffPath, instrumentFilesExcluded := captureAgentDiff(ctx, wt)
 
 	oracle, err := scenariobench.RunOracle(ctx, wt, cp.task, sessions, root)
 	if err != nil {
 		return scenariobench.CellResult{}, fmt.Errorf("running oracle: %w", err)
 	}
+	// O57 finding 3: exclude any detector already red at baseline from
+	// this cell's own pass/fail, now that RunOracle has computed its
+	// post-session verdict.
+	scenariobench.VoidBaselineRedDetectors(&oracle, baseline, cp.task, sessions)
 
 	readings := scenariobench.AggregateReadings(sessions)
 	readings.SurfaceCalls = scenariobench.SurfaceCallCount(readings.ToolCalls, arm.Surface)
@@ -644,9 +707,26 @@ func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench
 	drift := scenariobench.ContractDrift(planBytes, wt.Path, oracle.CoverProfile)
 	readings.Drift = &drift
 
+	var rowsAssigned, rowsUnassigned *int
 	if cp.task.Sessions.Mode == scenariobench.ModePlannerWorkers {
 		overlap := scenariobench.ReexplorationOverlap(sessions)
 		readings.Overlap = &overlap
+
+		// O55 item 3: rows_assigned counts the worker sessions RunSessions'
+		// reassignment loop actually ran (every session but the planner);
+		// rows_unassigned re-reads the plan file AFTER sessions finished —
+		// whatever RunSessions' own maxTotal cap (or an errored worker)
+		// left unchecked.
+		assigned := 0
+		for _, s := range sessions {
+			if s.Role == "worker" {
+				assigned++
+			}
+		}
+		rowsAssigned = &assigned
+		if n, err := scenariobench.RemainingPlanRows(wt.Path); err == nil {
+			rowsUnassigned = &n
+		}
 	}
 
 	if cp.task.Rule != nil {
@@ -667,6 +747,9 @@ func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench
 	// task with Oracle.Localization) onto the cell's Readings, exactly as
 	// PlanCoverage/FalseDone/Drift already are above.
 	readings.Localization = oracle.Localization
+	// O57 finding 2: carry the oracle's own refusal outcome (set only for
+	// a refusal-aware task) onto the cell's Readings, same pattern.
+	readings.RefusalOutcome = oracle.Outcome
 
 	return scenariobench.CellResult{
 		TaskID:   cp.task.ID,
@@ -676,25 +759,28 @@ func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench
 		Sessions: sessions,
 		Oracle:   oracle,
 		Readings: readings,
-		// An untouched tree cannot pass (guards pilot 1) — UNLESS the
-		// task's oracle is answer-only (SB-32 lookups-vs.json) or
-		// localization-only (VB-25, the LCA bug-localization track),
-		// where nothing was ever meant to be edited.
-		Success:        oracle.Passed && (scenariobench.AnswerOnly(cp.task) || scenariobench.LocalizationOnly(cp.task) || scenariobench.AnyEdits(sessions)),
-		CellKey:        cp.key,
-		CorpusSHA256:   cp.inv.CorpusSHA256,
-		ModelID:        cp.inv.ModelID,
-		HarnessVersion: cp.inv.HarnessVersion,
-		ArmSurface:     cp.inv.ArmSurface,
-		Surface:        arm.Surface,
-		Gold:           cp.task.Gold,
-		PlanPath:       planPath,
-		AgentDiffPath:  diffPath,
-		RunID:          runID,
-		StartedAt:      "", // TODO(SB-19 follow-up): inject a clock; not needed for wave 2's own tests
-		WorktreePath:   wt.Path,
-		SubjectClone:   wt.SubjectClone,
-		BaseCommit:     cp.task.Subject.BaseCommit,
+		// Fix-first review: the any-edits floor is now the ONE SuccessFor
+		// formula (oracle.go) every Success-setting caller shares — runOneCell
+		// here, runExternalCell (external_corpus.go) and cmdScore's rescoring
+		// (below) — see its own doc comment for why.
+		Success:                 scenariobench.SuccessFor(cp.task, oracle, sessions),
+		CellKey:                 cp.key,
+		CorpusSHA256:            cp.inv.CorpusSHA256,
+		ModelID:                 cp.inv.ModelID,
+		HarnessVersion:          cp.inv.HarnessVersion,
+		ArmSurface:              cp.inv.ArmSurface,
+		Surface:                 arm.Surface,
+		Gold:                    cp.task.Gold,
+		PlanPath:                planPath,
+		AgentDiffPath:           diffPath,
+		RunID:                   runID,
+		StartedAt:               "", // TODO(SB-19 follow-up): inject a clock; not needed for wave 2's own tests
+		WorktreePath:            wt.Path,
+		SubjectClone:            wt.SubjectClone,
+		BaseCommit:              cp.task.Subject.BaseCommit,
+		RowsAssigned:            rowsAssigned,
+		RowsUnassigned:          rowsUnassigned,
+		InstrumentFilesExcluded: instrumentFilesExcluded,
 	}, nil
 }
 
@@ -846,27 +932,50 @@ func findAgentPlanFile(worktree string, sessionsStart time.Time) string {
 // captureAgentDiff writes wt.CellDir/agent.diff: `git add -N .` (so an
 // untracked file the agent created shows up as a new-file hunk, not as
 // nothing) followed by `git diff` against the index, covering everything
-// the sessions changed since PrepareSubject reset the tree to base_commit.
-// Best-effort: an error returns "" rather than failing the cell — a
-// captured diff is a convenience for later re-scoring, not a precondition
-// for the readings computed here (which read the live worktree directly).
-func captureAgentDiff(ctx context.Context, wt scenariobench.Worktree) string {
+// the sessions changed since PrepareSubject reset the tree to base_commit
+// — MINUS whatever PrepareSubject's own instrument wrote (O55 item 4:
+// `fathom init`'s wiring — the CLAUDE.md/AGENTS.md stanza, everything
+// internal/wiring's ledger records, .fathomignore, anything under
+// workspace/ — is never the agent's own work and must never be credited to
+// it in agent.diff or any byte count derived from it). Returns the
+// captured diff's path ("" on any error — a captured diff is a convenience
+// for later re-scoring, not a precondition for the readings computed here,
+// which read the live worktree directly) and how many whole-file sections
+// were excluded, for CellResult.InstrumentFilesExcluded.
+func captureAgentDiff(ctx context.Context, wt scenariobench.Worktree) (path string, instrumentFilesExcluded int) {
 	add := exec.CommandContext(ctx, "git", "add", "-N", ".")
 	add.Dir = wt.Path
 	if _, err := add.CombinedOutput(); err != nil {
-		return ""
+		return "", 0
 	}
 	diff := exec.CommandContext(ctx, "git", "diff")
 	diff.Dir = wt.Path
 	out, err := diff.Output()
 	if err != nil {
-		return ""
+		return "", 0
 	}
+	// Region-aware first (CLAUDE.md/AGENTS.md's own fathom stanza — never
+	// ledger-tracked, O55 item 4 fix-first review), then the ledger/
+	// workspace-driven whole-file exclusion; the two act on disjoint files,
+	// so order between them does not matter, and their counts simply add.
+	var regionsExcluded int
+	out, regionsExcluded = scenariobench.StripInstrumentRegions(ctx, wt, out)
+	var filesExcluded int
+	if owned, err := scenariobench.InstrumentOwnedPaths(wt); err == nil {
+		// workspace/ is THIS repo's own convention, never assumed of an
+		// arbitrary subject (O55 item 4, fix-first review) — only a
+		// workspace/ path the SUBJECT's own .gitignore actually ignores
+		// is excluded; GitIgnoredWorkspacePaths queries just the
+		// workspace/ paths this diff names.
+		gitIgnored := scenariobench.GitIgnoredWorkspacePaths(ctx, wt, out)
+		out, filesExcluded = scenariobench.FilterInstrumentOwnedDiff(out, owned, gitIgnored)
+	}
+	instrumentFilesExcluded = regionsExcluded + filesExcluded
 	dest := filepath.Join(wt.CellDir, "agent.diff")
 	if err := os.WriteFile(dest, out, 0o644); err != nil {
-		return ""
+		return "", 0
 	}
-	return dest
+	return dest, instrumentFilesExcluded
 }
 
 // reconstructFinalTree rebuilds cell's final tree when its shared
@@ -1040,6 +1149,17 @@ func cmdScore(args []string) int {
 	if compileCost != nil {
 		cell.Readings.TotalCostUSD += compileCostUSD
 	}
+	// Success (fix-first review) IS always recomputed here, unlike
+	// GoldSourceTool just below: the bare any-edits floor, oracle.Passed
+	// && AnyEdits(sessions), needs no task at all, and recomputing it is
+	// never a "false regression" the way silently resetting
+	// GoldSourceTool to not-measured would be. Only SuccessFor's three
+	// exemptions (AnswerOnly/LocalizationOnly/RefusalAware) need the
+	// task's own oracle shape, which -corpus is what supplies — without
+	// it (or without a matching task id), this still recomputes, just
+	// via the SAME bare formula cmdScore always used, honestly narrower
+	// (no exemptions applied) rather than a stale preserved value.
+	cell.Success = cell.Oracle.Passed && scenariobench.AnyEdits(cell.Sessions)
 	if *corpusPath == "" {
 		fmt.Fprintln(os.Stderr, "scenariobench score: gold_source_tool: not recomputed (no -corpus)")
 		cell.Readings.GoldSourceTool = goldSourceTool
@@ -1058,11 +1178,20 @@ func cmdScore(args []string) int {
 			}
 		}
 		if !found {
-			fmt.Fprintf(os.Stderr, "scenariobench score: task %q not found in %s — gold_source_tool not recomputed\n", cell.TaskID, *corpusPath)
+			fmt.Fprintf(os.Stderr, "scenariobench score: task %q not found in %s — gold_source_tool not recomputed, success recomputed WITHOUT its oracle-shape exemptions\n", cell.TaskID, *corpusPath)
 			cell.Readings.GoldSourceTool = goldSourceTool
 			cell.Readings.GoldSourceEvidence = goldSourceEvidence
 		} else {
 			cell.Readings.GoldSourceTool, cell.Readings.GoldSourceEvidence = scenariobench.GoldSourceTool(cell.Sessions, task)
+			// Fix-first review: with task's own oracle shape known, use
+			// the SAME SuccessFor (oracle.go) runOneCell and
+			// runExternalCell use, so an answer-only, localization-only
+			// or refusal-aware cell (none of which ever necessarily
+			// edited anything, by design) is not scored FAIL purely for
+			// having no edits — the bug this review found (runExternalCell
+			// carried no exemptions at all; cmdScore's bare formula above
+			// carries none either, until this line overrides it).
+			cell.Success = scenariobench.SuccessFor(task, cell.Oracle, cell.Sessions)
 		}
 	}
 	cell.Readings.SurfaceCalls = scenariobench.SurfaceCallCount(cell.Readings.ToolCalls, cell.Surface)
@@ -1070,7 +1199,6 @@ func cmdScore(args []string) int {
 		fmt.Fprintf(os.Stderr, "scenariobench score: %s/%s/t%d: surface %q unused — zero %s* tool calls across the cell\n",
 			cell.TaskID, cell.Arm, cell.Trial, cell.Surface, scenariobench.SurfaceToolPrefix(cell.Surface))
 	}
-	cell.Success = cell.Oracle.Passed && scenariobench.AnyEdits(cell.Sessions)
 	rescoreSDDReadings(&cell)
 
 	dest := *out
@@ -1092,6 +1220,18 @@ func cmdScore(args []string) int {
 
 // ─── ledger ──────────────────────────────────────────────────────────────
 
+// borrowRunMismatchError builds cmdLedger's -strict-borrow refusal message
+// (O55 item 5): a stored cell record exists at key/trial, but names a
+// different run than -run-id expects — usually -cells pointed at the wrong
+// store, or -run-id was mistyped, not "this cell just wasn't part of this
+// run" (that case is !ok, handled separately). Names the store it actually
+// resolved (storeRoot, CellResult.StoreRoot — BorrowScenarioCell's own
+// cellsDir) so the operator has something to check.
+func borrowRunMismatchError(taskID, arm string, trial int, key, storeRoot, gotRunID, wantRunID string) error {
+	return fmt.Errorf("cell %s/%s/t%d (key %s) in store %s was filed under run %q, not the expected run %q — refusing to borrow (pass -strict-borrow=false to allow across-run borrowing)",
+		taskID, arm, trial, key, storeRoot, gotRunID, wantRunID)
+}
+
 func cmdLedger(args []string) int {
 	fs := newFlagSet("ledger")
 	corpusPath := fs.String("corpus", "", "path to the scenario corpus JSON, or \""+externalCorpusSentinel+"\" to build one from -dataset (required)")
@@ -1103,6 +1243,7 @@ func cmdLedger(args []string) int {
 	runID := fs.String("run-id", "", "the run whose cells to file (required)")
 	commit := fs.String("commit", "", "repo HEAD this run measured (default: git rev-parse --short HEAD)")
 	trials := fs.Int("trials", 0, "trials per (task, arm) this run intended (default: the corpus criterion's own min_trials; a cell key with MORE stored trials than this is still counted in full, never capped)")
+	strictBorrow := fs.Bool("strict-borrow", true, "refuse (exit 2) to file a row when a stored cell's own run_id differs from -run-id, rather than silently skipping it — false restores the old silent-skip behavior for a cellsDir deliberately shared across runs")
 	cf := addCellFlags(fs)
 	if err := fs.Parse(args); err != nil {
 		return 2
@@ -1120,7 +1261,10 @@ func cmdLedger(args []string) int {
 		fmt.Fprintf(os.Stderr, "scenariobench ledger: %v\n", err)
 		return 2
 	}
-	generatedAt := ""
+	// O55 item 5: RFC3339 UTC from the injected clock — every filed row
+	// carries WHEN this filing happened, deterministic in tests
+	// (ledgerClock), real wall time in production.
+	generatedAt := ledgerClock().UTC().Format(time.RFC3339)
 	resolvedCommit := *commit
 	if resolvedCommit == "" {
 		resolvedCommit = resolveFathomCommit("")
@@ -1152,6 +1296,7 @@ func cmdLedger(args []string) int {
 			fmt.Fprintf(os.Stderr, "scenariobench ledger: reading cell %s/%s/t%d: %v\n", cp.task.ID, cp.arm, cp.trial, err)
 			return 2
 		}
+		resolvedKey := cp.key
 		if seenTrial[cp.key] == nil {
 			seenTrial[cp.key] = map[int]bool{}
 		}
@@ -1165,8 +1310,16 @@ func cmdLedger(args []string) int {
 				fmt.Fprintf(os.Stderr, "scenariobench ledger: %v\n", err)
 				return 2
 			}
+			resolvedKey = alt
 		}
-		if !ok || cell.RunID != *runID {
+		if !ok {
+			continue
+		}
+		if cell.RunID != *runID {
+			if *strictBorrow {
+				fmt.Fprintf(os.Stderr, "scenariobench ledger: %v\n", borrowRunMismatchError(cp.task.ID, cp.arm, cp.trial, resolvedKey, cell.StoreRoot, cell.RunID, *runID))
+				return 2
+			}
 			continue
 		}
 		k := key{cp.task.ID, cp.arm}
@@ -1196,7 +1349,14 @@ func cmdLedger(args []string) int {
 				return 2
 			}
 			seenTrial[primaryKey][trial] = true
-			if !ok || cell.RunID != *runID {
+			if !ok {
+				continue
+			}
+			if cell.RunID != *runID {
+				if *strictBorrow {
+					fmt.Fprintf(os.Stderr, "scenariobench ledger: %v\n", borrowRunMismatchError(k.task, k.arm, trial, primaryKey, cell.StoreRoot, cell.RunID, *runID))
+					return 2
+				}
 				continue
 			}
 			byTaskArm[k] = append(byTaskArm[k], cell)
@@ -1223,10 +1383,15 @@ func cmdLedger(args []string) int {
 		group := byTaskArm[k]
 		allCells = append(allCells, group...)
 		row := scenariobench.ScenarioLedgerRow{
-			RunID:          *runID,
-			GeneratedAt:    generatedAt,
-			Commit:         resolvedCommit,
-			CorpusSHA256:   sha,
+			RunID:        *runID,
+			GeneratedAt:  generatedAt,
+			Commit:       resolvedCommit,
+			CorpusSHA256: sha,
+			// CriterionID (RC-35 follow-up): stamped from the corpus this
+			// invocation just loaded, so this row stays citable by its
+			// criterion even after a later corpus rewrite changes sha's
+			// own content hash — see ScenarioLedgerRow.CriterionID.
+			CriterionID:    corpus.Criterion.ID,
 			TaskID:         k.task,
 			Category:       taskByID[k.task].Category,
 			Arm:            k.arm,
@@ -1333,6 +1498,81 @@ func cmdLedger(args []string) int {
 	default:
 		return 1
 	}
+}
+
+// ─── void ────────────────────────────────────────────────────────────────
+
+// cmdVoid is O53 defect 7: `scenariobench void` marks a FILED ledger
+// row's own InstrumentDefect (and every matching stored cell record's)
+// after the fact — a defect discovered only once the numbers were
+// already read, ADR-034 decision 2's own escape hatch, which had no
+// command to drive it before this one. It refuses when the row is
+// absent: voiding something that was never filed would silently invent a
+// defect claim for a reading that does not exist.
+func cmdVoid(args []string) int {
+	fs := newFlagSet("void")
+	cellsDir := fs.String("cells", filepath.Join("workspace", "artifacts", "scenariobench", "cells"), "content-addressed cell store")
+	ledgerPath := fs.String("ledger", filepath.Join("docs", "bench", "scenarios-ledger.jsonl"), "committed JSONL ledger")
+	readmePath := fs.String("readme", filepath.Join("docs", "bench", "README.md"), "README carrying the marker-fenced scenario ledger table")
+	corpusGlob := fs.String("corpus-glob", filepath.Join("testdata", "scenariobench", "*.json"), "every corpus whose criterion the re-rendered verdict block may cite, keyed by corpus SHA256")
+	runID := fs.String("run-id", "", "the run whose row to void (required)")
+	taskID := fs.String("task", "", "the task id (required)")
+	arm := fs.String("arm", "", "the arm name (required)")
+	reason := fs.String("reason", "", "the instrument defect naming why this row is voided (required)")
+	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+	if *runID == "" || *taskID == "" || *arm == "" || *reason == "" {
+		fmt.Fprintln(os.Stderr, "scenariobench void: -run-id, -task, -arm, and -reason are required")
+		return 2
+	}
+
+	if err := scenariobench.VoidScenarioLedgerRow(*ledgerPath, *runID, *taskID, *arm, *reason); err != nil {
+		fmt.Fprintf(os.Stderr, "scenariobench void: %v\n", err)
+		return 2
+	}
+
+	// "and the cell record": every stored cell filed under this exact
+	// (run_id, task_id, arm) — never only the ledger row's own summary —
+	// carries the same InstrumentDefect, so a reader of the cell store
+	// directly sees the same fact the ledger does.
+	cells, err := scenariobench.FindScenarioCellsByRun(*cellsDir, *taskID, *arm, *runID)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "scenariobench void: %v\n", err)
+		return 2
+	}
+	for _, c := range cells {
+		c.InstrumentDefect = *reason
+		if err := scenariobench.OverwriteScenarioCell(*cellsDir, c); err != nil {
+			fmt.Fprintf(os.Stderr, "scenariobench void: %v\n", err)
+			return 2
+		}
+	}
+
+	// Re-render the README block exactly as `ledger` does: the SAME
+	// three pieces (verdict, table, gold-source-by-category), from the
+	// ledger's own current (now-voided) contents.
+	rows, err := scenariobench.LoadScenarioLedger(*ledgerPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "scenariobench void: %v\n", err)
+		return 2
+	}
+	criteria, err := criteriaBySHA256(*corpusGlob)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "scenariobench void: %v\n", err)
+		return 2
+	}
+	body := scenariobench.RenderVerdict(rows, criteria) + "\n" + scenariobench.RenderScenarioLedger(rows)
+	if shapeTable := scenariobench.RenderGoldSourceByCategory(scenariobench.GoldSourceRateByCategory(rows)); shapeTable != "" {
+		body += "\n" + shapeTable
+	}
+	if err := scenariobench.RewriteScenarioLedgerSection(*readmePath, body); err != nil {
+		fmt.Fprintf(os.Stderr, "scenariobench void: rendering %s: %v\n", *readmePath, err)
+		return 2
+	}
+
+	fmt.Fprintf(os.Stdout, "scenariobench void: voided run %s task %s arm %s (%d cell record(s)): %s\n", *runID, *taskID, *arm, len(cells), *reason)
+	return 0
 }
 
 // ─── flag helpers ────────────────────────────────────────────────────────

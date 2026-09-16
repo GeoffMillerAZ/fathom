@@ -83,6 +83,13 @@ type Sessions struct {
 	MaxTurns int  `json:"max_turns"`
 	Workers  int  `json:"workers,omitempty"`
 	Mode     Mode `json:"mode"`
+	// MaxWorkersTotal caps how many worker sessions ModePlannerWorkers may
+	// run in total across the whole cell (O55 item 3): after a worker
+	// finishes its row, runPlannerWorkers assigns the next unchecked plan
+	// row to a new worker session rather than stopping at Workers sessions
+	// — a plan with more rows than Workers used to leave the extra rows
+	// unassigned forever. 0 defaults to Workers*3 (runPlannerWorkers).
+	MaxWorkersTotal int `json:"max_workers_total,omitempty"`
 }
 
 // Subject is the pinned repository a task runs against.
@@ -107,6 +114,16 @@ type Subject struct {
 	// TestCommand runs the oracle's test selection; {{tests}} is replaced
 	// by the regex of test names. Default: go test -run '{{tests}}' ./...
 	TestCommand string `json:"test_command,omitempty"`
+	// ExcludePaths (O53 defect 3) are glob patterns, relative to the
+	// worktree root, that PrepareSubject removes from the worktree at
+	// prepare time — after checkout, before any ingest, for EVERY arm —
+	// so a file the corpus itself was derived from (an answer key) never
+	// sits inside the worktree an agent can Read/Grep/Bash its way into.
+	// The corpus loader (corpus.go) requires this to cover
+	// "testdata/contextbench/**", "testdata/scenariobench/**" and
+	// "docs/bench/**" for any task whose derivation names the home lookup
+	// corpus (testdata/contextbench/tasks-home.json).
+	ExcludePaths []string `json:"exclude_paths,omitempty"`
 }
 
 // Detector is a rule's own enforcement: a command whose exit code decides.
@@ -114,6 +131,43 @@ type Detector struct {
 	Name       string `json:"name"`
 	Command    string `json:"command"`
 	ExpectExit int    `json:"expect_exit"`
+	// BaselineVoid marks a detector whose redness at baseline (before any
+	// session runs, RunBaselineDetectors) is an environment/instrument
+	// fact rather than a claim about the agent's own work — i16's
+	// config-audit-deploy-safety is the corpus's own example: it reads
+	// the CURRENT repo's config, not anything scoped to this task, so a
+	// drifted environment can leave it red before any agent touches
+	// anything. VoidBaselineRedDetectors (baseline_red.go, fix-first
+	// review) voids a detector ONLY when this is true — NEVER inferred
+	// from redness alone, since a change-present detector (red until the
+	// agent makes the change, BY DESIGN) has the exact same shape as a
+	// truly-broken environment and would otherwise be voided right along
+	// with it, letting an agent that edits something unrelated pass.
+	BaselineVoid bool `json:"baseline_void,omitempty"`
+	// Completion marks the OTHER shape explicitly, for the corpus's own
+	// reader: a detector that is SUPPOSED to be red until the agent
+	// completes the task (a change-present check) — never voidable,
+	// whether or not BaselineVoid is set (it never should be, on a
+	// completion detector). Carries no runtime behavior of its own
+	// (unmarked already defaults to "never voided"); it documents intent
+	// so a corpus author does not have to re-derive it from absence.
+	Completion bool `json:"completion,omitempty"`
+}
+
+// Refusal (O57 finding 2) declares a task whose CORRECT handling may be to
+// refuse the requested change and cite the rule that forbids it, rather
+// than making any edit at all: a change-present detector plus the
+// any-edits floor used to score that refusal exactly like a violation, so
+// neither arm's governance behaviour on a forbid-shaped rule was ever
+// adjudicable. ForbiddenPaths names the paths whose diff would make the
+// change a real violation; MustCite names rule tokens (matched
+// case-insensitive substring, any one sufficing) the final session's own
+// FinalAnswer must name for the refusal to count as reasoned rather than
+// merely idle. See ScoreRefusal (refusal.go) for how a trial's outcome is
+// decided from these.
+type Refusal struct {
+	ForbiddenPaths []string `json:"forbidden_paths,omitempty"`
+	MustCite       []string `json:"must_cite,omitempty"`
 }
 
 // Oracle decides success and violations, after the last session, never by
@@ -125,10 +179,22 @@ type Oracle struct {
 	// Coverage requests a coverprofile from the test run (SDD readings).
 	Coverage bool `json:"coverage,omitempty"`
 	// AnswerAllOf is the answer-only oracle (SB-32 lookups-vs.json): every
-	// token must appear (case-insensitive substring) in the LAST session's
-	// SessionResult.FinalAnswer. A task may carry this ALONE — no
-	// tree-level check at all — see AnswerOnly (oracle.go).
+	// token must appear (case-insensitive substring, subject to
+	// oracleAnswerMatches' negation/quoting/conclusion-span rules — O53
+	// defect 5) in the LAST session's SessionResult.FinalAnswer. A task
+	// may carry this ALONE — no tree-level check at all — see AnswerOnly
+	// (oracle.go).
 	AnswerAllOf []string `json:"answer_all_of,omitempty"`
+	// AnswerAnyOf declares groups of spelling-equivalent gold tokens (O53
+	// defect 5a, mirroring internal/contextbench.Task.AnswerAnyOf/VB-36):
+	// each inner slice is one required fact, satisfied by ANY member
+	// appearing in the answer — the same false-fail contextbench's own
+	// H1-T02 hit ("Edge struct" vs the literal "core.Edge") for the same
+	// fact spelled differently. Groups are required exactly like
+	// AnswerAllOf's own tokens: every group (and every plain AnswerAllOf
+	// token) must be satisfied. AnswerAllOf keeps working unchanged when
+	// this is empty — AnswerAnyOf only ADDS grouped alternatives.
+	AnswerAnyOf [][]string `json:"answer_any_of,omitempty"`
 	// Localization is VB-25's "files" oracle (vision 29 Wave G, the LCA
 	// bug-localization track): the LAST session's FinalAnswer is parsed
 	// for a file set (ParseAnswerFiles) and scored against Gold.Files
@@ -139,6 +205,9 @@ type Oracle struct {
 	// substring containment. Never combined with AnswerAllOf on the same
 	// task — the two answer-only oracles ask different questions.
 	Localization bool `json:"localization,omitempty"`
+	// Refusal marks a refusal-aware task (O57 finding 2) — see the Refusal
+	// type. nil for every ordinary change task.
+	Refusal *Refusal `json:"refusal,omitempty"`
 }
 
 // Gold is what the accepted change touched, from the pinned patch.
@@ -259,6 +328,18 @@ type BoxCheck struct {
 	// checklist with no contract) — never at record time, since no tree
 	// exists yet to confirm a backticked identifier names a real function.
 	Text string `json:"text,omitempty"`
+	// Oracle/Path/Pattern (O57 finding 6) mirror the plan-grammar-v2
+	// lexical-oracle contract (docs/plans/README.md, ADR-030) parsed off
+	// the SAME {...} annotation Symbol/Package come from: a row carrying
+	// `oracle: lexical, path: ..., pattern: ...` instead of a symbol
+	// contract. FalseDoneRate adjudicates it directly (a regexp match
+	// against the final tree), never folding it into "no symbol"
+	// (NotAdjudicable) the way a plain checklist row does — the defect
+	// O57 named: "the false_done reading skips rows with a lexical
+	// oracle". Oracle is "" for an ordinary symbol-contract or plain row.
+	Oracle  string `json:"oracle,omitempty"`
+	Path    string `json:"path,omitempty"`
+	Pattern string `json:"pattern,omitempty"`
 }
 
 // SessionResult is the harness-independent record of one session.
@@ -351,6 +432,21 @@ type SessionResult struct {
 	// every session in it errored.
 	Error           string `json:"error,omitempty"`
 	InstrumentError string `json:"instrument_error,omitempty"`
+	// AnswerKeyLeak (O53 defect 3) is set when a post-session scan
+	// (AnswerKeyLeakScan) found a tool_result in this session's raw
+	// transcript naming a path Subject.ExcludePaths was supposed to have
+	// removed from the worktree before any session ran — proof the answer
+	// key the task was derived from reached the agent anyway. CellLost
+	// treats any ONE such session as voiding the whole cell, exactly like
+	// InstrumentError.
+	AnswerKeyLeak bool `json:"answer_key_leak,omitempty"`
+	// BaselineRanFathom (O53 defect 4) is set when a post-session scan
+	// (BaselineRanFathomScan) found a Bash tool_use in this session's raw
+	// transcript invoking the fathom binary despite this arm's PATH
+	// exclusion — proof the "no fathom on PATH" isolation a non-wired arm
+	// depends on did not hold. CellLost treats any ONE such session as
+	// voiding the whole cell, exactly like InstrumentError.
+	BaselineRanFathom bool `json:"baseline_ran_fathom,omitempty"`
 }
 
 // DetectorResult is one detector's verdict.
@@ -358,6 +454,14 @@ type DetectorResult struct {
 	Name     string `json:"name"`
 	Exit     int    `json:"exit"`
 	Violated bool   `json:"violated"`
+	// VoidedBaselineRed is O57 finding 3: true when RunBaselineDetectors
+	// found this SAME detector already red on the prepared (post-wire, but
+	// pre-session) worktree — an instrument/environment fact, never the
+	// agent's own violation. Violated above is forced to false and this
+	// detector is excluded from the cell's pass/fail when this is true;
+	// Note explains why.
+	VoidedBaselineRed bool   `json:"voided_baseline_red,omitempty"`
+	Note              string `json:"note,omitempty"`
 }
 
 // OracleResult is what the tests and detectors said after the last session.
@@ -379,7 +483,23 @@ type OracleResult struct {
 	// ScoreLocalization's own verdict (oracle.go), computed from the LAST
 	// session's FinalAnswer against Gold.Files.
 	Localization *LocalizationReading `json:"localization,omitempty"`
+	// Outcome is set only for a refusal-aware task (Oracle.Refusal, O57
+	// finding 2): RefusalOutcomeRefused ("refused" — PASS: no forbidden
+	// path touched, a must_cite token named), RefusalOutcomeViolated
+	// ("violated" — a forbidden path was touched, regardless of the
+	// answer), or RefusalOutcomeNoEdit ("no_edit" — FAIL: neither an edit
+	// nor a citation). Decided by ScoreRefusal (refusal.go), which
+	// supersedes the ordinary detector-based Passed computation for a
+	// refusal-aware task. "" for every other task.
+	Outcome string `json:"outcome,omitempty"`
 }
+
+// Refusal outcomes (O57 finding 2) — see Oracle.Refusal and OracleResult.Outcome.
+const (
+	RefusalOutcomeRefused  = "refused"
+	RefusalOutcomeViolated = "violated"
+	RefusalOutcomeNoEdit   = "no_edit"
+)
 
 // LocalizationReading is VB-25 (vision 29 Wave G): how a bug-localization
 // answer's own parsed file set (ParseAnswerFiles) scored against
@@ -537,6 +657,10 @@ type Readings struct {
 	// cell's own Readings verbatim, so a stored CellResult and a ledger
 	// row's PerTrial both carry it without a separate lookup into Oracle.
 	Localization *LocalizationReading `json:"localization,omitempty"`
+	// RefusalOutcome is O57 finding 2: OracleResult.Outcome carried onto
+	// the cell's own Readings verbatim (the same pattern Localization
+	// above already follows) — "" for every task but a refusal-aware one.
+	RefusalOutcome string `json:"refusal_outcome,omitempty"`
 
 	// --- row-only aggregates (AggregateRowReadings, cell.go) ---
 	// A single cell/trial never sets these — they summarize what cannot
@@ -575,6 +699,11 @@ type Readings struct {
 	LocalizationHitAt5Rate     float64 `json:"localization_hit_at_5,omitempty"`
 	LocalizationFileRecallMean float64 `json:"file_recall,omitempty"`
 	LocalizationN              int     `json:"localization_n,omitempty"`
+	// RefusalOutcomes counts a row's own trials by RefusalOutcome
+	// ("refused", "violated", "no_edit") — O57 finding 2: the ledger row's
+	// own breakdown of a refusal-aware task's outcomes. Nil when no trial
+	// in the row carried one (not a refusal-aware task).
+	RefusalOutcomes map[string]int `json:"refusal_outcomes,omitempty"`
 }
 
 // CompileCostReading is the wave-0 receipt (RC-10) of what a wired,
@@ -639,6 +768,33 @@ type CellResult struct {
 	// SHARED, REUSED directory has already been reset by a later cell.
 	SubjectClone string `json:"subject_clone,omitempty"`
 	BaseCommit   string `json:"base_commit,omitempty"`
+	// InstrumentDefect mirrors ScenarioLedgerRow's own field (ADR-034
+	// decision 2, RC-36): O53 defect 7's `scenariobench void` command sets
+	// it on every stored cell record filed under the voided
+	// (run_id, task_id, arm), so the cell store itself — not only the
+	// ledger row — carries the fact that this reading measured an
+	// instrument defect, not the thing it claims. Empty for a sound cell.
+	InstrumentDefect string `json:"instrument_defect,omitempty"`
+	// RowsAssigned / RowsUnassigned are ModePlannerWorkers' own accounting
+	// (O55 item 3): how many plan rows actually got a worker session
+	// (RunSessions' reassignment loop, sessions.go) versus how many were
+	// still unchecked when it stopped (task.Sessions.MaxWorkersTotal
+	// reached, or a worker session errored). nil for ModeSingle — there is
+	// no plan-row assignment to report.
+	RowsAssigned   *int `json:"rows_assigned,omitempty"`
+	RowsUnassigned *int `json:"rows_unassigned,omitempty"`
+	// InstrumentFilesExcluded is how many whole-file sections
+	// FilterInstrumentOwnedDiff dropped from agent.diff (O55 item 4) —
+	// `fathom init`'s own writes, never the agent's — so the exclusion is
+	// visible on the cell rather than a silent shrink of AgentDiffPath. 0
+	// (the common unwired-arm case) is a real, reported count, not absence
+	// — always present, never omitempty.
+	InstrumentFilesExcluded int `json:"instrument_files_excluded"`
+	// StoreRoot is set only by BorrowScenarioCell (O55 item 5), to the
+	// cellsDir the cell was actually read from — ephemeral like Borrowed/
+	// SourceRunID (StoreScenarioCell never writes a borrowed cell back), so
+	// this is never present on a cell as originally stored.
+	StoreRoot string `json:"store_root,omitempty"`
 }
 
 // Harness runs one session and returns what happened; the Claude Code

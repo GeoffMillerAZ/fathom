@@ -323,3 +323,147 @@ func TestGoldSourceRateByCategory_Empty(t *testing.T) {
 		t.Error("no breakdown, no rendered table")
 	}
 }
+
+// TestWriteScenarioLedger_RoundTrips proves the overwrite path: every row
+// survives a write/reload cycle, in the given order.
+func TestWriteScenarioLedger_RoundTrips(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "ledger.jsonl")
+	rows := []ScenarioLedgerRow{
+		{RunID: "run-1", TaskID: "T1", Arm: "full", Trials: 2, Successes: 2},
+		{RunID: "run-1", TaskID: "T1", Arm: "control", Trials: 2, Successes: 1},
+	}
+	if err := WriteScenarioLedger(path, rows); err != nil {
+		t.Fatalf("WriteScenarioLedger: %v", err)
+	}
+	got, err := LoadScenarioLedger(path)
+	if err != nil {
+		t.Fatalf("LoadScenarioLedger: %v", err)
+	}
+	if len(got) != 2 || got[0].Arm != "full" || got[1].Arm != "control" {
+		t.Fatalf("unexpected round-trip: %+v", got)
+	}
+}
+
+// TestWriteScenarioLedger_OverwritesExistingContent proves this is a
+// REPLACE, not an append: a second write with fewer rows leaves exactly
+// that many, never the union of both writes.
+func TestWriteScenarioLedger_OverwritesExistingContent(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "ledger.jsonl")
+	if err := WriteScenarioLedger(path, []ScenarioLedgerRow{
+		{RunID: "run-1", TaskID: "T1", Arm: "full"},
+		{RunID: "run-1", TaskID: "T1", Arm: "control"},
+	}); err != nil {
+		t.Fatalf("first WriteScenarioLedger: %v", err)
+	}
+	if err := WriteScenarioLedger(path, []ScenarioLedgerRow{
+		{RunID: "run-2", TaskID: "T2", Arm: "full"},
+	}); err != nil {
+		t.Fatalf("second WriteScenarioLedger: %v", err)
+	}
+	got, err := LoadScenarioLedger(path)
+	if err != nil {
+		t.Fatalf("LoadScenarioLedger: %v", err)
+	}
+	if len(got) != 1 || got[0].RunID != "run-2" {
+		t.Fatalf("expected the second write to REPLACE the first, got %+v", got)
+	}
+}
+
+// TestVoidScenarioLedgerRow_MarksMatchingRowOnly is O53 defect 7's own
+// proof on a temp ledger: voiding one (run_id, task_id, arm) marks
+// exactly that row's InstrumentDefect and leaves every other row —
+// including a same-task different-arm row and a same-arm different-task
+// row — untouched.
+func TestVoidScenarioLedgerRow_MarksMatchingRowOnly(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "ledger.jsonl")
+	for _, r := range []ScenarioLedgerRow{
+		{RunID: "run-1", TaskID: "T1", Arm: "full", Trials: 3, Successes: 3},
+		{RunID: "run-1", TaskID: "T1", Arm: "control", Trials: 3, Successes: 1},
+		{RunID: "run-1", TaskID: "T2", Arm: "full", Trials: 3, Successes: 2},
+		{RunID: "run-2", TaskID: "T1", Arm: "full", Trials: 3, Successes: 3},
+	} {
+		if err := AppendScenarioLedger(path, r); err != nil {
+			t.Fatalf("AppendScenarioLedger: %v", err)
+		}
+	}
+
+	if err := VoidScenarioLedgerRow(path, "run-1", "T1", "full", "the operator daemon was reachable"); err != nil {
+		t.Fatalf("VoidScenarioLedgerRow: %v", err)
+	}
+
+	rows, err := LoadScenarioLedger(path)
+	if err != nil {
+		t.Fatalf("LoadScenarioLedger: %v", err)
+	}
+	if len(rows) != 4 {
+		t.Fatalf("expected voiding to change row COUNT not at all, got %d rows", len(rows))
+	}
+	for _, r := range rows {
+		wantVoided := r.RunID == "run-1" && r.TaskID == "T1" && r.Arm == "full"
+		if wantVoided && r.InstrumentDefect != "the operator daemon was reachable" {
+			t.Errorf("row %s/%s/%s: InstrumentDefect = %q, want it voided", r.RunID, r.TaskID, r.Arm, r.InstrumentDefect)
+		}
+		if !wantVoided && r.InstrumentDefect != "" {
+			t.Errorf("row %s/%s/%s: InstrumentDefect = %q, want untouched", r.RunID, r.TaskID, r.Arm, r.InstrumentDefect)
+		}
+	}
+}
+
+// TestVoidScenarioLedgerRow_RefusesWhenRowAbsent: voiding a row that was
+// never filed is refused, and the ledger is left byte-for-byte unchanged.
+func TestVoidScenarioLedgerRow_RefusesWhenRowAbsent(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "ledger.jsonl")
+	if err := AppendScenarioLedger(path, ScenarioLedgerRow{RunID: "run-1", TaskID: "T1", Arm: "full"}); err != nil {
+		t.Fatalf("AppendScenarioLedger: %v", err)
+	}
+	before, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = VoidScenarioLedgerRow(path, "run-1", "T1", "control", "no such row")
+	if err == nil {
+		t.Fatal("expected an error voiding a row that was never filed")
+	}
+
+	after, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(before) != string(after) {
+		t.Error("expected the ledger to be left untouched on refusal")
+	}
+}
+
+// TestVoidScenarioLedgerRow_RefusesOnMissingLedgerFile: no ledger file at
+// all (nothing has ever been filed) is also refused, not silently
+// treated as an empty, successfully-voided ledger.
+func TestVoidScenarioLedgerRow_RefusesOnMissingLedgerFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "does-not-exist.jsonl")
+	if err := VoidScenarioLedgerRow(path, "run-1", "T1", "full", "reason"); err == nil {
+		t.Fatal("expected an error voiding against a ledger that does not exist")
+	}
+}
+
+// TestVoidScenarioLedgerRow_MarksEveryTrialOfTheRow: a row voided twice
+// under different reasons keeps the LATEST reason (a re-void corrects the
+// annotation rather than appending to it).
+func TestVoidScenarioLedgerRow_SecondVoidReplacesReason(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "ledger.jsonl")
+	if err := AppendScenarioLedger(path, ScenarioLedgerRow{RunID: "run-1", TaskID: "T1", Arm: "full"}); err != nil {
+		t.Fatalf("AppendScenarioLedger: %v", err)
+	}
+	if err := VoidScenarioLedgerRow(path, "run-1", "T1", "full", "first reason"); err != nil {
+		t.Fatalf("first VoidScenarioLedgerRow: %v", err)
+	}
+	if err := VoidScenarioLedgerRow(path, "run-1", "T1", "full", "corrected reason"); err != nil {
+		t.Fatalf("second VoidScenarioLedgerRow: %v", err)
+	}
+	rows, err := LoadScenarioLedger(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 || rows[0].InstrumentDefect != "corrected reason" {
+		t.Fatalf("expected exactly 1 row with the corrected reason, got %+v", rows)
+	}
+}

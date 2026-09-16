@@ -79,6 +79,29 @@ type fakeDaemonCfg struct {
 	servicePaths       map[string]string
 	obligFileRules     map[string]int
 	obligLayerCompiled bool
+
+	// obligLayerCoverage (O54), when non-nil, is rendered as the
+	// obligations response's layer_coverage field on every probe that
+	// otherwise serves real rules (n > 0) — checkObligationsServed's
+	// partial-layer WARN downgrade. Nil (the zero value) preserves every
+	// pre-existing test's coverage-free obligations payload exactly.
+	obligLayerCoverage *fakeLayerCoverage
+
+	// obligLayerCoverageUnknown (O60), when true, renders layer_coverage
+	// as {"status":"unknown", note:...} instead of real numbers — the
+	// shape a real store answers with when it has no compile_runs row for
+	// the service (semantic.ObligationsLayerCoverage's found:false).
+	// Mutually exclusive with obligLayerCoverage; false preserves every
+	// pre-existing test's behavior exactly.
+	obligLayerCoverageUnknown bool
+}
+
+// fakeLayerCoverage mirrors semantic.LayerCoverage's JSON shape for
+// fakeDoctorDaemon's obligations responses.
+type fakeLayerCoverage struct {
+	SectionsTotal    int
+	SectionsCompiled int
+	BudgetStopped    bool
 }
 
 type fakeModuleRow struct {
@@ -138,7 +161,15 @@ func fakeDoctorDaemon(t *testing.T, cfg fakeDaemonCfg) *httptest.Server {
 			if wm != "" {
 				wmField = fmt.Sprintf(`,"compiled_at_watermark":%q`, wm)
 			}
-			inner = fmt.Sprintf(`{"service":"svc","file":%q,"rules":%s%s}`, file, rules, wmField)
+			covField := ""
+			if cfg.obligLayerCoverage != nil {
+				c := cfg.obligLayerCoverage
+				covField = fmt.Sprintf(`,"layer_coverage":{"sections_total":%d,"sections_compiled":%d,"budget_stopped":%v}`,
+					c.SectionsTotal, c.SectionsCompiled, c.BudgetStopped)
+			} else if cfg.obligLayerCoverageUnknown {
+				covField = `,"layer_coverage":{"status":"unknown","note":"layer compiled before coverage was recorded; recompile to record coverage"}`
+			}
+			inner = fmt.Sprintf(`{"service":"svc","file":%q,"rules":%s%s%s}`, file, rules, wmField, covField)
 		case "server_stats":
 			inner = fmt.Sprintf(`{"uptime_seconds":1,"surface_traffic":{"agent":{"calls":%d,"last_ts":"2026-01-01T00:00:00Z"}}}`, cfg.agentCalls)
 		case "list_modules":
@@ -1232,6 +1263,66 @@ func TestCheckObligationsServed(t *testing.T) {
 		}
 		if !strings.Contains(got.Reason, "2 of 3 rule(s) carry a drift status") {
 			t.Errorf("stale rules must be counted into the reason: %s", got.Reason)
+		}
+	})
+
+	// O54 deliverable 5: a PARTIALLY compiled obligations layer still
+	// serves real rules — a real, observable PASS — but must WARN, never
+	// FAIL, naming the resume command, when a compile_runs row shows
+	// sections_compiled < sections_total.
+	t.Run("partially compiled layer warns with the resume command, never fails", func(t *testing.T) {
+		srv := fakeDoctorDaemon(t, fakeDaemonCfg{
+			services: []string{"alpha"}, obligRules: 2, watermark: "wm",
+			obligLayerCoverage: &fakeLayerCoverage{SectionsTotal: 60, SectionsCompiled: 18, BudgetStopped: true},
+		})
+		defer srv.Close()
+		root := namedDir(t, "alpha")
+		got := checkObligationsServed(http.DefaultClient, srv.URL, root, "", true)
+		if got.Status != doctorWarn {
+			t.Fatalf("got %+v, want warn (never fail) for a partially compiled layer", got)
+		}
+		if !strings.Contains(got.Reason, "18/60 sections") {
+			t.Errorf("reason must name the section count: %s", got.Reason)
+		}
+		if !strings.Contains(got.Reason, "fathom compile --service alpha --layer obligations --dry-run=false --continue") {
+			t.Errorf("reason must carry the exact resume command: %s", got.Reason)
+		}
+	})
+
+	t.Run("fully compiled layer coverage stays a plain pass", func(t *testing.T) {
+		srv := fakeDoctorDaemon(t, fakeDaemonCfg{
+			services: []string{"alpha"}, obligRules: 2, watermark: "wm",
+			obligLayerCoverage: &fakeLayerCoverage{SectionsTotal: 60, SectionsCompiled: 60, BudgetStopped: false},
+		})
+		defer srv.Close()
+		root := namedDir(t, "alpha")
+		got := checkObligationsServed(http.DefaultClient, srv.URL, root, "", true)
+		if got.Status != doctorPass {
+			t.Fatalf("got %+v, want pass — sections_compiled == sections_total", got)
+		}
+		if strings.Contains(got.Reason, "PARTIALLY compiled") {
+			t.Errorf("a fully compiled layer must not carry the partial-coverage note: %s", got.Reason)
+		}
+	})
+
+	// O60: the store has no compile_runs row for this service (a layer
+	// compiled before coverage tracking existed is the live case) — the
+	// envelope now carries layer_coverage:{status:"unknown"} instead of
+	// omitting the key entirely, and this row must say so rather than
+	// silently reading it as "nothing to report".
+	t.Run("unrecorded coverage is named, never silently read as complete", func(t *testing.T) {
+		srv := fakeDoctorDaemon(t, fakeDaemonCfg{
+			services: []string{"alpha"}, obligRules: 2, watermark: "wm",
+			obligLayerCoverageUnknown: true,
+		})
+		defer srv.Close()
+		root := namedDir(t, "alpha")
+		got := checkObligationsServed(http.DefaultClient, srv.URL, root, "", true)
+		if got.Status != doctorPass {
+			t.Fatalf("got %+v, want pass — unrecorded coverage is not itself a problem", got)
+		}
+		if !strings.Contains(got.Reason, "coverage unrecorded") {
+			t.Errorf("reason must name the coverage as unrecorded, not silently read as complete: %s", got.Reason)
 		}
 	})
 

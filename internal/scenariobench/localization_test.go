@@ -2,6 +2,7 @@ package scenariobench
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -183,5 +184,55 @@ func TestScoreLocalization_Deterministic(t *testing.T) {
 	b := ScoreLocalization(answer, gold)
 	if !reflect.DeepEqual(a, b) {
 		t.Errorf("ScoreLocalization is not deterministic: %+v vs %+v", a, b)
+	}
+}
+
+// TestClauseIsNegated_BareNotButConstruction is the fix-first review's
+// own proof: negationMarkers' fixed phrases alone missed a bare "not X
+// but Y" — X is negated (rejected), but the correction ("but Y") means Y
+// is NOT negated, even though it sits in the same clause as "not".
+func TestClauseIsNegated_BareNotButConstruction(t *testing.T) {
+	text := "Consider not ADR-010 but ADR-014 as the distinctive identifier."
+	xPos := strings.Index(text, "ADR-010")
+	yPos := strings.Index(text, "ADR-014")
+	if !clauseIsNegated(text, xPos) {
+		t.Error("expected ADR-010 (before \"but\") to be negated")
+	}
+	if clauseIsNegated(text, yPos) {
+		t.Error("expected ADR-014 (after \"but\") to NOT be negated")
+	}
+}
+
+// TestClauseIsNegated_BareNever covers "never" alone, with no fixed
+// negationMarkers phrase involved at all.
+func TestClauseIsNegated_BareNever(t *testing.T) {
+	text := "Typed call edges never core.Edge, always Node."
+	pos := strings.Index(text, "core.Edge")
+	if !clauseIsNegated(text, pos) {
+		t.Error("expected a bare \"never\" to negate what follows it")
+	}
+}
+
+// TestClauseIsNegated_BareNor covers "nor".
+func TestClauseIsNegated_BareNor(t *testing.T) {
+	text := "The rule names neither ADR-010 nor ADR-014 directly."
+	pos := strings.Index(text, "ADR-014")
+	if !clauseIsNegated(text, pos) {
+		t.Error("expected \"nor\" to negate what follows it")
+	}
+}
+
+// TestClauseIsNegated_NotOnlyButAlsoIsNotNegation is the review's third
+// required case: "not only X but also Y" is a correlative idiom meaning
+// BOTH X and Y — never a rejection of X — so neither mention is negated.
+func TestClauseIsNegated_NotOnlyButAlsoIsNotNegation(t *testing.T) {
+	text := "The rule covers not only ADR-010 but also ADR-014."
+	xPos := strings.Index(text, "ADR-010")
+	yPos := strings.Index(text, "ADR-014")
+	if clauseIsNegated(text, xPos) {
+		t.Error("expected \"not only\" to NOT negate ADR-010 — it is a correlative idiom, not a rejection")
+	}
+	if clauseIsNegated(text, yPos) {
+		t.Error("expected ADR-014 (\"but also\") to NOT be negated either")
 	}
 }

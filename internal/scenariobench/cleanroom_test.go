@@ -28,7 +28,11 @@ func TestCleanRoomEnv_SetsFathomThreadsAndCreatesCellDir(t *testing.T) {
 func TestSessionEnv_EmptyCellDirSkipsCleanRoom(t *testing.T) {
 	wt := Worktree{} // no CellDir — every test fixture that predates RC-6
 	opts := RunOptions{Env: map[string]string{"FOO": "bar"}}
-	env, err := sessionEnv(wt, opts)
+	// Wired: true so baselineIsolationEnv (O53 defect 4) adds nothing here
+	// — this test is about the clean room's OWN merge behavior with no
+	// CellDir, not the baseline isolation feature (covered separately in
+	// baseline_test.go).
+	env, err := sessionEnv(Arm{Wired: true}, wt, opts)
 	if err != nil {
 		t.Fatalf("sessionEnv: %v", err)
 	}
@@ -43,7 +47,7 @@ func TestSessionEnv_EmptyCellDirSkipsCleanRoom(t *testing.T) {
 // they silently talk to the operator's real daemon instead.
 func TestSessionEnv_WiredCellSetsFathomHTTP(t *testing.T) {
 	wt := Worktree{CellDir: filepath.Join(t.TempDir(), "cell"), DaemonURL: "http://127.0.0.1:53219"}
-	env, err := sessionEnv(wt, RunOptions{})
+	env, err := sessionEnv(Arm{Wired: true}, wt, RunOptions{})
 	if err != nil {
 		t.Fatalf("sessionEnv: %v", err)
 	}
@@ -52,17 +56,22 @@ func TestSessionEnv_WiredCellSetsFathomHTTP(t *testing.T) {
 	}
 }
 
-// TestSessionEnv_UnwiredCellSetsNoFathomHTTP is the converse: an unwired
-// cell (no DaemonURL) must not set FATHOM_HTTP at all, so it keeps
-// whatever the environment (or nothing) already resolves to.
-func TestSessionEnv_UnwiredCellSetsNoFathomHTTP(t *testing.T) {
+// TestSessionEnv_UnwiredCellSetsUnroutableFathomHTTP is O53 defect 4's own
+// proof at the sessionEnv layer: an unwired cell must NOT keep whatever
+// FATHOM_HTTP the environment already resolves to (the defect — a live
+// operator daemon at the default localhost:7575 was reachable from a
+// baseline arm) — it must be pinned to the unroutable placeholder.
+func TestSessionEnv_UnwiredCellSetsUnroutableFathomHTTP(t *testing.T) {
 	wt := Worktree{CellDir: filepath.Join(t.TempDir(), "cell")}
-	env, err := sessionEnv(wt, RunOptions{})
+	env, err := sessionEnv(Arm{Wired: false}, wt, RunOptions{})
 	if err != nil {
 		t.Fatalf("sessionEnv: %v", err)
 	}
-	if _, ok := env["FATHOM_HTTP"]; ok {
-		t.Errorf("expected no FATHOM_HTTP for an unwired cell, got %q", env["FATHOM_HTTP"])
+	if env["FATHOM_HTTP"] != unroutableFathomURL {
+		t.Errorf("FATHOM_HTTP = %q, want %q", env["FATHOM_HTTP"], unroutableFathomURL)
+	}
+	if env["FATHOM_HTTP_URL"] != unroutableFathomURL {
+		t.Errorf("FATHOM_HTTP_URL = %q, want %q", env["FATHOM_HTTP_URL"], unroutableFathomURL)
 	}
 }
 
@@ -71,7 +80,7 @@ func TestSessionEnv_MergesCleanRoomUnderExplicitEnv(t *testing.T) {
 	opts := RunOptions{
 		Env: map[string]string{"FATHOM_THREADS": "explicit-wins", "OTHER": "kept"},
 	}
-	env, err := sessionEnv(wt, opts)
+	env, err := sessionEnv(Arm{Wired: true}, wt, opts)
 	if err != nil {
 		t.Fatalf("sessionEnv: %v", err)
 	}

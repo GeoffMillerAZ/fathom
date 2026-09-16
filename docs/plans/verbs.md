@@ -35,13 +35,13 @@ Verify: `fathom verify --service fathom --plan docs/plans/verbs.md`.
 ## Wave D — the freshness receipt (R5, SB-51)
 
 - [x] A scripted-edit freshness probe: N mechanical changes at HEAD, one question per change that only HEAD can answer, scored as post-edit correctness and time to a correct answer, run against fathom's own index for free {id: VB-17, symbol: FreshnessProbe, package: internal/indexbench}
-- [ ] (op) M7 written: the repaired FRESH task across five arms (SB-51) plus the probe once per release against graphify in `--watch` mode; if graphify answers four of five post-edit questions, freshness leaves positioning {id: VB-18, skip_test: true, skip: "operator spend; evidence is the ledger rows", needs: VB-17}
+- [ ] (op) M7 written: the repaired FRESH task across five arms (SB-51) plus the probe once per release against graphify in `--watch` mode; if graphify answers four of five post-edit questions, freshness leaves positioning — 2026-09-14: graphify --watch probe 4/5 (docs/bench/readings/vb18-freshness-graphify-watch.md); five-arm FRESH task pending vs-pilot-4 {id: VB-18, skip_test: true, skip: "operator spend; evidence is the ledger rows", needs: VB-17}
 
 ## Wave E — receipts a stranger can check (R6)
 
 - [x] Every edge carries a resolution tier — `typed`, `heuristic`, or `external(<indexer>@<version>)` — and every answer's envelope reports the mix, the index commit, and per-fact anchors (file, symbol fingerprint, content hash) {id: VB-19, symbol: resolutionTierOf, package: internal/core}
 - [x] `fathom receipt verify <receipt>` re-derives a served claim from a bare checkout at the named commit with go/types and git alone — no daemon, no index — so exit 0 means a third party reproduced it {id: VB-20, symbol: cmdReceiptVerify, package: cmd/fathom}
-- [ ] (op) M11b: fifty sampled receipts re-derived independently at ≥ 95 %, and the envelope under 10 % of median payload in the L1 replay, else the envelope is removed {id: VB-21, skip_test: true, skip: "sampling run; evidence is the report under workspace/ and the L1 replay goldens", needs: VB-20}
+- [x] (op) M11b: fifty sampled receipts re-derived independently at ≥ 95 %, and the envelope under 10 % of median payload in the L1 replay, else the envelope is removed {id: VB-21, skip_test: true, skip: "sampling run; evidence is the report under workspace/ and the L1 replay goldens", needs: VB-20} — 2026-09-16: 50/50 re-derived after the verifier loaded test files (first pass 14/50, verifier defect); envelope 7.6 % of median payload (docs/bench/readings/vb21-receipts-m11b.md)
 
 ## Wave F — the review a human sees (R11)
 
@@ -63,11 +63,11 @@ Verify: `fathom verify --service fathom --plan docs/plans/verbs.md`.
 ## Wave I — across the process boundary, and out of the index (R7, R9)
 
 - [x] A `service_ref` edge kind keyed on route template and method, grown from the existing HTTP-client detections and `net/http`, chi, gin and echo handler registrations, joined across repositories in the fleet store, tier `heuristic`; `blast_radius`, `cross_repo_blast_radius` and `review_diff` walk it {id: VB-30, symbol: ServiceRefEdges, package: internal/analysis/serviceref}
-- [ ] (op) M8: precision ≥ 0.90 and recall ≥ 0.90 on a hand-verified route table over the fixture fleet and one real pair, else it stays a finding {id: VB-31, skip_test: true, skip: "hand-verified route table; evidence under testdata/ and the ledger row", needs: VB-30}
+- [ ] (op) M8: precision ≥ 0.90 and recall ≥ 0.90 on a hand-verified route table over the fixture fleet and one real pair, else it stays a finding — 2026-09-14: measured P=1.00, R=0.20 overall (fauxtown 1.00/1.00; real pair openfaas/faas↔faas-provider 0/4 true edges found — the client detector misses a URL built in a variable, the reused route regex loses gorilla/mux's chained `.Methods()` and truncates a concatenated path), stays a finding {id: VB-31, skip_test: true, skip: "hand-verified route table; evidence under testdata/serviceref/route-table.json and docs/bench/readings/vb31-service-ref-m8.md", needs: VB-30}
 - [x] `fathom export scip` writes the symbol and typed-edge tables as a SCIP index carrying the resolution tier, round-tripped against scip-go on the fixture; `ingest --scip` is a later, separate decision {id: VB-32, symbol: cmdExportSCIP, package: cmd/fathom}
 
 ## Wave J — tests that adjudicate (M2)
 
 - [x] `fathom tests select --since <ref>` ranks tests for a diff by typed-edge reachability, statement coverage over the changed lines and layer, emitting a `go test -run` invocation and the changed symbols no test reaches {id: VB-33, symbol: cmdTestsSelect, package: cmd/fathom}
 - [x] A mutation report (go-mutesting first) is ingested as a code fact and the verify gate distinguishes covered from covered-and-asserted {id: VB-34, symbol: ParseMutationReport, package: internal/analysis/coverage}
-- [ ] (op) M12b and M2 from a replay of ~100 historical commits: selection recall ≥ 0.98 at ≤ 25 % of full-suite time, else advisory only {id: VB-35, skip_test: true, skip: "replay spend; evidence is the replay report", needs: VB-33}
+- [ ] (op) M12b and M2 from a replay of ~100 historical commits: selection recall ≥ 0.98 at ≤ 25 % of full-suite time, else advisory only — 2026-09-14: measured recall 28.2% pooled (24.8% mean, 21.8% median per commit) against an independent go-list-deps-test package-reachability oracle, time fraction 26.6% mean / 25.0% median, over 105 commits; a finer per-test coverage oracle on a 10-commit sample reads far higher (recall_finer = 100% on all 6 commits with nonzero finer truth), suggesting the coarse oracle's denominator is inflated by package co-membership rather than the tool missing real regression tests — but the row's own bar, measured as specified, is not met on either half; advisory only {id: VB-35, skip_test: true, skip: "replay spend; evidence is the replay report", needs: VB-33}

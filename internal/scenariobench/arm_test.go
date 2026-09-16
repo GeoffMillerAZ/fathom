@@ -374,9 +374,16 @@ func TestRenderArm_InstructionsPlainLeavesFileUntouched(t *testing.T) {
 	}
 }
 
-func TestRenderArm_InstructionsTextWritesInstructionsTextVerbatim(t *testing.T) {
+// TestRenderArm_InstructionsTextAppendsToExistingClaudeMD is O53 defect 1's
+// own proof: "text" mode used to REPLACE the subject's real CLAUDE.md with
+// arm.InstructionsText, so a competitor arm's worktree lost the
+// repository's real operating instructions while "plain" and "stanza" arms
+// kept them. The original content must survive, followed by the stanza
+// under a marker, and ArmFiles must say so.
+func TestRenderArm_InstructionsTextAppendsToExistingClaudeMD(t *testing.T) {
 	dir := t.TempDir()
-	writeTestFile(t, filepath.Join(dir, "CLAUDE.md"), "# subject's own\n")
+	original := "# subject's own\n\nDo not break the build.\n"
+	writeTestFile(t, filepath.Join(dir, "CLAUDE.md"), original)
 	arm := Arm{Instructions: "text", InstructionsText: "## routing stanza\n\nwhere: find_symbol\n"}
 	files, err := RenderArm(arm, dir)
 	if err != nil {
@@ -385,9 +392,168 @@ func TestRenderArm_InstructionsTextWritesInstructionsTextVerbatim(t *testing.T) 
 	if files.InstructionsPath == "" {
 		t.Error("expected InstructionsPath to be set")
 	}
+	if !files.InstructionsAppended {
+		t.Error("expected InstructionsAppended = true")
+	}
 	raw, err := os.ReadFile(filepath.Join(dir, "CLAUDE.md"))
-	if err != nil || string(raw) != arm.InstructionsText {
-		t.Errorf("CLAUDE.md = %q, err=%v, want %q", raw, err, arm.InstructionsText)
+	if err != nil {
+		t.Fatalf("reading CLAUDE.md: %v", err)
+	}
+	got := string(raw)
+	if !strings.Contains(got, original) {
+		t.Errorf("CLAUDE.md lost the subject's original content: %q", got)
+	}
+	if !strings.Contains(got, arm.InstructionsText) {
+		t.Errorf("CLAUDE.md missing arm.InstructionsText: %q", got)
+	}
+	origIdx := strings.Index(got, original)
+	stanzaIdx := strings.Index(got, arm.InstructionsText)
+	if origIdx < 0 || stanzaIdx < 0 || stanzaIdx < origIdx {
+		t.Errorf("expected the stanza to follow the original content, got %q", got)
+	}
+}
+
+// TestRenderArm_InstructionsTextCreatesClaudeMDWhenAbsent covers the other
+// half of the fix: no pre-existing CLAUDE.md means "text" mode creates one
+// (never errors), holding just the marked stanza.
+func TestRenderArm_InstructionsTextCreatesClaudeMDWhenAbsent(t *testing.T) {
+	dir := t.TempDir()
+	arm := Arm{Instructions: "text", InstructionsText: "## routing stanza\n\nwhere: find_symbol\n"}
+	files, err := RenderArm(arm, dir)
+	if err != nil {
+		t.Fatalf("RenderArm: %v", err)
+	}
+	if !files.InstructionsAppended {
+		t.Error("expected InstructionsAppended = true")
+	}
+	raw, err := os.ReadFile(filepath.Join(dir, "CLAUDE.md"))
+	if err != nil {
+		t.Fatalf("reading CLAUDE.md: %v", err)
+	}
+	if !strings.Contains(string(raw), arm.InstructionsText) {
+		t.Errorf("CLAUDE.md = %q, want it to contain %q", raw, arm.InstructionsText)
+	}
+}
+
+// TestRenderArm_InstructionsTextIdempotent is the fix-first review's own
+// proof: appendInstructionsText is not idempotent if a second RenderArm
+// on the SAME worktree (a retried session, a re-run of the same cell)
+// appends a SECOND region. Two renders with the same InstructionsText
+// must leave exactly one region in CLAUDE.md.
+func TestRenderArm_InstructionsTextIdempotent(t *testing.T) {
+	dir := t.TempDir()
+	original := "# subject's own\n\nDo not break the build.\n"
+	writeTestFile(t, filepath.Join(dir, "CLAUDE.md"), original)
+	arm := Arm{Instructions: "text", InstructionsText: "## routing stanza\n\nwhere: find_symbol\n"}
+
+	if _, err := RenderArm(arm, dir); err != nil {
+		t.Fatalf("RenderArm (1st): %v", err)
+	}
+	first, err := os.ReadFile(filepath.Join(dir, "CLAUDE.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := RenderArm(arm, dir); err != nil {
+		t.Fatalf("RenderArm (2nd): %v", err)
+	}
+	second, err := os.ReadFile(filepath.Join(dir, "CLAUDE.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if string(first) != string(second) {
+		t.Errorf("a second render with the same text changed the file:\nfirst:  %q\nsecond: %q", first, second)
+	}
+	if n := strings.Count(string(second), textInstructionsMarkerPrefix); n != 1 {
+		t.Errorf("expected exactly 1 region marker after two renders, got %d:\n%s", n, second)
+	}
+	if !strings.Contains(string(second), original) {
+		t.Errorf("expected the subject's original content to survive: %s", second)
+	}
+}
+
+// TestRenderArm_InstructionsTextReplacesChangedRegion covers the other
+// half: a SECOND render with DIFFERENT InstructionsText replaces the
+// region's own body in place — still exactly one region, now holding the
+// new text, not the old one.
+func TestRenderArm_InstructionsTextReplacesChangedRegion(t *testing.T) {
+	dir := t.TempDir()
+	original := "# subject's own\n"
+	writeTestFile(t, filepath.Join(dir, "CLAUDE.md"), original)
+
+	arm1 := Arm{Instructions: "text", InstructionsText: "## routing stanza v1\n"}
+	if _, err := RenderArm(arm1, dir); err != nil {
+		t.Fatalf("RenderArm (1st): %v", err)
+	}
+
+	arm2 := Arm{Instructions: "text", InstructionsText: "## routing stanza v2\n"}
+	if _, err := RenderArm(arm2, dir); err != nil {
+		t.Fatalf("RenderArm (2nd): %v", err)
+	}
+
+	raw, err := os.ReadFile(filepath.Join(dir, "CLAUDE.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(raw)
+	if n := strings.Count(got, textInstructionsMarkerPrefix); n != 1 {
+		t.Errorf("expected exactly 1 region marker, got %d:\n%s", n, got)
+	}
+	if strings.Contains(got, arm1.InstructionsText) {
+		t.Errorf("expected the OLD text to be gone, got: %s", got)
+	}
+	if !strings.Contains(got, arm2.InstructionsText) {
+		t.Errorf("expected the NEW text to be present, got: %s", got)
+	}
+	if !strings.Contains(got, original) {
+		t.Errorf("expected the subject's original content to survive: %s", got)
+	}
+}
+
+// TestFindInstructionsRegion_RoundTripsDigest proves the parser directly:
+// re-parsing renderInstructionsRegion's own output reports the SAME
+// digest renderInstructionsRegion computed.
+func TestFindInstructionsRegion_RoundTripsDigest(t *testing.T) {
+	rendered, digest := renderInstructionsRegion("## stanza\n")
+	region, err := findInstructionsRegion(rendered)
+	if err != nil {
+		t.Fatalf("findInstructionsRegion: %v", err)
+	}
+	if !region.present {
+		t.Fatal("expected a region to be found")
+	}
+	if region.digest != digest {
+		t.Errorf("region.digest = %q, want %q", region.digest, digest)
+	}
+	if region.start != 0 || region.end != len(rendered) {
+		t.Errorf("region span = [%d:%d], want [0:%d]", region.start, region.end, len(rendered))
+	}
+}
+
+// TestFindInstructionsRegion_AbsentIsNotAnError covers the "file
+// RenderArm has not touched yet" shape.
+func TestFindInstructionsRegion_AbsentIsNotAnError(t *testing.T) {
+	region, err := findInstructionsRegion("# just a normal CLAUDE.md\n")
+	if err != nil {
+		t.Fatalf("findInstructionsRegion: %v", err)
+	}
+	if region.present {
+		t.Error("expected present=false for content with no marker at all")
+	}
+}
+
+// TestDigestInstructionsBody_DiffersOnContent is a basic sanity check —
+// different bodies get different digests, the same body gets the same
+// one.
+func TestDigestInstructionsBody_DiffersOnContent(t *testing.T) {
+	a := digestInstructionsBody("## v1\n")
+	b := digestInstructionsBody("## v2\n")
+	if a == b {
+		t.Error("expected different bodies to hash differently")
+	}
+	if digestInstructionsBody("## v1\n") != a {
+		t.Error("expected the same body to hash the same way")
 	}
 }
 
@@ -434,6 +600,50 @@ func TestRenderArm_NotesFileSystemAppend(t *testing.T) {
 	}
 	if files2.SystemAppend != "" {
 		t.Errorf("expected empty SystemAppend when NotesFile is false, got %q", files2.SystemAppend)
+	}
+}
+
+// TestRenderArm_NotesFileSeeded is O57 finding 6: an arm declaring
+// NotesFile must actually seed NOTES.md at prepare time (not merely
+// promise, via SystemAppend, that one exists) — a real file with a
+// one-line header, never clobbering one the subject already commits.
+func TestRenderArm_NotesFileSeeded(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := RenderArm(Arm{Instructions: "none", NotesFile: true}, dir); err != nil {
+		t.Fatalf("RenderArm: %v", err)
+	}
+	raw, err := os.ReadFile(filepath.Join(dir, "NOTES.md"))
+	if err != nil {
+		t.Fatalf("NOTES.md was not seeded: %v", err)
+	}
+	if string(raw) != notesFileHeader {
+		t.Errorf("NOTES.md = %q, want the one-line header %q", raw, notesFileHeader)
+	}
+
+	// An arm with no NotesFile never creates one.
+	dir2 := t.TempDir()
+	if _, err := RenderArm(Arm{Instructions: "none", NotesFile: false}, dir2); err != nil {
+		t.Fatalf("RenderArm: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir2, "NOTES.md")); !os.IsNotExist(err) {
+		t.Errorf("NOTES.md should not exist when NotesFile is false: %v", err)
+	}
+
+	// A subject that already commits its own NOTES.md is never clobbered.
+	dir3 := t.TempDir()
+	existing := "already here\n"
+	if err := os.WriteFile(filepath.Join(dir3, "NOTES.md"), []byte(existing), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := RenderArm(Arm{Instructions: "none", NotesFile: true}, dir3); err != nil {
+		t.Fatalf("RenderArm: %v", err)
+	}
+	raw3, err := os.ReadFile(filepath.Join(dir3, "NOTES.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(raw3) != existing {
+		t.Errorf("NOTES.md = %q, want the subject's own pre-existing content %q untouched", raw3, existing)
 	}
 }
 

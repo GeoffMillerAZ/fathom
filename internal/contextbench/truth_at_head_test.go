@@ -206,6 +206,20 @@ func checkAnchor(root string, a TruthAnchor) error {
 			}
 		}
 		return nil
+	case AnchorHeading:
+		// resolveHeadingLine (citation.go) looks up Needle's heading FRESH
+		// against the current file — the check is just that the heading
+		// still exists, never a stored line to compare against, so an
+		// ADR.md insertion above it cannot break this the way it would an
+		// AnchorLine citation.
+		body, err := os.ReadFile(filepath.Join(root, a.File))
+		if err != nil {
+			return fmt.Errorf("token %q: %v", a.Token, err)
+		}
+		if _, err := resolveHeadingLine(string(body), a.Needle); err != nil {
+			return fmt.Errorf("token %q: %s: %v — the ground truth is false at HEAD", a.Token, a.File, err)
+		}
+		return nil
 	}
 	return fmt.Errorf("token %q: unknown anchor kind %q", a.Token, a.Kind)
 }

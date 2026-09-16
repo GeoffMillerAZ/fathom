@@ -168,6 +168,34 @@ func TestRenderVerdict_GoldSourceLine(t *testing.T) {
 	}
 }
 
+// TestRenderVerdict_RowCriterionSurvivesCorpusMove is the wave N2 defect
+// (docs/bench/README.md's "vs-pilot-3 (no registered criterion for this
+// corpus)"): the render looks a run's criterion up by the corpus
+// SHA256 recorded on the row, and testdata/scenariobench/lookups-vs.json
+// was rewritten after vs-pilot-3 filed, so the SAME criterion (M6-1) now
+// lives under a DIFFERENT sha in the freshly-globbed criteria map. A row
+// that also carries its own CriterionID (stamped at filing time) must
+// still resolve its criterion by ID, even though its CorpusSHA256 no
+// longer matches any key in criteria.
+func TestRenderVerdict_RowCriterionSurvivesCorpusMove(t *testing.T) {
+	criteria := map[string]Criterion{
+		// The corpus moved: this is its CURRENT sha, not the sha recorded
+		// on the rows below.
+		"sha-after-move": {ID: "M6-1", Treatment: "full", Control: "grep"},
+	}
+	rows := []ScenarioLedgerRow{
+		{RunID: "vs-pilot-3", TaskID: "t1", Arm: "full", CorpusSHA256: "sha-before-move", CriterionID: "M6-1", Trials: 2, Successes: 2, Readings: Readings{TotalTokens: 100}},
+		{RunID: "vs-pilot-3", TaskID: "t1", Arm: "grep", CorpusSHA256: "sha-before-move", CriterionID: "M6-1", Trials: 2, Successes: 1, Readings: Readings{TotalTokens: 200}},
+	}
+	out := renderVerdict(rows, criteria)
+	if strings.Contains(out, "no registered criterion for this corpus") {
+		t.Errorf("a row carrying its own criterion id must resolve it after the corpus moves:\n%s", out)
+	}
+	if !strings.Contains(out, "full vs grep: success 2/2 vs 1/2") {
+		t.Errorf("must render the comparison using the row's own criterion:\n%s", out)
+	}
+}
+
 func TestRenderVerdict_GoldSourceLineAbsentWhenUnrecorded(t *testing.T) {
 	criteria := map[string]Criterion{"sha": {ID: "M1", Treatment: "full", Control: "grep"}}
 	rows := []ScenarioLedgerRow{

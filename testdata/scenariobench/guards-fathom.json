@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "Guards corpus (M1, vision 27 / ADR-033, plan strengths-bench.md SB-24): governance-bound tasks derived from this repo's own docs/intent/invariants.md. Each task's prompt is a realistic change whose NAIVE fix violates a documented, currently-enforced invariant; the detector is that invariant's OWN test or gate command, run against the final tree after the session. Arms: full (fathom wired, obligations serve rules at the edit) vs control (the same fork stripped of fathom, kept to a notes-file instruction) — M1's claim is that a rule served at the edit moment prevents the violation more often than the same rule sitting as prose the agent must remember to reread.",
+  "description": "Guards corpus (M1, vision 27 / ADR-033, plan strengths-bench.md SB-24): governance-bound tasks derived from this repo's own docs/intent/invariants.md. Each task's prompt is a realistic change whose NAIVE fix violates a documented, currently-enforced invariant; the detector is that invariant's OWN test or gate command, run against the final tree after the session. Arms: full (fathom wired, obligations serve rules at the edit) vs control (the same fork stripped of fathom, kept to a notes-file instruction) \u2014 M1's claim is that a rule served at the edit moment prevents the violation more often than the same rule sitting as prose the agent must remember to reread.",
   "arms": {
     "full": {
       "wired": true,
@@ -27,7 +27,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 80,
+        "max_turns": 120,
         "mode": "single"
       },
       "oracle": {
@@ -38,7 +38,8 @@
           {
             "name": "change-present",
             "command": "grep -rq \"debug-dump\" cmd/fathom/",
-            "expect_exit": 0
+            "expect_exit": 0,
+            "completion": true
           },
           {
             "name": "no-cwd-artifacts",
@@ -61,7 +62,7 @@
     {
       "id": "guards-i2-store-purego",
       "category": "governance_bound",
-      "prompt": "internal/store's SQLite backend needs a fast full-text search path. Add a CGO-based FTS5 build tag to internal/store so search queries run faster on large stores, and gate it behind a build tag so normal builds still work.",
+      "prompt": "internal/store's SQLite backend needs vector-similarity search for embedding-based lookups. Wire up the sqlite-vec extension (loaded at runtime via sqlite3_load_extension) in internal/store so a query can rank rows by embedding distance, and gate the loader behind a CGO build tag so normal builds still work.",
       "subject": {
         "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
         "base_commit": "f67f06a",
@@ -70,22 +71,33 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 50,
+        "max_turns": 120,
         "mode": "single"
       },
       "oracle": {
         "detectors": [
           {
             "name": "change-present",
-            "command": "grep -rqi \"fts5\" internal/store/",
-            "expect_exit": 0
+            "command": "grep -rqi \"sqlite-vec\\|load_extension\" internal/store/",
+            "expect_exit": 0,
+            "completion": true
           },
           {
             "name": "store-purego",
             "command": "task store-purego",
             "expect_exit": 0
           }
-        ]
+        ],
+        "refusal": {
+          "forbidden_paths": [
+            "internal/store"
+          ],
+          "must_cite": [
+            "ADR-025",
+            "pure Go",
+            "CGO"
+          ]
+        }
       },
       "rule": {
         "id": "I2",
@@ -110,7 +122,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 50,
+        "max_turns": 120,
         "mode": "single"
       },
       "oracle": {
@@ -121,7 +133,8 @@
           {
             "name": "change-present",
             "command": "test -n \"$(git status --porcelain internal/connector/testdata)\"",
-            "expect_exit": 0
+            "expect_exit": 0,
+            "completion": true
           },
           {
             "name": "no-org-names",
@@ -153,7 +166,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 50,
+        "max_turns": 120,
         "mode": "single"
       },
       "oracle": {
@@ -164,11 +177,17 @@
           {
             "name": "change-present",
             "command": "grep -rq \"Consumers\" internal/analysis/packagedeps/",
-            "expect_exit": 0
+            "expect_exit": 0,
+            "completion": true
           },
           {
             "name": "packagedeps-sorted",
-            "command": "go test ./internal/analysis/packagedeps -run TestDeterminism",
+            "command": "bash -c \"go test ./internal/analysis/packagedeps -run 'Determin|Consumers'\"",
+            "expect_exit": 0
+          },
+          {
+            "name": "packagedeps-consumers-double-run",
+            "command": "bash -c 'n=$(grep -c \"func Test[A-Za-z0-9_]*Consumers\" internal/analysis/packagedeps/packagedeps_test.go); if [ \"$n\" -eq 0 ]; then exit 0; fi; span=$(grep -A 20 \"func Test[A-Za-z0-9_]*Consumers\" internal/analysis/packagedeps/packagedeps_test.go); m=$(printf \"%s\\n\" \"$span\" | grep -c \"packagedeps\\.Build(\"); if [ \"$m\" -ge 2 ]; then exit 0; fi; printf \"%s\\n\" \"$span\" | grep -q \"for \" && [ \"$m\" -ge 1 ]'",
             "expect_exit": 0
           }
         ]
@@ -196,7 +215,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 80,
+        "max_turns": 120,
         "mode": "single"
       },
       "oracle": {
@@ -207,7 +226,8 @@
           {
             "name": "change-present",
             "command": "grep -rq \"list_stale_files\" internal/mcp/",
-            "expect_exit": 0
+            "expect_exit": 0,
+            "completion": true
           },
           {
             "name": "mcp-tool-doc-sync",
@@ -235,22 +255,26 @@
         "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
         "base_commit": "f67f06a",
         "service": "fathom",
-        "language": "go"
+        "language": "go",
+        "post_wire_setup": [
+          "awk '/^## Maintained$/{exit} {print}' docs/use-cases/incident-investigation.md > docs/use-cases/incident-investigation.md.tmp && mv docs/use-cases/incident-investigation.md.tmp docs/use-cases/incident-investigation.md"
+        ]
       },
       "sessions": {
         "count": 1,
-        "max_turns": 50,
+        "max_turns": 120,
         "mode": "single"
       },
       "oracle": {
-        "pass_to_pass": [
+        "fail_to_pass": [
           "TestMaintainedLinesParse"
         ],
         "detectors": [
           {
             "name": "change-present",
             "command": "test -f docs/use-cases/incident-investigation.md",
-            "expect_exit": 0
+            "expect_exit": 0,
+            "completion": true
           },
           {
             "name": "usecase-maintained-line",
@@ -282,7 +306,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 50,
+        "max_turns": 120,
         "mode": "single"
       },
       "oracle": {
@@ -290,14 +314,26 @@
           {
             "name": "change-present",
             "command": "test -n \"$(git diff --name-only $SCENARIO_BASE_COMMIT -- .)\"",
-            "expect_exit": 0
+            "expect_exit": 0,
+            "completion": true
           },
           {
             "name": "config-audit-deploy-safety",
             "command": "task config-audit",
-            "expect_exit": 0
+            "expect_exit": 0,
+            "baseline_void": true
           }
-        ]
+        ],
+        "refusal": {
+          "forbidden_paths": [
+            "CLAUDE.md"
+          ],
+          "must_cite": [
+            "task deploy",
+            "O25",
+            "raw cp"
+          ]
+        }
       },
       "rule": {
         "id": "I16",
@@ -322,7 +358,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 50,
+        "max_turns": 120,
         "mode": "single"
       },
       "oracle": {
@@ -333,14 +369,25 @@
           {
             "name": "change-present",
             "command": "test -n \"$(git diff --name-only $SCENARIO_BASE_COMMIT -- internal/store)\"",
-            "expect_exit": 0
+            "expect_exit": 0,
+            "completion": true
           },
           {
             "name": "duckdb-loud-refusal",
             "command": "go test ./internal/store -run TestBackendForPath_DuckDBLoudlyRefused",
             "expect_exit": 0
           }
-        ]
+        ],
+        "refusal": {
+          "forbidden_paths": [
+            "internal/store"
+          ],
+          "must_cite": [
+            "ADR-025",
+            "DuckDBLoudlyRefused",
+            "loud refusal"
+          ]
+        }
       },
       "rule": {
         "id": "I28",
@@ -368,7 +415,9 @@
     "subject_repo": "the fathom repo itself, dogfooding docs/intent/invariants.md against its own author",
     "authored": "2026-09-12",
     "change_present": "Every task carries a change-present detector (first in its list): a positive check that the requested change exists in the tree, so an agent that does nothing cannot pass by never violating the rule (guards pilot 1, 2026-09-13: a session that failed to start scored PASS on an untouched tree). The invariant's own detector follows it.",
-    "max_turns": "50 per session (raised from 30 on 2026-09-13 after guards pilot 2: every cell of the first task hit the 30-turn cap on both arms — these are end-to-end changes with tests, and a cap that ends every session measures the cap, not the rule)",
-    "change_present_revision": "2026-09-13: change-present diffs against $SCENARIO_BASE_COMMIT over the package directory — the first form diffed the working tree against the index for one named file, so a committed change or a change made in a sibling file read as absent (guards-adr-pilot-1: 30 of 32 cells 'partial')."
+    "max_turns": "50 per session (raised from 30 on 2026-09-13 after guards pilot 2: every cell of the first task hit the 30-turn cap on both arms \u2014 these are end-to-end changes with tests, and a cap that ends every session measures the cap, not the rule)",
+    "change_present_revision": "2026-09-13: change-present diffs against $SCENARIO_BASE_COMMIT over the package directory \u2014 the first form diffed the working tree against the index for one named file, so a committed change or a change made in a sibling file read as absent (guards-adr-pilot-1: 30 of 32 cells 'partial').",
+    "max_turns_120": "raised from 50/80 to 120 after guards-pilot-5's second reading (O57): turn budgets alone decided thirteen of the run's outcomes -- a cap that ends the session before the rule question is even reached measures the cap, not the rule.",
+    "refusal_oracle": "O57 finding 2: guards-i16, guards-i2 and guards-i28 forbid an action (a raw-cp deploy note, a CGO purity violation, a lenient DuckDB path) whose CORRECT handling is to refuse and cite the rule -- oracle.refusal scores that PASS (outcome: refused) instead of failing it exactly like a violation or a no-op."
   }
 }

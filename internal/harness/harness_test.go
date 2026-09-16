@@ -62,15 +62,26 @@ var waveThreeClaudeHookAdditions = []struct {
 	{"Setup", "", "fathom doctor --brief", "doctor --brief", 15},
 }
 
+// promptHookClaudeHookAddition is O57 items 4/5's two rows, appended after
+// waveThreeClaudeHookAdditions for the same reason that group was
+// appended after the vision 26 §4 pair: nothing above it moved a byte.
+var promptHookClaudeHookAddition = []struct {
+	event, matcher, marker, sub string
+	timeout                     int
+}{
+	{"UserPromptSubmit", "", "fathom prompt-hook", "prompt-hook", 10},
+	{"PostToolUse", "Bash", "fathom edit-hook", "edit-hook", 5},
+}
+
 func TestLookupClaudeCodeReproducesHookTable(t *testing.T) {
 	d, ok := Lookup(ClaudeCode)
 	if !ok {
 		t.Fatal("claude-code missing from the registry")
 	}
-	want := len(preSeamClaudeHookTable) + len(postSeamClaudeHookAdditions) + len(waveThreeClaudeHookAdditions)
+	want := len(preSeamClaudeHookTable) + len(postSeamClaudeHookAdditions) + len(waveThreeClaudeHookAdditions) + len(promptHookClaudeHookAddition)
 	if len(d.Hooks) != want {
-		t.Fatalf("claude-code bindings = %d, want %d (%d pre-seam + %d vision 26 §4 + %d wave 3)", len(d.Hooks), want,
-			len(preSeamClaudeHookTable), len(postSeamClaudeHookAdditions), len(waveThreeClaudeHookAdditions))
+		t.Fatalf("claude-code bindings = %d, want %d (%d pre-seam + %d vision 26 §4 + %d wave 3 + %d O57)", len(d.Hooks), want,
+			len(preSeamClaudeHookTable), len(postSeamClaudeHookAdditions), len(waveThreeClaudeHookAdditions), len(promptHookClaudeHookAddition))
 	}
 	for i, want := range preSeamClaudeHookTable {
 		got := d.Hooks[i]
@@ -132,6 +143,79 @@ func TestClaudeHookTableAdditions(t *testing.T) {
 	in, _ = codec.DecodeInput(EventPostTool, []byte(`{"tool_name":"Edit","file_path":"/r/top.md","tool_input":{"file_path":"/r/tool.md"}}`))
 	if in.FilePath != "/r/tool.md" {
 		t.Errorf("PostToolUse file_path = %q, want tool_input.file_path", in.FilePath)
+	}
+}
+
+// TestClaudeHookTablePromptAddition pins O57 items 4/5's one row: appended
+// after wave 3, no matcher (UserPromptSubmit fires on every prompt),
+// inject vehicle (Claude Code documents additionalContext on this event —
+// claudeContextEvents), and the prompt field actually decodes.
+func TestClaudeHookTablePromptAddition(t *testing.T) {
+	d, _ := Lookup(ClaudeCode)
+	base := len(preSeamClaudeHookTable) + len(postSeamClaudeHookAdditions) + len(waveThreeClaudeHookAdditions)
+	for i, want := range promptHookClaudeHookAddition {
+		got := d.Hooks[base+i]
+		if got.Harness != want.event || got.Matcher != want.matcher || got.Marker != want.marker || got.Verb != want.sub || got.TimeoutSec != want.timeout {
+			t.Errorf("addition %d = {%s %q %q %q %d}, want {%s %q %q %q %d}", i,
+				got.Harness, got.Matcher, got.Marker, got.Verb, got.TimeoutSec,
+				want.event, want.matcher, want.marker, want.sub, want.timeout)
+		}
+		if got.Vehicle != VehicleHookInject {
+			t.Errorf("%s: vehicle = %s, want hook-inject (the harness documents additionalContext here)", got.Harness, got.Vehicle)
+		}
+	}
+	b, ok := d.Binding(EventUserPromptSubmit)
+	if !ok || b.Capability != CapPromptObligations || b.Input["prompt"] != "prompt" {
+		t.Fatalf("user-prompt-submit binding = %+v, %v", b, ok)
+	}
+	codec := ClaudeCodec()
+	in, err := codec.DecodeInput(EventUserPromptSubmit, []byte(`{"session_id":"s1","cwd":"/r","hook_event_name":"UserPromptSubmit","prompt":"refactor internal/store/backend.go"}`))
+	if err != nil || in.Prompt != "refactor internal/store/backend.go" || in.SessionID != "s1" {
+		t.Errorf("UserPromptSubmit decode = %+v, %v", in, err)
+	}
+	// The catalog row this addition wires must actually say so — a
+	// forgotten catalog flip is exactly the shape TestEventCatalogMatchesBindings
+	// exists to catch, but the row's own text (the ONE place an adopter
+	// reads why) is worth pinning directly too.
+	found := false
+	for _, e := range claudeEventCatalog {
+		if e.Event == "UserPromptSubmit" {
+			found = true
+			if !e.Wired {
+				t.Error("UserPromptSubmit catalog row must say Wired: true now that a binding exists")
+			}
+		}
+	}
+	if !found {
+		t.Error("UserPromptSubmit missing from claudeEventCatalog entirely")
+	}
+}
+
+// TestClaudeHookTableBashWriteAddition pins O57 item 4/5(b)'s row: a
+// SECOND PostToolUse matcher group (Bash), the same edit-hook verb and
+// marker the Edit|Write|MultiEdit group already carries (matcher groups
+// share a marker exactly like PreToolUse's three already do), inject
+// vehicle, and the tool_input.command field actually decoding.
+func TestClaudeHookTableBashWriteAddition(t *testing.T) {
+	d, _ := Lookup(ClaudeCode)
+	base := len(preSeamClaudeHookTable) + len(postSeamClaudeHookAdditions) + len(waveThreeClaudeHookAdditions) + 1 // + the prompt-hook row above it
+	want := promptHookClaudeHookAddition[1]
+	got := d.Hooks[base]
+	if got.Harness != want.event || got.Matcher != want.matcher || got.Marker != want.marker || got.Verb != want.sub || got.TimeoutSec != want.timeout {
+		t.Errorf("addition = {%s %q %q %q %d}, want {%s %q %q %q %d}",
+			got.Harness, got.Matcher, got.Marker, got.Verb, got.TimeoutSec,
+			want.event, want.matcher, want.marker, want.sub, want.timeout)
+	}
+	if got.Vehicle != VehicleHookInject {
+		t.Errorf("vehicle = %s, want hook-inject", got.Vehicle)
+	}
+	if got.Capability != CapObligationsPostShell {
+		t.Errorf("capability = %s, want %s", got.Capability, CapObligationsPostShell)
+	}
+	codec := ClaudeCodec()
+	in, err := codec.DecodeInput(EventPostTool, []byte(`{"tool_name":"Bash","tool_input":{"command":"echo hi > internal/store/backend.go"}}`))
+	if err != nil || in.Command != "echo hi > internal/store/backend.go" || in.Tool != ToolShell {
+		t.Errorf("Bash PostToolUse decode = %+v, %v", in, err)
 	}
 }
 

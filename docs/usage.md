@@ -900,6 +900,14 @@ byte-identical, the other files still applied, one line per file distinguishing
 not drift. `init` continues its other steps around a blocked file and lists the blocked
 files at the end.
 
+**Stanza line budget.** When `.fathom/concerns.cue`'s `max_lines` concern governs a stanza
+file, `init`/`reconcile --apply` trim the stanza body — dropping the opening-moves worked
+example first, then the continuity paragraph — to the smallest cut that fits every budgeted
+file, applied identically to CLAUDE.md and AGENTS.md so the two never diverge; a trim
+prints the note naming which tier it dropped. **This repo's own `CLAUDE.md` sits at exactly
+its 120-line budget right now** — the next line of growth here drops the opening-moves
+table first, before anything else in the stanza gives way.
+
 ---
 
 ### `doctor`

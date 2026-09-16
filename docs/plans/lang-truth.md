@@ -49,8 +49,8 @@ Design constraints (normative):
 - [x] Shared ext→language mapping derived from the extractor registry; langFromPath deleted; Sources() consumes it; cloc shows all 24 languages + explicit unclassified bucket {id: LT-1, symbol: Sources, package: pkg/client}
 - [x] Binary sniff at classification: excluded from extraction and line counts, reported as file-count/bytes bucket {id: LT-2, symbol: IsBinary, package: internal/connector}
 - [x] Repo hygiene: /fathom in .fathomignore; regression test that a NUL-bearing root file contributes zero code lines {id: LT-3, symbol: IsBinary, package: internal/connector, skip_test: true, skip: "ignore-file line + the LT-2 tests are the coverage; no new symbol"}
-- [x] CUE extractor v2: nested-field recursion with dotted names, package-clause attribution with filename fallback, import capture; golden test on the real #Layer manifest {id: LT-4, symbol: NewCUEExtractor, package: internal/extractor}
-- [x] ExtractorEpoch bump (CUE semantics changed) with the epoch test extended {id: LT-5, symbol: FingerprintHash, package: internal/fusion}
+- [x] CUE extractor v2: nested-field recursion with dotted names, package-clause attribution with filename fallback, import capture; golden test on the real #Layer manifest {id: LT-4, symbol: NewCUEExtractor, package: internal/extractor, reachable_from: TestAdoptionServiceScoped}
+- [x] ExtractorEpoch bump (CUE semantics changed) with the epoch test extended {id: LT-5, symbol: FingerprintHash, package: internal/fusion, reachable_from: TestAdoptionServiceScoped}
 
 Checked honestly by the implementing worker against `MACOSX_DEPLOYMENT_TARGET=14.0
 CGO_ENABLED=1 task validate` (green) and the test suite described in the

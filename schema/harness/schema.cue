@@ -16,7 +16,9 @@ package harness
 	"mcp-tools" | "skills" | "stanza" | "verify-gate" | "claim-gate" | "session-ledger" |
 	"stanza-loaded" | "config-audit" |
 	// Wave 3 (HP-26..HP-31): the advisory capabilities.
-	"subagent-prime" | "tool-failure-advice" | "worktree-advice" | "cwd-prime" | "setup-doctor"
+	"subagent-prime" | "tool-failure-advice" | "worktree-advice" | "cwd-prime" | "setup-doctor" |
+	// O57 items 4/5: governance from the prompt itself, before the first edit.
+	"prompt-obligations" | "obligations-post-shell"
 
 // #Vehicle is HOW a capability reaches a session on one harness.
 #Vehicle: "hook-inject" | "hook-block" | "hook-silent" | "pull" | "stanza" | "mcp" | "gate" | "absent"
@@ -24,7 +26,8 @@ package harness
 // #Event is fathom's canonical hook event.
 #Event: "session-start" | "pre-tool" | "post-tool" | "stop" | "session-end" | "pre-compact" |
 	"instructions-loaded" | "config-change" |
-	"subagent-start" | "tool-failure" | "file-changed" | "worktree-create" | "cwd-changed" | "setup"
+	"subagent-start" | "tool-failure" | "file-changed" | "worktree-create" | "cwd-changed" | "setup" |
+	"user-prompt-submit"
 
 // #ToolClass normalizes a harness's tool names.
 #ToolClass: "file-edit" | "shell" | "discovery-read" | "discovery-grep" | "discovery-glob" | "other"
@@ -137,6 +140,8 @@ package harness
 		"worktree-advice":       #Vehicle
 		"cwd-prime":             #Vehicle
 		"setup-doctor":          #Vehicle
+		"prompt-obligations":    #Vehicle
+		"obligations-post-shell": #Vehicle
 	}
 	notes?: {[#Capability]: string}
 	fail_mode:    string

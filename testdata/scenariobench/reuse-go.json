@@ -11875,7 +11875,8 @@
         "count": 1,
         "max_turns": 30,
         "workers": 1,
-        "mode": "planner-workers"
+        "mode": "planner-workers",
+        "max_workers_total": 3
       },
       "oracle": {
         "fail_to_pass": [
@@ -15778,7 +15779,7 @@
         "control": "no effect for the same reason; this variant is the matrix's no-effect cell",
         "full": "no effect: with one worker there is nothing to reuse across workers — the overlap reading is defined only against the planner, and vision 27 M5 predicts the pack advantage vanishes at K = 1"
       },
-      "derivation": "multi-swe-bench cli__cli-10043 @ 9d53b864369479e385455b55d2b6d3dad3467bed (CC0-1.0). Selected under ADR-031's rule: gold patch touches 2 non-test Go file(s). Category \"cross_package_feature\" by 2 non-test Go packages touched. | RE-: re-shaped for planner-workers mode (K=3, one planning session, one worker per row) by the exploration-reuse derivation; oracle and gold unchanged. | -K1: the same task with one worker, the pre-registered no-effect cell for M5."
+      "derivation": "multi-swe-bench cli__cli-10043 @ 9d53b864369479e385455b55d2b6d3dad3467bed (CC0-1.0). Selected under ADR-031's rule: gold patch touches 2 non-test Go file(s). Category \"cross_package_feature\" by 2 non-test Go packages touched. | RE-: re-shaped for planner-workers mode (K=3, one planning session, one worker per row) by the exploration-reuse derivation; oracle and gold unchanged. | -K1: the same task with one worker, the pre-registered no-effect cell for M5. | max_workers_total: 3 (O55 item 3's reassignment loop) so the one worker still reaches both packages' rows across sequential sessions, never in parallel."
     }
   ],
   "criterion": {

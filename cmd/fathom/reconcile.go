@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/harness"
 	"github.com/geoffmilleraz/fathom/internal/wiring"
 )
 
@@ -202,9 +203,8 @@ func stanzaPlan(root, service string) (wiring.Plan, error) {
 	svc := stanzaServiceID(root, service)
 	intentOn := intentChannelWired(root)
 	spec := wiring.Spec{}
-	for _, name := range stanzaFiles {
-		spec.Regions = append(spec.Regions, stanzaRegion(name, svc, intentOn))
-	}
+	regions, _ := stanzaRegionsFit(root, stanzaFiles, harness.ClaudeCode, svc, intentOn)
+	spec.Regions = append(spec.Regions, regions...)
 	return wiring.PlanWiring(root, spec)
 }
 
@@ -283,9 +283,10 @@ func reconcileSpec(root string, d wiringDiff) (wiring.Spec, []string) {
 		}
 	}
 	intentOn := intentChannelWired(root)
-	for _, name := range stanzaFiles {
-		if want[name] {
-			spec.Regions = append(spec.Regions, stanzaRegion(name, svc, intentOn))
+	regions, _ := stanzaRegionsFit(root, stanzaFiles, harness.ClaudeCode, svc, intentOn)
+	for _, r := range regions {
+		if want[r.File] {
+			spec.Regions = append(spec.Regions, r)
 		}
 	}
 

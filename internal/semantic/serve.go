@@ -16,6 +16,12 @@ import (
 // serving budget).
 const MaxObligations = 6
 
+// nearestTierReserveSlots (O57 item 4) is how many of a capped payload's
+// slots go to the nearest-scope tier unconditionally, before role or
+// freshness competes for the rest. See the cap block in obligationsCore
+// and reserveNearestTier.
+const nearestTierReserveSlots = 2
+
 // Obligation is one served rule.
 type Obligation struct {
 	Rule string `json:"rule"`
@@ -291,6 +297,58 @@ func rootScopeMatch(cl core.SemanticClaim, scope []string) int {
 	return best
 }
 
+// scored is one matched claim carrying everything the budget/order phase
+// of obligationsCore needs about it: cl.claims (RoleClaims fills the
+// budget only after governs, BP-18) and governing (its proximity to the
+// edited path, VB-8) alongside the plain glob-length specificity score.
+// Package-level (not local to obligationsCore) so reserveNearestTier can
+// share it.
+type scored struct {
+	cl          core.SemanticClaim
+	specificity int
+	claims      bool
+	governing   governingScope
+}
+
+// reserveNearestTier returns up to n items from matched belonging to the
+// single closest governingScope TIER actually present among them — tier
+// 0 (exact_file) if any matched claim reaches it, else tier 1 (package),
+// else tier 2 (parent_dir), else tier 3 (root) — in matched's existing
+// order (already sorted by less() before the caller reaches here), so
+// which of that tier's own rules fill the reserved slots still respects
+// freshness, role and specificity; only the cross-tier competition
+// against FARTHER rules is bypassed for these n slots. Empty when
+// outFile is "" (a root-scope call has no path to be proximate to, so
+// every candidate carries noGoverningScope and reservation is a no-op)
+// or when nothing in matched carries a real governing scope.
+func reserveNearestTier(matched []scored, n int, outFile string) []scored {
+	if outFile == "" || n <= 0 {
+		return nil
+	}
+	nearestTier := -1
+	for _, m := range matched {
+		if m.governing.tier < 0 {
+			continue
+		}
+		if nearestTier < 0 || m.governing.tier < nearestTier {
+			nearestTier = m.governing.tier
+		}
+	}
+	if nearestTier < 0 {
+		return nil
+	}
+	var reserved []scored
+	for _, m := range matched {
+		if len(reserved) >= n {
+			break
+		}
+		if m.governing.tier == nearestTier {
+			reserved = append(reserved, m)
+		}
+	}
+	return reserved
+}
+
 // obligationsCore is the shared match/budget/order engine behind
 // ObligationsFor and RootObligationsFor: outFile is what the returned
 // Obligations.File carries (a real path, or "" for the root-scope
@@ -359,12 +417,6 @@ func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile str
 	citedText := citedTextResolver(root, anchorText)
 	lookup := symbolFileLookup(ctx, st, serviceID)
 
-	type scored struct {
-		cl          core.SemanticClaim
-		specificity int
-		claims      bool // RoleClaims: fills the budget only after governs
-		governing   governingScope
-	}
 	var matched []scored
 	for _, cl := range served {
 		claims := layerRole(cl.Layer) == RoleClaims
@@ -440,9 +492,37 @@ func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile str
 		// so a claims rule can never evict a governs rule, but Displaced
 		// still counts BOTH — the eviction stays one honest integer.
 		out.Displaced = len(matched) - max
+		// O57 item 4: the nearest-scope tier gets first claim on the first
+		// nearestTierReserveSlots slots, unconditionally — before role or
+		// freshness gets a say. VB-8's proximity tie-break (governingscope.go)
+		// already sorts a FRESH, governs-role nearest rule to the front of
+		// its bucket, which is why the ordering-only test below already
+		// passed before this reservation existed; what it does NOT protect
+		// is a nearest rule that is stale, or claims-role — six fresh root
+		// rules can fill every slot before either is even considered, which
+		// is exactly what guards-pilot-5's second reading caught (a served
+		// payload naming no rule closer than "root" while a package guide
+		// governed the edited file). Reservation only decides MEMBERSHIP;
+		// which of the nearest tier's own rules fill the reserved slots
+		// still goes through matched's existing freshness/role/specificity
+		// order, and the final presentation order below is unaffected by
+		// how a rule reached kept.
+		reserveN := nearestTierReserveSlots
+		if reserveN > max {
+			reserveN = max
+		}
+		reserved := reserveNearestTier(matched, reserveN, outFile)
+		reservedIDs := make(map[string]bool, len(reserved))
+		for _, m := range reserved {
+			reservedIDs[m.cl.ClaimID] = true
+		}
 		kept := make([]scored, 0, max)
+		kept = append(kept, reserved...)
 		for _, m := range matched {
-			if !m.claims {
+			if len(kept) >= max {
+				break
+			}
+			if !m.claims && !reservedIDs[m.cl.ClaimID] {
 				kept = append(kept, m)
 			}
 		}
@@ -453,7 +533,7 @@ func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile str
 			if len(kept) >= max {
 				break
 			}
-			if m.claims {
+			if m.claims && !reservedIDs[m.cl.ClaimID] {
 				kept = append(kept, m)
 			}
 		}

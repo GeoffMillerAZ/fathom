@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/modserve"
@@ -70,6 +71,20 @@ type claimsSummaryBackend interface {
 // mirroring `fathom claim refute|corroborate` (cmd/fathom/claim.go).
 type claimFeedbackBackend interface {
 	ClaimFeedback(ctx context.Context, service, claimID, action, note, author string) error
+}
+
+// layerCoverageBackend is the optional backend capability for O54
+// deliverable 2's coverage disclosure: the obligations layer's LATEST
+// compile run completeness (sections_total/sections_compiled/
+// budget_stopped/uncompiled_scopes), attached to every obligations
+// response as layer_coverage — the same execute-and-flag doctrine ADR-014
+// applies elsewhere, applied to a compiled layer's own corpus
+// completeness. pkg/client.Client implements it via semantic.
+// ObligationsLayerCoverage; a backend that omits it (an older module, a
+// minimal test fake) simply serves no layer_coverage field — an honest
+// "coverage unknown", never a fabricated full-coverage claim.
+type layerCoverageBackend interface {
+	ObligationsLayerCoverage(ctx context.Context, service string) (semantic.LayerCoverage, bool, error)
 }
 
 // rootObligationsProbe is the FALLBACK-only bait path for rootObligations,
@@ -259,6 +274,51 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 	}
 	if indexStale {
 		result["index_stale"] = true
+	}
+	// O54 deliverable 2 / O60: coverage disclosure on every response, when
+	// the backend can report it — the same execute-and-flag doctrine
+	// ADR-014 already applies elsewhere, applied to the compiled layer's
+	// OWN corpus completeness. A backend that never implements this
+	// capability at all (an older module, a minimal test fake) carries no
+	// layer_coverage — an honest "coverage unknown" by omission, never a
+	// fabricated full-coverage claim. But a REAL backend that implements it
+	// and answers found:false (no compile_runs row for this service — a
+	// layer compiled before that tracking existed is the live case) must
+	// NOT collapse into that same silent omission: without a key at all, a
+	// stranger reading the envelope cannot tell a complete layer from an
+	// unrecorded one. Observed live on the operator daemon: an obligations
+	// response carrying compiled_at_watermark, displaced, file, layer,
+	// note, root, rules, service — no layer_coverage anywhere, even though
+	// rules were serving fine. So that case gets an explicit
+	// status:"unknown" placeholder instead of silence.
+	if cb, ok := backend.(layerCoverageBackend); ok {
+		cov, found, cerr := cb.ObligationsLayerCoverage(ctx, service)
+		switch {
+		case cerr != nil:
+			// An actual RPC/store error answering the coverage question is
+			// left exactly as before: no layer_coverage key. Distinct from
+			// found:false, which is an honest answer, not a failure.
+		case !found:
+			result["layer_coverage"] = map[string]any{
+				"status": "unknown",
+				"note":   "layer compiled before coverage was recorded; recompile to record coverage",
+			}
+		default:
+			result["layer_coverage"] = cov
+			// The queried file's nearest guide was never compiled: name it,
+			// with the resume command, rather than let a caller read a
+			// partial layer as if it were the whole answer. Never fires for
+			// a root-scope call (obl.File is always "" there — no path to
+			// be nearest to) and never overwrites the root-scope note set
+			// above, since the two are mutually exclusive by construction.
+			if guide, gok := semantic.NearestUncompiledGuide(cov, obl.File); gok {
+				coverage := fmt.Sprintf("%d/%d sections compiled", cov.SectionsCompiled, cov.SectionsTotal)
+				if cov.BudgetStopped {
+					coverage = fmt.Sprintf("budget stopped at %d/%d sections", cov.SectionsCompiled, cov.SectionsTotal)
+				}
+				result["note"] = fmt.Sprintf("%s governs this path and was not compiled: %s; run `fathom compile --layer obligations --continue`", guide, coverage)
+			}
+		}
 	}
 	return result
 }

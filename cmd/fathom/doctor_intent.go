@@ -37,9 +37,27 @@ func checkIntent(root string) doctorCheck {
 	c, err := intent.Load(root)
 	if err != nil {
 		return doctorCheck{
-			Name: name, Status: doctorWarn,
+			Name: name, Status: doctorSkipped,
 			Reason: "could not read the intent corpus: " + err.Error(),
-			Remedy: "check docs/intent/ is readable",
+			Remedy: "re-run; if the volume is external, reset its TCC verdict — tccutil reset SystemPolicyRemovableVolumes <terminal bundle id>",
+		}
+	}
+
+	// ADR-027 / never-FAIL-doctor rows: intent.Load never fails the read
+	// itself — a router that EXISTS but could not be opened still resolves
+	// Tier to TierNone, the same value a genuinely absent docs/intent/
+	// produces (c.Coverage is the only place the two are still told
+	// apart). Reporting that as "not adopted, which is a choice" is a
+	// guessed PASS over an instrument failure; SKIP instead, naming
+	// exactly what could not be read. Live evidence, 2026-09-14 (operator
+	// repo, volume EPERM wedge): the same tree reported WARN "127 unproven
+	// claim(s) [U12 111, U13 15, U3 1]" twice and PASS "no intent corpus"
+	// once in between, purely because the router read raced a TCC wedge.
+	if (c.Tier == intent.TierNone || c.Tier == intent.TierDecisionsOnly) && !c.Coverage.Complete() {
+		return doctorCheck{
+			Name: name, Status: doctorSkipped,
+			Reason: "could not read the intent corpus: " + readcoverage.Note(c.Coverage),
+			Remedy: "check the named path(s) are readable; on an external volume this is usually a wedged TCC verdict — `tccutil reset SystemPolicyRemovableVolumes <terminal bundle id>`",
 		}
 	}
 
@@ -159,7 +177,27 @@ func checkUnprovenClaims(root, baseURL, service string) doctorCheck {
 	}
 
 	c, err := intent.Load(root)
-	if err != nil || c.Tier == intent.TierNone {
+	if err != nil {
+		return doctorCheck{
+			Name: name, Status: doctorSkipped,
+			Reason: "could not read the intent corpus: " + err.Error(),
+			Remedy: "re-run; if the volume is external, reset its TCC verdict — tccutil reset SystemPolicyRemovableVolumes <terminal bundle id>",
+		}
+	}
+	// ADR-027: TierNone means "no router was found", true both for a
+	// genuinely absent docs/intent/ and for a router that exists but could
+	// not be read (checkIntent's doc comment above has the live evidence
+	// and the full explanation) — c.Coverage is what tells them apart.
+	// This row and checkIntent must not tell two different stories about
+	// the same unreadable tree.
+	if c.Tier == intent.TierNone {
+		if !c.Coverage.Complete() {
+			return doctorCheck{
+				Name: name, Status: doctorSkipped,
+				Reason: "could not read the intent corpus: " + readcoverage.Note(c.Coverage),
+				Remedy: "check the named path(s) are readable; on an external volume this is usually a wedged TCC verdict — `tccutil reset SystemPolicyRemovableVolumes <terminal bundle id>`",
+			}
+		}
 		return doctorCheck{
 			Name: name, Status: doctorPass,
 			Reason: "no intent corpus — the plan gate is still the proof of record here",

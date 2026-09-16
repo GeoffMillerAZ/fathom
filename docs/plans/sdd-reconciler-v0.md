@@ -5,8 +5,8 @@ Contract-bearing plan for ADR-018 / docs/design/sdd-reconciler.md. Gated by
 
 ## Grammar v2 (internal/verify)
 
-- [x] `[~]` parses as in-progress; `id:`/`disposition:`/`reason:`/`trigger:`/`skip:` annotation keys land on Task/Expect {id: G2-1, symbol: ParseMarkdownPlan, package: internal/verify}
-- [x] Double-quoted annotation values may contain commas; quotes stripped {id: G2-2, symbol: parseAnnotation, package: internal/verify}
+- [x] `[~]` parses as in-progress; `id:`/`disposition:`/`reason:`/`trigger:`/`skip:` annotation keys land on Task/Expect {id: G2-1, symbol: ParseMarkdownPlan, package: internal/verify, reachable_from: TestAdoptionServiceScoped}
+- [x] Double-quoted annotation values may contain commas; quotes stripped {id: G2-2, symbol: parseAnnotation, package: internal/verify, reachable_from: TestBind_DriftedModule_FlagsRules}
 - [x] `LintPlan` reports v2 convention violations deterministically (dup IDs, disposition without reason, disposition off `[-]`, trigger without deferred, skip_test without skip) {id: G2-3, symbol: LintPlan}
 - [x] `GateRequireAll` fails open/in-progress tasks in addition to Gate semantics {id: G2-4, symbol: GateRequireAll}
 

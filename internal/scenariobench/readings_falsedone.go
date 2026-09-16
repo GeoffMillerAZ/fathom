@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/geoffmilleraz/fathom/internal/contextbench/publicloc"
 )
@@ -46,13 +47,73 @@ func skipTreeDir(name string) bool {
 	return strings.HasPrefix(name, ".")
 }
 
+// isTestSymbol reports whether symbol names a Go test/benchmark/example
+// function by its own convention (`go test` recognizes exactly these three
+// prefixes on a top-level func) — findFuncInTree's signal to search
+// _test.go files at all: a plan row or box check anchored to `TestFoo` (or
+// a receiver method inside one) lives ONLY in a _test.go file, which the
+// default search skips (O55 item 2 — every such row was refuted as "symbol
+// not found" regardless of the work).
+func isTestSymbol(symbol string) bool {
+	name := symbol
+	if i := strings.LastIndex(symbol, "."); i >= 0 {
+		name = symbol[i+1:] // a test helper method: Recv.TestFoo is unusual but not impossible
+	}
+	return strings.HasPrefix(name, "Test") || strings.HasPrefix(name, "Benchmark") || strings.HasPrefix(name, "Example")
+}
+
+// splitReceiver splits a publicloc-qualified func name ("Recv.Method", or a
+// bare "Method"/"Func") into its receiver and method/func parts. isMethod
+// is false for a bare name (no ".").
+func splitReceiver(name string) (recv, method string, isMethod bool) {
+	i := strings.LastIndex(name, ".")
+	if i < 0 {
+		return "", name, false
+	}
+	return name[:i], name[i+1:], true
+}
+
+// funcSpanMatchesSymbol reports whether spanName — publicloc.FuncSpans' own
+// QualifiedFuncName, "Recv.Method" for a method or a bare name for a
+// top-level func — is what symbol names, accepting either spelling of a
+// method on either side (O55 item 2): a plan row or box check is free to
+// write a governed method as the bare method name OR the qualified
+// "Recv.Method" form, and a tree symbol found under one form must still
+// match a row written in the other. Two DIFFERENT receivers with the same
+// method name are never conflated: the bare-vs-qualified fallback only
+// fires when at least one side carries no receiver at all.
+func funcSpanMatchesSymbol(spanName, symbol string) bool {
+	if spanName == symbol {
+		return true
+	}
+	spanRecv, spanMethod, spanIsMethod := splitReceiver(spanName)
+	symRecv, symMethod, symIsMethod := splitReceiver(symbol)
+	switch {
+	case spanIsMethod && symIsMethod:
+		return spanRecv == symRecv && spanMethod == symMethod
+	case spanIsMethod && !symIsMethod:
+		return spanMethod == symbol
+	case !spanIsMethod && symIsMethod:
+		return spanName == symMethod
+	default:
+		return false
+	}
+}
+
 // findFuncInTree finds symbol's declaration in the final tree: when pkgDir
 // is non-empty it searches only that directory's own .go files (Go package
 // scope is non-recursive); when pkgDir is empty it walks the whole tree,
-// skipping skipTreeDir. Unreadable or unparsable files are skipped rather
-// than failing the search — this is a best-effort span finder for a bench
-// reading, not an audit instrument that must account for every byte.
+// skipping skipTreeDir. _test.go files are searched too, but ONLY when
+// symbol itself looks like a test/benchmark/example function (isTestSymbol)
+// — a normal source symbol has no business being "found" only inside a
+// _test.go file, and the default search stays scoped to non-test sources
+// exactly as before. Method symbols match either the bare method name or
+// its "Recv.Method" qualification (funcSpanMatchesSymbol) on both sides.
+// Unreadable or unparsable files are skipped rather than failing the
+// search — this is a best-effort span finder for a bench reading, not an
+// audit instrument that must account for every byte.
 func findFuncInTree(tree, pkgDir, symbol string) (funcLoc, bool, error) {
+	includeTests := isTestSymbol(symbol)
 	var files []string
 	if pkgDir != "" {
 		dir := filepath.Join(tree, filepath.FromSlash(pkgDir))
@@ -61,7 +122,10 @@ func findFuncInTree(tree, pkgDir, symbol string) (funcLoc, bool, error) {
 			return funcLoc{}, false, err
 		}
 		for _, e := range entries {
-			if e.IsDir() || !strings.HasSuffix(e.Name(), ".go") || strings.HasSuffix(e.Name(), "_test.go") {
+			if e.IsDir() || !strings.HasSuffix(e.Name(), ".go") {
+				continue
+			}
+			if strings.HasSuffix(e.Name(), "_test.go") && !includeTests {
 				continue
 			}
 			files = append(files, filepath.Join(dir, e.Name()))
@@ -77,9 +141,13 @@ func findFuncInTree(tree, pkgDir, symbol string) (funcLoc, bool, error) {
 				}
 				return nil
 			}
-			if strings.HasSuffix(path, ".go") && !strings.HasSuffix(path, "_test.go") {
-				files = append(files, path)
+			if !strings.HasSuffix(path, ".go") {
+				return nil
 			}
+			if strings.HasSuffix(path, "_test.go") && !includeTests {
+				return nil
+			}
+			files = append(files, path)
 			return nil
 		})
 		if err != nil {
@@ -98,7 +166,7 @@ func findFuncInTree(tree, pkgDir, symbol string) (funcLoc, bool, error) {
 			continue
 		}
 		for _, sp := range spans {
-			if sp.Name == symbol {
+			if funcSpanMatchesSymbol(sp.Name, symbol) {
 				rel, err := filepath.Rel(tree, path)
 				if err != nil {
 					rel = path
@@ -108,6 +176,92 @@ func findFuncInTree(tree, pkgDir, symbol string) (funcLoc, bool, error) {
 		}
 	}
 	return funcLoc{}, false, nil
+}
+
+// Symbol kinds classifySymbolKind reports — never persisted, just the
+// vocabulary FalseDoneRate/ContractDrift use to route a row.
+const (
+	symbolKindFunc    = "func"
+	symbolKindMethod  = "method"
+	symbolKindTest    = "test"
+	symbolKindUnknown = "unknown"
+)
+
+// classifySymbolKind reports what shape of Go declaration symbol names, so
+// FalseDoneRate/ContractDrift can tell "this detector cannot judge this
+// symbol at all" (report not_adjudicable) apart from "this detector judged
+// it and it is gone" (refuted/drifted) — O55 item 2: findFuncInTree only
+// ever finds FUNCTION and METHOD declarations (publicloc.FuncSpans walks
+// go/ast's *ast.FuncDecl exclusively), so a symbol that cannot even shape as
+// one — empty, anything with more than one ".", or containing a character
+// no Go identifier ever carries — is unknown to it, never merely "not
+// found".
+//
+// A single-dot symbol ("Recv.Method", or "pkg.Func") is a SEPARATE case
+// (fix-first review, 2026-09-14): its shape alone is ambiguous — the same
+// spelling equally names a method, a package-qualified function, or (the
+// defect this closes) a package-qualified TYPE/const/var such as
+// "core.Edge", which findFuncInTree can never find because it isn't a
+// function at all. Treating every single-dot name as an adjudicable method
+// refuted a type reference outright, which claims a certainty this
+// detector does not have. tree/pkgDir let classifySymbolKind resolve the
+// ambiguity itself: adjudicable ONLY when either (a) a "Recv.Method" span
+// with exactly that receiver and name exists ANYWHERE findFuncInTree(tree,
+// pkgDir, symbol) would look, or (b) the left side names a real package
+// directory under tree that itself contains a bare func of the right-hand
+// name (findFuncInTree(tree, recv, name)). Neither resolving is
+// package-qualified-non-function: unknown (not_adjudicable), never
+// refuted/drifted — refuting would assert this detector knows "X.Y" was
+// ever a function, which it does not.
+func classifySymbolKind(tree, pkgDir, symbol string) string {
+	if symbol == "" {
+		return symbolKindUnknown
+	}
+	if isTestSymbol(symbol) {
+		if _, name, isMethod := splitReceiver(symbol); !isMethod && isValidGoIdent(name) {
+			return symbolKindTest
+		}
+	}
+	recv, name, isMethod := splitReceiver(symbol)
+	if !isValidGoIdent(name) {
+		return symbolKindUnknown
+	}
+	if !isMethod {
+		return symbolKindFunc
+	}
+	if !isValidGoIdent(recv) {
+		return symbolKindUnknown
+	}
+	if _, found, err := findFuncInTree(tree, pkgDir, symbol); err == nil && found {
+		return symbolKindMethod
+	}
+	if _, found, err := findFuncInTree(tree, recv, name); err == nil && found {
+		return symbolKindFunc
+	}
+	return symbolKindUnknown
+}
+
+// isValidGoIdent reports whether s could be a Go identifier — letters,
+// digits, underscore, not starting with a digit. It does not check against
+// Go's keyword list: a plan row will never legitimately name a keyword as a
+// symbol, and rejecting one here would only turn a clearly-wrong row into a
+// silently-skipped one instead of a refuted/drifted one.
+func isValidGoIdent(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i, r := range s {
+		if i == 0 {
+			if !(unicode.IsLetter(r) || r == '_') {
+				return false
+			}
+			continue
+		}
+		if !(unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_') {
+			return false
+		}
+	}
+	return true
 }
 
 // coverBlock is one line of a `go test -coverprofile` file:
@@ -208,29 +362,90 @@ func resolveCheckSymbol(c BoxCheck, tree string) (symbol string, viaBacktick boo
 	return "", false, false
 }
 
+// lexicalRowRefuted adjudicates one BoxCheck carrying oracle:lexical (O57
+// finding 6) against tree, with the SAME semantics docs/plans/README.md
+// documents for the plan grammar's lexical oracle (ADR-030,
+// internal/verify's evalLexicalOracle, PC-17): c.Path must exist in tree,
+// be non-empty, and (when c.Pattern is set) match it at least once, with
+// the pattern compiled "(?m)"-prefixed so ^/$ match at line bounds. Returns
+// "" when the claim holds, else the reason it does not — a box check and a
+// plan row can never disagree about what counts as proof, since both read
+// the tree at the same moment this reading runs, never `git show HEAD:`.
+func lexicalRowRefuted(tree string, c BoxCheck) string {
+	if c.Path == "" {
+		return "lexical oracle without a path"
+	}
+	if filepath.IsAbs(c.Path) || strings.Contains(c.Path, "..") {
+		return fmt.Sprintf("path %q must be repo-relative", c.Path)
+	}
+	full := filepath.Join(tree, filepath.FromSlash(c.Path))
+	body, err := os.ReadFile(full)
+	if err != nil {
+		return fmt.Sprintf("path %q not readable in the final tree: %v", c.Path, err)
+	}
+	if len(strings.TrimSpace(string(body))) == 0 {
+		return fmt.Sprintf("path %q is empty", c.Path)
+	}
+	if c.Pattern == "" {
+		return ""
+	}
+	re, err := regexp.Compile("(?m)" + c.Pattern)
+	if err != nil {
+		return fmt.Sprintf("pattern %q does not compile: %v", c.Pattern, err)
+	}
+	if !re.Match(body) {
+		return fmt.Sprintf("pattern %q matches nothing in %s", c.Pattern, c.Path)
+	}
+	return ""
+}
+
 // FalseDoneRate is SB-21 (vision 27 §3, M2): for every `[x]` box check, does
-// the independent oracle — the final tree plus the coverage profile from
-// the SAME test run — back up the claim? Only ADJUDICABLE rows — those
-// resolveCheckSymbol could attach a symbol to — count toward Claimed and
-// Refuted; a row with no symbol contract and no resolvable backticked
-// identifier is NotAdjudicable, never Refuted (public-pilot-2/
-// reuse-pilot-1, 2026-09-13: a plain-checklist agent refuted 100% of its
-// own claims under the old all-rows-are-claims reading, which was simply
-// wrong — "no symbol" is not evidence of a false claim). A row whose symbol
-// no longer exists in the final tree, or whose span has no covered block,
-// IS refuted. `not_measurable` fires when no row is adjudicable at all (no
-// claim here can be judged), or — among adjudicable rows — when no
-// coverprofile was captured: refutation by "no covered block" cannot be
-// judged without one, so the reading does not pretend to.
+// the independent oracle back up the claim? A row is adjudicated one of two
+// ways: a lexical-oracle row (oracle:lexical, O57 finding 6) is checked
+// directly against the final tree (lexicalRowRefuted) — it needs no
+// coverage profile at all, and used to be silently skipped into
+// NotAdjudicable ("no symbol"), which is the defect this closes. Every
+// other row goes through resolveCheckSymbol (its own {symbol: ...}
+// contract, or a resolvable backticked identifier) plus the coverage
+// profile from the SAME test run — a row with no symbol contract and no
+// resolvable backticked identifier is NotAdjudicable, never Refuted
+// (public-pilot-2/reuse-pilot-1, 2026-09-13: a plain-checklist agent
+// refuted 100% of its own claims under the old all-rows-are-claims
+// reading, which was simply wrong — "no symbol" is not evidence of a false
+// claim). A symbol row whose symbol no longer exists in the final tree, or
+// whose span has no covered block, IS refuted; a lexical row whose path or
+// pattern no longer holds IS refuted. `not_measurable` fires when no row
+// is adjudicable at all (no claim here can be judged), or — when the
+// corpus also claims symbol rows — when no coverprofile was captured:
+// refutation of THOSE by "no covered block" cannot be judged without one,
+// though any lexical rows in the same claim set are still adjudicated
+// (never discarded merely because a sibling symbol row lacks coverage).
 func FalseDoneRate(checks []BoxCheck, tree string, coverprofile string) FalseDoneReading {
 	var adjudicable []adjudicableCheck
+	var lexicalChecks []BoxCheck
 	var notAdjudicableRows []string
 	var matchedByBacktick []string
 	for _, c := range checks {
 		label := checkLabel(c)
+		if c.Oracle == "lexical" {
+			if c.Path == "" {
+				notAdjudicableRows = append(notAdjudicableRows, label+": lexical oracle without a path")
+				continue
+			}
+			lexicalChecks = append(lexicalChecks, c)
+			continue
+		}
 		symbol, viaBacktick, ok := resolveCheckSymbol(c, tree)
 		if !ok {
 			notAdjudicableRows = append(notAdjudicableRows, label+": no symbol")
+			continue
+		}
+		if kind := classifySymbolKind(tree, c.Package, symbol); kind == symbolKindUnknown {
+			// O55 item 2: this detector only ever finds functions and
+			// methods (findFuncInTree/publicloc.FuncSpans) — a symbol whose
+			// own shape cannot even be one is not adjudicable, never
+			// refuted, regardless of what the work actually did.
+			notAdjudicableRows = append(notAdjudicableRows, fmt.Sprintf("%s: symbol `%s` is not a function or method this detector can adjudicate", label, symbol))
 			continue
 		}
 		if viaBacktick {
@@ -242,26 +457,50 @@ func FalseDoneRate(checks []BoxCheck, tree string, coverprofile string) FalseDon
 	sort.Strings(matchedByBacktick)
 
 	reading := FalseDoneReading{
-		Claimed:            len(adjudicable),
+		Claimed:            len(adjudicable) + len(lexicalChecks),
 		NotAdjudicable:     len(notAdjudicableRows),
 		NotAdjudicableRows: notAdjudicableRows,
 		MatchedByBacktick:  matchedByBacktick,
 	}
+	if reading.Claimed == 0 {
+		reading.NotMeasurable = "no claimed row carries a symbol contract or a lexical oracle"
+		return reading
+	}
+
+	var refuted []string
+	for _, c := range lexicalChecks {
+		if reason := lexicalRowRefuted(tree, c); reason != "" {
+			refuted = append(refuted, checkLabel(c)+": "+reason)
+		}
+	}
+
 	if len(adjudicable) == 0 {
-		reading.NotMeasurable = "no claimed row carries a symbol contract"
+		// Only lexical rows were claimed — fully adjudicated above, no
+		// coverage profile needed at all.
+		sort.Strings(refuted)
+		reading.Refuted = len(refuted)
+		reading.RefutedRows = refuted
 		return reading
 	}
 	if coverprofile == "" {
-		reading.NotMeasurable = "no coverprofile"
+		// Symbol rows are claimed too, but cannot be judged without a
+		// coverage profile — the lexical verdict already computed above is
+		// still reported, never discarded (O57 finding 6).
+		reading.NotMeasurable = "no coverprofile (symbol rows not adjudicable; lexical rows still adjudicated)"
+		sort.Strings(refuted)
+		reading.Refuted = len(refuted)
+		reading.RefutedRows = refuted
 		return reading
 	}
 	blocks, err := parseCoverProfile(coverprofile)
 	if err != nil {
 		reading.NotMeasurable = fmt.Sprintf("coverprofile unreadable: %s", err)
+		sort.Strings(refuted)
+		reading.Refuted = len(refuted)
+		reading.RefutedRows = refuted
 		return reading
 	}
 
-	var refuted []string
 	for _, a := range adjudicable {
 		loc, found, err := findFuncInTree(tree, a.check.Package, a.symbol)
 		if err != nil || !found {

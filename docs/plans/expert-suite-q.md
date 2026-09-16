@@ -148,7 +148,7 @@ implements):
 
 ### A — compile rejection-reason capture (O19's fix, docs/design/observability-surfaces.md §8 item 5)
 
-- [x] `verifyDraft`'s seven rejection sites each wrap their error with a classified cause (malformed / anchor-missing / scope-unverifiable / over-broad); `classifyRejectionCause` unwraps it, defaulting an unclassified error to malformed rather than dropping it {id: Q-1, symbol: classifyRejectionCause, package: internal/semantic}
+- [x] `verifyDraft`'s seven rejection sites each wrap their error with a classified cause (malformed / anchor-missing / scope-unverifiable / over-broad); `classifyRejectionCause` unwraps it, defaulting an unclassified error to malformed rather than dropping it {id: Q-1, symbol: classifyRejectionCause, package: internal/semantic, reachable_from: TestBuild_PropagatesListError}
   - `internal/semantic/compile.go`: `claimRejectionError` (cause + wrapped
     err, `Unwrap` for `errors.As`), `rejectErr(cause, format, args...)
     error` (the seven `verifyDraft` return sites switched to it, behavior
@@ -161,7 +161,7 @@ implements):
     failure paths), `_EmptyScope_Malformed`, `_ScopeMatchesNoFile_ScopeUnverifiable`,
     `_ScopeOverBroad_OverBroad`, `_UnclassifiedError_DefaultsMalformed`.
 
-- [x] The compile loop accumulates a deterministic, sorted rejection-cause breakdown (count + up to 3 example messages per cause) onto the run {id: Q-2, symbol: buildRejectionReasons, package: internal/semantic}
+- [x] The compile loop accumulates a deterministic, sorted rejection-cause breakdown (count + up to 3 example messages per cause) onto the run {id: Q-2, symbol: buildRejectionReasons, package: internal/semantic, reachable_from: TestBuild_PropagatesListError}
   - `internal/semantic/compile.go`: `buildRejectionReasons(counts
     map[string]int, samples map[string][]string) []core.RejectionBreakdown`
     — sorted by cause name, samples capped at `maxRejectionSamplesPerCause`
@@ -180,7 +180,7 @@ implements):
     `verifyDraft` entirely — the field must stay empty, not zero-valued
     per cause).
 
-- [x] `compile_runs` persists the rejection breakdown (a new JSON column, additive migration on a pre-existing store) {id: Q-3, symbol: marshalRejectionReasons, package: internal/store}
+- [x] `compile_runs` persists the rejection breakdown (a new JSON column, additive migration on a pre-existing store) {id: Q-3, symbol: marshalRejectionReasons, package: internal/store, reachable_from: TestAdoptionServiceScoped}
   - `internal/store/sqlite.go`: `rejection_reasons_json TEXT NOT NULL
     DEFAULT '[]'` added to the `compile_runs` CREATE TABLE shape AND to the
     conditional-migration list (the `escape_note`/`anchor_text` pattern —
@@ -234,7 +234,7 @@ implements):
     the status `SetClaimStatus` sets on the same call site).
   - Tests (`pkg/client/semantic_test.go`): `TestClient_AppendClaimEvent_RoundTrips`.
 
-- [x] `internal/store` gains a bulk, time-windowed `claim_events` read (no prior bulk query existed — only per-claim-ID) {id: Q-6, symbol: queryClaimEventsSince, package: internal/store}
+- [x] `internal/store` gains a bulk, time-windowed `claim_events` read (no prior bulk query existed — only per-claim-ID) {id: Q-6, symbol: queryClaimEventsSince, package: internal/store, reachable_from: TestCmdFindingsStatus_JSON}
   - `internal/store/store.go`: `ClaimEventsSince(ctx, since, until
     time.Time) ([]core.ClaimEvent, error)` added to the `Store` interface,
     doc comment states plainly that `claim_events` carries no `service_id`
@@ -269,7 +269,7 @@ implements):
 
 ### C — `internal/metrics`: shared aggregation core (docs/design/observability-surfaces.md §8 item 1)
 
-- [x] `DiscoveryIndexTools` moves from `cmd/fathom` to `internal/metrics` (the design's own "import it, don't redefine" instruction) with an accessor {id: Q-8, symbol: IsDiscoveryIndexTool, package: internal/metrics}
+- [x] `DiscoveryIndexTools` moves from `cmd/fathom` to `internal/metrics` (the design's own "import it, don't redefine" instruction) with an accessor {id: Q-8, symbol: IsDiscoveryIndexTool, package: internal/metrics, reachable_from: TestAnsweredBeatCarriesDisplacedCount}
   - `internal/metrics/discovery.go`: `DiscoveryIndexTools map[string]bool`
     (the exact 10-tool set, moved verbatim with its explaining comment),
     `IsDiscoveryIndexTool(tool string) bool`.
@@ -284,7 +284,7 @@ implements):
     `staleness_report`/`verify_plan` are excluded, pinning the design §4
     exclusion list directly).
 
-- [x] `Ratio` is the one zero-denominator guard every ratio in this phase goes through {id: Q-15, symbol: Ratio, package: internal/metrics}
+- [x] `Ratio` is the one zero-denominator guard every ratio in this phase goes through {id: Q-15, symbol: Ratio, package: internal/metrics, reachable_from: TestAnsweredBeatCarriesDisplacedCount}
   - `internal/metrics/ratio.go`: `Ratio(numerator, denominator int) (pct
     *float64, note string)` — `denominator == 0` returns `(nil, "not
     measurable: zero denominator")`; otherwise a computed percentage and
@@ -294,7 +294,7 @@ implements):
     critic finding F1 fixed once, now guarded structurally),
     `TestRatio_ZeroNumerator_ZeroPercent`, `TestRatio_ComputesExpectedPercentage`.
 
-- [x] `AggregateSpend` — runs/tokens/USD/cost-per-claim/budget-headroom/escape-hatch flags, grouped by layer, day, or model {id: Q-9, symbol: AggregateSpend, package: internal/metrics}
+- [x] `AggregateSpend` — runs/tokens/USD/cost-per-claim/budget-headroom/escape-hatch flags, grouped by layer, day, or model {id: Q-9, symbol: AggregateSpend, package: internal/metrics, reachable_from: TestAnsweredBeatCarriesDisplacedCount}
   - `internal/metrics/spend.go`: `CompileRunBudgetLookup func(layer
     string) (maxUSD float64, found bool)` (injected — `internal/metrics`
     does no I/O, so `cmd/fathom` resolves budgets via
@@ -319,7 +319,7 @@ implements):
     proof for THIS instrument), `_EscapeHatchRunsFlagged`,
     `_EmptyInput_EmptyReport`.
 
-- [x] `AggregateTraffic` — volume/p50/p95/error-rate/plumbing-vs-discovery split, grouped by surface, tool, or hour {id: Q-10, symbol: AggregateTraffic, package: internal/metrics}
+- [x] `AggregateTraffic` — volume/p50/p95/error-rate/plumbing-vs-discovery split, grouped by surface, tool, or hour {id: Q-10, symbol: AggregateTraffic, package: internal/metrics, reachable_from: TestAnsweredBeatCarriesDisplacedCount}
   - `internal/metrics/traffic.go`: `CallEntry{TS string; Tool, Service,
     Surface string; LatencyMS float64; Error string}` (mirrors
     `adoptionCallEntry`'s JSON-relevant fields — `cmd/fathom` converts);
@@ -337,7 +337,7 @@ implements):
     `_ErrorRate_ZeroCallsInGroup_HonestNote`, `_DiscoveryPlumbingOtherSplit_Exhaustive`
     (every tool lands in exactly one bucket, no double count), `_EmptyInput_EmptyReport`.
 
-- [x] `AggregateChannels` — injection coverage, guarded pre/post, dedup, module serves, with phase P's "not measurable" strings carried through VERBATIM {id: Q-11, symbol: AggregateChannels, package: internal/metrics}
+- [x] `AggregateChannels` — injection coverage, guarded pre/post, dedup, module serves, with phase P's "not measurable" strings carried through VERBATIM {id: Q-11, symbol: AggregateChannels, package: internal/metrics, reachable_from: TestAnsweredBeatCarriesDisplacedCount}
   - `internal/metrics/channels.go`: `ChannelsReport{InjectionSeen,
     InjectionAnswered int; InjectionCoverageRate *float64;
     InjectionCoverageNote string; ObligationsServed int;
@@ -358,7 +358,7 @@ implements):
     `_ModuleRulesServed`, `_NeverMeasurable_NotesVerbatim` (pins the exact
     phase-P note strings), `_EmptyInput_HonestZeros`.
 
-- [x] `AggregateInterventions` — the design §1 table, mechanism-labeled, row 3 honestly "not measurable" {id: Q-12, symbol: AggregateInterventions, package: internal/metrics}
+- [x] `AggregateInterventions` — the design §1 table, mechanism-labeled, row 3 honestly "not measurable" {id: Q-12, symbol: AggregateInterventions, package: internal/metrics, reachable_from: TestAnsweredBeatCarriesDisplacedCount}
   - `internal/metrics/interventions.go`: `InterventionRow{Name,
     Mechanism string; Count *int; Note string}`;
     `InterventionsReport{Since, Until string; Rows []InterventionRow}`;
@@ -391,7 +391,7 @@ implements):
     directly — the load-bearing "no inferred agent behavior" proof),
     `_ObligationsAndGuardRows_MatchChannelsAggregate`, `_EmptyInput_AllRowsPresentWithNotes`.
 
-- [x] Daily rollups: deterministic, additive-only, `workspace/artifacts/metrics/daily/YYYY-MM-DD.json` {id: Q-13, symbol: BuildDailyRollup, package: internal/metrics}
+- [x] Daily rollups: deterministic, additive-only, `workspace/artifacts/metrics/daily/YYYY-MM-DD.json` {id: Q-13, symbol: BuildDailyRollup, package: internal/metrics, reachable_from: TestAnsweredBeatCarriesDisplacedCount}
   - `internal/metrics/rollup.go`: `DailyRollup{Date string; SpendTotalUSD
     float64; SpendCostPerClaimUSD *float64; TrafficTotalCalls int;
     TrafficErrorRate *float64; ChannelsInjectionCoverageRate *float64;
@@ -412,7 +412,7 @@ implements):
     `TestWriteDailyRollup_ThenReadDailyRollups_RoundTrips`,
     `_OverwritesSameDateIdempotently`, `_MissingDatesSkippedNotZeroed`.
 
-- [x] `ResolveMetricsTier` — `FATHOM_METRICS` off/basic/full, default basic, invalid value falls back to basic with an observable note {id: Q-14, symbol: ResolveMetricsTier, package: internal/metrics}
+- [x] `ResolveMetricsTier` — `FATHOM_METRICS` off/basic/full, default basic, invalid value falls back to basic with an observable note {id: Q-14, symbol: ResolveMetricsTier, package: internal/metrics, reachable_from: TestAnsweredBeatCarriesDisplacedCount}
   - `internal/metrics/tiering.go`: `MetricsTier` (`"off"`/`"basic"`/`"full"`);
     `ResolveMetricsTier() (tier MetricsTier, note string)` — reads
     `FATHOM_METRICS`; doc comment states plainly that NO tier spends LLM

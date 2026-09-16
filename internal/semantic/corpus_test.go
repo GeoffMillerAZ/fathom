@@ -19,6 +19,19 @@ func obligationsInclude(t *testing.T) []string {
 	return def.CorpusInclude
 }
 
+// obligationsCorpus is obligationsInclude's sibling: it also returns the
+// layer's CorpusExclude list, for tests (like
+// TestSelectCorpus_ExcludesTestdataFixtures below) that need the exclude
+// side of the SAME production manifest, not a hand-written glob.
+func obligationsCorpus(t *testing.T) (include, exclude []string) {
+	t.Helper()
+	def, err := LoadLayer(LayerObligations)
+	if err != nil {
+		t.Fatalf("LoadLayer(%s): %v", LayerObligations, err)
+	}
+	return def.CorpusInclude, def.CorpusExclude
+}
+
 func TestSelectCorpus(t *testing.T) {
 	files := []core.SourceFile{
 		{Path: "CLAUDE.md"},
@@ -124,6 +137,48 @@ func TestSelectCorpus_Deterministic(t *testing.T) {
 		if a[i].Path < a[i-1].Path {
 			t.Errorf("not sorted: %v", paths(a))
 			break
+		}
+	}
+}
+
+// TestSelectCorpus_ExcludesTestdataFixtures is O54's follow-up (.fathom/
+// observations.md O54 addendum): the obligations compile corpus walked
+// internal/custodian/testdata/codefacts/fixture/CLAUDE.md (a fixture
+// authored to exercise internal/custodian's OWN tests, never a real
+// governing document) as if it were a nested guide — it sat at position 10
+// of 66 sections in a real compile run, and its testdata-sibling ADR.md at
+// 19. The obligations layer's corpus.exclude must drop any path with a
+// `testdata` path segment, at any depth, while still selecting a genuine
+// nested guide (internal/CLAUDE.md) that the "**/CLAUDE.md" include glob
+// is meant to reach.
+func TestSelectCorpus_ExcludesTestdataFixtures(t *testing.T) {
+	files := []core.SourceFile{
+		{Path: "internal/custodian/testdata/codefacts/fixture/CLAUDE.md"},
+		{Path: "internal/custodian/testdata/codefacts/fixture/ADR.md"},
+		{Path: "internal/CLAUDE.md"},
+		{Path: "CLAUDE.md"},
+	}
+	include, exclude := obligationsCorpus(t)
+	got := SelectCorpus(files, include, exclude)
+
+	for _, f := range got {
+		if f.Path == "internal/custodian/testdata/codefacts/fixture/CLAUDE.md" ||
+			f.Path == "internal/custodian/testdata/codefacts/fixture/ADR.md" {
+			t.Errorf("SelectCorpus included a testdata fixture path %q — want it excluded (O54 addendum)", f.Path)
+		}
+	}
+
+	wantPresent := []string{"internal/CLAUDE.md", "CLAUDE.md"}
+	for _, want := range wantPresent {
+		found := false
+		for _, f := range got {
+			if f.Path == want {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("SelectCorpus dropped real nested guide %q, got %v", want, paths(got))
 		}
 	}
 }

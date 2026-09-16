@@ -107,6 +107,50 @@ func (c *Client) CompileLayer(ctx context.Context, service, layerName string, dr
 // compile_runs" audit trail both flags' kill criteria count against. Pass ""
 // for a normal run (CompileLayer's contract, unchanged).
 func (c *Client) CompileLayerWithEscape(ctx context.Context, service, layerName string, dryRun bool, escape string) (core.CompileRun, error) {
+	return c.compileLayer(ctx, service, layerName, dryRun, escape, false)
+}
+
+// CompileLayerResume is O54 deliverable 3 (`fathom compile --layer
+// obligations --continue`): CompileLayerWithEscape with
+// semantic.CompileInput.Resume wired true — see that field's doc comment.
+// A budget-stopped layer at a fixed max_tokens_per_run otherwise refuses at
+// the PRE-FLIGHT gate forever once the remaining corpus alone estimates
+// over budget; this skips that refusal so the SAME per-run budget keeps
+// making incremental progress call over call, the mid-run gate capping
+// each call exactly as it always has. The returned CompileRun's
+// ResumedFrom names the first not-yet-compiled section this call picked up
+// from.
+func (c *Client) CompileLayerResume(ctx context.Context, service, layerName string, dryRun bool, escape string) (core.CompileRun, error) {
+	return c.compileLayer(ctx, service, layerName, dryRun, escape, true)
+}
+
+// ObligationsLayerCoverage reports the obligations layer's LIVE compile
+// completeness for service (O54 deliverable 2, second review round): the
+// CURRENT corpus, not the possibly-stale numbers the latest compile_runs
+// row recorded — see semantic.LiveLayerCoverage. Resolves the layer
+// definition and its corpus the same way a real compile does
+// (compileLayer); a resolution failure at either step degrades to the
+// store-only semantic.ObligationsLayerCoverage rather than failing
+// obligations serving outright — this is a serve-time enrichment, never a
+// hard dependency.
+func (c *Client) ObligationsLayerCoverage(ctx context.Context, service string) (semantic.LayerCoverage, bool, error) {
+	root := ""
+	if meta, found, merr := c.st.GetServiceMeta(ctx, service); merr == nil && found {
+		root = meta.Path
+	}
+	layerDef, err := semantic.LoadLayerIn(root, semantic.LayerObligations)
+	if err != nil {
+		return semantic.ObligationsLayerCoverage(ctx, c.st, service, semantic.LayerObligations)
+	}
+	files, err := c.Sources(ctx, service)
+	if err != nil {
+		return semantic.ObligationsLayerCoverage(ctx, c.st, service, semantic.LayerObligations)
+	}
+	corpus := semantic.SelectCorpus(files, layerDef.CorpusInclude, layerDef.CorpusExclude)
+	return semantic.LiveLayerCoverage(ctx, c.st, service, layerDef, corpus)
+}
+
+func (c *Client) compileLayer(ctx context.Context, service, layerName string, dryRun bool, escape string, resume bool) (core.CompileRun, error) {
 	if !dryRun && c.llm == nil {
 		return core.CompileRun{}, fmt.Errorf("client: no LLM configured for CompileLayer (set ANTHROPIC_API_KEY and call WithLLM, or use dry_run:true to estimate cost)")
 	}
@@ -172,6 +216,7 @@ func (c *Client) CompileLayerWithEscape(ctx context.Context, service, layerName 
 		Watermark:    watermark,
 		DryRun:       dryRun,
 		Escape:       escape,
+		Resume:       resume,
 	})
 }
 

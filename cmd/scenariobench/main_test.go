@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,8 +11,10 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/scenariobench"
+	"github.com/geoffmilleraz/fathom/internal/wiring"
 )
 
 // captureStderr redirects os.Stderr for the duration of fn and returns
@@ -299,7 +302,7 @@ func TestCmdRun_FakeHarnessControlArm(t *testing.T) {
 	// not_measurable (no claimed row to judge at all), not a false 0/0.
 	if cell.Readings.FalseDone == nil {
 		t.Error("expected Readings.FalseDone to be present")
-	} else if cell.Readings.FalseDone.NotMeasurable != "no claimed row carries a symbol contract" {
+	} else if cell.Readings.FalseDone.NotMeasurable != "no claimed row carries a symbol contract or a lexical oracle" {
 		t.Errorf("expected FalseDone not_measurable (no box checks were ever recorded): got %q", cell.Readings.FalseDone.NotMeasurable)
 	}
 	if cell.Readings.Resumption == nil {
@@ -325,7 +328,7 @@ func TestCmdRun_FakeHarnessControlArm(t *testing.T) {
 		rescored.Readings.Resumption == nil || rescored.Readings.Drift == nil {
 		t.Errorf("expected score to recompute every SDD reading too, got %+v", rescored.Readings)
 	}
-	if rescored.Readings.FalseDone.NotMeasurable != "no claimed row carries a symbol contract" {
+	if rescored.Readings.FalseDone.NotMeasurable != "no claimed row carries a symbol contract or a lexical oracle" {
 		t.Errorf("expected score's FalseDone reading to be recomputed the same way: got not_measurable=%q", rescored.Readings.FalseDone.NotMeasurable)
 	}
 
@@ -903,6 +906,170 @@ func TestCmdLedger_TrialsDefaultCountsAllStoredTrials(t *testing.T) {
 	}
 }
 
+// runThenPrepareLedgerFixture runs one fake-harness cell under run-id
+// "run-1" and returns everything TestCmdLedger_GeneratedAt*/StoreRoot/
+// StrictBorrow need: the corpus/cells/ledger/readme paths, with readme
+// already carrying the marker-fenced section `ledger` rewrites.
+func runThenPrepareLedgerFixture(t *testing.T) (dir, corpusPath, cellsDir, ledgerPath, readmePath string) {
+	t.Helper()
+	dir = t.TempDir()
+	repoURL, commit := gitFixtureSubject(t)
+	corpusPath = writeCorpusFixture(t, dir, repoURL, commit)
+	root := filepath.Join(dir, "fathom-root")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cellsDir = filepath.Join(dir, "cells")
+	rawDir := filepath.Join(dir, "raw")
+	streamsDir := repoRelative(t, "testdata", "scenariobench", "streams")
+
+	if rc := run([]string{
+		"run",
+		"-corpus", corpusPath, "-root", root, "-cells", cellsDir, "-raw-dir", rawDir,
+		"-run-id", "run-1", "-harness-version", "fake-1", "-harness", "fake",
+		"-fake-streams-dir", streamsDir, "-fake-streams", `{"T1/control":"single-session.jsonl"}`,
+	}); rc != 0 {
+		t.Fatalf("run exited %d, want 0", rc)
+	}
+
+	ledgerPath = filepath.Join(dir, "ledger.jsonl")
+	readmePath = filepath.Join(dir, "README.md")
+	if err := os.WriteFile(readmePath, []byte("# Bench\n\n## Scenario runs\n\n"+
+		scenariobench.ScenarioLedgerBeginMarker+"\n\n"+scenariobench.ScenarioLedgerEndMarker+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return dir, corpusPath, cellsDir, ledgerPath, readmePath
+}
+
+// TestCmdLedger_GeneratedAtFromInjectedClock pins O55 item 5: every filed
+// row carries generated_at, RFC3339 UTC, from ledgerClock — deterministic
+// under a test's own override, never "" (the defect: the field existed on
+// ScenarioLedgerRow but cmdLedger never set it).
+func TestCmdLedger_GeneratedAtFromInjectedClock(t *testing.T) {
+	_, corpusPath, cellsDir, ledgerPath, readmePath := runThenPrepareLedgerFixture(t)
+
+	old := ledgerClock
+	fixed := time.Date(2026, 9, 14, 12, 0, 0, 0, time.UTC)
+	ledgerClock = func() time.Time { return fixed }
+	t.Cleanup(func() { ledgerClock = old })
+
+	if rc := run([]string{
+		"ledger",
+		"-corpus", corpusPath, "-cells", cellsDir, "-ledger", ledgerPath, "-readme", readmePath,
+		"-run-id", "run-1", "-harness-version", "fake-1",
+	}); rc != 0 {
+		t.Fatalf("ledger exited %d, want 0", rc)
+	}
+	rows, err := scenariobench.LoadScenarioLedger(ledgerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("expected 1 filed row, got %d", len(rows))
+	}
+	if want := "2026-09-14T12:00:00Z"; rows[0].GeneratedAt != want {
+		t.Errorf("GeneratedAt = %q, want %q", rows[0].GeneratedAt, want)
+	}
+}
+
+// TestCmdLedger_BorrowedCellsCarryStoreRoot pins O55 item 5's other half:
+// every entry in a filed row's own Borrowed list names the store
+// (cellsDir) it was actually read from — `ledger` only ever borrows (it
+// never runs a cell itself), so every cell it files is borrowed.
+func TestCmdLedger_BorrowedCellsCarryStoreRoot(t *testing.T) {
+	_, corpusPath, cellsDir, ledgerPath, readmePath := runThenPrepareLedgerFixture(t)
+
+	if rc := run([]string{
+		"ledger",
+		"-corpus", corpusPath, "-cells", cellsDir, "-ledger", ledgerPath, "-readme", readmePath,
+		"-run-id", "run-1", "-harness-version", "fake-1",
+	}); rc != 0 {
+		t.Fatalf("ledger exited %d, want 0", rc)
+	}
+	rows, err := scenariobench.LoadScenarioLedger(ledgerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 || len(rows[0].Borrowed) != 1 {
+		t.Fatalf("expected 1 filed row with 1 borrowed entry, got %+v", rows)
+	}
+	if rows[0].Borrowed[0].StoreRoot != cellsDir {
+		t.Errorf("Borrowed[0].StoreRoot = %q, want %q", rows[0].Borrowed[0].StoreRoot, cellsDir)
+	}
+}
+
+// setStoredCellRunID rewrites the one stored cell under cellsDir's own
+// run_id field on disk — simulating a cell filed by a DIFFERENT run than
+// the one `ledger` is about to ask for, the shape a wrong -cells/-run-id
+// pairing produces.
+func setStoredCellRunID(t *testing.T, cellsDir, runID string) {
+	t.Helper()
+	path := findStoredCell(t, cellsDir)
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m map[string]any
+	if err := json.Unmarshal(raw, &m); err != nil {
+		t.Fatal(err)
+	}
+	m["run_id"] = runID
+	out, err := json.Marshal(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, out, 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestCmdLedger_StrictBorrowRefusesRunIDMismatch pins O55 item 5's
+// -strict-borrow behavior: a stored cell whose own run_id differs from
+// -run-id is, by default, a hard refusal (exit 2) naming the cell, its
+// key, the store it resolved, and both run ids — not a silent skip that
+// could leave an operator staring at an empty or short ledger with no clue
+// why. -strict-borrow=false restores the old skip (nothing filed, the
+// criterion goes indeterminate for lack of trials).
+func TestCmdLedger_StrictBorrowRefusesRunIDMismatch(t *testing.T) {
+	_, corpusPath, cellsDir, ledgerPath, readmePath := runThenPrepareLedgerFixture(t)
+	setStoredCellRunID(t, cellsDir, "some-other-run")
+
+	t.Run("default (strict) refuses", func(t *testing.T) {
+		stderr := captureStderr(t, func() {
+			rc := run([]string{
+				"ledger",
+				"-corpus", corpusPath, "-cells", cellsDir, "-ledger", ledgerPath, "-readme", readmePath,
+				"-run-id", "run-1", "-harness-version", "fake-1",
+			})
+			if rc != 2 {
+				t.Errorf("ledger exited %d, want 2 (strict-borrow refusal)", rc)
+			}
+		})
+		for _, want := range []string{"some-other-run", "run-1", cellsDir, "refusing to borrow"} {
+			if !strings.Contains(stderr, want) {
+				t.Errorf("expected stderr to mention %q, got %q", want, stderr)
+			}
+		}
+		if rows, err := scenariobench.LoadScenarioLedger(ledgerPath); err != nil || len(rows) != 0 {
+			t.Errorf("expected no row filed on refusal, got %v (err=%v)", rows, err)
+		}
+	})
+
+	t.Run("-strict-borrow=false restores the old skip", func(t *testing.T) {
+		rc := run([]string{
+			"ledger",
+			"-corpus", corpusPath, "-cells", cellsDir, "-ledger", ledgerPath, "-readme", readmePath,
+			"-run-id", "run-1", "-harness-version", "fake-1", "-strict-borrow=false",
+		})
+		if rc != 3 {
+			t.Errorf("ledger exited %d, want 3 (indeterminate: nothing matched -run-id)", rc)
+		}
+		if rows, err := scenariobench.LoadScenarioLedger(ledgerPath); err != nil || len(rows) != 0 {
+			t.Errorf("expected no row filed (the mismatched cell was skipped, not counted), got %v (err=%v)", rows, err)
+		}
+	})
+}
+
 // TestCmdScore_GoldSourceToolCorpusFlag is item 3's own proof: without
 // -corpus, `score` must leave a stored gold_source_tool exactly as it was
 // (never overwritten to empty/not_measured) and say so on stderr; with
@@ -986,4 +1153,429 @@ func TestCmdScore_GoldSourceToolCorpusFlag(t *testing.T) {
 			t.Errorf("GoldSourceEvidence = %q, want foo.go", cell.Readings.GoldSourceEvidence)
 		}
 	})
+}
+
+// TestCmdScore_SuccessUsesSuccessForExemptions is the fix-first review's
+// own regression test for cmdScore's Success recomputation: before the
+// fix, cmdScore rescored `oracle.Passed && AnyEdits(sessions)` with NONE
+// of SuccessFor's three exemptions applied, so a refusal-aware cell that
+// correctly never edited anything (single-session.jsonl only READS
+// /repo/foo.go, by construction) rescored FAIL despite oracle.Passed
+// being stored true. With -corpus and a RefusalAware task, Success must
+// come back true via that exemption alone.
+func TestCmdScore_SuccessUsesSuccessForExemptions(t *testing.T) {
+	streamPath := repoRelative(t, "testdata", "scenariobench", "streams", "single-session.jsonl")
+	dir := t.TempDir()
+	cellPath := filepath.Join(dir, "cell.json")
+	raw, _ := json.Marshal(map[string]any{
+		"task_id":  "T-refusal",
+		"arm":      "control",
+		"cell_key": "k1",
+		"run_id":   "run-1",
+		"sessions": []map[string]any{
+			{"index": 0, "role": "single", "raw_path": streamPath},
+		},
+		"oracle": map[string]any{"passed": true},
+	})
+	if err := os.WriteFile(cellPath, raw, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	corpus := `{
+  "arms": {"control": {"wired": false, "instructions": "none", "surface": ""}},
+  "tasks": [{
+    "id": "T-refusal",
+    "category": "governance_bound",
+    "prompt": "never touch CLAUDE.md",
+    "derivation": "synthetic fixture for scenariobench's own tests",
+    "subject": {"repo_url": "https://example.invalid/subject.git", "base_commit": "deadbeef"},
+    "sessions": {"mode": "single", "count": 1, "max_turns": 5},
+    "oracle": {"detectors": [{"name": "change-present", "command": "true", "expect_exit": 0}], "refusal": {"forbidden_paths": ["CLAUDE.md"], "must_cite": ["rule"]}},
+    "predictions": {"control": "no-effect (this is the control)"}
+  }],
+  "criterion": {"id": "C1", "treatment": "control", "control": "control", "min_trials": 1}
+}`
+	corpusPath := filepath.Join(dir, "corpus.json")
+	if err := os.WriteFile(corpusPath, []byte(corpus), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if rc := run([]string{"score", "-in", cellPath, "-corpus", corpusPath}); rc != 0 {
+		t.Fatalf("score exited %d", rc)
+	}
+	cell := readStoredCell(t, cellPath)
+	if !cell.Success {
+		t.Error("Success = false, want true: a RefusalAware task is exempt from the any-edits floor")
+	}
+}
+
+// TestCmdScore_SuccessRecomputedWithoutCorpusUsesBareFormula: without
+// -corpus, cmdScore cannot know the task's oracle shape (so cannot apply
+// SuccessFor's three exemptions) but STILL recomputes Success, via the
+// same bare any-edits floor it always used (TestCmdScore_RecomputesReadings
+// pins this for the edited/passed case) — never a preserved stale value,
+// unlike GoldSourceTool (recomputing THAT wrong would silently read as
+// not-measured, an actual false regression; Success has no such trap).
+// This covers the no-edits side: oracle.Passed=true with no FilesEdited
+// recomputes to false without -corpus, the same as it always would have.
+func TestCmdScore_SuccessRecomputedWithoutCorpusUsesBareFormula(t *testing.T) {
+	streamPath := repoRelative(t, "testdata", "scenariobench", "streams", "single-session.jsonl")
+	dir := t.TempDir()
+	cellPath := filepath.Join(dir, "cell.json")
+	raw, _ := json.Marshal(map[string]any{
+		"task_id":  "T-refusal",
+		"arm":      "control",
+		"cell_key": "k1",
+		"run_id":   "run-1",
+		"sessions": []map[string]any{
+			{"index": 0, "role": "single", "raw_path": streamPath},
+		},
+		"oracle":  map[string]any{"passed": true},
+		"success": true, // stale — must NOT survive
+	})
+	if err := os.WriteFile(cellPath, raw, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if rc := run([]string{"score", "-in", cellPath}); rc != 0 {
+		t.Fatalf("score exited %d", rc)
+	}
+	cell := readStoredCell(t, cellPath)
+	if cell.Success {
+		t.Error("Success = true, want false: no FilesEdited and no -corpus to apply an exemption from")
+	}
+}
+
+// TestCmdVoid_MissingFlags mirrors TestCmdLedger_MissingFlags.
+func TestCmdVoid_MissingFlags(t *testing.T) {
+	if rc := run([]string{"void"}); rc != 2 {
+		t.Errorf("void with no flags: exit %d, want 2", rc)
+	}
+}
+
+// scenarioLedgerReadmeFixture writes a minimal README carrying the
+// marker-fenced scenario-ledger section RewriteScenarioLedgerSection
+// requires, and returns its path.
+func scenarioLedgerReadmeFixture(t *testing.T, dir string) string {
+	t.Helper()
+	path := filepath.Join(dir, "README.md")
+	content := "# bench\n\n" +
+		"<!-- BEGIN scenario ledger (task bench-scenario-ledger) -->\n" +
+		"(placeholder)\n" +
+		"<!-- END scenario ledger -->\n"
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+// TestCmdVoid_RefusesWhenRowAbsent is O53 defect 7's own refusal proof at
+// the CLI layer: no ledger row for (run_id, task_id, arm) is a non-zero
+// exit, and neither the ledger nor the README are touched.
+func TestCmdVoid_RefusesWhenRowAbsent(t *testing.T) {
+	dir := t.TempDir()
+	ledgerPath := filepath.Join(dir, "ledger.jsonl")
+	if err := scenariobench.AppendScenarioLedger(ledgerPath, scenariobench.ScenarioLedgerRow{RunID: "run-1", TaskID: "T1", Arm: "full"}); err != nil {
+		t.Fatal(err)
+	}
+	readmePath := scenarioLedgerReadmeFixture(t, dir)
+	readmeBefore, err := os.ReadFile(readmePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rc := run([]string{
+		"void",
+		"-ledger", ledgerPath,
+		"-readme", readmePath,
+		"-cells", filepath.Join(dir, "cells"),
+		"-corpus-glob", filepath.Join(dir, "no-such-corpus", "*.json"),
+		"-run-id", "run-1", "-task", "T1", "-arm", "control", // "control" was never filed
+		"-reason", "should be refused",
+	})
+	if rc == 0 {
+		t.Fatal("expected a non-zero exit voiding a row that was never filed")
+	}
+
+	rows, err := scenariobench.LoadScenarioLedger(ledgerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 || rows[0].InstrumentDefect != "" {
+		t.Errorf("expected the ledger untouched by a refused void, got %+v", rows)
+	}
+	readmeAfter, err := os.ReadFile(readmePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(readmeBefore) != string(readmeAfter) {
+		t.Error("expected the README untouched by a refused void")
+	}
+}
+
+// TestCmdVoid_MarksRowCellAndRerendersReadme is O53 defect 7's end-to-end
+// proof: a filed ledger row AND its stored cell record both carry the
+// void reason afterward, and the README's marker-fenced section is
+// re-rendered exactly as `ledger` does (the table now shows VOIDED).
+func TestCmdVoid_MarksRowCellAndRerendersReadme(t *testing.T) {
+	dir := t.TempDir()
+	ledgerPath := filepath.Join(dir, "ledger.jsonl")
+	if err := scenariobench.AppendScenarioLedger(ledgerPath, scenariobench.ScenarioLedgerRow{
+		RunID: "run-1", TaskID: "T1", Arm: "full", Trials: 3, Successes: 3, ModelID: "sonnet",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	readmePath := scenarioLedgerReadmeFixture(t, dir)
+
+	cellsDir := filepath.Join(dir, "cells")
+	inv := scenariobench.CellInvariants{
+		CorpusSHA256: "abc123", TaskID: "T1", Arm: "full", ModelID: "sonnet",
+		HarnessVersion: "2.1.0", Scoring: "oracle-v1", PromptSubject: "x",
+	}
+	key := scenariobench.ScenarioCellKey(inv)
+	if err := scenariobench.StoreScenarioCell(cellsDir, scenariobench.CellResult{
+		TaskID: "T1", Arm: "full", Trial: 1, CellKey: key, RunID: "run-1", Success: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	rc := run([]string{
+		"void",
+		"-ledger", ledgerPath,
+		"-readme", readmePath,
+		"-cells", cellsDir,
+		"-corpus-glob", filepath.Join(dir, "no-such-corpus", "*.json"),
+		"-run-id", "run-1", "-task", "T1", "-arm", "full",
+		"-reason", "the operator daemon was reachable",
+	})
+	if rc != 0 {
+		t.Fatalf("void exited %d, want 0", rc)
+	}
+
+	rows, err := scenariobench.LoadScenarioLedger(ledgerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 || rows[0].InstrumentDefect != "the operator daemon was reachable" {
+		t.Fatalf("expected the ledger row voided, got %+v", rows)
+	}
+
+	cell := readStoredCell(t, scenariobench.ScenarioCellPath(cellsDir, key, 1))
+	if cell.InstrumentDefect != "the operator daemon was reachable" {
+		t.Errorf("cell InstrumentDefect = %q, want it voided too", cell.InstrumentDefect)
+	}
+	if !cell.Success {
+		t.Error("expected every other field on the cell record to survive untouched")
+	}
+
+	readme, err := os.ReadFile(readmePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(readme), "VOIDED (the operator daemon was reachable)") {
+		t.Errorf("expected the re-rendered README table to show the voided row, got:\n%s", readme)
+	}
+}
+
+// TestCaptureAgentDiff_ExcludesInstrumentOwnedFiles pins O55 item 4, in the
+// finding's own words: a worktree with a fathom-owned file and a real edit
+// yields a one-file diff. CLAUDE.md is recorded in the worktree's own
+// .fathom/owned.json ledger (as `fathom init` would leave it after writing
+// its stanza) and edited alongside a genuine source change; only the real
+// edit's section survives, and InstrumentFilesExcluded reports the drop.
+// TestCaptureAgentDiff_ExcludesLedgerOwnedFiles covers the ledger-driven
+// half of O55 item 4: a REAL KindKey ledger entry (.claude/settings.json's
+// own hooks block — the shape `fathom init` actually records, never a
+// KindRegion stanza, which apply.go never puts in the ledger at all) is
+// excluded wholesale, alongside the ledger file itself; a real agent edit
+// survives.
+func TestCaptureAgentDiff_ExcludesLedgerOwnedFiles(t *testing.T) {
+	wtDir := t.TempDir()
+	runGit(t, wtDir, "init", "-q", "-b", "main")
+	if err := os.MkdirAll(filepath.Join(wtDir, ".claude"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(wtDir, ".claude", "settings.json"), []byte("{}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(wtDir, "real.go"), []byte("package thing\n\nfunc Old() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, wtDir, "add", "-A")
+	runGit(t, wtDir, "commit", "-q", "-m", "base")
+
+	// The instrument's own write: `fathom init` wiring its hook stack into
+	// .claude/settings.json and recording that KEY in the ledger — exactly
+	// what wireScratchDaemon's `fathom init` call leaves behind in a real
+	// wired cell.
+	if err := os.WriteFile(filepath.Join(wtDir, ".claude", "settings.json"), []byte(`{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":"fathom hook session-start"}]}]}}`+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	ledger := wiring.NewLedger()
+	ledger.Record(".claude/settings.json", wiring.OwnedKey{ID: "hooks", Digest: "sha256:x", Wrote: "2026-09-14T00:00:00Z"})
+	if err := wiring.SaveLedger(wtDir, ledger); err != nil {
+		t.Fatal(err)
+	}
+	// The agent's own, real edit.
+	if err := os.WriteFile(filepath.Join(wtDir, "real.go"), []byte("package thing\n\nfunc New() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	wt := scenariobench.Worktree{Path: wtDir, CellDir: t.TempDir()}
+	diffPath, excluded := captureAgentDiff(context.Background(), wt)
+	if diffPath == "" {
+		t.Fatal("expected a non-empty diff path")
+	}
+	// The ledger file itself is also instrument-written, so both it and
+	// .claude/settings.json's section are dropped — a one-file (real.go)
+	// diff.
+	if excluded != 2 {
+		t.Errorf("instrumentFilesExcluded = %d, want 2 (.claude/settings.json, .fathom/owned.json)", excluded)
+	}
+	raw, err := os.ReadFile(diffPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	diff := string(raw)
+	if strings.Contains(diff, "settings.json") {
+		t.Errorf("expected .claude/settings.json's section excluded from agent.diff, got:\n%s", diff)
+	}
+	if strings.Contains(diff, "owned.json") {
+		t.Errorf("expected the ledger's own section excluded from agent.diff, got:\n%s", diff)
+	}
+	if !strings.Contains(diff, "real.go") || !strings.Contains(diff, "func New()") {
+		t.Errorf("expected real.go's section to survive, got:\n%s", diff)
+	}
+	if strings.Count(diff, "diff --git ") != 1 {
+		t.Errorf("expected exactly one file section in the diff, got:\n%s", diff)
+	}
+}
+
+// TestCaptureAgentDiff_StripsRealFathomRegionKeepsOtherEdits is O55 item
+// 4's fix-first review, in the finding's own words: CLAUDE.md/AGENTS.md
+// stanzas are a KindRegion, never ledger-tracked, so the whole-file/
+// ledger-driven exclusion above can never catch one — the region must be
+// placed by internal/wiring's OWN production code (wiring.ApplyWiring),
+// never a hand-recorded ledger entry, and only ITS OWN lines must be
+// stripped from the diff: an agent's own edit to CLAUDE.md outside the
+// region, and a real source edit, must both survive.
+func TestCaptureAgentDiff_StripsRealFathomRegionKeepsOtherEdits(t *testing.T) {
+	wtDir := t.TempDir()
+	runGit(t, wtDir, "init", "-q", "-b", "main")
+	if err := os.WriteFile(filepath.Join(wtDir, "CLAUDE.md"), []byte("# Project notes\n\nSome human-authored content.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(wtDir, "real.go"), []byte("package thing\n\nfunc Old() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, wtDir, "add", "-A")
+	runGit(t, wtDir, "commit", "-q", "-m", "base")
+
+	// fathom init's own write: a REAL region placed via internal/wiring's
+	// own ApplyWiring — never a hand-crafted marker string.
+	fixedNow := func() time.Time { return time.Date(2026, 9, 14, 0, 0, 0, 0, time.UTC) }
+	spec := wiring.Spec{Regions: []wiring.Region{{
+		File: "CLAUDE.md", Syntax: wiring.HTMLMarkers, Version: "v3",
+		Body: "This repo is indexed by fathom. Route by question shape.",
+	}}}
+	if _, err := wiring.ApplyWiring(wtDir, spec, wiring.ApplyOptions{Now: fixedNow}); err != nil {
+		t.Fatalf("wiring.ApplyWiring: %v", err)
+	}
+
+	// The agent's own edits: a real source change, AND its own hand edit
+	// to CLAUDE.md OUTSIDE the fathom region — both must survive.
+	if err := os.WriteFile(filepath.Join(wtDir, "real.go"), []byte("package thing\n\nfunc New() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	claude, err := os.ReadFile(filepath.Join(wtDir, "CLAUDE.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(wtDir, "CLAUDE.md"), append(claude, []byte("\nAgent's own new note.\n")...), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	wt := scenariobench.Worktree{Path: wtDir, CellDir: t.TempDir()}
+	diffPath, excluded := captureAgentDiff(context.Background(), wt)
+	if diffPath == "" {
+		t.Fatal("expected a non-empty diff path")
+	}
+	if excluded < 1 {
+		t.Errorf("instrumentFilesExcluded = %d, want at least 1 (the region strip on CLAUDE.md)", excluded)
+	}
+	raw, err := os.ReadFile(diffPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	diff := string(raw)
+	if strings.Contains(diff, "indexed by fathom") {
+		t.Errorf("expected the fathom region's own body stripped from agent.diff, got:\n%s", diff)
+	}
+	if strings.Contains(diff, "fathom:begin") {
+		t.Errorf("expected the region's own marker lines stripped, got:\n%s", diff)
+	}
+	if !strings.Contains(diff, "Agent's own new note") {
+		t.Errorf("expected the agent's own CLAUDE.md edit (outside the region) to survive, got:\n%s", diff)
+	}
+	if !strings.Contains(diff, "real.go") || !strings.Contains(diff, "func New()") {
+		t.Errorf("expected real.go's edit to survive, got:\n%s", diff)
+	}
+}
+
+// TestCaptureAgentDiff_WorkspaceGatedBySubjectGitignore is O55 item 4's
+// fix-first review, in the finding's own words: a subject with real
+// workspace/ sources must not lose them. A subject whose own .gitignore
+// ignores workspace/artifacts/ but not workspace/pkg/ gets exactly that
+// distinction honored in agent.diff. Both files are already TRACKED at
+// base (git add -f for the gitignored one, simulating a build artifact
+// that was committed once despite the later ignore rule — the realistic
+// shape: an UNTRACKED ignored file is never even added by `git add -N .`
+// in the first place, so it would never reach a diff either way; a
+// MODIFIED tracked one is what actually exercises this filter) and then
+// modified, exactly like an agent's own edit.
+func TestCaptureAgentDiff_WorkspaceGatedBySubjectGitignore(t *testing.T) {
+	wtDir := t.TempDir()
+	runGit(t, wtDir, "init", "-q", "-b", "main")
+	if err := os.WriteFile(filepath.Join(wtDir, ".gitignore"), []byte("workspace/artifacts/\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(wtDir, "workspace", "pkg"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(wtDir, "workspace", "pkg", "real_source.go"), []byte("package pkg\n\nfunc Old() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(wtDir, "workspace", "artifacts"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(wtDir, "workspace", "artifacts", "scratch.json"), []byte("{}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, wtDir, "add", "-A")
+	runGit(t, wtDir, "add", "-f", "workspace/artifacts/scratch.json")
+	runGit(t, wtDir, "commit", "-q", "-m", "base")
+
+	// The agent's own real edit to a genuinely tracked subject source file
+	// that happens to live under workspace/, plus a change to the
+	// gitignored (but already-tracked) build artifact.
+	if err := os.WriteFile(filepath.Join(wtDir, "workspace", "pkg", "real_source.go"), []byte("package pkg\n\nfunc New() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(wtDir, "workspace", "artifacts", "scratch.json"), []byte(`{"changed":true}`+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	wt := scenariobench.Worktree{Path: wtDir, CellDir: t.TempDir()}
+	diffPath, _ := captureAgentDiff(context.Background(), wt)
+	if diffPath == "" {
+		t.Fatal("expected a non-empty diff path")
+	}
+	raw, err := os.ReadFile(diffPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	diff := string(raw)
+	if !strings.Contains(diff, "workspace/pkg/real_source.go") || !strings.Contains(diff, "func New()") {
+		t.Errorf("expected the real subject source under workspace/pkg/ to survive, got:\n%s", diff)
+	}
+	if strings.Contains(diff, "workspace/artifacts") {
+		t.Errorf("expected the .gitignore'd workspace/artifacts/ file excluded, got:\n%s", diff)
+	}
 }

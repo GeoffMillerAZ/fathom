@@ -8,16 +8,16 @@
 ## Phase CC — config custodian v1 (mechanical, index-free, offline-safe)
 
 - [x] CC-0 Vision 22 §3b + vision 23 + design doc landed and linked from the vision README {id: CC-0, oracle: lexical, path: docs/vision/README.md, pattern: "\[22-config-custodian\.md\].*the config custodian"}
-- [x] CC-1 Concern model + CUE loader: three-state load, `?:` refusal, unknown-field refusal, unknown check KINDS refused by name with the accepted list {id: CC-1, symbol: LoadFile, package: internal/custodian}
-- [x] CC-2 Law-13 scoping: project replaces same-ID user concern wholesale; `off: true` disables an inherited concern and the audit still names it {id: CC-2, symbol: Merge, package: internal/custodian}
-- [x] CC-3 Audit engine over agent-config files (git-authority discovery, walk fallback) with per-concern holds/violated/unable and `file:line` evidence {id: CC-3, symbol: Audit, package: internal/custodian}
-- [x] CC-4 The four v1 check kinds: forbidden_pattern, command_documented_and_exists, max_lines, pointers_resolve {id: CC-4, symbol: checkConcern, package: internal/custodian}
+- [x] CC-1 Concern model + CUE loader: three-state load, `?:` refusal, unknown-field refusal, unknown check KINDS refused by name with the accepted list {id: CC-1, symbol: LoadFile, package: internal/custodian, reachable_from: TestAnsweredBeatCarriesDisplacedCount}
+- [x] CC-2 Law-13 scoping: project replaces same-ID user concern wholesale; `off: true` disables an inherited concern and the audit still names it {id: CC-2, symbol: Merge, package: internal/custodian, reachable_from: TestAnsweredBeatCarriesDisplacedCount}
+- [x] CC-3 Audit engine over agent-config files (git-authority discovery, walk fallback) with per-concern holds/violated/unable and `file:line` evidence {id: CC-3, symbol: Audit, package: internal/custodian, reachable_from: TestAnsweredBeatCarriesDisplacedCount}
+- [x] CC-4 The four v1 check kinds: forbidden_pattern, command_documented_and_exists, max_lines, pointers_resolve {id: CC-4, symbol: checkConcern, package: internal/custodian, reachable_from: TestAnsweredBeatCarriesDisplacedCount}
 - [x] CC-5 `fathom config audit` verb — text + `--json`, exit 1 iff violated, zero concerns exits 0 with the absence named {id: CC-5, symbol: cmdConfigAudit, package: cmd/fathom}
 - [x] CC-6 Doctor row `concerns` — red only on load error or violation; zero concerns is a passing row naming the absence {id: CC-6, symbol: checkConcerns, package: cmd/fathom}
 - [x] CC-7 Session-brief attention line on startup/clear when violations exist, bytes on the payload-cost account {id: CC-7, symbol: concernAttentionLine, package: cmd/fathom}
 - [x] CC-8 Flywheel custodian loop: CLOSED = audits running AND violations consumed (the custodian audit beat is the attended record); OPEN = accumulating unread; IDLE = no concerns {id: CC-8, symbol: checkLoopCustodian, package: cmd/fathom}
 - [ ] CC-9 `fathom config propose` — the diff-offering verb (session applies; fathom never does) {id: CC-9}
-- [x] CC-10 `fathom init` scaffolds a commented concerns.cue; fleet reconcile reports repos with zero concern coverage {id: CC-10, symbol: ExampleTemplate, package: internal/custodian}
+- [x] CC-10 `fathom init` scaffolds a commented concerns.cue; fleet reconcile reports repos with zero concern coverage {id: CC-10, symbol: ExampleTemplate, package: internal/custodian, reachable_from: TestAnsweredBeatCarriesDisplacedCount}
 - [ ] CC-11 Corpus registry seam: `where:` resolves named corpora (agent-config | lefthook | taskfile | ci) behind the one engine — never a per-tool custodian (vision 22 §7) {id: CC-11}
 - [ ] CC-12 Deterministic-validation packs: curated concern sets shipped as data (claude-code, codex, lefthook, taskfile), repo-enabled, entry-overridable (law 13); chain checks for docs → lefthook → Taskfile → scripts {id: CC-12}
 - [ ] CC-13 Doctor convergence (O27): bespoke doctor checks re-expressed via the concern engine where a pack fully covers them — doctor renders what the audit knows {id: CC-13}

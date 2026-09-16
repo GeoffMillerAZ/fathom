@@ -173,6 +173,77 @@ func TestObligationsIndexStale(t *testing.T) {
 	}
 }
 
+// TestObligationsLayerCoverage_LiveCorpusReflectsGrowth is O54 deliverable
+// 2's second review round, end to end through pkg/client: a compile_runs
+// row's own sections_total goes stale the moment a NEW governing doc is
+// added to disk — Client.ObligationsLayerCoverage must read the LIVE
+// corpus (the same way a real compile resolves it), not the possibly
+// stale recorded numbers, and no re-ingest is needed for it to notice —
+// Sources() already reads straight off disk.
+func TestObligationsLayerCoverage_LiveCorpusReflectsGrowth(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+
+	if err := os.WriteFile(filepath.Join(dir, "CLAUDE.md"), []byte("# Rules\n\n- Run tests before committing.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "pkg"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "pkg", "foo.go"), []byte("package main\nfunc Foo() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	c := newTestClient(t, dir)
+	defer c.Close()
+	if _, err := c.Ingest(ctx, client.ServiceRef{ID: "svc", Path: dir}); err != nil {
+		t.Fatal("Ingest:", err)
+	}
+
+	mock := llmclient.NewMockClient(llmclient.MockEntry{Response: llmclient.Response{
+		Text: `{"claims":[{"rule":"Run tests before committing.","scope":["pkg/**"],"cite_start":3,"cite_end":3}]}`,
+	}})
+	c.WithLLM(mock, "mock-model", 0, 0)
+	run, err := c.CompileObligations(ctx, "svc", false)
+	if err != nil || run.SectionsCompiled != 1 {
+		t.Fatalf("compile: run=%+v err=%v", run, err)
+	}
+
+	cov, found, err := c.ObligationsLayerCoverage(ctx, "svc")
+	if err != nil || !found {
+		t.Fatalf("found=%v err=%v", found, err)
+	}
+	if cov.SectionsTotal != 1 || cov.SectionsCompiled != 1 || cov.CorpusGrew != 0 {
+		t.Fatalf("cov = %+v, want fully covered, no growth yet", cov)
+	}
+
+	// Add a nested guide to disk AFTER the compile — deliberately no
+	// re-ingest.
+	if err := os.MkdirAll(filepath.Join(dir, "internal"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "internal", "CLAUDE.md"), []byte("# internal\n\n- Register every extractor.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cov2, found, err := c.ObligationsLayerCoverage(ctx, "svc")
+	if err != nil || !found {
+		t.Fatalf("found=%v err=%v", found, err)
+	}
+	if cov2.SectionsTotal != 2 {
+		t.Fatalf("cov2.SectionsTotal = %d, want 2 (the live corpus, not the stale recorded 1)", cov2.SectionsTotal)
+	}
+	if cov2.SectionsCompiled != 1 {
+		t.Fatalf("cov2.SectionsCompiled = %d, want 1 (only the original CLAUDE.md)", cov2.SectionsCompiled)
+	}
+	if cov2.CorpusGrew != 1 {
+		t.Fatalf("cov2.CorpusGrew = %d, want 1 (internal/CLAUDE.md has never been seen by any run)", cov2.CorpusGrew)
+	}
+	if want := "internal/CLAUDE.md"; len(cov2.UncompiledScopes) != 1 || cov2.UncompiledScopes[0] != want {
+		t.Fatalf("cov2.UncompiledScopes = %v, want [%q]", cov2.UncompiledScopes, want)
+	}
+}
+
 // TestSweepClaims_AnchorDeadRecordsContradictedEvent is D2-2 (docs/plans/
 // expert-depth.md) plus P1-9's vocabulary fix (docs/plans/
 // pulled-tools-excellence.md): SweepClaims used to flip an anchor-dead
