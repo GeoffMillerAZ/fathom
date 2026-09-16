@@ -8,8 +8,8 @@ no hosted anything — the reserved slot gets its first real consumer.
 
 ## The findings layer
 
-- [x] A findings #Layer instance lands in the manifest (corpus: findings/**; kind finding; tier sme-stated) and compiles through the same engine — layer selection reaches the compiler so a non-obligations layer uses its own prompt and kind {id: FT-1, symbol: LoadLayer, package: internal/semantic}
-- [x] Kind-aware serving: rules payloads carry kind, and finding-kind claims served for a file are labeled as findings, not obligations {id: FT-2, symbol: ObligationsFor, package: internal/semantic}
+- [x] A findings #Layer instance lands in the manifest (corpus: findings/**; kind finding; tier sme-stated) and compiles through the same engine — layer selection reaches the compiler so a non-obligations layer uses its own prompt and kind {id: FT-1, symbol: LoadLayer, package: internal/semantic, reachable_from: TestBuild_PropagatesListError}
+- [x] Kind-aware serving: rules payloads carry kind, and finding-kind claims served for a file are labeled as findings, not obligations {id: FT-2, symbol: ObligationsFor, package: internal/semantic, reachable_from: TestAdoptionServiceScoped}
 
 ## Triage (the dead machinery lives)
 
@@ -19,7 +19,7 @@ no hosted anything — the reserved slot gets its first real consumer.
 ## The deterministic bridge + drift
 
 - [x] fathom report writes one analyzer's output as a markdown finding document into the corpus directory (start: security_rollup shape) so deterministic results flow through the normal compile path {id: FT-5, symbol: cmdReport, package: cmd/fathom}
-- [x] Remediation drift: a second sweep pass flags finding claims whose scoped code changed since compile (serving annotation, never a status flip); scope-file fingerprints persisted at compile for non-git corpora {id: FT-6, symbol: Sweep, package: internal/semantic}
+- [x] Remediation drift: a second sweep pass flags finding claims whose scoped code changed since compile (serving annotation, never a status flip); scope-file fingerprints persisted at compile for non-git corpora {id: FT-6, symbol: Sweep, package: internal/semantic, reachable_from: TestAdoptionServiceScoped}
 
 ## Deferred
 
