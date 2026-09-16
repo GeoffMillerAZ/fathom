@@ -213,7 +213,7 @@ func PrepareSubject(ctx context.Context, task Task, arm Arm, root string) (Workt
 	// copied from the home corpus must never carry that corpus (or its
 	// scenariobench/docs siblings) inside its own worktree, where an
 	// agent's Read/Grep/Bash tools can surface it as an answer key.
-	if err := removeExcludedPaths(wtPath, task.Subject.ExcludePaths); err != nil {
+	if err := removeExcludedPaths(ctx, wtPath, task.Subject.ExcludePaths); err != nil {
 		return Worktree{}, fmt.Errorf("preparing subject: %w", err)
 	}
 
@@ -284,6 +284,16 @@ func PrepareSubject(ctx context.Context, task Task, arm Arm, root string) (Workt
 			_ = StopWorktree(&wt)
 			return Worktree{}, fmt.Errorf("compiled layer serves no rules for %s", probeFile)
 		}
+	}
+
+	// O61 item 2: by now every instrument write this cell will ever make
+	// (fathom init's .claude/settings.json and .mcp.json, wireScratchDaemon
+	// above; RenderArm's own files) is on disk — hide the tracked ones from
+	// `git status`/`git diff` for the rest of the session, never just the
+	// exclude_paths this file's own removeExcludedPaths handles.
+	if err := HideInstrumentOwnedFilesFromStatus(ctx, wt); err != nil {
+		_ = StopWorktree(&wt)
+		return Worktree{}, fmt.Errorf("preparing subject: %w", err)
 	}
 
 	return wt, nil
@@ -982,6 +992,111 @@ func InstrumentOwnedPaths(wt Worktree) (map[string]bool, error) {
 		owned[filepath.ToSlash(file)] = true
 	}
 	return owned, nil
+}
+
+// HideInstrumentOwnedFilesFromStatus applies `git update-index
+// --assume-unchanged` to every InstrumentOwnedPaths entry that is
+// currently TRACKED in wt's own git index (O61 item 2, vs-pilot-4: a
+// cell's first `git status` printed `modified: .claude/settings.json`
+// right alongside the `deleted: …` lines the leak scanner correctly voided
+// the cell over — noise that names no excluded answer-key path, but is the
+// instrument's own write, not the agent's, and has no business in an
+// agent's first look at its own worktree).
+//
+// This is safe to do ONLY because these exact paths — .claude/settings.json,
+// .mcp.json's "fathom" key, and every other KindKey/KindFile ledger entry —
+// are ALREADY dropped WHOLESALE from the scored diff by
+// FilterInstrumentOwnedDiff regardless of who wrote the latest bytes (O55
+// item 4, cell.go): whether `git status`/`git diff` report a change for
+// them or not, the final scored diff is identical either way (proved in
+// TestHideInstrumentOwnedFilesFromStatus_ScoresIdenticallyToFiltering).
+//
+// CLAUDE.md/AGENTS.md are the one class of instrument-owned path this
+// deliberately never touches, and are refused twice over: InstrumentOwnedPaths
+// itself never names them (KindRegion is never ledger-tracked — that
+// function's own doc comment), and isInstrumentRegionFile refuses them again
+// here even if that ever changed. Their fathom stanza is stripped by LINE
+// RANGE (stripFathomRegionsFromDiff/StripInstrumentRegions) specifically so
+// an agent's own edit elsewhere in the same file survives into the scored
+// diff; `git update-index --assume-unchanged` has no such granularity — set
+// on the whole file it would hide that agent edit from `git status`/`git
+// diff` for the rest of the session exactly as completely as it hides the
+// instrument's own stanza, which would silently change what gets scored
+// (TestHideInstrumentOwnedFilesFromStatus_RegionFilesAreSkipped proves the
+// divergence directly, which is the "skip with the reason" this fix's own
+// brief asked for rather than assuming assume-unchanged is safe everywhere
+// InstrumentOwnedPaths reaches).
+//
+// An untracked instrument-written file (an unwired arm's ordinary case, or
+// the first time a wired arm's own ledger names a path the base commit
+// never had) is left alone: `git status` already reports it as "??", never
+// "modified:", and there is nothing for assume-unchanged to hide.
+func HideInstrumentOwnedFilesFromStatus(ctx context.Context, wt Worktree) error {
+	owned, err := InstrumentOwnedPaths(wt)
+	if err != nil {
+		return fmt.Errorf("hiding instrument-owned files from status: %w", err)
+	}
+	if len(owned) == 0 {
+		return nil
+	}
+	candidates := make([]string, 0, len(owned))
+	for p := range owned {
+		if isInstrumentRegionFile(p) {
+			continue
+		}
+		candidates = append(candidates, p)
+	}
+	if len(candidates) == 0 {
+		return nil
+	}
+	sort.Strings(candidates)
+	tracked, err := trackedPaths(ctx, wt.Path, candidates)
+	if err != nil {
+		return fmt.Errorf("hiding instrument-owned files from status: %w", err)
+	}
+	if len(tracked) == 0 {
+		return nil
+	}
+	args := append([]string{"update-index", "--assume-unchanged", "--"}, tracked...)
+	if out, err := runIn(ctx, wt.Path, "git", args...); err != nil {
+		return fmt.Errorf("hiding instrument-owned files from status: git update-index --assume-unchanged: %w (%s)", err, out)
+	}
+	return nil
+}
+
+// isInstrumentRegionFile reports whether path (as InstrumentOwnedPaths
+// spells it — repo-relative, slash-separated) is one of instrumentRegionFiles
+// (CLAUDE.md/AGENTS.md) — HideInstrumentOwnedFilesFromStatus's own explicit
+// second refusal, independent of whether InstrumentOwnedPaths would ever
+// name one itself (it never does; see that function's own doc comment).
+func isInstrumentRegionFile(path string) bool {
+	for _, name := range instrumentRegionFiles {
+		if path == name {
+			return true
+		}
+	}
+	return false
+}
+
+// trackedPaths reports which of candidates `git ls-files` in root considers
+// tracked. `git ls-files -- <pathspec…>` lists only the tracked matches and
+// never errors on a candidate that is not one — a plain filter, never a
+// per-path existence check, which is exactly what a caller applying
+// --assume-unchanged (meaningless, and refused by git, for an untracked
+// path) needs.
+func trackedPaths(ctx context.Context, root string, candidates []string) ([]string, error) {
+	args := append([]string{"ls-files", "--"}, candidates...)
+	out, err := runIn(ctx, root, "git", args...)
+	if err != nil {
+		return nil, fmt.Errorf("listing tracked files: %w (%s)", err, out)
+	}
+	var tracked []string
+	for _, line := range strings.Split(out, "\n") {
+		if line = strings.TrimSpace(line); line != "" {
+			tracked = append(tracked, line)
+		}
+	}
+	return tracked, nil
 }
 
 // instrumentRegionFiles are the only files internal/wiring ever places a
