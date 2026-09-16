@@ -1444,11 +1444,16 @@ type obligationsProbeResult struct {
 
 // doctorLayerCoverage mirrors semantic.LayerCoverage's JSON shape — a
 // package-local copy rather than an import so doctor.go stays free of an
-// internal/semantic dependency for one small struct.
+// internal/semantic dependency for one small struct. Status is O60's
+// addition: the envelope now carries layer_coverage:{"status":"unknown"}
+// (instead of omitting the key) when the backend has no compile_runs row
+// for the service — a real, distinct field from the numeric case below,
+// not just another zero value.
 type doctorLayerCoverage struct {
-	SectionsTotal    int  `json:"sections_total"`
-	SectionsCompiled int  `json:"sections_compiled"`
-	BudgetStopped    bool `json:"budget_stopped"`
+	SectionsTotal    int    `json:"sections_total"`
+	SectionsCompiled int    `json:"sections_compiled"`
+	BudgetStopped    bool   `json:"budget_stopped"`
+	Status           string `json:"status"`
 }
 
 // fetchObligationsProbe calls the obligations MCP tool for one
@@ -1638,7 +1643,15 @@ func checkObligationsServed(hc *http.Client, baseURL, root, explicitSvc string, 
 		// never FAIL (docs/intent invariants: a config-quality signal, not
 		// a wiring-broken verdict — doctorWarn's own doc comment).
 		status := doctorPass
-		if res.hasCovered && res.coverage.SectionsTotal > 0 && res.coverage.SectionsCompiled < res.coverage.SectionsTotal {
+		switch {
+		case res.hasCovered && res.coverage.Status == "unknown":
+			// O60: the store answered honestly that it has no compile_runs
+			// row for this service (a layer compiled before coverage
+			// tracking existed is the live case) — a stranger reading this
+			// row must be told the completeness of the layer is unrecorded
+			// rather than reading silence as "nothing wrong here".
+			reason += " — note: coverage unrecorded (layer compiled before coverage was recorded; recompile to record coverage)"
+		case res.hasCovered && res.coverage.SectionsTotal > 0 && res.coverage.SectionsCompiled < res.coverage.SectionsTotal:
 			status = doctorWarn
 			reason += fmt.Sprintf(" — WARN: the obligations layer is PARTIALLY compiled (%d/%d sections, budget_stopped=%v) — some governing guides may not be compiled yet; resume with `fathom compile --service %s --layer obligations --dry-run=false --continue`",
 				res.coverage.SectionsCompiled, res.coverage.SectionsTotal, res.coverage.BudgetStopped, svc)

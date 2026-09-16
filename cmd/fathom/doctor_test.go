@@ -85,6 +85,14 @@ type fakeDaemonCfg struct {
 	// partial-layer WARN downgrade. Nil (the zero value) preserves every
 	// pre-existing test's coverage-free obligations payload exactly.
 	obligLayerCoverage *fakeLayerCoverage
+
+	// obligLayerCoverageUnknown (O60), when true, renders layer_coverage
+	// as {"status":"unknown", note:...} instead of real numbers — the
+	// shape a real store answers with when it has no compile_runs row for
+	// the service (semantic.ObligationsLayerCoverage's found:false).
+	// Mutually exclusive with obligLayerCoverage; false preserves every
+	// pre-existing test's behavior exactly.
+	obligLayerCoverageUnknown bool
 }
 
 // fakeLayerCoverage mirrors semantic.LayerCoverage's JSON shape for
@@ -157,6 +165,8 @@ func fakeDoctorDaemon(t *testing.T, cfg fakeDaemonCfg) *httptest.Server {
 				c := cfg.obligLayerCoverage
 				covField = fmt.Sprintf(`,"layer_coverage":{"sections_total":%d,"sections_compiled":%d,"budget_stopped":%v}`,
 					c.SectionsTotal, c.SectionsCompiled, c.BudgetStopped)
+			} else if cfg.obligLayerCoverageUnknown {
+				covField = `,"layer_coverage":{"status":"unknown","note":"layer compiled before coverage was recorded; recompile to record coverage"}`
 			}
 			inner = fmt.Sprintf(`{"service":"svc","file":%q,"rules":%s%s%s}`, file, rules, wmField, covField)
 		case "server_stats":
@@ -1286,6 +1296,27 @@ func TestCheckObligationsServed(t *testing.T) {
 		}
 		if strings.Contains(got.Reason, "PARTIALLY compiled") {
 			t.Errorf("a fully compiled layer must not carry the partial-coverage note: %s", got.Reason)
+		}
+	})
+
+	// O60: the store has no compile_runs row for this service (a layer
+	// compiled before coverage tracking existed is the live case) — the
+	// envelope now carries layer_coverage:{status:"unknown"} instead of
+	// omitting the key entirely, and this row must say so rather than
+	// silently reading it as "nothing to report".
+	t.Run("unrecorded coverage is named, never silently read as complete", func(t *testing.T) {
+		srv := fakeDoctorDaemon(t, fakeDaemonCfg{
+			services: []string{"alpha"}, obligRules: 2, watermark: "wm",
+			obligLayerCoverageUnknown: true,
+		})
+		defer srv.Close()
+		root := namedDir(t, "alpha")
+		got := checkObligationsServed(http.DefaultClient, srv.URL, root, "", true)
+		if got.Status != doctorPass {
+			t.Fatalf("got %+v, want pass — unrecorded coverage is not itself a problem", got)
+		}
+		if !strings.Contains(got.Reason, "coverage unrecorded") {
+			t.Errorf("reason must name the coverage as unrecorded, not silently read as complete: %s", got.Reason)
 		}
 	})
 
