@@ -32,23 +32,23 @@ Verify: `fathom verify --service fathom --plan docs/plans/receipts.md`.
 
 - [x] `RenderArm` never replaces the hooks `fathom init` wrote: for a wired arm the rendered settings file is the one the init wrote, asserted to carry a SessionStart entry and absolute hook commands, and the nonexistent `obligations-hook` stanza is gone {id: RC-54, symbol: assertWiredHooksPresent, package: internal/scenariobench}
 - [x] Hooks are instrument truth too: `hook_response` events are parsed into `hooks_fired`, and a wired session with no SessionStart hook response is an instrument error — the cell is LOST, as it is when any session (not only every session) carries one {id: RC-53, symbol: hooksInstrumentError, package: internal/scenariobench}
-- [x] The index carries a symbol's end line for Go, C, C++, C#, Java, Lua, PHP, Rust, Scala, CUE, HCL, CMake and Templ, so `outline` renders `end_line`, the search receipt attributes a hit to the symbol whose span holds it, and the coverage join no longer guesses a boundary {id: RC-52, symbol: EndLine, package: internal/extractor/treesitter}
+- [x] The index carries a symbol's end line for Go, C, C++, C#, Java, Lua, PHP, Rust, Scala, CUE, HCL, CMake and Templ, so `outline` renders `end_line`, the search receipt attributes a hit to the symbol whose span holds it, and the coverage join no longer guesses a boundary {id: RC-52, symbol: EndLine, package: internal/extractor/treesitter, reachable_from: TestAdoptionServiceScoped}
 - [-] End lines for the wazero tree-sitter engine's languages (Python, JavaScript, TypeScript, Ruby), SQL, GraphQL and Protocol Buffers {id: RC-55, disposition: deferred, reason: "the engine's node carries a start row only — an end row needs a guest call on a hot path; the other three record no end position", trigger: "a coverage or search consumer on one of those languages, or the engine gains an end row"}
 
 ## Wave 1 — receipts on the answer (F7–F9)
 
-- [x] `find_callers`, `outline`, `symbol_context`, `repo_map` and `staleness_report` render under the same 16 KB budget as `references`: elide, count, and name the refinement in the elision line {id: RC-19, symbol: fitToolBudget, package: internal/mcp}
-- [x] A caller or reference query whose fan-in exceeds the budget returns the count, the top packages and the scoping arguments instead of the rows {id: RC-20, symbol: scopeRequired, package: internal/mcp}
-- [x] `references` on an interface method lists the implementing types first, from the typed edges {id: RC-21, symbol: implementationsForMethod, package: internal/mcp}
-- [x] `obligations` with no path answers "what governs this repository": the root conventions, budgeted {id: RC-22, symbol: rootObligations, package: internal/mcp}
+- [x] `find_callers`, `outline`, `symbol_context`, `repo_map` and `staleness_report` render under the same 16 KB budget as `references`: elide, count, and name the refinement in the elision line {id: RC-19, symbol: fitToolBudget, package: internal/mcp, reachable_from: TestAdoptionServiceScoped}
+- [x] A caller or reference query whose fan-in exceeds the budget returns the count, the top packages and the scoping arguments instead of the rows {id: RC-20, symbol: scopeRequired, package: internal/mcp, reachable_from: TestAdoptionServiceScoped}
+- [x] `references` on an interface method lists the implementing types first, from the typed edges {id: RC-21, symbol: implementationsForMethod, package: internal/mcp, reachable_from: TestAdoptionServiceScoped}
+- [x] `obligations` with no path answers "what governs this repository": the root conventions, budgeted {id: RC-22, symbol: rootObligations, package: internal/mcp, reachable_from: TestAdoptionServiceScoped}
 - [x] The routing text — stanza, primer, skills, guides, adoption docs — names `staleness_report` for "is this still true / what was known", root `obligations` for repository conventions, and grep for a document-versus-document contradiction {id: RC-23, oracle: lexical, path: docs/guides/fleet-index.md, pattern: staleness_report}
-- [x] Search with a receipt (SB-48 in `docs/plans/strengths-bench.md`) is on the agent surface with its pre-registered win condition beside it {id: RC-24, symbol: registerSearch, package: internal/mcp}
+- [x] Search with a receipt (SB-48 in `docs/plans/strengths-bench.md`) is on the agent surface with its pre-registered win condition beside it {id: RC-24, symbol: registerSearch, package: internal/mcp, reachable_from: TestAdoptionServiceScoped}
 
 ## Wave 2 — discoveries (F5, F11)
 
-- [x] Every agent-surface call-log row carries the answer's top pointers (symbol ids, paths) in the `ctx:` grammar `fathom plans context` resolves — eight at most, never rendered text {id: RC-25, symbol: resultPointers, package: internal/mcp}
+- [x] Every agent-surface call-log row carries the answer's top pointers (symbol ids, paths) in the `ctx:` grammar `fathom plans context` resolves — eight at most, never rendered text {id: RC-25, symbol: resultPointers, package: internal/mcp, reachable_from: TestAdoptionServiceScoped}
 - [x] `fathom discoveries [--since T] [--budget N]` derives this repo's discoveries from the call log and filed thread pointers, resolves each fresh against the index, marks the stale, and renders within the budget {id: RC-26, symbol: cmdDiscoveries, package: cmd/fathom}
-- [x] `discoveries` is on the agent surface as the pull form of the same render {id: RC-27, symbol: registerDiscoveries, package: internal/mcp}
+- [x] `discoveries` is on the agent surface as the pull form of the same render {id: RC-27, symbol: registerDiscoveries, package: internal/mcp, reachable_from: TestAdoptionServiceScoped}
 - [x] SessionStart records the session's start (id, cwd, time) under `workspace/`; SubagentStart renders the parent session's discoveries in this repo since that start, within 1 200 bytes, or the constant primer when there are none {id: RC-28, symbol: subagentDiscoveries, package: cmd/fathom}
 - [x] The session-end note carries the session's top pointers and the thread brief renders them resolved fresh inside its existing budget {id: RC-29, symbol: sessionEndPointers, package: cmd/fathom}
 - [x] `fathom routes [package|concern]` derives the pointers established in two or more sessions over thirty days, resolved fresh and dropped when the index no longer has them; the primer names routes in one line only when one exists; `thread promote` can write a route onto a plan row's `ctx:` {id: RC-30, symbol: cmdRoutes, package: cmd/fathom}
@@ -59,7 +59,7 @@ Verify: `fathom verify --service fathom --plan docs/plans/receipts.md`.
 
 ## Wave 3 — receipts on readings
 
-- [x] The plan grammar gains `oracle: ledger` (keys `path`, `run_id`, `task`, `arm`, optional `min_trials`): verify resolves the row in the ledger and refuses one that is missing, LOST, `surface_unused`, or under the trial floor {id: RC-34, symbol: ledgerOracle, package: internal/verify}
+- [x] The plan grammar gains `oracle: ledger` (keys `path`, `run_id`, `task`, `arm`, optional `min_trials`): verify resolves the row in the ledger and refuses one that is missing, LOST, `surface_unused`, or under the trial floor {id: RC-34, symbol: ledgerOracle, package: internal/verify, reachable_from: TestAdoptionServiceScoped}
 - [x] `scenariobench ledger` and the home render emit a "Where fathom stands" block from the row fields (better/worse than which arm, on which rows, at what cost) above the tables, and the README's authored verdict sits above it in plain language {id: RC-35, symbol: renderVerdict, package: internal/scenariobench}
 - [x] The 74 rows of the first round carry `instrument_defect` with the fact that voids them; vision 27 §0, the bench README, scope G10 and the changelog are restated to say the round measured prompt text, not tools {id: RC-36, oracle: lexical, path: docs/bench/scenarios-ledger.jsonl, pattern: instrument_defect}
 
