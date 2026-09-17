@@ -552,7 +552,7 @@ func TestRunDetector_TrustsParsedGoTestFailureOverExitCode(t *testing.T) {
 	d := Detector{
 		Name: "no-org-names",
 		Command: `sh -c 'printf -- "--- FAIL: TestNoOrgSpecificNames (0.01s)\n"; ` +
-			`printf "    orgnames_test.go:287: org-specific token (ADR-011 / I19): internal/connector/testdata/fauxtown/fixture.go:12: git@ghe.northlake.io\n"; ` +
+			`printf "    orgnames_test.go:287: org-specific token found in a fixture file\n"; ` +
 			`printf "FAIL\n"; exit 0'`,
 		ExpectExit: 0,
 	}
