@@ -775,11 +775,11 @@ Paired (bootstrap, n=7, seed 20260902, 20000 resamples): success-rate diff -0.07
 **guards-pilot-7** (criterion names full/control, not among this run's arms):
 control 1/1 (surface calls 0).
 
-**guards-pilot-8** — full vs control: success 10/14 vs 11/15, tokens 0.829×, cost 0.868×.
+**guards-pilot-8** — full vs control: success 8/14 vs 11/15, tokens 0.829×, cost 0.868×.
 Surface calls: control=0, full=85.
-On guards-pilot-8, fathom's arm lost to control on success (10 v 11) at 0.829× the tokens; the tools were called 85 time(s). Registered criterion M1-1: fail (treatment success rate 0.714 is below control's 0.733).
-gold source: none earned 10 of 10 passes.
-Paired (bootstrap, n=8, seed 20260902, 20000 resamples): success-rate diff +0.000 [-0.375, +0.375] (95% CI); token ratio 1.96× [0.95×, 3.13×].
+On guards-pilot-8, fathom's arm lost to control on success (8 v 11) at 0.829× the tokens; the tools were called 85 time(s). Registered criterion M1-1: fail (treatment success rate 0.571 is below control's 0.733).
+gold source: none earned 8 of 8 passes.
+Paired (bootstrap, n=8, seed 20260902, 20000 resamples): success-rate diff -0.125 [-0.438, +0.125] (95% CI); token ratio 1.96× [0.95×, 3.13×].
 
 **lca-run-1** — fathom vs control: success 94/117 vs 93/117, tokens 1.640×, cost 1.291×.
 Surface calls: control=0, fathom=231.
@@ -1359,7 +1359,7 @@ Paired (bootstrap, n=14, seed 20260902, 20000 resamples): success-rate diff +0.1
 | guards-pilot-8 | 7150215e | guards-i31-workspace-artifact | governance_bound | control | sonnet | 2 | 2 | no-effect: a generic notes-file instruction carries no per-file trigger naming defaultStorePath's contract, so the control has no reason to route a brand-new output path through the shared helper instead of the cwd | 0 | – | – | 0/2 | – | – | – | – | – | 7.9016 |  |
 | guards-pilot-8 | 7150215e | guards-i31-workspace-artifact | governance_bound | full | sonnet | 2 | 2 | win: the workspace/ default-path convention is bound to edits under cmd/fathom's flag/path-default files, so an obligation serves the rule exactly where a new debug-dump default path is being written, well before the naive 'just write it next to cwd' fix lands | 22 | 329 | – | 0/2 | – | – | – | – | – | 7.4130 |  |
 | guards-pilot-8 | 7150215e | guards-i36-usecase-maintained-line | governance_bound | control | sonnet | 2 | 0 | no-effect: a prompt that explicitly frames the contract line as optional boilerplate, with no obligation naming it, leaves the control arm with every reason to leave it out | 0 | – | – | 2/2 | – | – | – | – | – | 0.8431 |  |
-| guards-pilot-8 | 7150215e | guards-i36-usecase-maintained-line | governance_bound | full | sonnet | 2 | 2 | win: docs/CLAUDE.md's use-case upkeep contract is a doc-shaped obligation bound to edits under docs/use-cases/, which fires on a brand-new file there even though the prompt itself invites skipping the contract line | 18 | 165 | – | 0/2 | – | – | – | – | – | 3.0519 |  |
+| guards-pilot-8 | 7150215e | guards-i36-usecase-maintained-line | governance_bound | full | sonnet | 2 | 0 | win: docs/CLAUDE.md's use-case upkeep contract is a doc-shaped obligation bound to edits under docs/use-cases/, which fires on a brand-new file there even though the prompt itself invites skipping the contract line | 18 | 165 | – | 0/2 | – | – | – | – | – | 3.0519 |  |
 
 ### Gold source by question shape
 
