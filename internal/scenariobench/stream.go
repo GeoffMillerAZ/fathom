@@ -92,6 +92,17 @@ type streamEvent struct {
 	NumTurns     int     `json:"num_turns"`
 	DurationMS   int64   `json:"duration_ms"`
 	TotalCostUSD float64 `json:"total_cost_usd"`
+	// ModelUsage is the result event's own per-model cost/token breakdown
+	// (keyed by model id, e.g. "claude-sonnet-5") — the SAME field
+	// wave N19's rescore-cost fix reads TotalCostUSD's own fallback from
+	// (sumModelUsageCost, below): a session whose terminal event carries
+	// no top-level total_cost_usd at all (TotalCostUSD's own zero value,
+	// indistinguishable from a genuinely free/unmetered session) still
+	// prices out from here, exactly as the live path would have priced it
+	// had it needed to.
+	ModelUsage map[string]struct {
+		CostUSD float64 `json:"costUSD"`
+	} `json:"modelUsage"`
 	// Result is the result event's own final-answer text (SB-32's
 	// answer-only oracle).
 	Result string `json:"result"`
@@ -455,6 +466,20 @@ func parseBoxCheckAnnotation(line string) (rowID, symbol, pkg, oracle, path, pat
 	return rowID, symbol, pkg, oracle, path, pattern
 }
 
+// sumModelUsageCost sums a result event's own per-model modelUsage.costUSD
+// entries — TotalCostUSD's own fallback (toSessionResult) for a session
+// whose terminal event carries no top-level total_cost_usd. nil/empty in
+// is 0 out, never a guess.
+func sumModelUsageCost(usage map[string]struct {
+	CostUSD float64 `json:"costUSD"`
+}) float64 {
+	var sum float64
+	for _, u := range usage {
+		sum += u.CostUSD
+	}
+	return sum
+}
+
 func (ps *parsedStream) toSessionResult() SessionResult {
 	var r SessionResult
 	r.Turns = ps.turns
@@ -480,6 +505,18 @@ func (ps *parsedStream) toSessionResult() SessionResult {
 		r.CacheCreation = u.CacheCreationInputTokens
 		r.TotalTokens = u.InputTokens + u.OutputTokens + u.CacheReadInputTokens + u.CacheCreationInputTokens
 		r.CostUSD = ps.result.TotalCostUSD
+		if r.CostUSD == 0 {
+			// wave N19 defect 2: a rescored cell's own raw stream carries
+			// this same result event RunSession's live path already reads
+			// TotalCostUSD from — the live and rescore paths share
+			// ParseSessionStream, so this fallback benefits both, never
+			// just one. sumModelUsageCost prices the session from its own
+			// per-model breakdown when the top-level total is absent or
+			// legitimately zero for every model that actually ran (a
+			// wholly-cached session, say) leaves it at zero rather than
+			// guessing a number the transcript never reported.
+			r.CostUSD = sumModelUsageCost(ps.result.ModelUsage)
+		}
 		r.WallTime = time.Duration(ps.result.DurationMS) * time.Millisecond
 		r.FinalAnswer = ps.result.Result
 		if r.FinalAnswer != "" {

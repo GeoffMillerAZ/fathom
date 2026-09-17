@@ -53,7 +53,7 @@
 //	    95% CI of the success-rate difference includes zero — the
 //	    pre-registered null, recorded and published, never a refutation).
 //
-//	scenariobench void -run-id <id> -task <id> -arm <name> -reason <text> [-cells <dir>] [-ledger <path.jsonl>] [-readme <path>] [-corpus-glob <glob>]
+//	scenariobench void -run-id <id> -task <id> -arm <name> -reason <text> [-cells <dir>] [-ledger <path.jsonl>] [-readme <path>] [-corpus-glob <glob>] [-trial N [-verdict pass|fail] [-exclude]]
 //	    Marks a FILED ledger row's own InstrumentDefect (and every stored
 //	    cell record filed under that same run/task/arm) with -reason —
 //	    ADR-034 decision 2's own retroactive voiding, for an instrument
@@ -62,6 +62,14 @@
 //	    does. Refuses, changing nothing, when no ledger row matches
 //	    (run_id, task_id, arm): voiding a row that was never filed would
 //	    invent a defect claim for a reading that does not exist.
+//	    -trial N narrows this to ONE trial's own stored cell, a PROVEN
+//	    correction rather than a whole-row exclusion: -verdict pass
+//	    (default) is a scorer_false_fail (success=true), -verdict fail is
+//	    a scorer_false_pass (success=false, wave N19), and -exclude
+//	    deletes the cell entirely (an instrument-caused trial, e.g.
+//	    cross-cell worktree contamination, that must count toward neither
+//	    pass nor fail) — a subsequent `scenariobench ledger` re-file
+//	    rebuilds the row from the corrected/reduced cell set.
 package main
 
 import (
@@ -1739,11 +1747,17 @@ func cmdVoid(args []string) int {
 	arm := fs.String("arm", "", "the arm name (required)")
 	reason := fs.String("reason", "", "the instrument defect naming why this row is voided (required)")
 	trial := fs.Int("trial", 0, "void (correct) only this one trial's own stored cell rather than every trial of the row; 0 (default) voids every trial, exactly as before this flag existed")
+	verdict := fs.String("verdict", "pass", "with -trial N: the CORRECTED verdict for this one trial — \"pass\" (scorer_false_fail, the default — success=true) or \"fail\" (scorer_false_pass — success=false)")
+	exclude := fs.Bool("exclude", false, "with -trial N: DELETE this one trial's stored cell instead of correcting it, so a subsequent `scenariobench ledger` re-file counts it toward NEITHER pass nor fail — for an instrument-caused trial (e.g. cross-cell worktree contamination) whose own answer is not a sound reading in either direction, distinct from a proven false_fail/false_pass correction")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
 	if *runID == "" || *taskID == "" || *arm == "" || *reason == "" {
 		fmt.Fprintln(os.Stderr, "scenariobench void: -run-id, -task, -arm, and -reason are required")
+		return 2
+	}
+	if *verdict != "pass" && *verdict != "fail" {
+		fmt.Fprintf(os.Stderr, "scenariobench void: -verdict must be \"pass\" or \"fail\", got %q\n", *verdict)
 		return 2
 	}
 
@@ -1757,14 +1771,23 @@ func cmdVoid(args []string) int {
 			fmt.Fprintf(os.Stderr, "scenariobench void: no stored cell for run %s task %s arm %s trial %d\n", *runID, *taskID, *arm, *trial)
 			return 2
 		}
-		cell.Success = true
+		if *exclude {
+			if err := scenariobench.DeleteScenarioCell(*cellsDir, cell.CellKey, *trial); err != nil {
+				fmt.Fprintf(os.Stderr, "scenariobench void: %v\n", err)
+				return 2
+			}
+			fmt.Fprintf(os.Stdout, "scenariobench void: excluded run %s task %s arm %s trial %d entirely (counts toward neither pass nor fail): %s — re-run `scenariobench ledger` to refile this row with one fewer trial\n",
+				*runID, *taskID, *arm, *trial, *reason)
+			return 0
+		}
+		cell.Success = *verdict == "pass"
 		cell.InstrumentDefect = *reason
 		if err := scenariobench.OverwriteScenarioCell(*cellsDir, cell); err != nil {
 			fmt.Fprintf(os.Stderr, "scenariobench void: %v\n", err)
 			return 2
 		}
-		fmt.Fprintf(os.Stdout, "scenariobench void: corrected run %s task %s arm %s trial %d (scorer_false_fail -> success=true): %s — re-run `scenariobench ledger` to refile this row from the corrected cell\n",
-			*runID, *taskID, *arm, *trial, *reason)
+		fmt.Fprintf(os.Stdout, "scenariobench void: corrected run %s task %s arm %s trial %d (-> success=%v): %s — re-run `scenariobench ledger` to refile this row from the corrected cell\n",
+			*runID, *taskID, *arm, *trial, cell.Success, *reason)
 		return 0
 	}
 

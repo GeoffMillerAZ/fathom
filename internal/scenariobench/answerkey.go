@@ -55,6 +55,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"unicode/utf8"
 
@@ -337,7 +338,20 @@ func enclosingPathToken(text string, i int) string {
 		}
 		end += size
 	}
-	return text[start:end]
+	// wave N19 defect 1: a trailing '.' is never boundary-scanned above (a
+	// real path segment can legitimately contain one, e.g.
+	// "app_test.go") but prose narrating a path immediately followed by
+	// sentence-ending punctuation and no space — Serena's own
+	// "<active-project>... at <path>.\n..." session-start message,
+	// verbatim in the raw transcript on every serena-arm session — glues
+	// that period onto the end of an otherwise-exact safe-dir token,
+	// which then fails pathUnderAnyDir's prefix check by exactly one
+	// byte. Trimming it here can only ever SHRINK the token (never change
+	// where it starts, and the marker match itself always sits well
+	// before any trailing punctuation), so it cannot turn a genuine
+	// escape into a safe one — only stop a sentence's own full stop from
+	// masquerading as part of the path.
+	return strings.TrimRight(text[start:end], ".")
 }
 
 // pathUnderAnyDir reports whether path (cleaned) is exactly one of dirs or
@@ -345,17 +359,30 @@ func enclosingPathToken(text string, i int) string {
 // entries in dirs (a caller that does not have a raw dir, say) are simply
 // skipped — never treated as "everything is safe".
 func pathUnderAnyDir(path string, dirs []string) bool {
-	clean := filepath.Clean(path)
+	clean := macTmpCanonical(filepath.Clean(path))
 	for _, d := range dirs {
 		if d == "" {
 			continue
 		}
-		cd := filepath.Clean(d)
+		cd := macTmpCanonical(filepath.Clean(d))
 		if clean == cd || strings.HasPrefix(clean, cd+string(filepath.Separator)) {
 			return true
 		}
 	}
 	return false
+}
+
+// macTmpCanonical strips the leading "/private" macOS adds when it
+// resolves a symlinked top-level directory (/tmp, /var, /etc — the
+// FreeBSD-derived layout every stock macOS ships) to its real location: a
+// tool call that named a path as "/tmp/…" (the symlink spelling) and this
+// driver's own "-root" (always given as the resolved "/private/tmp/…"
+// spelling in this fleet's own scratch convention) name the IDENTICAL
+// file, but pathUnderAnyDir's bare string-prefix comparison sees two
+// different trees unless both sides are put in the same spelling first.
+// A path that never had the prefix is returned unchanged.
+func macTmpCanonical(path string) string {
+	return strings.TrimPrefix(path, "/private")
 }
 
 // SandboxEscapeScan scans session's raw transcript for a tool_use INPUT or
@@ -412,9 +439,45 @@ func SandboxEscapeScan(session SessionResult, safeDirs ...string) bool {
 	return false
 }
 
+// ansiOSCRE matches one terminal OSC (Operating System Command) escape
+// sequence — ESC ']' … terminated by BEL or ESC '\' (ST) — the shape a
+// terminal hyperlink wraps a path in: `ESC]8;;file:///abs/path ESC\
+// display-text ESC]8;;ESC\`, e.g. this environment's own `ls -la`
+// rendering (the Bash tool's own colorized/hyperlinked listing, byte-
+// identical whether the cd is inside the cell's own worktree or the
+// shared subjects/ pool one level up from it). The href parameter
+// carries the FULL absolute path; the visible display text alongside it
+// is normally just a basename. Left unstripped, the href's own path
+// characters (including its embedded ':' and ';') corrupt
+// enclosingPathToken's boundary walk into a token that starts or ends
+// mid-string — wave N19 defect 1's second shape.
+var ansiOSCRE = regexp.MustCompile("\x1b\\][^\x07\x1b]*(?:\x07|\x1b\\\\)")
+
+// ansiCSIRE matches one terminal CSI (Control Sequence Introducer) escape
+// sequence — ESC '[' parameter/intermediate bytes, one final byte — the
+// shape `ls --color`/`grep --color` wraps text in for SGR color codes
+// (e.g. `\x1b[36m`).
+var ansiCSIRE = regexp.MustCompile(`\x1b\[[0-9;]*[a-zA-Z]`)
+
+// stripTerminalEscapes removes terminal decoration (OSC hyperlinks, CSI
+// color codes) from text before it is scanned for a sandbox-escape
+// marker. It never removes a marker occurrence that exists anywhere in
+// the PLAIN, unescaped text — a colorized `ls`/`eza --hyperlink`
+// listing's own href always duplicates a path the tool's structured
+// input (the Bash command argument, a Read's file_path) already carries
+// unescaped, which SandboxEscapeScan scans separately — so stripping the
+// decoration loses no detection power, it only stops the decoration
+// itself from being misread as path content.
+func stripTerminalEscapes(text string) string {
+	text = ansiOSCRE.ReplaceAllString(text, "")
+	text = ansiCSIRE.ReplaceAllString(text, "")
+	return text
+}
+
 // textNamesSandboxEscape reports whether text names a genuine sandbox
 // escape: see SandboxEscapeScan's own doc comment for the exact rule.
 func textNamesSandboxEscape(text string, safeDirs []string) bool {
+	text = stripTerminalEscapes(text)
 	for _, m := range sandboxEscapeMarkers {
 		start := 0
 		for {

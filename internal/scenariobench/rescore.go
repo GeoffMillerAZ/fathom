@@ -210,10 +210,25 @@ func NeedsLiveWorktree(task Task) bool {
 // not they still exist or have since been reset and reused by a later
 // cell.
 func HistoricalWorktreePath(root string, task Task, arm Arm) string {
-	subjectsDir := filepath.Join(root, "workspace", "scenariobench", "subjects")
+	subjectsDir := HistoricalSubjectsDir(root)
 	cloneDir := filepath.Join(subjectsDir, shortHash(task.Subject.RepoURL))
 	worktreesDir := cloneDir + "-worktrees"
 	return filepath.Join(worktreesDir, task.Subject.BaseCommit+"-"+armContentHash(arm))
+}
+
+// HistoricalSubjectsDir returns the shared clone-and-worktree pool
+// directory PrepareSubject's own subjectsDir formula names under root —
+// the same no-I/O guarantee as HistoricalWorktreePath, and (wave N19
+// defect 1) an ADDITIONAL safe directory alongside a cell's own
+// worktree/cellDir/rawBase: subjectsDir holds nothing but bare,
+// sha256-hash-named clone and "<commit>-<armhash>"-named worktree
+// directories shared by EVERY cell of this run — a bare listing of it (an
+// agent orienting itself, `ls` of the pool root) names no task-specific
+// content, unlike cd'ing or reading INTO one specific OTHER cell's own
+// worktree, which remains unsafe because only THIS cell's own directories
+// are ever in the list.
+func HistoricalSubjectsDir(root string) string {
+	return filepath.Join(root, "workspace", "scenariobench", "subjects")
 }
 
 // HistoricalCellDir returns the per-trial artifact directory runOneCell

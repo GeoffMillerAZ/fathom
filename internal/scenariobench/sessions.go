@@ -189,7 +189,7 @@ func runSingle(ctx context.Context, h Harness, task Task, armName string, arm Ar
 		if err != nil {
 			return results, err
 		}
-		res, err := runOneSession(h, req, wt.Arm.MCPServerNames, task.Subject.ExcludePaths, wt.CellDir)
+		res, err := runOneSession(h, req, wt.Arm.MCPServerNames, task.Subject.ExcludePaths, wt.CellDir, SubjectsDirFromClone(wt.SubjectClone))
 		if err != nil {
 			return append(results, res), fmt.Errorf("task %s arm %s session %d: %w", task.ID, armName, i, err)
 		}
@@ -218,7 +218,7 @@ func runPlannerWorkers(ctx context.Context, h Harness, task Task, armName string
 	if err != nil {
 		return results, err
 	}
-	plannerRes, err := runOneSession(h, plannerReq, wt.Arm.MCPServerNames, task.Subject.ExcludePaths, wt.CellDir)
+	plannerRes, err := runOneSession(h, plannerReq, wt.Arm.MCPServerNames, task.Subject.ExcludePaths, wt.CellDir, SubjectsDirFromClone(wt.SubjectClone))
 	if err != nil {
 		return append(results, plannerRes), fmt.Errorf("task %s arm %s planner session: %w", task.ID, armName, err)
 	}
@@ -280,7 +280,7 @@ func runPlannerWorkers(ctx context.Context, h Harness, task Task, armName string
 		if err != nil {
 			return results, err
 		}
-		res, err := runOneSession(h, req, wt.Arm.MCPServerNames, task.Subject.ExcludePaths, wt.CellDir)
+		res, err := runOneSession(h, req, wt.Arm.MCPServerNames, task.Subject.ExcludePaths, wt.CellDir, SubjectsDirFromClone(wt.SubjectClone))
 		if err != nil {
 			return append(results, res), fmt.Errorf("task %s arm %s worker %d: %w", task.ID, armName, assigned, err)
 		}
@@ -627,7 +627,7 @@ func findPlanFile(worktree string) (string, error) {
 // disqualifying the whole cell regardless of how the other sessions in it
 // went. err is non-nil only when the harness failed to even start the
 // process.
-func runOneSession(h Harness, req SessionRequest, wantServers []string, excludePaths []string, cellDir string) (SessionResult, error) {
+func runOneSession(h Harness, req SessionRequest, wantServers []string, excludePaths []string, cellDir string, subjectsDir string) (SessionResult, error) {
 	res, err := h.RunSession(req)
 	if err != nil {
 		return res, err
@@ -661,8 +661,13 @@ func runOneSession(h Harness, req SessionRequest, wantServers []string, excludeP
 	// worktree, and its raw dir) are given explicitly so a `cd` into the
 	// cell's own tree never trips this scan merely because the bench root
 	// itself ("benchroot2") shares a literal substring with a
-	// sandboxEscapeMarkers entry ("/benchroot").
-	if SandboxEscapeScan(res, req.Worktree, cellDir, req.RawDir) {
+	// sandboxEscapeMarkers entry ("/benchroot"). wave N19 defect 1: the
+	// shared subjects/ pool root (subjectsDir, SubjectsDirFromClone) is a
+	// fourth safe directory, alongside the same three — see
+	// HistoricalSubjectsDir's own doc comment for why a bare listing of
+	// it is safe while a specific OTHER cell's worktree under it stays
+	// caught.
+	if SandboxEscapeScan(res, req.Worktree, cellDir, req.RawDir, subjectsDir) {
 		res.SandboxEscape = true
 	}
 	// O53 defect 4: only a non-wired ("baseline") arm is required to have

@@ -170,6 +170,39 @@ func TestHistoricalWorktreePathAndCellDir_MatchPrepareSubjectFormula(t *testing.
 	if cellDir != wantCellDir {
 		t.Errorf("HistoricalCellDir = %q, want %q", cellDir, wantCellDir)
 	}
+
+	subjectsDir := HistoricalSubjectsDir(root)
+	wantSubjectsDir := filepath.Join(root, "workspace", "scenariobench", "subjects")
+	if subjectsDir != wantSubjectsDir {
+		t.Errorf("HistoricalSubjectsDir = %q, want %q", subjectsDir, wantSubjectsDir)
+	}
+	// wantWT is subjectsDir/<hash>-worktrees/<commit-armhash> —
+	// HistoricalWorktreePath's own cloneDir sits directly under
+	// HistoricalSubjectsDir, exactly as PrepareSubject's live formula
+	// does (subject.go).
+	if !strings.HasPrefix(wtPath, subjectsDir+string(filepath.Separator)) {
+		t.Errorf("HistoricalWorktreePath %q is not nested under HistoricalSubjectsDir %q", wtPath, subjectsDir)
+	}
+}
+
+// TestSubjectsDirFromClone_MatchesHistoricalSubjectsDir proves the LIVE
+// path's own formula (SubjectsDirFromClone, sessions.go's own safe-dir
+// wiring — filepath.Dir(Worktree.SubjectClone)) agrees with the rescore
+// path's no-I/O formula (HistoricalSubjectsDir) for the SAME (root, repo)
+// pair: PrepareSubject's own cloneDir is subjectsDir/shortHash(repoURL),
+// so Dir(cloneDir) must equal subjectsDir exactly, on both paths.
+func TestSubjectsDirFromClone_MatchesHistoricalSubjectsDir(t *testing.T) {
+	root := "/root"
+	repoURL := "https://example.invalid/repo.git"
+	cloneDir := filepath.Join(HistoricalSubjectsDir(root), shortHash(repoURL))
+	got := SubjectsDirFromClone(cloneDir)
+	want := HistoricalSubjectsDir(root)
+	if got != want {
+		t.Errorf("SubjectsDirFromClone(%q) = %q, want %q", cloneDir, got, want)
+	}
+	if SubjectsDirFromClone("") != "" {
+		t.Error(`SubjectsDirFromClone("") = non-empty, want "" (never a guess with no real Worktree)`)
+	}
 }
 
 // TestRescoreSessionsFromRaw_ReconstructsSessionAndSuppressesFixedFalsePositive
@@ -249,6 +282,71 @@ func TestRescoreSessionsFromRaw_GenuineEscapeStaysFlagged(t *testing.T) {
 	}
 	if !sessions[0].SandboxEscape {
 		t.Error("expected the genuine escape to stay flagged after reconstruction")
+	}
+}
+
+// TestRescoreSessionsFromRaw_SerenaActiveProjectMessageStaysScorable is
+// wave N19 defect 1, built from the EXACT raw-dir shape of a real
+// vs-pilot-6 cell the rescore-from-raw pass silently dropped
+// (H1-T04/serena/t1, docs/bench/readings/vs-pilot-6-second-reading.md
+// §6): one attempt-1/session-0-<role>.stream.jsonl plus its sibling
+// session-0-mcp.json, exactly as ClaudeHarness itself writes them — the
+// stream's structure copied verbatim, never its real content. Serena's
+// own session-start tool_result narrates the worktree path in prose
+// immediately followed by a period and a newline with no space
+// ("...at <path>.\nActive language servers: go."), which used to glue
+// that period onto an otherwise-exact safe-dir token and lose the whole
+// cell to a false sandbox_escape despite a complete session with a real
+// final answer (is_error: false, a genuine result event). This also
+// covers wave N19 defect 2 in the same pass: the result event carries
+// modelUsage but no top-level total_cost_usd, so the reconstructed
+// session's own CostUSD must still come out nonzero.
+func TestRescoreSessionsFromRaw_SerenaActiveProjectMessageStaysScorable(t *testing.T) {
+	dir := t.TempDir()
+	root := "/private/tmp/claude-501/-Volumes-m2ext-code-geoffmilleraz-sextant/e8652946-4037-4a56-8b48-3336a3490e6f/scratchpad/benchroot2"
+	subjectWorktreeDir := root + "/workspace/scenariobench/subjects/cc9873a2-worktrees/1b8765d-d13524f3c445"
+	cellDir := root + "/workspace/artifacts/scenariobench/worktrees/H1-T04-1b8765d-d13524f3c445/trial-1"
+	subjectsDir := root + "/workspace/scenariobench/subjects"
+	rawBase := CellRawBase(filepath.Join(dir, "raw"), "vs-pilot-6", "H1-T04", "serena", 1)
+	attemptDir := filepath.Join(rawBase, "attempt-1")
+
+	activeProjectMsg := "Created and activated a new project with name '1b8765d-d13524f3c445' at " +
+		subjectWorktreeDir + ".\\nActive language servers: go.\\nFile encoding: utf-8.\\n"
+	writeRawStream(t, filepath.Join(attemptDir, "session-0-single.stream.jsonl"), []string{
+		`{"type":"system","subtype":"init","mcp_servers":[{"name":"serena","status":"connected"}],"tools":["mcp__serena__activate_project"]}`,
+		`{"type":"assistant","message":{"content":[{"type":"tool_use","id":"tu0","name":"mcp__serena__activate_project","input":{}}],"usage":{"input_tokens":5,"output_tokens":5}}}`,
+		`{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tu0","content":"` + activeProjectMsg + `"}]}}`,
+		`{"type":"result","is_error":false,"num_turns":1,"duration_ms":1,` +
+			`"modelUsage":{"claude-sonnet-5":{"costUSD":0.065024}},` +
+			`"result":"cmdVerify exists at cmd/fathom/verify.go:37","usage":{"input_tokens":5,"output_tokens":5}}`,
+	})
+	mcpPath := filepath.Join(attemptDir, "session-0-mcp.json")
+	if err := os.WriteFile(mcpPath, []byte(`{"mcpServers":{"serena":{"alwaysLoad":true}}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	attemptGot, ok, err := LatestCompleteAttempt(rawBase)
+	if err != nil || !ok {
+		t.Fatalf("LatestCompleteAttempt: ok=%v err=%v", ok, err)
+	}
+
+	sessions, err := RescoreSessionsFromRaw(attemptGot, nil, false, subjectWorktreeDir,
+		[]string{subjectWorktreeDir, cellDir, rawBase, subjectsDir})
+	if err != nil {
+		t.Fatalf("RescoreSessionsFromRaw: %v", err)
+	}
+	if len(sessions) != 1 {
+		t.Fatalf("expected 1 reconstructed session, got %d", len(sessions))
+	}
+	s := sessions[0]
+	if s.SandboxEscape {
+		t.Error("expected no sandbox escape: Serena's own startup message names this cell's own subject-worktree, just with a trailing sentence period")
+	}
+	if reason := CellLost([]SessionResult{s}); reason != "" {
+		t.Errorf("CellLost = %q, want \"\" (a complete, correctly-answered raw session must stay scorable)", reason)
+	}
+	if s.CostUSD != 0.065024 {
+		t.Errorf("CostUSD = %v, want 0.065024 (summed from modelUsage since total_cost_usd is absent)", s.CostUSD)
 	}
 }
 

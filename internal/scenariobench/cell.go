@@ -228,6 +228,31 @@ func OverwriteScenarioCell(cellsDir string, r CellResult) error {
 	return nil
 }
 
+// DeleteScenarioCell removes one trial's stored cell record entirely —
+// wave N19's `scenariobench void -trial N -exclude` (main.go): an
+// instrument-caused trial (e.g. cross-cell worktree contamination, RC-36)
+// that must count toward NEITHER pass nor fail, unlike a scorer_false_
+// fail/false_pass correction (OverwriteScenarioCell), which stays IN the
+// trial count under a corrected verdict. A subsequent `scenariobench
+// ledger` re-file then sees one fewer trial for this (task, arm) — the
+// SAME mechanism a genuinely LOST cell already produces (rescore.go's own
+// cells are simply never stored in the first place). Refuses when the
+// file does not exist, exactly like OverwriteScenarioCell's own "nothing
+// to touch" refusal, rather than silently succeeding on a no-op.
+func DeleteScenarioCell(cellsDir, key string, trial int) error {
+	path := ScenarioCellPath(cellsDir, key, trial)
+	if _, err := os.Stat(path); err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return fmt.Errorf("deleting scenario cell %s: no such cell on disk", path)
+		}
+		return fmt.Errorf("deleting scenario cell %s: %w", path, err)
+	}
+	if err := os.Remove(path); err != nil {
+		return fmt.Errorf("deleting scenario cell %s: %w", path, err)
+	}
+	return nil
+}
+
 // FindScenarioCellsByRun walks cellsDir for every stored cell record
 // whose TaskID, Arm and RunID match — O53 defect 7's own lookup for
 // `scenariobench void`, which has no corpus (and so no cell_key) to hand

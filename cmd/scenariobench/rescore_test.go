@@ -113,6 +113,72 @@ func TestCmdRun_RescoreLost_ReconstructsCellFromRaw(t *testing.T) {
 	}
 }
 
+// TestCmdRun_RescoreLost_SubjectsPoolListingRecoveredEndToEnd is wave N19
+// defect 1's wiring proof: a bare `ls` of the shared subjects/ pool root —
+// ONE level above the cell's own worktree, never itself a safe dir the
+// test hands in — must be recovered end-to-end through the REAL `run
+// -rescore-lost` wiring (cmdRun -> rescoreCellForReport ->
+// rescoreOneCell), which is the only place that actually COMPUTES
+// scenariobench.HistoricalSubjectsDir(root) and adds it to the safe-dir
+// list; a lower-level SandboxEscapeScan/RescoreSessionsFromRaw unit test
+// that hands subjectsDir in directly would prove pathUnderAnyDir's own
+// prefix logic but never prove this wiring exists at all.
+func TestCmdRun_RescoreLost_SubjectsPoolListingRecoveredEndToEnd(t *testing.T) {
+	dir := t.TempDir()
+	corpusPath := answerOnlyCorpusFixture(t, dir, []string{"T4"})
+	root := filepath.Join(dir, "fathom-root")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cellsDir := filepath.Join(dir, "cells")
+	rawDir := filepath.Join(dir, "raw")
+	runID := "run-1"
+
+	absRoot, err := filepath.Abs(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	subjectsDir := scenariobench.HistoricalSubjectsDir(absRoot)
+
+	attemptDir := filepath.Join(scenariobench.CellRawBase(rawDir, runID, "T4", "control", 1), "attempt-1")
+	if err := os.MkdirAll(attemptDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// The ONLY tool call in this session names subjectsDir itself — never
+	// the cell's own worktree/cellDir/rawBase — so this cell can only
+	// stay unLOST if the driver's own wiring adds subjectsDir as a safe
+	// dir on its own.
+	stream := `{"type":"assistant","message":{"content":[{"type":"tool_use","id":"tu0","name":"Bash","input":{"command":"ls ` + subjectsDir + ` 2>/dev/null"}}],"usage":{"input_tokens":5,"output_tokens":5}}}` + "\n" +
+		`{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tu0","content":"deadbeef\ndeadbeef-worktrees\n"}]}}` + "\n" +
+		`{"type":"result","is_error":false,"num_turns":1,"duration_ms":1,"total_cost_usd":0.001,"result":"fusion.New is defined in internal/fusion/registry.go","usage":{"input_tokens":5,"output_tokens":5}}` + "\n"
+	if err := os.WriteFile(filepath.Join(attemptDir, "session-0-single.stream.jsonl"), []byte(stream), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	rc := run([]string{
+		"run",
+		"-corpus", corpusPath,
+		"-root", root,
+		"-cells", cellsDir,
+		"-raw-dir", rawDir,
+		"-run-id", runID,
+		"-harness-version", "test-1",
+		"-rescore-lost",
+	})
+	if rc != 0 {
+		t.Fatalf("run -rescore-lost exited %d, want 0", rc)
+	}
+
+	cellPath := findStoredCell(t, cellsDir)
+	cell := readStoredCell(t, cellPath)
+	if cell.Sessions[0].SandboxEscape {
+		t.Error("expected no sandbox escape: a bare listing of the shared subjects/ pool root names only opaque directory names, and the driver's own wiring must add subjectsDir as a safe dir")
+	}
+	if !cell.Success {
+		t.Errorf("expected Success=true; oracle=%+v", cell.Oracle)
+	}
+}
+
 // TestCmdRun_RescoreLost_GenuineLeakStaysLost is the converse required by
 // the same spec line: a raw attempt dir whose own tool result names a
 // path OUTSIDE the cell's own worktree entirely (the operator's push
