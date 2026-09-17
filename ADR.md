@@ -1666,3 +1666,26 @@ honestly, never panics); the full `internal/mcp` suite, including the two existi
 auto-refresh-wrapper round-trip tests this change could have broken
 (`TestObligationsTool_RawFallback_ThroughAutoRefreshWrapper`,
 `TestSemanticTools_ThroughAutoRefreshWrapper`), stays green.
+
+**Addendum: ranking within a tier (wave O2, 2026-09-17).** vs-pilot-6's second reading
+(docs/bench/readings/vs-pilot-6-second-reading.md §5) found the raw fallback THIS ADR shipped
+fired on 8 of 10 "what governs this" trials — new, up from never existing — but never once
+served the rule the oracle wanted (0 of 10 from the raw row itself): every fired trial served
+an unrelated decoy (internal/CLAUDE.md's "Store purity" section, or a root CLAUDE.md header).
+Root cause: `rankByGoverningScope` (VB-8) gets a section to the right governing-scope TIER, but
+never decided which member of a multi-section tier wins — both `RawFallbackRules`'s candidate
+sort and `obligationsCore`'s compiled-claim `less()` fell straight to document order (a raw
+section's `StartLine`) or a near-alphabetical tie-break (`specificity`/`Rule` text) once a tier
+was fixed, so a nested guide's several same-tier sections were served in authoring order, never
+by which one actually names the edited file. Fixed by `internal/semantic/relevance.go`: a
+deterministic, no-LLM lexical relevance score (path-derived tokens, weighted ancestor <
+package < stem, plus optional caller-resolved symbol/import tokens at stem weight; heading hits
+weigh 2×; per-token hit count capped at 3; no length normalisation — an early length-normalised
+version penalised exactly the multi-topic section this fix targets) inserted as a new tie-break
+strictly INSIDE a tier, in both rankers, never overriding VB-8's own tier/depth primacy. Five-
+task offline reproduction (`internal/semantic/h1governance_test.go`, diagnostic, not a hard
+gate): H1-T01 and H1-T12 now pass; H1-T02/T08/T13 still miss a strict top-3 window — a real,
+named limitation (a nearer tier's own several sections can still fill every slot before a
+farther-tier answer competes; a root-wide convention with no lexical tie to any one file's own
+name needs a different mechanism entirely), not a regression on what this ADR already shipped.
+Full account: `.fathom/observations.md` O73.
