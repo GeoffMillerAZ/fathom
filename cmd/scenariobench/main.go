@@ -764,6 +764,19 @@ func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench
 	planPath, planBytes := captureAgentPlan(wt, sessionsStart)
 	diffPath, instrumentFilesExcluded := captureAgentDiff(ctx, wt)
 
+	// O76: persist a durable copy of agent.diff (plus any untracked
+	// binary snapshot and cell-artifacts.json) into this cell's own RAW
+	// attempt dir — never just wt.CellDir, which a later cell sharing this
+	// (subject, base_commit, arm) resets out from under this one, and
+	// which an operator's own cleanup can remove outright. Unconditional
+	// and BEFORE the caller's own leak/escape/LOST decision
+	// (runCellForReport's scenariobench.CellLost) — guards-pilot-7's 31
+	// cells were lost exactly because nothing durable was ever written for
+	// a cell that turned out LOST.
+	if attemptDir, ok := scenariobench.LatestAttemptDir(scenariobench.CellRawBase(rawDir, runID, cp.task.ID, cp.arm, cp.trial)); ok {
+		persistRawCellArtifacts(wt, attemptDir, diffPath, cp.task.Subject.BaseCommit)
+	}
+
 	oracle, err := scenariobench.RunOracle(ctx, wt, cp.task, sessions, root)
 	if err != nil {
 		return scenariobench.CellResult{}, fmt.Errorf("running oracle: %w", err)
