@@ -135,7 +135,16 @@ type TypedEdgeReport struct {
 	// clean "0 failed".
 	DiscoveryGaps     int
 	DiscoveryGapFiles []string // sample of those files (deduplicated, capped)
-	Duration          time.Duration
+	// Fallback names the override this run applied when an AMBIENT Go
+	// workspace would otherwise have governed repoPath — currently always
+	// "GOWORK=off" when non-empty, since TypedEdgeEnv forces that
+	// unconditionally (wave P3 / O82, .fathom/observations.md — the
+	// 2026-09-16 incident: a go.work naming sibling checkouts that exist
+	// only beside the operator's OWN checkout broke typed-edge loading for
+	// a push clone elsewhere). Empty when no workspace was discoverable
+	// from repoPath at all — never claim an override that did not happen.
+	Fallback string
+	Duration time.Duration
 }
 
 // hasGoSource reports whether refs contains at least one ".go" file — the
@@ -188,15 +197,19 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 	// staleness_report and doctor's typed_edges row can all say WHY the
 	// graph they serve is syntax-only, instead of a silent downgrade that
 	// every surface reports as healthy.
+	edgesTotal := rep.EdgesDirect + rep.EdgesIfaceDispatch + rep.EdgesUnresolved + rep.EdgesFuncValue
 	switch {
 	case err != nil:
-		p.noteTypedEdgeStatus(svc.ID, TypedEdgeStatus{Failed: true, Reason: err.Error()})
+		p.noteTypedEdgeStatus(svc.ID, TypedEdgeStatus{Failed: true, Reason: err.Error(), Fallback: rep.Fallback})
 		fmt.Fprintf(os.Stderr, "fusion: typed-edge pass %q failed to load: %v — syntax-only edges remain the baseline\n", svc.ID, err)
 	case rep.PackagesFailed > 0:
 		p.noteTypedEdgeStatus(svc.ID, TypedEdgeStatus{
-			Packages: rep.PackagesLoaded + rep.PackagesCached,
-			Failed:   true,
-			Reason:   fmt.Sprintf("%d/%d package(s) failed typed loading", rep.PackagesFailed, rep.PackagesTotal),
+			PackagesSeen: rep.PackagesTotal,
+			Packages:     rep.PackagesLoaded + rep.PackagesCached,
+			EdgesTotal:   edgesTotal,
+			Failed:       true,
+			Reason:       fmt.Sprintf("%d/%d package(s) failed typed loading", rep.PackagesFailed, rep.PackagesTotal),
+			Fallback:     rep.Fallback,
 		})
 		fmt.Fprintf(os.Stderr, "fusion: typed-edge pass %q: %d/%d package(s) failed typed loading — syntax-only edges remain the baseline for those\n", svc.ID, rep.PackagesFailed, rep.PackagesTotal)
 	case rep.PackagesTotal > 0 && rep.PackagesLoaded+rep.PackagesCached == 0:
@@ -204,14 +217,24 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 		// scope filter excluded every one of them. Legitimate only when the
 		// ignore rules really do exclude all Go source; otherwise it is a
 		// path-mapping bug of exactly the kind the relative-repoPath
-		// regression was (see TestEnrichTypedEdges_RelativeRepoPath).
+		// regression was (see TestEnrichTypedEdges_RelativeRepoPath). Also
+		// the shape a Go tree with ZERO typed edges takes (wave P3 / O82):
+		// disclosed as Failed here so ingest's own response can say so
+		// plainly instead of silently reading "ok" with a syntax-only graph.
 		p.noteTypedEdgeStatus(svc.ID, TypedEdgeStatus{
-			Failed: true,
-			Reason: fmt.Sprintf("%d package(s) seen but 0 processed — every package excluded by the connector scope filter", rep.PackagesTotal),
+			PackagesSeen: rep.PackagesTotal,
+			Failed:       true,
+			Reason:       fmt.Sprintf("%d package(s) seen but 0 processed — every package excluded by the connector scope filter", rep.PackagesTotal),
+			Fallback:     rep.Fallback,
 		})
 		fmt.Fprintf(os.Stderr, "fusion: typed-edge pass %q: %d package(s) seen but 0 processed — every package excluded by the connector scope filter; reconcile will purge any previously stored typed edges for this service\n", svc.ID, rep.PackagesTotal)
 	default:
-		p.noteTypedEdgeStatus(svc.ID, TypedEdgeStatus{Packages: rep.PackagesLoaded + rep.PackagesCached})
+		p.noteTypedEdgeStatus(svc.ID, TypedEdgeStatus{
+			PackagesSeen: rep.PackagesTotal,
+			Packages:     rep.PackagesLoaded + rep.PackagesCached,
+			EdgesTotal:   edgesTotal,
+			Fallback:     rep.Fallback,
+		})
 	}
 	return rep
 }
@@ -248,6 +271,18 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 	// zero edges, zero failures, zero stderr.
 	if abs, absErr := filepath.Abs(repoPath); absErr == nil {
 		repoPath = abs
+	}
+
+	// Fallback disclosure (wave P3 / O82): detect, best-effort and BEFORE
+	// forcing GOWORK=off below, whether an ambient Go workspace would have
+	// governed this load — `go env GOWORK` run from repoPath's own
+	// directory with the UN-forced environment auto-discovers a go.work
+	// exactly as an un-forced `go build` would (upward search, or GOWORK
+	// pinned globally via `go env -w`). Never blocking: any failure (no
+	// toolchain, a broken environment) leaves Fallback empty rather than
+	// guessing.
+	if ws := detectWorkspaceOverride(repoPath); ws != "" {
+		report.Fallback = "GOWORK=off"
 	}
 
 	fset := token.NewFileSet()
