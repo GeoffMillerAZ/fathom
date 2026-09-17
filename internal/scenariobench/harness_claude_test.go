@@ -1,9 +1,11 @@
 package scenariobench
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 )
 
@@ -259,5 +261,75 @@ func TestClaudeHarness_RunSession_FallsBackToArmMCPWhenConfigPathEmpty(t *testin
 	}
 	if !strings.Contains(string(copied), `"fathom"`) {
 		t.Errorf("expected the fallback config to carry req.Arm.MCP, got %s", copied)
+	}
+}
+
+// TestIsInstrumentWriteError covers RunSession's own classification of a
+// transcript-write failure (VB-27, lca-run-1 2026-09-17): a wedged
+// external-volume TCC verdict (EPERM) and the disk running out (ENOSPC) are
+// both instrument faults of the machine, never of the cell; anything else
+// (a missing directory, say) is a real bug and must still propagate as a
+// hard Go error rather than silently LOSTing the cell.
+func TestIsInstrumentWriteError(t *testing.T) {
+	cases := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{"permission denied", &fs.PathError{Op: "open", Path: "x", Err: os.ErrPermission}, true},
+		{"raw EPERM", &fs.PathError{Op: "open", Path: "x", Err: syscall.EPERM}, true},
+		{"no space left on device", &fs.PathError{Op: "write", Path: "x", Err: syscall.ENOSPC}, true},
+		{"not exist", &fs.PathError{Op: "open", Path: "x", Err: os.ErrNotExist}, false},
+		{"nil", nil, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := isInstrumentWriteError(c.err); got != c.want {
+				t.Errorf("isInstrumentWriteError(%v) = %v, want %v", c.err, got, c.want)
+			}
+		})
+	}
+}
+
+// TestClaudeHarness_RunSession_StreamWritePermissionDeniedIsAnInstrumentError
+// exercises the real RunSession path (not just isInstrumentWriteError in
+// isolation): a RawDir this process cannot write into must come back as a
+// data-carrying SessionResult with InstrumentError set, never a hard Go
+// error — the exact shape that let lca-run-1's own EPERM/ENOSPC class of
+// failure LOST one cell and continue, rather than aborting the whole
+// driver (main.go's cmdRun, exit 2).
+func TestClaudeHarness_RunSession_StreamWritePermissionDeniedIsAnInstrumentError(t *testing.T) {
+	dir := t.TempDir()
+	worktree := t.TempDir()
+	rawDir := filepath.Join(dir, "raw")
+	if err := os.MkdirAll(rawDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	argsOut := filepath.Join(dir, "args.txt")
+	fakeBin := writeFakeClaudeScript(t, dir, argsOut)
+
+	// Pre-create the exact path RunSession will write the transcript to
+	// (session-<index>-<role>.stream.jsonl, safeRole("")=="session") and
+	// make THAT FILE read-only — rawDir itself stays writable so the mcp
+	// config write earlier in RunSession still succeeds, landing the
+	// failure squarely on os.WriteFile(streamPath, ...), the one line this
+	// test means to exercise.
+	req := SessionRequest{Worktree: worktree, Prompt: "do the thing", RawDir: rawDir, Index: 0}
+	streamPath := filepath.Join(rawDir, "session-0-"+safeRole(req.Role)+".stream.jsonl")
+	if err := os.WriteFile(streamPath, []byte("old"), 0o444); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(streamPath, 0o644) })
+
+	h := ClaudeHarness{Bin: fakeBin}
+	result, err := h.RunSession(req)
+	if err != nil {
+		t.Fatalf("RunSession: %v, want a data-carrying SessionResult (an instrument write fault must LOST the cell, never abort the run)", err)
+	}
+	if result.InstrumentError == "" {
+		t.Errorf("InstrumentError = %q, want it set for a permission-denied transcript write", result.InstrumentError)
+	}
+	if result.Error == "" {
+		t.Errorf("Error = %q, want it set alongside InstrumentError", result.Error)
 	}
 }

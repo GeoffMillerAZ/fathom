@@ -561,7 +561,16 @@ func ensureClone(ctx context.Context, repoURL, cloneDir string) error {
 	if err := os.MkdirAll(filepath.Dir(cloneDir), 0o755); err != nil {
 		return fmt.Errorf("preparing subject: creating %s: %w", filepath.Dir(cloneDir), err)
 	}
-	if out, err := runIn(ctx, "", "git", "clone", "--no-single-branch", repoURL, cloneDir); err != nil {
+	// -c transfer.fsckObjects=false -c fetch.fsckObjects=false: a subject's
+	// own (often ancient) history is not this bench's to fsck — modern
+	// git's index-pack rejects a merely-nonstandard object (e.g. a
+	// zero-padded file mode, tootallnate/java-websocket's real history,
+	// confirmed directly) as a hard clone failure by default, which has
+	// nothing to do with whether that history is a legitimate subject to
+	// benchmark against (VB-27, lca-run-1 2026-09-17). gitConfigIsolation
+	// (runInEnv, keyed on name=="git") additionally keeps the OPERATOR's
+	// own global config from setting this same behavior even more strictly.
+	if out, err := runIn(ctx, "", "git", "-c", "transfer.fsckObjects=false", "-c", "fetch.fsckObjects=false", "clone", "--no-single-branch", repoURL, cloneDir); err != nil {
 		return fmt.Errorf("preparing subject: git clone %s: %w (%s)", repoURL, err, out)
 	}
 	return nil
@@ -663,8 +672,9 @@ func ensureCommit(ctx context.Context, cloneDir, commit string) error {
 	// Best-effort: the commit may have landed after the clone. A local
 	// (file://, plain-path) fixture with no remote still fails this
 	// harmlessly, and ensureCommit's caller surfaces the ORIGINAL missing
-	// commit as the real error below.
-	_, _ = runIn(ctx, cloneDir, "git", "fetch", "--all", "--quiet")
+	// commit as the real error below. Same fsck bypass as ensureClone's own
+	// clone, for the same reason.
+	_, _ = runIn(ctx, cloneDir, "git", "-c", "transfer.fsckObjects=false", "-c", "fetch.fsckObjects=false", "fetch", "--all", "--quiet")
 	if _, err := runIn(ctx, cloneDir, "git", "cat-file", "-e", commit+"^{commit}"); err != nil {
 		return fmt.Errorf("preparing subject: base_commit %s not found in %s after fetch: %w", commit, cloneDir, err)
 	}
@@ -698,8 +708,14 @@ func runIn(ctx context.Context, dir string, name string, args ...string) (string
 // environment) — workerDiscoveryBrief (sessions.go) uses this to point a
 // wired cell's own `fathom discoveries` subprocess at the CELL's threads
 // file and daemon, never the operator's real ones that a bare gitEnv()
-// inheritance would otherwise silently expose it to.
+// inheritance would otherwise silently expose it to. Every git invocation
+// (name=="git" — every call this file makes to git, subject clone and
+// worktree checkout alike) additionally gets gitConfigIsolation, so the
+// OPERATOR's own global/system git config never governs subject prep.
 func runInEnv(ctx context.Context, dir string, extra map[string]string, name string, args ...string) (string, error) {
+	if name == "git" {
+		extra = gitConfigIsolation(extra)
+	}
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Env = SubjectEnv(dir, extra)
 	cmd.Dir = dir

@@ -535,12 +535,14 @@ func cmdRun(args []string) int {
 				// startup were stored, then borrowed by the re-run).
 				lost++
 				fmt.Fprintf(os.Stderr, "%s/%s/t%d: LOST — %s\n", oc.cp.task.ID, oc.cp.arm, oc.cp.trial, oc.lostReason)
-				if strings.Contains(oc.lostReason, "operation not permitted") {
-					// A wedged volume verdict sticks to this process: every
-					// later cell would be LOST the same way (vs-pilot-2 lost
-					// 28 in a row, 2026-09-13). Stop; a relaunch borrows every
-					// stored cell and re-runs only the lost ones.
-					fmt.Fprintln(os.Stderr, "scenariobench run: the volume refused a read or write (a wedged TCC verdict) — stopping; reset it and relaunch with the same -run-id")
+				if msg, sticky := stickyInstrumentFaultMessage(oc.lostReason); sticky {
+					// A wedged volume verdict, or the disk simply running out
+					// (isInstrumentWriteError's ENOSPC case, lca-run-1
+					// 2026-09-17), sticks to this process: every later cell
+					// would be LOST the same way (vs-pilot-2 lost 28 in a row
+					// to the TCC case, 2026-09-13). Stop; a relaunch borrows
+					// every stored cell and re-runs only the lost ones.
+					fmt.Fprintf(os.Stderr, "scenariobench run: %s — stopping; reset it and relaunch with the same -run-id\n", msg)
 					return 4
 				}
 			default:
@@ -572,6 +574,32 @@ func cmdRun(args []string) int {
 // errSubjectPrep marks a PrepareSubject failure so runCellForReport can
 // turn it into a LOST cell instead of aborting the run.
 var errSubjectPrep = errors.New("preparing subject")
+
+// stickyInstrumentFaultMessage reports whether lostReason names a machine
+// condition that will recur identically for every remaining cell — a
+// wedged external-volume TCC verdict ("operation not permitted") or the
+// disk simply running out ("no space left on device",
+// isInstrumentWriteError's own ENOSPC case surfacing through CellLost's
+// "instrument error: " prefix, lca-run-1 2026-09-17: exit=2 came from an
+// UNRELATED task's transcript write hitting this, right after
+// tootallnate/java-websocket's own clone failure had already been LOST and
+// the run had correctly moved on) — and, when it does, the message to print
+// before stopping. Unlike an ordinary LOST cell (one bad session, one
+// subject that fails to clone), a sticky fault means burning through the
+// rest of the corpus would only mint more LOST cells at real spend for
+// every session that gets as far as starting a `claude -p`; stopping lets a
+// relaunch with the SAME -run-id borrow every already-stored cell and retry
+// only the gap.
+func stickyInstrumentFaultMessage(lostReason string) (msg string, sticky bool) {
+	switch {
+	case strings.Contains(lostReason, "operation not permitted"):
+		return "the volume refused a read or write (a wedged TCC verdict)", true
+	case strings.Contains(lostReason, "no space left on device"):
+		return "the disk ran out of space", true
+	default:
+		return "", false
+	}
+}
 
 // ledgerClock is cmdLedger's own injected clock (internal/CLAUDE.md's
 // determinism contract: inject clocks, never call time.Now() directly in
