@@ -272,3 +272,105 @@ func TestCiteWindow_NarrowsLongSectionToFirstHit(t *testing.T) {
 		t.Errorf("narrowed window %q (lines %d-%d) does not contain the extractor bullet", window, start, end)
 	}
 }
+
+// TestRawFallbackRules_CrossTierPromotion_StrongRootBeatsBlankNestedGuide
+// (wave O3, item 1; ADR-037 addendum) is design (1)'s flagship regression:
+// a NESTED guide's own section (package tier — nearer) that names NOTHING
+// about the edited file at all must lose its proximity advantage to a
+// ROOT-tier section (farther) that strongly names the file's own stem —
+// the shape H1-T02 approximates in the real corpus (a package guide with
+// no lexical tie loses to a root ADR that names the file's own symbol),
+// pinned here against a synthetic, corpus-growth-proof fixture.
+func TestRawFallbackRules_CrossTierPromotion_StrongRootBeatsBlankNestedGuide(t *testing.T) {
+	layer := rawFallbackTestLayer(t)
+	nestedDoc := core.SourceFile{Path: "internal/foo/CLAUDE.md", Content: []byte(
+		"# Unrelated policy\n\nWidgets must be logged and reviewed before merging. " +
+			"Nothing in this sentence names the edited file at all.\n")}
+	rootDoc := core.SourceFile{Path: "ADR.md", Content: []byte(
+		"## ADR-099: The bar type\n\nEverything in this subsystem revolves around bar. " +
+			"See bar's own tests for details.\n")}
+	corpus := []core.SourceFile{nestedDoc, rootDoc}
+
+	rows, err := RawFallbackRules(nil, layer, corpus, "internal/foo/bar.go", 1, "why", nil)
+	if err != nil {
+		t.Fatalf("RawFallbackRules: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("len(rows) = %d, want 1", len(rows))
+	}
+	if rows[0].Src != "ADR.md#L1-L4" {
+		t.Errorf("rows[0].Src = %q, want the root ADR section (%q) — the blank nested guide must not win on proximity alone: rows=%+v", rows[0].Src, "ADR.md#L1-L4", rows)
+	}
+}
+
+// TestRawFallbackRules_CrossTierPromotion_AnyHitOnNestedGuideBlocksPromotion
+// is the cap's own regression: the same fixture as above, except the
+// nested guide's section now mentions the file's own ancestor directory
+// once ("internal") — a weak hit, but a hit — which must be enough to
+// keep the nested guide's proximity advantage; the strong root ADR must
+// NOT leapfrog it.
+func TestRawFallbackRules_CrossTierPromotion_AnyHitOnNestedGuideBlocksPromotion(t *testing.T) {
+	layer := rawFallbackTestLayer(t)
+	nestedDoc := core.SourceFile{Path: "internal/foo/CLAUDE.md", Content: []byte(
+		"# Unrelated policy\n\nEvery internal package must log before merging widgets.\n")}
+	rootDoc := core.SourceFile{Path: "ADR.md", Content: []byte(
+		"## ADR-099: The bar type\n\nEverything in this subsystem revolves around bar. " +
+			"See bar's own tests for details.\n")}
+	corpus := []core.SourceFile{nestedDoc, rootDoc}
+
+	rows, err := RawFallbackRules(nil, layer, corpus, "internal/foo/bar.go", 1, "why", nil)
+	if err != nil {
+		t.Fatalf("RawFallbackRules: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("len(rows) = %d, want 1", len(rows))
+	}
+	if rows[0].Src != "internal/foo/CLAUDE.md#L1-L4" {
+		t.Errorf("rows[0].Src = %q, want the nested guide (its own \"internal\" hit, however weak, must block promotion): rows=%+v", rows[0].Src, rows)
+	}
+}
+
+// TestRawFallbackRules_BehaviorTokenPromotesUntiedRootConvention (wave O3,
+// item 2) is design (2)'s end-to-end proof at the RawFallbackRules level:
+// a root-wide convention that names no file/package/symbol of its own
+// (H1-T08's own shape) is crowded out of a narrow window by unrelated,
+// lexically-louder root sections — UNTIL the caller resolves a behaviour
+// token from the edited file's own source (BehaviorTokens) and passes it
+// through extraTokens, exactly as pkg/client.RawFallbackObligations now
+// does. Confirms the mechanism actually moves the served row, independent
+// of any one real file existing on disk (H1-T08 itself can't prove this —
+// cmd/fathom/emit.go isn't a real file in this repo).
+func TestRawFallbackRules_BehaviorTokenPromotesUntiedRootConvention(t *testing.T) {
+	layer := rawFallbackTestLayer(t)
+	workspaceDoc := core.SourceFile{Path: "CLAUDE.md", Content: []byte(
+		"# Rules\n\n## Non-negotiables — the workspace/ convention\n\nAll build artifacts " +
+			"belong under the gitignored workspace/ directory, never elsewhere in the tree. " +
+			"Run go tools from cmd as usual.\n")}
+	// A decoy that outscores the workspace section on raw lexical noise
+	// alone (repeats the file's own generic path tokens once each) but is
+	// otherwise unrelated to output-writing behaviour.
+	decoyDoc := core.SourceFile{Path: "ADR.md", Content: []byte(
+		"## ADR-050: cmd tool\n\nThe cmd package wraps go binaries.\n")}
+	corpus := []core.SourceFile{workspaceDoc, decoyDoc}
+	file := "cmd/emit.go"
+
+	without, err := RawFallbackRules(nil, layer, corpus, file, 1, "why", nil)
+	if err != nil {
+		t.Fatalf("RawFallbackRules (no behaviour token): %v", err)
+	}
+	if len(without) != 1 || without[0].Rule != "ADR-050: cmd tool" {
+		t.Fatalf("test setup: without a behaviour token the decoy should win the single slot, got %+v", without)
+	}
+
+	behavior := BehaviorTokens(`func emit(dir string) error { return os.WriteFile(filepath.Join(dir, "out"), data, 0o644) }`)
+	if len(behavior) == 0 {
+		t.Fatalf("test setup: expected BehaviorTokens to detect the os.WriteFile signal")
+	}
+	with, err := RawFallbackRules(nil, layer, corpus, file, 1, "why", behavior)
+	if err != nil {
+		t.Fatalf("RawFallbackRules (with behaviour token): %v", err)
+	}
+	if len(with) != 1 || with[0].Rule != "Non-negotiables — the workspace/ convention" {
+		t.Errorf("with the workspace behaviour token, the untied convention must win the slot instead of the decoy: got %+v", with)
+	}
+}

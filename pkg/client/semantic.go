@@ -231,6 +231,20 @@ func (c *Client) RawFallbackObligations(ctx context.Context, service, file strin
 	// handle) and handed to RawFallbackRules as plain data, which stays a
 	// pure function of its inputs.
 	extraTokens := semantic.SymbolNamesForFile(ctx, c.st, service, file)
+	// wave O3, item 2: a root-wide convention (workspace/, the gate) names
+	// no file/package/symbol of its own, so it can never earn a "strong"
+	// lexical tie via the above — what DOES tie it to file is file's own
+	// BEHAVIOUR. files was already fetched (Sources) to build corpus above;
+	// find the edited file's own content in it (a Faux/synthetic file, or
+	// one connector.Fetch skipped, simply isn't there — degrade to no
+	// signal, never an error) and fold semantic.BehaviorTokens' verdict
+	// into the same extraTokens path a resolved symbol name already uses.
+	for _, sf := range files {
+		if sf.Path == file {
+			extraTokens = append(extraTokens, semantic.BehaviorTokens(string(sf.Content))...)
+			break
+		}
+	}
 	rows, rerr := semantic.RawFallbackRules(claims, layerDef, corpus, file, max, why, extraTokens)
 	if rerr != nil || len(rows) == 0 {
 		return nil, "", false, nil

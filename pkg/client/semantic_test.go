@@ -616,6 +616,57 @@ func TestClient_RawFallbackObligations_CorpusGrowthServesNestedGuideRaw(t *testi
 	}
 }
 
+// TestClient_RawFallbackObligations_BehaviorTokenFromFileContent (wave O3,
+// item 2) is design (2)'s end-to-end client-level proof: a root-wide
+// convention (the workspace/ row — names no file, package, or symbol of
+// its own) loses a narrow raw-fallback window to a lexically louder but
+// unrelated decoy UNTIL the edited file's own real source (which
+// RawFallbackObligations now reads from the already-fetched Sources list,
+// alongside the pre-existing symbol-name lookup) is scanned for a
+// behaviour signal (os.WriteFile) and the resulting "workspace" token
+// folded into the same extraTokens path a resolved symbol name uses.
+func TestClient_RawFallbackObligations_BehaviorTokenFromFileContent(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+
+	if err := os.WriteFile(filepath.Join(dir, "CLAUDE.md"), []byte(
+		"# Rules\n\n## Non-negotiables — the workspace/ convention\n\nAll build artifacts "+
+			"belong under the gitignored workspace/ directory, never elsewhere in the tree. "+
+			"Run go tools from cmd as usual.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "ADR.md"), []byte(
+		"## ADR-050: cmd tool\n\nThe cmd package wraps go binaries.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "cmd"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "cmd", "emit.go"), []byte(
+		"package cmd\n\nimport \"os\"\n\nfunc emit(dir string) error {\n"+
+			"\treturn os.WriteFile(dir, nil, 0o644)\n}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	c := newTestClient(t, dir)
+	defer c.Close()
+	if _, err := c.Ingest(ctx, client.ServiceRef{ID: "svc", Path: dir}); err != nil {
+		t.Fatal("Ingest:", err)
+	}
+	// Deliberately no compile at all — the "never compiled" raw path.
+
+	rows, _, ok, err := c.RawFallbackObligations(ctx, "svc", "cmd/emit.go", 1)
+	if err != nil {
+		t.Fatalf("RawFallbackObligations: %v", err)
+	}
+	if !ok || len(rows) != 1 {
+		t.Fatalf("ok=%v rows=%+v, want exactly one raw row", ok, rows)
+	}
+	if rows[0].Rule != "Non-negotiables — the workspace/ convention" {
+		t.Errorf("rows[0].Rule = %q, want the workspace/ convention row — cmd/emit.go's own os.WriteFile call should have promoted it over the ADR-050 decoy: rows=%+v", rows[0].Rule, rows)
+	}
+}
+
 // TestClient_RawFallbackObligations_BudgetStoppedNamesStatus is test (a)'s
 // sibling at the client level: a RECORDED budget-stopped compile run (the
 // store's own bookkeeping — no real LLM trip needed to prove the status

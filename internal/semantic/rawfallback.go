@@ -86,9 +86,10 @@ func RawFallbackRules(claims []core.SemanticClaim, layerDef LayerDef, corpus []c
 	}
 
 	type candidate struct {
-		sec Section
-		gs  governingScope
-		rel float64
+		sec    Section
+		gs     governingScope
+		rel    float64
+		strong bool
 	}
 	var cands []candidate
 	docs := append([]core.SourceFile(nil), corpus...)
@@ -115,7 +116,8 @@ func RawFallbackRules(claims []core.SemanticClaim, layerDef LayerDef, corpus []c
 			if gs.tier < 0 {
 				continue // defensive: rankByGoverningScope found no tier despite the match above
 			}
-			cands = append(cands, candidate{sec: sec, gs: gs, rel: relevanceScore(sec.Text, tokens)})
+			rel, strong := relevanceStrength(sec.Text, tokens)
+			cands = append(cands, candidate{sec: sec, gs: gs, rel: rel, strong: strong})
 		}
 	}
 	if len(cands) == 0 {
@@ -123,22 +125,24 @@ func RawFallbackRules(claims []core.SemanticClaim, layerDef LayerDef, corpus []c
 	}
 
 	// Nearest tier first (VB-8's own proximity order: exact_file < package <
-	// parent_dir < root, deeper ancestor wins a parent_dir tie). WITHIN that
-	// tie (wave O2, vs-pilot-6 second reading §5), the lexical relevance
-	// score now decides NEXT — a nested guide's several same-tier sections
-	// no longer fall straight to document order; the one that actually
-	// names the file wins before compileorder.go's own document-type
-	// discipline (a nested/root GUIDE's own section order is never defeated
-	// by byte count; a root-OTHER document's smaller sections sort first)
-	// gets a say, so a truncated raw answer still reads like a deliberate,
+	// parent_dir < root, deeper ancestor wins a parent_dir tie) — EXCEPT
+	// (wave O3, item 1; ADR-037 addendum) a farther-tier section that
+	// STRONGLY names the file (its package path, stem, or a caller-
+	// resolved symbol/behaviour token) leapfrogs a nearer-tier section that
+	// is a total lexical blank; see crossTierCloser's own doc comment for
+	// the exact, deliberately narrow rule. WITHIN a tie on that comparison
+	// (wave O2, vs-pilot-6 second reading §5), the lexical relevance score
+	// decides NEXT — a nested guide's several same-tier sections no longer
+	// fall straight to document order; the one that actually names the
+	// file wins before compileorder.go's own document-type discipline (a
+	// nested/root GUIDE's own section order is never defeated by byte
+	// count; a root-OTHER document's smaller sections sort first) gets a
+	// say, so a truncated raw answer still reads like a deliberate,
 	// on-topic pick, not merely an arbitrary or alphabetically-early one.
 	sort.SliceStable(cands, func(i, j int) bool {
 		a, b := cands[i], cands[j]
-		if a.gs.tier != b.gs.tier {
-			return a.gs.tier < b.gs.tier
-		}
-		if a.gs.depth != b.gs.depth {
-			return a.gs.depth > b.gs.depth
+		if a.gs.tier != b.gs.tier || a.gs.depth != b.gs.depth {
+			return crossTierCloser(a.gs, b.gs, a.rel, b.rel, a.strong, b.strong)
 		}
 		if a.rel != b.rel {
 			return a.rel > b.rel
