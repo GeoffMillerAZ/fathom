@@ -14,7 +14,9 @@
 package scenariobench
 
 import (
+	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -138,5 +140,90 @@ func TestGuardsI1ConsumersDoubleRunDetectorIsNameless(t *testing.T) {
 		t.Fatalf("detector %q must stay RED for a Test*Consumers-named function with only ONE Build call (no double-run):\n%s", detector.Name, out)
 	} else {
 		t.Logf("detector %q correctly red (exit %d) for a named-but-not-double-run function", detector.Name, exit)
+	}
+}
+
+// TestGuardsI36PostWireSetupDerivesFromHEADNotWorkingTree is wave N14 item
+// 4's regression test (guards-i36, guards-pilot-6 second reading): the
+// ORIGINAL post_wire_setup command reads its own truncation point (the
+// first bare "## Maintained" line) from whatever is CURRENTLY on disk —
+// the same live-content pattern match item 1 already proved unsafe for
+// CLAUDE.md's own region. If the working tree's copy of the file has
+// drifted from what this repo actually committed at HEAD (for any
+// reason — another setup step, a stray earlier occurrence of the same
+// heading text), the old command truncates at whatever it finds THERE,
+// not at the doc's own real, intended heading. The fixed command sources
+// from `git show HEAD:<path>` instead, so its result depends only on the
+// instrument's own known, immutable reference content, never on
+// coincidental drift in the working tree.
+func TestGuardsI36PostWireSetupDerivesFromHEADNotWorkingTree(t *testing.T) {
+	c := loadGuardsCorpus(t) // guards-fathom.json
+	var task Task
+	found := false
+	for _, tk := range c.Tasks {
+		if tk.ID == "guards-i36-usecase-maintained-line" {
+			task, found = tk, true
+			break
+		}
+	}
+	if !found {
+		t.Fatal("guards-i36-usecase-maintained-line not found in guards-fathom.json")
+	}
+	if len(task.Subject.PostWireSetup) != 1 {
+		t.Fatalf("expected exactly one post_wire_setup command, got %d", len(task.Subject.PostWireSetup))
+	}
+	cmd := task.Subject.PostWireSetup[0]
+
+	dir := t.TempDir()
+	runGitProbe := func(args ...string) string {
+		t.Helper()
+		c := exec.Command("git", args...)
+		c.Dir = dir
+		c.Env = append(gitEnv(), "GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@example.invalid", "GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@example.invalid")
+		out, err := c.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v: %v (%s)", args, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	docPath := filepath.Join(dir, "docs", "use-cases", "incident-investigation.md")
+	if err := os.MkdirAll(filepath.Dir(docPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	const committed = "# Incident investigation\n\nReal body content.\n\n---\n\n## Maintained\n\nThis doc covers: `find_callers`, `blast_radius`. Update it when these change.\n"
+	if err := os.WriteFile(docPath, []byte(committed), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGitProbe("init", "-q", "-b", "main")
+	runGitProbe("add", "-A")
+	runGitProbe("commit", "-q", "-m", "base")
+
+	// Simulate the working tree DRIFTING from what this repo actually
+	// committed BEFORE post_wire_setup runs: an uncommitted copy carrying
+	// an EARLIER, spurious "## Maintained" line HEAD does not have (e.g. a
+	// prior setup step, or simply a different draft on disk).
+	const drifted = "# Incident investigation\n\nReal body content mentioning\n## Maintained\ninline as prose, not the real heading.\n\n---\n\n## Maintained\n\nThis doc covers: `find_callers`, `blast_radius`. Update it when these change.\n"
+	if err := os.WriteFile(docPath, []byte(drifted), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	wt := Worktree{Path: dir, CellDir: t.TempDir()}
+	task.Subject.PostWireSetup = []string{cmd}
+	if err := applyPostWireSetup(context.Background(), wt, task, nil); err != nil {
+		t.Fatalf("applyPostWireSetup: %v", err)
+	}
+
+	got, err := os.ReadFile(docPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(got), "Real body content.\n") == false {
+		t.Errorf("expected the doc's own real body content (from HEAD) to survive, got:\n%s", got)
+	}
+	if strings.Contains(string(got), "## Maintained") {
+		t.Errorf("expected every '## Maintained' occurrence stripped (the committed heading and everything after it), got:\n%s", got)
+	}
+	if strings.Contains(string(got), "inline as prose") {
+		t.Errorf("expected the working tree's own drifted content to have no bearing on the result at all — it must never even be read, got:\n%s", got)
 	}
 }

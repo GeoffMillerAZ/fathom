@@ -996,7 +996,23 @@ func captureAgentDiff(ctx context.Context, wt scenariobench.Worktree) (path stri
 	if _, err := add.CombinedOutput(); err != nil {
 		return "", 0
 	}
-	diff := exec.CommandContext(ctx, "git", "diff")
+	// wave N14 item 4 (guards-i36, guards-pilot-6 second reading,
+	// "agent_diff_misses_committed_work"): a bare `git diff` (no ref) shows
+	// only the working tree against the INDEX, so a session that `git
+	// commit`s its own work mid-session — a real, observed agent behavior —
+	// leaves both the index and HEAD already matching the working tree,
+	// and a bare `git diff` reports NOTHING for it. Diffing against
+	// wt.LocalBase instead (the same worktree-local root commit
+	// changedPaths/ScoreRefusal already anchor on — see
+	// Worktree.LocalBase's own doc comment) covers everything the sessions
+	// changed since PrepareSubject reset the tree, committed or not. A
+	// caller that never set LocalBase (none in production; a defensive
+	// fallback only) keeps the old bare-diff behavior.
+	args := []string{"diff"}
+	if wt.LocalBase != "" {
+		args = append(args, wt.LocalBase)
+	}
+	diff := exec.CommandContext(ctx, "git", args...)
 	diff.Dir = wt.Path
 	out, err := diff.Output()
 	if err != nil {

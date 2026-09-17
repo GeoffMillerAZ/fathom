@@ -268,7 +268,7 @@
         "service": "fathom",
         "language": "go",
         "post_wire_setup": [
-          "awk '/^## Maintained$/{exit} {print}' docs/use-cases/incident-investigation.md > docs/use-cases/incident-investigation.md.tmp && mv docs/use-cases/incident-investigation.md.tmp docs/use-cases/incident-investigation.md"
+          "git show HEAD:docs/use-cases/incident-investigation.md | awk '/^## Maintained$/{exit} {print}' > docs/use-cases/incident-investigation.md"
         ]
       },
       "sessions": {
