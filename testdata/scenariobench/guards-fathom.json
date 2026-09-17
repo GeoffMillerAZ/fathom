@@ -198,7 +198,7 @@
           },
           {
             "name": "packagedeps-consumers-double-run",
-            "command": "bash -c 'n=$(grep -c \"func Test[A-Za-z0-9_]*Consumers\" internal/analysis/packagedeps/packagedeps_test.go); if [ \"$n\" -eq 0 ]; then exit 0; fi; span=$(grep -A 20 \"func Test[A-Za-z0-9_]*Consumers\" internal/analysis/packagedeps/packagedeps_test.go); m=$(printf \"%s\\n\" \"$span\" | grep -c \"packagedeps\\.Build(\"); if [ \"$m\" -ge 2 ]; then exit 0; fi; printf \"%s\\n\" \"$span\" | grep -q \"for \" && [ \"$m\" -ge 1 ]'",
+            "command": "bash -c 'f=internal/analysis/packagedeps/packagedeps_test.go\n[ -f \"$f\" ] || exit 1\nprog=$(mktemp)\ncat > \"$prog\" <<AWKPROG\nBEGIN { infunc=0; buf=\"\"; found=0 }\n/^func / {\n  if (infunc && buf ~ /Consumers/) {\n    n = gsub(/packagedeps\\.Build\\(/, \"&\", buf)\n    if (n >= 2) found=1\n  }\n  infunc=1; buf=\\$0 \"\\n\"\n  next\n}\n{ if (infunc) buf = buf \\$0 \"\\n\" }\nEND {\n  if (infunc && buf ~ /Consumers/) {\n    n = gsub(/packagedeps\\.Build\\(/, \"&\", buf)\n    if (n >= 2) found=1\n  }\n  exit (found ? 0 : 1)\n}\nAWKPROG\nawk -f \"$prog\" \"$f\"\nst=$?\nrm -f \"$prog\"\nexit $st\n'",
             "expect_exit": 0
           }
         ]
