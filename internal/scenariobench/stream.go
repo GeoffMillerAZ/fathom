@@ -57,6 +57,13 @@ type streamEvent struct {
 	// "hook_event" (distinct from "hook_name", which is "Event:matcher",
 	// e.g. "SessionStart:startup").
 	HookEvent string `json:"hook_event"`
+	// HookName is the same "system"/"hook_response" event's own
+	// "Event:matcher" name (e.g. "PreToolUse:Grep",
+	// "PreToolUse:mcp__fathom__find_symbol") — distinct from HookEvent,
+	// which names only the bare event ("PreToolUse"). handleHookResponse
+	// (wave n13) uses it for HooksFiredByName's own per-tool-class
+	// breakdown.
+	HookName string `json:"hook_name"`
 	// Output / Stdout are the "system"/"hook_response" event's own raw
 	// process output. fathom's own hook subcommands print a
 	// {"hookSpecificOutput":{"additionalContext":"…"}} envelope
@@ -137,6 +144,9 @@ type parsedStream struct {
 	// "obligations_injected" key — see SessionResult.HooksFired's doc
 	// comment.
 	hooksFired map[string]int
+	// hooksFiredByName mirrors hooksFired at the finer hook_name grain
+	// (wave n13) — see SessionResult.HooksFiredByName's own doc comment.
+	hooksFiredByName map[string]int
 	// sessionStartContext is the FIRST SessionStart hook_response's own
 	// rendered text (handleHookResponse) — SessionResult.SessionStartContext.
 	sessionStartContext string
@@ -297,6 +307,11 @@ func (ps *parsedStream) handleInit(ev streamEvent) {
 // wired something (the instrument-truth question runOneSession asks),
 // unlike one that never fired at all. An event with no hook_event at all
 // (should not happen; defensive) is skipped rather than counted under "".
+// It also counts under the finer-grained hook_name (wave n13, vs-pilot-5's
+// second reading, "hooks_not_fired") — "Event:matcher", e.g.
+// "PreToolUse:Grep" — when the event carries one, so a reading can tell
+// WHICH tool class a hook actually fired for, not just that its bare
+// event name fired at all.
 func (ps *parsedStream) handleHookResponse(ev streamEvent) {
 	if ev.HookEvent == "" {
 		return
@@ -305,6 +320,13 @@ func (ps *parsedStream) handleHookResponse(ev streamEvent) {
 		ps.hooksFired = map[string]int{}
 	}
 	ps.hooksFired[ev.HookEvent]++
+
+	if ev.HookName != "" {
+		if ps.hooksFiredByName == nil {
+			ps.hooksFiredByName = map[string]int{}
+		}
+		ps.hooksFiredByName[ev.HookName]++
+	}
 
 	ctx := hookResponseAdditionalContext(ev)
 	if ev.HookEvent == "SessionStart" && ps.sessionStartContext == "" {
@@ -447,6 +469,7 @@ func (ps *parsedStream) toSessionResult() SessionResult {
 	r.MCPServers = ps.mcpServers
 	r.MCPTools = ps.mcpTools
 	r.HooksFired = ps.hooksFired
+	r.HooksFiredByName = ps.hooksFiredByName
 	r.SessionStartContext = ps.sessionStartContext
 	r.PayloadBytes = ps.payloadBytes
 	if ps.sawResult {

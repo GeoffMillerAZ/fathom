@@ -408,6 +408,12 @@ func AggregateReadings(sessions []SessionResult) Readings {
 			}
 			r.HooksFired[name] += n
 		}
+		for name, n := range s.HooksFiredByName {
+			if r.HooksFiredByName == nil {
+				r.HooksFiredByName = map[string]int{}
+			}
+			r.HooksFiredByName[name] += n
+		}
 	}
 	return r
 }
@@ -458,6 +464,12 @@ func AggregateRowReadings(cells []CellResult) (Readings, []TrialReading) {
 			}
 			r.HooksFired[name] += n
 		}
+		for name, n := range cr.HooksFiredByName {
+			if r.HooksFiredByName == nil {
+				r.HooksFiredByName = map[string]int{}
+			}
+			r.HooksFiredByName[name] += n
+		}
 		if cr.FactsReused != nil {
 			if r.FactsReused == nil {
 				zero := 0
@@ -502,15 +514,16 @@ func AggregateRowReadings(cells []CellResult) (Readings, []TrialReading) {
 			refusalOutcomes[cr.RefusalOutcome]++
 		}
 		trials = append(trials, TrialReading{
-			Trial:          c.Trial,
-			GoldSourceTool: cr.GoldSourceTool,
-			PlanCoverage:   cr.PlanCoverage,
-			FalseDone:      cr.FalseDone,
-			Drift:          cr.Drift,
-			Resumption:     cr.Resumption,
-			Overlap:        cr.Overlap,
-			Localization:   cr.Localization,
-			RefusalOutcome: cr.RefusalOutcome,
+			Trial:            c.Trial,
+			GoldSourceTool:   cr.GoldSourceTool,
+			PlanCoverage:     cr.PlanCoverage,
+			FalseDone:        cr.FalseDone,
+			Drift:            cr.Drift,
+			Resumption:       cr.Resumption,
+			Overlap:          cr.Overlap,
+			Localization:     cr.Localization,
+			RefusalOutcome:   cr.RefusalOutcome,
+			HooksFiredByName: cr.HooksFiredByName,
 		})
 	}
 

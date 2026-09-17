@@ -114,6 +114,14 @@ type TrialReading struct {
 	// Readings.RefusalOutcome, preserved verbatim (the row's own
 	// RefusalOutcomes map only counts it).
 	RefusalOutcome string `json:"refusal_outcome,omitempty"`
+	// HooksFiredByName is this trial's own Readings.HooksFiredByName,
+	// preserved verbatim (wave n13, vs-pilot-5's second reading,
+	// "hooks_not_fired") — a per-trial, per-tool-class hook-firing
+	// breakdown, so a reading examining ONE trial's own instrument truth
+	// can see directly which tool classes a hook (PreToolUse in
+	// particular) actually fired for, e.g. "PreToolUse:Grep": 1 with no
+	// "PreToolUse:mcp__fathom__…" key at all.
+	HooksFiredByName map[string]int `json:"hooks_fired_by_name,omitempty"`
 }
 
 // GoldSourceNotMeasured is the gold_source_rate bucket for a cell whose

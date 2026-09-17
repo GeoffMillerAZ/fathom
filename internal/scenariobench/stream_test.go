@@ -200,6 +200,55 @@ func TestParseSessionStream_NoHookResponseLeavesHooksFiredNil(t *testing.T) {
 	}
 }
 
+// TestParseSessionStream_HooksFiredByName is wave n13's own proof: the
+// same "hooks-fired.jsonl" fixture's two hook_response events (each
+// already carrying its own real hook_name) must ALSO land on
+// SessionResult.HooksFiredByName, keyed by that full "Event:matcher"
+// string rather than the bare event name HooksFired uses.
+func TestParseSessionStream_HooksFiredByName(t *testing.T) {
+	r, err := ParseSessionStream(filepath.Join(streamsDir, "hooks-fired.jsonl"))
+	if err != nil {
+		t.Fatalf("ParseSessionStream: %v", err)
+	}
+	want := map[string]int{"SessionStart:startup": 1, "PostToolUse:Edit|Write|MultiEdit": 1}
+	if len(r.HooksFiredByName) != len(want) {
+		t.Fatalf("HooksFiredByName = %v, want %v", r.HooksFiredByName, want)
+	}
+	for name, n := range want {
+		if r.HooksFiredByName[name] != n {
+			t.Errorf("HooksFiredByName[%q] = %d, want %d", name, r.HooksFiredByName[name], n)
+		}
+	}
+}
+
+// TestParseSessionStream_HooksFiredByNameShowsMCPGap is H1-T06's own
+// defect, pinned as a regression: a session that calls two
+// mcp__fathom__* tools and one Grep call, where only Grep's PreToolUse
+// fires a hook_response, must show "PreToolUse:Grep": 1 in
+// HooksFiredByName with NO "PreToolUse:mcp__fathom__…" key at all — the
+// gap vs-pilot-5's second reading found, now directly visible rather
+// than hidden inside a same-looking "PreToolUse": 1 total.
+func TestParseSessionStream_HooksFiredByNameShowsMCPGap(t *testing.T) {
+	r, err := ParseSessionStream(filepath.Join(streamsDir, "hooks-fired-mcp-gap.jsonl"))
+	if err != nil {
+		t.Fatalf("ParseSessionStream: %v", err)
+	}
+	if r.HooksFiredByName["PreToolUse:Grep"] != 1 {
+		t.Errorf("HooksFiredByName[PreToolUse:Grep] = %d, want 1", r.HooksFiredByName["PreToolUse:Grep"])
+	}
+	for name := range r.HooksFiredByName {
+		if strings.Contains(name, "mcp__fathom__") {
+			t.Errorf("HooksFiredByName unexpectedly carries a PreToolUse entry for an mcp__fathom__ call: %q (fixture has none — this pins the gap, not a fix to the fixture)", name)
+		}
+	}
+	// The bare hook_event count (HooksFired) still shows only 1 PreToolUse
+	// fire in total — exactly the number that hid the gap before this field
+	// existed.
+	if r.HooksFired["PreToolUse"] != 1 {
+		t.Errorf("HooksFired[PreToolUse] = %d, want 1 (the pre-existing, coarser count)", r.HooksFired["PreToolUse"])
+	}
+}
+
 func TestParseSessionStream_MissingFile(t *testing.T) {
 	if _, err := ParseSessionStream(filepath.Join(streamsDir, "does-not-exist.jsonl")); err == nil {
 		t.Fatal("expected an error for a missing transcript")

@@ -1,0 +1,11 @@
+{"type":"system","subtype":"hook_response","hook_id":"h0","hook_name":"SessionStart:startup","hook_event":"SessionStart","output":"","stdout":"","stderr":"","exit_code":0,"outcome":"success","uuid":"u0","session_id":"s1"}
+{"type":"system","subtype":"init","mcp_servers":[{"name":"fathom","status":"connected"}],"tools":["Read","Grep","mcp__fathom__find_symbol","mcp__fathom__references"]}
+{"type":"assistant","message":{"content":[{"type":"tool_use","id":"tu_1","name":"mcp__fathom__find_symbol","input":{"name":"Foo"}}],"usage":{"input_tokens":5,"output_tokens":2,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}}
+{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tu_1","content":"foo.go:1"}]}}
+{"type":"assistant","message":{"content":[{"type":"tool_use","id":"tu_2","name":"mcp__fathom__references","input":{"symbol":"Foo"}}],"usage":{"input_tokens":5,"output_tokens":2,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}}
+{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tu_2","content":"no references"}]}}
+{"type":"assistant","message":{"content":[{"type":"tool_use","id":"tu_3","name":"Grep","input":{"pattern":"Foo"}}],"usage":{"input_tokens":5,"output_tokens":2,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}}
+{"type":"system","subtype":"hook_response","hook_id":"h1","hook_name":"PreToolUse:Grep","hook_event":"PreToolUse","output":"","stdout":"","stderr":"","exit_code":0,"outcome":"success","uuid":"u1","session_id":"s1"}
+{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tu_3","content":"foo.go:1:package foo"}]}}
+{"type":"system","subtype":"hook_response","hook_id":"h2","hook_name":"Stop","hook_event":"Stop","output":"","stdout":"","stderr":"","exit_code":0,"outcome":"success","uuid":"u2","session_id":"s1"}
+{"type":"result","is_error":false,"num_turns":3,"duration_ms":10,"total_cost_usd":0.001,"usage":{"input_tokens":15,"output_tokens":6}}

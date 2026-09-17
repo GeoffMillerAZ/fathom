@@ -399,6 +399,20 @@ type SessionResult struct {
 	// reasons other than obligations injection, so this is always <= the
 	// "PostToolUse" count, never a separate event class of its own.
 	HooksFired map[string]int `json:"hooks_fired,omitempty"`
+	// HooksFiredByName is HooksFired's own per-TOOL-CLASS breakdown (wave
+	// n13, vs-pilot-5's second reading, defect "hooks_not_fired"): keyed
+	// by the hook_response event's own "hook_name" field ("Event:matcher",
+	// e.g. "PreToolUse:Grep", "PreToolUse:mcp__fathom__find_symbol") —
+	// distinct from "hook_event", which only names the EVENT
+	// ("PreToolUse") and so cannot tell a reading whether the fired
+	// matcher actually covered the tool class in question. H1-T06's
+	// full-arm trials fired PreToolUse for their one Grep call but never
+	// for either of their two mcp__fathom__* calls — HooksFired alone
+	// (a plain "PreToolUse": 1 count) hid that gap completely; this field
+	// makes it directly visible ("PreToolUse:Grep": 1, with no
+	// "PreToolUse:mcp__fathom__…" key at all). Nil when no hook_response
+	// event carried a non-empty hook_name.
+	HooksFiredByName map[string]int `json:"hooks_fired_by_name,omitempty"`
 	// BudgetHit is true when the turn cap ended the session (Claude Code's
 	// error_max_turns): the designed hand-off, never counted as an error.
 	BudgetHit bool `json:"budget_hit,omitempty"`
@@ -619,6 +633,14 @@ type Readings struct {
 	// event name to count — the same aggregation ToolCalls gets
 	// (AggregateReadings).
 	HooksFired map[string]int `json:"hooks_fired,omitempty"`
+	// HooksFiredByName sums every session's own HooksFiredByName
+	// (SessionResult) — per-tool-class hook firing (wave n13, vs-pilot-5's
+	// second reading, "hooks_not_fired"), the same aggregation HooksFired
+	// itself gets (AggregateReadings/AggregateRowReadings), so a row-level
+	// reading can see WHICH tool classes a PreToolUse (or any other) hook
+	// actually fired for, not just how many times the bare event name
+	// fired in total.
+	HooksFiredByName map[string]int `json:"hooks_fired_by_name,omitempty"`
 	// SurfaceCalls counts, within ToolCalls, every call to a tool
 	// namespaced to the arm's own Surface (SurfaceCallCount) — 0 for a
 	// pure control (empty Surface) by definition, never "not measured".
