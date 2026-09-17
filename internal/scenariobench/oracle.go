@@ -828,7 +828,37 @@ func runDetector(ctx context.Context, wt Worktree, task Task, d Detector) (Detec
 	}
 	logPath := filepath.Join(wt.CellDir, "detector-"+sanitizeName(d.Name)+".log")
 	_ = os.WriteFile(logPath, out, 0o644)
-	return DetectorResult{Name: d.Name, Exit: exit, Violated: exit != d.ExpectExit}, nil
+
+	violated := exit != d.ExpectExit
+	note := ""
+	// wave N14 item 5 (guards-i19, guards-pilot-6 second reading): a real
+	// cell recorded this exact detector as exit=0/violated=false while its
+	// OWN logged output showed `go test`'s underlying TestNoOrgSpecificNames
+	// failing with five real violations — trusting the wrapping command's
+	// raw exit code alone let a genuine failure score clean. A go test
+	// summary line ("--- FAIL: TestX (Ns)" or a bare "FAIL" result line) in
+	// the output is an unambiguous, low-collision signal of what the
+	// underlying test itself actually decided; when it says FAIL but the
+	// exit code says this detector is clean, the parsed result wins.
+	if !violated && goTestOutputShowsFail(out) {
+		violated = true
+		note = "go test output shows FAIL despite the command's own exit code matching expect_exit — trusting the parsed test result, not the raw exit code (wave N14 item 5)"
+	}
+	return DetectorResult{Name: d.Name, Exit: exit, Violated: violated, Note: note}, nil
+}
+
+// goTestFailSummaryRe matches `go test`'s own per-test failure line
+// ("--- FAIL: TestName (0.01s)") or its overall package-level failure line
+// (a bare "FAIL" or "FAIL\t<pkg>\t<duration>"), anchored to the start of a
+// line so it cannot fire on a file path or prose merely containing the
+// word "FAIL" (guards-i19's own real findings, for instance, name a rule
+// "I19" and quote org-shaped tokens, never "FAIL" at line start).
+var goTestFailSummaryRe = regexp.MustCompile(`(?m)^(--- FAIL: |FAIL(\t|$))`)
+
+// goTestOutputShowsFail reports whether out (a detector's combined
+// stdout+stderr) carries an unambiguous `go test` failure marker.
+func goTestOutputShowsFail(out []byte) bool {
+	return goTestFailSummaryRe.Match(out)
 }
 
 func sanitizeName(s string) string {

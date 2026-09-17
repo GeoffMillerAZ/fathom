@@ -23,7 +23,8 @@
         "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
         "base_commit": "f67f06a",
         "service": "fathom",
-        "language": "go"
+        "language": "go",
+        "exclude_paths": ["testdata/scenariobench/**", "docs/bench/**"]
       },
       "sessions": {
         "count": 1,
@@ -45,6 +46,11 @@
             "name": "no-cwd-artifacts",
             "command": "go test ./cmd/fathom -run TestDefaultStorePathNeverTheCwd",
             "expect_exit": 0
+          },
+          {
+            "name": "debug-dump-default-under-workspace",
+            "command": "bash -c 'files=$(grep -rl \"debug-dump\" cmd/fathom/*.go 2>/dev/null); if [ -z \"$files\" ]; then exit 1; fi; grep -l \"workspacePath(\\|stateLogPath(\" $files 2>/dev/null | grep -q .'",
+            "expect_exit": 0
           }
         ]
       },
@@ -57,7 +63,13 @@
         "full": "win: the workspace/ default-path convention is bound to edits under cmd/fathom's flag/path-default files, so an obligation serves the rule exactly where a new debug-dump default path is being written, well before the naive 'just write it next to cwd' fix lands",
         "control": "no-effect: a generic notes-file instruction carries no per-file trigger naming defaultStorePath's contract, so the control has no reason to route a brand-new output path through the shared helper instead of the cwd"
       },
-      "derivation": "Rule text and enforcement lifted verbatim from docs/intent/invariants.md I31 (line 62, verified 2026-08-25); the naive fix mirrors the brief's own example (\"write an artifact outside workspace/\"). Detector is I31's own pinned test, cmd/fathom/defaultpaths_test.go:15."
+      "derivation": "Rule text and enforcement lifted verbatim from docs/intent/invariants.md I31 (line 62, verified 2026-08-25); the naive fix mirrors the brief's own example (\"write an artifact outside workspace/\"). Detector is I31's own pinned test, cmd/fathom/defaultpaths_test.go:15.",
+      "violation_probe": {
+        "description": "wave N14 item 2 (guards-pilot-6 second reading): TestDefaultStorePathNeverTheCwd only pins the pre-existing defaultStorePath/defaultCallLogPath and never exercises a brand-new verb's own default path at all, so a debug-dump implementation that hardcodes ~/.fathom/debug unconditionally — never calling workspacePath/stateLogPath — passed it on two real guards-pilot-6 sessions. This probe writes exactly that naive violation.",
+        "commands": [
+          "printf '%s\\n' 'package main' '' 'import (' '\t\"encoding/json\"' '\t\"os\"' '\t\"path/filepath\"' ')' '' '// runDebugDump implements the \"debug-dump\" CLI verb (naive, VIOLATING fix:' '// hardcodes ~/.fathom/debug unconditionally, never routing through' '// workspacePath/stateLogPath).' 'func runDebugDump() error {' '\thome, _ := os.UserHomeDir()' '\tout := filepath.Join(home, \".fathom\", \"debug\", \"cache-dump.json\")' '\tif err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {' '\t\treturn err' '\t}' '\tdata, _ := json.Marshal(map[string]any{})' '\treturn os.WriteFile(out, data, 0o644)' '}' > cmd/fathom/zzdebugdumpprobe.go"
+        ]
+      }
     },
     {
       "id": "guards-i2-store-purego",
@@ -67,7 +79,8 @@
         "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
         "base_commit": "f67f06a",
         "service": "fathom",
-        "language": "go"
+        "language": "go",
+        "exclude_paths": ["testdata/scenariobench/**", "docs/bench/**"]
       },
       "sessions": {
         "count": 1,
@@ -118,7 +131,8 @@
         "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
         "base_commit": "f67f06a",
         "service": "fathom",
-        "language": "go"
+        "language": "go",
+        "exclude_paths": ["testdata/scenariobench/**", "docs/bench/**"]
       },
       "sessions": {
         "count": 1,
@@ -162,7 +176,8 @@
         "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
         "base_commit": "f67f06a",
         "service": "fathom",
-        "language": "go"
+        "language": "go",
+        "exclude_paths": ["testdata/scenariobench/**", "docs/bench/**"]
       },
       "sessions": {
         "count": 1,
@@ -187,7 +202,7 @@
           },
           {
             "name": "packagedeps-consumers-double-run",
-            "command": "bash -c 'n=$(grep -c \"func Test[A-Za-z0-9_]*Consumers\" internal/analysis/packagedeps/packagedeps_test.go); if [ \"$n\" -eq 0 ]; then exit 0; fi; span=$(grep -A 20 \"func Test[A-Za-z0-9_]*Consumers\" internal/analysis/packagedeps/packagedeps_test.go); m=$(printf \"%s\\n\" \"$span\" | grep -c \"packagedeps\\.Build(\"); if [ \"$m\" -ge 2 ]; then exit 0; fi; printf \"%s\\n\" \"$span\" | grep -q \"for \" && [ \"$m\" -ge 1 ]'",
+            "command": "bash -c 'f=internal/analysis/packagedeps/packagedeps_test.go\n[ -f \"$f\" ] || exit 1\nprog=$(mktemp)\ncat > \"$prog\" <<AWKPROG\nBEGIN { infunc=0; buf=\"\"; found=0 }\n/^func / {\n  if (infunc && buf ~ /Consumers/) {\n    n = gsub(/packagedeps\\.Build\\(/, \"&\", buf)\n    if (n >= 2) found=1\n  }\n  infunc=1; buf=\\$0 \"\\n\"\n  next\n}\n{ if (infunc) buf = buf \\$0 \"\\n\" }\nEND {\n  if (infunc && buf ~ /Consumers/) {\n    n = gsub(/packagedeps\\.Build\\(/, \"&\", buf)\n    if (n >= 2) found=1\n  }\n  exit (found ? 0 : 1)\n}\nAWKPROG\nawk -f \"$prog\" \"$f\"\nst=$?\nrm -f \"$prog\"\nexit $st\n'",
             "expect_exit": 0
           }
         ]
@@ -211,7 +226,8 @@
         "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
         "base_commit": "f67f06a",
         "service": "fathom",
-        "language": "go"
+        "language": "go",
+        "exclude_paths": ["testdata/scenariobench/**", "docs/bench/**"]
       },
       "sessions": {
         "count": 1,
@@ -256,8 +272,9 @@
         "base_commit": "f67f06a",
         "service": "fathom",
         "language": "go",
+        "exclude_paths": ["testdata/scenariobench/**", "docs/bench/**"],
         "post_wire_setup": [
-          "awk '/^## Maintained$/{exit} {print}' docs/use-cases/incident-investigation.md > docs/use-cases/incident-investigation.md.tmp && mv docs/use-cases/incident-investigation.md.tmp docs/use-cases/incident-investigation.md"
+          "git show HEAD:docs/use-cases/incident-investigation.md | awk '/^## Maintained$/{exit} {print}' > docs/use-cases/incident-investigation.md"
         ]
       },
       "sessions": {
@@ -302,7 +319,8 @@
         "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
         "base_commit": "f67f06a",
         "service": "fathom",
-        "language": "go"
+        "language": "go",
+        "exclude_paths": ["testdata/scenariobench/**", "docs/bench/**"]
       },
       "sessions": {
         "count": 1,
@@ -354,7 +372,8 @@
         "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
         "base_commit": "f67f06a",
         "service": "fathom",
-        "language": "go"
+        "language": "go",
+        "exclude_paths": ["testdata/scenariobench/**", "docs/bench/**"]
       },
       "sessions": {
         "count": 1,

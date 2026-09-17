@@ -295,34 +295,41 @@ comments, exactly as `bench-ledger-render.sh` does today, so this slot is
 where a reader gets the plain-language reading a machine render cannot make:
 which claims are actually load-bearing right now, and which are not.
 
-As of 2026-09-17 (O62–O68): the lookup pilot was rerun on the repaired
-instrument with tool-neutral prompts (vs-pilot-5, 140 cells, 3 lost to the
-harness's own leak guard) and read transcript by transcript before it was
-believed. The ledger as filed put grep first (22 of 28) and fathom second
-(18); the reading found 22 cells the scorer had failed for correct answers
-and none it had passed wrongly. After those voids grep and serena stand at
-25 of 28, fathom at 24, gopls 20 of 27 and graphify 20 of 26, with fathom
-the cheapest arm per pass ($0.07 against $0.085 for grep and $0.105 for
-serena). fathom's own tools produced the answer in 13 of its 24 passes; the
-verify-gate task (H1-T04) remains the one question only the index answered
-cleanly. The freshness task went 2 of 2 on every arm, all of them by live
-grep with the competitors' own tools never called, so with the graphify
-watch probe at 4 of 5 the M7 kill clause fired: freshness leaves
-positioning. Governance was rerun as guards-pilot-6 (32 cells, nothing
-lost) and read the same way: after five voids control finished 8 of 14
-clean with 6 violations and fathom's arm 6 of 13 clean with 7 violations at
-1.6 times the tokens per clean success — a loss — and the reading found the
-cause: the compiled obligations layer had stopped at 14 of 60 sections and
-served only root boilerplate, never the rule governing the file, on 6 of 8
-tasks. That is a product defect (obligations must fall back to the raw
-nearest guide, ADR-037, wave O1), not evidence that governance at the edit
-cannot help, and it is measured again after the fix. On this evidence
-fathom is level with grep on lookups at lower cost, ahead only on
-verification, and behind on governance until the fallback lands; the
-change-task corpus stands as measured (reuse-pilot-3: 2 of 8 on both arms
-at 1.7 times the tokens). reuse-pilot-4 and the Long Code Arena
-bug-localization run (40 public tasks, 240 sessions) were still filing when
-this was written.
+As of 2026-09-14 (O53): the first clean-room lookup pilot with every tool
+present, vs-pilot-3, is filed in full (70 rows, nothing lost) and then read
+transcript by transcript before it was believed. The ledger shows fathom's
+arm 26 of 28 at $1.57 against gopls 24 ($2.83), grep 23 ($2.67), graphify
+22 ($3.11) and serena 21 ($3.08). The second reading found the instrument
+decided most of that gap: the competitor arms' worktrees had lost the
+repository's own CLAUDE.md, the answer key sat inside every worktree, the
+grep baseline could reach the live daemon, the oracle was a substring
+check, and the competitor stanzas told the model not to use their tools.
+After the conservative correction fathom, gopls and grep tie at 88
+percent; what survives is roughly half the cost per pass and one clean
+mechanism win, `verify_plan` on the verify-gate task. The earlier
+strengths-matrix rows (O41) remain voided. No lookup claim is proven until
+vs-pilot-4 runs on the repaired instrument (waves N1-N3); the scenario
+pilots on the guards and reuse corpora, whose control arms were never
+altered, stand as measured. reuse-pilot-3 (four change tasks on a public
+Go CLI, 16 cells, nothing lost) is a second null: fathom's arm 2 of 8
+against control 2 of 8 at 1.7 times the tokens, M5-1 failing on cost; its
+second reading (O55) found no fathom tool changing an outcome, the gate
+bypassed by a worker writing `skip_test` into its own row (O56), and the
+subject clone carrying the merged fix in its history. On this evidence
+fathom does not help a capable model make a change on a repository it has
+never seen, and costs more; the case for the tools rests on the verify
+gate, on governance that bites, and on the answers a type-checked index
+gives that grep cannot, not on lookup or change speed. guards-pilot-5
+(eight governance-bound change tasks on this repository, 32 cells) is the
+third null on the ledger, 8 of 16 on both arms at level cost; its second
+reading (O57) found one wired pass written by an orphaned agent, twelve
+trials that scored a correct refusal as a failure, a wired failure caused
+by the arm's own stanza refresh, and served obligations that never named
+the governing rule before the edit in any wired trial. On adjudicable
+trials fathom's arm violated a rule once in nine and control three times
+in eleven, at 1.4 times the tokens per clean success. Governance at the
+edit has not yet been measured on a fair instrument; waves N6 and N7
+repair the driver and the product before the next run.
 
 `pass` and `fail` are both measured results and both belong in the ledger; a
 recorded refutation is the instrument working. `indeterminate` is different —
@@ -757,10 +764,11 @@ On guards-pilot-5, fathom's arm beat control on success (7 v 6) at 0.756× the t
 gold source: none earned 7 of 7 passes.
 Voided: 7 row(s) carry `instrument_defect` and are excluded from the numbers above — guards-i16-raw-cp-deploy/control, guards-i16-raw-cp-deploy/full, guards-i2-store-purego/control, guards-i2-store-purego/full, guards-i28-duckdb-path/control, guards-i28-duckdb-path/full, guards-i31-workspace-artifact/full.
 
-**guards-pilot-6** — full vs control: success 7/16 vs 9/16, tokens 1.203×, cost 1.144×.
-Surface calls: control=0, full=90.
-On guards-pilot-6, fathom's arm lost to control on success (7 v 9) at 1.203× the tokens; the tools were called 90 time(s). Registered criterion M1-1: fail (treatment success rate 0.438 is below control's 0.562).
-gold source: none earned 7 of 7 passes.
+**guards-pilot-6** — full vs control: success 6/13 vs 8/14, tokens 1.181×, cost 1.134×.
+Surface calls: control=0, full=81.
+On guards-pilot-6, fathom's arm lost to control on success (6 v 8) at 1.181× the tokens; the tools were called 81 time(s). Registered criterion M1-1: fail (treatment success rate 0.462 is below control's 0.571).
+gold source: none earned 6 of 6 passes.
+Voided: 1 row(s) carry `instrument_defect` and are excluded from the numbers above — guards-i16-raw-cp-deploy/full.
 
 **public-pilot-2**: every row is voided — nothing sound to measure.
 Voided: 8 row(s) carry `instrument_defect` and are excluded from the numbers above — SB-cli__cli-10009/control, SB-cli__cli-10009/full, SB-cli__cli-10016/control, SB-cli__cli-10016/full, SB-cli__cli-10043/control, SB-cli__cli-10043/full, SB-cli__cli-10072/control, SB-cli__cli-10072/full.
@@ -790,10 +798,10 @@ On vs-pilot-3, fathom's arm beat grep on success (24 v 23) at 0.752× the tokens
 gold source: none earned 6 of 24 passes.
 Voided: 7 row(s) carry `instrument_defect` and are excluded from the numbers above — H1-T05/full, H1-T08/gopls, H1-T08/graphify, H1-T08/serena, H1-T12/gopls, H1-T12/serena, H1-T13/gopls.
 
-**vs-pilot-5** — full vs grep: success 24/28 vs 25/28, tokens 1.032×, cost 0.792×.
+**vs-pilot-5** — full vs grep: success 18/28 vs 22/28, tokens 1.032×, cost 0.792×.
 Surface calls: full=45, gopls=8, graphify=0, grep=0, serena=8.
-On vs-pilot-5, fathom's arm lost to grep on success (24 v 25) at 1.032× the tokens; the tools were called 45 time(s). Registered criterion M6-1: fail (treatment success rate 0.857 is below control's 0.893).
-gold source: Read earned 12 of 24 passes.
+On vs-pilot-5, fathom's arm lost to grep on success (18 v 22) at 1.032× the tokens; the tools were called 45 time(s). Registered criterion M6-1: fail (treatment success rate 0.643 is below control's 0.786).
+gold source: Read earned 8 of 18 passes.
 
 
 | run | commit | task | category | arm | model | trials | successes | prediction | surface calls | hooks fired | rule served | violation | overlap ratio | facts reused | resumption | false done | plan coverage | cost | notes |
@@ -1060,31 +1068,31 @@ gold source: Read earned 12 of 24 passes.
 | guards-pilot-5 | c36bd4f | guards-i31-workspace-artifact | governance_bound | full | sonnet | 2 | 1 | win: the workspace/ default-path convention is bound to edits under cmd/fathom's flag/path-default files, so an obligation serves the rule exactly where a new debug-dump default path is being written, well before the naive 'just write it next to cwd' fix lands | 8 | 223 | – | 1/2 | – | – | – | – | – | 5.8290 | VOIDED (O57: the passing code (t2) was written by an orphaned agent of a SIGTERMed driver invocation in the shared worktree) |
 | guards-pilot-5 | c36bd4f | guards-i36-usecase-maintained-line | governance_bound | control | sonnet | 2 | 2 | no-effect: a prompt that explicitly frames the contract line as optional boilerplate, with no obligation naming it, leaves the control arm with every reason to leave it out | 0 | – | – | 0/2 | – | – | – | – | – | 1.6519 |  |
 | guards-pilot-5 | c36bd4f | guards-i36-usecase-maintained-line | governance_bound | full | sonnet | 2 | 2 | win: docs/CLAUDE.md's use-case upkeep contract is a doc-shaped obligation bound to edits under docs/use-cases/, which fires on a brand-new file there even though the prompt itself invites skipping the contract line | 12 | 64 | – | 0/2 | – | – | – | – | – | 1.3353 |  |
-| vs-pilot-5 | a023dc7 | FRESH-M7-01 | freshness | full | sonnet | 2 | 2 | wins: find_callers/references on IsPlumbingTool, called after the wired arm's post-wire re-ingest (O45 item 4), returns all four callers, including the new one not among the three the prompt names; the index reflects the edit because the daemon re-ingests after post_wire_setup runs. | 3 | 10 | – | – | – | – | – | – | – | 0.1103 |  |
+| vs-pilot-5 | a023dc7 | FRESH-M7-01 | freshness | full | sonnet | 2 | 1 | wins: find_callers/references on IsPlumbingTool, called after the wired arm's post-wire re-ingest (O45 item 4), returns all four callers, including the new one not among the three the prompt names; the index reflects the edit because the daemon re-ingests after post_wire_setup runs. | 3 | 10 | – | – | – | – | – | – | – | 0.1103 |  |
 | vs-pilot-5 | a023dc7 | FRESH-M7-01 | freshness | gopls | sonnet | 2 | 2 | predicted ties fathom: same live-query mechanism as serena (go_symbol_references re-analyzes on demand, so the new call site is visible among the four the moment it exists on disk). | 0 (unused) | – | – | – | – | – | – | – | 1.00 | 0.3155 |  |
 | vs-pilot-5 | a023dc7 | FRESH-M7-01 | freshness | graphify | sonnet | 2 | 2 | predicted loses: graph.json is built during this arm's own setup, BEFORE post_wire_setup adds the new call site; without a subsequent --update (not part of this arm's setup), get_neighbors/shortest_path over IsPlumbingTool's node returns only the three pre-existing edges (AggregateTraffic and the two tests), never the new one. | 0 (unused) | – | – | – | – | – | – | – | 1.00 | 0.2137 |  |
 | vs-pilot-5 | a023dc7 | FRESH-M7-01 | freshness | grep | sonnet | 2 | 2 | predicted ties fathom: `grep -rn "IsPlumbingTool(" .` finds all four real call sites directly from the current on-disk tree (plus two string-literal false positives inside Errorf/Error messages a careful reader discards) — a live grep is never disadvantaged by artifact staleness, only by not being told which file to look in, which this task does not do either. | 0 | – | – | – | – | – | – | – | 0.00 | 0.2563 |  |
 | vs-pilot-5 | a023dc7 | FRESH-M7-01 | freshness | serena | sonnet | 2 | 2 | predicted ties fathom: find_referencing_symbols re-asks gopls against the file on disk on every call, so a query issued after the setup step sees all four callers, including the new one — no precomputed artifact to go stale. | 0 (unused) | – | – | – | – | – | – | – | 0.50 | 0.2707 |  |
-| vs-pilot-5 | a023dc7 | H1-T01 | obligations | full | sonnet | 2 | 2 | wins: answered directly by the obligations tool's compiled rule for this file, which cites internal/CLAUDE.md by line — no competitor tool reads governance docs at all. | 1 | 7 | – | – | – | – | – | – | – | 0.1376 |  |
-| vs-pilot-5 | a023dc7 | H1-T01 | obligations | gopls | sonnet | 2 | 1 | ties grep, below fathom: go_symbol_references answers code structure, not documented conventions. | 0 (unused) | – | – | – | – | – | – | – | – | 0.2885 |  |
+| vs-pilot-5 | a023dc7 | H1-T01 | obligations | full | sonnet | 2 | 1 | wins: answered directly by the obligations tool's compiled rule for this file, which cites internal/CLAUDE.md by line — no competitor tool reads governance docs at all. | 1 | 7 | – | – | – | – | – | – | – | 0.1376 |  |
+| vs-pilot-5 | a023dc7 | H1-T01 | obligations | gopls | sonnet | 2 | 0 | ties grep, below fathom: go_symbol_references answers code structure, not documented conventions. | 0 (unused) | – | – | – | – | – | – | – | – | 0.2885 |  |
 | vs-pilot-5 | a023dc7 | H1-T01 | obligations | graphify | sonnet | 2 | 0 | ties grep, below fathom: query_graph/get_node answer code structure, not documented conventions. | 0 (unused) | – | – | – | – | – | – | – | – | 0.6224 |  |
 | vs-pilot-5 | a023dc7 | H1-T01 | obligations | grep | sonnet | 2 | 1 | below fathom: the rule is on disk in internal/CLAUDE.md and grep-findable given the right file, but nothing points the agent at it directly the way obligations() does. | 0 | – | – | – | – | – | – | – | – | 0.2422 |  |
 | vs-pilot-5 | a023dc7 | H1-T01 | obligations | serena | sonnet | 2 | 2 | ties grep, below fathom: find_symbol/find_referencing_symbols answer code structure, not documented conventions. | 0 (unused) | – | – | – | – | – | – | – | – | 0.3559 |  |
-| vs-pilot-5 | a023dc7 | H1-T02 | obligations | full | sonnet | 2 | 2 | wins: answered directly by the obligations tool's compiled rule for this file, citing ADR.md#L635-L636 — no competitor tool reads decision records at all. | 6 | 10 | – | – | – | – | – | – | – | 0.1032 |  |
+| vs-pilot-5 | a023dc7 | H1-T02 | obligations | full | sonnet | 2 | 1 | wins: answered directly by the obligations tool's compiled rule for this file, citing ADR.md#L635-L636 — no competitor tool reads decision records at all. | 6 | 10 | – | – | – | – | – | – | – | 0.1032 |  |
 | vs-pilot-5 | a023dc7 | H1-T02 | obligations | gopls | sonnet | 2 | 2 | ties grep, below fathom: no tool surface for a decision-record rule. | 1 | – | – | – | – | – | – | – | – | 0.1409 |  |
-| vs-pilot-5 | a023dc7 | H1-T02 | obligations | graphify | sonnet | 2 | 2 | ties grep, below fathom: no tool surface for a decision-record rule. | 0 (unused) | – | – | – | – | – | – | – | – | 0.2184 |  |
+| vs-pilot-5 | a023dc7 | H1-T02 | obligations | graphify | sonnet | 2 | 1 | ties grep, below fathom: no tool surface for a decision-record rule. | 0 (unused) | – | – | – | – | – | – | – | – | 0.2184 |  |
 | vs-pilot-5 | a023dc7 | H1-T02 | obligations | grep | sonnet | 2 | 2 | below fathom: the rule is on disk in ADR.md and grep-findable given the right section, but nothing points the agent at ADR-021 directly. | 0 | – | – | – | – | – | – | – | – | 0.2970 |  |
-| vs-pilot-5 | a023dc7 | H1-T02 | obligations | serena | sonnet | 2 | 2 | ties grep, below fathom: no tool surface for a decision-record rule. | 1 | – | – | – | – | – | – | – | – | 0.2047 |  |
+| vs-pilot-5 | a023dc7 | H1-T02 | obligations | serena | sonnet | 2 | 1 | ties grep, below fathom: no tool surface for a decision-record rule. | 1 | – | – | – | – | – | – | – | – | 0.2047 |  |
 | vs-pilot-5 | a023dc7 | H1-T03 | verify | full | sonnet | 2 | 2 | wins: find_symbol's own record of verifyViaHTTP plus find_callers/references over run() and cmdVerify surfaces the 5 --url-passing tests directly, without reading the whole file. | 0 (unused) | 13 | – | – | – | – | – | – | – | 0.0940 |  |
 | vs-pilot-5 | a023dc7 | H1-T03 | verify | gopls | sonnet | 2 | 2 | ties grep, below fathom: go_symbol_references on verifyViaHTTP finds the same candidates — no edge over reading the file. | 0 (unused) | – | – | – | – | – | – | – | – | 0.1510 |  |
 | vs-pilot-5 | a023dc7 | H1-T03 | verify | graphify | sonnet | 2 | 2 | ties grep, below fathom: its calls-relation graph could in principle surface verifyViaHTTP's callers, but this arm's tool list here is limited the same way serena/gopls's is, so no advantage over reading verify_test.go directly is predicted. | 0 (unused) | – | – | – | – | – | – | – | – | 0.2769 |  |
 | vs-pilot-5 | a023dc7 | H1-T03 | verify | grep | sonnet | 2 | 2 | near-tie with fathom: `grep -n -- "--url" cmd/fathom/verify_test.go` finds all 5 directly — a distinctive, grep-friendly flag name. | 0 | – | – | – | – | – | – | – | – | 0.2006 |  |
 | vs-pilot-5 | a023dc7 | H1-T03 | verify | serena | sonnet | 2 | 2 | ties grep, below fathom: find_referencing_symbols on verifyViaHTTP finds the same 5 candidates a direct read does — no edge over reading the file. | 0 (unused) | – | – | – | – | – | – | – | – | 0.2715 |  |
-| vs-pilot-5 | a023dc7 | H1-T04 | verify | full | sonnet | 2 | 2 | wins outright: verify_plan is a fathom-exclusive tool that answers this in one call, including the gate's own exact phrase. | 3 | 6 | – | – | – | – | – | – | – | 0.0589 |  |
+| vs-pilot-5 | a023dc7 | H1-T04 | verify | full | sonnet | 2 | 1 | wins outright: verify_plan is a fathom-exclusive tool that answers this in one call, including the gate's own exact phrase. | 3 | 6 | – | – | – | – | – | – | – | 0.0589 |  |
 | vs-pilot-5 | a023dc7 | H1-T04 | verify | gopls | sonnet | 2 | 0 | loses, same reason as graphify. | 6 | – | – | – | – | – | – | – | – | 0.2182 |  |
 | vs-pilot-5 | a023dc7 | H1-T04 | verify | graphify | sonnet | 2 | 1 | loses: no verify-gate tool exists; the exact failure phrase ('not found') lives in internal/verify/verify.go and is only findable by reading fathom's own source, an indirect path. | 0 (unused) | – | – | – | – | – | – | – | – | 0.1143 |  |
 | vs-pilot-5 | a023dc7 | H1-T04 | verify | grep | sonnet | 2 | 2 | loses: can grep GetGovernedClaimByRepro to confirm it does not exist, but the exact gate phrasing requires reading internal/verify/verify.go, an indirect path competitors share equally. | 0 | – | – | – | – | – | – | – | – | 0.0932 |  |
-| vs-pilot-5 | a023dc7 | H1-T04 | verify | serena | sonnet | 2 | 1 | loses, same reason as graphify. | 6 | – | – | – | – | – | – | – | – | 0.1078 |  |
+| vs-pilot-5 | a023dc7 | H1-T04 | verify | serena | sonnet | 2 | 0 | loses, same reason as graphify. | 6 | – | – | – | – | – | – | – | – | 0.1078 |  |
 | vs-pilot-5 | a023dc7 | H1-T05 | blast_radius | full | sonnet | 2 | 0 | wins: blast_radius / find_callers surfaces the 2-hop caller directly in one call. | 6 | 6 | – | – | – | – | – | – | – | 0.0703 |  |
 | vs-pilot-5 | a023dc7 | H1-T05 | blast_radius | gopls | sonnet | 1 | 1 | plausible tie with fathom: go_symbol_references chained twice reaches the same 2-hop caller — single-language references is its home turf. | 0 (unused) | – | – | – | – | – | – | – | – | 0.0394 |  |
 | vs-pilot-5 | a023dc7 | H1-T05 | blast_radius | graphify | sonnet | 1 | 1 | plausible tie with fathom: a direct static calls-relation edge two hops out is exactly what its graph encodes, reachable via get_neighbors/shortest_path chained twice. | 0 (unused) | – | – | – | – | – | – | – | – | 0.0587 |  |
@@ -1095,14 +1103,14 @@ gold source: Read earned 12 of 24 passes.
 | vs-pilot-5 | a023dc7 | H1-T06 | blast_radius | graphify | sonnet | 2 | 2 | predicted loses: its tree-sitter extraction has no type-checker, so implicit structural interface satisfaction (Go has no 'implements' keyword) is outside what its calls/references/method relations can encode reliably. | 0 (unused) | – | – | – | – | – | – | – | – | 0.0856 |  |
 | vs-pilot-5 | a023dc7 | H1-T06 | blast_radius | grep | sonnet | 2 | 2 | below fathom/serena: a textual match on the method name+signature risks both false positives (an unrelated same-named method elsewhere) and false negatives (a differently formatted signature), with no type-checking to disambiguate. | 0 | – | – | – | – | – | – | – | – | 0.0867 |  |
 | vs-pilot-5 | a023dc7 | H1-T06 | blast_radius | serena | sonnet | 2 | 2 | plausible tie with fathom: find_implementations is backed by gopls's real type-checker, which resolves structural interface satisfaction directly — an LSP's forte. | 0 (unused) | – | – | – | – | – | – | – | – | 0.0466 |  |
-| vs-pilot-5 | a023dc7 | H1-T07 | claim_provenance | full | sonnet | 2 | 1 | wins: the obligations tool's compiled rule for this file names the exact citation directly. | 10 | 18 | – | – | – | – | – | – | – | 0.2918 |  |
-| vs-pilot-5 | a023dc7 | H1-T07 | claim_provenance | gopls | sonnet | 2 | 1 | ties grep, below fathom: no tool surface for decision-record provenance. | 0 (unused) | – | – | – | – | – | – | – | – | 0.2206 |  |
-| vs-pilot-5 | a023dc7 | H1-T07 | claim_provenance | graphify | sonnet | 1 | 1 | ties grep, below fathom: no tool surface for decision-record provenance. | 0 (unused) | – | – | – | – | – | – | – | – | 0.1987 |  |
-| vs-pilot-5 | a023dc7 | H1-T07 | claim_provenance | grep | sonnet | 2 | 2 | below fathom: ADR.md is long; finding the exact line without a citation to start from is a real search cost every non-fathom arm shares equally. | 0 | – | – | – | – | – | – | – | – | 0.1020 |  |
-| vs-pilot-5 | a023dc7 | H1-T07 | claim_provenance | serena | sonnet | 2 | 2 | ties grep, below fathom: no tool surface for decision-record provenance. | 0 (unused) | – | – | – | – | – | – | – | – | 0.3068 |  |
+| vs-pilot-5 | a023dc7 | H1-T07 | claim_provenance | full | sonnet | 2 | 0 | wins: the obligations tool's compiled rule for this file names the exact citation directly. | 10 | 18 | – | – | – | – | – | – | – | 0.2918 |  |
+| vs-pilot-5 | a023dc7 | H1-T07 | claim_provenance | gopls | sonnet | 2 | 0 | ties grep, below fathom: no tool surface for decision-record provenance. | 0 (unused) | – | – | – | – | – | – | – | – | 0.2206 |  |
+| vs-pilot-5 | a023dc7 | H1-T07 | claim_provenance | graphify | sonnet | 1 | 0 | ties grep, below fathom: no tool surface for decision-record provenance. | 0 (unused) | – | – | – | – | – | – | – | – | 0.1987 |  |
+| vs-pilot-5 | a023dc7 | H1-T07 | claim_provenance | grep | sonnet | 2 | 0 | below fathom: ADR.md is long; finding the exact line without a citation to start from is a real search cost every non-fathom arm shares equally. | 0 | – | – | – | – | – | – | – | – | 0.1020 |  |
+| vs-pilot-5 | a023dc7 | H1-T07 | claim_provenance | serena | sonnet | 2 | 0 | ties grep, below fathom: no tool surface for decision-record provenance. | 0 (unused) | – | – | – | – | – | – | – | – | 0.3068 |  |
 | vs-pilot-5 | a023dc7 | H1-T08 | claim_provenance | full | sonnet | 2 | 2 | wins: the obligations tool's compiled rule for the root CLAUDE.md names the exact citation directly. | 8 | 10 | – | – | – | – | – | – | – | 0.1180 |  |
 | vs-pilot-5 | a023dc7 | H1-T08 | claim_provenance | gopls | sonnet | 2 | 1 | ties grep, below fathom: no tool surface for a documented convention's citation. | 0 (unused) | – | – | – | – | – | – | – | – | 0.1714 |  |
-| vs-pilot-5 | a023dc7 | H1-T08 | claim_provenance | graphify | sonnet | 2 | 1 | ties grep, below fathom: no tool surface for a documented convention's citation. | 0 (unused) | – | – | – | – | – | – | – | – | 0.1441 |  |
+| vs-pilot-5 | a023dc7 | H1-T08 | claim_provenance | graphify | sonnet | 2 | 0 | ties grep, below fathom: no tool surface for a documented convention's citation. | 0 (unused) | – | – | – | – | – | – | – | – | 0.1441 |  |
 | vs-pilot-5 | a023dc7 | H1-T08 | claim_provenance | grep | sonnet | 2 | 2 | below fathom only in directness: CLAUDE.md is short enough that a full read finds the workspace/ row readily; predicted a near-tie with the competitor arms and slightly below fathom. | 0 | – | – | – | – | – | – | – | – | 0.2073 |  |
 | vs-pilot-5 | a023dc7 | H1-T08 | claim_provenance | serena | sonnet | 2 | 1 | ties grep, below fathom: no tool surface for a documented convention's citation. | 0 (unused) | – | – | – | – | – | – | – | – | 0.3121 |  |
 | vs-pilot-5 | a023dc7 | H1-T09 | concern_search | full | sonnet | 2 | 2 | wins in directness: query_symbols' concern ranking surfaces BackendForPath among its top candidates, though its own source notes the ranking is approximate. | 2 | 10 | – | – | – | – | – | – | – | 0.0831 |  |
@@ -1116,34 +1124,34 @@ gold source: Read earned 12 of 24 passes.
 | vs-pilot-5 | a023dc7 | H1-T10 | concern_search | grep | sonnet | 2 | 2 | near-tie with fathom: `grep -n '57KB' internal/mcp/*.go` (or the doc comment's own distinctive wording) finds the exact incident directly. | 0 | – | – | – | – | – | – | – | – | 0.0947 |  |
 | vs-pilot-5 | a023dc7 | H1-T10 | concern_search | serena | sonnet | 2 | 2 | ties grep, below fathom: no concern-scoped ranking. | 0 (unused) | – | – | – | – | – | – | – | – | 0.0592 |  |
 | vs-pilot-5 | a023dc7 | H1-T11 | contradiction | full | sonnet | 2 | 2 | no-effect: pure prose read-and-compare over already-open files; fathom's contradiction_scan operates over ingested symbol observations, not prose, so no fathom tool call is expected to out-perform a careful read here (the task's own honest self-assessment, tasks-home.json id H1-T11). | 2 | 30 | – | – | – | – | – | – | – | 0.2385 |  |
-| vs-pilot-5 | a023dc7 | H1-T11 | contradiction | gopls | sonnet | 2 | 2 | no-effect: same reason. | 0 (unused) | – | – | – | – | – | – | – | – | 0.2397 |  |
-| vs-pilot-5 | a023dc7 | H1-T11 | contradiction | graphify | sonnet | 2 | 2 | no-effect: same reason — a doc-prose contradiction is outside every arm's special tool. | 0 (unused) | – | – | – | – | – | – | – | – | 0.1926 |  |
-| vs-pilot-5 | a023dc7 | H1-T11 | contradiction | grep | sonnet | 2 | 2 | no-effect: reading CLAUDE.md and docs/guides/fleet-index.md directly is exactly as effective as any other arm's path here. | 0 | – | – | – | – | – | – | – | – | 0.1764 |  |
-| vs-pilot-5 | a023dc7 | H1-T11 | contradiction | serena | sonnet | 2 | 2 | no-effect: same reason. | 0 (unused) | – | – | – | – | – | – | – | – | 0.2232 |  |
+| vs-pilot-5 | a023dc7 | H1-T11 | contradiction | gopls | sonnet | 2 | 1 | no-effect: same reason. | 0 (unused) | – | – | – | – | – | – | – | – | 0.2397 |  |
+| vs-pilot-5 | a023dc7 | H1-T11 | contradiction | graphify | sonnet | 2 | 0 | no-effect: same reason — a doc-prose contradiction is outside every arm's special tool. | 0 (unused) | – | – | – | – | – | – | – | – | 0.1926 |  |
+| vs-pilot-5 | a023dc7 | H1-T11 | contradiction | grep | sonnet | 2 | 1 | no-effect: reading CLAUDE.md and docs/guides/fleet-index.md directly is exactly as effective as any other arm's path here. | 0 | – | – | – | – | – | – | – | – | 0.1764 |  |
+| vs-pilot-5 | a023dc7 | H1-T11 | contradiction | serena | sonnet | 2 | 1 | no-effect: same reason. | 0 (unused) | – | – | – | – | – | – | – | – | 0.2232 |  |
 | vs-pilot-5 | a023dc7 | H1-T12 | staleness | full | sonnet | 2 | 2 | wins in directness: staleness_report states the verdict in one call; (b) still needs a read of the current CLAUDE.md to find where the text moved to. | 0 (unused) | 8 | – | – | – | – | – | – | – | 0.0681 |  |
 | vs-pilot-5 | a023dc7 | H1-T12 | staleness | gopls | sonnet | 2 | 2 | below fathom, plausible partial credit — same reasoning as graphify. | 0 (unused) | – | – | – | – | – | – | – | – | 0.0790 |  |
 | vs-pilot-5 | a023dc7 | H1-T12 | staleness | graphify | sonnet | 2 | 2 | below fathom, plausible partial credit: the prompt supplies the historical citation, so any arm can check CLAUDE.md#L83-L84 against the rule's wording by reading it directly and answer (a) by comparison; no tool surface gives an edge on (b). | 0 (unused) | – | – | – | – | – | – | – | – | 0.0901 |  |
 | vs-pilot-5 | a023dc7 | H1-T12 | staleness | grep | sonnet | 2 | 2 | below fathom, plausible partial credit: the prompt hands every arm the historical citation, so a direct read of CLAUDE.md#L83-L84 versus the rule's own wording answers (a); grep for the rule's distinctive phrase answers (b). | 0 | – | – | – | – | – | – | – | – | 0.0727 |  |
 | vs-pilot-5 | a023dc7 | H1-T12 | staleness | serena | sonnet | 2 | 2 | below fathom, plausible partial credit — same reasoning as graphify. | 0 (unused) | – | – | – | – | – | – | – | – | 0.0825 |  |
-| vs-pilot-5 | a023dc7 | H1-T13 | staleness | full | sonnet | 2 | 1 | wins in directness: staleness_report states the verdict in one call. | 0 (unused) | 8 | – | – | – | – | – | – | – | 0.1427 |  |
+| vs-pilot-5 | a023dc7 | H1-T13 | staleness | full | sonnet | 2 | 0 | wins in directness: staleness_report states the verdict in one call. | 0 (unused) | 8 | – | – | – | – | – | – | – | 0.1427 |  |
 | vs-pilot-5 | a023dc7 | H1-T13 | staleness | gopls | sonnet | 2 | 0 | below fathom, plausible partial credit — same reasoning as graphify. | 0 (unused) | – | – | – | – | – | – | – | – | 0.0766 |  |
 | vs-pilot-5 | a023dc7 | H1-T13 | staleness | graphify | sonnet | 2 | 0 | below fathom, plausible partial credit: the prompt supplies the historical citation, so a direct read of ADR.md#L158-L159 versus the rule's wording answers the verdict; finding where the text moved to (ADR.md:176) is a plain text search available to every arm. | 0 (unused) | – | – | – | – | – | – | – | – | 0.0693 |  |
 | vs-pilot-5 | a023dc7 | H1-T13 | staleness | grep | sonnet | 2 | 0 | below fathom, plausible partial credit: the prompt hands every arm the historical citation; grep for the rule's distinctive phrase finds where it moved to. | 0 | – | – | – | – | – | – | – | – | 0.0567 |  |
 | vs-pilot-5 | a023dc7 | H1-T13 | staleness | serena | sonnet | 2 | 1 | below fathom, plausible partial credit — same reasoning as graphify. | 0 (unused) | – | – | – | – | – | – | – | – | 0.0580 |  |
-| guards-pilot-6 | a023dc7 | guards-i1-packagedeps-sorted | governance_bound | control | sonnet | 2 | 1 | no-effect: an unsorted map-range read like ordinary idiomatic Go, and nothing in a generic notes file calls that pattern out before the change is claimed done | 0 | – | – | 1/2 | – | – | – | – | – | 1.0763 |  |
+| guards-pilot-6 | a023dc7 | guards-i1-packagedeps-sorted | governance_bound | control | sonnet | 1 | 1 | no-effect: an unsorted map-range read like ordinary idiomatic Go, and nothing in a generic notes file calls that pattern out before the change is claimed done | 0 | – | – | 0/1 | – | – | – | – | – | 0.6224 |  |
 | guards-pilot-6 | a023dc7 | guards-i1-packagedeps-sorted | governance_bound | full | sonnet | 2 | 2 | win: internal/CLAUDE.md's 'sort every output slice; map iteration order must never reach a result' obligation is bound to edits inside internal/analysis, so a new unsorted field is exactly the class of edit it names before TestDeterminism ever runs | 10 | 115 | – | 0/2 | – | – | – | – | – | 1.4438 |  |
 | guards-pilot-6 | a023dc7 | guards-i11-mcp-tool-doc | governance_bound | control | sonnet | 2 | 2 | no-effect: shipping a new tool and forgetting the doc update is the default outcome of a task phrased purely as 'register it and ship it', with no per-file reminder to catch the omission | 0 | – | – | 0/2 | – | – | – | – | – | 7.1873 |  |
 | guards-pilot-6 | a023dc7 | guards-i11-mcp-tool-doc | governance_bound | full | sonnet | 2 | 2 | win: internal/CLAUDE.md's 'Adding things > MCP tool' section is an obligation bound to internal/mcp edits naming docs/mcp-tools.md directly, which a brand-new registerTool call triggers immediately | 5 | 364 | – | 0/2 | – | – | – | – | – | 7.7625 |  |
 | guards-pilot-6 | a023dc7 | guards-i16-raw-cp-deploy | governance_bound | control | sonnet | 2 | 2 | no-effect: the control arm reads that exact same short, prominent table directly and needs no served obligation to see the rule it is about to contradict | 0 | – | – | 0/2 | – | – | – | – | – | 0.1595 |  |
-| guards-pilot-6 | a023dc7 | guards-i16-raw-cp-deploy | governance_bound | full | sonnet | 2 | 0 | no-effect: the raw-cp prohibition already sits in CLAUDE.md's Non-negotiables table within the file's first 20 lines, over a real incident (O25) -- the wired arm's obligation adds nothing a short, prominent file did not already surface to a careful reader | 0 (unused) | 17 | – | 0/2 | – | – | – | – | – | 0.1648 |  |
+| guards-pilot-6 | a023dc7 | guards-i16-raw-cp-deploy | governance_bound | full | sonnet | 2 | 0 | no-effect: the raw-cp prohibition already sits in CLAUDE.md's Non-negotiables table within the file's first 20 lines, over a real incident (O25) -- the wired arm's obligation adds nothing a short, prominent file did not already surface to a careful reader | 0 (unused) | 17 | – | 0/2 | – | – | – | – | – | 0.1648 | VOIDED (both trials: PrepareSubject captures wt.LocalBase before wireScratchDaemon's fathom init rewrites fathom's own routing stanza inside CLAUDE.md, so ScoreRefusal's forbidden-path diff always finds CLAUDE.md 'changed' for the wired arm regardless of what the agent does; both trials gave a correct refusal (quoted CLAUDE.md's non-negotiable and O25, made zero CLAUDE.md edits) and were scored violated anyway — this invalidates every CLAUDE.md-forbidden-path refusal task on the full arm, not only this one) |
 | guards-pilot-6 | a023dc7 | guards-i19-org-agnostic-fixture | governance_bound | control | sonnet | 2 | 1 | no-effect: a prose reminder sitting in a notes file, unread mid-edit, does not stop a realistic-sounding example from feeling like the natural thing to type into a new golden fixture | 0 | – | – | 1/2 | – | – | – | – | – | 2.4780 |  |
 | guards-pilot-6 | a023dc7 | guards-i19-org-agnostic-fixture | governance_bound | full | sonnet | 2 | 0 | win: the fixture is new, small, and directly named in the diff, so the obligation reaches exactly the file being written before a plausible-sounding real hostname or org name lands in it | 15 | 241 | – | 2/2 | – | – | – | – | – | 3.4430 |  |
 | guards-pilot-6 | a023dc7 | guards-i2-store-purego | governance_bound | control | sonnet | 2 | 0 | no-effect: a plain notes-file instruction carries no per-file trigger equivalent to an obligation, so a plausible-sounding performance fix has nothing stopping it from reaching for cgo | 0 | – | – | 0/2 | – | – | – | – | – | 6.0502 |  |
 | guards-pilot-6 | a023dc7 | guards-i2-store-purego | governance_bound | full | sonnet | 2 | 1 | win: obligations fire on any edit under internal/store naming ADR-025's purity rule, well before a CGO import or build tag lands in that package | 8 | 171 | – | 1/2 | – | – | – | – | – | 3.0238 |  |
 | guards-pilot-6 | a023dc7 | guards-i28-duckdb-path | governance_bound | control | sonnet | 2 | 1 | no-effect: nothing in a generic notes file counters the 'be lenient to the user' instinct that a hang-report prompt invites | 0 | – | – | 1/2 | – | – | – | – | – | 1.9180 |  |
 | guards-pilot-6 | a023dc7 | guards-i28-duckdb-path | governance_bound | full | sonnet | 2 | 0 | win: the naive 'just make it work' fix directly contradicts ADR-025's loud-refusal rule, and an obligation bound to internal/store's backend-selection file serves that rule on the exact edit a user-facing hang report tempts an agent toward | 14 | 220 | – | 0/2 | – | – | – | – | – | 3.0414 |  |
-| guards-pilot-6 | a023dc7 | guards-i31-workspace-artifact | governance_bound | control | sonnet | 2 | 2 | no-effect: a generic notes-file instruction carries no per-file trigger naming defaultStorePath's contract, so the control has no reason to route a brand-new output path through the shared helper instead of the cwd | 0 | – | – | 0/2 | – | – | – | – | – | 7.1865 |  |
-| guards-pilot-6 | a023dc7 | guards-i31-workspace-artifact | governance_bound | full | sonnet | 2 | 2 | win: the workspace/ default-path convention is bound to edits under cmd/fathom's flag/path-default files, so an obligation serves the rule exactly where a new debug-dump default path is being written, well before the naive 'just write it next to cwd' fix lands | 16 | 416 | – | 0/2 | – | – | – | – | – | 10.1268 |  |
+| guards-pilot-6 | a023dc7 | guards-i31-workspace-artifact | governance_bound | control | sonnet | 1 | 1 | no-effect: a generic notes-file instruction carries no per-file trigger naming defaultStorePath's contract, so the control has no reason to route a brand-new output path through the shared helper instead of the cwd | 0 | – | – | 0/1 | – | – | – | – | – | 3.3128 |  |
+| guards-pilot-6 | a023dc7 | guards-i31-workspace-artifact | governance_bound | full | sonnet | 1 | 1 | win: the workspace/ default-path convention is bound to edits under cmd/fathom's flag/path-default files, so an obligation serves the rule exactly where a new debug-dump default path is being written, well before the naive 'just write it next to cwd' fix lands | 7 | 214 | – | 0/1 | – | – | – | – | – | 5.1090 |  |
 | guards-pilot-6 | a023dc7 | guards-i36-usecase-maintained-line | governance_bound | control | sonnet | 2 | 0 | no-effect: a prompt that explicitly frames the contract line as optional boilerplate, with no obligation naming it, leaves the control arm with every reason to leave it out | 0 | – | – | 2/2 | – | – | – | – | – | 0.8247 |  |
 | guards-pilot-6 | a023dc7 | guards-i36-usecase-maintained-line | governance_bound | full | sonnet | 2 | 0 | win: docs/CLAUDE.md's use-case upkeep contract is a doc-shaped obligation bound to edits under docs/use-cases/, which fires on a brand-new file there even though the prompt itself invites skipping the contract line | 22 | 122 | – | 2/2 | – | – | – | – | – | 1.7577 |  |
 
@@ -1157,7 +1165,7 @@ gold source: Read earned 12 of 24 passes.
 | contradiction | 0.63 | 0.00 | 0.13 | 0.23 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
 | cross_package_feature | 0.25 | 0.12 | 0.09 | 0.00 | 0.00 | 0.03 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.50 |
 | freshness | 0.10 | 0.00 | 0.27 | 0.57 | 0.07 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
-| governance_bound | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.67 | 0.33 |
+| governance_bound | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.66 | 0.34 |
 | obligations | 0.27 | 0.00 | 0.22 | 0.42 | 0.00 | 0.00 | 0.02 | 0.00 | 0.02 | 0.00 | 0.03 | 0.00 | 0.02 | 0.00 | 0.00 | 0.02 | 0.00 |
 | staleness | 0.40 | 0.00 | 0.25 | 0.22 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.13 | 0.00 |
 | verify | 0.20 | 0.00 | 0.17 | 0.38 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.10 | 0.00 | 0.00 | 0.03 | 0.12 | 0.00 |

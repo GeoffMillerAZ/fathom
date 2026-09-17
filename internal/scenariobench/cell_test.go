@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 func testInvariants() CellInvariants {
@@ -149,6 +150,68 @@ func TestStoreScenarioCell_FirstWriterWins(t *testing.T) {
 	}
 	if got.SourceRunID != "run-1" {
 		t.Errorf("expected the FIRST writer's run to win, got %q", got.SourceRunID)
+	}
+}
+
+// TestStoreScenarioCell_ReplacesStaleSiblingUnderDifferentKey is wave N14
+// item 6's other half (guards-i31/control, guards-pilot-6 second reading):
+// a mid-session worktree reset can leave a STALE record for the SAME
+// logical (task, arm, trial, run_id) filed under a DIFFERENT cell key
+// (e.g. the harness version drifted between the aborted pre-reset attempt
+// and the real post-reset one) — StoreScenarioCell's own write-once
+// contract only ever protects the path it is about to write, so both
+// records used to survive side by side as two "independently-scored
+// cell_key directories". Storing a fresh cell must now REPLACE — not
+// leave appended — any sibling under this exact same (TaskID, Arm, Trial,
+// RunID) filed under some OTHER key, so the raw store never carries more
+// than one authoritative record for one logical cell.
+func TestStoreScenarioCell_ReplacesStaleSiblingUnderDifferentKey(t *testing.T) {
+	dir := t.TempDir()
+	staleKey := ScenarioCellKey(CellInvariants{CorpusSHA256: "abc123", TaskID: "T1", Arm: "control", ModelID: "sonnet", HarnessVersion: "2.1.270 (Claude Code)", Scoring: "oracle-v1", PromptSubject: "x"})
+	freshKey := ScenarioCellKey(CellInvariants{CorpusSHA256: "abc123", TaskID: "T1", Arm: "control", ModelID: "sonnet", HarnessVersion: "2.1.273 (Claude Code)", Scoring: "oracle-v1", PromptSubject: "x"})
+
+	stale := CellResult{TaskID: "T1", Arm: "control", Trial: 1, CellKey: staleKey, RunID: "run-1", HarnessVersion: "2.1.270 (Claude Code)"}
+	if err := StoreScenarioCell(dir, stale); err != nil {
+		t.Fatalf("storing stale: %v", err)
+	}
+	stalePath := ScenarioCellPath(dir, staleKey, 1)
+	if _, err := os.Stat(stalePath); err != nil {
+		t.Fatalf("expected the stale cell on disk before the fresh write: %v", err)
+	}
+
+	fresh := CellResult{TaskID: "T1", Arm: "control", Trial: 1, CellKey: freshKey, RunID: "run-1", HarnessVersion: "2.1.273 (Claude Code)"}
+	if err := StoreScenarioCell(dir, fresh); err != nil {
+		t.Fatalf("storing fresh: %v", err)
+	}
+
+	if _, err := os.Stat(stalePath); !os.IsNotExist(err) {
+		t.Errorf("expected the stale sibling under the OLD key removed once the fresh cell was filed, err=%v", err)
+	}
+	if _, ok, err := BorrowScenarioCell(dir, freshKey, 1); err != nil || !ok {
+		t.Fatalf("expected the fresh cell to be stored under its own key: ok=%v err=%v", ok, err)
+	}
+}
+
+// TestStoreScenarioCell_NeverTouchesADifferentRunsSibling proves the
+// cleanup above is scoped to THIS run_id only: a sibling under a different
+// key that belongs to a DIFFERENT run must never be removed just because
+// it shares a (TaskID, Arm, Trial).
+func TestStoreScenarioCell_NeverTouchesADifferentRunsSibling(t *testing.T) {
+	dir := t.TempDir()
+	otherRunKey := ScenarioCellKey(CellInvariants{CorpusSHA256: "abc123", TaskID: "T1", Arm: "control", ModelID: "sonnet", HarnessVersion: "9.9.9", Scoring: "oracle-v1", PromptSubject: "x"})
+	thisRunKey := ScenarioCellKey(CellInvariants{CorpusSHA256: "abc123", TaskID: "T1", Arm: "control", ModelID: "sonnet", HarnessVersion: "2.1.273 (Claude Code)", Scoring: "oracle-v1", PromptSubject: "x"})
+
+	otherRun := CellResult{TaskID: "T1", Arm: "control", Trial: 1, CellKey: otherRunKey, RunID: "run-OTHER"}
+	if err := StoreScenarioCell(dir, otherRun); err != nil {
+		t.Fatal(err)
+	}
+	thisRun := CellResult{TaskID: "T1", Arm: "control", Trial: 1, CellKey: thisRunKey, RunID: "run-1"}
+	if err := StoreScenarioCell(dir, thisRun); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, ok, err := BorrowScenarioCell(dir, otherRunKey, 1); err != nil || !ok {
+		t.Errorf("expected the other run's own cell left untouched: ok=%v err=%v", ok, err)
 	}
 }
 
@@ -646,6 +709,73 @@ func TestFindScenarioCellByTrial_NoMatchIsEmptyNotError(t *testing.T) {
 	}
 }
 
+// TestFindScenarioCellsByRun_DedupesSiblingKeysByTrial is wave N14 item 6's
+// regression test (guards-i31/control, guards-pilot-6 second reading): a
+// mid-session worktree reset can leave the SAME logical (task, arm, trial,
+// run_id) filed under two INDEPENDENTLY-COMPUTED cell keys (the reading's
+// own finding — e.g. a harness-version drift between the stale, pre-reset
+// attempt and the real, post-reset one). FindScenarioCellsByRun walks the
+// WHOLE cellsDir tree by content, so before this fix it returned BOTH —
+// "a naive rollup from cells/ (not the log) double-counts" — even though
+// only one of them is the authoritative record for that trial. It must now
+// return exactly one CellResult per (TaskID, Arm, Trial): the one written
+// LAST (highest file mtime), on the theory that a later write is always
+// the more recent, more-informed attempt.
+func TestFindScenarioCellsByRun_DedupesSiblingKeysByTrial(t *testing.T) {
+	dir := t.TempDir()
+	staleKey := ScenarioCellKey(CellInvariants{CorpusSHA256: "abc123", TaskID: "T1", Arm: "control", ModelID: "sonnet", HarnessVersion: "2.1.270 (Claude Code)", Scoring: "oracle-v1", PromptSubject: "x"})
+	freshKey := ScenarioCellKey(CellInvariants{CorpusSHA256: "abc123", TaskID: "T1", Arm: "control", ModelID: "sonnet", HarnessVersion: "2.1.273 (Claude Code)", Scoring: "oracle-v1", PromptSubject: "x"})
+
+	if err := StoreScenarioCell(dir, CellResult{TaskID: "T1", Arm: "control", Trial: 1, CellKey: staleKey, RunID: "run-1", HarnessVersion: "2.1.270 (Claude Code)", Success: false}); err != nil {
+		t.Fatal(err)
+	}
+	stalePath := ScenarioCellPath(dir, staleKey, 1)
+	oldMtime := time.Now().Add(-time.Hour)
+	if err := os.Chtimes(stalePath, oldMtime, oldMtime); err != nil {
+		t.Fatal(err)
+	}
+	if err := StoreScenarioCell(dir, CellResult{TaskID: "T1", Arm: "control", Trial: 1, CellKey: freshKey, RunID: "run-1", HarnessVersion: "2.1.273 (Claude Code)", Success: true}); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := FindScenarioCellsByRun(dir, "T1", "control", "run-1")
+	if err != nil {
+		t.Fatalf("FindScenarioCellsByRun: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("expected exactly 1 deduped cell for trial 1, got %d: %+v", len(got), got)
+	}
+	if got[0].CellKey != freshKey {
+		t.Errorf("expected the FRESH (later-written) record to win, got cell_key %s (want %s)", got[0].CellKey, freshKey)
+	}
+	if !got[0].Success {
+		t.Errorf("expected the fresh record's own content to survive, got %+v", got[0])
+	}
+}
+
+// TestFindScenarioCellsByRun_DistinctTrialsNeverCollapsed proves the
+// dedupe above is scoped to (TaskID, Arm, Trial) and never merges two
+// GENUINELY different trials just because they happen to share a run.
+func TestFindScenarioCellsByRun_DistinctTrialsNeverCollapsed(t *testing.T) {
+	dir := t.TempDir()
+	key := ScenarioCellKey(testInvariants())
+	for _, c := range []CellResult{
+		{TaskID: "T1", Arm: "full", Trial: 1, CellKey: key, RunID: "run-1"},
+		{TaskID: "T1", Arm: "full", Trial: 2, CellKey: key, RunID: "run-1"},
+	} {
+		if err := StoreScenarioCell(dir, c); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := FindScenarioCellsByRun(dir, "T1", "full", "run-1")
+	if err != nil {
+		t.Fatalf("FindScenarioCellsByRun: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("expected both distinct trials to survive, got %d: %+v", len(got), got)
+	}
+}
+
 // TestHarnessVersionsForRun_DistinctSortedAcrossTaskArm is O65 (wave N12)
 // item 3's own proof: a cell key is built over HarnessVersion, so a
 // mismatched -harness-version at filing time borrows nothing under ANY
@@ -874,5 +1004,52 @@ func TestStripFathomRegionsFromDiff_NoRangesIsNoop(t *testing.T) {
 	got, excluded := stripFathomRegionsFromDiff(diff, nil)
 	if excluded != 0 || string(got) != string(diff) {
 		t.Errorf("expected a no-op pass-through, got %q, %d", got, excluded)
+	}
+}
+
+// TestStripFathomRegionsFromDiff_LeadingBlankSeparatorNotARealChange is
+// wave N14 item 1's regression test: wiring.ApplyWiring/renderRegion
+// inserts a blank separator LINE before the region when appending to a
+// file that does not already end in one (confirmed directly against real
+// production output, fix-first review 2026-09-16) — a line that sits
+// OUTSIDE regionRange's own [newStart,newEnd] (which spans only the begin
+// marker through the end marker) but is still entirely the instrument's
+// own mechanical formatting, never the agent's. Before this fix, that lone
+// blank "+" line survived stripRegionFromDiffSection's own hasRealChange
+// check (any kept '+'/'-' line, blank or not, counted as "real"), so a
+// wired cell where the agent touched CLAUDE.md/AGENTS.md for NO reason
+// other than fathom's own stanza still reported the file changed — the
+// same false "touched" result ScoreRefusal's changedPaths depends on
+// StripInstrumentRegions to avoid (guards-i16, guards-pilot-6 second
+// reading).
+func TestStripFathomRegionsFromDiff_LeadingBlankSeparatorNotARealChange(t *testing.T) {
+	diff := "diff --git a/CLAUDE.md b/CLAUDE.md\n" +
+		"index aaa..bbb 100644\n" +
+		"--- a/CLAUDE.md\n" +
+		"+++ b/CLAUDE.md\n" +
+		"@@ -1,3 +1,7 @@\n" +
+		" # Real project notes\n" +
+		" \n" +
+		" Some pre-existing content.\n" +
+		"+\n" +
+		"+<!-- fathom:begin v3 sha256:x -->\n" +
+		"+stanza line 1\n" +
+		"+<!-- fathom:end -->\n" +
+		unifiedDiffFile("real.go", "@@ -1 +1 @@\n-func Old() {}\n+func New() {}\n")
+	// New-file line numbers: 1-3 context, 4 the blank separator ApplyWiring
+	// inserted, 5-7 the region itself (begin/body/end) — regionRange only
+	// ever spans 5-7, never the separator at 4.
+	ranges := map[string]regionRange{"CLAUDE.md": {newStart: 5, newEnd: 7}}
+
+	got, excluded := stripFathomRegionsFromDiff([]byte(diff), ranges)
+	if excluded != 1 {
+		t.Fatalf("excluded = %d, want 1", excluded)
+	}
+	s := string(got)
+	if strings.Contains(s, "CLAUDE.md") {
+		t.Errorf("expected CLAUDE.md's whole section dropped (its only surviving change was a blank separator line, not a real edit), got:\n%s", s)
+	}
+	if !strings.Contains(s, "real.go") || !strings.Contains(s, "func New()") {
+		t.Errorf("expected real.go's own section to survive untouched, got:\n%s", s)
 	}
 }

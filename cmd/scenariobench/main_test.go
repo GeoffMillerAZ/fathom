@@ -1824,6 +1824,7 @@ func TestCaptureAgentDiff_ExcludesLedgerOwnedFiles(t *testing.T) {
 	}
 	runGit(t, wtDir, "add", "-A")
 	runGit(t, wtDir, "commit", "-q", "-m", "base")
+	localBase := runGit(t, wtDir, "rev-parse", "HEAD")
 
 	// The instrument's own write: `fathom init` wiring its hook stack into
 	// .claude/settings.json and recording that KEY in the ledger — exactly
@@ -1842,7 +1843,7 @@ func TestCaptureAgentDiff_ExcludesLedgerOwnedFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wt := scenariobench.Worktree{Path: wtDir, CellDir: t.TempDir()}
+	wt := scenariobench.Worktree{Path: wtDir, CellDir: t.TempDir(), LocalBase: localBase}
 	diffPath, excluded := captureAgentDiff(context.Background(), wt)
 	if diffPath == "" {
 		t.Fatal("expected a non-empty diff path")
@@ -1872,6 +1873,56 @@ func TestCaptureAgentDiff_ExcludesLedgerOwnedFiles(t *testing.T) {
 	}
 }
 
+// TestCaptureAgentDiff_IncludesWorkCommittedMidSession is wave N14 item 4's
+// regression test (guards-i36, guards-pilot-6 second reading:
+// "agent_diff_misses_committed_work"): captureAgentDiff ran a BARE `git
+// diff` (working tree vs the INDEX), never against wt.LocalBase — so once
+// a session `git commit`s its own work (a real, common agent behavior;
+// guards-i36's own sessions did this), the index and HEAD both already
+// match the working tree and a bare `git diff` shows NOTHING for it,
+// leaving agent.diff with only whatever the agent left uncommitted at the
+// very end (the reading's own example: "~14 leftover lines instead of the
+// real change"). captureAgentDiff must diff against wt.LocalBase instead,
+// so committed work is never invisible.
+func TestCaptureAgentDiff_IncludesWorkCommittedMidSession(t *testing.T) {
+	wtDir := t.TempDir()
+	runGit(t, wtDir, "init", "-q", "-b", "main")
+	if err := os.WriteFile(filepath.Join(wtDir, "real.go"), []byte("package thing\n\nfunc Old() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, wtDir, "add", "-A")
+	runGit(t, wtDir, "commit", "-q", "-m", "base")
+	localBase := runGit(t, wtDir, "rev-parse", "HEAD")
+
+	// The agent's own mid-session behavior: edit, then commit — leaving a
+	// perfectly clean working tree that matches both the index and HEAD.
+	if err := os.WriteFile(filepath.Join(wtDir, "real.go"), []byte("package thing\n\nfunc New() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(wtDir, "added.go"), []byte("package thing\n\nfunc Added() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, wtDir, "add", "-A")
+	runGit(t, wtDir, "commit", "-q", "-m", "agent: mid-session commit")
+
+	wt := scenariobench.Worktree{Path: wtDir, CellDir: t.TempDir(), LocalBase: localBase}
+	diffPath, _ := captureAgentDiff(context.Background(), wt)
+	if diffPath == "" {
+		t.Fatal("expected a non-empty diff path")
+	}
+	raw, err := os.ReadFile(diffPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	diff := string(raw)
+	if !strings.Contains(diff, "func New()") {
+		t.Errorf("expected the agent's COMMITTED edit to real.go to appear in agent.diff, got:\n%s", diff)
+	}
+	if !strings.Contains(diff, "added.go") || !strings.Contains(diff, "func Added()") {
+		t.Errorf("expected the agent's COMMITTED new file added.go to appear in agent.diff, got:\n%s", diff)
+	}
+}
+
 // TestCaptureAgentDiff_StripsRealFathomRegionKeepsOtherEdits is O55 item
 // 4's fix-first review, in the finding's own words: CLAUDE.md/AGENTS.md
 // stanzas are a KindRegion, never ledger-tracked, so the whole-file/
@@ -1891,6 +1942,7 @@ func TestCaptureAgentDiff_StripsRealFathomRegionKeepsOtherEdits(t *testing.T) {
 	}
 	runGit(t, wtDir, "add", "-A")
 	runGit(t, wtDir, "commit", "-q", "-m", "base")
+	localBase := runGit(t, wtDir, "rev-parse", "HEAD")
 
 	// fathom init's own write: a REAL region placed via internal/wiring's
 	// own ApplyWiring — never a hand-crafted marker string.
@@ -1916,7 +1968,7 @@ func TestCaptureAgentDiff_StripsRealFathomRegionKeepsOtherEdits(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wt := scenariobench.Worktree{Path: wtDir, CellDir: t.TempDir()}
+	wt := scenariobench.Worktree{Path: wtDir, CellDir: t.TempDir(), LocalBase: localBase}
 	diffPath, excluded := captureAgentDiff(context.Background(), wt)
 	if diffPath == "" {
 		t.Fatal("expected a non-empty diff path")
@@ -1975,6 +2027,7 @@ func TestCaptureAgentDiff_WorkspaceGatedBySubjectGitignore(t *testing.T) {
 	runGit(t, wtDir, "add", "-A")
 	runGit(t, wtDir, "add", "-f", "workspace/artifacts/scratch.json")
 	runGit(t, wtDir, "commit", "-q", "-m", "base")
+	localBase := runGit(t, wtDir, "rev-parse", "HEAD")
 
 	// The agent's own real edit to a genuinely tracked subject source file
 	// that happens to live under workspace/, plus a change to the
@@ -1986,7 +2039,7 @@ func TestCaptureAgentDiff_WorkspaceGatedBySubjectGitignore(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wt := scenariobench.Worktree{Path: wtDir, CellDir: t.TempDir()}
+	wt := scenariobench.Worktree{Path: wtDir, CellDir: t.TempDir(), LocalBase: localBase}
 	diffPath, _ := captureAgentDiff(context.Background(), wt)
 	if diffPath == "" {
 		t.Fatal("expected a non-empty diff path")
