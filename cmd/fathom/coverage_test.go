@@ -1,10 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/intent"
 )
 
 // RC-7: "go.mod declares another module" and "go.mod could not be read" are
@@ -103,10 +107,31 @@ func TestDoctorUnprovenReconcilesWithVerb(t *testing.T) {
 		t.Skip("this tree reports no unproven claims; nothing to reconcile")
 	}
 	// The row must carry the kinds the verb computes WITHOUT an index —
-	// U12 and U13 were simply never wired in.
+	// U12 and U13 were simply never wired in. Reconcile against the audit
+	// built the way the row builds it, not against a hardcoded kind list:
+	// once every plan row pins its test (2026-09-16), U12 is legitimately
+	// zero and the row must NOT print a zero kind.
+	c, err := intent.Load(root)
+	if err != nil {
+		t.Fatalf("intent.Load: %v", err)
+	}
+	rows, note := planRowStates(root)
+	contracts, contractNote, _ := planRowContracts(root)
+	guardNotes, guardScopes, guardWhy := repoGuardNotes(root)
+	a := intent.RunAudit(intent.AuditInput{
+		Corpus: c, PlanRows: rows, PlanNote: note,
+		PlanContracts: contracts, PlanContractNote: contractNote,
+		GuardNotes: guardNotes, GuardScopes: guardScopes, GuardNote: guardWhy,
+		Ledger: intent.ReadLedger(),
+		Now:    time.Now().UTC(),
+	})
 	for _, kind := range []string{"U12", "U13"} {
-		if !strings.Contains(row.Reason, kind) {
-			t.Errorf("%s needs no index and must be counted in the doctor row: %s", kind, row.Reason)
+		n := a.ByKind[kind]
+		if n > 0 && !strings.Contains(row.Reason, fmt.Sprintf("%s %d", kind, n)) {
+			t.Errorf("%s needs no index and must be counted in the doctor row as the verb counts it (%d): %s", kind, n, row.Reason)
+		}
+		if n == 0 && strings.Contains(row.Reason, kind+" ") {
+			t.Errorf("%s is zero for this tree and must not be printed: %s", kind, row.Reason)
 		}
 	}
 	// And the non-zero path must carry what it could not compute, which
