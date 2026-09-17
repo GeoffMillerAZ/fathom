@@ -21,6 +21,87 @@ guards: [
 		command_scopes: ["npm *", "npx *", "yarn *", "pnpm *", "bun *"]
 		note: "No Node toolchain in this repo (app-kit ADR-0017 §3: fathom's artifact is a Go binary). The observatory CSS builds via task ui:css — the pinned Tailwind standalone binary. If you think you need npm here, re-read cmd/fathom/ui/input.css first."
 	},
+
+	// The 15 entries below are pasted from `fathom intent export --guard`
+	// (U13, EP-21): one per router sensitive-surface row, each carrying an
+	// `intent: … @ <12-hex stamp>` provenance tag so `fathom intent audit`
+	// can tell a stale entry (the router row changed) from a covered one.
+	// Re-run the export and replace an entry when its stamp goes stale.
+	{
+		scopes: ["internal/store/**"]
+		note: "intent: governed by I2 [gate] · I3 [test]; done needs: TestStoreFormatV0_RequiredSchema, TestStorePortability_RoundTrip (fathom intent audit) @ bd6866a32795"
+		max_rules: 2
+	},
+	{
+		scopes: ["internal/verify/**", "cmd/fathom/verify.go"]
+		note: "intent: done needs: TestEvalLexicalOracle_VerifiesAndRefuses, TestGateSARIF_OneResultPerFailingCriterionAndStrictUnknown, TestVerifyPlan_Verified (fathom intent audit) @ 0c40e5b22509"
+		max_rules: 2
+	},
+	{
+		scopes: ["internal/extractor/**", "internal/fusion/**"]
+		note: "intent: governed by I2 [gate] · I23 [test] · I24 [test] · I25 [test]; done needs: TestReachabilityFixtureEndToEnd (fathom intent audit) @ 0187019537f0"
+		max_rules: 2
+	},
+	{
+		scopes: ["internal/mcp/**"]
+		note: "intent: governed by I1 [code] · I11 [test]; done needs: TestMaintainedLinesNameRegisteredToolsAndVerbs, TestMcpToolsDocMatchesRegistry (fathom intent audit) @ 61ca1e3edc15"
+		max_rules: 2
+	},
+	{
+		scopes: ["internal/semantic/**", "schema/semantic/**"]
+		note: "intent: done needs: TestCompile_RejectsBadAnchorsAndScopes, TestObligationsCorpusNeverWidensToIntent (fathom intent audit) @ 3eac5ce7941c"
+		max_rules: 2
+	},
+	{
+		scopes: ["cmd/fathom/*hook*.go", "cmd/fathom/brief.go", "cmd/fathom/sessionhook.go"]
+		note: "intent: governed by I1 [code] · I12 [test] · I9 [test]; done needs: TestBriefBudgetAndSourceGating, TestWholePrimerCap (fathom intent audit) @ 22e9dd7664d2"
+		max_rules: 2
+	},
+	{
+		scopes: ["cmd/fathom/observatory*.go", "cmd/fathom/ui/**"]
+		note: "intent: done needs: TestObservatoryFleetPage, TestObservatoryImpactPage, TestObservatoryServicePage (fathom intent audit) @ 34836e484de0"
+		max_rules: 2
+	},
+	{
+		scopes: ["docs/plans/*.md"]
+		note: "intent: done needs: TestCmdPlansArchive_RefusesClaimedRowsNotGreen, TestPlanContractsNameUnreadablePlans (fathom intent audit) @ c456fdbd391b"
+		max_rules: 2
+	},
+	{
+		scopes: ["Taskfile.yml", "lefthook.yml", "scripts/*.sh"]
+		note: "intent: done needs: TestCheckLefthookGates, TestLefthookGates_VariableIndirection (fathom intent audit) @ 228d0c9c1763"
+		max_rules: 2
+	},
+	{
+		scopes: ["go.mod", "third_party/agentic-kit/**"]
+		note: "intent: governed by I1 [code] · I15 [gate]; done needs: TestPackFilesMatchSource (fathom intent audit) @ 1400de850e48"
+		max_rules: 2
+	},
+	{
+		scopes: [".fathom/*.cue", "internal/custodian/**"]
+		note: "intent: done needs: TestADRReferencesResolveConcern (fathom intent audit) @ 9cf7d07add1b"
+		max_rules: 2
+	},
+	{
+		scopes: ["internal/metrics/**", "cmd/fathom/research_report.go"]
+		note: "intent: done needs: TestAbsenceNotesAreArmAware, TestAggregateChannels_NeverMeasurable_NotesVerbatim, TestBuildResearchReport_DiscoveryShare_ZeroBeats_NeverFabricates100Percent (fathom intent audit) @ a366139c92ae"
+		max_rules: 2
+	},
+	{
+		scopes: ["CLAUDE.md", "AGENTS.md"]
+		note: "intent: done needs: TestCheckStanzaPresent, TestStanzaCarriesOpeningMovesAndPrime (fathom intent audit) @ 76082eaefe65"
+		max_rules: 2
+	},
+	{
+		scopes: ["internal/readcoverage/**", "foundations/telemetry/read-manifest"]
+		note: "intent: governed by I3 [test] · I38 [test]; done needs: TestReadSetRecordsAbsentUnreadableAndSkipped, TestRenderCountIsALowerBoundWhenBlind, TestUnreadableInputNeverLooksHealthier (fathom intent audit) @ fde1f211ab36"
+		max_rules: 2
+	},
+	{
+		scopes: ["docs/intent/**", "ADR.md", ".fathom/guard.cue"]
+		note: "intent: done needs: TestUnreadableInputNeverLooksHealthier (fathom intent audit) @ 65045acb45e1"
+		max_rules: 2
+	},
 ]
 
 // fathom's own first compiled governance rules (VB-13, docs/vision/29-
