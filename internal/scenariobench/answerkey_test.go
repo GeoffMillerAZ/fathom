@@ -191,6 +191,121 @@ func TestSandboxEscapeScan_InWorktreeCdIsNotEscape(t *testing.T) {
 	}
 }
 
+// TestSandboxEscapeScan_TrailingSentencePunctuationNotEscape is wave N19
+// defect 1's first shape (vs-pilot-6 second reading §6, 14 cells
+// genuinely LOST by the rescore-from-raw pass despite a complete,
+// correctly-answered raw session): every serena-arm session's own
+// "<active-project>" startup message narrates the worktree path in
+// prose, immediately followed by a period and a newline with no space —
+// "Created and activated a new project with name 'X' at <path>.\nActive
+// language servers: go." — gluing that period onto the end of an
+// otherwise-exact safe-dir token, which then fails pathUnderAnyDir's
+// prefix check by exactly one byte.
+func TestSandboxEscapeScan_TrailingSentencePunctuationNotEscape(t *testing.T) {
+	dir := t.TempDir()
+	root := "/private/tmp/claude-501/-Volumes-m2ext-code-geoffmilleraz-sextant/e8652946-4037-4a56-8b48-3336a3490e6f/scratchpad/benchroot2"
+	subjectWorktreeDir := root + "/workspace/scenariobench/subjects/cc9873a2-worktrees/1b8765d-d13524f3c445"
+	cellWorktreeDir := root + "/workspace/artifacts/scenariobench/worktrees/H1-T04-1b8765d-d13524f3c445"
+	rawDir := root + "/workspace/artifacts/scenariobench/raw/vs-pilot-6/H1-T04-serena-t1/attempt-1"
+	path := writeGoldTranscript(t, dir, "trailing-period.jsonl", []goldStep{
+		{
+			Name:  "mcp__serena__activate_project",
+			Input: `{}`,
+			Result: "Created and activated a new project with name '1b8765d-d13524f3c445' at " +
+				subjectWorktreeDir + ".\nActive language servers: go.\nFile encoding: utf-8.\n",
+		},
+	})
+	session := SessionResult{RawPath: path}
+	if SandboxEscapeScan(session, cellWorktreeDir, subjectWorktreeDir, rawDir) {
+		t.Error("expected no sandbox escape: the trailing '.' is Serena's own sentence punctuation, not part of the path")
+	}
+}
+
+// TestSandboxEscapeScan_HyperlinkedLsListingNotEscape is wave N19 defect
+// 1's second shape: this harness's own colorized `ls -la` rendering
+// (eza's OSC-8 hyperlink form, `ESC]8;;file:///abs/path ESC\ display-text
+// ESC]8;;ESC\`) wraps every listed entry's FULL absolute path in a
+// terminal escape sequence a plain marker-substring scan reads as path
+// text — its embedded ':' and ';' corrupt enclosingPathToken's boundary
+// walk into a token that starts or ends mid-string, even for an entry
+// genuinely inside the cell's own worktree.
+func TestSandboxEscapeScan_HyperlinkedLsListingNotEscape(t *testing.T) {
+	dir := t.TempDir()
+	root := "/private/tmp/claude-501/-Volumes-m2ext-code-geoffmilleraz-sextant/e8652946-4037-4a56-8b48-3336a3490e6f/scratchpad/benchroot2"
+	cellWorktreeDir := root + "/workspace/scenariobench/subjects/cc9873a2-worktrees/1b8765d-e535a44d8ef8"
+	rawDir := root + "/workspace/artifacts/scenariobench/raw/vs-pilot-6/H1-T05-gopls-t2/attempt-1"
+	entry := cellWorktreeDir + "/.fathomignore"
+	listing := "\x1b]8;;file://" + entry + "\x1b\\.fathomignore\x1b]8;;\x1b\\\n"
+	path := writeGoldTranscript(t, dir, "hyperlinked-ls.jsonl", []goldStep{
+		{Name: "Bash", Input: `{"command":"ls -la ` + cellWorktreeDir + `"}`, Result: listing},
+	})
+	session := SessionResult{RawPath: path}
+	if SandboxEscapeScan(session, cellWorktreeDir, rawDir) {
+		t.Error("expected no sandbox escape: the OSC-8 hyperlink decorates a path already inside the cell's own worktree")
+	}
+}
+
+// TestSandboxEscapeScan_SubjectsPoolListingNotEscape is wave N19 defect
+// 1's third shape: a bare `ls` of the shared subjects/ pool root — one
+// level above this cell's own worktree, holding nothing but bare
+// sha256-hash-named clone/worktree directories for EVERY cell of the
+// run — is not a leak (it names no task-specific content) when
+// subjectsDir is passed as a safe dir, unlike cd'ing or reading INTO one
+// specific OTHER cell's own worktree, which stays caught because that
+// path is never in the safe-dir list.
+func TestSandboxEscapeScan_SubjectsPoolListingNotEscape(t *testing.T) {
+	dir := t.TempDir()
+	root := "/private/tmp/claude-501/-Volumes-m2ext-code-geoffmilleraz-sextant/e8652946-4037-4a56-8b48-3336a3490e6f/scratchpad/benchroot2"
+	cellWorktreeDir := root + "/workspace/scenariobench/subjects/cc9873a2-worktrees/1b8765d-e535a44d8ef8"
+	subjectsDir := root + "/workspace/scenariobench/subjects"
+	rawDir := root + "/workspace/artifacts/scenariobench/raw/vs-pilot-6/H1-T05-gopls-t2/attempt-1"
+	path := writeGoldTranscript(t, dir, "subjects-pool-ls.jsonl", []goldStep{
+		{
+			Name:   "Bash",
+			Input:  `{"command":"ls ` + subjectsDir + ` 2>/dev/null"}`,
+			Result: "cc9873a26d8d57528915f0ff2f9a8a8293674ed619171cc948f0bce65e7f23b3\ncc9873a26d8d57528915f0ff2f9a8a8293674ed619171cc948f0bce65e7f23b3-worktrees\n",
+		},
+	})
+	session := SessionResult{RawPath: path}
+	if SandboxEscapeScan(session, cellWorktreeDir, rawDir, subjectsDir) {
+		t.Error("expected no sandbox escape: a bare listing of the shared subjects/ pool root names only opaque hash directories, and subjectsDir was given as a safe dir")
+	}
+	// The converse still holds: reading a SPECIFIC other cell's own
+	// worktree (nested under subjectsDir, but not one of THIS cell's own
+	// safe dirs) must stay caught.
+	otherCell := subjectsDir + "-worktrees/deadbeef-feedface/some/gold/file.go"
+	readPath := writeGoldTranscript(t, dir, "other-cell-read.jsonl", []goldStep{
+		{Name: "Read", Input: `{"file_path":"` + otherCell + `"}`, Result: "package gold\n"},
+	})
+	otherSession := SessionResult{RawPath: readPath}
+	if !SandboxEscapeScan(otherSession, cellWorktreeDir, rawDir, subjectsDir) {
+		t.Error("expected a sandbox escape: reading a DIFFERENT cell's own worktree content must stay caught even with subjectsDir marked safe")
+	}
+}
+
+// TestSandboxEscapeScan_MacTmpSymlinkSpellingNotEscape is wave N19 defect
+// 1's fourth shape: macOS resolves "/tmp" (and "/var", "/etc") to
+// "/private/tmp" — a tool call that named a path with the plain "/tmp/…"
+// spelling and this driver's own -root (always given as the resolved
+// "/private/tmp/…" spelling, this fleet's own scratch convention) name
+// the IDENTICAL file, but a bare string-prefix comparison sees two
+// different trees unless both sides are canonicalized first.
+func TestSandboxEscapeScan_MacTmpSymlinkSpellingNotEscape(t *testing.T) {
+	dir := t.TempDir()
+	privateRoot := "/private/tmp/claude-501/-Volumes-m2ext-code-geoffmilleraz-sextant/e8652946-4037-4a56-8b48-3336a3490e6f/scratchpad/benchroot2"
+	cellWorktreeDir := privateRoot + "/workspace/scenariobench/subjects/cc9873a2-worktrees/1b8765d-80fe955fc016"
+	// The tool call itself used the shorter, symlinked "/tmp/…" spelling.
+	symlinkSpelledFile := "/tmp/claude-501/-Volumes-m2ext-code-geoffmilleraz-sextant/e8652946-4037-4a56-8b48-3336a3490e6f/scratchpad/benchroot2/workspace/scenariobench/subjects/cc9873a2-worktrees/1b8765d-80fe955fc016/internal/metrics/toolkind_freshprobe.go"
+	rawDir := privateRoot + "/workspace/artifacts/scenariobench/raw/vs-pilot-6/FRESH-M7-01-grep-t1/attempt-1"
+	path := writeGoldTranscript(t, dir, "mac-tmp-symlink.jsonl", []goldStep{
+		{Name: "Read", Input: `{"file_path":"` + symlinkSpelledFile + `"}`, Result: "package metrics\n"},
+	})
+	session := SessionResult{RawPath: path}
+	if SandboxEscapeScan(session, cellWorktreeDir, rawDir) {
+		t.Error("expected no sandbox escape: the /tmp spelling and the -root's /private/tmp spelling name the identical file inside the cell's own worktree")
+	}
+}
+
 // TestSandboxEscapeScan_NoEscapeReturnsFalse covers the converse: an
 // ordinary in-worktree tool result never trips the sandbox-escape scan.
 func TestSandboxEscapeScan_NoEscapeReturnsFalse(t *testing.T) {

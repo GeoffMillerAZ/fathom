@@ -522,6 +522,20 @@ func shortHash(s string) string {
 	return hex.EncodeToString(sum[:])
 }
 
+// SubjectsDirFromClone returns the shared subjects/ pool directory a
+// cloneDir (Worktree.SubjectClone, this file's own cloneDir formula —
+// subjectsDir/shortHash(repoURL)) lives directly under: filepath.Dir,
+// exposed under its own name so a caller (runOneSession's own safe-dir
+// list, wave N19 defect 1) reasons about "the shared subjects pool"
+// rather than an ad hoc Dir call. "" in is "" out — never a guess at a
+// directory a caller with no real Worktree does not have.
+func SubjectsDirFromClone(cloneDir string) string {
+	if cloneDir == "" {
+		return ""
+	}
+	return filepath.Dir(cloneDir)
+}
+
 // armContentHash is a short, stable identifier for one Arm value, used
 // only to keep a cell's worktree directory name readable and distinct from
 // another arm's; it is not the cell key (cell.go's ScenarioCellKey is).

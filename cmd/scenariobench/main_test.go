@@ -1941,6 +1941,122 @@ func TestCmdVoid_TrialFlagCorrectsOnlyThatCell(t *testing.T) {
 	}
 }
 
+// TestCmdVoid_TrialFlagVerdictFailCorrectsScorerFalsePass is wave N19's
+// own required proof: -verdict fail (the void tool had no way to express
+// this before this wave — -trial N always flipped Success to true) sets
+// Success=false on a scorer_false_pass cell, never true, and — like
+// -verdict pass's own existing proof above — leaves the sibling trial and
+// the ledger row untouched for a subsequent `ledger` re-file to rebuild.
+func TestCmdVoid_TrialFlagVerdictFailCorrectsScorerFalsePass(t *testing.T) {
+	dir := t.TempDir()
+	ledgerPath := filepath.Join(dir, "ledger.jsonl")
+	if err := scenariobench.AppendScenarioLedger(ledgerPath, scenariobench.ScenarioLedgerRow{
+		RunID: "run-1", TaskID: "T1", Arm: "full", Trials: 2, Successes: 2, ModelID: "sonnet",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	readmePath := scenarioLedgerReadmeFixture(t, dir)
+
+	cellsDir := filepath.Join(dir, "cells")
+	inv := scenariobench.CellInvariants{
+		CorpusSHA256: "abc123", TaskID: "T1", Arm: "full", ModelID: "sonnet",
+		HarnessVersion: "2.1.0", Scoring: "oracle-v1", PromptSubject: "x",
+	}
+	key := scenariobench.ScenarioCellKey(inv)
+	if err := scenariobench.StoreScenarioCell(cellsDir, scenariobench.CellResult{
+		TaskID: "T1", Arm: "full", Trial: 1, CellKey: key, RunID: "run-1", Success: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := scenariobench.StoreScenarioCell(cellsDir, scenariobench.CellResult{
+		TaskID: "T1", Arm: "full", Trial: 2, CellKey: key, RunID: "run-1", Success: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	rc := run([]string{
+		"void",
+		"-ledger", ledgerPath,
+		"-readme", readmePath,
+		"-cells", cellsDir,
+		"-corpus-glob", filepath.Join(dir, "no-such-corpus", "*.json"),
+		"-run-id", "run-1", "-task", "T1", "-arm", "full", "-trial", "1",
+		"-verdict", "fail",
+		"-reason", "scorer_false_pass: lexical scorer matched an intermediate reasoning aside, not the stated conclusion",
+	})
+	if rc != 0 {
+		t.Fatalf("void -trial 1 -verdict fail exited %d, want 0", rc)
+	}
+
+	t1 := readStoredCell(t, scenariobench.ScenarioCellPath(cellsDir, key, 1))
+	if t1.Success {
+		t.Error("expected trial 1's Success corrected to FALSE (scorer_false_pass), not true")
+	}
+	if t1.InstrumentDefect == "" {
+		t.Error("expected trial 1's InstrumentDefect set")
+	}
+
+	t2 := readStoredCell(t, scenariobench.ScenarioCellPath(cellsDir, key, 2))
+	if !t2.Success || t2.InstrumentDefect != "" {
+		t.Errorf("expected trial 2's own cell untouched, got %+v", t2)
+	}
+}
+
+// TestCmdVoid_TrialFlagExcludeDeletesOnlyThatCell is wave N19's second
+// required proof: -exclude removes exactly the named trial's own stored
+// cell (an instrument-caused trial that must count toward neither pass
+// nor fail — cross-cell worktree contamination, never a proven false_
+// fail/false_pass), leaving a sibling trial's genuine cell in place.
+func TestCmdVoid_TrialFlagExcludeDeletesOnlyThatCell(t *testing.T) {
+	dir := t.TempDir()
+	ledgerPath := filepath.Join(dir, "ledger.jsonl")
+	if err := scenariobench.AppendScenarioLedger(ledgerPath, scenariobench.ScenarioLedgerRow{
+		RunID: "run-1", TaskID: "T1", Arm: "grep", Trials: 2, Successes: 1, ModelID: "sonnet",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	readmePath := scenarioLedgerReadmeFixture(t, dir)
+
+	cellsDir := filepath.Join(dir, "cells")
+	inv := scenariobench.CellInvariants{
+		CorpusSHA256: "abc123", TaskID: "T1", Arm: "grep", ModelID: "sonnet",
+		HarnessVersion: "2.1.0", Scoring: "oracle-v1", PromptSubject: "x",
+	}
+	key := scenariobench.ScenarioCellKey(inv)
+	if err := scenariobench.StoreScenarioCell(cellsDir, scenariobench.CellResult{
+		TaskID: "T1", Arm: "grep", Trial: 1, CellKey: key, RunID: "run-1", Success: false,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := scenariobench.StoreScenarioCell(cellsDir, scenariobench.CellResult{
+		TaskID: "T1", Arm: "grep", Trial: 2, CellKey: key, RunID: "run-1", Success: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	rc := run([]string{
+		"void",
+		"-ledger", ledgerPath,
+		"-readme", readmePath,
+		"-cells", cellsDir,
+		"-corpus-glob", filepath.Join(dir, "no-such-corpus", "*.json"),
+		"-run-id", "run-1", "-task", "T1", "-arm", "grep", "-trial", "1",
+		"-exclude",
+		"-reason", "instrument-caused cross-cell contamination: reused worktree slot returned another cell's content",
+	})
+	if rc != 0 {
+		t.Fatalf("void -trial 1 -exclude exited %d, want 0", rc)
+	}
+
+	if _, err := os.Stat(scenariobench.ScenarioCellPath(cellsDir, key, 1)); !os.IsNotExist(err) {
+		t.Errorf("expected trial 1's cell deleted, stat err = %v", err)
+	}
+	t2 := readStoredCell(t, scenariobench.ScenarioCellPath(cellsDir, key, 2))
+	if !t2.Success || t2.InstrumentDefect != "" {
+		t.Errorf("expected trial 2's own cell untouched, got %+v", t2)
+	}
+}
+
 // TestCmdVoid_TrialFlagRefusesWhenCellAbsent: a trial number no stored
 // cell carries is refused, leaving the cell store, ledger and README
 // untouched — the same "never invent a defect claim" discipline the

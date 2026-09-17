@@ -107,7 +107,12 @@ func rescoreOneCell(root string, cp cellPlan, arm scenariobench.Arm, rawDir, run
 	// from disk.
 	worktreeHint := scenariobench.HistoricalWorktreePath(root, cp.task, arm)
 	cellDirHint := scenariobench.HistoricalCellDir(root, cp.task, arm, cp.trial)
-	safeDirs := []string{worktreeHint, cellDirHint, cellRawBase}
+	// wave N19 defect 1: the shared subjects/ pool root, alongside this
+	// cell's own three directories — see HistoricalSubjectsDir's own doc
+	// comment for why a bare listing of it is safe while a specific OTHER
+	// cell's worktree under it stays caught.
+	subjectsDirHint := scenariobench.HistoricalSubjectsDir(root)
+	safeDirs := []string{worktreeHint, cellDirHint, cellRawBase, subjectsDirHint}
 
 	sessions, err := scenariobench.RescoreSessionsFromRaw(attemptDir, cp.task.Subject.ExcludePaths, arm.Wired, worktreeHint, safeDirs)
 	if err != nil {

@@ -255,6 +255,56 @@ func TestParseSessionStream_MissingFile(t *testing.T) {
 	}
 }
 
+// TestParseSessionStream_CostFallsBackToModelUsageWhenTotalCostUSDIsZero
+// is wave N19 defect 2: a terminal result event that carries no top-level
+// total_cost_usd (or reports it as exactly 0) still prices out from the
+// SAME event's own per-model modelUsage.costUSD breakdown — the shape
+// every raw vs-pilot-6 session actually carries (`modelUsage:
+// {"claude-sonnet-5": {"costUSD": ...}, ...}`) — so a rescored cell's
+// ledger cost column survives even on a stream whose top-level total is
+// absent, exactly as the live path (the SAME ParseSessionStream) would
+// have priced it.
+func TestParseSessionStream_CostFallsBackToModelUsageWhenTotalCostUSDIsZero(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "cost-fallback.jsonl")
+	writeTestFile(t, path,
+		`{"type":"assistant","message":{"content":[{"type":"text","text":"hi"}],"usage":{"input_tokens":1,"output_tokens":1}}}`+"\n"+
+			`{"type":"result","is_error":false,"num_turns":1,"duration_ms":1,`+
+			`"modelUsage":{"claude-haiku-4-5-20251001":{"costUSD":0.001119},"claude-sonnet-5":{"costUSD":0.0166748}},`+
+			`"result":"the answer","usage":{"input_tokens":1,"output_tokens":1}}`+"\n")
+
+	r, err := ParseSessionStream(path)
+	if err != nil {
+		t.Fatalf("ParseSessionStream: %v", err)
+	}
+	const want = 0.001119 + 0.0166748
+	if r.CostUSD != want {
+		t.Errorf("CostUSD = %v, want %v (summed from modelUsage since total_cost_usd is absent)", r.CostUSD, want)
+	}
+}
+
+// TestParseSessionStream_ExplicitTotalCostUSDWinsOverModelUsage covers the
+// converse: a result event that DOES carry a nonzero top-level
+// total_cost_usd is never overridden by summing modelUsage — the
+// fallback is for an absent/zero total only.
+func TestParseSessionStream_ExplicitTotalCostUSDWinsOverModelUsage(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "cost-explicit.jsonl")
+	writeTestFile(t, path,
+		`{"type":"assistant","message":{"content":[{"type":"text","text":"hi"}],"usage":{"input_tokens":1,"output_tokens":1}}}`+"\n"+
+			`{"type":"result","is_error":false,"num_turns":1,"duration_ms":1,"total_cost_usd":0.0177938,`+
+			`"modelUsage":{"claude-sonnet-5":{"costUSD":999}},`+
+			`"result":"the answer","usage":{"input_tokens":1,"output_tokens":1}}`+"\n")
+
+	r, err := ParseSessionStream(path)
+	if err != nil {
+		t.Fatalf("ParseSessionStream: %v", err)
+	}
+	if r.CostUSD != 0.0177938 {
+		t.Errorf("CostUSD = %v, want 0.0177938 (the explicit total, never the modelUsage fallback)", r.CostUSD)
+	}
+}
+
 func TestParseSessionStream_NoResultEvent(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "no-result.jsonl")
