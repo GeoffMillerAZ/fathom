@@ -866,6 +866,17 @@ type CellResult struct {
 	// SourceRunID (StoreScenarioCell never writes a borrowed cell back), so
 	// this is never present on a cell as originally stored.
 	StoreRoot string `json:"store_root,omitempty"`
+	// RescoredFromRaw (wave N18 defect 2) is true when this cell was never
+	// produced by a live `claude -p` session at all: its own sessions were
+	// reconstructed by re-parsing the raw transcript streams a run already
+	// spent real tokens producing (RescoreSessionsFromRaw), for a cell that
+	// had no cell file (LOST) or whose stored InstrumentDefect matched
+	// -rescore-reason. Readings that need a live worktree the shared,
+	// reused subject worktree can no longer supply (PlanCoverage, FalseDone,
+	// Resumption, ContractDrift, Overlap, RuleServed) are left unmeasured
+	// (their own nil zero value) rather than guessed — a reader must not
+	// mistake this cell's readings for the live path's full set.
+	RescoredFromRaw bool `json:"rescored_from_raw,omitempty"`
 }
 
 // Harness runs one session and returns what happened; the Claude Code

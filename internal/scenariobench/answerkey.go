@@ -54,7 +54,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/geoffmilleraz/fathom/internal/filter"
 )
@@ -287,15 +289,86 @@ func resultTextNamesExcludedPath(text string, needles []string) bool {
 // tree a stray command could wander into from inside a cell's worktree —
 // these three names are a complete proxy for "outside the worktree",
 // without needing the worktree's own absolute path threaded through.
+//
+// wave N18 defect 1 (vs-pilot-6, 105 of 140 cells LOST): every run's bench
+// ROOT itself is "<scratchpad>/benchroot2", and "/benchroot" is a
+// substring of "/benchroot2" — so the cell's OWN worktree path
+// (workspace/artifacts/scenariobench/worktrees/<cell>) and its subject-
+// worktree path (workspace/scenariobench/subjects/<sha>-worktrees/<cell>),
+// both of which live INSIDE the bench root, tripped this marker on the
+// very first `cd`. SandboxEscapeScan now takes the cell's own safe
+// directories and excludes any match found inside them — see its own doc
+// comment below.
 var sandboxEscapeMarkers = []string{"/pushclone/", "/wave-", "/benchroot"}
 
+// sandboxTokenBoundary reports whether r can never appear inside an
+// absolute-path token — whitespace, or the quoting/bracketing punctuation
+// a shell command or a tool's own JSON text wraps a path in (including the
+// ':' that separates a grep -n hit's own path from its line number).
+func sandboxTokenBoundary(r rune) bool {
+	switch r {
+	case ' ', '\t', '\n', '\r', '"', '\'', '`', '(', ')', '[', ']', '{', '}', '<', '>', ':', ',', ';':
+		return true
+	}
+	return false
+}
+
+// enclosingPathToken returns the maximal substring of text around byte
+// offset i (a position inside a sandboxEscapeMarkers match) that contains
+// no sandboxTokenBoundary rune — the whole path token spelled at that
+// position, so textNamesSandboxEscape can reason about where it STARTS
+// (absolute vs. relative — a relative path is never a sandbox escape) and
+// what it is a PREFIX of (one of the cell's own safe directories), rather
+// than the bare marker substring alone.
+func enclosingPathToken(text string, i int) string {
+	start := i
+	for start > 0 {
+		r, size := utf8.DecodeLastRuneInString(text[:start])
+		if sandboxTokenBoundary(r) {
+			break
+		}
+		start -= size
+	}
+	end := i
+	for end < len(text) {
+		r, size := utf8.DecodeRuneInString(text[end:])
+		if sandboxTokenBoundary(r) {
+			break
+		}
+		end += size
+	}
+	return text[start:end]
+}
+
+// pathUnderAnyDir reports whether path (cleaned) is exactly one of dirs or
+// nested inside one of them, once each is filepath.Clean-ed too. Empty
+// entries in dirs (a caller that does not have a raw dir, say) are simply
+// skipped — never treated as "everything is safe".
+func pathUnderAnyDir(path string, dirs []string) bool {
+	clean := filepath.Clean(path)
+	for _, d := range dirs {
+		if d == "" {
+			continue
+		}
+		cd := filepath.Clean(d)
+		if clean == cd || strings.HasPrefix(clean, cd+string(filepath.Separator)) {
+			return true
+		}
+	}
+	return false
+}
+
 // SandboxEscapeScan scans session's raw transcript for a tool_use INPUT or
-// tool_result naming one of sandboxEscapeMarkers — proof a command
-// (typically a Bash `find`/`grep -r` with no path argument, or an
-// absolute one) reached outside the cell's own worktree into the
-// operator's own scratch trees. false whenever there is nothing to scan
-// (no raw transcript) or nothing was found.
-func SandboxEscapeScan(session SessionResult) bool {
+// tool_result naming an absolute path that is a genuine sandbox escape:
+// one of sandboxEscapeMarkers' own substrings, in a path token that (a)
+// starts with "/" — a relative path is never an escape, however it
+// happens to spell — and (b) is not itself inside any of safeDirs, the
+// caller's own safe directories for this cell (CellLost's own naming: the
+// cell's own worktree directory, its subject-worktree directory, and its
+// raw transcript directory — pass whichever of these are known; an empty
+// or omitted safeDirs behaves exactly as before this fix). false whenever
+// there is nothing to scan (no raw transcript) or nothing was found.
+func SandboxEscapeScan(session SessionResult, safeDirs ...string) bool {
 	if session.RawPath == "" {
 		return false
 	}
@@ -321,7 +394,7 @@ func SandboxEscapeScan(session SessionResult) bool {
 				if c.Type != "tool_use" {
 					continue
 				}
-				if textNamesSandboxEscape(toolUseInputText(c.Name, c.Input)) {
+				if textNamesSandboxEscape(toolUseInputText(c.Name, c.Input), safeDirs) {
 					return true
 				}
 			}
@@ -330,7 +403,7 @@ func SandboxEscapeScan(session SessionResult) bool {
 				if c.Type != "tool_result" {
 					continue
 				}
-				if textNamesSandboxEscape(rawTextBlock(c.Content)) {
+				if textNamesSandboxEscape(rawTextBlock(c.Content), safeDirs) {
 					return true
 				}
 			}
@@ -339,12 +412,22 @@ func SandboxEscapeScan(session SessionResult) bool {
 	return false
 }
 
-// textNamesSandboxEscape reports whether text contains any of
-// sandboxEscapeMarkers.
-func textNamesSandboxEscape(text string) bool {
+// textNamesSandboxEscape reports whether text names a genuine sandbox
+// escape: see SandboxEscapeScan's own doc comment for the exact rule.
+func textNamesSandboxEscape(text string, safeDirs []string) bool {
 	for _, m := range sandboxEscapeMarkers {
-		if strings.Contains(text, m) {
-			return true
+		start := 0
+		for {
+			i := strings.Index(text[start:], m)
+			if i < 0 {
+				break
+			}
+			pos := start + i
+			token := enclosingPathToken(text, pos)
+			if strings.HasPrefix(token, "/") && !pathUnderAnyDir(token, safeDirs) {
+				return true
+			}
+			start = pos + len(m)
 		}
 	}
 	return false

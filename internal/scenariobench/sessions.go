@@ -124,11 +124,7 @@ func RunSessions(ctx context.Context, h Harness, task Task, armName string, arm 
 // under one run — the same formula RunSessions has always used — BEFORE
 // the per-attempt subdirectory allocateRawAttemptDir adds beneath it.
 func cellRawBase(task Task, armName string, opts RunOptions) string {
-	rawBase := opts.RawDir
-	if opts.RunID != "" {
-		rawBase = filepath.Join(opts.RawDir, opts.RunID)
-	}
-	return filepath.Join(rawBase, fmt.Sprintf("%s-%s-t%d", task.ID, armName, orOne(opts.Trial)))
+	return CellRawBase(opts.RawDir, opts.RunID, task.ID, armName, opts.Trial)
 }
 
 // allocateRawAttemptDir returns a fresh "attempt-<k>" directory under
@@ -193,7 +189,7 @@ func runSingle(ctx context.Context, h Harness, task Task, armName string, arm Ar
 		if err != nil {
 			return results, err
 		}
-		res, err := runOneSession(h, req, wt.Arm.MCPServerNames, task.Subject.ExcludePaths)
+		res, err := runOneSession(h, req, wt.Arm.MCPServerNames, task.Subject.ExcludePaths, wt.CellDir)
 		if err != nil {
 			return append(results, res), fmt.Errorf("task %s arm %s session %d: %w", task.ID, armName, i, err)
 		}
@@ -222,7 +218,7 @@ func runPlannerWorkers(ctx context.Context, h Harness, task Task, armName string
 	if err != nil {
 		return results, err
 	}
-	plannerRes, err := runOneSession(h, plannerReq, wt.Arm.MCPServerNames, task.Subject.ExcludePaths)
+	plannerRes, err := runOneSession(h, plannerReq, wt.Arm.MCPServerNames, task.Subject.ExcludePaths, wt.CellDir)
 	if err != nil {
 		return append(results, plannerRes), fmt.Errorf("task %s arm %s planner session: %w", task.ID, armName, err)
 	}
@@ -284,7 +280,7 @@ func runPlannerWorkers(ctx context.Context, h Harness, task Task, armName string
 		if err != nil {
 			return results, err
 		}
-		res, err := runOneSession(h, req, wt.Arm.MCPServerNames, task.Subject.ExcludePaths)
+		res, err := runOneSession(h, req, wt.Arm.MCPServerNames, task.Subject.ExcludePaths, wt.CellDir)
 		if err != nil {
 			return append(results, res), fmt.Errorf("task %s arm %s worker %d: %w", task.ID, armName, assigned, err)
 		}
@@ -631,7 +627,7 @@ func findPlanFile(worktree string) (string, error) {
 // disqualifying the whole cell regardless of how the other sessions in it
 // went. err is non-nil only when the harness failed to even start the
 // process.
-func runOneSession(h Harness, req SessionRequest, wantServers []string, excludePaths []string) (SessionResult, error) {
+func runOneSession(h Harness, req SessionRequest, wantServers []string, excludePaths []string, cellDir string) (SessionResult, error) {
 	res, err := h.RunSession(req)
 	if err != nil {
 		return res, err
@@ -660,8 +656,13 @@ func runOneSession(h Harness, req SessionRequest, wantServers []string, excludeP
 	}
 	// O65 (wave N12), item (c): a fact about the transcript independent of
 	// AnswerKeyLeak — a command that walked outside the cell's own
-	// worktree entirely, into the operator's own scratch trees.
-	if SandboxEscapeScan(res) {
+	// worktree entirely, into the operator's own scratch trees. wave N18
+	// defect 1: safe directories (the cell's own worktree, its subject-
+	// worktree, and its raw dir) are given explicitly so a `cd` into the
+	// cell's own tree never trips this scan merely because the bench root
+	// itself ("benchroot2") shares a literal substring with a
+	// sandboxEscapeMarkers entry ("/benchroot").
+	if SandboxEscapeScan(res, req.Worktree, cellDir, req.RawDir) {
 		res.SandboxEscape = true
 	}
 	// O53 defect 4: only a non-wired ("baseline") arm is required to have
