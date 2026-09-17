@@ -439,6 +439,62 @@ cannot load; both engines also exclude `.env`-pattern files and never follow
 a symlink, so a file ingest and `read_source` refuse is never still served
 by `search`.
 
+### Added
+
+- Kotlin extraction (`.kt`/`.kts`) via tree-sitter/wazero: classes/objects/interfaces,
+  top-level and member functions/methods, top-level properties, imports and same-file
+  call edges, closing O69's Kotlin blind spot (a real Kotlin repo went from ~165 symbols
+  indexed to 6,725). Kotlin drops off the unsupported-language disclosure list; Swift is
+  now that list's example.
+- `summary`: a deterministic, ≤200-char first-JSON-key sentence naming the direct answer,
+  added to nine agent-surface tools (`find_callers`, `references`, `blast_radius`,
+  `rename_impact`, `safe_delete_check`, `test_impact`, `localize`, `search`,
+  `obligations`) so a caller can no longer reason past evidence the tool already returned.
+- `fathom compile --max-tokens-per-run`/`--max-usd-per-run` (direct `--store` mode):
+  override a resolved layer's own budget for one compile call, a positive number or
+  `"all"` for unlimited.
+- `#Guard`/`#LayerRule` (`schema/guard`) gain `enforce: bool | *false`: an enforced rule
+  now denies a violating PreToolUse Edit/Write/MultiEdit or Bash call outright, citing the
+  rule and a remedy, instead of only injecting advisory text after the edit lands
+  (ADR-038). Loading an `enforce: true` rule with no deterministic check behind it is
+  refused by name; the shipped checks are `forbidden_paths`,
+  `org_token`/`secret_literal`/`workspace_output`/`usecase_maintained`, `cgo_purity`, and
+  `import_direction`/`boundary`.
+- Escape hatch: `FATHOM_ENFORCE=off` or `.fathom/config.toml`'s new `[guards] enforce =
+  false` turns every enforced rule back to advisory, repo-wide.
+
+### Changed
+
+- The existing CGO Java extractor now also emits field declarations (`KindJavaField`,
+  including multi-declarator lines) and import declarations (`KindJavaImport`, static and
+  wildcard); `fusion.ExtractorEpoch` bumps 6→7, forcing re-extraction of every
+  already-indexed `.java` file on next ingest.
+
+### Fixed
+
+- `ingest` (MCP tool) and `fathom ingest`/`--json` now report `typed_edges:
+  {packages_seen, packages_processed, edges, failed, error?, fallback?}` whenever a typed
+  pass was attempted for a Go service, instead of a silent clean success when it saw
+  packages but processed none; `failed:true` now flips the outcome to `degraded`/exit 1,
+  and `list_services` carries the same per-service field.
+- The daemon `ingest` tool now refuses a `path` that differs from an existing service's
+  registered root (a plain `git clone` elsewhere included) unless `remap:true` is passed;
+  the `post-commit-hook` verb checks the registered root via `list_services` first and
+  skips with a message on a mismatch instead of silently re-pointing the service.
+- `obligations` now accepts `path` as an alias for `file`.
+- `obligations`' governing-scope ranking no longer lets a nearer-tier candidate's bare
+  ancestor-directory-name hit (e.g. a stray "internal" mention) block a farther-tier,
+  strongly relevant rule from being promoted ahead of it.
+- `fathom compile`'s `max_usd_per_run <= 0` now means "unlimited", matching
+  `max_tokens_per_run`'s own convention — previously an explicit 0 refused every
+  non-free compile outright.
+- `fathom doctor`'s `obligations_served` WARN row now names `corpus_grew` when nonzero; the
+  value was already on the wire but silently dropped by a hand-copied mirror of the wire
+  shape.
+- `internal/guardspec.LoadGuards` no longer rejects a `forbidden_paths`-only guard as
+  "governing nothing" (only `scopes`/`command_scopes` were previously recognized as
+  governing fields).
+
 ## [0.8.0] -- 2026-09-02
 
 **What this release is.** fathom stopped being a Claude Code program and

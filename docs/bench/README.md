@@ -327,7 +327,11 @@ bars and stay advisory. On this evidence fathom is level with the best
 lookup tools at lower cost, ahead only on verification and receipts, not
 yet ahead on governance or on change tasks, and the case for continuing
 rests on the verify gate, the falsifiable receipts, and a governance channel
-that now reaches the edit and must next be made to bite.
+that now reaches the edit and must next be made to bite. This build round
+(2026-09-17 evening) shipped enforcement at the edit, answer-first `summary`
+envelopes, Kotlin extraction, ingest honesty and the compile budget as
+instrument truth, and the next guards run measures them — nothing above has
+been re-measured yet.
 
 `pass` and `fail` are both measured results and both belong in the ledger; a
 recorded refutation is the instrument working. `indeterminate` is different —
