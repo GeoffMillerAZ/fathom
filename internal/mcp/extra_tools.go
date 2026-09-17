@@ -946,12 +946,13 @@ func registerIngest(s *Server, backend QueryInterface) {
 	}
 	s.registerTool(toolDescriptor{
 		Name:        "ingest",
-		Description: "Re-ingest the named service to refresh the symbol store; pass path (absolute repo root) to onboard a NEW service into the index. Hash-gated: a clean repo is a sub-second no-op, so call it at session start and after every commit. Reach for it when staleness_report or a stale-index warning says the index lags the working tree. Required: service.",
+		Description: "Re-ingest the named service to refresh the symbol store; pass path (absolute repo root) to onboard a NEW service into the index. Hash-gated: a clean repo is a sub-second no-op, so call it at session start and after every commit. A path that differs from an EXISTING service's recorded root is refused unless remap:true is also passed (O82) — a hook must never re-point a service; remap:true (or the `fathom remap` verb) is the deliberate-move escape hatch. Reach for it when staleness_report or a stale-index warning says the index lags the working tree. Required: service.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
 				"path":    map[string]any{"type": "string", "description": "Absolute corpus root — required only when first onboarding a new service"},
+				"remap":   map[string]any{"type": "boolean", "description": "Authorize re-pointing an EXISTING service's recorded root at a different path (O82). Without it, a differing path is refused — a hook must never re-point a service."},
 			},
 			"required": []string{"service"},
 		},
@@ -963,6 +964,13 @@ func registerIngest(s *Server, backend QueryInterface) {
 		var p struct {
 			Service string `json:"service"`
 			Path    string `json:"path"`
+			// Remap authorizes a DELIBERATE move of an existing service's
+			// recorded root (wave P3 / O82, .fathom/observations.md): the
+			// escape hatch that parallels the store-direct `fathom remap`
+			// verb. Without it, a path that differs from the service's
+			// recorded root is refused outright — see the re-root refusal
+			// below.
+			Remap bool `json:"remap"`
 		}
 		if err := json.Unmarshal(args, &p); err != nil || p.Service == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "ingest: service required"}
@@ -1023,6 +1031,28 @@ func registerIngest(s *Server, backend QueryInterface) {
 			if recorded, _, found, merr := backend.ServiceMeta(ctx, svc); merr == nil && found && recorded != "" {
 				if err := worktree.CheckReroot(svc, recorded, canonical); err != nil {
 					return nil, &rpcError{Code: ErrCodeInvalid, Message: "ingest: " + err.Error()}
+				}
+				// General re-root refusal (wave P3 / O82,
+				// .fathom/observations.md): CheckReroot above only catches a
+				// LINKED git worktree of the recorded root. A plain `git
+				// clone` elsewhere — a separate physical checkout, not
+				// `git worktree add` — sails straight through it: a
+				// lefthook post-commit `fathom-refresh` step firing inside
+				// a push clone called this tool with {service:"fathom",
+				// path:<push clone>} and the daemon happily re-pointed the
+				// fleet service at a directory that vanishes with the
+				// clone. A HOOK must never re-point a service — that is a
+				// human (or explicitly authorized) decision. `remap:true`
+				// here is the deliberate-move escape hatch, parallel to the
+				// store-direct `fathom remap` verb.
+				recCanon, rcErr := filepath.EvalSymlinks(recorded)
+				if rcErr != nil {
+					recCanon = recorded
+				}
+				if recCanon != canonical && !p.Remap {
+					return nil, &rpcError{Code: ErrCodeInvalid, Message: fmt.Sprintf(
+						"ingest: service %q is already registered at %s — refusing to re-point it at %s without remap:true (a hook must never re-point a service; pass remap:true for a deliberate move, or use the `fathom remap` verb)",
+						svc, recCanon, canonical)}
 				}
 			}
 			p.Path = canonical
