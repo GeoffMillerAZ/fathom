@@ -336,3 +336,27 @@ pipeline fixed, worktrees isolated) does not put serena back ahead of
 fathom once its lost cells are restored, that specific correction is what
 this pilot's "fathom beats grep and serena on accuracy" claim rests on —
 report it as resting on a fixed pipeline, not yet a clean run.
+
+### Addendum (2026-09-17, after wave N19)
+
+The 14 cells §6 called "genuinely lost" were re-read by the driver's own
+rescore once the sandbox-escape scan was repaired a second time (O74: a
+sentence period glued to a path, terminal colour codes in `ls` output, the
+shared subjects pool one level above the worktree, and `/tmp` versus
+`/private/tmp`). Ten were recovered; two remain lost as commands genuinely
+broader than the pool, one as harness-truncated content, and one
+(H1-T04/gopls/t1) as a real `mcp server gopls failed` instrument fault. After
+those recoveries and this reading's five voids the filed table is:
+
+| Arm | Scored | Passes |
+|---|---|---|
+| serena | 27 | 26 |
+| full (fathom) | 28 | 24 |
+| graphify | 27 | 22 |
+| gopls | 26 | 21 |
+| grep | 27 | 20 |
+
+fathom's arm ran at 0.76× grep's tokens and 0.995× its cost. The verdict in
+§1 stands on the mechanism, not the lead: serena, not fathom, is the most
+accurate arm on this corpus once its lost cells are restored, and the
+obligations finding in §5 is unchanged.
