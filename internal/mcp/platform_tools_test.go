@@ -15,6 +15,11 @@ import (
 type fakeFleet struct {
 	svcs map[string][]core.SymbolNode
 	obs  map[string][]core.Observation
+	// unsupportedLangs is O69's fixture hook for UnsupportedLanguagesFor —
+	// service -> language display name -> file count. A nil/absent entry
+	// (the zero value every existing fixture gets for free) means "none",
+	// matching a real fleet backend with nothing unsupported to report.
+	unsupportedLangs map[string]map[string]int
 }
 
 func (f *fakeFleet) Services() []string {
@@ -39,6 +44,10 @@ func (f *fakeFleet) SymbolsFor(service string) []core.SymbolNode {
 
 func (f *fakeFleet) ObservationsFor(service string) []core.Observation {
 	return f.obs[service]
+}
+
+func (f *fakeFleet) UnsupportedLanguagesFor(service string) map[string]int {
+	return f.unsupportedLangs[service]
 }
 
 // compile-time check
@@ -135,6 +144,56 @@ func TestListServices_Empty(t *testing.T) {
 	p := platformToolPayload(t, resp)
 	if count, _ := p["count"].(float64); count != 0 {
 		t.Errorf("list_services count = %v, want 0", p["count"])
+	}
+}
+
+// TestListServices_IncludesUnsupportedLanguages (O69, wave P1): a service
+// with source in a known-but-unextracted language (the Long Code Arena bench
+// run's bumble-tech/appyx finding — a real Kotlin repo indexed as near-empty
+// with no signal anywhere that Kotlin was the reason) must say so by name
+// and file count, not stay indistinguishable from a service that classifies
+// everything.
+func TestListServices_IncludesUnsupportedLanguages(t *testing.T) {
+	fleet := fleetFixture()
+	fleet.unsupportedLangs = map[string]map[string]int{
+		"svc-a": {"kotlin": 412},
+	}
+	srv := newFleetServer(fleet)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1002, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "list_services",
+			"arguments": map[string]any{},
+		},
+	})
+	p := platformToolPayload(t, resp)
+	svcs := p["services"].([]any)
+	var sawA, sawB bool
+	for _, raw := range svcs {
+		entry := raw.(map[string]any)
+		switch entry["service"] {
+		case "svc-a":
+			sawA = true
+			langs, ok := entry["unsupported_languages"].([]any)
+			if !ok || len(langs) != 1 {
+				t.Fatalf("svc-a unsupported_languages = %v, want one entry", entry["unsupported_languages"])
+			}
+			row := langs[0].(map[string]any)
+			if row["language"] != "kotlin" {
+				t.Errorf("svc-a unsupported_languages[0].language = %v, want %q", row["language"], "kotlin")
+			}
+			if got, _ := row["files"].(float64); got != 412 {
+				t.Errorf("svc-a unsupported_languages[0].files = %v, want 412", row["files"])
+			}
+		case "svc-b":
+			sawB = true
+			if _, ok := entry["unsupported_languages"]; ok {
+				t.Errorf("svc-b has no unsupported languages — the key must be omitted, got %v", entry["unsupported_languages"])
+			}
+		}
+	}
+	if !sawA || !sawB {
+		t.Fatalf("expected both svc-a and svc-b in results: %v", svcs)
 	}
 }
 

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
@@ -46,4 +48,33 @@ func (f *fleetAdapter) ObservationsFor(service string) []client.Observation {
 		return nil
 	}
 	return obs
+}
+
+// UnsupportedLanguagesFor re-scans service's live source tree (via
+// client.Sources, the same connector-backed re-read cloc/secret_scan use)
+// and tallies files whose extension names a known programming language with
+// no registered extractor (O69) — mcp.FleetBackend's contract. Returns nil
+// on a fetch error (logged to stderr, matching every other method here) or
+// when nothing is unsupported.
+func (f *fleetAdapter) UnsupportedLanguagesFor(service string) map[string]int {
+	files, err := f.c.Sources(context.Background(), service)
+	if err != nil {
+		fmt.Fprintf(f.stderr, "fleet: sources for %s: %v\n", service, err)
+		return nil
+	}
+	var out map[string]int
+	for _, sf := range files {
+		if sf.Lang != core.LangUnclassified {
+			continue
+		}
+		lang, ok := connector.UnsupportedLanguageForPath(sf.Path)
+		if !ok {
+			continue
+		}
+		if out == nil {
+			out = make(map[string]int)
+		}
+		out[lang]++
+	}
+	return out
 }
