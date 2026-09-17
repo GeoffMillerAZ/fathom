@@ -556,7 +556,7 @@ func cmdRun(args []string) int {
 			cp := cp
 			fns[k] = func() (cellOutcome, error) {
 				if *rescoreLost {
-					return rescoreCellForReport(*root, cp, corpus, *cellsDir, absRawDir, *runID, *rescoreReason)
+					return rescoreCellForReport(ctx, *root, cp, corpus, *cellsDir, absRawDir, *runID, *rescoreReason)
 				}
 				return runCellForReport(ctx, *root, cp, corpus, *harnessName, *fakeStreamsDir, *fakeStreams, *cellsDir, absRawDir, *model, *runID)
 			}

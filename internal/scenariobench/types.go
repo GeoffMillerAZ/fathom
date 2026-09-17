@@ -877,6 +877,19 @@ type CellResult struct {
 	// (their own nil zero value) rather than guessed — a reader must not
 	// mistake this cell's readings for the live path's full set.
 	RescoredFromRaw bool `json:"rescored_from_raw,omitempty"`
+	// Rematerialized (wave N20) is true when RescoredFromRaw's own
+	// reconstruction went further than RescoreSessionsFromRaw's zero
+	// Worktree{} path: this cell's oracle NeedsLiveWorktree, so
+	// rescoreOneCellRematerialized (cmd/scenariobench/rescore.go) rebuilt a
+	// REAL worktree — the same PrepareSubject a live cell used — and applied
+	// the cell's own stored agent.diff on top (RematerializeCellWorktree)
+	// before running the SAME baseline+oracle a live cell runs, then deleted
+	// it. Always accompanied by RescoredFromRaw=true; the two are never set
+	// independently. Still never claims the SDD readings that need a plan.md
+	// this reconstruction has no sound way to date (PlanCoverage, FalseDone,
+	// Resumption, ContractDrift, Overlap, RuleServed) — left at their own
+	// zero value exactly like the non-rematerialized rescore path.
+	Rematerialized bool `json:"rematerialized,omitempty"`
 }
 
 // Harness runs one session and returns what happened; the Claude Code
