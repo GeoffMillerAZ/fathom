@@ -336,3 +336,36 @@ func TestRenderVerdict_PairedStatsLineOmittedWhenNothingPairs(t *testing.T) {
 		t.Errorf("expected no paired-stats line when no task ran in both arms:\n%s", out)
 	}
 }
+
+// TestRenderVerdict_PairedCriterionRendersNullSentence is wave N17's own
+// end-to-end failing-first test for the defect docs/bench/README.md
+// rendered for lca-run-1: "pass (treatment met the registered bar)"
+// immediately above a paired 95% CI that includes zero — contradicting
+// VB-27's registered rule (docs/vision/29-verbs-not-lookups.md §5). With
+// Criterion.Paired set, the plain-language sentence's own "Registered
+// criterion ...:" clause must carry the paired verdict word ("null") and
+// cite the same interval the "Paired (bootstrap...)" line below it
+// reports — every task's diff is exactly 0 here, so the CI is the
+// deterministic [0, 0].
+func TestRenderVerdict_PairedCriterionRendersNullSentence(t *testing.T) {
+	criteria := map[string]Criterion{
+		"sha": {ID: LCACriterionID, Treatment: "fathom", Control: "control", MinTrials: 2, Paired: true},
+	}
+	rows := []ScenarioLedgerRow{
+		{RunID: "lca-run-x", TaskID: "t1", Arm: "fathom", CorpusSHA256: "sha", Trials: 3, Successes: 3},
+		{RunID: "lca-run-x", TaskID: "t1", Arm: "control", CorpusSHA256: "sha", Trials: 3, Successes: 3},
+		{RunID: "lca-run-x", TaskID: "t2", Arm: "fathom", CorpusSHA256: "sha", Trials: 3, Successes: 1},
+		{RunID: "lca-run-x", TaskID: "t2", Arm: "control", CorpusSHA256: "sha", Trials: 3, Successes: 1},
+		{RunID: "lca-run-x", TaskID: "t3", Arm: "fathom", CorpusSHA256: "sha", Trials: 3, Successes: 0},
+		{RunID: "lca-run-x", TaskID: "t3", Arm: "control", CorpusSHA256: "sha", Trials: 3, Successes: 0},
+	}
+	out := renderVerdict(rows, criteria, nil)
+	want := "Registered criterion " + LCACriterionID +
+		": null (paired 95% CI of the success-rate difference includes zero: +0.000 [+0.000, +0.000]; the null is published).\n"
+	if !strings.Contains(out, want) {
+		t.Errorf("expected the null verdict sentence, got:\n%s", out)
+	}
+	if !strings.Contains(out, "Paired (bootstrap, n=3, seed 20260902, 20000 resamples): success-rate diff +0.000 [+0.000, +0.000] (95% CI)") {
+		t.Errorf("expected the paired-stats line to cite the same interval, got:\n%s", out)
+	}
+}

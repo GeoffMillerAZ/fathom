@@ -119,10 +119,11 @@ const (
 // LCACriterionID is VB-27's pre-registered criterion (M12/M16): "the
 // external corpus shows no lift with a confidence interval that includes
 // zero: the verdict publishes the null and BC-15 closes on it" (vision 29
-// §5). MinTrials mirrors VB-27's own "n >= 3" floor; the paired-statistics
-// interval itself is computed by the escalation/VB-27 tooling over the
-// rows this criterion's own Evaluate merely floors — a bare
-// Criterion.Evaluate pass/fail is not that confidence interval.
+// §5). MinTrials mirrors VB-27's own "n >= 3" floor. Paired: true (wave
+// N17) makes Criterion.Evaluate itself derive the verdict from that same
+// confidence interval — evaluatePaired (paired.go), over
+// ComputePairedRunStats's own paired bootstrap — never the unpaired
+// treatment>=control fallback, which has no notion of a null result.
 const LCACriterionID = "lca-bug-localization-m12-m16"
 
 // lcaCorpusDescription documents this corpus's own shape for a reader of
@@ -231,6 +232,7 @@ func BuildLCACorpus(records []LCARecord, path string) (Corpus, error) {
 			Treatment:  LCAArmFathom,
 			Control:    LCAArmControl,
 			MinTrials:  3,
+			Paired:     true,
 			Registered: "docs/vision/29-verbs-not-lookups.md §5 (VB-27, M12/M16)",
 		},
 		Sources: []SourcePin{{
@@ -280,6 +282,7 @@ func ExternalCorpusCriteria() map[string]Criterion {
 			Treatment:  LCAArmFathom,
 			Control:    LCAArmControl,
 			MinTrials:  3,
+			Paired:     true,
 			Registered: "docs/vision/29-verbs-not-lookups.md §5 (VB-27, M12/M16)",
 		},
 	}

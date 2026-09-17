@@ -1666,7 +1666,13 @@ func TestCmdLedger_LCABothArmsFiledWithRegisteredCriterionAndPairedStats(t *test
 	}
 
 	// The corrected invocation: -fathom-commit matches what actually
-	// produced the stored cells.
+	// produced the stored cells. wave N17: LCACriterionID is now Paired,
+	// and this fixture's own per-task diffs (0, +1/3, -1/3) were chosen so
+	// the mean is exactly 0 (the test's own comment above) — the paired
+	// bootstrap's CI necessarily brackets that zero point, so the
+	// corrected criterion publishes the null (exit 4), not pass (exit 0):
+	// VB-27's own registered rule (docs/vision/29-verbs-not-lookups.md
+	// §5), "a confidence interval that includes zero publishes the null."
 	stdout := captureStdout(t, func() {
 		rc := run([]string{
 			"ledger",
@@ -1675,8 +1681,8 @@ func TestCmdLedger_LCABothArmsFiledWithRegisteredCriterionAndPairedStats(t *test
 			"-run-id", runID, "-commit", "abc0001", "-fathom-commit", fathomCommit,
 			"-harness-version", harnessVersion, "-trials", "3",
 		})
-		if rc != 0 {
-			t.Fatalf("ledger exited %d, want 0", rc)
+		if rc != 4 {
+			t.Fatalf("ledger exited %d, want 4 (null: the paired CI includes zero)", rc)
 		}
 	})
 	if !strings.Contains(stdout, "filed 6 row(s)") {

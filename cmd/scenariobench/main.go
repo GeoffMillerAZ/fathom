@@ -42,7 +42,10 @@
 //	    own Criterion.MinTrials; whatever it resolves to is only a floor —
 //	    a cell key with more trials actually stored is still counted in
 //	    full. Exit 0 pass, 1 fail (a measured refutation — recorded, not
-//	    excused), 3 indeterminate (re-run: not enough was measured).
+//	    excused), 3 indeterminate (re-run: not enough was measured), 4 null
+//	    (a Paired criterion, e.g. LCA's VB-27: the paired bootstrap's own
+//	    95% CI of the success-rate difference includes zero — the
+//	    pre-registered null, recorded and published, never a refutation).
 //
 //	scenariobench void -run-id <id> -task <id> -arm <name> -reason <text> [-cells <dir>] [-ledger <path.jsonl>] [-readme <path>] [-corpus-glob <glob>]
 //	    Marks a FILED ledger row's own InstrumentDefect (and every stored
@@ -1682,6 +1685,8 @@ func cmdLedger(args []string) int {
 		return 0
 	case scenariobench.ScenarioVerdictIndeterminate:
 		return 3
+	case scenariobench.ScenarioVerdictNull:
+		return 4
 	default:
 		return 1
 	}

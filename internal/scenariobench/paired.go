@@ -40,6 +40,14 @@ const (
 // reason: a level a corpus could lower is a bar a corpus could lower.
 const pairedRunLevel = 0.95
 
+// minPairedTasks is evaluatePaired's own floor (wave N17) on how many
+// tasks must actually pair across treatment and control before the
+// bootstrap's own interval is trusted for a verdict — distinct from (and
+// checked after) Criterion.MinTrials's floor on treatment TRIALS. Below
+// it, a run has not measured enough paired evidence to decide either way,
+// mirroring the unpaired branch's own MinTrials indeterminate.
+const minPairedTasks = 3
+
 // PairedRunStats is one run's paired bootstrap summary over its own sound
 // (non-voided) rows: how many tasks paired across treatment and control,
 // the mean per-task success-rate difference with its 95% CI, and the mean
@@ -144,4 +152,68 @@ func RenderPairedRunStats(s PairedRunStats) string {
 		line += fmt.Sprintf("; token ratio %.2f× [%.2f×, %.2f×]", s.TokenRatio.Point, s.TokenRatio.Low, s.TokenRatio.High)
 	}
 	return line + ".\n"
+}
+
+// evaluatePaired is Criterion.Evaluate's own branch for a Paired criterion
+// (wave N17): VB-27's registered rule (docs/vision/29-verbs-not-lookups.md
+// §5) is "a confidence interval that includes zero publishes the null",
+// which the unpaired treatment>=control fallback cannot express — LCA's
+// own criterion registers neither RequireSuccessAtLeastEqual nor
+// MaxTokensPerSuccessRatio (lca.go's own doc comment: "a bare
+// Criterion.Evaluate pass/fail is not that confidence interval"), so that
+// fallback always reported "pass" once MinTrials was met, contradicting
+// the pre-registered rule.
+//
+// Order: c.MinTrials still floors the treatment's own trial count first
+// (the same floor the unpaired branch checks, so a run that measured
+// almost nothing reports the same indeterminate reason either way); then
+// ComputePairedRunStats pairs rows by task id, and minPairedTasks floors
+// how many tasks actually paired — a bootstrap over one or two clustered
+// tasks is not enough to trust the interval it reports. Only then does the
+// success-rate diff's own 95% CI decide: including zero is null, excluding
+// it above zero is pass (treatment's favour), excluding it below zero is
+// fail.
+func (c Criterion) evaluatePaired(rows []ScenarioLedgerRow) ScenarioEvaluation {
+	ev := ScenarioEvaluation{CriterionID: c.ID}
+
+	var tTrials int
+	for _, r := range rows {
+		if r.InstrumentDefect != "" {
+			continue
+		}
+		if r.Arm == c.Treatment {
+			tTrials += r.Trials
+		}
+	}
+	if tTrials < c.MinTrials {
+		ev.Verdict = ScenarioVerdictIndeterminate
+		ev.Reason = fmt.Sprintf("treatment %q ran %d trial(s), below the registered floor of %d", c.Treatment, tTrials, c.MinTrials)
+		return ev
+	}
+
+	stats, err := ComputePairedRunStats(rows, c.Treatment, c.Control)
+	if err != nil {
+		ev.Verdict = ScenarioVerdictIndeterminate
+		ev.Reason = fmt.Sprintf("paired bootstrap unavailable: %s", err)
+		return ev
+	}
+	if stats.Tasks < minPairedTasks {
+		ev.Verdict = ScenarioVerdictIndeterminate
+		ev.Reason = fmt.Sprintf("only %d task(s) paired across %q and %q, below the floor of %d", stats.Tasks, c.Treatment, c.Control, minPairedTasks)
+		return ev
+	}
+
+	diff := stats.SuccessDiff
+	switch {
+	case diff.Low <= 0 && diff.High >= 0:
+		ev.Verdict = ScenarioVerdictNull
+		ev.Reason = fmt.Sprintf("paired 95%% CI of the success-rate difference includes zero: %+.3f [%+.3f, %+.3f]; the null is published", diff.Point, diff.Low, diff.High)
+	case diff.Low > 0:
+		ev.Verdict = ScenarioVerdictPass
+		ev.Reason = fmt.Sprintf("paired 95%% CI of the success-rate difference excludes zero in the treatment's favour: %+.3f [%+.3f, %+.3f]", diff.Point, diff.Low, diff.High)
+	default:
+		ev.Verdict = ScenarioVerdictFail
+		ev.Reason = fmt.Sprintf("paired 95%% CI of the success-rate difference excludes zero against the treatment: %+.3f [%+.3f, %+.3f]", diff.Point, diff.Low, diff.High)
+	}
+	return ev
 }

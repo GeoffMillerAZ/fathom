@@ -571,16 +571,28 @@ const (
 	ScenarioVerdictPass          = "pass"
 	ScenarioVerdictFail          = "fail"
 	ScenarioVerdictIndeterminate = "indeterminate"
+	// ScenarioVerdictNull is evaluatePaired's own verdict (paired.go, wave
+	// N17): the paired bootstrap's 95% CI of the success-rate difference
+	// includes zero — VB-27's own registered rule (docs/vision/29-verbs-not-lookups.md
+	// §5): "a confidence interval that includes zero publishes the null."
+	// Never returned by the unpaired branch below.
+	ScenarioVerdictNull = "null"
 )
 
-// Evaluate applies c to rows (one run's ScenarioLedgerRow per task/arm):
-// fewer than c.MinTrials trials on the treatment arm is indeterminate (the
-// run did not measure enough to decide); otherwise a treatment success
-// rate below the control's, when c.RequireSuccessAtLeastEqual, is a fail,
-// and so is a token-per-success ratio above c.MaxTokensPerSuccessRatio when
-// one is registered. Anything else is a pass. Rows for arms other than
-// c.Treatment/c.Control are ignored.
+// Evaluate applies c to rows (one run's ScenarioLedgerRow per task/arm). A
+// Paired criterion (wave N17) delegates entirely to evaluatePaired
+// (paired.go) — the paired bootstrap over rows, never this function's own
+// unpaired tallies. Otherwise: fewer than c.MinTrials trials on the
+// treatment arm is indeterminate (the run did not measure enough to
+// decide); a treatment success rate below the control's, when
+// c.RequireSuccessAtLeastEqual, is a fail, and so is a token-per-success
+// ratio above c.MaxTokensPerSuccessRatio when one is registered. Anything
+// else is a pass. Rows for arms other than c.Treatment/c.Control are
+// ignored.
 func (c Criterion) Evaluate(rows []ScenarioLedgerRow) ScenarioEvaluation {
+	if c.Paired {
+		return c.evaluatePaired(rows)
+	}
 	ev := ScenarioEvaluation{CriterionID: c.ID}
 	var tTrials, tSuccesses, cTrials, cSuccesses int
 	var tTokens, cTokens int64

@@ -310,7 +310,29 @@ type Criterion struct {
 	MinTrials                  int     `json:"min_trials"`
 	RequireSuccessAtLeastEqual bool    `json:"require_success_at_least_equal"`
 	MaxTokensPerSuccessRatio   float64 `json:"max_tokens_per_success_ratio"`
-	Registered                 string  `json:"registered"`
+	// Paired switches Evaluate from the unpaired treatment>=control
+	// fallback (below) to the paired bootstrap in paired.go: wave N17's
+	// own fix for VB-27's registered rule (docs/vision/29-verbs-not-lookups.md
+	// §5) — "a confidence interval that includes zero publishes the
+	// null" — which a bare pass/fail comparison cannot express (a
+	// Criterion with neither RequireSuccessAtLeastEqual nor
+	// MaxTokensPerSuccessRatio registered, e.g. LCACriterionID, always
+	// fell through to "pass" once MinTrials was met). See
+	// Criterion.evaluatePaired.
+	//
+	// json:"-" deliberately: Criterion is hashed into its corpus's own
+	// CorpusSHA256 (canonicalMarshal)/CanonicalCorpusSHA256 (LCA), which
+	// gates every stored cell's own key (CellInvariants.CorpusSHA256,
+	// cell.go) — a field that changed the hash would orphan every cell
+	// already filed under a corpus's earlier identity (wave N17's own
+	// discovery: lca-run-1's committed cells, keyed under the corpus as it
+	// stood before this field existed, stopped resolving the moment this
+	// field first serialized). WHICH statistical test judges pass/fail is
+	// a scoring-time decision about the already-measured work, never part
+	// of what was measured, so it must never be part of the corpus's own
+	// content identity.
+	Paired     bool   `json:"-"`
+	Registered string `json:"registered"`
 }
 
 // BoxCheck is one `[x]` the agent wrote into a plan or checklist.

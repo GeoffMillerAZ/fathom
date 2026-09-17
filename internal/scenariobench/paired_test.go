@@ -126,3 +126,114 @@ func TestRenderPairedRunStats_Format(t *testing.T) {
 		t.Errorf("expected the token ratio clause, got:\n%s", out2)
 	}
 }
+
+// TestCriterionEvaluate_PairedNullWhenCIIncludesZero is wave N17's own
+// failing-first test for the defect docs/bench/README.md rendered:
+// lca-run-1's paired CI (+0.009 [-0.077, +0.094]) includes zero, but the
+// unpaired fallback said "pass" (VB-27's registered rule,
+// docs/vision/29-verbs-not-lookups.md §5, is "a confidence interval that
+// includes zero publishes the null"). Every task here has an identical
+// per-task diff of exactly 0, so the bootstrap CI is the degenerate
+// [0, 0] regardless of resample draws — deterministic without pinning the
+// RNG's own output.
+func TestCriterionEvaluate_PairedNullWhenCIIncludesZero(t *testing.T) {
+	c := Criterion{ID: "lca-x", Treatment: "fathom", Control: "control", MinTrials: 2, Paired: true}
+	rows := []ScenarioLedgerRow{
+		{TaskID: "t1", Arm: "fathom", Trials: 3, Successes: 3},
+		{TaskID: "t1", Arm: "control", Trials: 3, Successes: 3},
+		{TaskID: "t2", Arm: "fathom", Trials: 3, Successes: 1},
+		{TaskID: "t2", Arm: "control", Trials: 3, Successes: 1},
+		{TaskID: "t3", Arm: "fathom", Trials: 3, Successes: 0},
+		{TaskID: "t3", Arm: "control", Trials: 3, Successes: 0},
+	}
+	ev := c.Evaluate(rows)
+	if ev.Verdict != ScenarioVerdictNull {
+		t.Fatalf("Verdict = %s, want null: %s", ev.Verdict, ev.Reason)
+	}
+	if !strings.Contains(ev.Reason, "includes zero") || !strings.Contains(ev.Reason, "the null is published") {
+		t.Errorf("Reason must name the null publication: %s", ev.Reason)
+	}
+}
+
+// TestCriterionEvaluate_PairedPassWhenCIExcludesZeroInFavour mirrors the
+// null test with every task's diff at exactly +1.0 (treatment always
+// succeeds, control never) — the CI degenerates to [+1, +1], strictly
+// above zero.
+func TestCriterionEvaluate_PairedPassWhenCIExcludesZeroInFavour(t *testing.T) {
+	c := Criterion{ID: "lca-x", Treatment: "fathom", Control: "control", MinTrials: 2, Paired: true}
+	rows := []ScenarioLedgerRow{
+		{TaskID: "t1", Arm: "fathom", Trials: 3, Successes: 3},
+		{TaskID: "t1", Arm: "control", Trials: 3, Successes: 0},
+		{TaskID: "t2", Arm: "fathom", Trials: 3, Successes: 3},
+		{TaskID: "t2", Arm: "control", Trials: 3, Successes: 0},
+		{TaskID: "t3", Arm: "fathom", Trials: 3, Successes: 3},
+		{TaskID: "t3", Arm: "control", Trials: 3, Successes: 0},
+	}
+	ev := c.Evaluate(rows)
+	if ev.Verdict != ScenarioVerdictPass {
+		t.Fatalf("Verdict = %s, want pass: %s", ev.Verdict, ev.Reason)
+	}
+	if !strings.Contains(ev.Reason, "treatment's favour") {
+		t.Errorf("Reason must name the treatment's favour: %s", ev.Reason)
+	}
+}
+
+// TestCriterionEvaluate_PairedFailWhenCIExcludesZeroAgainst mirrors the
+// pass test in the opposite direction: every task's diff at exactly -1.0.
+func TestCriterionEvaluate_PairedFailWhenCIExcludesZeroAgainst(t *testing.T) {
+	c := Criterion{ID: "lca-x", Treatment: "fathom", Control: "control", MinTrials: 2, Paired: true}
+	rows := []ScenarioLedgerRow{
+		{TaskID: "t1", Arm: "fathom", Trials: 3, Successes: 0},
+		{TaskID: "t1", Arm: "control", Trials: 3, Successes: 3},
+		{TaskID: "t2", Arm: "fathom", Trials: 3, Successes: 0},
+		{TaskID: "t2", Arm: "control", Trials: 3, Successes: 3},
+		{TaskID: "t3", Arm: "fathom", Trials: 3, Successes: 0},
+		{TaskID: "t3", Arm: "control", Trials: 3, Successes: 3},
+	}
+	ev := c.Evaluate(rows)
+	if ev.Verdict != ScenarioVerdictFail {
+		t.Fatalf("Verdict = %s, want fail: %s", ev.Verdict, ev.Reason)
+	}
+	if !strings.Contains(ev.Reason, "against the treatment") {
+		t.Errorf("Reason must name it as against the treatment: %s", ev.Reason)
+	}
+}
+
+// TestCriterionEvaluate_PairedIndeterminateBelowMinTrials proves the
+// paired branch still floors on the treatment's own trial count first,
+// before any bootstrap runs.
+func TestCriterionEvaluate_PairedIndeterminateBelowMinTrials(t *testing.T) {
+	c := Criterion{ID: "lca-x", Treatment: "fathom", Control: "control", MinTrials: 10, Paired: true}
+	rows := []ScenarioLedgerRow{
+		{TaskID: "t1", Arm: "fathom", Trials: 3, Successes: 3},
+		{TaskID: "t1", Arm: "control", Trials: 3, Successes: 3},
+	}
+	ev := c.Evaluate(rows)
+	if ev.Verdict != ScenarioVerdictIndeterminate {
+		t.Fatalf("Verdict = %s, want indeterminate: %s", ev.Verdict, ev.Reason)
+	}
+	if !strings.Contains(ev.Reason, "below the registered floor of 10") {
+		t.Errorf("Reason must name the trial floor: %s", ev.Reason)
+	}
+}
+
+// TestCriterionEvaluate_PairedIndeterminateBelowMinPairedTasks proves the
+// paired branch also floors on how many TASKS actually paired — the
+// registered "n >= 3" floor VB-27 shares with the unpaired MinTrials
+// check, but counted in tasks rather than trials.
+func TestCriterionEvaluate_PairedIndeterminateBelowMinPairedTasks(t *testing.T) {
+	c := Criterion{ID: "lca-x", Treatment: "fathom", Control: "control", MinTrials: 2, Paired: true}
+	rows := []ScenarioLedgerRow{
+		{TaskID: "t1", Arm: "fathom", Trials: 3, Successes: 3},
+		{TaskID: "t1", Arm: "control", Trials: 3, Successes: 0},
+		{TaskID: "t2", Arm: "fathom", Trials: 3, Successes: 3},
+		{TaskID: "t2", Arm: "control", Trials: 3, Successes: 0},
+	}
+	ev := c.Evaluate(rows)
+	if ev.Verdict != ScenarioVerdictIndeterminate {
+		t.Fatalf("Verdict = %s, want indeterminate: %s", ev.Verdict, ev.Reason)
+	}
+	if !strings.Contains(ev.Reason, "only 2 task(s) paired") {
+		t.Errorf("Reason must name the paired-task floor: %s", ev.Reason)
+	}
+}
