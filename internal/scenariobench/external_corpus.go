@@ -277,6 +277,7 @@ func runExternalCell(ctx context.Context, root string, task Task, armName string
 		Oracle:         oracle,
 		Readings:       readings,
 		Success:        success,
+		SelfSkip:       SelfSkipDetected(sessions),
 		CellKey:        key,
 		CorpusSHA256:   inv.CorpusSHA256,
 		ModelID:        inv.ModelID,

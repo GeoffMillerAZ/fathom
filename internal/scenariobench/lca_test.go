@@ -256,3 +256,24 @@ func TestCanonicalCorpusSHA256_DeterministicAndSensitive(t *testing.T) {
 		t.Error("a different corpus (fewer tasks) hashed the same as the full one")
 	}
 }
+
+// TestExternalCorpusCriteria_RegistersLCA is wave N15 item 1's own proof:
+// the render-lookup fix needs LCACriterionID resolvable outside of a
+// loaded corpus (criteriaBySHA256 can never glob an in-memory external
+// corpus's own sha), and this is the map that supplies it.
+func TestExternalCorpusCriteria_RegistersLCA(t *testing.T) {
+	criteria := ExternalCorpusCriteria()
+	crit, ok := criteria[LCACriterionID]
+	if !ok {
+		t.Fatalf("expected ExternalCorpusCriteria to register %q, got keys %v", LCACriterionID, criteria)
+	}
+	if crit.ID != LCACriterionID {
+		t.Errorf("crit.ID = %q, want %q", crit.ID, LCACriterionID)
+	}
+	if crit.Treatment != LCAArmFathom || crit.Control != LCAArmControl {
+		t.Errorf("Treatment/Control = %q/%q, want %q/%q", crit.Treatment, crit.Control, LCAArmFathom, LCAArmControl)
+	}
+	if crit.MinTrials != 3 {
+		t.Errorf("MinTrials = %d, want 3 (VB-27's own floor)", crit.MinTrials)
+	}
+}

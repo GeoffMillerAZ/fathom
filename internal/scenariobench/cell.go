@@ -368,6 +368,63 @@ func HarnessVersionsForRun(cellsDir, runID string) ([]string, error) {
 	return out, nil
 }
 
+// ArmSurfacesForRun walks cellsDir for every stored cell record whose
+// RunID and Arm both match, and returns the DISTINCT ArmSurface values
+// found, sorted. wave N15 item 1's own arm-scoped analogue of
+// HarnessVersionsForRun above: a wired arm's cell key is built over
+// ArmSurface (ResolveArmSurface — the fathom commit a wired arm's cells
+// key on, planCells' own CellInvariants), so a `ledger` invocation whose
+// -fathom-commit does not match what actually produced the stored cells
+// borrows NOTHING for that arm specifically — while an unrelated arm
+// (e.g. a pure control, whose ArmSurface is always "") still files fine,
+// so cmdLedger's own whole-run "0 rows filed" guard (which only fires
+// when literally nothing filed) never catches this: the exact shape that
+// filed 39 "control" rows and 0 "fathom" rows for lca-run-1 while
+// reporting the treatment "ran 0 trial(s)" as if the arm had never been
+// exercised at all. Callers use this to tell that apart from an arm that
+// genuinely never ran under this run id: non-empty only when SOME cell
+// truly exists for (run, arm), just not under the arm_surface computed
+// from -fathom-commit. An empty or not-yet-created cellsDir is zero
+// results, not an error.
+func ArmSurfacesForRun(cellsDir, runID, arm string) ([]string, error) {
+	seen := map[string]bool{}
+	err := filepath.WalkDir(cellsDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			if errors.Is(err, fs.ErrNotExist) {
+				return nil
+			}
+			return err
+		}
+		if d.IsDir() || !strings.HasSuffix(path, ".json") {
+			return nil
+		}
+		raw, rerr := os.ReadFile(path)
+		if rerr != nil {
+			return fmt.Errorf("reading %s: %w", path, rerr)
+		}
+		var r CellResult
+		if uerr := json.Unmarshal(raw, &r); uerr != nil {
+			return fmt.Errorf("parsing %s: %w", path, uerr)
+		}
+		if r.RunID == runID && r.Arm == arm {
+			seen[r.ArmSurface] = true
+		}
+		return nil
+	})
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("finding arm surfaces for run %s arm %s: %w", runID, arm, err)
+	}
+	out := make([]string, 0, len(seen))
+	for v := range seen {
+		out = append(out, v)
+	}
+	sort.Strings(out)
+	return out, nil
+}
+
 // BorrowScenarioCell returns the stored cell for (key, trial) marked
 // Borrowed, with the run that paid for it named in SourceRunID. The second
 // return is false when no such cell exists — the caller then runs the cell

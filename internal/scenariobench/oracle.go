@@ -192,7 +192,19 @@ func AnswerOnly(task Task) bool {
 // edited: answer-only (SB-32 lookups-vs.json), localization-only (VB-25),
 // or refusal-aware (O57 finding 2, a correct refusal never edits
 // anything by design).
+//
+// wave N15 item 3: SelfSkipDetected is checked FIRST and, when true,
+// short-circuits straight to fail — no oracle result, however it reads,
+// may pass a cell whose own session wrote its way past a claimed row's
+// verification by adding skip_test: true in the same edit that claims
+// it (O56's self-grading pattern, selfskip.go). This is the single
+// point every Success-setting caller shares (this function's own doc
+// comment above), so the check applies uniformly rather than needing
+// its own copy at each call site.
 func SuccessFor(task Task, oracle OracleResult, sessions []SessionResult) bool {
+	if SelfSkipDetected(sessions) {
+		return false
+	}
 	return oracle.Passed && (AnswerOnly(task) || LocalizationOnly(task) || RefusalAware(task) || AnyEdits(sessions))
 }
 
@@ -489,24 +501,50 @@ func anyViolated(drs []DetectorResult) bool {
 	return false
 }
 
-// ApplyTestPatch applies task.Gold.TestPatch into wt.Path. SWE-bench
-// semantics: the patch was cut against base_commit, so BEFORE applying it
-// every path the patch's own `diff --git a/X b/X` headers name is reset to
-// its base_commit content — `git checkout base_commit -- path` for a path
-// that exists there, `rm -f` for one the patch creates — so a patch does
-// not fail with "does not match index"/"patch does not apply" merely
-// because the agent's own (non-test) edit also touched one of those files
-// (public pilot 1, 2026-09-13). Every OTHER file the agent touched is left
-// exactly as the agent left it. `git apply --3way` is then tried first (a
-// patch whose context has otherwise drifted still merges when the blobs
-// it names are reachable), falling back to a plain `git apply`. A task
-// with no test patch is a no-op. RunOracle calls this AFTER the sessions
-// and BEFORE the tests — the patch is hidden from every session, exactly
-// as SWE-bench evaluates.
+// ApplyTestPatch applies task.Gold.TestPatch so RunOracle can score
+// against it. A task with no test patch is a no-op. RunOracle calls this
+// AFTER the sessions and BEFORE the tests — the patch is hidden from
+// every session, exactly as SWE-bench evaluates.
+//
+// wave N15 item 4 (reuse-pilot-4 10124): when wt carries enough to stage
+// a driver-owned worktree (SubjectClone, CellDir, and task's own
+// BaseCommit), applyTestPatchViaStaging does the real work — the patch
+// is applied in a FRESH, agent-untouched worktree and the resulting
+// files are copied into wt.Path by a plain write, which has no
+// "already exists" failure mode. Falls back to applyTestPatchInPlace
+// (the original reset-then-git-apply approach, still exercised by a
+// hand-built Worktree with no real object store to stage from) when it
+// cannot.
 func ApplyTestPatch(ctx context.Context, wt Worktree, task Task) error {
 	if task.Gold.TestPatch == "" {
 		return nil
 	}
+	if wt.SubjectClone != "" && wt.CellDir != "" && task.Subject.BaseCommit != "" {
+		return applyTestPatchViaStaging(ctx, wt, task)
+	}
+	return applyTestPatchInPlace(ctx, wt, task)
+}
+
+// applyTestPatchInPlace is ApplyTestPatch's original approach: every path
+// the patch's own `diff --git a/X b/X` headers name is reset, IN wt.Path,
+// to its base_commit content — `git checkout base_commit -- path` for a
+// path that exists there, `rm -f` for one the patch creates — so a patch
+// does not fail with "does not match index"/"patch does not apply"
+// merely because the agent's own (non-test) edit also touched one of
+// those files (public pilot 1, 2026-09-13). Every OTHER file the agent
+// touched is left exactly as the agent left it. `git apply --3way` is
+// then tried first (a patch whose context has otherwise drifted still
+// merges when the blobs it names are reachable), falling back to a plain
+// `git apply`.
+//
+// This is still not enough for a target path the patch CREATES (no
+// content at base to reset TO) when an agent independently wrote its own
+// file at that exact path: `rm -f` clears the working tree, but `git
+// apply`'s own "already exists" check over wt.Path's git state can still
+// refuse it (reuse-pilot-4 10124, wave N15 item 4) — applyTestPatchViaStaging
+// is the fix for that case; this path remains only for a Worktree with no
+// real object store to stage a clean worktree from.
+func applyTestPatchInPlace(ctx context.Context, wt Worktree, task Task) error {
 	if task.Subject.BaseCommit != "" {
 		// wt.LocalBase, never task.Subject.BaseCommit — see
 		// Worktree.LocalBase's own doc comment; the guard above still
@@ -520,6 +558,61 @@ func ApplyTestPatch(ctx context.Context, wt Worktree, task Task) error {
 	if err := runGitApply(ctx, wt.Path, patch, true); err != nil {
 		if err2 := runGitApply(ctx, wt.Path, patch, false); err2 != nil {
 			return fmt.Errorf("git apply --3way: %v; git apply: %w", err, err2)
+		}
+	}
+	return nil
+}
+
+// applyTestPatchViaStaging materializes task.Gold.TestPatch in a fresh,
+// throwaway `git worktree add` off wt.SubjectClone at task.Subject.
+// BaseCommit (the SAME staging mechanism CalibrateSubject already uses,
+// prepareCalibrationWorktree) — a worktree no agent has ever touched, so
+// `git apply` there can never collide with an agent-authored file at the
+// SAME path a held-out gold test creates. Every file the patch's own
+// `diff --git a/X b/X` headers name is then copied from that staging
+// worktree into wt.Path by a plain os.WriteFile, overwriting whatever
+// the agent independently wrote there: a file write has no "already
+// exists" concept, unlike `git apply` creating a new file. Every OTHER
+// file the agent touched (anything the patch does not name) is left
+// untouched, exactly as applyTestPatchInPlace already guaranteed.
+func applyTestPatchViaStaging(ctx context.Context, wt Worktree, task Task) error {
+	staging := filepath.Join(wt.CellDir, "gold-test-patch-staging")
+	if out, err := prepareCalibrationWorktree(ctx, wt.SubjectClone, staging, task.Subject.BaseCommit); err != nil {
+		return fmt.Errorf("staging test patch worktree: %w (%s)", err, strings.TrimSpace(string(out)))
+	}
+	defer func() {
+		_ = exec.Command("git", "-C", wt.SubjectClone, "worktree", "remove", "--force", staging).Run()
+		_ = os.RemoveAll(staging)
+	}()
+
+	patch := []byte(task.Gold.TestPatch)
+	if err := runGitApply(ctx, staging, patch, true); err != nil {
+		if err2 := runGitApply(ctx, staging, patch, false); err2 != nil {
+			return fmt.Errorf("git apply --3way: %v; git apply: %w", err, err2)
+		}
+	}
+
+	for _, rel := range testPatchPaths(task.Gold.TestPatch) {
+		dst := filepath.Join(wt.Path, filepath.FromSlash(rel))
+		raw, err := os.ReadFile(filepath.Join(staging, filepath.FromSlash(rel)))
+		if err != nil {
+			if os.IsNotExist(err) {
+				// The patch DELETED this path (rare for a held-out gold
+				// test, but handled for correctness) — mirror that into
+				// the agent's worktree rather than leaving a stale file
+				// the staged patch no longer has.
+				if rmErr := os.Remove(dst); rmErr != nil && !os.IsNotExist(rmErr) {
+					return fmt.Errorf("removing %s (deleted by the staged patch): %w", rel, rmErr)
+				}
+				continue
+			}
+			return fmt.Errorf("reading staged %s: %w", rel, err)
+		}
+		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+			return fmt.Errorf("creating directory for %s: %w", rel, err)
+		}
+		if err := os.WriteFile(dst, raw, 0o644); err != nil {
+			return fmt.Errorf("writing %s into the agent's worktree: %w", rel, err)
 		}
 	}
 	return nil

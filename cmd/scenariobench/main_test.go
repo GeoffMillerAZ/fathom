@@ -1552,6 +1552,180 @@ func TestCmdScore_SuccessRecomputedWithoutCorpusUsesBareFormula(t *testing.T) {
 }
 
 // TestCmdVoid_MissingFlags mirrors TestCmdLedger_MissingFlags.
+// storeLCAFixtureCells stores trials stored cells for every task in the
+// LCA fixture corpus (internal/scenariobench/testdata/lca/fixture.jsonl,
+// 3 tasks) across both its arms ("fathom" wired at fathomCommit,
+// "control" unwired), so `ledger` can file them with no network and no
+// real harness — mirroring TestCmdVoid_MarksRowCellAndRerendersReadme's
+// own direct-StoreScenarioCell pattern rather than `run`, since an LCA
+// corpus's Subject.RepoURL always points at a real (here fake) GitHub
+// remote `run` cannot clone offline. fathomSuccessCounts/
+// controlSuccessCounts name how many of `trials` trials pass (the first N
+// of them, so 2 of 3 always means trial 1 and 2), and
+// fathomTokens/controlTokens are each trial's own token count (per task,
+// applied to every one of its trials) — parallel, one entry per task, so
+// a caller can craft deterministic, checkable paired statistics.
+func storeLCAFixtureCells(t *testing.T, cellsDir, sha, runID, harnessVersion, fathomCommit string, trials int, corpus scenariobench.Corpus, fathomSuccessCounts, controlSuccessCounts []int, fathomTokens, controlTokens []int64) {
+	t.Helper()
+	if len(fathomSuccessCounts) != len(corpus.Tasks) || len(controlSuccessCounts) != len(corpus.Tasks) {
+		t.Fatalf("success-count slices must have one entry per task (%d tasks)", len(corpus.Tasks))
+	}
+	for i, task := range corpus.Tasks {
+		for armName, arm := range corpus.Arms {
+			surface := scenariobench.ResolveArmSurface(arm, fathomCommit)
+			inv := scenariobench.CellInvariants{
+				CorpusSHA256: sha, TaskID: task.ID, Arm: armName,
+				ModelID: "sonnet", HarnessVersion: harnessVersion, Scoring: "oracle-v1",
+				PromptSubject: promptSubjectFor(task), ArmSurface: surface,
+			}
+			key := scenariobench.ScenarioCellKey(inv)
+			successCount := controlSuccessCounts[i]
+			tokens := controlTokens[i]
+			if armName == scenariobench.LCAArmFathom {
+				successCount = fathomSuccessCounts[i]
+				tokens = fathomTokens[i]
+			}
+			for trial := 1; trial <= trials; trial++ {
+				if err := scenariobench.StoreScenarioCell(cellsDir, scenariobench.CellResult{
+					TaskID: task.ID, Arm: armName, Trial: trial, CellKey: key, RunID: runID,
+					Success: trial <= successCount, CorpusSHA256: sha, ModelID: "sonnet", HarnessVersion: harnessVersion,
+					ArmSurface: surface, Readings: scenariobench.Readings{TotalTokens: tokens},
+				}); err != nil {
+					t.Fatalf("StoreScenarioCell %s/%s/t%d: %v", task.ID, armName, trial, err)
+				}
+			}
+		}
+	}
+}
+
+// TestCmdLedger_LCABothArmsFiledWithRegisteredCriterionAndPairedStats is
+// wave N15 item 1's own failing-first proof over a two-arm EXTERNAL
+// (LCA, VB-25) corpus fixture. Before the fix: (1) a `-fathom-commit`
+// that does not match the arm_surface actually stored under the "fathom"
+// arm silently filed every "control" row while the "fathom" arm filed
+// NONE — never refused, because the OTHER arm's rows made the whole-run
+// len(rows)==0 guard a no-op (this is bit-for-bit the shape a real
+// lca-run-1 filing hit: 39 filed "control" rows, 0 "fathom", criterion
+// "treatment fathom ran 0 trial(s)"); and (2) even once both arms filed,
+// the rendered "Where fathom stands" block said "(no registered criterion
+// for this corpus)" despite every row carrying the correct CriterionID,
+// because criteriaBySHA256's own testdata glob can never discover an
+// external corpus's in-memory sha.
+func TestCmdLedger_LCABothArmsFiledWithRegisteredCriterionAndPairedStats(t *testing.T) {
+	dir := t.TempDir()
+	datasetPath := repoRelative(t, "internal", "scenariobench", "testdata", "lca", "fixture.jsonl")
+	corpus, sha, err := loadCorpusOrLCA("lca", datasetPath)
+	if err != nil {
+		t.Fatalf("loadCorpusOrLCA: %v", err)
+	}
+	if len(corpus.Tasks) != 3 {
+		t.Fatalf("expected the fixture's 3 tasks, got %d", len(corpus.Tasks))
+	}
+
+	cellsDir := filepath.Join(dir, "cells")
+	const (
+		runID          = "lca-run-1"
+		harnessVersion = "fake-1"
+		fathomCommit   = "deadbeef"
+		trials         = 3
+	)
+	// Deterministic per-task outcomes so the paired-stats line is
+	// checkable: t1 ties 3/3 vs 3/3 (diff 0, ratio 0.5), t2 favors fathom
+	// 2/3 vs 1/3 (diff +1/3) at 1.5x the tokens, t3 favors control 1/3 vs
+	// 2/3 (diff -1/3) at 3x the tokens — mean diff 0, mean ratio 5/3.
+	storeLCAFixtureCells(t, cellsDir, sha, runID, harnessVersion, fathomCommit, trials, corpus,
+		[]int{3, 2, 1}, []int{3, 1, 2},
+		[]int64{1000, 1500, 3000}, []int64{2000, 1000, 1000},
+	)
+
+	// Reproduce EXACTLY the reported bug's own fathom-commit mismatch: the
+	// stored cells above key the "fathom" arm on fathomCommit
+	// ("deadbeef"), but this filing invocation passes a DIFFERENT commit,
+	// mirroring the real lca-run-1 filing that conflated -commit (this
+	// repo's own HEAD) with -fathom-commit (the wired arm's own binary).
+	ledgerPath := filepath.Join(dir, "ledger.jsonl")
+	readmePath := scenarioLedgerReadmeFixture(t, dir)
+	var rc int
+	stderr := captureStderr(t, func() {
+		rc = run([]string{
+			"ledger",
+			"-corpus", "lca", "-dataset", datasetPath,
+			"-cells", cellsDir, "-ledger", ledgerPath, "-readme", readmePath,
+			"-run-id", runID, "-commit", "abc0001", "-fathom-commit", "notthecommitthatran",
+			"-harness-version", harnessVersion, "-trials", "3",
+		})
+	})
+	if rc != 2 {
+		t.Fatalf("ledger with a mismatched -fathom-commit: exit %d, want 2 (refused), stderr:\n%s", rc, stderr)
+	}
+	if !strings.Contains(stderr, "arm_surface") || !strings.Contains(stderr, fathomCommit) {
+		t.Errorf("expected the refusal to name the discovered arm_surface %q, got:\n%s", fathomCommit, stderr)
+	}
+	if rows, _ := scenariobench.LoadScenarioLedger(ledgerPath); len(rows) != 0 {
+		t.Fatalf("a refused filing must file NOTHING (never a partial control-only ledger), got %d row(s)", len(rows))
+	}
+
+	// The corrected invocation: -fathom-commit matches what actually
+	// produced the stored cells.
+	stdout := captureStdout(t, func() {
+		rc := run([]string{
+			"ledger",
+			"-corpus", "lca", "-dataset", datasetPath,
+			"-cells", cellsDir, "-ledger", ledgerPath, "-readme", readmePath,
+			"-run-id", runID, "-commit", "abc0001", "-fathom-commit", fathomCommit,
+			"-harness-version", harnessVersion, "-trials", "3",
+		})
+		if rc != 0 {
+			t.Fatalf("ledger exited %d, want 0", rc)
+		}
+	})
+	if !strings.Contains(stdout, "filed 6 row(s)") {
+		t.Errorf("expected 6 rows filed (3 tasks x 2 arms), got:\n%s", stdout)
+	}
+
+	rows, err := scenariobench.LoadScenarioLedger(ledgerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 6 {
+		t.Fatalf("expected 6 filed rows, got %d: %+v", len(rows), rows)
+	}
+	armsSeen := map[string]int{}
+	for _, r := range rows {
+		armsSeen[r.Arm]++
+		if r.CriterionID != scenariobench.LCACriterionID {
+			t.Errorf("row %s/%s carries CriterionID %q, want %q", r.TaskID, r.Arm, r.CriterionID, scenariobench.LCACriterionID)
+		}
+	}
+	if armsSeen[scenariobench.LCAArmFathom] != 3 || armsSeen[scenariobench.LCAArmControl] != 3 {
+		t.Fatalf("expected 3 fathom + 3 control rows, got %v", armsSeen)
+	}
+
+	readme, err := os.ReadFile(readmePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	readmeText := string(readme)
+	if strings.Contains(readmeText, "no registered criterion") {
+		t.Errorf("expected the render to resolve the external corpus's own registered criterion, got:\n%s", readmeText)
+	}
+	if !strings.Contains(readmeText, "fathom vs control") {
+		t.Errorf("expected the verdict block to compare fathom vs control, got:\n%s", readmeText)
+	}
+	if !strings.Contains(readmeText, scenariobench.LCACriterionID) {
+		t.Errorf("expected the registered M12/M16 criterion id rendered, got:\n%s", readmeText)
+	}
+	if !strings.Contains(readmeText, "Paired (bootstrap, n=3") {
+		t.Errorf("expected the paired-bootstrap stats line for 3 paired tasks, got:\n%s", readmeText)
+	}
+	if !strings.Contains(readmeText, "success-rate diff +0.000") {
+		t.Errorf("expected the mean success-rate diff (0) rendered, got:\n%s", readmeText)
+	}
+	if !strings.Contains(readmeText, "token ratio 1.67×") {
+		t.Errorf("expected the mean token ratio (5/3) rendered, got:\n%s", readmeText)
+	}
+}
+
 func TestCmdVoid_MissingFlags(t *testing.T) {
 	if rc := run([]string{"void"}); rc != 2 {
 		t.Errorf("void with no flags: exit %d, want 2", rc)
