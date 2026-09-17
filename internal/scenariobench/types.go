@@ -447,6 +447,18 @@ type SessionResult struct {
 	// depends on did not hold. CellLost treats any ONE such session as
 	// voiding the whole cell, exactly like InstrumentError.
 	BaselineRanFathom bool `json:"baseline_ran_fathom,omitempty"`
+	// SandboxEscape (O65, wave N12) is set when a post-session scan
+	// (SandboxEscapeScan) found a tool_use input or tool_result in this
+	// session's raw transcript naming a path OUTSIDE the cell's own
+	// worktree — the operator's own push clone, another wave's clone, or a
+	// benchroot evidence tree — proof a command (typically an unanchored
+	// `find`/`grep -r`) walked past the sandbox boundary entirely. Distinct
+	// from AnswerKeyLeak: the escaped path may or may not also match an
+	// exclude_paths pattern, but either way it never reached the agent
+	// FROM inside the worktree the way an answer-key leak does. CellLost
+	// treats any ONE such session as voiding the whole cell, exactly like
+	// AnswerKeyLeak.
+	SandboxEscape bool `json:"sandbox_escape,omitempty"`
 }
 
 // DetectorResult is one detector's verdict.

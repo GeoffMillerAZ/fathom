@@ -658,6 +658,12 @@ func runOneSession(h Harness, req SessionRequest, wantServers []string, excludeP
 	if AnswerKeyLeakScan(res, excludePaths) {
 		res.AnswerKeyLeak = true
 	}
+	// O65 (wave N12), item (c): a fact about the transcript independent of
+	// AnswerKeyLeak — a command that walked outside the cell's own
+	// worktree entirely, into the operator's own scratch trees.
+	if SandboxEscapeScan(res) {
+		res.SandboxEscape = true
+	}
 	// O53 defect 4: only a non-wired ("baseline") arm is required to have
 	// no fathom available at all — a wired arm's own transcript naming
 	// `fathom` (its stanza tells it to run `fathom verify`, say) is
@@ -761,14 +767,14 @@ func hooksInstrumentError(wired bool, res SessionResult) string {
 }
 
 // CellLost reports why a cell is not a reading: any session carrying an
-// answer-key leak (AnswerKeyLeakScan), a baseline that ran fathom
-// (BaselineRanFathomScan), an instrument error
-// (instrumentTruthError/hooksInstrumentError, via runOneSession), every
-// session errored some other way, or no session ever produced a turn. A
-// single such session voids the whole cell regardless of how the other
-// sessions in it went — unlike a session that merely errored in-band,
-// which only loses the cell when EVERY session did. A lost cell is never
-// stored or scored.
+// answer-key leak (AnswerKeyLeakScan), a sandbox escape
+// (SandboxEscapeScan), a baseline that ran fathom (BaselineRanFathomScan),
+// an instrument error (instrumentTruthError/hooksInstrumentError, via
+// runOneSession), every session errored some other way, or no session
+// ever produced a turn. A single such session voids the whole cell
+// regardless of how the other sessions in it went — unlike a session that
+// merely errored in-band, which only loses the cell when EVERY session
+// did. A lost cell is never stored or scored.
 func CellLost(sessions []SessionResult) string {
 	if len(sessions) == 0 {
 		return "no sessions ran"
@@ -776,6 +782,11 @@ func CellLost(sessions []SessionResult) string {
 	for _, s := range sessions {
 		if s.AnswerKeyLeak {
 			return "answer_key_leak: a tool result named a path subject.exclude_paths should have removed from the worktree"
+		}
+	}
+	for _, s := range sessions {
+		if s.SandboxEscape {
+			return "sandbox_escape: a tool input or result named a path outside the cell's own worktree (the operator's push clone, another wave clone, or benchroot)"
 		}
 	}
 	for _, s := range sessions {

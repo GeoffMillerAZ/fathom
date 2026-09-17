@@ -65,17 +65,124 @@ func TestAnswerKeyLeakScan_EmptyInputsAreFalse(t *testing.T) {
 	}
 }
 
-// TestAnswerKeyLeakScan_BashCatOfExcludedPathIsCaught: the same defect the
-// vs-pilot-3 evidence names — a Bash tool result (a `cat`, a directory
-// listing) can carry the excluded path just as readily as Grep/Read.
-func TestAnswerKeyLeakScan_BashCatOfExcludedPathIsCaught(t *testing.T) {
+// TestAnswerKeyLeakScan_BashFindOutputIsCaught: the same defect the
+// vs-pilot-3 evidence names — a Bash tool result (a `find`, a directory
+// listing) can carry the excluded path just as readily as Grep/Read. O65
+// (wave N12) narrowed the RESULT-side check to lines ROOTED at the
+// excluded path (resultTextNamesExcludedPath): a `find` listing is exactly
+// that shape (optionally "./"-prefixed), unlike the unrealistic "$ cat
+// <path>" echo this test used to carry — a real Bash tool_result never
+// echoes the command it ran, only its output, so a `cat` of an excluded
+// path is caught via its tool_use INPUT instead (see
+// TestAnswerKeyLeakScan_BashCommandNamesExcludedPath below).
+func TestAnswerKeyLeakScan_BashFindOutputIsCaught(t *testing.T) {
 	dir := t.TempDir()
 	path := writeOverlapTranscript(t, dir, "bash-leak.jsonl", []overlapRead{
-		{Name: "Bash", File: "n/a", Result: "$ cat testdata/contextbench/tasks-home.json\n{\"H1-T01\":{\"ground_truth\":\"fusion.New\"}}\n"},
+		{Name: "Bash", File: "n/a", Result: "./testdata/contextbench/tasks-home.json\n"},
 	})
 	session := SessionResult{RawPath: path}
 	if !AnswerKeyLeakScan(session, homeCorpusExcludePaths) {
-		t.Error("expected a leak to be detected in a Bash tool result")
+		t.Error("expected a leak to be detected in a Bash find-style tool result rooted at the excluded path")
+	}
+}
+
+// TestAnswerKeyLeakScan_ProseMentionInUnrelatedFileIsNotALeak is O65 (wave
+// N12) item 1's own regression: vs-pilot-5's H1-T05/gopls/t1 read an
+// ordinary worktree source file (not itself excluded) whose own comment
+// happened to name an excluded path as documentation — a bare mention
+// inside prose, not the answer key itself reaching the agent. The old
+// substring-anywhere scan caught this; the line-rooted rule must not.
+func TestAnswerKeyLeakScan_ProseMentionInUnrelatedFileIsNotALeak(t *testing.T) {
+	dir := t.TempDir()
+	path := writeGoldTranscript(t, dir, "prose-mention.jsonl", []goldStep{
+		{
+			Name:   "Read",
+			Input:  `{"file_path":"/repo/internal/mcp/import.go"}`,
+			Result: "package mcp\n\n// registerReadSource wires the read_source tool (import.go; docs/bench/public-loc.md\n// narrates its own budget rules).\nfunc registerReadSource() {}\n",
+		},
+	})
+	session := SessionResult{RawPath: path}
+	if AnswerKeyLeakScan(session, homeCorpusExcludePaths) {
+		t.Error("expected no leak: docs/bench/ is merely named in a comment of a file that is not itself excluded")
+	}
+}
+
+// TestAnswerKeyLeakScan_GrepListingFileWhoseProseNamesExcludedPathIsNotALeak
+// is O65 item 2's own regression: vs-pilot-5's H1-T07/graphify/t2 ran
+// `grep -rl "ADR-020"`, whose own output is a bare list of matching FILE
+// NAMES — one of them, docs/plans/archive/falsifiability.md, is not
+// itself excluded, but that file's own prose (shown here as if a
+// follow-up step surfaced it in the same result) mentions
+// testdata/contextbench/tasks.json in running text, not as a listed path.
+// Neither line is rooted at an excluded directory.
+func TestAnswerKeyLeakScan_GrepListingFileWhoseProseNamesExcludedPathIsNotALeak(t *testing.T) {
+	dir := t.TempDir()
+	path := writeOverlapTranscript(t, dir, "grep-listing.jsonl", []overlapRead{
+		{Name: "Grep", File: "ADR-020", Result: "docs/plans/archive/falsifiability.md\n" +
+			"the falsifiability check reads its fixtures from testdata/contextbench/tasks.json directly.\n"},
+	})
+	session := SessionResult{RawPath: path}
+	if AnswerKeyLeakScan(session, homeCorpusExcludePaths) {
+		t.Error("expected no leak: the listed file is not excluded, and the excluded path is named only in that file's own prose, not as a rooted line")
+	}
+}
+
+// TestSandboxEscapeScan_FindOutsideWorktreeIsCaught is O65 item 3's own
+// proof: vs-pilot-5's H1-T05/graphify/t1 ran `find /private/tmp/claude-501
+// -maxdepth 8 -iname "*fathom*"`, a command with no path argument
+// confining it to the worktree, and its result walked OUTSIDE the
+// worktree entirely, listing the operator's own push clone. This must
+// register as a sandbox escape, distinct from (and not double-counted as)
+// an answer-key leak, even though the listed path's tail also matches an
+// exclude_paths pattern.
+func TestSandboxEscapeScan_FindOutsideWorktreeIsCaught(t *testing.T) {
+	dir := t.TempDir()
+	escaped := "/private/tmp/claude-501/-Volumes-m2ext-code-geoffmilleraz-sextant/e8652946/scratchpad/pushclone/testdata/scenariobench/guards-fathom.json"
+	path := writeOverlapTranscript(t, dir, "sandbox-escape.jsonl", []overlapRead{
+		{Name: "Bash", File: "n/a", Result: escaped + "\n"},
+	})
+	session := SessionResult{RawPath: path}
+	if !SandboxEscapeScan(session) {
+		t.Error("expected a sandbox escape to be detected from a path outside the worktree naming the operator's own push clone")
+	}
+	if AnswerKeyLeakScan(session, homeCorpusExcludePaths) {
+		t.Error("expected no answer_key_leak: the excluded sub-path is not rooted at the start of the line, it is buried inside a longer escaped path")
+	}
+}
+
+// TestSandboxEscapeScan_NoEscapeReturnsFalse covers the converse: an
+// ordinary in-worktree tool result never trips the sandbox-escape scan.
+func TestSandboxEscapeScan_NoEscapeReturnsFalse(t *testing.T) {
+	dir := t.TempDir()
+	path := writeOverlapTranscript(t, dir, "no-escape.jsonl", []overlapRead{
+		{Name: "Read", File: "internal/core/model.go", Result: "package core\n\ntype Edge struct{}\n"},
+	})
+	session := SessionResult{RawPath: path}
+	if SandboxEscapeScan(session) {
+		t.Error("expected no sandbox escape from an ordinary in-worktree tool result")
+	}
+}
+
+// TestResultTextNamesExcludedPath covers the line-rooted matching rule
+// directly: a needle must be the LEADING text of its own line (grep -n /
+// grep -l / find shapes), never merely present somewhere inside it.
+func TestResultTextNamesExcludedPath(t *testing.T) {
+	needles := []string{"testdata/contextbench/", "docs/bench/"}
+	cases := []struct {
+		name string
+		text string
+		want bool
+	}{
+		{"grep -n rooted hit", `testdata/contextbench/tasks-home.json:3:  "ground_truth": "fusion.New"`, true},
+		{"grep -l bare listing", "testdata/contextbench/tasks-home.json", true},
+		{"find ./-prefixed listing", "./testdata/contextbench/tasks-home.json", true},
+		{"prose mention mid-line", "see docs/bench/public-loc.md for the budget", false},
+		{"unrelated file listed, unrelated prose", "docs/plans/archive/falsifiability.md\nreads testdata/contextbench/tasks.json", false},
+	}
+	for _, c := range cases {
+		if got := resultTextNamesExcludedPath(c.text, needles); got != c.want {
+			t.Errorf("%s: resultTextNamesExcludedPath(%q) = %v, want %v", c.name, c.text, got, c.want)
+		}
 	}
 }
 
@@ -243,6 +350,54 @@ func TestRunSessions_NoLeakArmNotAffected(t *testing.T) {
 	}
 	if reason := CellLost(results); reason != "" {
 		t.Errorf("expected the cell not to be lost, got %q", reason)
+	}
+}
+
+// TestRunSessions_SandboxEscapeLosesTheCellDistinctly is O65 (wave N12)
+// item 3's end-to-end proof: a session whose transcript names a path
+// outside the worktree (the operator's own push clone) sets SandboxEscape,
+// never AnswerKeyLeak, and CellLost reports it with its own distinct
+// "sandbox_escape:" reason — not "answer_key_leak:", even though the
+// escaped path's tail also matches an exclude_paths pattern.
+func TestRunSessions_SandboxEscapeLosesTheCellDistinctly(t *testing.T) {
+	streamsTmp := t.TempDir()
+	escaped := "/private/tmp/claude-501/-Volumes-m2ext-code-geoffmilleraz-sextant/e8652946/scratchpad/pushclone/testdata/scenariobench/guards-fathom.json"
+	writeOverlapTranscript(t, streamsTmp, "escape.jsonl", []overlapRead{
+		{Name: "Bash", File: "n/a", Result: escaped + "\n"},
+	})
+
+	wtDir := t.TempDir()
+	task := Task{
+		ID:       "T1",
+		Prompt:   "do the thing",
+		Subject:  Subject{ExcludePaths: homeCorpusExcludePaths},
+		Sessions: Sessions{Mode: ModeSingle, Count: 1, MaxTurns: 10},
+	}
+	wt := Worktree{Path: wtDir}
+	h := &FakeHarness{
+		StreamsDir: streamsTmp,
+		TaskID:     "T1",
+		ArmName:    "full",
+		Streams:    map[string]string{"T1/full": "escape.jsonl"},
+	}
+	opts := RunOptions{Trial: 1, Model: "sonnet", RawDir: filepath.Join(t.TempDir(), "raw")}
+
+	results, err := RunSessions(context.Background(), h, task, "full", Arm{}, wt, opts)
+	if err != nil {
+		t.Fatalf("RunSessions: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 session, got %d", len(results))
+	}
+	if !results[0].SandboxEscape {
+		t.Error("expected SandboxEscape = true")
+	}
+	if results[0].AnswerKeyLeak {
+		t.Error("expected AnswerKeyLeak = false: the escaped path is not rooted at the excluded directory")
+	}
+	reason := CellLost(results)
+	if got := reason; got != "sandbox_escape: a tool input or result named a path outside the cell's own worktree (the operator's push clone, another wave clone, or benchroot)" {
+		t.Errorf("CellLost reason = %q", got)
 	}
 }
 
