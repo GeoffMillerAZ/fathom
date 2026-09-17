@@ -150,6 +150,88 @@ func (c *Client) ObligationsLayerCoverage(ctx context.Context, service string) (
 	return semantic.LiveLayerCoverage(ctx, c.st, service, layerDef, corpus)
 }
 
+// RawFallbackObligations is wave O1's fix (ADR-037) for the product defect
+// the benches found: `obligations` served nothing useful when the compiled
+// layer's coverage for the edited path's own scope was incomplete
+// (budget_stopped, no compile_runs row at all, or a section the compile
+// simply never reached). It ranks the obligations layer's own UNCOMPILED
+// sections that govern file by the same governing-scope proximity ranker
+// compiled claims use (semantic.RawFallbackRules → rankByGoverningScope,
+// VB-8) and returns up to max of the nearest as raw rows, alongside why —
+// the shared coverage-defect note every returned row also carries
+// individually.
+//
+// ok=false is an honest "nothing to add here", covering four cases: file is
+// empty (root-scope calls are out of this mechanism's scope — kept small),
+// the layer/corpus cannot be resolved (an enrichment-only degrade, never a
+// hard failure), the file's own nearest governing guide is ALREADY fully
+// compiled (semantic.NearestUncompiledGuide finds no gap), or the layer has
+// no recorded compile_runs row AND already has compiled claims of its own
+// (a store that seeds claims directly rather than through a real compile —
+// the L1 payload-replay fixture is exactly this shape; guessing at a gap
+// from a bookkeeping absence alone would be a false positive, not a real
+// one). The genuine "never compiled at all" case (no compile_runs row AND
+// zero claims for this layer) DOES fire — the guards-pilot-6 defect this
+// exists to fix (a brand-new file's PostToolUse hook naming only "index is
+// behind" and nothing else).
+func (c *Client) RawFallbackObligations(ctx context.Context, service, file string, max int) ([]semantic.Obligation, string, bool, error) {
+	if file == "" || max <= 0 {
+		return nil, "", false, nil
+	}
+	root := ""
+	if meta, found, merr := c.st.GetServiceMeta(ctx, service); merr == nil && found {
+		root = meta.Path
+	}
+	layerDef, err := semantic.LoadLayerIn(root, semantic.LayerObligations)
+	if err != nil {
+		return nil, "", false, nil
+	}
+	files, err := c.Sources(ctx, service)
+	if err != nil {
+		return nil, "", false, nil
+	}
+	corpus := semantic.SelectCorpus(files, layerDef.CorpusInclude, layerDef.CorpusExclude)
+	claims, err := c.st.ClaimsForService(ctx, service, layerDef.Name)
+	if err != nil {
+		return nil, "", false, nil
+	}
+	cov, found, cerr := semantic.LiveLayerCoverage(ctx, c.st, service, layerDef, corpus)
+	if cerr != nil {
+		return nil, "", false, nil
+	}
+
+	var status string
+	switch {
+	case !found:
+		if len(claims) > 0 {
+			// Claims exist without a recorded compile run — a store seeded
+			// directly (indexbench's L1 fixture) rather than through a real
+			// compile. Nothing here says the LAYER is actually incomplete;
+			// guessing at a gap from bookkeeping absence alone would be a
+			// false positive on exactly the fixture the L1 payload-replay
+			// golden pins byte-for-byte.
+			return nil, "", false, nil
+		}
+		status = "no compile_runs row"
+	default:
+		if _, gok := semantic.NearestUncompiledGuide(cov, file); !gok {
+			return nil, "", false, nil // this file's own governing guide is already fully compiled
+		}
+		if cov.BudgetStopped {
+			status = "budget_stopped"
+		} else {
+			status = "uncompiled"
+		}
+	}
+
+	why := fmt.Sprintf("compiled layer incomplete: %s; raw nearest guide served", status)
+	rows, rerr := semantic.RawFallbackRules(claims, layerDef, corpus, file, max, why)
+	if rerr != nil || len(rows) == 0 {
+		return nil, "", false, nil
+	}
+	return rows, why, true, nil
+}
+
 func (c *Client) compileLayer(ctx context.Context, service, layerName string, dryRun bool, escape string, resume bool) (core.CompileRun, error) {
 	if !dryRun && c.llm == nil {
 		return core.CompileRun{}, fmt.Errorf("client: no LLM configured for CompileLayer (set ANTHROPIC_API_KEY and call WithLLM, or use dry_run:true to estimate cost)")

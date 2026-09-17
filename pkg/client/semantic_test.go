@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -522,6 +523,272 @@ func TestClient_AppendClaimEvent_RoundTrips(t *testing.T) {
 	}
 	if events[0].Verdict != "superseded" || events[0].Author != "review" || events[0].Note != ev.Note {
 		t.Errorf("event = %+v, want %+v", events[0], ev)
+	}
+}
+
+// ─── wave O1 (ADR-037): RawFallbackObligations ─────────────────────────────
+//
+// The product defect the benches found: `obligations` served NOTHING
+// USEFUL when the compiled layer's coverage for the edited path's own
+// scope was incomplete. vs-pilot-5's second reading: the obligations tool
+// never served the predicted rule in 0 of 4 trials built to test it, the
+// compiled-rule layer having hit budget_stopped before the nested guide
+// that mattered. guards-pilot-6's second reading: a brand-new file's
+// PostToolUse hook returned only "index is behind your working tree" and
+// nothing else.
+
+// TestClient_RawFallbackObligations_CorpusGrowthServesNestedGuideRaw is
+// test (b): a nested guide added to the repo AFTER a full compile (the
+// exact TestObligationsLayerCoverage_LiveCorpusReflectsGrowth shape) never
+// gets a compiled claim of its own until the NEXT compile. RawFallback must
+// serve it raw, and the ALREADY-COMPILED root rule for the same file must
+// not be touched — the two are independent calls at this layer; ordering
+// them in one payload is internal/mcp's job (see
+// TestObligationsTool_RawFallback_NestedRankedAheadOfCompiledRoot).
+func TestClient_RawFallbackObligations_CorpusGrowthServesNestedGuideRaw(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+
+	if err := os.WriteFile(filepath.Join(dir, "CLAUDE.md"), []byte("# Rules\n\n- Run tests before committing.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "pkg"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "pkg", "foo.go"), []byte("package main\nfunc Foo() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	c := newTestClient(t, dir)
+	defer c.Close()
+	if _, err := c.Ingest(ctx, client.ServiceRef{ID: "svc", Path: dir}); err != nil {
+		t.Fatal("Ingest:", err)
+	}
+
+	mock := llmclient.NewMockClient(llmclient.MockEntry{Response: llmclient.Response{
+		Text: `{"claims":[{"rule":"Run tests before committing.","scope":["pkg/**"],"cite_start":3,"cite_end":3}]}`,
+	}})
+	c.WithLLM(mock, "mock-model", 0, 0)
+	run, err := c.CompileObligations(ctx, "svc", false)
+	if err != nil || run.SectionsCompiled != 1 {
+		t.Fatalf("compile: run=%+v err=%v", run, err)
+	}
+
+	// The COMPILED root rule already answers a file under pkg/ — untouched
+	// by anything below.
+	rootObl, err := c.Obligations(ctx, "svc", "pkg/foo.go", 0)
+	if err != nil || len(rootObl.Rules) != 1 {
+		t.Fatalf("Obligations(pkg/foo.go): obl=%+v err=%v", rootObl, err)
+	}
+
+	// A NESTED guide lands on disk after the compile — no re-ingest, no
+	// recompile. internal/extractor/goextract.go's own governing guide has
+	// never been turned into a claim at all.
+	if err := os.MkdirAll(filepath.Join(dir, "internal", "extractor"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "internal", "CLAUDE.md"), []byte("# internal\n\n- Register every extractor in fusion.New.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	rows, why, ok, err := c.RawFallbackObligations(ctx, "svc", "internal/extractor/goextract.go", 2)
+	if err != nil {
+		t.Fatalf("RawFallbackObligations: %v", err)
+	}
+	if !ok || len(rows) == 0 {
+		t.Fatalf("ok=%v rows=%+v, want a raw row for the never-compiled nested guide", ok, rows)
+	}
+	if rows[0].Tier != "raw" {
+		t.Errorf("rows[0].Tier = %q, want raw", rows[0].Tier)
+	}
+	if rows[0].Src != "internal/CLAUDE.md#L1-L4" {
+		t.Errorf("rows[0].Src = %q, want the nested guide's own citation", rows[0].Src)
+	}
+	if why == "" || !strings.Contains(why, "uncompiled") {
+		t.Errorf("why = %q, want it to name the uncompiled status", why)
+	}
+
+	// The root rule for pkg/foo.go must still be exactly what it was —
+	// RawFallbackObligations never touches the compiled path.
+	rootObl2, err := c.Obligations(ctx, "svc", "pkg/foo.go", 0)
+	if err != nil || len(rootObl2.Rules) != 1 || rootObl2.Rules[0].Rule != rootObl.Rules[0].Rule {
+		t.Fatalf("Obligations(pkg/foo.go) changed: before=%+v after=%+v err=%v", rootObl, rootObl2, err)
+	}
+}
+
+// TestClient_RawFallbackObligations_BudgetStoppedNamesStatus is test (a)'s
+// sibling at the client level: a RECORDED budget-stopped compile run (the
+// store's own bookkeeping — no real LLM trip needed to prove the status
+// label) leaves a nested guide's section uncompiled. RawFallback must name
+// "budget_stopped" in why, distinct from the "uncompiled"/CorpusGrew and
+// "no compile_runs row" statuses the sibling tests below name.
+func TestClient_RawFallbackObligations_BudgetStoppedNamesStatus(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+
+	if err := os.MkdirAll(filepath.Join(dir, "internal", "mcp"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "internal", "CLAUDE.md"), []byte("# internal\n\n- Sort all outputs.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "internal", "mcp", "tools.go"), []byte("package mcp\nfunc Foo() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	st := store.NewMemoryStore()
+	c := client.New(connector.NewLocalConnector(), st)
+	defer c.Close()
+	if _, err := c.Ingest(ctx, client.ServiceRef{ID: "svc", Path: dir}); err != nil {
+		t.Fatal("Ingest:", err)
+	}
+
+	// A budget-stopped run recorded directly against the store — mirrors
+	// TestObligationsLayerCoverage_ReadsLatestRun's own pattern. Zero
+	// claims exist for the layer, so the live corpus scan (LiveLayerCoverage)
+	// correctly reports internal/CLAUDE.md's section as never compiled,
+	// while cov.BudgetStopped carries this run's OWN recorded flag through.
+	if err := st.RecordCompileRun(ctx, core.CompileRun{
+		RunID: "r1", ServiceID: "svc", Layer: "obligations",
+		RanAt: time.Unix(1, 0).UTC(), SectionsTotal: 1, SectionsCompiled: 0,
+		BudgetStopped: true,
+	}); err != nil {
+		t.Fatalf("RecordCompileRun: %v", err)
+	}
+
+	rows, why, ok, err := c.RawFallbackObligations(ctx, "svc", "internal/mcp/tools.go", 2)
+	if err != nil {
+		t.Fatalf("RawFallbackObligations: %v", err)
+	}
+	if !ok || len(rows) == 0 {
+		t.Fatalf("ok=%v rows=%+v, want a raw row for the budget-stopped nested guide", ok, rows)
+	}
+	if !strings.Contains(why, "budget_stopped") {
+		t.Errorf("why = %q, want it to name budget_stopped", why)
+	}
+	if rows[0].Src != "internal/CLAUDE.md#L1-L4" {
+		t.Errorf("rows[0].Src = %q, want internal/CLAUDE.md's own citation", rows[0].Src)
+	}
+}
+
+// TestClient_RawFallbackObligations_CompleteLayerReturnsFalse is test (c):
+// once the layer's compile genuinely covers file's own governing guide,
+// RawFallback must add nothing — the existing compiled answer stands
+// unchanged.
+func TestClient_RawFallbackObligations_CompleteLayerReturnsFalse(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "CLAUDE.md"), []byte("# Rules\n\n- Run tests before committing.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "pkg"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "pkg", "foo.go"), []byte("package main\nfunc Foo() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	c := newTestClient(t, dir)
+	defer c.Close()
+	if _, err := c.Ingest(ctx, client.ServiceRef{ID: "svc", Path: dir}); err != nil {
+		t.Fatal("Ingest:", err)
+	}
+	mock := llmclient.NewMockClient(llmclient.MockEntry{Response: llmclient.Response{
+		Text: `{"claims":[{"rule":"Run tests before committing.","scope":["pkg/**"],"cite_start":3,"cite_end":3}]}`,
+	}})
+	c.WithLLM(mock, "mock-model", 0, 0)
+	if run, err := c.CompileObligations(ctx, "svc", false); err != nil || run.SectionsCompiled != 1 {
+		t.Fatalf("compile: run=%+v err=%v", run, err)
+	}
+
+	rows, why, ok, err := c.RawFallbackObligations(ctx, "svc", "pkg/foo.go", 2)
+	if err != nil {
+		t.Fatalf("RawFallbackObligations: %v", err)
+	}
+	if ok || len(rows) != 0 || why != "" {
+		t.Fatalf("ok=%v rows=%+v why=%q, want no raw fallback for a fully-compiled layer", ok, rows, why)
+	}
+}
+
+// TestClient_RawFallbackObligations_NeverCompiledAtAllStillServesRaw is
+// guards-pilot-6's own defect, reproduced directly: a brand-new service
+// with a governing guide but NO compile_runs row and NO claims at all —
+// "index is behind your working tree" must not be the only thing served.
+func TestClient_RawFallbackObligations_NeverCompiledAtAllStillServesRaw(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "docs", "use-cases"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "docs", "CLAUDE.md"), []byte("# docs\n\n- Every use-case doc needs a Maintained line.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "docs", "use-cases", "new-thing.md"), []byte("# New thing\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	c := newTestClient(t, dir)
+	defer c.Close()
+	if _, err := c.Ingest(ctx, client.ServiceRef{ID: "svc", Path: dir}); err != nil {
+		t.Fatal("Ingest:", err)
+	}
+	// Deliberately NO CompileObligations call at all — the layer has never
+	// been compiled, and no claim of any kind exists for it.
+
+	rows, why, ok, err := c.RawFallbackObligations(ctx, "svc", "docs/use-cases/new-thing.md", 2)
+	if err != nil {
+		t.Fatalf("RawFallbackObligations: %v", err)
+	}
+	if !ok || len(rows) == 0 {
+		t.Fatalf("ok=%v rows=%+v, want the nearest guide served raw even though nothing was ever compiled", ok, rows)
+	}
+	if !strings.Contains(why, "no compile_runs row") {
+		t.Errorf("why = %q, want it to name the never-compiled status", why)
+	}
+	if rows[0].Src != "docs/CLAUDE.md#L1-L4" {
+		t.Errorf("rows[0].Src = %q, want docs/CLAUDE.md's own citation", rows[0].Src)
+	}
+}
+
+// TestClient_RawFallbackObligations_ClaimsWithoutCompileRunNeverGuesses
+// protects internal/indexbench's L1 payload-replay fixture (SeedFixtureClaims
+// writes claims directly via PutClaims — no compile_runs row is ever
+// recorded for that store): a layer with real claims but no run record must
+// NOT be treated as a coverage gap, or the L1 golden's byte count would move
+// for a reason that has nothing to do with a genuine defect.
+func TestClient_RawFallbackObligations_ClaimsWithoutCompileRunNeverGuesses(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "CLAUDE.md"), []byte("# Rules\n\n- Sort outputs.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	st := store.NewMemoryStore()
+	conn := connector.NewLocalConnector()
+	c := client.New(conn, st)
+	defer c.Close()
+	if _, err := c.Ingest(ctx, client.ServiceRef{ID: "svc", Path: dir}); err != nil {
+		t.Fatal("Ingest:", err)
+	}
+
+	// Seed a claim directly against the store — no CompileObligations call,
+	// so no compile_runs row exists, exactly like SeedFixtureClaims.
+	claim := core.SemanticClaim{
+		ClaimID: "svc:fx-sorted", ServiceID: "svc",
+		Layer: "obligations", LayerVersion: "v1", Kind: "obligation",
+		Subject: "seeded#fx-sorted", Rule: "Sort outputs.",
+		Scope: []string{"**"}, Tier: core.TierDocClaimed, TierProfile: "engineering",
+		Status: core.ClaimFresh, CompiledAt: time.Unix(1, 0).UTC(),
+	}
+	if err := st.PutClaims(ctx, []core.SemanticClaim{claim}, nil); err != nil {
+		t.Fatalf("PutClaims: %v", err)
+	}
+
+	rows, why, ok, err := c.RawFallbackObligations(ctx, "svc", "pkg/foo.go", 2)
+	if err != nil {
+		t.Fatalf("RawFallbackObligations: %v", err)
+	}
+	if ok || len(rows) != 0 || why != "" {
+		t.Fatalf("ok=%v rows=%+v why=%q, want no raw fallback when claims exist without a compile_runs row", ok, rows, why)
 	}
 }
 

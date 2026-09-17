@@ -268,6 +268,22 @@ func (a *autoRefreshBackend) ClaimsSummary(ctx context.Context, service string) 
 	return cs.ClaimsSummary(ctx, service)
 }
 
+// RawFallbackObligations forwards wave O1's raw-section fallback capability
+// (ADR-037) — same O7 forwarding class as every other optional semantic
+// capability above: without this explicit forward, wrapping the client in
+// auto-refresh (serve-http's default configuration) would silently strip
+// the capability and obligations would degrade back to the layer_coverage
+// note-only disclosure on every real daemon, exactly the class of bug this
+// file's own doc comment names.
+func (a *autoRefreshBackend) RawFallbackObligations(ctx context.Context, service, file string, max int) ([]semantic.Obligation, string, bool, error) {
+	a.ensure(ctx, service)
+	rfb, ok := a.QueryInterface.(rawFallbackBackend)
+	if !ok {
+		return nil, "", false, nil
+	}
+	return rfb.RawFallbackObligations(ctx, service, file, max)
+}
+
 // StoreWatermark forwards the optional storeWatermarker capability
 // (resolved_nav.go) — same O7 forwarding class as IngestStats/TypedEdgeStatus
 // above. Without it, serve-http's default configuration (auto-refresh ON,

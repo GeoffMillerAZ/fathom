@@ -87,6 +87,24 @@ type layerCoverageBackend interface {
 	ObligationsLayerCoverage(ctx context.Context, service string) (semantic.LayerCoverage, bool, error)
 }
 
+// rawFallbackBackend is the optional backend capability for wave O1's
+// raw-section fallback (ADR-037): the product defect the benches found —
+// `obligations` served NOTHING USEFUL when the compiled layer's coverage
+// for the edited path's own scope was incomplete (a budget-stopped
+// compile, no compile_runs row at all, or a section the compile simply
+// never reached). Silence, or a generic root-tier rule that happened to
+// compile, is never the answer; this ranks the layer's own UNCOMPILED
+// sections by the exact same governing-scope proximity ranker compiled
+// claims use (rankByGoverningScope, VB-8) and serves the nearest ones,
+// flagged Tier:"raw" with a Why note, ahead of any farther-tier compiled
+// row. pkg/client.Client implements it via semantic.RawFallbackRules; a
+// backend that omits it (an older module, a minimal test fake) degrades to
+// the existing layer_coverage note-only disclosure — an enrichment, never
+// a hard dependency, exactly like layerCoverageBackend above.
+type rawFallbackBackend interface {
+	RawFallbackObligations(ctx context.Context, service, file string, max int) (rows []semantic.Obligation, why string, ok bool, err error)
+}
+
 // rootObligationsProbe is the FALLBACK-only bait path for rootObligations,
 // used solely when the backend does not implement rootObligationsBackend:
 // never read for content, only fed to obligationsBackend.Obligations' glob
@@ -226,6 +244,31 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 	if servedLayer != "" {
 		result["layer"] = servedLayer
 	}
+
+	// wave O1 / ADR-037: fill a real coverage gap with raw guide content
+	// BEFORE the rules below are snippet-rendered and byte-budgeted, so a
+	// raw row gets the exact same inlined citation and cap treatment a
+	// compiled row gets — never a second-class payload shape. Prepended,
+	// never appended: a raw row exists specifically because it is NEARER
+	// than what compiled — a nested guide's own section, say, when only a
+	// root-tier rule managed to compile — so it must not be displaced
+	// below a farther compiled row that survived only because the nearer
+	// one never got the chance to compete for a claim in the first place.
+	// Skipped for a root-scope call (no single file to rank sections
+	// against) and for the "claims" layer filter (raw sections are
+	// human-authored governing rules — RoleGoverns material — never a
+	// plan-row binding). A backend that omits rawFallbackBackend (an older
+	// module, a minimal test fake) is untouched — existing goldens for a
+	// complete layer render byte-identically, since a real gap is required
+	// before this ever adds a row.
+	if !rootScope && obl.File != "" && servedLayer != string(semantic.ObligationLayerClaims) {
+		if rfb, ok := backend.(rawFallbackBackend); ok {
+			if rows, _, rok, rerr := rfb.RawFallbackObligations(ctx, service, obl.File, semantic.RawFallbackReserve); rerr == nil && rok && len(rows) > 0 {
+				obl.Rules = append(rows, obl.Rules...)
+			}
+		}
+	}
+
 	displaced := obl.Displaced
 	if len(obl.Rules) > 0 {
 		var rendered []any
