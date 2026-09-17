@@ -595,6 +595,22 @@ func checkoutCommitIntoWorktree(ctx context.Context, cloneDir, base, wtPath stri
 	if out, err := runIn(ctx, wtPath, "git", "init", "-q", "-b", "bench"); err != nil {
 		return fmt.Errorf("preparing subject: git init: %w (%s)", err, out)
 	}
+	// VB-27 prep (2026-09-16): never let the OPERATOR's own global git
+	// config (core.autocrlf / core.safecrlf) touch bytes checkoutCommitTree
+	// deliberately preserved exact — a subject carrying even one CRLF file
+	// (joke2k/faker's docs/make.bat, confirmed directly) makes `git add -A`
+	// below fail outright under a safecrlf=true global config, and even a
+	// plain autocrlf=true would silently rewrite bytes this throwaway
+	// worktree must keep byte-identical to the real subject (the same
+	// exact-checkout guarantee the doc comment above already states for
+	// checkoutCommitTree vs `git archive`). LOCAL repo config only, scoped
+	// to this one throwaway commit — never the operator's global settings.
+	if out, err := runIn(ctx, wtPath, "git", "config", "core.autocrlf", "false"); err != nil {
+		return fmt.Errorf("preparing subject: git config core.autocrlf: %w (%s)", err, out)
+	}
+	if out, err := runIn(ctx, wtPath, "git", "config", "core.safecrlf", "false"); err != nil {
+		return fmt.Errorf("preparing subject: git config core.safecrlf: %w (%s)", err, out)
+	}
 	if out, err := runIn(ctx, wtPath, "git", "add", "-A"); err != nil {
 		return fmt.Errorf("preparing subject: git add: %w (%s)", err, out)
 	}

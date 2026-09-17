@@ -634,6 +634,82 @@ func TestPrepareSubject_LocalBaseUsableForInWorktreeGitDiffs(t *testing.T) {
 	}
 }
 
+// TestCheckoutCommitIntoWorktree_OperatorSafecrlfDoesNotBreakCRLFSubjectFile
+// is VB-27 prep's own regression test (2026-09-16): running the real
+// scenariobench driver against joke2k/faker (a Long Code Arena
+// bug-localization subject, docs/bench/scenarios.md "External corpus (LCA
+// bug localization)") failed both cells with "fatal: CRLF would be
+// replaced by LF in docs/make.bat" — checkoutCommitIntoWorktree's own `git
+// add -A` inherits the OPERATOR's real global git config (SubjectEnv
+// passes the full process environment through, HOME included), and this
+// operator's config carries core.autocrlf=input, core.safecrlf=true
+// (confirmed directly). That config has nothing to do with the bench: the
+// whole point of checkoutCommitIntoWorktree, per its own doc comment
+// above, is to preserve base's tree EXACTLY (checkout-index over `git
+// archive`, specifically to avoid a silent byte-level rewrite) — an
+// autocrlf/safecrlf policy from the operator's own unrelated dev
+// environment must never veto or rewrite a subject's own line endings.
+// This test never touches the real global config: GIT_CONFIG_GLOBAL
+// points every git subprocess at a throwaway file carrying the same
+// autocrlf=input/safecrlf=true the operator's own config had, so the
+// failure reproduces hermetically, then proves the fix (explicit
+// core.autocrlf=false/core.safecrlf=false on the throwaway worktree repo,
+// before `git add -A`) both unblocks the commit AND keeps the CRLF bytes
+// byte-for-byte.
+func TestCheckoutCommitIntoWorktree_OperatorSafecrlfDoesNotBreakCRLFSubjectFile(t *testing.T) {
+	dir := t.TempDir()
+	// -c core.autocrlf=false -c core.safecrlf=false: fixture setup must be
+	// hermetic regardless of THIS machine's own real global git config —
+	// confirmed directly, this dev environment's own ~/.gitconfig already
+	// carries safecrlf=true, which would otherwise fail this same `git add`
+	// before the test even gets to simulate anything.
+	run := func(args ...string) string {
+		full := append([]string{"-c", "core.autocrlf=false", "-c", "core.safecrlf=false"}, args...)
+		cmd := exec.Command("git", full...)
+		cmd.Dir = dir
+		cmd.Env = append(
+			gitEnv(),
+			"GIT_AUTHOR_NAME=test", "GIT_AUTHOR_EMAIL=test@example.invalid",
+			"GIT_COMMITTER_NAME=test", "GIT_COMMITTER_EMAIL=test@example.invalid",
+		)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v: %v (%s)", args, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	run("init", "-q", "-b", "main")
+	const crlfContent = "echo hello\r\necho world\r\n"
+	if err := os.WriteFile(filepath.Join(dir, "make.bat"), []byte(crlfContent), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	run("add", "make.bat")
+	run("commit", "-q", "-m", "base commit with a CRLF file")
+	base := run("rev-parse", "HEAD")
+
+	// From here on, GIT_CONFIG_GLOBAL simulates the OPERATOR's own real
+	// config for checkoutCommitIntoWorktree's own subprocesses only — the
+	// exact thing under test, unlike the hermetic fixture setup above.
+	globalConfig := filepath.Join(t.TempDir(), "gitconfig-safecrlf")
+	if err := os.WriteFile(globalConfig, []byte("[core]\n\tautocrlf = input\n\tsafecrlf = true\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GIT_CONFIG_GLOBAL", globalConfig)
+
+	wtPath := t.TempDir()
+	if err := checkoutCommitIntoWorktree(context.Background(), dir, base, wtPath); err != nil {
+		t.Fatalf("checkoutCommitIntoWorktree: %v (this is the exact failure joke2k/faker hit under the operator's real global git config)", err)
+	}
+
+	got, err := os.ReadFile(filepath.Join(wtPath, "make.bat"))
+	if err != nil {
+		t.Fatalf("reading checked-out make.bat: %v", err)
+	}
+	if string(got) != crlfContent {
+		t.Errorf("make.bat bytes = %q, want the CRLF bytes preserved exactly (never normalized to LF)", got)
+	}
+}
+
 // TestRequiresCompiledLayer covers the O45 item 1 default: a task's own
 // RequiresLayer wins when set; otherwise it defaults true for the
 // lookup-corpus categories whose prompts assume a compiled layer, false
