@@ -66,8 +66,11 @@ repaired by `fathom daemon install --force` followed by a `launchctl kickstart`.
    `symbol_context`, `outline`, `repo_map`, `pack_context`, `obligations`,
    `staleness_report`) for the questions only an index answers — where,
    who-calls, what breaks (RC-23, docs/vision/28-receipts.md §3.5): what
-   governs this repository is `obligations` called with no path (the root
-   conventions, not a file); is this still true / what was known is
+   governs this repository is `obligations` called with no `file` (the root
+   conventions, not a file; `path` is accepted as an alias for `file` — O82,
+   `.fathom/observations.md` — so reaching for the more common name never
+   silently falls back to root-scope instead of the file you meant); is
+   this still true / what was known is
    `staleness_report`; a literal string, a config value, or a log line
    routes to `search` (RC-24: grep with a receipt — the hit plus its
    enclosing symbol from the index) when fathom is wired, plain grep

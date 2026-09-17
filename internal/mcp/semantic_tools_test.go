@@ -145,6 +145,71 @@ func TestObligationsTool_WithRules(t *testing.T) {
 	}
 }
 
+// ─── obligations: `path` is an alias for `file` (wave P3 / O82) ──────────────
+
+// TestObligationsTool_PathAliasForFile pins the defect an operator hit live:
+// calling obligations with `path` instead of `file` silently served
+// root-scope rules only (rootScope := p.File == "" read true because the
+// caller's argument landed in a field the handler never looked at). `path`
+// must resolve exactly like `file` — same rules, same non-root-scope
+// behavior — never a silently different scope.
+func TestObligationsTool_PathAliasForFile(t *testing.T) {
+	fake := &semanticFakeBackend{
+		obligations: semantic.Obligations{
+			Service: "svc",
+			File:    "internal/mcp/tools.go",
+			Rules: []semantic.Obligation{
+				{Rule: "Sort outputs.", Src: "CLAUDE.md#L10-L10", Tier: "doc-claimed"},
+			},
+		},
+	}
+	srv := mcp.NewServer(fake)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 2, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "obligations",
+			"arguments": map[string]any{"service": "svc", "path": "internal/mcp/tools.go"},
+		},
+	})
+	if resp["error"] != nil {
+		t.Fatalf("unexpected error: %v", resp["error"])
+	}
+	if fake.gotObligationsFile != "internal/mcp/tools.go" {
+		t.Fatalf("obligations(path=...) resolved file=%q, want the path argument forwarded — path must alias file", fake.gotObligationsFile)
+	}
+	payload := extractPayload(t, resp)
+	if root, _ := payload["root"].(bool); root {
+		t.Error("obligations(path=...) answered root:true — path was silently ignored and fell back to root-scope")
+	}
+	rules, ok := payload["rules"].([]any)
+	if !ok || len(rules) == 0 {
+		t.Fatalf("expected rules for path-addressed file, got %v", payload["rules"])
+	}
+}
+
+// TestObligationsTool_FileWinsOverPath: when a caller (mistakenly) sends
+// both, `file` is authoritative — `path` is purely a fallback alias, never
+// an override.
+func TestObligationsTool_FileWinsOverPath(t *testing.T) {
+	fake := &semanticFakeBackend{
+		obligations: semantic.Obligations{Service: "svc", File: "a.go"},
+	}
+	srv := mcp.NewServer(fake)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 2, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "obligations",
+			"arguments": map[string]any{"service": "svc", "file": "a.go", "path": "b.go"},
+		},
+	})
+	if resp["error"] != nil {
+		t.Fatalf("unexpected error: %v", resp["error"])
+	}
+	if fake.gotObligationsFile != "a.go" {
+		t.Fatalf("obligations(file=a.go, path=b.go) resolved file=%q, want %q (file wins)", fake.gotObligationsFile, "a.go")
+	}
+}
+
 // ─── obligations: backend missing optional interface → ErrCodeInvalid ────────
 
 func TestObligationsTool_BackendUnsupported(t *testing.T) {

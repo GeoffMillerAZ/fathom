@@ -381,7 +381,7 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 		Description: "Return compiled obligations (governing rules) for a file at decision time, or — with no file and no action — the root-scope rules that answer \"what governs this repository\" (RC-22): the compiled layer's rules whose scope reaches the repo root / CLAUDE.md level, budgeted the same way, with root:true and a note to pass file for file-scoped rules. Empty rules with index_stale:false means a clean file. " +
 			"layer (VB-9, ADR-035 decision 2) selects WHICH claims answer: \"rules\" (default) is human-authored governing rules only — CLAUDE.md/AGENTS.md, ADR invariants, docs/intent — the \"what governs this file\" question; \"claims\" is plan-row bindings ONLY, bound strictly by a row's own {symbol, package} contract (a row naming no contract binds to nothing, never by prose keyword) — the \"what plan rows claim this file\" question, a different reader; \"all\" is the pre-VB-9 union of both, prose fallback included for a non-plan-row corpus (findings/**). The response echoes the layer actually served. " +
 			"Each rule carries a layer label (which manifest layer compiled it) and, when federated in from a bound platform module (docs/design/platform-modules.md), a module label naming it. displaced:N (when present) is the total count of served-eligible rules a cap dropped this call (the 6-rule MaxObligations cap plus, rarely, a 16KB payload-size cut); displaced_by_tier breaks that count out by governing-scope proximity (\"exact_file\"/\"package\"/\"parent_dir\"/\"root\") so a dropped root-level catch-all reads differently from a dropped package rule; displaced_repo/displaced_module split it once a module binding is configured. module_notes (when present) names any bound module this daemon does not have mounted — never silent. This result IS the answer for which rules govern this file (or the repository) right now — a follow-up call only helps once the file or the rule set changes, or to record a verdict via action. " +
-			"Also serves the claim feedback write path (D2): pass action:\"refute\"|\"corroborate\" with claim_id and note instead of file to record a verdict — refute flips the claim's status and stops it serving; corroborate never changes status or tier. Reach for it when you are about to edit a file and the hook did not run (a harness without PostToolUse hooks), to ask what governs the whole repository, or to record a verdict on a served claim. Required: service.",
+			"Also serves the claim feedback write path (D2): pass action:\"refute\"|\"corroborate\" with claim_id and note instead of file to record a verdict — refute flips the claim's status and stops it serving; corroborate never changes status or tier. `path` is accepted as an alias for `file` (O82) so a caller reaching for the more common name never silently gets root-scope rules instead; `file` wins when both are given. Reach for it when you are about to edit a file and the hook did not run (a harness without PostToolUse hooks), to ask what governs the whole repository, or to record a verdict on a served claim. Required: service.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -392,6 +392,10 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 				"file": map[string]any{
 					"type":        "string",
 					"description": "Repo-relative file path being edited. Omit (with no action) for root-scope obligations — \"what governs this repository\" — instead of an error.",
+				},
+				"path": map[string]any{
+					"type":        "string",
+					"description": "Alias for `file` (wave P3 / O82): a caller that passed `path` instead of `file` used to silently fall back to root-scope rules only. `file` wins when both are given.",
 				},
 				"layer": map[string]any{
 					"type":        "string",
@@ -431,6 +435,7 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 		var p struct {
 			Service         string `json:"service"`
 			File            string `json:"file"`
+			Path            string `json:"path"` // alias for File — see the "path" schema entry above (O82)
 			Layer           string `json:"layer"`
 			MaxRules        int    `json:"max_rules"`
 			IncludeSnippets *bool  `json:"include_snippets"`
@@ -444,6 +449,14 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 		}
 		if p.Service == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "obligations: service required"}
+		}
+		// O82: `path` aliases `file` — a caller that reached for the more
+		// common name used to silently fall back to root-scope rules
+		// (rootScope := p.File == "" read true because the operator's
+		// argument landed in a field this handler never read). `file`
+		// stays authoritative when both are given.
+		if p.File == "" && p.Path != "" {
+			p.File = p.Path
 		}
 
 		// D2 feedback action (docs/plans/expert-depth.md): a non-empty action
