@@ -1235,7 +1235,7 @@ Three follow-ups from the readings behind ADR-037's wave O2/O3 addenda, worked a
 
 Rule: a wave that documents its own ranking bug using the exact tokens that bug is about will make the DOCUMENTING text itself the loudest false-positive candidate the next time someone re-runs the same reproduction — corpus self-reference is a real, measurable cost of this repo's own "narrate the finding in ADR.md" discipline, not a hypothetical one, and it compounds with each addendum. And a wire field that exists, serializes, and gets silently dropped by ONE reader's own hand-copied mirror struct is a shape worth grepping for on principle whenever a new field is added anywhere near an MCP payload doctor.go also decodes — the type system gives no warning for an extra JSON key nobody asked to keep.
 
-### O78 — Governance now bites at the edit for a checkable rule: `enforce: true` denies a PreToolUse violation instead of only advising it (ADR-038, wave G1, 2026-09-17)
+### O83 — Governance now bites at the edit for a checkable rule: `enforce: true` denies a PreToolUse violation instead of only advising it (ADR-038, wave G1, 2026-09-17)
 
 guards-pilot-8's own reading (`docs/bench/readings/guards-pilot-8-second-reading.md`) found the
 governing rule now reaches the wired agent before the relevant edit on 4 of 8 tasks — ADR-036/037's
