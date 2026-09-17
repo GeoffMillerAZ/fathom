@@ -3,6 +3,7 @@ package harness
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 // HookInput is the harness-neutral envelope every hook verb consumes.
@@ -54,16 +55,44 @@ type HookInput struct {
 	// event (Claude Code: UserPromptSubmit) — O57 items 4/5. Empty on
 	// every other event; the harness does not document it elsewhere.
 	Prompt string
+	// NewContent is the text a file-edit tool call is about to WRITE
+	// (ADR-038, wave G1's enforced pre-write checks): Write's whole
+	// tool_input.content, or Edit/MultiEdit's new_string(s) concatenated
+	// with "\n" — enough for a deterministic content check without
+	// reconstructing the whole post-edit file. Empty on every event that
+	// is not a file-edit tool call.
+	NewContent string
+	// OldContent is the text Edit/MultiEdit is about to REPLACE
+	// (old_string(s), concatenated the same way as NewContent) — "" for
+	// Write, which replaces the whole file. Lets a check see something
+	// being REMOVED that NewContent alone cannot show (e.g. a deleted doc
+	// section).
+	OldContent string
 }
 
 // HookOutput is what a hook verb wants the harness to do with its payload.
 // Context is injected; Block (+ Reason) is honored only by the codec of a
 // harness whose event can block, and only the stop verb behind --block
-// ever sets it (§5.3 inject-only).
+// ever sets it. Deny (+ DenyReason) is ADR-038's narrow amendment to §5.3
+// inject-only: only the PreToolUse guard hook, only for a file/command
+// governed by an enforce:true guard or layer rule, ever sets it — every
+// other output on every other verb and event stays inject-only, unchanged.
 type HookOutput struct {
 	Context string
 	Block   bool
 	Reason  string
+	// Deny asks the codec to render a PERMISSION decision (Claude Code /
+	// Codex: hookSpecificOutput.permissionDecision:"deny" +
+	// permissionDecisionReason) instead of an advisory injection. Only
+	// meaningful on EventPreTool; a codec that does not support it (or is
+	// asked for it on any other event) returns an error, which the calling
+	// verb treats as "cannot answer" — i.e. silence, never a crash and
+	// never a fallback to advisory (see edithook_pre.go).
+	Deny bool
+	// DenyReason is the one-line reason shown in place of the tool call —
+	// the rule, its citation, and the remedy (design decision, ADR-038
+	// item 3: never a wall of text).
+	DenyReason string
 }
 
 // Codec is the ONLY per-harness code: envelope in, envelope out.
@@ -108,26 +137,42 @@ func ClaudeCodec() Codec { return claudeCodec{} }
 
 func (claudeCodec) ID() string { return ClaudeCode }
 
+// claudeToolInput is a tool_use event's own tool_input object — the union
+// of every shape fathom's hook verbs read across Bash, Grep/Glob, and the
+// three file-edit tools (Write/Edit/MultiEdit).
+type claudeToolInput struct {
+	FilePath string `json:"file_path"`
+	Command  string `json:"command"`
+	// Path is Grep/Glob's own tool_input.path (RC-56) — the file or
+	// directory argument, never Pattern (unread: a search pattern is not a
+	// location, docs/vision/28-receipts.md §4).
+	Path string `json:"path"`
+	// Content is Write's whole new file body. OldString/NewString are
+	// Edit's replaced/replacement text; Edits is MultiEdit's own list of
+	// the same pair (ADR-038, wave G1's enforced pre-write checks — see
+	// HookInput.NewContent/OldContent).
+	Content   string `json:"content"`
+	OldString string `json:"old_string"`
+	NewString string `json:"new_string"`
+	Edits     []struct {
+		OldString string `json:"old_string"`
+		NewString string `json:"new_string"`
+	} `json:"edits"`
+}
+
 // claudeEnvelope is the union of every stdin field fathom's hook verbs
 // read, per event. Claude Code sends one flat object with hook_event_name
 // naming the event; unknown fields are ignored, absent ones stay zero.
 type claudeEnvelope struct {
-	SessionID      string `json:"session_id"`
-	TranscriptPath string `json:"transcript_path"`
-	CWD            string `json:"cwd"`
-	Source         string `json:"source"`
-	Reason         string `json:"reason"`
-	Trigger        string `json:"trigger"`
-	ToolName       string `json:"tool_name"`
-	ToolInput      struct {
-		FilePath string `json:"file_path"`
-		Command  string `json:"command"`
-		// Path is Grep/Glob's own tool_input.path (RC-56) — the file or
-		// directory argument, never Pattern (unread: a search pattern is
-		// not a location, docs/vision/28-receipts.md §4).
-		Path string `json:"path"`
-	} `json:"tool_input"`
-	StopHookActive bool `json:"stop_hook_active"`
+	SessionID      string          `json:"session_id"`
+	TranscriptPath string          `json:"transcript_path"`
+	CWD            string          `json:"cwd"`
+	Source         string          `json:"source"`
+	Reason         string          `json:"reason"`
+	Trigger        string          `json:"trigger"`
+	ToolName       string          `json:"tool_name"`
+	ToolInput      claudeToolInput `json:"tool_input"`
+	StopHookActive bool            `json:"stop_hook_active"`
 	// InstructionsLoaded / ConfigChange carry file_path at the top level
 	// (hooks reference §7.2, §7.11), beside memory_type and load_reason.
 	FilePath   string `json:"file_path"`
@@ -168,6 +213,8 @@ func (c claudeCodec) DecodeInput(ev Event, raw []byte) (HookInput, error) {
 		Command:        env.ToolInput.Command,
 		Path:           env.ToolInput.Path,
 		ReEntrant:      env.StopHookActive,
+		NewContent:     claudeProposedNewContent(env.ToolInput),
+		OldContent:     claudeProposedOldContent(env.ToolInput),
 		MemoryType:     env.MemoryType,
 		LoadReason:     env.LoadReason,
 	}
@@ -203,6 +250,41 @@ func (c claudeCodec) DecodeInput(ev Event, raw []byte) (HookInput, error) {
 	return in, nil
 }
 
+// claudeProposedNewContent returns the text a Claude Code Edit/Write/
+// MultiEdit tool_input is about to WRITE: Write's whole content, Edit's
+// new_string, or MultiEdit's edits[].new_string joined with "\n" — in that
+// preference order, so a tool_input carrying more than one shape (should
+// not happen; defensive) still yields a sensible answer. "" when the
+// envelope carries none of the three.
+func claudeProposedNewContent(ti claudeToolInput) string {
+	if ti.Content != "" {
+		return ti.Content
+	}
+	if len(ti.Edits) > 0 {
+		parts := make([]string, len(ti.Edits))
+		for i, e := range ti.Edits {
+			parts[i] = e.NewString
+		}
+		return strings.Join(parts, "\n")
+	}
+	return ti.NewString
+}
+
+// claudeProposedOldContent is claudeProposedNewContent's mirror for the
+// text being REPLACED: "" for Write (which replaces the whole file, not a
+// fragment), Edit's old_string, or MultiEdit's edits[].old_string joined
+// with "\n".
+func claudeProposedOldContent(ti claudeToolInput) string {
+	if len(ti.Edits) > 0 {
+		parts := make([]string, len(ti.Edits))
+		for i, e := range ti.Edits {
+			parts[i] = e.OldString
+		}
+		return strings.Join(parts, "\n")
+	}
+	return ti.OldString
+}
+
 // claudeEventName is the hookEventName Claude Code expects back for each
 // canonical event fathom answers on.
 func claudeEventName(ev Event) (string, bool) {
@@ -214,6 +296,26 @@ func claudeEventName(ev Event) (string, bool) {
 }
 
 func (c claudeCodec) EncodeOutput(ev Event, out HookOutput) ([]byte, error) {
+	if out.Deny {
+		// ADR-038: hookSpecificOutput.permissionDecision:"deny" +
+		// permissionDecisionReason — the documented PreToolUse deny shape
+		// (see internal/harness/testdata/codecs/codex/pre-tool.deny.json,
+		// verbatim; Claude Code's own hooks reference documents the
+		// identical field names). Only PreToolUse supports a permission
+		// decision at all; asking for Deny on any other event is a caller
+		// bug, reported as an error (the verb's own "cannot answer" ⇒
+		// silence contract), never a decision Claude Code would reject.
+		if ev != EventPreTool {
+			return nil, fmt.Errorf("claude-code: deny is only valid on PreToolUse, got %q", ev)
+		}
+		return json.Marshal(map[string]any{
+			"hookSpecificOutput": map[string]any{
+				"hookEventName":            "PreToolUse",
+				"permissionDecision":       "deny",
+				"permissionDecisionReason": out.DenyReason,
+			},
+		})
+	}
 	if out.Block {
 		// Top-level decision: the Stop contract (also accepted on the other
 		// blockable events). Only the stop verb behind --block ever asks.

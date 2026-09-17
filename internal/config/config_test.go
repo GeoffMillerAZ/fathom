@@ -296,6 +296,48 @@ default_profile = "work"
 	}
 }
 
+// TestLoad_GuardsTable pins ADR-038's escape hatch config field: `[guards]
+// enforce = false` decodes to an explicit *bool, provenance is recorded,
+// and project overrides user like every other field.
+func TestLoad_GuardsTable(t *testing.T) {
+	dir := t.TempDir()
+	userPath := filepath.Join(dir, "user.toml")
+	writeTOML(t, userPath, "[guards]\nenforce = false\n")
+
+	loaded, err := Load(userPath, "")
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if loaded.Config.Guards.Enforce == nil || *loaded.Config.Guards.Enforce != false {
+		t.Errorf("Guards.Enforce = %v, want explicit false", loaded.Config.Guards.Enforce)
+	}
+	if info := loaded.Provenance["guards.enforce"]; info.Source != SourceUser || info.Path != userPath {
+		t.Errorf("provenance = %+v", info)
+	}
+
+	// Unset: nil, never a false default masquerading as "explicitly set".
+	empty := filepath.Join(dir, "empty.toml")
+	writeTOML(t, empty, "default_profile = \"x\"\n")
+	loaded, err = Load(empty, "")
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if loaded.Config.Guards.Enforce != nil {
+		t.Errorf("Guards.Enforce = %v, want nil when unset", *loaded.Config.Guards.Enforce)
+	}
+
+	// Project wins over user, like every other field.
+	projectPath := filepath.Join(dir, "project.toml")
+	writeTOML(t, projectPath, "[guards]\nenforce = true\n")
+	loaded, err = Load(userPath, projectPath)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if loaded.Config.Guards.Enforce == nil || *loaded.Config.Guards.Enforce != true {
+		t.Errorf("Guards.Enforce = %v, want project's explicit true to win", loaded.Config.Guards.Enforce)
+	}
+}
+
 // ---------------------------------------------------------------------------
 // ResolveProfile — named selection + env overlay
 // ---------------------------------------------------------------------------

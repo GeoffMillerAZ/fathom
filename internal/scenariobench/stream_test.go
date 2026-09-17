@@ -173,6 +173,34 @@ func TestParseSessionStream_ObligationsInjectedCount(t *testing.T) {
 	}
 }
 
+// TestParseSessionStream_EnforcedRefusalsCount is ADR-038 item 5: a
+// PreToolUse hook_response whose own output carries the deny marker
+// (hookSpecificOutput.permissionDecision:"deny") increments the synthetic
+// "enforced_refusals" key alongside the real "PreToolUse" count — the
+// instrument-truth counterpart of obligations_injected, mirrored fixture
+// for fixture.
+func TestParseSessionStream_EnforcedRefusalsCount(t *testing.T) {
+	r, err := ParseSessionStream(filepath.Join(streamsDir, "enforced-refusal.jsonl"))
+	if err != nil {
+		t.Fatalf("ParseSessionStream: %v", err)
+	}
+	if r.HooksFired["enforced_refusals"] != 1 {
+		t.Errorf("HooksFired[enforced_refusals] = %d, want 1", r.HooksFired["enforced_refusals"])
+	}
+	if r.HooksFired["PreToolUse"] != 1 {
+		t.Errorf("HooksFired[PreToolUse] = %d, want 1", r.HooksFired["PreToolUse"])
+	}
+	// The obligations fixture (an ordinary advisory PostToolUse inject)
+	// must never be miscounted as a refusal.
+	r2, err := ParseSessionStream(filepath.Join(streamsDir, "obligations-injected.jsonl"))
+	if err != nil {
+		t.Fatalf("ParseSessionStream: %v", err)
+	}
+	if r2.HooksFired["enforced_refusals"] != 0 {
+		t.Errorf("obligations-injected fixture: HooksFired[enforced_refusals] = %d, want 0", r2.HooksFired["enforced_refusals"])
+	}
+}
+
 // TestParseSessionStream_SessionStartContextCaptured proves
 // SessionResult.SessionStartContext is the FIRST SessionStart
 // hook_response's own decoded additionalContext.

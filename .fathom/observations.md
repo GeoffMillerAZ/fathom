@@ -1234,3 +1234,47 @@ Three follow-ups from the readings behind ADR-037's wave O2/O3 addenda, worked a
 **(3) Doctor's own corpus_grew.** `fathom doctor`'s `obligations_served` check already printed a `PARTIALLY compiled (%d/%d sections, budget_stopped=%v)` WARN (O54 deliverable 5) — but its own wire-payload mirror, `doctorLayerCoverage` (cmd/fathom/doctor.go), had no field for `corpus_grew` at all, so `semantic.LayerCoverage`'s own `corpus_grew,omitempty` (already on the wire — `internal/mcp/semantic_tools.go` serializes the whole `LayerCoverage` struct verbatim) silently vanished on decode into an unknown JSON field. The operator's own daemon was observed at 42/66 compiled with a real `corpus_grew: 14` and the WARN said nothing about it — understating how much of the gap is "the corpus outgrew the last compile" (14 sections no compile run has EVER seen) versus "this run's own budget stopped it early" (a stale digest on an already-seen section, a different failure mode with a different remedy). Fixed: `CorpusGrew int` added to the mirror struct, and the WARN reason now appends `, corpus_grew=%d` whenever it is nonzero (omitted entirely when zero, so a budget-stopped run with NO corpus growth is never misdescribed as having outgrown anything) — the remedy command (`fathom compile --service %s --layer obligations --dry-run=false --continue`) was already correct and unchanged. Pinned with the operator's own exact numbers (`TestCheckObligationsServed`'s new "partially compiled layer names corpus_grew when the corpus has outgrown the last compile" / "...omits corpus_grew when the corpus has not grown" subtests).
 
 Rule: a wave that documents its own ranking bug using the exact tokens that bug is about will make the DOCUMENTING text itself the loudest false-positive candidate the next time someone re-runs the same reproduction — corpus self-reference is a real, measurable cost of this repo's own "narrate the finding in ADR.md" discipline, not a hypothetical one, and it compounds with each addendum. And a wire field that exists, serializes, and gets silently dropped by ONE reader's own hand-copied mirror struct is a shape worth grepping for on principle whenever a new field is added anywhere near an MCP payload doctor.go also decodes — the type system gives no warning for an extra JSON key nobody asked to keep.
+
+### O78 — Governance now bites at the edit for a checkable rule: `enforce: true` denies a PreToolUse violation instead of only advising it (ADR-038, wave G1, 2026-09-17)
+
+guards-pilot-8's own reading (`docs/bench/readings/guards-pilot-8-second-reading.md`) found the
+governing rule now reaches the wired agent before the relevant edit on 4 of 8 tasks — ADR-036/037's
+own fixes working — and the wired arm violated the rule anyway on two of those four (i19, an
+org-specific name landed in a new fixture; i28, a lenient DuckDB path shipped over ADR-025's loud
+refusal), with one session going on to rewrite its own pinned regression test rather than honor
+the rule it had just been served. Violations tied the control arm 4-for-4. `docs/design/
+guarded-edits.md` §2.2 had named exactly this as its own escalation trigger since the design's
+first version: "revisit only with a documented incident a warning demonstrably failed to prevent."
+
+Fix (ADR-038): `#Guard`/`#LayerRule` gain `enforce: bool | *false`; `internal/guardspec.LoadGuards`/
+`LoadLayerRules` refuse to load an enforced rule with no deterministic check behind it, naming it.
+`internal/guardspec/enforce.go` adds five checks, each a pure function over one proposed edit's own
+path/text: `forbidden_paths`, `checks: ["org_token","secret_literal","workspace_output",
+"usecase_maintained"]` (guard), `cgo_purity` + `import_direction`/`boundary` content scans (layer
+rule, over the proposed text's textually-present imports). `internal/harness.HookOutput` gains
+`Deny`/`DenyReason`; Claude Code and Codex render the documented `permissionDecision:"deny"` shape
+(their existing "the shape fathom never emits" golden fixture is now the shape it emits, narrowly);
+Gemini refuses it. `cmd/fathom/enforce.go` wires this into `edithook_pre.go`, before the advisory
+daemon round-trip, with `FATHOM_ENFORCE=off` / `[guards] enforce = false` as the escape hatch. This
+repo's own `.fathom/guard.cue` turns `enforce: true` on the rules mapping to four of the eight
+guards-fathom.json tasks (i2, i19, i31, i36) plus the actual raw-cp-onto-daemon-path command guard
+(i16's Bash half); i1/i11 have no pre-write signal and stay gate-only, i28 is a control-flow
+decision no structural check can see, i16's CLAUDE.md-prose half stays gate-only via
+`task config-audit` (a content-pattern check for "advises a raw cp" risks a false positive on the
+Taskfile's own legitimate `cp -f bin/fathom … .new` line).
+
+Along the way: `LoadGuards` rejected a `forbidden_paths`-only guard as "governing nothing" — only
+`scopes`/`command_scopes` were recognized governing fields — a real bug this wave's own first
+`forbidden_paths` guard tripped over immediately (fixed: `forbidden_paths` now also counts).
+`testdata/scenariobench/guards-m1.json`'s `.fathom/guard.cue#L43` citation for `core-no-mcp-or-cmd`
+had drifted to line 93 once this wave's own new guard entries grew the file above it — the same
+class of line-citation maintenance the two immediately-preceding commits on `main` already needed
+(H1-T07/guards-m1's ADR-011/ADR-036 citations) and evidently a recurring cost of citing a bare line
+number into a file that keeps growing above the cited line, worth a future revisit toward
+heading-anchored citations into `.fathom/guard.cue` the way `ResolveCitationLine` already does for
+ADR.md.
+
+Rule: an "obligation the agent can read and still contradict" is not proof of anything until a
+check exists that the tool call itself cannot get past — a served rule and an enforced rule are
+different instruments, and thesis 2 (vision 29 §2) says the compiled-test half of governance was
+always meant to reach the edit moment too, not just the gate.

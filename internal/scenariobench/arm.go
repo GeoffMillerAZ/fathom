@@ -220,12 +220,15 @@ func seedNotesFile(worktree string) error {
 // assertWiredHooksPresent reads the settings.json a wired cell's `fathom
 // init` (PrepareSubject's wireScratchDaemon) already wrote at path — BEFORE
 // RenderArm ever runs — and errors, naming path, unless it carries a
-// "hooks" key with at least one SessionStart entry: RenderArm's own proof
-// that the real hook stack (SessionStart/PreToolUse/PostToolUse/Stop) is
-// what a wired cell's harness will actually see, never a stand-in RenderArm
-// invented itself (the defect this closes: every wired cell used to run
-// under a single fake PostToolUse hook naming a fathom subcommand that does
-// not exist, with no SessionStart/PreToolUse/Stop hooks at all).
+// "hooks" key with at least one SessionStart entry AND a PreToolUse group
+// matching Edit|Write|MultiEdit (ADR-038 wave G1: without this group the
+// enforced-deny path can never fire in a wired cell at all, so a reading
+// claiming enforced_refusals coverage would be measuring nothing): RenderArm's
+// own proof that the real hook stack (SessionStart/PreToolUse/PostToolUse/
+// Stop) is what a wired cell's harness will actually see, never a stand-in
+// RenderArm invented itself (the defect this closes: every wired cell used
+// to run under a single fake PostToolUse hook naming a fathom subcommand
+// that does not exist, with no SessionStart/PreToolUse/Stop hooks at all).
 //
 // It also refuses a hook command naming a bare binary on PATH rather than
 // an absolute path: `fathom init`'s default binPath resolution
@@ -249,10 +252,31 @@ func assertWiredHooksPresent(path string) error {
 	if !ok || len(sessionStart) == 0 {
 		return fmt.Errorf("%s: a wired arm's settings.json must carry a hooks.SessionStart entry from `fathom init` (found none — was `fathom init` run before RenderArm?)", path)
 	}
+	if !hasPreToolUseEditMatcher(hooksObj) {
+		return fmt.Errorf("%s: a wired arm's settings.json must carry a hooks.PreToolUse group matching \"Edit|Write|MultiEdit\" (edit-hook --pre) — ADR-038's enforced-deny path never fires without it", path)
+	}
 	if bad := firstBareHookCommand(hooksObj); bad != "" {
 		return fmt.Errorf("%s: hook command %q names a bare binary on PATH, not the cell's own fathom binary (fathom init's binPath resolution should have written an absolute path)", path, bad)
 	}
 	return nil
+}
+
+// hasPreToolUseEditMatcher reports whether hooksObj carries a PreToolUse
+// group whose matcher is exactly "Edit|Write|MultiEdit" (cmd/fathom/
+// init.go's fathomHookSpecs binding, internal/harness/descriptors.go
+// CapGuardPreEdit).
+func hasPreToolUseEditMatcher(hooksObj map[string]any) bool {
+	preArr, _ := hooksObj["PreToolUse"].([]any)
+	for _, g := range preArr {
+		gm, ok := g.(map[string]any)
+		if !ok {
+			continue
+		}
+		if m, _ := gm["matcher"].(string); m == "Edit|Write|MultiEdit" {
+			return true
+		}
+	}
+	return false
 }
 
 // mcpDiscoveryMatcher is a PreToolUse matcher covering fathom's own MCP

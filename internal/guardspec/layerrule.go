@@ -57,6 +57,11 @@ type LayerRule struct {
 	Sentence string
 	Severity Severity
 
+	// Enforce is ADR-038's deny-capable extension: only Kind ==
+	// ImportDirection or Boundary may set it — see schema/guard/
+	// schema.cue's #LayerRule doc comment.
+	Enforce bool
+
 	// import_direction
 	From []string
 	To   []string
@@ -126,6 +131,7 @@ func decodeLayerRules(path string, v cue.Value) (LayerRuleSet, error) {
 			Kind:        LayerRuleKind(lookupString(rv, "kind")),
 			Sentence:    lookupString(rv, "sentence"),
 			Severity:    Severity(lookupStringDefault(rv, "severity", string(SeverityError))),
+			Enforce:     lookupBoolDefault(rv, "enforce", false),
 			From:        lookupStrings(rv, "from"),
 			To:          lookupStrings(rv, "to"),
 			Scope:       lookupStrings(rv, "scope"),
@@ -168,6 +174,17 @@ func decodeLayerRules(path string, v cue.Value) (LayerRuleSet, error) {
 			}
 		default:
 			errs = append(errs, fieldErr(path, prefix+".kind", fmt.Errorf("unknown kind %q", r.Kind)))
+		}
+		// ADR-038: enforce:true is refused for a kind with no deterministic
+		// pre-write check — no_cycles and cross_service_direction both need
+		// the full index/fleet graph a single proposed file cannot supply
+		// (see EvaluateLayerRuleEnforcement's doc comment).
+		if r.Enforce {
+			switch r.Kind {
+			case ImportDirection, Boundary:
+			default:
+				errs = append(errs, fieldErr(path, prefix+".enforce", fmt.Errorf("true is not supported for kind %q — only import_direction and boundary have a deterministic pre-write check (ADR-038)", r.Kind)))
+			}
 		}
 		out.Rules = append(out.Rules, r)
 	}

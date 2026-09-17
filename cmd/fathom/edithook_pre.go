@@ -47,13 +47,13 @@ func cmdEditHookPre(codec harness.Codec, in harness.HookInput, url string, armOf
 	case harness.ToolDiscoveryRead, harness.ToolDiscoveryGrep, harness.ToolDiscoveryGlob:
 		return cmdEditHookPreDiscovery(in, armOff)
 	default:
-		return cmdEditHookPreFile(codec, in.FilePath, in.Cwd, in.SessionID, url, armOff, stdout)
+		return cmdEditHookPreFile(codec, in.FilePath, in.Cwd, in.SessionID, in.NewContent, in.OldContent, url, armOff, stdout)
 	}
 }
 
 // ─── file guards (Edit/Write/MultiEdit) ──────────────────────────────────
 
-func cmdEditHookPreFile(codec harness.Codec, filePath, cwd, sessionID, url string, armOff bool, stdout io.Writer) int {
+func cmdEditHookPreFile(codec harness.Codec, filePath, cwd, sessionID, newContent, oldContent, url string, armOff bool, stdout io.Writer) int {
 	if filePath == "" {
 		return 0
 	}
@@ -69,6 +69,25 @@ func cmdEditHookPreFile(codec harness.Codec, filePath, cwd, sessionID, url strin
 	if armOff {
 		emitBeat("edit-hook", "answered", firingMetaArm(map[string]string{"emitted": "false", "phase": "pre", "target": "file"}, sessionID, filePath, armOff))
 		return 0 // OFF: no guard matching, no daemon call, no stdout
+	}
+
+	// ADR-038: an enforce:true guard/layer-rule violation DENIES the tool
+	// call outright, before the advisory path below ever runs (and before
+	// any daemon round-trip) — a single beat, a single deny line, never a
+	// wall of text.
+	if d := evaluateEnforcedFileAtProjDir(projDir, filePath, newContent, oldContent); d.Denied {
+		out, err := codec.EncodeOutput(harness.EventPreTool, harness.HookOutput{Deny: true, DenyReason: d.Reason})
+		if err != nil {
+			// A codec that cannot deny (Gemini) falls back to the
+			// ordinary advisory path below rather than losing the
+			// governance signal entirely — never a crash, never a silent
+			// full miss.
+		} else {
+			emitBeat("edit-hook", "denied", firingMeta(map[string]string{"phase": "pre", "target": "file"}, sessionID, filePath))
+			recordStoryRow(projDir, "guard-denied-file", nil)
+			fmt.Fprintln(stdout, string(out))
+			return 0
+		}
 	}
 
 	// decode → payload → encode (HP-6): the guard payload is harness-free
@@ -265,6 +284,21 @@ func cmdEditHookPreCommand(codec harness.Codec, command, cwd, sessionID, url str
 	if armOff {
 		emitBeat("edit-hook", "answered", firingMetaArm(map[string]string{"emitted": "false", "phase": "pre", "target": "command"}, sessionID, "", armOff))
 		return 0 // OFF: no guard matching, no daemon call, no stdout
+	}
+
+	// ADR-038: an enforce:true command guard match DENIES the command
+	// outright — a matching command_scopes IS the violation (design §2.5's
+	// own shape), so there is no separate content check to run first.
+	if d := evaluateEnforcedCommandAtProjDir(projDir, command); d.Denied {
+		out, err := codec.EncodeOutput(harness.EventPreTool, harness.HookOutput{Deny: true, DenyReason: d.Reason})
+		if err == nil {
+			emitBeat("edit-hook", "denied", firingMeta(map[string]string{"phase": "pre", "target": "command"}, sessionID, ""))
+			recordStoryRow(projDir, "guard-denied-command", nil)
+			fmt.Fprintln(stdout, string(out))
+			return 0
+		}
+		// A codec that cannot deny falls back to the ordinary advisory
+		// path below rather than losing the governance signal entirely.
 	}
 
 	var note string

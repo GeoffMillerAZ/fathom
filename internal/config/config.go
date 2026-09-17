@@ -80,11 +80,19 @@ type Daemon struct {
 	StateDir string
 }
 
+// Guards configures ADR-038's enforcement escape hatch (schema.cue
+// #Guards): `[guards] enforce = false` turns every enforce:true guard/
+// layer-rule in .fathom/guard.cue back to advisory, repo-wide.
+type Guards struct {
+	Enforce *bool // nil = unset at every layer; caller applies its own default (true)
+}
+
 // Config is the merged, in-memory form of one or more config.toml layers.
 type Config struct {
 	DefaultProfile string
 	Profiles       map[string]Profile
 	Daemon         Daemon
+	Guards         Guards
 }
 
 // LoadError names the file and the underlying cause — parse, validate, or

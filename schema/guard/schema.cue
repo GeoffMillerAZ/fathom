@@ -51,6 +51,17 @@ package guard
 	// compiled rule).
 	severity: "error" | "warn" | *"error"
 
+	// enforce: when true, this rule DENIES a violating PreToolUse
+	// Edit/Write/MultiEdit instead of only advising post-edit (ADR-038,
+	// docs/vision/29-verbs-not-lookups.md §2 thesis 2). Only "import_direction"
+	// and "boundary" have a deterministic check over one proposed file's OWN
+	// parsed imports (internal/guardspec.EvaluateLayerRuleEnforcement);
+	// "no_cycles" and "cross_service_direction" need the full index or fleet
+	// graph a single proposed edit cannot supply, so loading either of them
+	// with enforce:true is refused, naming the rule
+	// (internal/guardspec.LoadLayerRules).
+	enforce: bool | *false
+
 	// import_direction: packages matching any `from` glob may not import
 	// packages matching any `to` glob.
 	from?: [...string] & [_, ...]
@@ -69,7 +80,7 @@ package guard
 	// cross_service_direction: from_service must never depend on
 	// to_service, over the fleet's typed cross-service edges.
 	from_service?: string
-	to_service?: string
+	to_service?:   string
 }
 
 // #Guard names one critical scope: a set of file globs and/or command
@@ -97,4 +108,27 @@ package guard
 	// against the command string of a PreToolUse(Bash) call — the same
 	// guard extended to commands, not just file edits.
 	command_scopes?: [...string] & [_, ...]
+
+	// enforce: when true, a match on this guard DENIES the PreToolUse call
+	// instead of only advising post-edit (ADR-038). For a command guard
+	// (command_scopes set) the match itself is the violation. For a file
+	// guard, at least one of forbidden_paths or checks must also be set —
+	// loading enforce:true with neither is refused, naming the guard
+	// (internal/guardspec.LoadGuards): a note-only guard has no
+	// deterministic check to enforce.
+	enforce: bool | *false
+
+	// forbidden_paths are globs where ANY write — whatever its content —
+	// is itself the violation (e.g. a generated file nothing should
+	// hand-edit). Only meaningful with enforce:true.
+	forbidden_paths?: [...string] & [_, ...]
+
+	// checks are enforce:true's deterministic content checks (ADR-038 item
+	// 2), run against files `scopes` matches: "org_token" (ADR-011's
+	// scanner, lifted from cmd/fathom/orgnames_test.go), "secret_literal"
+	// (AWS/GitHub/Slack token shapes, a PEM private-key header),
+	// "workspace_output" (a hardcoded os.WriteFile/os.Create/MkdirAll path
+	// literal outside workspace/, I31), "usecase_maintained" (an edit to
+	// docs/use-cases/*.md that removes its own "## Maintained" line, I36).
+	checks?: [...("org_token" | "secret_literal" | "workspace_output" | "usecase_maintained")] & [_, ...]
 }
