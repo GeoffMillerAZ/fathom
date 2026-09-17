@@ -356,3 +356,66 @@ func TestVerifyPlan_VerdictOutcomeReachesCallLog(t *testing.T) {
 		}
 	})
 }
+
+// TestVerifyPlan_Tool_StructuredSkipReason is wave-N5's follow-up (O56): the
+// Markdown parser has always accepted a `skip:` annotation key alongside
+// `skip_test: true` (markdown.go, ann["skip"] -> Expect.SkipReason), but the
+// structured `tasks[]` JSON schema exposed no equivalent field, so a
+// structured caller's skip_test was ALWAYS refused as skip-without-reason —
+// there was no way to supply a reason at all. This pins that a `skip` string
+// field on a structured task now reaches Expect.SkipReason exactly as the
+// Markdown path does: bare skip_test still fails skip-without-reason, and
+// skip_test+skip passes with the reason in the detail.
+func TestVerifyPlan_Tool_StructuredSkipReason(t *testing.T) {
+	srv := mcp.NewServer(newVerifyBackend())
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 3201, Method: "tools/call",
+		Params: map[string]any{
+			"name": "verify_plan",
+			"arguments": map[string]any{
+				"service": "svc",
+				"tasks": []any{
+					// Bare skip_test, no reason: still refused.
+					map[string]any{"id": "T-BARE", "title": "bare skip", "symbol": "Untested", "skip_test": true},
+					// skip_test plus a structured `skip` reason: now passes,
+					// same as the Markdown `skip:` annotation would.
+					map[string]any{"id": "T-REASONED", "title": "reasoned skip", "symbol": "Untested", "skip_test": true, "skip": "covered by TestUntestedIntegration in another package, not visible to this graph"},
+				},
+			},
+		},
+	})
+	p := xtraPayload(t, resp)
+
+	byID := map[string]map[string]any{}
+	for _, ti := range p["tasks"].([]any) {
+		tm := ti.(map[string]any)
+		byID[tm["id"].(string)] = tm
+	}
+
+	criterionFor := func(t *testing.T, tm map[string]any, name string) map[string]any {
+		for _, ci := range tm["criteria"].([]any) {
+			c := ci.(map[string]any)
+			if c["name"] == name {
+				return c
+			}
+		}
+		t.Fatalf("no %q criterion in %v", name, tm)
+		return nil
+	}
+
+	bare := byID["T-BARE"]
+	if got := bare["status"].(string); got != "fail" {
+		t.Errorf("T-BARE: status = %q, want fail", got)
+	}
+	if c := criterionFor(t, bare, "skip_test"); c["status"] != "fail" || c["detail"] != "skip_test: true with no skip: reason — bare skips are refused" {
+		t.Errorf("T-BARE: skip_test criterion = %v", c)
+	}
+
+	reasoned := byID["T-REASONED"]
+	if got := reasoned["status"].(string); got != "pass" {
+		t.Errorf("T-REASONED: status = %q, want pass", got)
+	}
+	if c := criterionFor(t, reasoned, "skip_test"); c["status"] != "pass" || !strings.Contains(c["detail"].(string), "covered by TestUntestedIntegration") {
+		t.Errorf("T-REASONED: skip_test criterion = %v, want the structured skip reason in the detail", c)
+	}
+}

@@ -138,6 +138,11 @@ func TestInstrumentCitationShapes(t *testing.T) {
 		// literals
 		{"gated by fathom verify", true, true},
 		{"retro at workspace/artifacts/retros/x.md", true, true},
+		// O63 item 5: retro.go now writes under statedir.Resolve(root) by
+		// default, which for most repos lives outside the tree entirely —
+		// the legacy in-tree prefix is no longer the only shape a citation
+		// carries, so any path ending in artifacts/retros must count.
+		{"retro at /Users/geoff/.local/state/fathom/9f8e7d6c5b4a3210/artifacts/retros/2026-09-17.md", true, true},
 		{"", false, false},
 	}
 	for _, tc := range cases {

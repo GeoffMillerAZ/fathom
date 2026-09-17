@@ -22,7 +22,11 @@ package custodian
 //     docs/plans actually carry when that directory exists, and to a
 //     denylist of look-alikes (UTF-8, SHA-256, ISO-8601, RFC-…) always;
 //   - the literal `fathom verify`;
-//   - a retro artifact path under workspace/artifacts/retros.
+//   - a retro artifact path ending in artifacts/retros: the legacy
+//     in-tree workspace/artifacts/retros, or (O63 item 5) the state-dir
+//     path retro.go now writes by default —
+//     statedir.Resolve(root)/artifacts/retros, which for most repos lives
+//     outside the tree entirely (~/.local/state/fathom/<repo-id>/…).
 
 import (
 	"encoding/json"
@@ -54,7 +58,12 @@ var (
 	// judgement: the verify verb and a retro artifact path.
 	literalInstrumentRes = []*regexp.Regexp{
 		regexp.MustCompile(`fathom verify`),
-		regexp.MustCompile(`workspace/artifacts/retros`),
+		// Matches both the legacy in-tree workspace/artifacts/retros and
+		// (O63 item 5) the state-dir path retro.go now writes by default —
+		// statedir.Resolve(root)/artifacts/retros, whose prefix varies
+		// (~/.local/state/fathom/<repo-id>/… on most machines) but always
+		// ends in "artifacts/retros".
+		regexp.MustCompile(`artifacts/retros`),
 	}
 
 	// planRowDenylist is the prefixes of the hyphen-number tokens prose
