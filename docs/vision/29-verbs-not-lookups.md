@@ -100,3 +100,5 @@ debugger attach. A human-browsable graph as the adoption wedge.
   receipts: the envelope is decoration and is removed.
 - The external corpus shows no lift with a confidence interval that
   includes zero: the verdict publishes the null and BC-15 closes on it.
+
+Fired 2026-09-17: M7's kill clause (VB-18) — freshness leaves positioning; M11b held (50 of 50 receipts re-derived, VB-21); M8 held after the AST extractor (VB-31); M12b and M14 did not meet their bars (VB-35, VB-29); the M10 obligations claim is on hold until ADR-037's raw-guide fallback is re-measured (guards-pilot-6 second reading).
