@@ -1643,3 +1643,26 @@ small or too large against a re-run of guards-pilot-6 on this fix; or the pre-ex
 `ObligationsLayerCoverage`/`ObligationsLayer`/`ClaimFeedback` auto-refresh forwarding gap named
 above still has not been closed by the time a daemon operator reports the layer split or D2
 feedback silently not working in production.
+
+**Revisit-when trigger fired, resolved (wave N15 item 5).** The forwarding gap named above was
+still open: `internal/mcp/autorefresh.go` forwarded `RawFallbackObligations` (this ADR's own
+capability) but not `ObligationsLayerCoverage`, `ObligationsLayer`, `RootObligationsLayer`, or
+`ClaimFeedback` — so the operator daemon (serve-http's own auto-refresh-on default) never
+emitted `layer_coverage` at all, regardless of O54 deliverable 2 having shipped, because
+wrapping the client in `autoRefreshBackend` silently stripped all four before any request
+reached them. Fixed: all four now have explicit forwards, following the same O7 forwarding
+class every other optional capability in that file already documents.
+`ObligationsLayer`/`RootObligationsLayer` needed one more step beyond a bare forward — the
+`obligationLayers` caller (`semantic_tools.go`) detects support via a TYPE ASSERTION on the
+served backend, which is the wrapper when auto-refresh is on, so the wrapper's own method
+existing at all made that assertion always succeed; the wrapper's `ObligationsLayer`/
+`RootObligationsLayer` now degrade to plain `Obligations`/`rootObligations` themselves when the
+wrapped backend lacks the layer split, so a pre-VB-9 backend still degrades exactly as
+documented instead of hard-failing purely because auto-refresh happens to be on. Verified:
+`TestAutoRefresh_ForwardsObligationsLayerCapabilities` (a wrapped backend that implements all
+four exposes every one of them through the wrapper) and
+`TestAutoRefresh_ObligationsLayerCapabilitiesDegradeGracefully` (one that does not degrades
+honestly, never panics); the full `internal/mcp` suite, including the two existing
+auto-refresh-wrapper round-trip tests this change could have broken
+(`TestObligationsTool_RawFallback_ThroughAutoRefreshWrapper`,
+`TestSemanticTools_ThroughAutoRefreshWrapper`), stays green.

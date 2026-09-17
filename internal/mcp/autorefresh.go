@@ -251,6 +251,87 @@ func (a *autoRefreshBackend) RootObligations(ctx context.Context, service string
 	return rb.RootObligations(ctx, service, maxRules)
 }
 
+// ObligationsLayer forwards VB-9's layer-split file-scoped read (ADR-035
+// decision 2) — same O7 forwarding class as Obligations/RootObligations
+// above, and ensure()d the same way (a fresh index before reading a
+// specific layer). Without this explicit forward, wrapping the client in
+// auto-refresh would silently degrade every ObligationsLayer call back to
+// obligationLayers' own pre-VB-9 fallback (the "all" union regardless of
+// which layer the caller asked for), on any daemon running with
+// auto-refresh on — serve-http's own default.
+//
+// Unlike every OTHER forward in this file, this method's own PRESENCE on
+// the wrapper changes what obligationLayers (semantic_tools.go) sees:
+// backend.(obligationLayerBackend) is a TYPE assertion on the SERVED
+// backend, which is this wrapper when auto-refresh is on — so once this
+// method exists at all, that assertion always succeeds, regardless of
+// whether the INNER backend actually implements the layer split.
+// obligationLayers treats a non-nil error from a backend it believes
+// supports layers as a hard failure (never a fallback — a backend that
+// predates the split is supposed to degrade silently, never error), so
+// this method must replicate that SAME degrade here rather than ever
+// return errSemanticUnsupported: an inner backend with no
+// obligationLayerBackend falls back to plain Obligations (the pre-VB-9
+// union), exactly as obligationLayers' own top-level fallback already
+// does for an UNWRAPPED old backend — auto-refresh being on must never
+// turn a graceful degrade into a hard error.
+func (a *autoRefreshBackend) ObligationsLayer(ctx context.Context, service, file string, maxRules int, layer semantic.ObligationLayerFilter) (semantic.Obligations, error) {
+	a.ensure(ctx, service)
+	if lb, ok := a.QueryInterface.(obligationLayerBackend); ok {
+		return lb.ObligationsLayer(ctx, service, file, maxRules, layer)
+	}
+	ob, ok := a.QueryInterface.(obligationsBackend)
+	if !ok {
+		return semantic.Obligations{}, errSemanticUnsupported
+	}
+	return ob.Obligations(ctx, service, file, maxRules)
+}
+
+// RootObligationsLayer is ObligationsLayer's root-scope sibling — same
+// forward, same ensure(), and the SAME reason it must degrade to
+// rootObligations (never errSemanticUnsupported) when the inner backend
+// predates the layer split: see ObligationsLayer's own doc comment.
+func (a *autoRefreshBackend) RootObligationsLayer(ctx context.Context, service string, maxRules int, layer semantic.ObligationLayerFilter) (semantic.Obligations, error) {
+	a.ensure(ctx, service)
+	if rb, ok := a.QueryInterface.(rootObligationsLayerBackend); ok {
+		return rb.RootObligationsLayer(ctx, service, maxRules, layer)
+	}
+	ob, ok := a.QueryInterface.(obligationsBackend)
+	if !ok {
+		return semantic.Obligations{}, errSemanticUnsupported
+	}
+	return rootObligations(ctx, a.QueryInterface, ob, service, maxRules)
+}
+
+// ObligationsLayerCoverage forwards O54 deliverable 2's coverage
+// disclosure (the compiled layer's latest compile-run completeness) —
+// wave N15 item 5's own fix: THIS is the forward that was missing when
+// ADR-037's Revisit-when trigger fired (wave O1's raw-section fallback
+// shipped, but the operator daemon — auto-refresh on by default — never
+// forwarded this capability at all, so it never emitted layer_coverage
+// in the first place, regardless of the raw-fallback work). No ensure():
+// mirrors ClaimsSummary below, a service-wide summary read, not a
+// specific file's compiled content.
+func (a *autoRefreshBackend) ObligationsLayerCoverage(ctx context.Context, service string) (semantic.LayerCoverage, bool, error) {
+	cb, ok := a.QueryInterface.(layerCoverageBackend)
+	if !ok {
+		return semantic.LayerCoverage{}, false, nil
+	}
+	return cb.ObligationsLayerCoverage(ctx, service)
+}
+
+// ClaimFeedback forwards D2's refute/corroborate write path (the
+// obligations tool's feedback action) — same O7 forwarding class as
+// RemoveService/RenameService below: a write, never ensure()d (a verdict
+// on an existing claim needs no fresh re-ingest first).
+func (a *autoRefreshBackend) ClaimFeedback(ctx context.Context, service, claimID, action, note, author string) error {
+	fb, ok := a.QueryInterface.(claimFeedbackBackend)
+	if !ok {
+		return fmt.Errorf("backend does not support claim feedback")
+	}
+	return fb.ClaimFeedback(ctx, service, claimID, action, note, author)
+}
+
 func (a *autoRefreshBackend) CompileLayer(ctx context.Context, service, layer string, dryRun bool) (core.CompileRun, error) {
 	a.ensure(ctx, service)
 	cb, ok := a.QueryInterface.(compileBackend)
