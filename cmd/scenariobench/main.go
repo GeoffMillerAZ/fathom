@@ -338,6 +338,19 @@ func criteriaBySHA256(glob string) (bySHA256, byTaskID map[string]scenariobench.
 			byTaskID[task.ID] = c.Criterion
 		}
 	}
+	// wave N15 item 1: an EXTERNAL corpus (LCA, VB-25) is built in memory
+	// from the operator's own -dataset file and never committed as a
+	// corpus JSON file under glob — its own sha exists only once that
+	// dataset is loaded, so the scan above can never discover it, and a
+	// filed row's own CriterionID would resolve to nothing (verdict.go's
+	// criterionByID scans criteria's VALUES for a matching ID; the key
+	// merged under barely matters, only IDs colliding would, and every
+	// known external corpus registers its own unique one). Merged last so
+	// a real committed corpus glob-matching under the SAME id (never
+	// expected in practice) still wins the map literal's own last-write.
+	for id, crit := range scenariobench.ExternalCorpusCriteria() {
+		bySHA256["external:"+id] = crit
+	}
 	return bySHA256, byTaskID, nil
 }
 
@@ -1549,6 +1562,59 @@ func cmdLedger(args []string) int {
 		if len(other) > 0 {
 			fmt.Fprintf(os.Stderr, "scenariobench ledger: 0 cells matched run %q under -harness-version %q, but cell(s) for this run exist under other harness version(s): %s — pass -harness-version to match one of them\n",
 				*runID, *cf.harnessVersion, strings.Join(other, ", "))
+			return 2
+		}
+	}
+
+	// wave N15 item 1: an ARM-scoped analogue of the harness-version check
+	// above. A wired arm's cell key is built over ArmSurface
+	// (ResolveArmSurface — the fathom commit -fathom-commit names), so an
+	// operator who passes the wrong commit (e.g. conflating -commit, this
+	// repo's own HEAD, with -fathom-commit, the specific fathom binary
+	// that ran the wired arm) silently files every OTHER arm's rows while
+	// this one's own stored cells simply never match by key — never
+	// caught by the len(rows)==0 guard above, because the OTHER arms
+	// filed fine. This is the exact defect that filed 39 "control" rows
+	// and 0 "fathom" rows for lca-run-1 while the criterion printed
+	// "treatment fathom ran 0 trial(s)" as if the arm had never been
+	// exercised. Before accepting that at face value, check whether cells
+	// for this run id and this arm exist under some OTHER arm_surface; if
+	// they do, name it and refuse rather than file a partial,
+	// misleadingly indeterminate run.
+	wantSurfaceByArm := map[string]string{}
+	for _, cp := range cells {
+		if _, seen := wantSurfaceByArm[cp.arm]; !seen {
+			wantSurfaceByArm[cp.arm] = cp.inv.ArmSurface
+		}
+	}
+	filedArms := map[string]bool{}
+	for _, row := range rows {
+		filedArms[row.Arm] = true
+	}
+	armNames := make([]string, 0, len(corpus.Arms))
+	for name := range corpus.Arms {
+		armNames = append(armNames, name)
+	}
+	sort.Strings(armNames)
+	for _, armName := range armNames {
+		if filedArms[armName] {
+			continue
+		}
+		surfaces, serr := scenariobench.ArmSurfacesForRun(*cellsDir, *runID, armName)
+		if serr != nil {
+			fmt.Fprintf(os.Stderr, "scenariobench ledger: %v\n", serr)
+			return 2
+		}
+		want := wantSurfaceByArm[armName]
+		var other []string
+		for _, s := range surfaces {
+			if s != want {
+				other = append(other, s)
+			}
+		}
+		if len(other) > 0 {
+			fmt.Fprintf(os.Stderr, "scenariobench ledger: 0 cells matched run %q for arm %q under arm_surface %q (from -fathom-commit %q), but cell(s) for this run/arm exist under other arm_surface(s): %s — pass -fathom-commit to include one of them (comma-separated)\n",
+				*runID, armName, want, *cf.fathomCommit, strings.Join(other, ", "))
 			return 2
 		}
 	}

@@ -256,6 +256,35 @@ const (
 	lcaDatasetLicense = "Apache-2.0 (verified 2026-09-13; see docs/bench/scenarios.md)"
 )
 
+// ExternalCorpusCriteria returns the registered Criterion for every
+// external corpus this package builds directly from an operator-supplied
+// dataset (currently only Long Code Arena bug localization, VB-25) —
+// keyed by the criterion's own ID (LCACriterionID), never by a corpus
+// SHA256, because that sha exists only once the operator's own -dataset
+// file is loaded (CanonicalCorpusSHA256) and cmd/scenariobench's own
+// criteriaBySHA256 glob (testdata/scenariobench/*.json) can never
+// discover it — an external corpus is never committed as a corpus JSON
+// file there.
+//
+// wave N15 item 1's own fix: without this, a filed LCA ledger row (which
+// DOES carry the correct CriterionID, stamped at filing time) rendered
+// "(no registered criterion for this corpus)" in the verdict block —
+// verdict.go's criterionByID scans criteria's VALUES for a matching ID,
+// so merging this map's values into whatever criteriaBySHA256 already
+// loaded (any key works; only the ID inside each Criterion is ever
+// compared) is enough to resolve it.
+func ExternalCorpusCriteria() map[string]Criterion {
+	return map[string]Criterion{
+		LCACriterionID: {
+			ID:         LCACriterionID,
+			Treatment:  LCAArmFathom,
+			Control:    LCAArmControl,
+			MinTrials:  3,
+			Registered: "docs/vision/29-verbs-not-lookups.md §5 (VB-27, M12/M16)",
+		},
+	}
+}
+
 // CanonicalCorpusSHA256 hashes c's own canonical JSON encoding
 // (canonicalMarshal, derive.go's two-space-indent/no-HTML-escaping
 // convention) — the identity a corpus built in memory from an operator's

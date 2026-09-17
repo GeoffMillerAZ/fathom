@@ -293,3 +293,46 @@ func TestRenderVerdict_OldRowFallsBackToCorpusFamilyByTaskID(t *testing.T) {
 		t.Errorf("must never resolve to the decoy corpus's own criterion:\n%s", out)
 	}
 }
+
+// TestRenderVerdict_PairedStatsLine is wave N15 item 1: the verdict block
+// renders the bench-confidence layer's own paired bootstrap statistics
+// (ComputePairedRunStats/RenderPairedRunStats) for a run whose treatment
+// and control both resolve — placed strictly AFTER the voided-row summary
+// line, never between it and gold source (which would break
+// TestRenderVerdict_OldRowFallsBackToCorpusFamilyByTaskID's own
+// byte-for-byte pin above).
+func TestRenderVerdict_PairedStatsLine(t *testing.T) {
+	criteria := map[string]Criterion{"sha": {ID: "LCA-1", Treatment: "fathom", Control: "control"}}
+	rows := []ScenarioLedgerRow{
+		{RunID: "lca-run-1", TaskID: "t1", Arm: "fathom", CorpusSHA256: "sha", Trials: 3, Successes: 3, Readings: Readings{TotalTokens: 3000}},
+		{RunID: "lca-run-1", TaskID: "t1", Arm: "control", CorpusSHA256: "sha", Trials: 3, Successes: 3, Readings: Readings{TotalTokens: 6000}},
+		{RunID: "lca-run-1", TaskID: "t2", Arm: "fathom", CorpusSHA256: "sha", InstrumentDefect: "O41", Trials: 3, Successes: 3},
+	}
+	out := renderVerdict(rows, criteria, nil)
+	if !strings.Contains(out, "Paired (bootstrap, n=1, seed 20260902, 20000 resamples): success-rate diff +0.000 [+0.000, +0.000] (95% CI); token ratio 0.50× [0.50×, 0.50×].\n") {
+		t.Errorf("expected the paired-stats line for the one sound paired task, got:\n%s", out)
+	}
+	goldIdx := strings.Index(out, "Registered criterion")
+	pairedIdx := strings.Index(out, "Paired (bootstrap")
+	voidedIdx := strings.Index(out, "Voided:")
+	if voidedIdx == -1 || pairedIdx == -1 || goldIdx == -1 {
+		t.Fatalf("expected all three markers present:\n%s", out)
+	}
+	if !(goldIdx < voidedIdx && voidedIdx < pairedIdx) {
+		t.Errorf("expected order: criterion sentence, then Voided, then Paired — got indices %d, %d, %d in:\n%s", goldIdx, voidedIdx, pairedIdx, out)
+	}
+}
+
+// TestRenderVerdict_PairedStatsLineOmittedWhenNothingPairs proves the
+// line is skipped, never a placeholder, when no task ran in both arms.
+func TestRenderVerdict_PairedStatsLineOmittedWhenNothingPairs(t *testing.T) {
+	criteria := map[string]Criterion{"sha": {ID: "LCA-1", Treatment: "fathom", Control: "control"}}
+	rows := []ScenarioLedgerRow{
+		{RunID: "r1", TaskID: "t1", Arm: "fathom", CorpusSHA256: "sha", Trials: 3, Successes: 3},
+		{RunID: "r1", TaskID: "t2", Arm: "control", CorpusSHA256: "sha", Trials: 3, Successes: 3},
+	}
+	out := renderVerdict(rows, criteria, nil)
+	if strings.Contains(out, "Paired (bootstrap") {
+		t.Errorf("expected no paired-stats line when no task ran in both arms:\n%s", out)
+	}
+}

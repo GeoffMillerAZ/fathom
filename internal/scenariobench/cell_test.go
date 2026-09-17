@@ -834,6 +834,62 @@ func TestHarnessVersionsForRun_MissingCellsDirIsEmptyNotError(t *testing.T) {
 	}
 }
 
+// TestArmSurfacesForRun_FindsMismatchedSurfaceUnderSameRunAndArm is wave
+// N15 item 1's own proof: a "fathom" arm's cells stored under one
+// arm_surface (a fathom commit) are discoverable by (run, arm) even when
+// the caller's own computed surface differs — the exact situation that
+// silently filed 0 "fathom" rows for lca-run-1 while "control" (whose
+// arm_surface is always "") filed fine.
+func TestArmSurfacesForRun_FindsMismatchedSurfaceUnderSameRunAndArm(t *testing.T) {
+	dir := t.TempDir()
+	for i, c := range []CellResult{
+		{TaskID: "t1", Arm: "fathom", Trial: 1, CellKey: "k1", RunID: "lca-run-1", ArmSurface: "2fdaaf0"},
+		{TaskID: "t2", Arm: "fathom", Trial: 1, CellKey: "k2", RunID: "lca-run-1", ArmSurface: "2fdaaf0"},
+		{TaskID: "t1", Arm: "control", Trial: 1, CellKey: "k3", RunID: "lca-run-1", ArmSurface: ""},
+		{TaskID: "t1", Arm: "fathom", Trial: 1, CellKey: "k4", RunID: "other-run", ArmSurface: "deadbeef"},
+	} {
+		c.Trial = i + 1
+		if err := StoreScenarioCell(dir, c); err != nil {
+			t.Fatalf("StoreScenarioCell %+v: %v", c, err)
+		}
+	}
+	got, err := ArmSurfacesForRun(dir, "lca-run-1", "fathom")
+	if err != nil {
+		t.Fatalf("ArmSurfacesForRun: %v", err)
+	}
+	if len(got) != 1 || got[0] != "2fdaaf0" {
+		t.Errorf("ArmSurfacesForRun(lca-run-1, fathom) = %v, want [2fdaaf0]", got)
+	}
+}
+
+// TestArmSurfacesForRun_NoMatchIsEmptyNotError covers the genuine "this
+// arm never ran under this run id at all" case.
+func TestArmSurfacesForRun_NoMatchIsEmptyNotError(t *testing.T) {
+	dir := t.TempDir()
+	if err := StoreScenarioCell(dir, CellResult{TaskID: "t1", Arm: "control", Trial: 1, CellKey: "k1", RunID: "lca-run-1"}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := ArmSurfacesForRun(dir, "lca-run-1", "fathom")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("expected no surfaces for an arm that never ran, got %v", got)
+	}
+}
+
+// TestArmSurfacesForRun_MissingCellsDirIsEmptyNotError: no cell has ever
+// been stored — zero results, not an error.
+func TestArmSurfacesForRun_MissingCellsDirIsEmptyNotError(t *testing.T) {
+	got, err := ArmSurfacesForRun(filepath.Join(t.TempDir(), "does-not-exist"), "lca-run-1", "fathom")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("expected no matches, got %v", got)
+	}
+}
+
 // unifiedDiffFile builds one `git diff` file section (just enough shape for
 // FilterInstrumentOwnedDiff to parse the header) for path.
 func unifiedDiffFile(path, body string) string {

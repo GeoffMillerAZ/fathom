@@ -183,6 +183,7 @@ func renderRunVerdict(runID string, sound, voided []ScenarioLedgerRow, criteria 
 	}
 	t, tOK := byArm[crit.Treatment]
 	c, cOK := byArm[crit.Control]
+	var pairedLine string
 	switch {
 	case len(arms) == 0:
 		b.WriteString(": every row is voided — nothing sound to measure.\n")
@@ -199,6 +200,17 @@ func renderRunVerdict(runID string, sound, voided []ScenarioLedgerRow, criteria 
 		b.WriteString(surfaceCallsLine(arms, byArm))
 		b.WriteString(plainLanguageLine(runID, crit, crit.Evaluate(sound), t, c))
 		b.WriteString(goldSourceLine(sound, crit.Treatment))
+		// wave N15 item 1: the paired bootstrap statistics the
+		// bench-confidence layer already computes for the home bench
+		// (internal/contextbench, ADR-035) — rendered AFTER the voided-row
+		// summary below (never spliced between goldSourceLine and it), so
+		// this addition cannot shift any earlier-pinned byte-for-byte
+		// render (TestRenderVerdict_OldRowFallsBackToCorpusFamilyByTaskID).
+		// Skipped, never a placeholder line, when nothing paired at all
+		// (e.g. every task ran under only one of the two arms so far).
+		if stats, err := ComputePairedRunStats(sound, crit.Treatment, crit.Control); err == nil {
+			pairedLine = RenderPairedRunStats(stats)
+		}
 	default:
 		if sha == "" {
 			b.WriteString(" (voided or no sound row named a corpus)")
@@ -218,6 +230,9 @@ func renderRunVerdict(runID string, sound, voided []ScenarioLedgerRow, criteria 
 		}
 		sort.Strings(ids)
 		fmt.Fprintf(&b, "Voided: %d row(s) carry `instrument_defect` and are excluded from the numbers above — %s.\n", len(voided), strings.Join(ids, ", "))
+	}
+	if pairedLine != "" {
+		b.WriteString(pairedLine)
 	}
 	b.WriteString("\n")
 	return b.String()
