@@ -1734,3 +1734,56 @@ H1-T02/T08/T13 stay diagnostic-only, each carrying its own proven reason inline 
 bare MISS. VB-11 oracle (`go test ./internal/indexbench -run TestGoverningRuleOracle_Deterministic`)
 and the L1 payload replay (`go test ./internal/indexbench -run TestPayloadReplay`) both stayed
 byte-identical. Full account: `.fathom/observations.md` O75.
+
+**Addendum: ancestor-only hits no longer block cross-tier promotion (wave O4, 2026-09-17).**
+The wave O3 addendum above left H1-T02 and H1-T13 as proven, structural misses; item 1 of wave
+O4 (docs/bench reading behind the same H1 reproduction) revisited `crossTierCloser`'s own cap:
+it required the nearer-tier candidate to be a TOTAL lexical blank (`relevance == 0`) before a
+farther, strong candidate could leapfrog it — but a bare ANCESTOR-DIRECTORY token ("internal",
+"cmd", "docs") already registers as a nonzero hit under `relevance.go`'s own scoring purely
+because every sibling file under a guide shares it, never because the guide names the edited
+file at all. H1-T02 (`internal/core/model.go` vs. ADR-021) was exactly this shape:
+internal/CLAUDE.md's other same-tier sections each carried only a weak "internal" mention. The
+cap is narrowed from "the nearer candidate has ANY hit" to "the nearer candidate is itself
+STRONG" — `relevanceStrength`'s own packageWeight-or-above bit (the file's own package path,
+stem, or a caller-resolved symbol/behaviour token; never a mere ancestor or extension hit) —
+which is exactly what the previous addendum's own text already named as the discriminator for
+"strong"; this wave only narrows what BLOCKS promotion to match it, rather than introducing a
+new signal. `crossTierCloser`'s signature dropped the now-unused relevance floats (aRel/bRel)
+entirely, taking only the two `strong` bools that decide it. Re-running
+`TestH1GovernanceTasks_RawFallbackOffline` against this repo's own real corpus: H1-T02 now
+passes and is promoted to a HARD gate alongside H1-T01/T12. H1-T13 stays a miss, for its OWN,
+different, already-diagnosed reason (ADR-014's own section is the farther-tier candidate here
+and carries ZERO relevance itself — promotion only ever promotes a farther side that is itself
+strong, and there is nothing here to promote); its `missWhy` is unchanged by this addendum.
+
+A genuinely new finding surfaced re-running the fix against the real corpus rather than only
+the synthetic fixtures built to isolate it: even with the ancestor-token exemption in place,
+H1-T02 would NOT have passed if not for the fix ALSO clearing the field of several other
+tier-2 sections that were purely ancestor-blocked — and the same real-corpus run surfaced that
+ADR-037's OWN multi-wave addendum text (the paragraphs immediately above this one, which
+document this very ranking mechanism using its target tokens — "Edge/EdgeKind", "core",
+"model" — verbatim, because they narrate the H1-T02 reproduction itself) also crosses the
+"strong" bar on ordinary domain vocabulary and, being the longest, most discursive single
+entry in ADR.md, out-scores genuinely on-topic sections on raw hit-weighted magnitude within
+the SAME tier (root, alongside every other ADR). This is a same-tier (wave O2) relevance-
+ranking limitation, not this addendum's cross-tier one — wave O2's own design deliberately
+rejected length-normalisation, so a long section touching many relevant words legitimately
+outscores a short, focused one under the existing rules — and it is a limitation this repo's
+OWN corpus keeps actively widening: every wave that narrates a governance-ranking gap using
+the gap's own tokens measurably worsens the self-reference the next reproduction will
+encounter. Proven correct in ISOLATION, free of that confound, on synthetic fixtures at both
+the unit level (`TestCrossTierCloser_AncestorOnlyHitOnNearerDoesNotBlockPromotion`,
+`TestCrossTierCloser_StrongHitOnNearerBlocksPromotion`) and the `RawFallbackRules` level
+(`TestRawFallbackRules_CrossTierPromotion_AncestorOnlyHitDoesNotBlockPromotion`,
+`TestRawFallbackRules_CrossTierPromotion_StrongHitOnNestedGuideBlocksPromotion`). VB-11 oracle
+(`TestGoverningRuleOracle_Deterministic`) and the L1 payload replay (`TestPayloadReplay`,
+`internal/indexbench`) both stayed byte-identical. Full account: `.fathom/observations.md` O80.
+
+**Revisit when.** A future wave's own real-corpus H1 reproduction shows ADR.md's self-
+referential growth (this addendum included) has crowded a genuinely on-topic answer out of a
+top-3 window that previously worked, or when a same-tier length-normalisation redesign is
+seriously proposed — the wave O2 addendum's own rejection of length-normalisation should be
+re-read first, since the failure mode that rejection was built to avoid (penalising a
+thorough, multi-topic section) and the failure mode this addendum just measured (a long
+section winning on breadth alone) are the same trade-off pulling in opposite directions.

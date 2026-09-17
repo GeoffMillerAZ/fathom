@@ -91,14 +91,25 @@ func TestH1GovernanceTasks_RawFallbackOffline(t *testing.T) {
 			id: "H1-T02", file: "internal/core/model.go", extra: []string{"Edge", "EdgeKind"},
 			want: "ADR-021",
 			note: "typed call-edge kinds live on core.Edge",
-			missWhy: "wave O3 item 1 (cross-tier promotion) only leapfrogs a nearer-tier " +
-				"candidate that is a TOTAL lexical blank (relevance == 0). internal/CLAUDE.md's " +
-				"five same-tier sections each carry at least a weak hit (most from the bare " +
-				"ancestor token \"internal\", which the guide's own heading and several bodies " +
-				"mention in passing) — never zero — so the cap correctly declines to promote " +
-				"ADR-021 past them even though ADR-021 itself is STRONG on Edge/EdgeKind. A real, " +
-				"deliberately narrow limitation of the cap (TestCrossTierCloser_AnyHitOnNearerBlocksPromotion " +
-				"pins the same rule directly), not a bug.",
+			missWhy: "wave O4 item 1 (the narrowed cross-tier cap: \"the nearer candidate is " +
+				"itself STRONG\", not \"the nearer candidate has ANY hit\") DOES fix the " +
+				"originally-diagnosed block — internal/CLAUDE.md's other same-tier sections carry " +
+				"only a weak, ancestor-only hit on the bare token \"internal\" and no longer keep " +
+				"their tier against a strong root candidate; proven in isolation, on a clean " +
+				"synthetic corpus free of this repo's own self-reference " +
+				"(TestCrossTierCloser_AncestorOnlyHitOnNearerDoesNotBlockPromotion, " +
+				"TestRawFallbackRules_CrossTierPromotion_AncestorOnlyHitDoesNotBlockPromotion — " +
+				"both now pass; TestRawFallbackRules_CrossTierPromotion_StrongHitOnNestedGuideBlocksPromotion " +
+				"confirms a genuinely strong nearer hit still blocks it, as designed). But THIS " +
+				"real-corpus case still misses top-3, for a newly-discovered, DIFFERENT reason " +
+				"outside item 1's scope: several OTHER root-tier ADR.md sections (chiefly ADR-037 " +
+				"itself, whose own multi-wave addendum narrates this exact test using its target " +
+				"words \"model\"/\"core\"/\"Edge\"/\"EdgeKind\" verbatim) also cross the packageWeight " +
+				"\"strong\" bar on ordinary domain vocabulary and, being longer and more " +
+				"discursive, out-score ADR-021 on raw hit-weighted magnitude — a same-tier " +
+				"(wave O2) relevance-ranking limitation this repo's own corpus growth keeps " +
+				"widening every time a wave documents the gap using the gap's own tokens; not " +
+				"something a cross-tier blocking fix can reach.",
 		},
 		{
 			id: "H1-T08", file: "cmd/fathom/emit.go",
