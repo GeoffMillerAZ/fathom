@@ -471,6 +471,85 @@ func TestBroken(t *testing.T) {
 	}
 }
 
+// TestApplyTestPatch_NewFileCollisionScoredOnAgentsFix is wave N15 item
+// 4's own regression test: reuse-pilot-4 10124's held-out gold test
+// creates a NEW file (thing_fix_test.go, oracleCalibrationTestPatch) at
+// the exact path an agent independently wrote its own file at too, AND
+// staged (`git add`) — a plain `git apply` refuses ("already exists in
+// working directory") and `--3way` reports a conflict, EVEN AFTER
+// resetTestPatchTargets' own `rm -f`: a working-tree removal does not
+// clear a stale INDEX entry `git apply` also checks (reproduced
+// directly: `git add` the colliding file, `rm -f` it, then `git apply`
+// a new-file patch at that path still fails both ways). This makes the
+// whole cell unscoreable (FailToPassOK/PassToPassOK never actually run —
+// RunOracle's own early-return on ApplyTestPatch failure, oracle.go).
+// Staging the patch in a driver-owned worktree and copying the result in
+// by plain file write sidesteps the index entirely, and the agent's own
+// colliding file content must be gone afterward — the actual fix
+// (thing.go, never the agent's own competing test file) is what gets
+// scored.
+func TestApplyTestPatch_NewFileCollisionScoredOnAgentsFix(t *testing.T) {
+	repoPath, commit := oracleCalibrationFixtureRepo(t)
+	wtPath := cloneAtCommit(t, repoPath, commit)
+
+	// Simulate the agent: it fixed the bug AND wrote its own test at the
+	// EXACT path the hidden gold test patch also creates — content that
+	// would fail the fail_to_pass test if it survived (a wrong assertion),
+	// so a test asserting Passed=true below can only be explained by the
+	// GOLD content having actually landed, not the agent's own. Staged
+	// (`git add`), mirroring an agent workflow step (or the harness's own
+	// `git add -A` for a diff/handoff) — the INDEX entry this collision
+	// actually needs to reproduce (an untracked file alone does not).
+	writeTestFile(t, filepath.Join(wtPath, "thing.go"), "package thing\n\nfunc Add(a, b int) int { return a + b }\n")
+	writeTestFile(t, filepath.Join(wtPath, "thing_fix_test.go"), `package thing
+
+import "testing"
+
+func TestFix(t *testing.T) {
+	t.Fatal("agent's own competing test — must never survive into scoring")
+}
+`)
+	if out, err := exec.Command("git", "-C", wtPath, "add", "-A").CombinedOutput(); err != nil {
+		t.Fatalf("git add: %v (%s)", err, out)
+	}
+
+	wt := Worktree{Path: wtPath, SubjectClone: repoPath, CellDir: t.TempDir(), LocalBase: commit}
+	task := Task{
+		ID:      "T-COLLIDE",
+		Subject: Subject{RepoURL: repoPath, BaseCommit: commit},
+		Oracle:  Oracle{FailToPass: []string{"TestFix"}, PassToPass: []string{"TestBroken"}},
+		Gold:    Gold{TestPatch: oracleCalibrationTestPatch},
+	}
+
+	result, err := RunOracle(context.Background(), wt, task, nil, t.TempDir())
+	if err != nil {
+		t.Fatalf("RunOracle: %v", err)
+	}
+	if result.Calibration == nil {
+		t.Fatal("expected a Calibration summary")
+	}
+	if result.Calibration.NotMeasurable != "" {
+		t.Fatalf("expected the test patch to apply despite the agent's own colliding new file, got not_measurable=%q", result.Calibration.NotMeasurable)
+	}
+	if !result.FailToPassOK {
+		t.Error("expected FailToPassOK=true — the agent's real fix (thing.go) must be scored against the GOLD TestFix, not the agent's own competing one")
+	}
+	if !result.Passed {
+		t.Errorf("expected Passed=true, got %+v", result)
+	}
+
+	raw, err := os.ReadFile(filepath.Join(wtPath, "thing_fix_test.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), "agent's own competing test") {
+		t.Errorf("expected the gold test_patch's own content, got the agent's surviving instead:\n%s", raw)
+	}
+	if !strings.Contains(string(raw), "Add(2, 3) != 5") {
+		t.Errorf("expected the gold TestFix body, got:\n%s", raw)
+	}
+}
+
 // TestAnswerOnly proves the shape AnswerOnly reports: an AnswerAllOf oracle
 // with no tree-level check at all is answer-only; any tree-level check
 // (even alongside AnswerAllOf) is not.
