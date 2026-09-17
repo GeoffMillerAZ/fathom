@@ -56,6 +56,18 @@
         ]
       }
     ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "fathom edit-hook",
+            "timeout": 5,
+            "type": "command"
+          }
+        ],
+        "matcher": "Bash"
+      }
+    ],
     "PostToolUseFailure": [
       {
         "hooks": [
@@ -107,6 +119,17 @@
           {
             "command": "/Volumes/m2ext/code/geoffmilleraz/sextant/bin/fathom session-hook --event subagent-start",
             "timeout": 5,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "command": "fathom prompt-hook",
+            "timeout": 10,
             "type": "command"
           }
         ]
