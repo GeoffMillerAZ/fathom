@@ -596,6 +596,64 @@ func TestFindScenarioCellsByRun_MissingCellsDirIsEmptyNotError(t *testing.T) {
 	}
 }
 
+// TestHarnessVersionsForRun_DistinctSortedAcrossTaskArm is O65 (wave N12)
+// item 3's own proof: a cell key is built over HarnessVersion, so a
+// mismatched -harness-version at filing time borrows nothing under ANY
+// (task, arm) — this is the diagnostic that tells that case apart from a
+// run-id with genuinely no cells: every DISTINCT HarnessVersion recorded
+// for the run, across every task/arm, sorted, duplicates collapsed.
+func TestHarnessVersionsForRun_DistinctSortedAcrossTaskArm(t *testing.T) {
+	dir := t.TempDir()
+	for i, c := range []CellResult{
+		{TaskID: "T1", Arm: "full", Trial: 1, CellKey: "k1", RunID: "run-1", HarnessVersion: "2.1.270 (Claude Code)"},
+		{TaskID: "T1", Arm: "control", Trial: 1, CellKey: "k2", RunID: "run-1", HarnessVersion: "2.1.270 (Claude Code)"},
+		{TaskID: "T2", Arm: "full", Trial: 1, CellKey: "k3", RunID: "run-1", HarnessVersion: "2.1.269 (Claude Code)"},
+		{TaskID: "T1", Arm: "full", Trial: 1, CellKey: "k4", RunID: "run-2", HarnessVersion: "9.9.9 (Claude Code)"},
+	} {
+		c.Trial = i + 1 // distinct trial per record so the store never collides on one path
+		if err := StoreScenarioCell(dir, c); err != nil {
+			t.Fatalf("StoreScenarioCell %+v: %v", c, err)
+		}
+	}
+	got, err := HarnessVersionsForRun(dir, "run-1")
+	if err != nil {
+		t.Fatalf("HarnessVersionsForRun: %v", err)
+	}
+	want := []string{"2.1.269 (Claude Code)", "2.1.270 (Claude Code)"}
+	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
+		t.Errorf("HarnessVersionsForRun(run-1) = %v, want %v", got, want)
+	}
+}
+
+// TestHarnessVersionsForRun_NoMatchIsEmptyNotError covers the genuine
+// "this run-id has no cells at all" case: never an error, never a
+// fabricated version.
+func TestHarnessVersionsForRun_NoMatchIsEmptyNotError(t *testing.T) {
+	dir := t.TempDir()
+	if err := StoreScenarioCell(dir, CellResult{TaskID: "T1", Arm: "full", Trial: 1, CellKey: "k1", RunID: "run-other", HarnessVersion: "1.0.0"}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := HarnessVersionsForRun(dir, "run-1")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("expected no versions for an unrelated run-id, got %v", got)
+	}
+}
+
+// TestHarnessVersionsForRun_MissingCellsDirIsEmptyNotError: no cell has
+// ever been stored — zero results, not an error.
+func TestHarnessVersionsForRun_MissingCellsDirIsEmptyNotError(t *testing.T) {
+	got, err := HarnessVersionsForRun(filepath.Join(t.TempDir(), "does-not-exist"), "run-1")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("expected no matches, got %v", got)
+	}
+}
+
 // unifiedDiffFile builds one `git diff` file section (just enough shape for
 // FilterInstrumentOwnedDiff to parse the header) for path.
 func unifiedDiffFile(path, body string) string {

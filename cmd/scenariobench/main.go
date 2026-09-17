@@ -301,24 +301,44 @@ func loadCorpusOrLCA(corpusPath, datasetPath string) (scenariobench.Corpus, stri
 const datasetFlagUsage = "for -corpus " + externalCorpusSentinel + ": path to the operator's own downloaded Long Code Arena bug-localization JSONL (never fetched automatically — docs/bench/scenarios.md \"External corpus (LCA bug localization)\")"
 
 // criteriaBySHA256 loads every corpus matching glob and returns its
-// registered Criterion keyed by the corpus's own SHA256 — the same key a
-// ScenarioLedgerRow carries as CorpusSHA256 (RC-35), so RenderVerdict can
-// name each run's treatment/control without a hardcoded run→corpus table.
+// registered Criterion keyed by the corpus's own SHA256 (bySHA256) — the
+// same key a ScenarioLedgerRow carries as CorpusSHA256 (RC-35), so
+// RenderVerdict can name each run's treatment/control without a
+// hardcoded run→corpus table — AND, as a second index (byTaskID), the
+// SAME Criterion keyed by every one of that corpus's own task ids: O65
+// (wave N12) item 2's fallback for a ledger row filed before CriterionID
+// existed whose recorded sha a LATER corpus rewrite has since orphaned —
+// a rewrite changes the corpus's own content hash but never its task
+// ids, so byTaskID still resolves the same criterion through any task id
+// such a row's own transcript names. A task id declared by TWO different
+// corpora among paths is never added to byTaskID at all (tracked via
+// seenTaskID and deleted on the second sighting) — an ambiguous id must
+// resolve to nothing, never to whichever corpus happened to glob second.
 // An empty match (a repo with no corpora yet) is not an error.
-func criteriaBySHA256(glob string) (map[string]scenariobench.Criterion, error) {
+func criteriaBySHA256(glob string) (bySHA256, byTaskID map[string]scenariobench.Criterion, err error) {
 	paths, err := filepath.Glob(glob)
 	if err != nil {
-		return nil, fmt.Errorf("globbing %q: %w", glob, err)
+		return nil, nil, fmt.Errorf("globbing %q: %w", glob, err)
 	}
-	out := make(map[string]scenariobench.Criterion, len(paths))
+	bySHA256 = make(map[string]scenariobench.Criterion, len(paths))
+	byTaskID = make(map[string]scenariobench.Criterion, len(paths))
+	seenTaskID := map[string]bool{}
 	for _, p := range paths {
 		c, sha, err := loadCorpus(p)
 		if err != nil {
-			return nil, fmt.Errorf("loading corpus %s: %w", p, err)
+			return nil, nil, fmt.Errorf("loading corpus %s: %w", p, err)
 		}
-		out[sha] = c.Criterion
+		bySHA256[sha] = c.Criterion
+		for _, task := range c.Tasks {
+			if seenTaskID[task.ID] {
+				delete(byTaskID, task.ID)
+				continue
+			}
+			seenTaskID[task.ID] = true
+			byTaskID[task.ID] = c.Criterion
+		}
 	}
-	return out, nil
+	return bySHA256, byTaskID, nil
 }
 
 // ─── plan ────────────────────────────────────────────────────────────────
@@ -1272,9 +1292,24 @@ func cmdLedger(args []string) int {
 	commit := fs.String("commit", "", "repo HEAD this run measured (default: git rev-parse --short HEAD)")
 	trials := fs.Int("trials", 0, "trials per (task, arm) this run intended (default: the corpus criterion's own min_trials; a cell key with MORE stored trials than this is still counted in full, never capped)")
 	strictBorrow := fs.Bool("strict-borrow", true, "refuse (exit 2) to file a row when a stored cell's own run_id differs from -run-id, rather than silently skipping it — false restores the old silent-skip behavior for a cellsDir deliberately shared across runs")
+	backfillCriteria := fs.Bool("backfill-criteria", false, "backfill criterion_id (O65, wave N12 item 2) onto every existing ledger row that carries none, resolved via -corpus-glob's own corpus SHA256 or task ids, rewrite -ledger, print how many rows changed, and exit — ignores -corpus/-dataset/-run-id/-cells/-trials/-harness-version/-commit entirely")
 	cf := addCellFlags(fs)
 	if err := fs.Parse(args); err != nil {
 		return 2
+	}
+	if *backfillCriteria {
+		bySHA256, byTaskID, err := criteriaBySHA256(*corpusGlob)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "scenariobench ledger: %v\n", err)
+			return 2
+		}
+		updated, err := scenariobench.BackfillScenarioLedgerCriteria(*ledgerPath, bySHA256, byTaskID)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "scenariobench ledger: %v\n", err)
+			return 2
+		}
+		fmt.Fprintf(os.Stdout, "scenariobench ledger: backfilled criterion_id on %d row(s) in %s\n", updated, *ledgerPath)
+		return 0
 	}
 	if *corpusPath == "" || *runID == "" {
 		fmt.Fprintln(os.Stderr, "scenariobench ledger: -corpus and -run-id are required")
@@ -1471,6 +1506,37 @@ func cmdLedger(args []string) int {
 		}
 		rows = append(rows, row)
 	}
+	// O65 (wave N12) item 3: a cell key is built over -harness-version
+	// (planCells' own CellInvariants), so a filing invocation whose
+	// -harness-version does not byte-for-byte match what stored the cells
+	// borrows nothing for EVERY (task, arm) and would otherwise proceed to
+	// silently file 0 rows and report an "indeterminate" criterion verdict
+	// as if this run-id simply had no cells at all — the exact shape
+	// `-harness-version "$(claude --version)"` produced when the volume
+	// wedge broke `claude --version`. Before accepting that at face value,
+	// check whether cells for this exact run-id exist under some OTHER
+	// harness version; if they do, this is very likely a mismatched
+	// -harness-version, not a genuinely empty run, so name it and refuse
+	// rather than file a misleading empty/indeterminate row.
+	if len(rows) == 0 {
+		versions, verr := scenariobench.HarnessVersionsForRun(*cellsDir, *runID)
+		if verr != nil {
+			fmt.Fprintf(os.Stderr, "scenariobench ledger: %v\n", verr)
+			return 2
+		}
+		var other []string
+		for _, v := range versions {
+			if v != *cf.harnessVersion {
+				other = append(other, v)
+			}
+		}
+		if len(other) > 0 {
+			fmt.Fprintf(os.Stderr, "scenariobench ledger: 0 cells matched run %q under -harness-version %q, but cell(s) for this run exist under other harness version(s): %s — pass -harness-version to match one of them\n",
+				*runID, *cf.harnessVersion, strings.Join(other, ", "))
+			return 2
+		}
+	}
+
 	rowBorrowed := scenariobench.BorrowedScenarioCellsOf(allCells)
 	for i := range rows {
 		for _, b := range rowBorrowed {
@@ -1497,12 +1563,12 @@ func cmdLedger(args []string) int {
 	// each row already carries) — not only the one this invocation loaded
 	// — so the block stays informative across the whole committed history,
 	// not just the run being filed.
-	criteria, err := criteriaBySHA256(*corpusGlob)
+	criteria, byTaskID, err := criteriaBySHA256(*corpusGlob)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "scenariobench ledger: %v\n", err)
 		return 2
 	}
-	body := scenariobench.RenderVerdict(all, criteria) + "\n" + scenariobench.RenderScenarioLedger(all)
+	body := scenariobench.RenderVerdict(all, criteria, byTaskID) + "\n" + scenariobench.RenderScenarioLedger(all)
 	if shapeTable := scenariobench.RenderGoldSourceByCategory(scenariobench.GoldSourceRateByCategory(all)); shapeTable != "" {
 		body += "\n" + shapeTable
 	}
@@ -1585,12 +1651,12 @@ func cmdVoid(args []string) int {
 		fmt.Fprintf(os.Stderr, "scenariobench void: %v\n", err)
 		return 2
 	}
-	criteria, err := criteriaBySHA256(*corpusGlob)
+	criteria, byTaskID, err := criteriaBySHA256(*corpusGlob)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "scenariobench void: %v\n", err)
 		return 2
 	}
-	body := scenariobench.RenderVerdict(rows, criteria) + "\n" + scenariobench.RenderScenarioLedger(rows)
+	body := scenariobench.RenderVerdict(rows, criteria, byTaskID) + "\n" + scenariobench.RenderScenarioLedger(rows)
 	if shapeTable := scenariobench.RenderGoldSourceByCategory(scenariobench.GoldSourceRateByCategory(rows)); shapeTable != "" {
 		body += "\n" + shapeTable
 	}

@@ -616,6 +616,190 @@ func TestCmdLedger_MissingFlags(t *testing.T) {
 	}
 }
 
+// TestCmdLedger_EmptyHarnessVersionRefused is O65 (wave N12) item 3's
+// regression pin for the FIRST half of the defect: `-harness-version
+// "$(claude --version)"` filed 0 rows silently when the volume-wedge-
+// broken `claude --version` produced an empty string. `-corpus` and
+// `-run-id` are both supplied (otherwise the earlier "both required"
+// check would fire first and this would not be testing the harness-
+// version guard at all); `-harness-version` is left at its own empty
+// default.
+func TestCmdLedger_EmptyHarnessVersionRefused(t *testing.T) {
+	dir := t.TempDir()
+	corpusPath := filepath.Join(dir, "corpus.json")
+	if err := os.WriteFile(corpusPath, []byte(`{"arms":{},"tasks":[],"criterion":{"id":"C1","treatment":"full","control":"control","min_trials":1}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	stderr := captureStderr(t, func() {
+		rc := run([]string{
+			"ledger",
+			"-corpus", corpusPath,
+			"-run-id", "run-1",
+			"-cells", filepath.Join(dir, "cells"),
+			"-ledger", filepath.Join(dir, "ledger.jsonl"),
+		})
+		if rc != 2 {
+			t.Errorf("ledger with empty -harness-version: exit %d, want 2", rc)
+		}
+	})
+	if !strings.Contains(stderr, "-harness-version is required") {
+		t.Errorf("stderr = %q, want it to name -harness-version as required", stderr)
+	}
+}
+
+// TestCmdLedger_HarnessVersionMismatchNamesOtherVersions is O65 (wave
+// N12) item 3's SECOND half: a cell key is built over -harness-version
+// (planCells' own CellInvariants), so filing with a -harness-version that
+// does not match what `run` stamped the stored cells with borrows nothing
+// for every (task, arm) — exactly what a broken `$(claude --version)`
+// substitution produces when the two invocations disagree. Rather than
+// silently file 0 rows and report an indeterminate verdict as if run-1
+// simply had no cells, `ledger` must refuse and name the harness
+// version(s) the run's own stored cells actually carry.
+func TestCmdLedger_HarnessVersionMismatchNamesOtherVersions(t *testing.T) {
+	dir := t.TempDir()
+	repoURL, commit := gitFixtureSubject(t)
+	corpusPath := writeCorpusFixture(t, dir, repoURL, commit)
+	root := filepath.Join(dir, "fathom-root")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cellsDir := filepath.Join(dir, "cells")
+	rawDir := filepath.Join(dir, "raw")
+	streamsDir := repoRelative(t, "testdata", "scenariobench", "streams")
+
+	rc := run([]string{
+		"run",
+		"-corpus", corpusPath,
+		"-root", root,
+		"-cells", cellsDir,
+		"-raw-dir", rawDir,
+		"-run-id", "run-1",
+		"-harness-version", "2.1.270 (Claude Code)",
+		"-harness", "fake",
+		"-fake-streams-dir", streamsDir,
+		"-fake-streams", `{"T1/control":"single-session.jsonl"}`,
+	})
+	if rc != 0 {
+		t.Fatalf("run exited %d, want 0", rc)
+	}
+
+	ledgerPath := filepath.Join(dir, "ledger.jsonl")
+	readmePath := filepath.Join(dir, "README.md")
+	if err := os.WriteFile(readmePath, []byte("# Bench\n\n## Scenario runs\n\n"+
+		scenariobench.ScenarioLedgerBeginMarker+"\n\n"+scenariobench.ScenarioLedgerEndMarker+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	rc = -1
+	stderr := captureStderr(t, func() {
+		rc = run([]string{
+			"ledger",
+			"-corpus", corpusPath,
+			"-cells", cellsDir,
+			"-ledger", ledgerPath,
+			"-readme", readmePath,
+			"-run-id", "run-1",
+			// A real, non-empty, but WRONG string — never "" (that is
+			// the separate case above) — the shape a broken
+			// `$(claude --version)` substitution across two separate
+			// invocations (run, then ledger) can actually produce.
+			"-harness-version", "2.1.271 (Claude Code)",
+		})
+	})
+	if rc != 2 {
+		t.Fatalf("ledger with mismatched -harness-version: exit %d, want 2", rc)
+	}
+	if !strings.Contains(stderr, `other harness version(s): 2.1.270 (Claude Code)`) {
+		t.Errorf("stderr = %q, want it to name the run's real harness version", stderr)
+	}
+	rows, err := scenariobench.LoadScenarioLedger(ledgerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 0 {
+		t.Errorf("expected nothing filed when the harness-version mismatch is refused, got %d row(s)", len(rows))
+	}
+}
+
+// TestCmdLedger_BackfillCriteria is O65 (wave N12) item 2's CLI-level
+// proof: `-backfill-criteria` needs none of -corpus/-run-id/-cells/
+// -harness-version (every row filed before CriterionID existed carries no
+// hint about which run's own corpus invocation produced it, only the
+// ledger and the corpus glob), stamps criterion_id on every row that
+// carries none — resolved by CorpusSHA256 when still current, by the
+// row's own TaskID when the sha has since been orphaned by a corpus
+// rewrite — leaves a row that already carries one untouched, and reports
+// how many rows changed on stdout.
+func TestCmdLedger_BackfillCriteria(t *testing.T) {
+	dir := t.TempDir()
+	ledgerPath := filepath.Join(dir, "ledger.jsonl")
+	for _, r := range []scenariobench.ScenarioLedgerRow{
+		{RunID: "guards-pilot-5", TaskID: "guards-i1-packagedeps-sorted", Arm: "full", CorpusSHA256: "sha-orphaned"},
+		{RunID: "guards-pilot-5", TaskID: "guards-i1-packagedeps-sorted", Arm: "control", CorpusSHA256: "sha-orphaned"},
+		{RunID: "guards-pilot-6", TaskID: "guards-i1-packagedeps-sorted", Arm: "full", CorpusSHA256: "sha-orphaned", CriterionID: "keep-me"},
+	} {
+		if err := scenariobench.AppendScenarioLedger(ledgerPath, r); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	corporaDir := filepath.Join(dir, "corpora")
+	if err := os.MkdirAll(corporaDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	corpus := `{
+  "arms": {"full": {"wired": true, "instructions": "x"}, "control": {"wired": false, "instructions": "x"}},
+  "tasks": [{
+    "id": "guards-i1-packagedeps-sorted",
+    "category": "governance_bound",
+    "prompt": "x",
+    "derivation": "synthetic fixture for scenariobench's own tests",
+    "subject": {"repo_url": "https://example.invalid/x.git", "base_commit": "abc123"},
+    "sessions": {"mode": "single", "count": 1, "max_turns": 5},
+    "oracle": {"answer_all_of": ["x"]},
+    "predictions": {"full": "predicted win", "control": "predicted no-effect"}
+  }],
+  "criterion": {"id": "M1-1", "treatment": "full", "control": "control", "min_trials": 2}
+}`
+	if err := os.WriteFile(filepath.Join(corporaDir, "guards-fathom.json"), []byte(corpus), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	stdout := captureStdout(t, func() {
+		rc := run([]string{
+			"ledger", "-backfill-criteria",
+			"-ledger", ledgerPath,
+			"-corpus-glob", filepath.Join(corporaDir, "*.json"),
+		})
+		if rc != 0 {
+			t.Errorf("ledger -backfill-criteria: exit %d, want 0", rc)
+		}
+	})
+	if !strings.Contains(stdout, "backfilled criterion_id on 2 row(s)") {
+		t.Errorf("stdout = %q, want it to report 2 rows backfilled", stdout)
+	}
+
+	rows, err := scenariobench.LoadScenarioLedger(ledgerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 3 {
+		t.Fatalf("expected backfilling to change row COUNT not at all, got %d rows", len(rows))
+	}
+	for _, r := range rows {
+		if r.RunID == "guards-pilot-6" {
+			if r.CriterionID != "keep-me" {
+				t.Errorf("guards-pilot-6 row already carried a criterion_id: got %q, want it untouched", r.CriterionID)
+			}
+			continue
+		}
+		if r.CriterionID != "M1-1" {
+			t.Errorf("%s/%s: criterion_id = %q, want M1-1", r.RunID, r.Arm, r.CriterionID)
+		}
+	}
+}
+
 // TestCmdRunScoreLedger_SurfaceCallsAndUnusedFlag is item 6's end-to-end
 // proof: a competitor arm whose MCP server connected but was never called
 // (docs/bench/scenarios.md "Instrument truth", second documented defect)

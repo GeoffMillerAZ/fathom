@@ -467,3 +467,94 @@ func TestVoidScenarioLedgerRow_SecondVoidReplacesReason(t *testing.T) {
 		t.Fatalf("expected exactly 1 row with the corrected reason, got %+v", rows)
 	}
 }
+
+// TestBackfillCriterionIDs_ResolvesBySHAThenTaskID is O65 (wave N12) item
+// 2's own proof: a row carrying a CorpusSHA256 still present in bySHA256
+// resolves directly; a row whose sha is orphaned (a later corpus rewrite
+// changed it) falls back to its own TaskID against byTaskID; a row that
+// already carries a CriterionID is left untouched even when a resolvable
+// sha/task id would suggest something else (backfill never overwrites,
+// only fills gaps); and a row matching neither index is left exactly as
+// it was — never guessed at.
+func TestBackfillCriterionIDs_ResolvesBySHAThenTaskID(t *testing.T) {
+	bySHA256 := map[string]Criterion{"sha-current": {ID: "M1-1", Treatment: "full", Control: "control"}}
+	byTaskID := map[string]Criterion{"guards-i1-packagedeps-sorted": {ID: "M1-1", Treatment: "full", Control: "control"}}
+	rows := []ScenarioLedgerRow{
+		{RunID: "r1", TaskID: "t1", Arm: "full", CorpusSHA256: "sha-current"},
+		{RunID: "r2", TaskID: "guards-i1-packagedeps-sorted", Arm: "full", CorpusSHA256: "sha-orphaned"},
+		{RunID: "r3", TaskID: "t3", Arm: "full", CorpusSHA256: "sha-current", CriterionID: "already-set"},
+		{RunID: "r4", TaskID: "unknown-task", Arm: "full", CorpusSHA256: "sha-orphaned"},
+	}
+	if got := BackfillCriterionIDs(rows, bySHA256, byTaskID); got != 2 {
+		t.Errorf("BackfillCriterionIDs returned %d, want 2", got)
+	}
+	if rows[0].CriterionID != "M1-1" {
+		t.Errorf("row 0 (resolved by sha): CriterionID = %q, want M1-1", rows[0].CriterionID)
+	}
+	if rows[1].CriterionID != "M1-1" {
+		t.Errorf("row 1 (resolved by orphaned-sha fallback to task id): CriterionID = %q, want M1-1", rows[1].CriterionID)
+	}
+	if rows[2].CriterionID != "already-set" {
+		t.Errorf("row 2 (already carried a CriterionID): CriterionID = %q, want it untouched", rows[2].CriterionID)
+	}
+	if rows[3].CriterionID != "" {
+		t.Errorf("row 3 (resolves via neither index): CriterionID = %q, want it left empty", rows[3].CriterionID)
+	}
+}
+
+// TestBackfillScenarioLedgerCriteria_RewritesOnlyOnChange is the
+// file-level wrapper's own proof: a ledger with at least one backfillable
+// row is rewritten with the new field; a ledger where every row either
+// already carries a CriterionID or resolves via neither index is left
+// byte-for-byte untouched (mtime and content both), since WriteScenarioLedger
+// is skipped entirely when nothing changed.
+func TestBackfillScenarioLedgerCriteria_RewritesOnlyOnChange(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "ledger.jsonl")
+	for _, r := range []ScenarioLedgerRow{
+		{RunID: "guards-pilot-5", TaskID: "guards-i1-packagedeps-sorted", Arm: "full", CorpusSHA256: "sha-orphaned"},
+		{RunID: "guards-pilot-5", TaskID: "guards-i1-packagedeps-sorted", Arm: "control", CorpusSHA256: "sha-orphaned"},
+	} {
+		if err := AppendScenarioLedger(path, r); err != nil {
+			t.Fatalf("AppendScenarioLedger: %v", err)
+		}
+	}
+	byTaskID := map[string]Criterion{"guards-i1-packagedeps-sorted": {ID: "M1-1", Treatment: "full", Control: "control"}}
+
+	updated, err := BackfillScenarioLedgerCriteria(path, nil, byTaskID)
+	if err != nil {
+		t.Fatalf("BackfillScenarioLedgerCriteria: %v", err)
+	}
+	if updated != 2 {
+		t.Errorf("updated = %d, want 2", updated)
+	}
+	rows, err := LoadScenarioLedger(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range rows {
+		if r.CriterionID != "M1-1" {
+			t.Errorf("row %s/%s: CriterionID = %q, want M1-1", r.TaskID, r.Arm, r.CriterionID)
+		}
+	}
+
+	before, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A second backfill pass finds nothing left to do (every row already
+	// carries a CriterionID) and must not rewrite the file at all.
+	updated, err = BackfillScenarioLedgerCriteria(path, nil, byTaskID)
+	if err != nil {
+		t.Fatalf("second BackfillScenarioLedgerCriteria: %v", err)
+	}
+	if updated != 0 {
+		t.Errorf("second pass updated = %d, want 0", updated)
+	}
+	after, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(before) != string(after) {
+		t.Error("expected the ledger to be left byte-for-byte untouched when nothing was backfilled")
+	}
+}

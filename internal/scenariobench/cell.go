@@ -206,6 +206,59 @@ func FindScenarioCellsByRun(cellsDir, taskID, arm, runID string) ([]CellResult, 
 	return out, nil
 }
 
+// HarnessVersionsForRun walks cellsDir for every stored cell record whose
+// RunID matches, regardless of TaskID/Arm/HarnessVersion, and returns the
+// DISTINCT HarnessVersion values found, sorted. O65 (wave N12) item 3: a
+// stored cell's own key is built over HarnessVersion (planCells,
+// cmd/scenariobench/main.go — CellInvariants), so a `ledger` invocation
+// whose -harness-version does not byte-for-byte match what `run`/`plan`
+// stamped the cells with borrows NOTHING for every (task, arm) — the
+// exact silent shape of `-harness-version "$(claude --version)"` filing 0
+// rows when the volume-wedge-broken `claude --version` produced something
+// other than what actually ran. Callers use this to tell that apart from
+// a run-id that genuinely has no cells at all: this returns non-empty
+// only when SOME cell truly exists for the run, just not under the
+// -harness-version asked for. An empty cellsDir (or one that does not
+// exist yet) is zero results, not an error.
+func HarnessVersionsForRun(cellsDir, runID string) ([]string, error) {
+	seen := map[string]bool{}
+	err := filepath.WalkDir(cellsDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			if errors.Is(err, fs.ErrNotExist) {
+				return nil
+			}
+			return err
+		}
+		if d.IsDir() || !strings.HasSuffix(path, ".json") {
+			return nil
+		}
+		raw, rerr := os.ReadFile(path)
+		if rerr != nil {
+			return fmt.Errorf("reading %s: %w", path, rerr)
+		}
+		var r CellResult
+		if uerr := json.Unmarshal(raw, &r); uerr != nil {
+			return fmt.Errorf("parsing %s: %w", path, uerr)
+		}
+		if r.RunID == runID {
+			seen[r.HarnessVersion] = true
+		}
+		return nil
+	})
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("finding harness versions for run %s: %w", runID, err)
+	}
+	out := make([]string, 0, len(seen))
+	for v := range seen {
+		out = append(out, v)
+	}
+	sort.Strings(out)
+	return out, nil
+}
+
 // BorrowScenarioCell returns the stored cell for (key, trial) marked
 // Borrowed, with the run that paid for it named in SourceRunID. The second
 // return is false when no such cell exists — the caller then runs the cell
