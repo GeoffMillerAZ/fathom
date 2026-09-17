@@ -58,9 +58,22 @@ import (
 // inherited entries are kept so nothing else (PATH, HOME, GOTOOLCHAIN,
 // proxy settings) is silently dropped.
 func TypedEdgeEnv() []string {
+	return repairedGoEnv("GOWORK=off")
+}
+
+// repairedGoEnv is TypedEdgeEnv's own repair logic (GOPATH/GOCACHE/
+// GOMODCACHE, absolute and expanded), factored out so
+// detectWorkspaceOverride can ask `go env GOWORK` under a WORKING
+// environment without also forcing GOWORK=off — the same broken-GOPATH
+// shape BP-35 exists to repair makes `go env <anything>` fail outright
+// (`go: GOPATH entry is relative; must be absolute path: "$HOME/go"`),
+// which would otherwise make workspace detection silently report "no
+// override" on exactly the daemon environments most likely to need one.
+// extra is appended last (e.g. "GOWORK=off" for TypedEdgeEnv, nothing for
+// detection) — later entries win in exec's environment.
+func repairedGoEnv(extra ...string) []string {
 	env := make([]string, 0, len(os.Environ())+4)
 	env = append(env, os.Environ()...)
-	env = append(env, "GOWORK=off")
 
 	home, _ := os.UserHomeDir()
 
@@ -102,6 +115,7 @@ func TypedEdgeEnv() []string {
 		env = append(env, "GOMODCACHE="+gomodcache)
 	}
 
+	env = append(env, extra...)
 	return env
 }
 
@@ -139,6 +153,35 @@ func goEnvValue(key string, extra ...string) string {
 	return strings.TrimSpace(string(out))
 }
 
+// detectWorkspaceOverride reports the Go workspace file GOWORK=off
+// suppresses for repoPath (wave P3 / O82, .fathom/observations.md) — empty
+// when none would apply. `go env GOWORK` run FROM repoPath's own directory,
+// WITHOUT the GOWORK=off override, reflects exactly what an un-forced `go
+// build` would auto-discover there: upward search for a go.work file, or an
+// ambient GOWORK pinned globally via `go env -w` — the 2026-09-16 incident's
+// exact shape, where a daemon process's own pinned workspace named sibling
+// checkouts that existed only beside the operator's own checkout, not
+// beside a push clone elsewhere. Best-effort: "" on any failure (no
+// toolchain, a broken environment) or when the answer is "off"/empty —
+// never blocking, never guessed.
+func detectWorkspaceOverride(repoPath string) string {
+	if !goToolchainPresent() {
+		return ""
+	}
+	cmd := exec.Command("go", "env", "GOWORK")
+	cmd.Dir = repoPath
+	cmd.Env = repairedGoEnv() // repaired GOPATH/GOCACHE/GOMODCACHE, deliberately WITHOUT GOWORK=off
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	v := strings.TrimSpace(string(out))
+	if v == "" || v == "off" {
+		return ""
+	}
+	return v
+}
+
 var goLookupOnce struct {
 	sync.Once
 	found bool
@@ -164,15 +207,32 @@ func goToolchainPresent() bool {
 // Pipeline.TypedEdgeStatus) is the honest "no ingest of this service has
 // run in this process" state — never reported as a clean pass.
 type TypedEdgeStatus struct {
-	// Packages is loaded + cache-hit packages on the last pass.
+	// PackagesSeen is every package go/packages returned on the last pass
+	// (TypedEdgeReport.PackagesTotal), regardless of outcome — the
+	// disclosure ingest's typed_edges.packages_seen carries (wave P3 /
+	// O82). 0 when the load itself never got that far (e.g. a whole-load
+	// error).
+	PackagesSeen int
+	// Packages is loaded + cache-hit packages on the last pass —
+	// typed_edges.packages_processed.
 	Packages int
+	// EdgesTotal is every typed edge WRITTEN this pass (direct +
+	// iface-dispatch + unresolved + func-value) — typed_edges.edges.
+	EdgesTotal int
 	// Failed is true when the pass could not run at all, or when at least
-	// one package failed to type-check — both mean some edges the index
-	// serves are syntax-only while claiming nothing.
+	// one package failed to type-check, or when packages were seen but
+	// NONE were processed (every one excluded by the connector scope
+	// filter — a path-mapping bug's own shape, never a legitimate
+	// non-Go-tree zero) — all three mean some edges the index serves are
+	// syntax-only while claiming nothing (ADR-027: an instrument may not
+	// degrade toward healthy).
 	Failed bool
 	// Reason names the failure (I24: a named reason, never a bare count).
 	// Empty when Failed is false.
 	Reason string
+	// Fallback names the override this pass applied (currently always
+	// "GOWORK=off" when non-empty) — see TypedEdgeReport.Fallback.
+	Fallback string
 }
 
 // TypedEdgeStatus returns the last typed-edge pass outcome recorded for

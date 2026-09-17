@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/worktree"
@@ -69,11 +70,11 @@ func cmdPostCommitHook(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "post-commit: %s is a git worktree of %s — refreshed nothing; left service %q and its recorded root alone (list_services is the record of truth; ingest from %s)\n", root, mainRoot, svc, mainRoot)
 		return 0
 	}
+	hc := &http.Client{Timeout: *timeout}
 	svc := *service
 	if svc == "" {
 		// The same daemon-backed identity every hook uses (O1's
 		// deterministic resolver), fail-open to the basename.
-		hc := &http.Client{Timeout: *timeout}
 		if cand, ok := resolveIndexedCandidate(hc, *url, root); ok {
 			svc = cand.name
 		} else if cands := serviceCandidates(root); len(cands) > 0 {
@@ -83,6 +84,27 @@ func cmdPostCommitHook(args []string, stdout, stderr io.Writer) int {
 	if svc == "" {
 		fmt.Fprintln(stderr, "post-commit: no service resolves for this repo — skipping refresh (fathom init wires one)")
 		return 0
+	}
+
+	// Registered-root guard (wave P3 / O82, .fathom/observations.md): a
+	// hook must never re-point a service. The daemon's ingest tool now
+	// refuses that itself (a differing path needs remap:true), but
+	// stumbling into that refusal here would only print a confusing
+	// "daemon refresh failed ... falling back" line for what is really
+	// "this hook is running inside the wrong checkout" — the exact shape
+	// that re-rooted "fathom" at a push clone's path under /private/tmp.
+	// Skip proactively and say so plainly. Fail-open on enumeration
+	// failure (daemon down, or too old to answer list_services): the
+	// ingest call's own refusal below remains the backstop.
+	if svcs, err := fetchServices(hc, *url); err == nil {
+		if info, ok := svcs[strings.ToLower(svc)]; ok && info.path != "" {
+			recCanon, rerr := filepath.EvalSymlinks(info.path)
+			rootCanon, cerr := filepath.EvalSymlinks(root)
+			if rerr == nil && cerr == nil && recCanon != rootCanon {
+				fmt.Fprintf(stderr, "post-commit: %q is registered at %s, not this repo root (%s) — refreshed nothing (a hook must never re-point a service; use `fathom remap` for a deliberate move, or ingest with remap:true)\n", svc, recCanon, rootCanon)
+				return 0
+			}
+		}
 	}
 
 	if err := ingestViaDaemon(*url, svc, root, *timeout); err == nil {

@@ -92,8 +92,14 @@ type findSymbolResult struct {
 type ingestResult struct {
 	Service           string `json:"service"`
 	OK                bool   `json:"ok"`
+	Root              string `json:"root,omitempty"`
 	UnclassifiedFiles int    `json:"unclassified_files,omitempty"`
 	OversizeFiles     int    `json:"oversize_files,omitempty"`
+	// TypedEdges (O82): {packages_seen, packages_processed, edges, failed,
+	// error?, fallback?} — present whenever this process has a recorded
+	// typed-edge outcome for the service; a failed pass also flips OK to
+	// false. Absent for a non-Go tree or a backend that cannot report it.
+	TypedEdges any `json:"typed_edges,omitempty"`
 }
 
 type listServicesResult struct {

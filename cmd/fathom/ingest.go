@@ -148,13 +148,24 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintf(stdout, "  %s: %d file(s)\n", lang, report.UnsupportedLanguages[lang])
 		}
 	}
-	// Typed-edge counters (ADR-021 §3), non-zero-only like the above: their
-	// absence for a Go service is a signal (the silent relative-path no-op
-	// was invisible precisely because the CLI never printed these).
-	if report.TypedPackages > 0 || report.TypedPackagesFailed > 0 {
-		fmt.Fprintf(stdout, "typed-edges: %d pkg(s) (%d failed), %d direct / %d iface-dispatch / %d unresolved\n",
-			report.TypedPackages, report.TypedPackagesFailed,
-			report.TypedEdgesDirect, report.TypedEdgesIfaceDispatch, report.TypedEdgesUnresolved)
+	// Typed-edge counters (ADR-021 §3) and the ingest honesty disclosure
+	// (wave P3 / O82, .fathom/observations.md): printed whenever a typed
+	// pass was actually ATTEMPTED this ingest — PackagesSeen>0, or a
+	// disclosed failure with nothing yet seen (e.g. a whole-load error) —
+	// never the pre-O82 "non-zero packages/failures only" condition, which
+	// is exactly what let a Go tree with ZERO typed edges (packages seen,
+	// none processed) print nothing at all.
+	if report.TypedPackagesSeen > 0 || report.TypedPackages > 0 || report.TypedPackagesFailed > 0 || report.TypedFailed {
+		edges := report.TypedEdgesDirect + report.TypedEdgesIfaceDispatch + report.TypedEdgesUnresolved
+		fmt.Fprintf(stdout, "typed-edges: %d/%d pkg(s) processed (%d failed), %d edge(s) (%d direct / %d iface-dispatch / %d unresolved)\n",
+			report.TypedPackages, report.TypedPackagesSeen, report.TypedPackagesFailed,
+			edges, report.TypedEdgesDirect, report.TypedEdgesIfaceDispatch, report.TypedEdgesUnresolved)
+		if report.TypedFallback != "" {
+			fmt.Fprintf(stdout, "typed-edges: an ambient Go workspace was overridden (%s)\n", report.TypedFallback)
+		}
+		if report.TypedFailed {
+			fmt.Fprintf(stderr, "warning: typed-edge pass failed: %s — test_impact/verify test_reaches read a syntax-only graph for this service until it is fixed\n", report.TypedFailReason)
+		}
 	}
 	// Scoped config (docs/design/scoped-config.md §4 disclosure): report the
 	// project/user pattern-count split that governed this ingest. Ingest has
@@ -175,6 +186,15 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 		if h := readErr.Hint(); h != "" {
 			fmt.Fprintf(stderr, "hint: %s\n", h)
 		}
+		return 1
+	}
+	// ok:false-grade disclosure (wave P3 / O82): the syntax index is
+	// untouched (kept, never rolled back), but a Go tree whose typed pass
+	// produced nothing to trust must never exit 0 as though nothing were
+	// wrong — the exact silent gap that let a push be refused downstream
+	// with no earlier signal in the ingest that ran it.
+	if report.TypedFailed {
+		fmt.Fprintf(stderr, "error: ingest degraded: typed-edge pass failed: %s\n", report.TypedFailReason)
 		return 1
 	}
 	return 0

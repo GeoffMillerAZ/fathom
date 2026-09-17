@@ -141,6 +141,29 @@ type Report struct {
 	TypedEdgesIfaceDispatch int
 	TypedEdgesUnresolved    int
 
+	// Ingest honesty disclosure (wave P3 / O82, .fathom/observations.md):
+	// the same TypedEdgeStatus the daemon records for staleness_report and
+	// doctor, carried on THIS ingest's own Report so the ingest response
+	// itself (CLI text/--json, the MCP tool) can say plainly when the
+	// typed-edge pass produced nothing to trust — instead of requiring a
+	// SEPARATE staleness_report/doctor call to discover it, which is
+	// exactly how the 2026-09-16 push-clone incident stayed invisible
+	// through an {"ok":true} ingest and a refused push.
+	//
+	// TypedPackagesSeen is every package go/packages returned (before any
+	// were dropped by the connector-scope filter or a load failure) — 0
+	// when the load never got that far. TypedFailed is true when the pass
+	// could not run at all, a package failed to type-check, OR packages
+	// were seen but NONE were processed (every one excluded by the
+	// connector scope filter — never a legitimate non-Go-tree zero).
+	// TypedFailReason names the cause (I24); empty when TypedFailed is
+	// false. TypedFallback names "GOWORK=off" when an ambient Go workspace
+	// was discoverable and therefore overridden (defect 2, same wave).
+	TypedPackagesSeen int
+	TypedFailed       bool
+	TypedFailReason   string
+	TypedFallback     string
+
 	// TSEngineFaults is the number of files this ingest whose tree-sitter
 	// wasm extraction faulted (parse deadline on pathological input, wasm
 	// trap, or query-run failure — ADR-021 §4, extractor.ErrTSEngineFault).
@@ -863,6 +886,18 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	report.TypedEdgesDirect = typedRep.EdgesDirect
 	report.TypedEdgesIfaceDispatch = typedRep.EdgesIfaceDispatch
 	report.TypedEdgesUnresolved = typedRep.EdgesUnresolved
+	// Ingest honesty disclosure (wave P3 / O82): pull the SAME
+	// TypedEdgeStatus enrichTypedEdges just recorded (it always calls
+	// noteTypedEdgeStatus before returning, whenever it actually ran)
+	// straight onto this Report — one source of truth, so the ingest
+	// response can never disagree with staleness_report/doctor about
+	// whether this service's typed pass is trustworthy.
+	if st, known := p.TypedEdgeStatus(svc.ID); known {
+		report.TypedPackagesSeen = st.PackagesSeen
+		report.TypedFailed = st.Failed
+		report.TypedFailReason = st.Reason
+		report.TypedFallback = st.Fallback
+	}
 
 	// ── Orphan purge ─────────────────────────────────────────────────────────
 	// refs still holds every discovered file, unreadable ones included, so an

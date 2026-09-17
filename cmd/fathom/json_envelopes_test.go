@@ -37,6 +37,82 @@ func TestIngestJSONEnvelope(t *testing.T) {
 	}
 }
 
+// TestIngestJSONEnvelope_TypedEdgesDisclosed (wave P3 / O82): a healthy Go
+// service's --json envelope carries typed_edges with packages_seen and a
+// clean failed:false — the field shape ingest honesty now guarantees on
+// every Go-source ingest, not only when a failure happened to occur.
+func TestIngestJSONEnvelope_TypedEdgesDisclosed(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte("module example.com/typedprobe\n\ngo 1.21\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "main.go"), []byte("package main\n\nfunc Hello() { helper() }\n\nfunc helper() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	store := filepath.Join(t.TempDir(), "s.sqlite")
+	var stdout, stderr bytes.Buffer
+	code := cmdIngest([]string{"--service", "typedprobe", "--path", root, "--store", store, "--json"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("exit %d: %s %s", code, stdout.String(), stderr.String())
+	}
+	var env ingestJSON
+	if err := json.Unmarshal(stdout.Bytes(), &env); err != nil {
+		t.Fatalf("not JSON: %v\n%s", err, stdout.String())
+	}
+	if env.Outcome != "ok" || env.ExitCode != 0 {
+		t.Fatalf("a clean Go service must report ok: %+v", env)
+	}
+	if env.TypedEdges == nil {
+		t.Fatalf("typed_edges missing for a Go-source ingest: %+v", env)
+	}
+	if env.TypedEdges.PackagesSeen == 0 {
+		t.Errorf("typed_edges.packages_seen = 0, want at least the probe's own package")
+	}
+	if env.TypedEdges.Failed {
+		t.Errorf("typed_edges.failed = true on a clean fixture: %q", env.TypedEdges.Error)
+	}
+}
+
+// TestIngestJSONEnvelope_TypedEdgesFailureDegradesOutcome pins the ok:false-
+// grade disclosure: a Go tree whose typed pass fails (here, a syntax-broken
+// package — PackagesFailed>0) must report outcome:degraded and exit 1, with
+// the syntax index still written (Symbols/Discovered unaffected) — never a
+// silent {"outcome":"ok"} the way the 2026-09-16 push-clone incident did.
+func TestIngestJSONEnvelope_TypedEdgesFailureDegradesOutcome(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte("module example.com/typedbroken\n\ngo 1.21\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "broken.go"), []byte("package broken\n\nfunc Broken( {\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	store := filepath.Join(t.TempDir(), "s.sqlite")
+	var stdout, stderr bytes.Buffer
+	code := cmdIngest([]string{"--service", "typedbroken", "--path", root, "--store", store, "--json"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("exit = %d, want 1 (ok:false-grade disclosure): %s %s", code, stdout.String(), stderr.String())
+	}
+	var env ingestJSON
+	if err := json.Unmarshal(stdout.Bytes(), &env); err != nil {
+		t.Fatalf("not JSON: %v\n%s", err, stdout.String())
+	}
+	if env.Outcome != "degraded" {
+		t.Errorf("outcome = %q, want degraded", env.Outcome)
+	}
+	if env.ExitCode != 1 {
+		t.Errorf("exit_code = %d, want 1", env.ExitCode)
+	}
+	if env.TypedEdges == nil || !env.TypedEdges.Failed {
+		t.Fatalf("typed_edges.failed must be true: %+v", env.TypedEdges)
+	}
+	if env.TypedEdges.Error == "" {
+		t.Error("typed_edges.error is empty (I24: a named reason)")
+	}
+	if env.Error == "" {
+		t.Error("envelope Error is empty — the top-level error must also name the cause")
+	}
+}
+
 func TestInitJSONEnvelope(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	dir := t.TempDir()

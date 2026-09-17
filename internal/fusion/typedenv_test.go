@@ -172,3 +172,51 @@ func TestTypedEdgeStatus_RecordsFailureReason(t *testing.T) {
 		t.Fatal("failed typed pass recorded no reason (I24: a named reason, never a bare count)")
 	}
 }
+
+// ─── wave P3 / O82: the ingest Report itself carries typed-edge disclosure ───
+
+// TestIngestReport_CarriesTypedEdgeDisclosure: a successful pass populates
+// Report.TypedPackagesSeen and leaves TypedFailed false — the happy path
+// for the fields ingest's own response (CLI text/--json, the MCP tool) now
+// reads directly, instead of requiring a separate staleness_report call.
+func TestIngestReport_CarriesTypedEdgeDisclosure(t *testing.T) {
+	abs := typedFixtureDir(t)
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	p := fusion.New(connector.NewLocalConnector(), st, fusion.Config{Concurrency: 2})
+
+	report, err := p.Ingest(ctx, core.ServiceRef{ID: "typedfixture", Path: abs})
+	if err != nil {
+		t.Fatalf("Ingest: %v", err)
+	}
+	if report.TypedFailed {
+		t.Fatalf("report.TypedFailed = true on a clean fixture: %s", report.TypedFailReason)
+	}
+	if report.TypedPackagesSeen == 0 {
+		t.Fatal("report.TypedPackagesSeen = 0 after a successful pass")
+	}
+}
+
+// TestIngestReport_DisclosesTypedFailure pins the exact gap the 2026-09-16
+// incident hit: a Go tree whose typed-edge pass produces nothing to trust
+// must say so on the ingest Report ITSELF (never only via a separate
+// staleness_report/doctor call) — this is the field the MCP `ingest` tool
+// and `fathom ingest`/`--json` read to build their own typed_edges block.
+func TestIngestReport_DisclosesTypedFailure(t *testing.T) {
+	abs := typedFixtureDir(t)
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	p := fusion.New(connector.NewLocalConnector(), st, fusion.Config{Concurrency: 2})
+
+	t.Setenv("PATH", t.TempDir()) // no go toolchain: the load cannot even be attempted
+	report, err := p.Ingest(ctx, core.ServiceRef{ID: "typedfixture", Path: abs})
+	if err != nil {
+		t.Fatalf("Ingest must not fail when only the typed pass does: %v", err)
+	}
+	if !report.TypedFailed {
+		t.Fatal("report.TypedFailed = false with no go toolchain on PATH — the exact silent downgrade this disclosure exists to refuse")
+	}
+	if report.TypedFailReason == "" {
+		t.Error("report.TypedFailReason is empty (I24: a named reason, never a bare count)")
+	}
+}
