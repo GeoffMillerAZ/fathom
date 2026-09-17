@@ -225,7 +225,13 @@ func (c *Client) RawFallbackObligations(ctx context.Context, service, file strin
 	}
 
 	why := fmt.Sprintf("compiled layer incomplete: %s; raw nearest guide served", status)
-	rows, rerr := semantic.RawFallbackRules(claims, layerDef, corpus, file, max, why)
+	// wave O2, item 1: the file's own declared symbol names, when the index
+	// has them, are as strong a relevance signal as its stem — resolved
+	// here (the only place in this call chain that already holds a store
+	// handle) and handed to RawFallbackRules as plain data, which stays a
+	// pure function of its inputs.
+	extraTokens := semantic.SymbolNamesForFile(ctx, c.st, service, file)
+	rows, rerr := semantic.RawFallbackRules(claims, layerDef, corpus, file, max, why, extraTokens)
 	if rerr != nil || len(rows) == 0 {
 		return nil, "", false, nil
 	}

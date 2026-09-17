@@ -6,6 +6,8 @@ package semantic
 // internal/mcp/rawfallback_tool_test.go.
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -52,7 +54,7 @@ func TestRawFallbackRules_NestedGuideRankedAheadOfRootOther(t *testing.T) {
 	claim := freshClaimFor(t, layer, rootSec) // the ROOT section is already compiled and fresh
 
 	corpus := []core.SourceFile{rootDoc, nestedDoc, adrDoc}
-	rows, err := RawFallbackRules([]core.SemanticClaim{claim}, layer, corpus, "internal/extractor/goextract.go", 2, "compiled layer incomplete: budget_stopped; raw nearest guide served")
+	rows, err := RawFallbackRules([]core.SemanticClaim{claim}, layer, corpus, "internal/extractor/goextract.go", 2, "compiled layer incomplete: budget_stopped; raw nearest guide served", nil)
 	if err != nil {
 		t.Fatalf("RawFallbackRules: %v", err)
 	}
@@ -95,7 +97,7 @@ func TestRawFallbackRules_NoGapReturnsNil(t *testing.T) {
 	sec := SplitMarkdownSections(doc.Path, doc.Content)[0]
 	claim := freshClaimFor(t, layer, sec)
 
-	rows, err := RawFallbackRules([]core.SemanticClaim{claim}, layer, []core.SourceFile{doc}, "pkg/foo.go", 2, "why")
+	rows, err := RawFallbackRules([]core.SemanticClaim{claim}, layer, []core.SourceFile{doc}, "pkg/foo.go", 2, "why", nil)
 	if err != nil {
 		t.Fatalf("RawFallbackRules: %v", err)
 	}
@@ -110,7 +112,7 @@ func TestRawFallbackRules_RespectsMax(t *testing.T) {
 	docB := core.SourceFile{Path: "internal/store/CLAUDE.md", Content: []byte("# store\n\n- Rule B, deeper and nearer to the file.")}
 	corpus := []core.SourceFile{docA, docB}
 
-	rows, err := RawFallbackRules(nil, layer, corpus, "internal/store/backend.go", 1, "why")
+	rows, err := RawFallbackRules(nil, layer, corpus, "internal/store/backend.go", 1, "why", nil)
 	if err != nil {
 		t.Fatalf("RawFallbackRules: %v", err)
 	}
@@ -139,7 +141,7 @@ func TestRawFallbackRules_GuardClauses(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			rows, err := RawFallbackRules(nil, layer, c.docs, c.file, c.max, "why")
+			rows, err := RawFallbackRules(nil, layer, c.docs, c.file, c.max, "why", nil)
 			if err != nil {
 				t.Fatalf("RawFallbackRules: %v", err)
 			}
@@ -157,11 +159,116 @@ func TestRawFallbackRules_UnrelatedGuideNeverMatches(t *testing.T) {
 	// root-tier-by-accident.
 	layer := rawFallbackTestLayer(t)
 	doc := core.SourceFile{Path: "cmd/fathom/CLAUDE.md", Content: []byte("# cmd/fathom\n\n- UI doctrine.")}
-	rows, err := RawFallbackRules(nil, layer, []core.SourceFile{doc}, "internal/store/backend.go", 2, "why")
+	rows, err := RawFallbackRules(nil, layer, []core.SourceFile{doc}, "internal/store/backend.go", 2, "why", nil)
 	if err != nil {
 		t.Fatalf("RawFallbackRules: %v", err)
 	}
 	if rows != nil {
 		t.Errorf("expected nil rows — cmd/fathom/CLAUDE.md does not govern internal/store, got %+v", rows)
+	}
+}
+
+// TestRawFallbackRules_RelevanceRanksExtractorSectionFirst is wave O2's
+// flagship regression (vs-pilot-6 second reading §5): a nested guide with
+// SIX same-tier, same-depth sections — including a "Store purity" decoy
+// that mentions "internal" and "extractor" only in passing, and an
+// "Adding things" section that is the ONLY one naming how to wire up a new
+// extractor (fusion.New, a golden test) — must serve "Adding things"
+// FIRST for internal/extractor/goextract.go. Before wave O2, document
+// order (StartLine) decided this tie, and "Store purity" (line 3 of this
+// fixture) always won — the exact defect the second reading documents.
+func TestRawFallbackRules_RelevanceRanksExtractorSectionFirst(t *testing.T) {
+	layer := rawFallbackTestLayer(t)
+	nested := "# internal/ — engine rules\n\n" +
+		"## Determinism is a contract\n\n" +
+		"- Sort every output slice; never rely on map iteration order.\n" +
+		"- Inject clocks; never call time.Now() in query logic.\n\n" +
+		"## Store purity (ADR-020 / ADR-025)\n\n" +
+		"internal/store is pure Go — no CGO anywhere in the store or query\n" +
+		"layers. CGO in this repo comes only from the tree-sitter extractor\n" +
+		"bindings for a different, unrelated reason.\n\n" +
+		"## The domain model is the keystone\n\n" +
+		"Shared types live in internal/core; extend it additively.\n\n" +
+		"## Working conventions\n\n" +
+		"- Prefer small commits.\n" +
+		"- Keep the changelog current.\n\n" +
+		"## Testing discipline\n\n" +
+		"- Always run the race detector before claiming green.\n\n" +
+		"## Adding things\n\n" +
+		"- Extractor: implement extractor.Extractor, register it by extension\n" +
+		"  in fusion.New(), add its ext-to-kind mapping in connector, then\n" +
+		"  write a golden-test for it against the fixture fleet.\n" +
+		"- Analyzer: a pure internal/analysis/<name> package; deterministic.\n" +
+		"- MCP tool: registerTool in internal/mcp with a group; cover with a\n" +
+		"  fake-backend test.\n" +
+		"- Custodian check kind: a CheckKind in internal/custodian, loaded\n" +
+		"  from .fathom/concerns.cue.\n"
+	doc := core.SourceFile{Path: "internal/CLAUDE.md", Content: []byte(nested)}
+
+	rows, err := RawFallbackRules(nil, layer, []core.SourceFile{doc}, "internal/extractor/goextract.go", 6, "why", nil)
+	if err != nil {
+		t.Fatalf("RawFallbackRules: %v", err)
+	}
+	if len(rows) == 0 {
+		t.Fatalf("expected raw rows, got none")
+	}
+	if rows[0].Rule != "Adding things" {
+		t.Fatalf("rows[0].Rule = %q, want %q (the extractor-wiring section) — got rows=%+v", rows[0].Rule, "Adding things", rows)
+	}
+
+	// The served citation must resolve to lines that actually contain
+	// fusion.New — the bullet an agent needs, not merely the section's
+	// opening line (item 4: a long section's citation narrows to the first
+	// relevance hit, not its first bytes).
+	path, start, end, ok := parseCite(rows[0].Src)
+	if !ok {
+		t.Fatalf("could not parse Src %q", rows[0].Src)
+	}
+	if path != "internal/CLAUDE.md" {
+		t.Fatalf("Src path = %q, want internal/CLAUDE.md", path)
+	}
+	lines := strings.Split(nested, "\n")
+	if start < 1 || end > len(lines) {
+		t.Fatalf("Src range %d-%d out of bounds (doc has %d lines)", start, end, len(lines))
+	}
+	window := strings.Join(lines[start-1:end], "\n")
+	if !strings.Contains(window, "fusion.New") {
+		t.Errorf("cited window %q (lines %d-%d) does not contain fusion.New", window, start, end)
+	}
+}
+
+// TestCiteWindow_NarrowsLongSectionToFirstHit is item 4's direct unit test:
+// a section long enough to trigger narrowing (more than rawSnippetWindowLines
+// lines) with its one relevant bullet buried past the opening lines must
+// cite a window AROUND that bullet, not the section's own first line.
+func TestCiteWindow_NarrowsLongSectionToFirstHit(t *testing.T) {
+	var b strings.Builder
+	b.WriteString("## A long section\n\n")
+	for i := 0; i < 12; i++ {
+		fmt.Fprintf(&b, "- Filler bullet number %d, about nothing in particular.\n", i)
+	}
+	b.WriteString("- The extractor recipe: register it in fusion.New().\n")
+	for i := 0; i < 4; i++ {
+		fmt.Fprintf(&b, "- More filler bullet number %d.\n", i)
+	}
+	text := b.String()
+	sections := SplitMarkdownSections("internal/CLAUDE.md", []byte(text))
+	if len(sections) != 1 {
+		t.Fatalf("got %d sections, want 1", len(sections))
+	}
+	sec := sections[0]
+	if sec.EndLine-sec.StartLine < rawSnippetWindowLines {
+		t.Fatalf("fixture section too short to exercise narrowing (got %d lines)", sec.EndLine-sec.StartLine)
+	}
+
+	tokens := pathRelevanceTokens("internal/extractor/goextract.go")
+	start, end := citeWindow(sec, tokens)
+	if end-start >= sec.EndLine-sec.StartLine {
+		t.Fatalf("citeWindow did not narrow: got %d-%d, full section is %d-%d", start, end, sec.StartLine, sec.EndLine)
+	}
+	lines := strings.Split(text, "\n")
+	window := strings.Join(lines[start-1:end], "\n")
+	if !strings.Contains(window, "fusion.New") {
+		t.Errorf("narrowed window %q (lines %d-%d) does not contain the extractor bullet", window, start, end)
 	}
 }

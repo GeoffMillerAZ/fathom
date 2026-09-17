@@ -328,6 +328,67 @@ func TestGlobReachesRoot(t *testing.T) {
 	}
 }
 
+// TestObligationsFor_RelevanceSurvivesCap is wave O2's item 3: the budget
+// cap must not silently drop a rule whose own text names the edited file's
+// stem just because it sorted late alphabetically. Twenty root-tier
+// ("**") claims share one governing-scope tier (root — the only tier
+// present), so before this wave the cap kept whichever six sorted first by
+// RULE TEXT (near-alphabetical, close to document order) — here, "Rule A."
+// through "Rule F.", displacing "Rule O." even though it is the only one
+// that actually names cmd/x/emit.go's own stem ("emit"). H1-T12's real
+// defect (vs-pilot-6 second reading §5) was exactly this shape: the
+// correct rule sat among "14 more eligible rules not shown (cap)".
+func TestObligationsFor_RelevanceSurvivesCap(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+
+	fillers := []struct{ letter, text string }{
+		{"A", "Keep functions short and single-purpose."},
+		{"B", "Write a doc comment on every exported symbol."},
+		{"C", "Prefer table-driven tests over repeated assertions."},
+		{"D", "Name interfaces for the behavior they describe."},
+		{"E", "Avoid global mutable state in library packages."},
+		{"F", "Return early instead of nesting conditionals deeply."},
+		{"G", "Keep dependency injection explicit in constructors."},
+		{"H", "Document every public constant's unit of measure."},
+		{"I", "Prefer composition over embedding for behavior reuse."},
+		{"J", "Wrap errors with enough context to debug blind."},
+		{"K", "Keep package names short, lowercase, no underscores."},
+		{"L", "Review every third-party dependency before adding it."},
+		{"M", "Keep migrations backward compatible for one release."},
+		{"N", "Log at the boundary, not in every internal function."},
+		{"O", "Code and commands that emit output must write it under workspace/, never elsewhere in the tree."},
+		{"P", "Prefer explicit conversions over implicit truncation."},
+		{"Q", "Keep configuration validated at process startup."},
+		{"R", "Close every resource you open, even on the error path."},
+		{"S", "Keep retries bounded and jittered under load."},
+		{"T", "Version every public API breaking change explicitly."},
+	}
+	if len(fillers) != 20 {
+		t.Fatalf("fixture has %d rules, want 20", len(fillers))
+	}
+	for _, f := range fillers {
+		seedServed(t, st, "c-"+f.letter, "Rule "+f.letter+". "+f.text, []string{"**"}, core.ClaimFresh)
+	}
+
+	got, err := ObligationsFor(ctx, st, "svc", "cmd/x/emit.go", 0)
+	if err != nil {
+		t.Fatalf("ObligationsFor: %v", err)
+	}
+	if len(got.Rules) != MaxObligations {
+		t.Fatalf("got %d rules, want cap %d", len(got.Rules), MaxObligations)
+	}
+	found := false
+	for _, r := range got.Rules {
+		if strings.Contains(r.Rule, "workspace/") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("the workspace/ rule (alphabetically 15th of 20, only one naming the file's own stem) was displaced by the cap: %+v", got.Rules)
+	}
+}
+
 func TestIsRootLevelSource(t *testing.T) {
 	cases := map[string]bool{
 		"CLAUDE.md#gate":               true,

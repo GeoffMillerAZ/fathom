@@ -214,3 +214,42 @@ func symbolFileLookup(ctx context.Context, st store.Store, serviceID string) Sym
 		return file, ok
 	}
 }
+
+// SymbolNamesForFile returns the distinct symbol names the index has
+// recorded as declared in file (a SourceRef's ":line" suffix ignored) —
+// the index-backed half of relevance.go's optional signal (wave O2, item
+// 1): a governing rule that names the file's own type or function exactly
+// is as strong a lexical signal as one that names its stem. A caller
+// (pkg/client.Client.RawFallbackObligations) resolves these and passes
+// them to semantic.RawFallbackRules as extraTokens — RawFallbackRules
+// itself never touches a store directly. One QueryObservations scan;
+// returns nil (never an error) on a store read failure or when file
+// declares nothing the index has seen, the same honest-absence contract
+// symbolFileLookup's own lookup makes. Deterministic regardless of store
+// iteration order: sorted before return.
+func SymbolNamesForFile(ctx context.Context, st store.Store, serviceID, file string) []string {
+	obs, err := st.QueryObservations(ctx, serviceID, "")
+	if err != nil {
+		return nil
+	}
+	seen := map[string]bool{}
+	var names []string
+	for _, o := range obs {
+		if o.Symbol == "" || o.SourceRef == "" {
+			continue
+		}
+		f := o.SourceRef
+		if i := strings.LastIndex(f, ":"); i > 0 {
+			if _, err := strconv.Atoi(f[i+1:]); err == nil {
+				f = f[:i]
+			}
+		}
+		if f != file || seen[o.Symbol] {
+			continue
+		}
+		seen[o.Symbol] = true
+		names = append(names, o.Symbol)
+	}
+	sort.Strings(names)
+	return names
+}

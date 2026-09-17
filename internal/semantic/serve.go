@@ -314,15 +314,34 @@ func rootScopeMatch(cl core.SemanticClaim, scope []string) int {
 
 // scored is one matched claim carrying everything the budget/order phase
 // of obligationsCore needs about it: cl.claims (RoleClaims fills the
-// budget only after governs, BP-18) and governing (its proximity to the
-// edited path, VB-8) alongside the plain glob-length specificity score.
-// Package-level (not local to obligationsCore) so reserveNearestTier can
-// share it.
+// budget only after governs, BP-18), governing (its proximity to the
+// edited path, VB-8) and relevance (wave O2, item 1: the lexical tie-break
+// used STRICTLY INSIDE a governing-scope tier — see less()) alongside the
+// plain glob-length specificity score. Package-level (not local to
+// obligationsCore) so reserveNearestTier can share it.
 type scored struct {
 	cl          core.SemanticClaim
 	specificity int
 	claims      bool
 	governing   governingScope
+	relevance   float64
+}
+
+// claimRelevanceText builds the text relevanceScore scores one compiled
+// claim against: the claim's own Subject heading words (the slug after
+// "#", hyphens turned to spaces, folded into the synthetic FIRST line so
+// relevanceScore's own heading/body split weighs a heading-named match the
+// same way it does for a raw section's real ATX heading) followed by the
+// claim's Rule text — the only claim-authored prose obligationsCore ever
+// holds; no full cited-source re-read here, unlike RawFallbackRules, which
+// scores a whole raw section's actual text.
+func claimRelevanceText(cl core.SemanticClaim) string {
+	heading := cl.Subject
+	if i := strings.IndexByte(heading, '#'); i >= 0 {
+		heading = heading[i+1:]
+	}
+	heading = strings.ReplaceAll(heading, "-", " ")
+	return heading + "\n" + cl.Rule
 }
 
 // reserveNearestTier returns up to n items from matched belonging to the
@@ -431,6 +450,15 @@ func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile str
 	}
 	citedText := citedTextResolver(root, anchorText)
 	lookup := symbolFileLookup(ctx, st, serviceID)
+	// wave O2, item 1/2: path-derived tokens for the lexical relevance
+	// tie-break less() applies STRICTLY INSIDE a governing-scope tier (see
+	// less() below). Computed once here — pure function of outFile alone,
+	// no store I/O — never for a root-scope call, which has no path to be
+	// relevant to.
+	var relevanceTokens []weightedToken
+	if outFile != "" {
+		relevanceTokens = pathRelevanceTokens(outFile)
+	}
 
 	var matched []scored
 	for _, cl := range served {
@@ -462,10 +490,12 @@ func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile str
 		best := match(cl, scope)
 		if best >= 0 {
 			governing := noGoverningScope
+			var relevance float64
 			if outFile != "" {
 				governing = rankByGoverningScope(scope, outFile)
+				relevance = relevanceScore(claimRelevanceText(cl), relevanceTokens)
 			}
-			matched = append(matched, scored{cl: cl, specificity: best, claims: claims, governing: governing})
+			matched = append(matched, scored{cl: cl, specificity: best, claims: claims, governing: governing, relevance: relevance})
 		}
 	}
 	if len(matched) == 0 {
@@ -487,6 +517,18 @@ func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile str
 		// is always a no-op there.
 		if outFile != "" && a.governing != b.governing {
 			return a.governing.closerThan(b.governing)
+		}
+		// wave O2 (vs-pilot-6 second reading §5): STRICTLY INSIDE a
+		// governing-scope tier (same a.governing/b.governing — VB-8 above
+		// already decided the tier itself, this never overrides it), the
+		// lexical relevance score decides NEXT — several same-tier, same-
+		// freshness, same-role claims (a nested guide's own several
+		// sections, all floored to the same directory) no longer fall
+		// straight to the byte-length/rule-text tie-break below, which is
+		// closer to alphabetical/document order than to "which rule
+		// actually names this file".
+		if outFile != "" && a.relevance != b.relevance {
+			return a.relevance > b.relevance
 		}
 		// The keyword score (byte length of the matched glob) breaks ties
 		// INSIDE a tier — two claims scoped to the same directory still

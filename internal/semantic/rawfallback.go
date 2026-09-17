@@ -47,6 +47,14 @@ import (
 // supplied coverage-defect note. Deterministic: same claims/corpus/file,
 // same rows, every call.
 //
+// extraTokens (wave O2, item 1) is an OPTIONAL list of symbol/import names
+// the caller has already resolved from the index for file — folded into
+// the candidates' relevance ranking at the same specificity as the file's
+// own stem (symbolRelevanceTokens). RawFallbackRules stays a pure function
+// of its inputs; it never queries a store itself. Pass nil when the caller
+// has no such names (or does not want to resolve them) — relevance ranking
+// still runs on the path-derived tokens alone.
+//
 // Returns (nil, nil) when file is empty, max<=0, the corpus is empty, or no
 // candidate section's implied scope (impliedGuideScope) reaches file at
 // all — an honest "nothing to add here", never a fabricated row. Returns a
@@ -55,10 +63,12 @@ import (
 // caller (pkg/client.Client.RawFallbackObligations) treats this as a
 // serve-time enrichment failure and degrades to no raw rows, exactly like
 // every other optional enrichment in this package.
-func RawFallbackRules(claims []core.SemanticClaim, layerDef LayerDef, corpus []core.SourceFile, file string, max int, why string) ([]Obligation, error) {
+func RawFallbackRules(claims []core.SemanticClaim, layerDef LayerDef, corpus []core.SourceFile, file string, max int, why string, extraTokens []string) ([]Obligation, error) {
 	if file == "" || max <= 0 || len(corpus) == 0 {
 		return nil, nil
 	}
+	tokens := pathRelevanceTokens(file)
+	tokens = append(tokens, symbolRelevanceTokens(extraTokens)...)
 	_, promptVersion, err := promptForLayer(layerDef)
 	if err != nil {
 		return nil, err
@@ -78,6 +88,7 @@ func RawFallbackRules(claims []core.SemanticClaim, layerDef LayerDef, corpus []c
 	type candidate struct {
 		sec Section
 		gs  governingScope
+		rel float64
 	}
 	var cands []candidate
 	docs := append([]core.SourceFile(nil), corpus...)
@@ -104,7 +115,7 @@ func RawFallbackRules(claims []core.SemanticClaim, layerDef LayerDef, corpus []c
 			if gs.tier < 0 {
 				continue // defensive: rankByGoverningScope found no tier despite the match above
 			}
-			cands = append(cands, candidate{sec: sec, gs: gs})
+			cands = append(cands, candidate{sec: sec, gs: gs, rel: relevanceScore(sec.Text, tokens)})
 		}
 	}
 	if len(cands) == 0 {
@@ -112,12 +123,15 @@ func RawFallbackRules(claims []core.SemanticClaim, layerDef LayerDef, corpus []c
 	}
 
 	// Nearest tier first (VB-8's own proximity order: exact_file < package <
-	// parent_dir < root, deeper ancestor wins a parent_dir tie); within a
-	// tie, the same three-tier compile-order discipline compileorder.go
-	// already established (a nested/root GUIDE's own section order is never
-	// defeated by byte count; a root-OTHER document's smaller sections sort
-	// first) so a truncated raw answer still reads like a deliberate pick,
-	// not an arbitrary one.
+	// parent_dir < root, deeper ancestor wins a parent_dir tie). WITHIN that
+	// tie (wave O2, vs-pilot-6 second reading §5), the lexical relevance
+	// score now decides NEXT — a nested guide's several same-tier sections
+	// no longer fall straight to document order; the one that actually
+	// names the file wins before compileorder.go's own document-type
+	// discipline (a nested/root GUIDE's own section order is never defeated
+	// by byte count; a root-OTHER document's smaller sections sort first)
+	// gets a say, so a truncated raw answer still reads like a deliberate,
+	// on-topic pick, not merely an arbitrary or alphabetically-early one.
 	sort.SliceStable(cands, func(i, j int) bool {
 		a, b := cands[i], cands[j]
 		if a.gs.tier != b.gs.tier {
@@ -125,6 +139,9 @@ func RawFallbackRules(claims []core.SemanticClaim, layerDef LayerDef, corpus []c
 		}
 		if a.gs.depth != b.gs.depth {
 			return a.gs.depth > b.gs.depth
+		}
+		if a.rel != b.rel {
+			return a.rel > b.rel
 		}
 		ta, tb := docCompileTier(a.sec.Path), docCompileTier(b.sec.Path)
 		if ta != tb {
@@ -146,15 +163,62 @@ func RawFallbackRules(claims []core.SemanticClaim, layerDef LayerDef, corpus []c
 
 	out := make([]Obligation, 0, len(cands))
 	for _, c := range cands {
+		start, end := citeWindow(c.sec, tokens)
 		out = append(out, Obligation{
 			Rule:  rawRuleText(c.sec),
-			Src:   fmt.Sprintf("%s#L%d-L%d", c.sec.Path, c.sec.StartLine, c.sec.EndLine),
+			Src:   fmt.Sprintf("%s#L%d-L%d", c.sec.Path, start, end),
 			Tier:  "raw",
 			Layer: layerDef.Name,
 			Why:   why,
 		})
 	}
 	return out, nil
+}
+
+// rawSnippetWindowLines bounds how many lines a long raw section's citation
+// narrows to around its first lexical-relevance hit (wave O2, item 4): the
+// MCP obligations tool's snippet renderer (internal/mcp/obligationsnippet.go,
+// BP-20) truncates a citation's TEXT from its FIRST byte once it exceeds the
+// 240-byte snippet cap — so a raw row whose Src always spanned the whole
+// section showed the section's OPENING lines, never the bullet a reader
+// actually wanted (H1-T01's "Adding things" section: the opening lines are
+// about the Extractor recipe already in this repo's own guide, but a longer
+// governing section elsewhere could easily open on something else).
+// Narrowing Src itself — not the rendering path — fixes this for every
+// caller of a raw row's citation, not just the one MCP snippet mechanism.
+const rawSnippetWindowLines = 8
+
+// citeWindow narrows a long raw section's own line range to the lines
+// around the FIRST line that scores a relevance hit against tokens,
+// leaving a short section's Src untouched — StartLine/EndLine already ARE
+// its most relevant lines when there is nothing worth narrowing. Falls
+// back to the section's own full range when no line scores a hit at all
+// (an honest "nothing to center on", never a fabricated window).
+func citeWindow(sec Section, tokens []weightedToken) (start, end int) {
+	if sec.EndLine-sec.StartLine < rawSnippetWindowLines || len(tokens) == 0 {
+		return sec.StartLine, sec.EndLine
+	}
+	lines := strings.Split(sec.Text, "\n")
+	hit := -1
+	for i, ln := range lines {
+		if relevanceScore(ln, tokens) > 0 {
+			hit = i
+			break
+		}
+	}
+	if hit < 0 {
+		return sec.StartLine, sec.EndLine
+	}
+	half := rawSnippetWindowLines / 2
+	start = sec.StartLine + hit - half
+	if start < sec.StartLine {
+		start = sec.StartLine
+	}
+	end = start + rawSnippetWindowLines
+	if end > sec.EndLine {
+		end = sec.EndLine
+	}
+	return start, end
 }
 
 // impliedGuideScope is a raw candidate section's scope for governing-scope
