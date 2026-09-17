@@ -1,6 +1,18 @@
 ## VB-24 (M15): `fathom review --format github` against 42 historical merged-then-fixed PR pairs
 
-### Verdict
+**Superseded 2026-09-17 by the "Strict re-score" section below — row is
+unflipped to `[ ]`.** The verdict and 39/42 · 37/42 numbers immediately
+below credited a hit whenever B's fix landed in a file A's own diff had
+already touched (fathom's "Changed symbols" listing is file-level, not
+hunk-level), which requires no call-graph inference and is close to
+guaranteed by how this corpus was selected. Re-scored so a hit must name
+something the index actually inferred (a caller outside A's own changed
+files, or a pre-existing test), fathom hits **5/42 (11.9 %)** — under the
+row's `>= 30 %` bar. Kept below for the record of what the original pass
+found and why it doesn't hold up; do not cite the `[x]`/39/42/37/42
+numbers below as current.
+
+### Verdict (original — superseded, see above)
 
 **Row flips to `[x]`.** Against 42 real "regression PR A, fix PR B" pairs
 mined from two public Go repositories, `fathom review --format github`
@@ -230,6 +242,147 @@ deterministic comment" vs. "an LLM guessing from a diff with no index",
 and the row's design (`docs/plans/verbs.md` VB-22's "no model prose on
 the required path") is what the numbers here justify.
 
+### Strict re-score (2026-09-17, skeptic pass — row unflipped)
+
+**The `[x]` above and the 39/42 · 37/42 numbers do not survive a skeptic's
+re-read.** The pairs in this corpus are, by construction, "a later PR B
+that fixes a regression in A" — and the overwhelmingly common shape of a
+same-repo regression fix is B editing a function *in the same file A just
+touched*, often the exact function A touched. `renderGitHubReview`'s
+"Changed symbols" section is **file-level, not hunk-level**
+(`ChangedSymbolReviews`, `internal/analysis/review/github.go`: `if
+changed[n.FilePath] { keys = append(keys, n.Key()) }` — every symbol
+defined in any file the diff touched, not only the symbols whose bodies
+the diff actually edited). So a "hit" as originally scored — B's fix
+names a `(file, symbol)` that appears **anywhere** in fathom's Changed
+Symbols / Test gap listing — is satisfied whenever B's fix lands in a file
+A's PR touched, which is nearly guaranteed for this corpus by selection,
+and requires zero call-graph inference from fathom to satisfy.
+
+**Re-scored under the row's actual bar**: a hit must name something the
+index *inferred* — a caller of A's change that lives **outside** the files
+A's own diff touched, or a pre-existing test reaching A's change — not one
+of A's own changed-file symbols recited back.
+
+| metric | value |
+|---|---|
+| pairs | 42 |
+| strict hits, own-symbol matches counted (original definition, reproduced) | 37/42 (88.1 %) |
+| **strict-new hits, own-symbol excluded** | **5/42 (11.9 %)** |
+| of the 37: own-symbol-only (trivial) | 32 |
+| of the 37: genuine caller / affected-test | 5 |
+| pure misses (no match at all, either definition) | 5 |
+| false findings/PR under the same rule | 0 (unchanged — every named caller/test is a real call-graph or reachability fact, not a generated guess; Governing rules stayed empty in all 42 reviews, so there was never a rule citation to be wrong) |
+
+**5/42 = 11.9 % is well under the row's `>= 30 %` bar.** The row is
+unflipped to `[ ]`.
+
+**A second, independent defect**: the worker's own scoring pipeline
+(`pipeline.py`'s `CALLER_RE`, a regex matching top-level ``- `sym` (file...)``
+lines followed by nested `` "  - `sym` (file...) [tier]" `` caller lines)
+never actually matched a nested-caller line — it requires a literal `)`
+immediately after the (optional) line number, but every citation renders
+as a `#Lstart-Lend` range (`#L174-L174`), so the `)` is never adjacent.
+Verified directly: **0 of 7,922** nested-caller-shaped lines across all 42
+rendered reviews match `CALLER_RE`. This means the *original* 39/42 and
+37/42 numbers were, in practice, built entirely from top-level
+Changed-symbols entries (file-level) and Affected-tests entries — the
+"resolved caller" story in the worked example above (caddy #1300 →
+#1309, `ServeHTTP` "listed ... as a resolved caller of a symbol A's diff
+changed") was never actually what the scorer credited; `ServeHTTP` hit
+because it is itself a top-level entry (A's own PR touched
+`reverseproxy.go`, and `ServeHTTP` is defined there), not because of the
+nested-caller line the worked example points at. The 5 strict-new hits
+below were found by re-parsing the same rendered `review.md` files with a
+regex that actually matches the real citation format — real matches,
+just never scored the first time.
+
+**The 5 genuine strict-new hits** (caller of a changed symbol, in a file A
+never touched, or a pre-existing test reaching A's change — confirmed
+against `pr_a.files_changed` in each case):
+
+| repo | A | B | kind | matched symbol | file |
+|---|---|---|---|---|---|
+| caddy | #1300 | #1309 | caller | `createUpstreamRequest` | caddyhttp/proxy/proxy.go |
+| caddy | #4398 | #4661 | caller | `serversFromPairings`, `buildTLSApp` | caddyconfig/httpcaddyfile/{httptype,tlsapp}.go |
+| caddy | #5808 | #7507 | affected-test | `TestGlobalOptions`, `TestMatcherSyntax` | caddyconfig/httpcaddyfile/httptype_test.go |
+| golangci-lint | #5929 | #5939 | caller | `analyze` (runner) | pkg/goanalysis/runner.go |
+| golangci-lint | #6445 | #6762 | caller | `loadIssuesFromCache`, `saveIssuesToCache` | pkg/goanalysis/runners_cache.go |
+
+**Full per-pair table** (own-symbol = trivial file-level match only; caller
+/ affected-test = strict-new hit; testgap = the own-symbol match was also
+flagged in the Test gap section — never an independent signal, since Test
+gap only ever enumerates the same file-level changed-symbol set):
+
+| repo | A | B | fathom hit type | testgap | model (orig def) |
+|---|---|---|---|---|---|
+| caddy | #1300 | #1309 | caller | true | miss |
+| caddy | #2014 | #2039 | own-symbol | true | hit-within |
+| caddy | #2070 | #2134 | own-symbol | true | miss |
+| caddy | #2731 | #2740 | own-symbol | true | hit-within |
+| caddy | #3075 | #3096 | own-symbol | true | hit-within |
+| caddy | #3709 | #3733 | own-symbol | true | miss |
+| caddy | #3832 | #3839 | own-symbol | false | hit-within |
+| caddy | #4398 | #4661 | caller | false | miss |
+| caddy | #4443 | #4674 | miss | false | hit-within |
+| caddy | #4948 | #7877 | own-symbol | false | miss |
+| caddy | #5385 | #5404 | own-symbol | false | hit-within |
+| caddy | #5761 | #5769 | own-symbol | false | hit-within |
+| caddy | #5808 | #7507 | affected-test | false | hit-within |
+| caddy | #6146 | #6636 | own-symbol | false | hit-within |
+| caddy | #6328 | #7179 | own-symbol | false | miss |
+| caddy | #6356 | #6362 | own-symbol | true | miss |
+| caddy | #6480 | #6510 | own-symbol | false | hit-within |
+| caddy | #6573 | #6599 | own-symbol | false | hit-within |
+| caddy | #6608 | #7545 | own-symbol | true | hit-within |
+| caddy | #6682 | #7694 | own-symbol | true | hit-within |
+| caddy | #6699 | #6727 | own-symbol | false | miss |
+| caddy | #7206 | #7543 | own-symbol | false | miss |
+| caddy | #7245 | #7257 | own-symbol | true | miss |
+| caddy | #7547 | #7715 | own-symbol | false | miss |
+| golangci-lint | #1065 | #3025 | own-symbol | false | miss |
+| golangci-lint | #2576 | #2611 | own-symbol | false | hit-within |
+| golangci-lint | #2971 | #3611 | own-symbol | true | hit-within |
+| golangci-lint | #3207 | #3212 | own-symbol | false | miss |
+| golangci-lint | #3753 | #3762 | own-symbol | false | miss |
+| golangci-lint | #3995 | #4319 | miss | false | hit-within |
+| golangci-lint | #4441 | #4477 | own-symbol | true | miss |
+| golangci-lint | #4640 | #4870 | own-symbol | true | hit-within |
+| golangci-lint | #4709 | #4734 | miss | false | hit-within |
+| golangci-lint | #4907 | #5109 | own-symbol | true | miss |
+| golangci-lint | #4938 | #5112 | own-symbol | true | miss |
+| golangci-lint | #5160 | #5168 | miss | false | hit-within |
+| golangci-lint | #5402 | #5407 | miss | false | miss |
+| golangci-lint | #5632 | #5639 | own-symbol | true | miss |
+| golangci-lint | #5884 | #5885 | own-symbol | true | miss |
+| golangci-lint | #5929 | #5939 | caller | true | hit-outside |
+| golangci-lint | #6445 | #6762 | caller | true | hit-within |
+| golangci-lint | #6649 | #6683 | own-symbol | true | miss |
+
+**Model arm, same rule.** The model was shown only A's own diff, so its
+equivalent of "own-symbol" is naming anything in a file it was actually
+shown — it has no way to demonstrate index-style inference about code it
+never saw. Re-scored the same way (a hit counts only if it names a gold
+`(file, func)` in a file **outside** `pr_a.files_changed`, i.e. genuinely
+beyond what the model was shown): model hits **21/42 (50.0 %)** by the
+original name-match rule, but only **1/42 (2.4 %)** — golangci-lint #5929
+→ #5939, where the model guessed `pkg/goanalysis/runner.go` (hedged
+"approx") for a file it was never given — named something outside what it
+was shown. Both arms collapse under the strict rule; fathom still leads
+(5/42 vs. 1/42) but neither clears the row's bar this corpus was meant to
+prove.
+
+**Does the 42-pair corpus (short of the 50–60 target) explain this away?**
+No. The gap between 11.9 % and the 30 % floor is roughly 2.5x, not a
+few-pairs sampling wobble — golangci-lint alone would need to contribute
+disproportionately more strict hits than caddy did to close it, and
+nothing about the two repos suggests that. The row's failure is a scoring
+methodology problem (file-level "changed symbols" credited as a call-graph
+inference, plus a scorer regex bug that hid it further), not a corpus-size
+problem.
+
 ### Ledger
 
 Machine-readable summary: `docs/bench/readings/vb24-review-historical-prs.json`.
+This strict re-score is not reflected in that JSON file (unchanged);
+the numbers above are this section's own accounting.
