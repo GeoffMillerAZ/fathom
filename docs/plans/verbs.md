@@ -45,8 +45,8 @@ Verify: `fathom verify --service fathom --plan docs/plans/verbs.md`.
 
 ## Wave F — the review a human sees (R11)
 
-- [ ] `fathom review --format github` renders one deterministic comment per PR: changed symbols with resolved callers and their tier, call-site completeness, affected tests and gaps, governing rules with cited lines, a verify line when a plan row is touched, each line carrying its claim id — no model prose on the required path {id: VB-22, symbol: renderGitHubReview, package: internal/analysis/review}
-- [ ] A GitHub Action posts that comment and can be a required check under a Ruleset, documented for a stranger {id: VB-23, oracle: lexical, path: docs/adoption/github-action.md, pattern: fathom review --format github}
+- [x] `fathom review --format github` renders one deterministic comment per PR: changed symbols with resolved callers and their tier, call-site completeness, affected tests and gaps, governing rules with cited lines, a verify line when a plan row is touched, each line carrying its claim id — no model prose on the required path {id: VB-22, symbol: renderGitHubReview, package: internal/analysis/review}
+- [x] A GitHub Action posts that comment and can be a required check under a Ruleset, documented for a stranger {id: VB-23, oracle: lexical, path: docs/adoption/github-action.md, pattern: fathom review --format github}
 - [ ] (op) M15: on fifty to sixty historical merged-then-fixed PRs from two public Go repositories, the comment names the later-fixed call site or uncovered symbol in ≥ 30 % of cases with ≤ 1 false finding per PR, beside a model reviewer on the same diffs {id: VB-24, skip_test: true, skip: "replay spend; evidence is the ledger rows", needs: VB-22}
 
 ## Wave G — a corpus fathom does not own (R10, R12, BC-15)
