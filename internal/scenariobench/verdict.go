@@ -26,9 +26,15 @@ import (
 const VerdictHeading = "### Where fathom stands"
 
 // RenderVerdict is renderVerdict's exported face for callers outside this
-// package (cmd/scenariobench's `ledger` hook).
-func RenderVerdict(rows []ScenarioLedgerRow, criteria map[string]Criterion) string {
-	return renderVerdict(rows, criteria)
+// package (cmd/scenariobench's `ledger` hook). byTaskID is the same
+// corpus-glob load's Criterion values keyed by every task id each corpus
+// declares — renderRunVerdict's own last-resort fallback (O65, wave N12
+// item 2) for a row whose CorpusSHA256 is orphaned by a later corpus
+// rewrite AND carries no CriterionID (every row filed before that field
+// existed); nil is fine when the caller has no such index (every existing
+// caller before this parameter existed effectively passed nil).
+func RenderVerdict(rows []ScenarioLedgerRow, criteria map[string]Criterion, byTaskID map[string]Criterion) string {
+	return renderVerdict(rows, criteria, byTaskID)
 }
 
 // renderVerdict renders one paragraph per run present in rows (sorted by
@@ -37,7 +43,9 @@ func RenderVerdict(rows []ScenarioLedgerRow, criteria map[string]Criterion) stri
 // treatment and which is the control for that run. A run whose rows carry
 // a CorpusSHA256 absent from criteria (or missing the named arm entirely)
 // still lists its arms' raw totals — never dropped, never guessed at.
-func renderVerdict(rows []ScenarioLedgerRow, criteria map[string]Criterion) string {
+// byTaskID is renderRunVerdict's own family fallback — see RenderVerdict's
+// own doc comment.
+func renderVerdict(rows []ScenarioLedgerRow, criteria map[string]Criterion, byTaskID map[string]Criterion) string {
 	var b strings.Builder
 	b.WriteString(VerdictHeading)
 	b.WriteString("\n\n")
@@ -71,7 +79,7 @@ func renderVerdict(rows []ScenarioLedgerRow, criteria map[string]Criterion) stri
 
 	for _, runID := range runIDs {
 		g := byRun[runID]
-		b.WriteString(renderRunVerdict(runID, g.sound, g.voided, criteria))
+		b.WriteString(renderRunVerdict(runID, g.sound, g.voided, criteria, byTaskID))
 	}
 	return b.String()
 }
@@ -101,7 +109,7 @@ type armTotals struct {
 	surfaceCalls int
 }
 
-func renderRunVerdict(runID string, sound, voided []ScenarioLedgerRow, criteria map[string]Criterion) string {
+func renderRunVerdict(runID string, sound, voided []ScenarioLedgerRow, criteria map[string]Criterion, byTaskID map[string]Criterion) string {
 	byArm := map[string]*armTotals{}
 	var sha, critID string
 	for _, r := range sound {
@@ -142,6 +150,35 @@ func renderRunVerdict(runID string, sound, voided []ScenarioLedgerRow, criteria 
 	if critID != "" {
 		if c, ok := criterionByID(criteria, critID); ok {
 			crit, known = c, true
+		}
+	}
+	// O65 (wave N12) item 2: a row filed BEFORE CriterionID existed
+	// carries "" and never reaches the ID lookup above; when its own
+	// CorpusSHA256 is ALSO now orphaned (the corpus was rewritten again
+	// since filing, changing its content hash), neither prior lookup
+	// resolves anything, and the pre-N8 render regresses to "no
+	// registered criterion for this corpus" for a run that used to render
+	// a real comparison. A corpus rewrite changes its sha but never its
+	// own task ids, so byTaskID — keyed by every task id the corpus-glob's
+	// OWN corpora currently declare — still names the same criterion
+	// through any task id this run's own sound rows carry. Multiple
+	// corpora can share one (Treatment, Control) pair (this repo's own
+	// guards-fathom/guards-adr/guards-m1/public-go/reuse-go corpora all
+	// register "full"/"control"), so task id is the disambiguating key,
+	// never the arm names alone. Deliberately as trusting as the sha/ID
+	// lookups above: finding ONE resolves crit/known and nothing more —
+	// whether the run's own arms actually have sound data for its
+	// Treatment/Control is the switch below's own job (tOK/cOK), exactly
+	// as it already is for a sha or ID hit; gating acceptance here too
+	// would misclassify a run whose treatment arm is wholly voided (e.g.
+	// guards-pilot-4, O46) as "no registered criterion" instead of the
+	// more precise "criterion names X/Y, not among this run's arms".
+	if !known {
+		for _, r := range sound {
+			if c, ok := byTaskID[r.TaskID]; ok {
+				crit, known = c, true
+				break
+			}
 		}
 	}
 	t, tOK := byArm[crit.Treatment]

@@ -24,7 +24,7 @@ func TestRenderVerdict_BeatsMatchesAndVoids(t *testing.T) {
 		},
 	}
 
-	out := renderVerdict(rows, criteria)
+	out := renderVerdict(rows, criteria, nil)
 
 	if !strings.HasPrefix(out, VerdictHeading) {
 		t.Fatalf("must open with the heading:\n%s", out)
@@ -60,7 +60,7 @@ func TestRenderVerdict_MatchedAndLostToWording(t *testing.T) {
 	matched := renderVerdict([]ScenarioLedgerRow{
 		{RunID: "r1", Arm: "full", CorpusSHA256: "sha", Trials: 2, Successes: 2, Readings: Readings{TotalTokens: 100}},
 		{RunID: "r1", Arm: "grep", CorpusSHA256: "sha", Trials: 2, Successes: 2, Readings: Readings{TotalTokens: 100}},
-	}, criteria)
+	}, criteria, nil)
 	if !strings.Contains(matched, "fathom's arm matched grep") {
 		t.Errorf("equal success rates must render as matched:\n%s", matched)
 	}
@@ -68,7 +68,7 @@ func TestRenderVerdict_MatchedAndLostToWording(t *testing.T) {
 	lost := renderVerdict([]ScenarioLedgerRow{
 		{RunID: "r2", Arm: "full", CorpusSHA256: "sha", Trials: 2, Successes: 0, Readings: Readings{TotalTokens: 100}},
 		{RunID: "r2", Arm: "grep", CorpusSHA256: "sha", Trials: 2, Successes: 2, Readings: Readings{TotalTokens: 100}},
-	}, criteria)
+	}, criteria, nil)
 	if !strings.Contains(lost, "fathom's arm lost to grep") {
 		t.Errorf("a lower success rate must render as lost to:\n%s", lost)
 	}
@@ -84,7 +84,7 @@ func TestRenderVerdict_IndeterminateDoesNotClaimBeat(t *testing.T) {
 		{RunID: "r1", Arm: "full", CorpusSHA256: "sha", Trials: 1, Successes: 1, Readings: Readings{TotalTokens: 100}},
 		{RunID: "r1", Arm: "control", CorpusSHA256: "sha", Trials: 1, Successes: 0, Readings: Readings{TotalTokens: 100}},
 	}
-	out := renderVerdict(rows, criteria)
+	out := renderVerdict(rows, criteria, nil)
 	if strings.Contains(out, "fathom's arm beat") || strings.Contains(out, "fathom's arm lost to") {
 		t.Errorf("a run below the replication floor must not claim beat/lost to:\n%s", out)
 	}
@@ -101,7 +101,7 @@ func TestRenderVerdict_UnknownCriterionFallsBackToRawTotals(t *testing.T) {
 		{RunID: "vs-pilot-1", TaskID: "t1", Arm: "full", CorpusSHA256: "sha-unknown", Trials: 2, Successes: 2},
 		{RunID: "vs-pilot-1", TaskID: "t1", Arm: "gopls", CorpusSHA256: "sha-unknown", Trials: 2, Successes: 1},
 	}
-	out := renderVerdict(rows, nil)
+	out := renderVerdict(rows, nil, nil)
 	if !strings.Contains(out, "no registered criterion for this corpus") {
 		t.Errorf("an unmapped corpus must say so, not guess a comparison:\n%s", out)
 	}
@@ -113,7 +113,7 @@ func TestRenderVerdict_UnknownCriterionFallsBackToRawTotals(t *testing.T) {
 func TestRenderVerdict_EveryRowVoided(t *testing.T) {
 	out := renderVerdict([]ScenarioLedgerRow{
 		{RunID: "r3", TaskID: "t1", Arm: "full", InstrumentDefect: "O41"},
-	}, nil)
+	}, nil, nil)
 	if !strings.Contains(out, "every row is voided") {
 		t.Errorf("a run with no sound row must say so plainly:\n%s", out)
 	}
@@ -127,14 +127,14 @@ func TestRenderVerdict_DeterministicRunOrder(t *testing.T) {
 		{RunID: "zzz-run", Arm: "full", InstrumentDefect: "x"},
 		{RunID: "aaa-run", Arm: "full", InstrumentDefect: "x"},
 	}
-	out := renderVerdict(rows, nil)
+	out := renderVerdict(rows, nil, nil)
 	if strings.Index(out, "aaa-run") > strings.Index(out, "zzz-run") {
 		t.Errorf("runs must render in sorted order:\n%s", out)
 	}
 }
 
 func TestRenderVerdict_NoRows(t *testing.T) {
-	out := renderVerdict(nil, nil)
+	out := renderVerdict(nil, nil, nil)
 	if !strings.Contains(out, VerdictHeading) || !strings.Contains(out, "No runs recorded") {
 		t.Errorf("an empty ledger must render a sentence, not a blank block:\n%q", out)
 	}
@@ -142,7 +142,7 @@ func TestRenderVerdict_NoRows(t *testing.T) {
 
 func TestRenderVerdict_ExportedWrapperMatches(t *testing.T) {
 	rows := []ScenarioLedgerRow{{RunID: "r1", Arm: "full", InstrumentDefect: "x"}}
-	if RenderVerdict(rows, nil) != renderVerdict(rows, nil) {
+	if RenderVerdict(rows, nil, nil) != renderVerdict(rows, nil, nil) {
 		t.Error("RenderVerdict must delegate to renderVerdict verbatim")
 	}
 }
@@ -162,7 +162,7 @@ func TestRenderVerdict_GoldSourceLine(t *testing.T) {
 		},
 		{RunID: "r1", TaskID: "t1", Arm: "grep", CorpusSHA256: "sha", Trials: 2, Successes: 1},
 	}
-	out := renderVerdict(rows, criteria)
+	out := renderVerdict(rows, criteria, nil)
 	if !strings.Contains(out, "gold source: mcp__fathom__obligations earned 2 of 3 passes.") {
 		t.Errorf("must name the top tool and the pass totals for the TREATMENT arm:\n%s", out)
 	}
@@ -187,7 +187,7 @@ func TestRenderVerdict_RowCriterionSurvivesCorpusMove(t *testing.T) {
 		{RunID: "vs-pilot-3", TaskID: "t1", Arm: "full", CorpusSHA256: "sha-before-move", CriterionID: "M6-1", Trials: 2, Successes: 2, Readings: Readings{TotalTokens: 100}},
 		{RunID: "vs-pilot-3", TaskID: "t1", Arm: "grep", CorpusSHA256: "sha-before-move", CriterionID: "M6-1", Trials: 2, Successes: 1, Readings: Readings{TotalTokens: 200}},
 	}
-	out := renderVerdict(rows, criteria)
+	out := renderVerdict(rows, criteria, nil)
 	if strings.Contains(out, "no registered criterion for this corpus") {
 		t.Errorf("a row carrying its own criterion id must resolve it after the corpus moves:\n%s", out)
 	}
@@ -202,8 +202,94 @@ func TestRenderVerdict_GoldSourceLineAbsentWhenUnrecorded(t *testing.T) {
 		{RunID: "r1", TaskID: "t1", Arm: "full", CorpusSHA256: "sha", Trials: 2, Successes: 2},
 		{RunID: "r1", TaskID: "t1", Arm: "grep", CorpusSHA256: "sha", Trials: 2, Successes: 1},
 	}
-	out := renderVerdict(rows, criteria)
+	out := renderVerdict(rows, criteria, nil)
 	if strings.Contains(out, "gold source:") {
 		t.Errorf("a run with no GoldSourcePasses reading anywhere must not print the line:\n%s", out)
+	}
+}
+
+// TestRenderVerdict_OldRowFallsBackToCorpusFamilyByTaskID is O65 (wave
+// N12) item 2's own regression: guards-pilot-5's rows were filed before
+// CriterionID existed (empty on every row, the real shape recorded in
+// docs/bench/scenarios-ledger.jsonl) AND testdata/scenariobench/
+// guards-fathom.json has been rewritten again since filing, so the row's
+// own CorpusSHA256 no longer matches ANY key in a freshly-globbed
+// criteria map either — both of N8's own lookups (sha, then ID) fail, and
+// the pre-fix render regresses a run that used to compare cleanly to "(no
+// registered criterion for this corpus)". byTaskID resolves it: every
+// task id the row's own family (guards-fathom.json) declares still maps
+// to the SAME criterion, sha rewrite notwithstanding. A second,
+// DECOY criterion (M1-2, a different corpus registering the exact same
+// "full"/"control" arm pair — this repo's own guards-adr.json really
+// does) proves the match is genuinely by task id, not merely "the only
+// criterion whose arms fit": arm names alone cannot disambiguate here.
+//
+// The expected text below is byte-for-byte the pre-N8 rendering vs-pilot-5
+// evidence names for guards-pilot-5 (this test's own row totals ARE that
+// run's real committed aggregate: full 7/8, control 6/10, tokens
+// 31608749 vs 41835495, cost 11.5380296 vs 15.3707146, surface_calls 45,
+// gold_source_passes {"none":7}, 7 voided rows).
+func TestRenderVerdict_OldRowFallsBackToCorpusFamilyByTaskID(t *testing.T) {
+	criteria := map[string]Criterion{
+		// The corpus moved AGAIN since guards-pilot-5 filed: this is its
+		// CURRENT sha, never the sha recorded on the rows below.
+		"sha-guards-fathom-current": {ID: "M1-1", Treatment: "full", Control: "control", MinTrials: 2, RequireSuccessAtLeastEqual: true, MaxTokensPerSuccessRatio: 1.0},
+		// A DIFFERENT corpus family registering the exact same arm pair —
+		// disambiguation must not be possible from arm names alone.
+		"sha-guards-adr-current": {ID: "M1-2", Treatment: "full", Control: "control", MinTrials: 2, RequireSuccessAtLeastEqual: true, MaxTokensPerSuccessRatio: 1.0},
+	}
+	byTaskID := map[string]Criterion{
+		"guards-i1-packagedeps-sorted": criteria["sha-guards-fathom-current"],
+		"guards-i11-mcp-tool-doc":      criteria["sha-guards-fathom-current"],
+		"guards-adr-i1-decoy":          criteria["sha-guards-adr-current"],
+	}
+	const orphanedSHA = "sha-guards-pilot5-orphaned"
+	rows := []ScenarioLedgerRow{
+		{
+			RunID: "guards-pilot-5", TaskID: "guards-i1-packagedeps-sorted", Arm: "full",
+			CorpusSHA256: orphanedSHA, Trials: 8, Successes: 7,
+			Readings:         Readings{TotalTokens: 31608749, SurfaceCalls: 45},
+			CostUSD:          11.5380296,
+			GoldSourcePasses: map[string]int{"none": 7},
+		},
+		{
+			RunID: "guards-pilot-5", TaskID: "guards-i1-packagedeps-sorted", Arm: "control",
+			CorpusSHA256: orphanedSHA, Trials: 10, Successes: 6,
+			Readings: Readings{TotalTokens: 41835495},
+			CostUSD:  15.3707146,
+		},
+	}
+	for _, pair := range []struct{ task, arm string }{
+		{"guards-i16-raw-cp-deploy", "control"},
+		{"guards-i16-raw-cp-deploy", "full"},
+		{"guards-i2-store-purego", "control"},
+		{"guards-i2-store-purego", "full"},
+		{"guards-i28-duckdb-path", "control"},
+		{"guards-i28-duckdb-path", "full"},
+		{"guards-i31-workspace-artifact", "full"},
+	} {
+		rows = append(rows, ScenarioLedgerRow{
+			RunID: "guards-pilot-5", TaskID: pair.task, Arm: pair.arm,
+			CorpusSHA256: orphanedSHA, InstrumentDefect: "O57: not adjudicable",
+		})
+	}
+
+	out := renderVerdict(rows, criteria, byTaskID)
+
+	const want = "**guards-pilot-5** — full vs control: success 7/8 vs 6/10, tokens 0.756×, cost 0.751×.\n" +
+		"Surface calls: control=0, full=45.\n" +
+		"On guards-pilot-5, fathom's arm beat control on success (7 v 6) at 0.756× the tokens; the tools were called 45 time(s). Registered criterion M1-1: pass (treatment met the registered bar).\n" +
+		"gold source: none earned 7 of 7 passes.\n" +
+		"Voided: 7 row(s) carry `instrument_defect` and are excluded from the numbers above — " +
+		"guards-i16-raw-cp-deploy/control, guards-i16-raw-cp-deploy/full, guards-i2-store-purego/control, guards-i2-store-purego/full, guards-i28-duckdb-path/control, guards-i28-duckdb-path/full, guards-i31-workspace-artifact/full.\n"
+
+	if !strings.Contains(out, want) {
+		t.Errorf("guards-pilot-5 must render byte-for-byte as the pre-N8 text:\ngot:\n%s\nwant substring:\n%s", out, want)
+	}
+	if strings.Contains(out, "no registered criterion for this corpus") {
+		t.Errorf("must not fall back to the unresolved-criterion text once byTaskID can resolve the family:\n%s", out)
+	}
+	if strings.Contains(out, "M1-2") {
+		t.Errorf("must never resolve to the decoy corpus's own criterion:\n%s", out)
 	}
 }

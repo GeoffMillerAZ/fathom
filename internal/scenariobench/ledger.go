@@ -199,6 +199,59 @@ func VoidScenarioLedgerRow(ledgerPath, runID, taskID, arm, reason string) error 
 	return WriteScenarioLedger(ledgerPath, rows)
 }
 
+// BackfillCriterionIDs is O65 (wave N12) item 2's `scenariobench ledger
+// -backfill-criteria`: it stamps CriterionID (in place, on rows) for every
+// row that carries none — every row filed before that field existed
+// (commit 174e611) — resolving each exactly as renderRunVerdict's own
+// fallback chain does: first by the row's own CorpusSHA256 against
+// bySHA256 (unambiguous by construction — one key, one Criterion), then,
+// when that sha is now orphaned by a later corpus rewrite, by the row's
+// own TaskID against byTaskID (unambiguous whenever criteriaBySHA256's
+// own construction found that task id in exactly one currently-loaded
+// corpus; a colliding task id is never present in byTaskID at all — see
+// criteriaBySHA256's own doc comment — so it simply does not resolve
+// here either, rather than guess). A row that already carries a
+// CriterionID is never touched — this backfills history, it does not
+// correct it. Returns how many rows were changed.
+func BackfillCriterionIDs(rows []ScenarioLedgerRow, bySHA256, byTaskID map[string]Criterion) int {
+	updated := 0
+	for i := range rows {
+		if rows[i].CriterionID != "" {
+			continue
+		}
+		if c, ok := bySHA256[rows[i].CorpusSHA256]; ok && c.ID != "" {
+			rows[i].CriterionID = c.ID
+			updated++
+			continue
+		}
+		if c, ok := byTaskID[rows[i].TaskID]; ok && c.ID != "" {
+			rows[i].CriterionID = c.ID
+			updated++
+		}
+	}
+	return updated
+}
+
+// BackfillScenarioLedgerCriteria loads the JSONL ledger at ledgerPath,
+// applies BackfillCriterionIDs against bySHA256/byTaskID, and rewrites the
+// file (WriteScenarioLedger) only when at least one row actually changed —
+// an unchanged ledger is left byte-identical rather than rewritten for no
+// reason. Returns how many rows were backfilled.
+func BackfillScenarioLedgerCriteria(ledgerPath string, bySHA256, byTaskID map[string]Criterion) (int, error) {
+	rows, err := LoadScenarioLedger(ledgerPath)
+	if err != nil {
+		return 0, err
+	}
+	updated := BackfillCriterionIDs(rows, bySHA256, byTaskID)
+	if updated == 0 {
+		return 0, nil
+	}
+	if err := WriteScenarioLedger(ledgerPath, rows); err != nil {
+		return 0, err
+	}
+	return updated, nil
+}
+
 // LoadScenarioLedger reads every row from the JSONL ledger at path, in
 // file order. A ledger that does not exist yet is empty, not an error — the
 // first run creates it. An unparseable line IS an error naming its line

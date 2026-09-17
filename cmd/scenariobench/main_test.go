@@ -565,6 +565,84 @@ func TestCmdLedger_MissingFlags(t *testing.T) {
 	}
 }
 
+// TestCmdLedger_BackfillCriteria is O65 (wave N12) item 2's CLI-level
+// proof: `-backfill-criteria` needs none of -corpus/-run-id/-cells/
+// -harness-version (every row filed before CriterionID existed carries no
+// hint about which run's own corpus invocation produced it, only the
+// ledger and the corpus glob), stamps criterion_id on every row that
+// carries none — resolved by CorpusSHA256 when still current, by the
+// row's own TaskID when the sha has since been orphaned by a corpus
+// rewrite — leaves a row that already carries one untouched, and reports
+// how many rows changed on stdout.
+func TestCmdLedger_BackfillCriteria(t *testing.T) {
+	dir := t.TempDir()
+	ledgerPath := filepath.Join(dir, "ledger.jsonl")
+	for _, r := range []scenariobench.ScenarioLedgerRow{
+		{RunID: "guards-pilot-5", TaskID: "guards-i1-packagedeps-sorted", Arm: "full", CorpusSHA256: "sha-orphaned"},
+		{RunID: "guards-pilot-5", TaskID: "guards-i1-packagedeps-sorted", Arm: "control", CorpusSHA256: "sha-orphaned"},
+		{RunID: "guards-pilot-6", TaskID: "guards-i1-packagedeps-sorted", Arm: "full", CorpusSHA256: "sha-orphaned", CriterionID: "keep-me"},
+	} {
+		if err := scenariobench.AppendScenarioLedger(ledgerPath, r); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	corporaDir := filepath.Join(dir, "corpora")
+	if err := os.MkdirAll(corporaDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	corpus := `{
+  "arms": {"full": {"wired": true, "instructions": "x"}, "control": {"wired": false, "instructions": "x"}},
+  "tasks": [{
+    "id": "guards-i1-packagedeps-sorted",
+    "category": "governance_bound",
+    "prompt": "x",
+    "derivation": "synthetic fixture for scenariobench's own tests",
+    "subject": {"repo_url": "https://example.invalid/x.git", "base_commit": "abc123"},
+    "sessions": {"mode": "single", "count": 1, "max_turns": 5},
+    "oracle": {"answer_all_of": ["x"]},
+    "predictions": {"full": "predicted win", "control": "predicted no-effect"}
+  }],
+  "criterion": {"id": "M1-1", "treatment": "full", "control": "control", "min_trials": 2}
+}`
+	if err := os.WriteFile(filepath.Join(corporaDir, "guards-fathom.json"), []byte(corpus), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	stdout := captureStdout(t, func() {
+		rc := run([]string{
+			"ledger", "-backfill-criteria",
+			"-ledger", ledgerPath,
+			"-corpus-glob", filepath.Join(corporaDir, "*.json"),
+		})
+		if rc != 0 {
+			t.Errorf("ledger -backfill-criteria: exit %d, want 0", rc)
+		}
+	})
+	if !strings.Contains(stdout, "backfilled criterion_id on 2 row(s)") {
+		t.Errorf("stdout = %q, want it to report 2 rows backfilled", stdout)
+	}
+
+	rows, err := scenariobench.LoadScenarioLedger(ledgerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 3 {
+		t.Fatalf("expected backfilling to change row COUNT not at all, got %d rows", len(rows))
+	}
+	for _, r := range rows {
+		if r.RunID == "guards-pilot-6" {
+			if r.CriterionID != "keep-me" {
+				t.Errorf("guards-pilot-6 row already carried a criterion_id: got %q, want it untouched", r.CriterionID)
+			}
+			continue
+		}
+		if r.CriterionID != "M1-1" {
+			t.Errorf("%s/%s: criterion_id = %q, want M1-1", r.RunID, r.Arm, r.CriterionID)
+		}
+	}
+}
+
 // TestCmdRunScoreLedger_SurfaceCallsAndUnusedFlag is item 6's end-to-end
 // proof: a competitor arm whose MCP server connected but was never called
 // (docs/bench/scenarios.md "Instrument truth", second documented defect)
