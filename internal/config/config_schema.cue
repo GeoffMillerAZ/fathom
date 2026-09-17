@@ -99,6 +99,18 @@ package config
 	state_dir?: "workspace"
 }
 
+// #Guards is ADR-038's escape hatch: `enforce = false` turns every
+// enforce:true guard/layer-rule in .fathom/guard.cue back to advisory,
+// repo-wide — FATHOM_ENFORCE=off (an env var, not a config key — the
+// hooks' fixed-command-line callers cannot set a flag) is the other half
+// of the same switch and always wins over this. Unset means "enforcement
+// is live wherever a rule opts into it", the same default-true convention
+// #Daemon.auto_refresh's *bool Go type already uses to distinguish "never
+// set" from "explicitly false" (internal/config.Guards.Enforce).
+#Guards: {
+	enforce?: bool
+}
+
 // #Config is the top-level shape of one config.toml layer (user or
 // project). Both layers validate against the same schema; internal/config
 // merges them field-by-field per docs/plans/config-experience.md's stated
@@ -113,4 +125,5 @@ package config
 	profiles?: [string]: #Profile
 
 	daemon?: #Daemon
+	guards?: #Guards
 }

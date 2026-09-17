@@ -67,6 +67,10 @@ func mergeLayer(cfg *Config, prov Provenance, raw map[string]any, source Source,
 	if dm, ok := raw["daemon"].(map[string]any); ok {
 		mergeDaemonFields(&cfg.Daemon, dm, source, path, prov)
 	}
+
+	if gm, ok := raw["guards"].(map[string]any); ok {
+		mergeGuardsFields(&cfg.Guards, gm, source, path, prov)
+	}
 }
 
 func mergeProfileFields(p *Profile, raw map[string]any, name string, source Source, path string, prov Provenance) {
@@ -111,6 +115,15 @@ func mergeDaemonFields(d *Daemon, raw map[string]any, source Source, path string
 		if b, ok := v.(bool); ok {
 			d.AutoRefresh = &b
 			prov["daemon.auto_refresh"] = SourceInfo{source, path}
+		}
+	}
+}
+
+func mergeGuardsFields(g *Guards, raw map[string]any, source Source, path string, prov Provenance) {
+	if v, ok := raw["enforce"]; ok {
+		if b, ok := v.(bool); ok {
+			g.Enforce = &b
+			prov["guards.enforce"] = SourceInfo{source, path}
 		}
 	}
 }

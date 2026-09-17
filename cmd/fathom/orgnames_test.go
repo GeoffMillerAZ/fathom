@@ -189,9 +189,15 @@ func TestNoOrgSpecificNames(t *testing.T) {
 	}
 
 	var findings []string
-	self := filepath.ToSlash(filepath.Join("cmd", "fathom", "orgnames_test.go"))
+	// selfFixtures are files whose whole content IS org-shaped scanner
+	// fixtures (pinned true-positive examples, ADR-038's enforce_test.go
+	// among them) — shapes demonstrating the detector, never a real name.
+	selfFixtures := map[string]bool{
+		filepath.ToSlash(filepath.Join("cmd", "fathom", "orgnames_test.go")):        true,
+		filepath.ToSlash(filepath.Join("internal", "guardspec", "enforce_test.go")): true,
+	}
 	for _, rel := range orgScanFiles(t, root) {
-		if rel == self || orgDerivedCorpora[rel] {
+		if selfFixtures[rel] || orgDerivedCorpora[rel] {
 			continue // the scanner's own fixtures are shapes, not names; derived corpora quote upstream
 		}
 		if orgSkipDirs[strings.SplitN(rel, "/", 2)[0]] || orgSkipExt[strings.ToLower(filepath.Ext(rel))] {

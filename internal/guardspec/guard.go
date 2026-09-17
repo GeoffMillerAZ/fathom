@@ -78,10 +78,10 @@ func fieldErr(path, field string, err error) *FieldError {
 // READER (see package doc): unknown CUE fields are never inspected.
 // Required-ness and format are enforced in Go against exactly the fields
 // this package knows about; every violation across every guard entry is
-// collected into one *LoadError. A guard naming NEITHER scopes NOR
-// command_scopes is rejected — a guard governing nothing is dead by
-// construction, and the CUE schema alone cannot express that
-// either/or cleanly (same class of decision as bindspec's Go-enforced
+// collected into one *LoadError. A guard naming NONE of scopes,
+// command_scopes or forbidden_paths is rejected — a guard governing
+// nothing is dead by construction, and the CUE schema alone cannot
+// express that either/or/or cleanly (same class of decision as bindspec's Go-enforced
 // duplicate-module check).
 //
 // Three states, not two (O22, docs/dogfood-observations.md): the top-level
@@ -146,8 +146,8 @@ func LoadGuards(path string) (GuardSet, error) {
 		if cmdField.Exists() && len(g.CommandScopes) == 0 {
 			errs = append(errs, fieldErr(path, prefix+".command_scopes", fmt.Errorf("must be non-empty when present")))
 		}
-		if len(g.Scopes) == 0 && len(g.CommandScopes) == 0 {
-			errs = append(errs, fieldErr(path, prefix, fmt.Errorf("must set at least one of scopes/command_scopes — a guard governing nothing is dead by construction")))
+		if len(g.Scopes) == 0 && len(g.CommandScopes) == 0 && len(g.ForbiddenPaths) == 0 {
+			errs = append(errs, fieldErr(path, prefix, fmt.Errorf("must set at least one of scopes/command_scopes/forbidden_paths — a guard governing nothing is dead by construction")))
 		}
 		// ADR-038: enforce:true with no deterministic check to run is
 		// refused, naming the guard — a note-only guard has nothing an
