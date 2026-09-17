@@ -565,6 +565,112 @@ func TestCmdLedger_MissingFlags(t *testing.T) {
 	}
 }
 
+// TestCmdLedger_EmptyHarnessVersionRefused is O65 (wave N12) item 3's
+// regression pin for the FIRST half of the defect: `-harness-version
+// "$(claude --version)"` filed 0 rows silently when the volume-wedge-
+// broken `claude --version` produced an empty string. `-corpus` and
+// `-run-id` are both supplied (otherwise the earlier "both required"
+// check would fire first and this would not be testing the harness-
+// version guard at all); `-harness-version` is left at its own empty
+// default.
+func TestCmdLedger_EmptyHarnessVersionRefused(t *testing.T) {
+	dir := t.TempDir()
+	corpusPath := filepath.Join(dir, "corpus.json")
+	if err := os.WriteFile(corpusPath, []byte(`{"arms":{},"tasks":[],"criterion":{"id":"C1","treatment":"full","control":"control","min_trials":1}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	stderr := captureStderr(t, func() {
+		rc := run([]string{
+			"ledger",
+			"-corpus", corpusPath,
+			"-run-id", "run-1",
+			"-cells", filepath.Join(dir, "cells"),
+			"-ledger", filepath.Join(dir, "ledger.jsonl"),
+		})
+		if rc != 2 {
+			t.Errorf("ledger with empty -harness-version: exit %d, want 2", rc)
+		}
+	})
+	if !strings.Contains(stderr, "-harness-version is required") {
+		t.Errorf("stderr = %q, want it to name -harness-version as required", stderr)
+	}
+}
+
+// TestCmdLedger_HarnessVersionMismatchNamesOtherVersions is O65 (wave
+// N12) item 3's SECOND half: a cell key is built over -harness-version
+// (planCells' own CellInvariants), so filing with a -harness-version that
+// does not match what `run` stamped the stored cells with borrows nothing
+// for every (task, arm) — exactly what a broken `$(claude --version)`
+// substitution produces when the two invocations disagree. Rather than
+// silently file 0 rows and report an indeterminate verdict as if run-1
+// simply had no cells, `ledger` must refuse and name the harness
+// version(s) the run's own stored cells actually carry.
+func TestCmdLedger_HarnessVersionMismatchNamesOtherVersions(t *testing.T) {
+	dir := t.TempDir()
+	repoURL, commit := gitFixtureSubject(t)
+	corpusPath := writeCorpusFixture(t, dir, repoURL, commit)
+	root := filepath.Join(dir, "fathom-root")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cellsDir := filepath.Join(dir, "cells")
+	rawDir := filepath.Join(dir, "raw")
+	streamsDir := repoRelative(t, "testdata", "scenariobench", "streams")
+
+	rc := run([]string{
+		"run",
+		"-corpus", corpusPath,
+		"-root", root,
+		"-cells", cellsDir,
+		"-raw-dir", rawDir,
+		"-run-id", "run-1",
+		"-harness-version", "2.1.270 (Claude Code)",
+		"-harness", "fake",
+		"-fake-streams-dir", streamsDir,
+		"-fake-streams", `{"T1/control":"single-session.jsonl"}`,
+	})
+	if rc != 0 {
+		t.Fatalf("run exited %d, want 0", rc)
+	}
+
+	ledgerPath := filepath.Join(dir, "ledger.jsonl")
+	readmePath := filepath.Join(dir, "README.md")
+	if err := os.WriteFile(readmePath, []byte("# Bench\n\n## Scenario runs\n\n"+
+		scenariobench.ScenarioLedgerBeginMarker+"\n\n"+scenariobench.ScenarioLedgerEndMarker+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	rc = -1
+	stderr := captureStderr(t, func() {
+		rc = run([]string{
+			"ledger",
+			"-corpus", corpusPath,
+			"-cells", cellsDir,
+			"-ledger", ledgerPath,
+			"-readme", readmePath,
+			"-run-id", "run-1",
+			// A real, non-empty, but WRONG string — never "" (that is
+			// the separate case above) — the shape a broken
+			// `$(claude --version)` substitution across two separate
+			// invocations (run, then ledger) can actually produce.
+			"-harness-version", "2.1.271 (Claude Code)",
+		})
+	})
+	if rc != 2 {
+		t.Fatalf("ledger with mismatched -harness-version: exit %d, want 2", rc)
+	}
+	if !strings.Contains(stderr, `other harness version(s): 2.1.270 (Claude Code)`) {
+		t.Errorf("stderr = %q, want it to name the run's real harness version", stderr)
+	}
+	rows, err := scenariobench.LoadScenarioLedger(ledgerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 0 {
+		t.Errorf("expected nothing filed when the harness-version mismatch is refused, got %d row(s)", len(rows))
+	}
+}
+
 // TestCmdLedger_BackfillCriteria is O65 (wave N12) item 2's CLI-level
 // proof: `-backfill-criteria` needs none of -corpus/-run-id/-cells/
 // -harness-version (every row filed before CriterionID existed carries no

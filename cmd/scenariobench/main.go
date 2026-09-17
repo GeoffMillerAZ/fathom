@@ -1478,6 +1478,37 @@ func cmdLedger(args []string) int {
 		}
 		rows = append(rows, row)
 	}
+	// O65 (wave N12) item 3: a cell key is built over -harness-version
+	// (planCells' own CellInvariants), so a filing invocation whose
+	// -harness-version does not byte-for-byte match what stored the cells
+	// borrows nothing for EVERY (task, arm) and would otherwise proceed to
+	// silently file 0 rows and report an "indeterminate" criterion verdict
+	// as if this run-id simply had no cells at all — the exact shape
+	// `-harness-version "$(claude --version)"` produced when the volume
+	// wedge broke `claude --version`. Before accepting that at face value,
+	// check whether cells for this exact run-id exist under some OTHER
+	// harness version; if they do, this is very likely a mismatched
+	// -harness-version, not a genuinely empty run, so name it and refuse
+	// rather than file a misleading empty/indeterminate row.
+	if len(rows) == 0 {
+		versions, verr := scenariobench.HarnessVersionsForRun(*cellsDir, *runID)
+		if verr != nil {
+			fmt.Fprintf(os.Stderr, "scenariobench ledger: %v\n", verr)
+			return 2
+		}
+		var other []string
+		for _, v := range versions {
+			if v != *cf.harnessVersion {
+				other = append(other, v)
+			}
+		}
+		if len(other) > 0 {
+			fmt.Fprintf(os.Stderr, "scenariobench ledger: 0 cells matched run %q under -harness-version %q, but cell(s) for this run exist under other harness version(s): %s — pass -harness-version to match one of them\n",
+				*runID, *cf.harnessVersion, strings.Join(other, ", "))
+			return 2
+		}
+	}
+
 	rowBorrowed := scenariobench.BorrowedScenarioCellsOf(allCells)
 	for i := range rows {
 		for _, b := range rowBorrowed {
