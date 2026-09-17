@@ -22,6 +22,14 @@ const MaxObligations = 6
 // and reserveNearestTier.
 const nearestTierReserveSlots = 2
 
+// RawFallbackReserve (wave O1, ADR-037) is how many raw-tier fallback rows
+// RawFallbackRules ever returns for one obligations call — a small, FIXED
+// budget on top of MaxObligations' compiled-rule cap, never competing with
+// it. A raw row only ever ADDS a governing section the compiled layer
+// never reached; it never displaces a compiled row, so it does not need
+// (and must never consume) a slot out of the shared six-rule cap.
+const RawFallbackReserve = 2
+
 // Obligation is one served rule.
 type Obligation struct {
 	Rule string `json:"rule"`
@@ -80,6 +88,13 @@ type Obligation struct {
 	// internal/modserve.Bind, never by ObligationsFor itself, which knows
 	// nothing about modules or bindings.
 	Module string `json:"module,omitempty"`
+	// Why (wave O1, ADR-037) is set ONLY on a Tier:"raw" row: the coverage
+	// defect that made the compiled layer skip this section instead of
+	// compiling it into a real claim (e.g. "compiled layer incomplete:
+	// budget_stopped; raw nearest guide served"). A compiled row never
+	// carries this field, so a payload that never needs a raw fallback row
+	// is byte-identical to what it was before this field existed.
+	Why string `json:"why,omitempty"`
 }
 
 // ModuleNote is an explicit, never-silent note attached to an Obligations
