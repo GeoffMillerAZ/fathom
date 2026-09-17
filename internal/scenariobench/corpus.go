@@ -114,6 +114,17 @@ func validateScenarioTask(t Task, armNames []string) error {
 			return fmt.Errorf("task %s: derivation names the home corpus (%s) but subject.exclude_paths is missing %v — the answer key it was derived from must never sit inside this task's own worktree", t.ID, homeCorpusMarker, missing)
 		}
 	}
+	// wave N14 item 7 (guards-i28/i31, guards-pilot-6 second reading): a
+	// task whose subject is fathom's own repository must exclude this
+	// corpus's own scoring apparatus from its own worktree too — a
+	// DIFFERENT condition from derivesFromHomeCorpus above (a self-hosting
+	// task need not be home-corpus-derived, and vice versa), checked
+	// separately.
+	if subjectIsFathomSelfHost(t) {
+		if missing := excludePathsCoverSelfHost(t.Subject.ExcludePaths); len(missing) > 0 {
+			return fmt.Errorf("task %s: subject is fathom's own repository but subject.exclude_paths is missing %v — this corpus's own scoring apparatus must never sit inside a self-hosting task's own worktree", t.ID, missing)
+		}
+	}
 	if t.Sessions.MaxTurns <= 0 {
 		return fmt.Errorf("task %s: sessions.max_turns must be > 0", t.ID)
 	}

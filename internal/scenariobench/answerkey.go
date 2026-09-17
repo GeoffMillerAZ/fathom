@@ -99,6 +99,61 @@ func excludePathsCoverHomeCorpus(paths []string) []string {
 	return missing
 }
 
+// fathomSelfHostMarkers are the repo_url spellings this repo's own
+// guards-*.json/lookups-vs.json corpora use for their subject (both the
+// SSH and HTTPS forms already committed, case-folded before comparison).
+// wave N14 item 7 (guards-i28/i31, guards-pilot-6 second reading): a task
+// whose subject is fathom's own repository carries this corpus's own
+// scoring apparatus (testdata/scenariobench/*.json — a task's own rule,
+// prediction, and detector text) and its runbook (docs/bench/) INSIDE the
+// checked-out worktree an agent can Read/Grep/Bash into — the same
+// answer-key contamination requiredHomeCorpusExcludes guards against for
+// the home lookup corpus, from a different source. None of guards-
+// fathom.json/guards-m1.json/guards-adr.json ever declared exclude_paths
+// at all, which — since AnswerKeyLeakScan itself short-circuits on an
+// empty list — disabled BOTH the prepare-time removal AND the post-
+// session leak scanner for every task in them at once.
+var fathomSelfHostMarkers = []string{"geoffmilleraz/fathom"}
+
+// subjectIsFathomSelfHost reports whether t's subject repo is fathom's
+// own, by fathomSelfHostMarkers.
+func subjectIsFathomSelfHost(t Task) bool {
+	repo := strings.ToLower(t.Subject.RepoURL)
+	for _, m := range fathomSelfHostMarkers {
+		if strings.Contains(repo, m) {
+			return true
+		}
+	}
+	return false
+}
+
+// requiredSelfHostExcludes are the exclude_paths glob patterns
+// validateScenarioTask requires of any subjectIsFathomSelfHost task: this
+// corpus's own scoring apparatus and the runbook narrating it in prose.
+// Deliberately NOT testdata/contextbench/** — that one is
+// requiredHomeCorpusExcludes' own concern (derivesFromHomeCorpus), a
+// distinct condition a self-hosting task may or may not also meet.
+var requiredSelfHostExcludes = []string{
+	"testdata/scenariobench/**",
+	"docs/bench/**",
+}
+
+// excludePathsCoverSelfHost mirrors excludePathsCoverHomeCorpus exactly,
+// against requiredSelfHostExcludes instead.
+func excludePathsCoverSelfHost(paths []string) []string {
+	have := make(map[string]bool, len(paths))
+	for _, p := range paths {
+		have[p] = true
+	}
+	var missing []string
+	for _, want := range requiredSelfHostExcludes {
+		if !have[want] {
+			missing = append(missing, want)
+		}
+	}
+	return missing
+}
+
 // excludeNeedle turns one exclude_paths glob into the literal substring
 // AnswerKeyLeakScan searches transcript text for: a "/**" suffix (the only
 // shape requiredHomeCorpusExcludes or a hand-authored corpus is expected

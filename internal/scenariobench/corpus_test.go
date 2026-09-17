@@ -212,6 +212,66 @@ func TestLoadScenarioCorpus_RefusesHomeCorpusDerivationWithoutExcludePaths(t *te
 	}
 }
 
+// TestLoadScenarioCorpus_RefusesFathomSelfHostSubjectWithoutExcludePaths is
+// wave N14 item 7's loader-refusal proof (guards-i28/i31, guards-pilot-6
+// second reading): a "filename-only answer-key leak" reached the agent on
+// these tasks because NONE of the guards-*.json corpora ever declared
+// subject.exclude_paths at all, despite their subject being fathom's own
+// repository — the very tree that carries testdata/scenariobench/*.json
+// (a task's own rule/prediction/detector text) and docs/bench/ (the
+// runbook narrating it). AnswerKeyLeakScan itself also short-circuits on
+// an empty exclude_paths list, so this doubly disabled both the removal
+// AND the post-session leak scanner for every guards task at once. A task
+// whose subject is fathom's own repo must now declare exclude_paths
+// covering testdata/scenariobench/** and docs/bench/**, or the loader
+// refuses it exactly like a home-corpus-derived task with none.
+func TestLoadScenarioCorpus_RefusesFathomSelfHostSubjectWithoutExcludePaths(t *testing.T) {
+	dir := t.TempDir()
+	bad := `{
+  "arms": {"full": {"wired": true, "instructions": "stanza"}},
+  "tasks": [{
+    "id": "T1", "prompt": "p",
+    "derivation": "Rule text lifted from docs/intent/invariants.md.",
+    "subject": {"repo_url": "git@github.com:GeoffMillerAZ/fathom.git", "base_commit": "c", "service": "fathom"},
+    "sessions": {"mode": "single", "count": 1, "max_turns": 5},
+    "oracle": {"answer_all_of": ["tok"]},
+    "predictions": {"full": "wins"}
+  }],
+  "criterion": {"id": "C1", "treatment": "full", "control": "control", "min_trials": 1}
+}`
+	path := writeCorpusFixture(t, dir, "corpus.json", bad)
+	_, err := LoadScenarioCorpus(path)
+	if err == nil {
+		t.Fatal("expected an error for a fathom-self-host task with no exclude_paths")
+	}
+	if !strings.Contains(err.Error(), "exclude_paths") {
+		t.Errorf("error %q does not name exclude_paths", err)
+	}
+}
+
+// TestLoadScenarioCorpus_FathomSelfHostSubjectWithExcludePathsLoadsFine
+// proves the check above is satisfiable, not merely a refusal — a task
+// declaring the required excludes loads without error.
+func TestLoadScenarioCorpus_FathomSelfHostSubjectWithExcludePathsLoadsFine(t *testing.T) {
+	dir := t.TempDir()
+	good := `{
+  "arms": {"full": {"wired": true, "instructions": "stanza"}},
+  "tasks": [{
+    "id": "T1", "prompt": "p",
+    "derivation": "Rule text lifted from docs/intent/invariants.md.",
+    "subject": {"repo_url": "git@github.com:GeoffMillerAZ/fathom.git", "base_commit": "c", "service": "fathom", "exclude_paths": ["testdata/scenariobench/**", "docs/bench/**"]},
+    "sessions": {"mode": "single", "count": 1, "max_turns": 5},
+    "oracle": {"answer_all_of": ["tok"]},
+    "predictions": {"full": "wins"}
+  }],
+  "criterion": {"id": "C1", "treatment": "full", "control": "control", "min_trials": 1}
+}`
+	path := writeCorpusFixture(t, dir, "corpus.json", good)
+	if _, err := LoadScenarioCorpus(path); err != nil {
+		t.Fatalf("expected a fathom-self-host task with proper exclude_paths to load, got %v", err)
+	}
+}
+
 // TestLoadScenarioCorpus_RefusesHomeCorpusDerivationWithPartialExcludePaths
 // covers the "cover" requirement, not just "declare something": all three
 // globs are required, not just one.

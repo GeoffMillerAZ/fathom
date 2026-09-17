@@ -23,7 +23,8 @@
         "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
         "base_commit": "f67f06a",
         "service": "fathom",
-        "language": "go"
+        "language": "go",
+        "exclude_paths": ["testdata/scenariobench/**", "docs/bench/**"]
       },
       "sessions": {
         "count": 1,
@@ -78,7 +79,8 @@
         "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
         "base_commit": "f67f06a",
         "service": "fathom",
-        "language": "go"
+        "language": "go",
+        "exclude_paths": ["testdata/scenariobench/**", "docs/bench/**"]
       },
       "sessions": {
         "count": 1,
@@ -129,7 +131,8 @@
         "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
         "base_commit": "f67f06a",
         "service": "fathom",
-        "language": "go"
+        "language": "go",
+        "exclude_paths": ["testdata/scenariobench/**", "docs/bench/**"]
       },
       "sessions": {
         "count": 1,
@@ -173,7 +176,8 @@
         "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
         "base_commit": "f67f06a",
         "service": "fathom",
-        "language": "go"
+        "language": "go",
+        "exclude_paths": ["testdata/scenariobench/**", "docs/bench/**"]
       },
       "sessions": {
         "count": 1,
@@ -222,7 +226,8 @@
         "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
         "base_commit": "f67f06a",
         "service": "fathom",
-        "language": "go"
+        "language": "go",
+        "exclude_paths": ["testdata/scenariobench/**", "docs/bench/**"]
       },
       "sessions": {
         "count": 1,
@@ -267,6 +272,7 @@
         "base_commit": "f67f06a",
         "service": "fathom",
         "language": "go",
+        "exclude_paths": ["testdata/scenariobench/**", "docs/bench/**"],
         "post_wire_setup": [
           "git show HEAD:docs/use-cases/incident-investigation.md | awk '/^## Maintained$/{exit} {print}' > docs/use-cases/incident-investigation.md"
         ]
@@ -313,7 +319,8 @@
         "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
         "base_commit": "f67f06a",
         "service": "fathom",
-        "language": "go"
+        "language": "go",
+        "exclude_paths": ["testdata/scenariobench/**", "docs/bench/**"]
       },
       "sessions": {
         "count": 1,
@@ -365,7 +372,8 @@
         "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
         "base_commit": "f67f06a",
         "service": "fathom",
-        "language": "go"
+        "language": "go",
+        "exclude_paths": ["testdata/scenariobench/**", "docs/bench/**"]
       },
       "sessions": {
         "count": 1,

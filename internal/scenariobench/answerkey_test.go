@@ -276,6 +276,41 @@ func TestExcludePathsCoverHomeCorpus(t *testing.T) {
 	}
 }
 
+// TestSubjectIsFathomSelfHost / TestExcludePathsCoverSelfHost cover wave
+// N14 item 7's own validation helpers directly (corpus_test.go covers
+// them again end-to-end through LoadScenarioCorpus) — both repo_url
+// spellings already committed in this repo's own corpora (SSH in
+// guards-*.json, HTTPS in lookups-vs.json), case-insensitively.
+func TestSubjectIsFathomSelfHost(t *testing.T) {
+	cases := []struct {
+		repoURL string
+		want    bool
+	}{
+		{"git@github.com:GeoffMillerAZ/fathom.git", true},
+		{"https://github.com/geoffmilleraz/fathom", true},
+		{"https://github.com/cli/cli", false},
+		{"", false},
+	}
+	for _, c := range cases {
+		got := subjectIsFathomSelfHost(Task{Subject: Subject{RepoURL: c.repoURL}})
+		if got != c.want {
+			t.Errorf("subjectIsFathomSelfHost(%q) = %v, want %v", c.repoURL, got, c.want)
+		}
+	}
+}
+
+func TestExcludePathsCoverSelfHost(t *testing.T) {
+	if missing := excludePathsCoverSelfHost([]string{"testdata/scenariobench/**", "docs/bench/**"}); len(missing) != 0 {
+		t.Errorf("expected full coverage to report nothing missing, got %v", missing)
+	}
+	if missing := excludePathsCoverSelfHost([]string{"testdata/scenariobench/**"}); len(missing) != 1 {
+		t.Errorf("expected 1 missing glob, got %v", missing)
+	}
+	if missing := excludePathsCoverSelfHost(nil); len(missing) != 2 {
+		t.Errorf("expected both missing, got %v", missing)
+	}
+}
+
 // TestRunSessions_AnswerKeyLeakLosesTheCell is the end-to-end proof: a
 // session whose transcript leaks an excluded path gets AnswerKeyLeak set,
 // and CellLost reports the cell lost because of it — exactly the "marks

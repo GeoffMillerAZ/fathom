@@ -24,6 +24,7 @@
         "base_commit": "dd0311c",
         "service": "fathom",
         "language": "go",
+        "exclude_paths": ["testdata/scenariobench/**", "docs/bench/**"],
         "setup": [
           "mkdir -p internal/analysis/fanout",
           "cat > internal/analysis/fanout/fanout.go <<'SETUP_EOF'\n// Package fanout counts, for each package in a []core.SymbolNode, how many\n// distinct OTHER packages it calls into (its fan-out).\npackage fanout\n\nimport (\n\t\"sort\"\n\t\"strings\"\n\n\t\"github.com/geoffmilleraz/fathom/internal/core\"\n)\n\n// Entry is one package's fan-out count.\ntype Entry struct {\n\tPackage string\n\tFanOut  int\n}\n\n// Compute returns each package's fan-out count, ordered by Package name.\nfunc Compute(nodes []core.SymbolNode) []Entry {\n\ttargets := make(map[string]map[string]bool)\n\tfor _, n := range nodes {\n\t\tif n.Package == \"\" {\n\t\t\tcontinue\n\t\t}\n\t\tif _, ok := targets[n.Package]; !ok {\n\t\t\ttargets[n.Package] = make(map[string]bool)\n\t\t}\n\t\tfor _, callee := range n.Calls {\n\t\t\ttoPkg := calleePackage(callee)\n\t\t\tif toPkg == \"\" || toPkg == n.Package {\n\t\t\t\tcontinue\n\t\t\t}\n\t\t\ttargets[n.Package][toPkg] = true\n\t\t}\n\t}\n\n\tentries := make([]Entry, 0, len(targets))\n\tfor pkg, set := range targets {\n\t\tentries = append(entries, Entry{Package: pkg, FanOut: len(set)})\n\t}\n\tsort.Slice(entries, func(i, j int) bool { return entries[i].Package < entries[j].Package })\n\treturn entries\n}\n\n// calleePackage extracts the package segment from a Calls entry\n// (\"svc::pkg.Name\" or \"pkg.Name\" -> \"pkg\"; \"Name\" -> \"\").\nfunc calleePackage(key string) string {\n\tif idx := strings.Index(key, \"::\"); idx >= 0 {\n\t\tkey = key[idx+2:]\n\t}\n\tif dot := strings.LastIndex(key, \".\"); dot > 0 {\n\t\treturn key[:dot]\n\t}\n\treturn \"\"\n}\n\nSETUP_EOF",
@@ -75,7 +76,8 @@
         "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
         "base_commit": "dd0311c",
         "service": "fathom",
-        "language": "go"
+        "language": "go",
+        "exclude_paths": ["testdata/scenariobench/**", "docs/bench/**"]
       },
       "sessions": {
         "count": 1,
@@ -123,6 +125,7 @@
         "base_commit": "dd0311c",
         "service": "fathom",
         "language": "go",
+        "exclude_paths": ["testdata/scenariobench/**", "docs/bench/**"],
         "setup": [
           "cat > internal/store/fastsearch.go <<'SETUP_EOF'\npackage store\n\n// SearchAccelerated reports whether this build links an accelerated\n// full-text index for Search to consult on a large store. The\n// tree-sitter extractor already links CGO into this same binary for\n// general-language parsing, so a CGO-backed accelerator here would ride\n// on a dependency the release already pays for rather than add a new one.\n//\n// The current build always returns false: no accelerator is linked yet,\n// so Search always takes its pure-Go scan.\nfunc SearchAccelerated() bool {\n\treturn false\n}\n\nSETUP_EOF",
           "cat > internal/store/search.go <<'SETUP_EOF'\npackage store\n\nimport \"strings\"\n\n// Search does a substring scan over candidates for query, returning the\n// matches in their original order. When SearchAccelerated reports true a\n// caller may also consult a faster index directly; the scan below is the\n// correctness fallback every build can run.\nfunc Search(candidates []string, query string) []string {\n\t_ = SearchAccelerated()\n\tif query == \"\" {\n\t\treturn nil\n\t}\n\tvar out []string\n\tfor _, c := range candidates {\n\t\tif strings.Contains(c, query) {\n\t\t\tout = append(out, c)\n\t\t}\n\t}\n\treturn out\n}\n\nSETUP_EOF",
@@ -173,7 +176,8 @@
         "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
         "base_commit": "dd0311c",
         "service": "fathom",
-        "language": "go"
+        "language": "go",
+        "exclude_paths": ["testdata/scenariobench/**", "docs/bench/**"]
       },
       "sessions": {
         "count": 1,
@@ -219,7 +223,8 @@
         "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
         "base_commit": "dd0311c",
         "service": "fathom",
-        "language": "go"
+        "language": "go",
+        "exclude_paths": ["testdata/scenariobench/**", "docs/bench/**"]
       },
       "sessions": {
         "count": 1,
@@ -276,7 +281,8 @@
         "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
         "base_commit": "dd0311c",
         "service": "fathom",
-        "language": "go"
+        "language": "go",
+        "exclude_paths": ["testdata/scenariobench/**", "docs/bench/**"]
       },
       "sessions": {
         "count": 1,
