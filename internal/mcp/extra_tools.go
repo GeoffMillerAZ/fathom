@@ -946,7 +946,7 @@ func registerIngest(s *Server, backend QueryInterface) {
 	}
 	s.registerTool(toolDescriptor{
 		Name:        "ingest",
-		Description: "Re-ingest the named service to refresh the symbol store; pass path (absolute repo root) to onboard a NEW service into the index. Hash-gated: a clean repo is a sub-second no-op, so call it at session start and after every commit. A path that differs from an EXISTING service's recorded root is refused unless remap:true is also passed (O82) — a hook must never re-point a service; remap:true (or the `fathom remap` verb) is the deliberate-move escape hatch. Reach for it when staleness_report or a stale-index warning says the index lags the working tree. Required: service.",
+		Description: "Re-ingest the named service to refresh the symbol store; pass path (absolute repo root) to onboard a NEW service into the index. Hash-gated: a clean repo is a sub-second no-op, so call it at session start and after every commit. A path that differs from an EXISTING service's recorded root is refused unless remap:true is also passed (O82) — a hook must never re-point a service; remap:true (or the `fathom remap` verb) is the deliberate-move escape hatch. For a Go service, the result carries typed_edges:{packages_seen,packages_processed,edges,failed,error?,fallback?} (O82) — a tree whose typed-edge pass produced nothing to trust (packages seen but none processed, a package failed to type-check, or the load failed outright) flips ok:false even though the syntax index was written and kept; test_impact/verify test_reaches read a syntax-only graph until it is fixed. Reach for it when staleness_report or a stale-index warning says the index lags the working tree. Required: service.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -1109,6 +1109,42 @@ func registerIngest(s *Server, backend QueryInterface) {
 			afterUnclassified, afterOversize := sb.IngestStats()
 			result["unclassified_files"] = afterUnclassified - before.unclassified
 			result["oversize_files"] = afterOversize - before.oversize
+		}
+		// Ingest honesty disclosure (wave P3 / O82, .fathom/observations.md):
+		// the SAME TypedEdgeStatus staleness_report/doctor/list_services
+		// already read, carried on the ingest response itself — a caller
+		// must never need a SEPARATE call to learn a Go tree's typed pass
+		// produced nothing to trust. This is the exact gap the 2026-09-16
+		// incident hit: the daemon answered {"ok":true} for a push clone
+		// whose typed-edge enrichment produced ZERO typed edges (go.work
+		// named sibling checkouts that existed only beside the operator's
+		// own checkout), and nothing about that response said so —
+		// test_impact/verify test_reaches silently read "no test reaches
+		// it" and a push was refused with no earlier signal anywhere.
+		//
+		// ok:false-grade disclosure: the syntax index is kept (IngestService
+		// already wrote it, never rolled back here), but `ok` flips to
+		// false when the typed pass failed — a caller checking only `ok`
+		// (the common case) must not read this as a clean ingest.
+		if teb, ok := backend.(typedEdgeStatusBackend); ok {
+			if st, known := teb.TypedEdgeStatus(svc); known {
+				te := map[string]any{
+					"packages_seen":      st.PackagesSeen,
+					"packages_processed": st.Packages,
+					"edges":              st.EdgesTotal,
+					"failed":             st.Failed,
+				}
+				if st.Reason != "" {
+					te["error"] = st.Reason
+				}
+				if st.Fallback != "" {
+					te["fallback"] = st.Fallback
+				}
+				result["typed_edges"] = te
+				if st.Failed {
+					result["ok"] = false
+				}
+			}
 		}
 		return result, nil
 	})

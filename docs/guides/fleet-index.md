@@ -51,6 +51,35 @@ fresh?". `known: false` means this daemon process has not ingested the service
 since it started — it is not a pass. A daemon installed by an older binary is
 repaired by `fathom daemon install --force` followed by a `launchctl kickstart`.
 
+**Ingest itself now says so, not just a follow-up call (O82,
+.fathom/observations.md).** The 2026-09-16 incident above had a second half:
+even with the environment fix live, the `ingest` tool's own response stayed a
+bare `{"ok":true}` when a Go tree's typed-edge pass saw packages but processed
+none (the connector-scope filter excluded every one — a go.work naming a
+sibling checkout that existed only beside the operator's own checkout, not
+beside the push clone being ingested) — `test_impact`/`verify test_reaches`
+silently read "no test reaches it" and a push was refused, with nothing in
+the ingest that ran it to explain why. `ingest`'s result, `fathom ingest`
+(text and `--json`), and `list_services`' per-service row now all carry
+`typed_edges:{packages_seen, packages_processed, edges, failed, error?,
+fallback?}` — the SAME fact this section's three checks already read — and a
+`failed:true` flips the envelope's own `ok`/exit code, never a silent pass
+over a syntax-only graph. `fallback:"GOWORK=off"` names when an ambient
+workspace was discoverable and overridden (TypedEdgeEnv forces GOWORK=off
+unconditionally, so this is disclosure, not a live risk).
+
+**A hook may never re-point a service (O82).** `worktree.CheckReroot`
+(O22/PC-33) only refuses re-rooting a service onto a LINKED git worktree of
+its own recorded root; a plain `git clone` elsewhere sails through it. The
+daemon-side `ingest` handler now refuses ANY `path` that differs from a
+service's recorded root unless `remap:true` is also passed (the deliberate-
+move escape hatch, parallel to the store-direct `fathom remap` verb), and the
+lefthook `fathom-refresh` post-commit step (`post-commit-hook` verb) checks
+the registered root via `list_services` BEFORE calling `ingest` and skips
+with a plain message on a mismatch — never stumbling into that refusal and
+reporting a confusing "daemon refresh failed" line for what is really "this
+hook is running inside the wrong checkout".
+
 ## Working against the index
 
 1. **A verb first, a lookup second (ADR-035 decision 1, docs/vision/

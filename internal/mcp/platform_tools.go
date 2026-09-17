@@ -87,6 +87,33 @@ func registerListServices(s *Server, backend QueryInterface, fleet FleetBackend)
 			// silently indistinguishable from a service that classifies
 			// every file it has. Omitted when there is nothing to report —
 			// the common case stays exactly as quiet as it always was.
+			// Typed-edge outcome (wave P3 / O82, .fathom/observations.md):
+			// the SAME per-service TypedEdgeStatus doctor's typed_edges
+			// row and the ingest response's own typed_edges block read —
+			// one source of truth, so list_services can never disagree
+			// with either about whether a Go service's graph is typed.
+			// known:false (no ingest of this service has run in THIS
+			// daemon process) omits the block entirely — never a
+			// fabricated clean pass.
+			if backend != nil {
+				if teb, ok := backend.(typedEdgeStatusBackend); ok {
+					if st, known := teb.TypedEdgeStatus(svc); known {
+						te := map[string]any{
+							"packages_seen":      st.PackagesSeen,
+							"packages_processed": st.Packages,
+							"edges":              st.EdgesTotal,
+							"failed":             st.Failed,
+						}
+						if st.Reason != "" {
+							te["error"] = st.Reason
+						}
+						if st.Fallback != "" {
+							te["fallback"] = st.Fallback
+						}
+						entry["typed_edges"] = te
+					}
+				}
+			}
 			if unsupported := fleet.UnsupportedLanguagesFor(svc); len(unsupported) > 0 {
 				names := make([]string, 0, len(unsupported))
 				for lang := range unsupported {

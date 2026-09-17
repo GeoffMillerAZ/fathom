@@ -22,6 +22,23 @@ type ingestReadFailureJSON struct {
 }
 
 type ingestTypedEdgesJSON struct {
+	// PackagesSeen/PackagesProcessed/Edges/Failed/Error are the ingest
+	// honesty disclosure (wave P3 / O82, .fathom/observations.md): a Go
+	// tree whose typed-edge pass produced nothing to trust must say so on
+	// the ingest response itself, not only via a separate staleness_report
+	// call. PackagesSeen is every package go/packages returned, before any
+	// were dropped; PackagesProcessed is loaded+cache-hit (kept as
+	// `packages` too, for compatibility with the pre-O82 field name).
+	PackagesSeen      int    `json:"packages_seen"`
+	PackagesProcessed int    `json:"packages_processed"`
+	Edges             int    `json:"edges"`
+	Failed            bool   `json:"failed"`
+	Error             string `json:"error,omitempty"`
+	// Fallback names "GOWORK=off" when an ambient Go workspace was
+	// discoverable and therefore overridden (defect 2, same wave).
+	Fallback string `json:"fallback,omitempty"`
+
+	// Pre-O82 fields, kept for compatibility.
 	Packages       int `json:"packages"`
 	PackagesFailed int `json:"packages_failed"`
 	Direct         int `json:"direct"`
@@ -102,8 +119,17 @@ func renderIngestJSON(w io.Writer, service, svcPath string, report client.Report
 	for _, f := range report.ReadFailures {
 		out.ReadFailures = append(out.ReadFailures, ingestReadFailureJSON{Path: f.Path, Err: f.Err, Errno: errnoClass(f.Err)})
 	}
-	if report.TypedPackages > 0 || report.TypedPackagesFailed > 0 {
+	// Ingest honesty disclosure (wave P3 / O82): present whenever a typed
+	// pass was actually ATTEMPTED this ingest — PackagesSeen>0 or a
+	// disclosed failure with nothing seen yet (e.g. a whole-load error) —
+	// never the pre-O82 "non-zero packages/failures only" condition, which
+	// is exactly what let a Go tree with ZERO typed edges (packages seen,
+	// none processed) report a silently empty block.
+	if report.TypedPackagesSeen > 0 || report.TypedPackages > 0 || report.TypedPackagesFailed > 0 || report.TypedFailed {
+		edges := report.TypedEdgesDirect + report.TypedEdgesIfaceDispatch + report.TypedEdgesUnresolved
 		out.TypedEdges = &ingestTypedEdgesJSON{
+			PackagesSeen: report.TypedPackagesSeen, PackagesProcessed: report.TypedPackages,
+			Edges: edges, Failed: report.TypedFailed, Error: report.TypedFailReason, Fallback: report.TypedFallback,
 			Packages: report.TypedPackages, PackagesFailed: report.TypedPackagesFailed,
 			Direct: report.TypedEdgesDirect, IfaceDispatch: report.TypedEdgesIfaceDispatch, Unresolved: report.TypedEdgesUnresolved,
 		}
@@ -119,6 +145,17 @@ func renderIngestJSON(w io.Writer, service, svcPath string, report client.Report
 		out.ExitCode = 1
 		out.Error = readErr.Error()
 		out.Hint = readErr.Hint()
+	} else if report.TypedFailed {
+		// ok:false-grade disclosure (wave P3 / O82): the syntax index is
+		// untouched (kept, never rolled back), but a Go tree whose typed
+		// pass produced nothing to trust must never read as a clean "ok" —
+		// this is the exact silent gap that let a push be refused
+		// downstream (test_impact/verify test_reaches read "no test
+		// reaches it") with no earlier signal anywhere in the ingest that
+		// ran it.
+		out.Outcome = "degraded"
+		out.ExitCode = 1
+		out.Error = "typed-edge pass failed: " + report.TypedFailReason
 	}
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
