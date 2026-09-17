@@ -12,6 +12,12 @@ package main
 // operator wants denied from FATHOM_ORG_DENYLIST (comma-separated,
 // case-insensitive) — local, never committed, the same law-13 shape as
 // every other per-machine setting.
+//
+// The scanner itself (guardspec.OrgHits and its supporting helpers) is
+// lifted into internal/guardspec (ADR-038 item 2) so this gate test and
+// the enforced "org_token" pre-write check (enforce.go) share exactly one
+// rule set — a hook denying an edit and this test rejecting the same
+// commit must never be able to disagree about what counts as org-specific.
 
 import (
 	"bufio"
@@ -22,6 +28,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/guardspec"
 )
 
 // orgSkipDirs are never scanned: vendored mirrors carry their own
@@ -51,90 +59,18 @@ var orgSkipExt = map[string]bool{
 	".sum": true, ".css": true,
 }
 
-// orgInternalHostSuffixes are the private-network TLDs a host is denied
-// under — the ONE list orgInternalHostRe is built from and
+// orgInternalHostSuffixes mirrors guardspec.OrgInternalHostSuffixes — the
+// ONE list the scanner is built from and
 // TestADR011EnforcedPatternsMatchOrgNames checks ADR-011's own served text
 // against (O57 item 7): the ADR's prose must name exactly these, in this
 // shape, so a reader of the ADR — human or a compiled obligation — learns
 // what the gate actually checks instead of "invented, neutral names" alone.
-var orgInternalHostSuffixes = []string{"corp", "internal", "intranet", "lan"}
+var orgInternalHostSuffixes = guardspec.OrgInternalHostSuffixes
 
-var (
-	// An internal-network host: a name under one of the private TLDs
-	// (orgInternalHostSuffixes).
-	orgInternalHostRe = regexp.MustCompile(`(?i)\b[a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)*\.(?:` + strings.Join(orgInternalHostSuffixes, "|") + `)\b`)
-	// An email address; the domain is checked against the neutral set.
-	orgEmailRe = regexp.MustCompile(`\b[A-Za-z0-9._%+-]+@((?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,})\b`)
-	// A cloud account in an ARN (12 digits) other than the documented
-	// placeholder accounts.
-	orgARNRe = regexp.MustCompile(`arn:aws:[a-z0-9-]*:[a-z0-9-]*:(\d{12}):`)
-	// A storage bucket URI.
-	orgBucketRe = regexp.MustCompile(`\b(?:gs|s3)://([a-z0-9][a-z0-9._-]{2,})`)
-)
-
-// orgNeutralEmailDomain reports whether an email domain is a documented
-// placeholder (RFC 2606/6761 names) or tooling identity, not an org.
-func orgNeutralEmailDomain(d string) bool {
-	d = strings.ToLower(d)
-	switch {
-	case d == "example.com", d == "example.net", d == "example.org",
-		strings.HasSuffix(d, ".example.com"), strings.HasSuffix(d, ".example.net"), strings.HasSuffix(d, ".example.org"),
-		strings.HasSuffix(d, ".example"), strings.HasSuffix(d, ".test"), strings.HasSuffix(d, ".invalid"), strings.HasSuffix(d, ".localhost"),
-		d == "localhost", d == "github.com", d == "anthropic.com":
-		return true
-	}
-	return false
-}
-
-func orgPlaceholderAccount(acct string) bool {
-	switch acct {
-	case "123456789012", "000000000000", "111111111111", "999999999999":
-		return true
-	}
-	return false
-}
-
-func orgNeutralBucket(b string) bool {
-	b = strings.ToLower(b)
-	return strings.Contains(b, "example") || strings.HasPrefix(b, "my-") || strings.HasPrefix(b, "bucket") || strings.Contains(b, "fauxtown")
-}
-
-// orgHits scans one line and returns the org-shaped tokens on it.
+// orgHits scans one line and returns the org-shaped tokens on it —
+// guardspec.OrgHits, the shared rule set (see this file's doc comment).
 func orgHits(line string, denylist []string) []string {
-	var hits []string
-	lower := strings.ToLower(line)
-	// Cheap substring gates before each regexp: the scan covers every
-	// tracked line of the repo and must stay well under a second.
-	if strings.Contains(lower, ".corp") || strings.Contains(lower, ".internal") || strings.Contains(lower, ".intranet") || strings.Contains(lower, ".lan") {
-		hits = append(hits, orgInternalHostRe.FindAllString(line, -1)...)
-	}
-	if strings.Contains(line, "@") {
-		for _, m := range orgEmailRe.FindAllStringSubmatch(line, -1) {
-			if !orgNeutralEmailDomain(m[1]) && !strings.HasPrefix(strings.ToLower(m[0]), "noreply@") {
-				hits = append(hits, m[0])
-			}
-		}
-	}
-	if strings.Contains(line, "arn:aws") {
-		for _, m := range orgARNRe.FindAllStringSubmatch(line, -1) {
-			if !orgPlaceholderAccount(m[1]) {
-				hits = append(hits, m[0])
-			}
-		}
-	}
-	if strings.Contains(line, "://") {
-		for _, m := range orgBucketRe.FindAllStringSubmatch(line, -1) {
-			if !orgNeutralBucket(m[1]) {
-				hits = append(hits, m[0])
-			}
-		}
-	}
-	for _, tok := range denylist {
-		if tok != "" && strings.Contains(lower, tok) {
-			hits = append(hits, tok)
-		}
-	}
-	return hits
+	return guardspec.OrgHits(line, denylist)
 }
 
 // orgScanFiles lists the files ADR-011 governs: the git-tracked tree

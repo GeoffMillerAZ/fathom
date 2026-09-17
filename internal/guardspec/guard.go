@@ -27,6 +27,13 @@ type Guard struct {
 	MaxRules       int
 	IncludeModules bool
 	CommandScopes  []string
+
+	// Enforce, ForbiddenPaths and Checks are ADR-038's deny-capable
+	// extension (docs/vision/29-verbs-not-lookups.md §2 thesis 2): see
+	// schema/guard/schema.cue's #Guard doc comments for their contract.
+	Enforce        bool
+	ForbiddenPaths []string
+	Checks         []string
 }
 
 // GuardSet is the decoded runtime form of a `.fathom/guard.cue` file
@@ -124,6 +131,9 @@ func LoadGuards(path string) (GuardSet, error) {
 			MaxRules:       lookupIntDefault(gv, "max_rules", DefaultMaxRules),
 			IncludeModules: lookupBoolDefault(gv, "include_modules", false),
 			CommandScopes:  lookupStrings(gv, "command_scopes"),
+			Enforce:        lookupBoolDefault(gv, "enforce", false),
+			ForbiddenPaths: lookupStrings(gv, "forbidden_paths"),
+			Checks:         lookupStrings(gv, "checks"),
 		}
 		if g.MaxRules <= 0 {
 			errs = append(errs, fieldErr(path, prefix+".max_rules", fmt.Errorf("must be > 0, got %d", g.MaxRules)))
@@ -138,6 +148,14 @@ func LoadGuards(path string) (GuardSet, error) {
 		}
 		if len(g.Scopes) == 0 && len(g.CommandScopes) == 0 {
 			errs = append(errs, fieldErr(path, prefix, fmt.Errorf("must set at least one of scopes/command_scopes — a guard governing nothing is dead by construction")))
+		}
+		// ADR-038: enforce:true with no deterministic check to run is
+		// refused, naming the guard — a note-only guard has nothing an
+		// EvaluateGuardEnforcement call could ever deny on. A command
+		// guard's own match (command_scopes) IS its check; a file guard
+		// needs forbidden_paths or checks.
+		if g.Enforce && len(g.ForbiddenPaths) == 0 && len(g.Checks) == 0 && len(g.CommandScopes) == 0 {
+			errs = append(errs, fieldErr(path, prefix+".enforce", fmt.Errorf("true requires forbidden_paths, checks, or command_scopes — no deterministic check exists for a note-only guard (ADR-038)")))
 		}
 		errs = append(errs, checkNoOptionalFields(path, prefix, gv)...)
 		out.Guards = append(out.Guards, g)
@@ -156,7 +174,14 @@ func LoadGuards(path string) (GuardSet, error) {
 // today — LoadGuards' lenient reader would otherwise silently ignore it
 // as an unknown field, which is exactly the silent-widening risk law 13
 // exists to prevent.
-var userScopeForbiddenFields = []string{"scopes", "max_rules", "include_modules", "min_tier"}
+var userScopeForbiddenFields = []string{
+	"scopes", "max_rules", "include_modules", "min_tier",
+	// ADR-038: enforcement is a governance decision (denying a tool call),
+	// squarely inside law 13's "governs" half — a user-scope guard may
+	// never flip a project's rule from advisory to blocking, nor invent
+	// its own forbidden_paths/checks the project never authored.
+	"enforce", "forbidden_paths", "checks",
+}
 
 // LoadUserGuards reads and decodes a USER-SCOPE guard file
 // (~/.fathom/guard.cue, docs/design/scoped-config.md deliverable 2):
