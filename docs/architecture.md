@@ -97,7 +97,8 @@ Pending files are bucketed by language and extracted.
 |---|---|
 | Go | Native `go/parser` / `go/ast` — fastest, most complete, extracts symbols + call edges + cyclomatic complexity |
 | Python, JavaScript/TypeScript/JSX/TSX, Ruby | Tree-sitter via **wazero/WASM** (`internal/extractor/tsengine`, ADR-021 §4) — tree-sitter's own core C runtime + one grammar per language, compiled to a self-contained wasm32-wasi module, no CGO. Calibration-gated against the CGO incumbent per language (`docs/plans/extraction-treesitter.md`); query-driven (`.scm` files), not a hand-rolled walk. |
-| Java, C, C++, C#, Rust, Scala, PHP, Bash, Lua | Tree-sitter via the official **CGO** Go bindings (ADR-013) — not yet migrated to the wazero engine |
+| Kotlin (`.kt`/`.kts`) | Also tree-sitter via **wazero/WASM** (`internal/extractor/tsengine`, wave P2/O79) — but *new-language breadth*, not a calibration swap: fathom had no Kotlin extractor at all before this (O69), so there is no CGO incumbent to gate against (`fwcd/tree-sitter-kotlin`, no field() names — see `internal/extractor/tsqueries/kotlin.scm`'s header for how that changes the query patterns). |
+| Java, C, C++, C#, Rust, Scala, PHP, Bash, Lua | Tree-sitter via the official **CGO** Go bindings (ADR-013) — not yet migrated to the wazero engine (Java additionally gained field/import symbol coverage in wave P2/O79, still on this CGO path) |
 | HCL/Terraform | Native HCL parser → `TerraformResource` nodes |
 | Kubernetes YAML | Native k8s decoder → workload kind/name/namespace |
 | CUE | `cue/ast` → definitions and constraints |
