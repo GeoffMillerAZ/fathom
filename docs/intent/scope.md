@@ -7,92 +7,77 @@ Computed progress: `fathom plans status --service fathom` (51 active plans, 779 
 
 **G2. The A/B becomes admissible.** Done when: `fathom flywheel` reports ≥20
 arm-homogeneous units per arm (MI-5) and a keep/retract verdict is recorded under law 12.
-Until then every production savings claim stays inadmissible
-(`docs/vision/24-work-frontier.md` §7: ON arm had 0 admissible units on 2026-08-21).
+Every production savings claim stays inadmissible until then (0 admissible ON-arm units
+on 2026-08-21, `docs/vision/24-work-frontier.md` §7).
 
 **G3. The continuity-thread bet reaches its sample.** Done when: `threadBetCheck`
 reports 20 units and the flywheel's continuity loop states keep or kill
 (`docs/vision/21-continuity-threads.md`; 4 of 20 on 2026-08-21).
 
 **G4. Ambient fathom closes.** Done when: `fathom plans status` shows
-`docs/plans/ambient-fathom.md` with 0 open and 0 claimed-unproven rows. Open on
-2026-08-25 evening: SH-9, SP-10, RG-5 (observatory UI), DO-3, IR-3/4/5 (LLM assess lanes,
-undesigned), OP-1 (the A/B, G2), OP-2 (deploy), RG-9 (wiring row).
+`docs/plans/ambient-fathom.md` with 0 open and 0 claimed-unproven rows. Open: SH-9,
+SP-10, RG-5, RG-9 (observatory UI/wiring), DO-3, IR-3/4/5 (LLM assess lanes, undesigned),
+OP-1 (the A/B, G2), OP-2 (deploy).
 
 **G5. The custodian closes.** Done when: `docs/plans/custodian.md` shows 0 open and 0
-claimed-unproven. Open on 2026-08-25 evening: CC-9 (`config propose`), CC-11/12/13
-(corpus seam, packs, doctor convergence), DP-2/3/4, SD-2/3/4 (SDD panel).
+claimed-unproven. Open: CC-9 (`config propose`), CC-11/12/13 (corpus seam, packs, doctor
+convergence), DP-3/4, SD-2/3/4 (SDD panel); DP-2 is refused (superseded by EP-9).
 
 **G6. Zero claimed-unproven rows fleet-wide, then CI fails closed.** Done when:
-`fathom plans status` shows 0 claimed-unproven across every active plan (0 on
-2026-09-02, with 10 rows `measured-stale` behind a daemon predating HEAD -- a coverage
-gap, not a failure) and `fathom verify --strict` exits 0 for every top-level plan (the
-sweep over all 51 reads 672 claimed / 662 verified / 0 refuted on 2026-09-02; the 10
-unverified are claimed rows with no contract the gate can refute, each naming why).
-Path: store provenance on verdicts and the lexical oracle shipped in 0.8.0 (ADR-030,
-`docs/plans/proof-credibility.md` PC-1..5, PC-17..19); PC-20 is what is left.
+`fathom plans status` shows 0 claimed-unproven across every active plan and
+`fathom verify --strict` exits 0 for every top-level plan. 0 claimed-unproven, and
+672 claimed / 662 verified / 0 refuted across 51 plans on 2026-09-02 (the 10 unverified
+are claimed rows with no contract the gate can refute, each naming why).
+`docs/plans/proof-credibility.md` PC-20 is what is left.
 
 **G9. The bench is honest, cheap to re-run, and the 2026-09-13 reading is the baseline.**
-BP-1..25 proved (L0 index oracle, L1 payload replay and L2 corpus gate in `task validate`;
-every cell remembered by its key; targeted runs; H2-3 registered) and the first replicated
-home run (run-20260913T002832Z, BC-14 / BP-25) is on the ledger under both H2-1 and H2-3:
-FAIL on cost either way — fathom passed 31/33 to grep's 28/33 but returned 1.90× the bytes
-(O31), and every headless fathom cell paid a ToolSearch turn the config can remove (O32,
-BP-39). Done when the next L4 (BP-44) borrows every grep and none cell by key, re-runs
-only the fathom cells, and records payload ≤ 1.0× or why not — after BP-41..43 land and a
-targeted run over the losing tasks shows them. Before ADR-032 the single three-arm bench
-could only test what grep can also do and measured the harness more than the index
-(O23–O26); the public run (PB-19) and any publication stay operator decisions (Q4, F2).
+BP-1..25 proved (L0 index oracle, L1 payload replay, L2 corpus gate, per-key cell memoization,
+H2-3 registered). The first replicated home run (run-20260913T002832Z) is FAIL on cost
+either way: fathom passed 31/33 to grep's 28/33 but returned 1.90× the bytes (O31), and
+every headless cell paid a removable ToolSearch turn (O32). Done when the next L4 (BP-44)
+borrows every grep/none cell by key, re-runs only fathom's, and records payload ≤ 1.0× or
+why not, after BP-41..43 land. Publication stays an operator decision (Q4, F2).
 
 **G10. Every claim fathom makes is on a ledger, against its alternative (ADR-033).** Waves
-1–5 proved (41 of 49 rows) and the pilots for M1, M3, M4, M5 and M6 are on
-`docs/bench/scenarios-ledger.jsonl` (74 rows) with their predictions beside their verdicts:
-M1 zero violations on either arm across 64 cells, M4 refuted as run, M5 confirmed on
-overlap without a token win, M6 equal accuracy at a third of grep's cost for grep. Two rows
-are honestly unmeasured and re-run next: M2 (no agent wrote a contract-bearing row, SB-53)
-and M7 (a setup defect, SB-51). Done when those two rows carry a reading and SB-48
-(search with a receipt) has a targeted run beside the lookup tasks grep won — the cost story
-the whole matrix points at. M8 and M9 stay registered behind that. **2026-09-13:** every
-pilot named above is voided by O41 (G11) — read this paragraph as history, not proof.
+1–5 shipped the matrix, and pilots for M1/M3/M4/M5/M6 landed on
+`docs/bench/scenarios-ledger.jsonl`. **Voided 2026-09-13 by O41 (see G11):** the wired arm
+never had its tools connected, so every pilot reading here is history, not proof.
 
 **G11. A reading, a hand-off and an answer carry their evidence (ADR-034).** The first
-round's 74 rows are voided by an instrument defect (the wired arm never had the tools) and
-say so on the ledger; every cell now carries its server status and surface calls, published
-readings are plan rows the gate verifies against the ledger, every tool answers under a
-budget with a receipt, discoveries reach workers and the next session as fresh-resolved
-pointers, and coverage is a code fact by layer. Done when the reruns in `docs/plans/receipts.md`
-wave 5 carry readings with `surface_calls > 0` and the discoveries kill criteria are decided.
+round's 74 rows were voided by an instrument defect (the wired arm never had the tools);
+every cell now carries its server status and surface calls, published readings are plan
+rows the gate verifies against the ledger, every tool answers under a budget with a
+receipt, discoveries reach workers and the next session as fresh-resolved pointers, and
+coverage is a code fact by layer. Done when the reruns in `docs/plans/receipts.md` wave 5
+carry readings with `surface_calls > 0` and the discoveries kill criteria are decided.
 
-**G12. The surface leads with the answers grep cannot give, and every answer is falsifiable (ADR-035).** The
-four impact verbs and a safe-delete check join the agent surface, obligations names the rule that
-governs, a layer rule compiles to a test, receipts carry a resolution tier a stranger can
-re-derive, and fathom is measured on a corpus it did not write. Done when `docs/plans/verbs.md`
-waves A–D are proven and M10, M11, M12 and M13 carry readings, honest either way.
-**2026-09-17:** waves A–D are proven (VB-1..36) and every row carries a reading. M7's freshness
-kill clause fired (VB-18) — freshness leaves positioning; M11/M11b (VB-19..21) and M8 (VB-30/31)
-held; M10 (VB-12) is on hold until ADR-037's raw-guide fallback is re-measured; M13's
-gated-versus-advisory governance pilot (VB-16) and M15's historical-PR review (VB-24, 5/42
-strict-new hits) stay open; M12/M12b (VB-27, VB-35) and M14 (VB-29) are a published null or stay
-advisory. Governance now bites at the edit for checkable rules (ADR-037, ADR-038); on the lookup
-pilot fathom reads level with the best tools at lower cost, not a token-savings win
-(`docs/bench/README.md` "Where fathom stands").
+**G12. The surface leads with the answers grep cannot give, and every answer is falsifiable
+(ADR-035).** The four impact verbs and a safe-delete check join the agent surface,
+obligations names the governing rule, a layer rule compiles to a test, receipts carry a
+re-derivable resolution tier, and fathom is measured on a corpus it did not write. Done
+when `docs/plans/verbs.md` waves A–D are proven and M10–M13 carry readings, honest either
+way. **2026-09-17:** waves A–D proven (VB-1..36); M7's freshness kill fired (VB-18 —
+freshness leaves positioning); M11/M11b and M8 held; M10 is on hold pending ADR-037's
+raw-guide re-measure; M13's governance pilot and M15's historical-PR review stay open;
+M12/M12b and M14 are a published null or stay advisory. Governance now bites at the edit
+for checkable rules (ADR-037, ADR-038); fathom reads level with the best tools at lower
+cost, not a token-savings win (`docs/bench/README.md` "Where fathom stands").
 
 **G7. The evidence plane's waves 1–2 ship and its oracle gate is read (ADR-026).** Waves 1
 and 2 shipped 2026-08-27: the verb, the ledger, the doctor rows, the clock, the shared
 attention line, the capped primer, the guard proposal with provenance, U12/U13, the fleet
-column, and K5's pair with K1's measured baseline (2 records, median 78 days). Done when:
+column, and K5's pair with K1's measured baseline (2 records, median 78 days). Done when
 the clock row records whether K0's demand signal (≥3 annotations across ≥2 repos) was met
-by day 30 — **either outcome closes the goal**, and EP-16/17/18 are the only rows still
-waiting on it.
+by day 30 — either outcome closes the goal, and EP-16/17/18 are the only rows still waiting
+on it.
 
 ## Current boundaries
 
 - Languages: Go via `go/parser`; Python, JS/TS, Ruby, Kotlin via tree-sitter on wazero
-  (`internal/extractor/tsengine`; Kotlin added wave P2/O79 as new-language breadth, no
-  CGO incumbent); Java, C, C++, C#, Rust, Scala, PHP, Bash, Lua via CGO tree-sitter; HCL,
-  Kubernetes YAML, CUE, Markdown, `go.mod` natively; tool identity for Helm, kustomize,
-  compose, OpenAPI, generated files. Evidence: `docs/architecture.md` "Extraction",
-  ADR-021.
+  (`internal/extractor/tsengine`); Java, C, C++, C#, Rust, Scala, PHP, Bash, Lua via CGO
+  tree-sitter; HCL, Kubernetes YAML, CUE, Markdown, `go.mod` natively; tool identity for
+  Helm, kustomize, compose, OpenAPI, generated files. Evidence: `docs/architecture.md`
+  "Extraction", ADR-021.
 - Surfaces: 57 CLI verbs (`fathom help`, counted 2026-09-02; ADR-029 adds `harness`);
   MCP over stdio and HTTP with 55 registered tools and a 19-tool agent surface, which
   now serve annotations and a generated `outputSchema` (`docs/mcp-tools.md`); Go client
@@ -101,11 +86,11 @@ waiting on it.
   served by one always-on loopback daemon (`serve-http`, `127.0.0.1:7575`) under launchd.
   Evidence: ADR-020, ADR-025, `Taskfile.yml` deploy.
 - Harnesses: Claude Code (SessionStart, PreToolUse, PostToolUse, Stop, SessionEnd,
-  PreCompact hooks; verified on this machine) and Codex (AGENTS.md stanza, `fathom prime`,
-  MCP). Under ADR-029 the harness is data in `internal/harness`: Codex and Gemini CLI
-  descriptors carry codecs and ship `unverified` until a real session's beats verify
-  them; Cursor and Copilot are data rows; tiers C/D are documented rows. Evidence:
-  `docs/adoption/claude-code.md`, `docs/adoption/codex.md`, `docs/vision/25-harness-port.md`.
+  PreCompact hooks) and Codex (AGENTS.md stanza, `fathom prime`, MCP) both verified live.
+  Under ADR-029 the harness is data in `internal/harness`: Gemini CLI ships `unverified`
+  until a real session's beats verify it; Cursor and Copilot are data rows; tiers C/D are
+  documented rows. Evidence: `docs/adoption/claude-code.md`, `docs/adoption/codex.md`,
+  `docs/vision/25-harness-port.md`.
 - Fleet: the repositories on this workstation, reconciled by `fathom fleet reconcile`
   (20 on 2026-09-02, 19 drifted on the dry run; nothing applied). Evidence:
   `CHANGELOG.md` 2026-08-13.
@@ -131,16 +116,14 @@ migration note (`docs/rename-migration.md` is the precedent; new ones go to
   `internal/verify/markdown.go`.
 - `fathom verify` exit codes 0/1/2 and the `--strict`, `--require-all`, `--quiet` flags;
   every wired repo's `lefthook.yml` depends on them. Evidence: `cmd/fathom/verify.go`.
-- Hook verbs and their stdin/stdout contracts: `session-hook` (with `--event
-  instructions-loaded|subagent-start|tool-failure|cwd-changed`),
-  `edit-hook [--pre]`, `stop-hook`, `session-end-hook`, `pre-compact-hook`,
-  `config audit --hook [--event file-changed]` and `doctor --brief`, each with an
-  additive `--harness <id>` (absent ⇒ `claude-code`); `fathom init` writes them into
-  adopters' `~/.claude/settings.json` and, under `--harness=gemini-cli`, into the
-  `hooks` key of the repo's `.gemini/settings.json`. It writes NO Codex hook file:
-  codex-cli 0.153.1 loads hooks only from the user-global `$CODEX_HOME/hooks.json`,
-  which fathom does not edit unasked — `fathom harness hooks --harness codex` prints
-  the entries instead. Evidence: `docs/adoption/claude-code.md`, ADR-029.
+- Hook verbs and their stdin/stdout contracts: `session-hook` (`--event
+  instructions-loaded|subagent-start|tool-failure|cwd-changed`), `edit-hook [--pre]`,
+  `stop-hook`, `session-end-hook`, `pre-compact-hook`, `config audit --hook [--event
+  file-changed]`, `doctor --brief`, each with an additive `--harness <id>` (absent ⇒
+  `claude-code`). `fathom init` writes them into `~/.claude/settings.json` and, under
+  `--harness=gemini-cli`, into `.gemini/settings.json`'s `hooks` key; it writes no Codex
+  hook file (codex-cli only loads a user-global one — `fathom harness hooks --harness
+  codex` prints the entries instead). Evidence: `docs/adoption/claude-code.md`, ADR-029.
 - `fathom harness list|capabilities|hooks|ladder|matrix` (`--json` where offered) and
   the exported descriptor shape, including each descriptor's event catalogue
   (`schema/harness`). Evidence: ADR-029.
