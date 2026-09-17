@@ -596,6 +596,56 @@ func TestFindScenarioCellsByRun_MissingCellsDirIsEmptyNotError(t *testing.T) {
 	}
 }
 
+// TestFindScenarioCellByTrial_MatchesExactlyOneTrial is wave-n13's own
+// proof: among two trials of the SAME (task, arm, run), only the named
+// trial's own record comes back — its sibling trial (which may carry a
+// genuine, untouched PASS or FAIL) is never returned.
+func TestFindScenarioCellByTrial_MatchesExactlyOneTrial(t *testing.T) {
+	dir := t.TempDir()
+	key := ScenarioCellKey(testInvariants())
+	for _, c := range []CellResult{
+		{TaskID: "T1", Arm: "full", Trial: 1, CellKey: key, RunID: "run-1", Success: false},
+		{TaskID: "T1", Arm: "full", Trial: 2, CellKey: key, RunID: "run-1", Success: true},
+	} {
+		if err := StoreScenarioCell(dir, c); err != nil {
+			t.Fatalf("StoreScenarioCell %+v: %v", c, err)
+		}
+	}
+
+	got, ok, err := FindScenarioCellByTrial(dir, "T1", "full", "run-1", 1)
+	if err != nil || !ok {
+		t.Fatalf("FindScenarioCellByTrial trial 1: ok=%v err=%v", ok, err)
+	}
+	if got.Trial != 1 || got.Success {
+		t.Errorf("expected trial 1's own (Success=false) record, got %+v", got)
+	}
+
+	got2, ok, err := FindScenarioCellByTrial(dir, "T1", "full", "run-1", 2)
+	if err != nil || !ok {
+		t.Fatalf("FindScenarioCellByTrial trial 2: ok=%v err=%v", ok, err)
+	}
+	if got2.Trial != 2 || !got2.Success {
+		t.Errorf("expected trial 2's own (Success=true) record, got %+v", got2)
+	}
+}
+
+// TestFindScenarioCellByTrial_NoMatchIsEmptyNotError covers the miss
+// case: a trial number no stored cell carries is a plain miss.
+func TestFindScenarioCellByTrial_NoMatchIsEmptyNotError(t *testing.T) {
+	dir := t.TempDir()
+	key := ScenarioCellKey(testInvariants())
+	if err := StoreScenarioCell(dir, CellResult{TaskID: "T1", Arm: "full", Trial: 1, CellKey: key, RunID: "run-1"}); err != nil {
+		t.Fatal(err)
+	}
+	_, ok, err := FindScenarioCellByTrial(dir, "T1", "full", "run-1", 2)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if ok {
+		t.Error("expected no match for a trial that was never stored")
+	}
+}
+
 // TestHarnessVersionsForRun_DistinctSortedAcrossTaskArm is O65 (wave N12)
 // item 3's own proof: a cell key is built over HarnessVersion, so a
 // mismatched -harness-version at filing time borrows nothing under ANY

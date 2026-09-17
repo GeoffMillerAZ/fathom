@@ -181,6 +181,16 @@ func WriteScenarioLedger(path string, rows []ScenarioLedgerRow) error {
 // row matches (RunID, TaskID) or when the row matched must first be
 // filed: a stranger voiding a row that was never there would silently
 // invent a defect claim for something that does not exist.
+//
+// This is the WHOLE-ROW form only — every trial of (runID, taskID, arm)
+// is equally untrustworthy (e.g. no MCP tools connected at all), so
+// excluding the row entirely from every verdict is correct. `void
+// -trial N` (wave n13, cmd/scenariobench's cmdVoid) is the OTHER shape —
+// one trial's own stored cell independently proven a scorer_false_fail —
+// and deliberately does not call this function at all: it corrects
+// FindScenarioCellByTrial's own cell (cell.go) and leaves the row for a
+// subsequent `scenariobench ledger` re-file to rebuild, never touching
+// this ledger file directly.
 func VoidScenarioLedgerRow(ledgerPath, runID, taskID, arm, reason string) error {
 	rows, err := LoadScenarioLedger(ledgerPath)
 	if err != nil {

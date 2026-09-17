@@ -1609,6 +1609,122 @@ func TestCmdVoid_MarksRowCellAndRerendersReadme(t *testing.T) {
 	}
 }
 
+// TestCmdVoid_TrialFlagCorrectsOnlyThatCell is wave-n13's own proof: with
+// -trial N, ONLY that one trial's stored cell is corrected (Success
+// flipped true, InstrumentDefect named) — its sibling trial's own cell,
+// the ledger row, and the README are all left byte-for-byte untouched,
+// deferring to a subsequent `scenariobench ledger` re-file.
+func TestCmdVoid_TrialFlagCorrectsOnlyThatCell(t *testing.T) {
+	dir := t.TempDir()
+	ledgerPath := filepath.Join(dir, "ledger.jsonl")
+	if err := scenariobench.AppendScenarioLedger(ledgerPath, scenariobench.ScenarioLedgerRow{
+		RunID: "run-1", TaskID: "T1", Arm: "full", Trials: 2, Successes: 1, ModelID: "sonnet",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	readmePath := scenarioLedgerReadmeFixture(t, dir)
+	readmeBefore, err := os.ReadFile(readmePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cellsDir := filepath.Join(dir, "cells")
+	inv := scenariobench.CellInvariants{
+		CorpusSHA256: "abc123", TaskID: "T1", Arm: "full", ModelID: "sonnet",
+		HarnessVersion: "2.1.0", Scoring: "oracle-v1", PromptSubject: "x",
+	}
+	key := scenariobench.ScenarioCellKey(inv)
+	if err := scenariobench.StoreScenarioCell(cellsDir, scenariobench.CellResult{
+		TaskID: "T1", Arm: "full", Trial: 1, CellKey: key, RunID: "run-1", Success: false,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := scenariobench.StoreScenarioCell(cellsDir, scenariobench.CellResult{
+		TaskID: "T1", Arm: "full", Trial: 2, CellKey: key, RunID: "run-1", Success: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	rc := run([]string{
+		"void",
+		"-ledger", ledgerPath,
+		"-readme", readmePath,
+		"-cells", cellsDir,
+		"-corpus-glob", filepath.Join(dir, "no-such-corpus", "*.json"),
+		"-run-id", "run-1", "-task", "T1", "-arm", "full", "-trial", "1",
+		"-reason", "scorer_false_fail: quoted-blockquote token exclusion",
+	})
+	if rc != 0 {
+		t.Fatalf("void -trial 1 exited %d, want 0", rc)
+	}
+
+	t1 := readStoredCell(t, scenariobench.ScenarioCellPath(cellsDir, key, 1))
+	if !t1.Success {
+		t.Error("expected trial 1's Success corrected to true")
+	}
+	if t1.InstrumentDefect != "scorer_false_fail: quoted-blockquote token exclusion" {
+		t.Errorf("trial 1 InstrumentDefect = %q, want it set", t1.InstrumentDefect)
+	}
+
+	t2 := readStoredCell(t, scenariobench.ScenarioCellPath(cellsDir, key, 2))
+	if !t2.Success || t2.InstrumentDefect != "" {
+		t.Errorf("expected trial 2's own cell untouched, got %+v", t2)
+	}
+
+	rows, err := scenariobench.LoadScenarioLedger(ledgerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 || rows[0].Trials != 2 || rows[0].Successes != 1 || rows[0].InstrumentDefect != "" {
+		t.Errorf("expected the ledger row left untouched for a subsequent `ledger` re-file, got %+v", rows)
+	}
+
+	readmeAfter, err := os.ReadFile(readmePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(readmeBefore) != string(readmeAfter) {
+		t.Error("expected the README untouched by a -trial void — the row is rebuilt by a subsequent `ledger` re-file, not re-rendered here")
+	}
+}
+
+// TestCmdVoid_TrialFlagRefusesWhenCellAbsent: a trial number no stored
+// cell carries is refused, leaving the cell store, ledger and README
+// untouched — the same "never invent a defect claim" discipline the
+// whole-row form already has.
+func TestCmdVoid_TrialFlagRefusesWhenCellAbsent(t *testing.T) {
+	dir := t.TempDir()
+	ledgerPath := filepath.Join(dir, "ledger.jsonl")
+	if err := scenariobench.AppendScenarioLedger(ledgerPath, scenariobench.ScenarioLedgerRow{
+		RunID: "run-1", TaskID: "T1", Arm: "full", Trials: 1, Successes: 0,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	readmePath := scenarioLedgerReadmeFixture(t, dir)
+	cellsDir := filepath.Join(dir, "cells")
+
+	rc := run([]string{
+		"void",
+		"-ledger", ledgerPath,
+		"-readme", readmePath,
+		"-cells", cellsDir,
+		"-corpus-glob", filepath.Join(dir, "no-such-corpus", "*.json"),
+		"-run-id", "run-1", "-task", "T1", "-arm", "full", "-trial", "3",
+		"-reason", "no such trial was ever stored",
+	})
+	if rc == 0 {
+		t.Fatal("expected a non-zero exit voiding a trial that was never stored")
+	}
+
+	rows, err := scenariobench.LoadScenarioLedger(ledgerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 || rows[0].InstrumentDefect != "" {
+		t.Errorf("expected the ledger untouched by a refused -trial void, got %+v", rows)
+	}
+}
+
 // TestCaptureAgentDiff_ExcludesInstrumentOwnedFiles pins O55 item 4, in the
 // finding's own words: a worktree with a fathom-owned file and a real edit
 // yields a one-file diff. CLAUDE.md is recorded in the worktree's own
