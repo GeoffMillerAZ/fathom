@@ -124,7 +124,7 @@ jobs:
             --service ${{ github.event.repository.name }} \
             --since origin/${{ github.base_ref }} \
             --store workspace/db/ci.sqlite \
-            > review-comment.md
+            --out review-comment.md
 
       - name: upsert the PR comment
         uses: actions/github-script@v7
@@ -161,6 +161,11 @@ jobs:
 store is discarded after the job, so writing findings to its claims store
 would only be lost work — the same reasoning the pre-push hook's
 `--no-persist` summary already relies on.
+
+`--out review-comment.md` writes the rendered comment straight to that file
+(stdout then carries only a one-line confirmation) instead of a shell `>`
+redirect — the same bytes either way, but `--out` also fails the step
+loudly if the file cannot be written, rather than silently truncating it.
 
 `fetch-depth: 0` is load-bearing: `actions/checkout`'s default shallow clone
 fetches only the PR's head, so `origin/${{ github.base_ref }}` does not exist

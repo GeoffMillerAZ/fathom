@@ -1275,7 +1275,7 @@ is required.
 ### `review` — the change-review verb
 
 ```sh
-fathom review --service <id> --since <git-ref> [--store DB] [--no-persist] [--budget-seconds N] [--call-log P] [--json]
+fathom review --service <id> --since <git-ref> [--store DB] [--no-persist] [--budget-seconds N] [--call-log P] [--json] [--format text|github] [--out FILE]
 ```
 
 CLI mirror of the `review_diff` MCP tool: diff impact + obligations/findings
@@ -1297,6 +1297,23 @@ the deterministic-oracle findings to the claims store unless `--no-persist`
 (the pre-push summary hook uses it). `--budget-seconds` is advisory — on
 excess it prints a named skip and exits 0; it requires `--no-persist` (a
 bounded run must never be a store writer).
+
+`--format github` (VB-22, `docs/plans/verbs.md`) renders ONE deterministic
+Markdown PR comment instead of the human summary or `--json`: changed
+symbols with their resolved direct callers and each caller's resolution
+tier (`[resolved]`/`[heuristic]`), call-site completeness (callers found vs.
+how many live in this same diff), governing rules with cited lines, a
+`### Verify` line naming `fathom verify --service … --plan …` whenever the
+diff touches a `docs/plans/*.md` row's anchored symbol, affected tests and
+the test gap, and a coverage block when a profile was supplied — every
+finding line carries a stable claim id, and NO model prose appears anywhere
+on this path (`internal/analysis/review/github.go`'s `renderGitHubReview`).
+Opens with the fixed marker `<!-- fathom-review -->` so a caller can find
+and update its own prior comment. `--out FILE` writes the report (any
+format) to `FILE` instead of stdout — stdout then carries only a one-line
+confirmation — for a CI step that captures the comment body and hands it to
+a separate upsert step; see `docs/adoption/github-action.md` (VB-23) for the
+full GitHub Action and the required-check wiring.
 
 ### `receipt` — a stranger's re-derivation (VB-20)
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -50,6 +51,7 @@ func runReview(args []string, gitRunner func(args ...string) ([]byte, error), st
 	since := fs.String("since", "", "git ref to diff against (required; e.g. origin/main)")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a human-readable summary")
 	format := fs.String("format", "text", "output format: \"text\" (default) or \"github\" (VB-22: one deterministic Markdown PR comment — changed symbols with resolved callers and tier, call-site completeness, governing rules, a verify line for touched plan rows, affected tests/test gap, coverage; overrides --json)")
+	outPath := fs.String("out", "", "write the review report to this file instead of stdout (VB-23: a GitHub Action step captures --format github's comment body here, then hands the file to the upsert-comment step — docs/adoption/github-action.md); stdout then carries only a short confirmation line")
 	noPersist := fs.Bool("no-persist", false, "report only: never write findings to the claims store (the pre-push summary hook uses this)")
 	budgetSeconds := fs.Int("budget-seconds", 0, "advisory time budget: on excess, print a named skip and exit 0 (requires --no-persist — a bounded run must never be a store writer); 0 = unbounded")
 	callLogFlag := fs.String("call-log", "", "MCP-format call log (JSONL) to append this run's verdict outcome to (T5-7); default: [daemon].call_log in config.toml, else "+defaultCallLogPath())
@@ -73,7 +75,7 @@ func runReview(args []string, gitRunner func(args ...string) ([]byte, error), st
 	}
 
 	body := func() int {
-		return runReviewBody(gitRunner, *storePath, *service, *since, *format, *jsonOut, *noPersist, *callLogFlag, coverageProfileFlags, stdout, stderr)
+		return runReviewBody(gitRunner, *storePath, *service, *since, *format, *jsonOut, *noPersist, *callLogFlag, *outPath, coverageProfileFlags, stdout, stderr)
 	}
 	if *budgetSeconds > 0 {
 		// The whole body races the budget. On excess the process prints a
@@ -97,8 +99,31 @@ func runReview(args []string, gitRunner func(args ...string) ([]byte, error), st
 	return body()
 }
 
-func runReviewBody(gitRunner func(args ...string) ([]byte, error), storePathV, serviceV, sinceV, formatV string, jsonOutV, noPersistV bool, callLogFlagV string, coverageProfilesV []string, stdout, stderr io.Writer) int {
+func runReviewBody(gitRunner func(args ...string) ([]byte, error), storePathV, serviceV, sinceV, formatV string, jsonOutV, noPersistV bool, callLogFlagV, outPathV string, coverageProfilesV []string, stdout, stderr io.Writer) int {
 	storePath, service, since, format, jsonOut, noPersist, callLogFlag := &storePathV, &serviceV, &sinceV, &formatV, &jsonOutV, &noPersistV, &callLogFlagV
+
+	// --out (VB-23): redirect the report body (github Markdown, JSON, or the
+	// human text summary — never the operational notices/errors above, which
+	// always go to the real stdout/stderr) into a buffer, then flush it to
+	// outPathV on every exit path via finishReview. A CI step then hands the
+	// file straight to the comment-upsert step instead of scraping stdout.
+	reportW := stdout
+	var reportBuf *bytes.Buffer
+	if outPathV != "" {
+		reportBuf = &bytes.Buffer{}
+		reportW = reportBuf
+	}
+	finishReview := func(code int) int {
+		if reportBuf == nil {
+			return code
+		}
+		if werr := os.WriteFile(outPathV, reportBuf.Bytes(), 0o644); werr != nil {
+			fmt.Fprintf(stderr, "error: writing --out %q: %v\n", outPathV, werr)
+			return 1
+		}
+		fmt.Fprintf(stdout, "review: wrote %s report to %s\n", *format, outPathV)
+		return code
+	}
 
 	out, err := gitRunner("diff", "--name-only", *since)
 	if err != nil {
@@ -244,7 +269,7 @@ func runReviewBody(gitRunner func(args ...string) ([]byte, error), storePathV, s
 	// (changed-symbol/caller detail, touched plan rows) is resolved here
 	// first.
 	if *format == "github" {
-		fmt.Fprint(stdout, review.RenderGitHubReview(review.GitHubReviewInput{
+		fmt.Fprint(reportW, review.RenderGitHubReview(review.GitHubReviewInput{
 			Verdict:         v,
 			TestGap:         gap,
 			IndexCommit:     watermark,
@@ -252,24 +277,24 @@ func runReviewBody(gitRunner func(args ...string) ([]byte, error), storePathV, s
 			ChangedSymbols:  review.ChangedSymbolReviews(in.Nodes, in.TypedEdges, in.ChangedFiles),
 			TouchedPlanRows: resolveTouchedPlanRows(corpusRoot, in),
 		}))
-		return 0
+		return finishReview(0)
 	}
 
 	if *jsonOut {
 		payload := v.Payload(persisted)
 		payload["test_impact"] = gap.Payload()
-		enc := json.NewEncoder(stdout)
+		enc := json.NewEncoder(reportW)
 		enc.SetIndent("", "  ")
 		if err := enc.Encode(payload); err != nil {
 			fmt.Fprintf(stderr, "error: encode JSON: %v\n", err)
 			return 1
 		}
-		return 0
+		return finishReview(0)
 	}
 
-	printReviewSummary(stdout, v)
-	renderTestGap(stdout, gap)
-	return 0
+	printReviewSummary(reportW, v)
+	renderTestGap(reportW, gap)
+	return finishReview(0)
 }
 
 // renderTestGap prints the test-impact block after the dimension summary
