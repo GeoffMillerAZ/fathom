@@ -774,7 +774,7 @@ Paired (bootstrap, n=7, seed 20260902, 20000 resamples): success-rate diff -0.07
 
 **lca-run-1** — fathom vs control: success 94/117 vs 93/117, tokens 1.640×, cost 1.291×.
 Surface calls: control=0, fathom=231.
-On lca-run-1, fathom's arm beat control on success (94 v 93) at 1.640× the tokens; the tools were called 231 time(s). Registered criterion lca-bug-localization-m12-m16: pass (treatment met the registered bar).
+On lca-run-1, fathom's arm beat control on success (94 v 93) at 1.640× the tokens; the tools were called 231 time(s). Registered criterion lca-bug-localization-m12-m16: null (paired 95% CI of the success-rate difference includes zero: +0.009 [-0.077, +0.094]; the null is published).
 gold source: mcp__fathom__search earned 38 of 94 passes.
 Paired (bootstrap, n=39, seed 20260902, 20000 resamples): success-rate diff +0.009 [-0.077, +0.094] (95% CI); token ratio 2.00× [1.71×, 2.33×].
 
