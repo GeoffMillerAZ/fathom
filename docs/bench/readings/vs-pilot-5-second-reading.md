@@ -110,7 +110,7 @@ output for completeness, not as commands to run.
 
 Full machine-readable list (25 entries: 22 to void + 3 already-lost, each
 `{task, arm, trial, reason}`):
-`/private/tmp/claude-501/-Volumes-m2ext-code-geoffmilleraz-sextant/e8652946-4037-4a56-8b48-3336a3490e6f/scratchpad/vs-pilot-5-voids.json`
+`<scratchpad>/vs-pilot-5-voids.json`
 
 ### 3. Gold-source tools per arm
 

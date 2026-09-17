@@ -109,7 +109,7 @@ scenariobench void -cells <bench-root>/workspace/artifacts/scenariobench/cells -
 scenariobench void -cells <bench-root>/workspace/artifacts/scenariobench/cells -run-id reuse-pilot-4 -task RE-SB-cli__cli-10124 -arm full -trial 2 -reason "Same list_test.go collision blocks oracle; plan_coverage reached the full gold function (NewCmdRepo/AUTOLINK-4) but drift check flags 1 claimed row's symbol as later vanished."
 ```
 
-Also written as JSON: `/private/tmp/claude-501/-Volumes-m2ext-code-geoffmilleraz-sextant/e8652946-4037-4a56-8b48-3336a3490e6f/scratchpad/reuse-pilot-4-voids.json`.
+Also written as JSON: `<scratchpad>/reuse-pilot-4-voids.json`.
 
 ### 4. Did any fathom tool change an outcome — cell by cell
 
