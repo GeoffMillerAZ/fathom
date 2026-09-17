@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sort"
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/hookcache"
@@ -131,6 +132,21 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	}
 	if report.ClassifiedZero > 0 {
 		fmt.Fprintf(stdout, "classified-but-zero-symbols: %d\n", report.ClassifiedZero)
+	}
+	// Unsupported languages (O69): a known programming language with no
+	// registered extractor — named and counted rather than left
+	// indistinguishable from the generic unclassified/no-extractor path.
+	// Sorted for deterministic output.
+	if len(report.UnsupportedLanguages) > 0 {
+		langs := make([]string, 0, len(report.UnsupportedLanguages))
+		for lang := range report.UnsupportedLanguages {
+			langs = append(langs, lang)
+		}
+		sort.Strings(langs)
+		fmt.Fprintf(stdout, "unsupported languages (no extractor):\n")
+		for _, lang := range langs {
+			fmt.Fprintf(stdout, "  %s: %d file(s)\n", lang, report.UnsupportedLanguages[lang])
+		}
 	}
 	// Typed-edge counters (ADR-021 §3), non-zero-only like the above: their
 	// absence for a Go service is a signal (the silent relative-path no-op

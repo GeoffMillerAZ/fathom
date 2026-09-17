@@ -27,6 +27,15 @@ type FleetBackend interface {
 	SymbolsFor(service string) []core.SymbolNode
 	// ObservationsFor returns all core.Observations for service.
 	ObservationsFor(service string) []core.Observation
+	// UnsupportedLanguagesFor returns, by language display name (e.g.
+	// "kotlin"), the count of files for service whose extension names a
+	// known programming language fathom has no registered extractor for
+	// (O69, connector.UnsupportedLanguageForPath) — the Long Code Arena
+	// bench run's bumble-tech/appyx finding: a real Kotlin repo indexed as
+	// near-empty with no signal anywhere that Kotlin was the reason.
+	// Implementations that cannot compute this (no source-fetching
+	// capability) return nil.
+	UnsupportedLanguagesFor(service string) map[string]int
 }
 
 // registerPlatformTools registers the five fleet-level tools into s. The
@@ -72,6 +81,23 @@ func registerListServices(s *Server, backend QueryInterface, fleet FleetBackend)
 				if path, _, found, err := backend.ServiceMeta(ctx, svc); err == nil && found && path != "" {
 					entry["path"] = path
 				}
+			}
+			// Unsupported languages (O69): a known programming language with
+			// no registered extractor, named and counted rather than left
+			// silently indistinguishable from a service that classifies
+			// every file it has. Omitted when there is nothing to report —
+			// the common case stays exactly as quiet as it always was.
+			if unsupported := fleet.UnsupportedLanguagesFor(svc); len(unsupported) > 0 {
+				names := make([]string, 0, len(unsupported))
+				for lang := range unsupported {
+					names = append(names, lang)
+				}
+				sort.Strings(names)
+				rows := make([]any, len(names))
+				for i, lang := range names {
+					rows[i] = map[string]any{"language": lang, "files": unsupported[lang]}
+				}
+				entry["unsupported_languages"] = rows
 			}
 			entries = append(entries, entry)
 		}

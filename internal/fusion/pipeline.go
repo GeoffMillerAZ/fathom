@@ -100,6 +100,20 @@ type Report struct {
 	// tool (ADR-021 §2 / TI-6) — never handed to an extractor, but counted
 	// instead of silently producing zero symbols.
 	Unclassified int
+	// UnsupportedLanguages counts, by language display name (e.g. "kotlin"),
+	// files whose extension belongs to a KNOWN programming language fathom
+	// has no registered extractor for (O69, wave P1 — connector.
+	// UnsupportedLanguageForPath). These files hit the same "no extractor
+	// registered" fallback as any other unrecognized extension — fingerprinted
+	// so they aren't re-sniffed, never extracted — but unlike a generic
+	// unrecognized extension (a lockfile, an image, a config format with no
+	// symbols to extract), a language name is knowable here, and staying
+	// silent about it is exactly the failure the Long Code Arena bench run
+	// found: bumble-tech/appyx, a real Kotlin repository, indexed as
+	// near-empty with no signal anywhere that Kotlin was the reason. Nil
+	// when every discovered extension either has an extractor or is not a
+	// known programming language.
+	UnsupportedLanguages map[string]int
 	// Oversize is the number of files skipped from extraction because their
 	// content exceeded MaxExtractSize (ADR-021 §2 / TI-6) — still
 	// fingerprinted so they are not re-sniffed on every ingest.
@@ -818,6 +832,7 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	report.Oversize = stats.oversize
 	report.ClassifiedZero = stats.classifiedZero
 	report.TSEngineFaults = stats.tsFaults
+	report.UnsupportedLanguages = stats.unsupportedLang
 
 	// Typed Go call-edge enrichment (ADR-021 §3): additive, per-package,
 	// never blocks ingest. See internal/fusion/typedcalls.go.
@@ -949,6 +964,11 @@ type extractStats struct {
 	oversize       int
 	classifiedZero int
 	tsFaults       int // extract errors matching extractor.ErrTSEngineFault (critic M1)
+	// unsupportedLang tallies files, by language display name, that hit the
+	// no-extractor fallback but matched a known-language extension (O69,
+	// connector.UnsupportedLanguageForPath) — the per-call source for
+	// Report.UnsupportedLanguages. Nil until the first such file is seen.
+	unsupportedLang map[string]int
 }
 
 // Stats returns the pipeline's process-lifetime unclassified/oversize counts
@@ -1080,7 +1100,17 @@ func (p *Pipeline) extractAndStore(ctx context.Context, serviceID string, batch 
 		}
 
 		if !ok {
-			// No extractor registered/resolved — write fingerprint only.
+			// No extractor registered/resolved — write fingerprint only. When
+			// the extension names a known programming language fathom simply
+			// has no extractor for (O69), count it by name instead of letting
+			// it vanish indistinguishably among lockfiles, images, and other
+			// genuinely non-code paths — see Report.UnsupportedLanguages.
+			if lang, known := connector.UnsupportedLanguageForPath(pf.ref.Path); known {
+				if stats.unsupportedLang == nil {
+					stats.unsupportedLang = make(map[string]int)
+				}
+				stats.unsupportedLang[lang]++
+			}
 			if err := p.st.SetFingerprint(ctx, serviceID, pf.ref.Path, pf.hash); err != nil {
 				return stats, fmt.Errorf("fusion: set fingerprint %q: %w", pf.ref.Path, err)
 			}

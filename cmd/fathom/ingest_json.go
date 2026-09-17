@@ -51,10 +51,14 @@ type ingestJSON struct {
 	Unclassified   int                     `json:"unclassified"`
 	Oversize       int                     `json:"oversize"`
 	ClassifiedZero int                     `json:"classified_zero"`
-	TypedEdges     *ingestTypedEdgesJSON   `json:"typed_edges,omitempty"`
-	Excluded       *ingestExcludedJSON     `json:"excluded,omitempty"`
-	Error          string                  `json:"error,omitempty"`
-	Hint           string                  `json:"hint,omitempty"`
+	// UnsupportedLanguages names, by language display name (e.g. "kotlin"),
+	// files whose extension belongs to a known programming language fathom
+	// has no registered extractor for (O69). Omitted when empty.
+	UnsupportedLanguages map[string]int        `json:"unsupported_languages,omitempty"`
+	TypedEdges           *ingestTypedEdgesJSON `json:"typed_edges,omitempty"`
+	Excluded             *ingestExcludedJSON   `json:"excluded,omitempty"`
+	Error                string                `json:"error,omitempty"`
+	Hint                 string                `json:"hint,omitempty"`
 }
 
 // errnoClass maps the connector's errno text to its symbolic class; ""
@@ -91,6 +95,9 @@ func renderIngestJSON(w io.Writer, service, svcPath string, report client.Report
 		Unclassified:   report.Unclassified,
 		Oversize:       report.Oversize,
 		ClassifiedZero: report.ClassifiedZero,
+	}
+	if len(report.UnsupportedLanguages) > 0 {
+		out.UnsupportedLanguages = report.UnsupportedLanguages
 	}
 	for _, f := range report.ReadFailures {
 		out.ReadFailures = append(out.ReadFailures, ingestReadFailureJSON{Path: f.Path, Err: f.Err, Errno: errnoClass(f.Err)})
