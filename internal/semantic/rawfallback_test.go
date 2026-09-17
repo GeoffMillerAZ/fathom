@@ -303,13 +303,20 @@ func TestRawFallbackRules_CrossTierPromotion_StrongRootBeatsBlankNestedGuide(t *
 	}
 }
 
-// TestRawFallbackRules_CrossTierPromotion_AnyHitOnNestedGuideBlocksPromotion
-// is the cap's own regression: the same fixture as above, except the
+// TestRawFallbackRules_CrossTierPromotion_AncestorOnlyHitDoesNotBlockPromotion
+// (wave O4, item 1; ADR-037 addendum) replaces this test's own former
+// pinning of the OPPOSITE result: the same fixture as above, except the
 // nested guide's section now mentions the file's own ancestor directory
-// once ("internal") — a weak hit, but a hit — which must be enough to
-// keep the nested guide's proximity advantage; the strong root ADR must
-// NOT leapfrog it.
-func TestRawFallbackRules_CrossTierPromotion_AnyHitOnNestedGuideBlocksPromotion(t *testing.T) {
+// once ("internal") — a weak, ancestor-only hit, never classified strong.
+// H1-T02 (docs/bench readings) found this exact shape in the real repo
+// corpus: internal/CLAUDE.md's other sections each carry only a bare
+// "internal" mention, which used to be enough to block ADR-021 (strong on
+// the file's own symbol) from ever being promoted past them, even though
+// none of them actually names the file's own package or symbol. An
+// ancestor-only hit is not "the nearer rule names the file" — it is
+// evidence the nearer rule names the whole subtree the file merely lives
+// in — so it no longer blocks; see crossTierCloser's own doc comment.
+func TestRawFallbackRules_CrossTierPromotion_AncestorOnlyHitDoesNotBlockPromotion(t *testing.T) {
 	layer := rawFallbackTestLayer(t)
 	nestedDoc := core.SourceFile{Path: "internal/foo/CLAUDE.md", Content: []byte(
 		"# Unrelated policy\n\nEvery internal package must log before merging widgets.\n")}
@@ -325,8 +332,36 @@ func TestRawFallbackRules_CrossTierPromotion_AnyHitOnNestedGuideBlocksPromotion(
 	if len(rows) != 1 {
 		t.Fatalf("len(rows) = %d, want 1", len(rows))
 	}
+	if rows[0].Src != "ADR.md#L1-L4" {
+		t.Errorf("rows[0].Src = %q, want the strong root ADR (%q) — a bare ancestor-directory hit on the nested guide must not keep its proximity advantage: rows=%+v", rows[0].Src, "ADR.md#L1-L4", rows)
+	}
+}
+
+// TestRawFallbackRules_CrossTierPromotion_StrongHitOnNestedGuideBlocksPromotion
+// (wave O4, item 1) is the narrowed cap's own regression: the same fixture,
+// except the nested guide's section now names the file's own PACKAGE
+// directory as its immediate parent ("foo", not merely the shared ancestor
+// "internal") — a hit at packageWeight, which IS strong — and must still
+// keep the nested guide's proximity advantage; the root ADR must NOT
+// leapfrog a nearer candidate that genuinely names the file.
+func TestRawFallbackRules_CrossTierPromotion_StrongHitOnNestedGuideBlocksPromotion(t *testing.T) {
+	layer := rawFallbackTestLayer(t)
+	nestedDoc := core.SourceFile{Path: "internal/foo/CLAUDE.md", Content: []byte(
+		"# Foo package policy\n\nEvery file in foo must log before merging widgets.\n")}
+	rootDoc := core.SourceFile{Path: "ADR.md", Content: []byte(
+		"## ADR-099: The bar type\n\nEverything in this subsystem revolves around bar. " +
+			"See bar's own tests for details.\n")}
+	corpus := []core.SourceFile{nestedDoc, rootDoc}
+
+	rows, err := RawFallbackRules(nil, layer, corpus, "internal/foo/bar.go", 1, "why", nil)
+	if err != nil {
+		t.Fatalf("RawFallbackRules: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("len(rows) = %d, want 1", len(rows))
+	}
 	if rows[0].Src != "internal/foo/CLAUDE.md#L1-L4" {
-		t.Errorf("rows[0].Src = %q, want the nested guide (its own \"internal\" hit, however weak, must block promotion): rows=%+v", rows[0].Src, rows)
+		t.Errorf("rows[0].Src = %q, want the nested guide (its own package-name hit is strong and must block promotion): rows=%+v", rows[0].Src, rows)
 	}
 }
 

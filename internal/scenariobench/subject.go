@@ -38,12 +38,28 @@ import (
 // wired, CompileLayers arm — recorded on the cell so a run that asked for
 // compiled obligations shows what that cost, separately from the session
 // spend RunSessions measures.
+//
+// SectionsTotal/SectionsCompiled/BudgetStopped (wave O4, item 2; ADR-037
+// addendum) are instrument truth over the compile ITSELF, distinct from
+// what it cost: vs-pilot-5's second reading found a subject's obligations
+// compile stopping at budget_stopped 14/60 sections under the layer's
+// default budget, so `obligations` served root boilerplate for the 46
+// sections the compile never reached — a reading that only sees
+// TokensIn/TokensOut/CostUSD cannot tell "the layer is genuinely small" from
+// "the compile quit early", the exact ambiguity that let that defect hide.
+// Parsed off `fathom compile`'s own stdout (compileLayers, below) the same
+// way tokens_in/tokens_out/cost_usd already are; zero/false for a Cached
+// cell (an earlier cell already compiled the shared store — these three
+// fields were never re-derived for a run that did no compiling).
 type CompileCost struct {
-	Cached    bool          `json:"cached,omitempty"` // served from a store an earlier cell compiled
-	TokensIn  int64         `json:"tokens_in"`
-	TokensOut int64         `json:"tokens_out"`
-	CostUSD   float64       `json:"cost_usd"`
-	Duration  time.Duration `json:"duration_ns"`
+	Cached           bool          `json:"cached,omitempty"` // served from a store an earlier cell compiled
+	TokensIn         int64         `json:"tokens_in"`
+	TokensOut        int64         `json:"tokens_out"`
+	CostUSD          float64       `json:"cost_usd"`
+	Duration         time.Duration `json:"duration_ns"`
+	SectionsTotal    int           `json:"sections_total,omitempty"`
+	SectionsCompiled int           `json:"sections_compiled,omitempty"`
+	BudgetStopped    bool          `json:"budget_stopped,omitempty"`
 }
 
 // Worktree is what PrepareSubject prepared for one (task, arm) cell.
@@ -988,10 +1004,27 @@ func waitDaemonReady(baseURL string, timeout time.Duration) error {
 // service's "obligations" layer against the scratch store directly
 // (bypassing the daemon, per cmd/fathom/compile.go's --store mode), and
 // reports its cost from the prose lines it prints ("tokens_in:",
-// "tokens_out:", "cost_usd:"). An unrecognized output shape still returns
-// a zero-cost CompileCost rather than failing the cell, since the compile
+// "tokens_out:", "cost_usd:", "sections_total:", "sections_compiled:",
+// "budget_stopped:"). An unrecognized output shape still returns a
+// zero-cost CompileCost rather than failing the cell, since the compile
 // step itself already succeeded (its exit code is what compileLayers
 // propagates as an error).
+//
+// -max-tokens-per-run=all (wave O4, item 2; ADR-037 addendum) is passed on
+// every real compile: vs-pilot-5's second reading found the layer's own
+// DEFAULT budget (layer.cue's max_tokens_per_run) stopping a subject's
+// compile at budget_stopped 14/60 sections, so `obligations` served root
+// boilerplate for the 46 sections the compile never reached and a reading
+// built to test compiled-obligations coverage instead measured an
+// incomplete layer without knowing it. A bench subject wants the WHOLE
+// corpus compiled in one run — instrument truth over the compiled layer's
+// coverage, not a partial compile masquerading as complete — so this call
+// always requests "all" rather than accepting whatever point the layer's
+// production default happens to stop at; SectionsTotal/SectionsCompiled/
+// BudgetStopped on the returned CompileCost are what let a reading tell an
+// incomplete layer from a product miss even so (a corpus that has grown
+// past what a SINGLE run's real spend can cover would still budget_stop
+// here, now visibly rather than silently).
 func compileLayers(ctx context.Context, root string, task Task, wt Worktree) (*CompileCost, error) {
 	bin := filepath.Join(wt.CellDir, "fathom")
 	service := task.Subject.Service
@@ -1005,7 +1038,7 @@ func compileLayers(ctx context.Context, root string, task Task, wt Worktree) (*C
 		return &CompileCost{Cached: true}, nil
 	}
 	start := time.Now()
-	out, err := runIn(ctx, wt.Path, bin, "compile", "-service", service, "-store", wt.StorePath, "-layer", "obligations", "-dry-run=false")
+	out, err := runIn(ctx, wt.Path, bin, "compile", "-service", service, "-store", wt.StorePath, "-layer", "obligations", "-dry-run=false", "-max-tokens-per-run=all")
 	dur := time.Since(start)
 	if err != nil {
 		return nil, fmt.Errorf("fathom compile: %w (%s)", err, out)
@@ -1013,7 +1046,24 @@ func compileLayers(ctx context.Context, root string, task Task, wt Worktree) (*C
 	if werr := os.WriteFile(marker, []byte(time.Now().UTC().Format(time.RFC3339)+"\n"), 0o644); werr != nil {
 		return nil, fmt.Errorf("fathom compile: writing %s: %w", marker, werr)
 	}
-	cost := &CompileCost{Duration: dur}
+	cost := parseCompileOutput(out)
+	cost.Duration = dur
+	return cost, nil
+}
+
+// parseCompileOutput parses `fathom compile`'s own prose stdout
+// (printCompileRunCore, cmd/fathom/compile.go) into a CompileCost — pulled
+// out of compileLayers as its own pure function so the parsing itself is
+// testable without shelling out to a real binary (Duration is set by the
+// caller, which alone knows the wall-clock span; this function never
+// touches it). An unrecognized line, or a line whose value fails to parse,
+// simply leaves that field at its zero value rather than erroring — the
+// caller's own doc comment on compileLayers already documents this as
+// deliberate: the compile step itself already succeeded (its exit code is
+// what compileLayers propagates as an error), so an unrecognized OUTPUT
+// SHAPE must never turn a successful compile into a reported failure.
+func parseCompileOutput(out string) *CompileCost {
+	cost := &CompileCost{}
 	for _, line := range strings.Split(out, "\n") {
 		line = strings.TrimSpace(line)
 		switch {
@@ -1023,9 +1073,19 @@ func compileLayers(ctx context.Context, root string, task Task, wt Worktree) (*C
 			fmt.Sscanf(strings.TrimSpace(strings.TrimPrefix(line, "tokens_out:")), "%d", &cost.TokensOut)
 		case strings.HasPrefix(line, "cost_usd:"):
 			fmt.Sscanf(strings.TrimSpace(strings.TrimPrefix(line, "cost_usd:")), "%f", &cost.CostUSD)
+		case strings.HasPrefix(line, "sections_total:"):
+			fmt.Sscanf(strings.TrimSpace(strings.TrimPrefix(line, "sections_total:")), "%d", &cost.SectionsTotal)
+		case strings.HasPrefix(line, "sections_compiled:"):
+			fmt.Sscanf(strings.TrimSpace(strings.TrimPrefix(line, "sections_compiled:")), "%d", &cost.SectionsCompiled)
+		case strings.HasPrefix(line, "budget_stopped:"):
+			// printCompileRunCore (cmd/fathom/compile.go) prints this line
+			// ONLY when run.BudgetStopped is true — there is no "false"
+			// line to distinguish from, so the line's mere presence is the
+			// signal, not its trailing text.
+			cost.BudgetStopped = true
 		}
 	}
-	return cost, nil
+	return cost
 }
 
 // InstrumentOwnedPaths returns the repo-relative paths (slash-separated,

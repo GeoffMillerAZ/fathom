@@ -119,54 +119,73 @@ func TestRankByGoverningScope_LengthDoesNotDecideTier(t *testing.T) {
 // TestCrossTierCloser_PromotesStrongFartherOverBlankNearer (wave O3, item
 // 1) pins the one case crossTierCloser adds over plain closerThan: a
 // farther-tier candidate that is STRONG leapfrogs a nearer-tier candidate
-// that is a total lexical blank (relevance == 0).
+// that is not itself strong (here, a total lexical blank).
 func TestCrossTierCloser_PromotesStrongFartherOverBlankNearer(t *testing.T) {
 	nearerBlank := governingScope{tier: 1, depth: 2} // package tier, zero relevance
 	fartherStrong := governingScope{tier: 3, depth: 0}
-	if crossTierCloser(nearerBlank, fartherStrong, 0 /*aRel*/, 12.5 /*bRel*/, false /*aStrong*/, true /*bStrong*/) {
+	if crossTierCloser(nearerBlank, fartherStrong, false /*aStrong*/, true /*bStrong*/) {
 		t.Error("the nearer-but-blank candidate must not sort ahead of a farther-but-strong one")
 	}
-	if !crossTierCloser(fartherStrong, nearerBlank, 12.5, 0, true, false) {
+	if !crossTierCloser(fartherStrong, nearerBlank, true, false) {
 		t.Error("the farther-but-strong candidate must sort ahead of a nearer-but-blank one")
 	}
 }
 
-// TestCrossTierCloser_AnyHitOnNearerBlocksPromotion pins the cap: the
-// moment the nearer candidate has ANY relevance at all — however weak
-// (an ancestor-only hit, never classified as strong) — proximity wins
-// outright and the farther, strong candidate does NOT get promoted.
-func TestCrossTierCloser_AnyHitOnNearerBlocksPromotion(t *testing.T) {
-	nearerWeakHit := governingScope{tier: 1, depth: 2}
+// TestCrossTierCloser_AncestorOnlyHitOnNearerDoesNotBlockPromotion (wave
+// O4, item 1; ADR-037 addendum) pins the narrowed bar: a nearer candidate
+// whose ONLY relevance is an ancestor-directory (or extension) token —
+// never classified "strong" by relevanceStrength — no longer keeps its
+// tier against a farther, strong candidate. H1-T02 (internal/core/model.go
+// vs. internal/CLAUDE.md's other sections, each carrying only a weak hit
+// on the bare token "internal") is exactly this shape.
+func TestCrossTierCloser_AncestorOnlyHitOnNearerDoesNotBlockPromotion(t *testing.T) {
+	nearerWeakHit := governingScope{tier: 1, depth: 2} // ancestor-only hit, not strong
 	fartherStrong := governingScope{tier: 3, depth: 0}
-	if crossTierCloser(fartherStrong, nearerWeakHit, 9.5, 1.5 /* nearer has a weak but nonzero hit */, true, false) {
-		t.Error("a nearer candidate with any hit (even weak) must keep its tier — no promotion")
+	if !crossTierCloser(fartherStrong, nearerWeakHit, true, false) {
+		t.Error("a nearer candidate with only a weak (non-strong) hit must be leapfrogged by a farther, strong one")
 	}
-	// Order-independent: proximity still wins in the reverse comparison too.
-	if !crossTierCloser(nearerWeakHit, fartherStrong, 1.5, 9.5, false, true) {
-		t.Error("the nearer candidate (with any hit) must sort ahead of the farther one")
+	// Order-independent: the promotion holds in the reverse comparison too.
+	if crossTierCloser(nearerWeakHit, fartherStrong, false, true) {
+		t.Error("the nearer-but-weak candidate must not sort ahead of the farther-but-strong one")
+	}
+}
+
+// TestCrossTierCloser_StrongHitOnNearerBlocksPromotion: the bar
+// crossTierCloser now uses — a nearer candidate that IS itself strong
+// (a hit on its own package path, stem, or a caller-resolved
+// symbol/behaviour token) keeps its tier; only an ancestor-only hit fails
+// to block, never a real one.
+func TestCrossTierCloser_StrongHitOnNearerBlocksPromotion(t *testing.T) {
+	nearerStrong := governingScope{tier: 1, depth: 2}
+	fartherStrong := governingScope{tier: 3, depth: 0}
+	if crossTierCloser(fartherStrong, nearerStrong, true, true) {
+		t.Error("a nearer candidate that is itself strong must keep its tier — no promotion")
+	}
+	if !crossTierCloser(nearerStrong, fartherStrong, true, true) {
+		t.Error("the nearer, strong candidate must sort ahead of the farther one")
 	}
 }
 
 // TestCrossTierCloser_SameTierFallsThroughToCloserThan: when both
 // candidates share a tier (the usual case — most comparisons never
 // involve two different tiers at all), crossTierCloser must behave
-// identically to plain closerThan, regardless of relevance/strength.
+// identically to plain closerThan, regardless of strength.
 func TestCrossTierCloser_SameTierFallsThroughToCloserThan(t *testing.T) {
 	deeper := governingScope{tier: 2, depth: 3}
 	shallower := governingScope{tier: 2, depth: 1}
-	if !crossTierCloser(deeper, shallower, 0, 99, false, true) {
-		t.Error("same-tier comparisons must ignore relevance entirely and fall through to closerThan (deeper wins)")
+	if !crossTierCloser(deeper, shallower, false, true) {
+		t.Error("same-tier comparisons must ignore strength entirely and fall through to closerThan (deeper wins)")
 	}
 }
 
-// TestCrossTierCloser_BothSidesHaveHits_ProximityWins: promotion requires
-// the nearer side to be a TOTAL blank; when both sides carry relevance
-// (even if the farther side is much stronger), ordinary proximity decides.
-func TestCrossTierCloser_BothSidesHaveHits_ProximityWins(t *testing.T) {
+// TestCrossTierCloser_NeitherStrong_ProximityWins: promotion requires the
+// FARTHER side to be strong; when neither side is, ordinary proximity
+// decides regardless of any ancestor-only relevance either carries.
+func TestCrossTierCloser_NeitherStrong_ProximityWins(t *testing.T) {
 	nearer := governingScope{tier: 1, depth: 2}
 	farther := governingScope{tier: 3, depth: 0}
-	if !crossTierCloser(nearer, farther, 1.0, 50.0, false, true) {
-		t.Error("nearer with nonzero relevance must win over a farther, stronger candidate")
+	if !crossTierCloser(nearer, farther, false, false) {
+		t.Error("nearer must win over a farther candidate that is not strong")
 	}
 }
 

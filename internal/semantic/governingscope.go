@@ -100,23 +100,45 @@ func rankByGoverningScope(scope []string, path string) governingScope {
 // STRONG (aStrong/bStrong — relevanceStrength's own verdict: a hit on a
 // packageWeight-or-above token, i.e. the file's own package path, stem, or
 // a caller-resolved symbol/behaviour name, never a mere shared ancestor or
-// extension) is promoted ahead of a nearer-tier candidate that is a TOTAL
-// lexical blank (relevance == 0 — "names nothing about the file at all").
-// This is deliberately narrow: the moment the nearer candidate has ANY
-// hit, however weak (an ancestor directory name in passing), proximity
-// wins outright and no promotion happens — a nearer guide's own several
-// sections, each mentioning the file's own ancestor directory somewhere,
-// are never leapfrogged by a farther, more specific rule; only a nearer
-// section that reads back NOTHING about the edited path loses its
-// proximity advantage. Ties (both sides carry relevance, or the farther
-// side is not strong) fall straight through to ordinary proximity — VB-8's
-// tier/depth primacy is unchanged in every case this doesn't apply to.
-func crossTierCloser(a, b governingScope, aRel, bRel float64, aStrong, bStrong bool) bool {
+// extension) is promoted ahead of a nearer-tier candidate that is NOT
+// itself strong — "the nearer rule names the file" is judged by the exact
+// same packageWeight-or-above bar, never by a bare hit of any weight.
+//
+// wave O4, item 1 (docs/bench readings, two more H1 misses: T02/T13)
+// narrowed this from "the nearer candidate is a TOTAL lexical blank
+// (relevance == 0)" to "the nearer candidate is not STRONG": an
+// ancestor-directory token alone ("internal", "cmd", "docs" — every
+// sibling file under that guide shares it, and a nested guide's own
+// heading or prose mentions its own root directory constantly in passing)
+// is not evidence that "the nearer rule names the file" — it is evidence
+// the nearer rule names the whole subtree the file merely lives in. H1-T02
+// (internal/core/model.go vs. internal/CLAUDE.md) was exactly this: every
+// one of internal/CLAUDE.md's OTHER same-tier sections carried a weak,
+// ancestor-only hit on the bare token "internal", which under the old
+// relevance==0 test blocked ADR-021 (strong on core.Edge) from ever being
+// promoted past them, even though none of them names model.go's own
+// package ("core") or anything about it. Only a hit at packageWeight or
+// above — the file's own package directory, stem, or a caller-resolved
+// symbol/behaviour token, exactly what relevanceStrength's own "strong"
+// bit already means — now blocks promotion; a bare ancestor or extension
+// hit stays a within-tier tie-break ONLY (see the caller's own relevance
+// sort immediately below this comparison), never a cross-tier blocker.
+// This is still deliberately narrow: the moment the nearer candidate is
+// ITSELF strong, proximity wins outright and no promotion happens — a
+// nearer guide's own section that actually names the file's package is
+// never leapfrogged by a farther, differently-specific rule. Ties (both
+// sides strong, or neither farther side is strong) fall straight through
+// to ordinary proximity — VB-8's tier/depth primacy is unchanged in every
+// case this doesn't apply to. The relevance SCORES themselves are no
+// longer read here at all (only the strong bit is) — a nearer candidate's
+// magnitude of ancestor-only relevance never affects this decision, only
+// the within-tier sort that runs when tiers are equal.
+func crossTierCloser(a, b governingScope, aStrong, bStrong bool) bool {
 	if a.tier != b.tier {
 		switch {
-		case aStrong && bRel == 0:
-			return true // a is farther but strong; b (nearer) names nothing at all
-		case bStrong && aRel == 0:
+		case aStrong && !bStrong:
+			return true // a is farther but strong; b (nearer) has no more than an ancestor/extension hit
+		case bStrong && !aStrong:
 			return false // symmetric: b leapfrogs a
 		}
 	}

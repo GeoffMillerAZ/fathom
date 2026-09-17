@@ -17,6 +17,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -474,7 +475,7 @@ exit 0
 // flag in HTTP mode must refuse loudly (naming --store) rather than
 // silently ignoring the flag — before any HTTP request is attempted.
 func TestCmdCompile_GuardFlagsRefusedWithoutStore(t *testing.T) {
-	for _, flag := range []string{"--force", "--unsafe-skip-eval-gate", "--continue"} {
+	for _, flag := range []string{"--force", "--unsafe-skip-eval-gate", "--continue", "--max-tokens-per-run=all", "--max-usd-per-run=all"} {
 		t.Run(flag, func(t *testing.T) {
 			var stdout, stderr bytes.Buffer
 			code := cmdCompile([]string{
@@ -508,4 +509,266 @@ func TestCmdCompile_DryRun_NeverGuardGated(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("dry-run of an un-evaled layer should never be gated, got exit %d; stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 	}
+}
+
+// ─── wave O4, item 2: --max-tokens-per-run / --max-usd-per-run ────────────
+
+// newBudgetStopFixture builds a store whose "obligations" corpus has 5
+// small, distinct nested-guide sections (g1..g5/CLAUDE.md) and a project
+// layer pack overriding "obligations" with a deliberately tiny
+// max_tokens_per_run — small enough that the PRE-FLIGHT cost estimate for
+// this whole 5-section corpus (cost.Estimate's bytes/4 heuristic plus the
+// fixed 260-token prompt overhead per section, summed over every section
+// needing compile) already exceeds it, so an unmodified compile refuses
+// outright before calling the LLM for even one section — the layer's own
+// default budget standing between the corpus and ANY progress, exactly the
+// shape vs-pilot-5's second reading found (a fixed run budget too small for
+// the corpus it was asked to cover). Uses the shared empty-claims fake
+// claude-cli script (fakeClaudeCLIClaimsScript): claim CONTENT is
+// irrelevant here — SectionsCompiled counts sections the loop reached, not
+// claims written, so a rejected/empty claim still proves the override let
+// the run proceed.
+func newBudgetStopFixture(t *testing.T) (storePath, root, service string) {
+	t.Helper()
+	root = t.TempDir()
+	for i := 1; i <= 5; i++ {
+		dir := filepath.Join(root, fmt.Sprintf("g%d", i))
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		content := fmt.Sprintf("# Guide %d\n\n- Rule number %d applies here.\n", i, i)
+		if err := os.WriteFile(filepath.Join(dir, "CLAUDE.md"), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	storePath = filepath.Join(t.TempDir(), "budget.sqlite")
+	st, err := store.Open(storePath)
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+	defer st.Close()
+	c := client.New(connector.NewLocalConnector(), st)
+	defer c.Close()
+	if _, err := c.Ingest(context.Background(), client.ServiceRef{ID: "svc", Path: root}); err != nil {
+		t.Fatalf("Ingest: %v", err)
+	}
+
+	packDir := filepath.Join(root, ".fathom", "layers", "obligations")
+	if err := os.MkdirAll(packDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	layerCUE := `name:    "obligations"
+version: "v1"
+kind:    "obligation"
+corpus: include: ["**/CLAUDE.md"]
+prompt_version: "obligations/content-addressed"
+prompt_file:    "schema/semantic/layers/obligations/prompt.md"
+tier:           "doc-claimed"
+role:           "governs"
+stratum:        "concern"
+evaled:         true
+budgets: {
+	max_tokens_per_run: 100
+	max_usd_per_run:    1000
+}
+`
+	if err := os.WriteFile(filepath.Join(packDir, "layer.cue"), []byte(layerCUE), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// decodePack (manifest.go) resolves a project pack's prompt as a SIBLING
+	// of layer.cue itself — the layer.cue's own prompt_file value above is
+	// documentation only, never the resolution path.
+	if err := os.WriteFile(filepath.Join(packDir, "prompt.md"), []byte("Emit {\"claims\": []}."), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv("FATHOM_LLM_PROVIDER", "claude-cli")
+	t.Setenv("FATHOM_CLAUDE_BIN", newFakeClaudeCLIClaims(t))
+	return storePath, root, "svc"
+}
+
+// TestCmdCompile_MaxTokensPerRunOverride_UnblocksAPreflightRefusal is the
+// CLI-level end-to-end proof for wave O4 item 2: the fixture's project pack
+// sets max_tokens_per_run so small that a plain compile refuses PRE-FLIGHT
+// (never reaches the LLM for any section — vs-pilot-5's second reading
+// found exactly this class of defect: a fixed per-run budget too small for
+// the corpus, silently limiting how much of `obligations` a bench subject's
+// compile step ever covers); --max-tokens-per-run=all removes the cap and
+// the SAME corpus compiles completely in the very next call, on the same
+// store, with no other guard escape needed (a pre-flight REFUSAL — unlike a
+// mid-run BudgetStopped — never counts as a "completed" prior run either
+// way, so the idempotency guard was never going to be the obstacle here).
+func TestCmdCompile_MaxTokensPerRunOverride_UnblocksAPreflightRefusal(t *testing.T) {
+	storePath, _, svc := newBudgetStopFixture(t)
+
+	// This project pack's own `evaled: true` gets forced to false (no
+	// eval/RESULTS.md on disk — packs.go's D3-1 honesty override), so every
+	// call here needs --unsafe-skip-eval-gate; that guard is orthogonal to
+	// the budget guard this test is actually about.
+	var stdout1, stderr1 bytes.Buffer
+	code := cmdCompile([]string{
+		"--service", svc, "--layer", "obligations", "--store", storePath, "--dry-run=false",
+		"--unsafe-skip-eval-gate",
+	}, &stdout1, &stderr1)
+	if code != 1 {
+		t.Fatalf("first (unbudgeted) compile: exit %d, want 1 (pre-flight refusal); stdout=%q stderr=%q", code, stdout1.String(), stderr1.String())
+	}
+	if !strings.Contains(stderr1.String(), "max_tokens_per_run") {
+		t.Errorf("stderr should name the exceeded budget, got %q", stderr1.String())
+	}
+	if n := countCompileRuns(t, storePath, svc, "obligations"); n != 1 {
+		t.Fatalf("a refused run is still recorded (ADR-016 §4.1); compile_runs = %d, want 1", n)
+	}
+
+	// With --max-tokens-per-run=all: the SAME corpus, same store, same
+	// layer default budget everywhere else — but this run's own override
+	// removes the cap, so the pre-flight estimate that just refused above
+	// now passes, and every section actually compiles.
+	var stdout2, stderr2 bytes.Buffer
+	code = cmdCompile([]string{
+		"--service", svc, "--layer", "obligations", "--store", storePath, "--dry-run=false",
+		"--unsafe-skip-eval-gate", "--max-tokens-per-run=all",
+	}, &stdout2, &stderr2)
+	if code != 0 {
+		t.Fatalf("second (--max-tokens-per-run=all) compile: exit %d; stdout=%q stderr=%q", code, stdout2.String(), stderr2.String())
+	}
+	if !strings.Contains(stdout2.String(), "sections_total:    5") {
+		t.Errorf("stdout must report sections_total: 5, got %q", stdout2.String())
+	}
+	if !strings.Contains(stdout2.String(), "sections_compiled: 5") {
+		t.Errorf("stdout must report sections_compiled: 5 (the override let every section reach the LLM), got %q", stdout2.String())
+	}
+	if strings.Contains(stdout2.String(), "budget_stopped:") {
+		t.Errorf("--max-tokens-per-run=all must not budget-stop either, got stdout=%q", stdout2.String())
+	}
+	if strings.Contains(stdout2.String(), "refused:") {
+		t.Errorf("--max-tokens-per-run=all must not refuse, got stdout=%q", stdout2.String())
+	}
+}
+
+// TestCmdCompile_MaxUSDPerRunOverride_UnblocksAPreflightRefusal is
+// --max-tokens-per-run's sibling proof for the dollar cap: the SAME
+// fixture's project pack budget (max_usd_per_run left at its own default
+// above, but overridden here to a value too small to pass pre-flight)
+// refuses without an override and completes with --max-usd-per-run=all.
+func TestCmdCompile_MaxUSDPerRunOverride_UnblocksAPreflightRefusal(t *testing.T) {
+	storePath, root, svc := newBudgetStopFixture(t)
+	// Loosen the token cap (already proven above) and instead tighten the
+	// dollar cap far below what even a tiny pre-flight estimate prices at
+	// the profile's own input rate — the two overrides are independent
+	// flags/fields; this test isolates the USD one.
+	layerCUE := `name:    "obligations"
+version: "v1"
+kind:    "obligation"
+corpus: include: ["**/CLAUDE.md"]
+prompt_version: "obligations/content-addressed"
+prompt_file:    "schema/semantic/layers/obligations/prompt.md"
+tier:           "doc-claimed"
+role:           "governs"
+stratum:        "concern"
+evaled:         true
+budgets: {
+	max_tokens_per_run: 1000000
+	max_usd_per_run:    0.00001
+}
+`
+	if err := os.WriteFile(filepath.Join(root, ".fathom", "layers", "obligations", "layer.cue"), []byte(layerCUE), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout1, stderr1 bytes.Buffer
+	code := cmdCompile([]string{
+		"--service", svc, "--layer", "obligations", "--store", storePath, "--dry-run=false",
+		"--unsafe-skip-eval-gate",
+	}, &stdout1, &stderr1)
+	if code != 1 {
+		t.Fatalf("first (unbudgeted) compile: exit %d, want 1 (pre-flight refusal); stdout=%q stderr=%q", code, stdout1.String(), stderr1.String())
+	}
+	if !strings.Contains(stderr1.String(), "max_usd_per_run") {
+		t.Errorf("stderr should name the exceeded dollar budget, got %q", stderr1.String())
+	}
+
+	var stdout2, stderr2 bytes.Buffer
+	code = cmdCompile([]string{
+		"--service", svc, "--layer", "obligations", "--store", storePath, "--dry-run=false",
+		"--unsafe-skip-eval-gate", "--max-usd-per-run=all",
+	}, &stdout2, &stderr2)
+	if code != 0 {
+		t.Fatalf("second (--max-usd-per-run=all) compile: exit %d; stdout=%q stderr=%q", code, stdout2.String(), stderr2.String())
+	}
+	if !strings.Contains(stdout2.String(), "sections_compiled: 5") {
+		t.Errorf("stdout must report sections_compiled: 5, got %q", stdout2.String())
+	}
+}
+
+// TestParseBudgetOverride pins parseBudgetOverride's own contract directly
+// (cmd/fathom/compile.go): "" for both means no override at all (nil, not
+// a zero-value BudgetOverride — compileViaStore's "was an override even
+// requested" branch depends on this); "all" (case-insensitive) maps to a
+// pointer to 0/0.0 (the "unlimited" sentinel both enforceBudgets and
+// semantic.BudgetOverride.Apply already use); a plain number parses
+// straight through; a malformed value is a usage error naming the flag and
+// the bad value.
+func TestParseBudgetOverride(t *testing.T) {
+	t.Run("both empty is nil, not a zero-value override", func(t *testing.T) {
+		got, err := parseBudgetOverride("", "")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got != nil {
+			t.Errorf("parseBudgetOverride(\"\", \"\") = %+v, want nil", got)
+		}
+	})
+
+	t.Run("\"all\" maps to the unlimited sentinel for both fields", func(t *testing.T) {
+		got, err := parseBudgetOverride("all", "ALL")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got == nil || got.MaxTokensPerRun == nil || *got.MaxTokensPerRun != 0 {
+			t.Fatalf("MaxTokensPerRun override = %+v, want a pointer to 0", got)
+		}
+		if got.MaxUSDPerRun == nil || *got.MaxUSDPerRun != 0 {
+			t.Fatalf("MaxUSDPerRun override (case-insensitive \"ALL\") = %+v, want a pointer to 0", got)
+		}
+	})
+
+	t.Run("a plain number parses through", func(t *testing.T) {
+		got, err := parseBudgetOverride("12345", "6.5")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got == nil || got.MaxTokensPerRun == nil || *got.MaxTokensPerRun != 12345 {
+			t.Fatalf("MaxTokensPerRun override = %+v, want a pointer to 12345", got)
+		}
+		if got.MaxUSDPerRun == nil || *got.MaxUSDPerRun != 6.5 {
+			t.Fatalf("MaxUSDPerRun override = %+v, want a pointer to 6.5", got)
+		}
+	})
+
+	t.Run("only one flag set leaves the other nil", func(t *testing.T) {
+		got, err := parseBudgetOverride("all", "")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got == nil || got.MaxTokensPerRun == nil {
+			t.Fatal("MaxTokensPerRun override should be set")
+		}
+		if got.MaxUSDPerRun != nil {
+			t.Errorf("MaxUSDPerRun override = %v, want nil (flag was not given)", *got.MaxUSDPerRun)
+		}
+	})
+
+	t.Run("a malformed value is a usage error naming the flag", func(t *testing.T) {
+		if _, err := parseBudgetOverride("not-a-number", ""); err == nil {
+			t.Fatal("expected an error for a malformed --max-tokens-per-run value")
+		} else if !strings.Contains(err.Error(), "max-tokens-per-run") {
+			t.Errorf("error should name the flag, got %v", err)
+		}
+		if _, err := parseBudgetOverride("", "not-a-number"); err == nil {
+			t.Fatal("expected an error for a malformed --max-usd-per-run value")
+		} else if !strings.Contains(err.Error(), "max-usd-per-run") {
+			t.Errorf("error should name the flag, got %v", err)
+		}
+	})
 }

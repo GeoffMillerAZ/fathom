@@ -768,11 +768,22 @@ type Readings struct {
 // named distinctly because that type already exists for a different
 // purpose (Worktree.CompileCost) and this one is the JSON-persisted
 // reading on CellResult/ScenarioLedgerRow.
+//
+// SectionsTotal/SectionsCompiled/BudgetStopped (wave O4, item 2; ADR-037
+// addendum) are CompileCost's own instrument-truth fields, carried onto
+// this JSON-persisted reading unchanged — see CompileCost's doc comment for
+// why a reading needs them: tokens/cost alone cannot distinguish "the
+// layer is genuinely small" from "the compile quit early", which is
+// exactly what let a budget_stopped compile serve root boilerplate for a
+// vs-pilot-5 reading without anyone noticing until the second read.
 type CompileCostReading struct {
-	TokensIn  int64   `json:"tokens_in"`
-	TokensOut int64   `json:"tokens_out"`
-	CostUSD   float64 `json:"cost_usd"`
-	Cached    bool    `json:"cached,omitempty"`
+	TokensIn         int64   `json:"tokens_in"`
+	TokensOut        int64   `json:"tokens_out"`
+	CostUSD          float64 `json:"cost_usd"`
+	Cached           bool    `json:"cached,omitempty"`
+	SectionsTotal    int     `json:"sections_total,omitempty"`
+	SectionsCompiled int     `json:"sections_compiled,omitempty"`
+	BudgetStopped    bool    `json:"budget_stopped,omitempty"`
 }
 
 // CellResult is one (task, arm, trial), the unit of the cell store.

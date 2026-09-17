@@ -629,6 +629,43 @@ func TestCompile_RefusesToStartWhenEstimatedCostExceedsBudget(t *testing.T) {
 	}
 }
 
+// TestEnforceBudgets_MaxUSDPerRunZeroOrNegativeMeansUnlimited (wave O4,
+// item 2) pins the fix: MaxUSDPerRun<=0 now means "no cost cap", mirroring
+// MaxTokensPerRun's own ">0" convention just above it in enforceBudgets.
+// Before this fix, a caller (a BudgetOverride to 0, or a hand-authored
+// layer.cue) that set MaxUSDPerRun to 0 "for no cost cap" instead refused
+// EVERY non-free run outright, since estCost > 0 for any real spend — the
+// zero-value sentinel meant the opposite of every other budget field in
+// this same function.
+func TestEnforceBudgets_MaxUSDPerRunZeroOrNegativeMeansUnlimited(t *testing.T) {
+	for _, max := range []float64{0, -1, -0.0001} {
+		layer := LayerDef{Name: "obligations", Budgets: LayerBudgets{MaxUSDPerRun: max}}
+		// A large, real token total that would price well above any normal
+		// max_usd_per_run — the point is that it refuses NOTHING when the
+		// cap itself is <=0.
+		refuse, reason := enforceBudgets(layer, 1_000_000, 1_000_000, 100.0)
+		if refuse {
+			t.Errorf("MaxUSDPerRun=%v: enforceBudgets refused (%q), want unlimited (no cost cap)", max, reason)
+		}
+	}
+}
+
+// TestEnforceBudgets_MaxUSDPerRunPositiveStillEnforces: the fix above must
+// not have quietly disabled the cost cap for its ordinary, positive case —
+// a positive MaxUSDPerRun still refuses an estimate that exceeds it, exactly
+// as TestCompile_RefusesToStartWhenEstimatedCostExceedsBudget already proves
+// end-to-end; this pins enforceBudgets itself, directly.
+func TestEnforceBudgets_MaxUSDPerRunPositiveStillEnforces(t *testing.T) {
+	layer := LayerDef{Name: "obligations", Budgets: LayerBudgets{MaxUSDPerRun: 0.0001}}
+	refuse, reason := enforceBudgets(layer, 1_000_000, 0, 100.0)
+	if !refuse {
+		t.Fatal("enforceBudgets did not refuse an estimate far over a positive max_usd_per_run")
+	}
+	if reason == "" {
+		t.Error("refusal reason is empty")
+	}
+}
+
 // TestCompile_StopsMidRunWhenTokenBudgetExceeded_AndResumesViaDigestGate:
 // the running token total crossing max_tokens_per_run after the first of two
 // sections stops the run cleanly — it keeps what it already compiled and

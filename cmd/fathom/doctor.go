@@ -1464,11 +1464,19 @@ type obligationsProbeResult struct {
 // addition: the envelope now carries layer_coverage:{"status":"unknown"}
 // (instead of omitting the key) when the backend has no compile_runs row
 // for the service — a real, distinct field from the numeric case below,
-// not just another zero value.
+// not just another zero value. CorpusGrew (wave O4, item 3; ADR-037
+// addendum) was silently dropped by this mirror despite the wire payload
+// (semantic.LayerCoverage's own corpus_grew,omitempty tag) already carrying
+// it — an operator daemon reading 42/66 compiled with a real corpus_grew:14
+// (14 CURRENT-corpus sections no compile run has ever even seen — distinct
+// from a stale digest) got a WARN that named the 42/66 split but never the
+// corpus growth, understating how much of the gap is "the corpus outgrew
+// the last compile" versus "this run's own budget stopped it early".
 type doctorLayerCoverage struct {
 	SectionsTotal    int    `json:"sections_total"`
 	SectionsCompiled int    `json:"sections_compiled"`
 	BudgetStopped    bool   `json:"budget_stopped"`
+	CorpusGrew       int    `json:"corpus_grew"`
 	Status           string `json:"status"`
 }
 
@@ -1669,8 +1677,20 @@ func checkObligationsServed(hc *http.Client, baseURL, root, explicitSvc string, 
 			reason += " — note: coverage unrecorded (layer compiled before coverage was recorded; recompile to record coverage)"
 		case res.hasCovered && res.coverage.SectionsTotal > 0 && res.coverage.SectionsCompiled < res.coverage.SectionsTotal:
 			status = doctorWarn
-			reason += fmt.Sprintf(" — WARN: the obligations layer is PARTIALLY compiled (%d/%d sections, budget_stopped=%v) — some governing guides may not be compiled yet; resume with `fathom compile --service %s --layer obligations --dry-run=false --continue`",
-				res.coverage.SectionsCompiled, res.coverage.SectionsTotal, res.coverage.BudgetStopped, svc)
+			// wave O4, item 3: corpus_grew names the CURRENT-corpus sections
+			// no compile run has ever even seen (semantic.LiveLayerCoverage's
+			// own doc comment) — distinct from a section that was compiled
+			// once but has since drifted (a stale digest, counted in the
+			// SectionsCompiled/SectionsTotal split above but never as
+			// growth). Omitted from the sentence entirely when zero: a
+			// budget-stopped run whose corpus has NOT grown since is not
+			// misdescribed as having outgrown anything.
+			corpusGrewNote := ""
+			if res.coverage.CorpusGrew > 0 {
+				corpusGrewNote = fmt.Sprintf(", corpus_grew=%d", res.coverage.CorpusGrew)
+			}
+			reason += fmt.Sprintf(" — WARN: the obligations layer is PARTIALLY compiled (%d/%d sections, budget_stopped=%v%s) — some governing guides may not be compiled yet; resume with `fathom compile --service %s --layer obligations --dry-run=false --continue`",
+				res.coverage.SectionsCompiled, res.coverage.SectionsTotal, res.coverage.BudgetStopped, corpusGrewNote, svc)
 		}
 		return doctorCheck{Name: name, Status: status, Reason: reason + hookMismatchNote}
 	}

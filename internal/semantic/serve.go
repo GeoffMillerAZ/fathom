@@ -516,12 +516,15 @@ func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile str
 		// Only meaningful for a file-scoped call (outFile != ""); a
 		// root-scope answer has no path to be proximate to, so every
 		// candidate carries the same noGoverningScope and this comparison
-		// is always a no-op there. wave O3, item 1: crossTierCloser lets a
-		// farther-tier claim with STRONG lexical relevance leapfrog a
-		// nearer-tier claim that is a total lexical blank — see its own doc
-		// comment; every other case reproduces plain closerThan exactly.
+		// is always a no-op there. wave O3, item 1 (wave O4, item 1 narrowed
+		// the bar): crossTierCloser lets a farther-tier claim with STRONG
+		// lexical relevance leapfrog a nearer-tier claim that is not itself
+		// strong — an ancestor-directory-only hit no longer blocks this,
+		// only a hit on the file's own package/stem/symbol does — see its
+		// own doc comment; every other case reproduces plain closerThan
+		// exactly.
 		if outFile != "" && a.governing != b.governing {
-			return crossTierCloser(a.governing, b.governing, a.relevance, b.relevance, a.strong, b.strong)
+			return crossTierCloser(a.governing, b.governing, a.strong, b.strong)
 		}
 		// wave O2 (vs-pilot-6 second reading §5): STRICTLY INSIDE a
 		// governing-scope tier (same a.governing/b.governing — VB-8 above
