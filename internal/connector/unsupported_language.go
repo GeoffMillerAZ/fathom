@@ -6,6 +6,11 @@ import "path/filepath"
 // fathom has NO registered extractor for (O69, wave P1 — Long Code Arena
 // bench run found bumble-tech/appyx, a real Kotlin repository, indexed as
 // near-empty and mislabeled with no signal that Kotlin itself was the gap).
+// Kotlin itself was removed from this table in wave P2 (O81): it now has a
+// registered tree-sitter/wazero extractor (extractor.NewTSExtractor
+// ("kotlin")) and classifies via extClassMap instead — see
+// TestUnsupportedLanguageForPath_RegisteredExtensionsNeverMatch, which pins
+// that every entry here stays disjoint from what's actually extracted.
 //
 // This is deliberately a SEPARATE table from extClassMap (LT-1's single
 // source of truth for what fathom DOES extract): every key here MUST be
@@ -24,8 +29,6 @@ import "path/filepath"
 // ".v", ".r", ".pl") is included, since a wrong guess here would be a new
 // silent-wrongness class of its own.
 var unsupportedLangExtMap = map[string]string{
-	".kt":     "kotlin",
-	".kts":    "kotlin",
 	".swift":  "swift",
 	".dart":   "dart",
 	".ex":     "elixir",

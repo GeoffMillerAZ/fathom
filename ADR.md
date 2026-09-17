@@ -653,6 +653,32 @@ templates, and refuses call edges for any method name two types share is
 not yet authoritative. Each correction removes a class of silent
 wrongness; none adds runtime machinery.
 
+**Addendum: Kotlin and Java as syntax-only languages (wave P2, 2026-09-17).**
+The Long Code Arena bench run (`docs/bench/readings/lca-run-1-reading.md`)
+had 12 Kotlin and 8 Java tasks of 40; wave P1 (O69) disclosed Kotlin's
+missing extractor but left the question open for Java. Investigated and
+resolved: **Java was already extracted**, not merely classified —
+`extractor.NewJavaExtractor()` (CGO tree-sitter bindings, ADR-013) has been
+registered in `fusion.New` since before this wave, covering classes,
+interfaces, enums, records, and methods; wave P2 closed its remaining gap
+(fields, imports — `KindJavaField`/`KindJavaImport`) without moving it off
+CGO — that migration is XT-6b, a separate, not-yet-triggered slice this wave
+does not pull forward. **Kotlin had no extractor at all** and is genuinely
+new: `extractor.NewTSExtractor("kotlin")` (§4's wazero/WASM engine) is now
+registered for `.kt`/`.kts`, backed by `internal/extractor/tsengine/
+grammars/kotlin.wasm` — fwcd/tree-sitter-kotlin (not an official
+tree-sitter-org grammar) pinned at tag 0.3.8, commit
+`e1a2d5ad1f61f5740677183cd4125bb071cd2f30`, built by the same zig-cc/
+wasm-opt recipe as the original four blobs (sha256 in
+`internal/extractor/tsengine/grammars/PROVENANCE.md`). Unlike Python/JS/
+Ruby, Kotlin has no CGO incumbent to calibrate against — §4's "new-language
+breadth" clause applies directly, not the calibration-gate clause. Proven
+live on two real subjects (shallow clones, deleted after): bumble-tech/appyx
+(Kotlin, 549 files) — 6,725 symbols where the O69 finding was ~165; jhy/jsoup
+(Java, 313 files) — 7,559 symbols including 806 fields and 1,912 imports
+that predate this wave's Java coverage fix. Full account: `.fathom/
+observations.md` O79.
+
 ## ADR-022: MCP server stays bespoke, not `kits/mcp-server` (2026-07-23)
 
 **Decision.** `internal/mcp.Server` (ADR-010) remains a from-scratch JSON-RPC

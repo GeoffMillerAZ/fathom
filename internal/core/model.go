@@ -58,11 +58,31 @@ const (
 	KindJavaMethod    SourceKind = "JavaMethod"
 	KindJavaEnum      SourceKind = "JavaEnum"
 	KindJavaRecord    SourceKind = "JavaRecord"
+	// KindJavaField and KindJavaImport close the wave P2 coverage gap (the
+	// incumbent CGO extractor captured types+methods only): field
+	// declarations and import declarations, added without moving Java off
+	// its CGO tree-sitter bindings (ADR-021's XT-6b CGO->wazero migration
+	// stays a separate, not-yet-triggered slice).
+	KindJavaField  SourceKind = "JavaField"
+	KindJavaImport SourceKind = "JavaImport"
 
 	// Ruby
 	KindRubyClass  SourceKind = "RubyClass"
 	KindRubyModule SourceKind = "RubyModule"
 	KindRubyMethod SourceKind = "RubyMethod"
+
+	// Kotlin (ADR-021 §4 new-language breadth, wave P2; tree-sitter via
+	// wazero/WASM — fwcd/tree-sitter-kotlin, no CGO incumbent to calibrate
+	// against). KindKotlinFunction covers both top-level functions and
+	// member methods (the grammar has one function_declaration node for
+	// both, same precedent as KindPyFunc); KindKotlinProperty is top-level
+	// val/var only (module-scope, mirroring KindPyVar).
+	KindKotlinClass     SourceKind = "KotlinClass"
+	KindKotlinInterface SourceKind = "KotlinInterface"
+	KindKotlinObject    SourceKind = "KotlinObject"
+	KindKotlinFunction  SourceKind = "KotlinFunction"
+	KindKotlinProperty  SourceKind = "KotlinProperty"
+	KindKotlinImport    SourceKind = "KotlinImport"
 
 	// Rust
 	KindRustFn     SourceKind = "RustFn"

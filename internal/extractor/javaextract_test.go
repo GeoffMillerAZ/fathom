@@ -140,6 +140,86 @@ func TestJavaExtractor_Basic(t *testing.T) {
 	})
 }
 
+// javaFieldsImportsFixture exercises wave P2's field/import coverage (O81):
+// a static import, a wildcard import, a single field, and a multi-declarator
+// field ("int a, b;" must emit TWO KindJavaField symbols).
+const javaFieldsImportsFixture = `package com.example;
+
+import com.example.util.Helper;
+import java.util.*;
+import static java.lang.Math.max;
+
+public class Account {
+    private String owner;
+    private int a, b;
+}
+`
+
+func TestJavaExtractor_FieldsAndImports(t *testing.T) {
+	x := extractor.NewJavaExtractor()
+	nodes, err := x.Extract("svc", "Account.java", []byte(javaFieldsImportsFixture))
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+
+	byName := make(map[string]core.SymbolNode, len(nodes))
+	var importNames []string
+	for _, n := range nodes {
+		byName[n.Name] = n
+		if n.Kind == core.KindJavaImport {
+			importNames = append(importNames, n.Name)
+		}
+	}
+
+	t.Run("plain import", func(t *testing.T) {
+		if _, ok := byName["com.example.util.Helper"]; !ok {
+			t.Errorf("expected import symbol com.example.util.Helper, got imports: %v", importNames)
+		}
+	})
+
+	t.Run("wildcard import drops the asterisk", func(t *testing.T) {
+		if _, ok := byName["java.util"]; !ok {
+			t.Errorf("expected wildcard import symbol java.util, got imports: %v", importNames)
+		}
+	})
+
+	t.Run("static import", func(t *testing.T) {
+		if _, ok := byName["java.lang.Math.max"]; !ok {
+			t.Errorf("expected static import symbol java.lang.Math.max, got imports: %v", importNames)
+		}
+	})
+
+	t.Run("single field", func(t *testing.T) {
+		n, ok := byName["Account.owner"]
+		if !ok {
+			t.Fatal("expected field symbol Account.owner")
+		}
+		if n.Kind != core.KindJavaField {
+			t.Errorf("Kind: got %q, want KindJavaField", n.Kind)
+		}
+	})
+
+	t.Run("multi-declarator field a", func(t *testing.T) {
+		n, ok := byName["Account.a"]
+		if !ok {
+			t.Fatal("expected field symbol Account.a")
+		}
+		if n.Kind != core.KindJavaField {
+			t.Errorf("Kind: got %q, want KindJavaField", n.Kind)
+		}
+	})
+
+	t.Run("multi-declarator field b", func(t *testing.T) {
+		n, ok := byName["Account.b"]
+		if !ok {
+			t.Fatal("expected field symbol Account.b (int a, b; must emit two fields)")
+		}
+		if n.Kind != core.KindJavaField {
+			t.Errorf("Kind: got %q, want KindJavaField", n.Kind)
+		}
+	})
+}
+
 func TestJavaExtractor_Determinism(t *testing.T) {
 	x := extractor.NewJavaExtractor()
 	n1, err := x.Extract("svc", "P.java", []byte(javaFixture))

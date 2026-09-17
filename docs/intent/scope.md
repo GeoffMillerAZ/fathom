@@ -79,11 +79,12 @@ waiting on it.
 
 ## Current boundaries
 
-- Languages: Go via `go/parser`; Python, JS/TS, Ruby via tree-sitter on wazero
-  (`internal/extractor/tsengine`); Java, C, C++, C#, Rust, Scala, PHP, Bash, Lua via CGO
-  tree-sitter; HCL, Kubernetes YAML, CUE, Markdown, `go.mod` natively; tool identity for
-  Helm, kustomize, compose, OpenAPI, generated files. Evidence: `docs/architecture.md`
-  "Extraction", ADR-021.
+- Languages: Go via `go/parser`; Python, JS/TS, Ruby, Kotlin via tree-sitter on wazero
+  (`internal/extractor/tsengine`; Kotlin added wave P2/O79 as new-language breadth, no
+  CGO incumbent); Java, C, C++, C#, Rust, Scala, PHP, Bash, Lua via CGO tree-sitter; HCL,
+  Kubernetes YAML, CUE, Markdown, `go.mod` natively; tool identity for Helm, kustomize,
+  compose, OpenAPI, generated files. Evidence: `docs/architecture.md` "Extraction",
+  ADR-021.
 - Surfaces: 57 CLI verbs (`fathom help`, counted 2026-09-02; ADR-029 adds `harness`);
   MCP over stdio and HTTP with 55 registered tools and a 19-tool agent surface, which
   now serve annotations and a generated `outputSchema` (`docs/mcp-tools.md`); Go client

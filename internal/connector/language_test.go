@@ -22,6 +22,8 @@ func TestLanguageForPath_KnownExtensions(t *testing.T) {
 		"app.js":                     "js",
 		"component.tsx":              "ts",
 		"Main.java":                  "java",
+		"App.kt":                     "kotlin",
+		"build.gradle.kts":           "kotlin",
 		"lib.rb":                     "ruby",
 		"main.rs":                    "rust",
 		"module.tf":                  "terraform",

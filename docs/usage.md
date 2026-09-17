@@ -143,25 +143,28 @@ fathom ingest --service <id> [--path <dir>] [--store <path>] [--mode local|faux]
 | `--path` | `.` | Source root directory (local mode) |
 | `--store` | `<repo>/workspace/db/fathom.sqlite` (see §CLI subcommands) | store path (.sqlite/.db) |
 | `--mode` | `local` | Connector mode: `local` or `faux` |
-| `--json` | off | Emit the run as JSON: `{service, outcome: ok|degraded|refused, exit_code, discovered, extracted, skipped, symbols, read_failed, read_failures: [{path, err, errno?}], unclassified, oversize, classified_zero, unsupported_languages?, typed_edges?, excluded?, error?, hint?}` — `errno` is the class (`EPERM`, `EACCES`, `ENOENT`, `EIO`, `EISDIR`) derived from the connector's text, so CI can assert `read_failed == 0`. `unsupported_languages` (O69, present only when non-empty) is `{language: file_count}` — e.g. `{"kotlin": 412}` — for source in a KNOWN programming language fathom has no registered extractor for; see "Unsupported languages" below |
+| `--json` | off | Emit the run as JSON: `{service, outcome: ok|degraded|refused, exit_code, discovered, extracted, skipped, symbols, read_failed, read_failures: [{path, err, errno?}], unclassified, oversize, classified_zero, unsupported_languages?, typed_edges?, excluded?, error?, hint?}` — `errno` is the class (`EPERM`, `EACCES`, `ENOENT`, `EIO`, `EISDIR`) derived from the connector's text, so CI can assert `read_failed == 0`. `unsupported_languages` (O69, present only when non-empty) is `{language: file_count}` — e.g. `{"swift": 412}` — for source in a KNOWN programming language fathom has no registered extractor for; see "Unsupported languages" below |
 
 Output: `discovered`, `extracted`, `skipped`, `symbols` counts, plus non-zero-only rows
 (`unclassified`, `oversize`, `classified-but-zero-symbols`, `unsupported languages (no extractor)`,
 `typed-edges`, `excluded:` pattern counts, and `read-failed`).
 
 **Unsupported languages (O69).** `unclassified` lumps every file with no registered
-extractor into one count, unnamed — a lockfile, an image, and a real Kotlin source file
+extractor into one count, unnamed — a lockfile, an image, and a real Swift source file
 all count the same way. When an unrecognized extension is also a KNOWN programming
-language (`internal/connector.UnsupportedLanguageForPath` — currently: Kotlin, Swift,
-Dart, Elixir, Clojure, Haskell, OCaml, F#, Erlang, Zig, Nim, Julia, Elm, Crystal, Groovy),
+language (`internal/connector.UnsupportedLanguageForPath` — currently: Swift, Dart,
+Elixir, Clojure, Haskell, OCaml, F#, Erlang, Zig, Nim, Julia, Elm, Crystal, Groovy),
 ingest names it and counts its files separately, so a repo whose primary language has no
-extractor reads as "kotlin: 412 files, no extractor" instead of a suspiciously low symbol
+extractor reads as "swift: 412 files, no extractor" instead of a suspiciously low symbol
 count with no explanation. The same breakdown is in `list_services`' per-service
 `unsupported_languages` and the `unsupported_languages` doctor row (WARN, not FAIL — a
 capability gap, not a misconfiguration). None of the languages above have a tree-sitter
 grammar or extractor wired into this repo today; adding one is a separate, larger change
 (a real extractor/grammar, TDD'd against a calibration fixture) — this is disclosure only,
-never a fake extraction.
+never a fake extraction. Kotlin was on this list through wave P1; wave P2 (O79) closed it
+— `.kt`/`.kts` now extract via `internal/extractor.NewTSExtractor("kotlin")` (tree-sitter
+via wazero/WASM, ADR-021 §4, `internal/extractor/tsengine/grammars/kotlin.wasm`) — the
+first language added for new-language breadth rather than a CGO-incumbent swap.
 
 The pipeline is hash-gated: unchanged files (same SHA-256 as the stored fingerprint) are
 skipped. Re-ingesting a large repo where few files changed is near-free.
