@@ -120,7 +120,7 @@ func PrepareSubject(ctx context.Context, task Task, arm Arm, root string) (Workt
 	}
 	subjectsDir := filepath.Join(root, "workspace", "scenariobench", "subjects")
 	cloneDir := filepath.Join(subjectsDir, shortHash(task.Subject.RepoURL))
-	if err := ensureClone(ctx, task.Subject.RepoURL, cloneDir); err != nil {
+	if err := ensureClone(ctx, task.Subject.RepoURL, cloneDir, root); err != nil {
 		return Worktree{}, err
 	}
 
@@ -136,7 +136,7 @@ func PrepareSubject(ctx context.Context, task Task, arm Arm, root string) (Workt
 	// store beside it persists and is re-ingested hash-gated.
 	wtPath := filepath.Join(worktreesDir, task.Subject.BaseCommit+"-"+armContentHash(arm))
 
-	if err := ensureCommit(ctx, cloneDir, task.Subject.BaseCommit); err != nil {
+	if err := ensureCommit(ctx, cloneDir, task.Subject.BaseCommit, root); err != nil {
 		return Worktree{}, err
 	}
 	// git's worktree registration files are not safe under concurrent
@@ -550,7 +550,7 @@ func lockClone(cloneDir string) func() {
 	return mu.Unlock
 }
 
-func ensureClone(ctx context.Context, repoURL, cloneDir string) error {
+func ensureClone(ctx context.Context, repoURL, cloneDir, root string) error {
 	unlock := lockClone(cloneDir)
 	defer unlock()
 	if _, err := os.Stat(filepath.Join(cloneDir, ".git")); err == nil {
@@ -561,16 +561,29 @@ func ensureClone(ctx context.Context, repoURL, cloneDir string) error {
 	if err := os.MkdirAll(filepath.Dir(cloneDir), 0o755); err != nil {
 		return fmt.Errorf("preparing subject: creating %s: %w", filepath.Dir(cloneDir), err)
 	}
+	// configGlobal (gitenv.go's operatorGitConfigFile) carries over only
+	// the operator's remote-reaching config (credential helpers, url
+	// rewrites, proxy/TLS, ssh command) — everything else the operator's
+	// global config might set stays isolated behind gitEnvFor's own
+	// /dev/null default. Without this a PRIVATE subject's
+	// credential.https://github.com.helper (the gh credential helper) is
+	// gone along with the rest, and the clone fails outright (vs-pilot-6
+	// lost all 140 cells at subject preparation this way, 2026-09-17).
+	configGlobal, cfgErr := operatorGitConfigFile(ctx, root)
+	if cfgErr != nil {
+		return fmt.Errorf("preparing subject: %w", cfgErr)
+	}
+	extra := map[string]string{"GIT_CONFIG_GLOBAL": configGlobal}
 	// -c transfer.fsckObjects=false -c fetch.fsckObjects=false: a subject's
 	// own (often ancient) history is not this bench's to fsck — modern
 	// git's index-pack rejects a merely-nonstandard object (e.g. a
 	// zero-padded file mode, tootallnate/java-websocket's real history,
 	// confirmed directly) as a hard clone failure by default, which has
 	// nothing to do with whether that history is a legitimate subject to
-	// benchmark against (VB-27, lca-run-1 2026-09-17). gitConfigIsolation
+	// benchmark against (VB-27, lca-run-1 2026-09-17). gitEnvFor
 	// (runInEnv, keyed on name=="git") additionally keeps the OPERATOR's
 	// own global config from setting this same behavior even more strictly.
-	if out, err := runIn(ctx, "", "git", "-c", "transfer.fsckObjects=false", "-c", "fetch.fsckObjects=false", "clone", "--no-single-branch", repoURL, cloneDir); err != nil {
+	if out, err := runInEnv(ctx, "", extra, "git", "-c", "transfer.fsckObjects=false", "-c", "fetch.fsckObjects=false", "clone", "--no-single-branch", repoURL, cloneDir); err != nil {
 		return fmt.Errorf("preparing subject: git clone %s: %w (%s)", repoURL, err, out)
 	}
 	return nil
@@ -665,7 +678,7 @@ func checkoutCommitTree(ctx context.Context, cloneDir, base, wtPath string) erro
 	return nil
 }
 
-func ensureCommit(ctx context.Context, cloneDir, commit string) error {
+func ensureCommit(ctx context.Context, cloneDir, commit, root string) error {
 	if _, err := runIn(ctx, cloneDir, "git", "cat-file", "-e", commit+"^{commit}"); err == nil {
 		return nil
 	}
@@ -673,8 +686,14 @@ func ensureCommit(ctx context.Context, cloneDir, commit string) error {
 	// (file://, plain-path) fixture with no remote still fails this
 	// harmlessly, and ensureCommit's caller surfaces the ORIGINAL missing
 	// commit as the real error below. Same fsck bypass as ensureClone's own
-	// clone, for the same reason.
-	_, _ = runIn(ctx, cloneDir, "git", "-c", "transfer.fsckObjects=false", "-c", "fetch.fsckObjects=false", "fetch", "--all", "--quiet")
+	// clone, for the same reason — and the same derived-config credential
+	// carry-over (operatorGitConfigFile), since a private subject's fetch
+	// needs to reach its remote exactly as its clone did.
+	extra := map[string]string{}
+	if configGlobal, cfgErr := operatorGitConfigFile(ctx, root); cfgErr == nil {
+		extra["GIT_CONFIG_GLOBAL"] = configGlobal
+	}
+	_, _ = runInEnv(ctx, cloneDir, extra, "git", "-c", "transfer.fsckObjects=false", "-c", "fetch.fsckObjects=false", "fetch", "--all", "--quiet")
 	if _, err := runIn(ctx, cloneDir, "git", "cat-file", "-e", commit+"^{commit}"); err != nil {
 		return fmt.Errorf("preparing subject: base_commit %s not found in %s after fetch: %w", commit, cloneDir, err)
 	}
@@ -710,11 +729,14 @@ func runIn(ctx context.Context, dir string, name string, args ...string) (string
 // file and daemon, never the operator's real ones that a bare gitEnv()
 // inheritance would otherwise silently expose it to. Every git invocation
 // (name=="git" — every call this file makes to git, subject clone and
-// worktree checkout alike) additionally gets gitConfigIsolation, so the
-// OPERATOR's own global/system git config never governs subject prep.
+// worktree checkout alike) additionally gets gitEnvFor (gitenv.go): the
+// OPERATOR's own global/system git config never governs subject prep,
+// GIT_TERMINAL_PROMPT/GIT_ASKPASS keep a missing credential from hanging
+// the run, and a caller-supplied GIT_CONFIG_GLOBAL in extra (ensureClone,
+// ensureCommit) still wins over gitConfigIsolation's own /dev/null.
 func runInEnv(ctx context.Context, dir string, extra map[string]string, name string, args ...string) (string, error) {
 	if name == "git" {
-		extra = gitConfigIsolation(extra)
+		extra = gitEnvFor(extra)
 	}
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Env = SubjectEnv(dir, extra)

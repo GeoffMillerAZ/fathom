@@ -834,7 +834,7 @@ func TestEnsureClone_OperatorGlobalFsckAndAutocrlfDontBreakSubjectClone(t *testi
 	t.Setenv("GIT_CONFIG_GLOBAL", globalConfig)
 
 	cloneDir := filepath.Join(t.TempDir(), "clone")
-	if err := ensureClone(context.Background(), "file://"+bare, cloneDir); err != nil {
+	if err := ensureClone(context.Background(), "file://"+bare, cloneDir, t.TempDir()); err != nil {
 		t.Fatalf("ensureClone: %v (this is the exact failure tootallnate/java-websocket hit in lca-run-1 under the operator's real global git config)", err)
 	}
 	if _, err := os.Stat(filepath.Join(cloneDir, ".git")); err != nil {
