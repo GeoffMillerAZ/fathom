@@ -295,41 +295,39 @@ comments, exactly as `bench-ledger-render.sh` does today, so this slot is
 where a reader gets the plain-language reading a machine render cannot make:
 which claims are actually load-bearing right now, and which are not.
 
-As of 2026-09-14 (O53): the first clean-room lookup pilot with every tool
-present, vs-pilot-3, is filed in full (70 rows, nothing lost) and then read
-transcript by transcript before it was believed. The ledger shows fathom's
-arm 26 of 28 at $1.57 against gopls 24 ($2.83), grep 23 ($2.67), graphify
-22 ($3.11) and serena 21 ($3.08). The second reading found the instrument
-decided most of that gap: the competitor arms' worktrees had lost the
-repository's own CLAUDE.md, the answer key sat inside every worktree, the
-grep baseline could reach the live daemon, the oracle was a substring
-check, and the competitor stanzas told the model not to use their tools.
-After the conservative correction fathom, gopls and grep tie at 88
-percent; what survives is roughly half the cost per pass and one clean
-mechanism win, `verify_plan` on the verify-gate task. The earlier
-strengths-matrix rows (O41) remain voided. No lookup claim is proven until
-vs-pilot-4 runs on the repaired instrument (waves N1-N3); the scenario
-pilots on the guards and reuse corpora, whose control arms were never
-altered, stand as measured. reuse-pilot-3 (four change tasks on a public
-Go CLI, 16 cells, nothing lost) is a second null: fathom's arm 2 of 8
-against control 2 of 8 at 1.7 times the tokens, M5-1 failing on cost; its
-second reading (O55) found no fathom tool changing an outcome, the gate
-bypassed by a worker writing `skip_test` into its own row (O56), and the
-subject clone carrying the merged fix in its history. On this evidence
-fathom does not help a capable model make a change on a repository it has
-never seen, and costs more; the case for the tools rests on the verify
-gate, on governance that bites, and on the answers a type-checked index
-gives that grep cannot, not on lookup or change speed. guards-pilot-5
-(eight governance-bound change tasks on this repository, 32 cells) is the
-third null on the ledger, 8 of 16 on both arms at level cost; its second
-reading (O57) found one wired pass written by an orphaned agent, twelve
-trials that scored a correct refusal as a failure, a wired failure caused
-by the arm's own stanza refresh, and served obligations that never named
-the governing rule before the edit in any wired trial. On adjudicable
-trials fathom's arm violated a rule once in nine and control three times
-in eleven, at 1.4 times the tokens per clean success. Governance at the
-edit has not yet been measured on a fair instrument; waves N6 and N7
-repair the driver and the product before the next run.
+As of 2026-09-17, evening (O62–O77): every corpus has now been run on the
+repaired instrument, with tool-neutral prompts, and read transcript by
+transcript before it was believed; the readings live under
+`docs/bench/readings/`. Lookups (vs-pilot-6, 140 cells, 5 lost to the
+harness's own guards): after five voids serena leads at 26 of 27, fathom's
+arm 24 of 28, graphify 22 of 27, gopls 21 of 26, grep 20 of 27; fathom's arm
+ran at 0.76 times grep's tokens and the same cost, and the verify-gate task
+is still the one question only the index answers cleanly. The freshness
+task went 2 of 2 on every arm by live grep, so with the graphify watch probe
+at 4 of 5 the M7 kill clause fired and freshness leaves positioning.
+Governance at the edit (guards-pilot-8, 32 cells, 2 lost): the served rule
+now reaches the agent before the edit on 4 of 8 tasks (2 of 8 in pilot 6,
+after ADR-037's raw-guide fallback and the relevance ranking of waves O1–O3),
+and fathom's arm ties control on violations (4 and 4) for the first time —
+but agents violate rules they were shown, clean successes trail (7 of 11
+adjudicable against 10 of 14) and each clean success costs 1.56 times the
+tokens, so M1 still fails; the measured cause moved from "the rule was never
+served" to "serving the rule does not make a capable model obey it", which is
+a different product problem. Change tasks stay a null: reuse-pilot-4 4 of 6
+on both arms at 1.7 times the tokens (M5 fails on cost, as in pilot 3), and
+the Long Code Arena bug-localization run (40 public tasks, 234 cells) put
+fathom's arm at 94 of 117 against control's 93 with a paired interval that
+includes zero at twice the tokens — the null is published and BC-15 closes
+on it. The receipts held (50 of 50 re-derived, envelope 7.6 % of median
+payload); cross-process blast radius held on the blind route table (P 1.00,
+R 1.00 after the AST extractor); the review verb named a caller or test gap
+the fix later touched in 5 of 42 historical PRs with no false findings, so
+M15 stays open; test selection and the code-fact audit did not meet their
+bars and stay advisory. On this evidence fathom is level with the best
+lookup tools at lower cost, ahead only on verification and receipts, not
+yet ahead on governance or on change tasks, and the case for continuing
+rests on the verify gate, the falsifiable receipts, and a governance channel
+that now reaches the edit and must next be made to bite.
 
 `pass` and `fail` are both measured results and both belong in the ledger; a
 recorded refutation is the instrument working. `indeterminate` is different —
