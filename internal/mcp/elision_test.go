@@ -293,7 +293,13 @@ func TestEveryTruncatingToolDiscloses(t *testing.T) {
 	}
 
 	assertElided(t, "query_symbols", callTool(t, srv, "query_symbols", map[string]any{"service": "svc", "concern": "handler", "top": 60}))
-	assertElided(t, "references", callTool(t, srv, "references", map[string]any{"query": "Needle"}))
+	refResp := callTool(t, srv, "references", map[string]any{"query": "Needle"})
+	assertElided(t, "references", refResp)
+	// wave L1: summary survives the same fitToBudget cut that produced the
+	// elided block above.
+	if s, ok := refResp["summary"].(string); !ok || s == "" {
+		t.Fatalf("references: summary missing or empty on a truncated response: %v", refResp)
+	}
 	assertElided(t, "repo_map", callTool(t, srv, "repo_map", map[string]any{"service": "svc", "budget": 50}))
 	assertElided(t, "pack_context", callTool(t, srv, "pack_context", map[string]any{"service": "svc", "concern": "handler", "budget": 50}))
 	assertElided(t, "find_symbol", callTool(t, srv, "find_symbol", map[string]any{"service": "svc", "name": "handler"}))
@@ -337,6 +343,14 @@ func TestTextElisionToolsDiscloseOnOverflow(t *testing.T) {
 		t.Fatalf("find_callers: scope_required unexpectedly true for a 250-row fan-in: %v", fcResp)
 	}
 	assertElisionLine(t, "find_callers", fcResp, "package or file")
+
+	// wave L1: summary is never truncated away by the same budget cut that
+	// produced the elision line above — it rides outside fitToolBudget's
+	// item-slicing entirely (summary.go's withSummary wraps the WHOLE
+	// response, after every list has already been cut).
+	if s, ok := fcResp["summary"].(string); !ok || s == "" {
+		t.Fatalf("find_callers: summary missing or empty on a truncated response: %v", fcResp)
+	}
 
 	// VB-19 fix (review F1): resolution must describe exactly the rows
 	// this response returns (callers + transitive_callers), never the

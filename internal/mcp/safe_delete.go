@@ -8,6 +8,7 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"sort"
 	"strings"
 
@@ -173,8 +174,31 @@ func registerSafeDeleteCheck(s *Server, backend QueryInterface) {
 		if metaFound && indexCommit != "" {
 			resp["index_commit"] = indexCommit
 		}
-		return resp, nil
+		return withSummary(safeDeleteSummary(symbol, referents, checkedEdges), resp), nil
 	})
+}
+
+// safeDeleteSummary renders safe_delete_check's answer-first sentence (wave
+// L1): the count and the first three sites, or — when referents is empty —
+// the proven-zero receipt line, built from referents itself (the exact,
+// already-sorted list the "referents" field returns).
+func safeDeleteSummary(symbol string, referents []safeDeleteReferent, checkedEdges string) string {
+	if len(referents) == 0 {
+		return fmt.Sprintf("0 referents for %s — proven zero (%s edges checked)", symbol, checkedEdges)
+	}
+	n := len(referents)
+	if n > 3 {
+		n = 3
+	}
+	sites := make([]string, n)
+	for i, r := range referents[:n] {
+		sites[i] = fmt.Sprintf("%s:%d", r.File, r.Line)
+	}
+	summary := fmt.Sprintf("%d referent%s for %s: %s", len(referents), pluralS(len(referents)), symbol, strings.Join(sites, ", "))
+	if len(referents) > n {
+		summary += fmt.Sprintf(" (+%d more)", len(referents)-n)
+	}
+	return capSummary(summary)
 }
 
 // tierLabel renders a core.EdgeConfidence as safe_delete_check's tier

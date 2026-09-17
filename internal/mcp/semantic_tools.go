@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/modserve"
@@ -232,7 +234,7 @@ func obligationLayers(ctx context.Context, backend QueryInterface, ob obligation
 //     caller can see WHAT KIND of rule the cap dropped: a root-level
 //     catch-all crowding out a package rule reads very differently than
 //     the reverse.
-func renderObligationReceipt(ctx context.Context, backend QueryInterface, service string, obl semantic.Obligations, rootScope bool, servedLayer string, includeSnippets, indexStale bool) map[string]any {
+func renderObligationReceipt(ctx context.Context, backend QueryInterface, service string, obl semantic.Obligations, rootScope bool, servedLayer string, includeSnippets, indexStale bool) (map[string]any, string) {
 	result := map[string]any{
 		"service": obl.Service,
 		"file":    obl.File,
@@ -268,6 +270,15 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 			}
 		}
 	}
+
+	// summary (wave L1): computed from obl.Rules right here — AFTER the raw
+	// fallback prepend above, so the summary never lags the priority order
+	// the "rules" field itself will render — never from result["rules"]
+	// (only built below, and shaped differently per includeSnippets).
+	// BA-4's "never refuses" guarantee (elisionFor's own doc comment) means
+	// fitToolBudget below always keeps at least rendered[0], so obl.Rules[0]
+	// here is always rules[0] on the wire.
+	summary := obligationsSummary(obl, rootScope)
 
 	displaced := obl.Displaced
 	if len(obl.Rules) > 0 {
@@ -363,7 +374,33 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 			}
 		}
 	}
-	return result
+	return result, summary
+}
+
+// obligationsSummary renders obligations' answer-first sentence (wave L1):
+// "governing rule for <file>: <rule head> (tier, source:line)" — or the
+// root-scope/no-rule equivalent — built from obl.Rules[0], the exact row
+// that (BA-4's never-refuses guarantee) always survives into "rules"[0] on
+// the wire.
+func obligationsSummary(obl semantic.Obligations, rootScope bool) string {
+	subject := "governing rule for " + obl.File
+	if rootScope {
+		subject = "root-scope governing rule"
+	}
+	if len(obl.Rules) == 0 {
+		if rootScope {
+			return "no root-scope governing rules found"
+		}
+		return "no governing rule found for " + obl.File
+	}
+	r := obl.Rules[0]
+	head := r.Rule
+	const headMaxChars = 70
+	if utf8.RuneCountInString(head) > headMaxChars {
+		runes := []rune(head)
+		head = strings.TrimRight(string(runes[:headMaxChars]), " ") + "…"
+	}
+	return capSummary(fmt.Sprintf("%s: %s (%s, %s)", subject, head, r.Tier, r.Src))
 }
 
 // ─── registerSemanticTools ───────────────────────────────────────────────────
@@ -516,7 +553,8 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 		}
 		indexStale := ob.ObligationsIndexStale(ctx, p.Service, staleFile)
 		includeSnippets := p.IncludeSnippets == nil || *p.IncludeSnippets
-		return renderObligationReceipt(ctx, backend, p.Service, obl, rootScope, servedLayer, includeSnippets, indexStale), nil
+		body, summary := renderObligationReceipt(ctx, backend, p.Service, obl, rootScope, servedLayer, includeSnippets, indexStale)
+		return withSummary(summary, body), nil
 	})
 
 	// compile_layer: trigger obligations compilation for a service. Defaults to

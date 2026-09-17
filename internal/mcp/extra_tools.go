@@ -220,8 +220,42 @@ func registerBlastRadius(s *Server, backend QueryInterface) {
 		if ic := indexCommitFor(ctx, backend, p.Service); ic != "" {
 			result["index_commit"] = ic
 		}
-		return result, nil
+		return withSummary(blastRadiusSummary(res.Buckets, len(res.Tests)), result), nil
 	})
+}
+
+// blastRadiusSummary renders blast_radius' answer-first sentence (wave L1):
+// "depth 0: N changed symbols; depth 1: M direct callers (top: …); affected
+// tests: K" — built from buckets, the exact by_depth list the response
+// returns, and testCount, len(res.Tests) itself.
+func blastRadiusSummary(buckets []blastBucket, testCount int) string {
+	var d0, d1 blastBucket
+	haveD1 := false
+	for _, b := range buckets {
+		switch b.Depth {
+		case 0:
+			d0 = b
+		case 1:
+			d1, haveD1 = b, true
+		}
+	}
+	summary := fmt.Sprintf("depth 0: %d changed symbol%s", d0.Count, pluralS(d0.Count))
+	if haveD1 {
+		summary += fmt.Sprintf("; depth 1: %d direct caller%s", d1.Count, pluralS(d1.Count))
+		if len(d1.Symbols) > 0 {
+			n := len(d1.Symbols)
+			if n > 3 {
+				n = 3
+			}
+			names := make([]string, n)
+			for i, s := range d1.Symbols[:n] {
+				names[i] = s.Key
+			}
+			summary += " (top: " + strings.Join(names, ", ") + ")"
+		}
+	}
+	summary += fmt.Sprintf("; affected tests: %d", testCount)
+	return capSummary(summary)
 }
 
 // intOr returns *p when the caller supplied it (0 is a real value meaning

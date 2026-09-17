@@ -124,6 +124,22 @@ func truncateForWire(s string, maxChars int) string {
 	return strings.TrimRight(string(runes[:maxChars-1]), " ") + "…"
 }
 
+// defEntry is one references definition row — hoisted to package scope
+// (was a local type inside registerReferences) so referencesSummary (wave
+// L1) can share it without a second, hand-copied shape.
+type defEntry struct {
+	Service string `json:"service"`
+	Symbol  string `json:"symbol"`
+	File    string `json:"file"`
+	Line    int    `json:"line"`
+	Tier    string `json:"tier"`
+	// Depth/EdgeConfidence (BD-2): a definition is depth 0; its
+	// confidence is the index's own evidence tier (verified =
+	// resolved, anything weaker = heuristic).
+	Depth          int    `json:"depth"`
+	EdgeConfidence string `json:"edge_confidence"`
+}
+
 // occEntry is one references occurrence in its full, internal shape — the
 // working representation registerReferences builds and by_depth/applyBudget
 // operate over, before renderReferenceOccurrence compacts it for the wire.
@@ -315,19 +331,6 @@ func registerReferences(s *Server, backend QueryInterface) {
 			exact = *p.Exact
 		}
 
-		type defEntry struct {
-			Service string `json:"service"`
-			Symbol  string `json:"symbol"`
-			File    string `json:"file"`
-			Line    int    `json:"line"`
-			Tier    string `json:"tier"`
-			// Depth/EdgeConfidence (BD-2): a definition is depth 0; its
-			// confidence is the index's own evidence tier (verified =
-			// resolved, anything weaker = heuristic).
-			Depth          int    `json:"depth"`
-			EdgeConfidence string `json:"edge_confidence"`
-		}
-
 		// degradedEntry (O36, ADR-014 execute-and-flag): a service this
 		// call could not fully answer for — its root vanished, or (SB-45)
 		// its store holds no typed reference sites to confirm a mention
@@ -490,7 +493,11 @@ func registerReferences(s *Server, backend QueryInterface) {
 		// Occurrences are already hard-capped at maxOccs above, so
 		// definitions (uncapped until now) are the runaway signal.
 		if need, sum := scopeRequired(len(defs), scopeRequiredBudget, byPkg); need {
-			return map[string]any{
+			msg := fmt.Sprintf(
+				"%d definitions named %q exceed the budget — too many to page through; scope with \"services\", or a dotted path (\"pkg.%s\") instead of a bare identifier.",
+				sum.Count, p.Query, p.Query,
+			)
+			return withSummary(capSummary(fmt.Sprintf("%d definitions named %q exceed the budget — too many to list; scope required", sum.Count, p.Query)), map[string]any{
 				"query":          p.Query,
 				"definitions":    []any{},
 				"occurrences":    []any{},
@@ -502,11 +509,8 @@ func registerReferences(s *Server, backend QueryInterface) {
 				"exact":          exact,
 				"scope_required": true,
 				"top_packages":   sum.TopPackages,
-				"message": fmt.Sprintf(
-					"%d definitions named %q exceed the budget — too many to page through; scope with \"services\", or a dotted path (\"pkg.%s\") instead of a bare identifier.",
-					sum.Count, p.Query, p.Query,
-				),
-			}, nil
+				"message":        msg,
+			}), nil
 		}
 
 		// SB-1/BA-1: ONE disclosure for both caps. totalOccs is every
@@ -610,6 +614,31 @@ func registerReferences(s *Server, backend QueryInterface) {
 		if el != nil {
 			resp["elided"] = el
 		}
-		return resp, nil
+		return withSummary(referencesSummary(p.Query, defs, wireOccs), resp), nil
 	})
+}
+
+// referencesSummary renders references' answer-first sentence (wave L1):
+// counts by kind (definitions, occurrences) with the first three locations
+// — built from defs and wireOccs, the exact (post-budget) lists the
+// "definitions"/"occurrences" fields return.
+func referencesSummary(query string, defs []defEntry, occs []referenceOccurrence) string {
+	summary := fmt.Sprintf("%d definition%s, %d occurrence%s of %q", len(defs), pluralS(len(defs)), len(occs), pluralS(len(occs)), query)
+	var locs []string
+	for _, d := range defs {
+		if len(locs) >= 3 {
+			break
+		}
+		locs = append(locs, fmt.Sprintf("%s:%d", d.File, d.Line))
+	}
+	for _, o := range occs {
+		if len(locs) >= 3 {
+			break
+		}
+		locs = append(locs, o.Loc)
+	}
+	if len(locs) > 0 {
+		summary += "; first: " + strings.Join(locs, ", ")
+	}
+	return capSummary(summary)
 }

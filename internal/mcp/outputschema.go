@@ -35,6 +35,11 @@ import (
 // CallerEdgeConfidence are the envelope lift, present only when every
 // listed caller shares one (see uniformCallerFields).
 type findCallersResult struct {
+	// Summary (wave L1, vision 28 §3 envelopes) is the FIRST key on the
+	// wire (see summary.go's summaryEnvelope) — one sentence naming the
+	// direct callers, never a depth-2+ one, built from the same "callers"
+	// list this struct carries.
+	Summary              string         `json:"summary"`
 	Callers              []callerEntry  `json:"callers"`
 	ByDepth              []depthBucket  `json:"by_depth"`
 	TransitiveCallers    []depthRow     `json:"transitive_callers,omitempty"`
@@ -104,6 +109,9 @@ type listServicesEntry struct {
 }
 
 type obligationsResult struct {
+	// Summary (wave L1): the governing rule's head, tier and source line
+	// for the queried file — or the root-scope/no-rule equivalent.
+	Summary             string         `json:"summary"`
 	Service             string         `json:"service"`
 	File                string         `json:"file,omitempty"`
 	Rules               []any          `json:"rules,omitempty"`
@@ -155,6 +163,9 @@ type readSourceResult struct {
 }
 
 type referencesResult struct {
+	// Summary (wave L1): counts by kind (definitions/occurrences) with the
+	// first three locations, built from the same post-budget lists below.
+	Summary           string                `json:"summary"`
 	Query             string                `json:"query"`
 	Definitions       []referenceDefinition `json:"definitions"`
 	Occurrences       []referenceOccurrence `json:"occurrences"`
@@ -293,6 +304,8 @@ type verifyPlanTask struct {
 
 // renameImpactResult mirrors rename_impact's payload (analysis_tools.go).
 type renameImpactResult struct {
+	// Summary (wave L1): the count and the first three call sites.
+	Summary string   `json:"summary"`
 	Callers []string `json:"callers"`
 	// Resolution/IndexCommit (VB-19): the typed/heuristic mix behind
 	// callers, and the daemon's watermark for the service.
@@ -302,7 +315,10 @@ type renameImpactResult struct {
 
 // testImpactResult mirrors test_impact's payload (analysis_tools.go).
 type testImpactResult struct {
-	Tests []string `json:"tests"`
+	// Summary (wave L1): how many tests reach the symbol, and the nearest
+	// one.
+	Summary string   `json:"summary"`
+	Tests   []string `json:"tests"`
 	// Resolution/IndexCommit (VB-19): the typed/heuristic mix behind
 	// tests, and the daemon's watermark for the service.
 	Resolution  resolutionMix `json:"resolution"`
@@ -311,6 +327,9 @@ type testImpactResult struct {
 
 // blastRadiusResult mirrors blast_radius' payload (extra_tools.go).
 type blastRadiusResult struct {
+	// Summary (wave L1): "depth 0: N changed symbols; depth 1: M direct
+	// callers (top: …); affected tests: K".
+	Summary      string        `json:"summary"`
 	Symbols      []string      `json:"symbols"`
 	Tests        []string      `json:"tests"`
 	Files        []string      `json:"files"`
@@ -354,6 +373,9 @@ type reviewDiffResult struct {
 
 // safeDeleteCheckResult mirrors safe_delete_check's payload (safe_delete.go).
 type safeDeleteCheckResult struct {
+	// Summary (wave L1): the count and the first three sites, or the
+	// proven-zero receipt line.
+	Summary       string               `json:"summary"`
 	Referents     []safeDeleteReferent `json:"referents"`
 	ReferentCount int                  `json:"referent_count"`
 	CheckedEdges  string               `json:"checked_edges"`
@@ -382,6 +404,8 @@ type localizeBudgetResult struct {
 
 // localizeResult mirrors localize's payload (localize_tool.go).
 type localizeResult struct {
+	// Summary (wave L1): the top candidate with its tier and why.
+	Summary     string                    `json:"summary"`
 	Candidates  []localizeCandidateResult `json:"candidates"`
 	Hops        []localizeHop             `json:"hops"`
 	Budget      localizeBudgetResult      `json:"budget"`

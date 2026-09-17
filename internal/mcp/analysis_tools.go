@@ -12,6 +12,8 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -107,8 +109,27 @@ func registerRenameImpact(s *Server, backend QueryInterface) {
 		if ic := indexCommitFor(ctx, backend, p.Service); ic != "" {
 			result["index_commit"] = ic
 		}
-		return result, nil
+		return withSummary(renameImpactSummary(p.Symbol, callers), result), nil
 	})
+}
+
+// renameImpactSummary renders rename_impact's answer-first sentence (wave
+// L1): the count and the first three call sites, built from callers —
+// exactly the list the "callers" field returns, so the summary can never
+// claim a site the body does not carry.
+func renameImpactSummary(symbol string, callers []string) string {
+	if len(callers) == 0 {
+		return fmt.Sprintf("0 call sites for %s — nothing to rename", symbol)
+	}
+	n := len(callers)
+	if n > 3 {
+		n = 3
+	}
+	summary := fmt.Sprintf("%d call site%s for %s: %s", len(callers), pluralS(len(callers)), symbol, strings.Join(callers[:n], ", "))
+	if len(callers) > n {
+		summary += fmt.Sprintf(" (+%d more)", len(callers)-n)
+	}
+	return capSummary(summary)
 }
 
 // ─── reachable ────────────────────────────────────────────────────────────────
@@ -234,8 +255,39 @@ func registerTestImpact(s *Server, backend QueryInterface) {
 		if ic := indexCommitFor(ctx, backend, p.Service); ic != "" {
 			result["index_commit"] = ic
 		}
-		return result, nil
+		return withSummary(testImpactSummary(p.Symbol, tests, infos), result), nil
 	})
+}
+
+// testImpactSummary renders test_impact's answer-first sentence (wave L1):
+// how many tests reach symbol, and the nearest one — built from tests (the
+// exact list the "tests" field returns) and infos (the same per-test depth
+// tally the resolution mix above already summed), so "nearest" can never
+// name a test that is not actually in the body.
+func testImpactSummary(symbol string, tests []string, infos map[string]depthInfo) string {
+	if len(tests) == 0 {
+		return fmt.Sprintf("no tests reach %s", symbol)
+	}
+	nearest := ""
+	nearestDepth := -1
+	for _, t := range tests {
+		d := 0
+		if info, ok := infos[t]; ok {
+			d = info.Depth
+		}
+		if nearestDepth == -1 || d < nearestDepth || (d == nearestDepth && t < nearest) {
+			nearestDepth, nearest = d, t
+		}
+	}
+	verb := "reach"
+	if len(tests) == 1 {
+		verb = "reaches"
+	}
+	summary := fmt.Sprintf("%d test%s %s %s", len(tests), pluralS(len(tests)), verb, symbol)
+	if nearest != "" {
+		summary += "; nearest: " + nearest
+	}
+	return capSummary(summary)
 }
 
 // ─── dead_code ────────────────────────────────────────────────────────────────

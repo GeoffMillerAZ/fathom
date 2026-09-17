@@ -114,9 +114,12 @@ type searchHit struct {
 
 // searchResult is search's top-level answer.
 type searchResult struct {
-	Hits   []searchHit `json:"hits"`
-	Engine string      `json:"engine"`
-	Elided *elided     `json:"elided,omitempty"`
+	// Summary (wave L1, vision 28 §3 envelopes): "N hits in M files; first:
+	// file:line (sym)", built from Hits after limit/budget truncation.
+	Summary string      `json:"summary"`
+	Hits    []searchHit `json:"hits"`
+	Engine  string      `json:"engine"`
+	Elided  *elided     `json:"elided,omitempty"`
 }
 
 // searchRawHit is one match before receipts are attached: what either
@@ -283,8 +286,31 @@ func registerSearch(s *Server, backend QueryInterface) {
 		if truncated || total > len(kept) {
 			el = elisionFor(len(kept), total, "path, then line", "narrow path or pattern")
 		}
-		return searchResult{Hits: kept, Engine: engine, Elided: el}, nil
+		return searchResult{Summary: searchSummary(kept), Hits: kept, Engine: engine, Elided: el}, nil
 	})
+}
+
+// searchSummary renders search's answer-first sentence (wave L1): the hit
+// and file counts, and the first hit's location plus its enclosing symbol
+// when the index resolved one — built from kept, the exact rows the "hits"
+// field returns, so the summary can never name a count the body does not
+// back.
+func searchSummary(kept []searchHit) string {
+	if len(kept) == 0 {
+		return "no hits"
+	}
+	files := make(map[string]bool, len(kept))
+	for _, h := range kept {
+		if f, _, ok := strings.Cut(h.Loc, ":"); ok {
+			files[f] = true
+		}
+	}
+	summary := fmt.Sprintf("%d hit%s in %d file%s", len(kept), pluralS(len(kept)), len(files), pluralS(len(files)))
+	first := kept[0].Loc
+	if kept[0].Sym != "" {
+		first += " (" + kept[0].Sym + ")"
+	}
+	return capSummary(summary + "; first: " + first)
 }
 
 // searchRun runs ripgrep when it is on PATH, falling back to searchWalk

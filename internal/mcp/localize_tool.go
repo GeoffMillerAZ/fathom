@@ -275,8 +275,11 @@ func findFileByPathSuffix(byFile map[string][]core.SymbolNode, target string) (s
 
 // ─── the loop ───────────────────────────────────────────────────────────────
 
-// runLocalize is registerLocalize's own testable core.
-func runLocalize(ctx context.Context, s *Server, backend QueryInterface, service, kind, text string, budgetIn int) map[string]any {
+// runLocalize is registerLocalize's own testable core. The second return
+// value is its answer-first summary sentence (wave L1) — computed here,
+// alongside the response it describes, rather than re-derived by the
+// caller from an already-built map.
+func runLocalize(ctx context.Context, s *Server, backend QueryInterface, service, kind, text string, budgetIn int) (map[string]any, string) {
 	allowed := clampLocalizeBudget(budgetIn)
 
 	// ADR-014 execute-and-flag: an unindexed service is never a silent
@@ -285,12 +288,13 @@ func runLocalize(ctx context.Context, s *Server, backend QueryInterface, service
 	// caller infer "not indexed" from a diagnosis that looks identical to
 	// "no bug found here".
 	if _, _, found, _ := backend.ServiceMeta(ctx, service); !found {
+		note := fmt.Sprintf("service %q is not indexed — nothing to localize against; ingest it first", service)
 		return map[string]any{
 			"candidates": []map[string]any{},
 			"hops":       []localizeHop{},
 			"budget":     map[string]any{"allowed": allowed, "used": 0},
-			"note":       fmt.Sprintf("service %q is not indexed — nothing to localize against; ingest it first", service),
-		}
+			"note":       note,
+		}, capSummary(note)
 	}
 
 	used := 0
@@ -511,7 +515,28 @@ func runLocalize(ctx context.Context, s *Server, backend QueryInterface, service
 	if _, indexCommit, found, _ := backend.ServiceMeta(ctx, service); found && indexCommit != "" {
 		resp["index_commit"] = indexCommit
 	}
-	return resp
+	return resp, localizeSummary(out)
+}
+
+// localizeSummary renders localize's answer-first sentence (wave L1): the
+// top candidate with its tier and why — built from out, the exact
+// already-sorted (score desc, then file, then symbol) slice candOut above
+// renders, so the summary can never name a candidate that outranks what
+// the body actually lists first.
+func localizeSummary(ranked []*localizeCandidate) string {
+	if len(ranked) == 0 {
+		return "no candidates found"
+	}
+	top := ranked[0]
+	loc := top.File
+	if top.Symbol != "" {
+		loc += " (" + top.Symbol + ")"
+	}
+	summary := fmt.Sprintf("top candidate: %s — tier %s", loc, top.Tier)
+	if len(top.Why) > 0 {
+		summary += "; " + top.Why[0]
+	}
+	return capSummary(summary)
 }
 
 // localizeInputKinds is the four mutually-exclusive input shapes, in the
@@ -567,6 +592,7 @@ func registerLocalize(s *Server, backend QueryInterface) {
 			return nil, &rpcError{Code: ErrCodeParams, Message: fmt.Sprintf("localize: exactly one of stack_trace, failing_test, error, concern is required, got %d (%s)", len(present), strings.Join(present, ", "))}
 		}
 		kind := present[0]
-		return runLocalize(ctx, s, backend, p.Service, kind, vals[kind], p.Budget), nil
+		body, summary := runLocalize(ctx, s, backend, p.Service, kind, vals[kind], p.Budget)
+		return withSummary(summary, body), nil
 	})
 }

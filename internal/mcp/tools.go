@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -238,7 +239,11 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 			byPkg[n.Package]++
 		}
 		if need, sum := scopeRequired(len(nodes), scopeRequiredBudget, byPkg); need {
-			return map[string]any{
+			msg := fmt.Sprintf(
+				"%d callers exceed the budget — too many to page through; scope with a more specific symbol, or inspect top_packages below.",
+				sum.Count,
+			)
+			return withSummary(capSummary(fmt.Sprintf("%d callers of %s exceed the budget — too many to list; scope required", sum.Count, p.Symbol)), map[string]any{
 				"callers":        []any{},
 				"edge_filter":    edgeFilter,
 				"by_depth":       []any{},
@@ -246,11 +251,8 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 				"scope_required": true,
 				"count":          sum.Count,
 				"top_packages":   sum.TopPackages,
-				"message": fmt.Sprintf(
-					"%d callers exceed the budget — too many to page through; scope with a more specific symbol, or inspect top_packages below.",
-					sum.Count,
-				),
-			}, nil
+				"message":        msg,
+			}), nil
 		}
 
 		callers := toNodeDTOs(nodes)
@@ -315,6 +317,7 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 		if env.ConfUniform {
 			result["caller_edge_confidence"] = env.EdgeConfidence
 		}
+		var transitiveRows []depthRow
 		if maxDepth != 1 {
 			transitive := map[string]depthInfo{}
 			for k, d := range depths {
@@ -323,7 +326,8 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 					infos = append(infos, d)
 				}
 			}
-			result["transitive_callers"] = sortedDepthRows(transitive)
+			transitiveRows = sortedDepthRows(transitive)
+			result["transitive_callers"] = transitiveRows
 		}
 		byDepth := withDepthBuckets(infos)
 		result["by_depth"] = byDepth
@@ -364,7 +368,7 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 		if cross := crossServiceCallers(fleet, p.Service, p.Symbol); len(cross) > 0 {
 			result["cross_service_callers"] = cross
 		}
-		return result, nil
+		return withSummary(findCallersSummary(p.Symbol, callers[:len(wireCallers)], transitiveRows, elidedCount, maxDepth), result), nil
 	})
 
 	// find_symbol — locate a symbol definition.
@@ -576,6 +580,50 @@ func callerGraph(ctx context.Context, backend QueryInterface, service string) *c
 		callgraph.AddTypedEdges(g, typed)
 	}
 	return g
+}
+
+// findCallersSummary renders find_callers' answer-first sentence (wave L1,
+// H1-T05): the direct (depth-1) callers by name and location, built from
+// direct — the exact prefix of symbolNodeDTOs the "callers" field renders
+// on the wire, post-budget — never from transitive (depth 2+), so the
+// summary can never name a deeper caller as direct (the exact defect
+// H1-T05 found: find_callers listed the direct caller correctly and the
+// model's final answer named a depth-2 caller instead). elidedDirect is
+// how many further direct callers the budget cut; transitive is the
+// (already depth/key-sorted) rows beyond depth 1, present only when the
+// caller asked for depth > 1.
+func findCallersSummary(symbol string, direct []symbolNodeDTO, transitive []depthRow, elidedDirect, maxDepth int) string {
+	var summary string
+	if len(direct) == 0 && elidedDirect == 0 {
+		summary = fmt.Sprintf("no direct callers of %s found", symbol)
+	} else {
+		n := len(direct)
+		if n > 3 {
+			n = 3
+		}
+		names := make([]string, n)
+		for i, c := range direct[:n] {
+			names[i] = fmt.Sprintf("%s (%s:%d)", c.Name, c.FilePath, c.Line)
+		}
+		summary = fmt.Sprintf("%d direct caller%s of %s: %s", len(direct)+elidedDirect, pluralS(len(direct)+elidedDirect), symbol, strings.Join(names, ", "))
+		if len(direct) > n {
+			summary += fmt.Sprintf(" (+%d more)", len(direct)-n)
+		}
+		if elidedDirect > 0 {
+			summary += fmt.Sprintf(" (+%d not shown)", elidedDirect)
+		}
+	}
+	if len(transitive) > 0 {
+		depthLabel := "depth 2"
+		switch {
+		case maxDepth == 0:
+			depthLabel = "deeper depths"
+		case maxDepth > 2:
+			depthLabel = fmt.Sprintf("depths 2-%d", maxDepth)
+		}
+		summary += fmt.Sprintf("; %d more at %s", len(transitive), depthLabel)
+	}
+	return capSummary(summary)
 }
 
 // typedCallersFor returns symbol's typed-edge callers (ADR-021 §3), each
