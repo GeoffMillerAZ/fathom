@@ -53,7 +53,7 @@ Verify: `fathom verify --service fathom --plan docs/plans/verbs.md`.
 
 - [x] A harness adapter runs the same model with and without the agent surface on Long Code Arena's bug-localization track, emitting rows into the scenario ledger with instrument truth (server connected, hooks fired, surface calls) {id: VB-25, symbol: RunExternalCorpus, package: internal/scenariobench}
 - [x] `localize`: given a stack trace, failing test, error string or concern, one bounded, budgeted, logged loop over the index ranked by graph proximity, recency and open obligations, returning a diagnosis object with citations and the hops taken — never a bare list {id: VB-26, symbol: registerLocalize, package: internal/mcp, reachable_from: TestLocalize_BudgetStopsTheLoop}
-- [ ] (op) M12 and M16 written with paired statistics at n ≥ 3 over ≥ 30 tasks; a confidence interval that includes zero publishes the null and closes BC-15 on it {id: VB-27, skip_test: true, skip: "operator spend; evidence is the ledger rows and the published raw cells", needs: VB-25}
+- [x] (op) M12 and M16 written with paired statistics at n ≥ 3 over ≥ 30 tasks; a confidence interval that includes zero publishes the null and closes BC-15 on it — 2026-09-17: lca-run-1, 40 Long Code Arena bug-localization tasks × 2 arms × 3 trials (234 cells, 6 lost): control 93/117, fathom 94/117; paired bootstrap over 39 tasks +0.009, 95 % CI [−0.077, +0.094] — includes zero at 2.0× tokens; the null is published and BC-15 closes on it (docs/bench/readings/lca-run-1-reading.md) {id: VB-27, skip_test: true, skip: "operator spend; evidence is the ledger rows and the published raw cells", needs: VB-25}
 
 ## Wave H — the custodian over harness memory (R8)
 
