@@ -795,6 +795,13 @@ gold source: Bash earned 2 of 2 passes.
 Voided: 1 row(s) carry `instrument_defect` and are excluded from the numbers above — RE-SB-cli__cli-10124/control.
 Paired (bootstrap, n=3, seed 20260902, 20000 resamples): success-rate diff +0.000 [+0.000, +0.000] (95% CI); token ratio 1.78× [1.38×, 2.45×].
 
+**reuse-pilot-4** — full vs control: success 4/6 vs 4/6, tokens 1.727×, cost 1.408×.
+Surface calls: control=0, full=40.
+On reuse-pilot-4, fathom's arm matched control on success (4 v 4) at 1.727× the tokens; the tools were called 40 time(s). Registered criterion M5-1: fail (tokens-per-success ratio 1.727× exceeds the registered bar of 1.000×).
+gold source: mcp__fathom__search earned 4 of 4 passes.
+Voided: 2 row(s) carry `instrument_defect` and are excluded from the numbers above — RE-SB-cli__cli-10124/control, RE-SB-cli__cli-10124/full.
+Paired (bootstrap, n=3, seed 20260902, 20000 resamples): success-rate diff +0.000 [+0.000, +0.000] (95% CI); token ratio 1.69× [1.47×, 1.84×].
+
 **vs-pilot-1**: every row is voided — nothing sound to measure.
 Voided: 30 row(s) carry `instrument_defect` and are excluded from the numbers above — FRESH-M7-01/full, FRESH-M7-01/gopls, FRESH-M7-01/graphify, FRESH-M7-01/grep, FRESH-M7-01/serena, H1-T01/full, H1-T01/gopls, H1-T01/graphify, H1-T01/grep, H1-T01/serena, H1-T03/full, H1-T03/gopls, H1-T03/graphify, H1-T03/grep, H1-T03/serena, H1-T06/full, H1-T06/gopls, H1-T06/graphify, H1-T06/grep, H1-T06/serena, H1-T07/full, H1-T07/gopls, H1-T07/graphify, H1-T07/grep, H1-T07/serena, H1-T10/full, H1-T10/gopls, H1-T10/graphify, H1-T10/grep, H1-T10/serena.
 
@@ -1243,6 +1250,14 @@ Paired (bootstrap, n=14, seed 20260902, 20000 resamples): success-rate diff -0.1
 | lca-run-1 | 490329d | tweepy/tweepy/1262/1261 | localization | fathom | sonnet | 3 | 2 | The localize verb's graph-proximity, recency and obligations ranking (VB-26) beats a cold grep-and-guess on file-level accuracy@1, mirroring LocAgent's own reported lift over a syntax-only graph (docs/vision/29-verbs-not-lookups.md R10). | 6 | 58 | – | – | – | – | – | – | – | 0.6309 |  |
 | lca-run-1 | 490329d | vert-x3/vertx-web/1779/1778 | localization | control | sonnet | 3 | 3 | Without a localize verb the agent falls back to grep and a stack-trace read, matching R10's SHERLOC finding that roughly half the tool budget goes to locating rather than fixing. | 0 | – | – | – | – | – | – | – | – | 0.3094 |  |
 | lca-run-1 | 490329d | vert-x3/vertx-web/1779/1778 | localization | fathom | sonnet | 3 | 3 | The localize verb's graph-proximity, recency and obligations ranking (VB-26) beats a cold grep-and-guess on file-level accuracy@1, mirroring LocAgent's own reported lift over a syntax-only graph (docs/vision/29-verbs-not-lookups.md R10). | 8 | 34 | – | – | – | – | – | – | – | 0.3854 |  |
+| reuse-pilot-4 | 490329d | RE-SB-cli__cli-10043 | cross_package_feature | control | sonnet | 2 | 2 | planner explores with grep/Read and writes prose rows; each worker re-explores the same files — overlap high | 0 | – | – | – | 0.26 (n=1) | – | 1774629 (n=1) | 2/4 refuted | 1.00 | 1.1256 |  |
+| reuse-pilot-4 | 490329d | RE-SB-cli__cli-10043 | cross_package_feature | full | sonnet | 2 | 2 | planner explores once through repo_map/pack_context/blast radius; workers start from the row's ctx pack — overlap low, workers reach first edit sooner | 16 | 167 | – | – | 0.45 (n=2) | – | 1834772 (n=2) | 4/6 refuted | 1.00 | 1.6631 |  |
+| reuse-pilot-4 | 490329d | RE-SB-cli__cli-10043-K1 | cross_package_feature | control | sonnet | 2 | 2 | no effect for the same reason; this variant is the matrix's no-effect cell | 0 | – | – | – | 0.18 (n=1) | – | 1142819 (n=1) | 2/4 refuted | 1.00 | 0.7845 |  |
+| reuse-pilot-4 | 490329d | RE-SB-cli__cli-10043-K1 | cross_package_feature | full | sonnet | 2 | 2 | no effect: with one worker there is nothing to reuse across workers — the overlap reading is defined only against the planner, and vision 27 M5 predicts the pack advantage vanishes at K = 1 | 14 | 110 | – | – | 0.24 (n=2) | – | 873338 (n=2) | 2/4 refuted | 1.00 | 0.8869 |  |
+| reuse-pilot-4 | 490329d | RE-SB-cli__cli-10048 | cross_package_feature | control | sonnet | 2 | 0 | planner explores with grep/Read and writes prose rows; each worker re-explores the same files — overlap high | 0 | – | – | – | 0.50 (n=2) | – | 933108 (n=2) | 2/4 refuted | 0.50 | 1.7118 |  |
+| reuse-pilot-4 | 490329d | RE-SB-cli__cli-10048 | cross_package_feature | full | sonnet | 2 | 0 | planner explores once through repo_map/pack_context/blast radius; workers start from the row's ctx pack — overlap low, workers reach first edit sooner | 10 | 230 | – | – | 0.44 (n=2) | – | 1783724 (n=2) | 4/5 refuted | 0.00 | 2.5504 |  |
+| reuse-pilot-4 | 490329d | RE-SB-cli__cli-10124 | cross_package_feature | control | sonnet | 2 | 0 | planner explores with grep/Read and writes prose rows; each worker re-explores the same files — overlap high | 0 | – | – | – | 0.25 (n=2) | – | 4816497 (n=2) | – | 0.00 | 4.5165 | VOIDED (Gold test_patch (http_test.go + list_test.go) can't git-apply: a worker already wrote pkg/cmd/repo/autolink/list/list_test.go at the identical path, so fail_to_pass never ran in either trial — oracle genuinely unmeasurable, not a proven fail (t1: worker wrote the colliding file; t2: 10 sessions completed all 10 plan rows per worker self-report but oracle still unmeasurable).) |
+| reuse-pilot-4 | 490329d | RE-SB-cli__cli-10124 | cross_package_feature | full | sonnet | 2 | 0 | planner explores once through repo_map/pack_context/blast radius; workers start from the row's ctx pack — overlap low, workers reach first edit sooner | 27 | 535 | – | – | 0.11 (n=2) | – | 6298554 (n=2) | – | 0.50 | 5.5680 | VOIDED (Same list_test.go collision blocks oracle despite fathom wiring in both trials — oracle genuinely unmeasurable, not a proven fail (t1: drift check flags REPO-AUTOLINK-1 and REPO-AUTOLINK-6 symbols as later vanished after being checked [x], so 2 claimed rows didn't hold; t2: plan_coverage reached the full gold function NewCmdRepo/AUTOLINK-4 but drift check flags 1 claimed row's symbol as later vanished).) |
 
 ### Gold source by question shape
 
@@ -1252,7 +1267,7 @@ Paired (bootstrap, n=14, seed 20260902, 20000 resamples): success-rate diff -0.1
 | claim_provenance | 0.00 | 0.00 | 0.00 | 0.20 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.80 | 0.00 |
 | concern_search | 0.05 | 0.00 | 0.70 | 0.12 | 0.00 | 0.00 | 0.00 | 0.00 | 0.02 | 0.02 | 0.00 | 0.09 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
 | contradiction | 0.63 | 0.00 | 0.13 | 0.23 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
-| cross_package_feature | 0.25 | 0.12 | 0.09 | 0.00 | 0.00 | 0.03 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.50 |
+| cross_package_feature | 0.23 | 0.17 | 0.15 | 0.00 | 0.00 | 0.04 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.08 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.33 |
 | freshness | 0.10 | 0.00 | 0.27 | 0.57 | 0.07 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
 | governance_bound | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.66 | 0.34 |
 | localization | 0.18 | 0.00 | 0.34 | 0.07 | 0.00 | 0.16 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.18 | 0.00 | 0.00 | 0.00 | 0.00 | 0.07 | 0.00 |
