@@ -325,6 +325,7 @@ type scored struct {
 	claims      bool
 	governing   governingScope
 	relevance   float64
+	strong      bool // wave O3, item 1: relevanceStrength's verdict — see crossTierCloser
 }
 
 // claimRelevanceText builds the text relevanceScore scores one compiled
@@ -491,11 +492,12 @@ func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile str
 		if best >= 0 {
 			governing := noGoverningScope
 			var relevance float64
+			var strong bool
 			if outFile != "" {
 				governing = rankByGoverningScope(scope, outFile)
-				relevance = relevanceScore(claimRelevanceText(cl), relevanceTokens)
+				relevance, strong = relevanceStrength(claimRelevanceText(cl), relevanceTokens)
 			}
-			matched = append(matched, scored{cl: cl, specificity: best, claims: claims, governing: governing, relevance: relevance})
+			matched = append(matched, scored{cl: cl, specificity: best, claims: claims, governing: governing, relevance: relevance, strong: strong})
 		}
 	}
 	if len(matched) == 0 {
@@ -514,9 +516,12 @@ func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile str
 		// Only meaningful for a file-scoped call (outFile != ""); a
 		// root-scope answer has no path to be proximate to, so every
 		// candidate carries the same noGoverningScope and this comparison
-		// is always a no-op there.
+		// is always a no-op there. wave O3, item 1: crossTierCloser lets a
+		// farther-tier claim with STRONG lexical relevance leapfrog a
+		// nearer-tier claim that is a total lexical blank — see its own doc
+		// comment; every other case reproduces plain closerThan exactly.
 		if outFile != "" && a.governing != b.governing {
-			return a.governing.closerThan(b.governing)
+			return crossTierCloser(a.governing, b.governing, a.relevance, b.relevance, a.strong, b.strong)
 		}
 		// wave O2 (vs-pilot-6 second reading §5): STRICTLY INSIDE a
 		// governing-scope tier (same a.governing/b.governing — VB-8 above

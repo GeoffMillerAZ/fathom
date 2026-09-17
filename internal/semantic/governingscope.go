@@ -92,6 +92,37 @@ func rankByGoverningScope(scope []string, path string) governingScope {
 	return best
 }
 
+// crossTierCloser (wave O3, item 1; ADR-037 addendum) is closerThan's own
+// caller-facing replacement in both rankers (obligationsCore's less() and
+// RawFallbackRules' candidate sort): proximity is still the PRIMARY key —
+// this exactly reproduces a.closerThan(b) whenever neither side qualifies
+// for promotion — but a farther-tier candidate whose lexical relevance is
+// STRONG (aStrong/bStrong — relevanceStrength's own verdict: a hit on a
+// packageWeight-or-above token, i.e. the file's own package path, stem, or
+// a caller-resolved symbol/behaviour name, never a mere shared ancestor or
+// extension) is promoted ahead of a nearer-tier candidate that is a TOTAL
+// lexical blank (relevance == 0 — "names nothing about the file at all").
+// This is deliberately narrow: the moment the nearer candidate has ANY
+// hit, however weak (an ancestor directory name in passing), proximity
+// wins outright and no promotion happens — a nearer guide's own several
+// sections, each mentioning the file's own ancestor directory somewhere,
+// are never leapfrogged by a farther, more specific rule; only a nearer
+// section that reads back NOTHING about the edited path loses its
+// proximity advantage. Ties (both sides carry relevance, or the farther
+// side is not strong) fall straight through to ordinary proximity — VB-8's
+// tier/depth primacy is unchanged in every case this doesn't apply to.
+func crossTierCloser(a, b governingScope, aRel, bRel float64, aStrong, bStrong bool) bool {
+	if a.tier != b.tier {
+		switch {
+		case aStrong && bRel == 0:
+			return true // a is farther but strong; b (nearer) names nothing at all
+		case bStrong && aRel == 0:
+			return false // symmetric: b leapfrogs a
+		}
+	}
+	return a.closerThan(b)
+}
+
 // dirOf is path.Dir normalised so a repo-root file's "directory" is "" —
 // the empty anchor every root-reaching glob and every exact-match test
 // below compares against, rather than Go's own "." sentinel.

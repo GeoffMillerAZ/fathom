@@ -36,6 +36,20 @@ package semantic
 // discriminates within a guide that governs all of internal/*), with a
 // heading hit weighted again on top. No division, so a thorough section is
 // never punished for being thorough.
+//
+// wave O3 adds two more pieces, both still strictly deterministic/no-LLM:
+// relevanceStrength (this file) reports, alongside the score, whether any
+// hit was STRONG (packageWeight or above) — the signal crossTierCloser
+// (governingscope.go) needs to ever promote a farther-tier rule ahead of a
+// nearer one, and only when the nearer one is a total lexical blank (see
+// that function's doc comment for the exact, deliberately narrow rule).
+// BehaviorTokens (this file) is the other half: a root-wide convention
+// (workspace/, the gate) names no file/package/symbol of its own to be
+// "strong" about, so a file that BEHAVES the way the convention governs
+// (writes output, runs the gate) is scanned for a small fixed table of
+// signals and gets the convention's own keyword folded in as an extra,
+// stem-weight token — the same extraTokens path a caller-resolved symbol
+// name already uses (pkg/client.RawFallbackObligations wires both).
 import "strings"
 
 // weightedToken is one lexical token relevanceScore matches against,
@@ -185,13 +199,28 @@ func splitIdent(s string) []string {
 // why. Zero when tokens or text is empty — an honest "nothing to score",
 // never a fabricated tie-break.
 func relevanceScore(text string, tokens []weightedToken) float64 {
+	score, _ := relevanceStrength(text, tokens)
+	return score
+}
+
+// relevanceStrength is relevanceScore's full answer (wave O3, item 1): the
+// same score, plus whether ANY hit came from a token at packageWeight or
+// above (stemWeight, packageWeight, or a caller-supplied symbol/behaviour
+// token — symbolRelevanceTokens and BehaviorTokens both carry stemWeight).
+// A hit confined to ancestorWeight/extensionWeight tokens ("internal",
+// ".go") is never strong: both are shared by every sibling file in the
+// repo and fire on unrelated prose constantly (a guide that merely
+// mentions "internal/store" in passing, or uses the word "go" as an
+// English verb). "Strong" is what crossTierCloser (governingscope.go)
+// requires before it will promote a farther-tier candidate ahead of a
+// nearer one — see that function's doc comment for the full rule.
+func relevanceStrength(text string, tokens []weightedToken) (score float64, strong bool) {
 	if len(tokens) == 0 || text == "" {
-		return 0
+		return 0, false
 	}
 	heading, body, _ := strings.Cut(text, "\n")
 	heading = strings.ToLower(heading)
 	body = strings.ToLower(body)
-	var score float64
 	for _, t := range tokens {
 		hHits := countWordHits(heading, t.tok)
 		bHits := countWordHits(body, t.tok)
@@ -201,9 +230,92 @@ func relevanceScore(text string, tokens []weightedToken) float64 {
 		if bHits > hitCap {
 			bHits = hitCap
 		}
+		if hHits+bHits == 0 {
+			continue
+		}
 		score += t.weight * (headingRelevanceWeight*float64(hHits) + float64(bHits))
+		if t.weight >= packageWeight {
+			strong = true
+		}
 	}
-	return score
+	return score, strong
+}
+
+// behaviorConventionTable (wave O3, item 2) is the small, deterministic
+// behaviour -> convention-keyword table for root-wide conventions that
+// name no file, package, or symbol of their own — H1-T08's workspace/ row
+// is the case this exists for: "ALL build artifacts, logs, temp files,
+// local DBs go under gitignored workspace/" reads back nothing about any
+// one edited file, so pathRelevanceTokens/symbolRelevanceTokens can never
+// give it a lexical tie no matter which file is being edited. What DOES
+// tie a file to that rule is the file's own BEHAVIOUR: a file that writes
+// output the convention governs. Each row is a set of literal signals
+// (matched as a plain substring of the file's own source text — no
+// parsing, no AST) mapped to the convention keyword(s) to add as extra
+// relevance tokens, at the same stem weight a caller-resolved symbol name
+// carries (BehaviorTokens below feeds them through the exact same
+// extraTokens path RawFallbackObligations already uses for symbol names).
+var behaviorConventionTable = []struct {
+	signals  []string
+	keywords []string
+}{
+	{
+		// Writing a file outside the working tree, or a flag that names an
+		// output path — the shape the root workspace/ convention governs.
+		signals: []string{
+			"os.WriteFile(", "os.Create(", "os.OpenFile(", "os.MkdirAll(",
+			"ioutil.WriteFile(", "ioutil.TempFile(", "os.TempDir(",
+		},
+		keywords: []string{"workspace"},
+	},
+	{
+		// Running the test/vet/build gate, or a raw shell command — the
+		// shape the root Gate convention governs.
+		signals: []string{
+			"exec.Command(\"go\"", "exec.Command(\"sh\"", "exec.Command(\"bash\"",
+			"\"go\", \"test\"", "\"go\", \"vet\"", "\"go\", \"build\"",
+		},
+		keywords: []string{"gate", "validate"},
+	},
+}
+
+// BehaviorTokens scans fileText — the edited file's own source, when the
+// caller has it (pkg/client.RawFallbackObligations already loads every
+// source file's content to build the layer's corpus; the edited file is
+// almost always among them) — for the signals behaviorConventionTable
+// declares, and returns the matched rows' convention keywords, deduplicated
+// in table order. A pure function of the text handed to it — no store
+// access, no AST parse, just the same substring/word-boundary machinery
+// this file already uses. Returns nil when fileText is empty (nothing to
+// scan — an honest "no signal available", the exact shape a synthetic or
+// unreadable path degrades to) or when nothing in the table matches.
+// Deterministic: same text, same tokens, every call.
+func BehaviorTokens(fileText string) []string {
+	if fileText == "" {
+		return nil
+	}
+	seen := map[string]bool{}
+	var out []string
+	for _, row := range behaviorConventionTable {
+		matched := false
+		for _, sig := range row.signals {
+			if strings.Contains(fileText, sig) {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			continue
+		}
+		for _, kw := range row.keywords {
+			if seen[kw] {
+				continue
+			}
+			seen[kw] = true
+			out = append(out, kw)
+		}
+	}
+	return out
 }
 
 // countWordHits counts non-overlapping, word-bounded occurrences of tok

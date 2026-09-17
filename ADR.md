@@ -1689,3 +1689,48 @@ named limitation (a nearer tier's own several sections can still fill every slot
 farther-tier answer competes; a root-wide convention with no lexical tie to any one file's own
 name needs a different mechanism entirely), not a regression on what this ADR already shipped.
 Full account: `.fathom/observations.md` O73.
+
+**Addendum: cross-tier promotion and behaviour-token relevance (wave O3, 2026-09-17).**
+The addendum above named two of its own three misses as structural, not fixable by a
+within-tier tie-break alone. This wave built the two mechanisms it predicted and measured
+exactly how far each one closes the gap — both real, deliberately narrow, no-LLM. (1)
+**Cross-tier promotion** (`crossTierCloser`, `internal/semantic/governingscope.go`): a
+farther-tier candidate whose relevance is STRONG (a hit on a packageWeight-or-above token —
+the file's own package path, stem, or a caller-resolved symbol/behaviour name, never a mere
+shared ancestor or extension; `relevanceStrength`, `internal/semantic/relevance.go`) is
+promoted ahead of a nearer-tier candidate that is a TOTAL lexical blank (relevance == 0) —
+proximity still wins outright the moment the nearer side has ANY hit, however weak. Wired into
+both rankers exactly where `closerThan`/`a.governing != b.governing` used to decide alone
+(`obligationsCore`'s `less()`, `RawFallbackRules`' candidate sort). (2) **Behaviour-token
+relevance** (`BehaviorTokens`, `internal/semantic/relevance.go`): a root-wide convention that
+names no file/package/symbol of its own (the workspace/ row, the Gate row) can never earn a
+"strong" lexical tie via (1) — what ties it to a file is the file's own BEHAVIOUR, not its name.
+A small fixed table of source-text signals (`os.WriteFile`, `os.Create`, `os.MkdirAll`, …  ->
+`"workspace"`; `exec.Command("go"/"sh"/"bash", …)` -> `"gate"`/`"validate"`) is scanned against
+the edited file's own real content — already fetched by `pkg/client.RawFallbackObligations`
+to build the layer's corpus — and folded into the same `extraTokens` path a resolved symbol
+name already uses.
+
+Re-running the five-task offline reproduction against THIS repo's own real corpus at HEAD
+(`internal/semantic/h1governance_test.go`) with both mechanisms wired: **unchanged** —
+H1-T01/T12 still pass, H1-T02/T08/T13 still miss, and each miss is now a *proven*, not merely
+suspected, structural limit rather than an unclosed gap: H1-T02 (ADR-021, strong on
+Edge/EdgeKind) stays crowded out because internal/CLAUDE.md's five same-tier sections each
+carry at least a weak hit (mostly the bare ancestor token "internal" in passing) — never a
+true zero — so promotion's own cap correctly declines to fire; H1-T13 (ADR-014) stays a miss
+because the FARTHER-tier candidate itself is the one with zero relevance (the content drifted
+away from anything lexically tying it to model.go — promotion only ever promotes a farther
+side that is itself strong, and there is nothing here to promote); H1-T08 (the workspace/ row)
+stays a miss only because `cmd/fathom/emit.go` is a synthetic scenariobench path with no real
+file on disk in this repo for `BehaviorTokens` to read — the mechanism itself is proven to
+close exactly this shape of gap on a real file: a synthetic corpus fixture
+(`TestRawFallbackRules_BehaviorTokenPromotesUntiedRootConvention`) and a full client-level
+proof reading real file content off disk
+(`TestClient_RawFallbackObligations_BehaviorTokenFromFileContent`) both show the workspace/
+convention winning its slot over a lexically louder decoy once the edited file's own
+`os.WriteFile` call is scanned. `h1governance_test.go` itself is no longer purely diagnostic
+(wave O3 item 3): H1-T01/T12 are now a HARD gate (a future regression here fails the build);
+H1-T02/T08/T13 stay diagnostic-only, each carrying its own proven reason inline rather than a
+bare MISS. VB-11 oracle (`go test ./internal/indexbench -run TestGoverningRuleOracle_Deterministic`)
+and the L1 payload replay (`go test ./internal/indexbench -run TestPayloadReplay`) both stayed
+byte-identical. Full account: `.fathom/observations.md` O75.
