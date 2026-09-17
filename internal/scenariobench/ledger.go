@@ -114,6 +114,14 @@ type TrialReading struct {
 	// Readings.RefusalOutcome, preserved verbatim (the row's own
 	// RefusalOutcomes map only counts it).
 	RefusalOutcome string `json:"refusal_outcome,omitempty"`
+	// HooksFiredByName is this trial's own Readings.HooksFiredByName,
+	// preserved verbatim (wave n13, vs-pilot-5's second reading,
+	// "hooks_not_fired") — a per-trial, per-tool-class hook-firing
+	// breakdown, so a reading examining ONE trial's own instrument truth
+	// can see directly which tool classes a hook (PreToolUse in
+	// particular) actually fired for, e.g. "PreToolUse:Grep": 1 with no
+	// "PreToolUse:mcp__fathom__…" key at all.
+	HooksFiredByName map[string]int `json:"hooks_fired_by_name,omitempty"`
 }
 
 // GoldSourceNotMeasured is the gold_source_rate bucket for a cell whose
@@ -144,6 +152,45 @@ func AppendScenarioLedger(path string, row ScenarioLedgerRow) error {
 		return fmt.Errorf("appending to scenario ledger %s: %w", path, err)
 	}
 	return nil
+}
+
+// UpsertScenarioLedgerRows files newRows into the JSONL ledger at path,
+// replacing any EXISTING row that matches on (RunID, TaskID, Arm) in place
+// (at its original position) rather than appending a duplicate — a plain
+// AppendScenarioLedger loop over a re-file of a run whose cells were
+// already filed once produces two rows per (task, arm) instead of one
+// corrected row (wave n13: `void -trial N` corrects a stored cell and
+// documents that "a subsequent `scenariobench ledger` re-file" rebuilds
+// the row — that promise only holds if re-filing updates in place). A
+// newRow with no existing counterpart is appended at the end, exactly as
+// AppendScenarioLedger already did for a first filing. An existing row's
+// own InstrumentDefect (set by the whole-row form of `scenariobench void`,
+// VoidScenarioLedgerRow) is preserved when newRow does not carry one of
+// its own — recomputing Readings/Successes from cells must not silently
+// erase an operator's earlier whole-row exclusion.
+func UpsertScenarioLedgerRows(path string, newRows []ScenarioLedgerRow) error {
+	existing, err := LoadScenarioLedger(path)
+	if err != nil {
+		return err
+	}
+	type key struct{ runID, taskID, arm string }
+	index := make(map[key]int, len(existing))
+	for i, r := range existing {
+		index[key{r.RunID, r.TaskID, r.Arm}] = i
+	}
+	for _, nr := range newRows {
+		k := key{nr.RunID, nr.TaskID, nr.Arm}
+		if i, ok := index[k]; ok {
+			if nr.InstrumentDefect == "" {
+				nr.InstrumentDefect = existing[i].InstrumentDefect
+			}
+			existing[i] = nr
+			continue
+		}
+		index[k] = len(existing)
+		existing = append(existing, nr)
+	}
+	return WriteScenarioLedger(path, existing)
 }
 
 // WriteScenarioLedger overwrites the JSONL ledger at path with rows, one
@@ -181,6 +228,16 @@ func WriteScenarioLedger(path string, rows []ScenarioLedgerRow) error {
 // row matches (RunID, TaskID) or when the row matched must first be
 // filed: a stranger voiding a row that was never there would silently
 // invent a defect claim for something that does not exist.
+//
+// This is the WHOLE-ROW form only — every trial of (runID, taskID, arm)
+// is equally untrustworthy (e.g. no MCP tools connected at all), so
+// excluding the row entirely from every verdict is correct. `void
+// -trial N` (wave n13, cmd/scenariobench's cmdVoid) is the OTHER shape —
+// one trial's own stored cell independently proven a scorer_false_fail —
+// and deliberately does not call this function at all: it corrects
+// FindScenarioCellByTrial's own cell (cell.go) and leaves the row for a
+// subsequent `scenariobench ledger` re-file to rebuild, never touching
+// this ledger file directly.
 func VoidScenarioLedgerRow(ledgerPath, runID, taskID, arm, reason string) error {
 	rows, err := LoadScenarioLedger(ledgerPath)
 	if err != nil {

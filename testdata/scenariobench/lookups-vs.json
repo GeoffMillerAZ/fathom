@@ -345,7 +345,7 @@
       },
       "oracle": {
         "answer_all_of": [
-          "ADR.md#L597"
+          "ADR.md#L590"
         ]
       },
       "predictions": {
@@ -358,7 +358,7 @@
       "requires": [
         "compiled-layer"
       ],
-      "derivation": "Copied verbatim from testdata/contextbench/tasks-home.json id H1-T07 (exact-match citation form, re-derived under BP-1/BP-2 to require file+line, not the bare filename). category hand-assigned ('claim_provenance'); not a ClassifyChange shape."
+      "derivation": "Copied verbatim from testdata/contextbench/tasks-home.json id H1-T07 (exact-match citation form, re-derived under BP-1/BP-2 to require file+line, not the bare filename). category hand-assigned ('claim_provenance'); not a ClassifyChange shape. wave n13 (vs-pilot-5 second reading): corrected ADR.md#L597 -> ADR.md#L590. 'L597' is tasks-home.json's own ground truth, correct only against LIVE HEAD (that corpus tracks no pinned commit); THIS task pins subject.base_commit 1b8765d, where the rule's text begins seven lines earlier (git show 1b8765d:ADR.md: '## ADR-020' heading at L586, the wrapped sentence '...then is removed. Backend selection' ending line 590, continuing 'is extension-based...' on 591) — the oracle must cite what the pinned checkout actually shows, not tasks-home.json's live-HEAD line, which only became correct for THIS commit two days later (cb4119b, +7 lines from ADR-011's own growth of the file)."
     },
     {
       "id": "H1-T08",
@@ -700,7 +700,7 @@
       },
       "H1-T07": {
         "ground_truth": [
-          "ADR.md#L597"
+          "ADR.md#L590"
         ],
         "scoring_rule": "exact-match"
       },

@@ -106,6 +106,9 @@ func RenderArm(arm Arm, worktree string) (ArmFiles, error) {
 		if err := assertWiredHooksPresent(settingsPath); err != nil {
 			return ArmFiles{}, fmt.Errorf("rendering arm: %w", err)
 		}
+		if err := ensureMCPDiscoveryHook(settingsPath); err != nil {
+			return ArmFiles{}, fmt.Errorf("rendering arm: %w", err)
+		}
 	} else if err := writeJSONFile(settingsPath, map[string]any{}); err != nil {
 		return ArmFiles{}, fmt.Errorf("rendering arm: %w", err)
 	}
@@ -250,6 +253,73 @@ func assertWiredHooksPresent(path string) error {
 		return fmt.Errorf("%s: hook command %q names a bare binary on PATH, not the cell's own fathom binary (fathom init's binPath resolution should have written an absolute path)", path, bad)
 	}
 	return nil
+}
+
+// mcpDiscoveryMatcher is a PreToolUse matcher covering fathom's own MCP
+// tools (both the plain server-scoped name and the plugin-scoped
+// mcp__plugin_<plugin>_fathom__<tool> form — mirroring the SAME pattern
+// internal/harness/descriptors.go's PostToolUseFailure binding already
+// uses for the identical need). ensureMCPDiscoveryHook adds a group under
+// this matcher itself, scenariobench-side.
+const mcpDiscoveryMatcher = `mcp__fathom__.*|mcp__plugin_[^_]*_fathom__.*`
+
+// mcpDiscoveryHookCommand is a trivial, harmless no-op — never fathom's
+// real edit-hook binary. Its only job is to make Claude Code emit the
+// hook_started/hook_response pair a PreToolUse match produces, so
+// ParseSessionStream can count it (HooksFiredByTool); it must never risk
+// exercising fathom's real hook dispatch against a tool class production
+// never designed it to see.
+const mcpDiscoveryHookCommand = "true"
+
+// ensureMCPDiscoveryHook is wave n13's own fix (vs-pilot-5's second
+// reading, H1-T06 "hooks_not_fired"): fathom's OWN PreToolUse hook table
+// (internal/harness/descriptors.go CapDiscoveryObserve) matches only
+// "Grep|Glob|Read" — a real, deliberately-frozen production wiring
+// contract every wired repository already carries (cmd/fathom/
+// hookspecs_test.go's own "do not edit this literal" golden table), out
+// of this bench's reach to widen. Left alone, a PreToolUse event never
+// fires for an mcp__fathom__* call at all, so HooksFired silently
+// undercounts fathom's own tool usage in anything derived from hook
+// events (confirmed: H1-T06/full/t1 fired PreToolUse for its one Grep
+// call but never for either of its two mcp__fathom__* calls). RenderArm
+// adds a SEPARATE PreToolUse group of its own, scenariobench-side, under
+// mcpDiscoveryMatcher, pointed at mcpDiscoveryHookCommand — a fix the
+// bench's own harness owns without touching fathom's frozen production
+// table at all. Idempotent: a settings.json that already carries this
+// exact matcher (fathom's own table adopting it in a future, properly
+// scoped wave) is left untouched, never duplicated.
+func ensureMCPDiscoveryHook(settingsPath string) error {
+	raw, err := os.ReadFile(settingsPath)
+	if err != nil {
+		return fmt.Errorf("reading %s: %w", settingsPath, err)
+	}
+	var settings map[string]any
+	if err := json.Unmarshal(raw, &settings); err != nil {
+		return fmt.Errorf("%s: parsing: %w", settingsPath, err)
+	}
+	hooksObj, _ := settings["hooks"].(map[string]any)
+	if hooksObj == nil {
+		hooksObj = map[string]any{}
+	}
+	preArr, _ := hooksObj["PreToolUse"].([]any)
+	for _, g := range preArr {
+		gm, ok := g.(map[string]any)
+		if !ok {
+			continue
+		}
+		if m, _ := gm["matcher"].(string); m == mcpDiscoveryMatcher {
+			return nil // already present — nothing to add
+		}
+	}
+	preArr = append(preArr, map[string]any{
+		"matcher": mcpDiscoveryMatcher,
+		"hooks": []any{
+			map[string]any{"type": "command", "command": mcpDiscoveryHookCommand, "timeout": 5},
+		},
+	})
+	hooksObj["PreToolUse"] = preArr
+	settings["hooks"] = hooksObj
+	return writeJSONFile(settingsPath, settings)
 }
 
 // initOwnedHookEvents are the events `fathom init` writes for a wired cell

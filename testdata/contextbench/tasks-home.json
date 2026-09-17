@@ -441,7 +441,7 @@
           "kind": "line",
           "file": "ADR.md",
           "needle": "Backend selection",
-          "why": "the served rule 'Backend selection must use extension-based approach in single shared helper store.BackendForPath.' cites ADR.md#L597-L591; line 590 is where its text begins"
+          "why": "the served rule 'Backend selection must use extension-based approach in single shared helper store.BackendForPath.' cites ADR.md#L597-L591; line 590 is where its text begins. This ground truth tracks LIVE HEAD (this corpus pins no base_commit) and is correct there. testdata/scenariobench/lookups-vs.json copies this task but pins subject.base_commit 1b8765d, where ADR.md was 7 lines shorter (ADR-011 had not yet grown it) — that copy's own oracle correctly cites ADR.md#L590 instead (wave n13, vs-pilot-5 second reading, H1-T07); do not 'fix' one to match the other, they are each other's true answer for a different commit."
         }
       ]
     },

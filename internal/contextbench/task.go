@@ -185,6 +185,20 @@ type TruthAnchor struct {
 	File   string          `json:"file,omitempty"`
 	Needle string          `json:"needle,omitempty"`
 	Why    string          `json:"why,omitempty"`
+
+	// BaseCommit pins this anchor's resolution to a specific historical
+	// git commit's own blob content (`git show <base_commit>:<file>`)
+	// rather than the current working tree (wave n13, vs-pilot-5's
+	// second reading, H1-T07): a ground truth whose derivation mirrors a
+	// scenariobench task's own pinned Subject.BaseCommit must be checked
+	// against THAT commit's file content, never live HEAD — HEAD drifts
+	// as the file grows (ADR.md gains records above an existing one) and
+	// checking it instead would silently paper over exactly the
+	// stale-citation defect the reading found ("ADR.md#L597" was true
+	// only two days after the pinned base_commit, never at it). Empty
+	// (the default, every task before this field existed): resolve
+	// against the working tree exactly as before.
+	BaseCommit string `json:"base_commit,omitempty"`
 }
 
 // MaxPredictedOrDefault returns the task's answer-line cap under

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -142,7 +143,34 @@ func TestHomeCorpusTruthAtHead_RevisionRecorded(t *testing.T) {
 	}
 }
 
-// checkAnchor re-derives one anchor against the tree rooted at root.
+// headOrCommit names what a failed check was measured against, for the
+// error message: the pinned commit when BaseCommit is set, else "HEAD".
+func headOrCommit(baseCommit string) string {
+	if baseCommit == "" {
+		return "HEAD"
+	}
+	return baseCommit
+}
+
+// readAnchorBody returns a.File's content: from the git blob at
+// a.BaseCommit ("git show <base_commit>:<file>", run rooted at root) when
+// BaseCommit is pinned, else from the current working tree exactly as
+// every anchor kind read it before that field existed (wave n13).
+func readAnchorBody(root string, a TruthAnchor) ([]byte, error) {
+	if a.BaseCommit == "" {
+		return os.ReadFile(filepath.Join(root, a.File))
+	}
+	cmd := exec.Command("git", "-C", root, "show", a.BaseCommit+":"+a.File)
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("git show %s:%s: %w", a.BaseCommit, a.File, err)
+	}
+	return out, nil
+}
+
+// checkAnchor re-derives one anchor against the tree rooted at root — or,
+// when a.BaseCommit is pinned, against that historical commit's own file
+// content instead (readAnchorBody).
 func checkAnchor(root string, a TruthAnchor) error {
 	switch a.Kind {
 	case AnchorForm:
@@ -157,7 +185,7 @@ func checkAnchor(root string, a TruthAnchor) error {
 		}
 		return nil
 	case AnchorFile:
-		body, err := os.ReadFile(filepath.Join(root, a.File))
+		body, err := readAnchorBody(root, a)
 		if err != nil {
 			return fmt.Errorf("token %q: %v", a.Token, err)
 		}
@@ -179,7 +207,7 @@ func checkAnchor(root string, a TruthAnchor) error {
 		}
 		return nil
 	case AnchorLine:
-		body, err := os.ReadFile(filepath.Join(root, a.File))
+		body, err := readAnchorBody(root, a)
 		if err != nil {
 			return fmt.Errorf("token %q: %v", a.Token, err)
 		}
@@ -208,20 +236,107 @@ func checkAnchor(root string, a TruthAnchor) error {
 		return nil
 	case AnchorHeading:
 		// resolveHeadingLine (citation.go) looks up Needle's heading FRESH
-		// against the current file — the check is just that the heading
-		// still exists, never a stored line to compare against, so an
-		// ADR.md insertion above it cannot break this the way it would an
-		// AnchorLine citation.
-		body, err := os.ReadFile(filepath.Join(root, a.File))
+		// against the current file (or, when a.BaseCommit is pinned,
+		// against that historical commit's own file — readAnchorBody) —
+		// the check is just that the heading still exists there, never a
+		// stored line to compare against, so an ADR.md insertion above it
+		// cannot break this the way it would an AnchorLine citation.
+		body, err := readAnchorBody(root, a)
 		if err != nil {
 			return fmt.Errorf("token %q: %v", a.Token, err)
 		}
 		if _, err := resolveHeadingLine(string(body), a.Needle); err != nil {
-			return fmt.Errorf("token %q: %s: %v — the ground truth is false at HEAD", a.Token, a.File, err)
+			return fmt.Errorf("token %q: %s: %v — the ground truth is false at %s", a.Token, a.File, err, headOrCommit(a.BaseCommit))
 		}
 		return nil
 	}
 	return fmt.Errorf("token %q: unknown anchor kind %q", a.Token, a.Kind)
+}
+
+// pinnedAnchorFixtureRepo builds a tiny git repo with TWO commits: the
+// first ("base") carries "## ADR-999: Original title" near the top of
+// ADR.md; the second inserts an unrelated ADR record ABOVE it (the exact
+// "every ADR.md insertion above it" shape H1-T07's own defect is) and
+// CONSOLIDATES ADR-999 away entirely (a different record, sharing no
+// substring with "ADR-999") — so a check against the current working tree
+// (HEAD) finds no trace of it at all, while the pinned base commit still
+// carries it. Returns the repo root and the base commit's short SHA.
+func pinnedAnchorFixtureRepo(t *testing.T) (root, baseCommit string) {
+	t.Helper()
+	dir := t.TempDir()
+	run := func(args ...string) string {
+		t.Helper()
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		cmd.Env = append(os.Environ(),
+			"GIT_AUTHOR_NAME=test", "GIT_AUTHOR_EMAIL=test@example.invalid",
+			"GIT_COMMITTER_NAME=test", "GIT_COMMITTER_EMAIL=test@example.invalid",
+		)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v: %v (%s)", args, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	adr := filepath.Join(dir, "ADR.md")
+	run("init", "-q", "-b", "main")
+	if err := os.WriteFile(adr, []byte("# ADR log\n\n## ADR-999: Original title\n\nbody\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	run("add", ".")
+	run("commit", "-q", "-m", "base")
+	base := run("rev-parse", "--short", "HEAD")
+
+	// The heading (and any trace of its id) at "base" is GONE at HEAD —
+	// checking the working tree (no BaseCommit) must fail; checking the
+	// pinned base commit must not.
+	if err := os.WriteFile(adr, []byte("# ADR log\n\n## ADR-001: Inserted later\n\nnew body\n\n## ADR-500: Consolidated elsewhere\n\nbody\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	run("add", ".")
+	run("commit", "-q", "-m", "grow the file, consolidate the record away")
+
+	return dir, base
+}
+
+// TestCheckAnchor_HeadingResolvesAtPinnedBaseCommit is wave n13's own
+// proof (vs-pilot-5's second reading, H1-T07): a TruthAnchor pinning
+// BaseCommit resolves an AnchorHeading against THAT commit's own ADR.md,
+// never the current working tree — the fix for a ground truth mirrored
+// from a scenariobench task that pins Subject.BaseCommit, where the
+// heading (or line) it names may since have moved, or in this fixture's
+// case been renamed away entirely, at HEAD.
+func TestCheckAnchor_HeadingResolvesAtPinnedBaseCommit(t *testing.T) {
+	root, base := pinnedAnchorFixtureRepo(t)
+
+	unpinned := TruthAnchor{Token: "ADR.md#ADR-999", Kind: AnchorHeading, File: "ADR.md", Needle: "ADR-999"}
+	if err := checkAnchor(root, unpinned); err == nil {
+		t.Fatal("expected the unpinned (working-tree/HEAD) check to fail — 'ADR-999' was renamed away at HEAD")
+	}
+
+	pinned := unpinned
+	pinned.BaseCommit = base
+	if err := checkAnchor(root, pinned); err != nil {
+		t.Errorf("expected the base_commit-pinned check to pass against %s's own ADR.md, got: %v", base, err)
+	}
+}
+
+// TestCheckAnchor_FileResolvesAtPinnedBaseCommit covers the same fix for
+// AnchorFile — a plain substring check pinned to a historical commit
+// rather than HEAD.
+func TestCheckAnchor_FileResolvesAtPinnedBaseCommit(t *testing.T) {
+	root, base := pinnedAnchorFixtureRepo(t)
+
+	unpinned := TruthAnchor{Token: "ADR-999", Kind: AnchorFile, File: "ADR.md"}
+	if err := checkAnchor(root, unpinned); err == nil {
+		t.Fatal("expected the unpinned check to fail — 'ADR-999' no longer appears anywhere at HEAD (consolidated away)")
+	}
+
+	pinned := unpinned
+	pinned.BaseCommit = base
+	if err := checkAnchor(root, pinned); err != nil {
+		t.Errorf("expected the base_commit-pinned check to pass against %s's own ADR.md, got: %v", base, err)
+	}
 }
 
 func TestRequiresSatisfied(t *testing.T) {

@@ -1546,11 +1546,13 @@ func cmdLedger(args []string) int {
 		}
 	}
 
-	for _, row := range rows {
-		if err := scenariobench.AppendScenarioLedger(*ledgerPath, row); err != nil {
-			fmt.Fprintf(os.Stderr, "scenariobench ledger: %v\n", err)
-			return 2
-		}
+	// UpsertScenarioLedgerRows (not a plain per-row AppendScenarioLedger
+	// loop): a re-file of a run whose (task, arm) rows were already filed
+	// once — e.g. after `void -trial N` corrected a stored cell — must
+	// UPDATE those existing rows, never duplicate them.
+	if err := scenariobench.UpsertScenarioLedgerRows(*ledgerPath, rows); err != nil {
+		fmt.Fprintf(os.Stderr, "scenariobench ledger: %v\n", err)
+		return 2
 	}
 
 	all, err := scenariobench.LoadScenarioLedger(*ledgerPath)
@@ -1603,6 +1605,22 @@ func cmdLedger(args []string) int {
 // command to drive it before this one. It refuses when the row is
 // absent: voiding something that was never filed would silently invent a
 // defect claim for a reading that does not exist.
+//
+// -trial N (wave n13, vs-pilot-5 second reading) narrows this to exactly
+// ONE trial's own stored cell — 16 of that reading's 22 confirmed
+// scorer_false_fail voids applied to only one of a task+arm's two
+// trials, and the plain (no -trial) form below has no way to say which,
+// so a blind re-run of it would wrongly touch a sibling trial's own
+// genuine PASS or FAIL. Unlike the whole-row form, a single-trial void
+// is a PROVEN CORRECTION, not an exclusion: the second reading did not
+// merely find this reading untrustworthy (RC-36's "excluded from every
+// verdict" — right for a genuinely unmeasurable row, e.g. no MCP tools
+// connected at all), it independently confirmed the answer was actually
+// right, so the cell's own Success flips to true and InstrumentDefect
+// names why — the row and README are left for the caller's own
+// subsequent `scenariobench ledger` re-file to rebuild correctly (that
+// is the one place Readings/PerTrial/GoldSourceRate aggregation
+// actually lives — AggregateRowReadings — never duplicated here).
 func cmdVoid(args []string) int {
 	fs := newFlagSet("void")
 	cellsDir := fs.String("cells", filepath.Join("workspace", "artifacts", "scenariobench", "cells"), "content-addressed cell store")
@@ -1613,12 +1631,34 @@ func cmdVoid(args []string) int {
 	taskID := fs.String("task", "", "the task id (required)")
 	arm := fs.String("arm", "", "the arm name (required)")
 	reason := fs.String("reason", "", "the instrument defect naming why this row is voided (required)")
+	trial := fs.Int("trial", 0, "void (correct) only this one trial's own stored cell rather than every trial of the row; 0 (default) voids every trial, exactly as before this flag existed")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
 	if *runID == "" || *taskID == "" || *arm == "" || *reason == "" {
 		fmt.Fprintln(os.Stderr, "scenariobench void: -run-id, -task, -arm, and -reason are required")
 		return 2
+	}
+
+	if *trial > 0 {
+		cell, ok, err := scenariobench.FindScenarioCellByTrial(*cellsDir, *taskID, *arm, *runID, *trial)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "scenariobench void: %v\n", err)
+			return 2
+		}
+		if !ok {
+			fmt.Fprintf(os.Stderr, "scenariobench void: no stored cell for run %s task %s arm %s trial %d\n", *runID, *taskID, *arm, *trial)
+			return 2
+		}
+		cell.Success = true
+		cell.InstrumentDefect = *reason
+		if err := scenariobench.OverwriteScenarioCell(*cellsDir, cell); err != nil {
+			fmt.Fprintf(os.Stderr, "scenariobench void: %v\n", err)
+			return 2
+		}
+		fmt.Fprintf(os.Stdout, "scenariobench void: corrected run %s task %s arm %s trial %d (scorer_false_fail -> success=true): %s — re-run `scenariobench ledger` to refile this row from the corrected cell\n",
+			*runID, *taskID, *arm, *trial, *reason)
+		return 0
 	}
 
 	if err := scenariobench.VoidScenarioLedgerRow(*ledgerPath, *runID, *taskID, *arm, *reason); err != nil {

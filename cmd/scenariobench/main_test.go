@@ -1305,6 +1305,79 @@ func TestCmdLedger_StrictBorrowRefusesRunIDMismatch(t *testing.T) {
 	})
 }
 
+// setStoredCellSuccess rewrites the one stored cell under cellsDir's own
+// success field on disk — simulating a `void -trial N` correction (or any
+// other post-hoc cell fix) landing between two `ledger` filings of the
+// same run.
+func setStoredCellSuccess(t *testing.T, cellsDir string, success bool) {
+	t.Helper()
+	path := findStoredCell(t, cellsDir)
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m map[string]any
+	if err := json.Unmarshal(raw, &m); err != nil {
+		t.Fatal(err)
+	}
+	m["success"] = success
+	out, err := json.Marshal(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, out, 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestCmdLedger_RefileUpdatesExistingRowInPlace is wave n13's own fix: a
+// `void -trial N` correction lands on a stored cell, and the ledger's own
+// doc comment (cmdVoid) promises "a subsequent `scenariobench ledger`
+// re-file to rebuild [the row] correctly" — that promise only holds if
+// re-filing the SAME run-id UPDATES the existing (task, arm) row in place
+// rather than appending a second one beside it (the defect a plain
+// per-row AppendScenarioLedger loop had: filing vs-pilot-5's 70 rows a
+// second time after applying its 22 confirmed voids would have left 140
+// rows in the ledger, not 70 corrected ones).
+func TestCmdLedger_RefileUpdatesExistingRowInPlace(t *testing.T) {
+	_, corpusPath, cellsDir, ledgerPath, readmePath := runThenPrepareLedgerFixture(t)
+
+	ledgerArgs := []string{
+		"ledger",
+		"-corpus", corpusPath, "-cells", cellsDir, "-ledger", ledgerPath, "-readme", readmePath,
+		"-run-id", "run-1", "-harness-version", "fake-1",
+	}
+	if rc := run(ledgerArgs); rc != 0 {
+		t.Fatalf("first ledger filing exited %d, want 0", rc)
+	}
+	first, err := scenariobench.LoadScenarioLedger(ledgerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(first) != 1 {
+		t.Fatalf("expected 1 filed row after the first filing, got %d: %+v", len(first), first)
+	}
+	firstSuccesses := first[0].Successes
+
+	// Simulate a `void -trial N` correction flipping the stored cell's own
+	// success flag, then re-file the SAME run-id.
+	setStoredCellSuccess(t, cellsDir, firstSuccesses == 0)
+
+	if rc := run(ledgerArgs); rc != 0 {
+		t.Fatalf("second (re-file) ledger filing exited %d, want 0", rc)
+	}
+	second, err := scenariobench.LoadScenarioLedger(ledgerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(second) != 1 {
+		t.Fatalf("re-filing run-1 must UPDATE its existing row, not duplicate it: got %d rows: %+v", len(second), second)
+	}
+	if second[0].Successes == firstSuccesses {
+		t.Errorf("expected the re-filed row to reflect the corrected cell's success (Successes changed from %d), got %d", firstSuccesses, second[0].Successes)
+	}
+}
+
 // TestCmdScore_GoldSourceToolCorpusFlag is item 3's own proof: without
 // -corpus, `score` must leave a stored gold_source_tool exactly as it was
 // (never overwritten to empty/not_measured) and say so on stderr; with
@@ -1606,6 +1679,122 @@ func TestCmdVoid_MarksRowCellAndRerendersReadme(t *testing.T) {
 	}
 	if !strings.Contains(string(readme), "VOIDED (the operator daemon was reachable)") {
 		t.Errorf("expected the re-rendered README table to show the voided row, got:\n%s", readme)
+	}
+}
+
+// TestCmdVoid_TrialFlagCorrectsOnlyThatCell is wave-n13's own proof: with
+// -trial N, ONLY that one trial's stored cell is corrected (Success
+// flipped true, InstrumentDefect named) — its sibling trial's own cell,
+// the ledger row, and the README are all left byte-for-byte untouched,
+// deferring to a subsequent `scenariobench ledger` re-file.
+func TestCmdVoid_TrialFlagCorrectsOnlyThatCell(t *testing.T) {
+	dir := t.TempDir()
+	ledgerPath := filepath.Join(dir, "ledger.jsonl")
+	if err := scenariobench.AppendScenarioLedger(ledgerPath, scenariobench.ScenarioLedgerRow{
+		RunID: "run-1", TaskID: "T1", Arm: "full", Trials: 2, Successes: 1, ModelID: "sonnet",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	readmePath := scenarioLedgerReadmeFixture(t, dir)
+	readmeBefore, err := os.ReadFile(readmePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cellsDir := filepath.Join(dir, "cells")
+	inv := scenariobench.CellInvariants{
+		CorpusSHA256: "abc123", TaskID: "T1", Arm: "full", ModelID: "sonnet",
+		HarnessVersion: "2.1.0", Scoring: "oracle-v1", PromptSubject: "x",
+	}
+	key := scenariobench.ScenarioCellKey(inv)
+	if err := scenariobench.StoreScenarioCell(cellsDir, scenariobench.CellResult{
+		TaskID: "T1", Arm: "full", Trial: 1, CellKey: key, RunID: "run-1", Success: false,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := scenariobench.StoreScenarioCell(cellsDir, scenariobench.CellResult{
+		TaskID: "T1", Arm: "full", Trial: 2, CellKey: key, RunID: "run-1", Success: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	rc := run([]string{
+		"void",
+		"-ledger", ledgerPath,
+		"-readme", readmePath,
+		"-cells", cellsDir,
+		"-corpus-glob", filepath.Join(dir, "no-such-corpus", "*.json"),
+		"-run-id", "run-1", "-task", "T1", "-arm", "full", "-trial", "1",
+		"-reason", "scorer_false_fail: quoted-blockquote token exclusion",
+	})
+	if rc != 0 {
+		t.Fatalf("void -trial 1 exited %d, want 0", rc)
+	}
+
+	t1 := readStoredCell(t, scenariobench.ScenarioCellPath(cellsDir, key, 1))
+	if !t1.Success {
+		t.Error("expected trial 1's Success corrected to true")
+	}
+	if t1.InstrumentDefect != "scorer_false_fail: quoted-blockquote token exclusion" {
+		t.Errorf("trial 1 InstrumentDefect = %q, want it set", t1.InstrumentDefect)
+	}
+
+	t2 := readStoredCell(t, scenariobench.ScenarioCellPath(cellsDir, key, 2))
+	if !t2.Success || t2.InstrumentDefect != "" {
+		t.Errorf("expected trial 2's own cell untouched, got %+v", t2)
+	}
+
+	rows, err := scenariobench.LoadScenarioLedger(ledgerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 || rows[0].Trials != 2 || rows[0].Successes != 1 || rows[0].InstrumentDefect != "" {
+		t.Errorf("expected the ledger row left untouched for a subsequent `ledger` re-file, got %+v", rows)
+	}
+
+	readmeAfter, err := os.ReadFile(readmePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(readmeBefore) != string(readmeAfter) {
+		t.Error("expected the README untouched by a -trial void — the row is rebuilt by a subsequent `ledger` re-file, not re-rendered here")
+	}
+}
+
+// TestCmdVoid_TrialFlagRefusesWhenCellAbsent: a trial number no stored
+// cell carries is refused, leaving the cell store, ledger and README
+// untouched — the same "never invent a defect claim" discipline the
+// whole-row form already has.
+func TestCmdVoid_TrialFlagRefusesWhenCellAbsent(t *testing.T) {
+	dir := t.TempDir()
+	ledgerPath := filepath.Join(dir, "ledger.jsonl")
+	if err := scenariobench.AppendScenarioLedger(ledgerPath, scenariobench.ScenarioLedgerRow{
+		RunID: "run-1", TaskID: "T1", Arm: "full", Trials: 1, Successes: 0,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	readmePath := scenarioLedgerReadmeFixture(t, dir)
+	cellsDir := filepath.Join(dir, "cells")
+
+	rc := run([]string{
+		"void",
+		"-ledger", ledgerPath,
+		"-readme", readmePath,
+		"-cells", cellsDir,
+		"-corpus-glob", filepath.Join(dir, "no-such-corpus", "*.json"),
+		"-run-id", "run-1", "-task", "T1", "-arm", "full", "-trial", "3",
+		"-reason", "no such trial was ever stored",
+	})
+	if rc == 0 {
+		t.Fatal("expected a non-zero exit voiding a trial that was never stored")
+	}
+
+	rows, err := scenariobench.LoadScenarioLedger(ledgerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 || rows[0].InstrumentDefect != "" {
+		t.Errorf("expected the ledger untouched by a refused -trial void, got %+v", rows)
 	}
 }
 

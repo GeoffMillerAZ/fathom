@@ -206,6 +206,25 @@ func FindScenarioCellsByRun(cellsDir, taskID, arm, runID string) ([]CellResult, 
 	return out, nil
 }
 
+// FindScenarioCellByTrial is FindScenarioCellsByRun narrowed to exactly
+// ONE trial — `scenariobench void -trial N`'s own lookup (main.go, wave
+// n13): a scorer_false_fail names one specific trial's own cell record,
+// never its sibling (the other trial of the same task+arm may be a
+// genuine PASS or a genuine FAIL that must not be touched). False, no
+// error, when no cell matches (task_id, arm, run_id, trial) exactly.
+func FindScenarioCellByTrial(cellsDir, taskID, arm, runID string, trial int) (CellResult, bool, error) {
+	cells, err := FindScenarioCellsByRun(cellsDir, taskID, arm, runID)
+	if err != nil {
+		return CellResult{}, false, err
+	}
+	for _, c := range cells {
+		if c.Trial == trial {
+			return c, true, nil
+		}
+	}
+	return CellResult{}, false, nil
+}
+
 // HarnessVersionsForRun walks cellsDir for every stored cell record whose
 // RunID matches, regardless of TaskID/Arm/HarnessVersion, and returns the
 // DISTINCT HarnessVersion values found, sorted. O65 (wave N12) item 3: a
@@ -389,6 +408,12 @@ func AggregateReadings(sessions []SessionResult) Readings {
 			}
 			r.HooksFired[name] += n
 		}
+		for name, n := range s.HooksFiredByName {
+			if r.HooksFiredByName == nil {
+				r.HooksFiredByName = map[string]int{}
+			}
+			r.HooksFiredByName[name] += n
+		}
 	}
 	return r
 }
@@ -439,6 +464,12 @@ func AggregateRowReadings(cells []CellResult) (Readings, []TrialReading) {
 			}
 			r.HooksFired[name] += n
 		}
+		for name, n := range cr.HooksFiredByName {
+			if r.HooksFiredByName == nil {
+				r.HooksFiredByName = map[string]int{}
+			}
+			r.HooksFiredByName[name] += n
+		}
 		if cr.FactsReused != nil {
 			if r.FactsReused == nil {
 				zero := 0
@@ -483,15 +514,16 @@ func AggregateRowReadings(cells []CellResult) (Readings, []TrialReading) {
 			refusalOutcomes[cr.RefusalOutcome]++
 		}
 		trials = append(trials, TrialReading{
-			Trial:          c.Trial,
-			GoldSourceTool: cr.GoldSourceTool,
-			PlanCoverage:   cr.PlanCoverage,
-			FalseDone:      cr.FalseDone,
-			Drift:          cr.Drift,
-			Resumption:     cr.Resumption,
-			Overlap:        cr.Overlap,
-			Localization:   cr.Localization,
-			RefusalOutcome: cr.RefusalOutcome,
+			Trial:            c.Trial,
+			GoldSourceTool:   cr.GoldSourceTool,
+			PlanCoverage:     cr.PlanCoverage,
+			FalseDone:        cr.FalseDone,
+			Drift:            cr.Drift,
+			Resumption:       cr.Resumption,
+			Overlap:          cr.Overlap,
+			Localization:     cr.Localization,
+			RefusalOutcome:   cr.RefusalOutcome,
+			HooksFiredByName: cr.HooksFiredByName,
 		})
 	}
 

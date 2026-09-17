@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -201,6 +202,97 @@ func TestRenderArm_WiredKeepsRealFathomInitHooks(t *testing.T) {
 		if !strings.Contains(string(after), want) {
 			t.Errorf("RenderArm replaced fathom init's real hooks — %q did not survive: %s", want, after)
 		}
+	}
+}
+
+// TestRenderArm_WiredAddsMCPDiscoveryPreToolUseMatcher is wave n13's own
+// proof (vs-pilot-5's second reading, H1-T06 "hooks_not_fired"): fathom's
+// own PreToolUse groups (Edit|Write|MultiEdit, Bash, Grep|Glob|Read) never
+// match an mcp__fathom__* tool call, so RenderArm adds its own group for
+// exactly that — proven here by compiling the rendered matcher as the
+// regex Claude Code itself would and confirming it matches a real fathom
+// MCP tool name AND the plugin-scoped form, while still leaving fathom's
+// own real groups (session-hook/edit-hook) untouched.
+func TestRenderArm_WiredAddsMCPDiscoveryPreToolUseMatcher(t *testing.T) {
+	dir := t.TempDir()
+	claudeDir := filepath.Join(dir, ".claude")
+	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, filepath.Join(claudeDir, "settings.json"), realWiredSettingsJSON("/cells/T1-full/fathom"))
+
+	arm := Arm{Wired: true, Instructions: "none"}
+	files, err := RenderArm(arm, dir)
+	if err != nil {
+		t.Fatalf("RenderArm: %v", err)
+	}
+	raw, err := os.ReadFile(files.SettingsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var settings map[string]any
+	if err := json.Unmarshal(raw, &settings); err != nil {
+		t.Fatalf("parsing settings: %v", err)
+	}
+	hooksObj, _ := settings["hooks"].(map[string]any)
+	preArr, _ := hooksObj["PreToolUse"].([]any)
+
+	var matchers []string
+	for _, g := range preArr {
+		gm, _ := g.(map[string]any)
+		if m, _ := gm["matcher"].(string); m != "" {
+			matchers = append(matchers, m)
+		}
+	}
+
+	anyMatches := func(tool string) bool {
+		for _, m := range matchers {
+			if ok, _ := regexp.MatchString("^(?:"+m+")$", tool); ok {
+				return true
+			}
+		}
+		return false
+	}
+	if !anyMatches("mcp__fathom__find_symbol") {
+		t.Errorf("no PreToolUse matcher covers mcp__fathom__find_symbol: %v", matchers)
+	}
+	if !anyMatches("mcp__plugin_myplugin_fathom__search") {
+		t.Errorf("no PreToolUse matcher covers the plugin-scoped mcp__plugin_<plugin>_fathom__<tool> form: %v", matchers)
+	}
+	// fathom's own real groups must survive untouched.
+	for _, want := range []string{"Edit|Write|MultiEdit", "session-hook", "edit-hook"} {
+		if !strings.Contains(string(raw), want) {
+			t.Errorf("RenderArm's MCP-matcher addition lost the real %q entry: %s", want, raw)
+		}
+	}
+}
+
+// TestRenderArm_WiredMCPDiscoveryHookIsIdempotent: calling RenderArm a
+// second time (or a settings.json that already carries the matcher — the
+// shape fathom's own table would have if it adopts this fix later) must
+// not duplicate the group.
+func TestRenderArm_WiredMCPDiscoveryHookIsIdempotent(t *testing.T) {
+	dir := t.TempDir()
+	claudeDir := filepath.Join(dir, ".claude")
+	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, filepath.Join(claudeDir, "settings.json"), realWiredSettingsJSON("/cells/T1-full/fathom"))
+	arm := Arm{Wired: true, Instructions: "none"}
+
+	if _, err := RenderArm(arm, dir); err != nil {
+		t.Fatalf("first RenderArm: %v", err)
+	}
+	if _, err := RenderArm(arm, dir); err != nil {
+		t.Fatalf("second RenderArm: %v", err)
+	}
+
+	raw, err := os.ReadFile(filepath.Join(claudeDir, "settings.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := strings.Count(string(raw), mcpDiscoveryMatcher); n != 1 {
+		t.Errorf("expected exactly one mcpDiscoveryMatcher entry after two RenderArm calls, found %d: %s", n, raw)
 	}
 }
 
