@@ -826,3 +826,50 @@ func TestStripFathomRegionsFromDiff_NoRangesIsNoop(t *testing.T) {
 		t.Errorf("expected a no-op pass-through, got %q, %d", got, excluded)
 	}
 }
+
+// TestStripFathomRegionsFromDiff_LeadingBlankSeparatorNotARealChange is
+// wave N14 item 1's regression test: wiring.ApplyWiring/renderRegion
+// inserts a blank separator LINE before the region when appending to a
+// file that does not already end in one (confirmed directly against real
+// production output, fix-first review 2026-09-16) — a line that sits
+// OUTSIDE regionRange's own [newStart,newEnd] (which spans only the begin
+// marker through the end marker) but is still entirely the instrument's
+// own mechanical formatting, never the agent's. Before this fix, that lone
+// blank "+" line survived stripRegionFromDiffSection's own hasRealChange
+// check (any kept '+'/'-' line, blank or not, counted as "real"), so a
+// wired cell where the agent touched CLAUDE.md/AGENTS.md for NO reason
+// other than fathom's own stanza still reported the file changed — the
+// same false "touched" result ScoreRefusal's changedPaths depends on
+// StripInstrumentRegions to avoid (guards-i16, guards-pilot-6 second
+// reading).
+func TestStripFathomRegionsFromDiff_LeadingBlankSeparatorNotARealChange(t *testing.T) {
+	diff := "diff --git a/CLAUDE.md b/CLAUDE.md\n" +
+		"index aaa..bbb 100644\n" +
+		"--- a/CLAUDE.md\n" +
+		"+++ b/CLAUDE.md\n" +
+		"@@ -1,3 +1,7 @@\n" +
+		" # Real project notes\n" +
+		" \n" +
+		" Some pre-existing content.\n" +
+		"+\n" +
+		"+<!-- fathom:begin v3 sha256:x -->\n" +
+		"+stanza line 1\n" +
+		"+<!-- fathom:end -->\n" +
+		unifiedDiffFile("real.go", "@@ -1 +1 @@\n-func Old() {}\n+func New() {}\n")
+	// New-file line numbers: 1-3 context, 4 the blank separator ApplyWiring
+	// inserted, 5-7 the region itself (begin/body/end) — regionRange only
+	// ever spans 5-7, never the separator at 4.
+	ranges := map[string]regionRange{"CLAUDE.md": {newStart: 5, newEnd: 7}}
+
+	got, excluded := stripFathomRegionsFromDiff([]byte(diff), ranges)
+	if excluded != 1 {
+		t.Fatalf("excluded = %d, want 1", excluded)
+	}
+	s := string(got)
+	if strings.Contains(s, "CLAUDE.md") {
+		t.Errorf("expected CLAUDE.md's whole section dropped (its only surviving change was a blank separator line, not a real edit), got:\n%s", s)
+	}
+	if !strings.Contains(s, "real.go") || !strings.Contains(s, "func New()") {
+		t.Errorf("expected real.go's own section to survive untouched, got:\n%s", s)
+	}
+}

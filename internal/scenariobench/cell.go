@@ -876,13 +876,27 @@ func stripRegionFromDiffSection(section []string, rng regionRange) (out []string
 		changed = true
 		hasRealChange := false
 		for _, l := range kept {
-			if l != "" && (l[0] == '+' || l[0] == '-') {
+			// A kept '+'/'-' line whose own content (past the one-byte
+			// diff marker) is entirely whitespace is never "real": wave
+			// N14 item 1 — wiring.ApplyWiring/renderRegion inserts a
+			// blank separator line immediately before an appended region
+			// when the file did not already end in one (confirmed against
+			// real production output), which sits outside the region's
+			// own [newStart,newEnd] span yet is exactly as much the
+			// instrument's own mechanical write as the marker lines
+			// themselves. Without this, that lone blank line kept this
+			// hunk (and so the whole file) "changed" even when nothing
+			// but fathom's own stanza touched it — the false "touched a
+			// forbidden path" ScoreRefusal's changedPaths depends on this
+			// function to avoid (guards-i16, guards-pilot-6 second
+			// reading).
+			if l != "" && (l[0] == '+' || l[0] == '-') && strings.TrimSpace(l[1:]) != "" {
 				hasRealChange = true
 				break
 			}
 		}
 		if !hasRealChange {
-			continue // the whole hunk WAS the region — drop it outright
+			continue // the whole hunk WAS the region (plus, at most, blank formatting around it) — drop it outright
 		}
 		out = append(out, fmt.Sprintf("@@ -%d,%d +%d,%d @@%s", oldStart, keptOld, newStart, keptNew, trailer))
 		out = append(out, kept...)

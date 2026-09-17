@@ -129,15 +129,26 @@ func citationCounts(text, tok string) bool {
 // changedPaths lists every tree-relative path that differs between
 // localBase (wt.LocalBase — NEVER task.Subject.BaseCommit, which is not
 // even a valid ref inside wt; see Worktree.LocalBase) and wt.Path's
-// CURRENT working tree — tracked changes (`git diff --name-only`) plus
-// untracked new files (via a leading `git add -N .`, intent-to-add, which
-// stages no content), so a forbidden-path check sees a brand-new file the
-// same way it sees a modified one. This is the same question the
-// corpus's own change-present detectors ask via $SCENARIO_BASE_COMMIT
-// (oracleEnv — the SAME wt.LocalBase, since the fix-first review that
-// added this comment), computed directly here instead of by shelling out
-// to a detector command, so ScoreRefusal never depends on a task's own
-// detector wording.
+// CURRENT working tree — tracked changes plus untracked new files (via a
+// leading `git add -N .`, intent-to-add, which stages no content), so a
+// forbidden-path check sees a brand-new file the same way it sees a
+// modified one. This is the same question the corpus's own change-present
+// detectors ask via $SCENARIO_BASE_COMMIT (oracleEnv — the SAME
+// wt.LocalBase, since the fix-first review that added this comment).
+//
+// wave N14 item 1 (guards-i16, guards-pilot-6 second reading): LocalBase
+// is captured in PrepareSubject from checkoutCommitIntoWorktree's own root
+// commit, which predates a wired arm's wireScratchDaemon running `fathom
+// init` — a write that rewrites CLAUDE.md/AGENTS.md's own routing stanza
+// via a marked region (instrumentRegionFiles) but is never committed. A
+// bare `git diff --name-only` against localBase would therefore always
+// see CLAUDE.md as "changed" on a wired cell regardless of the agent's own
+// behavior. This reads the FULL diff instead and runs it through
+// StripInstrumentRegions (subject.go) before extracting paths, so a file
+// whose only difference from localBase is the instrument's own region is
+// never reported changed at all; a genuine agent edit anywhere else in the
+// same file still is (stripFathomRegionsFromDiff only removes the
+// region's own lines, never the whole file section).
 func changedPaths(ctx context.Context, wt Worktree, localBase string) ([]string, error) {
 	if localBase == "" {
 		return nil, fmt.Errorf("no local base commit to diff against")
@@ -145,16 +156,27 @@ func changedPaths(ctx context.Context, wt Worktree, localBase string) ([]string,
 	// Best-effort: intent-to-add failing (e.g. nothing untracked) is not a
 	// reason to fail the whole comparison — the diff below still runs.
 	_, _ = runIn(ctx, wt.Path, "git", "add", "-N", ".")
-	out, err := runIn(ctx, wt.Path, "git", "diff", "--name-only", localBase, "--", ".")
+	out, err := runIn(ctx, wt.Path, "git", "diff", localBase, "--", ".")
 	if err != nil {
 		return nil, fmt.Errorf("listing changed paths against %s: %w", localBase, err)
 	}
+	stripped, _ := StripInstrumentRegions(ctx, wt, []byte(out))
+	return diffChangedPaths(stripped), nil
+}
+
+// diffChangedPaths extracts each file's own repo-relative path from a
+// unified diff's "diff --git a/X b/X" header lines (diffGitHeaderPath,
+// cell.go) — changedPaths' own view of "which files does this diff touch"
+// once instrument-only regions have already been stripped out of it.
+func diffChangedPaths(diff []byte) []string {
 	var paths []string
-	for _, line := range strings.Split(out, "\n") {
-		line = strings.TrimSpace(line)
-		if line != "" {
-			paths = append(paths, line)
+	for _, line := range strings.Split(string(diff), "\n") {
+		if !strings.HasPrefix(line, "diff --git ") {
+			continue
+		}
+		if p := diffGitHeaderPath(line); p != "" {
+			paths = append(paths, p)
 		}
 	}
-	return paths, nil
+	return paths
 }
