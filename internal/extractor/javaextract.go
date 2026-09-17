@@ -16,7 +16,9 @@ import (
 var javaLang = ts.NewLanguage(tsjava.Language())
 
 // JavaExtractor implements Extractor for Java source files using
-// tree-sitter CGO bindings (ADR-013). It emits:
+// tree-sitter CGO bindings (ADR-013 — stays on this engine deliberately;
+// ADR-021 §4's CGO->wazero migration for the remaining incumbents is XT-6b,
+// a separate, not-yet-triggered slice). It emits:
 //
 //   - KindJavaClass for class and static nested class declarations.
 //   - KindJavaInterface for interface declarations.
@@ -24,6 +26,13 @@ var javaLang = ts.NewLanguage(tsjava.Language())
 //   - KindJavaRecord for record declarations.
 //   - KindJavaMethod for method declarations and constructor declarations,
 //     qualified as "EnclosingType.methodName".
+//   - KindJavaField for field declarations (one symbol per declarator, so
+//     "int a, b;" emits two), qualified as "EnclosingType.fieldName" (wave
+//     P2, O81).
+//   - KindJavaImport for import declarations (static and wildcard included;
+//     a wildcard import's "*" is dropped, e.g. "import java.util.*;" emits
+//     "java.util" — mirrors kotlin.scm's import handling), unqualified
+//     (wave P2, O81).
 //
 // All symbols carry TierVerified.
 type JavaExtractor struct{}
@@ -121,6 +130,61 @@ func walkJava(
 		})
 		// Do not recurse into method/constructor bodies — inner types there
 		// are unusual and not worth complicating the scope.
+		return
+
+	case "field_declaration":
+		// The grammar's _variable_declarator_list is commaSep1(field
+		// ("declarator", variable_declarator)) — "int a, b;" has TWO
+		// variable_declarator children sharing the same field name, so we
+		// walk named children by KIND rather than ChildByFieldName (which
+		// only ever returns the first match for a repeated field).
+		count := n.NamedChildCount()
+		for i := uint(0); i < count; i++ {
+			child := n.NamedChild(i)
+			if child == nil || child.Kind() != "variable_declarator" {
+				continue
+			}
+			name := treesitter.FieldText(child, "name", src)
+			if name == "" {
+				continue
+			}
+			*out = append(*out, core.SymbolNode{
+				Service:  service,
+				Package:  pkg,
+				Name:     qualifyJava(scopeStack, name),
+				Kind:     core.KindJavaField,
+				FilePath: relPath,
+				Line:     treesitter.Line(n),
+				EndLine:  treesitter.EndLine(n),
+				Tier:     core.TierVerified,
+			})
+		}
+		return
+
+	case "import_declaration":
+		// The imported name ($._name: identifier | scoped_identifier) is
+		// NOT field-tagged at the import_declaration level — it is always
+		// the first named child, whether or not a trailing ".*" wildcard
+		// follows (the wildcard's "asterisk" node, if present, is a later
+		// named sibling).
+		nameNode := n.NamedChild(0)
+		if nameNode == nil {
+			return
+		}
+		name := nameNode.Utf8Text(src)
+		if name == "" {
+			return
+		}
+		*out = append(*out, core.SymbolNode{
+			Service:  service,
+			Package:  pkg,
+			Name:     name,
+			Kind:     core.KindJavaImport,
+			FilePath: relPath,
+			Line:     treesitter.Line(n),
+			EndLine:  treesitter.EndLine(n),
+			Tier:     core.TierVerified,
+		})
 		return
 	}
 

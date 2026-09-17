@@ -58,6 +58,13 @@ const (
 	KindJavaMethod    SourceKind = "JavaMethod"
 	KindJavaEnum      SourceKind = "JavaEnum"
 	KindJavaRecord    SourceKind = "JavaRecord"
+	// KindJavaField and KindJavaImport close the wave P2 coverage gap (the
+	// incumbent CGO extractor captured types+methods only): field
+	// declarations and import declarations, added without moving Java off
+	// its CGO tree-sitter bindings (ADR-021's XT-6b CGO->wazero migration
+	// stays a separate, not-yet-triggered slice).
+	KindJavaField  SourceKind = "JavaField"
+	KindJavaImport SourceKind = "JavaImport"
 
 	// Ruby
 	KindRubyClass  SourceKind = "RubyClass"

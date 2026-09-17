@@ -377,7 +377,11 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // previously fell through to "no extractor registered" and was fingerprinted
 // (never re-sniffed) by that dead-end path; the salt bump forces those files
 // through the new extractor on the next ingest instead of leaving them
-// silently stuck on a stale "unsupported" fingerprint.
+// silently stuck on a stale "unsupported" fingerprint. The same epoch bump
+// also covers JavaExtractor (.java, still CGO/ADR-013) additionally emitting
+// KindJavaField and KindJavaImport, which the epoch-6 extractor never
+// captured — every already-indexed .java file's stored observations predate
+// both new kinds.
 const ExtractorEpoch = "7"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
