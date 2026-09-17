@@ -124,6 +124,42 @@ type LayerBudgets struct {
 	MaxClaimsPerFile int
 }
 
+// BudgetOverride (wave O4, item 2 — instrument truth for a bench compile:
+// docs/bench readings found a scenariobench subject's obligations compile
+// stopping at budget_stopped 14/60 sections, so obligations served root
+// boilerplate instead of the nested rule a task actually needed) lets a
+// caller override one or both of a resolved layer's own MaxTokensPerRun/
+// MaxUSDPerRun for a single compile call, without editing layer.cue. A nil
+// field leaves that budget exactly as the layer defines it; a non-nil field
+// REPLACES it outright (0 or negative means "unlimited" for both fields —
+// the same convention enforceBudgets already applies to MaxTokensPerRun,
+// extended to MaxUSDPerRun by this same wave). Threaded from
+// `fathom compile --max-tokens-per-run/--max-usd-per-run` (cmd/fathom/
+// compile.go, direct --store mode only) through pkg/client.
+// CompileLayerWithBudget.
+type BudgetOverride struct {
+	MaxTokensPerRun *int
+	MaxUSDPerRun    *float64
+}
+
+// Apply returns layer with any non-nil override field replacing the
+// matching Budgets field — a pure function, never mutating layer's own
+// Budgets in place, so a caller holding the original LayerDef (e.g. for
+// logging) never sees it silently change under it. A nil o is a no-op,
+// returning layer unchanged.
+func (o *BudgetOverride) Apply(layer LayerDef) LayerDef {
+	if o == nil {
+		return layer
+	}
+	if o.MaxTokensPerRun != nil {
+		layer.Budgets.MaxTokensPerRun = *o.MaxTokensPerRun
+	}
+	if o.MaxUSDPerRun != nil {
+		layer.Budgets.MaxUSDPerRun = *o.MaxUSDPerRun
+	}
+	return layer
+}
+
 // LayerServing caps the decision-moment payload (schema.cue #Layer.serving).
 type LayerServing struct {
 	MaxRules  int

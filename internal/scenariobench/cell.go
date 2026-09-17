@@ -616,6 +616,15 @@ func AggregateRowReadings(cells []CellResult) (Readings, []TrialReading) {
 	var localizationN int
 	var refusalOutcomes map[string]int // O57 finding 2
 	trials := make([]TrialReading, 0, len(cells))
+	// compileCosts collects every cell's own CompileCost reading (wave O4,
+	// item 2), one entry per trial that carried one — see the selection
+	// below (after the loop) for how the row's single r.CompileCost is
+	// picked from among them.
+	type compileCostCandidate struct {
+		trial int
+		cc    *CompileCostReading
+	}
+	var compileCosts []compileCostCandidate
 
 	for _, c := range cells {
 		cr := c.Readings
@@ -624,6 +633,9 @@ func AggregateRowReadings(cells []CellResult) (Readings, []TrialReading) {
 		r.TotalCostUSD += cr.TotalCostUSD
 		r.PayloadBytes += cr.PayloadBytes
 		r.CompileCostUSD += cr.CompileCostUSD
+		if cr.CompileCost != nil {
+			compileCosts = append(compileCosts, compileCostCandidate{trial: c.Trial, cc: cr.CompileCost})
+		}
 		for name, n := range cr.ToolCalls {
 			if r.ToolCalls == nil {
 				r.ToolCalls = map[string]int{}
@@ -724,6 +736,26 @@ func AggregateRowReadings(cells []CellResult) (Readings, []TrialReading) {
 	if refusalOutcomes != nil {
 		r.RefusalOutcomes = refusalOutcomes // O57 finding 2
 	}
+	// wave O4, item 2: r.CompileCost picks ONE representative reading from
+	// among the row's cells, deterministically — by ascending Trial, then
+	// preferring the first entry that is NOT Cached (a cached cell's own
+	// CompileCost is legitimately all-zero, since it compiled nothing this
+	// run; surfacing that ahead of a real, populated reading elsewhere in
+	// the same row would hide the very sections_total/sections_compiled/
+	// budget_stopped instrument truth this field exists to carry). Falls
+	// back to the earliest trial's own (possibly cached) reading only when
+	// EVERY cell in the row was cached.
+	if len(compileCosts) > 0 {
+		sort.Slice(compileCosts, func(i, j int) bool { return compileCosts[i].trial < compileCosts[j].trial })
+		chosen := compileCosts[0].cc
+		for _, cand := range compileCosts {
+			if !cand.cc.Cached {
+				chosen = cand.cc
+				break
+			}
+		}
+		r.CompileCost = chosen
+	}
 	sort.Slice(trials, func(i, j int) bool { return trials[i].Trial < trials[j].Trial })
 	return r, trials
 }
@@ -770,10 +802,13 @@ func readingsCompileCost(wt Worktree) *CompileCostReading {
 		return nil
 	}
 	return &CompileCostReading{
-		TokensIn:  wt.CompileCost.TokensIn,
-		TokensOut: wt.CompileCost.TokensOut,
-		CostUSD:   wt.CompileCost.CostUSD,
-		Cached:    wt.CompileCost.Cached,
+		TokensIn:         wt.CompileCost.TokensIn,
+		TokensOut:        wt.CompileCost.TokensOut,
+		CostUSD:          wt.CompileCost.CostUSD,
+		Cached:           wt.CompileCost.Cached,
+		SectionsTotal:    wt.CompileCost.SectionsTotal,
+		SectionsCompiled: wt.CompileCost.SectionsCompiled,
+		BudgetStopped:    wt.CompileCost.BudgetStopped,
 	}
 }
 

@@ -97,11 +97,15 @@ type fakeDaemonCfg struct {
 }
 
 // fakeLayerCoverage mirrors semantic.LayerCoverage's JSON shape for
-// fakeDoctorDaemon's obligations responses.
+// fakeDoctorDaemon's obligations responses. CorpusGrew (wave O4, item 3)
+// defaults to 0 (omitted from the wire payload, matching
+// semantic.LayerCoverage's own corpus_grew,omitempty tag) — every
+// pre-existing test that does not set it keeps its exact prior payload.
 type fakeLayerCoverage struct {
 	SectionsTotal    int
 	SectionsCompiled int
 	BudgetStopped    bool
+	CorpusGrew       int
 }
 
 type fakeModuleRow struct {
@@ -164,8 +168,12 @@ func fakeDoctorDaemon(t *testing.T, cfg fakeDaemonCfg) *httptest.Server {
 			covField := ""
 			if cfg.obligLayerCoverage != nil {
 				c := cfg.obligLayerCoverage
-				covField = fmt.Sprintf(`,"layer_coverage":{"sections_total":%d,"sections_compiled":%d,"budget_stopped":%v}`,
-					c.SectionsTotal, c.SectionsCompiled, c.BudgetStopped)
+				corpusGrewField := ""
+				if c.CorpusGrew > 0 {
+					corpusGrewField = fmt.Sprintf(`,"corpus_grew":%d`, c.CorpusGrew)
+				}
+				covField = fmt.Sprintf(`,"layer_coverage":{"sections_total":%d,"sections_compiled":%d,"budget_stopped":%v%s}`,
+					c.SectionsTotal, c.SectionsCompiled, c.BudgetStopped, corpusGrewField)
 			} else if cfg.obligLayerCoverageUnknown {
 				covField = `,"layer_coverage":{"status":"unknown","note":"layer compiled before coverage was recorded; recompile to record coverage"}`
 			}
@@ -1286,6 +1294,52 @@ func TestCheckObligationsServed(t *testing.T) {
 		}
 		if !strings.Contains(got.Reason, "fathom compile --service alpha --layer obligations --dry-run=false --continue") {
 			t.Errorf("reason must carry the exact resume command: %s", got.Reason)
+		}
+	})
+
+	// wave O4, item 3 (ADR-037 addendum): the operator's own daemon was
+	// observed at 42/66 compiled with a real corpus_grew:14 — the WARN
+	// reason named the section split but silently dropped corpus_grew
+	// entirely (doctorLayerCoverage's own JSON mirror had no field to
+	// decode it into), understating how much of the gap is "the corpus
+	// outgrew the last compile" versus "this run's own budget stopped it
+	// early". Pinned with the operator's own exact numbers.
+	t.Run("partially compiled layer names corpus_grew when the corpus has outgrown the last compile", func(t *testing.T) {
+		srv := fakeDoctorDaemon(t, fakeDaemonCfg{
+			services: []string{"alpha"}, obligRules: 2, watermark: "wm",
+			obligLayerCoverage: &fakeLayerCoverage{SectionsTotal: 66, SectionsCompiled: 42, BudgetStopped: true, CorpusGrew: 14},
+		})
+		defer srv.Close()
+		root := namedDir(t, "alpha")
+		got := checkObligationsServed(http.DefaultClient, srv.URL, root, "", true)
+		if got.Status != doctorWarn {
+			t.Fatalf("got %+v, want warn (never fail) for a partially compiled layer", got)
+		}
+		if !strings.Contains(got.Reason, "42/66 sections") {
+			t.Errorf("reason must name the exact section split: %s", got.Reason)
+		}
+		if !strings.Contains(got.Reason, "corpus_grew=14") {
+			t.Errorf("reason must name corpus_grew when the corpus has outgrown the last compile: %s", got.Reason)
+		}
+		if !strings.Contains(got.Reason, "fathom compile --service alpha --layer obligations --dry-run=false --continue") {
+			t.Errorf("reason must carry the exact resume command: %s", got.Reason)
+		}
+	})
+
+	// The sibling case: budget_stopped with NO corpus growth must not
+	// fabricate a corpus_grew mention — omitted from the wire payload
+	// entirely (CorpusGrew: 0, matching the omitempty tag), the reason
+	// must say nothing about it either.
+	t.Run("partially compiled layer omits corpus_grew when the corpus has not grown", func(t *testing.T) {
+		srv := fakeDoctorDaemon(t, fakeDaemonCfg{
+			services: []string{"alpha"}, obligRules: 2, watermark: "wm",
+			obligLayerCoverage: &fakeLayerCoverage{SectionsTotal: 60, SectionsCompiled: 18, BudgetStopped: true},
+		})
+		defer srv.Close()
+		root := namedDir(t, "alpha")
+		got := checkObligationsServed(http.DefaultClient, srv.URL, root, "", true)
+		if strings.Contains(got.Reason, "corpus_grew") {
+			t.Errorf("reason must not mention corpus_grew when it is zero: %s", got.Reason)
 		}
 	})
 

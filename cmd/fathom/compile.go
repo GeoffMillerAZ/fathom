@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -40,6 +41,8 @@ func cmdCompile(args []string, stdout, stderr io.Writer) int {
 	force := fs.Bool("force", false, "A2-1 (docs/plans/activation.md): override the idempotency guard and recompile even when the store's latest compile_run for (service, layer) already ran at the same corpus watermark and prompt identity (direct --store mode only). Logged into the new compile_runs row.")
 	unsafeSkipEvalGate := fs.Bool("unsafe-skip-eval-gate", false, "D3-1 (docs/plans/expert-depth.md): override the eval-gate refusal and compile a layer with no passing eval/RESULTS.md record (direct --store mode only). Logged into the new compile_runs row.")
 	resume := fs.Bool("continue", false, "O54 deliverable 3: resume a budget-stopped compile of this (service, layer) from the first not-yet-compiled section instead of restarting — skips the pre-flight refusal that otherwise fires whenever the REMAINING corpus alone still estimates over this SAME run's max_tokens_per_run budget (direct --store mode only). The recorded compile_runs row's resumed_from names the section.")
+	maxTokensPerRun := fs.String("max-tokens-per-run", "", "wave O4 item 2: override the layer's own budgets.max_tokens_per_run (schema/semantic/schema.cue #Layer.budgets) for this compile only — a positive integer, or \"all\" for unlimited (direct --store mode only). Use this when a layer's default budget stops a compile part-way (budget_stopped, sections_compiled < sections_total) and the caller wants the WHOLE corpus compiled in one run — e.g. a scenariobench subject's own compile step, which otherwise serves root boilerplate for the sections the default budget never reached. Empty (default) leaves the layer's own configured budget untouched.")
+	maxUSDPerRun := fs.String("max-usd-per-run", "", "wave O4 item 2: override the layer's own budgets.max_usd_per_run for this compile only — a positive number, or \"all\" for unlimited (direct --store mode only). Same override shape as --max-tokens-per-run, for the layer's dollar cap instead of its token cap.")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
@@ -88,11 +91,66 @@ func cmdCompile(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "error: --continue applies to direct --store mode only. Pass --store.")
 		return 1
 	}
+	// --max-tokens-per-run/--max-usd-per-run share the same direct-store-only
+	// constraint (HTTP mode has no budget-override plumbing into the daemon
+	// — the daemon compiles under its own configured layer budgets).
+	if (*maxTokensPerRun != "" || *maxUSDPerRun != "") && *storePath == "" {
+		fmt.Fprintln(stderr, "error: --max-tokens-per-run and --max-usd-per-run apply to direct --store mode only. Pass --store, or omit these flags for an HTTP-mode compile under the daemon's own configured layer budgets.")
+		return 1
+	}
+	budget, berr := parseBudgetOverride(*maxTokensPerRun, *maxUSDPerRun)
+	if berr != nil {
+		fmt.Fprintf(stderr, "error: %v\n", berr)
+		return 1
+	}
 
 	if *storePath != "" {
-		return compileViaStore(*storePath, *service, *layer, *profile, *dryRun, *force, *unsafeSkipEvalGate, *resume, stdout, stderr)
+		return compileViaStore(*storePath, *service, *layer, *profile, *dryRun, *force, *unsafeSkipEvalGate, *resume, budget, stdout, stderr)
 	}
 	return compileViaHTTP(*url, *service, *layer, *dryRun, stdout, stderr)
+}
+
+// parseBudgetOverride turns --max-tokens-per-run/--max-usd-per-run's raw
+// flag values into a *semantic.BudgetOverride: "" leaves that field nil (no
+// override — the layer's own layer.cue budget stands), "all"
+// (case-insensitive) maps to a pointer to 0 (enforceBudgets' and
+// BudgetOverride's own "<=0 means unlimited" convention), and anything else
+// parses as a plain number (strconv.Atoi for tokens, strconv.ParseFloat for
+// USD) — a malformed value is a usage error naming the flag and the bad
+// value, never a silently ignored override. Returns nil (not a zero-value
+// BudgetOverride) when NEITHER flag was given, so compileViaStore's callers
+// can tell "no override requested" (pass nil straight through) from "an
+// override was requested, possibly to 0/unlimited".
+func parseBudgetOverride(rawTokens, rawUSD string) (*semantic.BudgetOverride, error) {
+	if rawTokens == "" && rawUSD == "" {
+		return nil, nil
+	}
+	var out semantic.BudgetOverride
+	if rawTokens != "" {
+		if strings.EqualFold(rawTokens, "all") {
+			zero := 0
+			out.MaxTokensPerRun = &zero
+		} else {
+			n, err := strconv.Atoi(rawTokens)
+			if err != nil {
+				return nil, fmt.Errorf("--max-tokens-per-run %q: want a positive integer or \"all\": %w", rawTokens, err)
+			}
+			out.MaxTokensPerRun = &n
+		}
+	}
+	if rawUSD != "" {
+		if strings.EqualFold(rawUSD, "all") {
+			zero := 0.0
+			out.MaxUSDPerRun = &zero
+		} else {
+			f, err := strconv.ParseFloat(rawUSD, 64)
+			if err != nil {
+				return nil, fmt.Errorf("--max-usd-per-run %q: want a positive number or \"all\": %w", rawUSD, err)
+			}
+			out.MaxUSDPerRun = &f
+		}
+	}
+	return &out, nil
 }
 
 // compileViaStore runs CompileLayer in-process against a local store.
@@ -110,7 +168,7 @@ func cmdCompile(args []string, stdout, stderr io.Writer) int {
 // criteria (docs/vision/11-dial-to-eleven.md Phase D) count against. Both
 // guards are pure pre-flight: a refusal never opens an LLM client and never
 // writes a compile_runs row.
-func compileViaStore(storePath, service, layer, profileFlag string, dryRun, force, unsafeSkipEvalGate, resume bool, stdout, stderr io.Writer) int {
+func compileViaStore(storePath, service, layer, profileFlag string, dryRun, force, unsafeSkipEvalGate, resume bool, budget *semantic.BudgetOverride, stdout, stderr io.Writer) int {
 	st, err := store.Open(storePath)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: open store %q: %v\n", storePath, err)
@@ -215,7 +273,13 @@ func compileViaStore(storePath, service, layer, profileFlag string, dryRun, forc
 
 	var run core.CompileRun
 	var compErr error
-	if resume {
+	// wave O4, item 2: a budget override (even to "all"/unlimited) always
+	// goes through CompileLayerWithBudget, which is Resume-aware itself
+	// (the same resume bool CompileLayerResume passes) — one call site
+	// instead of a 2x2 branch on (resume, budget != nil).
+	if budget != nil {
+		run, compErr = c.CompileLayerWithBudget(ctx, service, layer, dryRun, escape, resume, budget)
+	} else if resume {
 		run, compErr = c.CompileLayerResume(ctx, service, layer, dryRun, escape)
 	} else {
 		run, compErr = c.CompileLayerWithEscape(ctx, service, layer, dryRun, escape)

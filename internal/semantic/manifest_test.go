@@ -246,3 +246,62 @@ func TestLoadLayer_EmbeddedPacksAreConcernStratum(t *testing.T) {
 		}
 	}
 }
+
+// ─── wave O4, item 2: BudgetOverride ─────────────────────────────────────────
+
+// TestBudgetOverride_Apply pins BudgetOverride.Apply's contract: nil fields
+// leave the layer's own budget untouched, non-nil fields replace it
+// outright (0 included — the "unlimited" sentinel enforceBudgets' own
+// ">0"/"MaxUSDPerRun>0" checks already treat that way), and a nil
+// *BudgetOverride is a complete no-op that never mutates the layer it was
+// given (Apply returns a new value, not a pointer into the caller's own
+// LayerDef).
+func TestBudgetOverride_Apply(t *testing.T) {
+	base := LayerDef{Name: "obligations", Budgets: LayerBudgets{MaxTokensPerRun: 200000, MaxUSDPerRun: 1.0}}
+
+	t.Run("nil override is a no-op", func(t *testing.T) {
+		var o *BudgetOverride
+		got := o.Apply(base)
+		if got.Budgets != base.Budgets || got.Name != base.Name {
+			t.Errorf("Apply(nil) = %+v, want the layer unchanged (%+v)", got, base)
+		}
+	})
+
+	t.Run("nil fields leave the layer's own budgets untouched", func(t *testing.T) {
+		got := (&BudgetOverride{}).Apply(base)
+		if got.Budgets != base.Budgets {
+			t.Errorf("Apply({}) changed budgets: got %+v, want unchanged %+v", got.Budgets, base.Budgets)
+		}
+	})
+
+	t.Run("a non-nil MaxTokensPerRun replaces the layer's own value, including to 0 (unlimited)", func(t *testing.T) {
+		zero := 0
+		got := (&BudgetOverride{MaxTokensPerRun: &zero}).Apply(base)
+		if got.Budgets.MaxTokensPerRun != 0 {
+			t.Errorf("MaxTokensPerRun = %d, want 0 (unlimited override)", got.Budgets.MaxTokensPerRun)
+		}
+		if got.Budgets.MaxUSDPerRun != base.Budgets.MaxUSDPerRun {
+			t.Errorf("MaxUSDPerRun changed when only MaxTokensPerRun was overridden: got %v, want unchanged %v", got.Budgets.MaxUSDPerRun, base.Budgets.MaxUSDPerRun)
+		}
+	})
+
+	t.Run("a non-nil MaxUSDPerRun replaces the layer's own value", func(t *testing.T) {
+		big := 500.0
+		got := (&BudgetOverride{MaxUSDPerRun: &big}).Apply(base)
+		if got.Budgets.MaxUSDPerRun != 500.0 {
+			t.Errorf("MaxUSDPerRun = %v, want 500.0", got.Budgets.MaxUSDPerRun)
+		}
+		if got.Budgets.MaxTokensPerRun != base.Budgets.MaxTokensPerRun {
+			t.Errorf("MaxTokensPerRun changed when only MaxUSDPerRun was overridden: got %d, want unchanged %d", got.Budgets.MaxTokensPerRun, base.Budgets.MaxTokensPerRun)
+		}
+	})
+
+	t.Run("Apply never mutates the layer it was given", func(t *testing.T) {
+		zero := 0
+		original := base.Budgets
+		_ = (&BudgetOverride{MaxTokensPerRun: &zero}).Apply(base)
+		if base.Budgets != original {
+			t.Errorf("Apply mutated the caller's own LayerDef: got %+v, want unchanged %+v", base.Budgets, original)
+		}
+	})
+}

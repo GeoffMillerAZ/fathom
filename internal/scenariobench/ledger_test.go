@@ -90,6 +90,62 @@ func TestRenderScenarioLedger_SurfaceCallsColumn(t *testing.T) {
 	}
 }
 
+// ─── wave O4, item 2: renderCompileLayerSummary / the README "layer N/M
+// compiled" note ────────────────────────────────────────────────────────
+
+func TestRenderCompileLayerSummary(t *testing.T) {
+	cases := []struct {
+		name string
+		cc   *CompileCostReading
+		want string
+	}{
+		{"nil is empty", nil, ""},
+		{"cached (SectionsTotal 0) is empty", &CompileCostReading{Cached: true}, ""},
+		{"partial, budget-stopped", &CompileCostReading{SectionsTotal: 66, SectionsCompiled: 42, BudgetStopped: true}, "layer 42/66 compiled (budget_stopped)"},
+		{"full, not budget-stopped", &CompileCostReading{SectionsTotal: 5, SectionsCompiled: 5, BudgetStopped: false}, "layer 5/5 compiled"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := renderCompileLayerSummary(c.cc); got != c.want {
+				t.Errorf("renderCompileLayerSummary(%+v) = %q, want %q", c.cc, got, c.want)
+			}
+		})
+	}
+}
+
+// TestRenderScenarioLedger_CompileLayerSummaryInNotes: a wired,
+// CompileLayers row's "layer N/M compiled" summary appears in the README
+// table's notes column — no new column, so every pre-existing golden/
+// snapshot expectation of the table's header and column count is
+// untouched — and a row that never compiled a layer carries no such text.
+func TestRenderScenarioLedger_CompileLayerSummaryInNotes(t *testing.T) {
+	rows := []ScenarioLedgerRow{
+		{
+			RunID: "run-1", TaskID: "T1", Arm: "wired", Trials: 1, Successes: 1,
+			Readings: Readings{CompileCost: &CompileCostReading{SectionsTotal: 66, SectionsCompiled: 42, BudgetStopped: true}},
+		},
+		{
+			RunID: "run-1", TaskID: "T2", Arm: "control", Trials: 1, Successes: 1,
+			Notes: "an existing note",
+		},
+	}
+	out := RenderScenarioLedger(rows)
+	if !strings.Contains(out, "layer 42/66 compiled (budget_stopped)") {
+		t.Errorf("rendered table missing the compile-layer summary for the wired row:\n%s", out)
+	}
+	if strings.Contains(out, "layer ") && strings.Count(out, "| T2 |") > 0 {
+		// The T2 row itself must not pick up a stray compile-layer note.
+		for _, line := range strings.Split(out, "\n") {
+			if strings.Contains(line, "| T2 |") && strings.Contains(line, "layer ") {
+				t.Errorf("T2's row (never compiled a layer) must not carry a compile-layer summary: %s", line)
+			}
+		}
+	}
+	if !strings.Contains(out, "an existing note") {
+		t.Errorf("the compile-layer summary must not clobber an existing note:\n%s", out)
+	}
+}
+
 func TestRewriteScenarioLedgerSection(t *testing.T) {
 	dir := t.TempDir()
 	readme := filepath.Join(dir, "README.md")

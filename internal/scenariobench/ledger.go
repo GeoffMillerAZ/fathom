@@ -440,6 +440,28 @@ func renderPlanCoverageSummary(trials []TrialReading) string {
 	return fmt.Sprintf("%.2f", sum/float64(n))
 }
 
+// renderCompileLayerSummary (wave O4, item 2; ADR-037 addendum) renders a
+// wired, CompileLayers row's own instrument truth over the compile ITSELF —
+// "layer N/M compiled" (plus a "budget_stopped" flag when the compile quit
+// before reaching every section) — so a reader of the ledger table can tell
+// an INCOMPLETE compiled layer from a genuine product miss, the exact
+// ambiguity vs-pilot-5's second reading found hiding a budget_stopped 14/60
+// compile behind what looked like a plain "obligations didn't help" result.
+// "" for a row that never compiled a layer (cc == nil) or whose only
+// reading was Cached (SectionsTotal == 0 — nothing was compiled THIS run,
+// so there is nothing new to report; the compiling cell's own row already
+// carries the real numbers).
+func renderCompileLayerSummary(cc *CompileCostReading) string {
+	if cc == nil || cc.SectionsTotal == 0 {
+		return ""
+	}
+	summary := fmt.Sprintf("layer %d/%d compiled", cc.SectionsCompiled, cc.SectionsTotal)
+	if cc.BudgetStopped {
+		summary += " (budget_stopped)"
+	}
+	return summary
+}
+
 // RenderScenarioLedger renders rows (in the order given — the caller's
 // LoadScenarioLedger order, oldest first) as a markdown table, one row per
 // (run, task, arm). Columns beyond the always-present run/task/trials
@@ -459,6 +481,14 @@ func RenderScenarioLedger(rows []ScenarioLedgerRow) string {
 			surfaceCalls += " (unused)"
 		}
 		notes := r.Notes
+		// wave O4, item 2: a wired, CompileLayers row names its own compile
+		// completeness right in the table — "layer N/M compiled", flagged
+		// budget_stopped when the compile quit early — so a reader never has
+		// to cross-reference the JSON ledger to tell an incomplete compiled
+		// layer from a genuine product miss.
+		if summary := renderCompileLayerSummary(r.Readings.CompileCost); summary != "" {
+			notes = strings.TrimSpace(summary + " " + notes)
+		}
 		// RC-36: a voided row stays IN the table (deleting history is not
 		// the fix) but is named as voided, never blends silently into a
 		// reader's eye as a normal reading.

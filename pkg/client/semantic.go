@@ -99,6 +99,24 @@ func (c *Client) CompileLayer(ctx context.Context, service, layerName string, dr
 	return c.CompileLayerWithEscape(ctx, service, layerName, dryRun, "")
 }
 
+// CompileLayerWithBudget is CompileLayerWithEscape/CompileLayerResume with
+// an explicit per-run budget override (wave O4, item 2; ADR-037 addendum):
+// budget's non-nil fields REPLACE the resolved layer's own
+// Budgets.MaxTokensPerRun/MaxUSDPerRun for this call only — see
+// semantic.BudgetOverride's own doc comment for the "0/negative means
+// unlimited" convention. Pass budget == nil for the unmodified behavior
+// (identical to calling CompileLayerWithEscape/CompileLayerResume
+// directly); cmd/fathom compile.go's --max-tokens-per-run/--max-usd-per-run
+// flags are this method's only caller today, letting an operator (or a
+// scenariobench subject's own compile step, internal/scenariobench/
+// subject.go's compileLayers) request "all" of a corpus in one run instead
+// of accepting whatever budget_stopped point the layer's default budget
+// produces — instrument truth over the compiled layer's own coverage, not
+// a silent partial compile masquerading as complete.
+func (c *Client) CompileLayerWithBudget(ctx context.Context, service, layerName string, dryRun bool, escape string, resume bool, budget *semantic.BudgetOverride) (core.CompileRun, error) {
+	return c.compileLayer(ctx, service, layerName, dryRun, escape, resume, budget)
+}
+
 // CompileLayerWithEscape is CompileLayer with an audit note attached: when a
 // caller's own pre-flight guard (the idempotency guard's --force, A2-1, or
 // the eval-gate's --unsafe-skip-eval-gate, D3-1 — both cmd/fathom compile.go)
@@ -107,7 +125,7 @@ func (c *Client) CompileLayer(ctx context.Context, service, layerName string, dr
 // compile_runs" audit trail both flags' kill criteria count against. Pass ""
 // for a normal run (CompileLayer's contract, unchanged).
 func (c *Client) CompileLayerWithEscape(ctx context.Context, service, layerName string, dryRun bool, escape string) (core.CompileRun, error) {
-	return c.compileLayer(ctx, service, layerName, dryRun, escape, false)
+	return c.compileLayer(ctx, service, layerName, dryRun, escape, false, nil)
 }
 
 // CompileLayerResume is O54 deliverable 3 (`fathom compile --layer
@@ -121,7 +139,7 @@ func (c *Client) CompileLayerWithEscape(ctx context.Context, service, layerName 
 // ResumedFrom names the first not-yet-compiled section this call picked up
 // from.
 func (c *Client) CompileLayerResume(ctx context.Context, service, layerName string, dryRun bool, escape string) (core.CompileRun, error) {
-	return c.compileLayer(ctx, service, layerName, dryRun, escape, true)
+	return c.compileLayer(ctx, service, layerName, dryRun, escape, true, nil)
 }
 
 // ObligationsLayerCoverage reports the obligations layer's LIVE compile
@@ -252,7 +270,7 @@ func (c *Client) RawFallbackObligations(ctx context.Context, service, file strin
 	return rows, why, true, nil
 }
 
-func (c *Client) compileLayer(ctx context.Context, service, layerName string, dryRun bool, escape string, resume bool) (core.CompileRun, error) {
+func (c *Client) compileLayer(ctx context.Context, service, layerName string, dryRun bool, escape string, resume bool, budget *semantic.BudgetOverride) (core.CompileRun, error) {
 	if !dryRun && c.llm == nil {
 		return core.CompileRun{}, fmt.Errorf("client: no LLM configured for CompileLayer (set ANTHROPIC_API_KEY and call WithLLM, or use dry_run:true to estimate cost)")
 	}
@@ -274,6 +292,12 @@ func (c *Client) compileLayer(ctx context.Context, service, layerName string, dr
 	if err != nil {
 		return core.CompileRun{}, fmt.Errorf("client.CompileLayer: load layer manifest: %w", err)
 	}
+	// wave O4, item 2: apply the caller's per-run budget override, if any,
+	// AFTER resolving the layer's own manifest budgets — Apply is a pure
+	// function (never mutates layer.Budgets in place), so every downstream
+	// use of layer (corpus selection, prompt identity, etc.) is unaffected;
+	// only the Budgets Compiler actually enforces are replaced.
+	layer = budget.Apply(layer)
 
 	// Resolve corpus: all source files filtered to the layer's include list.
 	files, err := c.Sources(ctx, service)

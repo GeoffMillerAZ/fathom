@@ -589,8 +589,18 @@ func enforceBudgets(layer LayerDef, tokensIn, tokensOut int, inRatePerKTok float
 			return true, fmt.Sprintf("token total %d exceeds layer %q budget max_tokens_per_run=%d", total, layer.Name, max)
 		}
 	}
-	if estCost := cost.PriceUSD(tokensIn, inRatePerKTok); estCost > layer.Budgets.MaxUSDPerRun {
-		return true, fmt.Sprintf("estimated cost $%.4f exceeds layer %q budget max_usd_per_run=$%.4f", estCost, layer.Name, layer.Budgets.MaxUSDPerRun)
+	// wave O4, item 2: max_usd_per_run <= 0 now means unlimited, mirroring
+	// max_tokens_per_run's own ">0" convention above — previously this
+	// check ran unconditionally, so an override (or a hand-authored layer.cue)
+	// that set max_usd_per_run to 0 "for no cost cap" instead refused every
+	// non-free run outright (estCost > 0 for any real spend). A layer.cue
+	// author who wants a hard $0 cap should simply never compile that layer
+	// non-dry-run; nothing in this repo's shipped packs relies on the old
+	// always-refuse-at-zero behavior (they all set a positive max_usd_per_run).
+	if max := layer.Budgets.MaxUSDPerRun; max > 0 {
+		if estCost := cost.PriceUSD(tokensIn, inRatePerKTok); estCost > max {
+			return true, fmt.Sprintf("estimated cost $%.4f exceeds layer %q budget max_usd_per_run=$%.4f", estCost, layer.Name, max)
+		}
 	}
 	return false, ""
 }

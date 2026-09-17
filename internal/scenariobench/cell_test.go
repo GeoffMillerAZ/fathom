@@ -295,6 +295,20 @@ func TestReadingsCompileCost_CopiesWorktreeCompileCost(t *testing.T) {
 	}
 }
 
+// TestReadingsCompileCost_CopiesInstrumentTruthFields (wave O4, item 2)
+// pins the three new fields readingsCompileCost must carry through
+// unchanged from Worktree.CompileCost.
+func TestReadingsCompileCost_CopiesInstrumentTruthFields(t *testing.T) {
+	wt := Worktree{CompileCost: &CompileCost{SectionsTotal: 66, SectionsCompiled: 42, BudgetStopped: true}}
+	got := readingsCompileCost(wt)
+	if got == nil {
+		t.Fatal("expected a non-nil CompileCostReading")
+	}
+	if got.SectionsTotal != 66 || got.SectionsCompiled != 42 || !got.BudgetStopped {
+		t.Errorf("readingsCompileCost = %+v, want SectionsTotal:66 SectionsCompiled:42 BudgetStopped:true", got)
+	}
+}
+
 func TestApplyCompileCost_RollsUSDIntoTotalCostUSD(t *testing.T) {
 	wt := Worktree{CompileCost: &CompileCost{CostUSD: 0.5}}
 	r := Readings{TotalCostUSD: 1.0}
@@ -318,6 +332,62 @@ func TestApplyCompileCost_NoOpWhenNeverCompiled(t *testing.T) {
 	}
 	if r.TotalCostUSD != 1.0 {
 		t.Errorf("expected TotalCostUSD unchanged, got %v", r.TotalCostUSD)
+	}
+}
+
+// ─── wave O4, item 2: AggregateRowReadings' r.CompileCost selection ────────
+
+// TestAggregateRowReadings_CompileCost_PrefersRealOverCached pins the
+// selection rule: among a row's own cells (one per trial), the FIRST
+// non-Cached CompileCost wins (by ascending Trial) — a cached cell's own
+// CompileCost is legitimately all-zero (it compiled nothing this run), so
+// surfacing that ahead of a real, populated reading elsewhere in the row
+// would hide the very sections_total/sections_compiled/budget_stopped
+// instrument truth this field exists to carry.
+func TestAggregateRowReadings_CompileCost_PrefersRealOverCached(t *testing.T) {
+	cells := []CellResult{
+		{Trial: 1, Readings: Readings{CompileCost: &CompileCostReading{Cached: true}}},
+		{Trial: 2, Readings: Readings{CompileCost: &CompileCostReading{SectionsTotal: 66, SectionsCompiled: 42, BudgetStopped: true}}},
+		{Trial: 3, Readings: Readings{CompileCost: &CompileCostReading{Cached: true}}},
+	}
+	r, _ := AggregateRowReadings(cells)
+	if r.CompileCost == nil {
+		t.Fatal("expected a non-nil r.CompileCost")
+	}
+	if r.CompileCost.Cached {
+		t.Error("r.CompileCost picked a Cached entry when a real one was available")
+	}
+	if r.CompileCost.SectionsTotal != 66 || r.CompileCost.SectionsCompiled != 42 || !r.CompileCost.BudgetStopped {
+		t.Errorf("r.CompileCost = %+v, want the trial-2 real reading", r.CompileCost)
+	}
+}
+
+// TestAggregateRowReadings_CompileCost_FallsBackToCachedWhenAllCached: when
+// EVERY cell in the row was cached (every trial after the first shared the
+// already-compiled store), r.CompileCost still gets set — from the
+// earliest trial — rather than staying nil.
+func TestAggregateRowReadings_CompileCost_FallsBackToCachedWhenAllCached(t *testing.T) {
+	cells := []CellResult{
+		{Trial: 2, Readings: Readings{CompileCost: &CompileCostReading{Cached: true}}},
+		{Trial: 1, Readings: Readings{CompileCost: &CompileCostReading{Cached: true}}},
+	}
+	r, _ := AggregateRowReadings(cells)
+	if r.CompileCost == nil {
+		t.Fatal("expected a non-nil r.CompileCost even when every cell was cached")
+	}
+	if !r.CompileCost.Cached {
+		t.Errorf("r.CompileCost = %+v, want Cached:true (every cell was cached)", r.CompileCost)
+	}
+}
+
+// TestAggregateRowReadings_CompileCost_NilWhenNoCellCompiled: an unwired or
+// non-CompileLayers row's cells never carry a CompileCost at all — the row
+// must not fabricate one.
+func TestAggregateRowReadings_CompileCost_NilWhenNoCellCompiled(t *testing.T) {
+	cells := []CellResult{{Trial: 1, Readings: Readings{}}, {Trial: 2, Readings: Readings{}}}
+	r, _ := AggregateRowReadings(cells)
+	if r.CompileCost != nil {
+		t.Errorf("r.CompileCost = %+v, want nil (no cell ever compiled a layer)", r.CompileCost)
 	}
 }
 

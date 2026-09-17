@@ -1156,3 +1156,61 @@ func TestObligationsProbeServesRules_RealEnvelope(t *testing.T) {
 		t.Error("an error envelope must surface as an error, never as zero rules")
 	}
 }
+
+// ─── wave O4, item 2: parseCompileOutput ───────────────────────────────────
+
+// TestParseCompileOutput_FullRun pins parseCompileOutput against a real
+// printCompileRunCore rendering (cmd/fathom/compile.go) of a fully
+// compiled, non-budget-stopped run: every new field lands, BudgetStopped
+// stays false (the line is absent — printCompileRunCore only emits it when
+// true).
+func TestParseCompileOutput_FullRun(t *testing.T) {
+	out := "service:           svc\n" +
+		"layer:             obligations\n" +
+		"dry_run:           false\n" +
+		"sections_total:    5\n" +
+		"sections_compiled: 5\n" +
+		"claims_emitted:    3\n" +
+		"claims_rejected:   0\n" +
+		"tokens_in:         1234\n" +
+		"tokens_out:        567\n" +
+		"cost_usd:          0.012000\n" +
+		"model:             claude-haiku-4-5-20251001\n"
+	got := parseCompileOutput(out)
+	want := &CompileCost{TokensIn: 1234, TokensOut: 567, CostUSD: 0.012, SectionsTotal: 5, SectionsCompiled: 5, BudgetStopped: false}
+	if *got != *want {
+		t.Errorf("parseCompileOutput = %+v, want %+v", *got, *want)
+	}
+}
+
+// TestParseCompileOutput_BudgetStoppedRun pins the partial-compile shape
+// (vs-pilot-5's "14/60") this wave's instrument-truth fields exist for:
+// sections_compiled < sections_total, and BudgetStopped becomes true from
+// the mere PRESENCE of the "budget_stopped:" line (its own trailing prose
+// — the refusal reason, the resume command — is not parsed at all).
+func TestParseCompileOutput_BudgetStoppedRun(t *testing.T) {
+	out := "sections_total:    60\n" +
+		"sections_compiled: 14\n" +
+		"budget_stopped:    true (token total 201000 exceeds layer \"obligations\" budget max_tokens_per_run=200000 — re-run to resume; the digest gate skips completed sections. If the REMAINING corpus alone still exceeds this same budget, a plain re-run refuses at the pre-flight gate — pass --continue to keep making progress without restarting: `fathom compile --service svc --layer obligations --dry-run=false --continue`)\n" +
+		"tokens_in:         198000\n" +
+		"tokens_out:        3000\n" +
+		"cost_usd:          0.201000\n"
+	got := parseCompileOutput(out)
+	if got.SectionsTotal != 60 || got.SectionsCompiled != 14 {
+		t.Errorf("SectionsTotal/SectionsCompiled = %d/%d, want 60/14", got.SectionsTotal, got.SectionsCompiled)
+	}
+	if !got.BudgetStopped {
+		t.Error("BudgetStopped = false, want true (the line was present)")
+	}
+}
+
+// TestParseCompileOutput_UnrecognizedShapeDegradesToZeroCost: an
+// unrecognized output shape (compileLayers' own doc comment) must never
+// error — every field simply stays at its zero value.
+func TestParseCompileOutput_UnrecognizedShapeDegradesToZeroCost(t *testing.T) {
+	got := parseCompileOutput("this does not look like fathom compile output at all\n")
+	want := &CompileCost{}
+	if *got != *want {
+		t.Errorf("parseCompileOutput(unrecognized) = %+v, want the zero value", *got)
+	}
+}
