@@ -1,4 +1,4 @@
-// source: https://learn.chatgpt.com/docs/hooks.md (developers.openai.com/codex/hooks.md), fetched 2026-09-02; codex-cli 0.146.0 local — PreToolUse deny, verbatim — the shape fathom NEVER emits (§5.3 inject-only)
+// source: https://learn.chatgpt.com/docs/hooks.md (developers.openai.com/codex/hooks.md), fetched 2026-09-02; codex-cli 0.146.0 local — PreToolUse deny, verbatim — ADR-038 (2026-09): fathom now emits exactly this shape, but ONLY for an enforce:true guard/layer-rule violation on PreToolUse (TestClaudeCodecEncodesDenyBytes, TestCodexCodecEncodesDenyBytes); every other output on every other verb/event stays inject-only (§5.3)
 {
   "hookSpecificOutput": {
     "hookEventName": "PreToolUse",

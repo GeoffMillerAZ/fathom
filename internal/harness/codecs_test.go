@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 	"testing"
@@ -49,7 +50,10 @@ func readFixture(t *testing.T, path string) (header string, body []byte) {
 // TestCodecsRoundTripDocumentedFixtures pins HP-23: every wired non-Claude
 // codec decodes each documented stdin fixture into the neutral envelope,
 // re-encodes the documented stdout fixtures in the harness's own shape,
-// and never emits a deny/permissionDecision — for any event, any output.
+// and never emits a deny/permissionDecision from an ordinary Context/Block
+// output, for any event — ADR-038's amendment to §5.3: a codec that
+// supports Deny (Codex, Claude Code) reproduces the documented deny
+// fixture EXACTLY when explicitly asked for it, and ONLY then.
 func TestCodecsRoundTripDocumentedFixtures(t *testing.T) {
 	dirs, err := filepath.Glob(filepath.Join("testdata", "codecs", "*"))
 	if err != nil || len(dirs) == 0 {
@@ -112,7 +116,8 @@ func TestCodecsRoundTripDocumentedFixtures(t *testing.T) {
 				ev := fixtureEvents[stem]
 				checkEncodedShape(t, f, codec, ev, body)
 			case strings.HasSuffix(name, ".deny.json"):
-				// The documented deny shape is what fathom must never produce.
+				// The documented deny shape is never produced by an ordinary
+				// Context/Block output (§5.3 inject-only)…
 				stem := strings.TrimSuffix(name, ".deny.json")
 				ev := fixtureEvents[stem]
 				for _, o := range []HookOutput{{Context: "ctx"}, {Block: true, Reason: "r"}} {
@@ -122,6 +127,38 @@ func TestCodecsRoundTripDocumentedFixtures(t *testing.T) {
 					}
 					if string(got) == strings.TrimSpace(string(body)) {
 						t.Errorf("%s: codec reproduced the deny fixture", f)
+					}
+				}
+				// …but ADR-038's Deny output reproduces it EXACTLY, for a
+				// codec that supports it (id == Codex here; Claude Code carries
+				// no fixture directory of its own —
+				// TestClaudeCodecEncodesDenyBytes pins the identical shape
+				// inline).
+				if id == Codex {
+					var want struct {
+						HSO struct {
+							Reason string `json:"permissionDecisionReason"`
+						} `json:"hookSpecificOutput"`
+					}
+					if err := json.Unmarshal(body, &want); err != nil {
+						t.Fatal(err)
+					}
+					got, err := codec.EncodeOutput(ev, HookOutput{Deny: true, DenyReason: want.HSO.Reason})
+					if err != nil {
+						t.Fatal(err)
+					}
+					// The fixture is pretty-printed; compare the parsed values, not
+					// the bytes (json.Marshal's own compact form is what every other
+					// encode assertion in this file already accepts).
+					var gotM, wantM map[string]any
+					if err := json.Unmarshal(got, &gotM); err != nil {
+						t.Fatal(err)
+					}
+					if err := json.Unmarshal(body, &wantM); err != nil {
+						t.Fatal(err)
+					}
+					if !reflect.DeepEqual(gotM, wantM) {
+						t.Errorf("%s: Deny output does not reproduce the documented fixture:\n got %s\nwant %s", f, got, body)
 					}
 				}
 			default:
@@ -312,6 +349,49 @@ func TestGeminiCodecNeverDeniesAndUsesSystemMessageWhereContextIsUnshown(t *test
 	// Malformed stdin is an error the verbs turn into silence.
 	if _, err := c.DecodeInput(EventPreTool, []byte("{")); err == nil {
 		t.Error("malformed stdin must error")
+	}
+	// ADR-038: Gemini never gained Deny support (BeforeTool's
+	// additionalContext is already documented UNSHOWN, and its own flat
+	// deny shape belongs to AfterAgent, not a tool gate) — asking for it
+	// is an error, the same "cannot answer" ⇒ silence contract, never a
+	// silent downgrade to an advisory the agent could miss.
+	if _, err := c.EncodeOutput(EventPreTool, HookOutput{Deny: true, DenyReason: "x"}); err == nil {
+		t.Error("gemini-cli: Deny must be refused, not silently rendered")
+	}
+}
+
+// TestCodexCodecEncodesDenyBytes is TestClaudeCodecEncodesDenyBytes' twin
+// for Codex — same documented shape, same PreToolUse-only restriction.
+func TestCodexCodecEncodesDenyBytes(t *testing.T) {
+	c := CodexCodec()
+	got, err := c.EncodeOutput(EventPreTool, HookOutput{Deny: true, DenyReason: "Destructive command blocked by hook."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Destructive command blocked by hook."}}`
+	if string(got) != want {
+		t.Errorf("Deny bytes:\n got %s\nwant %s", got, want)
+	}
+	if _, err := c.EncodeOutput(EventPostTool, HookOutput{Deny: true, DenyReason: "x"}); err == nil {
+		t.Error("codex: Deny must be refused off PreToolUse")
+	}
+}
+
+// TestApplyPatchContent pins the added/removed text extraction ADR-038's
+// enforced checks read for a Codex apply_patch call.
+func TestApplyPatchContent(t *testing.T) {
+	patch := "*** Begin Patch\n*** Update File: a/b.go\n@@\n--- a/b.go\n+++ b/b.go\n-old line\n+new line\n+another new line\n*** End Patch"
+	added, removed := ApplyPatchContent(patch)
+	if added != "new line\nanother new line" {
+		t.Errorf("added = %q", added)
+	}
+	if removed != "old line" {
+		t.Errorf("removed = %q", removed)
+	}
+	// A patch with no hunk lines at all: both empty, never an error shape.
+	added, removed = ApplyPatchContent("*** Begin Patch\n*** Add File: new.md\n*** End Patch")
+	if added != "" || removed != "" {
+		t.Errorf("no-hunk patch: added=%q removed=%q", added, removed)
 	}
 }
 

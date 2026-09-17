@@ -207,6 +207,74 @@ func TestClaudeCodecNeverEmitsDeny(t *testing.T) {
 	}
 }
 
+// TestClaudeCodecEncodesDenyBytes pins ADR-038's amendment to §5.3
+// inject-only, byte-for-byte: a PreToolUse Deny renders EXACTLY the
+// documented shape (internal/harness/testdata/codecs/codex/pre-tool.deny.json,
+// which this repo's own hooks reference confirms is Claude-shaped too),
+// and Deny on any other event is refused rather than silently rendered.
+func TestClaudeCodecEncodesDenyBytes(t *testing.T) {
+	c := ClaudeCodec()
+	got, err := c.EncodeOutput(EventPreTool, HookOutput{Deny: true, DenyReason: "Destructive command blocked by hook."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Destructive command blocked by hook."}}`
+	if string(got) != want {
+		t.Errorf("Deny bytes:\n got %s\nwant %s", got, want)
+	}
+	if !json.Valid(got) {
+		t.Errorf("not valid JSON: %s", got)
+	}
+	for _, ev := range []Event{EventPostTool, EventStop, EventSessionStart} {
+		if _, err := c.EncodeOutput(ev, HookOutput{Deny: true, DenyReason: "x"}); err == nil {
+			t.Errorf("%s: Deny must be refused off PreToolUse", ev)
+		}
+	}
+}
+
+// TestClaudeCodecDecodesProposedContent pins the Write/Edit/MultiEdit
+// content extraction ADR-038's enforced checks read (HookInput.NewContent/
+// OldContent).
+func TestClaudeCodecDecodesProposedContent(t *testing.T) {
+	c := ClaudeCodec()
+
+	writeIn := `{"session_id":"s","cwd":"/w","hook_event_name":"PreToolUse","tool_name":"Write","tool_input":{"file_path":"/w/a.go","content":"package a\n"}}`
+	in, err := c.DecodeInput(EventPreTool, []byte(writeIn))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if in.NewContent != "package a\n" || in.OldContent != "" {
+		t.Errorf("Write: NewContent=%q OldContent=%q", in.NewContent, in.OldContent)
+	}
+
+	editIn := `{"session_id":"s","cwd":"/w","hook_event_name":"PreToolUse","tool_name":"Edit","tool_input":{"file_path":"/w/a.go","old_string":"old","new_string":"new"}}`
+	in, err = c.DecodeInput(EventPreTool, []byte(editIn))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if in.NewContent != "new" || in.OldContent != "old" {
+		t.Errorf("Edit: NewContent=%q OldContent=%q", in.NewContent, in.OldContent)
+	}
+
+	multiIn := `{"session_id":"s","cwd":"/w","hook_event_name":"PreToolUse","tool_name":"MultiEdit","tool_input":{"file_path":"/w/a.go","edits":[{"old_string":"o1","new_string":"n1"},{"old_string":"o2","new_string":"n2"}]}}`
+	in, err = c.DecodeInput(EventPreTool, []byte(multiIn))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if in.NewContent != "n1\nn2" || in.OldContent != "o1\no2" {
+		t.Errorf("MultiEdit: NewContent=%q OldContent=%q", in.NewContent, in.OldContent)
+	}
+
+	// A non-edit tool call carries neither.
+	in, err = c.DecodeInput(EventPreTool, []byte(claudePreToolUseBash))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if in.NewContent != "" || in.OldContent != "" {
+		t.Errorf("Bash: NewContent=%q OldContent=%q, want both empty", in.NewContent, in.OldContent)
+	}
+}
+
 func TestCodecFor(t *testing.T) {
 	if c, ok := CodecFor(ClaudeCode); !ok || c.ID() != ClaudeCode {
 		t.Error("claude-code must have a codec")

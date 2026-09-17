@@ -92,6 +92,16 @@ func (c geminiCodec) EncodeOutput(ev Event, out HookOutput) ([]byte, error) {
 	if _, ok := geminiEventName(ev); !ok {
 		return nil, fmt.Errorf("gemini-cli: no binding for event %q", ev)
 	}
+	if out.Deny {
+		// Gemini CLI's BeforeTool leaves additionalContext UNSHOWN (this
+		// file's own doc comment) and its documented flat
+		// {"decision":"deny",...} shape belongs to AfterAgent, not a tool
+		// gate — ADR-038's deny path is not extended here. An error is the
+		// same "cannot answer" ⇒ silence contract every other codec-cannot-
+		// render case already uses; it never silently downgrades a denial
+		// to an advisory the agent could miss.
+		return nil, fmt.Errorf("gemini-cli: deny is not supported")
+	}
 	if out.Block {
 		// Never deny (§5.3): a proven-failing claim is SHOWN, not forced
 		// into a retry loop. Gemini's AfterAgent deny would re-prompt the

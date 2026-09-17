@@ -98,6 +98,7 @@ func (c codexCodec) DecodeInput(ev Event, raw []byte) (HookInput, error) {
 			}
 			in.FilePath = p
 		}
+		in.NewContent, in.OldContent = ApplyPatchContent(command)
 	}
 	return in, nil
 }
@@ -137,6 +138,29 @@ func ApplyPatchFirstFile(patch string) string {
 	return ""
 }
 
+// ApplyPatchContent extracts the added and removed text from an
+// apply_patch patch (ADR-038, wave G1's enforced pre-write checks): every
+// hunk line beginning with '+' (never "+++") joins `added`; every line
+// beginning with '-' (never "---") joins `removed`. Deliberately a plain
+// line scan, not a full patch parser — apply_patch's own grammar
+// (ApplyPatchFirstFile's applyPatchFileHeaders) is simple enough that this
+// is exact for the shapes fathom's checks care about, and a malformed or
+// unrecognized patch degrades to two empty strings rather than an error.
+func ApplyPatchContent(patch string) (added, removed string) {
+	var add, rem []string
+	for _, line := range strings.Split(patch, "\n") {
+		switch {
+		case strings.HasPrefix(line, "+++") || strings.HasPrefix(line, "---"):
+			continue
+		case strings.HasPrefix(line, "+"):
+			add = append(add, strings.TrimPrefix(line, "+"))
+		case strings.HasPrefix(line, "-"):
+			rem = append(rem, strings.TrimPrefix(line, "-"))
+		}
+	}
+	return strings.Join(add, "\n"), strings.Join(rem, "\n")
+}
+
 // codexEventName is the hookEventName Codex expects back for a canonical
 // event, from the descriptor's own bindings.
 func codexEventName(ev Event) (string, bool) {
@@ -148,6 +172,21 @@ func codexEventName(ev Event) (string, bool) {
 }
 
 func (c codexCodec) EncodeOutput(ev Event, out HookOutput) ([]byte, error) {
+	if out.Deny {
+		// ADR-038: verbatim against
+		// internal/harness/testdata/codecs/codex/pre-tool.deny.json —
+		// Codex is Claude-shaped here too (this file's own doc comment).
+		if ev != EventPreTool {
+			return nil, fmt.Errorf("codex: deny is only valid on PreToolUse, got %q", ev)
+		}
+		return json.Marshal(map[string]any{
+			"hookSpecificOutput": map[string]any{
+				"hookEventName":            "PreToolUse",
+				"permissionDecision":       "deny",
+				"permissionDecisionReason": out.DenyReason,
+			},
+		})
+	}
 	if out.Block {
 		// Stop: {"decision":"block","reason":…} creates a continuation
 		// prompt from reason (hooks.md §"Stop"). Only the stop verb behind
