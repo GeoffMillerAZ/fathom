@@ -943,3 +943,16 @@ as `lca-bug-localization-m12-m16`, `MinTrials: 3`) is the floor that makes
 a row countable at all, never a substitute for that confidence interval;
 VB-27 is deliberately `skip_test: true` (operator spend) and reads the
 published ledger rows this section's own pipeline writes.
+
+**Turn budget (`DefaultLCAMaxTurns`, `internal/scenariobench/lca.go`):**
+raised 15 → 30 after lca-run-1 (2026-09-17,
+`docs/bench/readings/lca-run-1-reading.md` §5): the wired arm hit
+`error_max_turns` on three of its six "worse" tasks (`dokku`, `tock`,
+`pip`) AFTER already locating the gold file, on hook chatter (~19-27
+round-trips) and a 25-tool schema control's 3-tool surface does not
+carry, and `edgedb/edgedb` hit the same cap in all six trials before
+EITHER arm produced a scoreable answer — a fixed 15-turn cap was
+punishing fathom's overhead and swallowing whole tasks as null results,
+not measuring localization. `Sessions.MaxTurns` is one field per `Task`
+(no per-arm override), so the raise applies to both arms identically;
+`TestLCABuglocCorpus_LoadsAndBuilds` pins it.
