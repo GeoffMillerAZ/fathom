@@ -12,7 +12,7 @@
 //	    automatically (docs/bench/scenarios.md "External corpus (LCA bug
 //	    localization)") — instead of reading a committed corpus file.
 //
-//	scenariobench run -corpus <path|lca> [-dataset <path.jsonl>] -root <fathom repo root> [-cells <dir>] [-raw-dir <dir>] [-model-id <id>] [-harness-version <v>] [-scoring <id>] [-fathom-commit <sha>] [-trials N] [-model <name>] [-only <task id>] [-arm <name>] [-harness claude|fake] [-fake-streams-dir <dir>] [-fake-streams <json>] [-parallel-arms]
+//	scenariobench run -corpus <path|lca> [-dataset <path.jsonl>] -root <fathom repo root> [-cells <dir>] [-raw-dir <dir>] [-model-id <id>] [-harness-version <v>] [-scoring <id>] [-fathom-commit <sha>] [-trials N] [-model <name>] [-only <task id>] [-arm <name>] [-harness claude|fake] [-fake-streams-dir <dir>] [-fake-streams <json>] [-parallel-arms] [-rescore-lost [-rescore-reason <text>]]
 //	    For each selected cell not already in the cell store: PrepareSubject,
 //	    RunSessions, RunOracle, stores the scored CellResult. `-harness fake`
 //	    (with -fake-streams-dir / -fake-streams, a JSON map of lookup key to
@@ -22,7 +22,13 @@
 //	    package's own tests use. -corpus lca is the same sentinel plan
 //	    documents above; internal/scenariobench.RunExternalCorpus is the
 //	    same pipeline as a package-level call, used directly by this
-//	    package's own tests.
+//	    package's own tests. -rescore-lost (wave N18 defect 2) never
+//	    launches a session at all: instead of PrepareSubject/RunSessions, a
+//	    cell with no stored record (or, with -rescore-reason, a stored
+//	    record whose own instrument_defect matches) is reconstructed from
+//	    the raw session streams a PRIOR run under this same -raw-dir/-run-id
+//	    already wrote (rescore.go) — free, no worktree touched, every other
+//	    cell left alone.
 //
 //	scenariobench score -in <cell.json> [-out <path>] [-corpus <path>]
 //	    Recomputes a stored cell's basic aggregate readings (total tokens,
@@ -471,6 +477,8 @@ func cmdRun(args []string) int {
 	fakeStreamsDir := fs.String("fake-streams-dir", "", "-harness fake: directory holding the committed stream fixtures")
 	fakeStreams := fs.String("fake-streams", "", "-harness fake: JSON map of \"<task>/<arm>[/<role>]\" to a file name under -fake-streams-dir")
 	parallelArms := fs.Bool("parallel-arms", false, "run one task's arms concurrently (RC-16) — each cell prepares its own worktree and, when wired, its own scratch daemon on an independently allocated port, so nothing is shared between them; default off")
+	rescoreLost := fs.Bool("rescore-lost", false, "wave N18 defect 2: never launch a session — for each selected cell, re-score it from the raw streams a PRIOR run already wrote to -raw-dir instead. Only a cell with no stored record, or (with -rescore-reason) one whose stored record's own instrument_defect matches, is touched; every other cell is left alone (borrowed). A task whose oracle needs a live worktree is reported not rescorable")
+	rescoreReason := fs.String("rescore-reason", "", "with -rescore-lost: also re-score a cell whose STORED record's own instrument_defect equals this string (default \"\": only cells with no stored record at all are rescored)")
 	cf := addCellFlags(fs)
 	if err := fs.Parse(args); err != nil {
 		return 2
@@ -539,6 +547,9 @@ func cmdRun(args []string) int {
 		for k, cp := range batch {
 			cp := cp
 			fns[k] = func() (cellOutcome, error) {
+				if *rescoreLost {
+					return rescoreCellForReport(*root, cp, corpus, *cellsDir, absRawDir, *runID, *rescoreReason)
+				}
 				return runCellForReport(ctx, *root, cp, corpus, *harnessName, *fakeStreamsDir, *fakeStreams, *cellsDir, absRawDir, *model, *runID)
 			}
 		}

@@ -124,11 +124,7 @@ func RunSessions(ctx context.Context, h Harness, task Task, armName string, arm 
 // under one run — the same formula RunSessions has always used — BEFORE
 // the per-attempt subdirectory allocateRawAttemptDir adds beneath it.
 func cellRawBase(task Task, armName string, opts RunOptions) string {
-	rawBase := opts.RawDir
-	if opts.RunID != "" {
-		rawBase = filepath.Join(opts.RawDir, opts.RunID)
-	}
-	return filepath.Join(rawBase, fmt.Sprintf("%s-%s-t%d", task.ID, armName, orOne(opts.Trial)))
+	return CellRawBase(opts.RawDir, opts.RunID, task.ID, armName, opts.Trial)
 }
 
 // allocateRawAttemptDir returns a fresh "attempt-<k>" directory under
