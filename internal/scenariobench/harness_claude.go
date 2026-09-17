@@ -140,12 +140,15 @@ func (h ClaudeHarness) RunSession(req SessionRequest) (SessionResult, error) {
 		removeSessionPIDFiles(req.RawDir, req.Worktree)
 	}
 	if err := os.WriteFile(streamPath, stdout.Bytes(), 0o644); err != nil {
-		if errors.Is(err, os.ErrPermission) {
+		if isInstrumentWriteError(err) {
 			// A wedged external-volume TCC verdict (EPERM on a path that
-			// stat can see) is an instrument fault of this machine, not of
-			// the cell: report it as an instrument error so the cell is
-			// LOST and the run continues (vs-pilot-2 aborted 33 cells in on
-			// one, 2026-09-13); a rerun fills the gap.
+			// stat can see) or the disk simply running out (ENOSPC,
+			// lca-run-1 2026-09-17: "no space left on device" mid-write
+			// aborted the whole driver with exit 2 instead of losing just
+			// this cell) is an instrument fault of this machine, not of the
+			// cell: report it as an instrument error so the cell is LOST
+			// and the run continues (vs-pilot-2 aborted 33 cells in on one,
+			// 2026-09-13); a rerun fills the gap.
 			return SessionResult{
 				Index: req.Index, Role: req.Role, RowID: req.RowID,
 				InstrumentError: fmt.Sprintf("instrument: writing transcript %s: %v", streamPath, err),
@@ -174,6 +177,22 @@ func (h ClaudeHarness) RunSession(req SessionRequest) (SessionResult, error) {
 		result.Error = fmt.Sprintf("claude -p exited non-zero: %v", runErr)
 	}
 	return result, nil
+}
+
+// isInstrumentWriteError reports whether err is an OS-level fault of THIS
+// MACHINE, not of the cell: a wedged external-volume TCC verdict
+// (os.ErrPermission, on a path stat can already see) or the disk simply
+// running out (syscall.ENOSPC — lca-run-1, 2026-09-17: "no space left on
+// device" mid-transcript-write propagated as a hard Go error and aborted
+// the whole driver with exit 2 instead of losing just that cell). Both are
+// RunSession's own reason to report SessionResult.InstrumentError instead
+// of a hard error, so CellLost marks the cell LOST and the run continues —
+// a rerun (or freeing the disk) fills the gap; either machine fault would
+// otherwise recur identically for every cell, but that is exactly why it
+// belongs to the driver's own "one wedge stops the run" check (cmdRun,
+// main.go), not to a per-write classification like this one.
+func isInstrumentWriteError(err error) bool {
+	return errors.Is(err, os.ErrPermission) || errors.Is(err, syscall.ENOSPC)
 }
 
 // defaultRestrictedTools is what `--tools` names under `--restricted`

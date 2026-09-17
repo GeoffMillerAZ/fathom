@@ -1,8 +1,11 @@
 package scenariobench
 
 import (
+	"bytes"
 	"context"
+	"encoding/hex"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -707,6 +710,135 @@ func TestCheckoutCommitIntoWorktree_OperatorSafecrlfDoesNotBreakCRLFSubjectFile(
 	}
 	if string(got) != crlfContent {
 		t.Errorf("make.bat bytes = %q, want the CRLF bytes preserved exactly (never normalized to LF)", got)
+	}
+}
+
+// newFsckViolatingBareRepo builds a bare repo whose HEAD commit's tree
+// carries a hand-crafted, zero-padded file mode ("0100644" rather than the
+// "100644" `git write-tree` would ever produce) — exactly the class of
+// malformed object git's fsck names zeroPaddedFilemode, and exactly what
+// tootallnate/java-websocket's own real history carries (confirmed
+// directly against lca-run-1's log, workspace/logs/lca-run-1.log,
+// 2026-09-17: `error: object …: zeroPaddedFilemode: contains zero-padded
+// file modes` / `fatal: fsck error in packed object`). `git hash-object -w`
+// refuses to store a tree this malformed at all (its own fsck-on-write
+// check) — `--literally` is git's own escape hatch for exactly this. The
+// commit is built from LOOSE objects copied straight into a fresh bare
+// repo (content-addressed, so a plain file copy is safe) and a ref/HEAD
+// set directly with `update-ref`/`symbolic-ref`, never `git push` — a push
+// would run the BARE repo's own receive.fsckObjects check, which nothing
+// here has any reason to touch.
+func newFsckViolatingBareRepo(t *testing.T) string {
+	t.Helper()
+	src := t.TempDir()
+	run := func(args ...string) string {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = src
+		cmd.Env = append(
+			gitEnv(),
+			"GIT_AUTHOR_NAME=test", "GIT_AUTHOR_EMAIL=test@example.invalid",
+			"GIT_COMMITTER_NAME=test", "GIT_COMMITTER_EMAIL=test@example.invalid",
+		)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v: %v (%s)", args, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	run("init", "-q", "-b", "main")
+	if err := os.WriteFile(filepath.Join(src, "file.txt"), []byte("hello\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	blobSHA := run("hash-object", "-w", "file.txt")
+	rawSHA, err := hex.DecodeString(blobSHA)
+	if err != nil {
+		t.Fatalf("decoding blob sha %q: %v", blobSHA, err)
+	}
+	var tree bytes.Buffer
+	tree.WriteString("0100644 file.txt\x00")
+	tree.Write(rawSHA)
+	treePath := filepath.Join(src, "tree.bin")
+	if err := os.WriteFile(treePath, tree.Bytes(), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	treeSHA := run("hash-object", "--literally", "-w", "-t", "tree", treePath)
+	commitSHA := run("commit-tree", treeSHA, "-m", "bad mode commit")
+
+	bare := t.TempDir()
+	if out, err := exec.Command("git", "init", "-q", "--bare", bare).CombinedOutput(); err != nil {
+		t.Fatalf("git init --bare %s: %v (%s)", bare, err, out)
+	}
+	srcObjects := filepath.Join(src, ".git", "objects")
+	if err := filepath.WalkDir(srcObjects, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		rel, err := filepath.Rel(srcObjects, path)
+		if err != nil {
+			return err
+		}
+		dst := filepath.Join(bare, "objects", rel)
+		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+			return err
+		}
+		return copyFile(path, dst)
+	}); err != nil {
+		t.Fatalf("copying loose objects into the bare repo: %v", err)
+	}
+	if out, err := exec.Command("git", "--git-dir="+bare, "update-ref", "refs/heads/main", commitSHA).CombinedOutput(); err != nil {
+		t.Fatalf("git update-ref: %v (%s)", err, out)
+	}
+	if out, err := exec.Command("git", "--git-dir="+bare, "symbolic-ref", "HEAD", "refs/heads/main").CombinedOutput(); err != nil {
+		t.Fatalf("git symbolic-ref: %v (%s)", err, out)
+	}
+	return bare
+}
+
+// TestEnsureClone_OperatorGlobalFsckAndAutocrlfDontBreakSubjectClone is
+// VB-27's own reproduction of lca-run-1's real defect
+// (workspace/logs/lca-run-1.log, 2026-09-17): tootallnate/java-websocket
+// failed to clone with `fatal: fsck error in packed object` under this
+// machine's real environment. newFsckViolatingBareRepo reproduces that
+// exact class of malformed object hermetically; this test proves a global
+// config carrying fetch.fsckObjects=true and core.autocrlf=input (the same
+// class of leak core.autocrlf/safecrlf's own per-key override already
+// covers for CRLF subjects, checkoutCommitIntoWorktree) does not affect
+// ensureClone's own clone of it.
+func TestEnsureClone_OperatorGlobalFsckAndAutocrlfDontBreakSubjectClone(t *testing.T) {
+	bare := newFsckViolatingBareRepo(t)
+
+	// Sanity: a PLAIN clone (no -c overrides, no isolation) of this fixture
+	// fails exactly the way tootallnate/java-websocket did — confirms the
+	// fixture actually reproduces the defect before testing the fix
+	// against it. file:// forces the same fetch-pack/index-pack transport
+	// codepath a real network clone uses (never the local hardlink
+	// optimization a plain path would take), matching ensureClone's own
+	// clone of an https:// URL.
+	plainDest := filepath.Join(t.TempDir(), "plain")
+	out, err := exec.Command("git", "clone", "--no-single-branch", "file://"+bare, plainDest).CombinedOutput()
+	if err == nil {
+		t.Fatalf("fixture bug: a plain clone of the malformed bare repo succeeded; want the zeroPaddedFilemode fsck failure this test means to reproduce (%s)", out)
+	}
+	if !strings.Contains(string(out), "zeroPaddedFilemode") {
+		t.Fatalf("fixture bug: plain clone failed for an unexpected reason: %s", out)
+	}
+
+	// From here on, GIT_CONFIG_GLOBAL simulates the OPERATOR's own real
+	// config for ensureClone's own subprocess only — the exact thing under
+	// test, unlike the hermetic fixture setup above (which never goes
+	// through ensureClone/runInEnv at all).
+	globalConfig := filepath.Join(t.TempDir(), "gitconfig-fsck")
+	if err := os.WriteFile(globalConfig, []byte("[fetch]\n\tfsckObjects = true\n[core]\n\tautocrlf = input\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GIT_CONFIG_GLOBAL", globalConfig)
+
+	cloneDir := filepath.Join(t.TempDir(), "clone")
+	if err := ensureClone(context.Background(), "file://"+bare, cloneDir); err != nil {
+		t.Fatalf("ensureClone: %v (this is the exact failure tootallnate/java-websocket hit in lca-run-1 under the operator's real global git config)", err)
+	}
+	if _, err := os.Stat(filepath.Join(cloneDir, ".git")); err != nil {
+		t.Fatalf("cloneDir has no .git after ensureClone: %v", err)
 	}
 }
 

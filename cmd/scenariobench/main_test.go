@@ -344,6 +344,57 @@ func TestCmdRun_FakeHarnessControlArm(t *testing.T) {
 	}
 }
 
+// TestStickyInstrumentFaultMessage covers cmdRun's own stop-early gate
+// (VB-27, lca-run-1 2026-09-17): a wedged-volume LOST reason and a
+// disk-full LOST reason are both sticky (every remaining cell would fail
+// the same way, so cmdRun stops with exit 4 rather than burning the rest of
+// the corpus); an ordinary instrument LOST reason — a subject that failed
+// to clone, unrelated to the machine itself — is not, and must let the run
+// continue to the next task exactly as tootallnate/java-websocket's own
+// LOST cells did in that same run.
+func TestStickyInstrumentFaultMessage(t *testing.T) {
+	cases := []struct {
+		name       string
+		lostReason string
+		wantSticky bool
+	}{
+		{
+			name:       "wedged TCC volume",
+			lostReason: "instrument: writing transcript /x/y: open /x/y: operation not permitted",
+			wantSticky: true,
+		},
+		{
+			name:       "disk full",
+			lostReason: "instrument error: instrument: writing transcript /x/y: open /x/y: no space left on device",
+			wantSticky: true,
+		},
+		{
+			name:       "an ordinary subject-prep failure is not sticky",
+			lostReason: "instrument: preparing subject: preparing subject: git clone https://github.com/tootallnate/java-websocket: exit status 128 (...)",
+			wantSticky: false,
+		},
+		{
+			name:       "empty",
+			lostReason: "",
+			wantSticky: false,
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			msg, sticky := stickyInstrumentFaultMessage(c.lostReason)
+			if sticky != c.wantSticky {
+				t.Errorf("stickyInstrumentFaultMessage(%q) sticky = %v, want %v", c.lostReason, sticky, c.wantSticky)
+			}
+			if sticky && msg == "" {
+				t.Errorf("stickyInstrumentFaultMessage(%q) returned sticky=true with an empty message", c.lostReason)
+			}
+			if !sticky && msg != "" {
+				t.Errorf("stickyInstrumentFaultMessage(%q) returned sticky=false with a non-empty message %q", c.lostReason, msg)
+			}
+		})
+	}
+}
+
 func TestCmdScore_RecomputesReadings(t *testing.T) {
 	dir := t.TempDir()
 	cellPath := filepath.Join(dir, "cell.json")
