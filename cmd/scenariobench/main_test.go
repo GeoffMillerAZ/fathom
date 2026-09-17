@@ -1305,6 +1305,79 @@ func TestCmdLedger_StrictBorrowRefusesRunIDMismatch(t *testing.T) {
 	})
 }
 
+// setStoredCellSuccess rewrites the one stored cell under cellsDir's own
+// success field on disk — simulating a `void -trial N` correction (or any
+// other post-hoc cell fix) landing between two `ledger` filings of the
+// same run.
+func setStoredCellSuccess(t *testing.T, cellsDir string, success bool) {
+	t.Helper()
+	path := findStoredCell(t, cellsDir)
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m map[string]any
+	if err := json.Unmarshal(raw, &m); err != nil {
+		t.Fatal(err)
+	}
+	m["success"] = success
+	out, err := json.Marshal(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, out, 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestCmdLedger_RefileUpdatesExistingRowInPlace is wave n13's own fix: a
+// `void -trial N` correction lands on a stored cell, and the ledger's own
+// doc comment (cmdVoid) promises "a subsequent `scenariobench ledger`
+// re-file to rebuild [the row] correctly" — that promise only holds if
+// re-filing the SAME run-id UPDATES the existing (task, arm) row in place
+// rather than appending a second one beside it (the defect a plain
+// per-row AppendScenarioLedger loop had: filing vs-pilot-5's 70 rows a
+// second time after applying its 22 confirmed voids would have left 140
+// rows in the ledger, not 70 corrected ones).
+func TestCmdLedger_RefileUpdatesExistingRowInPlace(t *testing.T) {
+	_, corpusPath, cellsDir, ledgerPath, readmePath := runThenPrepareLedgerFixture(t)
+
+	ledgerArgs := []string{
+		"ledger",
+		"-corpus", corpusPath, "-cells", cellsDir, "-ledger", ledgerPath, "-readme", readmePath,
+		"-run-id", "run-1", "-harness-version", "fake-1",
+	}
+	if rc := run(ledgerArgs); rc != 0 {
+		t.Fatalf("first ledger filing exited %d, want 0", rc)
+	}
+	first, err := scenariobench.LoadScenarioLedger(ledgerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(first) != 1 {
+		t.Fatalf("expected 1 filed row after the first filing, got %d: %+v", len(first), first)
+	}
+	firstSuccesses := first[0].Successes
+
+	// Simulate a `void -trial N` correction flipping the stored cell's own
+	// success flag, then re-file the SAME run-id.
+	setStoredCellSuccess(t, cellsDir, firstSuccesses == 0)
+
+	if rc := run(ledgerArgs); rc != 0 {
+		t.Fatalf("second (re-file) ledger filing exited %d, want 0", rc)
+	}
+	second, err := scenariobench.LoadScenarioLedger(ledgerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(second) != 1 {
+		t.Fatalf("re-filing run-1 must UPDATE its existing row, not duplicate it: got %d rows: %+v", len(second), second)
+	}
+	if second[0].Successes == firstSuccesses {
+		t.Errorf("expected the re-filed row to reflect the corrected cell's success (Successes changed from %d), got %d", firstSuccesses, second[0].Successes)
+	}
+}
+
 // TestCmdScore_GoldSourceToolCorpusFlag is item 3's own proof: without
 // -corpus, `score` must leave a stored gold_source_tool exactly as it was
 // (never overwritten to empty/not_measured) and say so on stderr; with

@@ -154,6 +154,45 @@ func AppendScenarioLedger(path string, row ScenarioLedgerRow) error {
 	return nil
 }
 
+// UpsertScenarioLedgerRows files newRows into the JSONL ledger at path,
+// replacing any EXISTING row that matches on (RunID, TaskID, Arm) in place
+// (at its original position) rather than appending a duplicate — a plain
+// AppendScenarioLedger loop over a re-file of a run whose cells were
+// already filed once produces two rows per (task, arm) instead of one
+// corrected row (wave n13: `void -trial N` corrects a stored cell and
+// documents that "a subsequent `scenariobench ledger` re-file" rebuilds
+// the row — that promise only holds if re-filing updates in place). A
+// newRow with no existing counterpart is appended at the end, exactly as
+// AppendScenarioLedger already did for a first filing. An existing row's
+// own InstrumentDefect (set by the whole-row form of `scenariobench void`,
+// VoidScenarioLedgerRow) is preserved when newRow does not carry one of
+// its own — recomputing Readings/Successes from cells must not silently
+// erase an operator's earlier whole-row exclusion.
+func UpsertScenarioLedgerRows(path string, newRows []ScenarioLedgerRow) error {
+	existing, err := LoadScenarioLedger(path)
+	if err != nil {
+		return err
+	}
+	type key struct{ runID, taskID, arm string }
+	index := make(map[key]int, len(existing))
+	for i, r := range existing {
+		index[key{r.RunID, r.TaskID, r.Arm}] = i
+	}
+	for _, nr := range newRows {
+		k := key{nr.RunID, nr.TaskID, nr.Arm}
+		if i, ok := index[k]; ok {
+			if nr.InstrumentDefect == "" {
+				nr.InstrumentDefect = existing[i].InstrumentDefect
+			}
+			existing[i] = nr
+			continue
+		}
+		index[k] = len(existing)
+		existing = append(existing, nr)
+	}
+	return WriteScenarioLedger(path, existing)
+}
+
 // WriteScenarioLedger overwrites the JSONL ledger at path with rows, one
 // per line, in the given order — the one place this ledger is not purely
 // append-only: `scenariobench void` (O53 defect 7) rewriting a single

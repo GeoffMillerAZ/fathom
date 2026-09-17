@@ -1546,11 +1546,13 @@ func cmdLedger(args []string) int {
 		}
 	}
 
-	for _, row := range rows {
-		if err := scenariobench.AppendScenarioLedger(*ledgerPath, row); err != nil {
-			fmt.Fprintf(os.Stderr, "scenariobench ledger: %v\n", err)
-			return 2
-		}
+	// UpsertScenarioLedgerRows (not a plain per-row AppendScenarioLedger
+	// loop): a re-file of a run whose (task, arm) rows were already filed
+	// once — e.g. after `void -trial N` corrected a stored cell — must
+	// UPDATE those existing rows, never duplicate them.
+	if err := scenariobench.UpsertScenarioLedgerRows(*ledgerPath, rows); err != nil {
+		fmt.Fprintf(os.Stderr, "scenariobench ledger: %v\n", err)
+		return 2
 	}
 
 	all, err := scenariobench.LoadScenarioLedger(*ledgerPath)
