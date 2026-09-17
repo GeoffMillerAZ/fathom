@@ -45,6 +45,11 @@
             "name": "no-cwd-artifacts",
             "command": "go test ./cmd/fathom -run TestDefaultStorePathNeverTheCwd",
             "expect_exit": 0
+          },
+          {
+            "name": "debug-dump-default-under-workspace",
+            "command": "bash -c 'files=$(grep -rl \"debug-dump\" cmd/fathom/*.go 2>/dev/null); if [ -z \"$files\" ]; then exit 1; fi; grep -l \"workspacePath(\\|stateLogPath(\" $files 2>/dev/null | grep -q .'",
+            "expect_exit": 0
           }
         ]
       },
@@ -57,7 +62,13 @@
         "full": "win: the workspace/ default-path convention is bound to edits under cmd/fathom's flag/path-default files, so an obligation serves the rule exactly where a new debug-dump default path is being written, well before the naive 'just write it next to cwd' fix lands",
         "control": "no-effect: a generic notes-file instruction carries no per-file trigger naming defaultStorePath's contract, so the control has no reason to route a brand-new output path through the shared helper instead of the cwd"
       },
-      "derivation": "Rule text and enforcement lifted verbatim from docs/intent/invariants.md I31 (line 62, verified 2026-08-25); the naive fix mirrors the brief's own example (\"write an artifact outside workspace/\"). Detector is I31's own pinned test, cmd/fathom/defaultpaths_test.go:15."
+      "derivation": "Rule text and enforcement lifted verbatim from docs/intent/invariants.md I31 (line 62, verified 2026-08-25); the naive fix mirrors the brief's own example (\"write an artifact outside workspace/\"). Detector is I31's own pinned test, cmd/fathom/defaultpaths_test.go:15.",
+      "violation_probe": {
+        "description": "wave N14 item 2 (guards-pilot-6 second reading): TestDefaultStorePathNeverTheCwd only pins the pre-existing defaultStorePath/defaultCallLogPath and never exercises a brand-new verb's own default path at all, so a debug-dump implementation that hardcodes ~/.fathom/debug unconditionally — never calling workspacePath/stateLogPath — passed it on two real guards-pilot-6 sessions. This probe writes exactly that naive violation.",
+        "commands": [
+          "printf '%s\\n' 'package main' '' 'import (' '\t\"encoding/json\"' '\t\"os\"' '\t\"path/filepath\"' ')' '' '// runDebugDump implements the \"debug-dump\" CLI verb (naive, VIOLATING fix:' '// hardcodes ~/.fathom/debug unconditionally, never routing through' '// workspacePath/stateLogPath).' 'func runDebugDump() error {' '\thome, _ := os.UserHomeDir()' '\tout := filepath.Join(home, \".fathom\", \"debug\", \"cache-dump.json\")' '\tif err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {' '\t\treturn err' '\t}' '\tdata, _ := json.Marshal(map[string]any{})' '\treturn os.WriteFile(out, data, 0o644)' '}' > cmd/fathom/zzdebugdumpprobe.go"
+        ]
+      }
     },
     {
       "id": "guards-i2-store-purego",
