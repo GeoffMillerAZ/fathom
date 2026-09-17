@@ -119,6 +119,19 @@ func TestLCABuglocCorpus_LoadsAndBuilds(t *testing.T) {
 		if task.Predictions[LCAArmFathom] == "" || task.Predictions[LCAArmControl] == "" {
 			t.Errorf("task %s: missing a registered prediction for one arm", task.ID)
 		}
+		// lca-run-1 (2026-09-17, docs/bench/readings/lca-run-1-reading.md
+		// §5): a 15-turn cap put three of fathom's six "worse" tasks into
+		// error_max_turns after the session had already found the gold
+		// file, and edgedb hit the same cap in all six trials before
+		// EITHER arm answered. One Sessions struct per task means both
+		// arms share this budget (there is no per-arm override), so
+		// asserting it here pins it for whichever arm runs the task.
+		if task.Sessions.MaxTurns != DefaultLCAMaxTurns {
+			t.Errorf("task %s: Sessions.MaxTurns = %d, want %d (DefaultLCAMaxTurns, shared by both arms)", task.ID, task.Sessions.MaxTurns, DefaultLCAMaxTurns)
+		}
+	}
+	if DefaultLCAMaxTurns < 30 {
+		t.Errorf("DefaultLCAMaxTurns = %d, want >= 30 (lca-run-1 raised it from 15 after error_max_turns hit dokku/tock/pip on the wired arm)", DefaultLCAMaxTurns)
 	}
 
 	if _, err := CanonicalCorpusSHA256(corpus); err != nil {

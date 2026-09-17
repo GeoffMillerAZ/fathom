@@ -353,6 +353,15 @@ so only the FIRST run against a given commit pays it). It is
 operator-initiated: never in `validate`, never in a hook, never in CI
 (`docs/intent/autonomy.md`: ask before LLM spend).
 
+This section covers the home bench (`task bench-home` /
+`scripts/context-bench.sh`). Running a **scenario-bench pilot**
+(`cmd/scenariobench` — guards/vs/lca corpora, paid) instead? That runbook
+lives in `docs/bench/scenarios.md`, whose "Operating lessons" section
+carries the operational rules a pilot round this size actually needs
+(worktree/raw-artifact lifetime, the push gate's own Go cache, subject
+git isolation, `-rescore-lost`, `-strict-borrow`, monitoring a run) —
+read it before the first paid cell, not after losing one.
+
 ### Scratch daemon by default (VB-36, O47)
 
 The wired arms ("fathom", "full") talk to a **scratch daemon by default**

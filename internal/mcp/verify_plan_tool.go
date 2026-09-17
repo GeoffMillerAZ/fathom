@@ -40,6 +40,7 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 							"package":             map[string]any{"type": "string", "description": "Optional repo-relative directory the symbol's file must live under (disambiguates a bare name that exists in several packages)"},
 							"reachable_from":      map[string]any{"type": "string", "description": "Entrypoint that must reach symbol"},
 							"skip_test":           map[string]any{"type": "boolean", "description": "Don't require a test to reach symbol"},
+							"skip":                map[string]any{"type": "string", "description": "Justification for skip_test — mirrors the Markdown checklist's `skip:` annotation key. A bare skip_test with no reason is refused as skip-without-reason (O56)."},
 							"allow_contradiction": map[string]any{"type": "boolean", "description": "Contradictions don't fail the task"},
 							"min_tier":            map[string]any{"type": "string", "enum": []string{"verified", "pre-scan", "doc-claimed", "sme-stated", "assumed"}, "description": "Minimum evidence tier (default verified)"},
 						},
@@ -67,6 +68,7 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 				Package            string   `json:"package"`
 				ReachableFrom      string   `json:"reachable_from"`
 				SkipTest           bool     `json:"skip_test"`
+				Skip               string   `json:"skip"`
 				AllowContradiction bool     `json:"allow_contradiction"`
 				MinTier            string   `json:"min_tier"`
 				Claimed            bool     `json:"claimed"`
@@ -145,6 +147,7 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 						Package:            t.Package,
 						ReachableFrom:      t.ReachableFrom,
 						SkipTest:           t.SkipTest,
+						SkipReason:         t.Skip,
 						AllowContradiction: t.AllowContradiction,
 						MinTier:            mt,
 					},

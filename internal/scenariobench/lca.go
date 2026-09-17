@@ -100,7 +100,18 @@ const (
 // isChangeShaped), so the budget is small — R10's own SHERLOC finding is
 // that agents spend about half their tool budget merely locating; this
 // task measures exactly that half, not a fix.
-const DefaultLCAMaxTurns = 15
+//
+// Raised from 15 (lca-run-1, 2026-09-17): the wired arm hit
+// `error_max_turns` on three of its six "worse" tasks (dokku, tock, pip)
+// AFTER already locating the gold file, on hook chatter (~19-27
+// round-trips) and a 25-tool schema control's 3-tool surface does not
+// carry — a fixed 15-turn cap punished fathom's overhead rather than
+// measuring localization, and edgedb hit the same cap in all six trials
+// before EITHER arm produced a scoreable answer (docs/bench/readings/
+// lca-run-1-reading.md §5 findings 1-2). 30 gives both arms enough
+// headroom that a loss reads as a real localization miss, not a clock
+// running out on paperwork.
+const DefaultLCAMaxTurns = 30
 
 // lcaPredictionFathom / lcaPredictionControl are the pre-registered
 // predictions every task in a derived corpus repeats verbatim (SB-10):

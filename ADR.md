@@ -1747,8 +1747,8 @@ true zero — so promotion's own cap correctly declines to fire; H1-T13 (ADR-014
 because the FARTHER-tier candidate itself is the one with zero relevance (the content drifted
 away from anything lexically tying it to model.go — promotion only ever promotes a farther
 side that is itself strong, and there is nothing here to promote); H1-T08 (the workspace/ row)
-stays a miss only because `cmd/fathom/emit.go` is a synthetic scenariobench path with no real
-file on disk in this repo for `BehaviorTokens` to read — the mechanism itself is proven to
+stays a miss only because cmd/fathom/emit.go (a synthetic scenariobench path, never a real
+file on disk in this repo) leaves `BehaviorTokens` nothing to read — the mechanism itself is proven to
 close exactly this shape of gap on a real file: a synthetic corpus fixture
 (`TestRawFallbackRules_BehaviorTokenPromotesUntiedRootConvention`) and a full client-level
 proof reading real file content off disk

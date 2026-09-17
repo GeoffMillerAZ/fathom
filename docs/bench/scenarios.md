@@ -741,6 +741,59 @@ the cells' original `(task, arm, trial)` order, never completion order, so
 the printed log and the stored/borrowed/lost counts are identical whether
 or not `-parallel-arms` is set — only wall-clock time changes.
 
+## Operating lessons (pilot rounds N16–N18)
+
+Short rules an operator running a paid pilot needs, each paid for by a
+real lost or delayed run this round:
+
+- **Never delete a pilot's worktrees or subjects before the run is filed
+  AND read.** guards-pilot-7 lost 31 cells exactly this way (O76) —
+  reclaiming disk (or a later cell reusing the same
+  `(subject, base_commit, arm)` key) is safe only after the ledger row is
+  published and a human has read the transcripts, never merely after the
+  driver process exits.
+- **Every cell's diff persists under its raw attempt dir now, unconditionally,
+  before the LOST decision (O77).** `agent.diff`, the untracked-file
+  snapshot, and `cell-artifacts.json` land under
+  `<raw-dir>/<run-id>/<task>-<arm>-t<n>/attempt-<k>/` regardless of
+  whether the cell scores, is voided, or is lost — so re-scoring never
+  needs a live worktree that a later cell or an operator's cleanup may
+  already have reset or removed (see "The raw attempt dir" above).
+- **The push gate uses its own Go cache.** `lefthook pre-push` runs `task
+  validate` (a full `go vet`/`go test` pass) in whatever checkout you push
+  from; a pilot round's own builds (scratch daemon binaries, subject
+  exports) are also compiling concurrently on the same machine. Point the
+  push gate's `GOCACHE`/`GOMODCACHE`/`GOTMPDIR` at a location the pilot
+  round's own env does not also write to — sharing one build cache across
+  concurrent, independent Go processes is exactly the kind of contention
+  this round's own environment isolation (subject git, `GIT_CONFIG_GLOBAL`
+  below) already treats as a hazard elsewhere.
+- **Subject git runs under a derived `GIT_CONFIG_GLOBAL`, never a bare
+  `/dev/null`.** `gitConfigIsolation` (`internal/scenariobench/gitenv.go`)
+  isolates subject preparation from the operator's own global/system git
+  config (autocrlf, fsck policy, aliases, signing) — but `/dev/null` alone
+  also drops the keys a clone of a PRIVATE remote needs to authenticate at
+  all (`credential.*`, `url.*.insteadOf`/`pushInsteadOf`, `http.proxy`/
+  `sslcainfo`, `core.sshCommand` — `allowedOperatorConfigKey`). vs-pilot-6
+  lost all 140 cells at subject preparation to the bare-`/dev/null` form;
+  `ensureClone`/`ensureCommit` now point `GIT_CONFIG_GLOBAL` at a derived
+  file carrying only those remote-reaching keys.
+- **`-rescore-lost` re-scores a cell from the raw streams already on disk,
+  at zero spend.** Reach for it before re-running a whole corpus after
+  fixing a scoring or instrument defect — it never launches a session and
+  never claims a reading that genuinely needs a live worktree (a task
+  `NeedsLiveWorktree` is reported "not rescorable" rather than guessed).
+- **`-strict-borrow=false` is a recorded per-run decision, never a
+  default.** The default (`true`) refuses (exit 2) to file a row when a
+  stored cell's own `run_id` differs from `-run-id`, rather than silently
+  skipping it; passing `=false` to restore the old silent-skip behavior is
+  something to write down in the run's own notes (a `cellsDir` deliberately
+  shared across runs), not a flag to reach for out of habit.
+- **A `tail -F` monitor on a running pilot's log never terminates on its
+  own.** Use a waiter that exits on the driver's own completion (its exit
+  code, or a marker line it writes at the end) instead of an open-ended
+  follow a human has to remember to kill.
+
 ## How to publish a row
 
 After a paid run, its per-cell results append one row to
@@ -943,3 +996,16 @@ as `lca-bug-localization-m12-m16`, `MinTrials: 3`) is the floor that makes
 a row countable at all, never a substitute for that confidence interval;
 VB-27 is deliberately `skip_test: true` (operator spend) and reads the
 published ledger rows this section's own pipeline writes.
+
+**Turn budget (`DefaultLCAMaxTurns`, `internal/scenariobench/lca.go`):**
+raised 15 → 30 after lca-run-1 (2026-09-17,
+`docs/bench/readings/lca-run-1-reading.md` §5): the wired arm hit
+`error_max_turns` on three of its six "worse" tasks (`dokku`, `tock`,
+`pip`) AFTER already locating the gold file, on hook chatter (~19-27
+round-trips) and a 25-tool schema control's 3-tool surface does not
+carry, and `edgedb/edgedb` hit the same cap in all six trials before
+EITHER arm produced a scoreable answer — a fixed 15-turn cap was
+punishing fathom's overhead and swallowing whole tasks as null results,
+not measuring localization. `Sessions.MaxTurns` is one field per `Task`
+(no per-arm override), so the raise applies to both arms identically;
+`TestLCABuglocCorpus_LoadsAndBuilds` pins it.
