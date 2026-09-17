@@ -1734,3 +1734,105 @@ H1-T02/T08/T13 stay diagnostic-only, each carrying its own proven reason inline 
 bare MISS. VB-11 oracle (`go test ./internal/indexbench -run TestGoverningRuleOracle_Deterministic`)
 and the L1 payload replay (`go test ./internal/indexbench -run TestPayloadReplay`) both stayed
 byte-identical. Full account: `.fathom/observations.md` O75.
+
+## ADR-038: Governance bites at the edit for checkable rules — a compiled guard or layer rule denies a PreToolUse violation, never only advises after it (2026-09-17)
+
+**Status.** Accepted. Vision: `docs/vision/29-verbs-not-lookups.md` §2 thesis 2 ("a rule that
+can be compiled to a failing test is served at the edit AND fails the gate"). Amends
+`docs/design/guarded-edits.md` §2.2's "inject-only, never blocking" doctrine, under its own
+named escalation trigger ("revisit only with a documented incident a warning demonstrably
+failed to prevent"), and narrows `internal/harness`'s §5.3 inject-only contract the same way
+ADR-036 narrowed vision 21's UserPromptSubmit hold: one specific, bounded case, everything else
+unchanged.
+
+**Context.** guards-pilot-6/8 (`docs/bench/readings/guards-pilot-8-second-reading.md`) found the
+governing rule now reaches the agent before the relevant edit on 4 of 8 tasks (ADR-036/037's own
+fixes), and the wired arm violated the rule anyway on two of those four — i19 (an org-specific
+name landed in a new fixture) and i28 (a lenient DuckDB path shipped over ADR-025's loud
+refusal); one wired session went on to rewrite its own pinned regression test rather than honor
+the rule it had just been served. Violations tied the control arm 4-for-4. An obligation the
+agent can read, note, and still contradict is not the same instrument as a check the tool call
+itself cannot get past.
+
+**Decision.**
+1. `#Guard` and `#LayerRule` (`schema/guard/schema.cue`) gain `enforce: bool | *false`.
+   `internal/guardspec.LoadGuards`/`LoadLayerRules` refuse to load an enforced rule with no
+   deterministic check behind it, naming it: a note-only guard (no `forbidden_paths`, `checks`,
+   or `command_scopes`), or a layer rule whose kind is `no_cycles`/`cross_service_direction`
+   (both need the full index or fleet graph a single proposed file cannot supply).
+2. `internal/guardspec/enforce.go` adds the deterministic checks, each a pure function over one
+   proposed edit's own repo-relative path and text: `forbidden_paths` (guard, any write to a
+   named path is itself the violation); `checks: ["org_token", "secret_literal",
+   "workspace_output", "usecase_maintained"]` (guard, content scans — `org_token` reuses
+   ADR-011's scanner, lifted into `internal/guardspec/orgcheck.go` so the hook and
+   `TestNoOrgSpecificNames` share one rule set); `cgo_purity` and `import_direction`/`boundary`
+   content scans (layer rule, over the proposed text's own textually-present imports, keyed to
+   the rule's existing `from`/`to`/`allow`/`guarded` fields — no schema addition needed for cgo,
+   since ANY cgo import under a `from` package violates a "stays pure Go" sentence regardless of
+   its declared `to` list). A command guard's own `command_scopes` match IS its violation
+   (design §2.5's shape already has no separate content to check).
+3. `internal/harness.HookOutput` gains `Deny`/`DenyReason`; `claudeCodec`/`codexCodec` render the
+   documented `hookSpecificOutput.permissionDecision:"deny"` shape (verbatim against
+   `testdata/codecs/codex/pre-tool.deny.json`, whose header comment is updated — the shape fathom
+   now emits, narrowly, not the shape it never emits) on `EventPreTool` only; Gemini's codec
+   refuses `Deny` outright rather than silently downgrading it to advisory. `HookInput` gains
+   `NewContent`/`OldContent`, decoded from Claude Code's Write `content` / Edit
+   `old_string`+`new_string` / MultiEdit's `edits[]`, and from a Codex `apply_patch`'s `+`/`-`
+   hunk lines (`ApplyPatchContent`). `cmd/fathom/enforce.go` wires this into `edithook_pre.go`:
+   `cmdEditHookPreFile`/`cmdEditHookPreCommand` run the enforced checks BEFORE the advisory
+   daemon round-trip (pure local text either way, so the "instant silence on a miss" contract
+   §2.2 already established for the advisory half holds for enforcement too) and, on a
+   violation, emit `Deny` with a single line — the rule, its citation, the remedy — never a wall
+   of text; one beat (`edit-hook`/`denied`) records it. A codec that cannot deny falls back to
+   the ordinary advisory path rather than losing the signal or crashing. Escape hatch:
+   `FATHOM_ENFORCE=off` (env, checked first) or a project/user `[guards] enforce = false`
+   (`internal/config`'s new `Guards` section, `schema/config/schema.cue` `#Guards`) turns every
+   enforced rule back to advisory, repo-wide; both fail OPEN (enforcement stays live) on a config
+   read error, the same direction `capabilityOffAt` already takes.
+4. This repository's own `.fathom/guard.cue` turns `enforce: true` on the rules that map to
+   guards-fathom.json's eight tasks where a deterministic pre-write check exists: `store-no-cgo`
+   (i2, layer rule, `cgo_purity`), `internal/connector/testdata/**` `org_token` (i19),
+   `cmd/fathom/*.go` `workspace_output` (i31), `docs/use-cases/*.md` `usecase_maintained` (i36),
+   and a new command guard denying a raw `cp` onto the installed daemon path (i16's Bash half —
+   `O25`). i1 (an unsorted output field) and i11 (a new MCP tool's doc line) have no structural
+   pre-write signal and stay gate-only (`TestDeterminism`, `TestMcpToolsDocMatchesRegistry`); i28
+   (a lenient DuckDB path) is a control-flow decision no structural check here can see either,
+   and stays gated by `TestBackendForPath_DuckDBLoudlyRefused`; i16's OTHER half (a CLAUDE.md
+   prose edit instructing a raw-cp fast path) also stays gate-only via `task config-audit` — a
+   content-pattern check for "advises a raw cp" risks a false positive on the Taskfile's own
+   legitimate `cp -f bin/fathom … .new` line.
+5. `internal/scenariobench` records `enforced_refusals` per cell: `handleHookResponse` counts a
+   `PreToolUse` `hook_response` whose own output carries the deny marker, under the synthetic
+   `HooksFired["enforced_refusals"]` key (mirroring `obligations_injected`'s own pattern
+   exactly); `assertWiredHooksPresent` now also requires the wired arm's `settings.json` to carry
+   a `PreToolUse` group matching `"Edit|Write|MultiEdit"` — without it the enforced-deny path can
+   never fire in a cell at all, so a reading claiming `enforced_refusals` coverage would be
+   measuring nothing.
+
+**Consequences.** The advisory channel (`renderPreEdit`, `obligations`, the PostToolUse path) is
+completely unchanged for every guard and layer rule that stays `enforce: false` — the default,
+and every rule authored before this wave. `internal/harness`'s own tests
+(`TestClaudeCodecNeverEmitsDeny`, `TestCodecsRoundTripDocumentedFixtures`'s inject-only loop)
+still hold for ordinary `Context`/`Block` outputs; a new, parallel set of tests
+(`TestClaudeCodecEncodesDenyBytes`, `TestCodexCodecEncodesDenyBytes`) pins the amendment
+narrowly rather than loosening the old guarantee. A pre-write check is deliberately conservative
+— false negatives (a violation phrased in a shape the regex-based scan misses) stay recoverable
+via the advisory obligation, the compiled generated test, and code review; a false positive
+would deny a legitimate edit, so every check's own doc comment states its narrowing choice.
+
+**Alternatives rejected.** Blocking on every guard, enforced or not (the whole point of `enforce`
+as an opt-in is that a guard's author, not a global switch, decides which rules are load-bearing
+enough to deny on — a note-only "read this first" guard has no business ever blocking). An LLM
+judging whether the proposed content violates the rule (an LLM call on the decision-moment hot
+path, and a proven-failing claim from an untrusted judge is worse than a missed one). Blocking
+only in CI/the gate, never at the edit (already true — `fathom rules gen-test`'s generated test
+is the gate half of thesis 2; the readings show the gate alone does not stop the token/time spent
+on a violating edit before it is caught, only the deny does).
+
+**Revisit when.** A false positive from any of the five checks denies a legitimate edit in real
+use (name the check, narrow or drop it); `FATHOM_ENFORCE=off` sees material adoption, suggesting
+the checks are too aggressive by default; a guards-pilot rerun on the enforced arm still shows a
+violation the deny should have caught (name which check missed it and why); or `enforce: true`
+proves to need a check kind this ADR's five do not cover, at which point the schema's `checks`
+enum grows rather than each repo hand-rolling its own.
+

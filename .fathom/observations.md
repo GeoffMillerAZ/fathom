@@ -1186,3 +1186,47 @@ Locating the attempt dir from `runOneCell` needed its own small lookup rather th
 Failing-first test (`cmd/scenariobench/raw_artifacts_test.go`, `TestCmdRun_PersistsRawAgentDiffEvenWhenCellIsLost`): a real local git fixture subject, `-harness fake` replaying a stream whose own tool_result names a path outside every safe dir (the same `/pushclone/` shape `TestCmdRun_RescoreLost_GenuineLeakStaysLost` uses) — the LIVE `run` path, never `-rescore-lost` — produces a LOST cell (`sandbox_escape`, exit 3, nothing stored), and `agent.diff` plus `cell-artifacts.json` are still found under the raw attempt dir; confirmed to fail on the pre-fix code (`no such file or directory`) before the fix made it pass. `TestPersistRawCellArtifacts_RematerializeAcceptsTheRawCopyUnchanged` is the round-trip proof for O76's own consumer: a live `PrepareSubject`, a real edit, `captureAgentDiff` + `persistRawCellArtifacts` exactly as `runOneCell` calls them, the worktree destroyed (simulating the cleanup that lost guards-pilot-7's own cells), then `scenariobench.RematerializeCellWorktree` reproduces the tree byte for byte — with NO change to `RematerializeCellWorktree`/`ApplyStoredAgentDiff`/`CellRawAgentDiffPath`/`CellRawUntrackedSnapshotDir` at all, since this fix targets those exact existing paths. Plus `TestPersistRawCellArtifacts_CopiesAgentDiffAndCellArtifacts`, `TestPersistRawCellArtifacts_CapturesUntrackedBinaryFile`, `TestPersistRawCellArtifacts_SkipsOversizedBinaryFile` (the documented cap, and its `untracked-snapshot.json` skip entry), `TestPersistRawCellArtifacts_EmptyAttemptDirIsANoOp`; `TestLatestAttemptDir_PicksHighestNumbered`, `TestLatestAttemptDir_EmptyAttemptDirStillCounts` (the FakeHarness shape — an attempt dir with nothing written into it still counts), `TestLatestAttemptDir_MissingDirIsFalse` (`internal/scenariobench/rescore_test.go`) — all confirmed red before the fix.
 
 Rule: an artifact meant to survive a shared, reset-prone directory needs its OWN durable home from the moment it is first written, not a "capture it again once a rescue tool needs it" plan — O76 built the rescue tool and only THEN discovered, against real production data, that nothing had ever been left for it to rescue. And when a per-session path (`RawPath`) is stamped differently by different `Harness` implementations for reasons specific to each (a real harness's own written artifact vs. a fake harness's own fixture source), do not read a directory out of it for a purpose neither implementation's own doc comment promises — recompute the shared, harness-independent fact (the attempt dir every `RunSessions` call allocates up front, regardless of harness) instead.
+
+### O78 — Governance now bites at the edit for a checkable rule: `enforce: true` denies a PreToolUse violation instead of only advising it (ADR-038, wave G1, 2026-09-17)
+
+guards-pilot-8's own reading (`docs/bench/readings/guards-pilot-8-second-reading.md`) found the
+governing rule now reaches the wired agent before the relevant edit on 4 of 8 tasks — ADR-036/037's
+own fixes working — and the wired arm violated the rule anyway on two of those four (i19, an
+org-specific name landed in a new fixture; i28, a lenient DuckDB path shipped over ADR-025's loud
+refusal), with one session going on to rewrite its own pinned regression test rather than honor
+the rule it had just been served. Violations tied the control arm 4-for-4. `docs/design/
+guarded-edits.md` §2.2 had named exactly this as its own escalation trigger since the design's
+first version: "revisit only with a documented incident a warning demonstrably failed to prevent."
+
+Fix (ADR-038): `#Guard`/`#LayerRule` gain `enforce: bool | *false`; `internal/guardspec.LoadGuards`/
+`LoadLayerRules` refuse to load an enforced rule with no deterministic check behind it, naming it.
+`internal/guardspec/enforce.go` adds five checks, each a pure function over one proposed edit's own
+path/text: `forbidden_paths`, `checks: ["org_token","secret_literal","workspace_output",
+"usecase_maintained"]` (guard), `cgo_purity` + `import_direction`/`boundary` content scans (layer
+rule, over the proposed text's textually-present imports). `internal/harness.HookOutput` gains
+`Deny`/`DenyReason`; Claude Code and Codex render the documented `permissionDecision:"deny"` shape
+(their existing "the shape fathom never emits" golden fixture is now the shape it emits, narrowly);
+Gemini refuses it. `cmd/fathom/enforce.go` wires this into `edithook_pre.go`, before the advisory
+daemon round-trip, with `FATHOM_ENFORCE=off` / `[guards] enforce = false` as the escape hatch. This
+repo's own `.fathom/guard.cue` turns `enforce: true` on the rules mapping to four of the eight
+guards-fathom.json tasks (i2, i19, i31, i36) plus the actual raw-cp-onto-daemon-path command guard
+(i16's Bash half); i1/i11 have no pre-write signal and stay gate-only, i28 is a control-flow
+decision no structural check can see, i16's CLAUDE.md-prose half stays gate-only via
+`task config-audit` (a content-pattern check for "advises a raw cp" risks a false positive on the
+Taskfile's own legitimate `cp -f bin/fathom … .new` line).
+
+Along the way: `LoadGuards` rejected a `forbidden_paths`-only guard as "governing nothing" — only
+`scopes`/`command_scopes` were recognized governing fields — a real bug this wave's own first
+`forbidden_paths` guard tripped over immediately (fixed: `forbidden_paths` now also counts).
+`testdata/scenariobench/guards-m1.json`'s `.fathom/guard.cue#L43` citation for `core-no-mcp-or-cmd`
+had drifted to line 93 once this wave's own new guard entries grew the file above it — the same
+class of line-citation maintenance the two immediately-preceding commits on `main` already needed
+(H1-T07/guards-m1's ADR-011/ADR-036 citations) and evidently a recurring cost of citing a bare line
+number into a file that keeps growing above the cited line, worth a future revisit toward
+heading-anchored citations into `.fathom/guard.cue` the way `ResolveCitationLine` already does for
+ADR.md.
+
+Rule: an "obligation the agent can read and still contradict" is not proof of anything until a
+check exists that the tool call itself cannot get past — a served rule and an enforced rule are
+different instruments, and thesis 2 (vision 29 §2) says the compiled-test half of governance was
+always meant to reach the edit moment too, not just the gate.

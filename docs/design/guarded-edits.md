@@ -55,11 +55,29 @@ guards: [{
   `max_rules`, module-tagged, tier + staleness flagged, `note` first.
   Same ≤2 s hook budget; same fail-open silence on daemon absence (O8
   doctrine unchanged).
-- **Inject-only, never blocking.** PreToolUse can deny a tool call; this
-  hook never does. Blocking belongs to push/CI gates (house doctrine);
-  an edit-time deny would train agents to route around the channel.
-  Revisit only with a documented incident a warning demonstrably failed
-  to prevent — recorded here as the escalation trigger.
+- **Inject-only, never blocking — AMENDED by ADR-038 for a checkable
+  rule.** PreToolUse can deny a tool call; this hook did not, until
+  guards-pilot-8's own reading became the documented incident the
+  paragraph below asked for: the governing rule reached the agent before
+  the edit on 4 of 8 tasks and was violated anyway on two of them, tying
+  the control arm 4-for-4 — an obligation the agent can read and still
+  contradict is not the same instrument as a check the tool call cannot
+  get past. A guard or layer rule marked `enforce: true`
+  (`internal/guardspec`'s deterministic pre-write checks — forbidden
+  path, org token, secret literal, workspace-output convention,
+  doc-shape, cgo purity, import direction/boundary) now DENIES a
+  violating PreToolUse call outright — `hookSpecificOutput.
+  permissionDecision:"deny"`, a single-line reason, never a wall of
+  text — instead of only injecting the advisory payload above.
+  `enforce: false` (the default, and every guard authored before this
+  amendment) is unchanged: inject-only, exactly as below. Blocking still
+  belongs to push/CI gates for everything a deterministic pre-write check
+  cannot express; `FATHOM_ENFORCE=off` / `[guards] enforce = false` is
+  the repo-wide escape hatch back to advisory-only. Full account: ADR-038.
+- **The original escalation trigger, for the record.** "An edit-time
+  deny would train agents to route around the channel. Revisit only with
+  a documented incident a warning demonstrably failed to prevent" — the
+  trigger this amendment fired.
 
 ### 2.3 Dedup with the post-hook (no double-billing)
 
@@ -86,16 +104,21 @@ suppression.
 `guards[].command_scopes?: ["terraform apply*", "kubectl *", "*/migrate *"]`
 extends the same mechanism to PreToolUse(Bash): a command matching a
 guard's pattern gets the guard's `note` + rules injected before it runs.
-Identical budget, dedup, and inject-only doctrine — this complements the
-permission system (which decides IF a command may run) with governance
-context (what the org knows about running it). Doctor warns on dead
-command guards like dead file guards.
+Identical budget, dedup, and inject-only doctrine (ADR-038 §2.2's
+amendment applies here too: `enforce: true` on a command guard denies a
+matching command outright — a match against `command_scopes` IS the
+violation, so there is no separate content check to run) — this
+complements the permission system (which decides IF a command may run)
+with governance context (what the org knows about running it). Doctor
+warns on dead command guards like dead file guards.
 
 ## 3. Non-goals (v1)
 
 No auto-derived guards (an LLM proposing "this file looks important" is
 phase-L advisor territory, eval-gated, and lands only as a *suggested*
-`guard.cue` diff); no blocking; per-user guards ONLY as narrowly amended by
+`guard.cue` diff); no blocking for an `enforce: false` guard (the default);
+`enforce: true` blocking is bounded to ADR-038's five deterministic checks,
+never an LLM judgment call; per-user guards ONLY as narrowly amended by
 `docs/design/scoped-config.md` law 13 (notes and command scopes at user
 scope; every governance field stays project-committed); no new MCP tools.
 

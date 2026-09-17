@@ -83,7 +83,12 @@ repaired by `fathom daemon install --force` followed by a `launchctl kickstart`.
    `search` (RC-24) and `discoveries` (RC-27, its own kill criterion — see
    "Discoveries and routes" below) are the newest members.)
    Every Edit/Write also gets governing rules injected via the PostToolUse
-   edit-hook (`docs/design/coding-agent-excellence.md` §5.2).
+   edit-hook (`docs/design/coding-agent-excellence.md` §5.2) — treat them as
+   binding, not advisory. **ADR-038:** a `.fathom/guard.cue` rule marked
+   `enforce: true` goes further and DENIES a violating PreToolUse
+   Edit/Write/MultiEdit or Bash call outright (a one-line reason in place of
+   the tool call), rather than only injecting advisory text after it lands;
+   `FATHOM_ENFORCE=off` / `[guards] enforce = false` is the escape hatch.
 2. **Refresh through the server, never the CLI.** SQLite (ADR-020) allows
    many concurrent readers, but writes still serialize — a shell
    `fathom ingest` racing the daemon's own writes can hit its busy_timeout

@@ -610,6 +610,15 @@ Wire it under `hooks.PostToolUse` with matcher `Edit|Write|MultiEdit` (see
 `obligations` layer must be compiled for the service at least once
 (`fathom compile --service <id> --dry-run=false`) before this hook has anything to inject.
 
+**Enforcement (ADR-038).** A `.fathom/guard.cue` guard or `layer_rules` entry marked
+`enforce: true` DENIES a violating PreToolUse `Edit`/`Write`/`MultiEdit` or `Bash` call
+outright — the tool call never runs, and Claude Code/Codex show a one-line reason (the rule,
+its citation, the remedy) in place of it — instead of only advising after the fact. Loading an
+`enforce: true` rule with no deterministic check behind it (a note-only guard, or a layer rule
+of kind `no_cycles`/`cross_service_direction`) is refused, naming it. `FATHOM_ENFORCE=off`, or
+`[guards] enforce = false` in `.fathom/config.toml` / `~/.fathom/config.toml`, turns every
+enforced rule in this repo back to advisory.
+
 When `<repo>/.fathom/memories.jsonl` exists, the payload also carries a separate
 `🧠 fathom memory — <file>:` block (AM-6, **experimental**) listing memories anchored to
 the edited file, each `[tier, state]`, ordered tier → specificity → id, inside the same
