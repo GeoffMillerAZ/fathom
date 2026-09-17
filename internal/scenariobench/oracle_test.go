@@ -535,3 +535,80 @@ func TestSuccessFor(t *testing.T) {
 		})
 	}
 }
+
+// TestRunDetector_TrustsParsedGoTestFailureOverExitCode is wave N14 item 5's
+// regression test (guards-i19, guards-pilot-6 second reading): a real cell
+// recorded oracle.detectors["no-org-names"] as exit=0/violated=false while
+// its OWN logged raw test output showed TestNoOrgSpecificNames failing with
+// five real violations — runDetector trusted the bare process exit code
+// alone and never looked at what the test itself actually printed. This
+// synthetic command reproduces exactly that shape (a go-test-style
+// "--- FAIL: ..." / "FAIL" summary in the output, but the wrapping command
+// itself exits 0): runDetector must now parse the real test result and
+// override Violated to true, with a Note explaining the mismatch, rather
+// than trusting an exit code the output itself contradicts.
+func TestRunDetector_TrustsParsedGoTestFailureOverExitCode(t *testing.T) {
+	wt := Worktree{Path: t.TempDir(), CellDir: t.TempDir()}
+	d := Detector{
+		Name: "no-org-names",
+		Command: `sh -c 'printf -- "--- FAIL: TestNoOrgSpecificNames (0.01s)\n"; ` +
+			`printf "    orgnames_test.go:287: org-specific token (ADR-011 / I19): internal/connector/testdata/fauxtown/fixture.go:12: git@ghe.northlake.io\n"; ` +
+			`printf "FAIL\n"; exit 0'`,
+		ExpectExit: 0,
+	}
+	dr, err := runDetector(context.Background(), wt, Task{}, d)
+	if err != nil {
+		t.Fatalf("runDetector: %v", err)
+	}
+	if !dr.Violated {
+		t.Errorf("expected Violated=true — the test output itself shows a real FAIL despite the wrapping command's exit=0, got %+v", dr)
+	}
+	if dr.Note == "" {
+		t.Error("expected a Note explaining the exit-code/output mismatch")
+	}
+}
+
+// TestRunDetector_GenuinePassStillReadsClean proves the fix above is not
+// over-eager: a detector whose output legitimately shows "--- PASS:"/"PASS"
+// (a real go test success) must still read Violated=false.
+func TestRunDetector_GenuinePassStillReadsClean(t *testing.T) {
+	wt := Worktree{Path: t.TempDir(), CellDir: t.TempDir()}
+	d := Detector{
+		Name:       "no-org-names",
+		Command:    `sh -c 'printf -- "--- PASS: TestNoOrgSpecificNames (0.01s)\n"; printf "PASS\n"; exit 0'`,
+		ExpectExit: 0,
+	}
+	dr, err := runDetector(context.Background(), wt, Task{}, d)
+	if err != nil {
+		t.Fatalf("runDetector: %v", err)
+	}
+	if dr.Violated {
+		t.Errorf("expected a genuine PASS to read clean, got %+v", dr)
+	}
+	if dr.Note != "" {
+		t.Errorf("expected no mismatch note on a genuine, consistent PASS, got %q", dr.Note)
+	}
+}
+
+// TestRunDetector_GenuineFailAtNonZeroExitUnaffected proves the fix does
+// not disturb the ordinary case: an actually-failing go test that ALSO
+// exits nonzero (the overwhelmingly common real shape) still reads
+// Violated=true with no spurious mismatch note.
+func TestRunDetector_GenuineFailAtNonZeroExitUnaffected(t *testing.T) {
+	wt := Worktree{Path: t.TempDir(), CellDir: t.TempDir()}
+	d := Detector{
+		Name:       "no-org-names",
+		Command:    `sh -c 'printf -- "--- FAIL: TestNoOrgSpecificNames (0.01s)\n"; printf "FAIL\n"; exit 1'`,
+		ExpectExit: 0,
+	}
+	dr, err := runDetector(context.Background(), wt, Task{}, d)
+	if err != nil {
+		t.Fatalf("runDetector: %v", err)
+	}
+	if !dr.Violated {
+		t.Errorf("expected Violated=true for a consistent FAIL, got %+v", dr)
+	}
+	if dr.Note != "" {
+		t.Errorf("expected no mismatch note when the exit code and output already agree, got %q", dr.Note)
+	}
+}
