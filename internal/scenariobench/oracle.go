@@ -249,40 +249,102 @@ var boldConclusionRE = regexp.MustCompile(`\*\*[^*]+\*\*`)
 // concludingSpan looks for, checked case-insensitively, independent of
 // paragraph position (unlike the bold-span rule, which is restricted to
 // the LAST paragraph — a **bold** phrase elsewhere is common emphasis,
-// not necessarily the conclusion).
-var concludingSpanMarkers = []string{"the answer is", "answer:"}
+// not necessarily the conclusion). "verdict:" is the staleness-task
+// family's own required response prefix (lookups-vs.json's "answer in
+// exactly the form 'verdict: stale'/'verdict: fresh'") — the same shape
+// as "answer:", just this corpus's own wording for it.
+var concludingSpanMarkers = []string{"the answer is", "answer:", "verdict:"}
 
-// concludingSpan returns the portion of answer O53 defect 5c restricts
-// oracle token matching to, when answer carries an explicit conclusion
-// marker: a **bold** span in the answer's LAST paragraph (split on a
-// blank line), or the LAST occurrence of a concludingSpanMarkers phrase,
-// from there to the end of the answer. "" when answer carries no such
-// marker — oracleAnswerMatches then searches the whole answer, exactly
-// as before this fix (the H1-T13 false pass: a gold ADR id appeared only
-// inside an earlier, quoted aside about a DIFFERENT decision, while the
-// answer's own concluding paragraph named the wrong one — restricting
-// the search to that concluding paragraph is what turns the false pass
-// into a correct fail).
+// transitionWords are the contrastive openers that mark a paragraph as a
+// CORRECTION of whatever came before it ("But that note describes a
+// different, superseded rule.") — concludingSpan's bold-paragraph chain
+// (below) stops at, and never merges past, a paragraph that opens with
+// one of these: what precedes it is the REJECTED material, exactly like
+// the blockquote case it stops at for the same reason.
+var transitionWords = map[string]bool{"but": true, "however": true, "instead": true, "rather": true, "yet": true}
+
+// beginsWithTransitionWord reports whether paragraph's own first word
+// (after stripping markdown/punctuation) is one of transitionWords.
+func beginsWithTransitionWord(paragraph string) bool {
+	fields := strings.Fields(paragraph)
+	if len(fields) == 0 {
+		return false
+	}
+	first := strings.ToLower(strings.Trim(fields[0], "*_`\"'.,;:—-"))
+	return transitionWords[first]
+}
+
+// paragraphByteOffset returns the byte offset, within the "\n\n"-joined
+// text paras was split from, at which paragraph index idx begins.
+func paragraphByteOffset(paras []string, idx int) int {
+	offset := 0
+	for i := 0; i < idx; i++ {
+		offset += len(paras[i]) + len("\n\n")
+	}
+	return offset
+}
+
+// concludingSpan returns the portion of answer O53 defect 5c (and
+// wave-n13's own H1-T04/H1-T13 false-fail fixes) restrict oracle token
+// matching to, when answer carries an explicit conclusion signal — the
+// UNION of two independent signals, each optional, whichever starts
+// EARLIEST winning (both run to the end of the answer):
+//
+//  1. A **bold** span in the answer's LAST paragraph (split on a blank
+//     line), extended BACKWARD through any immediately preceding
+//     paragraph that ALSO carries its own bold span — stopping (not
+//     merging further) at the first preceding paragraph that is a
+//     blockquote (">") or opens with a transitionWords contrast, exactly
+//     the shape that must NOT merge (the H1-T13-old false-pass fixture:
+//     the paragraph right before the bold conclusion is a REJECTED
+//     blockquote aside). A multi-paragraph answer that builds its own
+//     conclusion across two bolded paragraphs (H1-T04: "Row **DEMO-H1**
+//     is the one that fails..." then, next paragraph, "**symbol not
+//     found**") merges; one that quotes an aside then pivots away from
+//     it ("But that note describes a different rule...") does not.
+//  2. The LAST occurrence of a concludingSpanMarkers phrase, independent
+//     of paragraph position — H1-T13's own "verdict: stale" opening
+//     line, stated well before a LATER supporting paragraph that happens
+//     to carry the gold citation in bold.
+//
+// "" when answer carries neither signal — oracleAnswerMatches then
+// searches the whole answer, exactly as before this fix.
 func concludingSpan(answer string) string {
 	trimmed := strings.TrimSpace(answer)
 	if trimmed == "" {
 		return ""
 	}
 	paras := strings.Split(trimmed, "\n\n")
-	if last := paras[len(paras)-1]; boldConclusionRE.MatchString(last) {
-		return last
+
+	boldStart := -1
+	if boldConclusionRE.MatchString(paras[len(paras)-1]) {
+		idx := len(paras) - 1
+		for idx > 0 {
+			prev := strings.TrimSpace(paras[idx-1])
+			if strings.HasPrefix(prev, ">") || beginsWithTransitionWord(prev) || !boldConclusionRE.MatchString(prev) {
+				break
+			}
+			idx--
+		}
+		boldStart = paragraphByteOffset(paras, idx)
 	}
-	lower := strings.ToLower(answer)
-	bestIdx := -1
+
+	lower := strings.ToLower(trimmed)
+	markerStart := -1
 	for _, marker := range concludingSpanMarkers {
-		if idx := strings.LastIndex(lower, marker); idx > bestIdx {
-			bestIdx = idx
+		if idx := strings.LastIndex(lower, marker); idx > markerStart {
+			markerStart = idx
 		}
 	}
-	if bestIdx >= 0 {
-		return answer[bestIdx:]
+
+	start := boldStart
+	if markerStart >= 0 && (start < 0 || markerStart < start) {
+		start = markerStart
 	}
-	return ""
+	if start < 0 {
+		return ""
+	}
+	return trimmed[start:]
 }
 
 // tokenCounts reports whether tok has at least one case-insensitive
@@ -291,25 +353,50 @@ func concludingSpan(answer string) string {
 // logic — reused here rather than duplicated, per O53 defect 5b) and not
 // solely inside a quoted line/span (isQuotedPosition). A token with every
 // occurrence excluded this way does not count — the answer only CITED or
-// REJECTED it, never asserted it as its own conclusion.
+// REJECTED it, never asserted it as its own conclusion. The search
+// itself is backtick-tolerant (stripBackticks, wave-n13 H1-T02): a
+// model's own markdown formatting around ONE word of a multi-word phrase
+// ("the `Edge` struct") must not break a match on the plain phrase
+// ("Edge struct").
 func tokenCounts(text, tok string) bool {
 	if tok == "" {
 		return true
 	}
 	lowerText := strings.ToLower(text)
 	lowerTok := strings.ToLower(tok)
-	for start := 0; start < len(lowerText); {
-		idx := strings.Index(lowerText[start:], lowerTok)
+	strippedText, origPos := stripBackticks(lowerText)
+	for start := 0; start < len(strippedText); {
+		idx := strings.Index(strippedText[start:], lowerTok)
 		if idx < 0 {
 			return false
 		}
-		pos := start + idx
+		strippedStart := start + idx
+		pos := origPos[strippedStart]
 		if !isQuotedPosition(text, pos) && !clauseIsNegated(text, pos) {
 			return true
 		}
-		start = pos + 1
+		start = strippedStart + 1
 	}
 	return false
+}
+
+// stripBackticks removes every backtick from s, returning the stripped
+// text and a same-length-as-stripped slice mapping each stripped byte
+// offset back to its ORIGINAL offset in s — so a match found against the
+// backtick-tolerant stripped text can still be checked (isQuotedPosition,
+// clauseIsNegated) against real positions in the untouched answer.
+func stripBackticks(s string) (string, []int) {
+	var b strings.Builder
+	b.Grow(len(s))
+	orig := make([]int, 0, len(s))
+	for i := 0; i < len(s); i++ {
+		if s[i] == '`' {
+			continue
+		}
+		b.WriteByte(s[i])
+		orig = append(orig, i)
+	}
+	return b.String(), orig
 }
 
 // isQuotedPosition reports whether pos sits on a QUOTED LINE — a
@@ -328,6 +415,18 @@ func tokenCounts(text, tok string) bool {
 // ENTIRELY a quotation counts. "A line the prose rejects" is a SEPARATE
 // concern — clauseIsNegated, checked independently by tokenCounts — this
 // function only ever answers the QUOTING half.
+//
+// PIN 2 (wave-n13, vs-pilot-5 second reading, H1-T01/H1-T11): a
+// blockquote (">") line carrying its OWN markdown emphasis — a backtick
+// code span or a **bold** span — is not a flat, incidental citation the
+// answer merely mentions in passing; it is the model actively marking up
+// specific words within its own quoted evidence, the same way the source
+// rule text itself is formatted (H1-T01: registering an extractor "in
+// `fusion.New()`"; H1-T11: "...busy_timeout and fail with a **lock
+// error**"). A token inside such a line counts as the answer's own
+// assertion. A PLAIN, unformatted blockquote (no backtick, no bold) stays
+// excluded exactly as before (O53 defect 5b — "> Purely additive over
+// ADR-010", a citation the answer brought up without asserting).
 func isQuotedPosition(text string, pos int) bool {
 	lineStart := strings.LastIndexByte(text[:pos], '\n') + 1
 	lineEnd := len(text)
@@ -336,7 +435,7 @@ func isQuotedPosition(text string, pos int) bool {
 	}
 	trimmed := strings.TrimSpace(text[lineStart:lineEnd])
 	if strings.HasPrefix(trimmed, ">") {
-		return true
+		return !strings.ContainsRune(trimmed, '`') && !strings.Contains(trimmed, "**")
 	}
 	return isWhollyDelimited(trimmed, '`') ||
 		isWhollyDelimited(trimmed, '"') ||

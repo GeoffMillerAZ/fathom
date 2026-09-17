@@ -268,3 +268,126 @@ func TestAnswerOnly_AnswerAnyOfAlone(t *testing.T) {
 		t.Error("expected AnswerOnly(task) = true for an AnswerAnyOf-only oracle")
 	}
 }
+
+// --- wave-n13: vs-pilot-5 second reading, the 22-cell scorer_false_fail
+// class (§ defects / § voids) --------------------------------------------
+//
+// Every fixture below is the MINIMAL final-answer text copied from the
+// named raw session's own last assistant turn (never the session log
+// itself — see docs/bench/README.md's raw-session convention). Each one
+// is a documented false FAIL in the second reading: the ledger scored it
+// FAIL, the reader confirmed it a correct, substantive answer. Zero
+// scorer_false_pass cells were found in that run, so every EXISTING
+// negation/quote regression test above (TestTokenCounts_QuotedLineDoes-
+// NotCountAlone, TestOracleAnswerMatches_H1T13FalsePass, the bare-not/
+// never/nor family, …) must still FAIL exactly as before — this section
+// only ADDS coverage, it narrows nothing already proven.
+
+// TestOracleAnswerMatches_H1T01QuotedBlockquoteRuleCounts is H1-T01/
+// full/t1's own false fail: the prompt asked the model to quote
+// internal/CLAUDE.md's extractor-registration rule in full, and it did —
+// but the sole "golden-test" occurrence sits on that quoted (">") line,
+// which the old isQuotedPosition excluded unconditionally. The blockquote
+// itself carries backticked identifiers and a **bold** lead-in — the
+// same way the source rule text is formatted — so it must count as the
+// answer's own assertion, not a passing aside.
+func TestOracleAnswerMatches_H1T01QuotedBlockquoteRuleCounts(t *testing.T) {
+	answer := "`internal/CLAUDE.md:35-36` governs this:\n\n" +
+		"> **Extractor**: implement `extractor.Extractor`, register by extension in `fusion.New()`, add its ext→kind in `connector`, golden-test it.\n\n" +
+		"So a new extractor must be registered in two places:\n" +
+		"1. **`fusion.New()`** — registered there by file extension.\n" +
+		"2. **`connector`** — given an ext→kind mapping entry there.\n\n" +
+		"(It should also implement the `extractor.Extractor` interface and have a golden test, but the two *registration* points the rule names are `fusion.New()` and `connector`.)"
+
+	if !oracleAnswerMatches(answer, []string{"fusion.New", "golden-test"}, nil) {
+		t.Error("expected PASS — 'golden-test' appears in the quoted rule text the prompt asked the model to quote in full")
+	}
+}
+
+// TestOracleAnswerMatches_H1T02BacktickBrokenPhraseCounts is H1-T02/
+// full/t1's own false fail: the model's own markdown wraps "Edge" in
+// backticks — "the `Edge` struct's `Kind EdgeKind` field" — so the plain
+// two-word phrase "Edge struct" never appears as one contiguous
+// substring. The backtick between the two words must not break the
+// match.
+func TestOracleAnswerMatches_H1T02BacktickBrokenPhraseCounts(t *testing.T) {
+	answer := "Typed call-edge kinds (`EdgeDirect`, `EdgeIfaceDispatch`, `EdgeUnresolved`, `EdgeFuncValue`) " +
+		"must be carried on the `Edge` struct's `Kind EdgeKind` field (internal/core/model.go:371-376). " +
+		"This comes from **ADR-021 §3** (internal/core/model.go:326, 343)."
+
+	allOf := []string{"ADR-021"}
+	anyOf := [][]string{{"core.Edge", "Edge struct"}}
+	if !oracleAnswerMatches(answer, allOf, anyOf) {
+		t.Error("expected PASS — the backtick between `Edge` and struct must not break the 'Edge struct' literal match")
+	}
+}
+
+// TestOracleAnswerMatches_H1T04MultiParagraphConclusionAndUnpunctuated-
+// Negation is H1-T04/full/t1's own false fail, TWO compounding bugs at
+// once: concludingSpan's old bold-last-paragraph rule returned ONLY the
+// last paragraph, missing "DEMO-H1" (stated, bolded, in paragraph 1); and
+// within that last paragraph, clauseIsNegated's old clause boundary
+// (only ".!?,") let an EARLIER, unrelated "does not exist" bleed — across
+// an em dash and a colon, with no comma or period anywhere between them
+// — into the bolded "not found" conclusion, marking it negated.
+func TestOracleAnswerMatches_H1T04MultiParagraphConclusionAndUnpunctuatedNegation(t *testing.T) {
+	answer := "Row **DEMO-H1** is the one that fails on the merits. `cmdVerify` (DEMO-H2) genuinely exists at " +
+		"`cmd/fathom/verify.go:37` and passes the symbol/tier checks — its only failure is a plan-hygiene issue " +
+		"(bare `skip_test: true` with no reason), not a code-truth problem.\n\n" +
+		"`GetGovernedClaimByRepro`, however, does not exist anywhere under `internal/store` (or the index at all) " +
+		"— the one-phrase reason: **symbol not found / never defined** (it's a ghost accessor, not actually wired)."
+
+	if !oracleAnswerMatches(answer, []string{"DEMO-H1", "not found"}, nil) {
+		t.Error("expected PASS — DEMO-H1 (paragraph 1) and the bolded, non-negated 'not found' (paragraph 2) are both the answer's own assertions")
+	}
+}
+
+// TestOracleAnswerMatches_H1T04SingleParagraphUnpunctuatedNegation is
+// H1-T04/serena/t2's own false fail — the same clause-boundary bug,
+// entirely within a SINGLE unpunctuated paragraph: "does not exist ...
+// (not just `internal/store`) — **symbol not found**" carries no comma
+// or period anywhere before the bolded conclusion, only an em dash.
+func TestOracleAnswerMatches_H1T04SingleParagraphUnpunctuatedNegation(t *testing.T) {
+	answer := "**Row A (DEMO-H1)** is the one that doesn't hold up: `GetGovernedClaimByRepro` does not exist " +
+		"anywhere in the repo (not just `internal/store`) — **symbol not found**."
+
+	if !oracleAnswerMatches(answer, []string{"DEMO-H1", "not found"}, nil) {
+		t.Error("expected PASS — the bolded 'not found' is the answer's own conclusion, not negated by the earlier, unrelated 'does not exist'")
+	}
+}
+
+// TestOracleAnswerMatches_H1T11QuotedBlockquoteRuleCounts is H1-T11's own
+// false fail, hit independently by grep/serena/gopls/graphify (t1, plus
+// graphify t2): both required substrings sit only inside the model's own
+// quoted excerpt of docs/guides/fleet-index.md — a blockquote carrying
+// its own **bold** emphasis and backticked identifiers, so (exactly like
+// H1-T01) it counts as the answer's own evidence, not a passing aside.
+func TestOracleAnswerMatches_H1T11QuotedBlockquoteRuleCounts(t *testing.T) {
+	answer := "Yes, the proposed line directly contradicts existing rules in fathom's CLAUDE.md and the guide it points to.\n\n" +
+		"**In CLAUDE.md itself** (the Index-first row):\n" +
+		"> \"refresh via the `ingest` MCP tool, **never a shell `fathom ingest` against the shared store**\"\n\n" +
+		"**In `docs/guides/fleet-index.md`** (the full text that row points to), point 2 is even more explicit about why:\n" +
+		"> \"**Refresh through the server, never the CLI.** SQLite (ADR-020) allows many concurrent readers, but writes still serialize " +
+		"— **a shell `fathom ingest` racing the daemon's own writes can hit its busy_timeout and fail with a lock error.**\"\n\n" +
+		"So the proposed line contradicts both the blanket prohibition and the stated reason."
+
+	if !oracleAnswerMatches(answer, []string{"lock error", "busy_timeout"}, nil) {
+		t.Error("expected PASS — both tokens appear verbatim inside the model's own quoted, formatted evidence")
+	}
+}
+
+// TestOracleAnswerMatches_H1T13EarlyVerdictLineCounts is H1-T13/full/t2's
+// own false fail: the model's overall verdict ("verdict: stale") is its
+// own first paragraph, while the required ADR-010 citation sits, bolded,
+// inside a LATER paragraph's own nested quotation of the current ADR.md
+// text — concludingSpan's old bold-last-paragraph rule returned only
+// that later paragraph, silently dropping the first-line verdict.
+func TestOracleAnswerMatches_H1T13EarlyVerdictLineCounts(t *testing.T) {
+	answer := "verdict: stale\n\n" +
+		"The rule's words (\"new hot-loop tool must be added\") now live at line 176, not 158-159; that line reads " +
+		"\"...new hot-loop tool must be added. Purely additive over **ADR-010** — removing the...\"."
+
+	if !oracleAnswerMatches(answer, []string{"verdict: stale", "ADR-010"}, nil) {
+		t.Error("expected PASS — the opening 'verdict: stale' line and the later bolded ADR-010 citation are both the answer's own claims")
+	}
+}

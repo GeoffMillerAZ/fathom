@@ -165,11 +165,21 @@ func demoteNegated(answer string, ordered []string, firstPos map[string]int) []s
 // insensitively), OR carries a bare negation clauseHasBareNegationBefore
 // recognizes (fix-first review, wave-n1: negationMarkers alone missed a
 // bare "not X but Y" — "not ADR-010 but ADR-014" passed for ADR-010).
+//
+// PIN (wave-n13, vs-pilot-5 second reading, H1-T04): a colon, an em dash
+// or a newline ALSO end a clause, exactly like "." "!" "?" "," already
+// did — real prose routinely separates two independent statements with a
+// dash or a colon and no comma at all ("`GetGovernedClaimByRepro`,
+// however, does not exist anywhere under `internal/store` (or the index
+// at all) — the one-phrase reason: **symbol not found**"). Without this,
+// an EARLIER, unrelated "does not exist" bled clean across the em dash
+// and the colon into the LATER, independent "not found" conclusion,
+// marking it negated for no reason connected to it at all.
 func clauseIsNegated(text string, pos int) bool {
 	if pos < 0 || pos > len(text) {
 		return false
 	}
-	start := strings.LastIndexAny(text[:pos], ".!?,")
+	start := strings.LastIndexAny(text[:pos], ".!?,:—\n")
 	if start < 0 {
 		start = 0
 	} else {
