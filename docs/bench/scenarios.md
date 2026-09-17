@@ -562,6 +562,18 @@ command/code-running tool outright. `buildClaudeArgs` still adds
 `threads.jsonl` under the cell's own `CellDir`, so two tasks sharing a
 worktree basename never share a thread scope either (F5). Every session also runs under `--permission-mode default` with an explicit allow-list — the arm's own when it has one, else every tool the session was given plus `mcp__<server>` for each of its servers — and `--add-dir <worktree>`; without those, a session under `--restricted` had every shell command answered "requires approval" and could not create a directory in its own worktree (reuse-pilot-2, 2026-09-13). Raw transcripts live under `<raw-dir>/<run-id>/` so a rerun never reads another run's sessions.
 
+### The raw attempt dir (O76/O77)
+
+Each cell's own raw artifacts land under `<raw-dir>/<run-id>/<task>-<arm>-t<n>/attempt-<k>/` (`CellRawBase` + `allocateRawAttemptDir`; a retried or resumed cell key gets a fresh `attempt-<k+1>`, never overwriting an earlier one). A `ClaudeHarness` session writes its own `session-<n>-<role>.stream.jsonl` (+ an occasional `.stderr` sibling) and `session-<n>-mcp.json` here; `-harness fake` writes neither (`FakeHarness` reads straight from its own committed `StreamsDir` and never touches this directory at all) — the attempt dir itself still gets created, empty, since `allocateRawAttemptDir` runs before either harness does.
+
+`runOneCell` (`cmd/scenariobench/main.go`) additionally persists, unconditionally and BEFORE the leak/escape/LOST decision, exactly what `RematerializeCellWorktree` (`internal/scenariobench/rematerialize.go`) needs to rebuild this cell's worktree from raw alone, once `workspace/artifacts/scenariobench/worktrees/…` has been reset by a later cell sharing the same `(subject, base_commit, arm)` or removed by an operator reclaiming disk (guards-pilot-7 lost 31 cells exactly this way — O76):
+
+- `agent.diff` (`scenariobench.CellRawAgentDiffPath`) — a byte-for-byte copy of `captureAgentDiff`'s own output (`git add -N .` then `git diff <LocalBase>`, instrument-owned files/regions already stripped).
+- `untracked-snapshot/` (`scenariobench.CellRawUntrackedSnapshotDir`), plus `untracked-snapshot.json` — a byte-identical copy of every binary file the diff names as created or modified (a plain `git diff` never embeds binary patch data), each capped at 10 MiB; what was captured and what was skipped (and why, and its size) is recorded in the manifest, never left ambiguous with "nothing to capture".
+- `cell-artifacts.json` — the task's base commit, `wt.LocalBase`, and the instrument-owned paths `captureAgentDiff` excluded.
+
+Best-effort: a write failure here is reported on stderr and never fails the cell — a raw copy is a convenience for later re-scoring, never a precondition for the readings already computed from the live worktree.
+
 **First design, replaced.** RC-6 first tried a scratch `CLAUDE_CONFIG_DIR`
 per run, with a stripped `~/.claude.json`/`~/.claude/settings.json` copied
 into it. Its own smoke test found that broke authentication ("Not logged

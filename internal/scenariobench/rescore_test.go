@@ -131,6 +131,57 @@ func TestLatestCompleteAttempt_MissingDirIsFalseNotError(t *testing.T) {
 	}
 }
 
+// TestLatestAttemptDir_PicksHighestNumbered is O76's own lookup: unlike
+// LatestCompleteAttempt, this never reads the attempt's own stream files —
+// it names the highest-numbered "attempt-<k>" dir allocateRawAttemptDir
+// most recently created for this cell key, whether or not anything was
+// ever written into it (FakeHarness, unlike ClaudeHarness, writes no raw
+// stream file into req.RawDir at all — see harness_fake.go).
+func TestLatestAttemptDir_PicksHighestNumbered(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "attempt-1"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "attempt-2"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	got, ok := LatestAttemptDir(dir)
+	if !ok {
+		t.Fatal("expected an attempt dir to be found")
+	}
+	if want := filepath.Join(dir, "attempt-2"); got != want {
+		t.Errorf("LatestAttemptDir = %q, want %q", got, want)
+	}
+}
+
+// TestLatestAttemptDir_EmptyAttemptDirStillCounts proves the case O76
+// actually needs: an attempt dir with NOTHING in it (a FakeHarness cell,
+// or a real one whose harness failed before writing a stream) is still
+// found — never treated as "no attempt ran" merely because it holds no
+// files.
+func TestLatestAttemptDir_EmptyAttemptDirStillCounts(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "attempt-1"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	got, ok := LatestAttemptDir(dir)
+	if !ok {
+		t.Fatal("expected the empty attempt-1 dir to be found")
+	}
+	if want := filepath.Join(dir, "attempt-1"); got != want {
+		t.Errorf("LatestAttemptDir = %q, want %q", got, want)
+	}
+}
+
+// TestLatestAttemptDir_MissingDirIsFalse covers a cell that never ran at
+// all under this run-id: no raw dir exists yet.
+func TestLatestAttemptDir_MissingDirIsFalse(t *testing.T) {
+	_, ok := LatestAttemptDir(filepath.Join(t.TempDir(), "never-existed"))
+	if ok {
+		t.Error("expected false for a raw base that does not exist")
+	}
+}
+
 func TestNeedsLiveWorktree(t *testing.T) {
 	cases := []struct {
 		name string

@@ -128,6 +128,40 @@ func IsCompleteSessionStream(path string) (bool, error) {
 // attemptDirRE matches allocateRawAttemptDir's own naming (sessions.go).
 var attemptDirRE = regexp.MustCompile(`^attempt-(\d+)$`)
 
+// LatestAttemptDir returns the highest-numbered "attempt-<k>" subdirectory
+// of cellRawBase currently on disk — the one allocateRawAttemptDir most
+// recently created for this cell key — regardless of what, if anything, is
+// inside it. Unlike LatestCompleteAttempt (which exists to pick a SAFE
+// attempt to rescore FROM, among possibly several old ones, and so
+// requires complete stream files), this is cmd/scenariobench's own O76
+// lookup for the attempt THIS cell's own RunSessions call just used, so the
+// live driver can persist agent.diff/untracked-snapshot/cell-artifacts.json
+// into it — including an attempt dir holding zero files, the normal shape
+// for a FakeHarness cell (harness_fake.go: FakeHarness.RunSession never
+// writes into req.RawDir at all, unlike ClaudeHarness). "", false when
+// cellRawBase does not exist or holds no attempt-<k> subdirectory at all.
+func LatestAttemptDir(cellRawBase string) (string, bool) {
+	entries, err := os.ReadDir(cellRawBase)
+	if err != nil {
+		return "", false
+	}
+	best := -1
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		if m := attemptDirRE.FindStringSubmatch(e.Name()); m != nil {
+			if k, err := strconv.Atoi(m[1]); err == nil && k > best {
+				best = k
+			}
+		}
+	}
+	if best < 0 {
+		return "", false
+	}
+	return filepath.Join(cellRawBase, fmt.Sprintf("attempt-%d", best)), true
+}
+
 // LatestCompleteAttempt returns the highest-numbered "attempt-<k>"
 // subdirectory of cellRawBase whose own raw session stream files all
 // exist and are complete (IsCompleteSessionStream) — never a partial
