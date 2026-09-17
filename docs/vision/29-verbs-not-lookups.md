@@ -101,4 +101,19 @@ debugger attach. A human-browsable graph as the adoption wedge.
 - The external corpus shows no lift with a confidence interval that
   includes zero: the verdict publishes the null and BC-15 closes on it.
 
-Fired 2026-09-17: M7's kill clause (VB-18) — freshness leaves positioning; M11b held (50 of 50 receipts re-derived, VB-21); M8 held after the AST extractor (VB-31); M12b and M14 did not meet their bars (VB-35, VB-29); the M10 obligations claim is on hold until ADR-037's raw-guide fallback is re-measured (guards-pilot-6 second reading).
+**Status, 2026-09-17 evening.** Fired: M7's kill clause (VB-18) — freshness
+leaves positioning. Closed on evidence: M11b held (50 of 50 receipts
+re-derived, VB-21); M8 held after the AST extractor (VB-31); M12b and M14
+did not meet their bars and stay advisory-only (VB-35, VB-29). Stay open:
+M13's gated-versus-advisory governance pilot (VB-16 — the 200-commit
+replay caught nothing and the pilot itself has not run) and M15's
+historical-PR review (VB-24 — 5/42 (11.9%) strict-new hits against a 30%
+floor, unflipped); the M10 obligations claim (VB-12) is on hold until
+ADR-037's raw-guide fallback is re-measured (guards-pilot-6 second
+reading). Two product moves shipped in response this round: ADR-037
+(`obligations` degrades to a raw guide section instead of silence, plus
+the cross-tier relevance-ranking fix that stopped a bare ancestor-token
+hit from blocking a farther, strongly relevant rule) and ADR-038 (a
+compiled guard or layer rule denies a violating PreToolUse edit outright
+instead of only advising after it lands). Next measurement: the guards
+corpus, not yet run.

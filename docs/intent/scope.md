@@ -68,6 +68,14 @@ four impact verbs and a safe-delete check join the agent surface, obligations na
 governs, a layer rule compiles to a test, receipts carry a resolution tier a stranger can
 re-derive, and fathom is measured on a corpus it did not write. Done when `docs/plans/verbs.md`
 waves A–D are proven and M10, M11, M12 and M13 carry readings, honest either way.
+**2026-09-17:** waves A–D are proven (VB-1..36) and every row carries a reading. M7's freshness
+kill clause fired (VB-18) — freshness leaves positioning; M11/M11b (VB-19..21) and M8 (VB-30/31)
+held; M10 (VB-12) is on hold until ADR-037's raw-guide fallback is re-measured; M13's
+gated-versus-advisory governance pilot (VB-16) and M15's historical-PR review (VB-24, 5/42
+strict-new hits) stay open; M12/M12b (VB-27, VB-35) and M14 (VB-29) are a published null or stay
+advisory. Governance now bites at the edit for checkable rules (ADR-037, ADR-038); on the lookup
+pilot fathom reads level with the best tools at lower cost, not a token-savings win
+(`docs/bench/README.md` "Where fathom stands").
 
 **G7. The evidence plane's waves 1–2 ship and its oracle gate is read (ADR-026).** Waves 1
 and 2 shipped 2026-08-27: the verb, the ledger, the doctor rows, the clock, the shared
