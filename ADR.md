@@ -13,6 +13,8 @@ This file records the decisions that shape the implementation, each with the
 
 ## ADR-001 — Three-layer architecture
 
+**Status.** Accepted.
+
 **Decision.** Strictly separate three layers:
 
 1. **Connector SPI** — abstract source (`Discover`/`Fetch`); produces `SourceRef`s.
@@ -23,6 +25,8 @@ This file records the decisions that shape the implementation, each with the
 never touches a network; the pipeline never knows where bytes came from.
 
 ## ADR-002 — Connector SPI with a deterministic Faux connector
+
+**Status.** Accepted.
 
 **Decision.** `Connector{ Discover(ctx, ServiceRef) ([]SourceRef, error); Fetch(ctx, SourceRef) ([]byte, error) }` with three impls: `LocalConnector` (disk, no network), `GitHubConnector` (gh CLI), `FauxConnector` (wraps `testdata/fauxtown/`).
 
@@ -67,6 +71,8 @@ strictly better than tree-sitter for Go, so we don't pay WASM cost there.
 
 ## ADR-005 — Hash-gated, deterministic 3-pass fusion pipeline
 
+**Status.** Accepted.
+
 **Decision.** Pipeline runs: **Pass 1 Filter** (sequential, ignore vendor/
 testdata/generated), **Pass 2 Fetch** (N parallel workers into pre-allocated
 slots, first error via atomic CAS, no mid-flight cancel), **Pass 3 post-fetch**
@@ -79,6 +85,8 @@ the post-fetch pass to re-impose input order even though fetch was parallel.
 Budget gating prevents runaway cost on unexpectedly large repos.
 
 ## ADR-006 — Mandatory concern-scoped queries
+
+**Status.** Accepted, amended 2026-08-26.
 
 **Decision.** Every query carries a `concern_id`; the engine filters observations
 to that concern, then scores by keyword/semantic overlap and truncates to TopN.
@@ -100,6 +108,8 @@ proposed for the agent surface.
 
 ## ADR-007 — Evidence tiers reused from agentic-kit
 
+**Status.** Accepted.
+
 **Decision.** Observations carry an **evidence tier** from agentic-kit's
 `foundations/review/scoring` foundation: `verified` (code, ceiling 5),
 `pre-scan` (4), `doc-claimed` (2), `sme-stated` (2), `assumed` (1). The query
@@ -111,6 +121,8 @@ reinvent. See ADR-009.
 
 ## ADR-008 — Staleness is always reported
 
+**Status.** Accepted.
+
 **Decision.** Every query result includes a staleness assessment (which sources,
 when last ingested, whether re-ingest is recommended).
 
@@ -118,6 +130,8 @@ when last ingested, whether re-ingest is recommended).
 this." Silent staleness is a correctness trap for AI consumers.
 
 ## ADR-009 — Depend on agentic-kit as the platform substrate
+
+**Status.** Accepted.
 
 **Decision.** fathom imports `github.com/geoffmilleraz/agentic-kit` (resolved
 locally via `go.work` + a `replace` directive during co-development). Reuse:
@@ -130,6 +144,8 @@ coherent. Changes to agentic-kit are made there when a shared primitive needs to
 evolve.
 
 ## ADR-010 — MCP server: stdio + HTTP, tool groups, profiles
+
+**Status.** Accepted, amended by ADR-014.
 
 **Decision.** Expose tools over MCP: `serve-mcp` (stdio JSON-RPC 2.0, zero ports,
 for editor/agent clients) and `serve-http` (JSON-RPC + SSE, multi-client,
@@ -145,6 +161,8 @@ HTTP server. Tool groups keep the surface relevant to the task at hand.
 selected per request by the endpoint path.
 
 ## ADR-014 — Path-scoped tool surfaces on the shared HTTP daemon
+
+**Status.** Accepted, amended 2026-07-16 and 2026-08-26.
 
 **Decision.** Over HTTP, the tool surface is an **immutable per-request
 selection carried in the request context**, chosen by the endpoint path:
@@ -179,6 +197,8 @@ which was judged a defect, not a feature.
 
 ## ADR-011 — Generalized / org-agnostic, open-source-ready
 
+**Status.** Accepted.
+
 **Decision.** No organization-specific names, hosts, catalogs, or product
 references anywhere in code, docs, tests, or fixtures. Anything org-specific is
 configuration. Mechanically enforced (`cmd/fathom/orgnames_test.go`'s
@@ -194,6 +214,8 @@ those four TLDs (O57 item 7).
 
 ## ADR-012 — Test-driven development with golden fixtures
 
+**Status.** Accepted.
+
 **Decision.** Build TDD: write the failing test (often against `FauxConnector` /
 `testdata/fauxtown/`) before the implementation; extractor and query outputs are
 asserted with golden files; determinism is an explicit, tested property.
@@ -202,6 +224,8 @@ asserted with golden files; determinism is an explicit, tested property.
 and reproducible. Tests encode that contract.
 
 ## ADR-013 — Tree-sitter via CGO bindings, superseding ADR-004's wazero mechanism
+
+**Status.** Accepted.
 
 **Decision.** General-language extraction (Python, JS/TS, Rust, C, C++, C#, Java,
 Ruby, Kotlin, Scala, PHP, Swift, Lua, Bash, …) runs **tree-sitter via the official
@@ -233,6 +257,8 @@ XT-6b (`docs/intent/futures.md` F1).
 
 ## ADR-015 — Rename to fathom; two strata: deterministic index + semantic layers
 
+**Status.** Accepted.
+
 **Decision.** The project is renamed **fathom**. Its knowledge model is explicitly
 two strata: the **deterministic index** (scraped: symbols, call edges, specs,
 routes — cheap, incremental, provable) and **semantic layers** (reasoned:
@@ -257,6 +283,8 @@ the `.sextantignore` fallback, legacy telemetry prefixes, and service-name alias
 go when no fleet repo carries the old name (`fathom fleet report`).
 
 ## ADR-016 — Semantic layers: governed claims beside the index, tracer-bullet first
+
+**Status.** Accepted, amended 2026-07-16.
 
 **Decision.** Semantic layers are **LLM-compiled, governed claims** stored in
 additive tables beside observations (`semantic_claims`, `claim_links`,
@@ -346,6 +374,8 @@ ratifies; `docs/intent/questions.md` Q21 carries the decision.
 
 ## ADR-017 — Born-portable stores: repo-relative anchors, domain-neutral freshness
 
+**Status.** Accepted.
+
 **Context.** D-EM2 ("the store is the module") was prose, not code: the local
 connector recorded absolute machine-local paths as observation anchors, so a
 store could not leave its build machine with citations intact — and freshness
@@ -398,6 +428,8 @@ the whole corpus" — a non-git corpus large enough that the manifest hash domin
 ingest time.
 
 ## ADR-018 — Plan grammar v2 + reconciler verbs: SDD state is derived, never driven
+
+**Status.** Accepted; pilot KEEP 2026-08-26.
 
 **Context.** The 2026-07 excellence review (docs/vision/09) examined "should
 SDD be a deterministically driven state machine in CUE?" against the July-2026
@@ -512,6 +544,8 @@ bare `/rpc` remain; `Server.strictSurfaces` remains. Executed by
 
 ## ADR-019 — In-tree mirror of agentic-kit for kit-free distribution
 
+**Status.** Accepted, amended 2026-09-01.
+
 **Context.** fathom's only private dependency is
 `github.com/geoffmilleraz/agentic-kit` (ADR-009); a cold clone of fathom by
 someone without access to that private repo cannot resolve it. A full `go
@@ -592,6 +626,8 @@ directory to check.
 
 ## ADR-020: Store backend — pure-Go SQLite (WAL) replaces DuckDB (2026-07-22)
 
+**Status.** Accepted (2026-07-22).
+
 **Decision.** `internal/store` gains a SQLite backend (modernc.org/sqlite,
 pure Go, WAL mode) as the default; DuckDB remains temporarily behind the
 same `Store` interface for migration, then is removed. Backend selection
@@ -626,6 +662,8 @@ LLM-derived enrichment a re-ingest does not rebuild in practice, so
 rebuild by re-ingest.
 
 ## ADR-021: Extraction v2 — language truth, tool identity, typed edges, tree-sitter (2026-07-22)
+
+**Status.** Accepted (2026-07-22).
 
 **Decision.** Four connected corrections to how fathom understands source:
 (1) One language registry: the extractor registry becomes the single
@@ -681,6 +719,8 @@ observations.md` O79.
 
 ## ADR-022: MCP server stays bespoke, not `kits/mcp-server` (2026-07-23)
 
+**Status.** Accepted (2026-07-23).
+
 **Decision.** `internal/mcp.Server` (ADR-010) remains a from-scratch JSON-RPC
 2.0 dispatcher — its own `Handler` table, its own stdio `Serve` loop, its own
 `toolEntry`/group bookkeeping — rather than adopting agentic-kit's
@@ -724,6 +764,8 @@ reopened by any hosted deployment (law 9, F8).
 
 ## ADR-023: Evaluation stays bespoke — `calibration/` + `internal/verify`, not `kits/eval-runner`/`qa-harness` (2026-07-23)
 
+**Status.** Accepted (2026-07-23).
+
 **Decision.** Fathom's two evaluation instruments — `internal/verify` (the
 `fathom verify` static proof-gate: `Task`/`Criterion`/`Expect` checked
 against a code index — symbol presence, tier, test-reaches, contradiction,
@@ -758,6 +800,8 @@ LLM-enriched knowledge cards), *that* lane is the natural `qa-harness` adoption
 point" — FA-12's second-consumer trigger (`docs/intent/futures.md` F12).
 
 ## ADR-024: Pack taxonomy adopted as vocabulary, not machinery (2026-07-23)
+
+**Status.** Accepted (2026-07-23), amended phase O (2026-07-29).
 
 **Decision.** Fathom's various pluggable, data-shaped things — extractors,
 the layer catalog, a project's own `.fathom/` content, and a still-hypothetical
@@ -845,6 +889,8 @@ consumer with a real corpus, eval fixtures, and a kill criterion" (F6). (3) A
 anti-pattern — becomes a platform-module binding instead.
 
 ## ADR-025: DuckDB backend deleted outright — SS-8 executed (2026-07-23)
+
+**Status.** Accepted (2026-07-23).
 
 **Decision.** ADR-020 made SQLite the default store backend but kept the
 DuckDB backend compiled in as `migrate-store`'s read source for the fleet
