@@ -62,7 +62,7 @@ flagged again in §7 as something to fix before the next run so a blind
 re-run of these commands can't accidentally void a correct sibling trial.
 
 ```
-CELLS=/private/tmp/claude-501/-Volumes-m2ext-code-geoffmilleraz-sextant/e8652946-4037-4a56-8b48-3336a3490e6f/scratchpad/benchroot2/workspace/artifacts/scenariobench/cells
+CELLS=<bench-root>/workspace/artifacts/scenariobench/cells
 
 scenariobench void -cells "$CELLS" -run-id vs-pilot-5 -task H1-T01 -arm full -reason "trial 1 only: sole 'golden-test' occurrence sits inside the quoted CLAUDE.md blockquote and is excluded by the oracle's quoted-line filter; answer correctly names fusion.New + connector and quotes the rule in full as asked"
 

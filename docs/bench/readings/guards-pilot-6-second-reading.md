@@ -27,7 +27,7 @@ Voiding moves fathom's raw-ledger tally up by one net pass (7→8 if the flips w
 Five of the 32 scored cells carry a demonstrated automated-grading defect (not a model defect): three scorer false-fails and two scorer false-passes. `scenariobench void` takes `-task` and `-arm` but no `-trial` flag (same limitation flagged in `vs-pilot-5-second-reading.md` §"what changes"), so a command below that names "trial N only" will still stamp the InstrumentDefect onto both trials' filed cell records — the healthy sibling trial's own number is correct and should be read from the log, not from the voided ledger row.
 
 ```sh
-CELLS=/private/tmp/claude-501/-Volumes-m2ext-code-geoffmilleraz-sextant/e8652946-4037-4a56-8b48-3336a3490e6f/scratchpad/benchroot2/workspace/artifacts/scenariobench/cells
+CELLS=<bench-root>/workspace/artifacts/scenariobench/cells
 
 scenariobench void -cells "$CELLS" -run-id guards-pilot-6 -task guards-i1-packagedeps-sorted -arm control -reason "trial 2 only: BuildReport sorts via sorted Nodes()/Deps() plus an explicit sort.Strings, and TestDeterminism was genuinely extended with a real r1/r2 double-run check of Consumers; the packagedeps-consumers-double-run detector only greps the body of a function literally named Test*Consumers for >=2 packagedeps.Build( calls, so it never saw the check landed inside the pre-existing TestDeterminism and flagged a false violation (trial 1 of this arm is a genuine PASS — do not treat it as void)"
 
