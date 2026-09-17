@@ -134,7 +134,7 @@ func TestRenderArm_WiredIgnoresSubjectsOwnBareHooks(t *testing.T) {
 	}
 	settings := `{"hooks":{
 	  "ConfigChange":[{"hooks":[{"type":"command","command":"fathom config audit --hook"}]}],
-	  "PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"fathom edit-hook --pre"}]}],
+	  "PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"fathom edit-hook --pre"}]},{"matcher":"Edit|Write|MultiEdit","hooks":[{"type":"command","command":"/cells/x/fathom edit-hook --pre"}]}],
 	  "SessionStart":[{"hooks":[{"type":"command","command":"/cells/x/fathom session-hook"}]}],
 	  "PostToolUse":[{"matcher":"Edit|Write|MultiEdit","hooks":[{"type":"command","command":"/cells/x/fathom edit-hook"}]}],
 	  "Stop":[{"hooks":[{"type":"command","command":"/cells/x/fathom stop-hook"}]}]

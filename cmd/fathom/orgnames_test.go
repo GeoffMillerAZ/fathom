@@ -193,8 +193,9 @@ func TestNoOrgSpecificNames(t *testing.T) {
 	// fixtures (pinned true-positive examples, ADR-038's enforce_test.go
 	// among them) — shapes demonstrating the detector, never a real name.
 	selfFixtures := map[string]bool{
-		filepath.ToSlash(filepath.Join("cmd", "fathom", "orgnames_test.go")):        true,
-		filepath.ToSlash(filepath.Join("internal", "guardspec", "enforce_test.go")): true,
+		filepath.ToSlash(filepath.Join("cmd", "fathom", "orgnames_test.go")):         true,
+		filepath.ToSlash(filepath.Join("cmd", "fathom", "edithook_enforce_test.go")): true,
+		filepath.ToSlash(filepath.Join("internal", "guardspec", "enforce_test.go")):  true,
 	}
 	for _, rel := range orgScanFiles(t, root) {
 		if selfFixtures[rel] || orgDerivedCorpora[rel] {

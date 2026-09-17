@@ -346,6 +346,20 @@ func (ps *parsedStream) handleHookResponse(ev streamEvent) {
 	if ev.HookEvent == "PostToolUse" && obligationsMarkerIn(ctx) {
 		ps.hooksFired["obligations_injected"]++
 	}
+	if ev.HookEvent == "PreToolUse" && denyMarkerIn(ctx) {
+		ps.hooksFired["enforced_refusals"]++
+	}
+}
+
+// denyMarkerIn reports whether ctx carries fathom's PreToolUse deny shape
+// (ADR-038, wave G1: hookSpecificOutput.permissionDecision:"deny") rather
+// than an ordinary injected guard/obligation payload.
+// hookResponseAdditionalContext's own fallback (raw text when the
+// additionalContext envelope shape does not match) is what makes this
+// reachable at all: a deny payload never carries additionalContext, so ctx
+// here is the raw JSON text of the deny envelope itself.
+func denyMarkerIn(ctx string) bool {
+	return strings.Contains(ctx, `"permissionDecision":"deny"`) || strings.Contains(ctx, `"permissionDecision": "deny"`)
 }
 
 // obligationsMarkerIn reports whether ctx carries either of the two
