@@ -5,15 +5,18 @@ package connector_test
 // bench run found bumble-tech/appyx — a real Kotlin repository — reporting
 // only ~165 symbols with its detected language misread, find_symbol
 // returning zero Kotlin candidates, and outline coming back empty: Kotlin
-// has no extractor (no tree-sitter grammar wired, no dedicated extractor
-// file), so every .kt/.kts file falls through fusion's dispatch to the
-// "no extractor registered" branch and is fingerprinted-and-skipped with NO
+// had no extractor (no tree-sitter grammar wired, no dedicated extractor
+// file), so every .kt/.kts file fell through fusion's dispatch to the
+// "no extractor registered" branch and was fingerprinted-and-skipped with NO
 // counter anywhere naming what was lost. UnsupportedLanguageForPath is the
 // disclosure primitive: it names a KNOWN programming language for an
 // extension that has no registered extractor, so ingest/list_services/
-// doctor can say "kotlin: 412 files, no extractor" instead of staying
+// doctor can say "<lang>: 412 files, no extractor" instead of staying
 // silent. It must never overlap connector.RegisteredExtensions() — a path
-// with a real extractor is never "unsupported".
+// with a real extractor is never "unsupported". Kotlin closed this gap in
+// wave P2 (O81, extractor.NewTSExtractor("kotlin")) and was removed from
+// unsupportedLangExtMap — see language_test.go for its now-registered
+// coverage.
 
 import (
 	"testing"
@@ -23,29 +26,26 @@ import (
 
 func TestUnsupportedLanguageForPath_KnownLanguages(t *testing.T) {
 	cases := map[string]string{
-		"App.kt":           "kotlin",
-		"build.gradle.kts": "kotlin",
-		"Foo.swift":        "swift",
-		"main.dart":        "dart",
-		"lib.ex":           "elixir",
-		"lib_test.exs":     "elixir",
-		"core.clj":         "clojure",
-		"core.cljs":        "clojure",
-		"core.cljc":        "clojure",
-		"Main.hs":          "haskell",
-		"lib.ml":           "ocaml",
-		"lib.mli":          "ocaml",
-		"Program.fs":       "fsharp",
-		"script.fsx":       "fsharp",
-		"mod.erl":          "erlang",
-		"mod.hrl":          "erlang",
-		"main.zig":         "zig",
-		"main.nim":         "nim",
-		"script.jl":        "julia",
-		"Main.elm":         "elm",
-		"main.cr":          "crystal",
-		"Build.groovy":     "groovy",
-		"pkg/foo/App.kt":   "kotlin",
+		"Foo.swift":    "swift",
+		"main.dart":    "dart",
+		"lib.ex":       "elixir",
+		"lib_test.exs": "elixir",
+		"core.clj":     "clojure",
+		"core.cljs":    "clojure",
+		"core.cljc":    "clojure",
+		"Main.hs":      "haskell",
+		"lib.ml":       "ocaml",
+		"lib.mli":      "ocaml",
+		"Program.fs":   "fsharp",
+		"script.fsx":   "fsharp",
+		"mod.erl":      "erlang",
+		"mod.hrl":      "erlang",
+		"main.zig":     "zig",
+		"main.nim":     "nim",
+		"script.jl":    "julia",
+		"Main.elm":     "elm",
+		"main.cr":      "crystal",
+		"Build.groovy": "groovy",
 	}
 	for path, want := range cases {
 		got, ok := connector.UnsupportedLanguageForPath(path)

@@ -123,6 +123,33 @@ func init() {
 		containerSep:    "::",
 		methodSep:       ".",
 	}
+
+	// Kotlin (wave P2, ADR-021 §4 new-language breadth — no CGO incumbent to
+	// calibrate against; see grammars/PROVENANCE.md). .kt and .kts share the
+	// one fwcd/tree-sitter-kotlin grammar (Kotlin scripts are valid Kotlin
+	// syntax under the same parser). chainContainers is true (Kotlin nested
+	// classes/objects are idiomatic, "Outer.Inner"), matching Java's own
+	// incumbent extractor's qualifyJava behavior for the same shape.
+	kotlinVariant := tsVariant{blob: "kotlin", entryPoint: "tree_sitter_kotlin", queryFile: "kotlin.scm"}
+	tsRegistry["kotlin"] = &tsLangSpec{
+		name: "kotlin",
+		kinds: map[string]tsDefKind{
+			"class":     {Kind: core.KindKotlinClass, Container: true},
+			"interface": {Kind: core.KindKotlinInterface, Container: true},
+			"object":    {Kind: core.KindKotlinObject, Container: true},
+			"function":  {Kind: core.KindKotlinFunction, Callable: true},
+			"property":  {Kind: core.KindKotlinProperty},
+			"import":    {Kind: core.KindKotlinImport},
+		},
+		variantForExt: map[string]tsVariant{
+			".kt":  kotlinVariant,
+			".kts": kotlinVariant,
+		},
+		defaultVariant:  kotlinVariant,
+		chainContainers: true,
+		containerSep:    ".",
+		methodSep:       ".",
+	}
 }
 
 // TSExtractor implements extractor.Extractor for one language using the
@@ -557,5 +584,7 @@ func EngineProvenance() map[string]string {
 		".ts":  "tree-sitter-wasm",
 		".tsx": "tree-sitter-wasm",
 		".rb":  "tree-sitter-wasm",
+		".kt":  "tree-sitter-wasm",
+		".kts": "tree-sitter-wasm",
 	}
 }

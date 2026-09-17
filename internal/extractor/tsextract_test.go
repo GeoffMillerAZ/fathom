@@ -509,8 +509,188 @@ class Outer:
 	}
 }
 
+// TestTSExtractor_Kotlin exercises wave P2's new-language addition (ADR-021
+// §4, O69/O81): classes, a nested interface, a named companion object,
+// top-level function/property, member methods (qualified), calls, and
+// imports — fwcd/tree-sitter-kotlin has no field() names at all, so every
+// pattern in kotlin.scm locates the name by node kind/anonymous-keyword
+// position rather than a field: constraint (see that file's header).
+func TestTSExtractor_Kotlin(t *testing.T) {
+	e, err := NewTSExtractor("kotlin")
+	if err != nil {
+		t.Fatalf("NewTSExtractor: %v", err)
+	}
+	src := []byte(`package com.example
+
+import com.example.util.Helper
+
+class PaymentService(val config: String) {
+    fun processPayment(amount: String) {
+        validate(amount)
+    }
+
+    private fun validate(amount: String): Boolean {
+        return amount.isNotEmpty()
+    }
+
+    interface Processor {
+        fun process(amount: String)
+    }
+
+    companion object Factory {
+        fun create(): PaymentService = PaymentService("x")
+    }
+}
+
+object Singleton {
+    fun ping() {}
+}
+
+val topLevelVar = 42
+
+fun topLevelFunc(x: Int): Int {
+    return x + 1
+}
+`)
+	nodes, err := e.Extract("svc", "PaymentService.kt", src)
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+	got := symStrings(nodes)
+	mustContainAll(
+		t, got,
+		string(core.KindKotlinImport)+":com.example.util.Helper",
+		string(core.KindKotlinClass)+":PaymentService",
+		string(core.KindKotlinFunction)+":PaymentService.processPayment",
+		string(core.KindKotlinFunction)+":PaymentService.validate",
+		string(core.KindKotlinInterface)+":PaymentService.Processor",
+		string(core.KindKotlinFunction)+":PaymentService.Processor.process",
+		string(core.KindKotlinObject)+":PaymentService.Factory",
+		string(core.KindKotlinFunction)+":PaymentService.Factory.create",
+		string(core.KindKotlinObject)+":Singleton",
+		string(core.KindKotlinFunction)+":Singleton.ping",
+		string(core.KindKotlinProperty)+":topLevelVar",
+		string(core.KindKotlinFunction)+":topLevelFunc",
+	)
+	for _, n := range nodes {
+		if n.Name == "PaymentService.processPayment" {
+			if len(n.Calls) != 1 || n.Calls[0] != "validate" {
+				t.Errorf("PaymentService.processPayment calls = %v, want [validate]", n.Calls)
+			}
+		}
+	}
+}
+
+// TestTSExtractor_Kotlin_TopLevelPropertyOnly is the property-scoping
+// regression (mirrors python.scm's module-var-only constraint): a member
+// property inside a class body must NOT surface as a KindKotlinProperty —
+// only the top-level (source_file-direct-child) property_declaration does.
+func TestTSExtractor_Kotlin_TopLevelPropertyOnly(t *testing.T) {
+	e, err := NewTSExtractor("kotlin")
+	if err != nil {
+		t.Fatalf("NewTSExtractor: %v", err)
+	}
+	src := []byte(`val topLevel = 1
+
+class Widget {
+    val memberField = 2
+}
+`)
+	nodes, err := e.Extract("svc", "widget.kt", src)
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+	got := symStrings(nodes)
+	mustContainAll(t, got, string(core.KindKotlinProperty)+":topLevel")
+	for _, g := range got {
+		if g == string(core.KindKotlinProperty)+":memberField" {
+			t.Errorf("class-member property leaked as a top-level property: %v", got)
+		}
+	}
+}
+
+// TestTSExtractor_Kotlin_NestedClassChaining verifies chainContainers (true,
+// "." separator — Kotlin nested classes are idiomatic, unlike JS/Python's
+// single-level scope).
+func TestTSExtractor_Kotlin_NestedClassChaining(t *testing.T) {
+	e, err := NewTSExtractor("kotlin")
+	if err != nil {
+		t.Fatalf("NewTSExtractor: %v", err)
+	}
+	src := []byte(`class Outer {
+    class Inner {
+        fun run() {}
+    }
+}
+`)
+	nodes, err := e.Extract("svc", "nested.kt", src)
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+	got := symStrings(nodes)
+	mustContainAll(
+		t, got,
+		string(core.KindKotlinClass)+":Outer",
+		string(core.KindKotlinClass)+":Outer.Inner",
+		string(core.KindKotlinFunction)+":Outer.Inner.run",
+	)
+}
+
+func TestTSExtractor_Kotlin_KtsExtension(t *testing.T) {
+	e, err := NewTSExtractor("kotlin")
+	if err != nil {
+		t.Fatalf("NewTSExtractor: %v", err)
+	}
+	src := []byte(`plugins {
+    kotlin("jvm")
+}
+
+fun helper() {}
+`)
+	nodes, err := e.Extract("svc", "build.gradle.kts", src)
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+	got := symStrings(nodes)
+	mustContainAll(t, got, string(core.KindKotlinFunction)+":helper")
+}
+
+func TestTSExtractor_Kotlin_Determinism(t *testing.T) {
+	e, err := NewTSExtractor("kotlin")
+	if err != nil {
+		t.Fatalf("NewTSExtractor: %v", err)
+	}
+	src := []byte(`class A {
+    fun b() {
+        c()
+    }
+    fun c() {}
+}
+`)
+	var first []string
+	for i := 0; i < 5; i++ {
+		nodes, err := e.Extract("svc", "f.kt", src)
+		if err != nil {
+			t.Fatalf("Extract: %v", err)
+		}
+		got := symStrings(nodes)
+		if first == nil {
+			first = got
+			continue
+		}
+		if len(got) != len(first) {
+			t.Fatalf("run %d: got %v, want %v", i, got, first)
+		}
+		for j := range got {
+			if got[j] != first[j] {
+				t.Fatalf("run %d: got %v, want %v", i, got, first)
+			}
+		}
+	}
+}
+
 func TestTSExtractor_EmptyFile(t *testing.T) {
-	for _, lang := range []string{"javascript", "python", "ruby"} {
+	for _, lang := range []string{"javascript", "python", "ruby", "kotlin"} {
 		e, err := NewTSExtractor(lang)
 		if err != nil {
 			t.Fatalf("NewTSExtractor(%s): %v", lang, err)
@@ -708,7 +888,7 @@ func TestTSExtractor_PathologicalInputRecovery(t *testing.T) {
 
 func TestEngineProvenance(t *testing.T) {
 	got := EngineProvenance()
-	for _, ext := range []string{".py", ".js", ".jsx", ".ts", ".tsx", ".rb"} {
+	for _, ext := range []string{".py", ".js", ".jsx", ".ts", ".tsx", ".rb", ".kt", ".kts"} {
 		if got[ext] != "tree-sitter-wasm" {
 			t.Errorf("EngineProvenance()[%q] = %q, want tree-sitter-wasm", ext, got[ext])
 		}

@@ -85,6 +85,13 @@ var extClassMap = map[string]classification{
 	".rs":   {core.KindRustFn, "rust"},
 	".cs":   {core.KindCSharpClass, "cs"},
 
+	// Kotlin (wave P2, ADR-021 §4 new-language breadth — closes the O69
+	// gap: a real Kotlin repo previously indexed near-empty with no
+	// disclosure). .kts (Kotlin script, e.g. build.gradle.kts) shares the
+	// same grammar/extractor as .kt.
+	".kt":  {core.KindKotlinClass, "kotlin"},
+	".kts": {core.KindKotlinClass, "kotlin"},
+
 	// C
 	".c": {core.KindCFunc, "c"},
 	".h": {core.KindCFunc, "c"},

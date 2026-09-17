@@ -83,7 +83,7 @@ var ParseTimeout = DefaultParseTimeout
 // everything — degraded and counted, never a wedged daemon.
 var ParseHardBackstop time.Duration
 
-//go:embed grammars/javascript.wasm grammars/typescript.wasm grammars/python.wasm grammars/ruby.wasm
+//go:embed grammars/javascript.wasm grammars/typescript.wasm grammars/python.wasm grammars/ruby.wasm grammars/kotlin.wasm
 var grammarFS embed.FS
 
 // blobPath maps a grammar name (the registry key extractors ask for) to its
@@ -94,6 +94,7 @@ var blobPath = map[string]string{
 	"typescript": "grammars/typescript.wasm",
 	"python":     "grammars/python.wasm",
 	"ruby":       "grammars/ruby.wasm",
+	"kotlin":     "grammars/kotlin.wasm",
 }
 
 // Sizeof constants for tree-sitter's public C structs (tree_sitter/api.h).

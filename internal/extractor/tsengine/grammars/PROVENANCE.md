@@ -15,11 +15,19 @@ embedded.
 | `typescript.wasm` | tree-sitter core | tree-sitter-typescript (both the `typescript/` and `tsx/` grammars in that repo) | `tree_sitter_typescript`, `tree_sitter_tsx` |
 | `python.wasm` | tree-sitter core | tree-sitter-python | `tree_sitter_python` |
 | `ruby.wasm` | tree-sitter core | tree-sitter-ruby | `tree_sitter_ruby` |
+| `kotlin.wasm` | tree-sitter core | tree-sitter-kotlin (fwcd) | `tree_sitter_kotlin` |
 
 Grammar versions are pinned to match the CGO grammar versions already in
 `go.mod` (`github.com/tree-sitter/tree-sitter-<lang>`) so the calibration
 comparison between the incumbent (CGO) and this engine (wazero) is
 apples-to-apples — same grammar generation, different execution mechanism.
+`kotlin.wasm` has no CGO incumbent to calibrate against (wave P2,
+docs/plans/lang-truth.md): fathom had no Kotlin extractor at all before this
+blob (O69/O81) — ADR-021 §4's "new-language breadth" clause, not a
+CGO-vs-wazero comparison. Its grammar (fwcd/tree-sitter-kotlin, not an
+official tree-sitter-org repo) is pinned to its latest tagged release at
+build time (0.3.8) rather than matched to any go.mod entry, since fathom
+carries no CGO Kotlin bindings.
 
 ## Resolved sources (pinned tag → commit SHA, as of this build)
 
@@ -30,6 +38,7 @@ apples-to-apples — same grammar generation, different execution mechanism.
 | tree-sitter/tree-sitter-typescript | v0.23.2 | f975a621f4e7f532fe322e13c4f79495e0a7b2e7 |
 | tree-sitter/tree-sitter-python | v0.25.0 | d326e4cad262cf681656e130960e49dfc04c03ea |
 | tree-sitter/tree-sitter-ruby | v0.23.1 | 71bd32fb7607035768799732addba884a37a6210 |
+| fwcd/tree-sitter-kotlin | 0.3.8 | e1a2d5ad1f61f5740677183cd4125bb071cd2f30 |
 
 The core runtime version does not need to match each grammar's own release
 train — tree-sitter's ABI is designed to be backwards-compatible (a newer
@@ -48,12 +57,17 @@ this directory; build.sh prints both at the end of a rebuild:
 | `typescript.wasm` | 2,037,040 | `30080208c90581bf3b29b412e9ee2e9a11c89b36153b6a94cc07da7b5000afcb` |
 | `python.wasm` | 539,848 | `ef1216ec19691690d3d237759d5ab8c3521e362423eef44f5e5234f7cb507ffc` |
 | `ruby.wasm` | 1,710,411 | `3299b506f05b73cb341de2cf65f1f327e9427e0149ce47d21f65af3d89b8924f` |
+| `kotlin.wasm` | 2,488,435 | `750a499adfc0a1339abebe5da80154eb6680c5732a3a5fdceaaace5053def3c3` |
 
 (458,741 B ≈ 448 KiB; 2,037,040 B ≈ 1.94 MiB; 539,848 B ≈ 527 KiB;
-1,710,411 B ≈ 1.63 MiB.) TypeScript is the largest blob because it
-statically links both the `typescript` and `tsx` grammars (each has its own
-large generated parse table) alongside the core; Ruby's grammar tables are
-large due to the language's syntactic ambiguity.
+1,710,411 B ≈ 1.63 MiB; 2,488,435 B ≈ 2.37 MiB.) TypeScript is the largest
+blob among the original four because it statically links both the
+`typescript` and `tsx` grammars (each has its own large generated parse
+table) alongside the core; Ruby's grammar tables are large due to the
+language's syntactic ambiguity. Kotlin is the largest blob overall — its
+grammar (with an external scanner for indentation/soft-keyword handling and
+a large expression/type grammar) produces the biggest generated parse
+table of the five.
 
 Each blob also compiles in `budget.c` (this directory, checked in — the only
 non-upstream C in the build): the deadline-bounded parse/query entry points

@@ -371,7 +371,14 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // CMake files extract (CT-4) — stored observations for every .h/.cc/.cpp/
 // .cxx/.hpp/.hh file predate all three, so the salt bump forces
 // re-extraction.
-const ExtractorEpoch = "6"
+// Epoch 7 (wave P2, O69/O79): Kotlin (.kt/.kts) now extracts via
+// internal/extractor.NewTSExtractor("kotlin") — tree-sitter via wazero/WASM,
+// ADR-021 §4 new-language breadth, no CGO incumbent — where every such file
+// previously fell through to "no extractor registered" and was fingerprinted
+// (never re-sniffed) by that dead-end path; the salt bump forces those files
+// through the new extractor on the next ingest instead of leaving them
+// silently stuck on a stale "unsupported" fingerprint.
+const ExtractorEpoch = "7"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
@@ -461,6 +468,16 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 		panic(fmt.Sprintf("fusion: tsextract ruby: %v", err))
 	}
 	p.exts[".rb"] = rb
+
+	// Kotlin — tree-sitter via wazero/WASM (ADR-021 §4 new-language
+	// breadth, wave P2 / O69 / O79): no CGO incumbent, so no calibration
+	// gate — this closes the Kotlin extraction gap directly.
+	kt, err := extractor.NewTSExtractor("kotlin")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: tsextract kotlin: %v", err))
+	}
+	p.exts[".kt"] = kt
+	p.exts[".kts"] = kt
 
 	// Terraform HCL
 	p.exts[".tf"] = extractor.NewHCLExtractor()

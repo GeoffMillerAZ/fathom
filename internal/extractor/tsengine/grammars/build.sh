@@ -41,6 +41,7 @@ JS_TAG="v0.25.0"
 TS_TAG="v0.23.2"
 PY_TAG="v0.25.0"
 RB_TAG="v0.23.1"
+KT_TAG="0.3.8"   # fwcd/tree-sitter-kotlin tags without a leading "v"
 
 fetch() { # fetch <repo> <tag> <destdir>
   curl -sL --fail "https://github.com/$1/archive/refs/tags/$2.tar.gz" -o "$WORK/src.tar.gz"
@@ -58,6 +59,8 @@ echo "fetching tree-sitter-python $PY_TAG..."
 fetch tree-sitter/tree-sitter-python "$PY_TAG" "$WORK/python"
 echo "fetching tree-sitter-ruby $RB_TAG..."
 fetch tree-sitter/tree-sitter-ruby "$RB_TAG" "$WORK/ruby"
+echo "fetching tree-sitter-kotlin $KT_TAG..."
+fetch fwcd/tree-sitter-kotlin "$KT_TAG" "$WORK/kotlin"
 
 CORE_INC=(-I "$WORK/core/lib/include" -I "$WORK/core/lib/src")
 # budget.c (this directory, checked in) adds fathom_parse_bounded — the
@@ -123,6 +126,10 @@ build python \
 build ruby \
   -I "$WORK/ruby/src" "$WORK/ruby/src/parser.c" "$WORK/ruby/src/scanner.c" \
   -Wl,--export=tree_sitter_ruby
+
+build kotlin \
+  -I "$WORK/kotlin/src" "$WORK/kotlin/src/parser.c" "$WORK/kotlin/src/scanner.c" \
+  -Wl,--export=tree_sitter_kotlin
 
 echo "=== sha256 ==="
 shasum -a 256 "$OUT"/*.wasm

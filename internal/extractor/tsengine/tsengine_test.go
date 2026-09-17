@@ -319,7 +319,7 @@ func TestParser_Determinism(t *testing.T) {
 
 func TestGrammars(t *testing.T) {
 	names := Grammars()
-	want := map[string]bool{"javascript": true, "typescript": true, "python": true, "ruby": true}
+	want := map[string]bool{"javascript": true, "typescript": true, "python": true, "ruby": true, "kotlin": true}
 	if len(names) != len(want) {
 		t.Fatalf("Grammars() = %v, want %d entries", names, len(want))
 	}

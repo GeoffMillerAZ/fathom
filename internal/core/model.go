@@ -64,6 +64,19 @@ const (
 	KindRubyModule SourceKind = "RubyModule"
 	KindRubyMethod SourceKind = "RubyMethod"
 
+	// Kotlin (ADR-021 §4 new-language breadth, wave P2; tree-sitter via
+	// wazero/WASM — fwcd/tree-sitter-kotlin, no CGO incumbent to calibrate
+	// against). KindKotlinFunction covers both top-level functions and
+	// member methods (the grammar has one function_declaration node for
+	// both, same precedent as KindPyFunc); KindKotlinProperty is top-level
+	// val/var only (module-scope, mirroring KindPyVar).
+	KindKotlinClass     SourceKind = "KotlinClass"
+	KindKotlinInterface SourceKind = "KotlinInterface"
+	KindKotlinObject    SourceKind = "KotlinObject"
+	KindKotlinFunction  SourceKind = "KotlinFunction"
+	KindKotlinProperty  SourceKind = "KotlinProperty"
+	KindKotlinImport    SourceKind = "KotlinImport"
+
 	// Rust
 	KindRustFn     SourceKind = "RustFn"
 	KindRustStruct SourceKind = "RustStruct"
