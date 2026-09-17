@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 func testInvariants() CellInvariants {
@@ -149,6 +150,68 @@ func TestStoreScenarioCell_FirstWriterWins(t *testing.T) {
 	}
 	if got.SourceRunID != "run-1" {
 		t.Errorf("expected the FIRST writer's run to win, got %q", got.SourceRunID)
+	}
+}
+
+// TestStoreScenarioCell_ReplacesStaleSiblingUnderDifferentKey is wave N14
+// item 6's other half (guards-i31/control, guards-pilot-6 second reading):
+// a mid-session worktree reset can leave a STALE record for the SAME
+// logical (task, arm, trial, run_id) filed under a DIFFERENT cell key
+// (e.g. the harness version drifted between the aborted pre-reset attempt
+// and the real post-reset one) — StoreScenarioCell's own write-once
+// contract only ever protects the path it is about to write, so both
+// records used to survive side by side as two "independently-scored
+// cell_key directories". Storing a fresh cell must now REPLACE — not
+// leave appended — any sibling under this exact same (TaskID, Arm, Trial,
+// RunID) filed under some OTHER key, so the raw store never carries more
+// than one authoritative record for one logical cell.
+func TestStoreScenarioCell_ReplacesStaleSiblingUnderDifferentKey(t *testing.T) {
+	dir := t.TempDir()
+	staleKey := ScenarioCellKey(CellInvariants{CorpusSHA256: "abc123", TaskID: "T1", Arm: "control", ModelID: "sonnet", HarnessVersion: "2.1.270 (Claude Code)", Scoring: "oracle-v1", PromptSubject: "x"})
+	freshKey := ScenarioCellKey(CellInvariants{CorpusSHA256: "abc123", TaskID: "T1", Arm: "control", ModelID: "sonnet", HarnessVersion: "2.1.273 (Claude Code)", Scoring: "oracle-v1", PromptSubject: "x"})
+
+	stale := CellResult{TaskID: "T1", Arm: "control", Trial: 1, CellKey: staleKey, RunID: "run-1", HarnessVersion: "2.1.270 (Claude Code)"}
+	if err := StoreScenarioCell(dir, stale); err != nil {
+		t.Fatalf("storing stale: %v", err)
+	}
+	stalePath := ScenarioCellPath(dir, staleKey, 1)
+	if _, err := os.Stat(stalePath); err != nil {
+		t.Fatalf("expected the stale cell on disk before the fresh write: %v", err)
+	}
+
+	fresh := CellResult{TaskID: "T1", Arm: "control", Trial: 1, CellKey: freshKey, RunID: "run-1", HarnessVersion: "2.1.273 (Claude Code)"}
+	if err := StoreScenarioCell(dir, fresh); err != nil {
+		t.Fatalf("storing fresh: %v", err)
+	}
+
+	if _, err := os.Stat(stalePath); !os.IsNotExist(err) {
+		t.Errorf("expected the stale sibling under the OLD key removed once the fresh cell was filed, err=%v", err)
+	}
+	if _, ok, err := BorrowScenarioCell(dir, freshKey, 1); err != nil || !ok {
+		t.Fatalf("expected the fresh cell to be stored under its own key: ok=%v err=%v", ok, err)
+	}
+}
+
+// TestStoreScenarioCell_NeverTouchesADifferentRunsSibling proves the
+// cleanup above is scoped to THIS run_id only: a sibling under a different
+// key that belongs to a DIFFERENT run must never be removed just because
+// it shares a (TaskID, Arm, Trial).
+func TestStoreScenarioCell_NeverTouchesADifferentRunsSibling(t *testing.T) {
+	dir := t.TempDir()
+	otherRunKey := ScenarioCellKey(CellInvariants{CorpusSHA256: "abc123", TaskID: "T1", Arm: "control", ModelID: "sonnet", HarnessVersion: "9.9.9", Scoring: "oracle-v1", PromptSubject: "x"})
+	thisRunKey := ScenarioCellKey(CellInvariants{CorpusSHA256: "abc123", TaskID: "T1", Arm: "control", ModelID: "sonnet", HarnessVersion: "2.1.273 (Claude Code)", Scoring: "oracle-v1", PromptSubject: "x"})
+
+	otherRun := CellResult{TaskID: "T1", Arm: "control", Trial: 1, CellKey: otherRunKey, RunID: "run-OTHER"}
+	if err := StoreScenarioCell(dir, otherRun); err != nil {
+		t.Fatal(err)
+	}
+	thisRun := CellResult{TaskID: "T1", Arm: "control", Trial: 1, CellKey: thisRunKey, RunID: "run-1"}
+	if err := StoreScenarioCell(dir, thisRun); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, ok, err := BorrowScenarioCell(dir, otherRunKey, 1); err != nil || !ok {
+		t.Errorf("expected the other run's own cell left untouched: ok=%v err=%v", ok, err)
 	}
 }
 
@@ -593,6 +656,73 @@ func TestFindScenarioCellsByRun_MissingCellsDirIsEmptyNotError(t *testing.T) {
 	}
 	if len(got) != 0 {
 		t.Errorf("expected no matches, got %v", got)
+	}
+}
+
+// TestFindScenarioCellsByRun_DedupesSiblingKeysByTrial is wave N14 item 6's
+// regression test (guards-i31/control, guards-pilot-6 second reading): a
+// mid-session worktree reset can leave the SAME logical (task, arm, trial,
+// run_id) filed under two INDEPENDENTLY-COMPUTED cell keys (the reading's
+// own finding — e.g. a harness-version drift between the stale, pre-reset
+// attempt and the real, post-reset one). FindScenarioCellsByRun walks the
+// WHOLE cellsDir tree by content, so before this fix it returned BOTH —
+// "a naive rollup from cells/ (not the log) double-counts" — even though
+// only one of them is the authoritative record for that trial. It must now
+// return exactly one CellResult per (TaskID, Arm, Trial): the one written
+// LAST (highest file mtime), on the theory that a later write is always
+// the more recent, more-informed attempt.
+func TestFindScenarioCellsByRun_DedupesSiblingKeysByTrial(t *testing.T) {
+	dir := t.TempDir()
+	staleKey := ScenarioCellKey(CellInvariants{CorpusSHA256: "abc123", TaskID: "T1", Arm: "control", ModelID: "sonnet", HarnessVersion: "2.1.270 (Claude Code)", Scoring: "oracle-v1", PromptSubject: "x"})
+	freshKey := ScenarioCellKey(CellInvariants{CorpusSHA256: "abc123", TaskID: "T1", Arm: "control", ModelID: "sonnet", HarnessVersion: "2.1.273 (Claude Code)", Scoring: "oracle-v1", PromptSubject: "x"})
+
+	if err := StoreScenarioCell(dir, CellResult{TaskID: "T1", Arm: "control", Trial: 1, CellKey: staleKey, RunID: "run-1", HarnessVersion: "2.1.270 (Claude Code)", Success: false}); err != nil {
+		t.Fatal(err)
+	}
+	stalePath := ScenarioCellPath(dir, staleKey, 1)
+	oldMtime := time.Now().Add(-time.Hour)
+	if err := os.Chtimes(stalePath, oldMtime, oldMtime); err != nil {
+		t.Fatal(err)
+	}
+	if err := StoreScenarioCell(dir, CellResult{TaskID: "T1", Arm: "control", Trial: 1, CellKey: freshKey, RunID: "run-1", HarnessVersion: "2.1.273 (Claude Code)", Success: true}); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := FindScenarioCellsByRun(dir, "T1", "control", "run-1")
+	if err != nil {
+		t.Fatalf("FindScenarioCellsByRun: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("expected exactly 1 deduped cell for trial 1, got %d: %+v", len(got), got)
+	}
+	if got[0].CellKey != freshKey {
+		t.Errorf("expected the FRESH (later-written) record to win, got cell_key %s (want %s)", got[0].CellKey, freshKey)
+	}
+	if !got[0].Success {
+		t.Errorf("expected the fresh record's own content to survive, got %+v", got[0])
+	}
+}
+
+// TestFindScenarioCellsByRun_DistinctTrialsNeverCollapsed proves the
+// dedupe above is scoped to (TaskID, Arm, Trial) and never merges two
+// GENUINELY different trials just because they happen to share a run.
+func TestFindScenarioCellsByRun_DistinctTrialsNeverCollapsed(t *testing.T) {
+	dir := t.TempDir()
+	key := ScenarioCellKey(testInvariants())
+	for _, c := range []CellResult{
+		{TaskID: "T1", Arm: "full", Trial: 1, CellKey: key, RunID: "run-1"},
+		{TaskID: "T1", Arm: "full", Trial: 2, CellKey: key, RunID: "run-1"},
+	} {
+		if err := StoreScenarioCell(dir, c); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := FindScenarioCellsByRun(dir, "T1", "full", "run-1")
+	if err != nil {
+		t.Fatalf("FindScenarioCellsByRun: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("expected both distinct trials to survive, got %d: %+v", len(got), got)
 	}
 }
 

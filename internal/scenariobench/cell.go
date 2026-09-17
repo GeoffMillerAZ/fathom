@@ -18,6 +18,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // CellInvariants are the invariants that bind one scored scenario cell.
@@ -109,15 +110,30 @@ func ScenarioCellPath(cellsDir, key string, trial int) string {
 
 // StoreScenarioCell writes a scored cell into the content-addressed store
 // (workspace/artifacts/scenariobench/cells/<key>/t<n>.json). A cell already
-// present is left alone — the first writer owns the provenance — and a
-// borrowed cell is never written back (it is already in the store under
-// this exact key).
+// present UNDER THIS EXACT KEY is left alone — the first writer owns the
+// provenance — and a borrowed cell is never written back (it is already in
+// the store under this exact key).
+//
+// wave N14 item 6 (guards-i31/control, guards-pilot-6 second reading):
+// before writing, this also REPLACES — never leaves appended — any STALE
+// sibling record for the exact same (TaskID, Arm, Trial, RunID) filed
+// under some OTHER key (a mid-session worktree reset can drift an
+// invariant like HarnessVersion between an aborted pre-reset attempt and
+// the real post-reset one, producing two independently-computed keys for
+// what is really one logical cell). Without this, the raw store
+// accumulated "two independently-scored cell_key directories" for the
+// same (task, arm, trial) — never wrong for `scenariobench ledger` (which
+// borrows by exact key, so a drifted key simply never matches) but
+// misleading for anything reading cells/ directly.
 func StoreScenarioCell(cellsDir string, r CellResult) error {
 	if r.CellKey == "" {
 		return fmt.Errorf("storing scenario cell %s/%s: no cell_key", r.TaskID, r.Arm)
 	}
 	if r.Borrowed {
 		return nil
+	}
+	if err := removeStaleSiblingCells(cellsDir, r); err != nil {
+		return fmt.Errorf("storing scenario cell %s: %w", r.CellKey, err)
 	}
 	dir := filepath.Join(cellsDir, r.CellKey)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -133,6 +149,53 @@ func StoreScenarioCell(cellsDir string, r CellResult) error {
 	}
 	if err := os.WriteFile(path, append(raw, '\n'), 0o644); err != nil {
 		return fmt.Errorf("writing cell %s: %w", path, err)
+	}
+	return nil
+}
+
+// removeStaleSiblingCells removes every OTHER top-level key directory's
+// own t<r.Trial>.json file whose (TaskID, Arm, RunID) match r exactly —
+// r's own key directory is never touched here (StoreScenarioCell's
+// write-once check for it runs separately). Cheaper than a full recursive
+// walk (FindScenarioCellsByRun's own shape): only ONE filename per
+// sibling top-level directory is ever read, since only that trial number
+// could possibly collide with r. A sibling directory left empty by the
+// removal is best-effort cleaned up too, so the store does not accumulate
+// husks; that second removal's own error is deliberately ignored; the
+// directory may still hold other trials. A cellsDir that does not exist
+// yet (the very first cell of a run) is a no-op, not an error.
+func removeStaleSiblingCells(cellsDir string, r CellResult) error {
+	entries, err := os.ReadDir(cellsDir)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil
+		}
+		return fmt.Errorf("scanning %s for stale sibling cells: %w", cellsDir, err)
+	}
+	trialFile := cellTrialFile(r.Trial)
+	for _, e := range entries {
+		if !e.IsDir() || e.Name() == r.CellKey {
+			continue
+		}
+		path := filepath.Join(cellsDir, e.Name(), trialFile)
+		raw, rerr := os.ReadFile(path)
+		if rerr != nil {
+			if errors.Is(rerr, fs.ErrNotExist) {
+				continue
+			}
+			return fmt.Errorf("reading %s: %w", path, rerr)
+		}
+		var sib CellResult
+		if uerr := json.Unmarshal(raw, &sib); uerr != nil {
+			return fmt.Errorf("parsing %s: %w", path, uerr)
+		}
+		if sib.TaskID != r.TaskID || sib.Arm != r.Arm || sib.RunID != r.RunID {
+			continue
+		}
+		if rmErr := os.Remove(path); rmErr != nil {
+			return fmt.Errorf("removing stale sibling cell %s: %w", path, rmErr)
+		}
+		_ = os.Remove(filepath.Join(cellsDir, e.Name())) // best-effort; fails silently if not empty
 	}
 	return nil
 }
@@ -169,10 +232,26 @@ func OverwriteScenarioCell(cellsDir string, r CellResult) error {
 // whose TaskID, Arm and RunID match — O53 defect 7's own lookup for
 // `scenariobench void`, which has no corpus (and so no cell_key) to hand
 // BorrowScenarioCell directly; it only has the ledger row's own
-// (run_id, task_id, arm). Returned in trial order. An empty cellsDir (or
-// one that does not exist yet) is zero results, not an error.
+// (run_id, task_id, arm). Returned in trial order, deduped one record per
+// (TaskID, Arm, Trial): wave N14 item 6 (guards-i31/control,
+// guards-pilot-6 second reading) — a mid-session worktree reset can leave
+// the SAME logical (task, arm, trial, run_id) filed under two
+// independently-computed cell keys (e.g. a harness-version drift between
+// a stale pre-reset attempt and the real post-reset one), and this walk
+// covers the WHOLE cellsDir tree by content, not by one key's own
+// directory — "a naive rollup from cells/ (not the log) double-counts"
+// was this function's own doc comment's blind spot before this fix. When
+// more than one record shares a (TaskID, Arm, Trial), the one with the
+// LATEST file modification time wins (a later write is always the more
+// recent, more-informed attempt) and the rest are dropped from the
+// result. An empty cellsDir (or one that does not exist yet) is zero
+// results, not an error.
 func FindScenarioCellsByRun(cellsDir, taskID, arm, runID string) ([]CellResult, error) {
-	var out []CellResult
+	type slot struct {
+		result  CellResult
+		modTime time.Time
+	}
+	byTrial := map[int]slot{}
 	err := filepath.WalkDir(cellsDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			if errors.Is(err, fs.ErrNotExist) {
@@ -191,8 +270,15 @@ func FindScenarioCellsByRun(cellsDir, taskID, arm, runID string) ([]CellResult, 
 		if uerr := json.Unmarshal(raw, &r); uerr != nil {
 			return fmt.Errorf("parsing %s: %w", path, uerr)
 		}
-		if r.TaskID == taskID && r.Arm == arm && r.RunID == runID {
-			out = append(out, r)
+		if r.TaskID != taskID || r.Arm != arm || r.RunID != runID {
+			return nil
+		}
+		info, serr := d.Info()
+		if serr != nil {
+			return fmt.Errorf("stat %s: %w", path, serr)
+		}
+		if existing, ok := byTrial[r.Trial]; !ok || info.ModTime().After(existing.modTime) {
+			byTrial[r.Trial] = slot{result: r, modTime: info.ModTime()}
 		}
 		return nil
 	})
@@ -201,6 +287,10 @@ func FindScenarioCellsByRun(cellsDir, taskID, arm, runID string) ([]CellResult, 
 			return nil, nil
 		}
 		return nil, fmt.Errorf("finding cells for run %s task %s arm %s: %w", runID, taskID, arm, err)
+	}
+	out := make([]CellResult, 0, len(byTrial))
+	for _, s := range byTrial {
+		out = append(out, s.result)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Trial < out[j].Trial })
 	return out, nil
