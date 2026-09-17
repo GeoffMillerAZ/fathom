@@ -510,6 +510,16 @@ func TestSuccessFor(t *testing.T) {
 	}}
 	edited := []SessionResult{{FilesEdited: []string{"foo.go"}}}
 	unedited := []SessionResult{{FinalAnswer: "done, nothing to change"}}
+	// wave N15 item 3: a session that claimed a row AND gave itself the
+	// skip_test escape in the same edit (O56 self-grading) — SuccessFor
+	// must fail this regardless of how favorably the oracle itself reads.
+	selfSkipped := []SessionResult{{
+		FilesEdited: []string{"foo.go"},
+		BoxChecks: []BoxCheck{{
+			RowID: "GIST-TTY-3",
+			Text:  "- [x] Add a test case [GIST-TTY-3] {symbol: TestNewCmdView, package: pkg/cmd/gist/view, skip_test: true}",
+		}},
+	}}
 
 	cases := []struct {
 		name     string
@@ -526,6 +536,8 @@ func TestSuccessFor(t *testing.T) {
 		{"localization-only, unedited, passed: exempt", localizationOnlyTask, true, unedited, true},
 		{"refusal-aware, unedited, passed: exempt (O57 finding 2)", refusalTask, true, unedited, true},
 		{"refusal-aware, unedited, not passed", refusalTask, false, unedited, false},
+		{"change task, edited, passed, but self-skipped: fails regardless (O56)", changeTask, true, selfSkipped, false},
+		{"refusal-aware, self-skipped: even an exempt shape fails", refusalTask, true, selfSkipped, false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

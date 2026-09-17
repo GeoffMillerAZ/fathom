@@ -192,7 +192,19 @@ func AnswerOnly(task Task) bool {
 // edited: answer-only (SB-32 lookups-vs.json), localization-only (VB-25),
 // or refusal-aware (O57 finding 2, a correct refusal never edits
 // anything by design).
+//
+// wave N15 item 3: SelfSkipDetected is checked FIRST and, when true,
+// short-circuits straight to fail — no oracle result, however it reads,
+// may pass a cell whose own session wrote its way past a claimed row's
+// verification by adding skip_test: true in the same edit that claims
+// it (O56's self-grading pattern, selfskip.go). This is the single
+// point every Success-setting caller shares (this function's own doc
+// comment above), so the check applies uniformly rather than needing
+// its own copy at each call site.
 func SuccessFor(task Task, oracle OracleResult, sessions []SessionResult) bool {
+	if SelfSkipDetected(sessions) {
+		return false
+	}
 	return oracle.Passed && (AnswerOnly(task) || LocalizationOnly(task) || RefusalAware(task) || AnyEdits(sessions))
 }
 

@@ -824,6 +824,21 @@ type CellResult struct {
 	// (the common unwired-arm case) is a real, reported count, not absence
 	// — always present, never omitempty.
 	InstrumentFilesExcluded int `json:"instrument_files_excluded"`
+	// SelfSkip is wave N15 item 3's own instrument truth: true when
+	// SelfSkipRows found at least one BoxCheck, anywhere across this
+	// cell's own sessions, whose claimed ("- [x]") checklist line also
+	// carries skip_test: true — the O56 self-grading pattern (an agent
+	// writing its own escape hatch into a row it also claims done),
+	// caught by the DRIVER from the session's own edit history rather
+	// than by the verify_plan MCP tool, which only runs its own
+	// git-based self-skip gate (internal/verify/selfskip.go) when the
+	// caller's tool args happen to include both plan_markdown and
+	// plan_path — reuse-pilot-4 10048/full/t2 called it without
+	// plan_path, so that gate never even ran. SuccessFor already forces
+	// Success false whenever this is true; the field exists so a reader
+	// of the stored cell (and the ledger row that aggregates it) sees
+	// WHY, not merely that the cell failed.
+	SelfSkip bool `json:"self_skip,omitempty"`
 	// StoreRoot is set only by BorrowScenarioCell (O55 item 5), to the
 	// cellsDir the cell was actually read from — ephemeral like Borrowed/
 	// SourceRunID (StoreScenarioCell never writes a borrowed cell back), so

@@ -825,6 +825,7 @@ func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench
 		// here, runExternalCell (external_corpus.go) and cmdScore's rescoring
 		// (below) — see its own doc comment for why.
 		Success:                 scenariobench.SuccessFor(cp.task, oracle, sessions),
+		SelfSkip:                scenariobench.SelfSkipDetected(sessions),
 		CellKey:                 cp.key,
 		CorpusSHA256:            cp.inv.CorpusSHA256,
 		ModelID:                 cp.inv.ModelID,
@@ -1237,6 +1238,14 @@ func cmdScore(args []string) int {
 	// via the SAME bare formula cmdScore always used, honestly narrower
 	// (no exemptions applied) rather than a stale preserved value.
 	cell.Success = cell.Oracle.Passed && scenariobench.AnyEdits(cell.Sessions)
+	// wave N15 item 3: self-skip is a bare-sessions check (SelfSkipDetected
+	// needs no task either) — recomputed and enforced here too, so a
+	// rescore never restores Success for a cell whose own session wrote
+	// skip_test: true into a row it also claimed (O56).
+	cell.SelfSkip = scenariobench.SelfSkipDetected(cell.Sessions)
+	if cell.SelfSkip {
+		cell.Success = false
+	}
 	if *corpusPath == "" {
 		fmt.Fprintln(os.Stderr, "scenariobench score: gold_source_tool: not recomputed (no -corpus)")
 		cell.Readings.GoldSourceTool = goldSourceTool
