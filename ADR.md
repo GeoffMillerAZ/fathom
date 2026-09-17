@@ -1578,3 +1578,68 @@ case is priced by the cap and measured by the M1 rerun on the repaired instrumen
 
 **Revisit when.** The measured injection cost per prompt exceeds the edit hook's, or
 guards-pilot-6 shows no change in rule_reached_agent.
+
+## ADR-037: `obligations` degrades to raw guide sections, never to silence (2026-09-16)
+
+**Status.** Accepted. Bench readings: vs-pilot-5 and guards-pilot-6 second readings
+(docs/vision/29-verbs-not-lookups.md §2–3 wave B; O54, .fathom/observations.md).
+
+**Context.** Both readings converge on the same product defect. vs-pilot-5: the obligations
+tool never served the predicted rule in 0 of 4 trials built to test it — the compiled-rule
+layer hit `budget_stopped` (14/60 sections), displacing the cited rule to root/parent tiers;
+both trials passed only via `mcp__fathom__search` + Read, the same route grep took.
+guards-pilot-6: obligations never surfaced the task-specific governing rule on 6 of 8 tasks'
+wired trials, serving only a fixed generic boilerplate subset of `internal/CLAUDE.md`, capped
+before the invariant (I2, I11, I19, I28, I31, I36) appeared; a brand-new file's PostToolUse
+hook returned only "index is behind your working tree" and nothing else
+(`obligations_degraded_stale_index`). O54 had already built `LiveLayerCoverage` and
+`NearestUncompiledGuide` to NAME the gap (`layer_coverage`, a `note` pointing at
+`fathom compile --continue`) but never to FILL it — the served answer was still silence plus a
+pointer to a command the agent cannot run mid-edit. Meanwhile a plain grep finds the rule in
+the nearest CLAUDE.md in one call.
+
+**Decision.** When the compiled obligations layer's coverage for the edited path's own scope
+is incomplete — a `budget_stopped` run, a recorded run whose corpus has grown past what it
+saw, or no compile_runs row at all for a layer that also has zero claims of its own —
+`obligations` (`internal/mcp/semantic_tools.go`'s `renderObligationReceipt`, via the new
+`rawFallbackBackend` capability) ranks the layer's own UNCOMPILED sections by the identical
+governing-scope proximity ranker compiled claims use (`rankByGoverningScope`, VB-8,
+`internal/semantic/governingscope.go`) and serves up to `semantic.RawFallbackReserve` (2) of
+the nearest as raw rows: `tier:"raw"`, a `why` note naming the coverage defect, the section's
+own citation as `src`, prepended AHEAD of any farther-tier compiled row so a nested guide's raw
+section is never buried below a root rule that merely happened to compile. A raw row only ever
+ADDS — it never displaces a compiled row, never consumes a slot from the six-rule
+`MaxObligations` cap, and never fires when a fresh compiled claim already answers the exact
+section (the same digest/prompt-version freshness test `LiveLayerCoverage` already applies). A
+store with existing claims but no recorded compile run (a seeded fixture, not a real compile —
+`internal/indexbench`'s L1 payload-replay fixture is exactly this shape) is deliberately NOT
+treated as a gap: guessing from bookkeeping absence alone would be a false positive on a
+byte-pinned golden, not a real defect. The edit hook and the prompt hook need no code change —
+`writeRuleBullet` already renders whatever `tier` a served rule carries.
+
+**Consequences.** `internal/semantic/rawfallback.go` (`RawFallbackRules`), `pkg/client`'s
+`RawFallbackObligations`, and the MCP wiring add one new optional backend capability, following
+the exact degrade-on-absence pattern `layerCoverageBackend` already established: a backend that
+omits it serves byte-identical payloads to before this ADR. No LLM call sits on this path — it
+is a deterministic rank over sections already on disk. `internal/mcp/autorefresh.go` gained an
+explicit forward for the new capability (the O7 forwarding class this file's own doc comment
+names) so the capability survives serve-http's default auto-refresh wrapper instead of being
+silently stripped the way `ObligationsLayerCoverage`/`ObligationsLayer`/`ClaimFeedback` still
+are today — that pre-existing gap is out of this wave's scope and is named here so it is not
+mistaken for fixed.
+
+**Alternatives rejected.** Raising the compile budget alone (treats the symptom on one repo's
+current corpus size, not the general case — a corpus always eventually outgrows any fixed
+budget). Compiling on demand at serve time (violates "determinism at query time, reasoning at
+compile time" and puts an LLM call on the decision-moment hot path). Serving the WHOLE
+uncompiled guide verbatim (unbounded payload growth; the existing snippet/byte-budget
+discipline already caps a compiled rule's citation, and a raw row must cost the same). Treating
+every `!found` (no compile_runs row) as a gap unconditionally (breaks the L1 fixture, which
+seeds claims directly without a compile run — a real false positive, not a real gap).
+
+**Revisit when.** A raw row is the gold source on fewer than one in five of the tasks
+vs-pilot/guards-pilot built around a known coverage gap; `RawFallbackReserve` (2) proves too
+small or too large against a re-run of guards-pilot-6 on this fix; or the pre-existing
+`ObligationsLayerCoverage`/`ObligationsLayer`/`ClaimFeedback` auto-refresh forwarding gap named
+above still has not been closed by the time a daemon operator reports the layer split or D2
+feedback silently not working in production.
