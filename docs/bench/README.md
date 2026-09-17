@@ -772,6 +772,9 @@ gold source: none earned 6 of 6 passes.
 Voided: 1 row(s) carry `instrument_defect` and are excluded from the numbers above — guards-i16-raw-cp-deploy/full.
 Paired (bootstrap, n=7, seed 20260902, 20000 resamples): success-rate diff -0.071 [-0.286, +0.143] (95% CI); token ratio 1.61× [1.09×, 2.25×].
 
+**guards-pilot-7** (criterion names full/control, not among this run's arms):
+control 1/1 (surface calls 0).
+
 **lca-run-1** — fathom vs control: success 94/117 vs 93/117, tokens 1.640×, cost 1.291×.
 Surface calls: control=0, fathom=231.
 On lca-run-1, fathom's arm beat control on success (94 v 93) at 1.640× the tokens; the tools were called 231 time(s). Registered criterion lca-bug-localization-m12-m16: null (paired 95% CI of the success-rate difference includes zero: +0.009 [-0.077, +0.094]; the null is published).
@@ -1334,6 +1337,7 @@ Paired (bootstrap, n=14, seed 20260902, 20000 resamples): success-rate diff +0.1
 | vs-pilot-6 | bcb62ac | H1-T13 | staleness | serena | sonnet | 2 | 2 | below fathom, plausible partial credit — same reasoning as graphify. | 0 (unused) | – | – | – | – | – | – | – | – | 0.0646 |  |
 | vs-pilot-6 | bcb62ac | H1-T04 | verify | serena | sonnet | 2 | 2 | loses, same reason as graphify. | 7 | – | – | – | – | – | – | – | – | 0.1093 |  |
 | vs-pilot-6 | bcb62ac | H1-T11 | contradiction | gopls | sonnet | 1 | 1 | no-effect: same reason. | 0 (unused) | – | – | – | – | – | – | – | – | 0.1175 |  |
+| guards-pilot-7 | bcb62ac | guards-i28-duckdb-path | governance_bound | control | sonnet | 1 | 1 | no-effect: nothing in a generic notes file counters the 'be lenient to the user' instinct that a hang-report prompt invites | 0 | – | – | 1/1 | – | – | – | – | – | 0.2603 |  |
 
 ### Gold source by question shape
 
