@@ -340,6 +340,20 @@ type Store interface {
 	// layer (layer "" returns all layers), newest-first by RanAt then run_id.
 	CompileRuns(ctx context.Context, serviceID, layer string) ([]core.CompileRun, error)
 
+	// RecordReviewRun upserts one `fathom review --idempotency-key` outcome
+	// (FL-15, docs/plans/findings-loop.md) keyed by (service_id,
+	// idempotency_key). A second call with the same key REPLACES the row —
+	// the caller (cmd/fathom's idempotency check) only ever calls this after
+	// confirming no prior row exists for that key, or with an identical
+	// PayloadDigest, so the replace is never observable as a silent
+	// overwrite of a conflicting request.
+	RecordReviewRun(ctx context.Context, run core.ReviewRun) error
+
+	// ReviewRun returns the recorded review run for (serviceID,
+	// idempotencyKey). found is false when no run was ever recorded under
+	// that key.
+	ReviewRun(ctx context.Context, serviceID, idempotencyKey string) (core.ReviewRun, bool, error)
+
 	// Close releases all resources held by the store. After Close returns the
 	// store must not be used.
 	Close() error

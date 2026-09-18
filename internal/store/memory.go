@@ -25,8 +25,9 @@ type MemoryStore struct {
 	claimLinks     map[string][]core.ClaimLink // claim_id → links (replace-semantic)
 	claimEvents    []core.ClaimEvent
 	compileRuns    []core.CompileRun
-	typedEdges     map[typedEdgeKey][]core.Edge // (serviceID, pkgPath) → edges (replace-semantic)
-	typedEdgeFPs   map[fpKey]string             // reuses fpKey{serviceID, pkgPath} shape
+	typedEdges     map[typedEdgeKey][]core.Edge    // (serviceID, pkgPath) → edges (replace-semantic)
+	typedEdgeFPs   map[fpKey]string                // reuses fpKey{serviceID, pkgPath} shape
+	reviewRuns     map[reviewRunKey]core.ReviewRun // (serviceID, idempotencyKey) → review run (FL-15)
 
 	// gate is the per-call suppression filter (scoped.go); initialised by
 	// NewMemoryStore and exercised by the constructor audit.
@@ -68,6 +69,7 @@ func NewMemoryStore() *MemoryStore {
 		claimLinks:     make(map[string][]core.ClaimLink),
 		typedEdges:     make(map[typedEdgeKey][]core.Edge),
 		typedEdgeFPs:   make(map[fpKey]string),
+		reviewRuns:     make(map[reviewRunKey]core.ReviewRun),
 	}
 }
 

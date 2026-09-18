@@ -303,6 +303,14 @@ CREATE INDEX IF NOT EXISTS idx_observations_service_id
 		return err
 	}
 
+	// review_runs (FL-15, docs/plans/findings-loop.md) is a separate const,
+	// executed right after the main schema — the same additive-table
+	// convention a later wave's own table follows; the main ddl const above
+	// is never edited for a new table.
+	if err := s.createReviewRunsSchema(); err != nil {
+		return err
+	}
+
 	// Conditional migrations for SQLite stores created before a column
 	// existed. The "no ALTER cruft" stance above holds for the fleet store
 	// (freshly migrated), but scratch/workspace SQLite stores created by

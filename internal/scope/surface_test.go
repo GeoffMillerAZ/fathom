@@ -85,6 +85,8 @@ var storeMethodDisposition = map[string]string{
 	"CompileRuns":                    "compile metadata (tokens, cost, watermark), no content",
 	"TypedEdgePackageFingerprint":    "per-package content hash for the enrichment cache, no content",
 	"ListTypedEdgePackages":          "package identifiers for the enrichment reconcile, no file paths",
+	"RecordReviewRun":                "write path",
+	"ReviewRun":                      "idempotency cache row keyed by service+key, no path-anchored content",
 	"Close":                          "lifecycle",
 }
 
