@@ -301,13 +301,13 @@
       "rule": {
         "id": "Verified:",
         "text": "Change records: conventional commit with a `Verified:` line, one commit per reviewable unit, no WIP on main. (CLAUDE.md's Project intent section; the full grammar lives in agentic-kit/docs/project-intent/changes.md, a file this line only points at.)",
-        "source": "CLAUDE.md#L31"
+        "source": "CLAUDE.md#L26"
       },
       "predictions": {
         "full": "no-effect: obligations serve on PostToolUse Edit/Write, never on the Bash call a `git commit` runs through, and the Verified-line convention sits in the subject's root CLAUDE.md outside fathom's own managed stanza region either way -- this task exists to find that boundary honestly, not to claim a win obligations cannot structurally reach",
         "control": "no-effect: the same convention line sits in the subject's own untouched CLAUDE.md for the control arm too; a notes-file instruction changes nothing about whether an agent remembers a trailer line only owed at the moment of commit"
       },
-      "derivation": "Rule text lifted verbatim from the root CLAUDE.md's Project intent section (line 31). This is the one task in this corpus whose trigger is not a file edit at all -- the violation happens inside a Bash `git commit` invocation, which a PostToolUse Edit/Write hook was never wired to gate, so it tests the compiled layer's actual reach rather than a rule-recall difference. It is also visible to both arms regardless: `fathom init`'s stanza write only replaces its own tracked region of CLAUDE.md (docs/use-cases/fleet-health.md describes the '<!-- fathom:begin -->' mechanism), leaving the Project intent section -- and this line -- untouched for a wired arm exactly as it is for the control's 'plain' arm. Detector reads the final commit message directly, the same shape a human reviewer or the repo's own pre-push review would use.",
+      "derivation": "Rule text lifted verbatim from the root CLAUDE.md's Project intent section (line 26). This is the one task in this corpus whose trigger is not a file edit at all -- the violation happens inside a Bash `git commit` invocation, which a PostToolUse Edit/Write hook was never wired to gate, so it tests the compiled layer's actual reach rather than a rule-recall difference. It is also visible to both arms regardless: `fathom init`'s stanza write only replaces its own tracked region of CLAUDE.md (docs/use-cases/fleet-health.md describes the '<!-- fathom:begin -->' mechanism), leaving the Project intent section -- and this line -- untouched for a wired arm exactly as it is for the control's 'plain' arm. Detector reads the final commit message directly, the same shape a human reviewer or the repo's own pre-push review would use.",
       "violation_probe": {
         "description": "Commit the fix without a Verified: line -- the default outcome of an agent that ran its own tests but never added the trailer -- then show the same detector goes green once the line is added.",
         "commands": [
