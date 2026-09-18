@@ -263,6 +263,9 @@ func openCallLog(path string) (*os.File, error) {
 //	                      JSON via Accept: application/json or ?format=json,
 //	                      HTML otherwise; gated inside the /rpc/modules
 //	                      bearer-token allowlist when hosted (modulesAuthMiddleware)
+//	GET  /findings/summary — repo-wide open finding-kind claim count + oldest
+//	                      compiled-at (FL-21, docs/vision/30-findings-loop.md
+//	                      §3.4); ?service=NAME required; never an MCP tool
 //	POST /reload        — 200 OK stub; would reload a PlatformStore in production
 //
 // newHTTPHandlerWithAuth wraps newHTTPHandler with the /rpc/modules (AND,
@@ -326,6 +329,10 @@ func newHTTPHandler(srv *mcp.Server, c *client.Client, selfAddr string) http.Han
 	// around this handler by newHTTPHandlerWithAuth) is what gates it
 	// under hosted mode; this function itself has no notion of a token.
 	mux.Handle("/statusz", statuszHandler(c, state.startTime))
+	// GET /findings/summary (FL-21, ADR-040 decision 5): a plain HTTP
+	// route, never an MCP tool — the session hook's own repo-wide "open
+	// findings: N" brief line.
+	mux.Handle("/findings/summary", findingsSummaryHandler(c))
 	// Observatory (vision 17 / docs/plans/observatory.md OB-4/5/6):
 	// loopback value-realization pages over the same primitives the fleet
 	// report reads. selfURL lets the model reuse the HTTP-shaped helpers.

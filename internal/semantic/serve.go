@@ -95,6 +95,21 @@ type Obligation struct {
 	// carries this field, so a payload that never needs a raw fallback row
 	// is byte-identical to what it was before this field existed.
 	Why string `json:"why,omitempty"`
+
+	// ─── ADR-040: the findings loop — external review findings served as
+	// obligations (Kind:"finding") over the producer catalog (§4). Every
+	// field below is omitted for a native obligations/adr-rules row, so a
+	// payload with no finding-kind rows is byte-identical to what it was
+	// before this wave.
+	Producer       string `json:"producer,omitempty"`
+	RuleID         string `json:"rule_id,omitempty"`
+	SourceID       string `json:"source_id,omitempty"`
+	Class          string `json:"class,omitempty"`
+	Remedy         string `json:"remedy,omitempty"`
+	ObservedAt     string `json:"observed_at,omitempty"`
+	SourceRevision string `json:"source_revision,omitempty"`
+	AnchorCurrent  *bool  `json:"anchor_current,omitempty"`
+	Unanchored     bool   `json:"unanchored,omitempty"`
 }
 
 // ModuleNote is an explicit, never-silent note attached to an Obligations

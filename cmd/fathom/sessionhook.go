@@ -339,6 +339,14 @@ func buildSessionContext(baseURL, projDir string) string {
 		if rl := routesSummaryLine(projDir, lookup, time.Now()); rl != "" {
 			ctxLine += " " + rl
 		}
+		// FL-21 (docs/vision/30-findings-loop.md §3.4): one line naming
+		// the repo-wide open finding-kind claim count, when any exist —
+		// silent on a zero count or any fetch failure, matching this
+		// hook's own degraded-branch discipline (never a reason to fail
+		// or slow session start).
+		if fl := findingsSummaryLine(hc, baseURL, lookup); fl != "" {
+			ctxLine += " " + fl
+		}
 		return ctxLine
 	}
 

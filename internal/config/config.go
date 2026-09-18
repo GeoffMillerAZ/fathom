@@ -87,12 +87,25 @@ type Guards struct {
 	Enforce *bool // nil = unset at every layer; caller applies its own default (true)
 }
 
+// Findings configures the findings-loop outbox sync (ADR-040, docs/vision/
+// 30-findings-loop.md §3.7, schema.cue #Findings): subject is the
+// provisioned subject→service mapping the governed import authorizes;
+// outbox is a repo-relative path to the review kit's projection file the
+// session hook syncs once per session; producers optionally narrows which
+// catalog producers this repo's import accepts.
+type Findings struct {
+	Subject   string
+	Outbox    string
+	Producers []string
+}
+
 // Config is the merged, in-memory form of one or more config.toml layers.
 type Config struct {
 	DefaultProfile string
 	Profiles       map[string]Profile
 	Daemon         Daemon
 	Guards         Guards
+	Findings       Findings
 }
 
 // LoadError names the file and the underlying cause — parse, validate, or

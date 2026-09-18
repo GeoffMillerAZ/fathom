@@ -111,6 +111,23 @@ package config
 	enforce?: bool
 }
 
+// #Findings configures the findings-loop outbox sync (ADR-040, docs/vision/
+// 30-findings-loop.md §3.7): the session hook imports a changed outbox
+// file once per session under a provisioned subject->service mapping.
+#Findings: {
+	// subject is the provisioned subject->service mapping the governed
+	// import authorizes (e.g. "geoffmilleraz/fathom/fathom").
+	subject?: string
+
+	// outbox is a repo-relative path to the review kit's versioned
+	// projection file (#FathomProjectionOutbox). Unset = no outbox sync.
+	outbox?: string
+
+	// producers optionally narrows which catalog producer ids this
+	// repo's import accepts; unset = every producer the catalog allows.
+	producers?: [...string]
+}
+
 // #Config is the top-level shape of one config.toml layer (user or
 // project). Both layers validate against the same schema; internal/config
 // merges them field-by-field per docs/plans/config-experience.md's stated
@@ -124,6 +141,7 @@ package config
 	// named profiles, keyed however the operator likes.
 	profiles?: [string]: #Profile
 
-	daemon?: #Daemon
-	guards?: #Guards
+	daemon?:   #Daemon
+	guards?:   #Guards
+	findings?: #Findings
 }

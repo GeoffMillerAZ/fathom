@@ -71,6 +71,10 @@ func mergeLayer(cfg *Config, prov Provenance, raw map[string]any, source Source,
 	if gm, ok := raw["guards"].(map[string]any); ok {
 		mergeGuardsFields(&cfg.Guards, gm, source, path, prov)
 	}
+
+	if fm, ok := raw["findings"].(map[string]any); ok {
+		mergeFindingsFields(&cfg.Findings, fm, source, path, prov)
+	}
 }
 
 func mergeProfileFields(p *Profile, raw map[string]any, name string, source Source, path string, prov Provenance) {
@@ -124,6 +128,27 @@ func mergeGuardsFields(g *Guards, raw map[string]any, source Source, path string
 		if b, ok := v.(bool); ok {
 			g.Enforce = &b
 			prov["guards.enforce"] = SourceInfo{source, path}
+		}
+	}
+}
+
+// mergeFindingsFields merges the [findings] layer (ADR-040 §3.7): subject
+// and outbox are scalar overrides, producers replaces the whole list when
+// present (an operator narrowing the accepted producer set means exactly
+// that list, never a merge with a lower layer's).
+func mergeFindingsFields(f *Findings, raw map[string]any, source Source, path string, prov Provenance) {
+	set := func(key string, dst *string) {
+		if v, ok := stringField(raw, key); ok {
+			*dst = v
+			prov["findings."+key] = SourceInfo{source, path}
+		}
+	}
+	set("subject", &f.Subject)
+	set("outbox", &f.Outbox)
+	if v, ok := raw["producers"]; ok {
+		if list, ok := stringSlice(v); ok {
+			f.Producers = list
+			prov["findings.producers"] = SourceInfo{source, path}
 		}
 	}
 }
