@@ -101,9 +101,9 @@ run Prompt 1's rewire first if doctor shows wiring drift).
    `fathom layers list` for installable shipped packs first.
 3. BINDINGS (.fathom/modules.cue): bind any expert modules actually
    mounted on the daemon; otherwise a concrete `bindings: []`.
-4. SKILLS: ensure the nine fathom skills exist under .claude/skills/
+4. SKILLS: ensure the ten fathom skills exist under .claude/skills/
    (fathom-plan/verify/doctor/feedback/impact/onboard/rewire/activate/
-   custodian) — `fathom init --skills=claude` (or `=all`) if absent;
+   custodian/findings) — `fathom init --skills=claude` (or `=all`) if absent;
    `fathom doctor`'s skills_installed row says which are current.
 5. GATES: if this repo uses lefthook and has docs/plans/*.md, wire the
    pre-push verify loop using plain `fathom` (shim) with `--quiet`

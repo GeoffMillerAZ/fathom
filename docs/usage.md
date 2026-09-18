@@ -1603,13 +1603,32 @@ Design: `docs/design/observability-surfaces.md`.
 ### `findings` — findings as evidence (**experimental**; entry ≥15–20 resolved findings)
 
 ```sh
-fathom findings near   <symbol|file> --store P --service S [--hops 2] [--include-superseded] [--json]
-fathom findings status --store P --service S [--json]
+fathom findings near       <symbol|file> --store P --service S [--hops 2] [--include-superseded] [--json]
+fathom findings status     --store P --service S [--json]
+fathom findings import     --store P --service S --subject ORG/REPO/COMPONENT [--producer NAME] --file P [--dry-run] [--json]
+fathom findings candidates --store P --service S [--min-sites 3] [--json]
 ```
 
 `near` is the call-graph precedent lookup (mirror of the `findings_near`
-MCP tool); `status` reports entry-condition progress. Design:
+MCP tool); `status` reports entry-condition progress, plus (the findings
+loop, below) `candidates` and `disagreements` counts. Design:
 `docs/design/findings-as-evidence.md`.
+
+**The findings loop** (`docs/vision/30-findings-loop.md`, ADR-040;
+`docs/plans/findings-loop.md`): `import` is the governed entry point for an
+EXTERNAL review kit's own findings — validated against `.fathom/config.toml`'s
+`[findings] subject` (no mapping, no import), deduplicated and ordered by a
+per-claim cursor, capped at the producer's declared tier (`schema/semantic/
+producers.cue`), and never accepted from a `fathom`-origin producer. The
+receipt (`{schema_version, delivered, duplicate, stale, unclassified,
+rejected: [{index, finding_id, reason}], truncated, cursors, dry_run}`)
+exits 1 on any rejection. `candidates` derives rule candidates from
+patterns recurring across `--min-sites` distinct sites (native and
+imported findings together) — a report only; fathom never writes a rule.
+When `.fathom/config.toml` names an `outbox`, the session hook imports it
+once per session and reports the receipt in the brief — see
+`docs/configuration.md`'s findings-loop section and
+`docs/adoption/findings-loop.md` for the end-to-end guide.
 
 ### `memory` — anchored memory (**experimental**)
 

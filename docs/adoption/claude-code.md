@@ -985,10 +985,10 @@ they still work when called off the agent surface (execute, just flagged
 
 ---
 
-## 11. Agent skills — the nine shipped with the binary
+## 11. Agent skills — the ten shipped with the binary
 
 `fathom init --skills[=claude|codex|agents|all|codex-prompts]` installs
-nine shipped, versioned skill sources (`dist/agents/skills/`, embedded in
+ten shipped, versioned skill sources (`dist/agents/skills/`, embedded in
 the binary — no fathom source checkout needed at install time):
 
 ```sh
@@ -996,7 +996,7 @@ bin/fathom init --skills          # bare = all: .agents/skills + .claude/skills
 bin/fathom init --skills=claude   # .claude/skills only
 ```
 
-Or package all nine with the hook template and the MCP registration as a
+Or package all ten with the hook template and the MCP registration as a
 plugin — `fathom plugin render` writes one tree that carries both Claude
 Code's `.claude-plugin/plugin.json` and the Agent Plugins 1.0
 `plugin.json`/`mcp.json` over one `skills/` directory
@@ -1040,6 +1040,11 @@ claude plugin validate --strict fathom-plugin
   falsifiable concerns about the agent config, read `fathom config
   audit`'s evidence, and apply fixes as the session — fathom reports, the
   session edits (§8).
+- **`fathom-findings`** — the findings loop (`docs/vision/30-findings-loop.md`,
+  ADR-040): import an external review kit's outbox, inspect
+  (`findings status`/`near`/`candidates`), refute/corroborate with
+  `fathom claim`, read a receipt honestly, and what fathom never does with
+  an imported finding's authority.
 
 Each is rendered from one authored source into three shapes, selected by
 the `--skills` value:
@@ -1284,7 +1289,7 @@ claim-moment verify), `stop-hook`, `config audit --hook`, `thread`
 the 19-tool agent allowlist (incl. `read_source`, `memory_search`); the
 observatory pages (fleet, service, impact, brief, wiring); the
 `SessionStart`/`SessionEnd`/`PreCompact`/`PostToolUse`/`PreToolUse`/`Stop`
-Claude Code hook wiring; the lefthook pre-push verify gate; the nine
+Claude Code hook wiring; the lefthook pre-push verify gate; the ten
 shipped agent skills (`dist/agents/skills/` — plan, verify, onboard,
-feedback, doctor, impact, rewire, activate, custodian). Update this doc's
-examples and this line when any of these change.
+feedback, doctor, impact, rewire, activate, custodian, findings). Update
+this doc's examples and this line when any of these change.

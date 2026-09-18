@@ -136,6 +136,34 @@ func TestCmdInit_WiresRepoEndToEnd(t *testing.T) {
 		}
 	}
 
+	// .fathom/config.toml (FL-25): scaffolded, every line commented (`#`,
+	// TOML's own comment syntax — guard.cue/modules.cue above are CUE and
+	// use `//`), so the findings-loop [findings] block it documents is
+	// inert until a human uncomments it.
+	{
+		raw, err := os.ReadFile(filepath.Join(dir, ".fathom", "config.toml"))
+		if err != nil {
+			t.Fatalf("reading .fathom/config.toml: %v", err)
+		}
+		s := string(raw)
+		if !strings.Contains(s, "[findings]") {
+			t.Errorf(".fathom/config.toml missing a commented [findings] block:\n%s", s)
+		}
+		for _, want := range []string{"subject", "outbox", "producers"} {
+			if !strings.Contains(s, want) {
+				t.Errorf(".fathom/config.toml missing %q:\n%s", want, s)
+			}
+		}
+		for _, line := range strings.Split(strings.TrimSpace(s), "\n") {
+			if line == "" {
+				continue
+			}
+			if !strings.HasPrefix(strings.TrimSpace(line), "#") {
+				t.Errorf(".fathom/config.toml has an active (non-comment) line: %q\nfull:\n%s", line, s)
+			}
+		}
+	}
+
 	// CLAUDE.md + AGENTS.md carry the same stanza.
 	for _, name := range []string{"CLAUDE.md", "AGENTS.md"} {
 		raw, err := os.ReadFile(filepath.Join(dir, name))
@@ -179,7 +207,7 @@ func TestCmdInit_Idempotent(t *testing.T) {
 		t.Fatalf("first run exit = %d; stdout=%s stderr=%s", code, out1.String(), err1.String())
 	}
 
-	files := []string{".fathomignore", filepath.Join(".claude", "settings.json"), "CLAUDE.md", "AGENTS.md", filepath.Join(".fathom", "guard.cue"), filepath.Join(".fathom", "modules.cue")}
+	files := []string{".fathomignore", filepath.Join(".claude", "settings.json"), "CLAUDE.md", "AGENTS.md", filepath.Join(".fathom", "guard.cue"), filepath.Join(".fathom", "modules.cue"), filepath.Join(".fathom", "config.toml")}
 	before := map[string][]byte{}
 	for _, f := range files {
 		raw, err := os.ReadFile(filepath.Join(dir, f))
@@ -212,6 +240,7 @@ func TestCmdInit_Idempotent(t *testing.T) {
 		"ok AGENTS.md (already present)",
 		"ok .fathom/guard.cue (already present)",
 		"ok .fathom/modules.cue (already present)",
+		"ok .fathom/config.toml (already present)",
 	} {
 		if !strings.Contains(out2Str, want) {
 			t.Errorf("second run stdout missing %q:\n%s", want, out2Str)

@@ -88,10 +88,10 @@ func TestPluginManifestsVet(t *testing.T) {
 		t.Logf("cue not installed — skipping the binary pass (the Go API pass above already ran)")
 	}
 
-	// One skills/ tree, spec-only frontmatter, all nine.
+	// One skills/ tree, spec-only frontmatter, all ten.
 	entries, err := os.ReadDir(filepath.Join(out, "skills"))
-	if err != nil || len(entries) != 9 {
-		t.Fatalf("skills/ = %v (%v), want 9", entries, err)
+	if err != nil || len(entries) != 10 {
+		t.Fatalf("skills/ = %v (%v), want 10", entries, err)
 	}
 	// The two Agent Plugins files agree on the schema version.
 	var pj, mj map[string]any

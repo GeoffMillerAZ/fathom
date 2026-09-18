@@ -328,6 +328,11 @@ tasks:
     cmds:
       - GOWORK=off CGO_ENABLED=1 {{.GO}} run ./cmd/scenariobench run -corpus testdata/scenariobench/guards-m1.json -trials 3 {{.CLI_ARGS}}
 
+  bench-scenario-findings:
+    desc: "COSTS TOKENS — findings loop pilot: arms full vs control, n=3 (FL-24; testdata/scenariobench/findings-loop.json). NOT run by this wave: the CLI it exercises (fathom findings import, the pre-edit 'open findings' block) is built by other waves against docs/plans/findings-loop.md sections A-D."
+    cmds:
+      - GOWORK=off CGO_ENABLED=1 go run ./cmd/scenariobench run -corpus testdata/scenariobench/findings-loop.json -trials 3 {{.CLI_ARGS}}
+
   bench-scenario-pilot:
     desc: "COSTS TOKENS (pilot tier, ~$90-130 — vision 27 §9). Change-bench pilot over the public Go corpus: arms full vs control, 2 trials, 2 sessions/cell (SB-38)."
     cmds:

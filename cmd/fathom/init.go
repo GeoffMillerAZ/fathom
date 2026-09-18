@@ -68,7 +68,7 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
 	binOverride := fs.String("bin", "", "fathom binary path baked into hook commands (default: os.Executable, symlink-resolved)")
 	var skillsFlag optionalStringFlag
-	fs.Var(&skillsFlag, "skills", "install the nine shipped agent skills (fathom-activate/custodian/doctor/feedback/impact/onboard/plan/rewire/verify): claude | codex | agents | all | codex-prompts (bare --skills = all = .agents/skills + .claude/skills; codex = .agents/skills; codex-prompts = the deprecated ~/.codex/prompts twin; omit to skip)")
+	fs.Var(&skillsFlag, "skills", "install the ten shipped agent skills (fathom-activate/custodian/doctor/feedback/findings/impact/onboard/plan/rewire/verify): claude | codex | agents | all | codex-prompts (bare --skills = all = .agents/skills + .claude/skills; codex = .agents/skills; codex-prompts = the deprecated ~/.codex/prompts twin; omit to skip)")
 	seedUserIgnoreFlag := fs.Bool("seed-user-ignore", false, "seed ~/.fathom/ignore with machine-junk defaults (docs/design/scoped-config.md); prints exactly what it writes, never silent, requires this flag")
 	harnessFlag := fs.String("harness", "", "harness to wire (ADR-029): claude-code (default) | codex | gemini-cli | agents | none — init writes only that descriptor's declared vehicles and prints its own `mcp add` line; hooks are wired for claude-code only in this build")
 	hooksScopeFlag := fs.String("hooks-scope", "auto", "Claude Code hook scope: auto (default) skips a fathom hook already wired at ~/.claude/settings.json; project writes every fathom hook at <root>/.claude/settings.json regardless of user scope — required for a clean room or CI harness that loads only project settings (e.g. claude --restricted --settings), which never sees user-scope hooks. Also settable via FATHOM_HOOKS_SCOPE=project.")
@@ -237,7 +237,7 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 		printHarnessManualSteps(stdout, targets, svc, *url)
 	}
 	if skillsMode == "" {
-		fmt.Fprintln(stdout, "MANUAL: install fathom's shipped agent skills (nine; .agents/skills is the Agent Skills standard path, .claude/skills the Claude Code one):")
+		fmt.Fprintln(stdout, "MANUAL: install fathom's shipped agent skills (ten; .agents/skills is the Agent Skills standard path, .claude/skills the Claude Code one):")
 		fmt.Fprintln(stdout, "MANUAL:   fathom init --skills[=claude|codex|agents|all|codex-prompts]")
 	}
 
@@ -431,14 +431,41 @@ func seedUserIgnoreFile(stdout io.Writer) error {
 
 // ─── c2. .fathom/ config scaffolds (guard.cue, modules.cue, capabilities.cue) ──
 
+// findingsConfigTemplate is the project-scope `.fathom/config.toml`
+// scaffold (FL-25, docs/plans/findings-loop.md, vision 30 §7): a single
+// FULLY COMMENTED `[findings]` block — every line an operator would
+// uncomment, one at a time, with a trailing comment naming what it does.
+// Never validated against internal/config's #Config schema (that schema
+// has no `findings` field yet — it is added by the wave that builds
+// FL-9's BindSubject/the importer — so this block stays pure documentation
+// until then; TestWriteStarterConfig_UncommentedProfilesAreValid's fixed
+// block list deliberately does NOT include this one for the same reason).
+// See docs/configuration.md's "The findings loop" section and
+// docs/adoption/findings-loop.md for the end-to-end guide.
+const findingsConfigTemplate = `# fathom project configuration (docs/configuration.md).
+# Precedence: flags > env > project .fathom/config.toml > ~/.fathom/config.toml
+# > built-in defaults.
+
+# --- the findings loop (docs/vision/30-findings-loop.md, ADR-040) ---
+# Binds this repository to a review-kit subject and, optionally, a local
+# outbox file the session hook imports once per session (vision 30 §3.7).
+# Uncomment once a review-kit outbox exists for this repo — see
+# docs/adoption/findings-loop.md.
+# [findings]
+# subject   = "org/repo/component"                 # the provisioned review-kit subject this repo maps to; fathom findings import refuses on any mismatch
+# outbox    = ".reviewkit/outbox/projection.json"   # repo-relative; the session hook imports it once per session when its digest changes from the last import
+# producers = ["reviewkit.system-review"]           # producer ids this repo trusts (schema/semantic/producers.cue's catalog) — an unlisted producer's events are refused
+`
+
 // writeFathomConfigScaffolds creates <root>/.fathom/guard.cue,
-// <root>/.fathom/modules.cue and <root>/.fathom/capabilities.cue
-// with commented, inert example templates if
+// <root>/.fathom/modules.cue, <root>/.fathom/capabilities.cue and
+// <root>/.fathom/config.toml with commented, inert example templates if
 // absent — mirroring writeFathomIgnore's write-if-absent, never-overwrite
-// discipline. Both files are valid, EMPTY CUE as scaffolded (guardspec/
-// bindspec's ExampleTemplate — every worked example is a comment block), so
-// `fathom doctor` sees no active guard/binding until a human uncomments and
-// commits one.
+// discipline. Every one is inert as scaffolded (guardspec/bindspec's
+// ExampleTemplate — every worked example is a comment block; config.toml's
+// own scaffold is 100% `#` comments, a valid empty TOML document), so
+// `fathom doctor` sees no active guard/binding/findings subject until a
+// human uncomments and commits one.
 func writeFathomConfigScaffolds(root string, stdout io.Writer) error {
 	dir := filepath.Join(root, ".fathom")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -451,6 +478,9 @@ func writeFathomConfigScaffolds(root string, stdout io.Writer) error {
 		return err
 	}
 	if err := writeIfAbsent(filepath.Join(dir, "modules.cue"), bindspec.ExampleTemplate(), "modules.cue", stdout); err != nil {
+		return err
+	}
+	if err := writeIfAbsent(filepath.Join(dir, "config.toml"), findingsConfigTemplate, "config.toml", stdout); err != nil {
 		return err
 	}
 	// Phase T: the scaffold teaches the vocabulary without changing any

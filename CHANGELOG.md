@@ -73,6 +73,10 @@ Evidence: `docs/app-kit.md`.
 <!-- fl-wave-1 -->
 - **The findings loop's governed import lands** (ADR-040, `docs/plans/findings-loop.md` FL-1..FL-14): `fathom findings import --store --service --subject --producer --file [--dry-run] [--json]` (and `pkg/client.ImportFindings`, the identical code path) accepts the review kit's projection under a provisioned `[findings] subject`, deriving one content-addressed claim per finding and mapping its lifecycle onto the existing status/event vocabulary instead of inventing a new one. A producer catalog (`schema/semantic/producers.cue`) caps served tier at `min(event tier, producer cap)` and refuses a `fathom`-origin producer outright, closing the circular-proof loophole. Ordering and idempotency are enforced per claim via a new `external_findings` cursor table (additive on both backends), and native review reconciliation (`StaleReviewClaims`) and the external importer stay provably separate reconciliation domains, discriminated by `PromptVersion`.
 <!-- /fl-wave-1 -->
+<!-- fl-wave-5 -->
+- The findings loop (`docs/vision/30-findings-loop.md`, ADR-040): `fathom init` scaffolds a commented `[findings]` section in `.fathom/config.toml`; a new `fathom-findings` skill (import/inspect/refute) and a `fathom-onboard` step document it end to end (`docs/adoption/findings-loop.md`, `docs/configuration.md`). The `fathom findings import`/`fathom findings candidates` CLI verbs it documents are other waves' work (`docs/plans/findings-loop.md` sections A-D) and are not yet present.
+- Measurement corpus `testdata/scenariobench/findings-loop.json` (FL-24, `task bench-scenario-findings`): four tasks, each a real gap this repo's own tree carries, anchored to a review-kit finding served (full arm) or withheld (control arm) — committed only, not run.
+<!-- /fl-wave-5 -->
 
 ### Changed
 

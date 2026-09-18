@@ -144,6 +144,23 @@ today; see the catalog row above). `fathom findings near <symbol|file>` and
 `fathom findings status` are the read-side verbs — see
 `docs/use-cases/incident-investigation.md`.
 
+**External producers (docs/vision/30-findings-loop.md, ADR-040).** A finding
+on this layer need not originate from `fathom compile`: `fathom findings
+import` projects a review kit's own portable journal into the same store,
+under a distinct `PromptVersion` — `external-import/v1` — that keeps native
+review reconciliation (`StaleReviewClaims`, `review-verb/v1`) and the
+importer's own reconciliation from ever touching each other's claims.
+Every producer (`fathom.review`, `reviewkit.system-review`,
+`reviewkit.security-review`, `human.review`, …) is registered in a catalog
+(`schema/semantic/producers.cue`) with a declared `tier_cap`: the served
+tier is `min(event tier, producer cap)` — an imported claim's tier can
+never RISE on import, whatever confidence the source event claims. A
+`fathom`-origin producer named for import is refused outright (`circular:
+native finding already exists as <claim_id>`) — authority never flows
+backwards from a review-kit-imported journal entry to a native finding, or
+from a native finding re-imported as if it were independent corroboration.
+`docs/adoption/findings-loop.md` is the end-to-end guide.
+
 ### `adr-rules` — architectural constraints (the layer-2 proof)
 
 **When to use:** any repo with decision records / design docs whose

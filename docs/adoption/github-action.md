@@ -214,6 +214,39 @@ If any of these does not hold, check the exact `context` string GitHub
 reports on a real PR's Checks tab against §5's JSON — the same byte-for-byte
 requirement `github-rulesets.md` §3 documents.
 
+## 7. Committing the review-kit outbox (optional)
+
+The job above is fathom's OWN PR-comment review. A SEPARATE, optional step —
+in this workflow or another — lets the review kit's own findings reach a
+LATER coding session with no daemon and no network hop: `leadsman review`
+(the review kit's CLI, a peer process, never a fathom dependency — vision
+30 §2) writes its projection outbox, and the workflow commits it back to
+the branch:
+
+```yaml
+      - name: run the review kit and commit its outbox
+        run: |
+          leadsman review --target fathom \
+            --outbox .reviewkit/outbox/projection.json
+          if ! git diff --quiet -- .reviewkit/outbox/projection.json; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add .reviewkit/outbox/projection.json
+            git commit -m "chore(reviewkit): update findings outbox"
+            git push
+          fi
+```
+
+The next `fathom findings import --service S --subject ORG/REPO/COMPONENT
+--file .reviewkit/outbox/projection.json` (by hand, or automatically —
+`docs/configuration.md`'s `[findings] outbox` setting makes the SessionStart
+hook run it once per session) is what actually gets these findings served
+at the edit; committing the outbox only gets them OUT of the CI runner.
+`docs/adoption/findings-loop.md` covers the full loop, including the local
+variant (no CI at all — `leadsman review` then `fathom findings import`
+from a workstation) and every honest failure shape (no subject provisioned,
+an unknown producer, a stale or conflicting replay).
+
 ## What this page does not claim
 
 This is a template and a walkthrough, not a measurement. Whether the

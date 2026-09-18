@@ -186,7 +186,7 @@ a stale memory of the codebase, per the companion adoption guides).
 
 The `fathom-plan` agent skill (installed via `fathom init
 --skills[=claude|codex|all]`, see
-[docs/adoption/claude-code.md §11](claude-code.md#11-agent-skills--the-nine-shipped-with-the-binary))
+[docs/adoption/claude-code.md §11](claude-code.md#11-agent-skills--the-ten-shipped-with-the-binary))
 is the condensed, self-contained version of this section and §3 above — it
 inlines the grammar and this grounding discipline so an agent can scaffold
 a gate-ready plan even in a repo that has never seen fathom's own source.
