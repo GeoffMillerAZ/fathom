@@ -29,7 +29,7 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 	// query_symbols — concern-scoped symbol search.
 	s.registerTool(toolDescriptor{
 		Name:        "query_symbols",
-		Description: "Concern-scoped symbol search. Returns ranked SymbolNodes matching the given concern and optional keywords. Reach for it when you have a topic rather than a name: the concern scopes the index to what is relevant and returns the ranked slice (ADR-006 — the concern is this engine's parameter, not every tool's). Required: service, concern.",
+		Description: "Concern-scoped symbol search. Returns ranked SymbolNodes matching the given concern and optional keywords. Reach for it when you have a topic rather than a name: the concern scopes the index to what is relevant and returns the ranked slice. Required: service, concern.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -39,11 +39,11 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 				},
 				"concern": map[string]any{
 					"type":        "string",
-					"description": "Concern ID to scope the query (e.g. \"authentication\"). Alias: \"symbol\" (additive — same field, either name works; both may be given only if they agree).",
+					"description": "Concern ID to scope the query (e.g. \"authentication\"). Alias: \"symbol\" (same field; give only one, or both if they agree).",
 				},
 				"symbol": map[string]any{
 					"type":        "string",
-					"description": "Alias for \"concern\" (P1-1: the hot-tool quartet's primary argument is named differently per tool; this lets a caller reuse the same field name across all four).",
+					"description": "Alias for \"concern\" — the hot-tool quartet names this argument differently per tool; reuse the same field across all four.",
 				},
 				"keywords": map[string]any{
 					"type":        "array",
@@ -115,7 +115,7 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 	// find_callers — k-hop callers of a symbol.
 	s.registerTool(toolDescriptor{
 		Name:        "find_callers",
-		Description: "Find every symbol that calls the named symbol in one service. Returns only RESOLVED callers by default (edges the Go typed pass confirmed); include_heuristic: true adds the syntax-only ones back. Each caller is rendered compact for the wire (SB-47, like references' SB-1): {loc: \"file:line name\", c: \"r\"|\"h\"} — no signature unless with_signatures: true — with service/tier/depth/edge_confidence lifted to the envelope (caller_service, caller_tier, caller_depth, caller_edge_confidence) whenever every listed caller shares one, which the direct \"callers\" list almost always does. edge_filter names which evidence answered, and a corpus with no typed edges falls back to \"all\". depth > 1 adds transitive_callers (full {key,depth,edge_confidence} rows, uncompacted); by_depth summarises. This result IS the answer for who calls this symbol at the requested depth — a follow-up call only helps to walk further (raise depth), add the heuristic edges this default omits (include_heuristic: true), or get full signatures (with_signatures: true), never to re-confirm what a resolved edge already settled. Budgeted; the elision line names the refinement (package or file). A fan-in too large to page through at all returns scope_required: true with the count and top_packages instead of rows. Reach for it when you need who-calls-this before changing a signature. Required: service, symbol.",
+		Description: "Find every symbol that calls the named symbol in one service. Returns only RESOLVED callers by default; include_heuristic: true adds syntax-only ones back. This result IS the answer for who calls this symbol at the requested depth; a follow-up call only helps to walk further (raise depth) or add heuristic edges. Reach for it when you need who-calls-this before changing a signature. Required: service, symbol.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -129,7 +129,7 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 				},
 				"depth": map[string]any{
 					"type":        "integer",
-					"description": "Reverse-graph depth to walk (default 1 = direct callers only). Values above 1 add transitive_callers (depth 2..N) and extend by_depth; 0 = unbounded.",
+					"description": "Reverse-graph depth to walk (default 1 = direct callers only); 0 = unbounded.",
 				},
 				"include_heuristic": map[string]any{
 					"type":        "boolean",
@@ -137,7 +137,7 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 				},
 				"with_signatures": map[string]any{
 					"type":        "boolean",
-					"description": "SB-47: include each caller's full signature (\"sig\") on the wire row. Default false — the compact {loc, c} shape omits it.",
+					"description": "Include each caller's full signature on the wire row. Default false.",
 				},
 			},
 			"required": []string{"service", "symbol"},
@@ -374,7 +374,7 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 	// find_symbol — locate a symbol definition.
 	s.registerTool(toolDescriptor{
 		Name:        "find_symbol",
-		Description: "Locate symbol definitions by name, with tiered matching: exact/key-suffix first, then case-insensitive, then substring; a full miss returns did_you_mean suggestions (edit-distance typo candidates, else concern-ranked) when any exist. matched_via reports which tier answered — treat the result as proof the named symbol exists only when it is exact or case_insensitive. An exact hit on a Go interface additionally carries implementations: [{name, file_path, line, via}] — via is \"typed\" (a real call-graph dispatch edge), \"assertion\" (a var _ Iface = (*T)(nil) in source), or \"method_set\" (structural match), in that order of preference. This result IS the answer once matched_via is exact or case_insensitive — file and line are settled; a follow-up call only adds what find_symbol itself does not carry: the neighbourhood (symbol_context) or call sites (find_callers, references). Reach for it when you know (roughly) a name and need its definition's file and line before reading or editing — the first move of almost every task. Required: service, name.",
+		Description: "Locate symbol definitions by name, with tiered matching: exact/key-suffix first, then case-insensitive, then substring; a full miss returns did_you_mean suggestions when any exist. This result IS the answer once matched_via is exact or case_insensitive; a follow-up call only adds the neighbourhood (symbol_context) or call sites (find_callers, references). Reach for it when you know (roughly) a name and need its definition's file and line before reading or editing — the first move of almost every task. Required: service, name.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -384,11 +384,11 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 				},
 				"name": map[string]any{
 					"type":        "string",
-					"description": "Symbol name (bare or fully-qualified; exact spelling not required). Alias: \"symbol\" (additive — same field, either name works; both may be given only if they agree).",
+					"description": "Symbol name (bare or fully-qualified; exact spelling not required). Alias: \"symbol\" (same field; give only one, or both if they agree).",
 				},
 				"symbol": map[string]any{
 					"type":        "string",
-					"description": "Alias for \"name\" (P1-1: the hot-tool quartet's primary argument is named differently per tool; this lets a caller reuse the same field name across all four).",
+					"description": "Alias for \"name\" — the hot-tool quartet names this argument differently per tool; reuse the same field across all four.",
 				},
 			},
 			"required": []string{"service", "name"},

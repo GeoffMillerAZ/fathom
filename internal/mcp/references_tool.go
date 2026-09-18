@@ -201,17 +201,17 @@ func renderReferenceOccurrence(o occEntry, includeService bool) referenceOccurre
 func registerReferences(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "references",
-		Description: "Fleet-wide occurrence search: find every mention of a query string across code, docs, and config for one or more services. query must be an identifier (\"FindMe\"), a dotted path (\"pkg.Sym\" or \"Type.Method\"), or a declared regular expression (regex: true) — a free-text fragment (e.g. \"func (s *\") is refused, naming the three accepted forms. Returns structured occurrences (text matches, tier=pre-scan) plus symbol definitions found in the index (tier from the symbol's own evidence tier). Definitions are exact-name matches by default; include_heuristic: true also lists symbols whose name merely contains the query. Each occurrence is rendered compact for the wire — {loc: \"file:line\", text (trimmed to 60 chars), c: \"r\"|\"h\"} at 100 bytes or under — with service, tier (always pre-scan) and depth (always 1) lifted to the envelope (occurrence_service, occurrence_tier, occurrence_depth) when uniform across every occurrence rather than repeated per row; a search whose results span several services keeps a per-row \"svc\" instead. Definitions keep the fuller {service,symbol,file,line,tier,depth,edge_confidence} shape. Default max is 25 occurrences; the elided block names how to get more. Every row carries depth (0 = a definition, 1 = a mention) and edge_confidence (resolved = the mention's enclosing symbol has a typed call edge to the definition, or the definition is at the verified tier; heuristic = text match only), summarised in by_depth. SB-45: occurrences default to `exact` mode whenever a queried service's last ingest reported typed edges (see staleness_report's typed_edges) — only typed-confirmed (edge_confidence: resolved) mentions are returned, dropping bare text hits; `exact: false` restores every text occurrence regardless of confirmation. `include_heuristic: true` adds the syntax-only text hits back beside the exact ones without turning exact off. A service whose store holds no typed reference sites for this query (no typed edges, or no indexed definition of it there) is named in `degraded` with why and falls back to its unfiltered occurrences, and the response reports `exact_available: false`. A service whose root is unreadable (deleted, unmounted) is likewise named in `degraded` and skipped rather than failing the whole call. A definition fan-in too large to page through at all (a generic name across many packages/services) returns scope_required: true with the count and top_packages instead of rows. Reach for it when you need every place a name appears — docs and config included — not just the call graph. Required: query.",
+		Description: "Fleet-wide occurrence search across code, docs, and config for one or more services. query must be an identifier, a dotted path, or a regex (regex: true) — a free-text fragment is refused. Returns occurrences (text matches) plus symbol definitions; occurrences default to exact mode (typed-confirmed only) when a service has typed edges, widen with include_heuristic/exact: false, and a fan-in too large to page returns scope_required: true. Reach for it when you need every place a name appears — docs and config included — not just the call graph. Required: query.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"query": map[string]any{
 					"type":        "string",
-					"description": "String to search for: an identifier, a dotted path (\"pkg.Sym\" or \"Type.Method\"), or a regex (with regex: true). Alias: \"symbol\" (additive — same field, either name works; both may be given only if they agree).",
+					"description": "String to search for: an identifier, a dotted path, or a regex (regex: true). Alias: \"symbol\" (same field; give only one, or both if they agree).",
 				},
 				"symbol": map[string]any{
 					"type":        "string",
-					"description": "Alias for \"query\" (P1-1: the hot-tool quartet's primary argument is named differently per tool; this lets a caller reuse the same field name across all four).",
+					"description": "Alias for \"query\" — the hot-tool quartet names this argument differently per tool; reuse the same field across all four.",
 				},
 				"services": map[string]any{
 					"type":        "array",
@@ -236,11 +236,11 @@ func registerReferences(s *Server, backend QueryInterface) {
 				},
 				"include_heuristic": map[string]any{
 					"type":        "boolean",
-					"description": "Also list definitions whose name merely CONTAINS the query (\"FooBar\" for \"Foo\"), and (SB-45) add back the bare text occurrences exact mode drops. Default false.",
+					"description": "Also list definitions whose name merely contains the query, and add back the bare text occurrences exact mode drops. Default false.",
 				},
 				"exact": map[string]any{
 					"type":        "boolean",
-					"description": "SB-45: keep only occurrences the typed pass confirmed (edge_confidence: resolved) — identifier uses, never a comment or doc mention. Defaults to true when at least one queried service's last ingest reported typed edges (staleness_report's typed_edges); false restores every text occurrence. A service with no typed reference sites for this query falls back automatically and is named in degraded.",
+					"description": "Keep only occurrences the typed pass confirmed. Defaults to true when a service's typed pass has edges; false restores every text occurrence.",
 				},
 			},
 			"required": []string{"query"},

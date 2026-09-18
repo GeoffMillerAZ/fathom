@@ -414,11 +414,8 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 	// obligations: return the compiled rules governing a file at decision time.
 	// Returns empty rules when no rules apply (zero-output-on-clean contract).
 	s.registerTool(toolDescriptor{
-		Name: "obligations",
-		Description: "Return compiled obligations (governing rules) for a file at decision time, or — with no file and no action — the root-scope rules that answer \"what governs this repository\" (RC-22): the compiled layer's rules whose scope reaches the repo root / CLAUDE.md level, budgeted the same way, with root:true and a note to pass file for file-scoped rules. Empty rules with index_stale:false means a clean file. " +
-			"layer (VB-9, ADR-035 decision 2) selects WHICH claims answer: \"rules\" (default) is human-authored governing rules only — CLAUDE.md/AGENTS.md, ADR invariants, docs/intent — the \"what governs this file\" question; \"claims\" is plan-row bindings ONLY, bound strictly by a row's own {symbol, package} contract (a row naming no contract binds to nothing, never by prose keyword) — the \"what plan rows claim this file\" question, a different reader; \"all\" is the pre-VB-9 union of both, prose fallback included for a non-plan-row corpus (findings/**). The response echoes the layer actually served. " +
-			"Each rule carries a layer label (which manifest layer compiled it) and, when federated in from a bound platform module (docs/design/platform-modules.md), a module label naming it. displaced:N (when present) is the total count of served-eligible rules a cap dropped this call (the 6-rule MaxObligations cap plus, rarely, a 16KB payload-size cut); displaced_by_tier breaks that count out by governing-scope proximity (\"exact_file\"/\"package\"/\"parent_dir\"/\"root\") so a dropped root-level catch-all reads differently from a dropped package rule; displaced_repo/displaced_module split it once a module binding is configured. module_notes (when present) names any bound module this daemon does not have mounted — never silent. This result IS the answer for which rules govern this file (or the repository) right now — a follow-up call only helps once the file or the rule set changes, or to record a verdict via action. " +
-			"Also serves the claim feedback write path (D2): pass action:\"refute\"|\"corroborate\" with claim_id and note instead of file to record a verdict — refute flips the claim's status and stops it serving; corroborate never changes status or tier. `path` is accepted as an alias for `file` (O82) so a caller reaching for the more common name never silently gets root-scope rules instead; `file` wins when both are given. Reach for it when you are about to edit a file and the hook did not run (a harness without PostToolUse hooks), to ask what governs the whole repository, or to record a verdict on a served claim. Required: service.",
+		Name:        "obligations",
+		Description: "Return compiled obligations (governing rules) for a file at decision time, or — with no file — the root-scope rules answering \"what governs this repository\". Empty rules with index_stale:false means a clean file; layer picks which claims answer (rules/claims/all). This result IS the answer for which rules govern this file right now; a follow-up call only helps once the file/rules change, or to record a verdict via action:\"refute\"|\"corroborate\" (with claim_id/note, instead of file). Reach for it when you are about to edit a file and the hook did not run, or to ask what governs the repository. Required: service.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -428,16 +425,16 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 				},
 				"file": map[string]any{
 					"type":        "string",
-					"description": "Repo-relative file path being edited. Omit (with no action) for root-scope obligations — \"what governs this repository\" — instead of an error.",
+					"description": "Repo-relative file path being edited. Omit for root-scope obligations — \"what governs this repository\".",
 				},
 				"path": map[string]any{
 					"type":        "string",
-					"description": "Alias for `file` (wave P3 / O82): a caller that passed `path` instead of `file` used to silently fall back to root-scope rules only. `file` wins when both are given.",
+					"description": "Alias for `file`. `file` wins when both are given.",
 				},
 				"layer": map[string]any{
 					"type":        "string",
 					"enum":        []string{"rules", "claims", "all"},
-					"description": "Which claims to serve (VB-9): \"rules\" (default) is human-authored governing rules only; \"claims\" is plan-row bindings bound strictly by their own {symbol, package} contract; \"all\" is the pre-VB-9 union of both.",
+					"description": "Which claims to serve: \"rules\" (default) governing rules only; \"claims\" plan-row bindings by {symbol,package}; \"all\" the union.",
 				},
 				"max_rules": map[string]any{
 					"type":        "integer",
@@ -445,12 +442,12 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 				},
 				"include_snippets": map[string]any{
 					"type":        "boolean",
-					"description": "Inline each rule's cited lines as snippet, capped at 240 bytes (default true). Set false for the smallest possible payload.",
+					"description": "Inline each rule's cited lines, capped at 240 bytes (default true). Set false for the smallest payload.",
 				},
 				"action": map[string]any{
 					"type":        "string",
 					"enum":        []string{"refute", "corroborate"},
-					"description": "Feedback verb (D2): when set, this call records a claim_events verdict instead of looking up rules. Requires claim_id and note.",
+					"description": "Feedback verb: when set, this call records a claim_events verdict instead of looking up rules. Requires claim_id and note.",
 				},
 				"claim_id": map[string]any{
 					"type":        "string",

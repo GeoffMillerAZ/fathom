@@ -37,6 +37,9 @@ Release impact: minor (pre-1.0: breaking bumps minor)
 
 ### Changed
 
+<!-- fl-wave-10 -->
+- Agent-surface tool descriptions now carry only what a caller needs to call correctly — one opening sentence, at most two sentences on the result shape (budget/elision, tiers, checked:false), the "Reach for it when …" routing sentence, and "Required: …"; plan-row ids, ADR cross-references, and migration notes moved to `docs/mcp-tools.md` (nothing lost, address only), and the five tools whose result can be definitive (`find_symbol`, `find_callers`, `symbol_context`, `verify_plan`, `obligations`) keep a short "this result IS the answer" stop sentence (SB-4). Argument schemas are unchanged, pinned by a pre-diet golden. Measured `tools/list` schema bytes: 60,918 → 47,480 (still 25 tools); `agentSurfaceSchemaByteCeiling` re-pinned to 49,480.
+<!-- /fl-wave-10 -->
 - `find_callers`/`blast_radius` return only edges the Go typed pass resolved by default (heuristic edges behind `include_heuristic: true`); `references`' definition half gets the same treatment; every row carries `edge_confidence` and each response names `edge_filter`.
 - `blast_radius` defaults to a depth cap of 2 and a 500-symbol listing cap (both overridable, reported alongside `total_symbols`/`truncated`/`depth_capped`); `diff_impact` stays the unbounded both-kinds walk for PR review.
 - `references` defaults to `exact: true` where the service has typed edges (text mentions behind `include_heuristic`), renders one occurrence under 100 bytes (default cap 25), and refuses a query that is not an identifier, a dotted path, or a declared regex.
