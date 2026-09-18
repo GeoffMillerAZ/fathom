@@ -151,6 +151,25 @@ func TestFindingsLoopCorpusParses(t *testing.T) {
 			t.Errorf("task %s: no rule.id — a findings-loop task must cite the finding it is testing", task.ID)
 			continue
 		}
+		if task.Rule.ID == "none" {
+			// A control-shaped task (vision 27 §1): the treatment arm must
+			// predict no effect, and no outbox event may anchor to a file the
+			// task's own oracle touches — otherwise "no effect" is a guess,
+			// not a structural fact.
+			if !isNoEffectPrediction(task.Predictions["full"]) {
+				t.Errorf("task %s: rule.id none but the full arm does not predict no effect", task.ID)
+			}
+			for _, det := range task.Oracle.Detectors {
+				for _, path := range goPathsIn(det.Command) {
+					for i := range events {
+						if events[i].Anchor.Path == path {
+							t.Errorf("task %s: rule.id none but outbox event %s anchors to %s, which the oracle touches", task.ID, events[i].Rule.ID, path)
+						}
+					}
+				}
+			}
+			continue
+		}
 
 		var matched *findingsLoopEvent
 		for i := range events {
@@ -221,3 +240,14 @@ func TestFindingsLoopCorpusParses(t *testing.T) {
 		t.Errorf("findings-loop.json: only %d distinct rule ids were exercised by a task, want >= 4 (FL-24's >=4-task floor)", len(seenRuleIDs))
 	}
 }
+
+// goPathsIn returns every repo-relative .go path a detector command names.
+func goPathsIn(command string) []string {
+	var out []string
+	for _, m := range goPathRe.FindAllString(command, -1) {
+		out = append(out, strings.ReplaceAll(m, `\\.go`, ".go"))
+	}
+	return out
+}
+
+var goPathRe = regexp.MustCompile(`[A-Za-z0-9_./-]+(?:\\\\)?\.go`)
