@@ -95,6 +95,10 @@ func init() {
 			".cjs": jsVariant,
 			".ts":  tsVariantTS,
 			".tsx": tsVariantTSX,
+			// J1 (app-kit O18/O32/O33): the TypeScript module-system pair —
+			// plain TS syntax, same grammar/query set as .ts, never JSX.
+			".mts": tsVariantTS,
+			".cts": tsVariantTS,
 		},
 		defaultVariant: jsVariant,
 		methodSep:      ".",
@@ -569,20 +573,29 @@ func attachTSCalls(defs []*tsDef, calls []tsCallSite) {
 // original heuristic/CGO path are out of scope for this map.
 //
 // Only extensions the connector actually discovers AND fusion registers are
-// claimed (critic M3): .pyi/.mjs/.cjs are parseable by this engine (the
-// tsVariant table maps them) but the connector's ext->kind registry and
-// fusion.New's dispatch don't know them, so no such file ever reaches an
-// extractor — claiming them here would be provenance for an index entry
-// that cannot exist. Registering those extensions is a deliberate
-// scope-addition for a future slice (connector + fusion + tests together),
-// at which point they join this map.
+// claimed (critic M3): .pyi is parseable by this engine (the tsVariant
+// table maps it) but the connector's ext->kind registry and fusion.New's
+// dispatch don't know it, so no such file ever reaches an extractor —
+// claiming it here would be provenance for an index entry that cannot
+// exist. Registering it is a deliberate scope-addition for a future slice.
+//
+// .mjs/.cjs/.mts/.cts (J1, app-kit O18/O32/O33) joined this map once THAT
+// future slice landed: connector.extClassMap classifies them, fusion.New
+// dispatches them to this same "javascript" TSExtractor, and
+// TestTSExtractor_MjsExports/_CjsModuleExports/_MtsCtsRouting plus
+// TestIngest_MjsCjsMtsCtsSymbolsIndexed (internal/fusion) pin real symbols
+// indexed end to end.
 func EngineProvenance() map[string]string {
 	return map[string]string{
 		".py":  "tree-sitter-wasm",
 		".js":  "tree-sitter-wasm",
 		".jsx": "tree-sitter-wasm",
+		".mjs": "tree-sitter-wasm",
+		".cjs": "tree-sitter-wasm",
 		".ts":  "tree-sitter-wasm",
 		".tsx": "tree-sitter-wasm",
+		".mts": "tree-sitter-wasm",
+		".cts": "tree-sitter-wasm",
 		".rb":  "tree-sitter-wasm",
 		".kt":  "tree-sitter-wasm",
 		".kts": "tree-sitter-wasm",
