@@ -70,22 +70,14 @@ Evidence: `docs/app-kit.md`.
 - `fathom compile --max-tokens-per-run`/`--max-usd-per-run` overrides a resolved layer's budget for one compile call (a positive number or `"all"` for unlimited).
 - `review_diff`/`fathom review` and `fathom tests coverage` accept one Go coverage profile per test layer (`coverage_profiles: [{layer, path}]` / repeatable `--coverage-profile [layer=]<file>`), reporting per-changed-symbol coverage broken out by layer instead of one blended number.
 - `read_source` gains `max_bytes` (default 8KB); `find_symbol` on a Go interface carries `implementations`.
-<!-- fl-wave-1 -->
 - **The findings loop's governed import lands** (ADR-040, `docs/plans/findings-loop.md` FL-1..FL-14): `fathom findings import --store --service --subject --producer --file [--dry-run] [--json]` (and `pkg/client.ImportFindings`, the identical code path) accepts the review kit's projection under a provisioned `[findings] subject`, deriving one content-addressed claim per finding and mapping its lifecycle onto the existing status/event vocabulary instead of inventing a new one. A producer catalog (`schema/semantic/producers.cue`) caps served tier at `min(event tier, producer cap)` and refuses a `fathom`-origin producer outright, closing the circular-proof loophole. Ordering and idempotency are enforced per claim via a new `external_findings` cursor table (additive on both backends), and native review reconciliation (`StaleReviewClaims`) and the external importer stay provably separate reconciliation domains, discriminated by `PromptVersion`.
-<!-- /fl-wave-1 -->
-<!-- fl-wave-5 -->
 - The findings loop (`docs/vision/30-findings-loop.md`, ADR-040): `fathom init` scaffolds a commented `[findings]` section in `.fathom/config.toml`; a new `fathom-findings` skill (import/inspect/refute) and a `fathom-onboard` step document it end to end (`docs/adoption/findings-loop.md`, `docs/configuration.md`). The `fathom findings import`/`fathom findings candidates` CLI verbs it documents are other waves' work (`docs/plans/findings-loop.md` sections A-D) and are not yet present.
 - Measurement corpus `testdata/scenariobench/findings-loop.json` (FL-24, `task bench-scenario-findings`): four tasks, each a real gap this repo's own tree carries, anchored to a review-kit finding served (full arm) or withheld (control arm) — committed only, not run.
-<!-- /fl-wave-5 -->
-<!-- fl-wave-4 -->
 - Findings served at the point of work (ADR-040, docs/vision/30-findings-loop.md §3.4): the pre/post-edit hook's "open findings on this file" advisory block (capped at 3 findings/1,200 bytes, drifted anchors flagged, superseded/refuted never shown, post-edit gated on the edit actually touching the finding's cited lines); the prompt hook's `open findings: N across the files this prompt names`; the session brief's `open findings: N (oldest …)` (a new plain `GET /findings/summary` daemon route, never an MCP tool); the session hook's outbox sync (`[findings] outbox` in `.fathom/config.toml`, a sha256 digest cursor, one attempt per session); `fathom findings candidates [--min-sites 3] [--json]` (rule candidates derived from `DerivePatterns`, native and external findings alike, with a drafted rule sentence and its ADR-038 check family — fathom never writes the rule); `findings status` gains `candidates` and `disagreements_by_rule`.
-<!-- /fl-wave-4 -->
 
 ### Changed
 
-<!-- fl-wave-10 -->
 - Agent-surface tool descriptions now carry only what a caller needs to call correctly — one opening sentence, at most two sentences on the result shape (budget/elision, tiers, checked:false), the "Reach for it when …" routing sentence, and "Required: …"; plan-row ids, ADR cross-references, and migration notes moved to `docs/mcp-tools.md` (nothing lost, address only), and the five tools whose result can be definitive (`find_symbol`, `find_callers`, `symbol_context`, `verify_plan`, `obligations`) keep a short "this result IS the answer" stop sentence (SB-4). Argument schemas are unchanged, pinned by a pre-diet golden. Measured `tools/list` schema bytes: 60,918 → 47,480 (still 25 tools); `agentSurfaceSchemaByteCeiling` re-pinned to 49,480.
-<!-- /fl-wave-10 -->
 - `find_callers`/`blast_radius` return only edges the Go typed pass resolved by default (heuristic edges behind `include_heuristic: true`); `references`' definition half gets the same treatment; every row carries `edge_confidence` and each response names `edge_filter`.
 - `blast_radius` defaults to a depth cap of 2 and a 500-symbol listing cap (both overridable, reported alongside `total_symbols`/`truncated`/`depth_capped`); `diff_impact` stays the unbounded both-kinds walk for PR review.
 - `references` defaults to `exact: true` where the service has typed edges (text mentions behind `include_heuristic`), renders one occurrence under 100 bytes (default cap 25), and refuses a query that is not an identifier, a dotted path, or a declared regex.
@@ -99,9 +91,7 @@ Evidence: `docs/app-kit.md`.
 - `core.SymbolNode.EndLine` is now set by the Go extractor and most tree-sitter/AST-backed extractors, not only Markdown; `outline`/`query_symbols`/`symbol_context` render `end_line` for these symbols.
 - Every Claude Code MCP entry fathom writes now sets `alwaysLoad: true`, avoiding a wasted `ToolSearch` turn per session on a headless run.
 - The CGO Java extractor now also emits field and import declarations; `ExtractorEpoch` bumps 6→7, forcing re-extraction of every already-indexed `.java` file on next ingest.
-<!-- fl-wave-9 -->
 - `fathom review --format github`'s "Changed symbols" caller listing now walks to depth 2 (direct callers plus callers-of-callers), labeled `[tier, depth N]`, instead of stopping at direct callers only; call-site completeness counts stay direct-callers-only. Moved the M15/VB-24 historical-PR recall bench from 5/42 (11.9%) to 6/42 (14.3%) with 0 regressions and 0 false findings — still well short of the row's 30% floor (`docs/bench/readings/review-recall-loop-2026-09-18.md`).
-<!-- /fl-wave-9 -->
 
 ### Fixed
 
@@ -115,9 +105,7 @@ Evidence: `docs/app-kit.md`.
 - `fathom compile`'s `max_usd_per_run <= 0` now means unlimited, matching `max_tokens_per_run`'s own convention.
 - `internal/guardspec.LoadGuards` no longer rejects a `forbidden_paths`-only guard as "governing nothing".
 
-<!-- fl-wave-3 -->
 `fathom review` gains an explicit `--mode report|persist` (`--no-persist` is now an alias for `--mode report`), `--manifest FILE` for an explicit changed-path digest set (mutually exclusive with `--since`; a current-content mismatch refuses with `manifest mismatch: <path>` and exit 2), `--idempotency-key` (a repeated key with the same request replays the recorded response from the new additive `review_runs` store table and writes nothing else; a different request under the same key refuses), and `--expect-index-watermark` (a mismatch sets `stale_index: true` and refuses persist while still running every dimension); `--json` now emits a versioned `ReviewResponse` envelope (`schema_version`, `producer`, `inputs` fingerprints, `coverage{complete,unknown}`, `truncated`/`stale_index`/`cancelled`, `unanchored_paths` for a changed process-subject path the index has no symbol for) around the unchanged `Verdict`; `review_diff` (MCP) is untouched beyond an additive `schema_version`. New `fathom review-key --service S (--since REF | --manifest FILE) [--prior FILE] [--json]` and `pkg/client.ReviewKey` compute one sha256 token (`internal/analysis/reviewkey`) over a changed-path manifest, the typed dependency closure (reusing the existing typed call graph, never a new import parser), the project's rule pack/`guard.cue`/layer manifests, `docs/plans/**`, tooling identity, and index watermarks — `complete: false` plus a named `unknown[]` entry whenever any of those inputs could not be verified, and `changed_since_prior[]` against a supplied prior key.
-<!-- /fl-wave-3 -->
 
 ## [0.8.0] -- 2026-09-02
 
