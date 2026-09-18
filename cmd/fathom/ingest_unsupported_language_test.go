@@ -22,8 +22,10 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
-const swiftSrcFixture = "import Foundation\n\nfunc main() {}\n"
-const kotlinSrcFixture = "package com.example\n\nfun main() {}\n"
+const (
+	swiftSrcFixture  = "import Foundation\n\nfunc main() {}\n"
+	kotlinSrcFixture = "package com.example\n\nfun main() {}\n"
+)
 
 func TestIngestReportNamesUnsupportedLanguages(t *testing.T) {
 	conn := &wedgedConnector{

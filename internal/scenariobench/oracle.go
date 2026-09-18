@@ -384,7 +384,16 @@ func tokenCounts(text, tok string) bool {
 		}
 		strippedStart := start + idx
 		pos := origPos[strippedStart]
-		if !isQuotedPosition(text, pos) && !clauseIsNegated(text, pos) {
+		// A token ending in a digit (every "file#L<n>" citation) counts
+		// only where the next byte is not a digit: "CLAUDE.md#L10" must
+		// never score an answer that cited "CLAUDE.md#L100".
+		digitContinues := false
+		if lowerTok[len(lowerTok)-1] >= '0' && lowerTok[len(lowerTok)-1] <= '9' {
+			if next := strippedStart + len(lowerTok); next < len(strippedText) && strippedText[next] >= '0' && strippedText[next] <= '9' {
+				digitContinues = true
+			}
+		}
+		if !digitContinues && !isQuotedPosition(text, pos) && !clauseIsNegated(text, pos) {
 			return true
 		}
 		start = strippedStart + 1

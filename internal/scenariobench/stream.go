@@ -486,7 +486,8 @@ func parseBoxCheckAnnotation(line string) (rowID, symbol, pkg, oracle, path, pat
 // is 0 out, never a guess.
 func sumModelUsageCost(usage map[string]struct {
 	CostUSD float64 `json:"costUSD"`
-}) float64 {
+},
+) float64 {
 	var sum float64
 	for _, u := range usage {
 		sum += u.CostUSD

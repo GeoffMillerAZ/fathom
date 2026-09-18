@@ -225,13 +225,12 @@ func checkAnchor(root string, a TruthAnchor) error {
 		if !strings.HasSuffix(a.Token, strconv.Itoa(line)) {
 			return fmt.Errorf("token %q must cite line %d of %s (where %q now begins) — the ground truth is false at HEAD", a.Token, line, a.File, a.Needle)
 		}
-		// The substring hole: a token that is also a substring of another
-		// line's citation would score a wrong answer as right.
-		prefix := strings.TrimSuffix(a.Token, strconv.Itoa(line))
-		for n := 1; n <= len(lines); n++ {
-			if n != line && strings.Contains(prefix+strconv.Itoa(n), a.Token) {
-				return fmt.Errorf("token %q is a substring of the citation for line %d as well as line %d — ambiguous; choose a form that is not", a.Token, n, line)
-			}
+		// The substring hole ("CLAUDE.md#L10" inside "CLAUDE.md#L100") is
+		// closed at the scorer: tokenPresent refuses a digit continuation,
+		// so a line citation can never score a longer line's citation.
+		// Pin that here so the corpus never silently depends on it.
+		if tokenPresent(a.File+"#L"+strconv.Itoa(line)+"0", a.Token) {
+			return fmt.Errorf("token %q would still match the citation for line %d0 — the scorer's digit-boundary rule is broken", a.Token, line)
 		}
 		return nil
 	case AnchorHeading:
@@ -268,7 +267,8 @@ func pinnedAnchorFixtureRepo(t *testing.T) (root, baseCommit string) {
 		t.Helper()
 		cmd := exec.Command("git", args...)
 		cmd.Dir = dir
-		cmd.Env = append(os.Environ(),
+		cmd.Env = append(
+			os.Environ(),
 			"GIT_AUTHOR_NAME=test", "GIT_AUTHOR_EMAIL=test@example.invalid",
 			"GIT_COMMITTER_NAME=test", "GIT_COMMITTER_EMAIL=test@example.invalid",
 		)

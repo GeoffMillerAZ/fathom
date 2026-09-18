@@ -188,7 +188,10 @@
         "ADR-021"
       ],
       "answer_any_of": [
-        ["core.Edge", "Edge struct"]
+        [
+          "core.Edge",
+          "Edge struct"
+        ]
       ],
       "scoring_rule": "all-of",
       "exercises": [
@@ -452,7 +455,7 @@
       "category": "what_governs",
       "prompt": "In the fathom repo, which repository-root convention governs where code and commands that emit files must place their output by default? Cite the line on which that rule's row begins, in the citation form `<file>#L<n>` (e.g. `docs/example.md#L7`).",
       "ground_truth": [
-        "CLAUDE.md#L15"
+        "CLAUDE.md#L10"
       ],
       "scoring_rule": "exact-match",
       "exercises": [
@@ -464,7 +467,7 @@
       "notes": "Reworked in the critic round (D3): the original asked which rule the compiler scoped UNIQUELY to engine.go vs goextract.go — a compile-time LLM scope decision not derivable from any on-disk text (rigged for the fathom arm), and its ground truth used fathom's native citation format ('CLAUDE.md#L29') that a correct grep answer ('CLAUDE.md line 29') would fail. The rework anchors the question and both ground truths to on-disk text reachable by either arm, which also removes the task's recompile exposure.",
       "truth_at_head": [
         {
-          "token": "CLAUDE.md#L15",
+          "token": "CLAUDE.md#L10",
           "kind": "line",
           "file": "CLAUDE.md",
           "needle": "**workspace/** — ALL build artifacts"
@@ -560,7 +563,7 @@
       "prompt": "A rule governing internal/core/model.go reads 'Maintain shared types in `internal/core` and extend them additively.', cited to CLAUDE.md#L83-L84. (a) Check whether CLAUDE.md#L83-L84 still contains this rule's text at the current HEAD; answer in exactly the form 'verdict: stale' or 'verdict: fresh'. (b) If it moved, cite the line on which the rule's text actually appears today, in the citation form `<file>#L<n>` (e.g. `docs/example.md#L7`).",
       "ground_truth": [
         "verdict: stale",
-        "CLAUDE.md#L48"
+        "CLAUDE.md#L41"
       ],
       "scoring_rule": "all-of",
       "exercises": [
@@ -580,10 +583,10 @@
           "why": "the answer form the prompt prescribes; the fact it encodes is that CLAUDE.md#L83-L84 no longer carries the rule's text (it is the index-first stanza at HEAD)"
         },
         {
-          "token": "CLAUDE.md#L48",
+          "token": "CLAUDE.md#L41",
           "kind": "line",
           "file": "CLAUDE.md",
-          "needle": "The domain model is the keystone",
+          "needle": "**Domain model**: shared types in `internal/core`",
           "why": "where the rule's text lives at HEAD, now that CLAUDE.md#L83-L84 no longer carries it"
         }
       ]

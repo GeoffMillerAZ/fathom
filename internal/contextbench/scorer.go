@@ -34,7 +34,7 @@ type ScoreResult struct {
 func Score(task Task, output string) ScoreResult {
 	var matched, missing []string
 	for _, want := range task.GroundTruth {
-		if strings.Contains(output, want) {
+		if tokenPresent(output, want) {
 			matched = append(matched, want)
 		} else {
 			missing = append(missing, want)
@@ -43,7 +43,7 @@ func Score(task Task, output string) ScoreResult {
 	for _, group := range task.AnswerAnyOf {
 		hit := ""
 		for _, alt := range group {
-			if strings.Contains(output, alt) {
+			if tokenPresent(output, alt) {
 				hit = alt
 				break
 			}
@@ -66,4 +66,37 @@ func Score(task Task, output string) ScoreResult {
 	}
 
 	return ScoreResult{TaskID: task.ID, Pass: pass, Matched: matched, Missing: missing}
+}
+
+// tokenPresent reports whether want occurs in output as a whole token. A
+// token that ends in a digit — every "file#L<n>" citation — counts only
+// where the next byte is NOT a digit, so "CLAUDE.md#L10" never scores an
+// answer that cited "CLAUDE.md#L100" (the substring hole the corpus's
+// truth-at-head check used to refuse by forbidding such tokens outright;
+// this rule closes it at the scorer, where it belongs, for every token).
+// "CLAUDE.md#L10-L12" still satisfies "CLAUDE.md#L10": a range that starts
+// on the cited line cites it.
+func tokenPresent(output, want string) bool {
+	if want == "" {
+		return false
+	}
+	if !endsInDigit(want) {
+		return strings.Contains(output, want)
+	}
+	for start := 0; start < len(output); {
+		idx := strings.Index(output[start:], want)
+		if idx < 0 {
+			return false
+		}
+		end := start + idx + len(want)
+		if end >= len(output) || output[end] < '0' || output[end] > '9' {
+			return true
+		}
+		start = start + idx + 1
+	}
+	return false
+}
+
+func endsInDigit(s string) bool {
+	return s != "" && s[len(s)-1] >= '0' && s[len(s)-1] <= '9'
 }
