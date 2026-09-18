@@ -122,6 +122,82 @@ func TestObligationsTool_UnreadableCitationOmitsTheSnippet(t *testing.T) {
 	}
 }
 
+// ─── J2 (a)/(d): stale/contradicted rules never read the current file at
+// their old citation range, and the payload surfaces stale_count/remedy ──
+
+func TestObligationsTool_StaleRuleUsesAnchorTextNeverCurrentFile(t *testing.T) {
+	// CLAUDE.md#L5-L5 currently reads "Determinism is a contract: sorted
+	// outputs, injected clocks." — NOT the stale rule's compile-time text.
+	// A pre-J2 renderer would have read that CURRENT line and shown it as
+	// if it still supported the rule.
+	srv, _ := snippetServer(t, []semantic.Obligation{{
+		Rule: "For material UI work, choose a complete visual reference separately.",
+		Src:  "CLAUDE.md#L5-L5", Tier: "doc-claimed", Layer: "obligations",
+		Status:     "stale",
+		AnchorText: "For material UI work, choose a complete visual reference separately from the renderer.",
+	}})
+
+	p := obligationsPayload(t, srv, map[string]any{"service": "svc", "file": "internal/extractor/goextract.go"})
+	r := firstRule(t, p)
+	snip, _ := r["snippet"].(string)
+	if snip != "For material UI work, choose a complete visual reference separately from the renderer." {
+		t.Fatalf("snippet = %q, want the stored AnchorText verbatim", snip)
+	}
+	if strings.Contains(snip, "Determinism is a contract") {
+		t.Fatalf("snippet must never contain a live read of the current file at the stale citation range: %q", snip)
+	}
+	if label, _ := r["snippet_label"].(string); label != "cited text at compile; current file differs" {
+		t.Errorf("snippet_label = %q, want the stale label", label)
+	}
+}
+
+func TestObligationsTool_StaleRuleWithoutAnchorTextOmitsSnippet(t *testing.T) {
+	srv, _ := snippetServer(t, []semantic.Obligation{{
+		Rule: "Legacy hash-only stale rule.", Src: "CLAUDE.md#L5-L5",
+		Tier: "doc-claimed", Layer: "obligations", Status: "stale",
+	}})
+
+	p := obligationsPayload(t, srv, map[string]any{"service": "svc", "file": "internal/extractor/goextract.go"})
+	r := firstRule(t, p)
+	if _, present := r["snippet"]; present {
+		t.Errorf("a stale rule with no stored AnchorText must never fabricate a snippet from the current file: %v", r)
+	}
+	if _, present := r["snippet_label"]; present {
+		t.Errorf("no snippet_label without a snippet: %v", r)
+	}
+}
+
+func TestObligationsTool_StaleCountAndRemedy(t *testing.T) {
+	srv, _ := snippetServer(t, []semantic.Obligation{
+		{Rule: "Fresh rule.", Src: "CLAUDE.md#L4-L4", Tier: "doc-claimed", Layer: "obligations"},
+		{Rule: "Stale rule.", Src: "CLAUDE.md#L5-L5", Tier: "doc-claimed", Layer: "adr-rules", Status: "stale"},
+	})
+
+	p := obligationsPayload(t, srv, map[string]any{"service": "svc", "file": "internal/extractor/goextract.go"})
+	sc, ok := p["stale_count"].(float64)
+	if !ok || sc != 1 {
+		t.Fatalf("stale_count = %v, want 1", p["stale_count"])
+	}
+	remedy, _ := p["remedy"].(string)
+	if remedy != "fathom compile --layer adr-rules --service svc" {
+		t.Errorf("remedy = %q, want the stale rule's own layer named", remedy)
+	}
+}
+
+func TestObligationsTool_NoStaleRules_NoStaleCountOrRemedy(t *testing.T) {
+	srv, _ := snippetServer(t, []semantic.Obligation{
+		{Rule: "Fresh rule.", Src: "CLAUDE.md#L4-L4", Tier: "doc-claimed", Layer: "obligations"},
+	})
+
+	p := obligationsPayload(t, srv, map[string]any{"service": "svc", "file": "internal/extractor/goextract.go"})
+	if _, present := p["stale_count"]; present {
+		t.Errorf("no stale rule present, stale_count must be absent: %v", p)
+	}
+	if _, present := p["remedy"]; present {
+		t.Errorf("no stale rule present, remedy must be absent: %v", p)
+	}
+}
+
 func TestObligationsTool_SnippetIsCappedWithANamedCut(t *testing.T) {
 	root := t.TempDir()
 	long := strings.Repeat("a governing sentence that goes on and on. ", 40)

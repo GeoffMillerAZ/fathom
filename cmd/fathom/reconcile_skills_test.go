@@ -105,4 +105,13 @@ func TestReconcileSkills(t *testing.T) {
 	if got, _ := os.ReadFile(stalePath); string(got) != string(current) {
 		t.Errorf("the stale owned copy was not rewritten")
 	}
+	// J6/O9 (app-kit dogfood): reconciling a REFRESHED (previously stale)
+	// owned skill must record the digest of the bytes it actually wrote,
+	// not a pre-refresh one — the very next drift check must read clean
+	// immediately, never a false "17 stale digest warnings" the instant
+	// after a successful --apply. This is the exact repro the observation
+	// names: `fleet reconcile --apply` then `doctor` back to back.
+	if d := analyzeWiring(root2); len(d.StaleSkills) != 0 || len(d.BlockedSkills) != 0 {
+		t.Fatalf("a freshly-reconciled skill file must show no drift immediately: %+v", d)
+	}
 }

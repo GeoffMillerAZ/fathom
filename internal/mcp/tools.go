@@ -374,7 +374,7 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 	// find_symbol — locate a symbol definition.
 	s.registerTool(toolDescriptor{
 		Name:        "find_symbol",
-		Description: "Locate symbol definitions by name, with tiered matching: exact/key-suffix first, then case-insensitive, then substring; a full miss returns did_you_mean suggestions when any exist. This result IS the answer once matched_via is exact or case_insensitive; a follow-up call only adds the neighbourhood (symbol_context) or call sites (find_callers, references). Reach for it when you know (roughly) a name and need its definition's file and line before reading or editing — the first move of almost every task. Required: service, name.",
+		Description: "Locate symbol definitions by name, with tiered matching: exact/key-suffix first, then case-insensitive, then substring; a full miss returns did_you_mean suggestions when any exist. This result IS the answer once matched_via is exact or case_insensitive; a follow-up call only adds the neighbourhood (symbol_context) or call sites (find_callers, references). Case-insensitive and substring tiers cap at 20 rows with an elision line. Reach for it when you know (roughly) a name and need its definition's file and line before reading or editing — the first move of almost every task. Required: service, name.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -444,8 +444,13 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 		var all []core.SymbolNode
 		if listed, listErr := backend.ListAllSymbols(ctx, p.Service); listErr == nil {
 			all = listed
-			if ci := caseFoldMatches(all, p.Name); len(ci) > 0 {
-				return map[string]any{"symbols": toNodeDTOs(ci), "matched_via": "case_insensitive"}, nil
+			if ci, ciTotal := caseFoldMatches(all, p.Name); len(ci) > 0 {
+				resp := map[string]any{"symbols": toNodeDTOs(ci), "matched_via": "case_insensitive"}
+				if el := elisionFor(len(ci), ciTotal, "name match before package match, then name/file/line/kind", "narrow with the exact name, or a package-qualified query (pkg.Name)"); el != nil {
+					resp["truncated"] = true
+					resp["elided"] = el
+				}
+				return resp, nil
 			}
 			if sub, total := substringMatches(all, p.Name); len(sub) > 0 {
 				resp := map[string]any{"symbols": toNodeDTOs(sub), "matched_via": "substring"}

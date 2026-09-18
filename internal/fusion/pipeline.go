@@ -458,6 +458,16 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	p.exts[".jsx"] = js
 	p.exts[".ts"] = js
 	p.exts[".tsx"] = js
+	// J1 (app-kit O18/O32/O33): .mjs/.cjs/.mts/.cts were classified as
+	// "js"/"ts" (connector.extClassMap) but never DISPATCHED to an
+	// extractor here — the actual root cause of find_symbol missing every
+	// exported symbol in a new .mjs/.cjs file after ingest. Same extractor
+	// instance; tsextract.go's own variantForExt picks the right grammar
+	// per extension.
+	p.exts[".mjs"] = js
+	p.exts[".cjs"] = js
+	p.exts[".mts"] = js
+	p.exts[".cts"] = js
 
 	// Java
 	p.exts[".java"] = extractor.NewJavaExtractor()

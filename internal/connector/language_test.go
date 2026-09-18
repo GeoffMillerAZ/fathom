@@ -16,10 +16,16 @@ import (
 
 func TestLanguageForPath_KnownExtensions(t *testing.T) {
 	cases := map[string]string{
-		"main.go":                    "go",
-		"go.mod":                     "go",
-		"script.py":                  "py",
-		"app.js":                     "js",
+		"main.go":   "go",
+		"go.mod":    "go",
+		"script.py": "py",
+		"app.js":    "js",
+		// J1 (app-kit O18/O32/O33): the four Node/TS module-system
+		// extensions a plain .js/.ts glob never covers.
+		"memory.mjs":                 "js",
+		"config.cjs":                 "js",
+		"probe.mts":                  "ts",
+		"types.cts":                  "ts",
 		"component.tsx":              "ts",
 		"Main.java":                  "java",
 		"App.kt":                     "kotlin",

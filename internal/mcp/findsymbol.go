@@ -42,7 +42,14 @@ const maxSuggestions = 5
 // steering — sorted by group, then the pre-existing deterministic
 // (name, file, line, kind) order within each group. matched_via stays
 // "case_insensitive" for every result regardless of which group matched.
-func caseFoldMatches(all []core.SymbolNode, name string) []core.SymbolNode {
+//
+// J3(b) (app-kit O22): the PACKAGE group (group 1) has no natural size
+// limit — a query naming a large package returns every one of its exported
+// symbols. Capped at maxSubstringMatches (the same 20-row cap and
+// tightest-first-is-not-meaningful-here-so-group/name order the substring
+// tier already uses), with total returned so the caller can disclose the
+// same way substringMatches already does.
+func caseFoldMatches(all []core.SymbolNode, name string) (nodes []core.SymbolNode, total int) {
 	q := strings.ToLower(name)
 	type ranked struct {
 		node  core.SymbolNode
@@ -65,11 +72,15 @@ func caseFoldMatches(all []core.SymbolNode, name string) []core.SymbolNode {
 		}
 		return nodeLess(out[i].node, out[j].node)
 	})
-	nodes := make([]core.SymbolNode, len(out))
+	nodes = make([]core.SymbolNode, len(out))
 	for i, r := range out {
 		nodes[i] = r.node
 	}
-	return nodes
+	total = len(nodes)
+	if len(nodes) > maxSubstringMatches {
+		return nodes[:maxSubstringMatches], total
+	}
+	return nodes, total
 }
 
 // substringMatches returns nodes whose name contains name case-insensitively,

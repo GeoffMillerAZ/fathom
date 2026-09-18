@@ -86,10 +86,56 @@ func registerFindCallees(s *Server, backend QueryInterface) {
 // so a snippet and a read_source citation of the same lines are identical.
 const symbolContextSnippetMaxLines = 40
 
+// symbolContextCandidateCap bounds the candidate list an ambiguous/hub
+// symbol_context answer renders (J3(a), app-kit O12) — enough to show the
+// shape of the ambiguity without becoming the unbounded payload this exists
+// to stop.
+const symbolContextCandidateCap = 10
+
+// symbolContextHubCallerCap (J3(a), app-kit O12): a symbol that resolves to
+// exactly ONE definition but has more callers than this is a hub — the
+// bare `symbol_context Run` query the dogfood journal found returning a
+// ~63k-token cross-service caller set. Past this cap, symbol_context
+// refuses the neighbourhood the same way it refuses true name ambiguity:
+// scope_required:true, no callers/callees/snippet.
+const symbolContextHubCallerCap = 50
+
+// ambiguousSymbolContextResult is the ONE shape symbol_context returns
+// instead of a neighbourhood when resolution is unsafe to serve (J3(a)):
+// candidates is capped at symbolContextCandidateCap ({symbol_key, file,
+// line} per row); count is the FULL size of whatever candidates is a
+// sample of — for ambiguous:true, the number of distinct definitions the
+// bare name matched (candidates may be a truncated sample of it); for
+// scope_required:true, the resolved definition's own caller count (the hub
+// fan-in that tripped the cap) — candidates there is the single resolved
+// definition itself, so a caller can still see its file/line without a
+// second lookup. hint always points at the fix: qualify the query.
+func ambiguousSymbolContextResult(candidates []core.SymbolNode, count int, hub bool) map[string]any {
+	shown := candidates
+	if len(shown) > symbolContextCandidateCap {
+		shown = shown[:symbolContextCandidateCap]
+	}
+	rows := make([]any, len(shown))
+	for i, n := range shown {
+		rows[i] = map[string]any{"symbol_key": n.Key(), "file": n.FilePath, "line": n.Line}
+	}
+	result := map[string]any{
+		"candidates": rows,
+		"count":      count,
+		"hint":       "pass the fully-qualified key or service",
+	}
+	if hub {
+		result["scope_required"] = true
+	} else {
+		result["ambiguous"] = true
+	}
+	return result
+}
+
 func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend) {
 	s.registerTool(toolDescriptor{
 		Name:        "symbol_context",
-		Description: "Return the neighbourhood context for a symbol: its definition, direct callers, direct callees, related tests, and (when readable) an inline source snippet capped at 40 lines. This result IS the answer for a symbol's immediate neighbourhood; a follow-up call only helps once you need lines beyond the 40-line cap (read_source) or a different symbol's neighbourhood. Reach for it when you have located a symbol and need its neighbourhood — definition, callers, callees, tests, source — in one call before changing it. Required: service, symbol.",
+		Description: "Return the neighbourhood context for a symbol: its definition, direct callers, direct callees, related tests, and (when readable) an inline source snippet capped at 40 lines. This result IS the answer for a symbol's immediate neighbourhood; a follow-up call only helps once you need lines beyond the 40-line cap (read_source) or a different symbol's neighbourhood. An ambiguous bare name, or a hub over 50 callers, returns candidates with scope_required instead of a neighbourhood. Reach for it when you have located a symbol and need its neighbourhood — definition, callers, callees, tests, source — in one call before changing it. Required: service, symbol.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -123,6 +169,21 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 		}
 		g := callgraph.Build(nodes)
+
+		// J3(a) (app-kit O12): resolve BEFORE building any neighbourhood.
+		// symbolnav.ResolveTiered mirrors the internal resolution
+		// SymbolContext would do anyway, but exposes the candidate set
+		// instead of collapsing ambiguity to a silent empty answer — and
+		// lets a uniquely-resolved but huge-fan-in symbol (a "hub") be
+		// caught before its caller list is ever computed for output.
+		if key, candidates, ok := symbolnav.ResolveTiered(nodes, p.Symbol); len(candidates) > 1 {
+			return ambiguousSymbolContextResult(candidates, len(candidates), false), nil
+		} else if ok {
+			if callers := callgraph.RenameImpact(g, key); len(callers) > symbolContextHubCallerCap {
+				return ambiguousSymbolContextResult(candidates, len(callers), true), nil
+			}
+		}
+
 		sctx := symbolnav.SymbolContext(nodes, g, p.Symbol)
 		var defDTO *symbolNodeDTO
 		if sctx.Def.Name != "" {

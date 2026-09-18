@@ -80,7 +80,9 @@ func cmdFindingsNear(args []string, stdout, stderr io.Writer) int {
 	hops := fs.Int("hops", 2, "call-graph hop radius")
 	includeSuperseded := fs.Bool("include-superseded", false, "include superseded/refuted findings (always labeled)")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a human-readable table")
-	if err := fs.Parse(args); err != nil {
+	// Accept the positional <symbol|file> before or after the flags (O92's
+	// class of friction: the documented order must parse).
+	if err := fs.Parse(reorderFlagsFirst(fs, args)); err != nil {
 		return 1
 	}
 	if fs.NArg() != 1 {

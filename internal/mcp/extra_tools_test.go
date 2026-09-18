@@ -872,6 +872,52 @@ func TestPackContext_Basic(t *testing.T) {
 	}
 }
 
+// TestPackContext_SentenceConcernRefused pins J3(d) (app-kit O28):
+// pack_context used to silently return an empty pack (budget spent,
+// included:[], dropped:0 — indistinguishable from "no evidence for a real
+// concern") when handed a natural-language sentence instead of a concern
+// ID. It now refuses loudly with a params error naming the problem, before
+// ever running the futile query.
+func TestPackContext_SentenceConcernRefused(t *testing.T) {
+	srv := newExtraSrv()
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1291, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "pack_context",
+			"arguments": map[string]any{"service": "svc", "concern": "G4 adoption improvement propagation second consumer reviewed"},
+		},
+	})
+	errObj, ok := resp["error"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected error for a sentence concern, got result: %v", resp)
+	}
+	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeParams) {
+		t.Errorf("code = %v, want %v", code, mcp.ErrCodeParams)
+	}
+	msg, _ := errObj["message"].(string)
+	if !strings.Contains(msg, "not a concern ID") || !strings.Contains(msg, "whitespace") {
+		t.Errorf("message = %q, want it to name the whitespace problem", msg)
+	}
+}
+
+// TestPackContext_HyphenatedConcernIDStillAccepted proves the whitespace
+// check does not over-refuse: a normal, single-token, hyphenated concern ID
+// still runs the query.
+func TestPackContext_HyphenatedConcernIDStillAccepted(t *testing.T) {
+	srv := newExtraSrv()
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1292, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "pack_context",
+			"arguments": map[string]any{"service": "svc", "concern": "tailwind-build", "budget": 500},
+		},
+	})
+	p := xtraPayload(t, resp)
+	if p["included"] == nil {
+		t.Error("pack_context: included missing")
+	}
+}
+
 // ─── batch ────────────────────────────────────────────────────────────────────
 
 func TestBatch_Basic(t *testing.T) {

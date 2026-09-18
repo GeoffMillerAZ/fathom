@@ -39,6 +39,68 @@ func seedServedLayer(t *testing.T, st store.Store, id, layer, rule string, scope
 	}
 }
 
+// TestObligationsFor_StaleRuleCarriesAnchorText pins J2 (a): a stale claim's
+// stored compile-time AnchorText travels onto the served Obligation so a
+// downstream renderer never has to re-read the (possibly now-unrelated)
+// current file at the claim's old citation range. A fresh claim never
+// carries it — byte-identical to before this field existed.
+func TestObligationsFor_StaleRuleCarriesAnchorText(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+
+	freshClaim := core.SemanticClaim{
+		ClaimID: "c-fresh", ServiceID: "svc",
+		Layer: LayerObligations, LayerVersion: "v1", Kind: KindObligation,
+		Subject: "docs/g.md#s-fresh", Rule: "Fresh rule.", Scope: []string{"**"},
+		Tier: core.TierDocClaimed, TierProfile: "engineering", Status: core.ClaimFresh,
+		PromptVersion: obligationsPromptVersion(), ReproKey: "c-fresh", InputDigest: "d",
+		CompiledAtWatermark: "manifest:aaa", CompiledAt: time.Date(2026, 7, 7, 0, 0, 0, 0, time.UTC),
+	}
+	staleClaim := core.SemanticClaim{
+		ClaimID: "c-stale", ServiceID: "svc",
+		Layer: LayerObligations, LayerVersion: "v1", Kind: KindObligation,
+		Subject: "docs/g.md#s-stale", Rule: "Stale rule.", Scope: []string{"**"},
+		Tier: core.TierDocClaimed, TierProfile: "engineering", Status: core.ClaimStale,
+		PromptVersion: obligationsPromptVersion(), ReproKey: "c-stale", InputDigest: "d",
+		CompiledAtWatermark: "manifest:aaa", CompiledAt: time.Date(2026, 7, 7, 0, 0, 0, 0, time.UTC),
+	}
+	links := []core.ClaimLink{
+		{ClaimID: "c-fresh", Rel: core.RelCites, TargetRef: "docs/g.md#L1-L2", TargetHash: "h1", AnchorText: "Fresh rule text at compile."},
+		{ClaimID: "c-fresh", Rel: core.RelScopes, TargetRef: "**"},
+		{ClaimID: "c-stale", Rel: core.RelCites, TargetRef: "docs/g.md#L46-L47", TargetHash: "h2", AnchorText: "Stale rule text at compile."},
+		{ClaimID: "c-stale", Rel: core.RelScopes, TargetRef: "**"},
+	}
+	if err := st.PutClaims(ctx, []core.SemanticClaim{freshClaim, staleClaim}, links); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	got, err := ObligationsFor(ctx, st, "svc", "any/file.go", 0)
+	if err != nil {
+		t.Fatalf("ObligationsFor: %v", err)
+	}
+	if len(got.Rules) != 2 {
+		t.Fatalf("got %d rules, want 2: %+v", len(got.Rules), got.Rules)
+	}
+	var fresh, stale *Obligation
+	for i := range got.Rules {
+		switch got.Rules[i].Rule {
+		case "Fresh rule.":
+			fresh = &got.Rules[i]
+		case "Stale rule.":
+			stale = &got.Rules[i]
+		}
+	}
+	if fresh == nil || stale == nil {
+		t.Fatalf("missing expected rules: %+v", got.Rules)
+	}
+	if fresh.AnchorText != "" {
+		t.Errorf("fresh rule must omit AnchorText, got %q", fresh.AnchorText)
+	}
+	if stale.AnchorText != "Stale rule text at compile." {
+		t.Errorf("stale rule AnchorText = %q, want the stored compile-time text", stale.AnchorText)
+	}
+}
+
 func TestObligationsFor_ScopedOrderedFlagged(t *testing.T) {
 	ctx := context.Background()
 	st := store.NewMemoryStore()

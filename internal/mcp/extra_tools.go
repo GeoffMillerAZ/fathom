@@ -24,6 +24,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/apisurface"
 	"github.com/geoffmilleraz/fathom/internal/analysis/archconformance"
@@ -1343,7 +1344,7 @@ func registerPackContext(s *Server, backend QueryInterface) {
 			"type": "object",
 			"properties": map[string]any{
 				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
-				"concern": map[string]any{"type": "string", "description": "Concern ID to scope the query"},
+				"concern": map[string]any{"type": "string", "description": "Concern ID to scope the query — a short identifier, never a sentence; whitespace is refused with a params error rather than a silent empty pack."},
 				"budget":  map[string]any{"type": "integer", "description": "Token budget (default 4000)"},
 			},
 			"required": []string{"service", "concern"},
@@ -1366,6 +1367,19 @@ func registerPackContext(s *Server, backend QueryInterface) {
 		}
 		if p.Concern == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "pack_context: concern required"}
+		}
+		// J3(d) (app-kit O28): a caller that hands pack_context a
+		// natural-language sentence instead of a concern ID used to get a
+		// silent, indistinguishable-from-real empty pack (budget spent,
+		// included:[], dropped:0) — nothing said the input itself was the
+		// problem. A concern ID is a short identifier; whitespace is the
+		// cheap, always-available tell that free text landed here instead.
+		// Refuse loudly rather than run a query that can only ever score
+		// zero.
+		if strings.ContainsFunc(p.Concern, unicode.IsSpace) {
+			return nil, &rpcError{Code: ErrCodeParams, Message: fmt.Sprintf(
+				"pack_context: %q is not a concern ID — it contains whitespace. Pass a short concern identifier (e.g. the concern argument query_symbols expects), not a sentence", p.Concern,
+			)}
 		}
 		budget := p.Budget
 		if budget <= 0 {

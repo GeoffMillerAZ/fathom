@@ -66,12 +66,19 @@ func cmdFlywheel(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("flywheel", stderr)
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
 	asJSON := fs.Bool("json", false, "emit JSON instead of a table")
+	// J5 (app-kit O25): flywheel had no --service at all, so it could
+	// never resolve a NAMED service's own call log the way instrument
+	// --adoption/research report do — one of the three disagreements the
+	// dogfood journal's P0 names. Optional and empty by default: with no
+	// --service, resolution is byte-for-byte what it always was
+	// (resolveCallLogPath, then resolveCallLogCandidates rooted at ".").
+	service := fs.String("service", "", "scope the call-log loop check to one service's own recorded call log (resolveServiceCallLog, calllogidentity.go) — answers \"is fathom's loop closed for repo X\" from anywhere")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
 
 	now := time.Now()
-	checks := runFlywheelChecks(*url, now)
+	checks := runFlywheelChecks(*url, *service, now)
 
 	if *asJSON {
 		enc := json.NewEncoder(stdout)
@@ -122,7 +129,7 @@ func flywheelExit(checks []flywheelCheck) int {
 	return 0
 }
 
-func runFlywheelChecks(baseURL string, now time.Time) []flywheelCheck {
+func runFlywheelChecks(baseURL, service string, now time.Time) []flywheelCheck {
 	ledger := readLedgerRows(sessionLedgerPath())
 	imp := buildImpactModel(now)
 	// Obligation traffic lives in the CALL LOG, not the impact model —
@@ -130,7 +137,7 @@ func runFlywheelChecks(baseURL string, now time.Time) []flywheelCheck {
 	// here produced a false IDLE on a loop carrying 6,992 injections, which
 	// is precisely the class of error this verb exists to catch. Every
 	// check must read the same source the surface it mirrors reads.
-	entries, callLogErr := flywheelCallLog(baseURL)
+	entries, callLogErr := flywheelCallLog(baseURL, service)
 	obligationCalls := 0
 	for _, e := range entries {
 		if e.Tool == "obligations" {
@@ -340,17 +347,29 @@ func checkLoopArm(rows []ledgerRow, imp obsImpact, now time.Time) flywheelCheck 
 // yet" (ENOENT — honestly IDLE) from "the log is there but unreadable"
 // (any other error — a real defect, OPEN), which the collapsed bool could
 // not distinguish.
-func flywheelCallLog(baseURL string) ([]adoptionCallEntry, error) {
-	path := resolveCallLogPath()
-	if _, err := os.Stat(path); err != nil {
-		// A real client: resolveCallLogCandidates asks the daemon where its
-		// own log lives, and passing nil made that a nil dereference on any
-		// machine lacking a local call log — which is every clean checkout.
+func flywheelCallLog(baseURL, service string) ([]adoptionCallEntry, error) {
+	// J5 (app-kit O25): a NAMED service resolves its own recorded call log
+	// (resolveServiceCallLog, calllogidentity.go) — the SAME identity
+	// instrument --adoption/research report now share. No service names:
+	// byte-for-byte the pre-existing resolution below.
+	var path, resolvedRoot string
+	if service != "" {
 		hc := &http.Client{Timeout: 4 * time.Second}
-		for _, cand := range resolveCallLogCandidates(hc, baseURL, true, ".") {
-			if _, e := os.Stat(cand); e == nil {
-				path = cand
-				break
+		path, resolvedRoot = resolveServiceCallLog(hc, baseURL, service)
+	}
+	if resolvedRoot == "" {
+		path = resolveCallLogPath()
+		if _, err := os.Stat(path); err != nil {
+			// A real client: resolveCallLogCandidates asks the daemon where
+			// its own log lives, and passing nil made that a nil dereference
+			// on any machine lacking a local call log — which is every clean
+			// checkout.
+			hc := &http.Client{Timeout: 4 * time.Second}
+			for _, cand := range resolveCallLogCandidates(hc, baseURL, true, ".") {
+				if _, e := os.Stat(cand); e == nil {
+					path = cand
+					break
+				}
 			}
 		}
 	}

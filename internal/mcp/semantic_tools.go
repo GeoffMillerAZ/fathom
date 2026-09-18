@@ -280,6 +280,29 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 	// here is always rules[0] on the wire.
 	summary := obligationsSummary(obl, rootScope)
 
+	// stale_count/remedy (J2, app-kit O6/O16/O24/O26/O29/O30): a stale or
+	// contradicted rule is still served (flagged, never silently dropped —
+	// Obligation.Status's own doc comment), but a caller reading only
+	// "rules" must not have to scan every row's status to notice one is
+	// non-binding. Computed from obl.Rules itself — the raw-fallback rows
+	// prepended above never carry a Status, so they never count. Absent
+	// (both fields) when nothing is stale: byte-identical to the payload
+	// before this field existed.
+	staleCount, staleLayer := 0, ""
+	for _, r := range obl.Rules {
+		if r.Status == "" {
+			continue
+		}
+		staleCount++
+		if staleLayer == "" && r.Layer != "" {
+			staleLayer = r.Layer
+		}
+	}
+	if staleCount > 0 {
+		result["stale_count"] = staleCount
+		result["remedy"] = staleRemedy(staleLayer, service)
+	}
+
 	displaced := obl.Displaced
 	if len(obl.Rules) > 0 {
 		var rendered []any
@@ -375,6 +398,19 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 		}
 	}
 	return result, summary
+}
+
+// staleRemedy (J2) is the ONE precise remedy line every stale-rule surface
+// (this tool's stale_count/remedy pair, and every hook's trailing stale
+// block — cmd/fathom/stalerules.go's own copy) renders identically: layer
+// is the first stale rule's own compiled layer, defaulting to the
+// obligations layer when unset (a stale rule with no recorded layer is not
+// an expected shape, but the remedy must never be empty).
+func staleRemedy(layer, service string) string {
+	if layer == "" {
+		layer = semantic.LayerObligations
+	}
+	return fmt.Sprintf("fathom compile --layer %s --service %s", layer, service)
 }
 
 // obligationsSummary renders obligations' answer-first sentence (wave L1):

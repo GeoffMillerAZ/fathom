@@ -82,8 +82,17 @@ var extClassMap = map[string]classification{
 	".jsx":  {core.KindJSFunc, "js"},
 	".ts":   {core.KindJSFunc, "ts"},
 	".tsx":  {core.KindJSFunc, "ts"},
-	".rs":   {core.KindRustFn, "rust"},
-	".cs":   {core.KindCSharpClass, "cs"},
+	// J1 (app-kit O18/O32/O33): the Node/TS module-system pairs a plain
+	// .js/.ts glob never covers — same extractor (internal/extractor's
+	// "javascript" TSExtractor), same Kind, split only by module system
+	// (mjs/cjs -> js grammar, mts/cts -> ts grammar), matching
+	// tsextract.go's own variantForExt routing.
+	".mjs": {core.KindJSFunc, "js"},
+	".cjs": {core.KindJSFunc, "js"},
+	".mts": {core.KindJSFunc, "ts"},
+	".cts": {core.KindJSFunc, "ts"},
+	".rs":  {core.KindRustFn, "rust"},
+	".cs":  {core.KindCSharpClass, "cs"},
 
 	// Kotlin (wave P2, ADR-021 §4 new-language breadth — closes the O69
 	// gap: a real Kotlin repo previously indexed near-empty with no

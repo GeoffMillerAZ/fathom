@@ -156,9 +156,7 @@ func renderPromptObligations(url, projDir, prompt, sessionID string, deadline ti
 
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "⚖️ fathom obligations — this prompt names %s:", promptNamesLabel(m.namedFiles))
-	for _, r := range m.rules {
-		writeRuleBullet(&sb, r)
-	}
+	writeRuleBullets(&sb, m.rules, svc)
 	if m.displaced > 0 {
 		fmt.Fprintf(&sb, "\n⚠️ %d more eligible rule(s) not shown (cap)", m.displaced)
 	}

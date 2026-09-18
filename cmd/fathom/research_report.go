@@ -11,16 +11,23 @@ package main
 //
 // Every metric that cannot be computed from what is actually on disk prints
 // an explicit "not measurable: <reason>" note rather than a fabricated
-// zero (docs/vision/11-dial-to-eleven.md law 3, "never silent"). This
-// command never queries the live daemon or opens a store: every input is a
-// local file, so there is nothing to "degrade" when the daemon is down —
-// the report is unaffected by daemon reachability by construction.
+// zero (docs/vision/11-dial-to-eleven.md law 3, "never silent"). Every
+// input is a local file, and with no --service named (or --call-log given
+// explicitly) this command still never queries the live daemon at all.
+// J5 (app-kit O25) narrows that: --service now makes ONE short-timeout,
+// best-effort daemon call (resolveServiceCallLog, calllogidentity.go) to
+// resolve THAT service's own recorded call log — the one identity
+// instrument --adoption and flywheel already share — falling back to the
+// pre-existing CWD-relative default on any daemon error, so the report is
+// still never blocked by daemon reachability, only occasionally less
+// precise without it.
 
 import (
 	"encoding/json"
 	"fmt"
 	"io"
 	"math"
+	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -240,11 +247,21 @@ func cmdResearchReport(args []string, stdout, stderr io.Writer) int {
 	sinceT := now().UTC().Add(-*since)
 	untilT := now().UTC()
 
+	// J5 (app-kit O25): a NAMED service resolves its OWN call log the one
+	// shared way every identity-aware instrument now does
+	// (resolveServiceCallLog, calllogidentity.go) — never the caller's
+	// cwd, which is exactly what let this command disagree with
+	// instrument --adoption and flywheel about the same repo (O25).
 	callLogPath := *callLogFlag
 	if callLogPath == "" {
-		callLogPath = resolveCallLogPath()
+		hc := &http.Client{Timeout: 2 * time.Second}
+		callLogPath, _ = resolveServiceCallLog(hc, defaultFathomURL(), *service)
 	}
-	entries, skippedMalformed, callLogRead := readCallLog(callLogPath)
+	entries, skippedMalformed, callLogErr := classifyCallLogRead(callLogPath)
+	callLogRead := callLogErr == nil
+	if !callLogRead {
+		fmt.Fprintln(stderr, "warn: research report: "+callLogIdentityLine(callLogPath, callLogErr))
+	}
 
 	hooksLogPath := *hooksLogFlag
 	if hooksLogPath == "" {

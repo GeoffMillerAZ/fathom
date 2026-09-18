@@ -154,6 +154,23 @@ type Obligation struct {
 	// with no anchor at all (vision 30 §3.1) — process context, never
 	// attached to a file; AnchorCurrent is always nil alongside it.
 	Unanchored bool `json:"unanchored,omitempty"`
+	// AnchorText (J2, app-kit O6/O16/O24/O26/O29/O30 — the journal's P0
+	// "withhold stale obligations from authoritative injection") is set
+	// ONLY when Status is non-empty (stale/contradicted) AND the claim's
+	// cites link stored the literal text of the cited lines at compile
+	// time: sweep.go already proved this rule's citation no longer hashes
+	// against the CURRENT file at its stored line range, so a consumer
+	// must never re-read that range from the current file and present it
+	// as this rule's snippet — the lines there may now be unrelated
+	// content (an upstream insertion shifted everything below it, say).
+	// AnchorText is the honest alternative: the exact text the rule was
+	// compiled against, labeled by every renderer as "cited text at
+	// compile; current file differs" rather than a live (and possibly
+	// wrong) read. Empty when the claim predates AnchorText (a legacy
+	// hash-only cites link) or is fresh — a fresh rule, and a payload with
+	// no stale rule at all, are byte-identical to what they were before
+	// this field existed.
+	AnchorText string `json:"anchor_text,omitempty"`
 }
 
 // ModuleNote is an explicit, never-silent note attached to an Obligations
@@ -729,6 +746,7 @@ func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile str
 		}
 		if m.cl.Status != core.ClaimFresh {
 			ob.Status = string(m.cl.Status)
+			ob.AnchorText = anchorText[m.cl.ClaimID]
 		}
 		if drifted[m.cl.ClaimID] {
 			ob.CodeDrifted = true

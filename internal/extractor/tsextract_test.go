@@ -795,6 +795,93 @@ class K {
 	)
 }
 
+// TestTSExtractor_MjsExports is J1 (app-kit O18/O32/O33): find_symbol never
+// found either export after ingest because .mjs was absent from the
+// extension routing this test now pins directly at the extractor.
+func TestTSExtractor_MjsExports(t *testing.T) {
+	e, err := NewTSExtractor("javascript")
+	if err != nil {
+		t.Fatalf("NewTSExtractor: %v", err)
+	}
+	src := []byte(`export async function createMemoryMeasurements() {
+  return { heap: 0 };
+}
+
+export function trackOwnedChild(pid) {
+  return pid;
+}
+`)
+	nodes, err := e.Extract("svc", "apps/styleguide/browser/memory.mjs", src)
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+	got := symStrings(nodes)
+	mustContainAll(
+		t, got,
+		string(core.KindJSFunc)+":createMemoryMeasurements",
+		string(core.KindJSFunc)+":trackOwnedChild",
+	)
+	for _, n := range nodes {
+		if n.Name == "createMemoryMeasurements" && n.Line != 1 {
+			t.Errorf("createMemoryMeasurements line = %d, want 1", n.Line)
+		}
+		if n.Name == "trackOwnedChild" && n.Line != 5 {
+			t.Errorf("trackOwnedChild line = %d, want 5", n.Line)
+		}
+	}
+}
+
+// TestTSExtractor_CjsModuleExports pins the CommonJS sibling: a plain
+// function declaration re-exported via `module.exports = {...}` still
+// extracts through the .cjs routing (the export object itself is not a new
+// definition — the function declaration is what a symbol lookup wants).
+func TestTSExtractor_CjsModuleExports(t *testing.T) {
+	e, err := NewTSExtractor("javascript")
+	if err != nil {
+		t.Fatalf("NewTSExtractor: %v", err)
+	}
+	src := []byte(`function trackOwnedChild(pid) {
+  return pid;
+}
+
+module.exports = { trackOwnedChild };
+`)
+	nodes, err := e.Extract("svc", "apps/styleguide/browser/owned_process.cjs", src)
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+	got := symStrings(nodes)
+	mustContainAll(t, got, string(core.KindJSFunc)+":trackOwnedChild")
+}
+
+// TestTSExtractor_MtsCtsRouting pins the TypeScript module-system pair:
+// .mts/.cts parse through the SAME typescript grammar variant .ts already
+// uses (interfaces/types included), not the plain JS variant.
+func TestTSExtractor_MtsCtsRouting(t *testing.T) {
+	e, err := NewTSExtractor("javascript")
+	if err != nil {
+		t.Fatalf("NewTSExtractor: %v", err)
+	}
+	src := []byte(`export interface Probe {
+  id: string;
+}
+
+export function run(p: Probe): void {}
+`)
+	for _, path := range []string{"src/probe.mts", "src/probe.cts"} {
+		nodes, err := e.Extract("svc", path, src)
+		if err != nil {
+			t.Fatalf("Extract(%s): %v", path, err)
+		}
+		got := symStrings(nodes)
+		mustContainAll(
+			t, got,
+			string(core.KindTSInterface)+":Probe",
+			string(core.KindJSFunc)+":run",
+		)
+	}
+}
+
 func TestTSExtractor_Ruby_ExactSet(t *testing.T) {
 	e, err := NewTSExtractor("ruby")
 	if err != nil {
@@ -888,7 +975,7 @@ func TestTSExtractor_PathologicalInputRecovery(t *testing.T) {
 
 func TestEngineProvenance(t *testing.T) {
 	got := EngineProvenance()
-	for _, ext := range []string{".py", ".js", ".jsx", ".ts", ".tsx", ".rb", ".kt", ".kts"} {
+	for _, ext := range []string{".py", ".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts", ".rb", ".kt", ".kts"} {
 		if got[ext] != "tree-sitter-wasm" {
 			t.Errorf("EngineProvenance()[%q] = %q, want tree-sitter-wasm", ext, got[ext])
 		}

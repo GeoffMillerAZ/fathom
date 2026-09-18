@@ -352,7 +352,12 @@ func cmdLayersInstall(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("layers install", stderr)
 	root := fs.String("root", "", "project root to install into (default: current directory)")
 	force := fs.Bool("force", false, "replace an already-installed pack of the same name (whole-directory replace, never a merge)")
-	if err := fs.Parse(args); err != nil {
+	// J6/O8: flags are accepted in EITHER position relative to the
+	// positional pack directory (flagreorder.go) — flag.FlagSet.Parse
+	// alone stops scanning for flags at the first non-flag token, which
+	// silently mis-parsed the documented `<dir> --root DIR` order as three
+	// positional arguments.
+	if err := fs.Parse(reorderFlagsFirst(fs, args)); err != nil {
 		return 1
 	}
 	if fs.NArg() != 1 {

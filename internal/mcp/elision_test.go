@@ -388,16 +388,25 @@ func TestTextElisionToolsDiscloseOnOverflow(t *testing.T) {
 	outlineSrv := NewServer(&elisionFakeBackend{nodes: outlineNodes})
 	assertElisionLine(t, "outline", callTool(t, outlineSrv, "outline", map[string]any{"service": "svc", "file": "big/file.go"}), "depth or kinds")
 
-	// symbol_context: many callers of one shared symbol.
-	scNodes := make([]core.SymbolNode, 401)
-	scNodes[0] = core.SymbolNode{Package: "pkg", Name: "Shared", Kind: core.KindGoFunc, FilePath: "pkg/shared.go", Line: 1}
-	for i := 1; i < len(scNodes); i++ {
+	// symbol_context: one symbol calling many distinct callees. Callers stay
+	// at zero — well under J3(a)'s hub cap (50) — so this proves the
+	// CALLEES byte-budget path specifically; the caller-side hub-refusal
+	// path (which now supersedes a large-callers fixture like this one
+	// used to be) is proven separately in new_tools_test.go
+	// (TestSymbolContext_HubCallerCapRefusesNeighbourhood /
+	// TestSymbolContext_HubCallerCap_500CallersUnder16KB) — a different
+	// response shape, not a disclosure line, exactly like find_callers/
+	// references' own scope_required escape hatch above.
+	const numCallees = 500
+	calleeNames := make([]string, numCallees)
+	scNodes := make([]core.SymbolNode, numCallees+1)
+	for i := 0; i < numCallees; i++ {
+		name := fmt.Sprintf("Callee%04d", i)
+		calleeNames[i] = name
 		pkg := fmt.Sprintf("pkg%02d", i%10)
-		scNodes[i] = core.SymbolNode{
-			Package: pkg, Name: fmt.Sprintf("Caller%04d", i), Kind: core.KindGoFunc,
-			FilePath: pkg + "/caller.go", Line: i, Calls: []string{"Shared"},
-		}
+		scNodes[i+1] = core.SymbolNode{Package: pkg, Name: name, Kind: core.KindGoFunc, FilePath: pkg + "/callee.go", Line: i + 1}
 	}
+	scNodes[0] = core.SymbolNode{Package: "pkg", Name: "Shared", Kind: core.KindGoFunc, FilePath: "pkg/shared.go", Line: 1, Calls: calleeNames}
 	scSrv := NewServer(&elisionFakeBackend{nodes: scNodes})
 	assertElisionLine(t, "symbol_context", callTool(t, scSrv, "symbol_context", map[string]any{"service": "svc", "symbol": "Shared", "snippet": false}), "depth")
 
