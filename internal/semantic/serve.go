@@ -2,14 +2,28 @@ package semantic
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/filter"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
+
+// externalImportPromptVersion is internal/findings/external's PromptVersion
+// discriminator (mirrored here as a literal — internal/semantic must stay
+// free of any internal/findings dependency, the same leaf-package stance
+// internal/analysis/review/claims.go documents for its own
+// ClaimsPromptVersion mirror). A claim carrying it was imported by the
+// findings-loop governed importer, never compiled; obligationsCore joins it
+// against store.ExternalFinding for the fields native claims do not have.
+const externalImportPromptVersion = "external-import/v1"
 
 // MaxObligations caps a served payload (ADR-016 §4.5: 3–6 rules, ≤150
 // tokens; rules are word-budgeted at compile time so the cap is the whole
@@ -95,6 +109,51 @@ type Obligation struct {
 	// carries this field, so a payload that never needs a raw fallback row
 	// is byte-identical to what it was before this field existed.
 	Why string `json:"why,omitempty"`
+
+	// --- Findings-loop source-linked provenance (vision 30 §4 item 4, plan
+	// FL — "Serving fields"). Populated ONLY for a claim whose PromptVersion
+	// is "external-import/v1" (internal/findings/external's own
+	// discriminator, kept out of review-verb/v1's native reconciliation) by
+	// joining the served claim against its store.ExternalFinding cursor row.
+	// Every field below is omitempty: a payload with no external claims in
+	// it is byte-identical to what it was before these fields existed. ---
+
+	// Producer is the catalogued producer id that emitted this finding
+	// (e.g. "reviewkit.system-review").
+	Producer string `json:"producer,omitempty"`
+	// RuleID is the producer's own rule identifier (distinct from Src's
+	// citation and from ClaimID — the source system's name for the check).
+	RuleID string `json:"rule_id,omitempty"`
+	// SourceID is the producer's own finding-source identifier (the
+	// per-producer stream this finding's SourceVersion counts within).
+	SourceID string `json:"source_id,omitempty"`
+	// Class is the finding's failure class (core.FindingClass) — carried
+	// here even though it is already on the underlying claim, since an
+	// external finding's Class is exactly as useful to a reader of THIS
+	// payload as Kind or Tier are.
+	Class string `json:"class,omitempty"`
+	// Remedy is the producer's stated fix for this finding — distinct from
+	// Rule (the claim text / finding statement itself).
+	Remedy string `json:"remedy,omitempty"`
+	// ObservedAt is when the producer observed this finding, RFC3339.
+	ObservedAt string `json:"observed_at,omitempty"`
+	// SourceRevision is the producer's own revision identifier at
+	// observation time (e.g. a commit SHA) — distinct from Watermark
+	// (fathom's own corpus watermark).
+	SourceRevision string `json:"source_revision,omitempty"`
+	// AnchorCurrent is recomputed at EVERY serve (vision 30 §3.3 item 6):
+	// sha256 of the anchor path's CURRENT file bytes, compared against the
+	// producer's own anchor digest recorded at import time. true means the
+	// file is unchanged since the producer observed it; false means it has
+	// moved — served FLAGGED, never dropped and never silently re-anchored.
+	// nil when the anchor file cannot currently be read (never coerced to
+	// false, which would read as a confident "code moved" when the truth is
+	// "could not check"). Always nil when Unanchored.
+	AnchorCurrent *bool `json:"anchor_current,omitempty"`
+	// Unanchored is true for a process-subject external finding carried
+	// with no anchor at all (vision 30 §3.1) — process context, never
+	// attached to a file; AnchorCurrent is always nil alongside it.
+	Unanchored bool `json:"unanchored,omitempty"`
 }
 
 // ModuleNote is an explicit, never-silent note attached to an Obligations
@@ -674,10 +733,70 @@ func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile str
 		if drifted[m.cl.ClaimID] {
 			ob.CodeDrifted = true
 		}
+		if m.cl.PromptVersion == externalImportPromptVersion {
+			fillExternalFinding(ctx, st, serviceID, root, m.cl, &ob)
+		}
 		out.Rules = append(out.Rules, ob)
 		if m.cl.CompiledAtWatermark != "" && out.Watermark == "" {
 			out.Watermark = m.cl.CompiledAtWatermark
 		}
 	}
 	return out, nil
+}
+
+// fillExternalFinding joins cl (a claim imported by internal/findings/
+// external, PromptVersion "external-import/v1") against its
+// store.ExternalFinding cursor row and fills ob's source-linked provenance
+// fields (vision 30 §4 item 4). A missing cursor row (should not happen —
+// the importer always writes one alongside the claim — but never trusted
+// blindly) leaves ob's new fields at their zero value rather than erroring
+// the whole obligations call over one malformed row.
+func fillExternalFinding(ctx context.Context, st store.Store, serviceID, root string, cl core.SemanticClaim, ob *Obligation) {
+	ef, found, err := st.ExternalFinding(ctx, serviceID, cl.ClaimID)
+	if err != nil || !found {
+		return
+	}
+	ob.Producer = ef.Producer
+	ob.RuleID = ef.RuleID
+	ob.SourceID = ef.SourceID
+	ob.Class = string(cl.Class)
+	ob.Remedy = ef.Remedy
+	if !ef.ObservedAt.IsZero() {
+		ob.ObservedAt = ef.ObservedAt.UTC().Format(time.RFC3339)
+	}
+	ob.SourceRevision = ef.SourceRevision
+	ob.Unanchored = ef.Unanchored
+
+	if ef.Unanchored || ef.AnchorPath == "" {
+		return
+	}
+	// anchor_current is recomputed at EVERY serve, never cached (vision 30
+	// §3.3 item 6): a file that has moved since the producer observed it is
+	// served flagged the moment it moves, not on the next import.
+	data, ok := readCurrentFile(root, ef.AnchorPath)
+	if !ok {
+		// Unreadable (or no service root known): "could not check", never
+		// coerced to a confident false.
+		return
+	}
+	sum := sha256.Sum256(data)
+	current := hex.EncodeToString(sum[:])
+	match := current == ef.AnchorDigest
+	ob.AnchorCurrent = &match
+}
+
+// readCurrentFile reads path (repo-relative) under a service's on-disk root
+// — the same serviceRoot every other serve-time drift check in this file
+// resolves through. ok is false when root is unknown or the read fails for
+// any reason (absent, unreadable, permission) — AnchorCurrent's caller
+// treats every such case identically: "could not check", never "changed".
+func readCurrentFile(root, path string) ([]byte, bool) {
+	if root == "" || path == "" {
+		return nil, false
+	}
+	data, err := os.ReadFile(filepath.Join(root, path))
+	if err != nil {
+		return nil, false
+	}
+	return data, true
 }
