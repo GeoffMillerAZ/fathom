@@ -67,19 +67,25 @@ func RenderBand(items []Stat, o BandOptions) string {
 		aria = fmt.Sprintf(` aria-label=%q`, esc(o.AriaLabel))
 	}
 	cols := gridColsClass(len(items))
-	fmt.Fprintf(&b, `<dl class="mt-3 grid grid-cols-1 divide-line overflow-hidden rounded-lg border border-line bg-surface-raised %s md:divide-x md:divide-y-0"%s>`, cols, aria)
+	// Each cell owns its bottom/right separators. The clipped one-pixel offset
+	// removes outer duplicates; the preceding row's bottom edges also divide
+	// empty space in a partial final row. Sibling divide-x assumes one row.
+	b.WriteString(`<div class="mt-3 overflow-hidden rounded-lg border border-line bg-surface-raised">`)
+	fmt.Fprintf(&b, `<dl class="-mr-px -mb-px grid grid-cols-1 %s"%s>`, cols, aria)
 	for _, it := range items {
 		valRole := it.ValueRole
 		if !roleRe.MatchString(valRole) {
 			valRole = "ink"
 		}
-		b.WriteString(`<div class="px-4 py-5 sm:p-6">`)
-		fmt.Fprintf(&b, `<dt class="text-sm font-normal text-ink-muted">%s</dt>`, esc(it.Label))
-		b.WriteString(`<dd class="mt-1 flex items-baseline justify-between md:block lg:flex">`)
-		b.WriteString(`<div class="flex items-baseline gap-2">`)
-		fmt.Fprintf(&b, `<span class="text-2xl font-semibold text-%s">%s</span>`, valRole, esc(it.Value))
+		b.WriteString(`<div class="min-w-0 border-r border-b border-line px-4 py-5 sm:p-6">`)
+		fmt.Fprintf(&b, `<dt class="text-sm font-normal text-ink-muted [overflow-wrap:anywhere]">%s</dt>`, esc(it.Label))
+		b.WriteString(`<dd class="mt-1 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-2 md:block lg:flex">`)
+		// Wrap between value and caption before squeezing a short value's unit
+		// onto another line. Oversized individual strings may still reflow.
+		b.WriteString(`<div class="flex min-w-0 max-w-full flex-wrap items-baseline gap-x-2 gap-y-1">`)
+		fmt.Fprintf(&b, `<span class="max-w-full text-2xl font-semibold text-%s [overflow-wrap:anywhere]">%s</span>`, valRole, esc(it.Value))
 		if it.Sub != "" {
-			fmt.Fprintf(&b, `<span class="text-sm font-medium text-ink-muted">%s</span>`, esc(it.Sub))
+			fmt.Fprintf(&b, `<span class="min-w-0 text-sm font-medium text-ink-muted [overflow-wrap:anywhere]">%s</span>`, esc(it.Sub))
 		}
 		b.WriteString(`</div>`)
 		if it.Delta != "" {
@@ -87,12 +93,13 @@ func RenderBand(items []Stat, o BandOptions) string {
 		}
 		b.WriteString(`</dd></div>`)
 	}
-	b.WriteString(`</dl>`)
+	b.WriteString(`</dl></div>`)
 	return b.String()
 }
 
-// gridColsClass returns a literal md:grid-cols-N class (literal so Tailwind's
-// source scan emits it). Falls back to 3 for unusual counts.
+// gridColsClass keeps dense bands at two columns beside a tablet-width sidebar.
+// Literal utilities let the consumer's Tailwind source scan emit every breakpoint.
+// Falls back to 3 for unusual counts.
 func gridColsClass(n int) string {
 	switch n {
 	case 1:
@@ -102,9 +109,9 @@ func gridColsClass(n int) string {
 	case 3:
 		return "md:grid-cols-3"
 	case 4:
-		return "md:grid-cols-4"
+		return "md:grid-cols-2 lg:grid-cols-4"
 	case 5:
-		return "md:grid-cols-5"
+		return "md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
 	default:
 		return "md:grid-cols-3"
 	}
@@ -127,7 +134,7 @@ func trendPill(delta, role string) string {
 	default:
 		icon, cls = "", "bg-surface-sunken text-ink-muted"
 	}
-	return fmt.Sprintf(`<div class="inline-flex items-baseline rounded-full px-2.5 py-0.5 text-sm font-medium %s md:mt-2 lg:mt-0">%s%s</div>`, cls, icon, esc(delta))
+	return fmt.Sprintf(`<div class="inline-flex max-w-full items-baseline rounded-full px-2.5 py-0.5 text-sm font-medium %s [overflow-wrap:anywhere] md:mt-2 lg:mt-0">%s%s</div>`, cls, icon, esc(delta))
 }
 
 // Render returns the tile as an HTML string.
@@ -138,21 +145,21 @@ func Render(s Stat) string {
 	}
 
 	var b strings.Builder
-	b.WriteString(`<div class="rounded-lg border border-line bg-surface-raised p-4">`)
-	fmt.Fprintf(&b, `<p class="text-sm text-ink-muted">%s</p>`, esc(s.Label))
-	b.WriteString(`<div class="mt-1 flex items-end justify-between gap-3">`)
+	b.WriteString(`<div class="min-w-0 rounded-lg border border-line bg-surface-raised p-4">`)
+	fmt.Fprintf(&b, `<p class="text-sm text-ink-muted [overflow-wrap:anywhere]">%s</p>`, esc(s.Label))
+	b.WriteString(`<div class="mt-1 flex flex-wrap items-end justify-between gap-3">`)
 
-	b.WriteString(`<div class="flex items-baseline gap-2">`)
+	b.WriteString(`<div class="flex min-w-0 max-w-full flex-wrap items-baseline gap-x-2 gap-y-1">`)
 	valRole := s.ValueRole
 	if !roleRe.MatchString(valRole) {
 		valRole = "ink"
 	}
-	fmt.Fprintf(&b, `<span class="text-2xl font-semibold text-%s">%s</span>`, valRole, esc(s.Value))
+	fmt.Fprintf(&b, `<span class="max-w-full text-2xl font-semibold text-%s [overflow-wrap:anywhere]">%s</span>`, valRole, esc(s.Value))
 	if s.Sub != "" {
-		fmt.Fprintf(&b, `<span class="text-sm font-medium text-ink-muted">%s</span>`, esc(s.Sub))
+		fmt.Fprintf(&b, `<span class="min-w-0 text-sm font-medium text-ink-muted [overflow-wrap:anywhere]">%s</span>`, esc(s.Sub))
 	}
 	if s.Delta != "" {
-		fmt.Fprintf(&b, `<span class="text-xs font-medium text-%s">%s</span>`, deltaRole, esc(s.Delta))
+		fmt.Fprintf(&b, `<span class="min-w-0 text-xs font-medium text-%s [overflow-wrap:anywhere]">%s</span>`, deltaRole, esc(s.Delta))
 	}
 	b.WriteString(`</div>`)
 

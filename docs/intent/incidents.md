@@ -41,6 +41,15 @@ Outcome: pending (`docs/plans/evidence-plane.md` EP-14 `adr_references_resolve`;
 
 ## Closed
 
+### INC-19 2026-09-14 Unreadable call logs still produced numerical Impact costs
+What: Impact showed zero response cost for an unreadable log, or stale cost/outcome rows when populated values accompanied the failure.
+Evidence: `TestObservatoryImpactCallLogUnavailableSuppressesDerivedCosts` failed behaviorally; app-kit browser fixture also recorded 36 missing-source disclosure failures.
+Would have caught it: test the source-availability flag against every derived projection, with both empty and poisoned populated inputs.
+Class: contract-broken (I38)
+Outcome: `TestObservatoryImpactCallLogUnavailableSuppressesDerivedCosts`, `TestObservatoryImpactCallLogUnavailableWithEmptyRowsUsesSourceReason` and readable-zero/positive canaries; response cost, ratio and tool rows retain exact escaped absence while independent schema measurements survive.
+
+- INC-18 2026-09-14 Fleet observation summaries collapsed missing coverage into zero or an exact subtotal; home also zero-filled unreadable call-log/catch evidence (contract-broken, I38). Render-level red tests caught it → shared app-owned coverage projection and `TestObservatoryObservationCoverage*` regressions; source semantics and wire model stay unchanged.
+
 - INC-16 2026-09-01 A third `package main` (`cmd/loctruth`) collapsed `fathom::main.run`, so
   `callgraph.Build` kept the last-ingested `run` and five untouched ambient-fathom rows (SP-4,
   SP-7, SP-8, SP-9, TH-1) were silently REFUTED (O21); caught by the wave-1 integration probe --

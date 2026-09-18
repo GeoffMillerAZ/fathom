@@ -533,7 +533,9 @@ func renderGradeDistribution(m observatoryModel) string {
 		for _, c := range latest.Counts {
 			bars = append(bars, viz.Bar{Label: c.Grade, Value: float64(c.Count), Role: gradeLetterRole(c.Grade)})
 		}
-		body.WriteString(viz.Bars(bars, viz.BarsOptions{W: 420, LabelW: 60, ShowValue: true, AriaLabel: "grade distribution on " + latest.Date}))
+		// A compact distribution fits the 256px content column at a 320px
+		// viewport. Set intrinsic geometry rather than shrinking SVG text with CSS.
+		body.WriteString(viz.Bars(bars, viz.BarsOptions{W: 256, LabelW: 60, ShowValue: true, AriaLabel: "grade distribution on " + latest.Date}))
 		body.WriteString(`<p class="mt-1 text-xs text-ink-muted">` + html.EscapeString(fmt.Sprintf("%s graded on %s", plural(latest.Total, "repo"), latest.Date)) + `</p>`)
 	}
 	if gs.Measured > 1 {

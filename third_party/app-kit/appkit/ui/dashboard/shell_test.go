@@ -25,6 +25,9 @@ func TestSkipLinkAndContentTargetAreTheKitsJob(t *testing.T) {
 	if !strings.Contains(got, `href="#content"`) {
 		t.Errorf("the skip link does not target the content id:\n%s", got)
 	}
+	if !strings.Contains(got, `<main id="content" tabindex="-1"`) {
+		t.Error("the skip destination must accept focus without joining the normal tab order")
+	}
 	// FIRST in document order. "The first focusable element" is a statement
 	// about source order, and a link nested after the sidebar is one the reader
 	// tabs to after the thing it exists to skip.
@@ -41,5 +44,17 @@ func TestSkipLinkAndContentTargetAreTheKitsJob(t *testing.T) {
 	custom := RenderShell(Shell{Title: "T", Content: "c", SkipLink: true, ContentID: "atrium-main"})
 	if !strings.Contains(custom, `href="#atrium-main"`) || !strings.Contains(custom, `<main id="atrium-main"`) {
 		t.Errorf("ContentID did not move both the link and its target:\n%.300s", custom)
+	}
+	if !strings.Contains(custom, `<main id="atrium-main" tabindex="-1"`) {
+		t.Error("custom content target lost programmatic focus support")
+	}
+}
+
+func TestMobileNavigationSummaryHasTargetAndFocusTreatment(t *testing.T) {
+	got := RenderShell(Shell{Title: "T", Nav: "nav", Content: "c"})
+	for _, class := range []string{"min-h-[44px]", "focus-visible:outline-2", "focus-visible:outline-offset-2", "focus-visible:outline-focus"} {
+		if !strings.Contains(got, class) {
+			t.Errorf("mobile navigation summary is missing %q: %s", class, got)
+		}
 	}
 }

@@ -1,0 +1,271 @@
+# App-kit adoption: evidence workspace
+
+Consumer [intent](intent/README.md), [product context](../PRODUCT.md) and the
+[UI doctrine](../cmd/fathom/CLAUDE.md) govern this selection. It executes existing
+architecture; no metric model, daemon behavior or future has been promoted.
+
+## Selected surface and design
+
+- `go-web`, layers L1/L3b, beginning with `shell.layout`. Existing stat/viz
+  integrations remain; this manifest is a bounded selection, not every kit import.
+- Operational readers need to distinguish wired, used and paying off, then reach
+  the evidence/remedy. Preserve current role-token identity in both light/dark themes.
+- The shared MatDash-derived `dashboard.RenderShell` supplies the sidebar, top bar,
+  mobile disclosure and landmarks. App-owned routes, leads, explainers and evidence
+  remain inside it. No paid source, browser runtime or new dependency was copied.
+- Missing/unreadable is not zero; instruments, denominators and time windows remain
+  explicit. Navigation composition must not change metrics, narratives or write policy.
+- Existing kit callouts name unavailable configuration and absent comparable exploration;
+  the latter links to session evidence without implying zero cost or savings. The service
+  share uses existing `vizframe` for wrapping prose, denominator and snapshot provenance,
+  not a long SVG caption or another nested widget. Measured derivations are unchanged.
+- Fleet/impact/story/home use one app-owned observation projection: none known is absent,
+  partial coverage is a named lower bound, complete coverage permits measured zero.
+  Registry failures cannot turn a listed subtotal into a fleet total. Story separates
+  the current backlog snapshot from weekly session metrics; home preserves unavailable
+  call-log and verify-catch evidence. No observation reader or wire model changed.
+- Compose the fleet as three indexing metrics plus two evidence-status metrics; the story's
+  snapshot has its own band. Keep the lower-bound sign with its number and give service
+  detail links a keyboard outline and 44px target. Do not patch the mirror in place.
+
+## Delivery identity and navigation handoff
+
+`go.mod` declares app-kit `v0.0.0` with an in-tree replacement. ADR-019 requires its
+exact stamped mirror: `third_party/app-kit/.vendor-commit` is
+`bcfeb8e94ce4132e1198a69f4cf10dc6764bd353`. Local `go.work` instead resolves the sibling.
+The adoption checker observes declarations/hashes, not effective Go resolution;
+verify both modes. The owner authorized this scoped mirror refresh on 2026-09-14
+while the other Claude Code session was paused. Its unrelated edits, agentic-kit
+pin/mirror and existing token identity remain unchanged. No release or deployment.
+
+`obsNavigation` maps the same seven app-owned destinations and active keys into
+the mirrored `dashboard.RenderNav`; unknown keys select none. `Shell.SkipLink`
+now targets the sole focusable `observatory-main`, replacing the app-owned skip
+link/nested focus workaround. Shared links and Menu supply 44px minimum targets
+and explicit keyboard focus treatment; tokens, routes and data semantics do not change.
+
+`appkit.adoption.json` binds reviewed `shell.layout` metadata, generated CSS and
+selected source bytes (21 passing static checks plus the version2 whole-catalog
+not-applicable result), not a released kit version, transitive source pin, runtime
+proof or the entire dependency graph. `task ui:css` now builds the CLI
+inside the exact mirror with `GOWORK=off`, reads its CUE tokens, and stages explicit
+Tailwind sources with `source(none)`. It needs no sibling checkout or new dependency.
+`bash scripts/ui-css.sh --check` regenerates and compares both committed CSS outputs;
+it does not treat embedding an old stylesheet as freshness proof.
+
+## Verification and isolated preview
+
+```sh
+task ui:css
+bash scripts/ui-css_test.sh
+bash scripts/ui-css.sh --check
+CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 go test -race ./cmd/fathom -run 'TestObservatory' -count=1
+GOWORK=off CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 go test -race ./cmd/fathom -run 'TestObservatory' -count=1
+```
+
+`TestObservatoryUsesSharedAccessibleShell` pins one main/heading/skip link/focus
+target, both navigation regions and preserved content/degraded text.
+`TestObservatoryNavigationRoutesAndUnknownActive` pins exact destinations and an
+unknown key's absence of current-page state. Existing fleet/service/impact tests
+remain required. Source-level evidence does not establish keyboard behavior.
+`observatory_empty_test.go` pins unknown/known configuration, absent/measured exploration,
+escaped reasons, readable share provenance and suppression when the call log is unreadable.
+`observatory_observation_coverage_test.go` pins exact, absent, partial and degraded totals
+across readers, bounded to the correct metric/widget rather than neighboring digits.
+
+`cmd/fathom/appkit_preview_test.go` exports only the fixed synthetic `alpha` model.
+Set `APPKIT_PREVIEW_DIR` to an existing empty child of `workspace/tmp`, then run
+`go test ./cmd/fathom -run '^TestExportAppkitPreview$' -count=1` with the CGO settings
+above. It renders fleet/impact/service/story in both themes, strips scripts/forms and
+adds restrictive CSP. It starts no server and reads no live daemon/provider data.
+Its inert transformation is not a general-purpose hostile-HTML sanitizer.
+The fixed story model makes the evidence-link task inspectable without reading a ledger.
+
+For observation triage, set `APPKIT_OBSERVATION_PREVIEW_DIR` to a different existing empty
+`workspace/tmp` child and run `TestExportAppkitObservationPreview`. Its ten fixed cases
+cover unknown/partial/zero/positive observations, unavailable/partial registry,
+unavailable call logs and measured zero/positive catches. It exports home/fleet/impact/story plus alpha/beta/gamma detail
+only where rows exist. No missing service is replaced with a fabricated service page.
+Use the app-kit fixture `docs/assessments/fixtures/fathom-observations/browser.mjs` with
+the export path, a separate empty report path and an isolated Playwright module path.
+The server exposes only these fixed GET/HEAD documents and CSS, never operational routes.
+
+Browser and delivery receipt: app-kit
+`docs/assessments/2026-09-13-fathom-observatory-uplift.md`. Do not infer live route,
+mutation, accessibility certification or installed-daemon proof from those fixtures.
+Observation-triage follow-up: `docs/assessments/2026-09-14-fathom-observation-triage.md`
+in app-kit records the synthetic browser matrix, baselines, budgets and remaining gaps.
+
+Evidence-journey follow-up: app-kit `docs/assessments/2026-09-14-fathom-evidence-journey.md`
+records the ten-scenario matrix and INC-19's missing-cost repair. Home/evidence actions
+compose the pinned `form.RenderButton` as native anchors; a direct-anchor 44px rule
+belongs to this app's composition and is included by the existing CSS source globs.
+Failed call-log reads invalidate dependent cost/outcome values, not independently
+measured schema tax. The subsequent owner-authorized stat/emitter upgrade now uses
+the exact `bcfeb8e` mirror, not a synthetic Go overlay. It preserves this app's
+positive0.55 palette and runtime font/radius aliases while correcting metric reflow
+and multi-row dividers. The independent positive0.51 kit change is not included.
+Actual-mirror exports pass 6,467 metric-layout, 5,560 evidence-journey and 1,207
+navigation browser checks; tablet-light and narrow-dark screenshots were inspected.
+These are synthetic local Chrome tasks, not real data, full accessibility or deployment.
+Kit assessment `docs/assessments/2026-09-14-stat-reflow.md` owns the upgrade receipt,
+including source-build checks and known limitations. Catalog `2a98eb25…`, module
+declarations and agentic-kit's mirror remain unchanged; the newer catalog needs its
+own review. All paused non-UI work remains independently owned and uncommitted.
+
+Navigation handoff: set `APPKIT_NAVIGATION_PREVIEW_DIR` to another empty
+`workspace/tmp` child and run `TestExportAppkitNavigationPreview`. It exports the real
+shell for all seven active keys in both themes with an inert synthetic body, not
+operational route handlers. App-kit's `docs/assessments/2026-09-14-navigation-delivery.md`
+records scoped mirror, standalone-build and browser evidence and their limits.
+The earlier navigation handoff passed 1,207 synthetic browser checks, workspace and snapshot
+race tests, scoped vet, both mirror checks and repeated identical standalone builds.
+Local evidence and the pre-change backup are under `workspace/tmp/appkit-navigation.1DsKeZ/`.
+
+Before a consumer commit, include the new mirrored `dashboard/nav.go` and its tests;
+the tracked-files-only clean-clone gate currently excludes them and fails. Keep
+unrelated paused work separately reviewed. The earlier navigation catalog selection was
+reconciled against an exact pinned checker (`52185ef4…`): all 16 checks pass for
+`2a98eb25…`. Only `catalog_revision` changed; profile, layers, capability, artifacts,
+module and routers did not. The old `0b528f5b…` catalog bytes could not be recovered,
+so this is a prospective review of the current `shell.layout` contract against the
+actual integration and its evidence, not an asserted old-to-new catalog comparison.
+The checker/schema remain strict and unchanged. App-kit retains the checker, catalog,
+1,248 compile-input hashes and before/after results in
+`data/design-assets/adoption-checker.DJ6MuD/`; its navigation receipt records identities.
+The stat upgrade adds five selected stat/emitter/CUE/stamp/build artifacts while keeping
+that catalog/profile/layer selection. Coverage and series test helpers now bind the
+actual component DOM, preserving exact value/reason assertions and rejecting decoys;
+the complete command-package race suite passes. No production metric code changed.
+Two sibling-free working-tree snapshots also regenerate identical CSS, build all Go
+packages and yield byte-identical CLI binaries; this is not a clean-Git release proof.
+No gate was waived.
+
+## Selected metadata and reusable contributions (2026-09-16)
+
+The owner-authorized version2 migration replaces the whole-catalog revision with the
+reviewed `shell.layout` metadata pin. The current record still fits `go-web`/L3b and
+the real responsive shell integration; it preserves app ownership of routes, current
+path, permitted destinations, identity, authorization and content. Profile, layers,
+capability, artifacts, module, contract and routers are otherwise unchanged. The old
+`2a98eb25…dc43c` selected record differs from the current record by the already-reviewed
+task phrase “mobile application shell navigation with current route and grouped links”;
+the migration is prospective acceptance of the current complete record, not a claim
+that old and new metadata bytes match.
+
+Keep Fathom measurements, readers, evidence semantics, routes and daemon policy here.
+Send a shared renderer defect to app-kit immediately with a failing sanitized fixture
+or minimal regression. Propose repeated workarounds and reusable lessons upstream with
+the originating task and evidence; incubate a one-app component locally until actual
+consumer use establishes a durable API boundary. Record a local or deferred disposition
+with its reason and concrete revisit condition. Returning a fix/test/lesson to the kit
+is separate from adopting it here: Fathom integration needs a reviewed versioned
+upgrade and proof of the original task. Second-consumer proof is required for promotion
+only where the layer contract requires it. Retrieve app-kit MCP
+`get_kit_decision("contribution-loop")` or a reviewed documentation snapshot; the current
+older mirror does not imply that this new document is present. If unavailable, retain
+the local candidate and mark canonical review pending rather than inventing policy.
+
+### Contribution records
+
+**FATHOM-ADOPT-01 — selected metadata migration**
+
+- **Origin / task:** Fathom; retain the reviewed responsive shell selection without
+  invalidation from unrelated catalog records.
+- **Observed / expected:** v1 failed only its whole-catalog revision; v2 should bind the
+  reviewed current `shell.layout` record and preserve every other requirement.
+- **Evidence:** app-kit ADR-0065 and
+  `docs/assessments/2026-09-16-fathom-display-adoption.md#consumer-v2-metadata-migration`;
+  the retained v2 checker reports 21 pass, one catalog not-applicable and zero failures.
+- **Ownership:** app-kit owns the pin contract/checker; Fathom owns selected IDs,
+  artifacts, module/mirror declarations, delivery evidence and runtime acceptance.
+- **Disposition:** `no-candidate` — this adopts the existing ADR-0065 contract and does
+  not propose another API, schema or automation layer.
+- **Next action / owner / revisit:** Fathom maintainer reviews and updates the pin only
+  when selected metadata changes; revisit on pin failure or an exact released-module
+  upgrade, not on unrelated catalog changes.
+- **Delivery / verification:** version2 manifest applied; non-migration fields compare
+  identically with the retained v1 report. This is static proof, not effective module
+  resolution or runtime acceptance.
+
+**FATHOM-UI-01 — freshness and diagnostic display lesson**
+
+- **Origin / task:** Fathom Observatory; represent incomplete freshness truthfully and
+  keep diagnostics/grade geometry usable at the intrinsic narrow width.
+- **Observed / expected:** positive language required complete known coverage; partial
+  values required a lower bound and reason; long diagnostics needed left-aligned wrap;
+  grade bars needed intrinsic 256px geometry.
+- **Evidence:** app-kit
+  `docs/assessments/2026-09-16-fathom-display-adoption.md`, including 13 freshness
+  states, long/escaped diagnostics and the real-handler synthetic probe.
+- **Ownership:** Fathom owns registry semantics and the app-local composition repair;
+  app-kit owns the sanitized reusable lesson/test fixture.
+- **Disposition:** `returned` lesson/test with an app-owned repair; no universal
+  freshness API or stamped-mirror change.
+- **Next action / owner / revisit:** app-kit maintainer retains the fixture and
+  coverage-before-conclusion lesson. Revisit when a second analytical consumer needs
+  the same missingness or containment cases; its verification is currently unperformed.
+- **Delivery / verification:** repaired Fathom source plus durable regression passes the
+  scoped race suite, 88 HTTP/412 browser checks, 9/9 CSS checks and CSS freshness.
+  Second-consumer propagation remains unverified.
+
+### Project-local host configuration review
+
+Reviewed on 2026-09-16: `.claude/settings.json` parses as a hooks-only object with
+`ConfigChange`, `CwdChanged`, `DirectoryAdded`, `FileChanged`, `InstructionsLoaded`,
+`PostToolUseFailure`, `PreToolUse`, `Setup` and `SubagentStart` event groups. A single
+app-kit/MCP text match is only the `PostToolUseFailure` matcher, not server registration.
+`.claude/settings.local.json` parses as a permissions object with an `allow` key; its
+values were not recorded or changed. `.codex/hooks.json`, `.mcp.json` and
+`.codex/config.toml` are absent; `.claude/commands/verify.md` was inventoried as a
+project command, not host registration. No global configuration was inspected.
+No change is warranted: this handoff does not require registration, the existing hooks
+and local permissions are independently owned, and installing configuration without a
+fresh-host test would not prove invocation. Fresh Claude/Codex retrieval remains
+unverified.
+
+## Observatory display handoff (2026-09-16)
+
+The owner-authorized current-source candidate improves display only: thirteen freshness
+states reserve positive success language for complete evidence, render partial evidence
+as a lower bound with its reason, keep long diagnostics left-aligned and wrapping, and
+grade the intrinsic 256px panel instead of only wide layouts. Existing I38 and ADR-027
+already govern those semantics, so no new Fathom decision is needed. The real-handler
+synthetic probe passed 88 HTTP and 412 browser checks against this checkout. This is
+fixture evidence, not live-daemon, production-data or full accessibility proof. A
+scoped race suite plus the 9/9 CSS harness and exact CSS freshness check pass; the
+display implementation changed no dependency, generated CSS, theme or app-kit mirror.
+The durable `TestAppkitGradeDistributionGeometry` additionally refuses the retained
+420px original and passes the256px current source under `-race`; geometry no longer
+depends only on the optional browser probe. Evidence and limitations live in app-kit
+`docs/assessments/2026-09-16-fathom-display-adoption.md`.
+
+## CSS fixture and artifact handoff (2026-09-16)
+
+Owner-authorized repair: the synthetic CSS fixture now copies the existing
+`scripts/lib/build-cache.sh` execution dependency. The adoption manifest selects that
+helper and reconciles only the reviewed `scripts/ui-css.sh` hash; ADR-039/I39 cache
+policy, helper/builder behavior, UI/CSS, dependencies and the kit mirror are unchanged.
+
+The ordinary isolated replay passes all nine unchanged CSS assertions, separate shell
+syntax checks, the active checkout's read-only `--check-sources`, and the retained
+adoption checker (22 pass, one not applicable). Copied-fixture checks reject a modified
+or missing helper by its exact path; restoring it passes again. Fresh private caches
+were used with cleanup disabled, without accessing or pruning real caches.
+
+Evidence is retained under `workspace/tmp/appkit-css-pin-repair.KvsMu3K7/`, including
+the original missing-helper failure and an unexpected first post-repair synthetic
+source-read failure. Subsequent traced and ordinary runs passed unchanged; the latter
+failure's cause is not established. App-kit's
+`docs/assessments/2026-09-16-propagation-reconciliation.md` records exact receipts.
+This is not a new Tailwind/CSS freshness run, full Fathom gate, browser proof or release;
+no daemon restart, commit, deployment or paused-work integration was performed.
+
+## Next acceptance and return
+
+Next: analytical hierarchy, meaningful populated/absent/stale/partial/error cases,
+drill-down/context retention, synthetic task completion, contrast/focus/target sizes
+and measured responsiveness. Avoid decorative charts or invented success metrics.
+Return observed generic failures to app-kit with adversarial fixtures; retain app
+domain calculations here. The mirror mismatch demonstrates why adoption needs
+standalone runtime proof, not just a passing workspace or static manifest check.

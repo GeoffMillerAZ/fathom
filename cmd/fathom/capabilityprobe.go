@@ -1,8 +1,8 @@
 package main
 
-// capabilityprobe.go — CR-2's caller side. Every filesystem read and HTTP
-// call for capability detection happens HERE, so internal/capability stays
-// pure and testable in a table.
+// capabilityprobe.go — CR-2's caller side. Filesystem reads and HTTP calls
+// for capability detection stay in this command package, so
+// internal/capability remains pure and testable in a table.
 //
 // The probe is deliberately best-effort: an unreachable daemon or an
 // unreadable file leaves a field at its zero value, and the registry then
@@ -69,7 +69,6 @@ func buildCapabilityProbe(baseURL, root, svc string, now time.Time) capability.P
 		p.StanzaPresent = row.StanzaNote == "present"
 		p.ObligationsCompiled = strings.Contains(row.CompileNote, "obligations")
 		if row.Config != nil {
-			p.GuardRules = row.Config.GuardCount
 			for _, l := range row.Config.Layers {
 				p.LayerPacks = append(p.LayerPacks, l.Name)
 			}
@@ -81,8 +80,12 @@ func buildCapabilityProbe(baseURL, root, svc string, now time.Time) capability.P
 	p.ObligationRules = countRuleSources(root)
 	p.ModuleBindings = countModuleBindings(root)
 	p.VerifyInLefthook = lefthookRunsVerify(root)
+	guards := inspectGuardRules(root)
+	p.GuardRules = guards.Count
+	if guards.Broken {
+		p.GuardProblem = guards.Note
+	}
 	if row == nil || row.Config == nil {
-		p.GuardRules = countGuardRules(root)
 		p.LayerPacks = localLayerPacks(root)
 	}
 	return p
@@ -153,20 +156,6 @@ func countModuleBindings(root string) int {
 			continue
 		}
 		if strings.HasPrefix(t, "module:") || strings.HasPrefix(t, "module :") {
-			n++
-		}
-	}
-	return n
-}
-
-func countGuardRules(root string) int {
-	data, err := os.ReadFile(filepath.Join(root, ".fathom", "guard.cue"))
-	if err != nil {
-		return 0
-	}
-	n := 0
-	for _, line := range strings.Split(string(data), "\n") {
-		if t := strings.TrimSpace(line); !strings.HasPrefix(t, "//") && strings.Contains(t, "note:") {
 			n++
 		}
 	}

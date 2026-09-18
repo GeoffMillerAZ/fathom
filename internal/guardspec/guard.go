@@ -101,6 +101,13 @@ func LoadGuards(path string) (GuardSet, error) {
 	if err != nil {
 		return GuardSet{}, fmt.Errorf("guardspec: read %s: %w", path, err)
 	}
+	return ParseGuards(path, data)
+}
+
+// ParseGuards decodes guard.cue bytes already read by a caller. It has the
+// same semantic contract as LoadGuards, while allowing reporting callers to
+// route the filesystem read through a read manifest without reading twice.
+func ParseGuards(path string, data []byte) (GuardSet, error) {
 	cctx := cuecontext.New()
 	v := cctx.CompileBytes(data, cue.Filename(path))
 	if v.Err() != nil {

@@ -21,6 +21,42 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: minor (pre-1.0: breaking bumps minor)
 
+**Portable bounded build cache (ADR-039).** `FATHOM_CACHE_ROOT` now relocates the
+supported Taskfile/script build caches without embedding a workstation path; configured
+missing roots refuse, and `FATHOM_CACHE_MAX_MIB` bounds the regenerable Go build cache.
+
+**App-kit adoption (shell/nav/stat/theme, CSS pipeline).** Observatory pages now render
+through the vendored app-kit dashboard shell, pinned to mirror `bcfeb8e`: shared
+sidebar/mobile navigation with current-page state, a focusable main landmark and skip
+link, kit stat tiles for metric display, kit-native action buttons with 44px touch
+targets, and the kit's theme tokens for light/dark, all inside the existing bounded
+content width. `task ui:css` (`scripts/ui-css.sh`) builds the CSS from that exact
+mirror with `GOWORK=off`, needs no sibling app-kit checkout, and refuses unaudited,
+missing, or changed inputs; `bash scripts/ui-css.sh --check` regenerates and compares
+the committed output. `appkit.adoption.json` pins the reviewed `shell.layout` metadata,
+generated CSS and selected source bytes the adoption checker verifies; the routed
+contribution contract in `docs/app-kit.md` keeps fathom-owned display code separate
+from reusable app-kit fixes, which flow back to the kit as their own reviewed,
+versioned adoption. Evidence: `docs/app-kit.md`.
+
+**Observatory display truth.** Freshness states reserve positive language for complete
+evidence, render partial coverage as an explicit lower bound with its reason, and wrap
+long diagnostics instead of clipping them. Impact no longer shows an unreadable
+response cost as zero or carries over a stale per-tool ratio: call-log read failures
+report their exact (escaped) reason, `classifyCallLogRead` preserves the underlying
+scanner-error cause and discards incomplete prefix counts, and independent schema-tax
+and measured-zero/positive cost figures stay distinct. Fleet, impact, story and home
+now distinguish an unavailable observation count from a partial lower bound and from a
+complete measured total (including zero); story labels the fleet snapshot separately
+from the week, and home still preserves unavailable call-log/catch evidence rather than
+filling it in. Missing configuration and unavailable comparable data now show a named
+explanation and a link to the evidence behind it, and service share keeps its full
+explanation, denominator and snapshot source. `fathom capabilities` and the observatory
+now count `.fathom/guard.cue` entries through the guard schema — quoted labels, compact
+CUE, comments and note-less guards all report correctly — while a malformed or
+unreadable guard file stays an explicit broken input rather than reading as absent.
+Evidence: `docs/app-kit.md`.
+
 ### Added
 
 - `search` — new agent-surface tool: grep with a receipt (enclosing symbol/kind, test/generated/vendored flags, ident/comment/string classification); excludes vendored and `workspace/` trees by default (RC-24, 19-tool agent surface).

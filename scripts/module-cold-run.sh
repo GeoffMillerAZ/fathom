@@ -29,6 +29,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+# shellcheck source=scripts/lib/build-cache.sh
+source "${SCRIPT_DIR}/lib/build-cache.sh"
+fathom_cache_configure
 cd "${REPO_ROOT}"
 
 SCRATCH="${REPO_ROOT}/workspace/tmp/module-cold-run-$$"

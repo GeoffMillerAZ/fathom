@@ -70,6 +70,33 @@ func TestLoadGuards_Valid(t *testing.T) {
 	}
 }
 
+func TestParseGuardsMatchesLoadSemantics(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		body      string
+		wantCount int
+		wantErr   bool
+	}{
+		{name: "valid", body: validGuardsCUE, wantCount: 1},
+		{name: "empty", body: "// guard scaffold\n"},
+		{name: "invalid", body: `guards: [{note: "dead"}]`, wantErr: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			const path = "fixture/guard.cue"
+			set, err := ParseGuards(path, []byte(tc.body))
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("ParseGuards error = %v, wantErr %v", err, tc.wantErr)
+			}
+			if len(set.Guards) != tc.wantCount {
+				t.Errorf("ParseGuards count = %d, want %d", len(set.Guards), tc.wantCount)
+			}
+			if err != nil && !strings.Contains(err.Error(), path) {
+				t.Errorf("ParseGuards error does not retain source path: %v", err)
+			}
+		})
+	}
+}
+
 func TestLoadGuards_DefaultsAppliedWhenFieldAbsent(t *testing.T) {
 	path := writeGuards(t, `guards: [{scopes: ["**/*.go"]}]`)
 	set, err := LoadGuards(path)

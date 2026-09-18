@@ -307,7 +307,7 @@ func TestConfigPanel(t *testing.T) {
 	mk(".fathom/layers/ui-appkit/layer.cue", "name: \"ui-appkit\"\n")
 	mk(".fathom/layers/evaled-pack/layer.cue", "name: \"evaled-pack\"\n")
 	mk(".fathom/layers/evaled-pack/eval/results.json", "{}")
-	mk(".fathom/guard.cue", "guards: [{note: \"a\"}, {note: \"b\"}]\n")
+	mk(".fathom/guard.cue", "guards: [{scopes: [\"cmd/**\"], note: \"a\"}, {command_scopes: [\"deploy *\"], note: \"b\"}]\n")
 
 	p := buildConfigPanel(root, 42)
 	if len(p.Layers) != 2 {

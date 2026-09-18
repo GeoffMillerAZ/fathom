@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"html"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +12,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	nethtml "golang.org/x/net/html"
 )
 
 // seriesRow builds one call-log row for the series tests.
@@ -302,39 +305,101 @@ func TestGradeDistributionSeries(t *testing.T) {
 	}
 }
 
-// tileValue returns the kit stat tile's rendered value for the tile whose
-// label is `label` — the text of the first text-2xl value span after the
-// label — so a test can assert an Absent tile shows "—" and never "0".
-// Matches both stat.Render's <p> label and stat.RenderBand's <dt> label.
+// tileValue returns the kit stat tile's rendered value for the unique tile
+// whose semantic label is label. It scopes the value to that tile's own
+// sibling value group, so a neighboring widget cannot satisfy the assertion.
 func tileValue(t *testing.T, body, label string) string {
 	t.Helper()
-	marker := `<p class="text-sm text-ink-muted">` + label + `</p>`
-	i := strings.Index(body, marker)
-	if i < 0 {
-		marker = `<dt class="text-sm font-normal text-ink-muted">` + label + `</dt>`
-		i = strings.Index(body, marker)
+	value, err := checkTileValue(body, label)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if i < 0 {
-		t.Fatalf("no stat tile labeled %q", label)
+	return value
+}
+
+func checkTileValue(body, label string) (string, error) {
+	doc, err := nethtml.Parse(strings.NewReader(body))
+	if err != nil {
+		return "", fmt.Errorf("parse rendered stat HTML: %w", err)
 	}
-	rest := body[i+len(marker):]
-	j := strings.Index(rest, "text-2xl font-semibold")
-	if j < 0 {
-		t.Fatalf("tile %q has no value span", label)
+	var labels, candidates int
+	var value *nethtml.Node
+	walkHTML(doc, func(node *nethtml.Node) {
+		if (!isElement(node, "p") && !isElement(node, "dt")) || nodeText(node) != label {
+			return
+		}
+		labels++
+		candidate := statTileValueNode(node)
+		if candidate != nil {
+			candidates++
+			value = candidate
+		}
+	})
+	if labels == 0 {
+		return "", fmt.Errorf("no stat tile labeled %q", label)
 	}
-	rest = rest[j:]
-	k := strings.Index(rest, ">")
-	l := strings.Index(rest, "</span>")
-	if k < 0 || l < 0 || l < k {
-		t.Fatalf("tile %q value span unparseable", label)
+	if labels != 1 {
+		return "", fmt.Errorf("found %d stat labels %q; want exactly 1", labels, label)
 	}
-	return rest[k+1 : l]
+	if candidates != 1 {
+		return "", fmt.Errorf("stat tile %q has no structurally scoped value span", label)
+	}
+	return nodeText(value), nil
+}
+
+func statTileValueNode(label *nethtml.Node) *nethtml.Node {
+	valueRow := nextElementSibling(label)
+	if isElement(label, "dt") {
+		if !isElement(valueRow, "dd") {
+			return nil
+		}
+	} else if !isElement(valueRow, "div") {
+		return nil
+	}
+	rowChildren := elementChildren(valueRow)
+	if len(rowChildren) == 0 || !isElement(rowChildren[0], "div") {
+		return nil
+	}
+	valueChildren := elementChildren(rowChildren[0])
+	if len(valueChildren) == 0 || !isElement(valueChildren[0], "span") {
+		return nil
+	}
+	return valueChildren[0]
+}
+
+func TestObservatoryTileValueRegressionCanaries(t *testing.T) {
+	const tile = `<div><p>queried</p><div><div><span>7</span><span>measured</span></div></div></div>`
+	const band = `<dl><div><dt>queried</dt><dd><div><span>7</span><span>measured</span></div></dd></div></dl>`
+	for name, body := range map[string]string{"tile": tile, "band": band} {
+		t.Run("valid "+name, func(t *testing.T) {
+			value, err := checkTileValue(body, "queried")
+			if err != nil || value != "7" {
+				t.Fatalf("value = %q, err = %v; want 7", value, err)
+			}
+		})
+	}
+	t.Run("missing value", func(t *testing.T) {
+		if _, err := checkTileValue(`<div><p>queried</p><div></div></div>`, "queried"); err == nil {
+			t.Fatal("label without its own value unexpectedly passed")
+		}
+	})
+	t.Run("duplicate label", func(t *testing.T) {
+		if _, err := checkTileValue(tile+band, "queried"); err == nil {
+			t.Fatal("duplicate labels unexpectedly passed as unambiguous")
+		}
+	})
+	t.Run("neighbor-only value", func(t *testing.T) {
+		body := `<div><p>queried</p></div><div><p>other</p><div><div><span>99</span></div></div></div>`
+		if _, err := checkTileValue(body, "queried"); err == nil {
+			t.Fatal("neighbor tile's value unexpectedly satisfied queried")
+		}
+	})
 }
 
 // kvValue returns the rendered value cell of the kv row labeled `label`.
 func kvValue(t *testing.T, body, label string) string {
 	t.Helper()
-	marker := `<span class="text-ink-muted">` + label + `</span><span class="text-right">`
+	marker := `<span class="shrink-0 text-ink-muted">` + label + `</span><span class="min-w-0 text-right [overflow-wrap:anywhere]">`
 	i := strings.Index(body, marker)
 	if i < 0 {
 		t.Fatalf("no kv row labeled %q", label)
@@ -692,20 +757,78 @@ func TestDimensionSeriesRenders(t *testing.T) {
 	}
 }
 
-// seriesTile returns the rendered block for one dimension of the series
-// widget: from its stat label to the next dimension's label (or the end).
+// seriesTile returns the one enclosing dimension block whose stat tile has
+// the exact label dim. DOM scoping keeps a neighboring dimension's chart out.
 func seriesTile(t *testing.T, body, dim string) string {
 	t.Helper()
-	marker := `<p class="text-sm text-ink-muted">` + dim + `</p>`
-	i := strings.Index(body, marker)
-	if i < 0 {
-		t.Fatalf("no series tile for %q", dim)
+	tile, err := checkSeriesTile(body, dim)
+	if err != nil {
+		t.Fatal(err)
 	}
-	rest := body[i+len(marker):]
-	if j := strings.Index(rest, `<p class="text-sm text-ink-muted">`); j >= 0 {
-		rest = rest[:j]
+	return tile
+}
+
+func checkSeriesTile(body, dim string) (string, error) {
+	doc, err := nethtml.Parse(strings.NewReader(body))
+	if err != nil {
+		return "", fmt.Errorf("parse rendered series HTML: %w", err)
 	}
-	return rest
+	var labels int
+	var blocks []*nethtml.Node
+	walkHTML(doc, func(label *nethtml.Node) {
+		if !isElement(label, "p") || nodeText(label) != dim {
+			return
+		}
+		labels++
+		if statTileValueNode(label) == nil || !isElement(label.Parent, "div") || !isElement(label.Parent.Parent, "div") {
+			return
+		}
+		block := label.Parent.Parent
+		children := elementChildren(block)
+		if len(children) == 0 || children[0] != label.Parent {
+			return
+		}
+		blocks = append(blocks, block)
+	})
+	if labels == 0 {
+		return "", fmt.Errorf("no series tile for %q", dim)
+	}
+	if labels != 1 {
+		return "", fmt.Errorf("found %d series labels %q; want exactly 1", labels, dim)
+	}
+	if len(blocks) != 1 {
+		return "", fmt.Errorf("series tile %q has no structurally scoped dimension block", dim)
+	}
+	var rendered strings.Builder
+	if err := nethtml.Render(&rendered, blocks[0]); err != nil {
+		return "", fmt.Errorf("render series tile %q: %w", dim, err)
+	}
+	return rendered.String(), nil
+}
+
+func TestObservatorySeriesTileRegressionCanaries(t *testing.T) {
+	target := `<div><div><p>queried</p><div><div><span>7</span></div></div></div><div><svg id="target-chart"></svg></div></div>`
+	neighbor := `<div><div><p>gating</p><div><div><span>1</span></div></div></div><div><svg id="neighbor-chart"></svg></div></div>`
+
+	t.Run("neighbor chart stays out", func(t *testing.T) {
+		block, err := checkSeriesTile(`<div>`+target+neighbor+`</div>`, "queried")
+		if err != nil {
+			t.Fatalf("valid target rejected: %v", err)
+		}
+		if !strings.Contains(block, `id="target-chart"`) || strings.Contains(block, `id="neighbor-chart"`) {
+			t.Fatalf("series block crossed dimension boundary: %s", block)
+		}
+	})
+	t.Run("missing target", func(t *testing.T) {
+		if _, err := checkSeriesTile(neighbor, "queried"); err == nil {
+			t.Fatal("missing target unexpectedly passed")
+		}
+	})
+	t.Run("duplicate target", func(t *testing.T) {
+		if _, err := checkSeriesTile(target+target, "queried"); err == nil {
+			t.Fatal("duplicate targets unexpectedly passed as unambiguous")
+		}
+	})
 }
 
 // polylinePoints lists the points attribute of every polyline in s.

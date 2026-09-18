@@ -310,6 +310,46 @@ func TestCodexCodecCapsAdditionalContextWithNamedCut(t *testing.T) {
 	}
 }
 
+func TestCodexStopAdvisoryUsesSystemMessage(t *testing.T) {
+	codec := CodexCodec()
+	out, err := codec.EncodeOutput(EventStop, HookOutput{Context: "review warning"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal(out, &got); err != nil {
+		t.Fatalf("advisory output is not JSON: %v", err)
+	}
+	if got["systemMessage"] != "review warning" {
+		t.Fatalf("advisory output = %s, want systemMessage", out)
+	}
+	if _, ok := got["hookSpecificOutput"]; ok {
+		t.Fatalf("Stop advisory output must not use hookSpecificOutput: %s", out)
+	}
+
+	longContext := strings.Repeat("é", CodexAdditionalContextCap)
+	out, err = codec.EncodeOutput(EventStop, HookOutput{Context: longContext})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got = nil
+	if err := json.Unmarshal(out, &got); err != nil {
+		t.Fatalf("capped advisory output is not JSON: %v", err)
+	}
+	message, _ := got["systemMessage"].(string)
+	if len(message) > CodexAdditionalContextCap || !strings.Contains(message, "[fathom: cut ") || !strings.Contains(message, "additionalContext limit]") {
+		t.Fatalf("systemMessage was not capped with marker: bytes=%d output=%s", len(message), out)
+	}
+
+	out, err = codec.EncodeOutput(EventStop, HookOutput{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out != nil {
+		t.Fatalf("empty Stop output = %s, want silence", out)
+	}
+}
+
 func TestApplyPatchFirstFile(t *testing.T) {
 	cases := map[string]string{
 		"*** Begin Patch\n*** Update File: a/b.go\n@@\n*** End Patch":                     "a/b.go",
