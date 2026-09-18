@@ -312,7 +312,46 @@ exit codes.
   `fathom fleet receipts` lists them, `fathom fleet undo --last|<id>`
   reverses one.
 
-## 8. Pick a provider (only needed for `fathom compile`)
+## 8. The findings loop (optional — an external review kit's own findings)
+
+`docs/vision/30-findings-loop.md` (ADR-040): a review kit's own findings —
+not fathom's — can be imported and served at the edit alongside the
+governing rules §6 already injects. Skip this step entirely if you have no
+review kit; nothing here is required for anything else in this skill.
+
+1. **The review kit writes an outbox.** `leadsman review --target fathom
+   --outbox .reviewkit/outbox/projection.json` (or your CI's equivalent —
+   `docs/adoption/github-action.md` §7) produces a projection file; commit
+   it (CI variant) or leave it local (developer variant) —
+   `docs/adoption/findings-loop.md` covers both end to end.
+2. **Point `.fathom/config.toml` at it.** `init` scaffolds a commented
+   `[findings]` block (§7's list above) — uncomment `subject` (the
+   provisioned `org/repo/component` this repo maps to; a mismatch refuses
+   the import before it reads anything) and, if you want automatic sync,
+   `outbox` (the repo-relative path from step 1). `producers` allow-lists
+   which producer ids this repo trusts.
+3. **The session hook syncs it.** With `outbox` set, SessionStart/
+   SubagentStart imports a changed outbox once per session (digest-gated —
+   a no-op session costs nothing extra) and the brief reports the receipt:
+   `findings outbox: imported 3 (0 duplicate, 1 stale)`, or the failure
+   reason when it couldn't. `fathom findings import ... --file P` is the
+   explicit, by-hand form — use `--dry-run` first against a new subject or
+   producer.
+4. **Served at the edit, exactly like §6's obligations block** — advisory,
+   never a gate: the pre-edit hook renders `open findings on this file (N,
+   showing k)` right after the governing rules, capped at 3 findings/1,200
+   bytes. Only a human-promoted rule (`fathom findings candidates`, then a
+   real `CLAUDE.md`/`guard.cue` edit) ever enforces.
+
+**Verification:** `fathom findings status --store PATH --service S`
+reports the entry-condition progress plus `candidates`/`disagreements`
+counts once findings exist — run it after step 3 to confirm the import
+landed. See the `fathom-findings` skill for import/inspect/refute day to
+day, and `docs/adoption/findings-loop.md`'s Troubleshooting section for
+every honest failure shape (no subject provisioned, unknown producer,
+circular producer, stale/duplicate/conflicting replay).
+
+## 9. Pick a provider (only needed for `fathom compile`)
 
 Six lanes, selected by a config profile's `provider` or
 `FATHOM_LLM_PROVIDER`: `anthropic` (API key), `claude-cli` (subscription,
@@ -328,7 +367,7 @@ fathom smoke --profile <name>                     # one real tiny completion, sm
 fathom compile --service <svc> --dry-run=false    # spend, digest-gated thereafter
 ```
 
-## 9. You know it works when…
+## 10. You know it works when…
 
 ```sh
 bin/fathom version                     # commit matches: git rev-parse HEAD
@@ -360,5 +399,8 @@ claude mcp get fathom                  # → Type: http · Status: ✔ Connected
       --harness codex` reports `skills_installed` from `.agents/skills`.
 - [ ] `fathom plugin render --out fathom-plugin` writes both manifests and
       `claude plugin validate --strict fathom-plugin` passes (fleet install path).
+- [ ] If you did §8, `fathom findings status --store PATH --service S`
+      reports without error (entry-condition progress; `candidates`/
+      `disagreements` once findings exist).
 - [ ] If friction shows up anywhere in this checklist, file it immediately —
       see the `fathom-feedback` skill; don't let it die unrecorded.

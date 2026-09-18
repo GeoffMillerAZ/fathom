@@ -12,10 +12,13 @@ registry-generated adoption matrix: Gemini CLI, the generic `AGENTS.md`
 tier, and what is verified vs. not),
 [spec-driven-development.md](spec-driven-development.md),
 [github-rulesets.md](github-rulesets.md) (making `fathom verify` and the
-compiled layer rules required GitHub checks), and
+compiled layer rules required GitHub checks),
 [github-action.md](github-action.md) (`fathom review --format github`: one
 deterministic PR comment, kept up to date in place, plus a `fathom / review`
-check the same Ruleset can require).
+check the same Ruleset can require), and
+[findings-loop.md](findings-loop.md) (an external review kit's own findings,
+imported and served at the edit alongside governing rules — CI and local
+variants).
 
 ## Get it running
 
@@ -39,10 +42,10 @@ cd /path/to/your/repo && fathom init --skills   # --harness codex|gemini-cli|age
 fathom doctor                     # the checklist; every SKIP says why
 ```
 
-`--skills` (bare) writes the nine shipped skills to `.agents/skills` (the
+`--skills` (bare) writes the ten shipped skills to `.agents/skills` (the
 Agent Skills standard path — Codex, Gemini CLI, Cursor, Copilot, …) and
 `.claude/skills` (Claude Code); `fathom plugin render` packages the same
-nine with the hook template and the MCP registration as one plugin tree
+ten with the hook template and the MCP registration as one plugin tree
 carrying both the Claude Code and the Agent Plugins 1.0 manifests.
 
 `fathom doctor` is the answer to "is this actually working". It never guesses:

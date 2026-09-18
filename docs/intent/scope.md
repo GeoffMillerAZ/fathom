@@ -91,6 +91,11 @@ on it.
   until a real session's beats verify it; Cursor and Copilot are data rows; tiers C/D are
   documented rows. Evidence: `docs/adoption/claude-code.md`, `docs/adoption/codex.md`,
   `docs/vision/25-harness-port.md`.
+- Findings loop: an external review kit's findings are importable (`fathom findings
+  import`, subject-bound, tier-capped by producer) and served at the edit alongside
+  governing rules; fathom never approves, disputes, tailors, or closes one on its own
+  authority — the review kit stays the organizational record. Evidence:
+  `docs/vision/30-findings-loop.md`, ADR-040.
 - Fleet: the repositories on this workstation, reconciled by `fathom fleet reconcile`
   (20 on 2026-09-02, 19 drifted on the dry run; nothing applied). Evidence:
   `CHANGELOG.md` 2026-08-13.

@@ -92,7 +92,20 @@ lefthook snippet regardless of who made the commits. See the
 `fathom-verify` prompt/skill for the exit-code contract. CI: `--strict`,
 exit 2 also a failure.
 
-## 6. Honest capability gaps (read this before assuming parity)
+## 6. The findings loop (optional — an external review kit's own findings)
+
+`docs/vision/30-findings-loop.md` (ADR-040). Skip if you have no review
+kit. `leadsman review --target fathom --outbox .reviewkit/outbox/
+projection.json` produces a projection file (commit it, or keep it
+local — `docs/adoption/findings-loop.md`); uncomment `[findings] subject`
+(and, for auto-sync, `outbox`) in `.fathom/config.toml`. No PreToolUse
+channel exists here (see the gap table below), so the served-at-the-edit
+block is Claude-Code-only — in Codex, call `fathom findings status`/
+`fathom findings near` explicitly, or `fathom findings import --dry-run`
+by hand, rather than expecting an injected block. See the `fathom-findings`
+skill for the day-to-day verbs.
+
+## 7. Honest capability gaps (read this before assuming parity)
 
 | Channel | Claude Code | Codex |
 |---|---|---|
@@ -103,13 +116,14 @@ exit 2 also a failure.
 | Standing operating-contract doc | `CLAUDE.md` | `AGENTS.md` — same stanza, same source |
 | Pre-push `fathom verify` gate | Yes | Yes — identical |
 | Subscription compile lane | `claude-cli`, near-$0 | `codex-cli`, real token cost |
+| Findings-loop pre-edit block | Yes — served automatically | **No equivalent** — call `findings status`/`findings near` explicitly |
 
 The practical upshot: in Codex, fathom is a fully capable **pull** tool
 (every MCP tool works) plus two harness-agnostic **gate** channels
 (pre-push, CI). What's missing is the **inject** tier — lean on `AGENTS.md`
 being genuinely followed and treat the gates as the honest backstop.
 
-## 7. You know it works when…
+## 8. You know it works when…
 
 ```sh
 curl -s http://127.0.0.1:7575/healthz   # → ok

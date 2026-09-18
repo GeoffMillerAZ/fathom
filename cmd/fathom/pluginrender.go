@@ -13,7 +13,7 @@ import (
 )
 
 // fathom plugin render (vision 16 R1, plan IO-25; RP-6 two manifests):
-// generate the plugin directory — skills (all nine, namespaced
+// generate the plugin directory — skills (all ten, namespaced
 // /fathom:<name> in Claude Code), the full hook template as Claude plugin
 // hooks, and the MCP registration in BOTH manifest dialects — from the
 // SAME embedded sources init installs. A build artifact, never

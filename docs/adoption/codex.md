@@ -43,8 +43,8 @@ If you ran `fathom init` in the repo (per the Claude Code guide), it already:
   semantics, and the corruption-refusal case are documented once, in
   [docs/adoption/claude-code.md §3.1](claude-code.md#31-the-claudemd--agentsmd-stanza--markers-re-run-semantics-corruption-refusal),
   since the mechanism and the stanza text are identical for both files), and
-- if you passed `--skills=codex` (or a bare `--skills`), rendered the nine
-  shipped `fathom-{plan,verify,onboard,feedback,doctor,impact,rewire,activate,custodian}`
+- if you passed `--skills=codex` (or a bare `--skills`), rendered the ten
+  shipped `fathom-{plan,verify,onboard,feedback,doctor,impact,rewire,activate,custodian,findings}`
   skills into `<repo>/.agents/skills/` — the path Codex documents — §1.1 below.
 
 The stanza and hook writes go through one wiring engine (law 15): a
@@ -66,10 +66,10 @@ bin/fathom init --skills                # bare = all: .agents/skills + .claude/s
 bin/fathom init --skills=codex-prompts  # the deprecated ~/.codex/prompts twin, explicit only
 ```
 
-Renders the same nine shipped skill sources
-(`dist/agents/skills/fathom-{plan,verify,onboard,feedback,doctor,impact,rewire,activate,custodian}/`)
+Renders the same ten shipped skill sources
+(`dist/agents/skills/fathom-{plan,verify,onboard,feedback,doctor,impact,rewire,activate,custodian,findings}/`)
 that the Claude Code guide installs under `.claude/skills`
-([docs/adoption/claude-code.md §11](claude-code.md#11-agent-skills--the-nine-shipped-with-the-binary))
+([docs/adoption/claude-code.md §11](claude-code.md#11-agent-skills--the-ten-shipped-with-the-binary))
 into the path Codex's skills documentation lists — `$REPO_ROOT/.agents/skills`
 (also every directory from cwd up to the repo root, and `$HOME/.agents/skills`
 for personal skills) — as Agent Skills `SKILL.md` files: frontmatter reduced
@@ -418,7 +418,7 @@ verified (above); stdio `serve-mcp` always works; the git-native gates (pre-push
 identical on both; the `codex-cli` compile lane carries a real ambient-token
 cost (§3); `fathom init --harness=codex` writes `AGENTS.md` and `.fathom/`
 only, prints the `codex mcp add` line rather than running it, and prints the
-hook entries rather than writing a user-global file; the nine
+hook entries rather than writing a user-global file; the ten
 shipped skills reach Codex through `--skills=codex` (= `--skills=agents`:
 `.agents/skills`, the documented path, unverified here) or the deprecated
 `--skills=codex-prompts` twin (§1.1); continuity threads are half a loop here (the store and verbs are
@@ -525,8 +525,8 @@ Codex's plugin loader reads beside Claude Code's), `prime` (the Codex pull tier)
 19-tool allowlist), the `codex-cli` provider lane
 (`cmd/fathom/llmprofile.go`'s `buildCodexCLIClientProfile` Ping tripwire),
 `fathom verify` / `--strict` / `--quiet` (git-native gate, identical to
-Claude Code), the nine shipped Codex prompts
-(`dist/agents/skills/fathom-{plan,verify,onboard,feedback,doctor,impact,rewire,activate,custodian}`).
+Claude Code), the ten shipped Codex prompts
+(`dist/agents/skills/fathom-{plan,verify,onboard,feedback,doctor,impact,rewire,activate,custodian,findings}`).
 Codex-specific `config.toml`/`codex mcp` syntax is
 sourced from Codex's own public docs, not this repo — re-verify those
 specifics against your installed Codex version when they change. Update

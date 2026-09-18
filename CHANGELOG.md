@@ -34,6 +34,10 @@ Release impact: minor (pre-1.0: breaking bumps minor)
 - `fathom compile --max-tokens-per-run`/`--max-usd-per-run` overrides a resolved layer's budget for one compile call (a positive number or `"all"` for unlimited).
 - `review_diff`/`fathom review` and `fathom tests coverage` accept one Go coverage profile per test layer (`coverage_profiles: [{layer, path}]` / repeatable `--coverage-profile [layer=]<file>`), reporting per-changed-symbol coverage broken out by layer instead of one blended number.
 - `read_source` gains `max_bytes` (default 8KB); `find_symbol` on a Go interface carries `implementations`.
+<!-- fl-wave-5 -->
+- The findings loop (`docs/vision/30-findings-loop.md`, ADR-040): `fathom init` scaffolds a commented `[findings]` section in `.fathom/config.toml`; a new `fathom-findings` skill (import/inspect/refute) and a `fathom-onboard` step document it end to end (`docs/adoption/findings-loop.md`, `docs/configuration.md`). The `fathom findings import`/`fathom findings candidates` CLI verbs it documents are other waves' work (`docs/plans/findings-loop.md` sections A-D) and are not yet present.
+- Measurement corpus `testdata/scenariobench/findings-loop.json` (FL-24, `task bench-scenario-findings`): four tasks, each a real gap this repo's own tree carries, anchored to a review-kit finding served (full arm) or withheld (control arm) — committed only, not run.
+<!-- /fl-wave-5 -->
 
 ### Changed
 

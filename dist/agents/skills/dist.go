@@ -17,10 +17,10 @@ package skillsdist
 
 import "embed"
 
-//go:embed fathom-plan fathom-verify fathom-onboard fathom-feedback fathom-doctor fathom-impact fathom-rewire fathom-activate fathom-custodian
+//go:embed fathom-plan fathom-verify fathom-onboard fathom-feedback fathom-doctor fathom-impact fathom-rewire fathom-activate fathom-custodian fathom-findings
 var FS embed.FS
 
 // Names is the ordered, canonical list of shipped skill names — the one
 // place this list is maintained; installers range over it instead of
 // hard-coding six names in more than one spot.
-var Names = []string{"fathom-plan", "fathom-verify", "fathom-onboard", "fathom-feedback", "fathom-doctor", "fathom-impact", "fathom-rewire", "fathom-activate", "fathom-custodian"}
+var Names = []string{"fathom-plan", "fathom-verify", "fathom-onboard", "fathom-feedback", "fathom-doctor", "fathom-impact", "fathom-rewire", "fathom-activate", "fathom-custodian", "fathom-findings"}
