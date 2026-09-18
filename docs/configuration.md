@@ -258,6 +258,52 @@ manifests as a **crash-loop**, with the error on stderr in the launchd log.
 Pre-flight before restarting: run `fathom config` (it loads the very same
 layers and prints the same errors) — if it exits 0, the daemon will start.
 
+## The findings loop: `[findings]`
+
+`fathom init` scaffolds `.fathom/config.toml` (project scope, sibling to
+`guard.cue`/`modules.cue`/`concerns.cue`/`capabilities.cue`) with a fully
+commented `[findings]` block — the review kit's projection outbox
+(`docs/vision/30-findings-loop.md`, ADR-040) reaching a coding session
+without a network hop or a daemon round trip:
+
+```toml
+# .fathom/config.toml
+[findings]
+subject   = "org/repo/component"                 # the provisioned review-kit subject this repo maps to
+outbox    = ".reviewkit/outbox/projection.json"   # repo-relative; optional
+producers = ["reviewkit.system-review"]           # producer ids this repo trusts
+```
+
+- `subject` binds this repository to one review-kit subject
+  (`org/repo/component`). `fathom findings import` refuses any event whose
+  own subject does not match exactly — no mapping, no import, and never a
+  best-effort guess.
+- `outbox` (optional) names a repo-relative projection file. When set, the
+  SessionStart/SubagentStart hook runs `findings import` against it once
+  per session, bounded to one attempt, IF the file's digest differs from
+  the cursor recorded under fathom's state dir since the last import — a
+  no-op session incurs no extra work. The session brief reports the
+  receipt (`open findings: N (k producers; oldest …)`) or the failure
+  reason, honestly, when the sync could not run (`docs/adoption/
+  findings-loop.md` covers every failure shape: no subject provisioned, an
+  unknown producer, a conflicting replay, a circular fathom-origin
+  producer). Leaving `outbox` unset is a valid, permanent choice — a CI
+  review that commits its own outbox, or an operator who only ever runs
+  `fathom findings import` by hand, needs it never.
+- `producers` is this repo's own allow-list against the producer catalog
+  (`schema/semantic/producers.cue`) — an event from a producer not named
+  here (or not in the catalog at all) is refused, never silently accepted
+  at a lower tier.
+
+This section is **read once per session** (the sync above), never
+hot-reloaded mid-session — the same restart/re-read discipline every other
+`.fathom/config.toml` section follows. `fathom findings status` and
+`fathom findings candidates` read the store directly and need no config at
+all beyond `--store`/`--service`; only the SESSION-HOOK sync depends on
+`[findings]` being provisioned. See `docs/adoption/findings-loop.md` for
+the end-to-end CI and local variants, and `docs/use-cases/change-review.md`
+for the loop from a reviewer's own seat.
+
 ## Worked example
 
 ```toml
