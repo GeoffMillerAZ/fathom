@@ -1961,3 +1961,97 @@ violation the deny should have caught (name which check missed it and why); or `
 proves to need a check kind this ADR's five do not cover, at which point the schema's `checks`
 enum grows rather than each repo hand-rolling its own.
 
+
+## ADR-040: The findings loop — external review findings are governed projections served as obligations; fathom is a projection adapter, never the organizational record (2026-09-18)
+
+**Status.** Accepted. Vision: `docs/vision/30-findings-loop.md`. Plan:
+`docs/plans/findings-loop.md`. Counterpart: platform-engineering ADR-0103 and
+`kits/review-kit/docs/design/fathom.md`.
+
+**Context.** The review kit (platform-engineering `kits/review-kit`) owns an
+organization's finding identity, lifecycle and dispositions and already emits
+a projection outbox for fathom that it marks "pending: governed external
+importer not negotiated". fathom already stores finding-kind claims with
+content-addressed IDs, drift anchors, failure classes, patterns, resolution
+outcomes and a gated promotion rule, and serves governing rules at the edit.
+Neither side could close the loop: findings never reached the agent at the
+point of work, a recurring finding never became a rule, and the review kit's
+uplift brief (P0–P4) named the missing contracts. The earlier decision that
+fathom must not be the only authoritative findings record (ADR-0098) stands;
+what was never decided is the projection.
+
+**Decision.**
+
+1. **Ownership is hexagonal.** The review kit owns identity, lifecycle,
+   dispositions and the portable bundle behind a `ProjectionPort`; fathom is
+   the first projection adapter. fathom never approves, disputes, tailors or
+   closes a review-kit finding, and a review-kit acceptance is never
+   translated into a fathom `refute`.
+2. **One governed import** (`fathom findings import`, `pkg/client.ImportFindings`)
+   accepts the review kit's versioned projection under a provisioned
+   subject→service mapping, derives claim identity deterministically in a
+   producer-namespaced subject, maps lifecycle to the existing status and
+   event vocabulary (`fresh`, `superseded` with `external-closure` /
+   `revoked`, status-preserving `annotated`), enforces monotonic source
+   versions with a per-claim cursor (duplicate / stale / conflicting-replay
+   are distinct receipt counts), and never writes on a batch schema failure.
+3. **Native and external findings are distinct reconciliation domains**,
+   discriminated by `PromptVersion` (`review-verb/v1` vs `external-import/v1`).
+   Native review never supersedes an external claim; an import never touches a
+   native one; a fathom-origin producer is refused on import (no circular
+   proof).
+4. **Provenance and confidence are checkable.** A producer catalog
+   (`schema/semantic/producers.cue`) declares each producer's kind, origin and
+   tier cap; served tier is `min(event tier, cap)`; tier never rises on
+   import; corroboration counts only across independent producers; every
+   served finding is source-linked (producer, versions, rule, source id,
+   revision, anchor path/lines/symbol, anchor digest, `anchor_current`);
+   disagreements between producers are served side by side and counted, never
+   resolved by fathom; annotation prose is quoted, never interpreted.
+5. **Findings are served at the point of work** as an advisory block after
+   the governing rules in the pre-edit hook (capped, omitted count always
+   shown, drifted anchors flagged), as a count in the prompt hook and the
+   session brief, and never as an enforcement. Enforcement belongs to rules;
+   a recurring finding becomes a rule only through the human-adopted
+   candidate (`fathom findings candidates`), after which ADR-038 applies.
+6. **The public review contract is versioned** (`schema_version`, explicit
+   `mode: report|persist` with a store-state equality guarantee for `report`,
+   an explicit changed-path manifest, idempotency keys, exact input
+   fingerprints, per-dimension `checked`/reason, `truncated`/`stale_index`/
+   `cancelled` never readable as clean), and `fathom review-key` binds the
+   changed manifest, the typed transitive closure, rule packs, plans, tooling
+   and index identity into one token with an explicit unknown set and a
+   changed-since-prior diff. The review kit keeps its own reuse policy
+   (ADR-0099) and consumes the key through its `Digester` port.
+7. **The outbox syncs without a network**: with `[findings] outbox` set, the
+   session hook imports a changed outbox once per session and reports the
+   receipt; the explicit CLI form remains.
+8. **Measured before believed.** A `findings-loop` scenario corpus with paired
+   criteria (`finding_addressed`, `finding_cited`) and kill criteria is
+   committed; no number is cited before a second reading.
+
+**Consequences.** The agent-facing MCP surface does not grow (findings ride
+`obligations layer: "all"`); the write surface is CLI/client, inside the
+trusted local boundary. Two additive store tables (`external_findings`,
+`review_runs`) and one additive event verdict (`annotated`). The review kit
+gains a `ProjectionPort` with fathom, file and null adapters, a publish verb
+with receipts, additive anchor lines/symbol on its schema, and consumption of
+the review key. agentic-kit gains an `evidence-producer` primitive (catalog
+with tier caps and origin) that fathom consumes. Restore, retention, access
+isolation across trust boundaries and named operators remain review-kit
+obligations; the receipts and cursors here make that review possible.
+
+**Alternatives rejected.** A findings database or CRUD API in fathom
+(duplicates the claims lifecycle; vision 03). Symmetric status writes
+between the two systems (two authorities for one disposition). SARIF as the
+interchange (a fine export later; it carries no lifecycle, no source
+versions, no subject authorization — the review kit's event contract does,
+and a SARIF exporter is one adapter away). Enforcing findings at the edit
+(a finding is one producer's observation; only an adopted rule is policy).
+Model-assisted import or dedup (ADR-0098: enrichment may aid retrieval,
+never tier or status).
+
+**Revisit when.** The bench shows no lift in `finding_addressed` at n ≥ 3;
+a second external producer needs a projection shape the event contract
+cannot carry; the review kit's ADR-0098 "revisit" fires and fathom is asked
+to be the record — then the durability list in vision 30 §5 is the entry bar.
