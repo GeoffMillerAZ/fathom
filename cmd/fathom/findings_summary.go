@@ -79,7 +79,7 @@ func buildFindingsSummary(ctx context.Context, c *client.Client, service string)
 	return out
 }
 
-// findingsSummaryLine fetches /findings/summary for service and renders
+// findingsBriefLine fetches /findings/summary for service and renders
 // the session brief's one-line form: "open findings: N (oldest
 // YYYY-MM-DD)" when Oldest is known, else bare "open findings: N". ""
 // (silent) on any fetch failure or a zero count — this hook's own
@@ -93,7 +93,7 @@ func buildFindingsSummary(ctx context.Context, c *client.Client, service string)
 // Producer field), populated by the external-import join a concurrent wave
 // (FL-1..FL-19, the provenance substrate) owns. Fabricating a producer
 // count from unrelated claim fields would be worse than omitting it.
-func findingsSummaryLine(hc *http.Client, baseURL, service string) string {
+func findingsBriefLine(hc *http.Client, baseURL, service string) string {
 	req, err := http.NewRequest(http.MethodGet, baseURL+"/findings/summary?service="+service, nil)
 	if err != nil {
 		return ""

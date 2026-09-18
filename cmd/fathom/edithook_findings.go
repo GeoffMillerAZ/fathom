@@ -173,7 +173,7 @@ func sortFindingRows(rows []semantic.Obligation) {
 
 // findingBullet renders one finding's bullet line, per §3.4's template:
 //
-//	- [finding · <class> · <producer> · <rule_id>] <rule> — remedy: <remedy> — <src> — observed <observed_at> at <source_revision>
+//   - [finding · <class> · <producer> · <rule_id>] <rule> — remedy: <remedy> — <src> — observed <observed_at> at <source_revision>
 //
 // with " (code moved since observed)" appended when AnchorCurrent is
 // explicitly false, and " (unanchored process finding)" appended when

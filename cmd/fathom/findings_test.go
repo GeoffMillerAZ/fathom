@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -177,6 +178,98 @@ func TestCmdFindingsStatus_JSON(t *testing.T) {
 	}
 	if payload["entry_condition_met"].(bool) {
 		t.Error("entry_condition_met = true, want false (2 < 15)")
+	}
+}
+
+// TestCmdFindingsStatus_CandidatesAndDisagreements pins FL-23's two new
+// StatusReport fields at the CLI/JSON boundary.
+func TestCmdFindingsStatus_CandidatesAndDisagreements(t *testing.T) {
+	t0 := time.Now()
+	claims := []core.SemanticClaim{
+		{ClaimID: "s1", ServiceID: "svc", Layer: "findings", Kind: "finding", Class: core.FindingClassCorrectness, Subject: "a", Rule: "Do a thing.", Scope: []string{"a.go"}, Status: core.ClaimFresh, CompiledAt: t0},
+		{ClaimID: "s2", ServiceID: "svc", Layer: "findings", Kind: "finding", Class: core.FindingClassCorrectness, Subject: "b", Rule: "Do a thing.", Scope: []string{"b.go"}, Status: core.ClaimFresh, CompiledAt: t0},
+		{ClaimID: "s3", ServiceID: "svc", Layer: "findings", Kind: "finding", Class: core.FindingClassCorrectness, Subject: "c", Rule: "Do a thing.", Scope: []string{"c.go"}, Status: core.ClaimFresh, CompiledAt: t0},
+		{ClaimID: "fresh1", ServiceID: "svc", Layer: "findings", Kind: "finding", Rule: "Do X.", Subject: "arch_conformance#api.A", Scope: []string{"x.go"}, Status: core.ClaimFresh, CompiledAt: t0},
+		{ClaimID: "closed1", ServiceID: "svc", Layer: "findings", Kind: "finding", Rule: "Do X.", Subject: "ext:reviewkit.security-review:f1", Scope: []string{"x.go"}, Status: core.ClaimSuperseded, CompiledAt: t0},
+	}
+	events := []core.ClaimEvent{
+		{ClaimID: "closed1", Verdict: "superseded", At: t0, ResolutionKind: "external-closure"},
+	}
+	storePath := seedFindingsStore(t, nil, claims, events)
+
+	var out, errBuf bytes.Buffer
+	code := cmdFindingsStatus([]string{"--store", storePath, "--service", "svc", "--json"}, &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("exit = %d, stderr: %s", code, errBuf.String())
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(out.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal: %v\noutput: %s", err, out.String())
+	}
+	if payload["candidates"].(float64) != 1 {
+		t.Errorf("candidates = %v, want 1", payload["candidates"])
+	}
+	if payload["disagreements_by_rule"].(float64) != 1 {
+		t.Errorf("disagreements_by_rule = %v, want 1", payload["disagreements_by_rule"])
+	}
+}
+
+func TestCmdFindingsCandidates_JSON(t *testing.T) {
+	t0 := time.Now()
+	claims := []core.SemanticClaim{
+		{ClaimID: "c1", ServiceID: "svc", Layer: "findings", Kind: "finding", Class: core.FindingClassSecurity, Subject: "ext:reviewkit.security-review:f1", Rule: "Do not log API keys in plaintext.", Scope: []string{"a.go"}, Status: core.ClaimFresh, CompiledAt: t0},
+		{ClaimID: "c2", ServiceID: "svc", Layer: "findings", Kind: "finding", Class: core.FindingClassSecurity, Subject: "arch_conformance#api.B", Rule: "Do not log API keys in plaintext.", Scope: []string{"b.go"}, Status: core.ClaimFresh, CompiledAt: t0},
+	}
+	storePath := seedFindingsStore(t, nil, claims, nil)
+
+	var out, errBuf bytes.Buffer
+	code := cmdFindingsCandidates([]string{"--store", storePath, "--service", "svc", "--min-sites", "2", "--json"}, &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("exit = %d, stderr: %s", code, errBuf.String())
+	}
+	var cands []map[string]any
+	if err := json.Unmarshal(out.Bytes(), &cands); err != nil {
+		t.Fatalf("unmarshal: %v\noutput: %s", err, out.String())
+	}
+	if len(cands) != 1 {
+		t.Fatalf("len(cands) = %d, want 1", len(cands))
+	}
+	if cands[0]["class"] != "security" {
+		t.Errorf("class = %v, want security", cands[0]["class"])
+	}
+	if cands[0]["check_family"] != "secret_literal" {
+		t.Errorf("check_family = %v, want secret_literal", cands[0]["check_family"])
+	}
+	if cands[0]["sites"].(float64) != 2 {
+		t.Errorf("sites = %v, want 2", cands[0]["sites"])
+	}
+}
+
+func TestCmdFindingsCandidates_Text(t *testing.T) {
+	t0 := time.Now()
+	claims := []core.SemanticClaim{
+		{ClaimID: "c1", ServiceID: "svc", Layer: "findings", Kind: "finding", Class: core.FindingClassSecurity, Subject: "ext:reviewkit.security-review:f1", Rule: "Do not log API keys in plaintext.", Scope: []string{"a.go"}, Status: core.ClaimFresh, CompiledAt: t0},
+		{ClaimID: "c2", ServiceID: "svc", Layer: "findings", Kind: "finding", Class: core.FindingClassSecurity, Subject: "arch_conformance#api.B", Rule: "Do not log API keys in plaintext.", Scope: []string{"b.go"}, Status: core.ClaimFresh, CompiledAt: t0},
+	}
+	storePath := seedFindingsStore(t, nil, claims, nil)
+
+	var out, errBuf bytes.Buffer
+	code := cmdFindingsCandidates([]string{"--store", storePath, "--service", "svc", "--min-sites", "2"}, &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("exit = %d, stderr: %s", code, errBuf.String())
+	}
+	got := out.String()
+	for _, want := range []string{"[security]", "draft: Never", "check family: secret_literal", "sites: 2"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("output missing %q, got %s", want, got)
+		}
+	}
+}
+
+func TestCmdFindingsCandidates_MissingFlags_ErrorExit(t *testing.T) {
+	var out, errBuf bytes.Buffer
+	if code := cmdFindingsCandidates(nil, &out, &errBuf); code == 0 {
+		t.Error("expected non-zero exit with no --store/--service")
 	}
 }
 

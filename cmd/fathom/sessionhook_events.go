@@ -70,6 +70,14 @@ func subagentPrimer(baseURL, projDir, parentSessionID string) string {
 			primer = line + "\n" + primer
 		}
 	}
+	// FL-22 (docs/vision/30-findings-loop.md §3.7): the outbox sync also
+	// runs on SubagentStart — a long-running session's first subagent may
+	// be the first hook fired since the outbox last changed. The digest
+	// cursor makes this safe to call from both paths: whichever fires
+	// first does the sync, the other sees an unchanged digest and no-ops.
+	if line := syncFindingsOutbox(baseURL, projDir); line != "" {
+		primer += "\n" + line
+	}
 	// RC-28: the parent's discoveries since its own recorded start, within
 	// 1200 bytes TOTAL — the constant 600-byte primer above stays the cap
 	// when there is nothing to append (subagentPrimerBudget).

@@ -1508,13 +1508,21 @@ Design: `docs/design/observability-surfaces.md`.
 ### `findings` — findings as evidence (**experimental**; entry ≥15–20 resolved findings)
 
 ```sh
-fathom findings near   <symbol|file> --store P --service S [--hops 2] [--include-superseded] [--json]
-fathom findings status --store P --service S [--json]
+fathom findings near       <symbol|file> --store P --service S [--hops 2] [--include-superseded] [--json]
+fathom findings status     --store P --service S [--json]
+fathom findings candidates --store P --service S [--min-sites 3] [--json]
 ```
 
 `near` is the call-graph precedent lookup (mirror of the `findings_near`
-MCP tool); `status` reports entry-condition progress. Design:
-`docs/design/findings-as-evidence.md`.
+MCP tool); `status` reports entry-condition progress and, since the
+findings loop (FL-23), `candidates`/`disagreements_by_rule` counts;
+`candidates` derives rule candidates — class, normalized shape, member
+citations, producers, code-change resolutions, a drafted rule sentence,
+and the ADR-038 check family that could enforce it — from patterns
+spanning at least `--min-sites` distinct sites across native and external
+(review-kit-imported) findings alike. fathom never writes a rule; this is
+a report a human decides whether to act on. Design:
+`docs/design/findings-as-evidence.md`, `docs/vision/30-findings-loop.md`.
 
 ### `memory` — anchored memory (**experimental**)
 

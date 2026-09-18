@@ -95,7 +95,7 @@ func TestFindingsSummaryLine(t *testing.T) {
 		json.NewEncoder(w).Encode(findingsSummary{Service: "svc", Count: 3, Oldest: "2026-09-02"})
 	}))
 	defer srv.Close()
-	line := findingsSummaryLine(&http.Client{}, srv.URL, "svc")
+	line := findingsBriefLine(&http.Client{}, srv.URL, "svc")
 	if !strings.Contains(line, "open findings: 3") || !strings.Contains(line, "2026-09-02") {
 		t.Errorf("line = %q, want it to name the count and oldest date", line)
 	}
@@ -104,7 +104,7 @@ func TestFindingsSummaryLine(t *testing.T) {
 		json.NewEncoder(w).Encode(findingsSummary{Service: "svc", Count: 0})
 	}))
 	defer zero.Close()
-	if got := findingsSummaryLine(&http.Client{}, zero.URL, "svc"); got != "" {
+	if got := findingsBriefLine(&http.Client{}, zero.URL, "svc"); got != "" {
 		t.Errorf("zero count must render no line, got %q", got)
 	}
 
@@ -112,7 +112,7 @@ func TestFindingsSummaryLine(t *testing.T) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer broken.Close()
-	if got := findingsSummaryLine(&http.Client{}, broken.URL, "svc"); got != "" {
+	if got := findingsBriefLine(&http.Client{}, broken.URL, "svc"); got != "" {
 		t.Errorf("a failure must omit the line silently, got %q", got)
 	}
 }

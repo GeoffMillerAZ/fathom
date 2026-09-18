@@ -34,6 +34,9 @@ Release impact: minor (pre-1.0: breaking bumps minor)
 - `fathom compile --max-tokens-per-run`/`--max-usd-per-run` overrides a resolved layer's budget for one compile call (a positive number or `"all"` for unlimited).
 - `review_diff`/`fathom review` and `fathom tests coverage` accept one Go coverage profile per test layer (`coverage_profiles: [{layer, path}]` / repeatable `--coverage-profile [layer=]<file>`), reporting per-changed-symbol coverage broken out by layer instead of one blended number.
 - `read_source` gains `max_bytes` (default 8KB); `find_symbol` on a Go interface carries `implementations`.
+<!-- fl-wave-4 -->
+- Findings served at the point of work (ADR-040, docs/vision/30-findings-loop.md §3.4): the pre/post-edit hook's "open findings on this file" advisory block (capped at 3 findings/1,200 bytes, drifted anchors flagged, superseded/refuted never shown, post-edit gated on the edit actually touching the finding's cited lines); the prompt hook's `open findings: N across the files this prompt names`; the session brief's `open findings: N (oldest …)` (a new plain `GET /findings/summary` daemon route, never an MCP tool); the session hook's outbox sync (`[findings] outbox` in `.fathom/config.toml`, a sha256 digest cursor, one attempt per session); `fathom findings candidates [--min-sites 3] [--json]` (rule candidates derived from `DerivePatterns`, native and external findings alike, with a drafted rule sentence and its ADR-038 check family — fathom never writes the rule); `findings status` gains `candidates` and `disagreements_by_rule`.
+<!-- /fl-wave-4 -->
 
 ### Changed
 
