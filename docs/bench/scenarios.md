@@ -232,6 +232,7 @@ and only matter for `bench-compare-edges`.
    | targeted | `task bench-scenario-guards` | ≈ $20–40 |
    | pilot | `task bench-scenario-pilot` | ≈ $90–130 |
    | lookups-vs | `task bench-scenario-lookups-vs` | fathom vs. graphify/serena/gopls/grep, 2 trials — 140 cells (`task bench-scenario-plan -- -corpus testdata/scenariobench/lookups-vs.json` lists them free first) |
+   | findings loop | `task bench-scenario-findings` | 4 tasks, arms full vs control, n=3 (FL-24, `docs/plans/findings-loop.md`; `testdata/scenariobench/findings-loop.json`) — committed only, **not run** by this wave: the CLI it exercises (`fathom findings import`, the pre-edit "open findings" block) is other waves' work against sections A-D of that plan |
    | credible | 30 tasks × 3 trials per matrix row (`docs/vision/27-strengths-bench.md` §9) | several hundred dollars per row; operator decision, not a Taskfile target |
 
    Regenerate `testdata/scenariobench/public-go.json` itself (after a
@@ -317,6 +318,67 @@ detectors detect, not merely that `TestGuardsCorpusDetectorsExist`
 (`guards_test.go`) proves they run. `task bench-scenario-guards-m1` is the
 paid tier (`-trials 3`, matching RC-51's pilot); RC-51 is the
 operator-run pilot itself.
+
+## The findings-loop corpus (`testdata/scenariobench/findings-loop.json`, FL-24)
+
+Vision 30 / ADR-040's own bench claim (§6): does an open, externally-sourced
+finding served at the point of work change the fix the way a compiled
+obligation does (`guards-fathom.json`'s M1 claim), or does a review-kit
+finding need its own measurement? Four tasks, each a real, currently
+unaddressed gap this repo's own tree carries — a bare `return err` with no
+step named (`recordPurge`, error-handling), a map-derived field with no sort
+call once it exists (`DerivePatterns`, contract-violation, the same
+determinism contract `guards-i1-packagedeps-sorted` tests — a different
+file), a doctor row that reports only the first of several violated
+concerns with no bound (contract-violation), and a change detector that
+never notices a deletion (`hasChanged`, correctness). Each is anchored to a
+real `path#Lstart-Lend` in this repo at the corpus's own `base_commit`
+(`anchor.digest` is that file's own sha256 — `TestFindingsLoopCorpusParses`
+checks it still matches); the task's prompt is an ordinary-sounding small
+ask whose correct completion also satisfies the finding's own remedy text,
+mirroring how `guards-fathom.json`'s naive-fix tasks work but for an
+imported review finding instead of a compiled rule.
+
+`subject.setup` (shared by every task, since `Subject.Setup` runs before
+either arm's own `Arm.Setup` — `subject.go`) appends a `[findings]` section
+to this repo's own `.fathom/config.toml` and writes a five-event review-kit
+projection outbox to `.reviewkit/outbox/projection.json` (schema
+`schemaVersion`/`kind`/`outcome`/`producer`/`subject`/`visibility`/
+`sourceId`/`sourceVersion`/`payloadDigest`/`findingId`/`observedAt`/
+`anchor`/`rule`, vision 30 §3.3) — four events match a task's own
+`rule.id`, a fifth (`genclaudemd.go`, `performance`) sits elsewhere in the
+repo and is never touched by any task, so the outbox reads as a repo
+carrying several open findings rather than exactly one per edited file.
+Arms: **full** (the outbox stays materialized — once the CLI other waves
+are building imports and serves it) vs **control**, whose own `Arm.Setup`
+(`"rm -f .reviewkit/outbox/projection.json"`) deletes the same file before
+session 1 — the "express the difference as an arm-specific setup, not a
+second subject variant" shape `types.go`'s own `Arm.Setup` doc comment
+supports, and the same one `guards-fathom.json` uses for `wired`. Both arms
+are otherwise identical (`wired: true`, `compile_layers: true`): the
+comparison isolates the outbox, not fathom's presence at all.
+
+Paired criteria per task, scored once the importer/hook exist:
+`finding_addressed` (the finding's own remedy, a detector distinct from
+`change-present`) and `finding_cited` (`Oracle.AnswerAnyOf`: the task's
+`rule.id` or the served "open findings on this file" line appearing in the
+final session's answer), plus the same `no-unrelated-rewrite` scope
+detector every corpus here uses (a diff confined to the edited file and its
+own test). Kill criteria (vision 30 §6, `notes.kill_criteria`): no lift in
+`finding_addressed` at n≥3; hook injection over the ADR-036 budget; a
+disagreement or drifted finding served as current.
+
+**This corpus is committed but not runnable yet.** `fathom findings import`
+(FL-10), the pre-edit "open findings on this file" block (FL-20), and the
+session-outbox sync (FL-22) are other waves' work against
+`docs/plans/findings-loop.md` sections A-D and are not present in this
+clone; `task bench-scenario-findings` will fail the same "no such file or
+directory" way `bench-scenario-guards` once did until `cmd/scenariobench`
+landed (see this page's own wave-status note above). `TestFindingsLoopCorpusParses`
+(`internal/scenariobench/findingsloop_test.go`) is the corpus's own proof
+of life in the meantime: it loads and validates the corpus through the
+same gate every other one passes, and checks every projection event's
+anchor path exists and its digest matches the file at HEAD.
 
 ## Layer-dependent tasks and post-wire drift (O45)
 

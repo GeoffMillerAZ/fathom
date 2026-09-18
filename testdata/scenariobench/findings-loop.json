@@ -1,0 +1,285 @@
+{
+  "version": 1,
+  "description": "Findings loop corpus (vision 30 / ADR-040 \u00a76, plan docs/plans/findings-loop.md FL-24): an external review-kit finding is projected into this repo's own outbox (.reviewkit/outbox/projection.json) anchored to a real file+line range each task then edits; the finding's remedy is a small, checkable fix that a correct completion of the task's ordinary-sounding prompt also applies. Arms: full (the projection outbox is materialized before session 1, so \u2014 once a session hook or explicit import wires it in \u2014 the finding is available to be served) vs control (Arm.Setup removes the same outbox file before session 1, so nothing is available to serve). This corpus documents the CLI/outbox contract other waves are building (fathom findings import, the pre-edit \"open findings on this file\" block); it is COMMITTED ONLY per FL-24's own row \u2014 not run until that machinery ships.",
+  "arms": {
+    "full": {
+      "wired": true,
+      "instructions": "stanza",
+      "surface": "fathom",
+      "compile_layers": true
+    },
+    "control": {
+      "wired": true,
+      "instructions": "stanza",
+      "surface": "fathom",
+      "compile_layers": true,
+      "setup": [
+        "rm -f .reviewkit/outbox/projection.json"
+      ]
+    }
+  },
+  "tasks": [
+    {
+      "id": "findings-purge-record-context",
+      "category": "bug_fix",
+      "prompt": "cmd/fathom's `recordPurge` (purgecmd.go) writes the purge-history JSON line, but its own error returns give no hint which step failed or which file it was trying to write when something goes wrong. Improve the error messages recordPurge returns so a failure in this function is diagnosable from the message alone, without needing to read the source.",
+      "subject": {
+        "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
+        "base_commit": "5302b8f",
+        "service": "fathom",
+        "language": "go",
+        "setup": [
+          "mkdir -p .reviewkit/outbox",
+          "cat >> .fathom/config.toml <<'FL24_CONFIG_EOF'\n[findings]\nsubject = \"geoffmilleraz/fathom/fathom\"\noutbox = \".reviewkit/outbox/projection.json\"\nproducers = [\"reviewkit.system-review\"]\nFL24_CONFIG_EOF\n",
+          "cat > .reviewkit/outbox/projection.json <<'FL24_OUTBOX_EOF'\n{\n  \"schemaVersion\": 1,\n  \"events\": [\n    {\n      \"kind\": \"observation\",\n      \"outcome\": \"fail\",\n      \"producer\": {\n        \"id\": \"reviewkit.system-review\",\n        \"version\": \"1.0.0\"\n      },\n      \"subject\": \"geoffmilleraz/fathom/fathom\",\n      \"visibility\": \"geoffmilleraz/fathom/fathom\",\n      \"sourceId\": \"system-review/2026-09-17/purge-record-error-wrap\",\n      \"sourceVersion\": 1,\n      \"payloadDigest\": \"bbffaa914d60724496010cd5363478ad8cb41abc97f762b35a7481c90902f359\",\n      \"findingId\": \"683d61676bf022330ce36730288994a0462825789b8cfda72dedc9d7c332cba6\",\n      \"observedAt\": \"2026-09-17T18:00:00Z\",\n      \"anchor\": {\n        \"path\": \"cmd/fathom/purgecmd.go\",\n        \"digest\": \"d05208ec69ccfa9ac67f13343be31ea0e2d896b4675ea30e9e201eae1f5d16af\",\n        \"start\": 418,\n        \"end\": 420,\n        \"symbol\": \"recordPurge\"\n      },\n      \"rule\": {\n        \"id\": \"RK-PURGE-ERRWRAP-1\",\n        \"version\": \"1.0.0\",\n        \"text\": \"recordPurge returns the raw json.Marshal/file-I/O error verbatim, with no purge-record path or step named, so a failed purge-history write cannot be diagnosed from the error message alone.\",\n        \"remedy\": \"Wrap each returned error with fmt.Errorf and %w, naming the purge-record path and which step failed (marshal / mkdir / open / write).\",\n        \"closure\": \"gate-only\",\n        \"class\": \"error-handling\"\n      }\n    },\n    {\n      \"kind\": \"observation\",\n      \"outcome\": \"fail\",\n      \"producer\": {\n        \"id\": \"reviewkit.system-review\",\n        \"version\": \"1.0.0\"\n      },\n      \"subject\": \"geoffmilleraz/fathom/fathom\",\n      \"visibility\": \"geoffmilleraz/fathom/fathom\",\n      \"sourceId\": \"system-review/2026-09-17/pattern-sites-sort\",\n      \"sourceVersion\": 1,\n      \"payloadDigest\": \"d193bfce5bb4f599a1b58eb3774188ab8531395d2832f9a8f782fe50d686c40d\",\n      \"findingId\": \"9d90fb9c3cdc996ca8da38c8e3b8888eef75224a72f3ec58ce0016b8611cb5fd\",\n      \"observedAt\": \"2026-09-17T18:00:00Z\",\n      \"anchor\": {\n        \"path\": \"internal/analysis/findings/pattern.go\",\n        \"digest\": \"df34ed9b1ea2b07fb603d9eb1c79b66a45b2b45030f35527a8a67bb039af183b\",\n        \"start\": 147,\n        \"end\": 152,\n        \"symbol\": \"DerivePatterns\"\n      },\n      \"rule\": {\n        \"id\": \"RK-PATTERN-SITES-SORT-1\",\n        \"version\": \"1.0.0\",\n        \"text\": \"DerivePatterns collects each pattern's distinct member sites into a map for the >=2-site threshold check but never exposes them on Pattern; a distinct-sites field built by ranging that map would iterate in random order, violating this repo's determinism contract (internal/CLAUDE.md: sort every output slice; map iteration order must never reach a result).\",\n        \"remedy\": \"When a distinct-sites field is added to Pattern, populate it by collecting the map's keys and sorting them with sort.Strings before assignment, exactly as DerivePatterns already sorts Members and the returned patterns themselves.\",\n        \"closure\": \"gate-only\",\n        \"class\": \"contract-violation\"\n      }\n    },\n    {\n      \"kind\": \"observation\",\n      \"outcome\": \"fail\",\n      \"producer\": {\n        \"id\": \"reviewkit.system-review\",\n        \"version\": \"1.0.0\"\n      },\n      \"subject\": \"geoffmilleraz/fathom/fathom\",\n      \"visibility\": \"geoffmilleraz/fathom/fathom\",\n      \"sourceId\": \"system-review/2026-09-17/doctor-concerns-bound\",\n      \"sourceVersion\": 1,\n      \"payloadDigest\": \"2b072f0f307a727cf32a477af43754f0172909b9ff2febacecd2f3af6633bfb3\",\n      \"findingId\": \"d329b6e27e372d1bce1d31b429e0442b83b40fdd67e1d3e2bd92cb01af60fe24\",\n      \"observedAt\": \"2026-09-17T18:00:00Z\",\n      \"anchor\": {\n        \"path\": \"cmd/fathom/doctor_concerns.go\",\n        \"digest\": \"bc23948d85781a3100c636d1e9c3e0de02824e7262a86c52f1715fda3164e7ee\",\n        \"start\": 54,\n        \"end\": 56,\n        \"symbol\": \"checkConcerns\"\n      },\n      \"rule\": {\n        \"id\": \"RK-DOCTOR-CONCERNS-BOUND-1\",\n        \"version\": \"1.0.0\",\n        \"text\": \"checkConcerns' violated branch reports only the first violated concern's id and detail; an operator with two or more violated concerns must fix the first and re-run doctor just to learn a second one exists, and any future widening of this branch needs an explicit bound to keep doctor.go's own contract (\\\"a short instruction), never a paragraph\\\").\",\n        \"remedy\": \"List every violated concern id, capped at a small fixed count with an explicit '+N more' suffix beyond the cap, never an unbounded join of every Detail.\",\n        \"closure\": \"gate-only\",\n        \"class\": \"contract-violation\"\n      }\n    },\n    {\n      \"kind\": \"observation\",\n      \"outcome\": \"fail\",\n      \"producer\": {\n        \"id\": \"reviewkit.system-review\",\n        \"version\": \"1.0.0\"\n      },\n      \"subject\": \"geoffmilleraz/fathom/fathom\",\n      \"visibility\": \"geoffmilleraz/fathom/fathom\",\n      \"sourceId\": \"system-review/2026-09-17/watch-hasChanged-delete\",\n      \"sourceVersion\": 1,\n      \"payloadDigest\": \"b025fbe413bf31920ff394aa681191f2c26d80c3a0b64dfee7426b6eeb47d3a3\",\n      \"findingId\": \"2d6d93650176ff29cab5c5a910d4456083aa66443a7e2373a16e85aa1a9ec691\",\n      \"observedAt\": \"2026-09-17T18:00:00Z\",\n      \"anchor\": {\n        \"path\": \"cmd/fathom/watch.go\",\n        \"digest\": \"8e640f938a5195bd071ba9fe81152c8218e622501d744e7bb99e39169bc7432b\",\n        \"start\": 54,\n        \"end\": 64,\n        \"symbol\": \"hasChanged\"\n      },\n      \"rule\": {\n        \"id\": \"RK-WATCH-DELETE-1\",\n        \"version\": \"1.0.0\",\n        \"text\": \"hasChanged only compares curr's own entries against prev (new or later-mtime keys); a file present in prev but absent from curr (deleted since the last scan) is never detected as a change, so `fathom watch` silently misses delete-only changes and never re-ingests them.\",\n        \"remedy\": \"Detect a shrinking file set too \\u2014 compare len(prev) to len(curr), or check for a prev key absent from curr \\u2014 not only a newer-or-absent-in-prev key found by ranging curr alone.\",\n        \"closure\": \"gate-only\",\n        \"class\": \"correctness\"\n      }\n    },\n    {\n      \"kind\": \"observation\",\n      \"outcome\": \"fail\",\n      \"producer\": {\n        \"id\": \"reviewkit.system-review\",\n        \"version\": \"1.0.0\"\n      },\n      \"subject\": \"geoffmilleraz/fathom/fathom\",\n      \"visibility\": \"geoffmilleraz/fathom/fathom\",\n      \"sourceId\": \"system-review/2026-09-17/genclaudemd-page\",\n      \"sourceVersion\": 1,\n      \"payloadDigest\": \"97269cb03b4d089f03381d3a0e7a55c4f0590ea9909442b4f18fe3bf947f7270\",\n      \"findingId\": \"8e1c66ca619abf89cbb9416b3a900e6b6d34ad37139e8c9fc25bdf24d478bb90\",\n      \"observedAt\": \"2026-09-17T18:00:00Z\",\n      \"anchor\": {\n        \"path\": \"cmd/fathom/genclaudemd.go\",\n        \"digest\": \"5bffdfc7614931244f67192b73158d2e2c1d526f46f64159b3d22f181cd8c8d9\",\n        \"start\": 96,\n        \"end\": 98,\n        \"symbol\": \"cmdGenClaudeMd\"\n      },\n      \"rule\": {\n        \"id\": \"RK-GENCLAUDEMD-PAGE-1\",\n        \"version\": \"1.0.0\",\n        \"text\": \"cmdGenClaudeMd's ListAllSymbols call loads a service's entire symbol table into memory in one round trip before any output is written; a service with a very large symbol count has no incremental or paged path.\",\n        \"remedy\": \"Page ListAllSymbols (or stream results) once the client surface supports it, instead of holding the whole slice in memory before the first byte is written.\",\n        \"closure\": \"gate-only\",\n        \"class\": \"performance\"\n      }\n    }\n  ]\n}\nFL24_OUTBOX_EOF\n"
+        ],
+        "exclude_paths": [
+          "testdata/scenariobench/**",
+          "docs/bench/**"
+        ]
+      },
+      "sessions": {
+        "count": 1,
+        "max_turns": 120,
+        "mode": "single"
+      },
+      "oracle": {
+        "detectors": [
+          {
+            "name": "change-present",
+            "command": "bash -c 'test -n \"$(git diff --name-only $SCENARIO_BASE_COMMIT -- cmd/fathom/purgecmd.go)\"'",
+            "expect_exit": 0,
+            "completion": true
+          },
+          {
+            "name": "finding-addressed",
+            "command": "bash -c 'awk \"/^func recordPurge/,/^}/\" cmd/fathom/purgecmd.go | grep -Eq \"fmt\\\\.Errorf\\\\(.*%w.*err\\\\)\"'",
+            "expect_exit": 0
+          },
+          {
+            "name": "no-unrelated-rewrite",
+            "command": "bash -c 'git diff --name-only $SCENARIO_BASE_COMMIT | grep -Ev \"^cmd/fathom/purgecmd\\\\.go|^cmd/fathom/purgecmd_test\\\\.go\" | grep -q . && exit 1 || exit 0'",
+            "expect_exit": 0
+          }
+        ],
+        "answer_any_of": [
+          [
+            "RK-PURGE-ERRWRAP-1",
+            "open findings on this file"
+          ]
+        ]
+      },
+      "rule": {
+        "id": "RK-PURGE-ERRWRAP-1",
+        "text": "recordPurge returns the raw json.Marshal/file-I/O error verbatim, with no purge-record path or step named, so a failed purge-history write cannot be diagnosed from the error message alone.",
+        "source": ".reviewkit/outbox/projection.json (reviewkit.system-review, sourceId system-review/2026-09-17/purge-record-error-wrap)"
+      },
+      "predictions": {
+        "full": "win: the pre-edit hook serves this finding's rule/remedy/citation exactly on the file the task asks the agent to touch, before the naive fix (a bare error, an unsorted field, an unbounded list, a silently-missed delete) lands",
+        "control": "no-effect: the same outbox never reaches the store in this arm (Arm.Setup removes the projection file before session 1), so nothing about this finding is served and the naive fix has no per-file signal against it"
+      },
+      "derivation": "New task (FL-24, vision 30 / ADR-040 \u00a76). Finding anchored to a real, currently-unaddressed gap in cmd/fathom/purgecmd.go (recordPurge, 418-420) at base_commit 5302b8f; the prompt is an ordinary small ask whose correct completion also satisfies the finding's own remedy text. Not derived from an upstream PR \u2014 hand-authored against this repo's own tree, mirroring guards-fathom.json's dogfooding shape but for an external-review finding instead of a compiled obligation."
+    },
+    {
+      "id": "findings-pattern-sites-field",
+      "category": "signature_change",
+      "prompt": "internal/analysis/findings.Pattern needs a `Sites []string` field: the distinct claim Subject values a pattern recurs across. DerivePatterns already computes this internally as a map when it checks the >=2-distinct-site threshold \u2014 add the field to Pattern and populate it wherever DerivePatterns builds each Pattern.",
+      "subject": {
+        "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
+        "base_commit": "5302b8f",
+        "service": "fathom",
+        "language": "go",
+        "setup": [
+          "mkdir -p .reviewkit/outbox",
+          "cat >> .fathom/config.toml <<'FL24_CONFIG_EOF'\n[findings]\nsubject = \"geoffmilleraz/fathom/fathom\"\noutbox = \".reviewkit/outbox/projection.json\"\nproducers = [\"reviewkit.system-review\"]\nFL24_CONFIG_EOF\n",
+          "cat > .reviewkit/outbox/projection.json <<'FL24_OUTBOX_EOF'\n{\n  \"schemaVersion\": 1,\n  \"events\": [\n    {\n      \"kind\": \"observation\",\n      \"outcome\": \"fail\",\n      \"producer\": {\n        \"id\": \"reviewkit.system-review\",\n        \"version\": \"1.0.0\"\n      },\n      \"subject\": \"geoffmilleraz/fathom/fathom\",\n      \"visibility\": \"geoffmilleraz/fathom/fathom\",\n      \"sourceId\": \"system-review/2026-09-17/purge-record-error-wrap\",\n      \"sourceVersion\": 1,\n      \"payloadDigest\": \"bbffaa914d60724496010cd5363478ad8cb41abc97f762b35a7481c90902f359\",\n      \"findingId\": \"683d61676bf022330ce36730288994a0462825789b8cfda72dedc9d7c332cba6\",\n      \"observedAt\": \"2026-09-17T18:00:00Z\",\n      \"anchor\": {\n        \"path\": \"cmd/fathom/purgecmd.go\",\n        \"digest\": \"d05208ec69ccfa9ac67f13343be31ea0e2d896b4675ea30e9e201eae1f5d16af\",\n        \"start\": 418,\n        \"end\": 420,\n        \"symbol\": \"recordPurge\"\n      },\n      \"rule\": {\n        \"id\": \"RK-PURGE-ERRWRAP-1\",\n        \"version\": \"1.0.0\",\n        \"text\": \"recordPurge returns the raw json.Marshal/file-I/O error verbatim, with no purge-record path or step named, so a failed purge-history write cannot be diagnosed from the error message alone.\",\n        \"remedy\": \"Wrap each returned error with fmt.Errorf and %w, naming the purge-record path and which step failed (marshal / mkdir / open / write).\",\n        \"closure\": \"gate-only\",\n        \"class\": \"error-handling\"\n      }\n    },\n    {\n      \"kind\": \"observation\",\n      \"outcome\": \"fail\",\n      \"producer\": {\n        \"id\": \"reviewkit.system-review\",\n        \"version\": \"1.0.0\"\n      },\n      \"subject\": \"geoffmilleraz/fathom/fathom\",\n      \"visibility\": \"geoffmilleraz/fathom/fathom\",\n      \"sourceId\": \"system-review/2026-09-17/pattern-sites-sort\",\n      \"sourceVersion\": 1,\n      \"payloadDigest\": \"d193bfce5bb4f599a1b58eb3774188ab8531395d2832f9a8f782fe50d686c40d\",\n      \"findingId\": \"9d90fb9c3cdc996ca8da38c8e3b8888eef75224a72f3ec58ce0016b8611cb5fd\",\n      \"observedAt\": \"2026-09-17T18:00:00Z\",\n      \"anchor\": {\n        \"path\": \"internal/analysis/findings/pattern.go\",\n        \"digest\": \"df34ed9b1ea2b07fb603d9eb1c79b66a45b2b45030f35527a8a67bb039af183b\",\n        \"start\": 147,\n        \"end\": 152,\n        \"symbol\": \"DerivePatterns\"\n      },\n      \"rule\": {\n        \"id\": \"RK-PATTERN-SITES-SORT-1\",\n        \"version\": \"1.0.0\",\n        \"text\": \"DerivePatterns collects each pattern's distinct member sites into a map for the >=2-site threshold check but never exposes them on Pattern; a distinct-sites field built by ranging that map would iterate in random order, violating this repo's determinism contract (internal/CLAUDE.md: sort every output slice; map iteration order must never reach a result).\",\n        \"remedy\": \"When a distinct-sites field is added to Pattern, populate it by collecting the map's keys and sorting them with sort.Strings before assignment, exactly as DerivePatterns already sorts Members and the returned patterns themselves.\",\n        \"closure\": \"gate-only\",\n        \"class\": \"contract-violation\"\n      }\n    },\n    {\n      \"kind\": \"observation\",\n      \"outcome\": \"fail\",\n      \"producer\": {\n        \"id\": \"reviewkit.system-review\",\n        \"version\": \"1.0.0\"\n      },\n      \"subject\": \"geoffmilleraz/fathom/fathom\",\n      \"visibility\": \"geoffmilleraz/fathom/fathom\",\n      \"sourceId\": \"system-review/2026-09-17/doctor-concerns-bound\",\n      \"sourceVersion\": 1,\n      \"payloadDigest\": \"2b072f0f307a727cf32a477af43754f0172909b9ff2febacecd2f3af6633bfb3\",\n      \"findingId\": \"d329b6e27e372d1bce1d31b429e0442b83b40fdd67e1d3e2bd92cb01af60fe24\",\n      \"observedAt\": \"2026-09-17T18:00:00Z\",\n      \"anchor\": {\n        \"path\": \"cmd/fathom/doctor_concerns.go\",\n        \"digest\": \"bc23948d85781a3100c636d1e9c3e0de02824e7262a86c52f1715fda3164e7ee\",\n        \"start\": 54,\n        \"end\": 56,\n        \"symbol\": \"checkConcerns\"\n      },\n      \"rule\": {\n        \"id\": \"RK-DOCTOR-CONCERNS-BOUND-1\",\n        \"version\": \"1.0.0\",\n        \"text\": \"checkConcerns' violated branch reports only the first violated concern's id and detail; an operator with two or more violated concerns must fix the first and re-run doctor just to learn a second one exists, and any future widening of this branch needs an explicit bound to keep doctor.go's own contract (\\\"a short instruction), never a paragraph\\\").\",\n        \"remedy\": \"List every violated concern id, capped at a small fixed count with an explicit '+N more' suffix beyond the cap, never an unbounded join of every Detail.\",\n        \"closure\": \"gate-only\",\n        \"class\": \"contract-violation\"\n      }\n    },\n    {\n      \"kind\": \"observation\",\n      \"outcome\": \"fail\",\n      \"producer\": {\n        \"id\": \"reviewkit.system-review\",\n        \"version\": \"1.0.0\"\n      },\n      \"subject\": \"geoffmilleraz/fathom/fathom\",\n      \"visibility\": \"geoffmilleraz/fathom/fathom\",\n      \"sourceId\": \"system-review/2026-09-17/watch-hasChanged-delete\",\n      \"sourceVersion\": 1,\n      \"payloadDigest\": \"b025fbe413bf31920ff394aa681191f2c26d80c3a0b64dfee7426b6eeb47d3a3\",\n      \"findingId\": \"2d6d93650176ff29cab5c5a910d4456083aa66443a7e2373a16e85aa1a9ec691\",\n      \"observedAt\": \"2026-09-17T18:00:00Z\",\n      \"anchor\": {\n        \"path\": \"cmd/fathom/watch.go\",\n        \"digest\": \"8e640f938a5195bd071ba9fe81152c8218e622501d744e7bb99e39169bc7432b\",\n        \"start\": 54,\n        \"end\": 64,\n        \"symbol\": \"hasChanged\"\n      },\n      \"rule\": {\n        \"id\": \"RK-WATCH-DELETE-1\",\n        \"version\": \"1.0.0\",\n        \"text\": \"hasChanged only compares curr's own entries against prev (new or later-mtime keys); a file present in prev but absent from curr (deleted since the last scan) is never detected as a change, so `fathom watch` silently misses delete-only changes and never re-ingests them.\",\n        \"remedy\": \"Detect a shrinking file set too \\u2014 compare len(prev) to len(curr), or check for a prev key absent from curr \\u2014 not only a newer-or-absent-in-prev key found by ranging curr alone.\",\n        \"closure\": \"gate-only\",\n        \"class\": \"correctness\"\n      }\n    },\n    {\n      \"kind\": \"observation\",\n      \"outcome\": \"fail\",\n      \"producer\": {\n        \"id\": \"reviewkit.system-review\",\n        \"version\": \"1.0.0\"\n      },\n      \"subject\": \"geoffmilleraz/fathom/fathom\",\n      \"visibility\": \"geoffmilleraz/fathom/fathom\",\n      \"sourceId\": \"system-review/2026-09-17/genclaudemd-page\",\n      \"sourceVersion\": 1,\n      \"payloadDigest\": \"97269cb03b4d089f03381d3a0e7a55c4f0590ea9909442b4f18fe3bf947f7270\",\n      \"findingId\": \"8e1c66ca619abf89cbb9416b3a900e6b6d34ad37139e8c9fc25bdf24d478bb90\",\n      \"observedAt\": \"2026-09-17T18:00:00Z\",\n      \"anchor\": {\n        \"path\": \"cmd/fathom/genclaudemd.go\",\n        \"digest\": \"5bffdfc7614931244f67192b73158d2e2c1d526f46f64159b3d22f181cd8c8d9\",\n        \"start\": 96,\n        \"end\": 98,\n        \"symbol\": \"cmdGenClaudeMd\"\n      },\n      \"rule\": {\n        \"id\": \"RK-GENCLAUDEMD-PAGE-1\",\n        \"version\": \"1.0.0\",\n        \"text\": \"cmdGenClaudeMd's ListAllSymbols call loads a service's entire symbol table into memory in one round trip before any output is written; a service with a very large symbol count has no incremental or paged path.\",\n        \"remedy\": \"Page ListAllSymbols (or stream results) once the client surface supports it, instead of holding the whole slice in memory before the first byte is written.\",\n        \"closure\": \"gate-only\",\n        \"class\": \"performance\"\n      }\n    }\n  ]\n}\nFL24_OUTBOX_EOF\n"
+        ],
+        "exclude_paths": [
+          "testdata/scenariobench/**",
+          "docs/bench/**"
+        ]
+      },
+      "sessions": {
+        "count": 1,
+        "max_turns": 120,
+        "mode": "single"
+      },
+      "oracle": {
+        "detectors": [
+          {
+            "name": "change-present",
+            "command": "bash -c 'test -n \"$(git diff --name-only $SCENARIO_BASE_COMMIT -- internal/analysis/findings/pattern.go)\"'",
+            "expect_exit": 0,
+            "completion": true
+          },
+          {
+            "name": "finding-addressed",
+            "command": "bash -c 'grep -q \"Sites\" internal/analysis/findings/pattern.go && awk \"/^func DerivePatterns/,/^}/\" internal/analysis/findings/pattern.go | grep -Eiq \"sort\\\\.(strings|slice)\\\\(.*ites\"'",
+            "expect_exit": 0
+          },
+          {
+            "name": "no-unrelated-rewrite",
+            "command": "bash -c 'git diff --name-only $SCENARIO_BASE_COMMIT | grep -Ev \"^internal/analysis/findings/pattern\\\\.go|^internal/analysis/findings/pattern_test\\\\.go\" | grep -q . && exit 1 || exit 0'",
+            "expect_exit": 0
+          }
+        ],
+        "answer_any_of": [
+          [
+            "RK-PATTERN-SITES-SORT-1",
+            "open findings on this file"
+          ]
+        ]
+      },
+      "rule": {
+        "id": "RK-PATTERN-SITES-SORT-1",
+        "text": "DerivePatterns collects each pattern's distinct member sites into a map for the >=2-site threshold check but never exposes them on Pattern; a distinct-sites field built by ranging that map would iterate in random order, violating this repo's determinism contract (internal/CLAUDE.md: sort every output slice; map iteration order must never reach a result).",
+        "source": ".reviewkit/outbox/projection.json (reviewkit.system-review, sourceId system-review/2026-09-17/pattern-sites-sort)"
+      },
+      "predictions": {
+        "full": "win: the pre-edit hook serves this finding's rule/remedy/citation exactly on the file the task asks the agent to touch, before the naive fix (a bare error, an unsorted field, an unbounded list, a silently-missed delete) lands",
+        "control": "no-effect: the same outbox never reaches the store in this arm (Arm.Setup removes the projection file before session 1), so nothing about this finding is served and the naive fix has no per-file signal against it"
+      },
+      "derivation": "New task (FL-24, vision 30 / ADR-040 \u00a76). Finding anchored to a real, currently-unaddressed gap in internal/analysis/findings/pattern.go (DerivePatterns, 147-152) at base_commit 5302b8f; the prompt is an ordinary small ask whose correct completion also satisfies the finding's own remedy text. Not derived from an upstream PR \u2014 hand-authored against this repo's own tree, mirroring guards-fathom.json's dogfooding shape but for an external-review finding instead of a compiled obligation."
+    },
+    {
+      "id": "findings-doctor-concerns-bound",
+      "category": "bug_fix",
+      "prompt": "cmd/fathom's checkConcerns only ever reports the FIRST violated concern in its doctor row, even when several concerns are violated at once \u2014 an operator has to fix one and re-run doctor just to discover the next. List every violated concern's id in the Reason, but keep the line short and bounded (doctor.go's own contract: \"a short instruction, never a paragraph\") rather than joining every Detail unbounded.",
+      "subject": {
+        "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
+        "base_commit": "5302b8f",
+        "service": "fathom",
+        "language": "go",
+        "setup": [
+          "mkdir -p .reviewkit/outbox",
+          "cat >> .fathom/config.toml <<'FL24_CONFIG_EOF'\n[findings]\nsubject = \"geoffmilleraz/fathom/fathom\"\noutbox = \".reviewkit/outbox/projection.json\"\nproducers = [\"reviewkit.system-review\"]\nFL24_CONFIG_EOF\n",
+          "cat > .reviewkit/outbox/projection.json <<'FL24_OUTBOX_EOF'\n{\n  \"schemaVersion\": 1,\n  \"events\": [\n    {\n      \"kind\": \"observation\",\n      \"outcome\": \"fail\",\n      \"producer\": {\n        \"id\": \"reviewkit.system-review\",\n        \"version\": \"1.0.0\"\n      },\n      \"subject\": \"geoffmilleraz/fathom/fathom\",\n      \"visibility\": \"geoffmilleraz/fathom/fathom\",\n      \"sourceId\": \"system-review/2026-09-17/purge-record-error-wrap\",\n      \"sourceVersion\": 1,\n      \"payloadDigest\": \"bbffaa914d60724496010cd5363478ad8cb41abc97f762b35a7481c90902f359\",\n      \"findingId\": \"683d61676bf022330ce36730288994a0462825789b8cfda72dedc9d7c332cba6\",\n      \"observedAt\": \"2026-09-17T18:00:00Z\",\n      \"anchor\": {\n        \"path\": \"cmd/fathom/purgecmd.go\",\n        \"digest\": \"d05208ec69ccfa9ac67f13343be31ea0e2d896b4675ea30e9e201eae1f5d16af\",\n        \"start\": 418,\n        \"end\": 420,\n        \"symbol\": \"recordPurge\"\n      },\n      \"rule\": {\n        \"id\": \"RK-PURGE-ERRWRAP-1\",\n        \"version\": \"1.0.0\",\n        \"text\": \"recordPurge returns the raw json.Marshal/file-I/O error verbatim, with no purge-record path or step named, so a failed purge-history write cannot be diagnosed from the error message alone.\",\n        \"remedy\": \"Wrap each returned error with fmt.Errorf and %w, naming the purge-record path and which step failed (marshal / mkdir / open / write).\",\n        \"closure\": \"gate-only\",\n        \"class\": \"error-handling\"\n      }\n    },\n    {\n      \"kind\": \"observation\",\n      \"outcome\": \"fail\",\n      \"producer\": {\n        \"id\": \"reviewkit.system-review\",\n        \"version\": \"1.0.0\"\n      },\n      \"subject\": \"geoffmilleraz/fathom/fathom\",\n      \"visibility\": \"geoffmilleraz/fathom/fathom\",\n      \"sourceId\": \"system-review/2026-09-17/pattern-sites-sort\",\n      \"sourceVersion\": 1,\n      \"payloadDigest\": \"d193bfce5bb4f599a1b58eb3774188ab8531395d2832f9a8f782fe50d686c40d\",\n      \"findingId\": \"9d90fb9c3cdc996ca8da38c8e3b8888eef75224a72f3ec58ce0016b8611cb5fd\",\n      \"observedAt\": \"2026-09-17T18:00:00Z\",\n      \"anchor\": {\n        \"path\": \"internal/analysis/findings/pattern.go\",\n        \"digest\": \"df34ed9b1ea2b07fb603d9eb1c79b66a45b2b45030f35527a8a67bb039af183b\",\n        \"start\": 147,\n        \"end\": 152,\n        \"symbol\": \"DerivePatterns\"\n      },\n      \"rule\": {\n        \"id\": \"RK-PATTERN-SITES-SORT-1\",\n        \"version\": \"1.0.0\",\n        \"text\": \"DerivePatterns collects each pattern's distinct member sites into a map for the >=2-site threshold check but never exposes them on Pattern; a distinct-sites field built by ranging that map would iterate in random order, violating this repo's determinism contract (internal/CLAUDE.md: sort every output slice; map iteration order must never reach a result).\",\n        \"remedy\": \"When a distinct-sites field is added to Pattern, populate it by collecting the map's keys and sorting them with sort.Strings before assignment, exactly as DerivePatterns already sorts Members and the returned patterns themselves.\",\n        \"closure\": \"gate-only\",\n        \"class\": \"contract-violation\"\n      }\n    },\n    {\n      \"kind\": \"observation\",\n      \"outcome\": \"fail\",\n      \"producer\": {\n        \"id\": \"reviewkit.system-review\",\n        \"version\": \"1.0.0\"\n      },\n      \"subject\": \"geoffmilleraz/fathom/fathom\",\n      \"visibility\": \"geoffmilleraz/fathom/fathom\",\n      \"sourceId\": \"system-review/2026-09-17/doctor-concerns-bound\",\n      \"sourceVersion\": 1,\n      \"payloadDigest\": \"2b072f0f307a727cf32a477af43754f0172909b9ff2febacecd2f3af6633bfb3\",\n      \"findingId\": \"d329b6e27e372d1bce1d31b429e0442b83b40fdd67e1d3e2bd92cb01af60fe24\",\n      \"observedAt\": \"2026-09-17T18:00:00Z\",\n      \"anchor\": {\n        \"path\": \"cmd/fathom/doctor_concerns.go\",\n        \"digest\": \"bc23948d85781a3100c636d1e9c3e0de02824e7262a86c52f1715fda3164e7ee\",\n        \"start\": 54,\n        \"end\": 56,\n        \"symbol\": \"checkConcerns\"\n      },\n      \"rule\": {\n        \"id\": \"RK-DOCTOR-CONCERNS-BOUND-1\",\n        \"version\": \"1.0.0\",\n        \"text\": \"checkConcerns' violated branch reports only the first violated concern's id and detail; an operator with two or more violated concerns must fix the first and re-run doctor just to learn a second one exists, and any future widening of this branch needs an explicit bound to keep doctor.go's own contract (\\\"a short instruction), never a paragraph\\\").\",\n        \"remedy\": \"List every violated concern id, capped at a small fixed count with an explicit '+N more' suffix beyond the cap, never an unbounded join of every Detail.\",\n        \"closure\": \"gate-only\",\n        \"class\": \"contract-violation\"\n      }\n    },\n    {\n      \"kind\": \"observation\",\n      \"outcome\": \"fail\",\n      \"producer\": {\n        \"id\": \"reviewkit.system-review\",\n        \"version\": \"1.0.0\"\n      },\n      \"subject\": \"geoffmilleraz/fathom/fathom\",\n      \"visibility\": \"geoffmilleraz/fathom/fathom\",\n      \"sourceId\": \"system-review/2026-09-17/watch-hasChanged-delete\",\n      \"sourceVersion\": 1,\n      \"payloadDigest\": \"b025fbe413bf31920ff394aa681191f2c26d80c3a0b64dfee7426b6eeb47d3a3\",\n      \"findingId\": \"2d6d93650176ff29cab5c5a910d4456083aa66443a7e2373a16e85aa1a9ec691\",\n      \"observedAt\": \"2026-09-17T18:00:00Z\",\n      \"anchor\": {\n        \"path\": \"cmd/fathom/watch.go\",\n        \"digest\": \"8e640f938a5195bd071ba9fe81152c8218e622501d744e7bb99e39169bc7432b\",\n        \"start\": 54,\n        \"end\": 64,\n        \"symbol\": \"hasChanged\"\n      },\n      \"rule\": {\n        \"id\": \"RK-WATCH-DELETE-1\",\n        \"version\": \"1.0.0\",\n        \"text\": \"hasChanged only compares curr's own entries against prev (new or later-mtime keys); a file present in prev but absent from curr (deleted since the last scan) is never detected as a change, so `fathom watch` silently misses delete-only changes and never re-ingests them.\",\n        \"remedy\": \"Detect a shrinking file set too \\u2014 compare len(prev) to len(curr), or check for a prev key absent from curr \\u2014 not only a newer-or-absent-in-prev key found by ranging curr alone.\",\n        \"closure\": \"gate-only\",\n        \"class\": \"correctness\"\n      }\n    },\n    {\n      \"kind\": \"observation\",\n      \"outcome\": \"fail\",\n      \"producer\": {\n        \"id\": \"reviewkit.system-review\",\n        \"version\": \"1.0.0\"\n      },\n      \"subject\": \"geoffmilleraz/fathom/fathom\",\n      \"visibility\": \"geoffmilleraz/fathom/fathom\",\n      \"sourceId\": \"system-review/2026-09-17/genclaudemd-page\",\n      \"sourceVersion\": 1,\n      \"payloadDigest\": \"97269cb03b4d089f03381d3a0e7a55c4f0590ea9909442b4f18fe3bf947f7270\",\n      \"findingId\": \"8e1c66ca619abf89cbb9416b3a900e6b6d34ad37139e8c9fc25bdf24d478bb90\",\n      \"observedAt\": \"2026-09-17T18:00:00Z\",\n      \"anchor\": {\n        \"path\": \"cmd/fathom/genclaudemd.go\",\n        \"digest\": \"5bffdfc7614931244f67192b73158d2e2c1d526f46f64159b3d22f181cd8c8d9\",\n        \"start\": 96,\n        \"end\": 98,\n        \"symbol\": \"cmdGenClaudeMd\"\n      },\n      \"rule\": {\n        \"id\": \"RK-GENCLAUDEMD-PAGE-1\",\n        \"version\": \"1.0.0\",\n        \"text\": \"cmdGenClaudeMd's ListAllSymbols call loads a service's entire symbol table into memory in one round trip before any output is written; a service with a very large symbol count has no incremental or paged path.\",\n        \"remedy\": \"Page ListAllSymbols (or stream results) once the client surface supports it, instead of holding the whole slice in memory before the first byte is written.\",\n        \"closure\": \"gate-only\",\n        \"class\": \"performance\"\n      }\n    }\n  ]\n}\nFL24_OUTBOX_EOF\n"
+        ],
+        "exclude_paths": [
+          "testdata/scenariobench/**",
+          "docs/bench/**"
+        ]
+      },
+      "sessions": {
+        "count": 1,
+        "max_turns": 120,
+        "mode": "single"
+      },
+      "oracle": {
+        "detectors": [
+          {
+            "name": "change-present",
+            "command": "bash -c 'test -n \"$(git diff --name-only $SCENARIO_BASE_COMMIT -- cmd/fathom/doctor_concerns.go)\"'",
+            "expect_exit": 0,
+            "completion": true
+          },
+          {
+            "name": "finding-addressed",
+            "command": "bash -c 'awk \"/^func checkConcerns/,/^}/\" cmd/fathom/doctor_concerns.go | grep -q \"range violated\" && awk \"/^func checkConcerns/,/^}/\" cmd/fathom/doctor_concerns.go | grep -Eiq \"[0-9]+ more|\\\\[:[0-9]\"'",
+            "expect_exit": 0
+          },
+          {
+            "name": "no-unrelated-rewrite",
+            "command": "bash -c 'git diff --name-only $SCENARIO_BASE_COMMIT | grep -Ev \"^cmd/fathom/doctor_concerns\\\\.go|^cmd/fathom/doctor_concerns_test\\\\.go\" | grep -q . && exit 1 || exit 0'",
+            "expect_exit": 0
+          }
+        ],
+        "answer_any_of": [
+          [
+            "RK-DOCTOR-CONCERNS-BOUND-1",
+            "open findings on this file"
+          ]
+        ]
+      },
+      "rule": {
+        "id": "RK-DOCTOR-CONCERNS-BOUND-1",
+        "text": "checkConcerns' violated branch reports only the first violated concern's id and detail; an operator with two or more violated concerns must fix the first and re-run doctor just to learn a second one exists, and any future widening of this branch needs an explicit bound to keep doctor.go's own contract (\"a short instruction), never a paragraph\").",
+        "source": ".reviewkit/outbox/projection.json (reviewkit.system-review, sourceId system-review/2026-09-17/doctor-concerns-bound)"
+      },
+      "predictions": {
+        "full": "win: the pre-edit hook serves this finding's rule/remedy/citation exactly on the file the task asks the agent to touch, before the naive fix (a bare error, an unsorted field, an unbounded list, a silently-missed delete) lands",
+        "control": "no-effect: the same outbox never reaches the store in this arm (Arm.Setup removes the projection file before session 1), so nothing about this finding is served and the naive fix has no per-file signal against it"
+      },
+      "derivation": "New task (FL-24, vision 30 / ADR-040 \u00a76). Finding anchored to a real, currently-unaddressed gap in cmd/fathom/doctor_concerns.go (checkConcerns, 54-56) at base_commit 5302b8f; the prompt is an ordinary small ask whose correct completion also satisfies the finding's own remedy text. Not derived from an upstream PR \u2014 hand-authored against this repo's own tree, mirroring guards-fathom.json's dogfooding shape but for an external-review finding instead of a compiled obligation."
+    },
+    {
+      "id": "findings-watch-detect-deletes",
+      "category": "bug_fix",
+      "prompt": "`fathom watch`'s change detector (hasChanged, cmd/fathom/watch.go) decides when to re-ingest. Make it also notice when a previously-seen file has been deleted since the last scan, not only when one is added or modified, so a delete-only change still triggers a re-ingest.",
+      "subject": {
+        "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
+        "base_commit": "5302b8f",
+        "service": "fathom",
+        "language": "go",
+        "setup": [
+          "mkdir -p .reviewkit/outbox",
+          "cat >> .fathom/config.toml <<'FL24_CONFIG_EOF'\n[findings]\nsubject = \"geoffmilleraz/fathom/fathom\"\noutbox = \".reviewkit/outbox/projection.json\"\nproducers = [\"reviewkit.system-review\"]\nFL24_CONFIG_EOF\n",
+          "cat > .reviewkit/outbox/projection.json <<'FL24_OUTBOX_EOF'\n{\n  \"schemaVersion\": 1,\n  \"events\": [\n    {\n      \"kind\": \"observation\",\n      \"outcome\": \"fail\",\n      \"producer\": {\n        \"id\": \"reviewkit.system-review\",\n        \"version\": \"1.0.0\"\n      },\n      \"subject\": \"geoffmilleraz/fathom/fathom\",\n      \"visibility\": \"geoffmilleraz/fathom/fathom\",\n      \"sourceId\": \"system-review/2026-09-17/purge-record-error-wrap\",\n      \"sourceVersion\": 1,\n      \"payloadDigest\": \"bbffaa914d60724496010cd5363478ad8cb41abc97f762b35a7481c90902f359\",\n      \"findingId\": \"683d61676bf022330ce36730288994a0462825789b8cfda72dedc9d7c332cba6\",\n      \"observedAt\": \"2026-09-17T18:00:00Z\",\n      \"anchor\": {\n        \"path\": \"cmd/fathom/purgecmd.go\",\n        \"digest\": \"d05208ec69ccfa9ac67f13343be31ea0e2d896b4675ea30e9e201eae1f5d16af\",\n        \"start\": 418,\n        \"end\": 420,\n        \"symbol\": \"recordPurge\"\n      },\n      \"rule\": {\n        \"id\": \"RK-PURGE-ERRWRAP-1\",\n        \"version\": \"1.0.0\",\n        \"text\": \"recordPurge returns the raw json.Marshal/file-I/O error verbatim, with no purge-record path or step named, so a failed purge-history write cannot be diagnosed from the error message alone.\",\n        \"remedy\": \"Wrap each returned error with fmt.Errorf and %w, naming the purge-record path and which step failed (marshal / mkdir / open / write).\",\n        \"closure\": \"gate-only\",\n        \"class\": \"error-handling\"\n      }\n    },\n    {\n      \"kind\": \"observation\",\n      \"outcome\": \"fail\",\n      \"producer\": {\n        \"id\": \"reviewkit.system-review\",\n        \"version\": \"1.0.0\"\n      },\n      \"subject\": \"geoffmilleraz/fathom/fathom\",\n      \"visibility\": \"geoffmilleraz/fathom/fathom\",\n      \"sourceId\": \"system-review/2026-09-17/pattern-sites-sort\",\n      \"sourceVersion\": 1,\n      \"payloadDigest\": \"d193bfce5bb4f599a1b58eb3774188ab8531395d2832f9a8f782fe50d686c40d\",\n      \"findingId\": \"9d90fb9c3cdc996ca8da38c8e3b8888eef75224a72f3ec58ce0016b8611cb5fd\",\n      \"observedAt\": \"2026-09-17T18:00:00Z\",\n      \"anchor\": {\n        \"path\": \"internal/analysis/findings/pattern.go\",\n        \"digest\": \"df34ed9b1ea2b07fb603d9eb1c79b66a45b2b45030f35527a8a67bb039af183b\",\n        \"start\": 147,\n        \"end\": 152,\n        \"symbol\": \"DerivePatterns\"\n      },\n      \"rule\": {\n        \"id\": \"RK-PATTERN-SITES-SORT-1\",\n        \"version\": \"1.0.0\",\n        \"text\": \"DerivePatterns collects each pattern's distinct member sites into a map for the >=2-site threshold check but never exposes them on Pattern; a distinct-sites field built by ranging that map would iterate in random order, violating this repo's determinism contract (internal/CLAUDE.md: sort every output slice; map iteration order must never reach a result).\",\n        \"remedy\": \"When a distinct-sites field is added to Pattern, populate it by collecting the map's keys and sorting them with sort.Strings before assignment, exactly as DerivePatterns already sorts Members and the returned patterns themselves.\",\n        \"closure\": \"gate-only\",\n        \"class\": \"contract-violation\"\n      }\n    },\n    {\n      \"kind\": \"observation\",\n      \"outcome\": \"fail\",\n      \"producer\": {\n        \"id\": \"reviewkit.system-review\",\n        \"version\": \"1.0.0\"\n      },\n      \"subject\": \"geoffmilleraz/fathom/fathom\",\n      \"visibility\": \"geoffmilleraz/fathom/fathom\",\n      \"sourceId\": \"system-review/2026-09-17/doctor-concerns-bound\",\n      \"sourceVersion\": 1,\n      \"payloadDigest\": \"2b072f0f307a727cf32a477af43754f0172909b9ff2febacecd2f3af6633bfb3\",\n      \"findingId\": \"d329b6e27e372d1bce1d31b429e0442b83b40fdd67e1d3e2bd92cb01af60fe24\",\n      \"observedAt\": \"2026-09-17T18:00:00Z\",\n      \"anchor\": {\n        \"path\": \"cmd/fathom/doctor_concerns.go\",\n        \"digest\": \"bc23948d85781a3100c636d1e9c3e0de02824e7262a86c52f1715fda3164e7ee\",\n        \"start\": 54,\n        \"end\": 56,\n        \"symbol\": \"checkConcerns\"\n      },\n      \"rule\": {\n        \"id\": \"RK-DOCTOR-CONCERNS-BOUND-1\",\n        \"version\": \"1.0.0\",\n        \"text\": \"checkConcerns' violated branch reports only the first violated concern's id and detail; an operator with two or more violated concerns must fix the first and re-run doctor just to learn a second one exists, and any future widening of this branch needs an explicit bound to keep doctor.go's own contract (\\\"a short instruction), never a paragraph\\\").\",\n        \"remedy\": \"List every violated concern id, capped at a small fixed count with an explicit '+N more' suffix beyond the cap, never an unbounded join of every Detail.\",\n        \"closure\": \"gate-only\",\n        \"class\": \"contract-violation\"\n      }\n    },\n    {\n      \"kind\": \"observation\",\n      \"outcome\": \"fail\",\n      \"producer\": {\n        \"id\": \"reviewkit.system-review\",\n        \"version\": \"1.0.0\"\n      },\n      \"subject\": \"geoffmilleraz/fathom/fathom\",\n      \"visibility\": \"geoffmilleraz/fathom/fathom\",\n      \"sourceId\": \"system-review/2026-09-17/watch-hasChanged-delete\",\n      \"sourceVersion\": 1,\n      \"payloadDigest\": \"b025fbe413bf31920ff394aa681191f2c26d80c3a0b64dfee7426b6eeb47d3a3\",\n      \"findingId\": \"2d6d93650176ff29cab5c5a910d4456083aa66443a7e2373a16e85aa1a9ec691\",\n      \"observedAt\": \"2026-09-17T18:00:00Z\",\n      \"anchor\": {\n        \"path\": \"cmd/fathom/watch.go\",\n        \"digest\": \"8e640f938a5195bd071ba9fe81152c8218e622501d744e7bb99e39169bc7432b\",\n        \"start\": 54,\n        \"end\": 64,\n        \"symbol\": \"hasChanged\"\n      },\n      \"rule\": {\n        \"id\": \"RK-WATCH-DELETE-1\",\n        \"version\": \"1.0.0\",\n        \"text\": \"hasChanged only compares curr's own entries against prev (new or later-mtime keys); a file present in prev but absent from curr (deleted since the last scan) is never detected as a change, so `fathom watch` silently misses delete-only changes and never re-ingests them.\",\n        \"remedy\": \"Detect a shrinking file set too \\u2014 compare len(prev) to len(curr), or check for a prev key absent from curr \\u2014 not only a newer-or-absent-in-prev key found by ranging curr alone.\",\n        \"closure\": \"gate-only\",\n        \"class\": \"correctness\"\n      }\n    },\n    {\n      \"kind\": \"observation\",\n      \"outcome\": \"fail\",\n      \"producer\": {\n        \"id\": \"reviewkit.system-review\",\n        \"version\": \"1.0.0\"\n      },\n      \"subject\": \"geoffmilleraz/fathom/fathom\",\n      \"visibility\": \"geoffmilleraz/fathom/fathom\",\n      \"sourceId\": \"system-review/2026-09-17/genclaudemd-page\",\n      \"sourceVersion\": 1,\n      \"payloadDigest\": \"97269cb03b4d089f03381d3a0e7a55c4f0590ea9909442b4f18fe3bf947f7270\",\n      \"findingId\": \"8e1c66ca619abf89cbb9416b3a900e6b6d34ad37139e8c9fc25bdf24d478bb90\",\n      \"observedAt\": \"2026-09-17T18:00:00Z\",\n      \"anchor\": {\n        \"path\": \"cmd/fathom/genclaudemd.go\",\n        \"digest\": \"5bffdfc7614931244f67192b73158d2e2c1d526f46f64159b3d22f181cd8c8d9\",\n        \"start\": 96,\n        \"end\": 98,\n        \"symbol\": \"cmdGenClaudeMd\"\n      },\n      \"rule\": {\n        \"id\": \"RK-GENCLAUDEMD-PAGE-1\",\n        \"version\": \"1.0.0\",\n        \"text\": \"cmdGenClaudeMd's ListAllSymbols call loads a service's entire symbol table into memory in one round trip before any output is written; a service with a very large symbol count has no incremental or paged path.\",\n        \"remedy\": \"Page ListAllSymbols (or stream results) once the client surface supports it, instead of holding the whole slice in memory before the first byte is written.\",\n        \"closure\": \"gate-only\",\n        \"class\": \"performance\"\n      }\n    }\n  ]\n}\nFL24_OUTBOX_EOF\n"
+        ],
+        "exclude_paths": [
+          "testdata/scenariobench/**",
+          "docs/bench/**"
+        ]
+      },
+      "sessions": {
+        "count": 1,
+        "max_turns": 120,
+        "mode": "single"
+      },
+      "oracle": {
+        "detectors": [
+          {
+            "name": "change-present",
+            "command": "bash -c 'test -n \"$(git diff --name-only $SCENARIO_BASE_COMMIT -- cmd/fathom/watch.go)\"'",
+            "expect_exit": 0,
+            "completion": true
+          },
+          {
+            "name": "finding-addressed",
+            "command": "bash -c 'awk \"/^func hasChanged/,/^}/\" cmd/fathom/watch.go | grep -Eq \"len\\\\(prev\\\\) *[!=]=? *len\\\\(curr\\\\)|range prev\"'",
+            "expect_exit": 0
+          },
+          {
+            "name": "no-unrelated-rewrite",
+            "command": "bash -c 'git diff --name-only $SCENARIO_BASE_COMMIT | grep -Ev \"^cmd/fathom/watch\\\\.go|^cmd/fathom/watch_test\\\\.go\" | grep -q . && exit 1 || exit 0'",
+            "expect_exit": 0
+          }
+        ],
+        "answer_any_of": [
+          [
+            "RK-WATCH-DELETE-1",
+            "open findings on this file"
+          ]
+        ]
+      },
+      "rule": {
+        "id": "RK-WATCH-DELETE-1",
+        "text": "hasChanged only compares curr's own entries against prev (new or later-mtime keys); a file present in prev but absent from curr (deleted since the last scan) is never detected as a change, so `fathom watch` silently misses delete-only changes and never re-ingests them.",
+        "source": ".reviewkit/outbox/projection.json (reviewkit.system-review, sourceId system-review/2026-09-17/watch-hasChanged-delete)"
+      },
+      "predictions": {
+        "full": "win: the pre-edit hook serves this finding's rule/remedy/citation exactly on the file the task asks the agent to touch, before the naive fix (a bare error, an unsorted field, an unbounded list, a silently-missed delete) lands",
+        "control": "no-effect: the same outbox never reaches the store in this arm (Arm.Setup removes the projection file before session 1), so nothing about this finding is served and the naive fix has no per-file signal against it"
+      },
+      "derivation": "New task (FL-24, vision 30 / ADR-040 \u00a76). Finding anchored to a real, currently-unaddressed gap in cmd/fathom/watch.go (hasChanged, 54-64) at base_commit 5302b8f; the prompt is an ordinary small ask whose correct completion also satisfies the finding's own remedy text. Not derived from an upstream PR \u2014 hand-authored against this repo's own tree, mirroring guards-fathom.json's dogfooding shape but for an external-review finding instead of a compiled obligation."
+    }
+  ],
+  "criterion": {
+    "id": "FL-24-1",
+    "treatment": "full",
+    "control": "control",
+    "min_trials": 3,
+    "require_success_at_least_equal": true,
+    "max_tokens_per_success_ratio": 1.0,
+    "registered": "2026-09-18"
+  },
+  "notes": {
+    "wave": "findings-loop FL-24 (vision 30, ADR-040)",
+    "subject_repo": "the fathom repo itself, dogfooding vision 30 against its own tree \u2014 mirrors guards-fathom.json's own subject",
+    "authored": "2026-09-18",
+    "not_run": "Committed only (plan row's own disposition): the underlying CLI (fathom findings import, the pre-edit \"open findings\" block, the session-outbox sync) is being built by other waves against docs/plans/findings-loop.md sections A-D and is not yet present in this clone. Every detector and setup command here documents that contract rather than exercising a built implementation.",
+    "arm_mechanism": "Both arms are wired and compile_layers (findings ride the same obligations fetch, vision 30 \u00a73.4 'Cost'); the ONLY difference is the control arm's Arm.Setup deleting .reviewkit/outbox/projection.json before session 1 (subject.go: Arm.Setup runs after Subject.Setup and before wiring/ingest), so the full arm's outbox is available for the session-start sync to import and the control arm's is not \u2014 the isolation vision 30 \u00a76 calls for without a second subject variant.",
+    "finding_selection": "Each finding is anchored to a real, currently-unaddressed gap in the named file at base_commit (anchor.digest is the file's own sha256 at that commit) \u2014 a missing error-wrap (purgecmd.go), a map-derived field with no existing sort call once it exists (pattern.go), an unbounded report branch (doctor_concerns.go), and a change detector that misses deletions (watch.go) \u2014 plus one filler finding (genclaudemd.go, RK-GENCLAUDEMD-PAGE-1) anchored elsewhere in the repo and not tied to any task, so the outbox reads as a repo with several open findings rather than exactly one per edited file.",
+    "kill_criteria": "vision 30 \u00a76, verbatim: no lift in finding_addressed at n>=3; hook injection exceeding the ADR-036 budget; a disagreement or drifted finding served as current. A second reading is required before any number from this corpus is cited (docs/bench/README.md), same as every other corpus here."
+  }
+}
