@@ -1,0 +1,7 @@
+{
+  "description": "one changed Go file (func A, no outgoing calls) in a minimal, non-module fixture corpus — the typed pass records no edges for its package at all, so the closure component is honestly incomplete rather than silently clean",
+  "manifest_paths": ["pkg/a.go"],
+  "expected_components": ["closure", "index", "manifest", "plans", "rules", "tooling"],
+  "expected_complete": false,
+  "expected_unknown_contains": ["dependency closure: pkg/pkg has no typed edges"]
+}
