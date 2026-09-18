@@ -87,12 +87,23 @@ type Guards struct {
 	Enforce *bool // nil = unset at every layer; caller applies its own default (true)
 }
 
+// Findings configures the findings-loop's governed external import
+// (docs/vision/30-findings-loop.md §3.3/§3.7, schema.cue #Findings):
+// `fathom findings import` refuses to operate without a provisioned
+// Subject.
+type Findings struct {
+	Subject   string   `toml:"subject"`
+	Outbox    string   `toml:"outbox"`
+	Producers []string `toml:"producers"`
+}
+
 // Config is the merged, in-memory form of one or more config.toml layers.
 type Config struct {
 	DefaultProfile string
 	Profiles       map[string]Profile
 	Daemon         Daemon
 	Guards         Guards
+	Findings       Findings
 }
 
 // LoadError names the file and the underlying cause — parse, validate, or

@@ -1,0 +1,99 @@
+{
+  "service": "svc-conformance",
+  "subject": "acme/widget/api",
+  "producer": "",
+  "dryRun": false,
+  "projection": {
+    "schemaVersion": 1,
+    "delivery": "pending",
+    "reason": "outbox flush",
+    "events": [
+      {
+        "schemaVersion": 1,
+        "kind": "observation",
+        "findingId": "06471dfe9e5c115bb14178185e4ab077d9b6d08ff2b4c3d5c4ad318fbf9c7253",
+        "producer": {
+          "name": "reviewkit.system-review",
+          "version": "1.0.0"
+        },
+        "subject": {
+          "organization": "acme",
+          "repository": "widget",
+          "component": "api"
+        },
+        "sourceId": "rule-1",
+        "sourceVersion": 1,
+        "sourceRevision": "rev1",
+        "payloadDigest": "71e9190446ff247360e9e238a4e0f1ee8726ee885dbf8971b45feee4fe336029",
+        "observedAt": "2026-09-10T12:00:00Z",
+        "outcome": "fail",
+        "coverage": "complete",
+        "sourceStatus": "open",
+        "rule": {
+          "id": "R-NIL-DEREF",
+          "version": "1",
+          "text": "possible nil dereference",
+          "remedy": "add a nil check",
+          "closure": "manual triage",
+          "class": "correctness",
+          "tier": "pre-scan"
+        },
+        "visibility": {
+          "organization": "acme",
+          "repository": "widget",
+          "component": "api"
+        },
+        "anchor": {
+          "path": "internal/foo/bar.go",
+          "digest": "e27b96e462ca30b6f04f90ec593bc9386b32ea5623c7b1dc805156889710d761",
+          "symbol": "Bar",
+          "start": 1,
+          "end": 2
+        }
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "observation",
+        "findingId": "06471dfe9e5c115bb14178185e4ab077d9b6d08ff2b4c3d5c4ad318fbf9c7253",
+        "producer": {
+          "name": "reviewkit.system-review",
+          "version": "1.0.0"
+        },
+        "subject": {
+          "organization": "acme",
+          "repository": "widget",
+          "component": "api"
+        },
+        "sourceId": "rule-1",
+        "sourceVersion": 2,
+        "sourceRevision": "rev1",
+        "payloadDigest": "d02c638019cb37cf2ef0ef65b4d690baee1a4079aa464c3cd138f96ec9030b53",
+        "observedAt": "2026-09-10T12:00:00Z",
+        "outcome": "fail",
+        "coverage": "complete",
+        "sourceStatus": "open",
+        "rule": {
+          "id": "R-NIL-DEREF",
+          "version": "1",
+          "text": "possible nil dereference",
+          "remedy": "add a nil check",
+          "closure": "manual triage",
+          "class": "correctness",
+          "tier": "pre-scan"
+        },
+        "visibility": {
+          "organization": "acme",
+          "repository": "widget",
+          "component": "api"
+        },
+        "anchor": {
+          "path": "internal/foo/baz.go",
+          "digest": "cd2548da214967e9bd1a6e81545c0b7adb4e00dd0115af7773ac9cf7c9b9caed",
+          "symbol": "Bar",
+          "start": 1,
+          "end": 2
+        }
+      }
+    ]
+  }
+}

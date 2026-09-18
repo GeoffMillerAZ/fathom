@@ -1,0 +1,21 @@
+{
+  "parseError": false,
+  "receipt": {
+    "schema_version": 1,
+    "delivered": 0,
+    "duplicate": 0,
+    "stale": 0,
+    "unclassified": 0,
+    "rejected": [
+      {
+        "index": 0,
+        "finding_id": "0818767ffc8e8e2a890a4a3ca10aa1679ef05523a881a67e31be8ba41c060be9",
+        "reason": "circular: fathom-origin producer"
+      }
+    ],
+    "truncated": false,
+    "cursors": [],
+    "dry_run": false,
+    "no_fingerprint": 0
+  }
+}

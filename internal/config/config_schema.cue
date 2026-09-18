@@ -111,6 +111,26 @@ package config
 	enforce?: bool
 }
 
+// #Findings configures the findings-loop's governed external import
+// (docs/vision/30-findings-loop.md §3.3/§3.7, ADR-040 decision 2): the
+// provisioned subject→service mapping `fathom findings import` refuses to
+// operate without.
+#Findings: {
+	// subject is the provisioned "org/repo/component" mapping every
+	// imported event's own subject and visibility must equal — no mapping,
+	// no import.
+	subject?: string
+
+	// outbox is an optional repo-relative path to the review kit's
+	// projection outbox file; when set, the session hook imports it once
+	// per session on change (§3.7).
+	outbox?: string
+
+	// producers is an optional allowlist of catalogued producer ids the
+	// outbox sync accepts.
+	producers?: [...string]
+}
+
 // #Config is the top-level shape of one config.toml layer (user or
 // project). Both layers validate against the same schema; internal/config
 // merges them field-by-field per docs/plans/config-experience.md's stated
@@ -124,6 +144,7 @@ package config
 	// named profiles, keyed however the operator likes.
 	profiles?: [string]: #Profile
 
-	daemon?: #Daemon
-	guards?: #Guards
+	daemon?:   #Daemon
+	guards?:   #Guards
+	findings?: #Findings
 }

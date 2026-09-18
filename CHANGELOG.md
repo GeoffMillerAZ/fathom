@@ -34,6 +34,9 @@ Release impact: minor (pre-1.0: breaking bumps minor)
 - `fathom compile --max-tokens-per-run`/`--max-usd-per-run` overrides a resolved layer's budget for one compile call (a positive number or `"all"` for unlimited).
 - `review_diff`/`fathom review` and `fathom tests coverage` accept one Go coverage profile per test layer (`coverage_profiles: [{layer, path}]` / repeatable `--coverage-profile [layer=]<file>`), reporting per-changed-symbol coverage broken out by layer instead of one blended number.
 - `read_source` gains `max_bytes` (default 8KB); `find_symbol` on a Go interface carries `implementations`.
+<!-- fl-wave-1 -->
+- **The findings loop's governed import lands** (ADR-040, `docs/plans/findings-loop.md` FL-1..FL-14): `fathom findings import --store --service --subject --producer --file [--dry-run] [--json]` (and `pkg/client.ImportFindings`, the identical code path) accepts the review kit's projection under a provisioned `[findings] subject`, deriving one content-addressed claim per finding and mapping its lifecycle onto the existing status/event vocabulary instead of inventing a new one. A producer catalog (`schema/semantic/producers.cue`) caps served tier at `min(event tier, producer cap)` and refuses a `fathom`-origin producer outright, closing the circular-proof loophole. Ordering and idempotency are enforced per claim via a new `external_findings` cursor table (additive on both backends), and native review reconciliation (`StaleReviewClaims`) and the external importer stay provably separate reconciliation domains, discriminated by `PromptVersion`.
+<!-- /fl-wave-1 -->
 
 ### Changed
 
