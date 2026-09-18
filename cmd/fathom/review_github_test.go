@@ -63,8 +63,8 @@ func TestReview_FormatGitHub_FauxtownGolden(t *testing.T) {
 	if !strings.Contains(out, "called from 1 place(s), 1 updated in this diff") {
 		t.Errorf("expected validateCharge's call-site completeness line (called once, from Charge, also in this diff): %s", out)
 	}
-	if !strings.Contains(out, "[heuristic]") {
-		t.Errorf("expected at least one heuristic-tier caller (this fixture carries no typed edges from a real Go module): %s", out)
+	if !strings.Contains(out, "[heuristic, depth 1]") {
+		t.Errorf("expected at least one direct heuristic-tier caller (this fixture carries no typed edges from a real Go module): %s", out)
 	}
 	if !strings.Contains(out, "### Test gap") {
 		t.Errorf("missing Test gap section: %s", out)

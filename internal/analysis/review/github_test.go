@@ -87,6 +87,66 @@ func TestChangedSymbolReviews_CallerTiersAndCompleteness(t *testing.T) {
 	}
 }
 
+// TestChangedSymbolReviews_TransitiveCallerDepth2 pins VB-24 recall-loop
+// mechanism (a) (docs/bench/readings/review-recall-loop-2026-09-18.md): a
+// caller of a caller (GrandCaller -> ResolvedCaller -> A, GrandCaller has
+// NO direct edge to A) now appears in A's Callers at Depth 2, labeled with
+// its own tier, WITHOUT inflating CallSitesTotal/CallSitesUpdated (those
+// stay direct-callers-only — "how many places call this AT ALL"). A
+// SelfLoop-shaped diamond (both GrandCaller and DeepCaller reach A only
+// through ResolvedCaller) also checks dedup: ResolvedCaller must not
+// appear twice.
+func TestChangedSymbolReviews_TransitiveCallerDepth2(t *testing.T) {
+	nodes := append(
+		githubFixtureNodes(),
+		core.SymbolNode{Service: "svc", Package: "pkg", Name: "GrandCaller", Kind: core.KindGoFunc, FilePath: "grand.go", Line: 5, Calls: []string{"svc::pkg.ResolvedCaller"}},
+		core.SymbolNode{Service: "svc", Package: "pkg", Name: "GreatGrandCaller", Kind: core.KindGoFunc, FilePath: "greatgrand.go", Line: 6, Calls: []string{"svc::pkg.GrandCaller"}},
+	)
+	typed := githubFixtureTypedEdges()
+	got := review.ChangedSymbolReviews(nodes, typed, []string{"a.go"})
+
+	var a *review.ChangedSymbolReview
+	for i := range got {
+		if got[i].Symbol == "svc::pkg.A" {
+			a = &got[i]
+		}
+	}
+	if a == nil {
+		t.Fatalf("svc::pkg.A missing from %+v", got)
+	}
+	if a.CallSitesTotal != 4 {
+		t.Errorf("A.CallSitesTotal = %d, want 4 (depth-2/3 callers must not inflate direct call-site counts)", a.CallSitesTotal)
+	}
+
+	depthOf := map[string]int{}
+	for _, c := range a.Callers {
+		if _, dup := depthOf[c.Symbol]; dup {
+			t.Errorf("caller %s listed more than once: %+v", c.Symbol, a.Callers)
+		}
+		depthOf[c.Symbol] = c.Depth
+	}
+	if depthOf["svc::pkg.ResolvedCaller"] != 1 {
+		t.Errorf("ResolvedCaller depth = %d, want 1", depthOf["svc::pkg.ResolvedCaller"])
+	}
+	if depthOf["svc::pkg.GrandCaller"] != 2 {
+		t.Errorf("GrandCaller depth = %d, want 2 (caller of a direct caller)", depthOf["svc::pkg.GrandCaller"])
+	}
+	if _, present := depthOf["svc::pkg.GreatGrandCaller"]; present {
+		t.Errorf("GreatGrandCaller (depth 3) must NOT appear — changedSymbolCallerDepth caps the walk at 2: %+v", a.Callers)
+	}
+
+	// Depth-ascending order: every depth-1 caller sorts before every
+	// depth-2 caller.
+	sawDepth2 := false
+	for _, c := range a.Callers {
+		if c.Depth == 2 {
+			sawDepth2 = true
+		} else if sawDepth2 {
+			t.Errorf("caller %+v at depth %d sorted after a depth-2 caller", c, c.Depth)
+		}
+	}
+}
+
 // githubReviewFixtureInput builds a review.Input over githubFixtureNodes
 // with one rules-layer obligation and one opt-in claims-layer binding on
 // A's file, so the render's obligations filter (rules only) has something
@@ -138,8 +198,8 @@ func TestRenderGitHubReview_ComposesTheFixedSections(t *testing.T) {
 	if !strings.Contains(out, "called from 4 place(s), 1 updated in this diff") {
 		t.Errorf("missing call-site completeness line: %s", out)
 	}
-	if !strings.Contains(out, "[resolved]") || !strings.Contains(out, "[heuristic]") {
-		t.Errorf("missing tier labels: %s", out)
+	if !strings.Contains(out, "[resolved, depth 1]") || !strings.Contains(out, "[heuristic, depth 1]") {
+		t.Errorf("missing tier+depth labels: %s", out)
 	}
 	if !strings.Contains(out, "exported functions need a doc comment") {
 		t.Errorf("missing rules-layer governing rule: %s", out)

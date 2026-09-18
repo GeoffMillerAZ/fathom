@@ -1365,3 +1365,16 @@ the test suite BEFORE trusting that it reads as design history — a sentence th
 boilerplate because a dozen OTHER sentences nearby really are boilerplate can still be the one load-
 bearing fact a bench measured and a test pins; running the full existing suite (not just the new
 tests being added) is what catches that, not a second reading of the prose.
+
+### O86 — `fathom review --format github`'s "Changed symbols" caller listing was hard-capped at depth 1, unlike every other blast-radius surface in the repo
+
+- **Symptom:** `fathom review --format github`'s recall on the VB-24 historical-PR corpus stayed at 5/42 (11.9%, well under the M15 row's 30% floor) even though the review engine's OWN impact dimension (`impact.DiffImpactWithTypedEdges`) has always walked the call graph unbounded — the GitHub-rendered comment's per-changed-symbol "Changed symbols" caller list never surfaced past a direct (depth-1) caller.
+- **Evidence:**
+  - **Tool:** `internal/reviewbench` (this wave's own offline VB-24 reproduction harness), `internal/analysis/review/github.go`
+  - **Expected:** a caller two hops from a changed symbol (a caller of a caller) named in the rendered review, the same way `blast_radius`/`find_callers` already report depth-2+ transitive callers by default (BP-27/BD-2).
+  - **Actual:** `ChangedSymbolReviews` built its `Callers` list from a single `callgraph.CallersDetail(g, k)` call — direct callers only. `golangci-lint` #5884→#5885's fix touched `analyze` in `pkg/goanalysis/runner_loadingpackage.go`, a caller-of-a-caller of the symbol A's diff changed, in a file A's diff never touched — invisible to the pre-fix code at any tier.
+  - **Repro:** `docs/bench/readings/review-recall-loop-2026-09-18.md` §"Worked example"; `internal/analysis/review/github_test.go`'s `TestChangedSymbolReviews_TransitiveCallerDepth2`.
+- **Root cause:** `ChangedSymbolReviews` (VB-22, the original tracer-bullet implementation) was written before the repo's later depth-2-default convention (BP-27, `blast_radius`/`find_callers`) existed, and nothing revisited it when that convention landed — a one-off omission, not a systemic gap (the review engine's `impact` dimension and `impact.TestGap`'s affected-tests reachability were both already unbounded).
+- **Fix:** `changedSymbolCallerDepth = 2` constant; `ChangedSymbolReviews` now BFS-walks to that depth, labeling each `CallerRef` with `Depth`; `CallSitesTotal`/`CallSitesUpdated` (call-site completeness) stay direct-callers-only by definition. Rendered as `[tier, depth N]`. Recall moved 5/42 → 6/42 (14.3%), 0 regressions, false findings unchanged at 0/PR.
+- **Status:** closed (shipped, `internal/analysis/review/github.go`'s `changedSymbolCallerDepth`)
+- **Impact:** +1 genuine strict-new hit on the VB-24 corpus (of 36/42 pairs directly re-verified); the row's 30% floor is still far off — the 5 pure misses this loop reproduces (byte-identical to the published reading's list) point at O39/O40-class selector-method/interface edge resolution as the next, unattempted, highest-value candidate.

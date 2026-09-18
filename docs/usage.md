@@ -1362,9 +1362,12 @@ a store writer).
 
 `--format github` (VB-22, `docs/plans/verbs.md`) renders ONE deterministic
 Markdown PR comment instead of the human summary or `--json`: changed
-symbols with their resolved direct callers and each caller's resolution
-tier (`[resolved]`/`[heuristic]`), call-site completeness (callers found vs.
-how many live in this same diff), governing rules with cited lines, a
+symbols with their callers out to depth 2 (review-recall-loop mechanism
+(a), `docs/bench/readings/review-recall-loop-2026-09-18.md`) and each
+caller's resolution tier plus depth (`[resolved, depth 1]`/`[heuristic,
+depth 2]`), call-site completeness (DIRECT callers found vs. how many live
+in this same diff — never inflated by a depth-2 row), governing rules with
+cited lines, a
 `### Verify` line naming `fathom verify --service … --plan …` whenever the
 diff touches a `docs/plans/*.md` row's anchored symbol, affected tests and
 the test gap, and a coverage block when a profile was supplied — every
