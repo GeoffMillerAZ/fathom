@@ -5,6 +5,22 @@ import (
 	"testing"
 )
 
+// TestEvaluateGuardEnforcement_IgnoresClaimStatus pins J2 (e): enforcement
+// is a pure function of the guard definition plus the proposed edit's own
+// path/text — it never takes a claim or a Status, so a stale/contradicted
+// compiled obligation cannot suppress a real violation or fabricate one.
+// The SAME (guard, path, content) input must always produce the SAME
+// violation set, regardless of anything the semantic/claims layer knows
+// about that path.
+func TestEvaluateGuardEnforcement_IgnoresClaimStatus(t *testing.T) {
+	g := Guard{Enforce: true, ForbiddenPaths: []string{"cmd/fathom/ui/app.css"}, Note: "generated"}
+	v1 := EvaluateGuardEnforcement(g, "cmd/fathom/ui/app.css", "anything", "")
+	v2 := EvaluateGuardEnforcement(g, "cmd/fathom/ui/app.css", "anything", "")
+	if len(v1) != 1 || len(v2) != 1 || v1[0] != v2[0] {
+		t.Fatalf("identical (guard, path, content) input must produce identical violations, got %v vs %v", v1, v2)
+	}
+}
+
 func TestEvaluateGuardEnforcement_NotEnforced(t *testing.T) {
 	g := Guard{Scopes: []string{"**/*.go"}, Checks: []string{"org_token"}}
 	if v := EvaluateGuardEnforcement(g, "x.go", "host = \"ci.build.corp\"", ""); v != nil {

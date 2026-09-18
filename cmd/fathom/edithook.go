@@ -308,9 +308,7 @@ func renderPostEdit(url, projDir, filePath, sessionID string) (string, postEditM
 			fmt.Fprintf(&sb, "⚖️ fathom obligations — %s: guarded — %d rule(s) already served pre-edit, unchanged", repoRelFile, suppressedByStamp)
 		} else {
 			fmt.Fprintf(&sb, "⚖️ fathom obligations — %s:", repoRelFile)
-			for _, r := range renderRules {
-				writeRuleBullet(&sb, r)
-			}
+			writeRuleBullets(&sb, renderRules, svcName)
 			if suppressedByStamp > 0 {
 				fmt.Fprintf(&sb, "\nguarded: %d rule(s) already served pre-edit, not repeated", suppressedByStamp)
 			}

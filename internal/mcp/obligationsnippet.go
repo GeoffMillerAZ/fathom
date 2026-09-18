@@ -96,6 +96,14 @@ func parseCitation(ref string) (file string, start, end int, ok bool) {
 	return file, start, end, true
 }
 
+// staleSnippetLabel (J2, app-kit O6/O16/O24/O26/O29/O30) is the exact label
+// every renderer attaches to a stale/contradicted rule's snippet — it is
+// NEVER a live read of the current file at the rule's stored citation
+// range (that range may now hold unrelated content; sweep.go already
+// proved the hash no longer matches), it is the literal text the rule was
+// compiled against.
+const staleSnippetLabel = "cited text at compile; current file differs"
+
 // withSnippets renders served rules as JSON objects with an inlined
 // "snippet" (BP-20). A rule whose citation cannot be read keeps exactly the
 // shape it had before this field existed — the absence is the honest
@@ -103,6 +111,17 @@ func parseCitation(ref string) (file string, start, end int, ok bool) {
 // round-tripping the rule's own JSON rather than re-listing its fields here
 // (semantic.Obligation is extended additively; a hand-copied field list
 // would silently drop the next one).
+//
+// A stale/contradicted rule (r.Status != "") never reaches obligationSnippet
+// at all: that function reads the CURRENT file at the rule's OLD cited line
+// range, which is exactly the unsafe read J2 exists to stop — a stale
+// citation's line range can hold content that moved there for unrelated
+// reasons. Instead its stored AnchorText (semantic.Obligation's J2 field,
+// set only when the claim's cites link recorded compile-time text) renders
+// as "snippet", labeled with staleSnippetLabel via "snippet_label" so a
+// caller can never mistake it for a live read. A stale rule with no stored
+// AnchorText (a legacy hash-only citation) gets neither field — an honest
+// absence, never a fabricated or unsafe one.
 func withSnippets(ctx context.Context, backend QueryInterface, service string, rules []semantic.Obligation) []any {
 	out := make([]any, 0, len(rules))
 	for _, r := range rules {
@@ -116,7 +135,12 @@ func withSnippets(ctx context.Context, backend QueryInterface, service string, r
 			out = append(out, r)
 			continue
 		}
-		if snip, ok := obligationSnippet(ctx, backend, service, r.Src); ok {
+		if r.Status != "" {
+			if r.AnchorText != "" {
+				m["snippet"] = r.AnchorText
+				m["snippet_label"] = staleSnippetLabel
+			}
+		} else if snip, ok := obligationSnippet(ctx, backend, service, r.Src); ok {
 			m["snippet"] = snip
 		}
 		out = append(out, m)

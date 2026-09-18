@@ -234,9 +234,14 @@ func renderPreEdit(url, projDir, filePath, sessionID string) (preEditResult, boo
 	if guard.Note != "" {
 		fmt.Fprintf(&sb, "⚖️ fathom guard — %s: %s", repoRelFile, guard.Note)
 	}
-	for _, r := range displayed {
+	governing, stale := partitionRules(displayed)
+	for _, r := range governing {
 		writeHeaderIfNeeded()
 		writeRuleBullet(&sb, r)
+	}
+	if len(stale) > 0 {
+		writeHeaderIfNeeded()
+		writeStaleRulesBlock(&sb, stale, svcName)
 	}
 	// Critic finding 7 (phase-O merge): include_modules:false was the
 	// design's one SILENT suppression — module rules are fetched
