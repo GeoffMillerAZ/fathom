@@ -63,6 +63,15 @@ Release impact: minor (pre-1.0: breaking bumps minor)
 - `fathom compile`'s `max_usd_per_run <= 0` now means unlimited, matching `max_tokens_per_run`'s own convention.
 - `internal/guardspec.LoadGuards` no longer rejects a `forbidden_paths`-only guard as "governing nothing".
 
+<!-- fl-wave-8 -->
+- A stale/contradicted obligation rule no longer renders as if binding: every hook (`edit-hook`, its `--pre` guard, the prompt hook) moves it into a trailing "stale rules — not binding until recompiled" block with one `fathom compile` remedy line, and its inlined snippet is the rule's stored compile-time text, never a live re-read of the current file at the old citation range (which can now hold unrelated content); the `obligations` MCP tool gains `stale_count`/`remedy`.
+- `.mjs`/`.cjs`/`.mts`/`.cts` now extract: the "javascript" tree-sitter engine already spanned the JS pair, but neither the connector's language classification nor fusion's extractor dispatch table ever named any of the four, so files with these extensions were silently dropped before ingest reached an extractor.
+- `symbol_context` on a bare name matching more than one definition, or resolving to a single definition with more than 50 callers, returns `{ambiguous|scope_required, candidates, count, hint}` and no neighbourhood, instead of a silent empty answer or an unbounded (observed ~63k-token) cross-service caller dump; `find_symbol`'s case-insensitive tier now caps at 20 rows with the same elision disclosure the substring tier already had; `pack_context` refuses a `concern` argument containing whitespace instead of silently running a futile query and returning an empty pack.
+- `fathom instrument --adoption`, `fathom research report` and `fathom flywheel` (which gains a `--service` flag) now resolve a named service's call log the same way — its recorded corpus path, then that root's own `.fathom/config.toml`, then the daemon's default for that root — instead of three divergent, CWD-relative rules that could each read a different log for the same repo; `doctor` gains an `instrument_identity` row.
+- `fathom layers install <dir> --root DIR` (the documented flag order) is no longer rejected as too many positional arguments; flags are now accepted in either position relative to the pack directory.
+
+<!-- /fl-wave-8 -->
+
 ## [0.8.0] -- 2026-09-02
 
 **What this release is.** fathom stopped being a Claude Code program and

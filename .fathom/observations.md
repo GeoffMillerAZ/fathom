@@ -834,7 +834,7 @@ triage if it matters.
 - **Status:** open
 - **Impact:** TODO
 
-### O40 — guards-adr-pilot-1 (32 cells, $31.45) read 30 cells as "partial": every task's change-present detector diffed ONE named file against the index, so a change the agent made in a sibling file (or committed) counted as absent. The rule detectors were clean on every cell — the second corpus in a row with zero rule violations on either arm.
+### O84 — guards-adr-pilot-1 (32 cells, $31.45) read 30 cells as "partial": every task's change-present detector diffed ONE named file against the index, so a change the agent made in a sibling file (or committed) counted as absent. The rule detectors were clean on every cell — the second corpus in a row with zero rule violations on either arm.
 
 - **Symptom:** `change-present (exit 1, violated)` beside a non-empty agent.diff (3–13 KB) on 30 of 32 cells; `rule` detectors exit 0 everywhere.
 - **Evidence:**
@@ -1278,3 +1278,56 @@ Rule: an "obligation the agent can read and still contradict" is not proof of an
 check exists that the tool call itself cannot get past — a served rule and an enforced rule are
 different instruments, and thesis 2 (vision 29 §2) says the compiled-test half of governance was
 always meant to reach the edit moment too, not just the gate.
+
+### O85 — J2: stale compiled obligations rendered as binding rules, snippet re-read the current file at the old citation
+
+- **Symptom:** A stale/contradicted rule rendered interleaved with binding rules (labeled only ", stale") and its inlined snippet re-read the CURRENT file at the rule's OLD citation range — closes app-kit O6, O16, O24, O26, O29, O30.
+- **Evidence:**
+  - **Tool:** obligations, edit-hook, edit-hook --pre, prompt-hook
+  - **Fix:** `internal/semantic/serve.go` attaches a stale/contradicted rule's compile-time AnchorText; `internal/mcp/obligationsnippet.go` never re-reads the current file for such a rule, rendering AnchorText labeled "cited text at compile; current file differs" instead; every hook renderer (`cmd/fathom/stalerules.go`) moves stale rules out of the governing bullet list into one trailing "stale rules — not binding until recompiled (N)" block with one remedy line; the `obligations` MCP tool gains `stale_count`/`remedy`; ADR-038 enforcement is proven (by construction and a regression test) to never consult claim status.
+- **Repro/pin:** `TestObligationsFor_StaleRuleCarriesAnchorText`, `TestObligationsTool_StaleRuleUsesAnchorTextNeverCurrentFile`, `TestObligationsTool_StaleCountAndRemedy`, `TestEditHookStaleRule_MovedToTrailingBlockWithRemedy`, `TestEditHookNoStaleRules_ByteIdenticalRendering`, `TestEvaluateGuardEnforcement_IgnoresClaimStatus`, `TestEditHookPre_EnforcedDeny_NeverConsultsStaleObligations`.
+- **Status:** closed
+- **Impact:** An agent can no longer read a drifted rule's citation as if it still supported the rule text, and always sees an explicit `fathom compile` remedy instead of a bare status label.
+
+### O86 — J1: .mjs/.cjs/.mts/.cts never dispatched to an extractor after ingest
+
+- **Symptom:** find_symbol never found an exported function in a new `.mjs`/`.cjs`/`.mts`/`.cts` file after a clean ingest — closes app-kit O18, O32, O33.
+- **Evidence:**
+  - **Tool:** ingest, find_symbol, outline
+  - **Root cause:** `internal/extractor/tsextract.go`'s "javascript" TSExtractor already spanned `.mjs`/`.cjs` (missing `.mts`/`.cts`), but neither `internal/connector/connector.go`'s `extClassMap` (language classification) nor `internal/fusion/pipeline.go`'s own extractor dispatch table (`p.exts`) ever named any of the four — so the files were fingerprinted and silently dropped before reaching an extractor.
+  - **Fix:** all four extensions added to `extClassMap`, `p.exts`, and `tsextract.go`'s `variantForExt`; `internal/extractor.EngineProvenance()` now claims them.
+- **Repro/pin:** `TestTSExtractor_MjsExports`, `TestTSExtractor_CjsModuleExports`, `TestTSExtractor_MtsCtsRouting`, `TestLanguageForPath_KnownExtensions`, `TestLanguageRegistryParity`, `TestIngest_MjsCjsMtsCtsSymbolsIndexed` (internal/fusion, end to end through Ingest).
+- **Status:** closed
+- **Impact:** A repo whose JS/TS source uses the Node/TS module-system extensions is now actually indexed, not silently near-empty.
+
+### O87 — J3: unbounded symbol_context/find_symbol answers for an ambiguous or hub-sized query
+
+- **Symptom:** A bare `symbol_context Run` query returned a ~63k-token cross-service caller set; a package-like `find_symbol` query flooded context with every exported symbol — closes app-kit O12, O22, and O28's silent-empty-pack pack_context misuse.
+- **Evidence:**
+  - **Tool:** symbol_context, find_symbol, pack_context
+  - **Fix:** `symbolnav.ResolveTiered` (a candidate-exposing sibling of resolveSymbol) lets `symbol_context` return `{ambiguous:true|scope_required:true, candidates, count, hint}` and no neighbourhood, before ever computing callers/callees/cross-service lookups, for a bare name matching >1 definition or a uniquely-resolved symbol with >50 callers; `find_symbol`'s case-insensitive tier (`caseFoldMatches`) now caps at 20 rows with the standard elision block, matching the substring tier; `pack_context` refuses a whitespace-containing `concern` argument with a params error instead of running a futile query.
+- **Repro/pin:** `TestSymbolContext_AmbiguousBareName_ReturnsCandidatesNoNeighbourhood`, `TestSymbolContext_HubCallerCapRefusesNeighbourhood`, `TestSymbolContext_HubCallerCap_500CallersUnder16KB`, `TestFindSymbolCaseInsensitive_PackageMatchCapsAt20`, `TestPackContext_SentenceConcernRefused`.
+- **Status:** closed
+- **Impact:** Neither tool can flood an agent's context from a single ambiguous or hub-shaped query; the byte budget is structural, not a post-hoc trim.
+
+### O88 — J5: instrument --adoption/research report/flywheel disagreed about which call log they read
+
+- **Symptom:** One instrument read a scratch clone's log while another reported the named repo's log absent, run moments apart against the same repo — closes app-kit O25, and the identity half of O15/O17/O19.
+- **Evidence:**
+  - **Tool:** instrument --adoption, research report, flywheel, doctor
+  - **Fix:** `cmd/fathom/calllogidentity.go`'s `resolveServiceCallLog` is the one shared algorithm (the named service's recorded corpus path -> that root's own `.fathom/config.toml [daemon].call_log` -> the daemon's literal default for that root); all three instruments now call it when `--service` is given (flywheel gained the flag); `doctor` gains an `instrument_identity` row proving the three answers agree.
+- **Repro/pin:** `TestResolveServiceCallLog` (the shared table), `TestConfiguredCallLogPathAt`, `TestCallLogIdentityLine`, `TestCheckInstrumentIdentity_ResolvedServicePasses`.
+- **Status:** closed
+- **Impact:** Naming `--service` now resolves the SAME call log everywhere; doctor catches a future regression in any one caller.
+- **Deviation:** did not rewrite every downstream numeric field's zero-vs-unknown rendering across all three report formats — only the top-level identity line. flywheel's own IDLE/OPEN evidence line (already honest about absent-vs-unreadable) was left as-is rather than force-fit into the new headline format.
+
+### O89 — J6: layers install rejected the documented flag order; fleet reconcile's pre-refresh-digest defect could not be reproduced
+
+- **Symptom:** `fathom layers install <dir> --root DIR` (the documented order) was refused as "requires exactly one pack directory" — closes app-kit O8. Investigated O9 (fleet reconcile recording pre-refresh skill digests) but could not reproduce it against this codebase.
+- **Evidence:**
+  - **Tool:** layers install, fleet reconcile
+  - **Fix:** `cmd/fathom/flagreorder.go`'s `reorderFlagsFirst` lets `layers install` accept its flags in either position relative to the positional pack directory.
+  - **O9 finding:** traced `ApplyWiring` -> `Ledger.Record` -> `DriftSkills` (internal/wiring/apply.go, ledger.go, drift.go): `Ledger.Record` already upserts by ID, and the owned-file digest recorded in the same apply call is the digest of the exact bytes written moments later in the same loop iteration. Added the missing regression assertion (immediate zero-drift after reconciling a refreshed skill file) rather than a speculative code change; it passes against current code.
+- **Repro/pin:** `TestReorderFlagsFirst`, `TestLayers_Install_FlagsAfterPositionalPath`, `TestLayers_Install_BoolFlagAfterPositionalPath`, `TestLayers_PrintUsage_LayersInstallLinePinned`, `TestReconcileSkills` (extended).
+- **Status:** closed (O8); O9 not reproduced — regression test added, no code change
+- **Impact:** `layers install` no longer punishes the documented invocation order; a future O9-shaped regression in the wiring ledger is now caught immediately.
