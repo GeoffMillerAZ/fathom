@@ -136,21 +136,21 @@ type searchRawHit struct {
 func registerSearch(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "search",
-		Description: "Grep with a receipt — the hit and the symbol it sits in, so the follow-up read is not needed. Runs ripgrep against the WORKING TREE when it is on PATH (falls back to an equivalent Go-regexp walk with an identical output shape otherwise) — for the recall, exactness and freshness a live read gives that the index, not yet re-ingested, may not (vision 28 §3.3). Each hit renders {loc: \"file:line\", text} plus a receipt: sym/kind (the enclosing func/method/type/const/var, from the index — requires service) and, from the filesystem/line itself (no service needed): flags (comma-joined test/generated/vendored when they apply) and class (ident/comment/string from same-line lexical evidence, omitted rather than guessed when a block comment or multi-line string on an earlier line makes it undecidable). Vendored and workspace/ trees are excluded by default. Hits are sorted by path then line; over limit (default 50) or the 16KB response budget, elided names how many more exist and how to get them. Give exactly one of service (searches its indexed corpus root; enables sym/kind) or root (an explicit directory; sym/kind omitted, flags/class still render). Reach for it when you have a literal string, a config value, or a log line to find; for where/who-calls questions use find_symbol/references instead — this result IS the answer for a text search, never a reason to re-grep the same file yourself. Required: pattern.",
+		Description: "Grep with a receipt — the hit and the symbol it sits in, so the follow-up read is not needed. Runs ripgrep against the working tree when on PATH (falls back to an equivalent Go-regexp walk otherwise). Each hit renders {loc, text} plus a receipt: sym/kind (needs service) and, needing no service, flags/class. Over limit (default 50) or the 16KB budget, elided names how many more exist; give exactly one of service (enables sym/kind) or root. Reach for it when you have a literal string, a config value, or a log line to find; for where/who-calls questions use find_symbol/references instead. Required: pattern.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"pattern": map[string]any{
 					"type":        "string",
-					"description": "Regular expression to search for (Go regexp syntax — must compile; the same pattern text is handed to ripgrep when it runs the search).",
+					"description": "Regular expression to search for (Go regexp syntax; handed to ripgrep as-is).",
 				},
 				"service": map[string]any{
 					"type":        "string",
-					"description": "Service / repo identifier — searches its indexed corpus root and enables sym/kind receipts. Give exactly one of service or root.",
+					"description": "Service / repo identifier — enables sym/kind receipts. Give exactly one of service or root.",
 				},
 				"root": map[string]any{
 					"type":        "string",
-					"description": "Absolute filesystem directory to search directly (no index lookup, so sym/kind are omitted; flags/class still render). Give exactly one of service or root.",
+					"description": "Absolute directory to search directly (sym/kind omitted; flags/class still render). Give exactly one of service or root.",
 				},
 				"path": map[string]any{
 					"type":        "string",

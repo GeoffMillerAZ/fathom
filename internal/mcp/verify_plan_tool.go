@@ -19,14 +19,14 @@ import (
 func registerVerifyPlan(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "verify_plan",
-		Description: "Evidence-backed definition-of-done: per plan task, verify the claimed symbol exists at the required evidence tier, a test statically reaches it, required call-edges are wired, and declared specs are covered. Verdicts cite file:line and can disagree with a 'done' claim. Static only — a reached test is not a passing test. Tasks carry claimed/skipped from checkbox state for gate computation. This result IS the answer for whether a claimed task is proven — a follow-up call only helps to fix an UNPROVEN row (find_symbol/references on the missing symbol) or to recheck after an edit, never to add more certainty about this same verdict. Reach for it when you are about to check off a plan row: done means proven by the index, not claimed. Required: service.",
+		Description: "Evidence-backed definition-of-done: per plan task, verify the claimed symbol exists at the required evidence tier, a test statically reaches it, required call-edges are wired, and declared specs are covered. This result IS the answer for whether a claimed task is proven — static only, a reached test is not a passing test; a follow-up call only helps to fix an unproven row or recheck after an edit. Reach for it when you are about to check off a plan row: done means proven by the index, not claimed. Required: service.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"service":       map[string]any{"type": "string", "description": "Service / repo identifier"},
 				"concern":       map[string]any{"type": "string", "description": "Optional concern to scope contradiction detection"},
-				"plan_markdown": map[string]any{"type": "string", "description": "Markdown checklist alternative to tasks: each '- [ ] title [SPEC-ID] {symbol: Foo, package: dir/of/foo, reachable_from: Bar, min_tier: verified}' line becomes a task. Annotations must sit on the checkbox line itself."},
-				"plan_path":     map[string]any{"type": "string", "description": "Repo-relative path plan_markdown was read from. Optional; when given and the service's recorded corpus root is a real git checkout, a claimed row's skip_test is checked against git history — a skip added in the same edit/commit that claims the row done is refused as self-skipped (O56), never graded by the agent's own hand."},
+				"plan_markdown": map[string]any{"type": "string", "description": "Markdown checklist alternative to tasks: each checkbox line becomes a task, with optional [SPEC-ID] and {symbol/package} annotations."},
+				"plan_path":     map[string]any{"type": "string", "description": "Repo-relative path plan_markdown was read from. A same-commit skip_test is refused as self-skipped (git checkout only)."},
 				"tasks": map[string]any{
 					"type":        "array",
 					"description": "Plan tasks with acceptance contracts",
@@ -37,10 +37,10 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 							"title":               map[string]any{"type": "string", "description": "Task title"},
 							"spec_ids":            map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Spec IDs that must be covered"},
 							"symbol":              map[string]any{"type": "string", "description": "Symbol that must exist in the index"},
-							"package":             map[string]any{"type": "string", "description": "Optional repo-relative directory the symbol's file must live under (disambiguates a bare name that exists in several packages)"},
+							"package":             map[string]any{"type": "string", "description": "Repo-relative directory the symbol's file must live under (disambiguates a name in several packages)"},
 							"reachable_from":      map[string]any{"type": "string", "description": "Entrypoint that must reach symbol"},
 							"skip_test":           map[string]any{"type": "boolean", "description": "Don't require a test to reach symbol"},
-							"skip":                map[string]any{"type": "string", "description": "Justification for skip_test — mirrors the Markdown checklist's `skip:` annotation key. A bare skip_test with no reason is refused as skip-without-reason (O56)."},
+							"skip":                map[string]any{"type": "string", "description": "Justification for skip_test. A bare skip_test with no reason is refused as skip-without-reason."},
 							"allow_contradiction": map[string]any{"type": "boolean", "description": "Contradictions don't fail the task"},
 							"min_tier":            map[string]any{"type": "string", "enum": []string{"verified", "pre-scan", "doc-claimed", "sme-stated", "assumed"}, "description": "Minimum evidence tier (default verified)"},
 						},

@@ -1302,3 +1302,66 @@ anchor a struct/interface TYPE row at a constructor or a method, never the bare 
 `fathom verify` will report a false "present-but-untested" for code that is genuinely tested — worth
 a check in `fathom-plan`'s own scaffolding (does the named symbol's Kind admit call edges at all)
 before it ever reaches an implementer.
+
+### O85 — the agent-surface schema tax cut ~22% (60,918 → 47,480 bytes) by moving description design-history off the wire, not by touching the machine-checkable contract (2026-09-18, wave fl-wave-10)
+
+`cmd/fathom/cost_panel_test.go`'s own measured cost (BA-7) — 60,918 bytes / 25 tools, every one
+paid by every MCP-connected session before its first call — and a consumer journal citing "25
+tools and 58,721 schema bytes per session" as a cost with no counterfactual were the trigger. Every
+one of the 25 agent-surface tool `Description` strings was rewritten to a fixed grammar
+`docs/mcp-tools.md` and `docs/adoption/claude-code.md` already documented but never enforced: one
+opening sentence naming what the tool answers, at most two sentences on the result shape a caller
+must know (budget/elision, tiers, `checked:false`), the "Reach for it when …" routing sentence, and
+a "Required: …" line. Everything else — plan-row ids (`SB-xx`/`VB-xx`/`RC-xx`/`O`-numbers), ADR
+cross-references, migration notes ("DEFAULTS changed in 0.9"), and defaults prose the argument
+schema already states — moved address only, never content: `docs/mcp-tools.md`'s per-tool rows
+already carried nearly all of it in full (the doc and the schema had been growing in lockstep since
+founding), so the diet was mostly subtraction from the wire, not composition into the doc; the rare
+genuinely-missing fact was folded into the existing row rather than a new one.
+
+One real near-miss: the first pass cut the "this result IS the answer … a follow-up call only
+helps …" stop sentence from all five tools that carry it (`find_symbol`, `find_callers`,
+`symbol_context`, `verify_plan`, `obligations`) as if it were design history — it read like the
+same "this result IS the answer" boilerplate the RC-19/20/21 waves left everywhere. It is not:
+`agent_surface_stop_test.go`'s `TestAgentSurfaceDescriptionsStateWhenToStop` pins it as SB-4, a
+measured H1-bench finding that a model kept calling follow-up tools past a definitive answer until
+the sentence was added. The full pre-existing test suite (not just the new tests this wave added)
+caught the cut on the first `go test ./internal/mcp/...` run; the fix keeps a short version of the
+same sentence as one of each tool's two allowed result-shape sentences, satisfying both the byte
+cap and the pinned test.
+
+Two new tests: `internal/mcp/surface_arg_schema_test.go`'s `TestAgentSurfaceArgSchemaUnchanged`
+diffs every agent-surface tool's `InputSchema` (descriptions stripped) against a golden captured
+before the diet (`internal/mcp/testdata/agent_surface_arg_schema.golden.json`) — names, types,
+enums, and required lists are byte-identical; only prose shrank. `internal/mcp/
+surface_description_caps_test.go`'s `TestAgentSurfaceDescriptionsWithinCaps` pins the per-tool cap
+(700 B; 1000 B for `review_diff`/`obligations`/`references`/`search`, whose composed or fleet-wide
+answers genuinely have more moving parts) and a 200 B cap on every argument-property description,
+recursively.
+
+Measured: 60,918 → 47,480 bytes (25 tools unchanged, `TestAgentSurfaceDiet`'s own pin unmoved);
+description + argument-description prose (the only bytes this wave could touch) fell 31,273 →
+17,787, a 43% cut. `agentSurfaceSchemaByteCeiling` (`cmd/fathom/cost_panel_test.go`) re-pinned to
+49,480 (measured + 2,000), its history comment replaced with a dated 2026-09-18 note. The brief's
+own aspirational ≤36,000 B target was not reached and is not reachable by a description diet alone:
+a per-tool byte breakdown (`internal/mcp` + `cmd/fathom` JSON marshal of a live `tools/list`) showed
+a ~29.6 kB fixed floor this wave never touched and was told not to — generated `outputSchema`
+(18,626 B, RP-11's machine-checkable per-tool result contract), MCP `annotations` (2,227 B, RP-10),
+and argument-schema STRUCTURE (~6,700 B: property names/types/enums/required, protected by the new
+golden). Hitting 36,000 would mean cutting one of those three, each a deliberate prior-wave
+decision this brief scoped out.
+
+Status: closed. Fix in `internal/mcp/*.go` (25 Description + argument-description edits),
+`internal/mcp/surface_arg_schema_test.go`, `internal/mcp/surface_description_caps_test.go`,
+`internal/mcp/testdata/agent_surface_arg_schema.golden.json`, `cmd/fathom/cost_panel_test.go`
+(re-pinned ceiling), `CHANGELOG.md`. `docs/mcp-tools.md` needed no new facts — it already carried
+what the wire cut. Impact: every session's standing schema cost drops ~13.4 kB (~22%) before any
+work happens; the fixed ~29.6 kB floor (output schemas + annotations + argument-schema structure)
+is now a measured, named number instead of an unexamined part of the 60,918 total, so a future wave
+that wants to go lower knows exactly which of the three protected costs it would have to spend.
+
+Rule: when a byte-cutting brief says "move design history to docs", check each cut sentence against
+the test suite BEFORE trusting that it reads as design history — a sentence that looks like
+boilerplate because a dozen OTHER sentences nearby really are boilerplate can still be the one load-
+bearing fact a bench measured and a test pins; running the full existing suite (not just the new
+tests being added) is what catches that, not a second reading of the prose.

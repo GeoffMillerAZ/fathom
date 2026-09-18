@@ -89,7 +89,7 @@ const symbolContextSnippetMaxLines = 40
 func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend) {
 	s.registerTool(toolDescriptor{
 		Name:        "symbol_context",
-		Description: "Return the neighbourhood context for a symbol: its definition, direct callers, direct callees, related tests, and (when readable) an inline source snippet of the definition capped at 40 lines — snippet_truncated:true marks a snippet that stopped at the cap with more file below it. Pass snippet:false to omit the snippet entirely (smaller payload). This result IS the answer for a symbol's immediate neighbourhood — a follow-up call only helps once you need lines beyond the 40-line snippet cap (read_source) or a DIFFERENT symbol's neighbourhood, never to re-fetch this one. Budgeted; the elision line names the refinement (depth). Reach for it when you have located a symbol and need its neighbourhood — definition, callers, callees, tests, source — in one call before changing it. Required: service, symbol.",
+		Description: "Return the neighbourhood context for a symbol: its definition, direct callers, direct callees, related tests, and (when readable) an inline source snippet capped at 40 lines. This result IS the answer for a symbol's immediate neighbourhood; a follow-up call only helps once you need lines beyond the 40-line cap (read_source) or a different symbol's neighbourhood. Reach for it when you have located a symbol and need its neighbourhood — definition, callers, callees, tests, source — in one call before changing it. Required: service, symbol.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{

@@ -100,8 +100,40 @@ const (
 	// Re-pinned once more integrating wave N5 with the concurrently merged
 	// waves N8/N10/N11 (O54 addendum, O60's `layer_coverage` unknown-status
 	// shape on `obligations`, and other sibling-wave description growth) —
-	// still 25 tools, no new tool: 59,094 bytes measured.
-	agentSurfaceSchemaByteCeiling = 62000 // 54,872 measured 2026-09-14 after VB-19's resolution/index_commit fields (24 tools); 56,655 after localize (VB-26) on 25 tools before VB-19; 59,094 after merging waves N5/N8/N10/N11 (still 25 tools) — the merged surface is re-measured below this pin's history
+	// still 25 tools, no new tool: 59,094 bytes measured, then 60,918 by the
+	// time fl-wave-10 (below) started.
+	//
+	// Re-pinned 2026-09-18 (fl-wave-10, docs/vision/05-surfaces.md's own
+	// cost complaint): a description DIET, not a tool change — still 25
+	// tools (TestAgentSurfaceDiet's own pin, unmoved). Every agent-surface
+	// tool description was cut to the grammar `docs/mcp-tools.md` already
+	// documented in full: one opening sentence, at most two sentences on
+	// the result shape a caller must know (budget/elision, tiers,
+	// checked:false), the "Reach for it when …" routing sentence, and the
+	// "Required: …" line — plan-row ids (SB-xx/VB-xx/RC-xx/O-numbers), ADR
+	// cross-references and migration notes moved to docs/mcp-tools.md
+	// (nothing lost, address only). Five tools (find_symbol/find_callers/
+	// symbol_context/verify_plan/obligations) keep a short "this result IS
+	// the answer … a follow-up call only …" stop sentence as one of their
+	// two result-shape sentences — SB-4's own measured H1 finding
+	// (agent_surface_stop_test.go's TestAgentSurfaceDescriptionsStateWhenToStop),
+	// not design history, so the diet trims it, never cuts it. Argument
+	// schemas (names/types/enums/required) are BYTE-IDENTICAL — pinned by
+	// internal/mcp's TestAgentSurfaceArgSchemaUnchanged against a pre-diet
+	// golden; only prose shrank. Measured 60,918 → 47,480 bytes: a 22% cut
+	// of the SERVED total, and a 43% cut of the actually in-scope prose
+	// (description + argument-description bytes: 31,273 → 17,787). The
+	// remaining ~29.6 kB is a fixed floor this wave never touched —
+	// generated `outputSchema` (18,626 B, RP-11's machine-checkable
+	// contract) + `annotations` (2,227 B, RP-10) + argument-schema
+	// STRUCTURE (~6,700 B: property names/types/enums/required, protected
+	// by the golden above) — so docs/vision/05-surfaces.md's aspirational
+	// ≤36,000 B target is not reachable by a description diet alone without
+	// cutting one of those three, which this brief put out of scope.
+	// TestAgentSurfaceDescriptionsWithinCaps pins the per-tool cap (700 B;
+	// 1000 B for review_diff/obligations/references/search) and the
+	// per-argument cap (200 B) going forward.
+	agentSurfaceSchemaByteCeiling = 49480 // 47,480 measured 2026-09-18 (fl-wave-10) + 2,000
 )
 
 // TestNarrowProfileSchemaBytes is BA-7: the narrow/agent surface profile

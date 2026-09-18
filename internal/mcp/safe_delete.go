@@ -29,7 +29,7 @@ type safeDeleteReferent struct {
 func registerSafeDeleteCheck(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "safe_delete_check",
-		Description: "The answer grep cannot give before a delete: every remaining referent of a symbol, each with file:line and a resolution tier (typed = a confirmed call-graph edge, heuristic = a bare-name match), test references listed separately from code references, and — when referent_count is 0 — a proven-zero receipt naming the index commit and which edge kinds were actually checked. Read-only: a sibling of rename_impact one step further down the same road, never a mutator. An interface (or a method only an interface declares) lists its concrete implementations as referents, since deleting it breaks them even though nothing \"calls\" it. Reach for it when you are about to delete a symbol and need to know whether anything still depends on it, rather than trusting a clean grep. symbol_id is an alias for symbol (a fully-qualified SymbolKey). Required: service, symbol.",
+		Description: "The answer grep cannot give before a delete: every remaining referent of a symbol, each with file:line and a resolution tier (typed = confirmed call-graph edge, heuristic = bare-name match). Test referents are listed separately from code ones, and referent_count:0 is a proven-zero receipt naming the index commit. An interface's implementations count as referents too, since deleting it breaks them. Reach for it when you are about to delete a symbol and need to know whether anything still depends on it. Required: service, symbol.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{

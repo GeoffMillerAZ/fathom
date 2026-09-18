@@ -151,7 +151,7 @@ func serviceRefHopsInto(ctx context.Context, backend QueryInterface, service str
 func registerBlastRadius(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "blast_radius",
-		Description: "The answer grep cannot give: blast radius of changed files — the symbols they define plus transitive callers, with affected tests, file paths, and by_depth (depth 0 = changed symbols, 1 = direct callers, …), each labeled edge_confidence. DEFAULTS changed in 0.9: resolved edges only, depth 2, at most 500 symbols — widen with include_heuristic / max_depth / max_symbols (0 = unbounded). Always reports edge_filter, total_symbols, truncated and depth_capped, so a bounded answer never reads as complete. Reach for it when you changed a file and need to know who transitively breaks — no grep query walks a call graph. Required: service, changed_files.",
+		Description: "The answer grep cannot give: blast radius of changed files — the symbols they define plus transitive callers, with affected tests and file paths, each labeled edge_confidence. Defaults to resolved edges only, depth 2, and at most 500 symbols (widen with include_heuristic/max_depth/max_symbols); total_symbols, truncated and depth_capped disclose when the answer is bounded. Reach for it when you changed a file and need to know who transitively breaks — no grep query walks a call graph. Required: service, changed_files.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -980,7 +980,7 @@ func registerIngest(s *Server, backend QueryInterface) {
 	}
 	s.registerTool(toolDescriptor{
 		Name:        "ingest",
-		Description: "Re-ingest the named service to refresh the symbol store; pass path (absolute repo root) to onboard a NEW service into the index. Hash-gated: a clean repo is a sub-second no-op, so call it at session start and after every commit. A path that differs from an EXISTING service's recorded root is refused unless remap:true is also passed (O82) — a hook must never re-point a service; remap:true (or the `fathom remap` verb) is the deliberate-move escape hatch. For a Go service, the result carries typed_edges:{packages_seen,packages_processed,edges,failed,error?,fallback?} (O82) — a tree whose typed-edge pass produced nothing to trust (packages seen but none processed, a package failed to type-check, or the load failed outright) flips ok:false even though the syntax index was written and kept; test_impact/verify test_reaches read a syntax-only graph until it is fixed. Reach for it when staleness_report or a stale-index warning says the index lags the working tree. Required: service.",
+		Description: "Re-ingest the named service to refresh the symbol store; pass path (absolute repo root) to onboard a NEW service. Hash-gated: a clean repo is a sub-second no-op. A differing path on an EXISTING service is refused unless remap:true; for a Go service, ok:false means the typed-edge pass produced nothing to trust though the syntax index was kept. Reach for it when staleness_report or a stale-index warning says the index lags the working tree. Required: service.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -1086,7 +1086,8 @@ func registerIngest(s *Server, backend QueryInterface) {
 				if recCanon != canonical && !p.Remap {
 					return nil, &rpcError{Code: ErrCodeInvalid, Message: fmt.Sprintf(
 						"ingest: service %q is already registered at %s — refusing to re-point it at %s without remap:true (a hook must never re-point a service; pass remap:true for a deliberate move, or use the `fathom remap` verb)",
-						svc, recCanon, canonical)}
+						svc, recCanon, canonical,
+					)}
 				}
 			}
 			p.Path = canonical

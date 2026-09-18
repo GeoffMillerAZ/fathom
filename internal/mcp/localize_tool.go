@@ -546,7 +546,7 @@ var localizeInputKinds = []string{"stack_trace", "failing_test", "error", "conce
 func registerLocalize(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "localize",
-		Description: "The answer grep cannot give when you don't yet know which file: one bounded, budgeted, LOGGED walk of the index from a stack trace, a failing test name, an error string, or a concern — never a bare list, a diagnosis object. Exactly one of stack_trace, failing_test, error, concern must be given (checked at call time, not the schema's own required list). Seeds from parsed stack frames (file:line, function names), quoted literals (the same grep engine `search` runs), or a concern's own significant terms; expands by graph proximity (callers/callees over the typed/syntax call graph — internal/analysis/callgraph), open obligations (a governed file ranks higher, cited, never a discovery path on its own), and recency (skipped with a note today — no churn analysis is wired in yet). Every hop is logged (tool, arg, how many candidates it added) whether or not it found anything. Response: candidates (file, symbol, score, tier — typed when a call-graph or index lookup confirmed it, heuristic when only a text match did — and why, the citation strings naming which hop produced it), hops, budget ({allowed, used}), and index_commit when the backend can name one. An unindexed service returns an empty diagnosis with a note naming it, never a silent empty that reads as \"no bug found\". Deterministic: identical input against an unchanged index returns byte-identical results. Reach for it when you have a crash, a failing test, or a described problem and do not yet know which file it lives in — a literal string with a KNOWN location is search's job instead. Required: service.",
+		Description: "The answer grep cannot give when you don't yet know which file: one bounded, budgeted, logged walk of the index from a stack trace, a failing test name, an error string, or a concern. Exactly one of those four must be given; candidates carry score, tier (typed/heuristic), and why, plus budget {allowed,used}. An unindexed service returns an empty diagnosis with a note naming it, never a silent \"no bug found\". Reach for it when you have a crash, a failing test, or a described problem and do not yet know which file it lives in. Required: service.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -555,7 +555,7 @@ func registerLocalize(s *Server, backend QueryInterface) {
 				"failing_test": map[string]any{"type": "string", "description": "A failing test's name (subtests like TestFoo/bar are split at the first \"/\" for the symbol lookup)"},
 				"error":        map[string]any{"type": "string", "description": "An error message, verbatim — quoted literals and any embedded file:line frames are parsed out as seeds"},
 				"concern":      map[string]any{"type": "string", "description": "A free-text description of the area or problem — significant terms are searched"},
-				"budget":       map[string]any{"type": "integer", "description": "Maximum hops (default 12, max 40) — always a floor under a bounded, terminating answer, never rejected for being too high"},
+				"budget":       map[string]any{"type": "integer", "description": "Maximum hops (default 12, max 40); never rejected for being too high"},
 			},
 			"required": []string{"service"},
 		},
