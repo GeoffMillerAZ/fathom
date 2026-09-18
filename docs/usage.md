@@ -1287,7 +1287,7 @@ is required.
 ### `review` — the change-review verb
 
 ```sh
-fathom review --service <id> --since <git-ref> [--store DB] [--no-persist] [--budget-seconds N] [--call-log P] [--json] [--format text|github] [--out FILE]
+fathom review --service <id> (--since <git-ref> | --manifest FILE) [--store DB] [--mode report|persist] [--no-persist] [--idempotency-key K] [--expect-index-watermark W] [--budget-seconds N] [--call-log P] [--json] [--format text|github] [--out FILE]
 ```
 
 CLI mirror of the `review_diff` MCP tool: diff impact + obligations/findings
@@ -1304,11 +1304,38 @@ with the symbols each reaches) and the changed symbols no test reaches
 ```
 
 `--json` carries the same block as `test_impact` (`{checked, reason?,
-affected_tests, test_gap}`), identical to `review_diff`'s. Persists
-the deterministic-oracle findings to the claims store unless `--no-persist`
-(the pre-push summary hook uses it). `--budget-seconds` is advisory — on
-excess it prints a named skip and exits 0; it requires `--no-persist` (a
-bounded run must never be a store writer).
+affected_tests, test_gap}`), identical to `review_diff`'s, folded into a
+versioned `ReviewResponse` envelope (FL-16, `docs/plans/findings-loop.md`):
+`schema_version`, `producer{name,version,build}`, `inputs{manifest_digest,
+source_watermark, index_watermark, rules_digest, plans_digest,
+extractor_versions}`, the unchanged `dimensions[]`/`summary`/
+`findings_persisted`, `coverage{complete, unknown}` (false the moment any
+dimension is unchecked, or the run is truncated/stale/cancelled),
+`truncated`/`stale_index`/`cancelled`, and `unanchored_paths` — a changed
+path the index carries no symbol for (a doc, a workflow file) is accepted
+as a valid process subject and listed here rather than given an invented
+anchor.
+
+Exactly one of `--since <ref>` or `--manifest FILE` (a JSON
+`[{"path","sha256"}]` array) selects the changed-file set; with `--manifest`
+every path's CURRENT content must hash to its declared sha256 or the run
+refuses with `manifest mismatch: <path>` and exit 2 — never a silent
+re-read.
+
+`--mode persist` (the default) writes the deterministic-oracle findings to
+the claims store; `--mode report` (`--no-persist` is an alias) never
+writes anything — pinned by a store-state equality test including the
+error path. `--idempotency-key K` (persist mode only) records the response
+in an additive `review_runs` table: a repeated key over the SAME request
+(service + mode + changed-file set) replays the recorded response and
+writes nothing else; the same key over a DIFFERENT request refuses with
+`idempotency key reused with a different payload` and exit 2.
+`--expect-index-watermark W` compares W against the index's own watermark;
+a mismatch sets `stale_index: true` (every dimension still runs — a report,
+never a hard refusal) and always refuses persist regardless of `--mode`.
+`--budget-seconds` is advisory — on excess it prints a named skip and exits
+0; it requires `--mode report`/`--no-persist` (a bounded run must never be
+a store writer).
 
 `--format github` (VB-22, `docs/plans/verbs.md`) renders ONE deterministic
 Markdown PR comment instead of the human summary or `--json`: changed
@@ -1326,6 +1353,51 @@ format) to `FILE` instead of stdout — stdout then carries only a one-line
 confirmation — for a CI step that captures the comment body and hands it to
 a separate upsert step; see `docs/adoption/github-action.md` (VB-23) for the
 full GitHub Action and the required-check wiring.
+
+### `review-key` — one reuse-eligibility token (FL-17/FL-18/FL-19)
+
+```sh
+fathom review-key --service <id> (--since <git-ref> | --manifest FILE) [--store DB] [--prior KEY.json] [--json]
+```
+
+Computes one sha256 token (`internal/analysis/reviewkey`) over every input a
+`fathom review` verdict depends on, so a caller (typically an external
+review kit) can decide whether a prior review result is still safe to reuse
+without a second bespoke hashing API:
+
+- `manifest` — the changed-path digest set (from `--since`'s git diff,
+  hashed off the working tree, or `--manifest FILE`'s own declared
+  digests).
+- `closure` — the typed import/call closure of the changed files, walked
+  forward over the SAME typed call graph `blast_radius`/`diff_impact` use
+  (never a new import parser), digested by each reached file's store
+  fingerprint.
+- `rules` — the project's `.fathom/rules/archconformance.cue` +
+  `.fathom/guard.cue` + any project-local `.fathom/layers/*/layer.cue`.
+- `plans` — every file under `docs/plans/`.
+- `tooling` — fathom's own version identity.
+- `index` — the service's connector watermark + store watermark.
+
+```json
+{ "schema_version": 1,
+  "key": "<sha256>",
+  "complete": false,
+  "unknown": ["dependency closure: pkg/pkg has no typed edges"],
+  "components": {
+    "manifest": "<sha256>", "closure": "<sha256>", "rules": "<sha256>",
+    "plans": "<sha256>", "tooling": "<sha256>", "index": "<sha256>" }
+}
+```
+
+A component whose input could not be verified (an unreadable manifest path,
+a changed package the typed pass never analyzed) never hashes as empty —
+it is excluded from that component's own digest and named in `unknown[]`,
+and `complete` is false; the key still computes over whatever WAS
+resolved, so a caller may reuse narrower results or refuse — fathom only
+reports. `--prior KEY.json` diffs a prior key against this run and adds
+`changed_since_prior: [component, …]`. Identical inputs produce an
+identical key across runs and machines. `pkg/client.ReviewKey` is the same
+code path this CLI calls — a Go embedder gets byte-identical answers.
 
 ### `receipt` — a stranger's re-derivation (VB-20)
 

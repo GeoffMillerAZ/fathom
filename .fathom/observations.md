@@ -1278,3 +1278,27 @@ Rule: an "obligation the agent can read and still contradict" is not proof of an
 check exists that the tool call itself cannot get past — a served rule and an enforced rule are
 different instruments, and thesis 2 (vision 29 §2) says the compiled-test half of governance was
 always meant to reach the edit moment too, not just the gate.
+
+### O84 — a plan row anchored at a bare Go struct TYPE can never pass `test_reaches`: the extractor records no call-graph edge into a composite literal (findings-loop wave 3, FL-16, 2026-09-18)
+
+`docs/plans/findings-loop.md`'s FL-16 row was authored with `symbol: ReviewResponse` — a plain
+`type ReviewResponse struct{...}`, not a func. `fathom verify` failed it with `test_reaches: no
+Test* statically reaches it` even with a real, passing test (`TestReviewResponsePayload`,
+`internal/analysis/review/response_test.go`) constructing the type via `review.BuildResponse(...)`
+and exercising its `Payload()` method. Root cause: `test_reaches` is purely
+`callgraph.TestImpact`/`TestImpactDetail` — a BFS over the typed/syntax CALL graph — and the Go
+extractor never emits a call-graph edge for a composite literal (`T{...}`) or a bare type reference;
+only function/method calls become edges (confirmed: no `CompositeLit` handling anywhere under
+`internal/extractor`). A struct type therefore has zero possible incoming edges from ANY test, no
+matter how thoroughly it is exercised — this is not a coverage gap this wave could close by writing
+a better test, it is a structural blind spot in what the call graph can express. Worked around by
+re-anchoring the row's `symbol:` to `BuildResponse` (the constructor function returning the type,
+which the same test calls directly) rather than the type itself — the row's own acceptance intent
+(the envelope exists and is built correctly) is unchanged, only the verify anchor moved to something
+the index can actually reach.
+
+Rule: a plan-authoring pass (`fathom-plan`, or a human hand-writing `{id, symbol, package}`) should
+anchor a struct/interface TYPE row at a constructor or a method, never the bare type name, or
+`fathom verify` will report a false "present-but-untested" for code that is genuinely tested — worth
+a check in `fathom-plan`'s own scaffolding (does the named symbol's Kind admit call edges at all)
+before it ever reaches an implementer.
