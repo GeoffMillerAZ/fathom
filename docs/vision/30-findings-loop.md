@@ -129,7 +129,7 @@ part no consumer can recompute cheaply.
 
 ### 3.3 P2 — the governed external import
 
-`fathom findings import --service S --subject ORG/REPO/COMPONENT --producer NAME --file projection.json [--dry-run] [--json]`
+`fathom findings import --service S --subject ORG/REPO/COMPONENT [--producer NAME] --file projection.json [--dry-run] [--json]` (`--producer` asserts every event's producer; omitted, each event's producer is checked against the catalog)
 
 **Input** is the review kit's projection (`#FathomProjectionOutbox` events)
 plus two additive anchor fields (`anchor.start`, `anchor.end`, and

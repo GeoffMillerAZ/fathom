@@ -1962,6 +1962,40 @@ proves to need a check kind this ADR's five do not cover, at which point the sch
 enum grows rather than each repo hand-rolling its own.
 
 
+## ADR-039: Build-cache placement is explicit, portable, and bounded (2026-09-16)
+
+**Status.** Accepted.
+
+**Context.** The repository hardcoded one workstation's removable volume for Go scratch,
+while an agent independently accumulated 15 GiB under another machine-specific
+`fathom-gate` path. The first choice made a clone non-portable; the second proved that
+agent habit is not a disk policy. Go has no repository-local environment file, and a
+silent fallback from a missing removable volume would recreate pressure on the system
+disk precisely when the operator believed the cache was external.
+
+**Decision.** Supported build entrypoints (`task` and repository build scripts) share
+`scripts/lib/build-cache.sh`. With `FATHOM_CACHE_ROOT` unset they preserve the caller's
+native Go, temp, and uv environment. When set, it must name an absolute, pre-existing,
+writable directory; the helper derives build, module, temp, and uv subdirectories below
+it. `FATHOM_CACHE_MAX_MIB` bounds only the regenerable Go build cache (8192 by default,
+`0` disables), pruning it with `go clean -cache` before a supported Go invocation. A
+missing configured root refuses loudly and never falls back to internal storage.
+
+**Consequences.** Other machines need no configuration and retain standard tool
+behavior. A workstation may place Fathom caches on removable storage without embedding
+that path in the product. Raw `go` commands remain outside repository policy; the
+documented and gated path is Taskfile/scripts. Module downloads are not automatically
+deleted, avoiding surprise network cost.
+
+**Alternatives rejected.** A hardcoded external path (not portable); a silent internal
+fallback (violates the placement promise); global `go env -w` settings (affect unrelated
+projects); automatic module-cache deletion (surprising and network-expensive); a Fathom
+TOML field (the binary cannot configure the toolchain needed to build itself).
+
+**Revisit when.** A portable project-local Go environment standard ships; a second
+supported build runner cannot share the shell contract; or measured automatic pruning
+materially harms iteration.
+
 ## ADR-040: The findings loop — external review findings are governed projections served as obligations; fathom is a projection adapter, never the organizational record (2026-09-18)
 
 **Status.** Accepted. Vision: `docs/vision/30-findings-loop.md`. Plan:
@@ -2055,37 +2089,3 @@ never tier or status).
 a second external producer needs a projection shape the event contract
 cannot carry; the review kit's ADR-0098 "revisit" fires and fathom is asked
 to be the record — then the durability list in vision 30 §5 is the entry bar.
-
-## ADR-039: Build-cache placement is explicit, portable, and bounded (2026-09-16)
-
-**Status.** Accepted.
-
-**Context.** The repository hardcoded one workstation's removable volume for Go scratch,
-while an agent independently accumulated 15 GiB under another machine-specific
-`fathom-gate` path. The first choice made a clone non-portable; the second proved that
-agent habit is not a disk policy. Go has no repository-local environment file, and a
-silent fallback from a missing removable volume would recreate pressure on the system
-disk precisely when the operator believed the cache was external.
-
-**Decision.** Supported build entrypoints (`task` and repository build scripts) share
-`scripts/lib/build-cache.sh`. With `FATHOM_CACHE_ROOT` unset they preserve the caller's
-native Go, temp, and uv environment. When set, it must name an absolute, pre-existing,
-writable directory; the helper derives build, module, temp, and uv subdirectories below
-it. `FATHOM_CACHE_MAX_MIB` bounds only the regenerable Go build cache (8192 by default,
-`0` disables), pruning it with `go clean -cache` before a supported Go invocation. A
-missing configured root refuses loudly and never falls back to internal storage.
-
-**Consequences.** Other machines need no configuration and retain standard tool
-behavior. A workstation may place Fathom caches on removable storage without embedding
-that path in the product. Raw `go` commands remain outside repository policy; the
-documented and gated path is Taskfile/scripts. Module downloads are not automatically
-deleted, avoiding surprise network cost.
-
-**Alternatives rejected.** A hardcoded external path (not portable); a silent internal
-fallback (violates the placement promise); global `go env -w` settings (affect unrelated
-projects); automatic module-cache deletion (surprising and network-expensive); a Fathom
-TOML field (the binary cannot configure the toolchain needed to build itself).
-
-**Revisit when.** A portable project-local Go environment standard ships; a second
-supported build runner cannot share the shell contract; or measured automatic pruning
-materially harms iteration.
