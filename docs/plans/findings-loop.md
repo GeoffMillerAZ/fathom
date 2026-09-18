@@ -35,10 +35,10 @@ a checkbox. No benchmark is run by this plan; FL-22 commits the corpus only.
 
 ## D. P3 — serving, sync, promotion
 
-- [ ] Pre-edit hook block "open findings on this file" after rules and the enforcement verdict: ≤3 findings, ≤1,200 bytes, `omitted` always rendered, drifted anchors flagged, superseded/refuted never shown; post-edit block only on cited-line overlap (`finding_touched` beat); rendered through the harness codec so Codex gets the same block {id: FL-20, symbol: renderFindingsBlock, package: cmd/fathom}
-- [ ] Prompt hook one-line count inside the ADR-036 deadline; session brief `open findings: N (k producers; oldest …)` {id: FL-21, symbol: findingsBriefLine, package: cmd/fathom}
-- [ ] Outbox sync: `[findings] outbox` → session hook imports a changed outbox once per session using a digest cursor under the state dir and reports the receipt or the failure reason in the brief {id: FL-22, symbol: syncFindingsOutbox, package: cmd/fathom}
-- [ ] `fathom findings candidates [--min-sites 3] [--json]`: rule candidates from `DerivePatterns` over native and external findings — class, normalized shape, member citations, producers, code-change resolutions, drafted rule sentence and the ADR-038 check family; never writes a rule; `findings status` gains `candidates` and `disagreements` {id: FL-23, symbol: RuleCandidates, package: internal/analysis/findings}
+- [x] Pre-edit hook block "open findings on this file" after rules and the enforcement verdict: ≤3 findings, ≤1,200 bytes, `omitted` always rendered, drifted anchors flagged, superseded/refuted never shown; post-edit block only on cited-line overlap (`finding_touched` beat); rendered through the harness codec so Codex gets the same block {id: FL-20, symbol: renderFindingsBlock, package: cmd/fathom}
+- [x] Prompt hook one-line count inside the ADR-036 deadline; session brief `open findings: N (oldest …)` {id: FL-21, symbol: findingsBriefLine, package: cmd/fathom}
+- [x] Outbox sync: `[findings] outbox` → session hook imports a changed outbox once per session using a digest cursor under the state dir and reports the receipt or the failure reason in the brief {id: FL-22, symbol: syncFindingsOutbox, package: cmd/fathom}
+- [x] `fathom findings candidates [--min-sites 3] [--json]`: rule candidates from `DerivePatterns` over native and external findings — class, normalized shape, member citations, producers, code-change resolutions, drafted rule sentence and the ADR-038 check family; never writes a rule; `findings status` gains `candidates` and `disagreements` {id: FL-23, symbol: RuleCandidates, package: internal/analysis/findings}
 
 ## E. Measurement and adoption
 
