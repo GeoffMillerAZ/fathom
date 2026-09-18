@@ -41,6 +41,12 @@ type CallerRef struct {
 	Line     int
 	Citation string
 	Tier     core.EdgeConfidence
+	// Depth is the reverse-call-graph distance from the changed symbol this
+	// caller was reached at: 1 for a direct caller, 2 for a caller of a
+	// caller, etc. Zero value (0) from a caller built before this field
+	// existed reads as depth 1 (ChangedSymbolReviews' pre-VB-24-recall-loop
+	// behavior was always direct callers only).
+	Depth int
 }
 
 // ChangedSymbolReview is one symbol defined in a changed file, with its
@@ -81,11 +87,31 @@ type GitHubReviewInput struct {
 	TouchedPlanRows []TouchedPlanRow
 }
 
+// changedSymbolCallerDepth bounds ChangedSymbolReviews' reverse-call-graph
+// walk (VB-24 recall-loop mechanism (a), docs/bench/readings/
+// review-recall-loop-2026-09-18.md): a direct caller (depth 1) alone missed
+// real fix targets the blast-radius/test-gap dimensions already compute
+// unbounded (impact.DiffImpactWithTypedEdges has no depth cap) but the
+// GitHub-rendered "Changed symbols" section never surfaced past depth 1.
+// Bounded at 2 — the same default blast_radius/find_callers settled on
+// (internal/mcp/tools.go, internal/mcp/extra_tools.go: "DEFAULTS changed in
+// 0.9: … depth 2") — for a maintainer-readable comment: unbounded would let
+// one heavily-called symbol's transitive fan-in swamp the rendered PR
+// comment.
+const changedSymbolCallerDepth = 2
+
 // ChangedSymbolReviews resolves VB-22's per-changed-symbol caller detail:
-// every symbol defined in a changed file, its direct callers (any tier —
-// callgraph.CallersDetail walks both the syntax and the typed graph,
-// core.EdgeConfidenceOf classifies each), and the call-site-completeness
-// counts. Pure and deterministic: symbols and their callers are sorted.
+// every symbol defined in a changed file, its callers out to
+// changedSymbolCallerDepth hops (any tier — callgraph.CallersDetail walks
+// both the syntax and the typed graph, core.EdgeConfidenceOf classifies
+// each; a depth-2 caller is a caller of a direct caller, its own Depth
+// field says which), and the call-site-completeness counts (DIRECT callers
+// only — CallSitesTotal/CallSitesUpdated answer "how many places call this
+// AT ALL", which a depth-2 indirect caller does not). Pure and
+// deterministic: symbols and their callers are sorted (depth ascending,
+// resolved tier before heuristic — the SAME typed-first ordering the
+// resolution-mix summary field already renders fields in, mcp/
+// resolution.go's `{typed, heuristic}` — then symbol name).
 //
 // Exported for the CLI to call while assembling GitHubReviewInput; kept in
 // this package (not cmd/fathom) because it is pure analysis over
@@ -117,7 +143,20 @@ func ChangedSymbolReviews(nodes []core.SymbolNode, typed []core.Edge, changedFil
 			Line:     n.Line,
 			Citation: citeOf(n.FilePath, n.Line),
 		}
-		for _, d := range callgraph.CallersDetail(g, k) {
+
+		direct := callgraph.CallersDetail(g, k)
+		csr.CallSitesTotal = len(direct)
+		seen := map[string]bool{k: true}
+		type frontierItem struct {
+			key   string
+			depth int
+		}
+		var frontier []frontierItem
+		for _, d := range direct {
+			if seen[d.Key] {
+				continue
+			}
+			seen[d.Key] = true
 			cn := byKey[d.Key]
 			if changed[cn.FilePath] {
 				csr.CallSitesUpdated++
@@ -128,10 +167,43 @@ func ChangedSymbolReviews(nodes []core.SymbolNode, typed []core.Edge, changedFil
 				Line:     cn.Line,
 				Citation: citeOf(cn.FilePath, cn.Line),
 				Tier:     core.EdgeConfidenceOf(core.Edge{Kind: d.Kind}),
+				Depth:    1,
 			})
+			frontier = append(frontier, frontierItem{d.Key, 1})
 		}
-		csr.CallSitesTotal = len(csr.Callers)
-		sort.Slice(csr.Callers, func(i, j int) bool { return csr.Callers[i].Symbol < csr.Callers[j].Symbol })
+		for i := 0; i < len(frontier); i++ {
+			cur := frontier[i]
+			if cur.depth >= changedSymbolCallerDepth {
+				continue
+			}
+			for _, d := range callgraph.CallersDetail(g, cur.key) {
+				if seen[d.Key] {
+					continue
+				}
+				seen[d.Key] = true
+				cn := byKey[d.Key]
+				csr.Callers = append(csr.Callers, CallerRef{
+					Symbol:   d.Key,
+					File:     cn.FilePath,
+					Line:     cn.Line,
+					Citation: citeOf(cn.FilePath, cn.Line),
+					Tier:     core.EdgeConfidenceOf(core.Edge{Kind: d.Kind}),
+					Depth:    cur.depth + 1,
+				})
+				frontier = append(frontier, frontierItem{d.Key, cur.depth + 1})
+			}
+		}
+
+		sort.Slice(csr.Callers, func(i, j int) bool {
+			a, b := csr.Callers[i], csr.Callers[j]
+			if a.Depth != b.Depth {
+				return a.Depth < b.Depth
+			}
+			if a.Tier != b.Tier {
+				return a.Tier == core.EdgeConfidenceResolved // resolved (typed) sorts before heuristic
+			}
+			return a.Symbol < b.Symbol
+		})
 		out = append(out, csr)
 	}
 	return out
@@ -189,7 +261,11 @@ func renderGitHubReview(in GitHubReviewInput) string {
 			continue
 		}
 		for _, c := range cs.Callers {
-			fmt.Fprintf(&b, "  - `%s` (%s) [%s]\n", c.Symbol, orDash(c.Citation), c.Tier)
+			depth := c.Depth
+			if depth == 0 {
+				depth = 1
+			}
+			fmt.Fprintf(&b, "  - `%s` (%s) [%s, depth %d]\n", c.Symbol, orDash(c.Citation), c.Tier, depth)
 		}
 	}
 	b.WriteString("\n")
