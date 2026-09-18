@@ -1,0 +1,50 @@
+{
+  "service": "svc-conformance",
+  "subject": "acme/widget/api",
+  "producer": "",
+  "dryRun": false,
+  "projection": {
+    "schemaVersion": 1,
+    "delivery": "pending",
+    "reason": "outbox flush",
+    "events": [
+      {
+        "schemaVersion": 1,
+        "kind": "observation",
+        "findingId": "27b1671a6a25ad31951ffcbcb43b0cf22f9961ebedf2853aff7111e0a782c846",
+        "producer": {
+          "name": "reviewkit.system-review",
+          "version": "1.0.0"
+        },
+        "subject": {
+          "organization": "acme",
+          "repository": "widget",
+          "component": "api"
+        },
+        "sourceId": "rule-1",
+        "sourceVersion": 1,
+        "sourceRevision": "rev1",
+        "payloadDigest": "1f09f92223d2a9abb0bb02e779ba8f3a2790caade384d781f6200d7fec858d81",
+        "observedAt": "2026-09-10T12:00:00Z",
+        "outcome": "fail",
+        "coverage": "complete",
+        "sourceStatus": "open",
+        "rule": {
+          "id": "R-NIL-DEREF",
+          "version": "1",
+          "text": "possible nil dereference",
+          "remedy": "add a nil check",
+          "closure": "manual triage",
+          "class": "correctness",
+          "tier": "pre-scan"
+        },
+        "visibility": {
+          "organization": "acme",
+          "repository": "widget",
+          "component": "api"
+        },
+        "bogusField": "should never be accepted"
+      }
+    ]
+  }
+}

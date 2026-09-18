@@ -304,7 +304,7 @@ type RejectionBreakdown struct {
 type ClaimEvent struct {
 	ClaimID string
 	// Verdict is "refuted" | "corroborated" | "contradicted" |
-	// "re-anchored" | "superseded". "refuted" and "contradicted" name DIFFERENT judgments
+	// "re-anchored" | "superseded" | "annotated". "refuted" and "contradicted" name DIFFERENT judgments
 	// and must never be conflated (P1-9, docs/plans/
 	// pulled-tools-excellence.md): "refuted" is a deliberate human (or
 	// human-equivalent) verdict via `fathom claim refute` / the obligations
@@ -356,19 +356,92 @@ type ClaimEvent struct {
 	// outcome and never expects ResolutionKind on it. Both fields are ""
 	// for every event that isn't a classified supersede — additive, never
 	// required.
+	//
+	// A FOURTH and FIFTH case (vision 30 §3.3 item 3, ADR-040 decision 2,
+	// plan FL-3/FL-6) are the findings-loop's own: ResolutionExternalClosure
+	// ("external-closure") when an external producer's own observation/pass
+	// or closure event superseded the claim, and ResolutionRevoked
+	// ("revoked") when a revocation event did. Both are set by
+	// internal/findings/external, never by internal/analysis/review's
+	// ClassifyResolution — an external producer's own verdict, projected,
+	// never a fathom-derived one.
 	ResolutionKind   string
 	ResolutionCommit string
 }
 
 // Resolution outcome kinds (docs/design/findings-as-evidence.md §3.4): the
-// two ClaimEvent.ResolutionKind values a "superseded" event may carry.
+// ClaimEvent.ResolutionKind values a "superseded" event may carry.
 // "refutation" is deliberately NOT a ResolutionKind constant — it is
 // recognized by Verdict=="refuted" directly (see ClaimEvent.ResolutionKind's
 // doc comment).
 const (
 	ResolutionCodeChange         = "code-change"
 	ResolutionScopeDisappearance = "scope-disappearance"
+	// ResolutionExternalClosure (vision 30 §3.3 item 3, FL-3): an external
+	// producer's own observation/pass or closure event superseded the claim.
+	ResolutionExternalClosure = "external-closure"
+	// ResolutionRevoked (vision 30 §3.3 item 3, FL-3): an external
+	// producer's revocation event superseded the claim — a revoked source is
+	// not a refuted claim; refute stays a human verdict.
+	ResolutionRevoked = "revoked"
 )
+
+// ValidVerdict reports whether v is a recognized ClaimEvent.Verdict value —
+// "refuted" | "corroborated" | "contradicted" | "re-anchored" |
+// "superseded" | "annotated" (FL-3: "annotated" is the findings-loop's
+// status-preserving verdict for an external annotation event — see
+// ClaimEvent.Verdict's doc comment). No caller currently gates writes on
+// this (ClaimEvent.Verdict has no existing validation point to hook into);
+// it exists so a caller that DOES need to check one has a single, tested
+// source of truth instead of hand-rolling the switch.
+func ValidVerdict(v string) bool {
+	switch v {
+	case "refuted", "corroborated", "contradicted", "re-anchored", "superseded", "annotated":
+		return true
+	}
+	return false
+}
+
+// ExternalFinding is the per-claim cursor row the findings-loop importer
+// (internal/findings/external, plan FL-7) maintains alongside the claim it
+// governs: one row per (ServiceID, ClaimID), keyed by the producer's own
+// identity fields, recording exactly enough to enforce ordering/idempotency
+// on the NEXT import (older SourceVersion → stale; same version, different
+// PayloadDigest → conflicting-replay; same version and digest → duplicate)
+// and to serve source-linked provenance (vision 30 §4 item 4) — producer,
+// rule, source id/version/revision, anchor path/lines/symbol/digest,
+// observed/imported timestamps — without re-deriving any of it from the
+// claim's own Subject/ReproKey encoding.
+type ExternalFinding struct {
+	ServiceID string
+	ClaimID   string
+
+	Producer        string
+	ProducerVersion string
+
+	SourceID       string
+	SourceVersion  uint64
+	PayloadDigest  string
+	SourceRevision string
+
+	RuleID      string
+	RuleVersion string
+	Remedy      string
+
+	AnchorPath   string
+	AnchorStart  int
+	AnchorEnd    int
+	AnchorSymbol string
+	AnchorDigest string
+
+	ObservedAt time.Time
+	ImportedAt time.Time
+
+	// Unanchored is true for a process-subject finding carried with no
+	// anchor at all (vision 30 §3.1, §4 item 4) — served as process context,
+	// never attached to a file.
+	Unanchored bool
+}
 
 func itoa(n int) string { return strconv.Itoa(n) }
 

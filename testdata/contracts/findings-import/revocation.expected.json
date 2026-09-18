@@ -1,0 +1,20 @@
+{
+  "parseError": false,
+  "receipt": {
+    "schema_version": 1,
+    "delivered": 2,
+    "duplicate": 0,
+    "stale": 0,
+    "unclassified": 0,
+    "rejected": [],
+    "truncated": false,
+    "cursors": [
+      {
+        "producer": "reviewkit.system-review",
+        "latest_source_version": 2
+      }
+    ],
+    "dry_run": false,
+    "no_fingerprint": 0
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "parseError": false,
+  "receipt": {
+    "schema_version": 1,
+    "delivered": 1,
+    "duplicate": 0,
+    "stale": 0,
+    "unclassified": 0,
+    "rejected": [
+      {
+        "index": 1,
+        "finding_id": "7e5e451ad80a4db1a97e0e54dd94934efeefa489e2934ecef5766d19adf7334f",
+        "reason": "conflicting-replay"
+      }
+    ],
+    "truncated": false,
+    "cursors": [
+      {
+        "producer": "reviewkit.system-review",
+        "latest_source_version": 1
+      }
+    ],
+    "dry_run": false,
+    "no_fingerprint": 0
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "service": "svc-conformance",
+  "subject": "acme/widget/api",
+  "producer": "",
+  "dryRun": false,
+  "projection": {
+    "schemaVersion": 1,
+    "delivery": "pending",
+    "reason": "outbox flush",
+    "events": [
+      {
+        "schemaVersion": 1,
+        "kind": "observation",
+        "findingId": "5f5a62e0a49129549a24a7fc07c8e83d167597e4c7692ac453f96bf452eb63de",
+        "producer": {
+          "name": "reviewkit.system-review",
+          "version": "1.0.0"
+        },
+        "subject": {
+          "organization": "acme",
+          "repository": "widget",
+          "component": "api"
+        },
+        "sourceId": "rule-1",
+        "sourceVersion": 1,
+        "sourceRevision": "rev1",
+        "payloadDigest": "c4bf296bddf11ece518b0c01cb78df587c745de12d312764dfc01175bbbd43bb",
+        "observedAt": "2026-09-10T12:00:00Z",
+        "outcome": "fail",
+        "coverage": "complete",
+        "sourceStatus": "open",
+        "rule": {
+          "id": "R-NIL-DEREF",
+          "version": "1",
+          "text": "possible nil dereference",
+          "remedy": "add a nil check",
+          "closure": "manual triage",
+          "class": "correctness",
+          "tier": "pre-scan"
+        },
+        "visibility": {
+          "organization": "acme",
+          "repository": "widget",
+          "component": "api"
+        }
+      },
+      {
+        "schemaVersion": 1,
+        "kind": "revocation",
+        "findingId": "5f5a62e0a49129549a24a7fc07c8e83d167597e4c7692ac453f96bf452eb63de",
+        "producer": {
+          "name": "reviewkit.system-review",
+          "version": "1.0.0"
+        },
+        "subject": {
+          "organization": "acme",
+          "repository": "widget",
+          "component": "api"
+        },
+        "sourceId": "rule-1",
+        "sourceVersion": 2,
+        "sourceRevision": "rev1",
+        "payloadDigest": "16a61692b9a948ef26e58fc2ade76379950c5d8c26da86e563527c00b49e1353",
+        "observedAt": "2026-09-10T12:00:00Z",
+        "outcome": "fail",
+        "coverage": "complete",
+        "sourceStatus": "open",
+        "rule": {
+          "id": "R-NIL-DEREF",
+          "version": "1",
+          "text": "possible nil dereference",
+          "remedy": "add a nil check",
+          "closure": "manual triage",
+          "class": "correctness",
+          "tier": "pre-scan"
+        },
+        "visibility": {
+          "organization": "acme",
+          "repository": "widget",
+          "component": "api"
+        }
+      }
+    ]
+  }
+}

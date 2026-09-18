@@ -31,7 +31,7 @@ const findingsLayerName = "findings"
 
 func cmdFindings(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "error: findings requires a verb: near | status")
+		fmt.Fprintln(stderr, "error: findings requires a verb: near | status | import")
 		printFindingsUsage(stderr)
 		return 1
 	}
@@ -40,8 +40,10 @@ func cmdFindings(args []string, stdout, stderr io.Writer) int {
 		return cmdFindingsNear(args[1:], stdout, stderr)
 	case "status":
 		return cmdFindingsStatus(args[1:], stdout, stderr)
+	case "import":
+		return cmdFindingsImport(args[1:], stdout, stderr)
 	default:
-		fmt.Fprintf(stderr, "error: unknown findings verb %q (want near | status)\n", args[0])
+		fmt.Fprintf(stderr, "error: unknown findings verb %q (want near | status | import)\n", args[0])
 		printFindingsUsage(stderr)
 		return 1
 	}
@@ -51,6 +53,7 @@ func printFindingsUsage(w io.Writer) {
 	fmt.Fprintln(w, "Usage:")
 	fmt.Fprintln(w, "  fathom findings near <symbol|file> --store PATH --service NAME [--hops N] [--include-superseded] [--json]")
 	fmt.Fprintln(w, "  fathom findings status --store PATH --service NAME [--json]")
+	fmt.Fprintln(w, "  fathom findings import --store PATH --service NAME --subject ORG/REPO/COMPONENT --producer NAME --file PATH [--dry-run] [--json]")
 }
 
 // openFindingsClient mounts storePath read-only and wraps it in pkg/client

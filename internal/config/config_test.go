@@ -273,6 +273,52 @@ model = "claude-opus-4-1-20250805"
 	}
 }
 
+// TestLoad_FindingsTable pins the findings-loop's config surface
+// (docs/vision/30-findings-loop.md §3.3/§3.7): subject/outbox/producers
+// decode, provenance is recorded, and project overrides user like every
+// other field.
+func TestLoad_FindingsTable(t *testing.T) {
+	dir := t.TempDir()
+	userPath := filepath.Join(dir, "user.toml")
+	writeTOML(t, userPath, `
+[findings]
+subject = "geoffmilleraz/fathom/fathom"
+outbox = ".reviewkit/outbox/projection.json"
+producers = ["reviewkit.system-review", "reviewkit.security-review"]
+`)
+	loaded, err := Load(userPath, "")
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	f := loaded.Config.Findings
+	if f.Subject != "geoffmilleraz/fathom/fathom" || f.Outbox != ".reviewkit/outbox/projection.json" {
+		t.Errorf("findings = %+v", f)
+	}
+	if len(f.Producers) != 2 || f.Producers[0] != "reviewkit.system-review" || f.Producers[1] != "reviewkit.security-review" {
+		t.Errorf("Producers = %v", f.Producers)
+	}
+	if info := loaded.Provenance["findings.subject"]; info.Source != SourceUser || info.Path != userPath {
+		t.Errorf("provenance = %+v", info)
+	}
+
+	projectPath := filepath.Join(dir, "project.toml")
+	writeTOML(t, projectPath, `[findings]
+subject = "other/repo/component"
+`)
+	loaded2, err := Load(userPath, projectPath)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if loaded2.Config.Findings.Subject != "other/repo/component" {
+		t.Errorf("project did not override user: %+v", loaded2.Config.Findings)
+	}
+	// The user layer's outbox survives — merge is field-by-field, not a
+	// wholesale table replacement.
+	if loaded2.Config.Findings.Outbox != ".reviewkit/outbox/projection.json" {
+		t.Errorf("Outbox = %q, want the user layer's value to survive", loaded2.Config.Findings.Outbox)
+	}
+}
+
 func TestLoad_DaemonTable(t *testing.T) {
 	dir := t.TempDir()
 	userPath := filepath.Join(dir, "user.toml")
