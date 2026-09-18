@@ -13,6 +13,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/impact"
 	"github.com/geoffmilleraz/fathom/internal/analysis/review"
+	"github.com/geoffmilleraz/fathom/internal/buildinfo"
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/projectrules"
@@ -48,20 +49,29 @@ func runReview(args []string, gitRunner func(args ...string) ([]byte, error), st
 	fs := newFlagSet("review", stderr)
 	storePath := fs.String("store", defaultStorePath(), "store path (.sqlite/.db)")
 	service := fs.String("service", "", "service ID (required)")
-	since := fs.String("since", "", "git ref to diff against (required; e.g. origin/main)")
-	jsonOut := fs.Bool("json", false, "emit JSON instead of a human-readable summary")
+	since := fs.String("since", "", "git ref to diff against (mutually exclusive with --manifest; one of the two is required)")
+	manifestPath := fs.String("manifest", "", "explicit changed-path manifest FILE (JSON [{\"path\":\"…\",\"sha256\":\"…\"}], mutually exclusive with --since); each path's CURRENT sha256 must match or the run refuses with \"manifest mismatch: <path>\" and exit 2 — never a silent re-read")
+	jsonOut := fs.Bool("json", false, "emit JSON (the ReviewResponse envelope) instead of a human-readable summary")
 	format := fs.String("format", "text", "output format: \"text\" (default) or \"github\" (VB-22: one deterministic Markdown PR comment — changed symbols with resolved callers and tier, call-site completeness, governing rules, a verify line for touched plan rows, affected tests/test gap, coverage; overrides --json)")
 	outPath := fs.String("out", "", "write the review report to this file instead of stdout (VB-23: a GitHub Action step captures --format github's comment body here, then hands the file to the upsert-comment step — docs/adoption/github-action.md); stdout then carries only a short confirmation line")
-	noPersist := fs.Bool("no-persist", false, "report only: never write findings to the claims store (the pre-push summary hook uses this)")
-	budgetSeconds := fs.Int("budget-seconds", 0, "advisory time budget: on excess, print a named skip and exit 0 (requires --no-persist — a bounded run must never be a store writer); 0 = unbounded")
+	noPersist := fs.Bool("no-persist", false, "report only: never write findings to the claims store (the pre-push summary hook uses this); equivalent to --mode report")
+	mode := fs.String("mode", "", "\"report\" (never writes; --no-persist is an alias) or \"persist\" (default): write findings/idempotency records to the store, pinned by a store-state equality test on report mode including the error path (FL-15)")
+	idempotencyKey := fs.String("idempotency-key", "", "persist mode only: same key + same payload digest replays the recorded response and writes nothing else; same key + a different payload digest refuses (exit 2)")
+	expectIndexWatermark := fs.String("expect-index-watermark", "", "refuse to trust the index if it disagrees: a mismatch sets stale_index:true in the response (dimensions still run in report mode) and refuses persist")
+	budgetSeconds := fs.Int("budget-seconds", 0, "advisory time budget: on excess, print a named skip and exit 0 (requires --mode report / --no-persist — a bounded run must never be a store writer); 0 = unbounded")
 	callLogFlag := fs.String("call-log", "", "MCP-format call log (JSONL) to append this run's verdict outcome to (T5-7); default: [daemon].call_log in config.toml, else "+defaultCallLogPath())
 	var coverageProfileFlags profileFlagValues
 	fs.Var(&coverageProfileFlags, "coverage-profile", "Go cover profile (go test -coverprofile) to join against changed symbols for the coverage dimension, as `[layer=]path` (repeatable — one per test layer, e.g. --coverage-profile unit=workspace/cov/unit.out --coverage-profile integration=workspace/cov/integration.out); a bare path defaults to layer \"unit\". Absent = coverage dimension reports checked:false.")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
-	if *service == "" || *since == "" {
-		fmt.Fprintln(stderr, "error: review requires --service and --since")
+	if *service == "" {
+		fmt.Fprintln(stderr, "error: review requires --service")
+		fs.Usage()
+		return 1
+	}
+	if (*since == "") == (*manifestPath == "") {
+		fmt.Fprintln(stderr, "error: review requires exactly one of --since or --manifest")
 		fs.Usage()
 		return 1
 	}
@@ -69,13 +79,30 @@ func runReview(args []string, gitRunner func(args ...string) ([]byte, error), st
 		fmt.Fprintf(stderr, "error: --format must be \"text\" or \"github\", got %q\n", *format)
 		return 1
 	}
-	if *budgetSeconds > 0 && !*noPersist {
-		fmt.Fprintln(stderr, "error: --budget-seconds requires --no-persist — a budget-bounded run can be cut off mid-flight, and a run that can be cut off must never be a store writer")
+	effectiveMode := *mode
+	switch {
+	case effectiveMode != "" && effectiveMode != "report" && effectiveMode != "persist":
+		fmt.Fprintf(stderr, "error: --mode must be \"report\" or \"persist\", got %q\n", effectiveMode)
+		return 1
+	case effectiveMode == "persist" && *noPersist:
+		fmt.Fprintln(stderr, "error: --no-persist conflicts with --mode persist")
+		return 1
+	case effectiveMode == "" && *noPersist:
+		effectiveMode = "report"
+	case effectiveMode == "":
+		effectiveMode = "persist"
+	}
+	if *idempotencyKey != "" && effectiveMode != "persist" {
+		fmt.Fprintln(stderr, "error: --idempotency-key requires --mode persist")
+		return 1
+	}
+	if *budgetSeconds > 0 && effectiveMode != "report" {
+		fmt.Fprintln(stderr, "error: --budget-seconds requires --mode report (or --no-persist) — a budget-bounded run can be cut off mid-flight, and a run that can be cut off must never be a store writer")
 		return 1
 	}
 
 	body := func() int {
-		return runReviewBody(gitRunner, *storePath, *service, *since, *format, *jsonOut, *noPersist, *callLogFlag, *outPath, coverageProfileFlags, stdout, stderr)
+		return runReviewBody(gitRunner, *storePath, *service, *since, *manifestPath, effectiveMode, *idempotencyKey, *expectIndexWatermark, *format, *jsonOut, *callLogFlag, *outPath, coverageProfileFlags, stdout, stderr)
 	}
 	if *budgetSeconds > 0 {
 		// The whole body races the budget. On excess the process prints a
@@ -92,15 +119,19 @@ func runReview(args []string, gitRunner func(args ...string) ([]byte, error), st
 		case rc := <-done:
 			return rc
 		case <-time.After(time.Duration(*budgetSeconds) * time.Second):
-			fmt.Fprintf(stdout, "review: budget exceeded (%ds) — summary skipped this push (advisory, fail-open; run `fathom review --service %s --since %s --no-persist` directly for the full report)\n", *budgetSeconds, *service, *since)
+			refFlag := "--since " + *since
+			if *manifestPath != "" {
+				refFlag = "--manifest " + *manifestPath
+			}
+			fmt.Fprintf(stdout, "review: budget exceeded (%ds) — summary skipped this push (advisory, fail-open; run `fathom review --service %s %s --no-persist` directly for the full report)\n", *budgetSeconds, *service, refFlag)
 			return 0
 		}
 	}
 	return body()
 }
 
-func runReviewBody(gitRunner func(args ...string) ([]byte, error), storePathV, serviceV, sinceV, formatV string, jsonOutV, noPersistV bool, callLogFlagV, outPathV string, coverageProfilesV []string, stdout, stderr io.Writer) int {
-	storePath, service, since, format, jsonOut, noPersist, callLogFlag := &storePathV, &serviceV, &sinceV, &formatV, &jsonOutV, &noPersistV, &callLogFlagV
+func runReviewBody(gitRunner func(args ...string) ([]byte, error), storePathV, serviceV, sinceV, manifestPathV, modeV, idempotencyKeyV, expectWatermarkV, formatV string, jsonOutV bool, callLogFlagV, outPathV string, coverageProfilesV []string, stdout, stderr io.Writer) int {
+	storePath, service, since, format, jsonOut, callLogFlag := &storePathV, &serviceV, &sinceV, &formatV, &jsonOutV, &callLogFlagV
 
 	// --out (VB-23): redirect the report body (github Markdown, JSON, or the
 	// human text summary — never the operational notices/errors above, which
@@ -125,23 +156,6 @@ func runReviewBody(gitRunner func(args ...string) ([]byte, error), storePathV, s
 		return code
 	}
 
-	out, err := gitRunner("diff", "--name-only", *since)
-	if err != nil {
-		fmt.Fprintf(stderr, "error: git diff --name-only %s: %v\n", *since, err)
-		return 1
-	}
-	var changedFiles []string
-	for _, line := range strings.Split(string(out), "\n") {
-		line = strings.TrimSpace(line)
-		if line != "" {
-			changedFiles = append(changedFiles, line)
-		}
-	}
-	if len(changedFiles) == 0 {
-		fmt.Fprintf(stdout, "review: no changed files since %s — nothing to review\n", *since)
-		return 0
-	}
-
 	st, err := store.Open(*storePath)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: open store %q: %v\n", *storePath, err)
@@ -153,6 +167,75 @@ func runReviewBody(gitRunner func(args ...string) ([]byte, error), storePathV, s
 	defer c.Close()
 
 	ctx := context.Background()
+
+	// corpusRoot/watermark are resolved BEFORE the changed-file list: a
+	// --manifest verification needs corpusRoot to resolve each path's
+	// current content, and --expect-index-watermark needs watermark to
+	// decide stale_index before running any dimension.
+	watermark, corpusRoot := "", ""
+	if path, indexedCommit, found, merr := c.ServiceMeta(ctx, *service); merr == nil && found {
+		watermark = indexedCommit
+		corpusRoot = path
+	}
+
+	var changedFiles []string
+	if manifestPathV != "" {
+		entries, merr := loadReviewManifest(manifestPathV)
+		if merr != nil {
+			fmt.Fprintf(stderr, "error: %v\n", merr)
+			return 1
+		}
+		files, mismatch := verifyReviewManifest(corpusRoot, entries)
+		if mismatch != "" {
+			fmt.Fprintf(stderr, "error: manifest mismatch: %s\n", mismatch)
+			return 2
+		}
+		changedFiles = files
+	} else {
+		out, gerr := gitRunner("diff", "--name-only", *since)
+		if gerr != nil {
+			fmt.Fprintf(stderr, "error: git diff --name-only %s: %v\n", *since, gerr)
+			return 1
+		}
+		for _, line := range strings.Split(string(out), "\n") {
+			line = strings.TrimSpace(line)
+			if line != "" {
+				changedFiles = append(changedFiles, line)
+			}
+		}
+	}
+	if len(changedFiles) == 0 {
+		ref := *since
+		if ref == "" {
+			ref = manifestPathV
+		}
+		fmt.Fprintf(stdout, "review: no changed files since %s — nothing to review\n", ref)
+		return 0
+	}
+
+	// stale_index (FL-15): a mismatch against --expect-index-watermark
+	// never blocks the report — dimensions still run over whatever the
+	// index currently holds — but it always refuses persist.
+	staleIndex := expectWatermarkV != "" && expectWatermarkV != watermark
+	persistThisRun := modeV == "persist" && !staleIndex
+
+	// Idempotency (FL-15): only reachable in persist mode (enforced by the
+	// flag validation in runReview) — a repeated key with the SAME payload
+	// digest replays the recorded response and writes nothing else; the
+	// same key with a DIFFERENT digest refuses loudly (exit 2), never a
+	// silent overwrite of a conflicting request.
+	payloadDigest := ""
+	if idempotencyKeyV != "" {
+		payloadDigest = reviewPayloadDigest(*service, modeV, *since, manifestPathV, changedFiles)
+		if existing, found, rerr := st.ReviewRun(ctx, *service, idempotencyKeyV); rerr == nil && found {
+			if existing.PayloadDigest == payloadDigest {
+				fmt.Fprint(reportW, existing.ResponseJSON)
+				return finishReview(0)
+			}
+			fmt.Fprintln(stderr, "error: idempotency key reused with a different payload")
+			return 2
+		}
+	}
 
 	in, sources, err := buildReviewInputFromClient(ctx, c, *service, changedFiles)
 	if err != nil {
@@ -185,14 +268,12 @@ func runReviewBody(gitRunner func(args ...string) ([]byte, error), storePathV, s
 	// C2-1 findings bridge, via review.BuildPersist — the one composition
 	// shared with the review_diff MCP tool: mint content-addressed claim
 	// IDs (hashed cites + scope-fp anchors), label already-refuted
-	// findings, and compute the fixed-findings reconcile. With --no-persist
-	// the same computation runs for the labels but nothing is written.
+	// findings, and compute the fixed-findings reconcile. In report mode
+	// (or when stale_index refused persist) the same computation runs for
+	// the labels but nothing is written — watermark/corpusRoot were already
+	// resolved above, before the changed-file list, for the manifest/
+	// stale-index checks.
 	existing, _ := c.ClaimsForService(ctx, *service, review.ClaimsLayer)
-	watermark, corpusRoot := "", ""
-	if path, indexedCommit, found, merr := c.ServiceMeta(ctx, *service); merr == nil && found {
-		watermark = indexedCommit
-		corpusRoot = path
-	}
 	content := make(map[string][]byte, len(sources))
 	for _, f := range sources {
 		content[f.Path] = f.Content
@@ -210,7 +291,7 @@ func runReviewBody(gitRunner func(args ...string) ([]byte, error), storePathV, s
 		},
 	})
 	persisted := false
-	if !*noPersist {
+	if persistThisRun {
 		persisted = true
 		if len(claims) > 0 {
 			if perr := c.PutClaims(ctx, claims, links); perr != nil {
@@ -262,18 +343,66 @@ func runReviewBody(gitRunner func(args ...string) ([]byte, error), storePathV, s
 	// renderTestGap.
 	gap := impact.TestGap(in.Nodes, in.ChangedFiles, in.TypedEdges)
 
+	// FL-16: the P0 response envelope — built on every run regardless of
+	// --format/--json, since idempotency recording below always stores the
+	// SAME JSON shape a --json caller would see, whatever this run actually
+	// prints.
+	coverage := review.BuildCoverage(v, false, staleIndex, false)
+	resp := review.BuildResponse(
+		v, modeV,
+		review.ProducerInfo{Name: "fathom", Version: buildinfo.Version(), Build: buildinfo.Read().BuiltAt},
+		review.ReviewInputs{
+			ManifestDigest:    reviewManifestDigest(changedFiles, content),
+			SourceWatermark:   sourceWatermarkLabel(*since, manifestPathV),
+			IndexWatermark:    watermark,
+			RulesDigest:       reviewRulesDigest(corpusRoot),
+			PlansDigest:       reviewPlansDigest(corpusRoot),
+			ExtractorVersions: map[string]string{"fathom": buildinfo.Version()},
+		},
+		persisted, coverage, false, staleIndex, false,
+		review.UnanchoredPaths(changedFiles, in.Nodes),
+	)
+	responsePayload := resp.Payload()
+	responsePayload["test_impact"] = gap.Payload()
+	responseJSON, jerr := json.Marshal(responsePayload)
+	if jerr != nil {
+		fmt.Fprintf(stderr, "error: encode response JSON: %v\n", jerr)
+		return 1
+	}
+
+	// Idempotency recording (FL-15): only when a key was given and stale
+	// index didn't refuse persist — a stale-index run's response is never
+	// cached for replay, since it did not answer the request the key names.
+	if idempotencyKeyV != "" && !staleIndex {
+		if rerr := st.RecordReviewRun(ctx, core.ReviewRun{
+			ServiceID:      *service,
+			IdempotencyKey: idempotencyKeyV,
+			PayloadDigest:  payloadDigest,
+			ResponseJSON:   string(responseJSON),
+			RecordedAt:     time.Now().UTC(),
+		}); rerr != nil {
+			fmt.Fprintf(stderr, "warning: recording idempotency key %q failed: %v\n", idempotencyKeyV, rerr)
+		}
+	}
+
 	// VB-22 (docs/plans/verbs.md; docs/vision/29-verbs-not-lookups.md §3
 	// wave F): --format github renders ONE deterministic Markdown PR
 	// comment over the SAME verdict/gap this run already computed —
 	// review.RenderGitHubReview does no I/O itself, so every dependency
 	// (changed-symbol/caller detail, touched plan rows) is resolved here
-	// first.
+	// first. Unchanged by FL-15/FL-16: the marker-prefix contract
+	// (review.GitHubReviewMarker, VB-23's PR-comment upsert step) is
+	// load-bearing, so the mode line goes on text output only.
 	if *format == "github" {
+		diffRange := *since + "..HEAD"
+		if *since == "" {
+			diffRange = "manifest:" + manifestPathV
+		}
 		fmt.Fprint(reportW, review.RenderGitHubReview(review.GitHubReviewInput{
 			Verdict:         v,
 			TestGap:         gap,
 			IndexCommit:     watermark,
-			DiffRange:       *since + "..HEAD",
+			DiffRange:       diffRange,
 			ChangedSymbols:  review.ChangedSymbolReviews(in.Nodes, in.TypedEdges, in.ChangedFiles),
 			TouchedPlanRows: resolveTouchedPlanRows(corpusRoot, in),
 		}))
@@ -281,20 +410,37 @@ func runReviewBody(gitRunner func(args ...string) ([]byte, error), storePathV, s
 	}
 
 	if *jsonOut {
-		payload := v.Payload(persisted)
-		payload["test_impact"] = gap.Payload()
-		enc := json.NewEncoder(reportW)
-		enc.SetIndent("", "  ")
-		if err := enc.Encode(payload); err != nil {
+		var buf bytes.Buffer
+		if err := json.Indent(&buf, responseJSON, "", "  "); err != nil {
 			fmt.Fprintf(stderr, "error: encode JSON: %v\n", err)
+			return 1
+		}
+		buf.WriteByte('\n')
+		if _, err := reportW.Write(buf.Bytes()); err != nil {
+			fmt.Fprintf(stderr, "error: write JSON: %v\n", err)
 			return 1
 		}
 		return finishReview(0)
 	}
 
+	fmt.Fprintf(reportW, "mode: %s\n", modeV)
 	printReviewSummary(reportW, v)
 	renderTestGap(reportW, gap)
 	return finishReview(0)
+}
+
+// sourceWatermarkLabel names what this run diffed against — ReviewInputs'
+// source_watermark — without shelling out to git a second time: the --since
+// ref itself when given, or "manifest:<path>" when the changed set came
+// from an explicit --manifest instead of a ref.
+func sourceWatermarkLabel(since, manifestPath string) string {
+	if since != "" {
+		return since
+	}
+	if manifestPath != "" {
+		return "manifest:" + manifestPath
+	}
+	return ""
 }
 
 // renderTestGap prints the test-impact block after the dimension summary

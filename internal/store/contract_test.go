@@ -2146,6 +2146,50 @@ func storeContract(t *testing.T, s Store) {
 			t.Errorf("ServiceNotFoundError.ServiceID = %q, want the missing source id", notFound.ServiceID)
 		}
 	})
+
+	// review_runs (FL-15, docs/plans/findings-loop.md): the idempotency
+	// cache `fathom review --idempotency-key` reads/writes.
+	t.Run("review_run_roundtrip_and_replace", func(t *testing.T) {
+		if _, found, err := s.ReviewRun(ctx, "svc-review-run", "key-1"); err != nil || found {
+			t.Fatalf("ReviewRun before any record: found=%v err=%v, want not found", found, err)
+		}
+		recorded := time.Now().UTC().Truncate(time.Second)
+		run := core.ReviewRun{
+			ServiceID:      "svc-review-run",
+			IdempotencyKey: "key-1",
+			PayloadDigest:  "digest-a",
+			ResponseJSON:   `{"schema_version":1}`,
+			RecordedAt:     recorded,
+		}
+		if err := s.RecordReviewRun(ctx, run); err != nil {
+			t.Fatalf("RecordReviewRun: %v", err)
+		}
+		got, found, err := s.ReviewRun(ctx, "svc-review-run", "key-1")
+		if err != nil || !found {
+			t.Fatalf("ReviewRun after record: found=%v err=%v", found, err)
+		}
+		if got.PayloadDigest != "digest-a" || got.ResponseJSON != run.ResponseJSON || !got.RecordedAt.Equal(recorded) {
+			t.Errorf("ReviewRun = %+v, want %+v", got, run)
+		}
+
+		// A second record for the SAME key replaces the row (the caller
+		// only calls this after confirming no prior row, or an identical
+		// payload digest — see the Store interface doc comment).
+		run.PayloadDigest = "digest-a"
+		run.ResponseJSON = `{"schema_version":1,"replayed":true}`
+		if err := s.RecordReviewRun(ctx, run); err != nil {
+			t.Fatalf("RecordReviewRun replace: %v", err)
+		}
+		got, found, err = s.ReviewRun(ctx, "svc-review-run", "key-1")
+		if err != nil || !found || got.ResponseJSON != run.ResponseJSON {
+			t.Fatalf("ReviewRun after replace = %+v found=%v err=%v", got, found, err)
+		}
+
+		// A different service never sees another service's review run.
+		if _, found, err := s.ReviewRun(ctx, "svc-review-run-other", "key-1"); err != nil || found {
+			t.Fatalf("ReviewRun cross-service: found=%v err=%v, want not found", found, err)
+		}
+	})
 }
 
 // -------------------------------------------------------------------------

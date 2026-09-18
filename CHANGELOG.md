@@ -102,6 +102,10 @@ Evidence: `docs/app-kit.md`.
 - `fathom compile`'s `max_usd_per_run <= 0` now means unlimited, matching `max_tokens_per_run`'s own convention.
 - `internal/guardspec.LoadGuards` no longer rejects a `forbidden_paths`-only guard as "governing nothing".
 
+<!-- fl-wave-3 -->
+`fathom review` gains an explicit `--mode report|persist` (`--no-persist` is now an alias for `--mode report`), `--manifest FILE` for an explicit changed-path digest set (mutually exclusive with `--since`; a current-content mismatch refuses with `manifest mismatch: <path>` and exit 2), `--idempotency-key` (a repeated key with the same request replays the recorded response from the new additive `review_runs` store table and writes nothing else; a different request under the same key refuses), and `--expect-index-watermark` (a mismatch sets `stale_index: true` and refuses persist while still running every dimension); `--json` now emits a versioned `ReviewResponse` envelope (`schema_version`, `producer`, `inputs` fingerprints, `coverage{complete,unknown}`, `truncated`/`stale_index`/`cancelled`, `unanchored_paths` for a changed process-subject path the index has no symbol for) around the unchanged `Verdict`; `review_diff` (MCP) is untouched beyond an additive `schema_version`. New `fathom review-key --service S (--since REF | --manifest FILE) [--prior FILE] [--json]` and `pkg/client.ReviewKey` compute one sha256 token (`internal/analysis/reviewkey`) over a changed-path manifest, the typed dependency closure (reusing the existing typed call graph, never a new import parser), the project's rule pack/`guard.cue`/layer manifests, `docs/plans/**`, tooling identity, and index watermarks — `complete: false` plus a named `unknown[]` entry whenever any of those inputs could not be verified, and `changed_since_prior[]` against a supplied prior key.
+<!-- /fl-wave-3 -->
+
 ## [0.8.0] -- 2026-09-02
 
 **What this release is.** fathom stopped being a Claude Code program and

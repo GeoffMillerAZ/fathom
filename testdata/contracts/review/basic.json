@@ -1,0 +1,14 @@
+{
+  "description": "one changed Go file carrying an uncovered spec reference ([US-777]), reviewed in report mode — findings must never be persisted and the response envelope must say so explicitly",
+  "changed_files": ["pkg/a.go"],
+  "expected": {
+    "schema_version": 1,
+    "mode": "report",
+    "findings_persisted": false,
+    "stale_index": false,
+    "truncated": false,
+    "cancelled": false,
+    "dimension_names": ["impact", "obligations", "arch_conformance", "spec_coverage", "coverage"],
+    "spec_coverage_finding_count": 1
+  }
+}

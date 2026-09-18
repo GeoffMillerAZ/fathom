@@ -88,6 +88,8 @@ var storeMethodDisposition = map[string]string{
 	"PutExternalFinding":             "write path",
 	"ExternalFinding":                "cursor/provenance row keyed by claim_id (FL-7); the claim it belongs to is anchored through claim_links, which IS filtered -- this is supplementary source-linked metadata for an already-filtered claim, not the primary path-anchored read",
 	"ExternalFindingsForService":     "cursor/provenance rows keyed by claim_id (FL-7); same reasoning as ExternalFinding",
+	"RecordReviewRun":                "write path",
+	"ReviewRun":                      "idempotency cache row keyed by service+key, no path-anchored content",
 	"Close":                          "lifecycle",
 }
 

@@ -25,8 +25,9 @@ type MemoryStore struct {
 	claimLinks     map[string][]core.ClaimLink // claim_id → links (replace-semantic)
 	claimEvents    []core.ClaimEvent
 	compileRuns    []core.CompileRun
-	typedEdges     map[typedEdgeKey][]core.Edge // (serviceID, pkgPath) → edges (replace-semantic)
-	typedEdgeFPs   map[fpKey]string             // reuses fpKey{serviceID, pkgPath} shape
+	typedEdges     map[typedEdgeKey][]core.Edge    // (serviceID, pkgPath) → edges (replace-semantic)
+	typedEdgeFPs   map[fpKey]string                // reuses fpKey{serviceID, pkgPath} shape
+	reviewRuns     map[reviewRunKey]core.ReviewRun // (serviceID, idempotencyKey) → review run (FL-15)
 
 	// externalFindings is the findings-loop's per-claim cursor table (FL-7),
 	// reusing claimKey's (serviceID, claimID) shape — one row per claim, same
@@ -75,6 +76,7 @@ func NewMemoryStore() *MemoryStore {
 		typedEdgeFPs:   make(map[fpKey]string),
 
 		externalFindings: make(map[claimKey]core.ExternalFinding),
+		reviewRuns:       make(map[reviewRunKey]core.ReviewRun),
 	}
 }
 
