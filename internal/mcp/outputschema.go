@@ -282,6 +282,17 @@ type symbolContextResult struct {
 	// callers+callees (post-elision), and the daemon's watermark.
 	Resolution  resolutionMix `json:"resolution"`
 	IndexCommit string        `json:"index_commit,omitempty"`
+	// Ambiguous/ScopeRequired/Candidates/Count/Hint (J3(a), app-kit O12):
+	// present INSTEAD OF every field above (no def/callers/callees/
+	// snippet/resolution) when the bare symbol resolves to more than one
+	// definition (Ambiguous) or to a single definition whose caller
+	// fan-in exceeds the hub cap (ScopeRequired) — see
+	// ambiguousSymbolContextResult's own doc comment (nav_tools.go).
+	Ambiguous     bool             `json:"ambiguous,omitempty"`
+	ScopeRequired bool             `json:"scope_required,omitempty"`
+	Candidates    []map[string]any `json:"candidates,omitempty"`
+	Count         int              `json:"count,omitempty"`
+	Hint          string           `json:"hint,omitempty"`
 }
 
 type verifyPlanResult struct {

@@ -374,7 +374,7 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 	// find_symbol — locate a symbol definition.
 	s.registerTool(toolDescriptor{
 		Name:        "find_symbol",
-		Description: "Locate symbol definitions by name, with tiered matching: exact/key-suffix first, then case-insensitive, then substring; a full miss returns did_you_mean suggestions (edit-distance typo candidates, else concern-ranked) when any exist. matched_via reports which tier answered — treat the result as proof the named symbol exists only when it is exact or case_insensitive. An exact hit on a Go interface additionally carries implementations: [{name, file_path, line, via}] — via is \"typed\" (a real call-graph dispatch edge), \"assertion\" (a var _ Iface = (*T)(nil) in source), or \"method_set\" (structural match), in that order of preference. This result IS the answer once matched_via is exact or case_insensitive — file and line are settled; a follow-up call only adds what find_symbol itself does not carry: the neighbourhood (symbol_context) or call sites (find_callers, references). Reach for it when you know (roughly) a name and need its definition's file and line before reading or editing — the first move of almost every task. Required: service, name.",
+		Description: "Locate symbol definitions by name, with tiered matching: exact/key-suffix first, then case-insensitive, then substring; a full miss returns did_you_mean suggestions (edit-distance typo candidates, else concern-ranked) when any exist. matched_via reports which tier answered — treat the result as proof the named symbol exists only when it is exact or case_insensitive. Both the case-insensitive and substring tiers cap at 20 rows with truncated:true/elided when more matched — a package-name query never floods the response with every exported symbol. An exact hit on a Go interface additionally carries implementations: [{name, file_path, line, via}] — via is \"typed\" (a real call-graph dispatch edge), \"assertion\" (a var _ Iface = (*T)(nil) in source), or \"method_set\" (structural match), in that order of preference. This result IS the answer once matched_via is exact or case_insensitive — file and line are settled; a follow-up call only adds what find_symbol itself does not carry: the neighbourhood (symbol_context) or call sites (find_callers, references). Reach for it when you know (roughly) a name and need its definition's file and line before reading or editing — the first move of almost every task. Required: service, name.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -444,8 +444,13 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 		var all []core.SymbolNode
 		if listed, listErr := backend.ListAllSymbols(ctx, p.Service); listErr == nil {
 			all = listed
-			if ci := caseFoldMatches(all, p.Name); len(ci) > 0 {
-				return map[string]any{"symbols": toNodeDTOs(ci), "matched_via": "case_insensitive"}, nil
+			if ci, ciTotal := caseFoldMatches(all, p.Name); len(ci) > 0 {
+				resp := map[string]any{"symbols": toNodeDTOs(ci), "matched_via": "case_insensitive"}
+				if el := elisionFor(len(ci), ciTotal, "name match before package match, then name/file/line/kind", "narrow with the exact name, or a package-qualified query (pkg.Name)"); el != nil {
+					resp["truncated"] = true
+					resp["elided"] = el
+				}
+				return resp, nil
 			}
 			if sub, total := substringMatches(all, p.Name); len(sub) > 0 {
 				resp := map[string]any{"symbols": toNodeDTOs(sub), "matched_via": "substring"}

@@ -341,10 +341,16 @@ func TestSymbolContext_MissingService(t *testing.T) {
 	}
 }
 
-// TestSymbolContext_BudgetElision is RC-19's proof for symbol_context: a
-// symbol called by far more callers than fit one budget is truncated to a
-// whole-row prefix (across "callers") plus a one-line elision.
-func TestSymbolContext_BudgetElision(t *testing.T) {
+// TestSymbolContext_HubCallerCapRefusesNeighbourhood is J3(a)'s successor
+// to the old RC-19 budget-elision proof (app-kit O12): a symbol with far
+// more callers than the hub cap used to come back as a huge partial
+// "callers" list plus a one-line elision — still tens of KB for a wide
+// enough fan-in, the exact shape the dogfood journal's bare `Run` query
+// blew up to ~63k tokens with. Past symbolContextHubCallerCap, symbol_context
+// now refuses the neighbourhood outright: scope_required:true, a bounded
+// candidate (the resolved definition itself), count = the real caller
+// count, and critically NO "callers"/"callees"/"snippet" field at all.
+func TestSymbolContext_HubCallerCapRefusesNeighbourhood(t *testing.T) {
 	srv := mcp.NewServer(&extendedFakeBackend{
 		nodes:    manyCallersOfShared(400, 10),
 		services: []string{"svc"},
@@ -357,11 +363,102 @@ func TestSymbolContext_BudgetElision(t *testing.T) {
 		},
 	})
 	p := extToolPayload(t, resp)
-	callers, ok := p["callers"].([]any)
-	if !ok || len(callers) == 0 || len(callers) >= 400 {
-		t.Fatalf("callers = %d rows, want a nonzero partial prefix < 400", len(callers))
+	if p["scope_required"] != true {
+		t.Fatalf("scope_required = %v, want true for a 400-caller hub", p["scope_required"])
 	}
-	assertRC19Elision(t, p, "depth")
+	if p["ambiguous"] != nil {
+		t.Errorf("ambiguous must be absent for the hub case, got %v", p["ambiguous"])
+	}
+	if cnt, _ := p["count"].(float64); cnt != 400 {
+		t.Errorf("count = %v, want 400 (the real caller count)", p["count"])
+	}
+	if p["hint"] != "pass the fully-qualified key or service" {
+		t.Errorf("hint = %v", p["hint"])
+	}
+	candidates, ok := p["candidates"].([]any)
+	if !ok || len(candidates) != 1 {
+		t.Fatalf("candidates = %v, want exactly the resolved definition", p["candidates"])
+	}
+	row := candidates[0].(map[string]any)
+	if row["symbol_key"] != "svc::pkg/pkg.Shared" || row["file"] != "pkg/shared.go" || row["line"] != float64(1) {
+		t.Errorf("candidates[0] = %v, want the Shared definition itself", row)
+	}
+	for _, absent := range []string{"callers", "callees", "snippet", "def"} {
+		if _, present := p[absent]; present {
+			t.Errorf("%q must be absent — NO neighbourhood for a hub, got %v", absent, p[absent])
+		}
+	}
+}
+
+// TestSymbolContext_HubCallerCap_500CallersUnder16KB is J3(c)'s explicit
+// proof: a synthetic 500-caller hub must render well under the 16KB tool
+// budget — trivially true once the hub refuses the neighbourhood, but this
+// pins the actual byte count so a regression that quietly re-inlines the
+// caller list is caught here, not by an agent's context window.
+func TestSymbolContext_HubCallerCap_500CallersUnder16KB(t *testing.T) {
+	srv := mcp.NewServer(&extendedFakeBackend{
+		nodes:    manyCallersOfShared(500, 10),
+		services: []string{"svc"},
+	})
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 225, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "symbol_context",
+			"arguments": map[string]any{"service": "svc", "symbol": "Shared"},
+		},
+	})
+	result := resp["result"].(map[string]any)
+	content := result["content"].([]any)
+	text := content[0].(map[string]any)["text"].(string)
+	if n := len(text); n > 16*1024 {
+		t.Fatalf("symbol_context response for a 500-caller hub = %d bytes, want <= 16KB", n)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(text), &payload); err != nil {
+		t.Fatalf("payload unmarshal: %v", err)
+	}
+	if payload["scope_required"] != true {
+		t.Fatalf("scope_required = %v, want true", payload["scope_required"])
+	}
+}
+
+// TestSymbolContext_AmbiguousBareName_ReturnsCandidatesNoNeighbourhood is
+// J3(a)'s other trigger (app-kit O12): a bare name matching more than one
+// definition returns ambiguous:true with a bounded candidate list — never
+// the old silent empty-context answer, and never a neighbourhood for
+// either candidate.
+func TestSymbolContext_AmbiguousBareName_ReturnsCandidatesNoNeighbourhood(t *testing.T) {
+	nodes := []core.SymbolNode{
+		{Service: "svc", Package: "pkga", Name: "Run", Kind: core.KindGoFunc, FilePath: "pkga/a.go", Line: 3},
+		{Service: "svc", Package: "pkgb", Name: "Run", Kind: core.KindGoFunc, FilePath: "pkgb/b.go", Line: 9},
+	}
+	srv := mcp.NewServer(&extendedFakeBackend{nodes: nodes, services: []string{"svc"}})
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 226, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "symbol_context",
+			"arguments": map[string]any{"service": "svc", "symbol": "Run"},
+		},
+	})
+	p := extToolPayload(t, resp)
+	if p["ambiguous"] != true {
+		t.Fatalf("ambiguous = %v, want true", p["ambiguous"])
+	}
+	if p["scope_required"] != nil {
+		t.Errorf("scope_required must be absent for the ambiguous case, got %v", p["scope_required"])
+	}
+	if cnt, _ := p["count"].(float64); cnt != 2 {
+		t.Errorf("count = %v, want 2", p["count"])
+	}
+	candidates, ok := p["candidates"].([]any)
+	if !ok || len(candidates) != 2 {
+		t.Fatalf("candidates = %v, want both Run definitions", p["candidates"])
+	}
+	for _, absent := range []string{"callers", "callees", "def"} {
+		if _, present := p[absent]; present {
+			t.Errorf("%q must be absent, got %v", absent, p[absent])
+		}
+	}
 }
 
 // ─── outline ──────────────────────────────────────────────────────────────────

@@ -9,6 +9,7 @@ package mcp_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -259,6 +260,45 @@ func TestFindSymbolCaseInsensitive_NameMatchOnly_Unaffected(t *testing.T) {
 	}
 	if names := symbolNames(t, payload); len(names) != 1 || names[0] != "ValidateToken" {
 		t.Errorf("symbols = %v, want [ValidateToken]", names)
+	}
+}
+
+// TestFindSymbolCaseInsensitive_PackageMatchCapsAt20 pins J3(b) (app-kit
+// O22): a query naming a large package used to return EVERY one of its
+// exported symbols through the case-insensitive tier's package-match
+// group, unbounded — the O22 "package-like find_symbol query floods
+// context without result budget" defect. It now caps at 20 with the
+// standard elision disclosure, exactly like the substring tier already
+// does.
+func TestFindSymbolCaseInsensitive_PackageMatchCapsAt20(t *testing.T) {
+	var nodes []core.SymbolNode
+	for i := 0; i < 25; i++ {
+		nodes = append(nodes, core.SymbolNode{
+			Service: "svc", Package: "bigpkg", Name: fmt.Sprintf("Func%02d", i),
+			Kind: core.KindGoFunc, FilePath: "bigpkg/x.go", Line: i + 1,
+		})
+	}
+	srv := mcp.NewServer(&extendedFakeBackend{nodes: nodes, services: []string{"svc"}})
+	payload := callFindSymbol(t, srv, "bigpkg")
+	if payload["matched_via"] != "case_insensitive" {
+		t.Fatalf("matched_via = %v, want case_insensitive", payload["matched_via"])
+	}
+	names := symbolNames(t, payload)
+	if len(names) != 20 {
+		t.Fatalf("case-insensitive package matches = %d, want capped at 20", len(names))
+	}
+	if payload["truncated"] != true {
+		t.Errorf("truncated = %v, want true", payload["truncated"])
+	}
+	elided, ok := payload["elided"].(map[string]any)
+	if !ok {
+		t.Fatalf("elided block missing: %v", payload)
+	}
+	if of, _ := elided["of"].(float64); of != 25 {
+		t.Errorf("elided.of = %v, want 25", elided["of"])
+	}
+	if cnt, _ := elided["count"].(float64); cnt != 5 {
+		t.Errorf("elided.count = %v, want 5", elided["count"])
 	}
 }
 

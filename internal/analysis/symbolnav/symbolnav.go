@@ -570,50 +570,76 @@ func SymbolDiff(oldNodes, newNodes []core.SymbolNode) Diff {
 // from before keys carried the package directory (PC-32) — each only when
 // it names exactly one node; ambiguity resolves to nothing.
 func resolveSymbol(nodes []core.SymbolNode, symbol string) string {
+	key, _, _ := ResolveTiered(nodes, symbol)
+	return key
+}
+
+// ResolveTiered is resolveSymbol's full-fidelity sibling (J3(a), app-kit
+// O12): the exact same tier cascade (exact key, bare name, "svc::pkg.Name",
+// suffix — the first tier that matches ANYTHING decides the answer, exactly
+// as resolveSymbol always has), but instead of collapsing an ambiguous tier
+// to a bare "", it returns every node that tier matched.
+//
+// ok is true only when exactly one node resolved (candidates then holds
+// that one node) — the unchanged, unambiguous case. ok is false in two
+// DIFFERENT situations a caller must distinguish: candidates == nil is a
+// genuine miss (no tier matched anything at all — resolveSymbol's own "no
+// match" case); len(candidates) > 1 is real ambiguity (a bare name, or a
+// "svc::pkg.Name"/suffix query, matched more than one distinct symbol) —
+// symbol_context (internal/mcp/nav_tools.go) uses this to render a bounded
+// candidate list instead of a silently empty neighbourhood.
+func ResolveTiered(nodes []core.SymbolNode, symbol string) (key string, candidates []core.SymbolNode, ok bool) {
 	// Exact key match.
 	for _, n := range nodes {
 		if n.Key() == symbol {
-			return symbol
+			return symbol, []core.SymbolNode{n}, true
 		}
 	}
-	// Bare name (unambiguous).
-	var match string
+	// Bare name.
+	var byName []core.SymbolNode
 	for _, n := range nodes {
 		if n.Name == symbol {
-			if match != "" {
-				return "" // ambiguous
-			}
-			match = n.Key()
+			byName = append(byName, n)
 		}
 	}
-	if match != "" {
-		return match
+	if len(byName) == 1 {
+		return byName[0].Key(), byName, true
 	}
-	// "svc::pkg.Name" → the unique node whose Package.Name matches.
+	if len(byName) > 1 {
+		return "", byName, false
+	}
+	// "svc::pkg.Name" → the node(s) whose Package.Name matches, deduped by
+	// key (two nodes sharing one key are not ambiguity).
 	if i := strings.Index(symbol, "::"); i >= 0 {
 		rest := symbol[i+2:]
+		seen := map[string]bool{}
+		var byQualified []core.SymbolNode
 		for _, n := range nodes {
-			if n.Package+"."+n.Name == rest {
-				if match != "" && match != n.Key() {
-					return "" // ambiguous: two same-named packages
-				}
-				match = n.Key()
+			if n.Package+"."+n.Name == rest && !seen[n.Key()] {
+				seen[n.Key()] = true
+				byQualified = append(byQualified, n)
 			}
 		}
-		return match
+		if len(byQualified) == 1 {
+			return byQualified[0].Key(), byQualified, true
+		}
+		return "", byQualified, false
 	}
-	// Suffix match at a component boundary: ".<symbol>" or "/<symbol>".
-	match = ""
+	// Suffix match at a component boundary: ".<symbol>" or "/<symbol>",
+	// deduped by key.
+	seen := map[string]bool{}
+	var bySuffix []core.SymbolNode
 	for _, n := range nodes {
 		k := n.Key()
-		if strings.HasSuffix(k, "."+symbol) || strings.HasSuffix(k, "/"+symbol) {
-			if match != "" && match != k {
-				return "" // ambiguous
-			}
-			match = k
+		if (strings.HasSuffix(k, "."+symbol) || strings.HasSuffix(k, "/"+symbol)) && !seen[k] {
+			seen[k] = true
+			bySuffix = append(bySuffix, n)
 		}
 	}
-	return match
+	if len(bySuffix) == 1 {
+		return bySuffix[0].Key(), bySuffix, true
+	}
+	return "", bySuffix, false
 }
 
 // sortedUnion returns a sorted, deduplicated union of two already-sorted slices.
