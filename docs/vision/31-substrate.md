@@ -201,7 +201,38 @@ without anchors; generic rerankers bolted on; a code property graph until a
 taint or dataflow question is actually asked; whole-program analysis at
 serve time (gopls' 10 GB monorepo failure mode is the cautionary tale).
 
-**D8 — Findings and review.** Filled from the review-tools reading below.
+**D8 — Findings and review: the loop is ahead on integrity and behind on
+learning telemetry.** Independent data on AI review is sobering: 36.4 % of
+31,073 AI review comments across 239 repositories were accepted and 56.3 %
+rejected, rejection driven by validity rather than volume (arXiv 2607.03316,
+2026); the best production reviewer scores F1 51 on the one open multi-vendor
+benchmark (Martian Code Review Bench, 2026-03); 93 % of findings in a 679-finding
+study were flagged by exactly one tool, and higher severity tiers carried
+higher false-positive rates. That is the argument for what we built: producer
+tier caps, deterministic identity, conflicting-replay refusal, per-dimension
+`checked:false` instead of an aggregate score, and nothing inferred from prose.
+No surveyed product exposes an evidence tier on a check; the review kit's
+ladder is ahead of the category. What the best of them do that we do not yet:
+(1) promotion with decay, ownership weight and a cadence cap, and a provenance
+tag on the promoted rule (Qodo's rule miner) — `findings candidates` counts
+sites and code-change resolutions only; (2) a typed disposition with an impact
+preview ("would filter N") before it becomes a scoped exception (Semgrep
+memories) — our annotations stay inert quotes, which is right, but a typed
+disposition can still be previewed; (3) per-rule effectiveness telemetry after
+promotion — served, touched, disputed, last fired — so a lifted rule can retire
+(CodeRabbit, Greptile); (4) a single-utterance "remember this" that becomes a
+scoped standing fact without waiting for recurrence (Cursor Bugbot) — ours has
+no path from one human sentence to a claim outside an import; (5) a
+reproducible third-party benchmark of accept/reject behaviour — our
+`findings-loop` corpus is that instrument and has not been run. What we refuse
+to copy: admin self-approval of exemptions (Cortex), org-wide unaudited
+prose-to-behaviour learning and negative-only suppression (CodeRabbit's default
+scope, Bito's three-dismissal auto-suppression, Greptile's tone parsing), and
+LLM-judged dedup or a single summed score as the headline. For the
+organizational side, borrow sequential floors, expiring human attestations,
+retained certification history and exemptions with an approval trail into
+marks and soundings; keep the portable journal as the record, never a vendor
+store.
 
 ## 4. Sequencing, each round gated by a measurement
 
