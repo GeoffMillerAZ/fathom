@@ -1,0 +1,676 @@
+{
+  "blast_radius": {
+    "properties": {
+      "changed_files": {
+        "description": "Repo-relative file paths that changed",
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "include_heuristic": {
+        "description": "Also follow syntax-only (heuristic) edges. Default false.",
+        "type": "boolean"
+      },
+      "max_depth": {
+        "description": "Hops from the changed files (default 2; 0 = unbounded).",
+        "type": "integer"
+      },
+      "max_symbols": {
+        "description": "Symbols listed, shallowest first (default 500; 0 = uncapped); total_symbols keeps the full count.",
+        "type": "integer"
+      },
+      "service": {
+        "description": "Service / repo identifier",
+        "type": "string"
+      }
+    },
+    "required": [
+      "service",
+      "changed_files"
+    ],
+    "type": "object"
+  },
+  "capabilities": {
+    "properties": {},
+    "type": "object"
+  },
+  "discoveries": {
+    "properties": {
+      "budget": {
+        "description": "Byte budget for the rendered list (default 4000)",
+        "type": "integer"
+      },
+      "service": {
+        "description": "Service / repo identifier",
+        "type": "string"
+      },
+      "since": {
+        "description": "RFC3339 timestamp; only pointers established at/after it (default: all recorded history)",
+        "type": "string"
+      }
+    },
+    "required": [
+      "service"
+    ],
+    "type": "object"
+  },
+  "entrypoints": {
+    "properties": {
+      "service": {
+        "description": "Service / repo identifier",
+        "type": "string"
+      }
+    },
+    "required": [
+      "service"
+    ],
+    "type": "object"
+  },
+  "find_callers": {
+    "properties": {
+      "depth": {
+        "description": "Reverse-graph depth to walk (default 1 = direct callers only). Values above 1 add transitive_callers (depth 2..N) and extend by_depth; 0 = unbounded.",
+        "type": "integer"
+      },
+      "include_heuristic": {
+        "description": "Add syntax-only (heuristic) callers, which come from bare-name matching. Default false.",
+        "type": "boolean"
+      },
+      "service": {
+        "description": "Service / repo identifier",
+        "type": "string"
+      },
+      "symbol": {
+        "description": "Symbol name (bare or fully-qualified)",
+        "type": "string"
+      },
+      "with_signatures": {
+        "description": "SB-47: include each caller's full signature (\"sig\") on the wire row. Default false — the compact {loc, c} shape omits it.",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "service",
+      "symbol"
+    ],
+    "type": "object"
+  },
+  "find_symbol": {
+    "properties": {
+      "name": {
+        "description": "Symbol name (bare or fully-qualified; exact spelling not required). Alias: \"symbol\" (additive — same field, either name works; both may be given only if they agree).",
+        "type": "string"
+      },
+      "service": {
+        "description": "Service / repo identifier",
+        "type": "string"
+      },
+      "symbol": {
+        "description": "Alias for \"name\" (P1-1: the hot-tool quartet's primary argument is named differently per tool; this lets a caller reuse the same field name across all four).",
+        "type": "string"
+      }
+    },
+    "required": [
+      "service",
+      "name"
+    ],
+    "type": "object"
+  },
+  "ingest": {
+    "properties": {
+      "path": {
+        "description": "Absolute corpus root — required only when first onboarding a new service",
+        "type": "string"
+      },
+      "remap": {
+        "description": "Authorize re-pointing an EXISTING service's recorded root at a different path (O82). Without it, a differing path is refused — a hook must never re-point a service.",
+        "type": "boolean"
+      },
+      "service": {
+        "description": "Service / repo identifier",
+        "type": "string"
+      }
+    },
+    "required": [
+      "service"
+    ],
+    "type": "object"
+  },
+  "list_services": {
+    "properties": {},
+    "type": "object"
+  },
+  "localize": {
+    "properties": {
+      "budget": {
+        "description": "Maximum hops (default 12, max 40) — always a floor under a bounded, terminating answer, never rejected for being too high",
+        "type": "integer"
+      },
+      "concern": {
+        "description": "A free-text description of the area or problem — significant terms are searched",
+        "type": "string"
+      },
+      "error": {
+        "description": "An error message, verbatim — quoted literals and any embedded file:line frames are parsed out as seeds",
+        "type": "string"
+      },
+      "failing_test": {
+        "description": "A failing test's name (subtests like TestFoo/bar are split at the first \"/\" for the symbol lookup)",
+        "type": "string"
+      },
+      "service": {
+        "description": "Service / repo identifier",
+        "type": "string"
+      },
+      "stack_trace": {
+        "description": "A stack trace or traceback, verbatim — file:line frames and function names are parsed out as seeds",
+        "type": "string"
+      }
+    },
+    "required": [
+      "service"
+    ],
+    "type": "object"
+  },
+  "memory_search": {
+    "properties": {
+      "file": {
+        "description": "Repo-relative file to scope to",
+        "type": "string"
+      },
+      "limit": {
+        "description": "Max results (default 20)",
+        "type": "integer"
+      },
+      "query": {
+        "description": "Substring terms over claim/anchor keys; empty = all",
+        "type": "string"
+      },
+      "service": {
+        "description": "Service / repo identifier",
+        "type": "string"
+      }
+    },
+    "required": [
+      "service"
+    ],
+    "type": "object"
+  },
+  "obligations": {
+    "properties": {
+      "action": {
+        "description": "Feedback verb (D2): when set, this call records a claim_events verdict instead of looking up rules. Requires claim_id and note.",
+        "enum": [
+          "refute",
+          "corroborate"
+        ],
+        "type": "string"
+      },
+      "author": {
+        "description": "Verdict author (optional; empty for an automated caller)",
+        "type": "string"
+      },
+      "claim_id": {
+        "description": "Claim ID being refuted/corroborated (required when action is set)",
+        "type": "string"
+      },
+      "file": {
+        "description": "Repo-relative file path being edited. Omit (with no action) for root-scope obligations — \"what governs this repository\" — instead of an error.",
+        "type": "string"
+      },
+      "include_snippets": {
+        "description": "Inline each rule's cited lines as snippet, capped at 240 bytes (default true). Set false for the smallest possible payload.",
+        "type": "boolean"
+      },
+      "layer": {
+        "description": "Which claims to serve (VB-9): \"rules\" (default) is human-authored governing rules only; \"claims\" is plan-row bindings bound strictly by their own {symbol, package} contract; \"all\" is the pre-VB-9 union of both.",
+        "enum": [
+          "rules",
+          "claims",
+          "all"
+        ],
+        "type": "string"
+      },
+      "max_rules": {
+        "description": "Maximum rules to return (default 6)",
+        "type": "integer"
+      },
+      "note": {
+        "description": "Verdict rationale (required when action is set)",
+        "type": "string"
+      },
+      "path": {
+        "description": "Alias for `file` (wave P3 / O82): a caller that passed `path` instead of `file` used to silently fall back to root-scope rules only. `file` wins when both are given.",
+        "type": "string"
+      },
+      "service": {
+        "description": "Service / repo identifier",
+        "type": "string"
+      }
+    },
+    "required": [
+      "service"
+    ],
+    "type": "object"
+  },
+  "outline": {
+    "properties": {
+      "file": {
+        "description": "Repo-relative file path",
+        "type": "string"
+      },
+      "service": {
+        "description": "Service / repo identifier",
+        "type": "string"
+      }
+    },
+    "required": [
+      "service",
+      "file"
+    ],
+    "type": "object"
+  },
+  "pack_context": {
+    "properties": {
+      "budget": {
+        "description": "Token budget (default 4000)",
+        "type": "integer"
+      },
+      "concern": {
+        "description": "Concern ID to scope the query",
+        "type": "string"
+      },
+      "service": {
+        "description": "Service / repo identifier",
+        "type": "string"
+      }
+    },
+    "required": [
+      "service",
+      "concern"
+    ],
+    "type": "object"
+  },
+  "query_symbols": {
+    "properties": {
+      "concern": {
+        "description": "Concern ID to scope the query (e.g. \"authentication\"). Alias: \"symbol\" (additive — same field, either name works; both may be given only if they agree).",
+        "type": "string"
+      },
+      "keywords": {
+        "description": "Optional keyword hints for relevance scoring",
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "service": {
+        "description": "Service / repo identifier (e.g. \"payment-service\")",
+        "type": "string"
+      },
+      "symbol": {
+        "description": "Alias for \"concern\" (P1-1: the hot-tool quartet's primary argument is named differently per tool; this lets a caller reuse the same field name across all four).",
+        "type": "string"
+      },
+      "top": {
+        "description": "Maximum number of results to return (default 20)",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "service",
+      "concern"
+    ],
+    "type": "object"
+  },
+  "read_source": {
+    "properties": {
+      "end_line": {
+        "description": "1-based end line, inclusive (default: start_line + 199, or EOF). An explicit range wider than the cap is refused, not narrowed.",
+        "type": "integer"
+      },
+      "file": {
+        "description": "Repo-relative file path (never absolute, never containing \"..\")",
+        "type": "string"
+      },
+      "max_bytes": {
+        "description": "Per-call byte budget (default 8000, ceiling 16000). Raise it for one call instead of re-calling with a narrower range.",
+        "type": "integer"
+      },
+      "service": {
+        "description": "Service / repo identifier",
+        "type": "string"
+      },
+      "start_line": {
+        "description": "1-based start line (default 1)",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "service",
+      "file"
+    ],
+    "type": "object"
+  },
+  "references": {
+    "properties": {
+      "case_insensitive": {
+        "description": "Case-insensitive matching",
+        "type": "boolean"
+      },
+      "exact": {
+        "description": "SB-45: keep only occurrences the typed pass confirmed (edge_confidence: resolved) — identifier uses, never a comment or doc mention. Defaults to true when at least one queried service's last ingest reported typed edges (staleness_report's typed_edges); false restores every text occurrence. A service with no typed reference sites for this query falls back automatically and is named in degraded.",
+        "type": "boolean"
+      },
+      "include_heuristic": {
+        "description": "Also list definitions whose name merely CONTAINS the query (\"FooBar\" for \"Foo\"), and (SB-45) add back the bare text occurrences exact mode drops. Default false.",
+        "type": "boolean"
+      },
+      "max": {
+        "description": "Maximum total occurrences to return (default 25)",
+        "type": "integer"
+      },
+      "query": {
+        "description": "String to search for: an identifier, a dotted path (\"pkg.Sym\" or \"Type.Method\"), or a regex (with regex: true). Alias: \"symbol\" (additive — same field, either name works; both may be given only if they agree).",
+        "type": "string"
+      },
+      "regex": {
+        "description": "Treat query as a regular expression",
+        "type": "boolean"
+      },
+      "services": {
+        "description": "Service IDs to search (default: all known services)",
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "symbol": {
+        "description": "Alias for \"query\" (P1-1: the hot-tool quartet's primary argument is named differently per tool; this lets a caller reuse the same field name across all four).",
+        "type": "string"
+      },
+      "word": {
+        "description": "Whole-word match only",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "query"
+    ],
+    "type": "object"
+  },
+  "rename_impact": {
+    "properties": {
+      "service": {
+        "description": "Service / repo identifier",
+        "type": "string"
+      },
+      "symbol": {
+        "description": "Symbol name (bare or fully-qualified SymbolKey)",
+        "type": "string"
+      }
+    },
+    "required": [
+      "service",
+      "symbol"
+    ],
+    "type": "object"
+  },
+  "repo_map": {
+    "properties": {
+      "budget": {
+        "description": "Token budget (default 4000)",
+        "type": "integer"
+      },
+      "service": {
+        "description": "Service / repo identifier",
+        "type": "string"
+      }
+    },
+    "required": [
+      "service"
+    ],
+    "type": "object"
+  },
+  "review_diff": {
+    "properties": {
+      "changed_files": {
+        "description": "Repo-relative changed file paths (e.g. from git diff --name-only)",
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "concern": {
+        "description": "Optional concern token (currently descriptive only; carried for forward compatibility)",
+        "type": "string"
+      },
+      "coverage_profile": {
+        "description": "Optional single-profile alias for coverage_profiles: a repo-relative path to one Go cover profile, labeled layer \"unit\" (no per-profile layer metadata exists to say otherwise). Ignored when coverage_profiles is also given.",
+        "type": "string"
+      },
+      "coverage_profiles": {
+        "description": "Optional: one entry per test layer — {layer, path}, each path repo-relative under the service's corpus root (e.g. workspace/cov/unit.out). Enables the \"coverage\" dimension with real per-layer attribution; absent (and no coverage_profile) = checked:false, reason \"no coverage profile supplied\".",
+        "items": {
+          "properties": {
+            "layer": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "layer",
+            "path"
+          ],
+          "type": "object"
+        },
+        "type": "array"
+      },
+      "service": {
+        "description": "Service / repo identifier",
+        "type": "string"
+      }
+    },
+    "required": [
+      "service",
+      "changed_files"
+    ],
+    "type": "object"
+  },
+  "safe_delete_check": {
+    "properties": {
+      "service": {
+        "description": "Service / repo identifier",
+        "type": "string"
+      },
+      "symbol": {
+        "description": "Symbol name (bare or fully-qualified SymbolKey)",
+        "type": "string"
+      },
+      "symbol_id": {
+        "description": "Alias for symbol — a fully-qualified SymbolKey",
+        "type": "string"
+      }
+    },
+    "required": [
+      "service",
+      "symbol"
+    ],
+    "type": "object"
+  },
+  "search": {
+    "properties": {
+      "case": {
+        "description": "Case-sensitive match. Default true (grep/ripgrep's own default); false for case-insensitive.",
+        "type": "boolean"
+      },
+      "context": {
+        "description": "Lines of context before and after each hit (default 0).",
+        "type": "integer"
+      },
+      "limit": {
+        "description": "Maximum hits returned (default 50).",
+        "type": "integer"
+      },
+      "path": {
+        "description": "Optional glob (gitignore-style, e.g. \"internal/mcp/**/*.go\") narrowing which files are searched.",
+        "type": "string"
+      },
+      "pattern": {
+        "description": "Regular expression to search for (Go regexp syntax — must compile; the same pattern text is handed to ripgrep when it runs the search).",
+        "type": "string"
+      },
+      "root": {
+        "description": "Absolute filesystem directory to search directly (no index lookup, so sym/kind are omitted; flags/class still render). Give exactly one of service or root.",
+        "type": "string"
+      },
+      "service": {
+        "description": "Service / repo identifier — searches its indexed corpus root and enables sym/kind receipts. Give exactly one of service or root.",
+        "type": "string"
+      }
+    },
+    "required": [
+      "pattern"
+    ],
+    "type": "object"
+  },
+  "staleness_report": {
+    "properties": {
+      "service": {
+        "description": "Service / repo identifier",
+        "type": "string"
+      }
+    },
+    "required": [
+      "service"
+    ],
+    "type": "object"
+  },
+  "symbol_context": {
+    "properties": {
+      "service": {
+        "description": "Service / repo identifier",
+        "type": "string"
+      },
+      "snippet": {
+        "description": "Include the inline definition source snippet (default true). Set false to omit it.",
+        "type": "boolean"
+      },
+      "symbol": {
+        "description": "Symbol name (bare or fully-qualified SymbolKey)",
+        "type": "string"
+      }
+    },
+    "required": [
+      "service",
+      "symbol"
+    ],
+    "type": "object"
+  },
+  "test_impact": {
+    "properties": {
+      "service": {
+        "description": "Service / repo identifier",
+        "type": "string"
+      },
+      "symbol": {
+        "description": "Symbol name (bare or fully-qualified SymbolKey)",
+        "type": "string"
+      }
+    },
+    "required": [
+      "service",
+      "symbol"
+    ],
+    "type": "object"
+  },
+  "verify_plan": {
+    "properties": {
+      "concern": {
+        "description": "Optional concern to scope contradiction detection",
+        "type": "string"
+      },
+      "plan_markdown": {
+        "description": "Markdown checklist alternative to tasks: each '- [ ] title [SPEC-ID] {symbol: Foo, package: dir/of/foo, reachable_from: Bar, min_tier: verified}' line becomes a task. Annotations must sit on the checkbox line itself.",
+        "type": "string"
+      },
+      "plan_path": {
+        "description": "Repo-relative path plan_markdown was read from. Optional; when given and the service's recorded corpus root is a real git checkout, a claimed row's skip_test is checked against git history — a skip added in the same edit/commit that claims the row done is refused as self-skipped (O56), never graded by the agent's own hand.",
+        "type": "string"
+      },
+      "service": {
+        "description": "Service / repo identifier",
+        "type": "string"
+      },
+      "tasks": {
+        "description": "Plan tasks with acceptance contracts",
+        "items": {
+          "properties": {
+            "allow_contradiction": {
+              "description": "Contradictions don't fail the task",
+              "type": "boolean"
+            },
+            "id": {
+              "description": "Task ID",
+              "type": "string"
+            },
+            "min_tier": {
+              "description": "Minimum evidence tier (default verified)",
+              "enum": [
+                "verified",
+                "pre-scan",
+                "doc-claimed",
+                "sme-stated",
+                "assumed"
+              ],
+              "type": "string"
+            },
+            "package": {
+              "description": "Optional repo-relative directory the symbol's file must live under (disambiguates a bare name that exists in several packages)",
+              "type": "string"
+            },
+            "reachable_from": {
+              "description": "Entrypoint that must reach symbol",
+              "type": "string"
+            },
+            "skip": {
+              "description": "Justification for skip_test — mirrors the Markdown checklist's `skip:` annotation key. A bare skip_test with no reason is refused as skip-without-reason (O56).",
+              "type": "string"
+            },
+            "skip_test": {
+              "description": "Don't require a test to reach symbol",
+              "type": "boolean"
+            },
+            "spec_ids": {
+              "description": "Spec IDs that must be covered",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "symbol": {
+              "description": "Symbol that must exist in the index",
+              "type": "string"
+            },
+            "title": {
+              "description": "Task title",
+              "type": "string"
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "type": "object"
+        },
+        "type": "array"
+      }
+    },
+    "required": [
+      "service"
+    ],
+    "type": "object"
+  }
+}
