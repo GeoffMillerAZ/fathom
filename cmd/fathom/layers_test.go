@@ -135,6 +135,66 @@ func TestLayers_Install_CopiesAndListable(t *testing.T) {
 	}
 }
 
+// TestLayers_Install_FlagsAfterPositionalPath is J6/O8 (app-kit dogfood):
+// the DOCUMENTED usage line (`fathom layers install <dir> --root DIR`)
+// used to be silently mis-parsed as three positional arguments and
+// refused — only the undocumented flags-first order worked. Both orders
+// now install identically.
+func TestLayers_Install_FlagsAfterPositionalPath(t *testing.T) {
+	srcDir := filepath.Join(t.TempDir(), "adr-rules")
+	writeTestPack(t, srcDir, "adr-rules")
+
+	root := t.TempDir()
+	var out, errBuf bytes.Buffer
+	code := run([]string{"layers", "install", srcDir, "--root", root}, &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("layers install <dir> --root DIR: exit = %d, stderr: %s", code, errBuf.String())
+	}
+	if !strings.Contains(out.String(), "installed: adr-rules") {
+		t.Errorf("install output = %q", out.String())
+	}
+	destLayerCUE := filepath.Join(root, ".fathom", "layers", "adr-rules", "layer.cue")
+	if _, err := os.Stat(destLayerCUE); err != nil {
+		t.Errorf("installed layer.cue missing: %v", err)
+	}
+}
+
+// TestLayers_Install_BoolFlagAfterPositionalPath pins the bool-flag case
+// (--force) specifically: reorderFlagsFirst must never swallow the
+// positional path (or a later flag) as --force's value.
+func TestLayers_Install_BoolFlagAfterPositionalPath(t *testing.T) {
+	srcDir := filepath.Join(t.TempDir(), "adr-rules")
+	writeTestPack(t, srcDir, "adr-rules")
+	root := t.TempDir()
+
+	var out, errBuf bytes.Buffer
+	if code := run([]string{"layers", "install", "--root", root, srcDir}, &out, &errBuf); code != 0 {
+		t.Fatalf("first install: exit = %d, stderr: %s", code, errBuf.String())
+	}
+
+	out.Reset()
+	errBuf.Reset()
+	code := run([]string{"layers", "install", srcDir, "--force", "--root", root}, &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("layers install <dir> --force --root DIR: exit = %d, stderr: %s", code, errBuf.String())
+	}
+	if !strings.Contains(out.String(), "installed: adr-rules") {
+		t.Errorf("install output = %q", out.String())
+	}
+}
+
+// TestLayers_PrintUsage_LayersInstallLinePinned pins the exact usage line
+// (J6/O8) so a future edit cannot silently drift it out of sync with the
+// parser's real accepted order.
+func TestLayers_PrintUsage_LayersInstallLinePinned(t *testing.T) {
+	var buf bytes.Buffer
+	printLayersUsage(&buf)
+	const want = "  fathom layers install <dir>  [--root DIR] [--force]\n"
+	if !strings.Contains(buf.String(), want) {
+		t.Errorf("usage = %q, want it to contain %q", buf.String(), want)
+	}
+}
+
 func TestLayers_Install_RejectsInvalidPack(t *testing.T) {
 	srcDir := t.TempDir() // no layer.cue at all
 	root := t.TempDir()
