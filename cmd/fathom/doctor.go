@@ -268,6 +268,9 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		checkConcerns(root),
 		checkIntent(root),
 		checkUnprovenClaims(root, baseURL, explicitSvc),
+		// J5 (app-kit O25): instrument --adoption/research report/flywheel
+		// must agree on which call log they're reading.
+		checkInstrumentIdentity(hc, baseURL, explicitSvc),
 	)
 	return checks
 }

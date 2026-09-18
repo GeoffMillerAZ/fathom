@@ -189,22 +189,32 @@ func cmdInstrumentAdoption(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 
+	// J5 (app-kit O25, O15/O17/O19): a NAMED service resolves its OWN
+	// call log the one shared way every identity-aware instrument now
+	// does (resolveServiceCallLog, calllogidentity.go) — its recorded
+	// corpus path, that root's own config, then the daemon default for
+	// that root — never the CALLER's cwd, which is exactly what let this
+	// command and flywheel/research_report disagree (O25).
 	callLogPath := *callLogFlag
+	resolvedServiceRoot := ""
 	if callLogPath == "" {
-		callLogPath = resolveCallLogPath()
-	}
-	if _, statErr := os.Stat(callLogPath); statErr != nil && *callLogFlag == "" {
-		// cwd-independence (IO-10, the audit's coupling defect): from any
-		// repo but the daemon's own checkout, the relative default resolves
-		// to a file that does not exist and the gauge measured nothing.
-		// Reuse doctor's call-log resolution (absolute config wins; else
-		// the fathom checkout; else the daemon's recorded service root) —
-		// the same logic, never re-derived.
 		hc := &http.Client{Timeout: 2 * time.Second}
-		for _, cand := range resolveCallLogCandidates(hc, defaultFathomURL(), true, *root) {
-			if _, err := os.Stat(cand); err == nil {
-				callLogPath = cand
-				break
+		callLogPath, resolvedServiceRoot = resolveServiceCallLog(hc, defaultFathomURL(), *serviceFlag)
+	}
+	if resolvedServiceRoot == "" {
+		if _, statErr := os.Stat(callLogPath); statErr != nil && *callLogFlag == "" {
+			// cwd-independence (IO-10, the audit's coupling defect): from any
+			// repo but the daemon's own checkout, the relative default resolves
+			// to a file that does not exist and the gauge measured nothing.
+			// Reuse doctor's call-log resolution (absolute config wins; else
+			// the fathom checkout; else the daemon's recorded service root) —
+			// the same logic, never re-derived.
+			hc := &http.Client{Timeout: 2 * time.Second}
+			for _, cand := range resolveCallLogCandidates(hc, defaultFathomURL(), true, *root) {
+				if _, err := os.Stat(cand); err == nil {
+					callLogPath = cand
+					break
+				}
 			}
 		}
 	}
@@ -247,8 +257,11 @@ func cmdInstrumentAdoption(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "warn: instrument --adoption: reading %s: %v\n", observationsPath(*root), obsErr)
 	}
 
-	if realReadErr {
-		fmt.Fprintf(stderr, "warn: instrument --adoption: call log at %s: %s\n", callLogPath, callLogReadError)
+	// J5: one identical headline across all three instruments (J5(d)) —
+	// "unknown", never a bare 0, whether the log is simply absent or
+	// genuinely unreadable.
+	if !read {
+		fmt.Fprintln(stderr, "warn: instrument --adoption: "+callLogIdentityLine(callLogPath, callLogErr))
 	}
 
 	// IT-11: the verify-gate figure sources from the verify ledger, never

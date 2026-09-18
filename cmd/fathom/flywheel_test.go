@@ -99,7 +99,7 @@ func TestFlywheelEveryCheckCarriesEvidence(t *testing.T) {
 	hermeticObsEnv(t)
 	armSetAt(t, now.Add(-time.Hour)) // hermeticObsEnv resets FATHOM_ARM_STATE
 
-	for _, c := range runFlywheelChecks("http://127.0.0.1:1", now) {
+	for _, c := range runFlywheelChecks("http://127.0.0.1:1", "", now) {
 		if c.Purpose == "" {
 			t.Errorf("%q has no stated purpose — a health check nobody can interpret is not one", c.Loop)
 		}
@@ -173,7 +173,7 @@ func TestFlywheelSurvivesWithoutALocalCallLog(t *testing.T) {
 	// for every test after it.
 	t.Setenv("FATHOM_CALL_LOG", filepath.Join(t.TempDir(), "absent", "mcp-calls.jsonl"))
 
-	checks := runFlywheelChecks("http://127.0.0.1:1", time.Date(2026, 8, 8, 22, 0, 0, 0, time.UTC))
+	checks := runFlywheelChecks("http://127.0.0.1:1", "", time.Date(2026, 8, 8, 22, 0, 0, 0, time.UTC))
 	if len(checks) == 0 {
 		t.Fatal("the flywheel must still report every loop with no local state")
 	}
@@ -204,7 +204,7 @@ func TestFlywheelReadErrorIsOpenNeverIdle(t *testing.T) {
 		t.Cleanup(func() { _ = os.Chmod(path, 0o644) }) // let TempDir cleanup remove it
 		t.Setenv("FATHOM_CALL_LOG", path)
 
-		entries, err := flywheelCallLog("http://127.0.0.1:1")
+		entries, err := flywheelCallLog("http://127.0.0.1:1", "")
 		if err == nil {
 			t.Fatalf("want an error reading an unreadable file, got nil (entries=%v)", entries)
 		}
@@ -220,7 +220,7 @@ func TestFlywheelReadErrorIsOpenNeverIdle(t *testing.T) {
 	t.Run("missing file stays IDLE", func(t *testing.T) {
 		t.Setenv("FATHOM_CALL_LOG", filepath.Join(t.TempDir(), "does-not-exist.jsonl"))
 
-		entries, err := flywheelCallLog("http://127.0.0.1:1")
+		entries, err := flywheelCallLog("http://127.0.0.1:1", "")
 		got := checkLoopCallLogEntries(entries, err, now)
 		if got.Status != loopIdle {
 			t.Fatalf("status = %q, want IDLE for a genuinely missing file", got.Status)
