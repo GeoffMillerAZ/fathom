@@ -28,6 +28,11 @@ type MemoryStore struct {
 	typedEdges     map[typedEdgeKey][]core.Edge // (serviceID, pkgPath) → edges (replace-semantic)
 	typedEdgeFPs   map[fpKey]string             // reuses fpKey{serviceID, pkgPath} shape
 
+	// externalFindings is the findings-loop's per-claim cursor table (FL-7),
+	// reusing claimKey's (serviceID, claimID) shape — one row per claim, same
+	// identity PutClaims already keys on.
+	externalFindings map[claimKey]core.ExternalFinding
+
 	// gate is the per-call suppression filter (scoped.go); initialised by
 	// NewMemoryStore and exercised by the constructor audit.
 	gate scopeGate
@@ -68,6 +73,8 @@ func NewMemoryStore() *MemoryStore {
 		claimLinks:     make(map[string][]core.ClaimLink),
 		typedEdges:     make(map[typedEdgeKey][]core.Edge),
 		typedEdgeFPs:   make(map[fpKey]string),
+
+		externalFindings: make(map[claimKey]core.ExternalFinding),
 	}
 }
 

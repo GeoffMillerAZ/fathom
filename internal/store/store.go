@@ -340,6 +340,23 @@ type Store interface {
 	// layer (layer "" returns all layers), newest-first by RanAt then run_id.
 	CompileRuns(ctx context.Context, serviceID, layer string) ([]core.CompileRun, error)
 
+	// PutExternalFinding upserts the findings-loop's per-claim cursor row
+	// (plan FL-7, vision 30 §3.3 item 4) keyed by (f.ServiceID, f.ClaimID) —
+	// the row the external import path (internal/findings/external) reads
+	// back on the NEXT import of the same claim to decide stale/duplicate/
+	// conflicting-replay, and that obligations serving joins onto a claim
+	// whose PromptVersion is "external-import/v1" for source-linked
+	// provenance (producer, rule, source id/version/revision, anchor).
+	PutExternalFinding(ctx context.Context, f core.ExternalFinding) error
+
+	// ExternalFinding returns the cursor row for (serviceID, claimID). found
+	// is false when no such row exists.
+	ExternalFinding(ctx context.Context, serviceID, claimID string) (core.ExternalFinding, bool, error)
+
+	// ExternalFindingsForService returns every cursor row for serviceID,
+	// sorted by claim_id.
+	ExternalFindingsForService(ctx context.Context, serviceID string) ([]core.ExternalFinding, error)
+
 	// Close releases all resources held by the store. After Close returns the
 	// store must not be used.
 	Close() error

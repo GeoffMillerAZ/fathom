@@ -1404,6 +1404,107 @@ func storeContract(t *testing.T, s Store) {
 		}
 	})
 
+	// ------------------------------------------------------------------ //
+	// external_findings (plan FL-7, vision 30 §3.3 item 4): the findings-loop
+	// importer's per-claim cursor row — upsert by (service_id, claim_id),
+	// round-trips every field, and a service-scoped list is sorted by
+	// claim_id. This is the interface-dispatched multi-impl call the row's
+	// skip_test annotation names (O9 residue: test_reaches cannot resolve a
+	// call through the Store interface, so the contract suite is the proof).
+	// ------------------------------------------------------------------ //
+	t.Run("external_findings", func(t *testing.T) {
+		svc := "svc-external-findings"
+
+		observedAt := time.Unix(1_700_000_000, 0).UTC()
+		importedAt := time.Unix(1_700_000_100, 0).UTC()
+		f1 := core.ExternalFinding{
+			ServiceID: svc, ClaimID: "ext-claim-1",
+			Producer: "reviewkit.system-review", ProducerVersion: "1.2.3",
+			SourceID: "rule-nil-deref", SourceVersion: 1,
+			PayloadDigest:  "digest-v1",
+			SourceRevision: "abc123",
+			RuleID:         "R-NIL-DEREF", RuleVersion: "1", Remedy: "add a nil check",
+			AnchorPath: "internal/foo/bar.go", AnchorStart: 10, AnchorEnd: 12,
+			AnchorSymbol: "Bar", AnchorDigest: "anchor-digest-v1",
+			ObservedAt: observedAt, ImportedAt: importedAt,
+		}
+		f2 := core.ExternalFinding{
+			ServiceID: svc, ClaimID: "ext-claim-0-unanchored",
+			Producer: "human.review", SourceID: "process-1", SourceVersion: 1,
+			PayloadDigest: "digest-p1", ObservedAt: observedAt, ImportedAt: importedAt,
+			Unanchored: true,
+		}
+
+		// found=false before any row exists.
+		if _, found, err := s.ExternalFinding(ctx, svc, f1.ClaimID); err != nil {
+			t.Fatalf("ExternalFinding before put: %v", err)
+		} else if found {
+			t.Fatal("ExternalFinding before put: found=true, want false")
+		}
+
+		if err := s.PutExternalFinding(ctx, f1); err != nil {
+			t.Fatalf("PutExternalFinding f1: %v", err)
+		}
+		if err := s.PutExternalFinding(ctx, f2); err != nil {
+			t.Fatalf("PutExternalFinding f2: %v", err)
+		}
+
+		got, found, err := s.ExternalFinding(ctx, svc, f1.ClaimID)
+		if err != nil {
+			t.Fatalf("ExternalFinding: %v", err)
+		}
+		if !found {
+			t.Fatal("ExternalFinding: found=false, want true")
+		}
+		if got.Producer != f1.Producer || got.ProducerVersion != f1.ProducerVersion ||
+			got.SourceID != f1.SourceID || got.SourceVersion != f1.SourceVersion ||
+			got.PayloadDigest != f1.PayloadDigest || got.SourceRevision != f1.SourceRevision ||
+			got.RuleID != f1.RuleID || got.RuleVersion != f1.RuleVersion || got.Remedy != f1.Remedy ||
+			got.AnchorPath != f1.AnchorPath || got.AnchorStart != f1.AnchorStart || got.AnchorEnd != f1.AnchorEnd ||
+			got.AnchorSymbol != f1.AnchorSymbol || got.AnchorDigest != f1.AnchorDigest ||
+			!got.ObservedAt.Equal(f1.ObservedAt) || !got.ImportedAt.Equal(f1.ImportedAt) || got.Unanchored != f1.Unanchored {
+			t.Errorf("ExternalFinding round-trip mismatch:\n got  = %+v\n want = %+v", got, f1)
+		}
+
+		// Upsert: a second Put for the same (service_id, claim_id) replaces
+		// the row wholesale (the cursor's own semantics — a fresh
+		// SourceVersion/PayloadDigest on the NEXT import).
+		f1Updated := f1
+		f1Updated.SourceVersion = 2
+		f1Updated.PayloadDigest = "digest-v2"
+		if err := s.PutExternalFinding(ctx, f1Updated); err != nil {
+			t.Fatalf("PutExternalFinding update: %v", err)
+		}
+		got2, _, err := s.ExternalFinding(ctx, svc, f1.ClaimID)
+		if err != nil {
+			t.Fatalf("ExternalFinding after update: %v", err)
+		}
+		if got2.SourceVersion != 2 || got2.PayloadDigest != "digest-v2" {
+			t.Errorf("ExternalFinding after update = %+v, want SourceVersion=2 PayloadDigest=digest-v2", got2)
+		}
+
+		// ExternalFindingsForService: sorted by claim_id, service-scoped.
+		if err := s.PutExternalFinding(ctx, core.ExternalFinding{
+			ServiceID: "svc-external-findings-other", ClaimID: "ext-claim-1",
+			Producer: "human.review", SourceID: "s", SourceVersion: 1,
+		}); err != nil {
+			t.Fatalf("PutExternalFinding other service: %v", err)
+		}
+		list, err := s.ExternalFindingsForService(ctx, svc)
+		if err != nil {
+			t.Fatalf("ExternalFindingsForService: %v", err)
+		}
+		if len(list) != 2 {
+			t.Fatalf("ExternalFindingsForService: got %d rows, want 2: %+v", len(list), list)
+		}
+		if list[0].ClaimID != "ext-claim-0-unanchored" || list[1].ClaimID != "ext-claim-1" {
+			t.Errorf("ExternalFindingsForService not sorted by claim_id: %+v", list)
+		}
+		if !list[0].Unanchored {
+			t.Errorf("ExternalFindingsForService[0].Unanchored = false, want true")
+		}
+	})
+
 	t.Run("claim_events_append_and_order", func(t *testing.T) {
 		t1 := time.Unix(1000, 0).UTC()
 		t2 := time.Unix(2000, 0).UTC()

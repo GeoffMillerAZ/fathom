@@ -85,6 +85,9 @@ var storeMethodDisposition = map[string]string{
 	"CompileRuns":                    "compile metadata (tokens, cost, watermark), no content",
 	"TypedEdgePackageFingerprint":    "per-package content hash for the enrichment cache, no content",
 	"ListTypedEdgePackages":          "package identifiers for the enrichment reconcile, no file paths",
+	"PutExternalFinding":             "write path",
+	"ExternalFinding":                "cursor/provenance row keyed by claim_id (FL-7); the claim it belongs to is anchored through claim_links, which IS filtered -- this is supplementary source-linked metadata for an already-filtered claim, not the primary path-anchored read",
+	"ExternalFindingsForService":     "cursor/provenance rows keyed by claim_id (FL-7); same reasoning as ExternalFinding",
 	"Close":                          "lifecycle",
 }
 
