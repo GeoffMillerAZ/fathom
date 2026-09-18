@@ -2,6 +2,28 @@
 
 One entry per tag once tagging starts (D13); pre-tag work logged by date.
 
+## 2026-09-14 (ui) — stat reflow and runtime theme identity
+
+Shared stat bands preserve metric content at narrow widths and delay dense column
+layouts until sufficient space is available. Generated themes now route font and
+radius utilities through runtime aliases so named themes can change identity tokens
+without rebuilding utility CSS. Existing semantic roles and palette values are unchanged.
+
+## 2026-09-14 (ui) — dashboard navigation accessibility repair
+
+Raises shared navigation items and the mobile Menu disclosure to a 44px minimum
+height, adds an explicit Menu focus outline, and uses the ink role for readable
+current-page text on the soft accent surface. No theme or runtime contract changes.
+
+## 2026-09-14 (ui) — typed dashboard navigation and skip-target focus
+
+Adds experimental `dashboard.RenderNav`, `NavGroup`, `NavItem` and `MatchPath` for
+escaped grouped links, route-boundary matching and one current-page indicator. Unsafe
+destinations render disabled, while long labels wrap and links expose visible-focus
+utilities. `RenderShell` skip destinations now accept programmatic focus without
+entering the normal tab order. Consumers retain routing, permissions and icon review,
+must scan the L3b package, and still need composed keyboard/narrow/theme verification.
+
 ## 2026-06-17 (ui) — hitl.ToolCall: agent tool-call inspector
 
 Rounds out the human-in-the-loop / "under the hood" vocabulary with

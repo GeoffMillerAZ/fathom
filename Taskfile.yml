@@ -10,36 +10,16 @@ version: '3'
 
 env:
   CGO_ENABLED: '1'
-  # Build/link scratch on the SAME roomy external volume as the repo, but
-  # deliberately OUTSIDE the module. The Go linker writes to TMPDIR (not
-  # GOTMPDIR), so both must point there: a near-full internal disk
-  # otherwise kills link steps with "no space left on device" even when the
-  # repo lives on a roomy external volume (recurring 2026-07 failure class).
-  #
-  # DIVERGENCE from CLAUDE.md's "everything under workspace/": these are Go
-  # toolchain scratch dirs, not project artifacts, and keeping them inside
-  # the module broke two things.
-  #
-  #   1. `go vet ./...` walks them. A killed build leaves a
-  #      go-build*/bNNN directory holding real .go files, and the next vet
-  #      run fails with a baffling "use of internal package
-  #      internal/runtime/sys not allowed" from Go's own runtime sources.
-  #      Observed 2026-08-08: it blocked a push carrying an urgent fix, and
-  #      the error names nothing in this repo.
-  #   2. It puts every t.TempDir() inside a git repository, which silently
-  #      breaks any test premised on "not in a git repo" (the class fixed
-  #      by gitProofTempDir in four places).
-  #
-  # workspace/tmp/ remains the home for anything a task deliberately emits.
-  GOTMPDIR: '/Volumes/m2ext/tmp/fathom-build'
-  TMPDIR: '/Volumes/m2ext/tmp/fathom-build'
   # Match the tree-sitter grammar packages' compiled objects to silence ld
   # version-mismatch warnings (previously justified by DuckDB's prebuilt
   # static libs, deleted in SS-8 — tree-sitter's CGO objects need this too).
   MACOSX_DEPLOYMENT_TARGET: '14.0'
 
 vars:
-  GO: go
+  # The wrapper preserves normal Go behavior when FATHOM_CACHE_ROOT is unset.
+  # When configured, every Taskfile Go invocation uses that dedicated root
+  # and enforces FATHOM_CACHE_MAX_MIB (default 8192) on the build cache.
+  GO: bash scripts/fathom-go.sh
   # Go files we own — exclude tmp/ scans, ref/ external clones, workspace/ (build
   # artifacts + calibration clones), _reference/ copies, testdata/ fixtures, and
   # third_party/ (the vendored agentic-kit mirror — upstream's code, upstream's
@@ -112,15 +92,15 @@ tasks:
         for f in scripts/*.sh; do
           bash -n "$f" || { echo "bash -n FAILED: $f"; rc=1; }
         done
-        exit $rc
+        [ "$rc" -eq 0 ] || exit "$rc"
+        bash scripts/build-cache_test.sh
 
   ui:css:
-    desc: Rebuild the observatory CSS via app-kit's pinned Tailwind binary (no Node)
+    desc: Rebuild the standalone observatory CSS from the in-tree app-kit mirror (no Node or sibling checkout)
     cmds:
-      # -terminal "" skips the kit's generated CLI palette (appkit/cli/theme/palette_gen.go,
-      # added with app-kit's cli-kit) — that file belongs to the kit's tree, not this one.
-      - go run github.com/geoffmilleraz/app-kit/cmd/appkit gen -tokens ../app-kit/cue/tokens/kit.cue -css cmd/fathom/ui/tokens/theme.css -dtcg "" -go "" -terminal ""
-      - go run github.com/geoffmilleraz/app-kit/cmd/appkit css -i cmd/fathom/ui/input.css -o cmd/fathom/ui/app.css
+      # The script builds appkit inside third_party/app-kit with GOWORK=off,
+      # validates the closed source set, stages both outputs, then publishes.
+      - bash scripts/ui-css.sh
 
   validate:
     desc: Full gate — fmt-check, vet, cue-vet, vendor-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, bench-l0-gate, test
@@ -286,7 +266,7 @@ tasks:
     vars:
       RANGE: '{{.RANGE | default "origin/main...HEAD"}}'
     cmds:
-      - GOWORK=off CGO_ENABLED=1 go run ./cmd/contextbenchscore select -tasks testdata/contextbench/tasks-home.json -diff {{.RANGE}} {{.CLI_ARGS}}
+      - GOWORK=off CGO_ENABLED=1 {{.GO}} run ./cmd/contextbenchscore select -tasks testdata/contextbench/tasks-home.json -diff {{.RANGE}} {{.CLI_ARGS}}
 
   bench-targeted:
     desc: "COSTS TOKENS (a fraction of bench-home). Re-run only the tasks a diff can move, fathom arm only (RANGE=origin/main...HEAD). The row is scope=targeted and the evaluator refuses to turn it into a verdict."
@@ -295,7 +275,7 @@ tasks:
     cmds:
       - |
         set -eu
-        ONLY="$(GOWORK=off CGO_ENABLED=1 go run ./cmd/contextbenchscore select -tasks testdata/contextbench/tasks-home.json -diff {{.RANGE}} | tr '\n' ' ')"
+        ONLY="$(GOWORK=off CGO_ENABLED=1 {{.GO}} run ./cmd/contextbenchscore select -tasks testdata/contextbench/tasks-home.json -diff {{.RANGE}} | tr '\n' ' ')"
         if [ -z "${ONLY// /}" ]; then
           echo "bench-targeted: {{.RANGE}} moves no task the corpus exercises — nothing to run, nothing to spend."
           exit 0
@@ -317,7 +297,7 @@ tasks:
   bench-regress:
     desc: "Regression gate over the committed ledger (free): newest row vs the previous same-corpus row; exit 1 if a task's treatment success fell, 3 if not comparable. Joins validate only once two same-corpus rows exist (ADR-031)."
     cmds:
-      - GOWORK=off CGO_ENABLED=1 go run ./cmd/contextbenchscore regress -ledger docs/bench/ledger.jsonl {{.CLI_ARGS}}
+      - GOWORK=off CGO_ENABLED=1 {{.GO}} run ./cmd/contextbenchscore regress -ledger docs/bench/ledger.jsonl {{.CLI_ARGS}}
 
   # ─── scenario bench (vision 27, ADR-033; docs/bench/scenarios.md) ───────
   # One driver (cmd/scenariobench) over corpora under
@@ -331,35 +311,34 @@ tasks:
   bench-scenario-plan:
     desc: "Free. Lists the public Go corpus's cells, their keys, and what would borrow by key — no spend."
     cmds:
-      - GOWORK=off CGO_ENABLED=1 go run ./cmd/scenariobench plan -corpus testdata/scenariobench/public-go.json {{.CLI_ARGS}}
+      - GOWORK=off CGO_ENABLED=1 {{.GO}} run ./cmd/scenariobench plan -corpus testdata/scenariobench/public-go.json {{.CLI_ARGS}}
 
   bench-scenario-guards:
     desc: "COSTS TOKENS (targeted tier, ~$20-40 — vision 27 §9). Guards pilot: the fathom-repo invariants corpus, arms full vs control, n=2 (SB-37; testdata/scenariobench/guards-fathom.json is SB-24, another wave)."
     cmds:
-      - GOWORK=off CGO_ENABLED=1 go run ./cmd/scenariobench run -corpus testdata/scenariobench/guards-fathom.json -trials 2 {{.CLI_ARGS}}
+      - GOWORK=off CGO_ENABLED=1 {{.GO}} run ./cmd/scenariobench run -corpus testdata/scenariobench/guards-fathom.json -trials 2 {{.CLI_ARGS}}
 
   bench-scenario-guards-adr:
     desc: "COSTS TOKENS (targeted tier, ~$20-40 — vision 27 §9). Guards pilot #2: rules that live only in ADR.md (never repeated in a CLAUDE.md/AGENTS.md), arms full vs control, n=2 (SB-49; testdata/scenariobench/guards-adr.json)."
     cmds:
-      - GOWORK=off CGO_ENABLED=1 go run ./cmd/scenariobench run -corpus testdata/scenariobench/guards-adr.json -trials 2 {{.CLI_ARGS}}
+      - GOWORK=off CGO_ENABLED=1 {{.GO}} run ./cmd/scenariobench run -corpus testdata/scenariobench/guards-adr.json -trials 2 {{.CLI_ARGS}}
 
   bench-scenario-guards-m1:
     desc: "COSTS TOKENS (targeted tier, ~$20-40 — vision 27 §9). Guards pilot #3 (M1 redesign): six rules placed far from their edit site by construction (a package guide, an unnamed-package ADR, a decoy comment, a served-only compiled rule, a three-file docs contract, a commit-message rule); two tasks materialize their own edit-site scaffold via subject.setup rather than committing it here. Arms full vs control, n=3 (RC-50/RC-51; testdata/scenariobench/guards-m1.json)."
     cmds:
-      - GOWORK=off CGO_ENABLED=1 go run ./cmd/scenariobench run -corpus testdata/scenariobench/guards-m1.json -trials 3 {{.CLI_ARGS}}
+      - GOWORK=off CGO_ENABLED=1 {{.GO}} run ./cmd/scenariobench run -corpus testdata/scenariobench/guards-m1.json -trials 3 {{.CLI_ARGS}}
 
   bench-scenario-pilot:
     desc: "COSTS TOKENS (pilot tier, ~$90-130 — vision 27 §9). Change-bench pilot over the public Go corpus: arms full vs control, 2 trials, 2 sessions/cell (SB-38)."
     cmds:
-      - GOWORK=off CGO_ENABLED=1 go run ./cmd/scenariobench run -corpus testdata/scenariobench/public-go.json -trials 2 {{.CLI_ARGS}}
+      - GOWORK=off CGO_ENABLED=1 {{.GO}} run ./cmd/scenariobench run -corpus testdata/scenariobench/public-go.json -trials 2 {{.CLI_ARGS}}
 
   bench-scenario-lookups-vs:
     desc: "COSTS TOKENS. Lookup pilot vs. the competitors (SB-32/O53): fathom (wired) vs. graphify/serena/gopls/grep over 14 lookup tasks, 2 trials — 140 cells (`task bench-scenario-plan -- -corpus testdata/scenariobench/lookups-vs.json` lists them at no spend; docs/bench/competitors.md pins each tool's install/build/query commands)."
     cmds:
-      - GOWORK=off CGO_ENABLED=1 go run ./cmd/scenariobench run -corpus testdata/scenariobench/lookups-vs.json -trials 2 {{.CLI_ARGS}}
+      - GOWORK=off CGO_ENABLED=1 {{.GO}} run ./cmd/scenariobench run -corpus testdata/scenariobench/lookups-vs.json -trials 2 {{.CLI_ARGS}}
 
   bench-compare-edges:
     desc: "Free. Competitor edge comparison (M6/M7): graphify/Serena/gopls precision-recall against the go/types L0 truth, beside fathom's own row (SB-28..31; cmd/indexbench compare is another wave)."
     cmds:
-      - GOWORK=off CGO_ENABLED=1 go run ./cmd/indexbench compare {{.CLI_ARGS}}
-
+      - GOWORK=off CGO_ENABLED=1 {{.GO}} run ./cmd/indexbench compare {{.CLI_ARGS}}

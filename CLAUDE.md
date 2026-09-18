@@ -1,12 +1,7 @@
 # CLAUDE.md — fathom
 
-A **code-intelligence + evidence engine**: it ingests source across one or
-many repos, extracts symbols / call edges / facts as governed evidence
-observations, and answers concern-scoped queries — for coding agents,
-cross-repo blast-radius, change review, incident investigation, fleet health.
-Surfaces: Go client (`pkg/client`), CLI (`cmd/fathom`), MCP server (stdio +
-HTTP). Built on **agentic-kit** (`../agentic-kit`, via `go.work` + `replace`).
-Three layers — connector → fusion → query: `docs/architecture.md`, `ADR.md`.
+A **code-intelligence + evidence engine**: governed symbols/call edges/facts and concern-scoped queries for coding agents, cross-repo impact, review, incidents and fleet health.
+Surfaces: Go (`pkg/client`), CLI (`cmd/fathom`), stdio/HTTP MCP. **agentic-kit** via workspace/replace; connector → fusion → query: `docs/architecture.md`, `ADR.md`.
 
 ## Non-negotiables (one line each — the pointer carries the full rules)
 
@@ -40,15 +35,25 @@ raw-`cp` the daemon, skip a gate, or claim done without `Verified:`.
 
 ## Working conventions
 
-- **TDD**: write the failing `_test.go` first; prefer golden fixtures
-  (`internal/connector/testdata/fauxtown/` is the deterministic fixture fleet).
+- **TDD**: failing `_test.go` first; prefer golden fixtures (`internal/connector/testdata/fauxtown/`).
 - **Determinism is a contract**: sorted outputs, injected clocks — `internal/CLAUDE.md`.
-- **CGO**: tests run `CGO_ENABLED=1` + `MACOSX_DEPLOYMENT_TARGET=14.0`
-  (tree-sitter, ADR-013); `internal/store` stays pure Go (ADR-020/025).
-- **The domain model is the keystone**: shared types live in `internal/core`,
-  extended additively; `pkg/client` re-exports for external consumers.
-- Always verify with `-race` — the gate uses it; several test bugs only
-  surface under it.
+- **CGO**: `CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0` (ADR-013); `internal/store` stays pure Go (ADR-020/025).
+- **Domain model**: shared types in `internal/core`, extended additively; external re-exports in `pkg/client`.
+- Always verify with `-race`; the gate uses it and some test bugs surface only there.
+
+<!-- appkit:begin -->
+## App-kit
+
+App-kit adoption lives at docs/app-kit.md: selected layers/profile, design context,
+revision, proof commands and divergences. Before material UI/CLI work, consult it and
+the kit's intent router through appkit MCP or the pinned local docs. Select a fitting
+capability/recipe; verify the actual task and states in the target UI. Record reusable
+improvements or a reasoned divergence and return applicable fixes upstream.
+<!-- appkit:end -->
+
+Project-specific contribution routing and disposition evidence live in
+`docs/app-kit.md#selected-metadata-and-reusable-contributions-2026-09-16`; retrieve the
+shared contract with app-kit MCP `get_kit_decision("contribution-loop")`.
 
 ## Path-scoped instructions (auto-loaded when you work there)
 
@@ -69,8 +74,7 @@ raw-`cp` the daemon, skip a gate, or claim done without `Verified:`.
 | Plans — gated checklists + grammar | `docs/plans/`, `docs/plans/README.md` |
 | Fleet index, daemon ops, deploy, dogfood discipline | `docs/guides/fleet-index.md` |
 | MCP tools + surfaces catalog | `docs/mcp-tools.md` |
-| CLI usage + workspace convention | `docs/usage.md` |
-| Use-case guides (one doc per use case; keep `## Maintained` current) | `docs/use-cases/` |
+| CLI/workspace; use-case guides (keep `## Maintained` current) | `docs/usage.md`, `docs/use-cases/` |
 | Friction log (`fathom observe`; the narrative log is frozen) | `.fathom/observations.md` (live); `docs/dogfood-observations.md` (historical) |
 | Original design docs (gitignored, local-only); roadmap = `fathom plans status` + `docs/intent/scope.md` | `tmp/design_inspiration/files/` |
 <!-- fathom:begin v3 sha256:0ac331d4f347089d3dd89ec45dbc7bdcfa8b06b9b0943e2f017dcafb3d10fec7 -->

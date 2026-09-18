@@ -63,6 +63,20 @@ stale) — fail-open, not a verification failure.
 - **Plan grammar + docs upkeep**: `docs/CLAUDE.md`, `docs/plans/README.md`.
 - Full agent guidance (conventions, source-of-truth map): `CLAUDE.md`.
 
+<!-- appkit:begin -->
+## App-kit
+
+App-kit adoption lives at docs/app-kit.md: selected layers/profile, design context,
+revision, proof commands and divergences. Before material UI/CLI work, consult it and
+the kit's intent router through appkit MCP or the pinned local docs. Select a fitting
+capability/recipe; verify the actual task and states in the target UI. Record reusable
+improvements or a reasoned divergence and return applicable fixes upstream.
+<!-- appkit:end -->
+
+Project-specific contribution routing and disposition evidence live in
+`docs/app-kit.md#selected-metadata-and-reusable-contributions-2026-09-16`; retrieve the
+shared contract with app-kit MCP `get_kit_decision("contribution-loop")`.
+
 ## Project intent
 
 Durable intent lives at `docs/intent/README.md` (router). Vision: `docs/design/product-vision.md`.

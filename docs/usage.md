@@ -29,6 +29,29 @@ lefthook install
 `store-purego` (invariant I2, ADR-025) runs `CGO_ENABLED=0 go test -race ./internal/store/`
 on every validate/push — the store stays pure Go; only the tree-sitter extractors need CGO.
 
+### Build-cache placement and disk guard
+
+Fathom's supported build path (`task ...` and repository scripts) preserves the
+machine's normal Go and temporary-directory settings by default. To give Fathom a
+dedicated cache—on an external volume, for example—create the root first and export:
+
+```sh
+mkdir -p /path/on/the/intended/volume/fathom
+export FATHOM_CACHE_ROOT=/path/on/the/intended/volume/fathom
+export FATHOM_CACHE_MAX_MIB=8192 # optional; 0 disables automatic pruning
+task validate
+```
+
+The root must be absolute, pre-existing, and writable. Requiring it to exist is
+intentional: if a removable volume is absent, Fathom refuses instead of recreating the
+mount path on the system disk. The build flow derives `GOCACHE`, `GOMODCACHE`,
+`GOTMPDIR`, `TMPDIR`, and `UV_CACHE_DIR` beneath that root. Before a supported Go
+invocation, a build cache larger than `FATHOM_CACHE_MAX_MIB` is cleared with
+`go clean -cache`; module downloads are retained.
+
+Raw `go` commands bypass repository policy. Use `task test`, `task build`, or the
+corresponding repository script when cache placement matters.
+
 ---
 
 ## workspace/ convention

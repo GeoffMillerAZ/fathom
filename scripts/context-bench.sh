@@ -221,6 +221,9 @@
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=scripts/lib/build-cache.sh
+source "${ROOT}/scripts/lib/build-cache.sh"
+fathom_cache_configure || exit $?
 TASKS="$ROOT/testdata/contextbench/tasks.json"
 FATHOM_HTTP_URL="${FATHOM_HTTP_URL:-http://localhost:7575}"
 MODEL="${CONTEXT_BENCH_MODEL:-sonnet}"

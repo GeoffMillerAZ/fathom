@@ -9,6 +9,9 @@
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=scripts/lib/build-cache.sh
+source "${ROOT}/scripts/lib/build-cache.sh"
+fathom_cache_configure || exit $?
 LEDGER="${1:-$ROOT/docs/bench/ledger.jsonl}"
 README="$ROOT/docs/bench/README.md"
 BEGIN="<!-- BEGIN ledger table (task bench-ledger) -->"

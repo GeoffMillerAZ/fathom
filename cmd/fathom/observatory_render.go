@@ -20,9 +20,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/geoffmilleraz/app-kit/appkit/ui/callout"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/dashboard"
+	"github.com/geoffmilleraz/app-kit/appkit/ui/form"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/stat"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/viz"
+	"github.com/geoffmilleraz/app-kit/appkit/ui/vizframe"
 )
 
 //go:embed ui/app.css
@@ -101,7 +104,7 @@ func shortFreshness(f string) string {
 
 // kv renders one label/value row inside a widget.
 func kv(k, v string) string {
-	return `<div class="flex justify-between gap-2 py-0.5"><span class="text-ink-muted">` + html.EscapeString(k) + `</span><span class="text-right">` + v + `</span></div>`
+	return `<div class="flex min-w-0 justify-between gap-2 py-0.5"><span class="shrink-0 text-ink-muted">` + html.EscapeString(k) + `</span><span class="min-w-0 text-right [overflow-wrap:anywhere]">` + v + `</span></div>`
 }
 
 // agentCallsTip wraps an "N agent" fragment with a learn-affordance
@@ -133,20 +136,31 @@ var obsLeads = map[string]obsLead{
 	"brief":  {"The shareable summary — same numbers, framed for someone who has never heard of fathom.", "This is the page to show your manager. It is generated from the live instruments, states what is NOT measured, and can be downloaded as markdown. Nothing on it is ever sent anywhere by fathom — sharing is a human decision."},
 }
 
+// obsNavigation preserves app-owned destinations and active keys; the pinned
+// kit owns link markup, current-page matching, focus and target-size treatment.
+func obsNavigation(active string) string {
+	items := []dashboard.NavItem{
+		{Href: "/", Label: "home"},
+		{Href: "/observatory", Label: "fleet"},
+		{Href: "/observatory/wiring/", Label: "wiring"},
+		{Href: "/observatory/impact", Label: "impact"},
+		{Href: "/observatory/story", Label: "story"},
+		{Href: "/observatory/brief", Label: "brief"},
+		{Href: "/statusz", Label: "statusz"},
+	}
+	currentPath := ""
+	for _, item := range items {
+		if item.Label == active {
+			currentPath = item.Href
+			break
+		}
+	}
+	return dashboard.RenderNav([]dashboard.NavGroup{{Items: items}}, currentPath)
+}
+
 func obsPage(title, active string, body string, m observatoryModel) string {
 	var b strings.Builder
-	b.WriteString(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>` + html.EscapeString(title) + `</title><link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔱</text></svg>"><link rel="stylesheet" href="/assets/app.css"></head>`)
-	b.WriteString(`<body class="min-h-screen bg-surface p-5 font-sans text-sm text-ink">`)
-	b.WriteString(`<h1 class="text-lg font-semibold">fathom observatory</h1>`)
-	b.WriteString(`<nav class="mb-4 mt-1 flex gap-4">`)
-	for _, p := range [][2]string{{"/", "home"}, {"/observatory", "fleet"}, {"/observatory/wiring/", "wiring"}, {"/observatory/impact", "impact"}, {"/observatory/story", "story"}, {"/observatory/brief", "brief"}, {"/statusz", "statusz"}} {
-		cls := "text-accent no-underline"
-		if p[1] == active {
-			cls += " font-semibold"
-		}
-		b.WriteString(`<a class="` + cls + `" href="` + p[0] + `">` + p[1] + `</a>`)
-	}
-	b.WriteString(`</nav>`)
+	b.WriteString(`<div class="mx-auto w-full max-w-7xl">`)
 	if l, ok := obsLeads[active]; ok {
 		b.WriteString(`<p class="mb-2 max-w-3xl text-ink-muted">` + html.EscapeString(l.Lead) + `</p>`)
 		if l.Explain != "" {
@@ -166,8 +180,14 @@ func obsPage(title, active string, body string, m observatoryModel) string {
 		banner(true, m.DegradedNote)
 	}
 	b.WriteString(body)
-	b.WriteString(`<footer class="mt-8 text-xs text-ink-muted">generated ` + html.EscapeString(m.GeneratedAt) + ` · fathom ` + html.EscapeString(m.FathomVersion) + ` · loopback-only; sharing is a human verb (law 13) — <code class="font-mono">fathom brief</code> writes the shareable file</footer></body></html>`)
-	return b.String()
+	b.WriteString(`</div>`)
+	footer := `<p class="mx-auto max-w-7xl text-xs text-ink-muted">generated ` + html.EscapeString(m.GeneratedAt) + ` · fathom ` + html.EscapeString(m.FathomVersion) + ` · loopback-only; sharing is a human verb (law 13) — <code class="font-mono">fathom brief</code> writes the shareable file</p>`
+	shell := dashboard.RenderShell(dashboard.Shell{
+		Title: title, Brand: template.HTML(`<span class="text-base font-semibold text-ink">fathom observatory</span>`),
+		Nav: template.HTML(obsNavigation(active)), Content: template.HTML(b.String()),
+		Footer: template.HTML(footer), ContentID: "observatory-main", SkipLink: true,
+	})
+	return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>` + html.EscapeString(title) + `</title><link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔱</text></svg>"><link rel="stylesheet" href="/assets/app.css"></head><body class="min-h-screen bg-surface font-sans text-sm text-ink">` + shell + `</body></html>`
 }
 
 // sectionHeading renders a muted uppercase section label.
@@ -179,28 +199,64 @@ func sectionHeading(s string) string {
 // named reason in the house absence style (metricCell's own), never a
 // digit (RG-8, law 3).
 func absentCell(reason string) string {
-	return metricCell(nil, reason, "")
+	// Reasons are prose, not numeric values. Keep their reading edge stable
+	// when a long path wraps inside a right-aligned key/value column.
+	return `<span class="block text-left">` + metricCell(nil, reason, "") + `</span>`
+}
+
+// fleetFreshnessStat projects known observations and their coverage together.
+// An unavailable registry cannot establish a fleet total, even with populated
+// rows: the model carries no independent provenance for those rows.
+func fleetFreshnessStat(m observatoryModel) stat.Stat {
+	if m.DegradedNote != "" {
+		return stat.Absent("index freshness", "freshness unavailable: "+m.DegradedNote)
+	}
+	fresh, stale, unknown := 0, 0, 0
+	unknownReason := ""
+	for _, s := range m.Services {
+		switch {
+		case s.Freshness == "fresh":
+			fresh++
+		case s.Freshness == "stale" || strings.HasPrefix(s.Freshness, "stale:"):
+			stale++
+		default:
+			unknown++
+			if unknownReason == "" {
+				unknownReason = s.Freshness
+				if unknownReason == "" {
+					unknownReason = "unknown: no freshness state reported"
+				}
+			}
+		}
+	}
+	coverage := fmt.Sprintf("%d of %d listed repositories known: %d fresh, %d stale, %d unknown", fresh+stale, len(m.Services), fresh, stale, unknown)
+	if unknown > 0 {
+		coverage += "; first unknown reason: " + unknownReason
+	}
+	if stale > 0 {
+		value := plural(stale, "stale repo")
+		if unknown > 0 {
+			value = "≥ " + value
+		}
+		return stat.Stat{Label: "index freshness", Value: value, ValueRole: "caution", Sub: coverage}
+	}
+	if len(m.Services) == 0 {
+		return stat.Absent("index freshness", "freshness unknown: no services available to evaluate")
+	}
+	if unknown > 0 {
+		return stat.Absent("index freshness", "freshness unknown; "+coverage)
+	}
+	return stat.Stat{Label: "index freshness", Value: "all fresh", ValueRole: "positive", Sub: coverage}
 }
 
 func renderObsFleet(m observatoryModel) string {
-	totalSymbols, symbolsKnown, totalCalls, openObs, obsKnown, staleCount := 0, 0, 0, 0, 0, 0
+	totalSymbols, symbolsKnown, totalCalls := 0, 0, 0
 	for _, s := range m.Services {
 		if s.SymbolsNote == "" {
 			totalSymbols += s.Symbols
 			symbolsKnown++
 		}
 		totalCalls += s.CallsTotal
-		if s.OpenObservations != nil {
-			openObs += *s.OpenObservations
-			obsKnown++
-		}
-		if strings.HasPrefix(s.Freshness, "stale") {
-			staleCount++
-		}
-	}
-	freshRole, freshVal := "positive", "all fresh"
-	if staleCount > 0 {
-		freshRole, freshVal = "caution", plural(staleCount, "stale repo")
 	}
 	// RG-8: a tile whose source was not read is Absent with the reason —
 	// the registry (symbols) and the call log (tool calls) each carry
@@ -223,9 +279,14 @@ func renderObsFleet(m observatoryModel) string {
 		{Label: "services indexed", Value: fmtThousands(len(m.Services))},
 		symbolsTile,
 		callsTile,
-		{Label: "index freshness", Value: freshVal, ValueRole: freshRole},
-		{Label: "open observations", Value: fmtThousands(openObs), Sub: "across " + plural(obsKnown, "repo") + " with a backlog"},
 	}, stat.BandOptions{AriaLabel: "fleet totals"}))
+	// The pinned kit's five-column band clips evidence captions beside the
+	// desktop sidebar at tablet widths. Compose bounded groups with its existing
+	// API; do not change the stamped mirror to repair consumer layout.
+	b.WriteString(stat.RenderBand([]stat.Stat{
+		fleetFreshnessStat(m),
+		fleetOpenObservations(m),
+	}, stat.BandOptions{AriaLabel: "fleet evidence status"}))
 
 	if len(m.TrafficDays) > 0 {
 		var spark []float64
@@ -308,7 +369,7 @@ func renderObsFleet(m observatoryModel) string {
 		}
 		widgets = append(widgets, dashboard.RenderWidget(dashboard.Widget{
 			Title:  s.Service,
-			Action: template.HTML(gradeChip + `<a class="text-accent" href="/observatory/service?id=` + html.EscapeString(s.Service) + `">detail →</a>`),
+			Action: template.HTML(gradeChip + `<a class="inline-flex min-h-11 items-center px-2 text-accent underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus" href="/observatory/service?id=` + html.EscapeString(s.Service) + `">detail →</a>`),
 			Body:   template.HTML(body.String()),
 		}))
 	}
@@ -387,19 +448,36 @@ func renderObsService(m observatoryModel, id string) (string, bool) {
 			}
 			cfg.WriteString(kv("obligations compile", `<span class="text-xs">`+html.EscapeString(s.CompileNote)+`</span>`))
 		}
+		configuration := dashboard.RenderWidget(dashboard.Widget{Title: "configuration (layers · guards · bindings)", Body: template.HTML(cfg.String())})
+		if s.Config == nil {
+			configuration = callout.Render(callout.Callout{
+				Kind:  callout.Info,
+				Title: "Configuration snapshot unavailable",
+				Body:  "This snapshot does not contain configuration evidence. Installed layers, guards and bindings are unknown here, not confirmed absent.",
+			})
+		}
 		widgets := []string{
 			dashboard.RenderWidget(dashboard.Widget{Title: id, Body: template.HTML(body.String())}),
-			dashboard.RenderWidget(dashboard.Widget{Title: "configuration (layers · guards · bindings)", Body: template.HTML(cfg.String())}),
+			configuration,
 		}
 		switch {
 		case m.CallLogNote != "":
 			widgets = append(widgets, dashboard.RenderWidget(dashboard.Widget{Title: "agent-surface share", Body: template.HTML(`<span class="italic text-ink-faint">not measured — ` + html.EscapeString(m.CallLogNote) + `</span>`)}))
 		case s.CallsTotal > 0:
 			g := viz.Gauge(float64(s.CallsAgent), float64(s.CallsTotal), viz.GaugeOptions{
-				Label:     "of this service's recorded calls arrived over the agent surface",
 				AriaLabel: "agent-surface share",
 			})
-			widgets = append(widgets, dashboard.RenderWidget(dashboard.Widget{Title: "agent-surface share", Body: template.HTML(g)}))
+			// Prose belongs outside the fixed SVG viewport. The existing frame
+			// supplies wrapping meaning and provenance in both kit resolutions.
+			source := fmtThousands(s.CallsAgent) + " of " + fmtThousands(s.CallsTotal) + " recorded calls; current local call-log snapshot"
+			if m.GeneratedAt != "" {
+				source += "; snapshot generated " + m.GeneratedAt
+			}
+			widgets = append(widgets, vizframe.MustRender(g, vizframe.Options{
+				ID: "service-agent-share", Title: "agent-surface share",
+				Note:   "of this service's recorded calls arrived over the agent surface",
+				Source: vizframe.Derived(source),
+			}))
 		default:
 			widgets = append(widgets, dashboard.RenderWidget(dashboard.Widget{Title: "agent-surface share", Body: template.HTML(`<span class="italic text-ink-faint">no recorded calls for this service in the current log</span>`)}))
 		}
@@ -427,13 +505,21 @@ func impactStat(label string, v *int, note string) stat.Stat {
 // labeled every time it renders), the standing schema tax with an honest
 // trend absence, elision rate per tool, and the tokens-spent vs
 // discovery-served ratio — OBSERVATIONAL, never a savings claim (law 12).
-func renderCostPanel(cp costPanel) string {
+func renderCostPanel(cp costPanel, callLogNote string) string {
 	var b strings.Builder
 	b.WriteString(sectionHeading("cost · what fathom put into your context (estimates, never a savings claim)"))
 
 	schemaTrend := stat.Absent("schema tax trend", cp.SchemaTaxTrendNote)
 	ratio := stat.Absent("tokens per discovery action", cp.RatioNote)
-	if cp.RatioTokensPerDiscoveryX10 != nil {
+	responseCost := stat.Stat{Label: "total response cost (est.)", Value: "~" + fmtThousands(cp.TotalEstTokens) + " tok", Sub: fmtThousands(cp.TotalBytes) + " B measured across accounted calls"}
+	// The schema is independently measured; only call-log-derived figures lose
+	// their authority when that source is unavailable, even with stale rows present.
+	if callLogNote != "" {
+		responseCost = stat.Absent("total response cost (est.)", callLogNote)
+		responseCost.ValueRole = "ink-muted"
+		ratio = stat.Absent("tokens per discovery action", callLogNote)
+		ratio.ValueRole = "ink-muted"
+	} else if cp.RatioTokensPerDiscoveryX10 != nil {
 		whole := *cp.RatioTokensPerDiscoveryX10 / 10
 		tenth := *cp.RatioTokensPerDiscoveryX10 % 10
 		ratio = stat.Stat{Label: "tokens per discovery action (est.)", Value: fmt.Sprintf("%d.%d", whole, tenth), Sub: cp.RatioNote}
@@ -441,12 +527,16 @@ func renderCostPanel(cp costPanel) string {
 	b.WriteString(stat.RenderBand([]stat.Stat{
 		{Label: "agent surface schema tax", Value: fmtThousands(cp.SchemaTaxBytes) + " B", Sub: plural(cp.SchemaTaxTools, "tool") + " carried by every connected session"},
 		schemaTrend,
-		{Label: "total response cost (est.)", Value: "~" + fmtThousands(cp.TotalEstTokens) + " tok", Sub: fmtThousands(cp.TotalBytes) + " B measured across accounted calls"},
+		responseCost,
 		ratio,
 	}, stat.BandOptions{AriaLabel: "cost"}))
 
+	if callLogNote != "" {
+		b.WriteString(dashboard.RenderWidget(dashboard.Widget{Title: "response cost by tool", Body: template.HTML(`<p class="text-ink-muted">` + html.EscapeString(callLogNote) + `</p>`)}))
+		return b.String()
+	}
 	if len(cp.Tools) == 0 {
-		b.WriteString(dashboard.RenderWidget(dashboard.Widget{Body: template.HTML(`<span class="italic text-ink-faint">no response-cost rows readable from here</span>`)}))
+		b.WriteString(dashboard.RenderWidget(dashboard.Widget{Body: template.HTML(`<span class="italic text-ink-muted">no accounted response-cost rows in the current log</span>`)}))
 		return b.String()
 	}
 
@@ -493,10 +583,21 @@ func renderObsImpact(m observatoryModel) string {
 			// the modes it distorts — never folded into either one.
 			{Label: "deferred-schema turns", Value: fmtThousands(imp.ExpToolSearchTurns), Sub: "ToolSearch turns loading MCP schemas — a cost only the indexed mode pays", ValueRole: "caution"},
 		}, stat.BandOptions{AriaLabel: "exploration story"}))
+		if strings.TrimSpace(imp.ExpNote) != "" {
+			b.WriteString(`<div class="mb-4 mt-2 text-xs text-ink-muted">` + html.EscapeString(imp.ExpNote) + `</div>`)
+		}
 	} else {
-		b.WriteString(dashboard.RenderWidget(dashboard.Widget{Body: template.HTML(`<span class="italic text-ink-faint">` + html.EscapeString(imp.ExpNote) + `</span>`)}))
+		note := imp.ExpNote
+		if strings.TrimSpace(note) == "" {
+			note = "This snapshot has no comparison with both raw exploration and indexed discovery. This is not evidence of zero cost or savings."
+		}
+		b.WriteString(callout.Render(callout.Callout{
+			Kind:  callout.Info,
+			Title: "No comparable exploration sample",
+			BodyHTML: template.HTML(`<p class="max-w-prose">` + html.EscapeString(note) + `</p>` +
+				`<p class="mt-3 [&>a]:min-h-[44px]">` + form.RenderButton(form.Button{Label: "Inspect session evidence", Href: "/observatory/story", Variant: form.ButtonGhost}) + `</p>`),
+		}))
 	}
-	b.WriteString(`<div class="mb-4 mt-2 text-xs text-ink-muted">` + html.EscapeString(imp.ExpNote) + `</div>`)
 
 	// Q2 — Prevented.
 	b.WriteString(sectionHeading("Q2 · what did fathom prevent?"))
@@ -531,7 +632,9 @@ func renderObsImpact(m observatoryModel) string {
 
 	// Q3 — Friction (the flywheel's fuel).
 	b.WriteString(sectionHeading("Q3 · where does the agent still flounder? (misses are the roadmap)"))
-	if len(m.Misses) > 0 {
+	if m.CallLogNote != "" {
+		b.WriteString(dashboard.RenderWidget(dashboard.Widget{Title: "per-tool outcomes", Body: template.HTML(`<p class="text-ink-muted">` + html.EscapeString(m.CallLogNote) + `</p>`)}))
+	} else if len(m.Misses) > 0 {
 		var tbl strings.Builder
 		tbl.WriteString(`<div class="overflow-x-auto"><table class="w-full border-collapse text-sm"><tr class="border-b border-line text-left"><th class="px-2 py-1 font-medium text-ink-muted">tool</th><th class="px-2 py-1 font-medium text-ink-muted">calls</th><th class="px-2 py-1 font-medium text-ink-muted">hits</th><th class="px-2 py-1 font-medium text-ink-muted">misses</th><th class="px-2 py-1 font-medium text-ink-muted">did-you-mean</th><th class="px-2 py-1 font-medium text-ink-muted">outcome not recorded</th></tr>`)
 		for i, r := range m.Misses {
@@ -543,14 +646,15 @@ func renderObsImpact(m observatoryModel) string {
 		tbl.WriteString(`</table></div><div class="mt-2 text-xs text-ink-muted">rows logged before the outcome instrument (IQ-1) count as not-recorded, never as hits. Query text stays out of the log by design — it is user-global and metadata-only.</div>`)
 		b.WriteString(dashboard.RenderWidget(dashboard.Widget{Title: "per-tool outcomes", Body: template.HTML(tbl.String())}))
 	} else {
-		b.WriteString(dashboard.RenderWidget(dashboard.Widget{Body: template.HTML(`<span class="italic text-ink-faint">no call-log rows readable from here</span>`)}))
+		b.WriteString(dashboard.RenderWidget(dashboard.Widget{Body: template.HTML(`<span class="italic text-ink-muted">no per-tool outcomes recorded in the current log</span>`)}))
 	}
-	b.WriteString(dashboard.RenderWidget(dashboard.Widget{Title: "friction filed by hand", Body: template.HTML(kv("open observations across the fleet", fmtThousands(fleetOpenObservations(m))+` <span class="text-ink-muted">(each is a bug spec with a repro — the backlog that improves fathom)</span>`))}))
+	observations := fleetOpenObservations(m)
+	b.WriteString(dashboard.RenderWidget(dashboard.Widget{Title: "friction filed by hand", Body: template.HTML(kv("open observations across the fleet", `<span>`+html.EscapeString(observations.Value)+`</span> <span class="text-ink-muted">`+html.EscapeString(observations.Sub)+`</span>`))}))
 
 	// Cost (BA-8): what fathom itself put into agent contexts — the
 	// denominator half of the impact story, folded from the same call-log
 	// entries the Q3 table above already reads.
-	b.WriteString(renderCostPanel(m.Cost))
+	b.WriteString(renderCostPanel(m.Cost, m.CallLogNote))
 
 	// Q4 — Compounding.
 	b.WriteString(sectionHeading("Q4 · is the knowledge compounding?"))
@@ -653,58 +757,75 @@ func landingHandler(baseURL string) http.HandlerFunc {
 			return
 		}
 		m := cachedObservatoryModel(baseURL, time.Now())
-		imp := m.Impact
-		totalCalls := 0
-		for _, svc := range m.Services {
-			totalCalls += svc.CallsTotal
-		}
-		saved := "dark until OFF-arm sessions exist"
-		if imp.TokensOffSessions > 0 {
-			saved = plural(imp.TokensOffSessions, "OFF-arm session") + " recorded"
-		}
-		q := func(n, question, answer, sub, href string) string {
-			return dashboard.RenderWidget(dashboard.Widget{
-				Title: n + " · " + question,
-				Body:  template.HTML(`<div class="text-xl font-semibold text-ink">` + html.EscapeString(answer) + `</div><div class="mt-1 text-ink-muted">` + html.EscapeString(sub) + `</div><div class="mt-2"><a class="text-accent" href="` + href + `">see the evidence →</a></div>`),
-			})
-		}
-		questions := []string{
-			q("Q1", "what did the agent not have to do?", saved, "a savings figure exists only as a counterfactual arm range (law 12)", "/observatory/impact"),
-			q("Q2", "what did fathom prevent?", fmtThousands(intOrZero(imp.VerifyCatchesTotal))+" verify catches", imp.VerifyCatchesNote, "/observatory/impact"),
-			q("Q3", "where does the agent still flounder?", fmtThousands(fleetOpenObservations(m))+" open observations", "plus per-tool miss rates from "+fmtThousands(totalCalls)+" logged calls", "/observatory/impact"),
-			q("Q4", "is the knowledge compounding?", firstEditAnswer(imp), "warm-up turns before the first edit, per session", "/observatory/story"),
-		}
-		type entry struct{ href, name, desc string }
-		var widgets []string
-		for _, e := range []entry{
-			{"/observatory", "observatory", "fleet tiles: wiring grades, freshness, traffic sparklines — every warning names its remedy"},
-			{"/observatory/impact", "impact", "the four questions with their instruments; the counterfactual pilot state machine (law 12)"},
-			{"/observatory/story", "the week", "the trailing 7 days composed from the instruments, with session replays"},
-			{"/statusz", "statusz", "daemon health: uptime, per-service index freshness, channel liveness, last compile per layer"},
-			{"/metrics", "metrics", "machine-readable counters"},
-			{"/healthz", "healthz", "liveness probe (plain ok)"},
-		} {
-			widgets = append(widgets, dashboard.RenderWidget(dashboard.Widget{
-				Title: e.name,
-				Body:  template.HTML(`<div class="text-ink-muted">` + html.EscapeString(e.desc) + `</div><div class="mt-2"><a class="text-accent" href="` + e.href + `">open →</a></div>`),
-			}))
-		}
-		var mach strings.Builder
-		mach.WriteString(kv("MCP over HTTP", `<code class="font-mono text-xs">/rpc/agent</code> · <code class="font-mono text-xs">/rpc/companion</code> · <code class="font-mono text-xs">/rpc</code>`))
-		mach.WriteString(kv("services indexed", fmtThousands(len(m.Services))))
-		// SurfaceTax (TD-1): the standing context cost every MCP-connected
-		// session pays before any work — measured, or named unmeasured.
-		mach.WriteString(kv("context tax", contextTaxValue(m.AgentSurfaceTools, m.AgentSchemaBytes)))
-		mach.WriteString(kv("shareable brief", `<code class="font-mono text-xs">fathom brief</code> — writes a local file; sharing is a human verb (law 13)`))
-		body := sectionHeading("the four questions") +
-			dashboard.RenderWidgetGrid(questions, dashboard.WidgetGridOptions{Cols: 4, AriaLabel: "the four questions"}) +
-			sectionHeading("surfaces") +
-			dashboard.RenderWidgetGrid(widgets, dashboard.WidgetGridOptions{Cols: 3, AriaLabel: "surfaces"}) +
-			sectionHeading("machine surfaces") +
-			dashboard.RenderWidget(dashboard.Widget{Body: template.HTML(mach.String())})
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = w.Write([]byte(obsPage("fathom", "home", body, m)))
+		_, _ = w.Write([]byte(renderObsLanding(m)))
 	}
+}
+
+// renderObsLanding is the front door's pure projection, also exercised by the
+// fixed preview without invoking the cache, registry or local evidence readers.
+func renderObsLanding(m observatoryModel) string {
+	imp := m.Impact
+	totalCalls := 0
+	for _, svc := range m.Services {
+		totalCalls += svc.CallsTotal
+	}
+	saved := "dark until OFF-arm sessions exist"
+	if imp.TokensOffSessions > 0 {
+		saved = plural(imp.TokensOffSessions, "OFF-arm session") + " recorded"
+	}
+	q := func(n, question, answer, sub, href string) string {
+		return dashboard.RenderWidget(dashboard.Widget{
+			Title: n + " · " + question,
+			Body:  template.HTML(`<div class="text-xl font-semibold text-ink">` + html.EscapeString(answer) + `</div><div class="mt-1 text-ink-muted">` + html.EscapeString(sub) + `</div><div class="mt-2 [&>a]:min-h-[44px]">` + form.RenderButton(form.Button{Label: "see the evidence →", Href: href, Variant: form.ButtonGhost}) + `</div>`),
+		})
+	}
+	observations := fleetOpenObservations(m)
+	callContext := "plus per-tool miss rates from " + fmtThousands(totalCalls) + " logged calls"
+	if m.CallLogNote != "" {
+		callContext = "per-tool outcomes unavailable: " + m.CallLogNote
+	} else if m.DegradedNote != "" {
+		callContext = "per-tool outcomes unavailable: " + m.DegradedNote
+	}
+	catches := "—"
+	if imp.VerifyCatchesTotal != nil {
+		catches = fmtThousands(*imp.VerifyCatchesTotal)
+	}
+	questions := []string{
+		q("Q1", "what did the agent not have to do?", saved, "a savings figure exists only as a counterfactual arm range (law 12)", "/observatory/impact"),
+		q("Q2", "what did fathom prevent?", catches+" verify catches", imp.VerifyCatchesNote, "/observatory/impact"),
+		q("Q3", "where does the agent still flounder?", observations.Value+" open observations", observations.Sub+"; "+callContext, "/observatory/impact"),
+		q("Q4", "is the knowledge compounding?", firstEditAnswer(imp), "warm-up turns before the first edit, per session", "/observatory/story"),
+	}
+	type entry struct{ href, name, desc string }
+	var widgets []string
+	for _, e := range []entry{
+		{"/observatory", "observatory", "fleet tiles: wiring grades, freshness, traffic sparklines — every warning names its remedy"},
+		{"/observatory/impact", "impact", "the four questions with their instruments; the counterfactual pilot state machine (law 12)"},
+		{"/observatory/story", "the week", "the trailing 7 days composed from the instruments, with session replays"},
+		{"/statusz", "statusz", "daemon health: uptime, per-service index freshness, channel liveness, last compile per layer"},
+		{"/metrics", "metrics", "machine-readable counters"},
+		{"/healthz", "healthz", "liveness probe (plain ok)"},
+	} {
+		widgets = append(widgets, dashboard.RenderWidget(dashboard.Widget{
+			Title: e.name,
+			Body:  template.HTML(`<div class="text-ink-muted">` + html.EscapeString(e.desc) + `</div><div class="mt-2"><a class="text-accent" href="` + e.href + `">open →</a></div>`),
+		}))
+	}
+	var mach strings.Builder
+	mach.WriteString(kv("MCP over HTTP", `<code class="font-mono text-xs">/rpc/agent</code> · <code class="font-mono text-xs">/rpc/companion</code> · <code class="font-mono text-xs">/rpc</code>`))
+	mach.WriteString(kv("services indexed", fmtThousands(len(m.Services))))
+	// SurfaceTax (TD-1): the standing context cost every MCP-connected
+	// session pays before any work — measured, or named unmeasured.
+	mach.WriteString(kv("context tax", contextTaxValue(m.AgentSurfaceTools, m.AgentSchemaBytes)))
+	mach.WriteString(kv("shareable brief", `<code class="font-mono text-xs">fathom brief</code> — writes a local file; sharing is a human verb (law 13)`))
+	body := sectionHeading("the four questions") +
+		dashboard.RenderWidgetGrid(questions, dashboard.WidgetGridOptions{Cols: 4, AriaLabel: "the four questions"}) +
+		sectionHeading("surfaces") +
+		dashboard.RenderWidgetGrid(widgets, dashboard.WidgetGridOptions{Cols: 3, AriaLabel: "surfaces"}) +
+		sectionHeading("machine surfaces") +
+		dashboard.RenderWidget(dashboard.Widget{Body: template.HTML(mach.String())})
+	return obsPage("fathom", "home", body, m)
 }
 
 func wantsJSON(r *http.Request) bool {
@@ -718,15 +839,6 @@ func writeObsJSON(w http.ResponseWriter, v any) {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	_ = enc.Encode(v)
-}
-
-// intOrZero is a display helper for landing-page counts (the sibling note
-// carries the honesty; the headline needs a number-shaped string).
-func intOrZero(v *int) int {
-	if v == nil {
-		return 0
-	}
-	return *v
 }
 
 // contextTaxValue renders TD-1's measurement: the agent surface's tool

@@ -60,7 +60,7 @@ func TestRenderBand_Structure(t *testing.T) {
 		{Label: "Required", Value: "6", Sub: "elements"},
 	}, BandOptions{Title: "Coverage", AriaLabel: "coverage KPIs"})
 	for _, want := range []string{
-		"<dl", "md:grid-cols-4", "md:divide-x", "bg-surface-raised",
+		"<dl", "md:grid-cols-2 lg:grid-cols-4", "border-r border-b border-line", "bg-surface-raised",
 		"Met", "text-positive", "Under-evidenced", "text-caution",
 		"Unmet", "text-danger", "Required", "elements", ">Coverage<", `aria-label="coverage KPIs"`,
 	} {
@@ -102,6 +102,49 @@ func TestRender_Deterministic(t *testing.T) {
 	b := Render(s)
 	if a != b {
 		t.Errorf("stat non-deterministic")
+	}
+}
+
+// Browser geometry is separately checked against rendered consumer fixtures;
+// these assertions keep the scanner-visible reflow contract and literal data.
+func TestMetricReflowPreservesContent(t *testing.T) {
+	for name, render := range map[string]func(Stat) string{
+		"tile": Render,
+		"band": func(s Stat) string { return RenderBand([]Stat{s}, BandOptions{}) },
+	} {
+		t.Run(name, func(t *testing.T) {
+			s := Stat{Label: "schema <tax>", Value: "0 B", Sub: "0 tools carried by every connected session", Delta: "+12%", Spark: []float64{1, 2, 3}}
+			got := render(s)
+			for _, want := range []string{
+				"flex min-w-0 max-w-full flex-wrap items-baseline", "[overflow-wrap:anywhere]",
+				"schema &lt;tax&gt;", ">0 B<", s.Sub, ">+12%<",
+				`<span class="max-w-full text-2xl font-semibold text-ink [overflow-wrap:anywhere]">0 B</span>`,
+				`<span class="min-w-0 text-sm font-medium text-ink-muted [overflow-wrap:anywhere]">` + s.Sub + `</span>`,
+			} {
+				if !strings.Contains(got, want) {
+					t.Errorf("missing reflow or content contract %q: %s", want, got)
+				}
+			}
+			if strings.Contains(got, "truncate") || strings.Contains(got, "line-clamp") || strings.Contains(got, "whitespace-nowrap") {
+				t.Error("metrics must not hide content or force oversized values onto one line")
+			}
+			absent := render(Absent("source", "unavailable <source> & reason"))
+			if !strings.Contains(absent, ">—<") || !strings.Contains(absent, "unavailable &lt;source&gt; &amp; reason") {
+				t.Error("reflow changed absence semantics")
+			}
+		})
+	}
+}
+
+func TestDenseBandsDelayFullColumnCount(t *testing.T) {
+	for count, want := range map[int]string{4: "md:grid-cols-2 lg:grid-cols-4", 5: "md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"} {
+		got := RenderBand(make([]Stat, count), BandOptions{})
+		if !strings.Contains(got, want) {
+			t.Errorf("%d metrics need room beside tablet navigation: %s", count, got)
+		}
+		if strings.Contains(got, "divide-x") || !strings.Contains(got, `class="-mr-px -mb-px grid`) || strings.Count(got, "border-r border-b border-line") != count {
+			t.Errorf("%d metrics need row-independent clipped cell separators: %s", count, got)
+		}
 	}
 }
 

@@ -145,6 +145,24 @@ error plumbing; controls carry their own ARIA so a bare control stays consistent
 | `RadioGroup` | mutually-exclusive options as a `<fieldset>` + `<legend>` (grouped requiredness) |
 | `Button` | action control — `primary` / `ghost` / `danger`; `<button>` or `<a>` (with `Href`) |
 
+## `appkit/ui/dashboard` — shell, navigation and layout (HTML, no JS)
+
+`RenderNav` accepts app-owned `NavGroup` and `NavItem` values. It escapes labels,
+disables unsafe destinations and marks at most one best path match with
+`aria-current="page"`; `MatchSubtree` respects route-segment boundaries. Icons are
+trusted HTML and require caller review. The app still owns routing, permissions,
+destinations and mobile composition.
+
+`RenderShell` can place the same navigation in its desktop and native mobile
+disclosure. An enabled skip link targets a programmatically focusable main region
+without adding that region to the normal tab order. These are L3b renderers: scan
+`appkit/ui/dashboard/*.go`, include the theme CSS, and verify keyboard focus, narrow
+layout, long labels and theme contrast in the composed application.
+
+Navigation items and the mobile disclosure carry a 44px minimum height and explicit
+focus treatment. The current item uses the normal ink role on the soft accent surface;
+consumers still verify delivered contrast and target width in their composed shell.
+
 ## `appkit/ui/chrome` — structural creature comforts (HTML, no JS)
 
 | Component | Use it for |

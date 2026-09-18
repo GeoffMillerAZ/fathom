@@ -7,6 +7,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"html"
 	"html/template"
 	"net/http"
@@ -198,12 +199,17 @@ func renderWeekStory(ws weekStory, m observatoryModel) string {
 	b.WriteString(sectionHeading("the week — " + ws.From + " … " + ws.To))
 	b.WriteString(`<div class="mb-3 rounded-md border border-dashed border-caution px-3 py-2 text-ink-muted">template-composed from the instruments; narrative is a lens, never evidence (law 14). The LLM-written weekly stays deferred (IQ-14) until the daemon has a model and two weeks of story rows.</div>`)
 
+	observations := fleetOpenObservations(m)
+	// The backlog is a current fleet snapshot, not observations filed this week.
+	observations.Label = "open observations (fleet snapshot)"
 	b.WriteString(stat.RenderBand([]stat.Stat{
 		{Label: "sessions", Value: fmtThousands(ws.Sessions)},
 		{Label: "verify catches", Value: fmtThousands(ws.Catches), Sub: "verify ran in " + fmtThousands(ws.CatchesRan) + " of " + fmtThousands(ws.Sessions) + " sessions"},
 		{Label: "sessions that edited", Value: fmtThousands(ws.EditSessions), Sub: "carry a first-edit turn"},
-		{Label: "open observations (fleet)", Value: fmtThousands(fleetOpenObservations(m)), Sub: "friction filed, not yet fixed"},
 	}, stat.BandOptions{AriaLabel: "week totals"}))
+	// This snapshot has a different time grain; give its coverage room to wrap
+	// without crowding the week's session metrics in the pinned kit's band.
+	b.WriteString(stat.RenderBand([]stat.Stat{observations}, stat.BandOptions{AriaLabel: "fleet snapshot"}))
 
 	if len(ws.RecentSessions) > 0 {
 		var links strings.Builder
@@ -218,16 +224,43 @@ func renderWeekStory(ws weekStory, m observatoryModel) string {
 	return b.String()
 }
 
-// fleetOpenObservations sums known open-observation counts (unknown repos
-// contribute nothing — never zero-faked).
-func fleetOpenObservations(m observatoryModel) int {
-	total := 0
+// fleetOpenObservations projects the existing per-service evidence without
+// losing its coverage: no known sources is absent, partial coverage is a named
+// lower bound, and only complete coverage permits an exact total (including 0).
+// Keep this app-owned; the kit renders the declared semantics, not their validity.
+func fleetOpenObservations(m observatoryModel) stat.Stat {
+	total, known := 0, 0
 	for _, s := range m.Services {
 		if s.OpenObservations != nil {
 			total += *s.OpenObservations
+			known++
 		}
 	}
-	return total
+	const label = "open observations"
+	if known == 0 {
+		reason := "no observation counts available"
+		if m.DegradedNote != "" {
+			reason = m.DegradedNote
+		}
+		absent := stat.Absent(label, reason)
+		// Keep absence readable at the consumer's 4.5:1 text target even
+		// though the mirrored component defaults its large dash to ink-faint.
+		absent.ValueRole = "ink-muted"
+		return absent
+	}
+	result := stat.Stat{
+		Label: label, Value: fmtThousands(total),
+		Sub: fmt.Sprintf("%d of %s reporting", known, plural(len(m.Services), "repo")),
+	}
+	if m.DegradedNote != "" {
+		result.Value = "≥\u00a0" + result.Value
+		result.Sub = fmt.Sprintf("%d of %s reporting; lower bound; fleet coverage unavailable: %s",
+			known, plural(len(m.Services), "listed repo"), m.DegradedNote)
+	} else if known < len(m.Services) {
+		result.Value = "≥\u00a0" + result.Value
+		result.Sub += "; lower bound"
+	}
+	return result
 }
 
 func observatoryStoryPage(baseURL string) http.HandlerFunc {

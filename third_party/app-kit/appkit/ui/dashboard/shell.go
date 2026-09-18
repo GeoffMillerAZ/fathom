@@ -97,13 +97,13 @@ func RenderShell(s Shell) string {
 	// Mobile nav disclosure (no JS) — only when nav is supplied.
 	if s.Nav != "" {
 		b.WriteString(`<details class="border-b border-line bg-surface-raised md:hidden">`)
-		b.WriteString(`<summary class="cursor-pointer select-none px-4 py-2 text-sm font-medium text-ink">Menu</summary>`)
+		b.WriteString(`<summary class="min-h-[44px] cursor-pointer select-none px-4 py-2 text-sm font-medium text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">Menu</summary>`)
 		fmt.Fprintf(&b, `<nav class="px-3 pb-3" aria-label=%q>%s</nav>`, esc(navAria+" (mobile)"), string(s.Nav))
 		b.WriteString(`</details>`)
 	}
 
 	// Content.
-	fmt.Fprintf(&b, `<main id=%q class="flex-1 overflow-y-auto p-4 md:p-6">`, esc(contentID))
+	fmt.Fprintf(&b, `<main id=%q tabindex="-1" class="flex-1 overflow-y-auto p-4 md:p-6">`, esc(contentID))
 	b.WriteString(string(s.Content))
 	if s.Footer != "" {
 		fmt.Fprintf(&b, `<footer class="mt-6 border-t border-line pt-4 text-sm text-ink-muted">%s</footer>`, string(s.Footer))

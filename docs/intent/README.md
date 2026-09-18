@@ -24,6 +24,7 @@ design work, then `intent-decide`, `intent-doctor`, `intent-audit`, `intent-prun
 | How to cross a breaking change | `../rename-migration.md` (precedent); new notes: `../upgrades/<version>-<slug>.md` |
 | Work orders and their proof | `../plans/` (grammar: `../plans/README.md`; progress: `fathom plans status`) |
 | Design records and the vision series | `../design/`, `../vision/README.md` (status per doc) |
+| App-kit selection, UI context, delivery and consumer proof | `../app-kit.md`, `../../PRODUCT.md` |
 | Architecture, surfaces, configuration, usage | `../architecture.md`, `../mcp-tools.md`, `../configuration.md`, `../usage.md` |
 
 ## Routing: what to read for which task

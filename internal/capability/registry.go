@@ -173,6 +173,9 @@ func Default() Registry {
 			Scopes:     ScopeProjectOnly,
 			Cost:       "shares the obligations hook round-trip; no additional call",
 			Detect: func(p Probe) State {
+				if p.GuardProblem != "" {
+					return State{Reason: p.GuardProblem, Broken: true}
+				}
 				if p.GuardRules == 0 {
 					return State{Reason: "no guard rules are defined for this repository"}
 				}
@@ -182,6 +185,9 @@ func Default() Registry {
 				return State{Operating: true, Detail: count(p.GuardRules, "guard rule") + " active"}
 			},
 			Remedy: func(p Probe) Remedy {
+				if p.GuardProblem != "" {
+					return Remedy{Cmd: "fathom doctor", Note: "repair .fathom/guard.cue before enabling guards"}
+				}
 				if p.GuardRules == 0 {
 					return Remedy{
 						Cmd:  "fathom init --guards",

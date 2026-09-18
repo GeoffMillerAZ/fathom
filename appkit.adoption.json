@@ -1,0 +1,30 @@
+{
+  "schema_version": 2,
+  "consumer": "fathom",
+  "profile": "go-web",
+  "layers": ["L1", "L3b"],
+  "capabilities": ["shell.layout"],
+  "capability_revisions": [
+    {
+      "id": "shell.layout",
+      "sha256": "34006292ff907885e9364113bce1560ebef6f3c2a8f289a7676943d8cdb59b10"
+    }
+  ],
+  "contract": "docs/app-kit.md",
+  "module": {"file": "go.mod", "version": "v0.0.0", "allow_local_replace": true},
+  "artifacts": [
+    {"path": "cmd/fathom/ui/app.css", "sha256": "0e0b5e5408c5e2484f0f2adcdba6a7c9491214d3528051ef7b43300dc52acaa1"},
+    {"path": "cmd/fathom/ui/input.css", "sha256": "78c7156e0ac001f98c3163cd75f8cef65461a45e220ccda0933e97dde023ddb1"},
+    {"path": "cmd/fathom/ui/tokens/theme.css", "sha256": "e5b8a4aa803dd81d37bc18414c3415f486283d8e4a03a67d305b43b6fe82c291"},
+    {"path": "third_party/app-kit/appkit/ui/dashboard/shell.go", "sha256": "e0e0ba904db70ae7b5aca2597c247ddabf40ee246658f94ffbee1605e57e53fa"},
+    {"path": "third_party/app-kit/appkit/ui/dashboard/nav.go", "sha256": "84e23d5c9eeaee8028a906c5be7bb507fe9f0c8db26ea023703786beec6b698c"},
+    {"path": "third_party/app-kit/appkit/ui/vizframe/vizframe.go", "sha256": "bfad436afad365508c51918e5bf6faed3d6c1b349b5cb53526ac3e9bb940d96f"},
+    {"path": "third_party/app-kit/appkit/ui/stat/stat.go", "sha256": "bf39b9412dce4764bcd1815a5b5ec6aad8963664069dc49bf418c4640d93b0f5"},
+    {"path": "third_party/app-kit/appkit/ui/tokens/tokens.go", "sha256": "456b83e6989a1bea9d83f527c09d119cbe0af83b19e701a741c912adac035ffe"},
+    {"path": "third_party/app-kit/cue/tokens/kit.cue", "sha256": "443461ce94d565b18ea6917631f45fed689a8248839533ec15b2dd328c5267bf"},
+    {"path": "third_party/app-kit/.vendor-commit", "sha256": "0b9ddb823f60e76ba243c082003b627f390346bd6faa1bb4ab5867b584c4fac1"},
+    {"path": "scripts/ui-css.sh", "sha256": "162d8c36f138b55ef736d57ae3ad46ff384c3115a71e30293175321e4744bdbd"},
+    {"path": "scripts/lib/build-cache.sh", "sha256": "03c033457bdc79cb0f678ab39fdc22e00286c0d503d84f02fc1558a75fe19342"}
+  ],
+  "agents": true
+}

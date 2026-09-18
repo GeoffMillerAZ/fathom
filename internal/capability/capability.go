@@ -106,6 +106,7 @@ type Probe struct {
 
 	// Seams
 	GuardRules     int
+	GuardProblem   string // invalid or unreadable input; never an absence
 	ModuleBindings int
 	LayerPacks     []string
 	// ObligationsCompiled is whether the obligations layer has a recorded

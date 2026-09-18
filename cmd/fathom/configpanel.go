@@ -10,7 +10,10 @@ package main
 import (
 	"os"
 	"path/filepath"
-	"strings"
+
+	readmanifest "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/read-manifest"
+	"github.com/geoffmilleraz/fathom/internal/guardspec"
+	"github.com/geoffmilleraz/fathom/internal/readcoverage"
 )
 
 // obsConfigPanel is one service's .fathom configuration state.
@@ -59,15 +62,9 @@ func buildConfigPanel(path string, obligationServes int) obsConfigPanel {
 		p.LayersNote = "no semantic layers installed — fathom layers install <pack-dir> (app-kit and agentic-kit ship packs)"
 	}
 
-	guardFile := filepath.Join(path, ".fathom", "guard.cue")
-	if raw, err := os.ReadFile(guardFile); err == nil {
-		p.GuardCount = strings.Count(string(raw), "note:")
-		if p.GuardCount == 0 {
-			p.GuardNote = "guard.cue present but empty"
-		}
-	} else {
-		p.GuardNote = "no guard file — pre-edit warnings are off (adapt a kit guard-pack into .fathom/guard.cue)"
-	}
+	guards := inspectGuardRules(path)
+	p.GuardCount = guards.Count
+	p.GuardNote = guards.Note
 
 	if _, err := os.Stat(filepath.Join(path, ".fathom", "bindings.cue")); err == nil {
 		p.BindingNote = "bindings.cue present"
@@ -75,4 +72,39 @@ func buildConfigPanel(path string, obligationServes int) obsConfigPanel {
 		p.BindingNote = "no bindings file — no layers are BOUND (binding requires an evaled layer, D3)"
 	}
 	return p
+}
+
+type guardRuleDiagnostic struct {
+	Count  int
+	Note   string
+	Broken bool
+}
+
+// inspectGuardRules is the single filesystem/semantic path for every
+// reporting surface that counts repository guards. The manifest owns the
+// read; ParseGuards applies exactly LoadGuards' CUE semantics to those bytes.
+func inspectGuardRules(root string) guardRuleDiagnostic {
+	guardFile := filepath.Join(root, ".fathom", "guard.cue")
+	reads := readmanifest.NewSet()
+	reads.RelativeTo(root)
+	data, ok := reads.ReadFile(guardFile)
+	manifest := reads.Manifest()
+	if !ok {
+		if !manifest.Complete() {
+			return guardRuleDiagnostic{
+				Note:   readcoverage.RenderCount(manifest, 0, "guard rule(s)"),
+				Broken: true,
+			}
+		}
+		return guardRuleDiagnostic{Note: "no guard file — pre-edit warnings are off (adapt a kit guard-pack into .fathom/guard.cue)"}
+	}
+
+	set, err := guardspec.ParseGuards(guardFile, data)
+	if err != nil {
+		return guardRuleDiagnostic{Note: "guard.cue is invalid: " + err.Error(), Broken: true}
+	}
+	if len(set.Guards) == 0 {
+		return guardRuleDiagnostic{Note: "guard.cue present but declares no guard rules"}
+	}
+	return guardRuleDiagnostic{Count: len(set.Guards)}
 }

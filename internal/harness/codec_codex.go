@@ -1,10 +1,11 @@
 package harness
 
 // codec_codex.go — the Codex CLI codec (HP-17, ADR-029 §5). Codex's hook
-// envelope is Claude-shaped (hooks.md, fetched 2026-09-02, no version
-// stamp; local codex-cli 0.146.0): the same stdin field names, the same
-// hookSpecificOutput / decision shapes on stdout. Two things differ and
-// both are encoded here, nowhere else:
+// input envelope is Claude-shaped (hooks.md, fetched 2026-09-02, no version
+// stamp; local codex-cli 0.146.0), but output is event-specific: Stop uses
+// the common systemMessage / decision fields while tool and session events
+// use hookSpecificOutput. The Codex-specific differences are encoded here,
+// nowhere else:
 //
 //   - apply_patch reports the whole patch in tool_input.command, not a
 //     file_path. The first `*** Update File:` / `*** Add File:` /
@@ -195,6 +196,13 @@ func (c codexCodec) EncodeOutput(ev Event, out HookOutput) ([]byte, error) {
 	}
 	if out.Context == "" {
 		return nil, nil
+	}
+	if ev == EventStop {
+		// Stop accepts the common systemMessage field, not the
+		// hookSpecificOutput.additionalContext shape used by context-bearing
+		// events. Returning the latter is schema-invalid and makes Codex report
+		// "invalid stop hook JSON output" even though the bytes are JSON.
+		return json.Marshal(map[string]any{"systemMessage": CapCodexContext(out.Context)})
 	}
 	name, ok := codexEventName(ev)
 	if !ok {

@@ -66,6 +66,22 @@ func TestDetectNeverReturnsBareBoolean(t *testing.T) {
 	}
 }
 
+func TestGuardInputProblemIsBrokenNotAbsent(t *testing.T) {
+	guards, ok := Default().Get("guards")
+	if !ok {
+		t.Fatal("guards capability is not registered")
+	}
+	const problem = "guard.cue is invalid: dead guard"
+	state := guards.Detect(Probe{GuardProblem: problem})
+	if state.Operating || !state.Broken || state.Reason != problem {
+		t.Fatalf("guard problem state = %+v, want broken with the original reason", state)
+	}
+	remedy := guards.Remedy(Probe{GuardProblem: problem})
+	if strings.Contains(remedy.Cmd, "init --guards") {
+		t.Fatalf("guard problem remedy may not overwrite the input: %+v", remedy)
+	}
+}
+
 // TestResolveProvenanceAndRefusals pins CR-3: resolution order, the scope
 // that supplied the value travelling with it, and law 13's asymmetry
 // enforced loudly rather than by silent drop.

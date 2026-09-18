@@ -278,10 +278,10 @@ func EmitThemeCSSOpts(t Tokens, o EmitOptions) string {
 	// @theme inline: utilities resolve through the runtime vars.
 	b.WriteString("@theme inline {\n")
 	for _, fv := range fontValues(t) {
-		fmt.Fprintf(&b, "  --font-%s: %s;\n", fv[0], fv[1])
+		fmt.Fprintf(&b, "  --font-%s: var(--ak-font-%s);\n", fv[0], fv[0])
 	}
 	for _, rv := range radiusValues(t) {
-		fmt.Fprintf(&b, "  --radius-%s: %s;\n", rv[0], rv[1])
+		fmt.Fprintf(&b, "  --radius-%s: var(--ak-radius-%s);\n", rv[0], rv[0])
 	}
 	for _, name := range names {
 		fmt.Fprintf(&b, "  --color-%s: var(--ak-color-%s);\n", name, name)
@@ -291,6 +291,14 @@ func EmitThemeCSSOpts(t Tokens, o EmitOptions) string {
 	// Default scheme + font-scale hook.
 	b.WriteString(":root {\n")
 	b.WriteString("  font-size: calc(100% * var(--ak-font-scale, 1));\n")
+	// Font and shape use the same runtime indirection as color. A separately
+	// linked named theme must change these too, without rebuilding utilities.
+	for _, fv := range fontValues(t) {
+		fmt.Fprintf(&b, "  --ak-font-%s: %s;\n", fv[0], fv[1])
+	}
+	for _, rv := range radiusValues(t) {
+		fmt.Fprintf(&b, "  --ak-radius-%s: %s;\n", rv[0], rv[1])
+	}
 	writePolarity(&b, "  ", lightPolarity)
 	for _, name := range names {
 		fmt.Fprintf(&b, "  --ak-color-%s: %s;\n", name, t.Colors[name].Light)

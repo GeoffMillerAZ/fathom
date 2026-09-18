@@ -307,26 +307,43 @@ func configuredCallLogPath() (string, bool) {
 }
 
 // readCallLog parses path as call-log JSONL, line-wise. read is false when
-// the file doesn't exist or can't be opened — reported honestly by the
-// caller (zero calls is then a fact about "never observed", not "measured
-// zero"). A malformed individual LINE is skipped and counted, never fatal
-// and never a reason to drop the rest of the file: the earlier
+// the file doesn't exist, can't be opened or cannot be read completely.
+// Callers must distinguish unavailable input from measured zero. A JSON
+// decode failure on an individual line is skipped and counted, never a
+// reason to drop the rest of the file: the earlier
 // json.Decoder-over-the-stream version BROKE at the first bad token, so a
 // single torn mid-file line (a daemon killed mid-write before O_APPEND
 // atomicity applied, hand-editing debris) silently discarded every entry
 // after it (critic H2). skipped is surfaced in the report so a truncated
 // measurement is visible, not laundered.
 func readCallLog(path string) (entries []adoptionCallEntry, skippedMalformed int, read bool) {
+	entries, skippedMalformed, err := classifyCallLogRead(path)
+	return entries, skippedMalformed, err == nil
+}
+
+// classifyCallLogRead owns parsing and the IT-1 read-error classification
+// (observation O17, filed 2026-08-23) — mirrors
+// flywheelCallLog's own classification (flywheel.go) so both consumers of
+// the call log tell "no log yet" apart from "the log is right there and
+// unreadable" the same way. err is nil on a clean read; os.IsNotExist(err)
+// is the honest ENOENT case. Other errors preserve their cause and path.
+// Open errors retain the existing tccWedgeHint behavior; scanner failures
+// are reported without inferring a permissions cause. An incomplete scan
+// discards prefix rows, never presenting partial data as a complete read.
+func classifyCallLogRead(path string) (entries []adoptionCallEntry, skippedMalformed int, err error) {
 	f, openErr := os.Open(path)
 	if openErr != nil {
-		return nil, 0, false
+		if os.IsNotExist(openErr) {
+			return nil, 0, openErr // honest "no log yet"
+		}
+		return nil, 0, fmt.Errorf("%w%s", openErr, tccWedgeHint(path))
 	}
 	defer f.Close()
 
 	sc := bufio.NewScanner(f)
 	// Call-log lines carry error strings and tool payload metadata; give
 	// the scanner room well past bufio's 64KB default before a long line
-	// (which Scan would otherwise abort on) can truncate the report.
+	// can make the read incomplete.
 	sc.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
 	for sc.Scan() {
 		line := strings.TrimSpace(sc.Text())
@@ -340,34 +357,12 @@ func readCallLog(path string) (entries []adoptionCallEntry, skippedMalformed int
 		}
 		entries = append(entries, e)
 	}
-	return entries, skippedMalformed, true
-}
-
-// classifyCallLogRead wraps readCallLog with the IT-1 read-error
-// classification (observation O17, filed 2026-08-23) — mirrors
-// flywheelCallLog's own classification (flywheel.go) so both consumers of
-// the call log tell "no log yet" apart from "the log is right there and
-// unreadable" the same way. err is nil on a clean read; os.IsNotExist(err)
-// is the honest ENOENT case; any other non-nil err is a real defect and
-// carries the errno plus tccWedgeHint's remedy (flywheel.go) already
-// appended, so the caller never needs to re-derive which path failed or
-// why.
-func classifyCallLogRead(path string) (entries []adoptionCallEntry, skippedMalformed int, err error) {
-	entries, skippedMalformed, read := readCallLog(path)
-	if read {
-		return entries, skippedMalformed, nil
+	if scanErr := sc.Err(); scanErr != nil {
+		// Partial counts are not a complete observation. Discard even valid
+		// prefix rows so callers cannot report a truncated file as measured.
+		return nil, 0, fmt.Errorf("read call log %s: %w", path, scanErr)
 	}
-	_, openErr := os.Open(path)
-	if openErr == nil {
-		// readCallLog just failed and a fresh Open didn't (a race, or a
-		// permission state that changed between the two calls) — report
-		// generically rather than claim success with zero entries.
-		return nil, 0, fmt.Errorf("call log at %s: unreadable", path)
-	}
-	if os.IsNotExist(openErr) {
-		return nil, 0, openErr // honest "no log yet"
-	}
-	return nil, 0, fmt.Errorf("%w%s", openErr, tccWedgeHint(path))
+	return entries, skippedMalformed, nil
 }
 
 // registeredToolNames returns the sorted names of every tool the fathom
