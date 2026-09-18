@@ -94,8 +94,9 @@ exists) the daemon.
 | `test_impact` | unchanged |
 
 Process subjects (a finding about a workflow, not a symbol) are accepted
-without inventing symbol anchors: a finding may carry `anchor: {path}` only,
-or no anchor at all with `unanchored: true`.
+without inventing symbol anchors: a changed path the index knows no symbol
+for is listed under `unanchored_paths`, and an imported finding may carry
+`anchor: {path}` only or no anchor at all (`unanchored: true` when served).
 
 ### 3.2 P1 — the review key: complete-input eligibility without a second hash API
 
@@ -169,7 +170,7 @@ plus two additive anchor fields (`anchor.start`, `anchor.end`, and
    cursor row; `anchor_current` is recomputed at serve time by hashing the
    current file, so a finding whose code moved is served **flagged**, never
    dropped and never silently re-anchored.
-7. **Receipt**: `{schema_version, delivered, duplicate, stale, rejected: [{finding_id, reason}], truncated, cursor: {producer, latest_source_version}}`.
+7. **Receipt**: `{schema_version, delivered, duplicate, stale, unclassified, no_fingerprint, rejected: [{index, finding_id, reason}], truncated, cursors: [{producer, latest_source_version}], dry_run}`.
    Nothing is written on any rejection of the batch's schema; per-event
    rejections are recorded and the rest apply.
 
@@ -190,8 +191,9 @@ kit's archive; the receipt makes the repair auditable.
   finding's cited lines (one beat: `finding_touched`).
 - **Prompt hook**: one line, `N open findings across the files this prompt
   names`, inside the existing deadline.
-- **Session brief**: `open findings: N (k producers; oldest 2026-09-02)` and,
-  when an outbox is configured, the sync result (§3.7).
+- **Session brief**: `open findings: N (oldest 2026-09-02)` — the per-producer
+  split lives on the served rows, not the brief — and, when an outbox is
+  configured, the sync result (§3.7).
 - **Isolation**: claims are service-scoped in the store; the import binds one
   provisioned subject to one service; a test proves a claim imported for
   service A is invisible to obligations, findings near, and the hooks for
@@ -274,7 +276,8 @@ Rules the catalog makes checkable:
 5. **Contradictions are shown, never resolved by fathom**: a `fail` from
    producer A and a `pass` from producer B on the same rule and anchor are
    both served, each with its producer, and the pair is counted in
-   `findings status` as `disagreements`.
+   `findings status` as `disagreements_by_rule` (grouped by normalized rule
+   shape and anchor path).
 6. **Nothing is inferred from prose.** Annotation text is stored and shown
    as a quote with its author; it never becomes a rule, a scope, or a status.
 7. **Read coverage is visible**: the importer and the candidates report use
