@@ -45,6 +45,22 @@ type StatusReport struct {
 	// rather than requiring a separate call.
 	PatternsWithThreeResolvedMembers int `json:"patterns_with_three_resolved_members"`
 
+	// Candidates (FL-23, §3.6) is the count of RuleCandidates at the
+	// promotion-relevant min-sites floor of 3 — the entry condition for
+	// "a recurring finding is worth lifting into a rule", read from data.
+	Candidates int `json:"candidates"`
+	// DisagreementsByRule (FL-23, §4 honesty rule 5: "disagreements are
+	// shown, never resolved by fathom") counts groups of same-normalized-
+	// rule-shape, same-anchor-path claims where a served member from one
+	// producer disagrees with another producer's member superseded via an
+	// "external-closure" resolution. Named "by_rule" rather than the plan's
+	// bare "disagreements": core.SemanticClaim carries no per-claim rule id
+	// of its own at this layer (that field lives only on the served
+	// semantic.Obligation, populated by a join the concurrent provenance-
+	// substrate wave owns) — NormalizeRuleShape(Rule) is the closest
+	// available proxy, named honestly rather than passed off as exact.
+	DisagreementsByRule int `json:"disagreements_by_rule"`
+
 	EntryBarLow  int `json:"entry_bar_low"`
 	EntryBarHigh int `json:"entry_bar_high"`
 	// EntryConditionMet is true once ResolvedFindingCount >= EntryBarLow —
@@ -96,6 +112,8 @@ func BuildStatus(claims []core.SemanticClaim, events []core.ClaimEvent) StatusRe
 		ResolvedFindingCount:             resolved,
 		DistinctClasses:                  classes,
 		PatternsWithThreeResolvedMembers: threePlus,
+		Candidates:                       len(RuleCandidates(claims, events, 3)),
+		DisagreementsByRule:              disagreementsByRule(claims, events),
 		EntryBarLow:                      EntryBarLow,
 		EntryBarHigh:                     EntryBarHigh,
 		EntryConditionMet:                resolved >= EntryBarLow,

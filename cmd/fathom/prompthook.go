@@ -168,6 +168,13 @@ func renderPromptObligations(url, projDir, prompt, sessionID string, deadline ti
 	if m.resolved < m.total {
 		fmt.Fprintf(&sb, "\n⚠️ partial: %d of %d resolved (time budget)", m.resolved, m.total)
 	}
+	// FL-21 (docs/vision/30-findings-loop.md §3.4): one line naming the
+	// open finding count across the SAME resolved files, inside the SAME
+	// shared deadline — skipped silently (the plan's own skip-note
+	// mechanism: simply not rendered) when the deadline is already spent.
+	if n, ok := countFindingsAcrossFiles(url, svc, files, deadline); ok && n > 0 {
+		fmt.Fprintf(&sb, "\nopen findings: %d across the files this prompt names", n)
+	}
 	return sb.String(), promptObligationsMeta{candidates: len(candidates), files: m.total, displaced: m.displaced, resolved: m.resolved}, true
 }
 

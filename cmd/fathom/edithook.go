@@ -140,7 +140,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 
 	// decode → payload → encode (HP-5): the payload is harness-free text;
 	// only the envelope around it belongs to the codec.
-	text, meta, ok := renderPostEdit(url, projDir, filePath, sessionID)
+	text, meta, ok := renderPostEdit(url, projDir, filePath, sessionID, hook.NewContent)
 	text, ok = withClaimMoment(url, projDir, filePath, sessionID, text, ok) // PC-22: a newly checked [x] on a depth-1 plan verifies now (edithook_claim.go)
 	text, ok = withSkipGainedNote(projDir, filePath, text, ok)              // O56 fix item 3: note a row gaining skip_test, daemon-free (edithook_skipnote.go)
 	if !ok {
@@ -168,6 +168,12 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	if meta.memDisplaced > 0 {
 		answeredMeta["memories_displaced"] = strconv.Itoa(meta.memDisplaced)
 	}
+	if meta.findingsShown > 0 {
+		answeredMeta["findings"] = strconv.Itoa(meta.findingsShown)
+	}
+	if meta.findingsOmitted > 0 {
+		answeredMeta["findings_omitted"] = strconv.Itoa(meta.findingsOmitted)
+	}
 	emitBeat("edit-hook", "answered", firingMeta(answeredMeta, sessionID, filePath))
 	recordStoryRow(projDir, "obligation-served", map[string]any{
 		"file": meta.repoRelFile, "rules": meta.rules, "session": sessionID,
@@ -184,6 +190,12 @@ type postEditMeta struct {
 	displaced    int
 	memShown     int
 	memDisplaced int
+	// findingsShown/findingsOmitted (FL-20) are renderFindingsBlock's own
+	// counts — 0/0 when the block never rendered (no finding-kind rows, no
+	// overlap with the edited range, or the shared budget was already
+	// spent).
+	findingsShown   int
+	findingsOmitted int
 }
 
 // renderPostEdit builds the PostToolUse obligations payload for one edited
@@ -193,7 +205,7 @@ type postEditMeta struct {
 // contract: nothing to say (or a refused/out-of-repo file, or a daemon
 // error) after the beat that names WHY has been emitted. The caller wraps
 // the text in the calling harness's envelope.
-func renderPostEdit(url, projDir, filePath, sessionID string) (string, postEditMeta, bool) {
+func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (string, postEditMeta, bool) {
 	// Try each service-identity candidate (dir basename, then the enclosing
 	// git repo for subdirectory-rooted projects), resolving the file against
 	// that candidate's root. First candidate with rules (or a stale flag)
@@ -245,7 +257,7 @@ func renderPostEdit(url, projDir, filePath, sessionID string) (string, postEditM
 			resolved, svcName, repoRelFile, svcRoot = true, strings.ToLower(cand.name), rel, cand.root
 		}
 		name := strings.ToLower(cand.name)
-		o, stale, ok := fetchObligations(url, name, rel, 0, 2*time.Second)
+		o, stale, ok := fetchObligations(url, name, rel, 0, 2*time.Second, semantic.ObligationLayerAll)
 		if !ok {
 			emitBeat("edit-hook", "error", firingMeta(map[string]string{"phase": "post"}, sessionID, filePath))
 			return "", postEditMeta{}, false // daemon down or error → silent
@@ -267,6 +279,15 @@ func renderPostEdit(url, projDir, filePath, sessionID string) (string, postEditM
 	// discovery, and must not inflate the discovery-share denominator.
 	markFileEdited(sessionID, repoRelFile, time.Now())
 
+	// FL-20 (ADR-040 decision 5): finding-kind rows (Kind=="finding") ride
+	// the SAME obligations call (layer=all, see fetchObligations above) but
+	// are never governing rules — split them out here so the guard-stamp
+	// dedup below, writeRuleBullet's loop, and reportModuleBeats all keep
+	// seeing EXACTLY the governs-role rows they always have (the "byte-
+	// identical when no findings exist" pin). findingRows is rendered
+	// separately, after the governing-rules block, by renderFindingsBlock.
+	govRules, findingRows := splitFindingRows(obl.Rules)
+
 	// Guarded-edits dedup (docs/design/guarded-edits.md §2.3): when the
 	// --pre hook already served rules for this exact (session, service,
 	// file) within guardStampTTL, render only the DELTA here — rules newly
@@ -275,14 +296,14 @@ func renderPostEdit(url, projDir, filePath, sessionID string) (string, postEditM
 	// No stamp found (the overwhelmingly common case: no guard matched
 	// this file, or the --pre hook isn't installed/didn't fire) renders
 	// the full answer exactly as before this feature existed.
-	renderRules := obl.Rules
+	renderRules := govRules
 	suppressedByStamp := 0
 	staleChangedSincePre := false
 	stampConsulted := false
 	if stamp, ok := readGuardStamp(sessionID, svcName, repoRelFile, time.Now()); ok {
 		stampConsulted = true
-		dedup := dedupAgainstStamp(stamp, toObligationLike(obl.Rules), indexStale)
-		renderRules = fromObligationLike(dedup.DeltaRules, obl.Rules)
+		dedup := dedupAgainstStamp(stamp, toObligationLike(govRules), indexStale)
+		renderRules = fromObligationLike(dedup.DeltaRules, govRules)
 		suppressedByStamp = dedup.SuppressedCount
 		staleChangedSincePre = dedup.StaleChanged
 		// Critic finding 6 (phase-O merge): count actual suppressed RULES,
@@ -334,6 +355,32 @@ func renderPostEdit(url, projDir, filePath, sessionID string) (string, postEditM
 			fmt.Fprintf(&sb, "\n⚠️ module %s: %s", n.Module, n.Note)
 		}
 		reportModuleBeats(renderRules, "post", sessionID)
+	}
+
+	// FL-20 (docs/vision/30-findings-loop.md §3.4): the post-edit findings
+	// block renders ONLY when the edited region overlaps a finding's cited
+	// lines — editedRangeFromFile best-effort locates that region from the
+	// tool's own proposed new_content against the file as it now stands
+	// (the edit already landed by PostToolUse time). Gated behind the SAME
+	// budget spec-lines/memories already share below: findings are
+	// advisory, lowest priority after the governing rules that precede
+	// them, so a payload that already spent its budget on rules drops
+	// findings first rather than growing further.
+	findingsShown, findingsOmitted := 0, 0
+	if len(findingRows) > 0 && cost.Estimate(sb.String()) <= specLineTokenBudget {
+		var editedRange *lineRange
+		if raw, rerr := os.ReadFile(filePath); rerr == nil {
+			editedRange = editedRangeFromFile(string(raw), newContent)
+		}
+		block, fmeta := renderFindingsBlock(findingRows, editedRange, "post")
+		if block != "" {
+			if sb.Len() > 0 {
+				sb.WriteString("\n")
+			}
+			sb.WriteString(block)
+			findingsShown, findingsOmitted = fmeta.Shown, fmeta.Omitted
+			emitBeat("edit-hook", "finding_touched", firingMeta(map[string]string{"phase": "post", "shown": strconv.Itoa(fmeta.Shown)}, sessionID, filePath))
+		}
 	}
 
 	// OP-4 (spec-line injection, docs/vision/04 §4 item 3): when the edited
@@ -406,11 +453,13 @@ func renderPostEdit(url, projDir, filePath, sessionID string) (string, postEditM
 		return "", postEditMeta{}, false // clean file (or unindexed project), no spec IDs → silent
 	}
 	return sb.String(), postEditMeta{
-		rules:        len(renderRules),
-		repoRelFile:  repoRelFile,
-		displaced:    obl.Displaced,
-		memShown:     memShown,
-		memDisplaced: memDisplaced,
+		rules:           len(renderRules),
+		repoRelFile:     repoRelFile,
+		displaced:       obl.Displaced,
+		memShown:        memShown,
+		memDisplaced:    memDisplaced,
+		findingsShown:   findingsShown,
+		findingsOmitted: findingsOmitted,
 	}, true
 }
 
@@ -577,7 +626,16 @@ func resolveSymlinks(p string) string {
 // 2*time.Second, byte-identical to this function's behavior before this
 // parameter existed. Returns the Obligations payload, the index_stale
 // flag, and ok=false on any error.
-func fetchObligations(baseURL, service, file string, maxRules int, timeout time.Duration) (semantic.Obligations, bool, bool) {
+//
+// layer (FL-20, ADR-040 decision 5) is forwarded as the tool's "layer"
+// argument only when non-empty — every pre-existing caller passes "" and
+// sees the exact same wire request it always has (the server defaults an
+// absent layer to "rules"). The edit-hook post/pre paths pass
+// semantic.ObligationLayerAll so a finding-kind row (Kind=="finding") can
+// reach the findings block (edithook_findings.go) in the SAME round trip
+// obligations rules already make — §3.4's "one call, no compile, no
+// model" cost claim.
+func fetchObligations(baseURL, service, file string, maxRules int, timeout time.Duration, layer semantic.ObligationLayerFilter) (semantic.Obligations, bool, bool) {
 	args := map[string]any{
 		"service": service,
 		"file":    file,
@@ -590,6 +648,9 @@ func fetchObligations(baseURL, service, file string, maxRules int, timeout time.
 	}
 	if maxRules > 0 {
 		args["max_rules"] = maxRules
+	}
+	if layer != "" {
+		args["layer"] = string(layer)
 	}
 	reqBody, err := json.Marshal(map[string]any{
 		"jsonrpc": "2.0",

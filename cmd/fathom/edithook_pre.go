@@ -209,20 +209,26 @@ func renderPreEdit(url, projDir, filePath, sessionID string) (preEditResult, boo
 	if remaining < minSecondCallBudget {
 		remaining = minSecondCallBudget
 	}
-	obl, indexStale, ok := fetchObligations(url, svcName, repoRelFile, guard.MaxRules, remaining)
+	obl, indexStale, ok := fetchObligations(url, svcName, repoRelFile, guard.MaxRules, remaining, semantic.ObligationLayerAll)
 	if !ok {
 		emitBeat("edit-hook", "error", firingMeta(map[string]string{"phase": "pre", "target": "file"}, sessionID, filePath))
 		return preEditResult{}, false
 	}
 
+	// FL-20 (ADR-040 decision 5): split finding-kind rows out before the
+	// governing-rules preview below — see edithook.go's renderPostEdit for
+	// why this must happen before ANYTHING else touches obl.Rules (the
+	// "byte-identical when no findings exist" pin covers this path too).
+	govRules, findingRows := splitFindingRows(obl.Rules)
+
 	// include_modules gates DISPLAY only (design §2.1's per-guard toggle) —
 	// the daemon already computed module rules whenever a binding exists;
 	// this guard's config decides whether the PRE-edit preview shows them.
-	displayed := obl.Rules
+	displayed := govRules
 	hiddenModuleRules := 0
 	if !guard.IncludeModules {
-		displayed = filterOutModuleRules(obl.Rules)
-		hiddenModuleRules = len(obl.Rules) - len(displayed)
+		displayed = filterOutModuleRules(govRules)
+		hiddenModuleRules = len(govRules) - len(displayed)
 	}
 
 	var sb strings.Builder
@@ -258,6 +264,22 @@ func renderPreEdit(url, projDir, filePath, sessionID string) (preEditResult, boo
 	for _, n := range obl.ModuleNotes {
 		writeHeaderIfNeeded()
 		fmt.Fprintf(&sb, "\n⚠️ module %s: %s", n.Module, n.Note)
+	}
+
+	// FL-20 (docs/vision/30-findings-loop.md §3.4): the pre-edit findings
+	// block goes AFTER the governing rules and after the enforcement
+	// verdict — the caller (cmdEditHookPreFile) already ran the enforce:true
+	// deny check before ever reaching renderPreEdit, so "never before a
+	// deny" holds by construction. Every live finding-kind row renders
+	// unconditionally here (phase "pre": there is no proposed edit yet to
+	// overlap against).
+	if len(findingRows) > 0 {
+		if block, _ := renderFindingsBlock(findingRows, nil, "pre"); block != "" {
+			if sb.Len() > 0 {
+				sb.WriteString("\n")
+			}
+			sb.WriteString(block)
+		}
 	}
 
 	if sb.Len() == 0 {

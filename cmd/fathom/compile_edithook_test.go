@@ -403,10 +403,18 @@ func TestEditHookOutputWithRules(t *testing.T) {
 	}
 }
 
-// FT-2's last hop: a finding-kind claim served on an edited file must be
-// distinguishable from an obligation in the rendered payload, and remediation
-// drift (code_drifted) must be visible — otherwise the labeling contract stops
-// one hop short of the agent.
+// FT-2's last hop labeled a finding-kind claim inline in the obligations
+// bullet list ("[…, sme-stated, finding, code drifted since compile]").
+// FL-20 (docs/vision/30-findings-loop.md §3.4, edithook_findings.go)
+// supersedes that inline labeling with a dedicated "open findings on this
+// file" block — richer (class, producer, rule id, remedy, anchor state)
+// and never mixed into the governing-rules bullet list. This test now pins
+// the OTHER half of that contract: a finding-kind row must never leak into
+// the governing bullet list, whether or not the findings block itself gets
+// to render (here it does not — no tool_input content means no edited
+// range to compare a post-edit overlap against, so the block silently
+// skips per its own "no edited range" contract; edithook_findings_test.go
+// covers the block actually rendering).
 func TestEditHookRendersKindAndCodeDrifted(t *testing.T) {
 	cannedPayload := map[string]any{
 		"service": "myrepo",
@@ -466,14 +474,15 @@ func TestEditHookRendersKindAndCodeDrifted(t *testing.T) {
 	}
 	hook, _ := payload["hookSpecificOutput"].(map[string]any)
 	ctx, _ := hook["additionalContext"].(string)
-	// The kind label sits in the bracket after the tier ("[…, sme-stated,
-	// finding, …]") — asserting the pair, not the bare word, because the src
-	// path "findings/security.md" would satisfy a bare Contains("finding").
-	if !strings.Contains(ctx, "sme-stated, finding") {
-		t.Errorf("finding-kind rule must be labeled as a finding after its tier, got %q", ctx)
+	// The finding-kind row must never render via the old inline "[…,
+	// sme-stated, finding, …]" bullet labeling — FL-20 moved that
+	// rendering to the dedicated findings block (silent here: no edited
+	// range).
+	if strings.Contains(ctx, "sme-stated, finding") {
+		t.Errorf("finding-kind rule must not be inline-labeled in the obligations bullet list anymore, got %q", ctx)
 	}
-	if !strings.Contains(ctx, "code drifted") {
-		t.Errorf("code_drifted rule must carry a drift marker, got %q", ctx)
+	if strings.Contains(ctx, "Rotate the leaked credential") {
+		t.Errorf("finding-kind rule text must not leak into the governing bullet list, got %q", ctx)
 	}
 	// The obligation bullet stays exactly as before — no kind label.
 	if !strings.Contains(ctx, "• Sort all outputs. [CLAUDE.md#L4-L4, doc-claimed]") {

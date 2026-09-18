@@ -77,6 +77,9 @@ Evidence: `docs/app-kit.md`.
 - The findings loop (`docs/vision/30-findings-loop.md`, ADR-040): `fathom init` scaffolds a commented `[findings]` section in `.fathom/config.toml`; a new `fathom-findings` skill (import/inspect/refute) and a `fathom-onboard` step document it end to end (`docs/adoption/findings-loop.md`, `docs/configuration.md`). The `fathom findings import`/`fathom findings candidates` CLI verbs it documents are other waves' work (`docs/plans/findings-loop.md` sections A-D) and are not yet present.
 - Measurement corpus `testdata/scenariobench/findings-loop.json` (FL-24, `task bench-scenario-findings`): four tasks, each a real gap this repo's own tree carries, anchored to a review-kit finding served (full arm) or withheld (control arm) — committed only, not run.
 <!-- /fl-wave-5 -->
+<!-- fl-wave-4 -->
+- Findings served at the point of work (ADR-040, docs/vision/30-findings-loop.md §3.4): the pre/post-edit hook's "open findings on this file" advisory block (capped at 3 findings/1,200 bytes, drifted anchors flagged, superseded/refuted never shown, post-edit gated on the edit actually touching the finding's cited lines); the prompt hook's `open findings: N across the files this prompt names`; the session brief's `open findings: N (oldest …)` (a new plain `GET /findings/summary` daemon route, never an MCP tool); the session hook's outbox sync (`[findings] outbox` in `.fathom/config.toml`, a sha256 digest cursor, one attempt per session); `fathom findings candidates [--min-sites 3] [--json]` (rule candidates derived from `DerivePatterns`, native and external findings alike, with a drafted rule sentence and its ADR-038 check family — fathom never writes the rule); `findings status` gains `candidates` and `disagreements_by_rule`.
+<!-- /fl-wave-4 -->
 
 ### Changed
 

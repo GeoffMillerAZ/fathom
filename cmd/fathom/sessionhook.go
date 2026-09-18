@@ -88,6 +88,19 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 
 	ctx := buildSessionContext(*url, projDir)
 
+	// FL-22 (docs/vision/30-findings-loop.md §3.7): the outbox sync, gated
+	// to the SAME startup/clear/"" sources as the continuity brief below —
+	// a resumed or compacted session already has this session's context,
+	// so re-syncing there would be the schema-tax mistake in a new
+	// costume, not a real session start. syncFindingsOutbox itself is the
+	// "never more than one attempt" gate (the digest cursor short-circuits
+	// a repeat call once it has been written).
+	if startSource == "startup" || startSource == "clear" || startSource == "" {
+		if line := syncFindingsOutbox(*url, projDir); line != "" {
+			ctx += "\n" + line
+		}
+	}
+
 	// Session windows (design point 2, docs/vision/28-receipts.md §4): a
 	// mechanical {session_id, cwd, service, started} row under
 	// logs/sessions.jsonl in the repo's state directory (statedir.Resolve
@@ -338,6 +351,14 @@ func buildSessionContext(baseURL, projDir string) string {
 		// routes` does that pass).
 		if rl := routesSummaryLine(projDir, lookup, time.Now()); rl != "" {
 			ctxLine += " " + rl
+		}
+		// FL-21 (docs/vision/30-findings-loop.md §3.4): one line naming
+		// the repo-wide open finding-kind claim count, when any exist —
+		// silent on a zero count or any fetch failure, matching this
+		// hook's own degraded-branch discipline (never a reason to fail
+		// or slow session start).
+		if fl := findingsBriefLine(hc, baseURL, lookup); fl != "" {
+			ctxLine += " " + fl
 		}
 		return ctxLine
 	}

@@ -42,8 +42,10 @@ func cmdFindings(args []string, stdout, stderr io.Writer) int {
 		return cmdFindingsStatus(args[1:], stdout, stderr)
 	case "import":
 		return cmdFindingsImport(args[1:], stdout, stderr)
+	case "candidates":
+		return cmdFindingsCandidates(args[1:], stdout, stderr)
 	default:
-		fmt.Fprintf(stderr, "error: unknown findings verb %q (want near | status | import)\n", args[0])
+		fmt.Fprintf(stderr, "error: unknown findings verb %q (want near | status | import | candidates)\n", args[0])
 		printFindingsUsage(stderr)
 		return 1
 	}
@@ -54,6 +56,7 @@ func printFindingsUsage(w io.Writer) {
 	fmt.Fprintln(w, "  fathom findings near <symbol|file> --store PATH --service NAME [--hops N] [--include-superseded] [--json]")
 	fmt.Fprintln(w, "  fathom findings status --store PATH --service NAME [--json]")
 	fmt.Fprintln(w, "  fathom findings import --store PATH --service NAME --subject ORG/REPO/COMPONENT --producer NAME --file PATH [--dry-run] [--json]")
+	fmt.Fprintln(w, "  fathom findings candidates --store PATH --service NAME [--min-sites N] [--json]")
 }
 
 // openFindingsClient mounts storePath read-only and wraps it in pkg/client
@@ -252,8 +255,80 @@ func cmdFindingsStatus(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stdout, "    - %s\n", cl)
 	}
 	fmt.Fprintf(stdout, "  patterns with >=3 resolved members: %d\n", report.PatternsWithThreeResolvedMembers)
+	fmt.Fprintf(stdout, "  candidates (>=3 sites): %d\n", report.Candidates)
+	fmt.Fprintf(stdout, "  disagreements (by rule shape + anchor path): %d\n", report.DisagreementsByRule)
 	fmt.Fprintf(stdout, "  entry condition (product-vision.md §3, %d-%d resolved findings): met=%v\n",
 		report.EntryBarLow, report.EntryBarHigh, report.EntryConditionMet)
 	fmt.Fprintf(stdout, "  %s\n", report.Note)
 	return 0
+}
+
+// ─── findings candidates ────────────────────────────────────────────────────
+
+func cmdFindingsCandidates(args []string, stdout, stderr io.Writer) int {
+	fs := newFlagSet("findings candidates", stderr)
+	storePath := fs.String("store", "", "local store path (required)")
+	service := fs.String("service", "", "service ID (required)")
+	minSites := fs.Int("min-sites", 3, "minimum distinct sites a pattern must span to emit a candidate")
+	jsonOut := fs.Bool("json", false, "emit JSON instead of a human-readable report")
+	if err := fs.Parse(args); err != nil {
+		return 1
+	}
+	if *storePath == "" || *service == "" {
+		fmt.Fprintln(stderr, "error: --store and --service are required")
+		fs.Usage()
+		return 1
+	}
+	if *minSites < 2 {
+		fmt.Fprintln(stderr, "error: --min-sites must be >= 2 (a single-site 'pattern' is one finding, not recurrence)")
+		return 1
+	}
+
+	c, closeFn, err := openFindingsClient(*storePath)
+	if err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
+		return 1
+	}
+	defer closeFn()
+
+	ctx := context.Background()
+	claims, err := c.ClaimsForService(ctx, *service, findingsLayerName)
+	if err != nil {
+		fmt.Fprintf(stderr, "error: load findings: %v\n", err)
+		return 1
+	}
+	events, eerr := c.ClaimEventsSince(ctx, time.Unix(0, 0).UTC(), time.Now().UTC())
+	if eerr != nil {
+		fmt.Fprintf(stderr, "error: load claim events: %v\n", eerr)
+		return 1
+	}
+
+	cands := findings.RuleCandidates(claims, events, *minSites)
+
+	if *jsonOut {
+		jsonPrint(stdout, cands)
+		return 0
+	}
+	renderFindingsCandidates(stdout, *service, *minSites, cands)
+	return 0
+}
+
+// renderFindingsCandidates renders one block per candidate: the class,
+// shape, drafted sentence, check family, producer set, and every member
+// citation — never a table (member citations vary too much in count to
+// stay tabular and readable at a terminal width).
+func renderFindingsCandidates(w io.Writer, service string, minSites int, cands []findings.RuleCandidate) {
+	fmt.Fprintf(w, "rule candidates for %s (>=%d sites): %d\n", service, minSites, len(cands))
+	for i, c := range cands {
+		fmt.Fprintf(w, "\n%d. [%s] %s\n", i+1, c.Class, c.Shape)
+		fmt.Fprintf(w, "   draft: %s\n", c.Draft)
+		fmt.Fprintf(w, "   check family: %s\n", c.CheckFamily)
+		fmt.Fprintf(w, "   sites: %d, code-change resolutions: %d, producers: %v\n", c.Sites, c.CodeChangeResolutions, c.Producers)
+		for _, m := range c.Members {
+			fmt.Fprintf(w, "     - %s (producer=%s, claim=%s, scope=%v)\n", m.Subject, m.Producer, m.ClaimID, m.Scope)
+		}
+	}
+	if len(cands) == 0 {
+		fmt.Fprintln(w, "  no pattern currently spans enough sites — never a reason to lower the bar without evidence")
+	}
 }
