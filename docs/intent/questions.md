@@ -53,3 +53,16 @@ amend ADR-016 to a measured ceiling, then treat drop-ranking as separate
 work. Blocks: HF-4, and I35 stays VIOLATED until this is answered — an
 invariant nobody can satisfy. Answerable by: owner.
 
+
+**Q22. Is a local embedding model an acceptable optional dependency for a compile step?** Never a
+serving dependency: `docs/vision/31-substrate.md` D5 proposes an `embeddings` compile layer for
+natural-language concept search only, behind a paired-bench kill criterion. Blocks: round D of
+that proposal. Answerable by: owner.
+
+**Q23. Which non-Go languages get typed edges first by SCIP import?** TypeScript/Python (mature
+exporters) or Kotlin/Java (the Long Code Arena corpus)? `docs/vision/31-substrate.md` D3. Blocks:
+round B. Answerable by: owner plus the calibration corpus.
+
+**Q24. Working-tree freshness: daemon-default or hook-triggered?** `docs/vision/31-substrate.md`
+D2 needs one of the two; the journal's O18/O20/O32/O33 are the cost of neither. Blocks: round A.
+Answerable by: owner.
