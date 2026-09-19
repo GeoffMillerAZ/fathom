@@ -244,7 +244,13 @@ func cmdFindingsStatus(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	report := findings.BuildStatus(claims, events)
+	// SU-16 (docs/plans/substrate.md §D): telemetry rides the SAME hooks
+	// beat log every other `fathom metrics`/instrument reader uses
+	// (beatLogPath/readBeatsFor, beats.go/metrics_io.go) — best-effort, an
+	// absent/unreadable log degrades to an honest all-zero telemetry, never
+	// an error.
+	beats := readBeatsFor(beatLogPath())
+	report := findings.BuildStatusWithTelemetry(claims, events, beats, time.Now())
 
 	if *jsonOut {
 		jsonPrint(stdout, report)
@@ -262,6 +268,13 @@ func cmdFindingsStatus(args []string, stdout, stderr io.Writer) int {
 	fmt.Fprintf(stdout, "  entry condition (product-vision.md §3, %d-%d resolved findings): met=%v\n",
 		report.EntryBarLow, report.EntryBarHigh, report.EntryConditionMet)
 	fmt.Fprintf(stdout, "  %s\n", report.Note)
+	fmt.Fprintf(stdout, "  rules never fired in 30d: %d\n", report.RulesNeverFired30d)
+	if len(report.TopFired) > 0 {
+		fmt.Fprintln(stdout, "  top fired:")
+		for _, f := range report.TopFired {
+			fmt.Fprintf(stdout, "    - %s served=%d touched=%d last_fired=%s\n", f.ClaimID, f.Served, f.Touched, f.LastFired)
+		}
+	}
 	return 0
 }
 

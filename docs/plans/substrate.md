@@ -31,7 +31,7 @@ Rows are proven by `fathom verify`; every round below ends with a free-tier meas
 ## D. Findings learning telemetry (decision 8)
 
 - [x] Rule candidates decay on dispute, weight members by CODEOWNERS ownership, and cap their cadence; the promoted-rule draft carries a `promoted_from` provenance tag {id: SU-15, symbol: CandidatePolicy, package: internal/analysis/findings}
-- [ ] Post-promotion rule telemetry from hook beats and the call log: served, touched, disputed, last fired per claim; `findings status` shows rules that have not fired in 30 days {id: SU-16, symbol: RuleTelemetry, package: internal/analysis/findings}
+- [x] Post-promotion rule telemetry from hook beats and the call log: served, touched, disputed, last fired per claim; `findings status` shows rules that have not fired in 30 days {id: SU-16, symbol: RuleTelemetry, package: internal/analysis/findings}
 - [ ] `fathom claim add --file --scope --rule` records one human-authored scoped claim (producer `human.review`, tier capped at sme-stated, content-addressed like every other claim) {id: SU-17, symbol: cmdClaimAdd, package: cmd/fathom}
 - [ ] `fathom claim refute --dry-run` previews the disposition: which served rows it would withhold, for which files, before anything is recorded {id: SU-18, symbol: previewRefute, package: cmd/fathom}
 

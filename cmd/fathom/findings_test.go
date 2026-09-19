@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
+
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
@@ -291,5 +293,43 @@ func TestCmdFindings_NoVerb_ErrorExit(t *testing.T) {
 	var out, errBuf bytes.Buffer
 	if code := cmdFindings(nil, &out, &errBuf); code == 0 {
 		t.Error("expected non-zero exit with no verb")
+	}
+}
+
+// TestCmdFindingsStatus_TelemetryFromSyntheticBeatLog is SU-16's CLI-wiring
+// proof: `findings status` reads the hooks beat log through the SAME
+// FATHOM_HOOKS_LOG/beatLogPath resolver every other instrument uses, and
+// folds RuleTelemetry into rules_never_fired_30d/top_fired.
+func TestCmdFindingsStatus_TelemetryFromSyntheticBeatLog(t *testing.T) {
+	t0 := time.Now()
+	claims := []core.SemanticClaim{
+		{ClaimID: "fired", ServiceID: "svc", Layer: "findings", Kind: "finding", Class: core.FindingClassSecurity, Subject: "a", Rule: "shared", Scope: []string{"a.go"}, Status: core.ClaimFresh, CompiledAt: t0},
+		{ClaimID: "silent", ServiceID: "svc", Layer: "findings", Kind: "finding", Class: core.FindingClassSecurity, Subject: "b", Rule: "shared", Scope: []string{"b.go"}, Status: core.ClaimFresh, CompiledAt: t0},
+	}
+	storePath := seedFindingsStore(t, nil, claims, nil)
+	logPath := writeBeatsFixture(t, []heartbeat.Beat{
+		{Channel: "edit-hook", Kind: "finding_touched", At: time.Now(), Meta: map[string]string{"file": "a.go", "shown": "1"}},
+	})
+	t.Setenv("FATHOM_HOOKS_LOG", logPath)
+
+	var out, errBuf bytes.Buffer
+	code := cmdFindingsStatus([]string{"--store", storePath, "--service", "svc", "--json"}, &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("exit = %d, stderr: %s", code, errBuf.String())
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(out.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal: %v\noutput: %s", err, out.String())
+	}
+	if payload["rules_never_fired_30d"].(float64) != 1 {
+		t.Errorf("rules_never_fired_30d = %v, want 1 (only 'silent' never fired)", payload["rules_never_fired_30d"])
+	}
+	topFired, ok := payload["top_fired"].([]any)
+	if !ok || len(topFired) != 1 {
+		t.Fatalf("top_fired = %v, want one entry", payload["top_fired"])
+	}
+	row := topFired[0].(map[string]any)
+	if row["claim_id"] != "fired" {
+		t.Errorf("top_fired[0].claim_id = %v, want %q", row["claim_id"], "fired")
 	}
 }
