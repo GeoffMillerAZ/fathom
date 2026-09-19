@@ -98,6 +98,16 @@ func TestO9Residue_RealFixtureIngestAndVerify(t *testing.T) {
 			t.Fatalf("syntax-only graph reaches %s = %v; want empty (the O9 refusal this test proves gets dissolved)", target, reached)
 		}
 	}
+	// O40's own shape (direct call on a concrete receiver, not through the
+	// interface): TestCallMemStoreDirect -> CallMemStoreDirect ->
+	// MemStore.PutClaims. The syntax-only graph must not reach it either —
+	// same ambiguous-suffix refusal, one hop closer to a real caller.
+	if !callgraph.Reachable(syntaxOnly, "TestCallMemStoreDirect", "CallMemStoreDirect") {
+		t.Fatal("syntax-only graph does not even reach CallMemStoreDirect from its own Test* caller — fixture wiring is broken, not the thing under test")
+	}
+	if callgraph.Reachable(syntaxOnly, "TestCallMemStoreDirect", "MemStore.PutClaims") {
+		t.Fatal("syntax-only graph reaches MemStore.PutClaims from TestCallMemStoreDirect; want false (the O40 refusal this test proves gets dissolved)")
+	}
 
 	typed, err := st.TypedEdges(ctx, "typedfixture")
 	if err != nil {
@@ -110,6 +120,13 @@ func TestO9Residue_RealFixtureIngestAndVerify(t *testing.T) {
 	graph := callgraph.Build(nodes)
 	callgraph.AddTypedEdges(graph, typed)
 	ev := &residueEvidence{nodes: nodes, graph: graph}
+
+	// O40: after AddTypedEdges, the direct concrete-receiver call resolves
+	// too — plain reachability (edge_wired's own check), not test_reaches'
+	// dispatch-detail path, since this is a direct edge, not dispatch.
+	if !ev.Reachable("TestCallMemStoreDirect", "MemStore.PutClaims") {
+		t.Fatal("typed graph does not reach MemStore.PutClaims from TestCallMemStoreDirect; want true (O40 fixed)")
+	}
 
 	cases := []struct {
 		name   string

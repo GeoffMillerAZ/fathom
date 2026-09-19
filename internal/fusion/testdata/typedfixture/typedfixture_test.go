@@ -24,3 +24,13 @@ func TestCheckPing(t *testing.T) {
 		t.Errorf("CheckPing: %v", err)
 	}
 }
+
+// TestCallMemStoreDirect is O40's exact reproduction shape's Test* caller: a
+// direct call on a concrete receiver (*MemStore) whose method name
+// (PutClaims) is shared by another receiver (DiskStore) implementing the
+// same interface. Only a typed edge disambiguates it.
+func TestCallMemStoreDirect(t *testing.T) {
+	if err := CallMemStoreDirect(&MemStore{}); err != nil {
+		t.Errorf("CallMemStoreDirect: %v", err)
+	}
+}

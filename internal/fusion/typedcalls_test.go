@@ -164,6 +164,78 @@ func TestEnrichTypedEdges_Resolution(t *testing.T) {
 	if !contains(testDirect, key("typedfixture", "RunAdapter")) {
 		t.Errorf("TestRunAdapter direct edges = %v, want to contain RunAdapter", testDirect)
 	}
+
+	// --- O40 shape: a direct call on a concrete receiver (*MemStore) whose
+	// method name (PutClaims) is shared by another receiver (DiskStore) of
+	// the same interface. The syntax-only resolver refuses this (ambiguous
+	// ".PutClaims" suffix, two candidates); the typed pass must record it
+	// as a plain EdgeDirect to MemStore's own method — not dispatch, and
+	// never to DiskStore.
+	memDirect := set[key("typedfixture", "CallMemStoreDirect")+"|"+string(core.EdgeDirect)]
+	wantMemDirect := []string{key("MemStore", "MemStore.PutClaims")}
+	if !equalStrSlices(memDirect, wantMemDirect) {
+		t.Errorf("CallMemStoreDirect direct edges = %v, want %v (never DiskStore.PutClaims)", memDirect, wantMemDirect)
+	}
+}
+
+// TestEnrichTypedEdges_MethodKeyMatchesExtractorCanonicalKey (O40) asserts a
+// resolved method edge's target key is byte-identical to the SAME method
+// node's own canonical core.SymbolNode.Key() as goextract would compute it
+// (receiver type name folded into Package AND Name — "Recv.Recv.Method" —
+// exactly once each; this shape is intentional, see GoExtractor.Extract's
+// doc and core.QualifiedPackage, not a defect). A mismatch here is what
+// would make a typed edge's ToSymbol an orphan key AddTypedEdges silently
+// drops (its endpoint check requires an exact g.nodes hit) — the failure
+// mode O40 described. This exercises it for a value receiver
+// (LocalPing.Ping), a pointer receiver (MemStore.PutClaims / DiskStore.
+// PutClaims), an embedded-promotion resolution (Base.Hello), and a generic
+// receiver (Stack.Push).
+func TestEnrichTypedEdges_MethodKeyMatchesExtractorCanonicalKey(t *testing.T) {
+	dir := typedFixtureDir(t)
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+
+	if _, err := fusion.EnrichTypedEdges(ctx, st, "typedfixture", dir, nil); err != nil {
+		t.Fatalf("EnrichTypedEdges: %v", err)
+	}
+	edges, err := st.TypedEdges(ctx, "typedfixture")
+	if err != nil {
+		t.Fatalf("TypedEdges: %v", err)
+	}
+
+	// canonicalKey mirrors core.SymbolNode.Key() for a method node the way
+	// GoExtractor.Extract would build one: Package = bare receiver type
+	// name, Name = "Recv.Method", both folded through core.SymbolKey. The
+	// fixture module's files sit at its own module root, so
+	// core.QualifiedPackage's directory qualifier is a no-op here — the
+	// receiver-name duplication this test targets ("Recv.Recv.Method")
+	// comes from Package+Name alone and reproduces identically in a
+	// subdirectory package (core.QualifiedPackage only ever prepends).
+	canonicalKey := func(recv, method string) string {
+		return core.SymbolKey("typedfixture", recv, recv+"."+method)
+	}
+
+	wantTargets := map[string]string{
+		"LocalPing.Ping":     canonicalKey("LocalPing", "Ping"),
+		"MemStore.PutClaims": canonicalKey("MemStore", "PutClaims"),
+		"Base.Hello":         canonicalKey("Base", "Hello"),
+		"Stack.Push":         canonicalKey("Stack", "Push"),
+	}
+	found := map[string]bool{}
+	for _, e := range edges {
+		for label, want := range wantTargets {
+			if e.ToSymbol == want {
+				found[label] = true
+			} else if strings.Contains(e.ToSymbol, "."+label) && e.ToSymbol != want {
+				t.Errorf("edge to %s has non-canonical target key %q, want %q", label, e.ToSymbol, want)
+			}
+		}
+	}
+	for label := range wantTargets {
+		if !found[label] {
+			t.Errorf("no typed edge found with canonical target key for %s (want %s)", label, wantTargets[label])
+		}
+	}
 }
 
 // TestEnrichTypedEdges_Caching is CT-5's correctness half: a second run over
