@@ -167,6 +167,14 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintf(stderr, "warning: typed-edge pass failed: %s — test_impact/verify test_reaches read a syntax-only graph for this service until it is fixed\n", report.TypedFailReason)
 		}
 	}
+	// CUE typed-edge counters (ADR-041 decision 5 / SU-10): printed only
+	// when the CUE pass actually ran (packages processed or failed) — a
+	// non-CUE service stays as quiet as it always was.
+	if report.CUEPackages > 0 || report.CUEPackagesFailed > 0 {
+		cueEdges := report.CUEEdgesDirect + report.CUEEdgesUnresolved
+		fmt.Fprintf(stdout, "cue: %d pkg(s) processed (%d failed), %d edge(s) (%d direct / %d unresolved)\n",
+			report.CUEPackages, report.CUEPackagesFailed, cueEdges, report.CUEEdgesDirect, report.CUEEdgesUnresolved)
+	}
 	// Scoped config (docs/design/scoped-config.md §4 disclosure): report the
 	// project/user pattern-count split that governed this ingest. Ingest has
 	// already succeeded above (Discover already ran LoadIgnoreScoped as its

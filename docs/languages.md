@@ -14,7 +14,7 @@ language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, label
 | Language / dialect | Extraction | Grammar in tree | Calibration subjects | Typed edges | Next |
 |---|---|---|---|---|---|
 | Go | `go/parser` + `go/types` | n/a | cobra, cli/cli, prometheus | **native** (done; selector-method and interface gaps O39/O40 open) | close O39/O40 |
-| CUE | `cueextract.go` + `cue/load` | n/a | this repo's `.fathom/`, `schema/` | **native** (SU-10) | — |
+| CUE | `cueextract.go` + `cue/load` | n/a | this repo's `.fathom/`, `schema/` | **native** (done) | — |
 | TypeScript | tree-sitter (wasm) | yes | nest, zod, typeorm | **scip** via scip-typescript (SU-9); **file** fallback (SU-11) | L0 oracle (SU-12), lookups corpus (SU-23) |
 | JavaScript (`.js .jsx .mjs .cjs`) | tree-sitter (wasm) | yes | express, axios, lodash | **scip** via scip-typescript (SU-9); **file** fallback (SU-11) | L0 oracle |
 | Python | tree-sitter (wasm) | yes | fastapi, flask, django | **scip** via scip-python (SU-9); **file** fallback (SU-11) | L0 oracle (SU-12), lookups corpus (SU-23) |

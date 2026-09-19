@@ -101,7 +101,7 @@ Pending files are bucketed by language and extracted.
 | Java, C, C++, C#, Rust, Scala, PHP, Bash, Lua | Tree-sitter via the official **CGO** Go bindings (ADR-013) — not yet migrated to the wazero engine (Java additionally gained field/import symbol coverage in wave P2/O79, still on this CGO path) |
 | HCL/Terraform | Native HCL parser → `TerraformResource` nodes |
 | Kubernetes YAML | Native k8s decoder → workload kind/name/namespace |
-| CUE | `cue/ast` → definitions and constraints |
+| CUE | `cue/ast` → definitions and constraints; typed edges (imports, `#A: #B & {...}` references) additionally resolved package-wide via `cue/load` (ADR-041 decision 5, `internal/fusion.EnrichCUEEdges`, SU-10) |
 | Markdown | Overlapping 2000-char chunks with nearest-heading context |
 | `go.mod` | Module dependency versions |
 

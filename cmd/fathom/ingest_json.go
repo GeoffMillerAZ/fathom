@@ -46,6 +46,17 @@ type ingestTypedEdgesJSON struct {
 	Unresolved     int `json:"unresolved"`
 }
 
+// ingestCUEEdgesJSON is the CUE typed-edge pass counters (ADR-041 decision
+// 5 / SU-10) — the same package-granular shape as ingestTypedEdgesJSON's
+// pre-O82 fields, over the CUE producer's own store-key namespace.
+type ingestCUEEdgesJSON struct {
+	Packages       int `json:"packages"`
+	PackagesFailed int `json:"packages_failed"`
+	Edges          int `json:"edges"`
+	Direct         int `json:"direct"`
+	Unresolved     int `json:"unresolved"`
+}
+
 type ingestExcludedJSON struct {
 	Project int `json:"project"`
 	User    int `json:"user"`
@@ -73,6 +84,7 @@ type ingestJSON struct {
 	// has no registered extractor for (O69). Omitted when empty.
 	UnsupportedLanguages map[string]int        `json:"unsupported_languages,omitempty"`
 	TypedEdges           *ingestTypedEdgesJSON `json:"typed_edges,omitempty"`
+	CUEEdges             *ingestCUEEdgesJSON   `json:"cue_edges,omitempty"`
 	Excluded             *ingestExcludedJSON   `json:"excluded,omitempty"`
 	Error                string                `json:"error,omitempty"`
 	Hint                 string                `json:"hint,omitempty"`
@@ -132,6 +144,13 @@ func renderIngestJSON(w io.Writer, service, svcPath string, report client.Report
 			Edges: edges, Failed: report.TypedFailed, Error: report.TypedFailReason, Fallback: report.TypedFallback,
 			Packages: report.TypedPackages, PackagesFailed: report.TypedPackagesFailed,
 			Direct: report.TypedEdgesDirect, IfaceDispatch: report.TypedEdgesIfaceDispatch, Unresolved: report.TypedEdgesUnresolved,
+		}
+	}
+	if report.CUEPackages > 0 || report.CUEPackagesFailed > 0 {
+		out.CUEEdges = &ingestCUEEdgesJSON{
+			Packages: report.CUEPackages, PackagesFailed: report.CUEPackagesFailed,
+			Edges:  report.CUEEdgesDirect + report.CUEEdgesUnresolved,
+			Direct: report.CUEEdgesDirect, Unresolved: report.CUEEdgesUnresolved,
 		}
 	}
 	if _, counts, err := connector.LoadIgnoreScopedFor(svcPath, service); err == nil && (counts.Project > 0 || counts.User > 0 || counts.Service > 0) {
