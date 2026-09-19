@@ -21,7 +21,6 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: minor (pre-1.0: breaking bumps minor)
 
-<!-- su-wave-s8 -->
 **Claims gain bi-temporal validity (ADR-041 decision 7, SU-19).** `semantic_claims`
 gains additive `valid_from`/`valid_to`/`asserted_by` columns (`claim_events` gains
 `asserted_by` too), stamped at mint and closed at every supersede/refute path;
@@ -63,9 +62,7 @@ corpus watermark (`"review:<key-or-watermark>"`), an import's `producer@version`
 (`"import:<producer>@<version>"`), and `fathom claim add`'s harness hook session id
 (`"claim-add:<session>"`) via a new `AddClaimRequest.SessionID`. Served as `asserted_by`
 on each obligations rule, omitted when empty.
-<!-- /su-wave-s8 -->
 
-<!-- su-wave-s6 -->
 **Vectors removed, not parked (ADR-041 decision 2, SU-8).** `internal/vector`, the
 query engine's `WithVector` option, the `SymbolIndexer` interface, `hybridRank`'s
 vector branch, and `core.Query.SemanticWt` (its only reader) are deleted, along with
@@ -79,9 +76,7 @@ revisit only through vision 31 §5's kill criterion. Docs scrubbed so "semantic"
 compiled claims, never vectors: `docs/architecture.md` (Hybrid semantic search section
 rewritten), `docs/design/scope-and-purge.md`, `docs/design/semantic-layers.md`,
 `docs/intent/futures.md` (F13 superseded). Evidence: `docs/vision/31-substrate.md`.
-<!-- /su-wave-s6 -->
 
-<!-- su-wave-s4 -->
 **`localize` walks the graph (ADR-041 D4, SU-14).** Every seed `localize` resolves now
 expands through the typed/heuristic call graph (`expandSeedsByGraph`) to depth 2, ranked
 by seed evidence, graph distance, resolved-over-heuristic, then how many distinct seeds
@@ -92,9 +87,7 @@ candidate's `why` caps at 3 citations, closing the 882,577-byte single payload l
 hit. Deterministic on identical input. The LCA corpus's `max_turns` (30) is confirmed
 current; the Kotlin near-empty-index question from lca-run-1 is recorded as an open note
 on the corpus rather than silently dropped.
-<!-- /su-wave-s4 -->
 
-<!-- su-wave-s2 -->
 **Typed edges beyond Go by import (ADR-041 decision 5, SU-9/SU-12/SU-13).** `fathom
 ingest --scip PATH` (repeatable, or auto-detected `index.scip` / `.fathom/scip/*.scip`)
 imports an external indexer's SCIP output as `typed_edges` — `internal/scip.ImportIndex`
@@ -107,9 +100,7 @@ now kept true by `TestLanguagesTrackerMatchesRegistry` (`internal/connector`), a
 `fathom capabilities --json` gains `typed_edge_producers` (native/scip:\<tool\>/file/
 syntax per language). No new module dependency: SCIP's wire types come from the
 already-vendored `third_party/scip` bindings `fathom export scip` uses.
-<!-- /su-wave-s2 -->
 
-<!-- su-wave-s9 -->
 **Language lookups corpora and push gate (ADR-041 decisions 9, 10; SU-23, SU-24, SU-26).**
 `testdata/scenariobench/lookups-ts.json` (nest) and `lookups-py.json` (fastapi) mirror
 lookups-vs.json's task classes on non-Go calibration subjects, committed and not run;
@@ -120,17 +111,11 @@ round" section ordering guards-fathom, findings-loop, lookups-vs, lookups-ts,
 lookups-py, and LCA with cell counts and ledger-derived cost estimates. `task push`
 refuses to push (`scripts/push-check.sh`, exit 3) unless the lefthook pre-push hook is
 present, closing INC-20 (invariant I40).
-<!-- /su-wave-s9 -->
 
-<!-- su-wave-s7 -->
 **Findings-loop learning telemetry (vision 31 §3 D8, ADR-041 decision 8, plan `docs/plans/substrate.md` §D).** `findings candidates` now scores each rule candidate by sites × mean CODEOWNERS-ownership weight of its member files, decayed once per disputed (refuted) member, and caps emission at a configurable cadence with the rest counted `deferred`; every candidate's drafted rule now carries a `promoted_from: <pattern id>, members: N, producers: [...]` provenance tag (`internal/analysis/findings.CandidatePolicy`/`RuleCandidatesWithPolicy`). `findings status` gains `rules_never_fired_30d` and `top_fired`, computed from the edit hook's own beat log (`internal/analysis/findings.RuleTelemetry`) — which currently-served rules have gone quiet and which fire most. New `fathom claim add --store --service --scope GLOB [--scope GLOB ...] --rule TEXT [--remedy TEXT] [--cite path#Lstart-Lend] [--json]` mints one human-authored, content-addressed claim (producer `human.review`, tier capped at sme-stated regardless of any `--tier` value, its own `human-authored/v1` reconciliation domain) served by the pre-edit hook like any finding. `fathom claim refute` gains `--dry-run`: previews `would withhold N served row(s) across N file(s): <first 5 files>` (and the equivalent `{claim_id, would_withhold, files, truncated}` JSON) by walking the claim's own scope globs against the indexed corpus — proven to write nothing.
-<!-- /su-wave-s7 -->
 
-<!-- su-wave-s3 -->
 **Typed edges beyond Go: CUE native, TypeScript/JavaScript/Python file-resolved (ADR-041 decision 5, `docs/plans/substrate.md` §B).** `EnrichCUEEdges` (SU-10, `internal/fusion`) loads every CUE package under a repo with `cue/load`, resolving same-file, cross-file and cross-package `#A: #B & {...}`/import references to typed `core.EdgeDirect` edges (an unsettled reference is `core.EdgeUnresolved`, never dropped) — wired into ingest beside the Go pass, package-granular, under its own `cue:`-prefixed store-key namespace so it can never collide with a Go package's typed-edge rows; `ingest` gains a `cue: N pkg(s) processed (…), N edge(s)` line (`--json`: `cue_edges`). `ResolveFileEdges` (SU-11, `internal/fusion`) adds a per-file import/module-scope resolver for TypeScript/JavaScript and Python when no SCIP index is present for the service, emitting the new `core.EdgeFileResolved` kind — tier pre-scan, always heuristic (`c: "h"`) in `find_callers`/`resolved_nav`/every nav consumer, never presented as typed; `ingest` reports `file_resolved: N` alongside it. `docs/languages.md`'s CUE row moves to native (done); its TypeScript/JavaScript/Python rows mark the file fallback done.
-<!-- /su-wave-s3 -->
 
-<!-- su-wave-s1 -->
 **Substrate hygiene and freshness (ADR-041 decisions 3/4, wave 1 of the substrate round).**
 `EnsureIndexes` adds the secondary indexes the obligations claim query and the
 find_callers/find_callees typed-edge queries actually use, applied idempotently at every
@@ -149,7 +134,6 @@ answering obligations (`ensureFileFresh`) instead of only reporting staleness, a
 prompt hook ignores harness-injected system notifications (`isSystemNotification`) so their
 prose can no longer be mis-read as repo paths. Evidence: `docs/plans/substrate.md` SU-1..3,
 SU-5..7.
-<!-- /su-wave-s1 -->
 
 **Portable bounded build cache (ADR-039).** `FATHOM_CACHE_ROOT` now relocates the
 supported Taskfile/script build caches without embedding a workstation path; configured
@@ -243,9 +227,7 @@ Evidence: `docs/app-kit.md`.
 - `fathom instrument --adoption`, `fathom research report` and `fathom flywheel` (which gains a `--service` flag) now resolve a named service's call log the same way — its recorded corpus path, then that root's own `.fathom/config.toml`, then the daemon's default for that root — instead of three divergent, CWD-relative rules that could each read a different log for the same repo; `doctor` gains an `instrument_identity` row.
 - `fathom layers install <dir> --root DIR` (the documented flag order) is no longer rejected as too many positional arguments; flags are now accepted in either position relative to the pack directory.
 
-<!-- su-wave-s10 -->
 - agentic-kit's `evidence-producer` catalog (`foundations/evidence/evidence-producer`) is vendored into `third_party/agentic-kit` (pin `2639212`); `internal/semantic.CatalogFromKit` builds an `evidenceproducer.Catalog` from `schema/semantic/producers.cue` under the shared engineering tier ladder, mapping fathom's `fathom`/`external` origin vocabulary to the kit's `self`/`external`. `ProducerCatalog.Lookup`, `CapTier`, the importer's fathom-origin refusal and a new `Importer.IndependentProducers` corroboration check now delegate to the kit's `Lookup`/`Cap`/`Admit`/`Independent` instead of a private `tierRank` map; `TestProducerCatalogsAgree` cross-checks fathom's catalog against the kit's own `#Catalog` CUE schema (SU-25, ADR-041 decision 8).
-<!-- /su-wave-s10 -->
 
 ## [0.8.0] -- 2026-09-02
 
