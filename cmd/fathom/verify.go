@@ -309,17 +309,19 @@ func verifyAllAgainstStore(plans []verify.Plan, service, storePath, concern stri
 	if len(nodes) == 0 {
 		return nil, fmt.Errorf("service %q has no symbols in store %q — ingest it before verifying", service, storePath)
 	}
-	graph := callgraph.Build(nodes)
 	// Typed Go call edges (ADR-021 §3), additive on top of the syntax graph —
-	// the SAME graph the daemon's verify_plan builds (BuildBoth). INC-21: this
-	// path built the syntax-only graph, so a plan row whose reachability runs
-	// through a method value or an interface dispatch verified under the
-	// daemon and failed under `fathom verify --store` on the identical tree.
-	// Best-effort: a non-Go service or a store with no typed edges yet simply
+	// the SAME graph the daemon's verify_plan builds (BuildBoth). Without them
+	// the CLI gate ran on syntax-only edges, which resolve a bare method call
+	// ("st.EnsureIndexes") through a name-suffix fallback that returns nothing
+	// whenever two receivers share a method name (SQLiteStore and MemoryStore
+	// both implement Store.EnsureIndexes) and never see a method value or an
+	// interface dispatch at all — the O39/O40 false "does not reach" on
+	// SU-1/SU-2, and INC-21's rows that verified under the daemon and failed
+	// under `fathom verify --store` on the identical tree. Best-effort, as on
+	// the daemon: a non-Go service or a store with no typed pass yet simply
 	// contributes nothing.
-	if typed, typedErr := c.TypedEdges(ctx, service); typedErr == nil {
-		callgraph.AddTypedEdges(graph, typed)
-	}
+	typed, _ := c.TypedEdges(ctx, service)
+	graph := callgraph.BuildBoth(nodes, typed)
 
 	var contras []core.Contradiction
 	if res, qErr := c.QuerySymbols(ctx, core.Query{
