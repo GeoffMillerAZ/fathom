@@ -16,7 +16,10 @@ func TestPushCheckScript(t *testing.T) {
 	if _, err := exec.LookPath("bash"); err != nil {
 		t.Skip("bash not on PATH")
 	}
-	root := filepath.Join("..", "..")
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
 	script := filepath.Join(root, "scripts", "push-check_test.sh")
 	if _, err := os.Stat(script); err != nil {
 		t.Fatalf("missing %s: %v", script, err)
