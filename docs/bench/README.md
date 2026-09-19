@@ -1389,3 +1389,23 @@ Paired (bootstrap, n=14, seed 20260902, 20000 resamples): success-rate diff +0.1
 | verify | 0.16 | 0.00 | 0.16 | 0.39 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.09 | 0.00 | 0.00 | 0.04 | 0.17 | 0.00 |
 
 <!-- END scenario ledger -->
+
+## Next round (2026-09-19, not run)
+
+SU-24: every corpus below passes `scenariobench plan` (`TestAllCorporaPlan`,
+internal/scenariobench) — one cell per (task, arm, trial), keyed, no error — and
+none has run this round. Cost = planned cells x the ledger's median $/cell for the
+nearest PRIOR corpus with real data (grouped by `criterion_id`); "no prior" falls
+back to `lookups-vs`, the nearest lookup-shaped corpus that has one.
+
+| Order | Corpus | Cells (tasks×arms×trials) | Nearest prior ($/cell, tokens/cell) | Est. cost |
+|---|---|---|---|---|
+| 1 | guards-fathom.json | 32 (8×2×2) | own history, M1-1: $0.7594, 1,603,632 tok | ~$24 |
+| 2 | findings-loop.json | 30 (5×2×3) | no prior: guards-fathom M1-1, $0.7594, 1,603,632 tok | ~$23 |
+| 3 | lookups-vs.json | 140 (14×5×2) | own history, M6-1: $0.1091, 159,310 tok | ~$15 |
+| 4 | lookups-ts.json | 24 (6×2×2) | no prior: estimate from lookups-vs M6-1, $0.1091, 159,310 tok | ~$3 |
+| 5 | lookups-py.json | 24 (6×2×2) | no prior: estimate from lookups-vs M6-1, $0.1091, 159,310 tok | ~$3 |
+| 6 | LCA (lca-bugloc.json) | 240 (40×2×3) | own history, lca-bug-localization-m12-m16: $0.0795, 166,171 tok | ~$19 |
+
+**Total: ~$87 across 490 cells.** Re-derive: group `docs/bench/scenarios-ledger.jsonl`
+by `criterion_id`, take median(`readings.total_tokens`/`trials`) and median(`cost_usd`/`trials`).
