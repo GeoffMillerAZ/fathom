@@ -33,24 +33,29 @@ import (
 // through the read-serving daemon.
 func cmdClaim(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "error: claim requires a verb: refute | corroborate")
+		fmt.Fprintln(stderr, "error: claim requires a verb: add | refute | corroborate")
 		printClaimUsage(stderr)
 		return 1
 	}
 	switch args[0] {
+	case "add":
+		return cmdClaimAdd(args[1:], stdout, stderr)
 	case "refute":
 		return cmdClaimVerdict(args[1:], stdout, stderr, "refuted", core.ClaimRefuted)
 	case "corroborate":
 		return cmdClaimVerdict(args[1:], stdout, stderr, "corroborated", "")
 	default:
-		fmt.Fprintf(stderr, "error: unknown claim verb %q (want refute | corroborate)\n", args[0])
+		fmt.Fprintf(stderr, "error: unknown claim verb %q (want add | refute | corroborate)\n", args[0])
 		printClaimUsage(stderr)
 		return 1
 	}
 }
 
 func printClaimUsage(w io.Writer) {
-	fmt.Fprintln(w, "Usage: fathom claim <refute|corroborate> --store DB --service S --claim ID --note \"...\" [--author NAME]")
+	fmt.Fprintln(w, "Usage:")
+	fmt.Fprintln(w, "  fathom claim add          --store DB --service S --scope GLOB [--scope GLOB ...] --rule \"...\" [--remedy \"...\"] [--cite path#Lstart-Lend] [--json]")
+	fmt.Fprintln(w, "  fathom claim refute       --store DB --service S --claim ID --note \"...\" [--author NAME] [--dry-run] [--json]")
+	fmt.Fprintln(w, "  fathom claim corroborate  --store DB --service S --claim ID --note \"...\" [--author NAME]")
 }
 
 // cmdClaimVerdict implements one triage verb. newStatus is the ClaimStatus to
