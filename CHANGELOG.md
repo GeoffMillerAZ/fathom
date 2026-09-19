@@ -21,6 +21,27 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: minor (pre-1.0: breaking bumps minor)
 
+<!-- su-wave-s1 -->
+**Substrate hygiene and freshness (ADR-041 decisions 3/4, wave 1 of the substrate round).**
+`EnsureIndexes` adds the secondary indexes the obligations claim query and the
+find_callers/find_callees typed-edge queries actually use, applied idempotently at every
+store Open. `Store.ClaimsForServe` prefilters claims by layer, served status and the edited
+file's directory prefixes in the backend (SQL `WHERE` for SQLite, a Go loop for the memory
+store) before `obligationsCore` scores them in Go, byte-identical to the prior full-scan
+path on every existing golden. Every `tools/call` result now passes through a
+dispatch-level byte budget (`budgetedHandler`) so a handler that forgets to budget itself
+still cannot exceed it. `CachedCallGraph.InvalidatePackage` patches one package's nodes and
+edges into a warm call graph in place instead of forcing a full rebuild (production wiring
+at the typed-edge and per-file re-ingest call sites is tracked as follow-up).
+`fusion.Pipeline.ReingestFile` re-extracts one file's observations/syntax edges and
+fingerprint on request, leaving typed edges package-granular; the daemon's new loopback
+`POST /refresh-file` route serves it. The pre-edit hook now refreshes a stale file before
+answering obligations (`ensureFileFresh`) instead of only reporting staleness, and the
+prompt hook ignores harness-injected system notifications (`isSystemNotification`) so their
+prose can no longer be mis-read as repo paths. Evidence: `docs/plans/substrate.md` SU-1..3,
+SU-5..7.
+<!-- /su-wave-s1 -->
+
 **Portable bounded build cache (ADR-039).** `FATHOM_CACHE_ROOT` now relocates the
 supported Taskfile/script build caches without embedding a workstation path; configured
 missing roots refuse, and `FATHOM_CACHE_MAX_MIB` bounds the regenerable Go build cache.
