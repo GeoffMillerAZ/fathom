@@ -139,6 +139,11 @@ futures may justify a free option today. The repo's own sequence is
   DuckDB VSS and never re-checked on SQLite. Evidence: ADR-016, `docs/design/product-vision.md` H3 note.
 - Do not build: a second store. Promote when: a query class fails keyword-only on the context bench.
 - Drop if: harness-native embeddings make it moot.
+- **Superseded 2026-09-19 (ADR-041 decision 2, `docs/vision/31-substrate.md` §3 D5/D7):**
+  the live vector adapter (`internal/vector`, `WithVector`) is deleted, not parked — this
+  row's old "Promote when" bar is replaced by vision 31 §5's kill criterion (a paired
+  concept-query bench beating lexical+graph at ≤ 2× tokens, committed ledger, n ≥ 3);
+  "semantic search" in fathom means compiled claims until that bench runs and passes.
 
 ## F14. CI/forge integration as its own repo
 

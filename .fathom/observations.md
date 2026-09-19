@@ -1431,3 +1431,14 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Repro/pin:** `TestReorderFlagsFirst`, `TestLayers_Install_FlagsAfterPositionalPath`, `TestLayers_Install_BoolFlagAfterPositionalPath`, `TestLayers_PrintUsage_LayersInstallLinePinned`, `TestReconcileSkills` (extended).
 - **Status:** closed (O8); O9 not reproduced — regression test added, no code change
 - **Impact:** `layers install` no longer punishes the documented invocation order; a future O9-shaped regression in the wiring ledger is now caught immediately.
+
+### O93 — SU-8: the vector/hybrid-search path was dead code from the daemon's perspective
+
+- **Symptom:** `internal/query`'s `WithVector`/`SymbolIndexer` hybrid-ranking option existed and was fully implemented, but nothing in the daemon, MCP server, or CLI ever wired an indexer in — `Query.SemanticWt` had no path to a nonzero value outside a direct Go caller building its own `SymbolIndexer` (vision 31 §2 inventory item 5).
+- **Evidence:**
+  - **Tool:** grep/find_callers over `internal/query`, `internal/modulehost`, `cmd/fathom`, `internal/mcp`, `pkg/client`
+  - **Root cause:** the hybrid path was built as an `Option` (`query.WithVector`) but never plumbed past `internal/query` itself — the one production call site outside tests, `internal/modulehost/federated.go`'s `query.New(m.Store)`, never passed it, and no CLI flag or MCP tool parameter ever set `SemanticWt`.
+  - **Fix:** ADR-041 decision 2 (vision 31 §3 D5/D7) — `internal/vector`, `WithVector`, `SymbolIndexer`, `hybridRank`'s vector branch, and `core.Query.SemanticWt` (its only reader) deleted; fathom's own import of agentic-kit's embedding client removed; `docs/architecture.md`, `docs/design/scope-and-purge.md`, `docs/design/semantic-layers.md`, and `docs/intent/futures.md` scrubbed so "semantic" means compiled claims, never vectors.
+- **Repro/pin:** `TestQueryEngineHasNoVectorOption` (AST scan refuses reintroduction of any `*Vector*`/`*Embedding*` declaration), `TestQuery_RankingGolden` (pins the surviving keyword+tier ranking byte-identical).
+- **Status:** closed
+- **Impact:** one fewer subsystem, one fewer agentic-kit import edge from fathom's own code, no behavior change for any real caller — the branch was unreachable in production. Revisit only through vision 31 §5's kill criterion.

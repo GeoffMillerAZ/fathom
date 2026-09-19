@@ -33,8 +33,8 @@ the project-intent router.
 ┌───────────────────────────────────────────────────────────────────┐
 │  Layer 3 — Knowledge Query Layer                                  │
 │  store → typed results per query / MCP tool call                  │
-│  concern-scoped · evidence-tier ranked · staleness-aware          │
-│  optional hybrid semantic search (agentic-kit embedding)          │
+│  concern-scoped · keyword+tier ranked · staleness-aware           │
+│  cross-repo graph verbs walk typed edges in memory                │
 └───────────────────────────────────────────────────────────────────┘
 ```
 
@@ -199,26 +199,39 @@ The set is open-ended; new extractors add new kinds.
 ### Mandatory concern scoping (ADR-006)
 
 Every `Query` carries a `ConcernID`. The engine filters observations to that concern, then
-scores by keyword/semantic overlap and truncates to `TopN`. Forcing a concern keeps results
-relevant and reduces LLM token cost significantly (measured ~77% token reduction vs.
+scores by keyword overlap and evidence tier and truncates to `TopN`. Forcing a concern keeps
+results relevant and reduces LLM token cost significantly (measured ~77% token reduction vs.
 dumping all symbols).
 
 ```go
 type Query struct {
-    ServiceID  string
-    ConcernID  string       // mandatory
-    Keywords   []string
-    Kinds      []SourceKind // optional filter
-    TopN       int          // 0 → default 20
-    SemanticWt float64      // 0 → keyword-only
+    ServiceID string
+    ConcernID string       // mandatory
+    Keywords  []string
+    Kinds     []SourceKind // optional filter
+    TopN      int          // 0 → default 20
 }
 ```
 
-### Hybrid semantic search
+### Ranking: keyword overlap + evidence tier
 
-When `SemanticWt > 0`, the engine runs a keyword query and a vector search in parallel,
-then merges results by blended score. Embeddings are produced via agentic-kit's
-`embedding` package.
+`scoreAndRank` (`internal/query/engine.go`) is the whole of the ranking path: each
+observation's score is `keywordOverlap*10 + tierRank`, ties broken by symbol name then
+source file for determinism. There is no vector or embedding component — "semantic" in
+fathom means a compiled claim (ADR-016's semantic stratum, below), never a vector.
+
+A prior optional hybrid path (`internal/vector`, the query engine's `WithVector` option,
+a `SymbolIndexer` blended against `agentic-kit`'s embedding client) was deleted as dead
+code: no production caller ever wired an indexer into the engine (ADR-041 decision 2).
+Revisit only through vision 31 §5's kill criterion (`docs/vision/31-substrate.md`): a
+controlled result on a labelled concept-query set that lexical plus graph cannot match at
+≤ 2× tokens. `internal/query`'s `TestQueryEngineHasNoVectorOption` fails the build if a
+`*Vector*`/`*Embedding*` option is reintroduced without going through that revisit.
+
+Concept and localization queries that need more than keyword+tier reach for the graph
+instead: `find_callers`/`references`/`blast_radius` walk typed call edges, and `localize`
+expands seeds through the typed neighbourhood (vision 31 §3 D4) — never a dense one-shot
+ranking pass.
 
 ### Staleness reporting (ADR-008)
 
@@ -477,7 +490,6 @@ Each is a small package with one verb and one design doc; none edits the user's 
 | `internal/resultcache` | Memoisation of expensive derived graphs |
 | `internal/verify`, `internal/sdd` | The done-means-proven gate (ADR-018) and the plan grammar (`ctx:`, `needs:`, leases) |
 | `internal/llm` | Knowledge-card enrichment via agentic-kit `llmclient` |
-| `internal/vector` | Embedding store via agentic-kit `embedding` (parked; needs a SQLite re-check) |
 | `internal/llmsec` | Token redaction via agentic-kit `security` |
 | `pkg/client` | Public Go API — wires connector, pipeline, store, query engine; re-exports `ReadFailuresError` |
 | `pkg/platform` | Public cross-repo graph API |

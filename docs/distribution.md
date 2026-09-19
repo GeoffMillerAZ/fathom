@@ -1,8 +1,8 @@
 # Distribution — building fathom without agentic-kit access
 
 fathom depends on one private module, `github.com/geoffmilleraz/agentic-kit`,
-for governed-evidence primitives (evidence tiers, `llmclient`, `embedding`,
-`security`, `telemetry`, `contracts` — ADR-009). Everyone on the fathom repo
+for governed-evidence primitives (evidence tiers, `llmclient`, `security`,
+`telemetry`, `contracts` — ADR-009). Everyone on the fathom repo
 does **not** also have access to that private repo. This doc is for them:
 clone fathom, build it, done — no extra credentials, no extra clone.
 
