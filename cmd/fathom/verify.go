@@ -309,7 +309,19 @@ func verifyAllAgainstStore(plans []verify.Plan, service, storePath, concern stri
 	if len(nodes) == 0 {
 		return nil, fmt.Errorf("service %q has no symbols in store %q — ingest it before verifying", service, storePath)
 	}
-	graph := callgraph.Build(nodes)
+	// Typed Go call edges (ADR-021 §3), additive on top of the syntax graph —
+	// same as the MCP verify_plan tool (registerVerifyPlan). Omitting this
+	// left the CLI gate on syntax-only edges, which resolve a bare method
+	// call ("st.EnsureIndexes") through a name-suffix fallback that returns
+	// nothing whenever two receivers share a method name (e.g. SQLiteStore
+	// and MemoryStore both implement Store.EnsureIndexes) — exactly the
+	// O39/O40 false "does not reach" on SU-1/SU-2. TypedEdges is best-effort:
+	// empty/nil for a non-Go service or one with no typed pass yet.
+	typed, tErr := c.TypedEdges(ctx, service)
+	if tErr != nil {
+		return nil, fmt.Errorf("listing typed edges for %q: %w", service, tErr)
+	}
+	graph := callgraph.BuildBoth(nodes, typed)
 
 	var contras []core.Contradiction
 	if res, qErr := c.QuerySymbols(ctx, core.Query{
