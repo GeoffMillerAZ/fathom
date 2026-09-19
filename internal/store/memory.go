@@ -80,6 +80,15 @@ func NewMemoryStore() *MemoryStore {
 	}
 }
 
+// EnsureIndexes is SQLiteStore.EnsureIndexes' MemoryStore counterpart
+// (SU-1, docs/plans/substrate.md §A): a plain Go map has no query planner
+// to steer, so there is nothing to create — always a no-op, never an
+// error, kept only so callers that hold a Store interface value can call
+// it uniformly regardless of backend.
+func (m *MemoryStore) EnsureIndexes(_ context.Context) error {
+	return nil
+}
+
 // PutObservations appends the supplied observations. IngestedAt is set to now
 // when the caller leaves it as the zero value.
 func (m *MemoryStore) PutObservations(_ context.Context, obs []core.Observation) error {

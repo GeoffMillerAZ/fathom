@@ -128,7 +128,52 @@ func NewSQLiteStore(path string) (*SQLiteStore, error) {
 		_ = db.Close()
 		return nil, fmt.Errorf("store.NewSQLiteStore schema: %w", err)
 	}
+	if err := s.EnsureIndexes(context.Background()); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("store.NewSQLiteStore indexes: %w", err)
+	}
 	return s, nil
+}
+
+// serveIndexes are the secondary indexes SU-1 (docs/plans/substrate.md §A,
+// ADR-041 decision 3) adds on top of the fixed schema above: one per column
+// a serve path actually filters on — the obligations claim query
+// (semantic_claims by service_id/layer/status), the find_callers/
+// find_callees typed-edge queries (typed_edges by service_id/to_symbol and
+// service_id/from_symbol), claim_links' own service/claim/rel lookup, the
+// per-source observations lookup, and external_findings' cursor lookup.
+// Every statement is CREATE INDEX IF NOT EXISTS — safe to run on every
+// Open, on a fresh store or a years-old one, with no ALTER-TABLE-style
+// migration bookkeeping required (unlike the tableColumns migrations
+// above, an index either already exists or is created; there is no
+// intermediate schema shape to detect).
+var serveIndexes = []string{
+	`CREATE INDEX IF NOT EXISTS idx_semantic_claims_serve
+    ON semantic_claims (service_id, layer, status)`,
+	`CREATE INDEX IF NOT EXISTS idx_claim_links_service_claim_rel
+    ON claim_links (service_id, claim_id, rel)`,
+	`CREATE INDEX IF NOT EXISTS idx_typed_edges_to_symbol
+    ON typed_edges (service_id, to_symbol)`,
+	`CREATE INDEX IF NOT EXISTS idx_typed_edges_from_symbol
+    ON typed_edges (service_id, from_symbol)`,
+	`CREATE INDEX IF NOT EXISTS idx_observations_service_source
+    ON observations (service_id, source_ref)`,
+	`CREATE INDEX IF NOT EXISTS idx_external_findings_service_claim
+    ON external_findings (service_id, claim_id)`,
+}
+
+// EnsureIndexes creates (idempotently) the secondary indexes serveIndexes
+// lists. Called once at construction (NewSQLiteStore) and safe to call
+// again any time — every statement is CREATE INDEX IF NOT EXISTS, so a
+// repeat call against an already-indexed store is a fast no-op check per
+// index, never an error and never a duplicate index.
+func (s *SQLiteStore) EnsureIndexes(ctx context.Context) error {
+	for _, ddl := range serveIndexes {
+		if _, err := s.db.ExecContext(ctx, ddl); err != nil {
+			return fmt.Errorf("store.EnsureIndexes: %w", err)
+		}
+	}
+	return nil
 }
 
 // createSchema creates the fixed, final-column schema. Unlike the old
