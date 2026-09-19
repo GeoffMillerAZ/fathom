@@ -446,12 +446,11 @@ type CrossRepoEdge struct {
 
 // Query is a concern-scoped lookup. ConcernID is mandatory (ADR-006).
 type Query struct {
-	ServiceID  string
-	ConcernID  string
-	Keywords   []string
-	Kinds      []SourceKind // optional filter
-	TopN       int          // 0 => default
-	SemanticWt float64      // 0 => keyword-only
+	ServiceID string
+	ConcernID string
+	Keywords  []string
+	Kinds     []SourceKind // optional filter
+	TopN      int          // 0 => default
 }
 
 // QueryResult is the typed answer to a Query.

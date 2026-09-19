@@ -6,10 +6,11 @@
 // (ADR-007): a doc-claimed observation never outranks a verified one at equal
 // keyword overlap.
 //
-// Optional hybrid search: when a *vector.SymbolIndexer is wired in via WithVector and
-// Query.SemanticWt > 0, each result's final score blends keyword overlap and
-// cosine similarity: final = (1-SemanticWt)*keyword + SemanticWt*semantic.
-// When no Indexer is configured the engine behaves exactly as before (keyword-only).
+// Ranking is keyword overlap blended with evidence tier (scoreAndRank) —
+// there is no vector or embedding path. ADR-041 decision 2 deleted the prior
+// optional hybrid-search branch (internal/vector, WithVector) as dead code no
+// production caller wired; revisit only through vision 31 §5's kill
+// criterion (docs/vision/31-substrate.md).
 package query
 
 import (
@@ -22,7 +23,6 @@ import (
 	"github.com/geoffmilleraz/agentic-kit/foundations/review/scoring"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/store"
-	"github.com/geoffmilleraz/fathom/internal/vector"
 )
 
 const (
@@ -32,10 +32,9 @@ const (
 
 // Engine is the knowledge query engine. It is safe for concurrent use.
 type Engine struct {
-	store   store.Store
-	now     func() time.Time
-	maxAge  time.Duration
-	indexer *vector.SymbolIndexer // nil → keyword-only mode
+	store  store.Store
+	now    func() time.Time
+	maxAge time.Duration
 }
 
 // Option configures an Engine.
@@ -49,13 +48,6 @@ func WithNow(fn func() time.Time) Option {
 // WithMaxAge sets the age threshold beyond which a source is considered stale.
 func WithMaxAge(d time.Duration) Option {
 	return func(e *Engine) { e.maxAge = d }
-}
-
-// WithVector wires a vector.SymbolIndexer into the engine. When non-nil and
-// Query.SemanticWt > 0 the engine blends keyword and vector-similarity scores.
-// The caller is responsible for indexing symbols before querying.
-func WithVector(idx *vector.SymbolIndexer) Option {
-	return func(e *Engine) { e.indexer = idx }
 }
 
 // New creates an Engine backed by the given store. Options may override
@@ -118,21 +110,9 @@ func (e *Engine) Query(ctx context.Context, q core.Query) (core.QueryResult, err
 		topN = defaultTopN
 	}
 
-	var nodes []core.SymbolNode
-
-	// Hybrid path: blend keyword score with vector-similarity when configured.
-	if e.indexer != nil && q.SemanticWt > 0 {
-		var err error
-		nodes, err = e.hybridRank(ctx, obs, q.Keywords, q.SemanticWt, topN)
-		if err != nil {
-			return core.QueryResult{}, err
-		}
-	} else {
-		// Keyword-only path (original behaviour).
-		nodes = scoreAndRank(obs, q.Keywords)
-		if len(nodes) > topN {
-			nodes = nodes[:topN]
-		}
+	nodes := scoreAndRank(obs, q.Keywords)
+	if len(nodes) > topN {
+		nodes = nodes[:topN]
 	}
 
 	staleness := e.buildStalenessReport(obs)
@@ -143,86 +123,6 @@ func (e *Engine) Query(ctx context.Context, q core.Query) (core.QueryResult, err
 		Staleness:      staleness,
 		Contradictions: contradictions,
 	}, nil
-}
-
-// hybridRank scores observations by blending keyword overlap and cosine similarity,
-// then returns the top-N nodes. It builds the query text from all keywords joined
-// by spaces and searches the Indexer for vector scores, then combines:
-//
-//	final = (1-semanticWt)*normKeyword + semanticWt*cosineSimilarity
-//
-// Cosine similarity is in [−1,1]; we normalise the keyword score into [0,1] by
-// dividing by len(keywords) (clamped to 1). When keyword list is empty the keyword
-// component is 0 for all observations.
-func (e *Engine) hybridRank(ctx context.Context, obs []core.Observation, keywords []string, semanticWt float64, topN int) ([]core.SymbolNode, error) {
-	// Build a query text for the vector search.
-	queryText := strings.Join(keywords, " ")
-	if queryText == "" {
-		queryText = " " // embed a whitespace token so the search still runs
-	}
-
-	// Search the index for the topN nearest symbols.
-	hits, err := e.indexer.SearchText(ctx, queryText, topN*2) // over-fetch for blending
-	if err != nil {
-		return nil, err
-	}
-
-	// Build a lookup: symbol name → best cosine score.
-	semScore := make(map[string]float64, len(hits))
-	for _, h := range hits {
-		if prev, ok := semScore[h.Symbol]; !ok || h.Score > prev {
-			semScore[h.Symbol] = h.Score
-		}
-	}
-
-	// Normalise keyword denominator.
-	kwDenom := float64(len(keywords))
-	if kwDenom < 1 {
-		kwDenom = 1
-	}
-
-	type hybridScored struct {
-		node  core.SymbolNode
-		score float64
-		tier  int
-	}
-
-	items := make([]hybridScored, len(obs))
-	for i, o := range obs {
-		ks := float64(keywordScore(o, keywords)) / kwDenom
-		ss := semScore[o.Symbol] // 0 if not in index
-		// Map cosine [-1,1] → [0,1].
-		normSS := (ss + 1) / 2
-		final := (1-semanticWt)*ks + semanticWt*normSS
-		items[i] = hybridScored{
-			node:  observationToNode(o),
-			score: final,
-			tier:  scoring.TierRank(string(o.EvidenceTier)),
-		}
-	}
-
-	// Sort by (score DESC, tier DESC, name ASC, file ASC) for determinism.
-	sort.SliceStable(items, func(i, j int) bool {
-		si := items[i].score*1000 + float64(items[i].tier)
-		sj := items[j].score*1000 + float64(items[j].tier)
-		if si != sj {
-			return si > sj
-		}
-		if items[i].node.Name != items[j].node.Name {
-			return items[i].node.Name < items[j].node.Name
-		}
-		return items[i].node.FilePath < items[j].node.FilePath
-	})
-
-	if len(items) > topN {
-		items = items[:topN]
-	}
-
-	nodes := make([]core.SymbolNode, len(items))
-	for i, it := range items {
-		nodes[i] = it.node
-	}
-	return nodes, nil
 }
 
 // FindCallers returns all SymbolNodes for the given serviceID whose Calls list
