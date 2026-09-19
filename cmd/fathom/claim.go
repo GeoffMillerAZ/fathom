@@ -66,13 +66,30 @@ func cmdClaimVerdict(args []string, stdout, stderr io.Writer, verdict string, ne
 	storePath := fs.String("store", "", "path to the store, .sqlite/.db (required)")
 	service := fs.String("service", "", "service ID (required)")
 	claimID := fs.String("claim", "", "claim ID (required)")
-	note := fs.String("note", "", "verdict rationale (required)")
+	note := fs.String("note", "", "verdict rationale (required, unless --dry-run)")
 	author := fs.String("author", "", "verdict author (optional)")
+	// SU-18 (docs/plans/substrate.md §D): --dry-run previews refute's
+	// disposition — which currently served rows it would withhold — without
+	// recording anything. Parsed for every verdict so a caller gets a named
+	// refusal rather than "flag provided but not defined"; only "refute"
+	// implements it (there is nothing to preview for corroborate, which
+	// never withholds anything).
+	dryRun := fs.Bool("dry-run", false, "refute only: preview the disposition without writing anything")
+	jsonOut := fs.Bool("json", false, "emit JSON instead of a human-readable summary")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
-	if *storePath == "" || *service == "" || *claimID == "" || *note == "" {
-		fmt.Fprintf(stderr, "error: claim %s requires --store, --service, --claim, and --note\n", verdict)
+	if *storePath == "" || *service == "" || *claimID == "" {
+		fmt.Fprintf(stderr, "error: claim %s requires --store, --service, and --claim\n", verdict)
+		fs.Usage()
+		return 1
+	}
+	if *dryRun && verdict != "refuted" {
+		fmt.Fprintf(stderr, "error: --dry-run is only supported for claim refute (nothing to preview for %s)\n", verdict)
+		return 1
+	}
+	if !*dryRun && *note == "" {
+		fmt.Fprintf(stderr, "error: claim %s requires --note\n", verdict)
 		fs.Usage()
 		return 1
 	}
@@ -103,6 +120,25 @@ func cmdClaimVerdict(args []string, stdout, stderr io.Writer, verdict string, ne
 	if !found {
 		fmt.Fprintf(stderr, "error: claim %q not found for service %q\n", *claimID, *service)
 		return 1
+	}
+
+	if *dryRun {
+		preview, perr := previewRefute(ctx, st, *service, *claimID)
+		if perr != nil {
+			fmt.Fprintf(stderr, "error: %v\n", perr)
+			return 1
+		}
+		if *jsonOut {
+			jsonPrint(stdout, preview)
+			return 0
+		}
+		// A dry-run over one claim: every withheld row is exactly one file
+		// (this rule stops serving there), so WouldWithhold == the file
+		// count — preview.Files is only the (possibly truncated) NAMED
+		// subset, capped separately from the count.
+		fmt.Fprintf(stdout, "would withhold %d served row(s) across %d file(s): %s\n",
+			preview.WouldWithhold, preview.WouldWithhold, joinTruncated(preview.Files, preview.Truncated))
+		return 0
 	}
 
 	ev := core.ClaimEvent{
