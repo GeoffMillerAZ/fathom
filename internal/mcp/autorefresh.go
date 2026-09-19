@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
@@ -240,6 +241,21 @@ func (a *autoRefreshBackend) ObligationsIndexStale(ctx context.Context, service,
 		return false
 	}
 	return ob.ObligationsIndexStale(ctx, service, file)
+}
+
+// ObligationsAsOf forwards SU-19's bi-temporal read (ADR-041 decision 7) —
+// same O7 forwarding class as every other optional capability in this file:
+// without it, wrapping the client in auto-refresh would silently make the
+// obligations tool refuse every as_of argument on a daemon running with
+// auto-refresh on (serve-http's own default). ensure()d like Obligations
+// itself: an as_of answer should still run against a fresh index.
+func (a *autoRefreshBackend) ObligationsAsOf(ctx context.Context, service, file string, maxRules int, asOf time.Time) (semantic.Obligations, error) {
+	a.ensure(ctx, service)
+	aob, ok := a.QueryInterface.(obligationsAsOfBackend)
+	if !ok {
+		return semantic.Obligations{}, errSemanticUnsupported
+	}
+	return aob.ObligationsAsOf(ctx, service, file, maxRules, asOf)
 }
 
 func (a *autoRefreshBackend) RootObligations(ctx context.Context, service string, maxRules int) (semantic.Obligations, error) {

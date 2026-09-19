@@ -253,6 +253,14 @@ type Store interface {
 	// error) when (service_id, claim_id) is absent.
 	SetClaimStatus(ctx context.Context, serviceID, claimID string, status core.ClaimStatus) error
 
+	// SetClaimValidTo closes a single claim's bi-temporal validity window at
+	// t (SU-19, ADR-041 decision 7, core.SemanticClaim.ValidTo) — called by
+	// every path that ends a claim's validity: a native review/compile
+	// reconciliation superseding it, an external closure/revocation, or a
+	// human `fathom claim refute`. A no-op (no error) when (service_id,
+	// claim_id) is absent, mirroring SetClaimStatus.
+	SetClaimValidTo(ctx context.Context, serviceID, claimID string, t time.Time) error
+
 	// UpdateClaimLink re-anchors a single link in place: it rewrites
 	// TargetRef/TargetHash for the row matching (service_id, claim_id, rel,
 	// target_ref=oldTargetRef) to (newTargetRef, newTargetHash), leaving

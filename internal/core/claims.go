@@ -98,6 +98,53 @@ type SemanticClaim struct {
 	// finding-kind claim compiled before this field existed (additive
 	// migration — internal/store's conditional column add).
 	Class FindingClass
+
+	// ValidFrom/ValidTo (SU-19, ADR-041 decision 7, docs/vision/31-substrate.md
+	// §3 D6) are the claim's bi-temporal VALIDITY window — "was this rule
+	// true then", answered independently of Status, which names only the
+	// CURRENT verdict. ValidFrom is stamped once, at mint (compiled_at for a
+	// compiled claim, the import/observation time for an imported or
+	// human-authored one — see each writer's own ValidFrom assignment) and
+	// never moves again: internal/store's PutClaims upsert preserves the
+	// FIRST value it ever saw for a claim_id, exactly like a legacy column's
+	// additive-migration default, so a recompile of unchanged content never
+	// drifts a claim's own history forward. ValidTo is the zero time while
+	// the claim is a live assertion and is set to the event time by every
+	// path that ends a claim's validity (a native review/compile
+	// reconciliation superseding it, an external closure/revocation, a human
+	// `fathom claim refute`) — see SetClaimValidTo. Both are the zero
+	// time.Time{} for a claim written before this field existed (additive
+	// migration, empty-string store column) — ValidAt treats a zero
+	// ValidFrom/ValidTo as an unconstrained bound in that direction, never a
+	// false "never valid"/"already closed".
+	ValidFrom time.Time
+	ValidTo   time.Time
+
+	// AssertedBy (SU-22, ADR-041 decision 7) is the PROV-style link to the
+	// activity that minted this claim: a compile run id, a review
+	// idempotency key or run id, an import cursor "producer@version", or a
+	// hook session id for a human `fathom claim add` — built with
+	// core.AssertedBy(kind, id) so every writer's value has the same
+	// "kind:id" shape. "" for a claim written before this field existed, or
+	// whose writer had no identity to record.
+	AssertedBy string
+}
+
+// ValidAt reports whether c's bi-temporal validity window contains at (SU-19,
+// ADR-041 decision 7): the SAME question "was this rule true then" that
+// ObligationsAsOf answers. A zero ValidFrom never rejects on the lower
+// bound (the claim's own mint time is unknown or predates this field); a
+// zero ValidTo means still open (never rejects on the upper bound) — the
+// same "empty means unconstrained" convention every other additive column
+// in this store uses for a pre-existing row.
+func (c SemanticClaim) ValidAt(at time.Time) bool {
+	if !c.ValidFrom.IsZero() && at.Before(c.ValidFrom) {
+		return false
+	}
+	if !c.ValidTo.IsZero() && !at.Before(c.ValidTo) {
+		return false
+	}
+	return true
 }
 
 // ClaimID computes the content-addressed identity for a claim.
@@ -148,7 +195,34 @@ const (
 	RelCites   = "cites"
 	RelScopes  = "scopes"
 	RelScopeFP = "scope-fp"
+	// RelSupersedes (SU-20, ADR-041 decision 7) is a link FROM the successor
+	// claim TO the predecessor it replaces: ClaimID is the successor,
+	// TargetRef is the predecessor's claim id, AnchorText is the human- or
+	// machine-readable reason. Written by semantic.WriteSupersedes and
+	// walked by semantic.SupersessionChain. TargetHash is always empty — a
+	// claim id is not a citation to re-hash.
+	RelSupersedes = "supersedes"
+	// RelAnchors (SU-21, ADR-041 decision 7) binds a claim's citation to the
+	// single enclosing symbol definition it resolved against at mint:
+	// TargetRef is the symbol's core.SymbolKey, TargetHash is the symbol's
+	// own current content fingerprint (core.HashLines over its declared
+	// range). Written by semantic.AnchorSymbol; read by semantic.Sweep (to
+	// re-anchor a drifted citation onto the symbol's new range instead of
+	// flipping stale) and by rename_impact (to name claims anchored to a
+	// renamed symbol).
+	RelAnchors = "anchors"
 )
+
+// AssertedBy builds the canonical "kind:id" form every claim/event writer
+// records into AssertedBy (SU-22, ADR-041 decision 7) — a compile run id
+// ("compile:<run_id>"), a review idempotency key or run id
+// ("review:<key>"), an import cursor ("import:<producer>@<version>"), or a
+// hook session id for a human `fathom claim add` ("claim-add:<session>").
+// One builder so every writer's value has the identical shape a later
+// reader can split on the first ":" without re-deriving the convention.
+func AssertedBy(kind, id string) string {
+	return kind + ":" + id
+}
 
 // CiteRef builds a citation TargetRef. Lines are 1-based and inclusive.
 func CiteRef(path string, startLine, endLine int) string {
@@ -367,6 +441,17 @@ type ClaimEvent struct {
 	// never a fathom-derived one.
 	ResolutionKind   string
 	ResolutionCommit string
+
+	// AssertedBy (SU-22, ADR-041 decision 7) is the same "kind:id" identity
+	// (core.AssertedBy) as SemanticClaim.AssertedBy, but for the ACTIVITY
+	// that recorded THIS event specifically — a sweep's own re-anchor/
+	// contradicted events carry "sweep:<claim_id>" (see semantic.Sweep),
+	// an import's closure/revocation events carry the SAME
+	// "import:<producer>@<version>" identity as the claim they close, and a
+	// human `fathom claim refute`/`corroborate` carries "claim-add:<session>"
+	// when a hook session id is available. "" for an event whose writer
+	// predates this field or had no identity to record.
+	AssertedBy string
 }
 
 // Resolution outcome kinds (docs/design/findings-as-evidence.md §3.4): the

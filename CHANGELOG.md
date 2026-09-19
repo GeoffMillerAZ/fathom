@@ -21,6 +21,18 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: minor (pre-1.0: breaking bumps minor)
 
+<!-- su-wave-s8 -->
+**Claims gain bi-temporal validity (ADR-041 decision 7, SU-19).** `semantic_claims`
+gains additive `valid_from`/`valid_to`/`asserted_by` columns (`claim_events` gains
+`asserted_by` too), stamped at mint and closed at every supersede/refute path;
+`semantic.ObligationsAsOf` and the `obligations` MCP tool's new `as_of` argument (RFC3339
+timestamp or commit sha) answer "what governed this file AT that instant" — including a
+claim since superseded or refuted, if `as_of` predates that event — labeled `as_of` in
+the response. `fathom findings near --as-of` mirrors it on the CLI. Default (`as_of`
+omitted) serving is byte-identical to before this row. Docs: `docs/mcp-tools.md`,
+`docs/layers.md`, `docs/usage.md`.
+<!-- /su-wave-s8 -->
+
 <!-- su-wave-s6 -->
 **Vectors removed, not parked (ADR-041 decision 2, SU-8).** `internal/vector`, the
 query engine's `WithVector` option, the `SymbolIndexer` interface, `hybridRank`'s

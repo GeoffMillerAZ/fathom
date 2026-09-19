@@ -605,6 +605,13 @@ func (m *MemoryStore) ListCommits(_ context.Context, serviceID string) ([]Commit
 // claim_id whose stored status is already ClaimRefuted retains it across the
 // upsert — a recompile that re-emits an unchanged rule under a refuted
 // ClaimID must not silently resurrect it to the compiler's fresh status.
+//
+// SU-19 (ADR-041 decision 7) mirrors SQLiteStore's own upsert CASE logic:
+// ValidFrom is stamped once, at first mint, and never drifts forward on a
+// later upsert of the same claim_id; ValidTo survives across the upsert
+// exactly when Status does (refuted), and otherwise takes the incoming
+// value — reopening the validity window on a superseded→fresh resurrection,
+// exactly as the status field itself does.
 func (m *MemoryStore) PutClaims(_ context.Context, claims []core.SemanticClaim, links []core.ClaimLink) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -615,8 +622,14 @@ func (m *MemoryStore) PutClaims(_ context.Context, claims []core.SemanticClaim, 
 			copy(sc.Scope, c.Scope)
 		}
 		key := claimKey{c.ServiceID, c.ClaimID}
-		if existing, ok := m.claims[key]; ok && existing.Status == core.ClaimRefuted {
-			sc.Status = core.ClaimRefuted
+		if existing, ok := m.claims[key]; ok {
+			if existing.Status == core.ClaimRefuted {
+				sc.Status = core.ClaimRefuted
+				sc.ValidTo = existing.ValidTo
+			}
+			if !existing.ValidFrom.IsZero() {
+				sc.ValidFrom = existing.ValidFrom
+			}
 		}
 		m.claims[key] = sc
 	}
@@ -806,6 +819,19 @@ func (m *MemoryStore) SetClaimStatus(_ context.Context, serviceID, claimID strin
 	k := claimKey{serviceID, claimID}
 	if c, ok := m.claims[k]; ok {
 		c.Status = status
+		m.claims[k] = c
+	}
+	return nil
+}
+
+// SetClaimValidTo closes a single claim's bi-temporal validity window at t
+// (SU-19, ADR-041 decision 7) — see the Store interface doc comment.
+func (m *MemoryStore) SetClaimValidTo(_ context.Context, serviceID, claimID string, t time.Time) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	k := claimKey{serviceID, claimID}
+	if c, ok := m.claims[k]; ok {
+		c.ValidTo = t
 		m.claims[k] = c
 	}
 	return nil

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -20,6 +21,16 @@ import (
 type obligationsBackend interface {
 	Obligations(ctx context.Context, service, file string, maxRules int) (semantic.Obligations, error)
 	ObligationsIndexStale(ctx context.Context, service, file string) bool
+}
+
+// obligationsAsOfBackend is the optional backend capability for SU-19's
+// bi-temporal read (ADR-041 decision 7): "what governed file AT asOf"
+// instead of "what governs it now". pkg/client implements it via
+// semantic.ObligationsAsOf; a backend that omits it (an older module, a
+// minimal test fake) makes the obligations tool refuse an as_of argument
+// outright rather than silently answering the live question instead.
+type obligationsAsOfBackend interface {
+	ObligationsAsOf(ctx context.Context, service, file string, maxRules int, asOf time.Time) (semantic.Obligations, error)
 }
 
 // rootObligationsBackend is the optional backend capability for the
@@ -239,6 +250,9 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 		"service": obl.Service,
 		"file":    obl.File,
 	}
+	if obl.AsOf != "" {
+		result["as_of"] = obl.AsOf
+	}
 	if rootScope {
 		result["root"] = true
 		result["note"] = "Root-scope obligations only (repo-root/CLAUDE.md-level rules) — pass file for file-scoped rules."
@@ -263,7 +277,7 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 	// module, a minimal test fake) is untouched — existing goldens for a
 	// complete layer render byte-identically, since a real gap is required
 	// before this ever adds a row.
-	if !rootScope && obl.File != "" && servedLayer != string(semantic.ObligationLayerClaims) {
+	if !rootScope && obl.File != "" && obl.AsOf == "" && servedLayer != string(semantic.ObligationLayerClaims) {
 		if rfb, ok := backend.(rawFallbackBackend); ok {
 			if rows, _, rok, rerr := rfb.RawFallbackObligations(ctx, service, obl.File, semantic.RawFallbackReserve); rerr == nil && rok && len(rows) > 0 {
 				obl.Rules = append(rows, obl.Rules...)
@@ -368,7 +382,7 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 	// note, root, rules, service — no layer_coverage anywhere, even though
 	// rules were serving fine. So that case gets an explicit
 	// status:"unknown" placeholder instead of silence.
-	if cb, ok := backend.(layerCoverageBackend); ok {
+	if cb, ok := backend.(layerCoverageBackend); ok && obl.AsOf == "" {
 		cov, found, cerr := cb.ObligationsLayerCoverage(ctx, service)
 		switch {
 		case cerr != nil:
@@ -497,6 +511,10 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 					"type":        "string",
 					"description": "Verdict author (optional; empty for an automated caller)",
 				},
+				"as_of": map[string]any{
+					"type":        "string",
+					"description": "Answer as of this RFC3339 timestamp or commit sha instead of now (requires file). Omit for live serving.",
+				},
 			},
 			"required": []string{"service"},
 		},
@@ -513,6 +531,7 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 			ClaimID         string `json:"claim_id"`
 			Note            string `json:"note"`
 			Author          string `json:"author"`
+			AsOf            string `json:"as_of"`
 		}
 		if err := json.Unmarshal(args, &p); err != nil {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "obligations: invalid args"}
@@ -551,6 +570,42 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 				return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 			}
 			return map[string]any{"service": p.Service, "claim_id": p.ClaimID, "action": p.Action}, nil
+		}
+
+		// SU-19 (ADR-041 decision 7): as_of switches this call from "what
+		// governs file now" to "what governed it AT this instant" — a
+		// separate, slower read (semantic.ObligationsAsOf's own doc
+		// comment), so it is handled here rather than folded into the live
+		// obligationLayers path below. File-scoped only: a root-scope
+		// as_of answer is not yet supported (deliberately out of this
+		// row's scope — see the plan).
+		if p.AsOf != "" {
+			if p.File == "" {
+				return nil, &rpcError{Code: ErrCodeParams, Message: "obligations: as_of requires file (root-scope as_of is not supported)"}
+			}
+			aob, ok := backend.(obligationsAsOfBackend)
+			if !ok {
+				return nil, &rpcError{Code: ErrCodeInvalid, Message: "backend does not support as_of"}
+			}
+			var commits []CommitInfo
+			if cl, cerr := backend.ListCommits(ctx, p.Service); cerr == nil {
+				commits = cl
+			}
+			asOf, aerr := semantic.ResolveAsOf(p.AsOf, commits)
+			if aerr != nil {
+				return nil, &rpcError{Code: ErrCodeParams, Message: "obligations: " + aerr.Error()}
+			}
+			obl, oerr := aob.ObligationsAsOf(ctx, p.Service, p.File, p.MaxRules, asOf)
+			if oerr != nil {
+				return nil, &rpcError{Code: ErrCodeInternal, Message: oerr.Error()}
+			}
+			var indexStale bool
+			if ob, ok := backend.(obligationsBackend); ok {
+				indexStale = ob.ObligationsIndexStale(ctx, p.Service, p.File)
+			}
+			includeSnippets := p.IncludeSnippets == nil || *p.IncludeSnippets
+			body, summary := renderObligationReceipt(ctx, backend, p.Service, obl, false, string(semantic.ObligationLayerAll), includeSnippets, indexStale)
+			return withSummary(summary, body), nil
 		}
 
 		ob, ok := backend.(obligationsBackend)

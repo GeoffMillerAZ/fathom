@@ -17,6 +17,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/findings"
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/semantic"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
@@ -79,6 +80,7 @@ func cmdFindingsNear(args []string, stdout, stderr io.Writer) int {
 	service := fs.String("service", "", "service ID (required)")
 	hops := fs.Int("hops", 2, "call-graph hop radius")
 	includeSuperseded := fs.Bool("include-superseded", false, "include superseded/refuted findings (always labeled)")
+	asOf := fs.String("as-of", "", "answer as of this RFC3339 timestamp or commit sha instead of now (SU-19, ADR-041 decision 7)")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a human-readable table")
 	// Accept the positional <symbol|file> before or after the flags (O92's
 	// class of friction: the documented order must parse).
@@ -121,7 +123,39 @@ func cmdFindingsNear(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	report := buildFindingsNearReport(nodes, typed, claims, subject, *hops, *includeSuperseded)
+	// SU-19 (ADR-041 decision 7): --as-of narrows claims to those whose
+	// bi-temporal validity window contains the resolved instant BEFORE
+	// RankNear ever runs — "was this finding true then", independent of
+	// its CURRENT status (a claim later superseded still answers if as-of
+	// falls before that event), which is a different question than
+	// --include-superseded's "show me what is superseded NOW too".
+	asOfLabel := ""
+	rankIncludeSuperseded := *includeSuperseded
+	if *asOf != "" {
+		commits, _ := c.ListCommits(ctx, *service)
+		at, aerr := semantic.ResolveAsOf(*asOf, commits)
+		if aerr != nil {
+			fmt.Fprintf(stderr, "error: %v\n", aerr)
+			return 1
+		}
+		asOfLabel = at.UTC().Format(time.RFC3339)
+		valid := claims[:0]
+		for _, cl := range claims {
+			if cl.ValidAt(at) {
+				valid = append(valid, cl)
+			}
+		}
+		claims = valid
+		// The bi-temporal filter above has ALREADY decided which claims
+		// were valid at asOf; RankNear's own superseded/refuted gate is a
+		// CURRENT-status question and must not additionally exclude a
+		// since-superseded claim this call just proved was valid then.
+		rankIncludeSuperseded = true
+	}
+
+	report := buildFindingsNearReport(nodes, typed, claims, subject, *hops, rankIncludeSuperseded)
+	report.IncludeSuperseded = *includeSuperseded
+	report.AsOf = asOfLabel
 
 	if *jsonOut {
 		jsonPrint(stdout, report)
@@ -140,6 +174,11 @@ type findingsNearReport struct {
 	Found             bool                `json:"found"`
 	Note              string              `json:"note,omitempty"`
 	Findings          []findingsNearEntry `json:"findings"`
+	// AsOf (SU-19, ADR-041 decision 7) is set only when --as-of was given —
+	// the RFC3339 instant this report answers "was this finding true then"
+	// for. Empty (omitted) for the default live report, byte-identical to
+	// this report's shape before as_of existed.
+	AsOf string `json:"as_of,omitempty"`
 }
 
 type findingsNearEntry struct {
@@ -187,6 +226,9 @@ func buildFindingsNearReport(nodes []core.SymbolNode, typed []core.Edge, claims 
 
 func renderFindingsNear(w io.Writer, r findingsNearReport) {
 	fmt.Fprintf(w, "findings near %q (hops<=%d)\n", r.Subject, r.Hops)
+	if r.AsOf != "" {
+		fmt.Fprintf(w, "  as_of=%s\n", r.AsOf)
+	}
 	if !r.Found {
 		fmt.Fprintf(w, "  %s\n", r.Note)
 		return

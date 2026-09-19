@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
@@ -44,6 +45,17 @@ type semanticFakeBackend struct {
 	gotFeedbackAction  string
 	gotFeedbackNote    string
 	gotFeedbackAuthor  string
+
+	// ObligationsAsOf (SU-19, ADR-041 decision 7): records the resolved
+	// as_of instant the last call carried.
+	obligationsAsOf    semantic.Obligations
+	obligationsAsOfErr error
+	gotAsOf            time.Time
+}
+
+func (s *semanticFakeBackend) ObligationsAsOf(_ context.Context, _, _ string, _ int, asOf time.Time) (semantic.Obligations, error) {
+	s.gotAsOf = asOf
+	return s.obligationsAsOf, s.obligationsAsOfErr
 }
 
 func (s *semanticFakeBackend) ClaimFeedback(_ context.Context, service, claimID, action, note, author string) error {
@@ -142,6 +154,74 @@ func TestObligationsTool_WithRules(t *testing.T) {
 	}
 	if wm, _ := payload["compiled_at_watermark"].(string); wm == "" {
 		t.Error("expected compiled_at_watermark")
+	}
+}
+
+// ─── obligations: as_of (SU-19, ADR-041 decision 7) ──────────────────────────
+
+func TestObligationsTool_AsOf(t *testing.T) {
+	fake := &semanticFakeBackend{
+		obligationsAsOf: semantic.Obligations{
+			Service: "svc", File: "pkg/foo.go",
+			Rules: []semantic.Obligation{{Rule: "Old rule.", Src: "CLAUDE.md#L1-L1", Tier: "doc-claimed"}},
+			AsOf:  "2026-02-01T00:00:00Z",
+		},
+	}
+	srv := mcp.NewServer(fake)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "obligations",
+			"arguments": map[string]any{"service": "svc", "file": "pkg/foo.go", "as_of": "2026-02-01T00:00:00Z"},
+		},
+	})
+	if resp["error"] != nil {
+		t.Fatalf("unexpected error: %v", resp["error"])
+	}
+	payload := extractPayload(t, resp)
+	if got, _ := payload["as_of"].(string); got != "2026-02-01T00:00:00Z" {
+		t.Errorf("as_of = %q, want the resolved RFC3339 instant", got)
+	}
+	rules, ok := payload["rules"].([]any)
+	if !ok || len(rules) != 1 {
+		t.Fatalf("expected 1 rule from the as_of path, got %v", payload["rules"])
+	}
+	want := time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)
+	if !fake.gotAsOf.Equal(want) {
+		t.Errorf("backend saw asOf=%v, want %v", fake.gotAsOf, want)
+	}
+}
+
+// TestObligationsTool_AsOf_RequiresFile pins that a root-scope as_of call is
+// refused rather than silently answering the live root-scope question.
+func TestObligationsTool_AsOf_RequiresFile(t *testing.T) {
+	fake := &semanticFakeBackend{}
+	srv := mcp.NewServer(fake)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "obligations",
+			"arguments": map[string]any{"service": "svc", "as_of": "2026-02-01T00:00:00Z"},
+		},
+	})
+	if resp["error"] == nil {
+		t.Fatal("expected an error for a root-scope as_of call")
+	}
+}
+
+// TestObligationsTool_AsOf_BackendUnsupported pins the degrade for a backend
+// that omits ObligationsAsOf (fakeBackend alone).
+func TestObligationsTool_AsOf_BackendUnsupported(t *testing.T) {
+	srv := mcp.NewServer(&fakeBackend{})
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "obligations",
+			"arguments": map[string]any{"service": "svc", "file": "pkg/foo.go", "as_of": "2026-02-01T00:00:00Z"},
+		},
+	})
+	if resp["error"] == nil {
+		t.Fatal("expected an error when the backend does not support as_of")
 	}
 }
 

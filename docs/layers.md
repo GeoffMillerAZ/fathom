@@ -251,6 +251,33 @@ window (same §4.6, each pack's own `KILL.md` records the decision date):
 call-rate from `mcp-calls.jsonl`/hook telemetry, plus a quality/outcome
 signal specific to the layer.
 
+## Temporal validity and supersession (ADR-041 decision 7)
+
+Every `SemanticClaim` carries a bi-temporal validity window beside its
+freshness `status`: `valid_from` (stamped once, at first mint — a compiled
+claim's `compiled_at`, an imported one's observation time) and `valid_to`
+(the zero time while the claim is a live assertion, closed to the event
+time by every path that ends a claim's validity — a native review/compile
+reconciliation superseding it, an external closure/revocation, or a human
+`fathom claim refute`). This answers a DIFFERENT question than `status`:
+"was this rule true then", independent of what the claim's CURRENT status
+says now.
+
+`obligations`' `as_of` argument (and `findings near --as-of`) accepts an
+RFC3339 timestamp or a commit sha (resolved against the service's own
+indexed commits) and serves the claims whose window contains it —
+including a claim since superseded or refuted, if `as_of` falls before that
+event. The response echoes the resolved instant back as `as_of`; omitted,
+serving is exactly the live path, unchanged.
+
+Every claim a real successor replaces also carries an explicit `supersedes`
+claim link (`rel:"supersedes"`, `TargetRef` = the predecessor's claim id) —
+written wherever a native review reconciliation supersedes a prior finding
+with a re-emitted one for the same subject. `SupersessionChain` walks that
+link back through however many times the same subject has been replaced —
+predecessor, its own predecessor, and so on — so a claim's full lineage is
+one call away, not a guess from `claim_events` alone.
+
 ## The `fathom layers` verb
 
 ```sh

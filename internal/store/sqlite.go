@@ -263,6 +263,9 @@ CREATE TABLE IF NOT EXISTS semantic_claims (
     compiled_at_watermark  TEXT   NOT NULL DEFAULT '',
     compiled_at            BIGINT NOT NULL DEFAULT 0,
     class                  TEXT   NOT NULL DEFAULT '',
+    valid_from             TEXT   NOT NULL DEFAULT '',
+    valid_to               TEXT   NOT NULL DEFAULT '',
+    asserted_by            TEXT   NOT NULL DEFAULT '',
     PRIMARY KEY (service_id, claim_id)
 );
 
@@ -309,7 +312,8 @@ CREATE TABLE IF NOT EXISTS claim_events (
     note              TEXT   NOT NULL DEFAULT '',
     event_at          BIGINT NOT NULL DEFAULT 0,
     resolution_kind   TEXT   NOT NULL DEFAULT '',
-    resolution_commit TEXT   NOT NULL DEFAULT ''
+    resolution_commit TEXT   NOT NULL DEFAULT '',
+    asserted_by       TEXT   NOT NULL DEFAULT ''
 );
 
 -- Typed call edges (ADR-021 §3, internal/fusion.EnrichTypedEdges). Rows are
@@ -409,6 +413,19 @@ CREATE INDEX IF NOT EXISTS idx_observations_service_id
 		// event simply reads back with both fields "".
 		{"claim_events", "resolution_kind", `ALTER TABLE claim_events ADD COLUMN resolution_kind TEXT NOT NULL DEFAULT ''`},
 		{"claim_events", "resolution_commit", `ALTER TABLE claim_events ADD COLUMN resolution_commit TEXT NOT NULL DEFAULT ''`},
+		// SU-19 (ADR-041 decision 7, docs/vision/31-substrate.md §3 D6): a
+		// pre-existing store (including the live fleet store) predates
+		// bi-temporal validity — PutClaims/ClaimsForService(Serve) must not
+		// fail with "no such column" on it; a legacy claim simply reads back
+		// with ValidFrom/ValidTo both zero (core.SemanticClaim.ValidAt's own
+		// doc comment: a zero bound is never constraining), exactly like
+		// every earlier additive claim column's own migration bounce.
+		{"semantic_claims", "valid_from", `ALTER TABLE semantic_claims ADD COLUMN valid_from TEXT NOT NULL DEFAULT ''`},
+		{"semantic_claims", "valid_to", `ALTER TABLE semantic_claims ADD COLUMN valid_to TEXT NOT NULL DEFAULT ''`},
+		// SU-22 (ADR-041 decision 7): a pre-existing store predates
+		// AssertedBy — a legacy claim/event simply reads back with "".
+		{"semantic_claims", "asserted_by", `ALTER TABLE semantic_claims ADD COLUMN asserted_by TEXT NOT NULL DEFAULT ''`},
+		{"claim_events", "asserted_by", `ALTER TABLE claim_events ADD COLUMN asserted_by TEXT NOT NULL DEFAULT ''`},
 	}
 	existingByTable := map[string]map[string]bool{}
 	for _, m := range migrations {
@@ -1105,8 +1122,8 @@ func (s *SQLiteStore) PutClaims(ctx context.Context, claims []core.SemanticClaim
 INSERT INTO semantic_claims
     (service_id, claim_id, layer, layer_version, kind, subject, rule, scope,
      tier, tier_profile, status, model, prompt_version, repro_key, input_digest,
-     compiled_at_watermark, compiled_at, class)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     compiled_at_watermark, compiled_at, class, valid_from, valid_to, asserted_by)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (service_id, claim_id) DO UPDATE SET
     layer                 = excluded.layer,
     layer_version         = excluded.layer_version,
@@ -1128,7 +1145,22 @@ ON CONFLICT (service_id, claim_id) DO UPDATE SET
     input_digest          = excluded.input_digest,
     compiled_at_watermark = excluded.compiled_at_watermark,
     compiled_at           = excluded.compiled_at,
-    class                 = excluded.class
+    class                 = excluded.class,
+    -- SU-19 (ADR-041 decision 7): valid_from is stamped ONCE, at the
+    -- claim_id's first-ever mint — an unchanged-content recompile that
+    -- upserts the identical content-addressed row must never drift its
+    -- own history forward, so a non-empty stored value always wins over
+    -- whatever this call proposes.
+    valid_from            = CASE WHEN semantic_claims.valid_from != '' THEN semantic_claims.valid_from ELSE excluded.valid_from END,
+    -- valid_to mirrors status' own refutation-durability CASE above: a
+    -- refuted claim's closed validity window survives every future
+    -- upsert exactly like its status does. A NON-refuted row (including
+    -- one this call is resurrecting from superseded back to fresh — see
+    -- status' own doc comment) takes the incoming value, which reopens
+    -- the window (an ordinary caller passes ValidTo's zero value/"" on a
+    -- normal write) exactly when the status resurrection itself does.
+    valid_to              = CASE WHEN semantic_claims.status = 'refuted' THEN semantic_claims.valid_to ELSE excluded.valid_to END,
+    asserted_by           = excluded.asserted_by
 `)
 		if err != nil {
 			return fmt.Errorf("PutClaims prepare claims: %w", err)
@@ -1148,6 +1180,7 @@ ON CONFLICT (service_id, claim_id) DO UPDATE SET
 				string(c.Status),
 				c.Model, c.PromptVersion, c.ReproKey, c.InputDigest,
 				c.CompiledAtWatermark, c.CompiledAt.UnixNano(), string(c.Class),
+				formatClaimTime(c.ValidFrom), formatClaimTime(c.ValidTo), c.AssertedBy,
 			)
 			if err != nil {
 				return fmt.Errorf("PutClaims exec claim: %w", err)
@@ -1197,7 +1230,7 @@ VALUES (?, ?, ?, ?, ?, ?)
 func (s *SQLiteStore) ClaimsForService(ctx context.Context, serviceID, layer string) ([]core.SemanticClaim, error) {
 	const cols = `service_id, claim_id, layer, layer_version, kind, subject, rule, scope,
 	tier, tier_profile, status, model, prompt_version, repro_key, input_digest,
-	compiled_at_watermark, compiled_at, class`
+	compiled_at_watermark, compiled_at, class, valid_from, valid_to, asserted_by`
 	var (
 		rows *sql.Rows
 		err  error
@@ -1242,7 +1275,7 @@ var scopeReachAnywhereLike = []string{
 func (s *SQLiteStore) ClaimsForServe(ctx context.Context, serviceID string, layers []string, statuses []core.ClaimStatus, scopePrefixes []string) ([]core.SemanticClaim, error) {
 	const cols = `service_id, claim_id, layer, layer_version, kind, subject, rule, scope,
 	tier, tier_profile, status, model, prompt_version, repro_key, input_digest,
-	compiled_at_watermark, compiled_at, class`
+	compiled_at_watermark, compiled_at, class, valid_from, valid_to, asserted_by`
 
 	where := []string{"service_id = ?"}
 	args := []any{serviceID}
@@ -1352,12 +1385,24 @@ UPDATE semantic_claims SET status = ? WHERE service_id = ? AND claim_id = ?
 	return nil
 }
 
+// SetClaimValidTo closes a single claim's bi-temporal validity window at t
+// (SU-19, ADR-041 decision 7) — see the Store interface doc comment.
+func (s *SQLiteStore) SetClaimValidTo(ctx context.Context, serviceID, claimID string, t time.Time) error {
+	_, err := s.db.ExecContext(ctx, `
+UPDATE semantic_claims SET valid_to = ? WHERE service_id = ? AND claim_id = ?
+`, formatClaimTime(t), serviceID, claimID)
+	if err != nil {
+		return fmt.Errorf("SetClaimValidTo: %w", err)
+	}
+	return nil
+}
+
 // AppendClaimEvent inserts one verdict row into the append-only event log.
 func (s *SQLiteStore) AppendClaimEvent(ctx context.Context, ev core.ClaimEvent) error {
 	_, err := s.db.ExecContext(ctx, `
-INSERT INTO claim_events (claim_id, verdict, author, note, event_at, resolution_kind, resolution_commit)
-VALUES (?, ?, ?, ?, ?, ?, ?)
-`, ev.ClaimID, ev.Verdict, ev.Author, ev.Note, ev.At.UnixNano(), ev.ResolutionKind, ev.ResolutionCommit)
+INSERT INTO claim_events (claim_id, verdict, author, note, event_at, resolution_kind, resolution_commit, asserted_by)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+`, ev.ClaimID, ev.Verdict, ev.Author, ev.Note, ev.At.UnixNano(), ev.ResolutionKind, ev.ResolutionCommit, ev.AssertedBy)
 	if err != nil {
 		return fmt.Errorf("AppendClaimEvent: %w", err)
 	}
@@ -1367,7 +1412,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?)
 // ClaimEvents returns all events for claimID ordered by (event_at, verdict).
 func (s *SQLiteStore) ClaimEvents(ctx context.Context, claimID string) ([]core.ClaimEvent, error) {
 	rows, err := s.db.QueryContext(ctx, `
-SELECT claim_id, verdict, author, note, event_at, resolution_kind, resolution_commit
+SELECT claim_id, verdict, author, note, event_at, resolution_kind, resolution_commit, asserted_by
 FROM claim_events
 WHERE claim_id = ?
 ORDER BY event_at, verdict
@@ -1382,7 +1427,7 @@ ORDER BY event_at, verdict
 			ev core.ClaimEvent
 			at int64
 		)
-		if err := rows.Scan(&ev.ClaimID, &ev.Verdict, &ev.Author, &ev.Note, &at, &ev.ResolutionKind, &ev.ResolutionCommit); err != nil {
+		if err := rows.Scan(&ev.ClaimID, &ev.Verdict, &ev.Author, &ev.Note, &at, &ev.ResolutionKind, &ev.ResolutionCommit, &ev.AssertedBy); err != nil {
 			return nil, fmt.Errorf("ClaimEvents scan: %w", err)
 		}
 		ev.At = time.Unix(0, at).UTC()
@@ -1406,7 +1451,7 @@ func (s *SQLiteStore) ClaimEventsSince(ctx context.Context, since, until time.Ti
 // definition.
 func queryClaimEventsSince(ctx context.Context, db *sql.DB, since, until time.Time) ([]core.ClaimEvent, error) {
 	rows, err := db.QueryContext(ctx, `
-SELECT claim_id, verdict, author, note, event_at, resolution_kind, resolution_commit
+SELECT claim_id, verdict, author, note, event_at, resolution_kind, resolution_commit, asserted_by
 FROM claim_events
 WHERE event_at >= ? AND event_at <= ?
 ORDER BY event_at, verdict
@@ -1421,7 +1466,7 @@ ORDER BY event_at, verdict
 			ev core.ClaimEvent
 			at int64
 		)
-		if err := rows.Scan(&ev.ClaimID, &ev.Verdict, &ev.Author, &ev.Note, &at, &ev.ResolutionKind, &ev.ResolutionCommit); err != nil {
+		if err := rows.Scan(&ev.ClaimID, &ev.Verdict, &ev.Author, &ev.Note, &at, &ev.ResolutionKind, &ev.ResolutionCommit, &ev.AssertedBy); err != nil {
 			return nil, fmt.Errorf("ClaimEventsSince scan: %w", err)
 		}
 		ev.At = time.Unix(0, at).UTC()
@@ -1783,9 +1828,11 @@ func scanClaims(rows *sql.Rows) ([]core.SemanticClaim, error) {
 	var result []core.SemanticClaim
 	for rows.Next() {
 		var (
-			c          core.SemanticClaim
-			scopeJSON  string
-			compiledAt int64
+			c             core.SemanticClaim
+			scopeJSON     string
+			compiledAt    int64
+			validFromText string
+			validToText   string
 		)
 		if err := rows.Scan(
 			&c.ServiceID, &c.ClaimID,
@@ -1794,6 +1841,7 @@ func scanClaims(rows *sql.Rows) ([]core.SemanticClaim, error) {
 			(*string)(&c.Status),
 			&c.Model, &c.PromptVersion, &c.ReproKey, &c.InputDigest,
 			&c.CompiledAtWatermark, &compiledAt, (*string)(&c.Class),
+			&validFromText, &validToText, &c.AssertedBy,
 		); err != nil {
 			return nil, fmt.Errorf("scanClaims scan: %w", err)
 		}
@@ -1801,10 +1849,40 @@ func scanClaims(rows *sql.Rows) ([]core.SemanticClaim, error) {
 			return nil, fmt.Errorf("scanClaims unmarshal scope: %w", err)
 		}
 		c.CompiledAt = time.Unix(0, compiledAt).UTC()
+		c.ValidFrom = parseClaimTime(validFromText)
+		c.ValidTo = parseClaimTime(validToText)
 		result = append(result, c)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("scanClaims rows: %w", err)
 	}
 	return result, nil
+}
+
+// formatClaimTime renders a claim's ValidFrom/ValidTo (SU-19) as the store's
+// nullable-RFC3339-text column: the zero time.Time{} — "unset" — stores as
+// "", exactly like every other additive claim column's empty-string
+// default; a real time stores as RFC3339Nano (UnixNano-precision round
+// trip, matching CompiledAt's own UnixNano storage).
+func formatClaimTime(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return t.UTC().Format(time.RFC3339Nano)
+}
+
+// parseClaimTime is formatClaimTime's inverse. An empty or unparseable
+// column value reads back as the zero time.Time{} — "unset", never an
+// error: a legacy row predating valid_from/valid_to must read exactly like
+// a row that was written with an explicitly empty value (core.SemanticClaim.
+// ValidAt's own "zero means unconstrained" doc comment depends on this).
+func parseClaimTime(s string) time.Time {
+	if s == "" {
+		return time.Time{}
+	}
+	t, err := time.Parse(time.RFC3339Nano, s)
+	if err != nil {
+		return time.Time{}
+	}
+	return t.UTC()
 }

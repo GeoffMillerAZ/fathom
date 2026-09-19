@@ -1673,14 +1673,19 @@ Design: `docs/design/observability-surfaces.md`.
 ### `findings` — findings as evidence (**experimental**; entry ≥15–20 resolved findings)
 
 ```sh
-fathom findings near       <symbol|file> --store P --service S [--hops 2] [--include-superseded] [--json]
+fathom findings near       <symbol|file> --store P --service S [--hops 2] [--include-superseded] [--as-of <RFC3339|sha>] [--json]
 fathom findings status     --store P --service S [--json]
 fathom findings import     --store P --service S --subject ORG/REPO/COMPONENT [--producer NAME] --file P [--dry-run] [--json]
 fathom findings candidates --store P --service S [--min-sites 3] [--json]
 ```
 
 `near` is the call-graph precedent lookup (mirror of the `findings_near`
-MCP tool); `status` reports entry-condition progress and, since the
+MCP tool); `--as-of` (SU-19, ADR-041 decision 7) narrows to claims whose
+bi-temporal validity window contains the resolved RFC3339 timestamp or
+commit sha, BEFORE the superseded/refuted gate runs — "was this finding
+true then", answered regardless of `--include-superseded` and regardless
+of the claim's CURRENT status. `status` reports entry-condition progress
+and, since the
 findings loop (FL-23), `candidates`/`disagreements_by_rule` counts, plus
 (SU-16) `rules_never_fired_30d` and `top_fired` — computed from the hooks
 beat log every other `fathom metrics`/instrument reader shares

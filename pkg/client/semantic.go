@@ -33,6 +33,13 @@ func (c *Client) Obligations(ctx context.Context, service, file string, maxRules
 	return semantic.ObligationsFor(ctx, c.st, service, file, maxRules)
 }
 
+// ObligationsAsOf answers "what governed file AT asOf" (SU-19, ADR-041
+// decision 7) — see semantic.ObligationsAsOf's own doc comment for why this
+// is a separate, slower read path from Obligations/ObligationsLayer.
+func (c *Client) ObligationsAsOf(ctx context.Context, service, file string, maxRules int, asOf time.Time) (semantic.Obligations, error) {
+	return semantic.ObligationsAsOf(ctx, c.st, service, file, maxRules, asOf)
+}
+
 // RootObligations returns "what governs this repository" (RC-22): the
 // served claims whose source is a root-level governing doc or whose scope
 // glob is unanchored/wildcard-rooted, capped at maxRules — see

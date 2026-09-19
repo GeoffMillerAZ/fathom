@@ -110,6 +110,14 @@ type Obligation struct {
 	// is byte-identical to what it was before this field existed.
 	Why string `json:"why,omitempty"`
 
+	// AssertedBy (SU-22, ADR-041 decision 7) carries the underlying claim's
+	// core.SemanticClaim.AssertedBy straight through — the PROV-style
+	// "kind:id" identity of the activity that minted it. "" (omitted) for
+	// every claim written before this field existed, or whose writer had no
+	// identity to record — a payload with no such claim in it is
+	// byte-identical to what it was before this field existed.
+	AssertedBy string `json:"asserted_by,omitempty"`
+
 	// --- Findings-loop source-linked provenance (vision 30 §4 item 4, plan
 	// FL — "Serving fields"). Populated ONLY for a claim whose PromptVersion
 	// is "external-import/v1" (internal/findings/external's own
@@ -231,6 +239,11 @@ type Obligations struct {
 	// bound platform modules (e.g. bound but not mounted on this daemon) —
 	// set only by internal/modserve.Bind.
 	ModuleNotes []ModuleNote `json:"module_notes,omitempty"`
+	// AsOf (SU-19, ADR-041 decision 7) is set ONLY by ObligationsAsOf, to
+	// the RFC3339 instant this payload answers "what was valid then" for —
+	// never by ObligationsFor/ObligationsForLayer, whose live-serving
+	// payload is byte-identical to what it was before this field existed.
+	AsOf string `json:"as_of,omitempty"`
 }
 
 // ObligationLayerFilter selects which claims obligations serves (VB-9,
@@ -289,7 +302,7 @@ const (
 //     stopped run led with stale rules; the agent reads top-down, so the
 //     freshest binding rule goes first.
 func ObligationsFor(ctx context.Context, st store.Store, serviceID, file string, max int) (Obligations, error) {
-	return obligationsCore(ctx, st, serviceID, file, max, fileScopeMatch(file), ObligationLayerAll)
+	return obligationsCore(ctx, st, serviceID, file, max, fileScopeMatch(file), ObligationLayerAll, nil)
 }
 
 // ObligationsForLayer is ObligationsFor's VB-9 sibling: layer selects which
@@ -298,7 +311,24 @@ func ObligationsFor(ctx context.Context, st store.Store, serviceID, file string,
 // ObligationLayerAll, so every pre-VB-9 caller sees byte-identical
 // behavior; a caller that wants the split asks for it explicitly.
 func ObligationsForLayer(ctx context.Context, st store.Store, serviceID, file string, max int, layer ObligationLayerFilter) (Obligations, error) {
-	return obligationsCore(ctx, st, serviceID, file, max, fileScopeMatch(file), layer)
+	return obligationsCore(ctx, st, serviceID, file, max, fileScopeMatch(file), layer, nil)
+}
+
+// ObligationsAsOf answers "what governed file AT asOf" (SU-19, ADR-041
+// decision 7, docs/vision/31-substrate.md §3 D6) instead of "what governs it
+// now": every claim whose bi-temporal validity window (core.SemanticClaim.
+// ValidAt) contains asOf is eligible, REGARDLESS of its CURRENT status — a
+// claim later superseded or refuted still answers this question if asOf
+// falls before that event. This is deliberately a SEPARATE, slower read path
+// from ObligationsFor/ObligationsForLayer (a full per-service claims load,
+// filtered in Go) rather than a parameter on obligationsCore's live fetch:
+// it is an audit/debug question, never the edit-hook hot path, and the live
+// functions' own fetch (store.Store.ClaimsForServe, prefiltered by CURRENT
+// status) must stay untouched so their served payload is byte-identical to
+// what it was before this function existed. The returned Obligations.AsOf
+// carries asOf back as the honest "as of" label.
+func ObligationsAsOf(ctx context.Context, st store.Store, serviceID, file string, max int, asOf time.Time) (Obligations, error) {
+	return obligationsCore(ctx, st, serviceID, file, max, fileScopeMatch(file), ObligationLayerAll, &asOf)
 }
 
 // servedClaimStatuses is core.ClaimStatus.Served()'s three admitted
@@ -381,14 +411,14 @@ func isRootLevelSource(subject string) bool {
 // file-scoped call (BP-17/BP-18); out.File is always "" (no single file
 // answers this question).
 func RootObligationsFor(ctx context.Context, st store.Store, serviceID string, max int) (Obligations, error) {
-	return obligationsCore(ctx, st, serviceID, "", max, rootScopeMatch, ObligationLayerAll)
+	return obligationsCore(ctx, st, serviceID, "", max, rootScopeMatch, ObligationLayerAll, nil)
 }
 
 // RootObligationsForLayer is RootObligationsFor's VB-9 sibling — see
 // ObligationsForLayer's doc comment; the same layer split applies to the
 // root-scope question.
 func RootObligationsForLayer(ctx context.Context, st store.Store, serviceID string, max int, layer ObligationLayerFilter) (Obligations, error) {
-	return obligationsCore(ctx, st, serviceID, "", max, rootScopeMatch, layer)
+	return obligationsCore(ctx, st, serviceID, "", max, rootScopeMatch, layer, nil)
 }
 
 func rootScopeMatch(cl core.SemanticClaim, scope []string) int {
@@ -489,11 +519,21 @@ func reserveNearestTier(matched []scored, n int, outFile string) []scored {
 // the answer, returning a specificity (higher wins ties) or <0 for no
 // match. See ObligationsFor's doc comment for the SCOPE/BUDGET/ORDER
 // contract this enforces regardless of which match function is passed.
-func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile string, max int, match func(cl core.SemanticClaim, scope []string) int, layerFilter ObligationLayerFilter) (Obligations, error) {
+//
+// asOf is nil for every live caller (ObligationsFor/ObligationsForLayer/
+// RootObligationsFor/RootObligationsForLayer) — the fetch and status
+// handling below are UNCHANGED from before ObligationsAsOf existed in that
+// case, so their served payload stays byte-identical. Non-nil only via
+// ObligationsAsOf: see its own doc comment for why that path fetches and
+// filters differently.
+func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile string, max int, match func(cl core.SemanticClaim, scope []string) int, layerFilter ObligationLayerFilter, asOf *time.Time) (Obligations, error) {
 	if max <= 0 || max > MaxObligations {
 		max = MaxObligations
 	}
 	out := Obligations{Service: serviceID, File: outFile}
+	if asOf != nil {
+		out.AsOf = asOf.UTC().Format(time.RFC3339)
+	}
 
 	// serviceRoot is the ONE place a service's project directory is knowable
 	// from (ctx, st, serviceID); both the layer-role split below (BP-18) and
@@ -539,26 +579,48 @@ func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile str
 	}
 
 	byID := map[string]core.SemanticClaim{}
-	if len(claimsRoleLayers) > 0 && len(scopePrefixes) > 0 {
-		// A file-scoped call scope-filters the main fetch below; claims-role
-		// layers must be fetched WITHOUT that filter (see above), so they
-		// get their own unfiltered-by-scope pass here. Skipped for a
-		// root-scope call (scopePrefixes empty) or when no layer resolves
-		// to RoleClaims at all — the main fetch already covers both.
-		crClaims, err := st.ClaimsForServe(ctx, serviceID, claimsRoleLayers, servedClaimStatuses, nil)
+	if asOf != nil {
+		// SU-19: "as of" answers a DIFFERENT question than live serving —
+		// not "what is CURRENTLY valid" (the status-prefiltered fetch
+		// below) but "what WAS valid at asOf, whatever its status is now".
+		// A full per-service load, filtered in Go by core.SemanticClaim.
+		// ValidAt: slower than the live path by design (see ObligationsAsOf's
+		// doc comment), and deliberately independent of the claims-role/
+		// governs-role split's own scope-prefix optimization — match() below
+		// still re-checks scope for every candidate regardless of how it was
+		// fetched, so skipping that optimization here changes performance
+		// only, never which claims are eligible.
+		all, err := st.ClaimsForService(ctx, serviceID, "")
 		if err != nil {
-			return out, fmt.Errorf("semantic: obligations load (claims-role): %w", err)
+			return out, fmt.Errorf("semantic: obligations load (as_of): %w", err)
 		}
-		for _, cl := range crClaims {
+		for _, cl := range all {
+			if cl.ValidAt(*asOf) {
+				byID[cl.ClaimID] = cl
+			}
+		}
+	} else {
+		if len(claimsRoleLayers) > 0 && len(scopePrefixes) > 0 {
+			// A file-scoped call scope-filters the main fetch below; claims-role
+			// layers must be fetched WITHOUT that filter (see above), so they
+			// get their own unfiltered-by-scope pass here. Skipped for a
+			// root-scope call (scopePrefixes empty) or when no layer resolves
+			// to RoleClaims at all — the main fetch already covers both.
+			crClaims, err := st.ClaimsForServe(ctx, serviceID, claimsRoleLayers, servedClaimStatuses, nil)
+			if err != nil {
+				return out, fmt.Errorf("semantic: obligations load (claims-role): %w", err)
+			}
+			for _, cl := range crClaims {
+				byID[cl.ClaimID] = cl
+			}
+		}
+		govClaims, err := st.ClaimsForServe(ctx, serviceID, nil, servedClaimStatuses, scopePrefixes)
+		if err != nil {
+			return out, fmt.Errorf("semantic: obligations load: %w", err)
+		}
+		for _, cl := range govClaims {
 			byID[cl.ClaimID] = cl
 		}
-	}
-	govClaims, err := st.ClaimsForServe(ctx, serviceID, nil, servedClaimStatuses, scopePrefixes)
-	if err != nil {
-		return out, fmt.Errorf("semantic: obligations load: %w", err)
-	}
-	for _, cl := range govClaims {
-		byID[cl.ClaimID] = cl
 	}
 	if len(byID) == 0 {
 		return out, nil
@@ -818,10 +880,11 @@ func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile str
 
 	for _, m := range matched {
 		ob := Obligation{
-			Rule:  m.cl.Rule,
-			Src:   primaryCite[m.cl.ClaimID],
-			Tier:  string(m.cl.Tier),
-			Layer: m.cl.Layer,
+			Rule:       m.cl.Rule,
+			Src:        primaryCite[m.cl.ClaimID],
+			Tier:       string(m.cl.Tier),
+			Layer:      m.cl.Layer,
+			AssertedBy: m.cl.AssertedBy,
 		}
 		if m.cl.Kind != KindObligation {
 			ob.Kind = m.cl.Kind

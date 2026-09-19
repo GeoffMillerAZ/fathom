@@ -124,6 +124,68 @@ func TestCmdFindingsNear_SupersededExcludedUnlessAsked(t *testing.T) {
 	}
 }
 
+// TestCmdFindingsNear_AsOf (SU-19, ADR-041 decision 7): --as-of narrows to
+// claims whose bi-temporal validity window contains the resolved instant —
+// a claim later superseded still answers "was this true then" for an
+// in-window as-of, and drops out for one after its ValidTo, regardless of
+// --include-superseded (a live-status question --as-of does not ask).
+func TestCmdFindingsNear_AsOf(t *testing.T) {
+	mintedAt := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	supersededAt := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+	claims := []core.SemanticClaim{
+		{
+			ClaimID: "old", ServiceID: "svc", Layer: "findings", Kind: "finding", Class: core.FindingClassConformance,
+			Subject: "arch_conformance#pkg.A", Rule: "old finding", Scope: []string{"pkg/a.go"},
+			Status: core.ClaimSuperseded, CompiledAt: mintedAt, ValidFrom: mintedAt, ValidTo: supersededAt,
+		},
+	}
+	storePath := seedFindingsStore(t, findingsFixtureObs(), claims, nil)
+
+	var inWindow, inErrBuf bytes.Buffer
+	code := cmdFindingsNear([]string{
+		"--store", storePath, "--service", "svc", "--json",
+		"--as-of", "2026-02-01T00:00:00Z", "svc::pkg.A",
+	}, &inWindow, &inErrBuf)
+	if code != 0 {
+		t.Fatalf("exit = %d, stderr: %s", code, inErrBuf.String())
+	}
+	var reportIn findingsNearReport
+	if err := json.Unmarshal(inWindow.Bytes(), &reportIn); err != nil {
+		t.Fatalf("unmarshal: %v\noutput: %s", err, inWindow.String())
+	}
+	if len(reportIn.Findings) != 1 {
+		t.Fatalf("in-window --as-of findings = %+v, want 1 (valid then, whatever its status now)", reportIn.Findings)
+	}
+	if reportIn.AsOf != "2026-02-01T00:00:00Z" {
+		t.Errorf("AsOf = %q, want the resolved RFC3339 instant", reportIn.AsOf)
+	}
+
+	var after, afterErrBuf bytes.Buffer
+	code = cmdFindingsNear([]string{
+		"--store", storePath, "--service", "svc", "--json",
+		"--as-of", "2026-04-01T00:00:00Z", "svc::pkg.A",
+	}, &after, &afterErrBuf)
+	if code != 0 {
+		t.Fatalf("exit = %d, stderr: %s", code, afterErrBuf.String())
+	}
+	var reportAfter findingsNearReport
+	if err := json.Unmarshal(after.Bytes(), &reportAfter); err != nil {
+		t.Fatalf("unmarshal: %v\noutput: %s", err, after.String())
+	}
+	if len(reportAfter.Findings) != 0 {
+		t.Errorf("after-supersede --as-of findings = %+v, want empty", reportAfter.Findings)
+	}
+
+	var bad, badErrBuf bytes.Buffer
+	code = cmdFindingsNear([]string{
+		"--store", storePath, "--service", "svc", "--json",
+		"--as-of", "not-a-timestamp-or-sha", "svc::pkg.A",
+	}, &bad, &badErrBuf)
+	if code == 0 {
+		t.Fatalf("expected a non-zero exit for an unresolvable --as-of, stderr: %s", badErrBuf.String())
+	}
+}
+
 func TestCmdFindingsNear_UnresolvableSubject_HonestNote(t *testing.T) {
 	storePath := seedFindingsStore(t, findingsFixtureObs(), nil, nil)
 	var out, errBuf bytes.Buffer

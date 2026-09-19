@@ -37,7 +37,7 @@ Rows are proven by `fathom verify`; every round below ends with a free-tier meas
 
 ## E. Claims gain time and identity (decision 7)
 
-- [ ] Bi-temporal validity on claims: additive `valid_from` / `valid_to` beside compiled-at; supersede and external closure set `valid_to`; `obligations` accepts `as_of <commit>` and serves what was valid then {id: SU-19, symbol: ObligationsAsOf, package: internal/semantic}
+- [x] Bi-temporal validity on claims: additive `valid_from` / `valid_to` beside compiled-at; supersede and external closure set `valid_to`; `obligations` accepts `as_of <commit>` and serves what was valid then {id: SU-19, symbol: ObligationsAsOf, package: internal/semantic}
 - [ ] Every supersede (native review, external closure, sweep) writes a `supersedes` claim link from the successor to the predecessor, and the sweep can walk the chain {id: SU-20, symbol: WriteSupersedes, package: internal/semantic}
 - [ ] Claims anchored to a resolved symbol carry an `anchors` link to its symbol key beside the line span; a rename re-anchors the span through `rename_impact` instead of marking the claim drifted {id: SU-21, symbol: AnchorSymbol, package: internal/semantic}
 - [ ] Every claim and event records the activity that asserted it (compile run id, review idempotency key, import cursor, or hook session), served as `asserted_by` {id: SU-22, symbol: AssertedBy, package: internal/core}

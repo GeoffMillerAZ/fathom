@@ -207,6 +207,10 @@
         ],
         "type": "string"
       },
+      "as_of": {
+        "description": "Answer as of this RFC3339 timestamp or commit sha instead of now (requires file). Omit for live serving.",
+        "type": "string"
+      },
       "author": {
         "description": "Verdict author (optional; empty for an automated caller)",
         "type": "string"
