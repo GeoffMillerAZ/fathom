@@ -1431,3 +1431,12 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Repro/pin:** `TestReorderFlagsFirst`, `TestLayers_Install_FlagsAfterPositionalPath`, `TestLayers_Install_BoolFlagAfterPositionalPath`, `TestLayers_PrintUsage_LayersInstallLinePinned`, `TestReconcileSkills` (extended).
 - **Status:** closed (O8); O9 not reproduced — regression test added, no code change
 - **Impact:** `layers install` no longer punishes the documented invocation order; a future O9-shaped regression in the wiring ledger is now caught immediately.
+
+### O93 — SU-14: `enclosingSymbol`'s lone-symbol fallback lets a graph-expansion seed misattribute across an entire file
+
+- **Symptom:** Hit building the SU-14 fixture that proves a two-hop bug ranks in `localize`'s top 3: `internal/mcp/search_tool.go`'s `enclosingSymbol` sets `upper = line` (the HIT's own line, not a real span) whenever a file's last-or-only symbol carries no `EndLine` and there is no following symbol to bound it — so any search/stack-frame hit at or after that symbol's declaration line, no matter how far past its real body, resolves to it. For `localize`'s new graph-expansion pass (ADR-041 D4) this matters beyond cosmetics: the seed `addSeedKey` walks the graph FROM is whichever symbol `enclosingSymbol` names, so a misattributed seed in a lightly-indexed (single-symbol-per-file) service walks the wrong neighbourhood entirely, silently.
+- **Evidence:**
+  - **Tool:** `localize` (graph expansion), `search` (shares the same `enclosingSymbol` call)
+  - **Status:** open — not fixed by this round. SU-14's own scope is `localize`'s ranking/expansion, not `enclosingSymbol`'s span inference; the fixture was rewritten to place its marker text inside the lone symbol's own body instead, which sidesteps the defect without touching it.
+- **Repro/pin:** none filed as a regression test this round (see `internal/mcp/localize_tool_test.go`'s `twoHopBugFixture` comment for the workaround); a fix would need `EndLine` populated for more extractors, or a real one-symbol-file test in `internal/mcp/search_tool_test.go` pinning the current (over-wide) behavior before narrowing it.
+- **Impact:** low today (multi-symbol files are the common case, where the next symbol's own `Line` already bounds the span correctly) but worth a follow-up before `localize`'s graph expansion is trusted on a corpus with many single-symbol files.

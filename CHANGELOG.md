@@ -21,6 +21,19 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: minor (pre-1.0: breaking bumps minor)
 
+<!-- su-wave-s4 -->
+**`localize` walks the graph (ADR-041 D4, SU-14).** Every seed `localize` resolves now
+expands through the typed/heuristic call graph (`expandSeedsByGraph`) to depth 2, ranked
+by seed evidence, graph distance, resolved-over-heuristic, then how many distinct seeds
+converge on a candidate; when seed extraction finds nothing at all, seeds are reformulated
+from identifier splitting, quoted literals and file basenames (never a model call).
+Candidates cap at 25 (`candidates_total` plus the standard elision block) and each
+candidate's `why` caps at 3 citations, closing the 882,577-byte single payload lca-run-1
+hit. Deterministic on identical input. The LCA corpus's `max_turns` (30) is confirmed
+current; the Kotlin near-empty-index question from lca-run-1 is recorded as an open note
+on the corpus rather than silently dropped.
+<!-- /su-wave-s4 -->
+
 **Portable bounded build cache (ADR-039).** `FATHOM_CACHE_ROOT` now relocates the
 supported Taskfile/script build caches without embedding a workstation path; configured
 missing roots refuse, and `FATHOM_CACHE_MAX_MIB` bounds the regenerable Go build cache.
