@@ -6,6 +6,7 @@ package mcp_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -483,6 +484,229 @@ func TestLocalize_ExactlyOneInputRequired(t *testing.T) {
 	})
 	if resp["error"] == nil {
 		t.Error("expected an error when more than one input shape is given")
+	}
+}
+
+// ─── graph expansion (ADR-041 D4) ──────────────────────────────────────────
+
+// twoHopBugFixture builds a chain Root -> Middle -> BuggyFunc (both edges
+// typed) in three real on-disk files, with exactly one quoted literal in
+// rootSrc naming Root's own file — the ONLY thing a literal seed can find
+// directly. BuggyFunc's own source carries no matching text at all, so it
+// is discoverable ONLY by walking the graph two hops out from the literal
+// seed's own resolved symbol.
+func twoHopBugFixture(t *testing.T) *localizeFakeBackend {
+	t.Helper()
+	root := t.TempDir()
+	// The marker sits INSIDE Root's own body (not in a leading comment)
+	// so enclosingSymbol resolves the search hit to Root itself — the
+	// only symbol on record in this file, so any hit at or after its own
+	// declaration line resolves to it.
+	rootSrc := "package chain\n\nfunc Root() {\n\t// marker: uniqueRootEntrypointMarker\n\tMiddle()\n}\n"
+	middleSrc := "package chain\n\nfunc Middle() {\n\tBuggyFunc()\n}\n"
+	buggySrc := "package chain\n\nfunc BuggyFunc() {\n\tpanic(\"nothing to see here\")\n}\n"
+	for name, content := range map[string]string{
+		"root.go": rootSrc, "middle.go": middleSrc, "buggy.go": buggySrc,
+	} {
+		if err := os.WriteFile(filepath.Join(root, name), []byte(content), 0o644); err != nil {
+			t.Fatalf("writing fixture %s: %v", name, err)
+		}
+	}
+	nodes := []core.SymbolNode{
+		{Service: "svc", Package: "chain", Name: "Root", Kind: core.KindGoFunc, FilePath: "root.go", Line: 3},
+		{Service: "svc", Package: "chain", Name: "Middle", Kind: core.KindGoFunc, FilePath: "middle.go", Line: 3},
+		{Service: "svc", Package: "chain", Name: "BuggyFunc", Kind: core.KindGoFunc, FilePath: "buggy.go", Line: 3},
+	}
+	byName := map[string]string{}
+	for _, n := range nodes {
+		byName[n.Name] = n.Key()
+	}
+	return &localizeFakeBackend{
+		nodes:       nodes,
+		svcPath:     root,
+		indexCommit: "commit-chain",
+		typedEdges: []core.Edge{
+			{FromService: "svc", FromSymbol: byName["Root"], ToSymbol: byName["Middle"], Kind: core.EdgeDirect},
+			{FromService: "svc", FromSymbol: byName["Middle"], ToSymbol: byName["BuggyFunc"], Kind: core.EdgeDirect},
+		},
+	}
+}
+
+// TestLocalize_GraphExpansionRanksTwoHopBugInTop3 pins SU-14 deliverable
+// 4: a bug two hops from the only literal seed ranks in the top 3 AFTER
+// expansion, and is provably absent from any non-graph hop's own
+// citations (i.e. it could not have been found BEFORE expansion at all).
+func TestLocalize_GraphExpansionRanksTwoHopBugInTop3(t *testing.T) {
+	be := twoHopBugFixture(t)
+	srv := mcp.NewServer(be)
+	got := localizeCall(t, srv, map[string]any{
+		"service": "svc", "error": `saw "uniqueRootEntrypointMarker" then it went sideways`,
+	})
+
+	cands, _ := got["candidates"].([]any)
+	idx := -1
+	var buggyRow map[string]any
+	for i, c := range cands {
+		row := c.(map[string]any)
+		if row["file"] == "buggy.go" && row["symbol"] == "BuggyFunc" {
+			idx = i
+			buggyRow = row
+		}
+	}
+	if idx < 0 {
+		t.Fatalf("BuggyFunc not found among candidates after expansion: %v", cands)
+	}
+	if idx > 2 {
+		t.Errorf("BuggyFunc ranked at index %d, want top 3 (index <= 2)", idx)
+	}
+	if gd, _ := buggyRow["graph_distance"].(float64); gd != 2 {
+		t.Errorf("BuggyFunc graph_distance = %v, want 2", buggyRow["graph_distance"])
+	}
+	if tier, _ := buggyRow["tier"].(string); tier != "typed" {
+		t.Errorf("BuggyFunc tier = %v, want typed (both edges on its path are typed)", tier)
+	}
+	// Pin "not before": every one of BuggyFunc's own citations must be a
+	// graph-path citation — none of the primary hops (stack frame,
+	// find_symbol, search) ever named it, since nothing in its own source
+	// matches the literal and no seed resolves its name directly.
+	why, _ := buggyRow["why"].([]any)
+	if len(why) == 0 {
+		t.Fatal("expected at least one why citation for BuggyFunc")
+	}
+	for _, w := range why {
+		s, _ := w.(string)
+		if !strings.HasPrefix(s, "graph path") {
+			t.Errorf("BuggyFunc why entry %q is not a graph-path citation — it should be undiscoverable by any other hop", s)
+		}
+	}
+
+	// Determinism: rerun and compare byte-for-byte.
+	got2 := localizeCall(t, srv, map[string]any{
+		"service": "svc", "error": `saw "uniqueRootEntrypointMarker" then it went sideways`,
+	})
+	raw1, _ := json.Marshal(got)
+	raw2, _ := json.Marshal(got2)
+	if string(raw1) != string(raw2) {
+		t.Errorf("graph-expansion result is not deterministic:\n%s\nvs\n%s", raw1, raw2)
+	}
+}
+
+// ─── reformulation (ADR-041 D4) ────────────────────────────────────────────
+
+func TestLocalize_ReformulatesWhenSeedExtractionFindsNothing(t *testing.T) {
+	be := localizeFixture(t)
+	srv := mcp.NewServer(be)
+	// stack_trace seeding only ever extracts file:line frames and
+	// "Name(" call shapes — a bare identifier with neither shape (no
+	// colon-path, no trailing paren) seeds nothing at all.
+	got := localizeCall(t, srv, map[string]any{
+		"service": "svc", "stack_trace": "something broke inside getBalanceForUser but not there",
+	})
+	if reformulated, _ := got["reformulated"].(bool); !reformulated {
+		t.Fatalf("expected reformulated=true, got %v", got["reformulated"])
+	}
+	terms, _ := got["reformulated_terms"].([]any)
+	wantTerms := []string{"getBalanceForUser", "get", "Balance"}
+	for _, want := range wantTerms {
+		found := false
+		for _, tm := range terms {
+			if tm == want {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("reformulated_terms = %v, want it to include %q", terms, want)
+		}
+	}
+	// The derived term "Balance" is a real symbol name AND a real
+	// substring in ledger.go — reformulation must lead somewhere real,
+	// never just flip a flag.
+	files := localizeCandidateFiles(t, got)
+	if !containsStr(files, "ledger.go") {
+		t.Errorf("expected reformulation's derived term %q to find ledger.go, got %v", "Balance", files)
+	}
+	hops, _ := got["hops"].([]any)
+	sawReformulate := false
+	for _, h := range hops {
+		if h.(map[string]any)["tool"] == "reformulate" {
+			sawReformulate = true
+		}
+	}
+	if !sawReformulate {
+		t.Errorf("expected a logged reformulate hop, hops=%v", hops)
+	}
+}
+
+func TestLocalize_NoReformulationWhenSeedsAlreadyFound(t *testing.T) {
+	be := localizeFixture(t)
+	srv := mcp.NewServer(be)
+	got := localizeCall(t, srv, map[string]any{"service": "svc", "stack_trace": "at ledger.go:5 in Balance"})
+	if _, ok := got["reformulated"]; ok {
+		t.Errorf("expected no reformulated flag when seed extraction already found seeds, got %v", got["reformulated"])
+	}
+}
+
+// ─── payload cap (ADR-041 D4) ──────────────────────────────────────────────
+
+// manyFilesFixture builds n independent files, each defining one function
+// whose name and body both contain the literal "needle" — so a single
+// literal seed matches all n as heuristic hits, one candidate per file,
+// with no graph edges connecting any of them (isolating the cap from
+// graph-expansion scoring).
+func manyFilesFixture(t *testing.T, n int) *localizeFakeBackend {
+	t.Helper()
+	root := t.TempDir()
+	var nodes []core.SymbolNode
+	for i := 0; i < n; i++ {
+		name := fmt.Sprintf("Needle%02d", i)
+		file := fmt.Sprintf("f%02d.go", i)
+		src := fmt.Sprintf("package many\n\n// needle\nfunc %s() {}\n", name)
+		if err := os.WriteFile(filepath.Join(root, file), []byte(src), 0o644); err != nil {
+			t.Fatalf("writing fixture %s: %v", file, err)
+		}
+		nodes = append(nodes, core.SymbolNode{Service: "svc", Package: "many", Name: name, Kind: core.KindGoFunc, FilePath: file, Line: 4})
+	}
+	return &localizeFakeBackend{nodes: nodes, svcPath: root, indexCommit: "commit-many"}
+}
+
+func TestLocalize_PayloadCappedAt25Candidates(t *testing.T) {
+	be := manyFilesFixture(t, 40)
+	srv := mcp.NewServer(be)
+	got := localizeCall(t, srv, map[string]any{"service": "svc", "concern": "needle search term here"})
+
+	cands, _ := got["candidates"].([]any)
+	if len(cands) > 25 {
+		t.Errorf("candidates = %d, want capped at 25", len(cands))
+	}
+	total, _ := got["candidates_total"].(float64)
+	if int(total) != 40 {
+		t.Errorf("candidates_total = %v, want 40 (the full match count before the cap)", got["candidates_total"])
+	}
+	if got["elided"] == nil {
+		t.Error("expected an elided block naming what was cut")
+	}
+	elided, _ := got["elided"].(map[string]any)
+	if how, _ := elided["how_to_get_more"].(string); how != "budget" {
+		t.Errorf("elided.how_to_get_more = %q, want \"budget\"", how)
+	}
+}
+
+func TestLocalize_WhyCappedAtThreeCitations(t *testing.T) {
+	be := localizeFixture(t)
+	srv := mcp.NewServer(be)
+	// Balance is found by the stack frame, matches the literal search
+	// hop's own file scan, AND is governed — more than 3 potential
+	// citations if nothing capped it.
+	got := localizeCall(t, srv, map[string]any{
+		"service": "svc", "error": `at ledger.go:5: "Balance" failed`,
+	})
+	cands, _ := got["candidates"].([]any)
+	for _, c := range cands {
+		row := c.(map[string]any)
+		why, _ := row["why"].([]any)
+		if len(why) > 3 {
+			t.Errorf("candidate %v why has %d entries, want <= 3", row["file"], len(why))
+		}
 	}
 }
 

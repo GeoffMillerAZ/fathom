@@ -251,6 +251,24 @@ func BuildLCACorpus(records []LCARecord, path string) (Corpus, error) {
 			URL:     lcaDatasetURL,
 			License: lcaDatasetLicense,
 		}},
+		Notes: map[string]any{
+			// ADR-041 D4's own re-check: lca-run-1
+			// (docs/bench/readings/lca-run-1-reading.md §3) found a
+			// near-empty or mislabeled Kotlin index in 3 of 4 sampled
+			// Kotlin tasks (bumble-tech/appyx, theopenconversationkit/tock,
+			// square/kotlinpoet) despite the fwcd 0.3.8 tree-sitter grammar
+			// already being in the tree (internal/extractor/tsengine/
+			// grammars/kotlin.wasm, internal/extractor/tsqueries/kotlin.scm,
+			// docs/languages.md's Kotlin row: "tree-sitter (wasm, fwcd
+			// 0.3.8)", "Grammar in tree: yes") — unchanged since that run.
+			// This round (SU-14) only changes localize's own ranking and
+			// graph expansion, not ingestion, so whether the gap is a
+			// per-task scratch-daemon ingestion defect or a genuine
+			// tree-sitter-Kotlin extraction gap is STILL OPEN, not
+			// diagnosed here. Re-check (an ingest-log read on one of the
+			// three affected repos) before the next LCA rerun.
+			"kotlin_index": "near-empty/mislabeled Kotlin index observed in 3/4 sampled Kotlin tasks in lca-run-1 (docs/bench/readings/lca-run-1-reading.md §3); grammar is present and unchanged; per-task ingestion defect vs. extraction gap is open, not diagnosed by SU-14",
+		},
 	}
 	if err := validateCorpus(c); err != nil {
 		return Corpus{}, fmt.Errorf("building LCA corpus from %s: %w", path, err)

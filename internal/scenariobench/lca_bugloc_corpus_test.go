@@ -138,3 +138,28 @@ func TestLCABuglocCorpus_LoadsAndBuilds(t *testing.T) {
 		t.Errorf("CanonicalCorpusSHA256: %v", err)
 	}
 }
+
+// TestLCABuglocCorpus_KotlinIndexNoteRecorded is SU-14's own LCA-readiness
+// re-check (ADR-041 D4): lca-run-1 (docs/bench/readings/lca-run-1-reading.md
+// §3) found a near-empty or mislabeled Kotlin index in 3 of 4 sampled Kotlin
+// tasks. The Kotlin tree-sitter grammar is present and unchanged
+// (internal/extractor/tsengine/grammars/kotlin.wasm,
+// internal/extractor/tsqueries/kotlin.scm, docs/languages.md's Kotlin row),
+// so this round does not "fix" the gap — it records it as an open note on
+// the corpus itself (BuildLCACorpus's Notes) rather than staying silent, per
+// this plan row's own instruction: fixed in this tree, or recorded as an
+// open note.
+func TestLCABuglocCorpus_KotlinIndexNoteRecorded(t *testing.T) {
+	records, err := LoadLCARecords(lcaBuglocCorpusPath)
+	if err != nil {
+		t.Fatalf("LoadLCARecords(%s): %v", lcaBuglocCorpusPath, err)
+	}
+	corpus, err := BuildLCACorpus(records, lcaBuglocCorpusPath)
+	if err != nil {
+		t.Fatalf("BuildLCACorpus: %v", err)
+	}
+	note, ok := corpus.Notes["kotlin_index"].(string)
+	if !ok || note == "" {
+		t.Fatalf("expected corpus.Notes[%q] to be a non-empty open note, got %v", "kotlin_index", corpus.Notes["kotlin_index"])
+	}
+}

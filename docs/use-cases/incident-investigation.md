@@ -19,6 +19,7 @@ Triage a production symptom fast using pre-computed call graphs, complexity hots
 |---|---|---|
 | `investigate_incident` | MCP prompt | Structured investigation sequence: entrypoints → complexity → call hierarchy → community → staleness; returns step-by-step tool instructions tailored to `service` + `symptom` |
 | `entrypoints` | MCP tool | Main functions, HTTP handlers, CLI root commands — the surface most likely to be the entry to the failing path |
+| `localize` | MCP tool | "Which file is this in" from a stack trace, a failing test name, an error string, or a bare description — seeds resolve, then expand two hops through the call graph, ranked and cited, before you have a symbol name to hand `find_callers` |
 | `find_callers` | MCP tool | All symbols that call a named symbol; traces a function up through its callers |
 | `blast_radius` | MCP tool | Given a set of changed files, returns all transitively affected symbols, test functions, and file paths |
 | `history` | MCP tool | Git commit history for a service, filterable by file suffix, spec ID, or symbol; results are newest-first |
@@ -46,6 +47,7 @@ With fathom:
 - **`history` with symbol resolution** collapses "find the commit that changed this function" into one call — it resolves the symbol to its file and filters commit history to that file automatically.
 - **`contradiction_scan`** surfaces doc-vs-code drift that might explain why the code is not behaving as the runbook says, without requiring you to read both documents manually.
 - **`evidence_summary`** tells you up front whether the index data is primarily verified (parsed from source) or assumed (lower-confidence), so you calibrate how much to trust the tool results before acting on them.
+- **`localize`** closes the gap before you have a symbol name at all: paste the stack trace, the failing test, or the error text, and it seeds from parsed frames/literals/test names, then walks the typed call graph two hops out from every resolved seed (ranked by evidence, graph distance, resolved-over-heuristic, then how many seeds converge on it) before `find_callers`/`blast_radius` have anything to grab onto. When the symptom is too vague to seed anything (no frame, no quoted literal, no matching function name), it reformulates from identifier splitting and file basenames rather than coming back empty — never a model call, always logged as its own hop.
 
 Together these move the investigation from open-ended code reading to a directed sequence of structured queries, letting Claude Code close in on a root cause faster and with less context drift.
 
@@ -185,4 +187,4 @@ Returns: `{ "found": true, "findings": [{ "claim_id": "...", "class": "error-han
 
 ## Maintained
 
-This doc covers: `investigate_incident`, `entrypoints`, `find_callers`, `blast_radius`, `history`, `contradiction_scan`, `evidence_summary`, `community`, `traverse`, `findings_near`, `memory_search`, `staleness_report`, `ingest`, `fathom findings` (`near`/`status`), `fathom memory` (`add`/`list`/`review`/`show`), `fathom scope` (`list`/`preview`/`suppress`/`unsuppress`). Update it when these change.
+This doc covers: `investigate_incident`, `entrypoints`, `localize`, `find_callers`, `blast_radius`, `history`, `contradiction_scan`, `evidence_summary`, `community`, `traverse`, `findings_near`, `memory_search`, `staleness_report`, `ingest`, `fathom findings` (`near`/`status`), `fathom memory` (`add`/`list`/`review`/`show`), `fathom scope` (`list`/`preview`/`suppress`/`unsuppress`). Update it when these change.

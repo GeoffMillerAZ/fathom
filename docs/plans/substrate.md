@@ -26,7 +26,7 @@ Rows are proven by `fathom verify`; every round below ends with a free-tier meas
 
 ## C. Localization (decision 6)
 
-- [ ] `localize` expands seeds through the typed neighbourhood to depth 2, ranks by graph distance then evidence, reformulates when seeds are empty (identifier splitting and synonyms from the concern), and caps its payload at the tool budget; the LCA corpus's `max_turns` and Kotlin index notes are re-checked so the corpus is runnable on the new instrument {id: SU-14, symbol: expandSeedsByGraph, package: internal/mcp}
+- [x] `localize` expands seeds through the typed neighbourhood to depth 2, ranks by graph distance then evidence, reformulates when seeds are empty (identifier splitting and synonyms from the concern), and caps its payload at the tool budget; the LCA corpus's `max_turns` and Kotlin index notes are re-checked so the corpus is runnable on the new instrument {id: SU-14, symbol: expandSeedsByGraph, package: internal/mcp}
 
 ## D. Findings learning telemetry (decision 8)
 
