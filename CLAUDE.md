@@ -35,11 +35,9 @@ raw-`cp` the daemon, skip a gate, or claim done without `Verified:`.
 
 ## Working conventions
 
-- **TDD**: failing `_test.go` first; prefer golden fixtures (`internal/connector/testdata/fauxtown/`).
-- **Determinism is a contract**: sorted outputs, injected clocks — `internal/CLAUDE.md`.
-- **CGO**: `CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0` (ADR-013); `internal/store` stays pure Go (ADR-020/025).
+- **TDD**: failing `_test.go` first; golden fixtures (`internal/connector/testdata/fauxtown/`); always verify with `-race` (the gate does; some bugs surface only there).
+- **Determinism is a contract** (sorted outputs, injected clocks — `internal/CLAUDE.md`); **CGO** `CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0` (ADR-013) while `internal/store` stays pure Go (ADR-020/025).
 - **Domain model**: shared types in `internal/core`, extended additively; external re-exports in `pkg/client`.
-- Always verify with `-race`; the gate uses it and some test bugs surface only there.
 
 <!-- appkit:begin -->
 ## App-kit
@@ -51,9 +49,7 @@ capability/recipe; verify the actual task and states in the target UI. Record re
 improvements or a reasoned divergence and return applicable fixes upstream.
 <!-- appkit:end -->
 
-Project-specific contribution routing and disposition evidence live in
-`docs/app-kit.md#selected-metadata-and-reusable-contributions-2026-09-16`; retrieve the
-shared contract with app-kit MCP `get_kit_decision("contribution-loop")`.
+Contribution routing and disposition evidence: `docs/app-kit.md#selected-metadata-and-reusable-contributions-2026-09-16`; shared contract via app-kit MCP `get_kit_decision("contribution-loop")`.
 
 ## Path-scoped instructions (auto-loaded when you work there)
 
