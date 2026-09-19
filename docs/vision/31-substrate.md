@@ -1,7 +1,10 @@
 # 31 — The substrate: relational facts, a graph in memory, embeddings on probation
 
-Status: PROPOSED 2026-09-18, for the owner's decision. Nothing in this document
-is built. Sources are dated inline; every claim about our own code carries a
+Status: ACCEPTED 2026-09-19 (ADR-041) with the owner's answers: embeddings are
+removed rather than parked (D5 rejected for now; §5 stays the revisit bar); typed
+edges proceed Go, CUE, TypeScript, Python, then the delegate's order, tracked in
+`docs/languages.md`; freshness is hook-triggered per file. Plan:
+`docs/plans/substrate.md`. Sources are dated inline; every claim about our own code carries a
 `path:line` pointer to the inventory that produced it.
 
 **Verdict.** Our base architecture is the right shape and the wrong build. The

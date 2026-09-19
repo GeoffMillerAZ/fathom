@@ -41,6 +41,13 @@ Outcome: pending (`docs/plans/evidence-plane.md` EP-14 `adr_references_resolve`;
 
 ## Closed
 
+### INC-20 2026-09-19 Two pushes reached main ungated after the push clone's hooks were wiped
+What: origin/main 7dd702ac (42 commits) and d8770983 (docs) were pushed from the scratch push clone while `.git/hooks/pre-push` (lefthook) and `.git/HEAD` were missing; `task validate` never ran before either push. Both push logs were two lines long.
+Evidence: `<scratchpad>/push-full29.log`, `push-full30.log` (2 lines each, no gate output); `.git/hooks` held only samples and `.git/HEAD` was absent at 2026-09-19 00:00; an unknown process touched `.git` at midnight.
+Would have caught it: a push script that refuses to push unless the pre-push hook is a lefthook hook; a log-length check that treats a gate-less push log as a failure.
+Class: gate-bypassed (I2/I3 class)
+Outcome: the full gate was re-run against d8770983 after the fact (result recorded in the ADR-041 round's CHANGELOG entry); `push-internal6.sh` aborts without the hook; ADR-041 decision 10.
+
 ### INC-19 2026-09-14 Unreadable call logs still produced numerical Impact costs
 What: Impact showed zero response cost for an unreadable log, or stale cost/outcome rows when populated values accompanied the failure.
 Evidence: `TestObservatoryImpactCallLogUnavailableSuppressesDerivedCosts` failed behaviorally; app-kit browser fixture also recorded 36 missing-source disclosure failures.

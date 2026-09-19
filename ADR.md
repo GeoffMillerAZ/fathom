@@ -2089,3 +2089,101 @@ never tier or status).
 a second external producer needs a projection shape the event contract
 cannot carry; the review kit's ADR-0098 "revisit" fires and fathom is asked
 to be the record — then the durability list in vision 30 §5 is the entry bar.
+
+## ADR-041: The substrate round — relational facts stay, embeddings leave, typed edges arrive by import, freshness follows the edit (2026-09-19)
+
+**Status.** Accepted. Accepts `docs/vision/31-substrate.md` with the owner's
+answers to Q22–Q24 (2026-09-19). Plan: `docs/plans/substrate.md`. Language
+tracker: `docs/languages.md`.
+
+**Context.** Vision 31 asked whether relational-for-everything, no embeddings
+and no graph database is the right substrate for fathom's five jobs, and
+answered with seven readings: the field converged on our shape, and our build
+has ten provable limits that are cheaper to fix than to migrate around. The
+owner answered the three open questions: a feature must earn its place, so
+embeddings are disabled and removed from guidance rather than kept for rare
+cases; typed edges proceed Go, CUE, TypeScript, Python, then the delegate's
+order, with a tracked table of done and needed; freshness is the delegate's
+call.
+
+**Decision.**
+
+1. **SQLite stays the system of record. No graph database, no DuckDB.**
+   Graph walks stay in memory over per-service adjacency; fleet composition
+   stays in Go until a measured query needs SQL across store files, at which
+   point SQLite `ATTACH` is the path (vision 03's DuckDB ATTACH plan is
+   withdrawn).
+2. **Embeddings are removed, not parked.** The dead vector adapter, the
+   `WithVector` option and the hybrid-rank vector branch are deleted; the
+   agentic-kit embedding client import goes with them; guidance that mentions
+   semantic or hybrid search is corrected to describe the lexical and graph
+   paths that exist. Revisit only through vision 31 §5: a controlled result on
+   a labelled concept-query set that lexical plus graph cannot match at ≤ 2×
+   tokens. Until then "semantic" in fathom means compiled claims, never vectors.
+3. **Substrate hygiene precedes every new capability.** Indexes on the
+   columns every serve path filters; claims prefiltered in SQL by layer,
+   status and scope prefix before Go scoring; the call-graph cache invalidated
+   per package instead of per watermark; per-file re-ingest of dirty files; a
+   dispatch-level response budget so no handler can regress the 63k-token
+   class; the prompt hook ignores system notifications. Each is measured on
+   the free tier of the bench pyramid before and after.
+4. **Freshness is hook-triggered, per file.** The pre-edit hook asks the
+   daemon to refresh the file being edited when its content hash differs from
+   the index; the daemon re-extracts that file's symbols and syntax edges in
+   place (typed edges stay package-granular until the next ingest) and the
+   hook answers from the refreshed index. `fathom watch` remains the opt-in
+   daemon-wide mode. The staleness line names what was refreshed and what was
+   not.
+5. **Typed edges beyond Go arrive by import.** `fathom ingest --scip` (and
+   auto-detected `index.scip` / `.fathom/scip/*.scip`) maps SCIP occurrences
+   to `typed_edges` under the same package-granular replacement, with the
+   producer's identity recorded. Order: Go (done, native), CUE (native, via
+   `cue/load` — no exporter exists), TypeScript and JavaScript
+   (scip-typescript), Python (scip-python), then Java/Kotlin/Scala (scip-java),
+   Rust (rust-analyzer), C/C++ (scip-clang), Ruby (scip-ruby), C# (scip-dotnet);
+   PHP, Swift, Lua, Bash and the configuration dialects keep syntax-level
+   edges. Where no exporter runs, a per-file resolver (imports plus
+   module-scope names, stack-graphs style) supplies edges labelled
+   `file-resolved` at tier pre-scan, never presented as typed.
+   `docs/languages.md` is the tracker every round updates.
+6. **Localization walks the graph.** `localize` expands seeds through the
+   typed neighbourhood to depth 2, ranks by graph distance and evidence,
+   reformulates when seeds are empty, and caps its payload; the Long Code
+   Arena corpus is re-run on that instrument before localization is
+   positioned or retired.
+7. **Claims gain time and identity.** Bi-temporal validity, explicit
+   `supersedes` links, anchors bound to the resolved symbol key beside the
+   line span, and a link to the run that asserted the claim; `obligations`
+   answers `as_of` a commit.
+8. **The findings loop gains learning telemetry without prose inference.**
+   Promotion candidates decay on dispute, weight by ownership and cap their
+   cadence; promoted rules carry served/touched/disputed/last-fired
+   telemetry; a human can add one scoped claim directly (`fathom claim add`,
+   producer `human.review`, tier capped at sme-stated); a disposition can be
+   previewed before it is recorded. Nothing is inferred from annotation text.
+9. **Benchmarks stay runnable and unrun.** A free-tier L0 oracle for typed
+   edges per language against SCIP truth on the calibration subjects; a
+   TypeScript and a Python lookups corpus on those subjects; every corpus
+   passes `scenariobench plan`; the next-round order is guards, findings-loop,
+   lookups (Go), then the new language corpora. No run in this round.
+10. **Pushes are gated by construction.** After INC-20 the push script refuses
+   to push unless the lefthook pre-push hook is present, and a push log
+   shorter than the gate's output is treated as an ungated push to be
+   re-validated.
+
+**Consequences.** One fewer subsystem (vectors), one new dependency
+(`github.com/sourcegraph/scip` bindings; protobuf was already present),
+additive store columns and links, a new daemon route for per-file refresh,
+and a language tracker that turns "what is left" into busywork anyone can
+pick up. The agent-surface tool set does not grow.
+
+**Alternatives rejected.** Keeping the vector path dormant (a feature that
+has not earned its place costs guidance and surface); a graph database or
+DuckDB (vision 31 §1); writing typed passes per language (SCIP exporters
+exist and are the calibration corpus's own oracle); daemon-default polling
+for freshness (CPU always on for edits that happen rarely; the hook knows
+which file matters).
+
+**Revisit when.** Vision 31 §5; a language without a SCIP exporter becomes a
+primary target (then the per-file resolver graduates to a typed pass); the
+per-file refresh is measured slower than 150 ms p50 at the hook.
