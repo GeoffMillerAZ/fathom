@@ -528,6 +528,13 @@ func (c *Client) SetClaimValidTo(ctx context.Context, serviceID, claimID string,
 	return c.st.SetClaimValidTo(ctx, serviceID, claimID, t)
 }
 
+// ClaimsAnchoredTo is a thin passthrough to semantic.ClaimsAnchoredTo
+// (SU-21, ADR-041 decision 7) — the claims anchored to symbolKey via an
+// "anchors" claim link, for rename_impact's claims_anchored receipt.
+func (c *Client) ClaimsAnchoredTo(ctx context.Context, serviceID, symbolKey string) ([]string, error) {
+	return semantic.ClaimsAnchoredTo(ctx, c.st, serviceID, symbolKey)
+}
+
 // WriteSupersedes is a thin passthrough to semantic.WriteSupersedes (SU-20,
 // ADR-041 decision 7) — records that successorID replaces predecessorID via
 // a "supersedes" claim link. See semantic.WriteSupersedes' own doc comment

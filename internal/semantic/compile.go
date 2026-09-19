@@ -374,6 +374,13 @@ func (c *Compiler) Compile(ctx context.Context, in CompileInput) (core.CompileRu
 	// exactly which tail, if any, this run never reached).
 	stoppedAt := -1
 
+	// SU-21 (ADR-041 decision 7): resolves a cites span to its enclosing
+	// symbol, when one exists — a governing PROSE document resolves to
+	// zero symbols on every call (anchorSymbolResolver never pays for the
+	// index load in that overwhelmingly common case); a layer whose corpus
+	// cites real code gets a live "anchors" link on every claim it mints.
+	anchorSymbol := anchorSymbolResolver(ctx, c.St, in.ServiceID)
+
 sectionLoop:
 	for i, item := range ordered {
 		doc, sec := item.doc, item.sec
@@ -425,7 +432,7 @@ sectionLoop:
 		recompiledSubjects = append(recompiledSubjects, sec.Subject)
 
 		for _, d := range drafts {
-			claim, links, verr := c.verifyDraft(ctx, in.ServiceID, d, sec, doc, in.IndexedFiles, in.Watermark, started, layerName, layerVersion, kind, tier, tierProfile, promptVersion, driftTracked)
+			claim, links, verr := c.verifyDraft(ctx, in.ServiceID, d, sec, doc, in.IndexedFiles, in.Watermark, started, layerName, layerVersion, kind, tier, tierProfile, promptVersion, driftTracked, anchorSymbol)
 			if verr != nil {
 				// A drift-anchor failure is infrastructure, not a bad
 				// draft: abort the run loudly (FT-6 — see errDriftAnchor).
@@ -647,7 +654,7 @@ func buildSectionPrompt(sec Section) string {
 // its anchors. layerName/layerVersion/kind/tier/tierProfile/driftTracked are
 // the caller's resolved layer identity (FT-1: Compile resolves them once from
 // c.Layer, defaulting to the obligations identity when no layer is loaded).
-func (c *Compiler) verifyDraft(ctx context.Context, serviceID string, d claimDraft, sec Section, doc core.SourceFile, indexedFiles []string, watermark string, at time.Time, layerName, layerVersion, kind string, tier core.EvidenceTier, tierProfile, promptVersion string, driftTracked bool) (core.SemanticClaim, []core.ClaimLink, error) {
+func (c *Compiler) verifyDraft(ctx context.Context, serviceID string, d claimDraft, sec Section, doc core.SourceFile, indexedFiles []string, watermark string, at time.Time, layerName, layerVersion, kind string, tier core.EvidenceTier, tierProfile, promptVersion string, driftTracked bool, anchorSymbol func(claimID, citeRef string, fetch func(string) ([]byte, bool)) (core.ClaimLink, bool)) (core.SemanticClaim, []core.ClaimLink, error) {
 	rule := strings.TrimSpace(d.Rule)
 	if rule == "" {
 		return core.SemanticClaim{}, nil, rejectErr(causeMalformed, "empty rule")
@@ -759,6 +766,21 @@ func (c *Compiler) verifyDraft(ctx context.Context, serviceID string, d claimDra
 	}
 	links := []core.ClaimLink{
 		{ClaimID: claim.ClaimID, Rel: core.RelCites, TargetRef: core.CiteRef(doc.Path, d.CiteStart, d.CiteEnd), TargetHash: hash, AnchorText: anchorText},
+	}
+	// SU-21 (ADR-041 decision 7): when the cites span resolves to exactly
+	// one symbol definition, bind the claim to it too — a no-op (ok=false)
+	// for the overwhelmingly common case of a claim citing prose, never a
+	// hard failure either way.
+	if anchorSymbol != nil {
+		fetch := func(p string) ([]byte, bool) {
+			if p == doc.Path {
+				return doc.Content, true
+			}
+			return nil, false
+		}
+		if link, ok := anchorSymbol(claim.ClaimID, core.CiteRef(doc.Path, d.CiteStart, d.CiteEnd), fetch); ok {
+			links = append(links, link)
+		}
 	}
 	for _, g := range scope {
 		links = append(links, core.ClaimLink{ClaimID: claim.ClaimID, Rel: core.RelScopes, TargetRef: g})

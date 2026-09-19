@@ -278,6 +278,20 @@ link back through however many times the same subject has been replaced —
 predecessor, its own predecessor, and so on — so a claim's full lineage is
 one call away, not a guess from `claim_events` alone.
 
+**Symbol-bound anchors (SU-21).** When a claim's citation resolves to
+exactly one symbol definition in the index — the enclosing declaration, not
+a guess across an ambiguous or absent match — it also gets an `anchors`
+claim link (`TargetRef` = the symbol's `core.SymbolKey`, `TargetHash` = the
+symbol's own current content fingerprint). `Sweep` reads it as a SECOND
+healing path beside the literal-text re-anchor (T5-1/O13): when a cites
+hash no longer matches and the literal text cannot be found (or the link
+predates it), but the anchored symbol's own body hash is UNCHANGED at a new
+range in the current index — a pure move, never a content edit passed off
+as one — the citation is re-anchored there instead of flipping stale.
+`rename_impact` lists any claim anchored to the renamed symbol
+(`claims_anchored`/`claims_anchored_ids`), so a rename is never silent for
+governance.
+
 ## The `fathom layers` verb
 
 ```sh

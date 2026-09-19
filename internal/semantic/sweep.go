@@ -119,10 +119,37 @@ func Sweep(ctx context.Context, st store.Store, serviceID string, fetch func(pat
 		return rep, fmt.Errorf("semantic: sweep load links: %w", err)
 	}
 	citesByClaim := map[string][]core.ClaimLink{}
+	// anchorsByClaim (SU-21, ADR-041 decision 7) is the "anchors" link each
+	// claim carries, keyed by ClaimID — at most one per claim (AnchorSymbol
+	// resolves at most one enclosing symbol per cites span, and every
+	// compiled claim has at most one cites link today). Used only as a
+	// FALLBACK when the AnchorText-based re-anchor below is unavailable or
+	// fails.
+	anchorsByClaim := map[string]core.ClaimLink{}
 	for _, l := range links {
-		if l.Rel == core.RelCites {
+		switch l.Rel {
+		case core.RelCites:
 			citesByClaim[l.ClaimID] = append(citesByClaim[l.ClaimID], l)
+		case core.RelAnchors:
+			anchorsByClaim[l.ClaimID] = l
 		}
+	}
+
+	// symbolIdx (SU-21) is the service's symbol index, loaded at most ONCE
+	// for this whole sweep and only on first actual use — most claims carry
+	// no "anchors" link at all (a governing-doc citation resolves to zero
+	// symbols), so a sweep with nothing to symbol-re-anchor never pays for
+	// the load.
+	var (
+		symbolIdxLoaded bool
+		symbolIdx       SymbolIndex
+	)
+	loadSymbolIdx := func() SymbolIndex {
+		if !symbolIdxLoaded {
+			symbolIdxLoaded = true
+			symbolIdx, _ = LoadSymbolIndex(ctx, st, serviceID)
+		}
+		return symbolIdx
 	}
 
 	// Deterministic order: by claim ID.
@@ -187,6 +214,49 @@ func Sweep(ctx context.Context, st store.Store, serviceID string, fetch func(pat
 						}
 						if err := st.AppendClaimEvent(ctx, ev); err != nil {
 							return rep, fmt.Errorf("semantic: sweep reanchor event %s: %w", cl.ClaimID, err)
+						}
+						claimReanchored = true
+						continue // healed: this citation no longer counts against next
+					}
+				}
+			}
+			// SU-21 (ADR-041 decision 7): the AnchorText path above either
+			// had nothing to search with (legacy hash-only link) or found
+			// zero/multiple matches (ambiguous — ADR-017's pre-T5-1
+			// fallthrough). When this claim's cites span resolved to
+			// exactly one symbol at mint (an "anchors" link), check
+			// whether that SAME symbol (by SymbolKey — identity, not
+			// position) still exists in the current index: a rename or an
+			// edit that changes the symbol's own body would drop it, but a
+			// move that only shifts its line range does not. Re-anchors
+			// the cites link to the symbol's CURRENT range instead of
+			// flipping stale — same-file only (a cross-file move is not
+			// attempted here: this file's already-loaded `data` would not
+			// match a different file's content, and re-reading a second
+			// file per candidate is out of this row's scope).
+			if link, ok := anchorsByClaim[cl.ClaimID]; ok {
+				if sym, symOK := loadSymbolIdx().ByKey(link.TargetRef); symOK && sym.FilePath == path {
+					// The hash comparison against the STORED anchors
+					// TargetHash (never just re-hashing current content) is
+					// load-bearing: it is what proves the symbol's own body
+					// is byte-identical to mint time and only its line
+					// range moved — without it this would blindly
+					// "heal" a genuine content edit inside the symbol's
+					// current range instead of correctly flagging it stale.
+					if newHash, hok := core.HashLines(data, sym.Line, sym.EndLine); hok && link.TargetHash != "" && newHash == link.TargetHash {
+						newRef := core.CiteRef(path, sym.Line, sym.EndLine)
+						if err := st.UpdateClaimLink(ctx, serviceID, cl.ClaimID, core.RelCites, cite.TargetRef, newRef, newHash); err != nil {
+							return rep, fmt.Errorf("semantic: sweep reanchor-symbol %s: %w", cl.ClaimID, err)
+						}
+						ev := core.ClaimEvent{
+							ClaimID: cl.ClaimID,
+							Verdict: "re-anchored",
+							Author:  "sweep",
+							Note:    fmt.Sprintf("%s -> %s (anchored symbol %s still resolves)", cite.TargetRef, newRef, sym.Key()),
+							At:      clock(),
+						}
+						if err := st.AppendClaimEvent(ctx, ev); err != nil {
+							return rep, fmt.Errorf("semantic: sweep reanchor-symbol event %s: %w", cl.ClaimID, err)
 						}
 						claimReanchored = true
 						continue // healed: this citation no longer counts against next

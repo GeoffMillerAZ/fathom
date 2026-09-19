@@ -41,6 +41,16 @@ func buildGraph(ctx context.Context, backend QueryInterface, service string) (*c
 	return callgraph.Build(nodes), nil
 }
 
+// claimsAnchoredBackend is the optional backend capability for SU-21's
+// governance-on-rename receipt (ADR-041 decision 7): claims whose "anchors"
+// claim link names a given core.SymbolKey. pkg/client implements it; a
+// backend that omits it (an older module, a minimal test fake) leaves
+// rename_impact's response exactly as it was before this field existed —
+// no claims_anchored key at all, never a fabricated zero.
+type claimsAnchoredBackend interface {
+	ClaimsAnchoredTo(ctx context.Context, serviceID, symbolKey string) ([]string, error)
+}
+
 // ─── rename_impact ────────────────────────────────────────────────────────────
 
 func registerRenameImpact(s *Server, backend QueryInterface) {
@@ -108,6 +118,20 @@ func registerRenameImpact(s *Server, backend QueryInterface) {
 		result := map[string]any{"callers": stringsToAny(callers), "resolution": mix}
 		if ic := indexCommitFor(ctx, backend, p.Service); ic != "" {
 			result["index_commit"] = ic
+		}
+		// SU-21 (ADR-041 decision 7): a rename is never silent for
+		// governance — any claim anchored to the renamed symbol (via an
+		// "anchors" claim link) is named here, not just its call sites.
+		// canonicalize through the SAME graph RenameImpact itself just
+		// walked, so the key this looks up is the identical symbol
+		// RenameImpact resolved p.Symbol to (bare name or full key alike).
+		if key := callgraph.Canonical(g, p.Symbol); key != "" {
+			if cab, ok := backend.(claimsAnchoredBackend); ok {
+				if ids, aerr := cab.ClaimsAnchoredTo(ctx, p.Service, key); aerr == nil && len(ids) > 0 {
+					result["claims_anchored"] = len(ids)
+					result["claims_anchored_ids"] = stringsToAny(ids)
+				}
+			}
 		}
 		return withSummary(renameImpactSummary(p.Symbol, callers), result), nil
 	})

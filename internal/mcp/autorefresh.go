@@ -140,6 +140,19 @@ func (a *autoRefreshBackend) TypedEdges(ctx context.Context, serviceID string) (
 	return a.QueryInterface.TypedEdges(ctx, serviceID)
 }
 
+// ClaimsAnchoredTo forwards SU-21's governance-on-rename receipt (ADR-041
+// decision 7) — same O7 forwarding class as every other optional
+// capability in this file: without it, wrapping the client in auto-refresh
+// would silently drop claims_anchored from rename_impact on a daemon
+// running with auto-refresh on (serve-http's own default).
+func (a *autoRefreshBackend) ClaimsAnchoredTo(ctx context.Context, serviceID, symbolKey string) ([]string, error) {
+	cab, ok := a.QueryInterface.(claimsAnchoredBackend)
+	if !ok {
+		return nil, nil
+	}
+	return cab.ClaimsAnchoredTo(ctx, serviceID, symbolKey)
+}
+
 // ─── forwarded optional capabilities ─────────────────────────────────────────
 //
 // Optional-capability interfaces (semantic tools, claims summary) are detected

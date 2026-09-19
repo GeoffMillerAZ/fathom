@@ -44,6 +44,17 @@ simply stopped firing (fixed, no replacement), which still supersedes but links 
 nothing. External closure/revocation and `fathom claim refute` close `valid_to` (closing
 a gap left in SU-19) but never call `WriteSupersedes`: both retire a claim in place with
 no distinct successor row to link to.
+
+**Claims gain symbol-bound anchors (ADR-041 decision 7, SU-21).** When a claim's
+citation resolves to exactly one symbol definition in the index, it also gets an
+`anchors` claim link (`internal/semantic.AnchorSymbol`, wired into the compiler's own
+citation step) — the symbol's `core.SymbolKey` plus its own current content
+fingerprint. `Sweep` reads it as a SECOND healing path, only when the existing
+literal-text re-anchor (T5-1/O13) is unavailable or fails: the anchored symbol's
+CURRENT body hash must still match the one stored at anchor time — proof of a pure
+line-range move, never a content edit passed off as one — before the citation is
+re-pointed at its new range instead of flipping stale. `rename_impact` gains
+`claims_anchored`/`claims_anchored_ids`, so a rename is never silent for governance.
 <!-- /su-wave-s8 -->
 
 <!-- su-wave-s6 -->

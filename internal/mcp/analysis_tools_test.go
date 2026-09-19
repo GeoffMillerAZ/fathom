@@ -137,6 +137,67 @@ func TestRenameImpact_DirectCallers(t *testing.T) {
 	}
 }
 
+// ─── claimsAnchoredFakeBackend ────────────────────────────────────────────────
+
+// claimsAnchoredFakeBackend extends richFakeBackend with ClaimsAnchoredTo
+// (SU-21, ADR-041 decision 7) so rename_impact's claims_anchored receipt
+// can be exercised without a real store.
+type claimsAnchoredFakeBackend struct {
+	richFakeBackend
+	byKey map[string][]string // SymbolKey -> anchored claim ids
+}
+
+func (r *claimsAnchoredFakeBackend) ClaimsAnchoredTo(_ context.Context, _, symbolKey string) ([]string, error) {
+	return r.byKey[symbolKey], nil
+}
+
+// TestRenameImpact_ClaimsAnchored pins SU-21's own deliverable: a rename is
+// never silent for governance — a claim anchored to the renamed symbol is
+// named in the response, not just its call sites.
+func TestRenameImpact_ClaimsAnchored(t *testing.T) {
+	symKey := core.SymbolKey("svc", "pkg", "B")
+	fake := &claimsAnchoredFakeBackend{
+		richFakeBackend: richFakeBackend{nodes: richFixtureNodes()},
+		byKey:           map[string][]string{symKey: {"claim-2", "claim-1"}},
+	}
+	srv := mcp.NewServer(fake)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 101, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "rename_impact",
+			"arguments": map[string]any{"service": "svc", "symbol": "B"},
+		},
+	})
+	payload := toolPayload(t, resp)
+	n, ok := payload["claims_anchored"].(float64)
+	if !ok || int(n) != 2 {
+		t.Fatalf("claims_anchored = %v, want 2", payload["claims_anchored"])
+	}
+	ids, ok := payload["claims_anchored_ids"].([]any)
+	if !ok || len(ids) != 2 {
+		t.Fatalf("claims_anchored_ids = %v, want 2 entries", payload["claims_anchored_ids"])
+	}
+}
+
+// TestRenameImpact_NoClaimsAnchored_OmitsField pins the absence contract: a
+// backend that supports ClaimsAnchoredTo but has nothing anchored to the
+// symbol omits claims_anchored entirely, never a fabricated zero.
+func TestRenameImpact_NoClaimsAnchored_OmitsField(t *testing.T) {
+	fake := &claimsAnchoredFakeBackend{richFakeBackend: richFakeBackend{nodes: richFixtureNodes()}}
+	srv := mcp.NewServer(fake)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 102, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "rename_impact",
+			"arguments": map[string]any{"service": "svc", "symbol": "B"},
+		},
+	})
+	payload := toolPayload(t, resp)
+	if _, ok := payload["claims_anchored"]; ok {
+		t.Errorf("claims_anchored must be absent when nothing is anchored, got %v", payload["claims_anchored"])
+	}
+}
+
 func TestRenameImpact_MissingSymbol(t *testing.T) {
 	srv := newAnalysisSrv()
 	resp := roundtrip(t, srv, request{
