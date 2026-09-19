@@ -310,6 +310,16 @@ func verifyAllAgainstStore(plans []verify.Plan, service, storePath, concern stri
 		return nil, fmt.Errorf("service %q has no symbols in store %q — ingest it before verifying", service, storePath)
 	}
 	graph := callgraph.Build(nodes)
+	// Typed Go call edges (ADR-021 §3), additive on top of the syntax graph —
+	// the SAME graph the daemon's verify_plan builds (BuildBoth). INC-21: this
+	// path built the syntax-only graph, so a plan row whose reachability runs
+	// through a method value or an interface dispatch verified under the
+	// daemon and failed under `fathom verify --store` on the identical tree.
+	// Best-effort: a non-Go service or a store with no typed edges yet simply
+	// contributes nothing.
+	if typed, typedErr := c.TypedEdges(ctx, service); typedErr == nil {
+		callgraph.AddTypedEdges(graph, typed)
+	}
 
 	var contras []core.Contradiction
 	if res, qErr := c.QuerySymbols(ctx, core.Query{

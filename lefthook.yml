@@ -38,6 +38,13 @@ pre-push:
     # `fathom plans archive`d there stops costing a verify invocation on
     # every push without any extra exclusion logic. Do not switch this to a
     # recursive glob without re-adding an explicit archive/ exclusion.
+    # INC-21 (2026-09-19): the gate verifies THE TREE BEING PUSHED. The daemon's
+    # store indexes the operator's checkout, which can lag the push clone by a
+    # whole round, so verifying claimed rows against it reported "25 claimed:
+    # 0 verified" for symbols that only exist in the pushed tree. The step now
+    # ingests HEAD into a scratch store under workspace/tmp (gitignored) and
+    # verifies against that; an ingest failure is an operational error
+    # (fail-open with a named line), never a silent pass.
     verify:
       run: |
         [ -x bin/fathom ] || exit 0
@@ -48,9 +55,16 @@ pre-push:
           plans+=("$f")
         done
         [ ${#plans[@]} -eq 0 ] && exit 0
+        mkdir -p workspace/tmp
+        store="workspace/tmp/gate-verify.sqlite"
+        rm -f "$store" "$store-wal" "$store-shm"
+        if ! bin/fathom ingest --store "$store" --service fathom --path . >workspace/tmp/gate-verify-ingest.log 2>&1; then
+          echo "fathom verify: scratch ingest of HEAD failed — allowing push (fail-open, see workspace/tmp/gate-verify-ingest.log)"
+          exit 0
+        fi
         rc=0
         for f in "${plans[@]}"; do
-          bin/fathom verify --service fathom --plan "$f" --quiet
+          bin/fathom verify --store "$store" --service fathom --plan "$f" --quiet
           code=$?
           if [ $code -eq 1 ]; then rc=1; fi
           if [ $code -eq 2 ]; then

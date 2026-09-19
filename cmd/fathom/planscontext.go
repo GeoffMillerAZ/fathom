@@ -124,11 +124,17 @@ func newStoreCtxIndex(service, storePath string) (*storeCtxIndex, error) {
 		return nil, fmt.Errorf("opening store %q: %w", storePath, err)
 	}
 	defer c.Close()
-	nodes, err := c.ListAllSymbols(context.Background(), service)
+	ctx := context.Background()
+	nodes, err := c.ListAllSymbols(ctx, service)
 	if err != nil {
 		return nil, fmt.Errorf("listing symbols for %q: %w", service, err)
 	}
-	return &storeCtxIndex{nodes: nodes, graph: callgraph.Build(nodes)}, nil
+	graph := callgraph.Build(nodes)
+	// Typed edges are additive (ADR-021 §3); same graph as the daemon (INC-21).
+	if typed, typedErr := c.TypedEdges(ctx, service); typedErr == nil {
+		callgraph.AddTypedEdges(graph, typed)
+	}
+	return &storeCtxIndex{nodes: nodes, graph: graph}, nil
 }
 
 // resolveSymbol narrows to nodes under pkgHint (a repo-relative

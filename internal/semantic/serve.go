@@ -556,16 +556,12 @@ func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile str
 	// I/O), and also backs layerRole below so the role lookup the rest of
 	// this function needs is a single map read instead of one
 	// LoadLayerIn/loadUnion rebuild per distinct layer name.
-	roleByLayer := map[string]string{}
-	var claimsRoleLayers []string
-	if infos, lerr := ListLayersIn(root); lerr == nil {
-		for _, li := range infos {
-			if li.Role == RoleClaims {
-				roleByLayer[li.Name] = RoleClaims
-				claimsRoleLayers = append(claimsRoleLayers, li.Name)
-			}
-		}
+	roleByLayer := LayerRolesIn(root)
+	claimsRoleLayers := make([]string, 0, len(roleByLayer))
+	for name := range roleByLayer {
+		claimsRoleLayers = append(claimsRoleLayers, name)
 	}
+	sort.Strings(claimsRoleLayers)
 	layerRole := func(layer string) string {
 		if roleByLayer[layer] == RoleClaims {
 			return RoleClaims

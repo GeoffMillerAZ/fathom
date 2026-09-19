@@ -404,12 +404,21 @@ func verifyTask(t Task, ev Evidence, files FileEvidence, contraBySymbol map[stri
 	var matches []core.SymbolNode
 	if e.Symbol != "" {
 		checked = true
-		matches = ev.FindSymbol(e.Symbol)
+		raw := ev.FindSymbol(e.Symbol)
+		matches = codeMatches(raw)
 		if e.Package != "" {
 			matches = underDir(matches, e.Package)
-			if keys := distinctKeys(matches); len(keys) == 1 {
-				querySym = keys[0]
-			}
+		}
+		// A package filter that leaves one distinct key names the canonical
+		// target. So does a bare name that collided with a doc heading and
+		// narrowed to ONE code key once the doc chunks were dropped: handed
+		// to the call graph as a bare name it would be ambiguous and every
+		// reachability check would answer "nothing" (INC-21: h1's `{symbol:
+		// Gate}` flipped between stores on exactly this). A bare name that
+		// matched only code is passed through as written — the graph
+		// resolves it by name, as it always has.
+		if keys := distinctKeys(matches); len(keys) == 1 && (e.Package != "" || len(matches) < len(raw)) {
+			querySym = keys[0]
 		}
 		if len(matches) == 0 {
 			detail := fmt.Sprintf("%q not found in the index", e.Symbol)
@@ -543,6 +552,25 @@ func verifyTask(t Task, ev Evidence, files FileEvidence, contraBySymbol map[stri
 // details is assumed non-empty and sorted by Key (callgraph.TestImpactDetail's
 // contract); the first dispatch-reaching entry is reported when one exists,
 // otherwise the first entry overall.
+// codeMatches drops DocChunk nodes from a `symbol:` lookup whenever at least
+// one code node matched: a plan row's symbol contract names code, and a
+// Markdown heading that happens to share the bare name (a reading titled
+// "Gate" beside verify.Gate) is never its target. A doc-only match set is
+// returned unchanged so a row that truly names nothing in code still fails
+// as absent rather than silently changing meaning.
+func codeMatches(nodes []core.SymbolNode) []core.SymbolNode {
+	var code []core.SymbolNode
+	for _, n := range nodes {
+		if n.Kind != core.KindDocChunk {
+			code = append(code, n)
+		}
+	}
+	if len(code) == 0 {
+		return nodes
+	}
+	return code
+}
+
 func testReachesDetail(details []ReachDetail) string {
 	for _, d := range details {
 		if d.ViaDispatch {

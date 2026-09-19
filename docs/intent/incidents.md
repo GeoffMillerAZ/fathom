@@ -41,6 +41,13 @@ Outcome: pending (`docs/plans/evidence-plane.md` EP-14 `adr_references_resolve`;
 
 ## Closed
 
+### INC-21 2026-09-19 The pre-push verify gate measured the daemon's index of a different tree
+What: the first gated push of the substrate round failed its `verify` step with "25 claimed: 0 verified" for `docs/plans/substrate.md` because `bin/fathom verify` used the default store — the daemon's index of the operator's checkout at d8770983 — while the symbols it was asked to prove exist only in the tree being pushed.
+Evidence: `<scratchpad>/push-full31.log` ("provenance: daemon binary @ 7dd702ac ≠ this fathom binary @ 3095a5d2 — the store (watermark d8770983) was built and queried by the daemon's extractor").
+Would have caught it: a gate that indexes what it verifies; the provenance line already said the two disagreed.
+Class: gate-measured-the-wrong-thing (I2/I3 class)
+Outcome: the lefthook `verify` step ingests HEAD into `workspace/tmp/gate-verify.sqlite` and verifies against it; an ingest failure is a named fail-open, never a silent pass. ADR-041 decision 10.
+
 ### INC-20 2026-09-19 Two pushes reached main ungated after the push clone's hooks were wiped
 What: origin/main 7dd702ac (42 commits) and d8770983 (docs) were pushed from the scratch push clone while `.git/hooks/pre-push` (lefthook) and `.git/HEAD` were missing; `task validate` never ran before either push. Both push logs were two lines long.
 Evidence: `<scratchpad>/push-full29.log`, `push-full30.log` (2 lines each, no gate output); `.git/hooks` held only samples and `.git/HEAD` was absent at 2026-09-19 00:00; an unknown process touched `.git` at midnight.

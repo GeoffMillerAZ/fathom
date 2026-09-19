@@ -12,7 +12,7 @@ rollup, call-log summary — shipped too, but shell-script deliverables have no
 index-provable contract, so it is recorded in CHANGELOG.md, not claimed here.)
 
 - [x] Checkbox semantics in plan parsing [ADR-014] {symbol: ParseMarkdownPlan}
-- [x] Done-means-proven gate function {symbol: Gate}
+- [x] Done-means-proven gate function {symbol: Gate, package: internal/verify}
 - [x] fathom verify CLI, HTTP-first with store fallback {symbol: cmdVerify, reachable_from: runWithStdin}
 - [x] Repo-relative anchors from the local connector [ADR-017] {symbol: LocalConnector.Discover, skip_test: true, skip: "interface-dispatched in contract tests (SPI with multiple impls) — static resolution honestly refuses multi-impl method calls"}
 - [x] Watermark SPI — domain-neutral freshness [ADR-017] {symbol: LocalConnector.Watermark, skip_test: true, skip: "interface-dispatched in contract tests (SPI with multiple impls) — static resolution honestly refuses multi-impl method calls"}

@@ -21,6 +21,8 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: minor (pre-1.0: breaking bumps minor)
 
+**The push gate verifies the tree it pushes (INC-21).** The pre-push `verify` step ingests HEAD into a scratch store under `workspace/tmp` and proves every claimed plan row against that index, instead of against the daemon's index of the operator's checkout; a failed scratch ingest is a named fail-open line.
+
 **Claims gain bi-temporal validity (ADR-041 decision 7, SU-19).** `semantic_claims`
 gains additive `valid_from`/`valid_to`/`asserted_by` columns (`claim_events` gains
 `asserted_by` too), stamped at mint and closed at every supersede/refute path;

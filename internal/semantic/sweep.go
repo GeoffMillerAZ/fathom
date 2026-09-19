@@ -512,9 +512,29 @@ const (
 // the field existed. Same fail-open leniency as layerIsDriftTracked, and
 // for the same reason: this is a serve-time hot path.
 func LayerRole(root, name string) string {
-	def, err := LoadLayerIn(root, name)
-	if err != nil || def.Role != RoleClaims {
-		return RoleGoverns
+	if LayerRolesIn(root)[name] == RoleClaims {
+		return RoleClaims
 	}
-	return RoleClaims
+	return RoleGoverns
+}
+
+// LayerRolesIn resolves every layer's serving role in ONE pass over the
+// embedded ∪ project-local union (ListLayersIn) — the reader the serve path
+// uses (BP-18), so a serve call pays one union load instead of one per
+// distinct layer name (SU-2). Only RoleClaims entries are recorded; a name
+// absent from the map is RoleGoverns, the schema default, for the same
+// fail-open reason LayerRole gives. A union that fails to load yields an
+// empty map: every layer governs, nothing loses serving priority.
+func LayerRolesIn(root string) map[string]string {
+	roles := map[string]string{}
+	infos, err := ListLayersIn(root)
+	if err != nil {
+		return roles
+	}
+	for _, li := range infos {
+		if li.Role == RoleClaims {
+			roles[li.Name] = RoleClaims
+		}
+	}
+	return roles
 }
