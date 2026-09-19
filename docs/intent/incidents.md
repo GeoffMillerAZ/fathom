@@ -46,7 +46,7 @@ What: origin/main 7dd702ac (42 commits) and d8770983 (docs) were pushed from the
 Evidence: `<scratchpad>/push-full29.log`, `push-full30.log` (2 lines each, no gate output); `.git/hooks` held only samples and `.git/HEAD` was absent at 2026-09-19 00:00; an unknown process touched `.git` at midnight.
 Would have caught it: a push script that refuses to push unless the pre-push hook is a lefthook hook; a log-length check that treats a gate-less push log as a failure.
 Class: gate-bypassed (I2/I3 class)
-Outcome: the full gate was re-run against d8770983 after the fact (result recorded in the ADR-041 round's CHANGELOG entry); `push-internal6.sh` aborts without the hook; ADR-041 decision 10.
+Outcome: the full gate was re-run against d8770983 after the fact (result recorded in the ADR-041 round's CHANGELOG entry); `push-internal6.sh` aborted without the hook as an operator-local stopgap, now superseded by the committed gate: `scripts/push-check.sh` (`task push`, `task scripts-check` → `scripts/push-check_test.sh`), invariant I40; ADR-041 decision 10.
 
 ### INC-19 2026-09-14 Unreadable call logs still produced numerical Impact costs
 What: Impact showed zero response cost for an unreadable log, or stale cost/outcome rows when populated values accompanied the failure.

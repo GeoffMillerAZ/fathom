@@ -94,6 +94,7 @@ tasks:
         done
         [ "$rc" -eq 0 ] || exit "$rc"
         bash scripts/build-cache_test.sh
+        bash scripts/push-check_test.sh
 
   ui:css:
     desc: Rebuild the standalone observatory CSS from the in-tree app-kit mirror (no Node or sibling checkout)
@@ -112,6 +113,12 @@ tasks:
     # 26–43s on 2026-09-02, under the two-minute budget that admits it here.
     deps: [fmt-check, vet, cue-vet, vendor-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, scenariobench, bench-l0-gate]
     cmds: [{ task: test }]
+
+  push:
+    desc: "Gated push: refuses without the lefthook pre-push hook, then git push origin HEAD:main"
+    cmds:
+      - bash scripts/push-check.sh
+      - git push origin HEAD:main
 
   scenariobench:
     desc: "Free — internal/scenariobench (the change-bench driver, vision 27/ADR-033): corpus load, category/prediction gate, fake-harness driver tests. TestPublicScenarioCorpusIsDerived skips (never fails) when workspace/bench/sources/ is empty, the normal case on a fresh clone or CI."

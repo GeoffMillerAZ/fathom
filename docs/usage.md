@@ -29,6 +29,35 @@ lefthook install
 `store-purego` (invariant I2, ADR-025) runs `CGO_ENABLED=0 go test -race ./internal/store/`
 on every validate/push — the store stays pure Go; only the tree-sitter extractors need CGO.
 
+### Pushing (`task push`)
+
+```sh
+task push      # scripts/push-check.sh, then: git push origin HEAD:main
+```
+
+INC-20 (2026-09-19): two pushes reached `origin/main` ungated after a push clone's
+`.git/hooks/pre-push` was wiped by an unrelated process — `task validate` never ran
+before either push, and both push logs were two lines long, the tell of a gate that
+never fired. `task push` refuses to push at all unless `scripts/push-check.sh` finds
+lefthook's own pre-push hook in place first (invariant I40, ADR-041 decision 10):
+
+- exit 0, `push-check: ok (lefthook pre-push present)` — the hook is present, push
+  proceeds.
+- exit 3, one line naming why — the hook is missing, empty, or present but not
+  lefthook's (a plain `git init`'s own `*.sample` hooks, for instance). Run
+  `lefthook install` and re-run `task push`.
+- exit 2 — an operational error (not a git repository, `git` not on `PATH`), not a
+  verdict about the hook.
+
+The check resolves the hook path through `git rev-parse --git-path hooks/pre-push`,
+so a repo with `core.hooksPath` pointed elsewhere, or a linked worktree, is checked
+where its own hook actually lives — never a hardcoded `.git/hooks/pre-push`. `git
+push` directly (skipping `task push`) still works and is never itself gated — the
+gate is `task push`'s own contract, not a server-side or repo-level enforcement; use
+`task push` so the gate actually runs. `scripts/push-check_test.sh` (wired into
+`task scripts-check`) proves the check against disposable temp repos: a missing hook,
+a non-lefthook hook, a real lefthook hook, and a `core.hooksPath` variant.
+
 ### Build-cache placement and disk guard
 
 Fathom's supported build path (`task ...` and repository scripts) preserves the
