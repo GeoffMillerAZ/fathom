@@ -232,6 +232,8 @@ and only matter for `bench-compare-edges`.
    | targeted | `task bench-scenario-guards` | ≈ $20–40 |
    | pilot | `task bench-scenario-pilot` | ≈ $90–130 |
    | lookups-vs | `task bench-scenario-lookups-vs` | fathom vs. graphify/serena/gopls/grep, 2 trials — 140 cells (`task bench-scenario-plan -- -corpus testdata/scenariobench/lookups-vs.json` lists them free first) |
+   | lookups-ts | `task bench-scenario-lookups-ts` | COSTS TOKENS, NOT run this round (SU-23, ADR-041 decision 9): fathom vs. grep on the `nest` calibration subject (TypeScript), 2 trials — 24 cells (`task bench-scenario-plan -- -corpus testdata/scenariobench/lookups-ts.json` lists them free first) |
+   | lookups-py | `task bench-scenario-lookups-py` | COSTS TOKENS, NOT run this round (SU-23, ADR-041 decision 9): fathom vs. grep on the `fastapi` calibration subject (Python), 2 trials — 24 cells (`task bench-scenario-plan -- -corpus testdata/scenariobench/lookups-py.json` lists them free first) |
    | findings loop | `task bench-scenario-findings` | 4 tasks, arms full vs control, n=3 (FL-24, `docs/plans/findings-loop.md`; `testdata/scenariobench/findings-loop.json`) — committed only, **not run** by this wave: the CLI it exercises (`fathom findings import`, the pre-edit "open findings" block) is other waves' work against sections A-D of that plan |
    | credible | 30 tasks × 3 trials per matrix row (`docs/vision/27-strengths-bench.md` §9) | several hundred dollars per row; operator decision, not a Taskfile target |
 
@@ -379,6 +381,52 @@ landed (see this page's own wave-status note above). `TestFindingsLoopCorpusPars
 of life in the meantime: it loads and validates the corpus through the
 same gate every other one passes, and checks every projection event's
 anchor path exists and its digest matches the file at HEAD.
+
+## The language lookups corpora (`lookups-ts.json` / `lookups-py.json`, SU-23)
+
+ADR-041 decision 9 (`docs/plans/substrate.md` section F): a TypeScript and a
+Python lookups corpus, on the calibration corpus's own pinned subjects
+(`calibration/corpus.yaml` — `nest` at `v11.1.26`, `fastapi` at `0.119.1`),
+mirroring `lookups-vs.json`'s task classes on a non-Go, non-fathom subject:
+where is X defined, who calls Y (`blast_radius`), what does Z import
+(`imports`), which tests reach W (`test_reach`). Neither subject carries a
+CLAUDE.md/AGENTS.md at its pinned commit, so the Go corpus's
+`obligations`/`staleness`/`claim_provenance`/`verify` classes — which need a
+compiled governance layer to answer — are dropped entirely rather than
+stubbed. Two arms only, `full` (fathom, wired) and `grep` (no MCP at all):
+the Go/LSP-specific competitors `lookups-vs.json` carries (graphify, serena,
+gopls) do not apply to a TypeScript or Python subject. 6 tasks each, 2
+trials, 2 arms — 24 cells per corpus (`task bench-scenario-plan -- -corpus
+testdata/scenariobench/lookups-ts.json` / `lookups-py.json` list them free).
+
+Every task's file/line anchor was verified directly against a shallow clone
+of the pinned commit (`git clone --depth 1 --branch <tag> <url>`, then `git
+fetch --depth 1 origin <pinned sha> && git checkout <pinned sha>` when the
+tag itself does not already resolve there — `nest`'s own pinned `sha` is an
+annotated tag object that dereferences to a different commit hash, `fastapi`'s
+is a plain commit) — never against a live HEAD; each task's own `derivation`
+field carries the exact command and output. `TestLanguageLookupsCorporaParse`
+(`internal/scenariobench/lookups_lang_test.go`, this row's own symbol) loads
+both through `LoadScenarioCorpus` and additionally checks the two-arm shape,
+the registered criterion, and the truth-at-head / prompt-names-anchor rule:
+no task's prompt already names the file its own oracle cites as the answer
+(`citationFilesInOracle`) — the "imports" class is the one deliberate
+exception, since asking "what does file Z import" necessarily names Z, and
+is registered as each corpus's own no-effect prediction for exactly that
+reason (a plain Read answers it as well as any tool).
+
+**Typed-edge tier, stated honestly.** Neither the SCIP import path (SU-9)
+nor the per-file resolver (SU-11) is wired in this tree at authoring time
+(`docs/languages.md`); both corpora's `full`-arm predictions are written
+against what TypeScript/Python extraction already provides today — symbol
+definitions plus HEURISTIC, syntax-level call edges
+(`treesitter.CollectCalls`, `internal/extractor/jsextract.go` /
+`pyextract.go`) — never presented as typed. Each corpus's own
+`notes.typed_edges` names this and asks for the predictions to be
+re-registered once SU-9/SU-11 land; `notes.kill_criteria` names the bar (no
+lift over grep at n>=2 on the where-defined/blast_radius/test_reach classes)
+and the index-gap-vs-true-negative distinction a zero-edge `find_callers`
+result must be read against. Committed and **NOT RUN** this round.
 
 ## Layer-dependent tasks and post-wire drift (O45)
 

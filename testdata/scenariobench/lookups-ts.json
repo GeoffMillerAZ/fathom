@@ -1,0 +1,218 @@
+{
+  "version": 1,
+  "description": "SU-23 (docs/plans/substrate.md section F, ADR-041 decision 9): a TypeScript lookups corpus on the calibration corpus's own `nest` subject (calibration/corpus.yaml, pinned v11.1.26), mirroring testdata/scenariobench/lookups-vs.json's task classes on a non-Go, non-fathom subject — where is X defined, who calls Y, what does Z import, which tests reach W. `nest`'s tree carries no CLAUDE.md/AGENTS.md at its pinned commit, so the Go corpus's 'obligations'/'staleness'/'claim_provenance'/'verify' classes (which need a compiled governance layer to answer) are dropped entirely, not stubbed. Two arms only: `full` (fathom, wired, Read/Grep/Bash) and `grep` (no MCP at all) — the competitor arms lookups-vs.json carries (graphify/serena/gopls) are Go/LSP-specific and do not apply to a TypeScript subject. Committed and NOT RUN this round (ADR-041 decision 9): every anchor below was verified directly against a shallow clone at the pinned commit (see each task's own derivation for the exact commands), never against a live HEAD.",
+  "arms": {
+    "full": {
+      "wired": true,
+      "allowed_tools": [
+        "Read",
+        "Grep",
+        "Bash"
+      ],
+      "instructions": "stanza",
+      "surface": "fathom",
+      "prediction": "Wins the where-defined and who-calls lookups via find_symbol/find_callers: TypeScript extraction (tree-sitter, docs/languages.md) already emits symbol definitions and syntax-level call edges (treesitter.CollectCalls, internal/extractor/jsextract.go) today, at HEURISTIC tier only — neither the SCIP import (SU-9) nor the per-file resolver (SU-11) is wired at this corpus's authoring time, so no edge here is ever a typed/resolved one, only a syntax-level name match; the callee names chosen (assignMetadata, mixin) are distinctive enough that a bare-name heuristic match is not expected to false-positive. Ties or loses the tests-reach task (Mocha `it(...)` description strings are string literals, not indexed declarations, so find_symbol has nothing to search for). No-effect on nothing beyond what is already registered per-task below."
+    },
+    "grep": {
+      "allowed_tools": [
+        "Read",
+        "Grep",
+        "Bash"
+      ],
+      "instructions": "plain",
+      "surface": "",
+      "prediction": "Below fathom on where-defined/who-calls when the symbol name is common enough that a bare grep returns many candidates with nothing to rank them; competitive-to-tied when the prompt's own description narrows the search to one plausible hit (mirrors lookups-vs.json's own grep predictions). Ties or wins the tests-reach task, since the target strings are grep-literal text with no indexing advantage available to either arm."
+    }
+  },
+  "tasks": [
+    {
+      "id": "TS-01",
+      "category": "where_defined",
+      "prompt": "In the nest monorepo (packages/), find the exported TypeScript function used internally to build custom parameter decorators — it takes an args object, a paramtype, an index, optional data, and a variadic list of pipes, and returns metadata assigned onto args at the given index (used by the `@Body()`/`@Param()`/`@Query()` family, and reused directly by nest's RPC and WebSocket parameter-decorator builders). Name the file (repo-relative path) and the line on which its `export function` declaration begins, in the citation form `<file>#L<n>`.",
+      "subject": {
+        "repo_url": "https://github.com/nestjs/nest",
+        "base_commit": "adecad1ce9e7ce813649272edfb650f5e7ac5540",
+        "service": "nest",
+        "language": "typescript"
+      },
+      "sessions": {
+        "count": 1,
+        "max_turns": 30,
+        "mode": "single"
+      },
+      "oracle": {
+        "answer_all_of": [
+          "packages/common/decorators/http/route-params.decorator.ts#L30"
+        ]
+      },
+      "predictions": {
+        "full": "wins: find_symbol resolves `assignMetadata` to its definition directly, one call.",
+        "grep": "below fathom: `grep -rn 'function assignMetadata' packages/` returns exactly one hit here too (the name is distinctive), so this is a near-tie in practice, but nothing points grep at the right search term the way find_symbol's own name-to-definition lookup does — registered below fathom per lookups-vs.json's own convention for a directly-grep-findable distinctive name."
+      },
+      "derivation": "New task (SU-23). Verified against the pinned commit directly: `git clone --depth 1 --branch v11.1.26 https://github.com/nestjs/nest`, then `git fetch --depth 1 origin adecad1ce9e7ce813649272edfb650f5e7ac5540 && git checkout adecad1ce9e7ce813649272edfb650f5e7ac5540` (the pinned value is calibration/corpus.yaml's own `sha` field — an annotated tag object that dereferences to commit 9ff83d540f50e96eb0093b4eb0dd96191aa6a285, `chore(release): publish v11.1.26 release`; `git checkout` on the tag object lands the tree at that commit, which is what this task's anchor was read from). `sed -n '25,35p' packages/common/decorators/http/route-params.decorator.ts` shows line 30 is `export function assignMetadata<TParamtype = any, TArgs = any>(`. Prompt deliberately never names route-params.decorator.ts (this task's own gold file) or route-params.decorator at all — only the function's behavior."
+    },
+    {
+      "id": "TS-02",
+      "category": "where_defined",
+      "prompt": "In the nest monorepo's core decorator package, find the small exported helper function that NestJS's own file-upload interceptors (packages/platform-express) call to turn a locally-defined, anonymous class into a fully injectable provider (it stamps a random name onto the class via Object.defineProperty and then applies the @Injectable() decorator to it). Name the file (repo-relative path) and the line on which its `export function` declaration begins, in the citation form `<file>#L<n>`.",
+      "subject": {
+        "repo_url": "https://github.com/nestjs/nest",
+        "base_commit": "adecad1ce9e7ce813649272edfb650f5e7ac5540",
+        "service": "nest",
+        "language": "typescript"
+      },
+      "sessions": {
+        "count": 1,
+        "max_turns": 30,
+        "mode": "single"
+      },
+      "oracle": {
+        "answer_all_of": [
+          "packages/common/decorators/core/injectable.decorator.ts#L53"
+        ]
+      },
+      "predictions": {
+        "full": "wins: find_symbol resolves `mixin` to its definition directly, one call.",
+        "grep": "below fathom: `grep -rn 'export function mixin'` is a common enough short name that a stray hit elsewhere is plausible in a monorepo this size; find_symbol's own definition-tier match does not carry that risk."
+      },
+      "derivation": "New task (SU-23). Verified against the same pinned checkout as TS-01: `sed -n '50,58p' packages/common/decorators/core/injectable.decorator.ts` shows line 53 is `export function mixin<T>(mixinClass: Type<T>) {`. Prompt deliberately never names injectable.decorator.ts (this task's own gold file) — only the function's behavior and one of its real call sites' package (platform-express), which is not this task's gold location."
+    },
+    {
+      "id": "TS-03",
+      "category": "blast_radius",
+      "prompt": "The helper function `mixin` (packages/common) turns a locally-defined class into an injectable provider. In packages/platform-express/multer/interceptors, several exported multer interceptor-factory functions each build an anonymous interceptor class and then call `mixin(...)` on it before returning. Name all five of those exported factory functions.",
+      "subject": {
+        "repo_url": "https://github.com/nestjs/nest",
+        "base_commit": "adecad1ce9e7ce813649272edfb650f5e7ac5540",
+        "service": "nest",
+        "language": "typescript"
+      },
+      "sessions": {
+        "count": 1,
+        "max_turns": 30,
+        "mode": "single"
+      },
+      "oracle": {
+        "answer_all_of": [
+          "AnyFilesInterceptor",
+          "FileFieldsInterceptor",
+          "FileInterceptor",
+          "FilesInterceptor",
+          "NoFilesInterceptor"
+        ]
+      },
+      "predictions": {
+        "full": "wins: find_callers on `mixin` lists all five production call sites directly from the syntax-level call graph (heuristic tier — no typed/SCIP edges for TypeScript at this corpus's authoring time, SU-9/SU-11 pending) in one call, versus five separate files an agent would otherwise have to open.",
+        "grep": "below fathom: `grep -rln 'mixin(' packages/platform-express` finds the same five files, but nothing distinguishes a real call from the many other appearances of the six-letter token `mixin` (the import line, the type re-export, doc comments) without opening each file — the same shape of grep disadvantage lookups-vs.json registers for its own blast_radius tasks (H1-T05/H1-T06)."
+      },
+      "derivation": "New task (SU-23). Verified against the same pinned checkout: `grep -rln 'mixin(' packages/ --include='*.ts' | grep -v 'spec.ts\\|injectable.decorator.ts'` returns exactly the five files under packages/platform-express/multer/interceptors/; `grep -n '^export function' <each file>` gives AnyFilesInterceptor (any-files.interceptor.ts:24), FileFieldsInterceptor (file-fields.interceptor.ts:27), FileInterceptor (file.interceptor.ts:25), FilesInterceptor (files.interceptor.ts:27), NoFilesInterceptor (no-files.interceptor.ts:24) — each file's own single call to `mixin(...)` sits on its last non-brace line, confirmed by reading each file directly."
+    },
+    {
+      "id": "TS-04",
+      "category": "blast_radius",
+      "prompt": "The decorator-support function `assignMetadata` (packages/common) is nest's own building block for custom parameter decorators. Outside its own defining file, exactly two other exported functions elsewhere in the monorepo call it directly — one used to build RPC (microservices) parameter decorators, one used to build WebSocket parameter decorators. Name both functions.",
+      "subject": {
+        "repo_url": "https://github.com/nestjs/nest",
+        "base_commit": "adecad1ce9e7ce813649272edfb650f5e7ac5540",
+        "service": "nest",
+        "language": "typescript"
+      },
+      "sessions": {
+        "count": 1,
+        "max_turns": 30,
+        "mode": "single"
+      },
+      "oracle": {
+        "answer_all_of": [
+          "createRpcParamDecorator",
+          "createWsParamDecorator"
+        ]
+      },
+      "predictions": {
+        "full": "wins: find_callers on `assignMetadata` returns both cross-package call sites directly, without an agent having to guess which packages (microservices, websockets) even reference the http-decorator package's own internals.",
+        "grep": "below fathom: `grep -rln 'assignMetadata' packages/` returns more than these two files (every call site inside route-params.decorator.ts itself, plus its own spec file), so the agent still has to read each hit to tell an external caller from an internal one or a test — the same disadvantage grep has on lookups-vs.json's own H1-T05."
+      },
+      "derivation": "New task (SU-23). Verified against the same pinned checkout: `grep -n 'assignMetadata' packages/microservices/utils/param.utils.ts packages/websockets/utils/param.utils.ts` shows both files import assignMetadata from '@nestjs/common/decorators/http/route-params.decorator' and call it inside their own exported `createRpcParamDecorator` (microservices/utils/param.utils.ts:8) and `createWsParamDecorator` (websockets/utils/param.utils.ts:8). Prompt names neither gold file — only their subject areas (RPC, WebSocket), which the answer itself must supply as function names, not paths."
+    },
+    {
+      "id": "TS-05",
+      "category": "imports",
+      "prompt": "In packages/platform-express/multer/interceptors/file-fields.interceptor.ts, which named exports does the file import from the `@nestjs/common` package specifically (its very first import statement) — not the third-party `multer`/`rxjs` imports, and not its own relative `../` imports? Name all seven.",
+      "subject": {
+        "repo_url": "https://github.com/nestjs/nest",
+        "base_commit": "adecad1ce9e7ce813649272edfb650f5e7ac5540",
+        "service": "nest",
+        "language": "typescript"
+      },
+      "sessions": {
+        "count": 1,
+        "max_turns": 30,
+        "mode": "single"
+      },
+      "oracle": {
+        "answer_all_of": [
+          "CallHandler",
+          "ExecutionContext",
+          "Inject",
+          "mixin",
+          "NestInterceptor",
+          "Optional",
+          "Type"
+        ]
+      },
+      "predictions": {
+        "full": "no-effect: an import list is read directly off the file's own first lines — find_symbol/find_callers give no edge over Read here, the same honest ceiling lookups-vs.json's own H1-T11 registers for a shape neither arm's tooling can improve on.",
+        "grep": "no-effect: same reason — `sed -n '1,9p'` or a direct Read is exactly as effective as any other arm's path here."
+      },
+      "derivation": "New task (SU-23). Verified against the same pinned checkout: `sed -n '1,9p' packages/platform-express/multer/interceptors/file-fields.interceptor.ts` shows the import block `import { CallHandler, ExecutionContext, Inject, mixin, NestInterceptor, Optional, Type } from '@nestjs/common';`. This is the corpus's registered no-effect task (vision 27 §1 / predictions_test.go's TestEveryScenarioTaskHasPredictions requirement) — the file is necessarily named since the question is about that file's own content, not a pointer elsewhere; the gold is nothing but a direct read of it."
+    },
+    {
+      "id": "TS-06",
+      "category": "test_reach",
+      "prompt": "In nest's common-package test suite, the `mixin` helper (packages/common) has its own dedicated `describe('mixin', ...)` block, distinct from the surrounding `@Injectable` block in the same file. Name the two test descriptions (the exact string literal passed to `it(...)`) inside that `describe('mixin', ...)` block.",
+      "subject": {
+        "repo_url": "https://github.com/nestjs/nest",
+        "base_commit": "adecad1ce9e7ce813649272edfb650f5e7ac5540",
+        "service": "nest",
+        "language": "typescript"
+      },
+      "sessions": {
+        "count": 1,
+        "max_turns": 30,
+        "mode": "single"
+      },
+      "oracle": {
+        "answer_all_of": [
+          "should set name of metatype",
+          "should not lost the design:paramtypes metadata"
+        ]
+      },
+      "predictions": {
+        "full": "no-effect: `it(...)` description strings are string literals, not declarations tree-sitter extraction indexes as symbols, so find_symbol/query_symbols have nothing to resolve here and a plain Read of the spec file is exactly as effective — unlike Go's Test-prefixed functions (which lookups-vs.json's own H1-T03 shows fathom's tools DO resolve), Mocha's `it()` blocks carry no name of their own for a symbol lookup to find.",
+          "grep": "no-effect: same reason — `grep -A20 \"describe('mixin'\" packages/common/test/decorators/injectable.decorator.spec.ts` finds both strings directly, with no advantage available to either arm."
+      },
+      "derivation": "New task (SU-23). Verified against the same pinned checkout: packages/common/test/decorators/injectable.decorator.spec.ts's own `describe('mixin', () => { ... })` block (lines 42-61) contains exactly two `it(...)` calls: `it('should set name of metatype', ...)` and `it('should not lost the design:paramtypes metadata', ...)`, read directly. This is the corpus's second registered no-effect data point (the required one for TestEveryScenarioTaskHasPredictions sits on TS-05; this one documents WHY the tests-reach class specifically has no fathom edge on a non-Go test-naming convention, distinct from TS-05's reason)."
+    }
+  ],
+  "criterion": {
+    "id": "SU23-TS-1",
+    "treatment": "full",
+    "control": "grep",
+    "min_trials": 2,
+    "require_success_at_least_equal": true,
+    "max_tokens_per_success_ratio": 1.0,
+    "registered": "2026-09-19"
+  },
+  "sources": [
+    {
+      "name": "nest",
+      "url": "https://github.com/nestjs/nest",
+      "revision": "v11.1.26",
+      "license": "MIT"
+    }
+  ],
+  "notes": {
+    "typed_edges": "Neither the SCIP import path (SU-9, internal/scip — not yet present in this tree) nor the per-file resolver (SU-11, ResolveFileEdges — not yet present either) is wired at this corpus's authoring commit. TypeScript extraction today (internal/extractor/jsextract.go) already emits symbol definitions and HEURISTIC (syntax, bare-name) call edges via treesitter.CollectCalls, never presented as typed — every 'full' arm prediction above is written against that tier, not an aspirational typed one. Re-verify every blast_radius prediction once SU-9/SU-11 land (docs/languages.md).",
+    "kill_criteria": "No lift in success rate for the full arm over grep at n>=2 trials/task on the where_defined/blast_radius tasks (TS-01..04) — the class this corpus exists to measure; find_callers returning zero heuristic edges for a chosen callee (an index gap, not a true negative) on more than one task; a SCIP index or the per-file resolver landing (SU-9/SU-11) without this corpus's predictions being re-registered against the new tier before any run."
+  }
+}

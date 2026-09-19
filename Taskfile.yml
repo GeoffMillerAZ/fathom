@@ -343,6 +343,16 @@ tasks:
     cmds:
       - GOWORK=off CGO_ENABLED=1 {{.GO}} run ./cmd/scenariobench run -corpus testdata/scenariobench/lookups-vs.json -trials 2 {{.CLI_ARGS}}
 
+  bench-scenario-lookups-ts:
+    desc: "COSTS TOKENS. NOT run this round (SU-23, ADR-041 decision 9). TypeScript lookup pilot on the calibration subject `nest`: fathom (wired) vs. grep over 6 lookup tasks, 2 trials — 24 cells (`task bench-scenario-plan -- -corpus testdata/scenariobench/lookups-ts.json` lists them at no spend)."
+    cmds:
+      - GOWORK=off CGO_ENABLED=1 {{.GO}} run ./cmd/scenariobench run -corpus testdata/scenariobench/lookups-ts.json -trials 2 {{.CLI_ARGS}}
+
+  bench-scenario-lookups-py:
+    desc: "COSTS TOKENS. NOT run this round (SU-23, ADR-041 decision 9). Python lookup pilot on the calibration subject `fastapi`: fathom (wired) vs. grep over 6 lookup tasks, 2 trials — 24 cells (`task bench-scenario-plan -- -corpus testdata/scenariobench/lookups-py.json` lists them at no spend)."
+    cmds:
+      - GOWORK=off CGO_ENABLED=1 {{.GO}} run ./cmd/scenariobench run -corpus testdata/scenariobench/lookups-py.json -trials 2 {{.CLI_ARGS}}
+
   bench-compare-edges:
     desc: "Free. Competitor edge comparison (M6/M7): graphify/Serena/gopls precision-recall against the go/types L0 truth, beside fathom's own row (SB-28..31; cmd/indexbench compare is another wave)."
     cmds:
