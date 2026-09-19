@@ -140,7 +140,39 @@ func looksLikePackagePath(tok string) bool {
 			}
 		}
 	}
+	// SU-7 (docs/plans/substrate.md §A): a bare (no "://") domain-shaped
+	// first segment — "cursor.com/blog/…" — is prose quoting a URL, never
+	// a repo package path; this repo's own package segments never carry a
+	// dot at all. Defense in depth alongside isSystemNotification (the
+	// concrete regression fixture, "cursor.com/blog/secure-codebase-
+	// indexing", came from a notification prompt that check already
+	// short-circuits before extraction ever runs) — a non-notification
+	// prompt quoting a bare URL must not fare any differently.
+	if looksLikeDomain(segs[0]) {
+		return false
+	}
 	return true
+}
+
+// commonTLDs is a short, deliberately non-exhaustive list of the top-level
+// domains a bare (scheme-less) URL mention in prose is overwhelmingly
+// likely to carry — enough to catch "cursor.com/blog/…", never intended
+// as an authoritative registry.
+var commonTLDs = map[string]bool{
+	"com": true, "org": true, "net": true, "io": true, "dev": true,
+	"co": true, "ai": true, "app": true, "blog": true, "edu": true, "gov": true,
+}
+
+// looksLikeDomain reports whether seg (a path token's first "/"-segment)
+// looks like "name.tld" — a bare domain mention, not a repo directory
+// (this repo, like the overwhelming majority of Go/JS/Python trees, never
+// names a top-level or nested package directory with an embedded dot).
+func looksLikeDomain(seg string) bool {
+	i := strings.LastIndexByte(seg, '.')
+	if i <= 0 || i == len(seg)-1 {
+		return false
+	}
+	return commonTLDs[strings.ToLower(seg[i+1:])]
 }
 
 // looksLikeSymbol reports whether tok reads as a code identifier rather
