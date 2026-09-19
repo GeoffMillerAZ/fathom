@@ -78,6 +78,10 @@ refuses to push (`scripts/push-check.sh`, exit 3) unless the lefthook pre-push h
 present, closing INC-20 (invariant I40).
 <!-- /su-wave-s9 -->
 
+<!-- su-wave-s7 -->
+**Findings-loop learning telemetry (vision 31 §3 D8, ADR-041 decision 8, plan `docs/plans/substrate.md` §D).** `findings candidates` now scores each rule candidate by sites × mean CODEOWNERS-ownership weight of its member files, decayed once per disputed (refuted) member, and caps emission at a configurable cadence with the rest counted `deferred`; every candidate's drafted rule now carries a `promoted_from: <pattern id>, members: N, producers: [...]` provenance tag (`internal/analysis/findings.CandidatePolicy`/`RuleCandidatesWithPolicy`). `findings status` gains `rules_never_fired_30d` and `top_fired`, computed from the edit hook's own beat log (`internal/analysis/findings.RuleTelemetry`) — which currently-served rules have gone quiet and which fire most. New `fathom claim add --store --service --scope GLOB [--scope GLOB ...] --rule TEXT [--remedy TEXT] [--cite path#Lstart-Lend] [--json]` mints one human-authored, content-addressed claim (producer `human.review`, tier capped at sme-stated regardless of any `--tier` value, its own `human-authored/v1` reconciliation domain) served by the pre-edit hook like any finding. `fathom claim refute` gains `--dry-run`: previews `would withhold N served row(s) across N file(s): <first 5 files>` (and the equivalent `{claim_id, would_withhold, files, truncated}` JSON) by walking the claim's own scope globs against the indexed corpus — proven to write nothing.
+<!-- /su-wave-s7 -->
+
 **Portable bounded build cache (ADR-039).** `FATHOM_CACHE_ROOT` now relocates the
 supported Taskfile/script build caches without embedding a workstation path; configured
 missing roots refuse, and `FATHOM_CACHE_MAX_MIB` bounds the regenerable Go build cache.

@@ -771,15 +771,33 @@ full authoring-to-gate loop.
 Human-judgment triage on a compiled semantic-layer claim, store-direct only (v0):
 
 ```sh
-fathom claim refute      --store <path> --service <id> --claim <claim-id> --note "..." [--author <name>]
-fathom claim corroborate --store <path> --service <id> --claim <claim-id> --note "..." [--author <name>]
+fathom claim add          --store <path> --service <id> --scope <glob> [--scope <glob> ...] --rule "..." [--remedy "..."] [--cite path#Lstart-Lend] [--json]
+fathom claim refute       --store <path> --service <id> --claim <claim-id> --note "..." [--author <name>] [--dry-run] [--json]
+fathom claim corroborate  --store <path> --service <id> --claim <claim-id> --note "..." [--author <name>]
 ```
 
+`add` (SU-17, docs/plans/substrate.md §D) mints one content-addressed, human-authored
+claim without waiting for a pattern to recur — "remember this" as a single utterance.
+Producer is always `human.review`; tier is always capped at `sme-stated` — `--tier` is
+parsed only to be refused (`--tier` is not a valid flag on this verb; there is no way to
+raise the cap). `PromptVersion` is `human-authored/v1`, its own reconciliation domain:
+distinct from native review's `review-verb/v1` and the governed import's
+`external-import/v1`, so neither ever supersedes or is superseded by a `claim add` claim.
+An `external_findings` row is written alongside it, exactly like a governed import
+(`source id human:<sha256(rule)[:12]>`, `source version 1`); scope-fp and cites links are
+written with the SAME helpers `fathom findings import` uses. Served by the pre-edit hook
+like any finding. `--store`, `--service`, at least one `--scope`, and `--rule` are
+required; `--remedy` and `--cite` are optional.
+
 `refute` appends a `ClaimEvent{Verdict:"refuted"}` **and** flips the claim's status to
-refuted — suppression is refutation with a note. `corroborate` appends a
+refuted — suppression is refutation with a note. `--dry-run` (SU-18) previews the
+disposition instead of recording it: `would withhold N served row(s) across N file(s):
+<first 5 files>` (JSON: `{claim_id, would_withhold, files, truncated}`), computed by
+walking the claim's own scope glob(s) against the service's indexed files. Nothing is
+written on a dry run; `--note` is not required with `--dry-run`. `corroborate` appends a
 `ClaimEvent{Verdict:"corroborated"}` and never changes status or tier — corroboration is
-provenance, not evidence-laundering. `--store`, `--service`, `--claim`, and `--note` are
-all required; `--author` is optional.
+provenance, not evidence-laundering. `--store`, `--service`, `--claim`, and `--note` (the
+last waived by `--dry-run`) are all required; `--author` is optional.
 
 ---
 
@@ -1659,24 +1677,27 @@ fathom findings near       <symbol|file> --store P --service S [--hops 2] [--inc
 fathom findings status     --store P --service S [--json]
 fathom findings import     --store P --service S --subject ORG/REPO/COMPONENT [--producer NAME] --file P [--dry-run] [--json]
 fathom findings candidates --store P --service S [--min-sites 3] [--json]
-fathom findings near       <symbol|file> --store P --service S [--hops 2] [--include-superseded] [--json]
-fathom findings status     --store P --service S [--json]
-fathom findings candidates --store P --service S [--min-sites 3] [--json]
 ```
 
 `near` is the call-graph precedent lookup (mirror of the `findings_near`
-MCP tool); `status` reports entry-condition progress, plus (the findings
-loop, below) `candidates` and `disagreements` counts. Design:
-`docs/design/findings-as-evidence.md`.
 MCP tool); `status` reports entry-condition progress and, since the
-findings loop (FL-23), `candidates`/`disagreements_by_rule` counts;
-`candidates` derives rule candidates — class, normalized shape, member
-citations, producers, code-change resolutions, a drafted rule sentence,
-and the ADR-038 check family that could enforce it — from patterns
-spanning at least `--min-sites` distinct sites across native and external
-(review-kit-imported) findings alike. fathom never writes a rule; this is
-a report a human decides whether to act on. Design:
-`docs/design/findings-as-evidence.md`, `docs/vision/30-findings-loop.md`.
+findings loop (FL-23), `candidates`/`disagreements_by_rule` counts, plus
+(SU-16) `rules_never_fired_30d` and `top_fired` — computed from the hooks
+beat log every other `fathom metrics`/instrument reader shares
+(`beatLogPath`/`readBeatsFor`). `candidates` derives rule candidates —
+class, normalized shape, member citations, producers, code-change
+resolutions, a drafted rule sentence, and the ADR-038 check family that
+could enforce it — from patterns spanning at least `--min-sites` distinct
+sites across native and external (review-kit-imported) findings alike.
+Since SU-15, each candidate's score is sites × mean CODEOWNERS-ownership
+weight of its member files (1.0 with no CODEOWNERS) × a decay applied once
+per disputed (refuted) member; a caller-set cadence cap bounds how many
+candidates are emitted per call, counting the rest as `deferred`; the
+drafted rule carries a `promoted_from: <pattern id>, members: N,
+producers: [...]` provenance tag. fathom never writes a rule; this is a
+report a human decides whether to act on. Design:
+`docs/design/findings-as-evidence.md`, `docs/vision/30-findings-loop.md`,
+`docs/vision/31-substrate.md` §3 D8.
 
 **The findings loop** (`docs/vision/30-findings-loop.md`, ADR-040;
 `docs/plans/findings-loop.md`): `import` is the governed entry point for an
@@ -1692,7 +1713,11 @@ imported findings together) — a report only; fathom never writes a rule.
 When `.fathom/config.toml` names an `outbox`, the session hook imports it
 once per session and reports the receipt in the brief — see
 `docs/configuration.md`'s findings-loop section and
-`docs/adoption/findings-loop.md` for the end-to-end guide.
+`docs/adoption/findings-loop.md` for the end-to-end guide. `fathom claim
+add` (see the `claim` section above) is the loop's third verb: one
+human-authored, sme-stated-capped claim minted directly, no recurrence or
+import batch required; `fathom claim refute --dry-run` previews which
+served rows a refutation would withhold before it is recorded.
 
 ### `memory` — anchored memory (**experimental**)
 

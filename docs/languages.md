@@ -18,9 +18,6 @@ language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, label
 | TypeScript | tree-sitter (wasm) | yes | nest, zod, typeorm | **scip** — `fathom ingest --scip` imports scip-typescript's own output (SU-9, `internal/scip`; the L0 oracle SU-12 is also done); **file** fallback pending (SU-11) | run scip-typescript on a calibration clone, then `task bench-l0-scip`; lookups corpus (SU-23) |
 | JavaScript (`.js .jsx .mjs .cjs`) | tree-sitter (wasm) | yes | express, axios, lodash | **scip** — same `--scip` import mechanism as TypeScript (SU-9, SU-12 done); **file** fallback pending (SU-11) | run scip-typescript on a calibration clone, then `task bench-l0-scip` |
 | Python | tree-sitter (wasm) | yes | fastapi, flask, django | **scip** — `fathom ingest --scip` imports scip-python's own output (SU-9, SU-12 done); **file** fallback pending (SU-11) | run scip-python on a calibration clone, then `task bench-l0-scip`; lookups corpus (SU-23) |
-| TypeScript | tree-sitter (wasm) | yes | nest, zod, typeorm | **scip** via scip-typescript (SU-9); **file** fallback (SU-11) | L0 oracle (SU-12) |
-| JavaScript (`.js .jsx .mjs .cjs`) | tree-sitter (wasm) | yes | express, axios, lodash | **scip** via scip-typescript (SU-9); **file** fallback (SU-11) | L0 oracle |
-| Python | tree-sitter (wasm) | yes | fastapi, flask, django | **scip** via scip-python (SU-9); **file** fallback (SU-11) | L0 oracle (SU-12) |
 | Java | heuristic (`javaextract.go`) | no | guava, retrofit | **scip** via scip-java (SU-9) | grammar; oracle |
 | Kotlin | tree-sitter (wasm, fwcd 0.3.8) | yes | okhttp, kotlinx.coroutines, Exposed | **scip** via scip-java (SU-9) | oracle (LCA corpus) |
 | Scala | heuristic (`scalaextract.go`) | no | cats, zio, http4s | **scip** via scip-java | grammar |

@@ -69,6 +69,15 @@ type StatusReport struct {
 	// the range the count actually falls.
 	EntryConditionMet bool   `json:"entry_condition_met"`
 	Note              string `json:"note"`
+
+	// RulesNeverFired30d and TopFired (SU-16, docs/plans/substrate.md §D)
+	// are populated only by BuildStatusWithTelemetry — BuildStatus itself
+	// leaves them at their zero value (0, nil), since it has no beat log to
+	// compute them from. RulesNeverFired30d counts currently-served claims
+	// with zero fires, or whose last fire predates now-30d; TopFired ranks
+	// the claims that DID fire (served+touched desc, then claim id), capped.
+	RulesNeverFired30d int         `json:"rules_never_fired_30d"`
+	TopFired           []FiredRule `json:"top_fired,omitempty"`
 }
 
 // BuildStatus computes the §3.7 report from claims (expected already

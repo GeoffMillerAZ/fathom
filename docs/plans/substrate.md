@@ -30,10 +30,10 @@ Rows are proven by `fathom verify`; every round below ends with a free-tier meas
 
 ## D. Findings learning telemetry (decision 8)
 
-- [ ] Rule candidates decay on dispute, weight members by CODEOWNERS ownership, and cap their cadence; the promoted-rule draft carries a `promoted_from` provenance tag {id: SU-15, symbol: CandidatePolicy, package: internal/analysis/findings}
-- [ ] Post-promotion rule telemetry from hook beats and the call log: served, touched, disputed, last fired per claim; `findings status` shows rules that have not fired in 30 days {id: SU-16, symbol: RuleTelemetry, package: internal/analysis/findings}
-- [ ] `fathom claim add --file --scope --rule` records one human-authored scoped claim (producer `human.review`, tier capped at sme-stated, content-addressed like every other claim) {id: SU-17, symbol: cmdClaimAdd, package: cmd/fathom}
-- [ ] `fathom claim refute --dry-run` previews the disposition: which served rows it would withhold, for which files, before anything is recorded {id: SU-18, symbol: previewRefute, package: cmd/fathom}
+- [x] Rule candidates decay on dispute, weight members by CODEOWNERS ownership, and cap their cadence; the promoted-rule draft carries a `promoted_from` provenance tag {id: SU-15, symbol: CandidatePolicy, package: internal/analysis/findings}
+- [x] Post-promotion rule telemetry from hook beats and the call log: served, touched, disputed, last fired per claim; `findings status` shows rules that have not fired in 30 days {id: SU-16, symbol: RuleTelemetry, package: internal/analysis/findings}
+- [x] `fathom claim add --file --scope --rule` records one human-authored scoped claim (producer `human.review`, tier capped at sme-stated, content-addressed like every other claim) {id: SU-17, symbol: cmdClaimAdd, package: cmd/fathom}
+- [x] `fathom claim refute --dry-run` previews the disposition: which served rows it would withhold, for which files, before anything is recorded {id: SU-18, symbol: previewRefute, package: cmd/fathom}
 
 ## E. Claims gain time and identity (decision 7)
 
@@ -44,11 +44,7 @@ Rows are proven by `fathom verify`; every round below ends with a free-tier meas
 
 ## F. Benchmarks runnable and unrun (decision 9); gate discipline (decision 10)
 
-- [ ] TypeScript and Python lookups corpora on the calibration subjects (nest, fastapi; pinned shas), ≥ 6 tasks each with oracles that do not name the gold file, arms fathom vs grep, committed and NOT run {id: SU-23, symbol: TestLanguageLookupsCorporaParse, package: internal/scenariobench, skip_test: true, skip: "the row's symbol IS the test"}
-- [ ] Every corpus passes `scenariobench plan` in a test, and `docs/bench/README.md` gains a "Next round" section naming the order (guards, findings-loop, lookups Go, lookups TypeScript, lookups Python, LCA) with cost estimates from the ledger {id: SU-24, symbol: TestAllCorporaPlan, package: internal/scenariobench, skip_test: true, skip: "the row's symbol IS the test"}
-- [x] agentic-kit's `evidence-producer` is vendored into the mirror and `internal/semantic/producers.go` delegates cap, admit and independence to it; a test cross-checks the two CUE catalogs {id: SU-25, symbol: CatalogFromKit, package: internal/semantic}
-- [ ] Pushes are gated by construction: `scripts/push-check.sh` refuses when `.git/hooks/pre-push` is not the lefthook hook, `task push` runs it, and `scripts/push-check_test.sh` is in scripts-check (invariant I40) {id: SU-26, symbol: TestPushCheckScript, package: cmd/fathom, skip_test: true, skip: "shell script; guarded by scripts-check"}
 - [x] TypeScript and Python lookups corpora on the calibration subjects (nest, fastapi; pinned shas), ≥ 6 tasks each with oracles that do not name the gold file, arms fathom vs grep, committed and NOT run {id: SU-23, symbol: TestLanguageLookupsCorporaParse, package: internal/scenariobench, skip_test: true, skip: "the row's symbol IS the test"}
 - [x] Every corpus passes `scenariobench plan` in a test, and `docs/bench/README.md` gains a "Next round" section naming the order (guards, findings-loop, lookups Go, lookups TypeScript, lookups Python, LCA) with cost estimates from the ledger {id: SU-24, symbol: TestAllCorporaPlan, package: internal/scenariobench, skip_test: true, skip: "the row's symbol IS the test"}
-- [ ] agentic-kit's `evidence-producer` is vendored into the mirror and `internal/semantic/producers.go` delegates cap, admit and independence to it; a test cross-checks the two CUE catalogs {id: SU-25, symbol: CatalogFromKit, package: internal/semantic}
+- [x] agentic-kit's `evidence-producer` is vendored into the mirror and `internal/semantic/producers.go` delegates cap, admit and independence to it; a test cross-checks the two CUE catalogs {id: SU-25, symbol: CatalogFromKit, package: internal/semantic}
 - [x] Pushes are gated by construction: `scripts/push-check.sh` refuses when `.git/hooks/pre-push` is not the lefthook hook, `task push` runs it, and `scripts/push-check_test.sh` is in scripts-check (invariant I40) {id: SU-26, symbol: TestPushCheckScript, package: cmd/fathom, skip_test: true, skip: "shell script; guarded by scripts-check"}

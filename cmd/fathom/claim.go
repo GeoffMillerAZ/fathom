@@ -33,24 +33,29 @@ import (
 // through the read-serving daemon.
 func cmdClaim(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "error: claim requires a verb: refute | corroborate")
+		fmt.Fprintln(stderr, "error: claim requires a verb: add | refute | corroborate")
 		printClaimUsage(stderr)
 		return 1
 	}
 	switch args[0] {
+	case "add":
+		return cmdClaimAdd(args[1:], stdout, stderr)
 	case "refute":
 		return cmdClaimVerdict(args[1:], stdout, stderr, "refuted", core.ClaimRefuted)
 	case "corroborate":
 		return cmdClaimVerdict(args[1:], stdout, stderr, "corroborated", "")
 	default:
-		fmt.Fprintf(stderr, "error: unknown claim verb %q (want refute | corroborate)\n", args[0])
+		fmt.Fprintf(stderr, "error: unknown claim verb %q (want add | refute | corroborate)\n", args[0])
 		printClaimUsage(stderr)
 		return 1
 	}
 }
 
 func printClaimUsage(w io.Writer) {
-	fmt.Fprintln(w, "Usage: fathom claim <refute|corroborate> --store DB --service S --claim ID --note \"...\" [--author NAME]")
+	fmt.Fprintln(w, "Usage:")
+	fmt.Fprintln(w, "  fathom claim add          --store DB --service S --scope GLOB [--scope GLOB ...] --rule \"...\" [--remedy \"...\"] [--cite path#Lstart-Lend] [--json]")
+	fmt.Fprintln(w, "  fathom claim refute       --store DB --service S --claim ID --note \"...\" [--author NAME] [--dry-run] [--json]")
+	fmt.Fprintln(w, "  fathom claim corroborate  --store DB --service S --claim ID --note \"...\" [--author NAME]")
 }
 
 // cmdClaimVerdict implements one triage verb. newStatus is the ClaimStatus to
@@ -61,13 +66,30 @@ func cmdClaimVerdict(args []string, stdout, stderr io.Writer, verdict string, ne
 	storePath := fs.String("store", "", "path to the store, .sqlite/.db (required)")
 	service := fs.String("service", "", "service ID (required)")
 	claimID := fs.String("claim", "", "claim ID (required)")
-	note := fs.String("note", "", "verdict rationale (required)")
+	note := fs.String("note", "", "verdict rationale (required, unless --dry-run)")
 	author := fs.String("author", "", "verdict author (optional)")
+	// SU-18 (docs/plans/substrate.md §D): --dry-run previews refute's
+	// disposition — which currently served rows it would withhold — without
+	// recording anything. Parsed for every verdict so a caller gets a named
+	// refusal rather than "flag provided but not defined"; only "refute"
+	// implements it (there is nothing to preview for corroborate, which
+	// never withholds anything).
+	dryRun := fs.Bool("dry-run", false, "refute only: preview the disposition without writing anything")
+	jsonOut := fs.Bool("json", false, "emit JSON instead of a human-readable summary")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
-	if *storePath == "" || *service == "" || *claimID == "" || *note == "" {
-		fmt.Fprintf(stderr, "error: claim %s requires --store, --service, --claim, and --note\n", verdict)
+	if *storePath == "" || *service == "" || *claimID == "" {
+		fmt.Fprintf(stderr, "error: claim %s requires --store, --service, and --claim\n", verdict)
+		fs.Usage()
+		return 1
+	}
+	if *dryRun && verdict != "refuted" {
+		fmt.Fprintf(stderr, "error: --dry-run is only supported for claim refute (nothing to preview for %s)\n", verdict)
+		return 1
+	}
+	if !*dryRun && *note == "" {
+		fmt.Fprintf(stderr, "error: claim %s requires --note\n", verdict)
 		fs.Usage()
 		return 1
 	}
@@ -98,6 +120,25 @@ func cmdClaimVerdict(args []string, stdout, stderr io.Writer, verdict string, ne
 	if !found {
 		fmt.Fprintf(stderr, "error: claim %q not found for service %q\n", *claimID, *service)
 		return 1
+	}
+
+	if *dryRun {
+		preview, perr := previewRefute(ctx, st, *service, *claimID)
+		if perr != nil {
+			fmt.Fprintf(stderr, "error: %v\n", perr)
+			return 1
+		}
+		if *jsonOut {
+			jsonPrint(stdout, preview)
+			return 0
+		}
+		// A dry-run over one claim: every withheld row is exactly one file
+		// (this rule stops serving there), so WouldWithhold == the file
+		// count — preview.Files is only the (possibly truncated) NAMED
+		// subset, capped separately from the count.
+		fmt.Fprintf(stdout, "would withhold %d served row(s) across %d file(s): %s\n",
+			preview.WouldWithhold, preview.WouldWithhold, joinTruncated(preview.Files, preview.Truncated))
+		return 0
 	}
 
 	ev := core.ClaimEvent{
