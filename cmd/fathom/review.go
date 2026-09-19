@@ -299,12 +299,47 @@ func runReviewBody(gitRunner func(args ...string) ([]byte, error), storePathV, s
 				fmt.Fprintf(stderr, "warning: persisting review findings failed: %v\n", perr)
 			}
 		}
+		// Resolution classification (docs/design/findings-as-evidence.md
+		// §3.4, §6 item 4): resolve looks up the PRE-run claim's own Scope
+		// (from `existing`, loaded before this run superseded anything)
+		// and classifies via review.ClassifyResolution against the
+		// current source set — code-change-in-scope when every scoped
+		// file still exists, scope-disappearance when one was deleted.
+		// Built BEFORE the supersede loop below: SU-20's WriteSupersedes
+		// call also needs each predecessor's own Subject to look up its
+		// successor.
+		existingByID := make(map[string]core.SemanticClaim, len(existing))
+		for _, cl := range existing {
+			existingByID[cl.ClaimID] = cl
+		}
+
+		supersedeAt := time.Now().UTC()
 		var supersededOK []string
 		for _, id := range supersede {
 			if serr := c.SetClaimStatus(ctx, *service, id, core.ClaimSuperseded); serr != nil {
 				persisted = false
 				fmt.Fprintf(stderr, "warning: superseding fixed finding %s failed: %v\n", id, serr)
 				continue
+			}
+			// SU-19 (ADR-041 decision 7): close the predecessor's
+			// bi-temporal validity window at the same instant its status
+			// flips — best-effort, mirroring the claim_event recording
+			// below: a failure here never flips persisted/the exit code,
+			// only SetClaimStatus's own success above does.
+			if verr := c.SetClaimValidTo(ctx, *service, id, supersedeAt); verr != nil {
+				fmt.Fprintf(stderr, "warning: closing validity window for %s failed: %v\n", id, verr)
+			}
+			// SU-20: a re-review that re-emits the SAME subject under a
+			// DIFFERENT content-addressed claim id (the rule text changed)
+			// gets an explicit supersedes link to its predecessor — see
+			// review.SupersedeSuccessor's own doc comment for why a
+			// genuinely fixed finding (no successor) never calls this.
+			if cl, ok := existingByID[id]; ok {
+				if successorID, sok := review.SupersedeSuccessor(v, cl.Subject); sok {
+					if werr := c.WriteSupersedes(ctx, *service, successorID, id, "review reconciliation: fixed/changed finding"); werr != nil {
+						fmt.Fprintf(stderr, "warning: recording supersedes link %s -> %s failed: %v\n", successorID, id, werr)
+					}
+				}
 			}
 			supersededOK = append(supersededOK, id)
 		}
@@ -314,17 +349,6 @@ func runReviewBody(gitRunner func(args ...string) ([]byte, error), storePathV, s
 		// (docs/design/observability-surfaces.md §1). Best-effort: a
 		// logging failure here never flips persisted/the exit code, only
 		// SetClaimStatus's own success above does.
-		//
-		// Resolution classification (docs/design/findings-as-evidence.md
-		// §3.4, §6 item 4): resolve looks up the PRE-run claim's own Scope
-		// (from `existing`, loaded before this run superseded anything)
-		// and classifies via review.ClassifyResolution against the
-		// current source set — code-change-in-scope when every scoped
-		// file still exists, scope-disappearance when one was deleted.
-		existingByID := make(map[string]core.SemanticClaim, len(existing))
-		for _, cl := range existing {
-			existingByID[cl.ClaimID] = cl
-		}
 		fileExists := func(path string) bool { _, ok := content[path]; return ok }
 		resolve := func(claimID string) (kind, commit string) {
 			cl, ok := existingByID[claimID]

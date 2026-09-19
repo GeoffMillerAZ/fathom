@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
@@ -102,6 +103,30 @@ func (r *reviewFakeBackend) SetClaimStatus(_ context.Context, _, claimID string,
 
 func (r *reviewFakeBackend) SourceFingerprint(_ context.Context, _, path string) (string, bool, error) {
 	return "fp-" + path, true, nil
+}
+
+// SetClaimValidTo (SU-19) mirrors the real store's bi-temporal close.
+func (r *reviewFakeBackend) SetClaimValidTo(_ context.Context, _, claimID string, t time.Time) error {
+	if c, ok := r.claims[claimID]; ok {
+		c.ValidTo = t
+		r.claims[claimID] = c
+	}
+	return nil
+}
+
+// WriteSupersedes (SU-20) mirrors store.Store.AppendClaimLink's
+// non-destructive append — never PutClaims' wholesale link-set replace.
+func (r *reviewFakeBackend) WriteSupersedes(_ context.Context, _, successorID, predecessorID, why string) error {
+	if successorID == "" || predecessorID == "" {
+		return nil
+	}
+	if r.links == nil {
+		r.links = map[string][]core.ClaimLink{}
+	}
+	r.links[successorID] = append(r.links[successorID], core.ClaimLink{
+		ClaimID: successorID, Rel: core.RelSupersedes, TargetRef: predecessorID, AnchorText: why,
+	})
+	return nil
 }
 
 var _ mcp.QueryInterface = (*reviewFakeBackend)(nil)

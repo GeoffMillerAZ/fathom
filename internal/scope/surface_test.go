@@ -63,6 +63,8 @@ var storeMethodDisposition = map[string]string{
 	"SetServiceMeta":                 "write path",
 	"SetCommits":                     "write path",
 	"SetClaimStatus":                 "write path",
+	"SetClaimValidTo":                "write path",
+	"AppendClaimLink":                "write path",
 	"SetTypedEdgePackageFingerprint": "write path",
 	"UpdateClaimLink":                "write path",
 	"AppendClaimEvent":               "write path",

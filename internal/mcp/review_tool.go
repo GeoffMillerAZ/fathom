@@ -32,6 +32,16 @@ type reviewClaimsBackend interface {
 	ClaimsForService(ctx context.Context, serviceID, layer string) ([]core.SemanticClaim, error)
 	SetClaimStatus(ctx context.Context, serviceID, claimID string, status core.ClaimStatus) error
 	SourceFingerprint(ctx context.Context, serviceID, path string) (hash string, found bool, err error)
+	// SetClaimValidTo (SU-19, ADR-041 decision 7) closes a superseded
+	// claim's bi-temporal validity window at the same moment SetClaimStatus
+	// flips it.
+	SetClaimValidTo(ctx context.Context, serviceID, claimID string, t time.Time) error
+	// WriteSupersedes (SU-20, ADR-041 decision 7) records the explicit
+	// successor->predecessor link when this run's reconcile found a
+	// genuine successor claim (review.SupersedeSuccessor) — see
+	// semantic.WriteSupersedes' own doc comment for the two cases that
+	// never call it.
+	WriteSupersedes(ctx context.Context, serviceID, successorID, predecessorID, why string) error
 }
 
 func registerReviewDiff(s *Server, backend QueryInterface) {
@@ -401,12 +411,27 @@ func applyAndPersistFindings(ctx context.Context, backend QueryInterface, v *rev
 	}
 	fileExists := func(path string) bool { _, ok := content[path]; return ok }
 	resolutions := make(map[string]string, len(supersede))
+	supersedeAt := time.Now().UTC()
 	for _, id := range supersede {
-		if cl, ok := existingByID[id]; ok {
+		cl, hasExisting := existingByID[id]
+		if hasExisting {
 			resolutions[id] = review.ClassifyResolution(cl.Scope, fileExists)
 		}
 		if err := rcb.SetClaimStatus(ctx, v.Service, id, core.ClaimSuperseded); err != nil {
 			okAll = false
+			continue
+		}
+		// SU-19 (ADR-041 decision 7): close the predecessor's bi-temporal
+		// validity window at the same instant its status flips —
+		// best-effort, mirroring SetClaimStatus's own error handling.
+		_ = rcb.SetClaimValidTo(ctx, v.Service, id, supersedeAt)
+		// SU-20: an explicit supersedes link when this run's reconcile
+		// found a genuine successor for the SAME subject — see
+		// review.SupersedeSuccessor's own doc comment.
+		if hasExisting {
+			if successorID, sok := review.SupersedeSuccessor(*v, cl.Subject); sok {
+				_ = rcb.WriteSupersedes(ctx, v.Service, successorID, id, "review reconciliation: fixed/changed finding")
+			}
 		}
 	}
 	return okAll, resolutions

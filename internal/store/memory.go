@@ -812,6 +812,16 @@ func (m *MemoryStore) UpdateClaimLink(_ context.Context, _, claimID, rel, oldTar
 	return nil
 }
 
+// AppendClaimLink appends ONE link row without touching claim_id's existing
+// link set (SU-20, ADR-041 decision 7) — see the Store interface doc
+// comment.
+func (m *MemoryStore) AppendClaimLink(_ context.Context, _ string, link core.ClaimLink) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.claimLinks[link.ClaimID] = append(m.claimLinks[link.ClaimID], link)
+	return nil
+}
+
 // SetClaimStatus flips the status of a single claim. No-op when absent.
 func (m *MemoryStore) SetClaimStatus(_ context.Context, serviceID, claimID string, status core.ClaimStatus) error {
 	m.mu.Lock()

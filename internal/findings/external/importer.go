@@ -342,6 +342,13 @@ func (im Importer) ApplyEvent(ctx context.Context, service string, ev Event, cla
 		if err := im.Store.SetClaimStatus(ctx, service, claim.ClaimID, core.ClaimSuperseded); err != nil {
 			return err
 		}
+		// SU-19 (ADR-041 decision 7): close the claim's bi-temporal
+		// validity window at the same instant its status flips — the
+		// PutClaims upsert just above reopened it (a fresh, non-refuted
+		// row's valid_to always takes the incoming — zero/open — value).
+		if err := im.Store.SetClaimValidTo(ctx, service, claim.ClaimID, now); err != nil {
+			return err
+		}
 		return im.Store.AppendClaimEvent(ctx, core.ClaimEvent{
 			ClaimID: claim.ClaimID, Verdict: "superseded", ResolutionKind: core.ResolutionRevoked,
 			Author: ev.Producer.Name,
@@ -354,6 +361,11 @@ func (im Importer) ApplyEvent(ctx context.Context, service string, ev Event, cla
 			return err
 		}
 		if err := im.Store.SetClaimStatus(ctx, service, claim.ClaimID, core.ClaimSuperseded); err != nil {
+			return err
+		}
+		// SU-19 (ADR-041 decision 7): see the revocation branch's own
+		// comment above — same close, same reason.
+		if err := im.Store.SetClaimValidTo(ctx, service, claim.ClaimID, now); err != nil {
 			return err
 		}
 		return im.Store.AppendClaimEvent(ctx, core.ClaimEvent{

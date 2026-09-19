@@ -31,6 +31,19 @@ claim since superseded or refuted, if `as_of` predates that event — labeled `a
 the response. `fathom findings near --as-of` mirrors it on the CLI. Default (`as_of`
 omitted) serving is byte-identical to before this row. Docs: `docs/mcp-tools.md`,
 `docs/layers.md`, `docs/usage.md`.
+
+**Claims gain an explicit supersedes chain (ADR-041 decision 7, SU-20).**
+`semantic.WriteSupersedes` appends a `supersedes` claim link (never `PutClaims`'
+wholesale link-set replace — the new `store.Store.AppendClaimLink` appends one row in
+place) from a successor claim to the predecessor it replaces; `semantic.SupersessionChain`
+walks it back through however many times a subject has been re-superseded.
+Wired at native review reconciliation (`fathom review` and the `review_diff` MCP tool),
+via `review.SupersedeSuccessor`'s reverse lookup of this run's OWN re-emitted finding for
+the predecessor's subject — the genuine successor case, as opposed to a finding that
+simply stopped firing (fixed, no replacement), which still supersedes but links to
+nothing. External closure/revocation and `fathom claim refute` close `valid_to` (closing
+a gap left in SU-19) but never call `WriteSupersedes`: both retire a claim in place with
+no distinct successor row to link to.
 <!-- /su-wave-s8 -->
 
 <!-- su-wave-s6 -->

@@ -1374,6 +1374,20 @@ WHERE service_id = ? AND claim_id = ? AND rel = ? AND target_ref = ?
 	return nil
 }
 
+// AppendClaimLink inserts ONE link row without touching claim_id's existing
+// link set (SU-20, ADR-041 decision 7) — see the Store interface doc
+// comment for why this differs from PutClaims' wholesale replace.
+func (s *SQLiteStore) AppendClaimLink(ctx context.Context, serviceID string, link core.ClaimLink) error {
+	_, err := s.db.ExecContext(ctx, `
+INSERT INTO claim_links (service_id, claim_id, rel, target_ref, target_hash, anchor_text)
+VALUES (?, ?, ?, ?, ?, ?)
+`, serviceID, link.ClaimID, link.Rel, link.TargetRef, link.TargetHash, link.AnchorText)
+	if err != nil {
+		return fmt.Errorf("AppendClaimLink: %w", err)
+	}
+	return nil
+}
+
 // SetClaimStatus updates the status of a single claim. No error when absent.
 func (s *SQLiteStore) SetClaimStatus(ctx context.Context, serviceID, claimID string, status core.ClaimStatus) error {
 	_, err := s.db.ExecContext(ctx, `

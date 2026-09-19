@@ -348,6 +348,32 @@ func StaleReviewClaims(v Verdict, existing []core.SemanticClaim) []string {
 	return stale
 }
 
+// SupersedeSuccessor is SU-20's (ADR-041 decision 7) reverse lookup:
+// given predecessorSubject (a StaleReviewClaims-superseded claim's own
+// core.SemanticClaim.Subject, "dim#key" — see findingSubjectKey), find
+// THIS run's OWN emitted finding for the identical dim#key slot, if any.
+// This is the genuine "successor" case — the underlying rule TEXT changed
+// (message, citation, …), so the content-addressed ClaimID changed too,
+// but the subject (same dimension, same file/symbol/kind) did not — as
+// opposed to a finding that simply stopped firing at all (fixed, no
+// replacement), which StaleReviewClaims also reports as "superseded" but
+// for which ok is correctly false here: nothing in v shares that subject.
+// A caller must call this AFTER AttachClaims has filled in every f.ClaimID
+// this run minted (BuildPersist's own ordering).
+func SupersedeSuccessor(v Verdict, predecessorSubject string) (successorID string, ok bool) {
+	for _, d := range v.Dimensions {
+		for _, f := range d.Findings {
+			if f.ClaimID == "" {
+				continue
+			}
+			if d.Name+"#"+findingSubjectKey(f) == predecessorSubject {
+				return f.ClaimID, true
+			}
+		}
+	}
+	return "", false
+}
+
 // ClassifyResolution reports which of the two review-reconcile resolution
 // outcomes (docs/design/findings-as-evidence.md §3.4, §6 item 4) explains
 // why a StaleReviewClaims-superseded claim's finding is no longer emitted:

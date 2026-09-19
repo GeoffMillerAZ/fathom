@@ -261,6 +261,16 @@ type Store interface {
 	// claim_id) is absent, mirroring SetClaimStatus.
 	SetClaimValidTo(ctx context.Context, serviceID, claimID string, t time.Time) error
 
+	// AppendClaimLink appends ONE link row to claim_id's link set without
+	// touching any of its existing links (SU-20, ADR-041 decision 7) —
+	// unlike PutClaims, whose link-writing side REPLACES a claim's whole
+	// link set wholesale for every claim_id present in the links it is
+	// given. Used for a "supersedes" link written once the successor is
+	// known, AFTER the successor claim's own mint already wrote its
+	// cites/scopes/scope-fp links via PutClaims — a PutClaims wholesale
+	// replace at that point would silently drop them.
+	AppendClaimLink(ctx context.Context, serviceID string, link core.ClaimLink) error
+
 	// UpdateClaimLink re-anchors a single link in place: it rewrites
 	// TargetRef/TargetHash for the row matching (service_id, claim_id, rel,
 	// target_ref=oldTargetRef) to (newTargetRef, newTargetHash), leaving

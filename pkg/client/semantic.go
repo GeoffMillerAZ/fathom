@@ -484,6 +484,12 @@ func (c *Client) ClaimFeedback(ctx context.Context, service, claimID, action, no
 		if err := c.st.SetClaimStatus(ctx, service, claimID, newStatus); err != nil {
 			return fmt.Errorf("client.ClaimFeedback: set status: %w", err)
 		}
+		// SU-19 (ADR-041 decision 7): refute (the only action that sets
+		// newStatus) is terminal — close the validity window at the same
+		// instant. corroborate never reaches here.
+		if err := c.st.SetClaimValidTo(ctx, service, claimID, ev.At); err != nil {
+			return fmt.Errorf("client.ClaimFeedback: close validity window: %w", err)
+		}
 	}
 	return nil
 }
@@ -513,6 +519,21 @@ func (c *Client) ClaimsForService(ctx context.Context, serviceID, layer string) 
 // review-minted claims whose findings a later run no longer emits.
 func (c *Client) SetClaimStatus(ctx context.Context, serviceID, claimID string, status core.ClaimStatus) error {
 	return c.st.SetClaimStatus(ctx, serviceID, claimID, status)
+}
+
+// SetClaimValidTo is a thin passthrough to the store's bi-temporal window
+// close (SU-19, ADR-041 decision 7) — every native supersede/refute path
+// calls it beside SetClaimStatus/AppendClaimEvent.
+func (c *Client) SetClaimValidTo(ctx context.Context, serviceID, claimID string, t time.Time) error {
+	return c.st.SetClaimValidTo(ctx, serviceID, claimID, t)
+}
+
+// WriteSupersedes is a thin passthrough to semantic.WriteSupersedes (SU-20,
+// ADR-041 decision 7) — records that successorID replaces predecessorID via
+// a "supersedes" claim link. See semantic.WriteSupersedes' own doc comment
+// for why this is called only where a genuine successor claim exists.
+func (c *Client) WriteSupersedes(ctx context.Context, serviceID, successorID, predecessorID, why string) error {
+	return semantic.WriteSupersedes(ctx, c.st, serviceID, successorID, predecessorID, why)
 }
 
 // CompileRunsFor (Q-25, docs/plans/expert-suite-q.md) is a thin passthrough

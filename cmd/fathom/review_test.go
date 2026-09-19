@@ -706,6 +706,123 @@ func TestReview_Reconcile_FixedFindingSuperseded(t *testing.T) {
 	}
 }
 
+// TestReview_Reconcile_ChangedFindingWritesSupersedesChain (SU-19/SU-20,
+// ADR-041 decision 7): a re-review that re-emits the SAME finding subject
+// under DIFFERENT content (the spec id referenced changes, so the
+// content-addressed claim id changes too, twice) supersedes the OLD claim
+// with a real successor — closing its bi-temporal validity window
+// (SetClaimValidTo) and recording an explicit "supersedes" claim link
+// (WriteSupersedes) — and semantic.SupersessionChain can walk the full
+// two-hop lineage back from the newest claim.
+func TestReview_Reconcile_ChangedFindingWritesSupersedesChain(t *testing.T) {
+	root, storePath := reviewIngestFixture(t)
+
+	runReviewJSON(t, storePath)
+	claims1 := reviewSvcClaims(t, storePath)
+	if len(claims1) != 1 {
+		t.Fatalf("expected exactly 1 claim after run 1, got %+v", claims1)
+	}
+	c1 := claims1[0].ClaimID
+
+	// Change (not fix) the violation: a different spec id in the SAME
+	// comment, same file — same finding subject, different message, so a
+	// NEW content-addressed claim id is minted this run.
+	rewrite := func(specID string) {
+		src := "package pkg\n\nfunc A() {\n\t// satisfies [" + specID + "] but nothing implements it yet\n}\n"
+		if err := os.WriteFile(filepath.Join(root, "pkg", "a.go"), []byte(src), 0o644); err != nil {
+			t.Fatalf("rewrite fixture: %v", err)
+		}
+		var ingestOut, ingestErr bytes.Buffer
+		if code := run([]string{"ingest", "--service", "review-svc", "--path", root, "--store", storePath}, &ingestOut, &ingestErr); code != 0 {
+			t.Fatalf("re-ingest exit = %d, stderr: %s", code, ingestErr.String())
+		}
+	}
+
+	rewrite("US-778")
+	runReviewJSON(t, storePath)
+	claims2 := reviewSvcClaims(t, storePath)
+	if len(claims2) != 2 {
+		t.Fatalf("expected 2 claims after run 2 (old superseded, new fresh), got %+v", claims2)
+	}
+	var c2 string
+	for _, cl := range claims2 {
+		if cl.ClaimID != c1 {
+			c2 = cl.ClaimID
+		}
+	}
+	if c2 == "" {
+		t.Fatalf("run 2 did not mint a new claim id: %+v", claims2)
+	}
+
+	st, err := store.Open(storePath)
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+	defer st.Close()
+	ctx := context.Background()
+
+	oldAfterRun2, err := freshestByID(ctx, st, c1)
+	if err != nil {
+		t.Fatalf("re-read c1: %v", err)
+	}
+	if oldAfterRun2.Status != core.ClaimSuperseded {
+		t.Fatalf("c1 status after run 2 = %q, want superseded", oldAfterRun2.Status)
+	}
+	if oldAfterRun2.ValidTo.IsZero() {
+		t.Error("c1 ValidTo must be closed after being superseded (SU-19)")
+	}
+
+	links, err := st.ClaimLinks(ctx, "review-svc", []string{c2})
+	if err != nil {
+		t.Fatalf("ClaimLinks: %v", err)
+	}
+	foundSupersedes := false
+	for _, l := range links {
+		if l.Rel == core.RelSupersedes && l.TargetRef == c1 {
+			foundSupersedes = true
+		}
+	}
+	if !foundSupersedes {
+		t.Fatalf("c2's links = %+v, want a supersedes link to c1", links)
+	}
+
+	rewrite("US-779")
+	runReviewJSON(t, storePath)
+	claims3 := reviewSvcClaims(t, storePath)
+	var c3 string
+	for _, cl := range claims3 {
+		if cl.ClaimID != c1 && cl.ClaimID != c2 {
+			c3 = cl.ClaimID
+		}
+	}
+	if c3 == "" {
+		t.Fatalf("run 3 did not mint a third claim id: %+v", claims3)
+	}
+
+	chain, err := semantic.SupersessionChain(ctx, st, "review-svc", c3)
+	if err != nil {
+		t.Fatalf("SupersessionChain: %v", err)
+	}
+	if len(chain) != 2 || chain[0] != c2 || chain[1] != c1 {
+		t.Fatalf("SupersessionChain(c3) = %v, want [%s %s]", chain, c2, c1)
+	}
+}
+
+// freshestByID returns the current stored claim for id, or an error if
+// absent.
+func freshestByID(ctx context.Context, st store.Store, id string) (core.SemanticClaim, error) {
+	claims, err := st.ClaimsForService(ctx, "review-svc", "findings")
+	if err != nil {
+		return core.SemanticClaim{}, err
+	}
+	for _, cl := range claims {
+		if cl.ClaimID == id {
+			return cl, nil
+		}
+	}
+	return core.SemanticClaim{}, fmt.Errorf("claim %s not found", id)
+}
+
 // TestReview_NoPersist_WritesNothing is defect 3's regression test: the
 // --no-persist mode (what the pre-push hook uses) performs no store write
 // of any kind — no claims, no supersedes — and reports

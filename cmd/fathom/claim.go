@@ -158,6 +158,15 @@ func cmdClaimVerdict(args []string, stdout, stderr io.Writer, verdict string, ne
 			fmt.Fprintf(stderr, "error: set claim status: %v\n", err)
 			return 1
 		}
+		// SU-19 (ADR-041 decision 7): refute is a terminal verdict — close
+		// the claim's bi-temporal validity window at the same instant its
+		// status flips to refuted. corroborate never reaches here
+		// (newStatus is "" for it — corroboration is provenance, never a
+		// status or validity change).
+		if err := st.SetClaimValidTo(ctx, *service, *claimID, ev.At); err != nil {
+			fmt.Fprintf(stderr, "error: close claim validity window: %v\n", err)
+			return 1
+		}
 	}
 
 	fmt.Fprintf(stdout, "claim:   %s\n", *claimID)
