@@ -222,6 +222,7 @@ and only matter for `bench-compare-edges`.
    |---|---|---|
    | free (corpus) | `task bench-scenario-plan` | 0 — lists the public corpus's cells and keys |
    | free (index oracle) | `task bench-compare-edges` | 0 — competitor edges vs the go/types L0 truth |
+   | free (typed-edge oracle) | `task bench-l0-scip` | 0 — fathom's own edges vs a SCIP index, any language (ADR-041 decision 5, SU-12) — see "The SCIP typed-edge oracle" below |
    | free (gate) | `task scenariobench` | 0 — corpus load, category/prediction gate, driver unit tests; re-derives the public corpus when the pins from step 1 are present |
 
 3. **Paid tiers — ask before running (`docs/intent/autonomy.md`), need
@@ -244,6 +245,55 @@ and only matter for `bench-compare-edges`.
    newline) to keep it byte-identical to what `TestPublicScenarioCorpusIsDerived`
    expects. `cmd/scenariobench` (another wave) is the intended long-term
    entry point for this once it lands.
+
+## The SCIP typed-edge oracle (`bench-l0-scip`, ADR-041 decision 5, SU-12)
+
+Free — no LLM, no network beyond the calibration clone itself. Where
+`bench-compare-edges` scores fathom's Go typed edges against a go/types
+truth this repo can build for itself, `bench-l0-scip` scores fathom's
+edges for ANY language against an independent SCIP index — the only kind
+of truth available once fathom has no per-language type-checker of its
+own (`docs/languages.md`'s tracked order: Go, CUE, TypeScript, Python,
+then the delegate's).
+
+1. **Get a calibration clone.** `task calibrate-clone -- TypeScript` (or
+   `Python`) shallow-clones `calibration/corpus.yaml`'s pinned subjects
+   into `workspace/calibration/<lang>/<repo>` (TypeScript: nest, zod,
+   typeorm; Python: fastapi, flask, django — `calibration/README.md`).
+2. **Produce a SCIP index for one**, with the delegate indexer
+   `docs/languages.md` names for that language (`scip-typescript` /
+   `scip-python` today; installed separately — this repo never vendors or
+   shells out to one):
+
+   ```sh
+   cd workspace/calibration/typescript/<repo>
+   scip-typescript index   # or, in a Python clone: scip-python index
+   ```
+
+3. **Ingest the clone into a throwaway store** (never the shared fleet
+   store) — `fathom ingest --service <repo> --path . --store
+   workspace/calibration/scip/<repo>.sqlite` — then score it:
+
+   ```sh
+   task bench-l0-scip -- \
+     -store workspace/calibration/scip/<repo>.sqlite \
+     -service <repo> \
+     -scip workspace/calibration/typescript/<repo>/index.scip
+   ```
+
+   Prints one row per (language, truth edge kind): `direct`'s precision
+   and recall against fathom's OWN edges for the service (typed edges when
+   a native or SCIP-imported pass already populated them — `fathom ingest
+   --scip` writes exactly that, ADR-041 decision 5, SU-9 — else the syntax
+   call graph, the same fallback find_callers/blast_radius use), and
+   `unresolved`'s recall (always low by construction — see
+   `internal/indexbench.ScipOracleRow`'s doc comment) plus the truth's own
+   `unresolved_rate`, a property of the SOURCE, never a fathom defect.
+   `-json` for the machine-readable report. An offline, fixture-pinned
+   version of this same scoring is a committed test
+   (`TestScipOracle_TSFixture`, `internal/indexbench/scip_oracle_test.go`)
+   — this procedure is for a REAL calibration subject; nothing here is run
+   by this wave.
 
 ## How to add a task
 

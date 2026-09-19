@@ -67,6 +67,27 @@ func TestCmdCapabilities(t *testing.T) {
 		}
 	})
 
+	t.Run("json carries typed_edge_producers (SU-13, ADR-041 decision 5)", func(t *testing.T) {
+		resetObsCache()
+		var out, errb bytes.Buffer
+		if code := cmdCapabilities([]string{"--url", "http://127.0.0.1:1", "--repo", repo, "--json"}, &out, &errb); code != 0 {
+			t.Fatalf("exit %d, stderr: %s", code, errb.String())
+		}
+		var m capabilityModel
+		if err := json.Unmarshal(out.Bytes(), &m); err != nil {
+			t.Fatalf("bad json: %v\n%s", err, out.String())
+		}
+		if got := m.TypedEdgeProducers["go"]; got != "native" {
+			t.Errorf(`TypedEdgeProducers["go"] = %q, want "native"`, got)
+		}
+		if got := m.TypedEdgeProducers["ts"]; got != "scip:scip-typescript" {
+			t.Errorf(`TypedEdgeProducers["ts"] = %q, want "scip:scip-typescript"`, got)
+		}
+		if got := m.TypedEdgeProducers["sql"]; got != "syntax" {
+			t.Errorf(`TypedEdgeProducers["sql"] = %q, want "syntax"`, got)
+		}
+	})
+
 	t.Run("explain names the cost, the scope rule and the evidence it produces", func(t *testing.T) {
 		resetObsCache()
 		var out, errb bytes.Buffer

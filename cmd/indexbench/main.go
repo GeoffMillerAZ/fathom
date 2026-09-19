@@ -43,13 +43,17 @@ func main() {
 	os.Exit(mainRun(os.Args[1:], os.Stdout, os.Stderr))
 }
 
-// mainRun dispatches to the "compare" subcommand (SB-31) or falls back to
-// the original flags-only self-run behavior — "compare" is not a valid
-// -root value, so this is unambiguous and every existing invocation
-// (`indexbench -root … `, the bench-l0-self task) is unaffected.
+// mainRun dispatches to the "compare" (SB-31) or "scip-oracle" (SU-12,
+// ADR-041 decision 5) subcommand, or falls back to the original
+// flags-only self-run behavior — neither is a valid -root value, so this
+// is unambiguous and every existing invocation (`indexbench -root … `,
+// the bench-l0-self task) is unaffected.
 func mainRun(args []string, stdout, stderr io.Writer) int {
 	if len(args) > 0 && args[0] == "compare" {
 		return cmdCompare(args[1:], stdout, stderr)
+	}
+	if len(args) > 0 && args[0] == "scip-oracle" {
+		return cmdScipOracle(args[1:], stdout, stderr)
 	}
 	return run(args, stdout, stderr)
 }

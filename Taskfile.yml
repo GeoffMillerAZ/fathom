@@ -245,6 +245,10 @@ tasks:
         -out workspace/artifacts/indexbench/self-$(date -u +%Y%m%dT%H%M%SZ).json
         {{.CLI_ARGS}}
 
+  bench-l0-scip:
+    desc: "Free. Typed-edge oracle against a SCIP index for a calibration subject: task calibrate-clone -- TypeScript first, then run scip-typescript in the clone (documented in docs/bench/scenarios.md), then this"
+    cmds: ["GOWORK=off CGO_ENABLED=1 {{.GO}} run ./cmd/indexbench scip-oracle {{.CLI_ARGS}}"]
+
   bench-freshness-probe:
     desc: "Free (VB-17; docs/vision/29-verbs-not-lookups.md §3 wave D, M7): the L0 freshness probe standalone — N scripted mechanical edits (rename, add a parameter, delete, move, change a return literal) against a mutable fixture copy, each scored before and after the hash-gated re-ingest. Already runs on every commit inside bench-l0-gate; this target is for running it, and reading its numbers, on its own."
     cmds: ["CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 {{.GO}} test -race -v -run TestFreshnessProbe ./internal/indexbench/... {{.CLI_ARGS}}"]
