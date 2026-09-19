@@ -6,6 +6,9 @@ import (
 	"runtime"
 	"testing"
 
+	"cuelang.org/go/cue"
+	"cuelang.org/go/cue/cuecontext"
+
 	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
@@ -167,5 +170,72 @@ func TestCapTier_EveryCatalogKind(t *testing.T) {
 				t.Errorf("CapTier(assumed, %s) = %q, want assumed (weakest always wins)", id, got2)
 			}
 		})
+	}
+}
+
+// TestProducerCatalogsAgree is SU-25's cross-check (ADR-041 decision 8):
+// fathom's own CUE producer catalog, mapped through CatalogFromKit's origin
+// translation (fathom -> self), must satisfy agentic-kit's own #Catalog CUE
+// schema — proving the two catalogs describe the same shape rather than
+// merely agreeing by construction of the Go structs.
+func TestProducerCatalogsAgree(t *testing.T) {
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
+	}
+	repoRoot := filepath.Join(filepath.Dir(file), "..", "..")
+	kitSchemaPath := filepath.Join(repoRoot, "third_party", "agentic-kit", "foundations", "evidence", "evidence-producer", "schema.cue")
+	kitSchema, err := os.ReadFile(kitSchemaPath)
+	if err != nil {
+		t.Fatalf("read kit schema %s: %v", kitSchemaPath, err)
+	}
+
+	cctx := cuecontext.New()
+	schemaVal := cctx.CompileBytes(kitSchema, cue.Filename("schema.cue"))
+	if err := schemaVal.Err(); err != nil {
+		t.Fatalf("compile kit schema: %v", err)
+	}
+	catalogDef := schemaVal.LookupPath(cue.ParsePath("#Catalog"))
+	if !catalogDef.Exists() {
+		t.Fatal("kit schema.cue has no #Catalog definition")
+	}
+
+	cat := DefaultProducers()
+	type wireProducer struct {
+		ID       string   `json:"id"`
+		Kind     string   `json:"kind"`
+		Origin   string   `json:"origin"`
+		TierCap  string   `json:"tier_cap"`
+		Requires []string `json:"requires"`
+	}
+	type wireCatalog struct {
+		Profile   string         `json:"profile"`
+		Ladder    []string       `json:"ladder"`
+		Producers []wireProducer `json:"producers"`
+	}
+	wc := wireCatalog{Profile: "engineering", Ladder: engineeringLadder}
+	for _, id := range cat.IDs() {
+		p, _ := cat.Lookup(id)
+		origin := "external"
+		if p.Origin == "fathom" {
+			origin = "self"
+		}
+		reqs := p.Requires
+		if reqs == nil {
+			reqs = []string{}
+		}
+		wc.Producers = append(wc.Producers, wireProducer{
+			ID: p.ID, Kind: p.Kind, Origin: origin, TierCap: string(p.TierCap), Requires: reqs,
+		})
+	}
+
+	instance := cctx.Encode(wc)
+	if err := instance.Err(); err != nil {
+		t.Fatalf("encode fathom catalog for cue vet: %v", err)
+	}
+
+	unified := catalogDef.Unify(instance)
+	if err := unified.Validate(cue.Concrete(true)); err != nil {
+		t.Fatalf("fathom's producers catalog does not satisfy agentic-kit's #Catalog: %v", err)
 	}
 }

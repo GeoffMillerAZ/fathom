@@ -113,6 +113,10 @@ Evidence: `docs/app-kit.md`.
 - `fathom instrument --adoption`, `fathom research report` and `fathom flywheel` (which gains a `--service` flag) now resolve a named service's call log the same way — its recorded corpus path, then that root's own `.fathom/config.toml`, then the daemon's default for that root — instead of three divergent, CWD-relative rules that could each read a different log for the same repo; `doctor` gains an `instrument_identity` row.
 - `fathom layers install <dir> --root DIR` (the documented flag order) is no longer rejected as too many positional arguments; flags are now accepted in either position relative to the pack directory.
 
+<!-- su-wave-s10 -->
+- agentic-kit's `evidence-producer` catalog (`foundations/evidence/evidence-producer`) is vendored into `third_party/agentic-kit` (pin `2639212`); `internal/semantic.CatalogFromKit` builds an `evidenceproducer.Catalog` from `schema/semantic/producers.cue` under the shared engineering tier ladder, mapping fathom's `fathom`/`external` origin vocabulary to the kit's `self`/`external`. `ProducerCatalog.Lookup`, `CapTier`, the importer's fathom-origin refusal and a new `Importer.IndependentProducers` corroboration check now delegate to the kit's `Lookup`/`Cap`/`Admit`/`Independent` instead of a private `tierRank` map; `TestProducerCatalogsAgree` cross-checks fathom's catalog against the kit's own `#Catalog` CUE schema (SU-25, ADR-041 decision 8).
+<!-- /su-wave-s10 -->
+
 ## [0.8.0] -- 2026-09-02
 
 **What this release is.** fathom stopped being a Claude Code program and
