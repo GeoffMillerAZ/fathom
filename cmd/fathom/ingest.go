@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"path/filepath"
 	"sort"
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
@@ -44,6 +45,8 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	storePath := fs.String("store", defaultStorePath(), "store path (.sqlite/.db)")
 	mode := fs.String("mode", "local", "connector mode: local or faux")
 	jsonOut := fs.Bool("json", false, "emit the run as JSON (counts, read_failures with errno, outcome ok|degraded|refused) — docs/usage.md §ingest")
+	var scipPaths stringList
+	fs.Var(&scipPaths, "scip", "SCIP index file to import as typed edges (ADR-041 decision 5, SU-9; repeatable). Unset: auto-detects index.scip at the repo root and .fathom/scip/*.scip")
 
 	if err := fs.Parse(args); err != nil {
 		return 1
@@ -99,8 +102,27 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	if readErr == nil || !readErr.Refused {
 		hookcache.BustIdent()
 	}
+
+	// SCIP import (ADR-041 decision 5, SU-9): only after a syntax ingest
+	// actually wrote something — a refused ingest (IT-15) leaves the store
+	// untouched, and importing typed edges for a service the syntax pass
+	// just refused to index would fabricate coverage the symbol table
+	// doesn't have. Best-effort per file: one bad SCIP index never aborts
+	// the ingest that already succeeded.
+	var scipResults []scipImportResult
+	if readErr == nil || !readErr.Refused {
+		for _, p := range resolveSCIPPaths(svcPath, scipPaths) {
+			imp, ierr := c.ImportSCIP(context.Background(), *service, p)
+			if ierr != nil {
+				fmt.Fprintf(stderr, "warning: scip import %s: %v\n", p, ierr)
+				continue
+			}
+			scipResults = append(scipResults, scipImportResult{Path: p, Import: imp})
+		}
+	}
+
 	if *jsonOut {
-		return renderIngestJSON(stdout, *service, svcPath, report, readErr) // RP-14: ingest_json.go
+		return renderIngestJSON(stdout, *service, svcPath, report, readErr, scipResults) // RP-14: ingest_json.go
 	}
 
 	fmt.Fprintf(stdout, "service:    %s\n", *service)
@@ -167,6 +189,13 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintf(stderr, "warning: typed-edge pass failed: %s — test_impact/verify test_reaches read a syntax-only graph for this service until it is fixed\n", report.TypedFailReason)
 		}
 	}
+	// SCIP-imported typed edges (ADR-041 decision 5, SU-9): one line per
+	// index, naming the producer so a reader can tell a native Go pass
+	// (the block above) from an imported one at a glance.
+	for _, r := range scipResults {
+		fmt.Fprintf(stdout, "typed_edges: %d edge(s) (%d direct / %d unresolved) via %s [%s]\n",
+			r.Import.Report.Edges, r.Import.Report.Direct, r.Import.Report.Unresolved, r.Import.Report.Producer.String(), r.Path)
+	}
 	// Scoped config (docs/design/scoped-config.md §4 disclosure): report the
 	// project/user pattern-count split that governed this ingest. Ingest has
 	// already succeeded above (Discover already ran LoadIgnoreScoped as its
@@ -198,4 +227,33 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	return 0
+}
+
+// scipImportResult pairs one --scip (or auto-detected) index's path with
+// its import outcome — kept as its own type so both the text summary and
+// renderIngestJSON (ingest_json.go) read the same value.
+type scipImportResult struct {
+	Path   string
+	Import client.ImportSCIPResult
+}
+
+// resolveSCIPPaths returns the SCIP index files this ingest should import
+// (ADR-041 decision 5, SU-9): explicit --scip values verbatim when any were
+// given, else auto-detection — index.scip at the service root, plus every
+// *.scip under .fathom/scip/ — the two locations docs/usage.md documents.
+// Auto-detection is silent about finding nothing: most ingests are not of
+// a language with a SCIP producer at all.
+func resolveSCIPPaths(root string, explicit []string) []string {
+	if len(explicit) > 0 {
+		return explicit
+	}
+	var out []string
+	if p := filepath.Join(root, "index.scip"); fileExists(p) {
+		out = append(out, p)
+	}
+	if matches, err := filepath.Glob(filepath.Join(root, ".fathom", "scip", "*.scip")); err == nil {
+		sort.Strings(matches)
+		out = append(out, matches...)
+	}
+	return out
 }

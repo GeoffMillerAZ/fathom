@@ -23,6 +23,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/query"
+	"github.com/geoffmilleraz/fathom/internal/scip"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/worktree"
 )
@@ -242,6 +243,31 @@ func (c *Client) TypedEdges(ctx context.Context, serviceID string) ([]Edge, erro
 		return nil, fmt.Errorf("client.TypedEdges: %w", err)
 	}
 	return edges, nil
+}
+
+// ImportSCIPResult is ImportSCIP's return: a re-export of scip.Import so
+// callers never import internal/scip directly.
+type ImportSCIPResult = scip.Import
+
+// ImportSCIP decodes a SCIP index file (ADR-041 decision 5, SU-9,
+// docs/plans/substrate.md; internal/scip.ImportIndexFile) and writes the
+// typed edges it implies for serviceID, grouped per package — the same
+// store.PutTypedEdges package-granular replace unit
+// internal/fusion.EnrichTypedEdges already uses for the native Go pass, so
+// re-importing one changed file's worth of SCIP output never disturbs
+// another package's rows. It never touches the syntax-extracted symbol
+// table, only typed_edges.
+func (c *Client) ImportSCIP(ctx context.Context, serviceID, path string) (ImportSCIPResult, error) {
+	imp, err := scip.ImportIndexFile(serviceID, path)
+	if err != nil {
+		return scip.Import{}, fmt.Errorf("client.ImportSCIP: %w", err)
+	}
+	for _, pkg := range imp.Packages {
+		if err := c.st.PutTypedEdges(ctx, serviceID, pkg.Package, pkg.Edges); err != nil {
+			return imp, fmt.Errorf("client.ImportSCIP: put typed edges for %q: %w", pkg.Package, err)
+		}
+	}
+	return imp, nil
 }
 
 // Observations returns every stored observation for serviceID, with no

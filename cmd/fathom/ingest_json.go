@@ -52,6 +52,20 @@ type ingestExcludedJSON struct {
 	Service int `json:"service"`
 }
 
+// ingestScipJSON is one --scip (or auto-detected) index's import outcome
+// (ADR-041 decision 5, SU-9) — Producer names the external indexer so a
+// reader can tell an imported typed pass from the native Go one
+// (TypedEdges above) without a separate lookup.
+type ingestScipJSON struct {
+	Path       string `json:"path"`
+	Producer   string `json:"producer"`
+	Language   string `json:"language,omitempty"`
+	Documents  int    `json:"documents"`
+	Edges      int    `json:"edges"`
+	Direct     int    `json:"direct"`
+	Unresolved int    `json:"unresolved"`
+}
+
 // ingestJSON is the `fathom ingest --json` envelope.
 type ingestJSON struct {
 	Service string `json:"service"`
@@ -73,6 +87,7 @@ type ingestJSON struct {
 	// has no registered extractor for (O69). Omitted when empty.
 	UnsupportedLanguages map[string]int        `json:"unsupported_languages,omitempty"`
 	TypedEdges           *ingestTypedEdgesJSON `json:"typed_edges,omitempty"`
+	ScipImports          []ingestScipJSON      `json:"scip_imports,omitempty"`
 	Excluded             *ingestExcludedJSON   `json:"excluded,omitempty"`
 	Error                string                `json:"error,omitempty"`
 	Hint                 string                `json:"hint,omitempty"`
@@ -98,8 +113,10 @@ func errnoClass(errText string) string {
 }
 
 // renderIngestJSON writes the envelope and returns the exit code (the same
-// 0/1 the text path returns).
-func renderIngestJSON(w io.Writer, service, svcPath string, report client.Report, readErr *client.ReadFailuresError) int {
+// 0/1 the text path returns). scipResults carries every --scip (or
+// auto-detected) index this ingest imported (ADR-041 decision 5, SU-9);
+// nil when none ran.
+func renderIngestJSON(w io.Writer, service, svcPath string, report client.Report, readErr *client.ReadFailuresError, scipResults []scipImportResult) int {
 	out := ingestJSON{
 		Service:        service,
 		Outcome:        "ok",
@@ -133,6 +150,13 @@ func renderIngestJSON(w io.Writer, service, svcPath string, report client.Report
 			Packages: report.TypedPackages, PackagesFailed: report.TypedPackagesFailed,
 			Direct: report.TypedEdgesDirect, IfaceDispatch: report.TypedEdgesIfaceDispatch, Unresolved: report.TypedEdgesUnresolved,
 		}
+	}
+	for _, r := range scipResults {
+		out.ScipImports = append(out.ScipImports, ingestScipJSON{
+			Path: r.Path, Producer: r.Import.Report.Producer.String(), Language: r.Import.Report.Language,
+			Documents: r.Import.Report.Documents, Edges: r.Import.Report.Edges,
+			Direct: r.Import.Report.Direct, Unresolved: r.Import.Report.Unresolved,
+		})
 	}
 	if _, counts, err := connector.LoadIgnoreScopedFor(svcPath, service); err == nil && (counts.Project > 0 || counts.User > 0 || counts.Service > 0) {
 		out.Excluded = &ingestExcludedJSON{Project: counts.Project, User: counts.User, Service: counts.Service}
