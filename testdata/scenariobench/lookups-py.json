@@ -1,0 +1,209 @@
+{
+  "version": 1,
+  "description": "SU-23 (docs/plans/substrate.md section F, ADR-041 decision 9): a Python lookups corpus on the calibration corpus's own `fastapi` subject (calibration/corpus.yaml, pinned 0.119.1), mirroring testdata/scenariobench/lookups-vs.json's task classes on a non-Go, non-fathom subject — where is X defined, who calls Y, what does Z import, which tests reach W. `fastapi`'s tree carries no CLAUDE.md/AGENTS.md at its pinned commit, so the Go corpus's 'obligations'/'staleness'/'claim_provenance'/'verify' classes (which need a compiled governance layer to answer) are dropped entirely, not stubbed. Two arms only: `full` (fathom, wired, Read/Grep/Bash) and `grep` (no MCP at all) — the competitor arms lookups-vs.json carries (graphify/serena/gopls) are Go/LSP-specific and do not apply to a Python subject. Committed and NOT RUN this round (ADR-041 decision 9): every anchor below was verified directly against a shallow clone at the pinned commit (see each task's own derivation for the exact commands), never against a live HEAD.",
+  "arms": {
+    "full": {
+      "wired": true,
+      "allowed_tools": [
+        "Read",
+        "Grep",
+        "Bash"
+      ],
+      "instructions": "stanza",
+      "surface": "fathom",
+      "prediction": "Wins the where-defined and who-calls lookups via find_symbol/find_callers: Python extraction (tree-sitter, docs/languages.md) already emits symbol definitions and syntax-level call edges (treesitter.CollectCalls, internal/extractor/pyextract.go) today, at HEURISTIC tier only — neither the SCIP import (SU-9) nor the per-file resolver (SU-11) is wired at this corpus's authoring time, so no edge here is ever a typed/resolved one, only a syntax-level name match; the callee names chosen (create_cloned_field, is_bytes_sequence_annotation, get_flat_dependant) are distinctive enough that a bare-name heuristic match is not expected to false-positive across fastapi's own three-way `_compat` v1/main/v2 split. Wins the tests-reach lookup too, since pytest `test_*` functions ARE named declarations tree-sitter indexes as symbols (unlike lookups-ts.json's Mocha `it(...)` string literals) — find_callers/references on the target resolves its one direct test caller the same way it resolves a production one. No-effect on the imports task, registered below."
+    },
+    "grep": {
+      "allowed_tools": [
+        "Read",
+        "Grep",
+        "Bash"
+      ],
+      "instructions": "plain",
+      "surface": "",
+      "prediction": "Below fathom on where-defined when the target name repeats across fastapi's `_compat/v1.py`/`_compat/main.py`/`_compat/v2.py` split (a bare grep for a common compat-layer name returns three candidates with nothing to disambiguate which one is live); below fathom on who-calls and tests-reach for the same nothing-prompts-a-second-search reason lookups-vs.json's own grep arm loses blast_radius on. Ties fathom on the imports task, registered below."
+    }
+  },
+  "tasks": [
+    {
+      "id": "PY-01",
+      "category": "where_defined",
+      "prompt": "In the fastapi package, find the function that clones a Pydantic `ModelField` so a subclassed response model cannot leak fields the declared response model does not have (used when FastAPI builds a route's own secure response field). Name the file (repo-relative path) and the line on which its `def` begins, in the citation form `<file>#L<n>`.",
+      "subject": {
+        "repo_url": "https://github.com/fastapi/fastapi",
+        "base_commit": "864b569cf8453654fc3bc2c64108c0f644e2918c",
+        "service": "fastapi",
+        "language": "python"
+      },
+      "sessions": {
+        "count": 1,
+        "max_turns": 30,
+        "mode": "single"
+      },
+      "oracle": {
+        "answer_all_of": [
+          "fastapi/utils.py#L135"
+        ]
+      },
+      "predictions": {
+        "full": "wins: find_symbol resolves `create_cloned_field` to its definition directly, one call.",
+        "grep": "below fathom: `grep -rn 'def create_cloned_field'` is a distinctive enough name that a stray hit is unlikely, but nothing points grep there without already suspecting utils.py, unlike find_symbol's own name-to-definition lookup."
+      },
+      "derivation": "New task (SU-23). Verified against the pinned commit directly: `git clone --depth 1 --branch 0.119.1 https://github.com/fastapi/fastapi` (HEAD resolved to 864b569cf8453654fc3bc2c64108c0f644e2918c, a real commit object — `git cat-file -t` confirms `commit`, matching calibration/corpus.yaml's own `sha` field exactly, no tag dereference needed unlike the TypeScript subject). `sed -n '130,140p' fastapi/utils.py` shows line 135 is `def create_cloned_field(`. Prompt deliberately never names fastapi/utils.py (this task's own gold file) — only the function's behavior."
+    },
+    {
+      "id": "PY-02",
+      "category": "where_defined",
+      "prompt": "Inside fastapi's Pydantic-compatibility layer, find the function that reports whether a type annotation is a sequence specifically of `bytes` (e.g. `List[bytes]`, or a `Union` of sequence-of-bytes variants) — it is called from the v2 compat module's own `is_bytes_sequence_field` and is directly unit-tested by name. Name the file (repo-relative path) and the line on which its `def` begins, in the citation form `<file>#L<n>`.",
+      "subject": {
+        "repo_url": "https://github.com/fastapi/fastapi",
+        "base_commit": "864b569cf8453654fc3bc2c64108c0f644e2918c",
+        "service": "fastapi",
+        "language": "python"
+      },
+      "sessions": {
+        "count": 1,
+        "max_turns": 30,
+        "mode": "single"
+      },
+      "oracle": {
+        "answer_all_of": [
+          "fastapi/_compat/shared.py#L169"
+        ]
+      },
+      "predictions": {
+        "full": "wins: find_symbol resolves `is_bytes_sequence_annotation` to its one real definition directly — fastapi's `_compat` package carries a v1/main/v2 split where several similarly-named predicates (`is_scalar_field`, etc.) are defined three times over, so a name-indexed lookup matters here more than on PY-01.",
+        "grep": "below fathom: `grep -rn 'def is_bytes_sequence_annotation'` happens to return one hit for this specific name (unlike `is_scalar_field`, which returns three across v1.py/main.py/v2.py), so grep is a near-tie here — registered below fathom per lookups-vs.json's own convention for a directly-grep-findable distinctive name, since nothing about grep itself resolves the ambiguity the compat split poses on the CLASS of lookup this task represents."
+      },
+      "derivation": "New task (SU-23). Verified against the same pinned checkout as PY-01: `sed -n '165,175p' fastapi/_compat/shared.py` shows line 169 is `def is_bytes_sequence_annotation(annotation: Any) -> bool:`; a whole-tree `grep -rn 'def is_bytes_sequence_annotation'` confirms exactly one definition (contrast noted in the prompt/predictions: `is_scalar_field` by comparison has three, in v1.py/main.py/v2.py, which is why this task deliberately picks the single-definition name). Prompt deliberately never names fastapi/_compat/shared.py (this task's own gold file)."
+    },
+    {
+      "id": "PY-03",
+      "category": "blast_radius",
+      "prompt": "The function `create_cloned_field` (fastapi's own utils module) is called recursively within its own defining file, and from exactly one place elsewhere in the fastapi package: a route class's own constructor, to build a secure clone of its response field. Name that constructor's own enclosing class and method, in the form `ClassName.__init__`.",
+      "subject": {
+        "repo_url": "https://github.com/fastapi/fastapi",
+        "base_commit": "864b569cf8453654fc3bc2c64108c0f644e2918c",
+        "service": "fastapi",
+        "language": "python"
+      },
+      "sessions": {
+        "count": 1,
+        "max_turns": 30,
+        "mode": "single"
+      },
+      "oracle": {
+        "answer_all_of": [
+          "APIRoute.__init__"
+        ]
+      },
+      "predictions": {
+        "full": "wins: find_callers on `create_cloned_field` separates the one EXTERNAL call site from the recursive ones inside its own defining file directly, from the syntax-level call graph (heuristic tier — no typed/SCIP edges for Python at this corpus's authoring time, SU-9/SU-11 pending) in one call.",
+        "grep": "below fathom: `grep -rn 'create_cloned_field(' fastapi/` returns four hits (three recursive, one external), and nothing distinguishes which of the four sits outside the defining file without opening and reading each one — the same shape of grep disadvantage lookups-vs.json registers for its own blast_radius tasks (H1-T05)."
+      },
+      "derivation": "New task (SU-23). Verified against the same pinned checkout: `grep -n 'create_cloned_field(' fastapi/utils.py fastapi/routing.py` shows three call sites inside fastapi/utils.py itself (lines 164, 181, 185 — recursive, inside create_cloned_field's own body) and exactly one in fastapi/routing.py:603; `sed -n '506,530p' fastapi/routing.py` confirms line 603 sits inside `class APIRoute(routing.Route): def __init__(...)` (class opens at 506, `__init__` at 507, next method `get_route_handler` at 649 — 603 falls between). Prompt names neither gold file — only the general shape (a route class's constructor)."
+    },
+    {
+      "id": "PY-04",
+      "category": "blast_radius",
+      "prompt": "The function `get_flat_dependant` (fastapi's dependency-resolution internals) flattens a route's own dependency tree. Inside fastapi's routing module specifically, two different route classes each call it from their own `__init__` method, to precompute a `_flat_dependant` instance attribute — one for HTTP routes, one for WebSocket routes. Name both classes' own `__init__` methods, in the form `ClassName.__init__`.",
+      "subject": {
+        "repo_url": "https://github.com/fastapi/fastapi",
+        "base_commit": "864b569cf8453654fc3bc2c64108c0f644e2918c",
+        "service": "fastapi",
+        "language": "python"
+      },
+      "sessions": {
+        "count": 1,
+        "max_turns": 30,
+        "mode": "single"
+      },
+      "oracle": {
+        "answer_all_of": [
+          "APIRoute.__init__",
+          "APIWebSocketRoute.__init__"
+        ]
+      },
+      "predictions": {
+        "full": "wins: find_callers on `get_flat_dependant` lists every call site (routing module's two `__init__` methods, plus two unrelated ones in fastapi/openapi/utils.py this task does not ask about) directly, so an agent only has to filter by enclosing class rather than search the whole package for the name.",
+        "grep": "below fathom: `grep -n 'get_flat_dependant(' fastapi/routing.py' finds both call sites (line 487 and 638) but not which class's `__init__` each sits inside without reading the surrounding lines — a real but smaller version of the same disadvantage PY-03 registers."
+      },
+      "derivation": "New task (SU-23). Verified against the same pinned checkout: `grep -n 'get_flat_dependant(' fastapi/routing.py' shows two production call sites, lines 487 and 638; `sed -n '466,499p' fastapi/routing.py` confirms line 487 sits inside `class APIWebSocketRoute(routing.WebSocketRoute): def __init__(...)` (class opens 466, `__init__` at 467, next method `matches` at 499); `sed -n '506,530p'` (same read as PY-03) confirms line 638 sits inside `APIRoute.__init__`. A separate pair of call sites also exists in fastapi/openapi/utils.py (lines 105, 276, inside `_get_openapi_operation_parameters`/`get_openapi_path`) — deliberately excluded from this task's own gold, since the prompt scopes the question to 'fastapi's routing module specifically'."
+    },
+    {
+      "id": "PY-05",
+      "category": "imports",
+      "prompt": "In fastapi/param_functions.py, which modules WITHIN the `fastapi` package itself does the file import from (its first four import lines) — excluding the stdlib `typing` import and the third-party `typing_extensions` import? Name all three, in dotted form (e.g. `fastapi.x`).",
+      "subject": {
+        "repo_url": "https://github.com/fastapi/fastapi",
+        "base_commit": "864b569cf8453654fc3bc2c64108c0f644e2918c",
+        "service": "fastapi",
+        "language": "python"
+      },
+      "sessions": {
+        "count": 1,
+        "max_turns": 30,
+        "mode": "single"
+      },
+      "oracle": {
+        "answer_all_of": [
+          "fastapi.params",
+          "fastapi._compat",
+          "fastapi.openapi.models"
+        ]
+      },
+      "predictions": {
+        "full": "no-effect: an import list is read directly off the file's own first lines — find_symbol/find_callers give no edge over Read here, the same honest ceiling lookups-vs.json's own H1-T11 registers for a shape neither arm's tooling can improve on.",
+        "grep": "no-effect: same reason — `sed -n '1,6p'` or a direct Read is exactly as effective as any other arm's path here."
+      },
+      "derivation": "New task (SU-23). Verified against the same pinned checkout: `sed -n '1,6p' fastapi/param_functions.py` shows `from fastapi import params`, `from fastapi._compat import Undefined`, `from fastapi.openapi.models import Example`, alongside the excluded `from typing import ...` and `from typing_extensions import ...` lines. This is the corpus's registered no-effect task (vision 27 §1 / predictions_test.go's TestEveryScenarioTaskHasPredictions requirement) — the file is necessarily named since the question is about that file's own content, not a pointer elsewhere; the gold is nothing but a direct read of it."
+    },
+    {
+      "id": "PY-06",
+      "category": "test_reach",
+      "prompt": "The predicate `is_bytes_sequence_annotation` (fastapi's Pydantic-compatibility layer) has exactly one pytest test function anywhere in the fastapi test suite that calls it directly by name. Name that test function.",
+      "subject": {
+        "repo_url": "https://github.com/fastapi/fastapi",
+        "base_commit": "864b569cf8453654fc3bc2c64108c0f644e2918c",
+        "service": "fastapi",
+        "language": "python"
+      },
+      "sessions": {
+        "count": 1,
+        "max_turns": 30,
+        "mode": "single"
+      },
+      "oracle": {
+        "answer_all_of": [
+          "test_is_bytes_sequence_annotation_union"
+        ]
+      },
+      "predictions": {
+        "full": "wins: unlike lookups-ts.json's TS-06 (Mocha `it(...)` description strings, which carry no symbol of their own), pytest's `test_*` functions ARE named declarations Python extraction indexes as ordinary symbols — find_symbol/references on `is_bytes_sequence_annotation` surfaces its one direct test caller the same way it would a production one, in one call.",
+        "grep": "below fathom: `grep -rn 'is_bytes_sequence_annotation' tests/` returns both the import line and the one call site in tests/test_compat.py, which an agent must still read to tell apart — a smaller version of the same nothing-prompts-a-second-look disadvantage PY-03/PY-04 register."
+      },
+      "derivation": "New task (SU-23). Verified against the same pinned checkout: `grep -n 'is_bytes_sequence_annotation' tests/test_compat.py` shows it imported at line 8 and called once, at line 128, inside `def test_is_bytes_sequence_annotation_union():` (defined at line 123); a whole-tree `grep -rln 'is_bytes_sequence_annotation' tests/` confirms tests/test_compat.py is the only test file that references it at all. Prompt names neither gold file — only the predicate's own module area."
+    }
+  ],
+  "criterion": {
+    "id": "SU23-PY-1",
+    "treatment": "full",
+    "control": "grep",
+    "min_trials": 2,
+    "require_success_at_least_equal": true,
+    "max_tokens_per_success_ratio": 1.0,
+    "registered": "2026-09-19"
+  },
+  "sources": [
+    {
+      "name": "fastapi",
+      "url": "https://github.com/fastapi/fastapi",
+      "revision": "0.119.1",
+      "license": "MIT"
+    }
+  ],
+  "notes": {
+    "typed_edges": "Neither the SCIP import path (SU-9, internal/scip — not yet present in this tree) nor the per-file resolver (SU-11, ResolveFileEdges — not yet present either) is wired at this corpus's authoring commit. Python extraction today (internal/extractor/pyextract.go) already emits symbol definitions and HEURISTIC (syntax, bare-name) call edges via treesitter.CollectCalls, never presented as typed — every 'full' arm prediction above is written against that tier, not an aspirational typed one. Re-verify every blast_radius prediction once SU-9/SU-11 land (docs/languages.md).",
+    "kill_criteria": "No lift in success rate for the full arm over grep at n>=2 trials/task on the where_defined/blast_radius/test_reach tasks (PY-01..04, PY-06) — the class this corpus exists to measure; find_callers returning zero heuristic edges for a chosen callee (an index gap, not a true negative) on more than one task; a SCIP index or the per-file resolver landing (SU-9/SU-11) without this corpus's predictions being re-registered against the new tier before any run."
+  }
+}

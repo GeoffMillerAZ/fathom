@@ -94,6 +94,7 @@ tasks:
         done
         [ "$rc" -eq 0 ] || exit "$rc"
         bash scripts/build-cache_test.sh
+        bash scripts/push-check_test.sh
 
   ui:css:
     desc: Rebuild the standalone observatory CSS from the in-tree app-kit mirror (no Node or sibling checkout)
@@ -112,6 +113,12 @@ tasks:
     # 26–43s on 2026-09-02, under the two-minute budget that admits it here.
     deps: [fmt-check, vet, cue-vet, vendor-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, scenariobench, bench-l0-gate]
     cmds: [{ task: test }]
+
+  push:
+    desc: "Gated push: refuses without the lefthook pre-push hook, then git push origin HEAD:main"
+    cmds:
+      - bash scripts/push-check.sh
+      - git push origin HEAD:main
 
   scenariobench:
     desc: "Free — internal/scenariobench (the change-bench driver, vision 27/ADR-033): corpus load, category/prediction gate, fake-harness driver tests. TestPublicScenarioCorpusIsDerived skips (never fails) when workspace/bench/sources/ is empty, the normal case on a fresh clone or CI."
@@ -346,6 +353,16 @@ tasks:
     desc: "COSTS TOKENS. Lookup pilot vs. the competitors (SB-32/O53): fathom (wired) vs. graphify/serena/gopls/grep over 14 lookup tasks, 2 trials — 140 cells (`task bench-scenario-plan -- -corpus testdata/scenariobench/lookups-vs.json` lists them at no spend; docs/bench/competitors.md pins each tool's install/build/query commands)."
     cmds:
       - GOWORK=off CGO_ENABLED=1 {{.GO}} run ./cmd/scenariobench run -corpus testdata/scenariobench/lookups-vs.json -trials 2 {{.CLI_ARGS}}
+
+  bench-scenario-lookups-ts:
+    desc: "COSTS TOKENS. NOT run this round (SU-23, ADR-041 decision 9). TypeScript lookup pilot on the calibration subject `nest`: fathom (wired) vs. grep over 6 lookup tasks, 2 trials — 24 cells (`task bench-scenario-plan -- -corpus testdata/scenariobench/lookups-ts.json` lists them at no spend)."
+    cmds:
+      - GOWORK=off CGO_ENABLED=1 {{.GO}} run ./cmd/scenariobench run -corpus testdata/scenariobench/lookups-ts.json -trials 2 {{.CLI_ARGS}}
+
+  bench-scenario-lookups-py:
+    desc: "COSTS TOKENS. NOT run this round (SU-23, ADR-041 decision 9). Python lookup pilot on the calibration subject `fastapi`: fathom (wired) vs. grep over 6 lookup tasks, 2 trials — 24 cells (`task bench-scenario-plan -- -corpus testdata/scenariobench/lookups-py.json` lists them at no spend)."
+    cmds:
+      - GOWORK=off CGO_ENABLED=1 {{.GO}} run ./cmd/scenariobench run -corpus testdata/scenariobench/lookups-py.json -trials 2 {{.CLI_ARGS}}
 
   bench-compare-edges:
     desc: "Free. Competitor edge comparison (M6/M7): graphify/Serena/gopls precision-recall against the go/types L0 truth, beside fathom's own row (SB-28..31; cmd/indexbench compare is another wave)."
