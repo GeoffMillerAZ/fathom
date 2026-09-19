@@ -12,6 +12,8 @@ package main
 // hits the daemon) is only reached once a guard has already matched.
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -24,6 +26,12 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/harness"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 )
+
+// refreshTimeout is ensureFileFresh's own HTTP budget (SU-6, ADR-041
+// decision 4) — separate from, and additive to, preHookBudget: a refresh
+// only ever fires on the (rare) stale-index path, so it is not carved out
+// of the two-call budget fetchObligations already splits.
+const refreshTimeout = 400 * time.Millisecond
 
 // cmdEditHookPre implements the --pre branch of cmdEditHook. The decoded
 // envelope's tool CLASS (harness.ClassifyTool — never a tool-name literal,
@@ -215,6 +223,34 @@ func renderPreEdit(url, projDir, filePath, sessionID string) (preEditResult, boo
 		return preEditResult{}, false
 	}
 
+	// SU-6 (docs/plans/substrate.md §A, ADR-041 decisions 3/4): the index
+	// is behind this file specifically (its on-disk content hash differs
+	// from the store's fingerprint — the exact comparison index_stale
+	// above already made server-side, never re-derived here). Ask the
+	// daemon to refresh just this file, then re-answer obligations from
+	// the now-current picture, before the agent ever sees a stale rule.
+	// A failed refresh degrades honestly (the ORIGINAL, stale obl stands)
+	// rather than silently pretending the index caught up.
+	var staleLine string
+	if indexStale {
+		if refreshErr := ensureFileFresh(url, svcName, repoRelFile); refreshErr == "" {
+			if freshObl, freshStale, freshOK := fetchObligations(url, svcName, repoRelFile, guard.MaxRules, remaining, semantic.ObligationLayerAll); freshOK {
+				obl, indexStale = freshObl, freshStale
+			}
+			if !indexStale {
+				if obl.Watermark != "" {
+					staleLine = fmt.Sprintf("index refreshed for this file (typed edges as of %s)", obl.Watermark)
+				} else {
+					staleLine = "index refreshed for this file"
+				}
+			} else {
+				staleLine = "index is behind your working tree for this file"
+			}
+		} else {
+			staleLine = fmt.Sprintf("index is behind your working tree (refresh failed: %s)", refreshErr)
+		}
+	}
+
 	// FL-20 (ADR-040 decision 5): split finding-kind rows out before the
 	// governing-rules preview below — see edithook.go's renderPostEdit for
 	// why this must happen before ANYTHING else touches obl.Rules (the
@@ -262,9 +298,9 @@ func renderPreEdit(url, projDir, filePath, sessionID string) (preEditResult, boo
 		writeHeaderIfNeeded()
 		fmt.Fprintf(&sb, "\n⚠️ %d more eligible rule(s) not shown (cap)", obl.Displaced)
 	}
-	if indexStale {
+	if staleLine != "" {
 		writeHeaderIfNeeded()
-		sb.WriteString("\n⚠️ index is behind your working tree for this file")
+		sb.WriteString("\n⚠️ " + staleLine)
 	}
 	for _, n := range obl.ModuleNotes {
 		writeHeaderIfNeeded()
@@ -403,6 +439,48 @@ func resolveProjDirFor(id, cwd string) string {
 // candidate root at all (should not happen here since the local pass
 // already found one, but this is the authoritative daemon-aware pass,
 // which can in principle disagree e.g. on a dogfood O15 rename).
+// ensureFileFresh (SU-6, docs/plans/substrate.md §A, ADR-041 decisions 3
+// and 4) asks the daemon to refresh repoRelFile — POST /refresh-file, a
+// 400ms budget (refreshTimeout) so a slow or hung daemon never blows the
+// hook's own <=2s pre-edit contract. Returns "" on a successful refresh
+// (fusion.ReingestReport.Refreshed == true); any other outcome (transport
+// error, malformed response, the daemon's own reported Error, or a file
+// the daemon could not extract at all) returns a short, honest reason the
+// caller folds into the "refresh failed: <reason>" staleness line — never
+// silently treated as success.
+func ensureFileFresh(url, svcName, repoRelFile string) (reason string) {
+	body, err := json.Marshal(refreshFileRequest{Service: svcName, File: repoRelFile})
+	if err != nil {
+		return err.Error()
+	}
+	req, err := http.NewRequest(http.MethodPost, url+"/refresh-file", bytes.NewReader(body))
+	if err != nil {
+		return err.Error()
+	}
+	req.Header.Set("Content-Type", "application/json")
+	hc := &http.Client{Timeout: refreshTimeout}
+	resp, err := hc.Do(req)
+	if err != nil {
+		return err.Error()
+	}
+	defer resp.Body.Close()
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, 1<<16))
+	if err != nil {
+		return err.Error()
+	}
+	var out refreshFileResponse
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return err.Error()
+	}
+	if out.Error != "" {
+		return out.Error
+	}
+	if !out.Refreshed {
+		return "file was not extracted (unrecognized/binary/oversize)"
+	}
+	return ""
+}
+
 func resolveServiceAndRel(hc *http.Client, url, projDir, filePath string) (svcName, rel string, ok bool) {
 	for _, cand := range candidatesWithDaemon(hc, url, projDir) {
 		if r, rok := relativeToRoot(cand.root, filePath); rok {
