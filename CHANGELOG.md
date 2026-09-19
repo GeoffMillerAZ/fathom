@@ -21,6 +21,19 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: minor (pre-1.0: breaking bumps minor)
 
+<!-- su-wave-s9 -->
+**Language lookups corpora and push gate (ADR-041 decisions 9, 10; SU-23, SU-24, SU-26).**
+`testdata/scenariobench/lookups-ts.json` (nest) and `lookups-py.json` (fastapi) mirror
+lookups-vs.json's task classes on non-Go calibration subjects, committed and not run;
+`TestLanguageLookupsCorporaParse` checks arms, criterion, and that no prompt names its
+own gold file. Every committed corpus (and the LCA external corpus) now passes a pure
+`PlanCells` enumeration (`TestAllCorporaPlan`); `docs/bench/README.md` gains a "Next
+round" section ordering guards-fathom, findings-loop, lookups-vs, lookups-ts,
+lookups-py, and LCA with cell counts and ledger-derived cost estimates. `task push`
+refuses to push (`scripts/push-check.sh`, exit 3) unless the lefthook pre-push hook is
+present, closing INC-20 (invariant I40).
+<!-- /su-wave-s9 -->
+
 **Portable bounded build cache (ADR-039).** `FATHOM_CACHE_ROOT` now relocates the
 supported Taskfile/script build caches without embedding a workstation path; configured
 missing roots refuse, and `FATHOM_CACHE_MAX_MIB` bounds the regenerable Go build cache.
