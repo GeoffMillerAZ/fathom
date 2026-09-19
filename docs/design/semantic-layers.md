@@ -258,7 +258,7 @@ instances, not one.
 | Generic CUE layer runtime + layer DAGs | Gate pass + building layer 2 |
 | `ai-derived` evidence tier (+ cross-kit taxonomy ADR) | First non-citation-grounded claim kind |
 | Claim-lifecycle FSM, hash-chained ledger, CODEOWNERS review routing | Claim volume exceeding the dogfood O-class loop |
-| Persisted vectors / claim embeddings (DuckDB VSS) | Telemetry showing intent-search misses that joins can't answer |
+| Persisted vectors / claim embeddings (withdrawn: ADR-041 — revisit only via vision 31 §5's kill criterion, not this row's DuckDB-VSS mechanism) | Telemetry showing intent-search misses that joins can't answer |
 | Machine-checkable claim predicates auto-refuted vs call graph | First layer emitting behavioral claims (invariants) |
 | Deterministic anchor pass (persist sdd/adr/commit links into `claim_links` at $0 LLM cost) | First post-gate addition — pure value, no spend |
 | Knowledge-graph ref schemes, closed ontology | Never as a prerequisite; grown edge-kind by edge-kind |
@@ -312,8 +312,10 @@ specifies:
   recompile a store travels inside it (claims, links, compile ledger, eval results,
   watermarks). A fathom `.duckdb` file + the engine = a portable expert module.
 - **D-EM3 — vectors are an additive column, never a second store.** When embeddings
-  earn their revival evidence, they land as DuckDB VSS over claim/summary text in
-  the same file — module portability is non-negotiable.
+  earn their revival evidence, they land as an additive column over claim/summary
+  text in the same store file — module portability is non-negotiable. (Withdrawn:
+  ADR-041 — DuckDB is gone per ADR-020/025, and revival now runs only through vision
+  31 §5's kill criterion, not this row's original DuckDB VSS mechanism.)
 - **D-EM4 — determinism + tiers are the product.** An expert module that can say
   *why* it believes something (tier, citation, freshness) and *when it stopped being
   sure* (status) is what distinguishes it from a chatbot with a folder of PDFs.

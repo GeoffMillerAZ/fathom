@@ -21,6 +21,22 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: minor (pre-1.0: breaking bumps minor)
 
+<!-- su-wave-s6 -->
+**Vectors removed, not parked (ADR-041 decision 2, SU-8).** `internal/vector`, the
+query engine's `WithVector` option, the `SymbolIndexer` interface, `hybridRank`'s
+vector branch, and `core.Query.SemanticWt` (its only reader) are deleted, along with
+fathom's own import of agentic-kit's embedding client (`embedding-client`,
+`vector-store`) — the keyword+tier ranking (`scoreAndRank`) is unchanged, pinned by
+the existing tests plus a new ranking-order golden. Not breaking: `WithVector` had no
+production caller (`internal/modulehost/federated.go` always called `query.New` bare)
+and `SemanticWt` did nothing outside the deleted path. `TestQueryEngineHasNoVectorOption`
+refuses any future `*Vector*`/`*Embedding*` declaration in the query engine by AST scan;
+revisit only through vision 31 §5's kill criterion. Docs scrubbed so "semantic" means
+compiled claims, never vectors: `docs/architecture.md` (Hybrid semantic search section
+rewritten), `docs/design/scope-and-purge.md`, `docs/design/semantic-layers.md`,
+`docs/intent/futures.md` (F13 superseded). Evidence: `docs/vision/31-substrate.md`.
+<!-- /su-wave-s6 -->
+
 **Portable bounded build cache (ADR-039).** `FATHOM_CACHE_ROOT` now relocates the
 supported Taskfile/script build caches without embedding a workstation path; configured
 missing roots refuse, and `FATHOM_CACHE_MAX_MIB` bounds the regenerable Go build cache.
