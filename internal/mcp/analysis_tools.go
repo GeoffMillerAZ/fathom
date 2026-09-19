@@ -3,10 +3,13 @@
 // registerAnalysisTools wires rename_impact, reachable, test_impact, and
 // dead_code into the server's tool registry.
 //
-// The call-graph tools build a *callgraph.Graph on each invocation by calling
-// backend.ListAllSymbols and passing the result to callgraph.Build.  This is
-// intentionally simple: caching can be added later without changing the public
-// tool API.
+// The call-graph tools walk the service's syntax-plus-typed graph through the
+// server's watermark-keyed cache (loadNavGraphs, BP-28/I21) — the SAME graph
+// verify_plan and the nav tools walk (O98), so a method value, an interface
+// dispatch, or a bare call on a receiver that shares a method name with
+// another type resolves identically on every surface. rename_impact alone
+// keeps its syntax-only caller SET by decision (BP-26) and annotates tiers
+// from the typed graph.
 package mcp
 
 import (
@@ -31,14 +34,25 @@ func registerAnalysisTools(s *Server, backend QueryInterface) {
 
 // ─── buildGraph is a shared helper ──────────────────────────────────────────
 
-// buildGraph fetches all symbols for service from backend and constructs a
-// callgraph.Graph.  Returns (nil, rpcError) on any failure.
-func buildGraph(ctx context.Context, backend QueryInterface, service string) (*callgraph.Graph, *rpcError) {
+// bothGraph returns the service's symbols and its syntax-plus-typed call
+// graph, memoized under the store watermark (O98: one graph for every
+// reachability answer the daemon gives). An index with no symbols yields an
+// empty graph, as it always did — only a backend failure is an error.
+func bothGraph(ctx context.Context, s *Server, backend QueryInterface, service string) ([]core.SymbolNode, *callgraph.Graph, *rpcError) {
+	if ng := s.loadNavGraphs(ctx, backend, service); ng != nil {
+		return ng.Nodes, ng.Both, nil
+	}
 	nodes, err := backend.ListAllSymbols(ctx, service)
 	if err != nil {
-		return nil, &rpcError{Code: ErrCodeInternal, Message: "list symbols: " + err.Error()}
+		return nil, nil, &rpcError{Code: ErrCodeInternal, Message: "list symbols: " + err.Error()}
 	}
-	return callgraph.Build(nodes), nil
+	return nodes, callgraph.Build(nodes), nil
+}
+
+// buildGraph is bothGraph for callers that need only the graph.
+func buildGraph(ctx context.Context, s *Server, backend QueryInterface, service string) (*callgraph.Graph, *rpcError) {
+	_, g, rpcErr := bothGraph(ctx, s, backend, service)
+	return g, rpcErr
 }
 
 // claimsAnchoredBackend is the optional backend capability for SU-21's
@@ -202,7 +216,7 @@ func registerReachable(s *Server, backend QueryInterface) {
 		if p.To == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "reachable: to required"}
 		}
-		g, rpcErr := buildGraph(ctx, backend, p.Service)
+		g, rpcErr := buildGraph(ctx, s, backend, p.Service)
 		if rpcErr != nil {
 			return nil, rpcErr
 		}
@@ -248,11 +262,10 @@ func registerTestImpact(s *Server, backend QueryInterface) {
 		if p.Symbol == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "test_impact: symbol required"}
 		}
-		nodes, err := backend.ListAllSymbols(ctx, p.Service)
-		if err != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "list symbols: " + err.Error()}
+		nodes, g, rpcErr := bothGraph(ctx, s, backend, p.Service)
+		if rpcErr != nil {
+			return nil, rpcErr
 		}
-		g := callgraph.Build(nodes)
 		tests := callgraph.TestImpact(g, p.Symbol)
 
 		// resolution/index_commit (VB-19, docs/vision/29-verbs-not-lookups.md
@@ -350,7 +363,7 @@ func registerDeadCode(s *Server, backend QueryInterface) {
 		if p.Service == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "dead_code: service required"}
 		}
-		g, rpcErr := buildGraph(ctx, backend, p.Service)
+		g, rpcErr := buildGraph(ctx, s, backend, p.Service)
 		if rpcErr != nil {
 			return nil, rpcErr
 		}

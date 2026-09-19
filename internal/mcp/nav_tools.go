@@ -65,11 +65,13 @@ func registerFindCallees(s *Server, backend QueryInterface) {
 		if p.Symbol == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "find_callees: symbol required"}
 		}
-		nodes, err := backend.ListAllSymbols(ctx, p.Service)
-		if err != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
+		// O98: the same syntax-plus-typed graph every other reachability
+		// tool walks, so a callee reached through a method value or an
+		// interface dispatch is listed here too.
+		nodes, g, rpcErr := bothGraph(ctx, s, backend, p.Service)
+		if rpcErr != nil {
+			return nil, rpcErr
 		}
-		g := callgraph.Build(nodes)
 		callees := symbolnav.Callees(g, nodes, p.Symbol)
 		return map[string]any{"callees": stringsToAny(callees)}, nil
 	})
