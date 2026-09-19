@@ -83,6 +83,19 @@ func cmdPromptHook(args []string, stdout, stderr io.Writer) int {
 	if prompt == "" {
 		return 0
 	}
+	// SU-7 (docs/plans/substrate.md §A, ADR-041 decision 3): a harness- or
+	// tool-injected system notification is not a user asking a question —
+	// its body is prose ABOUT something (an article title, a URL, a task
+	// summary) that extractPromptCandidates' lexical heuristics can and do
+	// misread as repo paths/packages (O91-class: "publication/observation"
+	// and "cursor.com/blog/secure-codebase-indexing" both reached
+	// obligations as fabricated `__prompt__.go` candidates from exactly
+	// this kind of text). No candidate extraction, no daemon call, no
+	// output — the prompt hook's own silence contract, applied before
+	// anything downstream ever sees this text.
+	if isSystemNotification(prompt) {
+		return 0
+	}
 
 	emitBeat("prompt-hook", "seen", firingMetaArm(map[string]string{}, sessionID, "", armOff))
 	if armOff {
@@ -112,6 +125,20 @@ func cmdPromptHook(args []string, stdout, stderr io.Writer) int {
 	emitBeat("prompt-hook", "answered", firingMetaArm(answeredMeta, sessionID, "", armOff))
 	fmt.Fprintln(stdout, string(out))
 	return 0
+}
+
+// isSystemNotification reports whether prompt is a harness/tool-injected
+// system notification rather than user-authored text (SU-7): it begins
+// with "[SYSTEM NOTIFICATION" (any casing of the bracket tag Claude Code
+// and other harnesses use for injected system messages, e.g. task/queue
+// completion notices) or contains a "<task-notification>" tag anywhere.
+// prompt is matched as given — the caller already trimmed leading/
+// trailing whitespace before this check runs.
+func isSystemNotification(prompt string) bool {
+	if strings.HasPrefix(prompt, "[SYSTEM NOTIFICATION") {
+		return true
+	}
+	return strings.Contains(prompt, "<task-notification>")
 }
 
 // promptObligationsMeta is what renderPromptObligations learned, for the

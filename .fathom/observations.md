@@ -1462,3 +1462,14 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Repro/pin:** `TestEnrichCUEEdges_Fixture` (the cross-package `#Widget`/`profile` -> `pkgone.#Base` edges would silently regress to `EdgeUnresolved` if this regressed).
 - **Status:** closed
 - **Impact:** cross-package CUE typed edges resolve correctly; anyone else calling `cue/load` for cross-instance identity should key by `Dir`, never by `*build.Instance` pointer or `ImportPath` (which also differs by version-suffix presence between the two call sites).
+
+### O96 — SU-4: a package-scoped graph patch that reinserts a SURVIVING key must never strip that key's cross-package incoming edges
+
+- **Symptom:** The first `InvalidatePackage`/`ReplacePackage` implementation (`internal/analysis/callgraph/replace_package.go`) passed its own "no full rebuild" assertion but silently dropped a caller-package's edge into the patched package the moment the patched symbol's own key survived the patch unchanged (e.g. only its `Calls` list changed) — a self-caught regression, not a shipped one.
+- **Evidence:**
+  - **Tool:** internal/analysis/callgraph (ReplacePackage)
+  - **Root cause:** the removal pass treated every old key in the touched package as unconditionally GONE — stripping every OTHER package's edge that pointed at it — even when that exact key reappeared in the new node set (the common case: a symbol's own body/Calls changed but its identity did not). A second bug in the same commit: `newNodes == nil` (the "typed edges only, symbols unchanged" call shape) was treated as "replace with nothing," deleting every node in the package and then silently dropping the very typed edges being added, since their endpoints no longer existed.
+  - **Fix:** a `newKeySet` computed from the (possibly caller-defaulted-to-current) new node set gates the incoming-edge-strip step — a surviving key's own outgoing edges are still recomputed, but nothing else's edges into it are touched; `newNodes == nil` now defaults to the package's CURRENT node set rather than an empty one.
+- **Repro/pin:** `TestInvalidatePackage_PatchesWithoutRebuild` (the cross-package "B1 still calls A1" assertions), `TestInvalidatePackage_TypedEdgesOnly`.
+- **Status:** closed
+- **Impact:** Documents the exact failure shape (survives-by-identity vs. survives-by-absence-of-newNodes) anyone extending package-scoped graph patching next — SU-4's own production wiring, or a future symbol-level cache patch elsewhere — needs to keep in mind; both are the kind of defect that would have read as "graph looks right" until a caller in a DIFFERENT, untouched package went silently unreachable.

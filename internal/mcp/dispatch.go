@@ -56,11 +56,14 @@ type toolEntry struct {
 	handler func(ctx context.Context, args json.RawMessage) (any, *rpcError)
 }
 
-// registerTool adds a tool to the server's tool registry.
+// registerTool adds a tool to the server's tool registry. Every handler is
+// wrapped with budgetedHandler (SU-3, ADR-041 decision 3) — a single choke
+// point, so a handler that forgets its own budget still cannot exceed the
+// dispatch-level one.
 func (s *Server) registerTool(desc toolDescriptor, h func(ctx context.Context, args json.RawMessage) (any, *rpcError)) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.tools = append(s.tools, toolEntry{desc: desc, handler: h})
+	s.tools = append(s.tools, toolEntry{desc: desc, handler: budgetedHandler(h)})
 }
 
 // findTool returns the toolEntry for a given name, or (zero, false).

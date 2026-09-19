@@ -301,6 +301,27 @@ func ObligationsForLayer(ctx context.Context, st store.Store, serviceID, file st
 	return obligationsCore(ctx, st, serviceID, file, max, fileScopeMatch(file), layer)
 }
 
+// servedClaimStatuses is core.ClaimStatus.Served()'s three admitted
+// statuses (fresh, stale, contradicted) as a slice store.Store.
+// ClaimsForServe's status filter can consume directly (SU-2). Kept in sync
+// with Served() by TestServedClaimStatusesMatchesServed.
+var servedClaimStatuses = []core.ClaimStatus{core.ClaimFresh, core.ClaimStale, core.ClaimContradicted}
+
+// scopeServePrefixes returns outFile itself plus every non-root ancestor
+// directory, deepest first — the substrings ClaimsForServe's scope-prefix
+// filter checks for literal containment in a stored scope glob (SU-2, see
+// the Store interface's ClaimsForServe doc comment). The repo root itself
+// ("") is deliberately excluded: an empty LIKE/Contains pattern would
+// match every row and defeat the filter entirely — root/global reach is
+// instead covered by ClaimsForServe's own wildcard/bare-name safety net.
+func scopeServePrefixes(outFile string) []string {
+	prefixes := []string{outFile}
+	for dir := dirOf(outFile); dir != ""; dir = dirOf(dir) {
+		prefixes = append(prefixes, dir)
+	}
+	return prefixes
+}
+
 // fileScopeMatch is the match function ObligationsFor/ObligationsForLayer
 // share: a claim's specificity is the byte length of its longest scope glob
 // that actually matches file — the KEYWORD tie-break rankByGoverningScope
@@ -474,21 +495,97 @@ func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile str
 	}
 	out := Obligations{Service: serviceID, File: outFile}
 
-	claims, err := st.ClaimsForService(ctx, serviceID, "")
+	// serviceRoot is the ONE place a service's project directory is knowable
+	// from (ctx, st, serviceID); both the layer-role split below (BP-18) and
+	// the citation re-read behind ContractScope (BP-19) resolve through it,
+	// so serving sees the same embedded ∪ project-local union a compile saw.
+	root := serviceRoot(ctx, st, serviceID)
+
+	// SU-2 (docs/plans/substrate.md §A, ADR-041 decision 3): claims are
+	// prefiltered in the STORE (SQL WHERE for SQLiteStore, a Go loop for
+	// MemoryStore) by served status, and — for a file-scoped call — by the
+	// edited file's own directory prefixes, before any Go scoring runs.
+	// This replaces the old "load every claim for the service, then
+	// cl.Status.Served() in Go" full scan.
+	//
+	// A claims-role layer's REAL matching scope is re-derived at serve time
+	// below from its citation (ContractScope, BP-19) — the STORED scope
+	// column this stage's prefix filter reads is only a compile-time
+	// fallback, so it must never be used to exclude a claims-role claim
+	// here. claimsRoleLayers is resolved once, from config alone (no store
+	// I/O), and also backs layerRole below so the role lookup the rest of
+	// this function needs is a single map read instead of one
+	// LoadLayerIn/loadUnion rebuild per distinct layer name.
+	roleByLayer := map[string]string{}
+	var claimsRoleLayers []string
+	if infos, lerr := ListLayersIn(root); lerr == nil {
+		for _, li := range infos {
+			if li.Role == RoleClaims {
+				roleByLayer[li.Name] = RoleClaims
+				claimsRoleLayers = append(claimsRoleLayers, li.Name)
+			}
+		}
+	}
+	layerRole := func(layer string) string {
+		if roleByLayer[layer] == RoleClaims {
+			return RoleClaims
+		}
+		return RoleGoverns
+	}
+
+	var scopePrefixes []string
+	if outFile != "" {
+		scopePrefixes = scopeServePrefixes(outFile)
+	}
+
+	byID := map[string]core.SemanticClaim{}
+	if len(claimsRoleLayers) > 0 && len(scopePrefixes) > 0 {
+		// A file-scoped call scope-filters the main fetch below; claims-role
+		// layers must be fetched WITHOUT that filter (see above), so they
+		// get their own unfiltered-by-scope pass here. Skipped for a
+		// root-scope call (scopePrefixes empty) or when no layer resolves
+		// to RoleClaims at all — the main fetch already covers both.
+		crClaims, err := st.ClaimsForServe(ctx, serviceID, claimsRoleLayers, servedClaimStatuses, nil)
+		if err != nil {
+			return out, fmt.Errorf("semantic: obligations load (claims-role): %w", err)
+		}
+		for _, cl := range crClaims {
+			byID[cl.ClaimID] = cl
+		}
+	}
+	govClaims, err := st.ClaimsForServe(ctx, serviceID, nil, servedClaimStatuses, scopePrefixes)
 	if err != nil {
 		return out, fmt.Errorf("semantic: obligations load: %w", err)
 	}
-	ids := make([]string, 0, len(claims))
-	served := claims[:0]
-	for _, cl := range claims {
-		if cl.Status.Served() {
-			served = append(served, cl)
-			ids = append(ids, cl.ClaimID)
-		}
+	for _, cl := range govClaims {
+		byID[cl.ClaimID] = cl
 	}
-	if len(served) == 0 {
+	if len(byID) == 0 {
 		return out, nil
 	}
+	served := make([]core.SemanticClaim, 0, len(byID))
+	for _, cl := range byID {
+		served = append(served, cl)
+	}
+	// Reproduce ClaimsForService's exact ordering: the two prefiltered
+	// fetches above are each independently ordered, but the union (map
+	// iteration) is not — re-sort so downstream logic (and any tie-break
+	// that reads input order) sees the SAME order the old full-scan path
+	// always fed it.
+	sort.Slice(served, func(i, j int) bool {
+		if served[i].Layer != served[j].Layer {
+			return served[i].Layer < served[j].Layer
+		}
+		if served[i].Subject != served[j].Subject {
+			return served[i].Subject < served[j].Subject
+		}
+		return served[i].ClaimID < served[j].ClaimID
+	})
+	ids := make([]string, len(served))
+	for i, cl := range served {
+		ids[i] = cl.ClaimID
+	}
+
 	links, err := st.ClaimLinks(ctx, serviceID, ids)
 	if err != nil {
 		return out, fmt.Errorf("semantic: obligations links: %w", err)
@@ -509,21 +606,6 @@ func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile str
 				anchorText[l.ClaimID] = l.AnchorText
 			}
 		}
-	}
-
-	// serviceRoot is the ONE place a service's project directory is knowable
-	// from (ctx, st, serviceID); both LayerRole (BP-18) and the citation
-	// re-read behind ContractScope (BP-19) resolve through it, so serving
-	// sees the same embedded ∪ project-local union a compile saw.
-	root := serviceRoot(ctx, st, serviceID)
-	roleByLayer := map[string]string{}
-	layerRole := func(layer string) string {
-		r, ok := roleByLayer[layer]
-		if !ok {
-			r = LayerRole(root, layer)
-			roleByLayer[layer] = r
-		}
-		return r
 	}
 	citedText := citedTextResolver(root, anchorText)
 	lookup := symbolFileLookup(ctx, st, serviceID)

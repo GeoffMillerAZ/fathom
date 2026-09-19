@@ -468,3 +468,48 @@ func TestIsRootLevelSource(t *testing.T) {
 		}
 	}
 }
+
+// TestServedClaimStatusesMatchesServed (SU-2) pins servedClaimStatuses — the
+// slice obligationsCore hands to store.Store.ClaimsForServe — against
+// core.ClaimStatus.Served()'s own truth table, so the two can never drift:
+// a status Served() admits but servedClaimStatuses omits would silently
+// stop being served; one servedClaimStatuses admits but Served() rejects
+// would silently serve a claim ClaimsForService's old full-scan path never
+// would have.
+func TestServedClaimStatusesMatchesServed(t *testing.T) {
+	all := []core.ClaimStatus{
+		core.ClaimFresh, core.ClaimStale, core.ClaimContradicted,
+		core.ClaimSuperseded, core.ClaimRefuted,
+	}
+	want := map[core.ClaimStatus]bool{}
+	for _, s := range all {
+		want[s] = s.Served()
+	}
+	got := map[core.ClaimStatus]bool{}
+	for _, s := range servedClaimStatuses {
+		got[s] = true
+	}
+	for _, s := range all {
+		if want[s] != got[s] {
+			t.Errorf("servedClaimStatuses vs Served() disagree on %q: Served()=%v, in servedClaimStatuses=%v", s, want[s], got[s])
+		}
+	}
+}
+
+// TestScopeServePrefixes pins the ancestor-chain shape obligationsCore
+// feeds to ClaimsForServe's scope-prefix filter for a file-scoped call.
+func TestScopeServePrefixes(t *testing.T) {
+	got := scopeServePrefixes("internal/store/sqlite.go")
+	want := []string{"internal/store/sqlite.go", "internal/store", "internal"}
+	if len(got) != len(want) {
+		t.Fatalf("scopeServePrefixes = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("scopeServePrefixes = %v, want %v", got, want)
+		}
+	}
+	if p := scopeServePrefixes("main.go"); len(p) != 1 || p[0] != "main.go" {
+		t.Fatalf("scopeServePrefixes(%q) = %v, want [main.go] (no ancestor beyond root)", "main.go", p)
+	}
+}

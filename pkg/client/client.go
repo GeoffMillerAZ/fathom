@@ -153,6 +153,25 @@ func (c *Client) Ingest(ctx context.Context, svc ServiceRef) (Report, error) {
 	return c.pipe.Ingest(ctx, svc)
 }
 
+// ReingestFile (SU-5/SU-6, docs/plans/substrate.md §A, ADR-041 decisions 3
+// and 4) re-extracts ONE file's observations/syntax edges and fingerprint
+// — the daemon's POST /refresh-file route and the pre-edit hook's
+// per-file freshness check both call through here. relFile is repo-relative
+// (forward-slash); the repo root is resolved from the service's recorded
+// ServiceMeta (set at the last full Ingest), so a service that has never
+// been ingested has nowhere to read the file from and errors loudly rather
+// than guessing a path.
+func (c *Client) ReingestFile(ctx context.Context, serviceID, relFile string) (fusion.ReingestReport, error) {
+	meta, found, err := c.st.GetServiceMeta(ctx, serviceID)
+	if err != nil {
+		return fusion.ReingestReport{}, fmt.Errorf("client.ReingestFile: get service meta: %w", err)
+	}
+	if !found || meta.Path == "" {
+		return fusion.ReingestReport{}, fmt.Errorf("client.ReingestFile: service %q has no recorded repo path (never ingested)", serviceID)
+	}
+	return c.pipe.ReingestFile(ctx, c.st, serviceID, meta.Path, relFile)
+}
+
 // refuseWorktreeReroot applies worktree.CheckReroot against the recorded
 // root for service, when there is one and path is an existing directory.
 func (c *Client) refuseWorktreeReroot(ctx context.Context, service, path string) error {

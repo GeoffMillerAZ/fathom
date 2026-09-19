@@ -80,6 +80,7 @@ var storeMethodDisposition = map[string]string{
 	"GetServiceMeta":                 "repo path + commit, service identity rather than indexed content",
 	"ListCommits":                    "git history, not indexed source content; suppressing a path never rewrites the repository's own log",
 	"ClaimsForService":               "claims are anchored through claim_links, which IS filtered; the claim row itself carries no path",
+	"ClaimsForServe":                 "SU-2: ClaimsForService's prefiltered sibling — same reasoning, same claim rows, only the WHERE narrowing differs; claims are anchored through claim_links, which IS filtered",
 	"ClaimEvents":                    "append-only verdict log keyed by claim id, no path and no content",
 	"ClaimEventsSince":               "append-only verdict log keyed by claim id, no path and no content",
 	"CompileRuns":                    "compile metadata (tokens, cost, watermark), no content",

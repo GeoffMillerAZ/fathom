@@ -124,6 +124,38 @@ func (c *CachedCallGraph) Invalidate(service string) {
 	c.entries = kept
 }
 
+// InvalidatePackage (SU-4, docs/plans/substrate.md §A, ADR-041 decision 3)
+// is Invalidate's package-granular sibling: when service's watermark
+// changed for a reason that only ever touches ONE Go package's worth of
+// data — typed edges reloaded for that package (internal/fusion/
+// typedcalls.go), or one file's observations/syntax edges re-ingested
+// (SU-5's ReingestFile) — the memoized graph is PATCHED in place
+// (Graph.ReplacePackage) instead of dropped, so the next Graph() call for
+// the SAME (service, watermark) key is still a cache hit and never pays a
+// full Build.
+//
+// newNodes is the package's complete new node set (nil when only typed
+// edges changed — SU-4's typedcalls.go wiring — leaving syntax nodes/edges
+// untouched); typedEdges is the package's complete new typed-edge set (nil
+// when only syntax data changed — SU-5's ReingestFile wiring, which
+// explicitly leaves typed edges as they are). A no-op when no graph is
+// cached for service at all — there is nothing to patch, and the next
+// Graph() call will build fresh from current data regardless.
+func (c *CachedCallGraph) InvalidatePackage(service, pkg string, newNodes []core.SymbolNode, typedEdges []core.Edge) {
+	if c == nil {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for i, e := range c.entries {
+		if e.service != service {
+			continue
+		}
+		c.entries[i].graph = e.graph.ReplacePackage(pkg, newNodes, typedEdges)
+		return
+	}
+}
+
 // Stats reports the cache's size and its process-lifetime hit/miss counts —
 // the numbers that say whether the memo is doing anything, rather than an
 // assurance that it is.

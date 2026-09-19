@@ -374,4 +374,35 @@ type Store interface {
 	// Close releases all resources held by the store. After Close returns the
 	// store must not be used.
 	Close() error
+
+	// ClaimsForServe (SU-2, docs/plans/substrate.md §A, ADR-041 decision 3)
+	// is ClaimsForService's prefiltered sibling: claims are narrowed by
+	// layer, status and scope prefix in the BACKEND (SQL WHERE for
+	// SQLiteStore, a Go loop for MemoryStore) instead of every caller
+	// loading a service's whole claim set and filtering in Go.
+	//
+	//   - layers: when non-empty, only claims whose Layer is in this set.
+	//     Empty/nil means every layer (ClaimsForService's layer="" behavior).
+	//   - statuses: when non-empty, only claims whose Status is in this
+	//     set. Empty/nil means every status.
+	//   - scopePrefixes: a DELIBERATE OVER-APPROXIMATION, never an exact
+	//     scope match — a claim is kept when any of its scope globs (a)
+	//     is unanchored/wildcard-rooted ("*", "**", or "**/…" — reaches
+	//     anywhere by construction), (b) is a bare literal with no "/"
+	//     (gitignore-style, matches anywhere), or (c) textually contains
+	//     one of scopePrefixes as a substring (a safe superset of "this
+	//     glob is anchored at, or is an ancestor/descendant relative of,
+	//     one of these paths" — the real anchor-vs-path relationship is
+	//     re-checked by the caller's own scope matcher, e.g.
+	//     internal/semantic's fileScopeMatch/rootScopeMatch, exactly as it
+	//     already does against ClaimsForService's full result). Empty/nil
+	//     means no scope filtering at all (every claim's scope, no matter
+	//     what it says, passes this stage). A claim with an EMPTY Scope
+	//     slice never matches a non-empty scopePrefixes filter (there is no
+	//     glob to test) — same as it never matching a real scope-gated
+	//     match() either.
+	//
+	// Results are ordered exactly like ClaimsForService: (layer, subject,
+	// claim_id).
+	ClaimsForServe(ctx context.Context, serviceID string, layers []string, statuses []core.ClaimStatus, scopePrefixes []string) ([]core.SemanticClaim, error)
 }

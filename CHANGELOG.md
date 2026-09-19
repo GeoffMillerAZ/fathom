@@ -86,6 +86,27 @@ present, closing INC-20 (invariant I40).
 **Typed edges beyond Go: CUE native, TypeScript/JavaScript/Python file-resolved (ADR-041 decision 5, `docs/plans/substrate.md` §B).** `EnrichCUEEdges` (SU-10, `internal/fusion`) loads every CUE package under a repo with `cue/load`, resolving same-file, cross-file and cross-package `#A: #B & {...}`/import references to typed `core.EdgeDirect` edges (an unsettled reference is `core.EdgeUnresolved`, never dropped) — wired into ingest beside the Go pass, package-granular, under its own `cue:`-prefixed store-key namespace so it can never collide with a Go package's typed-edge rows; `ingest` gains a `cue: N pkg(s) processed (…), N edge(s)` line (`--json`: `cue_edges`). `ResolveFileEdges` (SU-11, `internal/fusion`) adds a per-file import/module-scope resolver for TypeScript/JavaScript and Python when no SCIP index is present for the service, emitting the new `core.EdgeFileResolved` kind — tier pre-scan, always heuristic (`c: "h"`) in `find_callers`/`resolved_nav`/every nav consumer, never presented as typed; `ingest` reports `file_resolved: N` alongside it. `docs/languages.md`'s CUE row moves to native (done); its TypeScript/JavaScript/Python rows mark the file fallback done.
 <!-- /su-wave-s3 -->
 
+<!-- su-wave-s1 -->
+**Substrate hygiene and freshness (ADR-041 decisions 3/4, wave 1 of the substrate round).**
+`EnsureIndexes` adds the secondary indexes the obligations claim query and the
+find_callers/find_callees typed-edge queries actually use, applied idempotently at every
+store Open. `Store.ClaimsForServe` prefilters claims by layer, served status and the edited
+file's directory prefixes in the backend (SQL `WHERE` for SQLite, a Go loop for the memory
+store) before `obligationsCore` scores them in Go, byte-identical to the prior full-scan
+path on every existing golden. Every `tools/call` result now passes through a
+dispatch-level byte budget (`budgetedHandler`) so a handler that forgets to budget itself
+still cannot exceed it. `CachedCallGraph.InvalidatePackage` patches one package's nodes and
+edges into a warm call graph in place instead of forcing a full rebuild (production wiring
+at the typed-edge and per-file re-ingest call sites is tracked as follow-up).
+`fusion.Pipeline.ReingestFile` re-extracts one file's observations/syntax edges and
+fingerprint on request, leaving typed edges package-granular; the daemon's new loopback
+`POST /refresh-file` route serves it. The pre-edit hook now refreshes a stale file before
+answering obligations (`ensureFileFresh`) instead of only reporting staleness, and the
+prompt hook ignores harness-injected system notifications (`isSystemNotification`) so their
+prose can no longer be mis-read as repo paths. Evidence: `docs/plans/substrate.md` SU-1..3,
+SU-5..7.
+<!-- /su-wave-s1 -->
+
 **Portable bounded build cache (ADR-039).** `FATHOM_CACHE_ROOT` now relocates the
 supported Taskfile/script build caches without embedding a workstation path; configured
 missing roots refuse, and `FATHOM_CACHE_MAX_MIB` bounds the regenerable Go build cache.
