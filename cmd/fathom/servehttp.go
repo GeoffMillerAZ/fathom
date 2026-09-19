@@ -266,6 +266,11 @@ func openCallLog(path string) (*os.File, error) {
 //	GET  /findings/summary — repo-wide open finding-kind claim count + oldest
 //	                      compiled-at (FL-21, docs/vision/30-findings-loop.md
 //	                      §3.4); ?service=NAME required; never an MCP tool
+//	POST /refresh-file  — {service, file} re-extracts one file's
+//	                      observations/syntax edges and fingerprint,
+//	                      leaving typed edges alone (SU-5/SU-6, ADR-041
+//	                      decisions 3/4); the pre-edit hook's per-file
+//	                      freshness check; never an MCP tool
 //	POST /reload        — 200 OK stub; would reload a PlatformStore in production
 //
 // newHTTPHandlerWithAuth wraps newHTTPHandler with the /rpc/modules (AND,
@@ -333,6 +338,9 @@ func newHTTPHandler(srv *mcp.Server, c *client.Client, selfAddr string) http.Han
 	// route, never an MCP tool — the session hook's own repo-wide "open
 	// findings: N" brief line.
 	mux.Handle("/findings/summary", findingsSummaryHandler(c))
+	// POST /refresh-file {service, file} (SU-5/SU-6, ADR-041 decisions 3
+	// and 4): the pre-edit hook's per-file freshness refresh.
+	mux.Handle("/refresh-file", refreshFileHandler(c))
 	// Observatory (vision 17 / docs/plans/observatory.md OB-4/5/6):
 	// loopback value-realization pages over the same primitives the fleet
 	// report reads. selfURL lets the model reuse the HTTP-shaped helpers.
