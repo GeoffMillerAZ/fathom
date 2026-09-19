@@ -1224,6 +1224,72 @@ ORDER BY layer, subject, claim_id
 	return scanClaims(rows)
 }
 
+// scopeReachAnywhereConditions are the SQL LIKE fragments matching a
+// stored scope column (JSON array text, e.g. `["internal/store/**"]`)
+// whose glob(s) can match ANY path regardless of scopePrefixes — see
+// ClaimsForServe's doc comment on the Store interface. Checked against
+// the column's literal JSON text, so the quoting mirrors how
+// encoding/json renders a string element: `"**"`, `"**/…`, `"*"`.
+var scopeReachAnywhereLike = []string{
+	`%"**"%`, // exactly "**"
+	`%"**/%`, // starts with "**/"
+	`%"*"%`,  // exactly "*"
+}
+
+// ClaimsForServe is ClaimsForService's prefiltered sibling — see the Store
+// interface doc comment for the exact (deliberately over-approximate)
+// scope-prefix semantics.
+func (s *SQLiteStore) ClaimsForServe(ctx context.Context, serviceID string, layers []string, statuses []core.ClaimStatus, scopePrefixes []string) ([]core.SemanticClaim, error) {
+	const cols = `service_id, claim_id, layer, layer_version, kind, subject, rule, scope,
+	tier, tier_profile, status, model, prompt_version, repro_key, input_digest,
+	compiled_at_watermark, compiled_at, class`
+
+	where := []string{"service_id = ?"}
+	args := []any{serviceID}
+
+	if len(statuses) > 0 {
+		placeholders := make([]string, len(statuses))
+		for i, st := range statuses {
+			placeholders[i] = "?"
+			args = append(args, string(st))
+		}
+		where = append(where, "status IN ("+strings.Join(placeholders, ", ")+")")
+	}
+	if len(layers) > 0 {
+		placeholders := make([]string, len(layers))
+		for i, l := range layers {
+			placeholders[i] = "?"
+			args = append(args, l)
+		}
+		where = append(where, "layer IN ("+strings.Join(placeholders, ", ")+")")
+	}
+	if len(scopePrefixes) > 0 {
+		var scopeOr []string
+		for _, pat := range scopeReachAnywhereLike {
+			scopeOr = append(scopeOr, "scope LIKE ?")
+			args = append(args, pat)
+		}
+		// A bare literal scope entry (no "/" anywhere in the whole JSON
+		// array) is gitignore-style "matches anywhere" — see globAnchor's
+		// doc comment in internal/semantic/governingscope.go.
+		scopeOr = append(scopeOr, "scope NOT LIKE ?")
+		args = append(args, "%/%")
+		for _, prefix := range scopePrefixes {
+			scopeOr = append(scopeOr, "scope LIKE ?")
+			args = append(args, "%"+prefix+"%")
+		}
+		where = append(where, "("+strings.Join(scopeOr, " OR ")+")")
+	}
+
+	q := `SELECT ` + cols + ` FROM semantic_claims WHERE ` + strings.Join(where, " AND ") + ` ORDER BY layer, subject, claim_id`
+	rows, err := s.db.QueryContext(ctx, q, args...)
+	if err != nil {
+		return nil, fmt.Errorf("ClaimsForServe query: %w", err)
+	}
+	defer rows.Close()
+	return scanClaims(rows)
+}
+
 // ClaimLinks returns links for the given claim IDs within serviceID, ordered
 // by (claim_id, rel, target_ref). Returns nil with no error for empty claimIDs.
 func (s *SQLiteStore) claimLinksRaw(ctx context.Context, serviceID string, claimIDs []string) ([]core.ClaimLink, error) {

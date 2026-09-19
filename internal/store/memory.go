@@ -4,6 +4,7 @@ import (
 	"context"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -645,6 +646,87 @@ func (m *MemoryStore) ClaimsForService(_ context.Context, serviceID, layer strin
 			continue
 		}
 		if layer != "" && c.Layer != layer {
+			continue
+		}
+		sc := c
+		if c.Scope != nil {
+			sc.Scope = make([]string, len(c.Scope))
+			copy(sc.Scope, c.Scope)
+		}
+		result = append(result, sc)
+	}
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].Layer != result[j].Layer {
+			return result[i].Layer < result[j].Layer
+		}
+		if result[i].Subject != result[j].Subject {
+			return result[i].Subject < result[j].Subject
+		}
+		return result[i].ClaimID < result[j].ClaimID
+	})
+	return result, nil
+}
+
+// scopeReachesAnywhere mirrors SQLiteStore's scopeReachAnywhereLike check
+// (sqlite.go): true when g is unanchored/wildcard-rooted ("*", "**",
+// "**/…") or a bare literal with no "/" (gitignore-style, matches
+// anywhere) — either way a claim carrying it must survive ClaimsForServe's
+// scope-prefix filter regardless of scopePrefixes, per the Store interface
+// doc comment.
+func scopeReachesAnywhere(g string) bool {
+	if g == "*" || g == "**" || strings.HasPrefix(g, "**/") {
+		return true
+	}
+	return !strings.Contains(g, "/")
+}
+
+// scopeServeMatch reports whether ANY glob in scope passes ClaimsForServe's
+// over-approximate scope-prefix test: reaches anywhere (scopeReachesAnywhere)
+// or textually contains one of prefixes as a substring — see the Store
+// interface's ClaimsForServe doc comment for why substring containment is
+// the deliberately loose (never under-excluding) test used here.
+func scopeServeMatch(scope []string, prefixes []string) bool {
+	for _, g := range scope {
+		if scopeReachesAnywhere(g) {
+			return true
+		}
+		for _, p := range prefixes {
+			if strings.Contains(g, p) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// ClaimsForServe is ClaimsForService's prefiltered sibling — see the Store
+// interface doc comment for the exact (deliberately over-approximate)
+// scope-prefix semantics, mirrored here in Go rather than SQL.
+func (m *MemoryStore) ClaimsForServe(_ context.Context, serviceID string, layers []string, statuses []core.ClaimStatus, scopePrefixes []string) ([]core.SemanticClaim, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	layerSet := map[string]bool{}
+	for _, l := range layers {
+		layerSet[l] = true
+	}
+	statusSet := map[core.ClaimStatus]bool{}
+	for _, st := range statuses {
+		statusSet[st] = true
+	}
+
+	var result []core.SemanticClaim
+	for k, c := range m.claims {
+		if k.serviceID != serviceID {
+			continue
+		}
+		if len(layerSet) > 0 && !layerSet[c.Layer] {
+			continue
+		}
+		if len(statusSet) > 0 && !statusSet[c.Status] {
+			continue
+		}
+		if len(scopePrefixes) > 0 && !scopeServeMatch(c.Scope, scopePrefixes) {
 			continue
 		}
 		sc := c
