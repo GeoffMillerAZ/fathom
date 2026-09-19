@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/capability"
+	"github.com/geoffmilleraz/fathom/internal/connector"
 )
 
 func cmdCapabilities(args []string, stdout, stderr io.Writer) int {
@@ -398,10 +399,20 @@ type capabilityModel struct {
 	Operating    int             `json:"operating"`
 	Total        int             `json:"total"`
 	Capabilities []capabilityRow `json:"capabilities"`
+	// TypedEdgeProducers (SU-13, ADR-041 decision 5, docs/plans/
+	// substrate.md) names, per registered language tag, the typed-edge
+	// mechanism fathom's own code currently provides: "native", "scip:
+	// <tool>" (internal/scip.ImportIndex, generic across every SCIP
+	// producer — SU-9), "file", or "syntax". Computed from
+	// connector.TypedEdgeProducers(), the same table
+	// TestLanguagesTrackerMatchesRegistry (internal/connector) cross-checks
+	// against docs/languages.md — never a per-service, per-ingest fact
+	// (that lives in staleness_report/doctor's typed_edges row instead).
+	TypedEdgeProducers map[string]string `json:"typed_edge_producers"`
 }
 
 func capabilityJSON(p capability.Probe, reports []capability.Report) capabilityModel {
-	m := capabilityModel{Service: p.Service, RepoRoot: p.RepoRoot, Total: len(reports)}
+	m := capabilityModel{Service: p.Service, RepoRoot: p.RepoRoot, Total: len(reports), TypedEdgeProducers: connector.TypedEdgeProducers()}
 	for _, r := range reports {
 		if r.State.Operating {
 			m.Operating++
