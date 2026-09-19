@@ -41,6 +41,13 @@ Outcome: pending (`docs/plans/evidence-plane.md` EP-14 `adr_references_resolve`;
 
 ## Closed
 
+### INC-22 2026-09-19 Two green gates, no push: the ssh session did not survive the pre-push hook
+What: gated pushes 32 and 33 of the substrate round passed every lefthook step (validate 342 s / 162 s, hermetic verify 83 s, review) and then `git push` exited 141 (SIGPIPE) with no transport output; origin/main stayed at d8770983. git opens the transport before it runs the pre-push hook, so the ssh session to the remote sat idle for the whole gate (9 min, then 5.5 min with a warmed build cache) and was gone when git sent the pack. ssh keepalives changed nothing.
+Evidence: `<scratchpad>/push-full32.log`, `push-full33.log` (lefthook summary green, no `main -> main`); `git ls-remote` unchanged after both.
+Would have caught it: pushing over a transport with no session to lose. Push 34, over smart HTTP with the same hook, landed 54bf2d0b.
+Class: instrument-dies-after-passing (the gate proved the tree; the delivery failed silently)
+Outcome: `task push` sends the pack over smart HTTP derived from the push remote (`scripts/push-http.sh`, never a hardcoded URL — ADR-011); credentials from the GitHub CLI when present. Invariant I41; `scripts/push-http_test.sh` in `task scripts-check`.
+
 ### INC-21 2026-09-19 The pre-push verify gate measured the daemon's index of a different tree
 What: the first gated push of the substrate round failed its `verify` step with "25 claimed: 0 verified" for `docs/plans/substrate.md` because `bin/fathom verify` used the default store — the daemon's index of the operator's checkout at d8770983 — while the symbols it was asked to prove exist only in the tree being pushed.
 Evidence: `<scratchpad>/push-full31.log` ("provenance: daemon binary @ 7dd702ac ≠ this fathom binary @ 3095a5d2 — the store (watermark d8770983) was built and queried by the daemon's extractor").
