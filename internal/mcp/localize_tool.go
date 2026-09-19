@@ -27,6 +27,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/connector"
@@ -52,41 +53,100 @@ func clampLocalizeBudget(n int) int {
 	return n
 }
 
-// localizeSeedKind names one shape of frontier item the loop below
-// processes; the four input-derived kinds are produced once at the start,
-// "proximity" is queued DURING the loop when a seed resolves to a real
-// symbol.
+// localizeMaxCandidates / localizeMaxWhy are the payload-cap deliverable
+// (ADR-041 D4, docs/bench/readings/lca-run-1-reading.md §3's 882,577-byte
+// localize payload in tock-fathom-t2): candidates are capped at 25
+// regardless of the byte budget fitToBudget would otherwise allow, and
+// every candidate's own citation list is capped at 3 — a candidate with
+// ten contributing hops still names only its three most authoritative
+// (chronologically earliest, since hops run primary-seed before
+// graph-expansion before obligations).
+const (
+	localizeMaxCandidates = 25
+	localizeMaxWhy        = 3
+)
+
+// Graph-expansion score weights (ADR-041 D4): closer wins, resolved beats
+// heuristic at the same distance, and the per-candidate contribution is
+// scaled by how many distinct seeds' walks reached it
+// (graphExpansionCandidateScore) — this scheme's own encoding of ranking
+// criterion (d), convergence, without appending one why-citation per
+// contributing seed.
+const (
+	localizeGraphDist1Typed     = 3.0
+	localizeGraphDist1Heuristic = 2.0
+	localizeGraphDist2Typed     = 1.5
+	localizeGraphDist2Heuristic = 1.0
+)
+
+// graphExpansionScore returns the per-seed-contribution score for a
+// candidate reached at distance (1 or 2) with the given tier.
+func graphExpansionScore(distance int, tier string) float64 {
+	switch {
+	case distance <= 1 && tier == "typed":
+		return localizeGraphDist1Typed
+	case distance <= 1:
+		return localizeGraphDist1Heuristic
+	case tier == "typed":
+		return localizeGraphDist2Typed
+	default:
+		return localizeGraphDist2Heuristic
+	}
+}
+
+// graphExpansionCandidateScore scales the base per-distance/tier weight
+// by how many distinct seeds' walks reached the candidate (convergence,
+// ranking criterion (d)) — fromSeeds < 1 is treated as 1, never a zero or
+// negative multiplier.
+func graphExpansionCandidateScore(distance int, tier string, fromSeeds int) float64 {
+	if fromSeeds < 1 {
+		fromSeeds = 1
+	}
+	return graphExpansionScore(distance, tier) * float64(fromSeeds)
+}
+
+// pluralS (summary.go) is reused here for hop/why text ("1 hop" vs
+// "2 hops", "1 seed" vs "2 seeds").
+
+// localizeSeedKind names one shape of frontier item the primary loop
+// below processes — the four input-derived kinds, produced once at the
+// start. Graph expansion (ADR-041 D4, expandSeedsByGraph) runs as its own
+// pass AFTER this loop, over every symbol key the loop actually resolved
+// — never as a fifth frontier kind queued mid-loop, so the budget spends
+// on two predictable aggregate hops (depth 1, depth 2) instead of one per
+// resolved seed.
 type localizeSeedKind string
 
 const (
-	localizeSeedFileLine  localizeSeedKind = "file_line"
-	localizeSeedFunction  localizeSeedKind = "function"
-	localizeSeedLiteral   localizeSeedKind = "literal"
-	localizeSeedTerm      localizeSeedKind = "term"
-	localizeSeedProximity localizeSeedKind = "proximity"
+	localizeSeedFileLine localizeSeedKind = "file_line"
+	localizeSeedFunction localizeSeedKind = "function"
+	localizeSeedLiteral  localizeSeedKind = "literal"
+	localizeSeedTerm     localizeSeedKind = "term"
 )
 
 // localizeSeed is one frontier item. File/Line are set only for
-// localizeSeedFileLine; Label is set only for localizeSeedProximity (a
-// human-readable name for the hop log — Value there is the graph's own,
-// possibly fully-qualified, key).
+// localizeSeedFileLine.
 type localizeSeed struct {
 	Kind  localizeSeedKind
 	Value string
 	File  string
 	Line  int
-	Label string
 }
 
 // localizeCandidate accumulates every hop's own contribution to one
 // (file, symbol) pair — Symbol is "" when a hit named only a file (a
-// search match with no enclosing symbol at that line).
+// search match with no enclosing symbol at that line). GraphDistance is
+// ADR-041 D4's own field: the shortest graph-expansion distance (1 or 2)
+// any seed reached this candidate at; 0 covers BOTH "this candidate IS a
+// seed itself" and "graph expansion never touched it" — the spec's own
+// "0 seed" reading makes the two indistinguishable on the wire by design.
 type localizeCandidate struct {
-	File   string
-	Symbol string
-	Score  float64
-	Tier   string // "typed" | "heuristic"
-	Why    []string
+	File          string
+	Symbol        string
+	Score         float64
+	Tier          string // "typed" | "heuristic"
+	Why           []string
+	GraphDistance int
 }
 
 // localizeHop is one bounded step of the loop, always logged regardless
@@ -273,6 +333,226 @@ func findFileByPathSuffix(byFile map[string][]core.SymbolNode, target string) (s
 	return "", nil, false
 }
 
+// ─── reformulation (ADR-041 D4) ─────────────────────────────────────────────
+
+// reformulateIdentRE matches an identifier-shaped token of at least 3
+// characters — splitIdentifier below decides whether it actually carries
+// camelCase/snake_case shape (more than one word) or is just a plain
+// word, which reformulateSeeds skips.
+var reformulateIdentRE = regexp.MustCompile(`\b[A-Za-z][A-Za-z0-9_]{2,}\b`)
+
+// splitIdentifier splits an identifier into its constituent words —
+// snake_case on "_", camelCase/PascalCase on a lower-to-upper transition
+// — returning a single-element slice when s carries neither shape (a
+// plain word or a single already-lowercase token), the signal
+// reformulateSeeds uses to skip it as not identifier-shaped.
+func splitIdentifier(s string) []string {
+	if strings.Contains(s, "_") {
+		var parts []string
+		for _, p := range strings.Split(s, "_") {
+			if p != "" {
+				parts = append(parts, p)
+			}
+		}
+		return parts
+	}
+	runes := []rune(s)
+	var parts []string
+	var cur []rune
+	for i, r := range runes {
+		if i > 0 && unicode.IsUpper(r) && unicode.IsLower(runes[i-1]) {
+			parts = append(parts, string(cur))
+			cur = nil
+		}
+		cur = append(cur, r)
+	}
+	if len(cur) > 0 {
+		parts = append(parts, string(cur))
+	}
+	return parts
+}
+
+// reformulateSeeds (ADR-041 D4) derives seeds from free text when
+// ordinary extraction (localizeSeedsFor) found nothing to seed from at
+// all — NEVER a model call: every identifier-shaped token
+// (camelCase/snake_case, splitIdentifier finding more than one word)
+// becomes both a function-name seed (the identifier itself, run through
+// the SAME find_symbol hop a function seed always runs through) and a
+// concern-term seed per significant word it splits into; every quoted
+// literal becomes a literal seed; every path-shaped token's file
+// basename (extension stripped) becomes a term seed. Returns the derived
+// seeds (deduped, first-occurrence order) and the plain derived term
+// strings the response's own `reformulated_terms` names. Deterministic:
+// same text, same output, every time — no ranking or model call here,
+// only regex and string splitting.
+func reformulateSeeds(text string) ([]localizeSeed, []string) {
+	var out []localizeSeed
+	var terms []string
+	seenTerm := map[string]bool{}
+	add := func(kind localizeSeedKind, v string) {
+		if v == "" {
+			return
+		}
+		out = append(out, localizeSeed{Kind: kind, Value: v})
+		if !seenTerm[v] {
+			seenTerm[v] = true
+			terms = append(terms, v)
+		}
+	}
+
+	for _, m := range reformulateIdentRE.FindAllString(text, -1) {
+		parts := splitIdentifier(m)
+		if len(parts) < 2 {
+			continue // a plain word, not an identifier shape
+		}
+		add(localizeSeedFunction, m)
+		for _, p := range parts {
+			if len(p) >= 3 && !localizeStopwords[strings.ToLower(p)] {
+				add(localizeSeedTerm, p)
+			}
+		}
+	}
+	for _, m := range localizeQuotedRE.FindAllStringSubmatch(text, -1) {
+		for _, g := range m[1:] {
+			if g != "" {
+				add(localizeSeedLiteral, g)
+				break
+			}
+		}
+	}
+	for _, m := range localizeFrameColonRE.FindAllStringSubmatch(text, -1) {
+		base := filepath.Base(m[1])
+		base = strings.TrimSuffix(base, filepath.Ext(base))
+		if len(base) >= 3 {
+			add(localizeSeedTerm, base)
+		}
+	}
+	return dedupSeeds(out), terms
+}
+
+// ─── graph expansion (ADR-041 D4) ───────────────────────────────────────────
+
+// graphExpansion is one symbol expandSeedsByGraph found while walking the
+// call graph outward from a set of seed keys — the SECOND and THIRD hop
+// of localize's own walk (the FIRST hop is the seed extraction/scoring
+// above; expandSeedsByGraph only ever walks from a symbol a seed hop
+// already resolved). Key is the graph's own canonical key; Distance is 1
+// or 2 hops from the nearest contributing seed (never 0 — a seed is
+// never re-emitted as its own expansion candidate); Tier is "typed" when
+// the SHORTEST path found used only typed edges, "heuristic" otherwise;
+// Via is that shortest path's own seed-to-Key chain of canonical keys;
+// FromSeeds is every distinct origin seed (sorted) whose walk reached Key
+// at ANY distance — the convergence signal ranking criterion (d) uses.
+type graphExpansion struct {
+	Key       string
+	Distance  int
+	Tier      string
+	Via       []string
+	FromSeeds []string
+}
+
+// graphNeighbors is one symbol's direct callers AND callees, combined —
+// the bidirectional "proximity" shape localize's own graph walk has
+// always used (a caller and a callee are both evidence something is
+// nearby, not merely code that calls forward).
+func graphNeighbors(g *callgraph.Graph, key string) []callgraph.EdgeInfo {
+	return append(append([]callgraph.EdgeInfo{}, callgraph.CallersDetail(g, key)...), callgraph.CalleesDetail(g, key)...)
+}
+
+// expandSeedsByGraph walks callers and callees of each of seeds, in the
+// order given, out to depth hops (2 for localize's own D4 walk).
+// Resolved (typed) edges are preferred: a seed whose OWN direct
+// callers/callees include at least one typed edge walks typed edges
+// only, at every hop of that seed's own walk; a seed with NONE (its
+// direct neighbourhood is entirely syntax-only) falls back to walking
+// both kinds, and every candidate that walk reaches is labeled
+// "heuristic" — "resolved edges first; heuristic edges only when a seed
+// has no resolved edges, and label them". Deterministic: seeds are
+// walked in the given order, candidates are returned sorted by Key, and
+// a candidate reached more than once keeps the shortest (then
+// most-typed, then first-found-by-seed-order) path — never a later,
+// longer or less-confident one.
+func expandSeedsByGraph(seeds []string, graph *callgraph.Graph, depth int) []graphExpansion {
+	if graph == nil || depth <= 0 {
+		return nil
+	}
+	results := map[string]*graphExpansion{}
+	var order []string
+
+	type frontierNode struct {
+		key  string
+		path []string
+	}
+
+	for _, seed := range seeds {
+		canon := callgraph.Canonical(graph, seed)
+		if canon == "" {
+			continue
+		}
+		useHeuristic := true
+		for _, e := range graphNeighbors(graph, canon) {
+			if e.Kind != "" {
+				useHeuristic = false
+				break
+			}
+		}
+
+		visited := map[string]bool{canon: true}
+		frontier := []frontierNode{{canon, []string{canon}}}
+		for d := 1; d <= depth && len(frontier) > 0; d++ {
+			var next []frontierNode
+			for _, f := range frontier {
+				for _, e := range graphNeighbors(graph, f.key) {
+					if !useHeuristic && e.Kind == "" {
+						continue // resolved-first: this seed has typed edges, so skip heuristic-only ones
+					}
+					if visited[e.Key] {
+						continue
+					}
+					visited[e.Key] = true
+					tier := "heuristic"
+					if e.Kind != "" {
+						tier = "typed"
+					}
+					path := append(append([]string{}, f.path...), e.Key)
+					next = append(next, frontierNode{e.Key, path})
+
+					rec, ok := results[e.Key]
+					if !ok {
+						rec = &graphExpansion{Key: e.Key, Distance: d, Tier: tier, Via: path}
+						results[e.Key] = rec
+						order = append(order, e.Key)
+					} else if d < rec.Distance || (d == rec.Distance && tier == "typed" && rec.Tier == "heuristic") {
+						rec.Distance = d
+						rec.Tier = tier
+						rec.Via = path
+					}
+					seen := false
+					for _, s := range rec.FromSeeds {
+						if s == canon {
+							seen = true
+							break
+						}
+					}
+					if !seen {
+						rec.FromSeeds = append(rec.FromSeeds, canon)
+					}
+				}
+			}
+			frontier = next
+		}
+	}
+
+	sort.Strings(order)
+	out := make([]graphExpansion, 0, len(order))
+	for _, k := range order {
+		rec := results[k]
+		sort.Strings(rec.FromSeeds)
+		out = append(out, *rec)
+	}
+	return out
+}
+
 // ─── the loop ───────────────────────────────────────────────────────────────
 
 // runLocalize is registerLocalize's own testable core. The second return
@@ -302,7 +582,7 @@ func runLocalize(ctx context.Context, s *Server, backend QueryInterface, service
 	candidates := map[string]*localizeCandidate{}
 	var candOrder []string
 
-	upsert := func(file, symbol, tier string, score float64, why string) {
+	upsert := func(file, symbol, tier string, score float64, why string, distance int) {
 		key := file + "\x00" + symbol
 		c, ok := candidates[key]
 		if !ok {
@@ -315,6 +595,9 @@ func runLocalize(ctx context.Context, s *Server, backend QueryInterface, service
 			c.Tier = "typed"
 		}
 		c.Why = append(c.Why, why)
+		if distance > 0 && (c.GraphDistance == 0 || distance < c.GraphDistance) {
+			c.GraphDistance = distance
+		}
 	}
 
 	navs := s.loadNavGraphs(ctx, backend, service)
@@ -329,8 +612,38 @@ func runLocalize(ctx context.Context, s *Server, backend QueryInterface, service
 		}
 	}
 
-	seenProximity := map[string]bool{}
+	// seedGraphKeys is every symbol key the primary loop below actually
+	// resolved (a stack frame's enclosing symbol, a find_symbol hit, or a
+	// search hit's own enclosing symbol) — the walk origins ADR-041 D4's
+	// graph-expansion pass runs from, AFTER this loop, once per resolved
+	// symbol rather than once per hop.
+	var seedGraphKeys []string
+	seenSeedKey := map[string]bool{}
+	addSeedKey := func(k string) {
+		if k == "" || seenSeedKey[k] {
+			return
+		}
+		seenSeedKey[k] = true
+		seedGraphKeys = append(seedGraphKeys, k)
+	}
+
 	frontier := localizeSeedsFor(kind, text)
+	reformulated := false
+	var reformulatedTerms []string
+	// ADR-041 D4: seed extraction found nothing at all to work with —
+	// derive seeds by identifier splitting, quoted literals and file
+	// basenames (reformulateSeeds), never a model call. Logged as its own
+	// hop, even when it finds nothing either.
+	if len(frontier) == 0 && used < allowed {
+		used++
+		derived, terms := reformulateSeeds(text)
+		hops = append(hops, localizeHop{N: used, Tool: "reformulate", Arg: fmt.Sprintf("%d derived term(s) from identifier-splitting/literals/basenames", len(terms)), Added: len(derived)})
+		if len(derived) > 0 {
+			frontier = derived
+			reformulated = true
+			reformulatedTerms = terms
+		}
+	}
 
 	for len(frontier) > 0 && used < allowed {
 		item := frontier[0]
@@ -345,14 +658,11 @@ func runLocalize(ctx context.Context, s *Server, backend QueryInterface, service
 			hop.Arg = fmt.Sprintf("%s:%d", item.File, item.Line)
 			if matchPath, syms, ok := findFileByPathSuffix(byFile, item.File); ok {
 				if sym, found := enclosingSymbol(syms, item.Line, nil); found {
-					upsert(matchPath, sym.Name, "typed", 10, "stack frame "+hop.Arg)
+					upsert(matchPath, sym.Name, "typed", 10, "stack frame "+hop.Arg, 0)
 					added++
-					if key := sym.Key(); !seenProximity[key] {
-						seenProximity[key] = true
-						frontier = append(frontier, localizeSeed{Kind: localizeSeedProximity, Value: key, Label: sym.Name})
-					}
+					addSeedKey(sym.Key())
 				} else {
-					upsert(matchPath, "", "heuristic", 6, "stack frame "+hop.Arg+" (file; no enclosing symbol at that line)")
+					upsert(matchPath, "", "heuristic", 6, "stack frame "+hop.Arg+" (file; no enclosing symbol at that line)", 0)
 					added++
 				}
 			}
@@ -368,12 +678,9 @@ func runLocalize(ctx context.Context, s *Server, backend QueryInterface, service
 				return found[i].Name < found[j].Name
 			})
 			for _, n := range found {
-				upsert(n.FilePath, n.Name, "typed", 8, "named "+item.Value)
+				upsert(n.FilePath, n.Name, "typed", 8, "named "+item.Value, 0)
 				added++
-				if key := n.Key(); !seenProximity[key] {
-					seenProximity[key] = true
-					frontier = append(frontier, localizeSeed{Kind: localizeSeedProximity, Value: key, Label: n.Name})
-				}
+				addSeedKey(n.Key())
 			}
 
 		case localizeSeedLiteral, localizeSeedTerm:
@@ -401,41 +708,64 @@ func runLocalize(ctx context.Context, s *Server, backend QueryInterface, service
 							}
 							seenFile[rh.File] = true
 							sym := ""
+							var symKey string
 							if syms, ok := byFile[rh.File]; ok {
 								if n, found := enclosingSymbol(syms, rh.Line, nil); found {
 									sym = n.Name
+									symKey = n.Key()
 								}
 							}
-							upsert(rh.File, sym, "heuristic", score, fmt.Sprintf("%s %q via search", label, item.Value))
+							upsert(rh.File, sym, "heuristic", score, fmt.Sprintf("%s %q via search", label, item.Value), 0)
 							added++
+							addSeedKey(symKey)
 						}
 					}
-				}
-			}
-
-		case localizeSeedProximity:
-			hop.Tool = "graph_proximity"
-			hop.Arg = item.Label
-			if navs != nil {
-				graph, _ := navs.pick(true) // both typed and heuristic edges: a proximity hop must not silently drop a syntax-only neighbor
-				edges := append(append([]callgraph.EdgeInfo{}, callgraph.CallersDetail(graph, item.Value)...), callgraph.CalleesDetail(graph, item.Value)...)
-				for _, e := range edges {
-					n, ok := byKey[e.Key]
-					if !ok {
-						continue
-					}
-					tier := "heuristic"
-					if e.Kind != "" {
-						tier = "typed"
-					}
-					upsert(n.FilePath, n.Name, tier, 3, fmt.Sprintf("graph neighbor of %s (%s)", item.Label, tier))
-					added++
 				}
 			}
 		}
 
 		hop.Added = added
 		hops = append(hops, hop)
+	}
+
+	// Graph expansion (ADR-041 D4, hops 2 and 3): every symbol the primary
+	// loop above actually resolved becomes a walk origin — callers and
+	// callees over the typed/heuristic graph, to depth 2. Two aggregate
+	// hops (never one per seed, so the budget spends predictably): depth
+	// 1 then depth 2, each logged once regardless of how many seeds or
+	// candidates it touched.
+	if navs != nil && len(seedGraphKeys) > 0 {
+		graph, _ := navs.pick(true) // both typed and heuristic: expandSeedsByGraph itself decides, per seed, whether heuristic edges are in play
+		byDistance := map[int][]graphExpansion{}
+		for _, ge := range expandSeedsByGraph(seedGraphKeys, graph, 2) {
+			byDistance[ge.Distance] = append(byDistance[ge.Distance], ge)
+		}
+		for d := 1; d <= 2; d++ {
+			if used >= allowed {
+				break
+			}
+			used++
+			added := 0
+			for _, ge := range byDistance[d] {
+				n, ok := byKey[ge.Key]
+				if !ok {
+					continue
+				}
+				names := make([]string, 0, len(ge.Via))
+				for _, k := range ge.Via {
+					if vn, ok := byKey[k]; ok {
+						names = append(names, vn.Name)
+					} else {
+						names = append(names, k)
+					}
+				}
+				why := fmt.Sprintf("graph path via: %s (%s, %d hop%s, %d seed%s)",
+					strings.Join(names, " → "), ge.Tier, ge.Distance, pluralS(ge.Distance), len(ge.FromSeeds), pluralS(len(ge.FromSeeds)))
+				upsert(n.FilePath, n.Name, ge.Tier, graphExpansionCandidateScore(ge.Distance, ge.Tier, len(ge.FromSeeds)), why, ge.Distance)
+				added++
+			}
+			hops = append(hops, localizeHop{N: used, Tool: "graph_expand", Arg: fmt.Sprintf("depth %d from %d seed%s", d, len(seedGraphKeys), pluralS(len(seedGraphKeys))), Added: added})
+		}
 	}
 
 	// Recency (VB-26: "the churn/last-touched analysis if present in the
@@ -502,15 +832,44 @@ func runLocalize(ctx context.Context, s *Server, backend QueryInterface, service
 
 	candOut := make([]map[string]any, 0, len(out))
 	for _, c := range out {
-		candOut = append(candOut, map[string]any{
-			"file": c.File, "symbol": c.Symbol, "score": c.Score, "tier": c.Tier, "why": c.Why,
-		})
+		why := c.Why
+		if len(why) > localizeMaxWhy {
+			why = why[:localizeMaxWhy]
+		}
+		row := map[string]any{
+			"file": c.File, "symbol": c.Symbol, "score": c.Score, "tier": c.Tier, "why": why,
+		}
+		if c.GraphDistance > 0 {
+			row["graph_distance"] = c.GraphDistance
+		}
+		candOut = append(candOut, row)
 	}
 
+	// Payload cap (ADR-041 D4): capped at localizeMaxCandidates regardless
+	// of the byte budget, THEN fit to the standard byte budget on top —
+	// the 882,577-byte single payload lca-run-1 hit
+	// (docs/bench/readings/lca-run-1-reading.md §3) never happens again
+	// even before the byte cap engages. candidates_total is the count
+	// before either cut, so a caller can always see what was elided.
+	totalCandidates := len(candOut)
+	capped := candOut
+	if len(capped) > localizeMaxCandidates {
+		capped = capped[:localizeMaxCandidates]
+	}
+	kept, _ := fitToBudget(capped, 0)
+
 	resp := map[string]any{
-		"candidates": candOut,
-		"hops":       hops,
-		"budget":     map[string]any{"allowed": allowed, "used": used},
+		"candidates":       kept,
+		"candidates_total": totalCandidates,
+		"hops":             hops,
+		"budget":           map[string]any{"allowed": allowed, "used": used},
+	}
+	if el := elisionFor(len(kept), totalCandidates, "score desc, then file, then symbol", "budget"); el != nil {
+		resp["elided"] = el
+	}
+	if reformulated {
+		resp["reformulated"] = true
+		resp["reformulated_terms"] = reformulatedTerms
 	}
 	if _, indexCommit, found, _ := backend.ServiceMeta(ctx, service); found && indexCommit != "" {
 		resp["index_commit"] = indexCommit
@@ -546,7 +905,7 @@ var localizeInputKinds = []string{"stack_trace", "failing_test", "error", "conce
 func registerLocalize(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "localize",
-		Description: "The answer grep cannot give when you don't yet know which file: one bounded, budgeted, logged walk of the index from a stack trace, a failing test name, an error string, or a concern. Exactly one of those four must be given; candidates carry score, tier (typed/heuristic), and why, plus budget {allowed,used}. An unindexed service returns an empty diagnosis with a note naming it, never a silent \"no bug found\". Reach for it when you have a crash, a failing test, or a described problem and do not yet know which file it lives in. Required: service.",
+		Description: "The answer grep cannot give when you don't yet know which file: one bounded, budgeted, logged walk of the index from a stack trace, a failing test name, an error string, or a concern. Exactly one of those four must be given; candidates carry score, tier (typed/heuristic), graph_distance when found by graph expansion, and why, plus budget {allowed,used}. Seeds expand through the typed/heuristic call graph to depth 2 (callers and callees), ranked by seed evidence, graph distance, resolved-over-heuristic, then convergence; when seed extraction finds nothing, seeds are reformulated from identifier splitting, quoted literals and file basenames (reformulated: true, never a model call). candidates cap at 25 (candidates_total names the full count) and each candidate's why caps at 3 citations. Deterministic: identical input returns byte-identical output. An unindexed service returns an empty diagnosis with a note naming it, never a silent \"no bug found\". Reach for it when you have a crash, a failing test, or a described problem and do not yet know which file it lives in. Required: service.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
