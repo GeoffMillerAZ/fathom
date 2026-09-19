@@ -20,15 +20,20 @@ const (
 
 // EdgeConfidenceOf reads an edge's confidence from the provenance the
 // fusion pass already records on it: Edge.Kind is "" for every syntax-only
-// producer and is set only by the typed enrichment pass, so the
+// producer and is set only by a typed/resolved enrichment pass, so the
 // classification is a lookup, never a guess. EdgeUnresolved is heuristic
-// too — it records that the typed resolver could NOT settle the target,
-// which is weaker evidence than a resolved edge, not stronger. Any other
-// non-empty Kind (including kinds added after this function) came from the
-// typed pass and is resolved.
+// too — it records that a resolver could NOT settle the target, which is
+// weaker evidence than a resolved edge, not stronger. EdgeFileResolved
+// (ADR-041 decision 5, SU-11) is ALSO always heuristic, explicitly — it
+// carries no compiler/type-checker confirmation, only import-graph plus
+// name-in-scope matching, and must never be promoted by falling into the
+// "any other Kind is resolved" default below just because it is non-empty.
+// Any OTHER non-empty Kind (including kinds added after this function,
+// besides the two named exceptions) came from a typed pass and is
+// resolved.
 func EdgeConfidenceOf(e Edge) EdgeConfidence {
 	switch e.Kind {
-	case "", EdgeUnresolved:
+	case "", EdgeUnresolved, EdgeFileResolved:
 		return EdgeConfidenceHeuristic
 	default:
 		return EdgeConfidenceResolved

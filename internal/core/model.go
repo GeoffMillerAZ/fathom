@@ -388,6 +388,21 @@ const (
 	// receiver fans out like EdgeIfaceDispatch: one EdgeFuncValue edge per
 	// in-scope implementer, never a single ambiguous edge.
 	EdgeFuncValue EdgeKind = "func-value"
+	// EdgeFileResolved marks an edge from internal/fusion's per-file
+	// import/module-scope resolver (ADR-041 decision 5, docs/plans/
+	// substrate.md SU-11: TypeScript/JavaScript/Python when no SCIP index
+	// is present for the service) — a call site whose callee is bound by a
+	// parsed import statement (resolved to a file in the corpus) or
+	// defined at module scope in the same file. This is STRICTLY WEAKER
+	// evidence than a compiler/type-checker-confirmed edge: no type
+	// information, no overload resolution, just import-graph plus
+	// name-in-scope matching (stack-graphs-style, not stack-graphs-grade).
+	// It is tier pre-scan and MUST count as heuristic, never resolved —
+	// core.EdgeConfidenceOf special-cases this kind explicitly rather than
+	// falling into its "any other non-empty Kind is resolved" default, and
+	// every consumer (find_callers/resolved_nav/blast_radius) inherits that
+	// via EdgeConfidenceOf rather than switching on Kind itself.
+	EdgeFileResolved EdgeKind = "file-resolved"
 )
 
 // Edge is a directed call/reference edge between two symbols.

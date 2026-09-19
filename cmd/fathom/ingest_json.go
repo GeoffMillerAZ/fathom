@@ -46,6 +46,17 @@ type ingestTypedEdgesJSON struct {
 	Unresolved     int `json:"unresolved"`
 }
 
+// ingestCUEEdgesJSON is the CUE typed-edge pass counters (ADR-041 decision
+// 5 / SU-10) — the same package-granular shape as ingestTypedEdgesJSON's
+// pre-O82 fields, over the CUE producer's own store-key namespace.
+type ingestCUEEdgesJSON struct {
+	Packages       int `json:"packages"`
+	PackagesFailed int `json:"packages_failed"`
+	Edges          int `json:"edges"`
+	Direct         int `json:"direct"`
+	Unresolved     int `json:"unresolved"`
+}
+
 type ingestExcludedJSON struct {
 	Project int `json:"project"`
 	User    int `json:"user"`
@@ -88,9 +99,13 @@ type ingestJSON struct {
 	UnsupportedLanguages map[string]int        `json:"unsupported_languages,omitempty"`
 	TypedEdges           *ingestTypedEdgesJSON `json:"typed_edges,omitempty"`
 	ScipImports          []ingestScipJSON      `json:"scip_imports,omitempty"`
-	Excluded             *ingestExcludedJSON   `json:"excluded,omitempty"`
-	Error                string                `json:"error,omitempty"`
-	Hint                 string                `json:"hint,omitempty"`
+	CUEEdges             *ingestCUEEdgesJSON   `json:"cue_edges,omitempty"`
+	// FileResolved is the per-file TypeScript/JavaScript/Python resolver's
+	// edge count (ADR-041 decision 5 / SU-11) — always heuristic tier.
+	FileResolved int                 `json:"file_resolved,omitempty"`
+	Excluded     *ingestExcludedJSON `json:"excluded,omitempty"`
+	Error        string              `json:"error,omitempty"`
+	Hint         string              `json:"hint,omitempty"`
 }
 
 // errnoClass maps the connector's errno text to its symbolic class; ""
@@ -158,6 +173,15 @@ func renderIngestJSON(w io.Writer, service, svcPath string, report client.Report
 			Direct: r.Import.Report.Direct, Unresolved: r.Import.Report.Unresolved,
 		})
 	}
+	if report.CUEPackages > 0 || report.CUEPackagesFailed > 0 {
+		out.CUEEdges = &ingestCUEEdgesJSON{
+			Packages: report.CUEPackages, PackagesFailed: report.CUEPackagesFailed,
+			Edges:  report.CUEEdgesDirect + report.CUEEdgesUnresolved,
+			Direct: report.CUEEdgesDirect, Unresolved: report.CUEEdgesUnresolved,
+		}
+	}
+	out.FileResolved = report.FileResolvedEdges
+
 	if _, counts, err := connector.LoadIgnoreScopedFor(svcPath, service); err == nil && (counts.Project > 0 || counts.User > 0 || counts.Service > 0) {
 		out.Excluded = &ingestExcludedJSON{Project: counts.Project, User: counts.User, Service: counts.Service}
 	}

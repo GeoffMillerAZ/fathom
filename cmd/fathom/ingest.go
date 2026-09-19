@@ -196,6 +196,20 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stdout, "typed_edges: %d edge(s) (%d direct / %d unresolved) via %s [%s]\n",
 			r.Import.Report.Edges, r.Import.Report.Direct, r.Import.Report.Unresolved, r.Import.Report.Producer.String(), r.Path)
 	}
+	// CUE typed-edge counters (ADR-041 decision 5 / SU-10): printed only
+	// when the CUE pass actually ran (packages processed or failed) — a
+	// non-CUE service stays as quiet as it always was.
+	if report.CUEPackages > 0 || report.CUEPackagesFailed > 0 {
+		cueEdges := report.CUEEdgesDirect + report.CUEEdgesUnresolved
+		fmt.Fprintf(stdout, "cue: %d pkg(s) processed (%d failed), %d edge(s) (%d direct / %d unresolved)\n",
+			report.CUEPackages, report.CUEPackagesFailed, cueEdges, report.CUEEdgesDirect, report.CUEEdgesUnresolved)
+	}
+	// Per-file resolver counters (ADR-041 decision 5 / SU-11): printed only
+	// when it produced at least one edge — always heuristic tier, never
+	// presented as typed (core.EdgeConfidenceOf).
+	if report.FileResolvedEdges > 0 {
+		fmt.Fprintf(stdout, "file_resolved: %d\n", report.FileResolvedEdges)
+	}
 	// Scoped config (docs/design/scoped-config.md §4 disclosure): report the
 	// project/user pattern-count split that governed this ingest. Ingest has
 	// already succeeded above (Discover already ran LoadIgnoreScoped as its
