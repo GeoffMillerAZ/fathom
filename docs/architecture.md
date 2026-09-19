@@ -115,6 +115,25 @@ onto the wazero engine does not, by itself, make the whole binary CGO-free until
 row in that table has moved (`internal/extractor/tsengine` itself already builds and
 tests clean under `CGO_ENABLED=0` in isolation; `internal/store` now does too).
 
+**Typed edges beyond syntax (ADR-041 decision 5).** The table above is what every
+extractor produces from syntax alone — a symbol table plus call-site TEXT
+(`SymbolNode.Calls`), resolved into a best-effort call graph by
+`internal/analysis/callgraph`. A second, independent kind of edge exists for Go only,
+today: `internal/fusion.EnrichTypedEdges` type-checks the source directly
+(`go/packages` + `go/types`) and writes compiler-grade `typed_edges` rows. Every other
+language gains the same typed_edges table by IMPORTING an external indexer's SCIP
+output instead of fathom running a type-checker of its own: `internal/scip.ImportIndex`
+maps a SCIP index's definition/reference occurrences onto fathom's typed edges, keyed
+with the SAME package/qualifier convention the language's own extractor already uses
+(derived from SCIP's occurrence geometry — `EnclosingRange` containment — never trusted
+from the foreign indexer's own symbol grammar), replaced per fathom package exactly like
+the native Go pass. `fathom ingest --scip PATH` (repeatable, or auto-detected
+`index.scip` / `.fathom/scip/*.scip`) runs the import; `docs/languages.md` tracks which
+language has which level (`native` / `scip:<tool>` / `file` — a per-file, non-typed
+fallback resolver, tracked but not yet built — / `syntax`, the baseline every table row
+above already has) and `fathom capabilities --json`'s `typed_edge_producers` field
+reports the same table from code.
+
 ### Lazy mode
 
 When `Lazy: true` is set on the pipeline config, files are queued but not extracted until

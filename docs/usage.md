@@ -157,7 +157,7 @@ All subcommands share the convention:
 Ingest a service into the knowledge store.
 
 ```sh
-fathom ingest --service <id> [--path <dir>] [--store <path>] [--mode local|faux] [--json]
+fathom ingest --service <id> [--path <dir>] [--store <path>] [--mode local|faux] [--scip <path>]... [--json]
 ```
 
 | Flag | Default | Description |
@@ -166,11 +166,31 @@ fathom ingest --service <id> [--path <dir>] [--store <path>] [--mode local|faux]
 | `--path` | `.` | Source root directory (local mode) |
 | `--store` | `<repo>/workspace/db/fathom.sqlite` (see §CLI subcommands) | store path (.sqlite/.db) |
 | `--mode` | `local` | Connector mode: `local` or `faux` |
-| `--json` | off | Emit the run as JSON: `{service, outcome: ok|degraded|refused, exit_code, discovered, extracted, skipped, symbols, read_failed, read_failures: [{path, err, errno?}], unclassified, oversize, classified_zero, unsupported_languages?, typed_edges?, excluded?, error?, hint?}` — `errno` is the class (`EPERM`, `EACCES`, `ENOENT`, `EIO`, `EISDIR`) derived from the connector's text, so CI can assert `read_failed == 0`. `unsupported_languages` (O69, present only when non-empty) is `{language: file_count}` — e.g. `{"swift": 412}` — for source in a KNOWN programming language fathom has no registered extractor for; see "Unsupported languages" below |
+| `--scip` | auto-detected | SCIP index file to import as typed edges (ADR-041 decision 5, SU-9; repeatable). Unset: auto-detects `index.scip` at the service root and every `.fathom/scip/*.scip` |
+| `--json` | off | Emit the run as JSON: `{service, outcome: ok|degraded|refused, exit_code, discovered, extracted, skipped, symbols, read_failed, read_failures: [{path, err, errno?}], unclassified, oversize, classified_zero, unsupported_languages?, typed_edges?, scip_imports?, excluded?, error?, hint?}` — `errno` is the class (`EPERM`, `EACCES`, `ENOENT`, `EIO`, `EISDIR`) derived from the connector's text, so CI can assert `read_failed == 0`. `unsupported_languages` (O69, present only when non-empty) is `{language: file_count}` — e.g. `{"swift": 412}` — for source in a KNOWN programming language fathom has no registered extractor for; see "Unsupported languages" below. `scip_imports` (present only when at least one SCIP index was imported) is `[{path, producer, language?, documents, edges, direct, unresolved}]` — see "Typed edges by import" below |
 
 Output: `discovered`, `extracted`, `skipped`, `symbols` counts, plus non-zero-only rows
 (`unclassified`, `oversize`, `classified-but-zero-symbols`, `unsupported languages (no extractor)`,
-`typed-edges`, `excluded:` pattern counts, and `read-failed`).
+`typed-edges`, `typed_edges: … via <producer>` per imported SCIP index, `excluded:` pattern
+counts, and `read-failed`).
+
+**Typed edges by import (ADR-041 decision 5, SU-9).** Go gets typed call edges natively
+(`internal/fusion.EnrichTypedEdges`, type-checking the source directly); every other
+language gets them by IMPORTING an external indexer's SCIP output instead —
+`internal/scip.ImportIndex` maps a SCIP index's definition/reference occurrences onto
+fathom's `typed_edges` table, replaced per fathom package exactly like the native pass.
+fathom never runs or vendors a per-language type-checker itself: produce the index
+separately (`scip-typescript index`, `scip-python index`, …, per `docs/languages.md`'s
+tracked delegate order) and either name it with `--scip PATH` (repeatable — one ingest
+can import several indexes) or drop it at `index.scip` in the service root / anywhere
+under `.fathom/scip/*.scip` for auto-detection. A reference occurrence resolves to
+`core.EdgeDirect` when its symbol is defined somewhere in the same index, or
+`core.EdgeUnresolved` when it names something outside the index (never silently
+dropped). The summary line names the producer fathom read from the index's own
+metadata, e.g. `typed_edges: 118 edge(s) (94 direct / 24 unresolved) via scip-typescript
+0.3.16 [index.scip]` — `fathom capabilities --json`'s `typed_edge_producers` field names,
+per language, which mechanism fathom's own code currently provides (`native` /
+`scip:<tool>` / `file` / `syntax`).
 
 **Unsupported languages (O69).** `unclassified` lumps every file with no registered
 extractor into one count, unnamed — a lockfile, an image, and a real Swift source file

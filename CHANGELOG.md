@@ -21,6 +21,21 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: minor (pre-1.0: breaking bumps minor)
 
+<!-- su-wave-s2 -->
+**Typed edges beyond Go by import (ADR-041 decision 5, SU-9/SU-12/SU-13).** `fathom
+ingest --scip PATH` (repeatable, or auto-detected `index.scip` / `.fathom/scip/*.scip`)
+imports an external indexer's SCIP output as `typed_edges` — `internal/scip.ImportIndex`
+maps definition/reference occurrences using the same package/qualifier convention the
+language's own extractor already uses, replaced per fathom package; the ingest summary
+names the producer (e.g. `via scip-typescript 0.3.16`). `indexbench scip-oracle`
+(`task bench-l0-scip`) is the free-tier L0 oracle: precision/recall/unresolved-rate for
+fathom's edges against a SCIP truth, per language and edge kind. `docs/languages.md` is
+now kept true by `TestLanguagesTrackerMatchesRegistry` (`internal/connector`), and
+`fathom capabilities --json` gains `typed_edge_producers` (native/scip:\<tool\>/file/
+syntax per language). No new module dependency: SCIP's wire types come from the
+already-vendored `third_party/scip` bindings `fathom export scip` uses.
+<!-- /su-wave-s2 -->
+
 **Portable bounded build cache (ADR-039).** `FATHOM_CACHE_ROOT` now relocates the
 supported Taskfile/script build caches without embedding a workstation path; configured
 missing roots refuse, and `FATHOM_CACHE_MAX_MIB` bounds the regenerable Go build cache.
