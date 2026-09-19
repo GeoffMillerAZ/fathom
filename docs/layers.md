@@ -292,6 +292,16 @@ as one — the citation is re-anchored there instead of flipping stale.
 (`claims_anchored`/`claims_anchored_ids`), so a rename is never silent for
 governance.
 
+**Provenance (SU-22).** Every claim and event records the activity that
+asserted it, `core.AssertedBy(kind, id)`'s canonical `"kind:id"` form: a
+compile run's own `run.RunID` (`"compile:<run_id>"`), a review run's
+`--idempotency-key` or its corpus watermark (`"review:<key-or-watermark>"`),
+an import's `producer@version` (`"import:<producer>@<version>"`), or
+`fathom claim add`'s harness hook session id (`"claim-add:<session>"`) when
+one is resolvable. Served as `asserted_by` on each obligations rule
+(omitted when the underlying claim never recorded one — every pre-SU-22
+claim, and any writer this wave did not touch).
+
 ## The `fathom layers` verb
 
 ```sh

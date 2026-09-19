@@ -447,6 +447,11 @@ sectionLoop:
 				}
 				continue
 			}
+			// SU-22 (ADR-041 decision 7): every claim this run mints is
+			// asserted by THIS compile run's own id — run.RunID is already
+			// computed (before the section loop starts) so every claim in
+			// the run shares one identity.
+			claim.AssertedBy = core.AssertedBy("compile", run.RunID)
 			newClaims = append(newClaims, claim)
 			newLinks = append(newLinks, links...)
 		}

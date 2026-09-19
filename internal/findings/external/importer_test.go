@@ -85,6 +85,31 @@ func TestImport_Happy(t *testing.T) {
 	}
 }
 
+// TestImport_AssertedByIsProducerAtVersion (SU-22, ADR-041 decision 7): an
+// imported claim is asserted by its producer's own identity, the SAME
+// producer@version the ordering/idempotency cursor already keys on.
+func TestImport_AssertedByIsProducerAtVersion(t *testing.T) {
+	st := store.NewMemoryStore()
+	im := newTestImporter(t, st)
+	p := parseOne(t, validEventJSON("assertedby"))
+
+	r, err := im.Import(context.Background(), testService, "", p, false)
+	if err != nil {
+		t.Fatalf("Import: %v", err)
+	}
+	if r.Delivered != 1 {
+		t.Fatalf("receipt = %+v", r)
+	}
+	claims, err := st.ClaimsForService(context.Background(), testService, "findings")
+	if err != nil || len(claims) != 1 {
+		t.Fatalf("ClaimsForService: %v %+v", err, claims)
+	}
+	want := core.AssertedBy("import", "reviewkit.system-review@1.0.0")
+	if claims[0].AssertedBy != want {
+		t.Errorf("AssertedBy = %q, want %q", claims[0].AssertedBy, want)
+	}
+}
+
 func TestImport_Duplicate(t *testing.T) {
 	st := store.NewMemoryStore()
 	im := newTestImporter(t, st)

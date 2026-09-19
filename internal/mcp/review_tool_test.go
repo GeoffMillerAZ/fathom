@@ -676,6 +676,48 @@ rules: [
 // the fixed-findings reconcile: a review-minted claim whose finding a later
 // run (same changed files, violation now fixed) no longer emits is flipped
 // to superseded — absent = fixed, never rot.
+// TestReviewDiff_AssertedByIsReviewRun (SU-22, ADR-041 decision 7): a
+// review_diff-minted claim carries a "review:" AssertedBy identity.
+func TestReviewDiff_AssertedByIsReviewRun(t *testing.T) {
+	corpusRoot := t.TempDir()
+	rulesDir := filepath.Join(corpusRoot, ".fathom", "rules")
+	if err := os.MkdirAll(rulesDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	ruleFile := `
+rules: [
+	{from_pkg: "api", to_pkg: "store", allow: false},
+]
+`
+	if err := os.WriteFile(filepath.Join(rulesDir, "archconformance.cue"), []byte(ruleFile), 0o644); err != nil {
+		t.Fatalf("write rule file: %v", err)
+	}
+	violating := []core.SymbolNode{
+		{Service: "svc", Package: "api", Name: "Handler", Kind: core.KindGoFunc, FilePath: "api/handler.go", Line: 7, Calls: []string{"svc::store.Query"}},
+		{Service: "svc", Package: "store", Name: "Query", Kind: core.KindGoFunc, FilePath: "store/query.go", Line: 3},
+	}
+	fake := &reviewFakeBackend{
+		extendedFakeBackend: extendedFakeBackend{nodes: violating, services: []string{"svc"}, svcPath: corpusRoot},
+	}
+	srv := mcp.NewServer(fake)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "review_diff",
+			"arguments": map[string]any{"service": "svc", "changed_files": []string{"api/handler.go"}},
+		},
+	})
+	_ = extToolPayload(t, resp)
+	if len(fake.claims) == 0 {
+		t.Fatal("expected at least 1 persisted claim")
+	}
+	for _, cl := range fake.claims {
+		if !strings.HasPrefix(cl.AssertedBy, "review:") {
+			t.Errorf("claim %s AssertedBy = %q, want a review: prefix", cl.ClaimID, cl.AssertedBy)
+		}
+	}
+}
+
 func TestReviewDiff_ReconcileSupersedesFixedFinding(t *testing.T) {
 	corpusRoot := t.TempDir()
 	rulesDir := filepath.Join(corpusRoot, ".fathom", "rules")

@@ -402,6 +402,13 @@ func applyAndPersistFindings(ctx context.Context, backend QueryInterface, v *rev
 			return hash, ferr == nil && found
 		},
 	})
+	// SU-22 (ADR-041 decision 7): every claim this run mints is asserted by
+	// its corpus watermark as the run identity — review_diff carries no
+	// idempotency key of its own (unlike the CLI's --idempotency-key), so
+	// every claim from the SAME watermark shares one AssertedBy.
+	for i := range claims {
+		claims[i].AssertedBy = core.AssertedBy("review", watermark)
+	}
 
 	okAll := true
 	if len(claims) > 0 {

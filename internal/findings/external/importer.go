@@ -133,6 +133,10 @@ func (im Importer) Import(ctx context.Context, service, producer string, p Proje
 
 		tier := semantic.CapTier(core.EvidenceTier(ev.Rule.Tier), prod)
 		claim := ClaimFromEvent(service, ev, tier)
+		// SU-22 (ADR-041 decision 7): an imported claim is asserted by its
+		// producer's own identity, producer@version — the import cursor
+		// identity this whole ordering/idempotency scheme already keys on.
+		claim.AssertedBy = core.AssertedBy("import", ev.Producer.Name+"@"+ev.Producer.Version)
 
 		existing, found, err := im.Store.ExternalFinding(ctx, service, claim.ClaimID)
 		if err != nil {

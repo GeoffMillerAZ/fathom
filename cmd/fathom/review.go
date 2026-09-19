@@ -290,6 +290,17 @@ func runReviewBody(gitRunner func(args ...string) ([]byte, error), storePathV, s
 			return hash, ferr == nil && found
 		},
 	})
+	// SU-22 (ADR-041 decision 7): every claim this run mints is asserted by
+	// the run's own idempotency key when the caller gave one (--idempotency-
+	// key), else its corpus watermark as the run identity surrogate — every
+	// claim from the SAME run shares one AssertedBy either way.
+	reviewRunID := idempotencyKeyV
+	if reviewRunID == "" {
+		reviewRunID = watermark
+	}
+	for i := range claims {
+		claims[i].AssertedBy = core.AssertedBy("review", reviewRunID)
+	}
 	persisted := false
 	if persistThisRun {
 		persisted = true

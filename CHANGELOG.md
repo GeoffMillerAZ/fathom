@@ -55,6 +55,14 @@ CURRENT body hash must still match the one stored at anchor time — proof of a 
 line-range move, never a content edit passed off as one — before the citation is
 re-pointed at its new range instead of flipping stale. `rename_impact` gains
 `claims_anchored`/`claims_anchored_ids`, so a rename is never silent for governance.
+
+**Claims record who asserted them (ADR-041 decision 7, SU-22).** `core.AssertedBy(kind,
+id)` builds the canonical `"kind:id"` form every writer now records at mint: a compile
+run's own `run.RunID` (`"compile:<run_id>"`), a review run's `--idempotency-key` or its
+corpus watermark (`"review:<key-or-watermark>"`), an import's `producer@version`
+(`"import:<producer>@<version>"`), and `fathom claim add`'s harness hook session id
+(`"claim-add:<session>"`) via a new `AddClaimRequest.SessionID`. Served as `asserted_by`
+on each obligations rule, omitted when empty.
 <!-- /su-wave-s8 -->
 
 <!-- su-wave-s6 -->

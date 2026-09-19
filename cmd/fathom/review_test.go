@@ -823,6 +823,24 @@ func freshestByID(ctx context.Context, st store.Store, id string) (core.Semantic
 	return core.SemanticClaim{}, fmt.Errorf("claim %s not found", id)
 }
 
+// TestReview_AssertedByIsIdempotencyKeyOrWatermark (SU-22, ADR-041 decision
+// 7): a review-minted claim is asserted by --idempotency-key when given,
+// else by its own corpus watermark.
+func TestReview_AssertedByIsIdempotencyKeyOrWatermark(t *testing.T) {
+	root, storePath := reviewIngestFixture(t)
+	_ = root
+
+	runReviewJSON(t, storePath, "--idempotency-key", "key-abc")
+	claims := reviewSvcClaims(t, storePath)
+	if len(claims) != 1 {
+		t.Fatalf("expected exactly 1 claim, got %+v", claims)
+	}
+	want := core.AssertedBy("review", "key-abc")
+	if claims[0].AssertedBy != want {
+		t.Errorf("AssertedBy = %q, want %q", claims[0].AssertedBy, want)
+	}
+}
+
 // TestReview_NoPersist_WritesNothing is defect 3's regression test: the
 // --no-persist mode (what the pre-push hook uses) performs no store write
 // of any kind — no claims, no supersedes — and reports

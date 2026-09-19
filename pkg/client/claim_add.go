@@ -56,6 +56,13 @@ type AddClaimRequest struct {
 	// Scope's globs (a rule scoped broadly can still cite one file as its
 	// evidence).
 	CiteRef string
+	// SessionID (SU-22, ADR-041 decision 7) is the harness hook session id
+	// that asked for this claim, when the caller can resolve one
+	// (cmd/fathom/claim_add.go's currentSessionID()) — recorded as
+	// core.SemanticClaim.AssertedBy ("claim-add:<session>"). "" when no
+	// session is resolvable (a script driving the client directly); the
+	// claim is still minted, just with an empty AssertedBy.
+	SessionID string
 }
 
 // AddClaimResult is what AddClaim minted.
@@ -128,6 +135,12 @@ func (c *Client) AddClaim(ctx context.Context, req AddClaimRequest) (AddClaimRes
 	// scope and may be broader than (or absent from) the anchor.
 	claim.Scope = scope
 	claim.PromptVersion = HumanAuthoredPromptVersion
+	// SU-22 (ADR-041 decision 7): a human-authored claim is asserted by the
+	// hook session that minted it, when one is resolvable — "" (never
+	// fabricated) otherwise.
+	if req.SessionID != "" {
+		claim.AssertedBy = core.AssertedBy("claim-add", req.SessionID)
+	}
 
 	root := ""
 	if meta, found, _ := c.st.GetServiceMeta(ctx, req.Service); found {

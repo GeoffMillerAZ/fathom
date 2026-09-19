@@ -40,6 +40,39 @@ func TestAddClaim_MintsSMEStatedTierCappedClaim(t *testing.T) {
 	}
 }
 
+// TestAddClaim_AssertedByIsTheHookSession (SU-22, ADR-041 decision 7): a
+// claim minted with a session id gets AssertedBy = "claim-add:<session>";
+// one minted with no resolvable session (an SDK caller with no hook
+// context) leaves AssertedBy empty — never fabricated.
+func TestAddClaim_AssertedByIsTheHookSession(t *testing.T) {
+	conn := connector.NewFauxConnector()
+	ms := store.NewMemoryStore()
+	c := client.New(conn, ms)
+	t.Cleanup(func() { _ = c.Close() })
+
+	res, err := c.AddClaim(context.Background(), client.AddClaimRequest{
+		Service: "svc", Scope: []string{"internal/foo/**"}, Rule: "Do not log secrets in plaintext.",
+		SessionID: "sess-abc123",
+	})
+	if err != nil {
+		t.Fatalf("AddClaim: %v", err)
+	}
+	want := core.AssertedBy("claim-add", "sess-abc123")
+	if res.Claim.AssertedBy != want {
+		t.Errorf("AssertedBy = %q, want %q", res.Claim.AssertedBy, want)
+	}
+
+	res2, err := c.AddClaim(context.Background(), client.AddClaimRequest{
+		Service: "svc", Scope: []string{"internal/bar/**"}, Rule: "Never hardcode credentials.",
+	})
+	if err != nil {
+		t.Fatalf("AddClaim (no session): %v", err)
+	}
+	if res2.Claim.AssertedBy != "" {
+		t.Errorf("AssertedBy = %q, want empty when no session id is given", res2.Claim.AssertedBy)
+	}
+}
+
 func TestAddClaim_RequiredFields(t *testing.T) {
 	conn := connector.NewFauxConnector()
 	ms := store.NewMemoryStore()

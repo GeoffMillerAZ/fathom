@@ -63,8 +63,14 @@ func cmdClaimAdd(args []string, stdout, stderr io.Writer) int {
 	defer st.Close()
 
 	c := client.New(connector.NewLocalConnector(), st)
+	// SU-22 (ADR-041 decision 7): currentSessionID() resolves the harness's
+	// hook session id (rate.go) the same way `fathom rate` already does —
+	// "" when none is resolvable (a script invoking the CLI directly), and
+	// AddClaim records the claim with an empty AssertedBy in that case,
+	// never a fabricated one.
 	res, err := c.AddClaim(context.Background(), client.AddClaimRequest{
 		Service: *service, Scope: []string(scopes), Rule: *rule, Remedy: *remedy, CiteRef: *cite,
+		SessionID: currentSessionID(),
 	})
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
