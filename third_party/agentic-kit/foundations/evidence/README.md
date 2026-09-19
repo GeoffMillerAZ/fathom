@@ -84,6 +84,7 @@ documents nothing, the entry says so — assume single-goroutine use.
 | `entity-resolution` | Similarity primitives + match candidates for **human review**; never auto-merges | Not documented — pure functions; assume single-goroutine |
 | `evidence-grade` | Tier taxonomy (`direct` → `inferred`) + `GradeClaim` weakest-link promotion rules | Not documented — pure functions over value types; assume single-goroutine |
 | `evidence-graph` | LEGACY in-memory graph: TTL eviction + contradiction surfacing over the legacy Span | Documented **NOT safe for concurrent use** — serialise access externally |
+| `evidence-producer` | Producer catalog (kind/origin/tier_cap) for findings/claims crossing into a store; served tier = min(claimed, cap), `Independent`/`Admit` gate corroboration and circular self-import | Plain immutable value types; every method pure — safe for unrestricted concurrent use |
 | `evidence-resolver` | Deterministic ref → `evidencespan.Span` registry; `ResolveAll` preserves input order | Not documented — assume single-goroutine |
 | `evidence-span` | **Canonical Span** + `Locator`; `Validate` (lenient) vs `ValidateAsEvidence` (full provenance) | Not documented — plain value types; assume single-goroutine |
 | `record-fingerprint` | Content-hash dedup `Store`: new / unchanged / changed per record ID; `HashContent` is the canonical hasher | Not documented — assume single-goroutine (methods lock an internal mutex, but no contract is stated) |

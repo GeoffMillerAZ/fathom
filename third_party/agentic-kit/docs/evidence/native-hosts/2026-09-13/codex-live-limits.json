@@ -1,0 +1,9 @@
+{
+  "host": "codex-cli 0.154.0",
+  "model_invocations": 0,
+  "live_event_status": "unknown",
+  "usd_hard_cap": "No verified dollar hard-cap option in installed codex exec --help; no model request was launched under the bounded spend authorization.",
+  "project_hook_trust": "Normal project-hook trust was not established in this fresh fixture. The documented bypass-hook-trust option was not used; global trust/configuration was not changed.",
+  "configuration_and_runtime": "Supported by installed file/version/help/features checks only; not live native-event proof.",
+  "static_unsupported": ["stdin", "hosted-tools", "hook-failure-closed"]
+}

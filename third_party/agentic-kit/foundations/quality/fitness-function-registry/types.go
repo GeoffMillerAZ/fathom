@@ -1,14 +1,12 @@
-// Package fitnessfunctionregistry provides the "provable-excellence" backbone
-// (E2) as a reusable primitive: a registry of named FitnessFunctions, each a
-// declared Invariant backed by a set of weighted eval-gate Checks, plus a
-// deterministic Execute that scores a function and produces an auditable
-// ExecutionResult.
+// Package fitnessfunctionregistry provides named fitness checks and versioned,
+// evidence-linked assessment profiles, separating required outcomes from optional
+// weighted scoring delegated to eval-gate.
 //
-// A fitness function is the unit of provable excellence: it pairs a
-// human-readable Invariant ("what must remain true") with the concrete
-// machine-checkable Checks that decide whether the invariant holds, the Tier at
-// which the invariant is binding, and how often it should run (RunFreq). The
-// registry is the deterministic catalogue those functions live in.
+// A fitness function pairs a human-readable Invariant with caller-supplied Checks,
+// maturity metadata and a schedule hint. Execute scores those booleans; it does not
+// run tests or establish that the invariant was measured. Assessment profiles add
+// criterion/subject identities, evidence methods, freshness and explicit unknown/N/A
+// outcomes. Evidence remains caller-declared; a hash does not authenticate it.
 //
 // This package is the PRIMITIVE. It deliberately does NOT implement the
 // tier-gated promotion policy (e.g. "an artifact may only be promoted from
@@ -21,8 +19,8 @@
 // caller injects both the RunID and the timestamp, and all iteration over the
 // registry is sorted by name, so there is no map-ordering in any output.
 //
-// CUE contracts live in schema.cue; this file is the Go counterpart and must
-// stay in sync with that schema. No LLM is involved; every decision is fully
+// CUE contracts live in schema.cue and profile.cue; Go counterparts must
+// stay in sync with those schemas. No LLM is involved; every projection is fully
 // reproducible given the same inputs.
 //
 // Concurrency: Execute and ExecuteTimed are pure functions safe for concurrent
@@ -80,8 +78,8 @@ func (t Tier) Rank() (rank int, ok bool) {
 	return r, ok
 }
 
-// FitnessFunction is a single named, machine-checkable invariant. It is the
-// atomic unit of provable excellence.
+// FitnessFunction is a named invariant declaration with caller-supplied checks.
+// It describes what to score, not how to collect or validate the evidence.
 //
 // CUE mirror: #FitnessFunction in schema.cue.
 type FitnessFunction struct {
@@ -94,7 +92,7 @@ type FitnessFunction struct {
 
 	// Invariant states, in human-readable form, the property that must remain
 	// true (e.g. "every persisted span carries provenance"). The Checks are the
-	// concrete evidence that the invariant holds.
+	// caller-declared outcomes, not independent evidence that the invariant holds.
 	Invariant string
 
 	// Checks are the weighted criteria evaluated to decide whether the
@@ -149,7 +147,7 @@ type ExecutionResult struct {
 
 	// Duration is the optional measured wall-clock cost of producing the result.
 	// Execute leaves it zero (it is a pure function and does no timing); use
-	// ExecuteTimed, or set it from a caller-supplied measurement, when a duration
+	// ExecuteTimedWithClock, or set it from a caller-supplied measurement, when a duration
 	// is wanted. A zero Duration means "not measured".
 	Duration time.Duration
 }

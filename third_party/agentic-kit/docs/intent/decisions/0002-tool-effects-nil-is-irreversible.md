@@ -4,6 +4,10 @@
 **Type:** architecture
 **Date:** 2026-09-02
 
+Extension 2026-09-13: [0008](0008-bound-approval-transactions.md) adds stored,
+version-bound approvals inside `kits/hitl`; the synchronous effect gate and its
+defaults are unchanged. The rejection below concerns a separate bearer-token system.
+
 ## Context
 
 The year's worst agent incidents were failures of authority, not detection:

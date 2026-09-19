@@ -20,6 +20,62 @@ package agentharness
 // dispatches through a human approval first.
 #EffectPolicy: "permissive" | "strict"
 
+// #ControlStatus mirrors the receipt status vocabulary.
+#ControlStatus: "pass" | "fail" | "unknown"
+
+// #AttemptUsage mirrors one attempt's observable cost. An omitted ActualUSD
+// means unknown; invalid runtime values fail closed in Go.
+#AttemptUsage: {ActualUSD?: number & >=0}
+
+// #CompletionEvidence mirrors independently supplied completion evidence.
+#CompletionEvidence: {ID: string, Independent: bool}
+
+// #EngineeringProfileConfig mirrors EngineeringProfileConfig's data fields.
+// Behavioral controls are required by NewEngineeringProfile, including typed
+// non-nil interfaces that CUE cannot represent.
+#EngineeringProfileConfig: {
+	Harness: #Config & {
+		MaxTokensPerCall: int & >0
+		EstimatedUSDPerCall: 0
+		EffectPolicy: "strict"
+		InjectionAction: "block"
+		// Absent uses the Harness's true default; false would turn truncated
+		// output into a passing completion and is refused by the profile.
+		TreatMaxTokensAsError?: true
+	}
+	MaxAttempts: int & >=1
+	ReservedUSDPerAttempt: number & >0
+	AllowedTools: [string & !="", ...string & !=""]
+}
+
+// #AttemptAccounting mirrors attempt accounting in CoverageReceipt.
+#AttemptAccounting: {
+	Attempts: int & >=0
+	ReservedUSD: number & >=0
+	SpentUSD: number & >=0
+	UnknownActuals: int & >=0
+	InvalidActuals: int & >=0
+}
+
+// #CoverageReceipt mirrors the runtime receipt. Control keys are runtime
+// observations; an absent/unrun control is represented by "unknown".
+#CoverageReceipt: {
+	Version: string & !=""
+	Controls: [string]: #ControlStatus
+	AllowedTools: [...string & !=""]
+	Accounting: #AttemptAccounting
+	NonGuarantees: [...string & !=""]
+}
+
+// #EngineeringResult mirrors EngineeringResult's JSON envelope. RunResult is
+// the existing harness runtime record; its detailed shape remains owned by
+// the harness API rather than duplicated by this profile schema.
+#EngineeringResult: {
+	Run: _
+	Evidence: #CompletionEvidence
+	Coverage: #CoverageReceipt
+}
+
 // #Handoff mirrors the Go Handoff record: the receipt of one run that
 // stopped on budget, max_tokens or max_turns. Derived from the RunResult,
 // never stored by the kit.

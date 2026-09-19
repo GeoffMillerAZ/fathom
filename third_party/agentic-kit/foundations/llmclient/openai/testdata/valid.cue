@@ -8,6 +8,16 @@ import "github.com/geoffmilleraz/agentic-kit/foundations/llmclient/openai"
 // the key is optional for local endpoints and is resolved at runtime.
 validMinimal: openai.#Config & {}
 
+// validResponses opts in without altering Chat Completions defaults.
+validResponses: openai.#Config & {
+	UseResponses: true
+	DefaultModel: "model-example"
+	ProviderFamily: "example-family"
+}
+
+// Invalid: UseResponses:true with AzureDeployment; New and the schema reject
+// deployment-scoped Chat Completions routing in the Responses lane.
+
 // validOpenAI pins the standard OpenAI endpoint.
 validOpenAI: openai.#Config & {
 	APIKey:           "test-placeholder-key-not-real"

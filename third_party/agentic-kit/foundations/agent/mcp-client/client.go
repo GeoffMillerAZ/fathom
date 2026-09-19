@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -63,10 +64,9 @@ type ToolInfo struct {
 	// ToolInfo cannot lose the provenance of the hint.
 	EffectTrusted bool
 
-	// Hash is SHA-256(name ‖ "\x00" ‖ description ‖ "\x00" ‖ inputSchema),
-	// extended with ‖ "\x00" ‖ annotations when the tool carries any — so a
-	// tool without annotations hashes exactly as it did before annotations
-	// were pinned.
+	// Hash is SHA-256(name ‖ NUL ‖ description ‖ NUL ‖ canonical inputSchema),
+	// extended with canonical annotations when the tool carries any. Insignificant
+	// JSON whitespace and object-key order do not cause drift.
 	Hash string
 }
 
@@ -81,7 +81,30 @@ type ToolChangedError struct {
 // Error implements the error interface, naming the tool and the pinned vs.
 // current hash prefixes.
 func (e *ToolChangedError) Error() string {
-	return fmt.Sprintf("mcpclient: tool %q description changed (pin %s → %s); call Repin to accept", e.Name, e.OldHash[:8], e.NewHash[:8])
+	return fmt.Sprintf("mcpclient: tool %q description changed (pin %s → %s); call Repin to accept", e.Name, shortHash(e.OldHash), shortHash(e.NewHash))
+}
+
+// ToolNotPinnedError is returned by CallToolVerified when name did not have a
+// pin before verification started. A tools/list response received during that
+// verification cannot authorize a newly discovered tool.
+type ToolNotPinnedError struct {
+	Name string
+}
+
+// Error implements the error interface.
+func (e *ToolNotPinnedError) Error() string {
+	return fmt.Sprintf("mcpclient: tool %q has no pre-existing metadata pin", e.Name)
+}
+
+// ToolNotFoundError is returned by CallToolVerified when a pinned tool is
+// absent from the fresh tools/list response.
+type ToolNotFoundError struct {
+	Name string
+}
+
+// Error implements the error interface.
+func (e *ToolNotFoundError) Error() string {
+	return fmt.Sprintf("mcpclient: tool %q is absent from tools/list", e.Name)
 }
 
 // ToolCallError is returned when the MCP server reports an in-band tool
@@ -161,6 +184,10 @@ func (c *Client) Close() error {
 // Descriptions of foreign tools are untrusted content: they may contain
 // prompt-injection payloads. Pin / ToolChangedError is the detection mechanism.
 func (c *Client) ListTools(ctx context.Context) ([]ToolInfo, error) {
+	return c.listTools(ctx, false)
+}
+
+func (c *Client) listTools(ctx context.Context, strict bool) ([]ToolInfo, error) {
 	resp, err := c.call(ctx, "tools/list", nil)
 	if err != nil {
 		return nil, fmt.Errorf("mcpclient: tools/list: %w", err)
@@ -176,6 +203,21 @@ func (c *Client) ListTools(ctx context.Context) ([]ToolInfo, error) {
 	}
 	if err := json.Unmarshal(resp, &result); err != nil {
 		return nil, fmt.Errorf("mcpclient: tools/list parse: %w", err)
+	}
+	if strict {
+		if err := validateMetadataJSON(resp); err != nil {
+			return nil, err
+		}
+		seen := make(map[string]bool)
+		for _, tool := range result.Tools {
+			if strings.TrimSpace(tool.Name) == "" || strings.ContainsRune(tool.Name, 0) || seen[tool.Name] || strings.ContainsRune(tool.Description, 0) {
+				return nil, fmt.Errorf("mcpclient: ambiguous tool metadata identity")
+			}
+			seen[tool.Name] = true
+			if !metadataObject(tool.InputSchema) || (len(tool.Annotations) > 0 && !metadataObject(tool.Annotations)) {
+				return nil, fmt.Errorf("mcpclient: tool metadata schema/annotations must be objects")
+			}
+		}
 	}
 
 	tools := make([]ToolInfo, len(result.Tools))
@@ -229,12 +271,71 @@ func (c *Client) VerifyPin(name string) (hash string, pinned bool) {
 // the response. It performs NO pin verification of its own: it neither
 // re-fetches the tool description nor consults the pin table recorded at
 // list time. Description drift is caught only at the next ListTools call
-// (which re-verifies every pin) — a pre-call pin check is a proposed
-// hardening item in TRACKING.md's pull queue, not a current behavior.
+// (which re-verifies every pin). Use CallToolVerified to opt into a fresh
+// pre-call check; existing CallTool behavior remains unchanged.
 //
 // It returns ToolCallError when the server reports isError == true in the
 // response. Other errors are transport-level or parse failures.
 func (c *Client) CallTool(ctx context.Context, name string, args json.RawMessage) (string, error) {
+	return c.callTool(ctx, name, args)
+}
+
+// CallToolVerified refreshes the named tool's metadata and refuses to call it
+// unless it had a pin before verification began and its fresh metadata matches
+// the currently pinned hash. It returns ToolNotPinnedError for a tool observed
+// only in the fresh list, ToolNotFoundError when a pinned tool disappeared, and
+// ToolChangedError when the metadata drifted. No tools/call request is sent on
+// those failures or on a tools/list error.
+//
+// Repin is concurrent-safe: a Repin completed while tools/list is in flight is
+// honored if its new pin matches the fresh metadata. This verification and the
+// following remote tools/call request are necessarily not atomic; a server can
+// change its behavior after verification.
+func (c *Client) CallToolVerified(ctx context.Context, name string, args json.RawMessage) (string, error) {
+	// Check before ListTools because that method records pins for newly observed
+	// tools. Otherwise a malicious list response could authorize its own call.
+	if _, pinned := c.VerifyPin(name); !pinned {
+		return "", &ToolNotPinnedError{Name: name}
+	}
+
+	tools, err := c.listTools(ctx, true)
+	if err != nil {
+		var changed *ToolChangedError
+		if !errors.As(err, &changed) {
+			return "", fmt.Errorf("mcpclient: verified tools/list: %w", err)
+		}
+		// ListTools reports the first changed tool in the complete listing. The
+		// verified path is deliberately scoped to the tool about to be called;
+		// its hash below decides whether this call is safe to dispatch.
+	}
+
+	var fresh *ToolInfo
+	for i := range tools {
+		if tools[i].Name == name {
+			fresh = &tools[i]
+			break
+		}
+	}
+	if fresh == nil {
+		return "", &ToolNotFoundError{Name: name}
+	}
+
+	// Keep local authorization stable through dispatch. This cannot freeze the
+	// remote server, but Repin must not invalidate our local check before send.
+	c.pinMu.RLock()
+	defer c.pinMu.RUnlock()
+	pinnedHash, pinned := c.pins[name]
+	if !pinned {
+		return "", &ToolNotPinnedError{Name: name}
+	}
+	if pinnedHash != fresh.Hash {
+		return "", &ToolChangedError{Name: name, OldHash: pinnedHash, NewHash: fresh.Hash}
+	}
+
+	return c.callTool(ctx, name, args)
+}
+
+func (c *Client) callTool(ctx context.Context, name string, args json.RawMessage) (string, error) {
 	params, err := json.Marshal(struct {
 		Name      string          `json:"name"`
 		Arguments json.RawMessage `json:"arguments"`
@@ -368,23 +469,50 @@ func (c *Client) call(ctx context.Context, method string, params json.RawMessage
 }
 
 // toolHash returns hex(SHA-256(name ‖ NUL ‖ description ‖ NUL ‖ inputSchema
-// [‖ NUL ‖ annotations])). The NUL separators prevent concatenation
-// collisions between fields (JSON cannot carry a raw NUL byte, so the
-// separator is unambiguous). The annotations segment is appended ONLY when
-// non-empty, which keeps every pre-annotation hash — and every committed
-// pin — byte-identical for tools that carry none.
+// [‖ NUL ‖ annotations])). JSON fields are normalized through encoding/json so
+// irrelevant whitespace and object-key order do not cause a pin change. The
+// NUL separators prevent concatenation collisions between fields.
 func toolHash(name, description string, inputSchema, annotations json.RawMessage) string {
 	h := sha256.New()
 	h.Write([]byte(name))
 	h.Write([]byte{0})
 	h.Write([]byte(description))
 	h.Write([]byte{0})
-	h.Write(inputSchema)
+	h.Write(canonicalJSON(inputSchema))
 	if len(annotations) > 0 {
 		h.Write([]byte{0})
-		h.Write(annotations)
+		h.Write(canonicalJSON(annotations))
 	}
 	return hex.EncodeToString(h.Sum(nil))
+}
+
+// canonicalJSON returns encoding/json's stable representation of raw. Raw
+// metadata comes from a successfully parsed JSON-RPC response; retaining raw
+// bytes on the impossible invalid path preserves a deterministic hash instead
+// of silently dropping the field.
+func canonicalJSON(raw json.RawMessage) []byte {
+	if len(raw) == 0 {
+		return nil
+	}
+	var value any
+	decoder := json.NewDecoder(strings.NewReader(string(raw)))
+	decoder.UseNumber() // distinct integers beyond 2^53 must retain distinct pins
+	if err := decoder.Decode(&value); err != nil {
+		return raw
+	}
+	canonical, err := json.Marshal(value)
+	if err != nil {
+		return raw
+	}
+	return canonical
+}
+
+func shortHash(hash string) string {
+	const prefixLen = 8
+	if len(hash) <= prefixLen {
+		return hash
+	}
+	return hash[:prefixLen]
 }
 
 // RPCError is a JSON-RPC protocol-level error returned by the server.

@@ -15,6 +15,9 @@
 // Concurrency: Pipeline is NOT safe for concurrent use; it holds mutable
 // state (correction ledger, regeneration log) and callers must not share a
 // Pipeline across goroutines without external synchronisation.
+// SourcedPipeline is the additive strict claim/source/review/export path. Legacy
+// Pipeline attaches a bibliography and checks policy; it does not establish exact
+// claim support, source freshness, semantic truth or publication authorization.
 package governedprosekit
 
 import (
@@ -56,8 +59,8 @@ type Result struct {
 	// the generated output. An empty slice means no concerns were found.
 	ConcernFlags []concernflags.ConcernFlag
 
-	// GateResult is the eval-gate outcome; Result.GateResult.Passed must be
-	// true before the output is considered publishable.
+	// GateResult is the legacy policy/quality outcome, not claim-support or
+	// publication authorization. Use SourcedPipeline for those explicit controls.
 	GateResult evalgate.Result
 
 	// RawText is the raw LLM output before it was parsed into nodes, kept for

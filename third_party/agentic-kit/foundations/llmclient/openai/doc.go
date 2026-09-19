@@ -1,7 +1,35 @@
 // Package openai implements llmclient.LLMClient against the OpenAI Chat
 // Completions API (POST /v1/chat/completions). It is a provider adapter that
 // maps the platform's common llmclient.Request/Response types to OpenAI's wire
-// format, with full SSE streaming support.
+// format, with full SSE streaming support. Config.UseResponses explicitly opts
+// into POST /v1/responses; existing constructors keep Chat Completions.
+//
+// Responses mapping: System becomes instructions, conversations become ordered
+// input items, tool calls/results use call_id, Effort becomes reasoning.effort,
+// and OutputSchema becomes text.format. ToolDef.Strict=false is sent explicitly
+// to preserve optional parameters. ProviderParams may carry trusted optional
+// provider extensions, but cannot override normalized core fields (including
+// model, input, stream, store, tools, or output format). Automatic server
+// storage is disabled; carry prior Content via AsMessage.
+// Native reasoning/server-tool items remain BlockUnknown with verbatim Raw.
+// StopSequences, Thinking, cache hints, and Azure deployment routing are typed
+// InvalidRequestError failures in the Responses lane. Model-specific support
+// is checked through CapabilityCheck or the provider's typed HTTP response.
+//
+// Responses streams emit text incrementally for the current output item and
+// buffer later items until preceding items finish. Only explicitly completed
+// function items with whole JSON arguments can become tools, and executable
+// blocks are withheld until the terminal completed/incomplete response has
+// checked the canonical output; premature EOF is a ServerError. A 32 MiB total wire-byte cap bounds even streams made of many
+// small events, including comments. Usage excludes cached tokens from regular
+// InputTokens and records them in CacheReadInputTokens. Incomplete output limits
+// map to StopMaxTokens and refusals/content filters map to StopRefusal.
+//
+// Verified against: official OpenAI Responses migration and streaming docs,
+// 2026-09-13, using hermetic HTTP fixtures and TestResponsesConformance; no live
+// API call. Ping verifies credential reachability, not inference capabilities.
+// https://developers.openai.com/api/docs/guides/migrate-to-responses
+// https://developers.openai.com/api/docs/guides/streaming-responses
 //
 // Composition: imports only the standard library and the parent
 // foundations/llmclient package (for the interface, request/response types,
@@ -40,7 +68,8 @@
 //     returns a typed InvalidRequestError (not silently dropped).
 //   - OutputSchema → response_format: {type:"json_schema", json_schema: {name:"response",
 //     strict:true, schema: <OutputSchema>}}.
-//   - ProviderParams merged VERBATIM last; its keys override adapter-set keys.
+//   - ProviderParams merges trusted optional extensions only. Core lane fields
+//     are rejected before I/O rather than overridden.
 //   - StopSequences → the "stop" array field.
 //
 // Streaming: the client requests stream_options:{include_usage:true} so the
