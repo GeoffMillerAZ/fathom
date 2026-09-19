@@ -21,6 +21,10 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: minor (pre-1.0: breaking bumps minor)
 
+<!-- su-wave-s7 -->
+**Findings-loop learning telemetry (vision 31 §3 D8, ADR-041 decision 8, plan `docs/plans/substrate.md` §D).** `findings candidates` now scores each rule candidate by sites × mean CODEOWNERS-ownership weight of its member files, decayed once per disputed (refuted) member, and caps emission at a configurable cadence with the rest counted `deferred`; every candidate's drafted rule now carries a `promoted_from: <pattern id>, members: N, producers: [...]` provenance tag (`internal/analysis/findings.CandidatePolicy`/`RuleCandidatesWithPolicy`).
+<!-- /su-wave-s7 -->
+
 **Portable bounded build cache (ADR-039).** `FATHOM_CACHE_ROOT` now relocates the
 supported Taskfile/script build caches without embedding a workstation path; configured
 missing roots refuse, and `FATHOM_CACHE_MAX_MIB` bounds the regenerable Go build cache.
