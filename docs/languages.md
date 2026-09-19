@@ -15,9 +15,9 @@ language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, label
 |---|---|---|---|---|---|
 | Go | `go/parser` + `go/types` | n/a | cobra, cli/cli, prometheus | **native** (done; selector-method and interface gaps O39/O40 open) | close O39/O40 |
 | CUE | `cueextract.go` + `cue/load` | n/a | this repo's `.fathom/`, `schema/` | **native** (done) | — |
-| TypeScript | tree-sitter (wasm) | yes | nest, zod, typeorm | **scip** via scip-typescript (SU-9); **file** fallback (SU-11) | L0 oracle (SU-12), lookups corpus (SU-23) |
-| JavaScript (`.js .jsx .mjs .cjs`) | tree-sitter (wasm) | yes | express, axios, lodash | **scip** via scip-typescript (SU-9); **file** fallback (SU-11) | L0 oracle |
-| Python | tree-sitter (wasm) | yes | fastapi, flask, django | **scip** via scip-python (SU-9); **file** fallback (SU-11) | L0 oracle (SU-12), lookups corpus (SU-23) |
+| TypeScript | tree-sitter (wasm) | yes | nest, zod, typeorm | **scip** via scip-typescript (SU-9, not yet landed); **file** fallback (done — `ResolveFileEdges`, SU-11) | scip-typescript import (SU-9); L0 oracle (SU-12), lookups corpus (SU-23) |
+| JavaScript (`.js .jsx .mjs .cjs`) | tree-sitter (wasm) | yes | express, axios, lodash | **scip** via scip-typescript (SU-9, not yet landed); **file** fallback (done — `ResolveFileEdges`, SU-11) | scip-typescript import (SU-9); L0 oracle |
+| Python | tree-sitter (wasm) | yes | fastapi, flask, django | **scip** via scip-python (SU-9, not yet landed); **file** fallback (done — `ResolveFileEdges`, SU-11) | scip-python import (SU-9); L0 oracle (SU-12), lookups corpus (SU-23) |
 | Java | heuristic (`javaextract.go`) | no | guava, retrofit | **scip** via scip-java (SU-9) | grammar; oracle |
 | Kotlin | tree-sitter (wasm, fwcd 0.3.8) | yes | okhttp, kotlinx.coroutines, Exposed | **scip** via scip-java (SU-9) | oracle (LCA corpus) |
 | Scala | heuristic (`scalaextract.go`) | no | cats, zio, http4s | **scip** via scip-java | grammar |

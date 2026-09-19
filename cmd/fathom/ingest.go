@@ -175,6 +175,12 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stdout, "cue: %d pkg(s) processed (%d failed), %d edge(s) (%d direct / %d unresolved)\n",
 			report.CUEPackages, report.CUEPackagesFailed, cueEdges, report.CUEEdgesDirect, report.CUEEdgesUnresolved)
 	}
+	// Per-file resolver counters (ADR-041 decision 5 / SU-11): printed only
+	// when it produced at least one edge — always heuristic tier, never
+	// presented as typed (core.EdgeConfidenceOf).
+	if report.FileResolvedEdges > 0 {
+		fmt.Fprintf(stdout, "file_resolved: %d\n", report.FileResolvedEdges)
+	}
 	// Scoped config (docs/design/scoped-config.md §4 disclosure): report the
 	// project/user pattern-count split that governed this ingest. Ingest has
 	// already succeeded above (Discover already ran LoadIgnoreScoped as its

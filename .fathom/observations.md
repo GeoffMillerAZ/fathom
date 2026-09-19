@@ -1431,3 +1431,14 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Repro/pin:** `TestReorderFlagsFirst`, `TestLayers_Install_FlagsAfterPositionalPath`, `TestLayers_Install_BoolFlagAfterPositionalPath`, `TestLayers_PrintUsage_LayersInstallLinePinned`, `TestReconcileSkills` (extended).
 - **Status:** closed (O8); O9 not reproduced — regression test added, no code change
 - **Impact:** `layers install` no longer punishes the documented invocation order; a future O9-shaped regression in the wiring ledger is now caught immediately.
+
+### O93 — SU-10: cue/load hands a dependency edge a DIFFERENT *build.Instance pointer than the same package's own top-level load
+
+- **Symptom:** `EnrichCUEEdges`'s first working version resolved every same-package (same-file and cross-file) CUE reference correctly but every CROSS-PACKAGE import reference (`pkgtwo.#Widget: pkgone.#Base & {...}`) came back `core.EdgeUnresolved` even though `build.Instance.LookupImport` was finding the dependency and the target package's own def table (built from `load.Instances`'s own top-level slice) definitely contained the name.
+- **Evidence:**
+  - **Tool:** a throwaway `go test`-based debug harness printing `%p` pointers and `ImportPath`/`Dir` for every `load.Instances(["./..."], cfg)` result and its `.Imports` entries.
+  - **Root cause:** `cuelang.org/go/cue/load` gives a package's TOP-LEVEL instance (from `load.Instances`) an `ImportPath` carrying a version suffix (`example.com/cuefixture/pkgone@v0:pkgone`), while that SAME package reached as a DEPENDENCY (`build.Instance.Imports`, what `LookupImport` returns) is a freshly-built `*build.Instance` — same `.Dir`, same `.Files`, same bare (unversioned) `.ImportPath` — but a genuinely different pointer. A def table keyed by `*build.Instance` pointer (built from the top-level slice) therefore never matches the instance `LookupImport` hands back.
+  - **Fix:** key the def-table map by `inst.Dir` (an absolute path, identical across both instance objects for the same on-disk package) instead of by pointer identity — `internal/fusion/typedcue.go`'s `infos map[string]*cuePkgInfo`.
+- **Repro/pin:** `TestEnrichCUEEdges_Fixture` (the cross-package `#Widget`/`profile` -> `pkgone.#Base` edges would silently regress to `EdgeUnresolved` if this regressed).
+- **Status:** closed
+- **Impact:** cross-package CUE typed edges resolve correctly; anyone else calling `cue/load` for cross-instance identity should key by `Dir`, never by `*build.Instance` pointer or `ImportPath` (which also differs by version-suffix presence between the two call sites).

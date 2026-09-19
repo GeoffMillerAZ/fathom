@@ -85,9 +85,12 @@ type ingestJSON struct {
 	UnsupportedLanguages map[string]int        `json:"unsupported_languages,omitempty"`
 	TypedEdges           *ingestTypedEdgesJSON `json:"typed_edges,omitempty"`
 	CUEEdges             *ingestCUEEdgesJSON   `json:"cue_edges,omitempty"`
-	Excluded             *ingestExcludedJSON   `json:"excluded,omitempty"`
-	Error                string                `json:"error,omitempty"`
-	Hint                 string                `json:"hint,omitempty"`
+	// FileResolved is the per-file TypeScript/JavaScript/Python resolver's
+	// edge count (ADR-041 decision 5 / SU-11) — always heuristic tier.
+	FileResolved int                 `json:"file_resolved,omitempty"`
+	Excluded     *ingestExcludedJSON `json:"excluded,omitempty"`
+	Error        string              `json:"error,omitempty"`
+	Hint         string              `json:"hint,omitempty"`
 }
 
 // errnoClass maps the connector's errno text to its symbolic class; ""
@@ -153,6 +156,7 @@ func renderIngestJSON(w io.Writer, service, svcPath string, report client.Report
 			Direct: report.CUEEdgesDirect, Unresolved: report.CUEEdgesUnresolved,
 		}
 	}
+	out.FileResolved = report.FileResolvedEdges
 	if _, counts, err := connector.LoadIgnoreScopedFor(svcPath, service); err == nil && (counts.Project > 0 || counts.User > 0 || counts.Service > 0) {
 		out.Excluded = &ingestExcludedJSON{Project: counts.Project, User: counts.User, Service: counts.Service}
 	}

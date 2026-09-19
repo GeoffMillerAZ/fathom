@@ -174,6 +174,15 @@ type Report struct {
 	CUEEdgesDirect     int
 	CUEEdgesUnresolved int
 
+	// FileResolvedEdges is the number of core.EdgeFileResolved edges the
+	// per-file TypeScript/JavaScript/Python resolver produced this run
+	// (ADR-041 decision 5 / SU-11; zero when the service has none of those
+	// languages, a SCIP index is present for it, or Config.DisableTypedEdges
+	// is set). Always heuristic tier — see core.EdgeConfidenceOf — never
+	// folded into the Typed*/CUE* counters above. See
+	// internal/fusion/fileresolve.go.
+	FileResolvedEdges int
+
 	// TSEngineFaults is the number of files this ingest whose tree-sitter
 	// wasm extraction faulted (parse deadline on pathological input, wasm
 	// trap, or query-run failure — ADR-021 §4, extractor.ErrTSEngineFault).
@@ -926,6 +935,16 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	report.CUEPackagesFailed = cueRep.PackagesFailed
 	report.CUEEdgesDirect = cueRep.EdgesDirect
 	report.CUEEdgesUnresolved = cueRep.EdgesUnresolved
+
+	// Per-file resolver for TypeScript/JavaScript and Python (ADR-041
+	// decision 5 / SU-11): additive, never blocks ingest. Unlike the Go/CUE
+	// passes above it has no per-package content-hash cache yet (see
+	// internal/fusion/fileresolve.go's package doc) — every ingest
+	// re-fetches and re-parses the service's full TS/JS/Python corpus, the
+	// same "whole tree, every run" shape those passes use, just without
+	// their cache. See internal/fusion.ResolveFileEdges.
+	fileRep := p.enrichFileResolvedEdges(ctx, svc, refs)
+	report.FileResolvedEdges = fileRep.EdgesResolved
 
 	// ── Orphan purge ─────────────────────────────────────────────────────────
 	// refs still holds every discovered file, unreadable ones included, so an
