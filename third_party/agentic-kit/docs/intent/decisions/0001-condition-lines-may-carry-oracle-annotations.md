@@ -73,11 +73,8 @@ byte-identical to one where this was rejected.
 
 ## Revisit when
 
-Three hand-written annotations exist across two repositories (accept, and
-fathom's evaluator is unblocked), **or** thirty days pass from this record's
-date with fewer than that (reject, and this record is marked rejected rather
-than left open — an unanswered proposal is the debt the practice exists to
-name).
+Three hand-written annotations exist across two repositories (accept and unblock
+fathom's evaluator), **or** thirty days pass from this record's date with fewer
+(mark rejected rather than leaving the proposal open).
 
-Asked by fathom as FA-15 (`docs/plans/fathom-uplift-asks.md`); the consuming
-design is fathom ADR-026 and the question it answers is that repo's Q18.
+Asked by fathom as FA-15 (`docs/plans/fathom-uplift-asks.md`); consuming design: fathom ADR-026 / Q18.

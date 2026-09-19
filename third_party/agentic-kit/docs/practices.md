@@ -5,7 +5,8 @@ agentic-workload anti-pattern → why it bites → the kit's opinion (the practi
 it enforces instead) → the packages that implement it → an honest status
 (**shipped** | **partial** | **roadmap**). Every package claim below was
 verified against the code; a practices doc that overclaims is itself the
-anti-pattern.
+anti-pattern. A shipped component does not imply a wired consumer: required options,
+execution surfaces and evidence are described by [workflow assurance](intent/assurance.md).
 
 ## 1. Lossy progressive summarization
 
@@ -59,9 +60,13 @@ pre-scanned — an unverified tier CANNOT exceed its ceiling, by code.
 | `foundations/quality/honesty-gate` | deterministic Allowed/Hedge/Block verdict on overclaiming |
 | `foundations/review/scoring` + `confidence-scoring` | tier confidence ceilings (`TierCeiling`/`ApplyCeiling`); confidence derived from evidence count + agreement |
 
-**STATUS: shipped.** Start at `foundations/evidence/README.md` — it documents
+**STATUS: shipped primitives; precise prose composition is partial.** Start at `foundations/evidence/README.md` — it documents
 the canonical pipeline and the one trap: `evidence-graph.Span` is a legacy shape
 (no Grade/Author/Locator) whose migration is tracked deferred work.
+`kits/governed-prose-kit` currently copies every input reference to every generated
+line and tests whether any citation exists. It does not resolve evidence or verify
+sentence-level support. Scope G6 and decision 0006 define the next composition;
+reference integrity, semantic support and source truth remain separate guarantees.
 
 ## 3. Improvised escalation
 
@@ -219,11 +224,11 @@ authorship: every `claim-lifecycle` event carries an `Author`;
 | `foundations/provenance/ai-provenance` | the authorship record those hashes live on |
 | `foundations/review/claim-lifecycle` / `correction-ledger` | hash-chained / append-only ledgers that carry AI provenance through review |
 
-**STATUS: partial.** The hashes are shipped end to end. A versioned prompt
-*registry* is deliberately absent (`prompt-template` makes callers own storage
-and lookup), and the eval-runner regression harness that would catch quality
-drift is deliberate roadmap — TRACKING.md defers it until a real eval corpus
-exists to shape it. Drift is *attributable* today, not yet *auto-detected*.
+**STATUS: partial integration.** Hash/provenance primitives and `kits/eval-runner`
+ship; `task eval` replays the committed corpus. Callers own prompt storage, corpus
+provenance and wiring into their release path. The current prose pipeline does not
+populate a full per-node reproduction record. Replay regression is not a measurement
+of current live model quality; workflow adoption and independent trials remain necessary.
 
 ## 9. Tool definition sprawl
 
@@ -492,7 +497,7 @@ be talked out of by the model that reads the tool definitions.
 |---|---|
 | `foundations/agent/tool-registry` | `Effect` (the four MCP hints) + `EffectOf`; additive — no existing call site changes |
 | `kits/agent-harness` | `Config.EffectPolicy` (`permissive` default, `strict`); under strict an undeclared or destructive dispatch goes through `RequireApproval` → `Deps.Approver`, emitting `gate_denied` / `gate_approved` events plus a journal record; sequential even under `ParallelTools` |
-| `kits/hitl` | `Preview` supplies the approval card the approver is shown — the impact of the real op, not the model's description of it |
+| `kits/hitl` | pure operations can produce measured before/after previews; the harness's `previewFor` only describes the pending call and leaves `Changes` empty |
 | `kits/mcp-server` | `annotationsFromEffect` emits the annotations object in `tools/list` for tools with a declared `Effect`, all four hints explicit |
 | `foundations/agent/mcp-client` | `effectFromAnnotations` maps a server's annotations IN as untrusted unless `TrustedServer` — a server's self-declared "read only" is a claim, not a fact |
 
@@ -501,6 +506,8 @@ vocabulary verbatim; nil means destructive under strict; approval composes the
 existing `PreDispatch` seam and `kits/hitl` rather than a new gate). Consumers:
 `scenarios/governed-investigation` dispatches a destructive tool through the
 strict gate; `cmd/kit-new`'s generated harness declares effects.
+This is a synchronous per-call decision, not a durable approval token. Identity,
+target-version binding, expiry and safe retry after interruption are scope G8.
 
 ## 19. Protocol-revision drift
 
@@ -554,16 +561,11 @@ rather than assumed.
 | `foundations/agent/tool-registry` | `Options.Policy` is deny-by-default when wired, consulted before every handler; `TrifectaStrict` refuses at registration (§13) |
 | `kits/mcp-server` | an oversized message is an explicit `-32700` and a resync; when clean resync is impossible the server fails closed rather than misparse |
 
-**STATUS: partial**, and the split matters. Shipped HERE: the kit's own harness
-gates are fail-closed by construction (the rows above) — there is no advisory
-rung inside the loop to mislabel. NOT shipped here: the declared-posture type
-itself (`GatePosture{Kind, FailOpen, Covers}`) and an assurance report over it.
-The failure this entry describes lives at the CONSUMER edge, where a harness's
-hooks are fail-open by doctrine for infrastructure errors — correct, and
-undocumented to the operator. That row is fathom's: a doctor `gate_posture`
-check, landing as `HP-15` in its harness-port plan. The kit will absorb the type
-when a second consumer needs it; until then this section is a boundary
-description, not a package claim.
+**STATUS: partial.** Configured synchronous checks refuse on failure; absent optional
+dependencies are a different state. Nil budget/detector and the default permissive
+effect policy do not establish the claimed control. A declared-posture manifest and
+entry-point assurance report are scope G5 (0005), not shipped types. Host hooks have
+their own coverage and failure contracts and require separate probes.
 
 ## 21. Self-derived ground truth, n=1 evidence, and precision-less set grading
 
@@ -624,12 +626,29 @@ other side, keeping recall in a peer process that may recall but never assert.
 (`StopCompleted`, `StopRefusal`, `StopHook`, `StopCanceled`) is a deliberate
 choice, not a gap: those stops either finished or already carry their reason.
 
+## 23. Universal grades and unaudited policy screening
+
+**The anti-pattern.** A high average score hides a required failure; a cheap model's
+"safe" label becomes permission; missing evidence or classifier failure defaults to allow.
+
+**The opinion.** Share a versioned evidence lifecycle across engineering domains, not
+one universal grading formula. Required failures and unknowns block soft optimization.
+Keep policy classifications, their deterministic dispositions and actual authority
+separate. A model screen must not release protected work before completing its checks.
+
+**STATUS: experimental, locally integrated.** `fitness-function-registry.AssessProfile`
+projects evidence-linked criteria; `guardrails-pipeline.PromptScreener.Run` holds its
+callback on refusal/review/error under configurable standards. The [reference](../examples/engineering-assessments/README.md)
+checks actual counter dispatch and an independently disabled effect gate. Synthetic
+tests establish wiring, not live classifier accuracy or universal attack resistance.
+Existing topic/endpoint gates retain their different responsibilities. [Design](designs/engineering-assessments.md).
+
 ## Using this ledger
 
 Starting a new workload: walk the sections above and wire what applies — each
 table is the import list. When a new anti-pattern is identified in the field, it
-gets an entry here *and* an opinionated primitive in the kit (VISION.md
-practice-watch: absorb, don't annotate). For self-audit,
+gets a failure hypothesis here or in the roadmap, then a tested remedy through a
+consumer or admitted incubation (0004); often an existing seam is enough. For self-audit,
 `foundations/quality/agentic-practices-evaluator` is the scorecard seam: encode
 the practices your workload wired as deterministic `Practice` predicates over an
 `AgentRun` and score runs — the checklist is caller data by design, and this

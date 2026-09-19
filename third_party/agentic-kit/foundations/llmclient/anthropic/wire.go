@@ -33,7 +33,8 @@ type wireRequest struct {
 //
 //	"output_config": {"format": {"type": "json_schema", "schema": <OutputSchema>}}
 type wireOutputConfig struct {
-	Format wireOutputFormat `json:"format"`
+	Format *wireOutputFormat `json:"format,omitempty"`
+	Effort string            `json:"effort,omitempty"`
 }
 
 // wireOutputFormat is the "format" sub-object of output_config.
@@ -170,17 +171,24 @@ func (c *Client) buildBody(req llmclient.Request, stream bool) ([]byte, error) {
 		}
 	}
 
-	// Effort is not a first-class Anthropic API field. Reject explicitly so
-	// the caller learns immediately rather than silently losing the intent.
-	if req.Effort != "" {
+	switch req.Effort {
+	case "", "low", "medium", "high", "xhigh", "max":
+	default:
 		return nil, &llmclient.InvalidRequestError{Message: fmt.Sprintf(
-			"anthropic: Request.Effort %q is not supported by this adapter; use Request.ProviderParams to pass experimental effort fields verbatim",
+			"anthropic: Request.Effort %q is unsupported; use low, medium, high, xhigh, max or empty",
 			req.Effort,
 		)}
 	}
 
 	if err := llmclient.ValidateProviderParams(req.ProviderParams, "anthropic"); err != nil {
 		return nil, err
+	}
+	if (req.Effort != "" || len(req.OutputSchema) > 0) && len(req.ProviderParams) > 0 {
+		var params map[string]json.RawMessage
+		_ = json.Unmarshal(req.ProviderParams, &params) // shape validated above
+		if _, exists := params["output_config"]; exists {
+			return nil, &llmclient.InvalidRequestError{Message: "anthropic: ProviderParams.output_config conflicts with typed Effort or OutputSchema; use typed fields together or raw output_config alone"}
+		}
 	}
 
 	if err := llmclient.ValidateOutputSchema(req.OutputSchema, "anthropic"); err != nil {
@@ -287,12 +295,13 @@ func (c *Client) buildBody(req llmclient.Request, stream bool) ([]byte, error) {
 		}
 	}
 
-	if len(req.OutputSchema) > 0 {
-		w.OutputConfig = &wireOutputConfig{
-			Format: wireOutputFormat{
+	if len(req.OutputSchema) > 0 || req.Effort != "" {
+		w.OutputConfig = &wireOutputConfig{Effort: req.Effort}
+		if len(req.OutputSchema) > 0 {
+			w.OutputConfig.Format = &wireOutputFormat{
 				Type:   "json_schema",
 				Schema: req.OutputSchema,
-			},
+			}
 		}
 	}
 
@@ -303,7 +312,7 @@ func (c *Client) buildBody(req llmclient.Request, stream bool) ([]byte, error) {
 
 	// Merge ProviderParams VERBATIM into the top-level body object. Keys the
 	// adapter already set are overridden by ProviderParams — this is the
-	// caller's escape hatch. See the llmclient package doc.
+	// caller's escape hatch, except typed output_config conflicts rejected above.
 	if len(req.ProviderParams) > 0 {
 		body, err = mergeProviderParams(body, req.ProviderParams, "anthropic")
 		if err != nil {

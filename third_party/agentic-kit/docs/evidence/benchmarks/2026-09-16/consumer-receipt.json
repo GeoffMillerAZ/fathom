@@ -1,0 +1,131 @@
+{
+  "summary": {
+    "evidence_trust": "caller-declared",
+    "mode": "synthetic",
+    "observed_at": "2026-09-16T00:00:00Z",
+    "valid_until": "2026-09-17T00:00:00Z",
+    "manifest_fingerprint": "b13158afc441062ce7afc94a91feb188b5383e905691beb24a0217e9d740f4d1",
+    "evidence_fingerprint": "73a2587a44fa0c6576cc9c55db7c894d92130ade0389726ea8196982b0c959be",
+    "trials": 3,
+    "attempts": 3,
+    "outcomes": {
+      "accepted": 1,
+      "error": 1,
+      "rejected": 1
+    },
+    "first_attempt_accepted": 1,
+    "eventual_accepted": 1,
+    "first_attempt_success_rate": 0.3333333333333333,
+    "eventual_success_rate": 0.3333333333333333,
+    "known_cost_trials": 0,
+    "missing_cost_trials": 3,
+    "total_known_cost_usd": 0,
+    "cost_basis_counts": {
+      "unknown": 3
+    },
+    "total_cost_by_basis_usd": {
+      "estimated": 0,
+      "observed": 0,
+      "usage": 0
+    },
+    "cost_coverage_complete": false,
+    "cost_lower_bound": false,
+    "cost_warning": "partial cost coverage: caller attestation does not establish hidden-call completeness",
+    "cost_per_attempted_task_usd": null,
+    "cost_per_accepted_usd": null,
+    "p50_duration_ms": 0,
+    "p95_duration_ms": 0,
+    "accepted_trials": 1,
+    "p50_accepted_ms": 0,
+    "p95_accepted_ms": 0
+  },
+  "evidence": {
+    "manifest": {
+      "version": 1,
+      "workload": "redteam-faithfulness-offline",
+      "solution": {
+        "code": "367ba6106bac6b9093635b0a6a4f21611642e92f32270f34794ca142f763ad8e",
+        "context": "1906b5d3164f500a6b013ae3cf85934d938b2e23269687be3ce45ada02f59438",
+        "model": "54451d706db60405402e8062dbc0320bf788aac1bec70617e8b0c5345b19f070",
+        "parameters": "c31ffdf5aaab4718ca00bfa6a5da4fd9e83512f4c0517628b64e2fd6fc52b6f3",
+        "prompt": "62d5b9699987fd3daadcc9fd82a264c9b961322115c020ca51a5a1d1b21ef070",
+        "retrieval": "976d6318e648acaaeed99e18fd1db5e11190ffaac0d9f67c831078ac53dc8cd2",
+        "tools": "976d6318e648acaaeed99e18fd1db5e11190ffaac0d9f67c831078ac53dc8cd2",
+        "workflow": "1480a49639508c93035608af2fe5136d927955d7715c2a18ca8bd583f4eb6605"
+      },
+      "evaluation": {
+        "acceptance": "95ca9ff8a1df5afdd998164c01b5a4930f3f4d344197d99b1e198fd095719a2f",
+        "dataset": "0c6b790eebecc0416c5f32315eb3493c43984bce182bc70dd655e172e0de69c4",
+        "environment": "7e05f084eb6ac1f07e7d6aa6e021f87de32c108039f1fa0e65d1925610e36a4e",
+        "grader": "9704627f6722fd434311a0535d5e8a27341bf512325bed5247880f4452cdfc0b",
+        "pricing": "976d6318e648acaaeed99e18fd1db5e11190ffaac0d9f67c831078ac53dc8cd2",
+        "protocol": "f9f2d6d9f060148279ec27133c20a66f4123e2747c2f014b94bebd03e2d5de0a",
+        "useful_result": "fb143a12a1b2b14c3816a0850b3295faae92da89b27ad0c30ba52aff4fde3ad4"
+      }
+    },
+    "mode": "synthetic",
+    "observed_at": "2026-09-16T00:00:00Z",
+    "valid_until": "2026-09-17T00:00:00Z",
+    "trials": [
+      {
+        "task_id": "supported",
+        "replicate_id": "one",
+        "outcome": "accepted",
+        "attempt_count": 1,
+        "trial_spec_digest": "1aad58bd36a2472f1727aa77c09db41f48e0bff47967fce9907c841a2079793e",
+        "output_digest": "50341621d6e6817f50417a84ecf79ba9a21d3fb7ad61fedfcff9730d46034835",
+        "acceptance_digest": "2aec2416a65a120b2ca6a77169568c75706eb4a62706bdd9a0f6cf7361996543",
+        "cost_usd": null,
+        "cost_basis": "unknown",
+        "price_digest": null,
+        "cost_complete": false,
+        "duration_ms": 0,
+        "accepted_ms": 0,
+        "first_visible_ms": null,
+        "first_useful_ms": null
+      },
+      {
+        "task_id": "unsupported",
+        "replicate_id": "one",
+        "outcome": "rejected",
+        "attempt_count": 1,
+        "trial_spec_digest": "93132efcaf6a85b6286dbc4e4f0e0775571c0c38f17e84f34898f341654a6553",
+        "output_digest": null,
+        "acceptance_digest": "20115cb8481ce1b9e261736206f926d75c6b1658f5e02e4d68a3ee05ada84e41",
+        "cost_usd": null,
+        "cost_basis": "unknown",
+        "price_digest": null,
+        "cost_complete": false,
+        "duration_ms": 0,
+        "accepted_ms": null,
+        "first_visible_ms": null,
+        "first_useful_ms": null
+      },
+      {
+        "task_id": "unavailable",
+        "replicate_id": "one",
+        "outcome": "error",
+        "attempt_count": 1,
+        "trial_spec_digest": "f5b2e519258e8516e5b544fe19c9fd00874d1d4327423b8f23fba0b7e28e3aca",
+        "output_digest": null,
+        "acceptance_digest": null,
+        "cost_usd": null,
+        "cost_basis": "unknown",
+        "price_digest": null,
+        "cost_complete": false,
+        "duration_ms": 0,
+        "accepted_ms": null,
+        "first_visible_ms": null,
+        "first_useful_ms": null
+      }
+    ]
+  },
+  "artifacts": {
+    "1aad58bd36a2472f1727aa77c09db41f48e0bff47967fce9907c841a2079793e": "[{\"ID\":\"supported\",\"Label\":\"supported\",\"Fail\":false},\"Led a platform team.\",\"CITABLE EVIDENCE\\n- [example-b01] Example: Led a platform team.\",\"one\",[{\"Name\":\"a\",\"Model\":\"judge-a\",\"Family\":\"anthropic\"},{\"Name\":\"b\",\"Model\":\"judge-b\",\"Family\":\"google\"}]]",
+    "20115cb8481ce1b9e261736206f926d75c6b1658f5e02e4d68a3ee05ada84e41": "[{\"findings\":[{\"claim\":\"Led a platform team.\",\"span\":\"Led a platform team.\",\"label\":\"unsupported-extrinsic\",\"numeric\":false,\"rationale\":\"synthetic fixture\",\"lanes\":[{\"lane\":\"a\",\"label\":\"unsupported-extrinsic\"},{\"lane\":\"b\",\"label\":\"unsupported-extrinsic\"}]}],\"lanes\":[{\"lane\":\"a\",\"model\":\"judge-a\",\"family\":\"anthropic\",\"promptHash\":\"f670ccf6b64d5ddcd6b6bd1af2297e44702e8d240ce4cd6eb61a6bf16b1e4619\",\"author\":{\"kind\":\"ai\",\"ai\":{\"modelId\":\"judge-a\",\"modelVersion\":\"judge-a\",\"promptHash\":\"f670ccf6b64d5ddcd6b6bd1af2297e44702e8d240ce4cd6eb61a6bf16b1e4619\",\"paramsHash\":\"83774f2fc15934ccee1aea2079caa1024b1f227ff38427bafd2c563061726a82\",\"inputDigest\":\"f400a512d49268f19e66ce01233097be67d116e516ca86cb40078e3737793a21\",\"at\":\"2026-09-16T11:11:53.149002-07:00\"}},\"inTokens\":10,\"outTokens\":5,\"claims\":1,\"reasoningChars\":31},{\"lane\":\"b\",\"model\":\"judge-b\",\"family\":\"google\",\"promptHash\":\"f670ccf6b64d5ddcd6b6bd1af2297e44702e8d240ce4cd6eb61a6bf16b1e4619\",\"author\":{\"kind\":\"ai\",\"ai\":{\"modelId\":\"judge-b\",\"modelVersion\":\"judge-b\",\"promptHash\":\"f670ccf6b64d5ddcd6b6bd1af2297e44702e8d240ce4cd6eb61a6bf16b1e4619\",\"paramsHash\":\"f597a9097d54478259cbbf09167c899349e8f847a72094c281086f27408c3b29\",\"inputDigest\":\"f400a512d49268f19e66ce01233097be67d116e516ca86cb40078e3737793a21\",\"at\":\"2026-09-16T11:11:53.149074-07:00\"}},\"inTokens\":10,\"outTokens\":5,\"claims\":1,\"reasoningChars\":31}]},{\"blocking\":[{\"claim\":\"Led a platform team.\",\"span\":\"Led a platform team.\",\"label\":\"unsupported-extrinsic\",\"numeric\":false,\"rationale\":\"synthetic fixture\",\"lanes\":[{\"lane\":\"a\",\"label\":\"unsupported-extrinsic\"},{\"lane\":\"b\",\"label\":\"unsupported-extrinsic\"}]}],\"reasons\":[\"not in the source and not inferable (unsupported-extrinsic #1, rung 0)\"],\"passed\":false,\"tolerance\":{\"intrinsic\":0,\"extrinsic\":0,\"inferable\":3,\"numeric\":0,\"rephrase\":\"unbounded\"}}]",
+    "2aec2416a65a120b2ca6a77169568c75706eb4a62706bdd9a0f6cf7361996543": "[{\"findings\":[{\"claim\":\"Led a platform team.\",\"span\":\"Led a platform team.\",\"label\":\"supported\",\"numeric\":false,\"rationale\":\"synthetic fixture\",\"lanes\":[{\"lane\":\"a\",\"label\":\"supported\"},{\"lane\":\"b\",\"label\":\"supported\"}]}],\"lanes\":[{\"lane\":\"a\",\"model\":\"judge-a\",\"family\":\"anthropic\",\"promptHash\":\"f670ccf6b64d5ddcd6b6bd1af2297e44702e8d240ce4cd6eb61a6bf16b1e4619\",\"author\":{\"kind\":\"ai\",\"ai\":{\"modelId\":\"judge-a\",\"modelVersion\":\"judge-a\",\"promptHash\":\"f670ccf6b64d5ddcd6b6bd1af2297e44702e8d240ce4cd6eb61a6bf16b1e4619\",\"paramsHash\":\"83774f2fc15934ccee1aea2079caa1024b1f227ff38427bafd2c563061726a82\",\"inputDigest\":\"f400a512d49268f19e66ce01233097be67d116e516ca86cb40078e3737793a21\",\"at\":\"2026-09-16T11:11:53.148188-07:00\"}},\"inTokens\":10,\"outTokens\":5,\"claims\":1,\"reasoningChars\":31},{\"lane\":\"b\",\"model\":\"judge-b\",\"family\":\"google\",\"promptHash\":\"f670ccf6b64d5ddcd6b6bd1af2297e44702e8d240ce4cd6eb61a6bf16b1e4619\",\"author\":{\"kind\":\"ai\",\"ai\":{\"modelId\":\"judge-b\",\"modelVersion\":\"judge-b\",\"promptHash\":\"f670ccf6b64d5ddcd6b6bd1af2297e44702e8d240ce4cd6eb61a6bf16b1e4619\",\"paramsHash\":\"f597a9097d54478259cbbf09167c899349e8f847a72094c281086f27408c3b29\",\"inputDigest\":\"f400a512d49268f19e66ce01233097be67d116e516ca86cb40078e3737793a21\",\"at\":\"2026-09-16T11:11:53.148426-07:00\"}},\"inTokens\":10,\"outTokens\":5,\"claims\":1,\"reasoningChars\":31}]},{\"passed\":true,\"tolerance\":{\"intrinsic\":0,\"extrinsic\":0,\"inferable\":3,\"numeric\":0,\"rephrase\":\"unbounded\"}}]",
+    "50341621d6e6817f50417a84ecf79ba9a21d3fb7ad61fedfcff9730d46034835": "\"Led a platform team.\"",
+    "93132efcaf6a85b6286dbc4e4f0e0775571c0c38f17e84f34898f341654a6553": "[{\"ID\":\"unsupported\",\"Label\":\"unsupported-extrinsic\",\"Fail\":false},\"Led a platform team.\",\"CITABLE EVIDENCE\\n- [example-b01] Example: Led a platform team.\",\"one\",[{\"Name\":\"a\",\"Model\":\"judge-a\",\"Family\":\"anthropic\"},{\"Name\":\"b\",\"Model\":\"judge-b\",\"Family\":\"google\"}]]",
+    "f5b2e519258e8516e5b544fe19c9fd00874d1d4327423b8f23fba0b7e28e3aca": "[{\"ID\":\"unavailable\",\"Label\":\"unknown\",\"Fail\":true},\"Led a platform team.\",\"CITABLE EVIDENCE\\n- [example-b01] Example: Led a platform team.\",\"one\",[{\"Name\":\"a\",\"Model\":\"judge-a\",\"Family\":\"anthropic\"},{\"Name\":\"b\",\"Model\":\"judge-b\",\"Family\":\"google\"}]]"
+  }
+}

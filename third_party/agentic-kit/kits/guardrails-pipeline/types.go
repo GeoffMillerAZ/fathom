@@ -7,6 +7,8 @@
 // Stages (default order): wrap → inject-detect → classify → redact.
 // Each stage may be skipped by omitting the corresponding dep (nil dep →
 // StageResult{Allowed:true, Action:"skipped"}).
+// InjectDetectAction="annotate" records structured matches without blocking on
+// injection severity. The default is "block"; other stages retain their policy.
 //
 // # Post-LLM chain
 //
@@ -18,6 +20,16 @@
 // Both chains return a Decision. Allowed is false if any stage denied or if
 // any stage returned an error (fail-closed). Transformed carries the
 // cumulative text after all transformation stages (wrap, redact, disclaimer).
+// Invalid configuration and cancellation always deny. A nil dependency is an
+// explicitly skipped check, not evidence that its safeguard ran.
+//
+// # Model-based prompt screening
+//
+// PromptScreener adds an opt-in, single-call classifier against a versioned
+// RefusalPolicy. Its gated Run continuation is held on refusal, review or error.
+// It is separate from the legacy chains and does not change their skip semantics.
+// A classification is fallible evidence, never authorization or a guarantee about
+// later tool results, generated output, native coding hosts or unscreened entrypoints.
 //
 // # Concurrency
 //
@@ -74,6 +86,11 @@ type StageResult struct {
 	// was found or the stage was skipped.
 	Findings []string `json:"findings"`
 
+	// Matches preserves injection rule IDs, severities and excerpts independently
+	// of the decision policy. Findings remains the human-readable compatibility view.
+	// Excerpts are untrusted input and may be sensitive; redact before external logging.
+	Matches []injectiondetector.Match `json:"matches,omitempty"`
+
 	// Severity is the highest severity/risk string encountered by this stage,
 	// or "" if not applicable. The exact values depend on the stage
 	// (e.g. "high", "critical", "confidential").
@@ -107,6 +124,11 @@ type PreLLMConfig struct {
 	// InjectDetectThreshold is the minimum Severity string that causes the
 	// inject-detect stage to deny. Default is "high".
 	InjectDetectThreshold string
+
+	// InjectDetectAction is "block" (default) or "annotate". Annotate retains
+	// structured findings without denying on injection severity; other stages
+	// and configuration errors can still deny. Detection is heuristic, not proof.
+	InjectDetectAction string
 
 	// ClassifyThreshold is the minimum SensitivityLevel name that causes
 	// the classify stage to deny. Default is "confidential".

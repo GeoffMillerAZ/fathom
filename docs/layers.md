@@ -159,7 +159,11 @@ never RISE on import, whatever confidence the source event claims. A
 native finding already exists as <claim_id>`) — authority never flows
 backwards from a review-kit-imported journal entry to a native finding, or
 from a native finding re-imported as if it were independent corroboration.
-`docs/adoption/findings-loop.md` is the end-to-end guide.
+`docs/adoption/findings-loop.md` is the end-to-end guide. The cap, the
+fathom-origin refusal and the independent-corroboration check all delegate
+to agentic-kit's vendored `evidence-producer` catalog (`internal/semantic.
+CatalogFromKit`, SU-25, ADR-041 decision 8) rather than reimplementing tier
+arithmetic locally.
 
 ### `adr-rules` — architectural constraints (the layer-2 proof)
 

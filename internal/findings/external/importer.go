@@ -122,7 +122,7 @@ func (im Importer) Import(ctx context.Context, service, producer string, p Proje
 			receipt.Rejected = append(receipt.Rejected, Rejection{Index: i, FindingID: findingID, Reason: "unknown-producer"})
 			continue
 		}
-		if prod.Origin == "fathom" {
+		if err := im.Catalog.Admit(prod); err != nil {
 			receipt.Rejected = append(receipt.Rejected, Rejection{Index: i, FindingID: findingID, Reason: "circular: fathom-origin producer"})
 			continue
 		}
@@ -405,4 +405,21 @@ func missingRequiredField(ev Event, requires []string) string {
 		}
 	}
 	return ""
+}
+
+// IndependentProducers reports whether the catalogued producers named a and
+// b are independent — corroboration must count only across independent
+// producers, never the same one twice (vision 30 §4 / ADR-040 decision 4,
+// SU-25 / ADR-041 decision 8). Delegates to im.Catalog.Independent, which
+// itself delegates to agentic-kit's evidenceproducer.Catalog.Independent.
+// An unresolved producer name can't be proven distinct from anything, so
+// this fails closed rather than defaulting to "independent" — mirrors
+// missingRequiredField's convention for an unrecognized requirement.
+func (im Importer) IndependentProducers(a, b string) bool {
+	pa, aok := im.Catalog.Lookup(a)
+	pb, bok := im.Catalog.Lookup(b)
+	if !aok || !bok {
+		return false
+	}
+	return im.Catalog.Independent(pa, pb)
 }

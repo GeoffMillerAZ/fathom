@@ -48,203 +48,202 @@ type ShreddableVault interface {
 	Shred(namespace string) error
 }
 
-// encryptedEntry is the internal vault record storing a token and its encrypted
-// value. The plaintext is never stored; only the AES-GCM ciphertext is kept.
-type encryptedEntry struct {
-	token      Token
-	ciphertext []byte // AES-256-GCM: [nonce || ciphertext || tag]
-}
-
-// EncryptedVault is a Vault implementation that encrypts sensitive values at
-// rest under per-namespace AES-256-GCM envelope keys managed by a KeyStore.
-// It implements ShreddableVault: calling Shred destroys the namespace key via
-// the KeyStore, making all values in that namespace permanently unrecoverable.
-//
-// Token minting (Tokenize) uses the Tokenizer's RandomToken — the HMAC key
-// used by DeterministicToken is DISTINCT from the envelope key used to encrypt
-// values. This separation means:
-//   - Minting is not storage: DeterministicToken always produces the same token
-//     for a (value, class, namespace) triple regardless of whether the namespace
-//     has been shredded. The token can still be minted after a shred.
-//   - Resolution fails typed: after a shred, Detokenize returns ErrShredded even
-//     for tokens whose value was previously resolvable.
-//
-// Concurrency: EncryptedVault is safe for concurrent use. KeyStore must also be
-// safe for concurrent use (MemoryKeyStore is).
+// EncryptedVault encrypts values under per-namespace AES-256-GCM keys.
+// Durable reconstruction requires the same tokenizer HMAC key, RecordStore and
+// KeyStore, including durable shred tombstones. AuditLog is local to this instance.
+// Concurrency: methods are serialized via a mutex. Shared stores must themselves
+// be concurrent-safe. Shred cannot recall plaintext or keys already returned to
+// another instance; callers requiring that barrier must coordinate those users.
 type EncryptedVault struct {
 	mu       sync.RWMutex
 	tz       *Tokenizer
 	ks       KeyStore
 	policy   AccessPolicy
 	clock    func() time.Time
-	store    map[string]encryptedEntry // keyed by token.Value
+	records  RecordStore
+	random   RandFunc
 	auditLog []AuditEvent
 }
 
-// NewEncryptedVault constructs an EncryptedVault. tz provides token generation,
-// ks manages envelope keys (and shredding), policy enforces detokenize access
-// control, and clock timestamps audit events.
+// NewEncryptedVault constructs a vault with an in-memory encrypted record store
+// and crypto/rand nonces. Existing callers retain random token minting.
 func NewEncryptedVault(tz *Tokenizer, ks KeyStore, policy AccessPolicy, clock func() time.Time) *EncryptedVault {
-	if tz == nil {
-		panic("tokenization: NewEncryptedVault: tokenizer must not be nil")
-	}
-	if ks == nil {
-		panic("tokenization: NewEncryptedVault: key store must not be nil")
-	}
-	if policy == nil {
-		panic("tokenization: NewEncryptedVault: policy must not be nil")
-	}
-	if clock == nil {
-		panic("tokenization: NewEncryptedVault: clock must not be nil")
-	}
-	return &EncryptedVault{
-		tz:     tz,
-		ks:     ks,
-		policy: policy,
-		clock:  clock,
-		store:  make(map[string]encryptedEntry),
-	}
+	return NewEncryptedVaultWithStore(tz, ks, policy, clock, NewMemoryRecordStore(), nil)
 }
 
-// Tokenize encrypts value under the namespace's envelope key and stores the
-// ciphertext alongside the token. Each call fetches (or lazily mints) the
-// namespace key from the KeyStore. A tokenize AuditEvent is always appended.
-//
-// If the namespace has been shredded and the KeyStore returns ErrShredded,
-// Tokenize returns an error — you cannot store new values in a shredded
-// namespace without first calling Rotate on the KeyStore.
+// NewEncryptedVaultWithStore constructs a vault over caller-owned records and
+// keys. Neither store is copied or owned by the vault. Both must survive restart
+// for resolution; stable deterministic minting also requires the same HMAC key.
+// random supplies encryption nonces; nil defaults to crypto/rand. Production
+// sources must supply fresh cryptographic randomness, never seeded test bytes.
+// The tokenizer owns its independent random-token source. All other args are required.
+func NewEncryptedVaultWithStore(tz *Tokenizer, ks KeyStore, policy AccessPolicy, clock func() time.Time, records RecordStore, random RandFunc) *EncryptedVault {
+	if tz == nil || ks == nil || policy == nil || clock == nil || records == nil {
+		panic("tokenization: NewEncryptedVaultWithStore: required dependency is nil")
+	}
+	if random == nil {
+		random = cryptoRandom
+	}
+	return &EncryptedVault{tz: tz, ks: ks, policy: policy, clock: clock, records: records, random: random}
+}
+
+// Tokenize encrypts a value under a fresh random token. Duplicate token values
+// fail with ErrTokenCollision, without overwriting a record. Every call is audited.
 func (v *EncryptedVault) Tokenize(value string, class TokenClass, namespace string, by aiprovenance.Author) (Token, error) {
-	tok, tokErr := v.tz.RandomToken(class, namespace)
-
-	principalID := principalIDFromAuthor(by)
-
-	// Attempt encryption only if token minting succeeded.
-	var storeErr error
-	if tokErr == nil {
-		key, err := v.ks.Key(namespace)
-		if err != nil {
-			storeErr = fmt.Errorf("tokenization: EncryptedVault.Tokenize: key: %w", err)
-		} else {
-			ct, err := seal(key, []byte(value))
-			if err != nil {
-				storeErr = fmt.Errorf("tokenization: EncryptedVault.Tokenize: seal: %w", err)
-			} else {
-				v.mu.Lock()
-				v.store[tok.Value] = encryptedEntry{token: tok, ciphertext: ct}
-				v.mu.Unlock()
-			}
-		}
-	}
-
-	finalErr := tokErr
-	if finalErr == nil {
-		finalErr = storeErr
-	}
-
-	v.mu.Lock()
-	v.auditLog = append(v.auditLog, AuditEvent{
-		At:          v.clock(),
-		Action:      ActionTokenize,
-		TokenValue:  tok.Value,
-		Class:       class,
-		PrincipalID: principalID,
-		Purpose:     "",
-		Allowed:     finalErr == nil,
-	})
-	v.mu.Unlock()
-
-	if finalErr != nil {
-		return Token{}, finalErr
-	}
-	return tok, nil
+	return v.tokenize(value, class, namespace, by, false)
 }
 
-// Detokenize retrieves and decrypts the original value for token t.
-// Returns ErrShredded (via errors.Is) if the namespace has been shredded.
-// Access policy is checked before decryption; a denied principal receives an
-// access-denied error, not ErrShredded (policy takes precedence).
-func (v *EncryptedVault) Detokenize(t Token, principal Principal, purpose string) (string, error) {
-	allowed := v.policy.Allow(principal, t.Class, purpose)
+// TokenizeDeterministic encrypts value under its HMAC-derived token. Existing
+// identical records are authenticated and reused without a second audit event.
+// Collision, invalid record and shredded-key failures are audited and fail closed.
+// Deterministic tokens leak equality; use a secret non-empty tokenizer HMAC key.
+// Rotation cannot overwrite old records; choose a new namespace for a new generation.
+func (v *EncryptedVault) TokenizeDeterministic(value string, class TokenClass, namespace string, by aiprovenance.Author) (Token, error) {
+	return v.tokenize(value, class, namespace, by, true)
+}
 
-	ae := AuditEvent{
-		At:          v.clock(),
-		Action:      ActionDetokenize,
-		TokenValue:  t.Value,
-		Class:       t.Class,
-		PrincipalID: principal.ID,
-		Purpose:     purpose,
-		Allowed:     allowed,
-	}
-
-	if !allowed {
-		v.mu.Lock()
-		v.auditLog = append(v.auditLog, ae)
-		v.mu.Unlock()
-		return "", fmt.Errorf("tokenization: Detokenize: principal %q denied access to class %q", principal.ID, t.Class)
-	}
-
-	// Look up ciphertext.
-	v.mu.RLock()
-	e, ok := v.store[t.Value]
-	v.mu.RUnlock()
-
-	if !ok {
-		ae.Allowed = false
-		v.mu.Lock()
-		v.auditLog = append(v.auditLog, ae)
-		v.mu.Unlock()
-		return "", fmt.Errorf("tokenization: Detokenize: unknown token %q", t.Value)
-	}
-
-	// Fetch the namespace key — this returns ErrShredded if shredded.
-	key, err := v.ks.Key(e.token.Namespace)
-	if err != nil {
-		ae.Allowed = false
-		v.mu.Lock()
-		v.auditLog = append(v.auditLog, ae)
-		v.mu.Unlock()
-		// Wrap so callers can use errors.Is(err, ErrShredded).
-		if errors.Is(err, ErrShredded) {
-			return "", fmt.Errorf("tokenization: Detokenize: %w", ErrShredded)
-		}
-		return "", fmt.Errorf("tokenization: Detokenize: key: %w", err)
-	}
-
-	plaintext, err := open(key, e.ciphertext)
-	if err != nil {
-		ae.Allowed = false
-		v.mu.Lock()
-		v.auditLog = append(v.auditLog, ae)
-		v.mu.Unlock()
-		return "", fmt.Errorf("tokenization: Detokenize: decrypt: %w", err)
-	}
-
+func (v *EncryptedVault) tokenize(value string, class TokenClass, namespace string, by aiprovenance.Author, deterministic bool) (tok Token, err error) {
 	v.mu.Lock()
-	v.auditLog = append(v.auditLog, ae)
-	v.mu.Unlock()
+	defer v.mu.Unlock()
+	audit := true
+	defer func() {
+		if audit {
+			v.auditLog = append(v.auditLog, AuditEvent{At: v.clock(), Action: ActionTokenize, TokenValue: tok.Value, Class: class, PrincipalID: principalIDFromAuthor(by), Allowed: err == nil})
+		}
+		if err != nil {
+			tok = Token{}
+		}
+	}()
+	if deterministic {
+		if len(v.tz.hmacKey) == 0 {
+			return Token{}, fmt.Errorf("tokenization: encrypted deterministic tokens require a secret HMAC key")
+		}
+		tok = v.tz.DeterministicToken(value, class, namespace)
+		err = tok.Validate()
+	} else {
+		tok, err = v.tz.RandomToken(class, namespace)
+	}
+	if err != nil {
+		return tok, err
+	}
+	existing, found, err := v.records.Get(tok.Value)
+	if err != nil {
+		return tok, fmt.Errorf("tokenization: record lookup: %w", err)
+	}
+	if found {
+		if !deterministic {
+			return tok, ErrTokenCollision
+		}
+		err = v.matchRecord(existing, tok, value)
+		audit = err != nil
+		return tok, err
+	}
+	key, err := v.ks.Key(namespace)
+	if err != nil {
+		return tok, fmt.Errorf("tokenization: key: %w", err)
+	}
+	defer clear(key)
+	record := EncryptedRecord{Version: EncryptedRecordVersion, Token: tok}
+	record.Ciphertext, err = seal(key, []byte(value), record.aad(), v.random)
+	if err != nil {
+		return tok, err
+	}
+	actual, inserted, err := v.records.PutIfAbsent(record.Clone())
+	if err != nil {
+		return tok, fmt.Errorf("tokenization: record put: %w", err)
+	}
+	if !inserted {
+		if !deterministic {
+			return tok, ErrTokenCollision
+		}
+		err = v.matchRecord(actual, tok, value)
+		audit = err != nil
+	}
+	return tok, err
+}
 
+func (v *EncryptedVault) matchRecord(record EncryptedRecord, tok Token, value string) error {
+	if err := record.Validate(); err != nil {
+		return err
+	}
+	if record.Token != tok {
+		return ErrTokenCollision
+	}
+	plaintext, err := v.decrypt(record)
+	if err != nil {
+		return err
+	}
+	defer clear(plaintext)
+	if string(plaintext) != value {
+		return ErrTokenCollision
+	}
+	return nil
+}
+
+func (v *EncryptedVault) decrypt(record EncryptedRecord) ([]byte, error) {
+	key, err := v.ks.Key(record.Token.Namespace)
+	if err != nil {
+		return nil, fmt.Errorf("tokenization: key: %w", err)
+	}
+	defer clear(key)
+	return open(key, record.Ciphertext, record.aad())
+}
+
+// Detokenize validates the stored identity and enforces its class policy before
+// decryption. Empty namespace from Parse is accepted; a supplied namespace must
+// match. Every failure is audited as denied. ErrShredded remains detectable via
+// errors.Is, but policy denial takes precedence over key access.
+func (v *EncryptedVault) Detokenize(t Token, principal Principal, purpose string) (value string, err error) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	ae := AuditEvent{At: v.clock(), Action: ActionDetokenize, TokenValue: t.Value, Class: t.Class, PrincipalID: principal.ID, Purpose: purpose}
+	defer func() { ae.Allowed = err == nil; v.auditLog = append(v.auditLog, ae) }()
+	record, found, err := v.records.Get(t.Value)
+	if err != nil {
+		return "", fmt.Errorf("tokenization: record lookup: %w", err)
+	}
+	if !found {
+		return "", fmt.Errorf("tokenization: unknown token")
+	}
+	if err := record.Validate(); err != nil {
+		return "", err
+	}
+	ae.Class = record.Token.Class
+	if !sameIdentity(t, record.Token) {
+		return "", fmt.Errorf("tokenization: token identity mismatch")
+	}
+	if !v.policy.Allow(principal, record.Token.Class, purpose) {
+		return "", fmt.Errorf("tokenization: access denied")
+	}
+	plaintext, err := v.decrypt(record)
+	if err != nil {
+		return "", err
+	}
+	defer clear(plaintext)
 	return string(plaintext), nil
 }
 
-// AuditLog returns a defensive copy of the audit log in append order.
+// AuditLog returns a defensive copy of this instance's audit log in append order.
 func (v *EncryptedVault) AuditLog() []AuditEvent {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
-	out := make([]AuditEvent, len(v.auditLog))
-	copy(out, v.auditLog)
-	return out
+	return append([]AuditEvent{}, v.auditLog...)
 }
 
-// Shred destroys the namespace's envelope key via the KeyStore. After Shred,
-// all subsequent Detokenize calls for tokens in that namespace return
-// ErrShredded. Tokens in other namespaces are entirely unaffected.
-//
-// Shred is idempotent: shredding an already-shredded namespace is not an error.
-//
-// See the ShreddableVault documentation for what Shred does NOT guarantee.
+// Shred destroys the namespace key, preserving encrypted records. Calls through
+// this instance are serialized; subsequent resolutions fail with ErrShredded.
+// Durable stores must persist tombstones before success. Other instances may have
+// an in-flight key copy; Shred does not revoke copies already returned by Key.
 func (v *EncryptedVault) Shred(namespace string) error {
+	v.mu.Lock()
+	defer v.mu.Unlock()
 	if err := v.ks.Shred(namespace); err != nil {
-		return fmt.Errorf("tokenization: EncryptedVault.Shred: %w", err)
+		return fmt.Errorf("tokenization: shred: %w", err)
 	}
 	return nil
+}
+
+func sameIdentity(requested, stored Token) bool {
+	return requested.Value == stored.Value && requested.Class == stored.Class &&
+		(requested.Namespace == "" || requested.Namespace == stored.Namespace)
 }

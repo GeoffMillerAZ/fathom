@@ -508,3 +508,22 @@ func TestMissingRequiredField(t *testing.T) {
 		t.Errorf("missingRequiredField for unrecognized name = %q, want fail-closed \"unknown.field\"", got)
 	}
 }
+
+// TestImporter_IndependentProducers proves the corroboration primitive
+// (vision 30 §4 / ADR-040 decision 4, SU-25 / ADR-041 decision 8): two
+// distinct catalogued producers are independent, the same producer is not,
+// and an unresolved name fails closed rather than defaulting to
+// "independent".
+func TestImporter_IndependentProducers(t *testing.T) {
+	im := Importer{Catalog: semantic.DefaultProducers()}
+
+	if !im.IndependentProducers("human.review", "model.review") {
+		t.Error("IndependentProducers(human.review, model.review) = false, want true (distinct producers)")
+	}
+	if im.IndependentProducers("human.review", "human.review") {
+		t.Error("IndependentProducers(human.review, human.review) = true, want false (same producer)")
+	}
+	if im.IndependentProducers("human.review", "nonexistent.producer") {
+		t.Error("IndependentProducers with an unresolved name = true, want false (fail closed)")
+	}
+}

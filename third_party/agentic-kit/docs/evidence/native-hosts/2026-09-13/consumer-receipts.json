@@ -1,0 +1,350 @@
+[
+  {
+    "consumer": "throughline",
+    "kind": "configuration-only receipt summary",
+    "receipt": {
+      "version": 1,
+      "host": "claude",
+      "host_version": "2.1.270 (Claude Code)",
+      "generated_at": "2026-09-13T10:19:25Z",
+      "config_digest": "c33e9dde7765e25ac8c5c7789317cb19fbdc09ff754dd57ff9898fee37d5c143",
+      "help_digest": "ae85d661e9c086f05637ebcd868f5702b477ff6e55e2e65b8ada7807cd51a4b6",
+      "ready": true,
+      "scope": "Project-local configuration and declared controls only. Local version/help probes are not live host enforcement tests. Supplied live observations are operator evidence, not re-executed or independently authenticated. Hooks are partial guardrails, not a sandbox.",
+      "controls": [
+        {
+          "name": "configuration",
+          "status": "supported",
+          "basis": "local-file-check"
+        },
+        {
+          "name": "runtime",
+          "status": "supported",
+          "basis": "local-version-help"
+        },
+        {
+          "name": "startup",
+          "status": "unknown",
+          "basis": "unprobed"
+        },
+        {
+          "name": "resume",
+          "status": "unknown",
+          "basis": "unprobed"
+        },
+        {
+          "name": "nested-instructions",
+          "status": "unknown",
+          "basis": "unprobed"
+        },
+        {
+          "name": "tool",
+          "status": "unknown",
+          "basis": "unprobed"
+        },
+        {
+          "name": "edit",
+          "status": "unknown",
+          "basis": "unprobed"
+        },
+        {
+          "name": "shell",
+          "status": "unknown",
+          "basis": "unprobed"
+        },
+        {
+          "name": "stdin",
+          "status": "unknown",
+          "basis": "unprobed"
+        },
+        {
+          "name": "hosted-tools",
+          "status": "unknown",
+          "basis": "unprobed"
+        },
+        {
+          "name": "compaction",
+          "status": "unknown",
+          "basis": "unprobed"
+        },
+        {
+          "name": "stop",
+          "status": "unknown",
+          "basis": "unprobed"
+        },
+        {
+          "name": "hook-failure-closed",
+          "status": "unsupported",
+          "basis": "documented-limitation"
+        }
+      ]
+    },
+    "required_controls": [
+      "configuration",
+      "runtime"
+    ],
+    "deny_tools": [],
+    "deny_paths": []
+  },
+  {
+    "consumer": "throughline",
+    "kind": "configuration-only receipt summary",
+    "receipt": {
+      "version": 1,
+      "host": "codex",
+      "host_version": "codex-cli 0.154.0",
+      "generated_at": "2026-09-13T10:19:25Z",
+      "config_digest": "0f2396aa95002743470e153c588514f7f13a6fdc00266d5c2b02a5d009991a4a",
+      "help_digest": "4abfbbaee583f6d8c3fa45fd751a138b2b8fdac68f651ac444aa36599629acb7",
+      "ready": true,
+      "scope": "Project-local configuration and declared controls only. Local version/help probes are not live host enforcement tests. Supplied live observations are operator evidence, not re-executed or independently authenticated. Hooks are partial guardrails, not a sandbox.",
+      "controls": [
+        {
+          "name": "configuration",
+          "status": "supported",
+          "basis": "local-file-check"
+        },
+        {
+          "name": "runtime",
+          "status": "supported",
+          "basis": "local-version-help"
+        },
+        {
+          "name": "startup",
+          "status": "unknown",
+          "basis": "unprobed"
+        },
+        {
+          "name": "resume",
+          "status": "unknown",
+          "basis": "unprobed"
+        },
+        {
+          "name": "nested-instructions",
+          "status": "unknown",
+          "basis": "unprobed"
+        },
+        {
+          "name": "tool",
+          "status": "unknown",
+          "basis": "unprobed"
+        },
+        {
+          "name": "edit",
+          "status": "unknown",
+          "basis": "unprobed"
+        },
+        {
+          "name": "shell",
+          "status": "unknown",
+          "basis": "unprobed"
+        },
+        {
+          "name": "stdin",
+          "status": "unsupported",
+          "basis": "documented-limitation"
+        },
+        {
+          "name": "hosted-tools",
+          "status": "unsupported",
+          "basis": "documented-limitation"
+        },
+        {
+          "name": "compaction",
+          "status": "unknown",
+          "basis": "unprobed"
+        },
+        {
+          "name": "stop",
+          "status": "unknown",
+          "basis": "unprobed"
+        },
+        {
+          "name": "hook-failure-closed",
+          "status": "unsupported",
+          "basis": "documented-limitation"
+        }
+      ]
+    },
+    "required_controls": [
+      "configuration",
+      "runtime"
+    ],
+    "deny_tools": [],
+    "deny_paths": []
+  },
+  {
+    "consumer": "resume_as_code",
+    "kind": "configuration-only receipt summary",
+    "receipt": {
+      "version": 1,
+      "host": "claude",
+      "host_version": "2.1.270 (Claude Code)",
+      "generated_at": "2026-09-13T10:19:25Z",
+      "config_digest": "34a4b47699f1f3de8861c2a057f1cc4c5a7e2f57da59573c7d2592788278861d",
+      "help_digest": "ae85d661e9c086f05637ebcd868f5702b477ff6e55e2e65b8ada7807cd51a4b6",
+      "ready": true,
+      "scope": "Project-local configuration and declared controls only. Local version/help probes are not live host enforcement tests. Supplied live observations are operator evidence, not re-executed or independently authenticated. Hooks are partial guardrails, not a sandbox.",
+      "controls": [
+        {
+          "name": "configuration",
+          "status": "supported",
+          "basis": "local-file-check"
+        },
+        {
+          "name": "runtime",
+          "status": "supported",
+          "basis": "local-version-help"
+        },
+        {
+          "name": "startup",
+          "status": "unknown",
+          "basis": "unprobed"
+        },
+        {
+          "name": "resume",
+          "status": "unknown",
+          "basis": "unprobed"
+        },
+        {
+          "name": "nested-instructions",
+          "status": "unknown",
+          "basis": "unprobed"
+        },
+        {
+          "name": "tool",
+          "status": "unknown",
+          "basis": "unprobed"
+        },
+        {
+          "name": "edit",
+          "status": "unknown",
+          "basis": "unprobed"
+        },
+        {
+          "name": "shell",
+          "status": "unknown",
+          "basis": "unprobed"
+        },
+        {
+          "name": "stdin",
+          "status": "unknown",
+          "basis": "unprobed"
+        },
+        {
+          "name": "hosted-tools",
+          "status": "unknown",
+          "basis": "unprobed"
+        },
+        {
+          "name": "compaction",
+          "status": "unknown",
+          "basis": "unprobed"
+        },
+        {
+          "name": "stop",
+          "status": "unknown",
+          "basis": "unprobed"
+        },
+        {
+          "name": "hook-failure-closed",
+          "status": "unsupported",
+          "basis": "documented-limitation"
+        }
+      ]
+    },
+    "required_controls": [
+      "configuration",
+      "runtime"
+    ],
+    "deny_tools": [],
+    "deny_paths": []
+  },
+  {
+    "consumer": "resume_as_code",
+    "kind": "configuration-only receipt summary",
+    "receipt": {
+      "version": 1,
+      "host": "codex",
+      "host_version": "codex-cli 0.154.0",
+      "generated_at": "2026-09-13T10:19:25Z",
+      "config_digest": "e30c290e402e532fa8f9bc187f6163d2561d05ec52f63e5a420c9858dbf181df",
+      "help_digest": "4abfbbaee583f6d8c3fa45fd751a138b2b8fdac68f651ac444aa36599629acb7",
+      "ready": true,
+      "scope": "Project-local configuration and declared controls only. Local version/help probes are not live host enforcement tests. Supplied live observations are operator evidence, not re-executed or independently authenticated. Hooks are partial guardrails, not a sandbox.",
+      "controls": [
+        {
+          "name": "configuration",
+          "status": "supported",
+          "basis": "local-file-check"
+        },
+        {
+          "name": "runtime",
+          "status": "supported",
+          "basis": "local-version-help"
+        },
+        {
+          "name": "startup",
+          "status": "unknown",
+          "basis": "unprobed"
+        },
+        {
+          "name": "resume",
+          "status": "unknown",
+          "basis": "unprobed"
+        },
+        {
+          "name": "nested-instructions",
+          "status": "unknown",
+          "basis": "unprobed"
+        },
+        {
+          "name": "tool",
+          "status": "unknown",
+          "basis": "unprobed"
+        },
+        {
+          "name": "edit",
+          "status": "unknown",
+          "basis": "unprobed"
+        },
+        {
+          "name": "shell",
+          "status": "unknown",
+          "basis": "unprobed"
+        },
+        {
+          "name": "stdin",
+          "status": "unsupported",
+          "basis": "documented-limitation"
+        },
+        {
+          "name": "hosted-tools",
+          "status": "unsupported",
+          "basis": "documented-limitation"
+        },
+        {
+          "name": "compaction",
+          "status": "unknown",
+          "basis": "unprobed"
+        },
+        {
+          "name": "stop",
+          "status": "unknown",
+          "basis": "unprobed"
+        },
+        {
+          "name": "hook-failure-closed",
+          "status": "unsupported",
+          "basis": "documented-limitation"
+        }
+      ]
+    },
+    "required_controls": [
+      "configuration",
+      "runtime"
+    ],
+    "deny_tools": [],
+    "deny_paths": []
+  }
+]
