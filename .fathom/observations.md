@@ -1521,6 +1521,15 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Status:** fixed (2026-09-19, same round): `internal/mcp/analysis_tools.go` gained `bothGraph` — the watermark-cached syntax+typed graph `loadNavGraphs` already built for the nav tools — and `reachable`, `test_impact`, `dead_code` and `find_callees` walk it; `cmd/fathom/planscontext.go` adds the typed edges the same way `verify` now does. `rename_impact` keeps its syntax-only caller SET by decision (BP-26) and still annotates tiers from the typed graph. Regression coverage: `TestCmdVerify_Store_TypedEdgeWiresReachability`, `internal/verify/typededge_residue_test.go`; `go test ./internal/mcp/...` green on the change.
 - **Impact:** `rename_impact`, `reachable`, `test_impact`, `dead_code`, and `callees` can under-report on exactly the ambiguous-method-name shape O40 demonstrated end to end for `verify_plan`/`verify` — plausibly a live source of false "unreachable"/"safe to delete"/"no callers" answers on any Go service with more than one implementer of a shared method name (very common — any interface with 2+ implementations).
 
+### O106 — findings-loop-r3 read all 30 cells as violations for real: the corpus's allow-list contradicted the subject's own doctrine
+
+- **Symptom:** after O105, `no-unrelated-rewrite` fired on every cell of both arms with no baseline note — the sessions had genuinely edited files outside the allow-list: `docs/plans/<slug>.md` (the fathom repo's own plan-first rule for a change task), `cmd/fathom/purge_cmd_test.go` (the repo's real test file; the corpus allowed a `purgecmd_test.go` that does not exist), `configaudit_test.go` beside `doctor_concerns.go`.
+- **Evidence:** run findings-loop-r3 cells (`agent_diff_path` file lists; `oracle.detectors[].note` empty); `finding-addressed` passed 9 of 15 on each arm, `change-present` 15 of 15.
+- **Root cause:** the corpus author named the one file a finding points at and one guessed test file, and forgot that the subject's CLAUDE.md tells every session to write a plan and a change record first — the detector measured obedience to the subject's doctrine as a violation.
+- **Fix:** each task's allow-list admits any `_test.go` in the named source's directory, a plan under `docs/plans/`, `CHANGELOG.md` and `.fathom/observations.md`; everything else still fails the detector. Rerun as findings-loop-r4.
+- **Status:** closed (2026-09-21)
+- **Impact:** findings-loop-r3's 30 cells are void (not filed); three rounds of this corpus have now been consumed by the instrument, none by the treatment.
+
 ### O105 — findings-loop-r2 read every cell as a violation: the instrument's own files were in the detector's baseline diff
 
 - **Symptom:** findings-loop-r2 (5 × 2 × 3): 0/30 pass on both arms with `no-unrelated-rewrite` "baseline_red: this detector already exited 1 before the session ran" on every cell, while `finding-addressed` and `change-present` passed on most.

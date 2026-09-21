@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "Findings loop corpus (vision 30 / ADR-040 \u00a76, plan docs/plans/findings-loop.md FL-24): an external review-kit finding is projected into this repo's own outbox (.reviewkit/outbox/projection.json) anchored to a real file+line range each task then edits; the finding's remedy is a small, checkable fix that a correct completion of the task's ordinary-sounding prompt also applies. Arms: full (the projection outbox is materialized before session 1, so \u2014 once a session hook or explicit import wires it in \u2014 the finding is available to be served) vs control (Arm.Setup removes the same outbox file before session 1, so nothing is available to serve). This corpus documents the CLI/outbox contract other waves are building (fathom findings import, the pre-edit \"open findings on this file\" block); it is COMMITTED ONLY per FL-24's own row \u2014 not run until that machinery ships.",
+  "description": "Findings loop corpus (vision 30 / ADR-040 §6, plan docs/plans/findings-loop.md FL-24): an external review-kit finding is projected into this repo's own outbox (.reviewkit/outbox/projection.json) anchored to a real file+line range each task then edits; the finding's remedy is a small, checkable fix that a correct completion of the task's ordinary-sounding prompt also applies. Arms: full (the projection outbox is materialized before session 1, so — once a session hook or explicit import wires it in — the finding is available to be served) vs control (Arm.Setup removes the same outbox file before session 1, so nothing is available to serve). This corpus documents the CLI/outbox contract other waves are building (fathom findings import, the pre-edit \"open findings on this file\" block); it is COMMITTED ONLY per FL-24's own row — not run until that machinery ships.",
   "arms": {
     "full": {
       "wired": true,
@@ -58,8 +58,9 @@
           },
           {
             "name": "no-unrelated-rewrite",
-            "command": "bash -c 'git diff --name-only $SCENARIO_BASE_COMMIT | grep -Ev \"^cmd/fathom/purgecmd\\\\.go|^cmd/fathom/purgecmd_test\\\\.go\" | grep -q . && exit 1 || exit 0'",
-            "expect_exit": 0
+            "command": "bash -c 'git diff --name-only $SCENARIO_BASE_COMMIT | grep -Ev \"^cmd/fathom/purgecmd\\\\.go|^cmd/fathom/[^/]+_test\\\\.go|^docs/plans/[^/]+\\\\.md|^CHANGELOG\\\\.md|^\\\\.fathom/observations\\\\.md\" | grep -q . && exit 1 || exit 0'",
+            "expect_exit": 0,
+            "note_o106": "allow-list widened 2026-09-21 (O106): any _test.go beside the named source, plus the subject's own change-record doctrine (a plan under docs/plans, CHANGELOG.md, .fathom/observations.md)"
           }
         ],
         "answer_any_of": [
@@ -78,12 +79,12 @@
         "full": "win: the pre-edit hook serves this finding's rule/remedy/citation exactly on the file the task asks the agent to touch, before the naive fix (a bare error, an unsorted field, an unbounded list, a silently-missed delete) lands",
         "control": "no-effect: the same outbox never reaches the store in this arm (Arm.Setup removes the projection file before session 1), so nothing about this finding is served and the naive fix has no per-file signal against it"
       },
-      "derivation": "New task (FL-24, vision 30 / ADR-040 \u00a76). Finding anchored to a real, currently-unaddressed gap in cmd/fathom/purgecmd.go (recordPurge, 418-420) at base_commit 5302b8f; the prompt is an ordinary small ask whose correct completion also satisfies the finding's own remedy text. Not derived from an upstream PR \u2014 hand-authored against this repo's own tree, mirroring guards-fathom.json's dogfooding shape but for an external-review finding instead of a compiled obligation."
+      "derivation": "New task (FL-24, vision 30 / ADR-040 §6). Finding anchored to a real, currently-unaddressed gap in cmd/fathom/purgecmd.go (recordPurge, 418-420) at base_commit 5302b8f; the prompt is an ordinary small ask whose correct completion also satisfies the finding's own remedy text. Not derived from an upstream PR — hand-authored against this repo's own tree, mirroring guards-fathom.json's dogfooding shape but for an external-review finding instead of a compiled obligation."
     },
     {
       "id": "findings-pattern-sites-field",
       "category": "signature_change",
-      "prompt": "internal/analysis/findings.Pattern needs a `Sites []string` field: the distinct claim Subject values a pattern recurs across. DerivePatterns already computes this internally as a map when it checks the >=2-distinct-site threshold \u2014 add the field to Pattern and populate it wherever DerivePatterns builds each Pattern.",
+      "prompt": "internal/analysis/findings.Pattern needs a `Sites []string` field: the distinct claim Subject values a pattern recurs across. DerivePatterns already computes this internally as a map when it checks the >=2-distinct-site threshold — add the field to Pattern and populate it wherever DerivePatterns builds each Pattern.",
       "subject": {
         "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
         "base_commit": "687ce6a9",
@@ -119,8 +120,9 @@
           },
           {
             "name": "no-unrelated-rewrite",
-            "command": "bash -c 'git diff --name-only $SCENARIO_BASE_COMMIT | grep -Ev \"^internal/analysis/findings/pattern\\\\.go|^internal/analysis/findings/pattern_test\\\\.go\" | grep -q . && exit 1 || exit 0'",
-            "expect_exit": 0
+            "command": "bash -c 'git diff --name-only $SCENARIO_BASE_COMMIT | grep -Ev \"^internal/analysis/findings/pattern\\\\.go|^internal/analysis/findings/[^/]+_test\\\\.go|^docs/plans/[^/]+\\\\.md|^CHANGELOG\\\\.md|^\\\\.fathom/observations\\\\.md\" | grep -q . && exit 1 || exit 0'",
+            "expect_exit": 0,
+            "note_o106": "allow-list widened 2026-09-21 (O106): any _test.go beside the named source, plus the subject's own change-record doctrine (a plan under docs/plans, CHANGELOG.md, .fathom/observations.md)"
           }
         ],
         "answer_any_of": [
@@ -139,12 +141,12 @@
         "full": "win: the pre-edit hook serves this finding's rule/remedy/citation exactly on the file the task asks the agent to touch, before the naive fix (a bare error, an unsorted field, an unbounded list, a silently-missed delete) lands",
         "control": "no-effect: the same outbox never reaches the store in this arm (Arm.Setup removes the projection file before session 1), so nothing about this finding is served and the naive fix has no per-file signal against it"
       },
-      "derivation": "New task (FL-24, vision 30 / ADR-040 \u00a76). Finding anchored to a real, currently-unaddressed gap in internal/analysis/findings/pattern.go (DerivePatterns, 147-152) at base_commit 5302b8f; the prompt is an ordinary small ask whose correct completion also satisfies the finding's own remedy text. Not derived from an upstream PR \u2014 hand-authored against this repo's own tree, mirroring guards-fathom.json's dogfooding shape but for an external-review finding instead of a compiled obligation."
+      "derivation": "New task (FL-24, vision 30 / ADR-040 §6). Finding anchored to a real, currently-unaddressed gap in internal/analysis/findings/pattern.go (DerivePatterns, 147-152) at base_commit 5302b8f; the prompt is an ordinary small ask whose correct completion also satisfies the finding's own remedy text. Not derived from an upstream PR — hand-authored against this repo's own tree, mirroring guards-fathom.json's dogfooding shape but for an external-review finding instead of a compiled obligation."
     },
     {
       "id": "findings-doctor-concerns-bound",
       "category": "bug_fix",
-      "prompt": "cmd/fathom's checkConcerns only ever reports the FIRST violated concern in its doctor row, even when several concerns are violated at once \u2014 an operator has to fix one and re-run doctor just to discover the next. List every violated concern's id in the Reason, but keep the line short and bounded (doctor.go's own contract: \"a short instruction, never a paragraph\") rather than joining every Detail unbounded.",
+      "prompt": "cmd/fathom's checkConcerns only ever reports the FIRST violated concern in its doctor row, even when several concerns are violated at once — an operator has to fix one and re-run doctor just to discover the next. List every violated concern's id in the Reason, but keep the line short and bounded (doctor.go's own contract: \"a short instruction, never a paragraph\") rather than joining every Detail unbounded.",
       "subject": {
         "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
         "base_commit": "687ce6a9",
@@ -180,8 +182,9 @@
           },
           {
             "name": "no-unrelated-rewrite",
-            "command": "bash -c 'git diff --name-only $SCENARIO_BASE_COMMIT | grep -Ev \"^cmd/fathom/doctor_concerns\\\\.go|^cmd/fathom/doctor_concerns_test\\\\.go\" | grep -q . && exit 1 || exit 0'",
-            "expect_exit": 0
+            "command": "bash -c 'git diff --name-only $SCENARIO_BASE_COMMIT | grep -Ev \"^cmd/fathom/doctor_concerns\\\\.go|^cmd/fathom/[^/]+_test\\\\.go|^docs/plans/[^/]+\\\\.md|^CHANGELOG\\\\.md|^\\\\.fathom/observations\\\\.md\" | grep -q . && exit 1 || exit 0'",
+            "expect_exit": 0,
+            "note_o106": "allow-list widened 2026-09-21 (O106): any _test.go beside the named source, plus the subject's own change-record doctrine (a plan under docs/plans, CHANGELOG.md, .fathom/observations.md)"
           }
         ],
         "answer_any_of": [
@@ -200,7 +203,7 @@
         "full": "win: the pre-edit hook serves this finding's rule/remedy/citation exactly on the file the task asks the agent to touch, before the naive fix (a bare error, an unsorted field, an unbounded list, a silently-missed delete) lands",
         "control": "no-effect: the same outbox never reaches the store in this arm (Arm.Setup removes the projection file before session 1), so nothing about this finding is served and the naive fix has no per-file signal against it"
       },
-      "derivation": "New task (FL-24, vision 30 / ADR-040 \u00a76). Finding anchored to a real, currently-unaddressed gap in cmd/fathom/doctor_concerns.go (checkConcerns, 54-56) at base_commit 5302b8f; the prompt is an ordinary small ask whose correct completion also satisfies the finding's own remedy text. Not derived from an upstream PR \u2014 hand-authored against this repo's own tree, mirroring guards-fathom.json's dogfooding shape but for an external-review finding instead of a compiled obligation."
+      "derivation": "New task (FL-24, vision 30 / ADR-040 §6). Finding anchored to a real, currently-unaddressed gap in cmd/fathom/doctor_concerns.go (checkConcerns, 54-56) at base_commit 5302b8f; the prompt is an ordinary small ask whose correct completion also satisfies the finding's own remedy text. Not derived from an upstream PR — hand-authored against this repo's own tree, mirroring guards-fathom.json's dogfooding shape but for an external-review finding instead of a compiled obligation."
     },
     {
       "id": "findings-watch-detect-deletes",
@@ -241,8 +244,9 @@
           },
           {
             "name": "no-unrelated-rewrite",
-            "command": "bash -c 'git diff --name-only $SCENARIO_BASE_COMMIT | grep -Ev \"^cmd/fathom/watch\\\\.go|^cmd/fathom/watch_test\\\\.go\" | grep -q . && exit 1 || exit 0'",
-            "expect_exit": 0
+            "command": "bash -c 'git diff --name-only $SCENARIO_BASE_COMMIT | grep -Ev \"^cmd/fathom/watch\\\\.go|^cmd/fathom/[^/]+_test\\\\.go|^docs/plans/[^/]+\\\\.md|^CHANGELOG\\\\.md|^\\\\.fathom/observations\\\\.md\" | grep -q . && exit 1 || exit 0'",
+            "expect_exit": 0,
+            "note_o106": "allow-list widened 2026-09-21 (O106): any _test.go beside the named source, plus the subject's own change-record doctrine (a plan under docs/plans, CHANGELOG.md, .fathom/observations.md)"
           }
         ],
         "answer_any_of": [
@@ -261,7 +265,7 @@
         "full": "win: the pre-edit hook serves this finding's rule/remedy/citation exactly on the file the task asks the agent to touch, before the naive fix (a bare error, an unsorted field, an unbounded list, a silently-missed delete) lands",
         "control": "no-effect: the same outbox never reaches the store in this arm (Arm.Setup removes the projection file before session 1), so nothing about this finding is served and the naive fix has no per-file signal against it"
       },
-      "derivation": "New task (FL-24, vision 30 / ADR-040 \u00a76). Finding anchored to a real, currently-unaddressed gap in cmd/fathom/watch.go (hasChanged, 54-64) at base_commit 5302b8f; the prompt is an ordinary small ask whose correct completion also satisfies the finding's own remedy text. Not derived from an upstream PR \u2014 hand-authored against this repo's own tree, mirroring guards-fathom.json's dogfooding shape but for an external-review finding instead of a compiled obligation."
+      "derivation": "New task (FL-24, vision 30 / ADR-040 §6). Finding anchored to a real, currently-unaddressed gap in cmd/fathom/watch.go (hasChanged, 54-64) at base_commit 5302b8f; the prompt is an ordinary small ask whose correct completion also satisfies the finding's own remedy text. Not derived from an upstream PR — hand-authored against this repo's own tree, mirroring guards-fathom.json's dogfooding shape but for an external-review finding instead of a compiled obligation."
     },
     {
       "id": "findings-no-open-finding-statedir",
@@ -302,8 +306,9 @@
           },
           {
             "name": "no-unrelated-rewrite",
-            "command": "bash -c 'git diff --name-only $SCENARIO_BASE_COMMIT | grep -Ev \"^internal/statedir/statedir\\\\.go|^internal/statedir/statedir_test\\\\.go\" | grep -q . && exit 1 || exit 0'",
-            "expect_exit": 0
+            "command": "bash -c 'git diff --name-only $SCENARIO_BASE_COMMIT | grep -Ev \"^internal/statedir/statedir\\\\.go|^internal/statedir/[^/]+_test\\\\.go|^docs/plans/[^/]+\\\\.md|^CHANGELOG\\\\.md|^\\\\.fathom/observations\\\\.md\" | grep -q . && exit 1 || exit 0'",
+            "expect_exit": 0,
+            "note_o106": "allow-list widened 2026-09-21 (O106): any _test.go beside the named source, plus the subject's own change-record doctrine (a plan under docs/plans, CHANGELOG.md, .fathom/observations.md)"
           }
         ],
         "answer_any_of": [
@@ -316,7 +321,7 @@
         "full": "no-effect: no finding in the outbox anchors to internal/statedir, so the pre-edit hook renders nothing for this file beyond the governing rules both arms already see; the only measurable difference is the empty block's cost, which should be zero",
         "control": "no-effect: the same edit with the same governing rules and no outbox at all"
       },
-      "derivation": "A control-shaped task inside the corpus (vision 27 \u00a71): an honest bench registers where the treatment should NOT move the outcome. The file has no anchored finding in the outbox, so a difference between arms here is instrument cost or noise, never the loop.",
+      "derivation": "A control-shaped task inside the corpus (vision 27 §1): an honest bench registers where the treatment should NOT move the outcome. The file has no anchored finding in the outbox, so a difference between arms here is instrument cost or noise, never the loop.",
       "sessions": {
         "count": 1,
         "max_turns": 120,
@@ -335,11 +340,11 @@
   },
   "notes": {
     "wave": "findings-loop FL-24 (vision 30, ADR-040)",
-    "subject_repo": "the fathom repo itself, dogfooding vision 30 against its own tree \u2014 mirrors guards-fathom.json's own subject",
+    "subject_repo": "the fathom repo itself, dogfooding vision 30 against its own tree — mirrors guards-fathom.json's own subject",
     "authored": "2026-09-18",
     "not_run": "Committed only (plan row's own disposition): the underlying CLI (fathom findings import, the pre-edit \"open findings\" block, the session-outbox sync) is being built by other waves against docs/plans/findings-loop.md sections A-D and is not yet present in this clone. Every detector and setup command here documents that contract rather than exercising a built implementation.",
-    "arm_mechanism": "Both arms are wired and compile_layers (findings ride the same obligations fetch, vision 30 \u00a73.4 'Cost'); the ONLY difference is the control arm's Arm.Setup deleting .reviewkit/outbox/projection.json before session 1 (subject.go: Arm.Setup runs after Subject.Setup and before wiring/ingest), so the full arm's outbox is available for the session-start sync to import and the control arm's is not \u2014 the isolation vision 30 \u00a76 calls for without a second subject variant.",
-    "finding_selection": "Each finding is anchored to a real, currently-unaddressed gap in the named file at base_commit (anchor.digest is the file's own sha256 at that commit) \u2014 a missing error-wrap (purgecmd.go), a map-derived field with no existing sort call once it exists (pattern.go), an unbounded report branch (doctor_concerns.go), and a change detector that misses deletions (watch.go) \u2014 plus one filler finding (genclaudemd.go, RK-GENCLAUDEMD-PAGE-1) anchored elsewhere in the repo and not tied to any task, so the outbox reads as a repo with several open findings rather than exactly one per edited file.",
-    "kill_criteria": "vision 30 \u00a76, verbatim: no lift in finding_addressed at n>=3; hook injection exceeding the ADR-036 budget; a disagreement or drifted finding served as current. A second reading is required before any number from this corpus is cited (docs/bench/README.md), same as every other corpus here."
+    "arm_mechanism": "Both arms are wired and compile_layers (findings ride the same obligations fetch, vision 30 §3.4 'Cost'); the ONLY difference is the control arm's Arm.Setup deleting .reviewkit/outbox/projection.json before session 1 (subject.go: Arm.Setup runs after Subject.Setup and before wiring/ingest), so the full arm's outbox is available for the session-start sync to import and the control arm's is not — the isolation vision 30 §6 calls for without a second subject variant.",
+    "finding_selection": "Each finding is anchored to a real, currently-unaddressed gap in the named file at base_commit (anchor.digest is the file's own sha256 at that commit) — a missing error-wrap (purgecmd.go), a map-derived field with no existing sort call once it exists (pattern.go), an unbounded report branch (doctor_concerns.go), and a change detector that misses deletions (watch.go) — plus one filler finding (genclaudemd.go, RK-GENCLAUDEMD-PAGE-1) anchored elsewhere in the repo and not tied to any task, so the outbox reads as a repo with several open findings rather than exactly one per edited file.",
+    "kill_criteria": "vision 30 §6, verbatim: no lift in finding_addressed at n>=3; hook injection exceeding the ADR-036 budget; a disagreement or drifted finding served as current. A second reading is required before any number from this corpus is cited (docs/bench/README.md), same as every other corpus here."
   }
 }
