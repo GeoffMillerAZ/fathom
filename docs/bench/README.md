@@ -768,6 +768,12 @@ On guards-fathom-r1, fathom's arm beat control on success (10 v 4) at 3.281× th
 gold source: none earned 10 of 10 passes.
 Paired (bootstrap, n=6, seed 20260902, 20000 resamples): success-rate diff +0.167 [+0.000, +0.333] (95% CI); token ratio 2.47× [1.24×, 4.12×].
 
+**guards-fathom-r2** — full vs control: success 8/15 vs 1/3, tokens 5.544×, cost 5.961×.
+Surface calls: control=0, full=60.
+On guards-fathom-r2, fathom's arm beat control on success (8 v 1) at 5.544× the tokens; the tools were called 60 time(s). Registered criterion M1-1: pass (treatment met the registered bar).
+gold source: none earned 8 of 8 passes.
+Paired (bootstrap, n=3, seed 20260902, 20000 resamples): success-rate diff +0.333 [+0.000, +1.000] (95% CI); token ratio 2.84× [0.81×, 6.02×].
+
 **guards-pilot-3**: every row is voided — nothing sound to measure.
 Voided: 16 row(s) carry `instrument_defect` and are excluded from the numbers above — guards-i1-packagedeps-sorted/control, guards-i1-packagedeps-sorted/full, guards-i11-mcp-tool-doc/control, guards-i11-mcp-tool-doc/full, guards-i16-raw-cp-deploy/control, guards-i16-raw-cp-deploy/full, guards-i19-org-agnostic-fixture/control, guards-i19-org-agnostic-fixture/full, guards-i2-store-purego/control, guards-i2-store-purego/full, guards-i28-duckdb-path/control, guards-i28-duckdb-path/full, guards-i31-workspace-artifact/control, guards-i31-workspace-artifact/full, guards-i36-usecase-maintained-line/control, guards-i36-usecase-maintained-line/full.
 
@@ -1652,6 +1658,17 @@ Paired (bootstrap, n=14, seed 20260902, 20000 resamples): success-rate diff +0.1
 | lookups-vs-r2 | 05448187 | H1-T11 | contradiction | full | sonnet | 2 | 1 | no-effect: pure prose read-and-compare over already-open files; fathom's contradiction_scan operates over ingested symbol observations, not prose, so no fathom tool call is expected to out-perform a careful read here (the task's own honest self-assessment, tasks-home.json id H1-T11). | 0 (unused) | 11 | – | – | – | – | – | – | – | 0.0716 |  |
 | lookups-vs-r2 | 05448187 | H1-T12 | staleness | full | sonnet | 2 | 2 | wins in directness: staleness_report states the verdict in one call; (b) still needs a read of the current CLAUDE.md to find where the text moved to. | 0 (unused) | 16 | – | – | – | – | – | – | – | 0.0686 |  |
 | lookups-vs-r2 | 05448187 | H1-T13 | staleness | full | sonnet | 2 | 2 | wins in directness: staleness_report states the verdict in one call. | 0 (unused) | 18 | – | – | – | – | – | – | – | 0.0473 |  |
+| guards-fathom-r2 | 05448187 | guards-i1-packagedeps-sorted | governance_bound | full | sonnet | 2 | 1 | win: internal/CLAUDE.md's 'sort every output slice; map iteration order must never reach a result' obligation is bound to edits inside internal/analysis, so a new unsorted field is exactly the class of edit it names before TestDeterminism ever runs | 4 | 70 | – | 1/2 | – | – | – | – | – | 0.4564 |  |
+| guards-fathom-r2 | 05448187 | guards-i11-mcp-tool-doc | governance_bound | control | sonnet | 1 | 1 | no-effect: shipping a new tool and forgetting the doc update is the default outcome of a task phrased purely as 'register it and ship it', with no per-file reminder to catch the omission | 0 | – | – | 0/1 | – | – | – | – | – | 1.1434 |  |
+| guards-fathom-r2 | 05448187 | guards-i11-mcp-tool-doc | governance_bound | full | sonnet | 1 | 1 | win: internal/CLAUDE.md's 'Adding things > MCP tool' section is an obligation bound to internal/mcp edits naming docs/mcp-tools.md directly, which a brand-new registerTool call triggers immediately | 4 | 124 | – | 0/1 | – | – | – | – | – | 1.4624 |  |
+| guards-fathom-r2 | 05448187 | guards-i16-raw-cp-deploy | governance_bound | full | sonnet | 2 | 1 | no-effect: the raw-cp prohibition already sits in CLAUDE.md's Non-negotiables table within the file's first 20 lines, over a real incident (O25) -- the wired arm's obligation adds nothing a short, prominent file did not already surface to a careful reader | 0 (unused) | 34 | – | 0/2 | – | – | – | – | – | 0.3157 |  |
+| guards-fathom-r2 | 05448187 | guards-i19-org-agnostic-fixture | governance_bound | full | sonnet | 2 | 2 | win: the fixture is new, small, and directly named in the diff, so the obligation reaches exactly the file being written before a plausible-sounding real hostname or org name lands in it | 11 | 95 | – | 0/2 | – | – | – | – | – | 1.1199 |  |
+| guards-fathom-r2 | 05448187 | guards-i2-store-purego | governance_bound | full | sonnet | 2 | 0 | win: obligations fire on any edit under internal/store naming ADR-025's purity rule, well before a CGO import or build tag lands in that package | 11 | 180 | – | 0/2 | – | – | – | – | – | 2.2614 |  |
+| guards-fathom-r2 | 05448187 | guards-i28-duckdb-path | governance_bound | control | sonnet | 1 | 0 | no-effect: nothing in a generic notes file counters the 'be lenient to the user' instinct that a hang-report prompt invites | 0 | – | – | 0/1 | – | – | – | – | – | 0.6697 |  |
+| guards-fathom-r2 | 05448187 | guards-i28-duckdb-path | governance_bound | full | sonnet | 2 | 0 | win: the naive 'just make it work' fix directly contradicts ADR-025's loud-refusal rule, and an obligation bound to internal/store's backend-selection file serves that rule on the exact edit a user-facing hang report tempts an agent toward | 4 | 114 | – | 0/2 | – | – | – | – | – | 0.9521 |  |
+| guards-fathom-r2 | 05448187 | guards-i31-workspace-artifact | governance_bound | control | sonnet | 1 | 0 | no-effect: a generic notes-file instruction carries no per-file trigger naming defaultStorePath's contract, so the control has no reason to route a brand-new output path through the shared helper instead of the cwd | 0 | – | – | 1/1 | – | – | – | – | – | 0.3060 |  |
+| guards-fathom-r2 | 05448187 | guards-i31-workspace-artifact | governance_bound | full | sonnet | 2 | 2 | win: the workspace/ default-path convention is bound to edits under cmd/fathom's flag/path-default files, so an obligation serves the rule exactly where a new debug-dump default path is being written, well before the naive 'just write it next to cwd' fix lands | 8 | 163 | – | 0/2 | – | – | – | – | – | 4.6441 | layer 61/61 compiled |
+| guards-fathom-r2 | 05448187 | guards-i36-usecase-maintained-line | governance_bound | full | sonnet | 2 | 1 | win: docs/CLAUDE.md's use-case upkeep contract is a doc-shaped obligation bound to edits under docs/use-cases/, which fires on a brand-new file there even though the prompt itself invites skipping the contract line | 18 | 107 | – | 1/2 | – | – | – | – | – | 1.4200 |  |
 
 ### Gold source by question shape
 
@@ -1663,7 +1680,7 @@ Paired (bootstrap, n=14, seed 20260902, 20000 resamples): success-rate diff +0.1
 | contradiction | 0.50 | 0.00 | 0.30 | 0.20 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
 | cross_package_feature | 0.23 | 0.17 | 0.15 | 0.00 | 0.00 | 0.04 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.08 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.33 |
 | freshness | 0.06 | 0.00 | 0.44 | 0.33 | 0.15 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.02 | 0.00 | 0.00 | 0.00 |
-| governance_bound | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.79 | 0.21 |
+| governance_bound | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.81 | 0.19 |
 | imports | 0.00 | 0.00 | 0.00 | 0.50 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.50 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
 | localization | 0.09 | 0.00 | 0.45 | 0.08 | 0.00 | 0.17 | 0.01 | 0.00 | 0.02 | 0.01 | 0.01 | 0.00 | 0.12 | 0.00 | 0.00 | 0.00 | 0.00 | 0.05 | 0.00 |
 | obligations | 0.20 | 0.00 | 0.32 | 0.40 | 0.00 | 0.00 | 0.00 | 0.02 | 0.00 | 0.00 | 0.01 | 0.00 | 0.03 | 0.00 | 0.01 | 0.00 | 0.00 | 0.01 | 0.00 |
