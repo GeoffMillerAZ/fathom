@@ -70,7 +70,7 @@ type claimsAnchoredBackend interface {
 func registerRenameImpact(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "rename_impact",
-		Description: "The answer grep cannot give: every call site that would need updating if symbol were renamed (direct callers only) — grep's text match cannot resolve identity across a bare name shared by unrelated symbols. Reach for it when you are about to rename a symbol and need every call site a text search would miss or over-match. Required: service, symbol.",
+		Description: "Every call site needing an update if symbol were renamed — grep can't resolve identity across a shared name. Reach for it when about to rename. Required: service, symbol.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -80,7 +80,7 @@ func registerRenameImpact(s *Server, backend QueryInterface) {
 				},
 				"symbol": map[string]any{
 					"type":        "string",
-					"description": "Symbol name (bare or fully-qualified SymbolKey)",
+					"description": "Symbol name (bare or fully-qualified)",
 				},
 			},
 			"required": []string{"service", "symbol"},
@@ -229,7 +229,7 @@ func registerReachable(s *Server, backend QueryInterface) {
 func registerTestImpact(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "test_impact",
-		Description: "The answer grep cannot give: every test function (names prefixed with 'Test') that transitively reaches the given symbol via the call graph — no text search walks a call graph to a Test* root. Reach for it when you changed a symbol and need to know which tests actually exercise it, not which tests merely mention its name. Required: service, symbol.",
+		Description: "Every Test* function reaching symbol via the call graph — no text search walks it. Reach for it when you changed a symbol, to see what exercises it. Required: service, symbol.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -239,7 +239,7 @@ func registerTestImpact(s *Server, backend QueryInterface) {
 				},
 				"symbol": map[string]any{
 					"type":        "string",
-					"description": "Symbol name (bare or fully-qualified SymbolKey)",
+					"description": "Symbol name (bare or fully-qualified)",
 				},
 			},
 			"required": []string{"service", "symbol"},

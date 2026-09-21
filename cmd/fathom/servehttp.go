@@ -378,7 +378,10 @@ func newHTTPHandler(srv *mcp.Server, c *client.Client, selfAddr string) http.Han
 
 		// Background, not r.Context(): a client disconnect must not cancel a
 		// long-running ingest mid-flight. The scope carries the surface.
-		ctx := mcp.WithOrigin(mcp.WithRequestScope(context.Background(), surface, true), r.Header.Get("X-Fathom-Origin"))
+		// "?contracts=true" (O101/TD-2) opts this request's tools/list back
+		// into outputSchema — off by default so the served payload stays
+		// diet-sized; a client that validates structured output can ask.
+		ctx := mcp.WithContracts(mcp.WithOrigin(mcp.WithRequestScope(context.Background(), surface, true), r.Header.Get("X-Fathom-Origin")), r.URL.Query().Get("contracts") == "true")
 		// MCP-Protocol-Version (2025-06-18+ Streamable HTTP): clients send
 		// the negotiated revision on every post-initialize request. It is
 		// TOLERATED here (RP-12) — never a 400 — and answered with the

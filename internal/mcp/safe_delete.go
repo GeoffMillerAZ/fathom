@@ -29,13 +29,13 @@ type safeDeleteReferent struct {
 func registerSafeDeleteCheck(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "safe_delete_check",
-		Description: "The answer grep cannot give before a delete: every remaining referent of a symbol, each with file:line and a resolution tier (typed = confirmed call-graph edge, heuristic = bare-name match). Test referents are listed separately from code ones, and referent_count:0 is a proven-zero receipt naming the index commit. An interface's implementations count as referents too, since deleting it breaks them. Reach for it when you are about to delete a symbol and need to know whether anything still depends on it. Required: service, symbol.",
+		Description: "Every remaining referent of a symbol, file:line with a typed/heuristic tier; zero is a proven-zero receipt. Reach for it when about to delete a symbol. Required: service, symbol.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"service":   map[string]any{"type": "string", "description": "Service / repo identifier"},
-				"symbol":    map[string]any{"type": "string", "description": "Symbol name (bare or fully-qualified SymbolKey)"},
-				"symbol_id": map[string]any{"type": "string", "description": "Alias for symbol — a fully-qualified SymbolKey"},
+				"symbol":    map[string]any{"type": "string", "description": "Symbol name (bare or fully-qualified)"},
+				"symbol_id": map[string]any{"type": "string", "description": "Alias for symbol"},
 			},
 			"required": []string{"service", "symbol"},
 		},

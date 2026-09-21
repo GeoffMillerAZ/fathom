@@ -149,8 +149,14 @@ func TestToolsListOrderPinnedAndAnnotated(t *testing.T) {
 	for _, e := range entries {
 		m := e.(map[string]any)
 		names = append(names, m["name"].(string))
-		if m["annotations"] == nil || m["outputSchema"] == nil {
-			t.Errorf("%s: agent-surface entry lacks annotations/outputSchema", m["name"])
+		if m["annotations"] == nil {
+			t.Errorf("%s: agent-surface entry lacks annotations", m["name"])
+		}
+		// O101/TD-2: outputSchema is off tools/list by default — the diet's
+		// whole point — and served only under WithContracts(true), checked
+		// below.
+		if m["outputSchema"] != nil {
+			t.Errorf("%s: agent-surface entry serves outputSchema without contracts requested", m["name"])
 		}
 	}
 	if !sort.StringsAreSorted(names) {
@@ -164,20 +170,17 @@ func TestToolsListOrderPinnedAndAnnotated(t *testing.T) {
 	if a, b := srv.toolsListBytes(ctx), srv.toolsListBytes(ctx); a != b || a == 0 {
 		t.Errorf("toolsListBytes not stable: %d vs %d", a, b)
 	}
-	// The schema budget, honestly: what the surface costs with and without
-	// the RP-10/RP-11 additive fields (go test -v prints it).
-	stripped := make([]any, len(entries))
-	for i, e := range entries {
-		m := map[string]any{}
-		for k, v := range e.(map[string]any) {
-			if k != "annotations" && k != "outputSchema" {
-				m[k] = v
-			}
+	contractsCtx := WithContracts(ctx, true)
+	for _, e := range srv.toolsListEntries(contractsCtx) {
+		m := e.(map[string]any)
+		if m["outputSchema"] == nil {
+			t.Errorf("%s: WithContracts(true) must still serve outputSchema", m["name"])
 		}
-		stripped[i] = m
 	}
-	before, _ := json.Marshal(map[string]any{"tools": stripped})
-	t.Logf("agent-surface tools/list: %d bytes without annotations/outputSchema, %d bytes with", len(before), srv.toolsListBytes(ctx))
+	// The schema budget, honestly: what the surface costs by default (diet,
+	// annotations only) versus with outputSchema requested (go test -v
+	// prints it).
+	t.Logf("agent-surface tools/list: %d bytes (default, contracts=false), %d bytes (contracts=true)", srv.toolsListBytes(ctx), srv.toolsListBytes(contractsCtx))
 }
 
 // ─── RP-11: outputSchema is generated and every live result conforms ─────────

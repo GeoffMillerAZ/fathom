@@ -244,12 +244,12 @@ type discoveriesResult struct {
 func registerDiscoveries(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "discoveries",
-		Description: "What this session (or the planner) already established, resolved fresh — read before exploring. Pulls this repo's recent call-log pointers (symbol ids, files), deduped and ranked by recency then frequency, each re-resolved against the LIVE index — a pointer that no longer resolves is marked stale, never served as fact. Reach for it when you are picking up a hand-off (a subagent, or the start of a new session) and want to know what was already found before spending a call re-finding it. Required: service.",
+		Description: "What this session already found, resolved fresh against the live index. Reach for it when picking up a hand-off, before re-finding what's known. Required: service.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
-				"since":   map[string]any{"type": "string", "description": "RFC3339 timestamp; only pointers established at/after it (default: all recorded history)"},
+				"since":   map[string]any{"type": "string", "description": "RFC3339 timestamp; only pointers after it"},
 				"budget":  map[string]any{"type": "integer", "description": fmt.Sprintf("Byte budget for the rendered list (default %d)", discoveriesDefaultBudget)},
 			},
 			"required": []string{"service"},

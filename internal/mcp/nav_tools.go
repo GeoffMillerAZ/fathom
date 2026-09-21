@@ -137,13 +137,13 @@ func ambiguousSymbolContextResult(candidates []core.SymbolNode, count int, hub b
 func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend) {
 	s.registerTool(toolDescriptor{
 		Name:        "symbol_context",
-		Description: "Return the neighbourhood context for a symbol: its definition, direct callers, direct callees, related tests, and (when readable) an inline source snippet capped at 40 lines. This result IS the answer for a symbol's immediate neighbourhood; a follow-up call only helps once you need lines beyond the 40-line cap (read_source) or a different symbol's neighbourhood. An ambiguous bare name, or a hub over 50 callers, returns candidates with scope_required instead of a neighbourhood. Reach for it when you have located a symbol and need its neighbourhood — definition, callers, callees, tests, source — in one call before changing it. Required: service, symbol.",
+		Description: "Neighbourhood for a symbol: definition, callers/callees, tests, a snippet. This result IS the answer for its neighbourhood; a follow-up call only helps past the 40-line cap. Reach for it when about to change a symbol. Required: service, symbol.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
-				"symbol":  map[string]any{"type": "string", "description": "Symbol name (bare or fully-qualified SymbolKey)"},
-				"snippet": map[string]any{"type": "boolean", "description": "Include the inline definition source snippet (default true). Set false to omit it."},
+				"symbol":  map[string]any{"type": "string", "description": "Symbol name (bare or fully-qualified)"},
+				"snippet": map[string]any{"type": "boolean", "description": "Include the source snippet (default true)"},
 			},
 			"required": []string{"service", "symbol"},
 		},
@@ -358,7 +358,7 @@ func kindLabeledEdges(details []callgraph.EdgeInfo) []any {
 func registerOutline(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "outline",
-		Description: "List all symbols defined in a specific file, ordered by line number. Reach for it when you need a file's structure — every definition with its line — without reading the whole file. Budgeted; the elision line names the refinement (depth or kinds). Required: service, file.",
+		Description: "Lists every symbol defined in a file, ordered by line. Reach for it when editing a file you have not read yet. Required: service, file.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -407,7 +407,7 @@ func registerOutline(s *Server, backend QueryInterface) {
 func registerEntrypoints(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "entrypoints",
-		Description: "Return the likely program entrypoints in the service: main functions, HTTP handlers, and CLI root commands. Reach for it when you are orienting in an unfamiliar service and need where execution starts before tracing inward. Required: service.",
+		Description: "Lists likely program entrypoints: main functions, HTTP handlers, CLI root commands. Reach for it when orienting in an unfamiliar service. Required: service.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{

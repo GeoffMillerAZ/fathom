@@ -129,14 +129,20 @@ func (s *Server) handleToolsList(ctx context.Context, _ json.RawMessage) (any, *
 
 // toolsListEntries renders the request's visible tools as the MCP
 // tools/list entries: name, description, inputSchema, and — for every
-// classified tool — annotations (RP-10) and outputSchema (RP-11). The
-// order is pinned to ascending name (RP-12): registration order was
-// already deterministic, but a client that hashes or diffs the list (the
-// kit client pins per-tool hashes; a doc renderer diffs the whole list)
+// classified tool — annotations (RP-10). outputSchema (RP-11) is included
+// only when the request asked for it (WithContracts / the HTTP
+// "?contracts=true" query param, O101/TD-2): the generated JSON Schema was
+// ~18.8 kB of a 48.3 kB served payload, paid by every connected session on
+// every turn whether or not the client validates structured output against
+// it, so it is off by default and available on request. The order is
+// pinned to ascending name (RP-12): registration order was already
+// deterministic, but a client that hashes or diffs the list (the kit
+// client pins per-tool hashes; a doc renderer diffs the whole list)
 // deserves an order that does not move when a registration call moves.
 func (s *Server) toolsListEntries(ctx context.Context) []any {
 	descs := s.visibleToolsCtx(ctx)
 	sort.Slice(descs, func(i, j int) bool { return descs[i].Name < descs[j].Name })
+	includeSchemas := contractsFrom(ctx)
 	tools := make([]any, len(descs))
 	for i, d := range descs {
 		entry := map[string]any{
@@ -147,8 +153,10 @@ func (s *Server) toolsListEntries(ctx context.Context) []any {
 		if ann := toolAnnotations(d.Name); ann != nil {
 			entry["annotations"] = ann
 		}
-		if out := outputSchemaFor(d.Name); out != nil {
-			entry["outputSchema"] = out
+		if includeSchemas {
+			if out := outputSchemaFor(d.Name); out != nil {
+				entry["outputSchema"] = out
+			}
 		}
 		tools[i] = entry
 	}

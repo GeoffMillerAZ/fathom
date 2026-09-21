@@ -160,6 +160,31 @@ func originFrom(ctx context.Context) string {
 	return o
 }
 
+type contractsKey struct{}
+
+// WithContracts returns a context requesting outputSchema entries on
+// tools/list (O101/TD-2 diet): default false, so the served payload stays
+// diet-sized (no generated JSON Schema per tool) unless a client that
+// validates envelopes explicitly opts in. The HTTP layer sets this from the
+// "?contracts=true" query parameter on POST /rpc and /rpc/{surface}
+// (cmd/fathom's servehttp.go); stdio callers get the diet unconditionally
+// unless they call this directly. The schemas themselves are unaffected —
+// they stay in the registry (outputschema.go's agentResultTypes) and are
+// generated on demand by outputSchemaFor regardless of this flag.
+func WithContracts(ctx context.Context, include bool) context.Context {
+	if !include {
+		return ctx
+	}
+	return context.WithValue(ctx, contractsKey{}, true)
+}
+
+// contractsFrom reports whether this request asked for outputSchema entries
+// on tools/list (see WithContracts). Default false.
+func contractsFrom(ctx context.Context) bool {
+	v, _ := ctx.Value(contractsKey{}).(bool)
+	return v
+}
+
 // enforced reports whether tools/call must be hard-gated for this request:
 // only named surfaces over HTTP gate calls. The stdio profile stays advisory
 // (a single client owns the process), and the bare HTTP endpoint is the full

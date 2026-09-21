@@ -905,16 +905,16 @@ var localizeInputKinds = []string{"stack_trace", "failing_test", "error", "conce
 func registerLocalize(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "localize",
-		Description: "The answer grep cannot give when you don't yet know which file: one bounded walk of the index from a stack trace, a failing test, an error string or a concern. Seeds from frames, literals or concern terms expand through the typed call graph to depth 2, ranked by evidence, graph distance and convergence; candidates carry file, symbol, score, tier and why, capped at 25 with an elision line; identical input gives identical output. Give exactly one of stack_trace, failing_test, error, concern. Reach for it when you have a crash, a failing test or a described problem and do not yet know which file it lives in; a literal with a known location is search's job. Required: service.",
+		Description: "Bounded walk from a stack trace, failing test, error, or concern to the file(s) a bug likely lives in. Reach for it when you don't yet know which file. Required: service.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"service":      map[string]any{"type": "string", "description": "Service / repo identifier"},
-				"stack_trace":  map[string]any{"type": "string", "description": "A stack trace or traceback, verbatim — file:line frames and function names are parsed out as seeds"},
-				"failing_test": map[string]any{"type": "string", "description": "A failing test's name (subtests like TestFoo/bar are split at the first \"/\" for the symbol lookup)"},
-				"error":        map[string]any{"type": "string", "description": "An error message, verbatim — quoted literals and any embedded file:line frames are parsed out as seeds"},
-				"concern":      map[string]any{"type": "string", "description": "A free-text description of the area or problem — significant terms are searched"},
-				"budget":       map[string]any{"type": "integer", "description": "Maximum hops (default 12, max 40); never rejected for being too high"},
+				"stack_trace":  map[string]any{"type": "string", "description": "Stack trace, verbatim — frames parsed as seeds"},
+				"failing_test": map[string]any{"type": "string", "description": "Failing test's name (TestFoo/bar splits at /)"},
+				"error":        map[string]any{"type": "string", "description": "Error message, verbatim — seeds are parsed out"},
+				"concern":      map[string]any{"type": "string", "description": "Free-text description of the area or problem"},
+				"budget":       map[string]any{"type": "integer", "description": "Maximum hops (default 12, max 40)"},
 			},
 			"required": []string{"service"},
 		},

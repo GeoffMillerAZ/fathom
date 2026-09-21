@@ -136,37 +136,36 @@ type searchRawHit struct {
 func registerSearch(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "search",
-		Description: "Grep with a receipt — the hit and the symbol it sits in, so the follow-up read is not needed. Runs ripgrep against the working tree when on PATH (falls back to an equivalent Go-regexp walk otherwise). Each hit renders {loc, text} plus a receipt: sym/kind (needs service) and, needing no service, flags/class. Over limit (default 50) or the 16KB budget, elided names how many more exist; give exactly one of service (enables sym/kind) or root. Reach for it when you have a literal string, a config value, or a log line to find; for where/who-calls questions use find_symbol/references instead. Required: pattern.",
+		Description: "Grep with a receipt: the hit plus the symbol it sits in, so a follow-up read isn't needed. Reach for it when you have a literal string or log line. Required: pattern.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"pattern": map[string]any{
 					"type":        "string",
-					"description": "Regular expression to search for (Go regexp syntax; handed to ripgrep as-is).",
+					"description": "Go regexp to search for",
 				},
 				"service": map[string]any{
 					"type":        "string",
-					"description": "Service / repo identifier — enables sym/kind receipts. Give exactly one of service or root.",
+					"description": "Service id — enables sym/kind receipts",
 				},
 				"root": map[string]any{
 					"type":        "string",
-					"description": "Absolute directory to search directly (sym/kind omitted; flags/class still render). Give exactly one of service or root.",
+					"description": "Directory to search directly. One of service or root.",
 				},
 				"path": map[string]any{
 					"type":        "string",
-					"description": "Optional glob (gitignore-style, e.g. \"internal/mcp/**/*.go\") narrowing which files are searched.",
+					"description": "Glob narrowing which files are searched",
 				},
 				"case": map[string]any{
 					"type":        "boolean",
-					"description": "Case-sensitive match. Default true (grep/ripgrep's own default); false for case-insensitive.",
+					"description": "Case-sensitive match (default true)",
 				},
 				"limit": map[string]any{
-					"type":        "integer",
-					"description": "Maximum hits returned (default 50).",
+					"type": "integer",
 				},
 				"context": map[string]any{
 					"type":        "integer",
-					"description": "Lines of context before and after each hit (default 0).",
+					"description": "Lines of context around each hit (default 0)",
 				},
 			},
 			"required": []string{"pattern"},
