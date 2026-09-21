@@ -834,6 +834,9 @@ On lookups-vs-r1, fathom's arm lost to grep on success (23 v 26) at 1.345× the 
 gold source: Grep earned 8 of 23 passes.
 Paired (bootstrap, n=14, seed 20260902, 20000 resamples): success-rate diff -0.071 [-0.214, +0.000] (95% CI); token ratio 1.87× [1.45×, 2.27×].
 
+**lookups-vs-r2** (criterion names full/grep, not among this run's arms):
+full 26/28 (surface calls 25); gopls 1/1 (surface calls 0); graphify 1/1 (surface calls 0).
+
 **public-pilot-2**: every row is voided — nothing sound to measure.
 Voided: 8 row(s) carry `instrument_defect` and are excluded from the numbers above — SB-cli__cli-10009/control, SB-cli__cli-10009/full, SB-cli__cli-10016/control, SB-cli__cli-10016/full, SB-cli__cli-10043/control, SB-cli__cli-10043/full, SB-cli__cli-10072/control, SB-cli__cli-10072/full.
 
@@ -1633,24 +1636,40 @@ Paired (bootstrap, n=14, seed 20260902, 20000 resamples): success-rate diff +0.1
 | guards-fathom-r1 | cbfbfeb7 | guards-i31-workspace-artifact | governance_bound | full | sonnet | 2 | 1 | win: the workspace/ default-path convention is bound to edits under cmd/fathom's flag/path-default files, so an obligation serves the rule exactly where a new debug-dump default path is being written, well before the naive 'just write it next to cwd' fix lands | 13 | 157 | – | 1/2 | – | – | – | – | – | 2.0706 |  |
 | guards-fathom-r1 | cbfbfeb7 | guards-i36-usecase-maintained-line | governance_bound | control | sonnet | 2 | 2 | no-effect: a prompt that explicitly frames the contract line as optional boilerplate, with no obligation naming it, leaves the control arm with every reason to leave it out | 0 | – | – | 0/2 | – | – | – | – | – | 0.7296 |  |
 | guards-fathom-r1 | cbfbfeb7 | guards-i36-usecase-maintained-line | governance_bound | full | sonnet | 2 | 2 | win: docs/CLAUDE.md's use-case upkeep contract is a doc-shaped obligation bound to edits under docs/use-cases/, which fires on a brand-new file there even though the prompt itself invites skipping the contract line | 14 | 81 | – | 0/2 | – | – | – | – | – | 0.9402 |  |
+| lookups-vs-r2 | 05448187 | FRESH-M7-01 | freshness | full | sonnet | 2 | 2 | wins: find_callers/references on IsPlumbingTool, called after the wired arm's post-wire re-ingest (O45 item 4), returns all four callers, including the new one not among the three the prompt names; the index reflects the edit because the daemon re-ingests after post_wire_setup runs. | 5 | 63 | – | – | – | – | – | – | 1.00 | 0.3059 |  |
+| lookups-vs-r2 | 05448187 | H1-T01 | obligations | full | sonnet | 2 | 2 | wins: answered directly by the obligations tool's compiled rule for this file, which cites internal/CLAUDE.md by line — no competitor tool reads governance docs at all. | 2 | 12 | – | – | – | – | – | – | – | 2.8980 | layer 60/60 compiled |
+| lookups-vs-r2 | 05448187 | H1-T02 | obligations | full | sonnet | 2 | 2 | wins: answered directly by the obligations tool's compiled rule for this file, citing ADR.md#L635-L636 — no competitor tool reads decision records at all. | 2 | 15 | – | – | – | – | – | – | – | 0.0985 |  |
+| lookups-vs-r2 | 05448187 | H1-T03 | verify | full | sonnet | 2 | 2 | wins: find_symbol's own record of verifyViaHTTP plus find_callers/references over run() and cmdVerify surfaces the 5 --url-passing tests directly, without reading the whole file. | 0 (unused) | 10 | – | – | – | – | – | – | – | 0.0450 |  |
+| lookups-vs-r2 | 05448187 | H1-T04 | verify | full | sonnet | 2 | 2 | wins outright: verify_plan is a fathom-exclusive tool that answers this in one call, including the gate's own exact phrase. | 6 | 12 | – | – | – | – | – | – | – | 0.0391 |  |
+| lookups-vs-r2 | 05448187 | H1-T05 | blast_radius | full | sonnet | 2 | 2 | wins: blast_radius / find_callers surfaces the 2-hop caller directly in one call. | 4 | 10 | – | – | – | – | – | – | – | 0.0374 |  |
+| lookups-vs-r2 | 05448187 | H1-T06 | blast_radius | full | sonnet | 2 | 2 | wins: find_symbol's implementations field (SB-5) lists both concrete types directly from the typed pass. | 0 (unused) | 9 | – | – | – | – | – | – | – | 0.0310 |  |
+| lookups-vs-r2 | 05448187 | H1-T07 | claim_provenance | full | sonnet | 2 | 1 | wins: the obligations tool's compiled rule for this file names the exact citation directly. | 2 | 14 | – | – | – | – | – | – | – | 0.1121 |  |
+| lookups-vs-r2 | 05448187 | H1-T07 | claim_provenance | graphify | sonnet | 1 | 1 | ties grep, below fathom: no tool surface for decision-record provenance. | 0 (unused) | – | – | – | – | – | – | – | – | 0.1125 |  |
+| lookups-vs-r2 | 05448187 | H1-T08 | claim_provenance | full | sonnet | 2 | 2 | wins: the obligations tool's compiled rule for the root CLAUDE.md names the exact citation directly. | 2 | 12 | – | – | – | – | – | – | – | 0.0587 |  |
+| lookups-vs-r2 | 05448187 | H1-T08 | claim_provenance | gopls | sonnet | 1 | 1 | ties grep, below fathom: no tool surface for a documented convention's citation. | 0 (unused) | – | – | – | – | – | – | – | – | 0.0932 |  |
+| lookups-vs-r2 | 05448187 | H1-T09 | concern_search | full | sonnet | 2 | 2 | wins in directness: query_symbols' concern ranking surfaces BackendForPath among its top candidates, though its own source notes the ranking is approximate. | 2 | 10 | – | – | – | – | – | – | – | 0.0523 |  |
+| lookups-vs-r2 | 05448187 | H1-T10 | concern_search | full | sonnet | 2 | 2 | wins in directness: query_symbols' concern ranking surfaces fitToBudget among its top candidates. | 0 (unused) | 9 | – | – | – | – | – | – | – | 0.0423 |  |
+| lookups-vs-r2 | 05448187 | H1-T11 | contradiction | full | sonnet | 2 | 1 | no-effect: pure prose read-and-compare over already-open files; fathom's contradiction_scan operates over ingested symbol observations, not prose, so no fathom tool call is expected to out-perform a careful read here (the task's own honest self-assessment, tasks-home.json id H1-T11). | 0 (unused) | 11 | – | – | – | – | – | – | – | 0.0716 |  |
+| lookups-vs-r2 | 05448187 | H1-T12 | staleness | full | sonnet | 2 | 2 | wins in directness: staleness_report states the verdict in one call; (b) still needs a read of the current CLAUDE.md to find where the text moved to. | 0 (unused) | 16 | – | – | – | – | – | – | – | 0.0686 |  |
+| lookups-vs-r2 | 05448187 | H1-T13 | staleness | full | sonnet | 2 | 2 | wins in directness: staleness_report states the verdict in one call. | 0 (unused) | 18 | – | – | – | – | – | – | – | 0.0473 |  |
 
 ### Gold source by question shape
 
 | category | Bash | Glob | Grep | Read | mcp__fathom__find_callers | mcp__fathom__find_symbol | mcp__fathom__localize | mcp__fathom__obligations | mcp__fathom__outline | mcp__fathom__query_symbols | mcp__fathom__read_source | mcp__fathom__references | mcp__fathom__search | mcp__fathom__verify_plan | mcp__graphify__query_graph | mcp__serena__find_referencing_symbols | mcp__serena__find_symbol | none | not_measured |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| blast_radius | 0.03 | 0.00 | 0.73 | 0.02 | 0.12 | 0.04 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.02 | 0.00 | 0.00 | 0.00 | 0.02 | 0.00 | 0.04 | 0.00 |
-| claim_provenance | 0.02 | 0.00 | 0.02 | 0.36 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.60 | 0.00 |
-| concern_search | 0.03 | 0.00 | 0.74 | 0.09 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.01 | 0.01 | 0.00 | 0.11 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
-| contradiction | 0.52 | 0.00 | 0.27 | 0.21 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
+| blast_radius | 0.03 | 0.00 | 0.72 | 0.02 | 0.14 | 0.03 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.02 | 0.00 | 0.00 | 0.00 | 0.02 | 0.00 | 0.03 | 0.00 |
+| claim_provenance | 0.02 | 0.00 | 0.03 | 0.37 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.58 | 0.00 |
+| concern_search | 0.03 | 0.00 | 0.73 | 0.09 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.01 | 0.01 | 0.00 | 0.13 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
+| contradiction | 0.50 | 0.00 | 0.30 | 0.20 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
 | cross_package_feature | 0.23 | 0.17 | 0.15 | 0.00 | 0.00 | 0.04 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.08 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.33 |
-| freshness | 0.06 | 0.00 | 0.46 | 0.34 | 0.12 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.02 | 0.00 | 0.00 | 0.00 |
+| freshness | 0.06 | 0.00 | 0.44 | 0.33 | 0.15 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.02 | 0.00 | 0.00 | 0.00 |
 | governance_bound | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.79 | 0.21 |
 | imports | 0.00 | 0.00 | 0.00 | 0.50 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.50 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
 | localization | 0.09 | 0.00 | 0.45 | 0.08 | 0.00 | 0.17 | 0.01 | 0.00 | 0.02 | 0.01 | 0.01 | 0.00 | 0.12 | 0.00 | 0.00 | 0.00 | 0.00 | 0.05 | 0.00 |
-| obligations | 0.21 | 0.00 | 0.31 | 0.40 | 0.00 | 0.00 | 0.00 | 0.02 | 0.00 | 0.00 | 0.01 | 0.00 | 0.03 | 0.00 | 0.01 | 0.00 | 0.00 | 0.01 | 0.00 |
-| staleness | 0.35 | 0.00 | 0.27 | 0.26 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.12 | 0.00 |
+| obligations | 0.20 | 0.00 | 0.32 | 0.40 | 0.00 | 0.00 | 0.00 | 0.02 | 0.00 | 0.00 | 0.01 | 0.00 | 0.03 | 0.00 | 0.01 | 0.00 | 0.00 | 0.01 | 0.00 |
+| staleness | 0.36 | 0.00 | 0.28 | 0.25 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.12 | 0.00 |
 | test_reach | 0.00 | 0.00 | 0.75 | 0.00 | 0.25 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
-| verify | 0.12 | 0.00 | 0.23 | 0.31 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.09 | 0.00 | 0.00 | 0.03 | 0.22 | 0.00 |
+| verify | 0.12 | 0.00 | 0.24 | 0.30 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.11 | 0.00 | 0.00 | 0.03 | 0.21 | 0.00 |
 | where_defined | 0.00 | 0.00 | 0.62 | 0.12 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.25 | 0.00 |
 
 <!-- END scenario ledger -->
