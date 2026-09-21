@@ -859,6 +859,18 @@ func wireScratchDaemon(ctx context.Context, wt *Worktree, task Task, renderedArm
 	if err := checkInitJSON(out); err != nil {
 		return fmt.Errorf("wiring scratch daemon: fathom init: %w (%s)", err, out)
 	}
+	// O103: a subject that COMMITS its own `fathom …` hook rows (the fathom
+	// repo itself, at the vintage findings-loop.json pins) leaves bare
+	// PATH-resolved commands beside the absolute ones `fathom init` wrote;
+	// RenderArm refuses those (rightly — a bare `fathom` would run whatever
+	// the operator's PATH resolves, never the cell's binary). Rewrite them to
+	// this cell's own binary so the subject's hooks run the same code its
+	// daemon does; every other command is left byte-identical.
+	if n, err := rewriteBareFathomHooks(filepath.Join(wt.Path, ".claude", "settings.json"), bin); err != nil {
+		return fmt.Errorf("wiring scratch daemon: rewriting bare fathom hooks: %w", err)
+	} else if n > 0 {
+		fmt.Fprintf(os.Stderr, "scenariobench: %s: %d bare `fathom …` hook command(s) rewritten to the cell binary\n", wt.Path, n)
+	}
 
 	// renderedArm.MCP may alias the corpus's own Arm.MCP map (arm was
 	// shallow-copied into *renderedArm by the caller); a fresh map here

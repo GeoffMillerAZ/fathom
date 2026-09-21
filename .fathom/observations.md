@@ -1521,6 +1521,15 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Status:** fixed (2026-09-19, same round): `internal/mcp/analysis_tools.go` gained `bothGraph` — the watermark-cached syntax+typed graph `loadNavGraphs` already built for the nav tools — and `reachable`, `test_impact`, `dead_code` and `find_callees` walk it; `cmd/fathom/planscontext.go` adds the typed edges the same way `verify` now does. `rename_impact` keeps its syntax-only caller SET by decision (BP-26) and still annotates tiers from the typed graph. Regression coverage: `TestCmdVerify_Store_TypedEdgeWiresReachability`, `internal/verify/typededge_residue_test.go`; `go test ./internal/mcp/...` green on the change.
 - **Impact:** `rename_impact`, `reachable`, `test_impact`, `dead_code`, and `callees` can under-report on exactly the ambiguous-method-name shape O40 demonstrated end to end for `verify_plan`/`verify` — plausibly a live source of false "unreachable"/"safe to delete"/"no callers" answers on any Go service with more than one implementer of a shared method name (very common — any interface with 2+ implementations).
 
+### O103 — findings-loop-r1 lost all 30 cells at arm rendering: the subject's own committed bare `fathom …` hooks
+
+- **Symptom:** every findings-loop cell LOST with "hook command \"fathom edit-hook\" names a bare binary on PATH, not the cell's own fathom binary" — the fathom repo at the corpus's base commit (687ce6a9) commits `.claude/settings.json` rows that call `fathom` through the PATH shim; `fathom init` wrote its own absolute rows beside them and RenderArm refused the bare ones.
+- **Evidence:** `$SP/benchroot/logs/findings-loop-r1.log` (30 × LOST, 0 run); `git show 687ce6a9:.claude/settings.json`.
+- **Root cause:** the driver assumed every `fathom` hook row in a wired cell came from its own `fathom init`; a subject that is itself a fathom adopter (the dogfooding corpora) ships more.
+- **Fix:** `rewriteBareFathomHooks` runs after `fathom init` in wireScratchDaemon: a command whose first token is exactly `fathom` becomes the cell binary + the same arguments; absolute and foreign commands stay byte-identical (`TestRewriteBareFathomHooks`). The subject's hooks now run the cell's own code, which is what the refusal protected.
+- **Status:** closed (2026-09-21)
+- **Impact:** any corpus whose subject commits PATH-shim fathom hooks (guards-fathom at a newer vintage would too) was unrunnable; the refusal was right, the remedy was missing.
+
 ### O102 — On the LCA bug-localization corpus the wired arm never called `localize`, and half its cells never touched the surface at all
 
 - **Symptom:** lca-r1 (39 tasks × 3 trials, Sonnet, 2026-09-21): fathom 104/115 vs control 105/116 on hit@1 (3 tasks better, 2 worse, 34 tied) at 2.3× the tokens (74k vs 32k median). `localize` was called in 0 of 115 wired cells; 58 of 115 made no fathom call at all; the rest used find_symbol (43), search (30), read_source (24).
