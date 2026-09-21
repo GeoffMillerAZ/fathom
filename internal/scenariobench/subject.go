@@ -253,6 +253,16 @@ func PrepareSubject(ctx context.Context, task Task, arm Arm, root string) (Workt
 		return Worktree{}, fmt.Errorf("preparing subject: %w", err)
 	}
 	wt.Arm = files
+	// O105: fold everything the instrument itself wrote since the root
+	// commit — the rendered arm files, fathom init's wiring, an arm's own
+	// setup — into that root commit, so a detector's `git diff
+	// $SCENARIO_BASE_COMMIT` is empty before the session starts. The drift
+	// step below is deliberately NOT absorbed: it is subject state a
+	// staleness task wants visible.
+	if err := absorbInstrumentFiles(ctx, &wt); err != nil {
+		_ = StopWorktree(&wt)
+		return Worktree{}, fmt.Errorf("preparing subject: %w", err)
+	}
 
 	if arm.Wired && arm.CompileLayers {
 		cost, err := compileLayers(ctx, root, task, wt)

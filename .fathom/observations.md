@@ -1521,6 +1521,15 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Status:** fixed (2026-09-19, same round): `internal/mcp/analysis_tools.go` gained `bothGraph` — the watermark-cached syntax+typed graph `loadNavGraphs` already built for the nav tools — and `reachable`, `test_impact`, `dead_code` and `find_callees` walk it; `cmd/fathom/planscontext.go` adds the typed edges the same way `verify` now does. `rename_impact` keeps its syntax-only caller SET by decision (BP-26) and still annotates tiers from the typed graph. Regression coverage: `TestCmdVerify_Store_TypedEdgeWiresReachability`, `internal/verify/typededge_residue_test.go`; `go test ./internal/mcp/...` green on the change.
 - **Impact:** `rename_impact`, `reachable`, `test_impact`, `dead_code`, and `callees` can under-report on exactly the ambiguous-method-name shape O40 demonstrated end to end for `verify_plan`/`verify` — plausibly a live source of false "unreachable"/"safe to delete"/"no callers" answers on any Go service with more than one implementer of a shared method name (very common — any interface with 2+ implementations).
 
+### O105 — findings-loop-r2 read every cell as a violation: the instrument's own files were in the detector's baseline diff
+
+- **Symptom:** findings-loop-r2 (5 × 2 × 3): 0/30 pass on both arms with `no-unrelated-rewrite` "baseline_red: this detector already exited 1 before the session ran" on every cell, while `finding-addressed` and `change-present` passed on most.
+- **Evidence:** cell records run findings-loop-r2 (`oracle.detectors[].note`); the detector runs `git diff --name-only $SCENARIO_BASE_COMMIT` and PrepareSubject makes the root commit BEFORE fathom init, RenderArm and the arm's setup write .claude/settings.json, the stanza and .mcp.json.
+- **Root cause:** the recorded agent.diff excluded instrument-owned paths (`InstrumentFilesExcluded`) but a corpus detector's own git diff did not; any "no unrelated changes" detector was red at baseline on a wired cell.
+- **Fix:** `absorbInstrumentFiles` amends the worktree's root commit with everything the instrument wrote after it and re-reads LocalBase, before the drift step (which stays visible by design); `TestAbsorbInstrumentFiles`. findings-loop rerun as findings-loop-r3.
+- **Status:** closed (2026-09-21)
+- **Impact:** findings-loop-r2's 30 cells are void (not filed); the corpus's arms are both wired by design (control = the same surface with the imported findings removed), so the treatment is the projected findings, not the surface.
+
 ### O104 — H1-T04's oracle demanded grep's vocabulary ("not found") and failed the wired arm for stating the same fact in verify's own label ("claimed-but-absent")
 
 - **Symptom:** lookups-vs-r1: full 0/2 on H1-T04 while grep 2/2. Both arms named DEMO-H1 as the failing row and said the symbol is absent; the wired arm reached the answer through `find_symbol` + `verify_plan` and quoted the gate's own verdict label, `claimed-but-absent`; the oracle's `answer_all_of` required the literal "not found".
