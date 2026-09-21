@@ -483,15 +483,15 @@ func readSourceRange(ctx context.Context, backend QueryInterface, service, file 
 func registerReadSource(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "read_source",
-		Description: "Read a line range (or a capped whole-file view) of one file from a service's INDEXED corpus. Read-only, line-numbered so results are pinnable as citations. Capped at 200 lines / 8000 bytes per call by default (max_bytes raises the byte cap to 16000); a truncated line/range carries a note or an elided block, and end_line == total_lines means EOF. Readable = what ingest walks: refuses ignored paths, skipped directories, .env-pattern files, oversize/binary files, and symlinks outside the corpus root; an out-of-range start/end is clamped, not refused. Reach for it when you need bytes a find_symbol hit or a symbol_context snippet did not already carry. Required: service, file.",
+		Description: "Reads a line range (or capped whole file), line-numbered for citation. Reach for it when you need bytes a hit or snippet didn't carry. Required: service, file.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"service":    map[string]any{"type": "string", "description": "Service / repo identifier"},
 				"file":       map[string]any{"type": "string", "description": "Repo-relative file path (never absolute, never containing \"..\")"},
 				"start_line": map[string]any{"type": "integer", "description": "1-based start line (default 1)"},
-				"end_line":   map[string]any{"type": "integer", "description": "1-based end line, inclusive (default: start_line + 199, or EOF). An explicit range wider than the cap is refused, not narrowed."},
-				"max_bytes":  map[string]any{"type": "integer", "description": "Per-call byte budget (default 8000, ceiling 16000). Raise it for one call instead of re-calling with a narrower range."},
+				"end_line":   map[string]any{"type": "integer", "description": "1-based end line (default start_line+199, or EOF)"},
+				"max_bytes":  map[string]any{"type": "integer", "description": "Per-call byte budget (default 8000, ceiling 16000)"},
 			},
 			"required": []string{"service", "file"},
 		},

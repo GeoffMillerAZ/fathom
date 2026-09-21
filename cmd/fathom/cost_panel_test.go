@@ -57,7 +57,9 @@ import (
 // and tools/list gives each tool its own independent schema document, so
 // in-document refs save exactly 0 bytes (measured).
 const (
-	agentSurfaceSchemaByteFloor = 26000
+	// agentSurfaceSchemaByteFloor dropped from 26000 with O101 (below): the
+	// floor must bracket the diet total, not the pre-diet one.
+	agentSurfaceSchemaByteFloor = 16000
 	// agentSurfaceSchemaByteCeiling was 30000 before SB-1..SB-5
 	// (docs/plans/strengths-bench.md): references/read_source/find_symbol
 	// gained longer, more specific descriptions and new response fields
@@ -130,10 +132,40 @@ const (
 	// by the golden above) — so docs/vision/05-surfaces.md's aspirational
 	// ≤36,000 B target is not reachable by a description diet alone without
 	// cutting one of those three, which this brief put out of scope.
-	// TestAgentSurfaceDescriptionsWithinCaps pins the per-tool cap (700 B;
+	// TestAgentSurfaceDescriptionsWithinCaps pinned the per-tool cap (700 B;
 	// 1000 B for review_diff/obligations/references/search) and the
-	// per-argument cap (200 B) going forward.
-	agentSurfaceSchemaByteCeiling = 49480 // 47,480 measured 2026-09-18 (fl-wave-10) + 2,000
+	// per-argument cap (200 B) as of fl-wave-10.
+	//
+	// Re-pinned 2026-09-18 (O101, the wave-diet brief; bench evidence:
+	// lookups-ts/-py sessions carried a median 15,219 cache-read
+	// tokens/turn on the wired arm vs 5,165 on grep — a ~10k-token fixed
+	// tax every turn). Two levers, both in internal/mcp: (1) `outputSchema`
+	// (RP-11, 18,827 B measured — 39% of the pre-wave 48,341 B payload)
+	// moved OFF tools/list by default (dispatch.go's toolsListEntries,
+	// gated by contractsFrom/WithContracts) — still generated on request via
+	// the HTTP `?contracts=true` query param (cmd/fathom's servehttp.go),
+	// still pinned in the registry by TestOutputSchemasMatchLiveResults,
+	// which now opts in explicitly rather than assuming the wire carries
+	// it. (2) Every agent-surface description tightened to ONE flat 260 B
+	// cap (no more 700/1000 B tiers — the four composed tools fit too) and
+	// every argument-property description to 120 B
+	// (surface_description_caps_test.go); alias/history prose dropped, the
+	// aliases themselves unchanged. Measured 48,341 → 18,008 B (62.7%
+	// cut) — internal/mcp's TestAgentSurfaceBudget is the new from-scratch
+	// budget test (total/per-tool/per-description, all asserted together,
+	// logged per-tool via `go test -v`); its own comment carries the
+	// accounting for why the brief's own ≤16,000 B aspiration is not fully
+	// reached (annotations + argument-schema structure + JSON wire
+	// overhead form a ~10.7 kB floor this wave did not touch, the same
+	// shape as outputSchema's floor before it). Argument SCHEMA STRUCTURE
+	// (names/types/enums/required) stays pinned by
+	// TestAgentSurfaceArgSchemaUnchanged — some properties lost their
+	// "description" key entirely (self-explanatory by name, e.g. a task's
+	// "id"/"title", or already fully covered in docs/mcp-tools.md, e.g.
+	// obligations' claim-feedback args and verify_plan's `package`/
+	// `concern`, both extended there in the same change) — stripped before
+	// comparison either way, so the golden is unaffected.
+	agentSurfaceSchemaByteCeiling = 18700 // 17,998 measured 2026-09-18 (O101) + headroom
 )
 
 // TestNarrowProfileSchemaBytes is BA-7: the narrow/agent surface profile

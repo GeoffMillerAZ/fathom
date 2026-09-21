@@ -465,7 +465,7 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 	// Returns empty rules when no rules apply (zero-output-on-clean contract).
 	s.registerTool(toolDescriptor{
 		Name:        "obligations",
-		Description: "Return compiled obligations (governing rules) for a file at decision time, or — with no file — the root-scope rules answering \"what governs this repository\". Empty rules with index_stale:false means a clean file; layer picks which claims answer (rules/claims/all). This result IS the answer for which rules govern this file right now; a follow-up call only helps once the file/rules change, or to record a verdict via action:\"refute\"|\"corroborate\" (with claim_id/note, instead of file). Reach for it when you are about to edit a file and the hook did not run, or to ask what governs the repository. Required: service.",
+		Description: "Governing rules for a file, or (no file) root-scope rules. This result IS the answer for what governs it; a follow-up call only helps after a change. Reach for it when about to edit. Required: service.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -475,45 +475,41 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 				},
 				"file": map[string]any{
 					"type":        "string",
-					"description": "Repo-relative file path being edited. Omit for root-scope obligations — \"what governs this repository\".",
+					"description": "File being edited; omit for root scope",
 				},
 				"path": map[string]any{
 					"type":        "string",
-					"description": "Alias for `file`. `file` wins when both are given.",
+					"description": "Alias for file",
 				},
 				"layer": map[string]any{
 					"type":        "string",
 					"enum":        []string{"rules", "claims", "all"},
-					"description": "Which claims to serve: \"rules\" (default) governing rules only; \"claims\" plan-row bindings by {symbol,package}; \"all\" the union.",
+					"description": "Which claims to serve: \"rules\" (default), \"claims\" (plan-row bindings), or \"all\".",
 				},
 				"max_rules": map[string]any{
 					"type":        "integer",
-					"description": "Maximum rules to return (default 6)",
+					"description": "Max rules (default 6)",
 				},
 				"include_snippets": map[string]any{
 					"type":        "boolean",
-					"description": "Inline each rule's cited lines, capped at 240 bytes (default true). Set false for the smallest payload.",
+					"description": "Inline cited lines (default true)",
 				},
 				"action": map[string]any{
 					"type":        "string",
 					"enum":        []string{"refute", "corroborate"},
-					"description": "Feedback verb: when set, this call records a claim_events verdict instead of looking up rules. Requires claim_id and note.",
+					"description": "Records a verdict instead of listing rules",
 				},
 				"claim_id": map[string]any{
-					"type":        "string",
-					"description": "Claim ID being refuted/corroborated (required when action is set)",
+					"type": "string",
 				},
 				"note": map[string]any{
-					"type":        "string",
-					"description": "Verdict rationale (required when action is set)",
+					"type": "string",
 				},
 				"author": map[string]any{
-					"type":        "string",
-					"description": "Verdict author (optional; empty for an automated caller)",
+					"type": "string",
 				},
 				"as_of": map[string]any{
-					"type":        "string",
-					"description": "Answer as of this RFC3339 timestamp or commit sha instead of now (requires file). Omit for live serving.",
+					"type": "string",
 				},
 			},
 			"required": []string{"service"},

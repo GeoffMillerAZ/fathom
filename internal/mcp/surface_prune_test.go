@@ -128,10 +128,11 @@ func TestMcpToolsDocMatchesRegistry(t *testing.T) {
 	}
 
 	// RP-10/RP-11 (docs/plans/reach-parity.md): every agent-surface tool
-	// serves ToolAnnotations (the four hints, all booleans) and an
-	// outputSchema, and docs/mcp-tools.md's "Protocol contract" section
-	// documents both — the served contract and the doc drift together or
-	// not at all.
+	// serves ToolAnnotations (the four hints, all booleans) unconditionally,
+	// and an outputSchema on request (O101/TD-2: off tools/list by default,
+	// opted into here via WithContracts) — docs/mcp-tools.md's "Protocol
+	// contract" section documents both, the served contract and the doc
+	// drift together or not at all.
 	onAgent := map[string]bool{}
 	for _, n := range mcp.AgentSurfaceTools() {
 		onAgent[n] = true
@@ -152,8 +153,21 @@ func TestMcpToolsDocMatchesRegistry(t *testing.T) {
 				t.Errorf("%s: annotation %s missing or not boolean", name, k)
 			}
 		}
+		if _, ok := e["outputSchema"].(map[string]any); ok {
+			t.Errorf("%s: agent-surface tool served outputSchema without contracts=true (the diet's default is off)", name)
+		}
+	}
+	contractsResp := scopedRoundtrip(t, srv, mcp.WithContracts(context.Background(), true), request{
+		JSONRPC: "2.0", ID: 2, Method: "tools/list", Params: map[string]any{},
+	})
+	for _, raw := range contractsResp["result"].(map[string]any)["tools"].([]any) {
+		e := raw.(map[string]any)
+		name, _ := e["name"].(string)
+		if !onAgent[name] {
+			continue
+		}
 		if _, ok := e["outputSchema"].(map[string]any); !ok {
-			t.Errorf("%s: agent-surface tool served without outputSchema", name)
+			t.Errorf("%s: agent-surface tool served without outputSchema under WithContracts(true)", name)
 		}
 	}
 	for _, want := range []string{"## Protocol contract", "`readOnlyHint`", "`outputSchema`", "`structuredContent`", "`MCP-Protocol-Version`"} {

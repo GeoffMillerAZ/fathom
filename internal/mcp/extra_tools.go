@@ -152,15 +152,15 @@ func serviceRefHopsInto(ctx context.Context, backend QueryInterface, service str
 func registerBlastRadius(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "blast_radius",
-		Description: "The answer grep cannot give: blast radius of changed files — the symbols they define plus transitive callers, with affected tests and file paths, each labeled edge_confidence. Defaults to resolved edges only, depth 2, and at most 500 symbols (widen with include_heuristic/max_depth/max_symbols); total_symbols, truncated and depth_capped disclose when the answer is bounded. Reach for it when you changed a file and need to know who transitively breaks — no grep query walks a call graph. Required: service, changed_files.",
+		Description: "Blast radius of changed files: symbols, transitive callers, tests, edge_confidence-labeled. Reach for it when a file changed and you need who transitively breaks. Required: service, changed_files.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"service":           map[string]any{"type": "string", "description": "Service / repo identifier"},
 				"changed_files":     map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Repo-relative file paths that changed"},
-				"include_heuristic": map[string]any{"type": "boolean", "description": "Also follow syntax-only (heuristic) edges. Default false."},
-				"max_depth":         map[string]any{"type": "integer", "description": "Hops from the changed files (default 2; 0 = unbounded)."},
-				"max_symbols":       map[string]any{"type": "integer", "description": "Symbols listed, shallowest first (default 500; 0 = uncapped); total_symbols keeps the full count."},
+				"include_heuristic": map[string]any{"type": "boolean", "description": "Also follow syntax-only edges. Default false."},
+				"max_depth":         map[string]any{"type": "integer", "description": "Hops from the changed files (default 2; 0 = unbounded)"},
+				"max_symbols":       map[string]any{"type": "integer", "description": "Symbols listed, shallowest first (default 500)"},
 			},
 			"required": []string{"service", "changed_files"},
 		},
@@ -981,13 +981,13 @@ func registerIngest(s *Server, backend QueryInterface) {
 	}
 	s.registerTool(toolDescriptor{
 		Name:        "ingest",
-		Description: "Re-ingest the named service to refresh the symbol store; pass path (absolute repo root) to onboard a NEW service. Hash-gated: a clean repo is a sub-second no-op. A differing path on an EXISTING service is refused unless remap:true; for a Go service, ok:false means the typed-edge pass produced nothing to trust though the syntax index was kept. Reach for it when staleness_report or a stale-index warning says the index lags the working tree. Required: service.",
+		Description: "Re-ingests a service to refresh the symbol store; pass path to onboard one. Hash-gated, a clean repo is a no-op. Reach for it when the index lags the tree. Required: service.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
-				"path":    map[string]any{"type": "string", "description": "Absolute corpus root — required only when first onboarding a new service"},
-				"remap":   map[string]any{"type": "boolean", "description": "Authorize re-pointing an EXISTING service's recorded root at a different path (O82). Without it, a differing path is refused — a hook must never re-point a service."},
+				"path":    map[string]any{"type": "string", "description": "Absolute corpus root — only for onboarding a new service"},
+				"remap":   map[string]any{"type": "boolean", "description": "Authorize re-pointing an existing service's root"},
 			},
 			"required": []string{"service"},
 		},
@@ -1282,7 +1282,7 @@ func registerCrossRepoBlastRadius(s *Server, backend QueryInterface) {
 func registerRepoMap(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "repo_map",
-		Description: "Build a budget-bounded symbol map ranked by outbound call-edge count (most-connected symbols first), suitable for LLM context assembly. Budgeted; the elision line names the refinement (budget or package). Reach for it when you need the shape of a service you have never seen — the most-connected symbols first, within a token budget. Required: service.",
+		Description: "Budget-bounded symbol map ranked by outbound call-edge count, for LLM context. Reach for it when you need the shape of an unseen service. Required: service.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -1339,12 +1339,12 @@ func registerRepoMap(s *Server, backend QueryInterface) {
 func registerPackContext(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "pack_context",
-		Description: "Pack the concern-ranked evidence items for one service into a token budget, returning the highest-scoring items that fit (id, text, score) plus what was dropped. Reach for it when you are assembling context for a task and want the most relevant symbols under a fixed token cost instead of a raw listing. Required: service, concern.",
+		Description: "Packs concern-ranked evidence into a token budget: top items plus what was dropped. Reach for it when assembling task context. Required: service, concern.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
-				"concern": map[string]any{"type": "string", "description": "Concern ID to scope the query — a short identifier, never a sentence; whitespace is refused with a params error rather than a silent empty pack."},
+				"concern": map[string]any{"type": "string", "description": "Concern ID to scope the query — a short identifier"},
 				"budget":  map[string]any{"type": "integer", "description": "Token budget (default 4000)"},
 			},
 			"required": []string{"service", "concern"},

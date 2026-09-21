@@ -201,46 +201,43 @@ func renderReferenceOccurrence(o occEntry, includeService bool) referenceOccurre
 func registerReferences(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "references",
-		Description: "Fleet-wide occurrence search across code, docs, and config for one or more services. query must be an identifier, a dotted path, or a regex (regex: true) — a free-text fragment is refused. Returns occurrences (text matches) plus symbol definitions; occurrences default to exact mode (typed-confirmed only) when a service has typed edges, widen with include_heuristic/exact: false, and a fan-in too large to page returns scope_required: true. Reach for it when you need every place a name appears — docs and config included — not just the call graph. Required: query.",
+		Description: "Fleet-wide occurrence search: identifier, dotted path, or regex. Returns matches plus definitions. Reach for it when you need every place a name appears. Required: query.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"query": map[string]any{
 					"type":        "string",
-					"description": "String to search for: an identifier, a dotted path, or a regex (regex: true). Alias: \"symbol\" (same field; give only one, or both if they agree).",
+					"description": "Identifier, dotted path, or regex (regex: true). Alias: \"symbol\".",
 				},
 				"symbol": map[string]any{
 					"type":        "string",
-					"description": "Alias for \"query\" — the hot-tool quartet names this argument differently per tool; reuse the same field across all four.",
+					"description": "Alias for \"query\" — same field.",
 				},
 				"services": map[string]any{
 					"type":        "array",
 					"items":       map[string]any{"type": "string"},
-					"description": "Service IDs to search (default: all known services)",
+					"description": "Service IDs to search (default: all)",
 				},
 				"word": map[string]any{
-					"type":        "boolean",
-					"description": "Whole-word match only",
+					"type": "boolean",
 				},
 				"regex": map[string]any{
-					"type":        "boolean",
-					"description": "Treat query as a regular expression",
+					"type": "boolean",
 				},
 				"case_insensitive": map[string]any{
-					"type":        "boolean",
-					"description": "Case-insensitive matching",
+					"type": "boolean",
 				},
 				"max": map[string]any{
 					"type":        "integer",
-					"description": "Maximum total occurrences to return (default 25)",
+					"description": "Maximum occurrences to return (default 25)",
 				},
 				"include_heuristic": map[string]any{
 					"type":        "boolean",
-					"description": "Also list definitions whose name merely contains the query, and add back the bare text occurrences exact mode drops. Default false.",
+					"description": "Also list name-contains matches too. Default false.",
 				},
 				"exact": map[string]any{
 					"type":        "boolean",
-					"description": "Keep only occurrences the typed pass confirmed. Defaults to true when a service's typed pass has edges; false restores every text occurrence.",
+					"description": "Keep only typed-confirmed hits",
 				},
 			},
 			"required": []string{"query"},

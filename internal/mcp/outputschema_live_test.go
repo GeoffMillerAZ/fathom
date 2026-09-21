@@ -60,7 +60,10 @@ func TestOutputSchemasMatchLiveResults(t *testing.T) {
 	}}
 	// list_services needs a fleet backend; the same fixture nodes serve it.
 	srv := mcp.NewServerWithFleet(fake, &fakeFleet{svcs: map[string][]core.SymbolNode{"svc": extFixtureNodes()}})
-	ctx := mcp.WithRequestScope(context.Background(), mcp.SurfaceAgent, true)
+	// WithContracts(true): outputSchema is off tools/list by default
+	// (O101/TD-2 diet) — this test needs it on the wire to validate live
+	// results against it, so it opts in explicitly rather than assuming it.
+	ctx := mcp.WithContracts(mcp.WithRequestScope(context.Background(), mcp.SurfaceAgent, true), true)
 
 	listResp := scopedRoundtrip(t, srv, ctx, request{JSONRPC: "2.0", ID: 1, Method: "tools/list", Params: map[string]any{}})
 	schemas := map[string]map[string]any{}

@@ -47,17 +47,17 @@ type reviewClaimsBackend interface {
 func registerReviewDiff(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "review_diff",
-		Description: "The answer grep cannot give: diff impact + obligations/findings + architecture conformance + spec coverage + test coverage, composed into ONE cited verdict for changed files, plus test_impact (affected_tests/test_gap). Each dimension reports checked:false with a reason when it cannot run; pass coverage_profiles ({layer,path} per test layer) for the coverage dimension. Reach for it when you are reviewing a change and need the composed verdict in one call instead of the eight-step manual sequence. Required: service, changed_files.",
+		Description: "Composed review verdict: diff impact, obligations, findings, architecture, spec/test coverage, plus test_impact. Reach for it when reviewing a change instead of a manual sequence. Required: service, changed_files.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"service":          map[string]any{"type": "string", "description": "Service / repo identifier"},
-				"changed_files":    map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Repo-relative changed file paths (e.g. from git diff --name-only)"},
-				"concern":          map[string]any{"type": "string", "description": "Optional concern token (currently descriptive only; carried for forward compatibility)"},
-				"coverage_profile": map[string]any{"type": "string", "description": "Optional single-profile alias for coverage_profiles: a repo-relative path to one Go cover profile, labeled layer \"unit\". Ignored when coverage_profiles is also given."},
+				"changed_files":    map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Repo-relative changed file paths"},
+				"concern":          map[string]any{"type": "string", "description": "Optional concern token (descriptive only)"},
+				"coverage_profile": map[string]any{"type": "string", "description": "Single-profile alias for coverage_profiles, labeled layer \"unit\". Ignored when coverage_profiles is given."},
 				"coverage_profiles": map[string]any{
 					"type":        "array",
-					"description": "Optional: one entry per test layer — {layer, path}, path repo-relative under the service's corpus root. Enables the coverage dimension; absent (and no coverage_profile) = checked:false.",
+					"description": "One entry per test layer: {layer, path}. Enables per-layer coverage; omit for no coverage dimension.",
 					"items": map[string]any{
 						"type":       "object",
 						"properties": map[string]any{"layer": map[string]any{"type": "string"}, "path": map[string]any{"type": "string"}},
