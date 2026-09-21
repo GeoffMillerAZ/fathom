@@ -458,6 +458,15 @@ func isQuotedPosition(text string, pos int) bool {
 	if strings.HasPrefix(trimmed, ">") {
 		return !strings.ContainsRune(trimmed, '`') && !strings.Contains(trimmed, "**")
 	}
+	// O100 (lookups-py-r1, PY-03, both arms): an answer whose FIRST
+	// non-empty line is nothing but ONE backticked token —
+	// "`APIRoute.__init__`" — is the answer stated in the most direct shape
+	// a model has, never quoted evidence. The same line later in an answer
+	// (under a "Background:" heading, say) keeps reading as a citation.
+	if isWhollyDelimited(trimmed, '`') && !strings.ContainsAny(strings.Trim(trimmed, "`"), " \t") &&
+		strings.TrimSpace(text[:lineStart]) == "" {
+		return false
+	}
 	return isWhollyDelimited(trimmed, '`') ||
 		isWhollyDelimited(trimmed, '"') ||
 		isWhollyDelimited(trimmed, '\'')

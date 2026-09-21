@@ -1487,6 +1487,18 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Status:** closed
 - **Impact:** the general lesson for anyone extending anchor-based healing (line/symbol/AST-position based, not just this one): a re-anchor mechanism must always compare against a hash captured AT THE ORIGINAL ANCHOR TIME, never one derived solely from the CURRENT state of whatever it is about to re-point to — the latter cannot distinguish "moved, unchanged" from "changed in place," which is the entire question freshness tracking exists to answer.
 
+### O100 — The answer oracle excluded an answer stated as a single backticked token on its own first line
+
+- **Symptom:** lookups-py-r1 PY-03 read FAIL on BOTH arms although both answered "`APIRoute.__init__`" (the exact `answer_all_of` token) as the first line of the answer.
+- **Evidence:**
+  - **Tool:** internal/scenariobench oracle (`isQuotedPosition`, O53 defect 5b)
+  - **Expected:** an answer-first line that is nothing but the symbol is the answer's own assertion.
+  - **Actual:** a line wholly delimited by backticks was excluded as a "quoted line" regardless of position or content; `tokenCounts` found no other occurrence → `answerOK=false`.
+- **Root cause:** the 5b rule was written for quoted evidence lines (prose) and never distinguished a whitespace-free code span on the answer's first line.
+- **Fix:** a single-token code-span line counts when it is the answer's first non-empty line (later standalone lines stay citations — the existing whole-line-fence test); `TestOracleAnswer_SingleTokenCodeSpanLineIsAnAssertion`. The four PY-03 cells were re-scored from their raw streams (`-rescore-lost -rescore-reason "O100 quoted-line scorer"`, zero spend): 4/4 PASS.
+- **Status:** closed (2026-09-21)
+- **Impact:** any lookup task whose gold is a bare identifier could read as a false FAIL on every arm; the paired comparison was unaffected (both arms failed alike) but absolute pass rates were understated.
+
 ### O99 — A file refresh left the daemon's memoized call graph stale: the memo is keyed by a watermark a single-file re-ingest never moves
 
 - **Symptom:** after the pre-edit hook's POST /refresh-file re-extracted a file (SU-5), `find_callers` / `verify_plan` / `test_impact` on one of its symbols still answered from the pre-refresh graph — the memo (BP-28) is keyed by `IndexedCommit@IndexedAt`, which only a full ingest changes, so the same key stayed a cache hit.
