@@ -189,10 +189,10 @@ func TestPrepareSubject_WorktreeHasNoFuture(t *testing.T) {
 	if err != nil {
 		t.Fatalf("git log --all: %v (%s)", err, out)
 	}
-	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
-	if len(lines) != 1 || lines[0] == "" {
-		t.Errorf("expected exactly one commit in the cell worktree's history, got %d: %q", len(lines), out)
-	}
+	// O105: the history is the pristine root ("base <sha>") plus exactly one
+	// instrument commit above it — nothing from the subject's future, and
+	// never a third commit.
+	assertBaseAndInstrumentOnly(t, string(out), "after PrepareSubject")
 	if _, err := os.Stat(filepath.Join(wt.Path, "future.txt")); err == nil {
 		t.Error("the future commit's own file must not be present in the cell worktree's tree")
 	}
@@ -212,9 +212,25 @@ func TestPrepareSubject_WorktreeHasNoFuture(t *testing.T) {
 	if err != nil {
 		t.Fatalf("git log --all (2nd): %v (%s)", err, out2)
 	}
-	lines2 := strings.Split(strings.TrimSpace(string(out2)), "\n")
-	if len(lines2) != 1 || lines2[0] == "" {
-		t.Errorf("expected exactly one commit after reuse, got %d: %q", len(lines2), out2)
+	assertBaseAndInstrumentOnly(t, string(out2), "after reuse")
+}
+
+// assertBaseAndInstrumentOnly pins the cell worktree's whole history to
+// [instrument commit, base commit]: the root is the pristine export and the
+// one commit above it holds what the instrument wrote (absorbInstrumentFiles,
+// O105). A reused worktree must land on the same two, never accumulate.
+func assertBaseAndInstrumentOnly(t *testing.T, log, when string) {
+	t.Helper()
+	lines := strings.Split(strings.TrimSpace(log), "\n")
+	if len(lines) != 2 {
+		t.Errorf("%s: expected exactly the instrument commit above the base commit, got %d: %q", when, len(lines), log)
+		return
+	}
+	if !strings.Contains(lines[0], "instrument files") {
+		t.Errorf("%s: newest commit is not the instrument commit: %q", when, lines[0])
+	}
+	if !strings.Contains(lines[1], " base ") {
+		t.Errorf("%s: root commit is not the base export: %q", when, lines[1])
 	}
 }
 
