@@ -961,7 +961,7 @@ const (
 // sessionhook_events.go). A subagent that never read the stanza gets the
 // same four lines, not a second dialect of them.
 const openingMovesTable = "Opening moves by task shape (first 2-3 calls, then edit):\n" +
-	"- debug/trace: blast_radius -> find_callers -> symbol_context\n" +
+	"- bug report / stack trace / failing test: localize -> symbol_context -> find_callers\n" +
 	"- feature/change: repo_map -> pack_context(concern) -> test_impact\n" +
 	"- review/verify: review_diff -> obligations -> references\n" +
 	"- refactor/delete: rename_impact / safe_delete_check -> references"

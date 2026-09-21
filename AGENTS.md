@@ -15,7 +15,7 @@ other tools'.
 Read files to *edit* them, not to discover them.
 
 Opening moves by task shape (first 2-3 calls, then edit):
-- debug/trace: find_symbol -> find_callers/references -> symbol_context
+- bug report / stack trace / failing test: localize -> symbol_context -> find_callers
 - feature/change: repo_map -> pack_context(concern) -> references
 - review/verify: verify_plan -> obligations -> references on changed symbols
 - refactor: references -> outline -> symbol_context

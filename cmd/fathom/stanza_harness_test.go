@@ -30,7 +30,7 @@ const preSeamStanzaTemplate = "## fathom code intelligence\n" +
 	"Read files to *edit* them, not to discover them.\n" +
 	"\n" +
 	"Opening moves by task shape (first 2-3 calls, then edit):\n" +
-	"- debug/trace: blast_radius -> find_callers -> symbol_context\n" +
+	"- bug report / stack trace / failing test: localize -> symbol_context -> find_callers\n" +
 	"- feature/change: repo_map -> pack_context(concern) -> test_impact\n" +
 	"- review/verify: review_diff -> obligations -> references\n" +
 	"- refactor/delete: rename_impact / safe_delete_check -> references\n" +

@@ -1521,6 +1521,18 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Status:** fixed (2026-09-19, same round): `internal/mcp/analysis_tools.go` gained `bothGraph` — the watermark-cached syntax+typed graph `loadNavGraphs` already built for the nav tools — and `reachable`, `test_impact`, `dead_code` and `find_callees` walk it; `cmd/fathom/planscontext.go` adds the typed edges the same way `verify` now does. `rename_impact` keeps its syntax-only caller SET by decision (BP-26) and still annotates tiers from the typed graph. Regression coverage: `TestCmdVerify_Store_TypedEdgeWiresReachability`, `internal/verify/typededge_residue_test.go`; `go test ./internal/mcp/...` green on the change.
 - **Impact:** `rename_impact`, `reachable`, `test_impact`, `dead_code`, and `callees` can under-report on exactly the ambiguous-method-name shape O40 demonstrated end to end for `verify_plan`/`verify` — plausibly a live source of false "unreachable"/"safe to delete"/"no callers" answers on any Go service with more than one implementer of a shared method name (very common — any interface with 2+ implementations).
 
+### O102 — On the LCA bug-localization corpus the wired arm never called `localize`, and half its cells never touched the surface at all
+
+- **Symptom:** lca-r1 (39 tasks × 3 trials, Sonnet, 2026-09-21): fathom 104/115 vs control 105/116 on hit@1 (3 tasks better, 2 worse, 34 tied) at 2.3× the tokens (74k vs 32k median). `localize` was called in 0 of 115 wired cells; 58 of 115 made no fathom call at all; the rest used find_symbol (43), search (30), read_source (24).
+- **Evidence:**
+  - **Tool:** scenariobench cells, `readings.tool_calls` per cell; `docs/bench/scenarios-ledger.jsonl` run lca-r1
+  - **Expected:** an issue-shaped prompt (title + body, no file named) is exactly `localize`'s question — one bounded walk from the error's own terms.
+  - **Actual:** nothing in the wired session routed that prompt shape to localize: the session brief and the stanza's opening moves named where / who-calls / what-breaks / what-governs / is-this-still-true, and "debug/trace" began with `blast_radius`. The model fell back to grep and Read, paying the surface's context tax for no answer it used.
+- **Root cause:** the routing vocabulary had no entry for the bug-report shape; the verb existed, the route did not.
+- **Fix:** the SessionStart brief and the stanza's opening-moves table route "a bug report, stack trace, error string or failing test" to `localize` first (`sessionhook.go` ctxLine, `openingMovesTable`, the committed CLAUDE.md/AGENTS.md stanza line). Measured by lca-r2.
+- **Status:** open — closes when lca-r2 shows the verb used and hit@1 or tokens move.
+- **Impact:** every VB-27 null so far measured the surface's passive cost, not its localization answer.
+
 ### O101 — The agent-surface `tools/list` schema tax cost ~10k tokens/turn: `outputSchema` (39% of the payload) rode the wire unconditionally and every description still carried fl-wave-10's 700/1000-byte allowance
 
 - **Symptom:** on the lookups-ts and lookups-py bench scenarios the wired arm's sessions carried a median 15,219 cache-read tokens PER TURN versus 5,165 for the grep arm — a ~10k-token fixed context tax on every turn, the reason fathom's arm cost 2.6× the tokens on 3-turn tasks while answering the same or better.

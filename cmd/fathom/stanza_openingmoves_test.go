@@ -19,7 +19,7 @@ func TestStanzaCarriesOpeningMovesAndPrime(t *testing.T) {
 
 	for _, want := range []string{
 		"Opening moves by task shape (first 2-3 calls, then edit):",
-		"debug/trace: blast_radius -> find_callers -> symbol_context",
+		"bug report / stack trace / failing test: localize -> symbol_context -> find_callers",
 		"feature/change: repo_map -> pack_context(concern) -> test_impact",
 		"review/verify: review_diff -> obligations -> references",
 		"refactor/delete: rename_impact / safe_delete_check -> references",
