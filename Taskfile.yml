@@ -94,8 +94,8 @@ tasks:
         done
         [ "$rc" -eq 0 ] || exit "$rc"
         bash scripts/build-cache_test.sh
-        bash scripts/push-check_test.sh
-        bash scripts/push-http_test.sh
+        bash third_party/agentic-kit/fathom-pack/scripts/push-check_test.sh
+        bash third_party/agentic-kit/fathom-pack/scripts/push-http_test.sh
 
   ui:css:
     desc: Rebuild the standalone observatory CSS from the in-tree app-kit mirror (no Node or sibling checkout)
@@ -116,10 +116,10 @@ tasks:
     cmds: [{ task: test }]
 
   push:
-    desc: "Gated push: refuses without the lefthook pre-push hook (I40), then pushes HEAD:main over smart HTTP derived from origin (I41 — an ssh session does not survive the pre-push gate, INC-22)"
+    desc: "Gated push (I40/I41, agentic-kit fathom-pack push gates — docs/project-intent/operating.md §5 in the vendored kit): refuses without the lefthook pre-push hook, then pushes HEAD:main over smart HTTP derived from origin"
     cmds:
-      - bash scripts/push-check.sh
-      - bash scripts/push-http.sh HEAD:main
+      - bash third_party/agentic-kit/fathom-pack/scripts/push-check.sh
+      - bash third_party/agentic-kit/fathom-pack/scripts/push-http.sh HEAD:main
 
   scenariobench:
     desc: "Free — internal/scenariobench (the change-bench driver, vision 27/ADR-033): corpus load, category/prediction gate, fake-harness driver tests. TestPublicScenarioCorpusIsDerived skips (never fails) when workspace/bench/sources/ is empty, the normal case on a fresh clone or CI."

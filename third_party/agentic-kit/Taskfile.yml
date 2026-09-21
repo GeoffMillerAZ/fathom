@@ -66,11 +66,24 @@ tasks:
       - "{{.GO}} run ./cmd/constitution-lint"
 
   validate:
-    desc: Full gate — fmt-check, vet, cue-vet, constitution-lint, test
+    desc: Full gate — fmt-check, vet, cue-vet, scripts-check, constitution-lint, test
     deps: [fmt-check, vet, cue-vet]
     cmds:
+      - task: scripts-check
       - task: constitution-lint
       - task: test
+
+  scripts-check:
+    desc: bash -n every shipped shell script, then run the fathom-pack push-gate tests over temp repositories (no network)
+    cmds:
+      - |
+        rc=0
+        for f in fathom-pack/scripts/*.sh; do
+          bash -n "$f" || { echo "bash -n FAILED: $f"; rc=1; }
+        done
+        [ "$rc" -eq 0 ] || exit "$rc"
+        bash fathom-pack/scripts/push-check_test.sh
+        bash fathom-pack/scripts/push-http_test.sh
 
   eval:
     desc: "Run kits/eval-runner in replay mode over the committed corpus (H5/D9 first subscriber). Fully offline: no provider keys, no network — cassette-backed judge lanes only. Exits non-zero on regression-gate failure and on an empty bank (ErrEmptyBank, enforced in the runner, not here); the printed scenario count is informational."

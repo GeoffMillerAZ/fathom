@@ -1,25 +1,22 @@
-# Roadmap — composed workflows and capability backlog
+# Roadmap — known patterns awaiting a subscriber
 
-The next product investment is verified workflow composition: governed setup for
-Claude Code and Codex, precisely sourced prose, durable human approval, and shared
-lessons. [Current goals](intent/scope.md) own admission and completion criteria;
-[the workflow design](designs/governed-workflows.md) owns the delivery sequence.
-The numbered entries below retain the capability backlog and graduation history.
+This is the kit's **pre-thought future**: patterns we already know agentic
+workloads will need, designed far enough to be claimable, deliberately NOT
+built yet. Per [VISION.md](../VISION.md), capabilities land when a real
+workload pulls for them — a half-baked primitive that demos well is the most
+dangerous artifact in a foundation.
 
 **How to use this doc when starting a new workload:** scan the entries. If
 your project needs one, you are its **subscriber**: say so, and the pattern
-can be built against your requirements under the junk gate (contract,
+gets built against your real requirements under the junk gate (contract,
 deterministic `-race` tests, honest non-guarantees, gate green). If you need
-something that is *not* here, that's a signal too. A sponsored incubation may also
-admit anticipated work under [0004](intent/decisions/0004-bounded-incubation.md): an
-executable hypothesis, bounded maintenance, and a dated review. Candidate consumers
-are not claimed adopters; implemented primitives are not automatically proven workflows.
+something that is *not* here, that's a signal too — add the entry or build it.
 
 Relationship to the other records: [TRACKING.md](../TRACKING.md) is the audit
 log of what IS built and tested; this file is what we KNOW we'll likely need;
 [VISION.md](../VISION.md) is the doctrine both serve. Entries graduate from
 here into TRACKING.md when a subscriber lands them. Nothing here is a
-commitment unless it has been admitted into the current goals.
+commitment.
 
 Each entry: **What** → why it serves the vision → **Exists today** (the pieces
 already in the kit) → **Subscribe when**.
@@ -50,28 +47,36 @@ prompt" is a ranked decision, not a concatenation.
 
 ## Memory & knowledge
 
-### 3. Consumer-owned memory adapters
-**What:** provenance-aware integration with a consumer's memory, preserving source
-and trust boundaries. A shared central memory service is outside this direction (0006).
-**Exists today:** evidence providers, journals, embeddings, and run handoff receipts.
-**Subscribe when:** two integrations need the same retrieval contract (futures F2).
+### 3. Cross-session agent memory
+**What:** an episodic/semantic memory composition: write policy (what's worth
+remembering), retrieval-into-context, consolidation/summarization with
+provenance, decay/expiry. Built from vector-store + jsonl-log + knowledge
+cards — the missing composition, not new storage.
+**Exists today:** all the ingredients (embedding, vector-store, jsonl-log,
+knowledge-card-generation, memory-manifest as a receipt log).
+**Subscribe when:** an assistant must remember across sessions ("what did we
+learn about X last week").
 
 ### 4. Knowledge consolidation flywheel
-**What:** reviewed incident → redacted reproducer → tested remedy → versioned lesson
-→ recipient regression/adoption receipt. This can work through Git and Fathom without
-a shared memory service. Candidate lessons cannot change another workload's authority.
+**What:** a periodic pipeline distilling journals/transcripts/evidence into
+validated knowledge cards (archetype-checked, provenance-stamped), replacing
+re-derivation with recall.
 **Exists today:** knowledge-card-generation, investigation-journal sinks,
 ai-provenance, improvement-flywheel as the loop shape.
-**Status:** admitted as scope G7; queued after an incubation slot opens. Acceptance
-requires a demonstrated transfer to a second consumer, not merely a generated card.
+**Subscribe when:** a workload accumulates runs whose lessons are being
+re-learned.
 
 ## Evaluation & regression
 
 ### 5. eval-runner (prompt/behavior regression harness)
-**Graduated.** `kits/eval-runner` and `task eval` run the committed replay corpus,
-record verdicts, compare baselines and report reliability statistics. Remaining work
-is independent consumer evaluation and integration, as specified in the workflow design.
-Replay validates implementation; live-model quality needs independent trials.
+**What:** CUE-defined eval cases + datasets, a runner over `llmclient`, an
+LLM-as-judge implementing `qaharness.Judge`, JSONL baselines, regression
+diffing, `eval-gate` thresholding — CI for prompts.
+**Exists today:** qa-harness, eval-gate, replay cassettes (deterministic
+inputs), prompt-template (versioned prompts to regress).
+**Subscribe when:** the first project with prompts whose quality matters
+across edits — likely throughline's chat/system prompts or the first
+production agent.
 
 ### 6. Trajectory-level regression
 **What:** golden-diff entire agent runs — the sequence of tool calls,
@@ -121,8 +126,7 @@ typed errors + `Retry-After` both forms, `Ping`/`Pinger`; passes `RunConformance
 ### 11. Batch API support
 **What:** provider batch submission/polling in the LLM contract (~50% cost
 on bulk work) — the second-biggest cost lever after prompt caching.
-**Subscribe when:** a bulk consumer measures sufficient cost savings and can tolerate
-asynchronous completion; the existence of the offline eval-runner alone is insufficient.
+**Subscribe when:** eval-runner or any bulk enrichment workload lands.
 
 ### 12. Streamed unknown-block delta accumulation
 **✅ Graduated — Wave 1 (v0.3.0).** Stream-assembled unknown blocks now equal
@@ -214,9 +218,10 @@ captured" degradation is explicit, never silent; golden-tested + harness
 integration test. See TRACKING.md §1.3.
 
 ### 21. Cross-process trace propagation
-**Partly graduated.** `event/traceparent.go` and MCP HTTP transport tests cover
-trace propagation over HTTP/MCP. Additional subprocess/environment conventions await
-a consumer whose run correlation is lost at that boundary (futures F12).
+**What:** carry RunID/TraceContext across process boundaries (MCP calls,
+bounded-exec subprocesses, HTTP hops) via env/headers so multi-process runs
+correlate into one trace.
+**Subscribe when:** the first multi-process agent topology.
 
 ## Evidence & retrieval
 
@@ -285,4 +290,4 @@ is the named subscriber. See TRACKING.md §1.5.
 
 *Maintained under VISION.md's practice-watch: new field-level best practices
 and newly observed anti-patterns add entries here (or land directly with a
-subscriber or admitted incubation). Last reviewed: 2026-09-12.*
+subscriber). Last reviewed: 2026-06-10.*

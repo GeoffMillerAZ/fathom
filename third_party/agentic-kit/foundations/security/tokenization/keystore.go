@@ -19,8 +19,8 @@ import (
 type KeyStore interface {
 	// Key returns the current envelope key for namespace. If no key exists yet,
 	// the implementation must mint a fresh random key and store it before
-	// returning. Keys must be exactly 32 bytes (AES-256). The returned slice is
-	// caller-owned and must not be shared; implementations return defensive copies.
+	// returning. The returned slice must not be shared; callers may not mutate it
+	// (implementations return defensive copies or freshly derived bytes).
 	//
 	// Returns ErrShredded if the namespace has been shredded (key destroyed).
 	Key(namespace string) ([]byte, error)
@@ -33,7 +33,8 @@ type KeyStore interface {
 	// Rotate is idempotent with respect to shred: calling Rotate after Shred
 	// makes the namespace active again under a new key.
 	//
-	// Reactivation is explicit; ordinary Key calls must never resurrect a shred.
+	// Returns ErrShredded if called on an already-shredded namespace — call
+	// Rotate explicitly if you intend to re-activate after shred.
 	Rotate(namespace string) error
 
 	// Shred destroys the envelope key for namespace. After Shred, all ciphertexts
@@ -53,33 +54,38 @@ type KeyStore interface {
 //
 // MemoryKeyStore is safe for concurrent use via sync.RWMutex.
 type MemoryKeyStore struct {
-	mu     sync.RWMutex
-	keys   map[string][]byte // namespace → 32-byte AES-256 key; nil entry = shredded
-	shrd   map[string]bool   // set of shredded namespaces
-	random RandFunc
+	mu   sync.RWMutex
+	keys map[string][]byte // namespace → 32-byte AES-256 key; nil entry = shredded
+	shrd map[string]bool   // set of shredded namespaces
 }
 
 // NewMemoryKeyStore returns an empty MemoryKeyStore.
 func NewMemoryKeyStore() *MemoryKeyStore {
-	return NewMemoryKeyStoreWithRandom(nil)
-}
-
-// NewMemoryKeyStoreWithRandom supplies a key-generation seam. A nil source uses
-// crypto/rand. Seeded sources are for tests only; production requires fresh entropy.
-func NewMemoryKeyStoreWithRandom(random RandFunc) *MemoryKeyStore {
-	if random == nil {
-		random = cryptoRandom
-	}
 	return &MemoryKeyStore{
-		keys:   make(map[string][]byte),
-		shrd:   make(map[string]bool),
-		random: random,
+		keys: make(map[string][]byte),
+		shrd: make(map[string]bool),
 	}
 }
 
 // Key returns the current envelope key for namespace, minting a fresh key if
 // none exists yet. Returns ErrShredded if the namespace has been shredded.
 func (s *MemoryKeyStore) Key(namespace string) ([]byte, error) {
+	s.mu.RLock()
+	shredded := s.shrd[namespace]
+	key := s.keys[namespace]
+	s.mu.RUnlock()
+
+	if shredded {
+		return nil, fmt.Errorf("tokenization: %w: namespace %q", ErrShredded, namespace)
+	}
+	if key != nil {
+		// Defensive copy.
+		out := make([]byte, len(key))
+		copy(out, key)
+		return out, nil
+	}
+
+	// Mint a new key under the write lock (double-checked idiom).
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.shrd[namespace] {
@@ -90,7 +96,7 @@ func (s *MemoryKeyStore) Key(namespace string) ([]byte, error) {
 		copy(out, k)
 		return out, nil
 	}
-	k, err := randomBytes(s.random, 32)
+	k, err := generateKey()
 	if err != nil {
 		return nil, fmt.Errorf("tokenization: MemoryKeyStore: generate key: %w", err)
 	}
@@ -105,13 +111,12 @@ func (s *MemoryKeyStore) Key(namespace string) ([]byte, error) {
 // key generation (previous ciphertexts remain unrecoverable). Rotate on an
 // active namespace destroys the old key and replaces it.
 func (s *MemoryKeyStore) Rotate(namespace string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	k, err := randomBytes(s.random, 32)
+	k, err := generateKey()
 	if err != nil {
 		return fmt.Errorf("tokenization: MemoryKeyStore: rotate: %w", err)
 	}
-	clear(s.keys[namespace])
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.keys[namespace] = k
 	delete(s.shrd, namespace)
 	return nil
@@ -135,33 +140,23 @@ func (s *MemoryKeyStore) Shred(namespace string) error {
 	return nil
 }
 
-// cryptoRandom is the production default for key and nonce generation.
-func cryptoRandom(n int) ([]byte, error) {
-	k := make([]byte, n)
+// generateKey produces a fresh 256-bit AES key from crypto/rand. It uses the
+// package-level rand.Reader directly because this is a seam implementation:
+// the production path (MemoryKeyStore) intentionally depends on real entropy.
+// Injected randomness is not appropriate here — key generation requires true
+// randomness, not test-reproducible bytes.
+func generateKey() ([]byte, error) {
+	k := make([]byte, 32) // AES-256
 	if _, err := io.ReadFull(rand.Reader, k); err != nil {
 		return nil, fmt.Errorf("read random: %w", err)
 	}
 	return k, nil
 }
 
-func randomBytes(random RandFunc, n int) ([]byte, error) {
-	b, err := random(n)
-	if err != nil {
-		return nil, fmt.Errorf("tokenization: randomness: %w", err)
-	}
-	if len(b) != n {
-		return nil, fmt.Errorf("tokenization: randomness returned wrong byte count")
-	}
-	return append([]byte(nil), b...), nil
-}
-
 // seal encrypts plaintext under key using AES-256-GCM with a random nonce.
 // The nonce is prepended to the ciphertext: [12-byte nonce || GCM ciphertext].
 // key must be exactly 32 bytes (AES-256).
-func seal(key []byte, plaintext []byte, aad []byte, random RandFunc) ([]byte, error) {
-	if len(key) != 32 {
-		return nil, fmt.Errorf("tokenization: AES-256 key must be 32 bytes")
-	}
+func seal(key []byte, plaintext []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, fmt.Errorf("aes: %w", err)
@@ -170,20 +165,17 @@ func seal(key []byte, plaintext []byte, aad []byte, random RandFunc) ([]byte, er
 	if err != nil {
 		return nil, fmt.Errorf("gcm: %w", err)
 	}
-	nonce, err := randomBytes(random, gcm.NonceSize())
-	if err != nil {
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
 		return nil, fmt.Errorf("nonce: %w", err)
 	}
-	ct := gcm.Seal(nonce, nonce, plaintext, aad)
+	ct := gcm.Seal(nonce, nonce, plaintext, nil)
 	return ct, nil
 }
 
 // open decrypts ciphertext produced by seal. The ciphertext must begin with the
 // nonce (first NonceSize bytes) followed by GCM ciphertext+tag.
-func open(key []byte, ciphertext []byte, aad []byte) ([]byte, error) {
-	if len(key) != 32 {
-		return nil, fmt.Errorf("tokenization: AES-256 key must be 32 bytes")
-	}
+func open(key []byte, ciphertext []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, fmt.Errorf("aes: %w", err)
@@ -197,7 +189,7 @@ func open(key []byte, ciphertext []byte, aad []byte) ([]byte, error) {
 		return nil, fmt.Errorf("ciphertext too short")
 	}
 	nonce, ct := ciphertext[:ns], ciphertext[ns:]
-	plain, err := gcm.Open(nil, nonce, ct, aad)
+	plain, err := gcm.Open(nil, nonce, ct, nil)
 	if err != nil {
 		return nil, fmt.Errorf("gcm open: %w", err)
 	}

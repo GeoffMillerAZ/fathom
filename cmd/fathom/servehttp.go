@@ -340,7 +340,7 @@ func newHTTPHandler(srv *mcp.Server, c *client.Client, selfAddr string) http.Han
 	mux.Handle("/findings/summary", findingsSummaryHandler(c))
 	// POST /refresh-file {service, file} (SU-5/SU-6, ADR-041 decisions 3
 	// and 4): the pre-edit hook's per-file freshness refresh.
-	mux.Handle("/refresh-file", refreshFileHandler(c))
+	mux.Handle("/refresh-file", refreshFileHandler(c, srv))
 	// Observatory (vision 17 / docs/plans/observatory.md OB-4/5/6):
 	// loopback value-realization pages over the same primitives the fleet
 	// report reads. selfURL lets the model reuse the HTTP-shaped helpers.

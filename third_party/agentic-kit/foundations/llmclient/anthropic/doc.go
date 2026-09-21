@@ -50,17 +50,6 @@
 //     cache_control {"type":"ephemeral"}. More than 4 breakpoints total is
 //     rejected locally with a typed InvalidRequestError (the API would reject
 //     it anyway).
-//   - Effort maps to output_config.effort (low, medium, high, xhigh, max),
-//     alongside OutputSchema's output_config.format. Empty effort is omitted.
-//     CapabilityCheck can reject values unavailable on the selected model.
-//     No beta header is added. Raw ProviderParams.output_config conflicts
-//     with either typed field and is rejected before HTTP. Migration: remove
-//     that raw override and use Effort + OutputSchema, or unset both typed
-//     fields when explicitly owning the complete raw output_config.
-//
-// Effort wire contract verified against official Anthropic documentation on
-// 2026-09-13: https://platform.claude.com/docs/en/build-with-claude/effort.
-// Verification is httptest-based, not a live model-availability or billing claim.
 //
 // Timeouts: when Config.HTTPClient is nil, Complete uses an http.Client with
 // a 10-minute overall timeout and Stream uses one with NO overall timeout —

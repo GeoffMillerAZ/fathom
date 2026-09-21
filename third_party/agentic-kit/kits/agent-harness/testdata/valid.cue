@@ -51,34 +51,6 @@ validStrictEffects: agentharness.#Config & {
 	EffectPolicy: "strict"
 }
 
-validEngineeringProfile: agentharness.#EngineeringProfileConfig & {
-	Harness: {
-		MaxTurns: 2
-		MaxTokensPerCall: 256
-		EstimatedUSDPerCall: 0
-		EffectPolicy: "strict"
-		InjectionAction: "block"
-		TreatMaxTokensAsError: true
-	}
-	MaxAttempts: 2
-	ReservedUSDPerAttempt: 0.01
-	AllowedTools: ["read_file"]
-}
-
-validEngineeringReceipt: agentharness.#CoverageReceipt & {
-	Version: "governed-engineering/v1"
-	Controls: {context: "pass", detector: "unknown"}
-	AllowedTools: ["read_file"]
-	Accounting: {Attempts: 1, ReservedUSD: 0.01, SpentUSD: 0, UnknownActuals: 1, InvalidActuals: 0}
-	NonGuarantees: ["provider behavior is not observable"]
-}
-
-validEngineeringResult: agentharness.#EngineeringResult & {
-	Run: {}
-	Evidence: {ID: "independent-evidence", Independent: true}
-	Coverage: validEngineeringReceipt
-}
-
 // validHandoff is the record a run emits when it stops on max_turns after
 // two tool calls.
 validHandoff: agentharness.#Handoff & {

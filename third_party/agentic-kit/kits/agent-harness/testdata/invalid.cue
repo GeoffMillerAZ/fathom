@@ -75,17 +75,3 @@ package agentharness
 // 	turns:      1
 // 	summary:    "x"
 // }
-
-// // invalidEngineeringProfile — strict effect and block-only injection are required
-// invalidEngineeringProfile: #EngineeringProfileConfig & {
-	Harness: {
-		MaxTurns: 1
-		MaxTokensPerCall: 0
-		EstimatedUSDPerCall: 0.01
-		EffectPolicy: "permissive"
-		InjectionAction: "annotate"
-	}
-// 	MaxAttempts: 0
-// 	ReservedUSDPerAttempt: 0
-// 	AllowedTools: []
-// }

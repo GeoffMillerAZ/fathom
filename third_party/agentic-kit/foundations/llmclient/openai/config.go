@@ -73,15 +73,6 @@ const (
 // Config configures a Client. The zero value is usable as long as APIKey is
 // set or the endpoint does not require authentication.
 type Config struct {
-	// UseResponses opts into POST /responses; false preserves Chat Completions.
-	// Azure deployment routing is not supported in this lane.
-	UseResponses bool
-
-	// ProviderFamily asserts the model's family for a compatible endpoint.
-	// Empty is unknown except at the official OpenAI endpoint. This is caller
-	// supplied evidence, not a model-name heuristic or proof of independence.
-	ProviderFamily string
-
 	// BaseURL is the API base URL including path prefix, default
 	// "https://api.openai.com/v1". A trailing slash is trimmed.
 	// Set to "http://localhost:11434/v1" for Ollama or any other
@@ -156,12 +147,10 @@ type Config struct {
 // llmclient.LLMClient. Construct it with New. Safe for concurrent use:
 // all fields are immutable after construction.
 type Client struct {
-	useResponses   bool
-	providerFamily string
-	key            string
-	baseURL        string
-	model          string
-	maxTokens      int
+	key       string
+	baseURL   string
+	model     string
+	maxTokens int
 
 	completeClient *http.Client
 	streamClient   *http.Client
@@ -195,9 +184,6 @@ var _ llmclient.LLMClient = (*Client)(nil)
 // New validates cfg and returns a ready Client. APIKey may be empty for local
 // endpoints that do not require authentication.
 func New(cfg Config) (*Client, error) {
-	if cfg.UseResponses && cfg.AzureDeployment != "" {
-		return nil, &llmclient.InvalidRequestError{Message: "openai: UseResponses does not support AzureDeployment routing"}
-	}
 	// Azure validation happens before BaseURL defaulting: defaulting an
 	// empty BaseURL to the OpenAI public API base would silently misroute
 	// an Azure-mode caller who forgot to set the resource endpoint.
@@ -255,8 +241,6 @@ func New(cfg Config) (*Client, error) {
 	}
 
 	return &Client{
-		useResponses:    cfg.UseResponses,
-		providerFamily:  cfg.ProviderFamily,
 		key:             cfg.APIKey,
 		baseURL:         baseURL,
 		model:           cfg.DefaultModel,

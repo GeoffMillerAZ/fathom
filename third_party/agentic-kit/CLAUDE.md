@@ -8,8 +8,8 @@ Module `github.com/geoffmilleraz/agentic-kit`, Go 1.26. New to CUE? Read `docs/w
 
 - `task validate` = `fmt-check` + `vet` + `cue-vet` + `go test -race ./...`. **Must be green before any commit.**
 - lefthook hooks: pre-commit = fast staged-file checks (gofmt, `cue vet` on schema dirs); pre-push = full `task validate`.
-- **Never `git commit --no-verify` or `LEFTHOOK=0`.** Repair a broken hook through the authorized path (`docs/intent/autonomy.md`).
-- `task downstream-check` exercises configured consumers against the kit — run it before tagging or when exported APIs change. Known consumers live in `docs/intent/scope.md`; inspect the current task definitions and report actual coverage. A skipped or unconfigured consumer is not a pass. Fathom is currently checked out at `../sextant`.
+- **Never `git commit --no-verify`.** Opt out only with `LEFTHOOK=0`, and only if the hook itself is broken.
+- `task downstream-check` builds + tests both real consumers (fathom — currently checked out at `../sextant`, the on-disk dir rename to `../fathom` is still pending — and `../throughline`) against kit HEAD — run it before tagging or when exported APIs change; each check skips if the sibling isn't checked out, and resolves either dir name automatically.
 - `task doctor` checks toolchain health. `task --list` shows everything.
 
 ## Hard rules
@@ -101,7 +101,7 @@ injected automatically on every edit via the PostToolUse hook. Treat them
 as binding, not advisory.
 
 Continuity: run `fathom thread brief` at session start if your harness has
-no active SessionStart hook — it prints the open threads, or
+no SessionStart hook (Codex does not) — it prints the open threads, or
 nothing. File what the next session must know: `fathom thread note "…"`.
 
 Done means proven: a plan task is only "done" when the index proves it, not

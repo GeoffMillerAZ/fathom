@@ -100,7 +100,42 @@ abandoned `.claude/worktrees/agent-*` checkouts with no owner.
 Autonomy tiers apply per agent: a subagent's "ask first" is a return to its orchestrator,
 never a prompt to the human.
 
-## 5. Considered and rejected
+## 5. Push gates (`lefthook` pre-push, `task push`)
+
+Three rules, each paid for by a real incident in a consuming repo (fathom's
+INC-20, INC-21, INC-22, 2026-09-19). The scripts that enforce the first and
+third ship in `fathom-pack/scripts/` (`push-check.sh`, `push-http.sh`, each
+with a test); the second is a property of the gate you write.
+
+1. **A push refuses without the hook.** A wiped hooks directory (it happens:
+   an unrelated process emptied `.git/hooks` and `.git/HEAD` at midnight) turns
+   a gated push into an ungated one with no error. `task push` runs
+   `push-check.sh` first: it resolves the hook through `git rev-parse --git-path`
+   (honoring `core.hooksPath` and linked worktrees) and refuses, exit 3, unless
+   the pre-push hook is lefthook's. A two-line push log is the tell of a gate
+   that never fired.
+2. **The gate verifies the tree it pushes.** A pre-push step that asks a live
+   daemon, a shared index, or the operator's checkout is measuring a different
+   tree — one that can lag the push by a whole round. A `fathom verify` step
+   ingests HEAD into a scratch store and verifies against that; an ingest
+   failure is a named fail-open line, never a silent pass. The general form:
+   every gate input is derived from HEAD inside the hook, or the step says why
+   it could not be.
+3. **No transport session is held open across the gate.** git opens the
+   transport before it runs the pre-push hook; over ssh that session sits idle
+   for the whole gate and is gone when git sends the pack — a fully green gate
+   followed by exit 141 (SIGPIPE) and an unchanged remote, twice, with
+   keepalives on. `push-http.sh` derives `https://host/path` from the push
+   remote (never a hardcoded URL — the kit stays org-agnostic) and pushes over
+   smart HTTP, where the ref advertisement and the pack are separate requests;
+   credentials come from the GitHub CLI when it is on `PATH`, otherwise from
+   git's own configured helper. Never `--no-verify` to get around a hook.
+
+Adopt by calling the vendored scripts from the repo's `push` task and running
+their `_test.sh` files in the repo's own script gate; a repo that copies them
+instead keeps the provenance header so a later kit bump can re-sync by it.
+
+## 6. Considered and rejected
 
 - **A permissions DSL.** The harness has one. This file states intent in prose the
   harness owner can translate.

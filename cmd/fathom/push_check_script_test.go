@@ -7,8 +7,8 @@ import (
 	"testing"
 )
 
-// TestPushCheckScript runs scripts/push-check_test.sh (SU-26, invariant
-// I40): a push from any clone refuses when the lefthook pre-push hook is
+// TestPushCheckScript runs the kit-vendored push-check_test.sh (SU-26,
+// invariant I40; agentic-kit fathom-pack push gates): a push from any clone refuses when the lefthook pre-push hook is
 // absent. The shell test builds its own temp repositories; this wrapper
 // only makes the script part of `go test` so the plan row is anchored to
 // a symbol the index can see.
@@ -20,7 +20,7 @@ func TestPushCheckScript(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	script := filepath.Join(root, "scripts", "push-check_test.sh")
+	script := filepath.Join(root, "third_party", "agentic-kit", "fathom-pack", "scripts", "push-check_test.sh")
 	if _, err := os.Stat(script); err != nil {
 		t.Fatalf("missing %s: %v", script, err)
 	}
@@ -32,8 +32,8 @@ func TestPushCheckScript(t *testing.T) {
 	}
 }
 
-// TestPushHTTPScript runs scripts/push-http_test.sh (INC-22, invariant
-// I41): `task push` sends the pack over smart HTTP, derived from the push
+// TestPushHTTPScript runs the kit-vendored push-http_test.sh (INC-22,
+// invariant I41; agentic-kit fathom-pack push gates): `task push` sends the pack over smart HTTP, derived from the push
 // remote, so no transport session is held open across the pre-push gate.
 // The shell test only derives URLs (--print-url) and never touches the
 // network.
@@ -45,7 +45,7 @@ func TestPushHTTPScript(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	script := filepath.Join(root, "scripts", "push-http_test.sh")
+	script := filepath.Join(root, "third_party", "agentic-kit", "fathom-pack", "scripts", "push-http_test.sh")
 	if _, err := os.Stat(script); err != nil {
 		t.Fatalf("missing %s: %v", script, err)
 	}

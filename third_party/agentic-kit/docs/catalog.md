@@ -2,7 +2,7 @@
 
 # Package catalog
 
-197 Go packages. One line each: module-relative import path, package name, doc synopsis.
+193 Go packages. One line each: module-relative import path, package name, doc synopsis.
 Counted from source, so build-tagged packages the host `go list ./...` cannot see (e.g. the js/wasm-only `examples/governance-wasm`) are included — this total can run one higher than TRACKING.md's go-list count.
 
 ## foundations/agent (5)
@@ -58,7 +58,7 @@ Counted from source, so build-tagged packages the host `go list ./...` cannot se
 - `foundations/environment/platform-config` (`platformconfig`) — Package platformconfig loads and validates runtime platform configuration.
 - `foundations/environment/tool-execution-policy` (`toolexecutionpolicy`) — Package toolexecutionpolicy governs which tools an agent may call in a given runtime environment.
 
-## foundations/evidence (19)
+## foundations/evidence (20)
 
 - `foundations/evidence/assertion` (`assertion`) — Package assertion defines the speech-act primitive for the evidence foundation.
 - `foundations/evidence/authenticity` (`authenticity`) — Package authenticity provides typed, provenanced authenticity and integrity assessment for evidence records.
@@ -72,6 +72,7 @@ Counted from source, so build-tagged packages the host `go list ./...` cannot se
 - `foundations/evidence/evidence-grade` (`evidencegrade`) — Package evidencegrade defines the tier taxonomy and claim-grading primitives for the evidence foundation.
 - `foundations/evidence/evidence-graph` (`evidencegraph`) — Package evidencegraph provides an in-memory evidence graph with TTL-based eviction and contradiction detection.
 - `foundations/evidence/evidence-ladder` (`evidenceladder`) — Package evidenceladder implements the three-tier evidence-acquisition ladder: fast cache lookup (Tier-1) → exhaustive search (Tier-2) → human escalation (Tier-3).
+- `foundations/evidence/evidence-producer` (`evidenceproducer`) — Package evidenceproducer defines the catalog of producers that contribute findings or claims to a consuming evidence store: for each producer, its kind (deterministic analyzer, model reviewer, human, external tool), its origin relative to the consuming store (self or external), and the highest evidence tier it may ever confer.
 - `foundations/evidence/evidence-resolver` (`evidenceresolver`) — Package evidenceresolver provides a deterministic registry that maps span reference strings to their Span values.
 - `foundations/evidence/evidence-signature` (`evidencesignature`) — Package evidencesignature defines per-concern evidence signatures: declarative, diffable, testable specifications of what constitutes "enough evidence" for a given concern, decided at authoring time.
 - `foundations/evidence/evidence-span` (`evidencespan`) — Package evidencespan defines the atomic evidence unit used across the evidence foundation.
@@ -174,7 +175,7 @@ Counted from source, so build-tagged packages the host `go list ./...` cannot se
 - `foundations/quality/dlp-evaluator` (`dlpevaluator`) — Package dlpevaluator evaluates text against configurable DLP (Data Loss Prevention) rules and produces a leakage-risk Report.
 - `foundations/quality/eval-gate` (`evalgate`) — Package evalgate provides a deterministic pass/fail gate over a set of weighted checks.
 - `foundations/quality/eval-journal` (`evaljournal`) — Package evaljournal provides the append-only truth record of every judge call in an eval loop.
-- `foundations/quality/fitness-function-registry` (`fitnessfunctionregistry`) — Package fitnessfunctionregistry provides named fitness checks and versioned, evidence-linked assessment profiles, separating required outcomes from optional weighted scoring delegated to eval-gate.
+- `foundations/quality/fitness-function-registry` (`fitnessfunctionregistry`) — Package fitnessfunctionregistry provides the "provable-excellence" backbone (E2) as a reusable primitive: a registry of named FitnessFunctions, each a declared Invariant backed by a set of weighted eval-gate Checks, plus a deterministic Execute that scores a function and produces an auditable ExecutionResult.
 - `foundations/quality/honesty-gate` (`honestygate`) — Package honestygate flags overclaiming in model outputs using deterministic rules.
 - `foundations/quality/integrity-evaluator` (`integrityevaluator`) — Package integrityevaluator checks output integrity against a set of invariants.
 - `foundations/quality/qa-harness` (`qaharness`) — Package qaharness provides the QA judge interface and deterministic rubric scoring for agentic outputs.
@@ -242,7 +243,7 @@ Counted from source, so build-tagged packages the host `go list ./...` cannot se
 - `foundations/topology/live-graph` (`livegraph`) — Package livegraph provides a deployment/dependency graph with cycle detection, critical-path analysis, and wave-based rollout planning.
 - `foundations/topology/workspace-materialization` (`workspacematerialization`) — Package workspacematerialization computes the minimal transitive dependency set required to materialize a target node from a live-graph topology.
 
-## kits (15)
+## kits (14)
 
 - `kits/agent-harness` (`agentharness`) — Package agentharness is the governed tool-calling agent loop — the kit that composes the platform's foundations into one Run(ctx, input) call: model turn → tool dispatch → governance screens → repeat, until a stop condition.
 - `kits/command-center` (`commandcenter`) — Package commandcenter composes workflow-engine, review-queue, and telemetry foundations into a cross-workflow command surface.
@@ -257,7 +258,6 @@ Counted from source, so build-tagged packages the host `go list ./...` cannot se
 - `kits/guardrails-pipeline` (`guardrailspipeline`) — Package guardrailspipeline provides a declarative gate-chain that composes existing security and quality foundations into ordered pre-LLM and post-LLM decision pipelines.
 - `kits/hitl` (`hitl`) — Package hitl is a generic human-in-the-loop engine for agents that CHANGE data.
 - `kits/investigation` (`investigation`) — Package investigation composes evidence, investigation, and review foundations into a governed investigation workflow.
-- `kits/lesson-transfer` (`lessontransfer`) — Package lessontransfer validates bounded public-synthetic lesson bundles and runs receiver-owned adoption checks.
 - `kits/mcp-server` (`mcpserver`) — Package mcpserver is an MCP (Model Context Protocol) server kit: it exposes the tools of a foundations/agent/tool-registry Registry to any MCP client (Claude Code, Claude Desktop, ...) over two transports sharing one dispatch core — newline-delimited JSON-RPC 2.0 on a byte stream (stdio, Serve) and MCP Streamable HTTP (NewHTTPHandler, a single stateless POST endpoint).
 
 ## runtimes (2)
@@ -277,7 +277,7 @@ Counted from source, so build-tagged packages the host `go list ./...` cannot se
 - `toolchains/materialization/workspace-query-builder` (`workspacequerybuilder`) — Package workspacequerybuilder provides a fluent Go DSL for constructing workspace queries that compile to deterministic DuckDB-compatible SQL.
 - `toolchains/schemas` (`schemas`) — Package schemas is the canonical CUE schema root for agentic-kit.
 
-## cmd (9)
+## cmd (8)
 
 - `cmd/constitution-lint` (`main`) — Command constitution-lint mechanically enforces agentic-kit's constitutional promises.
 - `cmd/endpoint-guard` (`main`) — Command endpoint-guard is a self-contained, in-pod HTTP server that puts the endpoint-guard kit in front of an LLM-answer backend.
@@ -286,23 +286,16 @@ Counted from source, so build-tagged packages the host `go list ./...` cannot se
 - `cmd/jsonschema-gen` (`main`) — Command jsonschema-gen derives a JSON Schema (draft 2020-12) document from a CUE package directory and writes it to an output file (or stdout).
 - `cmd/kit-catalog` (`main`) — Command kit-catalog generates docs/catalog.md — a one-line-per-package index of every Go package in the module, grouped by area (foundations by category, then kits, runtimes, surfaces, toolchains, cmd, examples, scenarios), from package doc comments.
 - `cmd/kit-new` (`main`) — Command kit-new scaffolds a new consumer module from the agent-cli blueprint with governance ON by default, or — with -package — a new kit package in this repository's six-file shape together with the ledger lines it owes.
-- `cmd/kit-workflow` (`main`) — Command kit-workflow provides a bounded JSON front door for local governed workflow checks.
 - `cmd/release-notes` (`main`) — Command release-notes prints one version's section of CHANGELOG.md verbatim, for pasting into a GitHub Release body or a release announcement.
 
-## examples (5)
+## examples (4)
 
 - `examples/agent-cli` (`main`) — Command agent-cli is the hello-world agent for agentic-kit: a small, runnable CLI that proves the whole stack end-to-end and is meant to be COPIED as the starting point for new projects (see README.md and docs/adopting.md).
 - `examples/catalog-demo` (`main`) — Command catalog-demo is a worked example for foundations/knowledge/catalog: it scans a small directory tree into a Catalog, loads a previously "published" catalog from a fixture, and gates the two with Verify — design deliverable #8 ("a worked example building a small catalog from a directory scan and gating it").
-- `examples/engineering-assessments` (`main`) — Command engineering-assessments demonstrates two domain collectors sharing an evidence-linked assessment contract.
 - `examples/expertchat-service` (`main`) — Command expertchat-service is a thin, runnable example wiring kits/expertchat to a fathom module host.
 - `examples/governance-wasm` (`main`) — Package main is a thin WASM shim that registers governance primitives as JS-callable functions.
 
-## scenarios (3)
+## scenarios (2)
 
 - `scenarios/governed-docextract-hitl` (`governeddocextracthitl`) — Package governeddocextracthitl is an end-to-end scenario blueprint proving that docextract + agent-harness + hitl compose into a governed document-analysis workflow where the agent proposes a change, a human approves it, and the state mutates ONLY through the hitl engine.
 - `scenarios/governed-investigation` (`governedinvestigation`) — Package governedinvestigation is an end-to-end scenario blueprint that wires evidence-span, evidence-graph, investigation-journal, hypothesis-ranker, and dad-investigator into a seeded, deterministic governed investigation, then proposes the one irreversible remediation the finding implies through agent-harness under the strict effect gate — a human approval (seeded) sits between the model's tool call and its dispatch.
-- `scenarios/sourced-prose` (`sourcedprose`) — Package sourcedprose is a synthetic, offline composition of strict sourced prose and durable HITL approval.
-
-## internal (1)
-
-- `internal/jsonwire` (`jsonwire`) — Package jsonwire supplies private wire checks shared by strict kit decoders.

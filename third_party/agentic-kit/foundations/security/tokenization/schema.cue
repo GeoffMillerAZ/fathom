@@ -3,18 +3,6 @@
 // and policy.go are the Go counterparts; any drift is a bug.
 package tokenization
 
-// #EncryptedRecord mirrors EncryptedRecord v1. Ciphertext is raw nonce+GCM bytes;
-// JSON encodes Go []byte as base64 and adapters decode it before CUE validation.
-#EncryptedRecord: {
-	Version: 1
-	Token: #Token & {
-		Class: #TokenClass
-		Value: =~("^tok_" + Class + "_[0-9a-fA-F]{64}$")
-	}
-	Ciphertext:            bytes
-	_ciphertextLongEnough: true & (len(Ciphertext) >= 28)
-}
-
 // #TokenClass enumerates the recognised sensitivity categories for a secret.
 // The class is embedded in the opaque token value and drives access-policy
 // decisions.

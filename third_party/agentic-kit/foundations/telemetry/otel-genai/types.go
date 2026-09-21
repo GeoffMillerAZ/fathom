@@ -44,8 +44,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/telemetry/event"
 	"github.com/geoffmilleraz/agentic-kit/foundations/telemetry/metrics"
+	agentharness "github.com/geoffmilleraz/agentic-kit/kits/agent-harness"
 )
 
 // DefaultBatchSize is the number of events that trigger an automatic flush
@@ -112,9 +112,9 @@ func semconvAttr(kitKey string) string {
 		return "gen_ai.operation.name"
 	case "system":
 		return "gen_ai.system"
-	case event.AttrStopReason: // "stop_reason"
+	case agentharness.AttrStopReason: // "stop_reason"
 		return "gen_ai.response.finish_reasons"
-	case event.AttrToolNames: // "tool_names"
+	case agentharness.AttrToolNames: // "tool_names"
 		return "gen_ai.tool.name"
 	default:
 		return ""

@@ -83,9 +83,9 @@ type Output struct {
 	// Text is the output under judgment.
 	Text string `json:"text"`
 
-	// Producer describes what produced Text. It must exactly equal
-	// Config.Producer — independence was validated against that producer
-	// identity and no other (Run refuses mismatches with
+	// Producer describes what produced Text. Its Model must equal
+	// Config.Producer.Model — independence was validated against that
+	// producer and no other (Run refuses mismatches with
 	// ErrProducerMismatch).
 	Producer Producer `json:"producer"`
 }

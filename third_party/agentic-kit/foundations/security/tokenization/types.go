@@ -9,14 +9,13 @@
 //   - No inline time.Now() or crypto/rand calls in domain logic; both are
 //     injected so tests are fully deterministic.
 //   - Defensive copies on all slice/map returns.
-//   - EncryptedVault composes caller-owned KeyStore and RecordStore ports;
-//     memory reference stores are supplied, durable adapters remain caller-owned.
+//   - The Vault interface is a port; encrypted-at-rest storage is an app
+//     adapter — not implemented here. MemoryVault is the reference impl.
 //
 // CUE contracts live in schema.cue; this file and its siblings are the Go
 // counterpart. Drift between Go and CUE is a bug.
 //
-// Concurrency: vaults and memory stores are safe for concurrent use via mutexes.
-// Tokenizer is safe for concurrent use when its injected random source is too.
+// Concurrency: Tokenizer is safe for concurrent use after construction; MemoryVault is safe for concurrent use via sync.RWMutex.
 package tokenization
 
 import (

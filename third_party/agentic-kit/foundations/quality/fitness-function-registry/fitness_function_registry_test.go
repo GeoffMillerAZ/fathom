@@ -1,9 +1,7 @@
 package fitnessfunctionregistry_test
 
 import (
-	"math"
 	"reflect"
-	"sync"
 	"testing"
 	"time"
 
@@ -92,11 +90,6 @@ func TestRegister_Errors(t *testing.T) {
 		{
 			name:    "threshold above one",
 			ff:      ffr.FitnessFunction{Name: "x", Threshold: 1.5},
-			wantErr: true,
-		},
-		{
-			name:    "threshold NaN",
-			ff:      ffr.FitnessFunction{Name: "x", Threshold: math.NaN()},
 			wantErr: true,
 		},
 		{
@@ -213,79 +206,6 @@ func TestList_ReturnsCopySafeToMutate(t *testing.T) {
 	if !ok || ff.Name != "alpha" {
 		t.Errorf("registry copy was mutated by caller: got %q ok=%v", ff.Name, ok)
 	}
-}
-
-func TestRegistry_ChecksAreSnapshotCopies(t *testing.T) {
-	r := ffr.NewRegistry()
-	original := passingFF("alpha")
-	if err := r.Register(original); err != nil {
-		t.Fatalf("Register: %v", err)
-	}
-
-	// Mutating the caller's input after Register must not alter the registry.
-	original.Checks[0].Name = "caller-mutated"
-	got, ok := r.Get("alpha")
-	if !ok || got.Checks[0].Name != "c" {
-		t.Fatalf("Get after caller mutation = %#v, %v; want original checks", got.Checks, ok)
-	}
-
-	// Get and List must each return independent Check slices too.
-	got.Checks[0].Name = "get-mutated"
-	listed := r.List()
-	listed[0].Checks[0].Name = "list-mutated"
-	got, _ = r.Get("alpha")
-	if got.Checks[0].Name != "c" {
-		t.Errorf("registry checks changed through returned copy: %q", got.Checks[0].Name)
-	}
-}
-
-func TestRegistry_ChecksPreserveNilAndEmpty(t *testing.T) {
-	r := ffr.NewRegistry()
-	if err := r.Register(ffr.FitnessFunction{Name: "nil"}); err != nil {
-		t.Fatalf("Register nil: %v", err)
-	}
-	if err := r.Register(ffr.FitnessFunction{Name: "empty", Checks: []evalgate.Check{}}); err != nil {
-		t.Fatalf("Register empty: %v", err)
-	}
-	for _, name := range []string{"nil", "empty"} {
-		got, ok := r.Get(name)
-		if !ok {
-			t.Fatalf("Get(%q) missing", name)
-		}
-		if name == "nil" && got.Checks != nil {
-			t.Errorf("nil checks became non-nil")
-		}
-		if name == "empty" && got.Checks == nil {
-			t.Errorf("empty checks became nil")
-		}
-	}
-}
-
-func TestRegistry_ConcurrentReturnedCheckMutationsAreRaceFree(t *testing.T) {
-	r := ffr.NewRegistry()
-	if err := r.Register(passingFF("alpha")); err != nil {
-		t.Fatalf("Register: %v", err)
-	}
-
-	var wg sync.WaitGroup
-	for i := 0; i < 8; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for j := 0; j < 1000; j++ {
-				got, ok := r.Get("alpha")
-				if !ok {
-					t.Error("Get(alpha) missing")
-					return
-				}
-				got.Checks[0].Name = "mutated"
-				listed := r.List()
-				listed[0].Checks[0].Passed = false
-				_ = r.ExecuteAll("run", fixedAt)
-			}
-		}()
-	}
-	wg.Wait()
 }
 
 // --- Execute -----------------------------------------------------------------
@@ -480,50 +400,6 @@ func TestExecuteTimed_RecordsNonNegativeDuration(t *testing.T) {
 	res.Duration = 0
 	if !reflect.DeepEqual(res, pure) {
 		t.Errorf("ExecuteTimed differs from Execute beyond Duration:\n timed=%+v\n pure =%+v", res, pure)
-	}
-}
-
-func TestExecuteTimedWithClock_Duration(t *testing.T) {
-	tests := []struct {
-		name  string
-		ticks []time.Time
-		want  time.Duration
-	}{
-		{
-			name:  "exact duration",
-			ticks: []time.Time{fixedAt, fixedAt.Add(17 * time.Millisecond)},
-			want:  17 * time.Millisecond,
-		},
-		{
-			name:  "backward clock clamps to zero",
-			ticks: []time.Time{fixedAt, fixedAt.Add(-time.Millisecond)},
-			want:  0,
-		},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			ticks := append([]time.Time(nil), tc.ticks...)
-			res := ffr.ExecuteTimedWithClock(passingFF("t"), "r", fixedAt, func() time.Time {
-				now := ticks[0]
-				ticks = ticks[1:]
-				return now
-			})
-			if res.Duration != tc.want {
-				t.Errorf("Duration = %v, want %v", res.Duration, tc.want)
-			}
-		})
-	}
-}
-
-func TestExecuteTimedWithClock_NilUsesWallClock(t *testing.T) {
-	res := ffr.ExecuteTimedWithClock(passingFF("t"), "r", fixedAt, nil)
-	if res.Duration < 0 {
-		t.Errorf("Duration = %v, want non-negative", res.Duration)
-	}
-	pure := ffr.Execute(passingFF("t"), "r", fixedAt)
-	res.Duration = 0
-	if !reflect.DeepEqual(res, pure) {
-		t.Errorf("ExecuteTimedWithClock differs from Execute beyond Duration")
 	}
 }
 

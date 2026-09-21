@@ -1,5 +1,0 @@
-Sanitized native stderr; both invocations emitted the same warning.
-Replacements: original fixture path -> $FIXTURE_ROOT; user credential/config home -> $USER_CONFIG.
-This is evidence of the blocker, NOT an instruction to change global trust.
-
-Ignoring 4 permissions.allow entries from .claude/settings.json: this workspace has not been trusted. Run Claude Code interactively here once and accept the trust dialog, or set projects["$FIXTURE_ROOT"].hasTrustDialogAccepted: true in $USER_CONFIG/.claude.json.

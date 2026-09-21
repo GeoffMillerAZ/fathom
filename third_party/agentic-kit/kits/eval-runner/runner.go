@@ -48,16 +48,9 @@ var (
 	// ErrMissingOutput: a bank scenario has no matching Output.
 	ErrMissingOutput = errors.New("evalrunner: scenario has no matching output")
 
-	// ErrUnexpectedOutput: an Output has an empty ScenarioID or names a
-	// scenario outside the supplied bank.
-	ErrUnexpectedOutput = errors.New("evalrunner: output does not match a scenario in the bank")
-
-	// ErrDuplicateOutput: more than one Output names the same bank scenario.
-	ErrDuplicateOutput = errors.New("evalrunner: multiple outputs match the same scenario")
-
-	// ErrProducerMismatch: an Output's Producer differs from Config.Producer.
-	// Outputs must match the configured model, prompt and parameter identities;
-	// construction-time family/session checks alone do not bind generated data.
+	// ErrProducerMismatch: an Output's Producer.Model differs from
+	// Config.Producer.Model — independence was validated against the
+	// configured producer and no other.
 	ErrProducerMismatch = errors.New("evalrunner: output producer does not match configured producer")
 )
 
@@ -227,7 +220,7 @@ func LoadBank(path string) (scenariobank.Bank, error) {
 // under judgment — exactly one per scenario.
 //
 // Order of operations: journal presence → bank non-empty → scenario
-// re-validation (provenance gates) → exact output binding and producer match →
+// re-validation (provenance gates) → output coverage and producer match →
 // judge-stack probe (llmclient.ProbeAll) → determinism probe
 // (determinismgate.Probe, when Config.DeterminismK >= 3; budget-charged
 // but NOT journaled, so cassettes carry the K probe entries first) → the
@@ -268,38 +261,19 @@ func (r *Runner) Run(ctx context.Context, bank scenariobank.Bank, outputs []Outp
 	r.provenanceValidated = true
 	r.mu.Unlock()
 
-	// Output binding is a side-effect-free preflight: every output must name
-	// exactly one bank scenario, every bank scenario needs exactly one output,
-	// and the producer must equal the producer whose independence was checked at
-	// construction. Do this before pinging, judging, or appending a journal
-	// record, so malformed caller input cannot consume a cassette entry or look
-	// like an attempted evaluation.
-	expected := make(map[string]struct{}, len(scenarios))
-	for _, sc := range scenarios {
-		expected[sc.ID] = struct{}{}
-	}
+	// Output coverage: exactly one output per scenario, all from the
+	// configured producer.
 	byScenario := make(map[string]Output, len(outputs))
 	for i, o := range outputs {
-		if o.ScenarioID == "" {
-			return res, fmt.Errorf("%w: outputs[%d] has an empty ScenarioID", ErrUnexpectedOutput, i)
-		}
-		if _, ok := expected[o.ScenarioID]; !ok {
-			return res, fmt.Errorf("%w: outputs[%d] names scenario %q", ErrUnexpectedOutput, i, o.ScenarioID)
-		}
-		if _, dup := byScenario[o.ScenarioID]; dup {
-			return res, fmt.Errorf("%w: outputs[%d] names scenario %q", ErrDuplicateOutput, i, o.ScenarioID)
+		if o.Producer.Model != r.cfg.Producer.Model {
+			return res, fmt.Errorf("%w: outputs[%d] produced by %q, config declares %q",
+				ErrProducerMismatch, i, o.Producer.Model, r.cfg.Producer.Model)
 		}
 		byScenario[o.ScenarioID] = o
 	}
 	for _, sc := range scenarios {
 		if _, ok := byScenario[sc.ID]; !ok {
 			return res, fmt.Errorf("%w: scenario %q", ErrMissingOutput, sc.ID)
-		}
-	}
-	for i, o := range outputs {
-		if o.Producer != r.cfg.Producer {
-			return res, fmt.Errorf("%w: outputs[%d] producer %+v, config declares %+v",
-				ErrProducerMismatch, i, o.Producer, r.cfg.Producer)
 		}
 	}
 

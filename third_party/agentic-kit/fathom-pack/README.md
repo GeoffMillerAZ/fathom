@@ -26,6 +26,16 @@ every copied entry — `/fathom:activate` re-syncs by it. Prove by
 demonstration: touch `go.mod` in the kit and confirm the stdlib-only guard
 appears.
 
+## Push gates (`scripts/`)
+
+`push-check.sh` refuses a push from a clone whose pre-push hook is not
+lefthook's; `push-http.sh` derives a smart-HTTP URL from the push remote and
+sends the pack over it, so no transport session is held open across a long
+pre-push gate. Both carry a `_test.sh` that runs over temp repositories and
+never touches the network. Why each exists, and the third rule that is a
+property of the gate itself: `docs/project-intent/operating.md` §5. Adopt by
+calling the vendored scripts from the repo's `push` task.
+
 ## Authoring guards responsibly
 
 Guards spend attention as well as tokens; the discipline that keeps them

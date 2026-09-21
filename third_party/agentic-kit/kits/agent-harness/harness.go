@@ -26,80 +26,80 @@ const TelemetrySource = "kits/agent-harness"
 const (
 	// AttrStep discriminates the harness event: StepTurn, StepBudget,
 	// StepInjection, StepHandoff, StepGateDenied or StepGateApproved.
-	AttrStep = event.AttrStep
+	AttrStep = "step"
 
 	// AttrTurn is the zero-based turn index the event belongs to.
-	AttrTurn = event.AttrTurn
+	AttrTurn = "turn"
 
 	// AttrStopReason is the model's stop reason for this turn (turn events).
-	AttrStopReason = event.AttrStopReason
+	AttrStopReason = "stop_reason"
 
 	// AttrToolNames is the comma-joined tool names the model requested, in
 	// call order (turn events with tool calls only).
-	AttrToolNames = event.AttrToolNames
+	AttrToolNames = "tool_names"
 
 	// AttrDurationMS is the model call's wall-clock duration in integer
 	// milliseconds, measured with the injected clock (turn events).
-	AttrDurationMS = event.AttrDurationMS
+	AttrDurationMS = "duration_ms"
 
 	// AttrError is the error class when the model call failed: canceled,
 	// deadline_exceeded, rate_limit, server, invalid_request, auth, or
 	// other. Absent on successful turns.
-	AttrError = event.AttrError
+	AttrError = "error"
 
 	// AttrReason is the budget guard's denial reason (budget events).
-	AttrReason = event.AttrReason
+	AttrReason = "reason"
 
 	// AttrAction is the injection action taken: "block" or "annotate"
 	// (injection events).
-	AttrAction = event.AttrAction
+	AttrAction = "action"
 
 	// AttrRuleIDs is the comma-joined detector rule IDs that fired
 	// (injection events).
-	AttrRuleIDs = event.AttrRuleIDs
+	AttrRuleIDs = "rule_ids"
 
 	// AttrSeverity is the detection's maximum severity (injection events).
-	AttrSeverity = event.AttrSeverity
+	AttrSeverity = "severity"
 
 	// AttrToolUseID is the tool_use ID whose result was flagged (injection
 	// events) or gated (gate events).
-	AttrToolUseID = event.AttrToolUseID
+	AttrToolUseID = "tool_use_id"
 
 	// AttrStopCause is the run's stop cause (handoff events).
-	AttrStopCause = event.AttrStopCause
+	AttrStopCause = "stop_cause"
 
 	// AttrTurns is the number of completed model calls (handoff events).
-	AttrTurns = event.AttrTurns
+	AttrTurns = "turns"
 
 	// AttrLastTool is the last tool the model called (handoff events with
 	// tool calls only).
-	AttrLastTool = event.AttrLastTool
+	AttrLastTool = "last_tool"
 
 	// AttrTried is the comma-joined distinct tool names the model called, in
 	// first-call order (handoff events with tool calls only).
-	AttrTried = event.AttrTried
+	AttrTried = "tried"
 
 	// AttrCheckpointRef is CheckpointRef(RunResult.Final) (handoff events).
-	AttrCheckpointRef = event.AttrCheckpointRef
+	AttrCheckpointRef = "checkpoint_ref"
 )
 
 // AttrStep values.
 const (
 	// StepTurn marks the per-model-call event: one per completed (or failed)
 	// Complete call, emitted BEFORE that turn's tool dispatch.
-	StepTurn = event.StepTurn
+	StepTurn = "turn"
 
 	// StepBudget marks a budget-guard denial; the run ends with StopBudget.
-	StepBudget = event.StepBudget
+	StepBudget = "budget"
 
 	// StepInjection marks a detector flag on a tool result; AttrAction says
 	// what was done about it.
-	StepInjection = event.StepInjection
+	StepInjection = "injection"
 
 	// StepHandoff marks the one Handoff record of a run that stopped on
 	// budget, max_tokens or max_turns (see Handoff). StepGateDenied and
 	// StepGateApproved (effect.go) mark the strict effect gate's decisions.
-	StepHandoff = event.StepHandoff
+	StepHandoff = "handoff"
 )
 
 // Harness is the governed agent loop. Construct with New. It holds only

@@ -21,17 +21,6 @@
 // by exactly one producer goroutine and is closed exactly once by that
 // producer.
 //
-// # Optional provider metadata
-//
-// DescribeProvider queries ProviderDescriber without extending LLMClient.
-// ProviderInfo reports the effective model, provenance family and guaranteed
-// adapter mappings; false capability flags include unknown support. Metadata is
-// configuration evidence, not a live probe or a host-governance receipt. Unknown
-// families never satisfy IndependentProviders. Retry, instrumentation, egress
-// and recording wrappers preserve single-target identity. Swappable, failover,
-// mocks and replay keep identity unknown; concurrent routing can change the
-// serving provider, so a preflight snapshot cannot certify those routes.
-//
 // # Requests: single-turn and multi-turn
 //
 // Request supports both the v1 single-turn form and the v2 conversation form.
@@ -185,10 +174,8 @@
 // adapter returns a typed InvalidRequestError. This is deliberately not
 // silently dropped: an Effort value the caller set explicitly is a statement
 // of intent, and silently ignoring it would let quota-saving errors masquerade
-// as success. Anthropic maps low/medium/high/xhigh/max to output_config.effort;
-// its typed effort and schema coexist without a raw override. Model-specific
-// support belongs in CapabilityCheck. MockClient records the open-ended hint
-// without claiming to simulate reasoning or provider-specific validation.
+// as success. Use Request.ProviderParams to pass experimental effort fields
+// directly until the provider stabilises the API surface.
 //
 // TEMPERATURE-ON-FRONTIER HAZARD: current frontier models (e.g. Claude 3.7+
 // with extended thinking active) return a 400 InvalidRequestError when
@@ -202,8 +189,7 @@
 // Request.ProviderParams is a json.RawMessage containing a JSON object that is
 // merged VERBATIM into the outbound wire request body at the top level, after
 // the adapter maps the typed fields. Provider-side keys the adapter already
-// set are overridden by ProviderParams, subject to adapter conflict checks
-// (Anthropic protects typed Effort and OutputSchema). This is the escape hatch
+// set are OVERRIDDEN by ProviderParams. This is the structural escape hatch
 // for provider-specific fields not yet modeled by the contract (experimental
 // betas, future sampling parameters, etc.). Precedence is explicit by design:
 // ProviderParams is a power tool — the caller owns the semantics, the
@@ -264,10 +250,10 @@
 //
 // # Precedence with ProviderParams
 //
-// Anthropic rejects ProviderParams.output_config when typed OutputSchema or
-// Effort is set. Migration: use the two typed fields together, or leave both
-// unset when explicitly owning the full raw output_config. Other raw keys keep
-// their existing override behavior; adapters may impose additional constraints.
+// ProviderParams is merged AFTER the adapter maps OutputSchema to
+// output_config.format. A ProviderParams key of "output_config" will OVERRIDE
+// the adapter-set value — that is intentional: ProviderParams remains the
+// escape hatch for fine-grained control.
 //
 // # Streaming
 //

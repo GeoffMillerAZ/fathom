@@ -69,9 +69,6 @@ func (c *Client) mapTransportErr(err error) error {
 // do issues one POST /chat/completions request.
 func (c *Client) do(ctx context.Context, hc *http.Client, body []byte, accept string) (*http.Response, error) {
 	endpoint := c.buildEndpoint(completionsPath, c.azureCompletionsPath())
-	if c.useResponses {
-		endpoint = c.baseURL + "/responses"
-	}
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("openai: building request: %w", err)
@@ -89,9 +86,6 @@ func (c *Client) do(ctx context.Context, hc *http.Client, body []byte, accept st
 
 // Complete sends a blocking Chat Completions call and maps the full response.
 func (c *Client) Complete(ctx context.Context, req llmclient.Request) (llmclient.Response, error) {
-	if c.useResponses {
-		return c.completeResponses(ctx, req)
-	}
 	body, err := c.buildBody(req, false)
 	if err != nil {
 		return llmclient.Response{}, err

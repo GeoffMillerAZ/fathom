@@ -74,29 +74,6 @@
 // Nil optional dependencies turn the corresponding feature OFF; the loop
 // itself never requires them.
 //
-// # Governed engineering profile
-//
-// NewEngineeringProfile is an additive, stricter composition for governed
-// engineering work. It requires a registry, injection detector, budget guard,
-// strict effect approver, explicitly scoped pre-dispatch policy, controlled
-// model-attempt executor, and independent completion-evidence verifier before
-// a run begins. Existing Harness constructors and their defaults remain the
-// general-purpose path.
-//
-// Rather than accepting an arbitrary LLMClient, the profile accepts an
-// AttemptExecutor whose Attempt method is declared to perform one model
-// attempt. The profile owns its bounded retry loop and charges the budget at
-// that attempt boundary. It therefore refuses opaque client retry stacks; a
-// caller must expose the controlled seam rather than treating Complete calls
-// as wire-attempt counts. CoverageReceipt distinguishes reserved, spent, and
-// unknown actual cost, and explicitly records this executor contract as a
-// non-guarantee. Streaming is unsupported by this profile.
-//
-// A completed model run passes the profile only when its injected verifier
-// returns identified, independent evidence. That evidence verifies the
-// configured completion condition, not the truth of the result or any remote
-// tool effect.
-//
 // # Effect gate
 //
 // Config.EffectPolicy EffectStrict makes irreversibility a structural

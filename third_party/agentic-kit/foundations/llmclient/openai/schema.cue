@@ -7,9 +7,6 @@ package openai
 
 // #Config is the data shape of openai.Config. Defaults match New.
 #Config: {
-	UseResponses: *false | bool
-	ProviderFamily?: string
-	if UseResponses { AzureDeployment?: _|_ }
 	// BaseURL is the API base URL including path prefix, e.g.
 	// "https://api.openai.com/v1" (default) or "http://localhost:11434/v1"
 	// (Ollama) or "http://localhost:8000/v1" (vLLM). The vanilla default is

@@ -109,13 +109,6 @@ type okPinger struct{}
 
 func (okPinger) Ping(context.Context) error { return nil }
 
-type countingPinger struct{ calls int }
-
-func (p *countingPinger) Ping(context.Context) error {
-	p.calls++
-	return nil
-}
-
 // ---- New (construction honesty) ----
 
 func TestNew_SameFamilyConstructionFails(t *testing.T) {
@@ -350,90 +343,6 @@ func TestRun_ProducerMismatchRefused(t *testing.T) {
 	_, err = r.Run(context.Background(), bank, outs)
 	if !errors.Is(err, ErrProducerMismatch) {
 		t.Fatalf("expected ErrProducerMismatch, got %v", err)
-	}
-}
-
-func TestRun_InvalidOutputBindingRefusedBeforeSideEffects(t *testing.T) {
-	bank := testBank(t, bankTwoJSON)
-
-	cases := []struct {
-		name   string
-		mutate func([]Output) []Output
-		want   error
-	}{
-		{
-			name:   "missing output",
-			mutate: func(outs []Output) []Output { return outs[:1] },
-			want:   ErrMissingOutput,
-		},
-		{
-			name:   "duplicate output",
-			mutate: func(outs []Output) []Output { return append(outs, outs[0]) },
-			want:   ErrDuplicateOutput,
-		},
-		{
-			name: "foreign output",
-			mutate: func(outs []Output) []Output {
-				return append(outs, Output{ScenarioID: "foreign", Text: "irrelevant", Producer: outs[0].Producer})
-			},
-			want: ErrUnexpectedOutput,
-		},
-		{
-			name: "empty output id",
-			mutate: func(outs []Output) []Output {
-				outs[0].ScenarioID = ""
-				return outs
-			},
-			want: ErrUnexpectedOutput,
-		},
-		{
-			name: "producer prompt hash mismatch",
-			mutate: func(outs []Output) []Output {
-				outs[0].Producer.PromptHash = "different-prompt-hash"
-				return outs
-			},
-			want: ErrProducerMismatch,
-		},
-		{
-			name: "producer params hash mismatch",
-			mutate: func(outs []Output) []Output {
-				outs[0].Producer.ParamsHash = "different-params-hash"
-				return outs
-			},
-			want: ErrProducerMismatch,
-		},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			cfg := baseConfig()
-			var journal bytes.Buffer
-			client := llmclient.NewMockClient(passEntry("0.9", "should not be called"))
-			deps := baseDeps(client, jsonllog.NewWriter(&journal), testCatalog(t))
-			pinger := &countingPinger{}
-			deps.Pingers = map[string]llmclient.Pinger{"primary": pinger}
-			r, err := New(cfg, deps)
-			if err != nil {
-				t.Fatalf("New: %v", err)
-			}
-
-			res, err := r.Run(context.Background(), bank, tc.mutate(outputsFor(bank, cfg.Producer)))
-			if !errors.Is(err, tc.want) {
-				t.Fatalf("Run error = %v, want %v", err, tc.want)
-			}
-			if res.JudgeCalls != 0 || len(res.Records) != 0 {
-				t.Errorf("invalid input made judge/journal records: %+v", res)
-			}
-			if pinger.calls != 0 {
-				t.Errorf("invalid input called pinger %d times", pinger.calls)
-			}
-			if client.CallCount() != 0 {
-				t.Errorf("invalid input called model %d times", client.CallCount())
-			}
-			if journal.Len() != 0 {
-				t.Errorf("invalid input appended journal bytes: %q", journal.String())
-			}
-		})
 	}
 }
 

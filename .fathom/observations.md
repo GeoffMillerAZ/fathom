@@ -1487,6 +1487,18 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Status:** closed
 - **Impact:** the general lesson for anyone extending anchor-based healing (line/symbol/AST-position based, not just this one): a re-anchor mechanism must always compare against a hash captured AT THE ORIGINAL ANCHOR TIME, never one derived solely from the CURRENT state of whatever it is about to re-point to — the latter cannot distinguish "moved, unchanged" from "changed in place," which is the entire question freshness tracking exists to answer.
 
+### O99 — A file refresh left the daemon's memoized call graph stale: the memo is keyed by a watermark a single-file re-ingest never moves
+
+- **Symptom:** after the pre-edit hook's POST /refresh-file re-extracted a file (SU-5), `find_callers` / `verify_plan` / `test_impact` on one of its symbols still answered from the pre-refresh graph — the memo (BP-28) is keyed by `IndexedCommit@IndexedAt`, which only a full ingest changes, so the same key stayed a cache hit.
+- **Evidence:**
+  - **Tool:** internal/mcp graph memo (`CachedCallGraph.Graph`), `pkg/client.StoreWatermark`, `fusion.ReingestFile` (replaces observations, never touches service meta)
+  - **Expected:** a refreshed file's symbols are what the next graph query sees.
+  - **Actual:** the memo served the old node set until the next full ingest; `InvalidatePackage` (SU-4) existed with tests but had no production caller.
+- **Root cause:** SU-4's patch entry point was never wired into the refresh path; the cache key could not notice a per-file change by design.
+- **Fix:** `Server.PatchPackageGraph`/`DropCachedGraphs` (internal/mcp/graph_patch.go) called from the refresh-file handler with the package's current nodes; `TestRefreshFile_PatchesCachedGraph`, `TestPatchPackageGraph_KeepsMemoFreshWithoutRebuild`.
+- **Status:** closed (2026-09-21)
+- **Impact:** every reachability answer after an in-session edit now reflects the edit without paying a full rebuild; the response carries `graph_patched` so a hook can cite it.
+
 ### O98 — Several `callgraph.Build(nodes)` call sites never wire typed edges in, reproducing O40's ambiguous-method-name blind spot outside `verify_plan`
 
 - **Symptom:** while closing O40 (see its Status update), a repo-wide `grep callgraph.Build(` turned up ~18 call sites; most call `callgraph.AddTypedEdges` (or `BuildBoth`) right after, but at least three do not: `internal/mcp/analysis_tools.go`'s shared `buildGraph` helper (backs `rename_impact`, `reachable`, `test_impact`, `dead_code` — its own file-header comment calls the syntax-only graph "intentionally simple," with no mention of typed edges), `internal/mcp/nav_tools.go:72` (the `callees` tool), and `cmd/fathom/planscontext.go:131` (`storeCtxIndex`, used by plan-context symbol resolution). Each of these will silently refuse a direct call on a concrete receiver whenever another receiver shares the same method name — the O40 shape — for as long as it lives.

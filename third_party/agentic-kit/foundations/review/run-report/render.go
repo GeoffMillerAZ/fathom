@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/agentic-kit/foundations/telemetry/event"
+	agentharness "github.com/geoffmilleraz/agentic-kit/kits/agent-harness"
 )
 
 // Render produces a deterministic Markdown run-report from in.
@@ -116,7 +117,7 @@ func writeTurnTimeline(b *strings.Builder, in Input) {
 	// Extract turn events: events where AttrStep == "turn".
 	var turns []event.Event
 	for _, ev := range in.Events {
-		if ev.Attributes[event.AttrStep] == event.StepTurn {
+		if ev.Attributes[agentharness.AttrStep] == agentharness.StepTurn {
 			turns = append(turns, ev)
 		}
 	}
@@ -132,8 +133,8 @@ func writeTurnTimeline(b *strings.Builder, in Input) {
 
 	// Sort by turn index (AttrTurn), then by timestamp as tiebreak.
 	sort.SliceStable(turns, func(i, j int) bool {
-		ti := turns[i].Attributes[event.AttrTurn]
-		tj := turns[j].Attributes[event.AttrTurn]
+		ti := turns[i].Attributes[agentharness.AttrTurn]
+		tj := turns[j].Attributes[agentharness.AttrTurn]
 		if ti != tj {
 			return ti < tj
 		}
@@ -143,19 +144,19 @@ func writeTurnTimeline(b *strings.Builder, in Input) {
 	fmt.Fprintf(b, "| Turn | Kind | Stop reason | Tools | Duration ms | Trace span |\n")
 	fmt.Fprintf(b, "|---|---|---|---|---|---|\n")
 	for _, ev := range turns {
-		turn := ev.Attributes[event.AttrTurn]
-		stopReason := ev.Attributes[event.AttrStopReason]
+		turn := ev.Attributes[agentharness.AttrTurn]
+		stopReason := ev.Attributes[agentharness.AttrStopReason]
 		if stopReason == "" {
-			stopReason = ev.Attributes[event.AttrError]
+			stopReason = ev.Attributes[agentharness.AttrError]
 			if stopReason == "" {
 				stopReason = "-"
 			}
 		}
-		tools := ev.Attributes[event.AttrToolNames]
+		tools := ev.Attributes[agentharness.AttrToolNames]
 		if tools == "" {
 			tools = "-"
 		}
-		durMS := ev.Attributes[event.AttrDurationMS]
+		durMS := ev.Attributes[agentharness.AttrDurationMS]
 		if durMS == "" {
 			durMS = "-"
 		}
@@ -177,8 +178,8 @@ func writeFlags(b *strings.Builder, in Input) {
 
 	var injections, compactions []event.Event
 	for _, ev := range in.Events {
-		switch ev.Attributes[event.AttrStep] {
-		case event.StepInjection:
+		switch ev.Attributes[agentharness.AttrStep] {
+		case agentharness.StepInjection:
 			injections = append(injections, ev)
 		case "compaction":
 			compactions = append(compactions, ev)
@@ -202,11 +203,11 @@ func writeFlags(b *strings.Builder, in Input) {
 		fmt.Fprintf(b, "| Turn | Action | Severity | Rules | Tool use ID |\n")
 		fmt.Fprintf(b, "|---|---|---|---|---|\n")
 		for _, ev := range injections {
-			turn := ev.Attributes[event.AttrTurn]
-			action := ev.Attributes[event.AttrAction]
-			severity := ev.Attributes[event.AttrSeverity]
-			rules := ev.Attributes[event.AttrRuleIDs]
-			toolID := ev.Attributes[event.AttrToolUseID]
+			turn := ev.Attributes[agentharness.AttrTurn]
+			action := ev.Attributes[agentharness.AttrAction]
+			severity := ev.Attributes[agentharness.AttrSeverity]
+			rules := ev.Attributes[agentharness.AttrRuleIDs]
+			toolID := ev.Attributes[agentharness.AttrToolUseID]
 			fmt.Fprintf(b, "| %s | %s | %s | %s | %s |\n", turn, action, severity, rules, toolID)
 		}
 		b.WriteString("\n")
@@ -215,7 +216,7 @@ func writeFlags(b *strings.Builder, in Input) {
 	if len(compactions) > 0 {
 		b.WriteString("### Context compactions\n\n")
 		for _, ev := range compactions {
-			turn := ev.Attributes[event.AttrTurn]
+			turn := ev.Attributes[agentharness.AttrTurn]
 			dropped := ev.Attributes["dropped"]
 			fmt.Fprintf(b, "- Turn %s: %s messages dropped\n", turn, dropped)
 		}

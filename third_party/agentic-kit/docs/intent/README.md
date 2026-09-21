@@ -11,11 +11,10 @@ its first self-adopter). Skills: `intent-design` before design work, then
 
 | Question | Read |
 |---|---|
-| Mission, one-sentence test, core beliefs, incubation boundary | [`VISION.md`](../../VISION.md) |
+| Why the kit exists, the one-sentence test, eight core beliefs, what it is not | [`VISION.md`](../../VISION.md) |
 | Why one repository, what belongs, the component map with split/retire triggers, dependency direction | [`repo.md`](repo.md) |
 | How to resolve a tradeoff; the tensions that pull both ways | [`principles.md`](principles.md) |
 | What must always or never be true, and which lint, task, or guard enforces it | [`invariants.md`](invariants.md) |
-| What a governed workflow must prove; implementation vs enforcement vs adoption | [`assurance.md`](assurance.md) |
 | Vocabulary, domain truths, assumptions, the named consumers | [`domain.md`](domain.md) |
 | Current goals with exit tests, boundaries, compatibility surface, non-goals | [`scope.md`](scope.md) |
 | Plausible futures, each with its subscribe-when trigger | [`futures.md`](futures.md) |
@@ -26,11 +25,9 @@ its first self-adopter). Skills: `intent-design` before design work, then
 | What changed for consumers since the last release | [`CHANGELOG.md`](../../CHANGELOG.md) |
 | Package classification and the compatibility promise | [`docs/compat.md`](../compat.md) |
 | Anti-pattern ledger: the practices the kit enforces and their status | [`docs/practices.md`](../practices.md) |
-| Capability backlog, admission triggers and what graduated | [`docs/roadmap.md`](../roadmap.md) |
+| Roadmap: subscriber-gated items and what graduated | [`docs/roadmap.md`](../roadmap.md) |
 | Build status, every capability with a checkbox | [`TRACKING.md`](../../TRACKING.md) |
 | Work orders and their proof | [`docs/plans/`](../plans/), [`docs/designs/`](../designs/) |
-| Current delivery, baseline assessment and composed-workflow design | [`delivery`](../assessments/2026-09-13-governed-workflows.md), [`baseline`](../assessments/2026-09-12-agentic-kit.md), [`design`](../designs/governed-workflows.md) |
-| Evidence-based selection, profiles, screening and operational completion | [`benchmark design`](../designs/benchmark-evidence.md), [`assessment design`](../designs/engineering-assessments.md), [operational ledger](../plans/2026-09-operational-evidence.md), decisions 0011–0013 |
 | Threat model: what is and is not defended | [`docs/threat-model.md`](../threat-model.md) |
 
 ## Routing: what to read for which task
@@ -40,7 +37,7 @@ its first self-adopter). Skills: `intent-design` before design work, then
 | Typo, test fix, refactor inside one package, no exported change | nothing |
 | Implementation touching a sensitive surface (below) | `invariants.md`, decisions index, the surface's "Done needs" |
 | New exported API, new package, classification change | `scope.md` (compatibility surface), `invariants.md`, `principles.md`, decisions index, matching `futures.md` entries |
-| New kit, runtime, host adapter, or cross-package redesign | the above plus `VISION.md`, `domain.md`, `assurance.md`, `futures.md`, relevant decisions in full |
+| New kit, new runtime, cross-package redesign | the above plus `VISION.md` (junk gate), `domain.md`, `futures.md`, the relevant decisions in full |
 | Any merge to `main`, tag, deletion, `go.mod` change, or gate edit | `autonomy.md` |
 | Roadmap, public-readiness, 1.0 | everything |
 
@@ -56,25 +53,23 @@ its first self-adopter). Skills: `intent-design` before design work, then
 | `foundations/llmclient/**` | encodes external CLI/API behavior (tripwires) | adapter `Ping` green; `Verified against` line updated |
 | `TRACKING.md`, `docs/compat.md`, `docs/catalog.md`, `README.md` count | lint-coupled docs | `lint tracking-coverage`, `compat-coverage`, `catalog-fresh`, `readme-count` |
 | `fathom-pack/**` | pre-edit guards consumers inherit | cite the incident; ≤ 4 rules per entry; measure or retire |
-| Governed workflow/profile claims | optional wiring or skipped checks can look healthy | `assurance.md`; entry-point failure scenarios and a versioned, scoped coverage receipt |
 
 ## Before designing
 
 Say out loud, before proposing a design: which invariant, decision, non-goal, or future
 applies, whether a `Revisit when` / `Promote when` / `Drop if` condition has fired, and
-which consumer or bounded incubation pulls for the change (decision 0004). Build the
-present hypothesis; preserve documented options when free. Do not pre-build other futures.
+which named consumer pulls for the change. Build for now; foreclose nothing documented
+when keeping it open is free. No consumer, no capability (VISION junk gate).
 
 ## When to update
 
 - A decision passed the threshold → `intent-decide` (`decisions/NNNN-slug.md`).
-- A goal met its `Done when` → remove it. A future met `Promote when` (subscriber or
-  admitted incubation) → `scope.md` plus a record. `Drop if` met → delete.
+- A goal met its `Done when` → remove it. A future met `Promote when` (a subscriber
+  landed) → `scope.md` plus a record. `Drop if` met → delete.
 - An assumption, invariant, non-goal, or autonomy rule changed → same change.
 - Something broke → `intent-incident`; it ends as a lint check, a guard, a test, or a decision.
 - Trivial work never touches this directory.
 
-List every condition: `rg -n "Revisit when|Promote when|Drop if|Done when" docs/intent/`
+List every condition: `grep -rn -E "(Revisit when|Promote when|Drop if|Done when)" docs/intent/`
 
-Verified against: Claude Code 2.1.270, Codex CLI 0.154.0 (2026-09-13), within the
-[recorded scopes](../evidence/native-hosts/2026-09-13/README.md); Codex live coverage is unknown.
+Verified against: Claude Code 2.1.245, Codex CLI 0.146.0 (2026-08-25).

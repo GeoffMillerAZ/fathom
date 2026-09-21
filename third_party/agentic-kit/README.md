@@ -4,7 +4,7 @@
 
 A layered, org-agnostic platform for **governed agentic work** — developed
 almost entirely by AI agents. CUE owns the *shape* of data; Go owns
-*behavior* — drift between them is a bug. The tree is **197 Go packages, zero
+*behavior* — drift between them is a bug. The tree is **193 Go packages, zero
 external dependencies** (`go.mod` has no `require` block) — a generated count,
 not a hand-maintained one: see [`docs/catalog.md`](docs/catalog.md) (`task
 docs-index` regenerates it, `constitution-lint`'s `catalog-fresh` check
@@ -26,7 +26,6 @@ kits/          High-order workflows composed from foundations (agent-harness, mc
 runtimes/      Policy enforcement + credential-resolution substrates
 surfaces/      Human- and developer-facing interfaces (forms/cueform, editor)
 toolchains/    Canonical CUE schemas, generators, materialization
-internal/      Private implementation helpers shared by strict kit/command paths
 cmd/           Runnable binaries (endpoint-guard sidecar, kit-catalog generator)
 examples/      Small end-to-end programs (agent-cli, governance-wasm)
 scenarios/     Seeded end-to-end blueprints (governed-investigation)
@@ -61,10 +60,6 @@ TRACKING.md    Single source of truth for build/test status
   (`foundations/cost/cost-tracker`), drop-in client instrumentation
   (`foundations/llmclient/instrument`), metrics/events/sinks
   (`foundations/telemetry`).
-- **Evidence-linked assessments and prompt screening** — required criteria cannot
-  be outweighed by soft scores; optional small-model screening applies configurable
-  refusal standards before a protected continuation. [Offline example](examples/engineering-assessments/README.md),
-  [screening configuration](kits/guardrails-pipeline/README.md); live quality is unmeasured.
 
 ## Start here
 
@@ -96,8 +91,7 @@ lefthook install
 
 Two-layer git hooks (see `lefthook.yml`): pre-commit runs fast changed-file
 checks (gofmt, `cue vet`); pre-push runs the full `task validate`.
-Never bypass the hooks or full gate (`LEFTHOOK=0` / `--no-verify`). If a hook fails,
-repair the cause within the [autonomy policy](docs/intent/autonomy.md); gate edits need approval.
+Opt out with `LEFTHOOK=0` — never `--no-verify` unless the hook itself is broken.
 
 Also useful: `task smoke-live` (end-to-end live agent smoke; needs
 `ANTHROPIC_API_KEY`, skips cleanly without it) and `task downstream-check`

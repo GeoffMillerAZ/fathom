@@ -67,13 +67,13 @@ table is left unchanged for the same reason stated above.
 | Classification | Count |
 |---|---|
 | `stable` | 124 |
-| `experimental` | 31 |
+| `experimental` | 30 |
 | `internal-ish` | 24 |
-| **Total** | **179** |
+| **Total** | **178** |
 
 This is a real distribution, not a blanket stamp: 124 packages (70%) reflect
 four waves of hardening with no churn and either a real consumer or a
-foundational role nothing else has displaced; 31 (17%) are honestly flagged
+foundational role nothing else has displaced; 30 (17%) are honestly flagged
 as still-moving (plan-only designs, packages that landed in the last one to
 two days, or kits whose composition TRACKING.md itself calls "unproven");
 24 (13%) are real, tested, and useful but narrow/plumbing rather than a
@@ -87,10 +87,15 @@ throughline's HEAD after the first draft and promoted `internal-ish` →
 `stable` when live imports falsified their "no consumer" rationale; two of
 those imports landed the same day via the concurrent H3 adoption wave.)
 
-**Bounded experimental adoption:** throughline's existing guardrails dependency
-remains experimental, with its explicitly pinned/vendor-tested upgrade risk accepted
-under [0010](intent/decisions/0010-pinned-experimental-adoption.md). This is not a tier
-promotion or public compatibility promise; review precedes its next production upgrade.
+**Flagged for sign-off — a live policy question, not silently resolved
+here:** `kits/guardrails-pipeline` is classified `experimental` ("may change
+API shape … at any time") yet as of 2026-07-16 it has a live, disclosed
+downstream consumer: throughline wired `NewPreLLMChain` into
+`app/chat/untrusted.go` (H3 Stage 1). An experimental classification with a
+production consumer means that consumer has no compatibility promise. Geoff
+should either promote the row to `stable` (accepting the promise) or
+explicitly accept the consumer-on-experimental risk — the classification
+table keeps `experimental` until that call is made.
 
 **Methodology, stated plainly so any row can be challenged:**
 
@@ -159,6 +164,7 @@ promotion or public compatibility promise; review precedes its next production u
 | `foundations/evidence/evidence-grade` | stable | The "#1 truth-seeking primitive" per practices.md; Phase-1 vertical slice; heavy fan-in. |
 | `foundations/evidence/evidence-graph` | stable | Frozen/legacy by design: real consumer (`kits/investigation`) but explicitly the legacy `Span` shape per `foundations/evidence/README.md`; migration to `evidence-span` assessed not-cheap and deferred — no new pipelines may build on it, which is itself a stability property (it won't move). |
 | `foundations/evidence/evidence-ladder` | stable | The D8/D10 Tier1/2/3 evidence-acquisition ladder; deterministic tier progression with fail-closed `ABSENT_UNVERIFIED` semantics — a rich, deliberate moat component. |
+| `foundations/evidence/evidence-producer` | experimental | 2026-09-18 producer catalog for findings/claims crossing into a consuming store (kind, origin, tier cap); first consumer is fathom's findings loop (ADR-040); shape may move as a second producer kind lands. |
 | `foundations/evidence/evidence-resolver` | stable | Deterministic span-reference registry; real fan-in. |
 | `foundations/evidence/evidence-signature` | stable | Per-concern evidence contract (D8); mandatory-canary + coverage-manifest guarantees are substantial, not thin. |
 | `foundations/evidence/evidence-span` | stable | The canonical bitemporal evidence unit with full provenance; heaviest fan-in in the evidence category. |
@@ -231,7 +237,7 @@ promotion or public compatibility promise; review precedes its next production u
 | `foundations/quality/dlp-evaluator` | stable | Configurable DLP risk-band engine; real fan-in. |
 | `foundations/quality/eval-gate` | stable | Deterministic weighted-check gate; heavy fan-in (eval-runner, fitness-function-registry). |
 | `foundations/quality/eval-journal` | stable | Append-only judge-call truth record; real fan-in (eval-runner). |
-| `foundations/quality/fitness-function-registry` | experimental | Named checks plus versioned evidence-linked domain assessments (0012); required outcomes precede scoped scoring. No evidence authentication or universal quality claim. |
+| `foundations/quality/fitness-function-registry` | experimental | One of the four packages TRACKING.md explicitly names as grandfathered in-flight Wave 0. |
 | `foundations/quality/honesty-gate` | stable | Deterministic overclaiming detector; real fan-in (guardrails-pipeline). |
 | `foundations/quality/integrity-evaluator` | stable | Fabricated/unresolvable-reference checker; real fan-in (guardrails-pipeline). |
 | `foundations/quality/qa-harness` | stable | The `Judge` interface + `RubricJudge`/`MockJudge`; real fan-in, compiled into eval-runner's scenario bank. |
@@ -283,14 +289,13 @@ promotion or public compatibility promise; review precedes its next production u
 | `kits/docextract/pdf` | stable | Nested-module format handler for the same real consumer story as `kits/docextract`; own release cadence (see v1 decision record). |
 | `kits/docextract/xlsx` | stable | Nested-module format handler for the same real consumer story as `kits/docextract`; own release cadence (see v1 decision record). |
 | `kits/endpoint-guard` | stable | Real consumer: the `cmd/endpoint-guard` production sidecar. |
-| `kits/eval-runner` | experimental | Stage 1 self-hosted via `task eval`; benchmark receipts/comparisons (0011) and bounded non-executing reuse plans under [0013](intent/decisions/0013-operational-selection-evidence.md). Operational consumer collection/selection remains in progress, not live-quality evidence. Stages 2-3 (judge pool/panel/escalation) remain parked. |
+| `kits/eval-runner` | experimental | Stage 1 landed 2026-07-15; single self-hosted subscriber so far (this repo's own `task eval`); Stages 2-3 (judge pool/panel/escalation) explicitly parked. |
 | `kits/eval-runner/gen-cassettes` | internal-ish | An internal `package main` generator for regenerating eval-runner's own committed test fixtures; not an importable API surface at all. |
 | `kits/expertchat` | experimental | New this wave (`docs/plans/gke-expertchat.md`, agentic-kit repo side of the governed-knowledge-engine wave), critic-reviewed (MERGE-WITH-FIXES, applied) and wire-reconciled 2026-07-28 against fathom's landed `module_query` tool (both same-wave passes): the citation-mandatory answer loop over a fathom module host. Zero in-fleet consumer yet — `examples/expertchat-service` is a composition example, not a consumer. `wire.go` speaks fathom's REAL `tools/call` JSON-RPC envelope (verified against `sextant/internal/mcp/dispatch.go`) invoking the PINNED `module_query` v0 contract (`{text, module?, max?}` → `{results: [...]}`, field-for-field reconciled with fathom's own round-trip test) — no remaining wire assumption. |
-| `kits/governed-prose-kit` | experimental | Strict sourced generation/review/export is composed with HITL in an offline scenario; actual consumer prose adoption and general semantic quality remain unmeasured. |
-| `kits/guardrails-pipeline` | experimental | Throughline's legacy chains remain pinned under 0010. Additive configurable prompt-screening/held-continuation API includes opt-in provider structured output under 0012/0013; no live classifier-quality or native-host coverage claim. |
+| `kits/governed-prose-kit` | experimental | TRACKING.md explicitly: "Composition unproven — no in-fleet consumer yet"; adoption sketch recorded but not wired. |
+| `kits/guardrails-pipeline` | experimental | TRACKING.md said "wiring pending" when this audit was drafted; throughline wired it the same day (`app/chat/untrusted.go`, H3 Stage 1). Classification deliberately NOT silently upgraded — see the flagged policy question in the sign-off section above. |
 | `kits/hitl` | stable | Real in-repo composition proof (`scenarios/governed-docextract-hitl`); growing-gardens-bi assessed adopt-worthy-in-principle with a stated subscribe-when trigger, not a red flag against the kit. |
 | `kits/investigation` | stable | Real in-repo composition proof (`scenarios/governed-investigation`); migrated to canonical `evidencespan.Span` this wave, not flagged "composition unproven" unlike its sibling kits that are. |
-| `kits/lesson-transfer` | experimental | Bounded public-synthetic file protocol and receiver-owned reproduction under G7/0009; no shared memory, execution authority or automatic remediation. |
 | `kits/mcp-server` | experimental | TRACKING.md explicitly: "Composition unproven — serving side has no in-fleet consumer yet," even after H6's Streamable HTTP addition. |
 | `runtimes/credresolve` | stable | Real, tested (15 tests) credential resolution; consumed by throughline (`adapters/claudeauth/resolver.go`) since 2026-06-11 — the initial "no consumer" draft of this row was falsified by re-audit against the consumer's HEAD. |
 | `runtimes/policy` | internal-ish | Thin runtime `Enforcer` wrapper over the `tool-execution-policy` foundation; no consumer today. |

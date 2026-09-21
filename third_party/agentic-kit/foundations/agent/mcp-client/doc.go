@@ -60,20 +60,20 @@
 // the agent re-reads on each tools/list). This is the tool-poisoning attack
 // documented in the 2026 landscape findings [landscape/tool-poisoning].
 //
-// Pin records a SHA-256 of canonical (name ‖ description ‖ inputSchema) metadata
-// for each tool at first list. Every subsequent tools/list re-checks every pin: ListTools still
+// Pin records a SHA-256 of (name ‖ description ‖ inputSchema) for each tool at
+// first list. Every subsequent tools/list re-checks every pin: ListTools still
 // returns the full list, but returns a ToolChangedError for any tool whose
 // description has changed rather than silently forwarding modified
 // instructions to the model. Rebinding a changed tool requires an explicit
 // Repin call, making drift visible and auditable.
 //
 // CallTool performs NO pin verification of its own: it neither re-fetches the
-// tool description nor consults the pin table recorded at list time. Callers
-// that need an opt-in per-call metadata check use CallToolVerified, or set
-// BridgeOptions.VerifyPinBeforeCall for bridged registry tools. The verified
-// path refuses an unpinned, missing, or drifted selected tool before tools/call;
-// it does not make a remote check and call atomic. Verification is scoped to
-// that selected tool, while legacy CallTool remains listing-only.
+// tool description nor consults the pin table recorded at list time. Drift
+// between a listing and a call is therefore caught only at the next ListTools
+// — a pre-call pin check is TRACKING.md H8-1, an open hardening item, not a
+// current behavior. A caller that needs a fresher guarantee calls ListTools
+// before CallTool. TestDocDoesNotClaimPinVerification holds this paragraph to
+// CallTool's own comment.
 //
 // # Registry bridge
 //

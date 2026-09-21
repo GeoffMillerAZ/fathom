@@ -80,17 +80,12 @@ func NewMemoryVault(tz *Tokenizer, policy AccessPolicy, clock func() time.Time) 
 //
 // A tokenize AuditEvent is always appended, even on error.
 func (v *MemoryVault) Tokenize(value string, class TokenClass, namespace string, by aiprovenance.Author) (Token, error) {
-	v.mu.Lock()
-	defer v.mu.Unlock()
 	tok, err := v.tz.RandomToken(class, namespace)
 
 	principalID := principalIDFromAuthor(by)
 
-	if err == nil {
-		if _, exists := v.store[tok.Value]; exists {
-			err = ErrTokenCollision
-		}
-	}
+	v.mu.Lock()
+	defer v.mu.Unlock()
 
 	ae := AuditEvent{
 		At:          v.clock(),
@@ -135,14 +130,9 @@ func (v *MemoryVault) TokenizeDeterministic(value string, class TokenClass, name
 
 	// Idempotency check: if this token value is already stored, confirm the
 	// plaintext matches and return without a new audit event.
-	if err := tok.Validate(); err != nil {
-		v.auditLog = append(v.auditLog, AuditEvent{At: v.clock(), Action: ActionTokenize, TokenValue: tok.Value, Class: class, PrincipalID: principalID, Allowed: false})
-		return Token{}, err
-	}
 	if existing, ok := v.store[tok.Value]; ok {
-		if existing.value != value || existing.token != tok {
-			v.auditLog = append(v.auditLog, AuditEvent{At: v.clock(), Action: ActionTokenize, TokenValue: tok.Value, Class: class, PrincipalID: principalID, Allowed: false})
-			return Token{}, ErrTokenCollision
+		if existing.value != value {
+			return Token{}, fmt.Errorf("tokenization: TokenizeDeterministic: HMAC collision for token %q (different plaintext already stored)", tok.Value)
 		}
 		return tok, nil
 	}
@@ -168,8 +158,7 @@ func (v *MemoryVault) Detokenize(t Token, principal Principal, purpose string) (
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
-	e, ok := v.store[t.Value]
-	allowed := ok && sameIdentity(t, e.token) && v.policy.Allow(principal, e.token.Class, purpose)
+	allowed := v.policy.Allow(principal, t.Class, purpose)
 
 	ae := AuditEvent{
 		At:          v.clock(),
@@ -180,15 +169,16 @@ func (v *MemoryVault) Detokenize(t Token, principal Principal, purpose string) (
 		Purpose:     purpose,
 		Allowed:     allowed,
 	}
-	if ok {
-		ae.Class = e.token.Class
-	}
 	v.auditLog = append(v.auditLog, ae)
 
 	if !allowed {
 		return "", fmt.Errorf("tokenization: Detokenize: principal %q denied access to class %q", principal.ID, t.Class)
 	}
 
+	e, ok := v.store[t.Value]
+	if !ok {
+		return "", fmt.Errorf("tokenization: Detokenize: unknown token %q", t.Value)
+	}
 	return e.value, nil
 }
 

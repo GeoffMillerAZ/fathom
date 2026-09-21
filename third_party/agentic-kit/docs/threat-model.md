@@ -24,18 +24,6 @@ transcript) or annotated, per harness configuration. Recall on the kit's
 seeded corpus is 22/22 after an uplift pass; that corpus is necessarily finite
 — see §2.
 
-**Optional model-based prompt screening.**
-`guardrails-pipeline.PromptScreener` classifies explicitly supplied text against a
-versioned refusal policy. Its `Run` method holds the protected continuation on
-refusal, uncertainty, malformed output, cancellation or classifier failure. Default
-categories cover permission bypass, protected-data extraction and instruction hijack;
-they are not a comprehensive content-moderation standard. The supplied classifier
-client must be eligible for that data and bounded by the caller's budget. Prompt
-classification can miss attacks or falsely block benign work. An allow grants no
-tool permission and does not screen later retrieval, outputs or other entrypoints.
-Tests prove the gated callback and independent effect gate, not live model accuracy.
-See [assessment design](designs/engineering-assessments.md).
-
 **Untrusted-content fencing.**
 `foundations/security/untrusted-content-wrapper` fences untrusted external
 content (user documents, tool output, fetched web pages) between per-wrap
@@ -105,26 +93,17 @@ foreign MCP tools bridged into the registry. **This taxonomy is
 self-declared** — see §2 for what that means.
 
 **Tool-description integrity (tool poisoning).**
-`foundations/agent/mcp-client` computes a SHA-256 pin of selected tool metadata
-(including name, description, schema and declared effects) at first listing and
+`foundations/agent/mcp-client` computes a SHA-256 hash of
+(name ‖ description ‖ inputSchema) for every tool at first listing and
 re-verifies it on every subsequent `ListTools` — so the description the
 model sees (which always enters context via a listing) is pin-verified. A
 changed description returns a typed `ToolChangedError` instead of silently
 forwarding a modified instruction into the model's context. Rebinding
 requires an explicit `Repin` call, so any drift is visible and auditable
-rather than silently absorbed. **Legacy `CallTool` performs no pin re-verification.**
-Opt into `CallToolVerified` or the bridge's `VerifyPinBeforeCall` for a fresh metadata
-check before dispatch; missing, ambiguous or drifted tools refuse. Local pin mutation
-is coordinated with the call, but remote listing and dispatch are not atomic: a server
-can change behavior after verification. Pins bind metadata, not executable behavior
-or trustworthy first-contact identity.
-
-**Composed workflow boundaries.** The strict engineering profile validates required
-wiring and reports which controls actually ran; it does not certify arbitrary clients
-or native host tools. Native adapters protect only their declared delivered paths, not
-an OS sandbox, and unobserved/unsupported controls cannot pass. Source-linked prose,
-stored approvals and portable lessons preserve separate caller-owned trust boundaries;
-see [assurance](intent/assurance.md) and [delivery evidence](assessments/2026-09-13-governed-workflows.md).
+rather than silently absorbed. **`CallTool` itself performs no pin
+re-verification** — description drift between a listing and a call is caught
+at the *next* `ListTools`, not at call time; a pre-call pin check is an open
+hardening item tracked in TRACKING.md's pull queue, not a shipped behavior.
 
 **Audit trail.**
 `foundations/provenance/event-store` is an append-only, hash-chained event
@@ -174,9 +153,7 @@ Concretely, unpacked against the mitigations in §1:
   sounds: `foundations/security/tokenization`'s `EncryptedVault` /
   `ShreddableVault` gives **tokenized** values a crypto-erasure path
   (`Shred(namespace)` destroys the per-namespace AES-256-GCM key, making
-  ciphertexts unrecoverable through that key store). Persistent adapters must make
-  key destruction/tombstones durable; external key backups or restored old store
-  snapshots are outside this guarantee. This only covers content that
+  ciphertexts permanently unrecoverable) — but that only covers content that
   was routed through the vault's tokenization step in the first place.
   Anything written directly into a journal, event store, ledger, or replay
   cassette outside that vault has no deletion path at all.

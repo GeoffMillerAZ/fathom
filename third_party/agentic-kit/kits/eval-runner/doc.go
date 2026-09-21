@@ -67,9 +67,8 @@
 //
 // # Non-guarantees (stated as plainly as the guarantees)
 //
-//   - The runner validates declared family/session separation, journaling,
-//     budget enforcement, and probe wiring. It proves neither statistical
-//     independence nor judge correctness: an LLM judge is a
+//   - The runner proves independence, journaling, budget enforcement, and
+//     probe wiring. It NEVER proves judge correctness: an LLM judge is a
 //     model with all of a model's failure modes (position bias, verbosity
 //     bias, style bias survive family separation — see model-catalog's
 //     package doc).
@@ -88,31 +87,6 @@
 //     point on too little evidence, not a reliability claim; Trials and
 //     Excluded are reported so a consumer can apply its own floor.
 //
-// # Experimental benchmark receipts
-//
-// BenchmarkManifest binds solution and evaluation component digests using
-// record-fingerprint. BenchmarkEvidence validates bounded, caller-declared
-// terminal trials; SummarizeBenchmark retains failures and missing cost, and
-// CompareBenchmarks composes reliability-stats for paired task-clustered
-// acceptance differences. Comparison requires matching evaluation identities,
-// exact task/replicate pairs, distinct solutions and caller-declared live
-// evidence fresh at the supplied time. Its seed and parameters are recorded.
-// These helpers do not collect calls, authenticate artifacts, establish
-// representative datasets or calibrated graders, or select a runtime model.
-// A live flag is an assertion, never independent observation. Replay and
-// synthetic receipts can be summarized but cannot be compared as live quality.
-// See docs/designs/benchmark-evidence.md for metric semantics and limitations.
-//
-// PlanBenchmarkReuse adds bounded, non-executing reuse/change proposals. It
-// binds the retained trial inputs, complete manifest dependency classifications,
-// local verification receipts and time-scoped external identities. Exact output
-// reuse requires caller-attested determinism and all-local retained dependencies;
-// live targets always require a new observation. Regrading/repricing never adds
-// independent trials. The planner reads no artifact bytes and authenticates no
-// attestations; the consumer must verify retained bytes at its storage boundary.
-// Full-manifest closure is conservative: it does not infer minimal affected-test
-// subsets or semantic equivalence. It adds no router, provider discovery or store.
-//
 // # Concurrency contract
 //
 // A Runner is safe for concurrent use: construction-time state is
@@ -125,6 +99,4 @@
 // is invoked synchronously inside Score under the judge's mutex, so a
 // non-reentrant sink is safe. Deps.Now, when nil, defaults to time.Now
 // (the documented default for this seam).
-// Benchmark helpers are pure; callers must not mutate supplied maps, slices
-// or pointer values while a helper is executing.
 package evalrunner

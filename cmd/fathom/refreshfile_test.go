@@ -38,7 +38,7 @@ func TestRefreshFileHandler_ReextractsOneFile(t *testing.T) {
 		t.Fatalf("rewrite target.go: %v", err)
 	}
 
-	srv := httptest.NewServer(refreshFileHandler(c))
+	srv := httptest.NewServer(refreshFileHandler(c, nil))
 	defer srv.Close()
 
 	body, _ := json.Marshal(refreshFileRequest{Service: "refresh-svc", File: "target.go"})
@@ -68,7 +68,7 @@ func TestRefreshFileHandler_MissingFieldsBadRequest(t *testing.T) {
 	c := client.New(conn, ms)
 	t.Cleanup(func() { _ = c.Close() })
 
-	srv := httptest.NewServer(refreshFileHandler(c))
+	srv := httptest.NewServer(refreshFileHandler(c, nil))
 	defer srv.Close()
 
 	body, _ := json.Marshal(refreshFileRequest{Service: "", File: ""})
@@ -88,7 +88,7 @@ func TestRefreshFileHandler_MethodNotAllowed(t *testing.T) {
 	c := client.New(conn, ms)
 	t.Cleanup(func() { _ = c.Close() })
 
-	srv := httptest.NewServer(refreshFileHandler(c))
+	srv := httptest.NewServer(refreshFileHandler(c, nil))
 	defer srv.Close()
 
 	resp, err := http.Get(srv.URL + "/refresh-file")

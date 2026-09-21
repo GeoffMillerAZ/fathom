@@ -1,6 +1,6 @@
 # Scope
 
-Where the edges are right now. `docs/roadmap.md` holds the capability backlog;
+Where the edges are right now. `docs/roadmap.md` holds the subscriber-gated sequence;
 `TRACKING.md` holds every capability's checkbox; this file is the current position with
 exit tests. Done goals are deleted, not archived.
 
@@ -9,55 +9,33 @@ exit tests. Done goals are deleted, not archived.
 **G1. Ratify D4: does the kit go public, and is it a 1.0 candidate?** Done when: Geoff
 records the decision (`decisions/`), which unblocks H8 Stage B
 (`docs/plans/handoff-h8-public-candidacy.md`, 5 open rows). Status: blocked on Geoff
-since the uplift plan closed at v0.6.0. This does not block the workflow uplift;
-the 2026-09-12 strategy review does not authorize public release or a tag.
+since the uplift plan closed at v0.6.0.
 
-Sequence and scenarios: [governed workflows](../designs/governed-workflows.md).
-Incubation does not itself authorize promotion, deployment, paid runs, gate weakening
-or consumer mutation. The owner's separate 2026-09-13 authorization covers necessary
-throughline/resume_as_code changes, their project-local Claude/Codex configuration
-and synthetic live verification capped at $10 total; no global configuration changes.
-Maintenance and review owner: the kit maintainer (currently Geoff); agents execute
-bounded work under `autonomy.md`. Use 0004's promote / revise / retire criteria at review.
+**G2. Settle `kits/guardrails-pipeline`'s classification.** It is `experimental` with a
+live production consumer (throughline), so that consumer has no compatibility promise.
+Done when: promoted to `stable` in `compat.md` with the promise, or the risk is recorded
+as accepted. Status: open, flagged in `compat.md` §75–83.
+
+**G3. Close the open `TRACKING.md` rows.** F8 (guardrails-pipeline structured findings),
+F9 (EncryptedVault deterministic minting), H8-1 (`CallTool` pre-call pin verification,
+Geoff's call), more `scenarios/` blueprints. Done when: each is `[x]` with the gate green
+or `[-]` with a disposition. Status: 5 open, 3 in progress, 276 done.
+
+**G4. Apply the change-records budget from the next entry on.** Done when: every new
+`CHANGELOG.md` line is at most two sentences with a link, and `[Unreleased]` is rolled
+before the next tag. Status: 12 legacy long entries remain under `[Unreleased]` by rule.
 
 ## Current boundaries
 
-- Five library roots: `foundations`, `kits`, `runtimes`, `surfaces`, `toolchains`.
-  Counts and classifications live in `docs/catalog.md` / `docs/compat.md` rather than
-  being duplicated here. `cmd/`, `examples/`, `scenarios/`, `specs/` are outside that surface.
+- 172 library packages across five roots (`foundations` 148+, `kits` 13, `runtimes` 2,
+  `surfaces` 2, `toolchains` 4); 124 `stable`, 25 `experimental`, 24 `internal-ish`
+  (`docs/compat.md`). `cmd/`, `examples/`, `scenarios/`, `specs/` are not library surface.
 - Zero external dependencies; two nested modules (`kits/docextract/{pdf,xlsx}`) with
   their own tags. Go 1.26, CUE 0.16.
-- Four inspected consumers: fathom, throughline, growing-gardens-bi, resume_as_code.
-  They use a mix of sibling workspaces, replacement modules and vendored snapshots.
-  At the assessment baseline, the committed downstream task covers the first three;
-  the fourth consumer's proposed check is an uncommitted, mutating Taskfile change.
+- Three named consumers checked by `task downstream-check`; adoption is sibling
+  checkout + `go.work` + `require`/`replace` (`docs/adopting.md`).
 - LLM adapters: anthropic, bedrock (+awscred), openai (+Azure), claudecli, codexcli.
-- CLI providers are text-completion lanes; they reject caller-defined tools. Native
-  host adapters are a separate installed-policy boundary, with no universal parity claim.
-  G5's bounded setup exit passed in 142 seconds with tested version/scoped receipts;
-  [native evidence](../evidence/native-hosts/2026-09-13/README.md) leaves strict Claude
-  editing and Codex live coverage unproven. Human usability remains unmeasured.
-- G7's bounded transfer exit passed in kit and resume_as_code `7a6c56a`: actual
-  code-byte provenance, independent negative receivers, a bound adoption receipt and
-  tested revocation. Removing only the classification check makes the seeded false-pass
-  test fail. This is retrospective synthetic evidence, not measured recurrence reduction.
-  [Delivery](../assessments/2026-09-13-governed-workflows.md); review under 0009 remains due.
-- Throughline's experimental guardrails upgrade is explicitly pinned and accepted
-  under [0010](decisions/0010-pinned-experimental-adoption.md), not promoted to stable.
-  F8/F9 run through its actual default-vendor gate; H8-1 is an explicit opt-in MCP
-  dispatch policy with tested drift refusal and documented remote race limits.
-- Evidence-comparison incubation [0011](decisions/0011-workload-selection-evidence.md)
-  extends the existing evaluator; [0012](decisions/0012-composable-engineering-assessments.md)
-  adds domain assessment profiles to the fitness registry and configurable prompt
-  screening to guardrails. [Design](../designs/engineering-assessments.md): two bounded
-  reference domains, hard/soft separation, unknown evidence and held execution.
-  Live screening quality, model selection and broad profile adoption remain unproven.
-  One active implementation incubation; review due 2026-10-16 or next release.
-  The owner's operational follow-through is now admitted under
-  [0013](decisions/0013-operational-selection-evidence.md), with the required consumer,
-  selection/reuse, screening, retrieval and measurement exits in the
-  [completion ledger](../plans/2026-09-operational-evidence.md). Live spending remains
-  separately gated; no completion or production model switch is implied.
+- Latest tag `v0.7.0` (2026-07-16); `[Unreleased]` holds 12 entries, `Release impact: minor`.
 
 ## Compatibility surface
 
@@ -80,14 +58,8 @@ written.
 
 ## Non-goals
 
-Long-lived boundaries live in `VISION.md`. The ones an agent is most likely to re-propose:
-
-- **Guaranteed semantic truth or universal best-practice compliance.** Deterministic
-  link validation cannot prove that a source is true or entails a generated claim.
-  Publish the scope and quality evidence for each workflow (`assurance.md`).
-- **A global memory service or automatic policy propagation.** Lessons travel as
-  reviewed, versioned artifacts; local workloads retain authority and private storage.
-  Revisit when: two consumers need guarantees file-based distribution cannot supply (0006).
+Long-lived "what the kit is not" (framework, provider lock-in, research playground,
+compliance checkbox) lives in `VISION.md`. The ones an agent is most likely to re-propose:
 
 - **A sandbox or isolation claim for `bounded-exec`.** Why: confinement is not
   isolation; stdlib cannot deliver it. Revisit when: never; consumers add isolation.

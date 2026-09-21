@@ -156,6 +156,24 @@ func (c *CachedCallGraph) InvalidatePackage(service, pkg string, newNodes []core
 	}
 }
 
+// Has reports whether a graph is memoized for service under ANY watermark —
+// the question a package-scoped patch asks before paying to list a
+// package's nodes: with nothing cached there is nothing to patch, and the
+// next Graph() call builds fresh from current data regardless.
+func (c *CachedCallGraph) Has(service string) bool {
+	if c == nil {
+		return false
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for _, e := range c.entries {
+		if e.service == service {
+			return true
+		}
+	}
+	return false
+}
+
 // Stats reports the cache's size and its process-lifetime hit/miss counts —
 // the numbers that say whether the memo is doing anything, rather than an
 // assurance that it is.

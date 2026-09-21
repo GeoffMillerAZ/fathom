@@ -90,7 +90,7 @@ func benchObligationsAndRefreshMux(c *client.Client, serviceID string) http.Hand
 		var req refreshFileRequest
 		body, _ := io.ReadAll(r.Body)
 		_ = json.Unmarshal(body, &req)
-		out := buildRefreshFileResponse(r.Context(), c, req.Service, req.File)
+		out := buildRefreshFileResponse(r.Context(), c, nil, req.Service, req.File)
 		json.NewEncoder(w).Encode(out)
 	})
 	return mux

@@ -19,7 +19,6 @@ _postLLMStages: "integrity" | "honesty" | "dlp" | "disclaimer"
 	// injectDetectThreshold is the minimum severity that triggers deny.
 	// Valid values: "low" | "medium" | "high" | "critical". Default: "high".
 	injectDetectThreshold?: "low" | "medium" | "high" | "critical"
-	injectDetectAction?:    "block" | "annotate"
 
 	// classifyThreshold is the minimum sensitivity level that triggers deny.
 	// Valid values: "public" | "internal" | "confidential" | "restricted". Default: "confidential".
@@ -42,22 +41,17 @@ _postLLMStages: "integrity" | "honesty" | "dlp" | "disclaimer"
 
 // #StageResult is the outcome of one pipeline stage.
 #StageResult: {
-	stage:   string & !=""
-	allowed: bool
-	action:  "allowed" | "denied" | "skipped" | "transformed" | "error"
+	stage:     string & !=""
+	allowed:   bool
+	action:    "allowed" | "denied" | "skipped" | "transformed" | "error"
 	findings?: [...string]
-	matches?: [...{
-		RuleID:   string & !=""
-		Severity: "low" | "medium" | "high" | "critical"
-		Excerpt:  string
-	}]
 	severity?: string
 }
 
 // #Decision is the outcome of a chain Run call.
 #Decision: {
-	allowed: bool
-	stages: [...#StageResult]
+	allowed:     bool
+	stages:      [...#StageResult]
 	transformed: string
 	// err is omitted from CUE (it is Go-only; excluded from JSON serialisation)
 }

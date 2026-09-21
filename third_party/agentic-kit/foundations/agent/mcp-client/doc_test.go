@@ -23,9 +23,13 @@ var pinOverclaims = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)CallTool[^.]*\bverif(y|ies|ied)\b[^.]*\bpin`),
 }
 
-// TestDocDoesNotClaimPinVerification keeps the legacy CallTool guarantee
-// separate from the opt-in CallToolVerified guarantee. The package doc must
-// say which path verifies metadata and must not claim remote atomicity.
+// TestDocDoesNotClaimPinVerification holds the package doc to what CallTool's
+// own comment says: the description pin is verified at ListTools only, and
+// CallTool performs no pin verification of its own (TRACKING.md H8-1, open).
+// The package doc once claimed "every tools/call" verified the pin — INC-5
+// residue that outlived the H8 Stage-A docs correction — and this test fails
+// the moment that claim returns in any phrasing pinOverclaims catches, or the
+// moment the doc stops carrying the method comment's admission.
 func TestDocDoesNotClaimPinVerification(t *testing.T) {
 	fset := token.NewFileSet()
 
@@ -42,21 +46,18 @@ func TestDocDoesNotClaimPinVerification(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse client.go: %v", err)
 	}
-	methodDocs := make(map[string]string)
+	var methodDoc string
 	for _, decl := range clientFile.Decls {
 		fn, ok := decl.(*ast.FuncDecl)
-		if !ok || fn.Recv == nil || fn.Doc == nil {
+		if !ok || fn.Recv == nil || fn.Name.Name != "CallTool" {
 			continue
 		}
-		methodDocs[fn.Name.Name] = normalizeDoc(fn.Doc.Text())
+		if fn.Doc != nil {
+			methodDoc = normalizeDoc(fn.Doc.Text())
+		}
 	}
-	methodDoc := methodDocs["CallTool"]
 	if methodDoc == "" {
 		t.Fatal("client.go: (*Client).CallTool has no doc comment")
-	}
-	verifiedDoc := methodDocs["CallToolVerified"]
-	if verifiedDoc == "" {
-		t.Fatal("client.go: (*Client).CallToolVerified has no doc comment")
 	}
 
 	if !strings.Contains(methodDoc, pinAdmission) {
@@ -65,14 +66,8 @@ func TestDocDoesNotClaimPinVerification(t *testing.T) {
 	if !strings.Contains(pkgDoc, pinAdmission) {
 		t.Errorf("package doc does not carry CallTool's admission %q", pinAdmission)
 	}
-	if !strings.Contains(pkgDoc, "CallToolVerified") {
-		t.Error("package doc does not name the opt-in verified call path")
-	}
-	if !strings.Contains(pkgDoc, "VerifyPinBeforeCall") {
-		t.Error("package doc does not name the bridge opt-in")
-	}
-	if !strings.Contains(verifiedDoc, "not atomic") || !strings.Contains(pkgDoc, "not make a remote check and call atomic") {
-		t.Error("verified-call documentation must state that remote verification and dispatch are not atomic")
+	if !strings.Contains(pkgDoc, "H8-1") {
+		t.Error("package doc does not point at TRACKING.md H8-1, the open pre-call pin check")
 	}
 	for _, re := range pinOverclaims {
 		if m := re.FindString(pkgDoc); m != "" {
