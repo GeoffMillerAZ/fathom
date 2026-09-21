@@ -1521,6 +1521,15 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Status:** fixed (2026-09-19, same round): `internal/mcp/analysis_tools.go` gained `bothGraph` — the watermark-cached syntax+typed graph `loadNavGraphs` already built for the nav tools — and `reachable`, `test_impact`, `dead_code` and `find_callees` walk it; `cmd/fathom/planscontext.go` adds the typed edges the same way `verify` now does. `rename_impact` keeps its syntax-only caller SET by decision (BP-26) and still annotates tiers from the typed graph. Regression coverage: `TestCmdVerify_Store_TypedEdgeWiresReachability`, `internal/verify/typededge_residue_test.go`; `go test ./internal/mcp/...` green on the change.
 - **Impact:** `rename_impact`, `reachable`, `test_impact`, `dead_code`, and `callees` can under-report on exactly the ambiguous-method-name shape O40 demonstrated end to end for `verify_plan`/`verify` — plausibly a live source of false "unreachable"/"safe to delete"/"no callers" answers on any Go service with more than one implementer of a shared method name (very common — any interface with 2+ implementations).
 
+### O104 — H1-T04's oracle demanded grep's vocabulary ("not found") and failed the wired arm for stating the same fact in verify's own label ("claimed-but-absent")
+
+- **Symptom:** lookups-vs-r1: full 0/2 on H1-T04 while grep 2/2. Both arms named DEMO-H1 as the failing row and said the symbol is absent; the wired arm reached the answer through `find_symbol` + `verify_plan` and quoted the gate's own verdict label, `claimed-but-absent`; the oracle's `answer_all_of` required the literal "not found".
+- **Evidence:** cells lookups-vs-r1 H1-T04 full/t1,t2 (final answers), grep/t1,t2; `testdata/scenariobench/lookups-vs.json`.
+- **Root cause:** an oracle token that encodes one tool's phrasing of a fact, not the fact — the corpus-parity rule (O53) applied to answers, not only to instructions.
+- **Fix:** the oracle keeps `DEMO-H1` as all-of and accepts any of "not found" / "claimed-but-absent" / "does not exist" / "no such symbol" / "absent" / "no match" (a spelling-equivalent group for ONE fact). Rows filed this round stay as measured under the old oracle (the corpus hash is part of the cell key); the next run scores under the fixed one.
+- **Status:** closed (2026-09-21)
+- **Impact:** one of the four wired-arm misses on the home lookup corpus this round is a vocabulary mismatch, not a wrong answer; the paired reading in docs/bench/readings names it.
+
 ### O103 — findings-loop-r1 lost all 30 cells at arm rendering: the subject's own committed bare `fathom …` hooks
 
 - **Symptom:** every findings-loop cell LOST with "hook command \"fathom edit-hook\" names a bare binary on PATH, not the cell's own fathom binary" — the fathom repo at the corpus's base commit (687ce6a9) commits `.claude/settings.json` rows that call `fathom` through the PATH shim; `fathom init` wrote its own absolute rows beside them and RenderArm refused the bare ones.

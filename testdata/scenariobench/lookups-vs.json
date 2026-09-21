@@ -240,8 +240,17 @@
       },
       "oracle": {
         "answer_all_of": [
-          "DEMO-H1",
-          "not found"
+          "DEMO-H1"
+        ],
+        "answer_any_of": [
+          [
+            "not found",
+            "claimed-but-absent",
+            "does not exist",
+            "no such symbol",
+            "absent",
+            "no match"
+          ]
         ]
       },
       "predictions": {
