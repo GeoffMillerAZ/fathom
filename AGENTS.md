@@ -1,4 +1,4 @@
-<!-- fathom:begin v3 sha256:0ac331d4f347089d3dd89ec45dbc7bdcfa8b06b9b0943e2f017dcafb3d10fec7 -->
+<!-- fathom:begin v3 sha256:1d8c362742eae0be4571878adabb37cc65548215be41034fdf88669266409930 -->
 ## fathom code intelligence
 
 This repo is indexed by fathom as service "fathom". Route by

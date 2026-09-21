@@ -15,7 +15,7 @@
       {
         "hooks": [
           {
-            "command": "/Volumes/m2ext/code/geoffmilleraz/sextant/bin/fathom session-hook --event cwd-changed",
+            "command": "fathom session-hook --event cwd-changed",
             "timeout": 5,
             "type": "command"
           }
@@ -26,7 +26,7 @@
       {
         "hooks": [
           {
-            "command": "/Volumes/m2ext/code/geoffmilleraz/sextant/bin/fathom session-hook --event cwd-changed",
+            "command": "fathom session-hook --event cwd-changed",
             "timeout": 5,
             "type": "command"
           }
@@ -37,7 +37,7 @@
       {
         "hooks": [
           {
-            "command": "/Volumes/m2ext/code/geoffmilleraz/sextant/bin/fathom config audit --hook --event file-changed",
+            "command": "fathom config audit --hook --event file-changed",
             "timeout": 10,
             "type": "command"
           }
@@ -72,7 +72,7 @@
       {
         "hooks": [
           {
-            "command": "/Volumes/m2ext/code/geoffmilleraz/sextant/bin/fathom session-hook --event tool-failure",
+            "command": "fathom session-hook --event tool-failure",
             "timeout": 5,
             "type": "command"
           }
@@ -106,7 +106,7 @@
       {
         "hooks": [
           {
-            "command": "/Volumes/m2ext/code/geoffmilleraz/sextant/bin/fathom doctor --brief",
+            "command": "fathom doctor --brief",
             "timeout": 15,
             "type": "command"
           }
@@ -117,7 +117,7 @@
       {
         "hooks": [
           {
-            "command": "/Volumes/m2ext/code/geoffmilleraz/sextant/bin/fathom session-hook --event subagent-start",
+            "command": "fathom session-hook --event subagent-start",
             "timeout": 5,
             "type": "command"
           }

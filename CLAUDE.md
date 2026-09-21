@@ -73,7 +73,7 @@ Contribution routing and disposition evidence: `docs/app-kit.md#selected-metadat
 | CLI/workspace; use-case guides (keep `## Maintained` current) | `docs/usage.md`, `docs/use-cases/` |
 | Friction log (`fathom observe`; the narrative log is frozen) | `.fathom/observations.md` (live); `docs/dogfood-observations.md` (historical) |
 | Original design docs (gitignored, local-only); roadmap = `fathom plans status` + `docs/intent/scope.md` | `tmp/design_inspiration/files/` |
-<!-- fathom:begin v3 sha256:0ac331d4f347089d3dd89ec45dbc7bdcfa8b06b9b0943e2f017dcafb3d10fec7 -->
+<!-- fathom:begin v3 sha256:1d8c362742eae0be4571878adabb37cc65548215be41034fdf88669266409930 -->
 ## fathom code intelligence
 
 This repo is indexed by fathom as service "fathom". Route by
