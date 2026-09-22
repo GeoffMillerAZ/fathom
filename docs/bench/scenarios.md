@@ -954,6 +954,30 @@ real lost or delayed run this round:
   code, or a marker line it writes at the end) instead of an open-ended
   follow a human has to remember to kill.
 
+## The decision-port arm (`[decide]`, vision 32 / ADR-042)
+
+The port is off by default (`provider = none`) and the driver needs no change to
+measure it: an arm's own `setup` appends the block to the cell's
+`.fathom/config.toml` before `fathom init` and the scratch daemon start, so the
+daemon in that cell opens the port and every decision it makes lands in
+`decisions.jsonl` beside the cell's call log. A corpus variant that carries the
+setup line is a different corpus SHA256, hence a different cell key — the
+`none` cells of the base corpus are never borrowed by mistake.
+
+```json
+"arms": {
+  "full":        {"wired": true, "instructions": "stanza", "surface": "fathom", "compile_layers": true},
+  "full-decide": {"wired": true, "instructions": "stanza", "surface": "fathom", "compile_layers": true,
+                  "setup": ["printf '\n[decide]\nprovider = \"llm\"\n' >> .fathom/config.toml"]}
+}
+```
+
+Read the A/B off the two arms' `readings` plus the cell's `decisions.jsonl`
+(sites `compile_prefilter`, `obligations_rank`, `prompt_route`; `applied` is false
+for any unsure-band decision). The `llm` adapter spends model tokens on every
+decision — the compile pre-filter's own cost is in the compile-runs row — so a
+`full-decide` arm is a paid tier like any wired arm (docs/intent/autonomy.md).
+
 ## How to publish a row
 
 After a paid run, its per-cell results append one row to
