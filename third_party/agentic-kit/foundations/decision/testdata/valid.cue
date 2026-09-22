@@ -18,6 +18,7 @@ _rootCause: #Question & {
 	Rubric:        ""
 	TrueCriteria:  ""
 	FalseCriteria: ""
+	Levels: []
 }
 
 // A score question on a 0..10 range.
@@ -31,6 +32,21 @@ _severity: #Question & {
 	Rubric:        "0 = cosmetic, 10 = line-down"
 	TrueCriteria:  ""
 	FalseCriteria: ""
+	Levels: []
+}
+
+// A score question using Levels instead of a bare Min/Max range.
+_severityLevels: #Question & {
+	ID:           "severity-levels"
+	Kind:         "score"
+	Instructions: "how severe is this?"
+	Options: []
+	Min:           0
+	Max:           0
+	Rubric:        ""
+	TrueCriteria:  ""
+	FalseCriteria: ""
+	Levels: ["cosmetic", "minor", "moderate", "major", "line-down"]
 }
 
 // A noul (yes/no probability) question.
@@ -44,10 +60,11 @@ _restartSafe: #Question & {
 	Rubric:         ""
 	TrueCriteria:   "no visible damage and grinding has stopped"
 	FalseCriteria:  "any visible damage or persistent noise"
+	Levels: []
 }
 
 // A Request bundling all three questions against one State.
 _request: #Request & {
 	State: "widget on line 3 stopped moving after the motor made a grinding noise"
-	Questions: [_rootCause, _severity, _restartSafe]
+	Questions: [_rootCause, _severity, _severityLevels, _restartSafe]
 }

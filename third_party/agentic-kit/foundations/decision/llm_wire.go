@@ -36,6 +36,7 @@ type wireQuestion struct {
 	Min           *float64     `json:"min,omitempty"`
 	Max           *float64     `json:"max,omitempty"`
 	Rubric        string       `json:"rubric,omitempty"`
+	Levels        []string     `json:"levels,omitempty"`
 	TrueCriteria  string       `json:"true_criteria,omitempty"`
 	FalseCriteria string       `json:"false_criteria,omitempty"`
 }
@@ -60,6 +61,9 @@ func questionToWire(q Question) wireQuestion {
 		minV, maxV := q.Min, q.Max
 		w.Min, w.Max = &minV, &maxV
 		w.Rubric = q.Rubric
+		if len(q.Levels) > 0 {
+			w.Levels = q.Levels
+		}
 	case KindNoul:
 		w.TrueCriteria = q.TrueCriteria
 		w.FalseCriteria = q.FalseCriteria
@@ -125,10 +129,14 @@ func buildOutputSchema(questions []Question) json.RawMessage {
 func answerSchema(q Question) map[string]any {
 	switch q.Kind {
 	case KindScore:
+		lo, hi := q.Min, q.Max
+		if len(q.Levels) > 0 {
+			lo, hi = 0, float64(len(q.Levels)-1)
+		}
 		return map[string]any{
 			"type": "object",
 			"properties": map[string]any{
-				"score": map[string]any{"type": "number", "minimum": q.Min, "maximum": q.Max},
+				"score": map[string]any{"type": "number", "minimum": lo, "maximum": hi},
 			},
 			"required":             []string{"score"},
 			"additionalProperties": false,

@@ -3,6 +3,7 @@ package decision_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -339,6 +340,36 @@ func TestLLM_Decide_WithNowControlsLatency(t *testing.T) {
 	}
 	if resp.Latency != 250*time.Millisecond {
 		t.Errorf("Latency = %v, want 250ms", resp.Latency)
+	}
+}
+
+func TestLLM_Decide_LevelsInPromptAndSchema(t *testing.T) {
+	client := llmclient.NewMockClient(llmclient.MockEntry{
+		Response: llmclient.Response{Text: `{"answers":{"q1":{"score":2}}}`},
+	})
+	l := decision.NewLLM(client, "test-model")
+
+	req := decision.Request{
+		State: "s",
+		Questions: []decision.Question{
+			{ID: "q1", Kind: decision.KindScore, Instructions: "how severe?", Levels: []string{"cosmetic", "minor", "major"}},
+		},
+	}
+	if _, err := l.Decide(context.Background(), req); err != nil {
+		t.Fatalf("Decide() error = %v", err)
+	}
+
+	calls := client.Calls()
+	if len(calls) != 1 {
+		t.Fatalf("len(Calls()) = %d, want 1", len(calls))
+	}
+	got := calls[0].Request
+
+	if !strings.Contains(got.Prompt, `"levels"`) || !strings.Contains(got.Prompt, "cosmetic") {
+		t.Errorf("Prompt does not carry Levels:\n%s", got.Prompt)
+	}
+	if !strings.Contains(string(got.OutputSchema), `"minimum": 0`) || !strings.Contains(string(got.OutputSchema), `"maximum": 2`) {
+		t.Errorf("OutputSchema score range should be [0, len(Levels)-1]=[0,2]:\n%s", got.OutputSchema)
 	}
 }
 

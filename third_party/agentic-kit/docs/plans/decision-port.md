@@ -3,17 +3,20 @@
 **Mission** — a typed fast-decision port: callers ask typed `Question`s
 (`KindChoice`/`KindScore`/`KindNoul`) about a blob of state and get
 probabilities back, never text. The question kinds deliberately mirror
-TypeSafe AI's System One primitives (Choice/Score/Noul) so a future
-`typesafe` adapter maps onto `foundations/decision`'s types 1:1 instead of
-needing a shape-translation layer. This plan lands the package with two
-adapters, `None` and `LLM`; a `typesafe` adapter calling TypeSafe's System
-One API directly is deliberately parked (D8: no named second provider
-consumer yet) — see "Parked" below. The exported API (`Kind`, `Option`,
-`Question`, `Request`, `Answer`, `Usage`, `Response`, `Decider`,
+TypeSafe AI's System One primitives (Choice/Score/Noul) so the `typesafe`
+adapter maps onto `foundations/decision`'s types 1:1 instead of needing a
+shape-translation layer. This plan lands the package with three adapters,
+`None`, `LLM`, and `TypeSafe` (calling TypeSafe's System One API directly —
+DP-10, promoted from parked: fathom, a real workload, pulled for it on owner
+direction 2026-09-22; see "Design constraints" below for what D8 required
+before promotion). The exported API (`Kind`, `Option`, `Question`
+(including `Levels`), `Request`, `Answer`, `Usage`, `Response`, `Decider`,
 `ErrNoProvider`, `Validate`, `Confidence`, `Band`/`BandOf`, `Record`,
-`Response.Records`, `NewLLM`/`LLMOption`/`WithMaxTokens`/`WithNow`) is a
-contract external consumers are coding against concurrently with this
-change — the names are fixed, not a first draft.
+`Response.Records`, `NewLLM`/`LLMOption`/`WithMaxTokens`/`WithNow`,
+`NewTypeSafe`/`TypeSafeConfig`/`TypeSafeError`,
+`DefaultTypeSafeBaseURL`/`DefaultTypeSafeModel`) is a contract external
+consumers are coding against concurrently with this change — the names are
+fixed, not a first draft.
 
 ## Tasks
 
@@ -46,46 +49,66 @@ change — the names are fixed, not a first draft.
   prompt/schema drift is visible in review {id: DP-8, symbol: TestLLM_Decide_GoldenPromptAndSchema, package: foundations/decision}
 - [x] `schema.cue` (`#Kind`/`#Option`/`#Question`/`#Request`) + valid/invalid
   testdata pairs per the package-shape convention {id: DP-9, package: foundations/decision}
-
-## Parked
-
-- [-] **`typesafe` adapter** — a `Decider` calling TypeSafe AI's System One
-  API directly (the vendor this package's Kind vocabulary and Confidence
-  formula are deliberately modeled on), so a caller can switch from `LLM`
-  (a generic `llmclient` completion asked to emulate the same contract) to
-  the vendor's own decision endpoint by construction swap alone. Not built
-  in this pass: no TypeSafe API key is configured anywhere in the fleet, and
-  no consumer has measured whether the vendor's native endpoint beats the
-  `LLM` adapter's generic-completion approximation for cost, latency, or
-  accuracy. Building it now would be exactly the "demos well, no real
-  workload pulls for it" hazard `docs/roadmap.md` warns against. {id: DP-10,
-  disposition: deferred, reason: "no TypeSafe API key configured; no
-  consumer has run the A/B this adapter would need to justify itself over
-  the LLM adapter", trigger: "Promote when: an API key exists and a
-  consumer's A/B shows a gain over the LLM adapter"}
+- [ ] **`typesafe` adapter** — a `Decider` calling TypeSafe AI's System One
+  API directly (POST `{BaseURL}/v1/systemone`; the vendor this package's
+  Kind vocabulary and Confidence formula are deliberately modeled on), so a
+  caller can switch from `LLM` (a generic `llmclient` completion asked to
+  emulate the same contract) to the vendor's own decision endpoint by
+  construction swap alone: `NewTypeSafe`/`TypeSafeConfig`, `TypeSafe.Decide`
+  (one request per batch, per-question Invalid classification exactly like
+  `LLM`, Confidence always this package's own formula never the wire's),
+  `TypeSafe.Ping` (satisfies `llmclient.Pinger`'s method set without
+  importing it), `TypeSafeError` (`Retryable()` true for 429/529; the API
+  key never appears in it). `Question.Levels` (additive, DP-11 below) gives
+  `KindScore` an ordered level list TypeSafe's "score" primitive needs;
+  without it, an integral 2..10-level `[Min, Max]` is synthesized, else the
+  question lands in `Response.Invalid` without reaching the wire. D8's hold
+  ("no named second provider until a workload pulls for it") is LIFTED
+  2026-09-22: fathom, a real workload, pulled for it on owner direction —
+  see "Design constraints" below for what stays true of the promoted row.
+  {id: DP-10, symbol: NewTypeSafe, package: foundations/decision,
+  reachable_from: TestTypeSafe_Decide}
+- [ ] **`Question.Levels`** — an optional ordered `[]string` of level
+  descriptions for `KindScore` (2..10 entries when set; `Validate` requires
+  Min/Max then be unset or exactly `0`/`len(Levels)-1`), additive to both
+  adapters: `LLM` renders it into the prompt/schema when set and is
+  byte-identical to before Levels existed when empty (golden-tested);
+  `TypeSafe` sends it verbatim as `criteria`, or synthesizes it from an
+  integral `[Min, Max]` range when unset. {id: DP-11, symbol: Validate,
+  package: foundations/decision, reachable_from: TestValidate}
 
 ## Design constraints
 
-- **D8 holds for DP-10**: the row above gets no typing, no package
-  skeleton, and no stub file in this pass — filing it is the deliverable,
-  exactly as `docs/plans/fathom-uplift-asks.md`'s FA-11/FA-12 rows and this
-  repo's own `docs/plans/claudecli-ping.md` KP-3 row establish for a parked
-  ask with a named trigger.
-- If DP-10's trigger fires, the `typesafe` adapter must produce the exact
-  same `Response`/`Answer`/`Confidence` shape as `LLM` — a consumer
-  switching adapters must see no type-level difference, only a possible
-  change in the numbers themselves.
+- **D8, DP-10**: hold lifted 2026-09-22: fathom pulled for it on owner
+  direction. D8 originally read "no named second provider until a workload
+  pulls for it" — fathom (`sextant`/`fathom` repo) is that named second
+  provider/consumer, pulling for the native TypeSafe endpoint rather than
+  the `LLM` adapter's generic-completion approximation of the same
+  contract; a companion `docs/plans/*.md` row in that repo names the
+  consuming call site.
+- DP-10's promoted adapter produces the exact same `Response`/`Answer`/
+  `Confidence` shape as `LLM` — a consumer switching adapters sees no
+  type-level difference, only a possible change in the numbers themselves.
+- DP-10 and DP-11 land together: DP-10's "score" primitive needs an ordered
+  level list, which DP-11 (`Question.Levels`) supplies (explicitly, or
+  synthesized from an integral `[Min, Max]`); neither is meaningful without
+  the other.
 
 ## Acceptance = proof
 
 1. `task validate` green (fmt-check, vet, cue-vet, `constitution-lint`,
    `go test -race ./...`).
-2. `foundations/decision`'s own suite: 34 test funcs, `-race` clean, zero
-   network (the `LLM` adapter is exercised entirely through
-   `llmclient.MockClient`).
+2. `foundations/decision`'s own suite: 35 top-level test funcs (plus
+   table-driven subtests), `-race` clean, zero network (every adapter is
+   exercised entirely through `llmclient.MockClient` or `httptest`).
 3. `constitution-lint` clean on this package specifically: schema-presence,
    tracking-coverage, compat-coverage, catalog-fresh, readme-count,
    doc-coverage (every exported identifier documented), concurrency-contract
-   (doc.go states the contract), org-agnostic.
+   (doc.go states the contract), org-agnostic, secret-scan (no API key
+   shape anywhere in source or tests).
 4. `cue vet ./...` and `cue vet ./testdata/` clean from
    `foundations/decision/`.
+5. `fathom verify --service agentic-kit --plan docs/plans/decision-port.md`
+   proves DP-10 and DP-11 before either box flips to `[x]` — see "Done
+   means proven" in the repo's own operating doctrine; a claim, not a
+   proof, does not earn the checkbox.

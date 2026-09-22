@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -99,6 +101,69 @@ provider = "claude-cli"
 		}
 		if !strings.Contains(got.Reason, "jev") {
 			t.Errorf("Reason = %q, want it to name %q", got.Reason, "jev")
+		}
+	})
+}
+
+// TestDoctorDecisionProvider_TypeSafe pins DP-17: provider "typesafe" with
+// no resolvable key is a FAIL naming the missing key; a 401 from a real
+// ping is a FAIL naming the endpoint; a 200 System One envelope is a PASS
+// naming the model and endpoint. decide.Open is not exercised here — this
+// drives decisionProviderVerdict directly, the same way the "unknown
+// provider" case above does, since the ping path needs a real (fake)
+// server, not a lane seam.
+func TestDoctorDecisionProvider_TypeSafe(t *testing.T) {
+	t.Run("no key fails", func(t *testing.T) {
+		loaded := config.Loaded{Config: config.Config{Decide: config.Decide{Provider: "typesafe"}}}
+		got := decisionProviderVerdict(loaded, nil, "")
+		if got.Status != doctorFail {
+			t.Fatalf("Status = %v, want fail: %+v", got.Status, got)
+		}
+		if !strings.Contains(got.Reason, "no API key") {
+			t.Errorf("Reason = %q, want it to name the missing key", got.Reason)
+		}
+	})
+
+	t.Run("401 ping failure fails naming the endpoint", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusUnauthorized)
+			_, _ = w.Write([]byte(`{"error":"invalid api key"}`))
+		}))
+		defer srv.Close()
+
+		loaded := config.Loaded{Config: config.Config{Decide: config.Decide{
+			Provider: "typesafe", Endpoint: srv.URL, APIKeyEnv: "FATHOM_TEST_TYPESAFE_KEY",
+		}}}
+		t.Setenv("FATHOM_TEST_TYPESAFE_KEY", "bad-key")
+		got := decisionProviderVerdict(loaded, nil, "")
+		if got.Status != doctorFail {
+			t.Fatalf("Status = %v, want fail: %+v", got.Status, got)
+		}
+		if !strings.Contains(got.Reason, srv.URL) {
+			t.Errorf("Reason = %q, want it to name the endpoint %q", got.Reason, srv.URL)
+		}
+		if strings.Contains(got.Reason, "bad-key") {
+			t.Errorf("Reason = %q, must never carry the key", got.Reason)
+		}
+	})
+
+	t.Run("200 envelope passes naming model and endpoint", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"model":"jev-1.13.0","answers":{"ping":{"type":"noul","noul":0.99}},"usage":{"input_tokens":10,"output_tokens":2}}`))
+		}))
+		defer srv.Close()
+
+		loaded := config.Loaded{Config: config.Config{Decide: config.Decide{
+			Provider: "typesafe", Endpoint: srv.URL, Model: "jev-latest", APIKeyEnv: "FATHOM_TEST_TYPESAFE_KEY",
+		}}}
+		t.Setenv("FATHOM_TEST_TYPESAFE_KEY", "good-key")
+		got := decisionProviderVerdict(loaded, nil, "")
+		if got.Status != doctorPass {
+			t.Fatalf("Status = %v, want pass: %+v", got.Status, got)
+		}
+		if !strings.Contains(got.Reason, "jev-latest") || !strings.Contains(got.Reason, srv.URL) {
+			t.Errorf("Reason = %q, want it to name the model and endpoint", got.Reason)
 		}
 	})
 }

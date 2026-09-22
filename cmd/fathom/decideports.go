@@ -54,13 +54,22 @@ func openDecisionPorts(loaded config.Loaded, daemonProfileName, callLogPath, lab
 	if cfg.Provider != "llm" {
 		ports, err := decide.Open(cfg, nil, "", rec)
 		if err != nil {
-			// Only reachable for an unknown provider value — config.Load's
-			// own CUE schema already refuses that at load time (#Decide's
-			// provider enum, schema/config/schema.cue), but a hand-edited
-			// config.toml or a stale schema could still reach here. Fail
-			// open (I14) rather than refuse to start.
+			// Reachable for an unknown provider value (config.Load's own
+			// CUE schema already refuses that at load time — #Decide's
+			// provider enum, schema/config/schema.cue — but a hand-edited
+			// config.toml or a stale schema could still reach here) OR,
+			// for provider "typesafe", a missing/unresolvable API key —
+			// decide.Open's own error names which indirection to set.
+			// Either way: fail open (I14) rather than refuse to start.
 			fmt.Fprintf(stderr, "warn: decision port disabled: %v\n", err)
 			return &decide.Ports{Decider: decision.None{}, Cfg: cfg, Recorder: rec}
+		}
+		if cfg.Provider == "typesafe" {
+			model := cfg.Model
+			if model == "" {
+				model = decision.DefaultTypeSafeModel
+			}
+			fmt.Fprintf(stderr, "%s: decision port typesafe (model %s)\n", label, model)
 		}
 		return ports
 	}

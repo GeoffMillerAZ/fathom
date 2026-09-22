@@ -57,11 +57,24 @@ type Question struct {
 	Options []Option
 
 	// Min and Max bound a KindScore answer. Meaningful only for KindScore:
-	// Max must be greater than Min (enforced by Validate).
+	// Max must be greater than Min (enforced by Validate), unless Levels is
+	// set — see Levels.
 	Min, Max float64
 	// Rubric is optional guidance for scoring a KindScore question. May be
 	// empty.
 	Rubric string
+	// Levels is an optional ordered list of level descriptions for a
+	// KindScore question, low to high (2..10 entries when set — enforced
+	// by Validate). When set, Min/Max must be either unset (both zero) or
+	// exactly 0 and len(Levels)-1 (enforced by Validate); a Score answer
+	// then addresses a position in Levels rather than an arbitrary
+	// [Min, Max] float. Meaningful only for KindScore; ignored otherwise.
+	// The typesafe adapter (see doc.go) sends Levels verbatim as its
+	// "score" question criteria, or — when Levels is empty — synthesizes
+	// integer levels from an integral [Min, Max] range of 2..10 values.
+	// The llm adapter renders Levels into the prompt/schema when set and
+	// is byte-identical to before Levels existed when it is empty.
+	Levels []string
 
 	// TrueCriteria and FalseCriteria are optional free text describing what
 	// counts as true/false for a KindNoul question. May be empty.
@@ -153,9 +166,9 @@ type Response struct {
 }
 
 // Decider answers typed fast-decision Questions about a blob of state.
-// Implementations: None (the zero-configuration stub) and LLM (backed by an
-// llmclient.LLMClient). A future "typesafe" adapter is parked — see the
-// package doc.
+// Implementations: None (the zero-configuration stub), LLM (backed by an
+// llmclient.LLMClient), and TypeSafe (backed by TypeSafe AI's System One
+// API directly) — see the package doc's adapter table.
 type Decider interface {
 	// Name identifies the Decider implementation (e.g. "none", "llm").
 	Name() string

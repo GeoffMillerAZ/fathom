@@ -10,7 +10,10 @@ import "fmt"
 //     KindNoul).
 //   - A KindChoice question must have 2..255 Options with unique,
 //     non-empty names.
-//   - A KindScore question must have Max strictly greater than Min.
+//   - A KindScore question must have Max strictly greater than Min, UNLESS
+//     Levels is set, in which case Levels must have 2..10 entries and
+//     Min/Max must be either both zero (unset) or exactly 0 and
+//     len(Levels)-1.
 //
 // Validate does not require req.Questions to be non-empty: an empty batch
 // is a degenerate but harmless request.
@@ -35,14 +38,37 @@ func Validate(req Request) error {
 				return err
 			}
 		case KindScore:
-			if !(q.Max > q.Min) {
-				return fmt.Errorf("decision: question %q: score Max (%v) must be greater than Min (%v)", q.ID, q.Max, q.Min)
+			if err := validateScoreRange(q); err != nil {
+				return err
 			}
 		case KindNoul:
 			// No additional structural constraints.
 		default:
 			return fmt.Errorf("decision: question %q: unknown Kind %q", q.ID, q.Kind)
 		}
+	}
+	return nil
+}
+
+// validateScoreRange checks q's Min/Max/Levels against the score-kind
+// contract: with Levels unset, Max must be strictly greater than Min (the
+// original rule); with Levels set, Levels must have 2..10 entries and
+// Min/Max must be either both zero (unset) or exactly 0 and len(Levels)-1 —
+// see Question.Levels.
+func validateScoreRange(q Question) error {
+	if len(q.Levels) == 0 {
+		if !(q.Max > q.Min) {
+			return fmt.Errorf("decision: question %q: score Max (%v) must be greater than Min (%v)", q.ID, q.Max, q.Min)
+		}
+		return nil
+	}
+	if len(q.Levels) < 2 || len(q.Levels) > 10 {
+		return fmt.Errorf("decision: question %q: score Levels must have 2..10 entries, got %d", q.ID, len(q.Levels))
+	}
+	unset := q.Min == 0 && q.Max == 0
+	matching := q.Min == 0 && q.Max == float64(len(q.Levels)-1)
+	if !unset && !matching {
+		return fmt.Errorf("decision: question %q: score Min/Max must be unset (0,0) or (0,%d) matching Levels when Levels is set, got (%v,%v)", q.ID, len(q.Levels)-1, q.Min, q.Max)
 	}
 	return nil
 }

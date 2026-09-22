@@ -35,8 +35,8 @@ A/B rows at the end are operator decisions (LLM spend) and are never claimed by 
 
 ## F. TypeSafe (Jev) adapter — ADR-042 amendment, 2026-09-22
 
-- [ ] `[decide]` parses `provider = "typesafe"` with endpoint/model/key indirection; the key is resolved by cmd, then env, then `TYPESAFE_API_KEY`, never a literal {id: DP-15, symbol: ResolveAPIKey, package: internal/config, reachable_from: TestDecide_ResolveAPIKey}
-- [ ] `decide.Open` builds the kit's TypeSafe Decider for provider typesafe; an empty key is an error the callers turn into a warn-and-none {id: DP-16, symbol: Open, package: internal/decide, reachable_from: TestOpen_TypeSafe}
-- [ ] doctor `decision_provider` reports typesafe: FAIL naming the missing key, FAIL on a failed ping, PASS with model and last latency {id: DP-17, symbol: decisionProviderVerdict, package: cmd/fathom, reachable_from: TestDoctorDecisionProvider_TypeSafe}
-- [ ] end to end: with a typesafe Decider the obligations envelope says `ranked_by: typesafe` and the decisions log names provider typesafe {id: DP-18, symbol: WithDecision, package: pkg/client, reachable_from: TestWithDecision_TypeSafeFake}
-- [ ] `docs/configuration.md` documents the typesafe block {id: DP-19, oracle: lexical, path: docs/configuration.md, pattern: "provider *= *\"typesafe\""}
+- [x] `[decide]` parses `provider = "typesafe"` with endpoint/model/key indirection; the key is resolved by cmd, then env, then `TYPESAFE_API_KEY`, never a literal {id: DP-15, symbol: Decide.ResolveAPIKey, package: internal/config, reachable_from: TestDecide_ResolveAPIKey}
+- [x] `decide.Open` builds the kit's TypeSafe Decider for provider typesafe; an empty key is an error the callers turn into a warn-and-none {id: DP-16, symbol: Open, package: internal/decide, reachable_from: TestOpen_TypeSafe}
+- [x] doctor `decision_provider` reports typesafe: FAIL naming the missing key, FAIL on a failed ping, PASS with model and last latency {id: DP-17, symbol: decisionProviderVerdict, package: cmd/fathom, reachable_from: TestDoctorDecisionProvider_TypeSafe}
+- [x] end to end: with a typesafe Decider the obligations envelope says `ranked_by: typesafe` and the decisions log names provider typesafe {id: DP-18, symbol: WithDecision, package: pkg/client, reachable_from: TestWithDecision_TypeSafeFake}
+- [x] `docs/configuration.md` documents the typesafe block {id: DP-19, oracle: lexical, path: docs/configuration.md, pattern: "provider *= *\"typesafe\""}

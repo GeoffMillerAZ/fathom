@@ -27,7 +27,9 @@ _nonEmpty: string & !=""
 // #Question is one typed fast-decision question. Kind selects which of the
 // remaining fields are meaningful:
 //   - "choice": Options (2..255 entries, enforced in Go — see Validate)
-//   - "score":  Min, Max (Max > Min, enforced in Go), Rubric optional
+//   - "score":  Min, Max (Max > Min, enforced in Go), Rubric optional,
+//     Levels optional (2..10 ordered entries, enforced in Go; when set,
+//     Min/Max must be unset or exactly 0/len(Levels)-1, enforced in Go)
 //   - "noul":   TrueCriteria/FalseCriteria optional
 //
 // Fields not meaningful for a given Kind are simply left at their zero
@@ -43,6 +45,7 @@ _nonEmpty: string & !=""
 	Rubric:        string
 	TrueCriteria:  string
 	FalseCriteria: string
+	Levels: [...string]
 }
 
 // #Request bundles a caller's State (the blob of state being asked about,

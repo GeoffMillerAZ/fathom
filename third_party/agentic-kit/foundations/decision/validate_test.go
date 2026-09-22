@@ -154,6 +154,55 @@ func TestValidate(t *testing.T) {
 			}},
 			wantErr: false,
 		},
+		{
+			name: "score Levels with 1 entry is too few",
+			req: decision.Request{State: "s", Questions: []decision.Question{
+				{ID: "q1", Kind: decision.KindScore, Levels: []string{"only"}},
+			}},
+			wantErr: true,
+		},
+		{
+			name: "score Levels with 11 entries is too many",
+			req: decision.Request{State: "s", Questions: []decision.Question{
+				{ID: "q1", Kind: decision.KindScore, Levels: []string{"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"}},
+			}},
+			wantErr: true,
+		},
+		{
+			name: "score Levels with 10 entries is valid (upper bound inclusive)",
+			req: decision.Request{State: "s", Questions: []decision.Question{
+				{ID: "q1", Kind: decision.KindScore, Levels: []string{"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"}},
+			}},
+			wantErr: false,
+		},
+		{
+			name: "score Levels with Min/Max unset is valid",
+			req: decision.Request{State: "s", Questions: []decision.Question{
+				{ID: "q1", Kind: decision.KindScore, Levels: []string{"lo", "hi"}},
+			}},
+			wantErr: false,
+		},
+		{
+			name: "score Levels with Min/Max matching len(Levels)-1 is valid",
+			req: decision.Request{State: "s", Questions: []decision.Question{
+				{ID: "q1", Kind: decision.KindScore, Levels: []string{"lo", "mid", "hi"}, Min: 0, Max: 2},
+			}},
+			wantErr: false,
+		},
+		{
+			name: "score Levels with Max not matching len(Levels)-1 is invalid",
+			req: decision.Request{State: "s", Questions: []decision.Question{
+				{ID: "q1", Kind: decision.KindScore, Levels: []string{"lo", "mid", "hi"}, Min: 0, Max: 10},
+			}},
+			wantErr: true,
+		},
+		{
+			name: "score Levels with nonzero Min is invalid",
+			req: decision.Request{State: "s", Questions: []decision.Question{
+				{ID: "q1", Kind: decision.KindScore, Levels: []string{"lo", "hi"}, Min: 1, Max: 1},
+			}},
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {

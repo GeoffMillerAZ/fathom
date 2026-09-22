@@ -1,0 +1,34 @@
+{
+  "model": "jev-latest",
+  "state": "widget on line 3 stopped moving after the motor made a grinding noise",
+  "questions": {
+    "restart-safe": {
+      "type": "noul",
+      "instructions": "is it safe to restart the line without inspection?",
+      "criteria": {
+        "true": "no visible damage and grinding has stopped",
+        "false": "any visible damage or persistent noise"
+      }
+    },
+    "root-cause": {
+      "type": "choice",
+      "instructions": "what caused the stoppage?",
+      "criteria": {
+        "electrical": null,
+        "mechanical": "gears, belts, bearings",
+        "operator-error": null
+      }
+    },
+    "severity": {
+      "type": "score",
+      "instructions": "how severe is this on a 0-4 scale?",
+      "criteria": [
+        "cosmetic",
+        "minor",
+        "moderate",
+        "major",
+        "line-down"
+      ]
+    }
+  }
+}

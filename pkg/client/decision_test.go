@@ -1,14 +1,21 @@
 package client_test
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
 	"github.com/geoffmilleraz/fathom/internal/config"
+	"github.com/geoffmilleraz/fathom/internal/decide"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
@@ -144,5 +151,118 @@ func TestClient_WithDecision_NoneLeavesCompileUntouched(t *testing.T) {
 	}
 	if len(run.Decisions) != 0 {
 		t.Errorf("Decisions = %d rows, want 0 (decision.None makes no call, records no decision)", len(run.Decisions))
+	}
+}
+
+// typesafeSystemOneFake is an httptest handler for TypeSafe's System One
+// wire (POST {BaseURL}/v1/systemone): it answers every question in the
+// request — whatever IDs it asked, echoed back — as a noul at 0.95, the
+// same envelope shape docs.typesafe.ai and this wave's brief document.
+func typesafeSystemOneFake(t *testing.T) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Questions map[string]json.RawMessage `json:"questions"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		answers := make(map[string]any, len(body.Questions))
+		for id := range body.Questions {
+			answers[id] = map[string]any{"type": "noul", "noul": 0.95}
+		}
+		resp := map[string]any{
+			"model":   "jev-1.13.0",
+			"answers": answers,
+			"usage":   map[string]any{"input_tokens": 42, "output_tokens": 7},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(resp)
+	}))
+}
+
+// TestWithDecision_TypeSafeFake pins DP-18: with a real kit TypeSafe
+// Decider (over an httptest fake System One server answering every noul at
+// 0.95) wired through WithDecision, the obligations envelope's RankedBy is
+// "typesafe" and the shared decisions.jsonl recorder gets a row naming
+// provider "typesafe" — proving decide.Open's typesafe branch (DP-16) is
+// not just constructible but actually reachable end to end through the
+// same Client.Obligations path TestClient_WithDecision_RankedBy already
+// pins for "llm"/mock.
+func TestWithDecision_TypeSafeFake(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+
+	claudeMD := []byte("# Rules\n\n- Run tests before committing.\n")
+	if err := os.WriteFile(filepath.Join(dir, "CLAUDE.md"), claudeMD, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "pkg"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	goFile := []byte("package main\nfunc Foo() {}\n")
+	if err := os.WriteFile(filepath.Join(dir, "pkg", "foo.go"), goFile, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	c := newTestClient(t, dir)
+	defer c.Close()
+
+	if _, err := c.Ingest(ctx, client.ServiceRef{ID: "svc", Path: dir}); err != nil {
+		t.Fatal("Ingest:", err)
+	}
+
+	mockJSON := `{"claims":[{"rule":"Run tests before committing.","scope":["pkg/**"],"cite_start":3,"cite_end":3}]}`
+	mockLLM := llmclient.NewMockClient(llmclient.MockEntry{
+		Response: llmclient.Response{
+			Text:  mockJSON,
+			Usage: llmclient.Usage{InputTokens: 10, OutputTokens: 5},
+		},
+	})
+	c.WithLLM(mockLLM, "mock-model", 0, 0)
+	if _, err := c.CompileObligations(ctx, "svc", false); err != nil {
+		t.Fatalf("CompileObligations: %v", err)
+	}
+
+	srv := typesafeSystemOneFake(t)
+	defer srv.Close()
+
+	ts, err := decision.NewTypeSafe(decision.TypeSafeConfig{APIKey: "test-key", BaseURL: srv.URL})
+	if err != nil {
+		t.Fatalf("NewTypeSafe: %v", err)
+	}
+
+	var log bytes.Buffer
+	rec := decide.NewRecorder(&log, time.Now, "test-version")
+	c.WithDecision(ts, config.Decide{Provider: "typesafe", RankWithinTier: true}, rec)
+
+	obl, err := c.Obligations(ctx, "svc", "pkg/foo.go", 10)
+	if err != nil {
+		t.Fatalf("Obligations: %v", err)
+	}
+	if len(obl.Rules) == 0 {
+		t.Fatal("expected at least one rule for pkg/foo.go — test fixture is broken")
+	}
+	if obl.RankedBy != "typesafe" {
+		t.Errorf("RankedBy = %q, want %q", obl.RankedBy, "typesafe")
+	}
+
+	logged := strings.TrimSpace(log.String())
+	if logged == "" {
+		t.Fatal("decisions.jsonl recorder got no rows from a typesafe rerank call")
+	}
+	found := false
+	for _, line := range strings.Split(logged, "\n") {
+		var row map[string]any
+		if err := json.Unmarshal([]byte(line), &row); err != nil {
+			t.Fatalf("recorder row not JSON: %v (%s)", err, line)
+		}
+		if row["provider"] == "typesafe" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("no recorder row named provider \"typesafe\":\n%s", logged)
 	}
 }
