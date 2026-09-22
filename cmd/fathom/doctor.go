@@ -1477,10 +1477,16 @@ type obligationsProbeResult struct {
 // corpus growth, understating how much of the gap is "the corpus outgrew
 // the last compile" versus "this run's own budget stopped it early".
 type doctorLayerCoverage struct {
-	SectionsTotal    int    `json:"sections_total"`
-	SectionsCompiled int    `json:"sections_compiled"`
-	BudgetStopped    bool   `json:"budget_stopped"`
-	CorpusGrew       int    `json:"corpus_grew"`
+	SectionsTotal    int  `json:"sections_total"`
+	SectionsCompiled int  `json:"sections_compiled"`
+	BudgetStopped    bool `json:"budget_stopped"`
+	CorpusGrew       int  `json:"corpus_grew"`
+	// PrefilterSkipped (ADR-042 decision 2, O109) mirrors
+	// semantic.LayerCoverage.PrefilterSkipped — sections the decision
+	// port's pre-filter skipped before compilation, never compiled and
+	// never failed. Zero when no Decider was configured for the run that
+	// produced this coverage, or every section passed.
+	PrefilterSkipped int    `json:"prefilter_skipped"`
 	Status           string `json:"status"`
 }
 
@@ -1693,8 +1699,16 @@ func checkObligationsServed(hc *http.Client, baseURL, root, explicitSvc string, 
 			if res.coverage.CorpusGrew > 0 {
 				corpusGrewNote = fmt.Sprintf(", corpus_grew=%d", res.coverage.CorpusGrew)
 			}
-			reason += fmt.Sprintf(" — WARN: the obligations layer is PARTIALLY compiled (%d/%d sections, budget_stopped=%v%s) — some governing guides may not be compiled yet; resume with `fathom compile --service %s --layer obligations --dry-run=false --continue`",
-				res.coverage.SectionsCompiled, res.coverage.SectionsTotal, res.coverage.BudgetStopped, corpusGrewNote, svc)
+			// O109: prefilter_skipped names sections the decision port's
+			// pre-filter skipped (never compiled, never failed) — distinct
+			// from a section the budget never reached. Omitted when zero,
+			// the same discipline corpus_grew already follows.
+			prefilterNote := ""
+			if res.coverage.PrefilterSkipped > 0 {
+				prefilterNote = fmt.Sprintf(", prefilter_skipped=%d", res.coverage.PrefilterSkipped)
+			}
+			reason += fmt.Sprintf(" — WARN: the obligations layer is PARTIALLY compiled (%d/%d sections, budget_stopped=%v%s%s) — some governing guides may not be compiled yet; resume with `fathom compile --service %s --layer obligations --dry-run=false --continue`",
+				res.coverage.SectionsCompiled, res.coverage.SectionsTotal, res.coverage.BudgetStopped, corpusGrewNote, prefilterNote, svc)
 		}
 		return doctorCheck{Name: name, Status: status, Reason: reason + hookMismatchNote}
 	}

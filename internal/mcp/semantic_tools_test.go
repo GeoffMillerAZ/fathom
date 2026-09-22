@@ -157,6 +157,86 @@ func TestObligationsTool_WithRules(t *testing.T) {
 	}
 }
 
+// O109: renderObligationReceipt built its own response map and never read
+// obl.RankedBy/obl.RankNote, and no rendered rule carried relevance — a
+// live client saw none of these on the wire even though semantic.
+// Obligations carried them correctly. This pins the fix directly against
+// the map-building function (the fake backend hands renderObligationReceipt
+// a pre-built Obligations exactly like a real backend would after DP-7's
+// rerank ran).
+func TestObligationsTool_RankedByAndRelevanceOnWire(t *testing.T) {
+	relevance := 0.83
+	fake := &semanticFakeBackend{
+		obligations: semantic.Obligations{
+			Service: "svc",
+			File:    "internal/mcp/tools.go",
+			Rules: []semantic.Obligation{
+				{Rule: "Sort outputs.", Src: "CLAUDE.md#L10-L10", Tier: "doc-claimed", Relevance: &relevance},
+			},
+			RankedBy: "llm",
+		},
+	}
+	srv := mcp.NewServer(fake)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 2, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "obligations",
+			"arguments": map[string]any{"service": "svc", "file": "internal/mcp/tools.go"},
+		},
+	})
+	if resp["error"] != nil {
+		t.Fatalf("unexpected error: %v", resp["error"])
+	}
+	payload := extractPayload(t, resp)
+	if payload["ranked_by"] != "llm" {
+		t.Errorf(`payload["ranked_by"] = %v, want "llm"`, payload["ranked_by"])
+	}
+	if _, present := payload["rank_note"]; present {
+		t.Errorf("rank_note should be omitted when empty, got %v", payload["rank_note"])
+	}
+	rules, ok := payload["rules"].([]any)
+	if !ok || len(rules) != 1 {
+		t.Fatalf("expected 1 rule, got %v", payload["rules"])
+	}
+	rule, _ := rules[0].(map[string]any)
+	if got, _ := rule["relevance"].(float64); got != relevance {
+		t.Errorf("rule relevance = %v, want %v", rule["relevance"], relevance)
+	}
+}
+
+// TestObligationsTool_RankedByNoneAndRankNoteOnWire pins the OTHER two wire
+// states DP-8 promises: ranked_by:"none" is always present (never simply
+// absent — see semantic.Obligations.RankedBy's own doc comment), and
+// rank_note surfaces when a configured Decider's own call failed.
+func TestObligationsTool_RankedByNoneAndRankNoteOnWire(t *testing.T) {
+	fake := &semanticFakeBackend{
+		obligations: semantic.Obligations{
+			Service:  "svc",
+			File:     "internal/mcp/tools.go",
+			RankedBy: "none",
+			RankNote: "decision: no provider configured",
+		},
+	}
+	srv := mcp.NewServer(fake)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 3, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "obligations",
+			"arguments": map[string]any{"service": "svc", "file": "internal/mcp/tools.go"},
+		},
+	})
+	if resp["error"] != nil {
+		t.Fatalf("unexpected error: %v", resp["error"])
+	}
+	payload := extractPayload(t, resp)
+	if payload["ranked_by"] != "none" {
+		t.Errorf(`payload["ranked_by"] = %v, want "none" (always present, never absent)`, payload["ranked_by"])
+	}
+	if payload["rank_note"] != "decision: no provider configured" {
+		t.Errorf(`payload["rank_note"] = %v, want the note`, payload["rank_note"])
+	}
+}
+
 // ─── obligations: as_of (SU-19, ADR-041 decision 7) ──────────────────────────
 
 func TestObligationsTool_AsOf(t *testing.T) {
@@ -711,6 +791,75 @@ func TestCompileLayerDryRunDefault(t *testing.T) {
 	}
 	if _, present := payload["refused"]; present {
 		t.Errorf("refused should be omitted when false, got %v", payload["refused"])
+	}
+}
+
+// TestCompileLayer_SectionsPrefilteredOnWire is O109/DP-6's wire pin: the
+// compile_layer handler hand-copies named fields off core.CompileRun and
+// had never copied SectionsPrefiltered/PrefilteredSections — a live
+// --dry-run whose decision-port pre-filter genuinely ran and skipped
+// sections reported nothing about it.
+func TestCompileLayer_SectionsPrefilteredOnWire(t *testing.T) {
+	fake := &semanticFakeBackend{
+		compileRun: core.CompileRun{
+			ServiceID:           "svc",
+			Layer:               "obligations",
+			SectionsTotal:       10,
+			SectionsCompiled:    7,
+			SectionsPrefiltered: 3,
+			PrefilteredSections: []string{"docs/a.md#s1", "docs/a.md#s2", "docs/b.md#s1"},
+		},
+	}
+	srv := mcp.NewServer(fake)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 7, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "compile_layer",
+			"arguments": map[string]any{"service": "svc"},
+		},
+	})
+	if resp["error"] != nil {
+		t.Fatalf("unexpected error: %v", resp["error"])
+	}
+	payload := extractPayload(t, resp)
+	if sp, _ := payload["sections_prefiltered"].(float64); sp != 3 {
+		t.Errorf("sections_prefiltered = %v, want 3", payload["sections_prefiltered"])
+	}
+	names, ok := payload["prefiltered_sections"].([]any)
+	if !ok || len(names) != 3 {
+		t.Errorf("prefiltered_sections = %v, want 3 names", payload["prefiltered_sections"])
+	}
+}
+
+// TestCompileLayer_SectionsPrefilteredOmittedWhenZero: a run with no
+// Decider configured (or nothing skipped) stays byte-identical to before
+// these fields existed.
+func TestCompileLayer_SectionsPrefilteredOmittedWhenZero(t *testing.T) {
+	fake := &semanticFakeBackend{
+		compileRun: core.CompileRun{
+			ServiceID:        "svc",
+			Layer:            "obligations",
+			SectionsTotal:    10,
+			SectionsCompiled: 10,
+		},
+	}
+	srv := mcp.NewServer(fake)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 8, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "compile_layer",
+			"arguments": map[string]any{"service": "svc"},
+		},
+	})
+	if resp["error"] != nil {
+		t.Fatalf("unexpected error: %v", resp["error"])
+	}
+	payload := extractPayload(t, resp)
+	if _, present := payload["sections_prefiltered"]; present {
+		t.Errorf("sections_prefiltered should be omitted when zero, got %v", payload["sections_prefiltered"])
+	}
+	if _, present := payload["prefiltered_sections"]; present {
+		t.Errorf("prefiltered_sections should be omitted when empty, got %v", payload["prefiltered_sections"])
 	}
 }
 

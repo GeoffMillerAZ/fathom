@@ -142,6 +142,12 @@ type obligationsResult struct {
 	// (layerCoverageBackend) — absent for a backend that cannot (an older
 	// module, a minimal test fake), never a fabricated full-coverage claim.
 	LayerCoverage *semantic.LayerCoverage `json:"layer_coverage,omitempty"`
+	// RankedBy/RankNote (DP-8, ADR-042 decision 2, O109): see
+	// renderObligationReceipt's own doc comment — RankedBy is always
+	// present ("none" when no rerank ran), RankNote only when a
+	// configured Decider's own call failed.
+	RankedBy string `json:"ranked_by"`
+	RankNote string `json:"rank_note,omitempty"`
 }
 
 type packContextResult struct {

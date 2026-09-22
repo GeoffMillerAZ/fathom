@@ -260,6 +260,20 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 	if servedLayer != "" {
 		result["layer"] = servedLayer
 	}
+	// DP-8 (ADR-042 decision 2, O109): ranked_by is ALWAYS present — mirrors
+	// semantic.Obligations.RankedBy's own doc comment ("Always present,
+	// never omitempty") — so a caller can tell "reranking did not run"
+	// ("none") from "this field does not exist yet" without a second
+	// signal. rank_note rides beside it only when a configured Decider's
+	// own Decide call failed (semantic.Obligations.RankNote's doc
+	// comment); both were computed correctly on obl by
+	// semantic.ObligationsForOpts/ForLayerOpts/AsOfOpts all along — this
+	// function simply never read them onto the wire before O109 caught a
+	// live client seeing neither field at all.
+	result["ranked_by"] = obl.RankedBy
+	if obl.RankNote != "" {
+		result["rank_note"] = obl.RankNote
+	}
 
 	// wave O1 / ADR-037: fill a real coverage gap with raw guide content
 	// BEFORE the rules below are snippet-rendered and byte-budgeted, so a
@@ -746,6 +760,23 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 		}
 		if run.RefusalReason != "" {
 			result["refusal_reason"] = run.RefusalReason
+		}
+		// DP-6 (ADR-042 decision 2, O109): the decision-port pre-filter's
+		// own disclosure — how many sections it skipped before compilation
+		// (never compiled, never failed) and, when the core type carries
+		// it, which ones by stable section id. core.CompileRun.
+		// SectionsPrefiltered/PrefilteredSections were already correctly
+		// populated by the compiler; this handler hand-copies named fields
+		// off CompileRun and had never copied these two, so a live
+		// --dry-run whose pre-filter genuinely ran and skipped sections
+		// reported nothing about it. Omitted when zero — a run with no
+		// Decider configured (or nothing skipped) stays byte-identical to
+		// before these fields existed.
+		if run.SectionsPrefiltered > 0 {
+			result["sections_prefiltered"] = run.SectionsPrefiltered
+		}
+		if len(run.PrefilteredSections) > 0 {
+			result["prefiltered_sections"] = run.PrefilteredSections
 		}
 		return result, nil
 	})
