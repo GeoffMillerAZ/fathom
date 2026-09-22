@@ -1077,9 +1077,13 @@ verdict and drift-flagged rules counted into the reason), `surface_traffic`
 `user_scope_guard`, `guard_file` / `guard_dead_scopes` / `guard_include_modules_unbound`,
 `binding_file` / `binding_modules_mounted` / `binding_module_readiness` (SKIP names the real
 reason when `list_modules` is not registered: no `--module` store was mounted), `binary_on_path`,
-`channels_env`, `ident_cache_env`, `metrics_tier`, `session_ledger_tokens`, and
-`cpp_toolchain` (CMake repos: `compile_commands.json` present). The stanza check accepts
-both the v1 and the v3 (`sha256:`-digested) begin marker.
+`channels_env`, `ident_cache_env`, `metrics_tier`, `session_ledger_tokens`,
+`cpp_toolchain` (CMake repos: `compile_commands.json` present), and
+`decision_provider` (ADR-042, docs/vision/32-decision-port.md: `[decide] provider =
+none` is `skipped` naming it off; `llm` pings the configured profile lane and, when
+`decisions.jsonl` exists, names its last recorded `latency_ms`; any other value is a
+`fail`). The stanza check accepts both the v1 and the v3 (`sha256:`-digested) begin
+marker.
 
 Exit `0` every check passed; `1` at least one check failed; `2` doctor itself could not
 run (bad flags, unresolvable `--path`) — an operational error, not a verdict on the

@@ -75,6 +75,10 @@ func mergeLayer(cfg *Config, prov Provenance, raw map[string]any, source Source,
 	if fm, ok := raw["findings"].(map[string]any); ok {
 		mergeFindingsFields(&cfg.Findings, fm, source, path, prov)
 	}
+
+	if dcm, ok := raw["decide"].(map[string]any); ok {
+		mergeDecideFields(&cfg.Decide, dcm, source, path, prov)
+	}
 }
 
 func mergeProfileFields(p *Profile, raw map[string]any, name string, source Source, path string, prov Provenance) {
@@ -147,6 +151,49 @@ func mergeFindingsFields(f *Findings, raw map[string]any, source Source, path st
 			f.Producers = list
 			prov["findings.producers"] = SourceInfo{source, path}
 		}
+	}
+}
+
+func mergeDecideFields(d *Decide, raw map[string]any, source Source, path string, prov Provenance) {
+	if v, ok := stringField(raw, "provider"); ok {
+		d.Provider = v
+		prov["decide.provider"] = SourceInfo{source, path}
+	}
+	if v, ok := stringField(raw, "profile"); ok {
+		d.Profile = v
+		prov["decide.profile"] = SourceInfo{source, path}
+	}
+	if v, ok := numberField(raw, "compile_threshold"); ok {
+		d.CompileThreshold = v
+		prov["decide.compile_threshold"] = SourceInfo{source, path}
+	}
+	if v, ok := numberField(raw, "route_confidence"); ok {
+		d.RouteConfidence = v
+		prov["decide.route_confidence"] = SourceInfo{source, path}
+	}
+	if v, ok := raw["rank_within_tier"]; ok {
+		if b, ok := v.(bool); ok {
+			d.RankWithinTier = b
+			prov["decide.rank_within_tier"] = SourceInfo{source, path}
+		}
+	}
+}
+
+// numberField reads a TOML numeric field as float64 — go-toml decodes a
+// bare integer literal (e.g. `route_confidence = 1`) as int64 and anything
+// with a decimal point as float64, so both are accepted here.
+func numberField(m map[string]any, key string) (float64, bool) {
+	v, ok := m[key]
+	if !ok {
+		return 0, false
+	}
+	switch n := v.(type) {
+	case float64:
+		return n, true
+	case int64:
+		return float64(n), true
+	default:
+		return 0, false
 	}
 }
 

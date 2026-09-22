@@ -97,6 +97,33 @@ type Findings struct {
 	Producers []string `toml:"producers"`
 }
 
+// Decide configures ADR-042's decision port (docs/vision/32-decision-port.md,
+// schema.cue #Decide): typed fast decisions (choice/score/noul) behind a
+// provider flag, off by default. `provider = "none"` (the default) makes no
+// call and changes nothing; `provider = "llm"` routes through `profile`
+// (empty = the compile lane's own default profile resolution).
+// CompileThreshold/RouteConfidence are always in [0,1] (enforced by the CUE
+// schema); RankWithinTier gates ADR-035's obligations re-rank.
+type Decide struct {
+	Provider         string  `toml:"provider"`
+	Profile          string  `toml:"profile"`
+	CompileThreshold float64 `toml:"compile_threshold"`
+	RouteConfidence  float64 `toml:"route_confidence"`
+	RankWithinTier   bool    `toml:"rank_within_tier"`
+}
+
+// DefaultDecide is the zero-configuration [decide] block: provider "none"
+// (no call ever made), the vision-32-documented thresholds, and
+// rank_within_tier on. Load seeds Config.Decide with this — the one place
+// in this package where a block's default is a non-zero Go value rather
+// than "absent means the zero value" (Findings, Guards, Daemon).
+var DefaultDecide = Decide{
+	Provider:         "none",
+	CompileThreshold: 0.5,
+	RouteConfidence:  0.9,
+	RankWithinTier:   true,
+}
+
 // Config is the merged, in-memory form of one or more config.toml layers.
 type Config struct {
 	DefaultProfile string
@@ -104,6 +131,7 @@ type Config struct {
 	Daemon         Daemon
 	Guards         Guards
 	Findings       Findings
+	Decide         Decide
 }
 
 // LoadError names the file and the underlying cause — parse, validate, or
@@ -160,7 +188,7 @@ type Loaded struct {
 // validate is a *LoadError naming that file.
 func Load(userPath, projectPath string) (Loaded, error) {
 	out := Loaded{
-		Config:      Config{Profiles: map[string]Profile{}},
+		Config:      Config{Profiles: map[string]Profile{}, Decide: DefaultDecide},
 		Provenance:  Provenance{},
 		UserPath:    userPath,
 		ProjectPath: projectPath,
