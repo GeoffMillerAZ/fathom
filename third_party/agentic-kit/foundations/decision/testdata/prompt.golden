@@ -1,0 +1,37 @@
+{
+  "state": "widget on line 3 stopped moving after the motor made a grinding noise",
+  "questions": [
+    {
+      "id": "root-cause",
+      "kind": "choice",
+      "instructions": "what caused the stoppage?",
+      "options": [
+        {
+          "name": "mechanical",
+          "criteria": "gears, belts, bearings"
+        },
+        {
+          "name": "electrical"
+        },
+        {
+          "name": "operator-error"
+        }
+      ]
+    },
+    {
+      "id": "severity",
+      "kind": "score",
+      "instructions": "how severe is this on a 0-10 scale?",
+      "min": 0,
+      "max": 10,
+      "rubric": "0 = cosmetic, 10 = line-down"
+    },
+    {
+      "id": "restart-safe",
+      "kind": "noul",
+      "instructions": "is it safe to restart the line without inspection?",
+      "true_criteria": "no visible damage and grinding has stopped",
+      "false_criteria": "any visible damage or persistent noise"
+    }
+  ]
+}

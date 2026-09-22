@@ -2,7 +2,7 @@
 
 # Package catalog
 
-193 Go packages. One line each: module-relative import path, package name, doc synopsis.
+194 Go packages. One line each: module-relative import path, package name, doc synopsis.
 Counted from source, so build-tagged packages the host `go list ./...` cannot see (e.g. the js/wasm-only `examples/governance-wasm`) are included — this total can run one higher than TRACKING.md's go-list count.
 
 ## foundations/agent (5)
@@ -44,6 +44,10 @@ Counted from source, so build-tagged packages the host `go list ./...` cannot se
 - `foundations/data/data-contract` (`datacontract`) — Package datacontract provides low-level data-layer contracts validated by CUE.
 - `foundations/data/embedding-provenance` (`embeddingprovenance`) — Package embeddingprovenance tracks where embeddings came from: which model produced them, from which source document, and when.
 - `foundations/data/schema-migration-ledger` (`schemamigrationledger`) — Package schemamigrationledger provides an append-only ledger of schema migrations applied to the data layer.
+
+## foundations/decision (1)
+
+- `foundations/decision` (`decision`) — Package decision is a typed fast-decision port: callers ask typed questions about a blob of state and get probabilities back, never text.
 
 ## foundations/embedding (3)
 
