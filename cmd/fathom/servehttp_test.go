@@ -26,7 +26,7 @@ func newTestHandler(t *testing.T) http.Handler {
 	}
 	t.Cleanup(func() { c.Close() })
 	srv := mcp.NewServer(c)
-	return newHTTPHandler(srv, c, "127.0.0.1:0")
+	return newHTTPHandler(srv, c, "127.0.0.1:0", nil)
 }
 
 // rpcBody serialises v as compact JSON.
@@ -295,7 +295,7 @@ func TestServeHTTPOffSurfaceExecutesAndFlags(t *testing.T) {
 	t.Cleanup(func() { c.Close() })
 	var buf bytes.Buffer
 	srv := mcp.NewServerWithFleetAndLogger(c, nil, mcp.NewCallLogger(&buf))
-	handler := newHTTPHandler(srv, c, "127.0.0.1:0")
+	handler := newHTTPHandler(srv, c, "127.0.0.1:0", nil)
 
 	// secret_scan is off the companion allowlist. It still reaches the
 	// handler — any error it returns is its own backend error (no checkout
@@ -374,7 +374,7 @@ func TestServeHTTPCallLogRecordsSurface(t *testing.T) {
 	t.Cleanup(func() { c.Close() })
 	var buf bytes.Buffer
 	srv := mcp.NewServerWithFleetAndLogger(c, nil, mcp.NewCallLogger(&buf))
-	handler := newHTTPHandler(srv, c, "127.0.0.1:0")
+	handler := newHTTPHandler(srv, c, "127.0.0.1:0", nil)
 
 	_ = postRPCPath(t, handler, "/rpc/companion", rpcBody(t, map[string]any{
 		"jsonrpc": "2.0", "id": 24, "method": "tools/call",

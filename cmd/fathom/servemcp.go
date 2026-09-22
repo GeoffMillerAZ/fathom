@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
@@ -54,6 +55,25 @@ func runServeMCP(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return 1
 	}
 	defer c.Close()
+
+	// ADR-042/DP-9: the decision port — obligations' within-tier re-rank
+	// reads it through the Client exactly like serve-http (compile_layer's
+	// own prefilter benefits too, on the rare stdio caller that also wires
+	// an LLM via WithLLM elsewhere). Fail-open (openDecisionPorts never
+	// errors outward): a misconfigured or unreachable [decide] provider
+	// warns to stderr and falls back to decision.None rather than blocking
+	// stdio startup (I14).
+	loaded, cfgErr := config.Load(config.DefaultUserPath(), config.DefaultProjectPath())
+	if cfgErr != nil {
+		fmt.Fprintf(stderr, "warn: decision port disabled: loading config: %v\n", cfgErr)
+	} else {
+		daemonProfileName := loaded.Config.Daemon.DefaultProfile
+		if daemonProfileName == "" {
+			daemonProfileName = loaded.Config.DefaultProfile
+		}
+		ports := openDecisionPorts(loaded, daemonProfileName, resolveCallLogPath(), "serve-mcp", stderr)
+		c.WithDecision(ports.Decider, ports.Cfg, ports.Recorder)
+	}
 
 	// Announce build identity at startup. A long-running serve-mcp process can
 	// outlive several commits; logging the embedded VCS revision makes a stale

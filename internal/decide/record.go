@@ -102,31 +102,66 @@ func (r *Recorder) Record(site string, resp decision.Response, applied func(deci
 				app = applied(answer)
 			}
 		}
-		row := decisionRow{
-			SchemaVersion: decisionRecordSchemaVersion,
-			FathomVersion: r.fathomVersion,
-			TS:            ts,
-			Site:          rec.Site,
-			Provider:      rec.Provider,
-			Model:         rec.Model,
-			QuestionID:    rec.QuestionID,
-			Kind:          string(rec.Kind),
-			Choice:        rec.Choice,
-			Confidence:    rec.Confidence,
-			Score:         rec.Score,
-			Noul:          rec.Noul,
-			LatencyMS:     rec.Latency.Milliseconds(),
-			InputTokens:   rec.InputTokens,
-			OutputTokens:  rec.OutputTokens,
-			Applied:       app,
-		}
-		b, err := json.Marshal(row)
-		if err != nil {
-			continue // decisionRow is all primitives; unreachable in practice
-		}
-		b = append(b, '\n')
-		_, _ = r.w.Write(b) // best-effort, mirrors internal/mcp.CallLogger's own logging discipline
+		r.writeRow(ts, rec, app)
 	}
+}
+
+// Append writes one JSONL row per entry in records — the same row shape
+// Record produces — for a call site (compile's PrefilterSections,
+// obligations' rerankWithinTiers) that already has []decision.Record in
+// hand rather than a full decision.Response to classify itself. The kit's
+// decision.Record carries no Applied flag, so applied is derived from band
+// the same way Record treats the unsure band: per I42, a record whose
+// confidence bands as decision.BandUnsure is always applied:false; every
+// other record is applied:true, since Append's only callers (the compile
+// pre-filter and the obligations re-rank) pass records solely for
+// decisions their own logic already acted on — there is no separate
+// "applied" callback to consult for a bare Record.
+//
+// A nil Recorder, a nil writer, or an empty records is a safe no-op,
+// matching Record.
+func (r *Recorder) Append(records []decision.Record) {
+	if r == nil || r.w == nil || len(records) == 0 {
+		return
+	}
+
+	ts := r.now().UTC().Format(time.RFC3339)
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for _, rec := range records {
+		r.writeRow(ts, rec, decision.BandOf(rec.Confidence) != decision.BandUnsure)
+	}
+}
+
+// writeRow marshals and writes one JSONL row for rec with the given ts and
+// applied classification. Callers must hold r.mu.
+func (r *Recorder) writeRow(ts string, rec decision.Record, applied bool) {
+	row := decisionRow{
+		SchemaVersion: decisionRecordSchemaVersion,
+		FathomVersion: r.fathomVersion,
+		TS:            ts,
+		Site:          rec.Site,
+		Provider:      rec.Provider,
+		Model:         rec.Model,
+		QuestionID:    rec.QuestionID,
+		Kind:          string(rec.Kind),
+		Choice:        rec.Choice,
+		Confidence:    rec.Confidence,
+		Score:         rec.Score,
+		Noul:          rec.Noul,
+		LatencyMS:     rec.Latency.Milliseconds(),
+		InputTokens:   rec.InputTokens,
+		OutputTokens:  rec.OutputTokens,
+		Applied:       applied,
+	}
+	b, err := json.Marshal(row)
+	if err != nil {
+		return // decisionRow is all primitives; unreachable in practice
+	}
+	b = append(b, '\n')
+	_, _ = r.w.Write(b) // best-effort, mirrors internal/mcp.CallLogger's own logging discipline
 }
 
 // DefaultRecorderPath returns "decisions.jsonl" beside callLogPath (the same

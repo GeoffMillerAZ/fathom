@@ -263,11 +263,11 @@ type Obligations struct {
 	// see RankNote) or the Decider's own Name() (e.g. "llm", "mock").
 	// Always present, never omitempty, so a consumer can tell "reranking
 	// did not run" from "this field does not exist yet" without a second
-	// signal. Only ObligationsForOpts/ObligationsForLayerOpts can ever set
-	// it to anything but "none" — every other entry point (ObligationsFor,
-	// ObligationsForLayer, RootObligationsFor, RootObligationsForLayer,
-	// ObligationsAsOf) passes a zero-value ObligationsOptions and always
-	// reports "none" here.
+	// signal. Only ObligationsForOpts/ObligationsForLayerOpts/
+	// ObligationsAsOfOpts can ever set it to anything but "none" — every
+	// other entry point (ObligationsFor, ObligationsForLayer,
+	// RootObligationsFor, RootObligationsForLayer, ObligationsAsOf) passes a
+	// zero-value ObligationsOptions and always reports "none" here.
 	RankedBy string `json:"ranked_by"`
 	// RankNote (DP-8) is set only when a configured Decider's Decide call
 	// itself returned an error (including decision.ErrNoProvider) — the
@@ -405,6 +405,16 @@ func ObligationsForLayerOpts(ctx context.Context, st store.Store, serviceID, fil
 // carries asOf back as the honest "as of" label.
 func ObligationsAsOf(ctx context.Context, st store.Store, serviceID, file string, max int, asOf time.Time) (Obligations, error) {
 	return obligationsCore(ctx, st, serviceID, file, max, fileScopeMatch(file), ObligationLayerAll, &asOf, ObligationsOptions{})
+}
+
+// ObligationsAsOfOpts is ObligationsAsOf's decision-port sibling (DP-9), the
+// same way ObligationsForOpts is ObligationsFor's: obligationsCore already
+// accepts asOf and opts independently, so this is a thin wrapper threading
+// both through at once. ObligationsAsOfOpts(ctx, st, service, file, max,
+// asOf, ObligationsOptions{}) is byte-for-byte ObligationsAsOf(ctx, st,
+// service, file, max, asOf).
+func ObligationsAsOfOpts(ctx context.Context, st store.Store, serviceID, file string, max int, asOf time.Time, opts ObligationsOptions) (Obligations, error) {
+	return obligationsCore(ctx, st, serviceID, file, max, fileScopeMatch(file), ObligationLayerAll, &asOf, opts)
 }
 
 // servedClaimStatuses is core.ClaimStatus.Served()'s three admitted

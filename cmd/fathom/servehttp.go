@@ -14,6 +14,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/capability"
 	"github.com/geoffmilleraz/fathom/internal/config"
+	"github.com/geoffmilleraz/fathom/internal/decide"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 	"github.com/geoffmilleraz/fathom/internal/modulehost"
 	"github.com/geoffmilleraz/fathom/internal/store"
@@ -115,6 +116,14 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
+	// ADR-042/DP-9: the decision port — the compile pre-filter and the
+	// obligations re-rank both read it through the Client. Fail-open by
+	// construction (openDecisionPorts never errors outward): a
+	// misconfigured or unreachable [decide] provider warns and falls back
+	// to decision.None rather than blocking startup (I14).
+	ports := openDecisionPorts(loaded, daemonProfileName, *callLogPath, "serve-http", stderr)
+	c.WithDecision(ports.Decider, ports.Cfg, ports.Recorder)
+
 	// Default: keep the shared index fresh transparently. A query for a service
 	// whose git HEAD has drifted from the indexed commit triggers a hash-gated
 	// re-ingest before the answer — so the always-on daemon never serves a stale
@@ -182,7 +191,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	if modulesToken != "" {
 		srv.SetHostedModules(true)
 	}
-	handler := newHTTPHandlerWithAuth(srv, c, modulesToken, *addr)
+	handler := newHTTPHandlerWithAuth(srv, c, modulesToken, *addr, ports)
 
 	// Adopt a new binary without a human (selfrestart.go). launchd's
 	// KeepAlive is true for this job, so exiting IS a restart — which is
@@ -271,15 +280,25 @@ func openCallLog(path string) (*os.File, error) {
 //	                      leaving typed edges alone (SU-5/SU-6, ADR-041
 //	                      decisions 3/4); the pre-edit hook's per-file
 //	                      freshness check; never an MCP tool
+//	POST /route         — {prompt} suggests which MCP tool's question-shape
+//	                      fits a prompt (DP-9, ADR-042, docs/vision/
+//	                      32-decision-port.md §2 item 3) — a SUGGESTION
+//	                      about the prompt's shape, never a code fact;
+//	                      provider "none" or any failure serves a
+//	                      none-shaped 200, never a 5xx; the prompt hook's
+//	                      route line (DP-10) is this route's only caller
+//	                      today; never an MCP tool
 //	POST /reload        — 200 OK stub; would reload a PlatformStore in production
 //
 // newHTTPHandlerWithAuth wraps newHTTPHandler with the /rpc/modules (AND,
 // Q-26, /statusz) bearer-token gate (GKE-MH-7). modulesToken == "" (the
 // default) disables the check entirely — identical behavior to
 // newHTTPHandler(srv, c), so every existing call site/test unaffected by
-// this row keeps working unchanged.
-func newHTTPHandlerWithAuth(srv *mcp.Server, c *client.Client, modulesToken, selfAddr string) http.Handler {
-	return modulesAuthMiddleware(newHTTPHandler(srv, c, selfAddr), modulesToken)
+// this row keeps working unchanged. ports is DP-9's decision port for
+// POST /route; pass nil for the pre-decision-port none-shaped behavior
+// (routeHandler treats a nil *decide.Ports the same as provider "none").
+func newHTTPHandlerWithAuth(srv *mcp.Server, c *client.Client, modulesToken, selfAddr string, ports *decide.Ports) http.Handler {
+	return modulesAuthMiddleware(newHTTPHandler(srv, c, selfAddr, ports), modulesToken)
 }
 
 // modulesAuthMiddleware gates ONLY the /rpc/modules path (and its
@@ -324,7 +343,7 @@ func modulesAuthMiddleware(next http.Handler, token string) http.Handler {
 	})
 }
 
-func newHTTPHandler(srv *mcp.Server, c *client.Client, selfAddr string) http.Handler {
+func newHTTPHandler(srv *mcp.Server, c *client.Client, selfAddr string, ports *decide.Ports) http.Handler {
 	state := &httpServerState{startTime: time.Now()}
 	mux := http.NewServeMux()
 
@@ -341,6 +360,9 @@ func newHTTPHandler(srv *mcp.Server, c *client.Client, selfAddr string) http.Han
 	// POST /refresh-file {service, file} (SU-5/SU-6, ADR-041 decisions 3
 	// and 4): the pre-edit hook's per-file freshness refresh.
 	mux.Handle("/refresh-file", refreshFileHandler(c, srv))
+	// POST /route {prompt} (DP-9, ADR-042): suggests which MCP tool's
+	// question-shape fits prompt — the prompt hook's route line (DP-10).
+	mux.Handle("/route", routeHandler(ports))
 	// Observatory (vision 17 / docs/plans/observatory.md OB-4/5/6):
 	// loopback value-realization pages over the same primitives the fleet
 	// report reads. selfURL lets the model reuse the HTTP-shaped helpers.

@@ -113,6 +113,37 @@ withheld by a suppression someone registered". `read_source` refuses
 suppressed and service-ignored paths by name, with the unsuppress command
 in the refusal.
 
+### Plain HTTP endpoints (non-MCP)
+
+`serve-http` also answers a handful of plain (non-JSON-RPC) POST/GET routes
+outside the tool registry — hooks call these directly rather than through
+`tools/call`:
+
+- `POST /refresh-file` — `{service, file}` re-extracts one file's
+  observations/syntax edges and fingerprint (SU-5/SU-6, ADR-041 decisions 3
+  and 4); the pre-edit hook's per-file freshness check.
+- `GET /findings/summary?service=NAME` — repo-wide open finding-kind claim
+  count plus the oldest compiled-at (FL-21, `docs/vision/30-findings-loop.md`
+  §3.4).
+- `POST /route` — `{"prompt": "..."}` suggests which MCP tool's
+  question-shape best fits a prompt (DP-9, ADR-042 decision 2,
+  `docs/vision/32-decision-port.md` §2 item 3). One decision-port `choice`
+  question over the fixed verb set (`localize`, `find_symbol`, `references`,
+  `find_callers`, `obligations`, `staleness_report`, `search`, `none`)
+  answers `{"shape", "verb", "confidence", "band", "provider"}`. Provider
+  `none`, a decider error, or an invalid answer all degrade to
+  `{"shape":"","verb":"","confidence":0,"band":"unsure","provider":"none"}`
+  (plus an `"error"` field on a genuine failure) rather than a non-200
+  status — **this route is a SUGGESTION about the prompt's shape, never a
+  code fact**: it never asserts that a symbol exists, a caller calls, or a
+  rule is binding, only which lookup verb a question shaped like this one
+  usually wants. Every answered decision is appended to `decisions.jsonl`
+  (`internal/decide.DefaultRecorderPath`, beside the configured call log)
+  under site `"route"`. `fathom prompt-hook` is this route's only caller
+  today (DP-10): at or above the `proceed` band it injects one firm line,
+  in the `confirm` band one hedged line, and nothing below that or on any
+  failure.
+
 ---
 
 ## Protocol contract

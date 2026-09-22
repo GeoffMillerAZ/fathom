@@ -117,3 +117,66 @@ func TestRecord_NilRecorderIsNoop(t *testing.T) {
 	}
 	rec.Record("site", resp, func(decision.Answer) bool { return true })
 }
+
+// TestRecorder_Append pins Append's contract: same row shape as Record, a
+// nil Recorder / nil writer / empty records is a no-op, and — since
+// decision.Record carries no Applied flag — applied is derived from band
+// alone (I42: unsure is never applied; every other band is).
+func TestRecorder_Append(t *testing.T) {
+	fixedNow := time.Date(2026, 9, 22, 12, 0, 0, 0, time.UTC)
+
+	records := []decision.Record{
+		{
+			Site: "compile_prefilter", Provider: "llm", Model: "test-model",
+			QuestionID: "sec-2", Kind: decision.KindNoul,
+			Noul: 0.4, Confidence: 0.4, // unsure band
+		},
+		{
+			Site: "compile_prefilter", Provider: "llm", Model: "test-model",
+			QuestionID: "sec-1", Kind: decision.KindNoul,
+			Noul: 0.95, Confidence: 0.95, // proceed band
+		},
+	}
+
+	var buf bytes.Buffer
+	rec := decide.NewRecorder(&buf, func() time.Time { return fixedNow }, "v-test")
+	rec.Append(records)
+
+	lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("wrote %d line(s), want 2:\n%s", len(lines), buf.String())
+	}
+
+	byQID := map[string]map[string]any{}
+	for _, line := range lines {
+		var row map[string]any
+		if err := json.Unmarshal([]byte(line), &row); err != nil {
+			t.Fatalf("row not JSON: %v", err)
+		}
+		byQID[row["question_id"].(string)] = row
+	}
+
+	if applied, ok := byQID["sec-2"]["applied"].(bool); !ok || applied {
+		t.Errorf("sec-2 (unsure band) applied = %v, want false", byQID["sec-2"]["applied"])
+	}
+	if applied, ok := byQID["sec-1"]["applied"].(bool); !ok || !applied {
+		t.Errorf("sec-1 (proceed band) applied = %v, want true", byQID["sec-1"]["applied"])
+	}
+	if byQID["sec-1"]["site"] != "compile_prefilter" {
+		t.Errorf("site = %v, want %q", byQID["sec-1"]["site"], "compile_prefilter")
+	}
+
+	// nil Recorder, nil writer, and empty records are all safe no-ops.
+	var nilRec *decide.Recorder
+	nilRec.Append(records)
+
+	zeroWriterRec := decide.NewRecorder(nil, func() time.Time { return fixedNow }, "v-test")
+	zeroWriterRec.Append(records)
+
+	var buf2 bytes.Buffer
+	emptyRec := decide.NewRecorder(&buf2, func() time.Time { return fixedNow }, "v-test")
+	emptyRec.Append(nil)
+	if buf2.Len() != 0 {
+		t.Errorf("Append(nil) wrote %d bytes, want 0", buf2.Len())
+	}
+}

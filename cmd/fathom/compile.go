@@ -18,6 +18,7 @@ import (
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/claudecli"
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/codexcli"
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/openai"
+	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
@@ -182,6 +183,23 @@ func compileViaStore(storePath, service, layer, profileFlag string, dryRun, forc
 
 	ctx := context.Background()
 	escape := ""
+
+	// ADR-042/DP-9: the decision port — the compile pre-filter reads it
+	// through the Client, gated the same way as every other decision-port
+	// call site (a nil/None decider is the identity, byte-identical to
+	// before this wave). profileFlag is this command's own --profile flag,
+	// the same "empty [decide].profile fallback" role daemonProfileName
+	// plays for the HTTP daemon (servehttp.go): an operator's [decide]
+	// profile wins when set, else this compile's own --profile, else
+	// config.ResolveProfile's own default_profile/env-overlay fallback.
+	// Fail-open: any resolution failure warns and falls back to
+	// decision.None rather than refusing the compile (I14).
+	if loaded, cfgErr := config.Load(config.DefaultUserPath(), config.DefaultProjectPath()); cfgErr != nil {
+		fmt.Fprintf(stderr, "warn: decision port disabled: loading config: %v\n", cfgErr)
+	} else {
+		ports := openDecisionPorts(loaded, profileFlag, resolveCallLogPath(), "fathom compile", stderr)
+		c.WithDecision(ports.Decider, ports.Cfg, ports.Recorder)
+	}
 
 	if !dryRun {
 		// The service's actual ingested root (ServiceMeta) — the same

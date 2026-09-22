@@ -23,12 +23,12 @@ A/B rows at the end are operator decisions (LLM spend) and are never claimed by 
 
 ## D. Prompt routing (ADR-042 decision 2; I9/I12/I14 preserved)
 
-- [ ] `POST /route` on the loopback daemon takes `{prompt}` and returns `{shape, verb, confidence, provider}` from one `choice` over the verb set (`localize`, `find_symbol`, `references`, `find_callers`, `obligations`, `staleness_report`, `search`, `none`); under `none` it returns `provider: none` and an empty verb without calling anything {id: DP-9, symbol: routeHandler, package: cmd/fathom, reachable_from: TestRouteHandler_NoneAndLLM}
-- [ ] `fathom prompt-hook` calls `/route` inside its existing shared deadline and injects one line: firm at or above `route_confidence`, hedged in the confirm band, nothing below 0.5 or on any error; the whole injection stays within the hook's byte budget and the hook exits 0 on every failure {id: DP-10, symbol: routeLine, package: cmd/fathom, reachable_from: TestPromptHook_RouteLineBands}
+- [x] `POST /route` on the loopback daemon takes `{prompt}` and returns `{shape, verb, confidence, provider}` from one `choice` over the verb set (`localize`, `find_symbol`, `references`, `find_callers`, `obligations`, `staleness_report`, `search`, `none`); under `none` it returns `provider: none` and an empty verb without calling anything {id: DP-9, symbol: routeHandler, package: cmd/fathom, reachable_from: TestRouteHandler_NoneAndLLM}
+- [x] `fathom prompt-hook` calls `/route` inside its existing shared deadline and injects one line: firm at or above `route_confidence`, hedged in the confirm band, nothing below 0.5 or on any error; the whole injection stays within the hook's byte budget and the hook exits 0 on every failure {id: DP-10, symbol: routeLine, package: cmd/fathom, reachable_from: TestPromptHook_RouteLineBands}
 
 ## E. Docs, bench recipe, and the A/B (ADR-042 decision 5)
 
-- [ ] `docs/configuration.md` documents the `[decide]` block and its defaults {id: DP-11, oracle: lexical, path: docs/configuration.md, pattern: "\[decide\]"}
-- [ ] `docs/bench/scenarios.md` documents the corpus-variant recipe (an arm `setup` that appends the `[decide]` block; a different corpus hash is a different cell key) {id: DP-12, oracle: lexical, path: docs/bench/scenarios.md, pattern: "\[decide\]"}
+- [x] `docs/configuration.md` documents the `[decide]` block and its defaults {id: DP-11, oracle: lexical, path: docs/configuration.md, pattern: "\[decide\]"}
+- [x] `docs/bench/scenarios.md` documents the corpus-variant recipe (an arm `setup` that appends the `[decide]` block; a different corpus hash is a different cell key) {id: DP-12, oracle: lexical, path: docs/bench/scenarios.md, pattern: "\[decide\]"}
 - [ ] (op) Compile A/B on the fathom repo at one commit, `none` against `llm`: sections compiled, served rules lost, dollars, wall clock — bar: no served rule lost, under ten minutes and a dollar; LLM spend, owner asks {id: DP-13, skip: "operator decision: LLM spend"}
 - [ ] (op) Serving and routing A/B: `obligations` gold-source rate on guards-fathom; fraction of issue-shaped prompts reaching `localize` and hit@1 on LCA, `none` against `llm` {id: DP-14, skip: "operator decision: LLM spend"}

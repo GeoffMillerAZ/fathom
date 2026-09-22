@@ -278,6 +278,18 @@ rank_within_tier  = true     # obligations re-orders rules only inside their gov
 envelope carries `ranked_by`, and `POST /route` on the loopback daemon serves the
 prompt hook's route. A `typesafe` adapter is a documented future (`docs/intent/futures.md` F21).
 
+Like every other `config.toml` block, `[decide]` is read once at daemon
+startup — a change is **restart-to-apply**, never live-reloaded. `profile`
+empty falls back to the daemon's own compile-lane profile (`[daemon].
+default_profile`, else the top-level `default_profile`) — one lane
+resolution chain shared by compile and the decision port, not two to keep
+in sync. Every answered decision (the compile pre-filter, the obligations
+re-rank, and `POST /route`) is appended to `decisions.jsonl`, written
+beside the configured call log (`internal/decide.DefaultRecorderPath` —
+same directory as `[daemon].call_log`/`--call-log`, default
+`logs/mcp-calls.jsonl` under the repo's state directory); no call log
+configured means no decision log either.
+
 ## The findings loop: `[findings]`
 
 `fathom init` scaffolds `.fathom/config.toml` (project scope, sibling to

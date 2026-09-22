@@ -108,8 +108,17 @@ func cmdPromptHook(args []string, stdout, stderr io.Writer) int {
 	projDir := resolveProjDirFor(codec.ID(), hook.Cwd)
 	deadline := time.Now().Add(promptHookDeadlineBudget)
 	text, meta, ok := renderPromptObligations(url, projDir, prompt, sessionID, deadline)
+
+	// DP-10 (ADR-042, docs/vision/32-decision-port.md §2 item 3): routing
+	// draws on the SAME shared deadline as the obligations work above, and
+	// asks AFTER it — obligations always gets first claim on the budget; a
+	// route line is a bonus this hook can afford to skip, never a reason
+	// to starve it. A route line can stand alone (a prompt naming nothing
+	// obligations resolves, e.g. "why does X crash", is still routable).
+	route := routeLine(&http.Client{Timeout: deadlineRemaining(deadline)}, url, prompt, deadline)
+	text, ok = combineWithRouteLine(text, ok, route)
 	if !ok {
-		return 0 // renderPromptObligations already emitted the beat that names the silence
+		return 0 // nothing resolved and no route line either — silence contract
 	}
 	out, err := codec.EncodeOutput(harness.EventUserPromptSubmit, harness.HookOutput{Context: text})
 	if err != nil {
@@ -328,4 +337,96 @@ func fetchSymbolFile(hc *http.Client, baseURL, service, name string) (string, bo
 		return "", false
 	}
 	return payload.Symbols[0].FilePath, true
+}
+
+// combineWithRouteLine folds route (DP-10's rendered line, possibly "")
+// into text/ok (renderPromptObligations' own result): route == "" changes
+// nothing. Otherwise, text=="" (ok==false: nothing resolved) makes route
+// stand alone as the whole output. Otherwise route is appended on its own
+// line ONLY when the combined length still fits the hook's existing byte
+// budget (harness.CodexAdditionalContextCap, codec_codex.go) — appending
+// past it would risk that cap's own blind end-of-string truncation eating
+// into obligations text a caller already earned, so the route line is
+// dropped instead, never the obligations text. Pure function: no I/O, no
+// clock, so a test can exercise every branch without a daemon.
+func combineWithRouteLine(text string, ok bool, route string) (string, bool) {
+	if route == "" {
+		return text, ok
+	}
+	if !ok {
+		return route, true
+	}
+	if len(text)+1+len(route) <= harness.CodexAdditionalContextCap {
+		return text + "\n" + route, true
+	}
+	return text, true
+}
+
+// routePostResponse mirrors POST /route's JSON body (cmd/fathom/route.go's
+// routeResponse) — a private mirror here rather than importing route.go's
+// type directly, matching this file's existing pattern for every other
+// plain (non-JSON-RPC) daemon endpoint a hook calls (refreshFileRequest/
+// refreshFileResponse in edithook_pre.go/refreshfile.go).
+type routePostResponse struct {
+	Shape      string  `json:"shape"`
+	Verb       string  `json:"verb"`
+	Confidence float64 `json:"confidence"`
+	Band       string  `json:"band"`
+	Provider   string  `json:"provider"`
+	Error      string  `json:"error,omitempty"`
+}
+
+// routeLine asks the daemon's POST /route (DP-9) which MCP tool's
+// question-shape fits prompt and renders DP-10's one-line hint — verbs in
+// the line are the MCP tool names verbatim (find_symbol, references,
+// find_callers, obligations, staleness_report, search, localize), the
+// exact spelling a reader can paste into a tool call:
+//
+//   - band "proceed": one firm line.
+//   - band "confirm": one hedged line.
+//   - anything else — band "unsure", verb "" or "none", provider "none",
+//     a deadline already spent, any transport/HTTP/decode error, or a
+//     non-200 status — returns "": nothing is ever injected on a routing
+//     failure (ADR-016 §5.3's fail-open contract; the hook must never
+//     block, error, or print anything just because routing did not work).
+func routeLine(hc *http.Client, baseURL, prompt string, deadline time.Time) string {
+	if !time.Now().Before(deadline) {
+		return "" // routing never starves obligations: nothing left to spend
+	}
+	body, err := json.Marshal(map[string]string{"prompt": prompt})
+	if err != nil {
+		return ""
+	}
+	req, err := http.NewRequest(http.MethodPost, baseURL+"/route", bytes.NewReader(body))
+	if err != nil {
+		return ""
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := hc.Do(req)
+	if err != nil {
+		return ""
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return ""
+	}
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, 1<<16))
+	if err != nil {
+		return ""
+	}
+	var out routePostResponse
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return ""
+	}
+	if out.Error != "" || out.Provider == "none" || out.Verb == "" || out.Verb == "none" {
+		return ""
+	}
+	switch out.Band {
+	case "proceed":
+		return fmt.Sprintf("fathom route: this prompt is %s-shaped — open with %s (confidence %.2f).", out.Shape, out.Verb, out.Confidence)
+	case "confirm":
+		return fmt.Sprintf("fathom route: this looks %s-shaped; %s is the likely opening move (confidence %.2f, unconfirmed).", out.Shape, out.Verb, out.Confidence)
+	default:
+		return "" // "unsure", or an unrecognized band string — say nothing
+	}
 }

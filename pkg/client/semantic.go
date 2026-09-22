@@ -8,8 +8,11 @@ import (
 	"sort"
 	"time"
 
+	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/decide"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/llmsec"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
@@ -27,17 +30,112 @@ func (c *Client) WithLLM(llm llmclient.LLMClient, model string, inRatePerKTok, o
 	return c
 }
 
+// WithDecision attaches the decision port (ADR-042, docs/vision/
+// 32-decision-port.md) this Client threads through CompileLayer's
+// pre-filter (DP-9) and the Obligations*/ObligationsLayer*/ObligationsAsOf*
+// re-rank (DP-7/DP-8): d answers each site's batched fast-decision
+// questions, cfg carries the thresholds both sites read (CompileThreshold,
+// RankWithinTier), and rec is the shared decisions.jsonl sink both sites
+// append their decision.Record rows to — a nil rec is decide.Recorder's own
+// safe no-op, so a caller that wants the decider wired but no log written
+// can pass nil. Never calling WithDecision (decider stays the zero value,
+// nil) leaves every decision-port-aware call site byte-identical to before
+// this method existed: see decisionActive. Returns c for chaining, like
+// WithLLM.
+func (c *Client) WithDecision(d decision.Decider, cfg config.Decide, rec *decide.Recorder) *Client {
+	c.decider = d
+	c.decideCfg = cfg
+	c.decideRec = rec
+	return c
+}
+
+// decisionActive reports whether c has a decision port worth calling: a
+// non-nil Decider that is not the kit's own zero-configuration
+// decision.None stub. PrefilterSections and rerankWithinTiers already treat
+// nil/None identically to "no call, unchanged output" on their own, but
+// call sites in this package use decisionActive to decide whether to wire
+// the Decider/options through AT ALL, so a Client that never calls
+// WithDecision (or is explicitly given decision.None) builds a
+// semantic.Compiler/ObligationsOptions indistinguishable from one built
+// before the decision port existed.
+func (c *Client) decisionActive() bool {
+	if c.decider == nil {
+		return false
+	}
+	_, isNone := c.decider.(decision.None)
+	return !isNone
+}
+
+// decisionOpts builds the semantic.ObligationsOptions the file-scoped
+// obligations entry points (Obligations, ObligationsLayer, ObligationsAsOf)
+// pass to their *Opts sibling. Hunk is always empty here — none of these
+// three exposed methods takes a hunk argument (only the MCP obligations
+// tool's own edit-hook path, which another wave may wire directly against
+// semantic.ObligationsForOpts, ever has one). When c.decisionActive() is
+// false this is the zero-value ObligationsOptions{}, which
+// ObligationsForOpts/ObligationsForLayerOpts/ObligationsAsOfOpts document as
+// byte-identical to their pre-Opts, non-decision-port siblings.
+func (c *Client) decisionOpts() semantic.ObligationsOptions {
+	if !c.decisionActive() {
+		return semantic.ObligationsOptions{}
+	}
+	return semantic.ObligationsOptions{Decider: c.decider, RankWithinTier: c.decideCfg.RankWithinTier}
+}
+
+// coreDecisionRecordsToKit converts internal/core's dependency-free
+// core.DecisionRecord (what a CompileRun/Obligations payload carries across
+// the internal/semantic boundary) back into the kit's own decision.Record
+// shape, which decide.Recorder.Append consumes — the inverse of
+// internal/semantic's own (unexported) toCoreDecisionRecords. nil in, nil
+// out.
+func coreDecisionRecordsToKit(recs []core.DecisionRecord) []decision.Record {
+	if len(recs) == 0 {
+		return nil
+	}
+	out := make([]decision.Record, len(recs))
+	for i, r := range recs {
+		out[i] = decision.Record{
+			Site:         r.Site,
+			Provider:     r.Provider,
+			Model:        r.Model,
+			QuestionID:   r.QuestionID,
+			Kind:         decision.Kind(r.Kind),
+			Choice:       r.Choice,
+			Confidence:   r.Confidence,
+			Score:        r.Score,
+			Noul:         r.Noul,
+			Latency:      time.Duration(r.LatencyMS) * time.Millisecond,
+			InputTokens:  r.InputTokens,
+			OutputTokens: r.OutputTokens,
+		}
+	}
+	return out
+}
+
 // Obligations returns the obligations governing file for service, capped at
 // maxRules (≤ semantic.MaxObligations; ≤0 means the default cap).
+//
+// DP-7/DP-9: routed through semantic.ObligationsForOpts so a Client with an
+// active decision port (WithDecision, decisionActive) re-ranks eligible
+// rules within their governing-scope tier — see decisionOpts. A Client that
+// never calls WithDecision passes a zero-value semantic.ObligationsOptions,
+// which ObligationsForOpts documents as byte-identical to the pre-Opts
+// ObligationsFor path.
 func (c *Client) Obligations(ctx context.Context, service, file string, maxRules int) (semantic.Obligations, error) {
-	return semantic.ObligationsFor(ctx, c.st, service, file, maxRules)
+	obl, err := semantic.ObligationsForOpts(ctx, c.st, service, file, maxRules, c.decisionOpts())
+	c.decideRec.Append(obl.Decisions)
+	return obl, err
 }
 
 // ObligationsAsOf answers "what governed file AT asOf" (SU-19, ADR-041
 // decision 7) — see semantic.ObligationsAsOf's own doc comment for why this
-// is a separate, slower read path from Obligations/ObligationsLayer.
+// is a separate, slower read path from Obligations/ObligationsLayer. DP-9:
+// routed through semantic.ObligationsAsOfOpts the same way Obligations is
+// routed through ObligationsForOpts — see decisionOpts.
 func (c *Client) ObligationsAsOf(ctx context.Context, service, file string, maxRules int, asOf time.Time) (semantic.Obligations, error) {
-	return semantic.ObligationsAsOf(ctx, c.st, service, file, maxRules, asOf)
+	obl, err := semantic.ObligationsAsOfOpts(ctx, c.st, service, file, maxRules, asOf, c.decisionOpts())
+	c.decideRec.Append(obl.Decisions)
+	return obl, err
 }
 
 // RootObligations returns "what governs this repository" (RC-22): the
@@ -50,9 +148,13 @@ func (c *Client) RootObligations(ctx context.Context, service string, maxRules i
 
 // ObligationsLayer is Obligations' VB-9 sibling (ADR-035 decision 2):
 // layer selects rules/claims/all — see semantic.ObligationsForLayer and
-// semantic.ObligationLayerFilter.
+// semantic.ObligationLayerFilter. DP-9: routed through
+// semantic.ObligationsForLayerOpts, Obligations' own decision-port routing
+// — see decisionOpts.
 func (c *Client) ObligationsLayer(ctx context.Context, service, file string, maxRules int, layer semantic.ObligationLayerFilter) (semantic.Obligations, error) {
-	return semantic.ObligationsForLayer(ctx, c.st, service, file, maxRules, layer)
+	obl, err := semantic.ObligationsForLayerOpts(ctx, c.st, service, file, maxRules, layer, c.decisionOpts())
+	c.decideRec.Append(obl.Decisions)
+	return obl, err
 }
 
 // RootObligationsLayer is RootObligations' VB-9 sibling — see
@@ -342,7 +444,18 @@ func (c *Client) compileLayer(ctx context.Context, service, layerName string, dr
 		InRatePerKTok:  c.llmInRate,
 		OutRatePerKTok: c.llmOutRate,
 	}
-	return comp.Compile(ctx, semantic.CompileInput{
+	// ADR-042 decision 2 / DP-9: wire the compile pre-filter's decision port
+	// only when a real decider is configured (non-nil AND not the kit's own
+	// decision.None stub) — PrefilterSections already treats a nil or None
+	// Decider as the identity (no call, sections_prefiltered stays 0), but
+	// leaving Compiler.Decider unset in that case keeps a Compiler built
+	// through this path byte-identical to one built before WithDecision
+	// existed, rather than merely behaviorally equivalent.
+	if c.decisionActive() {
+		comp.Decider = c.decider
+		comp.PrefilterThreshold = c.decideCfg.CompileThreshold
+	}
+	run, err := comp.Compile(ctx, semantic.CompileInput{
 		ServiceID:    service,
 		Docs:         corpus,
 		IndexedFiles: indexedFiles,
@@ -351,6 +464,11 @@ func (c *Client) compileLayer(ctx context.Context, service, layerName string, dr
 		Escape:       escape,
 		Resume:       resume,
 	})
+	// DP-3/DP-9: log whatever the pre-filter decided, regardless of err —
+	// a partial run that failed mid-compile may still have asked the
+	// decision port about earlier sections, and those decisions were real.
+	c.decideRec.Append(coreDecisionRecordsToKit(run.Decisions))
+	return run, err
 }
 
 // CompileObligations is a thin wrapper over CompileLayer("obligations"),

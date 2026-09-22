@@ -18,9 +18,12 @@ import (
 	"path/filepath"
 	"time"
 
+	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/decide"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/query"
 	"github.com/geoffmilleraz/fathom/internal/scip"
@@ -95,6 +98,14 @@ type Client struct {
 	llmModel   string
 	llmInRate  float64
 	llmOutRate float64
+
+	// Optional decision port (ADR-042, WithDecision): decider is nil until
+	// WithDecision is called, which keeps every decision-port-aware call
+	// site (CompileLayer's prefilter, Obligations*'s rerank) byte-identical
+	// to pre-decision-port behavior for every Client that never calls it.
+	decider   decision.Decider
+	decideCfg config.Decide
+	decideRec *decide.Recorder
 }
 
 // New constructs a Client from an explicit connector and store. Callers that
