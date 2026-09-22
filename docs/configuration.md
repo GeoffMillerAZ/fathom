@@ -321,7 +321,7 @@ model       = "jev-latest"                # optional; this is the default
 api_key_env = "TYPESAFE_API_KEY"          # or api_key_cmd = ["op", "read", "op://vault/typesafe/credential"]
 ```
 
-The key is resolved at call time, never at config load: `api_key_cmd` wins over
+The key is resolved once, when the daemon (or a direct `fathom compile --store`) opens the port at startup — never at config load, never written anywhere: `api_key_cmd` wins over
 `api_key_env`, and when neither is set the well-known `TYPESAFE_API_KEY`
 environment variable is read directly. A literal `api_key` in `[decide]` is not
 representable — the schema is closed, same discipline as `[profiles.*]`.
