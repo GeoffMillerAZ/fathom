@@ -14,12 +14,12 @@ A/B rows at the end are operator decisions (LLM spend) and are never claimed by 
 ## B. Compile pre-filter (ADR-042 decision 2; ADR-037 preserved)
 
 - [x] `PrefilterSections` asks one batched `noul` per section ("does this section state a binding rule for code in this repository") in chunks of at most 20 sections and returns the sections at or above `compile_threshold`; with `none` it returns every section untouched and makes no call {id: DP-5, symbol: PrefilterSections, package: internal/semantic, reachable_from: TestCompile_PrefilterSkipsAndDiscloses}
-- [x] A skipped section is counted in `CompileRun.SectionsPrefiltered` and the additive `compile_runs.sections_prefiltered` column, listed in `uncompiled_scopes_json` like any uncompiled section, and the `layer_coverage` envelope names `prefilter_skipped`; the raw fallback (ADR-037) serves a skipped section exactly as it serves a budget-stopped one {id: DP-6, symbol: ObligationsLayerCoverage, package: internal/semantic, reachable_from: TestCompile_PrefilterSkipsAndDiscloses}
+- [x] A skipped section is counted in `CompileRun.SectionsPrefiltered` and the additive `compile_runs.sections_prefiltered` column, listed in `uncompiled_scopes_json` like any uncompiled section, and the `layer_coverage` envelope names `prefilter_skipped` — on the JSON-RPC wire, not only in the Go struct: `compile_layer`'s response map carries `sections_prefiltered`/`prefiltered_sections` and obligations' `layer_coverage` carries `prefilter_skipped`; the raw fallback (ADR-037) serves a skipped section exactly as it serves a budget-stopped one {id: DP-6, symbol: registerSemanticTools, package: internal/mcp, reachable_from: TestCompileLayer_SectionsPrefilteredOnWire}
 
 ## C. Obligations re-rank within a tier (ADR-042 decision 2; ADR-035 preserved)
 
 - [x] `rerankWithinTiers` asks one batched `noul` per eligible rule ("does this rule govern this edit") with the edited path (and hunk when the hook supplies one) as state, and re-orders rules only inside their governing-scope tier, stable on ties; a rule never crosses a tier, never drops, and the ≤6 cap and displaced counts are computed after the re-rank exactly as before {id: DP-7, symbol: rerankWithinTiers, package: internal/semantic, reachable_from: TestObligations_RerankWithinTierOnly}
-- [x] The obligations envelope carries `ranked_by` (`none` | `llm`) and, per served rule, `relevance` (the noul probability, absent under `none`); `docs/mcp-tools.md` documents both {id: DP-8, oracle: lexical, path: docs/mcp-tools.md, pattern: "ranked_by"}
+- [x] The obligations envelope carries `ranked_by` (`none` | `llm`) and, per served rule, `relevance` (the noul probability, absent under `none`) — on the JSON-RPC wire (`renderObligationReceipt`'s own response map, not only `semantic.Obligations`'s Go fields); `docs/mcp-tools.md` documents both {id: DP-8, symbol: renderObligationReceipt, package: internal/mcp, reachable_from: TestObligationsTool_RankedByAndRelevanceOnWire}
 
 ## D. Prompt routing (ADR-042 decision 2; I9/I12/I14 preserved)
 
@@ -40,3 +40,8 @@ A/B rows at the end are operator decisions (LLM spend) and are never claimed by 
 - [ ] doctor `decision_provider` reports typesafe: FAIL naming the missing key, FAIL on a failed ping, PASS with model and last latency {id: DP-17, symbol: decisionProviderVerdict, package: cmd/fathom, reachable_from: TestDoctorDecisionProvider_TypeSafe}
 - [ ] end to end: with a typesafe Decider the obligations envelope says `ranked_by: typesafe` and the decisions log names provider typesafe {id: DP-18, symbol: WithDecision, package: pkg/client, reachable_from: TestWithDecision_TypeSafeFake}
 - [ ] `docs/configuration.md` documents the typesafe block {id: DP-19, oracle: lexical, path: docs/configuration.md, pattern: "provider *= *\"typesafe\""}
+
+## G. Wire-level fixes and disclosure (O109)
+
+- [x] When an active decision port (`RankWithinTier && Decider != nil`) has nothing eligible in scope to rerank, `RankedBy` still reads `none` (no rerank occurred) but `RankNote` now names why — distinct from "no provider configured at all", closing the gap a live probe could not resolve (zero decisions logged and `ranked_by:"none"` looked identical either way) {id: DP-20, symbol: noteNoEligibleRerank, package: internal/semantic, reachable_from: TestObligationsWire_NoEligibleClaimsNamesWhyOnWire}
+- [x] `POST /route`'s own decider call is bounded by `[decide].route_timeout_ms` (default 3000ms, CUE-enforced 100-30000), not a fixed 3s constant {id: DP-21, symbol: routeHandler, package: cmd/fathom, reachable_from: TestRouteHandler_ConfigurableTimeout}
