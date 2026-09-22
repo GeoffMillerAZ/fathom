@@ -274,6 +274,19 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 	if obl.RankNote != "" {
 		result["rank_note"] = obl.RankNote
 	}
+	// DP-24 (O109): ranked_count/candidates_total disclose how many
+	// scope-eligible claims the DP-7 rerank actually asked the Decider
+	// about (ranked_count) out of how many existed before the served-
+	// window tier filter narrowed that down (candidates_total) — omitted
+	// together whenever no rerank ran at all (RankWithinTier off, no
+	// Decider, or nothing scope-eligible), the same condition that leaves
+	// both semantic.Obligations fields at zero.
+	if obl.RankedCount > 0 {
+		result["ranked_count"] = obl.RankedCount
+	}
+	if obl.CandidatesTotal > 0 {
+		result["candidates_total"] = obl.CandidatesTotal
+	}
 
 	// wave O1 / ADR-037: fill a real coverage gap with raw guide content
 	// BEFORE the rules below are snippet-rendered and byte-budgeted, so a

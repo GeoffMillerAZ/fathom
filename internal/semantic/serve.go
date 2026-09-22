@@ -280,6 +280,18 @@ type Obligations struct {
 	// obligations call over a ranker that could not fully answer (ADR-042
 	// decision 3: "serving must not fail because a ranker did").
 	RankNote string `json:"rank_note,omitempty"`
+	// RankedCount (DP-24, O109) is how many scope-eligible claims the DP-7
+	// rerank actually asked the Decider about — the served-window-filtered
+	// subset (rerankEligible), never the full candidate pool
+	// (CandidatesTotal). 0 (omitted) whenever no rerank ran at all
+	// (RankWithinTier off, no Decider, or nothing scope-eligible).
+	RankedCount int `json:"ranked_count,omitempty"`
+	// CandidatesTotal (DP-24, O109) is the total scope-eligible claim count
+	// the rerank drew its served window from — before DP-24's tier-window
+	// filter narrowed it down to RankedCount. 0 (omitted) under the same
+	// conditions as RankedCount. Comparing the two names the optimization's
+	// own effect (e.g. 10 of 160).
+	CandidatesTotal int `json:"candidates_total,omitempty"`
 	// Decisions (feeds DP-3's call-log Record) carries one decision.Record
 	// per rule a SUCCEEDING chunk asked the Decider about — for the CALLER
 	// (the daemon) to log, never part of the served wire payload: a tool
@@ -382,6 +394,16 @@ type ObligationsOptions struct {
 	// one — appended to the Decider's State alongside the edited path.
 	// Empty means the State names only the path.
 	Hunk string
+	// RerankTimeout (DP-25, O109) bounds how long rerankWithinTiers' shared
+	// context.WithTimeout may wait for the Decider across every chunk of
+	// one obligations call — <= 0 (the zero value) means
+	// defaultRerankTimeout (internal/semantic's own generic fallback).
+	// pkg/client.WithDecision's decisionOpts sets this from [decide]
+	// rerank_timeout_ms (config.Decide.RerankTimeoutMS, default 1500ms) for
+	// any real decision port, so this is only ever left at zero by a
+	// caller that builds ObligationsOptions directly outside that path (a
+	// test, most commonly).
+	RerankTimeout time.Duration
 }
 
 // ObligationsForOpts is ObligationsFor's decision-port sibling (DP-7): file-
@@ -936,16 +958,28 @@ func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile str
 		// position (ADR-042 decision 3, extended by DP-22: a provider
 		// error is swallowed into an untouched result for THAT CHUNK,
 		// never a fatal error for the whole call).
-		oc := rerankWithinTiers(ctx, opts.Decider, outFile, opts.Hunk, matched)
+		//
+		// DP-24: only claims in governing-scope tiers that intersect the
+		// served window [0, max) are ever asked about — max is this
+		// call's own served cap, already clamped above. DP-25: the whole
+		// call (every chunk) shares one rerank_timeout_ms budget
+		// (opts.RerankTimeout, <= 0 meaning defaultRerankTimeout).
+		oc := rerankWithinTiers(ctx, opts.Decider, outFile, opts.Hunk, matched, max, opts.RerankTimeout)
 		matched = oc.Matched
 		out.Decisions = oc.Records
 		out.DecisionErrors = oc.Failures
+		out.RankedCount = oc.RankedCount
+		out.CandidatesTotal = oc.CandidatesTotal
 		if oc.Ranked {
 			decideRelevance = oc.Relevance
 			out.RankedBy = opts.Decider.Name()
 		}
 		if len(oc.Failures) > 0 {
-			out.RankNote = rerankFailureNote(oc.Failures, oc.ChunksTotal)
+			if oc.TimedOut {
+				out.RankNote = rerankTimeoutNote(oc.Timeout, oc.ChunksFailed, oc.ChunksTotal)
+			} else {
+				out.RankNote = rerankFailureNote(oc.Failures, oc.ChunksTotal)
+			}
 		}
 	}
 

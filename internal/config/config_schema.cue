@@ -173,6 +173,20 @@ package config
 	// their governing-scope tier (ADR-035's tier order is never crossed).
 	rank_within_tier?: bool
 
+	// rerank_timeout_ms (DP-25, O109) bounds how long the obligations
+	// re-rank may wait for the decider across every chunk of one
+	// obligations call, in milliseconds. Default 1500 — deliberately kept
+	// under the PostToolUse edit hook's own 2000ms HTTP client timeout for
+	// its obligations RPC (cmd/fathom/edithook.go), with margin: a rerank
+	// that exhausts the whole budget must still return before that
+	// client's own deadline gives up and renders nothing at all. The
+	// design point is a sub-second decision model (e.g. TypeSafe/Jev); an
+	// LLM lane will usually exceed this default, and the envelope then
+	// discloses rank_note "decision budget …" while rules are served in
+	// lexical order rather than waiting. Raise it only for offline/
+	// non-hook use, where nothing is racing a client-side deadline.
+	rerank_timeout_ms?: int & >=100 & <=60000
+
 	// endpoint overrides provider "typesafe"'s base URL (default
 	// decision.DefaultTypeSafeBaseURL, "https://api.typesafe.ai"). Unused
 	// by "none"/"llm".

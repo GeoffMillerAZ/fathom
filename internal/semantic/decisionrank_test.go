@@ -208,7 +208,7 @@ func TestRerankWithinTiers_ChunksByDeciderName(t *testing.T) {
 		}
 		md := decision.NewMockDecider("llm", entries...)
 
-		oc := rerankWithinTiers(ctx, md, rerankTestFile, "", matched)
+		oc := rerankWithinTiers(ctx, md, rerankTestFile, "", matched, len(matched), 0)
 		if oc.ChunksTotal != 3 {
 			t.Errorf("ChunksTotal = %d, want 3", oc.ChunksTotal)
 		}
@@ -246,7 +246,7 @@ func TestRerankWithinTiers_ChunksByDeciderName(t *testing.T) {
 		}
 		md := decision.NewMockDecider("mock", decision.MockEntry{Response: decision.Response{Provider: "mock", Answers: answers}})
 
-		oc := rerankWithinTiers(ctx, md, rerankTestFile, "", matched)
+		oc := rerankWithinTiers(ctx, md, rerankTestFile, "", matched, len(matched), 0)
 		if oc.ChunksTotal != 1 {
 			t.Errorf("ChunksTotal = %d, want 1", oc.ChunksTotal)
 		}
@@ -259,7 +259,7 @@ func TestRerankWithinTiers_ChunksByDeciderName(t *testing.T) {
 
 	t.Run("MaxQuestions()==0 opts in but stays unbounded: 1 call", func(t *testing.T) {
 		md := &fixedBatchDecider{name: "llm-variant", max: 0}
-		oc := rerankWithinTiers(ctx, md, rerankTestFile, "", matched)
+		oc := rerankWithinTiers(ctx, md, rerankTestFile, "", matched, len(matched), 0)
 		if oc.ChunksTotal != 1 {
 			t.Errorf("ChunksTotal = %d, want 1", oc.ChunksTotal)
 		}
@@ -320,7 +320,7 @@ func TestRerankWithinTiers_PartialChunkFailureKeepsOthersRankedAndNotesCount(t *
 		decision.MockEntry{Response: decision.Response{Provider: "llm", Answers: mkAnswers(40, 45)}},
 	)
 
-	oc := rerankWithinTiers(ctx, md, rerankTestFile, "", matched)
+	oc := rerankWithinTiers(ctx, md, rerankTestFile, "", matched, len(matched), 0)
 
 	if oc.ChunksTotal != 3 {
 		t.Fatalf("ChunksTotal = %d, want 3", oc.ChunksTotal)
@@ -386,7 +386,7 @@ func TestRerankWithinTiers_AllChunksFailStaysUnranked(t *testing.T) {
 	matched := buildMatchedRuleSet(3)
 	md := decision.NewMockDecider("llm", decision.MockEntry{Err: decision.ErrNoProvider})
 
-	oc := rerankWithinTiers(ctx, md, rerankTestFile, "", matched)
+	oc := rerankWithinTiers(ctx, md, rerankTestFile, "", matched, len(matched), 0)
 	if oc.Ranked {
 		t.Error("Ranked = true, want false (every chunk failed)")
 	}
@@ -405,6 +405,181 @@ func TestRerankWithinTiers_AllChunksFailStaysUnranked(t *testing.T) {
 	if !strings.Contains(note, decision.ErrNoProvider.Error()) {
 		t.Errorf("rerankFailureNote = %q, want it to contain %v (bare error text, total==1)", note, decision.ErrNoProvider)
 	}
+}
+
+// buildTieredRuleSet builds, for each tier index t (0-based) and its count n
+// in nPerTier, n scored claims all carrying governingScope{tier: t} — same
+// freshness/role bucket throughout, so the shape mirrors exactly what
+// obligationsCore's own less() sort produces for a uniform set of fresh,
+// governs-role claims at different governing-scope proximities: matched
+// arrives at rerankWithinTiers already grouped by ascending tier. ClaimIDs
+// are "t<tier>i<index>" so a test can name exactly which tier's claims were
+// asked about from the Decider's own recorded Calls().
+func buildTieredRuleSet(nPerTier ...int) []scored {
+	var out []scored
+	for tier, n := range nPerTier {
+		for i := 0; i < n; i++ {
+			id := fmt.Sprintf("t%di%03d", tier, i)
+			out = append(out, scored{
+				cl:        core.SemanticClaim{ClaimID: id, Rule: id, Status: core.ClaimFresh},
+				governing: governingScope{tier: tier},
+			})
+		}
+	}
+	return out
+}
+
+// TestRerankWithinTiers_ServedWindowNarrowsCandidates is DP-24's own
+// acceptance test (O109): 40 claims across 4 governing-scope tiers of 10.
+// At max 6 the served window [0,6) never leaves tier 0 (10 members,
+// positions 0-9) — only tier 0 is eligible, so only its 10 claims are ever
+// asked, in one chunk (an unnamed MockDecider is unbounded per
+// decisionBatchSize). At max 15 the window reaches into tier 1 (positions
+// 10-19, straddling the cut at 15) — tiers 0 and 1 are both eligible (20
+// claims); tiers 2 and 3 (wholly below the cut) are never asked. The
+// Decider's own recorded Calls() question count is the proof — not
+// RankedCount, which merely mirrors it.
+func TestRerankWithinTiers_ServedWindowNarrowsCandidates(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("max 6: only tier 0's 10 claims are asked, in one chunk", func(t *testing.T) {
+		matched := buildTieredRuleSet(10, 10, 10, 10)
+		md := decision.NewMockDecider("mock")
+
+		oc := rerankWithinTiers(ctx, md, rerankTestFile, "", matched, 6, 0)
+
+		calls := md.Calls()
+		if len(calls) != 1 {
+			t.Fatalf("Decide called %d times, want 1 (one chunk)", len(calls))
+		}
+		if len(calls[0].Questions) != 10 {
+			t.Errorf("questions asked = %d, want 10 (tier 0 only)", len(calls[0].Questions))
+		}
+		for _, q := range calls[0].Questions {
+			if !strings.HasPrefix(q.ID, "t0i") {
+				t.Errorf("asked about %q, want a tier-0 claim only", q.ID)
+			}
+		}
+		if oc.RankedCount != 10 {
+			t.Errorf("RankedCount = %d, want 10", oc.RankedCount)
+		}
+		if oc.CandidatesTotal != 40 {
+			t.Errorf("CandidatesTotal = %d, want 40", oc.CandidatesTotal)
+		}
+		if len(oc.Matched) != 40 {
+			t.Errorf("Matched = %d claims, want 40 (every candidate still present, asked or not)", len(oc.Matched))
+		}
+	})
+
+	t.Run("max 15: tiers 0 and 1 asked (20 questions); 2 and 3 never asked", func(t *testing.T) {
+		matched := buildTieredRuleSet(10, 10, 10, 10)
+		md := decision.NewMockDecider("mock")
+
+		oc := rerankWithinTiers(ctx, md, rerankTestFile, "", matched, 15, 0)
+
+		calls := md.Calls()
+		total := 0
+		for _, c := range calls {
+			total += len(c.Questions)
+			for _, q := range c.Questions {
+				if !strings.HasPrefix(q.ID, "t0i") && !strings.HasPrefix(q.ID, "t1i") {
+					t.Errorf("asked about %q, want only a tier-0/tier-1 claim", q.ID)
+				}
+			}
+		}
+		if total != 20 {
+			t.Errorf("total questions asked across %d call(s) = %d, want 20", len(calls), total)
+		}
+		if oc.RankedCount != 20 {
+			t.Errorf("RankedCount = %d, want 20", oc.RankedCount)
+		}
+		if oc.CandidatesTotal != 40 {
+			t.Errorf("CandidatesTotal = %d, want 40", oc.CandidatesTotal)
+		}
+	})
+}
+
+// slowDecider wraps a decision.Decider with an artificial delay that still
+// respects ctx cancellation (DP-25) — the same discipline a real
+// HTTP-backed adapter has (ctx threaded into the outgoing request), so this
+// double exercises rerankWithinTiers' actual deadline behavior rather than
+// a decider that ignores ctx and blocks regardless of any budget.
+type slowDecider struct {
+	inner decision.Decider
+	sleep time.Duration
+}
+
+func (s *slowDecider) Name() string { return s.inner.Name() }
+
+func (s *slowDecider) Decide(ctx context.Context, req decision.Request) (decision.Response, error) {
+	select {
+	case <-time.After(s.sleep):
+		return s.inner.Decide(ctx, req)
+	case <-ctx.Done():
+		return decision.Response{}, ctx.Err()
+	}
+}
+
+// TestRerankWithinTiers_BudgetBoundsWallTime is DP-25's own acceptance test
+// (O109): a Decider that respects ctx but is genuinely slow must never hold
+// rerankWithinTiers hostage past its own configured budget.
+func TestRerankWithinTiers_BudgetBoundsWallTime(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("tight budget: prompt return, lexical order, note set, error rows", func(t *testing.T) {
+		matched := buildMatchedRuleSet(3)
+		slow := &slowDecider{inner: decision.NewMockDecider("llm"), sleep: 5 * time.Second}
+
+		start := time.Now()
+		oc := rerankWithinTiers(ctx, slow, rerankTestFile, "", matched, len(matched), 100*time.Millisecond)
+		elapsed := time.Since(start)
+
+		if elapsed >= 500*time.Millisecond {
+			t.Errorf("wall time = %v, want < 500ms (a 100ms budget must not wait for a 5s decider)", elapsed)
+		}
+		if oc.Ranked {
+			t.Error("Ranked = true, want false (the only chunk timed out)")
+		}
+		if !oc.TimedOut {
+			t.Error("TimedOut = false, want true")
+		}
+		if oc.Timeout != 100*time.Millisecond {
+			t.Errorf("Timeout = %v, want 100ms", oc.Timeout)
+		}
+		for i := range matched {
+			if oc.Matched[i].cl.ClaimID != matched[i].cl.ClaimID {
+				t.Errorf("Matched[%d] = %q, want %q (lexical order preserved at the deadline)", i, oc.Matched[i].cl.ClaimID, matched[i].cl.ClaimID)
+			}
+		}
+		if len(oc.Failures) != oc.ChunksTotal || oc.ChunksFailed != oc.ChunksTotal {
+			t.Errorf("Failures/ChunksFailed = %d/%d, want %d/%d (every chunk unanswered)", len(oc.Failures), oc.ChunksFailed, oc.ChunksTotal, oc.ChunksTotal)
+		}
+		note := rerankTimeoutNote(oc.Timeout, oc.ChunksFailed, oc.ChunksTotal)
+		if !strings.Contains(note, "decision budget 100ms exceeded") {
+			t.Errorf("rerankTimeoutNote = %q, want it to name the budget", note)
+		}
+	})
+
+	t.Run("generous budget: genuinely ranked", func(t *testing.T) {
+		matched := buildMatchedRuleSet(3)
+		answers := map[string]float64{}
+		for _, m := range matched {
+			answers[m.cl.ClaimID] = 0.9
+		}
+		inner := decision.NewMockDecider("llm", decision.MockEntry{Response: mockNoulResponse("llm", answers)})
+		slow := &slowDecider{inner: inner, sleep: 50 * time.Millisecond}
+
+		oc := rerankWithinTiers(ctx, slow, rerankTestFile, "", matched, len(matched), 5*time.Second)
+		if !oc.Ranked {
+			t.Error("Ranked = false, want true")
+		}
+		if oc.TimedOut {
+			t.Error("TimedOut = true, want false")
+		}
+		if len(oc.Failures) != 0 {
+			t.Errorf("Failures = %v, want none", oc.Failures)
+		}
+	})
 }
 
 // concurrencyProbeDecider is a decision.Decider + maxQuestionser test
@@ -453,7 +628,7 @@ func TestRerankWithinTiers_ConcurrencyIsBounded(t *testing.T) {
 	matched := buildMatchedRuleSet(12)
 	probe := &concurrencyProbeDecider{max: 1}
 
-	oc := rerankWithinTiers(ctx, probe, rerankTestFile, "", matched)
+	oc := rerankWithinTiers(ctx, probe, rerankTestFile, "", matched, len(matched), 0)
 	if !oc.Ranked {
 		t.Fatal("Ranked = false, want true")
 	}

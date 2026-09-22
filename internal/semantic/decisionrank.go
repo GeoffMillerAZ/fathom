@@ -18,9 +18,38 @@ package semantic
 // keep their pre-rerank (lexical) position, exactly as an unanswered
 // question already did before chunking existed — and is reported back as a
 // DecisionError for the caller to log, rather than vanishing silently.
+//
+// DP-24 (O109): chunking alone still asked the Decider about EVERY
+// scope-eligible claim — obligationsCore measured ~160 candidates on a
+// 6-rule served cap, so 154 of those questions (8 chunks, ~28s wall) were
+// spent on rules the cap could never seat regardless of how they ranked.
+// rerankEligible narrows the batch to only the governing-scope tiers
+// (governingscope.go) that intersect the served window [0, max) in the
+// ALREADY-SORTED matched order obligationsCore hands this file (its own
+// less(), run before rerankWithinTiers is ever called) — a tier wholly
+// inside the window is asked (its own internal order still matters for
+// reading), a tier straddling the cut is asked (ranking decides who
+// survives), a tier wholly below the cut is never asked (no ranking of it
+// can change what is served). A claim this excludes is never asked and so
+// never answered — it falls through to the EXACT same "unusable, unmoved"
+// path an unanswered chunk already used before DP-24 existed.
+//
+// DP-25 (O109): a chunk's own Decide call — genuinely slow (a live LLM
+// lane) or simply hanging — no longer has an unbounded ctx to run under.
+// rerankWithinTiers derives one context.WithTimeout(ctx, timeout) shared by
+// every chunk in the call (RerankTimeout, [decide] rerank_timeout_ms,
+// default defaultRerankTimeout); a chunk still in flight when that deadline
+// fires is cancelled through ctx (a well-behaved Decider — any real
+// HTTP-backed adapter that threads ctx into its request — returns promptly
+// once ctx.Done() fires, so wg.Wait() below returns at the deadline rather
+// than blocking on it) and is treated exactly like any other hard-failed
+// chunk: its rules keep their lexical position, and a DecisionError is
+// reported. The served order and the response itself are never held
+// hostage to a slow or unresponsive decider.
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -30,6 +59,21 @@ import (
 	"github.com/geoffmilleraz/agentic-kit/foundations/decision"
 	"github.com/geoffmilleraz/fathom/internal/core"
 )
+
+// defaultRerankTimeout (DP-25, O109) is rerankWithinTiers' own ceiling when
+// the caller leaves its timeout argument at zero — a caller that builds
+// ObligationsOptions directly (a test, or any future caller that never
+// threads [decide] rerank_timeout_ms through pkg/client.WithDecision) still
+// gets SOME bound rather than an unbounded wait. config.DefaultDecide.
+// RerankTimeoutMS (internal/config, always supplied for any REAL decision
+// port via pkg/client's decisionOpts) carries its own, tighter, deliberately
+// chosen default (1500ms) — see docs/configuration.md's "[decide]" table for
+// why that number specifically: it is kept under the PostToolUse edit
+// hook's own 2000ms HTTP client timeout (cmd/fathom/edithook.go's
+// fetchObligations call) with margin, so a daemon that exhausts the rerank
+// budget still returns before that client gives up and renders nothing at
+// all. This constant is the generic, config-unaware fallback only.
+const defaultRerankTimeout = 2 * time.Second
 
 // rerankConcurrency bounds how many chunk Decide calls rerankWithinTiers
 // runs at once (DP-22). Chunking alone still pays N round trips — this is
@@ -71,6 +115,36 @@ type rerankOutcome struct {
 	// function's own early return, which never reaches the chunking logic
 	// at all.
 	ChunksTotal, ChunksFailed int
+	// CandidatesTotal (DP-24, O109) is len(matched) as this call received
+	// it — the total scope-eligible claim count the served window was
+	// computed from, BEFORE DP-24 narrowed which of them ever became a
+	// decision.Question. 0 only when matched was empty (the same early
+	// return that leaves ChunksTotal/ChunksFailed at 0).
+	CandidatesTotal int
+	// RankedCount (DP-24, O109) is how many of those candidates the
+	// served-window tier filter actually sent to the Decider as a
+	// decision.Question — regardless of whether that question's own chunk
+	// later succeeded or failed (a chunk that timed out still ASKED; it
+	// simply never got an answer). The gap between RankedCount and
+	// CandidatesTotal is DP-24's whole point: O109 measured 154 of ~160
+	// candidates asked about for no reason a 6-rule cap could ever use.
+	RankedCount int
+	// TimedOut (DP-25, O109) is true when this call's shared rerank budget
+	// (the timeout argument, or defaultRerankTimeout) was exceeded — at
+	// least one chunk was still in flight when its context.WithTimeout
+	// deadline fired and was cancelled rather than answered. The caller's
+	// RankNote names the budget explicitly in this case
+	// (rerankTimeoutNote) rather than the ordinary per-chunk-failure text
+	// rerankFailureNote renders, so a reader can tell "the decider was too
+	// slow for this call's budget" apart from an ordinary hard failure
+	// (a truncated reply, say).
+	TimedOut bool
+	// Timeout is the budget this call actually ran under — the timeout
+	// argument, or defaultRerankTimeout when the caller left it at zero —
+	// carried only so rerankTimeoutNote can name it without re-deriving
+	// the default. Zero only when matched was empty (this function's own
+	// early return, which never reaches the timeout logic at all).
+	Timeout time.Duration
 }
 
 // rerankChunkResult is one chunk's Decide outcome, written into
@@ -85,21 +159,37 @@ type rerankChunkResult struct {
 }
 
 // rerankWithinTiers asks d one batched decision.KindNoul question per
-// matched claim — "does this rule govern the edit described in the state" —
+// ELIGIBLE matched claim — "does this rule govern the edit described in the
+// state" — where eligible (DP-24) means: matched's own governing-scope tier
+// (scored.governing.tier) has at least one member inside the served
+// window's first max positions of matched, which the caller hands this
+// function ALREADY SORTED (obligationsCore's own less(), run before this is
+// ever called) — see rerankEligible's own doc comment for the tier-window
+// rule in full. A claim outside that window is never asked and so never
+// answered; it falls straight through to the same "no answer, unmoved"
+// path an unanswered chunk already used before DP-24 existed. Asking is
 // chunked at decisionBatchSize(d) questions per Decide call (DP-22), the
 // chunks run concurrently (bounded at rerankConcurrency, each its own
-// Decide call sharing the same rendered State) — and returns matched
-// re-ordered ONLY inside each rule's own governing-scope tier
-// (scored.governing.tier): a rule never crosses a tier and never drops
-// (every input claim is present in the output, exactly once). Within a
-// tier, a rule whose noul answer clears I42's unsure-band floor
-// (usableNoul, decision.UnsureBelow) is ordered by descending noul, stable
-// on ties; every other rule in that tier (no answer at all — including
-// every rule in a chunk whose Decide call itself failed — or an answer
-// below the floor) keeps its EXACT original position — I42: "a decision in
-// the unsure band never changes served content," extended by DP-22 to "a
-// decision that was never successfully asked never changes served
-// content" either.
+// Decide call sharing the same rendered State) under one shared
+// context.WithTimeout(ctx, timeout) (DP-25 — see the timeout parameter's
+// own doc below) — and rerankWithinTiers returns matched (the FULL input,
+// eligible or not) re-ordered ONLY inside each rule's own governing-scope
+// tier: a rule never crosses a tier and never drops (every input claim is
+// present in the output, exactly once). Within a tier, a rule whose noul
+// answer clears I42's unsure-band floor (usableNoul, decision.UnsureBelow)
+// is ordered by descending noul, stable on ties; every other rule in that
+// tier (never asked at all — DP-24's own window exclusion, or DP-25's own
+// timeout — including every rule in a chunk whose Decide call itself
+// failed, or an answer below the floor) keeps its EXACT original position —
+// I42: "a decision in the unsure band never changes served content,"
+// extended by DP-22 to "a decision that was never successfully asked never
+// changes served content" either, and by DP-24/DP-25 to "a decision that
+// was never even ASKED" the same way.
+//
+// max is the served window's own cap (obligationsCore's own max, already
+// clamped to [1, MaxObligations] by the time it reaches here) — the boundary
+// rerankEligible computes tiers against. timeout is this call's shared
+// rerank budget; <= 0 means defaultRerankTimeout.
 //
 // d is assumed non-nil and RankWithinTier-gated by the caller
 // (obligationsCore never calls this otherwise); a nil d (or an empty
@@ -112,30 +202,37 @@ type rerankChunkResult struct {
 // for obligationsCore to attach as each served Obligation.Relevance.
 // Records is every succeeding chunk's resp.Records("obligations"), merged
 // and sorted, for the caller to log; Failures is one DecisionError per
-// chunk whose Decide call itself errored, for the caller to log as an
-// error row instead (I42/ADR-042 decision 3 apply the same way per chunk
-// that the old single-call path applied to the whole batch: a provider
-// error is swallowed into an untouched result FOR THAT CHUNK'S OWN
-// QUESTIONS, never surfaced as a fatal error from this function — the
-// caller decides how to report it).
-func rerankWithinTiers(ctx context.Context, d decision.Decider, file, hunk string, matched []scored) rerankOutcome {
+// chunk whose Decide call itself errored (including one cancelled by the
+// DP-25 deadline), for the caller to log as an error row instead (I42/
+// ADR-042 decision 3 apply the same way per chunk that the old single-call
+// path applied to the whole batch: a provider error is swallowed into an
+// untouched result FOR THAT CHUNK'S OWN QUESTIONS, never surfaced as a
+// fatal error from this function — the caller decides how to report it).
+func rerankWithinTiers(ctx context.Context, d decision.Decider, file, hunk string, matched []scored, max int, timeout time.Duration) rerankOutcome {
 	if d == nil || len(matched) == 0 {
 		return rerankOutcome{Matched: matched}
 	}
+	if timeout <= 0 {
+		timeout = defaultRerankTimeout
+	}
+	rctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	eligible := rerankEligible(matched, max)
 
 	state := rerankState(file, hunk)
 	size := decisionBatchSize(d)
-	if size <= 0 || size > len(matched) {
-		size = len(matched)
+	if size <= 0 || size > len(eligible) {
+		size = len(eligible)
 	}
 
 	var chunks [][]scored
-	for start := 0; start < len(matched); start += size {
+	for start := 0; start < len(eligible); start += size {
 		end := start + size
-		if end > len(matched) {
-			end = len(matched)
+		if end > len(eligible) {
+			end = len(eligible)
 		}
-		chunks = append(chunks, matched[start:end])
+		chunks = append(chunks, eligible[start:end])
 	}
 
 	results := make([]rerankChunkResult, len(chunks))
@@ -158,7 +255,7 @@ func rerankWithinTiers(ctx context.Context, d decision.Decider, file, hunk strin
 				})
 			}
 			start := time.Now()
-			resp, err := d.Decide(ctx, req)
+			resp, err := d.Decide(rctx, req)
 			results[i] = rerankChunkResult{chunk: chunk, resp: resp, err: err, lat: time.Since(start)}
 		}(i, chunk)
 	}
@@ -189,15 +286,71 @@ func rerankWithinTiers(ctx context.Context, d decision.Decider, file, hunk strin
 	}
 	sort.Slice(records, func(i, j int) bool { return records[i].QuestionID < records[j].QuestionID })
 
+	// DP-25: rctx's own deadline, not the parent ctx's — a caller-side
+	// cancellation of ctx itself would also show up here (context.Canceled,
+	// not DeadlineExceeded via errors.Is), which this deliberately does NOT
+	// call a "budget" timeout; TimedOut only fires for this call's OWN
+	// rerank_timeout_ms budget actually being exhausted.
+	timedOut := errors.Is(rctx.Err(), context.DeadlineExceeded)
+
 	return rerankOutcome{
-		Matched:      reorderByNoulWithinTier(matched, relevance),
-		Relevance:    relevance,
-		Records:      records,
-		Failures:     failures,
-		Ranked:       ranked,
-		ChunksTotal:  len(chunks),
-		ChunksFailed: len(failures),
+		Matched:         reorderByNoulWithinTier(matched, relevance),
+		Relevance:       relevance,
+		Records:         records,
+		Failures:        failures,
+		Ranked:          ranked,
+		ChunksTotal:     len(chunks),
+		ChunksFailed:    len(failures),
+		CandidatesTotal: len(matched),
+		RankedCount:     len(eligible),
+		TimedOut:        timedOut,
+		Timeout:         timeout,
 	}
+}
+
+// rerankEligible (DP-24, O109) narrows matched to the claims rerankWithinTiers
+// should actually ask the Decider about. DP-7's tier law (governingscope.go)
+// means only a claim whose OWN governing-scope tier has at least one member
+// inside the served window's first max positions of the already-sorted
+// matched slice can possibly change what gets served:
+//
+//   - a tier wholly inside the window (every member already within
+//     [0, max)) is served in full regardless of ranking, but its own
+//     INTERNAL reading order still benefits from a rerank, so it stays
+//     eligible and is asked about in full;
+//   - a tier straddling the cut (some members inside [0, max), some
+//     outside) is exactly where a rerank's answer decides which of its own
+//     members make the cut — eligible, and asked about IN FULL (not only
+//     the members currently inside the window: the within-tier permutation
+//     needs every member of a straddling tier to place them correctly);
+//   - a tier wholly below the cut (no member reaches a position < max)
+//     cannot be served no matter how it ranks — asking the Decider about it
+//     spends a real, billed round trip on an answer the served payload can
+//     never act on (O109 measured 154 of ~160 candidates on a 6-rule cap).
+//     Never asked; its members keep their exact pre-rerank (lexical)
+//     position, the same "never asked, never moves" contract an unanswered
+//     chunk already carried before DP-24 existed.
+//
+// A root-scope call (every matched claim carries noGoverningScope, tier -1)
+// has exactly one implicit tier, so every claim is always eligible — DP-24
+// changes nothing there. max <= 0 (or >= len(matched)) also changes
+// nothing: the window covers the whole slice, so every tier intersects it.
+func rerankEligible(matched []scored, max int) []scored {
+	limit := max
+	if limit <= 0 || limit > len(matched) {
+		limit = len(matched)
+	}
+	tiers := make(map[int]bool, limit)
+	for i := 0; i < limit; i++ {
+		tiers[matched[i].governing.tier] = true
+	}
+	eligible := make([]scored, 0, len(matched))
+	for _, m := range matched {
+		if tiers[m.governing.tier] {
+			eligible = append(eligible, m)
+		}
+	}
+	return eligible
 }
 
 // rerankFailureNote renders RankNote's text for a rerank whose Decide
@@ -218,6 +371,19 @@ func rerankFailureNote(failures []DecisionError, total int) string {
 		return failures[0].Err.Error()
 	}
 	return fmt.Sprintf("%d of %d chunks failed: %v", len(failures), total, failures[0].Err)
+}
+
+// rerankTimeoutNote renders RankNote's text for a rerank whose shared
+// rerank_timeout_ms budget was exhausted (rerankOutcome.TimedOut) — named
+// distinctly from rerankFailureNote's "N of M chunks failed: <err>" so a
+// reader can tell "the decider was too slow for this call's budget" apart
+// from an ordinary hard failure (a truncated reply, say): the budget itself
+// is disclosed, not a provider error string (there may not even be one yet
+// for the chunks still in flight when the deadline fired — DecisionErrors
+// carries context.DeadlineExceeded for those, not a provider-specific
+// message).
+func rerankTimeoutNote(timeout time.Duration, failed, total int) string {
+	return fmt.Sprintf("decision budget %dms exceeded: %d of %d chunks unanswered", timeout.Milliseconds(), failed, total)
 }
 
 // rerankState renders the State text a rerank Request's questions are asked

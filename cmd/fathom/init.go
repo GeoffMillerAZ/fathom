@@ -470,6 +470,7 @@ const findingsConfigTemplate = `# fathom project configuration (docs/configurati
 # route_confidence  = 0.9      # the prompt hook injects a firm route line at or above this; a hedged one from 0.5; nothing below
 # route_timeout_ms  = 3000     # POST /route's own decider budget, in ms (100-30000); the design point is a sub-second decision model — raise for a slower (e.g. LLM) lane, the prompt hook's own shared deadline (~8s) still bounds the line
 # rank_within_tier  = true     # obligations re-orders rules only inside their governing-scope tier
+# rerank_timeout_ms = 1500     # obligations re-rank's own decider budget, in ms (100-60000); kept under the PostToolUse edit hook's 2000ms RPC timeout with margin — an LLM lane usually exceeds this default and falls back to lexical order (rank_note names the budget); raise only for offline use
 # endpoint          = "https://api.typesafe.ai"  # typesafe only: base URL override (default shown)
 # model             = "jev-latest"               # typesafe only: model override (default shown)
 # api_key_env       = "TYPESAFE_API_KEY"         # typesafe only: env var to read at call time (cmd wins if both set); unset defers to TYPESAFE_API_KEY

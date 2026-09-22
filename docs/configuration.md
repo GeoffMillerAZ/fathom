@@ -273,6 +273,7 @@ compile_threshold = 0.5      # a guide section whose "is this a binding rule" pr
 route_confidence  = 0.9      # the prompt hook injects a firm route line at or above this; a hedged one from 0.5; nothing below
 route_timeout_ms  = 3000     # POST /route's own decider budget, in ms (100-30000)
 rank_within_tier  = true     # obligations re-orders rules only inside their governing-scope tier
+rerank_timeout_ms = 1500     # obligations re-rank's own decider budget, in ms (100-60000)
 ```
 
 `route_timeout_ms` (O109) bounds `POST /route`'s own decider call — the design
@@ -283,6 +284,29 @@ half the old fixed budget — so a slower lane needs this raised; the prompt
 hook's own shared deadline (`fathom prompt-hook`'s ~8s budget) still bounds the
 line regardless of what this is set to, so raising it only trades "the route
 line arrives" against "the hook's own deadline eats the wait instead."
+
+`rerank_timeout_ms` (DP-25, O109) bounds how long the obligations re-rank
+(`rerankWithinTiers`) may wait for the decider across EVERY chunk of one
+`obligations` call — one shared budget for the whole call, not per chunk. The
+design point is the same sub-second decision model (e.g. TypeSafe/Jev); an LLM
+lane will usually exceed the default entirely — O109's own chunked live run
+measured a single 20-question chunk at 8-18s against OpenRouter — and when the
+budget is exceeded, the envelope discloses `rank_note` naming the budget
+(`"decision budget <N>ms exceeded: <k> of <m> chunks unanswered"`) while rules
+are served in their plain lexical order rather than waiting. The default
+(1500ms) is deliberately **below** `route_timeout_ms`'s own default and below
+even that sub-second design point's usual headroom, because `obligations`
+(unlike `/route`) sits on the **PostToolUse edit hook's own critical path**:
+`fetchObligations` (`cmd/fathom/edithook.go`) gives that hook's obligations RPC
+a flat **2000ms HTTP client timeout**, and on any timeout or error the hook
+renders **nothing at all** ("daemon down or error → silent") — a strictly worse
+outcome than the rerank giving up early and serving the untouched lexical
+order. A server that spent its entire budget on the rerank alone, with no
+margin left for store I/O, JSON encode/decode and the network round trip,
+risks losing that race outright; 1500ms leaves 500ms of margin under the
+hook's 2000ms ceiling. Raise it only for offline/non-hook use (a terminal
+`fathom obligations` call, a bench run) where nothing is racing a client-side
+deadline.
 
 `provider = "typesafe"` routes through the kit's TypeSafe (Jev) adapter directly
 — no `[llm]` profile needed — and lands 2026-09-22 (ADR-042 amendment; the

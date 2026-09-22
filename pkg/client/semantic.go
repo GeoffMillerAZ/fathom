@@ -76,11 +76,23 @@ func (c *Client) decisionActive() bool {
 // false this is the zero-value ObligationsOptions{}, which
 // ObligationsForOpts/ObligationsForLayerOpts/ObligationsAsOfOpts document as
 // byte-identical to their pre-Opts, non-decision-port siblings.
+//
+// RerankTimeout (DP-25, O109) is threaded from c.decideCfg.RerankTimeoutMS
+// ([decide] rerank_timeout_ms, config.DefaultDecide's own default 1500ms) —
+// the ONE place a real decision port supplies this bound; a Client that
+// never calls WithDecision, or is given decision.None, never reaches this
+// line at all (the early return above), so semantic.rerankWithinTiers'
+// own zero-value fallback (defaultRerankTimeout) is exercised only by a
+// caller that builds ObligationsOptions directly, outside this path.
 func (c *Client) decisionOpts() semantic.ObligationsOptions {
 	if !c.decisionActive() {
 		return semantic.ObligationsOptions{}
 	}
-	return semantic.ObligationsOptions{Decider: c.decider, RankWithinTier: c.decideCfg.RankWithinTier}
+	return semantic.ObligationsOptions{
+		Decider:        c.decider,
+		RankWithinTier: c.decideCfg.RankWithinTier,
+		RerankTimeout:  time.Duration(c.decideCfg.RerankTimeoutMS) * time.Millisecond,
+	}
 }
 
 // coreDecisionRecordsToKit converts internal/core's dependency-free

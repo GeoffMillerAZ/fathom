@@ -181,6 +181,10 @@ func mergeDecideFields(d *Decide, raw map[string]any, source Source, path string
 			prov["decide.rank_within_tier"] = SourceInfo{source, path}
 		}
 	}
+	if v, ok := numberField(raw, "rerank_timeout_ms"); ok {
+		d.RerankTimeoutMS = int(v)
+		prov["decide.rerank_timeout_ms"] = SourceInfo{source, path}
+	}
 	if v, ok := stringField(raw, "endpoint"); ok {
 		d.Endpoint = v
 		prov["decide.endpoint"] = SourceInfo{source, path}
