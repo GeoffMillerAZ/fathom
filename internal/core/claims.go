@@ -385,6 +385,29 @@ type CompileRun struct {
 	// Compiler.Decider is nil or every question in every chunk answered
 	// invalid.
 	Decisions []DecisionRecord `json:"decisions,omitempty"`
+	// PrefilterError (DP-22, O109) is set only when the compile pre-filter's
+	// own decision-port call hard-failed (anything but
+	// decision.ErrNoProvider) — this run aborted with an error and no
+	// claims were compiled, but the failed call itself is still named here
+	// so the caller can log it, instead of it vanishing along with the
+	// aborted run. nil on every successful run, and nil when Compiler.
+	// Decider is nil (the pre-filter never called out at all).
+	PrefilterError *DecisionError `json:"-"`
+}
+
+// DecisionError is internal/core's storage-friendly, dependency-free mirror
+// of internal/semantic.DecisionError (DP-22, O109) — same discipline as
+// DecisionRecord's own doc comment: a LOCAL type, never carrying the kit's
+// own error value, so internal/core stays buildable in isolation. Err is
+// the underlying error's message, never a secret (the kit's own adapters
+// already keep API keys and raw provider bodies out of their returned
+// errors).
+type DecisionError struct {
+	Site      string
+	Provider  string
+	Questions int
+	LatencyMS int64
+	Err       string
 }
 
 // DecisionRecord is internal/core's storage-friendly mirror of agentic-kit

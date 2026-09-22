@@ -269,19 +269,32 @@ type Obligations struct {
 	// RootObligationsFor, RootObligationsForLayer, ObligationsAsOf) passes a
 	// zero-value ObligationsOptions and always reports "none" here.
 	RankedBy string `json:"ranked_by"`
-	// RankNote (DP-8) is set only when a configured Decider's Decide call
-	// itself returned an error (including decision.ErrNoProvider) — the
-	// payload is served exactly as the untouched (RankedBy:"none") path
-	// would be, and this names why, rather than failing the whole
-	// obligations call over a ranker that could not answer (ADR-042
+	// RankNote (DP-8) is set whenever at least one chunk of a configured
+	// Decider's batched Decide call hard-failed (DP-22, O109): with EVERY
+	// chunk failing, the payload is served exactly as the untouched
+	// (RankedBy:"none") path would be and this names why (the pre-DP-22
+	// contract, unchanged for that case); with only SOME chunks failing,
+	// RankedBy still names the Decider (the other chunks genuinely
+	// reranked) and RankNote instead discloses "N of M chunks failed" plus
+	// the first failure's own error text — never failing the whole
+	// obligations call over a ranker that could not fully answer (ADR-042
 	// decision 3: "serving must not fail because a ranker did").
 	RankNote string `json:"rank_note,omitempty"`
 	// Decisions (feeds DP-3's call-log Record) carries one decision.Record
-	// per rule this call asked the Decider about, only when reranking
-	// actually ran — for the CALLER (the daemon) to log, never part of the
-	// served wire payload: a tool response has no reason to carry raw
-	// per-rule model telemetry (site, provider, confidence, latency).
+	// per rule a SUCCEEDING chunk asked the Decider about — for the CALLER
+	// (the daemon) to log, never part of the served wire payload: a tool
+	// response has no reason to carry raw per-rule model telemetry (site,
+	// provider, confidence, latency). Empty when reranking never ran or
+	// every chunk failed.
 	Decisions []decision.Record `json:"-"`
+	// DecisionErrors (DP-22, O109) carries one DecisionError per chunk of
+	// the re-rank batch whose Decide call itself hard-failed — for the
+	// CALLER to log as an error row (decide.Recorder.RecordError), the
+	// same "never part of the served wire payload" discipline as
+	// Decisions. Before this field existed, a failed rerank chunk left
+	// NO trace in decisions.jsonl at all — only a transient RankNote on
+	// whichever wire response happened to hit it.
+	DecisionErrors []DecisionError `json:"-"`
 }
 
 // ObligationLayerFilter selects which claims obligations serves (VB-9,
@@ -915,17 +928,24 @@ func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile str
 	// zero ObligationsOptions{} every non-Opts entry point passes leaves
 	// this whole block dead code for them.
 	if opts.RankWithinTier && opts.Decider != nil {
-		reordered, rel, recs, rerr := rerankWithinTiers(ctx, opts.Decider, outFile, opts.Hunk, matched)
-		if rerr != nil {
-			// ADR-042 decision 3: a provider error never fails the call —
-			// it is swallowed into the untouched (RankedBy:"none") path,
-			// named on the envelope instead.
-			out.RankNote = rerr.Error()
-		} else {
-			matched = reordered
-			decideRelevance = rel
-			out.Decisions = recs
+		// DP-22 (O109): the noul batch is chunked (decisionBatchSize) and
+		// the chunks run concurrently — rerankWithinTiers reports a PER-
+		// CHUNK outcome now, not one all-or-nothing error. matched/records
+		// reflect whatever succeeded even when some chunks failed; a
+		// chunk's own questions that failed simply keep their pre-rerank
+		// position (ADR-042 decision 3, extended by DP-22: a provider
+		// error is swallowed into an untouched result for THAT CHUNK,
+		// never a fatal error for the whole call).
+		oc := rerankWithinTiers(ctx, opts.Decider, outFile, opts.Hunk, matched)
+		matched = oc.Matched
+		out.Decisions = oc.Records
+		out.DecisionErrors = oc.Failures
+		if oc.Ranked {
+			decideRelevance = oc.Relevance
 			out.RankedBy = opts.Decider.Name()
+		}
+		if len(oc.Failures) > 0 {
+			out.RankNote = rerankFailureNote(oc.Failures, oc.ChunksTotal)
 		}
 	}
 

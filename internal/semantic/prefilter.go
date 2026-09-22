@@ -17,14 +17,20 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/geoffmilleraz/agentic-kit/foundations/decision"
 	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // prefilterChunkSize bounds how many sections one decision.Request batches
-// together (vision 32 §2 item 1: "one batched request per chunk of at most
-// 20 sections").
+// together for the kit's "llm" adapter (vision 32 §2 item 1: "one batched
+// request per chunk of at most 20 sections") — decisionBatchSize's case 2
+// (decisionbatch.go, DP-22) reads this same constant, so PrefilterSections
+// and rerankWithinTiers chunk the "llm" adapter identically; a Decider this
+// helper does not recognize is never chunked here either (case 3, 0 =
+// unbounded), same as before decisionBatchSize existed for every Decider
+// PrefilterSections previously chunked at a fixed 20 regardless of name.
 const prefilterChunkSize = 20
 
 // defaultPrefilterThreshold is the noul cutoff Compile applies when a
@@ -36,11 +42,12 @@ const defaultPrefilterThreshold = 0.5
 // chunk is asked, verbatim (vision 32 §2 item 1).
 const prefilterInstructions = "Does this section state a binding rule for code in this repository (something an editor of a governed file must do or must never do), rather than narrative, history, or an example?"
 
-// PrefilterSections asks the decision port, in chunks of at most
-// prefilterChunkSize, whether each of secs (already in the caller's
-// deterministic compile order) states a binding rule — and returns the
-// sections that pass threshold, in that same order, as keep; the rest, also
-// in order, as skipped.
+// PrefilterSections asks the decision port, in chunks sized by
+// decisionBatchSize(d) (DP-22 — prefilterChunkSize for the kit's "llm"
+// adapter, unbounded for any other recognized Decider), whether each of
+// secs (already in the caller's deterministic compile order) states a
+// binding rule — and returns the sections that pass threshold, in that
+// same order, as keep; the rest, also in order, as skipped.
 //
 // Identity fast paths — every section is kept, nothing is skipped, no
 // Record is produced, and no call is made:
@@ -68,23 +75,35 @@ const prefilterInstructions = "Does this section state a binding rule for code i
 // A real Decider error (anything but ErrNoProvider) aborts and is returned
 // to the caller — the same "poison the whole run, don't guess" posture
 // Compile's own LLM call already takes at the section level, just one step
-// earlier.
-func PrefilterSections(ctx context.Context, d decision.Decider, threshold float64, secs []Section) (keep []Section, skipped []Section, records []decision.Record, err error) {
+// earlier. decErr (DP-22, O109) is non-nil in exactly that case — data
+// describing the chunk that failed (site, provider, question count,
+// latency), for the caller to log via decide.Recorder.RecordError; nil on
+// every other return path (identity fast paths, ErrNoProvider, success).
+func PrefilterSections(ctx context.Context, d decision.Decider, threshold float64, secs []Section) (keep []Section, skipped []Section, records []decision.Record, decErr *DecisionError, err error) {
 	if d == nil {
-		return append([]Section(nil), secs...), nil, nil, nil
+		return append([]Section(nil), secs...), nil, nil, nil, nil
 	}
 	if _, isNone := d.(decision.None); isNone {
-		return append([]Section(nil), secs...), nil, nil, nil
+		return append([]Section(nil), secs...), nil, nil, nil, nil
+	}
+
+	chunkSize := decisionBatchSize(d)
+	if chunkSize <= 0 || chunkSize > len(secs) {
+		// len(secs) == 0 leaves chunkSize at 0 too, but the loop below
+		// never runs in that case (start := 0 < len(secs) is already
+		// false), so no positive floor is needed here.
+		chunkSize = len(secs)
 	}
 
 	keep = make([]Section, 0, len(secs))
-	for start := 0; start < len(secs); start += prefilterChunkSize {
-		end := start + prefilterChunkSize
+	for start := 0; start < len(secs); start += chunkSize {
+		end := start + chunkSize
 		if end > len(secs) {
 			end = len(secs)
 		}
 		chunk := secs[start:end]
 
+		callStart := time.Now()
 		resp, derr := d.Decide(ctx, buildPrefilterRequest(chunk))
 		if derr != nil {
 			if errors.Is(derr, decision.ErrNoProvider) {
@@ -92,9 +111,16 @@ func PrefilterSections(ctx context.Context, d decision.Decider, threshold float6
 				// one chunk — the whole input is kept, not just the tail
 				// not yet asked, and whatever this or an earlier chunk
 				// already sorted into keep/skipped is discarded.
-				return append([]Section(nil), secs...), nil, nil, nil
+				return append([]Section(nil), secs...), nil, nil, nil, nil
 			}
-			return nil, nil, nil, fmt.Errorf("semantic: compile prefilter: %w", derr)
+			decErr = &DecisionError{
+				Site:      "compile_prefilter",
+				Provider:  d.Name(),
+				Questions: len(chunk),
+				Latency:   time.Since(callStart),
+				Err:       derr,
+			}
+			return nil, nil, nil, decErr, fmt.Errorf("semantic: compile prefilter: %w", derr)
 		}
 
 		for _, sec := range chunk {
@@ -107,7 +133,7 @@ func PrefilterSections(ctx context.Context, d decision.Decider, threshold float6
 		}
 		records = append(records, resp.Records("compile_prefilter")...)
 	}
-	return keep, skipped, records, nil
+	return keep, skipped, records, nil, nil
 }
 
 // buildPrefilterRequest renders one chunk's decision.Request: State is
@@ -155,6 +181,27 @@ func toCoreDecisionRecords(recs []decision.Record) []core.DecisionRecord {
 		}
 	}
 	return out
+}
+
+// toCoreDecisionError converts internal/semantic's own DecisionError (the
+// kit-adjacent shape PrefilterSections/rerankWithinTiers return) into
+// internal/core's dependency-free mirror, core.DecisionError — same
+// rationale as toCoreDecisionRecords just above. nil in, nil out.
+func toCoreDecisionError(de *DecisionError) *core.DecisionError {
+	if de == nil {
+		return nil
+	}
+	errMsg := ""
+	if de.Err != nil {
+		errMsg = de.Err.Error()
+	}
+	return &core.DecisionError{
+		Site:      de.Site,
+		Provider:  de.Provider,
+		Questions: de.Questions,
+		LatencyMS: de.Latency.Milliseconds(),
+		Err:       errMsg,
+	}
 }
 
 // renderPrefilterState renders a chunk's sections deterministically: one

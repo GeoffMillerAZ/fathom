@@ -342,8 +342,13 @@ func (c *Compiler) Compile(ctx context.Context, in CompileInput) (core.CompileRu
 	for i, item := range ordered {
 		orderedSecs[i] = item.sec
 	}
-	_, prefilteredSecs, decisions, perr := PrefilterSections(ctx, c.Decider, threshold, orderedSecs)
+	_, prefilteredSecs, decisions, decErr, perr := PrefilterSections(ctx, c.Decider, threshold, orderedSecs)
 	if perr != nil {
+		// DP-22 (O109): decErr is non-nil here (a real Decide error, not
+		// ErrNoProvider — PrefilterSections' identity/no-provider paths
+		// never set perr at all) — carry it onto the aborted run so the
+		// caller can log it instead of it vanishing with the error return.
+		run.PrefilterError = toCoreDecisionError(decErr)
 		return run, fmt.Errorf("semantic: compile: %w", perr)
 	}
 	run.Decisions = toCoreDecisionRecords(decisions)
