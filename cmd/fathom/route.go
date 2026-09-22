@@ -148,6 +148,7 @@ func routeHandler(ports *decide.Ports) http.Handler {
 		ctx, cancel := context.WithTimeout(r.Context(), routeDecideTimeout(ports))
 		defer cancel()
 
+		callStart := time.Now()
 		resp, err := ports.Decider.Decide(ctx, decision.Request{
 			State: prompt,
 			Questions: []decision.Question{{
@@ -158,6 +159,13 @@ func routeHandler(ports *decide.Ports) http.Handler {
 			}},
 		})
 		if err != nil {
+			// DP-22 (O109): a hard Decide error here produced no
+			// decision.Response at all, so Record has nothing to log —
+			// RecordError is the parallel path, naming the failure instead
+			// of leaving decisions.jsonl silent about it. model is "" — the
+			// Decider interface has no Model() accessor to read one off a
+			// call that never returned a Response.
+			ports.Recorder.RecordError("route", ports.Decider.Name(), "", 1, time.Since(callStart), err)
 			out := noneRouteResponse()
 			out.Error = err.Error()
 			writeRouteResponse(w, out)

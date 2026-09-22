@@ -150,6 +150,30 @@ func TestRouteHandler_NoneAndLLM(t *testing.T) {
 		if out.Error == "" {
 			t.Errorf("Error is empty, want it to name the decider failure")
 		}
+
+		// DP-22 (O109): the decider error is also logged as a decisions.jsonl
+		// error row — silence there must never read as "route was never
+		// asked" when it was asked and failed.
+		lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
+		if len(lines) != 1 {
+			t.Fatalf("decisions.jsonl has %d row(s), want 1:\n%s", len(lines), buf.String())
+		}
+		var row map[string]any
+		if err := json.Unmarshal([]byte(lines[0]), &row); err != nil {
+			t.Fatalf("row not JSON: %v", err)
+		}
+		if row["site"] != "route" {
+			t.Errorf("site = %v, want %q", row["site"], "route")
+		}
+		if row["provider"] != "mock" {
+			t.Errorf("provider = %v, want %q", row["provider"], "mock")
+		}
+		if row["error"] != errBoom.Error() {
+			t.Errorf("error = %v, want %q", row["error"], errBoom.Error())
+		}
+		if applied, ok := row["applied"].(bool); !ok || applied {
+			t.Errorf("applied = %v, want false", row["applied"])
+		}
 	})
 
 	t.Run("GET is refused", func(t *testing.T) {

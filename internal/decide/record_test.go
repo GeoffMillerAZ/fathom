@@ -3,6 +3,7 @@ package decide_test
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -178,5 +179,77 @@ func TestRecorder_Append(t *testing.T) {
 	emptyRec.Append(nil)
 	if buf2.Len() != 0 {
 		t.Errorf("Append(nil) wrote %d bytes, want 0", buf2.Len())
+	}
+}
+
+// TestRecordError pins DP-22/O109's fix: a hard-failed Decide call (no
+// decision.Response at all) still leaves ONE JSONL row — schema_version,
+// site, provider, model, questions, latency_ms, error, applied:false — so
+// silence in decisions.jsonl means "never asked", not "asked and failed".
+// A nil Recorder, a nil writer, and a nil err are all safe no-ops.
+func TestRecordError(t *testing.T) {
+	fixedNow := time.Date(2026, 9, 22, 12, 0, 0, 0, time.UTC)
+	boom := errors.New("decision: llm response is not JSON: unexpected end of JSON input")
+
+	var buf bytes.Buffer
+	rec := decide.NewRecorder(&buf, func() time.Time { return fixedNow }, "v-test")
+
+	rec.RecordError("obligations", "llm", "gpt-6-luna", 20, 18370*time.Millisecond, boom)
+
+	lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
+	if len(lines) != 1 {
+		t.Fatalf("wrote %d line(s), want 1:\n%s", len(lines), buf.String())
+	}
+	var row map[string]any
+	if err := json.Unmarshal([]byte(lines[0]), &row); err != nil {
+		t.Fatalf("row not JSON: %v", err)
+	}
+
+	if v, ok := row["schema_version"].(float64); !ok || v != 1 {
+		t.Errorf("schema_version = %v, want 1", row["schema_version"])
+	}
+	if row["fathom_version"] != "v-test" {
+		t.Errorf("fathom_version = %v, want %q", row["fathom_version"], "v-test")
+	}
+	if row["ts"] != fixedNow.Format(time.RFC3339) {
+		t.Errorf("ts = %v, want %q", row["ts"], fixedNow.Format(time.RFC3339))
+	}
+	if row["site"] != "obligations" {
+		t.Errorf("site = %v, want %q", row["site"], "obligations")
+	}
+	if row["provider"] != "llm" {
+		t.Errorf("provider = %v, want %q", row["provider"], "llm")
+	}
+	if row["model"] != "gpt-6-luna" {
+		t.Errorf("model = %v, want %q", row["model"], "gpt-6-luna")
+	}
+	if v, ok := row["questions"].(float64); !ok || v != 20 {
+		t.Errorf("questions = %v, want 20", row["questions"])
+	}
+	if v, ok := row["latency_ms"].(float64); !ok || v != 18370 {
+		t.Errorf("latency_ms = %v, want 18370", row["latency_ms"])
+	}
+	if row["error"] != boom.Error() {
+		t.Errorf("error = %v, want %q", row["error"], boom.Error())
+	}
+	if applied, ok := row["applied"].(bool); !ok || applied {
+		t.Errorf("applied = %v, want false", row["applied"])
+	}
+	if _, ok := row["question_id"]; ok && row["question_id"] != "" {
+		t.Errorf("question_id = %v, want empty (no single question answered)", row["question_id"])
+	}
+
+	// Safe no-ops.
+	var nilRec *decide.Recorder
+	nilRec.RecordError("site", "p", "m", 1, time.Millisecond, boom)
+
+	zeroWriterRec := decide.NewRecorder(nil, func() time.Time { return fixedNow }, "v-test")
+	zeroWriterRec.RecordError("site", "p", "m", 1, time.Millisecond, boom)
+
+	var buf2 bytes.Buffer
+	nilErrRec := decide.NewRecorder(&buf2, func() time.Time { return fixedNow }, "v-test")
+	nilErrRec.RecordError("site", "p", "m", 1, time.Millisecond, nil)
+	if buf2.Len() != 0 {
+		t.Errorf("RecordError(nil err) wrote %d bytes, want 0 (nothing failed)", buf2.Len())
 	}
 }

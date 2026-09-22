@@ -15,8 +15,9 @@ import (
 // any semantic change to an existing field, never for an additive one).
 const decisionRecordSchemaVersion = 1
 
-// decisionRow is one JSONL row written per answered decision.Question —
-// deterministic field order (a struct, never a map).
+// decisionRow is one JSONL row written per answered decision.Question, OR
+// (DP-22, O109) per decision-port call that hard-failed and answered
+// nothing at all — deterministic field order (a struct, never a map).
 type decisionRow struct {
 	SchemaVersion int    `json:"schema_version"`
 	FathomVersion string `json:"fathom_version"`
@@ -38,12 +39,29 @@ type decisionRow struct {
 	OutputTokens int   `json:"output_tokens"`
 
 	Applied bool `json:"applied"`
+
+	// Questions (DP-22, RecordError only) is how many decision.Question a
+	// hard-failed call carried — QuestionID (singular, "one row per
+	// answer") has no meaning for a call that answered nothing at all.
+	// Omitted (0) on every ordinary Record/Append row.
+	Questions int `json:"questions,omitempty"`
+	// Error (DP-22, RecordError only) is the failed call's error message,
+	// verbatim — never a secret (the kit's own adapters already keep API
+	// keys and raw provider bodies out of their returned errors). Absent
+	// on every ordinary Record/Append row: a decision that was actually
+	// answered has no error to carry, and this field's mere PRESENCE is
+	// what lets a reader tell "asked and failed" apart from "never asked
+	// at all" — silence in this log used to mean only the latter (O109).
+	Error string `json:"error,omitempty"`
 }
 
 // Recorder appends one JSONL row per answered decision.Question to an
 // append-only log — the call-log-shaped instrument truth I42 requires: a
 // decision in the unsure band is recorded as NOT applied regardless of what
-// the call site itself did with the answer.
+// the call site itself did with the answer. RecordError (DP-22, O109) is
+// the parallel path for a Decide call that answered NOTHING because it
+// hard-failed: one row naming site/provider/questions/latency/error, so
+// silence in this log means "never asked", never "asked and failed".
 //
 // A nil *Recorder is a no-op (every method checks its receiver first), so a
 // caller that never wires the decision port (provider = none, or DP-4's
@@ -138,7 +156,7 @@ func (r *Recorder) Append(records []decision.Record) {
 // writeRow marshals and writes one JSONL row for rec with the given ts and
 // applied classification. Callers must hold r.mu.
 func (r *Recorder) writeRow(ts string, rec decision.Record, applied bool) {
-	row := decisionRow{
+	r.writeJSONLine(decisionRow{
 		SchemaVersion: decisionRecordSchemaVersion,
 		FathomVersion: r.fathomVersion,
 		TS:            ts,
@@ -155,13 +173,64 @@ func (r *Recorder) writeRow(ts string, rec decision.Record, applied bool) {
 		InputTokens:   rec.InputTokens,
 		OutputTokens:  rec.OutputTokens,
 		Applied:       applied,
-	}
+	})
+}
+
+// writeJSONLine marshals and writes one decisionRow. Callers must hold r.mu.
+func (r *Recorder) writeJSONLine(row decisionRow) {
 	b, err := json.Marshal(row)
 	if err != nil {
 		return // decisionRow is all primitives; unreachable in practice
 	}
 	b = append(b, '\n')
 	_, _ = r.w.Write(b) // best-effort, mirrors internal/mcp.CallLogger's own logging discipline
+}
+
+// RecordError (DP-22, O109) writes one JSONL row for a decision-port Decide
+// call that hard-failed: no decision.Response was ever produced, so
+// Record/Append's own Response-shaped row has nothing to write, and before
+// this method existed a failed call left NO trace in decisions.jsonl at
+// all — the obligations re-rank's own O109 finding was a real, billed
+// OpenRouter round trip whose failure was visible only on a transient
+// rank_note on whichever wire response happened to hit it, never in the
+// append-only log. site identifies the call site ("route",
+// "compile_prefilter", "obligations"); provider is the failing Decider's
+// own Name(); model is the underlying model identifier when known — empty
+// when not (the decision.Decider interface has no Model() accessor, and a
+// hard Decide error returns no Response to read one off — every call site
+// in this wave passes "" here); questions is how many decision.Question
+// the failed call carried; latency is how long the call took before
+// failing; err's message is recorded VERBATIM as this row's "error" field
+// (never a secret — the kit's own adapters already keep API keys and raw
+// provider bodies out of their returned errors). Applied is always false: a
+// decision that never happened changed nothing.
+//
+// A nil Recorder, a nil writer, or a nil err are all safe no-ops — a nil
+// err in particular is "nothing failed", not a row with an empty error
+// string that would misread as "asked and failed" when nothing was ever
+// asked.
+func (r *Recorder) RecordError(site, provider, model string, questions int, latency time.Duration, err error) {
+	if r == nil || r.w == nil || err == nil {
+		return
+	}
+
+	ts := r.now().UTC().Format(time.RFC3339)
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.writeJSONLine(decisionRow{
+		SchemaVersion: decisionRecordSchemaVersion,
+		FathomVersion: r.fathomVersion,
+		TS:            ts,
+		Site:          site,
+		Provider:      provider,
+		Model:         model,
+		Questions:     questions,
+		LatencyMS:     latency.Milliseconds(),
+		Error:         err.Error(),
+		Applied:       false,
+	})
 }
 
 // DefaultRecorderPath returns "decisions.jsonl" beside callLogPath (the same
