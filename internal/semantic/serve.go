@@ -597,6 +597,27 @@ func reserveNearestTier(matched []scored, n int, outFile string) []scored {
 	return reserved
 }
 
+// noteNoEligibleRerank (O109) names, in out.RankNote, WHY out.RankedBy
+// stayed "none" when an active Decider (opts.RankWithinTier &&
+// opts.Decider != nil) never got a chance to answer anything — nothing
+// eligible was ever built for it to ask about, so the DP-7 rerank block
+// (gated on a non-empty matched set) is never reached: no decision.Record
+// is produced, nothing is logged for this call, and RankedBy stays "none"
+// exactly as the no-provider-configured path does. That is CORRECT — there
+// is nothing to rerank — but before this, the two cases were wire-
+// indistinguishable. O109's own live probe (two files, low compile
+// coverage) saw zero decisions logged and ranked_by:"none" and could not
+// tell "the rerank never fired for these files" apart from "it fired and
+// changed nothing"; this closes that gap without touching RankedBy's own
+// contract (still "none": no rerank occurred). A no-op (out unchanged)
+// whenever RankWithinTier is off or no Decider is configured — byte-
+// identical to before this function existed for every such caller.
+func noteNoEligibleRerank(out *Obligations, opts ObligationsOptions) {
+	if opts.RankWithinTier && opts.Decider != nil {
+		out.RankNote = "no eligible compiled rules in scope to rerank"
+	}
+}
+
 // obligationsCore is the shared match/budget/order engine behind
 // ObligationsFor and RootObligationsFor: outFile is what the returned
 // Obligations.File carries (a real path, or "" for the root-scope
@@ -711,6 +732,7 @@ func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile str
 		}
 	}
 	if len(byID) == 0 {
+		noteNoEligibleRerank(&out, opts)
 		return out, nil
 	}
 	served := make([]core.SemanticClaim, 0, len(byID))
@@ -809,6 +831,7 @@ func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile str
 		}
 	}
 	if len(matched) == 0 {
+		noteNoEligibleRerank(&out, opts)
 		return out, nil
 	}
 	// decideRelevance is nil until (and unless) the DP-7 rerank block below
