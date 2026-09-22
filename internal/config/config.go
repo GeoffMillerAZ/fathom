@@ -111,7 +111,15 @@ type Decide struct {
 	Profile          string  `toml:"profile"`
 	CompileThreshold float64 `toml:"compile_threshold"`
 	RouteConfidence  float64 `toml:"route_confidence"`
-	RankWithinTier   bool    `toml:"rank_within_tier"`
+	// RouteTimeoutMS (O109) bounds POST /route's own decider call in
+	// milliseconds. Default 3000 fits Jev-class latency (70-500ms
+	// measured) but starves an LLM lane under ordinary network latency
+	// (1.5-2.8s warm, more cold, measured live against OpenRouter) — the
+	// design point is a sub-second decision model; the prompt hook's own
+	// shared deadline (~8s) still bounds the line regardless of this
+	// value. CUE-enforced to [100,30000].
+	RouteTimeoutMS int  `toml:"route_timeout_ms"`
+	RankWithinTier bool `toml:"rank_within_tier"`
 
 	// Endpoint overrides provider "typesafe"'s base URL (default
 	// decision.DefaultTypeSafeBaseURL). Unused by "none"/"llm".
@@ -138,6 +146,7 @@ var DefaultDecide = Decide{
 	Provider:         "none",
 	CompileThreshold: 0.5,
 	RouteConfidence:  0.9,
+	RouteTimeoutMS:   3000,
 	RankWithinTier:   true,
 }
 

@@ -468,6 +468,7 @@ const findingsConfigTemplate = `# fathom project configuration (docs/configurati
 # profile           = ""       # llm: the [llm] profile lane to use (default: the compile lane)
 # compile_threshold = 0.5      # a guide section whose "is this a binding rule" probability is below this is not compiled (counted, disclosed, still served raw)
 # route_confidence  = 0.9      # the prompt hook injects a firm route line at or above this; a hedged one from 0.5; nothing below
+# route_timeout_ms  = 3000     # POST /route's own decider budget, in ms (100-30000); the design point is a sub-second decision model — raise for a slower (e.g. LLM) lane, the prompt hook's own shared deadline (~8s) still bounds the line
 # rank_within_tier  = true     # obligations re-orders rules only inside their governing-scope tier
 # endpoint          = "https://api.typesafe.ai"  # typesafe only: base URL override (default shown)
 # model             = "jev-latest"               # typesafe only: model override (default shown)

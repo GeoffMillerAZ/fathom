@@ -404,6 +404,7 @@ func TestConfig_DecideBlock(t *testing.T) {
 			Provider:         "none",
 			CompileThreshold: 0.5,
 			RouteConfidence:  0.9,
+			RouteTimeoutMS:   3000,
 			RankWithinTier:   true,
 		}
 		if !reflect.DeepEqual(loaded.Config.Decide, want) {
@@ -422,14 +423,18 @@ func TestConfig_DecideBlock(t *testing.T) {
 			"profile":           "work",
 			"compile_threshold": 0.3,
 			"route_confidence":  0.8,
+			"route_timeout_ms":  int64(500),
 			"rank_within_tier":  false,
 		}, SourceProject, "project.toml", prov)
-		want := Decide{Provider: "llm", Profile: "work", CompileThreshold: 0.3, RouteConfidence: 0.8, RankWithinTier: false}
+		want := Decide{Provider: "llm", Profile: "work", CompileThreshold: 0.3, RouteConfidence: 0.8, RouteTimeoutMS: 500, RankWithinTier: false}
 		if !reflect.DeepEqual(d, want) {
 			t.Errorf("mergeDecideFields result = %+v, want %+v", d, want)
 		}
 		if info := prov["decide.provider"]; info.Source != SourceProject || info.Path != "project.toml" {
 			t.Errorf("provenance[decide.provider] = %+v", info)
+		}
+		if info := prov["decide.route_timeout_ms"]; info.Source != SourceProject || info.Path != "project.toml" {
+			t.Errorf("provenance[decide.route_timeout_ms] = %+v", info)
 		}
 	})
 
@@ -469,6 +474,7 @@ provider           = "llm"
 profile            = "work"
 compile_threshold  = 0.7
 route_confidence    = 0.95
+route_timeout_ms   = 1500
 rank_within_tier   = false
 `)
 		loaded, err := Load(userPath, "")
@@ -476,10 +482,10 @@ rank_within_tier   = false
 			t.Fatalf("Load: %v", err)
 		}
 		d := loaded.Config.Decide
-		if d.Provider != "llm" || d.Profile != "work" || d.CompileThreshold != 0.7 || d.RouteConfidence != 0.95 || d.RankWithinTier != false {
+		if d.Provider != "llm" || d.Profile != "work" || d.CompileThreshold != 0.7 || d.RouteConfidence != 0.95 || d.RouteTimeoutMS != 1500 || d.RankWithinTier != false {
 			t.Errorf("Decide = %+v", d)
 		}
-		for _, key := range []string{"decide.provider", "decide.profile", "decide.compile_threshold", "decide.route_confidence", "decide.rank_within_tier"} {
+		for _, key := range []string{"decide.provider", "decide.profile", "decide.compile_threshold", "decide.route_confidence", "decide.route_timeout_ms", "decide.rank_within_tier"} {
 			if info := loaded.Provenance[key]; info.Source != SourceUser || info.Path != userPath {
 				t.Errorf("provenance[%q] = %+v, want user layer %q", key, info, userPath)
 			}
@@ -536,6 +542,32 @@ api_key_env = "TYPESAFE_API_KEY"
 		writeTOML(t, userPath2, "[decide]\nroute_confidence = -0.1\n")
 		if _, err := Load(userPath2, ""); err == nil {
 			t.Fatal("expected an error for route_confidence outside [0,1]")
+		}
+	})
+
+	t.Run("refuses route_timeout_ms out of range", func(t *testing.T) {
+		dir := t.TempDir()
+
+		tooLow := filepath.Join(dir, "low.toml")
+		writeTOML(t, tooLow, "[decide]\nroute_timeout_ms = 50\n")
+		if _, err := Load(tooLow, ""); err == nil {
+			t.Fatal("expected an error for route_timeout_ms below 100")
+		}
+
+		tooHigh := filepath.Join(dir, "high.toml")
+		writeTOML(t, tooHigh, "[decide]\nroute_timeout_ms = 30001\n")
+		if _, err := Load(tooHigh, ""); err == nil {
+			t.Fatal("expected an error for route_timeout_ms above 30000")
+		}
+
+		inRange := filepath.Join(dir, "ok.toml")
+		writeTOML(t, inRange, "[decide]\nroute_timeout_ms = 100\n")
+		loaded, err := Load(inRange, "")
+		if err != nil {
+			t.Fatalf("Load: %v (route_timeout_ms=100 should be in range)", err)
+		}
+		if loaded.Config.Decide.RouteTimeoutMS != 100 {
+			t.Errorf("RouteTimeoutMS = %d, want 100", loaded.Config.Decide.RouteTimeoutMS)
 		}
 	})
 }

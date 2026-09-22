@@ -171,6 +171,10 @@ func mergeDecideFields(d *Decide, raw map[string]any, source Source, path string
 		d.RouteConfidence = v
 		prov["decide.route_confidence"] = SourceInfo{source, path}
 	}
+	if v, ok := numberField(raw, "route_timeout_ms"); ok {
+		d.RouteTimeoutMS = int(v)
+		prov["decide.route_timeout_ms"] = SourceInfo{source, path}
+	}
 	if v, ok := raw["rank_within_tier"]; ok {
 		if b, ok := v.(bool); ok {
 			d.RankWithinTier = b

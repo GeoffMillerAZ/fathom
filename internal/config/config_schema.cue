@@ -161,6 +161,14 @@ package config
 	// below the unsure band.
 	route_confidence?: number & >=0 & <=1
 
+	// route_timeout_ms bounds POST /route's own decider call (O109): the
+	// default (3000ms) fits Jev-class latency (70-500ms measured) but
+	// starves an LLM lane under ordinary network latency (1.5-2.8s warm,
+	// more cold, measured live against OpenRouter) — the design point is a
+	// sub-second decision model; the prompt hook's own ~8s shared deadline
+	// still bounds the line regardless of this value.
+	route_timeout_ms?: int & >=100 & <=30000
+
 	// rank_within_tier: obligations re-ranks eligible rules only inside
 	// their governing-scope tier (ADR-035's tier order is never crossed).
 	rank_within_tier?: bool

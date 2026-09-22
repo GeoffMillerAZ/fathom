@@ -271,8 +271,18 @@ provider          = "none"   # none | llm | typesafe — none makes no call and 
 profile           = ""       # llm: the [llm] profile lane to use (default: the compile lane)
 compile_threshold = 0.5      # a guide section whose "is this a binding rule" probability is below this is not compiled (counted, disclosed, still served raw)
 route_confidence  = 0.9      # the prompt hook injects a firm route line at or above this; a hedged one from 0.5; nothing below
+route_timeout_ms  = 3000     # POST /route's own decider budget, in ms (100-30000)
 rank_within_tier  = true     # obligations re-orders rules only inside their governing-scope tier
 ```
+
+`route_timeout_ms` (O109) bounds `POST /route`'s own decider call — the design
+point is a **sub-second decision model** (Jev-class latency measured 70-500ms),
+which is what the 3000ms default is generous for. An LLM-lane provider measured
+live against OpenRouter answered in 1.5-2.8s warm (more cold) — comfortably over
+half the old fixed budget — so a slower lane needs this raised; the prompt
+hook's own shared deadline (`fathom prompt-hook`'s ~8s budget) still bounds the
+line regardless of what this is set to, so raising it only trades "the route
+line arrives" against "the hook's own deadline eats the wait instead."
 
 `provider = "typesafe"` routes through the kit's TypeSafe (Jev) adapter directly
 — no `[llm]` profile needed — and lands 2026-09-22 (ADR-042 amendment; the
