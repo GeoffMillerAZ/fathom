@@ -18,8 +18,8 @@ A/B rows at the end are operator decisions (LLM spend) and are never claimed by 
 
 ## C. Obligations re-rank within a tier (ADR-042 decision 2; ADR-035 preserved)
 
-- [ ] `rerankWithinTiers` asks one batched `noul` per eligible rule ("does this rule govern this edit") with the edited path (and hunk when the hook supplies one) as state, and re-orders rules only inside their governing-scope tier, stable on ties; a rule never crosses a tier, never drops, and the ≤6 cap and displaced counts are computed after the re-rank exactly as before {id: DP-7, symbol: rerankWithinTiers, package: internal/semantic, reachable_from: TestObligations_RerankWithinTierOnly}
-- [ ] The obligations envelope carries `ranked_by` (`none` | `llm`) and, per served rule, `relevance` (the noul probability, absent under `none`); `docs/mcp-tools.md` documents both {id: DP-8, oracle: lexical, path: docs/mcp-tools.md, pattern: "ranked_by"}
+- [x] `rerankWithinTiers` asks one batched `noul` per eligible rule ("does this rule govern this edit") with the edited path (and hunk when the hook supplies one) as state, and re-orders rules only inside their governing-scope tier, stable on ties; a rule never crosses a tier, never drops, and the ≤6 cap and displaced counts are computed after the re-rank exactly as before {id: DP-7, symbol: rerankWithinTiers, package: internal/semantic, reachable_from: TestObligations_RerankWithinTierOnly}
+- [x] The obligations envelope carries `ranked_by` (`none` | `llm`) and, per served rule, `relevance` (the noul probability, absent under `none`); `docs/mcp-tools.md` documents both {id: DP-8, oracle: lexical, path: docs/mcp-tools.md, pattern: "ranked_by"}
 
 ## D. Prompt routing (ADR-042 decision 2; I9/I12/I14 preserved)
 

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/geoffmilleraz/agentic-kit/foundations/decision"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/filter"
 	"github.com/geoffmilleraz/fathom/internal/store"
@@ -179,6 +180,16 @@ type Obligation struct {
 	// no stale rule at all, are byte-identical to what they were before
 	// this field existed.
 	AnchorText string `json:"anchor_text,omitempty"`
+
+	// Relevance (DP-8, ADR-042 decision 2/vision 32 §2 item 2) is this
+	// rule's noul probability from the decision-port re-rank ("does this
+	// rule govern this edit") — present only when the payload's RankedBy
+	// names a real provider AND that provider answered this rule's
+	// question. Absent for every rule under ranked_by:"none" (the default:
+	// no provider, RankWithinTier off, or a provider error swallowed into
+	// RankNote) and for any rule left unanswered — a payload that never
+	// asked is byte-identical to what it was before this field existed.
+	Relevance *float64 `json:"relevance,omitempty"`
 }
 
 // ModuleNote is an explicit, never-silent note attached to an Obligations
@@ -244,6 +255,33 @@ type Obligations struct {
 	// never by ObligationsFor/ObligationsForLayer, whose live-serving
 	// payload is byte-identical to what it was before this field existed.
 	AsOf string `json:"as_of,omitempty"`
+
+	// RankedBy (DP-8, ADR-042 decision 2) names which decision-port Decider
+	// re-ranked this payload's rules within their governing-scope tier:
+	// "none" (the default — no provider configured, RankWithinTier off, or
+	// a configured provider's Decide call itself failed and was swallowed;
+	// see RankNote) or the Decider's own Name() (e.g. "llm", "mock").
+	// Always present, never omitempty, so a consumer can tell "reranking
+	// did not run" from "this field does not exist yet" without a second
+	// signal. Only ObligationsForOpts/ObligationsForLayerOpts can ever set
+	// it to anything but "none" — every other entry point (ObligationsFor,
+	// ObligationsForLayer, RootObligationsFor, RootObligationsForLayer,
+	// ObligationsAsOf) passes a zero-value ObligationsOptions and always
+	// reports "none" here.
+	RankedBy string `json:"ranked_by"`
+	// RankNote (DP-8) is set only when a configured Decider's Decide call
+	// itself returned an error (including decision.ErrNoProvider) — the
+	// payload is served exactly as the untouched (RankedBy:"none") path
+	// would be, and this names why, rather than failing the whole
+	// obligations call over a ranker that could not answer (ADR-042
+	// decision 3: "serving must not fail because a ranker did").
+	RankNote string `json:"rank_note,omitempty"`
+	// Decisions (feeds DP-3's call-log Record) carries one decision.Record
+	// per rule this call asked the Decider about, only when reranking
+	// actually ran — for the CALLER (the daemon) to log, never part of the
+	// served wire payload: a tool response has no reason to carry raw
+	// per-rule model telemetry (site, provider, confidence, latency).
+	Decisions []decision.Record `json:"-"`
 }
 
 // ObligationLayerFilter selects which claims obligations serves (VB-9,
@@ -302,7 +340,7 @@ const (
 //     stopped run led with stale rules; the agent reads top-down, so the
 //     freshest binding rule goes first.
 func ObligationsFor(ctx context.Context, st store.Store, serviceID, file string, max int) (Obligations, error) {
-	return obligationsCore(ctx, st, serviceID, file, max, fileScopeMatch(file), ObligationLayerAll, nil)
+	return obligationsCore(ctx, st, serviceID, file, max, fileScopeMatch(file), ObligationLayerAll, nil, ObligationsOptions{})
 }
 
 // ObligationsForLayer is ObligationsFor's VB-9 sibling: layer selects which
@@ -311,7 +349,45 @@ func ObligationsFor(ctx context.Context, st store.Store, serviceID, file string,
 // ObligationLayerAll, so every pre-VB-9 caller sees byte-identical
 // behavior; a caller that wants the split asks for it explicitly.
 func ObligationsForLayer(ctx context.Context, st store.Store, serviceID, file string, max int, layer ObligationLayerFilter) (Obligations, error) {
-	return obligationsCore(ctx, st, serviceID, file, max, fileScopeMatch(file), layer, nil)
+	return obligationsCore(ctx, st, serviceID, file, max, fileScopeMatch(file), layer, nil, ObligationsOptions{})
+}
+
+// ObligationsOptions carries the decision-port options ObligationsForOpts/
+// ObligationsForLayerOpts accept (DP-7/DP-8, ADR-042 decision 2, vision 32
+// §2 item 2). The zero value reproduces ObligationsFor/ObligationsForLayer's
+// own behaviour exactly — every existing entry point passes it unchanged.
+type ObligationsOptions struct {
+	// Decider answers rerankWithinTiers' batched "does this rule govern
+	// this edit" noul question, one per eligible rule. nil (the zero
+	// value) means no call is ever made, regardless of RankWithinTier.
+	Decider decision.Decider
+	// RankWithinTier turns reranking on ([decide] rank_within_tier, DP-1).
+	// false (the zero value) means no call is ever made, regardless of
+	// Decider — both gates must be satisfied.
+	RankWithinTier bool
+	// Hunk is the edited hunk text, when the caller (the edit hook) has
+	// one — appended to the Decider's State alongside the edited path.
+	// Empty means the State names only the path.
+	Hunk string
+}
+
+// ObligationsForOpts is ObligationsFor's decision-port sibling (DP-7): file-
+// scoped, layer:"all", with opts controlling whether eligible rules are
+// re-ranked within their governing-scope tier before the MaxObligations cap.
+// ObligationsForOpts(ctx, st, service, file, max, ObligationsOptions{}) is
+// byte-for-byte ObligationsFor(ctx, st, service, file, max) — both call
+// obligationsCore identically, differing only in which options struct is
+// literally written at the call site.
+func ObligationsForOpts(ctx context.Context, st store.Store, serviceID, file string, max int, opts ObligationsOptions) (Obligations, error) {
+	return obligationsCore(ctx, st, serviceID, file, max, fileScopeMatch(file), ObligationLayerAll, nil, opts)
+}
+
+// ObligationsForLayerOpts is ObligationsForLayer's decision-port sibling —
+// the layer-filtered twin ObligationsForOpts needs so a VB-9 caller (e.g.
+// the obligations MCP tool, once another wave wires [decide] through it)
+// can ask for both the layer split and reranking together.
+func ObligationsForLayerOpts(ctx context.Context, st store.Store, serviceID, file string, max int, layer ObligationLayerFilter, opts ObligationsOptions) (Obligations, error) {
+	return obligationsCore(ctx, st, serviceID, file, max, fileScopeMatch(file), layer, nil, opts)
 }
 
 // ObligationsAsOf answers "what governed file AT asOf" (SU-19, ADR-041
@@ -328,7 +404,7 @@ func ObligationsForLayer(ctx context.Context, st store.Store, serviceID, file st
 // what it was before this function existed. The returned Obligations.AsOf
 // carries asOf back as the honest "as of" label.
 func ObligationsAsOf(ctx context.Context, st store.Store, serviceID, file string, max int, asOf time.Time) (Obligations, error) {
-	return obligationsCore(ctx, st, serviceID, file, max, fileScopeMatch(file), ObligationLayerAll, &asOf)
+	return obligationsCore(ctx, st, serviceID, file, max, fileScopeMatch(file), ObligationLayerAll, &asOf, ObligationsOptions{})
 }
 
 // servedClaimStatuses is core.ClaimStatus.Served()'s three admitted
@@ -411,14 +487,14 @@ func isRootLevelSource(subject string) bool {
 // file-scoped call (BP-17/BP-18); out.File is always "" (no single file
 // answers this question).
 func RootObligationsFor(ctx context.Context, st store.Store, serviceID string, max int) (Obligations, error) {
-	return obligationsCore(ctx, st, serviceID, "", max, rootScopeMatch, ObligationLayerAll, nil)
+	return obligationsCore(ctx, st, serviceID, "", max, rootScopeMatch, ObligationLayerAll, nil, ObligationsOptions{})
 }
 
 // RootObligationsForLayer is RootObligationsFor's VB-9 sibling — see
 // ObligationsForLayer's doc comment; the same layer split applies to the
 // root-scope question.
 func RootObligationsForLayer(ctx context.Context, st store.Store, serviceID string, max int, layer ObligationLayerFilter) (Obligations, error) {
-	return obligationsCore(ctx, st, serviceID, "", max, rootScopeMatch, layer, nil)
+	return obligationsCore(ctx, st, serviceID, "", max, rootScopeMatch, layer, nil, ObligationsOptions{})
 }
 
 func rootScopeMatch(cl core.SemanticClaim, scope []string) int {
@@ -526,11 +602,17 @@ func reserveNearestTier(matched []scored, n int, outFile string) []scored {
 // case, so their served payload stays byte-identical. Non-nil only via
 // ObligationsAsOf: see its own doc comment for why that path fetches and
 // filters differently.
-func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile string, max int, match func(cl core.SemanticClaim, scope []string) int, layerFilter ObligationLayerFilter, asOf *time.Time) (Obligations, error) {
+//
+// opts is the zero ObligationsOptions{} for every caller above — a nil
+// Decider or RankWithinTier==false means the DP-7 rerank block below never
+// runs, so the served payload is byte-for-byte what it was before
+// ObligationsOptions existed. Non-zero only via ObligationsForOpts/
+// ObligationsForLayerOpts.
+func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile string, max int, match func(cl core.SemanticClaim, scope []string) int, layerFilter ObligationLayerFilter, asOf *time.Time, opts ObligationsOptions) (Obligations, error) {
 	if max <= 0 || max > MaxObligations {
 		max = MaxObligations
 	}
-	out := Obligations{Service: serviceID, File: outFile}
+	out := Obligations{Service: serviceID, File: outFile, RankedBy: "none"}
 	if asOf != nil {
 		out.AsOf = asOf.UTC().Format(time.RFC3339)
 	}
@@ -719,6 +801,12 @@ func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile str
 	if len(matched) == 0 {
 		return out, nil
 	}
+	// decideRelevance is nil until (and unless) the DP-7 rerank block below
+	// populates it — less() closes over the VARIABLE, not a snapshot, so
+	// the SAME comparator used for the sort just below is still correct
+	// after that block runs, and for the cap branch's own later re-sort
+	// (both read whatever decideRelevance holds at the time they run).
+	var decideRelevance map[string]float64
 	less := func(a, b scored) bool {
 		if af, bf := a.cl.Status == core.ClaimFresh, b.cl.Status == core.ClaimFresh; af != bf {
 			return af // BP-17/D5: fresh before stale or contradicted
@@ -741,6 +829,25 @@ func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile str
 		// exactly.
 		if outFile != "" && a.governing != b.governing {
 			return crossTierCloser(a.governing, b.governing, a.strong, b.strong)
+		}
+		// DP-7 (ADR-042 decision 2): STRICTLY INSIDE a governing-scope tier
+		// (a.governing == b.governing, or a root-scope call — VB-8 above
+		// already settled the tier itself, this never overrides it), a
+		// decision-port re-rank's noul answer decides NEXT, before the
+		// lexical relevance tie-break below — but only when BOTH sides
+		// cleared I42's unsure-band floor (usableNoul): an absent answer, or
+		// one below decision.UnsureBelow, falls straight through to the
+		// EXACT same comparison this rule would have made before
+		// decideRelevance ever existed, so such a claim's rank relative to
+		// every other claim is untouched — "never moves a rule". With no
+		// rerank ever run, decideRelevance is nil and this block is always
+		// a no-op: the ORIGINAL, unchanged comparator.
+		if outFile != "" && decideRelevance != nil {
+			if ra, oka := usableNoul(a.cl.ClaimID, decideRelevance); oka {
+				if rb, okb := usableNoul(b.cl.ClaimID, decideRelevance); okb && ra != rb {
+					return ra > rb
+				}
+			}
 		}
 		// wave O2 (vs-pilot-6 second reading §5): STRICTLY INSIDE a
 		// governing-scope tier (same a.governing/b.governing — VB-8 above
@@ -766,6 +873,29 @@ func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile str
 		return a.cl.ClaimID < b.cl.ClaimID
 	}
 	sort.Slice(matched, func(i, j int) bool { return less(matched[i], matched[j]) })
+
+	// DP-7 (ADR-042 decision 2, vision 32 §2 item 2): re-rank the eligible
+	// set within its governing-scope tiers, AFTER the tiering sort just
+	// above and BEFORE the MaxObligations cap below — so a rerank can shift
+	// which same-tier rule survives the cap, never which TIER survives it.
+	// Gated on BOTH opts.RankWithinTier and a non-nil opts.Decider; the
+	// zero ObligationsOptions{} every non-Opts entry point passes leaves
+	// this whole block dead code for them.
+	if opts.RankWithinTier && opts.Decider != nil {
+		reordered, rel, recs, rerr := rerankWithinTiers(ctx, opts.Decider, outFile, opts.Hunk, matched)
+		if rerr != nil {
+			// ADR-042 decision 3: a provider error never fails the call —
+			// it is swallowed into the untouched (RankedBy:"none") path,
+			// named on the envelope instead.
+			out.RankNote = rerr.Error()
+		} else {
+			matched = reordered
+			decideRelevance = rel
+			out.Decisions = recs
+			out.RankedBy = opts.Decider.Name()
+		}
+	}
+
 	if len(matched) > max {
 		// T5-2/O14: record the cap's damage BEFORE slicing it away — this is
 		// the only point that knows how many served-eligible claims existed
@@ -894,6 +1024,9 @@ func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile str
 		}
 		if m.cl.PromptVersion == externalImportPromptVersion {
 			fillExternalFinding(ctx, st, serviceID, root, m.cl, &ob)
+		}
+		if v, ok := decideRelevance[m.cl.ClaimID]; ok {
+			ob.Relevance = &v
 		}
 		out.Rules = append(out.Rules, ob)
 		if m.cl.CompiledAtWatermark != "" && out.Watermark == "" {
