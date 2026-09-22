@@ -192,6 +192,12 @@ futures may justify a free option today. The repo's own sequence is
   session brief measurably loses to the harness's own recall on the thread bet (G3).
 - Drop if: harness memory formats keep churning quarterly (Cursor removed theirs in 2.1).
 
+## F21. A `typesafe` adapter for the decision port (TypeSafe AI's Jev)
+
+- Confidence: plausible. Horizon: when access exists. Evidence: ADR-042, `docs/vision/32-decision-port.md`, the 2026-09-22 assessment.
+- Promote when: an API key exists AND one site's A/B (compile pre-filter, obligations rank, or routing) shows a gain over the `llm` adapter at n ≥ 3. Drop if: the vendor's calibration fails our own adjudicated cells (0.9 not right nine times in ten) or the service is withdrawn.
+- Preserve: the port's three kinds mirror the vendor primitives; an adapter is an HTTP client, never a change to a site.
+
 ## F20. Spec-scaffold interop: scaffold task checklists as plan rows and a converge report
 
 - Confidence: plausible. Horizon: later.

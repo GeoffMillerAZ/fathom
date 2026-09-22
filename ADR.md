@@ -2187,3 +2187,54 @@ which file matters).
 **Revisit when.** Vision 31 §5; a language without a SCIP exporter becomes a
 primary target (then the per-file resolver graduates to a typed pass); the
 per-file refresh is measured slower than 150 ms p50 at the hook.
+
+## ADR-042: The decision port — typed fast decisions behind a flag, off by default (2026-09-22)
+
+**Status.** Accepted. Accepts `docs/vision/32-decision-port.md` (owner-directed,
+2026-09-22, after the assessment "Jev and the Strengths Bench"). Plan:
+`docs/plans/decision-port.md`.
+
+**Context.** Fathom's facts come from the index, but three decisions are still made
+by heuristics or by a slow text model: which six of ~140 eligible rules to serve at
+an edit, which verb an issue-shaped prompt wants first, and which guide sections
+carry a binding rule at all (the compile: 61 sections, 5.1M tokens, $2.79 and 75
+minutes per subject and commit on this repository). Each is a typed question with a
+probability answer. A model class now exists for exactly that shape (TypeSafe AI's
+Jev, in early access), and an ordinary LLM asked for JSON answers it too.
+
+**Decision.**
+1. agentic-kit gains `foundations/decision`: `choice`, `score`, `noul` questions over
+   a state, one batched request, `confidence` = (k·max−1)/(k−1) over the probability
+   spread, bands at 0.5 and 0.9. Adapters `none` and `llm`; `typesafe` is a future
+   (F21) gated on access and an A/B.
+2. Fathom consumes it behind `[decide] provider = none | llm` (default `none`: no
+   call is made and every site behaves as before) at three sites: the compile
+   section pre-filter (skipped sections counted, disclosed, and served raw by
+   ADR-037's fallback), obligations re-ranking within a governing-scope tier only
+   (ADR-035's tier order is untouchable by a model), and prompt routing through a
+   loopback daemon endpoint the hook calls under its existing deadline.
+3. The port ranks, routes and triages; it never asserts a code fact (the ADR-028
+   authority boundary). A decision in the unsure band never changes served content.
+   Every decision is logged to the call log and disclosed in the envelope that used it.
+4. I14 is amended: the decision port is the second sanctioned off-host egress after
+   compilation, armed only by operator config, never from a hook process. I42 pins
+   the default-off and disclosure properties.
+5. No new MCP tool. Default-on for any repo only after the site's A/B (vision 32 §4).
+
+**Consequences.** One new kit foundation and one fathom package (`internal/decide`),
+a `[decide]` config block, a doctor row, an additive `compile_runs` column, two
+envelope fields (`ranked_by`, `relevance`), one loopback endpoint (`POST /route`),
+and a `Verified against` obligation on the `llm` adapter's prompt golden.
+
+**Alternatives rejected.** A `decide` MCP tool (no call-log justification; internal
+to serving); provider calls from the hook (I14, fail-open in milliseconds); model
+re-ranking across scope tiers (breaks the one predictable part of serving);
+recording every decision as a claim (ephemeral ranking is instrument truth, not
+durable evidence).
+
+**Revisit when.** A site's A/B shows no gain at n ≥ 3 (turn that site off by
+default and say so); a second provider ships (the port's kinds are the contract, the
+adapter is data); egress policy of an adopter forbids any third-party call (the
+`none` default already answers it); the compile pre-filter ever loses a served rule
+in an A/B (the threshold is wrong, not the fallback).
+
