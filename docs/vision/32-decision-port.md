@@ -2,6 +2,10 @@
 
 Status: ACCEPTED 2026-09-22 (ADR-042, owner-directed after the assessment "Jev and
 the Strengths Bench"). Plan: `docs/plans/decision-port.md`. Default: off.
+**Amendment 2026-09-22:** the `typesafe` adapter (§2) landed on owner direction the
+same day, ahead of the A/B this doc originally gated it on — the "parked until
+access" clause below is superseded; access is a key the operator supplies
+(`[decide].api_key_env`/`api_key_cmd`, else `TYPESAFE_API_KEY`), not a blocker.
 
 ## 1. The question
 
@@ -29,17 +33,18 @@ value is in the seam, not the vendor.
 A **decision port** — `foundations/decision` in agentic-kit — with three question
 kinds mirroring the vendor primitives 1:1 (`choice`, `score`, `noul` = a yes/no
 probability), one batched request per call, and a `confidence` derived from the
-probability spread by the same formula the vendor documents. Two adapters ship now:
-`none` (returns a typed "no provider" error) and `llm` (any `llmclient` asked for a
-JSON object against the question schema — Haiku through the existing lanes). A
-`typesafe` adapter is a documented future (`futures.md` F21), added when access
-exists and an A/B earns it.
+probability spread by the same formula the vendor documents. Three adapters ship:
+`none` (returns a typed "no provider" error), `llm` (any `llmclient` asked for a
+JSON object against the question schema — Haiku through the existing lanes), and
+`typesafe` (TypeSafe AI's own `/v1/systemone` wire, called directly — landed
+2026-09-22 on owner direction, ahead of the A/B `futures.md` F21 originally gated
+it on).
 
 Fathom consumes the port through `.fathom/config.toml`:
 
 ```toml
 [decide]
-provider           = "none"   # none | llm      (default none: no call is ever made)
+provider           = "none"   # none | llm | typesafe (default none: no call is ever made)
 profile            = ""       # llm: the [llm] profile lane to use (default: the compile lane)
 compile_threshold  = 0.5      # noul below this → the section is not compiled
 route_confidence   = 0.9      # choice confidence at/above this → one firm route line
@@ -60,7 +65,7 @@ Three sites, each with its deterministic path intact:
    exact-file rule outranks a package rule outranks a root rule, and no model may
    change that. Inside one tier, a batched `noul` per eligible rule ("does this rule
    govern this edit") re-orders the rules before the `MaxObligations` cap. The
-   envelope says `ranked_by: "none" | "llm"` and carries each served rule's
+   envelope says `ranked_by: "none" | "llm" | "typesafe"` and carries each served rule's
    `relevance`. Displaced counts, budgets and the ≤6 cap (I35) are unchanged.
 3. **Prompt routing.** `fathom prompt-hook` asks the daemon (`POST /route`, loopback)
    for the verb an issue-shaped prompt wants; the daemon asks the port one `choice`

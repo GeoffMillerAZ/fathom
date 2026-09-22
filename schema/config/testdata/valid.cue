@@ -51,3 +51,15 @@ example: #Config & {
 		rank_within_tier:  true
 	}
 }
+
+// A [decide] block using the TypeSafe (Jev) adapter directly (ADR-042
+// amendment, 2026-09-22): endpoint/model are optional overrides, and the
+// key comes from one of api_key_env or api_key_cmd — never a literal.
+exampleTypeSafe: #Config & {
+	decide: {
+		provider:    "typesafe"
+		endpoint:    "https://api.typesafe.ai"
+		model:       "jev-latest"
+		api_key_env: "TYPESAFE_API_KEY"
+	}
+}

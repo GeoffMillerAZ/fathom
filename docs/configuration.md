@@ -267,28 +267,54 @@ and every answer is logged and disclosed:
 ```toml
 # .fathom/config.toml
 [decide]
-provider          = "none"   # none | llm — none makes no call and changes nothing
+provider          = "none"   # none | llm | typesafe — none makes no call and changes nothing
 profile           = ""       # llm: the [llm] profile lane to use (default: the compile lane)
 compile_threshold = 0.5      # a guide section whose "is this a binding rule" probability is below this is not compiled (counted, disclosed, still served raw)
 route_confidence  = 0.9      # the prompt hook injects a firm route line at or above this; a hedged one from 0.5; nothing below
 rank_within_tier  = true     # obligations re-orders rules only inside their governing-scope tier
 ```
 
+`provider = "typesafe"` routes through the kit's TypeSafe (Jev) adapter directly
+— no `[llm]` profile needed — and lands 2026-09-22 (ADR-042 amendment; the
+"parked until access" clause it supersedes is `docs/intent/futures.md` F21):
+
+```toml
+# .fathom/config.toml
+[decide]
+provider    = "typesafe"
+endpoint    = "https://api.typesafe.ai"   # optional; this is the default
+model       = "jev-latest"                # optional; this is the default
+api_key_env = "TYPESAFE_API_KEY"          # or api_key_cmd = ["op", "read", "op://vault/typesafe/credential"]
+```
+
+The key is resolved at call time, never at config load: `api_key_cmd` wins over
+`api_key_env`, and when neither is set the well-known `TYPESAFE_API_KEY`
+environment variable is read directly. A literal `api_key` in `[decide]` is not
+representable — the schema is closed, same discipline as `[profiles.*]`.
+
 `fathom doctor` reports the provider under `decision_provider`; the obligations
-envelope carries `ranked_by`, and `POST /route` on the loopback daemon serves the
-prompt hook's route. A `typesafe` adapter is a documented future (`docs/intent/futures.md` F21).
+envelope carries `ranked_by` (`none` | `llm` | `typesafe`), and `POST /route` on
+the loopback daemon serves the prompt hook's route with the same `provider`
+value.
+
+Both `llm` and `typesafe` are **fail-open** (I14): no key, an unreachable
+endpoint, or any other error opening the port at startup is one `warn:` line on
+stderr and the port silently falls back to `none` — a misconfigured `[decide]`
+never stops the daemon from starting or the CLI from compiling. `fathom doctor`
+names exactly what failed (missing key, ping failure, unknown provider) under
+`decision_provider` so the fallback is never silent to an operator running it.
 
 Like every other `config.toml` block, `[decide]` is read once at daemon
 startup — a change is **restart-to-apply**, never live-reloaded. `profile`
 empty falls back to the daemon's own compile-lane profile (`[daemon].
 default_profile`, else the top-level `default_profile`) — one lane
 resolution chain shared by compile and the decision port, not two to keep
-in sync. Every answered decision (the compile pre-filter, the obligations
-re-rank, and `POST /route`) is appended to `decisions.jsonl`, written
-beside the configured call log (`internal/decide.DefaultRecorderPath` —
-same directory as `[daemon].call_log`/`--call-log`, default
-`logs/mcp-calls.jsonl` under the repo's state directory); no call log
-configured means no decision log either.
+in sync (this fallback chain is `llm`-only; `typesafe` has no profile). Every
+answered decision (the compile pre-filter, the obligations re-rank, and
+`POST /route`) is appended to `decisions.jsonl`, written beside the configured
+call log (`internal/decide.DefaultRecorderPath` — same directory as
+`[daemon].call_log`/`--call-log`, default `logs/mcp-calls.jsonl` under the
+repo's state directory); no call log configured means no decision log either.
 
 ## The findings loop: `[findings]`
 

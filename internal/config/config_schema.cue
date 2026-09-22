@@ -133,16 +133,19 @@ package config
 
 // #Decide configures ADR-042's decision port (docs/vision/32-decision-port.md):
 // typed fast decisions (choice/score/noul) behind a provider flag, off by
-// default. `provider` is either "none" (the default: no call is ever made,
-// every site behaves exactly as before) or "llm" (any llmclient profile
-// lane, asked for a JSON object against the question schema); any other
-// value is refused by name, same discipline as #Provider. compile_threshold
-// and route_confidence are probabilities and so must lie in [0,1] — CUE
-// enforces the range directly, the same way #Profile's provider enum makes
-// an out-of-set value a load-time validation error rather than a silent
-// no-op.
+// default. `provider` is "none" (the default: no call is ever made, every
+// site behaves exactly as before), "llm" (any llmclient profile lane, asked
+// for a JSON object against the question schema), or "typesafe" (the kit's
+// TypeSafe/Jev adapter, called directly — endpoint/model/api_key_env/
+// api_key_cmd configure that lane); any other value is refused by name, same
+// discipline as #Provider. compile_threshold and route_confidence are
+// probabilities and so must lie in [0,1] — CUE enforces the range directly,
+// the same way #Profile's provider enum makes an out-of-set value a
+// load-time validation error rather than a silent no-op. Like #Profile, this
+// struct is closed and has no `api_key` field — a literal secret pasted here
+// fails validation instead of being silently accepted and persisted.
 #Decide: {
-	provider?: "none" | "llm"
+	provider?: "none" | "llm" | "typesafe"
 
 	// profile names the [llm] profile lane provider "llm" uses; empty (the
 	// default) means "the compile lane's own default profile resolution".
@@ -161,6 +164,26 @@ package config
 	// rank_within_tier: obligations re-ranks eligible rules only inside
 	// their governing-scope tier (ADR-035's tier order is never crossed).
 	rank_within_tier?: bool
+
+	// endpoint overrides provider "typesafe"'s base URL (default
+	// decision.DefaultTypeSafeBaseURL, "https://api.typesafe.ai"). Unused
+	// by "none"/"llm".
+	endpoint?: string
+
+	// model overrides provider "typesafe"'s model (default
+	// decision.DefaultTypeSafeModel, "jev-latest"). Unused by "none"/"llm".
+	model?: string
+
+	// api_key_env names an environment variable read at decision-port
+	// construction time (never at config load time) for provider
+	// "typesafe"; empty defers to the well-known TYPESAFE_API_KEY.
+	api_key_env?: string
+
+	// api_key_cmd is an argv (no shell interpretation) executed with a
+	// bounded timeout at construction time, for provider "typesafe"; its
+	// trimmed stdout is the credential. Wins over api_key_env when both are
+	// set. Must name at least one element (the executable).
+	api_key_cmd?: [...string] & [_, ...]
 }
 
 // #Config is the top-level shape of one config.toml layer (user or

@@ -44,6 +44,25 @@ func (p Profile) ResolveAPIKey(ctx context.Context) (string, error) {
 	return "", nil
 }
 
+// ResolveAPIKey resolves the credential [decide]'s provider "typesafe" lane
+// uses, at CALL time — same discipline as Profile.ResolveAPIKey (never
+// cached, never resolved during Load). Precedence: APIKeyCmd wins over
+// APIKeyEnv, exactly like Profile. The one difference: when d names
+// NEITHER, Profile.ResolveAPIKey stops at "" and lets the adapter fall back
+// to its own default env var — [decide] has no adapter-owned default to
+// defer to, so this falls back one step further, to the well-known
+// TYPESAFE_API_KEY env var, before returning "". Still never logged, never
+// embedded in a returned error.
+func (d Decide) ResolveAPIKey(ctx context.Context) (string, error) {
+	if len(d.APIKeyCmd) > 0 {
+		return runAPIKeyCmd(ctx, d.APIKeyCmd)
+	}
+	if d.APIKeyEnv != "" {
+		return os.Getenv(d.APIKeyEnv), nil
+	}
+	return os.Getenv("TYPESAFE_API_KEY"), nil
+}
+
 // runAPIKeyCmd execs argv (no shell — argv[0] is resolved via PATH or as an
 // absolute path by exec.LookPath semantics, exactly like exec.Command)
 // under apiKeyCmdTimeout and returns its trimmed stdout. Stderr is

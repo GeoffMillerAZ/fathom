@@ -44,7 +44,8 @@ package config
 // 	daemon: state_dir: "/abs/path"
 // }
 //
-// 6. An unknown [decide] provider value (ADR-042: only "none" or "llm"):
+// 6. An unknown [decide] provider value (ADR-042: "none", "llm", or
+//    "typesafe" only):
 // bad6: #Config & {
 // 	decide: provider: "jev"
 // }
@@ -52,4 +53,14 @@ package config
 // 7. A [decide] threshold outside [0,1]:
 // bad7: #Config & {
 // 	decide: compile_threshold: 1.5
+// }
+//
+// 8. A literal secret in [decide] (ADR-042 amendment, 2026-09-22): #Decide
+//    is a closed struct with no api_key field, same discipline as #Profile
+//    — the key must come from api_key_env or api_key_cmd, never a literal:
+// bad8: #Config & {
+// 	decide: {
+// 		provider: "typesafe"
+// 		api_key:  "sk-or-not-representable"
+// 	}
 // }

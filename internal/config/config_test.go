@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -405,10 +406,10 @@ func TestConfig_DecideBlock(t *testing.T) {
 			RouteConfidence:  0.9,
 			RankWithinTier:   true,
 		}
-		if loaded.Config.Decide != want {
+		if !reflect.DeepEqual(loaded.Config.Decide, want) {
 			t.Errorf("Decide = %+v, want defaults %+v", loaded.Config.Decide, want)
 		}
-		if want != DefaultDecide {
+		if !reflect.DeepEqual(want, DefaultDecide) {
 			t.Errorf("DefaultDecide = %+v, want it to match the documented defaults %+v", DefaultDecide, want)
 		}
 	})
@@ -424,11 +425,38 @@ func TestConfig_DecideBlock(t *testing.T) {
 			"rank_within_tier":  false,
 		}, SourceProject, "project.toml", prov)
 		want := Decide{Provider: "llm", Profile: "work", CompileThreshold: 0.3, RouteConfidence: 0.8, RankWithinTier: false}
-		if d != want {
+		if !reflect.DeepEqual(d, want) {
 			t.Errorf("mergeDecideFields result = %+v, want %+v", d, want)
 		}
 		if info := prov["decide.provider"]; info.Source != SourceProject || info.Path != "project.toml" {
 			t.Errorf("provenance[decide.provider] = %+v", info)
+		}
+	})
+
+	t.Run("mergeDecideFields sets typesafe fields and records provenance", func(t *testing.T) {
+		var d Decide
+		prov := Provenance{}
+		mergeDecideFields(&d, map[string]any{
+			"provider":    "typesafe",
+			"endpoint":    "https://example.invalid",
+			"model":       "jev-1.13.0",
+			"api_key_env": "TYPESAFE_API_KEY",
+			"api_key_cmd": []any{"op", "read", "op://vault/jev/key"},
+		}, SourceProject, "project.toml", prov)
+		want := Decide{
+			Provider:  "typesafe",
+			Endpoint:  "https://example.invalid",
+			Model:     "jev-1.13.0",
+			APIKeyEnv: "TYPESAFE_API_KEY",
+			APIKeyCmd: []string{"op", "read", "op://vault/jev/key"},
+		}
+		if d.Provider != want.Provider || d.Endpoint != want.Endpoint || d.Model != want.Model || d.APIKeyEnv != want.APIKeyEnv || strings.Join(d.APIKeyCmd, " ") != strings.Join(want.APIKeyCmd, " ") {
+			t.Errorf("mergeDecideFields result = %+v, want %+v", d, want)
+		}
+		for _, key := range []string{"decide.endpoint", "decide.model", "decide.api_key_env", "decide.api_key_cmd"} {
+			if info := prov[key]; info.Source != SourceProject || info.Path != "project.toml" {
+				t.Errorf("provenance[%q] = %+v", key, info)
+			}
 		}
 	})
 
@@ -452,6 +480,31 @@ rank_within_tier   = false
 			t.Errorf("Decide = %+v", d)
 		}
 		for _, key := range []string{"decide.provider", "decide.profile", "decide.compile_threshold", "decide.route_confidence", "decide.rank_within_tier"} {
+			if info := loaded.Provenance[key]; info.Source != SourceUser || info.Path != userPath {
+				t.Errorf("provenance[%q] = %+v, want user layer %q", key, info, userPath)
+			}
+		}
+	})
+
+	t.Run("parses typesafe provider and key-indirection keys", func(t *testing.T) {
+		dir := t.TempDir()
+		userPath := filepath.Join(dir, "user.toml")
+		writeTOML(t, userPath, `
+[decide]
+provider    = "typesafe"
+endpoint    = "https://api.typesafe.ai"
+model       = "jev-latest"
+api_key_env = "TYPESAFE_API_KEY"
+`)
+		loaded, err := Load(userPath, "")
+		if err != nil {
+			t.Fatalf("Load: %v", err)
+		}
+		d := loaded.Config.Decide
+		if d.Provider != "typesafe" || d.Endpoint != "https://api.typesafe.ai" || d.Model != "jev-latest" || d.APIKeyEnv != "TYPESAFE_API_KEY" {
+			t.Errorf("Decide = %+v", d)
+		}
+		for _, key := range []string{"decide.provider", "decide.endpoint", "decide.model", "decide.api_key_env"} {
 			if info := loaded.Provenance[key]; info.Source != SourceUser || info.Path != userPath {
 				t.Errorf("provenance[%q] = %+v, want user layer %q", key, info, userPath)
 			}
@@ -731,6 +784,60 @@ func TestResolveAPIKey_Cmd_NotFound(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected an error for a nonexistent command")
 	}
+}
+
+// TestDecide_ResolveAPIKey pins [decide]'s own credential indirection
+// (provider "typesafe"): api_key_cmd wins over api_key_env, api_key_env
+// wins over the well-known TYPESAFE_API_KEY fallback, and neither set falls
+// back to reading TYPESAFE_API_KEY directly — the one place Decide.
+// ResolveAPIKey diverges from Profile.ResolveAPIKey, which stops at "".
+func TestDecide_ResolveAPIKey(t *testing.T) {
+	t.Run("api_key_cmd", func(t *testing.T) {
+		script := "#!/bin/sh\nprintf '" + sentinelKey + "'\n"
+		path := writeExecutableScript(t, script)
+		d := Decide{APIKeyCmd: []string{path}}
+		key, err := d.ResolveAPIKey(context.Background())
+		if err != nil {
+			t.Fatalf("ResolveAPIKey: %v", err)
+		}
+		if key != sentinelKey {
+			t.Errorf("key = %q, want %q", key, sentinelKey)
+		}
+	})
+
+	t.Run("api_key_env", func(t *testing.T) {
+		t.Setenv("FATHOM_TEST_KEY_VAR", "sekret-value")
+		d := Decide{APIKeyEnv: "FATHOM_TEST_KEY_VAR"}
+		key, err := d.ResolveAPIKey(context.Background())
+		if err != nil {
+			t.Fatalf("ResolveAPIKey: %v", err)
+		}
+		if key != "sekret-value" {
+			t.Errorf("key = %q", key)
+		}
+	})
+
+	t.Run("default env TYPESAFE_API_KEY", func(t *testing.T) {
+		t.Setenv("TYPESAFE_API_KEY", "jev-default-key")
+		d := Decide{}
+		key, err := d.ResolveAPIKey(context.Background())
+		if err != nil {
+			t.Fatalf("ResolveAPIKey: %v", err)
+		}
+		if key != "jev-default-key" {
+			t.Errorf("key = %q, want the TYPESAFE_API_KEY fallback", key)
+		}
+	})
+
+	t.Run("none set", func(t *testing.T) {
+		t.Setenv("TYPESAFE_API_KEY", "")
+		os.Unsetenv("TYPESAFE_API_KEY")
+		d := Decide{}
+		key, err := d.ResolveAPIKey(context.Background())
+		if err != nil || key != "" {
+			t.Errorf("key=%q err=%v, want empty/nil", key, err)
+		}
+	})
 }
 
 // clearProviderEnv scrubs every env var applyEnvOverlay reads, so tests are

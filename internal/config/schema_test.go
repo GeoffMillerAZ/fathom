@@ -99,6 +99,13 @@ bad6: #Config & {
 bad7: #Config & {
 	decide: compile_threshold: 1.5
 }`},
+		{"literal api_key in [decide] (closed #Decide has none)", `
+bad8: #Config & {
+	decide: {
+		provider: "typesafe"
+		api_key:  "sk-or-not-representable"
+	}
+}`},
 	}
 
 	cctx := cuecontext.New()

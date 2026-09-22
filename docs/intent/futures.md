@@ -194,6 +194,13 @@ futures may justify a free option today. The repo's own sequence is
 
 ## F21. A `typesafe` adapter for the decision port (TypeSafe AI's Jev)
 
+**Landed 2026-09-22**, ahead of the promote condition below, on owner direction —
+ADR-042's amendment of the same date; `[decide] provider = "typesafe"`,
+`docs/configuration.md` §"The decision port". The A/B this row originally gated
+promotion on still applies before `typesafe` becomes any repo's *default*
+provider (vision 32 §4) — kept below as the still-live bar for that, not for
+existence.
+
 - Confidence: plausible. Horizon: when access exists. Evidence: ADR-042, `docs/vision/32-decision-port.md`, the 2026-09-22 assessment.
 - Promote when: an API key exists AND one site's A/B (compile pre-filter, obligations rank, or routing) shows a gain over the `llm` adapter at n ≥ 3. Drop if: the vendor's calibration fails our own adjudicated cells (0.9 not right nine times in ten) or the service is withdrawn.
 - Preserve: the port's three kinds mirror the vendor primitives; an adapter is an HTTP client, never a change to a site.

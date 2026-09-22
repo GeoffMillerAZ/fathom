@@ -101,15 +101,32 @@ type Findings struct {
 // schema.cue #Decide): typed fast decisions (choice/score/noul) behind a
 // provider flag, off by default. `provider = "none"` (the default) makes no
 // call and changes nothing; `provider = "llm"` routes through `profile`
-// (empty = the compile lane's own default profile resolution).
-// CompileThreshold/RouteConfidence are always in [0,1] (enforced by the CUE
-// schema); RankWithinTier gates ADR-035's obligations re-rank.
+// (empty = the compile lane's own default profile resolution); `provider =
+// "typesafe"` routes through the kit's TypeSafe (Jev) adapter directly —
+// Endpoint/Model/APIKeyEnv/APIKeyCmd configure that lane and are otherwise
+// unused. CompileThreshold/RouteConfidence are always in [0,1] (enforced by
+// the CUE schema); RankWithinTier gates ADR-035's obligations re-rank.
 type Decide struct {
 	Provider         string  `toml:"provider"`
 	Profile          string  `toml:"profile"`
 	CompileThreshold float64 `toml:"compile_threshold"`
 	RouteConfidence  float64 `toml:"route_confidence"`
 	RankWithinTier   bool    `toml:"rank_within_tier"`
+
+	// Endpoint overrides provider "typesafe"'s base URL (default
+	// decision.DefaultTypeSafeBaseURL). Unused by "none"/"llm".
+	Endpoint string `toml:"endpoint"`
+	// Model overrides provider "typesafe"'s model (default
+	// decision.DefaultTypeSafeModel, "jev-latest"). Unused by "none"/"llm".
+	Model string `toml:"model"`
+	// APIKeyEnv names an environment variable ResolveAPIKey reads for
+	// provider "typesafe", at call time — never cached, never resolved
+	// during Load (same discipline as Profile.APIKeyEnv).
+	APIKeyEnv string `toml:"api_key_env"`
+	// APIKeyCmd is an argv (no shell) ResolveAPIKey execs for provider
+	// "typesafe"; wins over APIKeyEnv when both are set (same discipline as
+	// Profile.APIKeyCmd).
+	APIKeyCmd []string `toml:"api_key_cmd"`
 }
 
 // DefaultDecide is the zero-configuration [decide] block: provider "none"

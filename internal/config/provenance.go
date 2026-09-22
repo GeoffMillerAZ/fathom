@@ -177,6 +177,24 @@ func mergeDecideFields(d *Decide, raw map[string]any, source Source, path string
 			prov["decide.rank_within_tier"] = SourceInfo{source, path}
 		}
 	}
+	if v, ok := stringField(raw, "endpoint"); ok {
+		d.Endpoint = v
+		prov["decide.endpoint"] = SourceInfo{source, path}
+	}
+	if v, ok := stringField(raw, "model"); ok {
+		d.Model = v
+		prov["decide.model"] = SourceInfo{source, path}
+	}
+	if v, ok := stringField(raw, "api_key_env"); ok {
+		d.APIKeyEnv = v
+		prov["decide.api_key_env"] = SourceInfo{source, path}
+	}
+	if v, ok := raw["api_key_cmd"]; ok {
+		if list, ok := stringSlice(v); ok {
+			d.APIKeyCmd = list
+			prov["decide.api_key_cmd"] = SourceInfo{source, path}
+		}
+	}
 }
 
 // numberField reads a TOML numeric field as float64 — go-toml decodes a

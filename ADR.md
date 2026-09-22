@@ -2238,3 +2238,16 @@ adapter is data); egress policy of an adopter forbids any third-party call (the
 `none` default already answers it); the compile pre-filter ever loses a served rule
 in an A/B (the threshold is wrong, not the fallback).
 
+**Amendment (2026-09-22): the `typesafe` adapter ships, superseding decision 1's
+"future (F21) gated on access and an A/B" clause.** Fires this ADR's own "a second
+provider ships" revisit trigger, on owner direction rather than after the A/B —
+access turned out to be a key the operator supplies
+(`[decide].api_key_env`/`api_key_cmd`, else `TYPESAFE_API_KEY`), not a blocker to
+wait on. `[decide] provider = none | llm | typesafe`; `typesafe` calls TypeSafe
+AI's `/v1/systemone` wire directly (agentic-kit `foundations/decision.NewTypeSafe`),
+at the same three sites, under the same I14 fail-open and disclosure properties as
+`llm` — a missing key, an unreachable endpoint, or any other open failure is one warn
+line and a silent fallback to `none`, never a startup or compile failure. The A/B
+this decision originally gated default-on on (vision 32 §4) still applies before
+`typesafe` becomes any repo's default provider. `docs/intent/futures.md` F21: landed.
+
