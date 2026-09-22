@@ -325,6 +325,9 @@ answered decision (the compile pre-filter, the obligations re-rank, and
 call log (`internal/decide.DefaultRecorderPath` — same directory as
 `[daemon].call_log`/`--call-log`, default `logs/mcp-calls.jsonl` under the
 repo's state directory); no call log configured means no decision log either.
+A call that hard-fails (no answer at all) is logged too, as an `error` row
+(DP-22/DP-23, O109) — so silence in `decisions.jsonl` always means "never
+asked", never "asked and failed".
 
 ## The findings loop: `[findings]`
 

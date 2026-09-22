@@ -143,7 +143,12 @@ outside the tool registry — hooks call these directly rather than through
   under site `"route"`. `fathom prompt-hook` is this route's only caller
   today (DP-10): at or above the `proceed` band it injects one firm line,
   in the `confirm` band one hedged line, and nothing below that or on any
-  failure.
+  failure. **A decision-port call that hard-fails (no answer at all —
+  `/route`'s own decider error, a `compile_layer` pre-filter chunk, or an
+  `obligations` re-rank chunk) is ALSO logged** (DP-22/DP-23, O109): a row
+  naming `site`/`provider`/`questions`/`latency_ms`/`error`,
+  `applied:false` — so silence in `decisions.jsonl` means "never asked",
+  never "asked and failed".
 
 ---
 
