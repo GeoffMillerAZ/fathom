@@ -155,9 +155,11 @@ func TestObligationsFor_ZeroOutputOnClean(t *testing.T) {
 	if len(got.Rules) != 0 {
 		t.Fatalf("clean file got %d rules", len(got.Rules))
 	}
-	// The JSON a hook would emit must carry no rules key at all.
+	// The JSON a hook would emit must carry no rules key at all — DP-8
+	// added the always-present ranked_by field (ADR-042 decision 2), but
+	// every other zero-value field (rules, displaced, …) still omits.
 	b, _ := json.Marshal(got)
-	if string(b) != `{"service":"svc","file":"cmd/fathom/main.go"}` {
+	if string(b) != `{"service":"svc","file":"cmd/fathom/main.go","ranked_by":"none"}` {
 		t.Errorf("clean payload = %s", b)
 	}
 }
