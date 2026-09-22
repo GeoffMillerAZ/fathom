@@ -187,7 +187,7 @@ contain:
 | Table | Required columns |
 |---|---|
 | `claim_events` | `claim_id`, `verdict`, `author`, `note`, `event_at` |
-| `compile_runs` | `run_id`, `service_id`, `layer`, `corpus_watermark`, `model`, `prompt_version`, `dry_run`, `tokens_in`, `tokens_out`, `cost_usd`, `duration_ms`, `sections_total`, `sections_compiled`, `sections_failed`, `claims_emitted`, `claims_rejected`, `ran_at`, `refused`, `refusal_reason`, `budget_stopped`, `escape_note` |
+| `compile_runs` | `run_id`, `service_id`, `layer`, `corpus_watermark`, `model`, `prompt_version`, `dry_run`, `tokens_in`, `tokens_out`, `cost_usd`, `duration_ms`, `sections_total`, `sections_compiled`, `sections_failed`, `claims_emitted`, `claims_rejected`, `ran_at`, `refused`, `refusal_reason`, `budget_stopped`, `escape_note`, `sections_prefiltered` |
 
 A Writer **MUST NOT** delete rows from `semantic_claims` or `claim_events` —
 superseding a claim is a status flip (`status` column), never a row

@@ -54,6 +54,7 @@ var requiredSchemaV0 = map[string][]string{
 		"cost_usd", "duration_ms", "sections_total", "sections_compiled",
 		"sections_failed", "claims_emitted", "claims_rejected", "ran_at",
 		"refused", "refusal_reason", "budget_stopped", "escape_note",
+		"sections_prefiltered",
 	},
 }
 

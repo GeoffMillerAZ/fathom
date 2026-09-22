@@ -403,6 +403,56 @@ CREATE TABLE compile_runs (
 	if got[0].ResumedFrom != "" || got[0].UncompiledScopes != nil {
 		t.Fatalf("legacy run: got ResumedFrom=%q UncompiledScopes=%v, want empty/nil", got[0].ResumedFrom, got[0].UncompiledScopes)
 	}
+	// DP-6 (ADR-042): this legacy DDL also predates sections_prefiltered —
+	// the same migration pass adds it too, and the pre-existing row reads
+	// back honestly as 0 (no pre-filter ever ran on it), never an error.
+	if got[0].SectionsPrefiltered != 0 {
+		t.Fatalf("legacy run: got SectionsPrefiltered=%d, want 0", got[0].SectionsPrefiltered)
+	}
+}
+
+// TestSQLiteStore_RecordCompileRun_PersistsSectionsPrefiltered (DP-6,
+// ADR-042): CompileRun.SectionsPrefiltered round-trips through the
+// additive sections_prefiltered column, and a run that never prefiltered
+// anything (the common case, no Decider configured) round-trips as 0.
+func TestSQLiteStore_RecordCompileRun_PersistsSectionsPrefiltered(t *testing.T) {
+	s, err := NewSQLiteStore("")
+	if err != nil {
+		t.Fatalf("NewSQLiteStore: %v", err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+	ctx := context.Background()
+
+	if err := s.RecordCompileRun(ctx, core.CompileRun{
+		RunID: "run-prefiltered", ServiceID: "svc", Layer: "obligations",
+		CorpusWatermark: "wm-1", PromptVersion: "obligations/v1",
+		RanAt: time.Unix(1, 0).UTC(), SectionsTotal: 2, SectionsCompiled: 1,
+		SectionsPrefiltered: 1, PrefilteredSections: []string{"docs/a.md#rule-b"},
+		UncompiledScopes: []string{"docs/a.md"},
+	}); err != nil {
+		t.Fatalf("RecordCompileRun (prefiltered): %v", err)
+	}
+	if err := s.RecordCompileRun(ctx, core.CompileRun{
+		RunID: "run-clean", ServiceID: "svc", Layer: "obligations",
+		CorpusWatermark: "wm-1", PromptVersion: "obligations/v1",
+		RanAt: time.Unix(2, 0).UTC(), SectionsTotal: 1, SectionsCompiled: 1,
+	}); err != nil {
+		t.Fatalf("RecordCompileRun (clean): %v", err)
+	}
+	got, err := s.CompileRuns(ctx, "svc", "")
+	if err != nil {
+		t.Fatalf("CompileRuns: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("got %d runs, want 2", len(got))
+	}
+	// Newest-first: run-clean, then run-prefiltered.
+	if got[0].SectionsPrefiltered != 0 {
+		t.Errorf("got[0].SectionsPrefiltered = %d, want 0 (never prefiltered)", got[0].SectionsPrefiltered)
+	}
+	if got[1].SectionsPrefiltered != 1 {
+		t.Errorf("got[1].SectionsPrefiltered = %d, want 1", got[1].SectionsPrefiltered)
+	}
 }
 
 // TestSQLiteStore_ClaimsForService_LegacyRowMissingClassColumn_DegradesToEmpty

@@ -582,6 +582,18 @@ func printCompileRunCore(w io.Writer, run core.CompileRun) {
 	if len(run.UncompiledScopes) > 0 {
 		fmt.Fprintf(w, "uncompiled_scopes: %s\n", strings.Join(run.UncompiledScopes, ", "))
 	}
+	if run.SectionsPrefiltered > 0 {
+		// ADR-042 / vision 32 §2 item 1: the decision port judged these
+		// sections not-a-rule and never sent them to the compile model.
+		// Provider name comes off the run's own decision records when
+		// present (a run whose every question answered Invalid still
+		// counts sections prefiltered but leaves Decisions empty).
+		provider := "decide"
+		if len(run.Decisions) > 0 {
+			provider = run.Decisions[0].Provider
+		}
+		fmt.Fprintf(w, "prefiltered:       %d section(s) not compiled ([decide] provider %s)\n", run.SectionsPrefiltered, provider)
+	}
 	fmt.Fprintf(w, "claims_emitted:    %d\n", run.ClaimsEmitted)
 	fmt.Fprintf(w, "claims_rejected:   %d\n", run.ClaimsRejected)
 	// Q-4 (docs/plans/expert-suite-q.md, O19's fix): a run with zero

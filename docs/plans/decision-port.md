@@ -13,8 +13,8 @@ A/B rows at the end are operator decisions (LLM spend) and are never claimed by 
 
 ## B. Compile pre-filter (ADR-042 decision 2; ADR-037 preserved)
 
-- [ ] `PrefilterSections` asks one batched `noul` per section ("does this section state a binding rule for code in this repository") in chunks of at most 20 sections and returns the sections at or above `compile_threshold`; with `none` it returns every section untouched and makes no call {id: DP-5, symbol: PrefilterSections, package: internal/semantic, reachable_from: TestCompile_PrefilterSkipsAndDiscloses}
-- [ ] A skipped section is counted in `CompileRun.SectionsPrefiltered` and the additive `compile_runs.sections_prefiltered` column, listed in `uncompiled_scopes_json` like any uncompiled section, and the `layer_coverage` envelope names `prefilter_skipped`; the raw fallback (ADR-037) serves a skipped section exactly as it serves a budget-stopped one {id: DP-6, symbol: SectionsPrefiltered, package: internal/core, reachable_from: TestCompile_PrefilterSkipsAndDiscloses}
+- [x] `PrefilterSections` asks one batched `noul` per section ("does this section state a binding rule for code in this repository") in chunks of at most 20 sections and returns the sections at or above `compile_threshold`; with `none` it returns every section untouched and makes no call {id: DP-5, symbol: PrefilterSections, package: internal/semantic, reachable_from: TestCompile_PrefilterSkipsAndDiscloses}
+- [x] A skipped section is counted in `CompileRun.SectionsPrefiltered` and the additive `compile_runs.sections_prefiltered` column, listed in `uncompiled_scopes_json` like any uncompiled section, and the `layer_coverage` envelope names `prefilter_skipped`; the raw fallback (ADR-037) serves a skipped section exactly as it serves a budget-stopped one {id: DP-6, symbol: ObligationsLayerCoverage, package: internal/semantic, reachable_from: TestCompile_PrefilterSkipsAndDiscloses}
 
 ## C. Obligations re-rank within a tier (ADR-042 decision 2; ADR-035 preserved)
 

@@ -302,7 +302,8 @@ CREATE TABLE IF NOT EXISTS compile_runs (
     escape_note        TEXT    NOT NULL DEFAULT '',
     rejection_reasons_json TEXT NOT NULL DEFAULT '[]',
     resumed_from       TEXT    NOT NULL DEFAULT '',
-    uncompiled_scopes_json TEXT NOT NULL DEFAULT '[]'
+    uncompiled_scopes_json TEXT NOT NULL DEFAULT '[]',
+    sections_prefiltered INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS claim_events (
@@ -393,6 +394,13 @@ CREATE INDEX IF NOT EXISTS idx_observations_service_id
 		// UncompiledScopes==nil.
 		{"compile_runs", "resumed_from", `ALTER TABLE compile_runs ADD COLUMN resumed_from TEXT NOT NULL DEFAULT ''`},
 		{"compile_runs", "uncompiled_scopes_json", `ALTER TABLE compile_runs ADD COLUMN uncompiled_scopes_json TEXT NOT NULL DEFAULT '[]'`},
+		// DP-6 (ADR-042, vision 32 §2 item 1): a pre-existing store (including
+		// the live fleet store) predates the decision-port compile pre-filter —
+		// RecordCompileRun/CompileRuns must not fail with "no such column" on
+		// it, exactly like every other late compile_runs column above; a
+		// legacy row simply reads back with SectionsPrefiltered==0 (honest:
+		// no pre-filter ever ran on it).
+		{"compile_runs", "sections_prefiltered", `ALTER TABLE compile_runs ADD COLUMN sections_prefiltered INTEGER NOT NULL DEFAULT 0`},
 		// T5-1/O13: pre-existing claim_links rows (including the live fleet
 		// store) predate AnchorText — a re-anchor read/write over such a
 		// store must not fail with "no such column", it must simply see ''
@@ -1568,8 +1576,8 @@ INSERT INTO compile_runs
      dry_run, tokens_in, tokens_out, cost_usd, duration_ms,
      sections_total, sections_compiled, sections_failed, claims_emitted, claims_rejected, ran_at,
      refused, refusal_reason, budget_stopped, escape_note, rejection_reasons_json,
-     resumed_from, uncompiled_scopes_json)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     resumed_from, uncompiled_scopes_json, sections_prefiltered)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `,
 		run.RunID, run.ServiceID, run.Layer, run.CorpusWatermark,
 		run.Model, run.PromptVersion, run.DryRun,
@@ -1578,7 +1586,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		run.ClaimsEmitted, run.ClaimsRejected,
 		run.RanAt.UnixNano(),
 		run.Refused, run.RefusalReason, run.BudgetStopped, run.Escape,
-		rejectionJSON, run.ResumedFrom, uncompiledJSON,
+		rejectionJSON, run.ResumedFrom, uncompiledJSON, run.SectionsPrefiltered,
 	)
 	if err != nil {
 		return fmt.Errorf("RecordCompileRun: %w", err)
@@ -1593,7 +1601,7 @@ func (s *SQLiteStore) CompileRuns(ctx context.Context, serviceID, layer string) 
 	dry_run, tokens_in, tokens_out, cost_usd, duration_ms,
 	sections_total, sections_compiled, sections_failed, claims_emitted, claims_rejected, ran_at,
 	refused, refusal_reason, budget_stopped, escape_note, rejection_reasons_json,
-	resumed_from, uncompiled_scopes_json`
+	resumed_from, uncompiled_scopes_json, sections_prefiltered`
 	var (
 		rows *sql.Rows
 		err  error
@@ -1632,7 +1640,7 @@ ORDER BY ran_at DESC, run_id
 			&r.SectionsTotal, &r.SectionsCompiled, &r.SectionsFailed,
 			&r.ClaimsEmitted, &r.ClaimsRejected, &ranAt,
 			&r.Refused, &r.RefusalReason, &r.BudgetStopped, &r.Escape,
-			&rejectionJSON, &r.ResumedFrom, &uncompiledJSON,
+			&rejectionJSON, &r.ResumedFrom, &uncompiledJSON, &r.SectionsPrefiltered,
 		); err != nil {
 			return nil, fmt.Errorf("CompileRuns scan: %w", err)
 		}

@@ -360,6 +360,54 @@ type CompileRun struct {
 	// digest gate already has one from an earlier run and is never in
 	// this tail.
 	UncompiledScopes []string `json:"uncompiled_scopes,omitempty"`
+
+	// SectionsPrefiltered (ADR-042 decision 2, vision 32 §2 item 1) counts
+	// ordered sections the decision port's PrefilterSections skipped this
+	// run — asked one batched noul ("does this section state a binding
+	// rule") and scored below Compiler.PrefilterThreshold, or unanswered.
+	// Zero when Compiler.Decider is nil (the default: no wave wires one
+	// without operator config) or every section passed. A prefiltered
+	// section is counted here, never in SectionsCompiled or SectionsFailed,
+	// and its subject is also folded into UncompiledScopes' document set —
+	// ADR-037's raw fallback must still be able to serve it.
+	SectionsPrefiltered int `json:"sections_prefiltered,omitempty"`
+	// PrefilteredSections names, by stable section id ("<path>#<slug>"),
+	// every section SectionsPrefiltered counts — the same identity
+	// Section.Subject and a compiled claim's own Subject use, so a caller
+	// can cross-reference a specific skipped section without re-deriving
+	// it from UncompiledScopes' coarser document-path granularity.
+	PrefilteredSections []string `json:"prefiltered_sections,omitempty"`
+	// Decisions is every decision the decision port produced during this
+	// run (currently: PrefilterSections' "compile_prefilter" site only) —
+	// an in-memory disclosure for the caller to log, not persisted to
+	// compile_runs (ephemeral ranking is instrument truth, not durable
+	// evidence — ADR-042's "Considered and rejected"). Nil when
+	// Compiler.Decider is nil or every question in every chunk answered
+	// invalid.
+	Decisions []DecisionRecord `json:"decisions,omitempty"`
+}
+
+// DecisionRecord is internal/core's storage-friendly mirror of agentic-kit
+// foundations/decision.Record — same fields, deliberately a LOCAL type
+// rather than an import of that package: internal/core is built, in
+// isolation and without fathom's own go.mod replace directives, by
+// `fathom rules gen-test`'s generated temp modules (cmd/fathom/rules.go),
+// so a third-party dependency here breaks their offline build. The
+// semantic package (internal/semantic/compile.go) converts a real
+// decision.Record into this shape when it populates CompileRun.Decisions.
+type DecisionRecord struct {
+	Site         string
+	Provider     string
+	Model        string
+	QuestionID   string
+	Kind         string
+	Choice       string
+	Confidence   float64
+	Score        float64
+	Noul         float64
+	LatencyMS    int64
+	InputTokens  int
+	OutputTokens int
 }
 
 // RejectionBreakdown is one compile run's rejection-cause bucket (O19's

@@ -46,6 +46,14 @@ type LayerCoverage struct {
 	// "never seen" from "budget-stopped before reaching it"). Zero
 	// (omitted) when the corpus has not grown past what some run compiled.
 	CorpusGrew int `json:"corpus_grew,omitempty"`
+	// PrefilterSkipped (ADR-042 decision 2, vision 32 §2 item 1) is the
+	// latest compile run's own CompileRun.SectionsPrefiltered: sections the
+	// decision port's noul pre-filter skipped before compilation, never
+	// compiled and never failed. Zero (omitted) when no Decider was
+	// configured for that run or every section passed. A section counted
+	// here is also folded into UncompiledScopes — ADR-037's raw fallback
+	// still serves it.
+	PrefilterSkipped int `json:"prefilter_skipped,omitempty"`
 }
 
 // ObligationsLayerCoverage reports layer's LATEST compile run completeness
@@ -69,6 +77,7 @@ func ObligationsLayerCoverage(ctx context.Context, st store.Store, serviceID, la
 		SectionsCompiled: latest.SectionsCompiled,
 		BudgetStopped:    latest.BudgetStopped,
 		UncompiledScopes: latest.UncompiledScopes,
+		PrefilterSkipped: latest.SectionsPrefiltered,
 	}, true, nil
 }
 
@@ -123,7 +132,7 @@ func LiveLayerCoverage(ctx context.Context, st store.Store, serviceID string, la
 	docs := append([]core.SourceFile(nil), corpus...)
 	sort.Slice(docs, func(i, j int) bool { return docs[i].Path < docs[j].Path })
 
-	live := LayerCoverage{BudgetStopped: base.BudgetStopped}
+	live := LayerCoverage{BudgetStopped: base.BudgetStopped, PrefilterSkipped: base.PrefilterSkipped}
 	var uncompiled []orderedSection
 	for _, doc := range docs {
 		for _, sec := range SplitMarkdownSections(doc.Path, doc.Content) {
