@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/geoffmilleraz/agentic-kit/foundations/decision"
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/store"
@@ -1979,5 +1981,125 @@ func TestCompile_UncompiledScopes_ExcludesAlreadyCompiledSectionsInTheTail(t *te
 	all, err := st.ClaimsForService(ctx, "svc", LayerObligations)
 	if err != nil || len(all) != 4 {
 		t.Fatalf("total claims = %d, %v; want 4 (A, B, C from run 1 plus D from run 2)", len(all), err)
+	}
+}
+
+// twoRuleDoc has two sections, one clearly a binding rule (Rule A) and one
+// this test's mock decision port scores below threshold (Rule B) — the
+// compile pre-filter's own fixture (ADR-042, vision 32 §2 item 1).
+// Line numbers (1-based):
+//
+//	1: # Rule A
+//	2: (blank)
+//	3: - Always do the thing.
+//	4: (blank)
+//	5: # Rule B
+//	6: (blank)
+//	7: - Never do the other thing.
+const twoRuleDoc = `# Rule A
+
+- Always do the thing.
+
+# Rule B
+
+- Never do the other thing.
+`
+
+// TestCompile_PrefilterSkipsAndDiscloses is DP-5/DP-6 (ADR-042, vision 32
+// §2 item 1): a decision.MockDecider answers noul 0.9 for "Rule A" and 0.2
+// for "Rule B" at threshold 0.5 — only Rule A reaches the compile model
+// (the mock LLM client has exactly one scripted response and CallCount
+// proves it was used exactly once). Rule B is never compiled and never
+// failed: it is counted in SectionsPrefiltered/PrefilteredSections, folded
+// into UncompiledScopes exactly like a budget-stopped section, round-trips
+// through the store's sections_prefiltered column, surfaces as
+// layer_coverage's prefilter_skipped, and ADR-037's raw fallback can still
+// serve it.
+func TestCompile_PrefilterSkipsAndDiscloses(t *testing.T) {
+	ctx := context.Background()
+	st, err := store.NewSQLiteStore("")
+	if err != nil {
+		t.Fatalf("NewSQLiteStore: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+
+	llmMock := llmclient.NewMockClient(llmclient.MockEntry{Response: llmclient.Response{
+		Text:  `{"claims":[{"rule":"Always do the thing.","scope":["internal/query/**"],"cite_start":3,"cite_end":3}]}`,
+		Usage: llmclient.Usage{InputTokens: 60, OutputTokens: 20},
+	}})
+	decider := decision.NewMockDecider("mock-decide", decision.MockEntry{Response: decision.Response{
+		Provider: "mock-decide",
+		Answers: map[string]decision.Answer{
+			"docs/twosections.md#rule-a": {ID: "docs/twosections.md#rule-a", Kind: decision.KindNoul, Noul: 0.9, Confidence: 0.9},
+			"docs/twosections.md#rule-b": {ID: "docs/twosections.md#rule-b", Kind: decision.KindNoul, Noul: 0.2, Confidence: 0.8},
+		},
+	}})
+
+	c := &Compiler{St: st, LLM: llmMock, Model: "mock-model", Now: fixedNow, Decider: decider, PrefilterThreshold: 0.5}
+	docs := []core.SourceFile{{Path: "docs/twosections.md", Content: []byte(twoRuleDoc)}}
+	run, err := c.Compile(ctx, CompileInput{
+		ServiceID: "svc", Docs: docs, IndexedFiles: indexedFiles, Watermark: "manifest:aaa",
+	})
+	if err != nil {
+		t.Fatalf("Compile: %v", err)
+	}
+	if llmMock.CallCount() != 1 {
+		t.Fatalf("llmMock.CallCount() = %d, want 1 — Rule B must never reach the compile model", llmMock.CallCount())
+	}
+	if run.SectionsCompiled != 1 || run.SectionsFailed != 0 {
+		t.Fatalf("SectionsCompiled/Failed = %d/%d, want 1/0", run.SectionsCompiled, run.SectionsFailed)
+	}
+	if run.SectionsPrefiltered != 1 {
+		t.Fatalf("SectionsPrefiltered = %d, want 1", run.SectionsPrefiltered)
+	}
+	if want := []string{"docs/twosections.md#rule-b"}; !reflect.DeepEqual(run.PrefilteredSections, want) {
+		t.Fatalf("PrefilteredSections = %v, want %v", run.PrefilteredSections, want)
+	}
+	if want := []string{"docs/twosections.md"}; !reflect.DeepEqual(run.UncompiledScopes, want) {
+		t.Fatalf("UncompiledScopes = %v, want %v (Rule B's doc, exactly like a budget-stopped tail)", run.UncompiledScopes, want)
+	}
+	if len(run.Decisions) == 0 {
+		t.Fatalf("Decisions is empty, want the compile_prefilter records for both questions")
+	}
+
+	// Store round-trip: the additive sections_prefiltered column.
+	runs, err := st.CompileRuns(ctx, "svc", LayerObligations)
+	if err != nil || len(runs) != 1 {
+		t.Fatalf("CompileRuns = %d, %v; want 1 recorded run", len(runs), err)
+	}
+	if runs[0].SectionsPrefiltered != 1 {
+		t.Errorf("stored run SectionsPrefiltered = %d, want 1 (round-tripped)", runs[0].SectionsPrefiltered)
+	}
+
+	// layer_coverage discloses prefilter_skipped.
+	cov, found, cerr := ObligationsLayerCoverage(ctx, st, "svc", LayerObligations)
+	if cerr != nil || !found {
+		t.Fatalf("ObligationsLayerCoverage: found=%v err=%v", found, cerr)
+	}
+	if cov.PrefilterSkipped != 1 {
+		t.Errorf("layer_coverage.PrefilterSkipped = %d, want 1", cov.PrefilterSkipped)
+	}
+
+	// ADR-037 raw fallback can still serve the prefiltered section.
+	claims, err := st.ClaimsForService(ctx, "svc", LayerObligations)
+	if err != nil {
+		t.Fatalf("ClaimsForService: %v", err)
+	}
+	layerDef, err := LoadLayer(LayerObligations)
+	if err != nil {
+		t.Fatalf("LoadLayer: %v", err)
+	}
+	rawRows, err := RawFallbackRules(claims, layerDef, docs, "internal/query/engine.go", 2, "prefiltered", nil)
+	if err != nil {
+		t.Fatalf("RawFallbackRules: %v", err)
+	}
+	var sawRuleB bool
+	for _, row := range rawRows {
+		if row.Tier == "raw" && row.Rule == "Rule B" {
+			sawRuleB = true
+		}
+	}
+	if !sawRuleB {
+		t.Errorf("RawFallbackRules = %+v, want a raw row for the prefiltered Rule B section", rawRows)
 	}
 }

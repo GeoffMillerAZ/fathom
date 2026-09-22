@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/geoffmilleraz/agentic-kit/foundations/decision"
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/structured"
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -117,6 +118,21 @@ type Compiler struct {
 	// USD per 1k tokens for the cost ledger; zero rates record honest zeros.
 	InRatePerKTok  float64
 	OutRatePerKTok float64
+
+	// Decider is the decision port (ADR-042, vision 32 §2 item 1) this
+	// compile asks PrefilterSections through before anything else considers
+	// an ordered section. nil (the default: no wave wires it without
+	// operator config) makes PrefilterSections the identity — no call, no
+	// section skipped, byte-identical to a Compiler built before this
+	// field existed.
+	Decider decision.Decider
+	// PrefilterThreshold is the noul cutoff PrefilterSections applies: a
+	// section scoring below it is skipped (not compiled, but still counted
+	// and disclosed — see CompileRun.SectionsPrefiltered). Zero with a
+	// non-nil Decider means 0.5 (defaultPrefilterThreshold), documented
+	// here since the zero value would otherwise silently skip every
+	// section (noul is never negative). Meaningless when Decider is nil.
+	PrefilterThreshold float64
 
 	Now func() time.Time // injected clock (repo convention)
 }
@@ -309,6 +325,47 @@ func (c *Compiler) Compile(ctx context.Context, in CompileInput) (core.CompileRu
 	// orderSectionsByGoverningScope's doc comment for the bug this fixes).
 	ordered := orderSectionsByGoverningScope(all)
 
+	// ADR-042 decision 2 / vision 32 §2 item 1: ask the decision port which
+	// ordered sections state a binding rule BEFORE anything else considers
+	// them — before the digest gate, the pre-flight budget estimate, and
+	// the section loop. A skipped section is removed from ordered for the
+	// rest of this run (never compiled, never failed) but is never lost:
+	// prefilteredOrdered feeds run.UncompiledScopes below exactly like a
+	// budget-stopped tail, so ADR-037's raw fallback still serves it. With
+	// c.Decider nil (the default), PrefilterSections is the identity and
+	// this changes nothing.
+	threshold := c.PrefilterThreshold
+	if c.Decider != nil && threshold == 0 {
+		threshold = defaultPrefilterThreshold
+	}
+	orderedSecs := make([]Section, len(ordered))
+	for i, item := range ordered {
+		orderedSecs[i] = item.sec
+	}
+	_, prefilteredSecs, decisions, perr := PrefilterSections(ctx, c.Decider, threshold, orderedSecs)
+	if perr != nil {
+		return run, fmt.Errorf("semantic: compile: %w", perr)
+	}
+	run.Decisions = toCoreDecisionRecords(decisions)
+	var prefilteredOrdered []orderedSection
+	if len(prefilteredSecs) > 0 {
+		skip := make(map[string]bool, len(prefilteredSecs))
+		for _, sec := range prefilteredSecs {
+			skip[sec.Subject] = true
+			run.PrefilteredSections = append(run.PrefilteredSections, sec.Subject)
+		}
+		run.SectionsPrefiltered = len(prefilteredSecs)
+		kept := make([]orderedSection, 0, len(ordered)-len(prefilteredSecs))
+		for _, item := range ordered {
+			if skip[item.sec.Subject] {
+				prefilteredOrdered = append(prefilteredOrdered, item)
+				continue
+			}
+			kept = append(kept, item)
+		}
+		ordered = kept
+	}
+
 	needsCompile := func(sec Section) bool {
 		prior := bySubject[sec.Subject]
 		return len(prior) == 0 || !allDigestsMatch(prior, sec.Digest, promptVersion)
@@ -469,27 +526,30 @@ sectionLoop:
 		}
 	}
 	run.ClaimsEmitted = len(newClaims)
+	// uncompiledTail starts with whatever the decision-port pre-filter
+	// skipped above (DP-6: a skipped section is treated exactly like an
+	// uncompiled one here, never as compiled, never as failed) and, on a
+	// mid-run budget stop, gains the tail of the deterministic order this
+	// run never reached — exactly what layer_coverage.uncompiled_scopes
+	// discloses at serve time.
+	uncompiledTail := append([]orderedSection(nil), prefilteredOrdered...)
 	if stoppedAt >= 0 {
-		// O54 deliverable 2: the tail of the deterministic order this run
-		// never reached, by document — exactly what layer_coverage.
-		// uncompiled_scopes discloses at serve time. Second review round:
-		// the tail alone is not enough — a RESUMED run can stop again
-		// before reaching a section LATER in order that a PRIOR run
-		// already compiled (a small guide inserted between two already-
-		// compiled sections, say), and that section's doc must not be
-		// reported uncompiled just because this call never revisited it.
-		// Filter through needsCompile (the same digest-gate predicate the
-		// loop above uses) so only sections that ACTUALLY still need
-		// compiling — never reached this run AND no matching prior claim
-		// — count.
-		var stillUncompiled []orderedSection
+		// O54 deliverable 2, second review round: the tail alone is not
+		// enough — a RESUMED run can stop again before reaching a section
+		// LATER in order that a PRIOR run already compiled (a small guide
+		// inserted between two already-compiled sections, say), and that
+		// section's doc must not be reported uncompiled just because this
+		// call never revisited it. Filter through needsCompile (the same
+		// digest-gate predicate the loop above uses) so only sections that
+		// ACTUALLY still need compiling — never reached this run AND no
+		// matching prior claim — count.
 		for _, item := range ordered[stoppedAt+1:] {
 			if needsCompile(item.sec) {
-				stillUncompiled = append(stillUncompiled, item)
+				uncompiledTail = append(uncompiledTail, item)
 			}
 		}
-		run.UncompiledScopes = uncompiledDocScopes(stillUncompiled)
 	}
+	run.UncompiledScopes = uncompiledDocScopes(uncompiledTail)
 	run.RejectionReasons = buildRejectionReasons(rejectionCounts, rejectionSamples)
 	run.CostUSD = cost.PriceUSD(run.TokensIn, c.InRatePerKTok) + cost.PriceUSD(run.TokensOut, c.OutRatePerKTok)
 	if run.SectionsCompiled == 0 && run.SectionsFailed > 0 {
