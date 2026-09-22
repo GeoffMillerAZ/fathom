@@ -432,16 +432,18 @@ func seedUserIgnoreFile(stdout io.Writer) error {
 // ─── c2. .fathom/ config scaffolds (guard.cue, modules.cue, capabilities.cue) ──
 
 // findingsConfigTemplate is the project-scope `.fathom/config.toml`
-// scaffold (FL-25, docs/plans/findings-loop.md, vision 30 §7): a single
-// FULLY COMMENTED `[findings]` block — every line an operator would
-// uncomment, one at a time, with a trailing comment naming what it does.
+// scaffold (FL-25, docs/plans/findings-loop.md, vision 30 §7; the
+// `[decide]` block is DP-1's addition, docs/vision/32-decision-port.md):
+// FULLY COMMENTED `[findings]` and `[decide]` blocks — every line an
+// operator would uncomment, one at a time, with a trailing comment naming
+// what it does.
 // Never validated against internal/config's #Config schema (that schema
 // has no `findings` field yet — it is added by the wave that builds
 // FL-9's BindSubject/the importer — so this block stays pure documentation
 // until then; TestWriteStarterConfig_UncommentedProfilesAreValid's fixed
 // block list deliberately does NOT include this one for the same reason).
-// See docs/configuration.md's "The findings loop" section and
-// docs/adoption/findings-loop.md for the end-to-end guide.
+// See docs/configuration.md's "The findings loop" / "The decision port"
+// sections and docs/adoption/findings-loop.md for the end-to-end guide.
 const findingsConfigTemplate = `# fathom project configuration (docs/configuration.md).
 # Precedence: flags > env > project .fathom/config.toml > ~/.fathom/config.toml
 # > built-in defaults.
@@ -455,6 +457,18 @@ const findingsConfigTemplate = `# fathom project configuration (docs/configurati
 # subject   = "org/repo/component"                 # the provisioned review-kit subject this repo maps to; fathom findings import refuses on any mismatch
 # outbox    = ".reviewkit/outbox/projection.json"   # repo-relative; the session hook imports it once per session when its digest changes from the last import
 # producers = ["reviewkit.system-review"]           # producer ids this repo trusts (schema/semantic/producers.cue's catalog) — an unlisted producer's events are refused
+
+# --- the decision port (docs/vision/32-decision-port.md, ADR-042) ---
+# Typed fast decisions (choice/score/noul) behind a provider flag. Off by
+# default — provider = none makes no call and changes nothing. Uncomment to
+# route the compile pre-filter, the obligations re-rank, and prompt routing
+# through a real model — see docs/configuration.md's "The decision port".
+# [decide]
+# provider          = "none"   # none | llm — none makes no call and changes nothing
+# profile           = ""       # llm: the [llm] profile lane to use (default: the compile lane)
+# compile_threshold = 0.5      # a guide section whose "is this a binding rule" probability is below this is not compiled (counted, disclosed, still served raw)
+# route_confidence  = 0.9      # the prompt hook injects a firm route line at or above this; a hedged one from 0.5; nothing below
+# rank_within_tier  = true     # obligations re-orders rules only inside their governing-scope tier
 `
 
 // writeFathomConfigScaffolds creates <root>/.fathom/guard.cue,

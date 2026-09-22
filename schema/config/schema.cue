@@ -131,6 +131,38 @@ package config
 	producers?: [...string]
 }
 
+// #Decide configures ADR-042's decision port (docs/vision/32-decision-port.md):
+// typed fast decisions (choice/score/noul) behind a provider flag, off by
+// default. `provider` is either "none" (the default: no call is ever made,
+// every site behaves exactly as before) or "llm" (any llmclient profile
+// lane, asked for a JSON object against the question schema); any other
+// value is refused by name, same discipline as #Provider. compile_threshold
+// and route_confidence are probabilities and so must lie in [0,1] — CUE
+// enforces the range directly, the same way #Profile's provider enum makes
+// an out-of-set value a load-time validation error rather than a silent
+// no-op.
+#Decide: {
+	provider?: "none" | "llm"
+
+	// profile names the [llm] profile lane provider "llm" uses; empty (the
+	// default) means "the compile lane's own default profile resolution".
+	profile?: string
+
+	// compile_threshold: a guide section whose "does this state a binding
+	// rule" probability is below this is not compiled (counted, disclosed
+	// as prefilter_skipped, still served raw by ADR-037's fallback).
+	compile_threshold?: number & >=0 & <=1
+
+	// route_confidence: the prompt hook injects one firm route line at or
+	// above this confidence, a hedged one in the confirm band, nothing
+	// below the unsure band.
+	route_confidence?: number & >=0 & <=1
+
+	// rank_within_tier: obligations re-ranks eligible rules only inside
+	// their governing-scope tier (ADR-035's tier order is never crossed).
+	rank_within_tier?: bool
+}
+
 // #Config is the top-level shape of one config.toml layer (user or
 // project). Both layers validate against the same schema; internal/config
 // merges them field-by-field per docs/plans/config-experience.md's stated
@@ -147,4 +179,5 @@ package config
 	daemon?:   #Daemon
 	guards?:   #Guards
 	findings?: #Findings
+	decide?:   #Decide
 }

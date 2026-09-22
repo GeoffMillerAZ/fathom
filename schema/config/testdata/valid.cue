@@ -43,4 +43,11 @@ example: #Config & {
 		auto_refresh:    true
 		default_profile: "work"
 	}
+	decide: {
+		provider:          "llm"
+		profile:           "work"
+		compile_threshold: 0.5
+		route_confidence:  0.9
+		rank_within_tier:  true
+	}
 }

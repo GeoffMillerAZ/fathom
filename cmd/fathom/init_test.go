@@ -154,6 +154,19 @@ func TestCmdInit_WiresRepoEndToEnd(t *testing.T) {
 				t.Errorf(".fathom/config.toml missing %q:\n%s", want, s)
 			}
 		}
+		// DP-1 (docs/vision/32-decision-port.md): a commented [decide]
+		// block sits right after [findings], same discipline.
+		if !strings.Contains(s, "[decide]") {
+			t.Errorf(".fathom/config.toml missing a commented [decide] block:\n%s", s)
+		}
+		for _, want := range []string{"provider", "profile", "compile_threshold", "route_confidence", "rank_within_tier"} {
+			if !strings.Contains(s, want) {
+				t.Errorf(".fathom/config.toml missing %q:\n%s", want, s)
+			}
+		}
+		if strings.Index(s, "[findings]") > strings.Index(s, "[decide]") {
+			t.Errorf(".fathom/config.toml: [decide] must come after [findings]:\n%s", s)
+		}
 		for _, line := range strings.Split(strings.TrimSpace(s), "\n") {
 			if line == "" {
 				continue

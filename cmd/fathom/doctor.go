@@ -231,6 +231,7 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		checkAgentsSkills(root, harness), // RP-3: skills_installed on the standard (doctor_skills.go)
 		checkWiringDrift(root, harness),  // PC-29: hooks, stanzas, MCP entries, owned skills (doctor_wiring.go)
 		checkConfigValid(root),
+		checkDecisionProvider(root, providerClientBuilder), // DP-4 (ADR-042): is the configured [decide] provider viable? (doctor_decide.go)
 		checkObligationsServed(hc, baseURL, root, explicitSvc, daemonUp),
 		checkSurfaceTraffic(hc, baseURL, daemonUp, root),
 		// Phase O (docs/design/platform-modules.md §4 / guarded-edits.md

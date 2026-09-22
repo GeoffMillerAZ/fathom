@@ -6,10 +6,10 @@ A/B rows at the end are operator decisions (LLM spend) and are never claimed by 
 
 ## A. The port and its wiring (ADR-042 decisions 1, 2, 4)
 
-- [ ] `[decide]` config block parsed with defaults (`provider = none`, `compile_threshold = 0.5`, `route_confidence = 0.9`, `rank_within_tier = true`); an unknown provider is refused by name at load {id: DP-1, symbol: Decide, package: internal/config, reachable_from: TestConfig_DecideBlock}
-- [ ] `decide.Open` builds the port's `Decider` from config: `none` → the kit's `None`; `llm` → the kit's `LLM` over the configured profile lane (default: the compile lane); the daemon opens it once and every site receives it by injection, never by global {id: DP-2, symbol: Open, package: internal/decide, reachable_from: TestOpen_NoneAndLLM}
-- [ ] Every decision is logged to the call log with site, provider, model, question kind, confidence and latency (`schema_version`-carrying rows, I32), and a decision in the unsure band is recorded as `applied: false` {id: DP-3, symbol: Record, package: internal/decide, reachable_from: TestRecord_UnsureIsNotApplied}
-- [ ] `fathom doctor` gains a `decision_provider` row: `off` for `none`; for `llm` the profile lane's own ping and the last recorded latency {id: DP-4, symbol: checkDecisionProvider, package: cmd/fathom, reachable_from: TestDoctorDecisionProvider}
+- [x] `[decide]` config block parsed with defaults (`provider = none`, `compile_threshold = 0.5`, `route_confidence = 0.9`, `rank_within_tier = true`); an unknown provider is refused by name at load {id: DP-1, symbol: Load, package: internal/config, reachable_from: TestConfig_DecideBlock}
+- [x] `decide.Open` builds the port's `Decider` from config: `none` → the kit's `None`; `llm` → the kit's `LLM` over the configured profile lane (default: the compile lane); the daemon opens it once and every site receives it by injection, never by global {id: DP-2, symbol: Open, package: internal/decide, reachable_from: TestOpen_NoneAndLLM}
+- [x] Every decision is logged to the call log with site, provider, model, question kind, confidence and latency (`schema_version`-carrying rows, I32), and a decision in the unsure band is recorded as `applied: false` {id: DP-3, symbol: Record, package: internal/decide, reachable_from: TestRecord_UnsureIsNotApplied}
+- [x] `fathom doctor` gains a `decision_provider` row: `off` for `none`; for `llm` the profile lane's own ping and the last recorded latency {id: DP-4, symbol: checkDecisionProvider, package: cmd/fathom, reachable_from: TestDoctorDecisionProvider}
 
 ## B. Compile pre-filter (ADR-042 decision 2; ADR-037 preserved)
 

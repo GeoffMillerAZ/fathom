@@ -91,6 +91,14 @@ bad4: #Config & {
 bad5: #Config & {
 	daemon: state_dir: "/abs/path"
 }`},
+		{"unknown [decide] provider value", `
+bad6: #Config & {
+	decide: provider: "jev"
+}`},
+		{"[decide] threshold outside [0,1]", `
+bad7: #Config & {
+	decide: compile_threshold: 1.5
+}`},
 	}
 
 	cctx := cuecontext.New()

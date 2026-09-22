@@ -384,6 +384,109 @@ func TestLoad_GuardsTable(t *testing.T) {
 	}
 }
 
+// TestConfig_DecideBlock pins ADR-042's decision port config surface
+// (docs/vision/32-decision-port.md, schema.cue #Decide): defaults when the
+// `[decide]` table is absent, every key parses when present, an unknown
+// provider is refused by name, and a threshold outside [0,1] is refused.
+func TestConfig_DecideBlock(t *testing.T) {
+	t.Run("defaults when absent", func(t *testing.T) {
+		dir := t.TempDir()
+		loaded, err := Load(filepath.Join(dir, "user.toml"), "")
+		if err != nil {
+			t.Fatalf("Load: %v", err)
+		}
+		// Asserted as a literal (docs/vision/32-decision-port.md's exact
+		// documented defaults), not just "equals DefaultDecide" — that
+		// comparison alone would still pass if DefaultDecide itself were
+		// wrong.
+		want := Decide{
+			Provider:         "none",
+			CompileThreshold: 0.5,
+			RouteConfidence:  0.9,
+			RankWithinTier:   true,
+		}
+		if loaded.Config.Decide != want {
+			t.Errorf("Decide = %+v, want defaults %+v", loaded.Config.Decide, want)
+		}
+		if want != DefaultDecide {
+			t.Errorf("DefaultDecide = %+v, want it to match the documented defaults %+v", DefaultDecide, want)
+		}
+	})
+
+	t.Run("mergeDecideFields sets fields and records provenance directly", func(t *testing.T) {
+		var d Decide
+		prov := Provenance{}
+		mergeDecideFields(&d, map[string]any{
+			"provider":          "llm",
+			"profile":           "work",
+			"compile_threshold": 0.3,
+			"route_confidence":  0.8,
+			"rank_within_tier":  false,
+		}, SourceProject, "project.toml", prov)
+		want := Decide{Provider: "llm", Profile: "work", CompileThreshold: 0.3, RouteConfidence: 0.8, RankWithinTier: false}
+		if d != want {
+			t.Errorf("mergeDecideFields result = %+v, want %+v", d, want)
+		}
+		if info := prov["decide.provider"]; info.Source != SourceProject || info.Path != "project.toml" {
+			t.Errorf("provenance[decide.provider] = %+v", info)
+		}
+	})
+
+	t.Run("parses every key", func(t *testing.T) {
+		dir := t.TempDir()
+		userPath := filepath.Join(dir, "user.toml")
+		writeTOML(t, userPath, `
+[decide]
+provider           = "llm"
+profile            = "work"
+compile_threshold  = 0.7
+route_confidence    = 0.95
+rank_within_tier   = false
+`)
+		loaded, err := Load(userPath, "")
+		if err != nil {
+			t.Fatalf("Load: %v", err)
+		}
+		d := loaded.Config.Decide
+		if d.Provider != "llm" || d.Profile != "work" || d.CompileThreshold != 0.7 || d.RouteConfidence != 0.95 || d.RankWithinTier != false {
+			t.Errorf("Decide = %+v", d)
+		}
+		for _, key := range []string{"decide.provider", "decide.profile", "decide.compile_threshold", "decide.route_confidence", "decide.rank_within_tier"} {
+			if info := loaded.Provenance[key]; info.Source != SourceUser || info.Path != userPath {
+				t.Errorf("provenance[%q] = %+v, want user layer %q", key, info, userPath)
+			}
+		}
+	})
+
+	t.Run("refuses unknown provider by name", func(t *testing.T) {
+		dir := t.TempDir()
+		userPath := filepath.Join(dir, "user.toml")
+		writeTOML(t, userPath, "[decide]\nprovider = \"jev\"\n")
+		_, err := Load(userPath, "")
+		if err == nil {
+			t.Fatal("expected an error for an unknown [decide] provider")
+		}
+		if !strings.Contains(err.Error(), "jev") {
+			t.Errorf("error = %v, want it to name the offending value %q", err, "jev")
+		}
+	})
+
+	t.Run("refuses threshold out of range", func(t *testing.T) {
+		dir := t.TempDir()
+		userPath := filepath.Join(dir, "user.toml")
+		writeTOML(t, userPath, "[decide]\ncompile_threshold = 1.5\n")
+		if _, err := Load(userPath, ""); err == nil {
+			t.Fatal("expected an error for compile_threshold outside [0,1]")
+		}
+
+		userPath2 := filepath.Join(dir, "user2.toml")
+		writeTOML(t, userPath2, "[decide]\nroute_confidence = -0.1\n")
+		if _, err := Load(userPath2, ""); err == nil {
+			t.Fatal("expected an error for route_confidence outside [0,1]")
+		}
+	})
+}
+
 // ---------------------------------------------------------------------------
 // ResolveProfile — named selection + env overlay
 // ---------------------------------------------------------------------------

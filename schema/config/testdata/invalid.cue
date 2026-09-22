@@ -43,3 +43,13 @@ package config
 // bad5: #Config & {
 // 	daemon: state_dir: "/abs/path"
 // }
+//
+// 6. An unknown [decide] provider value (ADR-042: only "none" or "llm"):
+// bad6: #Config & {
+// 	decide: provider: "jev"
+// }
+//
+// 7. A [decide] threshold outside [0,1]:
+// bad7: #Config & {
+// 	decide: compile_threshold: 1.5
+// }
