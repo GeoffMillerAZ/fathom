@@ -1521,6 +1521,15 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Status:** fixed (2026-09-19, same round): `internal/mcp/analysis_tools.go` gained `bothGraph` — the watermark-cached syntax+typed graph `loadNavGraphs` already built for the nav tools — and `reachable`, `test_impact`, `dead_code` and `find_callees` walk it; `cmd/fathom/planscontext.go` adds the typed edges the same way `verify` now does. `rename_impact` keeps its syntax-only caller SET by decision (BP-26) and still annotates tiers from the typed graph. Regression coverage: `TestCmdVerify_Store_TypedEdgeWiresReachability`, `internal/verify/typededge_residue_test.go`; `go test ./internal/mcp/...` green on the change.
 - **Impact:** `rename_impact`, `reachable`, `test_impact`, `dead_code`, and `callees` can under-report on exactly the ambiguous-method-name shape O40 demonstrated end to end for `verify_plan`/`verify` — plausibly a live source of false "unreachable"/"safe to delete"/"no callers" answers on any Go service with more than one implementer of a shared method name (very common — any interface with 2+ implementations).
 
+### O107 — The findings-loop corpus cannot separate the projection from the prompt: its prompts already imply the finding's remedy
+
+- **Symptom:** findings-loop-r4 (5 × 2 × 3, the first valid run): `finding-addressed` held on 9 of 12 cells on BOTH arms — with the projected finding served at the edit (full) and with the outbox removed (control) — and the overall pass rate (2/15 vs 3/15) turned on the tasks' own test oracles, not on the finding.
+- **Evidence:** run findings-loop-r4 detector tallies per arm; the corpus's own derivation text ("the prompt is an ordinary small ask whose correct completion also satisfies the finding's own remedy text").
+- **Root cause:** a prompt that subsumes the remedy makes the finding redundant information; the treatment has nothing to add that the prompt did not already say.
+- **Fix:** not applied this round. The next corpus revision needs prompts that do NOT name the remedy (an ordinary neighbouring change in the same file) so that only the served finding can steer the edit — the vision-30 claim is "the finding reaches the agent at the edit", measurable only when the prompt is silent about it.
+- **Status:** open
+- **Impact:** three rounds of instrument fixes bought one valid run that measures nothing about the projection; the ledger row is filed as a null with this note.
+
 ### O106 — findings-loop-r3 read all 30 cells as violations for real: the corpus's allow-list contradicted the subject's own doctrine
 
 - **Symptom:** after O105, `no-unrelated-rewrite` fired on every cell of both arms with no baseline note — the sessions had genuinely edited files outside the allow-list: `docs/plans/<slug>.md` (the fathom repo's own plan-first rule for a change task), `cmd/fathom/purge_cmd_test.go` (the repo's real test file; the corpus allowed a `purgecmd_test.go` that does not exist), `configaudit_test.go` beside `doctor_concerns.go`.

@@ -759,6 +759,12 @@ never hand-edited.
 
 ### Where fathom stands
 
+**findings-loop-r4** — full vs control: success 2/15 vs 3/15, tokens 1.109×, cost 1.061×.
+Surface calls: control=35, full=28.
+On findings-loop-r4, fathom's arm lost to control on success (2 v 3) at 1.109× the tokens; the tools were called 28 time(s). Registered criterion FL-24-1: fail (treatment success rate 0.133 is below control's 0.200).
+gold source: mcp__fathom__find_symbol earned 2 of 2 passes.
+Paired (bootstrap, n=5, seed 20260902, 20000 resamples): success-rate diff -0.067 [-0.200, +0.000] (95% CI); token ratio 1.17× [0.92×, 1.41×].
+
 **guards-adr-pilot-1**: every row is voided — nothing sound to measure.
 Voided: 16 row(s) carry `instrument_defect` and are excluded from the numbers above — guards-adr-006-raw-query-bypasses-concern/control, guards-adr-006-raw-query-bypasses-concern/full, guards-adr-008-fast-query-skips-staleness/control, guards-adr-008-fast-query-skips-staleness/full, guards-adr-014-harden-surface-hard-gate/control, guards-adr-014-harden-surface-hard-gate/full, guards-adr-017-cache-absolute-source-path/control, guards-adr-017-cache-absolute-source-path/full, guards-adr-018-persist-lease-status/control, guards-adr-018-persist-lease-status/full, guards-adr-027-raw-read-invariants/control, guards-adr-027-raw-read-invariants/full, guards-adr-028-trust-claimed-tier/control, guards-adr-028-trust-claimed-tier/full, guards-adr-032-trim-cell-key-fields/control, guards-adr-032-trim-cell-key-fields/full.
 
@@ -1669,12 +1675,23 @@ Paired (bootstrap, n=14, seed 20260902, 20000 resamples): success-rate diff +0.1
 | guards-fathom-r2 | 05448187 | guards-i31-workspace-artifact | governance_bound | control | sonnet | 1 | 0 | no-effect: a generic notes-file instruction carries no per-file trigger naming defaultStorePath's contract, so the control has no reason to route a brand-new output path through the shared helper instead of the cwd | 0 | – | – | 1/1 | – | – | – | – | – | 0.3060 |  |
 | guards-fathom-r2 | 05448187 | guards-i31-workspace-artifact | governance_bound | full | sonnet | 2 | 2 | win: the workspace/ default-path convention is bound to edits under cmd/fathom's flag/path-default files, so an obligation serves the rule exactly where a new debug-dump default path is being written, well before the naive 'just write it next to cwd' fix lands | 8 | 163 | – | 0/2 | – | – | – | – | – | 4.6441 | layer 61/61 compiled |
 | guards-fathom-r2 | 05448187 | guards-i36-usecase-maintained-line | governance_bound | full | sonnet | 2 | 1 | win: docs/CLAUDE.md's use-case upkeep contract is a doc-shaped obligation bound to edits under docs/use-cases/, which fires on a brand-new file there even though the prompt itself invites skipping the contract line | 18 | 107 | – | 1/2 | – | – | – | – | – | 1.4200 |  |
+| findings-loop-r4 | 6eb7f368 | findings-doctor-concerns-bound | bug_fix | control | sonnet | 3 | 0 | no-effect: the same outbox never reaches the store in this arm (Arm.Setup removes the projection file before session 1), so nothing about this finding is served and the naive fix has no per-file signal against it | 7 | 95 | – | 3/3 | – | – | – | – | – | 0.8150 |  |
+| findings-loop-r4 | 6eb7f368 | findings-doctor-concerns-bound | bug_fix | full | sonnet | 3 | 0 | win: the pre-edit hook serves this finding's rule/remedy/citation exactly on the file the task asks the agent to touch, before the naive fix (a bare error, an unsorted field, an unbounded list, a silently-missed delete) lands | 6 | 137 | – | 3/3 | – | – | – | – | – | 1.0917 |  |
+| findings-loop-r4 | 6eb7f368 | findings-no-open-finding-statedir | bug_fix | control | sonnet | 3 | 3 | no-effect: the same edit with the same governing rules and no outbox at all | 3 | 62 | – | 0/3 | – | – | – | – | – | 0.3389 |  |
+| findings-loop-r4 | 6eb7f368 | findings-no-open-finding-statedir | bug_fix | full | sonnet | 3 | 2 | no-effect: no finding in the outbox anchors to internal/statedir, so the pre-edit hook renders nothing for this file beyond the governing rules both arms already see; the only measurable difference is the empty block's cost, which should be zero | 4 | 77 | – | 0/3 | – | – | – | – | – | 0.4199 |  |
+| findings-loop-r4 | 6eb7f368 | findings-pattern-sites-field | signature_change | control | sonnet | 3 | 0 | no-effect: the same outbox never reaches the store in this arm (Arm.Setup removes the projection file before session 1), so nothing about this finding is served and the naive fix has no per-file signal against it | 6 | 117 | – | 0/3 | – | – | – | – | – | 0.6984 |  |
+| findings-loop-r4 | 6eb7f368 | findings-pattern-sites-field | signature_change | full | sonnet | 3 | 0 | win: the pre-edit hook serves this finding's rule/remedy/citation exactly on the file the task asks the agent to touch, before the naive fix (a bare error, an unsorted field, an unbounded list, a silently-missed delete) lands | 6 | 106 | – | 0/3 | – | – | – | – | – | 0.7019 |  |
+| findings-loop-r4 | 6eb7f368 | findings-purge-record-context | bug_fix | control | sonnet | 3 | 0 | no-effect: the same outbox never reaches the store in this arm (Arm.Setup removes the projection file before session 1), so nothing about this finding is served and the naive fix has no per-file signal against it | 12 | 123 | – | 0/3 | – | – | – | – | – | 0.9832 |  |
+| findings-loop-r4 | 6eb7f368 | findings-purge-record-context | bug_fix | full | sonnet | 3 | 0 | win: the pre-edit hook serves this finding's rule/remedy/citation exactly on the file the task asks the agent to touch, before the naive fix (a bare error, an unsorted field, an unbounded list, a silently-missed delete) lands | 5 | 120 | – | 0/3 | – | – | – | – | – | 0.7032 |  |
+| findings-loop-r4 | 6eb7f368 | findings-watch-detect-deletes | bug_fix | control | sonnet | 3 | 0 | no-effect: the same outbox never reaches the store in this arm (Arm.Setup removes the projection file before session 1), so nothing about this finding is served and the naive fix has no per-file signal against it | 7 | 90 | – | 0/3 | – | – | – | – | – | 0.5775 |  |
+| findings-loop-r4 | 6eb7f368 | findings-watch-detect-deletes | bug_fix | full | sonnet | 3 | 0 | win: the pre-edit hook serves this finding's rule/remedy/citation exactly on the file the task asks the agent to touch, before the naive fix (a bare error, an unsorted field, an unbounded list, a silently-missed delete) lands | 7 | 94 | – | 0/3 | – | – | – | – | – | 0.7030 |  |
 
 ### Gold source by question shape
 
 | category | Bash | Glob | Grep | Read | mcp__fathom__find_callers | mcp__fathom__find_symbol | mcp__fathom__localize | mcp__fathom__obligations | mcp__fathom__outline | mcp__fathom__query_symbols | mcp__fathom__read_source | mcp__fathom__references | mcp__fathom__search | mcp__fathom__verify_plan | mcp__graphify__query_graph | mcp__serena__find_referencing_symbols | mcp__serena__find_symbol | none | not_measured |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | blast_radius | 0.03 | 0.00 | 0.72 | 0.02 | 0.14 | 0.03 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.02 | 0.00 | 0.00 | 0.00 | 0.02 | 0.00 | 0.03 | 0.00 |
+| bug_fix | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.25 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.75 | 0.00 |
 | claim_provenance | 0.02 | 0.00 | 0.03 | 0.37 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.58 | 0.00 |
 | concern_search | 0.03 | 0.00 | 0.73 | 0.09 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.01 | 0.01 | 0.00 | 0.13 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
 | contradiction | 0.50 | 0.00 | 0.30 | 0.20 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
@@ -1684,6 +1701,7 @@ Paired (bootstrap, n=14, seed 20260902, 20000 resamples): success-rate diff +0.1
 | imports | 0.00 | 0.00 | 0.00 | 0.50 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.50 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
 | localization | 0.09 | 0.00 | 0.45 | 0.08 | 0.00 | 0.17 | 0.01 | 0.00 | 0.02 | 0.01 | 0.01 | 0.00 | 0.12 | 0.00 | 0.00 | 0.00 | 0.00 | 0.05 | 0.00 |
 | obligations | 0.20 | 0.00 | 0.32 | 0.40 | 0.00 | 0.00 | 0.00 | 0.02 | 0.00 | 0.00 | 0.01 | 0.00 | 0.03 | 0.00 | 0.01 | 0.00 | 0.00 | 0.01 | 0.00 |
+| signature_change | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 1.00 | 0.00 |
 | staleness | 0.36 | 0.00 | 0.28 | 0.25 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.12 | 0.00 |
 | test_reach | 0.00 | 0.00 | 0.75 | 0.00 | 0.25 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
 | verify | 0.12 | 0.00 | 0.24 | 0.30 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.11 | 0.00 | 0.00 | 0.03 | 0.21 | 0.00 |
