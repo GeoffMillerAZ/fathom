@@ -159,7 +159,7 @@ func TestCmdInit_WiresRepoEndToEnd(t *testing.T) {
 		if !strings.Contains(s, "[decide]") {
 			t.Errorf(".fathom/config.toml missing a commented [decide] block:\n%s", s)
 		}
-		for _, want := range []string{"provider", "profile", "compile_threshold", "route_confidence", "rank_within_tier"} {
+		for _, want := range []string{"provider", "profile", "compile_threshold", "route_confidence", "route_timeout_ms", "rank_within_tier", "rerank_timeout_ms"} {
 			if !strings.Contains(s, want) {
 				t.Errorf(".fathom/config.toml missing %q:\n%s", want, s)
 			}

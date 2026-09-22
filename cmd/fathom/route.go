@@ -20,11 +20,29 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/decide"
 )
 
-// routeDecideTimeout bounds the decider call this handler makes — derived
-// from the request's own context, so a slow/unreachable LLM lane can never
-// outlast this on top of whatever deadline the caller (the prompt hook)
-// already enforces on the HTTP round trip itself.
-const routeDecideTimeout = 3 * time.Second
+// routeDecideTimeoutDefault is the fallback bound on the decider call this
+// handler makes when ports.Cfg.RouteTimeoutMS is unset (0) — a Ports built
+// outside config.Load (a direct test construction, say) that never got a
+// RouteTimeoutMS still gets a sane budget rather than a zero/immediate
+// timeout. config.DefaultDecide.RouteTimeoutMS carries the SAME value
+// (3000ms) for every real caller; this constant exists only as this
+// function's own defensive floor.
+const routeDecideTimeoutDefault = 3 * time.Second
+
+// routeDecideTimeout resolves ports.Cfg.RouteTimeoutMS (O109: [decide]
+// route_timeout_ms, default 3000ms) into a time.Duration, bounding the
+// decider call this handler makes — derived from the request's own
+// context, so a slow/unreachable LLM lane can never outlast this on top of
+// whatever deadline the caller (the prompt hook) already enforces on the
+// HTTP round trip itself. A non-positive configured value (Ports built
+// without going through config.Load/DefaultDecide) falls back to
+// routeDecideTimeoutDefault rather than firing an immediate/zero timeout.
+func routeDecideTimeout(ports *decide.Ports) time.Duration {
+	if ports == nil || ports.Cfg.RouteTimeoutMS <= 0 {
+		return routeDecideTimeoutDefault
+	}
+	return time.Duration(ports.Cfg.RouteTimeoutMS) * time.Millisecond
+}
 
 // routeVerbs is DP-9's fixed, ordered verb set: each Name is an MCP tool
 // this route can suggest (or "none"), and Criteria is the one-line
@@ -127,9 +145,10 @@ func routeHandler(ports *decide.Ports) http.Handler {
 			return
 		}
 
-		ctx, cancel := context.WithTimeout(r.Context(), routeDecideTimeout)
+		ctx, cancel := context.WithTimeout(r.Context(), routeDecideTimeout(ports))
 		defer cancel()
 
+		callStart := time.Now()
 		resp, err := ports.Decider.Decide(ctx, decision.Request{
 			State: prompt,
 			Questions: []decision.Question{{
@@ -140,6 +159,13 @@ func routeHandler(ports *decide.Ports) http.Handler {
 			}},
 		})
 		if err != nil {
+			// DP-22 (O109): a hard Decide error here produced no
+			// decision.Response at all, so Record has nothing to log —
+			// RecordError is the parallel path, naming the failure instead
+			// of leaving decisions.jsonl silent about it. model is "" — the
+			// Decider interface has no Model() accessor to read one off a
+			// call that never returned a Response.
+			ports.Recorder.RecordError("route", ports.Decider.Name(), "", 1, time.Since(callStart), err)
 			out := noneRouteResponse()
 			out.Error = err.Error()
 			writeRouteResponse(w, out)

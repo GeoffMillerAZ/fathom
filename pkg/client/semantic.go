@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -75,11 +76,23 @@ func (c *Client) decisionActive() bool {
 // false this is the zero-value ObligationsOptions{}, which
 // ObligationsForOpts/ObligationsForLayerOpts/ObligationsAsOfOpts document as
 // byte-identical to their pre-Opts, non-decision-port siblings.
+//
+// RerankTimeout (DP-25, O109) is threaded from c.decideCfg.RerankTimeoutMS
+// ([decide] rerank_timeout_ms, config.DefaultDecide's own default 1500ms) —
+// the ONE place a real decision port supplies this bound; a Client that
+// never calls WithDecision, or is given decision.None, never reaches this
+// line at all (the early return above), so semantic.rerankWithinTiers'
+// own zero-value fallback (defaultRerankTimeout) is exercised only by a
+// caller that builds ObligationsOptions directly, outside this path.
 func (c *Client) decisionOpts() semantic.ObligationsOptions {
 	if !c.decisionActive() {
 		return semantic.ObligationsOptions{}
 	}
-	return semantic.ObligationsOptions{Decider: c.decider, RankWithinTier: c.decideCfg.RankWithinTier}
+	return semantic.ObligationsOptions{
+		Decider:        c.decider,
+		RankWithinTier: c.decideCfg.RankWithinTier,
+		RerankTimeout:  time.Duration(c.decideCfg.RerankTimeoutMS) * time.Millisecond,
+	}
 }
 
 // coreDecisionRecordsToKit converts internal/core's dependency-free
@@ -112,6 +125,20 @@ func coreDecisionRecordsToKit(recs []core.DecisionRecord) []decision.Record {
 	return out
 }
 
+// recordDecisionErrors (DP-22, O109) logs each of errs as one
+// decisions.jsonl error row — the caller-side half of a rerank chunk that
+// hard-failed (internal/semantic.DecisionError carries the data;
+// internal/semantic itself stays free of the decide.Recorder type). model
+// is always "" here: the decision.Decider interface has no Model()
+// accessor, and a hard Decide error returns no Response to read one off.
+// A nil/empty errs, or a Client with no decideRec wired, is a safe no-op —
+// decide.Recorder.RecordError is itself nil-receiver-safe.
+func (c *Client) recordDecisionErrors(errs []semantic.DecisionError) {
+	for _, de := range errs {
+		c.decideRec.RecordError(de.Site, de.Provider, "", de.Questions, de.Latency, de.Err)
+	}
+}
+
 // Obligations returns the obligations governing file for service, capped at
 // maxRules (≤ semantic.MaxObligations; ≤0 means the default cap).
 //
@@ -120,10 +147,14 @@ func coreDecisionRecordsToKit(recs []core.DecisionRecord) []decision.Record {
 // rules within their governing-scope tier — see decisionOpts. A Client that
 // never calls WithDecision passes a zero-value semantic.ObligationsOptions,
 // which ObligationsForOpts documents as byte-identical to the pre-Opts
-// ObligationsFor path.
+// ObligationsFor path. DP-22: obl.DecisionErrors carries one entry per
+// rerank chunk whose Decide call itself hard-failed — recordDecisionErrors
+// logs each as an error row (O109: before this, a failed chunk left no
+// trace in decisions.jsonl at all).
 func (c *Client) Obligations(ctx context.Context, service, file string, maxRules int) (semantic.Obligations, error) {
 	obl, err := semantic.ObligationsForOpts(ctx, c.st, service, file, maxRules, c.decisionOpts())
 	c.decideRec.Append(obl.Decisions)
+	c.recordDecisionErrors(obl.DecisionErrors)
 	return obl, err
 }
 
@@ -131,10 +162,12 @@ func (c *Client) Obligations(ctx context.Context, service, file string, maxRules
 // decision 7) — see semantic.ObligationsAsOf's own doc comment for why this
 // is a separate, slower read path from Obligations/ObligationsLayer. DP-9:
 // routed through semantic.ObligationsAsOfOpts the same way Obligations is
-// routed through ObligationsForOpts — see decisionOpts.
+// routed through ObligationsForOpts — see decisionOpts. DP-22: see
+// Obligations' own doc comment on recordDecisionErrors.
 func (c *Client) ObligationsAsOf(ctx context.Context, service, file string, maxRules int, asOf time.Time) (semantic.Obligations, error) {
 	obl, err := semantic.ObligationsAsOfOpts(ctx, c.st, service, file, maxRules, asOf, c.decisionOpts())
 	c.decideRec.Append(obl.Decisions)
+	c.recordDecisionErrors(obl.DecisionErrors)
 	return obl, err
 }
 
@@ -154,6 +187,7 @@ func (c *Client) RootObligations(ctx context.Context, service string, maxRules i
 func (c *Client) ObligationsLayer(ctx context.Context, service, file string, maxRules int, layer semantic.ObligationLayerFilter) (semantic.Obligations, error) {
 	obl, err := semantic.ObligationsForLayerOpts(ctx, c.st, service, file, maxRules, layer, c.decisionOpts())
 	c.decideRec.Append(obl.Decisions)
+	c.recordDecisionErrors(obl.DecisionErrors)
 	return obl, err
 }
 
@@ -468,6 +502,20 @@ func (c *Client) compileLayer(ctx context.Context, service, layerName string, dr
 	// a partial run that failed mid-compile may still have asked the
 	// decision port about earlier sections, and those decisions were real.
 	c.decideRec.Append(coreDecisionRecordsToKit(run.Decisions))
+	// DP-22 (O109): run.PrefilterError is set exactly when the pre-filter's
+	// own Decide call hard-failed (aborting the whole run) — log it as an
+	// error row too, so the failure that killed this compile is visible in
+	// decisions.jsonl, not only in the returned err.
+	if run.PrefilterError != nil {
+		c.decideRec.RecordError(
+			run.PrefilterError.Site,
+			run.PrefilterError.Provider,
+			"",
+			run.PrefilterError.Questions,
+			time.Duration(run.PrefilterError.LatencyMS)*time.Millisecond,
+			errors.New(run.PrefilterError.Err),
+		)
+	}
 	return run, err
 }
 

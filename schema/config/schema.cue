@@ -161,9 +161,31 @@ package config
 	// below the unsure band.
 	route_confidence?: number & >=0 & <=1
 
+	// route_timeout_ms bounds POST /route's own decider call (O109): the
+	// default (3000ms) fits Jev-class latency (70-500ms measured) but
+	// starves an LLM lane under ordinary network latency (1.5-2.8s warm,
+	// more cold, measured live against OpenRouter) — the design point is a
+	// sub-second decision model; the prompt hook's own ~8s shared deadline
+	// still bounds the line regardless of this value.
+	route_timeout_ms?: int & >=100 & <=30000
+
 	// rank_within_tier: obligations re-ranks eligible rules only inside
 	// their governing-scope tier (ADR-035's tier order is never crossed).
 	rank_within_tier?: bool
+
+	// rerank_timeout_ms (DP-25, O109) bounds how long the obligations
+	// re-rank may wait for the decider across every chunk of one
+	// obligations call, in milliseconds. Default 1500 — deliberately kept
+	// under the PostToolUse edit hook's own 2000ms HTTP client timeout for
+	// its obligations RPC (cmd/fathom/edithook.go), with margin: a rerank
+	// that exhausts the whole budget must still return before that
+	// client's own deadline gives up and renders nothing at all. The
+	// design point is a sub-second decision model (e.g. TypeSafe/Jev); an
+	// LLM lane will usually exceed this default, and the envelope then
+	// discloses rank_note "decision budget …" while rules are served in
+	// lexical order rather than waiting. Raise it only for offline/
+	// non-hook use, where nothing is racing a client-side deadline.
+	rerank_timeout_ms?: int & >=100 & <=60000
 
 	// endpoint overrides provider "typesafe"'s base URL (default
 	// decision.DefaultTypeSafeBaseURL, "https://api.typesafe.ai"). Unused

@@ -269,19 +269,44 @@ type Obligations struct {
 	// RootObligationsFor, RootObligationsForLayer, ObligationsAsOf) passes a
 	// zero-value ObligationsOptions and always reports "none" here.
 	RankedBy string `json:"ranked_by"`
-	// RankNote (DP-8) is set only when a configured Decider's Decide call
-	// itself returned an error (including decision.ErrNoProvider) — the
-	// payload is served exactly as the untouched (RankedBy:"none") path
-	// would be, and this names why, rather than failing the whole
-	// obligations call over a ranker that could not answer (ADR-042
+	// RankNote (DP-8) is set whenever at least one chunk of a configured
+	// Decider's batched Decide call hard-failed (DP-22, O109): with EVERY
+	// chunk failing, the payload is served exactly as the untouched
+	// (RankedBy:"none") path would be and this names why (the pre-DP-22
+	// contract, unchanged for that case); with only SOME chunks failing,
+	// RankedBy still names the Decider (the other chunks genuinely
+	// reranked) and RankNote instead discloses "N of M chunks failed" plus
+	// the first failure's own error text — never failing the whole
+	// obligations call over a ranker that could not fully answer (ADR-042
 	// decision 3: "serving must not fail because a ranker did").
 	RankNote string `json:"rank_note,omitempty"`
+	// RankedCount (DP-24, O109) is how many scope-eligible claims the DP-7
+	// rerank actually asked the Decider about — the served-window-filtered
+	// subset (rerankEligible), never the full candidate pool
+	// (CandidatesTotal). 0 (omitted) whenever no rerank ran at all
+	// (RankWithinTier off, no Decider, or nothing scope-eligible).
+	RankedCount int `json:"ranked_count,omitempty"`
+	// CandidatesTotal (DP-24, O109) is the total scope-eligible claim count
+	// the rerank drew its served window from — before DP-24's tier-window
+	// filter narrowed it down to RankedCount. 0 (omitted) under the same
+	// conditions as RankedCount. Comparing the two names the optimization's
+	// own effect (e.g. 10 of 160).
+	CandidatesTotal int `json:"candidates_total,omitempty"`
 	// Decisions (feeds DP-3's call-log Record) carries one decision.Record
-	// per rule this call asked the Decider about, only when reranking
-	// actually ran — for the CALLER (the daemon) to log, never part of the
-	// served wire payload: a tool response has no reason to carry raw
-	// per-rule model telemetry (site, provider, confidence, latency).
+	// per rule a SUCCEEDING chunk asked the Decider about — for the CALLER
+	// (the daemon) to log, never part of the served wire payload: a tool
+	// response has no reason to carry raw per-rule model telemetry (site,
+	// provider, confidence, latency). Empty when reranking never ran or
+	// every chunk failed.
 	Decisions []decision.Record `json:"-"`
+	// DecisionErrors (DP-22, O109) carries one DecisionError per chunk of
+	// the re-rank batch whose Decide call itself hard-failed — for the
+	// CALLER to log as an error row (decide.Recorder.RecordError), the
+	// same "never part of the served wire payload" discipline as
+	// Decisions. Before this field existed, a failed rerank chunk left
+	// NO trace in decisions.jsonl at all — only a transient RankNote on
+	// whichever wire response happened to hit it.
+	DecisionErrors []DecisionError `json:"-"`
 }
 
 // ObligationLayerFilter selects which claims obligations serves (VB-9,
@@ -369,6 +394,16 @@ type ObligationsOptions struct {
 	// one — appended to the Decider's State alongside the edited path.
 	// Empty means the State names only the path.
 	Hunk string
+	// RerankTimeout (DP-25, O109) bounds how long rerankWithinTiers' shared
+	// context.WithTimeout may wait for the Decider across every chunk of
+	// one obligations call — <= 0 (the zero value) means
+	// defaultRerankTimeout (internal/semantic's own generic fallback).
+	// pkg/client.WithDecision's decisionOpts sets this from [decide]
+	// rerank_timeout_ms (config.Decide.RerankTimeoutMS, default 1500ms) for
+	// any real decision port, so this is only ever left at zero by a
+	// caller that builds ObligationsOptions directly outside that path (a
+	// test, most commonly).
+	RerankTimeout time.Duration
 }
 
 // ObligationsForOpts is ObligationsFor's decision-port sibling (DP-7): file-
@@ -597,6 +632,27 @@ func reserveNearestTier(matched []scored, n int, outFile string) []scored {
 	return reserved
 }
 
+// noteNoEligibleRerank (O109) names, in out.RankNote, WHY out.RankedBy
+// stayed "none" when an active Decider (opts.RankWithinTier &&
+// opts.Decider != nil) never got a chance to answer anything — nothing
+// eligible was ever built for it to ask about, so the DP-7 rerank block
+// (gated on a non-empty matched set) is never reached: no decision.Record
+// is produced, nothing is logged for this call, and RankedBy stays "none"
+// exactly as the no-provider-configured path does. That is CORRECT — there
+// is nothing to rerank — but before this, the two cases were wire-
+// indistinguishable. O109's own live probe (two files, low compile
+// coverage) saw zero decisions logged and ranked_by:"none" and could not
+// tell "the rerank never fired for these files" apart from "it fired and
+// changed nothing"; this closes that gap without touching RankedBy's own
+// contract (still "none": no rerank occurred). A no-op (out unchanged)
+// whenever RankWithinTier is off or no Decider is configured — byte-
+// identical to before this function existed for every such caller.
+func noteNoEligibleRerank(out *Obligations, opts ObligationsOptions) {
+	if opts.RankWithinTier && opts.Decider != nil {
+		out.RankNote = "no eligible compiled rules in scope to rerank"
+	}
+}
+
 // obligationsCore is the shared match/budget/order engine behind
 // ObligationsFor and RootObligationsFor: outFile is what the returned
 // Obligations.File carries (a real path, or "" for the root-scope
@@ -711,6 +767,7 @@ func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile str
 		}
 	}
 	if len(byID) == 0 {
+		noteNoEligibleRerank(&out, opts)
 		return out, nil
 	}
 	served := make([]core.SemanticClaim, 0, len(byID))
@@ -809,6 +866,7 @@ func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile str
 		}
 	}
 	if len(matched) == 0 {
+		noteNoEligibleRerank(&out, opts)
 		return out, nil
 	}
 	// decideRelevance is nil until (and unless) the DP-7 rerank block below
@@ -892,17 +950,36 @@ func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile str
 	// zero ObligationsOptions{} every non-Opts entry point passes leaves
 	// this whole block dead code for them.
 	if opts.RankWithinTier && opts.Decider != nil {
-		reordered, rel, recs, rerr := rerankWithinTiers(ctx, opts.Decider, outFile, opts.Hunk, matched)
-		if rerr != nil {
-			// ADR-042 decision 3: a provider error never fails the call —
-			// it is swallowed into the untouched (RankedBy:"none") path,
-			// named on the envelope instead.
-			out.RankNote = rerr.Error()
-		} else {
-			matched = reordered
-			decideRelevance = rel
-			out.Decisions = recs
+		// DP-22 (O109): the noul batch is chunked (decisionBatchSize) and
+		// the chunks run concurrently — rerankWithinTiers reports a PER-
+		// CHUNK outcome now, not one all-or-nothing error. matched/records
+		// reflect whatever succeeded even when some chunks failed; a
+		// chunk's own questions that failed simply keep their pre-rerank
+		// position (ADR-042 decision 3, extended by DP-22: a provider
+		// error is swallowed into an untouched result for THAT CHUNK,
+		// never a fatal error for the whole call).
+		//
+		// DP-24: only claims in governing-scope tiers that intersect the
+		// served window [0, max) are ever asked about — max is this
+		// call's own served cap, already clamped above. DP-25: the whole
+		// call (every chunk) shares one rerank_timeout_ms budget
+		// (opts.RerankTimeout, <= 0 meaning defaultRerankTimeout).
+		oc := rerankWithinTiers(ctx, opts.Decider, outFile, opts.Hunk, matched, max, opts.RerankTimeout)
+		matched = oc.Matched
+		out.Decisions = oc.Records
+		out.DecisionErrors = oc.Failures
+		out.RankedCount = oc.RankedCount
+		out.CandidatesTotal = oc.CandidatesTotal
+		if oc.Ranked {
+			decideRelevance = oc.Relevance
 			out.RankedBy = opts.Decider.Name()
+		}
+		if len(oc.Failures) > 0 {
+			if oc.TimedOut {
+				out.RankNote = rerankTimeoutNote(oc.Timeout, oc.ChunksFailed, oc.ChunksTotal)
+			} else {
+				out.RankNote = rerankFailureNote(oc.Failures, oc.ChunksTotal)
+			}
 		}
 	}
 

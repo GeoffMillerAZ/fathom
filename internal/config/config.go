@@ -105,13 +105,47 @@ type Findings struct {
 // "typesafe"` routes through the kit's TypeSafe (Jev) adapter directly —
 // Endpoint/Model/APIKeyEnv/APIKeyCmd configure that lane and are otherwise
 // unused. CompileThreshold/RouteConfidence are always in [0,1] (enforced by
-// the CUE schema); RankWithinTier gates ADR-035's obligations re-rank.
+// the CUE schema); RankWithinTier gates ADR-035's obligations re-rank, and
+// RerankTimeoutMS (DP-25) bounds how long that re-rank may wait for it.
 type Decide struct {
 	Provider         string  `toml:"provider"`
 	Profile          string  `toml:"profile"`
 	CompileThreshold float64 `toml:"compile_threshold"`
 	RouteConfidence  float64 `toml:"route_confidence"`
-	RankWithinTier   bool    `toml:"rank_within_tier"`
+	// RouteTimeoutMS (O109) bounds POST /route's own decider call in
+	// milliseconds. Default 3000 fits Jev-class latency (70-500ms
+	// measured) but starves an LLM lane under ordinary network latency
+	// (1.5-2.8s warm, more cold, measured live against OpenRouter) — the
+	// design point is a sub-second decision model; the prompt hook's own
+	// shared deadline (~8s) still bounds the line regardless of this
+	// value. CUE-enforced to [100,30000].
+	RouteTimeoutMS int  `toml:"route_timeout_ms"`
+	RankWithinTier bool `toml:"rank_within_tier"`
+	// RerankTimeoutMS (DP-25, O109) bounds how long the obligations
+	// re-rank (rerankWithinTiers, internal/semantic) may wait for the
+	// Decider across EVERY chunk of one obligations call, in milliseconds
+	// — a hard ceiling, not a per-chunk one: the whole call shares this
+	// one budget. Default 1500 — deliberately BELOW route_timeout_ms's own
+	// 3000ms default, and below even the more common "one sub-second
+	// decision model" design point this whole port is built for, because
+	// obligations (unlike /route) is on the PostToolUse edit hook's own
+	// critical path: cmd/fathom/edithook.go's fetchObligations call gives
+	// that hook a flat 2000ms HTTP client timeout for the whole RPC, and a
+	// server that spends its entire budget on the rerank alone (with zero
+	// left for store I/O, JSON encode/decode and the network round trip)
+	// risks losing the race against that client deadline — which renders
+	// NOTHING at all (edithook.go: "daemon down or error → silent"), a
+	// strictly worse outcome than the rerank giving up early and serving
+	// the untouched lexical order. 1500ms leaves 500ms of margin. An LLM
+	// lane will usually exceed this default entirely (O109 measured a
+	// single 20-question chunk at 8-18s against OpenRouter) — the design
+	// point is a sub-second decision model (e.g. TypeSafe/Jev); when the
+	// budget is exceeded the envelope discloses rank_note "decision budget
+	// …" and serves rules in lexical order rather than waiting. Raise it
+	// only for offline/non-hook use (`fathom obligations` from a terminal,
+	// a bench run) where nothing is racing a client-side deadline.
+	// CUE-enforced to [100,60000].
+	RerankTimeoutMS int `toml:"rerank_timeout_ms"`
 
 	// Endpoint overrides provider "typesafe"'s base URL (default
 	// decision.DefaultTypeSafeBaseURL). Unused by "none"/"llm".
@@ -138,7 +172,9 @@ var DefaultDecide = Decide{
 	Provider:         "none",
 	CompileThreshold: 0.5,
 	RouteConfidence:  0.9,
+	RouteTimeoutMS:   3000,
 	RankWithinTier:   true,
+	RerankTimeoutMS:  1500,
 }
 
 // Config is the merged, in-memory form of one or more config.toml layers.
