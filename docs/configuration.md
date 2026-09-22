@@ -258,6 +258,26 @@ manifests as a **crash-loop**, with the error on stderr in the launchd log.
 Pre-flight before restarting: run `fathom config` (it loads the very same
 layers and prints the same errors) — if it exits 0, the daemon will start.
 
+## The decision port: `[decide]`
+
+Off by default. When set, the daemon asks a typed decision model (vision 32,
+ADR-042) three kinds of question about state it already holds — never for a fact —
+and every answer is logged and disclosed:
+
+```toml
+# .fathom/config.toml
+[decide]
+provider          = "none"   # none | llm — none makes no call and changes nothing
+profile           = ""       # llm: the [llm] profile lane to use (default: the compile lane)
+compile_threshold = 0.5      # a guide section whose "is this a binding rule" probability is below this is not compiled (counted, disclosed, still served raw)
+route_confidence  = 0.9      # the prompt hook injects a firm route line at or above this; a hedged one from 0.5; nothing below
+rank_within_tier  = true     # obligations re-orders rules only inside their governing-scope tier
+```
+
+`fathom doctor` reports the provider under `decision_provider`; the obligations
+envelope carries `ranked_by`, and `POST /route` on the loopback daemon serves the
+prompt hook's route. A `typesafe` adapter is a documented future (`docs/intent/futures.md` F21).
+
 ## The findings loop: `[findings]`
 
 `fathom init` scaffolds `.fathom/config.toml` (project scope, sibling to
