@@ -294,3 +294,26 @@ func TestNotificationsInitialized(t *testing.T) {
 		t.Errorf("notification should produce no response; extra output: %q", out.String())
 	}
 }
+
+// TestGraphCacheStats_StartsEmpty pins O108's /metrics gauge
+// (fathom_graph_memo_entries, cmd/fathom/servehttp.go): a freshly
+// constructed server's call-graph memo starts at zero entries/hits/misses
+// — the baseline a synthetic driver's iteration-0 sample compares against.
+func TestGraphCacheStats_StartsEmpty(t *testing.T) {
+	srv := mcp.NewServer(nil)
+	entries, hits, misses := srv.GraphCacheStats()
+	if entries != 0 || hits != 0 || misses != 0 {
+		t.Fatalf("GraphCacheStats() = (%d, %d, %d), want all zero on a fresh server", entries, hits, misses)
+	}
+}
+
+// TestAutoRefreshTotal_ZeroWithoutAutoRefreshBackend pins O108's /metrics
+// gauge (fathom_autorefresh_total): a server whose backend does not wrap
+// autorefresh.go's watcher (nil here, matching --auto-refresh=false or a
+// test fake) reports 0 rather than erroring or panicking.
+func TestAutoRefreshTotal_ZeroWithoutAutoRefreshBackend(t *testing.T) {
+	srv := mcp.NewServer(nil)
+	if got := srv.AutoRefreshTotal(); got != 0 {
+		t.Fatalf("AutoRefreshTotal() = %d, want 0 (no autorefresh backend wired)", got)
+	}
+}

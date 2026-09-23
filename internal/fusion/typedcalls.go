@@ -99,6 +99,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/tools/go/packages"
@@ -185,6 +186,7 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 	if p.cfg.DisableTypedEdges || !hasGoSource(refs) || !hasGoModule(svc.Path) {
 		return TypedEdgeReport{}
 	}
+	atomic.AddInt64(&p.typedPassTotal, 1)
 	allowed := make(map[string]bool)
 	for _, r := range refs {
 		if strings.HasSuffix(r.Path, ".go") {

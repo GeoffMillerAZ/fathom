@@ -220,6 +220,7 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		daemonCheck,
 		checkBinaryFresh(root),
 		checkDaemonFresh(hc, baseURL, daemonUp), // PC-4: the daemon's stamp vs this binary (doctor_provenance.go)
+		checkDaemonFootprint(hc, baseURL, daemonUp), // O108: the daemon's own heap in-use vs a stated budget (doctor_footprint.go)
 		checkHooksInstalled(root, harness),
 		checkLefthookGates(root),
 		checkHooksFiring(hc, baseURL, daemonUp, root, harness),

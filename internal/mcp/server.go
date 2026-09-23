@@ -199,6 +199,28 @@ func newServer(backend QueryInterface, fleet FleetBackend, logger *CallLogger, m
 	return s
 }
 
+// GraphCacheStats returns the call-graph memo's current size and its
+// process-lifetime hit/miss counts (BP-28, I21) — see
+// callgraph.CachedCallGraph.Stats. Consumed by cmd/fathom's /metrics as
+// fathom_graph_memo_entries (O108): a daemon running --auto-refresh should
+// hold this at or below the cache's capacity (8 by default) for its whole
+// lifetime, never climbing without bound.
+func (s *Server) GraphCacheStats() (entries, hits, misses int) {
+	return s.graphCache.Stats()
+}
+
+// AutoRefreshTotal returns the process-lifetime count of auto-refresh
+// re-ingests this server's backend has triggered (O108), or 0 when the
+// backend does not wrap autorefresh.go's watcher (e.g. --auto-refresh=false,
+// or a test fake). Consumed by cmd/fathom's /metrics as
+// fathom_autorefresh_total.
+func (s *Server) AutoRefreshTotal() int64 {
+	if b, ok := s.backend.(autoRefreshStatsBackend); ok {
+		return b.AutoRefreshTotal()
+	}
+	return 0
+}
+
 // Register adds a handler for the given JSON-RPC method name.
 func (s *Server) Register(method string, h Handler) {
 	s.mu.Lock()

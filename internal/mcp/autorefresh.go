@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -29,6 +30,13 @@ type autoRefreshBackend struct {
 
 	mu   sync.Mutex
 	seen map[string]string // service -> commit already refreshed to
+
+	// refreshTotal counts every auto-refresh re-ingest this backend has
+	// triggered (O108, cmd/fathom's /metrics fathom_autorefresh_total) —
+	// incremented once per debounced drift, regardless of whether the
+	// ingest that followed succeeded. Process-lifetime; read via
+	// AutoRefreshTotal.
+	refreshTotal int64 // atomic
 }
 
 // NewAutoRefresh returns a QueryInterface that transparently keeps each queried
@@ -81,6 +89,7 @@ func (a *autoRefreshBackend) ensure(ctx context.Context, service string) {
 	}
 	a.seen[service] = head
 	a.mu.Unlock()
+	atomic.AddInt64(&a.refreshTotal, 1)
 
 	if a.log != nil {
 		fmt.Fprintf(a.log, "auto-refresh: %s drifted %s→%s, re-ingesting\n", service, shortSHA(indexed), shortSHA(head))
@@ -96,6 +105,14 @@ func (a *autoRefreshBackend) ensure(ctx context.Context, service string) {
 	// ingest above succeeded or failed (a failed ingest may still have
 	// changed on-disk state worth invalidating against).
 	hookcache.BustIdent()
+}
+
+// AutoRefreshTotal returns the process-lifetime count of auto-refresh
+// re-ingests this backend has triggered (O108). Consumed by cmd/fathom's
+// /metrics as fathom_autorefresh_total via the optional
+// autoRefreshStatsBackend capability (meta.go).
+func (a *autoRefreshBackend) AutoRefreshTotal() int64 {
+	return atomic.LoadInt64(&a.refreshTotal)
 }
 
 func shortSHA(s string) string {
