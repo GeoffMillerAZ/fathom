@@ -326,6 +326,31 @@ The key is resolved once, when the daemon (or a direct `fathom compile --store`)
 environment variable is read directly. A literal `api_key` in `[decide]` is not
 representable — the schema is closed, same discipline as `[profiles.*]`.
 
+**No TypeSafe key of your own?** OpenRouter serves the same model (Jev 1.13)
+behind the same TypeSafe System One wire shape — `endpoint`/`model` are the
+only two fields that change, since `TypeSafeConfig.BaseURL` is always suffixed
+with `/v1/systemone`:
+
+```toml
+# .fathom/config.toml
+[decide]
+provider    = "typesafe"
+endpoint    = "https://openrouter.ai/api"
+model       = "typesafe/jev-1.13"       # pinned; "~typesafe/jev-latest" tracks the rolling alias instead
+api_key_env = "OPENROUTER_API_KEY"
+```
+
+This is the recommended route for anyone without a direct TypeSafe API key —
+one OpenRouter account covers this adapter and the `llm` adapter's own
+OpenRouter lanes both. Priced (2026-09-22) at $0.042 per million input
+tokens; output is free. First live run against the real model over this
+route: O110 (`.fathom/observations.md`) — routing and the obligations
+re-rank both worked and genuinely disclosed `ranked_by`/`relevance` on the
+wire; the compile section pre-filter does not yet work against this adapter
+on a repo whose obligations layer has grown past a small section count (see
+O110 for the root cause — an unbounded batch size, not an OpenRouter or
+Jev-specific limitation).
+
 `fathom doctor` reports the provider under `decision_provider`; the obligations
 envelope carries `ranked_by` (`none` | `llm` | `typesafe`), and `POST /route` on
 the loopback daemon serves the prompt hook's route with the same `provider`

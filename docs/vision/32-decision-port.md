@@ -92,6 +92,14 @@ Three sites, each with its deterministic path intact:
 
 ## 4. Measurement before default-on (ADR-041: earn the place)
 
+**Status (2026-09-22, O110):** first live run of the `typesafe` adapter against
+the real model (Jev 1.13, via OpenRouter — `docs/configuration.md` §"The
+decision port") — routing and the obligations re-rank both work and genuinely
+disclose `ranked_by`/`relevance` on the wire; the compile section pre-filter
+does not yet (an unbounded batch size for this adapter, not a DP-13 A/B
+result). Not itself the DP-13/DP-14 A/B below — a single measurement run, not
+n ≥ 3 — see `.fathom/observations.md` O110 for the full readings.
+
 Each site has a free or cheap A/B on the same tree with `provider = none` against
 `provider = llm`: the compile (sections compiled, served rules lost, dollars, wall
 clock; bar: no served rule lost, under ten minutes and a dollar), obligations
