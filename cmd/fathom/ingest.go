@@ -142,6 +142,18 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
+	// `// certifies:` marker scan + certifications compile (vision 33 /
+	// ADR-043 stage 1, TC-6's own wiring instruction): a plain `fathom
+	// ingest` for a Go service also scans for declared certifications and
+	// recompiles the certifications layer from them, so `fathom certify
+	// gaps` works even with no attested-run envelope at all (declarations
+	// only → every certificate reads unproven, never silently absent).
+	// Hash-gated (runCertifyCompile) so a repeat ingest against an
+	// unchanged declaration/watermark set is a cheap no-op.
+	if readErr == nil || !readErr.Refused {
+		ingestConfiguredCertifications(context.Background(), *storePath, *service, svcPath, stdout, stderr, *jsonOut)
+	}
+
 	if *jsonOut {
 		return renderIngestJSON(stdout, *service, svcPath, report, readErr, scipResults) // RP-14: ingest_json.go
 	}
@@ -314,6 +326,40 @@ func ingestConfiguredTestResults(ctx context.Context, storePath, service, svcPat
 		return 0, fmt.Errorf("ingest runs: %w", err)
 	}
 	return report.RunsWritten, nil
+}
+
+// ingestConfiguredCertifications implements the marker-scan half of
+// vision 33 / ADR-043 stage 1's plain-ingest wiring (TC-6): scan svcPath
+// for `// certifies:` markers (the same internal/testevidence.
+// IngestCertifyMarkers `fathom tests ingest` uses) and, when anything is
+// declared, hash-gate and run the certifications compile
+// (runCertifyCompile, certify_compile.go). Fail-open like every other
+// best-effort ingest enrichment at this CLI entry point: a problem here
+// warns and never turns an otherwise-successful ingest into a failure.
+func ingestConfiguredCertifications(ctx context.Context, storePath, service, svcPath string, stdout, stderr io.Writer, jsonOut bool) {
+	st, err := store.Open(storePath)
+	if err != nil {
+		fmt.Fprintf(stderr, "warning: certify: open store: %v\n", err)
+		return
+	}
+	defer st.Close()
+
+	watermark := testsIngestWatermark(ctx, st, service)
+	markerReport, err := testevidence.IngestCertifyMarkers(ctx, st, service, watermark, svcPath)
+	if err != nil {
+		fmt.Fprintf(stderr, "warning: certify: scan certifies markers: %v\n", err)
+		return
+	}
+	for _, w := range markerReport.Warnings {
+		fmt.Fprintf(stderr, "warning: certify: malformed certifies marker: %s\n", w)
+	}
+	if markerReport.Declared == 0 {
+		return
+	}
+	if !jsonOut {
+		fmt.Fprintf(stdout, "certify: %d declared certification(s) found in %d file(s)\n", markerReport.Declared, markerReport.FilesScanned)
+	}
+	runCertifyCompile(ctx, st, service, watermark, stdout, stderr, jsonOut)
 }
 
 // scipImportResult pairs one --scip (or auto-detected) index's path with

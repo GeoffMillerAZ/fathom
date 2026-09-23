@@ -6,6 +6,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/testevidence"
 )
@@ -96,6 +97,21 @@ func cmdTestsIngest(args []string, stdout, stderr io.Writer) int {
 
 	fmt.Fprintf(stdout, "tests ingest: %d suite(s), %d run(s), %d case(s) (%d joined), %d declared certification(s)\n",
 		report.SuitesWritten, report.RunsWritten, report.CasesWritten, report.CasesJoined, markerReport.Declared)
+
+	// The certifications layer recompiles unconditionally at the end of
+	// `tests ingest` (vision 33 / ADR-043 stage 1, TC-6's own wiring
+	// instruction) — this verb's whole job is to pick up fresh
+	// declarations and/or a fresh attested run, so it never skips the
+	// recompile the way the hash-gated plain-`ingest` path
+	// (runCertifyCompile, cmd/fathom/certify_compile.go) can.
+	if certReport, cerr := certify.CompileCertifications(ctx, st, svc, watermark, time.Now()); cerr != nil {
+		fmt.Fprintf(stderr, "warning: certify: compile: %v\n", cerr)
+	} else if certReport.Declared > 0 {
+		fmt.Fprintf(stdout, "certify: %d declared, %d claim(s) compiled\n", certReport.Declared, certReport.ClaimsWritten)
+		for _, w := range certReport.Skipped {
+			fmt.Fprintf(stderr, "warning: certify: %s\n", w)
+		}
+	}
 	return 0
 }
 
