@@ -280,6 +280,41 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 	return nil
 }
 
+// TestCaseRunsForSymbol returns testSymbolKey's case observations across
+// every attested run for serviceID, most-recent-run-first — see the Store
+// interface doc comment (vision 33 stage 1, TC-6/TC-8).
+func (s *SQLiteStore) TestCaseRunsForSymbol(ctx context.Context, serviceID, testSymbolKey string, limit int) ([]TestCaseRun, error) {
+	query := `
+SELECT tc.run_digest, tc.suite, tr.component, tr.started_at, tc.status, tc.attempts, tr.ingested_at
+FROM test_cases tc
+JOIN test_runs tr ON tr.service_id = tc.service_id AND tr.run_digest = tc.run_digest AND tr.suite = tc.suite
+WHERE tc.service_id = ? AND tc.test_symbol_key = ?
+ORDER BY tr.started_at DESC, tr.ingested_at DESC
+`
+	args := []any{serviceID, testSymbolKey}
+	if limit > 0 {
+		query += `LIMIT ?`
+		args = append(args, limit)
+	}
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("TestCaseRunsForSymbol query: %w", err)
+	}
+	defer rows.Close()
+	var out []TestCaseRun
+	for rows.Next() {
+		var r TestCaseRun
+		if err := rows.Scan(&r.RunDigest, &r.Suite, &r.Component, &r.StartedAt, &r.Status, &r.Attempts, &r.IngestedAt); err != nil {
+			return nil, fmt.Errorf("TestCaseRunsForSymbol scan: %w", err)
+		}
+		out = append(out, r)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("TestCaseRunsForSymbol rows: %w", err)
+	}
+	return out, nil
+}
+
 // certifyDeclarationsForServiceRaw returns every declared certification fact
 // for serviceID, ordered by (file, line).
 func (s *SQLiteStore) certifyDeclarationsForServiceRaw(ctx context.Context, serviceID string) ([]CertifyDeclaration, error) {

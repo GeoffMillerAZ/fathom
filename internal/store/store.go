@@ -190,6 +190,24 @@ type CertifyDeclaration struct {
 	Watermark     string
 }
 
+// TestCaseRun is one historical case-status observation for a Test*
+// symbol, across attested runs (vision 33 stage 1, TC-6/TC-8): the read
+// internal/certify.CompileCertifications/SweepCertifications use to
+// derive a certificate's STATE — the last attested run's status/attempts,
+// and a flake within the last three attested runs (design doc §3). It is
+// the same test_cases/test_runs join TestSuiteStatuses' own LastRun read
+// performs, but keyed by TEST SYMBOL rather than by suite, and carrying
+// every historical run rather than only the newest.
+type TestCaseRun struct {
+	RunDigest  string
+	Suite      string
+	Component  string
+	StartedAt  string
+	Status     string
+	Attempts   int
+	IngestedAt int64
+}
+
 // Store is the persistence contract for fathom's evidence layer.
 // Implementations must be safe for concurrent reads; writes are serialised by
 // the implementation (single writer pattern).
@@ -543,4 +561,11 @@ type Store interface {
 	// CertifyDeclarationsForService returns every declared certification
 	// fact for serviceID, ordered by (file, line).
 	CertifyDeclarationsForService(ctx context.Context, serviceID string) ([]CertifyDeclaration, error)
+
+	// TestCaseRunsForSymbol returns testSymbolKey's case observations
+	// across every attested run for serviceID, most-recent-run-first (by
+	// the owning run's started_at, ties broken by ingested_at — the same
+	// ordering TestSuiteStatuses' own last-run read uses), capped at limit
+	// (0 = unbounded). vision 33 stage 1 (TC-6/TC-8).
+	TestCaseRunsForSymbol(ctx context.Context, serviceID, testSymbolKey string, limit int) ([]TestCaseRun, error)
 }

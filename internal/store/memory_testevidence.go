@@ -101,6 +101,35 @@ func (m *MemoryStore) TestSuiteStatuses(_ context.Context, serviceID string) ([]
 	return out, nil
 }
 
+// TestCaseRunsForSymbol returns testSymbolKey's case observations across
+// every attested run for serviceID, most-recent-run-first (by StartedAt,
+// ties broken by insertion order) — see the Store interface doc comment
+// (vision 33 stage 1, TC-6/TC-8).
+func (m *MemoryStore) TestCaseRunsForSymbol(_ context.Context, serviceID, testSymbolKey string, limit int) ([]TestCaseRun, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	var out []TestCaseRun
+	for _, r := range m.testRuns[serviceID] {
+		for _, c := range r.Cases {
+			if c.TestSymbolKey != testSymbolKey {
+				continue
+			}
+			out = append(out, TestCaseRun{
+				RunDigest: r.RunDigest, Suite: r.Suite, Component: r.Component,
+				StartedAt: r.StartedAt, Status: c.Status, Attempts: c.Attempts,
+			})
+		}
+	}
+	// Most-recent-run-first: StartedAt descending, stable so ties preserve
+	// insertion order (the same "last wins" TestSuiteStatuses documents).
+	sort.SliceStable(out, func(i, j int) bool { return out[i].StartedAt > out[j].StartedAt })
+	if limit > 0 && len(out) > limit {
+		out = out[:limit]
+	}
+	return out, nil
+}
+
 // PutCertifyDeclarations replaces serviceID's entire certify_declarations
 // set — see the Store interface doc comment for the wholesale-replace
 // contract.

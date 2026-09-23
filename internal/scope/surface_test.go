@@ -101,6 +101,9 @@ var storeMethodDisposition = map[string]string{
 	"PutTestRuns":            "write path",
 	"PutCertifyDeclarations": "write path",
 	"TestSuiteStatuses":      "declared suite + last-run summary (component/suite/class/tier/verdict/totals), no path-anchored source content",
+
+	// --- vision 33 / ADR-043 stage 1 (TC-6/TC-8): certification evidence ---
+	"TestCaseRunsForSymbol": "per-run case status/attempts history keyed by test symbol, no path-anchored source content",
 }
 
 func seedSurfaceStore(t *testing.T, s store.Store) {
