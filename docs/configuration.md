@@ -239,7 +239,27 @@ store           = "workspace/db/fleet.sqlite"
 addr            = "127.0.0.1:7575"
 auto_refresh    = true
 default_profile = "work"
+memory_limit    = "3GiB"
 ```
+
+`memory_limit` (O108, `docs/plans/daemon-footprint.md`) is a SOFT ceiling —
+Go size syntax (IEC units only: `"3GiB"`, `"512MiB"`, `"1.5GiB"`) or the
+literal `"off"` — applied at startup with `runtime/debug.SetMemoryLimit`: the
+runtime GCs and scavenges harder as total memory use approaches it, but it
+never kills the process, unlike a hard OS/container limit. Unset defaults to
+`"3GiB"`; `FATHOM_MEMORY_LIMIT` (an env var, not a config key) always wins
+over the config value, matching every other daemon key's env-wins-over-config
+precedence. The startup line reads `serve-http: memory limit 3 GiB (soft,
+runtime.SetMemoryLimit)` or `serve-http: memory limit off`; the live value is
+also on `GET /metrics` as `go_memory_limit_bytes` and named in `fathom
+doctor`'s `daemon_footprint` row. This bounds how large a single typed-edge
+pass's peak heap is allowed to grow — complementary to a process-wide
+semaphore that serializes typed-edge passes (so two large services never
+type-check concurrently; `fathom_typed_pass_inflight`/`_waited_total` on
+`/metrics`) and to the periodic scavenger (`FATHOM_SCAVENGE_INTERVAL`,
+`FATHOM_SCAVENGE=off`, `docs/guides/fleet-index.md`) that bounds how long a
+peak's OS-visible footprint survives after the fact — three independent
+bounds on the same O108 growth pattern, not alternatives to each other.
 
 This is a **read-once** load: a change to `config.toml` reaches the daemon
 only after a restart —

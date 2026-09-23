@@ -46,14 +46,49 @@ compressed rather than free).
 - [x] Regression: the call-graph memo never exceeds its configured capacity and `heap_inuse` stays within 2x of its post-fill level across 300 sequential large-graph (10k-node) misses spanning 15 services against a cap-8 cache {id: DF-6, symbol: CachedCallGraph.Graph, package: internal/analysis/callgraph, reachable_from: TestCachedCallGraph_SequentialChurnDoesNotLeak}
 - [x] Regression: the same boundedness holds under concurrent load — 50 rounds of 12-way-simultaneous misses on the same (service, watermark) key (the daemon's own real operating condition serving many parallel agent sessions), which every sequential driver could not exercise; proves a "thundering herd" of redundant concurrent builds (`Graph()`'s `build()` runs outside the lock by design) does not become a permanent floor {id: DF-7, symbol: CachedCallGraph.Graph, package: internal/analysis/callgraph, reachable_from: TestCachedCallGraph_ConcurrentMissesDoNotLeak}
 
+## D. W-N (2026-09-23): bound the peaks — O108 reframed
+
+Production evidence (O108's 2026-09-23 addendum) reframed root cause: not an
+unattributed leak, but idle heap left behind by PEAKS — typed-edge passes
+over large services (`app-kit` ≈390 packages; one session issued 19 `ingest`
+calls on it in 20 minutes while the daemon grew 1.4 → 5.2 GB) — that darwin
+reclaims lazily (compress, later swap) rather than immediately. W-L's
+scavenger (§C, DF-5) already bounds how long a peak's OS-visible footprint
+survives; this section bounds the peaks themselves — how large one can grow,
+and how many can happen at once.
+
+- [x] A process-wide semaphore serializes the typed-edge pass: only one runs at a time anywhere in the process; a second acquire that arrives while the first is held waits, the contended wait is counted (`fathom_typed_pass_waited_total`), and the inflight gauge (`fathom_typed_pass_inflight`, exposed on `/metrics`) returns to 0 once every holder has released {id: DF-8, symbol: acquireTypedPassSlot, package: internal/fusion, reachable_from: TestAcquireTypedPassSlot_SerializesAndCounts}
+- [x] ctx cancellation while waiting for the slot returns `ctx.Err()` promptly instead of blocking for the holder to release, and the cancelled waiter never acquires (the gauge stays owned by the original holder throughout) {id: DF-9, symbol: acquireTypedPassSlot, package: internal/fusion, reachable_from: TestAcquireTypedPassSlot_CancelWhileWaiting}
+- [x] Two real typed-edge passes over the small `testdata/typedfixture` module, run concurrently and each bracketed by the same acquire/release pair `Pipeline.enrichTypedEdges` uses in production, never overlap — the second's guarded window starts only after the first's ends {id: DF-10, symbol: EnrichTypedEdges, package: internal/fusion, reachable_from: TestTypedPassSemaphore_SerializesConcurrentFixturePasses}
+- [x] The typed pass's own early-skip guard (`DisableTypedEdges`, no Go source, no `go.mod`) returns before ever touching the semaphore — a skipped service never inflates `fathom_typed_pass_inflight` {id: DF-11, symbol: Pipeline.enrichTypedEdges, package: internal/fusion, reachable_from: TestEnrichTypedEdges_ServiceSkipsSemaphoreGate}
+- [x] `/metrics` gains `fathom_typed_pass_inflight` (0/1 gauge) and `fathom_typed_pass_waited_total` (counter) beside the existing `fathom_typed_pass_total`, plus `go_memory_limit_bytes` (below) {id: DF-12, symbol: newHTTPHandler, package: cmd/fathom, reachable_from: TestServeHTTPMetrics}
+- [x] `[daemon].memory_limit` parses Go size syntax (`"3GiB"`, `"512MiB"`, `"1.5GiB"`, IEC units only) and the literal `"off"`, both shape-checked by `schema.cue`'s pattern and re-checked at load time {id: DF-13, symbol: ParseMemoryLimit, package: internal/config, reachable_from: TestParseMemoryLimit_Valid}
+- [x] A malformed `memory_limit` value is refused outright — no silent fallback to the default for a typo, a decimal-SI unit, a negative, or a zero value {id: DF-14, symbol: ParseMemoryLimit, package: internal/config, reachable_from: TestParseMemoryLimit_Refused}
+- [x] `FATHOM_MEMORY_LIMIT` (env) wins over `[daemon].memory_limit` (config), which wins over the `"3GiB"` built-in default — the same env-wins-over-config precedence `FATHOM_CALL_LOG` already follows {id: DF-15, symbol: memoryLimitFromEnvOrConfig, package: cmd/fathom, reachable_from: TestMemoryLimitFromEnvOrConfig}
+- [x] The resolved limit is actually applied to the runtime with `runtime/debug.SetMemoryLimit` at daemon startup, and reads back correctly via `debug.SetMemoryLimit(-1)`'s query-only negative-input contract; `"off"` never calls `SetMemoryLimit` at all {id: DF-16, symbol: applyMemoryLimit, package: cmd/fathom, reachable_from: TestApplyMemoryLimit_ActuallyAppliesToRuntime}
+- [x] `/metrics` gains `go_memory_limit_bytes`, read live from the runtime (never a cached copy of what startup applied) {id: DF-17, symbol: memoryLimitMetricLine, package: cmd/fathom, reachable_from: TestMemoryLimitMetricLine}
+- [x] `fathom doctor`'s `daemon_footprint` row names the configured memory limit (or `"off"`) in its reason, without forcing a SKIP on a daemon whose `/metrics` predates this wave (the limit segment is appended only when the metric is present) {id: DF-18, symbol: checkDaemonFootprint, package: cmd/fathom, reachable_from: TestCheckDaemonFootprint_NamesMemoryLimitInReason}
+
 ## Status
 
-Not closed. The synthetic curves this round produced are flat (Task 2/3's own
-closure bar), but that is a NEGATIVE result against the named candidates, not
-a positive identification of the allocation site that reached 12 GB in
-production — see O108 for the full honesty accounting. The scavenger (DF-5)
-is a defensible, evidence-directed mitigation (it targets the ONE signature
-every driver reproduced: `heap_sys` never decreasing) rather than a fix for a
-located leak. Re-measure `top -o cmprs` / `/metrics` `go_memstats_heap_sys_bytes`
-against the deployed daemon at +9h and update O108's Status before this plan's
-rows are treated as the end of the story.
+Mitigated-and-bounded (was: not closed). The 2026-09-23 production reading
+(O108's addendum) confirms the mechanism this round's synthetic drivers could
+not pin down — peaks + darwin's lazy reclamation, not a live leak — and
+confirms the scavenger (DF-5) closes the OS-visible gap it targets
+(`top -stats mem,cmprs` 44 MB / nothing compressed after a pass that had left
+`heap_sys` 753 MB and RSS 765 MB; `ps rss` is the wrong instrument to judge it
+by — it counts `MADV_FREE`'d pages as resident until the kernel actually
+reclaims them). §D adds two bounds ON the peaks themselves, not just their
+cleanup: DF-8..11 cap how many typed-edge passes can run at once
+(serialization — directly answering the 19-calls-in-20-minutes/1.4→5.2 GB
+reading); DF-13..18 cap how large the heap is allowed to grow toward before
+the runtime itself starts working harder to shrink it (`memory_limit`, soft,
+default 3 GiB).
+
+Not claimed fully closed: this observation's own prior closure bar — a
+sustained +9h production reading (`top -o cmprs` / `/metrics`
+`go_memstats_heap_sys_bytes` against the deployed daemon's own value at
+start) — is still pending a sampler run with all three mitigations
+(scavenger + semaphore + memory limit) live; the 2026-09-23 reading is a
+single-pass snapshot, not that curve. Update O108's Status again once the
+sampler confirms it.

@@ -270,9 +270,16 @@ O108, `docs/plans/daemon-footprint.md`), reaching 12 GB (11 GB compressed) over
 it's felt, not after:
 
 ```sh
-curl -s localhost:7575/metrics | grep -E 'heap_(inuse|sys)_bytes|goroutines|graph_memo|open_stores'
-fathom doctor   # daemon_footprint row: WARN above 2 GiB heap in-use, names the remedy
+curl -s localhost:7575/metrics | grep -E 'heap_(inuse|sys)_bytes|goroutines|graph_memo|open_stores|typed_pass|memory_limit'
+fathom doctor   # daemon_footprint row: WARN above 2 GiB heap in-use, names the memory limit too
 ```
+
+Read the daemon's OS-visible footprint with `top -pid <pid> -stats mem,cmprs`
+(or `/metrics`' `go_memstats_heap_sys_bytes`), never `ps`'s RSS column — `ps`
+counts `MADV_FREE`'d pages as resident until the kernel actually reclaims
+them, so it can read hundreds of MB high for minutes after a scavenge pass
+has already returned that memory to the OS (2026-09-23 production reading,
+O108).
 
 A live heap snapshot when a number looks wrong:
 
@@ -289,16 +296,21 @@ curl -s localhost:7575/debug/pprof/heap -o heap-b.pb.gz
 go tool pprof -top -sample_index=inuse_space -base heap-a.pb.gz heap-b.pb.gz
 ```
 
-The daemon also returns freed heap to the OS every 15 minutes by default
+Three independent bounds now target O108's growth pattern — a 2026-09-23
+production reading reframed it as idle heap left behind by PEAKS (typed-edge
+passes over large services), reclaimed lazily by darwin, not a live leak.
+The daemon returns freed heap to the OS every 15 minutes by default
 (`debug.FreeOSMemory`, `FATHOM_SCAVENGE_INTERVAL` to tune, `FATHOM_SCAVENGE=off`
 to disable) rather than waiting on Go's own lazy background scavenger — bounds
 how long any one peak (a large graph build, a burst of concurrent cache
-misses across many parallel agent sessions) can inflate `go_memstats_heap_sys_bytes`,
-the one number every O108 synthetic driver showed never decreasing on its own.
-If footprint is still climbing after a restart, re-read O108 before assuming
-the mitigation covers it — the round that shipped it could not conclusively
-isolate the original allocation site (see the observation's own honesty
-accounting).
+misses across many parallel agent sessions) can inflate `go_memstats_heap_sys_bytes`.
+A process-wide semaphore serializes the typed-edge pass so two large services
+(an `app-kit`-sized one included) can never type-check concurrently — bounds
+how many peaks can stack at once. `[daemon] memory_limit` (default `"3GiB"`,
+`docs/configuration.md`) applies a soft `runtime.SetMemoryLimit` ceiling —
+bounds how large any one peak's heap is allowed to grow in the first place.
+If footprint is still climbing after a restart with all three live, re-read
+O108 before assuming the mitigations cover it.
 
 ## Fleet wiring: `fleet report`, `reconcile`, receipts, `undo` (law 15)
 
