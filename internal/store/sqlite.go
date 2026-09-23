@@ -284,6 +284,7 @@ CREATE TABLE IF NOT EXISTS semantic_claims (
     valid_from             TEXT   NOT NULL DEFAULT '',
     valid_to               TEXT   NOT NULL DEFAULT '',
     asserted_by            TEXT   NOT NULL DEFAULT '',
+    meta                   TEXT   NOT NULL DEFAULT '',
     PRIMARY KEY (service_id, claim_id)
 );
 
@@ -459,6 +460,12 @@ CREATE INDEX IF NOT EXISTS idx_observations_service_id
 		// AssertedBy — a legacy claim/event simply reads back with "".
 		{"semantic_claims", "asserted_by", `ALTER TABLE semantic_claims ADD COLUMN asserted_by TEXT NOT NULL DEFAULT ''`},
 		{"claim_events", "asserted_by", `ALTER TABLE claim_events ADD COLUMN asserted_by TEXT NOT NULL DEFAULT ''`},
+		// vision 33 / ADR-043 stage 1 (TC-6): a pre-existing store predates
+		// the opaque per-claim Meta provenance blob — PutClaims/
+		// ClaimsForService(Serve) must not fail with "no such column" on
+		// it; a legacy claim simply reads back with Meta==nil, same
+		// additive-migration bounce every earlier claim column hit.
+		{"semantic_claims", "meta", `ALTER TABLE semantic_claims ADD COLUMN meta TEXT NOT NULL DEFAULT ''`},
 	}
 	existingByTable := map[string]map[string]bool{}
 	for _, m := range migrations {
@@ -1155,8 +1162,8 @@ func (s *SQLiteStore) PutClaims(ctx context.Context, claims []core.SemanticClaim
 INSERT INTO semantic_claims
     (service_id, claim_id, layer, layer_version, kind, subject, rule, scope,
      tier, tier_profile, status, model, prompt_version, repro_key, input_digest,
-     compiled_at_watermark, compiled_at, class, valid_from, valid_to, asserted_by)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     compiled_at_watermark, compiled_at, class, valid_from, valid_to, asserted_by, meta)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (service_id, claim_id) DO UPDATE SET
     layer                 = excluded.layer,
     layer_version         = excluded.layer_version,
@@ -1193,7 +1200,8 @@ ON CONFLICT (service_id, claim_id) DO UPDATE SET
     -- the window (an ordinary caller passes ValidTo's zero value/"" on a
     -- normal write) exactly when the status resurrection itself does.
     valid_to              = CASE WHEN semantic_claims.status = 'refuted' THEN semantic_claims.valid_to ELSE excluded.valid_to END,
-    asserted_by           = excluded.asserted_by
+    asserted_by           = excluded.asserted_by,
+    meta                  = excluded.meta
 `)
 		if err != nil {
 			return fmt.Errorf("PutClaims prepare claims: %w", err)
@@ -1205,6 +1213,10 @@ ON CONFLICT (service_id, claim_id) DO UPDATE SET
 			if err != nil {
 				return fmt.Errorf("PutClaims marshal scope: %w", err)
 			}
+			metaText := ""
+			if len(c.Meta) > 0 {
+				metaText = string(c.Meta)
+			}
 			_, err = stmt.ExecContext(
 				ctx,
 				c.ServiceID, c.ClaimID,
@@ -1213,7 +1225,7 @@ ON CONFLICT (service_id, claim_id) DO UPDATE SET
 				string(c.Status),
 				c.Model, c.PromptVersion, c.ReproKey, c.InputDigest,
 				c.CompiledAtWatermark, c.CompiledAt.UnixNano(), string(c.Class),
-				formatClaimTime(c.ValidFrom), formatClaimTime(c.ValidTo), c.AssertedBy,
+				formatClaimTime(c.ValidFrom), formatClaimTime(c.ValidTo), c.AssertedBy, metaText,
 			)
 			if err != nil {
 				return fmt.Errorf("PutClaims exec claim: %w", err)
@@ -1263,7 +1275,7 @@ VALUES (?, ?, ?, ?, ?, ?)
 func (s *SQLiteStore) ClaimsForService(ctx context.Context, serviceID, layer string) ([]core.SemanticClaim, error) {
 	const cols = `service_id, claim_id, layer, layer_version, kind, subject, rule, scope,
 	tier, tier_profile, status, model, prompt_version, repro_key, input_digest,
-	compiled_at_watermark, compiled_at, class, valid_from, valid_to, asserted_by`
+	compiled_at_watermark, compiled_at, class, valid_from, valid_to, asserted_by, meta`
 	var (
 		rows *sql.Rows
 		err  error
@@ -1308,7 +1320,7 @@ var scopeReachAnywhereLike = []string{
 func (s *SQLiteStore) ClaimsForServe(ctx context.Context, serviceID string, layers []string, statuses []core.ClaimStatus, scopePrefixes []string) ([]core.SemanticClaim, error) {
 	const cols = `service_id, claim_id, layer, layer_version, kind, subject, rule, scope,
 	tier, tier_profile, status, model, prompt_version, repro_key, input_digest,
-	compiled_at_watermark, compiled_at, class, valid_from, valid_to, asserted_by`
+	compiled_at_watermark, compiled_at, class, valid_from, valid_to, asserted_by, meta`
 
 	where := []string{"service_id = ?"}
 	args := []any{serviceID}
@@ -1881,6 +1893,7 @@ func scanClaims(rows *sql.Rows) ([]core.SemanticClaim, error) {
 			compiledAt    int64
 			validFromText string
 			validToText   string
+			metaText      string
 		)
 		if err := rows.Scan(
 			&c.ServiceID, &c.ClaimID,
@@ -1889,7 +1902,7 @@ func scanClaims(rows *sql.Rows) ([]core.SemanticClaim, error) {
 			(*string)(&c.Status),
 			&c.Model, &c.PromptVersion, &c.ReproKey, &c.InputDigest,
 			&c.CompiledAtWatermark, &compiledAt, (*string)(&c.Class),
-			&validFromText, &validToText, &c.AssertedBy,
+			&validFromText, &validToText, &c.AssertedBy, &metaText,
 		); err != nil {
 			return nil, fmt.Errorf("scanClaims scan: %w", err)
 		}
@@ -1899,6 +1912,9 @@ func scanClaims(rows *sql.Rows) ([]core.SemanticClaim, error) {
 		c.CompiledAt = time.Unix(0, compiledAt).UTC()
 		c.ValidFrom = parseClaimTime(validFromText)
 		c.ValidTo = parseClaimTime(validToText)
+		if metaText != "" {
+			c.Meta = json.RawMessage(metaText)
+		}
 		result = append(result, c)
 	}
 	if err := rows.Err(); err != nil {

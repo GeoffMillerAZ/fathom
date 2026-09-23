@@ -3,6 +3,7 @@ package core
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"strconv"
 	"strings"
 	"time"
@@ -119,6 +120,18 @@ type SemanticClaim struct {
 	// false "never valid"/"already closed".
 	ValidFrom time.Time
 	ValidTo   time.Time
+
+	// Meta (vision 33 / ADR-043 stage 1, TC-6) is an additive, opaque JSON
+	// provenance blob for a claim whose facts don't fit SemanticClaim's own
+	// typed fields — the certifications layer's own {test, suite, class,
+	// strength, state, run_digest, attempts, coverage_pct?, mutation_score?}
+	// block (design doc §3) is the first user. nil/empty for every claim
+	// written before this field existed (additive migration, empty-string
+	// store column, same convention as every earlier additive claim column
+	// — see ValidFrom/AssertedBy's own doc comments) and for every claim
+	// that carries no such provenance. A reader unmarshal-per-layer: this
+	// package places no schema on the bytes beyond "valid JSON or empty".
+	Meta json.RawMessage
 
 	// AssertedBy (SU-22, ADR-041 decision 7) is the PROV-style link to the
 	// activity that minted this claim: a compile run id, a review

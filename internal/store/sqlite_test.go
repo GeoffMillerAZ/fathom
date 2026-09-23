@@ -543,7 +543,7 @@ func TestScanClaims_RoundTripsClass(t *testing.T) {
 	rows, err := s.db.QueryContext(context.Background(), `
 SELECT service_id, claim_id, layer, layer_version, kind, subject, rule, scope,
 	tier, tier_profile, status, model, prompt_version, repro_key, input_digest,
-	compiled_at_watermark, compiled_at, class, valid_from, valid_to, asserted_by
+	compiled_at_watermark, compiled_at, class, valid_from, valid_to, asserted_by, meta
 FROM semantic_claims WHERE claim_id = ?
 `, "scan-claims-direct")
 	if err != nil {
