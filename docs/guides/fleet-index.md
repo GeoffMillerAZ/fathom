@@ -262,6 +262,44 @@ Never hand-roll it with `cp`:
   (`.fathom/observations.md` O10, closed structurally 2026-08-08 — the
   grant now follows the `fathom-dev` identity, not the hash).
 
+## Daemon memory footprint (O108)
+
+The always-on daemon grew ~0.9 GB/hour in one incident (`.fathom/observations.md`
+O108, `docs/plans/daemon-footprint.md`), reaching 12 GB (11 GB compressed) over
+9.4h and killing the pre-push gate's low-memory watchdog twice. Watch it before
+it's felt, not after:
+
+```sh
+curl -s localhost:7575/metrics | grep -E 'heap_(inuse|sys)_bytes|goroutines|graph_memo|open_stores'
+fathom doctor   # daemon_footprint row: WARN above 2 GiB heap in-use, names the remedy
+```
+
+A live heap snapshot when a number looks wrong:
+
+```sh
+curl -s localhost:7575/debug/pprof/heap -o heap.pb.gz && go tool pprof -top -sample_index=inuse_space heap.pb.gz
+```
+
+Two snapshots minutes apart, `-base`-diffed, show what's actually growing
+rather than what's merely large:
+
+```sh
+curl -s localhost:7575/debug/pprof/heap -o heap-a.pb.gz   # wait, then:
+curl -s localhost:7575/debug/pprof/heap -o heap-b.pb.gz
+go tool pprof -top -sample_index=inuse_space -base heap-a.pb.gz heap-b.pb.gz
+```
+
+The daemon also returns freed heap to the OS every 15 minutes by default
+(`debug.FreeOSMemory`, `FATHOM_SCAVENGE_INTERVAL` to tune, `FATHOM_SCAVENGE=off`
+to disable) rather than waiting on Go's own lazy background scavenger — bounds
+how long any one peak (a large graph build, a burst of concurrent cache
+misses across many parallel agent sessions) can inflate `go_memstats_heap_sys_bytes`,
+the one number every O108 synthetic driver showed never decreasing on its own.
+If footprint is still climbing after a restart, re-read O108 before assuming
+the mitigation covers it — the round that shipped it could not conclusively
+isolate the original allocation site (see the observation's own honesty
+accounting).
+
 ## Fleet wiring: `fleet report`, `reconcile`, receipts, `undo` (law 15)
 
 `fathom fleet report` writes the wiring/freshness report across every
