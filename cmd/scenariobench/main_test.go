@@ -101,6 +101,49 @@ func writeCorpusFixture(t *testing.T, dir, repoURL, commit string) string {
 	return path
 }
 
+// writeTwoTaskCorpusFixture is writeCorpusFixture's two-task sibling (O111,
+// TestCmdRun_RunOneCellErrorLostsOneCellRunContinues): T1 and T2 share the
+// same "control" arm and the same subject (repo_url, base_commit), so
+// PrepareSubject resolves them to the SAME shared worktree (keyed on
+// subject+base_commit+arm, no task component — RunArmsConcurrently's own
+// doc comment) but DIFFERENT per-task CellDirs (task.ID is part of that
+// path — subject.go's wt.CellDir assignment), which is exactly the
+// combination the test needs: break T1's own cell dir without touching
+// T2's.
+func writeTwoTaskCorpusFixture(t *testing.T, dir, repoURL, commit string) string {
+	t.Helper()
+	corpus := `{
+  "arms": {
+    "control": {"wired": false, "instructions": "none", "surface": ""}
+  },
+  "tasks": [{
+    "id": "T1",
+    "category": "bug_fix",
+    "prompt": "fix it",
+    "derivation": "synthetic fixture for scenariobench's own tests",
+    "subject": {"repo_url": "` + repoURL + `", "base_commit": "` + commit + `"},
+    "sessions": {"mode": "single", "count": 1, "max_turns": 5},
+    "oracle": {"fail_to_pass": ["TestPass"], "coverage": true},
+    "predictions": {"control": "no-effect (this is the control)"}
+  }, {
+    "id": "T2",
+    "category": "bug_fix",
+    "prompt": "fix it too",
+    "derivation": "synthetic fixture for scenariobench's own tests",
+    "subject": {"repo_url": "` + repoURL + `", "base_commit": "` + commit + `"},
+    "sessions": {"mode": "single", "count": 1, "max_turns": 5},
+    "oracle": {"fail_to_pass": ["TestPass"], "coverage": true},
+    "predictions": {"control": "no-effect (this is the control)"}
+  }],
+  "criterion": {"id": "C1", "treatment": "control", "control": "control", "min_trials": 1}
+}`
+	path := filepath.Join(dir, "corpus.json")
+	if err := os.WriteFile(path, []byte(corpus), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
 func TestCmdPlan_NoSpend(t *testing.T) {
 	dir := t.TempDir()
 	repoURL, commit := gitFixtureSubject(t)
@@ -392,6 +435,100 @@ func TestStickyInstrumentFaultMessage(t *testing.T) {
 				t.Errorf("stickyInstrumentFaultMessage(%q) returned sticky=false with a non-empty message %q", c.lostReason, msg)
 			}
 		})
+	}
+}
+
+// TestCmdRun_RunOneCellErrorLostsOneCellRunContinues is O111's own
+// failing-first proof (guards-jev-r1, 2026-09-23): before this fix, a
+// runOneCell error that was NOT errSubjectPrep — running sessions, running
+// baseline detectors, running oracle — propagated all the way through
+// runCellForReport as a hard `error`, and cmdRun's own loop
+// (`if errs[k] != nil { …; return 2 }`) aborted the WHOLE remaining run at
+// the first one. That is exactly what happened live: guards-i16-raw-cp-
+// deploy/full-jev/t1's own oracle-scoring git call ("listing changed paths
+// … exit status 128", refusal.go's changedPaths) killed the run with 7 of
+// 32 cells never scored — the rest of that task PLUS the entire next task
+// (guards-i28-duckdb-path) never ran at all.
+//
+// This reproduces the SHAPE of that failure (not the TCC wedge itself,
+// which is environmental and not reproducible on demand): T1's own
+// per-trial cell dir (wt.CellDir + "/trial-1", runOneCell's own
+// os.MkdirAll target) is pre-occupied by a plain file, so
+// os.MkdirAll(wt.CellDir, …) fails with a genuine, non-errSubjectPrep,
+// non-ExitError Go error — the same general class (a filesystem call
+// inside runOneCell's own pipeline failing for a reason PrepareSubject
+// never saw) as the production git failure, reached without needing a
+// live git-object read to actually break. T2 shares nothing with T1 but
+// the worktree (same subject/base_commit/arm — RunArmsConcurrently's own
+// doc comment) and its own CellDir is untouched, so it must still run and
+// be stored: proof the run continued past T1 rather than aborting.
+func TestCmdRun_RunOneCellErrorLostsOneCellRunContinues(t *testing.T) {
+	dir := t.TempDir()
+	repoURL, commit := gitFixtureSubject(t)
+	root := filepath.Join(dir, "fathom-root")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	corpusPath := writeTwoTaskCorpusFixture(t, dir, repoURL, commit)
+
+	// Learn T1's own (deterministic: subject/base_commit/arm plus task.ID —
+	// subject.go's wt.CellDir assignment, no randomness) cell dir by
+	// preparing it directly, then occupy the exact path runOneCell's own
+	// PerTrialCellDir(cellDir, "", 1) will need to os.MkdirAll as a
+	// directory with a plain file instead.
+	task1 := scenariobench.Task{ID: "T1", Subject: scenariobench.Subject{RepoURL: repoURL, BaseCommit: commit}}
+	arm := scenariobench.Arm{Instructions: "none"}
+	probe, err := scenariobench.PrepareSubject(context.Background(), task1, arm, root)
+	if err != nil {
+		t.Fatalf("PrepareSubject (probe): %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(probe.CellDir, "trial-1"), []byte("occupying the trial dir"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := scenariobench.StopWorktree(&probe); err != nil {
+		t.Fatalf("StopWorktree (probe): %v", err)
+	}
+
+	cellsDir := filepath.Join(dir, "cells")
+	rawDir := filepath.Join(dir, "raw")
+	streamsDir := repoRelative(t, "testdata", "scenariobench", "streams")
+
+	var rc int
+	stderr := captureStderr(t, func() {
+		rc = run([]string{
+			"run",
+			"-corpus", corpusPath,
+			"-root", root,
+			"-cells", cellsDir,
+			"-raw-dir", rawDir,
+			"-run-id", "run-1",
+			"-harness-version", "fake-1",
+			"-harness", "fake",
+			"-fake-streams-dir", streamsDir,
+			"-fake-streams", `{"T1/control":"single-session.jsonl","T2/control":"single-session.jsonl"}`,
+		})
+	})
+	// T1 is LOST (never a fatal abort); T2 runs for real and its fixture
+	// oracle test passes — cmdRun only returns non-zero for a failed cell
+	// (1) or nothing having run at all (3); one ran and passed, one was
+	// lost, so 0.
+	if rc != 0 {
+		t.Fatalf("run exited %d, want 0 (T1 LOST, T2 still ran and passed): stderr=%s", rc, stderr)
+	}
+	if !strings.Contains(stderr, "T1/control/t1: LOST") {
+		t.Errorf("expected T1 to be reported LOST (not a fatal abort), got:\n%s", stderr)
+	}
+	if strings.Contains(stderr, "scenariobench run: T1/control/t1: creating per-trial cell dir") {
+		t.Errorf("T1's failure must never reach cmdRun's own fatal \"scenariobench run: …\" line, got:\n%s", stderr)
+	}
+
+	// Proof the run continued past T1: T2's cell must be stored.
+	t2Dir, err := filepath.Glob(filepath.Join(cellsDir, "*"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(t2Dir) == 0 {
+		t.Fatalf("expected T2's cell to be stored under %s (the run must continue past T1's LOST cell), found nothing", cellsDir)
 	}
 }
 

@@ -687,8 +687,11 @@ func cmdRun(args []string) int {
 // runCellForReport's own result type, so a caller feeding it through
 // scenariobench.RunArmsConcurrently (RC-16) or a plain sequential loop
 // prints/stores/counts it identically either way.
-// errSubjectPrep marks a PrepareSubject failure so runCellForReport can
-// turn it into a LOST cell instead of aborting the run.
+// errSubjectPrep marks a PrepareSubject failure so runCellForReport's
+// lostReason can carry the "instrument: " prefix (O111 generalized every
+// OTHER runOneCell failure to LOST too — see runCellForReport's own doc
+// comment — but PrepareSubject failing before a worktree ever exists is
+// still worth telling apart from a cell that failed partway through).
 var errSubjectPrep = errors.New("preparing subject")
 
 // stickyInstrumentFaultMessage reports whether lostReason names a machine
@@ -750,15 +753,27 @@ func runCellForReport(ctx context.Context, root string, cp cellPlan, corpus scen
 	}
 
 	result, err := runOneCell(ctx, root, cp, arm, harness, rawDir, model, runID)
-	if err != nil && errors.Is(err, errSubjectPrep) {
-		// A subject that could not be prepared (a fetch refused by the
-		// volume wedge, a daemon that never came up) is an instrument fault
-		// of this cell: LOST, never stored, and the run goes on — one task's
-		// clone must not abort a hundred other cells (vs-pilot-2, 2026-09-13).
-		return cellOutcome{cp: cp, lostReason: "instrument: " + err.Error()}, nil
-	}
 	if err != nil {
-		return cellOutcome{cp: cp}, fmt.Errorf("%s/%s/t%d: %w", cp.task.ID, cp.arm, cp.trial, err)
+		// O111 (guards-jev-r1, 2026-09-23): a fault ANYWHERE in one cell's
+		// own pipeline — subject prep, running sessions, baseline
+		// detectors, or oracle scoring (a git call hitting a wedged TCC
+		// verdict on the external volume, guards-i16-raw-cp-deploy/full-jev/
+		// t1's own "listing changed paths … exit status 128") — must LOST
+		// this ONE cell, never abort every remaining cell in the corpus:
+		// the O52 rule ("a driver kills what it started") generalizes to "a
+		// driver loses only what it touched". Before this fix only a
+		// PrepareSubject failure (errSubjectPrep) degraded to LOST; every
+		// other runOneCell error propagated as a hard error all the way to
+		// cmdRun's "return 2", which is exactly why one cell's own
+		// oracle-scoring failure cost the rest of that task plus the whole
+		// next task (7 of 32 cells, guards-jev-r1). The errSubjectPrep
+		// prefix is kept so a reader can still tell "never even got a
+		// worktree" apart from "failed partway through".
+		reason := "cell: " + err.Error()
+		if errors.Is(err, errSubjectPrep) {
+			reason = "instrument: " + err.Error()
+		}
+		return cellOutcome{cp: cp, lostReason: reason}, nil
 	}
 	if reason := scenariobench.CellLost(result.Sessions); reason != "" {
 		return cellOutcome{cp: cp, lostReason: reason}, nil
