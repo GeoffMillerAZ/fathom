@@ -78,6 +78,12 @@ type Daemon struct {
 	// internal/statedir.Dir) or "workspace" (O63 item 5's in-tree opt-out
 	// — see schema.cue #Daemon.state_dir).
 	StateDir string
+	// MemoryLimit is Go size syntax ("3GiB") or "off" (W-N,
+	// docs/plans/daemon-footprint.md): the soft limit serve-http applies
+	// with runtime/debug.SetMemoryLimit at startup. "" = unset at every
+	// layer; the caller's own default ("3GiB") applies — see
+	// ParseMemoryLimit and schema.cue #Daemon.memory_limit's pattern.
+	MemoryLimit string
 }
 
 // Guards configures ADR-038's enforcement escape hatch (schema.cue

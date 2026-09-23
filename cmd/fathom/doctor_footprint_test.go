@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -89,6 +90,51 @@ func TestCheckDaemonFootprint_Unreachable_Skips(t *testing.T) {
 	c := checkDaemonFootprint(&http.Client{}, ts.URL, true)
 	if c.Status != doctorSkipped {
 		t.Fatalf("status = %s, want skipped", c.Status)
+	}
+}
+
+// TestCheckDaemonFootprint_NamesMemoryLimitInReason pins Task 2's "doctor's
+// daemon_footprint row names the limit in its reason" requirement.
+func TestCheckDaemonFootprint_NamesMemoryLimitInReason(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "process_uptime_seconds 60\n")
+		fmt.Fprintf(w, "go_memstats_heap_inuse_bytes %d\n", int64(64<<20))
+		fmt.Fprintf(w, "go_memory_limit_bytes %d\n", int64(3)<<30)
+	}))
+	defer ts.Close()
+	c := checkDaemonFootprint(&http.Client{}, ts.URL, true)
+	if !strings.Contains(c.Reason, "memory limit 3.00 GiB") {
+		t.Errorf("reason must name the configured memory limit: %q", c.Reason)
+	}
+}
+
+// TestCheckDaemonFootprint_MemoryLimitOff pins the "off" reading for a
+// daemon with no soft limit configured (the runtime's own math.MaxInt64
+// sentinel).
+func TestCheckDaemonFootprint_MemoryLimitOff(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "process_uptime_seconds 60\n")
+		fmt.Fprintf(w, "go_memstats_heap_inuse_bytes %d\n", int64(64<<20))
+		fmt.Fprintf(w, "go_memory_limit_bytes %d\n", int64(math.MaxInt64))
+	}))
+	defer ts.Close()
+	c := checkDaemonFootprint(&http.Client{}, ts.URL, true)
+	if !strings.Contains(c.Reason, "memory limit off") {
+		t.Errorf("reason must report the limit as off: %q", c.Reason)
+	}
+}
+
+// TestCheckDaemonFootprint_MissingMemoryLimit_StillPasses proves a
+// pre-W-N daemon's /metrics (no go_memory_limit_bytes line at all) never
+// forces a skip — only the heap/uptime pair is required.
+func TestCheckDaemonFootprint_MissingMemoryLimit_StillPasses(t *testing.T) {
+	ts := metricsServer(t, 64<<20, 3600)
+	c := checkDaemonFootprint(&http.Client{}, ts.URL, true)
+	if c.Status != doctorPass {
+		t.Fatalf("status = %s (%s), want pass", c.Status, c.Reason)
+	}
+	if strings.Contains(c.Reason, "memory limit") {
+		t.Errorf("reason must not mention memory limit when the metric is absent: %q", c.Reason)
 	}
 }
 

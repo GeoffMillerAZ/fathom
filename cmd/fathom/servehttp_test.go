@@ -221,9 +221,10 @@ func TestServeHTTPMetrics(t *testing.T) {
 		"fathom_autorefresh_total",
 		"fathom_typed_pass_total",
 		// W-N (docs/plans/daemon-footprint.md): the process-wide typed-pass
-		// semaphore's gauge/counter.
+		// semaphore's gauge/counter and the soft memory limit's gauge.
 		"fathom_typed_pass_inflight",
 		"fathom_typed_pass_waited_total",
+		"go_memory_limit_bytes",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("GET /metrics body missing %q; body=%q", want, body)

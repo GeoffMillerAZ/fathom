@@ -97,6 +97,19 @@ package config
 	// back. FATHOM_STATE_DIR (an env var, not a config key — the hooks'
 	// fixed-command-line callers cannot set a flag) overrides both.
 	state_dir?: "workspace"
+
+	// memory_limit is a SOFT limit (W-N, docs/plans/daemon-footprint.md,
+	// O108 reframed as peaks + darwin's lazy reclamation, not a live
+	// leak): applied at daemon startup with runtime/debug.SetMemoryLimit,
+	// it makes the Go runtime GC and scavenge harder as total memory use
+	// approaches it — it never kills the process, unlike a hard (OS or
+	// container) limit. Go size syntax ("3GiB", "512MiB", "1.5GiB") or
+	// the literal "off" to disable; unset defaults to "3GiB"
+	// (internal/config.ParseMemoryLimit does the actual parsing — this
+	// pattern only bounds the shape). FATHOM_MEMORY_LIMIT (an env var, not
+	// a config key — matches every other daemon key's env-wins-over-config
+	// precedence) overrides this.
+	memory_limit?: string & =~"^([0-9]+(\\.[0-9]+)?(B|KiB|MiB|GiB|TiB)|off)$"
 }
 
 // #Guards is ADR-038's escape hatch: `enforce = false` turns every

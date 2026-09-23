@@ -64,3 +64,11 @@ package config
 // 		api_key:  "sk-or-not-representable"
 // 	}
 // }
+//
+// 9. A daemon.memory_limit that is neither Go size syntax nor "off" (W-N,
+//    docs/plans/daemon-footprint.md) — this pattern only bounds the SHAPE;
+//    internal/config.ParseMemoryLimit still rejects a shape-valid but
+//    nonsensical value (e.g. a unit-less number) at load time:
+// bad9: #Config & {
+// 	daemon: memory_limit: "3 gigs"
+// }

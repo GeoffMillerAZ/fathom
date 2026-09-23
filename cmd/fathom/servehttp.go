@@ -218,6 +218,15 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 		go runMemoryScavenger(context.Background(), scavengeIntervalFromEnv(), stdout, debug.FreeOSMemory)
 	}
 
+	// Soft memory limit (memorylimit.go, W-N, docs/plans/daemon-footprint.md):
+	// bounds how hard the runtime lets the heap grow toward a ceiling in
+	// the first place, complementing the scavenger above (which bounds how
+	// long a peak's OS-visible footprint survives AFTER the fact).
+	if memLimitErr := applyMemoryLimit(loaded.Config.Daemon.MemoryLimit, stdout, debug.SetMemoryLimit); memLimitErr != nil {
+		fmt.Fprintf(stderr, "error: %v\n", memLimitErr)
+		return 1
+	}
+
 	fmt.Fprintf(stdout, "serve-http: listening on %s\n", *addr)
 	if err := http.ListenAndServe(*addr, handler); err != nil {
 		fmt.Fprintf(stderr, "error: http serve: %v\n", err)
@@ -549,6 +558,14 @@ func newHTTPHandler(srv *mcp.Server, c *client.Client, selfAddr string, ports *d
 		fmt.Fprintf(w, "go_memstats_heap_sys_bytes %d\n", ms.HeapSys)
 		fmt.Fprintf(w, "go_memstats_sys_bytes %d\n", ms.Sys)
 		fmt.Fprintf(w, "go_goroutines %d\n", runtime.NumGoroutine())
+
+		// go_memory_limit_bytes (W-N, docs/plans/daemon-footprint.md): the
+		// soft limit runtime/debug.SetMemoryLimit is currently enforcing —
+		// read back live (never a cached copy of what serve-http applied
+		// at startup) via the negative-input query contract
+		// (memorylimit.go's currentMemoryLimitBytes). A value at
+		// math.MaxInt64's scale means no limit is set ("off").
+		fmt.Fprint(w, memoryLimitMetricLine())
 
 		// fathom_graph_memo_entries: the watermark-keyed call-graph memo
 		// (BP-28, I21, internal/analysis/callgraph/cache.go) — one entry

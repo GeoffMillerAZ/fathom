@@ -52,6 +52,13 @@ func checkDaemonFootprint(hc *http.Client, baseURL string, daemonUp bool) doctor
 		}
 	}
 	reason := fmt.Sprintf("heap in-use %.2f GiB, uptime %s", heap/(1<<30), time.Duration(uptime*float64(time.Second)).Round(time.Second))
+	// memory limit (W-N, docs/plans/daemon-footprint.md): named here best-
+	// effort — a daemon built before this wave simply has no
+	// go_memory_limit_bytes line, and that alone is not a reason to skip
+	// the rest of this check the way a missing heap/uptime pair is.
+	if limit, ok := m["go_memory_limit_bytes"]; ok {
+		reason += fmt.Sprintf(", memory limit %s", memoryLimitDisplay(limit))
+	}
 	if heap >= daemonFootprintWarnBytes {
 		return doctorCheck{
 			Name: name, Status: doctorWarn,
@@ -60,6 +67,17 @@ func checkDaemonFootprint(hc *http.Client, baseURL string, daemonUp bool) doctor
 		}
 	}
 	return doctorCheck{Name: name, Status: doctorPass, Reason: reason}
+}
+
+// memoryLimitDisplay renders a go_memory_limit_bytes reading (already
+// parsed as float64 by fetchMetricsText) for doctor's reason line — "off"
+// for the runtime's own math.MaxInt64 sentinel (unlimitedMemoryLimit,
+// memorylimit.go), else two-decimal GiB.
+func memoryLimitDisplay(bytes float64) string {
+	if unlimitedMemoryLimit(bytes) {
+		return "off"
+	}
+	return fmt.Sprintf("%.2f GiB", bytes/(1<<30))
 }
 
 // fetchMetricsText GETs baseURL/metrics and parses its "key value\n" text

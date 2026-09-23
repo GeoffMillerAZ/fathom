@@ -106,6 +106,10 @@ bad8: #Config & {
 		api_key:  "sk-or-not-representable"
 	}
 }`},
+		{"daemon.memory_limit neither Go size syntax nor off", `
+bad9: #Config & {
+	daemon: memory_limit: "3 gigs"
+}`},
 	}
 
 	cctx := cuecontext.New()

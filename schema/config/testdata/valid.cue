@@ -15,7 +15,7 @@ example: #Config & {
 			bin:      "/opt/homebrew/bin/claude"
 		}
 		vault: {
-			provider:    "openai"
+			provider: "openai"
 			api_key_cmd: ["op", "read", "op://vault/openai/credential"]
 		}
 		"bedrock-govcloud": {
@@ -30,11 +30,11 @@ example: #Config & {
 			model:    "anthropic.claude-3-5-sonnet-20241022-v2:0"
 		}
 		"azure-gov": {
-			provider:     "azure-openai"
-			endpoint:     "https://example-resource.openai.azure.us"
-			deployment:   "gov-deployment"
-			api_version:  "2024-06-01"
-			api_key_env:  "AZURE_OPENAI_API_KEY"
+			provider:    "azure-openai"
+			endpoint:    "https://example-resource.openai.azure.us"
+			deployment:  "gov-deployment"
+			api_version: "2024-06-01"
+			api_key_env: "AZURE_OPENAI_API_KEY"
 		}
 	}
 	daemon: {
@@ -42,6 +42,7 @@ example: #Config & {
 		addr:            "127.0.0.1:7575"
 		auto_refresh:    true
 		default_profile: "work"
+		memory_limit:    "3GiB"
 	}
 	decide: {
 		provider:          "llm"
