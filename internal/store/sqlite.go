@@ -382,6 +382,13 @@ CREATE INDEX IF NOT EXISTS idx_observations_service_id
 		return err
 	}
 
+	// Test evidence + declared certifications (vision 33 / ADR-043 stage
+	// 0, TC-2/TC-5) — same additive-table convention, own file
+	// (sqlite_testevidence.go).
+	if err := s.createTestEvidenceSchema(); err != nil {
+		return err
+	}
+
 	// Conditional migrations for SQLite stores created before a column
 	// existed. The "no ALTER cruft" stance above holds for the fleet store
 	// (freshly migrated), but scratch/workspace SQLite stores created by

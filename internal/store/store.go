@@ -102,6 +102,94 @@ type CommitInfo struct {
 	SpecIDs           []string
 }
 
+// TestSuite is one declared suite from a service's tests/<component>.cue
+// manifest (vision 33 / ADR-043 stage 0, TC-2) — the facts a manifest
+// asserts about a suite, independent of any run. These tables are
+// ADDITIVE and OPTIONAL: they are not part of store-format-v0's required
+// L0/Writer schema (conformance.go's requiredSchemaV0) — a store with no
+// test evidence ingested simply has empty tables.
+type TestSuite struct {
+	ServiceID string
+	Component string
+	Suite     string
+	Class     string
+	Tier      string
+	Port      string
+	// DeclaredCertifiesJSON is the suite's declared #Certifies entries
+	// (design doc §1), JSON-encoded — always "[]" this round: test-kit's
+	// #Suite.certifies field is a stage-1 ADR-0042 amendment (plan row
+	// TC-17) that has not landed upstream yet. The column exists now so
+	// stage 1 needs no migration to start reading it.
+	DeclaredCertifiesJSON string
+	// Watermark is the service's ingest watermark this suite was observed
+	// under (every row carries it — design doc §2).
+	Watermark string
+}
+
+// TestCase is one case within a TestRun (vision 33 stage 0, TC-2/TC-3).
+type TestCase struct {
+	CaseID     string
+	Name       string
+	Status     string
+	Attempts   int
+	DurationMS int64
+	// FailureJSON is "" when the case carried no #CaseFailure.
+	FailureJSON string
+	// TestSymbolKey is "" when JoinCasesToSymbols (internal/testevidence)
+	// could not join this case to exactly one Test* symbol — kept, never
+	// dropped; the join rate is a reported fact, never a pass/fail (design
+	// doc §2, TC-3).
+	TestSymbolKey string
+}
+
+// TestRun is one ingested #TestResult envelope (vision 33 stage 0, TC-2).
+type TestRun struct {
+	ServiceID string
+	RunDigest string
+	Component string
+	Suite     string
+	// StartedAt is RFC3339, "" when the envelope's timing.startedAt was
+	// absent.
+	StartedAt  string
+	Verdict    string
+	TotalsJSON string
+	// CoverageJSON is "" when the envelope carried no coverage report.
+	CoverageJSON string
+	// SignerTier is the DSSE envelope's own tier field ("unsigned" |
+	// "local" | "cosign-keyless") when the run arrived wrapped, "" for a
+	// bare envelope — fathom records this as a fact and never attempts
+	// signature verification itself (design doc §2).
+	SignerTier string
+	Watermark  string
+	Cases      []TestCase
+}
+
+// TestSuiteStatus is the per-suite read `fathom tests status` (TC-4)
+// renders: a declared suite plus its most-recently-ingested run (by
+// StartedAt, falling back to insertion order when StartedAt ties or is
+// unset) and that run's join stats.
+type TestSuiteStatus struct {
+	TestSuite
+	HasRun      bool
+	LastRun     TestRun // zero value when HasRun is false
+	CasesTotal  int
+	CasesJoined int
+}
+
+// CertifyDeclaration is one declared certification fact read from a
+// `// certifies:` marker above a Test* function (vision 33 stage 0, TC-5).
+// This table is ADDITIVE and OPTIONAL, same conformance note as TestSuite.
+type CertifyDeclaration struct {
+	ServiceID     string
+	TestSymbolKey string
+	Kind          string
+	TargetID      string
+	Strength      string
+	File          string
+	Line          int
+	Watermark     string
+}
+
 // Store is the persistence contract for fathom's evidence layer.
 // Implementations must be safe for concurrent reads; writes are serialised by
 // the implementation (single writer pattern).
@@ -423,4 +511,36 @@ type Store interface {
 	// Results are ordered exactly like ClaimsForService: (layer, subject,
 	// claim_id).
 	ClaimsForServe(ctx context.Context, serviceID string, layers []string, statuses []core.ClaimStatus, scopePrefixes []string) ([]core.SemanticClaim, error)
+
+	// PutTestSuites replaces serviceID's entire declared-suite set (vision
+	// 33 stage 0, TC-2) with suites — a manifest reload's suites ARE the
+	// current truth, the same "wholesale replace" contract PutTypedEdges
+	// uses per package. Calling it with an empty slice clears every suite
+	// for serviceID (a manifest that declared nothing, or was removed).
+	PutTestSuites(ctx context.Context, serviceID string, suites []TestSuite) error
+
+	// PutTestRuns appends runs (each with its embedded Cases) for
+	// serviceID — runs are moment-in-time evidence, never replaced,
+	// because a suite's run HISTORY is itself a fact stage 1 reads
+	// (flakiness from the last three attested runs, design doc §5).
+	// Idempotent by (serviceID, RunDigest): re-ingesting the identical
+	// envelope a second time must not duplicate its cases.
+	PutTestRuns(ctx context.Context, serviceID string, runs []TestRun) error
+
+	// TestSuiteStatuses returns every declared suite for serviceID, each
+	// with its most-recently-ingested run (HasRun false when none has
+	// ever been ingested) and that run's join stats — the read `fathom
+	// tests status` (TC-4) renders directly. Ordered by (component,
+	// suite).
+	TestSuiteStatuses(ctx context.Context, serviceID string) ([]TestSuiteStatus, error)
+
+	// PutCertifyDeclarations replaces serviceID's entire
+	// certify_declarations set (vision 33 stage 0, TC-5) with decls — a
+	// fresh marker scan's declarations ARE the current truth, same
+	// replace contract as PutTestSuites.
+	PutCertifyDeclarations(ctx context.Context, serviceID string, decls []CertifyDeclaration) error
+
+	// CertifyDeclarationsForService returns every declared certification
+	// fact for serviceID, ordered by (file, line).
+	CertifyDeclarationsForService(ctx context.Context, serviceID string) ([]CertifyDeclaration, error)
 }

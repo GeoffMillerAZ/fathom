@@ -30,6 +30,12 @@ type MemoryStore struct {
 	typedEdgeFPs   map[fpKey]string                // reuses fpKey{serviceID, pkgPath} shape
 	reviewRuns     map[reviewRunKey]core.ReviewRun // (serviceID, idempotencyKey) → review run (FL-15)
 
+	// Test evidence + declared certifications (vision 33 / ADR-043 stage
+	// 0, TC-2/TC-5): see memory_testevidence.go.
+	testSuites          map[string][]TestSuite          // serviceID → declared suites (wholesale replace)
+	testRuns            map[string][]TestRun            // serviceID → runs, append-only, dedup by (RunDigest, Suite)
+	certifyDeclarations map[string][]CertifyDeclaration // serviceID → declared certifications (wholesale replace)
+
 	// externalFindings is the findings-loop's per-claim cursor table (FL-7),
 	// reusing claimKey's (serviceID, claimID) shape — one row per claim, same
 	// identity PutClaims already keys on.
@@ -78,6 +84,10 @@ func NewMemoryStore() *MemoryStore {
 
 		externalFindings: make(map[claimKey]core.ExternalFinding),
 		reviewRuns:       make(map[reviewRunKey]core.ReviewRun),
+
+		testSuites:          make(map[string][]TestSuite),
+		testRuns:            make(map[string][]TestRun),
+		certifyDeclarations: make(map[string][]CertifyDeclaration),
 	}
 }
 

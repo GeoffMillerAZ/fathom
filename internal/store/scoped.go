@@ -123,7 +123,15 @@ func (s *SQLiteStore) ClaimLinks(ctx context.Context, serviceID string, claimIDs
 	return filterScoped(ctx, s.gate, serviceID, links, err, claimLinkRef)
 }
 
-// ---- MemoryStore: the same six ----
+// CertifyDeclarationsForService filters by certify_declarations.file (vision
+// 33 stage 0, TC-5) — a declared marker names the FILE its Test* function
+// lives in, the same path-anchored shape as a claim_links citation.
+func (s *SQLiteStore) CertifyDeclarationsForService(ctx context.Context, serviceID string) ([]CertifyDeclaration, error) {
+	decls, err := s.certifyDeclarationsForServiceRaw(ctx, serviceID)
+	return filterScoped(ctx, s.gate, serviceID, decls, err, func(d CertifyDeclaration) string { return d.File })
+}
+
+// ---- MemoryStore: the same six (+ CertifyDeclarationsForService) ----
 
 // QueryObservations filters by observations.source_ref.
 func (m *MemoryStore) QueryObservations(ctx context.Context, serviceID, concernID string) ([]core.Observation, error) {
@@ -159,4 +167,11 @@ func (m *MemoryStore) TypedEdges(ctx context.Context, serviceID string) ([]core.
 func (m *MemoryStore) ClaimLinks(ctx context.Context, serviceID string, claimIDs []string) ([]core.ClaimLink, error) {
 	links, err := m.claimLinksRaw(ctx, serviceID, claimIDs)
 	return filterScoped(ctx, m.gate, serviceID, links, err, claimLinkRef)
+}
+
+// CertifyDeclarationsForService filters by certify_declarations.file — see
+// the SQLiteStore twin's doc comment.
+func (m *MemoryStore) CertifyDeclarationsForService(ctx context.Context, serviceID string) ([]CertifyDeclaration, error) {
+	decls, err := m.certifyDeclarationsForServiceRaw(ctx, serviceID)
+	return filterScoped(ctx, m.gate, serviceID, decls, err, func(d CertifyDeclaration) string { return d.File })
 }

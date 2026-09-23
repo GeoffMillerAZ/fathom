@@ -46,12 +46,13 @@ var fixedTime = time.Date(2026, 8, 13, 12, 0, 0, 0, time.UTC)
 // be filtered"; any other value is the recorded reason it is exempt.
 var storeMethodDisposition = map[string]string{
 	// --- filtered: path-anchored content leaves the store here ---
-	"QueryObservations": "",
-	"DocSummaries":      "",
-	"KnowledgeCards":    "",
-	"TypedEdges":        "",
-	"ListSourceRefs":    "",
-	"ClaimLinks":        "",
+	"QueryObservations":             "",
+	"DocSummaries":                  "",
+	"KnowledgeCards":                "",
+	"TypedEdges":                    "",
+	"ListSourceRefs":                "",
+	"ClaimLinks":                    "",
+	"CertifyDeclarationsForService": "",
 
 	// --- exempt, with the reason ---
 	"PutObservations":                "write path; suppression is a READ decision and must never change what is indexed (§3.5)",
@@ -94,6 +95,12 @@ var storeMethodDisposition = map[string]string{
 	"RecordReviewRun":                "write path",
 	"ReviewRun":                      "idempotency cache row keyed by service+key, no path-anchored content",
 	"Close":                          "lifecycle",
+
+	// --- vision 33 / ADR-043 stage 0 (TC-2/TC-5): test evidence ---
+	"PutTestSuites":          "write path",
+	"PutTestRuns":            "write path",
+	"PutCertifyDeclarations": "write path",
+	"TestSuiteStatuses":      "declared suite + last-run summary (component/suite/class/tier/verdict/totals), no path-anchored source content",
 }
 
 func seedSurfaceStore(t *testing.T, s store.Store) {
@@ -145,6 +152,12 @@ func seedSurfaceStore(t *testing.T, s store.Store) {
 	}
 	if err := s.PutClaims(ctx, claims, links); err != nil {
 		t.Fatalf("PutClaims: %v", err)
+	}
+	if err := s.PutCertifyDeclarations(ctx, svc, []store.CertifyDeclaration{
+		{TestSymbolKey: svc + "::secrets.TestSecret", Kind: "invariant", TargetID: "I-hidden", Strength: "asserts", File: hiddenRef, Line: 5},
+		{TestSymbolKey: svc + "::internal.TestOk", Kind: "invariant", TargetID: "I-visible", Strength: "asserts", File: visibleRef, Line: 5},
+	}); err != nil {
+		t.Fatalf("PutCertifyDeclarations: %v", err)
 	}
 }
 
@@ -306,6 +319,13 @@ func TestSuppressionCoversEverySurface(t *testing.T) {
 					}
 					return ""
 				}))
+			})
+			t.Run("CertifyDeclarationsForService", func(t *testing.T) {
+				got, err := g.CertifyDeclarationsForService(ctx, svc)
+				if err != nil {
+					t.Fatal(err)
+				}
+				assertRefs(t, refsOf(got, func(d store.CertifyDeclaration) string { return d.File }))
 			})
 			// The exempt hash-gate read still serves the fingerprint: a
 			// reversible READ decision must never change what ingest sees.
