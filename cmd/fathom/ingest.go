@@ -5,11 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"sort"
 
+	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/hookcache"
+	"github.com/geoffmilleraz/fathom/internal/store"
+	"github.com/geoffmilleraz/fathom/internal/testevidence"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
@@ -118,6 +122,23 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 				continue
 			}
 			scipResults = append(scipResults, scipImportResult{Path: p, Import: imp})
+		}
+	}
+
+	// [tests] results_dir (vision 33 / ADR-043 stage 0, TC-2): a plain
+	// `fathom ingest` also picks up attested #TestResult envelopes when
+	// configured, via internal/testevidence.IngestRuns ONLY — never
+	// test_suites, so a suite set a separate `fathom tests ingest
+	// --manifest` call declared survives an ordinary ingest untouched
+	// (IngestRuns' own doc comment). Fail-open like every other
+	// config/optional read at a CLI entry point (I14): a problem here
+	// warns and never turns an otherwise-successful ingest into a
+	// failure.
+	if readErr == nil || !readErr.Refused {
+		if n, cerr := ingestConfiguredTestResults(context.Background(), *storePath, *service, svcPath); cerr != nil {
+			fmt.Fprintf(stderr, "warning: [tests] results_dir envelope pickup: %v\n", cerr)
+		} else if n > 0 && !*jsonOut {
+			fmt.Fprintf(stdout, "tests: %d run(s) picked up from [tests] results_dir\n", n)
 		}
 	}
 
@@ -241,6 +262,58 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	return 0
+}
+
+// ingestConfiguredTestResults implements the `[tests] results_dir` half of
+// vision 33 / ADR-043 stage 0 (TC-2): when a project or user
+// .fathom/config.toml names a results_dir, a PLAIN `fathom ingest` also
+// loads and joins its attested #TestResult envelopes — never test_suites
+// (see internal/testevidence.IngestRuns' own doc comment; only `fathom
+// tests ingest --manifest` declares suites). resultsDir resolves relative
+// to svcPath (the service root this ingest just walked). Returns the
+// number of runs ingested; (0, nil) when results_dir is unset or the
+// directory does not exist — most services have no test evidence at all,
+// and that is not a failure.
+func ingestConfiguredTestResults(ctx context.Context, storePath, service, svcPath string) (int, error) {
+	loaded, err := config.Load(config.DefaultUserPath(), config.DefaultProjectPath())
+	if err != nil {
+		return 0, fmt.Errorf("load config: %w", err)
+	}
+	resultsDir := loaded.Config.Tests.ResultsDir
+	if resultsDir == "" {
+		return 0, nil
+	}
+	resultsPath := resultsDir
+	if !filepath.IsAbs(resultsPath) {
+		resultsPath = filepath.Join(svcPath, resultsPath)
+	}
+	if _, statErr := os.Stat(resultsPath); statErr != nil {
+		if os.IsNotExist(statErr) {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("stat %s: %w", resultsPath, statErr)
+	}
+
+	runs, err := testevidence.LoadEnvelopes(resultsPath)
+	if err != nil {
+		return 0, fmt.Errorf("load envelopes from %s: %w", resultsPath, err)
+	}
+	if len(runs) == 0 {
+		return 0, nil
+	}
+
+	st, err := store.Open(storePath)
+	if err != nil {
+		return 0, fmt.Errorf("open store: %w", err)
+	}
+	defer st.Close()
+
+	watermark := testsIngestWatermark(ctx, st, service)
+	report, err := testevidence.IngestRuns(ctx, st, service, watermark, runs)
+	if err != nil {
+		return 0, fmt.Errorf("ingest runs: %w", err)
+	}
+	return report.RunsWritten, nil
 }
 
 // scipImportResult pairs one --scip (or auto-detected) index's path with

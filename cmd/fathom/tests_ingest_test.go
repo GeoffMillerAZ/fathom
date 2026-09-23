@@ -91,6 +91,59 @@ func TestCmdTestsIngest_ManifestAndResults(t *testing.T) {
 	}
 }
 
+// TestPlainIngest_PicksUpConfiguredResultsDir proves the [tests]
+// results_dir half of TC-2: a PLAIN `fathom ingest` (never `fathom tests
+// ingest`) also joins attested envelopes when configured, and — the
+// specific bug this guards against — never wipes out a suite a prior
+// `fathom tests ingest --manifest` call declared.
+func TestPlainIngest_PicksUpConfiguredResultsDir(t *testing.T) {
+	root, storePath, service := setUpTestsIngestFixture(t)
+
+	// Declare the suite via a real `tests ingest --manifest` first.
+	var tiOut, tiErr bytes.Buffer
+	if code := cmdTestsIngest([]string{"--service", service, "--store", storePath, "--manifest", root}, &tiOut, &tiErr); code != 0 {
+		t.Fatalf("tests ingest exit = %d, stderr: %s", code, tiErr.String())
+	}
+
+	// [tests] results_dir, project-scoped: config.DefaultProjectPath()
+	// resolves against the process's cwd, so chdir into root for this test
+	// (the same "run fathom ingest from inside the service's own checkout"
+	// shape the whole config-loading convention assumes elsewhere).
+	if err := os.MkdirAll(filepath.Join(root, ".fathom"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, "results"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "results", "run.json"), []byte(testsIngestFixtureEnvelope("2026-09-23T00:00:00Z")), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".fathom", "config.toml"), []byte("[tests]\nresults_dir = \"results\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(root)
+
+	var out, errBuf bytes.Buffer
+	if code := run([]string{"ingest", "--service", service, "--path", ".", "--store", storePath}, &out, &errBuf); code != 0 {
+		t.Fatalf("ingest exit = %d, stderr: %s", code, errBuf.String())
+	}
+	if !strings.Contains(out.String(), "tests: 1 run(s) picked up from [tests] results_dir") {
+		t.Fatalf("plain ingest did not report the configured envelope pickup: %q", out.String())
+	}
+
+	var statusOut, statusErr bytes.Buffer
+	if code := cmdTestsStatus([]string{"--service", service, "--store", storePath}, &statusOut, &statusErr); code != 0 {
+		t.Fatalf("tests status exit = %d, stderr: %s", code, statusErr.String())
+	}
+	got := statusOut.String()
+	if !strings.Contains(got, "cart/unit") {
+		t.Fatalf("plain ingest's envelope pickup wiped the declared suite: %q", got)
+	}
+	if !strings.Contains(got, "pass") {
+		t.Fatalf("plain ingest's envelope pickup did not write the run: %q", got)
+	}
+}
+
 func TestCmdTestsIngest_NoManifestsAndNoRuns(t *testing.T) {
 	root := t.TempDir() // no tests/ dir at all
 	storePath := filepath.Join(t.TempDir(), "s.sqlite")

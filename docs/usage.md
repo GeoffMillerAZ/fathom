@@ -1583,6 +1583,51 @@ measured predicted catch-rate — never a fabricated one.
 | `--store` | `<repo>/workspace/db/fathom.sqlite` | store path |
 | `--json` | `false` | Emit JSON instead of a table |
 
+### `tests ingest` / `tests status` — test-kit evidence (vision 33 / ADR-043 stage 0)
+
+```sh
+fathom tests ingest --manifest <dir> --results <file|dir> \
+  [--service <id>] [--store <path>]
+
+fathom tests status [--service <id>] [--store <path>] [--json]
+```
+
+`tests ingest` loads a service's declared `<dir>/tests/*.cue` manifests
+(validated against the mirrored test-kit schema, `schema/testkit/`) and
+attested `#TestResult` envelopes from `--results` (a single file, a
+directory of `*.json` files, plain JSON, NDJSON, or a DSSE/in-toto-wrapped
+envelope — the payload is decoded and its digest recorded as the run's
+identity; fathom never verifies signatures itself) into the additive
+`test_suites`/`test_runs`/`test_cases` store tables, joining each case to a
+`Test*` symbol by exact name (`TestX/sub` joins to `TestX`). It also scans
+`--manifest`'s whole tree for `// certifies: <kind> <id> [(<strength>)]`
+markers above `Test*` functions, writing one declared fact per entry into
+`certify_declarations` (a malformed marker is a warning naming its
+file:line, never a silent skip). "no manifests found" and "no runs
+ingested" print as named lines — never a silently clean run.
+
+`tests status` prints, per declared suite, its class, tier, the last
+ingested run's verdict and totals, and `joined N of M cases` — the
+case-to-symbol join rate is a reported fact, never a pass/fail. A service
+with no declared suites prints "no manifests found" instead of an empty
+table.
+
+fathom never runs a test itself (design doc §2): both verbs ingest
+test-kit's own record.
+
+| Flag (`tests ingest`) | Default | Description |
+|---|---|---|
+| `--manifest` | `.` | service repo root: `tests/*.cue` live under `<dir>/tests/`, and `// certifies:` markers are scanned under `<dir>` |
+| `--results` | `""` | attested `#TestResult` envelope file, or a directory of `*.json` envelopes |
+| `--service` | resolved from cwd | Service ID |
+| `--store` | `<repo>/workspace/db/fathom.sqlite` | store path |
+
+| Flag (`tests status`) | Default | Description |
+|---|---|---|
+| `--service` | resolved from cwd | Service ID |
+| `--store` | `<repo>/workspace/db/fathom.sqlite` | store path |
+| `--json` | `false` | Emit JSON instead of a table |
+
 ### `export` — interchange with other code-intel tooling (VB-32)
 
 ```sh

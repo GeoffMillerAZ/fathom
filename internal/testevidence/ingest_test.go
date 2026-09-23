@@ -105,6 +105,41 @@ func TestIngestTestEvidence_ManifestAndEnvelope(t *testing.T) {
 	}
 }
 
+func TestIngestRuns_NeverTouchesSuites(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	t.Cleanup(func() { _ = st.Close() })
+
+	const service = "cart-svc"
+
+	// A prior `fathom tests ingest --manifest` declared a suite.
+	manifests := []Manifest{
+		{File: "tests/cart.cue", Component: "cart", Suites: []Suite{{Name: "unit", Class: "unit", Tier: "blocking"}}},
+	}
+	if _, err := IngestTestEvidence(ctx, st, service, "wm-1", manifests, nil); err != nil {
+		t.Fatalf("seed IngestTestEvidence: %v", err)
+	}
+
+	// A plain `fathom ingest` with [tests] results_dir configured calls
+	// IngestRuns directly (cmd/fathom's cmdIngest) — it must never wipe
+	// the suite the manifest call declared.
+	runs := []Run{{Suite: SuiteRef{Component: "cart", Name: "unit"}, Verdict: "pass", Digest: "sha256:abc"}}
+	if _, err := IngestRuns(ctx, st, service, "wm-2", runs); err != nil {
+		t.Fatalf("IngestRuns: %v", err)
+	}
+
+	statuses, err := st.TestSuiteStatuses(ctx, service)
+	if err != nil {
+		t.Fatalf("TestSuiteStatuses: %v", err)
+	}
+	if len(statuses) != 1 || statuses[0].Suite != "unit" {
+		t.Fatalf("IngestRuns wiped the declared suite: %+v", statuses)
+	}
+	if !statuses[0].HasRun || statuses[0].LastRun.Verdict != "pass" {
+		t.Fatalf("IngestRuns did not write the run: %+v", statuses[0])
+	}
+}
+
 func TestIngestTestEvidence_NoRuns(t *testing.T) {
 	ctx := context.Background()
 	st := store.NewMemoryStore()

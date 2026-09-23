@@ -34,6 +34,12 @@ type Report struct {
 // test_cases rows, idempotent by run digest) for service, stamped with
 // watermark. Every run's cases are joined against the service's
 // currently-indexed Test* symbols before being written.
+//
+// Suites and runs are independent writes: a caller with runs but no
+// manifests (a plain `fathom ingest` picking up `[tests] results_dir`
+// envelopes with no `--manifest` of its own — see IngestRuns) must never
+// wholesale-replace a service's previously-declared suites with an empty
+// set just because THIS call did not also load them.
 func IngestTestEvidence(ctx context.Context, st store.Store, service, watermark string, manifests []Manifest, runs []Run) (Report, error) {
 	var report Report
 
@@ -60,6 +66,26 @@ func IngestTestEvidence(ctx context.Context, st store.Store, service, watermark 
 	}
 	report.SuitesWritten = len(suites)
 
+	runReport, err := IngestRuns(ctx, st, service, watermark, runs)
+	if err != nil {
+		return report, err
+	}
+	report.RunsWritten = runReport.RunsWritten
+	report.CasesWritten = runReport.CasesWritten
+	report.CasesJoined = runReport.CasesJoined
+	return report, nil
+}
+
+// IngestRuns writes runs (as append-only test_runs/test_cases rows,
+// idempotent by run digest) for service, stamped with watermark, WITHOUT
+// touching test_suites — the half of IngestTestEvidence a plain `fathom
+// ingest` uses when `[tests] results_dir` is configured (cmd/fathom's
+// cmdIngest): envelopes picked up incidentally on every ingest must never
+// wipe out suites a separate `fathom tests ingest --manifest` call
+// declared. Every run's cases are joined against the service's
+// currently-indexed Test* symbols before being written.
+func IngestRuns(ctx context.Context, st store.Store, service, watermark string, runs []Run) (Report, error) {
+	var report Report
 	if len(runs) == 0 {
 		return report, nil
 	}
