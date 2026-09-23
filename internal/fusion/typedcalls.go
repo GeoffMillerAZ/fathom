@@ -193,7 +193,38 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 			allowed[r.Path] = true
 		}
 	}
-	rep, err := EnrichTypedEdges(ctx, p.st, svc.ID, svc.Path, allowed)
+
+	// Serialize process-wide (W-N, docs/plans/daemon-footprint.md, O108
+	// reframed): this is the one choke point every caller of the typed
+	// pass goes through — explicit `ingest` and auto-refresh-on-drift both
+	// call Pipeline.Ingest, which calls this method; refresh-file never
+	// runs a typed pass at all (fusion.Pipeline.ReingestFile only marks
+	// TypedEdgesStale). A caller that arrives while another pass holds the
+	// slot waits here; ctx cancellation while waiting is honored and never
+	// blocks the surrounding Ingest — it degrades exactly like any other
+	// typed-pass failure (fallback rows stand).
+	release, acquireErr := acquireTypedPassSlot(ctx)
+	if acquireErr != nil {
+		p.noteTypedEdgeStatus(svc.ID, TypedEdgeStatus{
+			Failed: true,
+			Reason: fmt.Sprintf("waiting for the process-wide typed-pass slot: %v", acquireErr),
+		})
+		fmt.Fprintf(os.Stderr, "fusion: typed-edge pass %q: %v while waiting for the process-wide typed-pass slot — syntax-only edges remain the baseline\n", svc.ID, acquireErr)
+		return TypedEdgeReport{}
+	}
+	defer release()
+
+	var rep TypedEdgeReport
+	var err error
+	peakHeapInuse := samplePeakHeapInuse(func() {
+		rep, err = EnrichTypedEdges(ctx, p.st, svc.ID, svc.Path, allowed)
+	})
+	defer func() {
+		packages := rep.PackagesLoaded + rep.PackagesCached
+		edges := rep.EdgesDirect + rep.EdgesIfaceDispatch + rep.EdgesUnresolved + rep.EdgesFuncValue
+		fmt.Fprintf(os.Stderr, "fusion: typed-edge pass %q: %d packages, %d edges, peak heap_inuse %.1f MiB, %s\n",
+			svc.ID, packages, edges, float64(peakHeapInuse)/(1024*1024), rep.Duration)
+	}()
 	// BP-35: the outcome is recorded ON THE SERVICE, not only on stderr.
 	// The named reason travels with it (I24) so /statusz,
 	// staleness_report and doctor's typed_edges row can all say WHY the

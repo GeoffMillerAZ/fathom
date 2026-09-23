@@ -576,6 +576,15 @@ func newHTTPHandler(srv *mcp.Server, c *client.Client, selfAddr string, ports *d
 		// every ingest of a Go service, whether triggered by an explicit
 		// `ingest` call or an auto-refresh.
 		fmt.Fprintf(w, "fathom_typed_pass_total %d\n", c.TypedPassTotal())
+
+		// fathom_typed_pass_inflight / fathom_typed_pass_waited_total (W-N,
+		// docs/plans/daemon-footprint.md, O108 reframed): the process-wide
+		// typed-pass semaphore that bounds the memory PEAK a typed-edge
+		// pass over a large service can leave as idle heap — inflight is 0
+		// or 1; waited_total climbs only when a pass actually had to queue
+		// behind another one, e.g. two overlapping `ingest` calls.
+		fmt.Fprintf(w, "fathom_typed_pass_inflight %d\n", c.TypedPassInflight())
+		fmt.Fprintf(w, "fathom_typed_pass_waited_total %d\n", c.TypedPassWaitedTotal())
 	})
 
 	// POST /reload — 200 OK stub; in production this would call

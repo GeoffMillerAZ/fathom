@@ -475,6 +475,24 @@ func (c *Client) TypedPassTotal() int64 {
 	return c.pipe.TypedPassTotal()
 }
 
+// TypedPassInflight returns 1 while a typed-edge pass is currently running
+// anywhere in this process, else 0 — see fusion.TypedPassInflight (W-N,
+// docs/plans/daemon-footprint.md). The semaphore it reflects is
+// process-wide, not per-Pipeline, so this is a package-level read, not a
+// forward to c.pipe. Consumed by cmd/fathom's /metrics as
+// fathom_typed_pass_inflight.
+func (c *Client) TypedPassInflight() int64 {
+	return fusion.TypedPassInflight()
+}
+
+// TypedPassWaitedTotal returns the process-lifetime count of typed-edge
+// passes that had to wait for another pass already holding the
+// process-wide typed-pass slot — see fusion.TypedPassWaitedTotal (W-N).
+// Consumed by cmd/fathom's /metrics as fathom_typed_pass_waited_total.
+func (c *Client) TypedPassWaitedTotal() int64 {
+	return fusion.TypedPassWaitedTotal()
+}
+
 // ServiceWatermark returns the connector's *current* freshness token for the
 // service's corpus (git HEAD SHA, or a content-addressed manifest hash for
 // non-git corpora — ADR-017), resolved from the path recorded in service_meta
