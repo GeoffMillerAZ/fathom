@@ -964,6 +964,9 @@ daemon in that cell opens the port and every decision it makes lands in
 setup line is a different corpus SHA256, hence a different cell key — the
 `none` cells of the base corpus are never borrowed by mistake.
 
+A committed JSON corpus (one with a file to fork) declares the variant arm
+directly in its own `arms` object:
+
 ```json
 "arms": {
   "full":        {"wired": true, "instructions": "stanza", "surface": "fathom", "compile_layers": true},
@@ -972,11 +975,35 @@ setup line is a different corpus SHA256, hence a different cell key — the
 }
 ```
 
+The generated LCA corpus (`-corpus lca`, its two arms fixed in code by
+`lca.go`) has no file to fork, so `scenariobench run` also takes the same
+variant from the command line (DP-14): `-arm-clone NEW=BASE` (repeatable)
+copies an existing arm — every field of the base, unchanged — under a new
+name, and `-arm-setup ARM=<shell line>` (repeatable) appends one setup line
+to a named arm's own `setup` list. Both apply after the corpus is
+loaded/generated and before the corpus hash (and every cell key) is
+computed, so a variant is a genuinely different corpus SHA256 exactly as
+the JSON form is — the base corpus's `none` cells are never borrowed by
+mistake either way. `-arm-clone` runs before `-arm-setup`, in the order
+each was given, so a setup line may target a name a clone just created.
+`-arms name,name,...` (composing with the older single-arm `-arm`) selects
+exactly the named arms to run, instead of every arm the corpus defines —
+the A/B always runs exactly two arms:
+
+```sh
+scenariobench run -corpus lca -dataset lca-test.jsonl -trials 2 -run-id lca-jev-r1 -root . \
+  -harness-version "$(claude --version | head -1)" -model sonnet \
+  -arm-clone fathom-jev=fathom \
+  -arm-setup 'fathom-jev=printf '\''\n[decide]\nprovider = "typesafe"\nendpoint = "https://openrouter.ai/api"\nmodel = "typesafe/jev-1.13"\napi_key_cmd = ["cat", "/Users/geoff/secrets/openrouter/token"]\n'\'' >> .fathom/config.toml' \
+  -arms fathom,fathom-jev
+```
+
 Read the A/B off the two arms' `readings` plus the cell's `decisions.jsonl`
 (sites `compile_prefilter`, `obligations_rank`, `prompt_route`; `applied` is false
-for any unsure-band decision). The `llm` adapter spends model tokens on every
-decision — the compile pre-filter's own cost is in the compile-runs row — so a
-`full-decide` arm is a paid tier like any wired arm (docs/intent/autonomy.md).
+for any unsure-band decision). The `llm`/`typesafe` adapters spend model
+tokens on every decision — the compile pre-filter's own cost is in the
+compile-runs row — so a `full-decide`/`fathom-jev`-style arm is a paid tier
+like any wired arm (docs/intent/autonomy.md).
 
 ## How to publish a row
 

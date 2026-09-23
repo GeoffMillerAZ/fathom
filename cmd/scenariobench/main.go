@@ -12,7 +12,7 @@
 //	    automatically (docs/bench/scenarios.md "External corpus (LCA bug
 //	    localization)") — instead of reading a committed corpus file.
 //
-//	scenariobench run -corpus <path|lca> [-dataset <path.jsonl>] -root <fathom repo root> [-cells <dir>] [-raw-dir <dir>] [-model-id <id>] [-harness-version <v>] [-scoring <id>] [-fathom-commit <sha>] [-trials N] [-model <name>] [-only <task id>] [-arm <name>] [-harness claude|fake] [-fake-streams-dir <dir>] [-fake-streams <json>] [-parallel-arms] [-rescore-lost [-rescore-reason <text>]]
+//	scenariobench run -corpus <path|lca> [-dataset <path.jsonl>] -root <fathom repo root> [-cells <dir>] [-raw-dir <dir>] [-model-id <id>] [-harness-version <v>] [-scoring <id>] [-fathom-commit <sha>] [-trials N] [-model <name>] [-only <task id>] [-arm <name>] [-arms <name,name,...>] [-arm-clone <new>=<base>]... [-arm-setup <arm>=<shell line>]... [-harness claude|fake] [-fake-streams-dir <dir>] [-fake-streams <json>] [-parallel-arms] [-rescore-lost [-rescore-reason <text>]]
 //	    For each selected cell not already in the cell store: PrepareSubject,
 //	    RunSessions, RunOracle, stores the scored CellResult. `-harness fake`
 //	    (with -fake-streams-dir / -fake-streams, a JSON map of lookup key to
@@ -29,6 +29,23 @@
 //	    the raw session streams a PRIOR run under this same -raw-dir/-run-id
 //	    already wrote (rescore.go) — free, no worktree touched, every other
 //	    cell left alone.
+//
+//	    -arm-clone <new>=<base> (repeatable) copies an existing arm (e.g.
+//	    lca.go's own "fathom") under a new name, and -arm-setup
+//	    <arm>=<shell line> (repeatable) appends one setup line to a named
+//	    arm's worktree setup (runs before session 1) — together they build
+//	    a corpus VARIANT on the command line (DP-14) instead of a
+//	    hand-maintained JSON fork, the only way to reach an arm defined in
+//	    CODE (the generated LCA corpus has no file to fork). Applied after
+//	    the corpus is loaded/generated and before the corpus hash/cell keys
+//	    are computed, so a variant is a genuinely different corpus SHA — a
+//	    variant's cells are never borrowed from (or collide with) the
+//	    un-cloned base corpus's own stored cells. -arm-clone runs before
+//	    -arm-setup, in the order each was given on the command line, so a
+//	    setup line may target a name -arm-clone just created. -arms
+//	    <name,name,...> composes with -arm to select exactly the named
+//	    arms (deduped) instead of every arm the corpus defines — an A/B
+//	    always runs exactly two.
 //
 //	scenariobench score -in <cell.json> [-out <path>] [-corpus <path>]
 //	    Recomputes a stored cell's basic aggregate readings (total tokens,
@@ -479,7 +496,12 @@ func cmdRun(args []string) int {
 	trials := fs.Int("trials", 1, "trials per (task, arm)")
 	model := fs.String("model", "sonnet", "model passed to the harness")
 	only := fs.String("only", "", "comma-separated task ids to run (default: every task)")
-	onlyArm := fs.String("arm", "", "run only this arm (default: every arm)")
+	onlyArm := fs.String("arm", "", "run only this arm (default: every arm); composes with -arms")
+	arms := fs.String("arms", "", "comma-separated arm names to run (default: every arm); composes with -arm — an A/B always names exactly two")
+	var armClones armCloneFlag
+	fs.Var(&armClones, "arm-clone", "NEW=BASE (repeatable): copy arm BASE under a new name NEW before the run, applied before -arm-setup and before the corpus hash is computed (DP-14) — builds a corpus variant on the command line")
+	var armSetups armSetupFlag
+	fs.Var(&armSetups, "arm-setup", "ARM=<shell line> (repeatable): append a setup line to arm ARM's worktree setup (runs before session 1), applied after every -arm-clone and before the corpus hash is computed (DP-14)")
 	runID := fs.String("run-id", "", "this run's id (required; stamps CellResult.RunID)")
 	harnessName := fs.String("harness", "claude", "harness to run sessions with: claude (real spend) or fake (replays committed transcripts, no spend)")
 	fakeStreamsDir := fs.String("fake-streams-dir", "", "-harness fake: directory holding the committed stream fixtures")
@@ -504,7 +526,46 @@ func cmdRun(args []string) int {
 		fmt.Fprintf(os.Stderr, "scenariobench run: %v\n", err)
 		return 2
 	}
+	// DP-14: -arm-clone/-arm-setup build a corpus VARIANT in memory —
+	// applied after load/generation and before the corpus hash (and thus
+	// every cell key) is computed, so a variant is a genuinely different
+	// corpus SHA and never borrows cells from (or collides with) the
+	// un-cloned base corpus. Clones run first, in the order given, so a
+	// setup line may target a name a clone just created; the untouched
+	// (no -arm-clone/-arm-setup) case keeps its ORIGINAL sha exactly —
+	// CorpusSHA256's own file-bytes hash for a committed JSON corpus,
+	// unchanged — so every existing cell key stays stable.
+	if len(armClones) > 0 || len(armSetups) > 0 {
+		for _, spec := range armClones {
+			newName, base, ok := splitEqualsPair(spec)
+			if !ok {
+				fmt.Fprintf(os.Stderr, "scenariobench run: -arm-clone %q: want NEW=BASE\n", spec)
+				return 2
+			}
+			if err := scenariobench.CloneArm(&corpus, newName, base); err != nil {
+				fmt.Fprintf(os.Stderr, "scenariobench run: %v\n", err)
+				return 2
+			}
+		}
+		for _, spec := range armSetups {
+			armName, line, ok := splitEqualsPair(spec)
+			if !ok {
+				fmt.Fprintf(os.Stderr, "scenariobench run: -arm-setup %q: want ARM=<shell line>\n", spec)
+				return 2
+			}
+			if err := scenariobench.SetupArm(&corpus, armName, line); err != nil {
+				fmt.Fprintf(os.Stderr, "scenariobench run: %v\n", err)
+				return 2
+			}
+		}
+		sha, err = scenariobench.CanonicalCorpusSHA256(corpus)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "scenariobench run: hashing the corpus variant: %v\n", err)
+			return 2
+		}
+	}
 	onlyTasks := splitCommaSet(*only)
+	armFilter := scenariobench.ArmSelection(*onlyArm, *arms)
 	cells := planCells(corpus, cf, *trials, sha)
 
 	ctx := context.Background()
@@ -531,7 +592,7 @@ func cmdRun(args []string) int {
 		if len(onlyTasks) > 0 && !onlyTasks[cp.task.ID] {
 			continue
 		}
-		if *onlyArm != "" && cp.arm != *onlyArm {
+		if armFilter != nil && !armFilter[cp.arm] {
 			continue
 		}
 		selected = append(selected, cp)
@@ -1867,4 +1928,43 @@ func splitCommaSet(s string) map[string]bool {
 		}
 	}
 	return out
+}
+
+// splitEqualsPair splits "LEFT=RIGHT" (a -arm-clone or -arm-setup value)
+// on the FIRST "=" only, so a -arm-setup line that itself contains "="
+// (any shell assignment, e.g. `provider = "typesafe"`) is never cut
+// short. ok is false when s carries no "=" at all, or either side is
+// empty.
+func splitEqualsPair(s string) (left, right string, ok bool) {
+	i := strings.Index(s, "=")
+	if i < 0 {
+		return "", "", false
+	}
+	left, right = strings.TrimSpace(s[:i]), s[i+1:]
+	if left == "" || right == "" {
+		return "", "", false
+	}
+	return left, right, true
+}
+
+// armCloneFlag collects every -arm-clone NEW=BASE given on the command
+// line, in order (DP-14) — flag.Value's own repeatable-flag pattern,
+// since the standard library's flag package has no built-in slice flag.
+type armCloneFlag []string
+
+func (f *armCloneFlag) String() string { return strings.Join(*f, ",") }
+func (f *armCloneFlag) Set(s string) error {
+	*f = append(*f, s)
+	return nil
+}
+
+// armSetupFlag collects every -arm-setup ARM=<shell line> given on the
+// command line, in order (DP-14) — same repeatable-flag pattern as
+// armCloneFlag.
+type armSetupFlag []string
+
+func (f *armSetupFlag) String() string { return strings.Join(*f, ",") }
+func (f *armSetupFlag) Set(s string) error {
+	*f = append(*f, s)
+	return nil
 }
