@@ -7,11 +7,11 @@ silently skipped. Design: `docs/design/test-certifications.md`.
 
 ## A. Stage 0 — facts only (no vocabulary, no spend)
 
-- [ ] test-kit's manifest and result schemas are mirrored under `schema/testkit/` at a pinned commit and drift-gated like `third_party/` {id: TC-1, oracle: lexical, path: schema/testkit/manifest.cue, pattern: "#TestManifest"}
-- [ ] `fathom tests ingest --manifest <dir> --results <file|dir>` loads `tests/*.cue` and attested `#TestResult` envelopes into additive store tables (`test_suites`, `test_cases`, `test_runs`), each row carrying the service watermark {id: TC-2, symbol: IngestTestEvidence, package: internal/testevidence, reachable_from: TestIngestTestEvidence_ManifestAndEnvelope}
-- [ ] Every envelope case is joined to a `Test*` symbol by exact name (`TestX/sub` joins to `TestX`); the join rate is a reported fact {id: TC-3, symbol: JoinCasesToSymbols, package: internal/testevidence, reachable_from: TestJoinCasesToSymbols_ExactNameAndSubtest}
-- [ ] `fathom tests status` prints, per suite, class, tier, the last run's verdict and totals, and `joined N of M cases`; "no manifests found" is a named skip, never a clean table {id: TC-4, symbol: cmdTestsStatus, package: cmd/fathom, reachable_from: TestCmdTestsStatus_JoinRateAndNoManifests}
-- [ ] The Go extractor reads a `// certifies:` marker above a `Test*` function into a declared certification fact; a malformed marker is an ingest warning naming file and line {id: TC-5, symbol: ParseCertifiesMarker, package: internal/extractor, reachable_from: TestParseCertifiesMarker_GrammarAndMalformed}
+- [x] test-kit's manifest and result schemas are mirrored under `schema/testkit/` at a pinned commit and drift-gated like `third_party/` {id: TC-1, oracle: lexical, path: schema/testkit/manifest.cue, pattern: "#TestManifest"}
+- [x] `fathom tests ingest --manifest <dir> --results <file|dir>` loads `tests/*.cue` and attested `#TestResult` envelopes into additive store tables (`test_suites`, `test_cases`, `test_runs`), each row carrying the service watermark {id: TC-2, symbol: IngestTestEvidence, package: internal/testevidence, reachable_from: TestIngestTestEvidence_ManifestAndEnvelope}
+- [x] Every envelope case is joined to a `Test*` symbol by exact name (`TestX/sub` joins to `TestX`); the join rate is a reported fact {id: TC-3, symbol: JoinCasesToSymbols, package: internal/testevidence, reachable_from: TestJoinCasesToSymbols_ExactNameAndSubtest}
+- [x] `fathom tests status` prints, per suite, class, tier, the last run's verdict and totals, and `joined N of M cases`; "no manifests found" is a named skip, never a clean table {id: TC-4, symbol: cmdTestsStatus, package: cmd/fathom, reachable_from: TestCmdTestsStatus_JoinRateAndNoManifests}
+- [x] The Go extractor reads a `// certifies:` marker above a `Test*` function into a declared certification fact; a malformed marker is an ingest warning naming file and line {id: TC-5, symbol: ParseCertifiesMarker, package: internal/extractor, reachable_from: TestParseCertifiesMarker_GrammarAndMalformed}
 - [ ] (op) TC-M1: envelope-to-symbol join rate measured on fathom's own repo and on test-kit's `examples/`; bar ≥ 80 %, else the envelope needs a case-to-symbol contract before stage 1 {id: TC-M1, skip: "operator measurement: recorded in docs/bench/readings once run"}
 
 ## B. Stage 1 — the certifications layer and the gate
