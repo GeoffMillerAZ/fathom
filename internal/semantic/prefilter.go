@@ -25,12 +25,12 @@ import (
 
 // prefilterChunkSize bounds how many sections one decision.Request batches
 // together for the kit's "llm" adapter (vision 32 §2 item 1: "one batched
-// request per chunk of at most 20 sections") — decisionBatchSize's case 2
-// (decisionbatch.go, DP-22) reads this same constant, so PrefilterSections
-// and rerankWithinTiers chunk the "llm" adapter identically; a Decider this
-// helper does not recognize is never chunked here either (case 3, 0 =
-// unbounded), same as before decisionBatchSize existed for every Decider
-// PrefilterSections previously chunked at a fixed 20 regardless of name.
+// request per chunk of at most 20 sections") — decisionBatchCaps' own "llm"
+// case (decisionbatch.go, DP-22/DP-26) reads this same constant, so
+// PrefilterSections and rerankWithinTiers chunk the "llm" adapter's
+// question count identically; typesafe and any other Decider get their own
+// default question/byte caps instead (DP-26, O110) — never truly unbounded
+// any more, see decisionBatchCaps' own doc comment for why.
 const prefilterChunkSize = 20
 
 // defaultPrefilterThreshold is the noul cutoff Compile applies when a
@@ -42,12 +42,22 @@ const defaultPrefilterThreshold = 0.5
 // chunk is asked, verbatim (vision 32 §2 item 1).
 const prefilterInstructions = "Does this section state a binding rule for code in this repository (something an editor of a governed file must do or must never do), rather than narrative, history, or an example?"
 
-// PrefilterSections asks the decision port, in chunks sized by
-// decisionBatchSize(d) (DP-22 — prefilterChunkSize for the kit's "llm"
-// adapter, unbounded for any other recognized Decider), whether each of
-// secs (already in the caller's deterministic compile order) states a
-// binding rule — and returns the sections that pass threshold, in that
-// same order, as keep; the rest, also in order, as skipped.
+// PrefilterSections asks the decision port, in chunks planned by
+// decisionBatchPlan(d, ...) (DP-22/DP-26 — prefilterChunkSize questions for
+// the kit's "llm" adapter, defaultBatchQuestions otherwise, EVERY Decider
+// also byte-budgeted at its own decisionBatchCaps state-byte cap since
+// DP-26/O110), whether each of secs (already in the caller's deterministic
+// compile order) states a binding rule — and returns the sections that
+// pass threshold, in that same order, as keep; the rest, also in order, as
+// skipped. A section whose own rendered state block alone exceeds the byte
+// budget (decisionBatchPlan's Oversized) is never sent at all — it is
+// added to skipped and recorded with a reason (see the chunk loop below),
+// the DP-26 fix for O110's `max_tokens_exceeded` failure: the old count-
+// only chunking sent typesafe (Jev) all 72 sections' full text in ONE
+// request and the whole run was refused outright before answering
+// anything; a byte-oversized single section now degrades that ONE section
+// to "uncompiled" (ADR-037's raw fallback still serves it) instead of
+// poisoning the entire compile run.
 //
 // Identity fast paths — every section is kept, nothing is skipped, no
 // Record is produced, and no call is made:
@@ -87,21 +97,44 @@ func PrefilterSections(ctx context.Context, d decision.Decider, threshold float6
 		return append([]Section(nil), secs...), nil, nil, nil, nil
 	}
 
-	chunkSize := decisionBatchSize(d)
-	if chunkSize <= 0 || chunkSize > len(secs) {
-		// len(secs) == 0 leaves chunkSize at 0 too, but the loop below
-		// never runs in that case (start := 0 < len(secs) is already
-		// false), so no positive floor is needed here.
-		chunkSize = len(secs)
+	plan := decisionBatchPlan(d, prefilterPlanItems(secs))
+	oversized := make(map[int]string, len(plan.Oversized))
+	for _, o := range plan.Oversized {
+		oversized[o.Index] = o.Reason
 	}
 
 	keep = make([]Section, 0, len(secs))
-	for start := 0; start < len(secs); start += chunkSize {
-		end := start + chunkSize
-		if end > len(secs) {
-			end = len(secs)
+	for _, idxs := range plan.Chunks {
+		if len(idxs) == 1 {
+			if reason, ok := oversized[idxs[0]]; ok {
+				// DP-26 (O110): this ONE section's own rendered state
+				// alone exceeds the byte budget — never send it (that is
+				// exactly the shape of O110's max_tokens_exceeded
+				// failure, just narrowed from all 72 sections to one).
+				// It is skipped like any Invalid/below-threshold section,
+				// and reason travels as a synthetic decision.Record's
+				// Choice (Confidence 0 — decision.BandOf classifies it
+				// unsure, so a Recorder logs it applied:false, "asked and
+				// answered nothing" being exactly wrong here — "never
+				// asked" is the true state, which is why NO Decide call
+				// is made for it at all).
+				sec := secs[idxs[0]]
+				skipped = append(skipped, sec)
+				records = append(records, decision.Record{
+					Site:       "compile_prefilter",
+					Provider:   d.Name(),
+					QuestionID: sec.Subject,
+					Kind:       decision.KindNoul,
+					Choice:     reason,
+				})
+				continue
+			}
 		}
-		chunk := secs[start:end]
+
+		chunk := make([]Section, len(idxs))
+		for j, idx := range idxs {
+			chunk[j] = secs[idx]
+		}
 
 		callStart := time.Now()
 		resp, derr := d.Decide(ctx, buildPrefilterRequest(chunk))
@@ -134,6 +167,21 @@ func PrefilterSections(ctx context.Context, d decision.Decider, threshold float6
 		records = append(records, resp.Records("compile_prefilter")...)
 	}
 	return keep, skipped, records, nil, nil
+}
+
+// prefilterPlanItems builds decisionBatchPlan's input for secs: each
+// item's StateBytes is the length of that ONE section's own rendered block
+// (prefilterSectionBlock) — the actual bytes it would add to a chunk's
+// shared decision.Request.State, since a prefilter chunk's whole batch of
+// section text rides on State, not on any per-Question field (contrast
+// rerankWithinTiers' items, whose bulk content rides on each Question's
+// own TrueCriteria instead — see that function's own doc comment).
+func prefilterPlanItems(secs []Section) []decisionPlanItem {
+	items := make([]decisionPlanItem, len(secs))
+	for i, sec := range secs {
+		items[i] = decisionPlanItem{QuestionID: sec.Subject, StateBytes: len(prefilterSectionBlock(sec))}
+	}
+	return items
 }
 
 // buildPrefilterRequest renders one chunk's decision.Request: State is
@@ -213,8 +261,17 @@ func renderPrefilterState(chunk []Section) string {
 		if i > 0 {
 			b.WriteString("\n\n")
 		}
-		fmt.Fprintf(&b, "id: %s\ndoc: %s\nheading: %s\ntext:\n%s",
-			sec.Subject, sec.Path, firstLine(sec.Text), sec.Text)
+		b.WriteString(prefilterSectionBlock(sec))
 	}
 	return b.String()
+}
+
+// prefilterSectionBlock renders ONE section's own block exactly as
+// renderPrefilterState writes it into a chunk's shared State (id, doc
+// path, heading, full text) — factored out so prefilterPlanItems can size
+// decisionBatchPlan's byte budget per section without rendering a whole
+// chunk just to measure one member of it.
+func prefilterSectionBlock(sec Section) string {
+	return fmt.Sprintf("id: %s\ndoc: %s\nheading: %s\ntext:\n%s",
+		sec.Subject, sec.Path, firstLine(sec.Text), sec.Text)
 }

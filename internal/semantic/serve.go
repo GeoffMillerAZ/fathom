@@ -950,9 +950,10 @@ func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile str
 	// zero ObligationsOptions{} every non-Opts entry point passes leaves
 	// this whole block dead code for them.
 	if opts.RankWithinTier && opts.Decider != nil {
-		// DP-22 (O109): the noul batch is chunked (decisionBatchSize) and
-		// the chunks run concurrently — rerankWithinTiers reports a PER-
-		// CHUNK outcome now, not one all-or-nothing error. matched/records
+		// DP-22/DP-26 (O109/O110): the noul batch is chunked by count AND
+		// state bytes (decisionBatchPlan) and the chunks run concurrently
+		// — rerankWithinTiers reports a PER-CHUNK outcome now, not one
+		// all-or-nothing error. matched/records
 		// reflect whatever succeeded even when some chunks failed; a
 		// chunk's own questions that failed simply keep their pre-rerank
 		// position (ADR-042 decision 3, extended by DP-22: a provider

@@ -9,8 +9,8 @@ package semantic
 // "does this rule govern this edit" for each — never across tiers, never by
 // dropping one.
 //
-// DP-22 (O109): the batch is chunked at decisionBatchSize(d) questions per
-// Decide call (see decisionbatch.go) and the chunks run CONCURRENTLY,
+// DP-22 (O109): the batch is chunked at decisionBatchPlan(d, ...) questions
+// per Decide call (see decisionbatch.go) and the chunks run CONCURRENTLY,
 // bounded at rerankConcurrency — a ~160-claim batch sent as one request to
 // the kit's "llm" adapter came back truncated (not valid JSON), the whole
 // Decide call errored, and nothing ranked. A chunk that still fails is
@@ -18,6 +18,15 @@ package semantic
 // keep their pre-rerank (lexical) position, exactly as an unanswered
 // question already did before chunking existed — and is reported back as a
 // DecisionError for the caller to log, rather than vanishing silently.
+//
+// DP-26 (O110): decisionBatchPlan also bounds each chunk's summed state
+// BYTES, not only its question count — every claim's own rule text
+// (rerankCriteria) sizes its item, though in practice a rerank batch stays
+// far under the byte budget long before it would hit it (a claim summary
+// is short; O109 measured calls up to 248 questions succeed against the
+// SAME unbounded-by-count typesafe/llm defaults that failed the compile
+// pre-filter's 72-full-section batch) — see rerankWithinTiers' own doc
+// comment for why this plan is expected to stay count-bound in practice.
 //
 // DP-24 (O109): chunking alone still asked the Decider about EVERY
 // scope-eligible claim — obligationsCore measured ~160 candidates on a
@@ -128,6 +137,11 @@ type rerankOutcome struct {
 	// simply never got an answer). The gap between RankedCount and
 	// CandidatesTotal is DP-24's whole point: O109 measured 154 of ~160
 	// candidates asked about for no reason a 6-rule cap could ever use.
+	// DP-26 (O110): a claim decisionBatchPlan reports Oversized (its own
+	// rerankCriteria text alone exceeds the byte budget) is ALSO never
+	// asked, so it is excluded from RankedCount the same as a
+	// window-excluded claim — RankedCount always means "actually sent",
+	// never merely "eligible to be sent."
 	RankedCount int
 	// TimedOut (DP-25, O109) is true when this call's shared rerank budget
 	// (the timeout argument, or defaultRerankTimeout) was exceeded — at
@@ -168,11 +182,15 @@ type rerankChunkResult struct {
 // rule in full. A claim outside that window is never asked and so never
 // answered; it falls straight through to the same "no answer, unmoved"
 // path an unanswered chunk already used before DP-24 existed. Asking is
-// chunked at decisionBatchSize(d) questions per Decide call (DP-22), the
-// chunks run concurrently (bounded at rerankConcurrency, each its own
-// Decide call sharing the same rendered State) under one shared
-// context.WithTimeout(ctx, timeout) (DP-25 — see the timeout parameter's
-// own doc below) — and rerankWithinTiers returns matched (the FULL input,
+// chunked by decisionBatchPlan(d, ...) (DP-22/DP-26 — a question-count cap
+// AND a state-byte budget, the byte budget sized off each claim's own
+// rerankCriteria text — an item whose criteria alone exceeds the byte
+// budget is never asked at all, exactly like a DP-24 window-excluded claim,
+// and is recorded with a reason instead), the chunks run concurrently
+// (bounded at rerankConcurrency, each its own Decide call sharing the same
+// rendered State) under one shared context.WithTimeout(ctx, timeout)
+// (DP-25 — see the timeout parameter's own doc below) — and
+// rerankWithinTiers returns matched (the FULL input,
 // eligible or not) re-ordered ONLY inside each rule's own governing-scope
 // tier: a rule never crosses a tier and never drops (every input claim is
 // present in the output, exactly once). Within a tier, a rule whose noul
@@ -221,18 +239,45 @@ func rerankWithinTiers(ctx context.Context, d decision.Decider, file, hunk strin
 	eligible := rerankEligible(matched, max)
 
 	state := rerankState(file, hunk)
-	size := decisionBatchSize(d)
-	if size <= 0 || size > len(eligible) {
-		size = len(eligible)
+
+	items := make([]decisionPlanItem, len(eligible))
+	for i, m := range eligible {
+		items[i] = decisionPlanItem{QuestionID: m.cl.ClaimID, StateBytes: len(rerankCriteria(m.cl))}
+	}
+	plan := decisionBatchPlan(d, items)
+	oversizedReason := make(map[int]string, len(plan.Oversized))
+	for _, o := range plan.Oversized {
+		oversizedReason[o.Index] = o.Reason
 	}
 
 	var chunks [][]scored
-	for start := 0; start < len(eligible); start += size {
-		end := start + size
-		if end > len(eligible) {
-			end = len(eligible)
+	var oversizedRecords []decision.Record
+	for _, idxs := range plan.Chunks {
+		if len(idxs) == 1 {
+			if reason, ok := oversizedReason[idxs[0]]; ok {
+				// DP-26 (O110): this ONE claim's own rule text alone
+				// exceeds the byte budget — never ask about it (exactly
+				// like a DP-24 window-excluded claim: never asked, never
+				// moves from its lexical position), but say why via a
+				// synthetic Record (Confidence 0 — decision.BandOf reads
+				// that as unsure, so a Recorder logs it applied:false,
+				// matching "this was never actually answered").
+				m := eligible[idxs[0]]
+				oversizedRecords = append(oversizedRecords, decision.Record{
+					Site:       "obligations",
+					Provider:   d.Name(),
+					QuestionID: m.cl.ClaimID,
+					Kind:       decision.KindNoul,
+					Choice:     reason,
+				})
+				continue
+			}
 		}
-		chunks = append(chunks, eligible[start:end])
+		grp := make([]scored, len(idxs))
+		for j, idx := range idxs {
+			grp[j] = eligible[idx]
+		}
+		chunks = append(chunks, grp)
 	}
 
 	results := make([]rerankChunkResult, len(chunks))
@@ -284,6 +329,7 @@ func rerankWithinTiers(ctx context.Context, d decision.Decider, file, hunk strin
 		}
 		records = append(records, res.resp.Records("obligations")...)
 	}
+	records = append(records, oversizedRecords...)
 	sort.Slice(records, func(i, j int) bool { return records[i].QuestionID < records[j].QuestionID })
 
 	// DP-25: rctx's own deadline, not the parent ctx's — a caller-side
@@ -302,7 +348,7 @@ func rerankWithinTiers(ctx context.Context, d decision.Decider, file, hunk strin
 		ChunksTotal:     len(chunks),
 		ChunksFailed:    len(failures),
 		CandidatesTotal: len(matched),
-		RankedCount:     len(eligible),
+		RankedCount:     len(eligible) - len(plan.Oversized),
 		TimedOut:        timedOut,
 		Timeout:         timeout,
 	}

@@ -642,3 +642,99 @@ func TestRerankWithinTiers_ConcurrencyIsBounded(t *testing.T) {
 		t.Errorf("max concurrent in-flight calls = %d, want <= rerankConcurrency (%d)", probe.maxSeen, rerankConcurrency)
 	}
 }
+
+// TestRerankWithinTiers_DefaultCapsChunkTypesafe is DP-26's own acceptance
+// test (O110) for the re-rank's own chunk plan under the new default caps:
+// a typesafe-named Decider (no MaxQuestions()/MaxStateBytes() opt-in) still
+// chunks once a batch exceeds defaultBatchQuestions (64) — 70 claims split
+// into chunks of 64 and 6 — while llm's own count cap stays at
+// prefilterChunkSize (20), unchanged from
+// TestRerankWithinTiers_ChunksByDeciderName above. Each claim's own rule
+// text here is tiny, so the byte budget never binds: this call is
+// intentionally COUNT-bound, exactly as decisionrank.go's own file-level
+// doc comment says a rerank batch normally is (contrast the pre-filter's
+// byte-bound TestPrefilterSections_DefaultCapsChunkByBytes).
+func TestRerankWithinTiers_DefaultCapsChunkTypesafe(t *testing.T) {
+	ctx := context.Background()
+	matched := buildMatchedRuleSet(70)
+
+	answers := make(map[string]decision.Answer, len(matched))
+	for _, m := range matched {
+		answers[m.cl.ClaimID] = decision.Answer{ID: m.cl.ClaimID, Kind: decision.KindNoul, Noul: 0.9}
+	}
+	entry := decision.MockEntry{Response: decision.Response{Provider: "typesafe", Answers: answers}}
+	md := decision.NewMockDecider("typesafe", entry, entry, entry)
+
+	oc := rerankWithinTiers(ctx, md, rerankTestFile, "", matched, len(matched), 0)
+	if oc.ChunksTotal != 2 {
+		t.Errorf("ChunksTotal = %d, want 2 (70 claims at cap 64: 64 + 6)", oc.ChunksTotal)
+	}
+	if oc.ChunksFailed != 0 {
+		t.Errorf("ChunksFailed = %d, want 0", oc.ChunksFailed)
+	}
+	calls := md.Calls()
+	if len(calls) != 2 {
+		t.Fatalf("Decide called %d times, want 2", len(calls))
+	}
+	sizes := map[int]bool{len(calls[0].Questions): true, len(calls[1].Questions): true}
+	if !sizes[64] || !sizes[6] {
+		t.Errorf("chunk sizes = {%d, %d}, want {64, 6}", len(calls[0].Questions), len(calls[1].Questions))
+	}
+	if total := len(calls[0].Questions) + len(calls[1].Questions); total != 70 {
+		t.Errorf("total questions across 2 calls = %d, want 70", total)
+	}
+}
+
+// TestRerankWithinTiers_OversizedClaimNeverSent (DP-26, O110): a claim
+// whose own rule text alone exceeds the byte budget is never asked about —
+// it keeps its exact lexical position (the same "never asked, never moves"
+// contract DP-24's window exclusion already uses) and is recorded with a
+// reason via a synthetic decision.Record, matching PrefilterSections' own
+// handling of an oversized section.
+func TestRerankWithinTiers_OversizedClaimNeverSent(t *testing.T) {
+	ctx := context.Background()
+	normal := buildMatchedRuleSet(2)
+	huge := scored{
+		cl:        core.SemanticClaim{ClaimID: "huge", Rule: strings.Repeat("z", 200*1024), Status: core.ClaimFresh},
+		governing: governingScope{tier: 0},
+	}
+	matched := []scored{normal[0], huge, normal[1]}
+
+	answers := map[string]decision.Answer{
+		"rule000": {ID: "rule000", Kind: decision.KindNoul, Noul: 0.9},
+		"rule001": {ID: "rule001", Kind: decision.KindNoul, Noul: 0.9},
+	}
+	entry := decision.MockEntry{Response: decision.Response{Provider: "typesafe", Answers: answers}}
+	md := decision.NewMockDecider("typesafe", entry, entry, entry)
+
+	oc := rerankWithinTiers(ctx, md, rerankTestFile, "", matched, len(matched), 0)
+
+	for _, c := range md.Calls() {
+		for _, q := range c.Questions {
+			if q.ID == "huge" {
+				t.Error("the oversized claim was asked about as a Question")
+			}
+		}
+	}
+	if oc.Matched[1].cl.ClaimID != "huge" {
+		t.Errorf("Matched[1] = %q, want %q (unmoved — never asked)", oc.Matched[1].cl.ClaimID, "huge")
+	}
+	var reasonRec *decision.Record
+	for i := range oc.Records {
+		if oc.Records[i].QuestionID == "huge" {
+			reasonRec = &oc.Records[i]
+		}
+	}
+	if reasonRec == nil {
+		t.Fatal("Records carries no entry for the oversized claim")
+	}
+	if !strings.Contains(reasonRec.Choice, "budget") {
+		t.Errorf("oversized record's reason = %q, want it to name the byte budget", reasonRec.Choice)
+	}
+	if reasonRec.Confidence != 0 {
+		t.Errorf("oversized record's Confidence = %v, want 0 (never actually answered)", reasonRec.Confidence)
+	}
+	if oc.RankedCount != 2 {
+		t.Errorf("RankedCount = %d, want 2 (the oversized claim was eligible but never actually sent)", oc.RankedCount)
+	}
+}
