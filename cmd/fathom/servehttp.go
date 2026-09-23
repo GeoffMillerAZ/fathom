@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -205,6 +206,16 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stdout, "self-restart: disabled — cannot resolve this process's own path (%v)\n", exeErr)
 	} else {
 		go watchOwnBinary(exe, stdout, selfRestartPoll, selfRestartCooldown, os.Exit)
+	}
+
+	// Periodic OS-memory return (memscavenge.go, O108): bounds how long any
+	// one peak (a large graph build, a burst of concurrent cache misses)
+	// can inflate the daemon's OS-visible footprint, instead of leaving it
+	// to Go's own lazy background scavenger for a process that runs 24/7.
+	if scavengeDisabled() {
+		fmt.Fprintln(stdout, "scavenge: OFF (FATHOM_SCAVENGE=off) — the daemon's OS-visible footprint may not shrink after a peak (O108)")
+	} else {
+		go runMemoryScavenger(context.Background(), scavengeIntervalFromEnv(), stdout, debug.FreeOSMemory)
 	}
 
 	fmt.Fprintf(stdout, "serve-http: listening on %s\n", *addr)
