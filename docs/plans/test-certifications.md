@@ -12,7 +12,7 @@ silently skipped. Design: `docs/design/test-certifications.md`.
 - [x] Every envelope case is joined to a `Test*` symbol by exact name (`TestX/sub` joins to `TestX`); the join rate is a reported fact {id: TC-3, symbol: JoinCasesToSymbols, package: internal/testevidence, reachable_from: TestJoinCasesToSymbols_ExactNameAndSubtest}
 - [x] `fathom tests status` prints, per suite, class, tier, the last run's verdict and totals, and `joined N of M cases`; "no manifests found" is a named skip, never a clean table {id: TC-4, symbol: cmdTestsStatus, package: cmd/fathom, reachable_from: TestCmdTestsStatus_JoinRateAndNoManifests}
 - [x] The Go extractor reads a `// certifies:` marker above a `Test*` function into a declared certification fact; a malformed marker is an ingest warning naming file and line {id: TC-5, symbol: ParseCertifiesMarker, package: internal/extractor, reachable_from: TestParseCertifiesMarker_GrammarAndMalformed}
-- [ ] (op) TC-M1: envelope-to-symbol join rate measured on fathom's own repo and on test-kit's `examples/`; bar ≥ 80 %, else the envelope needs a case-to-symbol contract before stage 1 {id: TC-M1, skip: "operator measurement: recorded in docs/bench/readings once run"}
+- [ ] (op) TC-M1: envelope-to-symbol join rate measured on fathom's own repo and on test-kit's `examples/`; bar ≥ 80 %, else the envelope needs a case-to-symbol contract before stage 1 {id: TC-M1, skip: "measured: docs/bench/readings/test-certifications-stage0.md — 100% (9/9) on test-kit examples/runnable, 94.76% (4542/4793) on fathom ./internal/...; both clear the 80% bar, verdict pass"}
 
 ## B. Stage 1 — the certifications layer and the gate
 
