@@ -87,7 +87,7 @@ func TestSweepCertifications_MovedGoneAndNewRun(t *testing.T) {
 	}
 	byTest := make(map[string]core.SemanticClaim, len(claims))
 	for _, c := range claims {
-		var m meta
+		var m Meta
 		if len(c.Meta) > 0 {
 			_ = json.Unmarshal(c.Meta, &m)
 		}
@@ -107,7 +107,7 @@ func TestSweepCertifications_MovedGoneAndNewRun(t *testing.T) {
 	if c, ok := byTest["TestUnproven"]; !ok || c.Status != core.ClaimFresh {
 		t.Errorf("TestUnproven status = %v (ok=%v), want fresh", c.Status, ok)
 	} else {
-		var m meta
+		var m Meta
 		_ = json.Unmarshal(c.Meta, &m)
 		if State(m.State) != StateBroken {
 			t.Errorf("TestUnproven state after new failing run = %s, want broken", m.State)

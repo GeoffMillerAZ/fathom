@@ -62,7 +62,7 @@ func SweepCertifications(ctx context.Context, st store.Store, service string) (R
 		if len(c.Meta) == 0 {
 			continue
 		}
-		var m meta
+		var m Meta
 		if err := json.Unmarshal(c.Meta, &m); err != nil {
 			report.Skipped = append(report.Skipped, fmt.Sprintf("%s: unreadable meta: %v", c.ClaimID, err))
 			continue

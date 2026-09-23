@@ -70,6 +70,21 @@ func ParseMarkdownPlan(service string, md []byte) Plan {
 			t.Expect.SkipTest = truthy(ann["skip_test"])
 			t.Expect.SkipReason = ann["skip"]
 			t.Expect.AllowContradiction = truthy(ann["allow_contradiction"])
+			// certified_by (vision 33 / ADR-043 stage 1, TC-9, design doc
+			// §4): repeatable — same comma-separated-VALUE convention
+			// `needs` already uses, so more than one test is written
+			// quoted ("certified_by: "TestA,TestB""; a comma anywhere in
+			// an unquoted value would otherwise fragment the annotation
+			// block itself). strength is a single optional floor applied
+			// to every named test.
+			if v, ok := ann["certified_by"]; ok {
+				for _, name := range strings.Split(v, ",") {
+					if name = strings.TrimSpace(name); name != "" {
+						t.Expect.CertifiedBy = append(t.Expect.CertifiedBy, name)
+					}
+				}
+			}
+			t.Expect.CertifyStrength = ann["strength"]
 			// ADR-030: the lexical oracle keys. `path`/`pattern` mean nothing
 			// without `oracle`, so they are read only alongside it — a stray
 			// pattern on a symbol row stays inert instead of half-contracting.
@@ -217,6 +232,8 @@ var annotationKeys = []string{
 	"id", "symbol", "package", "skip_test", "skip", "reachable_from",
 	"min_tier", "disposition", "reason", "trigger", "allow_contradiction",
 	"ctx", "needs",
+	// certified_by (vision 33 / ADR-043 stage 1, TC-9)
+	"certified_by", "strength",
 	// intent-condition oracles (ADR-026)
 	"oracle", "paths", "pattern", "min", "max", "eq", "run", "path",
 	"service", "present", "after", "plan", "rows", "row", "partial",

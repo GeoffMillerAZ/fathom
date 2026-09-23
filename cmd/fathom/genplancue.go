@@ -120,7 +120,7 @@ func renderPlanCUE(p verify.Plan) string {
 		if t.Trigger != "" {
 			fmt.Fprintf(&b, "\t\ttrigger: %q\n", t.Trigger)
 		}
-		if t.Expect != (verify.Expect{}) || t.Oracle != "" {
+		if !t.Expect.IsZero() || t.Oracle != "" {
 			b.WriteString("\t\texpect: {\n")
 			e := t.Expect
 			if e.Symbol != "" {

@@ -134,7 +134,7 @@ func TestCompileCertifications_TierAndStateLadders(t *testing.T) {
 	}
 	byTest := make(map[string]core.SemanticClaim, len(claims))
 	for _, c := range claims {
-		var m meta
+		var m Meta
 		if err := json.Unmarshal(c.Meta, &m); err != nil {
 			t.Fatalf("unmarshal meta for %s: %v", c.ClaimID, err)
 		}
@@ -159,7 +159,7 @@ func TestCompileCertifications_TierAndStateLadders(t *testing.T) {
 			t.Errorf("%s: no compiled claim found", tc.test)
 			continue
 		}
-		var m meta
+		var m Meta
 		_ = json.Unmarshal(c.Meta, &m)
 		if State(m.State) != tc.wantState {
 			t.Errorf("%s: state = %s, want %s", tc.test, m.State, tc.wantState)

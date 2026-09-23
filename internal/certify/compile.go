@@ -49,7 +49,7 @@ type declaredEntry struct {
 	Component string
 }
 
-// meta is CompileCertifications'/SweepCertifications' JSON provenance
+// Meta is CompileCertifications'/SweepCertifications' JSON provenance
 // block (design doc §3's {test, suite, class, strength, state, run_digest,
 // attempts, coverage_pct?, mutation_score?}), stored in
 // core.SemanticClaim.Meta. TestSymbolKey/TargetKind/TargetID/TestFile are
@@ -57,7 +57,7 @@ type declaredEntry struct {
 // re-derive a claim's current state without re-scanning declarations from
 // scratch (TestFile is what lets it detect a same-key, moved-file test —
 // design doc §3's "stale when the test… moved").
-type meta struct {
+type Meta struct {
 	Test          string   `json:"test"`
 	Suite         string   `json:"suite,omitempty"`
 	Class         string   `json:"class,omitempty"`
@@ -268,7 +268,7 @@ func evaluateCertificate(ctx context.Context, st store.Store, service, watermark
 	scope := sortedUnique(append(append([]string(nil), testNode.FilePath), target.Files...))
 	rule := fmt.Sprintf("%s certifies %s %s (%s) — %s", testBareName(testNode.Name), e.Kind, e.TargetID, strength, state)
 
-	m := meta{
+	m := Meta{
 		Test: testBareName(testNode.Name), Suite: suite, Class: class, Strength: strength, State: string(state),
 		RunDigest: runDigest, Attempts: attempts,
 		TestSymbolKey: e.TestSymbolKey, TargetKind: e.Kind, TargetID: e.TargetID, TestFile: testNode.FilePath,

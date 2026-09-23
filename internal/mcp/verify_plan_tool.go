@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
+	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/sdd"
 	"github.com/geoffmilleraz/fathom/internal/verify"
@@ -226,6 +227,35 @@ func (e *verifyEvidence) SpecImplementors(specID string) []string {
 	}
 	return e.matrix.Coverage(specID)
 }
+
+// certificationsBackend is the optional backend capability
+// CertificationsByTest needs (vision 33 / ADR-043 stage 1, TC-9) —
+// QueryInterface implementations that don't serve semantic layers simply
+// don't implement it, and CertificationsByTest degrades to "no
+// certificate" for every row rather than failing the whole verify_plan
+// call.
+type certificationsBackend interface {
+	ClaimsForService(ctx context.Context, serviceID, layer string) ([]core.SemanticClaim, error)
+}
+
+// CertificationsByTest implements verify.CertificationEvidence: reads
+// every compiled certifications-layer claim for the service and groups it
+// by its provenance test's bare name via certify.ByTest — the SAME
+// resolution cmd/fathom's cliEvidence uses, so `fathom verify` and
+// verify_plan resolve a certified_by contract identically.
+func (e *verifyEvidence) CertificationsByTest(tests []string) map[string][]verify.Certification {
+	cb, ok := e.backend.(certificationsBackend)
+	if !ok {
+		return nil
+	}
+	claims, err := cb.ClaimsForService(e.ctx, e.service, certify.Layer)
+	if err != nil {
+		return nil
+	}
+	return certify.ByTest(claims, tests)
+}
+
+var _ verify.CertificationEvidence = (*verifyEvidence)(nil)
 
 var (
 	_ verify.Evidence         = (*verifyEvidence)(nil)
