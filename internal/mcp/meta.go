@@ -106,6 +106,16 @@ type typedEdgeStatusBackend interface {
 	TypedEdgeStatus(service string) (fusion.TypedEdgeStatus, bool)
 }
 
+// autoRefreshStatsBackend is the optional backend capability for the
+// auto-refresh wrapper's process-lifetime re-ingest counter (O108,
+// autorefresh.go). Present only when the backend passed to NewServer* is
+// (or wraps) an *autoRefreshBackend — i.e. serve-http's default
+// --auto-refresh=true configuration. Consumed by cmd/fathom's /metrics as
+// fathom_autorefresh_total, via Server.AutoRefreshTotal.
+type autoRefreshStatsBackend interface {
+	AutoRefreshTotal() int64
+}
+
 func registerServerStats(s *Server) {
 	s.registerTool(toolDescriptor{
 		Name:        "server_stats",

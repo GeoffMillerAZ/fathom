@@ -6,8 +6,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/pprof"
 	"os"
 	"path/filepath"
+	"runtime"
+	"runtime/debug"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -205,6 +208,16 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 		go watchOwnBinary(exe, stdout, selfRestartPoll, selfRestartCooldown, os.Exit)
 	}
 
+	// Periodic OS-memory return (memscavenge.go, O108): bounds how long any
+	// one peak (a large graph build, a burst of concurrent cache misses)
+	// can inflate the daemon's OS-visible footprint, instead of leaving it
+	// to Go's own lazy background scavenger for a process that runs 24/7.
+	if scavengeDisabled() {
+		fmt.Fprintln(stdout, "scavenge: OFF (FATHOM_SCAVENGE=off) — the daemon's OS-visible footprint may not shrink after a peak (O108)")
+	} else {
+		go runMemoryScavenger(context.Background(), scavengeIntervalFromEnv(), stdout, debug.FreeOSMemory)
+	}
+
 	fmt.Fprintf(stdout, "serve-http: listening on %s\n", *addr)
 	if err := http.ListenAndServe(*addr, handler); err != nil {
 		fmt.Fprintf(stderr, "error: http serve: %v\n", err)
@@ -377,6 +390,23 @@ func newHTTPHandler(srv *mcp.Server, c *client.Client, selfAddr string, ports *d
 	mux.Handle("/observatory/brief", observatoryBriefPage(selfURL))
 	mux.Handle("/observatory/wiring/", wiringRoutes(clientWiringRegistry(c), selfURL, time.Now)) // SH-7/SH-8: preview → apply → undo, law-13 gated (observatory_apply.go)
 
+	// GET /debug/pprof/* (O108, docs/guides/fleet-index.md daemon ops,
+	// docs/mcp-tools.md HTTP surfaces): the stdlib pprof handlers, mounted
+	// on this handler's OWN mux rather than relying on net/http/pprof's
+	// init()-time registration onto http.DefaultServeMux (which this
+	// server never serves from). Loopback-only by the same trust boundary
+	// as every other route here (ADR-014 amendment: surfaces are not a
+	// security boundary) — no separate gate, same as /statusz outside
+	// hosted mode. /debug/pprof/heap and /debug/pprof/goroutine are the
+	// two profiles O108's synthetic driver reads across an auto-refresh
+	// loop; /debug/pprof/profile (30s CPU) and /debug/pprof/allocs are
+	// mounted too since they cost nothing idle.
+	mux.HandleFunc("/debug/pprof/", pprof.Index)
+	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+
 	// serveRPC handles one JSON-RPC 2.0 message on the named surface.
 	serveRPC := func(w http.ResponseWriter, r *http.Request, surface string) {
 		state.reqCount.Add(1)
@@ -484,6 +514,18 @@ func newHTTPHandler(srv *mcp.Server, c *client.Client, selfAddr string, ports *d
 
 	// GET /metrics — simple text exposition of server-level metrics.
 	// Format: one "key value\n" line per metric.
+	//
+	// O108 (.fathom/observations.md): the always-on daemon's memory grew
+	// ~0.9 GB/hour with nothing on this endpoint to attribute it from —
+	// no memory series, no goroutine count, no pprof. The go_memstats_*/
+	// go_goroutines/process_uptime_seconds lines below are the Prometheus-
+	// conventional names (github.com/prometheus/client_golang's own
+	// process/go collectors use the same three memstats names and
+	// go_goroutines) so an operator's existing dashboards/alerts pick them
+	// up without translation; the fathom_* gauges are the per-subsystem
+	// breakdown O108 asked for — cheap enough to compute on every scrape
+	// (an atomic load or a short mutex-guarded scan each, never a
+	// recomputation of the thing being measured).
 	mux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -491,10 +533,49 @@ func newHTTPHandler(srv *mcp.Server, c *client.Client, selfAddr string, ports *d
 		}
 		uptime := time.Since(state.startTime).Seconds()
 		reqCount := state.reqCount.Load()
+
+		var ms runtime.MemStats
+		runtime.ReadMemStats(&ms)
+
+		graphEntries, graphHits, graphMisses := srv.GraphCacheStats()
+
 		w.Header().Set("Content-Type", "text/plain; version=0.0.4")
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintf(w, "fathom_uptime_seconds %.3f\n", uptime)
 		fmt.Fprintf(w, "fathom_requests_total %d\n", reqCount)
+		fmt.Fprintf(w, "process_uptime_seconds %.3f\n", uptime)
+
+		fmt.Fprintf(w, "go_memstats_heap_inuse_bytes %d\n", ms.HeapInuse)
+		fmt.Fprintf(w, "go_memstats_heap_sys_bytes %d\n", ms.HeapSys)
+		fmt.Fprintf(w, "go_memstats_sys_bytes %d\n", ms.Sys)
+		fmt.Fprintf(w, "go_goroutines %d\n", runtime.NumGoroutine())
+
+		// fathom_graph_memo_entries: the watermark-keyed call-graph memo
+		// (BP-28, I21, internal/analysis/callgraph/cache.go) — one entry
+		// per (service, watermark) currently held, capped at 8 by default.
+		// hits/misses are process-lifetime counters, not gauges, but are
+		// cheap enough to always include so a flat entries count next to a
+		// climbing misses count reads as "evicting correctly", not "empty".
+		fmt.Fprintf(w, "fathom_graph_memo_entries %d\n", graphEntries)
+		fmt.Fprintf(w, "fathom_graph_memo_hits_total %d\n", graphHits)
+		fmt.Fprintf(w, "fathom_graph_memo_misses_total %d\n", graphMisses)
+
+		// fathom_open_stores: SQLiteStore handles currently open in this
+		// process (internal/store's openStoreCount) — a daemon that opens
+		// one store at startup and never re-opens one should hold this
+		// constant for its whole lifetime.
+		fmt.Fprintf(w, "fathom_open_stores %d\n", store.OpenStores())
+
+		// fathom_autorefresh_total: auto-refresh re-ingests triggered by
+		// git-HEAD drift (internal/mcp/autorefresh.go) since this process
+		// started. 0 when --auto-refresh=false.
+		fmt.Fprintf(w, "fathom_autorefresh_total %d\n", srv.AutoRefreshTotal())
+
+		// fathom_typed_pass_total: go/packages typed-edge passes actually
+		// run (internal/fusion/typedcalls.go) since this process started —
+		// every ingest of a Go service, whether triggered by an explicit
+		// `ingest` call or an auto-refresh.
+		fmt.Fprintf(w, "fathom_typed_pass_total %d\n", c.TypedPassTotal())
 	})
 
 	// POST /reload — 200 OK stub; in production this would call

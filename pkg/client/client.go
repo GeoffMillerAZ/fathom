@@ -467,6 +467,14 @@ func (c *Client) TypedEdgeStatus(service string) (fusion.TypedEdgeStatus, bool) 
 	return c.pipe.TypedEdgeStatus(service)
 }
 
+// TypedPassTotal returns the process-lifetime count of typed-edge passes
+// this Client's pipeline has actually run (O108) — see
+// fusion.Pipeline.TypedPassTotal. Consumed by cmd/fathom's /metrics as
+// fathom_typed_pass_total.
+func (c *Client) TypedPassTotal() int64 {
+	return c.pipe.TypedPassTotal()
+}
+
 // ServiceWatermark returns the connector's *current* freshness token for the
 // service's corpus (git HEAD SHA, or a content-addressed manifest hash for
 // non-git corpora — ADR-017), resolved from the path recorded in service_meta

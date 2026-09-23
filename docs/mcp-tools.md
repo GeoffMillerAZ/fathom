@@ -149,6 +149,22 @@ outside the tool registry — hooks call these directly rather than through
   naming `site`/`provider`/`questions`/`latency_ms`/`error`,
   `applied:false` — so silence in `decisions.jsonl` means "never asked",
   never "asked and failed".
+- `GET /metrics` — text exposition (`fathom_uptime_seconds`,
+  `fathom_requests_total`, plus O108's `go_memstats_heap_inuse_bytes`/
+  `_heap_sys_bytes`/`_sys_bytes`, `go_goroutines`, `process_uptime_seconds`,
+  `fathom_graph_memo_entries`/`_hits_total`/`_misses_total`,
+  `fathom_open_stores`, `fathom_autorefresh_total`,
+  `fathom_typed_pass_total`) — `fathom doctor`'s `daemon_footprint` row reads
+  it.
+- `GET /debug/pprof/*` (O108) — the stdlib `net/http/pprof` handlers
+  (`heap`, `goroutine`, `allocs`, `profile`, `cmdline`, `symbol`, `trace`),
+  mounted on the daemon's own mux. Loopback-only, same unauthenticated trust
+  boundary as every other route (ADR-014 amendment: surfaces are not a
+  security boundary) — never gated behind the `/rpc/modules` bearer token
+  even in hosted-modules mode. `curl -s localhost:7575/debug/pprof/heap -o
+  heap.pb.gz && go tool pprof -top heap.pb.gz` reads a live snapshot;
+  `docs/guides/fleet-index.md`'s daemon-ops section has the operational
+  playbook.
 
 ---
 

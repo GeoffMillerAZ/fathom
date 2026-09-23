@@ -9,12 +9,29 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	_ "modernc.org/sqlite"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 )
+
+// openStoreCount is the process-lifetime count of SQLiteStore handles
+// currently open (O108, cmd/fathom's /metrics fathom_open_stores):
+// incremented on every successful NewSQLiteStore, decremented on every
+// Close. A daemon that opens exactly one store at startup and never
+// re-opens one should hold this at a constant 1 (+1 per mounted
+// expert-module store) for its whole lifetime — a climbing value points
+// directly at a per-request/per-refresh store leak (O108 candidate c)
+// instead of leaving it to be inferred from RSS growth alone.
+var openStoreCount int64 // atomic
+
+// OpenStores returns the current count of open SQLiteStore handles in this
+// process. See openStoreCount's doc for what a healthy value looks like.
+func OpenStores() int64 {
+	return atomic.LoadInt64(&openStoreCount)
+}
 
 // SQLiteStore is a pure-Go, SQLite-backed (modernc.org/sqlite, WAL mode)
 // implementation of Store (ADR-020). Unlike the old DuckStore backend
@@ -132,6 +149,7 @@ func NewSQLiteStore(path string) (*SQLiteStore, error) {
 		_ = db.Close()
 		return nil, fmt.Errorf("store.NewSQLiteStore indexes: %w", err)
 	}
+	atomic.AddInt64(&openStoreCount, 1)
 	return s, nil
 }
 
@@ -1797,6 +1815,7 @@ func (s *SQLiteStore) DeleteTypedEdgePackage(ctx context.Context, serviceID, pkg
 
 // Close releases the underlying database connection pool.
 func (s *SQLiteStore) Close() error {
+	atomic.AddInt64(&openStoreCount, -1)
 	return s.db.Close()
 }
 

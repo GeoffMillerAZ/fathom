@@ -216,6 +216,13 @@ type Pipeline struct {
 	unclassifiedTotal int64 // atomic
 	oversizeTotal     int64 // atomic
 
+	// typedPassTotal counts every enrichTypedEdges call that actually ran
+	// the go/packages load (O108, cmd/fathom's /metrics fathom_typed_pass_total)
+	// — incremented past the hasGoSource/hasGoModule/DisableTypedEdges guard
+	// in internal/fusion/typedcalls.go, so a non-Go service's ingests never
+	// inflate it. Process-lifetime, like unclassifiedTotal/oversizeTotal.
+	typedPassTotal int64 // atomic
+
 	// classifiedZero counts, per ToolKind, files that classified as that
 	// tool but whose extractor emitted zero symbols (critic F5) — the
 	// remaining silent-zero class after the Unclassified counter. Guarded
@@ -1081,6 +1088,16 @@ type extractStats struct {
 // extraction" has a durable, process-wide counter, not just a per-call one.
 func (p *Pipeline) Stats() (unclassified, oversize int64) {
 	return atomic.LoadInt64(&p.unclassifiedTotal), atomic.LoadInt64(&p.oversizeTotal)
+}
+
+// TypedPassTotal returns the process-lifetime count of typed-edge passes
+// this Pipeline has actually run (O108) — every enrichTypedEdges call past
+// its own skip guard, regardless of whether the pass succeeded. Surfaced
+// via pkg/client and cmd/fathom's /metrics as fathom_typed_pass_total: a
+// daemon that never stops growing it while heap keeps climbing points at
+// the typed pass as a growth site; one that stays flat rules it out.
+func (p *Pipeline) TypedPassTotal() int64 {
+	return atomic.LoadInt64(&p.typedPassTotal)
 }
 
 // ClassifiedZeroStats returns a copy of the process-lifetime per-tool

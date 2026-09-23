@@ -204,6 +204,27 @@ func TestServeHTTPMetrics(t *testing.T) {
 	if !strings.Contains(body, "fathom_requests_total") {
 		t.Errorf("GET /metrics body = %q, want fathom_requests_total", body)
 	}
+	// O108: the memstats/goroutine/subsystem gauges must all be present —
+	// this is the instrument the observation asked for, and its whole
+	// value is that every one of these lines is actually served, not just
+	// the two pre-existing ones above.
+	for _, want := range []string{
+		"process_uptime_seconds",
+		"go_memstats_heap_inuse_bytes",
+		"go_memstats_heap_sys_bytes",
+		"go_memstats_sys_bytes",
+		"go_goroutines",
+		"fathom_graph_memo_entries",
+		"fathom_graph_memo_hits_total",
+		"fathom_graph_memo_misses_total",
+		"fathom_open_stores",
+		"fathom_autorefresh_total",
+		"fathom_typed_pass_total",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("GET /metrics body missing %q; body=%q", want, body)
+		}
+	}
 }
 
 func TestServeHTTPMetricsMethodNotAllowed(t *testing.T) {
@@ -213,6 +234,31 @@ func TestServeHTTPMetricsMethodNotAllowed(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 	if rr.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("POST /metrics status = %d, want 405", rr.Code)
+	}
+}
+
+// ─── GET /debug/pprof ─────────────────────────────────────────────────────────
+
+// TestServeHTTPPprofMounted pins O108's instrumentation: the daemon must
+// serve the stdlib pprof handlers on its own mux (not rely on
+// net/http/pprof's init()-time registration onto http.DefaultServeMux,
+// which this server never serves from) so a synthetic driver — or an
+// operator chasing a live leak — can pull /debug/pprof/heap without a
+// rebuild.
+func TestServeHTTPPprofMounted(t *testing.T) {
+	handler := newTestHandler(t)
+	for _, path := range []string{
+		"/debug/pprof/",
+		"/debug/pprof/heap",
+		"/debug/pprof/goroutine",
+		"/debug/pprof/allocs",
+	} {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, req)
+		if rr.Code != http.StatusOK {
+			t.Errorf("GET %s status = %d, want 200 (body=%q)", path, rr.Code, rr.Body.String())
+		}
 	}
 }
 

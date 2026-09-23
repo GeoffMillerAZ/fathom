@@ -84,6 +84,30 @@ func TestAutoRefresh_TypedEdges_TriggersEnsure(t *testing.T) {
 	}
 }
 
+// TestAutoRefresh_AutoRefreshTotal_CountsDebouncedRefreshesOnce pins O108's
+// /metrics gauge (fathom_autorefresh_total, cmd/fathom/servehttp.go): the
+// counter increments once per debounced drift, matching the ingest count
+// TestAutoRefresh_ReingestsOnDriftOnce already pins — never once per
+// intercepted read.
+func TestAutoRefresh_AutoRefreshTotal_CountsDebouncedRefreshesOnce(t *testing.T) {
+	fake := &refreshFake{path: "/repo", indexed: "oldsha"}
+	ar := newAR(fake, "newsha")
+	ctx := context.Background()
+	ar.ListAllSymbols(ctx, "svc")
+	ar.FindSymbol(ctx, "svc", "X")
+	ar.QuerySymbols(ctx, core.Query{ServiceID: "svc"})
+	if got := ar.AutoRefreshTotal(); got != 1 {
+		t.Fatalf("AutoRefreshTotal() = %d, want 1 (debounced)", got)
+	}
+
+	// A second, later drift bumps it again.
+	ar.headFn = func(string) string { return "newersha" }
+	ar.ListAllSymbols(ctx, "svc")
+	if got := ar.AutoRefreshTotal(); got != 2 {
+		t.Fatalf("AutoRefreshTotal() after a second drift = %d, want 2", got)
+	}
+}
+
 // TestAutoRefresh_NoReingestWhenFresh: HEAD == indexed commit → no ingest.
 func TestAutoRefresh_NoReingestWhenFresh(t *testing.T) {
 	fake := &refreshFake{path: "/repo", indexed: "same"}
