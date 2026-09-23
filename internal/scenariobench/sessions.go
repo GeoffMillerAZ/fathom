@@ -345,11 +345,10 @@ func RemainingPlanRows(worktree string) (int, error) {
 // wt.DaemonURL), and -service is passed explicitly so the command never
 // falls back to that same auto-resolution either.
 //
-// Note: the scratch daemon wireScratchDaemon (subject.go) starts with
-// `-call-log ""` (disabled) for a wired cell, so this call reads an empty
-// log until that is revisited — the function itself is correct and
-// tested against a populated log; making the daemon actually log is
-// subject.go's row, out of this row's file scope.
+// Note: wireScratchDaemon (subject.go) used to start every wired cell's
+// scratch daemon with `-call-log ""` (disabled), so this call read an
+// empty log — DP-14 fixed that (a real path under wt.CellDir), so a cell
+// with prior tool calls now gives `fathom discoveries` something to read.
 func workerDiscoveryBrief(ctx context.Context, wt Worktree, arm Arm, sessionStart time.Time) (brief string, pointers []string) {
 	if !arm.Wired || wt.DaemonURL == "" {
 		return "", nil

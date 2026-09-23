@@ -821,7 +821,20 @@ func wireScratchDaemon(ctx context.Context, wt *Worktree, task Task, renderedArm
 		return fmt.Errorf("wiring scratch daemon: finding a free port: %w", err)
 	}
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
-	daemon := exec.Command(bin, "serve-http", "-store", wt.StorePath, "-addr", addr, "-auto-refresh=false", "-call-log", "")
+	// DP-14 (docs/bench/scenarios.md "The decision-port arm"): an empty
+	// -call-log disables openDecisionRecorder outright (decideports.go's
+	// own doc comment — "" is decide.DefaultRecorderPath's own signal for
+	// "no call log configured at all"), so a wired cell's decisions.jsonl
+	// was never written regardless of the arm's own [decide] config —
+	// sessions.go's workerDiscoveryBrief doc comment already named this
+	// exact gap ("making the daemon actually log is subject.go's row").
+	// An absolute path under wt.CellDir (never relative to daemon.Dir,
+	// the worktree) keeps every cell's own call log — and the
+	// decisions.jsonl DefaultRecorderPath derives beside it — next to
+	// this cell's other own artifacts (scratch-daemon.log, arm-setup.log),
+	// never shared across cells.
+	callLog := filepath.Join(wt.CellDir, "calls.jsonl")
+	daemon := exec.Command(bin, "serve-http", "-store", wt.StorePath, "-addr", addr, "-auto-refresh=false", "-call-log", callLog)
 	daemon.Dir = wt.Path
 	// A scratch daemon never watches its binary for a deploy (it would exit
 	// and nothing relaunches it), and it runs in its own process group so
