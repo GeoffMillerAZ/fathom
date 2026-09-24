@@ -354,23 +354,40 @@ vectors were specified as "DuckDB VSS" and need a SQLite-era re-check before any
 revival (F13). (3) "If the tracer bullet fails its gate" — the 3-week
 generalize-or-kill telemetry gate on `obligations`.
 
-**Amendment proposed 2026-09-02 (Q21): a measured obligation ceiling.**
-*Status: proposed; the owner decides.* This ADR's 150-token serving ceiling
-was set before the channel's cost was ever measured. HF-3 measured it
+**Amendment (2026-09-24, Q21): the measured obligation ceiling, ratified.**
+*Status: accepted* (proposed 2026-09-02; the owner delegated the decision
+2026-09-24). This ADR's 150-token serving ceiling was set before the
+channel's cost was measured. HF-3 measured it
 (`docs/measurements/2026-08-27-obligation-ceiling.md`, 2026-07-30 →
 2026-08-26, one machine, one adopter, `tokens_estimate` = bytes/4, an
-ESTIMATE): `post-edit` obligations payloads n=1,918, p50 131, p90 315, p95
-329, max 378 tokens — **897 of 1,918 (47%) over 150**; `pre-edit-guard`
-payloads n=370, p50 185, p90 198, p95 222, max 380 — **308 (83%) over 150**.
-Rules per post-edit payload p50 3, p95 6. Enforcing 150 as written would
-drop a median of two rules from roughly half of all edits, with no evidence
-about which two (precision was not computable: the beat log records bytes
-and rule counts, never text). Proposed: raise the ceiling to the measured
-post-edit p90 (≈320 tokens) so invariant I35 stops being a permanently
-VIOLATED row nobody can satisfy, and treat drop-ranking under any cap as
-separate work with its own evidence (HF-4, Q13's options 1–3). Not
-adopted by this paragraph: no code or invariant changes until the owner
-ratifies; `docs/intent/questions.md` Q21 carries the decision.
+ESTIMATE): `post-edit` payloads n=1,918, p50 131, p90 315, p95 329, max 378
+tokens — 897 (47%) over 150; `pre-edit-guard` n=370, p50 185, p90 198, p95
+222, max 380 — 308 (83%) over 150. A second read of the same log
+(2026-09-14 → 2026-09-24, mixed organic and A/B-bench traffic, a different
+population) went the same way, milder: post-edit p90 241, p95 273, max 932
+(25% over 150, 2% over 320); pre-edit-guard p90 204, p95 267, max 319 (36%
+over 150, none over 320).
+**Decision.** Raise the whole-payload serving ceiling from 150 to 320 tokens
+(HF-3's post-edit p90) — `specLineTokenBudget` in `cmd/fathom/edithook.go`,
+pinned to this paragraph by `TestSpecLineTokenBudget_MatchesADR016`. The
+constant gates only what is appended after the rules (spec-line refs,
+anchored memories, findings); the rules block stays bounded by
+`MaxObligations` (6) and the ≤28-word compile budget. It costs nothing on
+the median edit (p50 62–131 tokens in both windows) and nothing on payloads
+already over 320; it only lets payloads in the 150–320 band carry content
+that was silently skipped before, at most 170 tokens more. The tail over
+320 (HF-3's pre-edit max 380; the second window's 72 post-edit payloads up
+to 932) is named here, not absorbed: any future truncation must disclose
+the dropped count (P3).
+**Not resolved by this amendment.** The guards pilots and the
+decision-port A/B (`docs/bench/readings/decision-port-ab-2026-09-23.md`)
+show the task's governing rule missing from the served set regardless of
+ranking or headroom. That is a selection problem, not a budget problem; it
+stays open under HF-4 / Q13, and `rank_within_tier = false` (ADR-042
+amendment, 2026-09-23) is a mitigation, not a fix.
+**Revisit when** a single-adopter window of 14 days or more without bench
+traffic moves post-edit p90 more than 15% from 320, or HF-4/Q13's selection
+work lands (a better selector may let the ceiling come back down).
 
 ## ADR-017 — Born-portable stores: repo-relative anchors, domain-neutral freshness
 

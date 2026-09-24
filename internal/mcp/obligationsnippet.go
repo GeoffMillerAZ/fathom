@@ -14,7 +14,7 @@ package mcp
 //
 // The cap is deliberately small (240 bytes, versus symbol_context's 40
 // lines): a citation is a rule's anchor, not its body, and six of these
-// ride the decision-moment payload whose whole budget is ~150 tokens.
+// ride the decision-moment payload whose whole budget is ~320 tokens (ADR-016, amended).
 
 import (
 	"context"

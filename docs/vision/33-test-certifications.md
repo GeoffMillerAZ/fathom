@@ -83,8 +83,9 @@ claim-shaped, and fathom is the claim engine.
    example "every deny-severity invariant has a live certificate of strength at
    least `asserts`", decides and enforces.
 
-The edit hook does not serve certificates in this round: its payload is capped
-at 150 tokens and already over budget on half of edits (Q21). A one-line "no
+The edit hook does not serve certificates in this round: its payload ceiling
+(320 tokens since Q21 was answered, 2026-09-24) is sized to today's rules, not
+to an extra line. A one-line "no
 live certificate governs this file" at the edit is a measured row with its own
 kill criterion, not a default.
 

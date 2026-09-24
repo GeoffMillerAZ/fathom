@@ -90,7 +90,8 @@ Default: the 30-day clock deletes, but only once a consumer population exists (P
 Source: `docs/vision/05`, `docs/plans/surface-prune.md`.
 
 **T3. Forced channels vs token cost.** Injection pays cache rent (the measured 22× line).
-Default: bounded payloads (≤150-token obligations, ≤600-token brief) and a
+Default: bounded payloads (≤320-token obligations payload, the measured p90 — ADR-016
+amended 2026-09-24; ≤600-token brief) and a
 pre-registered saving with a kill. Source: `docs/vision/21`, `docs/design/budgeted-answers.md`.
 
 **T4. Determinism vs LLM-compiled knowledge.** Default: the index is the spine; claims

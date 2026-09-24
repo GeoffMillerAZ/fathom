@@ -394,9 +394,10 @@ func TestEditHookSpecLineDroppedWhenBudgetSpent(t *testing.T) {
 	rel := "internal/core/engine.go"
 	abs := writeEditedFile(t, dir, rel, "package core\n\n// implements [US-042]\nfunc Engine() {}\n")
 
-	// A single rule long enough (chars/4 ~= tokens) to blow the 150-token
-	// budget on its own.
-	longRule := strings.Repeat("word ", 200)
+	// A single rule long enough (chars/4 ~= tokens) to blow the whole-payload
+	// budget on its own — sized from specLineTokenBudget, never a literal, so
+	// the test follows ADR-016's ceiling (5 chars per "word " = 1.25 tokens).
+	longRule := strings.Repeat("word ", specLineTokenBudget)
 	fake := &specRefsFakeDaemon{
 		t: t,
 		obligationsOut: map[string]any{

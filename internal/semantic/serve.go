@@ -26,9 +26,10 @@ import (
 // against store.ExternalFinding for the fields native claims do not have.
 const externalImportPromptVersion = "external-import/v1"
 
-// MaxObligations caps a served payload (ADR-016 §4.5: 3–6 rules, ≤150
-// tokens; rules are word-budgeted at compile time so the cap is the whole
-// serving budget).
+// MaxObligations caps a served payload (ADR-016 §4.5: 3–6 rules; rules are
+// word-budgeted at compile time, so this count is the rules block's budget —
+// the ≤320-token whole-payload ceiling, ADR-016 amended 2026-09-24, gates
+// only what the edit hook appends after them).
 const MaxObligations = 6
 
 // nearestTierReserveSlots (O57 item 4) is how many of a capped payload's

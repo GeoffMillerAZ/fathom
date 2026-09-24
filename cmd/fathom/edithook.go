@@ -19,13 +19,14 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 )
 
-// specLineTokenBudget is the ≤150-token discipline for the whole edit-hook
-// payload (docs/design/coding-agent-excellence.md, ADR.md#L241): obligations
+// specLineTokenBudget is the ≤320-token discipline for the whole edit-hook
+// payload (ADR-016 amendment 2026-09-24, Q21: the measured post-edit p90 —
+// docs/measurements/2026-08-27-obligation-ceiling.md): obligations
 // rules are already word-budgeted at compile time, so spec-line injection
 // (OP-4) is the one part of the payload that can still grow unboundedly (one
 // line per cited spec ID) — it is the part dropped first when the budget is
 // already spent.
-const specLineTokenBudget = 150
+const specLineTokenBudget = 320
 
 // maxSpecIDsPerEdit caps how many distinct spec IDs cited in one edited file
 // trigger a spec_refs lookup — a file citing a dozen specs must not turn one
@@ -403,7 +404,7 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 	// file cites bracketed spec IDs, tie those knowledge concepts to code by
 	// appending where each one is actually defined — beneath the obligations
 	// payload when there is one, as a payload of their own when there isn't.
-	// The ≤150-token budget covers the WHOLE payload and spec lines drop
+	// The ≤320-token budget covers the WHOLE payload and spec lines drop
 	// first: when obligations alone already spend it, skip every spec_refs
 	// RPC up front rather than paying hook latency for lines that cannot
 	// fit. Silent on any error (hook doctrine): a missing/unreadable file, a
@@ -444,7 +445,7 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 	// AM-6 (docs/design/anchored-memory.md §4): anchored memories ABOUT the
 	// edited file join the payload as a separate labeled block, through this
 	// same path — measured, budgeted and governed exactly as obligations
-	// are. Lowest priority in the ≤150-token budget: obligations are
+	// are. Lowest priority in the ≤320-token budget: obligations are
 	// compile-time budgeted, spec lines drop first, memories take only what
 	// remains (drop lowest-ranked first, count the displaced). The daemon
 	// (memory_search, file-scoped) evaluates drift and labels every line;
@@ -666,7 +667,7 @@ func fetchObligations(baseURL, service, file string, maxRules int, timeout time.
 		"file":    file,
 		// BP-20 (ADR-032 §4 D3): the tool inlines each rule's cited lines by
 		// default; the edit hook opts OUT. The decision-moment payload is
-		// budgeted at ~150 tokens and its rendered bytes are pinned by
+		// budgeted at ~320 tokens and its rendered bytes are pinned by
 		// golden tests — a snippet here would pay a discovery cost the hook
 		// never asked for, on every edit.
 		"include_snippets": false,
@@ -799,7 +800,7 @@ func fetchSpecRefs(baseURL, service, spec string) (map[string][]specRefLoc, bool
 }
 
 // maxMemoriesPerEdit caps how many memories one edit asks the daemon for.
-// The ≤150-token payload fits a handful at most; the daemon's own
+// The ≤320-token payload fits a handful at most; the daemon's own
 // `displaced` count for anything beyond this cap is folded into the beat
 // meta so the truncation is never silent.
 const maxMemoriesPerEdit = 20

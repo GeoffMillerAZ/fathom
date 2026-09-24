@@ -353,7 +353,7 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 			// the TOOL (an agent calling obligations directly is about to
 			// read the citation anyway) and OFF for the EDIT HOOK, which
 			// passes include_snippets:false — the decision-moment payload's
-			// budget is ~150 tokens and its rendered bytes must not move.
+			// budget is ~320 tokens and its rendered bytes must not move.
 			rendered = withSnippets(ctx, backend, service, obl.Rules)
 		} else {
 			rendered = make([]any, len(obl.Rules))

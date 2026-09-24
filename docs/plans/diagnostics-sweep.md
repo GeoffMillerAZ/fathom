@@ -48,9 +48,9 @@ O112. Grammar: `docs/plans/README.md`. Verify:
 
 ## Owner-decision (deferred — not applied here)
 
-- [-] OWN-1 — deregister stale fleet service records (`demo`'s vanished corpus root, `esp-thumper`, scratchpad-rooted services) via the existing `remove_service` MCP tool {id: OWN-1, disposition: deferred, reason: "owner decision — deletes registered service records; DG-18 makes a missing root harmless and visible (root_missing) in the meantime"}
-- [-] OWN-2 — `docs/intent/questions.md` Q21: amend ADR-016's 150-token obligations-injection ceiling to a measured value, or accept the overrun, is a standing product decision {id: OWN-2, disposition: deferred, reason: "owner product decision on ADR-016's ceiling, not a bug to silently patch"}
-- [-] OWN-4 — `.claude/settings.json` 6-entry wiring-drift diff: run `fathom config audit` and, if benign, `fathom fleet reconcile --repo <path> --apply --rebaseline` against the live settings file {id: OWN-4, disposition: deferred, reason: "owner decision — writes to the live settings file, not run here"}
+- [x] OWN-1 — deregister stale fleet service records (`demo`'s vanished corpus root, `esp-thumper`, scratchpad-rooted services) via the existing `remove_service` MCP tool {id: OWN-1, oracle: lexical, path: .fathom/observations.md, pattern: "OWN-1 executed"}
+- [x] OWN-2 — `docs/intent/questions.md` Q21: amend ADR-016's 150-token obligations-injection ceiling to a measured value, or accept the overrun, is a standing product decision {id: OWN-2, oracle: lexical, path: docs/intent/invariants.md, pattern: "320-token whole-payload ceiling"}
+- [-] OWN-4 — `.claude/settings.json` 6-entry wiring-drift diff: run `fathom config audit` and, if benign, `fathom fleet reconcile --repo <path> --apply --rebaseline` against the live settings file {id: OWN-4, disposition: deferred, reason: "diagnosed benign 2026-09-24: the six hook entries changed through the project's own commits (shim spelling) after the 2026-09-12 recording in a gitignored per-checkout ledger; origin/main audits clean; the documented remedy could not clear hook drift until the reconcile fix in this change; the volume checkout re-records on its next update"}
 
 ## Status
 

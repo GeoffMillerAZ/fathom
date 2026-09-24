@@ -172,7 +172,7 @@ func Search(ctx context.Context, ms Store, idx Index, cache *DriftCache, now fun
 // ShortLine renders the memory as one budgeted line: the label (tier and
 // state — never omitted, §9) and the claim. A suspect memory names each
 // anchor that moved in a short clause, not the full detail Line carries,
-// because the edit hook's whole payload is ≤150 tokens.
+// because the edit hook's whole payload is ≤320 tokens (ADR-016, amended).
 func (e Evaluation) ShortLine() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "[%s · %s", e.Tier, e.State)

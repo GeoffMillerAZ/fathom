@@ -12,7 +12,7 @@ makes every other ambition credible.
 
 | Metric | Target | Status (verified during this review) |
 |---|---|---|
-| **Injection coverage** — % of Edit/Write in indexed repos receiving obligations | ≥90%, payload p95 ≤150 tokens | **Unmeasured — no denominator exists** (Gap 1) |
+| **Injection coverage** — % of Edit/Write in indexed repos receiving obligations | ≥90%, payload p95 ≤320 tokens (ADR-016 amended 2026-09-24; was 150) | **Unmeasured — no denominator exists** (Gap 1) |
 | **Injected-obligation precision** — % of injected rules binding-and-relevant to the edit | **≥0.95 at serve time** (tighter than the 0.90 compile eval; serve noise is trust-fatal) | Never sampled. Live counter-example: markdown edits receive "use the race detector" (over-broad scope) and "bucket pending results by language" (a compiled description of how the system works, not a rule) |
 | **Retrieval latency** | p95 ≤200ms per companion call | **Met** — obligations p50 36ms / p95 90ms (max 745ms), staleness_report ≤17ms in the log |
 | **Fathom share of discovery** (vs Grep/Read) | ≥40% sustained 4 weeks | Baseline **0%** (0 fathom calls vs 193 greps) |
