@@ -72,7 +72,11 @@ func cmdCertifyGaps(args []string, stdout, stderr io.Writer) int {
 	if *jsonOut {
 		return renderCertifyGapsJSON(stdout, svc, indexCommit, time.Now(), report)
 	}
-	renderCertifyGapsTable(stdout, report)
+	// Suggestions (TC-24) are advisory only and never touch the versioned
+	// fathom.certify.gaps/v1 JSON the Review Kit adapter parses — read and
+	// rendered ONLY on the table path, best effort (a missing file means
+	// certify suggest has simply never run here).
+	renderCertifyGapsTable(stdout, report, loadCertifySuggestions(workspacePath("artifacts/certify-suggestions.jsonl")))
 	return 0
 }
 
@@ -161,22 +165,28 @@ func renderCertifyGapsJSON(w io.Writer, service, indexCommit string, now time.Ti
 	return 0
 }
 
-func renderCertifyGapsTable(w io.Writer, report certify.GapReport) {
+func renderCertifyGapsTable(w io.Writer, report certify.GapReport, suggestions []certifySuggestion) {
 	if len(report.Targets) == 0 {
 		fmt.Fprintln(w, "certify gaps: no targets found (nothing declared, and no invariant/incident corpus read)")
-		return
-	}
-	fmt.Fprintf(w, "%-10s %-24s %-5s %s\n", "KIND", "ID", "GAP", "REMEDY")
-	for _, t := range report.Targets {
-		gap := "no"
-		remedy := ""
-		if t.Gap {
-			gap = "yes"
-			remedy = t.Remedy
+	} else {
+		fmt.Fprintf(w, "%-10s %-24s %-5s %s\n", "KIND", "ID", "GAP", "REMEDY")
+		for _, t := range report.Targets {
+			gap := "no"
+			remedy := ""
+			if t.Gap {
+				gap = "yes"
+				remedy = t.Remedy
+			}
+			fmt.Fprintf(w, "%-10s %-24s %-5s %s\n", t.Kind, t.ID, gap, remedy)
 		}
-		fmt.Fprintf(w, "%-10s %-24s %-5s %s\n", t.Kind, t.ID, gap, remedy)
+		fmt.Fprintf(w, "%d declared, %d live, %d gap(s), joined %d of %d cases\n",
+			report.Summary.Declared, report.Summary.Live, report.Summary.Gaps,
+			report.Summary.JoinedCases, report.Summary.Cases)
 	}
-	fmt.Fprintf(w, "%d declared, %d live, %d gap(s), joined %d of %d cases\n",
-		report.Summary.Declared, report.Summary.Live, report.Summary.Gaps,
-		report.Summary.JoinedCases, report.Summary.Cases)
+	// TC-24: an unregistered test the decision port judged proceed-band —
+	// never a claim, never counted in Summary, purely a hint that a human
+	// still has to accept by adding the marker.
+	for _, s := range suggestions {
+		fmt.Fprintf(w, "suggested: %s may certify something (strength: %s, confidence %.2f, asserts %.2f) — add a \"// certifies:\" marker to accept\n", s.Test, s.Strength, s.Confidence, s.AssertsNoul)
+	}
 }

@@ -10,6 +10,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/coverage"
 	"github.com/geoffmilleraz/fathom/internal/analysis/impact"
+	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
@@ -99,6 +100,62 @@ func TestRankTestSelection_NameTiebreak(t *testing.T) {
 	ranked := rankTestSelection(nodes, affected, nil, false)
 	if ranked[0].Test != a.Key() || ranked[1].Test != b.Key() {
 		t.Fatalf("want alphabetical tiebreak, got %v", []string{ranked[0].Test, ranked[1].Test})
+	}
+}
+
+// ─── rankCertifyingFirst / certifyingTestKeys (TC-23) ───────────────────────
+
+func TestTestsSelect_CertifyingFirst(t *testing.T) {
+	certifying := tsNode("TestCertifying", "pkg/cert_test.go")
+	broad := tsNode("TestBroad", "pkg/broad_test.go")
+	c1 := tsNode("C1", "pkg/a.go")
+	c2 := tsNode("C2", "pkg/b.go")
+
+	affected := []impact.TestReach{
+		{Test: certifying.Key(), File: certifying.FilePath, Reaches: []string{c1.Key()}},
+		{Test: broad.Key(), File: broad.FilePath, Reaches: []string{c1.Key(), c2.Key()}},
+	}
+	nodes := []core.SymbolNode{certifying, broad, c1, c2}
+
+	ranked := rankTestSelection(nodes, affected, nil, false)
+	if ranked[0].Test != broad.Key() {
+		t.Fatalf("sanity check: want breadth tiebreak to rank the broader test first BEFORE certifying-first is applied, got %v", ranked[0].Test)
+	}
+
+	// TestCertifying certifies invariant I1, whose compiled claim Scope
+	// names pkg/a.go — one of this diff's changed files — so
+	// rankCertifyingFirst must move it ahead of TestBroad despite its
+	// narrower reach.
+	meta, err := json.Marshal(certify.Meta{Test: "TestCertifying", TestSymbolKey: certifying.Key(), Strength: "asserts", State: "live"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	claims := []core.SemanticClaim{{
+		Subject: "invariant:I1", Layer: certify.Layer, Scope: []string{"pkg/a.go"}, Meta: meta,
+	}}
+	changedFiles := []string{"pkg/a.go", "pkg/b.go"}
+
+	certifyingSet := certifyingTestKeys(nodes, claims, changedFiles)
+	if !certifyingSet[certifying.Key()] {
+		t.Fatalf("certifyingTestKeys = %v, want %q present (its claim's Scope intersects the changed files)", certifyingSet, certifying.Key())
+	}
+	if certifyingSet[broad.Key()] {
+		t.Fatalf("certifyingTestKeys = %v, want %q absent (it certifies nothing)", certifyingSet, broad.Key())
+	}
+
+	got := rankCertifyingFirst(ranked, certifyingSet)
+	if got[0].Test != certifying.Key() {
+		t.Fatalf("rankCertifyingFirst order = %v, want the certifying test first despite narrower reach", []string{got[0].Test, got[1].Test})
+	}
+	if got[1].Test != broad.Key() {
+		t.Fatalf("rankCertifyingFirst order = %v, want the non-certifying test preserved second", []string{got[0].Test, got[1].Test})
+	}
+
+	// A nil/empty certifying set must be a no-op, preserving the input
+	// order exactly (rankTestSelection's own contract untouched).
+	noop := rankCertifyingFirst(ranked, nil)
+	if noop[0].Test != ranked[0].Test || noop[1].Test != ranked[1].Test {
+		t.Fatalf("rankCertifyingFirst with no certifying tests reordered anyway: %v", noop)
 	}
 }
 
