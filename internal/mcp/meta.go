@@ -106,6 +106,18 @@ type typedEdgeStatusBackend interface {
 	TypedEdgeStatus(service string) (fusion.TypedEdgeStatus, bool)
 }
 
+// fleetRootStatusBackend is the optional FleetBackend capability (DG-18,
+// diagnostics sweep) for reporting that a service's recorded corpus root
+// (ServiceMeta.Path, set at ingest time) no longer exists on disk.
+// list_services surfaces this as a structured "root_missing": true field
+// plus remedy instead of an error line — a dangling service record (e.g.
+// a cleaned-up scratch clone) is common enough that a human reading
+// list_services should be told what to do about it, not just that
+// something failed.
+type fleetRootStatusBackend interface {
+	RootMissing(service string) (missing bool, remedy string)
+}
+
 // autoRefreshStatsBackend is the optional backend capability for the
 // auto-refresh wrapper's process-lifetime re-ingest counter (O108,
 // autorefresh.go). Present only when the backend passed to NewServer* is

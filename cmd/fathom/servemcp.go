@@ -6,8 +6,10 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/config"
+	"github.com/geoffmilleraz/fathom/internal/dlog"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
@@ -89,7 +91,8 @@ func runServeMCP(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		backend = mcp.NewAutoRefresh(c, stderr)
 	}
 
-	srv := mcp.NewServerWithFleet(backend, &fleetAdapter{c: c, stderr: stderr})
+	flog := dlog.New(stderr, dlog.LevelFromEnv(os.Getenv), time.Now)
+	srv := mcp.NewServerWithFleet(backend, &fleetAdapter{c: c, log: flog})
 
 	if err := srv.Serve(context.Background(), stdin, stdout); err != nil {
 		// EOF / context cancel are expected end-of-stream signals; only

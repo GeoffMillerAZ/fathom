@@ -126,6 +126,17 @@ func registerListServices(s *Server, backend QueryInterface, fleet FleetBackend)
 				}
 				entry["unsupported_languages"] = rows
 			}
+			// DG-18: a service whose recorded corpus root has vanished
+			// (e.g. a cleaned-up scratch clone) is reported structurally
+			// rather than via a live re-walk turning into a bare error —
+			// root_missing:true plus a remedy naming how to drop the
+			// stale record.
+			if frb, ok := fleet.(fleetRootStatusBackend); ok {
+				if missing, remedy := frb.RootMissing(svc); missing {
+					entry["root_missing"] = true
+					entry["remedy"] = remedy
+				}
+			}
 			entries = append(entries, entry)
 		}
 		return map[string]any{"services": entries, "count": len(svcs)}, nil

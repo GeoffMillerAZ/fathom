@@ -18,6 +18,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/capability"
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/decide"
+	"github.com/geoffmilleraz/fathom/internal/dlog"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 	"github.com/geoffmilleraz/fathom/internal/modulehost"
 	"github.com/geoffmilleraz/fathom/internal/store"
@@ -167,11 +168,12 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
+	flog := dlog.New(stderr, dlog.LevelFromEnv(os.Getenv), time.Now)
 	var srv *mcp.Server
 	if moduleHost != nil {
-		srv = mcp.NewServerWithModules(backend, &fleetAdapter{c: c, stderr: stderr}, logger, moduleHost)
+		srv = mcp.NewServerWithModules(backend, &fleetAdapter{c: c, log: flog}, logger, moduleHost)
 	} else {
-		srv = mcp.NewServerWithFleetAndLogger(backend, &fleetAdapter{c: c, stderr: stderr}, logger)
+		srv = mcp.NewServerWithFleetAndLogger(backend, &fleetAdapter{c: c, log: flog}, logger)
 	}
 	// BA-9: budget defaults are project-settable. The `budgets` block of
 	// <cwd>/.fathom/capabilities.cue (the daemon's working repo) and
