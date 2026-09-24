@@ -237,6 +237,14 @@ func writeIdentCache(projDir, baseURL string, cand serviceCandidate, found bool,
 // (hit/miss/stale-served/miss-error) — research_report.go sums these into
 // a hit rate.
 //
+// stale is true ONLY for the DG-12 fallback below — a caller (specifically
+// candidatesWithDaemon) MUST treat that case as a lower trust tier than a
+// genuinely fresh round trip or cache hit (finding [3]): a stale-served
+// answer can be up to identCacheStaleServeMax old and may no longer be
+// true after a remap, rename, or service removal, so it must never be
+// stamped with the SAME "verified" trust DG-11's daemon-confirmed
+// candidates carry.
+//
 // DG-12: when the fresh round trip fails OUTRIGHT (fetchServices' own
 // error — a network error, or list_services timing out under load, never
 // a resolved-but-empty answer), this serves the last known POSITIVE
@@ -244,27 +252,27 @@ func writeIdentCache(projDir, baseURL string, cand serviceCandidate, found bool,
 // caller (candidatesWithDaemon) would otherwise fall all the way back to
 // an unverified basename guess on every miss that lands during a load
 // spike, exactly when the daemon-verified identity matters most.
-func resolveIndexedCandidateCached(hc *http.Client, baseURL, projDir string) (serviceCandidate, bool) {
+func resolveIndexedCandidateCached(hc *http.Client, baseURL, projDir string) (cand serviceCandidate, found bool, stale bool) {
 	if !identCacheDisabled() {
 		if cand, found, hit := readIdentCache(projDir, baseURL, time.Now()); hit {
 			emitBeat("ident-cache", "hit", nil)
-			return cand, found
+			return cand, found, false
 		}
 	}
 	emitBeat("ident-cache", "miss", nil)
-	cand, found, err := resolveIndexedCandidateErr(hc, baseURL, projDir)
+	resolved, found, err := resolveIndexedCandidateErr(hc, baseURL, projDir)
 	if err != nil {
 		if !identCacheDisabled() {
 			if staleCand, hit := readIdentCacheStale(projDir, baseURL, time.Now()); hit {
 				emitBeat("ident-cache", "stale-served", nil)
-				return staleCand, true
+				return staleCand, true, true
 			}
 		}
 		emitBeat("ident-cache", "miss-error", nil)
-		return serviceCandidate{}, false
+		return serviceCandidate{}, false, false
 	}
 	if !identCacheDisabled() {
-		writeIdentCache(projDir, baseURL, cand, found, time.Now())
+		writeIdentCache(projDir, baseURL, resolved, found, time.Now())
 	}
-	return cand, found
+	return resolved, found, false
 }

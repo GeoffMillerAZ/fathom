@@ -135,12 +135,18 @@ func TestResolveIndexedCandidateCached_ServesStaleOnTimeoutOverBasenameFallback(
 	}
 
 	hc := &http.Client{Timeout: 200 * time.Millisecond}
-	cand, ok := resolveIndexedCandidateCached(hc, baseURL, dir)
+	cand, ok, stale := resolveIndexedCandidateCached(hc, baseURL, dir)
 	if !ok {
 		t.Fatal("resolveIndexedCandidateCached ok = false, want true (served from the stale cache entry, not the raw basename fallback)")
 	}
 	if cand.name != "realname" || cand.root != dir {
 		t.Errorf("cand = %+v, want the stale-served known-good identity {realname %s}", cand, dir)
+	}
+	// finding [3]/DG-12: the stale-served case MUST be reported distinctly
+	// from a fresh hit/round-trip — candidatesWithDaemon depends on this to
+	// avoid stamping a possibly-stale identity as daemon-verified.
+	if !stale {
+		t.Error("stale = false, want true: a DG-12 stale-served answer must be reported as stale, not indistinguishable from a fresh one")
 	}
 }
 
@@ -160,7 +166,7 @@ func TestResolveIndexedCandidateCached_StaleFallbackNeverServesNegative(t *testi
 	writeIdentCache(dir, baseURL, serviceCandidate{}, false, staleWrittenAt)
 
 	hc := &http.Client{Timeout: 200 * time.Millisecond}
-	if _, ok := resolveIndexedCandidateCached(hc, baseURL, dir); ok {
+	if _, ok, _ := resolveIndexedCandidateCached(hc, baseURL, dir); ok {
 		t.Fatal("expected ok = false: a cached NEGATIVE resolution must never be served as a stale fallback identity")
 	}
 }
@@ -195,6 +201,40 @@ func TestCandidatesWithDaemon_CachesAcrossCalls(t *testing.T) {
 	}
 	if len(first) == 0 || len(second) == 0 || first[0].name != second[0].name {
 		t.Errorf("first=%v second=%v — expected the same resolved identity both times", first, second)
+	}
+}
+
+// TestCandidatesWithDaemon_StaleServedNeverMarksVerified is the finding [3]
+// regression test: a DG-12 stale-served answer (the daemon round trip
+// failed outright; the cache replayed a past-TTL POSITIVE resolution) must
+// NOT be stamped verified=true the way a genuinely fresh daemon
+// confirmation is. Before this fix, resolveIndexedCandidateCached's ok=true
+// covered both cases identically, so candidatesWithDaemon always set
+// verified=true — letting renderPostEdit's DG-11 short-circuit
+// (`if cand.verified { break }`) lock onto a stale identity that may have
+// gone wrong (remap/rename/removal) during the staleness window, instead
+// of trying the next, possibly-correct candidate.
+func TestCandidatesWithDaemon_StaleServedNeverMarksVerified(t *testing.T) {
+	withTempIdentCacheDir(t)
+	dir := t.TempDir()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	baseURL := srv.URL
+	srv.Close() // every fresh round trip fails from here on
+
+	staleWrittenAt := time.Now().Add(-identCacheTTL - time.Minute)
+	writeIdentCache(dir, baseURL, serviceCandidate{name: "realname", root: dir}, true, staleWrittenAt)
+
+	hc := &http.Client{Timeout: 200 * time.Millisecond}
+	cands := candidatesWithDaemon(hc, baseURL, dir)
+	if len(cands) == 0 {
+		t.Fatal("candidatesWithDaemon returned no candidates at all")
+	}
+	if cands[0].name != "realname" {
+		t.Fatalf("cands[0] = %+v, want the stale-served identity to still be tried first", cands[0])
+	}
+	if cands[0].verified {
+		t.Error("cands[0].verified = true, want false: a stale-served (possibly outdated) identity must never carry the same trust as a fresh daemon confirmation")
 	}
 }
 

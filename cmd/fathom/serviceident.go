@@ -156,7 +156,7 @@ func resolveFromServices(svcs map[string]svcInfo, projDir string) (serviceCandid
 // the daemon again.
 func candidatesWithDaemon(hc *http.Client, baseURL, projDir string) []serviceCandidate {
 	base := serviceCandidates(projDir)
-	resolved, ok := resolveIndexedCandidateCached(hc, baseURL, projDir)
+	resolved, ok, stale := resolveIndexedCandidateCached(hc, baseURL, projDir)
 	if !ok {
 		return base
 	}
@@ -164,7 +164,16 @@ func candidatesWithDaemon(hc *http.Client, baseURL, projDir string) []serviceCan
 	// only caller that stamps this flag, so a test constructing its own
 	// serviceCandidate literals (TestMergeCandidatesNeverCollapses) or
 	// calling resolveFromServices directly never sees it set implicitly.
-	resolved.verified = true
+	//
+	// finding [3]/DG-12: verified must mean a genuinely FRESH daemon
+	// confirmation, never a stale-served replay (up to identCacheStaleServeMax
+	// old, and possibly wrong after a remap/rename/service removal in the
+	// meantime) — stamping a stale answer as verified let
+	// renderPostEdit's DG-11 short-circuit (`if cand.verified { break }`)
+	// lock onto a since-invalidated identity instead of trying the next,
+	// possibly-correct candidate: exactly the O15-class regression DG-11
+	// exists to prevent, reintroduced through this client-side cache.
+	resolved.verified = !stale
 	return mergeCandidates(resolved, base)
 }
 

@@ -278,7 +278,7 @@ type threadScope struct {
 func threadScopeFor(root string) threadScope {
 	sc := threadScope{identity: repoIdentity(root), repo: strings.ToLower(filepath.Base(root))}
 	hc := &http.Client{Timeout: 1500 * time.Millisecond}
-	if cand, ok := resolveIndexedCandidateCached(hc, defaultFathomURL(), root); ok {
+	if cand, ok, _ := resolveIndexedCandidateCached(hc, defaultFathomURL(), root); ok {
 		sc.service = strings.ToLower(cand.name)
 	}
 	return sc
