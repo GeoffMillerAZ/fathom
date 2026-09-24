@@ -2263,8 +2263,9 @@ governance at the edit: guards-jev-r1's paired mean was -0.19 (CI [-0.375, -0.06
 3 tasks worse and 0 better at n=2 trials, with the mechanism traced in raw
 transcripts — the LLM re-rank reordering the served rules for the touched file
 relative to the deterministic default, in one traced case (`guards-i28-duckdb-path`)
-pushing the governing rule to the last visible slot on a later touch of the same
-file after starting no worse than the baseline arm. **Change:** `internal/config`'s
+leaving the governing rule unserved at the first, most consequential touch (worse
+than the baseline arm's own position there) and pushing it to the last visible
+slot on a later touch of the same file. **Change:** `internal/config`'s
 `DefaultDecide.RankWithinTier` is now `false` — a decision provider configured
 without further tuning no longer reranks obligations within a tier; routing and the
 compile pre-filter are unaffected and keep their own results. A repo sets

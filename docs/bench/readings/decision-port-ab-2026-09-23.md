@@ -21,16 +21,19 @@ the agent before it edits — the obligations re-rank site).
   sensibly, but it did not change which cells passed.
 - **The obligations within-tier re-rank measured negative on governance at
   the edit, at this sample size.** `guards-jev-r1`: paired mean -0.19 (CI
-  [-0.375, -0.062]), 3 tasks worse, 0 better, 5 tied, n=2 trials. Tracing the
-  mechanism in raw transcripts finds ONE task (`guards-i28-duckdb-path`)
-  where the re-rank visibly displaced the governing rule later in the same
-  session; the other two regressed tasks (`guards-i19`, `guards-i31`) show
-  the governing rule never served in EITHER arm — a pre-existing coverage
-  gap the re-rank did not cause. The evidence supports "the re-rank can
-  displace the rule that matters" as a real, demonstrated mechanism, but
-  does not support it as the explanation for all 3 regressions — see
-  "Guards mechanism analysis" below for the full per-task trace and the
-  count of what would change this reading.
+  [-0.375, -0.062]), 3 tasks worse, 0 better, 5 tied, n=2 trials. Tracing
+  the mechanism in raw transcripts finds ONE task (`guards-i28-duckdb-path`)
+  where the re-rank leaves the governing rule unserved at the most
+  consequential touch — worse than the deterministic baseline's own
+  position there — and buries it at the worst shown rank when it does
+  surface later in the same session; the other two regressed tasks
+  (`guards-i19`, `guards-i31`) show the governing rule never served in
+  EITHER arm — a pre-existing coverage gap the re-rank did not cause. The
+  evidence supports "the re-rank can leave the governing rule unserved or
+  buried" as a real, demonstrated mechanism, but does not support it as
+  the explanation for all 3 regressions — see "Guards mechanism analysis"
+  below for the full per-task trace and the count of what would change
+  this reading.
 - **What changed as a result (this reading, `internal/config`):**
   `DefaultDecide.RankWithinTier` is now `false`. A repo that sets
   `[decide] provider = llm | typesafe` for routing or the compile pre-filter
@@ -164,7 +167,7 @@ cell(s) run, 0 lost`. Ledger: 28 rows (`full`) + 28 rows (`full-jev`).
 | `H1-T10` | unsure ×1, `search` ×3 | 0.00 / 0.50–0.59 | `mcp__fathom__search` | 2/2 |
 | `H1-T11` | `search` ×4 | 0.81–0.84 | `Bash`/`Grep` | 2/2 |
 | `H1-T12` | `staleness_report` ×4 | 0.94–0.95 | `Grep` | 2/2 |
-| `H1-T13` | `staleness_report` ×4 | 1.00 | `Grep` | 2/2 |
+| `H1-T13` | `staleness_report` ×4 | 1.00 | `Grep` | 0/2 (tied fail) |
 
 Read plainly: Jev routed every task to a plausible verb (never "unsure" more
 than once per task), and the two tasks where the route was `obligations`
@@ -260,26 +263,42 @@ block's own `⚠️ N more eligible rule(s) not shown (cap)` line.
 | `guards-i11-mcp-tool-doc` | `internal/mcp` | I11 tool↔doc sync | not in list (177 more) | not in list (177 more) | not in list (249 more) | not in list (249 more) | tied (100%/100%) |
 | `guards-i16-raw-cp-deploy` | `CLAUDE.md`/`Taskfile.yml` | I16 no raw-cp deploy | not in list (174 more) | not in list (174 more) | not in list (245 more) | not in list (246 more) | tied (100%/100%) — registered no-effect case |
 | `guards-i19-org-agnostic-fixture` | `internal/connector/testdata` | I19 org-agnostic, ADR-011 | **absent, every block** | absent, every block | **absent, every block** | absent, every block | **worse (50%→0%)** |
-| `guards-i28-duckdb-path` | `internal/store` | I28 DuckDB loud refusal, ADR-025 | served pos 1/6 (178 more) | served pos 1/6 (178 more) | served pos 1/6 (256), **then pos 6/6 and pos 3/6 on later touches** | served pos 1/6 (258), **then pos 6/6 on a later touch** | **worse (50%→0%)** |
+| `guards-i28-duckdb-path` | `internal/store` | I28 DuckDB loud refusal, ADR-025 | served pos 2/6 (178 more) | served pos 2/6 (178 more) | **never served at first touch** (256 more), then pos 6/6 on a later touch, then absent again on a third touch | **never served at first touch** (258 more), then pos 6/6 on a later touch | **worse (50%→0%)** |
 | `guards-i31-workspace-artifact` | `cmd/fathom` | I31 workspace/ paths | absent (3 blocks) | never named | never named | absent (6 blocks) | **worse (100%→50%)** |
 | `guards-i36-usecase-maintained-line` | `docs/use-cases` | I36 Maintained contract | served pos 2/6 (84 more) | served pos 2/6 (84 more) | not in list (125 more) | not in list (128 more) | tied (0%/0%) |
 
 **Per-task deep trace on the 3 regressed tasks (every obligations block
 naming the target path, not just the first):**
 
-- **`guards-i28-duckdb-path` — the one directly traced re-rank mechanism.**
-  `full` has exactly one block naming `internal/store` in either trial (the
-  `UserPromptSubmit`, rule at position 1–2/6) — the session apparently never
-  triggered a second `PostToolUse` hook on that path. `full-jev` starts
-  IDENTICALLY (position 1/6 at `UserPromptSubmit`, in fact nominally better
-  than `full`'s 2/6), but on the LATER `PostToolUse:Bash` touches of
-  `internal/store/backend_test.go` within the same session, the rule falls
-  to position 6 of 6 (t1: pos 6/6 then pos 3/6; t2: pos 6/6) — the LLM
-  re-rank visibly reordering a rule that started in the SAME favorable
-  position as the deterministic baseline, specifically at the moment the
-  agent had already started writing code and most needed the rule
-  reinforced. This is the one task where "the re-rank displaced the rule
-  that mattered" is directly evidenced, not inferred.
+- **`guards-i28-duckdb-path` — corrected below; an earlier version of this
+  reading misread this task by keyword-matching "DuckDB" instead of the
+  literal rule text, and reported `full`/`full-jev` as starting from the
+  same position when they do not.** `full` has exactly one block naming
+  `internal/store` in either trial (the `UserPromptSubmit`) — the session
+  apparently never triggered a second `PostToolUse` hook on that path.
+  There, the governing rule ("`BackendForPath` must refuse to open
+  `.duckdb` paths…", `ADR.md#L852-L853`) serves at position **2** of 6
+  (178 more); position 1 in that same block is a different, superseded
+  rule (`ADR-020`, the pure-Go SQLite replacement) that only shares the
+  keyword "DuckDB." `full-jev`'s own FIRST and most consequential block —
+  its own `UserPromptSubmit` — never serves the governing rule at all, in
+  EITHER trial (256 more in t1, 258 more in t2); its own position-1 slot
+  is yet another DuckDB-adjacent but unrelated rule (`ADR-003`, the
+  original storage-engine choice). So `full-jev` starts WORSE than `full`
+  here, not identically or better as this reading first reported. The
+  rule does surface later, on `PostToolUse:Bash` touches of
+  `internal/store/backend_test.go` within the same session — buried at
+  the worst shown rank, position 6 of 6, on t1's first such touch and
+  t2's only such touch — but in t1 a further touch of the same file
+  (a third `PostToolUse:Bash` block) shows it absent again, not at
+  position 3 as previously reported. Read plainly: the re-rank never puts
+  this governing rule in a good position at any point in either `full-jev`
+  trial — it is either missing from the shown list entirely (worse than
+  `full`'s own position 2) or buried last. That is still evidence the
+  re-rank hurts rule-serving on this task, arguably more starkly than
+  first reported — but it is not a case of a rule "sliding down" from a
+  position it shared with the deterministic baseline; `full-jev` never
+  reaches a good position to slide down from.
 - **`guards-i19-org-agnostic-fixture` — refutes the re-rank theory for this
   task.** The governing rule (org-agnostic fixtures) is ABSENT from every
   single obligations block this reading found, in BOTH arms, on BOTH
@@ -301,16 +320,18 @@ naming the target path, not just the first):**
   observations) to call this refuted as cleanly as i19.
 
 **Verdict on the load-bearing question:** the evidence **supports** "the
-re-rank can displace the governing rule" as a real, demonstrated mechanism
-(guards-i28, traced turn-by-turn) but **does not support** it as the
-explanation for the guards-jev-r1 regression as a whole — 2 of the 3
-worse tasks (i19, i31) show the identical rule-absence pattern in the
-UN-reranked baseline arm too, meaning something other than rank
-displacement is also driving those two losses, unmeasured by this
-reading. The one clean mechanism case, plus the negative paired mean at
-real cost (15,742 decisions for a corpus this small) and zero offsetting
-`better` tasks, is enough to flip the default off; it is not enough to
-call the mechanism proven end-to-end.
+re-rank can leave the governing rule unserved or buried at the worst rank" as a
+real, demonstrated mechanism (guards-i28, traced turn-by-turn — the rule is
+absent from `full-jev`'s own first, most consequential block in both trials,
+worse than `full`'s own position there, and never rises above the last shown
+slot on the later touches where it does appear) but **does not support** it as
+the explanation for the guards-jev-r1 regression as a whole — 2 of the 3 worse
+tasks (i19, i31) show the identical rule-absence pattern in the UN-reranked
+baseline arm too, meaning something other than rank displacement is also
+driving those two losses, unmeasured by this reading. The one clean mechanism
+case, plus the negative paired mean at real cost (15,742 decisions for a corpus
+this small) and zero offsetting `better` tasks, is enough to flip the default
+off; it is not enough to call the mechanism proven end-to-end.
 
 ---
 
@@ -354,12 +375,12 @@ call the mechanism proven end-to-end.
 - **A corpus where two governing rules genuinely compete within one
   scope tier.** None of these 8 guards tasks ever gave the re-rank a real
   choice to arbitrate well OR badly between two eligible same-tier rules
-  both bearing on the edit — `guards-i28`'s traced displacement was a
-  single rule sliding down a list of otherwise-irrelevant candidates, not
-  a case of the re-rank correctly preferring a MORE relevant rule over a
-  less relevant one. A corpus built specifically to test that contest is
-  the direct next step this reading recommends (named as the ADR's own
-  revisit trigger).
+  both bearing on the edit — `guards-i28`'s traced pattern was the re-rank
+  leaving a single rule unserved (past the shown cap) or buried last among
+  otherwise-irrelevant candidates, not a case of the re-rank correctly
+  preferring a MORE relevant rule over a less relevant one. A corpus built
+  specifically to test that contest is the direct next step this reading
+  recommends (named as the ADR's own revisit trigger).
 - **Resolving the i19/i31 rule-absence gap independently of Jev.** Since
   the governing rule for both never serves in the deterministic baseline
   either, fixing that (a separate, un-scoped obligations-coverage defect)
