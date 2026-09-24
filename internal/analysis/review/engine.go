@@ -40,6 +40,12 @@ const (
 	DimObligations  = "obligations"
 	DimArch         = "arch_conformance"
 	DimSpecCoverage = "spec_coverage"
+	// DimCertifications (vision 33 / ADR-043 stage 1, TC-10) is exported
+	// like DimTestCoverage's own dimCoverageName is NOT, because there is
+	// no separate constructor-function identifier competing for this
+	// name — runCertifications is unexported like every other run*
+	// dimension function.
+	DimCertifications = "certifications"
 )
 
 // Finding is one cited item within a Dimension. Every finding that survives
@@ -82,6 +88,16 @@ type Finding struct {
 	// persistableDim in claims.go), since Class only matters for a
 	// persisted claim.
 	Class core.FindingClass
+
+	// Test/Strength/State are certifications-dimension-only detail
+	// (vision 33 / ADR-043 stage 1, TC-10): the certifying test's bare
+	// name, its declared strength, and the certifications layer's own
+	// state fact (live | flaky | broken | unproven | unreachable) — set
+	// only on a Kind=="certification" finding, "" for every other
+	// dimension's findings.
+	Test     string
+	Strength string
+	State    string
 }
 
 // Dimension is one axis of the review.
@@ -176,6 +192,49 @@ type Input struct {
 	// (coverage.LabeledProfile), never guessed from per-test data.
 	CoverageChecked bool
 	CoverageLayered []coverage.SymbolLayerCoverage
+
+	// certifications (vision 33 / ADR-043 stage 1, TC-10). Supported is
+	// the backend-capability gate (a live claims-serving backend, same
+	// meaning as ObligationsSupported); Declared is false when the
+	// certifications LAYER ITSELF is empty for this service (nothing
+	// compiled anywhere, not merely nothing touching the diff) — design
+	// doc §4's "checked: false, reason: 'no certifications declared' when
+	// the layer is empty". ByFile maps a changed file to every compiled
+	// certification claim (internal/certify.Records, flattened by the
+	// caller — review does not import internal/certify, the same reason
+	// ObligationRule mirrors semantic.Obligation instead of importing
+	// internal/semantic) whose own Scope includes that file.
+	CertificationsSupported bool
+	CertificationsDeclared  bool
+	CertificationsByFile    map[string][]CertificationRecord
+}
+
+// CertificationRecord is one compiled certifications-layer claim, as the
+// certifications dimension needs it (vision 33 / ADR-043 stage 1, TC-10).
+// Callers build it from internal/certify.Record (certify.Records over
+// ClaimsForService(service, certify.Layer)) — review stays a leaf
+// internal/analysis package with no internal/certify dependency, mirrored
+// exactly like ObligationRule flattens semantic.Obligation.
+type CertificationRecord struct {
+	// Subject is the target's "<kind>:<id>" identity (design doc §3).
+	Subject  string
+	Test     string
+	Strength string
+	// State is the certifications layer's own state fact: live | flaky |
+	// broken | unproven | unreachable.
+	State string
+	Tier  string
+	Rule  string
+	// Status mirrors core.ClaimStatus ("" == fresh) — a stale/contradicted
+	// certification is served WITH its status label, never silently
+	// dropped (the same served-with-label discipline runObligations
+	// applies).
+	Status string
+	// Scope is the claim's own file scope (the test file plus the files
+	// of the symbols the test reaches that the target names) — what the
+	// caller used to place this record into CertificationsByFile in the
+	// first place; carried through so a Finding can cite it.
+	Scope []string
 }
 
 // Run composes every dimension into one Verdict. Deterministic: identical
@@ -190,6 +249,7 @@ func Run(in Input) Verdict {
 		runArch(in),
 		runSpecCoverage(in),
 		DimTestCoverage(in),
+		runCertifications(in),
 	}
 
 	v := Verdict{
@@ -312,6 +372,81 @@ func runObligations(in Input) Dimension {
 	sort.Slice(d.Findings, func(i, j int) bool {
 		if d.Findings[i].File != d.Findings[j].File {
 			return d.Findings[i].File < d.Findings[j].File
+		}
+		return d.Findings[i].Message < d.Findings[j].Message
+	})
+	d.Count = len(d.Findings)
+	return d
+}
+
+// ─── certifications ───────────────────────────────────────────────────────
+
+// runCertifications reports the certifications layer's own compiled facts
+// scoped to the diff (vision 33 / ADR-043 stage 1, TC-10, design doc §4):
+// per changed file, the certificates (test, strength, state) whose Scope
+// includes it, plus one finding per target (subject) touching the diff
+// that has NO live certificate among those records. Checked is false —
+// with a reason — when the backend doesn't serve semantic layers at all
+// (mirrors runObligations), or when the certifications layer is
+// genuinely empty for this service (mirrors DimTestCoverage's own "no
+// coverage profile supplied": a capability the corpus never populated
+// reports checked:false, never a clean-shaped empty pass).
+func runCertifications(in Input) Dimension {
+	d := Dimension{Name: DimCertifications}
+	if !in.CertificationsSupported {
+		d.Reason = "backend does not serve semantic layers"
+		return d
+	}
+	if !in.CertificationsDeclared {
+		d.Reason = "no certifications declared"
+		return d
+	}
+	d.Checked = true
+
+	liveSubjects := map[string]bool{}
+	seenSubjects := map[string]string{} // subject -> first Rule text seen, for the gap finding's message
+
+	for _, f := range in.ChangedFiles {
+		for _, r := range in.CertificationsByFile[f] {
+			sev := "info"
+			if r.State != "live" {
+				sev = "warn"
+			}
+			d.Findings = append(d.Findings, Finding{
+				Kind: "certification", File: f, Message: r.Rule,
+				Citation: citeOf(f, 0), Severity: sev,
+				Test: r.Test, Strength: r.Strength, State: r.State,
+				Status: r.Status,
+			})
+			seenSubjects[r.Subject] = r.Rule
+			if r.State == "live" {
+				liveSubjects[r.Subject] = true
+			}
+		}
+	}
+
+	var gapSubjects []string
+	for subject := range seenSubjects {
+		if !liveSubjects[subject] {
+			gapSubjects = append(gapSubjects, subject)
+		}
+	}
+	sort.Strings(gapSubjects)
+	for _, subject := range gapSubjects {
+		d.Findings = append(d.Findings, Finding{
+			Kind:     "certification_gap",
+			Message:  fmt.Sprintf("%s has no live certificate", subject),
+			Severity: "warn",
+			Class:    core.FindingClassTestGap,
+		})
+	}
+
+	sort.Slice(d.Findings, func(i, j int) bool {
+		if d.Findings[i].File != d.Findings[j].File {
+			return d.Findings[i].File < d.Findings[j].File
+		}
+		if d.Findings[i].Kind != d.Findings[j].Kind {
+			return d.Findings[i].Kind < d.Findings[j].Kind
 		}
 		return d.Findings[i].Message < d.Findings[j].Message
 	})

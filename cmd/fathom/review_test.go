@@ -105,8 +105,8 @@ func TestReview_OneCallWorkedExample(t *testing.T) {
 		t.Errorf("service = %v", payload["service"])
 	}
 	dims, ok := payload["dimensions"].([]any)
-	if !ok || len(dims) != 5 {
-		t.Fatalf("expected 5 dimensions, got %v", payload["dimensions"])
+	if !ok || len(dims) != 6 {
+		t.Fatalf("expected 6 dimensions, got %v", payload["dimensions"])
 	}
 	var specDim map[string]any
 	for _, raw := range dims {

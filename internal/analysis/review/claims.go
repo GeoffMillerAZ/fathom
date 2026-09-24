@@ -59,6 +59,11 @@ const ClaimsTier = core.TierVerified
 //   - impact NEVER persists: info-severity blast-radius enumeration is
 //     context, not a finding — persisting it is noise with the same
 //     budget-displacement failure mode.
+//   - certifications NEVER persists (vision 33 / ADR-043 stage 1, TC-10):
+//     exactly like obligations, this dimension RE-SERVES claims
+//     internal/certify.CompileCertifications already compiled on the
+//     "certifications" layer — wrapping them again here would be the
+//     identical double-mint/budget-displacement failure mode.
 func persistableDim(name string) bool {
 	return name == DimArch || name == DimSpecCoverage
 }
