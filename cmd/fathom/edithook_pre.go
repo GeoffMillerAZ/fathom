@@ -217,9 +217,9 @@ func renderPreEdit(url, projDir, filePath, sessionID string) (preEditResult, boo
 	if remaining < minSecondCallBudget {
 		remaining = minSecondCallBudget
 	}
-	obl, indexStale, ok := fetchObligations(url, svcName, repoRelFile, guard.MaxRules, remaining, semantic.ObligationLayerAll)
+	obl, indexStale, ok, ferr := fetchObligations(url, svcName, repoRelFile, guard.MaxRules, remaining, semantic.ObligationLayerAll)
 	if !ok {
-		emitBeat("edit-hook", "error", firingMeta(map[string]string{"phase": "pre", "target": "file"}, sessionID, filePath))
+		emitBeat("edit-hook", "error", firingMeta(map[string]string{"phase": "pre", "target": "file", "reason": truncateBytes(ferr.Error(), reasonMetaMaxBytes)}, sessionID, filePath))
 		return preEditResult{}, false
 	}
 
@@ -234,7 +234,7 @@ func renderPreEdit(url, projDir, filePath, sessionID string) (preEditResult, boo
 	var staleLine string
 	if indexStale {
 		if refreshErr := ensureFileFresh(url, svcName, repoRelFile); refreshErr == "" {
-			if freshObl, freshStale, freshOK := fetchObligations(url, svcName, repoRelFile, guard.MaxRules, remaining, semantic.ObligationLayerAll); freshOK {
+			if freshObl, freshStale, freshOK, _ := fetchObligations(url, svcName, repoRelFile, guard.MaxRules, remaining, semantic.ObligationLayerAll); freshOK {
 				obl, indexStale = freshObl, freshStale
 			}
 			if !indexStale {

@@ -32,6 +32,12 @@ const specLineTokenBudget = 150
 // edit into a dozen RPCs.
 const maxSpecIDsPerEdit = 3
 
+// reasonMetaMaxBytes caps the "reason" meta value a degradation beat
+// carries (DG-7): never the whole error chain (which can embed a URL or
+// response fragment), just enough for a human to tell failure branches
+// apart in the beat log.
+const reasonMetaMaxBytes = 200
+
 // cmdEditHook implements the "edit-hook" subcommand: a Claude Code PostToolUse
 // hook that injects obligation rules into session context whenever a file is
 // edited.
@@ -257,13 +263,25 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 			resolved, svcName, repoRelFile, svcRoot = true, strings.ToLower(cand.name), rel, cand.root
 		}
 		name := strings.ToLower(cand.name)
-		o, stale, ok := fetchObligations(url, name, rel, 0, 2*time.Second, semantic.ObligationLayerAll)
+		o, stale, ok, ferr := fetchObligations(url, name, rel, 0, 2*time.Second, semantic.ObligationLayerAll)
 		if !ok {
-			emitBeat("edit-hook", "error", firingMeta(map[string]string{"phase": "post"}, sessionID, filePath))
+			emitBeat("edit-hook", "error", firingMeta(map[string]string{"phase": "post", "reason": truncateBytes(ferr.Error(), reasonMetaMaxBytes)}, sessionID, filePath))
 			return "", postEditMeta{}, false // daemon down or error → silent
 		}
 		if len(o.Rules) > 0 || stale {
 			obl, indexStale, repoRelFile, svcName, svcRoot, found = o, stale, rel, name, cand.root, true
+			break
+		}
+		// DG-11 (O15 regression): a daemon-verified candidate — one the
+		// daemon itself records a live ServiceMeta.Path for — that answers
+		// successfully IS this file's true identity, even when it happens
+		// to carry no rules for this particular file. Trying further,
+		// unverified basename/git-toplevel guesses past this point could
+		// only misattribute the file to the wrong (stale, coincidentally
+		// name-colliding) service — the exact shape of the O15 incident.
+		// An unverified candidate's empty answer, by contrast, leaves the
+		// loop open to try the next guess exactly as before this fix.
+		if cand.verified {
 			break
 		}
 	}
@@ -633,7 +651,16 @@ func resolveSymlinks(p string) string {
 // reach the findings block (edithook_findings.go) in the SAME round trip
 // obligations rules already make — §3.4's "one call, no compile, no
 // model" cost claim.
-func fetchObligations(baseURL, service, file string, maxRules int, timeout time.Duration, layer semantic.ObligationLayerFilter) (semantic.Obligations, bool, bool) {
+//
+// DG-7: every internal failure used to collapse to a bare ok=false,
+// discarding the actual cause — the caller's beat then recorded a
+// degradation with a session id and file path but no reason,
+// structurally indistinguishable from "no guard names this file." The
+// fourth return value names which branch failed (nil on success); the
+// hook's fail-open contract to the AGENT is unchanged (stdout still stays
+// silent on any error) — this only changes what a human can later learn
+// from the beat log.
+func fetchObligations(baseURL, service, file string, maxRules int, timeout time.Duration, layer semantic.ObligationLayerFilter) (semantic.Obligations, bool, bool, error) {
 	args := map[string]any{
 		"service": service,
 		"file":    file,
@@ -660,27 +687,30 @@ func fetchObligations(baseURL, service, file string, maxRules int, timeout time.
 		},
 	})
 	if err != nil {
-		return semantic.Obligations{}, false, false
+		return semantic.Obligations{}, false, false, fmt.Errorf("marshal request: %w", err)
 	}
 
 	hc := &http.Client{Timeout: timeout}
 	req, err := originHeader(baseURL, bytes.NewReader(reqBody))
 	if err != nil {
-		return semantic.Obligations{}, false, false
+		return semantic.Obligations{}, false, false, fmt.Errorf("build request: %w", err)
 	}
 	resp, err := hc.Do(req)
 	if err != nil {
-		return semantic.Obligations{}, false, false
+		return semantic.Obligations{}, false, false, fmt.Errorf("daemon request: %w", err)
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return semantic.Obligations{}, false, false, fmt.Errorf("daemon returned HTTP %d", resp.StatusCode)
+	}
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
-		return semantic.Obligations{}, false, false
+		return semantic.Obligations{}, false, false, fmt.Errorf("read response body: %w", err)
 	}
 
 	inner, err := unwrapRPCResult(raw)
 	if err != nil {
-		return semantic.Obligations{}, false, false
+		return semantic.Obligations{}, false, false, fmt.Errorf("unwrap RPC result: %w", err)
 	}
 
 	// Decode the obligations payload.
@@ -696,7 +726,7 @@ func fetchObligations(baseURL, service, file string, maxRules int, timeout time.
 		ModuleNotes         []semantic.ModuleNote `json:"module_notes"`
 	}
 	if err := json.Unmarshal(inner, &payload); err != nil {
-		return semantic.Obligations{}, false, false
+		return semantic.Obligations{}, false, false, fmt.Errorf("decode obligations payload: %w", err)
 	}
 
 	obl := semantic.Obligations{
@@ -709,7 +739,7 @@ func fetchObligations(baseURL, service, file string, maxRules int, timeout time.
 		DisplacedModule: payload.DisplacedModule,
 		ModuleNotes:     payload.ModuleNotes,
 	}
-	return obl, payload.IndexStale, true
+	return obl, payload.IndexStale, true, nil
 }
 
 // specRefLoc is one {file, line} location the spec_refs MCP tool reports for
