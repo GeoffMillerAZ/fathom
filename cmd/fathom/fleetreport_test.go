@@ -214,3 +214,39 @@ func TestFleetWiringNotes_DetectsUserScopeWiring(t *testing.T) {
 		t.Fatal("no 'wired' dimension in the report")
 	})
 }
+
+// TestUserScopeFathomHookCount_PermissionsOnlyIsNotWired is the finding [5]
+// regression test: a ~/.claude/settings.json that only registers the
+// fathom MCP server and/or mcp__fathom__* permissions -- no hooks key at
+// all -- must never be counted as wired hooks. Before this, the raw
+// strings.Count(data, "fathom") substring scan over the WHOLE file matched
+// these unrelated mentions, so a user with fathom's MCP tools allowed but
+// NO hooks configured anywhere was reported "wired at user scope" --
+// realizationGrade's hooksOK check keys off the literal "hook reference"
+// substring, so this flipped the 'wired' ladder dimension to a false MET.
+func TestUserScopeFathomHookCount_PermissionsOnlyIsNotWired(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	if err := os.MkdirAll(filepath.Join(home, ".claude"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// A very ordinary settings.json: the fathom MCP server registered and
+	// its tools allowed, but genuinely zero hooks configured anywhere.
+	settings := `{
+		"permissions": {"allow": ["mcp__fathom__ingest", "mcp__fathom__find_symbol"]},
+		"mcpServers": {"fathom": {"command": "fathom", "args": ["mcp"]}}
+	}`
+	if err := os.WriteFile(filepath.Join(home, ".claude", "settings.json"), []byte(settings), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if n, ok := userScopeFathomHookCount(); !ok || n != 0 {
+		t.Fatalf("userScopeFathomHookCount() = (%d, %v), want (0, true) for a permissions/mcpServers-only settings.json with no hooks key", n, ok)
+	}
+
+	repo := t.TempDir() // no project .claude/settings.json either
+	hooks, _ := fleetWiringNotes(repo)
+	if strings.Contains(hooks, "wired at user scope") {
+		t.Fatalf("fleetWiringNotes reported user-scope wiring from a permissions/mcpServers-only settings.json: %q", hooks)
+	}
+}

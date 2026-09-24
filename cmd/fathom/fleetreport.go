@@ -333,7 +333,57 @@ func userScopeFathomHookCount() (int, bool) {
 	if err != nil {
 		return 0, false
 	}
-	return strings.Count(string(data), "fathom"), true
+	// Finding [5]/DG-14: a raw strings.Count(data, "fathom") over the WHOLE
+	// file matched a project's fathom MCP-server registration or
+	// mcp__fathom__* permission entries just as readily as an actual hook
+	// command -- neither of which wires a single hook. Parse the file and
+	// count only genuine hook command entries under the "hooks" key, the
+	// same scope doctor.go's checkHooksInstalled/hookMarkerPresent trusts.
+	var parsed map[string]any
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		// Malformed JSON: nothing here can be honestly confirmed as wired --
+		// never fall back to the substring scan, which is exactly the
+		// false-positive class this rewrite exists to close.
+		return 0, true
+	}
+	hooksObj, _ := parsed["hooks"].(map[string]any)
+	return countFathomHookCommands(hooksObj), true
+}
+
+// countFathomHookCommands counts actual hook COMMAND entries mentioning
+// "fathom" under a parsed settings.json "hooks" object. Deliberately
+// looser than doctor.go's hookMarkerPresent (which requires an EXACT
+// (event, matcher) match against fathomHookSpecs, one fathom's own
+// installer writes) -- this only answers "is there ANY fathom hook entry
+// here at all", the question fleetWiringNotes asks before it reports a
+// user-scope find. hooksObj may be nil (no "hooks" key, or a settings.json
+// that never parsed as an object) -- ranging over a nil map is a no-op.
+func countFathomHookCommands(hooksObj map[string]any) int {
+	n := 0
+	for _, rawGroups := range hooksObj {
+		groups, ok := rawGroups.([]any)
+		if !ok {
+			continue
+		}
+		for _, rawGroup := range groups {
+			group, ok := rawGroup.(map[string]any)
+			if !ok {
+				continue
+			}
+			hooks, _ := group["hooks"].([]any)
+			for _, rawHook := range hooks {
+				hook, ok := rawHook.(map[string]any)
+				if !ok {
+					continue
+				}
+				cmd, _ := hook["command"].(string)
+				if strings.Contains(cmd, "fathom") {
+					n++
+				}
+			}
+		}
+	}
+	return n
 }
 
 func renderFleetReportMD(rep fleetReport) string {
