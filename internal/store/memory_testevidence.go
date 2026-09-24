@@ -103,14 +103,25 @@ func (m *MemoryStore) TestSuiteStatuses(_ context.Context, serviceID string) ([]
 
 // TestCaseRunsForSymbol returns testSymbolKey's case observations across
 // every attested run for serviceID, most-recent-run-first (by StartedAt,
-// ties broken by insertion order) — see the Store interface doc comment
-// (vision 33 stage 1, TC-6/TC-8).
+// ties broken by insertion order — the most-recently-INGESTED run wins,
+// the same "last wins" TestSuiteStatuses documents) — see the Store
+// interface doc comment (vision 33 stage 1, TC-6/TC-8).
 func (m *MemoryStore) TestCaseRunsForSymbol(_ context.Context, serviceID, testSymbolKey string, limit int) ([]TestCaseRun, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
+	runs := m.testRuns[serviceID]
 	var out []TestCaseRun
-	for _, r := range m.testRuns[serviceID] {
+	// Walk runs newest-ingested-first (reverse append order) so that when
+	// sort.SliceStable below finds a StartedAt TIE, the run ingested more
+	// recently already sits first and the stable sort leaves it there —
+	// matching TestSuiteStatuses' `r.StartedAt >= last.StartedAt` scan
+	// (which, walking oldest-ingested-first, lets the LAST-appended run
+	// win a tie). Iterating forward here would do the opposite: a stable
+	// sort on a strict `>` comparator preserves the OLDEST-ingested run
+	// on a tie, silently reporting a stale pass over a newer failure.
+	for i := len(runs) - 1; i >= 0; i-- {
+		r := runs[i]
 		for _, c := range r.Cases {
 			if c.TestSymbolKey != testSymbolKey {
 				continue
@@ -121,8 +132,8 @@ func (m *MemoryStore) TestCaseRunsForSymbol(_ context.Context, serviceID, testSy
 			})
 		}
 	}
-	// Most-recent-run-first: StartedAt descending, stable so ties preserve
-	// insertion order (the same "last wins" TestSuiteStatuses documents).
+	// Most-recent-run-first: StartedAt descending, stable so a tie keeps
+	// the most-recently-ingested run (already ordered first above).
 	sort.SliceStable(out, func(i, j int) bool { return out[i].StartedAt > out[j].StartedAt })
 	if limit > 0 && len(out) > limit {
 		out = out[:limit]
