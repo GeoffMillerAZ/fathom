@@ -79,6 +79,21 @@ func mergeLayer(cfg *Config, prov Provenance, raw map[string]any, source Source,
 	if dcm, ok := raw["decide"].(map[string]any); ok {
 		mergeDecideFields(&cfg.Decide, dcm, source, path, prov)
 	}
+
+	if tm, ok := raw["tests"].(map[string]any); ok {
+		mergeTestsFields(&cfg.Tests, tm, source, path, prov)
+	}
+}
+
+func mergeTestsFields(t *Tests, raw map[string]any, source Source, path string, prov Provenance) {
+	set := func(key string, dst *string) {
+		if v, ok := stringField(raw, key); ok {
+			*dst = v
+			prov["tests."+key] = SourceInfo{source, path}
+		}
+	}
+	set("results_dir", &t.ResultsDir)
+	set("artifacts_dir", &t.ArtifactsDir)
 }
 
 func mergeProfileFields(p *Profile, raw map[string]any, name string, source Source, path string, prov Provenance) {

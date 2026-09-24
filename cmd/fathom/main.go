@@ -109,7 +109,31 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		if len(args) > 1 && args[1] == "select" {
 			return cmdTestsSelect(args[2:], stdout, stderr)
 		}
-		fmt.Fprintln(stderr, "usage: fathom tests coverage --profile <file> [--service S] [--diff <base>] [--json]\n       fathom tests select --since <ref> [--profile <file>]... [--service S] [--json]")
+		if len(args) > 1 && args[1] == "ingest" {
+			return cmdTestsIngest(args[2:], stdout, stderr)
+		}
+		if len(args) > 1 && args[1] == "status" {
+			return cmdTestsStatus(args[2:], stdout, stderr)
+		}
+		fmt.Fprintln(stderr, "usage: fathom tests coverage --profile <file> [--service S] [--diff <base>] [--json]\n       fathom tests select --since <ref> [--profile <file>]... [--service S] [--json]\n       fathom tests ingest --manifest <dir> --results <file|dir> [--service S] [--store DB]\n       fathom tests status [--service S] [--store DB] [--json]")
+		return 1
+	case "certify":
+		if len(args) > 1 && args[1] == "status" {
+			return cmdCertifyStatus(args[2:], stdout, stderr)
+		}
+		if len(args) > 1 && args[1] == "gaps" {
+			return cmdCertifyGaps(args[2:], stdout, stderr)
+		}
+		if len(args) > 1 && args[1] == "manifest" {
+			return cmdCertifyManifest(args[2:], stdout, stderr)
+		}
+		if len(args) > 1 && args[1] == "orphans" {
+			return cmdCertifyOrphans(args[2:], stdout, stderr)
+		}
+		if len(args) > 1 && args[1] == "suggest" {
+			return cmdCertifySuggest(args[2:], stdout, stderr)
+		}
+		fmt.Fprintln(stderr, "usage: fathom certify status [--service S] [--store DB] [--json]\n       fathom certify gaps [--kind invariant|incident|spec|port|rule|behaviour] [--service S] [--store DB] [--json]\n       fathom certify manifest [--out FILE] [--check] [--service S] [--store DB]\n       fathom certify orphans [--service S] [--store DB] [--json]\n       fathom certify suggest [--service S] [--store DB] [--limit N]")
 		return 1
 	case "edit-hook":
 		return cmdEditHook(args[1:], stdout, stderr)

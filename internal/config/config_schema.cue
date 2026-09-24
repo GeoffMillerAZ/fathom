@@ -221,6 +221,24 @@ package config
 	api_key_cmd?: [...string] & [_, ...]
 }
 
+// #Tests configures vision 33 / ADR-043 stage 0's test-evidence ingest: a
+// plain `fathom ingest` also picks up attested #TestResult envelopes when
+// results_dir is set, exactly as `fathom tests ingest --results` does
+// explicitly.
+#Tests: {
+	// results_dir is a repo-relative directory `fathom ingest` reads
+	// attested #TestResult envelopes from (internal/testevidence.
+	// LoadEnvelopes) — unset means "no envelope auto-pickup on a plain
+	// ingest"; `fathom tests ingest --results` still works either way.
+	results_dir?: string
+
+	// artifacts_dir is a repo-relative directory an envelope's artifact
+	// refs (name + sha256 digest) resolve against when the digest
+	// matches — unset means artifact refs are recorded but never
+	// resolved to bytes.
+	artifacts_dir?: string
+}
+
 // #Config is the top-level shape of one config.toml layer (user or
 // project). Both layers validate against the same schema; internal/config
 // merges them field-by-field per docs/plans/config-experience.md's stated
@@ -238,4 +256,5 @@ package config
 	guards?:   #Guards
 	findings?: #Findings
 	decide?:   #Decide
+	tests?:    #Tests
 }

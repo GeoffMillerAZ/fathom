@@ -63,15 +63,11 @@ func Verify(ctx context.Context, repoRoot string, receipt core.Receipt) (Outcome
 		return Outcome{}, fmt.Errorf("receipt: symbol is empty — nothing to re-derive")
 	}
 
-	dir, cleanup, err := archiveCommit(ctx, repoRoot, receipt.IndexCommit)
+	dir, cleanup, err := CheckoutModule(ctx, repoRoot, receipt.IndexCommit)
 	if err != nil {
 		return Outcome{}, err
 	}
 	defer cleanup()
-
-	if _, statErr := os.Stat(filepath.Join(dir, "go.mod")); statErr != nil {
-		return Outcome{}, fmt.Errorf("receipt: no go.mod at %s@%s — cannot re-derive with go/types (%w)", repoRoot, receipt.IndexCommit, statErr)
-	}
 
 	switch receipt.Kind {
 	case core.ReceiptKindCallers:
@@ -92,6 +88,28 @@ func Verify(ctx context.Context, repoRoot string, receipt core.Receipt) (Outcome
 		return Outcome{}, fmt.Errorf("receipt: unknown kind %q (want %q, %q or %q)",
 			receipt.Kind, core.ReceiptKindCallers, core.ReceiptKindReferences, core.ReceiptKindSymbolLocation)
 	}
+}
+
+// CheckoutModule checks out commit from the git repository at repoRoot via
+// `git archive` into a fresh temporary directory and confirms a go.mod
+// exists there — the bare-checkout precondition every receipt kind's
+// go/types re-derivation shares. Verify uses it for its own three kinds;
+// cmd/fathom's certification-kind verifier (TC-13) reuses it directly so
+// there is exactly one implementation of "produce an independent bare
+// checkout of a receipt's index_commit". A non-nil error means the
+// checkout could not be produced at all (repoRoot is not a git
+// repository, the commit is missing, or the checkout has no go.mod) —
+// cmd/fathom maps every non-nil error to exit 2, never a false OK.
+func CheckoutModule(ctx context.Context, repoRoot, commit string) (dir string, cleanup func(), err error) {
+	dir, cleanup, err = archiveCommit(ctx, repoRoot, commit)
+	if err != nil {
+		return "", nil, err
+	}
+	if _, statErr := os.Stat(filepath.Join(dir, "go.mod")); statErr != nil {
+		cleanup()
+		return "", nil, fmt.Errorf("receipt: no go.mod at %s@%s — cannot re-derive with go/types (%w)", repoRoot, commit, statErr)
+	}
+	return dir, cleanup, nil
 }
 
 // BareSymbolName reduces a fathom SymbolKey ("service::dir/pkg.Name" or

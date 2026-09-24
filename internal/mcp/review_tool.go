@@ -14,6 +14,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/coverage"
 	"github.com/geoffmilleraz/fathom/internal/analysis/impact"
 	"github.com/geoffmilleraz/fathom/internal/analysis/review"
+	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/projectrules"
 )
@@ -243,6 +244,39 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
 				in.ObligationsByFile[f] = append(in.ObligationsByFile[f], review.ObligationRule{
 					File: f, Rule: r.Rule, Src: r.Src, Tier: r.Tier, Kind: r.Kind, Status: r.Status,
 				})
+			}
+		}
+	}
+
+	// certifications (vision 33 / ADR-043 stage 1, TC-10) — mirrors the
+	// obligations block above exactly, gated on certificationsBackend (the
+	// SAME optional-capability interface verify_plan_tool.go's
+	// CertificationsByTest already asserts backend against) rather than
+	// unconditionally, since QueryInterface implementations here (unlike
+	// cmd/fathom's concrete *client.Client) may not serve semantic layers
+	// at all.
+	if cb, ok := backend.(certificationsBackend); ok {
+		in.CertificationsSupported = true
+		if certClaims, cerr := cb.ClaimsForService(ctx, service, certify.Layer); cerr == nil {
+			records := certify.Records(certClaims)
+			in.CertificationsDeclared = len(records) > 0
+			if in.CertificationsDeclared {
+				changedSet := make(map[string]bool, len(changedFiles))
+				for _, f := range changedFiles {
+					changedSet[f] = true
+				}
+				in.CertificationsByFile = make(map[string][]review.CertificationRecord, len(changedFiles))
+				for _, r := range records {
+					for _, f := range r.Scope {
+						if !changedSet[f] {
+							continue
+						}
+						in.CertificationsByFile[f] = append(in.CertificationsByFile[f], review.CertificationRecord{
+							Subject: r.Subject, Test: r.Test, Strength: r.Strength, State: r.State,
+							Tier: r.Tier, Rule: r.Rule, Status: r.Status, Scope: r.Scope,
+						})
+					}
+				}
 			}
 		}
 	}

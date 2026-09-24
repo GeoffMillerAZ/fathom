@@ -270,6 +270,11 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		checkConcerns(root),
 		checkIntent(root),
 		checkUnprovenClaims(root, baseURL, explicitSvc),
+		// vision 33 / ADR-043 stage 1 (TC-14): the certifications layer's
+		// own declared/live/join-rate facts, read directly from the
+		// repo's local store (doctor's only store-direct row — see
+		// doctor_certifications.go's own doc comment for why).
+		checkCertifications(certificationsStorePath(root), certificationsDoctorService(root, explicitSvc)),
 		// J5 (app-kit O25): instrument --adoption/research report/flywheel
 		// must agree on which call log they're reading.
 		checkInstrumentIdentity(hc, baseURL, explicitSvc),

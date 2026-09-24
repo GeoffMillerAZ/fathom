@@ -15,6 +15,7 @@ import (
 	"cuelang.org/go/cue/cuecontext"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
+	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/sdd"
 	"github.com/geoffmilleraz/fathom/internal/verify"
@@ -374,10 +375,25 @@ func (e *cliEvidence) SpecImplementors(specID string) []string {
 	return e.matrix.Coverage(specID)
 }
 
+// CertificationsByTest implements verify.CertificationEvidence (vision 33
+// / ADR-043 stage 1, TC-9): reads every compiled certifications-layer
+// claim for the service and groups it by its provenance test's bare name
+// via certify.ByTest — the SAME resolution internal/mcp's verifyEvidence
+// uses, so `fathom verify` and verify_plan resolve a certified_by
+// contract identically.
+func (e *cliEvidence) CertificationsByTest(tests []string) map[string][]verify.Certification {
+	claims, err := e.c.ClaimsForService(e.ctx, e.service, certify.Layer)
+	if err != nil {
+		return nil
+	}
+	return certify.ByTest(claims, tests)
+}
+
 var (
-	_ verify.Evidence         = (*cliEvidence)(nil)
-	_ verify.DetailedEvidence = (*cliEvidence)(nil)
-	_ verify.FileEvidence     = (*cliEvidence)(nil)
+	_ verify.Evidence              = (*cliEvidence)(nil)
+	_ verify.DetailedEvidence      = (*cliEvidence)(nil)
+	_ verify.FileEvidence          = (*cliEvidence)(nil)
+	_ verify.CertificationEvidence = (*cliEvidence)(nil)
 )
 
 // renderStatusCUE is exposed for tests that want to verify template output

@@ -105,14 +105,14 @@ tasks:
       - bash scripts/ui-css.sh
 
   validate:
-    desc: Full gate — fmt-check, vet, cue-vet, vendor-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, bench-l0-gate, test
+    desc: Full gate — fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, bench-l0-gate, test
     # clean-clone-check is IN the gate, not a nice-to-have: the adopter build
     # broke silently once (go.work committed, app-kit unmirrored) and stayed
     # broken because every machine that ran validate had the siblings.
     # stranger-check (RP-23) is the same lesson one step further: the copy
     # must init and pass doctor for someone who is not the author. Measured
     # 26–43s on 2026-09-02, under the two-minute budget that admits it here.
-    deps: [fmt-check, vet, cue-vet, vendor-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, scenariobench, bench-l0-gate]
+    deps: [fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, scenariobench, bench-l0-gate]
     cmds: [{ task: test }]
 
   push:
@@ -148,6 +148,10 @@ tasks:
   vendor-check:
     desc: Drift guard — assert third_party/agentic-kit matches the commit go.mod pins (skips gracefully without ../agentic-kit)
     cmds: ["bash scripts/vendor-check.sh"]
+
+  testkit-schema-check:
+    desc: "Drift guard (vision 33 / ADR-043 stage 0, TC-1) — assert schema/testkit/{manifest,result}.cue match the commit schema/testkit/.vendor-commit pins from platform-engineering/kits/test-kit (skips gracefully without the sibling)"
+    cmds: ["bash scripts/testkit-schema-check.sh"]
 
   stranger-check:
     desc: "Adopter guard (RP-23) — copy the tracked tree to $TMPDIR (outside the module, so a parallel `go vet ./...` never walks it), build with GOWORK=off, run `fathom init --harness=none --skills` and `fathom doctor` against a throwaway daemon + temp store with a temp HOME; fail on any FAIL row. Prints its elapsed seconds."

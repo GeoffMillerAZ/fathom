@@ -25,6 +25,7 @@ func newStore(t *testing.T, obs []core.Observation) *store.MemoryStore {
 
 // ─── empty ConcernID ─────────────────────────────────────────────────────────
 
+// certifies: invariant I5 (asserts)
 func TestQuery_EmptyConcernIDReturnsError(t *testing.T) {
 	e := query.New(store.NewMemoryStore())
 	_, err := e.Query(context.Background(), core.Query{

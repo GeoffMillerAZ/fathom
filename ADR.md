@@ -2251,3 +2251,22 @@ line and a silent fallback to `none`, never a startup or compile failure. The A/
 this decision originally gated default-on on (vision 32 §4) still applies before
 `typesafe` becomes any repo's default provider. `docs/intent/futures.md` F21: landed.
 
+## ADR-043: Tested means certified — a certifications layer over declared test evidence, judged elsewhere (2026-09-23)
+
+**Status.** Accepted 2026-09-23. Vision: `docs/vision/33-test-certifications.md`. Design: `docs/design/test-certifications.md`. Plan: `docs/plans/test-certifications.md`.
+
+**Context.** The owner asked whether fathom should track test coverage, test kinds and what tests are for, on a standard defined in platform-engineering. Three repositories already hold most of the pieces and agree on the boundary: test-kit declares suites and attests per-case results (ADR-0042 there); Review Kit judges requirements through evidence checks with adapters and enforcement; fathom knows which tests reach which symbols, which symbols each labelled layer covers and which mutants survive, and states "fathom asserts a fact. The review kit judges it." Nothing links a test to what it is for, and nothing computes which invariants, incidents, specs and ports have no certifying test.
+
+**Decision.**
+1. *A certification is a claim.* `test T, of kind K and strength S, certifies target X` is stored, tiered, swept and served exactly like every other claim: content-addressed, cited, `stale` when the test or a reached symbol moves, `contradicted` when the test is gone or the target does not resolve, `refuted` by a human. Layer `certifications`, role `claims`, compiled deterministically from declarations times joins; no model in the default path.
+2. *The vocabulary is the platform standard's.* `#Certifies` and `#Suite.certifies` are an amendment to test-kit's ADR-0042; the per-test marker `// certifies: <kind> <id> (<strength>)` is comment-grammar fathom reads at ingest. fathom never invents a vocabulary of its own.
+3. *fathom asserts liveness, never adequacy.* A certificate's state (`live`, `flaky`, `broken`, `unproven`, `unreachable`) and tier are facts. No threshold, percentage or "adequate" lives in fathom; a Review Kit requirement with a fathom evidence adapter decides and enforces.
+4. *Served through the gate, the review and the list.* `fathom verify` gains `certified_by`; `review_diff` gains a `certifications` dimension; `fathom certify status|gaps|manifest|orphans` are verb-first CLI, no new MCP tool. The edit hook is not a site this round (Q21).
+5. *No attested run, no live certificate.* fathom never runs tests; it ingests test-kit's attested envelopes. A reached test is not a passing test; a receipt says `pass: unverified (no run)` until the holder runs it.
+6. *The decision port may suggest, never certify.* `certify suggest` asks a strength choice and an asserts noul per unregistered test; proceed-band answers are suggestions in a workspace artifact, never claims (ADR-042's boundary).
+
+**Alternatives rejected.** A coverage percentage as the product (test-kit already declares floors; Review Kit judges; covered is not asserted). fathom running tests (non-goal: no dispatch loop). Model-inferred test intent as truth (tier discipline). A hand-maintained test registry (state is computed, P17). A test quality score (the advisor recommends; the gate decides, P11). A new MCP tool ahead of call-log justification (P4). A fathom-local vocabulary (one standard, three consumers).
+
+**Consequences.** Three repositories change in one round: test-kit (schema, ADR amendment), fathom (this layer and its verbs), Review Kit (a requirement and an adapter). Every stage carries a kill criterion (plan rows TC-M1..M4). The certifications layer is the second deterministic claim layer after findings; if a third appears the deterministic-layer path is factored (ADR-040's "not a findings database" holds: fathom remains the projection, test-kit the record).
+
+**Revisit when.** TC-M1 fails (the envelope needs a case-to-symbol contract first); TC-M2 fails (declaration is too heavy); a non-Go service ingests envelopes (TC-26 fires); Review Kit's requirement never fires deny in a month (TC-M3); or a fourth consumer wants the vocabulary outside the platform standard.

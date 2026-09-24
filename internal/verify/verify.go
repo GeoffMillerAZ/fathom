@@ -135,6 +135,32 @@ type Expect struct {
 	SkipReason         string            // justification for SkipTest (the "skip:" key; LintPlan warns when absent)
 	AllowContradiction bool              // false (default) → any contradiction on Symbol fails the task
 	MinTier            core.EvidenceTier // "" (default) → treated as TierVerified
+
+	// CertifiedBy names the test(s) a `certified_by: <Test>` annotation
+	// declares (vision 33 / ADR-043 stage 1, TC-9, design doc §4) —
+	// repeatable via a comma-separated value, same convention as Needs.
+	// When non-empty, it REPLACES the ordinary test_reaches requirement
+	// with the certifications layer's own, stronger proof: only a LIVE
+	// certificate from one of these tests satisfies the row (see
+	// EvaluateCertifiedBy). Empty means "no certified_by contract" — the
+	// ordinary test_reaches/skip_test path applies unchanged.
+	CertifiedBy []string
+	// CertifyStrength is the optional `strength: <level>` floor every
+	// named test's certificate must meet or exceed (design doc §1's
+	// closed, ordered ladder). "" defaults to the ladder's own default
+	// (extractor.DefaultCertifyStrength, "asserts").
+	CertifyStrength string
+}
+
+// IsZero reports whether e carries no contract at all — the struct-
+// equality check `e == Expect{}` used to answer this before CertifiedBy
+// (a slice, incomparable) joined the struct; callers outside this package
+// (cmd/fathom's gen-plan-cue) use this instead of comparing to a literal
+// zero value.
+func (e Expect) IsZero() bool {
+	return e.Symbol == "" && e.Package == "" && e.ReachableFrom == "" &&
+		!e.SkipTest && e.SkipReason == "" && !e.AllowContradiction && e.MinTier == "" &&
+		len(e.CertifiedBy) == 0 && e.CertifyStrength == ""
 }
 
 // CriterionStatus is the outcome of a single acceptance criterion.
@@ -300,6 +326,151 @@ type DetailedEvidence interface {
 	// dispatch modality for each — same emptiness/ordering contract as
 	// TestReaches.
 	TestReachesDetail(symbol string) []ReachDetail
+}
+
+// Certification is one compiled certifications-layer claim (vision 33 /
+// ADR-043 stage 1, internal/certify.CompileCertifications), reduced to
+// what EvaluateCertifiedBy needs to judge a `certified_by: <Test>`
+// contract. verify does not import internal/certify (a leaf package
+// depending only on internal/core and agentic-kit's scoring foundation) —
+// CertificationEvidence implementations translate, the same pattern
+// DetailedEvidence's ReachDetail already uses for internal/analysis/
+// callgraph.
+type Certification struct {
+	// Test is the certifying test's bare name (the same form TestReaches'
+	// own results use).
+	Test string
+	// Strength is the certificate's declared strength, on the closed
+	// ladder design doc §1 names (smoke < asserts < golden < property <
+	// conformance < mutation-killed).
+	Strength string
+	// State is the certifications layer's own state fact: "live" |
+	// "flaky" | "broken" | "unproven" | "unreachable" (internal/certify.
+	// State's values, mirrored here as plain strings for the same
+	// no-cross-package-dependency reason as Strength).
+	State string
+	// Scope is the claim's own Scope — the test file plus the files of
+	// the symbols the test reaches that the target names (design doc
+	// §3). A certified_by row is satisfied by a test whose certificate
+	// Scope includes the row's claimed symbol's FILE.
+	Scope []string
+}
+
+// certifyStrengthRank mirrors internal/extractor.CertifyStrengthRank's
+// ordering (design doc §1's closed ladder) without importing that
+// package — verify stays a leaf dependency. The two lists MUST be kept in
+// sync; TestEvaluateCertifiedBy_EveryVerdict pins the values this side
+// depends on.
+var certifyStrengthRank = map[string]int{
+	"smoke": 0, "asserts": 1, "golden": 2, "property": 3, "conformance": 4, "mutation-killed": 5,
+}
+
+// defaultCertifyStrength mirrors internal/extractor.DefaultCertifyStrength.
+const defaultCertifyStrength = "asserts"
+
+// EvaluateCertifiedBy is the certified_by: <Test> contract's own criterion
+// (vision 33 / ADR-043 stage 1, TC-9, design doc §4): symbolFile is the
+// row's claimed symbol's defining file (verifyTask already resolves this
+// for symbol_present); certifiedBy is the row's certified_by test name
+// list; minStrength is the row's optional strength: floor ("" defaults to
+// the ladder's own default); byTest maps a certifying test's bare name to
+// every certification claim provenance-attributed to it (typically every
+// compiled certifications-layer claim whose Meta.Test equals that name —
+// CertificationEvidence.CertificationsFor's own contract).
+//
+// Only a LIVE certificate from one of the named tests, at or above
+// minStrength, whose Scope includes symbolFile, proves the row
+// ("certified"). Every other outcome fails, labeled by the MOST
+// INFORMATIVE reason found across every named test's every certificate —
+// certificate-broken (a certificate exists, scoped to this file, and its
+// last attested run failed) > certificate-unproven (exists, scoped, never
+// run) > certificate-unreachable (exists, scoped, but the test does not
+// reach anything the target names) > certificate-absent (nothing
+// certifies this file from any named test at all) — so a row naming
+// three tests where one actually ran and failed is never silently
+// reported as if none of them existed. The second return is the failing
+// label (""  on Pass), the same (Criterion, label) shape evalLexicalOracle/
+// ledgerOracle already use.
+func EvaluateCertifiedBy(symbolFile string, certifiedBy []string, minStrength string, byTest map[string][]Certification) (Criterion, string) {
+	if minStrength == "" {
+		minStrength = defaultCertifyStrength
+	}
+	wantRank := certifyStrengthRank[minStrength]
+
+	rank := func(state string) int {
+		switch state {
+		case "broken":
+			return 3
+		case "unproven":
+			return 2
+		case "unreachable":
+			return 1
+		default: // "absent" / unrecognized
+			return 0
+		}
+	}
+	best := "absent"
+	var bestDetail string
+	anyNamed := false
+	for _, test := range certifiedBy {
+		certs, ok := byTest[test]
+		if !ok {
+			continue
+		}
+		anyNamed = true
+		for _, c := range certs {
+			if !scopeContains(c.Scope, symbolFile) {
+				continue
+			}
+			if certifyStrengthRank[c.Strength] < wantRank {
+				continue
+			}
+			if c.State == "live" {
+				return Criterion{Name: "certified_by", Status: Pass, Detail: fmt.Sprintf(
+					"%s certifies this file (strength %s, live)", c.Test, c.Strength)}, ""
+			}
+			state := c.State
+			if state == "" {
+				state = "absent"
+			}
+			if rank(state) > rank(best) {
+				best = state
+				bestDetail = fmt.Sprintf("%s's certificate for this file is %s (strength %s)", c.Test, c.State, c.Strength)
+			}
+		}
+	}
+	if !anyNamed || bestDetail == "" {
+		names := strings.Join(certifiedBy, ", ")
+		return Criterion{Name: "certified_by", Status: Fail, Detail: fmt.Sprintf(
+			"no certificate from %s covers this file", names)}, "certificate-absent"
+	}
+	return Criterion{Name: "certified_by", Status: Fail, Detail: bestDetail}, "certificate-" + best
+}
+
+// scopeContains reports whether file appears verbatim in scope — a
+// certification claim's Scope is a flat list of repo-relative file paths
+// (design doc §3: "the test file plus the files of the symbols the test
+// reaches that the target names"), never a glob, so an exact match is the
+// whole contract.
+func scopeContains(scope []string, file string) bool {
+	for _, s := range scope {
+		if s == file {
+			return true
+		}
+	}
+	return false
+}
+
+// CertificationEvidence is an optional capability: an Evidence that can
+// report the certifications layer's compiled state (vision 33 / ADR-043
+// stage 1, TC-9). VerifyPlan type-asserts for it — an Evidence without it
+// leaves every certified_by row Fail with "no certification evidence
+// available", never a fabricated pass.
+type CertificationEvidence interface {
+	// CertificationsByTest returns, for the given test bare names, every
+	// compiled certification claim provenance-attributed to each —
+	// EvaluateCertifiedBy's own byTest map.
+	CertificationsByTest(tests []string) map[string][]Certification
 }
 
 // FileEvidence is an optional capability: an Evidence that can read the
@@ -476,6 +647,26 @@ func verifyTask(t Task, ev Evidence, files FileEvidence, contraBySymbol map[stri
 			pass("skip_test", fmt.Sprintf("test-reach requirement waived: %s", e.SkipReason))
 		case len(matches) == 0:
 			na("test_reaches", "symbol absent")
+		case len(e.CertifiedBy) > 0:
+			// certified_by (vision 33 / ADR-043 stage 1, TC-9, design doc
+			// §4) REPLACES the ordinary test_reaches check with the
+			// certifications layer's own stronger proof: only a LIVE
+			// certificate from a named test satisfies the row. An
+			// Evidence with no CertificationEvidence capability fails
+			// honestly rather than silently falling back to the weaker
+			// test_reaches contract.
+			ce, ok := ev.(CertificationEvidence)
+			if !ok {
+				fail("certified_by", "no certification evidence available", "certificate-absent")
+				break
+			}
+			byTest := ce.CertificationsByTest(e.CertifiedBy)
+			crit, label := EvaluateCertifiedBy(matches[0].FilePath, e.CertifiedBy, e.CertifyStrength, byTest)
+			if crit.Status == Pass {
+				pass(crit.Name, crit.Detail)
+			} else {
+				fail(crit.Name, crit.Detail, label)
+			}
 		default:
 			if de, ok := ev.(DetailedEvidence); ok {
 				if details := de.TestReachesDetail(querySym); len(details) > 0 {

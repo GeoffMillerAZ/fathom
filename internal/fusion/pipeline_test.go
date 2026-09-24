@@ -612,6 +612,8 @@ func TestIngest_LineNumberRoundTrip(t *testing.T) {
 // guard: a store carrying pre-ADR-017 absolute-path anchors is purged
 // wholesale on the first ingest that discovers repo-relative refs, so no
 // symbol exists under both anchor styles.
+//
+// certifies: invariant I3 (asserts)
 func TestIngest_SelfHealsLegacyAbsoluteAnchors(t *testing.T) {
 	ctx := context.Background()
 	conn := connector.NewFauxConnector()

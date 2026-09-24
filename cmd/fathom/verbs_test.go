@@ -198,6 +198,8 @@ func TestMaintainedLinesNameRegisteredToolsAndVerbs(t *testing.T) {
 // use-case doc carries exactly one `## Maintained` contract and the
 // contract parses to at least one tool or verb name — a doc whose contract
 // is prose a machine cannot read is an unmaintained doc.
+//
+// certifies: invariant I36 (asserts)
 func TestMaintainedLinesParse(t *testing.T) {
 	root := repoRootForDocs(t)
 	docs, err := filepath.Glob(filepath.Join(root, "docs", "use-cases", "*.md"))

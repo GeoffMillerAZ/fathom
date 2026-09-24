@@ -112,6 +112,8 @@ func TestResolveStoreFiles(t *testing.T) {
 // deleted outright, so BackendForPath must never silently open (or silently
 // fall back away from) a ".duckdb" path — it must return a clear, typed
 // error naming the file and pointing at a pre-SS-8 build, every time.
+//
+// certifies: invariant I28 (asserts)
 func TestBackendForPath_DuckDBLoudlyRefused(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "svc.duckdb")
 	s, err := BackendForPath(path)

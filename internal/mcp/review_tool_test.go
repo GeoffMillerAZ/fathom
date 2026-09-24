@@ -174,15 +174,15 @@ func TestReviewDiff_ComposesDimensionsHonestly(t *testing.T) {
 		t.Errorf("service = %v", p["service"])
 	}
 	dims, ok := p["dimensions"].([]any)
-	if !ok || len(dims) != 5 {
-		t.Fatalf("expected 5 dimensions, got %v", p["dimensions"])
+	if !ok || len(dims) != 6 {
+		t.Fatalf("expected 6 dimensions, got %v", p["dimensions"])
 	}
 	byName := map[string]map[string]any{}
 	for _, raw := range dims {
 		d := raw.(map[string]any)
 		byName[d["name"].(string)] = d
 	}
-	for _, want := range []string{"impact", "obligations", "arch_conformance", "spec_coverage", "coverage"} {
+	for _, want := range []string{"impact", "obligations", "arch_conformance", "spec_coverage", "coverage", "certifications"} {
 		if _, ok := byName[want]; !ok {
 			t.Errorf("missing dimension %q", want)
 		}
@@ -194,6 +194,14 @@ func TestReviewDiff_ComposesDimensionsHonestly(t *testing.T) {
 	}
 	if byName["coverage"]["reason"] != "no coverage profile supplied" {
 		t.Errorf("coverage reason = %v", byName["coverage"]["reason"])
+	}
+	// No certifications-layer claims exist for "svc" in this fixture — the
+	// SAME "declared but empty" honesty discipline (TC-10).
+	if byName["certifications"]["checked"] != false {
+		t.Errorf("certifications should be unchecked (nothing declared): %v", byName["certifications"])
+	}
+	if byName["certifications"]["reason"] != "no certifications declared" {
+		t.Errorf("certifications reason = %v", byName["certifications"]["reason"])
 	}
 	if byName["impact"]["checked"] != true {
 		t.Errorf("impact should be checked: %v", byName["impact"])

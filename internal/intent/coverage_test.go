@@ -57,6 +57,8 @@ func writeCorpus(t *testing.T, root string) {
 // instead of 37 and 85 unproven claims instead of 169, with NOTHING naming
 // the file. The repository's most broken state was its healthiest-looking
 // one. This asserts that can never happen silently again.
+//
+// certifies: invariant I38 (asserts)
 func TestUnreadableInputNeverLooksHealthier(t *testing.T) {
 	root := t.TempDir()
 	writeCorpus(t, root)

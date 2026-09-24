@@ -14,6 +14,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/coverage"
 	"github.com/geoffmilleraz/fathom/internal/analysis/impact"
 	"github.com/geoffmilleraz/fathom/internal/analysis/review"
+	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/store"
@@ -135,6 +136,13 @@ func runTestsSelect(args []string, gitRunner func(args ...string) ([]byte, error
 	}
 
 	ranked := rankTestSelection(nodes, gap.AffectedTests, coverageSyms, len(profiles) > 0)
+	// TC-23 (design doc §5's "Ordering"): a test that already certifies a
+	// target in the changed files ranks first, ahead of the reach ranking
+	// above — best effort (an absent/unreadable certifications layer
+	// degrades to no reordering at all, never an error: this is an
+	// advisory tie-break, not the selection itself).
+	claims, _ := c.ClaimsForService(ctx, svc, certify.Layer)
+	ranked = rankCertifyingFirst(ranked, certifyingTestKeys(nodes, claims, changedFiles))
 	invocations := groupTestInvocations(nodes, ranked)
 	replay := loadTestSelectReplay(workspacePath("artifacts/tests-select/replay.jsonl"))
 
@@ -236,6 +244,61 @@ func rankTestSelection(nodes []core.SymbolNode, affected []impact.TestReach, cov
 			return len(a.Reaches) > len(b.Reaches)
 		}
 		return a.Test < b.Test
+	})
+	return out
+}
+
+// certifyingTestKeys resolves design doc §5's "tests that certify a
+// target in the changed files": every certifications-layer claim
+// (certify.Records) whose Scope intersects changedFiles names a
+// certifying test by its BARE name (Record carries no symbol key — see
+// certify.Record's own doc comment); this resolves each matching bare
+// name back to every symbol key nodes gives it (ambiguous names resolve
+// to more than one key, matching this advisory tie-break's own tolerance
+// for approximation — a wrong extra promotion costs nothing but ordering,
+// unlike a gate). claims or changedFiles empty yields an empty set, never
+// an error: rankCertifyingFirst then reorders nothing.
+func certifyingTestKeys(nodes []core.SymbolNode, claims []core.SemanticClaim, changedFiles []string) map[string]bool {
+	changed := make(map[string]bool, len(changedFiles))
+	for _, f := range changedFiles {
+		changed[f] = true
+	}
+	certifyingNames := map[string]bool{}
+	for _, r := range certify.Records(claims) {
+		for _, f := range r.Scope {
+			if changed[f] {
+				certifyingNames[r.Test] = true
+				break
+			}
+		}
+	}
+	if len(certifyingNames) == 0 {
+		return nil
+	}
+	out := map[string]bool{}
+	for _, n := range nodes {
+		if certifyingNames[n.Name] {
+			out[n.Key()] = true
+		}
+	}
+	return out
+}
+
+// rankCertifyingFirst (TC-23, design doc §5's "Ordering") stable-
+// partitions ranked into two groups — tests in certifying (keyed by
+// rankedTest.Test, i.e. a symbol key) first, everyone else after —
+// preserving rankTestSelection's own relative order WITHIN each group
+// (sort.SliceStable): "ranks tests that certify a target in the changed
+// files first, THEN the existing reach ranking." Pure, advisory only: it
+// never changes WHICH tests are selected, only their order. A nil/empty
+// certifying set is a no-op copy of ranked in its original order.
+func rankCertifyingFirst(ranked []rankedTest, certifying map[string]bool) []rankedTest {
+	out := append([]rankedTest(nil), ranked...)
+	if len(certifying) == 0 {
+		return out
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		return certifying[out[i].Test] && !certifying[out[j].Test]
 	})
 	return out
 }

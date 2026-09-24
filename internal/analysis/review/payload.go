@@ -75,6 +75,15 @@ func (f Finding) payload() map[string]any {
 	if f.Status != "" {
 		m["status"] = f.Status
 	}
+	if f.Test != "" {
+		m["test"] = f.Test
+	}
+	if f.Strength != "" {
+		m["strength"] = f.Strength
+	}
+	if f.State != "" {
+		m["state"] = f.State
+	}
 	return m
 }
 

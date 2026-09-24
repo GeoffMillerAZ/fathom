@@ -96,6 +96,8 @@ func repoRoot(t *testing.T) string {
 // the three-place membership contract (surface registration, this test,
 // the doc) can no longer silently drift apart. A name on only one side
 // fails loudly, naming which side and which name.
+//
+// certifies: invariant I11 (asserts)
 func TestMcpToolsDocMatchesRegistry(t *testing.T) {
 	docPath := filepath.Join(repoRoot(t), "docs", "mcp-tools.md")
 	raw, err := os.ReadFile(docPath)

@@ -183,6 +183,15 @@ var DefaultDecide = Decide{
 	RerankTimeoutMS:  1500,
 }
 
+// Tests configures vision 33 / ADR-043 stage 0's test-evidence ingest
+// (schema.cue #Tests): `[tests] results_dir` makes a plain `fathom ingest`
+// also pick up attested #TestResult envelopes, exactly as `fathom tests
+// ingest --results` does explicitly.
+type Tests struct {
+	ResultsDir   string `toml:"results_dir"`
+	ArtifactsDir string `toml:"artifacts_dir"`
+}
+
 // Config is the merged, in-memory form of one or more config.toml layers.
 type Config struct {
 	DefaultProfile string
@@ -191,6 +200,7 @@ type Config struct {
 	Guards         Guards
 	Findings       Findings
 	Decide         Decide
+	Tests          Tests
 }
 
 // LoadError names the file and the underlying cause — parse, validate, or

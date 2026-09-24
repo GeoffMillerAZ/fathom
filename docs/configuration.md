@@ -444,6 +444,36 @@ all beyond `--store`/`--service`; only the SESSION-HOOK sync depends on
 the end-to-end CI and local variants, and `docs/use-cases/change-review.md`
 for the loop from a reviewer's own seat.
 
+## Test evidence: `[tests]`
+
+Vision 33 / ADR-043 stage 0's test-kit evidence ingest
+(`docs/vision/33-test-certifications.md`): `fathom tests ingest
+--results <file|dir>` always works explicitly; `[tests] results_dir` makes
+a PLAIN `fathom ingest` also pick up attested `#TestResult` envelopes from
+that repo-relative directory, without a separate `tests ingest` call.
+
+```toml
+# .fathom/config.toml
+[tests]
+results_dir   = "workspace/artifacts/test-results"   # repo-relative; optional
+artifacts_dir = "workspace/artifacts/test-blobs"      # repo-relative; optional
+```
+
+- `results_dir` (optional): a repo-relative directory of attested
+  `#TestResult` envelopes (`internal/testevidence.LoadEnvelopes`'s own
+  shape — plain JSON, NDJSON, a JSON array, or DSSE/in-toto-wrapped).
+  Unset means no auto-pickup on a plain `fathom ingest` — `fathom tests
+  ingest --results` still works either way.
+- `artifacts_dir` (optional): a repo-relative directory an envelope's
+  artifact references (`name` + `sha256` digest) resolve against when the
+  digest matches. Unset means artifact refs are recorded as facts but
+  never resolved to bytes.
+
+Both keys are read the same way every other `.fathom/config.toml` section
+is (project layer over user layer, `fathom config --explain` for
+provenance) — see `internal/config`'s `Tests` struct and
+`schema/config/schema.cue`'s `#Tests`.
+
 ## Worked example
 
 ```toml

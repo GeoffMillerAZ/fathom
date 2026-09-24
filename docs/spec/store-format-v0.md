@@ -431,7 +431,19 @@ A claim's identity is a function of four inputs
 was compiled or by whom. Provenance — separate from identity — is carried on
 the row: `model` (empty for a deterministic/oracle-class compile), `prompt_
 version`, `repro_key`, `input_digest` (sha256 of the exact source section
-compiled), and `compiled_at`/`compiled_at_watermark`. A conforming writer
+compiled), and `compiled_at`/`compiled_at_watermark`. `class`, `valid_from`,
+`valid_to`, `asserted_by`, and (vision 33 / ADR-043 stage 1) `meta` are
+later, ADDITIVE `semantic_claims` columns — not part of the required L0/
+Writer schema (§3, §4) — each one an "additive within v0" column per §1: a
+reader that predates it simply never sees it populated, and a writer
+predating it upserts `''`/`NULL` there without failing. `meta` is an opaque
+per-layer JSON provenance blob (`internal/core.SemanticClaim.Meta`) for
+facts that don't fit the typed columns above — the certifications layer's
+`{test, suite, class, strength, state, run_digest, attempts, coverage_pct?,
+mutation_score?}` block (`docs/design/test-certifications.md` §3) is its
+first user; this spec makes no claim about its schema beyond "valid JSON or
+empty," same discipline as the embedding-column non-goal in §11. A
+conforming writer
 **MUST** ensure that recompiling the identical corpus section under the
 identical prompt version reproduces the identical `claim_id` — this is what
 makes the upsert-not-duplicate rule (§8.1) meaningful rather than

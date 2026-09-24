@@ -471,6 +471,54 @@ func Reachable(g *Graph, from, to string) bool {
 	return bfsReachable(g, fromKey, toKey, visited)
 }
 
+// ReachableAny reports whether any directed path exists from the node
+// identified by from to AT LEAST ONE of the nodes named in to (following
+// caller→callee edges) — a single BFS from from regardless of how many
+// candidates to names, so a caller checking "does X reach ANY of this
+// large set" (TC-22's orphan detection: does a test reach any symbol in a
+// large changed-file set) pays one graph walk, not one per candidate the
+// way calling Reachable in a loop would.
+//
+// from and to entries may be full keys or bare names. A from that
+// canonicalizes to "" reports false; a to entry that does not canonicalize
+// is simply never matched (never an error — the caller's own candidate set
+// may legitimately include a name callgraph cannot resolve, e.g. a symbol
+// outside this service).
+func ReachableAny(g *Graph, from string, to []string) bool {
+	fromKey := g.canonicalize(from)
+	if fromKey == "" {
+		return false
+	}
+	want := make(map[string]bool, len(to))
+	for _, t := range to {
+		if k := g.canonicalize(t); k != "" {
+			want[k] = true
+		}
+	}
+	if len(want) == 0 {
+		return false
+	}
+	if want[fromKey] {
+		return true
+	}
+	visited := map[string]bool{fromKey: true}
+	queue := []string{fromKey}
+	for len(queue) > 0 {
+		cur := queue[0]
+		queue = queue[1:]
+		for _, next := range g.callees[cur] {
+			if want[next] {
+				return true
+			}
+			if !visited[next] {
+				visited[next] = true
+				queue = append(queue, next)
+			}
+		}
+	}
+	return false
+}
+
 func bfsReachable(g *Graph, from, to string, visited map[string]bool) bool {
 	queue := []string{from}
 	visited[from] = true

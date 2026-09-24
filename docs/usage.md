@@ -760,6 +760,13 @@ fathom verify --service <id> --plan docs/plans/<slug>.md [--plan <more>...] \
 | `--mutation` | `""` (falls back to `$FATHOM_MUTATION_REPORT`) | VB-34: a mutation-testing report (go-mutesting log output, or fathom's own JSON shape — see `docs/use-cases/test-coverage.md`); a claimed row whose symbol is `test_reaches`-covered but has mutation score 0 gets a `covered-not-asserted` note. `--store`/direct mode only — HTTP mode errors (exit 2) if given |
 | `--strict-mutation` | `false` | Gate-fail a `covered-not-asserted` finding instead of noting it as advisory |
 
+A plan row's `certified_by: <Test>` annotation (vision 33 / ADR-043 stage 1,
+TC-9, `internal/verify.EvaluateCertifiedBy`) replaces the ordinary
+`test_reaches`/`skip_test` requirement: the row verifies only when that test
+has a `live` compiled certification (`internal/certify`) scoped to the row's
+`symbol`, at or above `strength` (default `asserts`). See
+[docs/plans/README.md](plans/README.md) for the full annotation grammar.
+
 See [docs/plans/README.md](plans/README.md) for the plan grammar and
 [docs/adoption/spec-driven-development.md](adoption/spec-driven-development.md) for the
 full authoring-to-gate loop.
@@ -1517,9 +1524,10 @@ this repository's git history gets the same verdict fathom's own gate does
 §3 wave E).
 
 A receipt is a small JSON file the caller saves from an answer's envelope —
-`kind` (`callers` | `references` | `symbol_location`), the queried `symbol`
-(bare name or `Recv.Method` — go/types' own vocabulary), `index_commit`, and
-the facts to check (`callers`, `files`, or `file`/`line`):
+`kind` (`callers` | `references` | `symbol_location` | `certification`), the
+queried `symbol` (bare name or `Recv.Method` — go/types' own vocabulary),
+`index_commit`, and the facts to check (`callers`, `files`, `file`/`line`,
+or `test`/`reached` for `certification`):
 
 ```json
 {
@@ -1538,6 +1546,29 @@ symbol, a moved definition line); **2** it could not run at all — no git
 repository at `--repo`, the commit is missing, the checkout has no `go.mod`,
 or the receipt file is missing/invalid — an operational refusal, never a
 false pass or fail.
+
+**`certification` receipts** (TC-13, vision 33 / ADR-043) carry `test` (the
+certifying `Test*` function, `"dir/pkg.Name"`) and `reached` (the symbols its
+certification claims that test reaches) instead of `callers`/`files`:
+
+```json
+{"kind": "certification", "symbol": "Charge", "test": "internal/billing.TestCharge_Idempotent",
+ "index_commit": "a1b2c3d...", "reached": ["Charge", "validateCharge"]}
+```
+
+Reach is re-derived independently with go/types alone, exactly like the
+other three kinds (`internal/receiptverify` + `internal/contextbench/publicloc`
+— never `internal/certify`'s own indexed computation). The run itself is
+reported as `pass: unverified (no run)` unless `--run-tests` is given, in
+which case `fathom receipt verify` actually executes
+`go test -run '^<Test>$' <pkg>` for that one test and reports `pass: true`
+or `pass: false` — ADR-043 decision 5: a reached test is not a passing test,
+so the verdict is never inferred from reach alone.
+
+| Flag (`receipt verify`) | Default | Description |
+|---|---|---|
+| `--repo` | current directory | git checkout to re-derive from |
+| `--run-tests` | `false` | `certification` kind only: actually run the named test instead of reporting `unverified (no run)` |
 
 ### `tests coverage` / `tests select` — coverage, mutation, and test selection
 
@@ -1562,7 +1593,10 @@ no covering test in any layer. `--mutation <report>` (VB-34) adds a
 typed-edge reachability, corroborating statement coverage (when `--profile`
 is given), and test layer (unit before integration before e2e), then emits
 a `go test ./<pkg> -run '^(TestA|TestB)$'` invocation per package plus the
-changed symbols no test reaches. A replay ledger at
+changed symbols no test reaches. A test that already certifies a target
+whose scope intersects this diff (TC-23, vision 33 / ADR-043 stage 3) ranks
+first, ahead of that reach ranking — advisory only, it never changes which
+tests are selected. A replay ledger at
 `workspace/artifacts/tests-select/replay.jsonl`, when present, adds a
 measured predicted catch-rate — never a fabricated one.
 
@@ -1582,6 +1616,107 @@ measured predicted catch-rate — never a fabricated one.
 | `--service` | resolved from cwd | Service ID |
 | `--store` | `<repo>/workspace/db/fathom.sqlite` | store path |
 | `--json` | `false` | Emit JSON instead of a table |
+
+### `tests ingest` / `tests status` — test-kit evidence (vision 33 / ADR-043 stage 0)
+
+```sh
+fathom tests ingest --manifest <dir> --results <file|dir> \
+  [--service <id>] [--store <path>]
+
+fathom tests status [--service <id>] [--store <path>] [--json]
+```
+
+`tests ingest` loads a service's declared `<dir>/tests/*.cue` manifests
+(validated against the mirrored test-kit schema, `schema/testkit/`) and
+attested `#TestResult` envelopes from `--results` (a single file, a
+directory of `*.json` files, plain JSON, NDJSON, or a DSSE/in-toto-wrapped
+envelope — the payload is decoded and its digest recorded as the run's
+identity; fathom never verifies signatures itself) into the additive
+`test_suites`/`test_runs`/`test_cases` store tables, joining each case to a
+`Test*` symbol by exact name (`TestX/sub` joins to `TestX`). It also scans
+`--manifest`'s whole tree for `// certifies: <kind> <id> [(<strength>)]`
+markers above `Test*` functions, writing one declared fact per entry into
+`certify_declarations` (a malformed marker is a warning naming its
+file:line, never a silent skip). "no manifests found" and "no runs
+ingested" print as named lines — never a silently clean run.
+
+`tests status` prints, per declared suite, its class, tier, the last
+ingested run's verdict and totals, and `joined N of M cases` — the
+case-to-symbol join rate is a reported fact, never a pass/fail. A service
+with no declared suites prints "no manifests found" instead of an empty
+table.
+
+fathom never runs a test itself (design doc §2): both verbs ingest
+test-kit's own record.
+
+| Flag (`tests ingest`) | Default | Description |
+|---|---|---|
+| `--manifest` | `.` | service repo root: `tests/*.cue` live under `<dir>/tests/`, and `// certifies:` markers are scanned under `<dir>` |
+| `--results` | `""` | attested `#TestResult` envelope file, or a directory of `*.json` envelopes |
+| `--service` | resolved from cwd | Service ID |
+| `--store` | `<repo>/workspace/db/fathom.sqlite` | store path |
+
+| Flag (`tests status`) | Default | Description |
+|---|---|---|
+| `--service` | resolved from cwd | Service ID |
+| `--store` | `<repo>/workspace/db/fathom.sqlite` | store path |
+| `--json` | `false` | Emit JSON instead of a table |
+
+### `certify` — the compiled certifications layer (vision 33 / ADR-043 stages 1-3)
+
+```sh
+fathom certify status [--service <id>] [--store <path>] [--json]
+fathom certify gaps [--kind invariant|incident|spec|port|rule|behaviour] \
+  [--service <id>] [--store <path>] [--json]
+fathom certify manifest [--out FILE] [--check] [--service <id>] [--store <path>]
+fathom certify orphans [--json] [--service <id>] [--store <path>]
+fathom certify suggest [--limit N] [--out FILE] [--service <id>] [--store <path>]
+```
+
+`certify status` reports the compiled `certifications` layer's declared/live/
+gap counts and the join rate. `certify gaps` lists every declared target
+with no live certificate, one line per gap with a remedy; `--kind` narrows
+to one target kind; `--json` emits the versioned `fathom.certify.gaps/v1`
+shape the Review Kit adapter's `fathom-certify` parses (schema string, field
+names, and sort order — kind then id — are the wire contract; do not change
+them without a version bump). `certify manifest` regenerates
+`docs/certifications.md` from the layer; `--check` fails (exit 1) instead of
+writing when the committed file differs — a hand edit to that file is a
+defect. `certify orphans` (TC-22) lists `Test*` symbols that certify
+nothing, reach no symbol changed in the last 180 days, and never failed or
+flaked in any ingested run — a list, never an action; nothing is deleted or
+flagged for deletion. `certify suggest` (TC-24) asks the decision port
+(`[decide] provider = llm|typesafe`) one batched request per chunk of
+unregistered `Test*` symbols — a strength choice plus an "asserts a real
+behaviour" noul — and writes proceed-band answers to `--out`
+(`workspace/artifacts/certify-suggestions.jsonl` by default, regenerated
+fresh each run, never appended), rendered as a hint in `certify gaps`'s
+table output; a suggestion is never a claim and is never written to the
+store, and `provider = none` prints one line and exits 0.
+
+| Flag (`certify gaps`) | Default | Description |
+|---|---|---|
+| `--kind` | `""` (all kinds) | filter to one target kind |
+| `--service` | resolved from cwd | Service ID |
+| `--store` | `<repo>/workspace/db/fathom.sqlite` | store path |
+| `--json` | `false` | Emit the `fathom.certify.gaps/v1` JSON shape instead of a table |
+
+| Flag (`certify manifest`) | Default | Description |
+|---|---|---|
+| `--out` | `docs/certifications.md` | path to write the generated artifact |
+| `--check` | `false` | exit 1 when the committed file differs, without writing |
+| `--service` | resolved from cwd | Service ID |
+| `--store` | `<repo>/workspace/db/fathom.sqlite` | store path |
+
+| Flag (`certify suggest`) | Default | Description |
+|---|---|---|
+| `--limit` | `0` (no cap) | cap the number of unregistered `Test*` symbols considered |
+| `--out` | `workspace/artifacts/certify-suggestions.jsonl` | suggestions artifact path (regenerated fresh, never appended) |
+| `--service` | resolved from cwd | Service ID |
+| `--store` | `<repo>/workspace/db/fathom.sqlite` | store path |
+
+`certify status` and `certify orphans` also take `--service`/`--store`
+(resolved the same way) plus `--json`.
 
 ### `export` — interchange with other code-intel tooling (VB-32)
 

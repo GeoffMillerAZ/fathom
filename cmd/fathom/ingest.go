@@ -5,11 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"sort"
 
+	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/hookcache"
+	"github.com/geoffmilleraz/fathom/internal/store"
+	"github.com/geoffmilleraz/fathom/internal/testevidence"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
@@ -119,6 +123,35 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 			}
 			scipResults = append(scipResults, scipImportResult{Path: p, Import: imp})
 		}
+	}
+
+	// [tests] results_dir (vision 33 / ADR-043 stage 0, TC-2): a plain
+	// `fathom ingest` also picks up attested #TestResult envelopes when
+	// configured, via internal/testevidence.IngestRuns ONLY — never
+	// test_suites, so a suite set a separate `fathom tests ingest
+	// --manifest` call declared survives an ordinary ingest untouched
+	// (IngestRuns' own doc comment). Fail-open like every other
+	// config/optional read at a CLI entry point (I14): a problem here
+	// warns and never turns an otherwise-successful ingest into a
+	// failure.
+	if readErr == nil || !readErr.Refused {
+		if n, cerr := ingestConfiguredTestResults(context.Background(), *storePath, *service, svcPath); cerr != nil {
+			fmt.Fprintf(stderr, "warning: [tests] results_dir envelope pickup: %v\n", cerr)
+		} else if n > 0 && !*jsonOut {
+			fmt.Fprintf(stdout, "tests: %d run(s) picked up from [tests] results_dir\n", n)
+		}
+	}
+
+	// `// certifies:` marker scan + certifications compile (vision 33 /
+	// ADR-043 stage 1, TC-6's own wiring instruction): a plain `fathom
+	// ingest` for a Go service also scans for declared certifications and
+	// recompiles the certifications layer from them, so `fathom certify
+	// gaps` works even with no attested-run envelope at all (declarations
+	// only → every certificate reads unproven, never silently absent).
+	// Hash-gated (runCertifyCompile) so a repeat ingest against an
+	// unchanged declaration/watermark set is a cheap no-op.
+	if readErr == nil || !readErr.Refused {
+		ingestConfiguredCertifications(context.Background(), *storePath, *service, svcPath, stdout, stderr, *jsonOut)
 	}
 
 	if *jsonOut {
@@ -241,6 +274,92 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	return 0
+}
+
+// ingestConfiguredTestResults implements the `[tests] results_dir` half of
+// vision 33 / ADR-043 stage 0 (TC-2): when a project or user
+// .fathom/config.toml names a results_dir, a PLAIN `fathom ingest` also
+// loads and joins its attested #TestResult envelopes — never test_suites
+// (see internal/testevidence.IngestRuns' own doc comment; only `fathom
+// tests ingest --manifest` declares suites). resultsDir resolves relative
+// to svcPath (the service root this ingest just walked). Returns the
+// number of runs ingested; (0, nil) when results_dir is unset or the
+// directory does not exist — most services have no test evidence at all,
+// and that is not a failure.
+func ingestConfiguredTestResults(ctx context.Context, storePath, service, svcPath string) (int, error) {
+	loaded, err := config.Load(config.DefaultUserPath(), config.DefaultProjectPath())
+	if err != nil {
+		return 0, fmt.Errorf("load config: %w", err)
+	}
+	resultsDir := loaded.Config.Tests.ResultsDir
+	if resultsDir == "" {
+		return 0, nil
+	}
+	resultsPath := resultsDir
+	if !filepath.IsAbs(resultsPath) {
+		resultsPath = filepath.Join(svcPath, resultsPath)
+	}
+	if _, statErr := os.Stat(resultsPath); statErr != nil {
+		if os.IsNotExist(statErr) {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("stat %s: %w", resultsPath, statErr)
+	}
+
+	runs, err := testevidence.LoadEnvelopes(resultsPath)
+	if err != nil {
+		return 0, fmt.Errorf("load envelopes from %s: %w", resultsPath, err)
+	}
+	if len(runs) == 0 {
+		return 0, nil
+	}
+
+	st, err := store.Open(storePath)
+	if err != nil {
+		return 0, fmt.Errorf("open store: %w", err)
+	}
+	defer st.Close()
+
+	watermark := testsIngestWatermark(ctx, st, service)
+	report, err := testevidence.IngestRuns(ctx, st, service, watermark, runs)
+	if err != nil {
+		return 0, fmt.Errorf("ingest runs: %w", err)
+	}
+	return report.RunsWritten, nil
+}
+
+// ingestConfiguredCertifications implements the marker-scan half of
+// vision 33 / ADR-043 stage 1's plain-ingest wiring (TC-6): scan svcPath
+// for `// certifies:` markers (the same internal/testevidence.
+// IngestCertifyMarkers `fathom tests ingest` uses) and, when anything is
+// declared, hash-gate and run the certifications compile
+// (runCertifyCompile, certify_compile.go). Fail-open like every other
+// best-effort ingest enrichment at this CLI entry point: a problem here
+// warns and never turns an otherwise-successful ingest into a failure.
+func ingestConfiguredCertifications(ctx context.Context, storePath, service, svcPath string, stdout, stderr io.Writer, jsonOut bool) {
+	st, err := store.Open(storePath)
+	if err != nil {
+		fmt.Fprintf(stderr, "warning: certify: open store: %v\n", err)
+		return
+	}
+	defer st.Close()
+
+	watermark := testsIngestWatermark(ctx, st, service)
+	markerReport, err := testevidence.IngestCertifyMarkers(ctx, st, service, watermark, svcPath)
+	if err != nil {
+		fmt.Fprintf(stderr, "warning: certify: scan certifies markers: %v\n", err)
+		return
+	}
+	for _, w := range markerReport.Warnings {
+		fmt.Fprintf(stderr, "warning: certify: malformed certifies marker: %s\n", w)
+	}
+	if markerReport.Declared == 0 {
+		return
+	}
+	if !jsonOut {
+		fmt.Fprintf(stdout, "certify: %d declared certification(s) found in %d file(s)\n", markerReport.Declared, markerReport.FilesScanned)
+	}
+	runCertifyCompile(ctx, st, service, watermark, stdout, stderr, jsonOut)
 }
 
 // scipImportResult pairs one --scip (or auto-detected) index's path with

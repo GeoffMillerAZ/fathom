@@ -157,6 +157,7 @@ func TestADR011EnforcedPatternsMatchOrgNames(t *testing.T) {
 	}
 }
 
+// certifies: invariant I19 (asserts)
 func TestNoOrgSpecificNames(t *testing.T) {
 	root := repoRootForDocs(t)
 	var denylist []string

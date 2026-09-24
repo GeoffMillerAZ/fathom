@@ -37,6 +37,8 @@ func TestCachedCallGraphMemoizesPerWatermark(t *testing.T) {
 // TestCachedCallGraphInvalidatesOnReIngest is I21's enforcement: a new
 // watermark for the same service must rebuild AND must not leave the
 // previous ingest's graph reachable.
+//
+// certifies: invariant I21 (asserts)
 func TestCachedCallGraphInvalidatesOnReIngest(t *testing.T) {
 	c := NewCachedCallGraph(0)
 	builds := 0

@@ -2190,6 +2190,52 @@ func storeContract(t *testing.T, s Store) {
 			t.Fatalf("ReviewRun cross-service: found=%v err=%v, want not found", found, err)
 		}
 	})
+
+	// vision 33 / ADR-043: TestCaseRunsForSymbol's own doc comment claims
+	// "ties broken by insertion order — the same 'last wins'
+	// TestSuiteStatuses documents". Two runs for the SAME test symbol
+	// sharing one StartedAt (plausible: a CI system stamps every run in
+	// one batch/workflow invocation with a single shared start time) must
+	// resolve that tie the same way TestSuiteStatuses does: the
+	// more-recently-INGESTED run (run B, ingested second) wins, not the
+	// one that merely happens to sort first.
+	t.Run("test_case_runs_for_symbol_tie_break_matches_last_ingested_wins", func(t *testing.T) {
+		svc := "svc-tie-break"
+		testKey := "svc-tie-break::pkg.TestFoo"
+		startedAt := "2026-09-23T00:00:00Z"
+
+		// Run A: ingested FIRST, status pass.
+		if err := s.PutTestRuns(ctx, svc, []TestRun{{
+			RunDigest: "run-a", Component: "pkg", Suite: "unit", StartedAt: startedAt, Verdict: "pass",
+			Cases: []TestCase{{CaseID: "1", Name: "TestFoo", Status: "pass", Attempts: 1, TestSymbolKey: testKey}},
+		}}); err != nil {
+			t.Fatalf("PutTestRuns (run-a): %v", err)
+		}
+		// Run B: ingested SECOND, same StartedAt, status fail.
+		if err := s.PutTestRuns(ctx, svc, []TestRun{{
+			RunDigest: "run-b", Component: "pkg", Suite: "unit", StartedAt: startedAt, Verdict: "fail",
+			Cases: []TestCase{{CaseID: "1", Name: "TestFoo", Status: "fail", Attempts: 1, TestSymbolKey: testKey}},
+		}}); err != nil {
+			t.Fatalf("PutTestRuns (run-b): %v", err)
+		}
+
+		runs, err := s.TestCaseRunsForSymbol(ctx, svc, testKey, 3)
+		if err != nil {
+			t.Fatalf("TestCaseRunsForSymbol: %v", err)
+		}
+		if len(runs) != 2 {
+			t.Fatalf("TestCaseRunsForSymbol returned %d runs, want 2", len(runs))
+		}
+		// The more-recently-ingested run (run-b, fail) must be runs[0] —
+		// a stale passing run must never hide a newer failing one behind
+		// a StartedAt tie.
+		if runs[0].RunDigest != "run-b" || runs[0].Status != "fail" {
+			t.Fatalf("runs[0] = %+v, want run-b/fail (last-ingested wins a StartedAt tie, matching TestSuiteStatuses)", runs[0])
+		}
+		if runs[1].RunDigest != "run-a" || runs[1].Status != "pass" {
+			t.Fatalf("runs[1] = %+v, want run-a/pass", runs[1])
+		}
+	})
 }
 
 // -------------------------------------------------------------------------

@@ -95,6 +95,7 @@ func TestWindowTailReadDetectsIncompleteness(t *testing.T) {
 	_ = sum
 }
 
+// certifies: invariant I33 (asserts)
 func TestArmUnitAdmission(t *testing.T) {
 	turns := func(n int) *int { return &n }
 
