@@ -310,7 +310,7 @@ func (p *Pipeline) noteTypedEdgeStatus(ctx context.Context, service string, st T
 		return
 	}
 	now := time.Now().UTC()
-	_ = p.st.SetTypedEdgeStatus(ctx, service, store.TypedEdgeStatusRecord{
+	if err := p.st.SetTypedEdgeStatus(ctx, service, store.TypedEdgeStatusRecord{
 		PackagesSeen:           st.PackagesSeen,
 		Packages:               st.Packages,
 		EdgesTotal:             st.EdgesTotal,
@@ -321,5 +321,16 @@ func (p *Pipeline) noteTypedEdgeStatus(ctx context.Context, service string, st T
 		DiscoveryGapFiles:      st.DiscoveryGapFiles,
 		EdgesDroppedOutOfScope: st.EdgesDroppedOutOfScope,
 		RecordedAt:             now,
-	})
+	}); err != nil {
+		// Finding [6]: this write failing (DB locked, disk full, the TCC
+		// wedge on /Volumes this repo's own CLAUDE.md documents as
+		// recurring) must never be silent — the "never silent" doctrine
+		// (docs/vision/11-dial-to-eleven.md law 3). A swallowed error here
+		// means DG-10's whole point (a restart falling back to "known as
+		// of the last successful pass" instead of "never known") silently
+		// stops working until the next successful write, with zero
+		// operator signal — diagWarn is the same seam this package's other
+		// failure branches already use (typedcalls.go).
+		p.diagWarn("fusion: persisting typed-edge status for %q: %v — DG-10's restart fallback will not see this pass until the next successful write\n", service, err)
+	}
 }
