@@ -135,6 +135,11 @@ migration note (`docs/rename-migration.md` is the precedent; new ones go to
 - The `<!-- fathom:intent-playbook -->` region of a root `INTENT.md`, written by
   `fathom intent render --playbook` and held to existence by `config audit`'s
   `pointers_resolve`. Evidence: `cmd/fathom/intent_playbook.go`.
+- The certification contracts (ADR-043): the `// certifies: <kind> <id> [(<strength>)]` marker
+  grammar, the `certified_by:` plan key, and `fathom certify gaps --json`'s
+  `fathom.certify.gaps/v1` shape (schema string, field names, kind-then-id sort order) that
+  Review Kit's `fathom-certify` adapter parses. Evidence: `docs/design/test-certifications.md`,
+  `cmd/fathom/certify_gaps.go` (`TestCmdCertifyGaps_RemedyLinesAndJSON`).
 - Plan grammar v2's lexical oracle keys on plan rows (`oracle: lexical`, `path`,
   `pattern`). Evidence: ADR-030, `schema/plan/schema.cue`.
 - The `<!-- fathom:begin -->`…`<!-- fathom:end -->` stanza region in `CLAUDE.md` and

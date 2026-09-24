@@ -33,6 +33,8 @@ is the canonical short wiring summary the adoption guides expand on.
 | [platform-modules.md](platform-modules.md) | Bind a compiled-once platform module into a repo's edit-time obligations, and guard critical scopes for pre-edit guidance |
 | [research-flywheel.md](research-flywheel.md) | Aggregate fathom's own local instrumentation into an honest report, and produce a sanitized, review-first bundle you may choose to share |
 | [metrics-surfaces.md](metrics-surfaces.md) | Query spend, traffic, channel liveness, and mechanism-labeled interventions over a time range; daily rollups and time series; a daemon status page at `/statusz` |
+| [test-coverage.md](test-coverage.md) | Per-symbol coverage per caller-labelled test layer, changed code no test covers, mutation joins, and a ranked test run list for a diff |
+| [test-certifications.md](test-certifications.md) | Say which test certifies which invariant, incident, spec, rule or port; ingest attested runs; list every target with no live certificate; gate a plan row on `certified_by` |
 
 ---
 
