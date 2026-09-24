@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -167,7 +168,122 @@ budgets: {
 	}
 }
 
+// ─── compile: CV-41 — an empty --layer compiles the default set ──────────────
+
+// TestCmdCompile_EmptyLayerUsesDefaultSet is CV-41's wiring proof (docs/plans/
+// refactor-conservation.md, docs/design/refactor-conservation.md §6): direct
+// --store mode with NO --layer flag compiles semantic.DefaultLayersFor's set
+// for the service's own root — here, a root with ADR.md but no docs/plans/,
+// so "adr-rules" joins "obligations" and "spec-bindings" does not.
+func TestCmdCompile_EmptyLayerUsesDefaultSet(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "ADR.md"), []byte("# Decisions\n"), 0o644); err != nil {
+		t.Fatalf("write ADR.md: %v", err)
+	}
+
+	storePath := filepath.Join(t.TempDir(), "s.sqlite")
+	st, err := store.Open(storePath)
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+	if err := st.SetServiceMeta(context.Background(), store.ServiceMeta{ServiceID: "svc", Path: root}); err != nil {
+		t.Fatalf("SetServiceMeta: %v", err)
+	}
+	st.Close()
+
+	var out, errBuf bytes.Buffer
+	code := run([]string{"compile", "--service=svc", "--store=" + storePath}, &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("compile with no --layer should succeed (dry-run over the default set), got exit %d, stderr: %s", code, errBuf.String())
+	}
+	outStr := out.String()
+	if !strings.Contains(outStr, "layer:             obligations") {
+		t.Errorf("default set should include obligations, got:\n%s", outStr)
+	}
+	if !strings.Contains(outStr, "layer:             adr-rules") {
+		t.Errorf("default set should include adr-rules (ADR.md is present), got:\n%s", outStr)
+	}
+	if strings.Contains(outStr, "layer:             spec-bindings") {
+		t.Errorf("default set should NOT include spec-bindings (no docs/plans/ corpus), got:\n%s", outStr)
+	}
+}
+
+// TestCmdCompile_EmptyLayerNoMatchingCorpusIsObligationsAlone: a root with
+// neither adr-rules' nor spec-bindings' corpus present compiles only
+// "obligations" — the pre-CV-41 default, unchanged when nothing new applies.
+func TestCmdCompile_EmptyLayerNoMatchingCorpusIsObligationsAlone(t *testing.T) {
+	root := t.TempDir()
+	storePath := filepath.Join(t.TempDir(), "s.sqlite")
+	st, err := store.Open(storePath)
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+	if err := st.SetServiceMeta(context.Background(), store.ServiceMeta{ServiceID: "svc", Path: root}); err != nil {
+		t.Fatalf("SetServiceMeta: %v", err)
+	}
+	st.Close()
+
+	var out, errBuf bytes.Buffer
+	code := run([]string{"compile", "--service=svc", "--store=" + storePath}, &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("compile with no --layer should succeed, got exit %d, stderr: %s", code, errBuf.String())
+	}
+	outStr := out.String()
+	if !strings.Contains(outStr, "layer:             obligations") {
+		t.Errorf("want obligations compiled, got:\n%s", outStr)
+	}
+	if strings.Contains(outStr, "layer:             adr-rules") || strings.Contains(outStr, "layer:             spec-bindings") {
+		t.Errorf("neither corpus is present — want obligations alone, got:\n%s", outStr)
+	}
+}
+
 // ─── compile: HTTP mode calls compile_layer ───────────────────────────────────
+
+// TestCompileViaHTTP_EmptyLayerDefaultsToObligations: HTTP mode has no
+// plumbing to resolve a service's root from the CLI process, so an omitted
+// --layer over HTTP still sends "obligations" — the exact pre-CV-41 request,
+// never DefaultLayersFor's (potentially multi-layer) set.
+func TestCompileViaHTTP_EmptyLayerDefaultsToObligations(t *testing.T) {
+	var gotLayer string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req map[string]any
+		body, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(body, &req)
+		params, _ := req["params"].(map[string]any)
+		args, _ := params["arguments"].(map[string]any)
+		gotLayer, _ = args["layer"].(string)
+
+		resp := map[string]any{
+			"jsonrpc": "2.0",
+			"id":      1,
+			"result": map[string]any{
+				"content": []any{
+					map[string]any{
+						"type": "text",
+						"text": mustJSON(map[string]any{
+							"service": "svc", "layer": gotLayer, "dry_run": true,
+							"sections_total": 0.0, "sections_compiled": 0.0,
+							"claims_emitted": 0.0, "claims_rejected": 0.0,
+							"tokens_in": 0.0, "tokens_out": 0.0, "cost_usd": 0.0, "duration_ms": 0.0,
+						}),
+					},
+				},
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer srv.Close()
+
+	var out, errBuf bytes.Buffer
+	code := run([]string{"compile", "--service=svc", "--url=" + srv.URL}, &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("compile via HTTP failed (code=%d): stderr=%q", code, errBuf.String())
+	}
+	if gotLayer != "obligations" {
+		t.Errorf("HTTP mode with no --layer sent layer=%q, want %q", gotLayer, "obligations")
+	}
+}
 
 func TestCompileViaHTTP(t *testing.T) {
 	// Serve a canned compile_layer MCP response.

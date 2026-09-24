@@ -868,7 +868,7 @@ fathom compile --service <id> [--layer obligations] [--dry-run=false] \
 | Flag | Default | Description |
 |---|---|---|
 | `--service` | (required) | Service ID |
-| `--layer` | `obligations` | Layer to compile (must be defined in the manifest; `fathom layers list` shows what's visible) |
+| `--layer` | `""` (the default compile set) | Layer to compile (must be defined in the manifest; `fathom layers list` shows what's visible). Empty compiles CV-41's default set — `semantic.DefaultLayersFor`: `obligations` always, plus `adr-rules`/`spec-bindings` when their own corpus matches at least one file under the service's root — one layer at a time, direct `--store` mode only. HTTP mode has no plumbing to resolve the service's root from the CLI, so an empty `--layer` there still compiles `obligations` alone, unchanged from before this row. |
 | `--dry-run` | `true` | Estimate cost without spending; `--dry-run=false` to actually compile |
 | `--store` | `""` | Direct mode — bypasses the daemon, compiles against a local store |
 | `--url` | `defaultFathomURL()` | HTTP mode base URL (used when `--store` is empty; the daemon compiles with its own configured profile) |

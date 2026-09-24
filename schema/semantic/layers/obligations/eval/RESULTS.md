@@ -8,6 +8,35 @@ harness (`internal/semantic/eval_test.go`'s `runLayerEval`,
 unchanged since the layer's original ADR-016 admission; the prompt is
 identity-pinned (`obligations/c02b1aa1`) and was NOT iterated here.
 
+## 2026-09-24 — production-model recheck (CV-M9, docs/plans/refactor-conservation.md): CLEARS
+
+```
+FATHOM_EVAL_LLM=1 FATHOM_LLM_PROVIDER=anthropic FATHOM_EVAL_MODEL=claude-haiku-4-5-20251001 \
+  go test -count=1 ./internal/semantic -run TestObligationsEval_Precision -v
+```
+
+| Run | Model | Claims emitted | Rejected | Precision | Recall | Missed rules | Gate |
+|-----|-------|-----------------|----------|-----------|--------|--------------|------|
+| 1   | claude-haiku-4-5-20251001 | 6 | 1 | 1.00 | 0.86 | no-secret-logging | pass |
+| 2   | claude-haiku-4-5-20251001 | 6 | 1 | 1.00 | 0.86 | no-secret-logging | pass |
+
+**Reading:** two independent runs (fresh `-count=1` invocations, not a cached
+replay — output tokens differ 445/447, confirming both hit the API) land
+exactly on the 2026-07-17 run 2 reading: precision 1.00, recall 0.86,
+`no-secret-logging` (security.md's fleet-wide rule) missed both times. The
+2026-07-17 instability (0.71 in run 1, an escalated pre-OP-6 signal) did NOT
+reproduce here — both runs today clear the 0.75 bar with the same miss
+pattern, not a worse one. No prompt iteration was attempted (the prompt
+stays identity-pinned, same discipline as the 2026-07-17 entry); recall is
+above the bar as measured, so CV-M9's "improve extraction" branch does not
+apply this round.
+
+**Disposition:** the pre-OP-6 escalation (`no-secret-logging` missed under
+the production model) stands as an open, tracked gap — not a gate failure,
+since both today's runs and 2026-07-17's run 2 clear 0.75 — but a real,
+repeated miss worth the next prompt bump (vision 04 Gap 3) folding in
+`no-secret-logging` recall, per the original escalation's option (b).
+
 ## 2026-07-17 — production-model check (PRE-OP-6 SIGNAL, escalated)
 
 First recorded runs against the PRODUCTION compile default —

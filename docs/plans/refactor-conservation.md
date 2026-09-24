@@ -67,8 +67,8 @@ silently skipped. Design: `docs/design/refactor-conservation.md`.
 
 ## F. Layers and packs
 
-- [ ] A citation whose lines moved re-anchors by its anchor text and the claim stays fresh {id: CV-40, symbol: ReanchorCitation, package: internal/semantic, reachable_from: TestReanchorCitation_MovedLinesStayFresh}
-- [ ] The default compile set includes adr-rules and spec-bindings when their corpus exists {id: CV-41, symbol: DefaultLayersFor, package: internal/semantic, reachable_from: TestDefaultLayersFor_CorpusPresence}
+- [x] A citation whose lines moved re-anchors by its anchor text and the claim stays fresh {id: CV-40, symbol: ReanchorCitation, package: internal/semantic, reachable_from: TestReanchorCitation_MovedLinesStayFresh}
+- [x] The default compile set includes adr-rules and spec-bindings when their corpus exists {id: CV-41, symbol: DefaultLayersFor, package: internal/semantic, reachable_from: TestDefaultLayersFor_CorpusPresence}
 - [ ] (op) CV-M8: the fleet recompile ran for services with no or fully stale layers, dry-run priced, spend recorded {id: CV-M8, skip: "operator run: fleet recompile"}
 - [ ] (op) CV-M9: obligations recall is at least 0.75 under the production model on its labeled fixtures {id: CV-M9, skip: "measurement: obligations eval"}
 - [ ] (op) CV-M10: the findings layer's eval scores {id: CV-M10, skip: "measurement: findings eval"}

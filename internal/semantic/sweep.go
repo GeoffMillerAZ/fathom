@@ -196,29 +196,26 @@ func Sweep(ctx context.Context, st store.Store, serviceID string, fetch func(pat
 			claimDrifted = true
 			// T5-1/O13: try to re-anchor before giving up to stale — only
 			// possible when this link carries the compile-time anchor text
-			// (legacy hash-only links cannot heal, by construction).
-			if cite.AnchorText != "" {
-				if newStart, newEnd, unambiguous := findAnchorText(data, cite.AnchorText); unambiguous {
-					newHash, hok := core.HashLines(data, newStart, newEnd)
-					if hok {
-						newRef := core.CiteRef(path, newStart, newEnd)
-						if err := st.UpdateClaimLink(ctx, serviceID, cl.ClaimID, core.RelCites, cite.TargetRef, newRef, newHash); err != nil {
-							return rep, fmt.Errorf("semantic: sweep reanchor %s: %w", cl.ClaimID, err)
-						}
-						ev := core.ClaimEvent{
-							ClaimID: cl.ClaimID,
-							Verdict: "re-anchored",
-							Author:  "sweep",
-							Note:    fmt.Sprintf("%s -> %s (citation text unchanged, line range shifted)", cite.TargetRef, newRef),
-							At:      clock(),
-						}
-						if err := st.AppendClaimEvent(ctx, ev); err != nil {
-							return rep, fmt.Errorf("semantic: sweep reanchor event %s: %w", cl.ClaimID, err)
-						}
-						claimReanchored = true
-						continue // healed: this citation no longer counts against next
-					}
+			// (legacy hash-only links cannot heal, by construction). CV-40
+			// (docs/plans/refactor-conservation.md) extracted the decision
+			// itself into ReanchorCitation, directly testable on a fixture
+			// content+cite pair with no store involved.
+			if newRef, newHash, ok := ReanchorCitation(data, cite); ok {
+				if err := st.UpdateClaimLink(ctx, serviceID, cl.ClaimID, core.RelCites, cite.TargetRef, newRef, newHash); err != nil {
+					return rep, fmt.Errorf("semantic: sweep reanchor %s: %w", cl.ClaimID, err)
 				}
+				ev := core.ClaimEvent{
+					ClaimID: cl.ClaimID,
+					Verdict: "re-anchored",
+					Author:  "sweep",
+					Note:    fmt.Sprintf("%s -> %s (citation text unchanged, line range shifted)", cite.TargetRef, newRef),
+					At:      clock(),
+				}
+				if err := st.AppendClaimEvent(ctx, ev); err != nil {
+					return rep, fmt.Errorf("semantic: sweep reanchor event %s: %w", cl.ClaimID, err)
+				}
+				claimReanchored = true
+				continue // healed: this citation no longer counts against next
 			}
 			// SU-21 (ADR-041 decision 7): the AnchorText path above either
 			// had nothing to search with (legacy hash-only link) or found
@@ -303,6 +300,43 @@ func Sweep(ctx context.Context, st store.Store, serviceID string, fetch func(pat
 		}
 	}
 	return rep, nil
+}
+
+// ReanchorCitation is CV-40's extraction of the sweep's T5-1/O13 heal
+// decision (docs/plans/refactor-conservation.md, docs/design/
+// refactor-conservation.md §6 "Claims move with the code"): given the
+// CURRENT content of a citation's file and the citation link as stored
+// (TargetRef "path#Lstart-Lend", AnchorText the literal text minted at
+// compile time), it reports whether the citation can heal, and if so the
+// re-pointed reference and its fresh hash.
+//
+// ok is true only when cite carries AnchorText and that exact text occurs
+// EXACTLY ONCE in content (findAnchorText) — the claim then stays fresh at
+// the new line range. ok is false — the caller falls through to the stale
+// path, exactly as before this citation drifted — in every other case: no
+// stored anchor text at all (a legacy hash-only link, minted before this
+// field existed, can only ever go stale on drift, never heal), or the
+// anchor text resolves to zero or more than one location, which is
+// indistinguishable from a genuine rewrite and must never be guessed at.
+// A pure function of its two arguments: no store, no disk read, so a
+// fixture with shifted lines proves the decision directly.
+func ReanchorCitation(content []byte, cite core.ClaimLink) (newRef, newHash string, ok bool) {
+	if cite.AnchorText == "" {
+		return "", "", false
+	}
+	path, _, _, refOK := core.ParseCiteRef(cite.TargetRef)
+	if !refOK {
+		return "", "", false
+	}
+	start, end, unambiguous := findAnchorText(content, cite.AnchorText)
+	if !unambiguous {
+		return "", "", false
+	}
+	hash, hok := core.HashLines(content, start, end)
+	if !hok {
+		return "", "", false
+	}
+	return core.CiteRef(path, start, end), hash, true
 }
 
 // findAnchorText searches content — normalized the same way HashLines/

@@ -75,8 +75,8 @@ stratum today.
 
 | Layer | Kind | Tier | Stratum | Corpus | Drift-tracked | Eval | Production |
 |---|---|---|---|---|---|---|---|
-| `obligations` | `obligation` | `doc-claimed` | `concern` | `CLAUDE.md`, `ADR.md`, `docs/plans/README.md`, `**/CLAUDE.md` | no | pass — ADR-016 baseline (see `eval/RESULTS.md`; a later production-model recheck found recall unstable around the bar, 0.71/0.86 — escalated as a pre-OP-6 input, not a gate failure) | `fathom layers list --store PATH --service NAME` |
-| `findings` | `finding` | `sme-stated` | `concern` | `findings/**` | **yes** | **not-gated** — `eval/{labels.json,corpus.md}` now exist (docs/design/findings-as-evidence.md §6 item 5: 6 labeled findings across 6 classes + 2 traps), but `TestFindingsEval_Precision` has not yet been run against a real model (see `eval/RESULTS.md`); `fathom compile` still refuses this layer without `--unsafe-skip-eval-gate`, and no derived pattern (`internal/analysis/findings.PromoteTier`) may serve at a promoted tier until it does | `fathom layers list --store PATH --service NAME` |
+| `obligations` | `obligation` | `doc-claimed` | `concern` | `CLAUDE.md`, `ADR.md`, `docs/plans/README.md`, `**/CLAUDE.md` | no | pass — ADR-016 baseline (see `eval/RESULTS.md`); CV-M9's 2026-09-24 recheck clears at 0.86 recall on 2 independent production-model runs (`no-secret-logging` still missed both times — an open, tracked gap per the pre-OP-6 escalation, not a gate failure) | `fathom layers list --store PATH --service NAME` |
+| `findings` | `finding` | `sme-stated` | `concern` | `findings/**` | **yes** | pass — CV-M10 (2026-09-24): precision 1.00 / recall 1.00, 2 consecutive production-model runs, after fixing the eval harness's own scope-fp fingerprint gap (`eval/RESULTS.md` — the 2026-07-30 run was blocked before scoring, not a precision failure) | `fathom layers list --store PATH --service NAME` |
 | `adr-rules` | `adr-rule` | `doc-claimed` | `concern` | `ADR.md`, `docs/design/*.md` | no | pass — precision 1.00 / recall 1.00, 7 rules + 2 traps, production model pinned | `fathom layers list --store PATH --service NAME` |
 | `spec-bindings` | `spec-binding` | `doc-claimed` | `concern` | `docs/plans/**` excl. `README.md` | no | pass — precision 1.00 / recall 1.00, 6 rules + 2 traps, production model pinned | `fathom layers list --store PATH --service NAME` |
 | `certifications` | `certification` | `doc-claimed` → `pre-scan` → `verified` | `concern` | `// certifies:` markers, `tests/*.cue` manifests, attested test-kit runs | swept on every ingest | n/a — compiled deterministically, no model (ADR-043) | `fathom certify status\|gaps\|manifest` |
@@ -140,8 +140,8 @@ by the reviewer prompt for the LLM-compiled corpus, deterministically by
 sharing (class, normalized rule shape) across ≥2 sites into a computed,
 never-persisted **pattern**; a pattern with ≥3 members carrying independent,
 recorded code-change resolutions may rise exactly one tier
-(`PromoteTier`) — but ONLY once this layer passes its eval gate (still not
-today; see the catalog row above). `fathom findings near <symbol|file>` and
+(`PromoteTier`) — but ONLY once this layer passes its eval gate (CV-M10,
+2026-09-24: pass; see the catalog row above). `fathom findings near <symbol|file>` and
 `fathom findings status` are the read-side verbs — see
 `docs/use-cases/incident-investigation.md`.
 
@@ -302,6 +302,23 @@ an import's `producer@version` (`"import:<producer>@<version>"`), or
 one is resolvable. Served as `asserted_by` on each obligations rule
 (omitted when the underlying claim never recorded one — every pre-SU-22
 claim, and any writer this wave did not touch).
+
+## The default compile set (CV-41, ADR-044 §6 "Activation")
+
+`fathom compile --service <id>` with no `--layer` flag (direct `--store` mode
+only — see the `compile` verb in `docs/usage.md`) compiles
+`semantic.DefaultLayersFor(root)`'s set instead of one hardcoded layer:
+`obligations` always (it is "always on, every fleet repo" per its own catalog
+entry above), plus `adr-rules` and `spec-bindings` whenever their OWN corpus
+globs — read from each pack's `layer.cue`, never duplicated in Go — match at
+least one file under the service's ingested root. A layer whose corpus
+matches nothing is left out: compiling it would run zero sections and emit
+zero claims every time, so naming it in a "default" set would just print an
+empty run on every repo that doesn't carry it. Each layer in the set
+compiles in turn under the same `--dry-run`/`--force`/`--profile` flags a
+named `--layer` would use. HTTP mode has no plumbing to resolve a service's
+root from the CLI process, so an empty `--layer` there still compiles
+`obligations` alone — unchanged from before this row.
 
 ## The `fathom layers` verb
 
