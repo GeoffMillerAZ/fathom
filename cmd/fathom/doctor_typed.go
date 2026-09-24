@@ -75,6 +75,11 @@ func checkTypedEdges(hc *http.Client, baseURL, root, explicitSvc string, daemonU
 			Reason            string   `json:"reason"`
 			DiscoveryGaps     int      `json:"discovery_gaps"`
 			DiscoveryGapFiles []string `json:"discovery_gap_files"`
+			// Persisted/RecordedAt (finding [4]/DG-10): this answer was
+			// replayed from the store, not computed by THIS daemon process
+			// since it last started -- possibly hours or days old.
+			Persisted  bool   `json:"persisted"`
+			RecordedAt string `json:"recorded_at"`
 		} `json:"typed_edges"`
 	}
 	if err := json.Unmarshal(inner, &payload); err != nil {
@@ -118,6 +123,21 @@ func checkTypedEdges(hc *http.Client, baseURL, root, explicitSvc string, daemonU
 			Name: name, Status: doctorWarn,
 			Reason: reason,
 			Remedy: "check the service's .fathomignore / skip-dir rules against the named file(s), then re-ingest",
+		}
+	}
+	// finding [4]/DG-10: a Persisted=true answer was replayed from the
+	// store, not computed by THIS daemon process since it last started
+	// (the daemon restarts roughly twice a day per O108) -- it may be
+	// hours or days old, and whatever broke the environment could have
+	// happened AFTER it was recorded (the exact 2026-09-12 shape this row
+	// exists to catch). Reporting it as an indistinguishable PASS would be
+	// exactly the "an instrument may not degrade toward healthy" failure
+	// ADR-027 forbids -- WARN, named with the watermark, instead.
+	if payload.TypedEdges.Persisted {
+		return doctorCheck{
+			Name: name, Status: doctorWarn,
+			Reason: fmt.Sprintf("the daemon's last typed-edge pass for %q resolved %d package(s), but this daemon process has not re-run it since it started -- known as of %s, possibly pre-restart", svc, payload.TypedEdges.Packages, payload.TypedEdges.RecordedAt),
+			Remedy: "refresh the index (the `ingest` MCP tool, or `fathom ingest --service " + svc + "`) to confirm the current environment still passes, then re-run doctor",
 		}
 	}
 	return doctorCheck{

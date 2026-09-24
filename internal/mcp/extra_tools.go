@@ -1176,6 +1176,15 @@ func registerIngest(s *Server, backend QueryInterface) {
 				if st.Fallback != "" {
 					te["fallback"] = st.Fallback
 				}
+				// finding [4]/DG-10: see platform_tools.go's list_services block
+				// -- the SAME distinction (a store-replayed, pre-restart answer
+				// vs. one this process just computed) must travel through the
+				// ingest response too, or a caller reading only THIS surface has
+				// no way to tell them apart.
+				if st.Persisted {
+					te["persisted"] = true
+					te["recorded_at"] = st.RecordedAt.UTC().Format(time.RFC3339)
+				}
 				result["typed_edges"] = te
 				if st.Failed {
 					result["ok"] = false

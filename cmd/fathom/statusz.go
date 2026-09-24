@@ -56,6 +56,11 @@ type StatuszTypedEdges struct {
 	Packages int    `json:"packages"`
 	Failed   bool   `json:"failed"`
 	Reason   string `json:"reason,omitempty"`
+	// Persisted/RecordedAt (finding [4]/DG-10) name a store-replayed
+	// (pre-restart) answer distinctly from one this daemon process just
+	// computed -- omitted (false/zero) for a fresh in-process result.
+	Persisted  bool   `json:"persisted,omitempty"`
+	RecordedAt string `json:"recorded_at,omitempty"`
 }
 
 // StatuszServiceRow is one indexed service's freshness + last-compile
@@ -118,6 +123,10 @@ func buildStatuszReport(ctx context.Context, c *client.Client, startTime, now ti
 		}
 		if st, known := c.TypedEdgeStatus(svc); known {
 			row.TypedEdges = &StatuszTypedEdges{Packages: st.Packages, Failed: st.Failed, Reason: st.Reason}
+			if st.Persisted {
+				row.TypedEdges.Persisted = true
+				row.TypedEdges.RecordedAt = st.RecordedAt.UTC().Format(time.RFC3339)
+			}
 		}
 		if runs, rerr := c.CompileRunsFor(ctx, svc); rerr == nil && len(runs) > 0 {
 			// runs is newest-first (Store.CompileRuns' own contract) —

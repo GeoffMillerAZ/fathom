@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/configdrift"
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -123,6 +124,15 @@ func registerListServices(s *Server, backend QueryInterface, fleet FleetBackend)
 							if len(st.DiscoveryGapFiles) > 0 {
 								te["discovery_gap_files"] = st.DiscoveryGapFiles
 							}
+						}
+						// finding [4]/DG-10: Persisted/RecordedAt exist SPECIFICALLY
+						// so a caller can tell a store-replayed (pre-restart) answer
+						// apart from one this process just computed -- omitted before
+						// this fix, so a restart-stale PASS read identically to a
+						// fresh one on this exact surface.
+						if st.Persisted {
+							te["persisted"] = true
+							te["recorded_at"] = st.RecordedAt.UTC().Format(time.RFC3339)
 						}
 						entry["typed_edges"] = te
 					}

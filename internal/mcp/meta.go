@@ -306,6 +306,20 @@ func registerStalenessReport(s *Server, backend QueryInterface) {
 						block["discovery_gap_files"] = st.DiscoveryGapFiles
 					}
 				}
+				// finding [4]/DG-10: Persisted/RecordedAt exist SPECIFICALLY so a
+				// caller -- doctor's checkTypedEdges, in particular -- can tell a
+				// store-replayed (pre-restart) answer apart from one this daemon
+				// process just computed. Before this fix, THIS was the one
+				// surface doctor actually reads (cmd/fathom/doctor_typed.go), and
+				// it dropped both fields, so a restart-stale PASS was reported
+				// identically to a genuinely fresh one -- the exact "an
+				// instrument may not degrade toward healthy" failure ADR-027 was
+				// written to prevent, reintroduced through the very mechanism
+				// (DG-10) built to fix restart-driven blind spots.
+				if st.Persisted {
+					block["persisted"] = true
+					block["recorded_at"] = st.RecordedAt.UTC().Format(time.RFC3339)
+				}
 			}
 			resp["typed_edges"] = block
 		}

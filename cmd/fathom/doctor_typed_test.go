@@ -85,6 +85,28 @@ func TestCheckTypedEdges_PassesWithPackageCount(t *testing.T) {
 	}
 }
 
+// TestCheckTypedEdges_PersistedDowngradesToWarn is the finding [4]
+// regression test: a Persisted=true typed_edges block (DG-10 -- this
+// daemon process has not re-run the typed pass since it started; the
+// answer was replayed from the store) must never read as an
+// indistinguishable PASS -- WARN, naming the RecordedAt watermark, so an
+// operator can tell this might be pre-restart, possibly-stale data.
+func TestCheckTypedEdges_PersistedDowngradesToWarn(t *testing.T) {
+	srv := typedEdgesDaemon(t, `{"known":true,"packages":142,"failed":false,"persisted":true,"recorded_at":"2026-09-01T00:00:00Z"}`)
+	defer srv.Close()
+
+	got := checkTypedEdges(srv.Client(), srv.URL, typedEdgesRepo(t), "svc", true)
+	if got.Status != doctorWarn {
+		t.Fatalf("status = %v, want WARN -- a store-replayed (pre-restart) pass must not read as an indistinguishable fresh PASS (%s)", got.Status, got.Reason)
+	}
+	if !strings.Contains(got.Reason, "2026-09-01T00:00:00Z") {
+		t.Fatalf("reason must name the RecordedAt watermark: %q", got.Reason)
+	}
+	if !strings.Contains(strings.ToLower(got.Reason), "restart") {
+		t.Fatalf("reason must say this may be pre-restart data: %q", got.Reason)
+	}
+}
+
 // TestCheckTypedEdges_DiscoveryGapsWarn is DG-9: a discovery gap (a call
 // target file that EXISTS on disk despite being excluded from the
 // connector's allowed set — a likely partially wedged Discover pass) must
