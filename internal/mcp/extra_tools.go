@@ -1335,7 +1335,7 @@ func registerRepoMap(s *Server, backend QueryInterface) {
 			// budgeted tools carry, alongside (not instead of) the existing
 			// structured "elided" block above — repo_map already had a
 			// working disclosure; this just makes its wording uniform.
-			if line := elisionLine(len(nodes)-included, "budget or package"); line != "" {
+			if line := elisionLine(len(nodes)-included, "budget"); line != "" {
 				resp["elision"] = line
 			}
 		}

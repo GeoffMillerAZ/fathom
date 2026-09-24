@@ -521,7 +521,7 @@ func TestOutline_BudgetElision(t *testing.T) {
 	if !ok || len(symbols) == 0 || len(symbols) >= 600 {
 		t.Fatalf("symbols = %d rows, want a nonzero partial prefix < 600", len(symbols))
 	}
-	assertRC19Elision(t, p, "depth or kinds")
+	assertRC19Elision(t, p, "read_source with start_line/end_line")
 }
 
 // ─── entrypoints ──────────────────────────────────────────────────────────────
@@ -818,7 +818,7 @@ func TestStalenessReport_BudgetElision(t *testing.T) {
 	if !ok || len(sources) == 0 || len(sources) >= n {
 		t.Fatalf("sources = %d rows, want a nonzero partial prefix < %d", len(sources), n)
 	}
-	assertRC19Elision(t, p, "service or limit")
+	assertRC19Elision(t, p, "read_source or outline on the file you doubt (source_count is the full total)")
 }
 
 // ─── meta: list_sources ───────────────────────────────────────────────────────

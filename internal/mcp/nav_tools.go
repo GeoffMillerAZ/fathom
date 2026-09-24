@@ -213,7 +213,7 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 			"callees":       stringsToAny(callees),
 			"related_tests": stringsToAny(sctx.RelatedTests),
 		}
-		if line := elisionLine(callersElided+calleesElided, "depth"); line != "" {
+		if line := elisionLine(callersElided+calleesElided, "find_callers (depth) for every caller"); line != "" {
 			result["elision"] = line
 		}
 
@@ -395,7 +395,7 @@ func registerOutline(s *Server, backend QueryInterface) {
 		// index. Keep whole rows up to budget, then a one-line elision.
 		symbols, elidedCount := fitToolBudget(toNodeDTOs(outlined), defaultCharBudget)
 		resp := map[string]any{"symbols": symbols}
-		if line := elisionLine(elidedCount, "depth or kinds"); line != "" {
+		if line := elisionLine(elidedCount, "read_source with start_line/end_line"); line != "" {
 			resp["elision"] = line
 		}
 		return resp, nil

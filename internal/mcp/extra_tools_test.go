@@ -850,7 +850,7 @@ func TestRepoMap_ElisionLine(t *testing.T) {
 	if !ok || line == "" {
 		t.Fatalf("repo_map: elision missing: %v", p)
 	}
-	if !strings.HasPrefix(line, "elided: ") || !strings.Contains(line, "refine with budget or package") {
+	if !strings.HasPrefix(line, "elided: ") || !strings.Contains(line, "refine with budget") {
 		t.Errorf("repo_map: elision = %q, want the RC-19 shape", line)
 	}
 }

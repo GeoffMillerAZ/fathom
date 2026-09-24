@@ -342,7 +342,7 @@ func TestTextElisionToolsDiscloseOnOverflow(t *testing.T) {
 	if fcResp["scope_required"] == true {
 		t.Fatalf("find_callers: scope_required unexpectedly true for a 250-row fan-in: %v", fcResp)
 	}
-	assertElisionLine(t, "find_callers", fcResp, "package or file")
+	assertElisionLine(t, "find_callers", fcResp, "a package-qualified symbol (pkg.Name)")
 
 	// wave L1: summary is never truncated away by the same budget cut that
 	// produced the elision line above — it rides outside fitToolBudget's
@@ -386,7 +386,7 @@ func TestTextElisionToolsDiscloseOnOverflow(t *testing.T) {
 		}
 	}
 	outlineSrv := NewServer(&elisionFakeBackend{nodes: outlineNodes})
-	assertElisionLine(t, "outline", callTool(t, outlineSrv, "outline", map[string]any{"service": "svc", "file": "big/file.go"}), "depth or kinds")
+	assertElisionLine(t, "outline", callTool(t, outlineSrv, "outline", map[string]any{"service": "svc", "file": "big/file.go"}), "read_source with start_line/end_line")
 
 	// symbol_context: one symbol calling many distinct callees. Callers stay
 	// at zero — well under J3(a)'s hub cap (50) — so this proves the
@@ -408,7 +408,7 @@ func TestTextElisionToolsDiscloseOnOverflow(t *testing.T) {
 	}
 	scNodes[0] = core.SymbolNode{Package: "pkg", Name: "Shared", Kind: core.KindGoFunc, FilePath: "pkg/shared.go", Line: 1, Calls: calleeNames}
 	scSrv := NewServer(&elisionFakeBackend{nodes: scNodes})
-	assertElisionLine(t, "symbol_context", callTool(t, scSrv, "symbol_context", map[string]any{"service": "svc", "symbol": "Shared", "snippet": false}), "depth")
+	assertElisionLine(t, "symbol_context", callTool(t, scSrv, "symbol_context", map[string]any{"service": "svc", "symbol": "Shared", "snippet": false}), "find_callers (depth) for every caller")
 
 	// staleness_report: many distinct source files.
 	srNodes := make([]core.SymbolNode, 1200)
@@ -419,7 +419,7 @@ func TestTextElisionToolsDiscloseOnOverflow(t *testing.T) {
 		}
 	}
 	srSrv := NewServer(&elisionFakeBackend{nodes: srNodes})
-	assertElisionLine(t, "staleness_report", callTool(t, srSrv, "staleness_report", map[string]any{"service": "svc"}), "service or limit")
+	assertElisionLine(t, "staleness_report", callTool(t, srSrv, "staleness_report", map[string]any{"service": "svc"}), "read_source or outline on the file you doubt (source_count is the full total)")
 }
 
 // ─── BA-2: the arithmetic is checked at construction ────────────────────────

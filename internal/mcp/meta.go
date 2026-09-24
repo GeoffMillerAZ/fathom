@@ -279,7 +279,7 @@ func registerStalenessReport(s *Server, backend QueryInterface) {
 			"current_commit":       currentCommit,
 			"reingest_recommended": reingestRecommended,
 		}
-		if line := elisionLine(elidedCount, "service or limit"); line != "" {
+		if line := elisionLine(elidedCount, "read_source or outline on the file you doubt (source_count is the full total)"); line != "" {
 			resp["elision"] = line
 		}
 		// BP-35: the typed-edge pass outcome for this service, when the

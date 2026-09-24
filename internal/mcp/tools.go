@@ -302,7 +302,7 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 		// already match what it returns.
 		infos = infos[:len(wireCallers)]
 		result := map[string]any{"callers": wireCallers, "edge_filter": edgeFilter}
-		if line := elisionLine(elidedCount, "package or file"); line != "" {
+		if line := elisionLine(elidedCount, "a package-qualified symbol (pkg.Name)"); line != "" {
 			result["elision"] = line
 		}
 		if env.ServiceUniform {

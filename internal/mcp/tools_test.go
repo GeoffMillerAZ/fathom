@@ -288,7 +288,7 @@ func TestFindCallers_BudgetElision(t *testing.T) {
 	if !ok || line == "" {
 		t.Fatalf("elision missing: %v", payload)
 	}
-	if !strings.HasPrefix(line, "elided: ") || !strings.Contains(line, "refine with package or file") {
+	if !strings.HasPrefix(line, "elided: ") || !strings.Contains(line, "refine with a package-qualified symbol (pkg.Name)") {
 		t.Errorf("elision = %q, want the RC-19 shape", line)
 	}
 }

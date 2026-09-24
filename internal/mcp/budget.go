@@ -82,9 +82,11 @@ func fitToolBudget[T any](items []T, maxChars int) ([]T, int) {
 // plainer than BA-1's structured `elided` object (elisionFor), since these
 // four tools have no existing consumer parsing that shape. refineWith names
 // the tool's OWN scoping angle (e.g. "package or file" for find_callers) so
-// the hint is never generic filler; it need not be a literal parameter name
-// when the tool has none — narrowing the query itself is a valid refinement
-// too. Returns "" when elided <= 0 — never attach an empty line.
+// the hint is never generic filler. It must name something that works: a
+// parameter the tool actually takes, a narrower form of an argument it
+// takes, or the tool that answers the narrower question — never a
+// parameter the tool does not accept, which an agent would pass and have
+// silently ignored. Returns "" when elided <= 0 — never attach an empty line.
 func elisionLine(elided int, refineWith string) string {
 	if elided <= 0 {
 		return ""
