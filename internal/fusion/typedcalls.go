@@ -263,8 +263,12 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 	defer func() {
 		packages := rep.PackagesLoaded + rep.PackagesCached
 		edges := rep.EdgesDirect + rep.EdgesIfaceDispatch + rep.EdgesUnresolved + rep.EdgesFuncValue
-		p.diagInfo("fusion: typed-edge pass %q: %d packages, %d edges, peak heap_inuse %.1f MiB, %s\n",
-			svc.ID, packages, edges, float64(peakHeapInuse)/(1024*1024), rep.Duration)
+		// "edges" is what this pass WROTE: a package whose content hash is
+		// unchanged keeps its stored edges and contributes none here, so an
+		// all-cached pass reads "0 edges written", never a bare "0 edges"
+		// over a graph that still holds every edge.
+		p.diagInfo("fusion: typed-edge pass %q: %d packages (%d re-resolved, %d unchanged and reused), %d edges written, peak heap_inuse %.1f MiB, %s\n",
+			svc.ID, packages, rep.PackagesLoaded, rep.PackagesCached, edges, float64(peakHeapInuse)/(1024*1024), rep.Duration)
 	}()
 	// BP-35: the outcome is recorded ON THE SERVICE, not only on stderr.
 	// The named reason travels with it (I24) so /statusz,
