@@ -213,49 +213,32 @@ func evaluateCertificate(ctx context.Context, st store.Store, service, watermark
 		return nil, fmt.Errorf("evaluateCertificate: TestCaseRunsForSymbol: %w", err)
 	}
 
-	var state State
+	state, last, flaky := CertificateState(reached, runs)
 	var runDigest string
 	var attempts int
 	var suite, class, component = e.Suite, e.Class, e.Component
-	switch {
-	case !reached:
-		state = StateUnreachable
-	case len(runs) == 0:
-		state = StateUnproven
-	default:
-		last := runs[0]
+	if reached && len(runs) > 0 {
 		runDigest = last.RunDigest
 		attempts = last.Attempts
 		if suite == "" {
 			suite, component = last.Suite, last.Component
-		}
-		flaky := false
-		limit := len(runs)
-		if limit > 3 {
-			limit = 3
-		}
-		for _, r := range runs[:limit] {
-			if r.Status == "flake" {
-				flaky = true
-			}
-		}
-		switch {
-		case last.Status == "pass" && !flaky:
-			state = StateLive
-		case flaky:
-			state = StateFlaky
-		case last.Status == "fail":
-			state = StateBroken
-		default:
-			state = StateUnproven
 		}
 	}
 
 	tier := core.TierDocClaimed
 	if extractor.CertifyKind(e.Kind) != extractor.CertifyKindBehaviour && reached {
 		tier = core.TierPreScan
-		if len(runs) > 0 && runs[0].Status == "pass" {
+		if len(runs) > 0 && last.Status == "pass" {
 			tier = core.TierVerified
+			if flaky {
+				// TC-21 (design doc §5): a flake in the last three
+				// attested runs never leaves a certificate silently
+				// reported at the top tier — drop one step, the SAME
+				// ladder dropOne (internal/memory) uses for its own
+				// "suspect" penalty rather than inventing a tier value
+				// core's own ladder does not know how to sort.
+				tier = core.TierPreScan
+			}
 		}
 	}
 

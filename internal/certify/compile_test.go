@@ -149,7 +149,9 @@ func TestCompileCertifications_TierAndStateLadders(t *testing.T) {
 		{"TestLive", StateLive, core.TierVerified},
 		{"TestBroken", StateBroken, core.TierPreScan},
 		{"TestUnproven", StateUnproven, core.TierPreScan},
-		{"TestFlaky", StateFlaky, core.TierVerified},
+		// TC-21: a flake in the last three attested runs drops the
+		// tier one step (never silently Verified) — design doc §5.
+		{"TestFlaky", StateFlaky, core.TierPreScan},
 		{"TestUnreached", StateUnreachable, core.TierDocClaimed},
 		{"TestBehaviour", StateUnproven, core.TierDocClaimed},
 	}
