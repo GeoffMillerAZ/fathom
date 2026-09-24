@@ -1278,6 +1278,137 @@ func TestCmdLedger_TrialsDefaultCountsAllStoredTrials(t *testing.T) {
 	}
 }
 
+// TestCmdLedger_ArmCloneSetupMatchesRunCorpusVariant is DP-14's own ledger
+// side: a run filed with -arm-clone/-arm-setup (the decision-port A/B's
+// jev-style arm, built entirely on the command line — docs/bench/
+// scenarios.md "The decision-port arm") keys every cell, including the
+// UN-cloned base arm's own, on the mutated corpus's variant sha
+// (CanonicalCorpusSHA256 of the corpus AFTER CloneArm/SetupArm), never the
+// committed corpus file's own sha. Filing that run without repeating the
+// identical -arm-clone/-arm-setup on `ledger` recomputes the ORIGINAL sha
+// and borrows nothing at all; repeating them lands on the same variant sha
+// and files both arms' rows, -arms narrowing to exactly the two named.
+func TestCmdLedger_ArmCloneSetupMatchesRunCorpusVariant(t *testing.T) {
+	dir := t.TempDir()
+	repoURL, commit := gitFixtureSubject(t)
+	corpusPath := writeCorpusFixture(t, dir, repoURL, commit)
+	root := filepath.Join(dir, "fathom-root")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cellsDir := filepath.Join(dir, "cells")
+	rawDir := filepath.Join(dir, "raw")
+	streamsDir := repoRelative(t, "testdata", "scenariobench", "streams")
+	const armClone = "control-jev=control"
+	const armSetup = `control-jev=echo jev-setup`
+
+	rc := run([]string{
+		"run",
+		"-corpus", corpusPath,
+		"-root", root,
+		"-cells", cellsDir,
+		"-raw-dir", rawDir,
+		"-run-id", "run-jev-1",
+		"-harness-version", "fake-1",
+		"-harness", "fake",
+		"-fake-streams-dir", streamsDir,
+		"-fake-streams", `{"T1/control":"single-session.jsonl","T1/control-jev":"single-session.jsonl"}`,
+		"-arm-clone", armClone,
+		"-arm-setup", armSetup,
+		"-arms", "control,control-jev",
+	})
+	if rc != 0 {
+		t.Fatalf("run exited %d, want 0", rc)
+	}
+	matches, err := filepath.Glob(filepath.Join(cellsDir, "*", "t*.json"))
+	if err != nil || len(matches) != 2 {
+		t.Fatalf("expected 2 stored cells (control, control-jev), got %v (err=%v)", matches, err)
+	}
+
+	ledgerCallN := 0
+	freshLedger := func() (ledgerPath, readmePath string) {
+		ledgerCallN++
+		ledgerPath = filepath.Join(dir, fmt.Sprintf("ledger-%d.jsonl", ledgerCallN))
+		readmePath = filepath.Join(dir, fmt.Sprintf("README-%d.md", ledgerCallN))
+		if err := os.WriteFile(readmePath, []byte("# Bench\n\n## Scenario runs\n\n"+
+			scenariobench.ScenarioLedgerBeginMarker+"\n\n"+scenariobench.ScenarioLedgerEndMarker+"\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return ledgerPath, readmePath
+	}
+
+	// Without the matching -arm-clone/-arm-setup, `ledger` recomputes the
+	// corpus's ORIGINAL (un-cloned) sha — every cell key it builds misses
+	// the store entirely, so nothing is filed and neither arm's row
+	// appears (never a partial or wrongly-keyed row).
+	{
+		ledgerPath, readmePath := freshLedger()
+		// rc is deliberately unchecked here: with 0 rows filed, the
+		// registered criterion reads "indeterminate" (exit 3) rather than
+		// 0 — the row count is what this half of the test is pinning.
+		run([]string{
+			"ledger",
+			"-corpus", corpusPath, "-cells", cellsDir, "-ledger", ledgerPath, "-readme", readmePath,
+			"-run-id", "run-jev-1", "-harness-version", "fake-1",
+		})
+		rows, err := scenariobench.LoadScenarioLedger(ledgerPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(rows) != 0 {
+			t.Fatalf("ledger without -arm-clone/-arm-setup filed %d row(s), want 0 (wrong corpus sha, cells unreachable): %+v", len(rows), rows)
+		}
+	}
+
+	// With the identical -arm-clone/-arm-setup/-arms, `ledger` recomputes
+	// the SAME variant sha `run` used and finds both cells.
+	{
+		ledgerPath, readmePath := freshLedger()
+		stdout := captureStdout(t, func() {
+			rc = run([]string{
+				"ledger",
+				"-corpus", corpusPath, "-cells", cellsDir, "-ledger", ledgerPath, "-readme", readmePath,
+				"-run-id", "run-jev-1", "-harness-version", "fake-1",
+				"-arm-clone", armClone,
+				"-arm-setup", armSetup,
+				"-arms", "control,control-jev",
+			})
+		})
+		if rc != 0 {
+			t.Fatalf("ledger (with arm-clone) exited %d, want 0: stdout=%s", rc, stdout)
+		}
+		rows, err := scenariobench.LoadScenarioLedger(ledgerPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(rows) != 2 {
+			t.Fatalf("expected 2 filed rows (control, control-jev), got %d: %+v", len(rows), rows)
+		}
+		byArm := map[string]scenariobench.ScenarioLedgerRow{}
+		for _, r := range rows {
+			byArm[r.Arm] = r
+		}
+		control, ok := byArm["control"]
+		if !ok {
+			t.Fatalf("no row filed for arm %q: %+v", "control", rows)
+		}
+		jev, ok := byArm["control-jev"]
+		if !ok {
+			t.Fatalf("no row filed for arm %q: %+v", "control-jev", rows)
+		}
+		if control.CorpusSHA256 == "" || control.CorpusSHA256 != jev.CorpusSHA256 {
+			t.Errorf("both arms of one variant corpus must share one corpus_sha256, got control=%q jev=%q", control.CorpusSHA256, jev.CorpusSHA256)
+		}
+		_, fileSHA, err := loadCorpusOrLCA(corpusPath, "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if control.CorpusSHA256 == fileSHA {
+			t.Errorf("variant corpus_sha256 (%s) must differ from the un-cloned corpus file's own sha (%s) — DP-14", control.CorpusSHA256, fileSHA)
+		}
+	}
+}
+
 // runThenPrepareLedgerFixture runs one fake-harness cell under run-id
 // "run-1" and returns everything TestCmdLedger_GeneratedAt*/StoreRoot/
 // StrictBorrow need: the corpus/cells/ledger/readme paths, with readme

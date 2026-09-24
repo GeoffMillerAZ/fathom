@@ -55,7 +55,7 @@
 //	    value is left exactly as it was (never overwritten with
 //	    not_measured), and a stderr line says so.
 //
-//	scenariobench ledger -corpus <path|lca> [-dataset <path.jsonl>] -cells <dir> -ledger <path.jsonl> -readme <path> -run-id <id> [-commit <sha>] [-corpus-glob <glob>] [-arm-surface arm=value ...] [-trials N]
+//	scenariobench ledger -corpus <path|lca> [-dataset <path.jsonl>] -cells <dir> -ledger <path.jsonl> -readme <path> -run-id <id> [-commit <sha>] [-corpus-glob <glob>] [-arm-surface arm=value ...] [-trials N] [-arm <name>] [-arms <name,name,...>] [-arm-clone <new>=<base>]... [-arm-setup <arm>=<shell line>]...
 //	    Reads every stored cell for -run-id, groups by (task, arm) into
 //	    ScenarioLedgerRow, appends them to -ledger, re-renders -readme's
 //	    marker-fenced section — a "Where fathom stands" verdict block
@@ -64,10 +64,17 @@
 //	    registered criterion. -trials, left unset, defaults to the corpus's
 //	    own Criterion.MinTrials; whatever it resolves to is only a floor —
 //	    a cell key with more trials actually stored is still counted in
-//	    full. Exit 0 pass, 1 fail (a measured refutation — recorded, not
-//	    excused), 3 indeterminate (re-run: not enough was measured), 4 null
-//	    (a Paired criterion, e.g. LCA's VB-27: the paired bootstrap's own
-//	    95% CI of the success-rate difference includes zero — the
+//	    full. -arm-clone/-arm-setup (DP-14) rebuild the SAME corpus variant
+//	    -run used, given identically and in the same order, so the
+//	    recomputed corpus sha keys onto that run's stored cells instead of
+//	    the un-cloned corpus file's own sha (a jev-style A/B arm built
+//	    entirely on the -run command line has no ledger row otherwise);
+//	    -arm/-arms then narrows filing to exactly the named arms, composing
+//	    the same way -run's own -arm/-arms do. Exit 0 pass, 1 fail (a
+//	    measured refutation — recorded, not excused), 3 indeterminate
+//	    (re-run: not enough was measured), 4 null (a Paired criterion, e.g.
+//	    LCA's VB-27: the paired bootstrap's own 95% CI of the success-rate
+//	    difference includes zero — the
 //	    pre-registered null, recorded and published, never a refutation).
 //
 //	scenariobench void -run-id <id> -task <id> -arm <name> -reason <text> [-cells <dir>] [-ledger <path.jsonl>] [-readme <path>] [-corpus-glob <glob>] [-trial N [-verdict pass|fail] [-exclude]]
@@ -1440,6 +1447,12 @@ func cmdLedger(args []string) int {
 	runID := fs.String("run-id", "", "the run whose cells to file (required)")
 	commit := fs.String("commit", "", "repo HEAD this run measured (default: git rev-parse --short HEAD)")
 	trials := fs.Int("trials", 0, "trials per (task, arm) this run intended (default: the corpus criterion's own min_trials; a cell key with MORE stored trials than this is still counted in full, never capped)")
+	onlyArm := fs.String("arm", "", "file only this arm (default: every arm in the corpus); composes with -arms")
+	arms := fs.String("arms", "", "comma-separated arm names to file (default: every arm in the corpus)")
+	var armClones armCloneFlag
+	fs.Var(&armClones, "arm-clone", "NEW=BASE (repeatable): copy arm BASE under a new name NEW before filing, applied before -arm-setup and before the corpus hash is computed (DP-14) — MUST match the -arm-clone the run used, or the recomputed corpus sha will not key onto that run's stored cells")
+	var armSetups armSetupFlag
+	fs.Var(&armSetups, "arm-setup", "ARM=<shell line> (repeatable): append a setup line to arm ARM before filing, applied after every -arm-clone and before the corpus hash is computed (DP-14) — MUST match the -arm-setup the run used, for the same reason")
 	strictBorrow := fs.Bool("strict-borrow", true, "refuse (exit 2) to file a row when a stored cell's own run_id differs from -run-id, rather than silently skipping it — false restores the old silent-skip behavior for a cellsDir deliberately shared across runs")
 	backfillCriteria := fs.Bool("backfill-criteria", false, "backfill criterion_id (O65, wave N12 item 2) onto every existing ledger row that carries none, resolved via -corpus-glob's own corpus SHA256 or task ids, rewrite -ledger, print how many rows changed, and exit — ignores -corpus/-dataset/-run-id/-cells/-trials/-harness-version/-commit entirely")
 	cf := addCellFlags(fs)
@@ -1473,6 +1486,47 @@ func cmdLedger(args []string) int {
 		fmt.Fprintf(os.Stderr, "scenariobench ledger: %v\n", err)
 		return 2
 	}
+	// DP-14, mirrored from cmdRun: a run filed with -arm-clone/-arm-setup
+	// built its cell keys against a corpus VARIANT, whose sha differs from
+	// the committed corpus file's own sha — so filing that run's cells
+	// needs the identical -arm-clone/-arm-setup to land on the same
+	// variant sha before planCells builds the cell keys ledger borrows
+	// against. Given in the same order as -arm-clone before -arm-setup,
+	// exactly as cmdRun applies them, so a setup line may target a name a
+	// clone just created. The untouched (no -arm-clone/-arm-setup) case
+	// keeps its ORIGINAL sha exactly, so every existing ledger filing
+	// stays reproducible byte-for-byte.
+	if len(armClones) > 0 || len(armSetups) > 0 {
+		for _, spec := range armClones {
+			newName, base, ok := splitEqualsPair(spec)
+			if !ok {
+				fmt.Fprintf(os.Stderr, "scenariobench ledger: -arm-clone %q: want NEW=BASE\n", spec)
+				return 2
+			}
+			if err := scenariobench.CloneArm(&corpus, newName, base); err != nil {
+				fmt.Fprintf(os.Stderr, "scenariobench ledger: %v\n", err)
+				return 2
+			}
+		}
+		for _, spec := range armSetups {
+			armName, line, ok := splitEqualsPair(spec)
+			if !ok {
+				fmt.Fprintf(os.Stderr, "scenariobench ledger: -arm-setup %q: want ARM=<shell line>\n", spec)
+				return 2
+			}
+			if err := scenariobench.SetupArm(&corpus, armName, line); err != nil {
+				fmt.Fprintf(os.Stderr, "scenariobench ledger: %v\n", err)
+				return 2
+			}
+		}
+		sha, err = scenariobench.CanonicalCorpusSHA256(corpus)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "scenariobench ledger: hashing the corpus variant: %v\n", err)
+			return 2
+		}
+	}
+	armFilter := scenariobench.ArmSelection(*onlyArm, *arms)
+
 	// O55 item 5: RFC3339 UTC from the injected clock — every filed row
 	// carries WHEN this filing happened, deterministic in tests
 	// (ledgerClock), real wall time in production.
@@ -1494,7 +1548,17 @@ func cmdLedger(args []string) int {
 		}
 	}
 
-	cells := planCells(corpus, cf, effectiveTrials, sha)
+	allCellPlans := planCells(corpus, cf, effectiveTrials, sha)
+	cells := allCellPlans
+	if armFilter != nil {
+		filtered := make([]cellPlan, 0, len(allCellPlans))
+		for _, cp := range allCellPlans {
+			if armFilter[cp.arm] {
+				filtered = append(filtered, cp)
+			}
+		}
+		cells = filtered
+	}
 	type key struct{ task, arm string }
 	byTaskArm := map[key][]scenariobench.CellResult{}
 	seenTrial := map[string]map[int]bool{} // primary cell key -> trials already fetched
