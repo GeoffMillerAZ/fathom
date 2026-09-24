@@ -6,6 +6,19 @@ build against: test-kit (the vocabulary), fathom (the facts), Review Kit (the
 judgment). Every section names what is deterministic, what a declaration is,
 and what tier each fact earns.
 
+**Status (2026-09-23).** Stages 0-3 landed in fathom: the `certifications`
+layer (§4, compile/resolve/sweep), `fathom verify certified_by` (I43), the
+`review_diff`/`fathom review` `certifications` dimension, `fathom certify
+status|gaps|manifest|orphans|suggest`, a `certification` receipt kind, the
+`fathom doctor` `certifications` row, and fathom's own repo declaring
+certificates for its deny-severity invariants and open incidents' tests
+(`tests/fathom.cue`). §7's test-kit and Review Kit halves (TC-17, TC-18)
+landed in platform-engineering, proven by that repository's own gate. Open:
+TC-M2/TC-M3/TC-M4 (the three two-week/one-month/twenty-suggestion operator
+measurements) and fathom's own live-certificate count against its
+deny-severity invariants — see `docs/certifications.md` for the current
+counts.
+
 ## 1. Vocabulary (owned by the platform standard, test-kit ADR-0042)
 
 A certification names a target, a strength and, optionally, the tests that

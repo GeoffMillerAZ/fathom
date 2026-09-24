@@ -1,8 +1,11 @@
 # 33 — Tested means certified
 
-Status: accepted 2026-09-23 (ADR-043). Assessment: the owner's question of
-2026-09-23, "should fathom track test coverage, test kinds and what tests are
-for, on a standard defined in platform-engineering?" Plan:
+Status: accepted 2026-09-23 (ADR-043); stages 0-3 landed 2026-09-23 (the
+`certifications` layer, `verify certified_by`, the review dimension, the
+`certify` verb family, receipts, fathom's own declarations — TC-1..24 except
+the TC-M op measurements). Assessment: the owner's question of 2026-09-23,
+"should fathom track test coverage, test kinds and what tests are for, on a
+standard defined in platform-engineering?" Plan:
 `docs/plans/test-certifications.md`. Design: `docs/design/test-certifications.md`.
 
 ## 1. The thesis
