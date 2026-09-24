@@ -13,8 +13,13 @@ package certify
 // vacuously satisfied once the target itself resolves" (types.go's own
 // doc comment) — the certificate's tier still climbs on the test's own
 // existence and attested run, it simply has no SEPARATE reach check to
-// clear. behaviour never resolves to anything at all (design doc §1: tier
-// never exceeds doc-claimed — CompileCertifications enforces that cap).
+// clear. behaviour resolves against the HEAD capability inventory
+// (resolveBehaviour, ADR-044 §2.4): an id that names no inventory key at
+// all is now genuinely "target does not resolve" (contradicted), rather
+// than always resolving — so characterization/golden tests finally
+// certify something checkable — while Target.Symbols STILL stays empty
+// (design doc §1: tier never exceeds doc-claimed for this kind, whatever
+// it resolves against).
 import (
 	"context"
 	"os"
@@ -23,7 +28,9 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/geoffmilleraz/fathom/internal/analysis/inventory"
 	"github.com/geoffmilleraz/fathom/internal/analysis/symbolnav"
+	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
 	"github.com/geoffmilleraz/fathom/internal/intent"
@@ -46,11 +53,7 @@ func ResolveTarget(ctx context.Context, st store.Store, service, kind, id string
 
 	switch extractor.CertifyKind(kind) {
 	case extractor.CertifyKindBehaviour:
-		// Declared only — nothing to resolve, nothing to reach. The
-		// caller (CompileCertifications) caps this kind's tier at
-		// doc-claimed regardless of test existence/reach/run.
-		t.Resolved = true
-		return t, nil
+		return resolveBehaviour(ctx, st, service, t)
 	case extractor.CertifyKindInvariant:
 		return resolveInvariant(ctx, st, service, t)
 	case extractor.CertifyKindIncident:
@@ -119,6 +122,118 @@ func resolveIncident(ctx context.Context, st store.Store, service string, t Targ
 	}
 	t.Reason = "target does not resolve"
 	return t, nil
+}
+
+// resolveBehaviour resolves a `certifies: behaviour <key>` target against
+// service's HEAD capability inventory (CV-22, ADR-044 §2.4): t.ID must
+// name an existing `internal/analysis/inventory.Extract` item key (e.g.
+// `route:GET /v1/x`) — an id that matches nothing is "target does not
+// resolve" (contradicted, ResolveTarget's caller sets
+// core.ClaimContradicted), so a characterization/golden test finally
+// certifies something checkable instead of an arbitrary free-text label.
+// Target.Symbols stays empty regardless (types.go's own doc comment: this
+// kind's tier never exceeds doc-claimed).
+//
+// The inventory is built from every file the store already knows about
+// for service (serviceSymbols' FilePath set, unioned with
+// ListSourceRefs — the fullest known-file list a store affords without a
+// bare directory walk), read fresh off disk under the service's recorded
+// corpus root: the store persists SYMBOLS, never raw file content
+// (internal/store has no content-serving method), so this is the same
+// "re-read a known file from disk" pattern resolveIncident already uses
+// for a single file, generalised to the whole known corpus. An unreadable
+// or since-deleted file contributes nothing rather than failing the
+// whole resolve.
+func resolveBehaviour(ctx context.Context, st store.Store, service string, t Target) (Target, error) {
+	root, ok, err := serviceRoot(ctx, st, service)
+	if err != nil {
+		return t, err
+	}
+	if !ok {
+		t.Reason = "target does not resolve"
+		return t, nil
+	}
+
+	paths, err := knownServiceFiles(ctx, st, service)
+	if err != nil {
+		return t, err
+	}
+	files := make([]inventory.File, 0, len(paths))
+	for _, rel := range paths {
+		content, rerr := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel)))
+		if rerr != nil {
+			continue
+		}
+		files = append(files, inventory.File{Path: rel, Content: content})
+	}
+
+	items := inventory.Extract(files, projectSurfacePatterns(root))
+	for _, it := range items {
+		if it.Key == t.ID {
+			t.Resolved = true
+			return t, nil
+		}
+	}
+	t.Reason = "target does not resolve"
+	return t, nil
+}
+
+// knownServiceFiles returns the sorted, deduplicated union of every file
+// path the store has EVER recorded evidence for under service: every
+// indexed symbol's FilePath (serviceSymbols) plus ListSourceRefs (which
+// additionally covers fingerprint-only files with no registered
+// extractor, e.g. a .proto or a plain-text env file that produced no
+// symbol of its own).
+func knownServiceFiles(ctx context.Context, st store.Store, service string) ([]string, error) {
+	nodes, err := serviceSymbols(ctx, st, service)
+	if err != nil {
+		return nil, err
+	}
+	set := make(map[string]bool, len(nodes))
+	for _, n := range nodes {
+		if n.FilePath != "" {
+			set[n.FilePath] = true
+		}
+	}
+	refs, err := st.ListSourceRefs(ctx, service)
+	if err != nil {
+		return nil, err
+	}
+	for _, r := range refs {
+		if r != "" {
+			set[r] = true
+		}
+	}
+	out := make([]string, 0, len(set))
+	for p := range set {
+		out = append(out, p)
+	}
+	sort.Strings(out)
+	return out, nil
+}
+
+// projectSurfacePatterns best-effort reads root's OWN `.fathom/config.toml`
+// for `[[surface.pattern]]` entries (CV-17) — project layer only,
+// deliberately skipping the operator's personal user-level config.toml:
+// resolveBehaviour scans a SERVICE's corpus, not the caller's own
+// environment, and a repo's configured surface patterns are a property of
+// that repo, not of whoever happens to be running the resolve. A missing
+// or unreadable config.toml (no project file at all is the ordinary case)
+// yields no patterns rather than an error — the built-in kinds still work.
+func projectSurfacePatterns(root string) []inventory.Pattern {
+	loaded, err := config.Load("", filepath.Join(root, ".fathom", "config.toml"))
+	if err != nil {
+		return nil
+	}
+	src := config.SurfacePatterns(loaded.Config)
+	if len(src) == 0 {
+		return nil
+	}
+	out := make([]inventory.Pattern, len(src))
+	for i, p := range src {
+		out[i] = inventory.Pattern{Kind: p.Kind, Glob: p.Glob, Regex: p.Regex}
+	}
+	return out
 }
 
 func resolveSpec(ctx context.Context, st store.Store, service string, t Target) (Target, error) {

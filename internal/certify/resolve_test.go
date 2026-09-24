@@ -28,6 +28,11 @@ func seedResolveFixture(t *testing.T) (context.Context, store.Store) {
 	mustWrite(t, filepath.Join(root, "docs", "intent", "README.md"), "# Router\n\ndocs/intent/invariants.md is the living doc.\n")
 	mustWrite(t, filepath.Join(root, "docs", "intent", "invariants.md"), "# Invariants\n\n| # | Statement | Enforced by |\n|---|---|---|\n| I1 | Widgets never negative | test (`TestWidgetCount`) |\n")
 	mustWrite(t, filepath.Join(root, "docs", "intent", "incidents.md"), "# Incidents\n\n## Open\n\n### INC-1\n\nSomething happened.\n\nOutcome: pending\n")
+	// billing/routes.go: a real on-disk file registered in the store below
+	// (CV-22, resolveBehaviour) — its route:GET /v1/checkout registration
+	// is the inventory item "behaviour is declared-only"/
+	// TestResolveTarget_BehaviourInventoryKey resolve against.
+	mustWrite(t, filepath.Join(root, "billing", "routes.go"), "package billing\n\nimport \"net/http\"\n\nfunc register(mux *http.ServeMux) {\n\tmux.HandleFunc(\"GET /v1/checkout\", handleCheckout)\n}\n\nfunc handleCheckout(w http.ResponseWriter, r *http.Request) {}\n")
 
 	if err := st.SetServiceMeta(ctx, store.ServiceMeta{ServiceID: testResolveService, Path: root, IndexedCommit: "deadbeef"}); err != nil {
 		t.Fatalf("SetServiceMeta: %v", err)
@@ -43,6 +48,11 @@ func seedResolveFixture(t *testing.T) (context.Context, store.Store) {
 			ServiceID: testResolveService, SourceRef: "billing/ports.go", SourceKind: core.KindGoInterface,
 			EvidenceTier: core.TierVerified, Symbol: "Ledger", Package: "billing",
 			Claim: "type Ledger interface", IngestedAt: time.Now(),
+		},
+		{
+			ServiceID: testResolveService, SourceRef: "billing/routes.go", SourceKind: core.KindGoFunc,
+			EvidenceTier: core.TierVerified, Symbol: "register", Package: "billing",
+			Claim: "func register(mux *http.ServeMux)", IngestedAt: time.Now(),
 		},
 	}); err != nil {
 		t.Fatalf("seed PutObservations: %v", err)
@@ -73,13 +83,23 @@ func mustWrite(t *testing.T, path, content string) {
 func TestResolveTarget_EveryKindAndUnknown(t *testing.T) {
 	ctx, st := seedResolveFixture(t)
 
-	t.Run("behaviour is declared-only", func(t *testing.T) {
-		got, err := ResolveTarget(ctx, st, testResolveService, "behaviour", "checkout-happy-path")
+	t.Run("behaviour resolves to a real inventory key, Symbols stays empty", func(t *testing.T) {
+		got, err := ResolveTarget(ctx, st, testResolveService, "behaviour", "route:GET /v1/checkout")
 		if err != nil {
 			t.Fatalf("ResolveTarget: %v", err)
 		}
 		if !got.Resolved || len(got.Symbols) != 0 {
-			t.Fatalf("behaviour target = %+v, want Resolved=true, Symbols empty", got)
+			t.Fatalf("behaviour route:GET /v1/checkout = %+v, want Resolved=true, Symbols empty", got)
+		}
+	})
+
+	t.Run("behaviour unknown key does not resolve", func(t *testing.T) {
+		got, err := ResolveTarget(ctx, st, testResolveService, "behaviour", "checkout-happy-path")
+		if err != nil {
+			t.Fatalf("ResolveTarget: %v", err)
+		}
+		if got.Resolved || got.Reason != "target does not resolve" {
+			t.Fatalf("behaviour checkout-happy-path = %+v, want unresolved with the standard reason", got)
 		}
 	})
 
@@ -195,4 +215,36 @@ func TestResolveTarget_EveryKindAndUnknown(t *testing.T) {
 			t.Fatalf("unknown kind = %+v, want unresolved with the standard reason", got)
 		}
 	})
+}
+
+// TestResolveTarget_BehaviourInventoryKey pins CV-22 (ADR-044 §2.4)
+// end to end: a `certifies: behaviour <key>` target resolves exactly when
+// <key> names a real capability-inventory item at HEAD, and a changed
+// registration (a route that no longer exists) flips a previously
+// resolving target back to unresolved — the deterministic re-derivation a
+// characterization/golden test needs to certify something checkable.
+func TestResolveTarget_BehaviourInventoryKey(t *testing.T) {
+	ctx, st := seedResolveFixture(t)
+
+	got, err := ResolveTarget(ctx, st, testResolveService, "behaviour", "route:GET /v1/checkout")
+	if err != nil {
+		t.Fatalf("ResolveTarget: %v", err)
+	}
+	if !got.Resolved {
+		t.Fatalf("route:GET /v1/checkout = %+v, want Resolved=true", got)
+	}
+	if len(got.Symbols) != 0 {
+		t.Errorf("Symbols = %v, want empty (design doc §1: behaviour's tier never exceeds doc-claimed)", got.Symbols)
+	}
+
+	unknown, err := ResolveTarget(ctx, st, testResolveService, "behaviour", "route:DELETE /v1/checkout")
+	if err != nil {
+		t.Fatalf("ResolveTarget: %v", err)
+	}
+	if unknown.Resolved {
+		t.Fatalf("route:DELETE /v1/checkout = %+v, want unresolved — no such registration exists", unknown)
+	}
+	if unknown.Reason != "target does not resolve" {
+		t.Errorf("Reason = %q, want the standard %q", unknown.Reason, "target does not resolve")
+	}
 }

@@ -1,0 +1,636 @@
+// Package inventory computes ADR-044 §2.1's capability inventory: every
+// item a corpus's file CONTENT offers — a Go exported declaration, a JSON
+// wire tag, an HTTP route, an environment-variable read, a proto RPC, a
+// cobra CLI verb, or whatever a repo's own `[[surface.pattern]]` entries
+// name — as one flat, language-neutral list of {key, kind, file, line,
+// detail} items.
+//
+// Extract runs over file CONTENT alone (File.Path + File.Content), never
+// over an index or a git ref: the same function must produce base's
+// inventory from `git show <base>:<path>` bytes and head's from worktree
+// bytes, with nothing re-ingested at base (docs/design/
+// refactor-conservation.md §0, §2.1 — P19). It is pure and deterministic:
+// no I/O, no clock, sorted output (internal/CLAUDE.md's determinism
+// contract).
+//
+// Where an existing analyzer already does the job over raw source text,
+// Extract reuses it rather than re-implementing: internal/analysis/routes
+// for `route:`, internal/analysis/envkeys for `env:`. The Go `api:`/`json:`
+// kinds and the proto `rpc:`/cobra `cli:` kinds have no existing
+// content-only extractor (internal/analysis/apisurface operates on
+// already-indexed []core.SymbolNode, which base content never has — P19 —
+// so this package cannot reuse it directly; its export-visibility rule is
+// mirrored here instead, over a fresh go/ast parse of the same file).
+package inventory
+
+import (
+	"bytes"
+	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/printer"
+	"go/token"
+	"path"
+	"reflect"
+	"regexp"
+	"sort"
+	"strconv"
+	"strings"
+	"unicode"
+
+	"github.com/emicklei/proto"
+	"github.com/geoffmilleraz/fathom/internal/analysis/envkeys"
+	"github.com/geoffmilleraz/fathom/internal/analysis/routes"
+	"github.com/geoffmilleraz/fathom/internal/filter"
+)
+
+// File is one source file's content, exactly as a base or head read
+// produces it (git show / worktree read) — Extract never does I/O of its
+// own, so the identical function runs on base and head content.
+type File struct {
+	Path    string
+	Content []byte
+}
+
+// Pattern is one repo-configured `[[surface.pattern]]` entry (design doc
+// §2.1): Glob scopes which files it applies to (internal/filter's
+// gitignore-style glob syntax, "" meaning every file), Regex's first
+// capturing group names the matched item, and Kind is the "<kind>:" prefix
+// every match is emitted under. A caller with internal/config.SurfacePattern
+// values converts them 1:1 — this package stays free of any config/TOML
+// dependency so it can be unit tested, and run over base content, without
+// one.
+type Pattern struct {
+	Kind  string
+	Glob  string
+	Regex string
+}
+
+// Item is one capability-inventory entry (design doc §2.1's table). Key is
+// the wire identity ("<kind>:<name>") Diff compares across base and head;
+// Detail is whatever else about the item changing should count as
+// "changed" rather than merely "present at both" — a stripped function
+// signature, a JSON field's Go type, a route handler name.
+type Item struct {
+	Key    string
+	Kind   string
+	File   string
+	Line   int
+	Detail string
+}
+
+// Extract returns every capability-inventory item found across files, plus
+// whatever patterns' configured-pattern matches — sorted by Key and
+// deduplicated (a key produced twice, e.g. the same route registered in
+// two files, keeps its first occurrence in (File, Line) order). Files
+// whose name ends "_test.go" are skipped entirely: test code is never
+// part of the capability surface a refactor must conserve, for every kind,
+// not merely the Go-specific ones (design doc §2.1's table implicitly
+// assumes production code; this is the one rule Extract adds beyond it,
+// applied uniformly rather than kind by kind).
+func Extract(files []File, patterns []Pattern) []Item {
+	// Filter _test.go out ONCE, up front: every kind below — including
+	// the configured-pattern kind — must see the identical file set, or a
+	// pattern like CV-26's own `tool:` glob (internal/mcp/*.go) silently
+	// picks up every *_test.go fixture's own toolDescriptor literal too
+	// (a real bug this exact fix closed: a test-only fake tool name
+	// otherwise showed up as a surface item indistinguishable from a real
+	// registration).
+	var prod []File
+	for _, f := range files {
+		if strings.HasSuffix(f.Path, "_test.go") {
+			continue
+		}
+		prod = append(prod, f)
+	}
+
+	var out []Item
+	for _, f := range prod {
+		switch {
+		case strings.HasSuffix(f.Path, ".go"):
+			out = append(out, extractGoAPI(f)...)
+			out = append(out, extractGoJSON(f)...)
+			out = append(out, extractGoCLI(f)...)
+		case strings.HasSuffix(f.Path, ".proto"):
+			out = append(out, extractProtoRPC(f)...)
+		}
+		out = append(out, extractRouteAndEnv(f)...)
+	}
+	for _, p := range patterns {
+		out = append(out, extractConfigured(prod, p)...)
+	}
+	return sortDedupe(out)
+}
+
+func sortDedupe(items []Item) []Item {
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].File != items[j].File {
+			return items[i].File < items[j].File
+		}
+		if items[i].Line != items[j].Line {
+			return items[i].Line < items[j].Line
+		}
+		return items[i].Key < items[j].Key
+	})
+	seen := make(map[string]bool, len(items))
+	out := make([]Item, 0, len(items))
+	for _, it := range items {
+		if it.Key == "" || seen[it.Key] {
+			continue
+		}
+		seen[it.Key] = true
+		out = append(out, it)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Key < out[j].Key })
+	return out
+}
+
+// Delta is Extract's base→head comparison (design doc §2.2): Removed and
+// Changed are both losses (a caller excuses them via a plan's retires:/
+// surface_change: declaration, I45); Added is never a loss. All three are
+// sorted.
+type Delta struct {
+	Removed []string
+	Changed []string
+	Added   []string
+}
+
+// Diff computes base→head's Delta by Item.Key, comparing Detail for a key
+// present at both to decide removed/changed/added — apisurface.Diff's own
+// three-way split, generalised from indexed Go symbols to every inventory
+// kind.
+func Diff(base, head []Item) Delta {
+	baseDetail := make(map[string]string, len(base))
+	for _, it := range base {
+		baseDetail[it.Key] = it.Detail
+	}
+	headDetail := make(map[string]string, len(head))
+	for _, it := range head {
+		headDetail[it.Key] = it.Detail
+	}
+
+	var d Delta
+	for k := range baseDetail {
+		if _, ok := headDetail[k]; !ok {
+			d.Removed = append(d.Removed, k)
+		}
+	}
+	for k, hd := range headDetail {
+		bd, ok := baseDetail[k]
+		if !ok {
+			d.Added = append(d.Added, k)
+		} else if bd != hd {
+			d.Changed = append(d.Changed, k)
+		}
+	}
+	sort.Strings(d.Removed)
+	sort.Strings(d.Changed)
+	sort.Strings(d.Added)
+	return d
+}
+
+// ─── api: / json: / cli: (Go, go/ast) ──────────────────────────────────────
+
+// extractGoAPI returns "api:<importpath>.<Name>" / "api:<importpath>.
+// <Type>.<Method>" items for every exported top-level func, method, type,
+// const and var in f — skipping package "main" and any package under an
+// "internal/" directory component (design doc §2.1), the same visibility
+// rule internal/analysis/apisurface applies to already-indexed symbols,
+// re-derived here over content go/ast never had a chance to index (base
+// content, P19). importpath is f's own repo-relative directory (path.Dir):
+// this package has no go.mod/module-path knowledge (it is handed file
+// content only, sometimes from a commit where go.mod itself may have
+// looked different), so the directory is the closest stable,
+// content-derivable analogue — sufficient to tell "this package's Foo" from
+// "that package's Foo" across a diff, which is Extract's whole job.
+func extractGoAPI(f File) []Item {
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, f.Path, f.Content, 0)
+	if err != nil {
+		return nil
+	}
+	if file.Name == nil || file.Name.Name == "main" {
+		return nil
+	}
+	dir := path.Dir(f.Path)
+	if isInternalDir(dir) {
+		return nil
+	}
+
+	var out []Item
+	for _, decl := range file.Decls {
+		switch d := decl.(type) {
+		case *ast.FuncDecl:
+			out = append(out, goFuncItem(fset, f.Path, dir, d)...)
+		case *ast.GenDecl:
+			out = append(out, goGenDeclItems(fset, f.Path, dir, d)...)
+		}
+	}
+	return out
+}
+
+func goFuncItem(fset *token.FileSet, filePath, dir string, d *ast.FuncDecl) []Item {
+	if d.Name == nil || !d.Name.IsExported() {
+		return nil
+	}
+	line := fset.Position(d.Pos()).Line
+	sig := strippedSignature(fset, d.Type)
+	if d.Recv == nil || len(d.Recv.List) == 0 {
+		return []Item{{
+			Key: fmt.Sprintf("api:%s.%s", dir, d.Name.Name), Kind: "api",
+			File: filePath, Line: line, Detail: sig,
+		}}
+	}
+	recv := receiverTypeName(d.Recv.List[0].Type)
+	if recv == "" || !isExportedName(recv) {
+		return nil
+	}
+	return []Item{{
+		Key: fmt.Sprintf("api:%s.%s.%s", dir, recv, d.Name.Name), Kind: "api",
+		File: filePath, Line: line, Detail: sig,
+	}}
+}
+
+func goGenDeclItems(fset *token.FileSet, filePath, dir string, d *ast.GenDecl) []Item {
+	var out []Item
+	for _, spec := range d.Specs {
+		switch s := spec.(type) {
+		case *ast.TypeSpec:
+			if s.Name == nil || !s.Name.IsExported() {
+				continue
+			}
+			out = append(out, Item{
+				Key: fmt.Sprintf("api:%s.%s", dir, s.Name.Name), Kind: "api",
+				File: filePath, Line: fset.Position(s.Pos()).Line,
+				Detail: renderNode(fset, s.Type),
+			})
+		case *ast.ValueSpec:
+			for i, name := range s.Names {
+				if name == nil || !name.IsExported() {
+					continue
+				}
+				detail := ""
+				switch {
+				case s.Type != nil:
+					detail = renderNode(fset, s.Type)
+				case i < len(s.Values):
+					detail = renderNode(fset, s.Values[i])
+				}
+				out = append(out, Item{
+					Key: fmt.Sprintf("api:%s.%s", dir, name.Name), Kind: "api",
+					File: filePath, Line: fset.Position(name.Pos()).Line, Detail: detail,
+				})
+			}
+		}
+	}
+	return out
+}
+
+// extractGoJSON returns "json:<importpath>.<Type>.<tag>" items for every
+// JSON-tagged exported field of an exported struct type in f (design doc
+// §2.1) — same package-visibility exclusion as extractGoAPI. A field with
+// no `json:"..."` tag, or tagged `json:"-"`, is never emitted: encoding/
+// json's implicit field-name default is not a declared wire surface.
+func extractGoJSON(f File) []Item {
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, f.Path, f.Content, 0)
+	if err != nil {
+		return nil
+	}
+	if file.Name == nil || file.Name.Name == "main" {
+		return nil
+	}
+	dir := path.Dir(f.Path)
+	if isInternalDir(dir) {
+		return nil
+	}
+
+	var out []Item
+	for _, decl := range file.Decls {
+		gd, ok := decl.(*ast.GenDecl)
+		if !ok || gd.Tok != token.TYPE {
+			continue
+		}
+		for _, spec := range gd.Specs {
+			ts, ok := spec.(*ast.TypeSpec)
+			if !ok || ts.Name == nil || !ts.Name.IsExported() {
+				continue
+			}
+			st, ok := ts.Type.(*ast.StructType)
+			if !ok || st.Fields == nil {
+				continue
+			}
+			for _, field := range st.Fields.List {
+				if field.Tag == nil || len(field.Names) == 0 {
+					continue
+				}
+				tagVal, err := strconv.Unquote(field.Tag.Value)
+				if err != nil {
+					continue
+				}
+				jsonTag := reflect.StructTag(tagVal).Get("json")
+				name, _, _ := strings.Cut(jsonTag, ",")
+				if name == "" || name == "-" {
+					continue
+				}
+				detail := renderNode(fset, field.Type)
+				line := fset.Position(field.Pos()).Line
+				for _, fname := range field.Names {
+					if !fname.IsExported() {
+						continue
+					}
+					out = append(out, Item{
+						Key:  fmt.Sprintf("json:%s.%s.%s", dir, ts.Name.Name, name),
+						Kind: "json", File: f.Path, Line: line, Detail: detail,
+					})
+				}
+			}
+		}
+	}
+	return out
+}
+
+// extractGoCLI returns "cli:<verb>" items for every cobra `Command{Use:
+// "verb ..."}` composite literal in f (design doc §2.1) — the first
+// whitespace-delimited token of the Use string is the verb, cobra's own
+// convention ("list [flags]" names verb "list"). Recognizes both
+// `cobra.Command{...}` (a package-qualified selector whose Sel.Name is
+// "Command") and a bare `Command{...}` (a dot-import) — never anything
+// else named "Command", but a false positive there would need an unrelated
+// type named exactly "Command" with a field also named exactly "Use" set
+// to a string literal, which this repo's own convention (verbTable,
+// cmd/fathom/verbs.go) avoids entirely by not using cobra at all.
+func extractGoCLI(f File) []Item {
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, f.Path, f.Content, 0)
+	if err != nil {
+		return nil
+	}
+	var out []Item
+	ast.Inspect(file, func(n ast.Node) bool {
+		lit, ok := n.(*ast.CompositeLit)
+		if !ok || !isCobraCommandType(lit.Type) {
+			return true
+		}
+		for _, elt := range lit.Elts {
+			kv, ok := elt.(*ast.KeyValueExpr)
+			if !ok {
+				continue
+			}
+			key, ok := kv.Key.(*ast.Ident)
+			if !ok || key.Name != "Use" {
+				continue
+			}
+			bl, ok := kv.Value.(*ast.BasicLit)
+			if !ok || bl.Kind != token.STRING {
+				continue
+			}
+			raw, uerr := strconv.Unquote(bl.Value)
+			if uerr != nil {
+				continue
+			}
+			fields := strings.Fields(raw)
+			if len(fields) == 0 {
+				continue
+			}
+			out = append(out, Item{
+				Key: "cli:" + fields[0], Kind: "cli",
+				File: f.Path, Line: fset.Position(kv.Pos()).Line,
+			})
+		}
+		return true
+	})
+	return out
+}
+
+func isCobraCommandType(e ast.Expr) bool {
+	switch t := e.(type) {
+	case *ast.SelectorExpr:
+		return t.Sel != nil && t.Sel.Name == "Command"
+	case *ast.Ident:
+		return t.Name == "Command"
+	}
+	return false
+}
+
+// ─── rpc: (.proto, github.com/emicklei/proto) ──────────────────────────────
+
+// extractProtoRPC returns "rpc:<package>.<Service>/<Method>" items for
+// every RPC method of every service declared in a .proto file (design doc
+// §2.1). package is the file's own `package foo.bar;` statement, when
+// present; omitted (bare "<Service>/<Method>") when the file declares
+// none. A file that fails to parse contributes nothing, the same
+// "skip unparseable" discipline internal/analysis/routes documents.
+func extractProtoRPC(f File) []Item {
+	def, err := proto.NewParser(bytes.NewReader(f.Content)).Parse()
+	if err != nil || def == nil {
+		return nil
+	}
+	pkgName := ""
+	for _, e := range def.Elements {
+		if p, ok := e.(*proto.Package); ok {
+			pkgName = p.Name
+			break
+		}
+	}
+	var out []Item
+	for _, e := range def.Elements {
+		svc, ok := e.(*proto.Service)
+		if !ok {
+			continue
+		}
+		svcName := svc.Name
+		if pkgName != "" {
+			svcName = pkgName + "." + svc.Name
+		}
+		for _, se := range svc.Elements {
+			rpc, ok := se.(*proto.RPC)
+			if !ok {
+				continue
+			}
+			out = append(out, Item{
+				Key:  fmt.Sprintf("rpc:%s/%s", svcName, rpc.Name),
+				Kind: "rpc", File: f.Path, Line: rpc.Position.Line,
+				Detail: rpc.RequestType + " -> " + rpc.ReturnsType,
+			})
+		}
+	}
+	return out
+}
+
+// ─── route: / env: (reused analyzers) ──────────────────────────────────────
+
+// extractRouteAndEnv reuses internal/analysis/routes.Extract and
+// internal/analysis/envkeys.Scan verbatim over f's content — design doc
+// §2.1's explicit "reusing internal/analysis/routes, envkeys ... where
+// they fit". Both already accept raw (path, content) and need no store or
+// index, so base content runs through them exactly like head content.
+func extractRouteAndEnv(f File) []Item {
+	var out []Item
+	if lang := routeLangFor(f.Path); lang != "" {
+		for _, r := range routes.Extract(lang, f.Path, f.Content) {
+			out = append(out, Item{
+				Key:  fmt.Sprintf("route:%s %s", r.Method, r.Path),
+				Kind: "route", File: r.File, Line: r.Line, Detail: r.Handler,
+			})
+		}
+		for _, k := range envkeys.Scan(f.Path, string(f.Content)) {
+			out = append(out, Item{
+				Key: "env:" + k.Name, Kind: "env", File: k.File, Line: k.Line,
+			})
+		}
+	}
+	return out
+}
+
+func routeLangFor(p string) string {
+	switch {
+	case strings.HasSuffix(p, ".go"):
+		return "go"
+	case strings.HasSuffix(p, ".ts"), strings.HasSuffix(p, ".tsx"):
+		return "ts"
+	case strings.HasSuffix(p, ".js"), strings.HasSuffix(p, ".jsx"), strings.HasSuffix(p, ".mjs"):
+		return "js"
+	case strings.HasSuffix(p, ".py"):
+		return "python"
+	default:
+		return ""
+	}
+}
+
+// ─── configured `[[surface.pattern]]` kinds ────────────────────────────────
+
+// extractConfigured returns "<p.Kind>:<name>" items for every match of
+// p.Regex's first capturing group across files whose path matches p.Glob
+// (every file when p.Glob is "") — design doc §2.1's "configured patterns"
+// row, this repo's own mechanism for a `tool:`/`verb:` surface no built-in
+// kind covers. A malformed regex, or a pattern naming no capture group,
+// yields no items rather than erroring — Extract itself never fails.
+func extractConfigured(files []File, p Pattern) []Item {
+	if p.Kind == "" || p.Regex == "" {
+		return nil
+	}
+	re, err := regexp.Compile(p.Regex)
+	if err != nil || re.NumSubexp() < 1 {
+		return nil
+	}
+	var m *filter.Matcher
+	if p.Glob != "" {
+		m = filter.New([]string{p.Glob})
+	}
+	var out []Item
+	for _, f := range files {
+		if m != nil && !m.Match(f.Path) {
+			continue
+		}
+		for _, loc := range re.FindAllSubmatchIndex(f.Content, -1) {
+			if len(loc) < 4 || loc[2] < 0 {
+				continue
+			}
+			name := string(f.Content[loc[2]:loc[3]])
+			if name == "" {
+				continue
+			}
+			out = append(out, Item{
+				Key: p.Kind + ":" + name, Kind: p.Kind,
+				File: f.Path, Line: lineForOffset(f.Content, loc[0]),
+			})
+		}
+	}
+	return out
+}
+
+func lineForOffset(content []byte, offset int) int {
+	if offset > len(content) {
+		offset = len(content)
+	}
+	return 1 + bytes.Count(content[:offset], []byte("\n"))
+}
+
+// ─── small shared helpers ───────────────────────────────────────────────────
+
+func isInternalDir(dir string) bool {
+	for _, seg := range strings.Split(dir, "/") {
+		if seg == "internal" {
+			return true
+		}
+	}
+	return false
+}
+
+func isExportedName(name string) bool {
+	if name == "" {
+		return false
+	}
+	r := []rune(name)
+	return unicode.IsUpper(r[0])
+}
+
+// receiverTypeName extracts a method receiver's base type name, stripping
+// pointer indirection and generic type parameters — mirrors internal/
+// extractor's own unexported receiverTypeName (that package's copy is not
+// importable; the logic is small enough to duplicate rather than export
+// it purely for this one caller).
+func receiverTypeName(expr ast.Expr) string {
+	switch t := expr.(type) {
+	case *ast.StarExpr:
+		return receiverTypeName(t.X)
+	case *ast.Ident:
+		return t.Name
+	case *ast.IndexExpr:
+		return receiverTypeName(t.X)
+	case *ast.IndexListExpr:
+		return receiverTypeName(t.X)
+	}
+	return ""
+}
+
+// renderNode renders e in canonical Go syntax via go/printer — used for
+// type expressions (a struct field's type, a type declaration's
+// underlying type) where, unlike a function signature, parameter names are
+// not in play and the expression alone is already exactly what should
+// change detail when a refactor changes it.
+func renderNode(fset *token.FileSet, e ast.Expr) string {
+	var buf bytes.Buffer
+	if err := printer.Fprint(&buf, fset, e); err != nil {
+		return ""
+	}
+	return buf.String()
+}
+
+// strippedSignature renders ft as "func(<types>) (<types>)" with every
+// parameter and result NAME removed — design doc §2.1: "detail is the
+// signature with parameter names removed", so a pure parameter rename
+// never shows as api: "changed". Cardinality is preserved: a grouped field
+// `a, b int` (two names, one type) still renders as two comma-separated
+// occurrences of "int", exactly like the named signature would parse as
+// two parameters.
+func strippedSignature(fset *token.FileSet, ft *ast.FuncType) string {
+	params := strippedFieldList(fset, ft.Params)
+	if ft.Results == nil || len(ft.Results.List) == 0 {
+		return "func(" + params + ")"
+	}
+	results := strippedFieldList(fset, ft.Results)
+	if len(ft.Results.List) == 1 && len(ft.Results.List[0].Names) == 0 {
+		return "func(" + params + ") " + results
+	}
+	return "func(" + params + ") (" + results + ")"
+}
+
+func strippedFieldList(fset *token.FileSet, fl *ast.FieldList) string {
+	if fl == nil {
+		return ""
+	}
+	var parts []string
+	for _, f := range fl.List {
+		t := renderNode(fset, f.Type)
+		n := len(f.Names)
+		if n == 0 {
+			n = 1
+		}
+		for i := 0; i < n; i++ {
+			parts = append(parts, t)
+		}
+	}
+	return strings.Join(parts, ", ")
+}

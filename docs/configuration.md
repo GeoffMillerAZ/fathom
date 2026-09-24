@@ -511,6 +511,50 @@ is (project layer over user layer, `fathom config --explain` for
 provenance) — see `internal/config`'s `Tests` struct and
 `schema/config/schema.cue`'s `#Tests`.
 
+## Capability-inventory patterns: `[[surface.pattern]]`
+
+ADR-044 §2.1 (`docs/design/refactor-conservation.md`): `internal/analysis/
+inventory.Extract` derives most of a corpus's capability inventory from
+built-in kinds — a Go exported declaration (`api:`), a JSON wire tag
+(`json:`), an HTTP route (`route:`), an environment-variable read (`env:`),
+a proto RPC (`rpc:`) — with no configuration at all. A repository whose own
+surface a built-in kind cannot see (this repository's own MCP tool names
+and CLI verbs: it dispatches its CLI through a plain switch, never cobra,
+and registers MCP tools through its own struct literals, not a typed
+registry) declares `[[surface.pattern]]` blocks instead, one per surface:
+
+```toml
+# .fathom/config.toml
+[[surface.pattern]]
+kind  = "tool"
+glob  = "internal/mcp/*.go"
+regex = 'registerTool\(toolDescriptor\{\s*\n\s*Name:\s*"([a-zA-Z_][a-zA-Z0-9_]*)"'
+
+[[surface.pattern]]
+kind  = "verb"
+glob  = "cmd/fathom/verbs.go"
+regex = '\{Name:\s*"([a-z][a-z0-9-]*)"'
+```
+
+- `kind` (required): the `"<kind>:"` prefix every match is emitted under —
+  `fathom conserve`'s surface plane then treats `tool:find_callers` exactly
+  like a built-in `api:`/`route:` key: removed or changed between base and
+  head is a finding, excused by a plan row's `retires: "tool:find_callers"`
+  or `surface_change:` declared BEFORE the change range (I45).
+- `glob` (optional; unset matches every file): internal/filter's
+  gitignore-style syntax (`**` included) scoping which files the pattern
+  scans. Files ending `_test.go` are never scanned by any kind, built-in
+  or configured — test fixtures are never part of the capability surface.
+- `regex` (required): a Go regexp whose FIRST capturing group names the
+  matched item; a pattern with no capturing group, or that fails to
+  compile, yields no items rather than an error.
+
+`fathom conserve --since <ref>` and (later) `fathom review --since <ref>`
+read these via `internal/config.SurfacePatterns`; `fathom refactor plan`
+(a later row) also reads them when generating a `gone:` row for a
+configured-pattern surface item. This repository's own two entries above
+declare its tool and verb surfaces (CV-26).
+
 ## Worked example
 
 ```toml

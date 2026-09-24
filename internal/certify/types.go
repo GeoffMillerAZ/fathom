@@ -67,14 +67,17 @@ type Target struct {
 	ID   string
 
 	// Symbols is the sorted set of canonical symbol keys the target
-	// names. Empty for kind "behaviour" (declared only — the caller caps
-	// its tier at doc-claimed, design doc §1) and for kind "invariant"/
+	// names. Always empty for kind "behaviour": ADR-044 §2.4 makes a
+	// behaviour target resolve against the HEAD capability inventory
+	// (resolveBehaviour), so Resolved now reflects a real fact, but it
+	// still names no symbol to REACH — the caller caps its tier at
+	// doc-claimed regardless (design doc §1) — and for kind "invariant"/
 	// "incident": the row/record itself is what resolves for those two
 	// kinds, and neither one binds to a specific code symbol the way
 	// spec/rule/port do (see ResolveTarget's own doc comment) — a
-	// certificate for one of these two kinds is checked for the target's
-	// EXISTENCE only, and reach is vacuously satisfied once the target
-	// itself resolves.
+	// certificate for one of these three kinds is checked for the
+	// target's EXISTENCE only, and reach is vacuously satisfied once the
+	// target itself resolves.
 	Symbols []string
 	// Files is the sorted set of repo-relative files backing Symbols,
 	// plus (for invariant/incident) the doc file the target's own record

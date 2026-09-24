@@ -46,6 +46,10 @@ const (
 	// name — runCertifications is unexported like every other run*
 	// dimension function.
 	DimCertifications = "certifications"
+	// DimConservation (ADR-044 §1.6/§2, CV-24) reports internal/conserve's
+	// own report, ALREADY COMPUTED by the caller (runConservation's own
+	// doc comment) — same naming precedent as DimCertifications.
+	DimConservation = "conservation"
 )
 
 // Finding is one cited item within a Dimension. Every finding that survives
@@ -228,6 +232,38 @@ type Input struct {
 	CertificationsSupported bool
 	CertificationsDeclared  bool
 	CertificationsByFile    map[string][]CertificationRecord
+
+	// conservation (ADR-044 §1.6, CV-24). ConservationSupported is the
+	// backend-capability gate (a resolvable Base ref AND a readable
+	// corpus — the same "caller was ABLE to build the input at all"
+	// meaning ObligationsSupported/CertificationsSupported already
+	// carry); false when Base is "" (mirrors DimIntegrity's own "needs a
+	// base ref"). ConservationPlanes is the caller-PRECOMPUTED per-plane
+	// report — this package never imports internal/conserve (which
+	// itself needs git/store I/O this leaf package must not do), the
+	// same reason CertificationRecord mirrors internal/certify.Record
+	// instead of importing it; a caller builds these from
+	// internal/conserve.Report.Planes 1:1 (ConservationPlaneSummary's own
+	// doc comment). nil/empty is a legitimate "every plane reported
+	// nothing" result once Supported is true, never itself a reason to
+	// report checked:false.
+	ConservationSupported bool
+	ConservationPlanes    []ConservationPlaneSummary
+}
+
+// ConservationPlaneSummary mirrors one internal/conserve.PlaneReport —
+// review's own copy of the shape (ObligationRule/CertificationRecord's
+// own precedent), so this leaf package never imports internal/conserve.
+type ConservationPlaneSummary struct {
+	Plane    string
+	Verdict  string // "conserved" | "losses" | "unproven" (conserve.Verdict's own three values)
+	Missing  []string
+	Findings []ConservationFinding
+}
+
+// ConservationFinding mirrors one internal/conserve.Finding.
+type ConservationFinding struct {
+	Plane, Kind, Key, Detail, Base, Head, Declared, Remedy string
 }
 
 // CertificationRecord is one compiled certifications-layer claim, as the
@@ -291,6 +327,7 @@ func Run(in Input) Verdict {
 		DimTestCoverage(in),
 		runCertifications(in),
 		DimIntegrity(in),
+		runConservation(in),
 	}
 
 	v := Verdict{
@@ -486,6 +523,67 @@ func runCertifications(in Input) Dimension {
 		if d.Findings[i].File != d.Findings[j].File {
 			return d.Findings[i].File < d.Findings[j].File
 		}
+		if d.Findings[i].Kind != d.Findings[j].Kind {
+			return d.Findings[i].Kind < d.Findings[j].Kind
+		}
+		return d.Findings[i].Message < d.Findings[j].Message
+	})
+	d.Count = len(d.Findings)
+	return d
+}
+
+// ─── conservation ─────────────────────────────────────────────────────────
+
+// runConservation reports internal/conserve's own report (ADR-044 §1.6,
+// CV-24), already computed by the caller into in.ConservationPlanes —
+// this leaf package runs no plane itself, exactly like runCertifications
+// never compiles the certifications layer itself. Checked is false, with
+// a reason, when in.Base is "" (mirrors DimIntegrity's own "needs a base
+// ref": review_diff's optional `since` argument was not given) or when
+// ConservationSupported is false (the caller could not build a
+// conserve.Input at all — an unresolvable Base ref, an unreadable
+// corpus). A plane finding not excused by a prior declaration ("prior")
+// is "warn"; one that is ("prior") is "info" — the same severity split
+// runCertifications applies to a non-live certificate. A plane's own
+// Missing inputs are rendered as informational findings too, never
+// silently dropped (I44: the caller must be able to see WHICH plane
+// could not be checked and why, not just that the dimension overall
+// ran).
+func runConservation(in Input) Dimension {
+	d := Dimension{Name: DimConservation}
+	if in.Base == "" {
+		d.Reason = "needs a base ref"
+		return d
+	}
+	if !in.ConservationSupported {
+		d.Reason = "conservation input could not be built"
+		return d
+	}
+	d.Checked = true
+
+	for _, p := range in.ConservationPlanes {
+		for _, m := range p.Missing {
+			d.Findings = append(d.Findings, Finding{
+				Kind: "conservation_unproven", Message: fmt.Sprintf("%s: %s", p.Plane, m), Severity: "info",
+			})
+		}
+		for _, f := range p.Findings {
+			sev := "info"
+			if f.Declared != "prior" {
+				sev = "warn"
+			}
+			cite := f.Head
+			if cite == "" {
+				cite = f.Base
+			}
+			d.Findings = append(d.Findings, Finding{
+				Kind: "conservation_" + f.Kind, Message: fmt.Sprintf("%s: %s", f.Key, f.Detail),
+				Citation: cite, Severity: sev, Status: f.Declared,
+			})
+		}
+	}
+
+	sort.Slice(d.Findings, func(i, j int) bool {
 		if d.Findings[i].Kind != d.Findings[j].Kind {
 			return d.Findings[i].Kind < d.Findings[j].Kind
 		}

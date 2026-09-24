@@ -114,6 +114,10 @@ bad9: #Config & {
 bad10: #Config & {
 	decide: sites: ["route", "made_up_site"]
 }`},
+		{"surface.pattern entry missing required regex", `
+bad11: #Config & {
+	surface: pattern: [{kind: "tool"}]
+}`},
 	}
 
 	cctx := cuecontext.New()
