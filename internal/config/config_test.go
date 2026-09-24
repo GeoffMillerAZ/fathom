@@ -389,6 +389,8 @@ func TestLoad_GuardsTable(t *testing.T) {
 // (docs/vision/32-decision-port.md, schema.cue #Decide): defaults when the
 // `[decide]` table is absent, every key parses when present, an unknown
 // provider is refused by name, and a threshold outside [0,1] is refused.
+//
+// certifies: invariant I42 (asserts)
 func TestConfig_DecideBlock(t *testing.T) {
 	t.Run("defaults when absent", func(t *testing.T) {
 		dir := t.TempDir()

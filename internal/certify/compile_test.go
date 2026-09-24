@@ -114,6 +114,7 @@ func seedCompileFixture(t *testing.T) (context.Context, store.Store) {
 	return ctx, st
 }
 
+// certifies: invariant I43 (asserts)
 func TestCompileCertifications_TierAndStateLadders(t *testing.T) {
 	ctx, st := seedCompileFixture(t)
 

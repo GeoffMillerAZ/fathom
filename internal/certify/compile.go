@@ -125,9 +125,10 @@ func CompileCertifications(ctx context.Context, st store.Store, service, waterma
 			if len(ref.Tests) == 0 {
 				// "absent = every Test* case of the suite" (design doc
 				// §1) needs a suite→test-symbol membership fathom does
-				// not yet have a store read for (test-kit's own
-				// #Suite.certifies has not landed, TC-17) — recorded as
-				// a documented stage-1 gap, never silently guessed.
+				// not yet have a store read for (TC-17 landed the
+				// `certifies` field itself; this expansion is a separate,
+				// still-open gap) — recorded as a documented stage-1 gap,
+				// never silently guessed.
 				report.Skipped = append(report.Skipped,
 					fmt.Sprintf("suite %s/%s: certifies %s %s declares no explicit tests (every-case expansion not yet available)",
 						su.Component, su.Suite, ref.Kind, ref.ID))

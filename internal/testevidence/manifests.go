@@ -126,9 +126,53 @@ func decodeManifest(v cue.Value, file string) (Manifest, error) {
 		if port := sv.LookupPath(cue.ParsePath("port")); port.Exists() {
 			su.Port, _ = port.String()
 		}
+		if certs := sv.LookupPath(cue.ParsePath("certifies")); certs.Exists() {
+			su.Certifies = decodeCertifies(certs)
+		}
 		suites = append(suites, su)
 	}
 	sort.Slice(suites, func(i, j int) bool { return suites[i].Name < suites[j].Name })
 
 	return Manifest{File: file, Component: component, Suites: suites}, nil
+}
+
+// decodeCertifies decodes a validated, concrete `certifies: [...#Certifies]`
+// list (TC-17, landed upstream in test-kit and re-mirrored at
+// schema/testkit/manifest.cue) into the CertifyRef slice
+// IngestTestEvidence writes to test_suites.declared_certifies_json for
+// internal/certify's CompileCertifications to join against the index.
+// strength always resolves concrete here since #Certifies defaults it to
+// "asserts" when the manifest omits it; tests is optional (absent means
+// "every case in the suite", design doc §1 — CompileCertifications' own
+// stage-1 gap for that expansion, not this decoder's).
+func decodeCertifies(certs cue.Value) []CertifyRef {
+	iter, err := certs.List()
+	if err != nil {
+		return nil
+	}
+	var refs []CertifyRef
+	for iter.Next() {
+		cv := iter.Value()
+		var ref CertifyRef
+		if k := cv.LookupPath(cue.ParsePath("kind")); k.Exists() {
+			ref.Kind, _ = k.String()
+		}
+		if id := cv.LookupPath(cue.ParsePath("id")); id.Exists() {
+			ref.ID, _ = id.String()
+		}
+		if s := cv.LookupPath(cue.ParsePath("strength")); s.Exists() {
+			ref.Strength, _ = s.String()
+		}
+		if ts := cv.LookupPath(cue.ParsePath("tests")); ts.Exists() {
+			if titer, terr := ts.List(); terr == nil {
+				for titer.Next() {
+					if name, nerr := titer.Value().String(); nerr == nil {
+						ref.Tests = append(ref.Tests, name)
+					}
+				}
+			}
+		}
+		refs = append(refs, ref)
+	}
+	return refs
 }

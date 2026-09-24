@@ -19,6 +19,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
+// certifies: invariant I23 (asserts)
 func TestFuncValueReferencesAreEdges(t *testing.T) {
 	dir, err := filepath.Abs(filepath.Join("testdata", "reachfix"))
 	if err != nil {

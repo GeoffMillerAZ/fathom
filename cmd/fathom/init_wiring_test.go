@@ -15,6 +15,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/wiring"
 )
 
+// certifies: invariant I13 (asserts)
 func TestInitWritesReceipt(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	dir := t.TempDir()

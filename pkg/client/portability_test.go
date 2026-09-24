@@ -51,6 +51,7 @@ const portGoSrc = `package mod
 func Anchor() int { return 42 }
 `
 
+// certifies: invariant I3 (asserts)
 func TestStorePortability_RoundTrip(t *testing.T) {
 	ctx := context.Background()
 
