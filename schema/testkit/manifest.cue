@@ -47,6 +47,37 @@ import "struct"
 	perPackageMin?: number & >=0 & <=100
 }
 
+// #Certifies names what a suite certifies: a target the organization has
+// decided matters — an invariant, a spec, a governing rule, an incident,
+// a port, or a declared behaviour (docs/design/test-certifications.md,
+// vision 33 / ADR-0042 amendment). This is vocabulary and declaration
+// ONLY: test-kit records that a suite claims to certify a target, fathom
+// joins the claim against its own index and computes whether it holds
+// live, and Review Kit judges whether live is enough. test-kit checks
+// none of that — the same separation `port` already draws for conformance
+// suites.
+//
+// The per-test marker `// certifies: <kind> <id> (<strength>)` on the
+// comment line(s) above a test function is a SEPARATE surface: comment
+// grammar fathom's extractors read directly from source, never parsed by
+// this schema or by surveyor. The two surfaces share one vocabulary so a
+// suite-level declaration and a per-test marker never disagree about what
+// a `kind` or a `strength` can be.
+#Certifies: {
+	kind: "invariant" | "spec" | "rule" | "incident" | "port" | "behaviour"
+	id:   string & !="" // I35 · US-12 · CLAUDE.md#deploy · INC-21 · billing/ports.Ledger · a free id
+
+	// The ladder is closed and ordered: smoke < asserts < golden <
+	// property < conformance < mutation-killed. Only `mutation-killed` is
+	// corroborated mechanically; the rest are declared, then checked for
+	// the minimum they imply.
+	strength: *"asserts" | "smoke" | "property" | "golden" | "conformance" | "mutation-killed"
+
+	// tests names the Test* cases inside the suite that carry the
+	// certification; absent means every case in the suite does.
+	tests?: [...string]
+}
+
 // #FlakePolicy — retry lineage is data, never hidden (ADR-0042 §2).
 #FlakePolicy: {
 	maxRetries:      int & >=0 | *0
@@ -94,6 +125,19 @@ import "struct"
 	// concrete.
 	flake: #FlakePolicy
 	tier:  #Tier
+
+	// certifies is OPTIONAL and additive: a suite that declares nothing
+	// here is a suite fathom's gap list will find, not a suite test-kit
+	// refuses. See #Certifies for the vocabulary.
+	certifies?: [...#Certifies]
+
+	// A `conformance` certificate claims the suite exists to prove one
+	// port's contract — the same claim `port` below makes structural.
+	// Outside a suite of class conformance that claim is meaningless, so
+	// it is refused the same way: a unification failure, not a lint pass.
+	if class != "conformance" {
+		certifies?: [...#Certifies & {strength: !="conformance"}]
+	}
 
 	// conformance is reserved for PORT ADAPTERS (ADR-0042 §1), which is
 	// ADR-0003's "every port has a shared conformance suite" requirement

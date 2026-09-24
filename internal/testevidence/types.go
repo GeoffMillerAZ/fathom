@@ -19,15 +19,14 @@ type Suite struct {
 	// Port is "" unless Class is "conformance" (the schema requires it
 	// there — ADR-0003's "every port has a shared conformance suite").
 	Port string
-	// Certifies is always empty this round: test-kit's #Suite.certifies
-	// field is a stage-1 ADR-0042 amendment (plan row TC-17) that has not
-	// landed upstream yet.
+	// Certifies is decoded from the manifest's `certifies` block (TC-17
+	// landed upstream, schema/testkit/manifest.cue re-mirrored, TC-15):
+	// nil when the suite declares none.
 	Certifies []CertifyRef
 }
 
-// CertifyRef is one #Certifies entry declared on a suite (design doc §1).
-// Unused until test-kit lands #Suite.certifies (TC-17); defined now so
-// stage 1 needs no shape change to start populating it.
+// CertifyRef is one #Certifies entry declared on a suite (design doc §1),
+// decoded by decodeManifest from a manifest's `certifies` block.
 type CertifyRef struct {
 	Kind     string
 	ID       string
