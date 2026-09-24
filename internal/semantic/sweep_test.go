@@ -352,6 +352,97 @@ func TestSweep_ReanchorsOnUpstreamLineShift(t *testing.T) {
 	})
 }
 
+// TestReanchorCitation_MovedLinesStayFresh is CV-40 (docs/plans/
+// refactor-conservation.md, docs/design/refactor-conservation.md §6):
+// ReanchorCitation is the T5-1/O13 heal decision (sweep.go) extracted to its
+// own named, directly testable function — a claim citation whose lines no
+// longer contain the stored anchor text is re-pointed when that anchor text
+// occurs exactly once elsewhere in the same file content; otherwise it
+// reports ok=false so the caller falls through to stale, exactly as before
+// this extraction. Fixture: lines shift (an insertion above the anchor).
+func TestReanchorCitation_MovedLinesStayFresh(t *testing.T) {
+	ctx := context.Background()
+
+	original := []byte("line one\nline two\nTARGET TEXT\nline four\n")
+	shifted := []byte("inserted\nline one\nline two\nTARGET TEXT\nline four\n")
+	rewritten := []byte("inserted\nline one\nline two\nDIFFERENT TEXT\nline four\n")
+	duplicated := []byte("inserted\nline one\nTARGET TEXT\nline two\nTARGET TEXT\nline four\n")
+
+	hash, ok := core.HashLines(original, 3, 3)
+	if !ok {
+		t.Fatal("seed hash")
+	}
+	cite := core.ClaimLink{
+		TargetRef:  core.CiteRef("d.md", 3, 3),
+		TargetHash: hash,
+		AnchorText: "TARGET TEXT",
+	}
+
+	t.Run("lines shift: re-points to the new range with a fresh hash", func(t *testing.T) {
+		newRef, newHash, ok := ReanchorCitation(shifted, cite)
+		if !ok {
+			t.Fatal("want ok=true: the anchor text occurs exactly once elsewhere in the file")
+		}
+		wantRef := core.CiteRef("d.md", 4, 4)
+		if newRef != wantRef {
+			t.Errorf("newRef = %q, want %q", newRef, wantRef)
+		}
+		wantHash, _ := core.HashLines(shifted, 4, 4)
+		if newHash != wantHash {
+			t.Errorf("newHash = %q, want %q (the fresh hash at the new range)", newHash, wantHash)
+		}
+	})
+
+	t.Run("anchor text gone: falls through, never a guess", func(t *testing.T) {
+		if _, _, ok := ReanchorCitation(rewritten, cite); ok {
+			t.Error("want ok=false: the anchor text is gone, this must not heal")
+		}
+	})
+
+	t.Run("anchor text ambiguous: falls through, never a guess", func(t *testing.T) {
+		if _, _, ok := ReanchorCitation(duplicated, cite); ok {
+			t.Error("want ok=false: two matches for the anchor text is ambiguous")
+		}
+	})
+
+	t.Run("no stored anchor text: legacy hash-only link cannot heal", func(t *testing.T) {
+		legacy := cite
+		legacy.AnchorText = ""
+		if _, _, ok := ReanchorCitation(shifted, legacy); ok {
+			t.Error("want ok=false: no stored anchor text to search with")
+		}
+	})
+
+	// End-to-end through the real sweep: the claim stays fresh with the new
+	// line range when the anchor text moved, and goes stale — as today —
+	// when nothing matches.
+	t.Run("full sweep: fresh across the shift, stale when the text is gone", func(t *testing.T) {
+		st := store.NewMemoryStore()
+		seedClaimAnchored(t, st, "c-cv40-fresh", "d.md#target", core.ClaimFresh, "d.md", original, 3, 3)
+
+		rep, err := Sweep(ctx, st, "svc", func(string) ([]byte, bool) { return shifted, true }, nil)
+		if err != nil {
+			t.Fatalf("Sweep: %v", err)
+		}
+		if rep.ReAnchored != 1 || rep.Fresh != 1 || rep.Stale != 0 {
+			t.Fatalf("report %+v, want reanchored=1 fresh=1 stale=0", rep)
+		}
+		if status := statusByID(t, st)["c-cv40-fresh"]; status != core.ClaimFresh {
+			t.Fatalf("c-cv40-fresh = %s, want fresh (healed)", status)
+		}
+
+		st2 := store.NewMemoryStore()
+		seedClaimAnchored(t, st2, "c-cv40-stale", "d.md#target", core.ClaimFresh, "d.md", original, 3, 3)
+		rep2, err := Sweep(ctx, st2, "svc", func(string) ([]byte, bool) { return rewritten, true }, nil)
+		if err != nil {
+			t.Fatalf("Sweep: %v", err)
+		}
+		if rep2.Stale != 1 || rep2.ReAnchored != 0 {
+			t.Fatalf("report %+v, want stale=1 reanchored=0 (anchor text gone, no guess)", rep2)
+		}
+	})
+}
+
 func TestSweep_FlipsAndHeals(t *testing.T) {
 	ctx := context.Background()
 	st := store.NewMemoryStore()

@@ -55,13 +55,15 @@ futures may justify a free option today. The repo's own sequence is
 - Preserve: findings persist as `kind:"finding"` claims; non-git watermarks (ADR-017).
 - Promote when: the obligations gate has passed AND ≥15–20 resolved findings exist.
 - Drop if: two replay attempts put the true root-cause class in the top-3 for <70% of a 20-incident set.
-- Trigger status (2026-09-18, vision 30 / ADR-040 landing): not fired. The findings eval
-  gate is still `not-gated` (`docs/layers.md`'s `findings` row — `TestFindingsEval_Precision`
-  has not run against a real model); the resolved-finding count is BuildStatus's own tally
-  across every finding-kind claim regardless of origin, so an imported review-kit finding
-  (once `fathom findings import` lands, FL-10) counts toward the same ≥15–20 threshold this
-  future is watching — the findings loop widens the funnel, it does not promote anything by
-  itself.
+- Trigger status (2026-09-24, CV-M10 / docs/plans/refactor-conservation.md): still not fired,
+  but half the condition cleared. The findings eval gate now passes (`docs/layers.md`'s
+  `findings` row — `TestFindingsEval_Precision`: precision 1.00 / recall 1.00, 2 consecutive
+  production-model runs, `schema/semantic/layers/findings/eval/RESULTS.md`); the ≥15–20
+  resolved-finding half is unmeasured here and, on a fixture-scale corpus, presumed well
+  below the bar. The resolved-finding count is BuildStatus's own tally across every
+  finding-kind claim regardless of origin, so an imported review-kit finding (once `fathom
+  findings import` lands, FL-10) counts toward the same ≥15–20 threshold this future is
+  watching — the findings loop widens the funnel, it does not promote anything by itself.
 
 ## F5. Provider pack type (TX-3)
 

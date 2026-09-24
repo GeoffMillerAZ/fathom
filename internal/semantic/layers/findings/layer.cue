@@ -37,6 +37,11 @@ role: "claims"
 // concern: fathom-authored, eval-gated-embedded — see obligations/layer.cue
 // for the full stratum reasoning (ADR-024, docs/design/pack-taxonomy.md).
 stratum: "concern"
+// eval/RESULTS.md (CV-M10, docs/plans/refactor-conservation.md): 1.00
+// precision / 1.00 recall, 2 consecutive runs on the production compile
+// model, once the eval harness's own scope-fp fingerprint gap (RunEval,
+// internal/semantic/eval.go) was fixed. Result: PASS.
+evaled: true
 budgets: {
 	max_tokens_per_run: 200000
 	max_usd_per_run:    1.0

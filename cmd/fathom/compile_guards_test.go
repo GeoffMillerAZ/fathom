@@ -116,17 +116,51 @@ func latestCompileRunEscape(t *testing.T, storePath, service, layer string) stri
 
 // ─── D3-1: eval-gate ──────────────────────────────────────────────────────
 
+// writeUnevaledTestPack installs a project-local pack at root's
+// .fathom/layers/<name>/ that carries no `evaled` field at all — the
+// schema's own zero value, `false` (#Layer.evaled) — so it is a genuinely
+// un-evaled layer for the D3-1 guard tests. CV-M10 (docs/plans/
+// refactor-conservation.md) flipped every EMBEDDED pack (obligations,
+// findings, adr-rules, spec-bindings) to evaled:true, so these guard tests
+// can no longer reach for "findings" as their un-evaled fixture — a
+// project-local pack plays that role instead.
+func writeUnevaledTestPack(t *testing.T, root, name string) {
+	t.Helper()
+	packDir := filepath.Join(root, ".fathom", "layers", name)
+	if err := os.MkdirAll(packDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	layerCUE := fmt.Sprintf(`name:    %q
+version: "v1"
+kind:    "test-kind"
+corpus: include: ["findings/**"]
+prompt_version: %q
+prompt_file:    %q
+tier:           "doc-claimed"
+budgets: {
+	max_tokens_per_run: 1000
+	max_usd_per_run:    0.1
+}
+`, name, name+"/fixture", name+"/prompt.md")
+	if err := os.WriteFile(filepath.Join(packDir, "layer.cue"), []byte(layerCUE), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(packDir, "prompt.md"), []byte(`Emit {"claims": []}.`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestCmdCompile_EvalGate_RefusesUnEvaledLayer(t *testing.T) {
-	storePath, _ := newGuardTestStore(t)
-	// findings is shipped without eval/ yet (docs/layers.md) — LayerDef.Evaled
-	// is false. No LLM provider is configured at all: a correct guard refuses
-	// BEFORE ever trying to build an LLM client.
+	storePath, root := newGuardTestStore(t)
+	writeUnevaledTestPack(t, root, "unevaled-pack")
+	// No LLM provider is configured at all: a correct guard refuses BEFORE
+	// ever trying to build an LLM client.
 	t.Setenv("FATHOM_LLM_PROVIDER", "")
 	t.Setenv("ANTHROPIC_API_KEY", "")
 
 	var stdout, stderr bytes.Buffer
 	code := cmdCompile([]string{
-		"--service", "svc", "--layer", "findings", "--store", storePath, "--dry-run=false",
+		"--service", "svc", "--layer", "unevaled-pack", "--store", storePath, "--dry-run=false",
 	}, &stdout, &stderr)
 	if code != 1 {
 		t.Fatalf("exit code = %d, want 1 (refused); stdout=%q stderr=%q", code, stdout.String(), stderr.String())
@@ -137,28 +171,29 @@ func TestCmdCompile_EvalGate_RefusesUnEvaledLayer(t *testing.T) {
 	if !strings.Contains(stderr.String(), "--unsafe-skip-eval-gate") {
 		t.Errorf("stderr should name the escape flag, got %q", stderr.String())
 	}
-	if n := countCompileRuns(t, storePath, "svc", "findings"); n != 0 {
+	if n := countCompileRuns(t, storePath, "svc", "unevaled-pack"); n != 0 {
 		t.Errorf("a refused compile must not write a compile_run row, got %d", n)
 	}
 }
 
 func TestCmdCompile_EvalGate_UnsafeSkipOverridesAndLogsEscape(t *testing.T) {
-	storePath, _ := newGuardTestStore(t)
+	storePath, root := newGuardTestStore(t)
+	writeUnevaledTestPack(t, root, "unevaled-pack")
 	t.Setenv("FATHOM_LLM_PROVIDER", "claude-cli")
 	t.Setenv("FATHOM_CLAUDE_BIN", newFakeClaudeCLIClaims(t))
 
 	var stdout, stderr bytes.Buffer
 	code := cmdCompile([]string{
-		"--service", "svc", "--layer", "findings", "--store", storePath, "--dry-run=false",
+		"--service", "svc", "--layer", "unevaled-pack", "--store", storePath, "--dry-run=false",
 		"--unsafe-skip-eval-gate",
 	}, &stdout, &stderr)
 	if code != 0 {
 		t.Fatalf("exit code = %d, want 0 (override should let the compile proceed); stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 	}
-	if n := countCompileRuns(t, storePath, "svc", "findings"); n != 1 {
+	if n := countCompileRuns(t, storePath, "svc", "unevaled-pack"); n != 1 {
 		t.Fatalf("expected exactly 1 compile_run after the override run, got %d", n)
 	}
-	escape := latestCompileRunEscape(t, storePath, "svc", "findings")
+	escape := latestCompileRunEscape(t, storePath, "svc", "unevaled-pack")
 	if escape == "" {
 		t.Fatal("compile_runs.escape must be non-empty when --unsafe-skip-eval-gate overrode a refusal (D3-1: \"logged into compile_runs\")")
 	}
@@ -498,13 +533,14 @@ func TestCmdCompile_GuardFlagsRefusedWithoutStore(t *testing.T) {
 // contract): an un-evaled layer's dry-run estimate must still work with no
 // escape flag, since nothing is spent or written.
 func TestCmdCompile_DryRun_NeverGuardGated(t *testing.T) {
-	storePath, _ := newGuardTestStore(t)
+	storePath, root := newGuardTestStore(t)
+	writeUnevaledTestPack(t, root, "unevaled-pack")
 	t.Setenv("FATHOM_LLM_PROVIDER", "")
 	t.Setenv("ANTHROPIC_API_KEY", "")
 
 	var stdout, stderr bytes.Buffer
 	code := cmdCompile([]string{
-		"--service", "svc", "--layer", "findings", "--store", storePath, "--dry-run=true",
+		"--service", "svc", "--layer", "unevaled-pack", "--store", storePath, "--dry-run=true",
 	}, &stdout, &stderr)
 	if code != 0 {
 		t.Fatalf("dry-run of an un-evaled layer should never be gated, got exit %d; stdout=%q stderr=%q", code, stdout.String(), stderr.String())

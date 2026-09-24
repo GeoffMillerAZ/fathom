@@ -120,6 +120,24 @@ func RunEval(ctx context.Context, llm llmclient.LLMClient, model string, layer L
 	}
 
 	st := store.NewMemoryStore()
+	// CV-M10 (docs/layers.md "findings" catalog row, schema/semantic/layers/
+	// findings/eval/RESULTS.md's 2026-07-30 BLOCKED run): a drift-tracked
+	// layer's compiler (verifyDraft, compile.go) persists a scope-fp link
+	// for every indexed file a claim's scope matches, reading each one's
+	// CURRENT fingerprint from the store — the same contract a real ingest's
+	// fusion pipeline satisfies via SetFingerprint on every processed file.
+	// This eval harness is not a real ingest, so a fresh MemoryStore carried
+	// no fingerprint for any probe path, and the compile aborted loudly
+	// (errDriftAnchor) before a single claim could be scored — exactly the
+	// gap RESULTS.md's own "Fix direction" named. Seed one deterministic,
+	// content-independent fingerprint per probe here: the eval proves the
+	// compile can complete and score correctly, not real drift correctness,
+	// so the fingerprint's VALUE never matters, only its presence.
+	for _, probe := range labels.Probes {
+		if err := st.SetFingerprint(ctx, "eval", probe, "eval-fixture:"+probe); err != nil {
+			return EvalResult{}, fmt.Errorf("semantic: eval seed fingerprint for %s: %w", probe, err)
+		}
+	}
 	c := &Compiler{St: st, LLM: llm, Model: model, Layer: layer, Now: now}
 	run, err := c.Compile(ctx, CompileInput{
 		ServiceID:    "eval",

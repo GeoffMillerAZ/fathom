@@ -111,6 +111,70 @@ func TestRunEval_MockLane_FalsePositiveFailsGate(t *testing.T) {
 	}
 }
 
+// TestRunEval_DriftTrackedLayerSeedsProbeFingerprints is CV-M10's fixture/
+// harness gap fix (docs/layers.md "findings" catalog row,
+// schema/semantic/layers/findings/eval/RESULTS.md's 2026-07-30 BLOCKED
+// run): findings is drift_tracked (FT-6), so its compiler persists a
+// scope-fp link for every indexed (probe) file a claim's scope matches —
+// and aborts the WHOLE compile with errDriftAnchor when the store carries
+// no fingerprint for one, exactly the "indexed file ... has no stored
+// fingerprint" failure RESULTS.md recorded against a real model. RunEval's
+// fresh MemoryStore never seeded one for any probe path; this proves the
+// harness now does, deterministically, with a mock LLM (no tokens spent).
+func TestRunEval_DriftTrackedLayerSeedsProbeFingerprints(t *testing.T) {
+	dir := t.TempDir()
+	doc := "## wa-101\n\nStatus: open\n\nA connection is acquired without a guaranteed release on error.\n"
+	if err := os.WriteFile(filepath.Join(dir, "finding.md"), []byte(doc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Three probes, matching only ONE with an exact-file scope (not a
+	// single-file-class extension glob): a fixture with just one probe
+	// would trip the UNRELATED over-broad-scope guard (>50% of indexed
+	// files) before ever reaching the drift-anchor fingerprint check this
+	// test targets — mirrors the real findings fixture's multi-probe shape
+	// (schema/semantic/layers/findings/eval/labels.json).
+	labels := EvalLabels{
+		Docs:   []string{"finding.md"},
+		Probes: []string{"internal/store/pool.go", "internal/mcp/server.go", "internal/analysis/review.go"},
+		Rules: []struct {
+			Key               string   `json:"key"`
+			CiteSubstr        string   `json:"cite_substr"`
+			Governs           []string `json:"governs"`
+			TrapMustNotGovern []string `json:"trap_must_not_govern"`
+		}{
+			{Key: "pool-leak", CiteSubstr: "acquired without a guaranteed release", Governs: []string{"internal/store/pool.go"}},
+		},
+	}
+	raw, err := json.Marshal(labels)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "labels.json"), raw, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	mock := llmclient.NewMockClient(llmclient.MockEntry{Response: llmclient.Response{
+		Text: `{"claims":[{"rule":"A connection is acquired without a guaranteed release.","scope":["internal/store/pool.go"],"cite_start":5,"cite_end":5,"class":"resource-leak"}]}`,
+	}})
+	layer, err := LoadLayer(LayerFindings)
+	if err != nil {
+		t.Fatalf("LoadLayer: %v", err)
+	}
+	if !layer.Serving.DriftTracked {
+		t.Fatal("findings must be drift_tracked for this regression to mean anything")
+	}
+	fixedNow := func() time.Time { return time.Date(2026, 7, 30, 0, 0, 0, 0, time.UTC) }
+
+	result, err := RunEval(context.Background(), mock, "mock-model", layer, dir, fixedNow)
+	if err != nil {
+		t.Fatalf("RunEval: %v (the eval harness must seed a fingerprint for every probe path before compiling a drift-tracked layer)", err)
+	}
+	if !result.PassesGate() {
+		t.Errorf("expected the perfectly-labeled fixture to pass, got precision=%.2f recall=%.2f (tp=%d fp=%d fn=%d) missed=%v",
+			result.Precision, result.Recall, result.TP, result.FP, result.FN, result.MissedRuleKeys)
+	}
+}
+
 func TestRunEval_MissingLabelsJSON(t *testing.T) {
 	dir := t.TempDir()
 	layer, err := LoadLayer(LayerObligations)

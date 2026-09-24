@@ -370,15 +370,14 @@ func TestLayers_List_ShowsEvalColumnFromManifestData(t *testing.T) {
 	}
 	for _, line := range strings.Split(got, "\n") {
 		switch {
-		case strings.HasPrefix(line, "obligations"), strings.HasPrefix(line, "adr-rules"), strings.HasPrefix(line, "spec-bindings"):
+		// CV-M10 (docs/plans/refactor-conservation.md, 2026-09-24) cleared
+		// findings' own eval gate (precision 1.00 / recall 1.00, 2
+		// consecutive production-model runs — schema/semantic/layers/
+		// findings/eval/RESULTS.md) — every embedded layer now shows a
+		// passing eval status, findings included.
+		case strings.HasPrefix(line, "obligations"), strings.HasPrefix(line, "adr-rules"), strings.HasPrefix(line, "spec-bindings"), strings.HasPrefix(line, "findings"):
 			if !strings.Contains(line, "pass") {
 				t.Errorf("evaled layer row should show a passing eval status: %q", line)
-			}
-		case strings.HasPrefix(line, "findings"):
-			// findings ships without eval/ yet (docs/layers.md) — LayerDef.Evaled
-			// is false; the CLI must say so, not silently omit the column.
-			if !strings.Contains(line, "not-gated") {
-				t.Errorf("un-evaled findings row should say not-gated: %q", line)
 			}
 		}
 	}

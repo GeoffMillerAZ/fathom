@@ -34,7 +34,7 @@ import (
 func cmdCompile(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("compile", stderr)
 	service := fs.String("service", "", "service ID (required)")
-	layer := fs.String("layer", "obligations", "layer to compile (must be defined in the semantic-layer manifest, schema/semantic/schema.cue; see ADR-016)")
+	layer := fs.String("layer", "", "layer to compile (must be defined in the semantic-layer manifest, schema/semantic/schema.cue; see ADR-016). Empty (the default) compiles CV-41's default compile set: \"obligations\" always, plus \"adr-rules\"/\"spec-bindings\" when their own corpus matches at least one file in the service's root (direct --store mode only; HTTP mode falls back to \"obligations\" — see semantic.DefaultLayersFor, docs/layers.md)")
 	dryRun := fs.Bool("dry-run", true, "estimate cost without calling the LLM (default true; use --dry-run=false to spend)")
 	storePath := fs.String("store", "", "store path, .sqlite/.db (direct mode; bypasses daemon)")
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL (HTTP mode)")
@@ -62,12 +62,18 @@ func cmdCompile(args []string, stdout, stderr io.Writer) int {
 	// exact bug class this slice closed at the MCP handler by deleting its
 	// pre-check entirely. Unknown at CWD therefore warns and passes through;
 	// the backend's own resolution error is the only rejection.
-	validateRoot, rerr := os.Getwd()
-	if rerr != nil {
-		validateRoot = ""
-	}
-	if _, err := semantic.LoadLayerIn(validateRoot, *layer); err != nil {
-		fmt.Fprintf(stderr, "warning: %v\nwarning: (checked against the current directory only — proceeding; the compile resolves layers against the service's own ingested root)\n", err)
+	// *layer == "" means the caller named none — CV-41's DefaultLayersFor
+	// picks the compile set instead, resolved below against the service's
+	// own root once it's known; there is nothing to validate against CWD
+	// yet.
+	if *layer != "" {
+		validateRoot, rerr := os.Getwd()
+		if rerr != nil {
+			validateRoot = ""
+		}
+		if _, err := semantic.LoadLayerIn(validateRoot, *layer); err != nil {
+			fmt.Fprintf(stderr, "warning: %v\nwarning: (checked against the current directory only — proceeding; the compile resolves layers against the service's own ingested root)\n", err)
+		}
 	}
 	// N2 (config-experience review): HTTP mode has no --profile plumbing —
 	// the daemon compiles with ITS OWN configured profile
@@ -106,9 +112,60 @@ func cmdCompile(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if *storePath != "" {
-		return compileViaStore(*storePath, *service, *layer, *profile, *dryRun, *force, *unsafeSkipEvalGate, *resume, budget, stdout, stderr)
+		return compileDefaultAwareViaStore(*storePath, *service, *layer, *profile, *dryRun, *force, *unsafeSkipEvalGate, *resume, budget, stdout, stderr)
 	}
-	return compileViaHTTP(*url, *service, *layer, *dryRun, stdout, stderr)
+	// HTTP mode has no plumbing to resolve the service's root from here (the
+	// daemon, not this CLI process, holds ServiceMeta) — CV-41's default
+	// compile set is a direct --store mode feature; an empty --layer over
+	// HTTP falls back to the single layer "obligations" always compiled by
+	// default before this row, so an existing HTTP caller sees no change.
+	httpLayer := *layer
+	if httpLayer == "" {
+		httpLayer = semantic.LayerObligations
+	}
+	return compileViaHTTP(*url, *service, httpLayer, *dryRun, stdout, stderr)
+}
+
+// compileDefaultAwareViaStore is cmdCompile's direct --store dispatch.
+// layer == "" means the caller named none: CV-41's semantic.DefaultLayersFor
+// picks the compile set for the service's own ingested root (obligations
+// always, plus adr-rules/spec-bindings when their corpus matches at least
+// one file) instead of the caller silently getting one hardcoded layer, and
+// each picked layer compiles in turn. A named layer is a pass-through to
+// compileViaStore, byte-identical to before this row. The combined exit
+// code is non-zero if any layer in the set fails.
+func compileDefaultAwareViaStore(storePath, service, layer, profileFlag string, dryRun, force, unsafeSkipEvalGate, resume bool, budget *semantic.BudgetOverride, stdout, stderr io.Writer) int {
+	layers := []string{layer}
+	if layer == "" {
+		layers = semantic.DefaultLayersFor(serviceRootFromStore(storePath, service))
+	}
+	code := 0
+	for i, ly := range layers {
+		if i > 0 {
+			fmt.Fprintln(stdout)
+		}
+		if rc := compileViaStore(storePath, service, ly, profileFlag, dryRun, force, unsafeSkipEvalGate, resume, budget, stdout, stderr); rc != 0 {
+			code = rc
+		}
+	}
+	return code
+}
+
+// serviceRootFromStore resolves service's recorded ingest root (ServiceMeta)
+// by opening storePath just long enough to read it — the same authoritative
+// source compileViaStore's own eval/idempotency guards already resolve
+// against. Empty on any failure (unopenable store, unknown service):
+// DefaultLayersFor then degrades to {"obligations"} alone, never a guess.
+func serviceRootFromStore(storePath, service string) string {
+	st, err := store.Open(storePath)
+	if err != nil {
+		return ""
+	}
+	defer st.Close()
+	if meta, found, merr := st.GetServiceMeta(context.Background(), service); merr == nil && found {
+		return meta.Path
+	}
+	return ""
 }
 
 // parseBudgetOverride turns --max-tokens-per-run/--max-usd-per-run's raw
