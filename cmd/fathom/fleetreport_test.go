@@ -107,3 +107,110 @@ func TestFleetReportUnprovenColumnHonestNA(t *testing.T) {
 		t.Fatalf("the column must be in the header:\n%s", md)
 	}
 }
+
+// TestFleetWiringNotes_DetectsUserScopeWiring pins DG-14/O15: a project
+// settings.json with zero (or no) fathom references does not mean fathom
+// has no hooks here — `fathom init`'s own user-scope dedup (O42)
+// deliberately wires hooks at ~/.claude/settings.json instead of
+// per-project once they're already present there. fleetWiringNotes must
+// check that scope before reporting an absence, and the reported note must
+// carry the "hook reference" substring realizationGrade and observatory's
+// wiring-remedy check both key off — otherwise a real user-scope find
+// still grades as a wiring gap and gets a bogus reconcile remedy.
+func TestFleetWiringNotes_DetectsUserScopeWiring(t *testing.T) {
+	t.Run("project settings.json present but empty of fathom refs falls back to user scope", func(t *testing.T) {
+		home := t.TempDir()
+		t.Setenv("HOME", home)
+		if err := os.MkdirAll(filepath.Join(home, ".claude"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(home, ".claude", "settings.json"), []byte(`{"hooks":{"PostToolUse":[{"hooks":[{"command":"fathom edit-hook"}]}]}}`), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		repo := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(repo, ".claude"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(repo, ".claude", "settings.json"), []byte(`{"hooks":{}}`), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		hooks, _ := fleetWiringNotes(repo)
+		if !strings.Contains(hooks, "user scope") {
+			t.Fatalf("hooks note must name the user scope: %q", hooks)
+		}
+		if !strings.Contains(hooks, "hook reference") {
+			t.Fatalf("hooks note must carry the substring realizationGrade/observatory key off: %q", hooks)
+		}
+	})
+
+	t.Run("no project settings.json at all also falls back to user scope", func(t *testing.T) {
+		home := t.TempDir()
+		t.Setenv("HOME", home)
+		if err := os.MkdirAll(filepath.Join(home, ".claude"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(home, ".claude", "settings.json"), []byte(`{"hooks":{"PostToolUse":[{"hooks":[{"command":"fathom edit-hook"}]}]}}`), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		repo := t.TempDir() // no .claude/settings.json here at all
+
+		hooks, _ := fleetWiringNotes(repo)
+		if !strings.Contains(hooks, "user scope") || !strings.Contains(hooks, "hook reference") {
+			t.Fatalf("hooks note must report the user-scope find: %q", hooks)
+		}
+	})
+
+	t.Run("neither scope wired reports the honest absence, unchanged", func(t *testing.T) {
+		home := t.TempDir()
+		t.Setenv("HOME", home) // no ~/.claude/settings.json in this HOME
+
+		repo := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(repo, ".claude"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(repo, ".claude", "settings.json"), []byte(`{"hooks":{}}`), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		hooks, _ := fleetWiringNotes(repo)
+		if hooks != "settings.json present, no fathom hooks" {
+			t.Fatalf("got %q, want the unchanged honest-absence message", hooks)
+		}
+	})
+
+	t.Run("realizationGrade treats a user-scope find as wired, not a gap", func(t *testing.T) {
+		home := t.TempDir()
+		t.Setenv("HOME", home)
+		if err := os.MkdirAll(filepath.Join(home, ".claude"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(home, ".claude", "settings.json"), []byte(`{"hooks":{"PostToolUse":[{"hooks":[{"command":"fathom edit-hook"}]}]}}`), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		repo := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(repo, ".claude"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(repo, ".claude", "settings.json"), []byte(`{"hooks":{}}`), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		hooks, stanza := fleetWiringNotes(repo)
+		row := obsServiceRow{fleetServiceRow: fleetServiceRow{Service: "svc", HooksNote: hooks, StanzaNote: stanza}}
+		row.StanzaNote = "present"
+		rep := realizationGrade(row, realizationWindow{HasPlans: false})
+		for _, d := range rep.Dims {
+			if d.Name != "wired" {
+				continue
+			}
+			if d.Met == nil || !*d.Met {
+				t.Fatalf("wired dim = %+v, want MET given a genuine user-scope find (%q)", d, hooks)
+			}
+			return
+		}
+		t.Fatal("no 'wired' dimension in the report")
+	})
+}

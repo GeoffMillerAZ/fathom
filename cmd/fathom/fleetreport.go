@@ -277,12 +277,29 @@ func fleetWiringNotes(path string) (hooks, stanza string) {
 	case err == nil:
 		n := strings.Count(string(data), "fathom")
 		if n == 0 {
-			hooks = "settings.json present, no fathom hooks"
+			// O15/DG-14: a project settings.json with zero fathom
+			// references does not mean fathom has no hooks here —
+			// `fathom init`'s own user-scope dedup (O42) deliberately
+			// wires hooks at ~/.claude/settings.json instead of
+			// per-project whenever they are already present there. Check
+			// that scope before reporting an absence this confidently;
+			// the realization grader (realizationGrade) keys off the
+			// "hook reference" substring, so a genuine user-scope find
+			// grades as wired, not as a gap.
+			if un, ok := userScopeFathomHookCount(); ok && un > 0 {
+				hooks = fmt.Sprintf("wired at user scope (%d fathom hook reference(s) in ~/.claude/settings.json; none in project settings.json)", un)
+			} else {
+				hooks = "settings.json present, no fathom hooks"
+			}
 		} else {
 			hooks = fmt.Sprintf("%d fathom hook reference(s) in project settings", n)
 		}
 	case os.IsNotExist(err):
-		hooks = "no project settings.json (user-scope or plugin wiring not visible from here)"
+		if un, ok := userScopeFathomHookCount(); ok && un > 0 {
+			hooks = fmt.Sprintf("wired at user scope (%d fathom hook reference(s) in ~/.claude/settings.json)", un)
+		} else {
+			hooks = "no project settings.json (user-scope or plugin wiring not visible from here)"
+		}
 	default:
 		hooks = "settings.json unreadable: " + err.Error()
 	}
@@ -298,6 +315,25 @@ func fleetWiringNotes(path string) (hooks, stanza string) {
 		stanza = "unreadable: " + err.Error()
 	}
 	return hooks, stanza
+}
+
+// userScopeFathomHookCount counts "fathom" occurrences in the current
+// user's ~/.claude/settings.json — the same file `fathom init`'s
+// user-scope dedup (O42) and doctor's checkHooksInstalled already treat as
+// a valid wiring scope. ok is false when $HOME cannot be resolved or the
+// file is absent/unreadable, so callers fall back to reporting only what
+// the project scope showed rather than claiming an absence they never
+// checked.
+func userScopeFathomHookCount() (int, bool) {
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return 0, false
+	}
+	data, err := os.ReadFile(filepath.Join(home, ".claude", "settings.json"))
+	if err != nil {
+		return 0, false
+	}
+	return strings.Count(string(data), "fathom"), true
 }
 
 func renderFleetReportMD(rep fleetReport) string {
