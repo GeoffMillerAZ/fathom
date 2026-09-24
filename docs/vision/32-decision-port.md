@@ -6,6 +6,11 @@ the Strengths Bench"). Plan: `docs/plans/decision-port.md`. Default: off.
 same day, ahead of the A/B this doc originally gated it on — the "parked until
 access" clause below is superseded; access is a key the operator supplies
 (`[decide].api_key_env`/`api_key_cmd`, else `TYPESAFE_API_KEY`), not a blocker.
+**Amendment 2026-09-23:** `rank_within_tier` now defaults to **false** even
+when a provider is configured — §4's own decision-port A/B measured the
+obligations re-rank net negative on governed edits (guards-jev-r1). Routing
+and the compile pre-filter are unchanged and default on once a provider is
+set. See §4 and `docs/bench/readings/decision-port-ab-2026-09-23.md`.
 
 ## 1. The question
 
@@ -48,7 +53,7 @@ provider           = "none"   # none | llm | typesafe (default none: no call is 
 profile            = ""       # llm: the [llm] profile lane to use (default: the compile lane)
 compile_threshold  = 0.5      # noul below this → the section is not compiled
 route_confidence   = 0.9      # choice confidence at/above this → one firm route line
-rank_within_tier   = true     # obligations: re-rank inside a governing-scope tier only
+rank_within_tier   = false    # obligations: re-rank inside a governing-scope tier only (default false since 2026-09-23 — see the amendment above)
 ```
 
 Three sites, each with its deterministic path intact:
@@ -107,6 +112,26 @@ clock; bar: no served rule lost, under ten minutes and a dollar), obligations
 routing (fraction of issue-shaped prompts reaching `localize`, hit@1 on LCA). The
 bench needs no driver change: a corpus variant whose arm setup appends the `[decide]`
 block is a different corpus hash, hence a different cell key.
+
+**Status (2026-09-23, DP-13/DP-14 A/B):** three trials=2 runs of the wired arm
+against the same arm plus a `[decide] provider=typesafe` block (Jev 1.13, live
+via OpenRouter), across `lca` (localize routing), `lookups-vs` (opening-move
+routing) and `guards-fathom` (governance at the edit) —
+`docs/bench/readings/decision-port-ab-2026-09-23.md`. Routing works as
+designed and shows a real, small effect: lca's localize gold-source rate rose
+4.6%→23.4% (paired mean +0.047, bootstrap 95% CI [0.000, 0.125], 2 tasks
+better, 0 worse); lookups-vs showed no product effect (mean 0.000, CI
+[-0.107, 0.107], 1 better/1 worse). The obligations re-rank showed a
+**negative** effect on governed edits: guards-jev-r1 paired mean -0.19 (CI
+[-0.375, -0.062]), 3 tasks worse, 0 better, at n=2 trials — the LLM re-rank
+sometimes reordered the served rules for the touched file relative to the
+default (non-LLM) ranking, in one case pushing the governing rule to the last
+visible slot on a later touch of the same file. **Consequence (the amendment
+above): `rank_within_tier` now defaults to false**, on or off a provider —
+routing and the compile pre-filter are untouched by this change. Revisit when
+a guards-shaped run at n ≥ 3 trials shows the re-rank net positive, or on a
+corpus where governing rules conflict within one scope tier (this A/B's
+8 guards tasks never had two same-tier candidates to actually choose between).
 
 ## 5. Considered and rejected
 

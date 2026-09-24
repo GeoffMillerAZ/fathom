@@ -405,7 +405,7 @@ func TestConfig_DecideBlock(t *testing.T) {
 			CompileThreshold: 0.5,
 			RouteConfidence:  0.9,
 			RouteTimeoutMS:   3000,
-			RankWithinTier:   true,
+			RankWithinTier:   false,
 			RerankTimeoutMS:  1500,
 		}
 		if !reflect.DeepEqual(loaded.Config.Decide, want) {
