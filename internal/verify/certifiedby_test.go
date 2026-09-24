@@ -5,6 +5,8 @@ import "testing"
 // TestEvaluateCertifiedBy_EveryVerdict (TC-9, design doc §4): certified
 // proves the row; certificate-unproven, certificate-broken,
 // certificate-unreachable, and certificate-absent never do.
+//
+// certifies: invariant I43 (asserts)
 func TestEvaluateCertifiedBy_EveryVerdict(t *testing.T) {
 	const file = "billing/refund.go"
 

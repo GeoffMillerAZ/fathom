@@ -90,6 +90,7 @@ func observationCount(t *testing.T, storePath, service string) int {
 	return len(obs)
 }
 
+// certifies: invariant I25 (asserts)
 func TestIngestReportNamesReadFailures(t *testing.T) {
 	conn := &wedgedConnector{
 		refs: []core.SourceRef{

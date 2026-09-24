@@ -78,6 +78,8 @@ func TestCallLogger_SurfaceTraffic_NilLoggerIsEmpty(t *testing.T) {
 // carries the schema version and the producing binary's version, so a
 // trend fold can filter by the semantics that wrote each row instead of
 // re-living the 251,834-catch class of cross-semantics aggregation error.
+//
+// certifies: invariant I32 (asserts)
 func TestCallLogVersionStamp(t *testing.T) {
 	var buf bytes.Buffer
 	l := NewCallLogger(&buf)

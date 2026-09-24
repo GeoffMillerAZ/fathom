@@ -348,6 +348,7 @@ func TestCompile_DigestGateSkipsUnchangedSections(t *testing.T) {
 	}
 }
 
+// certifies: invariant I6 (asserts)
 func TestCompile_SupersedesReplacedClaims(t *testing.T) {
 	ctx := context.Background()
 	st := store.NewMemoryStore()

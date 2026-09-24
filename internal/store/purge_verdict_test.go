@@ -10,6 +10,8 @@ import (
 // error, raw residue, a survivor, and a wired-but-failed derived store must
 // each land on their named non-success state; only "SQL zero + probe ran
 // clean" is verified.
+//
+// certifies: invariant I29 (asserts)
 func TestPurgeVerdictTable(t *testing.T) {
 	cases := []struct {
 		name      string

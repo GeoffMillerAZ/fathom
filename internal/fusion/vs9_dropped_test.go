@@ -20,6 +20,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
+// certifies: invariant I24 (asserts)
 func TestTypedEdgesNameDroppedOutOfScopeTargets(t *testing.T) {
 	dir := typedFixtureDir(t)
 	ctx := context.Background()
