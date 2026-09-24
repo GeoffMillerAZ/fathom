@@ -321,7 +321,7 @@ func extractGoJSON(f File) []Item {
 				continue
 			}
 			for _, field := range st.Fields.List {
-				if field.Tag == nil || len(field.Names) == 0 {
+				if field.Tag == nil {
 					continue
 				}
 				tagVal, err := strconv.Unquote(field.Tag.Value)
@@ -335,6 +335,23 @@ func extractGoJSON(f File) []Item {
 				}
 				detail := renderNode(fset, field.Type)
 				line := fset.Position(field.Pos()).Line
+
+				if len(field.Names) == 0 {
+					// An embedded (anonymous) field carrying an explicit
+					// json tag is NOT flattened/promoted — encoding/json's
+					// own documented rule treats it as a normal named
+					// field under that tag, so it is part of the wire
+					// surface exactly like any other tagged field. Its Go
+					// field name (and thus its exportedness) is the
+					// embedded type's own base identifier.
+					if fname := embeddedFieldName(field.Type); fname != "" && isExportedName(fname) {
+						out = append(out, Item{
+							Key:  fmt.Sprintf("json:%s.%s.%s", dir, ts.Name.Name, name),
+							Kind: "json", File: f.Path, Line: line, Detail: detail,
+						})
+					}
+					continue
+				}
 				for _, fname := range field.Names {
 					if !fname.IsExported() {
 						continue
@@ -581,6 +598,31 @@ func receiverTypeName(expr ast.Expr) string {
 		return receiverTypeName(t.X)
 	case *ast.IndexListExpr:
 		return receiverTypeName(t.X)
+	}
+	return ""
+}
+
+// embeddedFieldName returns an embedded (anonymous) struct field's Go
+// field name — the identifier encoding/json (and every other consumer of
+// that field's declared name) uses for it — stripping pointer indirection,
+// a package qualifier (an embedded type from another package, `pkg.Foo`,
+// names its field `Foo`, never `pkg.Foo`), and generic type arguments.
+// Unlike receiverTypeName (a method receiver can never be package-
+// qualified — Go disallows it), an embedded field can be, so this handles
+// *ast.SelectorExpr too. "" when expr is not a shape an embedded field's
+// type can take.
+func embeddedFieldName(expr ast.Expr) string {
+	switch t := expr.(type) {
+	case *ast.StarExpr:
+		return embeddedFieldName(t.X)
+	case *ast.Ident:
+		return t.Name
+	case *ast.SelectorExpr:
+		return t.Sel.Name
+	case *ast.IndexExpr:
+		return embeddedFieldName(t.X)
+	case *ast.IndexListExpr:
+		return embeddedFieldName(t.X)
 	}
 	return ""
 }

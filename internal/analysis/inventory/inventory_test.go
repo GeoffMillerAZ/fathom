@@ -205,6 +205,53 @@ func Do(widgetID string, count int) error { return nil }
 	}
 }
 
+// TestExtract_TaggedEmbeddedFieldIsAJSONItem pins design §2.1's json: row
+// against encoding/json's own documented rule: a tagged anonymous
+// (embedded) field is NOT flattened/promoted — it becomes a normal named
+// JSON field under its own tag. extractGoJSON used to skip every field
+// with zero Names outright, so a tag change on a genuinely embedded field
+// (a real, breaking wire-format change on an exported type) produced no
+// json: item on either side of a diff and inventory.Diff saw nothing to
+// report.
+func TestExtract_TaggedEmbeddedFieldIsAJSONItem(t *testing.T) {
+	src := []byte(`package widgets
+
+type Meta struct {
+	Version int ` + "`json:\"version\"`" + `
+}
+
+type Response struct {
+	Meta ` + "`json:\"meta\"`" + `
+	Data string ` + "`json:\"data\"`" + `
+}
+`)
+	items := Extract([]File{{Path: "widgets/response.go", Content: src}}, nil)
+	keys := keysOf(items)
+
+	wantMeta := "json:widgets.Response.meta"
+	found := false
+	for _, k := range keys {
+		if k == wantMeta {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("keys = %v, want %q among them (tagged embedded field must not be skipped)", keys, wantMeta)
+	}
+	// Data's own ordinary named field still extracts too — the fix must
+	// not disturb the non-embedded path.
+	wantData := "json:widgets.Response.data"
+	found = false
+	for _, k := range keys {
+		if k == wantData {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("keys = %v, want %q among them", keys, wantData)
+	}
+}
+
 func keysOf(items []Item) []string {
 	out := make([]string, len(items))
 	for i, it := range items {
