@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	skillsdist "github.com/geoffmilleraz/fathom/dist/agents/skills"
@@ -134,9 +135,23 @@ func wiringDriftHome() string {
 }
 
 // recordWiringBaselines records the MCP entries and owned skills that have
-// no baseline yet (fleet reconcile --apply). Returns the labels recorded.
+// no baseline yet, plus — only with rebaseline set — the drifted hook
+// entries' digests (fleet reconcile --apply[--rebaseline]). A hook entry is
+// never rewritten here; only its ledger digest moves, same as an MCP entry.
+// Returns the labels recorded, sorted.
 func recordWiringBaselines(root string, harnessIDs []string, home, wrote string, rebaseline bool) ([]string, error) {
-	return wiring.RecordBaselines(root, mcpFilesFor(root, home, harnessIDs), ownedSkillFiles(root, home), wrote, nil, rebaseline)
+	recorded, err := wiring.RecordBaselines(root, mcpFilesFor(root, home, harnessIDs), ownedSkillFiles(root, home), wrote, nil, rebaseline)
+	if err != nil {
+		return recorded, err
+	}
+	hookKeys, _ := shimHookKeys(root)
+	hookRecorded, herr := wiring.RecordKeyBaselines(root, hookKeys, wrote, nil, rebaseline)
+	if herr != nil {
+		return recorded, herr
+	}
+	recorded = append(recorded, hookRecorded...)
+	sort.Strings(recorded)
+	return recorded, nil
 }
 
 // wiringDriftAttention is the session attention fragment (PC-30):

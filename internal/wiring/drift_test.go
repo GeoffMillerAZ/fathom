@@ -150,6 +150,89 @@ func TestDriftMCPAndSkills(t *testing.T) {
 	}
 }
 
+// TestRecordKeyBaselines pins the Key counterpart of RecordBaselines: before
+// this, a hook entry law 15 blocked (its ledger digest no longer matched
+// what was on disk) had NO rebaseline path at all — RecordBaselines only
+// knew MCP entries and owned skills, so `fleet reconcile --apply
+// --rebaseline` could never clear a drifted hook (the observed bug: six
+// PROJECT-scope hook entries drifted against .fathom/owned.json after the
+// project's own committed edit — e.g. "hook rows in shim spelling" — moved
+// them outside fathom's apply path). rebaseline=true must move ONLY the
+// ledger digest, to the value the file NOW carries, and never write the
+// file itself.
+func TestRecordKeyBaselines(t *testing.T) {
+	root := t.TempDir()
+	rel := ".claude/settings.json"
+	original := `{"hooks":{"PostToolUse":[{"matcher":"Edit|Write|MultiEdit","hooks":[{"type":"command","command":"fathom edit-hook","timeout":5}]}]}}`
+	write(t, root, rel, original)
+
+	key := Key{
+		File: rel, Kind: KindJSONHook,
+		Path:   []string{"PostToolUse", "Edit|Write|MultiEdit"},
+		Marker: "fathom edit-hook", Body: "fathom edit-hook", Timeout: 5,
+	}
+	mustPlan := func() Plan {
+		t.Helper()
+		p, err := PlanWiring(root, Spec{Keys: []Key{key}})
+		if err != nil {
+			t.Fatalf("PlanWiring: %v", err)
+		}
+		return p
+	}
+
+	// Record the original baseline directly, as ApplyWiring would have the
+	// first time fathom wrote this entry.
+	cur, present, cerr := key.current(original)
+	if cerr != nil || !present {
+		t.Fatalf("current: %q %v %v", cur, present, cerr)
+	}
+	ledger := NewLedger()
+	ledger.Record(rel, OwnedKey{ID: key.ID(), Digest: digest(cur), Wrote: "2026-09-12"})
+	if err := SaveLedger(root, ledger); err != nil {
+		t.Fatal(err)
+	}
+	if it := itemFor(t, mustPlan(), rel, key.ID()); it.Verdict != VerdictSkip {
+		t.Fatalf("fresh baseline should read current, got %+v", it)
+	}
+
+	// The project's own committed edit moves the entry without going
+	// through fathom's apply path.
+	edited := `{"hooks":{"PostToolUse":[{"matcher":"Edit|Write|MultiEdit","hooks":[{"type":"command","command":"fathom edit-hook","timeout":45}]}]}}`
+	write(t, root, rel, edited)
+
+	it := itemFor(t, mustPlan(), rel, key.ID())
+	if it.Verdict != VerdictBlocked || it.Cause != CauseDrift {
+		t.Fatalf("edited entry should be BLOCKED/drift, got %+v", it)
+	}
+
+	// rebaseline=false is a deliberate no-op — law 15: fathom never
+	// re-records a drifted entry on its own.
+	if recorded, rerr := RecordKeyBaselines(root, []Key{key}, "2026-09-24", nil, false); rerr != nil || len(recorded) != 0 {
+		t.Fatalf("rebaseline=false must record nothing: %v, %v", recorded, rerr)
+	}
+	if it := itemFor(t, mustPlan(), rel, key.ID()); it.Verdict != VerdictBlocked {
+		t.Fatalf("rebaseline=false must leave the drift in place, got %+v", it)
+	}
+
+	// rebaseline=true records the CURRENT digest and touches nothing else.
+	before := read(t, root, rel)
+	recorded, rerr := RecordKeyBaselines(root, []Key{key}, "2026-09-24", nil, true)
+	if rerr != nil || len(recorded) != 1 || recorded[0] != DriftKindHook+" "+rel+" "+key.ID() {
+		t.Fatalf("RecordKeyBaselines(true) = %v, %v", recorded, rerr)
+	}
+	if got := read(t, root, rel); got != before {
+		t.Errorf("RecordKeyBaselines rewrote the entry; only the ledger may move:\nbefore: %s\nafter:  %s", before, got)
+	}
+	if it := itemFor(t, mustPlan(), rel, key.ID()); it.Verdict == VerdictBlocked {
+		t.Errorf("drift not cleared after rebaseline: %+v", it)
+	}
+
+	// A second rebaseline over a now-clean entry records nothing.
+	if recorded, rerr := RecordKeyBaselines(root, []Key{key}, "2026-09-25", nil, true); rerr != nil || len(recorded) != 0 {
+		t.Errorf("rebaseline over a clean entry should record nothing: %v, %v", recorded, rerr)
+	}
+}
+
 // TestDriftFromPlan lifts law-15 verdicts: a drifted region is stanza
 // drift, an unreadable key file is unreadable, applicable/skip are neither.
 func TestDriftFromPlan(t *testing.T) {
