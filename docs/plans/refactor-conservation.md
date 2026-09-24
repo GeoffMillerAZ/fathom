@@ -43,12 +43,12 @@ silently skipped. Design: `docs/design/refactor-conservation.md`.
 
 ## C. Stage 3 — absence and anti-Blindness
 
-- [ ] `gone:` rows prove import, module, pattern and kept-but-unused-symbol absence {id: CV-27, symbol: EvaluateGone, package: internal/verify, reachable_from: TestEvaluateGone_EveryForm}
-- [ ] A `gone:` row is Unknown, never proven, when the index is not at HEAD, typed packages failed in scope, or build-tag-excluded files reference the target {id: CV-28, symbol: EvaluateGone, package: internal/verify, reachable_from: TestEvaluateGone_UnknownOnStaleOrFailedIndex}
+- [x] `gone:` rows prove import, module, pattern and kept-but-unused-symbol absence {id: CV-27, symbol: EvaluateGone, package: internal/verify, reachable_from: TestEvaluateGone_EveryForm}
+- [x] A `gone:` row is Unknown, never proven, when the index is not at HEAD, typed packages failed in scope, or build-tag-excluded files reference the target {id: CV-28, symbol: EvaluateGone, package: internal/verify, reachable_from: TestEvaluateGone_UnknownOnStaleOrFailedIndex}
 - [x] The lexical oracle evaluates `max`, `min` and `eq` on plan rows {id: CV-29, symbol: lexicalBoundsVerdict, package: internal/verify, reachable_from: TestLexicalOracle_MaxMinEq}
-- [ ] A call site to a `Deprecated:` symbol that is new in the range is a finding {id: CV-30, symbol: DeprecatedCallers, package: internal/conserve, reachable_from: TestDeprecatedCallers_NewCallSiteInRange}
-- [ ] A function body hash is insensitive to identifier renames {id: CV-31, symbol: FuncBodyHash, package: internal/analysis/clone, reachable_from: TestFuncBodyHash_IdentifierRenameInsensitive}
-- [ ] A body deleted in the range that reappears under another name is a resurrection finding {id: CV-32, symbol: Resurrected, package: internal/conserve, reachable_from: TestResurrected_DeletedBodyReappears}
+- [x] A call site to a `Deprecated:` symbol that is new in the range is a finding {id: CV-30, symbol: DeprecatedCallers, package: internal/conserve, reachable_from: TestDeprecatedCallers_NewCallSiteInRange}
+- [x] A function body hash is insensitive to identifier renames {id: CV-31, symbol: FuncBodyHash, package: internal/analysis/clone, reachable_from: TestFuncBodyHash_IdentifierRenameInsensitive}
+- [x] A body deleted in the range that reappears under another name is a resurrection finding {id: CV-32, symbol: Resurrected, package: internal/conserve, reachable_from: TestResurrected_DeletedBodyReappears}
 - [ ] (op) CV-M5: seeded copies in replays of fathom's own migrations (ADR-025, ADR-041) are all caught, with no finding on the genuine commits {id: CV-M5, skip: "measurement: Blindness replay"}
 
 ## D. Stage 4 — refactors as programs

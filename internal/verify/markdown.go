@@ -151,6 +151,18 @@ func ParseMarkdownPlan(service string, md []byte) Plan {
 					}
 				}
 			}
+			// CV-27: `gone: pattern` row's optional `paths:` scope. Read
+			// unconditionally (harmless on any other row) — the same
+			// "meaningless without its partner key stays inert" shape
+			// oracle's own path/pattern keys already follow; EvaluateGone
+			// refuses it on a non-pattern gone: form.
+			if v, ok := ann["paths"]; ok {
+				for _, p := range strings.Split(v, ",") {
+					if p = strings.TrimSpace(p); p != "" {
+						t.GonePaths = append(t.GonePaths, p)
+					}
+				}
+			}
 			t.Max, t.BoundsInvalid = parseIntAnnotation(ann, "max", t.BoundsInvalid)
 			t.Min, t.BoundsInvalid = parseIntAnnotation(ann, "min", t.BoundsInvalid)
 			t.Eq, t.BoundsInvalid = parseIntAnnotation(ann, "eq", t.BoundsInvalid)
