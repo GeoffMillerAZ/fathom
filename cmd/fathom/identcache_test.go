@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -104,6 +105,63 @@ func TestIdentCache_KeyedByBothRootAndURL(t *testing.T) {
 	}
 	if _, _, hit := readIdentCache("/repo-a", "http://localhost:9999", now); hit {
 		t.Fatal("a different daemon URL must not share a cache entry")
+	}
+}
+
+// TestResolveIndexedCandidateCached_ServesStaleOnTimeoutOverBasenameFallback
+// is the DG-12 contract test: "identity timeout survives load." A fresh
+// daemon round trip that fails outright (simulated here with a closed
+// listener — connection-refused and a client timeout share the exact same
+// code path, fetchServices returning a non-nil error, so either
+// reproduces it) must serve the last known-good, past-TTL resolution
+// rather than reporting ok=false and sending the caller
+// (candidatesWithDaemon) all the way back to an unverified basename
+// guess.
+func TestResolveIndexedCandidateCached_ServesStaleOnTimeoutOverBasenameFallback(t *testing.T) {
+	withTempIdentCacheDir(t)
+	dir := t.TempDir()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	baseURL := srv.URL
+	srv.Close() // nothing listens on baseURL anymore: every round trip fails
+
+	// Seed a POSITIVE resolution already past the normal positive TTL.
+	staleWrittenAt := time.Now().Add(-identCacheTTL - time.Minute)
+	writeIdentCache(dir, baseURL, serviceCandidate{name: "realname", root: dir}, true, staleWrittenAt)
+
+	// Sanity: the fresh-TTL read must already report it expired.
+	if _, _, hit := readIdentCache(dir, baseURL, time.Now()); hit {
+		t.Fatal("setup: expected the seeded entry to already be expired under the normal TTL")
+	}
+
+	hc := &http.Client{Timeout: 200 * time.Millisecond}
+	cand, ok := resolveIndexedCandidateCached(hc, baseURL, dir)
+	if !ok {
+		t.Fatal("resolveIndexedCandidateCached ok = false, want true (served from the stale cache entry, not the raw basename fallback)")
+	}
+	if cand.name != "realname" || cand.root != dir {
+		t.Errorf("cand = %+v, want the stale-served known-good identity {realname %s}", cand, dir)
+	}
+}
+
+// TestResolveIndexedCandidateCached_StaleFallbackNeverServesNegative proves
+// the stale-serve path never resurrects a cached NEGATIVE ("not indexed")
+// resolution as though it were a usable identity — only a past POSITIVE
+// resolution is ever worth serving stale.
+func TestResolveIndexedCandidateCached_StaleFallbackNeverServesNegative(t *testing.T) {
+	withTempIdentCacheDir(t)
+	dir := t.TempDir()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	baseURL := srv.URL
+	srv.Close()
+
+	staleWrittenAt := time.Now().Add(-identCacheTTL - time.Minute)
+	writeIdentCache(dir, baseURL, serviceCandidate{}, false, staleWrittenAt)
+
+	hc := &http.Client{Timeout: 200 * time.Millisecond}
+	if _, ok := resolveIndexedCandidateCached(hc, baseURL, dir); ok {
+		t.Fatal("expected ok = false: a cached NEGATIVE resolution must never be served as a stale fallback identity")
 	}
 }
 

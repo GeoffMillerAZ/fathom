@@ -61,8 +61,22 @@ func gitToplevel(dir string) string {
 // the basename candidates exactly as before. Symlinks are resolved on both
 // sides so /var vs /private/var style aliases cannot defeat the match.
 func resolveIndexedCandidate(hc *http.Client, baseURL, projDir string) (serviceCandidate, bool) {
-	svcs, _ := fetchServices(hc, baseURL) // fail-open: resolution has its own fallbacks
-	return resolveFromServices(svcs, projDir)
+	cand, ok, _ := resolveIndexedCandidateErr(hc, baseURL, projDir)
+	return cand, ok
+}
+
+// resolveIndexedCandidateErr is resolveIndexedCandidate plus the raw
+// fetchServices error (DG-12): resolveIndexedCandidate's every other
+// caller wants the fail-open (cand, ok) pair exactly as before and stays
+// on it unchanged; only the cache layer (identcache.go) needs to tell "the
+// round trip itself failed" (network error, timeout under load) apart
+// from "the round trip succeeded and genuinely found no match" — the two
+// collapse to the same ok=false here otherwise, but only the FIRST should
+// ever trigger a stale-cache fallback.
+func resolveIndexedCandidateErr(hc *http.Client, baseURL, projDir string) (serviceCandidate, bool, error) {
+	svcs, err := fetchServices(hc, baseURL)
+	cand, ok := resolveFromServices(svcs, projDir)
+	return cand, ok, err
 }
 
 // resolveFromServices is resolveIndexedCandidate over an already-fetched
