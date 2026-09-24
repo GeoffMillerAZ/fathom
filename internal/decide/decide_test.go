@@ -158,3 +158,52 @@ func TestOpen_TypeSafe(t *testing.T) {
 		}
 	})
 }
+
+// TestSiteAllowed_Allowlist pins CV-42 (docs/design/refactor-conservation.md
+// §7, ADR-044 decision 8, I14): a site absent from cfg.Sites makes no call,
+// whatever Provider is set to; the four site name constants this package
+// exports are exactly what config.DefaultDecide.Sites lists by default, so
+// an unconfigured [decide] block calls every site it always called before
+// Sites existed.
+func TestSiteAllowed_Allowlist(t *testing.T) {
+	t.Run("every default site is allowed under the documented default", func(t *testing.T) {
+		cfg := config.DefaultDecide
+		for _, site := range decide.AllSites {
+			if !decide.SiteAllowed(cfg, site) {
+				t.Errorf("SiteAllowed(DefaultDecide, %q) = false, want true (unconfigured behaviour must stay unchanged)", site)
+			}
+		}
+	})
+
+	t.Run("a narrowed allowlist excludes every site not listed", func(t *testing.T) {
+		cfg := config.Decide{Sites: []string{decide.SiteRoute, decide.SiteCertifySuggest}}
+		if !decide.SiteAllowed(cfg, decide.SiteRoute) {
+			t.Error("SiteAllowed(route) = false, want true (listed)")
+		}
+		if !decide.SiteAllowed(cfg, decide.SiteCertifySuggest) {
+			t.Error("SiteAllowed(certify_suggest) = false, want true (listed)")
+		}
+		if decide.SiteAllowed(cfg, decide.SiteCompilePrefilter) {
+			t.Error("SiteAllowed(compile_prefilter) = true, want false (not listed)")
+		}
+		if decide.SiteAllowed(cfg, decide.SiteObligationsRerank) {
+			t.Error("SiteAllowed(obligations_rerank) = true, want false (not listed)")
+		}
+	})
+
+	t.Run("a nil or empty Sites allows nothing (fail-closed egress, never fail-open)", func(t *testing.T) {
+		if decide.SiteAllowed(config.Decide{}, decide.SiteRoute) {
+			t.Error("SiteAllowed with a zero-value Decide{} (nil Sites) = true, want false")
+		}
+		if decide.SiteAllowed(config.Decide{Sites: []string{}}, decide.SiteRoute) {
+			t.Error("SiteAllowed with an explicit empty Sites = true, want false")
+		}
+	})
+
+	t.Run("an unknown site name is never allowed, even when Sites is unrestricted-looking", func(t *testing.T) {
+		cfg := config.Decide{Sites: []string{"route", "compile_prefilter", "obligations_rerank", "certify_suggest"}}
+		if decide.SiteAllowed(cfg, "not_a_real_site") {
+			t.Error("SiteAllowed(\"not_a_real_site\") = true, want false")
+		}
+	})
+}

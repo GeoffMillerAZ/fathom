@@ -112,6 +112,14 @@ func runCertifySuggest(args []string, ports *decide.Ports, now func() time.Time,
 		fmt.Fprintln(stdout, "certify suggest: a decision provider is required (set [decide] provider = llm|typesafe in .fathom/config.toml)")
 		return 0
 	}
+	// ADR-044 decision 8 (I14): a second, independent gate a real provider
+	// must also clear — "certify_suggest" absent from [decide] sites makes
+	// NO call at all, same "print and return 0" shape as the provider-
+	// required gate above, naming why instead of what is missing.
+	if !decide.SiteAllowed(ports.Cfg, decide.SiteCertifySuggest) {
+		fmt.Fprintf(stdout, "certify suggest: site %q not allowed by [decide] sites (no call made)\n", decide.SiteCertifySuggest)
+		return 0
+	}
 
 	svc := *service
 	if svc == "" {

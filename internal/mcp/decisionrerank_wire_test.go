@@ -99,7 +99,7 @@ func TestObligationsWire_RerankReachesTheJSONRPCEnvelope(t *testing.T) {
 	})
 	var log bytes.Buffer
 	rec := decide.NewRecorder(&log, func() time.Time { return time.Unix(2, 0).UTC() }, "test")
-	c.WithDecision(mock, config.Decide{Provider: "llm", RankWithinTier: true, CompileThreshold: 0.5}, rec)
+	c.WithDecision(mock, config.Decide{Provider: "llm", RankWithinTier: true, CompileThreshold: 0.5, Sites: []string{decide.SiteObligationsRerank}}, rec)
 
 	srv := mcp.NewServer(c)
 	resp := roundtrip(t, srv, request{
@@ -167,7 +167,7 @@ func TestObligationsWire_NoEligibleClaimsNamesWhyOnWire(t *testing.T) {
 	mock := decision.NewMockDecider("mock")
 	var log bytes.Buffer
 	rec := decide.NewRecorder(&log, func() time.Time { return time.Unix(2, 0).UTC() }, "test")
-	c.WithDecision(mock, config.Decide{Provider: "llm", RankWithinTier: true, CompileThreshold: 0.5}, rec)
+	c.WithDecision(mock, config.Decide{Provider: "llm", RankWithinTier: true, CompileThreshold: 0.5, Sites: []string{decide.SiteObligationsRerank}}, rec)
 
 	srv := mcp.NewServer(c)
 	resp := roundtrip(t, srv, request{

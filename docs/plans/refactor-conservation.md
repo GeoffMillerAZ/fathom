@@ -60,7 +60,7 @@ silently skipped. Design: `docs/design/refactor-conservation.md`.
 
 ## E. Stage 5 — the typed floor beyond Go
 
-- [ ] The language tracker records the shipped file-resolved tier {id: CV-37, oracle: lexical, path: docs/languages.md, pattern: "file-resolved tier shipped"}
+- [x] The language tracker records the shipped file-resolved tier {id: CV-37, oracle: lexical, path: docs/languages.md, pattern: "file-resolved tier shipped"}
 - [ ] Every conservation report names the edge tier per language touched {id: CV-38, symbol: TiersByLanguage, package: internal/conserve, reachable_from: TestTiersByLanguage}
 - [ ] `fathom report evidence` gives per-service evidence density and ranks no languages {id: CV-39, symbol: cmdReportEvidence, package: cmd/fathom, reachable_from: TestCmdReportEvidence_NoRanking}
 - [ ] (op) CV-M7: precision and recall per language at the scip and file tiers, from the free L0 oracle on calibration clones, published beside Go's {id: CV-M7, skip: "measurement: L0 per-language run"}
@@ -75,7 +75,7 @@ silently skipped. Design: `docs/design/refactor-conservation.md`.
 
 ## G. The decision port
 
-- [ ] `[decide] sites` gates which sites may send questions off-host {id: CV-42, symbol: SiteAllowed, package: internal/decide, reachable_from: TestSiteAllowed_Allowlist}
+- [x] `[decide] sites` gates which sites may send questions off-host {id: CV-42, symbol: SiteAllowed, package: internal/decide, reachable_from: TestSiteAllowed_Allowlist}
 - [ ] (op) CV-M11: the calibration check (0.9 right nine times in ten) over logged route decisions and reviewed certificate suggestions, with the proceed band raised for any site that fails {id: CV-M11, skip: "measurement: calibration reading"}
 
 ## H. Review Kit, test-kit and the gate

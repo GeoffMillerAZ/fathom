@@ -11,6 +11,7 @@ import (
 
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
 	"github.com/geoffmilleraz/fathom/internal/config"
+	"github.com/geoffmilleraz/fathom/internal/decide"
 )
 
 // fakePingerClient is a minimal llmclient.LLMClient that also implements
@@ -164,6 +165,55 @@ func TestDoctorDecisionProvider_TypeSafe(t *testing.T) {
 		}
 		if !strings.Contains(got.Reason, "jev-latest") || !strings.Contains(got.Reason, srv.URL) {
 			t.Errorf("Reason = %q, want it to name the model and endpoint", got.Reason)
+		}
+	})
+
+	// ADR-044 decision 8 (I14): decision_provider's own Reason names any
+	// [decide] sites a working provider is still excluded from — a
+	// narrowed allowlist is disclosed, not merely enforced silently.
+	t.Run("a narrowed sites allowlist is named in the passing Reason", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"model":"jev-1.13.0","answers":{"ping":{"type":"noul","noul":0.99}},"usage":{"input_tokens":10,"output_tokens":2}}`))
+		}))
+		defer srv.Close()
+
+		loaded := config.Loaded{Config: config.Config{Decide: config.Decide{
+			Provider: "typesafe", Endpoint: srv.URL, Model: "jev-latest", APIKeyEnv: "FATHOM_TEST_TYPESAFE_KEY",
+			Sites: []string{decide.SiteRoute},
+		}}}
+		t.Setenv("FATHOM_TEST_TYPESAFE_KEY", "good-key")
+		got := decisionProviderVerdict(loaded, nil, "")
+		if got.Status != doctorPass {
+			t.Fatalf("Status = %v, want pass: %+v", got.Status, got)
+		}
+		for _, site := range []string{decide.SiteCompilePrefilter, decide.SiteObligationsRerank, decide.SiteCertifySuggest} {
+			if !strings.Contains(got.Reason, site) {
+				t.Errorf("Reason = %q, want it to name the excluded site %q", got.Reason, site)
+			}
+		}
+		if strings.Contains(got.Reason, "sites off") && strings.Contains(got.Reason, decide.SiteRoute+",") {
+			t.Errorf("Reason = %q, must not list the ALLOWED site %q among the blocked ones", got.Reason, decide.SiteRoute)
+		}
+	})
+
+	// The default (unconfigured) allowlist excludes nothing, so the
+	// Reason line is unchanged from before Sites existed.
+	t.Run("an unnarrowed allowlist adds nothing to the Reason", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"model":"jev-1.13.0","answers":{"ping":{"type":"noul","noul":0.99}},"usage":{"input_tokens":10,"output_tokens":2}}`))
+		}))
+		defer srv.Close()
+
+		loaded := config.Loaded{Config: config.Config{Decide: config.Decide{
+			Provider: "typesafe", Endpoint: srv.URL, Model: "jev-latest", APIKeyEnv: "FATHOM_TEST_TYPESAFE_KEY",
+			Sites: decide.AllSites,
+		}}}
+		t.Setenv("FATHOM_TEST_TYPESAFE_KEY", "good-key")
+		got := decisionProviderVerdict(loaded, nil, "")
+		if strings.Contains(got.Reason, "sites off") {
+			t.Errorf("Reason = %q, want no \"sites off\" note when every site is allowed", got.Reason)
 		}
 	})
 }

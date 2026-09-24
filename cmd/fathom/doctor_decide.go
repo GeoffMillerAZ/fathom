@@ -51,6 +51,25 @@ func checkDecisionProvider(root string, build profileClientBuilder) doctorCheck 
 	return decisionProviderVerdict(loaded, build, resolveCallLogPath())
 }
 
+// blockedSitesSuffix names, in decide.AllSites order, any site cfg.Sites
+// excludes (ADR-044 decision 8, I14) — appended to decision_provider's own
+// Reason once the provider itself is proven reachable, so an operator sees
+// not just "the provider works" but which of its sites are actually
+// enabled. "" when every site is allowed (the common, unconfigured case),
+// so an unnarrowed [decide] block leaves the Reason line unchanged.
+func blockedSitesSuffix(cfg config.Decide) string {
+	var blocked []string
+	for _, site := range decide.AllSites {
+		if !decide.SiteAllowed(cfg, site) {
+			blocked = append(blocked, site)
+		}
+	}
+	if len(blocked) == 0 {
+		return ""
+	}
+	return fmt.Sprintf(" (sites off: %s)", strings.Join(blocked, ", "))
+}
+
 // decisionProviderVerdict is checkDecisionProvider's pure decision logic,
 // separated out so a test can drive the "unknown provider" branch directly
 // with a hand-built config.Loaded — reaching it through a real
@@ -96,6 +115,7 @@ func decisionProviderVerdict(loaded config.Loaded, build profileClientBuilder, c
 		if latencyMS, ok := lastDecisionLatencyMS(callLogPath); ok {
 			reason = fmt.Sprintf("%s (last decision latency_ms=%d)", reason, latencyMS)
 		}
+		reason += blockedSitesSuffix(dc)
 		return doctorCheck{Name: name, Status: doctorPass, Reason: reason}
 
 	case "typesafe":
@@ -146,6 +166,7 @@ func decisionProviderVerdict(loaded config.Loaded, build profileClientBuilder, c
 		if latencyMS, ok := lastDecisionLatencyMS(callLogPath); ok {
 			reason = fmt.Sprintf("%s (last decision latency_ms=%d)", reason, latencyMS)
 		}
+		reason += blockedSitesSuffix(dc)
 		return doctorCheck{Name: name, Status: doctorPass, Reason: reason}
 
 	default:
