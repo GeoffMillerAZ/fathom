@@ -10,10 +10,19 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/dlog"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
+
+// testDiscardLogger is the *dlog.Logger every HTTP-handler test in this
+// package hands to newHTTPHandlerWithAuth (DG-5's loggingMiddleware needs a
+// non-nil logger) when the test itself has no interest in the log output.
+func testDiscardLogger() *dlog.Logger {
+	return dlog.New(io.Discard, dlog.LevelDebug, time.Now)
+}
 
 // newTestHandler builds a real mcp.Server backed by a faux client pointing at
 // a temp store, then wraps it in the HTTP handler under test.
@@ -239,6 +248,102 @@ func TestServeHTTPMetricsMethodNotAllowed(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 	if rr.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("POST /metrics status = %d, want 405", rr.Code)
+	}
+}
+
+// TestMetricsHandler_IncludesResidentMemoryWhenAvailable is DG-16's
+// plan-row contract test (owner amendment): process_resident_memory_bytes
+// must appear exactly when processResidentMemoryBytes() itself reports
+// available — never a fabricated zero when it does not, and never silently
+// missing when it does. The same check applies to phys-footprint and the
+// max-resident peak, each independently, since darwin/linux/other builds
+// have DIFFERENT availability for the three.
+func TestMetricsHandler_IncludesResidentMemoryWhenAvailable(t *testing.T) {
+	handler := newTestHandler(t)
+	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	body := rr.Body.String()
+
+	checks := []struct {
+		name   string
+		read   func() (int64, bool)
+		metric string
+	}{
+		{"resident", processResidentMemoryBytes, "process_resident_memory_bytes "},
+		{"phys footprint", processPhysFootprintBytes, "process_phys_footprint_bytes "},
+		{"max resident", processMaxResidentMemoryBytes, "process_max_resident_memory_bytes "},
+	}
+	for _, c := range checks {
+		_, ok := c.read()
+		present := strings.Contains(body, c.metric)
+		if ok && !present {
+			t.Errorf("%s: reader reports available but /metrics omits %q; body=%q", c.name, c.metric, body)
+		}
+		if !ok && present {
+			t.Errorf("%s: reader reports UNAVAILABLE but /metrics still printed %q (a fabricated value); body=%q", c.name, c.metric, body)
+		}
+	}
+}
+
+// ─── DG-5: HTTP access log middleware ──────────────────────────────────────
+
+// TestLoggingMiddleware_RecordsMethodPathStatusDuration is DG-5's plan-row
+// contract test: every route previously had structured access logging ONLY
+// for POST /rpc's tools/call (internal/mcp/calllog.go) — every other route
+// just incremented a bare counter, with no method, path, status or
+// duration recorded anywhere. This proves loggingMiddleware records all
+// four at debug level and stamps the response with a request id.
+func TestLoggingMiddleware_RecordsMethodPathStatusDuration(t *testing.T) {
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(2 * time.Millisecond)
+		w.WriteHeader(http.StatusTeapot)
+	})
+	var buf strings.Builder
+	log := dlog.New(&buf, dlog.LevelDebug, time.Now)
+	handler := loggingMiddleware(inner, log)
+
+	req := httptest.NewRequest(http.MethodPost, "/rpc/agent", nil)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusTeapot {
+		t.Fatalf("status = %d, want %d (loggingMiddleware must not alter the response)", rr.Code, http.StatusTeapot)
+	}
+	reqID := rr.Header().Get(fathomRequestIDHeader)
+	if reqID == "" {
+		t.Errorf("response missing %s header", fathomRequestIDHeader)
+	}
+
+	out := buf.String()
+	for _, want := range []string{"method=POST", "path=/rpc/agent", "status=418", "dur_ms=", "req_id=" + reqID} {
+		if !strings.Contains(out, want) {
+			t.Errorf("log line missing %q; got:\n%s", want, out)
+		}
+	}
+	if !strings.Contains(out, "level=DEBUG") {
+		t.Errorf("access log must be at debug level (the daemon's normal request volume is too high for info); got:\n%s", out)
+	}
+}
+
+// TestLoggingMiddleware_DefaultsStatusTo200WhenHandlerNeverCallsWriteHeader
+// pins net/http's own convention: a handler that only calls Write (never
+// WriteHeader) implicitly answers 200, and the logged status must say so
+// too, not zero.
+func TestLoggingMiddleware_DefaultsStatusTo200WhenHandlerNeverCallsWriteHeader(t *testing.T) {
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("ok")) //nolint:errcheck
+	})
+	var buf strings.Builder
+	log := dlog.New(&buf, dlog.LevelDebug, time.Now)
+	handler := loggingMiddleware(inner, log)
+
+	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	if !strings.Contains(buf.String(), "status=200") {
+		t.Errorf("log line must default an unset status to 200; got:\n%s", buf.String())
 	}
 }
 

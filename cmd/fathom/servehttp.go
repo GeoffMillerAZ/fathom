@@ -48,9 +48,19 @@ func (f *stringSliceFlag) Set(v string) error {
 // DISABLED" gap the file's grounding names. Restart-to-apply: this load
 // happens once, at process start.
 func runServeHTTP(args []string, stdout, stderr io.Writer) int {
+	// DG-4 (diagnostics sweep): one logger per stream, constructed FIRST so
+	// every diagnostic below — including the ones that can fire before a
+	// store or client exists — is timestamped and leveled instead of a bare
+	// fmt.Fprintf. Two loggers, not one, because launchd pipes stdout and
+	// stderr to SEPARATE files (daemon.go's plistBody, DG-6) — collapsing
+	// them onto one writer would move today's stdout-only lines into
+	// fathom-http.err and vice versa.
+	flog := dlog.New(stderr, dlog.LevelFromEnv(os.Getenv), time.Now)
+	outLog := dlog.New(stdout, dlog.LevelFromEnv(os.Getenv), time.Now)
+
 	loaded, cfgErr := config.Load(config.DefaultUserPath(), config.DefaultProjectPath())
 	if cfgErr != nil {
-		fmt.Fprintf(stderr, "error: loading config: %v\n", cfgErr)
+		flog.Error(fmt.Sprintf("loading config: %v", cfgErr))
 		return 1
 	}
 
@@ -68,7 +78,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if *storePath == "" {
-		fmt.Fprintln(stderr, "error: --store is required")
+		flog.Error("--store is required")
 		fs.Usage()
 		return 1
 	}
@@ -81,17 +91,18 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	if *modulesTokenEnv != "" {
 		modulesToken = os.Getenv(*modulesTokenEnv)
 		if modulesToken == "" {
-			fmt.Fprintf(stderr, "error: --modules-token-env=%s is set but that environment variable is empty or unset\n", *modulesTokenEnv)
+			flog.Error(fmt.Sprintf("--modules-token-env=%s is set but that environment variable is empty or unset", *modulesTokenEnv))
 			return 1
 		}
 	}
 
 	c, err := client.NewConstantClient(client.ModeLocal, *storePath)
 	if err != nil {
-		fmt.Fprintf(stderr, "error: opening client: %v\n", err)
+		flog.Error(fmt.Sprintf("opening client: %v", err))
 		return 1
 	}
 	defer c.Close()
+	c.WithLogger(flog) // DG-4: the typed-edge pass's own diagnostics gain a timestamp/level too.
 
 	// Semantic-layer compilation over HTTP (the compile_layer tool) needs an
 	// LLM. Wire one when a provider is configured EITHER the pre-profile way
@@ -110,13 +121,17 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	if os.Getenv("ANTHROPIC_API_KEY") != "" || os.Getenv("FATHOM_LLM_PROVIDER") != "" || hasProfileConfig {
 		p, _, profErr := config.ResolveProfile(loaded.Config, loaded.Provenance, daemonProfileName)
 		if profErr != nil {
-			fmt.Fprintf(stderr, "warn: compile_layer disabled: %v\n", profErr)
+			// DG-4: names the profile and the remedy once per start — this
+			// path runs exactly once during startup, so "once per start" is
+			// automatic; profErr already names which profile failed to
+			// resolve and why.
+			flog.Warn(fmt.Sprintf("compile_layer disabled: %v", profErr))
 		} else if llmCl, llmErr := buildLLMClientForProfile(p); llmErr == nil {
 			model := compileModelForProfile(p)
 			c.WithLLM(llmCl, model, 0.001, 0.005)
-			fmt.Fprintf(stderr, "serve-http: compile_layer enabled (model %s)\n", model)
+			flog.Info(fmt.Sprintf("serve-http: compile_layer enabled (model %s)", model))
 		} else {
-			fmt.Fprintf(stderr, "warn: compile_layer disabled: %v\n", llmErr)
+			flog.Warn(fmt.Sprintf("compile_layer disabled: %v", llmErr))
 		}
 	}
 
@@ -134,7 +149,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// index without anyone noticing.
 	var backend mcp.QueryInterface = c
 	if *autoRefresh {
-		backend = mcp.NewAutoRefresh(c, stderr)
+		backend = mcp.NewAutoRefresh(c, flog)
 	}
 
 	// Call logging feeds tool-selection telemetry (which tools each surface
@@ -143,7 +158,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	if *callLogPath != "" {
 		f, err := openCallLog(*callLogPath)
 		if err != nil {
-			fmt.Fprintf(stderr, "warn: call log disabled: %v\n", err)
+			flog.Warn(fmt.Sprintf("call log disabled: %v", err))
 		} else {
 			defer f.Close()
 			logger = mcp.NewCallLogger(f)
@@ -161,14 +176,13 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 		moduleHost = modulehost.NewHost(store.LevelL0)
 		for _, p := range modulePaths {
 			if _, mErr := moduleHost.Mount(p, ""); mErr != nil {
-				fmt.Fprintf(stderr, "error: mounting module %s: %v\n", p, mErr)
+				flog.Error(fmt.Sprintf("mounting module %s: %v", p, mErr))
 				return 1
 			}
-			fmt.Fprintf(stderr, "serve-http: mounted module %s (%s)\n", p, modulehost.ModuleNameFromPath(p))
+			flog.Info(fmt.Sprintf("serve-http: mounted module %s (%s)", p, modulehost.ModuleNameFromPath(p)))
 		}
 	}
 
-	flog := dlog.New(stderr, dlog.LevelFromEnv(os.Getenv), time.Now)
 	var srv *mcp.Server
 	if moduleHost != nil {
 		srv = mcp.NewServerWithModules(backend, &fleetAdapter{c: c, log: flog}, logger, moduleHost)
@@ -183,7 +197,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// never a silent partial read. Restart-to-apply, like config.toml.
 	budgets, budgetErrs := capability.LoadBudgetResolution(capability.DefaultUserPath(), capability.DefaultProjectPath())
 	for _, e := range budgetErrs {
-		fmt.Fprintf(stderr, "warn: %v — built-in budget defaults stand for that scope\n", e)
+		flog.Warn(fmt.Sprintf("%v — built-in budget defaults stand for that scope", e))
 	}
 	srv.SetBudgets(budgets)
 	// GKE-MH-7 (critic finding 2): a configured modules token means this is
@@ -196,28 +210,41 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	if modulesToken != "" {
 		srv.SetHostedModules(true)
 	}
-	handler := newHTTPHandlerWithAuth(srv, c, modulesToken, *addr, ports)
+	handler := newHTTPHandlerWithAuth(srv, c, modulesToken, *addr, ports, flog)
 
 	// Adopt a new binary without a human (selfrestart.go). launchd's
 	// KeepAlive is true for this job, so exiting IS a restart — which is
 	// what lets an agent complete a deploy end to end, rather than
 	// building a fix and then waiting for someone to run `launchctl`.
 	if selfRestartDisabled() {
-		fmt.Fprintln(stdout, "self-restart: OFF (FATHOM_SELF_RESTART=off) — a deploy will need a manual restart")
+		outLog.Info("self-restart: OFF (FATHOM_SELF_RESTART=off) — a deploy will need a manual restart")
 	} else if exe, exeErr := os.Executable(); exeErr != nil {
-		fmt.Fprintf(stdout, "self-restart: disabled — cannot resolve this process's own path (%v)\n", exeErr)
+		outLog.Warn(fmt.Sprintf("self-restart: disabled — cannot resolve this process's own path (%v)", exeErr))
 	} else {
-		go watchOwnBinary(exe, stdout, selfRestartPoll, selfRestartCooldown, os.Exit)
+		go watchOwnBinary(exe, outLog, selfRestartPoll, selfRestartCooldown, os.Exit)
 	}
 
 	// Periodic OS-memory return (memscavenge.go, O108): bounds how long any
 	// one peak (a large graph build, a burst of concurrent cache misses)
 	// can inflate the daemon's OS-visible footprint, instead of leaving it
 	// to Go's own lazy background scavenger for a process that runs 24/7.
+	// DG-6 piggybacks the daemon's own launchd-piped stdout/stderr bound on
+	// this same ticker (rotateDaemonStdio) — an operator who turns
+	// scavenging off also pauses log rotation, a deliberate coupling
+	// (matching DG-2's dedupe-flush cadence) rather than a second
+	// independent ticker for one more periodic housekeeping task.
+	// outFile/errFile are the real *os.File only when this IS a genuine
+	// os.Stdout/os.Stderr (production); a test's non-*os.File stdout/stderr
+	// simply makes rotateDaemonStdio a no-op for those two arguments.
+	outFile, _ := stdout.(*os.File)
+	errFile, _ := stderr.(*os.File)
 	if scavengeDisabled() {
-		fmt.Fprintln(stdout, "scavenge: OFF (FATHOM_SCAVENGE=off) — the daemon's OS-visible footprint may not shrink after a peak (O108)")
+		outLog.Info("scavenge: OFF (FATHOM_SCAVENGE=off) — the daemon's OS-visible footprint may not shrink after a peak (O108); fathom-http.log/.err rotation (DG-6) is paused too")
 	} else {
-		go runMemoryScavenger(context.Background(), scavengeIntervalFromEnv(), stdout, debug.FreeOSMemory)
+		go runMemoryScavenger(context.Background(), scavengeIntervalFromEnv(), outLog, func() {
+			debug.FreeOSMemory()
+			rotateDaemonStdio(outFile, errFile, daemonStdioRotateBytes, flog)
+		})
 	}
 
 	// Soft memory limit (memorylimit.go, W-N, docs/plans/daemon-footprint.md):
@@ -225,13 +252,24 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// the first place, complementing the scavenger above (which bounds how
 	// long a peak's OS-visible footprint survives AFTER the fact).
 	if memLimitErr := applyMemoryLimit(loaded.Config.Daemon.MemoryLimit, stdout, debug.SetMemoryLimit); memLimitErr != nil {
-		fmt.Fprintf(stderr, "error: %v\n", memLimitErr)
+		flog.Error(memLimitErr.Error())
 		return 1
 	}
 
-	fmt.Fprintf(stdout, "serve-http: listening on %s\n", *addr)
-	if err := http.ListenAndServe(*addr, handler); err != nil {
-		fmt.Fprintf(stderr, "error: http serve: %v\n", err)
+	// DG-19 (owner amendment c): a self-restart or `task deploy` exits the
+	// OLD daemon so launchd starts the new one — if the old process is
+	// still tearing down when the new one races up, the bind can lose to
+	// EADDRINUSE even though nothing is permanently wrong. Retry the BIND
+	// ONLY, with backoff, for up to bindRetryMaxWait before giving up with
+	// the same error ListenAndServe would have returned immediately.
+	listener, listenErr := listenTCPWithRetry(*addr, flog)
+	if listenErr != nil {
+		flog.Error(fmt.Sprintf("http serve: %v", listenErr))
+		return 1
+	}
+	outLog.Info(fmt.Sprintf("serve-http: listening on %s", *addr))
+	if err := http.Serve(listener, handler); err != nil {
+		flog.Error(fmt.Sprintf("http serve: %v", err))
 		return 1
 	}
 	return 0
@@ -321,8 +359,65 @@ func openCallLog(path string) (*os.File, error) {
 // this row keeps working unchanged. ports is DP-9's decision port for
 // POST /route; pass nil for the pre-decision-port none-shaped behavior
 // (routeHandler treats a nil *decide.Ports the same as provider "none").
-func newHTTPHandlerWithAuth(srv *mcp.Server, c *client.Client, modulesToken, selfAddr string, ports *decide.Ports) http.Handler {
-	return modulesAuthMiddleware(newHTTPHandler(srv, c, selfAddr, ports), modulesToken)
+// log is DG-5's per-request access logger (loggingMiddleware, wrapped
+// OUTSIDE the modules-auth gate so even a 401 gets an access-log line).
+func newHTTPHandlerWithAuth(srv *mcp.Server, c *client.Client, modulesToken, selfAddr string, ports *decide.Ports, log *dlog.Logger) http.Handler {
+	return loggingMiddleware(modulesAuthMiddleware(newHTTPHandler(srv, c, selfAddr, ports), modulesToken), log)
+}
+
+// fathomRequestIDHeader is the response header loggingMiddleware stamps on
+// every request (DG-5) — a correlation token for reading fathom-http.log
+// alongside a client's own logs, never a security credential.
+const fathomRequestIDHeader = "X-Fathom-Request-Id"
+
+// loggingRequestSeq is the monotonic counter backing loggingMiddleware's
+// request ids — a plain incrementing number is sufficient correlation
+// (this is a debug log line, not an auth token) and, unlike
+// crypto/rand, needs no error handling on every single request.
+var loggingRequestSeq atomic.Int64
+
+// loggingResponseWriter wraps http.ResponseWriter to capture the status
+// code a handler actually wrote, defaulting to 200 for a handler that
+// never calls WriteHeader explicitly (net/http's own convention).
+type loggingResponseWriter struct {
+	http.ResponseWriter
+	status int
+}
+
+func (w *loggingResponseWriter) WriteHeader(status int) {
+	w.status = status
+	w.ResponseWriter.WriteHeader(status)
+}
+
+// loggingMiddleware is DG-5: every route in newHTTPHandler's mux (/statusz,
+// /findings/summary, /refresh-file, /route, /rpc*, /healthz, /events,
+// /metrics, /reload, the observatory pages) previously had structured
+// access logging ONLY for POST /rpc's tools/call (internal/mcp/calllog.go)
+// — every other route just incremented a bare counter, with no method,
+// path, status, duration or client ever recorded anywhere. This wraps the
+// whole handler once, at debug level (the daemon's normal operating volume
+// is far too high for info), and stamps every response with a short
+// request id so a client's own logs can be correlated against
+// fathom-http.log for the same request.
+func loggingMiddleware(next http.Handler, log *dlog.Logger) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := loggingRequestSeq.Add(1)
+		reqID := fmt.Sprintf("%d", id)
+		w.Header().Set(fathomRequestIDHeader, reqID)
+
+		lw := &loggingResponseWriter{ResponseWriter: w, status: http.StatusOK}
+		start := time.Now()
+		next.ServeHTTP(lw, r)
+		dur := time.Since(start)
+
+		log.Debug("http request",
+			"method", r.Method,
+			"path", r.URL.Path,
+			"status", lw.status,
+			"dur_ms", dur.Milliseconds(),
+			"req_id", reqID,
+		)
+	})
 }
 
 // modulesAuthMiddleware gates ONLY the /rpc/modules path (and its
@@ -560,6 +655,26 @@ func newHTTPHandler(srv *mcp.Server, c *client.Client, selfAddr string, ports *d
 		fmt.Fprintf(w, "go_memstats_heap_sys_bytes %d\n", ms.HeapSys)
 		fmt.Fprintf(w, "go_memstats_sys_bytes %d\n", ms.Sys)
 		fmt.Fprintf(w, "go_goroutines %d\n", runtime.NumGoroutine())
+
+		// process_resident_memory_bytes / process_phys_footprint_bytes /
+		// process_max_resident_memory_bytes (DG-16, owner amendment): the
+		// go_memstats_* lines above are ALL Go-runtime-level — none of them
+		// is OS-visible resident memory, which is exactly the "heap_sys
+		// never decreases, RSS freely oscillates" divergence O108's finding
+		// was about. getrusage's ru_maxrss is a PEAK that never decreases,
+		// so it is named _max_ here rather than exposed as "current RSS" (a
+		// prior draft of this fix would have done exactly that). Omitted
+		// entirely — never a fabricated zero — on a platform/build with no
+		// proven reading (rss_other.go).
+		if v, ok := processResidentMemoryBytes(); ok {
+			fmt.Fprintf(w, "process_resident_memory_bytes %d\n", v)
+		}
+		if v, ok := processPhysFootprintBytes(); ok {
+			fmt.Fprintf(w, "process_phys_footprint_bytes %d\n", v)
+		}
+		if v, ok := processMaxResidentMemoryBytes(); ok {
+			fmt.Fprintf(w, "process_max_resident_memory_bytes %d\n", v)
+		}
 
 		// go_memory_limit_bytes (W-N, docs/plans/daemon-footprint.md): the
 		// soft limit runtime/debug.SetMemoryLimit is currently enforcing —

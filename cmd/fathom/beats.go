@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/buildinfo"
+	"github.com/geoffmilleraz/fathom/internal/dlog"
 
 	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
 )
@@ -140,11 +141,10 @@ const beatSchemaVersion = "2"
 // backup) when it exceeds beatLogRotateBytes, so the NEXT append starts a
 // fresh file. Best-effort: any failure (including "no file yet," the
 // overwhelmingly common case) is silent, exactly like every other beat-log
-// operation.
+// operation. A thin wrapper over internal/dlog.RotateIfNeeded (DG-6,
+// diagnostics sweep) — this file proved the one-prior-generation rotation
+// out first; the daemon's own launchd-piped stdout/stderr (DG-6's other
+// half, cmd/fathom/daemonstdio.go) reuses the same primitive.
 func rotateBeatLogIfNeeded(path string) {
-	fi, err := os.Stat(path)
-	if err != nil || fi.Size() < beatLogRotateBytes {
-		return
-	}
-	_ = os.Rename(path, path+".1")
+	_ = dlog.RotateIfNeeded(path, beatLogRotateBytes)
 }

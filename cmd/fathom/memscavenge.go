@@ -31,11 +31,12 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"io"
 	"os"
+	"runtime"
 	"strings"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/dlog"
 )
 
 // defaultScavengeInterval bounds how long any single memory peak can
@@ -67,12 +68,20 @@ func scavengeDisabled() bool {
 }
 
 // runMemoryScavenger calls free (production: debug.FreeOSMemory) once per
-// interval until ctx is done, logging each pass to out. interval <= 0 is a
+// interval until ctx is done, logging each pass to log. interval <= 0 is a
 // no-op (never spins a busy loop). Safe to run in its own goroutine for
 // the life of the process; ctx cancellation is a testability seam — the
 // production caller never cancels its own Background() context, so the
 // goroutine runs for as long as the daemon does.
-func runMemoryScavenger(ctx context.Context, interval time.Duration, out io.Writer, free func()) {
+//
+// DG-4 (diagnostics sweep): the pre-existing line here
+// ("scavenge: returned freed heap memory to the OS (O108)") was content-free
+// — it recorded that a pass RAN, never what it did. That forced the O108
+// postmortem to stand up an external 5-minute MemStats sampler just to see
+// whether a given scavenge pass actually moved anything. runtime.MemStats is
+// read immediately before and after free() so the same line self-reports
+// the heap_sys/heap_inuse before→after delta the postmortem needed.
+func runMemoryScavenger(ctx context.Context, interval time.Duration, log *dlog.Logger, free func()) {
 	if interval <= 0 {
 		return
 	}
@@ -83,8 +92,16 @@ func runMemoryScavenger(ctx context.Context, interval time.Duration, out io.Writ
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
+			var before, after runtime.MemStats
+			runtime.ReadMemStats(&before)
 			free()
-			fmt.Fprintf(out, "scavenge: returned freed heap memory to the OS (O108)\n")
+			runtime.ReadMemStats(&after)
+			log.Info("scavenge: returned freed heap memory to the OS (O108)",
+				"heap_sys_before_bytes", before.HeapSys,
+				"heap_sys_after_bytes", after.HeapSys,
+				"heap_inuse_before_bytes", before.HeapInuse,
+				"heap_inuse_after_bytes", after.HeapInuse,
+			)
 		}
 	}
 }
