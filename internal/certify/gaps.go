@@ -9,11 +9,11 @@ package certify
 //
 // Deliberately NOT sourced here (design doc §5 lists it for a later
 // stage; the plan row scopes TC-11 to declared + invariant + incident
-// only): every exported interface (kind "port") — TC-20 extends the
-// target universe additively (a later worker) — and every spec id
-// declared in plans (still deferred). TC-19 (incident-outcome
-// certificates) is wired below: it changes how an "incident" target's
-// liveness is DECIDED, not what target universe is sourced.
+// only): every spec id declared in plans (still deferred). TC-20 (port
+// gaps) and TC-19 (incident-outcome certificates) are both wired below —
+// TC-20 extends the target universe itself (port.go's own PortGaps);
+// TC-19 changes how an "incident" target's liveness is DECIDED, not
+// what target universe is sourced.
 import (
 	"context"
 	"fmt"
@@ -149,6 +149,22 @@ func Gaps(ctx context.Context, st store.Store, service, corpusRoot string, kinds
 		}
 	}
 
+	// TC-20 (design doc §5): every exported interface with at least one
+	// indexed implementation is a "port" target, sourced from the index
+	// itself rather than from CertifyDeclarationsForService/intent.Load —
+	// there is nothing to declare a port target's EXISTENCE against, only
+	// whether it carries a conformance certificate.
+	portImpls := map[string][]PortImplementation{}
+	if corpusRoot != "" && include("port") {
+		ports, perr := PortGaps(ctx, st, service, corpusRoot)
+		if perr == nil {
+			for _, p := range ports {
+				add("port", p.ID)
+				portImpls[p.ID] = p.Implementations
+			}
+		}
+	}
+
 	claims, err := st.ClaimsForService(ctx, service, Layer)
 	if err != nil {
 		return GapReport{}, fmt.Errorf("Gaps: ClaimsForService: %w", err)
@@ -183,7 +199,12 @@ func Gaps(ctx context.Context, st store.Store, service, corpusRoot string, kinds
 				Test: r.Test, Suite: r.Suite, Class: r.Class,
 				Strength: r.Strength, State: r.State, Tier: r.Tier, RunDigest: r.RunDigest,
 			})
-			if r.State == string(StateLive) {
+			// A "port" target needs specifically a conformance-strength
+			// live certificate (design doc §5/§1: "a conformance
+			// certificate must sit in a suite of class... naming a
+			// port") — a live certificate at a weaker strength still
+			// leaves it a gap.
+			if r.State == string(StateLive) && (k.kind != "port" || r.Strength == "conformance") {
 				hasLive = true
 			}
 			states = append(states, r.State)
@@ -212,6 +233,8 @@ func Gaps(ctx context.Context, st store.Store, service, corpusRoot string, kinds
 		if t.Gap {
 			gaps++
 			switch {
+			case k.kind == "port":
+				t.Remedy = portRemedy(k.id, portImpls[k.id])
 			case k.kind == "incident" && outcomeTest != "":
 				if len(states) == 0 {
 					t.Remedy = fmt.Sprintf("Outcome: names certificate %s, but no certifications-layer record exists for it at all — declare it with a \"// certifies:\" marker and attest a passing run", outcomeTest)
