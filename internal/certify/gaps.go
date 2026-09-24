@@ -7,13 +7,13 @@ package certify
 // compiled certifications-layer certificates and a remedy line naming the
 // marker or manifest field to add when it has no live one.
 //
-// Deliberately NOT sourced here (design doc §5 lists them for a later
+// Deliberately NOT sourced here (design doc §5 lists it for a later
 // stage; the plan row scopes TC-11 to declared + invariant + incident
-// only): every spec id declared in plans, every exported interface (kind
-// "port"). A later worker adding TC-19 (incident-outcome certificates) or
-// TC-20 (port gaps) extends the target universe and GapCertificate's own
-// fields additively — the shape here is deliberately not tied to any one
-// kind's resolution.
+// only): every exported interface (kind "port") — TC-20 extends the
+// target universe additively (a later worker) — and every spec id
+// declared in plans (still deferred). TC-19 (incident-outcome
+// certificates) is wired below: it changes how an "incident" target's
+// liveness is DECIDED, not what target universe is sourced.
 import (
 	"context"
 	"fmt"
@@ -154,8 +154,18 @@ func Gaps(ctx context.Context, st store.Store, service, corpusRoot string, kinds
 		return GapReport{}, fmt.Errorf("Gaps: ClaimsForService: %w", err)
 	}
 	bySubject := map[string][]Record{}
+	byTestName := map[string][]Record{}
 	for _, r := range Records(claims) {
 		bySubject[r.Subject] = append(bySubject[r.Subject], r)
+		byTestName[r.Test] = append(byTestName[r.Test], r)
+	}
+
+	// TC-19 (design doc §5): an incident's OWN Outcome: line may name a
+	// live certificate independent of anything declared for
+	// "incident:<ID>" itself.
+	var incidentCerts map[string]string
+	if corpusRoot != "" && include("incident") {
+		incidentCerts = IncidentCertificates(corpusRoot)
 	}
 
 	targets := make([]GapTarget, 0, len(order))
@@ -179,12 +189,38 @@ func Gaps(ctx context.Context, st store.Store, service, corpusRoot string, kinds
 			states = append(states, r.State)
 		}
 
+		// TC-19 (design doc §5): an incident closed by its OWN
+		// Outcome: line, independent of any certifications-layer
+		// record for "incident:<ID>" itself.
+		var outcomeTest string
+		if k.kind == "incident" && !hasLive {
+			if outcomeTest = incidentCerts[k.id]; outcomeTest != "" {
+				for _, r := range byTestName[outcomeTest] {
+					certs = append(certs, GapCertificate{
+						Test: r.Test, Suite: r.Suite, Class: r.Class,
+						Strength: r.Strength, State: r.State, Tier: r.Tier, RunDigest: r.RunDigest,
+					})
+					if r.State == string(StateLive) {
+						hasLive = true
+					}
+					states = append(states, r.State)
+				}
+			}
+		}
+
 		t := GapTarget{Kind: k.kind, ID: k.id, Gap: !hasLive, Certificates: certs}
 		if t.Gap {
 			gaps++
-			if len(certs) == 0 {
+			switch {
+			case k.kind == "incident" && outcomeTest != "":
+				if len(states) == 0 {
+					t.Remedy = fmt.Sprintf("Outcome: names certificate %s, but no certifications-layer record exists for it at all — declare it with a \"// certifies:\" marker and attest a passing run", outcomeTest)
+				} else {
+					t.Remedy = fmt.Sprintf("Outcome: names certificate %s, but it has no live certifications-layer record (declared state(s): %s) — fix or re-attest %s", outcomeTest, strings.Join(states, ", "), outcomeTest)
+				}
+			case len(certs) == 0:
 				t.Remedy = markerRemedy(k.kind, k.id)
-			} else {
+			default:
 				t.Remedy = fmt.Sprintf("no live certificate for %s %s: declared state(s) %s — fix the failing/unreachable test or attest a passing run", k.kind, k.id, strings.Join(states, ", "))
 			}
 		} else {

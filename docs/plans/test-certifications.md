@@ -33,7 +33,7 @@ silently skipped. Design: `docs/design/test-certifications.md`.
 
 - [ ] test-kit (platform-engineering): `#Certifies` and `#Suite.certifies` land as an ADR-0042 amendment, `surveyor validate` accepts them, one example manifest carries one {id: TC-17, skip: "lands in platform-engineering; proven by that repository's own gate, recorded here by commit"}
 - [ ] Review Kit (platform-engineering): requirement `testing.certified-targets` with an evidence check through adapter `fathom-certify`, a finding rule with a remedy, and the adapter calling `fathom certify gaps --json` through the fathom bridge {id: TC-18, skip: "lands in platform-engineering; proven by that repository's own gate, recorded here by commit"}
-- [ ] An incident `Outcome:` line may name `certificate <Test>`; `certify gaps --kind incident` treats a live one as closed and everything else as a gap {id: TC-19, symbol: IncidentCertificates, package: internal/certify, reachable_from: TestIncidentCertificates_OutcomeGrammar}
+- [x] An incident `Outcome:` line may name `certificate <Test>`; `certify gaps --kind incident` treats a live one as closed and everything else as a gap {id: TC-19, symbol: IncidentCertificates, package: internal/certify, reachable_from: TestIncidentCertificates_OutcomeGrammar}
 - [ ] `certify gaps --kind port [--fleet]` lists every exported interface with implementations and no `conformance` certificate, keeping each implementation's evidence tier {id: TC-20, symbol: PortGaps, package: internal/certify, reachable_from: TestPortGaps_ImplementationsWithoutConformance}
 - [ ] (op) TC-M3: the Review Kit requirement fires `deny` on a real change within a month of stage 2, else it is theatre and comes out {id: TC-M3, skip: "operator measurement: one-month window"}
 
