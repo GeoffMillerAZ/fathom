@@ -40,7 +40,7 @@ silently skipped. Design: `docs/design/test-certifications.md`.
 ## D. Stage 3 — adjacent, each with its own bar
 
 - [ ] Flakiness: a flake in the last three attested runs makes the certificate `flaky`, served at `suspect` tier, never silently live {id: TC-21, symbol: CertificateState, package: internal/certify, reachable_from: TestCertificateState_FlakyFromLastThreeRuns}
-- [ ] `fathom certify orphans`: `Test*` symbols that certify nothing, reach no symbol changed in 180 days, and never failed in any ingested run {id: TC-22, symbol: cmdCertifyOrphans, package: cmd/fathom, reachable_from: TestCmdCertifyOrphans_ThreeConditions}
+- [x] `fathom certify orphans`: `Test*` symbols that certify nothing, reach no symbol changed in 180 days, and never failed in any ingested run {id: TC-22, symbol: cmdCertifyOrphans, package: cmd/fathom, reachable_from: TestCmdCertifyOrphans_ThreeConditions}
 - [ ] `fathom tests select` ranks tests that certify a target in the changed files first, then the existing reach ranking; advisory {id: TC-23, symbol: rankCertifyingFirst, package: cmd/fathom, reachable_from: TestTestsSelect_CertifyingFirst}
 - [ ] `fathom certify suggest` asks the decision port one batched request per unregistered test (strength choice, asserts noul); proceed-band answers become suggestions in `workspace/artifacts/certify-suggestions.jsonl`, rendered in `certify gaps`; never a claim; `provider = none` prints one line and exits 0 {id: TC-24, symbol: cmdCertifySuggest, package: cmd/fathom, reachable_from: TestCmdCertifySuggest_BandsAndNone}
 - [ ] (op) TC-M4: suggestions accepted ≥ 50 % of the time over the first twenty, else `certify suggest` is removed {id: TC-M4, skip: "operator measurement: needs twenty suggestions reviewed"}
