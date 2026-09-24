@@ -273,6 +273,61 @@ func TestListServices_IncludesTypedEdgesOutcome(t *testing.T) {
 	}
 }
 
+// TestListServices_SurfacesDiscoveryGaps is DG-9: a discovery gap (a call
+// target file that EXISTS on disk despite being excluded from the
+// connector's allowed set) was computed and deduped by EnrichTypedEdges
+// every run, but before this fix, none of noteTypedEdgeStatus's call sites
+// copied it onto TypedEdgeStatus — list_services could never see it even
+// though the daemon's own stderr line named it (docs/intent/invariants.md
+// I24's documented gap).
+func TestListServices_SurfacesDiscoveryGaps(t *testing.T) {
+	fleet := fleetFixture()
+	backend := perServiceTypedStatusBackend{statuses: map[string]fusion.TypedEdgeStatus{
+		"svc-a": {
+			PackagesSeen:      3,
+			Packages:          3,
+			EdgesTotal:        7,
+			DiscoveryGaps:     1,
+			DiscoveryGapFiles: []string{"adapter.go"},
+		},
+		"svc-b": {PackagesSeen: 2, Packages: 2, EdgesTotal: 4}, // no gaps
+	}}
+	srv := mcp.NewServerWithFleet(backend, fleet)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1005, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "list_services",
+			"arguments": map[string]any{},
+		},
+	})
+	p := platformToolPayload(t, resp)
+	byName := map[string]map[string]any{}
+	for _, raw := range p["services"].([]any) {
+		e := raw.(map[string]any)
+		byName[e["service"].(string)] = e
+	}
+
+	teA, ok := byName["svc-a"]["typed_edges"].(map[string]any)
+	if !ok {
+		t.Fatalf("svc-a: no typed_edges block, got %v", byName["svc-a"])
+	}
+	if got, _ := teA["discovery_gaps"].(float64); int(got) != 1 {
+		t.Errorf("svc-a typed_edges.discovery_gaps = %v, want 1", teA["discovery_gaps"])
+	}
+	gapFiles, _ := teA["discovery_gap_files"].([]any)
+	if len(gapFiles) != 1 || gapFiles[0] != "adapter.go" {
+		t.Errorf("svc-a typed_edges.discovery_gap_files = %v, want [adapter.go]", teA["discovery_gap_files"])
+	}
+
+	teB, ok := byName["svc-b"]["typed_edges"].(map[string]any)
+	if !ok {
+		t.Fatalf("svc-b: no typed_edges block, got %v", byName["svc-b"])
+	}
+	if _, present := teB["discovery_gaps"]; present {
+		t.Errorf("svc-b typed_edges.discovery_gaps = %v, want omitted (zero gaps)", teB["discovery_gaps"])
+	}
+}
+
 // TestListServices_OmitsTypedEdgesWhenUnknown: a service this daemon process
 // has never ingested must omit typed_edges entirely — never a fabricated
 // clean pass (BP-35's own known:false discipline, carried into this row).

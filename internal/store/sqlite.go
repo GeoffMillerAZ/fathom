@@ -382,6 +382,12 @@ CREATE INDEX IF NOT EXISTS idx_observations_service_id
 		return err
 	}
 
+	// typed_edge_status (DG-10) follows the same additive-table convention
+	// as review_runs above.
+	if err := s.createTypedEdgeStatusSchema(); err != nil {
+		return err
+	}
+
 	// Conditional migrations for SQLite stores created before a column
 	// existed. The "no ALTER cruft" stance above holds for the fleet store
 	// (freshly migrated), but scratch/workspace SQLite stores created by

@@ -283,6 +283,17 @@ func registerStalenessReport(s *Server, backend QueryInterface) {
 				if st.Reason != "" {
 					block["reason"] = st.Reason
 				}
+				// DG-9: same discovery-gap disclosure as list_services'
+				// typed_edges block (platform_tools.go) — doctor's
+				// typed_edges row reads THIS block, not list_services',
+				// so a discovery gap must travel through here to reach
+				// doctor at all.
+				if st.DiscoveryGaps > 0 {
+					block["discovery_gaps"] = st.DiscoveryGaps
+					if len(st.DiscoveryGapFiles) > 0 {
+						block["discovery_gap_files"] = st.DiscoveryGapFiles
+					}
+				}
 			}
 			resp["typed_edges"] = block
 		}

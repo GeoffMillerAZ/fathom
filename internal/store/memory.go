@@ -26,9 +26,10 @@ type MemoryStore struct {
 	claimLinks     map[string][]core.ClaimLink // claim_id → links (replace-semantic)
 	claimEvents    []core.ClaimEvent
 	compileRuns    []core.CompileRun
-	typedEdges     map[typedEdgeKey][]core.Edge    // (serviceID, pkgPath) → edges (replace-semantic)
-	typedEdgeFPs   map[fpKey]string                // reuses fpKey{serviceID, pkgPath} shape
-	reviewRuns     map[reviewRunKey]core.ReviewRun // (serviceID, idempotencyKey) → review run (FL-15)
+	typedEdges     map[typedEdgeKey][]core.Edge     // (serviceID, pkgPath) → edges (replace-semantic)
+	typedEdgeFPs   map[fpKey]string                 // reuses fpKey{serviceID, pkgPath} shape
+	typedEdgeStat  map[string]TypedEdgeStatusRecord // serviceID → last persisted typed-edge status (DG-10)
+	reviewRuns     map[reviewRunKey]core.ReviewRun  // (serviceID, idempotencyKey) → review run (FL-15)
 
 	// externalFindings is the findings-loop's per-claim cursor table (FL-7),
 	// reusing claimKey's (serviceID, claimID) shape — one row per claim, same
@@ -75,6 +76,7 @@ func NewMemoryStore() *MemoryStore {
 		claimLinks:     make(map[string][]core.ClaimLink),
 		typedEdges:     make(map[typedEdgeKey][]core.Edge),
 		typedEdgeFPs:   make(map[fpKey]string),
+		typedEdgeStat:  make(map[string]TypedEdgeStatusRecord),
 
 		externalFindings: make(map[claimKey]core.ExternalFinding),
 		reviewRuns:       make(map[reviewRunKey]core.ReviewRun),
@@ -1022,6 +1024,32 @@ func (m *MemoryStore) DeleteTypedEdgePackage(_ context.Context, serviceID, pkgPa
 	delete(m.typedEdges, typedEdgeKey{serviceID, pkgPath})
 	delete(m.typedEdgeFPs, fpKey{serviceID, pkgPath})
 	return nil
+}
+
+// SetTypedEdgeStatus records or replaces the persisted typed-edge status
+// for serviceID (DG-10).
+func (m *MemoryStore) SetTypedEdgeStatus(_ context.Context, serviceID string, rec TypedEdgeStatusRecord) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if rec.RecordedAt.IsZero() {
+		rec.RecordedAt = time.Now().UTC()
+	}
+	// Store a defensive copy of the slice: the caller may reuse/mutate its
+	// backing array (e.g. TypedEdgeReport.DiscoveryGapFiles across runs).
+	if rec.DiscoveryGapFiles != nil {
+		rec.DiscoveryGapFiles = append([]string(nil), rec.DiscoveryGapFiles...)
+	}
+	m.typedEdgeStat[serviceID] = rec
+	return nil
+}
+
+// TypedEdgeStatus returns the last persisted typed-edge status for
+// serviceID. found is false when none has ever been recorded.
+func (m *MemoryStore) TypedEdgeStatus(_ context.Context, serviceID string) (TypedEdgeStatusRecord, bool, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	rec, ok := m.typedEdgeStat[serviceID]
+	return rec, ok, nil
 }
 
 // Close is a no-op for the in-memory store.

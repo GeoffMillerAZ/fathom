@@ -110,6 +110,20 @@ func registerListServices(s *Server, backend QueryInterface, fleet FleetBackend)
 						if st.Fallback != "" {
 							te["fallback"] = st.Fallback
 						}
+						// DG-9: a discovery gap (a call target file that
+						// EXISTS on disk despite being excluded from the
+						// connector's allowed set — a likely wedged
+						// Discover pass, not a legitimate exclusion) was
+						// computed and deduped every run but never left
+						// typedcalls.go's own stderr line. Omitted when
+						// zero — the common, healthy case stays as quiet
+						// as it always was.
+						if st.DiscoveryGaps > 0 {
+							te["discovery_gaps"] = st.DiscoveryGaps
+							if len(st.DiscoveryGapFiles) > 0 {
+								te["discovery_gap_files"] = st.DiscoveryGapFiles
+							}
+						}
 						entry["typed_edges"] = te
 					}
 				}
