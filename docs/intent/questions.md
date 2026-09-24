@@ -40,3 +40,37 @@ share it through git. Blocks: EP-6, K1 on a second machine (F15). Answerable by:
 the only evaluator; if the practice accepts several, the grammar moves to agentic-kit and
 fathom pins a version. Blocks: EP-2's key set, EP-34. Answerable by: owner, with the kit.
 
+**Q22. What would a reviewer need to be shown to accept a 400-file agent refactor without
+reading the diff, and can a stranger re-derive every line of it?** Vision 34's planes are
+one answer; whether they are sufficient is measured on the first real refactor program
+(CV-M6) by counting what the reviewer still had to open. Blocks: the pack's promotion from
+warn to deny. Answerable by: evidence (CV-M6), then owner.
+
+**Q23. When is a test edit a legitimate refactor and when is it a weakening?** The
+integrity check normalises renames and counts assertions; an assertion rewritten as a
+helper call, a table case merged, or a matcher swapped for an equivalent still flags as
+`edited` or `weakened`. CV-M2's replay sets the false-flag rate. Blocks: arming
+`refactoring.proof-integrity` at deny. Answerable by: evidence (CV-M2).
+
+**Q24. Should conservation block at push, or only in CI, and for whom?** Today it warns
+at push (fail-open, I8/I17) and CI runs `--strict`. A team shipping library APIs may want
+push-time blocking on `surface` losses; an application team may not. Blocks: nothing
+today. Answerable by: owner, per consumer.
+
+**Q25. How do certificates, ratchets and baselines behave on a long-lived branch while main
+keeps moving?** A baseline pinned weeks ago drifts; runs attested on a branch commit are
+not on main; I30 forbids re-rooting a service at a worktree, so mid-flight answers may
+reflect main. `fathom refactor status` reports drift; whether that is enough is open.
+Blocks: CV-M6 on a multi-week program. Answerable by: evidence.
+
+**Q26. Which refactors does this round not see?** Data and schema migrations (store
+formats, SQL DDL), infrastructure moves (Terraform `moved` blocks, Kubernetes apiVersion),
+security properties (an authorization chain dropped when a handler moves), performance and
+concurrency (bench certificates, race-attested runs). Futures F25 and F26 hold them.
+Answerable by: the first consumer who loses one.
+
+**Q27. When agents write most code, what should teams choose languages and architectures
+for, and how can fathom measure it honestly?** `fathom report evidence` gives evidence
+density per service (typed share, certificate density, inventory, receipts) and ranks no
+language; a cross-language comparison waits until at least three languages have measured
+typed edges (CV-M7). Answerable by: evidence, then owner.

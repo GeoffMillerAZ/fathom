@@ -110,4 +110,7 @@ Each stage carries one (P5): an envelope-to-symbol join rate under 80 percent
 kills stage 0's design; fewer than half of fathom's deny-severity invariants
 certified after two weeks of dogfood kills the declaration path; a Review Kit
 requirement that never fires deny on a real change in a month is theatre;
-suggested certificates accepted less than half the time are noise.
+suggested certificates accepted less than half the time are noise. (Amended
+2026-09-24, ADR-044: the Review Kit clause counts a requirement armed at warn — "never
+fires at warn in a month where armed" — because an off requirement cannot fire; and
+liveness now binds to the commit a run exercised, O114.)

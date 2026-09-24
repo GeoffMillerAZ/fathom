@@ -217,3 +217,53 @@ existence.
   second checklist dialect would plug into.
 - Promote when: a wired repo uses one of the scaffolds and asks for its checklist gated.
 - Drop if: the scaffolds converge on a checklist format fathom already parses.
+
+## F22. A cross-language port ledger
+
+- Confidence: plausible. Horizon: when a port happens.
+- Motivation: when a team moves a service to another language for engineering merit
+  (vision 34 §5), the language-neutral inventory keys (`route:`, `rpc:`, `env:`, `cli:`)
+  make the port auditable: complete when the source inventory is closed in the target and
+  behaviour certificates are live against both. Evidence: ADR-044, plan row CV-50.
+- Do not build: symbol-to-symbol mapping between languages; a translator.
+- Preserve: inventory keys stay language-neutral; behaviour certificates resolve to keys.
+- Promote when: a fleet service ports to another language. Drop if: ports stop happening.
+
+## F23. Decision-port roles in refactoring: frontier ordering and same-concept questions
+
+- Confidence: plausible. Horizon: after the ledger ships.
+- Motivation: ordering attention over hundreds of sites after the deterministic type-check
+  split, and a same-concept probability for renames where typed edges are missing, are the
+  two places a calibrated fast model could help (ADR-044 decision 8). Evidence: plan rows
+  CV-51, CV-52; the one ranking use at the edit measured negative (O113).
+- Do not build: a model deciding a move, a strength, scope or safety.
+- Preserve: every site is an explicit `[decide] sites` opt-in; calibration check first.
+- Promote when: a frontier over 100 sites exists with an A/B corpus (ordering), or file-tier
+  precision is published and a JavaScript or Python rename corpus exists (same-concept).
+- Drop if: either A/B is null or negative against the deterministic baseline.
+
+## F24. Architectural decisions compiled into refutable dependency rules
+
+- Confidence: plausible. Horizon: later.
+- Motivation: ADR-035's "governance compiles to tests": an ADR stating a dependency
+  direction or layering becomes a rule the call graph refutes on every ingest, instead of
+  a sentence served at the edit. Evidence: plan row CV-53; archconformance rules exist.
+- Do not build: a new LLM layer without a consumer (TX-4).
+- Promote when: adr-rules is compiled in two or more repositories and one asks for
+  enforcement. Drop if: arch rules authored by hand cover the need.
+
+## F25. Data, schema and infrastructure refactors
+
+- Confidence: speculative. Horizon: when a consumer migrates data.
+- Motivation: these refactors are irreversible or stateful (store formats, SQL DDL,
+  Terraform state addresses, Kubernetes apiVersion moves) and need a different
+  conservation law (reversibility, state-address continuity). Evidence: plan row CV-54.
+- Promote when: a named consumer's migration. Drop if: no consumer in two quarters.
+
+## F26. Security, performance and concurrency conservation
+
+- Confidence: plausible. Horizon: when a regression of that kind is observed.
+- Motivation: a moved handler can lose its authorization middleware while its route key
+  survives; a refactor of locking or loops loses race safety or throughput silently.
+  test-kit now records `env.race`; bench suites exist. Evidence: plan row CV-55.
+- Promote when: such a regression is observed in the fleet. Drop if: never observed.

@@ -135,6 +135,11 @@ migration note (`docs/rename-migration.md` is the precedent; new ones go to
 - The `<!-- fathom:intent-playbook -->` region of a root `INTENT.md`, written by
   `fathom intent render --playbook` and held to existence by `config audit`'s
   `pointers_resolve`. Evidence: `cmd/fathom/intent_playbook.go`.
+- The conservation contracts (ADR-044): `fathom conserve --json`'s `fathom.conserve/v1` shape
+  (schema string, plane and kind names, field names, plane-kind-key sort order), the plan keys
+  `gone:`, `retires:`, `surface_change:`, `baseline:` and `tests:`, and `.fathom/config.toml`'s
+  `[[surface.pattern]]` block. Evidence: `docs/design/refactor-conservation.md`,
+  `cmd/fathom/conserve.go` (`TestCmdConserve_JSONSchemaV1`).
 - The certification contracts (ADR-043): the `// certifies: <kind> <id> [(<strength>)]` marker
   grammar, the `certified_by:` plan key, and `fathom certify gaps --json`'s
   `fathom.certify.gaps/v1` shape (schema string, field names, kind-then-id sort order) that
