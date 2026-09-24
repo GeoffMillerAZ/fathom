@@ -76,6 +76,60 @@ func TestPersistRawCellArtifacts_CopiesAgentDiffAndCellArtifacts(t *testing.T) {
 	}
 }
 
+// TestPersistRawCellArtifacts_OwnedPathsReadFailureMarkedUnknown is O111's
+// own regression pin (guards-jev-r1, 2026-09-23, "reading .fathom/
+// owned.json: operation not permitted"): before this fix, a failed
+// InstrumentOwnedPaths read wrote cell-artifacts.json's own
+// instrument_owned_paths as an empty list — byte-for-byte indistinguishable
+// from an unwired arm's own honest "this cell owns nothing" — so a later
+// reader (a human, or wave N20's RematerializeCellWorktree) had no way to
+// tell "we know there are zero" from "we don't know". A malformed
+// .fathom/owned.json (not the live EPERM, which is environmental and not
+// reproducible on demand, but the same InstrumentOwnedPaths error path)
+// must still never fail persistRawCellArtifacts itself — it is best-effort,
+// by design (O76) — but the JSON it writes must say so honestly.
+func TestPersistRawCellArtifacts_OwnedPathsReadFailureMarkedUnknown(t *testing.T) {
+	wtDir := t.TempDir()
+	runGit(t, wtDir, "init", "-q", "-b", "main")
+	if err := os.WriteFile(filepath.Join(wtDir, "real.go"), []byte("package thing\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, wtDir, "add", "-A")
+	runGit(t, wtDir, "commit", "-q", "-m", "base")
+	localBase := runGit(t, wtDir, "rev-parse", "HEAD")
+
+	if err := os.MkdirAll(filepath.Join(wtDir, ".fathom"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(wtDir, ".fathom", "owned.json"), []byte("not valid json"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	wt := scenariobench.Worktree{Path: wtDir, CellDir: t.TempDir(), LocalBase: localBase}
+	attemptDir := t.TempDir()
+	stderr := captureStderr(t, func() {
+		persistRawCellArtifacts(wt, attemptDir, "", "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef")
+	})
+	if !strings.Contains(stderr, "instrument files unknown") {
+		t.Errorf("expected a stderr note naming the gap, got: %s", stderr)
+	}
+
+	artifactsRaw, err := os.ReadFile(filepath.Join(attemptDir, "cell-artifacts.json"))
+	if err != nil {
+		t.Fatalf("persistRawCellArtifacts must still write cell-artifacts.json (best-effort, O76): %v", err)
+	}
+	var artifacts rawCellArtifacts
+	if err := json.Unmarshal(artifactsRaw, &artifacts); err != nil {
+		t.Fatal(err)
+	}
+	if !artifacts.InstrumentOwnedPathsUnknown {
+		t.Error("expected InstrumentOwnedPathsUnknown = true: the owned.json read failed, this is not a confirmed zero")
+	}
+	if len(artifacts.InstrumentOwnedPaths) != 0 {
+		t.Errorf("expected InstrumentOwnedPaths empty when the read failed, got %v", artifacts.InstrumentOwnedPaths)
+	}
+}
+
 // TestPersistRawCellArtifacts_CapturesUntrackedBinaryFile proves the
 // byte-identical fallback RematerializeCellWorktree needs: a plain `git
 // diff` never embeds binary patch data (it records only "Binary files ...

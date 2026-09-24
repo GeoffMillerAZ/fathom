@@ -49,6 +49,13 @@ type rawCellArtifacts struct {
 	BaseCommit           string   `json:"base_commit"`
 	LocalBase            string   `json:"local_base"`
 	InstrumentOwnedPaths []string `json:"instrument_owned_paths"`
+	// InstrumentOwnedPathsUnknown is true when scenariobench.InstrumentOwnedPaths
+	// itself failed (O111: an EPERM/wedged-volume read of .fathom/owned.json,
+	// not merely "this cell was never wired") — InstrumentOwnedPaths is then
+	// an empty list for lack of anything better, and this field is the only
+	// way a reader tells that apart from a genuinely unwired cell's honest
+	// zero.
+	InstrumentOwnedPathsUnknown bool `json:"instrument_owned_paths_unknown,omitempty"`
 }
 
 // rawSnapshotSkip is one entry in untracked-snapshot.json's own "skipped"
@@ -111,9 +118,18 @@ func persistRawCellArtifacts(wt scenariobench.Worktree, attemptDir, diffPath, ba
 		}
 	}
 
+	// O111 (guards-jev-r1, 2026-09-23): a failed read here (guards-i16-raw-
+	// cp-deploy/full-jev/t1 hit "reading .fathom/owned.json: operation not
+	// permitted" — the same wedged-volume class stickyInstrumentFaultMessage
+	// already names) must never write an empty InstrumentOwnedPaths list
+	// indistinguishable from "confirmed: this cell owns nothing" (an
+	// unwired arm's genuine, common case) — InstrumentOwnedPathsUnknown
+	// says which one this is, honestly, instead of the two collapsing into
+	// the same silent `[]`.
 	owned, err := scenariobench.InstrumentOwnedPaths(wt)
+	ownedUnknown := err != nil
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "scenariobench: persisting cell-artifacts.json: %v\n", err)
+		fmt.Fprintf(os.Stderr, "scenariobench: persisting cell-artifacts.json: instrument files unknown: %v\n", err)
 		owned = nil
 	}
 	ownedList := make([]string, 0, len(owned))
@@ -121,7 +137,12 @@ func persistRawCellArtifacts(wt scenariobench.Worktree, attemptDir, diffPath, ba
 		ownedList = append(ownedList, p)
 	}
 	sort.Strings(ownedList)
-	artifacts := rawCellArtifacts{BaseCommit: baseCommit, LocalBase: wt.LocalBase, InstrumentOwnedPaths: ownedList}
+	artifacts := rawCellArtifacts{
+		BaseCommit:                  baseCommit,
+		LocalBase:                   wt.LocalBase,
+		InstrumentOwnedPaths:        ownedList,
+		InstrumentOwnedPathsUnknown: ownedUnknown,
+	}
 	if data, err := json.MarshalIndent(artifacts, "", "  "); err != nil {
 		fmt.Fprintf(os.Stderr, "scenariobench: marshaling cell-artifacts.json: %v\n", err)
 	} else if err := os.WriteFile(filepath.Join(attemptDir, "cell-artifacts.json"), data, 0o644); err != nil {

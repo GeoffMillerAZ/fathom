@@ -158,7 +158,19 @@ func changedPaths(ctx context.Context, wt Worktree, localBase string) ([]string,
 	_, _ = runIn(ctx, wt.Path, "git", "add", "-N", ".")
 	out, err := runIn(ctx, wt.Path, "git", "diff", localBase, "--", ".")
 	if err != nil {
-		return nil, fmt.Errorf("listing changed paths against %s: %w", localBase, err)
+		// O111 (guards-jev-r1, 2026-09-23): runIn's own "out" is git's
+		// CombinedOutput — the ONLY place the real fatal: text lives (`git
+		// diff`'s exit code alone collapses "unknown revision", "not a git
+		// repository" and "Operation not permitted" reading a pack file
+		// into the identical bare "exit status 128"). Dropping it here is
+		// what turned guards-i16-raw-cp-deploy/full-jev/t1's failure into
+		// an unreadable "exit status 128" with no way to tell a stale
+		// localBase apart from a wedged volume — and it is exactly the
+		// wedged-volume text stickyInstrumentFaultMessage (cmd/scenariobench
+		// main.go) greps a lostReason for, so surfacing it here also lets a
+		// future occurrence of this same fault stop the run cleanly instead
+		// of silently losing every remaining cell one at a time.
+		return nil, fmt.Errorf("listing changed paths against %s: %w (%s)", localBase, err, strings.TrimSpace(out))
 	}
 	stripped, _ := StripInstrumentRegions(ctx, wt, []byte(out))
 	return diffChangedPaths(stripped), nil
