@@ -127,7 +127,13 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		if len(args) > 1 && args[1] == "manifest" {
 			return cmdCertifyManifest(args[2:], stdout, stderr)
 		}
-		fmt.Fprintln(stderr, "usage: fathom certify status [--service S] [--store DB] [--json]\n       fathom certify gaps [--kind invariant|incident|spec|port|rule|behaviour] [--service S] [--store DB] [--json]\n       fathom certify manifest [--out FILE] [--check] [--service S] [--store DB]")
+		if len(args) > 1 && args[1] == "orphans" {
+			return cmdCertifyOrphans(args[2:], stdout, stderr)
+		}
+		if len(args) > 1 && args[1] == "suggest" {
+			return cmdCertifySuggest(args[2:], stdout, stderr)
+		}
+		fmt.Fprintln(stderr, "usage: fathom certify status [--service S] [--store DB] [--json]\n       fathom certify gaps [--kind invariant|incident|spec|port|rule|behaviour] [--service S] [--store DB] [--json]\n       fathom certify manifest [--out FILE] [--check] [--service S] [--store DB]\n       fathom certify orphans [--service S] [--store DB] [--json]\n       fathom certify suggest [--service S] [--store DB] [--limit N]")
 		return 1
 	case "edit-hook":
 		return cmdEditHook(args[1:], stdout, stderr)
