@@ -26,7 +26,7 @@ silently skipped. Design: `docs/design/test-certifications.md`.
 - [x] Receipts gain kind `certification`; `fathom receipt verify` re-derives reach with go/types and reports `pass: unverified (no run)` unless `--run-tests` runs that one test {id: TC-13, symbol: verifyCertificationReceipt, package: cmd/fathom, reachable_from: TestReceiptVerify_CertificationKind}
 - [x] `fathom doctor` row `certifications`: declared, live, join rate; "no manifests found" is a skip {id: TC-14, symbol: checkCertifications, package: cmd/fathom, reachable_from: TestDoctorCertifications_Row}
 - [x] fathom's own repo declares certificates for its deny-severity invariants and its open incidents' named tests, in `tests/fathom.cue` and markers {id: TC-15, oracle: lexical, path: tests/fathom.cue, pattern: "certifies"}
-- [ ] `docs/configuration.md` documents `[tests] results_dir` and `artifacts_dir`; `docs/usage.md` documents the verbs; `docs/mcp-tools.md` documents the review dimension {id: TC-16, oracle: lexical, path: docs/configuration.md, pattern: "\[tests\]"}
+- [x] `docs/configuration.md` documents `[tests] results_dir` and `artifacts_dir`; `docs/usage.md` documents the verbs; `docs/mcp-tools.md` documents the review dimension {id: TC-16, oracle: lexical, path: docs/configuration.md, pattern: "\[tests\]"}
 - [ ] (op) TC-M2: two weeks after stage 1 lands, ≥ 50 % of fathom's deny-severity invariants carry a live certificate, else the declaration path changes {id: TC-M2, skip: "operator measurement: two-week dogfood window"}
 
 ## C. Stage 2 — the judge, the standard, the projections
