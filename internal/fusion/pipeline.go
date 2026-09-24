@@ -42,6 +42,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/dlog"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
 	"github.com/geoffmilleraz/fathom/internal/llm"
 	"github.com/geoffmilleraz/fathom/internal/sdd"
@@ -208,6 +209,17 @@ type Pipeline struct {
 	siblingIdx map[string]*siblingIndex // serviceID → this ingest's sibling index (ADR-021 §2 classifier context), guarded by mu
 	gitHeadFn  func(path string) string // injectable; default = realGitHead
 	gitLogFn   func(path string) string // injectable; default = realGitLog
+
+	// logger is DG-4's (diagnostics sweep) seam for the typed-edge pass's
+	// own diagnostics (typedcalls.go's diagWarn/diagInfo): nil by default,
+	// which preserves this package's original bare fmt.Fprintf(os.Stderr,
+	// ...) behavior for every embedder that never calls SetLogger — a
+	// Pipeline used directly via pkg/client.New (no cmd/fathom daemon
+	// wrapping it) keeps working exactly as before. cmd/fathom's
+	// serve-http/serve-mcp opt in via pkg/client.Client.WithLogger so these
+	// lines gain the same timestamp/level/dedupe discipline as the rest of
+	// the daemon's diagnostics.
+	logger *dlog.Logger
 
 	// Process-lifetime counters (ADR-021 §2 / TI-6), surfaced via Stats() and
 	// (through pkg/client + the mcp server_stats/ingest tools) to operators —
@@ -663,6 +675,15 @@ func (p *Pipeline) WithGitLog(fn func(path string) string) {
 // runs when Config.Enrich is also true; passing nil is a no-op.
 func (p *Pipeline) WithEnricher(e *llm.Enricher) {
 	p.enricher = e
+}
+
+// SetLogger routes the typed-edge pass's own diagnostics (typedcalls.go)
+// through log instead of a bare fmt.Fprintf(os.Stderr, ...) (DG-4,
+// diagnostics sweep). nil (the default) preserves the original os.Stderr
+// behavior — every embedder that never calls this keeps working
+// unchanged; cmd/fathom's daemon opts in via pkg/client.Client.WithLogger.
+func (p *Pipeline) SetLogger(log *dlog.Logger) {
+	p.logger = log
 }
 
 // Ingest discovers, fetches, and (unless Lazy) extracts all files for svc.
