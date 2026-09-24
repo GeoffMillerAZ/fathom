@@ -294,6 +294,27 @@ func (f *fixedBatchDecider) Decide(_ context.Context, req decision.Request) (dec
 	return decision.Response{Provider: f.name, Answers: answers}, nil
 }
 
+// chunkFailDecider answers every question with noul 0.9, except that a
+// request carrying failID fails whole with err — keyed by the request's
+// content, never by call order.
+type chunkFailDecider struct {
+	failID string
+	err    error
+}
+
+func (d chunkFailDecider) Name() string { return "llm" }
+
+func (d chunkFailDecider) Decide(_ context.Context, req decision.Request) (decision.Response, error) {
+	answers := make(map[string]decision.Answer, len(req.Questions))
+	for _, q := range req.Questions {
+		if q.ID == d.failID {
+			return decision.Response{}, d.err
+		}
+		answers[q.ID] = decision.Answer{ID: q.ID, Kind: decision.KindNoul, Noul: 0.9}
+	}
+	return decision.Response{Provider: "llm", Answers: answers}, nil
+}
+
 // TestRerankWithinTiers_PartialChunkFailureKeepsOthersRankedAndNotesCount
 // (DP-22, O109): 45 rules in 3 chunks (20/20/5) under an "llm"-named mock;
 // the MIDDLE chunk (rules 20..39) hard-fails. The other two chunks' rules
@@ -307,18 +328,10 @@ func TestRerankWithinTiers_PartialChunkFailureKeepsOthersRankedAndNotesCount(t *
 	matched := buildMatchedRuleSet(45)
 	boom := errors.New("boom: chunk 2 exploded")
 
-	mkAnswers := func(lo, hi int) map[string]decision.Answer {
-		answers := make(map[string]decision.Answer, hi-lo)
-		for i := lo; i < hi; i++ {
-			answers[matched[i].cl.ClaimID] = decision.Answer{ID: matched[i].cl.ClaimID, Kind: decision.KindNoul, Noul: 0.9}
-		}
-		return answers
-	}
-	md := decision.NewMockDecider("llm",
-		decision.MockEntry{Response: decision.Response{Provider: "llm", Answers: mkAnswers(0, 20)}},
-		decision.MockEntry{Err: boom},
-		decision.MockEntry{Response: decision.Response{Provider: "llm", Answers: mkAnswers(40, 45)}},
-	)
+	// The chunks run concurrently, so a call-order script (MockDecider)
+	// would hand the error to whichever chunk asked second; fail the
+	// chunk that carries matched[20] instead, whatever order it asks in.
+	md := chunkFailDecider{failID: matched[20].cl.ClaimID, err: boom}
 
 	oc := rerankWithinTiers(ctx, md, rerankTestFile, "", matched, len(matched), 0)
 
