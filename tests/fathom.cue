@@ -51,6 +51,25 @@ suites: {
 		// you have a measurement — a scaffolded number would be a floor
 		// nobody chose, and the one number guaranteed never to fail.
 		// ADOPT-TODO: suites.unit.coverage: no floor is declared because nothing has been measured — add a min once you have run the suite, or leave it absent
+
+		// certifies declares what this suite's tests certify (TC-15, vision
+		// 33 / ADR-043 stage 1): a subset of fathom's own deny-severity
+		// invariants whose enforcing test lives under ./internal/... (this
+		// suite's declared inputs) and was read to confirm it really
+		// asserts the invariant, never guessed. Every other invariant with
+		// a specific enforcing test carries the same declaration directly
+		// on that test via a `// certifies:` marker instead — this suite
+		// block and the per-test markers share one vocabulary (design doc
+		// §1) and fathom joins both into one certify_declarations/
+		// declared_certifies fact set on ingest.
+		certifies: [
+			{kind: "invariant", id: "I5", tests: ["TestQuery_EmptyConcernIDReturnsError"]},
+			{kind: "invariant", id: "I6", tests: ["TestCompile_SupersedesReplacedClaims"]},
+			{kind: "invariant", id: "I11", tests: ["TestMcpToolsDocMatchesRegistry"]},
+			{kind: "invariant", id: "I21", tests: ["TestCachedCallGraphInvalidatesOnReIngest"]},
+			{kind: "invariant", id: "I38", tests: ["TestUnreadableInputNeverLooksHealthier"]},
+			{kind: "invariant", id: "I43", tests: ["TestEvaluateCertifiedBy_EveryVerdict", "TestCompileCertifications_TierAndStateLadders"]},
+		]
 	}
 
 	// A conformance suite is reserved for PORT ADAPTERS, and it is where
