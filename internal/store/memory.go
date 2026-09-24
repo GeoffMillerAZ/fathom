@@ -1055,7 +1055,7 @@ func (m *MemoryStore) SetTypedEdgeStatus(_ context.Context, serviceID string, re
 
 // TypedEdgeStatus returns the last persisted typed-edge status for
 // serviceID. found is false when none has ever been recorded.
-func (m *MemoryStore) TypedEdgeStatus(_ context.Context, serviceID string) (TypedEdgeStatusRecord, bool, error) {
+func (m *MemoryStore) typedEdgeStatusRaw(_ context.Context, serviceID string) (TypedEdgeStatusRecord, bool, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	rec, ok := m.typedEdgeStat[serviceID]

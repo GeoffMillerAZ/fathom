@@ -104,6 +104,10 @@ var storeMethodDisposition = map[string]string{
 
 	// --- vision 33 / ADR-043 stage 1 (TC-6/TC-8): certification evidence ---
 	"TestCaseRunsForSymbol": "per-run case status/attempts history keyed by test symbol, no path-anchored source content",
+
+	// --- diagnostics sweep DG-10: restart-durable typed-edge status ---
+	"SetTypedEdgeStatus": "write path",
+	"TypedEdgeStatus":    "", // filtered: DiscoveryGapFiles names files, and a hidden one must not surface through list_services/staleness_report//statusz
 }
 
 func seedSurfaceStore(t *testing.T, s store.Store) {
@@ -161,6 +165,11 @@ func seedSurfaceStore(t *testing.T, s store.Store) {
 		{TestSymbolKey: svc + "::internal.TestOk", Kind: "invariant", TargetID: "I-visible", Strength: "asserts", File: visibleRef, Line: 5},
 	}); err != nil {
 		t.Fatalf("PutCertifyDeclarations: %v", err)
+	}
+	if err := s.SetTypedEdgeStatus(ctx, svc, store.TypedEdgeStatusRecord{
+		Packages: 2, DiscoveryGaps: 2, DiscoveryGapFiles: []string{hiddenRef, visibleRef}, RecordedAt: now,
+	}); err != nil {
+		t.Fatalf("SetTypedEdgeStatus: %v", err)
 	}
 }
 
@@ -329,6 +338,13 @@ func TestSuppressionCoversEverySurface(t *testing.T) {
 					t.Fatal(err)
 				}
 				assertRefs(t, refsOf(got, func(d store.CertifyDeclaration) string { return d.File }))
+			})
+			t.Run("TypedEdgeStatus", func(t *testing.T) {
+				rec, ok, err := g.TypedEdgeStatus(ctx, svc)
+				if err != nil || !ok {
+					t.Fatalf("TypedEdgeStatus ok=%v err=%v", ok, err)
+				}
+				assertRefs(t, rec.DiscoveryGapFiles)
 			})
 			// The exempt hash-gate read still serves the fingerprint: a
 			// reversible READ decision must never change what ingest sees.

@@ -107,7 +107,7 @@ ON CONFLICT (service_id) DO UPDATE SET
 
 // TypedEdgeStatus returns the last persisted typed-edge status for
 // serviceID. found is false when none has ever been recorded.
-func (s *SQLiteStore) TypedEdgeStatus(ctx context.Context, serviceID string) (TypedEdgeStatusRecord, bool, error) {
+func (s *SQLiteStore) typedEdgeStatusRaw(ctx context.Context, serviceID string) (TypedEdgeStatusRecord, bool, error) {
 	var (
 		rec        TypedEdgeStatusRecord
 		filesJSON  string
@@ -126,7 +126,9 @@ WHERE service_id = ?
 	if err != nil {
 		return TypedEdgeStatusRecord{}, false, fmt.Errorf("TypedEdgeStatus: %w", err)
 	}
-	_ = json.Unmarshal([]byte(filesJSON), &rec.DiscoveryGapFiles)
+	if err := json.Unmarshal([]byte(filesJSON), &rec.DiscoveryGapFiles); err != nil {
+		return TypedEdgeStatusRecord{}, false, fmt.Errorf("TypedEdgeStatus: discovery_gap_files: %w", err)
+	}
 	rec.RecordedAt = time.Unix(0, recordedAt).UTC()
 	return rec, true, nil
 }

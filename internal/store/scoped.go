@@ -175,3 +175,28 @@ func (m *MemoryStore) CertifyDeclarationsForService(ctx context.Context, service
 	decls, err := m.certifyDeclarationsForServiceRaw(ctx, serviceID)
 	return filterScoped(ctx, m.gate, serviceID, decls, err, func(d CertifyDeclaration) string { return d.File })
 }
+
+// ---- TypedEdgeStatus (DG-10): both backends ----
+
+// TypedEdgeStatus filters the persisted status's DiscoveryGapFiles, its one
+// path-bearing field, so a suppressed file never surfaces through
+// list_services, staleness_report or /statusz. Counts stay as recorded; the
+// drop is disclosed like every other filtered read.
+func (s *SQLiteStore) TypedEdgeStatus(ctx context.Context, serviceID string) (TypedEdgeStatusRecord, bool, error) {
+	rec, ok, err := s.typedEdgeStatusRaw(ctx, serviceID)
+	return filterTypedEdgeStatus(ctx, s.gate, serviceID, rec, ok, err)
+}
+
+// TypedEdgeStatus filters DiscoveryGapFiles; see the SQLiteStore method.
+func (m *MemoryStore) TypedEdgeStatus(ctx context.Context, serviceID string) (TypedEdgeStatusRecord, bool, error) {
+	rec, ok, err := m.typedEdgeStatusRaw(ctx, serviceID)
+	return filterTypedEdgeStatus(ctx, m.gate, serviceID, rec, ok, err)
+}
+
+func filterTypedEdgeStatus(ctx context.Context, g scopeGate, serviceID string, rec TypedEdgeStatusRecord, ok bool, err error) (TypedEdgeStatusRecord, bool, error) {
+	if err != nil || !ok {
+		return rec, ok, err
+	}
+	rec.DiscoveryGapFiles, err = filterScoped(ctx, g, serviceID, rec.DiscoveryGapFiles, nil, func(f string) string { return f })
+	return rec, ok, err
+}
