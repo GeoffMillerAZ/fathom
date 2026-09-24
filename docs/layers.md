@@ -79,6 +79,7 @@ stratum today.
 | `findings` | `finding` | `sme-stated` | `concern` | `findings/**` | **yes** | **not-gated** — `eval/{labels.json,corpus.md}` now exist (docs/design/findings-as-evidence.md §6 item 5: 6 labeled findings across 6 classes + 2 traps), but `TestFindingsEval_Precision` has not yet been run against a real model (see `eval/RESULTS.md`); `fathom compile` still refuses this layer without `--unsafe-skip-eval-gate`, and no derived pattern (`internal/analysis/findings.PromoteTier`) may serve at a promoted tier until it does | `fathom layers list --store PATH --service NAME` |
 | `adr-rules` | `adr-rule` | `doc-claimed` | `concern` | `ADR.md`, `docs/design/*.md` | no | pass — precision 1.00 / recall 1.00, 7 rules + 2 traps, production model pinned | `fathom layers list --store PATH --service NAME` |
 | `spec-bindings` | `spec-binding` | `doc-claimed` | `concern` | `docs/plans/**` excl. `README.md` | no | pass — precision 1.00 / recall 1.00, 6 rules + 2 traps, production model pinned | `fathom layers list --store PATH --service NAME` |
+| `certifications` | `certification` | `doc-claimed` → `pre-scan` → `verified` | `concern` | `// certifies:` markers, `tests/*.cue` manifests, attested test-kit runs | swept on every ingest | n/a — compiled deterministically, no model (ADR-043) | `fathom certify status\|gaps\|manifest` |
 
 ### `obligations` — every edit
 

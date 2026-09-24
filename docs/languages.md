@@ -27,13 +27,15 @@ language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, label
 | Ruby | tree-sitter (wasm) | yes | sinatra, jekyll, fastlane | **scip** via scip-ruby | oracle |
 | C# | heuristic (`csharpextract.go`) | no | (corpus.yaml) | **scip** via scip-dotnet | grammar |
 | PHP | heuristic (`phpextract.go`) | no | laravel, guzzle, monolog | **syntax** (no mature exporter) | grammar; file resolver |
-| Swift | heuristic | no | (corpus.yaml) | **syntax** | grammar |
+| Swift | **none** — disclosed as unsupported, reported per service by `list_services` | no | (corpus.yaml) | **none** | extractor (fleet demand: app-kit) |
 | Lua | heuristic (`luaextract.go`) | no | (corpus.yaml) | **syntax** | grammar |
 | Bash | heuristic (`bashextract.go`) | no | (corpus.yaml) | **syntax** | — |
 | SQL | heuristic (`sqlextract.go`) | no | — | **syntax** | — |
 | Terraform/HCL | pure Go (`hclextract.go`) | n/a | (corpus.yaml) | **syntax** (resource references) | — |
 | Kubernetes YAML, Helm, Kustomize, docker-compose | pure Go | n/a | (corpus.yaml) | **syntax** (`service_ref` cross-repo edges) | — |
 | Dockerfile, CMake, GitHub Actions, proto, GraphQL, OpenAPI, JSON, TOML, templ, Markdown, go.mod | pure Go | n/a | (corpus.yaml where listed) | **syntax** | — |
+
+Disclosed as unsupported (named per service in `list_services`, never silently skipped; `internal/connector/unsupported_language.go`): Clojure, Crystal, Dart, Elixir, Elm, Erlang, F#, Groovy, Haskell, Julia, Nim, OCaml, Swift, Zig.
 
 Bench coverage today: every scenario corpus has a Go subject; the Long Code Arena corpus
 covers Python, Java and Kotlin bug localization. SU-23 (done) adds TypeScript

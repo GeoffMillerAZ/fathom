@@ -1,4 +1,4 @@
-<!-- fathom:begin v3 sha256:1d8c362742eae0be4571878adabb37cc65548215be41034fdf88669266409930 -->
+<!-- fathom:begin v3 sha256:14a63374af15eabfcfaaf5553d85b8ec4397ff0ca5696a02a3d31abfd88e5fba -->
 ## fathom code intelligence
 
 This repo is indexed by fathom as service "fathom". Route by
@@ -16,17 +16,17 @@ Read files to *edit* them, not to discover them.
 
 Opening moves by task shape (first 2-3 calls, then edit):
 - bug report / stack trace / failing test: localize -> symbol_context -> find_callers
-- feature/change: repo_map -> pack_context(concern) -> references
-- review/verify: verify_plan -> obligations -> references on changed symbols
-- refactor: references -> outline -> symbol_context
+- feature/change: repo_map -> pack_context(concern) -> test_impact
+- review/verify: review_diff -> obligations -> references
+- refactor/delete: rename_impact / safe_delete_check -> references
 
 Refresh the index via the `ingest` MCP tool (`{"service":"fathom"}`) at
 session start and after each commit; it is hash-gated, so a clean repo
 refreshes in well under a second.
 
-Obligations — governing rules for the file you are about to touch — are
-injected automatically on every edit via the PostToolUse hook. Treat them
-as binding, not advisory.
+Obligations — governing rules for the file you are about to touch, and
+where `docs/intent/` exists its matched invariants — are injected on every
+edit via the PostToolUse hook. Treat them as binding, not advisory.
 
 Continuity: run `fathom prime` at session start if your harness has no
 SessionStart hook (Codex does not) — it prints the same identity,
