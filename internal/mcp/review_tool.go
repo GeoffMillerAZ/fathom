@@ -57,7 +57,7 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 				"service":          map[string]any{"type": "string", "description": "Service / repo identifier"},
 				"changed_files":    map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Repo-relative changed file paths"},
 				"concern":          map[string]any{"type": "string", "description": "Optional concern token (descriptive only)"},
-				"since":            map[string]any{"type": "string", "description": "Base commit ref (ADR-044); unused by any dimension yet."},
+				"since":            map[string]any{"type": "string", "description": "Base commit ref (ADR-044); feeds integrity + conservation."},
 				"coverage_profile": map[string]any{"type": "string", "description": "Single-profile alias for coverage_profiles, labeled layer \"unit\". Ignored when coverage_profiles is given."},
 				"coverage_profiles": map[string]any{
 					"type":        "array",

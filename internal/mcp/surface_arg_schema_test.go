@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -98,5 +99,37 @@ func TestAgentSurfaceArgSchemaUnchanged(t *testing.T) {
 		if want != got {
 			t.Errorf("tool %q: argument schema structure changed (names/types/enums/required must stay identical across the description diet)\n--- golden ---\n%s\n--- live ---\n%s", name, want, got)
 		}
+	}
+}
+
+// TestReviewDiff_SinceDescriptionNamesItsConsumers: review_diff's `since`
+// argument (ADR-044 §1.6, CV-13) gates the "integrity" (CV-12) and
+// "conservation" (CV-24) review dimensions — both landed in this same
+// wave. The served schema's own description string is the ONE thing a
+// caller reads before deciding whether to pass it; it must never claim
+// "unused by any dimension yet" once a dimension actually consumes it,
+// or an agent that trusts the description omits `since` and silently
+// gets checked:false from integrity instead of guarded-test-loss
+// findings.
+func TestReviewDiff_SinceDescriptionNamesItsConsumers(t *testing.T) {
+	s := NewServer(nil)
+	te, ok := s.findTool("review_diff")
+	if !ok {
+		t.Fatal("review_diff not registered")
+	}
+	props, ok := te.desc.InputSchema["properties"].(map[string]any)
+	if !ok {
+		t.Fatal("review_diff InputSchema has no properties map")
+	}
+	since, ok := props["since"].(map[string]any)
+	if !ok {
+		t.Fatal("review_diff InputSchema has no \"since\" property")
+	}
+	desc, _ := since["description"].(string)
+	if strings.Contains(desc, "unused by any dimension") {
+		t.Errorf("since description still claims it is unused by any dimension, but the integrity and conservation dimensions both gate on it: %q", desc)
+	}
+	if !strings.Contains(desc, "integrity") {
+		t.Errorf("since description does not name the integrity dimension it feeds: %q", desc)
 	}
 }

@@ -478,7 +478,7 @@
         "type": "string"
       },
       "since": {
-        "description": "Base commit ref (ADR-044); unused by any dimension yet.",
+        "description": "Base commit ref (ADR-044); feeds integrity + conservation.",
         "type": "string"
       }
     },
