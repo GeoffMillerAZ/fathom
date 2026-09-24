@@ -96,8 +96,15 @@ func (c *Client) decisionActive() bool {
 // line at all (the early return above), so semantic.rerankWithinTiers'
 // own zero-value fallback (defaultRerankTimeout) is exercised only by a
 // caller that builds ObligationsOptions directly, outside this path.
+//
+// ADR-044 decision 8 (I14): decide.SiteAllowed(c.decideCfg,
+// decide.SiteObligationsRerank) is a second, independent gate a real
+// decider must also clear — "obligations_rerank" absent from [decide]
+// sites returns the SAME zero-value ObligationsOptions{} as a Client that
+// never called WithDecision at all, so a blocked site makes no call,
+// byte-identical to the port simply being off.
 func (c *Client) decisionOpts() semantic.ObligationsOptions {
-	if !c.decisionActive() {
+	if !c.decisionActive() || !decide.SiteAllowed(c.decideCfg, decide.SiteObligationsRerank) {
 		return semantic.ObligationsOptions{}
 	}
 	return semantic.ObligationsOptions{
@@ -497,7 +504,13 @@ func (c *Client) compileLayer(ctx context.Context, service, layerName string, dr
 	// leaving Compiler.Decider unset in that case keeps a Compiler built
 	// through this path byte-identical to one built before WithDecision
 	// existed, rather than merely behaviorally equivalent.
-	if c.decisionActive() {
+	//
+	// ADR-044 decision 8 (I14): decide.SiteAllowed(c.decideCfg,
+	// decide.SiteCompilePrefilter) is a second, independent gate a real
+	// decider must also clear — "compile_prefilter" absent from [decide]
+	// sites leaves comp.Decider unset, the SAME "no call at all" shape as
+	// decisionActive() being false.
+	if c.decisionActive() && decide.SiteAllowed(c.decideCfg, decide.SiteCompilePrefilter) {
 		comp.Decider = c.decider
 		comp.PrefilterThreshold = c.decideCfg.CompileThreshold
 	}

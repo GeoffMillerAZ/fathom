@@ -409,6 +409,7 @@ func TestConfig_DecideBlock(t *testing.T) {
 			RouteTimeoutMS:   3000,
 			RankWithinTier:   false,
 			RerankTimeoutMS:  1500,
+			Sites:            []string{"route", "compile_prefilter", "obligations_rerank", "certify_suggest"},
 		}
 		if !reflect.DeepEqual(loaded.Config.Decide, want) {
 			t.Errorf("Decide = %+v, want defaults %+v", loaded.Config.Decide, want)
@@ -576,6 +577,65 @@ api_key_env = "TYPESAFE_API_KEY"
 		}
 		if loaded.Config.Decide.RouteTimeoutMS != 100 {
 			t.Errorf("RouteTimeoutMS = %d, want 100", loaded.Config.Decide.RouteTimeoutMS)
+		}
+	})
+
+	t.Run("mergeDecideFields sets sites and records provenance (ADR-044 decision 8)", func(t *testing.T) {
+		var d Decide
+		prov := Provenance{}
+		mergeDecideFields(&d, map[string]any{
+			"sites": []any{"route", "certify_suggest"},
+		}, SourceProject, "project.toml", prov)
+		want := []string{"route", "certify_suggest"}
+		if strings.Join(d.Sites, ",") != strings.Join(want, ",") {
+			t.Errorf("Sites = %v, want %v", d.Sites, want)
+		}
+		if info := prov["decide.sites"]; info.Source != SourceProject || info.Path != "project.toml" {
+			t.Errorf("provenance[decide.sites] = %+v", info)
+		}
+	})
+
+	t.Run("sites narrows the default allowlist when set, from TOML", func(t *testing.T) {
+		dir := t.TempDir()
+		userPath := filepath.Join(dir, "user.toml")
+		writeTOML(t, userPath, `
+[decide]
+sites = ["route"]
+`)
+		loaded, err := Load(userPath, "")
+		if err != nil {
+			t.Fatalf("Load: %v", err)
+		}
+		if strings.Join(loaded.Config.Decide.Sites, ",") != "route" {
+			t.Errorf("Sites = %v, want [route]", loaded.Config.Decide.Sites)
+		}
+	})
+
+	t.Run("an empty sites list disables every site", func(t *testing.T) {
+		dir := t.TempDir()
+		userPath := filepath.Join(dir, "user.toml")
+		writeTOML(t, userPath, "[decide]\nsites = []\n")
+		loaded, err := Load(userPath, "")
+		if err != nil {
+			t.Fatalf("Load: %v", err)
+		}
+		if len(loaded.Config.Decide.Sites) != 0 {
+			t.Errorf("Sites = %v, want an empty (never nil-defaulted) allowlist", loaded.Config.Decide.Sites)
+		}
+	})
+
+	t.Run("refuses an unrecognised sites entry by name", func(t *testing.T) {
+		dir := t.TempDir()
+		userPath := filepath.Join(dir, "user.toml")
+		writeTOML(t, userPath, `[decide]
+sites = ["route", "made_up_site"]
+`)
+		_, err := Load(userPath, "")
+		if err == nil {
+			t.Fatal("expected an error for an unrecognised [decide] sites entry")
+		}
+		if !strings.Contains(err.Error(), "made_up_site") {
+			t.Errorf("error = %v, want it to name the offending value %q", err, "made_up_site")
 		}
 	})
 

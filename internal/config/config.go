@@ -172,6 +172,22 @@ type Decide struct {
 	// "typesafe"; wins over APIKeyEnv when both are set (same discipline as
 	// Profile.APIKeyCmd).
 	APIKeyCmd []string `toml:"api_key_cmd"`
+
+	// Sites is the egress allowlist for ADR-044 decision 8 (I14: "the only
+	// off-host egress is LLM compilation and, since ADR-042, the decision
+	// port"): the site names allowed to send a decision.Question off-host
+	// through this Decide port — "route" (POST /route), "compile_prefilter"
+	// (the compile pre-filter, DP-9), "obligations_rerank" (the obligations
+	// within-tier re-rank, DP-7/DP-8) and "certify_suggest" (`fathom certify
+	// suggest`, TC-24). A site not listed here makes NO call at all,
+	// regardless of Provider — internal/decide.SiteAllowed is the single
+	// gate every call site consults. A present-but-empty list (`sites = []`)
+	// disables every site; an absent key (the common case) leaves the
+	// loaded default in place (DefaultDecide.Sites: every current site, so
+	// unconfigured behaviour is unchanged) exactly like every other
+	// present-key-replaces-default list field in this struct (APIKeyCmd
+	// above, Findings.Producers).
+	Sites []string `toml:"sites"`
 }
 
 // DefaultDecide is the zero-configuration [decide] block: provider "none"
@@ -197,6 +213,11 @@ var DefaultDecide = Decide{
 	RouteTimeoutMS:   3000,
 	RankWithinTier:   false,
 	RerankTimeoutMS:  1500,
+	// Every current site (ADR-044 decision 8): the default allowlist keeps
+	// every existing site's behaviour unchanged — Provider "none" still
+	// makes no call either way, and a real provider calls every site it
+	// always called before Sites existed. A repo narrows this explicitly.
+	Sites: []string{"route", "compile_prefilter", "obligations_rerank", "certify_suggest"},
 }
 
 // Tests configures vision 33 / ADR-043 stage 0's test-evidence ingest

@@ -82,7 +82,7 @@ func TestRouteHandler_NoneAndLLM(t *testing.T) {
 				},
 			},
 		})
-		ports := &decide.Ports{Decider: mock, Cfg: config.Decide{Provider: "llm", RouteConfidence: 0.9}, Recorder: rec}
+		ports := &decide.Ports{Decider: mock, Cfg: config.Decide{Provider: "llm", RouteConfidence: 0.9, Sites: []string{decide.SiteRoute}}, Recorder: rec}
 		resp, out := postRoute(t, routeHandler(ports), "TypeError: cannot read property 'x' of undefined")
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("status = %d, want 200", resp.StatusCode)
@@ -120,7 +120,7 @@ func TestRouteHandler_NoneAndLLM(t *testing.T) {
 				},
 			},
 		})
-		ports := &decide.Ports{Decider: mock, Cfg: config.Decide{Provider: "llm", RouteConfidence: 0.9}, Recorder: rec}
+		ports := &decide.Ports{Decider: mock, Cfg: config.Decide{Provider: "llm", RouteConfidence: 0.9, Sites: []string{decide.SiteRoute}}, Recorder: rec}
 		_, out := postRoute(t, routeHandler(ports), "what rules govern this file")
 		if out.Band != "confirm" || out.Verb != "obligations" || out.Shape != "what-governs" {
 			t.Errorf("out = %+v, want verb=obligations shape=what-governs band=confirm", out)
@@ -139,7 +139,7 @@ func TestRouteHandler_NoneAndLLM(t *testing.T) {
 		var buf bytes.Buffer
 		rec := decide.NewRecorder(&buf, time.Now, "v-test")
 		mock := decision.NewMockDecider("mock", decision.MockEntry{Err: errBoom})
-		ports := &decide.Ports{Decider: mock, Cfg: config.Decide{Provider: "llm"}, Recorder: rec}
+		ports := &decide.Ports{Decider: mock, Cfg: config.Decide{Provider: "llm", Sites: []string{decide.SiteRoute}}, Recorder: rec}
 		resp, out := postRoute(t, routeHandler(ports), "some prompt")
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("status = %d, want 200 (a decider error must never 5xx)", resp.StatusCode)
@@ -173,6 +173,38 @@ func TestRouteHandler_NoneAndLLM(t *testing.T) {
 		}
 		if applied, ok := row["applied"].(bool); !ok || applied {
 			t.Errorf("applied = %v, want false", row["applied"])
+		}
+	})
+
+	t.Run("route not in [decide] sites makes no call and discloses why", func(t *testing.T) {
+		var buf bytes.Buffer
+		rec := decide.NewRecorder(&buf, time.Now, "v-test")
+		mock := decision.NewMockDecider("mock", decision.MockEntry{
+			Response: decision.Response{
+				Provider: "mock",
+				Answers: map[string]decision.Answer{
+					"verb": {ID: "verb", Kind: decision.KindChoice, Choice: "localize", Confidence: 0.95},
+				},
+			},
+		})
+		// Sites lists a real site, just not "route" — proves the gate is
+		// per-site, not merely "Sites is unset".
+		ports := &decide.Ports{Decider: mock, Cfg: config.Decide{Provider: "llm", Sites: []string{decide.SiteCertifySuggest}}, Recorder: rec}
+		resp, out := postRoute(t, routeHandler(ports), "some prompt")
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("status = %d, want 200", resp.StatusCode)
+		}
+		if len(mock.Calls()) != 0 {
+			t.Errorf("Decide was called %d time(s), want 0 (site not allowed)", len(mock.Calls()))
+		}
+		if out.Provider != "none" || out.Verb != "" || out.Band != "unsure" {
+			t.Errorf("out = %+v, want the none-shaped fallback", out)
+		}
+		if !strings.Contains(out.Error, "route") || !strings.Contains(out.Error, "sites") {
+			t.Errorf("Error = %q, want it to name the blocked site and [decide] sites", out.Error)
+		}
+		if buf.Len() != 0 {
+			t.Errorf("decisions.jsonl got %d bytes written, want 0 (no call, nothing to log)", buf.Len())
 		}
 	})
 
@@ -239,7 +271,7 @@ func TestRouteHandler_ConfigurableTimeout(t *testing.T) {
 				"verb": {ID: "verb", Kind: decision.KindChoice, Choice: "localize", Confidence: 0.95},
 			},
 		}}
-		ports := &decide.Ports{Decider: slow, Cfg: config.Decide{Provider: "llm", RouteTimeoutMS: 100}, Recorder: rec}
+		ports := &decide.Ports{Decider: slow, Cfg: config.Decide{Provider: "llm", RouteTimeoutMS: 100, Sites: []string{decide.SiteRoute}}, Recorder: rec}
 
 		start := time.Now()
 		resp, out := postRoute(t, routeHandler(ports), "some prompt")
@@ -272,7 +304,7 @@ func TestRouteHandler_ConfigurableTimeout(t *testing.T) {
 				"verb": {ID: "verb", Kind: decision.KindChoice, Choice: "localize", Confidence: 0.95},
 			},
 		}}
-		ports := &decide.Ports{Decider: slow, Cfg: config.Decide{Provider: "llm", RouteTimeoutMS: 5000}, Recorder: rec}
+		ports := &decide.Ports{Decider: slow, Cfg: config.Decide{Provider: "llm", RouteTimeoutMS: 5000, Sites: []string{decide.SiteRoute}}, Recorder: rec}
 
 		resp, out := postRoute(t, routeHandler(ports), "some prompt")
 		if resp.StatusCode != http.StatusOK {

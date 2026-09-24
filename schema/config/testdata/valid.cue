@@ -50,6 +50,7 @@ example: #Config & {
 		compile_threshold: 0.5
 		route_confidence:  0.9
 		rank_within_tier:  true
+		sites: ["route", "obligations_rerank"]
 	}
 }
 

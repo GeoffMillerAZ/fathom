@@ -301,6 +301,7 @@ route_confidence  = 0.9      # the prompt hook injects a firm route line at or a
 route_timeout_ms  = 3000     # POST /route's own decider budget, in ms (100-30000)
 rank_within_tier  = false    # obligations re-orders rules only inside their governing-scope tier
 rerank_timeout_ms = 1500     # obligations re-rank's own decider budget, in ms (100-60000)
+sites = ["route", "compile_prefilter", "obligations_rerank", "certify_suggest"]  # the egress opt-in — this is the default
 ```
 
 `rank_within_tier` defaults to **false** (amended 2026-09-23, ADR-042): the
@@ -343,6 +344,26 @@ risks losing that race outright; 1500ms leaves 500ms of margin under the
 hook's 2000ms ceiling. Raise it only for offline/non-hook use (a terminal
 `fathom obligations` call, a bench run) where nothing is racing a client-side
 deadline.
+
+`sites` (ADR-044 decision 8) is the egress opt-in for I14 ("questions carry
+code off-host"): the site names this port is allowed to send a
+`decision.Question` off-host from — `route` (`POST /route`), `compile_prefilter`
+(the compile pre-filter, DP-9), `obligations_rerank` (the obligations
+within-tier re-rank, DP-7/DP-8), and `certify_suggest` (`fathom certify
+suggest`, TC-24). **A site absent from `sites` makes NO call at all**,
+whatever `provider` is set to — this is a second, independent gate a real
+provider must also clear, checked once per call site (`internal/decide.
+SiteAllowed`) rather than re-derived at each one. Every failure discloses why:
+`POST /route` answers its usual none-shaped body with `Error` naming the
+blocked site; `fathom certify suggest` prints one line naming it and exits 0;
+`fathom doctor`'s `decision_provider` row appends `(sites off: <names>)` to a
+passing provider's own Reason whenever `sites` excludes any of the four.
+Unset (the default, shown above) means every current site, so an
+unconfigured `[decide]` block behaves exactly as it did before `sites`
+existed; `sites = []` disables every site outright — a fully quiet decision
+port with a provider still configured. Closed to the four site names that
+exist today (`fathom config` load refuses an unrecognized one by name, the
+same discipline `provider`'s own enum already applies).
 
 `provider = "typesafe"` routes through the kit's TypeSafe (Jev) adapter directly
 — no `[llm]` profile needed — and lands 2026-09-22 (ADR-042 amendment; the

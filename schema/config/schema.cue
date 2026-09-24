@@ -219,6 +219,15 @@ package config
 	// trimmed stdout is the credential. Wins over api_key_env when both are
 	// set. Must name at least one element (the executable).
 	api_key_cmd?: [...string] & [_, ...]
+
+	// sites is the egress allowlist (ADR-044 decision 8, I14): the site
+	// names this port is allowed to send a decision.Question off-host from.
+	// A site absent here makes NO call at all, whatever provider is set.
+	// Unset (the default) means every current site — DefaultDecide.Sites in
+	// Go, so unconfigured behaviour is unchanged; `sites = []` disables
+	// every site. Closed to the four sites that exist today, same
+	// discipline as provider's own enum.
+	sites?: [...("route" | "compile_prefilter" | "obligations_rerank" | "certify_suggest")]
 }
 
 // #Tests configures vision 33 / ADR-043 stage 0's test-evidence ingest: a

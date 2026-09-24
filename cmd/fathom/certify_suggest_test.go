@@ -22,6 +22,7 @@ import (
 
 	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
 	"github.com/geoffmilleraz/fathom/internal/certify"
+	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/decide"
 )
 
@@ -83,7 +84,7 @@ func TestCmdCertifySuggest_BandsAndNone(t *testing.T) {
 
 	mock := decision.NewMockDecider("mock", decision.MockEntry{Response: certifySuggestMockResponse()})
 	rec := decide.NewRecorder(&bytes.Buffer{}, now, "test")
-	ports := &decide.Ports{Decider: mock, Recorder: rec}
+	ports := &decide.Ports{Decider: mock, Cfg: config.Decide{Sites: []string{decide.SiteCertifySuggest}}, Recorder: rec}
 
 	outPath := filepath.Join(t.TempDir(), "suggestions.jsonl")
 	var out, errBuf bytes.Buffer
@@ -130,6 +131,28 @@ func TestCmdCertifySuggest_BandsAndNone(t *testing.T) {
 	}
 	if s.GeneratedAt != "2026-09-23T00:00:00Z" {
 		t.Errorf("generated_at = %q, want the injected clock's timestamp", s.GeneratedAt)
+	}
+
+	// ADR-044 decision 8 (I14): "certify_suggest" absent from [decide]
+	// sites makes NO call at all, even with a live provider and real
+	// candidates — a second, independent gate a configured provider must
+	// also clear.
+	blockedMock := decision.NewMockDecider("mock", decision.MockEntry{Response: certifySuggestMockResponse()})
+	blockedPorts := &decide.Ports{Decider: blockedMock, Cfg: config.Decide{Sites: []string{decide.SiteRoute}}, Recorder: rec}
+	var blockedOut, blockedErr bytes.Buffer
+	code = runCertifySuggest(
+		[]string{"--service", service, "--store", storePath, "--out", filepath.Join(t.TempDir(), "blocked.jsonl")},
+		blockedPorts, now, &blockedOut, &blockedErr,
+	)
+	if code != 0 {
+		t.Fatalf("site-blocked run: exit = %d, stderr: %s", code, blockedErr.String())
+	}
+	if calls := blockedMock.Calls(); len(calls) != 0 {
+		t.Fatalf("Decide called %d time(s), want 0 (certify_suggest not in [decide] sites)", len(calls))
+	}
+	blockedLines := strings.Split(strings.TrimRight(blockedOut.String(), "\n"), "\n")
+	if len(blockedLines) != 1 || !strings.Contains(blockedLines[0], "certify_suggest") || !strings.Contains(blockedLines[0], "not allowed") {
+		t.Fatalf("site-blocked stdout = %q, want exactly one line naming the blocked site", blockedOut.String())
 	}
 
 	// certify gaps (table path) renders the suggested hint from the file.

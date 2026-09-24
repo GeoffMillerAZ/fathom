@@ -26,6 +26,61 @@ type Ports struct {
 	Recorder *Recorder
 }
 
+// Site name constants for [decide] sites (ADR-044 decision 8, design doc
+// §7, I14): the only sites a decision.Decider may ever be asked from. These
+// four literals are exactly what config.DefaultDecide.Sites lists — a
+// config.Decide loaded through config.Load and never touching [decide]
+// sites carries all four, so SiteAllowed(cfg, <any of these>) is true by
+// default and every existing call site's behaviour is unchanged.
+const (
+	// SiteRoute is POST /route (DP-9, cmd/fathom/route.go): one
+	// decision.KindChoice question asking which verb a prompt fits.
+	SiteRoute = "route"
+	// SiteCompilePrefilter is the compile pre-filter (DP-9,
+	// internal/semantic.PrefilterSections): one decision.KindNoul question
+	// per ordered section asking whether it states a binding rule.
+	SiteCompilePrefilter = "compile_prefilter"
+	// SiteObligationsRerank is the obligations within-tier re-rank (DP-7/
+	// DP-8, internal/semantic.rerankWithinTiers): one decision.KindNoul
+	// question per eligible rule asking whether it governs the edit. The
+	// decisions.jsonl row this site produces is still logged under Site
+	// "obligations" (internal/semantic/decisionrank.go) — that wire value
+	// predates Sites and stays as-is; SiteObligationsRerank is only the
+	// [decide] sites config vocabulary's name for the same call site.
+	SiteObligationsRerank = "obligations_rerank"
+	// SiteCertifySuggest is `fathom certify suggest` (TC-24,
+	// cmd/fathom/certify_suggest.go): one batched request per content-sized
+	// chunk of ungoverned Test* symbols.
+	SiteCertifySuggest = "certify_suggest"
+)
+
+// AllSites lists every known site name, in the same order config.toml's
+// documentation and DefaultDecide.Sites present them — for iteration (e.g.
+// fathom doctor's decision_provider row naming every site a narrowed
+// allowlist excludes).
+var AllSites = []string{SiteRoute, SiteCompilePrefilter, SiteObligationsRerank, SiteCertifySuggest}
+
+// SiteAllowed reports whether cfg's [decide] sites allowlist lets site send
+// a decision.Question off-host (ADR-044 decision 8, I14: "the only off-host
+// egress is LLM compilation and … the decision port"). A site absent from
+// cfg.Sites — including every site, when cfg.Sites is nil or empty — makes
+// NO call at all, regardless of cfg.Provider: this is a second, independent
+// gate a real provider must also clear, never a substitute for Provider
+// "none" already making no call. Fail-closed by construction: a
+// zero-value config.Decide{} (Sites never set) allows nothing, the same
+// direction every other egress control in this repository defaults to,
+// never fail-open. Every call site (route.go's routePortActive,
+// certify_suggest.go, pkg/client.WithDecision's decisionOpts/CompileLayer
+// wiring) consults this one function rather than re-deriving the check.
+func SiteAllowed(cfg config.Decide, site string) bool {
+	for _, s := range cfg.Sites {
+		if s == site {
+			return true
+		}
+	}
+	return false
+}
+
 // Open builds a Ports from cfg: provider "none" (or unset, the default)
 // yields the kit's zero-configuration decision.None — no call is ever made.
 // provider "llm" resolves an llmclient.LLMClient via lane(cfg.Profile) (the

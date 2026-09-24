@@ -13,6 +13,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -142,6 +143,19 @@ func routeHandler(ports *decide.Ports) http.Handler {
 
 		if !routePortActive(ports) {
 			writeRouteResponse(w, noneRouteResponse())
+			return
+		}
+
+		// ADR-044 decision 8 (I14): a second, independent gate a real
+		// provider must also clear — "route" absent from [decide] sites
+		// makes NO call at all, same shape as the port-inactive path above,
+		// but the disclosure names WHY (routePortActive's own degrade
+		// carries no Error at all, since "off" needs no explanation; a
+		// configured-but-site-blocked provider does).
+		if !decide.SiteAllowed(ports.Cfg, decide.SiteRoute) {
+			out := noneRouteResponse()
+			out.Error = fmt.Sprintf("decision port: site %q not allowed by [decide] sites (no call made)", decide.SiteRoute)
+			writeRouteResponse(w, out)
 			return
 		}
 

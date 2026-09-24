@@ -87,7 +87,7 @@ func TestClient_WithDecision_RankedBy(t *testing.T) {
 	mock := decision.NewMockDecider("mock-decider", decision.MockEntry{
 		Response: decision.Response{Provider: "mock-decider"},
 	})
-	c.WithDecision(mock, config.Decide{RankWithinTier: true}, nil)
+	c.WithDecision(mock, config.Decide{RankWithinTier: true, Sites: []string{decide.SiteObligationsRerank}}, nil)
 	oblMock, err := c.Obligations(ctx, "svc", "pkg/foo.go", 10)
 	if err != nil {
 		t.Fatalf("Obligations (mock decider): %v", err)
@@ -108,6 +108,68 @@ func TestClient_WithDecision_RankedBy(t *testing.T) {
 	}
 	if oblGated.RankedBy != "none" {
 		t.Errorf("RankedBy = %q, want %q (rank_within_tier off)", oblGated.RankedBy, "none")
+	}
+}
+
+// TestClient_WithDecision_SiteNotAllowedMakesNoCall pins CV-42 (ADR-044
+// decision 8, I14): a real, active decider (RankWithinTier on, a live
+// MockDecider) whose [decide] sites excludes "obligations_rerank" must
+// serve obligations exactly as if WithDecision had never been called —
+// ranked_by "none", zero Decide calls — the SAME degrade
+// TestClient_WithDecision_RankedBy's "rank_within_tier off" case already
+// pins for the OTHER gate (RankWithinTier), proving Sites is a second,
+// independent gate a real decider must also clear.
+func TestClient_WithDecision_SiteNotAllowedMakesNoCall(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+
+	claudeMD := []byte("# Rules\n\n- Run tests before committing.\n")
+	if err := os.WriteFile(filepath.Join(dir, "CLAUDE.md"), claudeMD, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "pkg"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	goFile := []byte("package main\nfunc Foo() {}\n")
+	if err := os.WriteFile(filepath.Join(dir, "pkg", "foo.go"), goFile, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	c := newTestClient(t, dir)
+	defer c.Close()
+
+	if _, err := c.Ingest(ctx, client.ServiceRef{ID: "svc", Path: dir}); err != nil {
+		t.Fatal("Ingest:", err)
+	}
+
+	mockJSON := `{"claims":[{"rule":"Run tests before committing.","scope":["pkg/**"],"cite_start":3,"cite_end":3}]}`
+	mockLLM := llmclient.NewMockClient(llmclient.MockEntry{
+		Response: llmclient.Response{
+			Text:  mockJSON,
+			Usage: llmclient.Usage{InputTokens: 10, OutputTokens: 5},
+		},
+	})
+	c.WithLLM(mockLLM, "mock-model", 0, 0)
+	if _, err := c.CompileObligations(ctx, "svc", false); err != nil {
+		t.Fatalf("CompileObligations: %v", err)
+	}
+
+	mock := decision.NewMockDecider("mock-decider", decision.MockEntry{
+		Response: decision.Response{Provider: "mock-decider"},
+	})
+	// RankWithinTier is on and the decider is real — Sites lists a real
+	// site, just not obligations_rerank, so this proves the gate is
+	// per-site, not merely "Sites is unset".
+	c.WithDecision(mock, config.Decide{RankWithinTier: true, Sites: []string{decide.SiteRoute}}, nil)
+	obl, err := c.Obligations(ctx, "svc", "pkg/foo.go", 10)
+	if err != nil {
+		t.Fatalf("Obligations: %v", err)
+	}
+	if obl.RankedBy != "none" {
+		t.Errorf("RankedBy = %q, want %q (obligations_rerank not in [decide] sites)", obl.RankedBy, "none")
+	}
+	if len(mock.Calls()) != 0 {
+		t.Errorf("mock decider called %d time(s), want 0 (site not allowed)", len(mock.Calls()))
 	}
 }
 
@@ -151,6 +213,60 @@ func TestClient_WithDecision_NoneLeavesCompileUntouched(t *testing.T) {
 	}
 	if len(run.Decisions) != 0 {
 		t.Errorf("Decisions = %d rows, want 0 (decision.None makes no call, records no decision)", len(run.Decisions))
+	}
+}
+
+// TestClient_WithDecision_CompilePrefilterSiteNotAllowedMakesNoCall pins
+// CV-42's other half: a REAL (non-None) decider wired through WithDecision
+// but with [decide] sites excluding "compile_prefilter" must leave
+// CompileLayer untouched exactly like TestClient_WithDecision_
+// NoneLeavesCompileUntouched — SectionsPrefiltered 0, no Decisions rows —
+// and, unlike that test, the mock decider itself proves NO call was even
+// attempted (a None decider can never be called at all; a real one can, so
+// only its own Calls() count actually distinguishes "gated by Sites" from
+// "gated by the decider's own identity").
+func TestClient_WithDecision_CompilePrefilterSiteNotAllowedMakesNoCall(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+
+	claudeMD := []byte("# Rules\n\n- Run tests before committing.\n")
+	if err := os.WriteFile(filepath.Join(dir, "CLAUDE.md"), claudeMD, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	c := newTestClient(t, dir)
+	defer c.Close()
+	if _, err := c.Ingest(ctx, client.ServiceRef{ID: "svc", Path: dir}); err != nil {
+		t.Fatal("Ingest:", err)
+	}
+
+	mockJSON := `{"claims":[{"rule":"Run tests before committing.","scope":["**"],"cite_start":3,"cite_end":3}]}`
+	mockLLM := llmclient.NewMockClient(llmclient.MockEntry{
+		Response: llmclient.Response{
+			Text:  mockJSON,
+			Usage: llmclient.Usage{InputTokens: 10, OutputTokens: 5},
+		},
+	})
+	c.WithLLM(mockLLM, "mock-model", 0, 0)
+	mock := decision.NewMockDecider("mock-decider", decision.MockEntry{
+		Response: decision.Response{Provider: "mock-decider"},
+	})
+	// Sites lists a real site, just not compile_prefilter — proves the
+	// gate is per-site, not merely "Sites is unset".
+	c.WithDecision(mock, config.Decide{CompileThreshold: 0.9, Sites: []string{decide.SiteRoute}}, nil)
+
+	run, err := c.CompileObligations(ctx, "svc", false)
+	if err != nil {
+		t.Fatalf("CompileObligations: %v", err)
+	}
+	if run.SectionsPrefiltered != 0 {
+		t.Errorf("SectionsPrefiltered = %d, want 0 (compile_prefilter not in [decide] sites)", run.SectionsPrefiltered)
+	}
+	if len(run.Decisions) != 0 {
+		t.Errorf("Decisions = %d rows, want 0 (site not allowed, no call made)", len(run.Decisions))
+	}
+	if len(mock.Calls()) != 0 {
+		t.Errorf("mock decider called %d time(s), want 0 (site not allowed)", len(mock.Calls()))
 	}
 }
 
@@ -235,7 +351,7 @@ func TestWithDecision_TypeSafeFake(t *testing.T) {
 
 	var log bytes.Buffer
 	rec := decide.NewRecorder(&log, time.Now, "test-version")
-	c.WithDecision(ts, config.Decide{Provider: "typesafe", RankWithinTier: true}, rec)
+	c.WithDecision(ts, config.Decide{Provider: "typesafe", RankWithinTier: true, Sites: []string{decide.SiteObligationsRerank}}, rec)
 
 	obl, err := c.Obligations(ctx, "svc", "pkg/foo.go", 10)
 	if err != nil {

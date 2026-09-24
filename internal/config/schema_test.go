@@ -110,6 +110,10 @@ bad8: #Config & {
 bad9: #Config & {
 	daemon: memory_limit: "3 gigs"
 }`},
+		{"unrecognised [decide] sites entry", `
+bad10: #Config & {
+	decide: sites: ["route", "made_up_site"]
+}`},
 	}
 
 	cctx := cuecontext.New()

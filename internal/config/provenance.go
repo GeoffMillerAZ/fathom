@@ -219,6 +219,12 @@ func mergeDecideFields(d *Decide, raw map[string]any, source Source, path string
 			prov["decide.api_key_cmd"] = SourceInfo{source, path}
 		}
 	}
+	if v, ok := raw["sites"]; ok {
+		if list, ok := stringSlice(v); ok {
+			d.Sites = list
+			prov["decide.sites"] = SourceInfo{source, path}
+		}
+	}
 }
 
 // numberField reads a TOML numeric field as float64 — go-toml decodes a
