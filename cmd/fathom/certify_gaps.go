@@ -93,6 +93,16 @@ type certifyGapsPayload struct {
 	Kinds       []string            `json:"kinds"`
 	Targets     []certifyGapsTarget `json:"targets"`
 	Summary     certifyGapsSummary  `json:"summary"`
+	// Skip names why the target universe is empty because nothing was
+	// ever ingested/declared here — never set for a genuinely-checked
+	// service that simply has zero targets right now. Mirrors `certify
+	// status --json`'s and the doctor row's own "no manifests found"
+	// skip (never a silent pass): without this, a never-ingested service
+	// and a checked, zero-gap one both serialize to an empty `targets`
+	// array, and the Review Kit adapter treats empty targets as an
+	// outright pass. Additive and omitempty — the schema string, field
+	// names and sort order stay exactly what that adapter parses.
+	Skip string `json:"skip,omitempty"`
 }
 
 type certifyGapsTarget struct {
@@ -156,6 +166,11 @@ func renderCertifyGapsJSON(w io.Writer, service, indexCommit string, now time.Ti
 			Declared: report.Summary.Declared, Live: report.Summary.Live, Gaps: report.Summary.Gaps,
 			JoinedCases: report.Summary.JoinedCases, Cases: report.Summary.Cases,
 		},
+	}
+	if report.Summary.Declared == 0 {
+		// Same condition and wording `certify status` already treats as
+		// a named skip, never a pass (cmdCertifyStatus).
+		payload.Skip = "no manifests found — nothing declared"
 	}
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")

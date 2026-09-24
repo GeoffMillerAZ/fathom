@@ -242,3 +242,34 @@ func TestCmdCertifyGaps_RemedyLinesAndJSON(t *testing.T) {
 		}
 	})
 }
+
+// TestCmdCertifyGaps_JSONSkipsWhenNothingEverDeclared covers the "no
+// manifests found" case `certify status` and the doctor row already name
+// as a skip, not a pass — `certify gaps --json` had no equivalent field,
+// so a never-ingested service and a genuinely-checked-and-clean service
+// were indistinguishable in the wire contract the Review Kit adapter
+// parses (that adapter treats zero targets as an outright pass). The
+// fix adds an additive, omitempty "skip" field to the SAME
+// fathom.certify.gaps/v1 shape — never a different payload shape, since
+// the schema/field-name contract is fixed.
+func TestCmdCertifyGaps_JSONSkipsWhenNothingEverDeclared(t *testing.T) {
+	storePath := filepath.Join(t.TempDir(), "empty.sqlite")
+	var out, errBuf bytes.Buffer
+	code := cmdCertifyGaps([]string{"--service", "neverseen", "--store", storePath, "--json"}, &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("certify gaps --json (never ingested) exit = %d, stderr: %s", code, errBuf.String())
+	}
+	var p certifyGapsPayload
+	if err := json.Unmarshal(out.Bytes(), &p); err != nil {
+		t.Fatalf("unmarshal: %v\n%s", err, out.String())
+	}
+	if p.Schema != certifyGapsSchema {
+		t.Errorf("schema = %q, want %q (the skip field must never change the wire contract)", p.Schema, certifyGapsSchema)
+	}
+	if len(p.Targets) != 0 {
+		t.Fatalf("targets = %+v, want none (nothing was ever ingested)", p.Targets)
+	}
+	if p.Skip == "" {
+		t.Fatalf("Skip is empty, want a named skip — a never-ingested service must not be indistinguishable from a genuinely-checked, zero-gap one")
+	}
+}
