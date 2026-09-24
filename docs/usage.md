@@ -1426,11 +1426,19 @@ re-read.
 
 `--since` (ADR-044 §1.6, CV-13) additionally resolves `<ref>` to a commit
 sha and carries it, plus the service's own corpus root, on the review
-engine's internal Input (`Base`/`Root`) — the base/root a base-aware
-dimension from `docs/design/refactor-conservation.md` (not yet shipped)
-reads. A ref that does not resolve fails open (every dimension still runs
-over the changed-file set `--since` already computed); `--manifest` runs
-never populate `Base` at all, since they carry no ref.
+engine's internal Input (`Base`/`Root`). This feeds the **`integrity`**
+dimension (ADR-044 §1, CV-12): without `--since`, `[ ] integrity` prints
+with reason `needs a base ref`; with it, `fathom review` runs
+internal/conserve's `integrity` plane over base..head and reports any
+guarded-test loss (a certifying or invariant-enforcing test that was
+deleted, renamed, weakened, newly skipped, had its referenced golden
+fixture change, or lost/moved its `// certifies:` marker) or a hand edit
+to a generated file whose generator inputs did not change. The
+`conservation` dimension from `docs/design/refactor-conservation.md` is
+not yet shipped and reads the same `Base`/`Root`. A ref that does not
+resolve fails open (every dimension still runs over the changed-file set
+`--since` already computed); `--manifest` runs never populate `Base` at
+all, since they carry no ref.
 
 `--mode persist` (the default) writes the deterministic-oracle findings to
 the claims store; `--mode report` (`--no-persist` is an alias) never

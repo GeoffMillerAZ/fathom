@@ -105,8 +105,8 @@ func TestReview_OneCallWorkedExample(t *testing.T) {
 		t.Errorf("service = %v", payload["service"])
 	}
 	dims, ok := payload["dimensions"].([]any)
-	if !ok || len(dims) != 6 {
-		t.Fatalf("expected 6 dimensions, got %v", payload["dimensions"])
+	if !ok || len(dims) != 7 { // impact, obligations, arch_conformance, spec_coverage, coverage, certifications, integrity (CV-12)
+		t.Fatalf("expected 7 dimensions, got %v", payload["dimensions"])
 	}
 	var specDim map[string]any
 	for _, raw := range dims {
@@ -910,8 +910,8 @@ func TestReview_AppendsCallLogVerdictOutcome(t *testing.T) {
 	if entry.VerdictOutcome == nil {
 		t.Fatal("VerdictOutcome is nil, want the per-checked-dimension counts")
 	}
-	if want := map[string]int{"impact": 0, "obligations": 0, "spec_coverage": 1}; !reflect.DeepEqual(entry.VerdictOutcome, want) {
-		t.Errorf("VerdictOutcome = %v, want %v (arch_conformance absent — unchecked, no rule pack)", entry.VerdictOutcome, want)
+	if want := map[string]int{"impact": 0, "obligations": 0, "spec_coverage": 1, "integrity": 0}; !reflect.DeepEqual(entry.VerdictOutcome, want) {
+		t.Errorf("VerdictOutcome = %v, want %v (arch_conformance absent — unchecked, no rule pack; integrity checked via --since with no findings)", entry.VerdictOutcome, want)
 	}
 }
 
