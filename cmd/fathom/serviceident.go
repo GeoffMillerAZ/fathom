@@ -8,10 +8,17 @@ import (
 )
 
 // serviceCandidate is one (service name, corpus root) identity guess for a
-// Claude Code project directory.
+// Claude Code project directory. verified is true only for the candidate
+// resolveIndexedCandidate(Cached) returned — i.e. one the daemon itself
+// records a live ServiceMeta.Path for (DG-11) — never for a bare basename/
+// git-toplevel guess, which carries no such backing at all. It is set by
+// candidatesWithDaemon on the struct it hands to mergeCandidates, not by
+// mergeCandidates itself, so a caller building its own serviceCandidate
+// literals (as the O1 tests do) is unaffected: the zero value is false.
 type serviceCandidate struct {
-	name string
-	root string
+	name     string
+	root     string
+	verified bool
 }
 
 // serviceCandidates returns identity guesses for projDir, in preference order:
@@ -139,6 +146,11 @@ func candidatesWithDaemon(hc *http.Client, baseURL, projDir string) []serviceCan
 	if !ok {
 		return base
 	}
+	// DG-11: mark this candidate as daemon-verified BEFORE merging — the
+	// only caller that stamps this flag, so a test constructing its own
+	// serviceCandidate literals (TestMergeCandidatesNeverCollapses) or
+	// calling resolveFromServices directly never sees it set implicitly.
+	resolved.verified = true
 	return mergeCandidates(resolved, base)
 }
 
