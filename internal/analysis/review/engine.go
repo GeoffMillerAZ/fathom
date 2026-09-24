@@ -204,6 +204,16 @@ type Input struct {
 	CoverageChecked bool
 	CoverageLayered []coverage.SymbolLayerCoverage
 
+	// integrity (ADR-044 §1.6, CV-12). Checked only when Base != "" (the
+	// same "needs a base ref" gate design §1.6 specifies) — IntegrityFindings
+	// is caller-flattened (the SAME discipline ObligationRule/
+	// CertificationRecord already use): a caller with a base ref runs
+	// internal/conserve's "integrity" plane (or internal/analysis/
+	// integrity.Check directly) and maps its result onto IntegrityFinding,
+	// review itself never importing internal/conserve or internal/analysis/
+	// integrity (a leaf package stays a leaf package).
+	IntegrityFindings []IntegrityFinding
+
 	// certifications (vision 33 / ADR-043 stage 1, TC-10). Supported is
 	// the backend-capability gate (a live claims-serving backend, same
 	// meaning as ObligationsSupported); Declared is false when the
@@ -248,6 +258,25 @@ type CertificationRecord struct {
 	Scope []string
 }
 
+// IntegrityFinding is one "integrity" conserve-plane result (ADR-044 §1),
+// flattened for DimIntegrity (CV-12) exactly like CertificationRecord
+// flattens a certify.Record — the caller (cmd/fathom's --since glue,
+// internal/mcp's reviewDiffWithBase path) builds one of these per
+// internal/conserve.Finding (or per internal/analysis/integrity.Finding
+// directly) whose Plane is "integrity", not review itself.
+type IntegrityFinding struct {
+	// Kind mirrors internal/analysis/integrity.Kind's wire strings:
+	// deleted | renamed | weakened | skipped | golden_changed |
+	// marker_moved | edited | hand_edit.
+	Kind string
+	// Test is the guarded test's bare name; "" for a hand_edit finding,
+	// which names a generated FILE instead (see File).
+	Test   string
+	File   string
+	Line   int
+	Detail string
+}
+
 // Run composes every dimension into one Verdict. Deterministic: identical
 // Input always produces an identical Verdict (every slice is sorted).
 func Run(in Input) Verdict {
@@ -261,6 +290,7 @@ func Run(in Input) Verdict {
 		runSpecCoverage(in),
 		DimTestCoverage(in),
 		runCertifications(in),
+		DimIntegrity(in),
 	}
 
 	v := Verdict{
@@ -759,6 +789,74 @@ func DimTestCoverage(in Input) Dimension {
 // coverage.LabeledProfile's own doc comment).
 func ResolveCoverage(profiles []coverage.LabeledProfile, nodes []core.SymbolNode) []coverage.SymbolLayerCoverage {
 	return coverage.JoinLayeredSymbols(profiles, nodes)
+}
+
+// ─── integrity ────────────────────────────────────────────────────────────
+
+// dimIntegrityName is the "integrity" dimension's Name — a plain constant
+// (not exported as DimIntegrity alongside DimImpact/DimObligations/…)
+// because the exported identifier DimIntegrity names the dimension's
+// constructor FUNCTION instead (CV-12's own anchor), mirroring
+// DimTestCoverage/dimCoverageName's own split naming exactly.
+const dimIntegrityName = "integrity"
+
+// DimIntegrity computes the "integrity" dimension (ADR-044 §1.6, CV-12):
+// every guarded-test/generated-file finding the caller's "integrity"
+// conserve-plane run (or a direct internal/analysis/integrity.Check call)
+// already produced, scoped to base..head exactly like every other
+// base-aware fact this package serves. Checked is false — with Reason
+// "needs a base ref" — whenever in.Base is empty (design §1.6's own
+// wording): a review run with no --since/since given has no change range
+// to check integrity OVER, the same honesty discipline runObligations/
+// runArch already apply to their own missing capabilities.
+//
+// Unlike every other dimension, DimIntegrity performs NO analysis itself —
+// in.IntegrityFindings is already the finished, plane-computed result; this
+// function only gates on Base, renders each IntegrityFinding as a Finding,
+// and sorts. The analysis lives in internal/conserve's "integrity" plane
+// (and internal/analysis/integrity beneath it) precisely so review stays a
+// leaf package with no git, corpus, or call-graph dependency of its own —
+// see IntegrityFinding's own doc comment.
+func DimIntegrity(in Input) Dimension {
+	d := Dimension{Name: dimIntegrityName}
+	if in.Base == "" {
+		d.Reason = "needs a base ref"
+		return d
+	}
+	d.Checked = true
+
+	for _, f := range in.IntegrityFindings {
+		sev := "warn"
+		switch f.Kind {
+		case "deleted", "weakened", "hand_edit":
+			// The three kinds design §1.3/§1.5 treat as an unqualified loss
+			// on their own (never "reported, not a loss unless…" the way
+			// `renamed` is) read as errors; every other kind is
+			// informational-but-notable, matching runCertifications' own
+			// live/non-live split.
+			sev = "error"
+		}
+		d.Findings = append(d.Findings, Finding{
+			Kind:     f.Kind,
+			Symbol:   f.Test,
+			File:     f.File,
+			Line:     f.Line,
+			Message:  f.Detail,
+			Citation: citeOf(f.File, f.Line),
+			Severity: sev,
+		})
+	}
+	sort.Slice(d.Findings, func(i, j int) bool {
+		if d.Findings[i].File != d.Findings[j].File {
+			return d.Findings[i].File < d.Findings[j].File
+		}
+		if d.Findings[i].Kind != d.Findings[j].Kind {
+			return d.Findings[i].Kind < d.Findings[j].Kind
+		}
+		return d.Findings[i].Message < d.Findings[j].Message
+	})
+	d.Count = len(d.Findings)
+	return d
 }
 
 // ─── shared helpers ───────────────────────────────────────────────────────

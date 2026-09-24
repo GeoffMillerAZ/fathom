@@ -45,7 +45,7 @@ func TestBuildReviewInputFromClient_SinceResolvesBaseAndRoot(t *testing.T) {
 	c := client.New(connector.NewLocalConnector(), st)
 	defer c.Close()
 
-	in, _, err := buildReviewInputFromClient(context.Background(), c, "review-since-svc",
+	in, _, err := buildReviewInputFromClient(context.Background(), c, st, "review-since-svc",
 		[]string{"pkg/a.go"}, rewriteGitRunner([]string{"pkg/a.go"}, "deadbeef"), "HEAD~1")
 	if err != nil {
 		t.Fatalf("buildReviewInputFromClient: %v", err)
@@ -68,7 +68,7 @@ func TestBuildReviewInputFromClient_NoSinceLeavesBaseEmpty(t *testing.T) {
 	c := client.New(connector.NewLocalConnector(), st)
 	defer c.Close()
 
-	in, _, err := buildReviewInputFromClient(context.Background(), c, "review-nosince-svc",
+	in, _, err := buildReviewInputFromClient(context.Background(), c, st, "review-nosince-svc",
 		[]string{"pkg/a.go"}, rewriteGitRunner([]string{"pkg/a.go"}, "deadbeef"), "")
 	if err != nil {
 		t.Fatalf("buildReviewInputFromClient: %v", err)
@@ -94,7 +94,7 @@ func TestBuildReviewInputFromClient_UnresolvableSinceFailsOpen(t *testing.T) {
 	failingRunner := func(args ...string) ([]byte, error) {
 		return nil, bytes.ErrTooLarge // any error
 	}
-	in, _, err := buildReviewInputFromClient(context.Background(), c, "review-badsince-svc",
+	in, _, err := buildReviewInputFromClient(context.Background(), c, st, "review-badsince-svc",
 		[]string{"pkg/a.go"}, failingRunner, "not-a-real-ref")
 	if err != nil {
 		t.Fatalf("buildReviewInputFromClient must not error on an unresolvable --since: %v", err)

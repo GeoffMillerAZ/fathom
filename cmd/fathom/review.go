@@ -238,7 +238,7 @@ func runReviewBody(gitRunner func(args ...string) ([]byte, error), storePathV, s
 		}
 	}
 
-	in, sources, err := buildReviewInputFromClient(ctx, c, *service, changedFiles, gitRunner, sinceV)
+	in, sources, err := buildReviewInputFromClient(ctx, c, st, *service, changedFiles, gitRunner, sinceV)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
@@ -509,7 +509,7 @@ func renderTestGap(w io.Writer, gap impact.TestGapResult) {
 // the MCP QueryInterface abstraction. The full source list is also
 // returned: the persist step needs it to hash cited lines (semantic.Sweep's
 // contract), including arch citations on files OUTSIDE the changed set.
-func buildReviewInputFromClient(ctx context.Context, c *client.Client, service string, changedFiles []string, gitRunner func(args ...string) ([]byte, error), since string) (review.Input, []core.SourceFile, error) {
+func buildReviewInputFromClient(ctx context.Context, c *client.Client, st store.Store, service string, changedFiles []string, gitRunner func(args ...string) ([]byte, error), since string) (review.Input, []core.SourceFile, error) {
 	nodes, err := c.ListAllSymbols(ctx, service)
 	if err != nil {
 		return review.Input{}, nil, fmt.Errorf("list symbols: %w", err)
@@ -581,6 +581,11 @@ func buildReviewInputFromClient(ctx context.Context, c *client.Client, service s
 			in.Base = strings.TrimSpace(string(out))
 		}
 	}
+	// CV-12 (ADR-044 §1.6): the "integrity" conserve plane, over exactly
+	// the base just resolved — a no-op (leaves IntegrityFindings empty)
+	// when Base is still "", so DimIntegrity's own "needs a base ref" gate
+	// is the only thing a caller with no --since ever sees.
+	applyIntegrityDimension(ctx, &in, gitRunner, corpusRoot, st, service)
 	rules, source, deny, checked, reason, rerr := projectrules.ResolveRules(corpusRoot, nil, false)
 	if rerr != nil {
 		return review.Input{}, nil, fmt.Errorf("project rules: %w", rerr)
