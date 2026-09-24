@@ -17,6 +17,14 @@ const (
 	// (find_symbol, or a references definition row): File/Line for
 	// Symbol, compared against a fresh go/parser pass over File.
 	ReceiptKindSymbolLocation ReceiptKind = "symbol_location"
+	// ReceiptKindCertification re-derives a certifications-layer claim's
+	// reach (vision 33, ADR-043 §4; docs/plans/test-certifications.md
+	// TC-13): that Test's call graph, independently walked with go/types,
+	// reaches every symbol named in Reached. A reached test is not a
+	// passing test (ADR-043 decision 5) — `fathom receipt verify` reports
+	// the run itself as "unverified (no run)" unless --run-tests is
+	// given, in which case it actually runs Test and reports pass/fail.
+	ReceiptKindCertification ReceiptKind = "certification"
 )
 
 // Receipt is the saved envelope of one agent-surface answer (ADR-034
@@ -60,4 +68,31 @@ type Receipt struct {
 	// definition site the original answer named for Symbol.
 	File string `json:"file,omitempty"`
 	Line int    `json:"line,omitempty"`
+
+	// Test is set when Kind is ReceiptKindCertification: the certifying
+	// test, in the same "dir/pkg.Name" vocabulary as Symbol (a Test
+	// function is never a method, so exactly one dot separates the
+	// repo-relative package directory from the function name) — the form
+	// `receipt verify --run-tests` builds its `go test <pkg>` invocation
+	// from.
+	Test string `json:"test,omitempty"`
+	// Target is set when Kind is ReceiptKindCertification: the
+	// certification's target id (e.g. "invariant:I35"). Documentation
+	// only — not re-derived.
+	Target string `json:"target,omitempty"`
+	// Strength is set when Kind is ReceiptKindCertification: the
+	// declared certification strength (design doc §3: exists, reaches,
+	// covers, kills). Documentation only — not re-derived.
+	Strength string `json:"strength,omitempty"`
+	// Reached is set when Kind is ReceiptKindCertification: the symbol
+	// keys the original certification found Test's call graph reaching.
+	// `receipt verify` confirms every one is independently reachable
+	// from Test with go/types; the first one that is not names the
+	// difference.
+	Reached []string `json:"reached,omitempty"`
+	// RunDigest is set when Kind is ReceiptKindCertification: a content
+	// digest of the attested run the certification's state was last
+	// computed from. Documentation only — `receipt verify --run-tests`
+	// runs Test fresh rather than trusting this digest.
+	RunDigest string `json:"run_digest,omitempty"`
 }

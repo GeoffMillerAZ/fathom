@@ -40,12 +40,13 @@ func cmdReceipt(args []string, stdout, stderr io.Writer) int {
 func cmdReceiptVerify(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("receipt verify", stderr)
 	repo := fs.String("repo", ".", "path to a git checkout containing the receipt's index_commit (default: current directory)")
+	runTests := fs.Bool("run-tests", false, "certification kind only: actually run the named test (go test -run '^<Test>$' <pkg>) instead of reporting an unverified run")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
 	rest := fs.Args()
 	if len(rest) != 1 {
-		fmt.Fprintln(stderr, "usage: fathom receipt verify [--repo <path>] <receipt.json>")
+		fmt.Fprintln(stderr, "usage: fathom receipt verify [--repo <path>] [--run-tests] <receipt.json>")
 		return 2
 	}
 
@@ -58,6 +59,10 @@ func cmdReceiptVerify(args []string, stdout, stderr io.Writer) int {
 	if err := json.Unmarshal(data, &r); err != nil {
 		fmt.Fprintf(stderr, "receipt verify: invalid receipt JSON: %v\n", err)
 		return 2
+	}
+
+	if r.Kind == core.ReceiptKindCertification {
+		return cmdReceiptVerifyCertification(*repo, r, *runTests, stdout, stderr)
 	}
 
 	outcome, err := receiptverify.Verify(context.Background(), *repo, r)
