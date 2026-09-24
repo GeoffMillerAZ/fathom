@@ -194,7 +194,14 @@ func Run(ctx context.Context, in Input, planes []Plane) Report {
 	for _, p := range planes {
 		findings, missing := p.Check(ctx, in)
 
-		fs := append([]Finding(nil), findings...)
+		// fs/ms start as non-nil, zero-length slices (never append's
+		// nil-preserving shorthand) so a plane with nothing to report
+		// marshals "missing":[]/"findings":[] — the documented
+		// fathom.conserve/v1 wire example (design doc §0) — rather than
+		// null, which a JSON Schema validator or a non-Go client would
+		// refuse where an array is declared.
+		fs := make([]Finding, 0, len(findings))
+		fs = append(fs, findings...)
 		sort.Slice(fs, func(i, j int) bool {
 			if fs[i].Kind != fs[j].Kind {
 				return fs[i].Kind < fs[j].Kind
@@ -202,7 +209,8 @@ func Run(ctx context.Context, in Input, planes []Plane) Report {
 			return fs[i].Key < fs[j].Key
 		})
 
-		ms := append([]string(nil), missing...)
+		ms := make([]string, 0, len(missing))
+		ms = append(ms, missing...)
 		sort.Strings(ms)
 
 		rep.Planes = append(rep.Planes, PlaneReport{

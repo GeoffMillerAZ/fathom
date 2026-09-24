@@ -10,6 +10,7 @@ package conserve
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -172,5 +173,35 @@ func TestRun_MissingBeatsFindings(t *testing.T) {
 	rep := Run(context.Background(), Input{Service: "svc"}, planes)
 	if rep.Planes[0].Verdict != Unproven {
 		t.Errorf("verdict = %q, want unproven", rep.Planes[0].Verdict)
+	}
+}
+
+// TestRun_EmptyFindingsAndMissingMarshalAsEmptyArrays pins the
+// fathom.conserve/v1 wire contract's documented example
+// (docs/design/refactor-conservation.md §0: `"missing":[]`) for the
+// ordinary "conserved, nothing to report" case: a plane with nil
+// findings/missing must still marshal `"missing":[]`/`"findings":[]`, never
+// `null` — a JSON Schema validator or a non-Go client that does not
+// silently coerce null to [] would otherwise fail on every clean plane.
+func TestRun_EmptyFindingsAndMissingMarshalAsEmptyArrays(t *testing.T) {
+	planes := []Plane{fakePlane{name: "p"}} // nil findings, nil missing
+	rep := Run(context.Background(), Input{Service: "svc"}, planes)
+	if rep.Planes[0].Verdict != Conserved {
+		t.Fatalf("verdict = %q, want conserved", rep.Planes[0].Verdict)
+	}
+
+	b, err := json.Marshal(rep)
+	if err != nil {
+		t.Fatalf("json.Marshal: %v", err)
+	}
+	got := string(b)
+	if !strings.Contains(got, `"missing":[]`) {
+		t.Errorf("marshaled report does not contain %q, got: %s", `"missing":[]`, got)
+	}
+	if !strings.Contains(got, `"findings":[]`) {
+		t.Errorf("marshaled report does not contain %q, got: %s", `"findings":[]`, got)
+	}
+	if strings.Contains(got, "null") {
+		t.Errorf("marshaled report contains null, want [] for empty missing/findings: %s", got)
 	}
 }
