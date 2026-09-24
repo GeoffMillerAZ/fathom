@@ -159,22 +159,93 @@ func (e *Engine) TypedEdges(ctx context.Context, serviceID string) ([]core.Edge,
 // FindSymbol returns all SymbolNodes for the given serviceID whose Symbol field
 // matches name exactly, or whose SymbolKey (SourceRef + "." + Symbol) has name
 // as a suffix.
+//
+// finding [8] (DG-10 plan-row spurious-match class): name is normalized
+// through normalizeReceiverSyntax FIRST, so a plan contract written in
+// ordinary Go doc syntax for a pointer/value-receiver method --
+// "(*Pipeline).TypedEdgeStatus" -- can exact-match the extractor's own
+// stored form ("Pipeline.TypedEdgeStatus", never parens or a pointer
+// star) instead of falling through to symbolMatches' loose bidirectional
+// suffix rule and only ever matching an unrelated same-named TYPE. When
+// that normalization actually did something (raw was genuinely
+// receiver-qualified), a resulting GoMethod match is sorted ahead of a
+// same-named GoType match -- the two are otherwise indistinguishable by
+// name alone, and a bare type declaration is never what "(*T).M" syntax
+// means. Ordinary (non-parenthesized) queries are completely unaffected:
+// normalizeReceiverSyntax is a no-op for them, and the existing
+// alphabetical-by-Name ordering is unchanged.
 func (e *Engine) FindSymbol(ctx context.Context, serviceID, name string) ([]core.SymbolNode, error) {
 	obs, err := e.store.QueryObservations(ctx, serviceID, "")
 	if err != nil {
 		return nil, err
 	}
 
+	qname := normalizeReceiverSyntax(name)
+	receiverQualified := qname != name
+
 	var nodes []core.SymbolNode
 	for _, o := range obs {
-		if symbolMatches(o, name) {
+		if symbolMatches(o, qname) {
 			nodes = append(nodes, observationToNode(o))
 		}
 	}
+
+	if receiverQualified {
+		// "(*T).Method" / "(T).Method" syntax unambiguously names a METHOD --
+		// never a type, function, or anything else that happens to share the
+		// bare name via symbolMatches' loose bidirectional suffix rule
+		// (finding [8], DG-10's plan-row spurious-match class). Narrow down
+		// to just the method match(es) when at least one exists, so a caller
+		// building a canonical key from this result (verify's package-scoped
+		// distinctKeys narrowing, in particular) sees exactly one distinct
+		// symbol -- the method -- instead of the method AND an unrelated
+		// same-named type, which left the canonical key ambiguous and the
+		// downstream call-graph reachability check (test_reaches/edge_wired)
+		// silently resolving nothing. If no method matched at all (e.g. a
+		// genuinely absent one), the full match set is left as-is so
+		// symbol_present still reports "not found" rather than silently
+		// reporting an unrelated same-named symbol as present.
+		var methods []core.SymbolNode
+		for _, n := range nodes {
+			if n.Kind == core.KindGoMethod {
+				methods = append(methods, n)
+			}
+		}
+		if len(methods) > 0 {
+			nodes = methods
+		}
+	}
+
 	sort.Slice(nodes, func(i, j int) bool {
 		return nodes[i].Name < nodes[j].Name
 	})
 	return nodes, nil
+}
+
+// normalizeReceiverSyntax strips Go's doc-style "(*T).Method" / "(T).Method"
+// pointer/value-receiver wrapping down to the plain "T.Method" form the Go
+// extractor actually stores (receiverTypeName never keeps the pointer star
+// or parens, internal/extractor/goextract.go) -- without this, a plan
+// contract written in ordinary Go doc syntax for a pointer-receiver method
+// (the idiomatic way to name one) can never exact-match its own stored
+// Symbol, and silently falls back to matching an unrelated same-named type
+// or function via symbolMatches' loose bidirectional suffix rule (finding
+// [8]). Returns name unchanged when it does not look like this form, so
+// every other query (the overwhelming majority) is completely unaffected.
+func normalizeReceiverSyntax(name string) string {
+	if !strings.HasPrefix(name, "(") {
+		return name
+	}
+	close := strings.Index(name, ")")
+	if close < 0 {
+		return name
+	}
+	recv := strings.TrimPrefix(name[1:close], "*")
+	rest := name[close+1:]
+	if recv == "" || !strings.HasPrefix(rest, ".") {
+		return name
+	}
+	return recv + rest
 }
 
 // ─── internal helpers ────────────────────────────────────────────────────────
