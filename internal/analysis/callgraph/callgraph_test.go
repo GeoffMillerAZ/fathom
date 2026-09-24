@@ -153,6 +153,48 @@ func TestReachable_BareName(t *testing.T) {
 	}
 }
 
+// ─── ReachableAny (TC-22: one BFS against a whole candidate set) ───────────
+
+func TestReachableAny_MatchesOneOfMany(t *testing.T) {
+	g := callgraph.Build(fixture())
+	// TestFoo -> A -> B -> C; "svc::pkg.Z" names nothing in the fixture, so
+	// only the "svc::pkg.C" candidate can match — proving the whole-set
+	// membership test, not just "first candidate wins".
+	if !callgraph.ReachableAny(g, "svc::pkg.TestFoo", []string{"svc::pkg.Z", "svc::pkg.C"}) {
+		t.Error("TestFoo should reach C, one of the two candidates")
+	}
+}
+
+func TestReachableAny_NoneMatch(t *testing.T) {
+	g := callgraph.Build(fixture())
+	// TestBar -> B -> C; Orphan and "Z" are both unreached (Orphan has no
+	// callers, Z names nothing at all).
+	if callgraph.ReachableAny(g, "svc::pkg.TestBar", []string{"svc::pkg.Orphan", "svc::pkg.Z"}) {
+		t.Error("TestBar reaches neither Orphan nor the nonexistent Z")
+	}
+}
+
+func TestReachableAny_EmptyCandidatesFalse(t *testing.T) {
+	g := callgraph.Build(fixture())
+	if callgraph.ReachableAny(g, "svc::pkg.TestFoo", nil) {
+		t.Error("an empty candidate set can never be reached")
+	}
+}
+
+func TestReachableAny_UnknownFromFalse(t *testing.T) {
+	g := callgraph.Build(fixture())
+	if callgraph.ReachableAny(g, "svc::pkg.NoSuchSymbol", []string{"svc::pkg.C"}) {
+		t.Error("a from that canonicalizes to nothing can never reach anything")
+	}
+}
+
+func TestReachableAny_SelfMatch(t *testing.T) {
+	g := callgraph.Build(fixture())
+	if !callgraph.ReachableAny(g, "svc::pkg.A", []string{"svc::pkg.A"}) {
+		t.Error("A is trivially in a candidate set containing itself")
+	}
+}
+
 // ─── CallPath ────────────────────────────────────────────────────────────────
 
 func TestCallPath_Direct(t *testing.T) {
