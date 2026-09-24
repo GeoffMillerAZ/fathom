@@ -7,12 +7,12 @@ silently skipped. Design: `docs/design/refactor-conservation.md`.
 
 ## A. Stage 1 — proof integrity
 
-- [ ] A test-kit envelope's `env.commit`, `env.dirty` and `env.race` (or an in-toto `gitCommit` subject) are read into the run {id: CV-1, symbol: runCommitFromEnvelope, package: internal/testevidence, reachable_from: TestLoadEnvelopes_CommitDirtyRace}
-- [ ] Stored test runs keep the commit, tree cleanliness and race mode they were made with {id: CV-2, symbol: SQLiteStore.PutTestRuns, package: internal/store, reachable_from: TestTestRuns_CommitRoundTrip}
-- [ ] A certificate is live only for a passing run bound to a commit after which nothing it reaches changed; unbound runs leave it unproven, a changed reach stales it (O114) {id: CV-3, symbol: CertificateStateAt, package: internal/certify, reachable_from: TestCertificateStateAt_EveryRule}
-- [ ] The reach check sees committed and uncommitted changes to the test file and every reached symbol's file {id: CV-4, symbol: reachUnchangedSince, package: internal/certify, reachable_from: TestReachUnchangedSince_CommittedAndWorktreeEdits}
-- [ ] The sweep stales a certificate whose reached symbol changed since its attested run, the half of TC-8 that O114 found missing {id: CV-5, symbol: SweepCertifications, package: internal/certify, reachable_from: TestSweepCertifications_ReachChangedSinceRunGoesStale}
-- [ ] `task tests:attest` re-attests this repository's runs with a commit and ingests them {id: CV-6, oracle: lexical, path: Taskfile.yml, pattern: "tests:attest"}
+- [x] A test-kit envelope's `env.commit`, `env.dirty` and `env.race` (or an in-toto `gitCommit` subject) are read into the run {id: CV-1, symbol: runCommitFromEnvelope, package: internal/testevidence, reachable_from: TestLoadEnvelopes_CommitDirtyRace}
+- [x] Stored test runs keep the commit, tree cleanliness and race mode they were made with {id: CV-2, symbol: SQLiteStore.PutTestRuns, package: internal/store, reachable_from: TestTestRuns_CommitRoundTrip}
+- [x] A certificate is live only for a passing run bound to a commit after which nothing it reaches changed; unbound runs leave it unproven, a changed reach stales it (O114) {id: CV-3, symbol: CertificateStateAt, package: internal/certify, reachable_from: TestCertificateStateAt_EveryRule}
+- [x] The reach check sees committed and uncommitted changes to the test file and every reached symbol's file {id: CV-4, symbol: reachUnchangedSince, package: internal/certify, reachable_from: TestReachUnchangedSince_CommittedAndWorktreeEdits}
+- [x] The sweep stales a certificate whose reached symbol changed since its attested run, the half of TC-8 that O114 found missing {id: CV-5, symbol: SweepCertifications, package: internal/certify, reachable_from: TestSweepCertifications_ReachChangedSinceRunGoesStale}
+- [x] `task tests:attest` re-attests this repository's runs with a commit and ingests them {id: CV-6, oracle: lexical, path: Taskfile.yml, pattern: "tests:attest"}
 - [ ] Guarded tests are found with their reason: certifies marker, manifest entry, invariant enforcement cell, compatibility-surface evidence, or reach of a changed symbol {id: CV-7, symbol: GuardedTests, package: internal/analysis/integrity, reachable_from: TestGuardedTests_EveryReason}
 - [ ] A function body's normalized hash is unchanged by a pure rename {id: CV-8, symbol: NormalizedBodyHash, package: internal/analysis/integrity, reachable_from: TestNormalizedBodyHash_RenameOnlyEqual}
 - [ ] Test integrity over base..head reports deleted, renamed, weakened, skipped, golden_changed, marker_moved and edited guarded tests {id: CV-9, symbol: Check, package: internal/analysis/integrity, reachable_from: TestCheck_EveryKind}

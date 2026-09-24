@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 const certifyGapsFixtureManifest = `
@@ -43,7 +44,11 @@ const certifyGapsFixtureInvariants = "# Invariants\n\n| # | Statement | Enforced
 
 const certifyGapsFixtureIncidents = "# Incidents\n\n## Open\n\n### INC-1\n\nSomething broke.\n"
 
-func certifyGapsFixtureEnvelope() string {
+// certifyGapsFixtureEnvelope takes the commit the attested run is bound
+// to (CV-1/CV-2/CV-3, O114): an unbound run leaves its certificate
+// unproven rather than live, so a fixture proving a "live" certificate
+// must bind its run to the repo's own real HEAD.
+func certifyGapsFixtureEnvelope(commit string) string {
 	return `{
   "suite": {"component": "cart", "name": "unit", "class": "unit"},
   "key": "k1",
@@ -53,7 +58,7 @@ func certifyGapsFixtureEnvelope() string {
   ],
   "totals": {"run": 1, "passed": 1, "failed": 0, "skipped": 0, "flaked": 0},
   "timing": {"startedAt": "2026-09-23T00:00:00Z", "wallClock": "1ms"},
-  "env": {"toolchainDigest": "x", "runnerClass": "y", "arch": "amd64", "os": "darwin"},
+  "env": {"toolchainDigest": "x", "runnerClass": "y", "arch": "amd64", "os": "darwin", "commit": "` + commit + `", "dirty": false},
   "artifacts": []
 }`
 }
@@ -82,6 +87,20 @@ func setUpCertifyGapsFixture(t *testing.T) (root, storePath, service string) {
 	write("docs/intent/invariants.md", certifyGapsFixtureInvariants)
 	write("docs/intent/incidents.md", certifyGapsFixtureIncidents)
 
+	// A real git repo (CV-5, O114): CompileCertifications' reach check
+	// (internal/certify.reachUnchangedSince) needs an actual commit and
+	// working tree to diff against, not a bare directory — gitAt is
+	// certify_orphans_test.go's own helper, in the same package.
+	now := time.Date(2026, 9, 23, 12, 0, 0, 0, time.UTC)
+	gitAt(t, root, now, "init", "-q")
+	gitAt(t, root, now, "add", "-A")
+	gitAt(t, root, now, "commit", "-q", "-m", "c0")
+	headOut, headErr := gitRunnerIn(root)("rev-parse", "HEAD")
+	if headErr != nil {
+		t.Fatalf("git rev-parse HEAD: %v", headErr)
+	}
+	commit := strings.TrimSpace(string(headOut))
+
 	service = "cart-svc"
 	storePath = filepath.Join(t.TempDir(), "s.sqlite")
 	var out, errBuf bytes.Buffer
@@ -90,7 +109,7 @@ func setUpCertifyGapsFixture(t *testing.T) (root, storePath, service string) {
 	}
 
 	resultsPath := filepath.Join(t.TempDir(), "run.json")
-	if err := os.WriteFile(resultsPath, []byte(certifyGapsFixtureEnvelope()), 0o644); err != nil {
+	if err := os.WriteFile(resultsPath, []byte(certifyGapsFixtureEnvelope(commit)), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	var tiOut, tiErr bytes.Buffer

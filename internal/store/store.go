@@ -162,6 +162,19 @@ type TestRun struct {
 	SignerTier string
 	Watermark  string
 	Cases      []TestCase
+
+	// Commit, Dirty and Race are CV-2's own facts (design doc §1.1,
+	// O114, vision 34 / ADR-044 stage 1): the git commit the run was
+	// attested against, whether the working tree carried uncommitted
+	// changes at that moment, and whether the race detector was on.
+	// Commit is "" (Dirty/Race both false) for a run that never stated
+	// them — an envelope from before this field existed, or from an
+	// adapter nobody told — never a fabricated commit;
+	// internal/certify's certificate ladder (CertificateStateAt) treats
+	// an empty Commit as "not bound to a commit."
+	Commit string
+	Dirty  bool
+	Race   bool
 }
 
 // TestSuiteStatus is the per-suite read `fathom tests status` (TC-4)
@@ -206,6 +219,15 @@ type TestCaseRun struct {
 	Status     string
 	Attempts   int
 	IngestedAt int64
+
+	// Commit, Dirty and Race mirror the owning TestRun's own CV-2 facts
+	// — carried onto this per-symbol read because internal/certify's
+	// certificate ladder (CertificateStateAt, CV-3) needs them to decide
+	// whether a run is bound to a commit, without a second read back to
+	// TestRun for every run TestCaseRunsForSymbol already returns.
+	Commit string
+	Dirty  bool
+	Race   bool
 }
 
 // Store is the persistence contract for fathom's evidence layer.

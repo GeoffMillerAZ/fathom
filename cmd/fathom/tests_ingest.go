@@ -104,7 +104,7 @@ func cmdTestsIngest(args []string, stdout, stderr io.Writer) int {
 	// declarations and/or a fresh attested run, so it never skips the
 	// recompile the way the hash-gated plain-`ingest` path
 	// (runCertifyCompile, cmd/fathom/certify_compile.go) can.
-	if certReport, cerr := certify.CompileCertifications(ctx, st, svc, watermark, time.Now()); cerr != nil {
+	if certReport, cerr := certify.CompileCertifications(ctx, st, svc, watermark, time.Now(), *manifestDir, certify.ExecGit); cerr != nil {
 		fmt.Fprintf(stderr, "warning: certify: compile: %v\n", cerr)
 	} else if certReport.Declared > 0 {
 		fmt.Fprintf(stdout, "certify: %d declared, %d claim(s) compiled\n", certReport.Declared, certReport.ClaimsWritten)

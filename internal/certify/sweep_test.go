@@ -17,7 +17,7 @@ import (
 // it (still fresh, but no longer live).
 func TestSweepCertifications_MovedGoneAndNewRun(t *testing.T) {
 	ctx, st := seedCompileFixture(t)
-	if _, err := CompileCertifications(ctx, st, compileSvc, "wm-1", time.Now()); err != nil {
+	if _, err := CompileCertifications(ctx, st, compileSvc, "wm-1", time.Now(), "", noopGitRunner); err != nil {
 		t.Fatalf("CompileCertifications: %v", err)
 	}
 
@@ -73,7 +73,7 @@ func TestSweepCertifications_MovedGoneAndNewRun(t *testing.T) {
 		t.Fatalf("PutTestRuns (new run): %v", err)
 	}
 
-	report, err := SweepCertifications(ctx, st, compileSvc)
+	report, err := SweepCertifications(ctx, st, compileSvc, "", noopGitRunner)
 	if err != nil {
 		t.Fatalf("SweepCertifications: %v", err)
 	}

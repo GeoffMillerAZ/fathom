@@ -72,6 +72,18 @@ package testkit
 	runnerClass:     string
 	arch:            string
 	os:              string
+	// commit/dirty/race are optional (ADR-0106, "results bind to the
+	// commit they exercised"): the commit the suite ran against, whether
+	// the working tree carried uncommitted changes at that moment, and
+	// whether the race detector was on. Absent on an envelope from before
+	// this field existed, or from an adapter that was never told — never
+	// a fabricated value. A consumer that needs to know whether a run is
+	// bound to a commit checks commit's presence, not a zero value: an
+	// absent commit and a zero-length string read identically in CUE and
+	// in JSON, so "never fabricate" already covers both.
+	commit?: string & =~"^[0-9a-f]{40}$"
+	dirty?:  bool
+	race?:   bool
 }
 
 // #ArtifactRef is a CAS reference — logs, coverage profiles, screenshots.

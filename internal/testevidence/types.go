@@ -113,6 +113,19 @@ type Run struct {
 	SignerTier string `json:"-"`
 	// SourceFile is the file this run was read from.
 	SourceFile string `json:"-"`
+
+	// Commit, Dirty and Race are CV-1's own facts (design doc §1.1,
+	// O114): the git commit the run was attested against, whether the
+	// working tree carried uncommitted changes at that moment, and
+	// whether the race detector was on. All three are the zero value
+	// ("", false, false) on an envelope from before this field existed,
+	// or from an adapter nobody told — runCommitFromEnvelope never
+	// fabricates them, and a consumer (internal/certify's certificate
+	// ladder) treats an empty Commit as "not bound to a commit," never
+	// as a claim about a specific empty-string commit.
+	Commit string `json:"-"`
+	Dirty  bool   `json:"-"`
+	Race   bool   `json:"-"`
 }
 
 // timingView is the subset of #TestResult.timing LoadEnvelopes reads —
