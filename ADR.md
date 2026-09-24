@@ -2291,6 +2291,32 @@ guards-shaped run at n ≥ 3 trials shows the re-rank net positive, or a corpus 
 two governing rules genuinely competing within one scope tier is measured (this
 A/B's 8 guards tasks never had that contest to arbitrate).
 
+**Amended 2026-09-24 (ADR-044 decision 8, CV-M11): the `route` site fails its own
+calibration check, and no `route_confidence` value fixes it.** ADR-044 decision 8
+requires "0.9 right nine times in ten on adjudicated cases" before a site's default
+proceed band is trusted; `docs/bench/readings/decision-port-calibration-2026-09-24.md`
+ran it against `/route`, joining every logged route decision in
+`sextant-r3-workspace`'s live `lookups-vs-jev-r1` and `guards-jev-r1` runs (82
+answered decisions, 22 worktrees) against each task's own empirically-observed
+gold-source tool. At confidence ≥ 0.9, route's choice matched the gold tool only
+45.7% of the time (16/35) — well under the bar. Unlike a simple under-confidence
+gap, **raising the threshold does not recover it**: sweeping every cutoff in
+`[0, 1]` never reaches 90% (the best any cutoff achieves is 58.5%), and the
+highest-confidence slice (exactly 1.0) is measurably *worse* than the 0.9-and-above
+band it sits inside (28.6% vs 45.7%) — confidence and correctness are not
+positively correlated in this sample. Per this ADR's own contingency for a failed
+calibration check, the proceed threshold would ordinarily rise to the smallest
+passing value; none exists on this data, so **`internal/config.DefaultDecide.
+RouteConfidence` is unchanged at 0.9** — raising it to any value would not satisfy
+the check and would misrepresent an unfixed miscalibration as fixed. This does not
+change decision 3's boundary (the port still never asserts a fact, and a wrong
+route suggestion only misdirects an agent's first tool choice, never a claim) or
+any other site's calibration (`certify_suggest`'s own spot-check stayed 5/5
+correct, unaffected). **Revisit when** a larger or less `governance_bound`-heavy
+sample is measured, or route's own prompt/model changes in a way that could plausibly
+fix the non-monotonicity this reading found — a threshold change alone is not
+expected to.
+
 ## ADR-043: Tested means certified — a certifications layer over declared test evidence, judged elsewhere (2026-09-23)
 
 **Status.** Accepted 2026-09-23. Vision: `docs/vision/33-test-certifications.md`. Design: `docs/design/test-certifications.md`. Plan: `docs/plans/test-certifications.md`.
