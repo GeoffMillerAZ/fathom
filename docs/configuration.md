@@ -292,9 +292,18 @@ profile           = ""       # llm: the [llm] profile lane to use (default: the 
 compile_threshold = 0.5      # a guide section whose "is this a binding rule" probability is below this is not compiled (counted, disclosed, still served raw)
 route_confidence  = 0.9      # the prompt hook injects a firm route line at or above this; a hedged one from 0.5; nothing below
 route_timeout_ms  = 3000     # POST /route's own decider budget, in ms (100-30000)
-rank_within_tier  = true     # obligations re-orders rules only inside their governing-scope tier
+rank_within_tier  = false    # obligations re-orders rules only inside their governing-scope tier
 rerank_timeout_ms = 1500     # obligations re-rank's own decider budget, in ms (100-60000)
 ```
+
+`rank_within_tier` defaults to **false** (amended 2026-09-23, ADR-042): the
+decision-port A/B measured the LLM re-rank net negative on governed edits once
+a real provider is configured (guards-jev-r1: paired mean -0.19, 3 tasks worse,
+0 better — `docs/bench/readings/decision-port-ab-2026-09-23.md`), sometimes
+pushing the one governing rule to the last visible slot on a later touch of
+the same file. Routing and the compile pre-filter are unaffected and keep
+their own measured (small positive / untested) results. Set it `true`
+explicitly to opt back in.
 
 `route_timeout_ms` (O109) bounds `POST /route`'s own decider call — the design
 point is a **sub-second decision model** (Jev-class latency measured 70-500ms),

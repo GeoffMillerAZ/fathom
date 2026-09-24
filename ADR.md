@@ -2251,6 +2251,29 @@ line and a silent fallback to `none`, never a startup or compile failure. The A/
 this decision originally gated default-on on (vision 32 §4) still applies before
 `typesafe` becomes any repo's default provider. `docs/intent/futures.md` F21: landed.
 
+**Amended 2026-09-23: `rank_within_tier` defaults to false.** Fires this ADR's own
+"a site's A/B shows no gain at n ≥ 3" revisit trigger early, on measured harm rather
+than a null result — `docs/bench/readings/decision-port-ab-2026-09-23.md`, the
+DP-13/DP-14 A/B (trials=2, three corpora): the wired arm against the same arm plus
+`[decide] provider = typesafe` (Jev 1.13, live via OpenRouter). Routing measured a
+real, small positive (lca localize gold-source rate 4.6%→23.4%, paired mean +0.047,
+bootstrap 95% CI [0.000, 0.125], 2 tasks better/0 worse; lookups-vs null, mean 0.000,
+CI [-0.107, 0.107]). The obligations within-tier re-rank measured **negative** on
+governance at the edit: guards-jev-r1's paired mean was -0.19 (CI [-0.375, -0.062]),
+3 tasks worse and 0 better at n=2 trials, with the mechanism traced in raw
+transcripts — the LLM re-rank reordering the served rules for the touched file
+relative to the deterministic default, in one traced case (`guards-i28-duckdb-path`)
+leaving the governing rule unserved at the first, most consequential touch (worse
+than the baseline arm's own position there) and pushing it to the last visible
+slot on a later touch of the same file. **Change:** `internal/config`'s
+`DefaultDecide.RankWithinTier` is now `false` — a decision provider configured
+without further tuning no longer reranks obligations within a tier; routing and the
+compile pre-filter are unaffected and keep their own results. A repo sets
+`rank_within_tier = true` explicitly to opt back in. **Revisit when** a
+guards-shaped run at n ≥ 3 trials shows the re-rank net positive, or a corpus with
+two governing rules genuinely competing within one scope tier is measured (this
+A/B's 8 guards tasks never had that contest to arbitrate).
+
 ## ADR-043: Tested means certified — a certifications layer over declared test evidence, judged elsewhere (2026-09-23)
 
 **Status.** Accepted 2026-09-23. Vision: `docs/vision/33-test-certifications.md`. Design: `docs/design/test-certifications.md`. Plan: `docs/plans/test-certifications.md`.

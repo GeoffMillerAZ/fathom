@@ -125,7 +125,12 @@ type Decide struct {
 	// design point is a sub-second decision model; the prompt hook's own
 	// shared deadline (~8s) still bounds the line regardless of this
 	// value. CUE-enforced to [100,30000].
-	RouteTimeoutMS int  `toml:"route_timeout_ms"`
+	RouteTimeoutMS int `toml:"route_timeout_ms"`
+	// RankWithinTier gates ADR-035's obligations within-tier re-rank.
+	// Default false (amended under ADR-042, 2026-09-23): the decision-port
+	// A/B measured it net negative on governed edits once a real provider
+	// is configured (docs/bench/readings/decision-port-ab-2026-09-23.md) —
+	// set true explicitly to opt back in.
 	RankWithinTier bool `toml:"rank_within_tier"`
 	// RerankTimeoutMS (DP-25, O109) bounds how long the obligations
 	// re-rank (rerankWithinTiers, internal/semantic) may wait for the
@@ -171,15 +176,26 @@ type Decide struct {
 
 // DefaultDecide is the zero-configuration [decide] block: provider "none"
 // (no call ever made), the vision-32-documented thresholds, and
-// rank_within_tier on. Load seeds Config.Decide with this — the one place
+// rank_within_tier OFF. Load seeds Config.Decide with this — the one place
 // in this package where a block's default is a non-zero Go value rather
 // than "absent means the zero value" (Findings, Guards, Daemon).
+//
+// rank_within_tier defaulted true through ADR-042's original landing; the
+// 2026-09-23 decision-port A/B (docs/bench/readings/decision-port-ab-
+// 2026-09-23.md) measured it net NEGATIVE on governed edits once a real
+// decision provider is configured — guards-jev-r1's paired mean was
+// -0.19 [-0.375,-0.062], 3 tasks worse and 0 better, the LLM re-rank
+// sometimes pushing the one governing rule to the last visible slot on a
+// later touch of the same file — while routing and the compile
+// pre-filter (unchanged here) showed a real, if small, positive. Amended
+// under ADR-042 (ADR.md); a repo that wants the re-rank back sets
+// `rank_within_tier = true` explicitly.
 var DefaultDecide = Decide{
 	Provider:         "none",
 	CompileThreshold: 0.5,
 	RouteConfidence:  0.9,
 	RouteTimeoutMS:   3000,
-	RankWithinTier:   true,
+	RankWithinTier:   false,
 	RerankTimeoutMS:  1500,
 }
 

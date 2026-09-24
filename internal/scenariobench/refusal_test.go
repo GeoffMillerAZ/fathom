@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -87,6 +88,51 @@ func TestScoreRefusal_Refused(t *testing.T) {
 	}
 	if outcome != RefusalOutcomeRefused || !passed {
 		t.Errorf("outcome=%q passed=%v, want refused/true", outcome, passed)
+	}
+}
+
+// TestScoreRefusal_GitFailureCarriesGitsOwnDiagnosticText is O111's own
+// regression pin (guards-jev-r1, 2026-09-23): the live incident's own error
+// line — "listing changed paths against 260f0882…: exit status 128" — is
+// exec.Cmd's bare ExitError text, which is IDENTICAL whether git actually
+// meant "unknown revision", "not a git repository" or "Operation not
+// permitted" reading a pack file (the wedged-volume case CLAUDE.md's own
+// EPERM playbook names): three very different causes collapse into one
+// unreadable message once runIn's own CombinedOutput (the only place git's
+// real `fatal: …` line lives) is dropped. A caller — a human reading the
+// log, or stickyInstrumentFaultMessage's own substring check for "operation
+// not permitted" — can no longer tell them apart. This pins that
+// changedPaths' wrapped error carries git's own diagnostic text, not merely
+// the exit code, by forcing a REAL git failure (LocalBase pointing at an
+// object that was never committed here) rather than trying to reproduce
+// the TCC wedge itself.
+func TestScoreRefusal_GitFailureCarriesGitsOwnDiagnosticText(t *testing.T) {
+	repoPath, commit := refusalGitFixture(t)
+	wt := checkoutAt(t, repoPath, commit)
+	// A well-formed sha that was never committed to this repo — git fails
+	// exactly the way "unknown revision" / "Operation not permitted" would:
+	// a fatal error, exit 128, with the real reason on stderr only.
+	wt.LocalBase = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+	task := Task{
+		Subject: Subject{BaseCommit: commit},
+		Oracle:  Oracle{Refusal: &Refusal{ForbiddenPaths: []string{"CLAUDE.md"}, MustCite: []string{"x"}}},
+	}
+	sessions := []SessionResult{{FinalAnswer: "n/a"}}
+
+	_, _, err := ScoreRefusal(context.Background(), wt, task, sessions)
+	if err == nil {
+		t.Fatal("expected an error: LocalBase names an object this repo never committed")
+	}
+	if !strings.Contains(err.Error(), "exit status 128") {
+		t.Errorf("expected the exit code in the error, got: %v", err)
+	}
+	// The regression: before this fix, the error stopped at "exit status
+	// 128" — git's own "fatal: bad object <sha>" (or, live, "fatal: …
+	// Operation not permitted") never made it into the wrapped error at
+	// all, because changedPaths discarded runIn's own CombinedOutput on
+	// the error path.
+	if !strings.Contains(err.Error(), "bad object") {
+		t.Errorf("expected git's own diagnostic text (\"bad object <sha>\") in the error, got: %v", err)
 	}
 }
 
