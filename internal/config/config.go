@@ -208,6 +208,27 @@ type Tests struct {
 	ArtifactsDir string `toml:"artifacts_dir"`
 }
 
+// SurfacePattern is one `[[surface.pattern]]` entry (ADR-044 §2.1): a
+// repo-declared capability-inventory source `internal/analysis/inventory.
+// Extract` cannot derive from a built-in kind (api/json/route/env/rpc/
+// cli) — this repository's own MCP tool names and CLI verbs, for
+// instance, since it dispatches neither through a typed tool registry nor
+// cobra. Kind becomes the "<kind>:" prefix on every match; Glob (internal/
+// filter's gitignore-style syntax, ** included; "" matches every file)
+// scopes which files are scanned; Regex's first capturing group names the
+// matched item.
+type SurfacePattern struct {
+	Kind  string `toml:"kind"`
+	Glob  string `toml:"glob"`
+	Regex string `toml:"regex"`
+}
+
+// Surface configures ADR-044 §2.1's repo-declared capability-inventory
+// patterns (schema.cue #Surface): `[[surface.pattern]]` blocks.
+type Surface struct {
+	Pattern []SurfacePattern
+}
+
 // Config is the merged, in-memory form of one or more config.toml layers.
 type Config struct {
 	DefaultProfile string
@@ -217,6 +238,15 @@ type Config struct {
 	Findings       Findings
 	Decide         Decide
 	Tests          Tests
+	Surface        Surface
+}
+
+// SurfacePatterns returns cfg's configured `[[surface.pattern]]` entries
+// (CV-17, ADR-044 §2.1) — a named accessor so a caller (internal/conserve's
+// surface plane, internal/certify's behaviour-target resolver) need not
+// know the field lives nested under Surface.
+func SurfacePatterns(cfg Config) []SurfacePattern {
+	return cfg.Surface.Pattern
 }
 
 // LoadError names the file and the underlying cause — parse, validate, or

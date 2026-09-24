@@ -100,6 +100,8 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return cmdReport(args[1:], stdout, stderr)
 	case "review":
 		return cmdReview(args[1:], stdout, stderr)
+	case "conserve":
+		return cmdConserve(args[1:], stdout, stderr)
 	case "review-key":
 		return cmdReviewKey(args[1:], stdout, stderr)
 	case "tests":

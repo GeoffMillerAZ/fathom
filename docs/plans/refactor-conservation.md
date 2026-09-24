@@ -27,18 +27,18 @@ silently skipped. Design: `docs/design/refactor-conservation.md`.
 
 ## B. Stage 2 — the conservation ledger
 
-- [ ] The capability inventory extracts api, json, route, env, rpc, cli and configured-pattern keys from file contents {id: CV-15, symbol: Extract, package: internal/analysis/inventory, reachable_from: TestExtract_EveryKeyKind}
-- [ ] The inventory delta lists removed, changed and added keys {id: CV-16, symbol: Diff, package: internal/analysis/inventory, reachable_from: TestDiff_RemovedChangedAdded}
-- [ ] `.fathom/config.toml` `[[surface.pattern]]` blocks declare string surfaces {id: CV-17, symbol: SurfacePatterns, package: internal/config, reachable_from: TestConfig_SurfacePatternBlock}
+- [x] The capability inventory extracts api, json, route, env, rpc, cli and configured-pattern keys from file contents {id: CV-15, symbol: Extract, package: internal/analysis/inventory, reachable_from: TestExtract_EveryKeyKind}
+- [x] The inventory delta lists removed, changed and added keys {id: CV-16, symbol: Diff, package: internal/analysis/inventory, reachable_from: TestDiff_RemovedChangedAdded}
+- [x] `.fathom/config.toml` `[[surface.pattern]]` blocks declare string surfaces {id: CV-17, symbol: SurfacePatterns, package: internal/config, reachable_from: TestConfig_SurfacePatternBlock}
 - [x] The conservation run reports every plane's verdict and the inputs it was missing; a plane with a missing input is never conserved (I44) {id: CV-18, symbol: Run, package: internal/conserve, reachable_from: TestRun_PlanesVerdictsAndMissingInputs}
-- [ ] `fathom conserve --since <ref> [--json] [--strict]` emits `fathom.conserve/v1` {id: CV-19, symbol: cmdConserve, package: cmd/fathom, reachable_from: TestCmdConserve_JSONSchemaV1}
-- [ ] A removed or changed route that another service calls names the caller {id: CV-20, symbol: ConsumerLosses, package: internal/conserve, reachable_from: TestConsumerLosses_RemovedRouteNamesCaller}
-- [ ] A certifies declaration at base with no declaration at head and no retirement is lost {id: CV-21, symbol: LostDeclarations, package: internal/certify, reachable_from: TestLostDeclarations_RemovedNotRetired}
-- [ ] A `behaviour` certificate resolves to an inventory key, and an unknown key contradicts it {id: CV-22, symbol: resolveBehaviour, package: internal/certify, reachable_from: TestResolveTarget_BehaviourInventoryKey}
-- [ ] A claim whose scope matched files at base and none at head is orphaned {id: CV-23, symbol: GovernanceOrphans, package: internal/conserve, reachable_from: TestGovernanceOrphans_ScopeMatchedAtBaseNoneAtHead}
-- [ ] `fathom review --since` and `review_diff` carry a `conservation` dimension {id: CV-24, symbol: DimConservation, package: internal/analysis/review, reachable_from: TestReview_ConservationDimension}
+- [x] `fathom conserve --since <ref> [--json] [--strict]` emits `fathom.conserve/v1` {id: CV-19, symbol: cmdConserve, package: cmd/fathom, reachable_from: TestCmdConserve_JSONSchemaV1}
+- [x] A removed or changed route that another service calls names the caller {id: CV-20, symbol: ConsumerLosses, package: internal/conserve, reachable_from: TestConsumerLosses_RemovedRouteNamesCaller}
+- [x] A certifies declaration at base with no declaration at head and no retirement is lost {id: CV-21, symbol: LostDeclarations, package: internal/certify, reachable_from: TestLostDeclarations_RemovedNotRetired}
+- [x] A `behaviour` certificate resolves to an inventory key, and an unknown key contradicts it {id: CV-22, symbol: resolveBehaviour, package: internal/certify, reachable_from: TestResolveTarget_BehaviourInventoryKey}
+- [x] A claim whose scope matched files at base and none at head is orphaned {id: CV-23, symbol: GovernanceOrphans, package: internal/conserve, reachable_from: TestGovernanceOrphans_ScopeMatchedAtBaseNoneAtHead}
+- [x] `fathom review --since` and `review_diff` carry a `conservation` dimension {id: CV-24, symbol: DimConservation, package: internal/analysis/review, reachable_from: TestReview_ConservationDimension}
 - [x] The plan schema accepts `retires`, `surface_change`, `gone`, `baseline` and `tests` {id: CV-25, oracle: lexical, path: schema/plan/schema.cue, pattern: "surface_change"}
-- [ ] This repository declares its tool and verb surfaces {id: CV-26, oracle: lexical, path: .fathom/config.toml, pattern: "surface.pattern"}
+- [x] This repository declares its tool and verb surfaces {id: CV-26, oracle: lexical, path: .fathom/config.toml, pattern: "surface.pattern"}
 - [ ] (op) CV-M4: the Go surface delta agrees with apidiff at precision and recall of at least 0.95 over 50 release pairs of the calibration repositories {id: CV-M4, skip: "measurement: apidiff agreement run"}
 
 ## C. Stage 3 — absence and anti-Blindness
@@ -61,7 +61,7 @@ silently skipped. Design: `docs/design/refactor-conservation.md`.
 ## E. Stage 5 — the typed floor beyond Go
 
 - [ ] The language tracker records the shipped file-resolved tier {id: CV-37, oracle: lexical, path: docs/languages.md, pattern: "file-resolved tier shipped"}
-- [ ] Every conservation report names the edge tier per language touched {id: CV-38, symbol: TiersByLanguage, package: internal/conserve, reachable_from: TestTiersByLanguage}
+- [x] Every conservation report names the edge tier per language touched {id: CV-38, symbol: TiersByLanguage, package: internal/conserve, reachable_from: TestTiersByLanguage}
 - [ ] `fathom report evidence` gives per-service evidence density and ranks no languages {id: CV-39, symbol: cmdReportEvidence, package: cmd/fathom, reachable_from: TestCmdReportEvidence_NoRanking}
 - [ ] (op) CV-M7: precision and recall per language at the scip and file tiers, from the free L0 oracle on calibration clones, published beside Go's {id: CV-M7, skip: "measurement: L0 per-language run"}
 

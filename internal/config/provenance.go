@@ -83,6 +83,41 @@ func mergeLayer(cfg *Config, prov Provenance, raw map[string]any, source Source,
 	if tm, ok := raw["tests"].(map[string]any); ok {
 		mergeTestsFields(&cfg.Tests, tm, source, path, prov)
 	}
+
+	if sm, ok := raw["surface"].(map[string]any); ok {
+		mergeSurfaceFields(&cfg.Surface, sm, source, path, prov)
+	}
+}
+
+// mergeSurfaceFields merges the `[surface]` table's `pattern` array-of-
+// tables. Like Findings.Producers/Profile.APIKeyCmd, a present `pattern`
+// key REPLACES the whole slice rather than merging entry-by-entry — an
+// array-of-tables has no natural per-element merge key, so "the layer that
+// sets it wins outright" is the same discipline every other slice field in
+// this package already follows.
+func mergeSurfaceFields(s *Surface, raw map[string]any, source Source, path string, prov Provenance) {
+	v, ok := raw["pattern"]
+	if !ok {
+		return
+	}
+	list, ok := v.([]any)
+	if !ok {
+		return
+	}
+	patterns := make([]SurfacePattern, 0, len(list))
+	for _, entry := range list {
+		m, ok := entry.(map[string]any)
+		if !ok {
+			continue
+		}
+		var p SurfacePattern
+		p.Kind, _ = stringField(m, "kind")
+		p.Glob, _ = stringField(m, "glob")
+		p.Regex, _ = stringField(m, "regex")
+		patterns = append(patterns, p)
+	}
+	s.Pattern = patterns
+	prov["surface.pattern"] = SourceInfo{source, path}
 }
 
 func mergeTestsFields(t *Tests, raw map[string]any, source Source, path string, prov Provenance) {

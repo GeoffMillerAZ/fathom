@@ -1427,10 +1427,15 @@ re-read.
 `--since` (ADR-044 §1.6, CV-13) additionally resolves `<ref>` to a commit
 sha and carries it, plus the service's own corpus root, on the review
 engine's internal Input (`Base`/`Root`) — the base/root a base-aware
-dimension from `docs/design/refactor-conservation.md` (not yet shipped)
-reads. A ref that does not resolve fails open (every dimension still runs
-over the changed-file set `--since` already computed); `--manifest` runs
-never populate `Base` at all, since they carry no ref.
+dimension from `docs/design/refactor-conservation.md` reads. A ref that
+does not resolve fails open (every dimension still runs over the
+changed-file set `--since` already computed); `--manifest` runs never
+populate `Base` at all, since they carry no ref. The `conservation`
+dimension itself (CV-24) is built and tested against a caller-supplied
+`internal/conserve.Report`, but `fathom review`/`review_diff` do not yet
+compute and attach that report on `--since` — run `fathom conserve
+--since <ref>` alongside `fathom review --since <ref>` for the
+conservation planes' own findings until that wiring lands.
 
 `--mode persist` (the default) writes the deterministic-oracle findings to
 the claims store; `--mode report` (`--no-persist` is an alias) never
@@ -1511,6 +1516,61 @@ reports. `--prior KEY.json` diffs a prior key against this run and adds
 `changed_since_prior: [component, …]`. Identical inputs produce an
 identical key across runs and machines. `pkg/client.ReviewKey` is the same
 code path this CLI calls — a Go embedder gets byte-identical answers.
+
+### `conserve` — the refactor-conservation report (ADR-044, CV-19)
+
+```sh
+fathom conserve --since <git-ref> --service <id> [--store DB] [--json] [--strict] [--plan FILE ...]
+```
+
+Runs every registered `internal/conserve.Plane` (`surface`, `certificates`,
+`governance`, plus `integrity`/`absence` once landed) over base (`--since
+<ref>`) versus head (the working tree, uncommitted edits included) and
+reports each plane's verdict: `conserved` (checked, nothing undeclared
+lost), `losses` (at least one undeclared finding), or `unproven` (an
+input the plane needed was missing — never `conserved` from a missing
+input, I44). The `surface` plane's own findings are the capability
+inventory's base→head delta (`internal/analysis/inventory`: exported Go
+declarations, JSON wire tags, routes, env keys, proto RPCs, plus any
+`[[surface.pattern]]`-configured kind, `docs/configuration.md`) — a
+removed or changed `route:` key additionally names any OTHER known
+service whose client code still calls it (`consumer_loss`). `certificates`
+reports a `// certifies:` marker declared at base and gone at head, plus
+any compiled certification whose test or reach is in the changed set and
+whose state is `unproven`/`broken`/`unreachable`. `governance` reports an
+obligations/adr-rules/spec-bindings/findings claim whose scope glob(s)
+matched a file at base and match none at head — a deliberate exception
+that reads the full base/head file-path list (`git ls-tree`/`git
+ls-files`), never file content, since a claim's scope can be orphaned by
+files nowhere near this particular diff.
+
+A finding is excused (its `declared` field is `"prior"`) only when a plan
+row's `retires:`/`surface_change:` key already named it BEFORE the change
+range started — `--plan` (repeatable) names which plan files to read those
+declarations from; unset, every `docs/plans/*.md` at the repo root
+(non-recursive, the same set the pre-push gate itself walks) is read. A
+declaration added inside the range excuses nothing (I45) — it shows up as
+`declared: "self"` instead, exactly like `fathom verify --since` renders a
+self-declared row.
+
+```json
+{"schema":"fathom.conserve/v1","service":"fathom","base":"<sha>","head":"worktree",
+ "planes":[{"plane":"surface","verdict":"losses","missing":[],
+   "findings":[{"plane":"surface","kind":"removed","key":"api:foo.Old",
+     "detail":"func()","base":"foo.go#L3","declared":"none",
+     "remedy":"add `retires: api:foo.Old` to the row that removed it, or restore it"}]}],
+ "tiers":[{"language":"Go","tier":"typed"},{"language":"TypeScript","tier":"file-resolved"}]}
+```
+
+`--json` emits the versioned `fathom.conserve/v1` document above (the
+compatibility surface: field names and verdict/declared strings are
+stable); the default is a short text table, one line per plane plus its
+findings and missing inputs indented beneath, and a trailing `tiers:` line
+naming the edge tier (`typed`/`scip`/`file-resolved`/`syntax`) behind every
+language among the changed files. `--strict` exits 1 when any plane's
+verdict is `losses` (2 is reserved for an operational failure — a bad
+`--since` ref, an unreadable store; 0 otherwise, --strict included, when
+no plane reports losses).
 
 ### `receipt` — a stranger's re-derivation (VB-20)
 

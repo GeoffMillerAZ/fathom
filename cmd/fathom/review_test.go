@@ -105,8 +105,10 @@ func TestReview_OneCallWorkedExample(t *testing.T) {
 		t.Errorf("service = %v", payload["service"])
 	}
 	dims, ok := payload["dimensions"].([]any)
-	if !ok || len(dims) != 6 {
-		t.Fatalf("expected 6 dimensions, got %v", payload["dimensions"])
+	if !ok || len(dims) != 7 {
+		// 7 (ADR-044 CV-24): impact, obligations, arch_conformance,
+		// spec_coverage, coverage, certifications, conservation.
+		t.Fatalf("expected 7 dimensions, got %v", payload["dimensions"])
 	}
 	var specDim map[string]any
 	for _, raw := range dims {

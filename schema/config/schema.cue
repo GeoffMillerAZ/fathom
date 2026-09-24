@@ -239,6 +239,27 @@ package config
 	artifacts_dir?: string
 }
 
+// #SurfacePattern is one `[[surface.pattern]]` entry (ADR-044 §2.1): a
+// repo-declared capability-inventory source `internal/analysis/inventory.
+// Extract` cannot derive from a built-in kind (api/json/route/env/rpc/
+// cli) — this repository's own MCP tool names and CLI verbs, for instance,
+// neither of which goes through a typed tool registry or cobra. kind
+// becomes the "<kind>:" prefix on every match; glob (internal/filter's
+// gitignore-style syntax, ** included; "" matches every file) scopes which
+// files are scanned; regex's first capturing group names the matched
+// item.
+#SurfacePattern: {
+	kind:  string
+	glob?: string
+	regex: string
+}
+
+// #Surface configures ADR-044 §2.1's repo-declared capability-inventory
+// patterns: any number of `[[surface.pattern]]` blocks.
+#Surface: {
+	pattern?: [...#SurfacePattern]
+}
+
 // #Config is the top-level shape of one config.toml layer (user or
 // project). Both layers validate against the same schema; internal/config
 // merges them field-by-field per docs/plans/config-experience.md's stated
@@ -257,4 +278,5 @@ package config
 	findings?: #Findings
 	decide?:   #Decide
 	tests?:    #Tests
+	surface?:  #Surface
 }

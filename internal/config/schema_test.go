@@ -110,6 +110,10 @@ bad8: #Config & {
 bad9: #Config & {
 	daemon: memory_limit: "3 gigs"
 }`},
+		{"surface.pattern entry missing required regex", `
+bad10: #Config & {
+	surface: pattern: [{kind: "tool"}]
+}`},
 	}
 
 	cctx := cuecontext.New()

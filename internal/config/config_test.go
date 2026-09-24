@@ -606,6 +606,80 @@ api_key_env = "TYPESAFE_API_KEY"
 	})
 }
 
+// TestConfig_SurfacePatternBlock pins CV-17 (ADR-044 §2.1): `[[surface.
+// pattern]]` blocks parse into SurfacePatterns, project replaces the whole
+// user-layer list (array-of-tables has no per-element merge key), and an
+// absent table leaves SurfacePatterns empty.
+func TestConfig_SurfacePatternBlock(t *testing.T) {
+	t.Run("absent means empty", func(t *testing.T) {
+		dir := t.TempDir()
+		loaded, err := Load(filepath.Join(dir, "user.toml"), "")
+		if err != nil {
+			t.Fatalf("Load: %v", err)
+		}
+		if got := SurfacePatterns(loaded.Config); len(got) != 0 {
+			t.Errorf("SurfacePatterns = %v, want empty", got)
+		}
+	})
+
+	t.Run("parses every field", func(t *testing.T) {
+		dir := t.TempDir()
+		userPath := filepath.Join(dir, "user.toml")
+		writeTOML(t, userPath, `
+[[surface.pattern]]
+kind = "tool"
+glob = "internal/mcp/*.go"
+regex = 'Name:\s*"([a-zA-Z_][a-zA-Z0-9_]*)"'
+
+[[surface.pattern]]
+kind = "verb"
+glob = "cmd/fathom/verbs.go"
+regex = '\{Name:\s*"([a-z-]+)"'
+`)
+		loaded, err := Load(userPath, "")
+		if err != nil {
+			t.Fatalf("Load: %v", err)
+		}
+		got := SurfacePatterns(loaded.Config)
+		if len(got) != 2 {
+			t.Fatalf("SurfacePatterns = %+v, want 2 entries", got)
+		}
+		if got[0].Kind != "tool" || got[0].Glob != "internal/mcp/*.go" {
+			t.Errorf("pattern[0] = %+v", got[0])
+		}
+		if got[1].Kind != "verb" || got[1].Glob != "cmd/fathom/verbs.go" {
+			t.Errorf("pattern[1] = %+v", got[1])
+		}
+		if info := loaded.Provenance["surface.pattern"]; info.Source != SourceUser || info.Path != userPath {
+			t.Errorf("provenance = %+v", info)
+		}
+	})
+
+	t.Run("project replaces user's whole list", func(t *testing.T) {
+		dir := t.TempDir()
+		userPath := filepath.Join(dir, "user.toml")
+		writeTOML(t, userPath, `
+[[surface.pattern]]
+kind = "tool"
+regex = "Name"
+`)
+		projectPath := filepath.Join(dir, "project.toml")
+		writeTOML(t, projectPath, `
+[[surface.pattern]]
+kind = "verb"
+regex = "Use"
+`)
+		loaded, err := Load(userPath, projectPath)
+		if err != nil {
+			t.Fatalf("Load: %v", err)
+		}
+		got := SurfacePatterns(loaded.Config)
+		if len(got) != 1 || got[0].Kind != "verb" {
+			t.Errorf("SurfacePatterns = %+v, want only the project layer's [verb]", got)
+		}
+	})
+}
+
 // ---------------------------------------------------------------------------
 // ResolveProfile — named selection + env overlay
 // ---------------------------------------------------------------------------

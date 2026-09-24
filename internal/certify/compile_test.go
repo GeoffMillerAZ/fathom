@@ -28,8 +28,9 @@ func symKey(name string) string {
 // every State the design's ladder names — TestLive/TestBroken/
 // TestUnproven/TestFlaky all certify invariant I1 with varying attested
 // run histories; TestUnreached certifies a "spec" target it never calls,
-// for StateUnreachable; TestBehaviour certifies a "behaviour" target
-// (declared only, tier never exceeds doc-claimed regardless of its run).
+// for StateUnreachable; TestBehaviour certifies a "behaviour" target that
+// resolves against a real capability-inventory item (env:CHECKOUT_FLOW,
+// CV-22) — tier still never exceeds doc-claimed regardless of its run.
 func seedCompileFixture(t *testing.T) (context.Context, store.Store) {
 	t.Helper()
 	ctx := context.Background()
@@ -39,6 +40,11 @@ func seedCompileFixture(t *testing.T) (context.Context, store.Store) {
 	root := t.TempDir()
 	mustWrite(t, root+"/docs/intent/README.md", "# Router\n\ndocs/intent/invariants.md is the living doc.\n")
 	mustWrite(t, root+"/docs/intent/invariants.md", "# Invariants\n\n| # | Statement | Enforced by |\n|---|---|---|\n| I1 | Widgets never negative | test (`TestWidgetCount`) |\n")
+	// pkg/spec.go: real on-disk content behind the "pkg/spec.go" observation
+	// below — CV-22's resolveBehaviour reads known files fresh off disk, so
+	// TestBehaviour's target (env:CHECKOUT_FLOW) needs a real inventory item
+	// to resolve against, not merely an indexed symbol row.
+	mustWrite(t, root+"/pkg/spec.go", "package pkg\n\nimport \"os\"\n\n// Target is exported. [US-1]\nfunc Target() { _ = os.Getenv(\"CHECKOUT_FLOW\") }\n")
 	if err := st.SetServiceMeta(ctx, store.ServiceMeta{ServiceID: compileSvc, Path: root}); err != nil {
 		t.Fatalf("SetServiceMeta: %v", err)
 	}
@@ -68,7 +74,7 @@ func seedCompileFixture(t *testing.T) (context.Context, store.Store) {
 		{TestSymbolKey: symKey("TestUnproven"), Kind: "invariant", TargetID: "I1", Strength: "asserts", File: "pkg/x_test.go", Line: 3},
 		{TestSymbolKey: symKey("TestFlaky"), Kind: "invariant", TargetID: "I1", Strength: "asserts", File: "pkg/x_test.go", Line: 4},
 		{TestSymbolKey: symKey("TestUnreached"), Kind: "spec", TargetID: "US-1", Strength: "asserts", File: "pkg/x_test.go", Line: 5},
-		{TestSymbolKey: symKey("TestBehaviour"), Kind: "behaviour", TargetID: "checkout-flow", Strength: "smoke", File: "pkg/x_test.go", Line: 6},
+		{TestSymbolKey: symKey("TestBehaviour"), Kind: "behaviour", TargetID: "env:CHECKOUT_FLOW", Strength: "smoke", File: "pkg/x_test.go", Line: 6},
 	}
 	if err := st.PutCertifyDeclarations(ctx, compileSvc, decls); err != nil {
 		t.Fatalf("PutCertifyDeclarations: %v", err)

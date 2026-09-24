@@ -174,8 +174,10 @@ func TestReviewDiff_ComposesDimensionsHonestly(t *testing.T) {
 		t.Errorf("service = %v", p["service"])
 	}
 	dims, ok := p["dimensions"].([]any)
-	if !ok || len(dims) != 6 {
-		t.Fatalf("expected 6 dimensions, got %v", p["dimensions"])
+	if !ok || len(dims) != 7 {
+		// 7 (ADR-044 CV-24): impact, obligations, arch_conformance,
+		// spec_coverage, coverage, certifications, conservation.
+		t.Fatalf("expected 7 dimensions, got %v", p["dimensions"])
 	}
 	byName := map[string]map[string]any{}
 	for _, raw := range dims {
