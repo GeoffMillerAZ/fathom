@@ -341,6 +341,51 @@ func TestCheck_NoGuardedTestsIsEmpty(t *testing.T) {
 	}
 }
 
+// TestCheck_BuildTagAddedIsSkipped: design §1.3's skipped kind is "a
+// t.Skip*/testing.Short() guard was added, OR a //go:build line was added
+// to the file" — the file-level half. A guarded test's own body is
+// byte-identical at base and head; only the file gains a leading
+// "//go:build !ci" between the two points. Under CI's real build tags
+// `go test ./...` would silently stop running this test, so Check must
+// flag it `skipped` even though nothing inside the function changed
+// (previously: scanGoFile's hasBuildTag return was discarded at both call
+// sites, so this case produced zero findings).
+func TestCheck_BuildTagAddedIsSkipped(t *testing.T) {
+	const path = "pkg/tagged_test.go"
+	body := `package pkg
+
+import "testing"
+
+// certifies: invariant I1 (asserts)
+func TestGuardedByMarker(t *testing.T) {
+	if 1 != 2 {
+		t.Fatalf("boom")
+	}
+}
+`
+	base := map[string][]byte{path: []byte(body)}
+	head := map[string][]byte{path: []byte("//go:build !ci\n\n" + body)}
+
+	in := Input{
+		ChangedFiles: []string{path},
+		BaseFile:     fileReader(base),
+		HeadFile:     fileReader(head),
+	}
+	findings := Check(in)
+	var skipped []Finding
+	for _, f := range findings {
+		if f.Kind == KindSkipped {
+			skipped = append(skipped, f)
+		}
+	}
+	if len(skipped) != 1 {
+		t.Fatalf("got %d KindSkipped findings, want 1: all findings: %+v", len(skipped), findings)
+	}
+	if skipped[0].Key != "TestGuardedByMarker" {
+		t.Errorf("skipped finding Key = %q, want TestGuardedByMarker", skipped[0].Key)
+	}
+}
+
 // TestCheck_Deterministic: identical Input always produces identical,
 // sorted output.
 func TestCheck_Deterministic(t *testing.T) {

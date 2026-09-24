@@ -75,21 +75,25 @@ func Check(in Input) []Finding {
 
 	headTestsByFile := map[string][]scannedTest{}
 	var headTestsFlat []scannedTest
+	headBuildTag := map[string]bool{}
 	for _, src := range headSources {
-		tests, _, ok := scanGoFile(src.Path, src.Content)
+		tests, hasBuildTag, ok := scanGoFile(src.Path, src.Content)
 		if !ok {
 			continue
 		}
 		headTestsByFile[src.Path] = tests
 		headTestsFlat = append(headTestsFlat, tests...)
+		headBuildTag[src.Path] = hasBuildTag
 	}
 
 	baseByFileAndName := map[string]scannedTest{}
+	baseBuildTag := map[string]bool{}
 	for _, src := range baseSources {
-		tests, _, ok := scanGoFile(src.Path, src.Content)
+		tests, hasBuildTag, ok := scanGoFile(src.Path, src.Content)
 		if !ok {
 			continue
 		}
+		baseBuildTag[src.Path] = hasBuildTag
 		for _, t := range tests {
 			baseByFileAndName[t.File+"\x00"+t.Name] = t
 		}
@@ -111,7 +115,8 @@ func Check(in Input) []Finding {
 			}
 		}
 		if ht != nil {
-			out = append(out, checkStillPresent(in, g, bt, *ht, baseHash, headTestsFlat, sourceOf(headSources, g.File))...)
+			out = append(out, checkStillPresent(in, g, bt, *ht, baseHash, headTestsFlat, sourceOf(headSources, g.File),
+				baseBuildTag[g.File], headBuildTag[g.File])...)
 			continue
 		}
 
@@ -154,8 +159,10 @@ func Check(in Input) []Finding {
 
 // checkStillPresent evaluates every finer-grained kind (design §1.3) for a
 // guarded test that still exists, under the same name, in the same file,
-// at head.
-func checkStillPresent(in Input, g GuardedTest, bt, ht scannedTest, baseHash string, headTestsFlat []scannedTest, headSrc []byte) []Finding {
+// at head. baseHasBuildTag/headHasBuildTag are the enclosing FILE's own
+// //go:build (or // +build) state at each point — the file-level half of
+// the skipped check (the test-body half is ht.HasSkip below).
+func checkStillPresent(in Input, g GuardedTest, bt, ht scannedTest, baseHash string, headTestsFlat []scannedTest, headSrc []byte, baseHasBuildTag, headHasBuildTag bool) []Finding {
 	var out []Finding
 	found := map[Kind]bool{}
 	add := func(f Finding) {
@@ -172,6 +179,9 @@ func checkStillPresent(in Input, g GuardedTest, bt, ht scannedTest, baseHash str
 	}
 	if ht.HasSkip && !bt.HasSkip {
 		add(Finding{Kind: KindSkipped, Detail: "a t.Skip*/testing.Short() guard was added"})
+	}
+	if headHasBuildTag && !baseHasBuildTag {
+		add(Finding{Kind: KindSkipped, Detail: "a //go:build (or // +build) constraint line was added to the file"})
 	}
 	if changed := changedGoldenPaths(in, bt.GoldenPaths); len(changed) > 0 {
 		add(Finding{Kind: KindGoldenChanged, Detail: "testdata referenced by this test changed: " + strings.Join(changed, ", ")})
