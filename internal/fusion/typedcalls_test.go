@@ -330,6 +330,17 @@ func TestEnrichTypedEdges_LoadFailure(t *testing.T) {
 	if report.PackagesFailed == 0 {
 		t.Error("PackagesFailed = 0, want at least 1 for the syntax-broken package")
 	}
+	// DG-8: a bare count is not enough — the failing package must be
+	// NAMED, with the actual go/packages error, not just "N/M failed".
+	if len(report.FailedPackages) == 0 {
+		t.Fatal("FailedPackages is empty, want the failing package named (DG-8)")
+	}
+	if !strings.Contains(report.FailedPackages[0].PkgID, "broken") {
+		t.Errorf("FailedPackages[0].PkgID = %q, want it to name the broken package", report.FailedPackages[0].PkgID)
+	}
+	if report.FailedPackages[0].Err == "" {
+		t.Error("FailedPackages[0].Err is empty, want the go/packages load error")
+	}
 	edges, err := st.TypedEdges(ctx, "broken-svc")
 	if err != nil {
 		t.Fatalf("TypedEdges: %v", err)

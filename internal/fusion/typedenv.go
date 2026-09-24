@@ -34,11 +34,15 @@ package fusion
 // them reported.
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
 // TypedEdgeEnv returns the environment for the go/packages subprocess:
@@ -233,24 +237,89 @@ type TypedEdgeStatus struct {
 	// Fallback names the override this pass applied (currently always
 	// "GOWORK=off" when non-empty) — see TypedEdgeReport.Fallback.
 	Fallback string
+	// DiscoveryGaps/DiscoveryGapFiles/EdgesDroppedOutOfScope carry
+	// TypedEdgeReport's own fields of the same name (typedcalls.go) onto
+	// the per-service record (DG-9) — before this, list_services,
+	// staleness_report and doctor's typed_edges row could never see a
+	// discovery gap even though it was computed, deduped and printed to
+	// stderr every run (docs/intent/invariants.md I24's documented gap).
+	DiscoveryGaps          int
+	DiscoveryGapFiles      []string
+	EdgesDroppedOutOfScope int
+	// Persisted is true when this status was NOT recorded by this process
+	// (TypedEdgeStatus fell back to the store, DG-10) — the daemon has not
+	// ingested this service since it last started, but a previous process
+	// had. RecordedAt then names when that pass ran; a caller (doctor, in
+	// particular) uses the pair to report "known as of <RecordedAt>,
+	// possibly pre-restart" instead of the honest-but-unhelpful "never
+	// known" a bare restart used to produce regardless of history.
+	Persisted  bool
+	RecordedAt time.Time
 }
 
 // TypedEdgeStatus returns the last typed-edge pass outcome recorded for
-// service in this process. known is false when no ingest of that service
-// has run here yet.
+// service. known is false only when NEITHER this process NOR the store has
+// ever recorded one for service — a fresh restart with a populated store
+// (DG-10) still answers known=true, with Persisted=true and RecordedAt
+// naming the pre-restart pass, rather than the "never known" a purely
+// in-memory map produced regardless of what the store already knew.
 func (p *Pipeline) TypedEdgeStatus(service string) (status TypedEdgeStatus, known bool) {
 	p.teMu.Lock()
-	defer p.teMu.Unlock()
 	st, ok := p.typedEdgeStatus[service]
-	return st, ok
+	p.teMu.Unlock()
+	if ok {
+		return st, true
+	}
+	if p.st == nil {
+		return TypedEdgeStatus{}, false
+	}
+	rec, found, err := p.st.TypedEdgeStatus(context.Background(), service)
+	if err != nil || !found {
+		return TypedEdgeStatus{}, false
+	}
+	return TypedEdgeStatus{
+		PackagesSeen:           rec.PackagesSeen,
+		Packages:               rec.Packages,
+		EdgesTotal:             rec.EdgesTotal,
+		Failed:                 rec.Failed,
+		Reason:                 rec.Reason,
+		Fallback:               rec.Fallback,
+		DiscoveryGaps:          rec.DiscoveryGaps,
+		DiscoveryGapFiles:      rec.DiscoveryGapFiles,
+		EdgesDroppedOutOfScope: rec.EdgesDroppedOutOfScope,
+		Persisted:              true,
+		RecordedAt:             rec.RecordedAt,
+	}, true
 }
 
-// noteTypedEdgeStatus records one pass's outcome for service.
-func (p *Pipeline) noteTypedEdgeStatus(service string, st TypedEdgeStatus) {
+// noteTypedEdgeStatus records one pass's outcome for service, in-memory for
+// this process AND persisted to the store (DG-10, best-effort: a store
+// write failure never blocks or fails the surrounding ingest — it only
+// means a restart before the NEXT successful pass falls back to "never
+// known" instead of "known as of the last one," exactly the pre-DG-10
+// shape).
+func (p *Pipeline) noteTypedEdgeStatus(ctx context.Context, service string, st TypedEdgeStatus) {
 	p.teMu.Lock()
-	defer p.teMu.Unlock()
 	if p.typedEdgeStatus == nil {
 		p.typedEdgeStatus = make(map[string]TypedEdgeStatus)
 	}
 	p.typedEdgeStatus[service] = st
+	p.teMu.Unlock()
+
+	if p.st == nil {
+		return
+	}
+	now := time.Now().UTC()
+	_ = p.st.SetTypedEdgeStatus(ctx, service, store.TypedEdgeStatusRecord{
+		PackagesSeen:           st.PackagesSeen,
+		Packages:               st.Packages,
+		EdgesTotal:             st.EdgesTotal,
+		Failed:                 st.Failed,
+		Reason:                 st.Reason,
+		Fallback:               st.Fallback,
+		DiscoveryGaps:          st.DiscoveryGaps,
+		DiscoveryGapFiles:      st.DiscoveryGapFiles,
+		EdgesDroppedOutOfScope: st.EdgesDroppedOutOfScope,
+		RecordedAt:             now,
+	})
 }

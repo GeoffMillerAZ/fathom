@@ -354,6 +354,17 @@ type Store interface {
 	// package is a no-op, not an error.
 	DeleteTypedEdgePackage(ctx context.Context, serviceID, pkgPath string) error
 
+	// SetTypedEdgeStatus records or replaces the persisted typed-edge pass
+	// status for serviceID (DG-10) — the store-backed counterpart to
+	// internal/fusion.Pipeline's in-memory typedEdgeStatus map, so a
+	// daemon restart does not make the fleet's typed-edge health
+	// unobservable purely from restart timing.
+	SetTypedEdgeStatus(ctx context.Context, serviceID string, rec TypedEdgeStatusRecord) error
+
+	// TypedEdgeStatus returns the last persisted typed-edge status for
+	// serviceID. found is false when none has ever been recorded.
+	TypedEdgeStatus(ctx context.Context, serviceID string) (rec TypedEdgeStatusRecord, found bool, err error)
+
 	// CompileRuns returns compile runs for serviceID, optionally filtered by
 	// layer (layer "" returns all layers), newest-first by RanAt then run_id.
 	CompileRuns(ctx context.Context, serviceID, layer string) ([]core.CompileRun, error)

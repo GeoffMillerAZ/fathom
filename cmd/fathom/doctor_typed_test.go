@@ -85,6 +85,28 @@ func TestCheckTypedEdges_PassesWithPackageCount(t *testing.T) {
 	}
 }
 
+// TestCheckTypedEdges_DiscoveryGapsWarn is DG-9: a discovery gap (a call
+// target file that EXISTS on disk despite being excluded from the
+// connector's allowed set — a likely partially wedged Discover pass) must
+// turn this row WARN, named with the file, never a silent PASS — but it is
+// non-fatal (the pass itself ran and produced typed edges), so WARN, not
+// FAIL.
+func TestCheckTypedEdges_DiscoveryGapsWarn(t *testing.T) {
+	srv := typedEdgesDaemon(t, `{"known":true,"packages":12,"failed":false,"discovery_gaps":1,"discovery_gap_files":["adapter.go"]}`)
+	defer srv.Close()
+
+	got := checkTypedEdges(srv.Client(), srv.URL, typedEdgesRepo(t), "svc", true)
+	if got.Status != doctorWarn {
+		t.Fatalf("status = %v, want WARN for a discovery gap (%s)", got.Status, got.Reason)
+	}
+	if !strings.Contains(got.Reason, "adapter.go") {
+		t.Fatalf("reason must name the gap file: %q", got.Reason)
+	}
+	if !strings.Contains(got.Reason, "1 discovery gap") {
+		t.Fatalf("reason must name the gap count: %q", got.Reason)
+	}
+}
+
 // `known:false` means this daemon process has not ingested the service —
 // not that the pass succeeded. Reporting it as a pass would be the exact
 // degrade-toward-healthy ADR-027 forbids.
