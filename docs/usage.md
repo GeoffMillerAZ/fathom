@@ -1562,7 +1562,10 @@ no covering test in any layer. `--mutation <report>` (VB-34) adds a
 typed-edge reachability, corroborating statement coverage (when `--profile`
 is given), and test layer (unit before integration before e2e), then emits
 a `go test ./<pkg> -run '^(TestA|TestB)$'` invocation per package plus the
-changed symbols no test reaches. A replay ledger at
+changed symbols no test reaches. A test that already certifies a target
+whose scope intersects this diff (TC-23, vision 33 / ADR-043 stage 3) ranks
+first, ahead of that reach ranking — advisory only, it never changes which
+tests are selected. A replay ledger at
 `workspace/artifacts/tests-select/replay.jsonl`, when present, adds a
 measured predicted catch-rate — never a fabricated one.
 
