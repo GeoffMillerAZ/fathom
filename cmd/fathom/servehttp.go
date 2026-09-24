@@ -389,6 +389,21 @@ func (w *loggingResponseWriter) WriteHeader(status int) {
 	w.ResponseWriter.WriteHeader(status)
 }
 
+// Flush lets loggingResponseWriter satisfy http.Flusher by forwarding to
+// the embedded ResponseWriter's own Flush, when it has one. Go does NOT
+// promote a method through an embedded INTERFACE field the way it does
+// through an embedded concrete type, so without this, wrapping any
+// ResponseWriter in loggingResponseWriter silently strips its Flusher-ness
+// — exactly the regression that broke GET /events (an SSE stream) once
+// loggingMiddleware started wrapping every route (finding [0]/DG-5): the
+// handler's `w.(http.Flusher)` type assertion started failing, so its
+// Flush() call was skipped and streamed bytes sat buffered forever.
+func (w *loggingResponseWriter) Flush() {
+	if f, ok := w.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
 // loggingMiddleware is DG-5: every route in newHTTPHandler's mux (/statusz,
 // /findings/summary, /refresh-file, /route, /rpc*, /healthz, /events,
 // /metrics, /reload, the observatory pages) previously had structured

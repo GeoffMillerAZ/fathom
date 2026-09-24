@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -185,6 +186,67 @@ func TestServeHTTPEventsHello(t *testing.T) {
 	body := string(buf[:n])
 	if !strings.Contains(body, "hello") {
 		t.Errorf("GET /events body = %q, want to contain \"hello\"", body)
+	}
+}
+
+// TestServeHTTPEventsHello_ThroughLoggingMiddleware is the finding [0]
+// regression test: DG-5's loggingMiddleware now wraps EVERY route,
+// including /events, via newHTTPHandlerWithAuth
+// (loggingMiddleware(modulesAuthMiddleware(newHTTPHandler(...)))). Unlike
+// TestServeHTTPEventsHello above (which calls newHTTPHandler directly and
+// so never exercises loggingMiddleware at all), this drives the request
+// through the FULL production chain a real client hits. loggingResponseWriter
+// embeds http.ResponseWriter as an interface field with only WriteHeader
+// overridden; Go does not promote Flush() through an embedded interface
+// field, so *loggingResponseWriter must implement http.Flusher itself or
+// the /events handler's `w.(http.Flusher)` assertion fails, its Flush()
+// call is silently skipped, and the hello event sits buffered forever.
+func TestServeHTTPEventsHello_ThroughLoggingMiddleware(t *testing.T) {
+	store := filepath.Join(t.TempDir(), "test.sqlite")
+	c, err := client.NewConstantClient(client.ModeLocal, store)
+	if err != nil {
+		t.Fatalf("NewConstantClient: %v", err)
+	}
+	t.Cleanup(func() { c.Close() })
+	srv := mcp.NewServer(c)
+	handler := newHTTPHandlerWithAuth(srv, c, "", "127.0.0.1:0", nil, testDiscardLogger())
+
+	ts := httptest.NewServer(handler)
+	t.Cleanup(ts.Close)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, ts.URL+"/events", nil)
+	if err != nil {
+		t.Fatalf("NewRequest: %v", err)
+	}
+	resp, err := ts.Client().Do(req)
+	if err != nil {
+		t.Fatalf("GET /events: %v", err)
+	}
+	defer resp.Body.Close()
+
+	type readResult struct {
+		body string
+		err  error
+	}
+	ch := make(chan readResult, 1)
+	go func() {
+		buf := make([]byte, 256)
+		n, rerr := resp.Body.Read(buf)
+		ch <- readResult{body: string(buf[:n]), err: rerr}
+	}()
+
+	select {
+	case r := <-ch:
+		if r.err != nil && r.err != io.EOF {
+			t.Fatalf("reading /events body: %v", r.err)
+		}
+		if !strings.Contains(r.body, "hello") {
+			t.Errorf("GET /events body (through loggingMiddleware) = %q, want to contain \"hello\"", r.body)
+		}
+	case <-time.After(1500 * time.Millisecond):
+		t.Fatal("GET /events through the full newHTTPHandlerWithAuth chain delivered no bytes within 1.5s — loggingResponseWriter must forward Flush() to the underlying http.ResponseWriter (DG-5 regression)")
 	}
 }
 
