@@ -3,11 +3,13 @@ package certify
 import (
 	"context"
 	"encoding/json"
+	"reflect"
 	"testing"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/store"
+	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
 const compileSvc = "svc"
@@ -209,5 +211,113 @@ func TestCompileCertifications_ContradictedTargetNeverResolves(t *testing.T) {
 	}
 	if len(claims) != 1 || claims[0].Status != core.ClaimContradicted {
 		t.Fatalf("claims = %+v, want exactly one contradicted claim", claims)
+	}
+}
+
+// TestCompileCertifications_ScopeNarrowsToReachedSymbols is I43's own
+// regression test: a "rule" target whose obligations claim spans TWO
+// files (pkg/a.go, pkg/b.go — resolveRule sets target.Symbols/Files from
+// the whole governing claim's Scope, never one file at a time) is
+// certified by a test that reaches only ONE of them (SymA, via a direct
+// Calls edge). Before the fix, evaluateCertificate's Scope was built from
+// target.Files WHOLESALE (compile.go, "scope := ... target.Files..."),
+// so the compiled certificate covered pkg/b.go too even though the test
+// never touches it — letting a certified_by row for pkg/b.go's symbol
+// pass on a test that demonstrably never reaches it. Scope must include
+// only the test file plus the files of the symbols ACTUALLY reached.
+func TestCompileCertifications_ScopeNarrowsToReachedSymbols(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	t.Cleanup(func() { _ = st.Close() })
+
+	pkgKey := func(file, name string) string {
+		return core.SymbolKey(compileSvc, core.QualifiedPackage(file, "pkg"), name)
+	}
+	testKey := pkgKey("pkg/x_test.go", "TestRuleReachesA")
+	symAKey := pkgKey("pkg/a.go", "SymA")
+
+	obs := []core.Observation{
+		{ServiceID: compileSvc, SourceRef: "pkg/a.go", SourceKind: core.KindGoFunc, EvidenceTier: core.TierVerified, Symbol: "SymA", Package: "pkg", Claim: "func SymA()", IngestedAt: time.Now()},
+		{ServiceID: compileSvc, SourceRef: "pkg/b.go", SourceKind: core.KindGoFunc, EvidenceTier: core.TierVerified, Symbol: "SymB", Package: "pkg", Claim: "func SymB()", IngestedAt: time.Now()},
+		{
+			ServiceID: compileSvc, SourceRef: "pkg/x_test.go", SourceKind: core.KindGoFunc, EvidenceTier: core.TierVerified,
+			Symbol: "TestRuleReachesA", Package: "pkg", Claim: "func TestRuleReachesA(t *testing.T)",
+			Calls: []string{symAKey}, IngestedAt: time.Now(),
+		},
+	}
+	if err := st.PutObservations(ctx, obs); err != nil {
+		t.Fatalf("seed PutObservations: %v", err)
+	}
+
+	claim := core.SemanticClaim{
+		ClaimID: "rule-multi-1", ServiceID: compileSvc, Layer: "obligations", Kind: "obligation",
+		Subject: "RULE-MULTI", Rule: "a rule spanning two files", Scope: []string{"pkg/a.go", "pkg/b.go"},
+		Tier: core.TierDocClaimed, Status: core.ClaimFresh,
+	}
+	if err := st.PutClaims(ctx, []core.SemanticClaim{claim}, nil); err != nil {
+		t.Fatalf("seed PutClaims (obligations): %v", err)
+	}
+
+	if err := st.PutCertifyDeclarations(ctx, compileSvc, []store.CertifyDeclaration{
+		{TestSymbolKey: testKey, Kind: "rule", TargetID: "RULE-MULTI", Strength: "asserts", File: "pkg/x_test.go", Line: 1},
+	}); err != nil {
+		t.Fatalf("PutCertifyDeclarations: %v", err)
+	}
+
+	if err := st.PutTestRuns(ctx, compileSvc, []store.TestRun{
+		{
+			ServiceID: compileSvc, RunDigest: "d-rule", Component: "pkg", Suite: "unit",
+			StartedAt: "2026-09-23T00:00:00Z", Verdict: "pass",
+			Cases: []store.TestCase{{CaseID: "1", Name: "TestRuleReachesA", Status: "pass", Attempts: 1, TestSymbolKey: testKey}},
+		},
+	}); err != nil {
+		t.Fatalf("PutTestRuns: %v", err)
+	}
+
+	report, err := CompileCertifications(ctx, st, compileSvc, "wm-1", time.Date(2026, 9, 23, 12, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatalf("CompileCertifications: %v", err)
+	}
+	if report.ClaimsWritten != 1 {
+		t.Fatalf("ClaimsWritten = %d, want 1", report.ClaimsWritten)
+	}
+
+	claims, err := st.ClaimsForService(ctx, compileSvc, Layer)
+	if err != nil {
+		t.Fatalf("ClaimsForService: %v", err)
+	}
+	if len(claims) != 1 {
+		t.Fatalf("claims = %+v, want exactly 1", claims)
+	}
+	c := claims[0]
+	var m Meta
+	if err := json.Unmarshal(c.Meta, &m); err != nil {
+		t.Fatalf("unmarshal meta: %v", err)
+	}
+	if State(m.State) != StateLive || c.Tier != core.TierVerified {
+		t.Fatalf("state/tier = %s/%s, want live/verified (the test DOES reach SymA, and its last run passed)", m.State, c.Tier)
+	}
+
+	wantScope := []string{"pkg/a.go", "pkg/x_test.go"}
+	if !reflect.DeepEqual(c.Scope, wantScope) {
+		t.Fatalf("Scope = %v, want %v — I43: a rule target's Scope must never include a file (pkg/b.go) the certifying test does not reach", c.Scope, wantScope)
+	}
+
+	// verify-level: a plan row naming a symbol defined in the UNREACHED
+	// pkg/b.go, certified_by TestRuleReachesA, must NOT be certified —
+	// the exact contract I43 protects (EvaluateCertifiedBy, verify.go).
+	byTest := ByTest(claims, []string{"TestRuleReachesA"})
+	crit, label := verify.EvaluateCertifiedBy("pkg/b.go", []string{"TestRuleReachesA"}, "", byTest)
+	if crit.Status == verify.Pass {
+		t.Fatalf("EvaluateCertifiedBy(pkg/b.go) = Pass, want Fail — TestRuleReachesA never reaches anything in pkg/b.go")
+	}
+	if label != "certificate-absent" {
+		t.Errorf("label = %q, want certificate-absent (no certificate's Scope covers pkg/b.go)", label)
+	}
+
+	// The reached file itself DOES certify.
+	critA, _ := verify.EvaluateCertifiedBy("pkg/a.go", []string{"TestRuleReachesA"}, "", byTest)
+	if critA.Status != verify.Pass {
+		t.Errorf("EvaluateCertifiedBy(pkg/a.go) = %+v, want Pass", critA)
 	}
 }

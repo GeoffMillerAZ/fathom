@@ -207,7 +207,18 @@ func evaluateCertificate(ctx context.Context, st store.Store, service, watermark
 		strength = string(extractor.DefaultCertifyStrength)
 	}
 
-	reached := target.Resolved && (len(target.Symbols) == 0 || reachesAny(g, e.TestSymbolKey, target.Symbols))
+	// reachedSyms is the subset of target.Symbols the call graph actually
+	// confirms e.TestSymbolKey reaches — NOT just whether any one of them
+	// is reached. A multi-symbol target (kind "rule"/"port"/"spec" can
+	// all resolve to symbols spanning several files, resolve.go) must
+	// only certify the files backing what was actually proven reachable
+	// (I43); reachedSyms is empty and unused for the vacuous-reach kinds
+	// (invariant/incident), whose target.Symbols is intentionally empty.
+	var reachedSyms []string
+	if target.Resolved && len(target.Symbols) > 0 {
+		reachedSyms = reachedSymbols(g, e.TestSymbolKey, target.Symbols)
+	}
+	reached := target.Resolved && (len(target.Symbols) == 0 || len(reachedSyms) > 0)
 
 	runs, err := st.TestCaseRunsForSymbol(ctx, service, e.TestSymbolKey, 3)
 	if err != nil {
@@ -249,7 +260,17 @@ func evaluateCertificate(ctx context.Context, st store.Store, service, watermark
 	}
 
 	subject := e.Kind + ":" + e.TargetID
-	scope := sortedUnique(append(append([]string(nil), testNode.FilePath), target.Files...))
+	// Scope is the test file plus the files of the symbols the test
+	// REACHES that the target names (Certification.Scope's own doc
+	// comment, internal/verify/verify.go) — never target.Files wholesale.
+	// A target with Symbols (rule/port/spec) narrows to reachedSyms'
+	// files; the vacuous-reach kinds (invariant/incident, Symbols always
+	// empty) keep target.Files as their whole Scope, same as before.
+	scopeFiles := target.Files
+	if len(target.Symbols) > 0 {
+		scopeFiles = filesForSymbols(reachedSyms, byKey)
+	}
+	scope := sortedUnique(append(append([]string(nil), testNode.FilePath), scopeFiles...))
 	rule := fmt.Sprintf("%s certifies %s %s (%s) — %s", testBareName(testNode.Name), e.Kind, e.TargetID, strength, state)
 
 	m := Meta{
@@ -285,17 +306,35 @@ func evaluateCertificate(ctx context.Context, st store.Store, service, watermark
 	return &claim, nil
 }
 
-// reachesAny reports whether test reaches at least one of symbols via the
-// call graph (typed edges included) — the same walk test_impact uses
+// reachedSymbols returns the subset of symbols the call graph confirms
+// test reaches (typed edges included) — the same walk test_impact uses
 // (internal/analysis/callgraph.Reachable), just checked from the test
-// forward rather than from a symbol backward.
-func reachesAny(g *callgraph.Graph, test string, symbols []string) bool {
+// forward rather than from a symbol backward, and collecting EVERY match
+// rather than stopping at the first: evaluateCertificate's Scope must be
+// built from exactly what was proven reachable (I43), never from the
+// target's full symbol/file set on the strength of any single match.
+func reachedSymbols(g *callgraph.Graph, test string, symbols []string) []string {
+	var out []string
 	for _, s := range symbols {
 		if callgraph.Reachable(g, test, s) {
-			return true
+			out = append(out, s)
 		}
 	}
-	return false
+	return out
+}
+
+// filesForSymbols maps each of symbols (canonical SymbolKeys, as found in
+// byKey) to its defining file, deduplicated and sorted — the files
+// backing exactly the reached subset a multi-symbol target names, never
+// that target's full Files set wholesale (I43).
+func filesForSymbols(symbols []string, byKey map[string]core.SymbolNode) []string {
+	var files []string
+	for _, s := range symbols {
+		if n, ok := byKey[s]; ok {
+			files = append(files, n.FilePath)
+		}
+	}
+	return sortedUnique(files)
 }
 
 // testSymbolsByBareName indexes every Test* Go function by its bare name
