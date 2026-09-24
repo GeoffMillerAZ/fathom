@@ -106,6 +106,12 @@ package plan
 	// referents too.
 	tests?: string
 
+	// paths scopes a `gone: pattern` row's regexp scan to specific
+	// repo-relative paths (an exact file, or a "dir/" prefix matching
+	// every file under it) — CV-27. Refused on any other gone: form.
+	// Omitted scans the whole corpus.
+	paths?: [...string]
+
 	// retires lists capability-inventory keys (ADR-044 §2.1) this row
 	// declares lost — exact match or a "<prefix>*" wildcard.
 	retires?: [...string]

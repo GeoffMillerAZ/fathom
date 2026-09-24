@@ -170,6 +170,14 @@ type Task struct {
 	// INTENTIONALLY CHANGED (not removed) — same shape and matching rule
 	// as Retires.
 	SurfaceChange []string
+	// GonePaths is a `gone: pattern` row's optional `paths:` annotation
+	// (design §3.1's "with optional paths:", CV-27/CV-28,
+	// EvaluateGone/evaluateGonePattern): repeatable repo-relative paths
+	// (an exact file, or a "dir/" prefix matching every file under it) —
+	// same comma-separated convention Retires/SurfaceChange use — scoping
+	// the row's regexp scan. Empty scans the whole corpus. Refused
+	// (goneContractError) on any gone: form other than pattern.
+	GonePaths []string
 	// Max/Min/Eq bound a row's contract's match count: a lexical oracle's
 	// pattern (CV-29, lexicalBoundsVerdict) or a `gone:` ratchet's caller
 	// count (design §3.1/§4, a later row). nil means unset — a lexical row
@@ -607,6 +615,42 @@ func verifyTask(t Task, ev Evidence, files FileEvidence, contraBySymbol map[stri
 			evalOracle = ledgerOracle
 		}
 		c, label := evalOracle(t, files)
+		switch c.Status {
+		case Pass:
+			pass(c.Name, c.Detail)
+		case Fail:
+			fail(c.Name, c.Detail, label)
+		default:
+			v.Criteria = append(v.Criteria, c)
+			if v.Status == Pass {
+				v.Status = Unknown
+				v.Label = label
+			}
+		}
+		if e.Symbol != "" {
+			v.Criteria = append(v.Criteria, Criterion{Name: "runtime_pass", Status: Unknown, Detail: "not evaluated: one contract per row"})
+			return v
+		}
+	}
+
+	// --- gone: rows (ADR-044 §3.1, CV-27/CV-28) ---
+	// An absence contract, never combined with symbol:/oracle: (design
+	// §3.1; goneContractError refuses the combination). Evaluated early,
+	// like the oracle block above, so a row carrying gone AND symbol is
+	// labeled by the contract conflict rather than by whatever the index
+	// says about the symbol — the symbol path below is skipped for it
+	// entirely. An Evidence with no GoneEvidence capability leaves the
+	// row honestly Unknown (never a fabricated pass), the same pattern
+	// FileEvidence/CertificationEvidence already use.
+	if t.Gone != "" {
+		checked = true
+		var c Criterion
+		var label string
+		if ge, ok := ev.(GoneEvidence); ok {
+			c, label = EvaluateGone(t, ge)
+		} else {
+			c, label = Criterion{Name: goneCriterion, Status: Unknown, Detail: "no gone evidence available on this evidence source"}, "gone-unevaluated"
+		}
 		switch c.Status {
 		case Pass:
 			pass(c.Name, c.Detail)
