@@ -41,7 +41,12 @@ const agentSurfaceTotalByteCeiling = 18700
 
 // agentSurfacePerToolByteCeiling is the per-tool served-entry byte cap
 // (name + description + inputSchema + annotations, contracts=false).
-const agentSurfacePerToolByteCeiling = 1200
+// Re-pinned 1200 -> 1260 (ADR-044 §1.6, CV-13): review_diff's genuinely
+// new "since" argument measures 1240 B served; the terse description
+// above leaves no further slack to cut from an already-dense six-property
+// tool without losing real information. The total ceiling above did not
+// move (18106 B measured, still inside 18700).
+const agentSurfacePerToolByteCeiling = 1260
 
 // TestAgentSurfaceBudget is the O101/TD-2 acceptance test: render the
 // agent surface's tools/list exactly as a connected session receives it

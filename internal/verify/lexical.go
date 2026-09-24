@@ -45,6 +45,18 @@ func lexicalContractError(t Task) string {
 		return fmt.Sprintf("path %q must be repo-relative", t.OraclePath)
 	case strings.HasSuffix(strings.ToLower(t.OraclePath), ".md") && t.OraclePattern == "":
 		return fmt.Sprintf("markdown path %q without a pattern proves nothing about a claim (ADR-030)", t.OraclePath)
+	case t.Eq != nil && (t.Max != nil || t.Min != nil):
+		return "eq cannot be combined with max or min (CV-29): one bound shape per row"
+	case t.Max != nil && *t.Max < 0:
+		return fmt.Sprintf("max %d must be non-negative", *t.Max)
+	case t.Min != nil && *t.Min < 0:
+		return fmt.Sprintf("min %d must be non-negative", *t.Min)
+	case t.Eq != nil && *t.Eq < 0:
+		return fmt.Sprintf("eq %d must be non-negative", *t.Eq)
+	case t.Max != nil && t.Min != nil && *t.Max < *t.Min:
+		return fmt.Sprintf("max %d is less than min %d", *t.Max, *t.Min)
+	case len(t.BoundsInvalid) > 0:
+		return fmt.Sprintf("malformed integer bound(s): %s", strings.Join(t.BoundsInvalid, ", "))
 	}
 	if t.OraclePattern != "" {
 		if _, err := regexp.Compile("(?m)" + t.OraclePattern); err != nil {
@@ -91,12 +103,55 @@ func evalLexicalOracle(t Task, files FileEvidence) (Criterion, string) {
 		return Criterion{lexicalCriterion, Pass, fmt.Sprintf("%s exists in the working tree (%d bytes, non-empty)", t.OraclePath, len(body))}, ""
 	}
 	re := regexp.MustCompile("(?m)" + t.OraclePattern) // compiled once already in lexicalContractError
-	loc := re.FindIndex(body)
-	if loc == nil {
-		return Criterion{lexicalCriterion, Fail, fmt.Sprintf("pattern %q matches nothing in %s (%d bytes)", t.OraclePattern, t.OraclePath, len(body))}, "pattern-unmatched"
+	locs := re.FindAllIndex(body, -1)
+	return lexicalBoundsVerdict(t, body, locs)
+}
+
+// lexicalBoundsVerdict decides a lexical row's pass/fail from its pattern's
+// match count (CV-29, ADR-044 §3.1: "gone: pattern" and every other
+// lexical row now evaluate max, min and eq against the match count, not
+// merely "at least one"). locs is regexp.FindAllIndex's result — nil or
+// empty means zero matches.
+//
+// With none of Max/Min/Eq set, the oracle's ORIGINAL contract holds
+// unchanged: count >= 1 ("at least one match"), reported exactly as
+// before (label "pattern-unmatched" on zero, detail "matches at
+// <path>:<line>" on the first match, for every existing caller/test that
+// keys off those strings). Eq, when set, requires an exact count (refused
+// combined with Max/Min by lexicalContractError, so this never sees both).
+// Max and Min, either or both, bound the count as a range; either may be
+// used alone (Max only: "at most N"; Min only: "at least N", replacing the
+// bare ">=1" default with an explicit floor — CV-29's `gone: pattern` use,
+// where "at least 0" i.e. Max alone proves an upper-bounded ratchet).
+//
+// Pure; the only I/O (reading path) already happened in evalLexicalOracle.
+func lexicalBoundsVerdict(t Task, body []byte, locs [][]int) (Criterion, string) {
+	count := len(locs)
+	switch {
+	case t.Eq != nil:
+		if count != *t.Eq {
+			return Criterion{lexicalCriterion, Fail, fmt.Sprintf("pattern %q matched %d time(s) in %s, want exactly %d", t.OraclePattern, count, t.OraclePath, *t.Eq)}, "bounds-unmet"
+		}
+	case t.Max != nil || t.Min != nil:
+		if t.Min != nil && count < *t.Min {
+			return Criterion{lexicalCriterion, Fail, fmt.Sprintf("pattern %q matched %d time(s) in %s, want at least %d", t.OraclePattern, count, t.OraclePath, *t.Min)}, "bounds-unmet"
+		}
+		if t.Max != nil && count > *t.Max {
+			return Criterion{lexicalCriterion, Fail, fmt.Sprintf("pattern %q matched %d time(s) in %s, want at most %d", t.OraclePattern, count, t.OraclePath, *t.Max)}, "bounds-unmet"
+		}
+	default:
+		if count == 0 {
+			return Criterion{lexicalCriterion, Fail, fmt.Sprintf("pattern %q matches nothing in %s (%d bytes)", t.OraclePattern, t.OraclePath, len(body))}, "pattern-unmatched"
+		}
 	}
-	line := 1 + strings.Count(string(body[:loc[0]]), "\n")
-	return Criterion{lexicalCriterion, Pass, fmt.Sprintf("pattern matches at %s:%d (%d bytes, non-empty)", t.OraclePath, line, len(body))}, ""
+	if count == 0 {
+		// Only reachable with an explicit Min <= 0 or Eq == 0 — "proves
+		// absence" (a gone: pattern's whole point). No match location to
+		// cite; the count itself is the evidence.
+		return Criterion{lexicalCriterion, Pass, fmt.Sprintf("pattern %q matched 0 time(s) in %s, as required (%d bytes, non-empty)", t.OraclePattern, t.OraclePath, len(body))}, ""
+	}
+	line := 1 + strings.Count(string(body[:locs[0][0]]), "\n")
+	return Criterion{lexicalCriterion, Pass, fmt.Sprintf("pattern matches at %s:%d, %d match(es) total (%d bytes, non-empty)", t.OraclePath, line, count, len(body))}, ""
 }
 
 // DirFiles is the working-tree FileEvidence: repo-relative reads under one

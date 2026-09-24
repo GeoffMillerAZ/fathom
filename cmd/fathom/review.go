@@ -238,7 +238,7 @@ func runReviewBody(gitRunner func(args ...string) ([]byte, error), storePathV, s
 		}
 	}
 
-	in, sources, err := buildReviewInputFromClient(ctx, c, *service, changedFiles)
+	in, sources, err := buildReviewInputFromClient(ctx, c, *service, changedFiles, gitRunner, sinceV)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
@@ -509,7 +509,7 @@ func renderTestGap(w io.Writer, gap impact.TestGapResult) {
 // the MCP QueryInterface abstraction. The full source list is also
 // returned: the persist step needs it to hash cited lines (semantic.Sweep's
 // contract), including arch citations on files OUTSIDE the changed set.
-func buildReviewInputFromClient(ctx context.Context, c *client.Client, service string, changedFiles []string) (review.Input, []core.SourceFile, error) {
+func buildReviewInputFromClient(ctx context.Context, c *client.Client, service string, changedFiles []string, gitRunner func(args ...string) ([]byte, error), since string) (review.Input, []core.SourceFile, error) {
 	nodes, err := c.ListAllSymbols(ctx, service)
 	if err != nil {
 		return review.Input{}, nil, fmt.Errorf("list symbols: %w", err)
@@ -570,6 +570,16 @@ func buildReviewInputFromClient(ctx context.Context, c *client.Client, service s
 	corpusRoot := ""
 	if path, _, found, merr := c.ServiceMeta(ctx, service); merr == nil && found {
 		corpusRoot = path
+	}
+	// CV-13 (ADR-044 §1.6): Root is always filled; Base only when --since
+	// was given AND resolves — a bad ref fails open (Base stays ""), the
+	// SAME discipline internal/mcp's reviewDiffWithBase uses, so a review
+	// run never blocks on a base-aware dimension alone.
+	in.Root = corpusRoot
+	if since != "" {
+		if out, gerr := gitRunner("rev-parse", since); gerr == nil {
+			in.Base = strings.TrimSpace(string(out))
+		}
 	}
 	rules, source, deny, checked, reason, rerr := projectrules.ResolveRules(corpusRoot, nil, false)
 	if rerr != nil {

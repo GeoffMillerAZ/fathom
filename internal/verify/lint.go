@@ -43,6 +43,9 @@ func LintPlan(p Plan) []string {
 		if t.CtxMalformed {
 			out = append(out, fmt.Sprintf("%s: empty ctx: value (want space-separated pointers)", t.ID))
 		}
+		for _, key := range t.BoundsInvalid {
+			out = append(out, fmt.Sprintf("%s: %s: value is not an integer", t.ID, key))
+		}
 		if t.Oracle == "ledger" {
 			out = append(out, lintLedgerOracle(t)...)
 		} else {

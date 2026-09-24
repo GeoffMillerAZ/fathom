@@ -1,0 +1,269 @@
+package conserve
+
+// input.go — CV-18's Input type, Declarations (I45's "was this excused
+// before the change started, or only after"), and NewInput, the one place
+// in this package that touches git. Every Plane.Check gets its facts
+// through Input alone — BaseFile/HeadFile/ChangedFiles/Store — so a plane
+// itself never shells out and never re-derives the change range on its
+// own (ADR-044 §0: "Costs scale with the change. Base facts come from the
+// changed files only.").
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"sort"
+	"strings"
+
+	"github.com/geoffmilleraz/fathom/internal/store"
+	"github.com/geoffmilleraz/fathom/internal/verify"
+)
+
+// HeadWorktree is the Head value NewInput always uses: the actual working
+// tree, uncommitted edits included — never a re-ingest, never a re-read of
+// HEAD's committed blob. A future `--head <ref>` variant would set Head to
+// a resolved sha instead; nothing in this package assumes Head is either
+// shape beyond the literal string "worktree" meaning exactly this.
+const HeadWorktree = "worktree"
+
+// Input carries everything a Plane.Check needs, resolved ONCE per Run so
+// every plane sees the identical facts (ADR-044 §0's "base"/"head", the
+// same changed-file set `fathom review --since` already computes).
+type Input struct {
+	Service string
+	Root    string
+	// Base is the resolved base commit sha (never a symbolic ref — NewInput
+	// resolves it once via `git rev-parse`, so every plane compares against
+	// the identical commit even if a branch tip moves mid-run).
+	Base string
+	// Head is "worktree" (NewInput's only shape today) or a resolved sha —
+	// never a symbolic ref, for the same reason Base never is.
+	Head string
+	// ChangedFiles is `git diff --name-only <Base>` plus untracked files
+	// (NewInput), or whatever a caller with its own resolution supplies.
+	ChangedFiles []string
+	// BaseFile reads path's content AS OF Base (git show <Base>:<path>,
+	// for NewInput's callers). ok is false — never an error — when path
+	// simply did not exist at Base; that is the ordinary case for most of
+	// a diff's files, not a failure.
+	BaseFile func(path string) (content []byte, ok bool, err error)
+	// HeadFile reads path's content AS OF Head — the worktree file, for
+	// NewInput's callers. Same ok/err contract as BaseFile.
+	HeadFile func(path string) (content []byte, ok bool, err error)
+	// Store is the live index, for a plane that needs it (certificates,
+	// governance). nil is valid and means exactly that: a plane needing it
+	// reports "no store" in its Missing and goes Unproven (I44) — Input
+	// itself never refuses to construct over a nil Store.
+	Store store.Store
+	// Declarations answers, for an inventory/capability key, whether a
+	// plan declared losing or changing it BEFORE the range started
+	// ("prior", excuses a finding), only inside the range ("self", excuses
+	// nothing — I45), or not at all ("none").
+	Declarations Declarations
+}
+
+// Declarations is the base/head split of every retires:/surface_change:
+// pattern a set of plan files declared — built once per Run (NewInput, or
+// NewDeclarations for a caller with its own plan versions) and consulted
+// by any plane that needs to know whether a loss was excused ahead of
+// time. Patterns match a key exactly, or as a "<prefix>*" wildcard prefix
+// (ADR-044 §2.2).
+type Declarations struct {
+	base []string
+	head []string
+}
+
+// Declared reports whether key was declared retired/changed at Base
+// ("prior"), only somewhere inside base..head ("self" — I45: excuses
+// nothing), or not at all ("none"). Pure; matches DeclaredPrior/
+// DeclaredSelf/DeclaredNone.
+func (d Declarations) Declared(key string) string {
+	if declPatternsMatch(d.base, key) {
+		return DeclaredPrior
+	}
+	if declPatternsMatch(d.head, key) {
+		return DeclaredSelf
+	}
+	return DeclaredNone
+}
+
+// declPatternsMatch reports whether key matches any of patterns: an exact
+// match, or a "<prefix>*" wildcard whose prefix key starts with.
+func declPatternsMatch(patterns []string, key string) bool {
+	for _, p := range patterns {
+		if rest, ok := strings.CutSuffix(p, "*"); ok {
+			if strings.HasPrefix(key, rest) {
+				return true
+			}
+			continue
+		}
+		if p == key {
+			return true
+		}
+	}
+	return false
+}
+
+// NewDeclarations builds a Declarations from already-parsed plan versions —
+// every retires:/surface_change: key from basePlans is a "prior" pattern,
+// every one from headPlans (whether or not it also appeared at base — a
+// key present at both is still "prior", the stronger of the two) is a
+// "self" pattern. A caller that already has both plan versions in hand
+// (e.g. a test, or a command that read them for another reason) builds a
+// Declarations this way without any git I/O; NewInput uses it as its own
+// last step after reading each plan path at both points.
+func NewDeclarations(basePlans, headPlans []verify.Plan) Declarations {
+	return Declarations{
+		base: declPatternsFromPlans(basePlans),
+		head: declPatternsFromPlans(headPlans),
+	}
+}
+
+func declPatternsFromPlans(plans []verify.Plan) []string {
+	seen := map[string]bool{}
+	for _, p := range plans {
+		for _, t := range p.Tasks {
+			for _, k := range t.Retires {
+				seen[k] = true
+			}
+			for _, k := range t.SurfaceChange {
+				seen[k] = true
+			}
+		}
+	}
+	out := make([]string, 0, len(seen))
+	for k := range seen {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// NewInput resolves baseRef against root's git history and fills every
+// Input field from it: Base (the resolved sha), Head ("worktree"),
+// ChangedFiles (`git diff --name-only <base>` plus untracked files — the
+// same set `fathom review --since` computes, ADR-044 §0), BaseFile/
+// HeadFile (git show / worktree reads), and Declarations (built by
+// reading each of planPaths — repo-relative — at base and at the
+// worktree). st may be nil; it is carried straight onto Input.Store.
+//
+// Returns an error only for an operational failure resolving baseRef or
+// listing changed files (a bad ref, root not a git repo, git
+// unavailable) — never for an individual plan path being absent at base
+// or at head, which Declarations treats as "no declarations from that
+// file at that point," not a fatal condition.
+func NewInput(ctx context.Context, root, baseRef string, st store.Store, service string, planPaths []string) (Input, error) {
+	base, err := resolveRef(ctx, root, baseRef)
+	if err != nil {
+		return Input{}, fmt.Errorf("resolving base ref %q in %s: %w", baseRef, root, err)
+	}
+	changed, err := changedFilesSinceBase(ctx, root, base)
+	if err != nil {
+		return Input{}, fmt.Errorf("listing changed files since %s: %w", base, err)
+	}
+
+	var basePlans, headPlans []verify.Plan
+	for _, rel := range planPaths {
+		if b, ok, _ := gitShowFile(root, base, rel); ok {
+			basePlans = append(basePlans, verify.ParseMarkdownPlan(service, b))
+		}
+		if b, ok, _ := worktreeFile(root, rel); ok {
+			headPlans = append(headPlans, verify.ParseMarkdownPlan(service, b))
+		}
+	}
+
+	return Input{
+		Service:      service,
+		Root:         root,
+		Base:         base,
+		Head:         HeadWorktree,
+		ChangedFiles: changed,
+		BaseFile:     func(path string) ([]byte, bool, error) { return gitShowFile(root, base, path) },
+		HeadFile:     func(path string) ([]byte, bool, error) { return worktreeFile(root, path) },
+		Store:        st,
+		Declarations: NewDeclarations(basePlans, headPlans),
+	}, nil
+}
+
+// resolveRef resolves ref to a commit sha via `git rev-parse`.
+func resolveRef(ctx context.Context, root, ref string) (string, error) {
+	out, err := exec.CommandContext(ctx, "git", "-C", root, "rev-parse", ref).Output()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+// changedFilesSinceBase returns the sorted, deduplicated union of `git
+// diff --name-only <base>` (every tracked change against base, staged or
+// not) and `git ls-files --others --exclude-standard` (untracked files,
+// gitignore respected) — a brand-new file never `git add`ed shows up in
+// neither the index nor a tracked diff, so it needs the second call
+// (ADR-044 §0).
+func changedFilesSinceBase(ctx context.Context, root, base string) ([]string, error) {
+	diffOut, err := exec.CommandContext(ctx, "git", "-C", root, "diff", "--name-only", base).Output()
+	if err != nil {
+		return nil, fmt.Errorf("git diff --name-only %s: %w", base, err)
+	}
+	untrackedOut, err := exec.CommandContext(ctx, "git", "-C", root, "ls-files", "--others", "--exclude-standard").Output()
+	if err != nil {
+		return nil, fmt.Errorf("git ls-files --others --exclude-standard: %w", err)
+	}
+	set := map[string]bool{}
+	for _, line := range strings.Split(string(diffOut), "\n") {
+		if l := strings.TrimSpace(line); l != "" {
+			set[l] = true
+		}
+	}
+	for _, line := range strings.Split(string(untrackedOut), "\n") {
+		if l := strings.TrimSpace(line); l != "" {
+			set[l] = true
+		}
+	}
+	out := make([]string, 0, len(set))
+	for f := range set {
+		out = append(out, f)
+	}
+	sort.Strings(out)
+	return out, nil
+}
+
+// gitShowFile reads path's content at ref inside root via `git show
+// <ref>:<path>`. ok is false — never an error — when git ran but the path
+// simply did not exist at ref (the ordinary shape for a new file); err is
+// non-nil only when git itself could not be run at all (not installed, not
+// on PATH).
+func gitShowFile(root, ref, path string) ([]byte, bool, error) {
+	cmd := exec.Command("git", "-C", root, "show", ref+":"+filepath.ToSlash(path))
+	out, err := cmd.Output()
+	if err != nil {
+		var execErr *exec.Error
+		if errors.As(err, &execErr) {
+			return nil, false, err
+		}
+		return nil, false, nil
+	}
+	return out, true, nil
+}
+
+// worktreeFile reads path's content from the working tree under root. ok
+// is false — never an error — when the file simply does not exist there.
+// Refuses (a real error) a path that would resolve outside root.
+func worktreeFile(root, path string) ([]byte, bool, error) {
+	r := filepath.Clean(root)
+	full := filepath.Clean(filepath.Join(r, filepath.FromSlash(path)))
+	if full != r && !strings.HasPrefix(full, r+string(filepath.Separator)) {
+		return nil, false, fmt.Errorf("path %q escapes root %q", path, root)
+	}
+	b, err := os.ReadFile(full)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, false, nil
+		}
+		return nil, false, err
+	}
+	return b, true, nil
+}

@@ -3,6 +3,7 @@ package verify
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -13,6 +14,13 @@ import (
 // "- [~] title", "- [-] title". Group 1 is the checkbox char; group 2 is the
 // title text.
 var taskLineRe = regexp.MustCompile(`^\s*[-*]\s+\[([ xX~\-])\]\s+(.*\S)\s*$`)
+
+// baselineLineRe matches the plan-level "Baseline: <sha>" header line
+// (ADR-044 §4) ParseMarkdownPlan reads into Plan.Baseline. Not a checkbox
+// row — this line stands on its own, anywhere in the file (conventionally
+// near the top), case-insensitive on the label the way a header reads
+// naturally either way. Group 1 is the ref/sha itself.
+var baselineLineRe = regexp.MustCompile(`(?i)^\s*Baseline:\s*(\S+)\s*$`)
 
 // ParseMarkdownPlan turns a Markdown checklist (the kind people actually write —
 // e.g. tmp/TRACKING.md) into a verify.Plan, so verify_plan / gen-status-cue can
@@ -35,6 +43,12 @@ func ParseMarkdownPlan(service string, md []byte) Plan {
 	plan := Plan{Service: service}
 	n := 0
 	for i, line := range strings.Split(string(md), "\n") {
+		if plan.Baseline == "" {
+			if bm := baselineLineRe.FindStringSubmatch(line); bm != nil {
+				plan.Baseline = bm[1]
+				continue
+			}
+		}
 		m := taskLineRe.FindStringSubmatch(line)
 		if m == nil {
 			continue
@@ -117,6 +131,29 @@ func ParseMarkdownPlan(service string, md []byte) Plan {
 					}
 				}
 			}
+			// ADR-044 (vision 34): the refactor-conservation grammar.
+			// gone/tests are single free-text values; retires/
+			// surface_change are repeatable via the SAME quote-when-
+			// commas convention certified_by and needs already use.
+			t.Gone = ann["gone"]
+			t.Tests = ann["tests"]
+			if v, ok := ann["retires"]; ok {
+				for _, key := range strings.Split(v, ",") {
+					if key = strings.TrimSpace(key); key != "" {
+						t.Retires = append(t.Retires, key)
+					}
+				}
+			}
+			if v, ok := ann["surface_change"]; ok {
+				for _, key := range strings.Split(v, ",") {
+					if key = strings.TrimSpace(key); key != "" {
+						t.SurfaceChange = append(t.SurfaceChange, key)
+					}
+				}
+			}
+			t.Max, t.BoundsInvalid = parseIntAnnotation(ann, "max", t.BoundsInvalid)
+			t.Min, t.BoundsInvalid = parseIntAnnotation(ann, "min", t.BoundsInvalid)
+			t.Eq, t.BoundsInvalid = parseIntAnnotation(ann, "eq", t.BoundsInvalid)
 		}
 		plan.Tasks = append(plan.Tasks, t)
 	}
@@ -239,6 +276,8 @@ var annotationKeys = []string{
 	"service", "present", "after", "plan", "rows", "row", "partial",
 	// ledger oracle (ADR-034 decision 2)
 	"run_id", "task", "arm", "min_trials",
+	// refactor-conservation grammar (ADR-044, vision 34)
+	"gone", "tests", "retires", "surface_change",
 }
 
 // ParseAnnotation is parseAnnotation's exported face for callers outside
@@ -350,6 +389,23 @@ func unquote(v string) string {
 		return v[1 : len(v)-1]
 	}
 	return v
+}
+
+// parseIntAnnotation reads key from ann as an optional integer bound
+// (ADR-044's max/min/eq): absent stays nil, unchanged; present and
+// well-formed returns a fresh *int; present and malformed (not a base-10
+// integer) returns nil and appends key to invalid — loud, never a silently
+// ignored bound (O4's lesson applied to a numeric key).
+func parseIntAnnotation(ann map[string]string, key string, invalid []string) (*int, []string) {
+	v, ok := ann[key]
+	if !ok {
+		return nil, invalid
+	}
+	n, err := strconv.Atoi(strings.TrimSpace(v))
+	if err != nil {
+		return nil, append(invalid, key)
+	}
+	return &n, invalid
 }
 
 func truthy(s string) bool {

@@ -3,7 +3,8 @@
 package plan
 
 plan: #Plan & {
-	service: "my-service"
+	service:  "my-service"
+	baseline: "8c1e4f2a9b3d7e6501234567890abcdef123456"
 	tasks: [
 		{
 			id:    "T-1"
@@ -46,6 +47,35 @@ plan: #Plan & {
 				oracle:  "lexical"
 				path:    "docs/measurements/2026-08-27-obligation-ceiling.md"
 				pattern: "p95"
+			}
+		},
+		{
+			// ADR-044 §3.1/§2.1: the refactor-conservation grammar (CV-25).
+			id:    "T-6"
+			title: "OldFunc is gone"
+			state: "claimed"
+			gone:  "callers OldFunc"
+			tests: "allowed"
+			expect: {
+				package: "internal/old"
+			}
+		},
+		{
+			id:             "T-7"
+			title:          "surface retirement declared"
+			retires: ["api:foo.Old*"]
+			surface_change: ["json:foo.Bar.tag"]
+		},
+		{
+			// CV-29: bounded lexical oracle.
+			id:    "T-8"
+			title: "at most 2 references remain"
+			state: "claimed"
+			expect: {
+				oracle:  "lexical"
+				path:    "internal/foo/bar.go"
+				pattern: "OldThing"
+				max:     2
 			}
 		},
 	]

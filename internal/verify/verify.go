@@ -33,6 +33,20 @@ import (
 type Plan struct {
 	Service string
 	Tasks   []Task
+
+	// Baseline is the plan-level "Baseline: <sha>" header line (ADR-044 §4):
+	// the base commit every row in the plan is proved against, written by
+	// `fathom refactor plan` and read by `fathom refactor status` and
+	// `fathom conserve`. "" when the plan carries no header line — most
+	// plans, which pin no baseline.
+	Baseline string
+
+	// DeletedRows is set externally by AnnotateSelfDeclared — NEVER by
+	// ParseMarkdownPlan (there is no per-plan annotation for it): the
+	// sorted IDs of rows present in the base plan and absent from this
+	// one (I45's "rows deleted since base"). nil when no comparison was
+	// made.
+	DeletedRows []string
 }
 
 // Task is one unit of planned work with an acceptance contract.
@@ -121,6 +135,53 @@ type Task struct {
 	// reason says. A skip that predates the claim (already present at the
 	// comparison point) leaves this false and the row stands.
 	SelfSkipped bool
+
+	// SelfDeclared is set externally by AnnotateSelfDeclared — NEVER by
+	// ParseMarkdownPlan. The sorted list of declaration keys (I45:
+	// "skip", "disposition", "retires", "surface_change", "max") this row
+	// gained relative to a base version of the plan — a declaration added
+	// INSIDE the change range excuses nothing. nil when no comparison was
+	// made, or the row gained none of them.
+	SelfDeclared []string
+
+	// --- ADR-044 (vision 34) refactor-conservation grammar ---
+	//
+	// Gone is the raw value of a `gone: <form>` row (ADR-044 §3.1): "import
+	// <importpath>", "module <path>", `pattern "<regex>"` (optionally
+	// followed by a `paths:` annotation, read separately), or "callers
+	// <Symbol>" (with `package:` naming its package, already parsed into
+	// Expect.Package). Evaluated by internal/verify.EvaluateGone (a later
+	// row); this Task only carries the text.
+	Gone string
+	// Tests refines a `gone: callers` row: "allowed" permits nonzero TEST
+	// referents to the retired symbol (design §3.1); any other value (most
+	// commonly "", unset) requires zero test referents too, same as zero
+	// non-test referents.
+	Tests string
+	// Retires lists capability-inventory keys (design §2.1) this row
+	// declares INTENTIONALLY REMOVED — a `retires: <key>[, <key>...]`
+	// value, repeatable via the same comma-separated convention Needs and
+	// CertifiedBy use (quote a multi-key value). Each key is either an
+	// exact inventory key or a "<prefix>*" wildcard. This is the
+	// declaration internal/conserve.Declarations reads to call a loss
+	// "prior" rather than "self" or "none".
+	Retires []string
+	// SurfaceChange lists capability-inventory keys this row declares
+	// INTENTIONALLY CHANGED (not removed) — same shape and matching rule
+	// as Retires.
+	SurfaceChange []string
+	// Max/Min/Eq bound a row's contract's match count: a lexical oracle's
+	// pattern (CV-29, lexicalBoundsVerdict) or a `gone:` ratchet's caller
+	// count (design §3.1/§4, a later row). nil means unset — a lexical row
+	// with no bound keeps its original "at least one match" contract; a
+	// `gone:` row with no Max is not a ratchet. Eq is refused (lint AND
+	// verify) combined with either Max or Min — one bound shape per row.
+	Max, Min, Eq *int
+	// BoundsInvalid names the max/min/eq annotation keys whose raw value
+	// did not parse as an integer (e.g. `max: nope`) — the row's contract
+	// is malformed exactly the way an unparsable min_trials is (O4: loud,
+	// never a silently-ignored bound). LintPlan reports each one.
+	BoundsInvalid []string
 }
 
 // Expect is a task's acceptance contract. The zero value is the STRICTEST
@@ -727,6 +788,25 @@ func verifyTask(t Task, ev Evidence, files FileEvidence, contraBySymbol map[stri
 		Status: Unknown,
 		Detail: "no CI/coverage evidence ingested — static checks cannot prove the test passes",
 	})
+
+	// --- self-declared (I45, ADR-044 §1.4) ---
+	// Informational only — never sets `checked` and never on its own
+	// changes v.Status. AnnotateSelfDeclared is the only source of
+	// t.SelfDeclared (ParseMarkdownPlan never sets it); a caller with no
+	// base plan to compare against (the ordinary `fathom verify`, no
+	// --since) leaves it nil and this is a no-op. The one case that DOES
+	// change Status — a self-declared skip — was already handled above by
+	// the ordinary skip_test switch reading t.SelfSkipped directly; this
+	// is the HTTP-mode daemon's own equivalent overlay
+	// (OverlaySelfDeclared) for the report this function's caller (store
+	// mode, or OverlayLocal's lexical re-evaluation) computes natively.
+	if len(t.SelfDeclared) > 0 {
+		v.Criteria = append(v.Criteria, Criterion{
+			Name:   "self_declared",
+			Status: NA,
+			Detail: fmt.Sprintf("self-declared: %s", strings.Join(t.SelfDeclared, ", ")),
+		})
+	}
 
 	if !checked {
 		// No acceptance contract to evaluate — don't pretend it's verified.

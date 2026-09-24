@@ -60,6 +60,7 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 	quiet := fs.Bool("quiet", false, "print only failing (and, with --strict, unknown) task rows plus the summary; composes with --quiet-pass")
 	mutationPath := fs.String("mutation", "", "VB-34: mutation-testing report (go-mutesting log output, or fathom's own JSON shape); a claimed row whose symbol has mutation score 0 gets a covered-not-asserted note (falls back to $"+mutationReportEnvVar+"; direct/--store mode only)")
 	strictMutation := fs.Bool("strict-mutation", false, "gate-fail a covered-not-asserted finding instead of noting it as advisory")
+	since := fs.String("since", "", "git ref to compare each --plan file against (ADR-044 §1.4, I45): a claimed row's skip/disposition/retires/surface_change/raised-max gained since <ref> is reported self-declared and never excuses a loss; rows present at <ref> and missing now are reported deleted. Applies only inside a git work tree; a ref the plan file did not exist at counts as every current row being self-declared.")
 
 	if err := fs.Parse(args); err != nil {
 		return 2
@@ -114,6 +115,13 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 		if absPF, aerr := filepath.Abs(pf); aerr == nil {
 			if rel, ok := relativeToRoot(root, absPF); ok {
 				lp = verify.AnnotateSelfSkip(lp, priorSelfSkipPlan(root, rel, *service, raw))
+				// ADR-044 §1.4 (I45, CV-14): --since widens the same
+				// question from "the one edit/commit that claimed this
+				// row" to "anywhere across base..head" — a declaration
+				// gained at ANY point in the range excuses nothing.
+				if *since != "" {
+					lp = verify.AnnotateSelfDeclared(lp, sinceRefPlan(root, rel, *since, *service))
+				}
 			}
 		}
 		for _, w := range verify.LintPlan(lp) {
@@ -194,6 +202,9 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 			// read Pass — force it back to Fail/self-skipped from the LOCAL
 			// AnnotateSelfSkip result already folded into lp above.
 			verify.OverlaySelfSkip(&rep, lp)
+			// CV-14: same reasoning, widened to --since's whole range —
+			// the daemon never saw lp's AnnotateSelfDeclared result either.
+			verify.OverlaySelfDeclared(&rep, lp)
 			reports = append(reports, rep)
 		}
 	}
@@ -247,6 +258,16 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 					continue
 				}
 				fmt.Fprintf(stdout, "%s [%s] %s\n", icon, tv.TaskID, tv.Title)
+				// CV-14 (ADR-044 §1.4, I45): --since's per-row rendering —
+				// printed for every row that carries one, claimed or not,
+				// failing or not, since a self-declared retirement/ratchet
+				// is information for the reviewer regardless of the row's
+				// own verdict.
+				for _, c := range tv.Criteria {
+					if c.Name == "self_declared" {
+						fmt.Fprintf(stdout, "    %s\n", c.Detail)
+					}
+				}
 				// Only expand failing criteria for claimed tasks that gate.
 				if tv.Claimed && !tv.Skipped &&
 					(tv.Status == verify.Fail || (*strict && tv.Status == verify.Unknown)) {
@@ -278,6 +299,17 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 		}
 		fmt.Fprintf(stdout, "\n%d tasks total; %d claimed: %d verified, %d failing\n",
 			total, claimed, passed, failed)
+		// CV-14: rows present at --since's ref and missing from this plan
+		// file now — I45's "rows deleted since base." One line per plan
+		// file that lost rows; a plan with none prints nothing.
+		if *since != "" {
+			for i, lp := range localPlans {
+				if len(lp.DeletedRows) == 0 {
+					continue
+				}
+				fmt.Fprintf(stdout, "deleted since %s (%s): %s\n", *since, plans[i], strings.Join(lp.DeletedRows, ", "))
+			}
+		}
 	}
 
 	if !gatePass {

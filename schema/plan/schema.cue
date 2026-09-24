@@ -57,6 +57,14 @@ package plan
 	// when path is a markdown file (existence proves nothing about prose);
 	// optional for other files, where existence + non-empty suffices.
 	pattern?: string
+
+	// max/min/eq bound a lexical oracle's pattern match count (ADR-044
+	// §3.1, CV-29): omitted keeps the oracle's original "at least one
+	// match" default. eq is refused combined with either max or min — one
+	// bound shape per row.
+	max?: int
+	min?: int
+	eq?:  int
 }
 
 // #Task is one unit of planned work with an acceptance contract.
@@ -86,12 +94,37 @@ package plan
 
 	// expect is the acceptance contract for this task.
 	expect?: #Expect
+
+	// gone declares an absence contract this row proves once claimed
+	// (ADR-044 §3.1): "import <path>", "module <path>", `pattern
+	// "<regex>"` (optionally with paths), or "callers <Symbol>" (with
+	// package). Absence proofs, never presence.
+	gone?: string
+
+	// tests refines a `gone: callers` row: "allowed" permits nonzero test
+	// referents to the retired symbol; default requires zero test
+	// referents too.
+	tests?: string
+
+	// retires lists capability-inventory keys (ADR-044 §2.1) this row
+	// declares lost — exact match or a "<prefix>*" wildcard.
+	retires?: [...string]
+
+	// surface_change lists capability-inventory keys this row declares
+	// intentionally changed (not removed) — same matching rule as retires.
+	surface_change?: [...string]
 }
 
 // #Plan is the top-level schema for a hand-edited plan file.
 #Plan: {
 	// service is the fathom service ID to evaluate the plan against.
 	service: string
+
+	// baseline pins the base commit every row in this plan is proved
+	// against (ADR-044 §4, the "Baseline: <sha>" header line) — written
+	// by `fathom refactor plan`, read by `fathom refactor status` and
+	// `fathom conserve`.
+	baseline?: string
 
 	// tasks is the list of tasks to verify.
 	tasks: [...#Task]

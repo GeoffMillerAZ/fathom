@@ -9,6 +9,8 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/coverage"
@@ -55,6 +57,7 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 				"service":          map[string]any{"type": "string", "description": "Service / repo identifier"},
 				"changed_files":    map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Repo-relative changed file paths"},
 				"concern":          map[string]any{"type": "string", "description": "Optional concern token (descriptive only)"},
+				"since":            map[string]any{"type": "string", "description": "Base commit ref (ADR-044); unused by any dimension yet."},
 				"coverage_profile": map[string]any{"type": "string", "description": "Single-profile alias for coverage_profiles, labeled layer \"unit\". Ignored when coverage_profiles is given."},
 				"coverage_profiles": map[string]any{
 					"type":        "array",
@@ -77,6 +80,7 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 			Service      string   `json:"service"`
 			ChangedFiles []string `json:"changed_files"`
 			Concern      string   `json:"concern"`
+			Since        string   `json:"since"`
 			// CoverageProfile is the single-profile alias; CoverageProfiles
 			// is the real multi-layer form. CoverageProfiles wins when both
 			// are given.
@@ -96,7 +100,7 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "review_diff: changed_files required"}
 		}
 
-		in, sources, rpcErr := buildReviewInput(ctx, backend, p.Service, p.ChangedFiles, p.Concern)
+		in, sources, rpcErr := buildReviewInput(ctx, backend, p.Service, p.ChangedFiles, p.Concern, p.Since)
 		if rpcErr != nil {
 			return nil, rpcErr
 		}
@@ -208,6 +212,31 @@ func reviewVerdictOutcome(v review.Verdict, resolutions map[string]string) map[s
 	return map[string]any{"active": active, "fixed": fixed, "superseded": superseded}
 }
 
+// reviewDiffWithBase fills in.Root unconditionally, and in.Base by
+// resolving since (a git ref) against root via `git -C root rev-parse
+// <since>` — CV-13 (ADR-044 §1.6), the review_diff/cmd/fathom-review
+// counterpart to cmd/fathom verify --since's sinceRefPlan (verify never
+// shells the daemon's own cwd: root is always the SERVICE's own indexed
+// corpus root, resolved by the caller via ServiceMeta).
+//
+// since == "" or root == "" is a complete no-op for Base (Root is still
+// set from root, empty or not) — nothing to resolve. A ref that does not
+// resolve (bad ref, root not a git work tree, git unavailable) fails OPEN:
+// Base stays "" exactly as if since had not been given, and no error is
+// returned — every other review_diff dimension must still run regardless
+// of whether the base-aware ones can.
+func reviewDiffWithBase(in *review.Input, root, since string) {
+	in.Root = root
+	if since == "" || root == "" {
+		return
+	}
+	out, err := exec.Command("git", "-C", root, "rev-parse", since).Output()
+	if err != nil {
+		return
+	}
+	in.Base = strings.TrimSpace(string(out))
+}
+
 // buildReviewInput does every I/O review.Run itself never performs:
 // ListAllSymbols/TypedEdges for impact, per-changed-file Obligations for the
 // obligations dimension, ServiceMeta + internal/projectrules.ResolveRules
@@ -217,7 +246,7 @@ func reviewVerdictOutcome(v review.Verdict, resolutions map[string]string) map[s
 // spec_coverage. The full source list is also returned: the persist step
 // needs it to hash cited lines (semantic.Sweep's contract), including arch
 // citations on files OUTSIDE the changed set.
-func buildReviewInput(ctx context.Context, backend QueryInterface, service string, changedFiles []string, concern string) (review.Input, []core.SourceFile, *rpcError) {
+func buildReviewInput(ctx context.Context, backend QueryInterface, service string, changedFiles []string, concern, since string) (review.Input, []core.SourceFile, *rpcError) {
 	nodes, err := backend.ListAllSymbols(ctx, service)
 	if err != nil {
 		return review.Input{}, nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
@@ -285,6 +314,9 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
 	if path, _, found, metaErr := backend.ServiceMeta(ctx, service); metaErr == nil && found {
 		corpusRoot = path
 	}
+	// CV-13 (ADR-044 §1.6): resolve since in the service's OWN indexed
+	// root — never the daemon process's cwd — and fill Input.Base/Root.
+	reviewDiffWithBase(&in, corpusRoot, since)
 	rules, source, deny, checked, reason, resolveErr := projectrules.ResolveRules(corpusRoot, nil, false)
 	if resolveErr != nil {
 		return review.Input{}, nil, &rpcError{Code: ErrCodeInternal, Message: "review_diff: project rules: " + resolveErr.Error()}

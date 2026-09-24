@@ -741,7 +741,7 @@ push); exit `2` — operational error (daemon unreachable, service unindexed, em
 fathom verify --service <id> --plan docs/plans/<slug>.md [--plan <more>...] \
   [--store <path> | --url http://localhost:7575] [--strict] [--require-all] \
   [--concern <id>] [--json | --format text|json|sarif] [--quiet] [--quiet-pass] \
-  [--mutation <report>] [--strict-mutation]
+  [--mutation <report>] [--strict-mutation] [--since <ref>]
 ```
 
 | Flag | Default | Description |
@@ -759,6 +759,7 @@ fathom verify --service <id> --plan docs/plans/<slug>.md [--plan <more>...] \
 | `--quiet-pass` | `false` | Suppress output when the gate passes (exit 0) |
 | `--mutation` | `""` (falls back to `$FATHOM_MUTATION_REPORT`) | VB-34: a mutation-testing report (go-mutesting log output, or fathom's own JSON shape — see `docs/use-cases/test-coverage.md`); a claimed row whose symbol is `test_reaches`-covered but has mutation score 0 gets a `covered-not-asserted` note. `--store`/direct mode only — HTTP mode errors (exit 2) if given |
 | `--strict-mutation` | `false` | Gate-fail a `covered-not-asserted` finding instead of noting it as advisory |
+| `--since` | `""` | ADR-044 §1.4/CV-14 (I45): compare each `--plan` file against its version at this git ref. A claimed row whose `skip_test`/`skip`, `disposition`, `retires:`, `surface_change:`, or a raised `max:` was gained ANYWHERE inside `<ref>`..head (not merely the last edit/commit — the narrower thing no `--since` does) is reported `self-declared` and, for a gained skip, fails the gate exactly as the plain self-skip check does. Text output prints `self-declared: <keys>` under each affected row and, after the summary, `deleted since <ref> (<plan>): <ids>` for rows present at `<ref>` and missing now. Applies only inside a git work tree; a `<ref>` the plan file did not exist at yet counts as every current declaration being self-declared |
 
 A plan row's `certified_by: <Test>` annotation (vision 33 / ADR-043 stage 1,
 TC-9, `internal/verify.EvaluateCertifiedBy`) replaces the ordinary
@@ -1422,6 +1423,14 @@ Exactly one of `--since <ref>` or `--manifest FILE` (a JSON
 every path's CURRENT content must hash to its declared sha256 or the run
 refuses with `manifest mismatch: <path>` and exit 2 — never a silent
 re-read.
+
+`--since` (ADR-044 §1.6, CV-13) additionally resolves `<ref>` to a commit
+sha and carries it, plus the service's own corpus root, on the review
+engine's internal Input (`Base`/`Root`) — the base/root a base-aware
+dimension from `docs/design/refactor-conservation.md` (not yet shipped)
+reads. A ref that does not resolve fails open (every dimension still runs
+over the changed-file set `--since` already computed); `--manifest` runs
+never populate `Base` at all, since they carry no ref.
 
 `--mode persist` (the default) writes the deterministic-oracle findings to
 the claims store; `--mode report` (`--no-persist` is an alias) never

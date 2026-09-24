@@ -476,6 +476,10 @@
       "service": {
         "description": "Service / repo identifier",
         "type": "string"
+      },
+      "since": {
+        "description": "Base commit ref (ADR-044); unused by any dimension yet.",
+        "type": "string"
       }
     },
     "required": [

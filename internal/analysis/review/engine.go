@@ -163,6 +163,17 @@ type Input struct {
 	// yet).
 	Concern string
 
+	// Base is the resolved base commit sha a --since/since caller compared
+	// ChangedFiles against, and Root is the service's indexed corpus root
+	// (ADR-044 §1.6, CV-13) — both filled by cmd/fathom's --since glue and
+	// internal/mcp's reviewDiffWithBase. "" (Base) means no base ref was
+	// given: DimIntegrity (a later row) then reports checked:false, reason
+	// "needs a base ref", exactly as review_diff already behaves today. Run
+	// itself does not read either field yet; they exist so a base-aware
+	// dimension can be added without another Input-shape change.
+	Base string
+	Root string
+
 	// impact
 	Nodes      []core.SymbolNode
 	TypedEdges []core.Edge
