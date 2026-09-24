@@ -164,6 +164,118 @@ func TestIntegrityPlane_ReachabilityFromStore(t *testing.T) {
 	}
 }
 
+// TestIntegrityPlane_EditedFindingDoesNotForceLosses: design §1.3 says
+// `edited` is "informational; never a loss on its own." A guarded test
+// whose body changed (a tightened assertion message, say) but tripped no
+// other kind must still surface the `edited` Finding — a caller inspecting
+// findings directly should see it — but must NOT, by itself, tip the
+// plane's Run-computed verdict to Losses, or an honest edit to a guarded
+// test's body fails `fathom conserve --strict`/the pre-push hook with
+// nothing actually lost.
+func TestIntegrityPlane_EditedFindingDoesNotForceLosses(t *testing.T) {
+	const path = "pkg/x_test.go"
+	base := map[string][]byte{
+		path: []byte("package pkg\n\nimport \"testing\"\n\n// certifies: invariant I1 (asserts)\nfunc TestGuarded(t *testing.T) {\n\tif 1 != 2 {\n\t\tt.Fatalf(\"boom\")\n\t}\n}\n"),
+	}
+	head := map[string][]byte{
+		path: []byte("package pkg\n\nimport \"testing\"\n\n// certifies: invariant I1 (asserts)\nfunc TestGuarded(t *testing.T) {\n\tif 1 != 2 {\n\t\tt.Fatalf(\"boom now\")\n\t}\n}\n"),
+	}
+	in := Input{Service: "svc", ChangedFiles: []string{path}, BaseFile: fr(base), HeadFile: fr(head)}
+
+	rep := Run(context.Background(), in, []Plane{integrityPlane{}})
+	if len(rep.Planes) != 1 {
+		t.Fatalf("got %d plane reports, want 1", len(rep.Planes))
+	}
+	pr := rep.Planes[0]
+	if len(pr.Findings) != 1 || pr.Findings[0].Kind != "edited" {
+		t.Fatalf("got findings %+v, want exactly one edited finding", pr.Findings)
+	}
+	if pr.Verdict != Conserved {
+		t.Errorf("verdict = %q, want conserved (an edited finding is informational, never a loss on its own)", pr.Verdict)
+	}
+}
+
+// TestIntegrityPlane_CleanRenameDoesNotForceLosses: a test guarded ONLY by
+// reach (no marker/manifest/invariant/surface citation of its name) is
+// renamed, body untouched. Design §1.3: `renamed` is "not a loss unless a
+// -run pattern, marker or enforcement cell still names the old name" —
+// with no such citation at base (StillNamedElsewhere is false), this is
+// the "clean rename" case and must not tip the plane to Losses.
+func TestIntegrityPlane_CleanRenameDoesNotForceLosses(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	t.Cleanup(func() { _ = st.Close() })
+
+	const svc = "svc"
+	const changedFile = "pkg/widget.go"
+	const testFile = "pkg/widget_test.go"
+
+	obs := []core.Observation{
+		{ServiceID: svc, SourceRef: changedFile, SourceKind: core.KindGoFunc, Symbol: "Widget", Package: "pkg", EvidenceTier: core.TierVerified, IngestedAt: time.Now()},
+		{ServiceID: svc, SourceRef: testFile, SourceKind: core.KindGoFunc, Symbol: "TestReachesWidget", Package: "pkg", EvidenceTier: core.TierVerified, IngestedAt: time.Now()},
+	}
+	if err := st.PutObservations(ctx, obs); err != nil {
+		t.Fatalf("PutObservations: %v", err)
+	}
+	testKey := core.SymbolKey(svc, core.QualifiedPackage(testFile, "pkg"), "TestReachesWidget")
+	widgetKey := core.SymbolKey(svc, core.QualifiedPackage(changedFile, "pkg"), "Widget")
+	edges := []core.Edge{{FromService: svc, FromFile: testFile, FromSymbol: testKey, ToSymbol: widgetKey, Kind: core.EdgeKind("typed")}}
+	if err := st.PutTypedEdges(ctx, svc, "pkg", edges); err != nil {
+		t.Fatalf("PutTypedEdges: %v", err)
+	}
+
+	base := map[string][]byte{
+		testFile: []byte("package pkg\n\nimport \"testing\"\n\nfunc TestReachesWidget(t *testing.T) {\n\tif 1 != 2 {\n\t\tt.Fatalf(\"boom\")\n\t}\n}\n"),
+	}
+	head := map[string][]byte{
+		// Same body, new name, nothing else in the file touched: a clean
+		// rename with no explicit-naming reason at base to leave stale.
+		testFile: []byte("package pkg\n\nimport \"testing\"\n\nfunc TestReachesWidgetRenamed(t *testing.T) {\n\tif 1 != 2 {\n\t\tt.Fatalf(\"boom\")\n\t}\n}\n"),
+	}
+
+	in := Input{
+		Service:      svc,
+		ChangedFiles: []string{changedFile, testFile},
+		BaseFile:     fr(base),
+		HeadFile:     fr(head),
+		Store:        st,
+	}
+	rep := Run(ctx, in, []Plane{integrityPlane{}})
+	pr := rep.Planes[0]
+	if len(pr.Findings) != 1 || pr.Findings[0].Kind != "renamed" {
+		t.Fatalf("got findings %+v, want exactly one renamed finding", pr.Findings)
+	}
+	if pr.Verdict != Conserved {
+		t.Errorf("verdict = %q, want conserved (a clean rename with no still-named citation is not a loss)", pr.Verdict)
+	}
+}
+
+// TestIntegrityPlane_RenameStillNamedIsALoss is the sanity check the two
+// tests above need: the fix must not blanket-exempt every rename. A test
+// guarded by a "// certifies:" marker at base — an explicit-naming reason
+// — is renamed; StillNamedElsewhere is true (the marker's citation of the
+// old behavior may still sit somewhere this package cannot itself verify
+// was updated), so the plane must still report Losses.
+func TestIntegrityPlane_RenameStillNamedIsALoss(t *testing.T) {
+	const path = "pkg/x_test.go"
+	base := map[string][]byte{
+		path: []byte("package pkg\n\nimport \"testing\"\n\n// certifies: invariant I1 (asserts)\nfunc TestGuarded(t *testing.T) {\n\tif 1 != 2 {\n\t\tt.Fatalf(\"boom\")\n\t}\n}\n"),
+	}
+	head := map[string][]byte{
+		path: []byte("package pkg\n\nimport \"testing\"\n\nfunc TestGuardedRenamed(t *testing.T) {\n\tif 1 != 2 {\n\t\tt.Fatalf(\"boom\")\n\t}\n}\n"),
+	}
+	in := Input{Service: "svc", ChangedFiles: []string{path}, BaseFile: fr(base), HeadFile: fr(head)}
+
+	rep := Run(context.Background(), in, []Plane{integrityPlane{}})
+	pr := rep.Planes[0]
+	if len(pr.Findings) != 1 || pr.Findings[0].Kind != "renamed" {
+		t.Fatalf("got findings %+v, want exactly one renamed finding", pr.Findings)
+	}
+	if pr.Verdict != Losses {
+		t.Errorf("verdict = %q, want losses (a marker-guarded rename is still-named, never excused)", pr.Verdict)
+	}
+}
+
 // TestIntegrityPlane_NoGuardedNoFindings: an ordinary, unguarded Go test
 // change produces no findings and no missing entries — Check must never
 // invent a claim for code the conservation checks have no opinion about.

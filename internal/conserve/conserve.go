@@ -89,6 +89,21 @@ type Finding struct {
 	Head     string `json:"head,omitempty"`
 	Declared string `json:"declared"`
 	Remedy   string `json:"remedy,omitempty"`
+
+	// informational marks a finding a plane reports for visibility but
+	// that must never, by itself, tip planeVerdict to Losses — design doc
+	// §1.3's per-kind rule that `edited` is "informational; never a loss
+	// on its own" and `renamed` is a loss only when the old name is still
+	// named elsewhere. Unexported: a purely internal verdict-computation
+	// signal, deliberately never part of the fathom.conserve/v1 wire
+	// contract (encoding/json never marshals an unexported field
+	// regardless of tag) — the finding itself still appears in
+	// PlaneReport.Findings exactly as before, only its effect on the
+	// rolled-up Verdict changes. The alternative certificates.go uses
+	// (never emit a "live" finding at all) does not fit here: an edited or
+	// cleanly-renamed guarded test is still something a caller inspecting
+	// findings directly should see.
+	informational bool
 }
 
 // PlaneReport is one Plane's contribution to a Report: its computed
@@ -226,12 +241,17 @@ func Run(ctx context.Context, in Input, planes []Plane) Report {
 
 // planeVerdict applies the rule the package doc comment states: any
 // missing input makes the plane Unproven outright (I44); otherwise any
-// finding not declared prior makes it Losses; otherwise Conserved.
+// finding not declared prior makes it Losses; otherwise Conserved. A
+// finding marked informational (Finding.informational) never contributes
+// to this decision either way — it is reported, never a loss on its own.
 func planeVerdict(missing []string, findings []Finding) Verdict {
 	if len(missing) > 0 {
 		return Unproven
 	}
 	for _, f := range findings {
+		if f.informational {
+			continue
+		}
 		if f.Declared != DeclaredPrior {
 			return Losses
 		}

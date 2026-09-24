@@ -132,6 +132,16 @@ func looksLikeTestFile(p string) bool {
 // declaration vocabulary of its own (unlike the ledger plane's retires:/
 // surface_change:) — a lost test is never excused by a plan annotation,
 // only by being genuinely absent from the guarded set to begin with.
+//
+// informational (never part of the wire contract — see Finding.
+// informational's doc comment) is set per design §1.3's own loss/no-loss
+// rule for each Kind: KindEdited is "informational; never a loss on its
+// own"; KindRenamed is a loss only when the old name is StillNamedElsewhere
+// (a marker, invariant-enforcement cell, or compatibility-surface entry
+// that named it at base) — a clean rename with no such citation excuses
+// nothing to excuse. Every other kind (deleted/weakened/skipped/
+// golden_changed/marker_moved/hand_edit) is a genuine, undeclared loss by
+// design and stays fully verdict-affecting.
 func toConserveFinding(f integrity.Finding) Finding {
 	detail := f.Detail
 	if len(f.Reasons) > 0 {
@@ -154,15 +164,19 @@ func toConserveFinding(f integrity.Finding) Finding {
 	case integrity.KindHandEdit:
 		remedy = "regenerate instead of hand-editing, or update the generator input to match"
 	}
+	informational := f.Kind == integrity.KindEdited ||
+		(f.Kind == integrity.KindRenamed && !f.StillNamedElsewhere)
+
 	return Finding{
-		Plane:    integrityPlaneName,
-		Kind:     string(f.Kind),
-		Key:      f.Key,
-		Detail:   detail,
-		Base:     citeOf(f.BaseFile, f.BaseLine),
-		Head:     citeOf(f.HeadFile, f.HeadLine),
-		Declared: DeclaredNone,
-		Remedy:   remedy,
+		Plane:         integrityPlaneName,
+		Kind:          string(f.Kind),
+		Key:           f.Key,
+		Detail:        detail,
+		Base:          citeOf(f.BaseFile, f.BaseLine),
+		Head:          citeOf(f.HeadFile, f.HeadLine),
+		Declared:      DeclaredNone,
+		Remedy:        remedy,
+		informational: informational,
 	}
 }
 
