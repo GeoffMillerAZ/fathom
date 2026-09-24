@@ -2,7 +2,7 @@
 
 # Certifications — fathom
 
-73 declared, 13 live, 60 gap(s), joined 4762 of 4844 cases.
+73 target(s), 13 live, 60 gap(s), joined 4762 of 4844 cases.
 
 ## incident
 

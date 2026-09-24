@@ -102,7 +102,7 @@ func checkCertifications(storePath, service string) doctorCheck {
 	}
 	gaps := len(declared) - len(live)
 
-	reason := fmt.Sprintf("%d declared, %d live, %d gap(s), joined %d of %d cases (%.0f%%)",
+	reason := fmt.Sprintf("%d target(s), %d live, %d gap(s), joined %d of %d cases (%.0f%%)",
 		len(declared), len(live), gaps, casesJoined, casesTotal, joinRate*100)
 	if len(declared) == 0 {
 		return doctorCheck{

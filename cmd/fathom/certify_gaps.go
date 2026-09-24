@@ -194,7 +194,7 @@ func renderCertifyGapsTable(w io.Writer, report certify.GapReport, suggestions [
 			}
 			fmt.Fprintf(w, "%-10s %-24s %-5s %s\n", t.Kind, t.ID, gap, remedy)
 		}
-		fmt.Fprintf(w, "%d declared, %d live, %d gap(s), joined %d of %d cases\n",
+		fmt.Fprintf(w, "%d target(s), %d live, %d gap(s), joined %d of %d cases\n",
 			report.Summary.Declared, report.Summary.Live, report.Summary.Gaps,
 			report.Summary.JoinedCases, report.Summary.Cases)
 	}

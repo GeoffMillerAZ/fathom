@@ -45,7 +45,7 @@ func TestDoctorCertifications_Row(t *testing.T) {
 		if c.Status != doctorPass {
 			t.Fatalf("Status = %q, want pass, reason=%q", c.Status, c.Reason)
 		}
-		for _, want := range []string{"1 declared", "1 live", "0 gap(s)", "joined 1 of 1 cases"} {
+		for _, want := range []string{"1 target(s)", "1 live", "0 gap(s)", "joined 1 of 1 cases"} {
 			if !strings.Contains(c.Reason, want) {
 				t.Errorf("Reason = %q, missing %q", c.Reason, want)
 			}

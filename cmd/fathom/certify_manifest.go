@@ -97,7 +97,7 @@ func renderCertifyManifest(service string, report certify.GapReport) string {
 	b.WriteString("\n\n# Certifications — ")
 	b.WriteString(service)
 	b.WriteString("\n\n")
-	fmt.Fprintf(&b, "%d declared, %d live, %d gap(s), joined %d of %d cases.\n\n",
+	fmt.Fprintf(&b, "%d target(s), %d live, %d gap(s), joined %d of %d cases.\n\n",
 		report.Summary.Declared, report.Summary.Live, report.Summary.Gaps,
 		report.Summary.JoinedCases, report.Summary.Cases)
 

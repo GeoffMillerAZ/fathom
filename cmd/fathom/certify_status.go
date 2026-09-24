@@ -79,7 +79,7 @@ func cmdCertifyStatus(args []string, stdout, stderr io.Writer) int {
 		}
 		return 0
 	}
-	fmt.Fprintf(stdout, "certify status: %s: %d declared, %d live, %d gap(s), joined %d of %d cases (%.0f%%)\n",
+	fmt.Fprintf(stdout, "certify status: %s: %d target(s), %d live, %d gap(s), joined %d of %d cases (%.0f%%)\n",
 		svc, report.Summary.Declared, report.Summary.Live, report.Summary.Gaps,
 		report.Summary.JoinedCases, report.Summary.Cases, joinRate*100)
 	return 0
