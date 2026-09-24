@@ -24,7 +24,12 @@ import (
 // surfaced but never abort the caller's own ingest — certification
 // compilation is a best-effort enrichment pass over data the ingest
 // already wrote successfully.
-func runCertifyCompile(ctx context.Context, st store.Store, service, watermark string, stdout, stderr io.Writer, quiet bool) {
+//
+// repoDir is CV-5's own addition (design doc §1.1, O114): the working
+// tree evaluateCertificate's reach check runs `git diff` against, using
+// the real system git binary (certify.ExecGit) — the same repo root the
+// caller is already ingesting from.
+func runCertifyCompile(ctx context.Context, st store.Store, service, watermark, repoDir string, stdout, stderr io.Writer, quiet bool) {
 	needed, err := certifyNeedsCompile(ctx, st, service, watermark)
 	if err != nil {
 		fmt.Fprintf(stderr, "warning: certify: hash-gate check: %v\n", err)
@@ -33,7 +38,7 @@ func runCertifyCompile(ctx context.Context, st store.Store, service, watermark s
 	if !needed {
 		return
 	}
-	report, err := certify.CompileCertifications(ctx, st, service, watermark, time.Now())
+	report, err := certify.CompileCertifications(ctx, st, service, watermark, time.Now(), repoDir, certify.ExecGit)
 	if err != nil {
 		fmt.Fprintf(stderr, "warning: certify: compile: %v\n", err)
 		return

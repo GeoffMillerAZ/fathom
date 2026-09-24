@@ -12,3 +12,9 @@
 # location here keeps that dev loop working unchanged.
 [daemon]
 state_dir = "workspace"
+
+# CV-6 (docs/plans/refactor-conservation.md, design doc §1.1, O114):
+# `task tests:attest` writes its commit-bound envelope here; a plain
+# `fathom ingest` picks it up from this directory automatically.
+[tests]
+results_dir = "workspace/artifacts/test-results"

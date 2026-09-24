@@ -14,6 +14,21 @@ import (
 
 const compileSvc = "svc"
 
+// fixtureCommit is the sha every bound run in this file's fixtures shares
+// — these tests are not exercising CV-5's reach-changed detection (that
+// is git_test.go's and state_at_test.go's own job, plus
+// TestSweepCertifications_ReachChangedSinceRunGoesStale below), so every
+// bound run here is attested against one consistent, made-up commit.
+const fixtureCommit = "dddddddddddddddddddddddddddddddddddddddd"
+
+// noopGitRunner is a GitRunner that never actually runs git: every call
+// succeeds with an empty diff, i.e. "nothing changed" — the answer every
+// test in this file EXCEPT the CV-5 reach-changed test wants, since none
+// of their fixtures point at a real git repository. Passed as
+// CompileCertifications'/SweepCertifications' `git` argument wherever a
+// test is not itself exercising the reach check.
+func noopGitRunner(string, ...string) ([]byte, error) { return nil, nil }
+
 // symKey mirrors core.SymbolNode.Key() for a Test* func defined in
 // "pkg/x_test.go" under `package pkg` — QualifiedPackage joins the file's
 // directory ("pkg") with the declared package name ("pkg"), so the real
@@ -77,7 +92,7 @@ func seedCompileFixture(t *testing.T) (context.Context, store.Store) {
 	runs := []store.TestRun{
 		{
 			ServiceID: compileSvc, RunDigest: "d-live", Component: "pkg", Suite: "unit",
-			StartedAt: "2026-09-23T00:00:00Z", Verdict: "pass",
+			StartedAt: "2026-09-23T00:00:00Z", Verdict: "pass", Commit: fixtureCommit,
 			Cases: []store.TestCase{{CaseID: "1", Name: "TestLive", Status: "pass", Attempts: 1, TestSymbolKey: symKey("TestLive")}},
 		},
 		{
@@ -90,17 +105,17 @@ func seedCompileFixture(t *testing.T) (context.Context, store.Store) {
 		// the last three attested runs (design doc §3).
 		{
 			ServiceID: compileSvc, RunDigest: "d-flaky-1", Component: "pkg", Suite: "unit",
-			StartedAt: "2026-09-21T00:00:00Z", Verdict: "flake",
+			StartedAt: "2026-09-21T00:00:00Z", Verdict: "flake", Commit: fixtureCommit,
 			Cases: []store.TestCase{{CaseID: "1", Name: "TestFlaky", Status: "flake", Attempts: 2, TestSymbolKey: symKey("TestFlaky")}},
 		},
 		{
 			ServiceID: compileSvc, RunDigest: "d-flaky-2", Component: "pkg", Suite: "unit",
-			StartedAt: "2026-09-22T00:00:00Z", Verdict: "pass",
+			StartedAt: "2026-09-22T00:00:00Z", Verdict: "pass", Commit: fixtureCommit,
 			Cases: []store.TestCase{{CaseID: "1", Name: "TestFlaky", Status: "pass", Attempts: 1, TestSymbolKey: symKey("TestFlaky")}},
 		},
 		{
 			ServiceID: compileSvc, RunDigest: "d-flaky-3", Component: "pkg", Suite: "unit",
-			StartedAt: "2026-09-23T00:00:00Z", Verdict: "pass",
+			StartedAt: "2026-09-23T00:00:00Z", Verdict: "pass", Commit: fixtureCommit,
 			Cases: []store.TestCase{{CaseID: "1", Name: "TestFlaky", Status: "pass", Attempts: 1, TestSymbolKey: symKey("TestFlaky")}},
 		},
 		{
@@ -120,7 +135,7 @@ func seedCompileFixture(t *testing.T) (context.Context, store.Store) {
 func TestCompileCertifications_TierAndStateLadders(t *testing.T) {
 	ctx, st := seedCompileFixture(t)
 
-	report, err := CompileCertifications(ctx, st, compileSvc, "wm-1", time.Date(2026, 9, 23, 12, 0, 0, 0, time.UTC))
+	report, err := CompileCertifications(ctx, st, compileSvc, "wm-1", time.Date(2026, 9, 23, 12, 0, 0, 0, time.UTC), "", noopGitRunner)
 	if err != nil {
 		t.Fatalf("CompileCertifications: %v", err)
 	}
@@ -179,7 +194,7 @@ func TestCompileCertifications_TierAndStateLadders(t *testing.T) {
 
 	// Idempotence: recompiling unchanged declarations/runs reproduces the
 	// identical claim_ids (design doc §3 / ADR-043 decision 1).
-	report2, err := CompileCertifications(ctx, st, compileSvc, "wm-1", time.Date(2026, 9, 23, 12, 0, 0, 0, time.UTC))
+	report2, err := CompileCertifications(ctx, st, compileSvc, "wm-1", time.Date(2026, 9, 23, 12, 0, 0, 0, time.UTC), "", noopGitRunner)
 	if err != nil {
 		t.Fatalf("CompileCertifications (2nd): %v", err)
 	}
@@ -202,7 +217,7 @@ func TestCompileCertifications_ContradictedTargetNeverResolves(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("PutCertifyDeclarations: %v", err)
 	}
-	if _, err := CompileCertifications(ctx, st, compileSvc, "wm-1", time.Now()); err != nil {
+	if _, err := CompileCertifications(ctx, st, compileSvc, "wm-1", time.Now(), "", noopGitRunner); err != nil {
 		t.Fatalf("CompileCertifications: %v", err)
 	}
 	claims, err := st.ClaimsForService(ctx, compileSvc, Layer)
@@ -267,14 +282,14 @@ func TestCompileCertifications_ScopeNarrowsToReachedSymbols(t *testing.T) {
 	if err := st.PutTestRuns(ctx, compileSvc, []store.TestRun{
 		{
 			ServiceID: compileSvc, RunDigest: "d-rule", Component: "pkg", Suite: "unit",
-			StartedAt: "2026-09-23T00:00:00Z", Verdict: "pass",
+			StartedAt: "2026-09-23T00:00:00Z", Verdict: "pass", Commit: fixtureCommit,
 			Cases: []store.TestCase{{CaseID: "1", Name: "TestRuleReachesA", Status: "pass", Attempts: 1, TestSymbolKey: testKey}},
 		},
 	}); err != nil {
 		t.Fatalf("PutTestRuns: %v", err)
 	}
 
-	report, err := CompileCertifications(ctx, st, compileSvc, "wm-1", time.Date(2026, 9, 23, 12, 0, 0, 0, time.UTC))
+	report, err := CompileCertifications(ctx, st, compileSvc, "wm-1", time.Date(2026, 9, 23, 12, 0, 0, 0, time.UTC), "", noopGitRunner)
 	if err != nil {
 		t.Fatalf("CompileCertifications: %v", err)
 	}

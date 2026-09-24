@@ -43,6 +43,15 @@ type inTotoStatement struct {
 	Predicate     json.RawMessage `json:"predicate"`
 }
 
+// inTotoSubject is one entry of an in-toto Statement's `subject` array —
+// just the two fields runCommitFromEnvelope (CV-1) needs to recognise a
+// subject named "gitCommit" (design doc §1.1: "An in-toto subject named
+// gitCommit is accepted as the same fact").
+type inTotoSubject struct {
+	Name   string            `json:"name"`
+	Digest map[string]string `json:"digest"`
+}
+
 // envelopeWire is the JSON wire shape of a bare #TestResult — Run plus
 // the timing block Run itself does not expose as a JSON field.
 type envelopeWire struct {
@@ -54,6 +63,68 @@ type envelopeWire struct {
 	Coverage  *CoverageReport `json:"coverage,omitempty"`
 	Artifacts []ArtifactRef   `json:"artifacts,omitempty"`
 	Timing    timingView      `json:"timing"`
+	Env       envInfoWire     `json:"env"`
+}
+
+// envInfoWire is the subset of #EnvInfo (schema/testkit/result.cue)
+// runCommitFromEnvelope reads — CV-1's own commit/dirty/race facts
+// (design doc §1.1, O114). The other #EnvInfo fields (toolchainDigest,
+// runnerClass, arch, os) are not fathom's concern and are left for the
+// decoder to discard.
+type envInfoWire struct {
+	Commit string `json:"commit,omitempty"`
+	Dirty  bool   `json:"dirty,omitempty"`
+	Race   bool   `json:"race,omitempty"`
+}
+
+// runCommitFromEnvelope (CV-1, design doc §1.1) reads the commit/dirty/
+// race facts a run was attested under: from #EnvInfo's own env.commit/
+// env.dirty/env.race fields when commit is present, or — for a
+// DSSE-wrapped envelope whose in-toto Statement carries a subject named
+// "gitCommit" — from that subject's digest, accepted as the same commit
+// fact. subjects is nil for a bare (non-DSSE) envelope, which has no
+// subjects to fall back to.
+//
+// Returns "" / false / false when neither source states a commit: an
+// envelope from before this field existed, or from an adapter that was
+// never told, leaves the run unbound — exactly what design doc §1.1's
+// "unbound runs leave it unproven" expects, never a fabricated commit.
+//
+// The in-toto fallback carries only the commit identity, never dirty or
+// race: a Statement's subject is a bare {name, digest} pair with no room
+// for either fact, so a run bound this way reads dirty=false, race=false
+// — a documented limitation (an actually-dirty tree attested only via a
+// gitCommit subject is indistinguishable from a clean one here), not a
+// silent bug.
+func runCommitFromEnvelope(env envInfoWire, subjects []inTotoSubject) (commit string, dirty, race bool) {
+	if env.Commit != "" {
+		return env.Commit, env.Dirty, env.Race
+	}
+	for _, s := range subjects {
+		if s.Name != "gitCommit" {
+			continue
+		}
+		// git's own hash algorithm is sha1 (sha256 repositories are rare
+		// and would still name their algorithm the same way); preferred
+		// explicitly, with a sorted-key fallback so a differently-keyed
+		// digest map never resolves by Go's randomized map iteration
+		// order (internal/CLAUDE.md: map iteration order must never
+		// reach a result).
+		if sha1 := s.Digest["sha1"]; sha1 != "" {
+			return sha1, false, false
+		}
+		keys := make([]string, 0, len(s.Digest))
+		for k := range s.Digest {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			if s.Digest[k] != "" {
+				return s.Digest[k], false, false
+			}
+		}
+	}
+	return "", false, false
 }
 
 func (w envelopeWire) toRun() Run {
@@ -168,6 +239,7 @@ func decodeOneEnvelope(raw json.RawMessage) (Run, error) {
 		return Run{}, fmt.Errorf("decode #TestResult: %w", err)
 	}
 	run := wire.toRun()
+	run.Commit, run.Dirty, run.Race = runCommitFromEnvelope(wire.Env, nil)
 	sum := sha256.Sum256(raw)
 	run.Digest = "sha256:" + hex.EncodeToString(sum[:])
 	return run, nil
@@ -193,7 +265,14 @@ func decodeDSSEEnvelope(raw json.RawMessage) (Run, error) {
 	if err := json.Unmarshal(stmt.Predicate, &wire); err != nil {
 		return Run{}, fmt.Errorf("decode #TestResult predicate: %w", err)
 	}
+	// subjects is decoded best-effort: an absent or malformed `subject`
+	// array leaves it nil, which runCommitFromEnvelope treats exactly
+	// like "no in-toto fallback available" rather than failing the whole
+	// envelope over a field it does not otherwise need.
+	var subjects []inTotoSubject
+	_ = json.Unmarshal(stmt.Subject, &subjects)
 	run := wire.toRun()
+	run.Commit, run.Dirty, run.Race = runCommitFromEnvelope(wire.Env, subjects)
 	sum := sha256.Sum256(payload)
 	run.Digest = "sha256:" + hex.EncodeToString(sum[:])
 	run.SignerTier = dsse.Tier

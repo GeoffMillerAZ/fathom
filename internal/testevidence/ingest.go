@@ -142,6 +142,7 @@ func IngestRuns(ctx context.Context, st store.Store, service, watermark string, 
 			ServiceID: service, RunDigest: r.Digest, Component: r.Suite.Component, Suite: r.Suite.Name,
 			StartedAt: r.StartedAt, Verdict: r.Verdict, TotalsJSON: string(totalsJSON), CoverageJSON: coverageJSON,
 			SignerTier: r.SignerTier, Watermark: watermark, Cases: cases,
+			Commit: r.Commit, Dirty: r.Dirty, Race: r.Race,
 		})
 	}
 	if err := st.PutTestRuns(ctx, service, storeRuns); err != nil {

@@ -43,6 +43,9 @@ CREATE TABLE IF NOT EXISTS test_runs (
     signer_tier  TEXT NOT NULL DEFAULT '',
     watermark    TEXT NOT NULL DEFAULT '',
     ingested_at  BIGINT NOT NULL DEFAULT 0,
+    commit_sha   TEXT NOT NULL DEFAULT '',
+    dirty        INTEGER NOT NULL DEFAULT 0,
+    race         INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (service_id, run_digest, suite)
 );
 
@@ -138,8 +141,8 @@ func (s *SQLiteStore) PutTestRuns(ctx context.Context, serviceID string, runs []
 
 	runStmt, err := tx.PrepareContext(ctx, `
 INSERT OR IGNORE INTO test_runs
-    (service_id, run_digest, component, suite, started_at, verdict, totals, coverage, signer_tier, watermark, ingested_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    (service_id, run_digest, component, suite, started_at, verdict, totals, coverage, signer_tier, watermark, ingested_at, commit_sha, dirty, race)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `)
 	if err != nil {
 		return fmt.Errorf("PutTestRuns prepare run: %w", err)
@@ -158,7 +161,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 
 	now := time.Now().UnixNano()
 	for _, r := range runs {
-		if _, err := runStmt.ExecContext(ctx, serviceID, r.RunDigest, r.Component, r.Suite, r.StartedAt, r.Verdict, r.TotalsJSON, r.CoverageJSON, r.SignerTier, r.Watermark, now); err != nil {
+		if _, err := runStmt.ExecContext(ctx, serviceID, r.RunDigest, r.Component, r.Suite, r.StartedAt, r.Verdict, r.TotalsJSON, r.CoverageJSON, r.SignerTier, r.Watermark, now, r.Commit, r.Dirty, r.Race); err != nil {
 			return fmt.Errorf("PutTestRuns exec run: %w", err)
 		}
 		for _, c := range r.Cases {
@@ -285,7 +288,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 // interface doc comment (vision 33 stage 1, TC-6/TC-8).
 func (s *SQLiteStore) TestCaseRunsForSymbol(ctx context.Context, serviceID, testSymbolKey string, limit int) ([]TestCaseRun, error) {
 	query := `
-SELECT tc.run_digest, tc.suite, tr.component, tr.started_at, tc.status, tc.attempts, tr.ingested_at
+SELECT tc.run_digest, tc.suite, tr.component, tr.started_at, tc.status, tc.attempts, tr.ingested_at, tr.commit_sha, tr.dirty, tr.race
 FROM test_cases tc
 JOIN test_runs tr ON tr.service_id = tc.service_id AND tr.run_digest = tc.run_digest AND tr.suite = tc.suite
 WHERE tc.service_id = ? AND tc.test_symbol_key = ?
@@ -304,7 +307,7 @@ ORDER BY tr.started_at DESC, tr.ingested_at DESC
 	var out []TestCaseRun
 	for rows.Next() {
 		var r TestCaseRun
-		if err := rows.Scan(&r.RunDigest, &r.Suite, &r.Component, &r.StartedAt, &r.Status, &r.Attempts, &r.IngestedAt); err != nil {
+		if err := rows.Scan(&r.RunDigest, &r.Suite, &r.Component, &r.StartedAt, &r.Status, &r.Attempts, &r.IngestedAt, &r.Commit, &r.Dirty, &r.Race); err != nil {
 			return nil, fmt.Errorf("TestCaseRunsForSymbol scan: %w", err)
 		}
 		out = append(out, r)

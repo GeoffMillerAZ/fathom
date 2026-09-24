@@ -30,7 +30,16 @@ import (
 // (status flip, or a fully re-derived state/tier). A claim with no Meta
 // block (written before this field existed, or by a foreign producer) is
 // left untouched — nothing to re-derive it from.
-func SweepCertifications(ctx context.Context, st store.Store, service string) (Report, error) {
+//
+// repoDir and git are CV-5's own addition (design doc §1.1, O114), passed
+// straight through to evaluateCertificate exactly like
+// CompileCertifications' own — see that function's doc comment for why
+// they are injected rather than resolved from the service's own recorded
+// path. This is the half of TC-8 O114 found missing: a certificate whose
+// test still reaches a symbol, but whose reached symbol's FILE changed
+// since the attested run's commit, now goes stale/unproven on a sweep
+// exactly like a moved test file already did.
+func SweepCertifications(ctx context.Context, st store.Store, service, repoDir string, git GitRunner) (Report, error) {
 	var report Report
 
 	claims, err := st.ClaimsForService(ctx, service, Layer)
@@ -95,7 +104,7 @@ func SweepCertifications(ctx context.Context, st store.Store, service string) (R
 				TestSymbolKey: m.TestSymbolKey, Kind: m.TargetKind, TargetID: m.TargetID,
 				Strength: m.Strength, Suite: m.Suite, Class: m.Class,
 			}
-			fresh, ferr := evaluateCertificate(ctx, st, service, c.CompiledAtWatermark, c.CompiledAt, e, target, g, byKey)
+			fresh, ferr := evaluateCertificate(ctx, st, service, c.CompiledAtWatermark, c.CompiledAt, e, target, g, byKey, repoDir, git)
 			if ferr != nil {
 				return report, ferr
 			}

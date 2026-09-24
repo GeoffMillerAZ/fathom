@@ -2284,6 +2284,87 @@ func storeContract(t *testing.T, s Store) {
 	})
 }
 
+// TestTestRuns_CommitRoundTrip is CV-2's own test (docs/plans/
+// refactor-conservation.md, design doc §1.1, O114): a stored run keeps
+// the commit, tree cleanliness and race mode it was attested with, both
+// on TestRun itself (PutTestRuns) and on the TestCaseRunsForSymbol read
+// internal/certify's certificate ladder consumes (CV-3/CV-4). A run that
+// never stated them round-trips as empty/false, never a fabricated
+// commit. A standalone top-level test (not a storeContract subtest, the
+// convention the rest of this file uses) so its name is a real, statically
+// reachable Test* symbol — CV-2's own `reachable_from` contract.
+func TestTestRuns_CommitRoundTrip(t *testing.T) {
+	for _, backend := range []struct {
+		name string
+		new  func(t *testing.T) Store
+	}{
+		{"MemoryStore", func(t *testing.T) Store { return NewMemoryStore() }},
+		{"SQLiteStore", func(t *testing.T) Store {
+			s, err := NewSQLiteStore("")
+			if err != nil {
+				t.Fatalf("NewSQLiteStore in-memory: %v", err)
+			}
+			return s
+		}},
+	} {
+		t.Run(backend.name, func(t *testing.T) {
+			ctx := context.Background()
+			s := backend.new(t)
+			t.Cleanup(func() { _ = s.Close() })
+
+			svc := "svc-commit-roundtrip"
+			testKey := "svc-commit-roundtrip::pkg.TestBound"
+			sha := strings.Repeat("c", 40)
+
+			if err := s.PutTestRuns(ctx, svc, []TestRun{
+				{
+					RunDigest: "run-bound", Component: "pkg", Suite: "unit",
+					StartedAt: "2026-09-24T00:00:00Z", Verdict: "pass",
+					Commit: sha, Dirty: false, Race: true,
+					Cases: []TestCase{{CaseID: "1", Name: "TestBound", Status: "pass", Attempts: 1, TestSymbolKey: testKey}},
+				},
+				{
+					RunDigest: "run-unbound", Component: "pkg", Suite: "unit",
+					StartedAt: "2026-09-23T00:00:00Z", Verdict: "pass",
+					Cases: []TestCase{{CaseID: "1", Name: "TestBound", Status: "pass", Attempts: 1, TestSymbolKey: testKey}},
+				},
+			}); err != nil {
+				t.Fatalf("PutTestRuns: %v", err)
+			}
+
+			runs, err := s.TestCaseRunsForSymbol(ctx, svc, testKey, 5)
+			if err != nil {
+				t.Fatalf("TestCaseRunsForSymbol: %v", err)
+			}
+			if len(runs) != 2 {
+				t.Fatalf("TestCaseRunsForSymbol returned %d runs, want 2", len(runs))
+			}
+			// Most-recent-first: run-bound (2026-09-24) then run-unbound (2026-09-23).
+			if runs[0].RunDigest != "run-bound" {
+				t.Fatalf("runs[0] = %+v, want run-bound", runs[0])
+			}
+			if runs[0].Commit != sha {
+				t.Errorf("runs[0].Commit = %q, want %q", runs[0].Commit, sha)
+			}
+			if runs[0].Dirty {
+				t.Error("runs[0].Dirty = true, want false")
+			}
+			if !runs[0].Race {
+				t.Error("runs[0].Race = false, want true")
+			}
+			if runs[1].RunDigest != "run-unbound" {
+				t.Fatalf("runs[1] = %+v, want run-unbound", runs[1])
+			}
+			if runs[1].Commit != "" {
+				t.Errorf("runs[1].Commit = %q, want empty (never stated)", runs[1].Commit)
+			}
+			if runs[1].Dirty || runs[1].Race {
+				t.Errorf("runs[1] Dirty=%v Race=%v, want both false (never stated)", runs[1].Dirty, runs[1].Race)
+			}
+		})
+	}
+}
+
 // -------------------------------------------------------------------------
 // Helpers
 // -------------------------------------------------------------------------

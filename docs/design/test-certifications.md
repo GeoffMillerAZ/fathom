@@ -104,17 +104,36 @@ content-addressed ids, no model — from declarations × joins:
 | `Subject` | `<kind>:<id>` (the target) |
 | `Rule` | the served line: `TestRefund_Idempotent certifies invariant I35 (asserts) — live` |
 | `Scope` | the test file plus the files of the symbols the test reaches that the target names |
-| `Tier` | declared only → `doc-claimed`; test exists and reaches a target symbol → `pre-scan`; reach plus a passing attested run → `verified` |
-| `Status` | `fresh`; `stale` when the test or a reached symbol moved since the last run; `contradicted` when the test is gone or the target does not resolve; `refuted` by a human |
+| `Tier` | declared only → `doc-claimed`; test exists and reaches a target symbol → `pre-scan`; reach plus a passing attested run BOUND TO A COMMIT after which nothing reached changed → `verified` |
+| `Status` | `fresh`; `stale` when the test or a reached symbol moved since the last run, OR when a changed reach since the attested run's own commit drops State to unproven (O114, vision 34 / ADR-044 stage 1); `contradicted` when the test is gone or the target does not resolve; `refuted` by a human |
 | provenance | `{test, suite, class, strength, state, run_digest, attempts, coverage_pct?, mutation_score?}` |
 
-**State** (a fact beside the tier): `live` (reach + last run passed, no flake
-in the last three runs), `flaky` (a flake in the last three), `broken` (last
-run failed), `unproven` (no attested run ingested), `unreachable` (declared,
-but the test reaches nothing the target names). Only `live` satisfies a gate.
+**State** (a fact beside the tier; `internal/certify.CertificateStateAt`,
+vision 34 / ADR-044 stage 1, O114): `live` (reach + the newest run bound to
+a commit, tree clean, passed, reach unchanged since that commit, no flake in
+the last three runs), `flaky` (the same, but a flake in the last three),
+`broken` (the newest run failed), `unproven` — for any of three distinct
+reasons, each named in the served `Rule` line: no attested run ingested at
+all ("no attested run"); the newest run carries no commit or a dirty tree
+("run not bound to a commit"); or a bound, passing run whose reach — its
+test file plus the files of the symbols it reaches — changed since that
+run's own commit ("reach changed since the attested run at \<sha\>", which
+ALSO marks the claim's own `Status` `stale`, not just its `State`)
+—`unreachable` (declared, but the test reaches nothing the target names).
+Only `live` satisfies a gate. A run's commit/dirty/race facts come from
+test-kit's `#EnvInfo` (`env.commit`/`env.dirty`/`env.race`, all optional —
+absent on a pre-existing envelope, never fabricated) or an in-toto subject
+named `gitCommit` for the commit alone; `task tests:attest` produces one for
+this repository.
 
 **Sweep**: on every ingest, like every other claim: a renamed test →
-`stale`; a deleted test → `contradicted`; a newly ingested run updates state.
+`stale`; a deleted test → `contradicted`; a newly ingested run updates
+state; a reached symbol's file changing since the attested run's commit →
+`unproven`/`stale`, the same reach check `CompileCertifications` runs, so a
+symbol edited AFTER a certificate compiled `live` is caught on the next
+sweep without waiting for a fresh run (the half of this rule O114 found
+missing — the sweep previously staled a certificate only when the TEST
+FILE itself moved).
 
 ## 4. Where it is served
 

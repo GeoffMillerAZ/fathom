@@ -359,7 +359,7 @@ func ingestConfiguredCertifications(ctx context.Context, storePath, service, svc
 	if !jsonOut {
 		fmt.Fprintf(stdout, "certify: %d declared certification(s) found in %d file(s)\n", markerReport.Declared, markerReport.FilesScanned)
 	}
-	runCertifyCompile(ctx, st, service, watermark, stdout, stderr, jsonOut)
+	runCertifyCompile(ctx, st, service, watermark, svcPath, stdout, stderr, jsonOut)
 }
 
 // scipImportResult pairs one --scip (or auto-detected) index's path with

@@ -80,7 +80,18 @@ type Meta struct {
 // tiered and stated per design doc §3. watermark stamps CompiledAtWatermark;
 // now is the injected clock (repo convention: never time.Now() in
 // compile/analysis logic).
-func CompileCertifications(ctx context.Context, st store.Store, service, watermark string, now time.Time) (Report, error) {
+//
+// repoDir and git are CV-5's own addition (design doc §1.1, O114): the
+// working tree evaluateCertificate's reach check (CertificateStateAt,
+// reachUnchangedSince) runs against, and the injected GitRunner it runs
+// with. Both are injected rather than resolved from the service's own
+// recorded ServiceMeta.Path deliberately — a store's recorded path is not
+// always a live git checkout on the machine compiling against it (a
+// restored store, a different clone), and a caller that does not have a
+// real repository to check reach against (most tests) passes a stub
+// GitRunner rather than CompileCertifications silently trusting a path it
+// was never told to trust.
+func CompileCertifications(ctx context.Context, st store.Store, service, watermark string, now time.Time, repoDir string, git GitRunner) (Report, error) {
 	var report Report
 
 	decls, err := st.CertifyDeclarationsForService(ctx, service)
@@ -170,7 +181,7 @@ func CompileCertifications(ctx context.Context, st store.Store, service, waterma
 			targetCache[targetKey] = target
 		}
 
-		claim, cerr := evaluateCertificate(ctx, st, service, watermark, now, e, target, g, byKey)
+		claim, cerr := evaluateCertificate(ctx, st, service, watermark, now, e, target, g, byKey, repoDir, git)
 		if cerr != nil {
 			return report, cerr
 		}
@@ -196,7 +207,12 @@ func CompileCertifications(ctx context.Context, st store.Store, service, waterma
 // SweepCertifications both use, so a claim's state is derived by exactly
 // one code path. Returns (nil, nil) when the test symbol itself is not in
 // the index — never a fabricated claim for a symbol that does not exist.
-func evaluateCertificate(ctx context.Context, st store.Store, service, watermark string, now time.Time, e declaredEntry, target Target, g *callgraph.Graph, byKey map[string]core.SymbolNode) (*core.SemanticClaim, error) {
+//
+// repoDir/git are CV-5's addition: threaded straight through to
+// CertificateStateAt's reachUnchangedSince closure (CV-3/CV-4) so a
+// changed reach both stales an already-compiled claim's Status and drops
+// its State to unproven (design doc §1.1, O114).
+func evaluateCertificate(ctx context.Context, st store.Store, service, watermark string, now time.Time, e declaredEntry, target Target, g *callgraph.Graph, byKey map[string]core.SymbolNode, repoDir string, git GitRunner) (*core.SemanticClaim, error) {
 	testNode, testExists := byKey[e.TestSymbolKey]
 	if !testExists {
 		return nil, nil
@@ -225,7 +241,38 @@ func evaluateCertificate(ctx context.Context, st store.Store, service, watermark
 		return nil, fmt.Errorf("evaluateCertificate: TestCaseRunsForSymbol: %w", err)
 	}
 
-	state, last, flaky := CertificateState(reached, runs)
+	subject := e.Kind + ":" + e.TargetID
+	// Scope is the test file plus the files of the symbols the test
+	// REACHES that the target names (Certification.Scope's own doc
+	// comment, internal/verify/verify.go) — never target.Files wholesale.
+	// A target with Symbols (rule/port/spec) narrows to reachedSyms'
+	// files; the vacuous-reach kinds (invariant/incident, Symbols always
+	// empty) keep target.Files as their whole Scope, same as before.
+	// Computed BEFORE the state ladder (rather than after, as before
+	// CV-5): CertificateStateAt's reachUnchangedSince closure needs
+	// exactly this file set — the certificate's reach — to check against.
+	scopeFiles := target.Files
+	if len(target.Symbols) > 0 {
+		scopeFiles = filesForSymbols(reachedSyms, byKey)
+	}
+	scope := sortedUnique(append(append([]string(nil), testNode.FilePath), scopeFiles...))
+
+	reachUnchanged := func(commit string) (bool, error) {
+		return reachUnchangedSince(git, repoDir, commit, scope)
+	}
+	state, last, _, reason, stale, serr := CertificateStateAt(reached, runs, reachUnchanged)
+	if serr != nil {
+		// A git failure (no repository at repoDir, an unknown revision in
+		// a shallow clone, git not installed) is a MISSING INPUT (I44),
+		// never a reason to abort every other certificate this compile
+		// was about to write: CertificateStateAt itself stays strict and
+		// propagates the error honestly (never silently guessing
+		// "unchanged"), but this integration point degrades to unproven
+		// with the failure named in the reason, the same "missing input
+		// -> unproven, never conserved" rule design doc §1.1/I44 states
+		// for every other stage-1 input.
+		state, reason, stale = StateUnproven, "reach could not be checked: "+serr.Error(), false
+	}
 	var runDigest string
 	var attempts int
 	var suite, class, component = e.Suite, e.Class, e.Component
@@ -237,41 +284,36 @@ func evaluateCertificate(ctx context.Context, st store.Store, service, watermark
 		}
 	}
 
+	// Tier follows State directly now (CV-5): Verified only when the
+	// ladder actually says Live — the same outcome the old inline
+	// pass/flaky check produced, but derived from the ONE ladder
+	// computation above rather than a second, parallel one that could
+	// drift from it (a run that is unbound, or whose reach changed, must
+	// never earn Verified just because its last run happened to pass).
 	tier := core.TierDocClaimed
 	if extractor.CertifyKind(e.Kind) != extractor.CertifyKindBehaviour && reached {
 		tier = core.TierPreScan
-		if len(runs) > 0 && last.Status == "pass" {
+		if state == StateLive {
 			tier = core.TierVerified
-			if flaky {
-				// TC-21 (design doc §5): a flake in the last three
-				// attested runs never leaves a certificate silently
-				// reported at the top tier — drop one step, the SAME
-				// ladder dropOne (internal/memory) uses for its own
-				// "suspect" penalty rather than inventing a tier value
-				// core's own ladder does not know how to sort.
-				tier = core.TierPreScan
-			}
 		}
 	}
 
 	status := core.ClaimFresh
-	if !target.Resolved {
+	switch {
+	case !target.Resolved:
 		status = core.ClaimContradicted
+	case stale:
+		// CV-5/I43: a changed reach stales the CLAIM's own status,
+		// distinct from the certificate ladder's State (already dropped
+		// to unproven by CertificateStateAt above) — design doc §1.1's
+		// "the claim's status stale."
+		status = core.ClaimStale
 	}
 
-	subject := e.Kind + ":" + e.TargetID
-	// Scope is the test file plus the files of the symbols the test
-	// REACHES that the target names (Certification.Scope's own doc
-	// comment, internal/verify/verify.go) — never target.Files wholesale.
-	// A target with Symbols (rule/port/spec) narrows to reachedSyms'
-	// files; the vacuous-reach kinds (invariant/incident, Symbols always
-	// empty) keep target.Files as their whole Scope, same as before.
-	scopeFiles := target.Files
-	if len(target.Symbols) > 0 {
-		scopeFiles = filesForSymbols(reachedSyms, byKey)
-	}
-	scope := sortedUnique(append(append([]string(nil), testNode.FilePath), scopeFiles...))
 	rule := fmt.Sprintf("%s certifies %s %s (%s) — %s", testBareName(testNode.Name), e.Kind, e.TargetID, strength, state)
+	if reason != "" {
+		rule += " (" + reason + ")"
+	}
 
 	m := Meta{
 		Test: testBareName(testNode.Name), Suite: suite, Class: class, Strength: strength, State: string(state),

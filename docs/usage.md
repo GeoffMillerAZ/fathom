@@ -1656,7 +1656,28 @@ with no declared suites prints "no manifests found" instead of an empty
 table.
 
 fathom never runs a test itself (design doc §2): both verbs ingest
-test-kit's own record.
+test-kit's own record. A run's `env.commit`/`env.dirty`/`env.race` (vision
+34 / ADR-044 stage 1, O114) bind the run to the commit it was attested
+against — the commit-blind half of `internal/certify`'s state ladder that
+let a certificate read `live` after the code it certified had already
+changed; an envelope with no commit (the common case for one produced
+before this field existed, or by an adapter never told) leaves its
+certificate `unproven`, never a silent guess. `task tests:attest` produces
+a commit-bound envelope for this repository's own suite — see below.
+
+**`task tests:attest`** re-attests this repository's own suite with a
+commit-bound envelope: `go test -json ./...`, converted to a `#TestResult`
+envelope by test-kit's go-test-json adapter (env `TESTKIT_GO_JSON` — the
+path to a built test-kit `surveyor` binary; the task prints a clear skip,
+never a failure, when it is unset), bound to `git rev-parse HEAD` / `git
+status --porcelain`, and written under `[tests] results_dir`
+(`docs/configuration.md`). The task never ingests the envelope itself — a
+plain `fathom ingest`, or `fathom tests ingest --results
+workspace/artifacts/test-results`, picks it up on its own next run.
+`TESTKIT_RACE=1` adds `-race` to the run and `--race` to the envelope (off
+by default — a full `-race ./...` run is slow, and the task's own job is
+producing a commit-bound envelope, not deciding this repository's race
+policy).
 
 | Flag (`tests ingest`) | Default | Description |
 |---|---|---|

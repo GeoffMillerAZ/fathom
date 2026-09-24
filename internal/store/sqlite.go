@@ -472,6 +472,17 @@ CREATE INDEX IF NOT EXISTS idx_observations_service_id
 		// it; a legacy claim simply reads back with Meta==nil, same
 		// additive-migration bounce every earlier claim column hit.
 		{"semantic_claims", "meta", `ALTER TABLE semantic_claims ADD COLUMN meta TEXT NOT NULL DEFAULT ''`},
+		// CV-2 (docs/plans/refactor-conservation.md, design doc §1.1,
+		// O114, vision 34 / ADR-044 stage 1): a pre-existing store
+		// (including the live fleet store) predates commit/dirty/race —
+		// PutTestRuns/TestCaseRunsForSymbol must not fail with "no such
+		// column" on it, same additive-migration bounce every earlier
+		// test_runs-adjacent column hit; a legacy run simply reads back
+		// unbound (commit_sha=='', dirty=false, race=false), which is
+		// the honest answer for a run that never stated them.
+		{"test_runs", "commit_sha", `ALTER TABLE test_runs ADD COLUMN commit_sha TEXT NOT NULL DEFAULT ''`},
+		{"test_runs", "dirty", `ALTER TABLE test_runs ADD COLUMN dirty INTEGER NOT NULL DEFAULT 0`},
+		{"test_runs", "race", `ALTER TABLE test_runs ADD COLUMN race INTEGER NOT NULL DEFAULT 0`},
 	}
 	existingByTable := map[string]map[string]bool{}
 	for _, m := range migrations {

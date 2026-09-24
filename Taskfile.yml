@@ -84,6 +84,47 @@ tasks:
     desc: Integration tests (Faux-backed end-to-end)
     cmds: ["{{.GO}} test -race -run Integration ./..."]
 
+  tests:attest:
+    desc: >-
+      Re-attest this repository's own suite with commit/dirty/race bound
+      (CV-6, design doc §1.1, O114): `go test -json ./...`, converted by
+      test-kit's go-test-json adapter (env TESTKIT_GO_JSON — the path to a
+      built test-kit `surveyor` binary; a clear skip, never a failure,
+      when unset), written under `[tests] results_dir`
+      (workspace/artifacts/test-results/ — set it in .fathom/config.toml
+      if this checkout predates it). This task never ingests the envelope
+      itself: a plain `fathom ingest` (or `bin/fathom tests ingest
+      --results workspace/artifacts/test-results`) picks it up on its own
+      next run, the daemon's normal pickup path. TESTKIT_RACE=1 adds
+      -race to the run and --race to the envelope (off by default — a
+      full -race ./... run is slow, and this task's own job is producing
+      a commit-bound envelope, not re-deciding this repo's race policy).
+    cmds:
+      - |
+        set -eu
+        if [ -z "${TESTKIT_GO_JSON:-}" ]; then
+          echo "tests:attest: TESTKIT_GO_JSON is unset (path to a built test-kit 'surveyor' binary) — skipping. Build one from a platform-engineering checkout: go build -o /path/to/surveyor ./kits/test-kit/cmd/surveyor, then export TESTKIT_GO_JSON=/path/to/surveyor."
+          exit 0
+        fi
+        [ -x "$TESTKIT_GO_JSON" ] || { echo "tests:attest: TESTKIT_GO_JSON=$TESTKIT_GO_JSON is not an executable file" >&2; exit 1; }
+        out=workspace/artifacts/test-results
+        mkdir -p "$out"
+        commit=$(git rev-parse HEAD)
+        dirty=false
+        [ -z "$(git status --porcelain)" ] || dirty=true
+        started=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+        raceflag=""; racearg=""
+        if [ "${TESTKIT_RACE:-0}" = "1" ]; then raceflag="-race"; racearg="--race"; fi
+        dirtyarg=""
+        [ "$dirty" = true ] && dirtyarg="--dirty"
+        {{.GO}} test -json $raceflag ./... > "$out/go-test.jsonl" || true
+        "$TESTKIT_GO_JSON" ingest --format go-test-json \
+          --component fathom --suite unit --class unit \
+          --started-at "$started" --commit "$commit" $dirtyarg $racearg \
+          < "$out/go-test.jsonl" > "$out/envelope.json"
+        echo "tests:attest: wrote $out/envelope.json bound to commit ${commit} (dirty=${dirty}, race=${TESTKIT_RACE:-0})"
+        echo "tests:attest: a plain 'fathom ingest' (or the daemon's next ingest) picks this up from [tests] results_dir; to ingest it right now: bin/fathom tests ingest --service fathom --store <store> --manifest . --results $out"
+
   scripts-check:
     desc: bash -n every scripts/*.sh (syntax gate — A2-2's skip note depends on this running in CI via task validate)
     cmds:

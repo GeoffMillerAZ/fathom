@@ -129,6 +129,7 @@ func (m *MemoryStore) TestCaseRunsForSymbol(_ context.Context, serviceID, testSy
 			out = append(out, TestCaseRun{
 				RunDigest: r.RunDigest, Suite: r.Suite, Component: r.Component,
 				StartedAt: r.StartedAt, Status: c.Status, Attempts: c.Attempts,
+				Commit: r.Commit, Dirty: r.Dirty, Race: r.Race,
 			})
 		}
 	}
