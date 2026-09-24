@@ -119,7 +119,7 @@ func TestConsumerLosses_RemovedRouteNamesCaller(t *testing.T) {
 import "net/http"
 
 func fetchWidget(id string) {
-	http.Get("https://widgets.internal/v1/widgets/" + id)
+	http.Get("https://widgets.example.com/v1/widgets/" + id)
 }
 `)
 	if err := st.SetServiceMeta(ctx, store.ServiceMeta{ServiceID: "consumer", Path: consumerRoot}); err != nil {
