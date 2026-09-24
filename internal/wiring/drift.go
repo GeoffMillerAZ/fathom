@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -389,6 +390,61 @@ func RecordBaselines(root string, mcp []MCPFile, skills []SkillFile, wrote strin
 		}
 		ledger.Record(f.Label, OwnedKey{ID: skillKeyID, Digest: digest(string(data)), Wrote: wrote})
 		recorded = append(recorded, DriftKindSkill+" "+f.Label)
+	}
+	sort.Strings(recorded)
+	if len(recorded) == 0 {
+		return nil, nil
+	}
+	if err := SaveLedger(root, ledger); err != nil {
+		return nil, err
+	}
+	return recorded, nil
+}
+
+// RecordKeyBaselines re-records the ledger digest for every Key currently
+// BLOCKED with CauseDrift — a structured-file entry (a Claude Code hook row
+// is the shipping case) whose on-disk value no longer matches what fathom
+// recorded in .fathom/owned.json. It is the Key counterpart of
+// RecordBaselines' MCP/skill rebaseline: it writes nothing to the file
+// itself, ever — only the ledger entry moves, to the digest of the value AS
+// IT NOW STANDS, because a rebaseline is the operator saying the change is
+// theirs, not fathom re-asserting its own template. An entry that is not
+// currently drifted (no baseline yet, or baseline already matches) is left
+// alone: a fresh entry is baselined by the ordinary apply path the first
+// time fathom writes it, never by rebaseline.
+//
+// rebaseline=false is a deliberate no-op (law 15: fathom never re-records a
+// drifted entry on its own, only on the operator's explicit --rebaseline),
+// so callers may pass it unconditionally in the same request that also
+// baselines MCP/skill entries. Returns the labels rebaselined, sorted.
+func RecordKeyBaselines(root string, keys []Key, wrote string, read readFn, rebaseline bool) ([]string, error) {
+	if !rebaseline || len(keys) == 0 {
+		return nil, nil
+	}
+	if read == nil {
+		read = os.ReadFile
+	}
+	ledger, err := LoadLedger(root)
+	if err != nil {
+		return nil, err
+	}
+	var recorded []string
+	for _, k := range keys {
+		data, rerr := read(filepath.Join(root, filepath.FromSlash(k.File)))
+		if rerr != nil {
+			continue
+		}
+		current, present, cerr := k.current(string(data))
+		if cerr != nil || !present {
+			continue
+		}
+		id := k.ID()
+		owned, has := ownedKey(ledger, k.File, id)
+		if !has || owned.Digest == digest(current) {
+			continue // unrecorded or not drifted: nothing for rebaseline to do
+		}
+		ledger.Record(k.File, OwnedKey{ID: id, Digest: digest(current), Wrote: wrote})
+		recorded = append(recorded, DriftKindHook+" "+k.File+" "+id)
 	}
 	sort.Strings(recorded)
 	if len(recorded) == 0 {

@@ -172,8 +172,15 @@ func analyzeWiringFor(root, service string) wiringDiff {
 	// a different id is neither falsely flagged nor rewritten wrongly.
 	d.StaleStanzas, d.RemarkStanzas, d.DriftedStanzas = staleStanzaFiles(root, d.Service)
 
-	// PC-28: MCP entries and owned skills against their recorded baselines
-	// (hooks and stanzas are already covered by the plan above).
+	// PC-28: MCP entries and owned skills against their recorded baselines,
+	// plus hook entries recorded in the ledger. Stanza REGIONS are still
+	// covered by the plan above (d.DriftedStanzas) and stay out of this
+	// report — a region's digest lives inside the file's own marker, not in
+	// .fathom/owned.json, so there is no ledger baseline for --rebaseline to
+	// move. A hook entry's digest DOES live in the ledger (the same shape as
+	// an MCP entry), so a hand edit to a wired hook row must be reported and
+	// rebaselined the same way an MCP entry is — this is the same Key set
+	// reconcileSpec would apply, computed read-only here.
 	home := wiringDriftHome()
 	ledger, lerr := wiring.LoadLedger(root)
 	if lerr != nil {
@@ -181,6 +188,10 @@ func analyzeWiringFor(root, service string) wiringDiff {
 	}
 	rep := wiring.DriftMCP(ledger, mcpFilesFor(root, home, nil), nil)
 	rep.Merge(wiring.DriftSkills(ledger, ownedSkillFiles(root, home), nil))
+	hookKeys, _ := shimHookKeys(root)
+	if hookPlan, perr := wiring.PlanWiring(root, wiring.Spec{Keys: hookKeys}); perr == nil {
+		rep.Merge(wiring.DriftFromPlan(hookPlan))
+	}
 	d.WiringDrift, d.WiringUnreadable, d.WiringUnrecorded = rep.Lines(), rep.Unreadable, rep.Unrecorded
 	return d
 }

@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -218,6 +220,136 @@ func TestReconcileUpgradesUntrackedRegion(t *testing.T) {
 	d = analyzeWiring(root)
 	if len(d.DriftedStanzas) != 1 || !strings.HasPrefix(d.DriftedStanzas[0], "CLAUDE.md — ") {
 		t.Errorf("a hand edit inside the tracked region was not reported as drift: %v", d.DriftedStanzas)
+	}
+}
+
+// TestReconcileHookDriftListedAndRebaselined reproduces the bug observed
+// live 2026-09-24: `fathom config audit`'s wiring_current concern (via
+// wiringDriftFor/wiringCurrentEvaluator) reports a PROJECT-scope hook entry
+// drifted against .fathom/owned.json — recorded, then the project's OWN
+// committed edit moved the entry on disk without going through fathom's
+// apply path — but `fathom fleet reconcile` told the operator to run
+// `--apply --rebaseline`, which (a) never listed the drift in its dry run
+// (its PC-28 block only checked MCP entries and owned skills) and (b) never
+// re-recorded the drifted hook's ledger digest even with --rebaseline, so
+// the documented remedy could never clear it.
+func TestReconcileHookDriftListedAndRebaselined(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	root := t.TempDir()
+
+	// Seed: one full apply wires every fathom hook and skill file; a second
+	// settles every "first sight" baseline (owned skill content recorded
+	// under its own ledger id, separate from the file it also wrote) so the
+	// repo reaches a fully-baselined, drift-free steady state before the
+	// fixture introduces the ONE drift this test is about.
+	var stdout, stderr strings.Builder
+	if code := cmdFleetReconcile([]string{"--apply", "--repo", root}, &stdout, &stderr); code != 0 {
+		t.Fatalf("seed apply exit = %d:\n%s%s", code, stdout.String(), stderr.String())
+	}
+	stdout.Reset()
+	stderr.Reset()
+	if code := cmdFleetReconcile([]string{"--apply", "--repo", root}, &stdout, &stderr); code != 0 {
+		t.Fatalf("settle apply exit = %d:\n%s%s", code, stdout.String(), stderr.String())
+	}
+	if d := analyzeWiring(root); len(d.WiringDrift) != 0 || len(d.WiringUnrecorded) != 0 {
+		t.Fatalf("fixture did not settle to a clean baseline: drift=%v unrecorded=%v", d.WiringDrift, d.WiringUnrecorded)
+	}
+	settings := filepath.Join(root, ".claude", "settings.json")
+	ledgerPath := filepath.Join(root, ".fathom", "owned.json")
+	before, err := os.ReadFile(settings)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ledgerBefore, err := os.ReadFile(ledgerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Simulate the project's own committed edit to a hook row (e.g. commit
+	// e6c7ffa7 "hook rows in shim spelling"): the timeout on one of fathom's
+	// own entries changes on disk without fathom's apply path touching it —
+	// the marker/command spelling that identifies the entry as fathom's own
+	// stays intact, so it is still found, just drifted against the ledger.
+	timeoutRe := regexp.MustCompile(`"timeout":\s*(\d+)`)
+	loc := timeoutRe.FindSubmatchIndex(before)
+	if loc == nil {
+		t.Fatalf("fixture: no hook timeout found in seeded settings.json:\n%s", before)
+	}
+	n, _ := strconv.Atoi(string(before[loc[2]:loc[3]]))
+	edited := append(append(append([]byte{}, before[:loc[2]]...), []byte(strconv.Itoa(n+37))...), before[loc[3]:]...)
+	if string(edited) == string(before) {
+		t.Fatal("fixture: the hand edit changed nothing")
+	}
+	if err := os.WriteFile(settings, edited, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// 1. The dry run must list the hook drift the same way it lists MCP
+	// drift — today it says nothing at all.
+	stdout.Reset()
+	stderr.Reset()
+	if code := cmdFleetReconcile([]string{"--repo", root}, &stdout, &stderr); code != 0 {
+		t.Fatalf("dry-run exit = %d:\n%s%s", code, stdout.String(), stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "DRIFT:   hook .claude/settings.json") {
+		t.Errorf("dry run does not list the hook drift:\n%s", stdout.String())
+	}
+	d := analyzeWiring(root)
+	if len(d.WiringDrift) == 0 || !strings.HasPrefix(d.WiringDrift[0], "hook .claude/settings.json") {
+		t.Errorf("analyzeWiring does not report the hook drift: %v", d.WiringDrift)
+	}
+	rep := wiringDriftFor(root, "", nil, "")
+	if len(rep.Drifts) == 0 {
+		t.Fatalf("wiringDriftFor (the audit's own computation) reports no drift — fixture is not reproducing the bug")
+	}
+
+	// 2. --apply WITHOUT --rebaseline: law 15 — fathom never merges a
+	// drifted entry by itself. Drift still reported, ledger untouched.
+	stdout.Reset()
+	stderr.Reset()
+	cmdFleetReconcile([]string{"--apply", "--repo", root}, &stdout, &stderr)
+	if !strings.Contains(stdout.String(), "DRIFT:   hook .claude/settings.json") {
+		t.Errorf("--apply without --rebaseline stopped reporting the drift:\n%s", stdout.String())
+	}
+	ledgerAfterApply, err := os.ReadFile(ledgerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(ledgerAfterApply) != string(ledgerBefore) {
+		t.Errorf("--apply without --rebaseline changed the ledger:\nbefore: %s\nafter:  %s", ledgerBefore, ledgerAfterApply)
+	}
+	afterApplyOnly, err := os.ReadFile(settings)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(afterApplyOnly) != string(edited) {
+		t.Errorf("reconcile rewrote the drifted hook entry instead of leaving it alone:\nwant: %s\ngot:  %s", edited, afterApplyOnly)
+	}
+
+	// 3. --apply --rebaseline: the operator's explicit "the change is
+	// mine" — records the new baseline, never rewrites the entry.
+	stdout.Reset()
+	stderr.Reset()
+	if code := cmdFleetReconcile([]string{"--apply", "--rebaseline", "--repo", root}, &stdout, &stderr); code != 0 {
+		t.Fatalf("--apply --rebaseline exit = %d:\n%s%s", code, stdout.String(), stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "recorded: baseline digest for hook .claude/settings.json") {
+		t.Errorf("--apply --rebaseline did not record a new hook baseline:\n%s", stdout.String())
+	}
+	afterRebaseline, err := os.ReadFile(settings)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(afterRebaseline) != string(edited) {
+		t.Errorf("--apply --rebaseline rewrote the hook entry — only the ledger may move:\nwant: %s\ngot:  %s", edited, afterRebaseline)
+	}
+	rep = wiringDriftFor(root, "", nil, "")
+	if len(rep.Drifts) != 0 {
+		t.Errorf("hook drift not cleared after --apply --rebaseline: %v", rep.Lines())
+	}
+	d = analyzeWiring(root)
+	if len(d.WiringDrift) != 0 {
+		t.Errorf("reconcile still reports hook drift after --apply --rebaseline: %v", d.WiringDrift)
 	}
 }
 
