@@ -41,7 +41,7 @@ On the comment line above a Go test function:
 func TestRefund_Idempotent(t *testing.T) { … }
 ```
 
-Or per suite, in the test-kit manifest `tests/<component>.cue` (platform standard: test-kit `#Certifies`, ADR-0104 amending ADR-0042):
+Or per suite, in the test-kit manifest `tests/<component>.cue` (platform standard: test-kit `#Certifies`, ADR-0105 amending ADR-0042):
 
 ```cue
 suites: "billing-invariants": certifies: [
