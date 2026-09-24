@@ -20,16 +20,6 @@ worktree older than its session is an incident).
 Class: gate-bypassed
 Outcome: pending (deletion needs the owner: `questions.md` Q3; then `autonomy.md` "Ask first" carries the rule)
 
-### INC-3 2026-08-25 The post-commit hook does what the Index-first rule forbids
-What: `lefthook.yml` post-commit runs a shell `bin/fathom ingest --service fathom … --store
-workspace/db/fleet.sqlite` against the store the daemon serves, on every commit; this is
-INC-2's exact write path, and `CLAUDE.md` says "refresh via the `ingest` MCP tool, never a
-shell `fathom ingest` against the shared store."
-Evidence: `lefthook.yml` post-commit `fathom-refresh`; `CLAUDE.md` Index-first row.
-Would have caught it: a custodian concern that the hook's command matches the documented rule.
-Class: intent-violated
-Outcome: pending — mitigated: IT-15 now refuses an empty overwrite from either path (`invariants.md` I25); the hook still contradicts the rule (`questions.md` Q2)
-
 ### INC-14 2026-08-26 A design declared itself adopted before its decision record existed
 What: the first draft of `docs/design/evidence-plane.md` carried "adopted (ADR-026)" and
 three intent docs cited ADR-026 while `ADR.md` had no such section; the design panel caught it.
@@ -85,6 +75,7 @@ Outcome: `TestObservatoryImpactCallLogUnavailableSuppressesDerivedCosts`, `TestO
   post-commit hook in a worktree refreshes nothing and names what it left alone; invariant I30
   extended (cada740).
 - INC-13 2026-08-25 The raw-`cp` deploy instruction survived outside the custodian's corpus (`docs/adoption/claude-code.md` ×3, doctor's `binary_fresh` remedy) → both now say `task deploy` and why; widening the concern corpus stays CC-11.
+- INC-3 2026-08-25 The post-commit hook ran a shell `fathom ingest` against the shared store on every commit, which the Index-first rule forbids (`CLAUDE.md`, O16's write path) → HF-2 (`cmd/fathom/postcommithook.go`): the refresh now routes through the daemon's `ingest` MCP tool first, falling back to a store-direct ingest only when the daemon is genuinely unreachable, under IT-15's refusal-on-read-error guard (`TestPostCommitHookPrefersDaemon`, `TestPostCommitHookRefusalIsReported`); status corrected from "pending" 2026-09-23 (C1, DG diagnostics-sweep housekeeping pass) — the fix had already landed and was never flipped.
 - INC-2 2026-08-21 A wedged reader wrote a zero-symbol index that reported "0 failed" (O16) → IT-14/IT-15: read failures counted and named, zero-readable runs refuse to overwrite (`TestIngestRefusesEmptyOverwriteOnReadErrors`).
 - INC-12 2026-08-25 Law 15 held in the engine, not on the production write path → `init`/`reconcile --apply` write only through `internal/wiring` (`TestInitWritesReceipt`, `TestReconcileStopsOnDriftedRegion`).
 - INC-4 2026-08-12 The documented deploy (raw `cp`) took the daemon down fleet-wide (O25) → `.fathom/concerns.cue` deploy_safety; `CLAUDE.md` non-negotiable row; `task deploy` serving assertion.

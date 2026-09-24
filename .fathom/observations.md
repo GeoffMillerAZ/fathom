@@ -109,22 +109,19 @@ triage if it matters.
   own degraded path emits an active, confident instruction to grep instead
   — the exact behaviour it exists to prevent — and does so for the entire
   session, with no error, no warning, and no retry.
-- **Fix:** (NOT yet done)
-  (a) `fetchServices` returns `(map[string]svcInfo, error)` so callers can
-      tell failure from emptiness;
-  (b) `buildSessionContext` gains a third branch for enumeration failure:
-      "daemon is up but the service list could not be read — call
-      `list_services` before assuming this repo is unindexed", never the
-      discouraging assertion;
-  (c) give the `list_services` call its own timeout separate from
-      `/healthz`, plus one retry — the same call succeeded seconds later,
-      so a single retry would have prevented this outright;
-  (d) guard `len(known) == 0` at `:118` so an empty list can never be
-      formatted into a sentence as `Indexed services: .`;
-  (e) `sessionhook_test.go` currently asserts only that the string
-      "not an indexed service" appears — add a case asserting it does NOT
-      appear when enumeration fails for a repo that is in fact indexed.
-- **Status:** open
+- **Fix:** done — (a)-(d) landed: `fetchServices` (`sessionhook.go`) now
+  returns `(map[string]svcInfo, error)`; `buildSessionContext`'s degraded
+  branch (the `sessionhook.go:315` `// O2:` comment) renders "fathom daemon
+  is healthy but service enumeration failed (%v)" instead of the confident
+  not-indexed claim; `fetchServices` retries once with its own timeout,
+  decoupled from the `/healthz` client; the zero-known-services render no
+  longer produces the dangling "Indexed services: ." artifact. (e) is
+  covered by dedicated tests rather than an added case in the old one.
+- **Status:** closed — proven by `TestSessionHookNamesFetchFailureNotUnindexed`
+  and `TestSessionHookZeroServices` (both `cmd/fathom/sessionhook_test.go`,
+  `go test ./cmd/fathom/ -run TestSessionHookNamesFetchFailureNotUnindexed`,
+  `-run TestSessionHookZeroServices`), re-verified 2026-09-23 during the DG
+  diagnostics-sweep housekeeping pass.
 - **Impact:** Same severity class as O1 — silent, transient loss of
   fathom's agentic value — but broader blast radius per occurrence: O1 lost
   rules on individual edits, O2 mis-primes an entire session's discovery
@@ -172,7 +169,15 @@ triage if it matters.
   (c) **Add a CUE evidence tier** (`vet_clean` / `export_golden`) so a row can
       prove behaviour, not just presence. Today that proof is prose inside
       `skip:`, which no machine reads.
-- **Status:** open
+- **Status:** closed — (a) and (b) landed as VS-3/VS-4 (docs/plans/verify-spine.md):
+  `internal/extractor/cueextract.go`'s `cueReferenceEdges` emits
+  unification/field-type/list-element/import edges, and `cueTestdataReaches`
+  maps a `testdata/*.cue` unification onto the same edge kind so
+  `reachable_from` is satisfiable for CUE. (c) (a dedicated evidence tier)
+  was not needed once (a)/(b) landed. Proven by `TestCUEReferenceEdgesEmitted`
+  and `TestCUETestdataUnificationCountsAsReaches`
+  (`internal/extractor/cueextract_test.go`), re-verified 2026-09-23 during
+  the DG diagnostics-sweep housekeeping pass.
 - **Impact:** Scoped but sharp, and it will grow. It does not produce false
   passes — the honesty boundary holds, and fathom makes the author write an
   explicit escape rather than silently passing (this is the design working).
@@ -223,7 +228,16 @@ triage if it matters.
       degrading to `no-contract` is the one outcome that hides the error, because
       an Unknown row looks identical to an intentionally-uncontracted one;
   (c) add the two-line repro above as a parser test case.
-- **Status:** open
+- **Status:** closed — VS-1/VS-2 (docs/plans/verify-spine.md): the
+  annotation-block scanner (`internal/verify/markdown.go`) is quote-aware
+  for `{`/`}` exactly as it already was for `,`, and a block that looked
+  annotation-shaped but yielded zero keys now lints loudly
+  (`internal/verify/lint.go`) instead of silently downgrading to a
+  positional `md-NNN` id. Proven by `TestParseAnnotation_BracesInQuotedValues`
+  and `TestLintPlan_UnparseableAnnotationIsLoud` (`internal/verify/markdown_test.go`)
+  plus the dedicated `TestQuotedBracesDoNotTerminateAnnotation` /
+  `TestMalformedAnnotationLintsLoudly` (`internal/verify/o4_pin_test.go`),
+  re-verified 2026-09-23 during the DG diagnostics-sweep housekeeping pass.
 - **Impact:** Low-frequency trigger, high consequence, and self-concealing —
   the combination this log keeps finding (cf. O1, O2). Three compounding effects:
   1. **The id is lost.** The README states author-owned `id` should be used "in
@@ -275,7 +289,19 @@ triage if it matters.
       configuration rather than assuming `<repo>/workspace/logs/`, or defer to
       `surface_traffic`, which already answers the question correctly;
   (c) whichever way, a check the operator cannot clear must not be a FAIL.
-- **Status:** open
+- **Status:** closed — both landed in the docs/dogfood-observations.md O23
+  wave: (a) `checkBinaryFresh` (`cmd/fathom/doctor.go`) now gates on
+  `fathomSourceTree`/`isFathomSourceTree` and SKIPs with an explicit
+  "binary freshness is only checkable from the fathom source tree" reason
+  in every non-fathom repo, instead of comparing against that repo's HEAD;
+  (b) `checkHooksFiring`'s `resolveCallLogCandidates` resolves the
+  daemon's own call log via `fathomServicePath` (asking the daemon, like
+  `surface_traffic` already did) rather than assuming
+  `<doctored-repo>/workspace/logs/`. Proven by
+  `TestCheckBinaryFresh/not_the_fathom_source_tree_is_skipped,_never_a_guessed_fail_(O23)`
+  and `TestCheckHooksFiring/O23:_adopter_repo_resolves_the_daemon's_own_call_log_via_the_fathom_service_path`
+  (both `cmd/fathom/doctor_test.go`), re-verified 2026-09-23 during the DG
+  diagnostics-sweep housekeeping pass.
 - **Impact:** Reputational, and therefore worse than it looks. `doctor` is the
   most valuable thing in the tool for a new consumer — in this session it
   correctly caught four real, fixable adoption gaps (obligations never
@@ -327,7 +353,14 @@ triage if it matters.
       that is the one an operator can act on;
   (c) re-derive the verify-gate catch count as distinct catches and sanity-cap
       the per-call ratio, or label precisely what is being summed.
-- **Status:** open
+- **Status:** closed — IO-10 (a): `instrument --adoption`'s zero-call list
+  is now partitioned by the agent surface (`cmd/fathom/instrument_adoption.go`'s
+  `partitionZeroCalls`) instead of counted against the full tool registry;
+  IT-11 (c): the verify-gate figure derives from the verify ledger
+  (`verifyFigure`), never the call log, retiring the 215/4940-family
+  double-count. Proven by `TestAdoptionServiceScoped` and
+  `TestAdoptionVerifyFigureMatchesLedger` (`cmd/fathom/instrument_adoption_test.go`),
+  re-verified 2026-09-23 during the DG diagnostics-sweep housekeeping pass.
 - **Impact:** This is the instrument the flywheel is steered by — it is what
   answers "is fathom helping?", which is the question that decides whether a
   team keeps investing in it. Overstating under-adoption makes the tool look
@@ -366,7 +399,15 @@ triage if it matters.
   or (b) relax the schema so an absent `bindings` means "none bound", which is
   what guard already does and what the file's own comment already says ("No org
   rule ever reaches this repo until a binding below is uncommented").
-- **Status:** open
+- **Status:** closed — same fix family as docs/dogfood-observations.md O22/IO-7:
+  the binding schema's `[_, ...]` constraint was dropped
+  (`schema/binding` + `schema/guard`) so an absent `bindings` field (the
+  scaffold's own shape) loads clean, and the explicit `bindings: []` /
+  `guards: []` literal is also accepted as valid — one vocabulary either
+  way. Proven by `TestExampleTemplate_IsCommentedNoOp`
+  (`internal/bindspec/binding_test.go`, `internal/guardspec/guard_test.go`)
+  and `TestExplicitEmptyBindings`/`TestExplicitEmptyGuards`, re-verified
+  2026-09-23 during the DG diagnostics-sweep housekeeping pass.
 - **Impact:** First-run experience, on the exact path the adoption guide walks a
   new consumer down. It is cosmetic in effect — nothing is broken, no rule is
   missed — but it costs `doctor` credibility at the worst possible moment,
@@ -410,7 +451,14 @@ triage if it matters.
       run measures is not what the real run sends;
   (d) surface expected duration. 21 minutes for a 10-section layer is the kind
       of thing an operator wants to know before starting, not after.
-- **Status:** open
+- **Status:** closed — IO-8: the dry run now estimates output as a per-layer
+  ratio band (`EstTokensOutLow`/`High = input × [2, 8]`, `internal/core/claims.go`)
+  and prints a cost RANGE, never a confident point/zero
+  (`cmd/fathom/compile.go`'s "cost_usd: est. %.2f-%.2f (a range, never a
+  point — O8)"); the input-side under-estimate and a duration band ride
+  the same change. Proven by `TestDryRunEstimateRange`
+  (`internal/semantic/compile_test.go`), re-verified 2026-09-23 during the
+  DG diagnostics-sweep housekeeping pass.
 - **Impact:** This is the number a user decides on. In this session the owner
   asked, in as many words, "is it worth using and how much will it cost me?" —
   I quoted the dry run (5,547 tokens, effectively free) and was wrong by 25x on
@@ -458,8 +506,13 @@ triage if it matters.
 
 - **Symptom:** a stray `cmd/fathom/workspace/logs/mcp-calls.jsonl` appeared in the repo after `review` ran with cwd=cmd/fathom (budget-race test runs, 2026-08-08); content was review verdict rows.
 - **Root cause (suspected):** the call-log default path resolves relative to cwd instead of the repo/service root or an absolute user-scope path.
-- **Fix:** TODO — default the CLI call log to an absolute path (service workspace root or ~/.fathom), never cwd-relative.
-- **Status:** open
+- **Fix:** done — PC-15/I31: `-call-log`'s default now resolves under the
+  enclosing repository's `workspace/` from any subdirectory (or `~/.fathom/`
+  outside a repo), never the bare cwd; explicit flags and
+  `[daemon].call_log`/`FATHOM_CALL_LOG` still win.
+- **Status:** closed — proven by `TestDefaultStorePathNeverTheCwd`
+  (`cmd/fathom/defaultpaths_test.go`, which names O11/O12 directly),
+  re-verified 2026-09-23 during the DG diagnostics-sweep housekeeping pass.
 - **Impact:** cosmetic here (deleted), but a cwd-relative log means CLI surface traffic silently fragments across directories and undercounts in the adoption gauge.
 
 
@@ -468,8 +521,12 @@ triage if it matters.
 - **Symptom:** `fathom ingest --service calib-fmt` run from a corpus checkout printed a full success summary while writing to `<cwd>/workspace/db/fathom.sqlite` — a store nothing will ever read — and FATHOM_HTTP was silently ignored (ingest is store-direct, not daemon-routed).
 - **Evidence (2026-08-08):** the CT-10 calibration first-run: scratch daemon's store stayed at 0 services while ingest reported 5,470 symbols; the data was in a fresh `workspace/db/` inside the clone.
 - **Root cause:** the `-store` flag defaults to the relative path "workspace/db/fathom.sqlite" (same class as O11's cwd-relative call log); nothing warns when the default resolves outside any known service root.
-- **Fix:** TODO — resolve the default against the repo/service root (or ~/.fathom), print the absolute store path in the summary line, and say loudly when a fresh store file is being created.
-- **Status:** open
+- **Fix:** done — PC-15/I31: `-store`'s default now resolves under the
+  enclosing repository's `workspace/` (or `~/.fathom/` outside a repo),
+  never the bare cwd; explicit `[daemon].store` still wins.
+- **Status:** closed — proven by `TestDefaultStorePathNeverTheCwd`
+  (`cmd/fathom/defaultpaths_test.go`, which names O11/O12 directly),
+  re-verified 2026-09-23 during the DG diagnostics-sweep housekeeping pass.
 - **Impact:** a successful-looking ingest that indexes into the void; cost one calibration re-run here, would cost a new adopter their first hour.
 
 
@@ -503,10 +560,28 @@ triage if it matters.
   - **Expected:** wired MET with a scope note, or a distinct partial-visibility verdict
   - **Actual:** grade B — not wired, remedy suggests reconcile, which correctly refuses to double-wire
   - **Repro:** fathom fleet report; geoffmiller-cloud hooks_note='settings.json present, no fathom hook references'; ~/.claude/settings.json carries the fathom hooks
-- **Root cause:** TODO
-- **Fix:** TODO
-- **Status:** open
-- **Impact:** TODO
+- **Root cause:** `fleetWiringNotes` (`cmd/fathom/fleetreport.go`) resolved
+  hook presence purely from `<path>/.claude/settings.json`; when that file
+  exists but has zero fathom references (or is absent entirely), it
+  reported the absence directly, with no fallback check of
+  `~/.claude/settings.json` — even though `fathom init`'s own user-scope
+  dedup (O42) deliberately wires hooks there instead of per-project.
+  `realizationGrade`'s `wired` dimension then ANDed that false "no hooks"
+  reading into the grade.
+- **Fix:** done (DG-14) — `fleetWiringNotes` now checks
+  `~/.claude/settings.json` (`userScopeFathomHookCount`) before reporting
+  an absence, and reports a distinct "wired at user scope (...)" note that
+  carries the same "hook reference" substring `realizationGrade` and
+  `observatory.go`'s wiring-remedy check already key off, so a genuine
+  user-scope find grades as wired, never as a gap.
+- **Status:** closed — proven by `TestFleetWiringNotes_DetectsUserScopeWiring`
+  (`cmd/fathom/fleetreport_test.go`), which includes a subtest asserting
+  `realizationGrade` reads the resulting note as MET; landed in this same
+  DG diagnostics-sweep housekeeping pass (2026-09-23).
+- **Impact:** a repo wired correctly at user scope (the common, recommended
+  shape) was misreported as unwired, pointing an operator at a needless
+  `fathom fleet reconcile --apply` / `fathom init` that would have installed
+  project-scope duplicates.
 
 ### O16 — a wedged reader produces a plausible empty index: ingest wrote 0 symbols / 0 typed edges while printing '188 pkg(s) (0 failed)' and exit 0 — the fourth false-signal shape of the TCC EPERM wedge
 
@@ -672,10 +747,23 @@ triage if it matters.
   - **Expected:** the documented project hook layer (<repo>/.codex/hooks.json) loads under directory trust, as Codex's hooks reference describes
   - **Actual:** on codex-cli 0.153.1, touch hooks placed in <repo>/.codex/hooks.json on SessionStart, Stop, SessionEnd and UserPromptSubmit fired ZERO times in a headless codex exec run under a trusted parent project with [features] hooks = true and --dangerously-bypass-hook-trust; the identical entries under $CODEX_HOME/hooks.json fired every time. Every fathom Codex adopter since 2026-09-02 has been given a hook file the harness ignores, and doctor's harness_hooks row read it back as evidence of wiring. Fixed: the descriptor records the project file as documented-but-not-loaded with no wiring kind, init writes nothing and prints the entries (fathom harness hooks --harness codex), and the descriptor is now verified against a real session instead of a fetched doc page. The general lesson: a documented extension point is a claim, and the only thing that settles it is a smoke test that would have failed.
   - **Repro:** place a touch hook in <repo>/.codex/hooks.json, run: codex exec --json --sandbox read-only --dangerously-bypass-hook-trust 'reply ok'
-- **Root cause:** TODO
-- **Fix:** TODO
-- **Status:** open
-- **Impact:** TODO
+- **Root cause:** HP-34 measured codex-cli 0.153.1 on this workstation and
+  found `<repo>/.codex/hooks.json` (the repo-scoped layer) is not loaded at
+  all — only the `$CODEX_HOME` layer is — so there was no repo-scoped Codex
+  hook file the wiring engine could ever make fire.
+- **Fix:** done (already recorded in this observation's own "Actual" line
+  above) — `codexHookKey` (`cmd/fathom/init_harnesshooks.go`) now returns
+  `ok=false` for Codex's project hook file, so `fathom init --harness=codex`
+  plans nothing and prints the entries instead
+  (`fathom harness hooks --harness codex`) rather than writing wiring that
+  cannot fire; the descriptor is verified against a real session, not a
+  fetched doc page.
+- **Status:** closed — proven by `TestCodexHookKeyReusesJSONHookEditor`
+  (`cmd/fathom/init_harnesshooks_test.go`), re-verified 2026-09-23 during
+  the DG diagnostics-sweep housekeeping pass.
+- **Impact:** every fathom Codex adopter since 2026-09-02 had been given a
+  hook file the harness silently ignores, with doctor's `harness_hooks` row
+  reading the file's mere presence back as false wiring evidence.
 
 ### O29 — The launchd daemon hung for minutes inside open() of the SQLite store on /Volumes/m2ext (goroutine 1 [syscall] in modernc sqlite _posixOpen, SIGQUIT dump) after 'fathom daemon uninstall' + 'install': install's defaults chose a new label (dev.fathom.serve-http), a fresh ~/.fathom/db store and dropped WorkingDirectory and the call-log arg; even after reinstalling with the fleet store, the original label, the fathom-dev-signed libexec binary and WorkingDirectory restored, the process bootstrapped from this shell inherited a wedged removable-volume TCC verdict and never bound the port. The same signed binary started in the foreground from the shell opened the store in 6 s.
 
