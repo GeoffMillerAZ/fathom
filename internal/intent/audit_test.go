@@ -152,8 +152,34 @@ func TestUnprovenClaimsEachNamedWithRemedy(t *testing.T) {
 	if a.ByKind["U1"] != 1 || a.ByKind["U2"] != 1 {
 		t.Errorf("a failing row is U1 and a contract-less claim is U2: %v", a.ByKind)
 	}
-	if a.ByKind["U3"] == 0 {
-		t.Errorf("this repo has VIOLATED invariants; they must be listed: %v", a.ByKind)
+	// Every invariant the live corpus marks `violated` is listed as U3 debt —
+	// exactly those, and zero is the state the corpus exists to reach (I35,
+	// the last one, was answered by ADR-016's 2026-09-24 amendment).
+	violated := 0
+	for _, inv := range c.Invariants {
+		if inv.Rung == intent.RungViolated {
+			violated++
+		}
+	}
+	if a.ByKind["U3"] != violated {
+		t.Errorf("U3 = %d, want one per violated invariant in the live corpus (%d): %v", a.ByKind["U3"], violated, a.ByKind)
+	}
+	// The U3 path stays proven when the live corpus has none: mark one
+	// invariant violated on a copy and it must be listed with its evidence.
+	if len(c.Invariants) > 0 {
+		cv := c
+		cv.Invariants = append([]intent.Invariant(nil), c.Invariants...)
+		cv.Invariants[0].Rung = intent.RungViolated
+		av := intent.RunAudit(intent.AuditInput{Corpus: cv, Symbols: fakeOracle{known: known}, Now: time.Now().UTC()})
+		found := false
+		for _, cl := range av.Unproven {
+			if cl.Kind == "U3" && cl.Ref == cv.Invariants[0].ID && cl.Remedy != "" && cl.Evidence != "" {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("a violated invariant (%s) is not listed as U3 debt with remedy and evidence: %+v", cv.Invariants[0].ID, av.Unproven)
+		}
 	}
 
 	// `stated` is honest, not debt. The live corpus may have none left
