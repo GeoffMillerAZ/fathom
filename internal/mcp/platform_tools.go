@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/configdrift"
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -110,6 +111,29 @@ func registerListServices(s *Server, backend QueryInterface, fleet FleetBackend)
 						if st.Fallback != "" {
 							te["fallback"] = st.Fallback
 						}
+						// DG-9: a discovery gap (a call target file that
+						// EXISTS on disk despite being excluded from the
+						// connector's allowed set — a likely wedged
+						// Discover pass, not a legitimate exclusion) was
+						// computed and deduped every run but never left
+						// typedcalls.go's own stderr line. Omitted when
+						// zero — the common, healthy case stays as quiet
+						// as it always was.
+						if st.DiscoveryGaps > 0 {
+							te["discovery_gaps"] = st.DiscoveryGaps
+							if len(st.DiscoveryGapFiles) > 0 {
+								te["discovery_gap_files"] = st.DiscoveryGapFiles
+							}
+						}
+						// finding [4]/DG-10: Persisted/RecordedAt exist SPECIFICALLY
+						// so a caller can tell a store-replayed (pre-restart) answer
+						// apart from one this process just computed -- omitted before
+						// this fix, so a restart-stale PASS read identically to a
+						// fresh one on this exact surface.
+						if st.Persisted {
+							te["persisted"] = true
+							te["recorded_at"] = st.RecordedAt.UTC().Format(time.RFC3339)
+						}
 						entry["typed_edges"] = te
 					}
 				}
@@ -125,6 +149,17 @@ func registerListServices(s *Server, backend QueryInterface, fleet FleetBackend)
 					rows[i] = map[string]any{"language": lang, "files": unsupported[lang]}
 				}
 				entry["unsupported_languages"] = rows
+			}
+			// DG-18: a service whose recorded corpus root has vanished
+			// (e.g. a cleaned-up scratch clone) is reported structurally
+			// rather than via a live re-walk turning into a bare error —
+			// root_missing:true plus a remedy naming how to drop the
+			// stale record.
+			if frb, ok := fleet.(fleetRootStatusBackend); ok {
+				if missing, remedy := frb.RootMissing(svc); missing {
+					entry["root_missing"] = true
+					entry["remedy"] = remedy
+				}
 			}
 			entries = append(entries, entry)
 		}

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
@@ -270,6 +271,102 @@ func TestListServices_IncludesTypedEdgesOutcome(t *testing.T) {
 	}
 	if teB["fallback"] != "GOWORK=off" {
 		t.Errorf("svc-b typed_edges.fallback = %v, want %q", teB["fallback"], "GOWORK=off")
+	}
+}
+
+// TestListServices_PersistedTypedEdgesCarriesRecordedAt is the finding [4]
+// regression test: TypedEdgeStatus.Persisted/RecordedAt (DG-10) exist
+// specifically so a caller can tell a store-replayed (pre-restart) answer
+// apart from a fresh in-process one — but before this fix, list_services'
+// typed_edges block dropped both fields on the floor, so a restart-stale
+// PASS read identically to a genuinely fresh one.
+func TestListServices_PersistedTypedEdgesCarriesRecordedAt(t *testing.T) {
+	fleet := fleetFixture()
+	recordedAt := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
+	backend := perServiceTypedStatusBackend{statuses: map[string]fusion.TypedEdgeStatus{
+		"svc-a": {Packages: 5, Persisted: true, RecordedAt: recordedAt},
+	}}
+	srv := mcp.NewServerWithFleet(backend, fleet)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1004, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "list_services",
+			"arguments": map[string]any{},
+		},
+	})
+	p := platformToolPayload(t, resp)
+	svcs := p["services"].([]any)
+	byName := map[string]map[string]any{}
+	for _, raw := range svcs {
+		e := raw.(map[string]any)
+		byName[e["service"].(string)] = e
+	}
+
+	teA, ok := byName["svc-a"]["typed_edges"].(map[string]any)
+	if !ok {
+		t.Fatalf("svc-a: no typed_edges block, got %v", byName["svc-a"])
+	}
+	if teA["persisted"] != true {
+		t.Errorf("svc-a typed_edges.persisted = %v, want true", teA["persisted"])
+	}
+	got, _ := teA["recorded_at"].(string)
+	if got != recordedAt.Format(time.RFC3339) {
+		t.Errorf("svc-a typed_edges.recorded_at = %q, want %q", got, recordedAt.Format(time.RFC3339))
+	}
+}
+
+// TestListServices_SurfacesDiscoveryGaps is DG-9: a discovery gap (a call
+// target file that EXISTS on disk despite being excluded from the
+// connector's allowed set) was computed and deduped by EnrichTypedEdges
+// every run, but before this fix, none of noteTypedEdgeStatus's call sites
+// copied it onto TypedEdgeStatus — list_services could never see it even
+// though the daemon's own stderr line named it (docs/intent/invariants.md
+// I24's documented gap).
+func TestListServices_SurfacesDiscoveryGaps(t *testing.T) {
+	fleet := fleetFixture()
+	backend := perServiceTypedStatusBackend{statuses: map[string]fusion.TypedEdgeStatus{
+		"svc-a": {
+			PackagesSeen:      3,
+			Packages:          3,
+			EdgesTotal:        7,
+			DiscoveryGaps:     1,
+			DiscoveryGapFiles: []string{"adapter.go"},
+		},
+		"svc-b": {PackagesSeen: 2, Packages: 2, EdgesTotal: 4}, // no gaps
+	}}
+	srv := mcp.NewServerWithFleet(backend, fleet)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1005, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "list_services",
+			"arguments": map[string]any{},
+		},
+	})
+	p := platformToolPayload(t, resp)
+	byName := map[string]map[string]any{}
+	for _, raw := range p["services"].([]any) {
+		e := raw.(map[string]any)
+		byName[e["service"].(string)] = e
+	}
+
+	teA, ok := byName["svc-a"]["typed_edges"].(map[string]any)
+	if !ok {
+		t.Fatalf("svc-a: no typed_edges block, got %v", byName["svc-a"])
+	}
+	if got, _ := teA["discovery_gaps"].(float64); int(got) != 1 {
+		t.Errorf("svc-a typed_edges.discovery_gaps = %v, want 1", teA["discovery_gaps"])
+	}
+	gapFiles, _ := teA["discovery_gap_files"].([]any)
+	if len(gapFiles) != 1 || gapFiles[0] != "adapter.go" {
+		t.Errorf("svc-a typed_edges.discovery_gap_files = %v, want [adapter.go]", teA["discovery_gap_files"])
+	}
+
+	teB, ok := byName["svc-b"]["typed_edges"].(map[string]any)
+	if !ok {
+		t.Fatalf("svc-b: no typed_edges block, got %v", byName["svc-b"])
+	}
+	if _, present := teB["discovery_gaps"]; present {
+		t.Errorf("svc-b typed_edges.discovery_gaps = %v, want omitted (zero gaps)", teB["discovery_gaps"])
 	}
 }
 

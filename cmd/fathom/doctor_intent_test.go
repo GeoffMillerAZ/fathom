@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -99,5 +100,44 @@ func TestDoctorIntentRowsPassOnGenuinelyAbsentCorpus(t *testing.T) {
 	claims := checkUnprovenClaims(root, "http://127.0.0.1:1", "svc")
 	if claims.Status != doctorPass {
 		t.Errorf("unproven_claims status = %v, want pass for a genuinely absent corpus: %+v", claims.Status, claims)
+	}
+}
+
+// TestCheckUnprovenClaims_ReasonIncludesEvidenceTimestamp pins DG-15:
+// intent.Claim.Evidence ("verify ledger " + measured-at) is already
+// computed for every U1/U2 claim (internal/intent/audit.go) but was
+// discarded when doctor_intent.go rendered the one-line reason — a reader
+// deciding whether "first" is still current needs that timestamp.
+func TestCheckUnprovenClaims_ReasonIncludesEvidenceTimestamp(t *testing.T) {
+	root := t.TempDir()
+	writeCorpusFixture(t, root)
+	t.Setenv("FATHOM_INTENT_LEDGER", filepath.Join(root, "intent-ledger.jsonl"))
+	ledgerPath := filepath.Join(root, "verify-ledger.jsonl")
+	t.Setenv("FATHOM_VERIFY_LEDGER", ledgerPath)
+
+	row := verifyLedgerRow{
+		SchemaVersion: verifyLedgerSchemaVersion,
+		At:            "2026-01-02T03:04:05Z",
+		RepoRoot:      root,
+		Service:       "svc",
+		Plan:          "docs/plans/demo.md",
+		Total:         1,
+		Claimed:       1,
+		Failing:       1,
+	}
+	data, err := json.Marshal(row)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(ledgerPath, append(data, '\n'), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got := checkUnprovenClaims(root, "http://127.0.0.1:1", "svc")
+	if got.Status != doctorWarn {
+		t.Fatalf("status = %v, want warn (a failing plan row is honest debt, never a doctor failure): %+v", got.Status, got)
+	}
+	if !strings.Contains(got.Reason, "verify ledger 2026-01-02T03:04:05Z") {
+		t.Fatalf("reason must carry the claim's evidence timestamp, not just its ref/detail: %q", got.Reason)
 	}
 }

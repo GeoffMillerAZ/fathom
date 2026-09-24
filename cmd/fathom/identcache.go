@@ -120,30 +120,8 @@ func identCacheKey(projDir, baseURL string) string {
 // guardstamp.go's doc comment for the full TOCTOU reasoning; identical
 // here).
 func readIdentCache(projDir, baseURL string, now time.Time) (cand serviceCandidate, found, hit bool) {
-	path := identCacheKey(projDir, baseURL)
-	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
-	if err != nil {
-		return serviceCandidate{}, false, false
-	}
-	defer f.Close()
-	fi, err := f.Stat()
-	if err != nil || !fi.Mode().IsRegular() {
-		return serviceCandidate{}, false, false
-	}
-	if st, ok := fi.Sys().(*syscall.Stat_t); ok {
-		if int(st.Uid) != os.Getuid() {
-			return serviceCandidate{}, false, false
-		}
-	}
-	if fi.Mode().Perm()&0o022 != 0 {
-		return serviceCandidate{}, false, false
-	}
-	data, err := io.ReadAll(io.LimitReader(f, 1<<16))
-	if err != nil {
-		return serviceCandidate{}, false, false
-	}
-	var e identCacheEntry
-	if err := json.Unmarshal(data, &e); err != nil {
+	e, ok := readIdentCacheEntry(projDir, baseURL)
+	if !ok {
 		return serviceCandidate{}, false, false
 	}
 	writtenAt, err := time.Parse(time.RFC3339, e.WrittenAt)
@@ -158,6 +136,74 @@ func readIdentCache(projDir, baseURL string, now time.Time) (cand serviceCandida
 		return serviceCandidate{}, false, false
 	}
 	return serviceCandidate{name: e.Name, root: e.Root}, e.Found, true
+}
+
+// readIdentCacheEntry loads and validates the raw cache entry for (projDir,
+// baseURL) with every hardening check readIdentCache always applied
+// (O_NOFOLLOW, owner check, permission check, size cap, JSON shape), but
+// WITHOUT judging its age — the shared parse step both the fresh
+// (TTL-bounded) read above and the DG-12 stale-served read below build on.
+func readIdentCacheEntry(projDir, baseURL string) (identCacheEntry, bool) {
+	path := identCacheKey(projDir, baseURL)
+	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
+	if err != nil {
+		return identCacheEntry{}, false
+	}
+	defer f.Close()
+	fi, err := f.Stat()
+	if err != nil || !fi.Mode().IsRegular() {
+		return identCacheEntry{}, false
+	}
+	if st, ok := fi.Sys().(*syscall.Stat_t); ok {
+		if int(st.Uid) != os.Getuid() {
+			return identCacheEntry{}, false
+		}
+	}
+	if fi.Mode().Perm()&0o022 != 0 {
+		return identCacheEntry{}, false
+	}
+	data, err := io.ReadAll(io.LimitReader(f, 1<<16))
+	if err != nil {
+		return identCacheEntry{}, false
+	}
+	var e identCacheEntry
+	if err := json.Unmarshal(data, &e); err != nil {
+		return identCacheEntry{}, false
+	}
+	return e, true
+}
+
+// identCacheStaleServeMax bounds how far past its normal TTL a POSITIVE
+// cache entry may still be served as a DG-12 fallback when a fresh daemon
+// round trip fails outright — never indefinitely: an identity that has
+// been unconfirmable for this long is worse than none, and a long-dead
+// daemon should eventually degrade to the honest "not resolved" state
+// rather than replay an arbitrarily old answer forever.
+const identCacheStaleServeMax = 24 * time.Hour
+
+// readIdentCacheStale serves a POSITIVE resolution past its normal TTL
+// (DG-12): "identity timeout survives load" — a daemon round trip that
+// fails outright (a network error, or a timeout when list_services is
+// slow under load, never a genuine "not indexed" answer, which already
+// has its own short identCacheNegativeTTL and is handled entirely by
+// readIdentCache) should degrade to the last KNOWN-good identity rather
+// than the raw, unverified basename guess candidatesWithDaemon otherwise
+// falls all the way back to. hit=false when there is no entry, the last
+// cached answer was itself negative, or it is older than
+// identCacheStaleServeMax.
+func readIdentCacheStale(projDir, baseURL string, now time.Time) (cand serviceCandidate, hit bool) {
+	e, ok := readIdentCacheEntry(projDir, baseURL)
+	if !ok || !e.Found {
+		return serviceCandidate{}, false
+	}
+	writtenAt, err := time.Parse(time.RFC3339, e.WrittenAt)
+	if err != nil {
+		return serviceCandidate{}, false
+	}
+	if now.Sub(writtenAt) > identCacheStaleServeMax {
+		return serviceCandidate{}, false
+	}
+	return serviceCandidate{name: e.Name, root: e.Root}, true
 }
 
 // writeIdentCache persists the resolution for (projDir, baseURL). Failures
@@ -188,18 +234,45 @@ func writeIdentCache(projDir, baseURL string, cand serviceCandidate, found bool,
 // cache: a fresh hit skips the daemon round trip entirely; a miss (or
 // FATHOM_IDENT_NO_CACHE) falls through to the real call and populates the
 // cache for next time. Every outcome emits an "ident-cache" beat
-// (hit/miss) — research_report.go sums these into a hit rate.
-func resolveIndexedCandidateCached(hc *http.Client, baseURL, projDir string) (serviceCandidate, bool) {
+// (hit/miss/stale-served/miss-error) — research_report.go sums these into
+// a hit rate.
+//
+// stale is true ONLY for the DG-12 fallback below — a caller (specifically
+// candidatesWithDaemon) MUST treat that case as a lower trust tier than a
+// genuinely fresh round trip or cache hit (finding [3]): a stale-served
+// answer can be up to identCacheStaleServeMax old and may no longer be
+// true after a remap, rename, or service removal, so it must never be
+// stamped with the SAME "verified" trust DG-11's daemon-confirmed
+// candidates carry.
+//
+// DG-12: when the fresh round trip fails OUTRIGHT (fetchServices' own
+// error — a network error, or list_services timing out under load, never
+// a resolved-but-empty answer), this serves the last known POSITIVE
+// resolution past its normal TTL instead of returning ok=false — the
+// caller (candidatesWithDaemon) would otherwise fall all the way back to
+// an unverified basename guess on every miss that lands during a load
+// spike, exactly when the daemon-verified identity matters most.
+func resolveIndexedCandidateCached(hc *http.Client, baseURL, projDir string) (cand serviceCandidate, found bool, stale bool) {
 	if !identCacheDisabled() {
 		if cand, found, hit := readIdentCache(projDir, baseURL, time.Now()); hit {
 			emitBeat("ident-cache", "hit", nil)
-			return cand, found
+			return cand, found, false
 		}
 	}
 	emitBeat("ident-cache", "miss", nil)
-	cand, found := resolveIndexedCandidate(hc, baseURL, projDir)
-	if !identCacheDisabled() {
-		writeIdentCache(projDir, baseURL, cand, found, time.Now())
+	resolved, found, err := resolveIndexedCandidateErr(hc, baseURL, projDir)
+	if err != nil {
+		if !identCacheDisabled() {
+			if staleCand, hit := readIdentCacheStale(projDir, baseURL, time.Now()); hit {
+				emitBeat("ident-cache", "stale-served", nil)
+				return staleCand, true, true
+			}
+		}
+		emitBeat("ident-cache", "miss-error", nil)
+		return serviceCandidate{}, false, false
 	}
-	return cand, found
+	if !identCacheDisabled() {
+		writeIdentCache(projDir, baseURL, resolved, found, time.Now())
+	}
+	return resolved, found, false
 }

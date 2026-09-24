@@ -19,7 +19,17 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/buildinfo"
+	"github.com/geoffmilleraz/fathom/internal/dlog"
 )
+
+// dlogOver returns a *dlog.Logger writing to w at debug level with a fixed
+// clock — the seam every selfrestart_test.go case uses in place of the old
+// raw io.Writer parameter (DG-4).
+func dlogOver(w *syncBuffer) *dlog.Logger {
+	return dlog.New(w, dlog.LevelDebug, time.Now)
+}
 
 // syncBuffer is a concurrency-safe sink. The watcher writes from its own
 // goroutine while the test polls for a phrase; a bare strings.Builder is a
@@ -68,7 +78,7 @@ func TestSelfRestartAdoptsAVerifiedBinary(t *testing.T) {
 	var out syncBuffer
 	done := make(chan struct{})
 	go func() {
-		watchOwnBinary(bin, &out, 5*time.Millisecond, 0, func(c int) { exited.Store(int32(c)) })
+		watchOwnBinary(bin, dlogOver(&out), 5*time.Millisecond, 0, func(c int) { exited.Store(int32(c)) })
 		close(done)
 	}()
 
@@ -98,7 +108,7 @@ func TestSelfRestartRefusesABinaryThatCannotRun(t *testing.T) {
 
 	var exited atomic.Bool
 	var out syncBuffer
-	go watchOwnBinary(bin, &out, 5*time.Millisecond, 0, func(int) { exited.Store(true) })
+	go watchOwnBinary(bin, dlogOver(&out), 5*time.Millisecond, 0, func(int) { exited.Store(true) })
 
 	time.Sleep(20 * time.Millisecond)
 	// The 2026-08-12 shape: present, changed, and unable to execute.
@@ -138,7 +148,7 @@ func TestSelfRestartWaitsForTheFileToSettle(t *testing.T) {
 	var out syncBuffer
 	// A long poll: the file changes twice within one interval, so a
 	// watcher that acted on first sight would adopt a half-written file.
-	go watchOwnBinary(bin, &out, 150*time.Millisecond, 0, func(int) { exited.Store(true) })
+	go watchOwnBinary(bin, dlogOver(&out), 150*time.Millisecond, 0, func(int) { exited.Store(true) })
 
 	time.Sleep(50 * time.Millisecond)
 	if err := os.WriteFile(bin, []byte("partial"), 0o755); err != nil {
@@ -162,5 +172,65 @@ func TestSelfRestartDisabledByEnv(t *testing.T) {
 	t.Setenv("FATHOM_SELF_RESTART", "")
 	if selfRestartDisabled() {
 		t.Error("empty means on — the default is to adopt")
+	}
+}
+
+// TestWatchOwnBinary_AdoptLineIncludesBuildAge pins DG-4: the existing
+// "adopting" line already named the old and new hash, but never how long
+// the outgoing binary had been running. selfRestartBuildStamp/selfRestartNow
+// are swapped for fixed values (buildinfo.Read's own sync.Once means the
+// REAL function cannot be driven to a known answer per test), so the
+// elapsed figure asserted here is deterministic rather than dependent on
+// whatever VCS stamp — if any — the go test binary happens to carry.
+func TestWatchOwnBinary_AdoptLineIncludesBuildAge(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell-script fixtures are POSIX")
+	}
+	builtAt := time.Date(2026, 9, 20, 12, 0, 0, 0, time.UTC)
+	origStamp, origNow := selfRestartBuildStamp, selfRestartNow
+	selfRestartBuildStamp = func() buildinfo.Stamp { return buildinfo.Stamp{BuiltAt: builtAt.Format(time.RFC3339)} }
+	selfRestartNow = func() time.Time { return builtAt.Add(3*time.Hour + 2*time.Minute) }
+	defer func() { selfRestartBuildStamp, selfRestartNow = origStamp, origNow }()
+
+	dir := t.TempDir()
+	bin := filepath.Join(dir, "fathom")
+	fakeBinary(t, bin, "fathom v0.1.0 @ aaaaaaaaaaaa", 0)
+
+	var exited atomic.Int32
+	exited.Store(-1)
+	var out syncBuffer
+	done := make(chan struct{})
+	go func() {
+		watchOwnBinary(bin, dlogOver(&out), 5*time.Millisecond, 0, func(c int) { exited.Store(int32(c)) })
+		close(done)
+	}()
+
+	time.Sleep(20 * time.Millisecond)
+	fakeBinary(t, bin, "fathom v0.1.0 @ bbbbbbbbbbbb", 0)
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatalf("the watcher never adopted the new binary; log:\n%s", out.String())
+	}
+	log := out.String()
+	if !strings.Contains(log, "adopting") {
+		t.Fatalf("adoption not announced:\n%s", log)
+	}
+	if !strings.Contains(log, "built 3h2m0s ago") {
+		t.Errorf("adoption line must name elapsed time since this binary's own build stamp:\n%s", log)
+	}
+}
+
+// TestBuildAgeSuffix_OmittedWhenNoBuildStamp pins the graceful-degradation
+// half: a binary with no embedded build timestamp (built without
+// -buildvcs) gets no fabricated or zero-valued age — the suffix is empty.
+func TestBuildAgeSuffix_OmittedWhenNoBuildStamp(t *testing.T) {
+	origStamp := selfRestartBuildStamp
+	selfRestartBuildStamp = func() buildinfo.Stamp { return buildinfo.Stamp{} }
+	defer func() { selfRestartBuildStamp = origStamp }()
+
+	if got := buildAgeSuffix(); got != "" {
+		t.Errorf("buildAgeSuffix() = %q with no BuiltAt, want empty", got)
 	}
 }

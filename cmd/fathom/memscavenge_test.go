@@ -2,9 +2,13 @@ package main
 
 import (
 	"context"
+	"io"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/dlog"
 )
 
 // TestRunMemoryScavenger_CallsFreeOnEveryTick pins O108's mitigation: the
@@ -18,8 +22,9 @@ func TestRunMemoryScavenger_CallsFreeOnEveryTick(t *testing.T) {
 	defer cancel()
 
 	done := make(chan struct{})
+	log := dlog.New(io.Discard, dlog.LevelDebug, time.Now)
 	go func() {
-		runMemoryScavenger(ctx, 5*time.Millisecond, &syncBuffer{}, func() { calls.Add(1) })
+		runMemoryScavenger(ctx, 5*time.Millisecond, log, func() { calls.Add(1) })
 		close(done)
 	}()
 
@@ -44,8 +49,9 @@ func TestRunMemoryScavenger_CallsFreeOnEveryTick(t *testing.T) {
 func TestRunMemoryScavenger_ZeroIntervalIsNoOp(t *testing.T) {
 	called := false
 	done := make(chan struct{})
+	log := dlog.New(io.Discard, dlog.LevelDebug, time.Now)
 	go func() {
-		runMemoryScavenger(context.Background(), 0, &syncBuffer{}, func() { called = true })
+		runMemoryScavenger(context.Background(), 0, log, func() { called = true })
 		close(done)
 	}()
 	select {
@@ -55,6 +61,46 @@ func TestRunMemoryScavenger_ZeroIntervalIsNoOp(t *testing.T) {
 	}
 	if called {
 		t.Error("free was called with a zero interval; want a no-op")
+	}
+}
+
+// TestRunMemoryScavenger_LogsHeapDelta pins DG-4: the scavenge line must be
+// self-contained evidence of what a pass did, not just that one ran — the
+// O108 postmortem had to stand up an external MemStats sampler to work
+// around exactly this gap. Both the before and after reading for each of
+// heap_sys and heap_inuse must appear in the logged line, so a reader never
+// needs a second instrument to see whether a pass actually moved anything.
+func TestRunMemoryScavenger_LogsHeapDelta(t *testing.T) {
+	var buf strings.Builder
+	log := dlog.New(&buf, dlog.LevelInfo, time.Now)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	done := make(chan struct{})
+	go func() {
+		runMemoryScavenger(ctx, 5*time.Millisecond, log, func() {})
+		close(done)
+	}()
+
+	time.Sleep(20 * time.Millisecond)
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("runMemoryScavenger did not exit after ctx cancellation")
+	}
+
+	out := buf.String()
+	for _, field := range []string{
+		"heap_sys_before_bytes", "heap_sys_after_bytes",
+		"heap_inuse_before_bytes", "heap_inuse_after_bytes",
+	} {
+		if !strings.Contains(out, field) {
+			t.Errorf("scavenge log missing %q; want both before and after heap_sys/heap_inuse readings in the same line:\n%s", field, out)
+		}
+	}
+	if !strings.Contains(out, "scavenge: returned freed heap memory to the OS (O108)") {
+		t.Errorf("scavenge log missing the O108 message text:\n%s", out)
 	}
 }
 

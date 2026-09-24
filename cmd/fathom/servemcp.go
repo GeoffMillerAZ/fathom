@@ -6,8 +6,10 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/config"
+	"github.com/geoffmilleraz/fathom/internal/dlog"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
@@ -81,15 +83,18 @@ func runServeMCP(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	// docs/dogfood-observations.md (staleness finding).
 	fmt.Fprintf(stderr, "fathom serve-mcp starting: %s\n", BuildRevision())
 
+	flog := dlog.New(stderr, dlog.LevelFromEnv(os.Getenv), time.Now)
+	c.WithLogger(flog) // DG-4: the typed-edge pass's own diagnostics gain a timestamp/level too.
+
 	// Default: keep the index fresh transparently. A query for a service whose
 	// git HEAD has drifted from the indexed commit triggers a hash-gated
 	// re-ingest before the answer — removing the manual staleness→ingest loop.
 	var backend mcp.QueryInterface = c
 	if *autoRefresh {
-		backend = mcp.NewAutoRefresh(c, stderr)
+		backend = mcp.NewAutoRefresh(c, flog)
 	}
 
-	srv := mcp.NewServerWithFleet(backend, &fleetAdapter{c: c, stderr: stderr})
+	srv := mcp.NewServerWithFleet(backend, &fleetAdapter{c: c, log: flog})
 
 	if err := srv.Serve(context.Background(), stdin, stdout); err != nil {
 		// EOF / context cancel are expected end-of-stream signals; only

@@ -43,6 +43,9 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/buildinfo"
+	"github.com/geoffmilleraz/fathom/internal/dlog"
 )
 
 const (
@@ -62,21 +65,33 @@ func selfRestartDisabled() bool {
 	return strings.EqualFold(os.Getenv("FATHOM_SELF_RESTART"), "off")
 }
 
+// selfRestartBuildStamp returns this process's own build stamp. A package
+// var (mirroring doctor.go's doctorBinaryRevision seam) so tests can
+// simulate a known build time instead of depending on the go test binary's
+// own — often absent — VCS build-time stamp.
+var selfRestartBuildStamp = buildinfo.Read
+
+// selfRestartNow is the injected wall clock the adoption line's "built ...
+// ago" figure is computed against (internal/CLAUDE.md's determinism
+// contract: operational logs still inject `now` so assertions on emitted
+// lines are not flaky). Production leaves this as time.Now; tests swap it.
+var selfRestartNow = time.Now
+
 // watchOwnBinary polls the daemon's own executable and exits when a
 // verified newer binary is in place.
 //
 // exit is injected so the loop is testable without ending the test
 // process; production passes os.Exit.
-func watchOwnBinary(path string, out io.Writer, poll, cooldown time.Duration, exit func(int)) {
+func watchOwnBinary(path string, log *dlog.Logger, poll, cooldown time.Duration, exit func(int)) {
 	start, err := hashFile(path)
 	if err != nil {
 		// No baseline means every later comparison is a guess. Say so once
 		// and stop, rather than restarting on noise.
-		fmt.Fprintf(out, "self-restart: disabled — cannot hash %s (%v); a deploy will need a manual restart\n", path, err)
+		log.Warn(fmt.Sprintf("self-restart: disabled — cannot hash %s (%v); a deploy will need a manual restart", path, err))
 		return
 	}
-	fmt.Fprintf(out, "self-restart: watching %s (%s); a verified new binary is adopted within ~%s\n",
-		path, shortHash(start), poll*2)
+	log.Info(fmt.Sprintf("self-restart: watching %s (%s); a verified new binary is adopted within ~%s",
+		path, shortHash(start), poll*2))
 
 	var (
 		pending     string
@@ -111,9 +126,9 @@ func watchOwnBinary(path string, out io.Writer, poll, cooldown time.Duration, ex
 		// (1) Verify before yielding.
 		ver, verr := binaryReports(path)
 		if verr != nil {
-			fmt.Fprintf(out, "self-restart: REFUSED — %s changed but will not run (%v). "+
+			log.Warn(fmt.Sprintf("self-restart: REFUSED — %s changed but will not run (%v). "+
 				"Keeping this process, so the fleet stays served by working code. "+
-				"An unsigned binary fails exactly this way; `task deploy` signs.\n", path, verr)
+				"An unsigned binary fails exactly this way; `task deploy` signs.", path, verr))
 			// start is deliberately NOT updated: if the operator repairs
 			// the binary in place, the next poll sees a new hash and
 			// re-verifies rather than treating the bad one as the baseline.
@@ -122,11 +137,34 @@ func watchOwnBinary(path string, out io.Writer, poll, cooldown time.Duration, ex
 			continue
 		}
 
-		fmt.Fprintf(out, "self-restart: adopting %s (%s → %s) — exiting so launchd restarts on the new code\n",
-			ver, shortHash(start), shortHash(cur))
+		log.Info(fmt.Sprintf("self-restart: adopting %s (%s → %s)%s — exiting so launchd restarts on the new code",
+			ver, shortHash(start), shortHash(cur), buildAgeSuffix()))
 		exit(0)
 		return
 	}
+}
+
+// buildAgeSuffix names how long this process's own binary has been running,
+// as measured from its embedded build timestamp (internal/buildinfo's
+// vcs.time stamp) to now — DG-4: the "adopting" line already named the old
+// and new hash but never how long the outgoing binary had been serving.
+// Returns "" (no suffix at all) when the running binary carries no build
+// timestamp (e.g. built without -buildvcs) or the stamp fails to parse —
+// silently omitted rather than a fabricated or zero-valued age.
+func buildAgeSuffix() string {
+	builtAt := selfRestartBuildStamp().BuiltAt
+	if builtAt == "" {
+		return ""
+	}
+	t, err := time.Parse(time.RFC3339, builtAt)
+	if err != nil {
+		return ""
+	}
+	age := selfRestartNow().Sub(t)
+	if age < 0 {
+		return ""
+	}
+	return fmt.Sprintf(", built %s ago", age.Round(time.Second))
 }
 
 // binaryReports runs the candidate's own `version` and requires a

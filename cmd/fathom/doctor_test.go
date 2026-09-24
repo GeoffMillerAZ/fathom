@@ -596,6 +596,104 @@ func TestCheckBinaryFresh(t *testing.T) {
 			t.Fatalf("expected the worktree caveat in the reason: %s", got.Reason)
 		}
 	})
+
+	// DG-13: a bare inequality FAIL cannot tell "binary is stale, deploy
+	// catches it up" from "this checkout hasn't pulled the commits the
+	// running binary was built from — deploying now would rebuild from
+	// the older tree and reinstall a regression". Both directions must
+	// name themselves distinctly and pick the right remedy.
+
+	t.Run("names direction when the local checkout is behind the running binary", func(t *testing.T) {
+		requireGit(t)
+		dir := t.TempDir()
+		writeFathomGoMod(t, dir)
+		older := gitRepo(t, dir)
+		gitCommit(t, dir, "second.txt", "advance past the pinned binary revision")
+		newer, err := doctorGitHead(dir)
+		if err != nil || newer == "" {
+			t.Fatalf("resolving advanced HEAD: %v", err)
+		}
+		// Roll the checkout's own HEAD back to the older commit — as if
+		// the running binary (pinned at `newer` below) was built from a
+		// tree this checkout has not yet pulled.
+		gitCheckout(t, dir, older)
+
+		doctorBinaryRevision = func() (string, bool, bool) { return newer, false, true }
+		got := checkBinaryFresh(dir)
+		if got.Status != doctorFail {
+			t.Fatalf("got %+v, want fail", got)
+		}
+		if !strings.Contains(got.Reason, "checkout") || !strings.Contains(got.Reason, "behind the running binary") {
+			t.Errorf("reason must name the checkout as the behind side: %s", got.Reason)
+		}
+		if !strings.Contains(got.Reason, "1 commit") {
+			t.Errorf("reason should count the exact commit gap: %s", got.Reason)
+		}
+		if !strings.Contains(got.Reason, "do not deploy") {
+			t.Errorf("reason must warn against deploying from a behind checkout: %s", got.Reason)
+		}
+		if !strings.Contains(got.Remedy, "do NOT run task deploy") {
+			t.Errorf("remedy must warn against deploying when it would regress: %s", got.Remedy)
+		}
+		if !strings.Contains(got.Remedy, "pull") {
+			t.Errorf("remedy should tell the operator to pull first: %s", got.Remedy)
+		}
+	})
+
+	t.Run("names direction when the binary is behind HEAD", func(t *testing.T) {
+		requireGit(t)
+		dir := t.TempDir()
+		writeFathomGoMod(t, dir)
+		older := gitRepo(t, dir)
+		gitCommit(t, dir, "second.txt", "advance HEAD past the pinned (stale) binary revision")
+
+		doctorBinaryRevision = func() (string, bool, bool) { return older, false, true }
+		got := checkBinaryFresh(dir)
+		if got.Status != doctorFail {
+			t.Fatalf("got %+v, want fail", got)
+		}
+		if !strings.Contains(got.Reason, "binary") || !strings.Contains(got.Reason, "behind HEAD") {
+			t.Errorf("reason must name the binary as the behind side: %s", got.Reason)
+		}
+		if !strings.Contains(got.Reason, "1 commit") {
+			t.Errorf("reason should count the exact commit gap: %s", got.Reason)
+		}
+		if !strings.Contains(got.Reason, "deploy to catch up") {
+			t.Errorf("reason should say deploy catches the binary up: %s", got.Reason)
+		}
+		if !strings.Contains(got.Remedy, "task deploy") {
+			t.Errorf("remedy should still be task deploy in this direction: %s", got.Remedy)
+		}
+	})
+}
+
+// gitCommit adds one file with the given content and commits it, advancing
+// dir's HEAD by one commit.
+func gitCommit(t *testing.T, dir, file, content string) {
+	t.Helper()
+	if err := os.WriteFile(filepath.Join(dir, file), []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{
+		{"add", "-A"},
+		{"-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "advance"},
+	} {
+		cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+}
+
+// gitCheckout detaches dir's HEAD at rev, without touching the working tree
+// contents doctor's checks read (go.mod, etc. are unaffected since the test
+// fixtures don't vary those files across commits).
+func gitCheckout(t *testing.T, dir, rev string) {
+	t.Helper()
+	cmd := exec.Command("git", "-C", dir, "checkout", "-q", "--detach", rev)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git checkout %s: %v\n%s", rev, err, out)
+	}
 }
 
 // ─── hooks_installed / lefthook_gates / hooks_firing ────────────────────────

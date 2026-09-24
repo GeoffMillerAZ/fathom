@@ -106,6 +106,18 @@ type typedEdgeStatusBackend interface {
 	TypedEdgeStatus(service string) (fusion.TypedEdgeStatus, bool)
 }
 
+// fleetRootStatusBackend is the optional FleetBackend capability (DG-18,
+// diagnostics sweep) for reporting that a service's recorded corpus root
+// (ServiceMeta.Path, set at ingest time) no longer exists on disk.
+// list_services surfaces this as a structured "root_missing": true field
+// plus remedy instead of an error line — a dangling service record (e.g.
+// a cleaned-up scratch clone) is common enough that a human reading
+// list_services should be told what to do about it, not just that
+// something failed.
+type fleetRootStatusBackend interface {
+	RootMissing(service string) (missing bool, remedy string)
+}
+
 // autoRefreshStatsBackend is the optional backend capability for the
 // auto-refresh wrapper's process-lifetime re-ingest counter (O108,
 // autorefresh.go). Present only when the backend passed to NewServer* is
@@ -282,6 +294,31 @@ func registerStalenessReport(s *Server, backend QueryInterface) {
 				block["failed"] = st.Failed
 				if st.Reason != "" {
 					block["reason"] = st.Reason
+				}
+				// DG-9: same discovery-gap disclosure as list_services'
+				// typed_edges block (platform_tools.go) — doctor's
+				// typed_edges row reads THIS block, not list_services',
+				// so a discovery gap must travel through here to reach
+				// doctor at all.
+				if st.DiscoveryGaps > 0 {
+					block["discovery_gaps"] = st.DiscoveryGaps
+					if len(st.DiscoveryGapFiles) > 0 {
+						block["discovery_gap_files"] = st.DiscoveryGapFiles
+					}
+				}
+				// finding [4]/DG-10: Persisted/RecordedAt exist SPECIFICALLY so a
+				// caller -- doctor's checkTypedEdges, in particular -- can tell a
+				// store-replayed (pre-restart) answer apart from one this daemon
+				// process just computed. Before this fix, THIS was the one
+				// surface doctor actually reads (cmd/fathom/doctor_typed.go), and
+				// it dropped both fields, so a restart-stale PASS was reported
+				// identically to a genuinely fresh one -- the exact "an
+				// instrument may not degrade toward healthy" failure ADR-027 was
+				// written to prevent, reintroduced through the very mechanism
+				// (DG-10) built to fix restart-driven blind spots.
+				if st.Persisted {
+					block["persisted"] = true
+					block["recorded_at"] = st.RecordedAt.UTC().Format(time.RFC3339)
 				}
 			}
 			resp["typed_edges"] = block

@@ -249,6 +249,14 @@ func checkUnprovenClaims(root, baseURL, service string) doctorCheck {
 	first := a.Unproven[0]
 	reason := fmt.Sprintf("%s [%s]; first: %s — %s",
 		readcoverage.RenderCount(a.Coverage, len(a.Unproven), "unproven claim(s)"), kinds, first.Ref, first.Detail)
+	// DG-15: Claim.Evidence already carries the exact "what was checked,
+	// and when" for this claim (internal/intent/audit.go) — it was
+	// computed and populated on every claim, just never read here. A
+	// reader deciding whether "first" is still current needs that
+	// timestamp, not just the claim's own ref/detail.
+	if first.Evidence != "" {
+		reason += fmt.Sprintf(" (%s)", first.Evidence)
+	}
 	// The zero path always carried this list; the non-zero path dropped it,
 	// which is how a partial count got printed as a total (RC-6).
 	if n := len(a.Uncomputable); n > 0 {

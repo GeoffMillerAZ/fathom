@@ -3,12 +3,12 @@ package mcp
 import (
 	"context"
 	"fmt"
-	"io"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/dlog"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/hookcache"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
@@ -25,7 +25,7 @@ import (
 // metadata methods pass through unchanged.
 type autoRefreshBackend struct {
 	QueryInterface
-	log    io.Writer
+	log    *dlog.Logger
 	headFn func(path string) string // injectable for tests; default = currentGitHead
 
 	mu   sync.Mutex
@@ -42,7 +42,7 @@ type autoRefreshBackend struct {
 // NewAutoRefresh returns a QueryInterface that transparently keeps each queried
 // service fresh against its git HEAD. log receives a one-line note on each
 // refresh; pass nil to silence it.
-func NewAutoRefresh(backend QueryInterface, log io.Writer) QueryInterface {
+func NewAutoRefresh(backend QueryInterface, log *dlog.Logger) QueryInterface {
 	return &autoRefreshBackend{
 		QueryInterface: backend,
 		log:            log,
@@ -92,10 +92,10 @@ func (a *autoRefreshBackend) ensure(ctx context.Context, service string) {
 	atomic.AddInt64(&a.refreshTotal, 1)
 
 	if a.log != nil {
-		fmt.Fprintf(a.log, "auto-refresh: %s drifted %s→%s, re-ingesting\n", service, shortSHA(indexed), shortSHA(head))
+		a.log.Info(fmt.Sprintf("auto-refresh: %s drifted %s→%s, re-ingesting", service, shortSHA(indexed), shortSHA(head)))
 	}
 	if err := a.QueryInterface.IngestService(ctx, service); err != nil && a.log != nil {
-		fmt.Fprintf(a.log, "auto-refresh: %s ingest failed: %v\n", service, err)
+		a.log.Warn(fmt.Sprintf("auto-refresh: %s ingest failed: %v", service, err))
 	}
 	// Critic finding F2 (BLOCKING, phase-P fix round): bust the CLI's
 	// service-identity cache (cmd/fathom/identcache.go) on every

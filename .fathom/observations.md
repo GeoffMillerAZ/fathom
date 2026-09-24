@@ -109,22 +109,19 @@ triage if it matters.
   own degraded path emits an active, confident instruction to grep instead
   — the exact behaviour it exists to prevent — and does so for the entire
   session, with no error, no warning, and no retry.
-- **Fix:** (NOT yet done)
-  (a) `fetchServices` returns `(map[string]svcInfo, error)` so callers can
-      tell failure from emptiness;
-  (b) `buildSessionContext` gains a third branch for enumeration failure:
-      "daemon is up but the service list could not be read — call
-      `list_services` before assuming this repo is unindexed", never the
-      discouraging assertion;
-  (c) give the `list_services` call its own timeout separate from
-      `/healthz`, plus one retry — the same call succeeded seconds later,
-      so a single retry would have prevented this outright;
-  (d) guard `len(known) == 0` at `:118` so an empty list can never be
-      formatted into a sentence as `Indexed services: .`;
-  (e) `sessionhook_test.go` currently asserts only that the string
-      "not an indexed service" appears — add a case asserting it does NOT
-      appear when enumeration fails for a repo that is in fact indexed.
-- **Status:** open
+- **Fix:** done — (a)-(d) landed: `fetchServices` (`sessionhook.go`) now
+  returns `(map[string]svcInfo, error)`; `buildSessionContext`'s degraded
+  branch (the `sessionhook.go:315` `// O2:` comment) renders "fathom daemon
+  is healthy but service enumeration failed (%v)" instead of the confident
+  not-indexed claim; `fetchServices` retries once with its own timeout,
+  decoupled from the `/healthz` client; the zero-known-services render no
+  longer produces the dangling "Indexed services: ." artifact. (e) is
+  covered by dedicated tests rather than an added case in the old one.
+- **Status:** closed — proven by `TestSessionHookNamesFetchFailureNotUnindexed`
+  and `TestSessionHookZeroServices` (both `cmd/fathom/sessionhook_test.go`,
+  `go test ./cmd/fathom/ -run TestSessionHookNamesFetchFailureNotUnindexed`,
+  `-run TestSessionHookZeroServices`), re-verified 2026-09-23 during the DG
+  diagnostics-sweep housekeeping pass.
 - **Impact:** Same severity class as O1 — silent, transient loss of
   fathom's agentic value — but broader blast radius per occurrence: O1 lost
   rules on individual edits, O2 mis-primes an entire session's discovery
@@ -172,7 +169,15 @@ triage if it matters.
   (c) **Add a CUE evidence tier** (`vet_clean` / `export_golden`) so a row can
       prove behaviour, not just presence. Today that proof is prose inside
       `skip:`, which no machine reads.
-- **Status:** open
+- **Status:** closed — (a) and (b) landed as VS-3/VS-4 (docs/plans/verify-spine.md):
+  `internal/extractor/cueextract.go`'s `cueReferenceEdges` emits
+  unification/field-type/list-element/import edges, and `cueTestdataReaches`
+  maps a `testdata/*.cue` unification onto the same edge kind so
+  `reachable_from` is satisfiable for CUE. (c) (a dedicated evidence tier)
+  was not needed once (a)/(b) landed. Proven by `TestCUEReferenceEdgesEmitted`
+  and `TestCUETestdataUnificationCountsAsReaches`
+  (`internal/extractor/cueextract_test.go`), re-verified 2026-09-23 during
+  the DG diagnostics-sweep housekeeping pass.
 - **Impact:** Scoped but sharp, and it will grow. It does not produce false
   passes — the honesty boundary holds, and fathom makes the author write an
   explicit escape rather than silently passing (this is the design working).
@@ -223,7 +228,16 @@ triage if it matters.
       degrading to `no-contract` is the one outcome that hides the error, because
       an Unknown row looks identical to an intentionally-uncontracted one;
   (c) add the two-line repro above as a parser test case.
-- **Status:** open
+- **Status:** closed — VS-1/VS-2 (docs/plans/verify-spine.md): the
+  annotation-block scanner (`internal/verify/markdown.go`) is quote-aware
+  for `{`/`}` exactly as it already was for `,`, and a block that looked
+  annotation-shaped but yielded zero keys now lints loudly
+  (`internal/verify/lint.go`) instead of silently downgrading to a
+  positional `md-NNN` id. Proven by `TestParseAnnotation_BracesInQuotedValues`
+  and `TestLintPlan_UnparseableAnnotationIsLoud` (`internal/verify/markdown_test.go`)
+  plus the dedicated `TestQuotedBracesDoNotTerminateAnnotation` /
+  `TestMalformedAnnotationLintsLoudly` (`internal/verify/o4_pin_test.go`),
+  re-verified 2026-09-23 during the DG diagnostics-sweep housekeeping pass.
 - **Impact:** Low-frequency trigger, high consequence, and self-concealing —
   the combination this log keeps finding (cf. O1, O2). Three compounding effects:
   1. **The id is lost.** The README states author-owned `id` should be used "in
@@ -275,7 +289,19 @@ triage if it matters.
       configuration rather than assuming `<repo>/workspace/logs/`, or defer to
       `surface_traffic`, which already answers the question correctly;
   (c) whichever way, a check the operator cannot clear must not be a FAIL.
-- **Status:** open
+- **Status:** closed — both landed in the docs/dogfood-observations.md O23
+  wave: (a) `checkBinaryFresh` (`cmd/fathom/doctor.go`) now gates on
+  `fathomSourceTree`/`isFathomSourceTree` and SKIPs with an explicit
+  "binary freshness is only checkable from the fathom source tree" reason
+  in every non-fathom repo, instead of comparing against that repo's HEAD;
+  (b) `checkHooksFiring`'s `resolveCallLogCandidates` resolves the
+  daemon's own call log via `fathomServicePath` (asking the daemon, like
+  `surface_traffic` already did) rather than assuming
+  `<doctored-repo>/workspace/logs/`. Proven by
+  `TestCheckBinaryFresh/not_the_fathom_source_tree_is_skipped,_never_a_guessed_fail_(O23)`
+  and `TestCheckHooksFiring/O23:_adopter_repo_resolves_the_daemon's_own_call_log_via_the_fathom_service_path`
+  (both `cmd/fathom/doctor_test.go`), re-verified 2026-09-23 during the DG
+  diagnostics-sweep housekeeping pass.
 - **Impact:** Reputational, and therefore worse than it looks. `doctor` is the
   most valuable thing in the tool for a new consumer — in this session it
   correctly caught four real, fixable adoption gaps (obligations never
@@ -327,7 +353,14 @@ triage if it matters.
       that is the one an operator can act on;
   (c) re-derive the verify-gate catch count as distinct catches and sanity-cap
       the per-call ratio, or label precisely what is being summed.
-- **Status:** open
+- **Status:** closed — IO-10 (a): `instrument --adoption`'s zero-call list
+  is now partitioned by the agent surface (`cmd/fathom/instrument_adoption.go`'s
+  `partitionZeroCalls`) instead of counted against the full tool registry;
+  IT-11 (c): the verify-gate figure derives from the verify ledger
+  (`verifyFigure`), never the call log, retiring the 215/4940-family
+  double-count. Proven by `TestAdoptionServiceScoped` and
+  `TestAdoptionVerifyFigureMatchesLedger` (`cmd/fathom/instrument_adoption_test.go`),
+  re-verified 2026-09-23 during the DG diagnostics-sweep housekeeping pass.
 - **Impact:** This is the instrument the flywheel is steered by — it is what
   answers "is fathom helping?", which is the question that decides whether a
   team keeps investing in it. Overstating under-adoption makes the tool look
@@ -366,7 +399,15 @@ triage if it matters.
   or (b) relax the schema so an absent `bindings` means "none bound", which is
   what guard already does and what the file's own comment already says ("No org
   rule ever reaches this repo until a binding below is uncommented").
-- **Status:** open
+- **Status:** closed — same fix family as docs/dogfood-observations.md O22/IO-7:
+  the binding schema's `[_, ...]` constraint was dropped
+  (`schema/binding` + `schema/guard`) so an absent `bindings` field (the
+  scaffold's own shape) loads clean, and the explicit `bindings: []` /
+  `guards: []` literal is also accepted as valid — one vocabulary either
+  way. Proven by `TestExampleTemplate_IsCommentedNoOp`
+  (`internal/bindspec/binding_test.go`, `internal/guardspec/guard_test.go`)
+  and `TestExplicitEmptyBindings`/`TestExplicitEmptyGuards`, re-verified
+  2026-09-23 during the DG diagnostics-sweep housekeeping pass.
 - **Impact:** First-run experience, on the exact path the adoption guide walks a
   new consumer down. It is cosmetic in effect — nothing is broken, no rule is
   missed — but it costs `doctor` credibility at the worst possible moment,
@@ -410,7 +451,14 @@ triage if it matters.
       run measures is not what the real run sends;
   (d) surface expected duration. 21 minutes for a 10-section layer is the kind
       of thing an operator wants to know before starting, not after.
-- **Status:** open
+- **Status:** closed — IO-8: the dry run now estimates output as a per-layer
+  ratio band (`EstTokensOutLow`/`High = input × [2, 8]`, `internal/core/claims.go`)
+  and prints a cost RANGE, never a confident point/zero
+  (`cmd/fathom/compile.go`'s "cost_usd: est. %.2f-%.2f (a range, never a
+  point — O8)"); the input-side under-estimate and a duration band ride
+  the same change. Proven by `TestDryRunEstimateRange`
+  (`internal/semantic/compile_test.go`), re-verified 2026-09-23 during the
+  DG diagnostics-sweep housekeeping pass.
 - **Impact:** This is the number a user decides on. In this session the owner
   asked, in as many words, "is it worth using and how much will it cost me?" —
   I quoted the dry run (5,547 tokens, effectively free) and was wrong by 25x on
@@ -458,8 +506,13 @@ triage if it matters.
 
 - **Symptom:** a stray `cmd/fathom/workspace/logs/mcp-calls.jsonl` appeared in the repo after `review` ran with cwd=cmd/fathom (budget-race test runs, 2026-08-08); content was review verdict rows.
 - **Root cause (suspected):** the call-log default path resolves relative to cwd instead of the repo/service root or an absolute user-scope path.
-- **Fix:** TODO — default the CLI call log to an absolute path (service workspace root or ~/.fathom), never cwd-relative.
-- **Status:** open
+- **Fix:** done — PC-15/I31: `-call-log`'s default now resolves under the
+  enclosing repository's `workspace/` from any subdirectory (or `~/.fathom/`
+  outside a repo), never the bare cwd; explicit flags and
+  `[daemon].call_log`/`FATHOM_CALL_LOG` still win.
+- **Status:** closed — proven by `TestDefaultStorePathNeverTheCwd`
+  (`cmd/fathom/defaultpaths_test.go`, which names O11/O12 directly),
+  re-verified 2026-09-23 during the DG diagnostics-sweep housekeeping pass.
 - **Impact:** cosmetic here (deleted), but a cwd-relative log means CLI surface traffic silently fragments across directories and undercounts in the adoption gauge.
 
 
@@ -468,8 +521,12 @@ triage if it matters.
 - **Symptom:** `fathom ingest --service calib-fmt` run from a corpus checkout printed a full success summary while writing to `<cwd>/workspace/db/fathom.sqlite` — a store nothing will ever read — and FATHOM_HTTP was silently ignored (ingest is store-direct, not daemon-routed).
 - **Evidence (2026-08-08):** the CT-10 calibration first-run: scratch daemon's store stayed at 0 services while ingest reported 5,470 symbols; the data was in a fresh `workspace/db/` inside the clone.
 - **Root cause:** the `-store` flag defaults to the relative path "workspace/db/fathom.sqlite" (same class as O11's cwd-relative call log); nothing warns when the default resolves outside any known service root.
-- **Fix:** TODO — resolve the default against the repo/service root (or ~/.fathom), print the absolute store path in the summary line, and say loudly when a fresh store file is being created.
-- **Status:** open
+- **Fix:** done — PC-15/I31: `-store`'s default now resolves under the
+  enclosing repository's `workspace/` (or `~/.fathom/` outside a repo),
+  never the bare cwd; explicit `[daemon].store` still wins.
+- **Status:** closed — proven by `TestDefaultStorePathNeverTheCwd`
+  (`cmd/fathom/defaultpaths_test.go`, which names O11/O12 directly),
+  re-verified 2026-09-23 during the DG diagnostics-sweep housekeeping pass.
 - **Impact:** a successful-looking ingest that indexes into the void; cost one calibration re-run here, would cost a new adopter their first hour.
 
 
@@ -503,10 +560,28 @@ triage if it matters.
   - **Expected:** wired MET with a scope note, or a distinct partial-visibility verdict
   - **Actual:** grade B — not wired, remedy suggests reconcile, which correctly refuses to double-wire
   - **Repro:** fathom fleet report; geoffmiller-cloud hooks_note='settings.json present, no fathom hook references'; ~/.claude/settings.json carries the fathom hooks
-- **Root cause:** TODO
-- **Fix:** TODO
-- **Status:** open
-- **Impact:** TODO
+- **Root cause:** `fleetWiringNotes` (`cmd/fathom/fleetreport.go`) resolved
+  hook presence purely from `<path>/.claude/settings.json`; when that file
+  exists but has zero fathom references (or is absent entirely), it
+  reported the absence directly, with no fallback check of
+  `~/.claude/settings.json` — even though `fathom init`'s own user-scope
+  dedup (O42) deliberately wires hooks there instead of per-project.
+  `realizationGrade`'s `wired` dimension then ANDed that false "no hooks"
+  reading into the grade.
+- **Fix:** done (DG-14) — `fleetWiringNotes` now checks
+  `~/.claude/settings.json` (`userScopeFathomHookCount`) before reporting
+  an absence, and reports a distinct "wired at user scope (...)" note that
+  carries the same "hook reference" substring `realizationGrade` and
+  `observatory.go`'s wiring-remedy check already key off, so a genuine
+  user-scope find grades as wired, never as a gap.
+- **Status:** closed — proven by `TestFleetWiringNotes_DetectsUserScopeWiring`
+  (`cmd/fathom/fleetreport_test.go`), which includes a subtest asserting
+  `realizationGrade` reads the resulting note as MET; landed in this same
+  DG diagnostics-sweep housekeeping pass (2026-09-23).
+- **Impact:** a repo wired correctly at user scope (the common, recommended
+  shape) was misreported as unwired, pointing an operator at a needless
+  `fathom fleet reconcile --apply` / `fathom init` that would have installed
+  project-scope duplicates.
 
 ### O16 — a wedged reader produces a plausible empty index: ingest wrote 0 symbols / 0 typed edges while printing '188 pkg(s) (0 failed)' and exit 0 — the fourth false-signal shape of the TCC EPERM wedge
 
@@ -672,10 +747,23 @@ triage if it matters.
   - **Expected:** the documented project hook layer (<repo>/.codex/hooks.json) loads under directory trust, as Codex's hooks reference describes
   - **Actual:** on codex-cli 0.153.1, touch hooks placed in <repo>/.codex/hooks.json on SessionStart, Stop, SessionEnd and UserPromptSubmit fired ZERO times in a headless codex exec run under a trusted parent project with [features] hooks = true and --dangerously-bypass-hook-trust; the identical entries under $CODEX_HOME/hooks.json fired every time. Every fathom Codex adopter since 2026-09-02 has been given a hook file the harness ignores, and doctor's harness_hooks row read it back as evidence of wiring. Fixed: the descriptor records the project file as documented-but-not-loaded with no wiring kind, init writes nothing and prints the entries (fathom harness hooks --harness codex), and the descriptor is now verified against a real session instead of a fetched doc page. The general lesson: a documented extension point is a claim, and the only thing that settles it is a smoke test that would have failed.
   - **Repro:** place a touch hook in <repo>/.codex/hooks.json, run: codex exec --json --sandbox read-only --dangerously-bypass-hook-trust 'reply ok'
-- **Root cause:** TODO
-- **Fix:** TODO
-- **Status:** open
-- **Impact:** TODO
+- **Root cause:** HP-34 measured codex-cli 0.153.1 on this workstation and
+  found `<repo>/.codex/hooks.json` (the repo-scoped layer) is not loaded at
+  all — only the `$CODEX_HOME` layer is — so there was no repo-scoped Codex
+  hook file the wiring engine could ever make fire.
+- **Fix:** done (already recorded in this observation's own "Actual" line
+  above) — `codexHookKey` (`cmd/fathom/init_harnesshooks.go`) now returns
+  `ok=false` for Codex's project hook file, so `fathom init --harness=codex`
+  plans nothing and prints the entries instead
+  (`fathom harness hooks --harness codex`) rather than writing wiring that
+  cannot fire; the descriptor is verified against a real session, not a
+  fetched doc page.
+- **Status:** closed — proven by `TestCodexHookKeyReusesJSONHookEditor`
+  (`cmd/fathom/init_harnesshooks_test.go`), re-verified 2026-09-23 during
+  the DG diagnostics-sweep housekeeping pass.
+- **Impact:** every fathom Codex adopter since 2026-09-02 had been given a
+  hook file the harness silently ignores, with doctor's `harness_hooks` row
+  reading the file's mere presence back as false wiring evidence.
 
 ### O29 — The launchd daemon hung for minutes inside open() of the SQLite store on /Volumes/m2ext (goroutine 1 [syscall] in modernc sqlite _posixOpen, SIGQUIT dump) after 'fathom daemon uninstall' + 'install': install's defaults chose a new label (dev.fathom.serve-http), a fresh ~/.fathom/db store and dropped WorkingDirectory and the call-log arg; even after reinstalling with the fleet store, the original label, the fathom-dev-signed libexec binary and WorkingDirectory restored, the process bootstrapped from this shell inherited a wedged removable-volume TCC verdict and never bound the port. The same signed binary started in the foreground from the shell opened the store in 6 s.
 
@@ -821,6 +909,7 @@ triage if it matters.
 - **Status:** open
 - **Impact:** TODO
 - **Status update (2026-09-19, wave-s11):** investigated, NOT fixed this wave — could not reproduce against this repo (no platform-engineering checkout available). Ruled out: this is NOT O40's mechanism — `references_tool.go`'s exact mode already wires typed edges correctly (`callgraph.MentionConfidence`/`BuildMentionIndex` calls `AddTypedEdges`, confirmed by the passing `TestReferencesExactModeDefault`/`TestFindCallersDepthAndConfidence`), so the CLI-wiring gap fixed for O40 does not apply here. The more likely mechanism, unconfirmed: `references` exact mode's `MentionIndex.Confidence` only credits a mention when the mention's DIRECT enclosing symbol has a typed edge to the definition (one hop); `verify_plan`'s `test_reaches` walks the WHOLE merged graph transitively and does not care whether each hop is typed or syntax-only. A caller reached only through table/registry-style indirection (a func value, or an interface-typed wrapper the typed pass could not statically resolve to `EdgeDirect`) would show as many-hops-reachable to `test_reaches` but never typed-confirmed at the single hop `references` checks — this is a precision/recall difference by design, not necessarily a bug, but worth checking against the original repo. Next step: reproduce with the actual platform-engineering index (or a fixture built from `runReview`'s real call shape) and inspect `MentionIndex.Confidence`'s per-mention verdict directly.
+- **Status update (2026-09-23, DG-21):** the previous wave's leading hypothesis (one-hop `MentionIndex.Confidence` vs transitive `test_reaches`) is real by design but ruled out as O39's cause: it predicts a PRECISION difference (some indirect callers dropped), not the SYMPTOM actually reported (`references` returned COUNT 0 for a query `verify_plan` resolved as a DIRECT reach). Built the owner-specified fixture instead — a value-receiver method called via a selector on a value AND on a pointer, a pointer-receiver method called via a selector on a pointer AND on an addressable value, and an interface-dispatch call (`internal/fusion/testdata/typedfixture/selectorforms.go`, reusing `adapter.go`'s existing `RunAdapter`/`AdapterA`/`AdapterB` for the third shape) — and drove it through the REAL pipeline (`fusion.Pipeline.Ingest` → `EnrichTypedEdges` → `callgraph.MentionConfidence`, no hand-built `core.Edge`/`core.SymbolNode` values anywhere). All five call sites resolve to `EdgeConfidenceResolved`: `internal/fusion`'s typed pass and `MentionIndex.Confidence`'s canonical-key matching are sound for every one of these shapes. New regression tests (`internal/analysis/callgraph/mention_selectorforms_test.go`): `TestMentionConfidence_SelectorOnValueAndPointer`, `TestMentionConfidence_PointerReceiverViaPointerAndAddressableValue`, `TestMentionConfidence_InterfaceDispatch` — all pass, so this is a NEGATIVE result narrowing the search, not a fix. Remaining root cause, still unconfirmed and now the leading lead: `references_tool.go`'s exact-mode filter compares `MentionIndex.Confidence`'s `byFile` lookup (keyed by `SymbolNode.FilePath`, set once at ingest time) against `occ.File` from a FRESH `references.Find` over `backend.Sources()` — and `pkg/client.Client.Sources` (client.go:332-341) re-resolves the service root via `GetServiceMeta` on every call, falling back to the bare service ID when no path is recorded (DG-3's exact mechanism, same sweep, different symptom). If `ServiceMeta.Path` at query time differs even slightly in normalization from the root the typed pass ingested against (or the daemon's service-identity resolution picked a different candidate — O15's own documented failure class), every `SymbolNode.FilePath`/`occ.File` pair in the byFile map fails to match, `Confidence` falls through to the `idx < 0` branch for every mention in the file, and `references` exact mode drops ALL of them — count 0, not a partial miss, matching the reported symptom exactly. Next step: once DG-3/DG-18's fix lands, re-run this exact repro against a service whose recorded root and typed-pass root are deliberately made to differ by path normalization only (trailing slash, symlink, `.` vs absolute) to confirm or rule out this mechanism directly; this was not attempted here to avoid duplicating DG-3/DG-18's own scope.
 
 ### O40 — Selector-method call edges disappear and receiver names duplicate in canonical verification targets
 
@@ -830,9 +919,9 @@ triage if it matters.
   - **Expected:** Direct TestFileContextIsScopedBoundedAndVersionAware calls to s.Context and s.Append are present in the call graph
   - **Actual:** symbol_context lists Open/draft/event/subject but omits direct methods; verification target becomes Store.Store.Context and reports no test reachability. Interface a.Collect similarly disappears with fathomAdapter.fathomAdapter.Collect.
   - **Repro:** Fresh MCP ingest platform-engineering, verify_plan symbol Store.Context package kits/review-kit/internal/findings; inspect TestFileContextIsScopedBoundedAndVersionAware. Public runFindingsQuery and its native runtime tests pass independently.
-- **Root cause:** TODO
-- **Fix:** TODO
-- **Status:** open
+- **Root cause:** `cmd/fathom/verify.go`'s `verifyAllAgainstStore` built its call graph with syntax-only `callgraph.Build(nodes)` and never called `AddTypedEdges`, unlike the MCP `verify_plan` tool (`callgraph.BuildBoth`) — on a syntax-only graph, a direct call on a concrete receiver whose method name is shared by another receiver is refused by `resolveAmbiguousCallees`'s ambiguous-suffix fallback, exactly this observation's shape. (The "duplicated receiver segment," `Store.Store.Context`, was investigated and found NOT a bug — it is `core.SymbolNode.Key()`'s intentional, consistent canonical form for a Go method, byte-identical between goextract and the typed pass's `symbolKeyForFunc`.)
+- **Fix:** wired `c.TypedEdges` + `callgraph.BuildBoth` into `verifyAllAgainstStore` (`cmd/fathom/verify.go`), same as the MCP tool.
+- **Status:** closed — see the 2026-09-19 status update below for the full root-cause narrative and every regression test; DG-21 (2026-09-23) re-verified `cmd/fathom/verify.go` still calls `callgraph.BuildBoth` and that all four cited regression tests (`TestEnrichTypedEdges_MethodKeyMatchesExtractorCanonicalKey`, `TestCallMemStoreDirect`, `TestO9Residue_RealFixtureIngestAndVerify`, `TestCmdVerify_Store_DirectAmbiguousMethodTypedEdge`) still exist and pass. The top-level Root cause/Fix/Status fields above were left at their pre-investigation TODO/open values when the fix landed (TRACKER-1's exact pattern) — flipped here to match the status update that already recorded the real outcome; no code changed for O40 in this pass.
 - **Impact:** TODO
 - **Status update (2026-09-19, wave-s11):** closed. The "duplicated receiver segment" (`Store.Store.Context`) is NOT a malformed key — it is the intentional, consistent canonical form `core.SymbolNode.Key()` has always produced for a Go method (`Package` = bare receiver type name, `Name` = "Recv.Method", folded through `SymbolKey` = "pkg.Recv" + "." + "Recv.Method"), and the typed pass's `symbolKeyForFunc` (internal/fusion/typedcalls.go) already computes byte-identical keys — verified directly against this repo's own `SQLiteStore.EnsureIndexes` (`fathom::internal/store/SQLiteStore.SQLiteStore.EnsureIndexes` in both the `observations`-derived node key and the stored `typed_edges.to_symbol`), and locked by a new regression test, `TestEnrichTypedEdges_MethodKeyMatchesExtractorCanonicalKey` (internal/fusion/typedcalls_test.go), plus the pre-existing `TestEnrichTypedEdges_Resolution`'s own `key("AdapterA","AdapterA.Complete")`-style assertions. The REAL root cause: `cmd/fathom/verify.go`'s `verifyAllAgainstStore` built its call graph with `callgraph.Build(nodes)` alone and never called `AddTypedEdges` — unlike the MCP `verify_plan` tool (`registerVerifyPlan`, which already used `callgraph.BuildBoth`). On a syntax-only graph, a direct call on a concrete receiver whose method name is shared by another receiver (`SQLiteStore.EnsureIndexes` vs `MemoryStore.EnsureIndexes`) is refused by `resolveAmbiguousCallees`'s ambiguous-suffix fallback (two candidates, "ambiguity resolves to nothing, never first-match-wins") — exactly SU-1/SU-2's `edge_wired` failure. Fixed by wiring `c.TypedEdges` + `callgraph.BuildBoth` into `verifyAllAgainstStore`, same as the MCP tool. Proof: `TestEnsureIndexes_DirectReach`/`TestClaimsForServe_DirectReach` (SU-1/SU-2) now verify; `go run ./cmd/fathom verify --plan docs/plans/substrate.md --strict` reports `25 claimed: 25 verified, 0 failing`. Regression tests: `internal/fusion/testdata/typedfixture/directambiguous.go` + `TestCallMemStoreDirect` (O40's exact shape, added to the fixture module), `TestO9Residue_RealFixtureIngestAndVerify`'s new before/after `Reachable` assertions (internal/verify/typededge_residue_test.go), and `cmd/fathom/verify_typededge_test.go`'s `TestCmdVerify_Store_DirectAmbiguousMethodTypedEdge` — confirmed FAILS on `git stash` of the one-line `cmd/fathom/verify.go` change, PASSES with it. See O98 for the wider pattern this surfaced.
 
@@ -1722,3 +1811,16 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** `internal/config.DefaultDecide.RankWithinTier` default flipped `true`→`false` (ADR-042 amended 2026-09-23, ADR.md and `docs/intent/decisions/README.md`; `docs/vision/32-decision-port.md` §4 and status line; `docs/configuration.md`'s `[decide]` table; `cmd/fathom init`'s commented `[decide]` block; `CHANGELOG.md` [Unreleased]) — a decision provider configured for routing/compile no longer reranks obligations within a tier unless `rank_within_tier = true` is set explicitly. Routing and the compile pre-filter are unchanged by this fix.
 - **Status:** closed (2026-09-23) — default changed and proven (`internal/config` tests green). Open follow-up (named in the ADR's revisit trigger): a guards-shaped rerun at n ≥ 3 trials, and a corpus with two governing rules genuinely competing within one scope tier — this A/B's 8 guards tasks never had that contest to arbitrate, so a positive case for the re-rank was never actually tested.
 - **Impact:** anyone who sets `[decide] provider = llm | typesafe` for routing or the compile pre-filter no longer silently inherits an unreviewed obligations re-rank on upgrade; the mechanism (a live per-edit LLM reorder of the served rules) is confirmed real and, on this sample, more likely to displace a governing rule later in a session than to help.
+
+### O112 — The 2026-09-23 diagnostics sweep: no daemon logging had timestamps, one stale-service line was 97% of the error log, and typed-edge recall silently dropped selector/interface-dispatch calls
+
+- **Symptom:** The 2026-09-23 diagnostics sweep: no daemon logging had timestamps, one stale-service line was 97% of the error log, and typed-edge recall silently dropped selector/interface-dispatch calls
+- **Evidence:**
+  - **Tool:** four parallel investigator passes (`logs`, `fleet`, `logging`, `backlog`) against a live daemon and its call-log, synthesized in `diag-plan.md` against the pushclone checkout at `959bddff`
+  - **Expected:** daemon diagnostic output is timestamped and attributable; a service whose recorded corpus root has vanished is reported once, structurally, not re-discovered as a bare error on every read; `references`/`spec_refs` resolve against the SAME verified identity `obligations` and `verify_plan` use; a selector-method call (value or pointer receiver) and an interface-dispatch call are typed-confirmed, not dropped
+  - **Actual:** zero hits for `log.New(`/`log.SetFlags`/`log/slog` anywhere in `cmd/fathom`/`internal/fusion` outside `third_party/agentic-kit`'s unrelated telemetry bridge — every diagnostic line was a bare, unattributable `fmt.Fprintf(stderr/stdout, ...)` (DG-1..DG-7's shared root cause); `fleetAdapter.UnsupportedLanguagesFor` re-walked a service's filesystem (`client.Sources` → `connector.Discover`) on every single call with no cache, confirmed by three independent investigators as 97%+ of the entire daemon error log, and independently measured as `list_services`'s (the fleet's most-called MCP tool, ~31k calls) live cost: p95 4.6s, max 182s (DG-3/DG-18); SQLite CANTOPEN bursts (errno 14, a transient TCC-verdict wedge or a genuinely deleted path) were logged identically to a permanent failure with no distinguishing tag (DG-17); `renderPostEdit`'s candidate loop let a later, unverified basename/git-toplevel guess overwrite an earlier daemon-verified identity once `list_services`'s own latency exceeded the hook's 2s round-trip budget — the O15 failure shape, DG-11/DG-12 — and the sweep's fleet/backlog investigators additionally reported `spec_refs` resolving through that unverified fallback identity on a majority (reported ~55%) of sampled calls before this fix (investigator-reported per diag-plan.md's own live-numbers provenance note; not independently re-measured against the live fleet in this integration pass — DG-11/DG-12's regression tests prove the mechanism is closed, not that historical percentage)
+  - **Repro:** `diag-plan.md` §§0-7 (root-cause citations file:line against the pushclone checkout); this plan's own `docs/plans/diagnostics-sweep.md` rows for the closing regression tests
+- **Root cause:** six independent gaps, all present before this sweep: (1) no leveled/timestamped logger existed anywhere in the daemon, so every stderr line was both unattributable to wall-clock time and undeduped, letting one condition dominate the log; (2) `fleetAdapter.UnsupportedLanguagesFor`/`pkg/client.Client.Sources` re-walked a service's filesystem on every `list_services` call with no cache and no distinction between "root recorded and reachable" and "root recorded but gone"; (3) a post-edit identity resolution raced `list_services`'s own uncached latency against a hardcoded 2s budget, and on timeout let an unverified basename guess silently overwrite an already-daemon-verified identity (O15's shape recurring); (4) a typed-edge loading failure or discovery gap was visible only as an unstructured stderr line, never carried on `TypedEdgeStatus` for `/statusz`/`doctor` to read, and did not survive a daemon restart; (5) `doctor`'s `binary_fresh` and `unproven_claims` rows discarded information they already computed (which side of HEAD is behind; the evidence timestamp); (6) `internal/analysis/callgraph.MentionConfidence`'s one-hop, byFile-keyed confidence lookup was suspected (O39/O40) to drop selector-method and interface-dispatch calls — DG-21's fixture-driven repro against the real `fusion.Pipeline.Ingest` → `EnrichTypedEdges` → `MentionConfidence` path proved the typed pass and confidence matching are themselves sound for every tested shape (value/pointer receiver via selector, interface dispatch), narrowing O39's remaining open lead to `references_tool.go`'s exact-mode filter comparing a byFile map built at ingest time against a possibly-differently-normalized service root resolved fresh per query (same DG-3/DG-18 root-cause family, different symptom) — recorded as still-open in O39, not closed by this sweep.
+- **Fix:** DG-1/DG-2 (`38d8477d`) — `internal/dlog`, a leveled/timestamped `log/slog` wrapper with dedupe-and-count. DG-3 (`7b730925`) — `fleetAdapter` routes through the deduped logger and stops re-walking a missing corpus root. DG-4/DG-5/DG-6/DG-16/DG-19 (`8138a32e`, `9f2153aa`) — remaining call sites threaded through `dlog`; HTTP access log with `X-Fathom-Request-Id`; log rotation; corrected live resident-memory gauges (never `getrusage` peak Maxrss mislabeled as current — darwin `proc_pid_rusage`/`RUSAGE_INFO_V2`, linux `/proc/self/status` VmRSS, honest peak named `process_max_resident_memory_bytes`, omitted where no live reading exists); startup bind-retry with backoff on `EADDRINUSE`. DG-7/DG-11 (`84b87bba`) — `fetchObligations` names its failure branch; `renderPostEdit` never lets an unverified guess overwrite a verified identity. DG-12 (`2b0f610f`) — the identity cache serves a stale positive resolution (capped 24h) on a genuine round-trip failure instead of falling all the way back to basename matching. DG-8/DG-9/DG-10/DG-17 (`234dbc0d`) — typed-loading failures name the failing package; discovery gaps and out-of-scope drops carry on `TypedEdgeStatus`; status persists across a daemon restart (SQLite-backed); CANTOPEN is tagged distinctly. DG-18 (folded into the dg-a/dg-c integration merge, this pass) — `list_services`'s per-service unsupported-language/root-missing lookup is memoized per (service, store watermark), never re-walked on a read; a vanished root reports `root_missing: true` plus a `remove_service` remedy instead of an error line. DG-21 (`d47d84d8`) — the owner-specified selector/pointer/interface-dispatch fixture reproduced against the real pipeline; all five call shapes resolve `EdgeConfidenceResolved`; O39/O40 Status fields updated with the fix and every regression test's name. DG-13 (`bdaa440a`) — `binary_fresh`'s remedy names which side of HEAD is behind. DG-14 (`b309e245`) — `fleetWiringNotes` checks user-scope hooks before reporting an absence (closes O15). DG-15 (`cc3165ea`) — `unproven_claims`'s reason carries its own computed evidence timestamp. OWN-1/OWN-2/OWN-4 recorded and deliberately deferred to the owner (`docs/plans/diagnostics-sweep.md`'s Owner-decision section) — not actioned by this sweep.
+- **Status:** fixed — DG-1 through DG-21 (P0/P1/P2) landed and merged across four parallel integration branches into `work`; proven by `fathom verify --service fathom --plan docs/plans/diagnostics-sweep.md` (see that plan for the per-row contract and which rows verify). O39 stays open (DG-21 narrowed but did not close it); O40, O15 closed by DG-21 and DG-14 respectively. Owner items (OWN-1, OWN-2, OWN-4) deferred, not fixed.
+- **Impact:** the 97%-of-log-volume stale-service spam and the live `list_services` re-walk cost (p95 4.6s/max 182s on ~31k calls) are eliminated at the mechanism level (DG-3/DG-18's cache; regression-proven at most one `Discover` per service+watermark); every daemon diagnostic line is now timestamped, leveled, and deduped instead of an unattributable, undeduped stream; a post-edit identity resolution can no longer silently regress to an unverified basename guess once a verified one has answered (DG-11/DG-12, closing the O15 failure class a second time); typed-edge diagnosability (failing package names, discovery gaps, restart-durable status) moved from "grep the stderr stream" to structured, queryable state; three selector/interface-dispatch call shapes are now regression-locked as correctly resolved, narrowing rather than closing O39.

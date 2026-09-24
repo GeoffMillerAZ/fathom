@@ -14,6 +14,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/decide"
+	"github.com/geoffmilleraz/fathom/internal/dlog"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/llmsec"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
@@ -47,6 +48,17 @@ func (c *Client) WithDecision(d decision.Decider, cfg config.Decide, rec *decide
 	c.decider = d
 	c.decideCfg = cfg
 	c.decideRec = rec
+	return c
+}
+
+// WithLogger routes the underlying fusion.Pipeline's own diagnostics
+// (the typed-edge pass's process-wide-slot/load-failure/discovery-gap
+// lines, DG-4 diagnostics sweep) through log instead of a bare
+// fmt.Fprintf(os.Stderr, ...). Never calling WithLogger (pipe.logger stays
+// nil) leaves those lines byte-identical to before this method existed —
+// like WithLLM/WithDecision, this is additive. Returns c for chaining.
+func (c *Client) WithLogger(log *dlog.Logger) *Client {
+	c.pipe.SetLogger(log)
 	return c
 }
 

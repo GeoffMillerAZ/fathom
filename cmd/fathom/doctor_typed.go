@@ -69,10 +69,17 @@ func checkTypedEdges(hc *http.Client, baseURL, root, explicitSvc string, daemonU
 	}
 	var payload struct {
 		TypedEdges *struct {
-			Known    bool   `json:"known"`
-			Packages int    `json:"packages"`
-			Failed   bool   `json:"failed"`
-			Reason   string `json:"reason"`
+			Known             bool     `json:"known"`
+			Packages          int      `json:"packages"`
+			Failed            bool     `json:"failed"`
+			Reason            string   `json:"reason"`
+			DiscoveryGaps     int      `json:"discovery_gaps"`
+			DiscoveryGapFiles []string `json:"discovery_gap_files"`
+			// Persisted/RecordedAt (finding [4]/DG-10): this answer was
+			// replayed from the store, not computed by THIS daemon process
+			// since it last started -- possibly hours or days old.
+			Persisted  bool   `json:"persisted"`
+			RecordedAt string `json:"recorded_at"`
 		} `json:"typed_edges"`
 	}
 	if err := json.Unmarshal(inner, &payload); err != nil {
@@ -98,6 +105,39 @@ func checkTypedEdges(hc *http.Client, baseURL, root, explicitSvc string, daemonU
 			Reason: fmt.Sprintf("the daemon's last typed-edge pass for %q FAILED (%s) — the index it serves has syntax-only call edges where typed ones are expected, while every other surface reports healthy",
 				svc, payload.TypedEdges.Reason),
 			Remedy: remedy,
+		}
+	}
+	// DG-9: a discovery gap — a call target file that EXISTS on disk
+	// despite being excluded from the connector's allowed set — is a
+	// likely wedged Discover pass (the 2026-08-23 cpp-toolchain flip's
+	// likeliest cause), not a legitimate zero. Non-fatal: the pass itself
+	// ran and produced typed edges, so WARN rather than FAIL — but never
+	// silent, per ADR-027.
+	if payload.TypedEdges.DiscoveryGaps > 0 {
+		reason := fmt.Sprintf("the daemon's last typed-edge pass for %q resolved %d package(s) but flagged %d discovery gap(s) — a target file exists on disk yet was excluded from the connector's discovered set, a likely partially wedged Discover pass",
+			svc, payload.TypedEdges.Packages, payload.TypedEdges.DiscoveryGaps)
+		if len(payload.TypedEdges.DiscoveryGapFiles) > 0 {
+			reason += fmt.Sprintf(" (e.g. %s)", strings.Join(payload.TypedEdges.DiscoveryGapFiles, ", "))
+		}
+		return doctorCheck{
+			Name: name, Status: doctorWarn,
+			Reason: reason,
+			Remedy: "check the service's .fathomignore / skip-dir rules against the named file(s), then re-ingest",
+		}
+	}
+	// finding [4]/DG-10: a Persisted=true answer was replayed from the
+	// store, not computed by THIS daemon process since it last started
+	// (the daemon restarts roughly twice a day per O108) -- it may be
+	// hours or days old, and whatever broke the environment could have
+	// happened AFTER it was recorded (the exact 2026-09-12 shape this row
+	// exists to catch). Reporting it as an indistinguishable PASS would be
+	// exactly the "an instrument may not degrade toward healthy" failure
+	// ADR-027 forbids -- WARN, named with the watermark, instead.
+	if payload.TypedEdges.Persisted {
+		return doctorCheck{
+			Name: name, Status: doctorWarn,
+			Reason: fmt.Sprintf("the daemon's last typed-edge pass for %q resolved %d package(s), but this daemon process has not re-run it since it started -- known as of %s, possibly pre-restart", svc, payload.TypedEdges.Packages, payload.TypedEdges.RecordedAt),
+			Remedy: "refresh the index (the `ingest` MCP tool, or `fathom ingest --service " + svc + "`) to confirm the current environment still passes, then re-run doctor",
 		}
 	}
 	return doctorCheck{

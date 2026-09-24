@@ -1893,6 +1893,52 @@ func storeContract(t *testing.T, s Store) {
 		}
 	})
 
+	t.Run("typed_edge_status", func(t *testing.T) {
+		// DG-10: the persisted counterpart to fusion.Pipeline's in-memory
+		// typedEdgeStatus map — survives a daemon restart, unlike it.
+		svc := "svc-typed-status"
+		if _, found, err := s.TypedEdgeStatus(ctx, svc); err != nil || found {
+			t.Fatalf("TypedEdgeStatus before set = found:%v err:%v, want false/nil", found, err)
+		}
+		rec1 := TypedEdgeStatusRecord{
+			PackagesSeen:           3,
+			Packages:               2,
+			EdgesTotal:             5,
+			Failed:                 true,
+			Reason:                 "1/3 package(s) failed typed loading",
+			Fallback:               "GOWORK=off",
+			DiscoveryGaps:          1,
+			DiscoveryGapFiles:      []string{"adapter.go"},
+			EdgesDroppedOutOfScope: 2,
+		}
+		if err := s.SetTypedEdgeStatus(ctx, svc, rec1); err != nil {
+			t.Fatalf("SetTypedEdgeStatus: %v", err)
+		}
+		got, found, err := s.TypedEdgeStatus(ctx, svc)
+		if err != nil || !found {
+			t.Fatalf("TypedEdgeStatus after set = found:%v err:%v, want true/nil", found, err)
+		}
+		if got.Packages != rec1.Packages || got.EdgesTotal != rec1.EdgesTotal || got.Failed != rec1.Failed || got.Reason != rec1.Reason {
+			t.Errorf("TypedEdgeStatus = %+v, want fields matching %+v", got, rec1)
+		}
+		if got.DiscoveryGaps != rec1.DiscoveryGaps || len(got.DiscoveryGapFiles) != 1 || got.DiscoveryGapFiles[0] != "adapter.go" {
+			t.Errorf("TypedEdgeStatus discovery fields = %+v, want DiscoveryGaps=1 DiscoveryGapFiles=[adapter.go]", got)
+		}
+		if got.RecordedAt.IsZero() {
+			t.Error("TypedEdgeStatus.RecordedAt is zero, want a watermark")
+		}
+
+		// Replace semantics: setting again overwrites, does not duplicate.
+		rec2 := TypedEdgeStatusRecord{PackagesSeen: 4, Packages: 4, EdgesTotal: 9}
+		if err := s.SetTypedEdgeStatus(ctx, svc, rec2); err != nil {
+			t.Fatalf("SetTypedEdgeStatus replace: %v", err)
+		}
+		got, found, err = s.TypedEdgeStatus(ctx, svc)
+		if err != nil || !found || got.Packages != 4 || got.Failed {
+			t.Errorf("TypedEdgeStatus after replace = %+v (found=%v err=%v), want Packages=4 Failed=false", got, found, err)
+		}
+	})
+
 	t.Run("typed_edge_package_listing_and_delete", func(t *testing.T) {
 		svc := "svc-typed-list"
 		edgesA := []core.Edge{

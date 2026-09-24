@@ -108,15 +108,47 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
+// diagWarn/diagInfo (DG-4, diagnostics sweep) route the typed-edge pass's
+// own diagnostics through p.logger when SetLogger has been called
+// (cmd/fathom's daemon does this at startup), preserving the ORIGINAL bare
+// fmt.Fprintf(os.Stderr, format, args...) behavior byte-for-byte when it
+// has not (p.logger == nil — every direct pkg/client embedder that never
+// wires a logger, and every existing test in this package). format keeps
+// its trailing "\n" for the os.Stderr fallback; the dlog path trims it,
+// since dlog's own handler terminates each record itself.
+func (p *Pipeline) diagWarn(format string, args ...any) {
+	if p.logger == nil {
+		fmt.Fprintf(os.Stderr, format, args...)
+		return
+	}
+	p.logger.Warn(strings.TrimSuffix(fmt.Sprintf(format, args...), "\n"))
+}
+
+func (p *Pipeline) diagInfo(format string, args ...any) {
+	if p.logger == nil {
+		fmt.Fprintf(os.Stderr, format, args...)
+		return
+	}
+	p.logger.Info(strings.TrimSuffix(fmt.Sprintf(format, args...), "\n"))
+}
+
 // TypedEdgeReport summarises one EnrichTypedEdges run. Edge counts cover
 // edges WRITTEN this run (cache-hit packages' stored edges are not
 // recounted).
 type TypedEdgeReport struct {
-	PackagesTotal      int // packages returned by the go/packages load (all variants)
-	PackagesLoaded     int // packages actually re-resolved this run (cache miss)
-	PackagesCached     int // packages skipped: content hash unchanged since last run
-	PackagesFailed     int // packages that failed to load/typecheck/persist (fallback, never blocks)
-	PackagesSkipped    int // packages with zero connector-allowed files (ignored dirs; reconciled away)
+	PackagesTotal   int // packages returned by the go/packages load (all variants)
+	PackagesLoaded  int // packages actually re-resolved this run (cache miss)
+	PackagesCached  int // packages skipped: content hash unchanged since last run
+	PackagesFailed  int // packages that failed to load/typecheck/persist (fallback, never blocks)
+	PackagesSkipped int // packages with zero connector-allowed files (ignored dirs; reconciled away)
+	// FailedPackages names a few (capped, in load order) of the packages
+	// behind PackagesFailed, with the go/packages load error(s) that failed
+	// each one (DG-8) — before this field, every surface (the stderr line,
+	// TypedEdgeStatus.Reason) could only ever say "N/M package(s) failed",
+	// with pkg.ID and pkg.Errors — both in scope at the failure site —
+	// discarded. Capped like DroppedOutOfScopeSample; a report with more
+	// than 5 failures still counts them all in PackagesFailed.
+	FailedPackages     []FailedTypedPackage
 	EdgesDirect        int
 	EdgesIfaceDispatch int
 	EdgesUnresolved    int
@@ -146,6 +178,15 @@ type TypedEdgeReport struct {
 	// from repoPath at all — never claim an override that did not happen.
 	Fallback string
 	Duration time.Duration
+}
+
+// FailedTypedPackage names one package that failed typed loading (DG-8):
+// the go/packages ID (unique per test variant, per the package doc's note
+// on test-variant identity) and the load error(s) go/packages attached to
+// it, joined into one string.
+type FailedTypedPackage struct {
+	PkgID string
+	Err   string
 }
 
 // hasGoSource reports whether refs contains at least one ".go" file — the
@@ -205,11 +246,11 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 	// typed-pass failure (fallback rows stand).
 	release, acquireErr := acquireTypedPassSlot(ctx)
 	if acquireErr != nil {
-		p.noteTypedEdgeStatus(svc.ID, TypedEdgeStatus{
+		p.noteTypedEdgeStatus(ctx, svc.ID, TypedEdgeStatus{
 			Failed: true,
 			Reason: fmt.Sprintf("waiting for the process-wide typed-pass slot: %v", acquireErr),
 		})
-		fmt.Fprintf(os.Stderr, "fusion: typed-edge pass %q: %v while waiting for the process-wide typed-pass slot — syntax-only edges remain the baseline\n", svc.ID, acquireErr)
+		p.diagWarn("fusion: typed-edge pass %q: %v while waiting for the process-wide typed-pass slot — syntax-only edges remain the baseline\n", svc.ID, acquireErr)
 		return TypedEdgeReport{}
 	}
 	defer release()
@@ -222,7 +263,7 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 	defer func() {
 		packages := rep.PackagesLoaded + rep.PackagesCached
 		edges := rep.EdgesDirect + rep.EdgesIfaceDispatch + rep.EdgesUnresolved + rep.EdgesFuncValue
-		fmt.Fprintf(os.Stderr, "fusion: typed-edge pass %q: %d packages, %d edges, peak heap_inuse %.1f MiB, %s\n",
+		p.diagInfo("fusion: typed-edge pass %q: %d packages, %d edges, peak heap_inuse %.1f MiB, %s\n",
 			svc.ID, packages, edges, float64(peakHeapInuse)/(1024*1024), rep.Duration)
 	}()
 	// BP-35: the outcome is recorded ON THE SERVICE, not only on stderr.
@@ -233,18 +274,28 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 	edgesTotal := rep.EdgesDirect + rep.EdgesIfaceDispatch + rep.EdgesUnresolved + rep.EdgesFuncValue
 	switch {
 	case err != nil:
-		p.noteTypedEdgeStatus(svc.ID, TypedEdgeStatus{Failed: true, Reason: err.Error(), Fallback: rep.Fallback})
-		fmt.Fprintf(os.Stderr, "fusion: typed-edge pass %q failed to load: %v — syntax-only edges remain the baseline\n", svc.ID, err)
-	case rep.PackagesFailed > 0:
-		p.noteTypedEdgeStatus(svc.ID, TypedEdgeStatus{
-			PackagesSeen: rep.PackagesTotal,
-			Packages:     rep.PackagesLoaded + rep.PackagesCached,
-			EdgesTotal:   edgesTotal,
-			Failed:       true,
-			Reason:       fmt.Sprintf("%d/%d package(s) failed typed loading", rep.PackagesFailed, rep.PackagesTotal),
-			Fallback:     rep.Fallback,
+		p.noteTypedEdgeStatus(ctx, svc.ID, TypedEdgeStatus{
+			Failed:                 true,
+			Reason:                 err.Error(),
+			Fallback:               rep.Fallback,
+			DiscoveryGaps:          rep.DiscoveryGaps,
+			DiscoveryGapFiles:      rep.DiscoveryGapFiles,
+			EdgesDroppedOutOfScope: rep.EdgesDroppedOutOfScope,
 		})
-		fmt.Fprintf(os.Stderr, "fusion: typed-edge pass %q: %d/%d package(s) failed typed loading — syntax-only edges remain the baseline for those\n", svc.ID, rep.PackagesFailed, rep.PackagesTotal)
+		p.diagWarn("fusion: typed-edge pass %q failed to load: %v — syntax-only edges remain the baseline\n", svc.ID, err)
+	case rep.PackagesFailed > 0:
+		p.noteTypedEdgeStatus(ctx, svc.ID, TypedEdgeStatus{
+			PackagesSeen:           rep.PackagesTotal,
+			Packages:               rep.PackagesLoaded + rep.PackagesCached,
+			EdgesTotal:             edgesTotal,
+			Failed:                 true,
+			Reason:                 fmt.Sprintf("%d/%d package(s) failed typed loading%s", rep.PackagesFailed, rep.PackagesTotal, formatFailedTypedPackages(rep.FailedPackages)),
+			Fallback:               rep.Fallback,
+			DiscoveryGaps:          rep.DiscoveryGaps,
+			DiscoveryGapFiles:      rep.DiscoveryGapFiles,
+			EdgesDroppedOutOfScope: rep.EdgesDroppedOutOfScope,
+		})
+		p.diagWarn("fusion: typed-edge pass %q: %d/%d package(s) failed typed loading — syntax-only edges remain the baseline for those%s\n", svc.ID, rep.PackagesFailed, rep.PackagesTotal, formatFailedTypedPackages(rep.FailedPackages))
 	case rep.PackagesTotal > 0 && rep.PackagesLoaded+rep.PackagesCached == 0:
 		// Never-silent guard: go/packages saw packages but the connector-
 		// scope filter excluded every one of them. Legitimate only when the
@@ -254,22 +305,43 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 		// the shape a Go tree with ZERO typed edges takes (wave P3 / O82):
 		// disclosed as Failed here so ingest's own response can say so
 		// plainly instead of silently reading "ok" with a syntax-only graph.
-		p.noteTypedEdgeStatus(svc.ID, TypedEdgeStatus{
-			PackagesSeen: rep.PackagesTotal,
-			Failed:       true,
-			Reason:       fmt.Sprintf("%d package(s) seen but 0 processed — every package excluded by the connector scope filter", rep.PackagesTotal),
-			Fallback:     rep.Fallback,
+		p.noteTypedEdgeStatus(ctx, svc.ID, TypedEdgeStatus{
+			PackagesSeen:           rep.PackagesTotal,
+			Failed:                 true,
+			Reason:                 fmt.Sprintf("%d package(s) seen but 0 processed — every package excluded by the connector scope filter", rep.PackagesTotal),
+			Fallback:               rep.Fallback,
+			DiscoveryGaps:          rep.DiscoveryGaps,
+			DiscoveryGapFiles:      rep.DiscoveryGapFiles,
+			EdgesDroppedOutOfScope: rep.EdgesDroppedOutOfScope,
 		})
-		fmt.Fprintf(os.Stderr, "fusion: typed-edge pass %q: %d package(s) seen but 0 processed — every package excluded by the connector scope filter; reconcile will purge any previously stored typed edges for this service\n", svc.ID, rep.PackagesTotal)
+		p.diagWarn("fusion: typed-edge pass %q: %d package(s) seen but 0 processed — every package excluded by the connector scope filter; reconcile will purge any previously stored typed edges for this service\n", svc.ID, rep.PackagesTotal)
 	default:
-		p.noteTypedEdgeStatus(svc.ID, TypedEdgeStatus{
-			PackagesSeen: rep.PackagesTotal,
-			Packages:     rep.PackagesLoaded + rep.PackagesCached,
-			EdgesTotal:   edgesTotal,
-			Fallback:     rep.Fallback,
+		p.noteTypedEdgeStatus(ctx, svc.ID, TypedEdgeStatus{
+			PackagesSeen:           rep.PackagesTotal,
+			Packages:               rep.PackagesLoaded + rep.PackagesCached,
+			EdgesTotal:             edgesTotal,
+			Fallback:               rep.Fallback,
+			DiscoveryGaps:          rep.DiscoveryGaps,
+			DiscoveryGapFiles:      rep.DiscoveryGapFiles,
+			EdgesDroppedOutOfScope: rep.EdgesDroppedOutOfScope,
 		})
 	}
 	return rep
+}
+
+// formatFailedTypedPackages renders FailedPackages as a short parenthesised
+// suffix for a log line or Reason string — "" when there is nothing to
+// name (DG-8: a bare "N/M failed" count alone is exactly the gap this
+// exists to close).
+func formatFailedTypedPackages(fp []FailedTypedPackage) string {
+	if len(fp) == 0 {
+		return ""
+	}
+	parts := make([]string, len(fp))
+	for i, f := range fp {
+		parts[i] = fmt.Sprintf("%s: %s", f.PkgID, f.Err)
+	}
+	return " (" + strings.Join(parts, "; ") + ")"
 }
 
 // EnrichTypedEdges loads every Go package under repoPath (pattern "./...",
@@ -397,6 +469,16 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 
 		if len(pkg.Errors) > 0 {
 			report.PackagesFailed++
+			if len(report.FailedPackages) < 5 {
+				msgs := make([]string, len(pkg.Errors))
+				for i, e := range pkg.Errors {
+					msgs[i] = e.Error()
+				}
+				report.FailedPackages = append(report.FailedPackages, FailedTypedPackage{
+					PkgID: pkg.ID,
+					Err:   strings.Join(msgs, "; "),
+				})
+			}
 			continue
 		}
 		hash, hashErr := packageContentHash(repoPath, pkg)
@@ -454,6 +536,16 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 					if len(report.DiscoveryGapFiles) < 5 {
 						report.DiscoveryGapFiles = append(report.DiscoveryGapFiles, f)
 					}
+					// NOT routed through diagWarn/dlog (DG-4 scope note):
+					// EnrichTypedEdges is a package-level exported function
+					// with ~20 direct test callers (typedcalls_test.go and
+					// siblings) that construct no Pipeline at all — adding a
+					// *dlog.Logger parameter here would ripple into every
+					// one of them for a single diagnostic line. p.diagWarn
+					// (this file, enrichTypedEdges above) already covers the
+					// method callers that DO have a Pipeline; this line
+					// keeps its original bare stderr write until a session
+					// takes on that broader signature change deliberately.
 					fmt.Fprintf(os.Stderr, "fusion: typed-edge pass %q: discovery gap — %s exists on disk but was excluded from the connector's allowed set; a typed edge into it was dropped as out-of-scope\n", serviceID, f)
 				}
 			}

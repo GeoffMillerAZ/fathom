@@ -277,12 +277,29 @@ func fleetWiringNotes(path string) (hooks, stanza string) {
 	case err == nil:
 		n := strings.Count(string(data), "fathom")
 		if n == 0 {
-			hooks = "settings.json present, no fathom hooks"
+			// O15/DG-14: a project settings.json with zero fathom
+			// references does not mean fathom has no hooks here —
+			// `fathom init`'s own user-scope dedup (O42) deliberately
+			// wires hooks at ~/.claude/settings.json instead of
+			// per-project whenever they are already present there. Check
+			// that scope before reporting an absence this confidently;
+			// the realization grader (realizationGrade) keys off the
+			// "hook reference" substring, so a genuine user-scope find
+			// grades as wired, not as a gap.
+			if un, ok := userScopeFathomHookCount(); ok && un > 0 {
+				hooks = fmt.Sprintf("wired at user scope (%d fathom hook reference(s) in ~/.claude/settings.json; none in project settings.json)", un)
+			} else {
+				hooks = "settings.json present, no fathom hooks"
+			}
 		} else {
 			hooks = fmt.Sprintf("%d fathom hook reference(s) in project settings", n)
 		}
 	case os.IsNotExist(err):
-		hooks = "no project settings.json (user-scope or plugin wiring not visible from here)"
+		if un, ok := userScopeFathomHookCount(); ok && un > 0 {
+			hooks = fmt.Sprintf("wired at user scope (%d fathom hook reference(s) in ~/.claude/settings.json)", un)
+		} else {
+			hooks = "no project settings.json (user-scope or plugin wiring not visible from here)"
+		}
 	default:
 		hooks = "settings.json unreadable: " + err.Error()
 	}
@@ -298,6 +315,75 @@ func fleetWiringNotes(path string) (hooks, stanza string) {
 		stanza = "unreadable: " + err.Error()
 	}
 	return hooks, stanza
+}
+
+// userScopeFathomHookCount counts "fathom" occurrences in the current
+// user's ~/.claude/settings.json — the same file `fathom init`'s
+// user-scope dedup (O42) and doctor's checkHooksInstalled already treat as
+// a valid wiring scope. ok is false when $HOME cannot be resolved or the
+// file is absent/unreadable, so callers fall back to reporting only what
+// the project scope showed rather than claiming an absence they never
+// checked.
+func userScopeFathomHookCount() (int, bool) {
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return 0, false
+	}
+	data, err := os.ReadFile(filepath.Join(home, ".claude", "settings.json"))
+	if err != nil {
+		return 0, false
+	}
+	// Finding [5]/DG-14: a raw strings.Count(data, "fathom") over the WHOLE
+	// file matched a project's fathom MCP-server registration or
+	// mcp__fathom__* permission entries just as readily as an actual hook
+	// command -- neither of which wires a single hook. Parse the file and
+	// count only genuine hook command entries under the "hooks" key, the
+	// same scope doctor.go's checkHooksInstalled/hookMarkerPresent trusts.
+	var parsed map[string]any
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		// Malformed JSON: nothing here can be honestly confirmed as wired --
+		// never fall back to the substring scan, which is exactly the
+		// false-positive class this rewrite exists to close.
+		return 0, true
+	}
+	hooksObj, _ := parsed["hooks"].(map[string]any)
+	return countFathomHookCommands(hooksObj), true
+}
+
+// countFathomHookCommands counts actual hook COMMAND entries mentioning
+// "fathom" under a parsed settings.json "hooks" object. Deliberately
+// looser than doctor.go's hookMarkerPresent (which requires an EXACT
+// (event, matcher) match against fathomHookSpecs, one fathom's own
+// installer writes) -- this only answers "is there ANY fathom hook entry
+// here at all", the question fleetWiringNotes asks before it reports a
+// user-scope find. hooksObj may be nil (no "hooks" key, or a settings.json
+// that never parsed as an object) -- ranging over a nil map is a no-op.
+func countFathomHookCommands(hooksObj map[string]any) int {
+	n := 0
+	for _, rawGroups := range hooksObj {
+		groups, ok := rawGroups.([]any)
+		if !ok {
+			continue
+		}
+		for _, rawGroup := range groups {
+			group, ok := rawGroup.(map[string]any)
+			if !ok {
+				continue
+			}
+			hooks, _ := group["hooks"].([]any)
+			for _, rawHook := range hooks {
+				hook, ok := rawHook.(map[string]any)
+				if !ok {
+					continue
+				}
+				cmd, _ := hook["command"].(string)
+				if strings.Contains(cmd, "fathom") {
+					n++
+				}
+			}
+		}
+	}
+	return n
 }
 
 func renderFleetReportMD(rep fleetReport) string {

@@ -85,6 +85,50 @@ func TestCheckTypedEdges_PassesWithPackageCount(t *testing.T) {
 	}
 }
 
+// TestCheckTypedEdges_PersistedDowngradesToWarn is the finding [4]
+// regression test: a Persisted=true typed_edges block (DG-10 -- this
+// daemon process has not re-run the typed pass since it started; the
+// answer was replayed from the store) must never read as an
+// indistinguishable PASS -- WARN, naming the RecordedAt watermark, so an
+// operator can tell this might be pre-restart, possibly-stale data.
+func TestCheckTypedEdges_PersistedDowngradesToWarn(t *testing.T) {
+	srv := typedEdgesDaemon(t, `{"known":true,"packages":142,"failed":false,"persisted":true,"recorded_at":"2026-09-01T00:00:00Z"}`)
+	defer srv.Close()
+
+	got := checkTypedEdges(srv.Client(), srv.URL, typedEdgesRepo(t), "svc", true)
+	if got.Status != doctorWarn {
+		t.Fatalf("status = %v, want WARN -- a store-replayed (pre-restart) pass must not read as an indistinguishable fresh PASS (%s)", got.Status, got.Reason)
+	}
+	if !strings.Contains(got.Reason, "2026-09-01T00:00:00Z") {
+		t.Fatalf("reason must name the RecordedAt watermark: %q", got.Reason)
+	}
+	if !strings.Contains(strings.ToLower(got.Reason), "restart") {
+		t.Fatalf("reason must say this may be pre-restart data: %q", got.Reason)
+	}
+}
+
+// TestCheckTypedEdges_DiscoveryGapsWarn is DG-9: a discovery gap (a call
+// target file that EXISTS on disk despite being excluded from the
+// connector's allowed set — a likely partially wedged Discover pass) must
+// turn this row WARN, named with the file, never a silent PASS — but it is
+// non-fatal (the pass itself ran and produced typed edges), so WARN, not
+// FAIL.
+func TestCheckTypedEdges_DiscoveryGapsWarn(t *testing.T) {
+	srv := typedEdgesDaemon(t, `{"known":true,"packages":12,"failed":false,"discovery_gaps":1,"discovery_gap_files":["adapter.go"]}`)
+	defer srv.Close()
+
+	got := checkTypedEdges(srv.Client(), srv.URL, typedEdgesRepo(t), "svc", true)
+	if got.Status != doctorWarn {
+		t.Fatalf("status = %v, want WARN for a discovery gap (%s)", got.Status, got.Reason)
+	}
+	if !strings.Contains(got.Reason, "adapter.go") {
+		t.Fatalf("reason must name the gap file: %q", got.Reason)
+	}
+	if !strings.Contains(got.Reason, "1 discovery gap") {
+		t.Fatalf("reason must name the gap count: %q", got.Reason)
+	}
+}
+
 // `known:false` means this daemon process has not ingested the service —
 // not that the pass succeeded. Reporting it as a pass would be the exact
 // degrade-toward-healthy ADR-027 forbids.

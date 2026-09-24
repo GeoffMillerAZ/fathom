@@ -278,6 +278,13 @@ manifests as a **crash-loop**, with the error on stderr in the launchd log.
 Pre-flight before restarting: run `fathom config` (it loads the very same
 layers and prints the same errors) — if it exits 0, the daemon will start.
 
+**`FATHOM_LOG_LEVEL`** (env var, not a config key; diagnostics sweep DG-1)
+sets the daemon's leveled `internal/dlog` output: `debug` / `info` / `warn`
+/ `error`, case-insensitive. Unset or unrecognized falls back to `info` —
+never a startup error, an operational tuning knob like `FATHOM_SCAVENGE_INTERVAL`
+above. See `docs/guides/fleet-index.md`'s "Daemon logging" section for the
+log format, rotation and dedupe-summary behavior this controls.
+
 ## The decision port: `[decide]`
 
 Off by default. When set, the daemon asks a typed decision model (vision 32,

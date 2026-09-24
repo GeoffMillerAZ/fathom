@@ -32,6 +32,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -605,7 +606,36 @@ func checkBinaryFresh(root string) doctorCheck {
 		return doctorCheck{Name: name, Status: doctorPass, Reason: reason}
 	}
 
+	// DG-13: a bare inequality FAIL cannot tell "binary is stale, deploy
+	// catches it up" from "this checkout is behind the running binary,
+	// deploying now would REBUILD FROM THE OLDER TREE and reinstall a
+	// regression". Resolve the direction with `git merge-base
+	// --is-ancestor` before picking the reason/remedy; only when neither
+	// side is an ancestor of the other (diverged history, or one revision
+	// is unknown to this repo — e.g. a shallow clone) does this fall back
+	// to today's direction-less message and generic remedy.
 	reason := fmt.Sprintf("this binary @ %s does not match HEAD %s of its own source tree (local binary only; the daemon's build is daemon_fresh's row)", shortSHA(rev), shortSHA(head))
+	freshRemedy := remedy
+	if binaryBehind, ok := gitIsAncestor(root, rev, head); ok && binaryBehind {
+		// rev is an ancestor of head: the binary was built from an older
+		// commit than HEAD. Deploying is the correct fix.
+		reason = fmt.Sprintf("binary @ %s is behind HEAD %s", shortSHA(rev), shortSHA(head))
+		if n, ok := gitCommitCount(root, rev, head); ok {
+			reason = fmt.Sprintf("binary @ %s is %d commit(s) behind HEAD %s", shortSHA(rev), n, shortSHA(head))
+		}
+		reason += " — deploy to catch up"
+	} else if checkoutBehind, ok := gitIsAncestor(root, head, rev); ok && checkoutBehind {
+		// head is an ancestor of rev: this checkout has NOT pulled the
+		// commits the running binary was built from. Deploying from here
+		// would rebuild from the older tree and reinstall a regression
+		// over the currently-running binary.
+		reason = fmt.Sprintf("local checkout HEAD %s is behind the running binary @ %s", shortSHA(head), shortSHA(rev))
+		if n, ok := gitCommitCount(root, head, rev); ok {
+			reason = fmt.Sprintf("local checkout HEAD %s is %d commit(s) behind the running binary @ %s", shortSHA(head), n, shortSHA(rev))
+		}
+		reason += " — do not deploy from here (would install a regression); pull the latest commits first"
+		freshRemedy = "git pull/fetch to bring this checkout up to the running binary's revision, then re-run doctor — do NOT run task deploy from here: it would rebuild from this older tree and reinstall a regression over the currently-running binary"
+	}
 	// Worktree-stamp caveat (this repo's own history — CLAUDE.md's
 	// "Dogfood" section, docs/dogfood-observations.md O3): only asserted
 	// when it can actually be verified — a linked git worktree's own .git
@@ -617,7 +647,44 @@ func checkBinaryFresh(root string) doctorCheck {
 	if isGitWorktree(root) {
 		reason += " (note: this path is a linked git worktree — if the binary was built from a different worktree of the same repo, a mismatch may reflect worktree divergence rather than a stale deploy)"
 	}
-	return doctorCheck{Name: name, Status: doctorFail, Reason: reason, Remedy: remedy}
+	return doctorCheck{Name: name, Status: doctorFail, Reason: reason, Remedy: freshRemedy}
+}
+
+// gitIsAncestor reports whether ancestor is an ancestor of (or equal to)
+// descendant in root's git history, via `git merge-base --is-ancestor`.
+// The second return is false when the question could not be answered at
+// all (git unavailable, or a revision unknown to this repo — e.g. a
+// shallow clone) — callers must treat that as "undetermined", never as a
+// negative answer.
+func gitIsAncestor(root, ancestor, descendant string) (bool, bool) {
+	err := exec.Command("git", "-C", root, "merge-base", "--is-ancestor", ancestor, descendant).Run()
+	if err == nil {
+		return true, true
+	}
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) && exitErr.ExitCode() == 1 {
+		// Exit 1 means the question was answered: not an ancestor.
+		return false, true
+	}
+	// Any other failure (exit 128 "unknown revision", git missing, …)
+	// means the question itself could not be answered.
+	return false, false
+}
+
+// gitCommitCount returns the number of commits reachable from `to` but not
+// from `from` (`git rev-list --count from..to`). ok is false when the
+// count could not be determined; the caller then omits the number rather
+// than guessing.
+func gitCommitCount(root, from, to string) (int, bool) {
+	out, err := exec.Command("git", "-C", root, "rev-list", "--count", from+".."+to).Output()
+	if err != nil {
+		return 0, false
+	}
+	n, err := strconv.Atoi(strings.TrimSpace(string(out)))
+	if err != nil {
+		return 0, false
+	}
+	return n, true
 }
 
 func doctorGitHead(root string) (string, error) {

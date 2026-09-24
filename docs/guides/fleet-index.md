@@ -80,6 +80,40 @@ with a plain message on a mismatch — never stumbling into that refusal and
 reporting a confusing "daemon refresh failed" line for what is really "this
 hook is running inside the wrong checkout".
 
+## Daemon logging (diagnostics sweep, 2026-09-23)
+
+Every daemon diagnostic line now goes through `internal/dlog` — a leveled,
+timestamped `log/slog` wrapper with per-key dedupe — instead of a bare,
+unattributable `fmt.Fprintf(stderr/stdout, ...)`. Before this sweep the
+daemon's error log carried no timestamps at all, and one condition (a stale
+`list_services` re-walk against a vanished service root) alone was measured
+at 97%+ of the entire log's volume with no dedup.
+
+- **`FATHOM_LOG_LEVEL`** (env, unset default `info`): `debug` / `info` /
+  `warn` / `error`, case-insensitive; an unset or unrecognized value falls
+  back to `info` rather than refusing to start — an operational tuning
+  knob, the same convention `FATHOM_SCAVENGE_INTERVAL` follows.
+- **Format**: RFC3339-timestamped, leveled text lines
+  (`slog.NewTextHandler`). A repeating condition (the same dedupe key) logs
+  once immediately, then folds every further occurrence into one
+  `"<msg> (repeated N times since <first-seen>)"` line flushed on the same
+  cadence as the memory scavenger (`FATHOM_SCAVENGE_INTERVAL`, default 15
+  min) and once at graceful shutdown.
+- **Rotation**: the launchd-piped `~/.fathom/logs/fathom-http.log`/`.err`
+  are truncated in place (not renamed — launchd holds the fd open for the
+  daemon's entire lifetime) once either exceeds 64MB, keeping exactly one
+  prior generation (`fathom-http.log.1`); piggybacked on the same ticker as
+  the memory scavenger, so `FATHOM_SCAVENGE=off` pauses log rotation too.
+- **`X-Fathom-Request-Id`**: every HTTP response now carries this header
+  (also logged on the per-request access line — method, path, status,
+  duration) so a request an operator sees fail can be traced back to its
+  server-side log line without guessing from method/path/timing alone.
+- **Startup bind retry**: if the configured address is already in use (a
+  previous instance from a self-restart or `task deploy` still exiting),
+  the daemon retries the bind with backoff for up to 10s, logging each
+  attempt at `warn`, before failing with the original bind error — absorbs
+  the launchd restart race without masking a genuinely stuck port forever.
+
 ## Working against the index
 
 1. **A verb first, a lookup second (ADR-035 decision 1, docs/vision/
@@ -270,9 +304,35 @@ O108, `docs/plans/daemon-footprint.md`), reaching 12 GB (11 GB compressed) over
 it's felt, not after:
 
 ```sh
-curl -s localhost:7575/metrics | grep -E 'heap_(inuse|sys)_bytes|goroutines|graph_memo|open_stores|typed_pass|memory_limit'
+curl -s localhost:7575/metrics | grep -E 'heap_(inuse|sys)_bytes|goroutines|graph_memo|open_stores|typed_pass|memory_limit|resident_memory|phys_footprint'
 fathom doctor   # daemon_footprint row: WARN above 2 GiB heap in-use, names the memory limit too
 ```
+
+**Footprint vs heap — read the right gauge (DG-16, diagnostics sweep).**
+`/metrics` carries two DIFFERENT kinds of memory number; conflating them
+misreads the daemon's health:
+
+- `go_memstats_heap_sys_bytes`/`go_memstats_heap_inuse_bytes` are the Go
+  RUNTIME's own view — `heap_sys` is a high-water mark that never
+  decreases for the process's life (it is the OS memory the Go allocator
+  has ever reserved, not what is live now); the scavenger (below) is what
+  brings the OS-visible number back down after a peak.
+- `process_resident_memory_bytes` (darwin: `proc_pid_rusage`'s
+  `ri_resident_size`; linux: `/proc/self/status`'s `VmRSS`) is the OS's own
+  LIVE reading — the same figure `top`'s RES column shows right now.
+  Darwin also exports `process_phys_footprint_bytes` (`ri_phys_footprint`)
+  — the figure Activity Monitor's own "Memory" column reads, which
+  additionally accounts for compressed pages `ri_resident_size` does not.
+  Neither line is emitted, ever, on a platform/build without a proven live
+  reading (a fabricated zero would be worse than an absent line).
+- `process_max_resident_memory_bytes` (darwin and linux, `getrusage`'s
+  `ru_maxrss`, normalized to bytes) is an **honestly-named peak** —
+  it is `heap_sys`'s OS-level sibling: also a high-water mark that never
+  decreases, useful ALONGSIDE the two live gauges above to see the same
+  peak-vs-live divergence O108 was about, without cross-referencing the Go
+  runtime's own accounting. **Never read this line as "current usage" —
+  that was the exact naming mistake O108's own instrumentation had to
+  correct (getrusage's Maxrss is a peak, not a current value).**
 
 Read the daemon's OS-visible footprint with `top -pid <pid> -stats mem,cmprs`
 (or `/metrics`' `go_memstats_heap_sys_bytes`), never `ps`'s RSS column — `ps`
@@ -331,6 +391,28 @@ apply; no prose changes)`, not stale). The observatory's wiring page
 returned `plan_digest`, 409 if the repo changed → `undo` with the
 `receipt_digest`); its mutating endpoints accept loopback, same-origin
 requests for registered service roots only.
+
+**A service whose recorded root vanished (DG-18, diagnostics sweep).**
+`list_services` used to re-walk every registered service's filesystem on
+EVERY call (`fleetAdapter.UnsupportedLanguagesFor` → `client.Sources` →
+`connector.Discover`) — measured live as the fleet's single most expensive
+MCP call (~31k calls, p95 4.6s, max 182s), almost entirely spent re-lstating
+a corpus root that no longer existed (a cleaned-up scratch clone, most
+often). The result is now memoized per (service, store watermark) — computed
+once per ingest, never re-walked to answer a read — and a vanished root is
+reported structurally instead of as a live-re-walk error: `list_services`
+returns `"root_missing": true` plus a `"remedy"` field on that service's
+entry, naming the cleanup command:
+
+```sh
+fathom fleet   # or the remove_service MCP tool directly
+```
+
+This never runs automatically — deregistering a service record is an
+owner decision (a stale `demo` service and similar scratch-rooted entries
+are a known, deliberately-deferred cleanup item; see
+`docs/plans/diagnostics-sweep.md`'s Owner-decision section) — `list_services`
+only makes the absence cheap to detect and visible, never acted on.
 
 ## Rebuilding the fleet index
 

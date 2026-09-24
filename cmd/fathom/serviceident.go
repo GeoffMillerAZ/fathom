@@ -8,10 +8,17 @@ import (
 )
 
 // serviceCandidate is one (service name, corpus root) identity guess for a
-// Claude Code project directory.
+// Claude Code project directory. verified is true only for the candidate
+// resolveIndexedCandidate(Cached) returned — i.e. one the daemon itself
+// records a live ServiceMeta.Path for (DG-11) — never for a bare basename/
+// git-toplevel guess, which carries no such backing at all. It is set by
+// candidatesWithDaemon on the struct it hands to mergeCandidates, not by
+// mergeCandidates itself, so a caller building its own serviceCandidate
+// literals (as the O1 tests do) is unaffected: the zero value is false.
 type serviceCandidate struct {
-	name string
-	root string
+	name     string
+	root     string
+	verified bool
 }
 
 // serviceCandidates returns identity guesses for projDir, in preference order:
@@ -54,8 +61,22 @@ func gitToplevel(dir string) string {
 // the basename candidates exactly as before. Symlinks are resolved on both
 // sides so /var vs /private/var style aliases cannot defeat the match.
 func resolveIndexedCandidate(hc *http.Client, baseURL, projDir string) (serviceCandidate, bool) {
-	svcs, _ := fetchServices(hc, baseURL) // fail-open: resolution has its own fallbacks
-	return resolveFromServices(svcs, projDir)
+	cand, ok, _ := resolveIndexedCandidateErr(hc, baseURL, projDir)
+	return cand, ok
+}
+
+// resolveIndexedCandidateErr is resolveIndexedCandidate plus the raw
+// fetchServices error (DG-12): resolveIndexedCandidate's every other
+// caller wants the fail-open (cand, ok) pair exactly as before and stays
+// on it unchanged; only the cache layer (identcache.go) needs to tell "the
+// round trip itself failed" (network error, timeout under load) apart
+// from "the round trip succeeded and genuinely found no match" — the two
+// collapse to the same ok=false here otherwise, but only the FIRST should
+// ever trigger a stale-cache fallback.
+func resolveIndexedCandidateErr(hc *http.Client, baseURL, projDir string) (serviceCandidate, bool, error) {
+	svcs, err := fetchServices(hc, baseURL)
+	cand, ok := resolveFromServices(svcs, projDir)
+	return cand, ok, err
 }
 
 // resolveFromServices is resolveIndexedCandidate over an already-fetched
@@ -135,10 +156,24 @@ func resolveFromServices(svcs map[string]svcInfo, projDir string) (serviceCandid
 // the daemon again.
 func candidatesWithDaemon(hc *http.Client, baseURL, projDir string) []serviceCandidate {
 	base := serviceCandidates(projDir)
-	resolved, ok := resolveIndexedCandidateCached(hc, baseURL, projDir)
+	resolved, ok, stale := resolveIndexedCandidateCached(hc, baseURL, projDir)
 	if !ok {
 		return base
 	}
+	// DG-11: mark this candidate as daemon-verified BEFORE merging — the
+	// only caller that stamps this flag, so a test constructing its own
+	// serviceCandidate literals (TestMergeCandidatesNeverCollapses) or
+	// calling resolveFromServices directly never sees it set implicitly.
+	//
+	// finding [3]/DG-12: verified must mean a genuinely FRESH daemon
+	// confirmation, never a stale-served replay (up to identCacheStaleServeMax
+	// old, and possibly wrong after a remap/rename/service removal in the
+	// meantime) — stamping a stale answer as verified let
+	// renderPostEdit's DG-11 short-circuit (`if cand.verified { break }`)
+	// lock onto a since-invalidated identity instead of trying the next,
+	// possibly-correct candidate: exactly the O15-class regression DG-11
+	// exists to prevent, reintroduced through this client-side cache.
+	resolved.verified = !stale
 	return mergeCandidates(resolved, base)
 }
 

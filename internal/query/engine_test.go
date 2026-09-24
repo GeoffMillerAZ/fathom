@@ -568,6 +568,40 @@ func TestFindSymbol_SymbolKeySuffixMatch(t *testing.T) {
 	}
 }
 
+// TestFindSymbol_PointerReceiverSyntaxPrefersMethodOverSameNamedType is the
+// finding [8] regression test (DG-10 plan-row spurious-match class): a
+// plan contract written in ordinary Go doc syntax for a pointer-receiver
+// method, "(*Pipeline).TypedEdgeStatus", must resolve to the METHOD the
+// extractor stores as "Pipeline.TypedEdgeStatus" (receiverTypeName never
+// keeps the pointer star or parens) -- not to an unrelated TYPE of the
+// same bare name matched only via the loose bidirectional suffix rule.
+func TestFindSymbol_PointerReceiverSyntaxPrefersMethodOverSameNamedType(t *testing.T) {
+	obs := []core.Observation{
+		// The TYPE declaration -- same bare name as the method below, at a
+		// different line: the exact collision the finding describes.
+		{ServiceID: "svc", ConcernID: "c", Symbol: "TypedEdgeStatus", SourceKind: core.KindGoType, Claim: "type", EvidenceTier: core.TierVerified, SourceRef: "typedenv.go", Line: 213, IngestedAt: epoch},
+		// The METHOD -- stored as "Pipeline.TypedEdgeStatus" (extractor's
+		// dotted receiver form; it never keeps the pointer star or parens).
+		{ServiceID: "svc", ConcernID: "c", Symbol: "Pipeline.TypedEdgeStatus", SourceKind: core.KindGoMethod, Claim: "method", EvidenceTier: core.TierVerified, SourceRef: "typedenv.go", Line: 266, IngestedAt: epoch},
+	}
+	ms := newStore(t, obs)
+	e := query.New(ms)
+
+	nodes, err := e.FindSymbol(context.Background(), "svc", "(*Pipeline).TypedEdgeStatus")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// Exactly one match, never the type ALONGSIDE the method: a caller
+	// building a canonical key from this result (verify's package-scoped
+	// distinctKeys narrowing) must see one unambiguous symbol.
+	if len(nodes) != 1 {
+		t.Fatalf("got %d matches, want exactly 1 (the method only): %+v", len(nodes), nodes)
+	}
+	if nodes[0].Kind != core.KindGoMethod || nodes[0].Line != 266 {
+		t.Errorf("nodes[0] = %+v, want the METHOD (line 266), not the same-named TYPE (line 213)", nodes[0])
+	}
+}
+
 func TestFindSymbol_NoMatch(t *testing.T) {
 	obs := []core.Observation{
 		{ServiceID: "svc", ConcernID: "c", Symbol: "ValidateToken", Claim: "validates JWT", EvidenceTier: core.TierVerified, SourceRef: "auth.go", IngestedAt: epoch},
