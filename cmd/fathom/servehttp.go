@@ -242,8 +242,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 		outLog.Info("scavenge: OFF (FATHOM_SCAVENGE=off) — the daemon's OS-visible footprint may not shrink after a peak (O108); fathom-http.log/.err rotation (DG-6) is paused too")
 	} else {
 		go runMemoryScavenger(context.Background(), scavengeIntervalFromEnv(), outLog, func() {
-			debug.FreeOSMemory()
-			rotateDaemonStdio(outFile, errFile, daemonStdioRotateBytes, flog)
+			scavengeTick(outFile, errFile, daemonStdioRotateBytes, outLog, flog, time.Now)
 		})
 	}
 

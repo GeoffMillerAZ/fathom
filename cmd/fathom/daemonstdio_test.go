@@ -6,10 +6,12 @@ package main
 // sparse-file hole of NUL bytes), and one prior generation must be kept.
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -147,5 +149,119 @@ func TestRotateDaemonStdio_NoHomeDir_NoOp(t *testing.T) {
 	t.Setenv("HOME", "")
 	t.Setenv("USERPROFILE", "") // windows' os.UserHomeDir fallback
 	log := dlog.New(io.Discard, dlog.LevelDebug, time.Now)
-	rotateDaemonStdio(nil, nil, 100, log) // must not panic
+	rotateDaemonStdio(nil, nil, 100, log, log) // must not panic
+}
+
+// TestTruncateStdioIfNeeded_ConcurrentWriterNeverProducesSparseHole is the
+// finding [1] regression test: the daemon's *dlog.Logger writes to the SAME
+// *os.File this function truncates (servehttp.go's flog/outLog share their
+// underlying os.Stdout/os.Stderr with rotateDaemonStdio's out/errW), from
+// many concurrent request-handling goroutines, 24/7. Before
+// Logger.WithWriteLock existed, a Write landing between Truncate(0) and
+// Seek(0, io.SeekStart) would land at the pre-truncate offset, padding the
+// file with NUL bytes up to there — this test drives real concurrent
+// writers THROUGH THE LOGGER against the exact file being rotated and
+// proves no such hole appears, and that no logged line is torn/corrupted.
+func TestTruncateStdioIfNeeded_ConcurrentWriterNeverProducesSparseHole(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "fathom-http.log")
+	f := openSameFile(t, path)
+
+	log := dlog.New(f, dlog.LevelDebug, time.Now)
+
+	// Get the file over the rotation threshold up front so the very first
+	// truncateStdioIfNeeded call fires immediately, maximizing overlap with
+	// the concurrent writers below instead of racing a size check.
+	if _, err := f.WriteString(strings.Repeat("x", 200)); err != nil {
+		t.Fatal(err)
+	}
+
+	const writers = 16
+	const linesPerWriter = 50
+	var wg sync.WaitGroup
+	stop := make(chan struct{})
+
+	for i := 0; i < writers; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			for j := 0; j < linesPerWriter; j++ {
+				log.Info(fmt.Sprintf("writer %d line %d", id, j))
+			}
+		}(i)
+	}
+
+	// Fire rotation repeatedly WHILE the writers above are active, exactly
+	// like the daemon's scavenge ticker racing live request-handling
+	// goroutines.
+	var rotateWG sync.WaitGroup
+	rotateWG.Add(1)
+	go func() {
+		defer rotateWG.Done()
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+				truncateStdioIfNeeded(f, path, 100, log)
+			}
+		}
+	}()
+
+	wg.Wait()
+	close(stop)
+	rotateWG.Wait()
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("reading %s: %v", path, err)
+	}
+	if idx := strings.IndexByte(string(data), 0); idx >= 0 {
+		t.Fatalf("found a NUL byte at offset %d — a concurrent write raced Truncate+Seek and left a sparse hole", idx)
+	}
+	// Every non-empty line must be a COMPLETE, well-formed log line (never
+	// a torn fragment of two interleaved writes) — slog's text handler
+	// always starts a line with "time=".
+	for _, line := range strings.Split(strings.TrimRight(string(data), "\n"), "\n") {
+		if line == "" {
+			continue
+		}
+		if !strings.HasPrefix(line, "time=") {
+			t.Fatalf("corrupted/torn log line (does not start with \"time=\"): %q", line)
+		}
+	}
+}
+
+// TestScavengeTick_FlushesDedupeOnBothLoggers is the finding [2]/[7]
+// regression test: Logger.FlushDedupe (DG-2) was fully implemented and
+// unit-tested in internal/dlog but never called from any production code
+// path. scavengeTick is what servehttp.go's scavenge-ticker closure now
+// calls every interval — this proves it actually flushes BOTH loggers'
+// deduped counts (each Logger owns its own independent dedupeState), not
+// just one.
+func TestScavengeTick_FlushesDedupeOnBothLoggers(t *testing.T) {
+	var outBuf, errBuf strings.Builder
+	fixed := time.Date(2026, 9, 23, 12, 0, 0, 0, time.UTC)
+	outLog := dlog.New(&outBuf, dlog.LevelDebug, func() time.Time { return fixed })
+	flog := dlog.New(&errBuf, dlog.LevelDebug, func() time.Time { return fixed })
+
+	// Seed a repeating condition on EACH logger so a flush has something to
+	// report.
+	for i := 0; i < 3; i++ {
+		outLog.Dedupe(dlog.LevelWarn, "out-key", "out condition: %d", i)
+		flog.Dedupe(dlog.LevelWarn, "err-key", "fleet: sources for demo: %d", i)
+	}
+	outBuf.Reset()
+	errBuf.Reset()
+
+	// nil files: rotateDaemonStdio degrades to a no-op for those (see
+	// TestRotateDaemonStdio_NoHomeDir_NoOp) — this test is only about the
+	// dedupe-flush wiring, not rotation itself.
+	scavengeTick(nil, nil, 100, outLog, flog, func() time.Time { return fixed.Add(time.Minute) })
+
+	if !strings.Contains(outBuf.String(), "repeated 2 times") {
+		t.Errorf("scavengeTick did not flush outLog's dedupe summary; got %q", outBuf.String())
+	}
+	if !strings.Contains(errBuf.String(), "repeated 2 times") {
+		t.Errorf("scavengeTick did not flush flog's dedupe summary; got %q", errBuf.String())
+	}
 }

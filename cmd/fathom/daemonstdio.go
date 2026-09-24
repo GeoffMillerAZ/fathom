@@ -31,9 +31,34 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime/debug"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/dlog"
 )
+
+// scavengeTick is the periodic housekeeping runMemoryScavenger's ticker
+// fires each interval (O108 memory return, DG-6 log rotation, and
+// finding [2]/[7]'s dedupe-flush) — factored out of the ticker's closure
+// (servehttp.go) so the wiring is unit-testable instead of only provable
+// by waiting on a real ticker. now is injected (never time.Now directly)
+// so a test can assert FlushDedupe ran without depending on wall time.
+//
+// outLog and flog each own an independent dedupeState (dlog.New
+// constructs one per Logger), so both need their own flush: before this,
+// Logger.FlushDedupe (DG-2) was fully implemented and unit-tested but
+// never called from any production code path, so a deduped repeating
+// condition (e.g. fleetAdapter's "fleet: sources for %s" warning) logged
+// its first occurrence and then silently suppressed every further one for
+// the rest of the process's life — worse than the bare fmt.Fprintf it
+// replaced, since an operator had no way to tell "happened once" from
+// "still happening."
+func scavengeTick(outFile, errFile *os.File, maxBytes int64, outLog, flog *dlog.Logger, now func() time.Time) {
+	debug.FreeOSMemory()
+	rotateDaemonStdio(outFile, errFile, maxBytes, outLog, flog)
+	outLog.FlushDedupe(now())
+	flog.FlushDedupe(now())
+}
 
 // daemonStdioRotateBytes bounds fathom-http.log/.err, mirroring
 // beats.go's beatLogRotateBytes. A package var (not a const) so tests can
@@ -59,21 +84,37 @@ func daemonLogDir() (string, bool) {
 // so tests can substitute real temp files for os.Stdout/os.Stderr — the
 // production caller (servehttp.go, piggybacking the scavenge ticker) passes
 // those two directly.
-func rotateDaemonStdio(out, errW *os.File, maxBytes int64, log *dlog.Logger) {
+//
+// outLog/errLog are the loggers that ACTUALLY write to out/errW
+// respectively (servehttp.go's outLog writes to stdout, flog to stderr) —
+// two, not one, because truncateStdioIfNeeded must serialize its
+// Truncate+Seek against the SAME lock the file's own writer uses
+// (Logger.WithWriteLock, finding [1]/DG-1+DG-6): locking the wrong
+// logger's mutex would leave the exact race it exists to close wide open
+// for whichever file that mismatched logger doesn't actually write to.
+func rotateDaemonStdio(out, errW *os.File, maxBytes int64, outLog, errLog *dlog.Logger) {
 	dir, ok := daemonLogDir()
 	if !ok {
 		return
 	}
 	if out != nil {
-		truncateStdioIfNeeded(out, filepath.Join(dir, "fathom-http.log"), maxBytes, log)
+		truncateStdioIfNeeded(out, filepath.Join(dir, "fathom-http.log"), maxBytes, outLog)
 	}
 	if errW != nil {
-		truncateStdioIfNeeded(errW, filepath.Join(dir, "fathom-http.err"), maxBytes, log)
+		truncateStdioIfNeeded(errW, filepath.Join(dir, "fathom-http.err"), maxBytes, errLog)
 	}
 }
 
 // truncateStdioIfNeeded is rotateDaemonStdio's per-file worker; see this
 // file's header comment for why it truncates in place instead of renaming.
+//
+// log MUST be the Logger that writes to f (never some other stream's
+// logger): the backup-read/Truncate/Seek sequence runs inside
+// log.WithWriteLock so it can never interleave with a concurrent
+// Debug/Info/Warn/Error call's Write landing between the Truncate and the
+// Seek — which would otherwise leave a sparse hole of NUL bytes in f
+// (finding [1]: the daemon runs 24/7 with many goroutines logging through
+// the very same *os.File this function truncates).
 func truncateStdioIfNeeded(f *os.File, path string, maxBytes int64, log *dlog.Logger) {
 	fInfo, err := f.Stat()
 	if err != nil || fInfo.Size() < maxBytes {
@@ -95,16 +136,31 @@ func truncateStdioIfNeeded(f *os.File, path string, maxBytes int64, log *dlog.Lo
 		log.Warn(fmt.Sprintf("log-rotate: reading %s to back it up before truncating: %v", path, readErr))
 	}
 
-	if err := f.Truncate(0); err != nil {
-		log.Warn(fmt.Sprintf("log-rotate: truncating %s: %v", path, err))
+	// Only the Truncate+Seek pair itself needs log.WithWriteLock — NOT the
+	// log.Warn/log.Info calls around it, which would DEADLOCK: they write
+	// through this SAME Logger's lockedWriter, which takes the SAME
+	// (non-reentrant) mutex WithWriteLock is already holding. Scoping the
+	// lock to just these two calls is also exactly what closes the race:
+	// any concurrent Debug/Info/Warn/Error call's Write blocks on the same
+	// mutex until BOTH the Truncate and the Seek have completed, so it can
+	// never land at the pre-truncate offset.
+	var truncErr, seekErr error
+	log.WithWriteLock(func() {
+		if truncErr = f.Truncate(0); truncErr != nil {
+			return
+		}
+		// The write offset survives Truncate — without this Seek, the next
+		// write would land at the file's OLD length, leaving a sparse hole
+		// of NUL bytes from 0 to there instead of starting the new
+		// generation at byte 0.
+		_, seekErr = f.Seek(0, io.SeekStart)
+	})
+	if truncErr != nil {
+		log.Warn(fmt.Sprintf("log-rotate: truncating %s: %v", path, truncErr))
 		return
 	}
-	// The write offset survives Truncate — without this Seek, the next
-	// write would land at the file's OLD length, leaving a sparse hole of
-	// NUL bytes from 0 to there instead of starting the new generation at
-	// byte 0.
-	if _, err := f.Seek(0, io.SeekStart); err != nil {
-		log.Warn(fmt.Sprintf("log-rotate: resetting write offset for %s: %v", path, err))
+	if seekErr != nil {
+		log.Warn(fmt.Sprintf("log-rotate: resetting write offset for %s: %v", path, seekErr))
 		return
 	}
 	log.Info(fmt.Sprintf("log-rotate: %s exceeded %d bytes, truncated in place (one prior generation kept at %s.1)", path, maxBytes, path))

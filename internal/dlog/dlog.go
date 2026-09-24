@@ -21,6 +21,7 @@ import (
 	"io"
 	"log/slog"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -82,6 +83,24 @@ type Logger struct {
 	now     func() time.Time
 
 	dedupe *dedupeState
+
+	// writeMu is the SAME lock lockedWriter takes around every Write to
+	// the underlying io.Writer (see New and WithWriteLock's doc comment).
+	writeMu *sync.Mutex
+}
+
+// lockedWriter serializes every Write through mu — installed as every
+// Logger's underlying writer so WithWriteLock can hand an external caller
+// that same lock (see below).
+type lockedWriter struct {
+	mu *sync.Mutex
+	w  io.Writer
+}
+
+func (lw *lockedWriter) Write(p []byte) (int, error) {
+	lw.mu.Lock()
+	defer lw.mu.Unlock()
+	return lw.w.Write(p)
 }
 
 // New constructs a Logger writing slog's text format (RFC3339 timestamps,
@@ -89,7 +108,8 @@ type Logger struct {
 // now supplying every record's timestamp (injected, per the determinism
 // contract — production callers pass time.Now, tests pass a fixed clock).
 func New(w io.Writer, level Level, now func() time.Time) *Logger {
-	h := slog.NewTextHandler(w, &slog.HandlerOptions{
+	mu := &sync.Mutex{}
+	h := slog.NewTextHandler(&lockedWriter{mu: mu, w: w}, &slog.HandlerOptions{
 		Level: level.slog(),
 		ReplaceAttr: func(_ []string, a slog.Attr) slog.Attr {
 			if a.Key == slog.TimeKey {
@@ -100,7 +120,20 @@ func New(w io.Writer, level Level, now func() time.Time) *Logger {
 			return a
 		},
 	})
-	return &Logger{handler: h, now: now, dedupe: newDedupeState()}
+	return &Logger{handler: h, now: now, dedupe: newDedupeState(), writeMu: mu}
+}
+
+// WithWriteLock runs fn while holding the SAME lock this Logger uses to
+// serialize its own writes to the underlying io.Writer. A caller that must
+// manipulate the writer's underlying file directly — log rotation's
+// Truncate+Seek, in particular — takes this lock around that critical
+// section so it can never interleave with a concurrent Debug/Info/Warn/
+// Error call's Write landing between the Truncate and the Seek (which
+// would otherwise leave a sparse hole of NUL bytes: finding [1]/DG-6+DG-1).
+func (l *Logger) WithWriteLock(fn func()) {
+	l.writeMu.Lock()
+	defer l.writeMu.Unlock()
+	fn()
 }
 
 func (l *Logger) emit(level Level, msg string, args ...any) {
