@@ -67,8 +67,8 @@ func (integrityPlane) Check(ctx context.Context, in Input) (findings []Finding, 
 	}
 
 	scopeEvidence := scopeEvidenceAt(in.BaseFile)
-	manifestCertifies := manifestCertifiesAt(in.Root)
-	invariantTests := invariantTestsAt(in.Root)
+	manifestCertifies := manifestCertifiesAt(ctx, in)
+	invariantTests := invariantTestsAt(in.BaseFile)
 	changedSymbols, reaches := reachabilityFrom(ctx, in)
 
 	guard := integrity.GuardedInput{
@@ -226,20 +226,38 @@ func scopeEvidenceAt(baseFile func(string) ([]byte, bool, error)) []string {
 	return integrity.ExtractScopeEvidenceTests(b)
 }
 
-// manifestCertifiesAt decodes root's tests/*.cue suite manifests
-// (testevidence.LoadManifests) and flattens every #Certifies entry's test
-// names. Read from root's CURRENT working tree, not base — LoadManifests
-// has no git-ref parameter and conserve.Input carries no directory-listing
-// primitive to build one from BaseFile alone (disclosed simplification: a
-// manifest's certifies declarations changing on the SAME day as a rename
-// they would excuse is the narrow case this approximation misses).
-// Malformed or absent manifests degrade to an empty list, never an error —
-// LoadManifests already treats "no tests/ dir" as (nil, nil, nil).
-func manifestCertifiesAt(root string) []string {
-	if root == "" {
+// manifestCertifiesAt decodes tests/*.cue suite manifests AT in.Base — via
+// `git ls-tree` for the path listing (gitLsTree, governance.go's own
+// exception to "changed files only": a listing costs nothing like a
+// content re-ingest) and in.BaseFile for each one's content — and flattens
+// every #Certifies entry's test names. Design §1.2 says guardedness is
+// judged "at base": reading root's CURRENT working tree instead (as this
+// function used to) lets an agent launder a rename or deletion by dropping
+// the SAME manifest's certifies entry in the same change — the guarded
+// test then has zero reasons on EITHER side and Check reports nothing,
+// not merely excuses an already-reported loss (the i28-laundering pattern
+// ADR-044 exists to catch). Malformed or absent manifests, or a missing
+// Root/BaseFile, degrade to an empty list, never an error —
+// LoadManifestsFromContents already treats "no tests/*.cue at this ref"
+// as (nil, nil, nil).
+func manifestCertifiesAt(ctx context.Context, in Input) []string {
+	if in.Root == "" || in.BaseFile == nil {
 		return nil
 	}
-	manifests, _, err := testevidence.LoadManifests(root)
+	paths, err := gitLsTree(ctx, in.Root, in.Base)
+	if err != nil {
+		return nil
+	}
+	files := map[string][]byte{}
+	for _, p := range paths {
+		if path.Dir(p) != "tests" || !strings.HasSuffix(p, ".cue") {
+			continue
+		}
+		if b, ok, ferr := in.BaseFile(p); ferr == nil && ok {
+			files[p] = b
+		}
+	}
+	manifests, _, err := testevidence.LoadManifestsFromContents(files)
 	if err != nil {
 		return nil
 	}
@@ -256,25 +274,27 @@ func manifestCertifiesAt(root string) []string {
 	return setToSortedSlice(seen)
 }
 
-// invariantTestsAt loads root's intent corpus (internal/intent.Load) and
-// flattens every invariant row's enforcement-column test names. Same
-// current-tree caveat as manifestCertifiesAt (intent.Load has no base-ref
-// parameter either).
-func invariantTestsAt(root string) []string {
-	if root == "" {
+// invariantTestsAt reads docs/intent/invariants.md AT BASE (via baseFile,
+// the same git-show discipline scopeEvidenceAt already applies to
+// scope.md) and returns every enforcement-column test name
+// (intent.ExtractInvariantEnforcementTests). Design §1.2 says guardedness
+// is judged "at base": reading intent.Load(root) against root's CURRENT
+// working tree instead (as this function used to) lets an agent launder a
+// rename or deletion by dropping the SAME row's test citation in the same
+// change, guarding the test on neither side — the invariants.md half of
+// the i28-laundering pattern above. An absent file (no docs/intent/ at
+// all, or ok=false for any other reason) is silently empty, the same
+// honest-absence handling ExtractInvariantEnforcementTests itself already
+// gives a missing table.
+func invariantTestsAt(baseFile func(string) ([]byte, bool, error)) []string {
+	if baseFile == nil {
 		return nil
 	}
-	c, err := intent.Load(root)
-	if err != nil {
+	b, ok, err := baseFile("docs/intent/invariants.md")
+	if err != nil || !ok {
 		return nil
 	}
-	seen := map[string]bool{}
-	for _, inv := range c.Invariants {
-		for _, t := range inv.Tests {
-			seen[t] = true
-		}
-	}
-	return setToSortedSlice(seen)
+	return intent.ExtractInvariantEnforcementTests(b)
 }
 
 // reachabilityFrom builds the "reaches a changed symbol" oracle (design

@@ -276,6 +276,117 @@ func TestIntegrityPlane_RenameStillNamedIsALoss(t *testing.T) {
 	}
 }
 
+// TestIntegrityPlane_InvariantGuardReadFromBase is the i28-laundering
+// repro (design §1.2's "at base"): a test guarded ONLY by
+// docs/intent/invariants.md's enforcement column — no marker, no manifest
+// entry, no surface evidence — is deleted, and the SAME change ALSO drops
+// its row from invariants.md's enforcement column (the exact
+// guards-pilot-8 pattern: rename/delete plus laundering the record that
+// would out it). Guardedness must be judged from invariants.md's content
+// AT BASE (where the row still names the test), never from head's current
+// tree — reading head would see the row already gone, guard the test on
+// neither side, and report nothing: the loss becomes invisible outright,
+// not merely excused.
+func TestIntegrityPlane_InvariantGuardReadFromBase(t *testing.T) {
+	const testPath = "pkg/x_test.go"
+	const invPath = "docs/intent/invariants.md"
+
+	base := map[string][]byte{
+		testPath: []byte("package pkg\n\nimport \"testing\"\n\nfunc TestGuardedByInvariant(t *testing.T) {\n\tif 1 != 2 {\n\t\tt.Fatalf(\"boom\")\n\t}\n}\n"),
+		invPath: []byte("# Invariants\n\n" +
+			"| # | Invariant | Enforced by | Source |\n" +
+			"|---|---|---|---|\n" +
+			"| I1 | Something always true | test `TestGuardedByInvariant` | ADR-1 |\n"),
+	}
+	head := map[string][]byte{
+		testPath: []byte("package pkg\n\nimport \"testing\"\n"), // deleted
+		invPath: []byte("# Invariants\n\n" +
+			"| # | Invariant | Enforced by | Source |\n" +
+			"|---|---|---|---|\n" +
+			"| I1 | Something always true | code (no test) | ADR-1 |\n"), // row's test citation laundered away too
+	}
+
+	p := integrityPlane{}
+	findings, missing := p.Check(context.Background(), Input{
+		Service:      "svc",
+		ChangedFiles: []string{testPath, invPath},
+		BaseFile:     fr(base),
+		HeadFile:     fr(head),
+	})
+	if len(missing) != 0 {
+		t.Fatalf("missing = %v, want none", missing)
+	}
+	if len(findings) != 1 {
+		t.Fatalf("got %d findings, want 1 (TestGuardedByInvariant deleted, guarded at base by invariants.md alone): %+v", len(findings), findings)
+	}
+	if findings[0].Key != "TestGuardedByInvariant" || findings[0].Kind != "deleted" {
+		t.Errorf("got %+v, want key=TestGuardedByInvariant kind=deleted", findings[0])
+	}
+}
+
+// TestIntegrityPlane_ManifestGuardReadFromBase is the same laundering
+// repro for the OTHER current-tree read the same bug covered: a test
+// guarded only by a tests/*.cue suite manifest's #Certifies entry is
+// deleted, and the manifest's certifies entry is dropped in the same
+// change. Manifest content must be read at BASE (via git show, same as
+// invariants.md above) — a real git repo is needed here because
+// manifestCertifiesAt lists tests/*.cue at a ref via `git ls-tree`.
+func TestIntegrityPlane_ManifestGuardReadFromBase(t *testing.T) {
+	repo := newInputTestRepo(t)
+	repo.write("pkg/x_test.go", "package pkg\n\nimport \"testing\"\n\nfunc TestGuardedByManifest(t *testing.T) {\n\tif 1 != 2 {\n\t\tt.Fatalf(\"boom\")\n\t}\n}\n")
+	repo.write("tests/cart.cue", `
+component: "cart"
+suites: unit: {
+	class:  "unit"
+	runner: "go-test"
+	inputs: paths: ["."]
+	needs: []
+	runtime: {}
+	flake: {}
+	tier: "blocking"
+	certifies: [
+		{kind: "invariant", id: "I5", tests: ["TestGuardedByManifest"]},
+	]
+}
+`)
+	repo.commitAll("base commit")
+	base := repo.headSHA()
+
+	repo.write("pkg/x_test.go", "package pkg\n\nimport \"testing\"\n") // deleted
+	repo.write("tests/cart.cue", `
+component: "cart"
+suites: unit: {
+	class:  "unit"
+	runner: "go-test"
+	inputs: paths: ["."]
+	needs: []
+	runtime: {}
+	flake: {}
+	tier: "blocking"
+}
+`) // certifies entry dropped in the same change
+	repo.commitAll("delete the test and its certifies entry together")
+
+	p := integrityPlane{}
+	findings, missing := p.Check(context.Background(), Input{
+		Service:      "svc",
+		Root:         repo.root,
+		Base:         base,
+		ChangedFiles: []string{"pkg/x_test.go", "tests/cart.cue"},
+		BaseFile:     func(path string) ([]byte, bool, error) { return gitShowFile(repo.root, base, path) },
+		HeadFile:     func(path string) ([]byte, bool, error) { return worktreeFile(repo.root, path) },
+	})
+	if len(missing) != 0 {
+		t.Fatalf("missing = %v, want none", missing)
+	}
+	if len(findings) != 1 {
+		t.Fatalf("got %d findings, want 1 (TestGuardedByManifest deleted, guarded at base by the manifest alone): %+v", len(findings), findings)
+	}
+	if findings[0].Key != "TestGuardedByManifest" || findings[0].Kind != "deleted" {
+		t.Errorf("got %+v, want key=TestGuardedByManifest kind=deleted", findings[0])
+	}
+}
+
 // TestIntegrityPlane_NoGuardedNoFindings: an ordinary, unguarded Go test
 // change produces no findings and no missing entries — Check must never
 // invent a claim for code the conservation checks have no opinion about.

@@ -46,17 +46,40 @@ func LoadManifests(root string) ([]Manifest, []string, error) {
 		return nil, nil, fmt.Errorf("read %s: %w", dir, err)
 	}
 
-	var files []string
+	files := map[string][]byte{}
 	for _, e := range entries {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".cue") {
 			continue
 		}
-		files = append(files, filepath.Join(dir, e.Name()))
+		p := filepath.Join(dir, e.Name())
+		data, err := os.ReadFile(p)
+		if err != nil {
+			return nil, nil, fmt.Errorf("read %s: %w", p, err)
+		}
+		files[p] = data
 	}
-	sort.Strings(files)
+	return LoadManifestsFromContents(files)
+}
+
+// LoadManifestsFromContents applies the identical schema validation and
+// decoding LoadManifests gives files it reads off disk, to tests/*.cue
+// content a caller already has some OTHER way — most commonly base-side
+// content from `git show <ref>:tests/<name>.cue`, for a caller (internal/
+// conserve's integrity plane) that must judge guardedness strictly at a
+// git ref rather than root's current working tree (ADR-044 §1.2). files
+// keys are repo-relative paths, used only to label warnings/manifests and
+// to order them deterministically — never read from disk here. An empty
+// map returns (nil, nil, nil), the same "no manifests found" contract
+// LoadManifests gives an absent tests/ directory.
+func LoadManifestsFromContents(files map[string][]byte) ([]Manifest, []string, error) {
 	if len(files) == 0 {
 		return nil, nil, nil
 	}
+	paths := make([]string, 0, len(files))
+	for p := range files {
+		paths = append(paths, p)
+	}
+	sort.Strings(paths)
 
 	cctx := cuecontext.New()
 	schema := cctx.CompileBytes(testKitManifestSchema)
@@ -70,12 +93,8 @@ func LoadManifests(root string) ([]Manifest, []string, error) {
 
 	var manifests []Manifest
 	var warnings []string
-	for _, f := range files {
-		data, err := os.ReadFile(f)
-		if err != nil {
-			return nil, nil, fmt.Errorf("read %s: %w", f, err)
-		}
-		doc := cctx.CompileBytes(data, cue.Filename(f))
+	for _, f := range paths {
+		doc := cctx.CompileBytes(files[f], cue.Filename(f))
 		if doc.Err() != nil {
 			warnings = append(warnings, fmt.Sprintf("%s: parse: %v", f, doc.Err()))
 			continue
