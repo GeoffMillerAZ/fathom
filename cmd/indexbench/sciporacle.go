@@ -56,7 +56,16 @@ func cmdScipOracle(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "indexbench scip-oracle: read %s: %v\n", *scipPath, err)
 		return 1
 	}
-	imp, err := fscip.ImportIndex(*service, raw)
+	nodes, err := c.ListAllSymbols(ctx, *service)
+	if err != nil {
+		fmt.Fprintf(stderr, "indexbench scip-oracle: list symbols: %v\n", err)
+		return 1
+	}
+	// O115: the truth edges must be mapped against the SAME service symbol
+	// table fathom's own `ingest -scip` uses, or this oracle would score
+	// ImportIndex's decode against itself again instead of against an
+	// independent read of what fathom actually stored.
+	imp, err := fscip.ImportIndex(*service, raw, nodes)
 	if err != nil {
 		fmt.Fprintf(stderr, "indexbench scip-oracle: decode %s: %v\n", *scipPath, err)
 		return 1

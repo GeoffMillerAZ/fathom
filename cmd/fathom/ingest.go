@@ -228,6 +228,13 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	for _, r := range scipResults {
 		fmt.Fprintf(stdout, "typed_edges: %d edge(s) (%d direct / %d unresolved) via %s [%s]\n",
 			r.Import.Report.Edges, r.Import.Report.Direct, r.Import.Report.Unresolved, r.Import.Report.Producer.String(), r.Path)
+		// O115 disclosure: a definition this import could not join to the
+		// service's own symbol table contributes no edge at all — never
+		// silent (a real producer never sets DisplayName, see
+		// .fathom/observations.md O115).
+		if u := r.Import.Report.Unmapped; u > 0 {
+			fmt.Fprintf(stderr, "warning: scip import %s: %d definition(s) could not be mapped to a fathom symbol and contributed no edge (O115)\n", r.Path, u)
+		}
 	}
 	// CUE typed-edge counters (ADR-041 decision 5 / SU-10): printed only
 	// when the CUE pass actually ran (packages processed or failed) — a

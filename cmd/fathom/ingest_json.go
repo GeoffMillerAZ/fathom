@@ -75,6 +75,15 @@ type ingestScipJSON struct {
 	Edges      int    `json:"edges"`
 	Direct     int    `json:"direct"`
 	Unresolved int    `json:"unresolved"`
+	// Unmapped discloses O115 (.fathom/observations.md): the count of SCIP
+	// definitions this import could not join to the service's own
+	// extracted symbol table — a real producer (scip-typescript,
+	// scip-python) never sets SymbolInformation.DisplayName, so ImportIndex
+	// resolves by definition position instead; a definition it still
+	// cannot place contributes NO edge, in either direction, rather than a
+	// silently wrong one. Zero on a healthy import; omitted from text
+	// output when zero, always present in JSON so CI can assert on it.
+	Unmapped int `json:"unmapped"`
 }
 
 // ingestJSON is the `fathom ingest --json` envelope.
@@ -171,6 +180,7 @@ func renderIngestJSON(w io.Writer, service, svcPath string, report client.Report
 			Path: r.Path, Producer: r.Import.Report.Producer.String(), Language: r.Import.Report.Language,
 			Documents: r.Import.Report.Documents, Edges: r.Import.Report.Edges,
 			Direct: r.Import.Report.Direct, Unresolved: r.Import.Report.Unresolved,
+			Unmapped: r.Import.Report.Unmapped,
 		})
 	}
 	if report.CUEPackages > 0 || report.CUEPackagesFailed > 0 {

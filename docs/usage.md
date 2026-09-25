@@ -196,7 +196,7 @@ fathom ingest --service <id> [--path <dir>] [--store <path>] [--mode local|faux]
 | `--store` | `<repo>/workspace/db/fathom.sqlite` (see §CLI subcommands) | store path (.sqlite/.db) |
 | `--mode` | `local` | Connector mode: `local` or `faux` |
 | `--scip` | auto-detected | SCIP index file to import as typed edges (ADR-041 decision 5, SU-9; repeatable). Unset: auto-detects `index.scip` at the service root and every `.fathom/scip/*.scip` |
-| `--json` | off | Emit the run as JSON: `{service, outcome: ok|degraded|refused, exit_code, discovered, extracted, skipped, symbols, read_failed, read_failures: [{path, err, errno?}], unclassified, oversize, classified_zero, unsupported_languages?, typed_edges?, scip_imports?, excluded?, error?, hint?}` — `errno` is the class (`EPERM`, `EACCES`, `ENOENT`, `EIO`, `EISDIR`) derived from the connector's text, so CI can assert `read_failed == 0`. `unsupported_languages` (O69, present only when non-empty) is `{language: file_count}` — e.g. `{"swift": 412}` — for source in a KNOWN programming language fathom has no registered extractor for; see "Unsupported languages" below. `scip_imports` (present only when at least one SCIP index was imported) is `[{path, producer, language?, documents, edges, direct, unresolved}]` — see "Typed edges by import" below |
+| `--json` | off | Emit the run as JSON: `{service, outcome: ok|degraded|refused, exit_code, discovered, extracted, skipped, symbols, read_failed, read_failures: [{path, err, errno?}], unclassified, oversize, classified_zero, unsupported_languages?, typed_edges?, scip_imports?, excluded?, error?, hint?}` — `errno` is the class (`EPERM`, `EACCES`, `ENOENT`, `EIO`, `EISDIR`) derived from the connector's text, so CI can assert `read_failed == 0`. `unsupported_languages` (O69, present only when non-empty) is `{language: file_count}` — e.g. `{"swift": 412}` — for source in a KNOWN programming language fathom has no registered extractor for; see "Unsupported languages" below. `scip_imports` (present only when at least one SCIP index was imported) is `[{path, producer, language?, documents, edges, direct, unresolved, unmapped}]` — see "Typed edges by import" below |
 
 Output: `discovered`, `extracted`, `skipped`, `symbols` counts, plus non-zero-only rows
 (`unclassified`, `oversize`, `classified-but-zero-symbols`, `unsupported languages (no extractor)`,
@@ -220,6 +220,20 @@ metadata, e.g. `typed_edges: 118 edge(s) (94 direct / 24 unresolved) via scip-ty
 0.3.16 [index.scip]` — `fathom capabilities --json`'s `typed_edge_producers` field names,
 per language, which mechanism fathom's own code currently provides (`native` /
 `scip:<tool>` / `file` / `syntax`).
+
+Each definition is mapped to fathom's own symbol space by its POSITION — the same
+service's already-extracted symbol table (the native or file-resolved pass's output for
+the files the index covers, always present by the time `-scip` runs), matched by
+document path + the definition's own line — falling back to parsing the SCIP symbol
+string's own descriptor suffix only when that position match is ambiguous (O115: the
+real, currently-published `scip-typescript`/`scip-python` releases never set a
+definition's `DisplayName`, so a name reconstructed from it — the pre-fix behaviour —
+never joined fathom's own symbol keys, and `find_callers`/`references`/`blast_radius`
+silently resolved none of a SCIP-imported service's edges). A definition neither path can
+place contributes NO edge, in either direction, and is counted in the summary's
+`scip_imports[].unmapped` (JSON) — printed as a warning on stderr when non-zero, e.g.
+`warning: scip import index.scip: 3 definition(s) could not be mapped to a fathom symbol
+and contributed no edge (O115)` — never silently folded into `direct` or `unresolved`.
 
 **Unsupported languages (O69).** `unclassified` lumps every file with no registered
 extractor into one count, unnamed — a lockfile, an image, and a real Swift source file

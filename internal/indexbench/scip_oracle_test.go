@@ -61,7 +61,27 @@ func scipTruthEdgesForFixture(t *testing.T) []core.Edge {
 	if err != nil {
 		t.Fatalf("read index.scip: %v", err)
 	}
-	imp, err := fscip.ImportIndex(scipOracleFixtureService, raw)
+	// O115: ImportIndex now maps every definition against the service's
+	// own extracted symbol table rather than the SCIP index's own
+	// DisplayName, so the fixture's real tsextract nodes are required here
+	// too (fathomSyntaxEdgesForFixture's own extraction, reused).
+	var nodes []core.SymbolNode
+	e, err := extractor.NewTSExtractor("javascript")
+	if err != nil {
+		t.Fatalf("NewTSExtractor: %v", err)
+	}
+	for _, f := range []string{"math.ts", "greeter.ts", "main.ts"} {
+		src, err := os.ReadFile("../scip/testdata/tsfixture/" + f)
+		if err != nil {
+			t.Fatalf("read %s: %v", f, err)
+		}
+		ns, err := e.Extract(scipOracleFixtureService, f, src)
+		if err != nil {
+			t.Fatalf("extract %s: %v", f, err)
+		}
+		nodes = append(nodes, ns...)
+	}
+	imp, err := fscip.ImportIndex(scipOracleFixtureService, raw, nodes)
 	if err != nil {
 		t.Fatalf("ImportIndex: %v", err)
 	}
