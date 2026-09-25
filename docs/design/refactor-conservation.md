@@ -412,6 +412,83 @@ range's changed files, and a hand check of 20 items finds each one a genuinely
 changed function in the right class. If the reading set narrows nothing, or a
 hand-checked item is wrong in a way the rule cannot fix, it comes out.
 
+### 3.5 Execution evidence (CV-M13)
+
+The reading set first judged a function `attested` when a passing, commit-bound
+test *statically reached* it. CV-M13
+(`docs/bench/readings/cv-m13-reading-set-calibration-2026-09-25.md`) measured
+that rule against Go coverage and found it both too generous and too strict.
+Over every function at one head of this repository, 168 of 4,534 `attested`
+functions (3.7%) never executed: branches no test takes, the CLI verb switch,
+interface fan-out, and MCP handlers credited to the `register*` function that
+wraps them. 31 of 91 `unreached` functions did execute, called from outside the
+first-party graph: the standard library through an interface (`flag.Value`,
+`slog.Handler`, `Unwrap`, `MarshalJSON`, `String`), the runtime (`init`), and
+package-level initializers. The test named as the voucher was always a hub.
+Function-level execution was also coarser than the change: `runServeHTTP` ran,
+but its one changed line (the O119 fix) never did.
+
+**The profile.** `task tests:attest` runs the suite once as
+`go test -json -coverpkg=./... -coverprofile=<results_dir>/coverage.out ./...`,
+so the same run feeds both the envelope and the profile, and writes
+`<results_dir>/coverage.meta.json` (`schema: fathom.coverage/v1`, `commit`,
+`dirty`, `race`, `profile`, `passed` = no failed case). `TESTKIT_COVER=0` turns
+the profile off. `fathom conserve` reads the meta from `[tests] results_dir`,
+or from `--coverage-meta <file>`.
+
+**Usable only when bound.** The profile is used only when its meta names a
+commit, `dirty` is false and `passed` is true (I44). For each function, the
+profile also counts only if neither the function's file nor its test's file
+changed between that commit and HEAD, the same rule O114 gave certificates. An
+unusable profile is named in the report (`coverage_unusable`), and every item
+falls back to static reach. Each item records which evidence classed it
+(`evidence`: `executed` or `static-reach`).
+
+**Mapping.** Profile blocks are keyed by import path. They are mapped to
+repository paths through the module path of the nearest `go.mod`, and duplicate
+blocks across per-package sections are merged by maximum count. A function's
+blocks are those inside its line span. Its *changed blocks* are the ones that
+overlap a line `git diff -U0 base..head` added or changed inside the function;
+for an added function, that is every block.
+
+**Classes with execution evidence.**
+
+- `attested`: every changed block executed. A comment-only edit has no changed
+  block, so it is cleared.
+- `partial`: the function executed, but some changed blocks never ran. The item
+  lists those line ranges (`unexecuted_lines`).
+- `unexecuted`: no block of the function executed.
+
+Without usable coverage the static classes stand: `attested`, `unattested` and
+`unreached`. Items list every class except `attested`, in this order:
+`unexecuted`, `unreached`, `partial`, `unattested`. Within a class they are
+sorted by resolved caller count, then by symbol. `tests` stays the static
+reach, never "the test that executed it", because a merged profile cannot
+attribute execution to a test. Counts and lists only (I43).
+
+**Reconciling counts.** A changed function in a file the index does not analyze
+(`vendor/`, an ignore rule, an unparseable file) is counted in
+`unanalyzed_functions`. So `changed` always equals the sum of the classes plus
+`unanalyzed_functions`, and a reader can see where every function went.
+
+**Test identity.** `fathom tests ingest` joined cases to `Test*` symbols by bare
+name. A name shared by tests in two packages joined to neither, so those tests
+never attested or certified anything (CV-M13's control: 34 of 566 cases). When
+the case id carries its package, the join uses it.
+
+**The decision port.** Execution evidence is deterministic; Jev has no role.
+Asking a model whether an unexecuted changed line is "safe" is refused under
+decision 8.
+
+**Kill criterion (CV-M14).** Re-run the CV-M13 ranges with coverage: fathom
+5afeee42..78e508d3 and conjure's two measured ranges. By construction, no
+`attested` item may be unexecuted and no flagged item may have executed.
+`runServeHTTP` must read `partial`, naming `cmd/fathom/servehttp.go` line 131.
+The `slog.Handler` methods must read `attested`. `WithGroup` and
+`ParseError.Unwrap` must read `unexecuted`. Separately, if an attest run with
+`-coverpkg=./...` takes more than twice as long as the plain run on this
+repository, the profile becomes opt-in (`TESTKIT_COVER=1`) instead of default.
+
 ## 4. Stage 4 — refactors as programs
 
 - Plan header `baseline: <sha>` pins the base for every row.
