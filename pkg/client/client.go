@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
@@ -279,6 +280,28 @@ func (c *Client) TypedEdges(ctx context.Context, serviceID string) ([]Edge, erro
 // callers never import internal/scip directly.
 type ImportSCIPResult = scip.Import
 
+// scipStoreKeyPrefix returns the store pkg_path NAMESPACE this SCIP index
+// file's packages are written under — "scip:<path>::" — mirroring
+// internal/fusion/typedcue.go's own "cue:" convention: the shared
+// typed_edges/typed_edge_fingerprints tables are keyed only by (serviceID,
+// pkgPath), so a producer that wants to reconcile ("this run's package set
+// is now exactly these, and no others") without ever touching another
+// producer's rows must own a private prefix of that namespace.
+//
+// Scoped by the SCIP index's own path, not just a bare "scip:" — because
+// `fathom ingest` can import SEVERAL SCIP indexes in one run (docs/usage.md:
+// --scip is repeatable, or auto-detected from index.scip plus every
+// .fathom/scip/*.scip), each commonly covering a disjoint slice of the
+// service's packages. Reconciling at the whole-service "scip:" level would
+// make one file's transient decode failure — or simply not passing it this
+// run — look identical to "this package's source vanished," and delete
+// another file's still-current rows. Per-path scoping keeps each index
+// file's reconcile self-contained: it only ever purges rows IT previously
+// wrote (O116 residual, .fathom/observations.md).
+func scipStoreKeyPrefix(path string) string {
+	return "scip:" + path + "::"
+}
+
 // ImportSCIP decodes a SCIP index file (ADR-041 decision 5, SU-9,
 // docs/plans/substrate.md; internal/scip.ImportIndexFile) and writes the
 // typed edges it implies for serviceID, grouped per package — the same
@@ -293,6 +316,20 @@ type ImportSCIPResult = scip.Import
 // own DisplayName, which a real producer never sets), so this reads that
 // table first — always available in practice, since ingest.go only calls
 // ImportSCIP after the syntax pass has written serviceID.
+//
+// O116 residual (.fathom/observations.md): O116 itself fixed the case where
+// a package's source is still present but now computes to zero edges
+// (still named in imp.Packages, with an empty Edges slice, so the loop
+// below still calls PutTypedEdges and clears it). This does NOT cover a
+// package that VANISHES ENTIRELY from the new decode — deleted, renamed, or
+// the producer stops emitting it — because such a package is never named
+// in imp.Packages at all, so the per-package loop never even sees it, and
+// its old rows survive forever. Fixed here by writing every package under
+// this path's own "scip:<path>::" namespace (scipStoreKeyPrefix) and then
+// reconciling: list every stored package in that namespace and delete any
+// this import did not just (re)write. Never touches a bare (Go typed pass)
+// or "cue:"-prefixed (CUE typed pass) pkg_path, and never touches another
+// SCIP index file's own "scip:<other path>::" rows.
 func (c *Client) ImportSCIP(ctx context.Context, serviceID, path string) (ImportSCIPResult, error) {
 	nodes, err := c.ListAllSymbols(ctx, serviceID)
 	if err != nil {
@@ -302,9 +339,25 @@ func (c *Client) ImportSCIP(ctx context.Context, serviceID, path string) (Import
 	if err != nil {
 		return scip.Import{}, fmt.Errorf("client.ImportSCIP: %w", err)
 	}
+	prefix := scipStoreKeyPrefix(path)
+	keep := make(map[string]bool, len(imp.Packages))
 	for _, pkg := range imp.Packages {
-		if err := c.st.PutTypedEdges(ctx, serviceID, pkg.Package, pkg.Edges); err != nil {
+		key := prefix + pkg.Package
+		keep[key] = true
+		if err := c.st.PutTypedEdges(ctx, serviceID, key, pkg.Edges); err != nil {
 			return imp, fmt.Errorf("client.ImportSCIP: put typed edges for %q: %w", pkg.Package, err)
+		}
+	}
+	stored, err := c.st.ListTypedEdgePackages(ctx, serviceID)
+	if err != nil {
+		return imp, fmt.Errorf("client.ImportSCIP: list typed edge packages: %w", err)
+	}
+	for _, id := range stored {
+		if !strings.HasPrefix(id, prefix) || keep[id] {
+			continue
+		}
+		if err := c.st.DeleteTypedEdgePackage(ctx, serviceID, id); err != nil {
+			return imp, fmt.Errorf("client.ImportSCIP: delete vanished package %q: %w", id, err)
 		}
 	}
 	return imp, nil
