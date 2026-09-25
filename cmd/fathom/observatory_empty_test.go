@@ -12,7 +12,7 @@ func TestObservatoryExplorationAbsenceExplainsNextEvidence(t *testing.T) {
 		m := syntheticModel()
 		m.Impact.ExpNote = note
 		got := renderObsImpact(m)
-		for _, want := range []string{`role="note"`, "No comparable exploration sample", `href="/observatory/story"`, "Inspect session evidence"} {
+		for _, want := range []string{`role="note"`, "No comparable exploration sample", `href="/sessions"`, "Inspect session evidence"} {
 			if !strings.Contains(got, want) {
 				t.Errorf("note %q: missing %q", note, want)
 			}

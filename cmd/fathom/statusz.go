@@ -6,15 +6,14 @@ package main
 // compile per layer. Loopback-only, read-only, gated inside the hosted-
 // mode allowlist when `--modules-token-env` is configured
 // (servehttp.go's modulesAuthMiddleware, extended there — the
-// phase-O-critic-finding-#2 class this closes).
+// phase-O-critic-finding-#2 class this closes). The report is built here;
+// the console page renders it on the shell (console_statusz.go, OC-6) and
+// answers ?format=json with this report unchanged (schema v3).
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/buildinfo"
@@ -148,67 +147,6 @@ func buildStatuszReport(ctx context.Context, c *client.Client, startTime, now ti
 	return r
 }
 
-// statuszHandler serves buildStatuszReport as JSON (Accept: application/json
-// or ?format=json) or a minimal, dependency-free HTML page otherwise — no
-// template engine, no new import.
-func statuszHandler(c *client.Client, startTime time.Time) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		report := buildStatuszReport(r.Context(), c, startTime, time.Now())
-
-		wantJSON := r.URL.Query().Get("format") == "json" || strings.Contains(r.Header.Get("Accept"), "application/json")
-		if wantJSON {
-			w.Header().Set("Content-Type", "application/json")
-			enc := json.NewEncoder(w)
-			enc.SetIndent("", "  ")
-			_ = enc.Encode(report)
-			return
-		}
-
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		fmt.Fprintf(w, "<!doctype html><html><head><meta charset=\"utf-8\"><title>fathom statusz</title>%s</head><body>", statuszCSS)
-		fmt.Fprintf(w, "<header><h1>fathom <span class=\"sub\">statusz</span></h1>")
-		fmt.Fprintf(w, "<dl class=\"meta\"><dt>generated</dt><dd>%s</dd><dt>uptime</dt><dd>%.1fs</dd><dt>binary</dt><dd>%s</dd><dt>channels</dt><dd>%s</dd></dl></header>",
-			htmlEscape(report.GeneratedAt), report.UptimeSec, htmlEscape(statuszBinaryLabel(report.StatuszBuildInfo)), htmlEscape(report.ChannelsNote))
-		fmt.Fprintf(w, "<h2>services <span class=\"count\">%d</span></h2><div class=\"grid\">", len(report.Services))
-		for _, s := range report.Services {
-			fmt.Fprintf(w, "<section class=\"svc\"><h3>%s</h3>", htmlEscape(s.Service))
-			fmt.Fprintf(w, "<p class=\"commit\">%s</p>", htmlEscape(s.IndexedCommit))
-			if s.FreshnessNote != "" {
-				fmt.Fprintf(w, "<p class=\"note\">%s</p>", htmlEscape(s.FreshnessNote))
-			}
-			// BP-35: a failed typed pass is the loudest thing on this card,
-			// because the graph it degrades to looks identical to a healthy one.
-			if te := s.TypedEdges; te != nil {
-				if te.Failed {
-					fmt.Fprintf(w, "<p class=\"note\">typed_edges: FAILED — %s</p>", htmlEscape(te.Reason))
-				} else {
-					fmt.Fprintf(w, "<p class=\"note\">typed_edges: %d package(s)</p>", te.Packages)
-				}
-			}
-			if len(s.LastCompilePerLayer) > 0 {
-				layers := make([]string, 0, len(s.LastCompilePerLayer))
-				for layer := range s.LastCompilePerLayer {
-					layers = append(layers, layer)
-				}
-				sort.Strings(layers)
-				fmt.Fprintf(w, "<ul class=\"layers\">")
-				for _, layer := range layers {
-					fmt.Fprintf(w, "<li><b>%s</b> %s</li>", htmlEscape(layer), htmlEscape(s.LastCompilePerLayer[layer]))
-				}
-				fmt.Fprintf(w, "</ul>")
-			} else {
-				fmt.Fprintf(w, "<p class=\"none\">no compiled layers</p>")
-			}
-			fmt.Fprintf(w, "</section>")
-		}
-		fmt.Fprintf(w, "</div><footer>read-only diagnostic · JSON at this same path with <code>Accept: application/json</code></footer></body></html>")
-	}
-}
-
 // statuszBinaryLabel renders the build stamp for the HTML view: the commit
 // (short), "-dirty" when built from a modified tree, or "unstamped".
 func statuszBinaryLabel(b StatuszBuildInfo) string {
@@ -226,56 +164,4 @@ func statuszBinaryLabel(b StatuszBuildInfo) string {
 		label += " built " + b.BuiltAt
 	}
 	return label
-}
-
-// statuszCSS is deliberately hand-written and inline.
-//
-// The fleet convention for real UI is the licensed corpus (TailwindPlus /
-// MatDash via the appkit MCP) rendered through app-kit's pure-Go ui
-// components — and that is exactly what fathom-studio's web dashboard does
-// (docs/design/observability-surfaces.md §5). It is the WRONG trade here:
-// /statusz is served by the fathom daemon binary, whose doctrine is one
-// pure-Go binary with no asset pipeline. Adopting the corpus would mean an
-// app-kit dependency plus a Tailwind build step inside the daemon, to style
-// a read-only diagnostic whose actual contract is the JSON at the same path.
-// So: ~40 inline lines here, and the corpus where it earns its keep.
-const statuszCSS = `<style>
-:root{color-scheme:light dark;--bg:#fbfcfd;--fg:#101418;--dim:#5b6773;--line:#e3e8ec;--card:#fff;--accent:#0b6b7a}
-@media(prefers-color-scheme:dark){:root{--bg:#0d1216;--fg:#e8edf1;--dim:#8b9aa6;--line:#1e262d;--card:#131a20;--accent:#4fc3d4}}
-*{box-sizing:border-box}
-body{margin:0;padding:32px 24px 48px;background:var(--bg);color:var(--fg);
-font:14px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
-header{max-width:1100px;margin:0 auto 28px}
-h1{margin:0 0 12px;font-size:22px;font-weight:600;letter-spacing:-.01em}
-h1 .sub{color:var(--dim);font-weight:400}
-h2{max-width:1100px;margin:0 auto 14px;font-size:13px;font-weight:600;
-text-transform:uppercase;letter-spacing:.08em;color:var(--dim)}
-h2 .count{color:var(--accent)}
-dl.meta{display:grid;grid-template-columns:auto 1fr;gap:2px 14px;margin:0;
-font-size:12.5px}
-dl.meta dt{color:var(--dim)}
-dl.meta dd{margin:0;overflow-wrap:anywhere}
-.grid{max-width:1100px;margin:0 auto;display:grid;gap:12px;
-grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}
-.svc{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
-.svc h3{margin:0 0 6px;font-size:15px;font-weight:600;overflow-wrap:anywhere}
-.commit{margin:0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
-font-size:11.5px;color:var(--dim);overflow-wrap:anywhere}
-.note{margin:8px 0 0;font-size:12.5px;color:var(--accent)}
-.none{margin:10px 0 0;font-size:12.5px;color:var(--dim);font-style:italic}
-ul.layers{margin:10px 0 0;padding:0;list-style:none;display:grid;gap:5px}
-ul.layers li{font-size:12px;color:var(--dim);
-font-family:ui-monospace,SFMono-Regular,Menlo,monospace;overflow-wrap:anywhere}
-ul.layers b{color:var(--fg);font-weight:600}
-footer{max-width:1100px;margin:28px auto 0;font-size:12px;color:var(--dim)}
-footer code{font-size:11.5px}
-</style>`
-
-// htmlEscape is a minimal, dependency-free HTML text-escaper — statusz's
-// values are all fathom-controlled (service names, models, notes), but
-// escaping costs nothing and closes the door on any future value that
-// isn't.
-func htmlEscape(s string) string {
-	r := strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;", `"`, "&quot;")
-	return r.Replace(s)
 }

@@ -23,6 +23,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/console"
 )
 
 func cmdBrief(args []string, stdout, stderr io.Writer) int {
@@ -406,7 +408,10 @@ func renderBriefMD(m observatoryModel) string {
 
 	// ---- 4. Weaknesses ----
 	b.WriteString("\n## 4 — Where does the agent still flounder?\n\n")
-	fmt.Fprintf(&b, "- **Open defects across the fleet: %s.** Each is a written bug report with a reproduction, filed by an agent the moment a fathom tool answered worse than expected.\n", fmtThousands(briefOpenObservations(m)))
+	// OC-9: the shared projection — a partial count stays a "≥" lower
+	// bound here exactly as it does on the fleet page (the survey found the
+	// brief dropping it: "≥114" on one page, "114" here).
+	fmt.Fprintf(&b, "- **Open defects across the fleet: %s.** Each is a written bug report with a reproduction, filed by an agent the moment a fathom tool answered worse than expected.\n", valuePlain(console.OpenObservations(fleetFactsFromModel(m))))
 	if len(m.Misses) > 0 {
 		var noisy []string
 		for i, mr := range m.Misses {
@@ -415,7 +420,7 @@ func renderBriefMD(m observatoryModel) string {
 			}
 			noisy = append(noisy, fmt.Sprintf("%s %s calls", mr.Tool, fmtThousands(mr.Calls)))
 		}
-		b.WriteString("- **Most-called tools:** " + strings.Join(noisy, " · ") + " — per-tool hit and miss rates are on `/observatory/impact` (the query text itself is never logged)\n")
+		b.WriteString("- **Most-called tools:** " + strings.Join(noisy, " · ") + " — per-tool hit and miss rates are on `/impact` (the query text itself is never logged)\n")
 	}
 	b.WriteString("\n**Reading:** a growing defect list is a sign the instrument is being used honestly, not a sign it is failing. The number to watch is how long each one stays open.\n")
 
@@ -495,15 +500,4 @@ func renderBriefMD(m observatoryModel) string {
 	b.WriteString("\n---\n\n")
 	b.WriteString("Narrative story rows, when captured, are a lens over mechanism-labeled events. They are deliberately not quoted as evidence in this brief (law 14). Nothing in this file was sent anywhere — fathom wrote it locally and stopped.\n")
 	return b.String()
-}
-
-// briefOpenObservations mirrors fleetOpenObservations for the brief.
-func briefOpenObservations(m observatoryModel) int {
-	total := 0
-	for _, s := range m.Services {
-		if s.OpenObservations != nil {
-			total += *s.OpenObservations
-		}
-	}
-	return total
 }

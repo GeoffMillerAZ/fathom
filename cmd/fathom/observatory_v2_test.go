@@ -124,14 +124,14 @@ func TestImpactFourQuestions(t *testing.T) {
 // TestLandingFourQuestions pins IQ-6.
 func TestLandingFourQuestions(t *testing.T) {
 	hermeticObsEnv(t)
-	h := landingHandler("http://127.0.0.1:1")
+	h := newUnreachableConsoleHandler(t)
 	rec := httptest.NewRecorder()
-	h(rec, httptest.NewRequest("GET", "/", nil))
+	h.ServeHTTP(rec, httptest.NewRequest("GET", "/", nil))
 	if rec.Code != 200 {
 		t.Fatalf("GET / = %d", rec.Code)
 	}
 	body := rec.Body.String()
-	for _, want := range []string{"the four questions", "Q1", "Q2", "Q3", "Q4", "law 12", "/observatory/story"} {
+	for _, want := range []string{"the four questions", "Q1", "Q2", "Q3", "Q4", "law 12", `href="/sessions"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("landing missing %q", want)
 		}

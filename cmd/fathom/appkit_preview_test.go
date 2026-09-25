@@ -217,11 +217,11 @@ func TestAppkitObservationPreviewPolicy(t *testing.T) {
 func TestAppkitPreviewEvidenceDestination(t *testing.T) {
 	model := syntheticModel()
 	impact, err := renderAppkitPreviewPage(http.MethodGet, "/observatory/impact", "light", model)
-	if err != nil || !strings.Contains(impact, `href="/observatory/story"`) {
+	if err != nil || !strings.Contains(impact, `href="/sessions"`) {
 		t.Fatalf("missing sample must link to the fixed evidence route: %v", err)
 	}
 	story, err := renderAppkitPreviewPage(http.MethodGet, "/observatory/story", "light", model)
-	if err != nil || !strings.Contains(story, "Synthetic session summary") || !strings.Contains(story, `href="/observatory/impact"`) {
+	if err != nil || !strings.Contains(story, "Synthetic session summary") || !strings.Contains(story, `href="/impact"`) {
 		t.Fatalf("evidence destination must render fixture totals and a return path: %v", err)
 	}
 }

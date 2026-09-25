@@ -571,33 +571,42 @@ func wiringPageHandler(reg wiringRegistry, baseURL string, now func() time.Time)
 			writeObsJSON(w, map[string]any{"services": all})
 			return
 		}
-		var b strings.Builder
-		b.WriteString(`<p class="mb-2 max-w-3xl text-ink-muted">Preview shows exactly what fathom would write into a repository — file by file, before and after — and only then offers Apply. A region fathom is tracking that was edited by hand is BLOCKED, never merged (law 15). Every apply is receipted and undoable from here or with <code class="font-mono">fathom fleet undo</code>.</p>`)
-		if err != nil {
-			b.WriteString(callout.Render(callout.Callout{Kind: callout.Caution, Title: "registry unavailable", Body: err.Error()}))
-		}
-		var widgets []string
-		for _, s := range all {
-			var body strings.Builder
-			if s.Root == "" {
-				body.WriteString(kv("root", `<span class="italic text-ink-faint">no local path — a remote corpus; nothing to wire</span>`))
-			} else {
-				body.WriteString(kv("root", `<span class="font-mono text-xs break-all">`+html.EscapeString(s.Root)+`</span>`))
-				body.WriteString(`<form method="post" action="/observatory/wiring/preview" class="mt-2"><input type="hidden" name="service" value="` + html.EscapeString(s.Service) + `">` +
-					form.RenderButton(form.Button{Label: "Preview changes", Variant: form.ButtonGhost}) + `</form>`)
-			}
-			widgets = append(widgets, dashboard.RenderWidget(dashboard.Widget{Title: s.Service, Body: template.HTML(body.String())}))
-		}
-		b.WriteString(sectionHeading("wiring (" + plural(len(all), "service") + ")"))
-		b.WriteString(dashboard.RenderWidgetGrid(widgets, dashboard.WidgetGridOptions{Cols: 3, AriaLabel: "wiring per service"}))
+		body := renderWiringIndex(all, err)
 		m := cachedObservatoryModel(baseURL, now())
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = w.Write([]byte(obsPage("fathom · wiring", "wiring", b.String(), m)))
+		_, _ = w.Write([]byte(obsPage("fathom · wiring", "wiring", body, m)))
 	})
 }
 
+// renderWiringIndex is the wiring page's body: every registered
+// repository with its root and a Preview button (the consent flow's first
+// step; nothing on this page writes). The console's /wiring page and the
+// legacy JSON-only route share it.
+func renderWiringIndex(all []registeredService, err error) string {
+	var b strings.Builder
+	b.WriteString(`<p class="mb-2 max-w-3xl text-ink-muted">Preview shows exactly what fathom would write into a repository — file by file, before and after — and only then offers Apply. A region fathom is tracking that was edited by hand is BLOCKED, never merged (law 15). Every apply is receipted and undoable from here or with <code class="font-mono">fathom fleet undo</code>.</p>`)
+	if err != nil {
+		b.WriteString(callout.Render(callout.Callout{Kind: callout.Caution, Title: "registry unavailable", Body: err.Error()}))
+	}
+	var widgets []string
+	for _, s := range all {
+		var body strings.Builder
+		if s.Root == "" {
+			body.WriteString(kv("root", `<span class="italic text-ink-faint">no local path — a remote corpus; nothing to wire</span>`))
+		} else {
+			body.WriteString(kv("root", `<span class="font-mono text-xs break-all">`+html.EscapeString(s.Root)+`</span>`))
+			body.WriteString(`<form method="post" action="/observatory/wiring/preview" class="mt-2"><input type="hidden" name="service" value="` + html.EscapeString(s.Service) + `">` +
+				form.RenderButton(form.Button{Label: "Preview changes", Variant: form.ButtonGhost}) + `</form>`)
+		}
+		widgets = append(widgets, dashboard.RenderWidget(dashboard.Widget{Title: s.Service, Body: template.HTML(body.String())}))
+	}
+	b.WriteString(sectionHeading("wiring (" + plural(len(all), "service") + ")"))
+	b.WriteString(dashboard.RenderWidgetGrid(widgets, dashboard.WidgetGridOptions{Cols: 3, AriaLabel: "wiring per service"}))
+	return b.String()
+}
+
 func wiringBackLink() string {
-	return `<p class="mt-4"><a class="text-accent" href="/observatory/wiring/">← wiring</a> · <a class="text-accent" href="/observatory">fleet</a></p>`
+	return `<p class="mt-4"><a class="text-accent" href="/wiring">← wiring</a> · <a class="text-accent" href="/fleet">fleet</a></p>`
 }
 
 // renderWiringPreview is the typed diff, then the consent card. BLOCKED
@@ -654,7 +663,7 @@ func renderWiringPreview(pv wiringPreview) string {
 	}
 	actions := `<form method="post" action="/observatory/wiring/apply"><input type="hidden" name="service" value="` + html.EscapeString(pv.Service) + `"><input type="hidden" name="plan_digest" value="` + html.EscapeString(pv.PlanDigest) + `">` +
 		form.RenderButton(form.Button{Label: "Apply exactly this", Variant: form.ButtonPrimary}) + `</form>` +
-		form.RenderButton(form.Button{Label: "Cancel", Variant: form.ButtonGhost, Href: "/observatory/wiring/"})
+		form.RenderButton(form.Button{Label: "Cancel", Variant: form.ButtonGhost, Href: "/wiring"})
 	b.WriteString(hitl.RenderApprovalCard(hitl.ApprovalCard{
 		Intent:  "Apply wiring",
 		Title:   "Write " + plural(len(applicable), "item") + " into " + plural(len(files), "file") + " of " + pv.Service,

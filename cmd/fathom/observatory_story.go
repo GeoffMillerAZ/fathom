@@ -7,7 +7,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"html"
 	"html/template"
 	"net/http"
@@ -20,6 +19,7 @@ import (
 	"github.com/geoffmilleraz/app-kit/appkit/ui/dashboard"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/stat"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/viz"
+	"github.com/geoffmilleraz/fathom/internal/console"
 )
 
 // sessionStory is one session's replay model (IQ-4).
@@ -130,7 +130,7 @@ func observatorySessionPage(baseURL string) http.HandlerFunc {
 		}
 		id := r.URL.Query().Get("id")
 		if id == "" {
-			http.Error(w, "session id required: /observatory/session?id=<session_id> (ids are in recent ledger rows — see /observatory/story)", http.StatusBadRequest)
+			http.Error(w, "session id required: /sessions/<session_id> (ids are in recent ledger rows — see /sessions)", http.StatusBadRequest)
 			return
 		}
 		st := buildSessionStory(id)
@@ -255,7 +255,7 @@ func renderWeekStory(ws weekStory, m observatoryModel) string {
 	if len(ws.RecentSessions) > 0 {
 		var links strings.Builder
 		for _, id := range ws.RecentSessions {
-			links.WriteString(`<div class="py-0.5"><a class="text-accent font-mono text-xs" href="/observatory/session?id=` + html.EscapeString(id) + `">` + html.EscapeString(id) + `</a></div>`)
+			links.WriteString(`<div class="py-0.5"><a class="text-accent font-mono text-xs" href="` + html.EscapeString(sessionHref(id)) + `">` + html.EscapeString(id) + `</a></div>`)
 		}
 		b.WriteString(dashboard.RenderWidget(dashboard.Widget{Title: "recent sessions (newest first) — open one for its replay", Body: template.HTML(links.String())}))
 	}
@@ -268,40 +268,10 @@ func renderWeekStory(ws weekStory, m observatoryModel) string {
 // fleetOpenObservations projects the existing per-service evidence without
 // losing its coverage: no known sources is absent, partial coverage is a named
 // lower bound, and only complete coverage permits an exact total (including 0).
-// Keep this app-owned; the kit renders the declared semantics, not their validity.
+// The number is the shared projection (console.OpenObservations, OC-9); the
+// kit renders the declared semantics, not their validity.
 func fleetOpenObservations(m observatoryModel) stat.Stat {
-	total, known := 0, 0
-	for _, s := range m.Services {
-		if s.OpenObservations != nil {
-			total += *s.OpenObservations
-			known++
-		}
-	}
-	const label = "open observations"
-	if known == 0 {
-		reason := "no observation counts available"
-		if m.DegradedNote != "" {
-			reason = m.DegradedNote
-		}
-		absent := stat.Absent(label, reason)
-		// Keep absence readable at the consumer's 4.5:1 text target even
-		// though the mirrored component defaults its large dash to ink-faint.
-		absent.ValueRole = "ink-muted"
-		return absent
-	}
-	result := stat.Stat{
-		Label: label, Value: fmtThousands(total),
-		Sub: fmt.Sprintf("%d of %s reporting", known, plural(len(m.Services), "repo")),
-	}
-	if m.DegradedNote != "" {
-		result.Value = "≥\u00a0" + result.Value
-		result.Sub = fmt.Sprintf("%d of %s reporting; lower bound; fleet coverage unavailable: %s",
-			known, plural(len(m.Services), "listed repo"), m.DegradedNote)
-	} else if known < len(m.Services) {
-		result.Value = "≥\u00a0" + result.Value
-		result.Sub += "; lower bound"
-	}
-	return result
+	return valueStat("open observations", console.OpenObservations(fleetFactsFromModel(m)))
 }
 
 func observatoryStoryPage(baseURL string) http.HandlerFunc {

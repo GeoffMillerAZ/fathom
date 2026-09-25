@@ -1,12 +1,16 @@
 package main
 
 import (
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/mcp"
+	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
 // resetObsCache forces the next cachedObservatoryModel call to rebuild.
@@ -329,26 +333,43 @@ func TestObservatoryImpactPage(t *testing.T) {
 }
 
 // TestLandingPage pins the front door: GET / links every surface; unknown
-// paths still 404 (the "/" mux pattern must not swallow them).
+// paths still 404 (the "/" mux pattern must not swallow them) — now on the
+// console shell with a way back (OC-5), not a bare text/plain body.
 func TestLandingPage(t *testing.T) {
 	hermeticObsEnv(t)
-	h := landingHandler("http://127.0.0.1:1")
+	h := newUnreachableConsoleHandler(t)
 
 	rec := httptest.NewRecorder()
-	h(rec, httptest.NewRequest("GET", "/", nil))
+	h.ServeHTTP(rec, httptest.NewRequest("GET", "/", nil))
 	if rec.Code != 200 {
 		t.Fatalf("GET / = %d", rec.Code)
 	}
 	body := rec.Body.String()
-	for _, want := range []string{"/observatory", "/observatory/impact", "/statusz", "/metrics", "/healthz", "/rpc/agent"} {
+	for _, want := range []string{`href="/fleet"`, `href="/impact"`, `href="/statusz"`, "/metrics", "/healthz", "/rpc/agent"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("landing page missing %q", want)
 		}
 	}
 
 	rec = httptest.NewRecorder()
-	h(rec, httptest.NewRequest("GET", "/no-such-page", nil))
+	h.ServeHTTP(rec, httptest.NewRequest("GET", "/no-such-page", nil))
 	if rec.Code != 404 {
 		t.Errorf("GET /no-such-page = %d, want 404", rec.Code)
 	}
+	if !strings.Contains(rec.Body.String(), `<main id="observatory-main"`) {
+		t.Error("the 404 must render on the console shell")
+	}
+}
+
+// newUnreachableConsoleHandler is serve-http's handler over an empty temp
+// store whose self URL is unreachable: the observatory model degrades to its
+// named notes, exactly as the pre-console landing tests' fixture did.
+func newUnreachableConsoleHandler(t *testing.T) http.Handler {
+	t.Helper()
+	c, err := client.NewConstantClient(client.ModeLocal, filepath.Join(t.TempDir(), "s.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { c.Close() })
+	return newHTTPHandler(mcp.NewServer(c), c, "127.0.0.1:1", nil)
 }

@@ -210,7 +210,10 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	if modulesToken != "" {
 		srv.SetHostedModules(true)
 	}
-	handler := newHTTPHandlerWithAuth(srv, c, modulesToken, *addr, ports, flog)
+	// The console's dependencies (vision 35): serve-http owns them so the
+	// event feeders below publish to the same bus GET /events streams.
+	consoleDeps := newConsoleDeps(c, "http://"+*addr, time.Now())
+	handler := newHTTPHandlerWithAuthDeps(srv, c, modulesToken, *addr, ports, flog, consoleDeps)
 
 	// Adopt a new binary without a human (selfrestart.go). launchd's
 	// KeepAlive is true for this job, so exiting IS a restart — which is
@@ -267,6 +270,22 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	outLog.Info(fmt.Sprintf("serve-http: listening on %s", *addr))
+
+	// OC-2: record this daemon (its absolute --call-log, store, pid,
+	// commit) only now that the listener is bound, so a verb run from any
+	// directory reads the log this daemon writes and a serve-http that
+	// failed to start never leaves a record behind. OC-13: announce the
+	// daemon and start the event feeders.
+	prevRecord, hadPrev := readDaemonRecordFor("http://" + *addr)
+	commit := statuszBuildInfo().BinaryCommit
+	if rec, recErr := recordServingDaemon(*addr, *callLogPath, *storePath, commit, time.Now()); recErr != nil {
+		flog.Warn(fmt.Sprintf("serve-http: daemon record not written (%v) — verbs fall back to config and the legacy call-log path", recErr))
+	} else {
+		outLog.Info(fmt.Sprintf("serve-http: daemon record: call log %s", rec.CallLog))
+	}
+	publishDaemonEvent(consoleDeps.bus, prevRecord, hadPrev, commit)
+	go runConsoleEventSources(context.Background(), newConsoleEventSources(consoleDeps.bus, c, verifyLedgerPath(), sessionLedgerPath()))
+
 	if err := http.Serve(listener, handler); err != nil {
 		flog.Error(fmt.Sprintf("http serve: %v", err))
 		return 1
@@ -325,7 +344,9 @@ func openCallLog(path string) (*os.File, error) {
 //	                      Server.strictSurfaces. agent is the primary
 //	                      15-tool surface; companion is a compatible alias.
 //	GET  /healthz       — liveness probe, returns "ok"
-//	GET  /events        — SSE stream stub (hello event, keep-alive)
+//	GET  /events        — live freshness (OC-13): SSE with IDs, a 25 s
+//	                      keepalive, Last-Event-ID replay of the last 64
+//	                      events, at most 16 subscribers; names and IDs only
 //	GET  /metrics       — simple text exposition: uptime and request count
 //	GET  /statusz       — daemon health, per-service freshness, channel
 //	                      liveness, last compile per layer (Q-25/Q-26,
@@ -361,7 +382,15 @@ func openCallLog(path string) (*os.File, error) {
 // log is DG-5's per-request access logger (loggingMiddleware, wrapped
 // OUTSIDE the modules-auth gate so even a 401 gets an access-log line).
 func newHTTPHandlerWithAuth(srv *mcp.Server, c *client.Client, modulesToken, selfAddr string, ports *decide.Ports, log *dlog.Logger) http.Handler {
-	return loggingMiddleware(modulesAuthMiddleware(newHTTPHandler(srv, c, selfAddr, ports), modulesToken), log)
+	return newHTTPHandlerWithAuthDeps(srv, c, modulesToken, selfAddr, ports, log, nil)
+}
+
+// newHTTPHandlerWithAuthDeps is newHTTPHandlerWithAuth with the console's
+// dependencies supplied by the caller — serve-http passes the deps whose
+// event bus its feeders publish to (console_events.go); nil builds fresh
+// ones, as every handler test does.
+func newHTTPHandlerWithAuthDeps(srv *mcp.Server, c *client.Client, modulesToken, selfAddr string, ports *decide.Ports, log *dlog.Logger, deps *consoleDeps) http.Handler {
+	return loggingMiddleware(modulesAuthMiddleware(newHTTPHandlerDeps(srv, c, selfAddr, ports, deps), modulesToken), log)
 }
 
 // fathomRequestIDHeader is the response header loggingMiddleware stamps on
@@ -477,15 +506,23 @@ func modulesAuthMiddleware(next http.Handler, token string) http.Handler {
 }
 
 func newHTTPHandler(srv *mcp.Server, c *client.Client, selfAddr string, ports *decide.Ports) http.Handler {
+	return newHTTPHandlerDeps(srv, c, selfAddr, ports, nil)
+}
+
+func newHTTPHandlerDeps(srv *mcp.Server, c *client.Client, selfAddr string, ports *decide.Ports, deps *consoleDeps) http.Handler {
 	state := &httpServerState{startTime: time.Now()}
 	mux := http.NewServeMux()
+	selfURL := "http://" + selfAddr
+	if deps == nil {
+		deps = newConsoleDeps(c, selfURL, state.startTime)
+	}
+	state.startTime = deps.startTime
 
 	// GET /statusz (Q-25/Q-26): daemon health, per-service index
 	// freshness, channel liveness, last compile per layer. Registered
 	// unconditionally here — modulesAuthMiddleware (servehttp.go, wrapped
 	// around this handler by newHTTPHandlerWithAuth) is what gates it
 	// under hosted mode; this function itself has no notion of a token.
-	mux.Handle("/statusz", statuszHandler(c, state.startTime))
 	// GET /findings/summary (FL-21, ADR-040 decision 5): a plain HTTP
 	// route, never an MCP tool — the session hook's own repo-wide "open
 	// findings: N" brief line.
@@ -496,19 +533,17 @@ func newHTTPHandler(srv *mcp.Server, c *client.Client, selfAddr string, ports *d
 	// POST /route {prompt} (DP-9, ADR-042): suggests which MCP tool's
 	// question-shape fits prompt — the prompt hook's route line (DP-10).
 	mux.Handle("/route", routeHandler(ports))
-	// Observatory (vision 17 / docs/plans/observatory.md OB-4/5/6):
-	// loopback value-realization pages over the same primitives the fleet
-	// report reads. selfURL lets the model reuse the HTTP-shaped helpers.
-	selfURL := "http://" + selfAddr
-	mux.Handle("/", landingHandler(selfURL))
+	// The Observatory console (vision 35, ADR-045): every registered page
+	// (console_registry.go) on the console shell — /, /fleet,
+	// /projects/{svc}, /impact, /sessions, /sessions/{id}, /brief, /wiring,
+	// /statusz (GET /statusz is Q-25/Q-26's report; the modules gate above
+	// still covers it in hosted mode), /search — plus GET /events, the
+	// shell's 404, and the legacy /observatory* routes (308 for HTML, the
+	// unchanged v1 JSON for ?format=json). The wiring mutations stay at
+	// /observatory/wiring/{preview,apply,undo} behind requireLocalMutation
+	// (SH-7/SH-8, law 13; observatory_apply.go).
 	mux.Handle("/assets/app.css", assetsHandler())
-	mux.Handle("/observatory", observatoryHandler(selfURL))
-	mux.Handle("/observatory/service", observatoryServicePage(selfURL))
-	mux.Handle("/observatory/impact", observatoryImpactPage(selfURL))
-	mux.Handle("/observatory/session", observatorySessionPage(selfURL))
-	mux.Handle("/observatory/story", observatoryStoryPage(selfURL))
-	mux.Handle("/observatory/brief", observatoryBriefPage(selfURL))
-	mux.Handle("/observatory/wiring/", wiringRoutes(clientWiringRegistry(c), selfURL, time.Now)) // SH-7/SH-8: preview → apply → undo, law-13 gated (observatory_apply.go)
+	mountConsole(mux, deps, wiringRoutes(clientWiringRegistry(c), selfURL, time.Now))
 
 	// GET /debug/pprof/* (O108, docs/guides/fleet-index.md daemon ops,
 	// docs/mcp-tools.md HTTP surfaces): the stdlib pprof handlers, mounted
@@ -606,30 +641,6 @@ func newHTTPHandler(srv *mcp.Server, c *client.Client, selfAddr string, ports *d
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprint(w, "ok")
-	})
-
-	// GET /events — SSE stream stub: sends a hello event then keeps the
-	// connection open (flushing every write).  Clients can listen here for
-	// future server-sent notifications.
-	mux.HandleFunc("/events", func(w http.ResponseWriter, r *http.Request) {
-		state.reqCount.Add(1)
-		if r.Method != http.MethodGet {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		w.Header().Set("Content-Type", "text/event-stream")
-		w.Header().Set("Cache-Control", "no-cache")
-		w.Header().Set("Connection", "keep-alive")
-		w.WriteHeader(http.StatusOK)
-
-		// Send the initial hello event.
-		fmt.Fprint(w, "event: hello\ndata: {\"server\":\"fathom\"}\n\n")
-		if f, ok := w.(http.Flusher); ok {
-			f.Flush()
-		}
-
-		// Keep the stream alive until the client disconnects.
-		<-r.Context().Done()
 	})
 
 	// GET /metrics — simple text exposition of server-level metrics.
@@ -733,6 +744,13 @@ func newHTTPHandler(srv *mcp.Server, c *client.Client, selfAddr string, ports *d
 		// behind another one, e.g. two overlapping `ingest` calls.
 		fmt.Fprintf(w, "fathom_typed_pass_inflight %d\n", c.TypedPassInflight())
 		fmt.Fprintf(w, "fathom_typed_pass_waited_total %d\n", c.TypedPassWaitedTotal())
+
+		// fathom_console_page_views_total{route} (OC-15, UX-M4): HTML views
+		// of each console page since this process started, keyed by the
+		// route pattern — the durable 30-day record is console-views.jsonl.
+		// fathom_console_event_subscribers: live GET /events streams (OC-13).
+		deps.views.writeMetrics(w)
+		fmt.Fprintf(w, "fathom_console_event_subscribers %d\n", deps.bus.Subscribers())
 	})
 
 	// POST /reload — 200 OK stub; in production this would call

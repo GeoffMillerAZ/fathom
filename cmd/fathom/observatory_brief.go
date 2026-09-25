@@ -69,10 +69,12 @@ func mdToHTML(md string) string {
 		switch {
 		case strings.HasPrefix(t, "## "):
 			closeList()
-			b.WriteString(`<h2 class="mb-2 mt-8 border-b border-line pb-1 text-lg font-semibold text-ink">` + mdInline(t[3:]) + `</h2>`)
+			b.WriteString(`<h3 class="mb-2 mt-8 border-b border-line pb-1 text-lg font-semibold text-ink">` + mdInline(t[3:]) + `</h3>`)
 		case strings.HasPrefix(t, "# "):
+			// The page's one h1 is the shell's title; the brief's own title
+			// is the document heading inside it.
 			closeList()
-			b.WriteString(`<h1 class="text-xl font-semibold text-ink">` + mdInline(t[2:]) + `</h1>`)
+			b.WriteString(`<h2 class="text-xl font-semibold text-ink">` + mdInline(t[2:]) + `</h2>`)
 		case strings.HasPrefix(t, "- "):
 			if !inList {
 				b.WriteString(`<ul class="list-disc space-y-1 pl-5 text-ink">`)
@@ -111,7 +113,7 @@ func observatoryBriefPage(baseURL string) http.HandlerFunc {
 			return
 		}
 		var b strings.Builder
-		b.WriteString(`<div class="mb-3"><a class="text-accent" href="/observatory/brief?format=md">download as markdown ↓</a></div>`)
+		b.WriteString(`<div class="mb-3"><a class="text-accent" href="/brief?format=md">download as markdown ↓</a></div>`)
 		b.WriteString(`<div class="max-w-3xl rounded-lg border border-line bg-surface-raised p-5">` + mdToHTML(md) + `</div>`)
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		_, _ = w.Write([]byte(obsPage("fathom · brief", "brief", b.String(), m)))
