@@ -2,9 +2,12 @@ package store
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"hash"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -850,6 +853,39 @@ SELECT count(*) FROM fingerprints WHERE service_id = ? AND source_ref LIKE '/%'
 		return 0, fmt.Errorf("CountAbsoluteSourceRefs: %w", err)
 	}
 	return n, nil
+}
+
+// ServiceContentDigest digests serviceID's fingerprints in source_ref order
+// (see Store.ServiceContentDigest).
+func (s *SQLiteStore) ServiceContentDigest(ctx context.Context, serviceID string) (string, error) {
+	rows, err := s.db.QueryContext(ctx, `
+SELECT source_ref, content_hash FROM fingerprints WHERE service_id = ? ORDER BY source_ref
+`, serviceID)
+	if err != nil {
+		return "", fmt.Errorf("ServiceContentDigest: %w", err)
+	}
+	defer rows.Close()
+	h := sha256.New()
+	for rows.Next() {
+		var ref, hash string
+		if err := rows.Scan(&ref, &hash); err != nil {
+			return "", fmt.Errorf("ServiceContentDigest: %w", err)
+		}
+		writeDigestRow(h, ref, hash)
+	}
+	if err := rows.Err(); err != nil {
+		return "", fmt.Errorf("ServiceContentDigest: %w", err)
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+// writeDigestRow feeds one fingerprint into a content digest; both backends
+// share it so they digest identically.
+func writeDigestRow(h hash.Hash, ref, contentHash string) {
+	h.Write([]byte(ref))
+	h.Write([]byte{0})
+	h.Write([]byte(contentHash))
+	h.Write([]byte{'\n'})
 }
 
 // DeleteFingerprint removes the fingerprint row for (serviceID, sourceRef).

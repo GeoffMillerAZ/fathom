@@ -2,6 +2,8 @@ package store
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -416,6 +418,25 @@ func (m *MemoryStore) CountAbsoluteSourceRefs(_ context.Context, serviceID strin
 		}
 	}
 	return n, nil
+}
+
+// ServiceContentDigest digests serviceID's fingerprints in source_ref order
+// (see Store.ServiceContentDigest).
+func (m *MemoryStore) ServiceContentDigest(_ context.Context, serviceID string) (string, error) {
+	m.mu.RLock()
+	var refs []string
+	for k := range m.fingerprints {
+		if k.serviceID == serviceID {
+			refs = append(refs, k.sourceRef)
+		}
+	}
+	sort.Strings(refs)
+	h := sha256.New()
+	for _, ref := range refs {
+		writeDigestRow(h, ref, m.fingerprints[fpKey{serviceID, ref}])
+	}
+	m.mu.RUnlock()
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 // DeleteFingerprint removes the fingerprint entry for (serviceID, sourceRef).

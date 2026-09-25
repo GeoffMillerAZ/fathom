@@ -305,6 +305,14 @@ type Store interface {
 	// or every symbol would duplicate under both anchor styles.
 	CountAbsoluteSourceRefs(ctx context.Context, serviceID string) (int, error)
 
+	// ServiceContentDigest is a digest of serviceID's recorded content —
+	// every (source_ref, content hash) fingerprint, in source_ref order. It
+	// moves when an ingest changed, added or removed a file and stays put
+	// across a hash-gated no-op re-ingest (whose service_meta.indexed_at
+	// still moves), so a reader keyed on it sees content changes only. A
+	// service with no fingerprints digests the empty set.
+	ServiceContentDigest(ctx context.Context, serviceID string) (string, error)
+
 	// DeleteFingerprint removes the fingerprint entry for (serviceID,
 	// sourceRef). Deleting a missing fingerprint is a no-op, not an error.
 	DeleteFingerprint(ctx context.Context, serviceID, sourceRef string) error

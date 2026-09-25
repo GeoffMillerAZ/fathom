@@ -291,6 +291,47 @@ func storeContract(t *testing.T, s Store) {
 	})
 
 	// ------------------------------------------------------------------ //
+	// ServiceContentDigest: a content watermark that moves only when a
+	// service's indexed content does (the console's ingest event and search
+	// cache key; a hash-gated no-op re-ingest must not move it).
+	// ------------------------------------------------------------------ //
+	t.Run("service_content_digest", func(t *testing.T) {
+		empty, err := s.ServiceContentDigest(ctx, "svc-digest")
+		if err != nil {
+			t.Fatalf("ServiceContentDigest: %v", err)
+		}
+		if err := s.SetFingerprint(ctx, "svc-digest", "a.go", "h1"); err != nil {
+			t.Fatal(err)
+		}
+		if err := s.SetFingerprint(ctx, "svc-digest", "b.go", "h2"); err != nil {
+			t.Fatal(err)
+		}
+		d1, _ := s.ServiceContentDigest(ctx, "svc-digest")
+		if d1 == empty || d1 == "" {
+			t.Fatalf("digest must change when content is recorded: %q vs empty %q", d1, empty)
+		}
+		// Rewriting the same hashes (a no-op re-ingest) keeps the digest.
+		_ = s.SetFingerprint(ctx, "svc-digest", "a.go", "h1")
+		if d, _ := s.ServiceContentDigest(ctx, "svc-digest"); d != d1 {
+			t.Errorf("an unchanged re-record moved the digest: %q -> %q", d1, d)
+		}
+		// Another service's content never moves this one's digest.
+		_ = s.SetFingerprint(ctx, "svc-digest-other", "a.go", "zz")
+		if d, _ := s.ServiceContentDigest(ctx, "svc-digest"); d != d1 {
+			t.Errorf("another service moved the digest")
+		}
+		_ = s.SetFingerprint(ctx, "svc-digest", "a.go", "h1-changed")
+		d2, _ := s.ServiceContentDigest(ctx, "svc-digest")
+		if d2 == d1 {
+			t.Error("a changed file must move the digest")
+		}
+		_ = s.DeleteFingerprint(ctx, "svc-digest", "b.go")
+		if d, _ := s.ServiceContentDigest(ctx, "svc-digest"); d == d2 {
+			t.Error("a deleted file must move the digest")
+		}
+	})
+
+	// ------------------------------------------------------------------ //
 	// PurgeService + CountAbsoluteSourceRefs (ADR-017 self-heal support)
 	// ------------------------------------------------------------------ //
 	t.Run("purge_service_and_count_absolute_refs", func(t *testing.T) {
