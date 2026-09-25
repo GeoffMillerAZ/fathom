@@ -5,6 +5,22 @@ Status: accepted 2026-09-24 (ADR-044). Assessment: the owner's question of
 refactoring becomes the main activity of agentic coding?" Plan:
 `docs/plans/refactor-conservation.md`. Design: `docs/design/refactor-conservation.md`.
 
+**Wave 2 status (2026-09-24).** Landed: stages 1–3 (proof integrity, the
+conservation ledger, absence/anti-Blindness) fully proven; stage 4
+(`fathom refactor plan`/`refactor status`, CV-33/34) and stage 5
+(`fathom report evidence`, CV-39) shipped; the pre-push hook runs `fathom
+conserve --since` as a warning (CV-47); `review --since`/`review_diff`'s
+`conservation` dimension is actually wired (CV-24); the SCIP import bug
+that kept TypeScript/Python edges out of fathom's own symbol space is
+fixed (O115). Open: CV-M4 fired this vision's own §6 revisit trigger — the
+Go surface delta is a textual diff, not type-identity-aware, measured
+0.615 precision / 0.941 recall against the 0.95/0.95 bar
+(`docs/bench/readings/cv-m4-apidiff-calibration-2026-09-24.md`); CV-M5
+found `conserve.Resurrected` over-fires on a genuine large removal
+(`docs/bench/readings/cv-m5-blindness-replay-2026-09-24.md`); the decision
+port's narrow role (§3, decision 8) and the cross-repo test-kit/Review Kit
+rows stay `(op)`/unclaimed in the plan.
+
 ## 1. The thesis
 
 fathom has two proven ideas. *Done means proven*: a plan checkbox is a claim the

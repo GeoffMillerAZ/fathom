@@ -93,6 +93,8 @@ callers, _ := c.FindCallers(ctx, "my-service", "ValidateToken")
 fathom ingest    --service my-service --path .          # exit 1 + `read-failed: N file(s)` when files could not be read
 fathom inspect   --service my-service --kind GoFunc
 fathom verify    --service my-service --plan docs/plans/<plan>.md [--quiet|--strict|--require-all]
+fathom conserve  --since <ref> --service my-service      # refactor-conservation report: what a change must keep (ADR-044)
+fathom refactor plan <symbol|import|pkg> --service my-service   # writes a gate-ready plan for retiring one target
 fathom serve-mcp  --store workspace/db/fathom.sqlite     # stdio MCP server (full registry)
 fathom serve-http --store workspace/db/fathom.sqlite     # the daemon, 127.0.0.1:7575; agents use POST /rpc/agent
 ```

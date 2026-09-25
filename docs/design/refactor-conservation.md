@@ -5,6 +5,21 @@ is gated on this document. Every section names what is deterministic, what each
 finding means, and which inputs must be present before a plane may say anything
 other than `unproven`.
 
+**Status (wave 2, 2026-09-24).** §1–3 (proof integrity, the ledger, absence/
+anti-Blindness) landed and are proven. §4 (refactors as programs) and §5 (the
+typed floor) shipped their CLI verbs (`fathom refactor plan`/`status`,
+`fathom report evidence`). §6's pre-push wiring and the `review`/`review_diff`
+`conservation` dimension are wired. Open: §5's own measured tiers surfaced
+that the `surface` plane's Go delta (§2.1) is a textual comparison, not a
+`go/types` one — CV-M4 fired the ADR's revisit trigger at 0.615p/0.941r
+against its 0.95/0.95 bar (three named disagreement classes:
+`interface{}`/`any` false positives, additive-struct false positives, a
+type-alias false negative — `docs/bench/readings/cv-m4-apidiff-calibration-2026-09-24.md`);
+§3.3's resurrection detector over-fires on a genuine large, unseeded removal
+(CV-M5, `docs/bench/readings/cv-m5-blindness-replay-2026-09-24.md`); §7's
+decision-port sites and §7a's cross-repo test-kit/Review Kit rows remain
+`(op)`/unclaimed in the plan.
+
 ## 0. Vocabulary and the change range
 
 - **Base**: a git ref resolved to a commit (`--since <ref>` or a plan's
