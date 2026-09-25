@@ -1616,6 +1616,16 @@ declaration added inside the range excuses nothing (I45) — it shows up as
 `declared: "self"` instead, exactly like `fathom verify --since` renders a
 self-declared row.
 
+One kind is a deliberate exception: a `resurrection`/`moved` finding (an
+ordinary, undeclared rename — design §3.3's resurrection honesty) always
+carries `declared: "prior"` on the wire even though nothing was ever
+declared, because "prior" is the only value that excuses a finding from
+`losses` and nothing needed excusing. The text renderer and `review_diff`
+never print that raw value for a `moved` finding — both say "no
+declaration needed" instead, so the line never claims a declaration was
+made when its own Detail says the opposite; a caller reading the JSON
+directly still sees `declared: "prior"`.
+
 ```json
 {"schema":"fathom.conserve/v1","service":"fathom","base":"<sha>","head":"worktree",
  "planes":[{"plane":"surface","verdict":"losses","missing":[],

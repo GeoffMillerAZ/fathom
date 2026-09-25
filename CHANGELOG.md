@@ -21,6 +21,8 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: minor (pre-1.0: breaking bumps minor)
 
+**A resurrection `moved` finding's text no longer contradicts itself.** Its Detail already says "no retirement was declared"; the wire-level `declared` field stays `"prior"` (Finding's only loss-exempt value, unchanged for `no-undeclared-loss`-style consumers reading the JSON), but `fathom conserve`'s text table and `review_diff`'s `conservation` dimension now render it as "no declaration needed" instead of echoing "(declared: prior)" on the same line.
+
 **`fathom refactor plan` refuses a dirty working tree.** `max:` was seeded from the live working tree (`c.Sources()`) while `Baseline:` is the last COMMIT — an uncommitted edit at plan-creation time let the two disagree for the same pinned baseline sha, so `fathom refactor status`'s own baseline count (read from git, not disk) could contradict `max:` from the very first check. `refactor plan` now refuses outright on a dirty tree instead (CV-33).
 
 **`fathom refactor plan` refuses rather than seeding a ratchet's `max:` at 0 from a partial corpus read.** A `c.Sources()` failure (a locked directory, a read error) used to silently fall back to zero source files, so every `gone: pattern` ratchet's `max:` read 0 even for a package the plan's own typed call graph proves has live references today — `fathom refactor status`'s very first run would then fail immediately against a baseline the plan never actually measured. `buildRefactorPlan` now returns an error naming what could not be read instead of writing a plan at all (CV-33).

@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -108,6 +109,43 @@ func TestCmdConserve_MissingSinceIsOperationalError(t *testing.T) {
 	code, _, stderr := runInDir(t, repo.root, []string{"conserve", "--service", "svc", "--store", storePath})
 	if code != 2 {
 		t.Fatalf("exit code = %d, want 2; stderr=%s", code, stderr)
+	}
+}
+
+// TestCmdConserve_MovedFindingTextNeverContradicts pins the fix for the
+// defect a review caught: a resurrection "moved" finding's own Detail
+// text says "no retirement was declared" while its wire-level Declared
+// value is DeclaredPrior ("prior") — the ordinary meaning of which,
+// everywhere else in this tool, is "a declaration excusing this loss WAS
+// present at Base." Printed on one line by the human-facing text
+// renderer, those two clauses directly contradict each other. An ordinary
+// undeclared rename must render with a phrase that actually matches what
+// happened instead.
+func TestCmdConserve_MovedFindingTextNeverContradicts(t *testing.T) {
+	repo := newSelfSkipGitRepo(t)
+	// >=5 statements: clone.FuncBodyHash's own floor for "means anything"
+	// (design §3.3) — a 1-line stub body never reaches Resurrected at all.
+	body := "\ta := x + 1\n\tb := a + 1\n\tc := b + 1\n\td := c + 1\n\treturn d\n"
+	repo.writePlan("widgets/w.go", "package widgets\n\nfunc Old(x int) int {\n"+body+"}\n")
+	repo.commitAll("base commit")
+	base := headSHAOf(t, repo.root)
+
+	// An ordinary, undeclared rename: identical body under a new name, no
+	// retires:/gone: row anywhere — nothing was ever claimed about it.
+	repo.writePlan("widgets/w.go", "package widgets\n\nfunc New(x int) int {\n"+body+"}\n")
+
+	storePath := filepath.Join(t.TempDir(), "conserve2.sqlite")
+	code, stdout, stderr := runInDir(t, repo.root, []string{
+		"conserve", "--since", base, "--service", "svc", "--store", storePath,
+	})
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr=%s", code, stderr)
+	}
+	if !strings.Contains(stdout, "[moved]") {
+		t.Fatalf("expected a [moved] resurrection finding in the text report:\n%s", stdout)
+	}
+	if strings.Contains(stdout, "no retirement was declared") && strings.Contains(stdout, "(declared: prior)") {
+		t.Errorf("moved finding's text is self-contradictory — says no declaration was ever made, then labels it \"prior\" (which everywhere else means one WAS made at base):\n%s", stdout)
 	}
 }
 

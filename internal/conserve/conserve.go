@@ -106,6 +106,27 @@ type Finding struct {
 	informational bool
 }
 
+// DeclaredLabel renders Declared for a human or a review-verdict reader,
+// correcting the one kind whose wire value would otherwise contradict its
+// own Detail text. resurrection.go's "moved" kind reuses DeclaredPrior as
+// a loss-exempt marker — deliberately: "prior" is Finding's only
+// never-a-loss escape hatch, and nothing was ever declared for an
+// ordinary, undeclared rename, so the wire contract keeps that value
+// (planeVerdict, the no-undeclared-loss pack and every other "prior"
+// consumer depend on it meaning "excused"). But everywhere ELSE in this
+// tool "prior" means "a declaration excusing this loss WAS present at
+// Base" (I45) — the opposite of what actually happened for a "moved"
+// finding, whose own Detail text says so ("no retirement was declared").
+// A renderer that prints both on one line contradicts itself. Callers
+// that need the raw wire value (JSON encoding, severity/pack logic) use
+// Declared directly; only display goes through this method.
+func (f Finding) DeclaredLabel() string {
+	if f.Kind == "moved" && f.Declared == DeclaredPrior {
+		return "no declaration needed"
+	}
+	return f.Declared
+}
+
 // PlaneReport is one Plane's contribution to a Report: its computed
 // Verdict, the Findings it based that verdict on (sorted by kind, then
 // key), and Missing — the inputs it needed and did not have, which is what

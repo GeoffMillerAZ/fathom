@@ -136,7 +136,16 @@ func printConserveReport(w io.Writer, rep conserve.Report) {
 			if cite != "" {
 				suffix = fmt.Sprintf(" (%s)", cite)
 			}
-			fmt.Fprintf(w, "  - [%s] %s: %s (declared: %s)%s\n", f.Kind, f.Key, f.Detail, f.Declared, suffix)
+			// f.Declared is the wire value (JSON keeps "prior" for a
+			// "moved" finding — see conserve.Finding.DeclaredLabel's own
+			// comment); the human-facing line renders the LABEL instead,
+			// so a "moved" finding never says both "no retirement was
+			// declared" and "(declared: prior)" in the same breath.
+			declaredNote := fmt.Sprintf("declared: %s", f.Declared)
+			if label := f.DeclaredLabel(); label != f.Declared {
+				declaredNote = label
+			}
+			fmt.Fprintf(w, "  - [%s] %s: %s (%s)%s\n", f.Kind, f.Key, f.Detail, declaredNote, suffix)
 			if f.Remedy != "" {
 				fmt.Fprintf(w, "      remedy: %s\n", f.Remedy)
 			}

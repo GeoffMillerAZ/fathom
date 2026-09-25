@@ -266,6 +266,22 @@ type ConservationFinding struct {
 	Plane, Kind, Key, Detail, Base, Head, Declared, Remedy string
 }
 
+// DeclaredLabel mirrors conserve.Finding.DeclaredLabel's own correction
+// (this package deliberately keeps its own copy rather than importing
+// internal/conserve — the comment on ConservationPlaneSummary above):
+// a "moved" resurrection finding's wire-level Declared stays "prior" (the
+// only loss-exempt value Finding has, and every "prior" consumer of the
+// raw field depends on it), but its own Detail/Message already says no
+// declaration was ever made, so a human-facing rendering must say that
+// instead of "prior" — which everywhere else means a declaration WAS
+// present at Base (I45).
+func (f ConservationFinding) DeclaredLabel() string {
+	if f.Kind == "moved" && f.Declared == "prior" {
+		return "no declaration needed"
+	}
+	return f.Declared
+}
+
 // CertificationRecord is one compiled certifications-layer claim, as the
 // certifications dimension needs it (vision 33 / ADR-043 stage 1, TC-10).
 // Callers build it from internal/certify.Record (certify.Records over
@@ -578,7 +594,14 @@ func runConservation(in Input) Dimension {
 			}
 			d.Findings = append(d.Findings, Finding{
 				Kind: "conservation_" + f.Kind, Message: fmt.Sprintf("%s: %s", f.Key, f.Detail),
-				Citation: cite, Severity: sev, Status: f.Declared,
+				// Status renders f.DeclaredLabel(), not the raw f.Declared:
+				// a "moved" resurrection finding's wire value stays
+				// DeclaredPrior (severity above and every other consumer
+				// of f.Declared still see the real wire value), but
+				// printing it verbatim as this dimension's human-readable
+				// Status would say "prior" for a finding whose own
+				// Message says no declaration was ever made.
+				Citation: cite, Severity: sev, Status: f.DeclaredLabel(),
 			})
 		}
 	}
