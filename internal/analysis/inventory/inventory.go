@@ -77,6 +77,14 @@ type Item struct {
 	File   string
 	Line   int
 	Detail string
+	// Type carries structural detail for a Go "api:" TYPE declaration item
+	// (apicompat.go, CV-M4, ADR-044 amendment 2026-09-24) — nil for every
+	// func/method/const/var item and for every non-Go kind. Diff uses it,
+	// when present on both sides of a key, to apply apidiff's own
+	// compatible/incompatible rules instead of a whole-text comparison;
+	// with either side nil it falls back to plain Detail equality, the
+	// design doc's own "normalized textual form" clause.
+	Type *TypeDetail
 }
 
 // Extract returns every capability-inventory item found across files, plus
@@ -155,31 +163,36 @@ type Delta struct {
 	Added   []string
 }
 
-// Diff computes base→head's Delta by Item.Key, comparing Detail for a key
-// present at both to decide removed/changed/added — apisurface.Diff's own
-// three-way split, generalised from indexed Go symbols to every inventory
-// kind.
+// Diff computes base→head's Delta by Item.Key, comparing each key present
+// at both sides via itemChanged to decide removed/changed/added —
+// apisurface.Diff's own three-way split, generalised from indexed Go
+// symbols to every inventory kind. For a Go "api:" TYPE declaration
+// present on both sides, itemChanged applies apidiff's own compatibility
+// rules (apicompat.go, CV-M4) instead of a whole-text comparison, so an
+// apidiff-compatible edit (an additive struct field, an any/interface{}
+// respelling) is never reported changed; every other item kind keeps the
+// original plain-Detail-equality rule.
 func Diff(base, head []Item) Delta {
-	baseDetail := make(map[string]string, len(base))
+	baseByKey := make(map[string]Item, len(base))
 	for _, it := range base {
-		baseDetail[it.Key] = it.Detail
+		baseByKey[it.Key] = it
 	}
-	headDetail := make(map[string]string, len(head))
+	headByKey := make(map[string]Item, len(head))
 	for _, it := range head {
-		headDetail[it.Key] = it.Detail
+		headByKey[it.Key] = it
 	}
 
 	var d Delta
-	for k := range baseDetail {
-		if _, ok := headDetail[k]; !ok {
+	for k := range baseByKey {
+		if _, ok := headByKey[k]; !ok {
 			d.Removed = append(d.Removed, k)
 		}
 	}
-	for k, hd := range headDetail {
-		bd, ok := baseDetail[k]
+	for k, hi := range headByKey {
+		bi, ok := baseByKey[k]
 		if !ok {
 			d.Added = append(d.Added, k)
-		} else if bd != hd {
+		} else if itemChanged(bi, hi) {
 			d.Changed = append(d.Changed, k)
 		}
 	}
@@ -217,13 +230,15 @@ func extractGoAPI(f File) []Item {
 		return nil
 	}
 
+	litKinds := fileLiteralValueKinds(file)
+
 	var out []Item
 	for _, decl := range file.Decls {
 		switch d := decl.(type) {
 		case *ast.FuncDecl:
 			out = append(out, goFuncItem(fset, f.Path, dir, d)...)
 		case *ast.GenDecl:
-			out = append(out, goGenDeclItems(fset, f.Path, dir, d)...)
+			out = append(out, goGenDeclItems(fset, f.Path, dir, d, litKinds)...)
 		}
 	}
 	return out
@@ -251,7 +266,7 @@ func goFuncItem(fset *token.FileSet, filePath, dir string, d *ast.FuncDecl) []It
 	}}
 }
 
-func goGenDeclItems(fset *token.FileSet, filePath, dir string, d *ast.GenDecl) []Item {
+func goGenDeclItems(fset *token.FileSet, filePath, dir string, d *ast.GenDecl, litKinds map[string]string) []Item {
 	var out []Item
 	for _, spec := range d.Specs {
 		switch s := spec.(type) {
@@ -263,6 +278,7 @@ func goGenDeclItems(fset *token.FileSet, filePath, dir string, d *ast.GenDecl) [
 				Key: fmt.Sprintf("api:%s.%s", dir, s.Name.Name), Kind: "api",
 				File: filePath, Line: fset.Position(s.Pos()).Line,
 				Detail: renderNode(fset, s.Type),
+				Type:   typeDetailFor(fset, s),
 			})
 		case *ast.ValueSpec:
 			for i, name := range s.Names {
@@ -274,7 +290,7 @@ func goGenDeclItems(fset *token.FileSet, filePath, dir string, d *ast.GenDecl) [
 				case s.Type != nil:
 					detail = renderNode(fset, s.Type)
 				case i < len(s.Values):
-					detail = renderNode(fset, s.Values[i])
+					detail = valueDetail(fset, d.Tok, s.Values[i], litKinds)
 				}
 				out = append(out, Item{
 					Key: fmt.Sprintf("api:%s.%s", dir, name.Name), Kind: "api",
@@ -631,8 +647,12 @@ func embeddedFieldName(expr ast.Expr) string {
 // type expressions (a struct field's type, a type declaration's
 // underlying type) where, unlike a function signature, parameter names are
 // not in play and the expression alone is already exactly what should
-// change detail when a refactor changes it.
+// change detail when a refactor changes it. e is normalized first
+// (normalizeAnyType, apicompat.go CV-M4 class A) so `any` and `interface{}`
+// always render identically — the same collapse a go/types identity check
+// would give for free, done here at the AST level instead.
 func renderNode(fset *token.FileSet, e ast.Expr) string {
+	e = normalizeAnyType(e)
 	var buf bytes.Buffer
 	if err := printer.Fprint(&buf, fset, e); err != nil {
 		return ""

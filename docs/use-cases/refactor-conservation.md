@@ -178,15 +178,19 @@ architecture in one pass instead of a second invocation.
   **claimed** the original retired (a `retires:`/`gone: import` row); an
   ordinary, undeclared rename reads `resurrection`/`moved`, informational,
   never a loss.
-- **Open measurement (CV-M4 fired its own revisit trigger, 2026-09-24):**
-  the Go surface delta is a textual diff, not a type-identity one — an
-  `interface{}`↔`any` modernization or a compatible additive struct field
-  currently reads as a false `changed` finding, and a type-alias
-  introduction is an unflagged false negative. Measured 0.615 precision /
-  0.941 recall against a 0.95/0.95 bar
-  (`docs/bench/readings/cv-m4-apidiff-calibration-2026-09-24.md`); treat
-  `surface` plane `api:` findings as directionally right, not yet
-  precision-trustworthy, until a `go/types`-aware diff lands.
+- **CV-M4 fixed (wave 3, 2026-09-24):** the Go `api:` surface delta now
+  applies apidiff's own struct/interface/alias compatibility rules
+  (`internal/analysis/inventory/apicompat.go`, built from the same
+  per-file `go/ast` parse, no `go/types` pass) instead of a whole-text
+  diff — an `interface{}`↔`any` modernization or a compatible additive
+  struct field is no longer a false `changed`, and a type-alias
+  introduction (`type X T` → `type X = T`) is caught. Measured 0.960
+  precision / 1.000 recall over the full 50-pair bar
+  (`docs/bench/readings/cv-m4-apidiff-full50-2026-09-24.md`); `surface`
+  plane `api:` findings can be trusted at this precision, with one named
+  residual gap — a type alias declared in an IMPORTED package (not the
+  changed package itself) is still invisible, since resolving another
+  package's own declaration is out of this fix's stated scope.
 - **Open measurement:** `conserve.Resurrected`'s false-positive rate on a
   genuine, unseeded large removal can run high when two long-lived,
   independently-written implementations converge in shape (24 spurious

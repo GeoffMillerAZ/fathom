@@ -94,6 +94,82 @@ func TestSurfacePlane_ChangedKeyReportsBothCitations(t *testing.T) {
 	}
 }
 
+// TestSurfacePlane_ApidiffCompatibleEditsAreNotLosses runs the plane end
+// to end over the two CV-M4 disagreement classes that manifest as false
+// POSITIVES (ADR-044 amendment 2026-09-24): an `interface{}`/`any`
+// respelling and an additive struct field must both come back conserved,
+// not losses, exactly as apidiff itself classifies them
+// (docs/bench/readings/cv-m4-apidiff-calibration-2026-09-24.md classes A
+// and B).
+func TestSurfacePlane_ApidiffCompatibleEditsAreNotLosses(t *testing.T) {
+	base := map[string]string{"widgets/w.go": `package widgets
+
+type Config struct {
+	Server string
+}
+
+func Do(data interface{}) error { return nil }
+`}
+	head := map[string]string{"widgets/w.go": `package widgets
+
+type Config struct {
+	Server    string
+	Namespace string
+}
+
+func Do(data any) error { return nil }
+`}
+
+	in := Input{
+		Service: "svc", Base: "base-sha", Head: HeadWorktree,
+		ChangedFiles: []string{"widgets/w.go"},
+		BaseFile:     fileReader(base), HeadFile: fileReader(head),
+	}
+	rep := Run(context.Background(), in, []Plane{surfacePlane{}})
+	pr := rep.Planes[0]
+	if pr.Verdict != Conserved {
+		t.Fatalf("verdict = %q, want conserved; findings=%+v", pr.Verdict, pr.Findings)
+	}
+	if len(pr.Findings) != 0 {
+		t.Fatalf("findings = %+v, want none (an additive field and an any/interface{} respelling are both apidiff-compatible)", pr.Findings)
+	}
+}
+
+// TestSurfacePlane_TypeAliasIntroductionIsALoss runs the plane end to end
+// over CV-M4's one false NEGATIVE: turning a defined type into an alias
+// (`type X T` -> `type X = T`) is apidiff's own largest incompatible
+// change in the calibration sample and must come back a loss here too.
+func TestSurfacePlane_TypeAliasIntroductionIsALoss(t *testing.T) {
+	base := map[string]string{"widgets/w.go": `package widgets
+
+type Handler func(name string) error
+`}
+	head := map[string]string{"widgets/w.go": `package widgets
+
+type Handler = func(name string) error
+`}
+
+	in := Input{
+		Service: "svc", Base: "base-sha", Head: HeadWorktree,
+		ChangedFiles: []string{"widgets/w.go"},
+		BaseFile:     fileReader(base), HeadFile: fileReader(head),
+	}
+	rep := Run(context.Background(), in, []Plane{surfacePlane{}})
+	pr := rep.Planes[0]
+	if pr.Verdict != Losses {
+		t.Fatalf("verdict = %q, want losses; findings=%+v", pr.Verdict, pr.Findings)
+	}
+	var saw bool
+	for _, f := range pr.Findings {
+		if f.Kind == "changed" && f.Key == "api:widgets.Handler" {
+			saw = true
+		}
+	}
+	if !saw {
+		t.Fatalf("expected a changed api:widgets.Handler finding, got %+v", pr.Findings)
+	}
+}
+
 // TestSurfacePlane_MissingFileReaders reports unproven (I44).
 func TestSurfacePlane_MissingFileReaders(t *testing.T) {
 	rep := Run(context.Background(), Input{Service: "svc"}, []Plane{surfacePlane{}})
