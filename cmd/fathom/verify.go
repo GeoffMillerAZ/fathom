@@ -379,6 +379,11 @@ func verifyAllAgainstStore(plans []verify.Plan, service, storePath, concern stri
 	}
 	matrix := buildCLISpecMatrix(ctx, c, service, nodes)
 
+	byKey := make(map[string]core.SymbolNode, len(nodes))
+	for _, n := range nodes {
+		byKey[n.Key()] = n
+	}
+
 	ev := &cliEvidence{
 		ctx:     ctx,
 		c:       c,
@@ -388,6 +393,8 @@ func verifyAllAgainstStore(plans []verify.Plan, service, storePath, concern stri
 		matrix:  matrix,
 		haveMat: haveMat,
 		files:   files,
+		root:    verifyRepoRoot(),
+		byKey:   byKey,
 	}
 
 	var mutationScores []verify.MutationScore

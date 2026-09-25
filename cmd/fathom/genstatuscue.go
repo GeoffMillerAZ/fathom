@@ -313,6 +313,15 @@ type cliEvidence struct {
 	// files is the working tree the lexical oracle (ADR-030) reads — the
 	// same tree the plan file came from (verifyRepoRoot).
 	files verify.FileEvidence
+	// root is the same tree files reads, resolved once (verifyRepoRoot) —
+	// verify_gone_evidence.go's git-aware precondition checks (IndexAtHead)
+	// need the actual working-tree root, not just a ReadRepoFile closure.
+	root string
+	// byKey resolves a callgraph canonical key back to its defining
+	// SymbolNode (file/line), for TypedCallers (verify_gone_evidence.go) —
+	// the same map cmd/fathom/refactor_plan.go's buildRefactorPlan builds
+	// from the identical nodes slice.
+	byKey map[string]core.SymbolNode
 }
 
 // ReadRepoFile implements verify.FileEvidence over the repo's working tree.
@@ -394,6 +403,7 @@ var (
 	_ verify.DetailedEvidence      = (*cliEvidence)(nil)
 	_ verify.FileEvidence          = (*cliEvidence)(nil)
 	_ verify.CertificationEvidence = (*cliEvidence)(nil)
+	_ verify.GoneEvidence          = (*cliEvidence)(nil)
 )
 
 // renderStatusCUE is exposed for tests that want to verify template output

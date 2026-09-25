@@ -1672,7 +1672,8 @@ The generated plan carries, in order:
    symbol target, or from files that still import the path for an
    import/package target — each `max:` seeded at today's own lexical
    match count scoped to that package via `paths:` (so the row already
-   passes the moment a `GoneEvidence` CLI adapter exists to check it);
+   passes once `fathom verify --store` checks it — `cliEvidence`'s
+   `GoneEvidence` adapter);
 3. a **`certified_by:` row per live-certified test** `TestImpact` says
    reaches the target (symbol targets only), so the refactor cannot
    silently break a certified behaviour while it proceeds;

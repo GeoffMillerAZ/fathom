@@ -21,6 +21,8 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: minor (pre-1.0: breaking bumps minor)
 
+**`fathom verify --store` can now prove a `gone:` row.** `cliEvidence` gained `verify.GoneEvidence`: `IndexAtHead` refuses on a stale ingest or a dirty working tree (never a fabricated pass), `GoFiles`/`CorpusFiles`/`ModuleFile` read the live corpus, `FailedTypedPackages` reads the store's persisted typed-edge status, and `TypedCallers` resolves a `package:`-scoped symbol against the call graph. Before this every `gone:` row read Unknown forever, independent of how true the claim was — discovered dogfooding CV-M6 (`docs/plans/retire-unused-analyzers.md`, ADR-044).
+
 **Docs corrected: the Review Kit `fathom-conserve` adapter's invocation always names `--service`.** `docs/design/refactor-conservation.md` §7a and `docs/use-cases/refactor-conservation.md` §6 showed `fathom conserve --json --since <base>` with no `--service`; `conserve` has no default-from-repo-directory fallback (unlike `certify gaps`/`certify manifest`/`certify status`/`certify orphans`), so every real invocation shaped like the old example would exit 2. Platform-engineering's adapter now threads its sounding's own configured Service through as `--service` (CV-44).
 
 **A resurrection `moved` finding's text no longer contradicts itself.** Its Detail already says "no retirement was declared"; the wire-level `declared` field stays `"prior"` (Finding's only loss-exempt value, unchanged for `no-undeclared-loss`-style consumers reading the JSON), but `fathom conserve`'s text table and `review_diff`'s `conservation` dimension now render it as "no declaration needed" instead of echoing "(declared: prior)" on the same line.
