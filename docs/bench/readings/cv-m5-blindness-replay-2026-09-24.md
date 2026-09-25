@@ -1,7 +1,57 @@
 # CV-M5: Blindness replay against fathom's own migrations (2026-09-24)
 
-**Verdict (plain language). CV-M5 fails on one of its two migrations, and
-the failure is a real, useful finding, not a fluke.** On ADR-041's vector
+**Update (2026-09-24, refactor-conservation wave 3): fixed, re-run, now
+passes 2/2.** `conserve.Resurrected`'s match against head now requires the
+matching head function to be ITSELF new in the range (absent at base, by
+name, in its own file) or changed in the range (present at base under that
+name but with a different body hash) — a head candidate whose identical
+body already existed at base under its own name is never added to the
+match pool at all, regardless of retirement status. The retirement gate
+from the prior amendment is untouched: a loss still requires a declared
+retirement; an undeclared reappearance is still "moved," never a loss.
+Two regression tests reproduce this reading's own fixture shapes directly
+(`internal/conserve/resurrection_test.go`):
+`TestResurrected_ConvergentImplementationsNeverFlag` (the DuckDB shape —
+two independent implementations sharing an identical body at base, one
+deleted, must never flag) and
+`TestResurrected_ConvergentImplementations_SeededCopyStillFlags` (a
+genuinely seeded copy in the SAME repository must still flag as a loss).
+Both migrations were then replayed exactly as the Method section below
+describes, with the fixed `bin/fathom`, against fresh scratch clones under
+`/Volumes/m2ext/tmp/cv3-calib/` (the base repository's own history already
+carries both migration commits):
+
+| migration | range | before this fix | after this fix |
+|---|---|---|---|
+| DuckDB (ADR-025) | genuine (`356630db`) | **24** `body_resurrected` (fail) | **0** `body_resurrected`, 1 unrelated informational `moved` (a coincidentally-renamed test in the same file), verdict `conserved` |
+| DuckDB (ADR-025) | seeded (`DuckStore.Fingerprint` copy) | flags correctly | still flags correctly — 2 `body_resurrected` (the seeded copy's hash happens to also match `DuckStore.TypedEdgePackageFingerprint`, a pre-existing coincidence in this codebase, unrelated to the fix), verdict `losses` |
+| vector (ADR-041 decision 2) | genuine (`bc0ee164`) | 0 findings (already passed) | 0 findings, verdict `conserved` — unaffected, as expected |
+| vector (ADR-041 decision 2) | seeded (`SymbolIndexer.SearchText` copy) | flags correctly | still flags correctly — 1 `body_resurrected`, verdict `losses` |
+
+**Bar (design §3.3): every seeded copy must flag as a resurrection loss;
+every genuine range must produce none. Result: 2/2 seeded copies flag
+(pass); 2/2 genuine ranges are clean (pass — up from 1/2).**
+
+One methodological note found and routed around while re-running this
+replay, filed separately as **O117**
+(`.fathom/observations.md`, not fixed here — out of this fix's own two
+named defects): `fathom conserve`'s DEFAULT plan discovery (no `--plan`
+flag — the only way the real pre-push gate ever invokes it) hands
+`internal/conserve.NewInput` absolute plan paths where it expects
+repo-relative ones, so `retires:`/`surface_change:` declarations may be
+silently invisible to `fathom conserve` on the real repository today, at
+both base and head. This reading's own measurements above route around it
+by passing an explicit, repo-relative `--plan docs/plans/<file>.md`; the
+original reading's own commands (below, unchanged from the first pass)
+would have hit the same silent gap, which — by coincidence, not by design
+— did not change either run's headline finding count (the resurrection fix
+itself removes the DuckDB false positives independent of whether
+retirement is recognized at all, and the vector migration was clean either
+way).
+
+**Original finding (below, preserved for the record). CV-M5 failed on one
+of its two migrations, and the failure was a real, useful finding, not a
+fluke.** On ADR-041's vector
 withdrawal, the detector is exactly right: the seeded copy flags, the
 genuine range is silent. On ADR-025's DuckDB removal, the seeded copy
 correctly ALSO flags — but so does the untouched, unseeded, genuine
@@ -108,8 +158,12 @@ git clone <fathom> /tmp/cv-m5-duckdb && cd /tmp/cv-m5-duckdb
 git checkout 5a7bd817713f662b7b5f35e0bb7691c61b2afd46 -b base
 # add docs/plans/cv-m5-ss8-retirement.md declaring `retires: "api:....DuckStore.*"`, commit
 git diff 5a7bd817713f662b7b5f35e0bb7691c61b2afd46 356630db33f40d5411c4c659c71b0cf7fe315f18 | git apply && git add -A && git commit -m genuine
-bin/fathom conserve --service cvm5 --store cv.sqlite --since <declared-base-sha> --json
+bin/fathom conserve --service cvm5 --store cv.sqlite --since <declared-base-sha> --plan docs/plans/cv-m5-ss8-retirement.md --json
 ```
 (seeded: same, plus the new file with a copied ≥5-statement function under
 a new name, before the final commit; vector the same shape against
-`4edbc217`/`bc0ee164`.)
+`4edbc217`/`bc0ee164`, plan `docs/plans/cv-m5-su8-retirement.md` retiring
+`api:internal/vector.*`.) **Pass `--plan <relative path>` explicitly** —
+default plan discovery does not currently pick up `docs/plans/*.md`
+declarations at all (O117, `.fathom/observations.md`, found while re-running
+this replay; not fixed here, out of this fix's own two named defects).

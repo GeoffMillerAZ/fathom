@@ -99,7 +99,11 @@ type Report struct {
 // PackageEdges is one fathom package's worth of imported typed edges.
 // ImportIndex groups its output this way because store.PutTypedEdges
 // (internal/store) replaces typed edges at exactly this granularity — see
-// the package doc comment.
+// the package doc comment. Edges may be empty: a package with at least one
+// mapped definition but no outgoing edges this run is still listed (O116,
+// .fathom/observations.md) so a caller looping Packages to call
+// store.PutTypedEdges per package still clears that package's stale rows
+// from an earlier import rather than silently skipping it.
 type PackageEdges struct {
 	Package string
 	Edges   []core.Edge
@@ -645,8 +649,33 @@ func fromIndex(service string, idx *scippb.Index, nodes []core.SymbolNode) Impor
 		rep.Skipped = nil
 	}
 
-	pkgs := make([]string, 0, len(edgesByPkg))
+	// O116 (.fathom/observations.md): Packages must list every package this
+	// import KNOWS ABOUT — every package holding at least one mapped
+	// definition — not merely the packages that happened to accumulate an
+	// edge. edgesByPkg alone under-reports: a package whose sole definition
+	// is never called FROM anywhere in this index (like "math" in the TS
+	// fixture, or any package whose calls all turned out unresolved-FROM or
+	// were simply absent) never gets a key there, so a caller looping
+	// Packages to call store.PutTypedEdges per package never even SEES it —
+	// and if an earlier, buggier import once wrote edges for that same
+	// package, those stale rows survive forever, because nothing ever calls
+	// PutTypedEdges with an empty slice for it (store.PutTypedEdges itself
+	// already clears correctly the instant it IS called that way — the gap
+	// was entirely about which packages get called at all). pkgSet is the
+	// union of every package with a mapped definition (bySym's values) and
+	// edgesByPkg's own keys (defensive: every edge's fromPkg already comes
+	// from a mapped definition, so this union should already be a no-op,
+	// but a package set derived from the SAME data an edge's fromPkg came
+	// from can never miss an edge-bearing package this way).
+	pkgSet := make(map[string]bool, len(bySym))
+	for _, d := range bySym {
+		pkgSet[d.node.PackagePath()] = true
+	}
 	for p := range edgesByPkg {
+		pkgSet[p] = true
+	}
+	pkgs := make([]string, 0, len(pkgSet))
+	for p := range pkgSet {
 		pkgs = append(pkgs, p)
 	}
 	sort.Strings(pkgs)

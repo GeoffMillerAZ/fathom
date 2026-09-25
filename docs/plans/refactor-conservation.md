@@ -49,7 +49,7 @@ silently skipped. Design: `docs/design/refactor-conservation.md`.
 - [x] A call site to a `Deprecated:` symbol that is new in the range is a finding {id: CV-30, symbol: DeprecatedCallers, package: internal/conserve, reachable_from: TestDeprecatedCallers_NewCallSiteInRange}
 - [x] A function body hash is insensitive to identifier renames {id: CV-31, symbol: FuncBodyHash, package: internal/analysis/clone, reachable_from: TestFuncBodyHash_IdentifierRenameInsensitive}
 - [x] A body deleted in the range that reappears under another name is a resurrection finding {id: CV-32, symbol: Resurrected, package: internal/conserve, reachable_from: TestResurrected_DeletedBodyReappears}
-- [ ] (op) CV-M5: seeded copies in replays of fathom's own migrations (ADR-025, ADR-041) are all caught, with no finding on the genuine commits {id: CV-M5, skip: "measurement: Blindness replay"}
+- [ ] (op) CV-M5: seeded copies in replays of fathom's own migrations (ADR-025, ADR-041) are all caught, with no finding on the genuine commits {id: CV-M5, skip: "measured PASS (2/2): docs/bench/readings/cv-m5-blindness-replay-2026-09-24.md's 2026-09-24 update — after fixing conserve.Resurrected to require a matching head function to be itself new-or-changed in the range, both migrations replayed clean: DuckDB genuine 0 body_resurrected (was 24), seeded still flags (2); vector genuine 0 (unchanged), seeded still flags (1)"}
 
 ## D. Stage 4 — refactors as programs
 

@@ -252,6 +252,153 @@ func TestResurrected_StructuralChangeIsNotFlagged(t *testing.T) {
 	}
 }
 
+// duckClaimEventsBody and sqliteClaimEventsBody are CV-M5's own fixture
+// shape (docs/bench/readings/cv-m5-blindness-replay-2026-09-24.md): two
+// long-lived, INDEPENDENTLY-written implementations of the same interface
+// (the real ADR-025 case: DuckStore.ClaimEvents and
+// SQLiteStore.ClaimEvents) sharing an identical, statement-for-statement
+// body for years before one twin is deleted — clone.FuncBodyHash's
+// identifier-insensitive normalization makes their differing receiver and
+// method names irrelevant to the hash.
+const duckClaimEventsBody = `func (s *DuckStore) ClaimEvents(id string) ([]Event, error) {
+	rows, err := s.db.Query(claimEventsQuery, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Event
+	for rows.Next() {
+		var e Event
+		if err := rows.Scan(&e.ID, &e.At, &e.Verdict); err != nil {
+			return nil, err
+		}
+		out = append(out, e)
+	}
+	return out, rows.Err()
+}`
+
+const sqliteClaimEventsBody = `func (s *SQLiteStore) ClaimEvents(id string) ([]Event, error) {
+	rows, err := s.db.Query(claimEventsQuery, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Event
+	for rows.Next() {
+		var e Event
+		if err := rows.Scan(&e.ID, &e.At, &e.Verdict); err != nil {
+			return nil, err
+		}
+		out = append(out, e)
+	}
+	return out, rows.Err()
+}`
+
+// TestResurrected_ConvergentImplementationsNeverFlag is CV-M5's own
+// regression: the genuine ADR-025 DuckDB removal produced 24 false
+// body_resurrected findings because Resurrected matched a deleted base
+// function against ANY function in a changed file at head sharing its
+// hash, without checking whether that MATCHING head function was itself
+// new or changed in this range. sqlite/store.go here is a changed file
+// only because of an unrelated edit elsewhere in it (an added helper
+// shifting line numbers) — SQLiteStore.ClaimEvents' own body never changes
+// between base and head. It must never be treated as
+// DuckStore.ClaimEvents' resurrection, retirement declared or not: it was
+// never new, and its hash never changed in this range — it simply always
+// existed, independently, since before the range began.
+func TestResurrected_ConvergentImplementationsNeverFlag(t *testing.T) {
+	base := map[string]string{
+		"duck/store.go":   "package duck\n\n" + duckClaimEventsBody + "\n",
+		"sqlite/store.go": "package sqlite\n\nfunc unrelatedHelper() {}\n\n" + sqliteClaimEventsBody + "\n",
+	}
+	head := map[string]string{
+		// The genuine ADR-025 shape: DuckStore's twin deleted outright.
+		"duck/store.go": "package duck\n\n// DuckStore was removed (ADR-025).\n",
+		// sqlite/store.go changes for a wholly unrelated reason — an extra
+		// helper lands earlier in the file, shifting line numbers —
+		// SQLiteStore.ClaimEvents' own body is byte-for-byte unchanged.
+		"sqlite/store.go": "package sqlite\n\nfunc unrelatedHelper() {}\n\nfunc anotherHelper() {}\n\n" + sqliteClaimEventsBody + "\n",
+	}
+	in := Input{
+		ChangedFiles: []string{"duck/store.go", "sqlite/store.go"},
+		BaseFile:     mapFile(base),
+		HeadFile:     mapFile(head),
+		// The duck package is declared retired — exactly the row a real
+		// refactor program (ADR-044 §4) emits for the deletion.
+		Retired: Retirement{keys: []string{"api:duck.DuckStore.ClaimEvents"}},
+	}
+
+	findings, missing := Resurrected(in)
+	if len(missing) != 0 {
+		t.Fatalf("missing = %v, want none", missing)
+	}
+	if len(findings) != 0 {
+		t.Fatalf("findings = %+v, want none — SQLiteStore.ClaimEvents already existed at base with an unchanged body; it is not a resurrection candidate (CV-M5)", findings)
+	}
+}
+
+// TestResurrected_ConvergentImplementations_SeededCopyStillFlags is the
+// OTHER half of the same CV-M5 reading, in the SAME convergent-
+// implementation repository as the test above: a genuinely SEEDED copy — a
+// brand-new file attached to the surviving implementation, copying the
+// retired body under a new name — must still flag. The fix must exempt
+// only a candidate that is itself unchanged from base, never suppress a
+// real resurrection merely because some unrelated, long-lived function
+// elsewhere happens to share its hash.
+func TestResurrected_ConvergentImplementations_SeededCopyStillFlags(t *testing.T) {
+	const seededClaimEventsBody = `func (s *SQLiteStore) SeededClaimEvents(id string) ([]Event, error) {
+	rows, err := s.db.Query(claimEventsQuery, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Event
+	for rows.Next() {
+		var e Event
+		if err := rows.Scan(&e.ID, &e.At, &e.Verdict); err != nil {
+			return nil, err
+		}
+		out = append(out, e)
+	}
+	return out, rows.Err()
+}`
+	base := map[string]string{
+		"duck/store.go":   "package duck\n\n" + duckClaimEventsBody + "\n",
+		"sqlite/store.go": "package sqlite\n\nfunc unrelatedHelper() {}\n\n" + sqliteClaimEventsBody + "\n",
+	}
+	head := map[string]string{
+		"duck/store.go":   "package duck\n\n// DuckStore was removed (ADR-025).\n",
+		"sqlite/store.go": "package sqlite\n\nfunc unrelatedHelper() {}\n\nfunc anotherHelper() {}\n\n" + sqliteClaimEventsBody + "\n",
+		// The seeded copy: a brand-new file, attached to the surviving
+		// implementation, copying DuckStore.ClaimEvents' exact body under a
+		// new name — the actual Blindness fixture this check exists to
+		// catch.
+		"sqlite/seeded.go": "package sqlite\n\n" + seededClaimEventsBody + "\n",
+	}
+	in := Input{
+		ChangedFiles: []string{"duck/store.go", "sqlite/seeded.go", "sqlite/store.go"},
+		BaseFile:     mapFile(base),
+		HeadFile:     mapFile(head),
+		Retired:      Retirement{keys: []string{"api:duck.DuckStore.ClaimEvents"}},
+	}
+
+	findings, missing := Resurrected(in)
+	if len(missing) != 0 {
+		t.Fatalf("missing = %v, want none", missing)
+	}
+	if len(findings) != 1 {
+		t.Fatalf("findings = %+v, want exactly 1 — the seeded copy must still flag", findings)
+	}
+	f := findings[0]
+	if f.Plane != "resurrection" || f.Kind != "body_resurrected" || f.Key != "DuckStore.ClaimEvents" {
+		t.Errorf("finding = %+v, want plane=resurrection kind=body_resurrected key=DuckStore.ClaimEvents", f)
+	}
+	wantHeadPrefix := "sqlite/seeded.go:"
+	if len(f.Head) < len(wantHeadPrefix) || f.Head[:len(wantHeadPrefix)] != wantHeadPrefix {
+		t.Errorf("Head = %q, want the seeded file's site (prefix %q), not sqlite/store.go's unchanged SQLiteStore.ClaimEvents", f.Head, wantHeadPrefix)
+	}
+}
+
 func TestResurrected_PlaneName(t *testing.T) {
 	var p resurrectionPlane
 	if got := p.Name(); got != "resurrection" {

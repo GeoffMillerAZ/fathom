@@ -9,15 +9,13 @@ other than `unproven`.
 anti-Blindness) landed and are proven. §4 (refactors as programs) and §5 (the
 typed floor) shipped their CLI verbs (`fathom refactor plan`/`status`,
 `fathom report evidence`). §6's pre-push wiring and the `review`/`review_diff`
-`conservation` dimension are wired. §3.3's resurrection detector over-fires
-on a genuine large, unseeded removal (CV-M5,
-`docs/bench/readings/cv-m5-blindness-replay-2026-09-24.md`); §7's
-decision-port sites and §7a's cross-repo test-kit/Review Kit rows remain
-`(op)`/unclaimed in the plan. **CV-M6 (the dogfood refactor program)
-passes**, but only after fixing a real gap it found: `fathom verify
---store` had never wired a `verify.GoneEvidence` adapter, so a `gone:` row
-(§3.1) could never be proven true or false via the CLI, only ever
-`Unknown` — now fixed (`cmd/fathom/verify_gone_evidence.go`,
+`conservation` dimension are wired. §7's decision-port sites and §7a's
+cross-repo test-kit/Review Kit rows remain `(op)`/unclaimed in the plan.
+**CV-M6 (the dogfood refactor program) passes**, but only after fixing a
+real gap it found: `fathom verify --store` had never wired a
+`verify.GoneEvidence` adapter, so a `gone:` row (§3.1) could never be
+proven true or false via the CLI, only ever `Unknown` — now fixed
+(`cmd/fathom/verify_gone_evidence.go`,
 `docs/bench/readings/cv-m6-dogfood-2026-09-24.md`). **CV-M4 (wave 3
 gap-closing):** §5's own measured tiers first surfaced that the `surface`
 plane's Go `api:` delta (§2.1) was a purely textual comparison, not a
@@ -33,7 +31,27 @@ Extract already does — no `go/types` pass, no second module load — and
 `Diff` applies apidiff's own compatibility rules (§2.2 below) over it
 instead of comparing rendered text; `any`/`interface{}` are canonicalized
 at render time for every Go item, type or not. Re-measured on the full 50
-pairs: `docs/bench/readings/cv-m4-apidiff-full50-2026-09-24.md`.
+pairs: precision 0.960, recall 1.000
+(`docs/bench/readings/cv-m4-apidiff-full50-2026-09-24.md`). **CV-M5 (the
+Blindness replay) now passes 2/2**, after fixing a real false-positive
+class it found: §3.3's resurrection detector matched a deleted base
+function against ANY function in a changed file at head sharing its body
+hash, without checking whether that matching head function was itself
+touched by the change — the genuine ADR-025 DuckDB removal produced 24
+false `body_resurrected` findings this way, because `DuckStore` and
+`SQLiteStore` had implemented the same `Store` interface with convergent
+CRUD bodies for years. Fixed: a head function is now a resurrection
+candidate only when it is itself new in the range or its body hash
+changed in the range — a function whose identical body already existed at
+base under its own name is never a candidate, retirement declared or not
+(`internal/conserve/resurrection.go`,
+`docs/bench/readings/cv-m5-blindness-replay-2026-09-24.md`'s 2026-09-24
+update). That replay also surfaced a second, unrelated gap — filed as
+O117 (`.fathom/observations.md`), not fixed here — `fathom conserve`'s
+default plan discovery hands absolute paths where its plan reader expects
+repo-relative ones, so `retires:`/`surface_change:` declarations may be
+silently invisible on the real repository whenever `--plan` is not passed
+explicitly (the only way the pre-push gate invokes it today).
 
 ## 0. Vocabulary and the change range
 
