@@ -31,25 +31,28 @@ func fakeRouteDaemon(t *testing.T, status int, body any) *httptest.Server {
 }
 
 // TestPromptHook_RouteLineBands pins DP-10's reachable_from (routeLine,
-// package cmd/fathom): a proceed-band response renders one firm line, a
-// confirm-band response renders one hedged line, and every other case —
-// unsure band, verb "none", provider "none", a non-200 status, or a
-// malformed body — renders nothing at all. Also covers combineWithRouteLine
-// (the pure byte-budget-drop helper routeLine's caller, cmdPromptHook,
-// folds the line through): a route line that would push the combined text
-// over the hook's existing byte budget (harness.CodexAdditionalContextCap)
-// is dropped, never truncating the obligations text it would have joined.
+// package cmd/fathom), amended 2026-09-24 (ADR-042, CV-M11): a
+// proceed-band response and a confirm-band response render the SAME
+// hedged line — route is never phrased as a firm instruction at any
+// confidence, since its own calibration reading found confidence
+// uncorrelated with correctness — and every other case — unsure band,
+// verb "none", provider "none", a non-200 status, or a malformed body —
+// renders nothing at all. Also covers combineWithRouteLine (the pure
+// byte-budget-drop helper routeLine's caller, cmdPromptHook, folds the
+// line through): a route line that would push the combined text over the
+// hook's existing byte budget (harness.CodexAdditionalContextCap) is
+// dropped, never truncating the obligations text it would have joined.
 func TestPromptHook_RouteLineBands(t *testing.T) {
 	deadline := time.Now().Add(5 * time.Second)
 
-	t.Run("proceed band: firm line", func(t *testing.T) {
+	t.Run("proceed band: hedged line, same wording as confirm", func(t *testing.T) {
 		srv := fakeRouteDaemon(t, 0, map[string]any{
 			"shape": "issue", "verb": "localize", "confidence": 0.93, "band": "proceed", "provider": "llm",
 		})
 		defer srv.Close()
 		hc := &http.Client{Timeout: deadlineRemaining(deadline)}
 		got := routeLine(hc, srv.URL, "TypeError: x is undefined", deadline)
-		want := "fathom route: this prompt is issue-shaped — open with localize (confidence 0.93)."
+		want := "fathom route: this looks issue-shaped; localize is the likely opening move (confidence 0.93, unconfirmed)."
 		if got != want {
 			t.Errorf("routeLine = %q, want %q", got, want)
 		}
@@ -160,7 +163,7 @@ func TestPromptHook_RouteLineBands(t *testing.T) {
 // obligations resolved nothing at all; an empty route line changes
 // nothing.
 func TestCombineWithRouteLine_ByteBudget(t *testing.T) {
-	route := "fathom route: this prompt is issue-shaped — open with localize (confidence 0.93)."
+	route := "fathom route: this looks issue-shaped; localize is the likely opening move (confidence 0.93, unconfirmed)."
 
 	t.Run("empty route changes nothing", func(t *testing.T) {
 		text, ok := combineWithRouteLine("obligations text", true, "")

@@ -24,7 +24,7 @@ A/B rows at the end are operator decisions (LLM spend) and are never claimed by 
 ## D. Prompt routing (ADR-042 decision 2; I9/I12/I14 preserved)
 
 - [x] `POST /route` on the loopback daemon takes `{prompt}` and returns `{shape, verb, confidence, provider}` from one `choice` over the verb set (`localize`, `find_symbol`, `references`, `find_callers`, `obligations`, `staleness_report`, `search`, `none`); under `none` it returns `provider: none` and an empty verb without calling anything {id: DP-9, symbol: routeHandler, package: cmd/fathom, reachable_from: TestRouteHandler_NoneAndLLM}
-- [x] `fathom prompt-hook` calls `/route` inside its existing shared deadline and injects one line: firm at or above `route_confidence`, hedged in the confirm band, nothing below 0.5 or on any error; the whole injection stays within the hook's byte budget and the hook exits 0 on every failure {id: DP-10, symbol: routeLine, package: cmd/fathom, reachable_from: TestPromptHook_RouteLineBands}
+- [x] `fathom prompt-hook` calls `/route` inside its existing shared deadline and injects one line, hedged at or above the confirm floor (amended 2026-09-24, ADR-042 decision 8/CV-M11: route's own calibration reading failed at every confidence cutoff, so the line is never phrased as firm, whatever the band), nothing below 0.5 or on any error; the whole injection stays within the hook's byte budget and the hook exits 0 on every failure {id: DP-10, symbol: routeLine, package: cmd/fathom, reachable_from: TestPromptHook_RouteLineBands}
 
 ## E. Docs, bench recipe, and the A/B (ADR-042 decision 5)
 

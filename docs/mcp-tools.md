@@ -141,8 +141,12 @@ outside the tool registry — hooks call these directly rather than through
   usually wants. Every answered decision is appended to `decisions.jsonl`
   (`internal/decide.DefaultRecorderPath`, beside the configured call log)
   under site `"route"`. `fathom prompt-hook` is this route's only caller
-  today (DP-10): at or above the `proceed` band it injects one firm line,
-  in the `confirm` band one hedged line, and nothing below that or on any
+  today (DP-10, amended 2026-09-24 — ADR-042 decision 8/CV-M11: route's own
+  calibration reading found its `proceed`-band choice right only 45.7% of the
+  time, well under the 0.9-right-nine-times-in-ten bar, with no confidence
+  cutoff that fixes it): at or above the `proceed` band OR in the `confirm`
+  band it injects the SAME hedged line — never a firm instruction, at any
+  confidence — and nothing below the confirm floor (0.5) or on any
   failure. **A decision-port call that hard-fails (no answer at all —
   `/route`'s own decider error, a `compile_layer` pre-filter chunk, or an
   `obligations` re-rank chunk) is ALSO logged** (DP-22/DP-23, O109): a row

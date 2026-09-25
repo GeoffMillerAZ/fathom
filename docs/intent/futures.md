@@ -203,6 +203,19 @@ promotion on still applies before `typesafe` becomes any repo's *default*
 provider (vision 32 §4) — kept below as the still-live bar for that, not for
 existence.
 
+**This row's own drop-if fired for the `route` site, 2026-09-24** (CV-M11,
+`docs/bench/readings/decision-port-calibration-2026-09-24.md`, ADR-042
+amendment): joined against 82 adjudicated route decisions, the vendor's
+calibration was right only 45.7% of the time at confidence ≥ 0.9 — the
+"0.9 not right nine times in ten" condition below, triggered. Scoped to
+`route` alone: `certify_suggest`'s own spot-check stayed 5/5, and this is not
+a drop of the adapter or of `typesafe` generally. The response is a downgrade,
+not a removal — `route_confidence` stays at 0.9 (raising it would not satisfy
+a non-monotonic miscalibration) and the prompt hook's route line is now
+always hedged, never firm, at any confidence (ADR-042's 2026-09-24 wave-2
+amendment). Revisit `route`'s own use specifically when a routing change
+passes the calibration check on a new sample; the row otherwise stands.
+
 - Confidence: plausible. Horizon: when access exists. Evidence: ADR-042, `docs/vision/32-decision-port.md`, the 2026-09-22 assessment.
 - Promote when: an API key exists AND one site's A/B (compile pre-filter, obligations rank, or routing) shows a gain over the `llm` adapter at n ≥ 3. Drop if: the vendor's calibration fails our own adjudicated cells (0.9 not right nine times in ten) or the service is withdrawn.
 - Preserve: the port's three kinds mirror the vendor primitives; an adapter is an HTTP client, never a change to a site.
