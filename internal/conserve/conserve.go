@@ -176,6 +176,16 @@ type Report struct {
 	// Tiers is left nil by Run — see TierInfo's doc comment. A caller that
 	// wants it set assigns Report.Tiers after Run returns.
 	Tiers []TierInfo `json:"tiers,omitempty"`
+	// Residue is the reading set (design §3.4, CV-64) — additive to the
+	// fathom.conserve/v1 wire contract. Left nil by Run, which never
+	// touches it (exactly like Tiers above: a pointer, `omitempty`, so a
+	// caller that never computes the reading set never emits a "residue"
+	// key or a spurious "null" — encoding/json's `omitempty` does not look
+	// inside a plain struct value, only a nil pointer/slice/map). A
+	// caller that wants it computes Residue(ctx, in, maxItems) and assigns
+	// Report.Residue itself. Never a plane: it carries no Verdict of its
+	// own and is never consulted by planeVerdict or --strict's exit.
+	Residue *ResidueReport `json:"residue,omitempty"`
 }
 
 // Plane is one family of conservation checks (ADR-044 §0: integrity,

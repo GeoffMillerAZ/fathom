@@ -281,6 +281,7 @@ func applyConservationDimension(ctx context.Context, in *review.Input, backend Q
 	in.ConservationSupported = true
 	rep := conserve.Run(ctx, cin, conserve.Planes())
 	in.ConservationPlanes = conservationPlaneSummaries(rep.Planes)
+	in.ConservationResidue = conservationResidueSummary(conserve.Residue(ctx, cin, conserve.DefaultResidueMax))
 }
 
 // conservationPlaneSummaries flattens internal/conserve.PlaneReport into
@@ -305,6 +306,24 @@ func conservationPlaneSummaries(planes []conserve.PlaneReport) []review.Conserva
 		})
 	}
 	return out
+}
+
+// conservationResidueSummary flattens internal/conserve.ResidueReport into
+// review.ConservationResidueSummary 1:1 (CV-65, design §3.4) —
+// cmd/fathom/reviewconservation.go carries its own identical copy
+// (conservationPlaneSummaries' own precedent just above).
+func conservationResidueSummary(rep conserve.ResidueReport) review.ConservationResidueSummary {
+	items := make([]review.ConservationResidueItem, 0, len(rep.Items))
+	for _, it := range rep.Items {
+		items = append(items, review.ConservationResidueItem{
+			Symbol: it.Symbol, File: it.File, Line: it.Line, Change: it.Change,
+			Class: it.Class, Tests: it.Tests, Callers: it.Callers,
+		})
+	}
+	return review.ConservationResidueSummary{
+		Changed: rep.Changed, Attested: rep.Attested, Unattested: rep.Unattested, Unreached: rep.Unreached,
+		Items: items, Truncated: rep.Truncated, Unanalyzed: rep.Unanalyzed, Missing: rep.Missing,
+	}
 }
 
 // discoverConservePlanPaths returns every docs/plans/*.md at root,

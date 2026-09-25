@@ -96,3 +96,88 @@ func TestReview_ConservationDimension(t *testing.T) {
 		}
 	})
 }
+
+// TestReview_ConservationDimensionCarriesResidue pins CV-65 (design §3.4):
+// the conservation dimension carries the reading set's own counts and its
+// first five `unreached` items, alongside — never in place of — its
+// ordinary plane findings, and never touches Checked/Reason on its own.
+func TestReview_ConservationDimensionCarriesResidue(t *testing.T) {
+	unreachedItem := func(symbol string, callers int) review.ConservationResidueItem {
+		return review.ConservationResidueItem{Symbol: symbol, File: "pkg/a.go", Line: 1, Change: "added", Class: "unreached", Callers: callers}
+	}
+
+	t.Run("counts and a capped-to-5 unreached list ride alongside plane findings", func(t *testing.T) {
+		items := []review.ConservationResidueItem{
+			unreachedItem("A", 6), unreachedItem("B", 5), unreachedItem("C", 4),
+			unreachedItem("D", 3), unreachedItem("E", 2), unreachedItem("F", 1),
+			{Symbol: "G", File: "pkg/a.go", Line: 2, Change: "modified", Class: "unattested", Tests: []string{"TestG"}},
+		}
+		v := review.Run(review.Input{
+			Service: "svc", ChangedFiles: []string{"pkg/a.go"}, Base: "deadbeef",
+			ConservationSupported: true,
+			ConservationPlanes: []review.ConservationPlaneSummary{
+				{Plane: "surface", Verdict: "conserved"},
+			},
+			ConservationResidue: review.ConservationResidueSummary{
+				Changed: 7, Attested: 0, Unattested: 1, Unreached: 6,
+				Items: items, Truncated: 3, Unanalyzed: []string{"README.md"}, Missing: []string{},
+			},
+		})
+		d := dimension(t, v, review.DimConservation)
+		if !d.Checked {
+			t.Fatalf("expected conservation to be checked; reason=%q", d.Reason)
+		}
+		if d.Residue.Changed != 7 || d.Residue.Attested != 0 || d.Residue.Unattested != 1 || d.Residue.Unreached != 6 {
+			t.Errorf("Residue counts = %+v, want changed=7 attested=0 unattested=1 unreached=6", d.Residue)
+		}
+		if d.Residue.Truncated != 3 {
+			t.Errorf("Residue.Truncated = %d, want 3 (carried through, not recomputed)", d.Residue.Truncated)
+		}
+		if len(d.Residue.Unanalyzed) != 1 || d.Residue.Unanalyzed[0] != "README.md" {
+			t.Errorf("Residue.Unanalyzed = %v, want [README.md]", d.Residue.Unanalyzed)
+		}
+		if len(d.Residue.Items) != 5 {
+			t.Fatalf("Residue.Items = %+v, want exactly 5 (first five unreached, never more)", d.Residue.Items)
+		}
+		wantSymbols := []string{"A", "B", "C", "D", "E"}
+		for i, sym := range wantSymbols {
+			if d.Residue.Items[i].Symbol != sym || d.Residue.Items[i].Class != "unreached" {
+				t.Errorf("Residue.Items[%d] = %+v, want symbol=%q class=unreached", i, d.Residue.Items[i], sym)
+			}
+		}
+		for _, it := range d.Residue.Items {
+			if it.Symbol == "F" || it.Symbol == "G" {
+				t.Errorf("Residue.Items must cap at the first five unreached and never include an unattested item: %+v", d.Residue.Items)
+			}
+		}
+		// The residue rides ALONGSIDE the plane findings, never instead
+		// of them — an empty-findings plane summary still leaves the
+		// dimension checked with a clean plane count.
+		if d.Count != 0 {
+			t.Errorf("Count = %d, want 0 (the residue itself contributes no Finding)", d.Count)
+		}
+	})
+
+	t.Run("an unproven residue still surfaces its own Missing, never as a plane finding", func(t *testing.T) {
+		v := review.Run(review.Input{
+			Service: "svc", ChangedFiles: []string{"pkg/a.go"}, Base: "deadbeef",
+			ConservationSupported: true,
+			ConservationResidue: review.ConservationResidueSummary{
+				Missing: []string{"the index is not at HEAD"},
+			},
+		})
+		d := dimension(t, v, review.DimConservation)
+		if !d.Checked {
+			t.Fatalf("expected conservation to be checked; reason=%q", d.Reason)
+		}
+		if len(d.Residue.Items) != 0 {
+			t.Errorf("Residue.Items = %+v, want none (nothing was classified)", d.Residue.Items)
+		}
+		if len(d.Residue.Missing) != 1 || d.Residue.Missing[0] != "the index is not at HEAD" {
+			t.Errorf("Residue.Missing = %v, want [the index is not at HEAD]", d.Residue.Missing)
+		}
+		if d.Count != 0 {
+			t.Errorf("Count = %d, want 0 (an unproven residue is never rendered as a plane Finding)", d.Count)
+		}
+	})
+}

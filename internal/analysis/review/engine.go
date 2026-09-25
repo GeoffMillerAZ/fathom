@@ -127,6 +127,15 @@ type Dimension struct {
 	// changed symbol DimTestCoverage found profile data for — {symbol,
 	// layers, percent, uncovered}. Empty for every other dimension.
 	Coverage []CoverageDetail
+
+	// Residue is DimConservation-only detail (CV-65, design §3.4): the
+	// reading set's own counts plus its first five `unreached` items —
+	// the same "dimension-specific detail, empty everywhere else"
+	// precedent Tests/Files/Coverage above already establish. Zero value
+	// for every other dimension, and for conservation itself whenever the
+	// caller had no residue to report (ConservationSupported false, or a
+	// residue that came back unproven with nothing classified).
+	Residue ConservationResidueSummary
 }
 
 // Verdict is the ONE cited verdict review_diff returns.
@@ -249,6 +258,16 @@ type Input struct {
 	// report checked:false.
 	ConservationSupported bool
 	ConservationPlanes    []ConservationPlaneSummary
+	// ConservationResidue is the reading set's own counts and its capped
+	// item list (design §3.4, CV-65), caller-PRECOMPUTED exactly like
+	// ConservationPlanes above (this package never imports
+	// internal/conserve — a caller builds this from conserve.Report.
+	// Residue's own fields, ConservationResidueSummary's own doc
+	// comment). Zero value ("nothing computed") is legitimate whenever
+	// ConservationSupported is false, or when the reading set itself came
+	// back unproven with nothing classified — runConservation never
+	// treats an empty residue as an error on its own.
+	ConservationResidue ConservationResidueSummary
 }
 
 // ConservationPlaneSummary mirrors one internal/conserve.PlaneReport —
@@ -264,6 +283,35 @@ type ConservationPlaneSummary struct {
 // ConservationFinding mirrors one internal/conserve.Finding.
 type ConservationFinding struct {
 	Plane, Kind, Key, Detail, Base, Head, Declared, Remedy string
+}
+
+// ConservationResidueSummary mirrors internal/conserve.ResidueReport (design
+// §3.4, CV-65) — review's own copy of the shape (ConservationPlaneSummary's
+// own precedent: this leaf package never imports internal/conserve). A
+// caller builds this from conserve.Report.Residue the same way it already
+// flattens Report.Planes into []ConservationPlaneSummary.
+type ConservationResidueSummary struct {
+	Changed    int
+	Attested   int
+	Unattested int
+	Unreached  int
+	// Items mirrors conserve.ResidueReport.Items 1:1 — the caller decides
+	// how much of it to hand over; runConservation itself only ever
+	// SURFACES the first five (design §3.4: "the review conservation
+	// dimension carries... the first five unreached items"), so a caller
+	// may pass the full, already-capped list without runConservation
+	// re-truncating it to something smaller than five.
+	Items      []ConservationResidueItem
+	Truncated  int
+	Unanalyzed []string
+	Missing    []string
+}
+
+// ConservationResidueItem mirrors one internal/conserve.ResidueItem.
+type ConservationResidueItem struct {
+	Symbol, File, Change, Class string
+	Line, Callers               int
+	Tests                       []string
 }
 
 // DeclaredLabel mirrors conserve.Finding.DeclaredLabel's own correction
@@ -565,6 +613,16 @@ func runCertifications(in Input) Dimension {
 // silently dropped (I44: the caller must be able to see WHICH plane
 // could not be checked and why, not just that the dimension overall
 // ran).
+//
+// The reading set (design §3.4, CV-65) rides alongside, never inside, the
+// plane findings above: d.Residue carries in.ConservationResidue's own
+// counts, and the residue's first five `unreached` items — ordered exactly
+// as the caller supplied them (unreached-first, resolved-caller-count
+// descending, then symbol — conserve.Residue's own order, ConservationResidue
+// Summary.Items' own doc comment) — never re-sorted or re-classed here.
+// It changes NOTHING about Checked/Reason or the plane findings: the
+// reading set is not a plane (design §3.4) and never overrides
+// runConservation's own base/supported gate above.
 func runConservation(in Input) Dimension {
 	d := Dimension{Name: DimConservation}
 	if in.Base == "" {
@@ -576,6 +634,18 @@ func runConservation(in Input) Dimension {
 		return d
 	}
 	d.Checked = true
+
+	res := in.ConservationResidue
+	d.Residue = ConservationResidueSummary{
+		Changed: res.Changed, Attested: res.Attested, Unattested: res.Unattested, Unreached: res.Unreached,
+		Truncated: res.Truncated, Unanalyzed: res.Unanalyzed, Missing: res.Missing,
+	}
+	for _, it := range res.Items {
+		if it.Class != "unreached" || len(d.Residue.Items) >= 5 {
+			continue
+		}
+		d.Residue.Items = append(d.Residue.Items, it)
+	}
 
 	for _, p := range in.ConservationPlanes {
 		for _, m := range p.Missing {

@@ -1586,7 +1586,7 @@ code path this CLI calls — a Go embedder gets byte-identical answers.
 ### `conserve` — the refactor-conservation report (ADR-044, CV-19)
 
 ```sh
-fathom conserve --since <git-ref> --service <id> [--store DB] [--json] [--strict] [--plan FILE ...]
+fathom conserve --since <git-ref> --service <id> [--store DB] [--json] [--strict] [--plan FILE ...] [--residue-max N]
 ```
 
 Runs every registered `internal/conserve.Plane` (`surface`, `certificates`,
@@ -1656,6 +1656,58 @@ language among the changed files. `--strict` exits 1 when any plane's
 verdict is `losses` (2 is reserved for an operational failure — a bad
 `--since` ref, an unreadable store; 0 otherwise, --strict included, when
 no plane reports losses).
+
+#### The reading set (design §3.4, ADR-044 amended 2026-09-25, Q22)
+
+`fathom conserve` prints a `reading set` section AFTER every plane's own
+table: the changed functions in `base..head` whose behaviour no
+commit-bound passing test vouches for — what a reviewer still has to open
+once every plane has spoken. It is **not a plane**: it carries no verdict,
+changes none of the planes' verdicts, and never affects `--strict`'s exit.
+
+For each changed, non-test, non-generated `.go` file, every function
+`added` (no function of that receiver-qualified name existed at base
+anywhere in the same changed package directory) or `modified` (one did,
+and the exact body text differs) is classed by walking the index's
+resolved call edges back to `Test*` functions:
+
+- `attested` — at least one reaching test's latest run passed, is bound to
+  a commit, was made on a clean tree, and neither the test's file nor the
+  changed function's file changed since that commit (the same O114 rule
+  certificates use, applied here without a declared target);
+- `unattested` — a test reaches it, but none has such a run;
+- `unreached` — no test reaches it over resolved edges at all.
+
+A moved-but-unchanged function (same body, different file in the same
+package directory) is neither added nor modified, and a deleted function
+is never in the reading set (the compiler proves it gone; the
+resurrection/absence planes cover the rest). Items are ordered `unreached`
+then `unattested`, each by resolved caller count descending then symbol —
+`attested` functions are counted but never listed, since nothing there
+needs a reviewer's attention. The list is capped (`--residue-max`,
+default 200); the report names how many were cut. **No percentage, ratio
+or threshold is ever computed (I43): counts and lists only.**
+
+The reading set is `unproven` — classing nothing, only naming what was
+missing — when the index is not at HEAD (the store's last-ingested commit
+must equal git HEAD, working tree clean), the typed pass failed, or a
+changed file's base content could not be read (I44). `changed` and
+`unanalyzed` (every changed file that isn't Go, by path — the reading set
+never extracts functions from any other language) are still reported in
+that case: both are pure facts of the diff itself, computed without
+touching the index, so a stale or partial store never taints them.
+
+```json
+{"changed":3,"attested":1,"unattested":1,"unreached":1,
+ "items":[{"symbol":"Unreached","file":"widgets/extra.go","line":3,
+   "change":"added","class":"unreached","tests":[],"callers":0}],
+ "truncated":0,"unanalyzed":[],"missing":[]}
+```
+
+Served two other places: `fathom.conserve/v1`'s additive `residue` object
+(exactly the shape above), and `fathom review --since`'s `conservation`
+dimension, which carries the same counts plus the first five `unreached`
+items alongside its ordinary plane findings.
 
 ### `refactor` — refactors as programs (CV-33/CV-34, ADR-044 §4)
 

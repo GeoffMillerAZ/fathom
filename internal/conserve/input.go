@@ -18,6 +18,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
@@ -76,6 +77,32 @@ type Input struct {
 	// range that deletes the code still counts as a claim here, per
 	// Retired's own doc comment.
 	Retired Retirement
+
+	// IndexAtHead/IndexAtHeadReason/FailedTypedPackages are the reading
+	// set's own preconditions (design §3.4, I44's "index not at HEAD,
+	// typed packages failed") — pre-resolved ONCE per NewInput call
+	// exactly like every other Input fact above, so Residue itself stays
+	// a pure function of Input and never shells out on its own (this
+	// file's own doc comment: "the one place in this package that
+	// touches git"). IndexAtHeadReason is always "" when IndexAtHead is
+	// true. A caller building Input directly (most tests) sets these
+	// itself; NewInput computes them via git plus Store.GetServiceMeta/
+	// TypedEdgeStatus, mirroring verify.GoneEvidence's IndexAtHead/
+	// FailedTypedPackages methods (cmd/fathom/verify_gone_evidence.go) —
+	// the same rule, re-derived here rather than depending on cmd/fathom.
+	IndexAtHead         bool
+	IndexAtHeadReason   string
+	FailedTypedPackages []string
+
+	// ReachUnchangedSince reports whether none of files changed between
+	// commit and HEAD (certify.ReachUnchangedSince, O114's rule, applied
+	// here without a declared target — design §3.4's "attested" check).
+	// nil means no repository is available to ask; Residue then treats
+	// every candidate as not attested through this path rather than
+	// guessing "unchanged". NewInput sets this to a real git-backed
+	// closure (certify.ExecGit against Root); a caller building Input
+	// directly (most tests) supplies its own, deterministic fake.
+	ReachUnchangedSince func(commit string, files []string) (bool, error)
 }
 
 // Declarations is the base/head split of every retires:/surface_change:
@@ -262,18 +289,97 @@ func NewInput(ctx context.Context, root, baseRef string, st store.Store, service
 		}
 	}
 
+	indexAtHead, indexAtHeadReason := resolveIndexAtHead(ctx, root, st, service)
+
 	return Input{
-		Service:      service,
-		Root:         root,
-		Base:         base,
-		Head:         HeadWorktree,
-		ChangedFiles: changed,
-		BaseFile:     func(path string) ([]byte, bool, error) { return gitShowFile(root, base, path) },
-		HeadFile:     func(path string) ([]byte, bool, error) { return worktreeFile(root, path) },
-		Store:        st,
-		Declarations: NewDeclarations(basePlans, headPlans),
-		Retired:      NewRetirement(basePlans, headPlans),
+		Service:             service,
+		Root:                root,
+		Base:                base,
+		Head:                HeadWorktree,
+		ChangedFiles:        changed,
+		BaseFile:            func(path string) ([]byte, bool, error) { return gitShowFile(root, base, path) },
+		HeadFile:            func(path string) ([]byte, bool, error) { return worktreeFile(root, path) },
+		Store:               st,
+		Declarations:        NewDeclarations(basePlans, headPlans),
+		Retired:             NewRetirement(basePlans, headPlans),
+		IndexAtHead:         indexAtHead,
+		IndexAtHeadReason:   indexAtHeadReason,
+		FailedTypedPackages: resolveFailedTypedPackages(ctx, st, service),
+		ReachUnchangedSince: func(commit string, files []string) (bool, error) {
+			return certify.ReachUnchangedSince(certify.ExecGit, root, commit, files)
+		},
 	}, nil
+}
+
+// resolveIndexAtHead reports whether store's last-ingested commit for
+// service equals git HEAD in root, with a clean working tree — the reading
+// set's own precondition (design §3.4, I44's "index not at HEAD"),
+// mirroring verify.GoneEvidence's IndexAtHead (cmd/fathom/
+// verify_gone_evidence.go) so the SAME rule governs both `gone:` rows and
+// the reading set rather than two implementations that could drift.
+// atHead=false always carries a named reason, never silently empty.
+func resolveIndexAtHead(ctx context.Context, root string, st store.Store, service string) (atHead bool, reason string) {
+	if root == "" {
+		return false, "no repository root resolved for the reading set's index-freshness check"
+	}
+	head, err := resolveRef(ctx, root, "HEAD")
+	if err != nil {
+		return false, fmt.Sprintf("could not resolve git HEAD in %s: %v", root, err)
+	}
+	if st == nil {
+		return false, "no store"
+	}
+	meta, found, err := st.GetServiceMeta(ctx, service)
+	if err != nil {
+		return false, fmt.Sprintf("could not read ingest metadata for %q: %v", service, err)
+	}
+	if !found || meta.IndexedCommit == "" {
+		return false, "no commit was recorded for this service's last ingest — re-ingest before evaluating the reading set"
+	}
+	if meta.IndexedCommit != head {
+		return false, fmt.Sprintf("the index was ingested at commit %s, HEAD is now %s — re-ingest", meta.IndexedCommit, head)
+	}
+	dirty, derr := gitDirty(ctx, root)
+	if derr != nil {
+		return false, fmt.Sprintf("could not check working tree cleanliness in %s: %v", root, derr)
+	}
+	if dirty {
+		return false, "the working tree has uncommitted changes since the index was ingested"
+	}
+	return true, ""
+}
+
+// resolveFailedTypedPackages reads the store's PERSISTED typed-edge status
+// for service (DG-10, store.TypedEdgeStatusRecord) — mirroring
+// verify.GoneEvidence's FailedTypedPackages exactly (see that method's own
+// doc comment for why the persisted row, not an in-process cache, is what
+// survives across the CLI's fresh-process-per-invocation lifetime). nil
+// (never an error) when st is nil, unrecorded, or clean.
+func resolveFailedTypedPackages(ctx context.Context, st store.Store, service string) []string {
+	if st == nil {
+		return nil
+	}
+	rec, ok, err := st.TypedEdgeStatus(ctx, service)
+	if err != nil || !ok || !rec.Failed {
+		return nil
+	}
+	reason := rec.Reason
+	if reason == "" {
+		reason = "typed pass reported failed with no reason recorded"
+	}
+	return []string{reason}
+}
+
+// gitDirty reports whether root's whole working tree carries any
+// uncommitted state (staged, unstaged, or untracked) — mirrors
+// cmd/fathom/plans_archive.go's gitPathDirty, re-derived here (this
+// package cannot import cmd/fathom) with a context for cancellation.
+func gitDirty(ctx context.Context, root string) (bool, error) {
+	out, err := exec.CommandContext(ctx, "git", "-C", root, "status", "--porcelain").Output()
+	if err != nil {
+		return false, err
+	}
+	return len(strings.TrimSpace(string(out))) > 0, nil
 }
 
 // planPathRelativeTo makes p safe for gitShowFile/worktreeFile, both of

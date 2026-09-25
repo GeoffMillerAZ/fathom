@@ -63,3 +63,14 @@ func reachUnchangedSince(run GitRunner, dir, commit string, files []string) (boo
 	}
 	return len(bytes.TrimSpace(out)) == 0, nil
 }
+
+// ReachUnchangedSince exports reachUnchangedSince for a caller outside this
+// package that needs the IDENTICAL O114 rule — "unchanged" defined exactly
+// once, never a second implementation that could quietly drift from the
+// certificate ladder's own. internal/conserve's reading set (design
+// §3.4, ADR-044 amended 2026-09-25) is the first such caller: "attested"
+// applies this same check to a reaching test's file plus the changed
+// function's own file, without a declared target.
+func ReachUnchangedSince(run GitRunner, dir, commit string, files []string) (bool, error) {
+	return reachUnchangedSince(run, dir, commit, files)
+}

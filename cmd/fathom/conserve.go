@@ -24,6 +24,7 @@ import (
 	"io"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/conserve"
 	"github.com/geoffmilleraz/fathom/internal/store"
@@ -36,6 +37,7 @@ func cmdConserve(args []string, stdout, stderr io.Writer) int {
 	storePath := fs.String("store", defaultStorePath(), "store path (.sqlite/.db)")
 	jsonOut := fs.Bool("json", false, "emit the fathom.conserve/v1 JSON report instead of a text table")
 	strict := fs.Bool("strict", false, "exit 1 when any plane's verdict is \"losses\"")
+	residueMax := fs.Int("residue-max", conserve.DefaultResidueMax, "cap on the reading set's item list (design §3.4); the report says how many were cut")
 	var plans planFlags
 	fs.Var(&plans, "plan", "plan file to read retires:/surface_change: declarations from (repeatable); default: every docs/plans/*.md at the repo root (non-recursive, the same set the gate itself walks)")
 
@@ -75,6 +77,8 @@ func cmdConserve(args []string, stdout, stderr io.Writer) int {
 
 	rep := conserve.Run(ctx, in, conserve.Planes())
 	rep.Tiers = conserve.TiersByLanguage(ctx, in)
+	residue := conserve.Residue(ctx, in, *residueMax)
+	rep.Residue = &residue
 
 	if *jsonOut {
 		b, jerr := json.MarshalIndent(rep, "", "  ")
@@ -85,6 +89,7 @@ func cmdConserve(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stdout, string(b))
 	} else {
 		printConserveReport(stdout, rep)
+		printConserveResidue(stdout, residue)
 	}
 
 	if *strict {
@@ -157,5 +162,31 @@ func printConserveReport(w io.Writer, rep conserve.Report) {
 			fmt.Fprintf(w, " %s=%s", t.Language, t.Tier)
 		}
 		fmt.Fprintln(w)
+	}
+}
+
+// printConserveResidue renders the reading set (CV-64, design §3.4) AFTER
+// every plane's own table — it is not a plane, changes no verdict, and
+// never affects --strict's exit, so it prints last, clearly set apart from
+// the plane-by-plane findings above it.
+func printConserveResidue(w io.Writer, rep conserve.ResidueReport) {
+	fmt.Fprintf(w, "reading set: %d changed, %d attested, %d unattested, %d unreached\n",
+		rep.Changed, rep.Attested, rep.Unattested, rep.Unreached)
+	for _, m := range rep.Missing {
+		fmt.Fprintf(w, "    missing: %s\n", m)
+	}
+	for _, u := range rep.Unanalyzed {
+		fmt.Fprintf(w, "    unanalyzed: %s\n", u)
+	}
+	for _, it := range rep.Items {
+		tests := "no reaching test"
+		if len(it.Tests) > 0 {
+			tests = strings.Join(it.Tests, ", ")
+		}
+		fmt.Fprintf(w, "  - [%s] %s %s (%s:%d) — callers=%d, tests: %s\n",
+			it.Class, it.Change, it.Symbol, it.File, it.Line, it.Callers, tests)
+	}
+	if rep.Truncated > 0 {
+		fmt.Fprintf(w, "    (%d more item(s) cut by --residue-max)\n", rep.Truncated)
 	}
 }

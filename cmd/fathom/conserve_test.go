@@ -196,6 +196,113 @@ func TestCmdConserve_NoPlanFlagStillReadsRetiresDeclarations(t *testing.T) {
 	}
 }
 
+// TestConserve_ResidueInJSONAndText pins CV-64: `fathom conserve` prints
+// the reading set after the planes in text mode, carries it as an
+// additive "residue" object in JSON, and --residue-max caps its item list
+// with the cut count reported — real end to end, a genuine `fathom
+// ingest` in between so the store is actually AT HEAD (design §3.4's own
+// precondition) and classification really runs rather than degrading to
+// unproven the way every OTHER conserve_test.go fixture (never ingested)
+// does.
+func TestConserve_ResidueInJSONAndText(t *testing.T) {
+	repo := newSelfSkipGitRepo(t)
+	repo.writePlan("widgets/w.go", "package widgets\n\nfunc Reached() int { return 1 }\n")
+	repo.writePlan("widgets/w_test.go", "package widgets\n\nimport \"testing\"\n\nfunc TestReached(t *testing.T) { Reached() }\n")
+	repo.commitAll("base commit")
+	base := headSHAOf(t, repo.root)
+
+	// Reached is MODIFIED (a changed function TestReached still reaches,
+	// but no run was ever ingested for it — unattested); Unreached is a
+	// brand-new function nothing calls at all. Both changes are committed
+	// (not left in the worktree) so the tree is clean when ingest runs —
+	// the reading set's own "index at HEAD" precondition needs that.
+	repo.writePlan("widgets/w.go", "package widgets\n\nfunc Reached() int { return 2 }\n")
+	repo.writePlan("widgets/extra.go", "package widgets\n\nfunc Unreached() {}\n")
+	repo.commitAll("head commit")
+
+	storePath := filepath.Join(t.TempDir(), "residue.sqlite")
+	if code, _, stderr := runInDir(t, repo.root, []string{
+		"ingest", "--service", "svc", "--path", repo.root, "--store", storePath,
+	}); code != 0 {
+		t.Fatalf("ingest exit = %d, stderr: %s", code, stderr)
+	}
+
+	code, stdout, stderr := runInDir(t, repo.root, []string{
+		"conserve", "--since", base, "--service", "svc", "--store", storePath, "--json",
+	})
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr=%s", code, stderr)
+	}
+
+	var rep map[string]any
+	if err := json.Unmarshal([]byte(stdout), &rep); err != nil {
+		t.Fatalf("output is not valid JSON: %v\nstdout=%s", err, stdout)
+	}
+	residue, ok := rep["residue"].(map[string]any)
+	if !ok {
+		t.Fatalf("no \"residue\" object in JSON output: %+v", rep)
+	}
+	if len(residue["missing"].([]any)) != 0 {
+		t.Fatalf("residue.missing = %v, want none (ingest just ran at a clean HEAD)", residue["missing"])
+	}
+	if got := residue["changed"]; got != float64(2) {
+		t.Errorf("residue.changed = %v, want 2", got)
+	}
+	if got := residue["unattested"]; got != float64(1) {
+		t.Errorf("residue.unattested = %v, want 1", got)
+	}
+	if got := residue["unreached"]; got != float64(1) {
+		t.Errorf("residue.unreached = %v, want 1", got)
+	}
+	items, _ := residue["items"].([]any)
+	if len(items) != 2 {
+		t.Fatalf("residue.items = %+v, want 2 entries", items)
+	}
+	// unreached lists before unattested (design §3.4's own order).
+	first := items[0].(map[string]any)
+	if first["symbol"] != "Unreached" || first["class"] != "unreached" {
+		t.Errorf("items[0] = %+v, want Unreached/unreached first", first)
+	}
+
+	// Text mode: the reading set prints after the planes, human-readable.
+	codeText, stdoutText, stderrText := runInDir(t, repo.root, []string{
+		"conserve", "--since", base, "--service", "svc", "--store", storePath,
+	})
+	if codeText != 0 {
+		t.Fatalf("text exit code = %d, want 0; stderr=%s", codeText, stderrText)
+	}
+	if !strings.Contains(stdoutText, "reading set: 2 changed, 0 attested, 1 unattested, 1 unreached") {
+		t.Errorf("text output missing the reading-set summary line:\n%s", stdoutText)
+	}
+	if !strings.Contains(stdoutText, "Unreached") || !strings.Contains(stdoutText, "Reached") {
+		t.Errorf("text output missing the reading-set items:\n%s", stdoutText)
+	}
+
+	// --residue-max caps the item list and reports the cut.
+	codeCap, stdoutCap, stderrCap := runInDir(t, repo.root, []string{
+		"conserve", "--since", base, "--service", "svc", "--store", storePath, "--json", "--residue-max", "1",
+	})
+	if codeCap != 0 {
+		t.Fatalf("capped exit code = %d, want 0; stderr=%s", codeCap, stderrCap)
+	}
+	var repCap map[string]any
+	if err := json.Unmarshal([]byte(stdoutCap), &repCap); err != nil {
+		t.Fatalf("capped output is not valid JSON: %v\nstdout=%s", err, stdoutCap)
+	}
+	residueCap := repCap["residue"].(map[string]any)
+	cappedItems, _ := residueCap["items"].([]any)
+	if len(cappedItems) != 1 {
+		t.Fatalf("capped residue.items = %+v, want exactly 1", cappedItems)
+	}
+	if got := residueCap["truncated"]; got != float64(1) {
+		t.Errorf("capped residue.truncated = %v, want 1", got)
+	}
+	// Counts are never truncated, only the item list.
+	if got := residueCap["unattested"]; got != float64(1) {
+		t.Errorf("capped residue.unattested = %v, want 1 (counts are never capped)", got)
+	}
+}
+
 func headSHAOf(t *testing.T, root string) string {
 	t.Helper()
 	cmd := exec.Command("git", "-C", root, "rev-parse", "HEAD")
