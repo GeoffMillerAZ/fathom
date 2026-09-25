@@ -298,8 +298,40 @@ type ImportSCIPResult = scip.Import
 // another file's still-current rows. Per-path scoping keeps each index
 // file's reconcile self-contained: it only ever purges rows IT previously
 // wrote (O116 residual, .fathom/observations.md).
-func scipStoreKeyPrefix(path string) string {
-	return "scip:" + path + "::"
+//
+// key is scipIndexKey's stable identity for the file, never the raw path
+// as given: an absolute path changes whenever the same repository is
+// ingested from another checkout or a remapped root, and an explicit
+// --scip pointing into a temp directory changes every run — either would
+// open a fresh namespace per import and leave every earlier one's rows
+// behind forever, the very leak this namespace exists to close.
+func scipStoreKeyPrefix(key string) string {
+	return "scip:" + key + "::"
+}
+
+// scipIndexKey is a SCIP index file's stable identity for
+// scipStoreKeyPrefix: its slash-separated path relative to the service root
+// when the file lives inside it (the auto-detected index.scip and
+// .fathom/scip/*.scip locations), else its base name. Both sides resolve
+// symlinks first, so a root reached through a symlinked parent still
+// relativizes. Two index files OUTSIDE the root with the same base name
+// share a namespace — name external indexes distinctly.
+func scipIndexKey(root, path string) string {
+	if root != "" {
+		abs, err := filepath.Abs(path)
+		if err == nil {
+			if r, rerr := filepath.EvalSymlinks(root); rerr == nil {
+				root = r
+			}
+			if a, aerr := filepath.EvalSymlinks(abs); aerr == nil {
+				abs = a
+			}
+			if rel, rerr := filepath.Rel(root, abs); rerr == nil && rel != "." && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) && !filepath.IsAbs(rel) {
+				return filepath.ToSlash(rel)
+			}
+		}
+	}
+	return filepath.Base(path)
 }
 
 // ImportSCIP decodes a SCIP index file (ADR-041 decision 5, SU-9,
@@ -339,7 +371,11 @@ func (c *Client) ImportSCIP(ctx context.Context, serviceID, path string) (Import
 	if err != nil {
 		return scip.Import{}, fmt.Errorf("client.ImportSCIP: %w", err)
 	}
-	prefix := scipStoreKeyPrefix(path)
+	root, _, _, err := c.ServiceMeta(ctx, serviceID)
+	if err != nil {
+		return imp, fmt.Errorf("client.ImportSCIP: service meta: %w", err)
+	}
+	prefix := scipStoreKeyPrefix(scipIndexKey(root, path))
 	keep := make(map[string]bool, len(imp.Packages))
 	for _, pkg := range imp.Packages {
 		key := prefix + pkg.Package

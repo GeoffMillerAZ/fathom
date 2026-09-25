@@ -277,3 +277,40 @@ func TestImportSCIP_O116_GoTypedPassPackageSurvivesSCIPReimport(t *testing.T) {
 		})
 	}
 }
+
+// TestImportSCIP_O116_SameIndexFromAnotherPathReconciles: the namespace is
+// the index's stable identity, not its path as given, so re-importing the
+// corrected index from a DIFFERENT temp directory (a fresh --scip location
+// each run) still clears the vanished package instead of opening a second
+// namespace beside the first.
+func TestImportSCIP_O116_SameIndexFromAnotherPathReconciles(t *testing.T) {
+	for _, b := range scipO116Backends(t) {
+		t.Run(b.name, func(t *testing.T) {
+			ctx := context.Background()
+			seedSCIPO116Fixture(t, ctx, b.st)
+			c := client.New(connector.NewFauxConnector(), b.st)
+			t.Cleanup(func() { _ = c.Close() })
+
+			first := filepath.Join(t.TempDir(), "index.scip")
+			writeSCIPIndex(t, first, scip.BuildTSFixtureIndex())
+			if _, err := c.ImportSCIP(ctx, scipO116Service, first); err != nil {
+				t.Fatalf("ImportSCIP(first): %v", err)
+			}
+			second := filepath.Join(t.TempDir(), "index.scip")
+			writeSCIPIndex(t, second, scipIndexWithoutGreeter())
+			if _, err := c.ImportSCIP(ctx, scipO116Service, second); err != nil {
+				t.Fatalf("ImportSCIP(second): %v", err)
+			}
+			greeterGreetKey := core.SymbolKey(scipO116Service, "greeter", "Greeter.greet")
+			after, err := b.st.TypedEdges(ctx, scipO116Service)
+			if err != nil {
+				t.Fatalf("TypedEdges: %v", err)
+			}
+			for _, e := range after {
+				if e.FromSymbol == greeterGreetKey {
+					t.Errorf("edge from %q survived a re-import of the same index from another path: %+v", greeterGreetKey, e)
+				}
+			}
+		})
+	}
+}
