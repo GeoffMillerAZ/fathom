@@ -2,6 +2,9 @@
 
 ## Scope and findings
 
+Current executable follow-up: [September22 installed refresh](2026-09-22-mcp-installed-refresh.md).
+The following host trials remain dated evidence, not trials of every later binary.
+
 Owner requested working app-kit adoption tooling in both Codex and Claude Code,
 after a new Conjure session showed only the legacy TailwindPlus server. This is a
 bounded setup/server maintenance task, not a restart of the deferred G1–G6 campaign.

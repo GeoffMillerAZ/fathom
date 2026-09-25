@@ -101,7 +101,7 @@ dark-long-focus zoom captures, not every full-page state or a complete accessibi
 review.
 
 Same-harness regression inputs beneath external parent
-`/Volumes/m2ext/appkit-hero-proof.o6s0RX5G7G` retain the pre-grid link overflow at
+`/Volumes/m2ext/appkit-evidence/appkit-hero-proof.o6s0RX5G7G` retain the pre-grid link overflow at
 `regression-overflow/zoom-juXkz2/failure.json` (`5d07342e...ddd18`) and the
 pre-scroll-margin bottom-edge focus failure at
 `regression-focus/zoom-d8oeDN/failure.json` (`a379e21a...fa7b`). Both exit 1, record
@@ -116,8 +116,8 @@ old images.
 Initial root: `/private/var/folders/2r/2zrkv4fd549bnlc5vwfzd4b00000gn/T/appkit-hero-final.1PMYuX1yvT`.
 `delivery/` is pristine; `cli-delivery/` intentionally retains the drift canary and is
 not a consumer input. Licensed originals and derivatives remain outside public fixtures.
-Final root: `/Volumes/m2ext/appkit-hero-proof.o6s0RX5G7G/probe.D2hJLGunWJ`.
-Fresh standalone root: `/Volumes/m2ext/appkit-hero-proof.o6s0RX5G7G/hero-standalone-xC7mNT`.
+Final root: `/Volumes/m2ext/appkit-evidence/appkit-hero-proof.o6s0RX5G7G/probe.D2hJLGunWJ`.
+Fresh standalone root: `/Volumes/m2ext/appkit-evidence/appkit-hero-proof.o6s0RX5G7G/hero-standalone-xC7mNT`.
 
 ### Initial implementation identities
 
@@ -156,7 +156,7 @@ move to external storage was reconciled: every remaining source entry exists ide
 at the destination and known failure/first-run evidence is retained, but no pre-move
 manifest exists, so completeness of that failed attempt is not claimed. It is separate
 from the successful fresh standalone receipt. The retained destination is
-`/Volumes/m2ext/appkit-hero-proof.o6s0RX5G7G/retained-disk-full-attempt`; its 142 MiB
+`/Volumes/m2ext/appkit-evidence/appkit-hero-proof.o6s0RX5G7G/retained-disk-full-attempt`; its 142 MiB
 source residue remains at
 `/private/var/folders/2r/2zrkv4fd549bnlc5vwfzd4b00000gn/T/hero-standalone-sw4rSx`.
 

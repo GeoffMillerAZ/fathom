@@ -164,6 +164,76 @@ closed Playwright page as proof that Chrome has already destroyed its targets.
 [Current failed measurements and next steps](../../../docs/assessments/2026-09-17-theme-guide-memory.md)
 remain separate from checker unit passes and from the earlier timing lane.
 
+The separate [memory-v2 contract](../../../docs/assessments/fixtures/styleguide-performance/memory-v2-contract.md)
+defines three independent retained-heap growth budgets and reports total Chrome cost.
+Its pure metrics subcheck is not wired into this v1 acquisition. Attribution remains
+unverified, no Gallery memory-v2 acquisition has qualified, and all v1 failures remain unchanged.
+
+`connectGuard` can opt into a separate, initially empty `lifecycleEvents` array.
+This enables target discovery and Page/Runtime observation before guarded targets
+resume. Valid default callers send no new instrumentation commands; `protocolEvents`
+remains Target-only. Malformed or duplicate attachments fail closed in both modes;
+unknown attachment liveness requires owner browser termination, not guard detach.
+`lifecycle.mjs` captures raw before/after target inventories, per-session frame/loader
+and isolate reads, exact owned-context membership, trace boundaries and partial
+failures against a five-second acceptance deadline. It never evaluates page scripts or changes
+the guide. Pass the same trace array and an independently recorded context-creation
+ID; a matching URL is not context ownership. Checkpoints are sequential observations,
+not atomic snapshots or independent lifecycle/retention acceptance. Synchronous Node
+work is not preempted; the external owner still needs its watchdog. The [prepared
+instrument and next controls](../../../docs/assessments/2026-09-22-theme-lifecycle-instrument.md)
+do not activate a v2 acquisition or promote the failed performance gate.
+
+`lifecycle-check.mjs` exports the separate pure
+`joinGuideLifecycle({events, checkpoints, contextId, origin})` checker. Give it the
+retained lifecycle trace and checkpoint array plus independently selected exact origin
+and browser-context ID. It derives relationships from raw protocol identities, rather
+than trusting the collector's `status` or summarized targets. Its `evidence_valid`
+and `live_membership_complete` flags are scoped structural results; shared, missing
+and retired membership remains explicit in `unqualified_reasons`/`observations`.
+Invalid boundary/oversized input throws; contradictory trace evidence cannot qualify.
+Attribution remains `not-verified` and memory/full-contract completion stays false.
+This neither replaces the v2 metric checker nor measures retained allocations.
+The [join assessment](../../../docs/assessments/2026-09-22-theme-lifecycle-join.md)
+owns verification status and the next browser-control boundary.
+
+`prepare-memory-control.mjs` freezes a new empty private staging directory's inputs
+for `memory-control.mjs MANIFEST NEW_OUTPUT positive|retention`. These are separate
+tiny synthetic instrument controls, with direct native CDP input and no Playwright
+or Gallery-page injection. Review the complete trusted manifest before execution;
+it pins Chrome's framework as well as its launcher. The first positive attempt
+[failed at startup](../../../docs/assessments/2026-09-22-theme-memory-controls.md)
+on an unadmitted background page, before any fixture cycle. A separate startup-only
+run now passes its bounded samples; the positive/retention controls remain unqualified.
+Unit success does not qualify either control, the guide workload or memory acceptance.
+For that separate diagnostic, the preparer's `--startup-only` option freezes only
+the named `no-background-components-v1` profile and admits only owner mode `startup`.
+It adds one fixed Chromium switch, never arbitrary flags, and starts no fixture server
+or app context. `startup-window.mjs` checks timestamped inventories spanning5s, with
+at least10 observations and at most500ms between completions. The result describes
+bounded samples, not continuous target absence; all observed foreign targets fail.
+All modes share the bounded cleanup contract; a forced stop or incomplete capture fails.
+The separate `--component-backgrounds-off` preparer option selects
+`no-background-components-controls-v1`, with the same flags and startup coverage but
+only `positive`/`retention` modes. Its first positive run reached20 native cycles and
+structural lifecycle checks, then failed process classification and shutdown/capture.
+Retention remains unrun. The caller must independently qualify a positive receipt
+before retention; that cross-invocation prerequisite is not enforced by this CLI.
+See the assessment for exact identities, preserved failures and the next hypotheses.
+`--shutdown-only` selects the separate `no-background-components-shutdown-v1` profile
+and only owner mode `shutdown`: one warm action, twenty native preview actions, then
+explicit disposal of the exact owned context before guard disconnect. It collects no
+memory samples. `owned_context.mjs` retains five bounded commands and refuses unknown
+identity, malformed/still-live evidence or guard failure; no unrelated context or
+browser process is closed by that helper. Its one frozen run passes context closure
+and unforced complete process/output cleanup. This shorter task does not establish
+the previous failure's cause or qualify the positive memory control. A later retained
+memory-control candidate also proves complete context/process cleanup while its metrics
+fail. All context-owning synthetic controls now use that helper; startup-only still
+has no context. `memory.mjs` rechecks the monotonic minimum5s idle deadline after
+early timer wakes. No timeout, guard policy or memory limit was relaxed. The failed
+component-update-disabled experiment is retained privately, not a maintained profile.
+
 ## Separate native Stop/retry acquisition
 
 `cancellation.mjs` uses the [controlled-delay fixture](../../../docs/assessments/fixtures/theme-cancellation/README.md)

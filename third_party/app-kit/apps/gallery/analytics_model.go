@@ -23,10 +23,12 @@ const (
 	analyticsCategoryAll     analyticsCategory   = "all"
 	analyticsCategoryAPI     analyticsCategory   = "api"
 	analyticsCategoryWorker  analyticsCategory   = "worker"
+	analyticsCategoryEmpty   analyticsCategory   = "empty"
 	analyticsStateComplete   analyticsState      = "complete"
 	analyticsStateMissing    analyticsState      = "missing"
 	analyticsStateStale      analyticsState      = "stale"
 	analyticsStatePartial    analyticsState      = "partial"
+	analyticsStateError      analyticsState      = "error"
 )
 
 type analyticsSelection struct {
@@ -62,11 +64,11 @@ func parseAnalyticsSelection(q url.Values) (analyticsSelection, error) {
 	if err != nil {
 		return analyticsSelection{}, err
 	}
-	category, err := field("category", "all", "all", "api", "worker")
+	category, err := field("category", "all", "all", "api", "worker", "empty")
 	if err != nil {
 		return analyticsSelection{}, err
 	}
-	state, err := field("state", "complete", "complete", "missing", "stale", "partial")
+	state, err := field("state", "complete", "complete", "missing", "stale", "partial", "error")
 	if err != nil {
 		return analyticsSelection{}, err
 	}
@@ -129,6 +131,8 @@ func analyticsCategoryLabel(category analyticsCategory) string {
 		return "API services"
 	case analyticsCategoryWorker:
 		return "worker services"
+	case analyticsCategoryEmpty:
+		return "empty fixture group"
 	default:
 		return "all services"
 	}
@@ -184,6 +188,9 @@ func analyticsFixtureDataset(s analyticsSelection, start time.Time, state analyt
 	}
 	// These are declared service groups, not inferred reliability ratings. The
 	// paired-period view has its own encoding; the public renderer uses this map.
+	if len(d.Rows) == 0 {
+		return d
+	}
 	if s.Category != analyticsCategoryWorker {
 		d.Legend = append(d.Legend, analytics.LegendItem{Role: "accent", Label: "API services"})
 	}
@@ -196,6 +203,9 @@ func analyticsFixtureDataset(s analyticsSelection, start time.Time, state analyt
 func buildAnalyticsJourney(s analyticsSelection) (analyticsJourney, error) {
 	if _, err := parseAnalyticsSelection(s.Values()); err != nil {
 		return analyticsJourney{}, err
+	}
+	if s.State == analyticsStateError {
+		return analyticsJourney{}, fmt.Errorf("analytics: synthetic data source could not be read")
 	}
 	start, err := time.Parse("2006-01", string(s.Period))
 	if err != nil {
@@ -265,6 +275,9 @@ func analyticsNarrative(j analyticsJourney) string {
 		serviceWord = "service"
 	}
 	intro := fmt.Sprintf("Synthetic fixture for %s, %s (%d %s). ", period, analyticsCategoryLabel(j.Selection.Category), len(j.Current.Rows), serviceWord)
+	if len(j.Current.Rows) == 0 {
+		return intro + "No matching services. This group contains no fixture services, not zero failed operations. Choose another group to inspect counts. Source availability is a separate condition."
+	}
 	if j.Selection.State == analyticsStateMissing {
 		return intro + "All selected counts are missing, not zero. No current total or change can be calculated. Obtain the missing source reports before making a comparison."
 	}

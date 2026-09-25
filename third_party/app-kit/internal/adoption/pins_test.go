@@ -29,7 +29,7 @@ func pinFixtureV2(t *testing.T) (string, Selection) {
 
 func TestCapabilityPinCanonicalEnvelope(t *testing.T) {
 	entry := catalog.Entry{ID: "fixture.example", Name: "Example <&>"}
-	pin, err := capabilityRevision(1, entry)
+	pin, err := PinCapability(1, entry)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +39,7 @@ func TestCapabilityPinCanonicalEnvelope(t *testing.T) {
 	if pin.ID != entry.ID || pin.SHA256 != hex.EncodeToString(sum[:]) {
 		t.Fatalf("canonical pin drift: %+v", pin)
 	}
-	other, err := capabilityRevision(2, entry)
+	other, err := PinCapability(2, entry)
 	if err != nil || other.SHA256 == pin.SHA256 {
 		t.Fatal("catalog schema version not bound")
 	}
@@ -51,7 +51,7 @@ func TestCapabilityPinBindsEveryMetadataField(t *testing.T) {
 		t.Fatal(err)
 	}
 	entry, _ := c.Get("foundation.tokens")
-	base, err := capabilityRevision(c.SchemaVersion, entry)
+	base, err := PinCapability(c.SchemaVersion, entry)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,7 +79,7 @@ func TestCapabilityPinBindsEveryMetadataField(t *testing.T) {
 				default:
 					t.Fatal("new metadata shape needs explicit pin contract review")
 				}
-				got, err := capabilityRevision(c.SchemaVersion, changed)
+				got, err := PinCapability(c.SchemaVersion, changed)
 				if err != nil || got.SHA256 == base.SHA256 {
 					t.Fatalf("unbound field %s: %v", label, err)
 				}
@@ -88,9 +88,9 @@ func TestCapabilityPinBindsEveryMetadataField(t *testing.T) {
 	}
 	visit(reflect.ValueOf(entry), nil, "")
 	entry.Tasks = []string{"one", "two"}
-	a, _ := capabilityRevision(1, entry)
+	a, _ := PinCapability(1, entry)
 	slices.Reverse(entry.Tasks)
-	b, _ := capabilityRevision(1, entry)
+	b, _ := PinCapability(1, entry)
 	if a.SHA256 == b.SHA256 {
 		t.Fatal("metadata arrays must retain their order")
 	}
@@ -225,7 +225,7 @@ func TestSelectedMetadataPinsIgnoreOnlyUnselectedRecords(t *testing.T) {
 		t.Fatal(err)
 	}
 	selected, _ := c.Get("foundation.tokens")
-	pin, err := capabilityRevision(c.SchemaVersion, selected)
+	pin, err := PinCapability(c.SchemaVersion, selected)
 	if err != nil {
 		t.Fatal(err)
 	}

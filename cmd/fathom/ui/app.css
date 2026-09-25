@@ -372,6 +372,9 @@
   .cursor-help {
     cursor: help;
   }
+  .cursor-not-allowed {
+    cursor: not-allowed;
+  }
   .cursor-pointer {
     cursor: pointer;
   }
@@ -772,6 +775,9 @@
   .underline-offset-4 {
     text-underline-offset: 4px;
   }
+  .opacity-50 {
+    opacity: 50%;
+  }
   .shadow-sm {
     --tw-shadow: 0 1px 3px 0 var(--tw-shadow-color, rgb(0 0 0 / 0.1)), 0 1px 2px -1px var(--tw-shadow-color, rgb(0 0 0 / 0.1));
     box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
@@ -1129,7 +1135,7 @@
   --ak-color-ink-muted: oklch(0.45 0.020 260);
   --ak-color-line: oklch(0.90 0.008 260);
   --ak-color-line-strong: oklch(0.80 0.012 260);
-  --ak-color-positive: oklch(0.55 0.14 155);
+  --ak-color-positive: oklch(0.51 0.14 155);
   --ak-color-positive-soft: oklch(0.94 0.05 155);
   --ak-color-surface: oklch(0.985 0.005 260);
   --ak-color-surface-overlay: oklch(0.995 0.003 260);
@@ -1183,7 +1189,7 @@
   --ak-color-ink-muted: oklch(0.45 0.020 260);
   --ak-color-line: oklch(0.90 0.008 260);
   --ak-color-line-strong: oklch(0.80 0.012 260);
-  --ak-color-positive: oklch(0.55 0.14 155);
+  --ak-color-positive: oklch(0.51 0.14 155);
   --ak-color-positive-soft: oklch(0.94 0.05 155);
   --ak-color-surface: oklch(0.985 0.005 260);
   --ak-color-surface-overlay: oklch(0.995 0.003 260);

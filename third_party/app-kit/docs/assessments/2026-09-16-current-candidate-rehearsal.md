@@ -2,7 +2,7 @@
 
 G4 progress under [ADR-0045](../adr/0045-exact-pins-and-private-candidate-preparation.md),
 not a release, whole-module approval or real-consumer upgrade. Windows remains deferred.
-Private evidence root: `/Volumes/m2ext/appkit-current-candidate.TeaBqLxK/`.
+Private evidence root: `/Volumes/m2ext/appkit-evidence/appkit-current-candidate.TeaBqLxK/`.
 
 ## Why another rehearsal was necessary
 

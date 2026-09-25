@@ -28,7 +28,7 @@ The retained-runner probe was copied before execution as
 Private raw evidence, including Git status snapshots, direct module/source
 digests, complete `go version -m` metadata, offline module graphs, build caches,
 retained copies, bounded streams, and receipts, is at
-`/Volumes/m2ext/appkit-cli-authorized-probe.SyAync/`. Its build-provenance file
+`/Volumes/m2ext/appkit-evidence/appkit-cli-authorized-probe.SyAync/`. Its build-provenance file
 hashes include `direct-source-module-sha256.txt`
 `70726dae9de79396b721bdb6b49607b21355d6731b16e3f8c7ca1984675bdb41`,
 `bosun.modules.json` `f7f5247d779e514503cfd2a6efcd733ea0d7bdafcb87d18ad8309bcb4d06d709`,

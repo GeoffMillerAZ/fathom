@@ -29,27 +29,72 @@ optional promotion/research gaps below do not block parking the campaign.
 | Reuse themes and local previews | [Theme workbench](theme-workbench.md), [app-owned guide](app-owned-styleguide.md); experimental, not full performance/accessibility or two-consumer certification |
 | Native delivery | [Web/macOS parity](web-desktop-parity.md); private unsigned experiment, not installed/signed production support; Windows remains deferred |
 
-The last campaign estimate was approximately87% weighted, not a measurement of
-release readiness. Deferral earns no completion credit. Report the selected task's
-acceptance and blocker status from here; do not restart a percentage-driven campaign.
+Earlier approximately87–88% campaign figures were planning estimates, not a measured
+weighted score: no durable category weights/formula were found in the [current review](../assessments/2026-09-22-analytics-adoption-integration.md#progress-accounting).
+Deferral earns no credit. Report task acceptance and blockers, not invented precision.
 
 ## Resume packets
 
-All packets are deferred. Owner: the app-kit maintainer with the named adopter's
-owner when consumer work is selected. Read only the selected row's owning specs and
-evidence; do not replay the whole session or crawl every assessment.
+The owner resumed adoption/dashboards/analytics on 2026-09-21. Selected **R4/R5** work
+is bounded by the [resumption assessment](../assessments/2026-09-21-adoption-analytics-resumption.md);
+On 2026-09-22 the owner also resumed bounded reusable UI/theme and catalog/core work
+(R1/R2/R3 when a named defect or useful acceptance step warrants it), without expanding
+the fixed gates or making long-tail certification mandatory. Fathom is available for
+the previously authorized guide scope. The [separated rebase](../assessments/2026-09-22-fathom-guide-only.md)
+is now working-tree integrated with its authorized exact mirror/minimal module delta
+and display repair. Current-source race/vet/build, real CSS build/check and bounded
+light/wide/dark/narrow native-browser tasks pass. Service JSON, agentic-kit and running
+services stay unchanged. [Large-value/zoom observations](../assessments/2026-09-22-fathom-large-zoom.md)
+now pass geometry and a native keyboard journey. A [one-cell capture diagnosis](../assessments/2026-09-22-native-zoom-paint.md)
+resolves light/200 chart paint without app changes; [dark chart inspection](../assessments/2026-09-23-fathom-dark-guide-paint.md)
+also succeeds, but its combined run fails native Scheme selection. The [minimal control](../assessments/2026-09-23-native-select-guide-resume.md)
+also fails: park this input lane until a materially different input comparison is available,
+not more key permutations. Dark-guide, old-matrix and broader quality gates stay open.
+Another Codex session owns Conjure adoption after its
+[bounded browser handoff](../assessments/fixtures/adoption-analytics-2026-09-21/conjure/browser-results.md).
+[RAC's approved CSV integration](../assessments/2026-09-22-analytics-adoption-integration.md)
+passes scoped synthetic/native-browser checks in the active worktree, without a consumer
+commit. Human A/B and the remaining guide/core/JIT gates stay open; native/CLI work
+remains outside this resumed priority. Jev is [research only](../assessments/2026-09-22-jev-adoption-assessment.md),
+not a new prerequisite for adoption or runtime rendering.
+Owner: the app-kit maintainer with the named adopter's
+owner. Read only the selected row's owning specs and evidence; do not replay the whole
+session or crawl every assessment.
 
 | Packet / activation trigger | Smallest next action and completion boundary |
 |---|---|
 | **R1: Needed catalog/core capability.** A real app lacks a required task, or the owner selects a finite maintenance batch. | Select the CUE inventory entry and profile; follow [JIT](just-in-time-conversion.md), preserve source/runtime identity and [conversion contract](conversion-pipeline.md). Fix the task's applicable gates, verify its consumer, record return/disposition. A syntax translation is not certification; unrelated variants stay parked. Personal-site series-navigation remains a separately scoped candidate in [sizing](../assessments/2026-09-16-personal-site-component-scope.md). |
 | **R2: Theme-guide browser target diagnosis.** Unknown targets prevent a newly selected acceptance run. | Use the frozen four-run [submission-boundary protocol](../assessments/2026-09-17-theme-guide-submission-boundaries.md), after input identity and cleanup checks. Its implementation/unit/race preparation is complete; browser acquisition was not run. Done for this diagnostic means retained lineage and cleanup observations, not full cancellation or permission to weaken the guard. |
-| **R3: Theme-guide acceptance/performance.** A consuming app needs a supported guide or promotion is explicitly funded. | Start from [guide design](app-owned-styleguide.md), [browser contract](../assessments/fixtures/styleguide-performance/browser-contract.md) and [failed memory evidence](../assessments/2026-09-17-theme-guide-memory.md). Define a separate versioned contract: bounded app-owned growth, total browser cost reported, attribution method/thresholds/controls fixed prospectively. Keep v1 failures. Resolve R2 only if it still blocks the selected run; complete applicable cancellation/cache/memory/accessibility cells independently. No clean blank-page or single diagnostic pass substitutes for them. |
+| **R3: Theme-guide acceptance/performance.** A consuming app needs a supported guide or promotion is explicitly funded. | Start from [guide design](app-owned-styleguide.md), [v1 contract](../assessments/fixtures/styleguide-performance/browser-contract.md), [failed evidence](../assessments/2026-09-17-theme-guide-memory.md) and prospective [memory-v2](../assessments/fixtures/styleguide-performance/memory-v2-contract.md). V2's pure metrics subcheck is not app attribution or an acquired memory pass; next qualify one cell's lifecycle and independent retention controls under its fixed cap before any full matrix. Keep v1 failures. Resolve R2 only if it blocks the selected run; cancellation/cache/memory/accessibility need independent evidence. |
 | **R4: Analytics consumer value.** RAC/Fathom changes an analytical task or requests G3 promotion. | Read [analytics task evidence](../assessments/2026-09-17-analytics-truth-state-journeys.md) and G3 in [scope](../intent/scope.md). Bind a selected real renderer to synthetic known values, chart/table/export agreement, uncertainty/recovery and payload/render/update budgets. G3 completion still needs the two selected apps and human time/error comparison; canaries alone are insufficient. |
-| **R5: Fathom guide and propagation.** Fathom needs its local guide, or the owner explicitly resumes the authorized feature. | Refresh `/Volumes/m2ext/code/geoffmilleraz/sextant` intent and paused edits. Build an opt-in exact private app-kit snapshot using actual Observatory renderers with synthetic complete/partial/missing/error states; preview/reset/refusal/export only. Add tests, source/artifact pins, adoption/intent/changelog and a contribution disposition. Preserve default appearance, live logs, dependencies and daemon. No commits/deployment/global changes. [RAC evidence](../assessments/2026-09-15-resume-theme-contrast-and-zoom.md) is a pattern, not Fathom proof. Broader G4 requires versioned propagation and independent consumer proof; the [JIT rehearsal](../assessments/2026-09-17-jit-contribution-rehearsal.md) is synthetic only. |
+| **R5: Fathom guide and propagation.** Fathom needs its local guide, or the owner explicitly resumes the authorized feature. | Refresh `/Volumes/m2ext/code/geoffmilleraz/sextant` intent and paused edits. Use the authorized exact mirror/minimal module/display packet with actual Observatory renderers and synthetic complete/partial/missing/error states; preview/reset/refusal/export only. Add tests, source/artifact pins, adoption/intent/changelog and a contribution disposition. Preserve the default palette, service JSON, agentic-kit pin, live logs and daemon. No consumer commits/pushes/deployment/global changes. [RAC evidence](../assessments/2026-09-15-resume-theme-contrast-and-zoom.md) is a pattern, not Fathom proof. Broader G4 requires versioned propagation and independent consumer proof; the [JIT rehearsal](../assessments/2026-09-17-jit-contribution-rehearsal.md) is synthetic only. |
 | **R6: Native macOS delivery.** A named task needs the native host or the owner resumes private-bundle work. | Select exact current candidate from [candidate handoff](../assessments/2026-09-16-current-gallery-candidate.md), compare [actual-bundle evidence](../assessments/2026-09-16-native-profile-workflow.md), then select one missing failure/retry/rollback or input/media lane. G6 completion remains the [parity matrix](web-desktop-parity.md) and ADR-0021, not historical success inherited by a new binary. Installation/signing/production distribution need separate authority. |
 
+R3 now has an opt-in [raw lifecycle instrument](../assessments/2026-09-22-theme-lifecycle-instrument.md)
+and a separate [independent structural join](../assessments/2026-09-22-theme-lifecycle-join.md)
+with replay/hidden-membership refusal controls. Next qualify real navigation and
+retained-allocation controls, then the one-cell workload;160 synthetic tests do not
+establish v2 browser/memory acceptance. Instrumentation stays opt-in; v1 failures remain.
+The [first real instrument control](../assessments/2026-09-22-theme-memory-controls.md)
+stopped before app work on an unadmitted Chrome background page, with clean cleanup.
+The separate startup profile passes50 samples. Its admitted positive control reaches20
+native cycles/structural lifecycle checks but fails process classification and forced,
+incomplete cleanup. Retention is unrun; resolve those recorded hypotheses, not a retry.
+Explicit context disposal/capture pass both a no-memory20-action control and a later
+failed positive; component-update disabling does not fix missing arguments. The latter
+also exposes an early idle wake, now repaired with114 frozen tests. No memory qualification.
+
+R5 now has frozen-candidate [native-export](../assessments/2026-09-22-fathom-native-export.md),
+[real CSS rebuild](../assessments/2026-09-22-fathom-css-rebuild.md), and
+[scoped race/vet/regression](../assessments/2026-09-22-fathom-candidate-regressions.md) passes.
+Reuse these receipts within their exact source identities. The newer guide-only
+rebase is integrated and passes its selected CSS/browser tasks; earlier CSS source-read
+failures remain retained. Start from the current packet's remaining gates, not replayed setup.
+Broader guide/propagation gates still apply. Do not replay
+completed diagnostics or reinterpret historical failed runs as passes.
+
 Other future choices and their promotion/drop triggers remain in
-[futures](../intent/futures.md): CA/GGB, Conjure, Windows/mobile, personal-site family,
+[futures](../intent/futures.md): CA/GGB, broader Conjure adoption, Windows/mobile, personal-site family,
 WASM, high-volume renderers, NATS/synchronization and framework-native packages.
 Existing approvals remain scoped; they are not instructions to execute every packet.
 
@@ -92,9 +137,19 @@ untracked files, check private-source exclusions and reproduce a standalone cons
 build under [ADR-0045](../adr/0045-exact-pins-and-private-candidate-preparation.md).
 
 Dated assessments retain exact commands, private receipt locations, hashes and limits.
+External task packets are grouped under `/Volumes/m2ext/appkit-evidence/`; preserve
+their contents and update the referenced paths when reorganizing them.
 External-volume and temporary evidence may disappear; check availability, and retain
 the selected packet outside temporary storage before deleting anything. An unavailable
 receipt leaves the historical observation documented but cannot support fresh approval.
+
+The 2026-09-24 landing audit is recorded in
+[`2026-09-24-landing-audit.md`](../assessments/2026-09-24-landing-audit.md): main and
+origin are aligned; the stat/font/radius delivery branch's behavior is already in main,
+while its remaining palette delta would undo a later contrast correction; the older
+component archive branch is intentionally retained as historical source, not merged
+over the newer main tree. Only main is checked out. The old generated-artifact stash
+is preserved.
 
 MCP `get_kit_decision("stabilization")` serves this same document. The intent router and
 both agent files route here. Fathom's ordinary index/thread continuity are helpful;

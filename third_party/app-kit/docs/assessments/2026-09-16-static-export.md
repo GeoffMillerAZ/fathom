@@ -27,7 +27,7 @@ command separates parse/argument exit 2 from accepted file/export/output failure
 
 ## Retained preparation
 
-Private parent: `/Volumes/m2ext/appkit-static-delivery.7yMDB3/`.
+Private parent: `/Volumes/m2ext/appkit-evidence/appkit-static-delivery.7yMDB3/`.
 `prepared-4nKDl6` retains the first preparer failure: test variants report absolute
 Go filenames, which were incorrectly prefixed twice. `prepared-VH8JPf` retains the
 second failure: the isolated module cache lacked CUE-tool dependencies and external
@@ -54,8 +54,8 @@ CSS, consumer, dependency pin, installed binary or global configuration changes.
 | Site manifest | `3a0e1688670c51a5ebe46c7a9ae654b7a683d67998ef748ddb259e47cec98ccf` |
 | Exported browser contract | `e2a3969b3f5514cffe4c5859702bd5b6556d7d2a09fef551b03e00579b54bd9f` |
 
-The separate exporter-unit packets at `/Volumes/m2ext/appkit-static-export-proof.CpuWTd`
-and `/Volumes/m2ext/appkit-static-export-followup.bXXrqA` retain earlier red/green
+The separate exporter-unit packets at `/Volumes/m2ext/appkit-evidence/appkit-static-export-proof.CpuWTd`
+and `/Volumes/m2ext/appkit-evidence/appkit-static-export-followup.bXXrqA` retain earlier red/green
 iterations. They precede the final header/focus refinements; their identities are not
 substituted for this preparation's final compiled bytes.
 

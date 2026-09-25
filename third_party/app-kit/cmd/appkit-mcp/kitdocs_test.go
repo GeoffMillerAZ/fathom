@@ -260,6 +260,11 @@ func TestFindDecision_Hazards(t *testing.T) {
 func TestGuidanceIsCurrent(t *testing.T) {
 	// Markdown wrapping does not change the policy a consumer reads.
 	g := strings.Join(strings.Fields(loadKitDocs(kitRootRel).guidance()), " ")
+	for _, want := range []string{"appkit adoption draft", "without consumer writes", "before saving, then run adoption check", "never use drafting to approve unexplained upgrade drift"} {
+		if !strings.Contains(g, want) {
+			t.Errorf("guidance omits first-adoption boundary %q", want)
+		}
+	}
 
 	for _, want := range []string{"ADR-0017", "L3a", "appkit vendor", "guides, it does not dictate", "Stopping is a complete adoption", "experimental Gallery analytics reference", "not promoted consumer proof", "list_design_conversions", "get_design_conversion", "neither converts, saves, executes or certifies a target", "read-only CLI static checks", "do not prove runtime adoption or agent-host activation", "no adoption MCP execution tool", "experimental read-only Charm terminal reference", "first-party catalog IDs and revision", "not browser or private-source coverage", "does not establish two-consumer adoption or host certification"} {
 		if !strings.Contains(g, want) {
@@ -449,13 +454,32 @@ func TestNavigationAdapterGuidancePreservesRoutingAndEvidenceBoundaries(t *testi
 	}
 }
 
+func TestCatalystSettingsAdapterGuidancePreservesCompositionAndAuthority(t *testing.T) {
+	doc, ok := loadKitDocs(kitRootRel).findDecision("catalyst-settings-adapter")
+	if !ok {
+		t.Fatal(`get_kit_decision("catalyst-settings-adapter") does not resolve the root intent router's P10 guide`)
+	}
+	flat := strings.Join(strings.Fields(doc.Body), " ")
+	for _, want := range []string{
+		"SettingsNativeStyles()",
+		"all five sections",
+		"Consumers own that shell, labels/values, allowed options, auth, routes and persistence",
+		"CLI/catalog exposure and certification remain open",
+	} {
+		if !strings.Contains(flat, want) {
+			t.Errorf("Catalyst settings guide omits %q", want)
+		}
+	}
+}
+
 // Exercise the actual MCP boundary: an agent that only has the server must be
 // able to follow the router and retrieve the same text as a local file reader.
 func TestIntentDocumentsThroughMCP(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	srv := mcp.NewServer(&mcp.Implementation{Name: "appkit-test", Version: "test"}, nil)
-	registerKitTools(srv, loadKitDocs(kitRootRel))
+	docs := loadKitDocs(kitRootRel)
+	registerKitTools(srv, docs)
 	serverTransport, clientTransport := mcp.NewInMemoryTransports()
 	serverSession, err := srv.Connect(ctx, serverTransport, nil)
 	if err != nil {
@@ -490,7 +514,9 @@ func TestIntentDocumentsThroughMCP(t *testing.T) {
 		"analytics-journey":            "docs/design/analytics-journey.md",
 		"viz-checks":                   "appkit/ui/vizcheck/README.md",
 		"application-shell":            "docs/design/application-shell.md",
+		"catalyst-settings-adapter":    "docs/design/catalyst-settings-adapter.md",
 		"design-references":            "docs/design/private-references.md",
+		"fathom-maintenance":           "docs/design/fathom-maintenance.md",
 		"conversion-pipeline":          "docs/design/conversion-pipeline.md",
 		"just-in-time-conversion":      "docs/design/just-in-time-conversion.md",
 		"converted-component-standard": "docs/design/converted-component-standard.md",
@@ -509,13 +535,32 @@ func TestIntentDocumentsThroughMCP(t *testing.T) {
 		"elements-translation":         "docs/design/elements-translation.md",
 		"faq-adapter":                  "docs/design/faq-adapter.md",
 		"runtime-selection":            "docs/design/runtime-selection.md",
+		"static-content-delivery":      "docs/design/static-content-delivery.md",
 		"client-editor-island":         "docs/design/client-editor-island.md",
 		"ui-components":                "docs/ui-components.md",
 		"cli-kit":                      "docs/design/cli-kit.md",
 		"terminal-gallery":             "docs/design/terminal-gallery.md",
+		"web-desktop-parity":           "docs/design/web-desktop-parity.md",
 	}
 	for _, name := range []string{"principles", "invariants", "domain", "scope", "futures", "questions", "autonomy", "incidents", "repo"} {
 		paths["intent/"+name] = "docs/intent/" + name + ".md"
+	}
+	router := readFile(t, filepath.Join(kitRootRel, "docs/intent/README.md"))
+	for _, match := range regexp.MustCompile(`\.\./design/([A-Za-z0-9._-]+\.md)(?:#[^)]*)?`).FindAllStringSubmatch(router, -1) {
+		rel := filepath.ToSlash(filepath.Join("docs/design", match[1]))
+		want := readFile(t, filepath.Join(kitRootRel, rel))
+		matchedID := ""
+		for id, doc := range docs.extra {
+			if doc.Body == want {
+				matchedID = id
+				break
+			}
+		}
+		if matchedID == "" {
+			t.Errorf("root intent router design document %s is not loaded as an exact MCP document", rel)
+			continue
+		}
+		paths[matchedID] = rel
 	}
 	for id, path := range paths {
 		t.Run(id, func(t *testing.T) {
@@ -569,7 +614,7 @@ func TestIntentDocumentsThroughMCP(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if len(resource.Contents) != 1 || resource.Contents[0].MIMEType != wantMIME || resource.Contents[0].Text != want {
+			if len(resource.Contents) != 1 || resource.Contents[0].URI != uri || resource.Contents[0].MIMEType != wantMIME || resource.Contents[0].Text != want {
 				t.Errorf("ReadResource(%q) differs from %s", uri, path)
 			}
 		})
@@ -616,12 +661,12 @@ func TestIntentDocumentsThroughMCP(t *testing.T) {
 		t.Fatalf("get_kit_guidance: %v", guidance.GetError())
 	}
 	body := guidance.Content[0].(*mcp.TextContent).Text
-	for _, id := range []string{"just-in-time-conversion", "converted-component-standard", "quality-inventory", "quality-schema"} {
+	for _, id := range []string{"just-in-time-conversion", "converted-component-standard", "quality-inventory", "quality-schema", "static-content-delivery"} {
 		if !strings.Contains(body, "get_kit_decision(\""+id+"\")") {
 			t.Errorf("get_kit_guidance does not route to %q", id)
 		}
 	}
-	for _, id := range []string{"intent", "adoption", "adoption-contract", "experience-system", "theme-workbench", "app-owned-styleguide", "analytics-journey", "viz-checks", "application-shell", "design-references", "conversion-pipeline", "target-evidence", "directory-adapter", "form-adapter", "navigation-adapter", "faq-adapter", "hero-adapter", "menu-adapter", "drawer-adapter", "navbar-adapter", "html-translation", "elements-translation", "runtime-selection", "client-editor-island", "ui-components", "cli-kit", "terminal-gallery"} {
+	for _, id := range []string{"intent", "adoption", "adoption-contract", "contribution-loop", "experience-system", "theme-workbench", "app-owned-styleguide", "analytics-journey", "viz-checks", "application-shell", "catalyst-settings-adapter", "design-references", "fathom-maintenance", "conversion-pipeline", "target-evidence", "directory-adapter", "form-adapter", "navigation-adapter", "faq-adapter", "hero-adapter", "menu-adapter", "drawer-adapter", "navbar-adapter", "html-translation", "elements-translation", "runtime-selection", "client-editor-island", "ui-components", "cli-kit", "terminal-gallery", "web-desktop-parity"} {
 		if !strings.Contains(body, "get_kit_decision(\""+id+"\")") {
 			t.Errorf("get_kit_guidance does not route to %q", id)
 		}
@@ -720,7 +765,7 @@ func TestClientEditorIslandThroughMCPWithoutLicensedCorpus(t *testing.T) {
 
 func TestMissingKitRootDoesNotInventIntent(t *testing.T) {
 	docs := loadKitDocs(t.TempDir())
-	for _, id := range []string{"intent", "adoption-contract", "analytics-journey", "viz-checks", "application-shell", "terminal-gallery", "directory-adapter", "form-adapter", "navigation-adapter", "client-editor-island"} {
+	for _, id := range []string{"intent", "adoption-contract", "analytics-journey", "viz-checks", "application-shell", "catalyst-settings-adapter", "fathom-maintenance", "web-desktop-parity", "terminal-gallery", "directory-adapter", "form-adapter", "navigation-adapter", "client-editor-island", "static-content-delivery"} {
 		if _, ok := docs.findDecision(id); ok {
 			t.Errorf("missing %s must not resolve to a fabricated document", id)
 		}

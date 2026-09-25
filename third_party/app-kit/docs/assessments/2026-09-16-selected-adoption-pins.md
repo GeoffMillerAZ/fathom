@@ -76,7 +76,7 @@ intent doctor or proof that installed agent hosts loaded the new guidance.
 
 ## Retained evidence and reproduction
 
-Private parent: `/Volumes/m2ext/appkit-adoption-audit.8JK5D5ft/`.
+Private parent: `/Volumes/m2ext/appkit-evidence/appkit-adoption-audit.8JK5D5ft/`.
 It retains pre-change sources/catalog and binary, both initial real-app reports,
 the new binary, executed harness copies, scoped current sources, complete JSON/stderr
 outputs and receipts. Current sources are checked unchanged after the run.

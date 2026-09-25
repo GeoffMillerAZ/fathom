@@ -104,9 +104,24 @@ The source MCP exposes this guide, `converted-component-standard`, `quality-inve
 and `quality-schema` through `get_kit_decision` and corresponding `kit://` resources.
 CUE resources are plain text. Prefer `list_quality_work` for compact discovery: its
 `scope` is `core` (default), `on-demand` (recorded non-core work), or `all`; optional
-`capability_id` joins an exact first-party ID. A known capability with no work returns
-an empty list, not a pass. `get_quality_work` takes the returned work-item `id` and
+`capability_id` joins an exact first-party ID. The additive `selection` object echoes
+the normalized scope and optional capability ID, reports `matched`, `filtered-out`
+or `untracked`, and supplies `available_scopes` and `next_action`. Available scopes
+are computed before filtering, in core/on-demand order. For filtered-out work, retry
+one of those scopes or `all`. For untracked work, retrieve this guide and the contribution
+loop; prepare a consumer-owned `docs/app-kit.md` section or existing issue for review.
+Retain the original search query/profile, task, capability ID and both returned revisions;
+the lookup does not know that original query or create records. Consumer writes need
+their own authority. Empty results never mean completion. Unknown capability IDs fail.
+`get_quality_work` takes the returned work-item `id` and
 optional `expected_revision`; a mismatch refuses a silently changed selection.
+Both tools also accept optional `expected_catalog_revision`: use the whole-catalog
+`revision` from capability discovery for the list, then the list's `catalog_revision`
+for detail. The existing `revision`/`expected_revision` still identifies only authored
+inventory. Do not substitute a per-capability adoption pin. Either identity can change
+independently; malformed or stale guards refuse before records are returned. Restart
+capability discovery/review on catalog mismatch, never silently remove its guard.
+Empty/omitted guards retain current-snapshot lookup; unknown coverage is not a pass.
 Detail includes all authored standard/gate gaps, next steps, references and adoption,
 plus standard definitions and backlog policy. No readiness percentage is computed.
 These read-only tools use the binary's embedded CUE snapshot without source files or
@@ -114,13 +129,19 @@ licensed corpora. They do not recheck evidence files, hashes or runtime claims. 
 to refresh; raw document resources from a selected kit root may be a newer revision.
 Lists are capped at32 records/64KiB JSON; detail at128KiB, per text/structured
 representation. Oversize results fail rather than truncate. Existing installed servers
-need a reviewed refresh; source protocol tests do not establish live host adoption.
+need a reviewed refresh to receive selection guidance; its absence in an older binary
+is unknown coverage, not acceptance. Rebuild for the additive `catalog_revision` and
+catalog guard; old servers may reject that argument. Inventory revisions still identify
+authored content, not response shape. Source protocol tests do not prove host adoption.
 
 The Gallery exposes the same embedded snapshot at `/quality` and `/quality/{id}`,
-linked from the capability catalog. Native GET filters select core/on-demand/all and
-an optional exact capability ID; item links bind the expected revision. The matching
-`/api/quality` routes return the same reader records as MCP. Empty matches are not
-passes. Detail separates standards, gates, next steps and consumer integration status;
+linked from the capability catalog. HTML and matching `/api/quality` routes accept
+optional `expected_catalog_revision`; detail also accepts inventory `expected_revision`.
+Capability links, native filters, detail/Back and supplied theme guards retain catalog
+identity. A stale catalog returns409 and requires fresh capability review; malformed,
+duplicate or invalidly encoded queries return400. Empty matches are not passes
+([Gallery handoff](../assessments/2026-09-23-gallery-quality-review.md)); rebuild Gallery, not consumer pins.
+Detail separates standards, gates, next steps and consumer integration status;
 references remain plain authored records, not an evidence-file server. Browser
 verification and its limits are recorded in the [Gallery assessment](../assessments/2026-09-16-quality-gallery.md).
 

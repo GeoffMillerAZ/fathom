@@ -19,6 +19,9 @@ is accepted work; current tool/source availability does not certify a converted 
 Use the [JIT enhancement workflow](just-in-time-conversion.md) and [converted-core-v1](converted-component-standard.md) when a selected component has gaps; update its CUE standards/gate/adoption status and return the verified improvement, without modifying imported originals or unrelated variants.
 Keep human design context in docs/app-kit.md; appkit.adoption.json binds the explicit
 profile/layers, whole-catalog or selected-metadata pins, artifacts and optional module/router checks.
+For a first selection, [CLI draft authoring](adoption-contract.md#first-time-draft-authoring)
+prints explicit v2 choices with current metadata pins and file hashes. Review/save/check
+remain separate; drafting never installs configuration or approves an upgrade.
 For team/offline use, keep a bounded versioned documentation snapshot or resolvable module
 reference; a sibling checkout or personal skill symlink is not a reproducible dependency.
 
@@ -34,13 +37,33 @@ Token reuse without artifact provenance is legitimate; do not invent kit.lock or
 
 ## Available discovery today
 
+Without a running host, use `appkit adoption search` then `appkit adoption capability`
+with the returned whole-catalog revision guard. These JSON-only commands share the
+embedded catalog and canonical pins; [CLI discovery](adoption-contract.md#discover-without-mcp-or-gallery)
+needs no consumer root, model or licensed corpus. Review metadata before drafting;
+local documentation and source remain separate inputs, not implicitly fetched.
+
 Use get_kit_guidance, then get_kit_decision with id=intent. Fetch only the routed
 documents, e.g. intent/scope, intent/invariants, adoption, experience-system or cli-kit.
 Use search_capabilities(query, profile, layer) → get_capability(id) for the implemented
 first-party token/primitive records; kit://catalog exposes their full versioned snapshot.
+Pass the search revision as `get_capability.expected_revision` to refuse a changed
+catalog across reconnects; omission still reads the server's current snapshot.
+Exact get includes the canonical `capability_revision` for a reviewed v2 metadata
+selection; it is not source identity or adoption proof ([pin contract](adoption-contract.md#explicit-version2-capability-pins)).
+For authored quality work, pass that whole-catalog `revision` as
+`list_quality_work.expected_catalog_revision`. Then pass the list's `revision` and
+`catalog_revision` as `get_quality_work.expected_revision` and
+`expected_catalog_revision`, respectively. These identities are independent; a catalog
+mismatch requires renewed capability discovery/review, not automatic guard removal.
+Rebuild older servers for these optional guards and the additive catalog identity;
+lookup still does not execute quality gates or establish adoption.
 Gallery /catalog and /catalog/{id} show the same IDs/contracts/revision. JSON endpoints
 are /api/catalog, /api/catalog/{id} and /api/catalog/search; search uses q, profile, layer,
-kind, maturity, limit and cursor. Limits default to 10 (1–50); retain query/filters/limit
+kind, maturity, limit and cursor. Generated HTML detail links bind the search revision;
+JSON exact callers can pass `expected_revision` too. A409 means return to current
+results and review again, not drop the guard and copy a new pin automatically.
+Limits default to 10 (1–50); retain query/filters/limit
 for continuation. Empty compatible results identify a catalog gap, not a promised recipe.
 Use ui-components/cli-kit docs and actual symbols for kit APIs outside this initial seed.
 
@@ -141,6 +164,9 @@ Regenerate an ignored local scanner fragment, never commit machine-specific cach
 Use `@import "tailwindcss" source(none)` and explicit sources; unrelated files must not
 alter CSS. Check required selectors even when Tailwind exits zero. Compare two isolated
 roots with fixed inputs/output locations, then inspect actual wrapping and contrast.
+Include selected browser-script utilities as well as Go/templ sources; Gallery's
+[source-isolation regression](../assessments/2026-09-22-gallery-css-closure.md) demonstrates
+why a working specimen must follow the same guarded input contract it teaches.
 Incremental task inputs must cover every renderer, scanner manifest, theme and compiler
 input. Correct scanning alone does not prove rebuild invalidation. Role names do not
 guarantee readable text; regeneration must preserve selected font/radius aliases.

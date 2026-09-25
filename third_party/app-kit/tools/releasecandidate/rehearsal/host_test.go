@@ -83,7 +83,12 @@ func TestHostBundleSourceDirectoriesAreExact(t *testing.T) {
 }
 
 func TestHostBundleSourceSnapshotRetainsExactGitVisibleBytes(t *testing.T) {
-	root := t.TempDir()
+	// Match rehearseHost's canonical root before testing source-level symlink
+	// refusal; macOS's /var temp alias is not a symlink inside the source tree.
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	files := map[string]string{
 		"go.mod":                    "module example.org/host\n",
 		"go.sum":                    "sum\n",
@@ -141,6 +146,27 @@ func TestHostBundleSourceSnapshotRetainsExactGitVisibleBytes(t *testing.T) {
 	}
 	if _, _, err := readHostSource(root); err == nil || !strings.Contains(err.Error(), `unexpected host source path "cmd/bundle-launcher/nested/paid.go"`) {
 		t.Fatalf("unexpected path did not fail closed: %v", err)
+	}
+}
+
+func TestHostSourceSnapshotRejectsFileSymlink(t *testing.T) {
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := filepath.Join(t.TempDir(), "outside.go")
+	if err := os.WriteFile(target, []byte("package main\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(target, filepath.Join(root, "main.go")); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command("git", "-C", root, "init", "-q").CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v: %s", err, out)
+	}
+	files, records, err := readHostSource(root)
+	if err == nil || err.Error() != "host source must not traverse a symlink: main.go" || files != nil || records != nil {
+		t.Fatalf("source symlink not refused atomically: files=%v records=%v err=%v", files, records, err)
 	}
 }
 

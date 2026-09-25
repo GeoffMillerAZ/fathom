@@ -22,6 +22,8 @@ type analyticsView struct {
 	Theme, Title, Summary, CurrentLabel, PreviousLabel         string
 	Back, Export, ExportLabel, Reset, CompleteFixture, Catalog string
 	Recipe                                                     string
+	AllGroups, EmptyContextExport                              string
+	SelectionLabel                                             string
 	StateLabel, StateDescription, Observation, Evaluated       string
 	Detail, PlotPrevious, HasPlottedValues                     bool
 	Scale                                                      string
@@ -45,16 +47,27 @@ func buildAnalyticsContent(j analyticsJourney, detail *analyticsDetail, theme st
 		Export:       analyticsURL("/analytics/export.csv", j.Selection, theme), ExportLabel: "Export CSV",
 		Reset: previewURL("/analytics", theme), Evaluated: j.Now.Format("2 Jan 2006, 15:04 MST"),
 		Catalog:      previewURL("/catalog/analytics.comparison", theme),
-		PlotPrevious: j.Previous != nil && j.Selection.State != analyticsStatePartial && j.Selection.State != analyticsStateMissing,
+		PlotPrevious: len(j.Current.Rows) > 0 && j.Previous != nil && j.Selection.State != analyticsStatePartial && j.Selection.State != analyticsStateMissing,
 	}
 	if j.Previous != nil {
 		v.PreviousLabel = j.Previous.Contract.Window.Start.Format("January 2006")
 		v.ExportLabel = "Export comparison CSV"
 	}
+	v.SelectionLabel = analyticsCategoryLabel(j.Selection.Category) + " · No comparison"
+	if j.Selection.Compare == analyticsComparePrevious {
+		v.SelectionLabel = analyticsCategoryLabel(j.Selection.Category) + " · Previous calendar month"
+	}
 	complete := j.Selection
 	recipeSelection := j.Selection
 	recipeSelection.Compare = analyticsCompareNone
 	v.Recipe = analyticsURL("/analytics/recipe", recipeSelection, theme)
+	v.EmptyContextExport = analyticsURL(analyticsRecipeExportPath, recipeSelection, theme)
+	allGroups := j.Selection
+	allGroups.Category = analyticsCategoryAll
+	v.AllGroups = analyticsURL("/analytics", allGroups, theme)
+	if len(j.Current.Rows) == 0 {
+		v.ExportLabel = "Export CSV (headers only)"
+	}
 	complete.State = analyticsStateComplete
 	v.CompleteFixture = analyticsURL("/analytics", complete, theme)
 	selected := j.Details
@@ -83,6 +96,9 @@ func buildAnalyticsContent(j analyticsJourney, detail *analyticsDetail, theme st
 	default:
 		v.StateLabel = "Complete reporting window"
 		v.StateDescription = "The fixture contains counts for the whole selected calendar month. A recorded zero means no failed operations in that reporting window."
+	}
+	if len(j.Current.Rows) == 0 {
+		v.StateDescription = "This source condition is retained independently of the empty group. No selected observations are available to interpret. Showing all service groups keeps this condition."
 	}
 	if f := j.Current.Contract.Freshness; f.UnknownReason != "" {
 		v.Observation = f.UnknownReason

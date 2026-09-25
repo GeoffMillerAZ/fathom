@@ -8,7 +8,7 @@ implementation changed during this preparation.
 
 ## Controlled comparison
 
-Private root: `/Volumes/m2ext/appkit-analytics-pair.u19A9Z`.
+Private root: `/Volumes/m2ext/appkit-evidence/appkit-analytics-pair.u19A9Z`.
 `prepared/receipt.json` records two independent 1,268-file first-party source copies.
 A substitutes only the retained prior `apps/gallery/analytics_templates.go`; B keeps
 the current composition. Both use the same current runtime, data, shared shell and

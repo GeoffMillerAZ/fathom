@@ -16,11 +16,14 @@ dirty-work evidence and scoped authority. Each app resumes separately; G2/G3/G4 
 ADR-0017/0018/0020/0024 evidence requirements remain, with no completion implied.
 **Drop if:** the owner explicitly retires the app or its adoption need; retain history.
 
-## F2. Conjure as an additional UI reference
+## F2. Broader Conjure adoption
 
-Confidence: owner-offered. Horizon: after the current Resume-as-Code/Fathom slice.
+Confidence: owner-offered. Horizon: coordinated with Conjure's owning session.
+The [bounded stream-validity handoff](../assessments/2026-09-21-conjure-dashboard-validity.md)
+is retained; another Codex session now owns Conjure adoption. Do not edit its
+checkout concurrently or treat its work as G3's selected-app acceptance.
 Do not build: a third simultaneous UI migration merely to increase consumer counts.
-Preserve: Conjure as an authorized candidate for a distinct interaction or delivery task.
+Preserve: exact-source/vendor review and Conjure's ADR-010 extraction quarantine.
 **Promote when:** the current pair leaves a meaningful kit boundary untested and a
 specific Conjure UI task can exercise it; refresh its intent and source before selecting.
 **Drop if:** the current pair supplies the same evidence without another migration.
@@ -96,3 +99,17 @@ Preserve: portable CSS/JS and renderer-independent recipe descriptions already h
 **Promote when:** two active consumers need the same native interaction package and
 artifact adoption cannot meet their verified task without recurring duplication.
 **Drop if:** a consumer-native composition or existing upstream package solves it cleanly.
+
+## F10. Optional typed decisions for adoption discovery
+
+Confidence: plausible; owner-requested research, not a runtime build order.
+The [Jev assessment](../assessments/2026-09-22-jev-adoption-assessment.md) proposes a
+small synthetic comparison of eligible-candidate ranking and adoption triage.
+Do not build: mandatory inference, another MCP server, a duplicate provider SDK,
+visual certification by a text model, or automatic transmission of licensed sources.
+Preserve: deterministic search/adoption checks and explicit unknowns; evaluate existing
+shared decision interfaces before proposing a separately authorized integration.
+**Promote when:** a bounded evaluation demonstrates a real selection benefit beyond
+reviewed vocabulary, with no eligibility regressions and acceptable latency/privacy/cost;
+then revisit ADR-0062 and define the opt-in contract without changing ordinary search.
+**Drop if:** simpler catalog metadata fixes suffice or provider controls cannot be bounded.

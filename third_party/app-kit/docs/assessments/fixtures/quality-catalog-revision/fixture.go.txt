@@ -1,0 +1,41 @@
+// Assessment-only actual-handler responses. No listener or evidence-file reads.
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http/httptest"
+	"net/url"
+	"os"
+
+	"github.com/geoffmilleraz/app-kit/apps/gallery"
+	"github.com/geoffmilleraz/app-kit/internal/qualityplan"
+)
+
+type response struct { Status int; Headers map[string][]string; Body string }
+
+func main() {
+	plan, err := qualityplan.Default(); if err != nil { panic(err) }
+	all, err := plan.List("", "all"); if err != nil { panic(err) }
+	h := gallery.New(); out := map[string]response{}
+	capture := func(path string) {
+		r := httptest.NewRecorder(); h.ServeHTTP(r, httptest.NewRequest("GET", "http://127.0.0.1"+path, nil))
+		if r.Code != 200 { panic(fmt.Sprintf("%s: %d", path, r.Code)) }
+		out[path] = response{r.Code, r.Header(), r.Body.String()}
+	}
+	for _, theme := range []string{"light", "dark"} {
+		for _, scope := range []string{"core", "on-demand", "all"} {
+			for _, capability := range []string{"", "analytics.comparison"} {
+				q := url.Values{"theme":{theme}, "scope":{scope}}
+				if capability != "" { q.Set("capability_id", capability) }
+				capture("/quality?"+q.Encode()); capture("/api/quality?"+q.Encode())
+			}
+		}
+		for _, item := range all.Items {
+			q := url.Values{"theme":{theme}, "scope":{"all"}, "expected_revision":{all.Revision}}
+			capture("/quality/"+item.ID+"?"+q.Encode()); capture("/api/quality/"+item.ID+"?"+q.Encode())
+		}
+		capture("/catalog/analytics.comparison?theme="+theme)
+	}
+	if err := json.NewEncoder(os.Stdout).Encode(out); err != nil { panic(err) }
+}

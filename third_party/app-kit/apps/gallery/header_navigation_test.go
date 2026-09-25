@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -25,7 +27,7 @@ func TestHeaderNavigationRetainsRouteParityAndNativeDisclosure(t *testing.T) {
 	}
 
 	desktop := headerNavigationFind(header, func(n *html.Node) bool {
-		return n.Data == "nav" && headerNavigationClass(n, "hidden") && headerNavigationClass(n, "lg:flex")
+		return n.Data == "nav" && headerNavigationStyled(t, n, "hidden") && headerNavigationStyled(t, n, "lg:flex")
 	})
 	disclosure := headerNavigationFind(header, func(n *html.Node) bool {
 		return n.Data == "details" && headerNavigationAttribute(n, "id") == "gallery-navigation"
@@ -89,7 +91,7 @@ func TestHeaderNavigationRetainsRouteParityAndNativeDisclosure(t *testing.T) {
 		if node == nil || headerNavigationAttribute(node, "aria-current") != theme.current {
 			t.Errorf("theme %q aria-current = %q, want %q", theme.label, headerNavigationAttribute(node, "aria-current"), theme.current)
 		}
-		if theme.current == "true" && (!headerNavigationClass(node, "bg-surface-sunken") || !headerNavigationClass(node, "font-semibold")) {
+		if theme.current == "true" && (!headerNavigationStyled(t, node, "bg-surface-sunken") || !headerNavigationStyled(t, node, "font-semibold")) {
 			t.Error("selected theme needs a visible, non-color-only distinction")
 		}
 	}
@@ -101,8 +103,8 @@ func TestHeaderNavigationRetainsRouteParityAndNativeDisclosure(t *testing.T) {
 	}
 
 	for _, node := range headerNavigationControls(header) {
-		if !headerNavigationClass(node, "min-h-[44px]") || !headerNavigationClass(node, "focus-visible:outline-2") || !headerNavigationClass(node, "focus-visible:outline-focus") {
-			t.Errorf("header %s %q lacks the standalone minimum/focus classes: %q", node.Data, headerNavigationNodeText(node), headerNavigationAttribute(node, "class"))
+		if !headerNavigationStyled(t, node, "min-h-[44px]") || !headerNavigationStyled(t, node, "focus-visible:outline-2") || !headerNavigationStyled(t, node, "focus-visible:outline-focus") {
+			t.Errorf("header %s %q lacks declared minimum/focus utilities: %q", node.Data, headerNavigationNodeText(node), headerNavigationAttribute(node, "class"))
 		}
 	}
 	if skip := headerNavigationFindAll(doc, func(n *html.Node) bool {
@@ -115,6 +117,72 @@ func TestHeaderNavigationRetainsRouteParityAndNativeDisclosure(t *testing.T) {
 	})
 	if main == nil || headerNavigationAttribute(main, "tabindex") != "-1" {
 		t.Fatal("skip target must be the focusable Gallery main landmark")
+	}
+}
+
+// Gallery-only aliases move the original utilities to the compiled stylesheet.
+// A class name alone is not proof: verify its exact @apply binding as well.
+// Browser parity separately tests the resulting cascade, dimensions and focus.
+func headerNavigationStyled(t *testing.T, node *html.Node, utility string) bool {
+	t.Helper()
+	if headerNavigationClass(node, utility) {
+		return true
+	}
+	css, err := os.ReadFile("ui/input.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var selectors []string
+	for _, class := range []string{"g-nav", "g-theme", "g-home", "g-summary", "g-header"} {
+		if headerNavigationClass(node, class) {
+			selectors = append(selectors, "."+class)
+		}
+	}
+	if node != nil && node.Data == "a" && node.Parent != nil {
+		for _, class := range []string{"g-nav", "g-theme"} {
+			if !headerNavigationClass(node.Parent, class) {
+				continue
+			}
+			selector := "." + class + " > a"
+			selectors = append(selectors, selector)
+			if current := headerNavigationAttribute(node, "aria-current"); current != "" {
+				selectors = append(selectors, selector+`[aria-current="`+current+`"]`)
+			} else {
+				selectors = append(selectors, selector+":not([aria-current])")
+			}
+		}
+	}
+	for _, selector := range selectors {
+		if headerAliasDeclares(string(css), selector, utility) {
+			return true
+		}
+	}
+	return false
+}
+
+func headerAliasDeclares(css, selector, utility string) bool {
+	rule := regexp.MustCompile(`(?m)^[\t ]*` + regexp.QuoteMeta(selector) + `\s*\{\s*@apply\s+([^;]+);`)
+	match := rule.FindStringSubmatch(css)
+	if len(match) != 2 {
+		return false
+	}
+	for _, token := range strings.Fields(match[1]) {
+		if token == utility {
+			return true
+		}
+	}
+	return false
+}
+
+func TestHeaderAliasRequiresItsOwnDeclaredUtility(t *testing.T) {
+	css := `.g-home { @apply min-h-[44px] focus-visible:outline-2; }
+.g-summary { @apply focus-visible:outline-focus; }`
+	if !headerAliasDeclares(css, ".g-home", "focus-visible:outline-2") ||
+		headerAliasDeclares(".wrong "+css, ".g-home", "focus-visible:outline-2") ||
+		headerAliasDeclares(css, ".g-home", "focus-visible:outline-focus") ||
+		headerAliasDeclares(css, ".absent", "focus-visible:outline-2") ||
+		headerAliasDeclares(strings.ReplaceAll(css, "focus-visible:outline-2", ""), ".g-home", "focus-visible:outline-2") {
+		t.Fatal("alias declaration check accepted missing or another selector's utility")
 	}
 }
 

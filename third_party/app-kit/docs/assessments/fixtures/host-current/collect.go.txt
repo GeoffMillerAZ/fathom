@@ -1,0 +1,118 @@
+// Assessment-only synthetic source and independent stdio reference collection.
+// Copy beneath the selected archived Go module before running; never uses real corpora.
+package main
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"io/fs"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"reflect"
+	"strings"
+	"time"
+
+	"github.com/geoffmilleraz/app-kit/appkit/catalog"
+	"github.com/geoffmilleraz/app-kit/internal/qualityplan"
+	"github.com/geoffmilleraz/app-kit/internal/twplus/index"
+	"github.com/geoffmilleraz/app-kit/internal/twplus/normalize"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+)
+
+func check(err error) { if err != nil { panic(err) } }
+func object(v any) map[string]any {
+	b, err := json.Marshal(v); check(err)
+	var out map[string]any; check(json.Unmarshal(b, &out)); return out
+}
+func same(a, b any) { if !reflect.DeepEqual(object(a), object(b)) { panic("reference mismatch") } }
+func kitFiles(root string) []string {
+	var paths []string
+	check(filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil { return err }
+		if d.Type()&os.ModeSymlink != 0 { return fmt.Errorf("fixture symlink refused: %s", path) }
+		if !d.IsDir() { if !d.Type().IsRegular() { return fmt.Errorf("nonregular fixture: %s", path) }; paths = append(paths,path) }
+		return nil
+	}))
+	return paths
+}
+func identities(p string) map[string]string {
+	paths := append(kitFiles(filepath.Join(p,"kit")), filepath.Join(p,"appkit-mcp"), filepath.Join(p,"source.tar"), filepath.Join(p,"source/cmd/host-trial/main.go"))
+	out := map[string]string{}
+	for _, path := range paths {
+		real, err := filepath.EvalSymlinks(path); check(err)
+		if real != path || !strings.HasPrefix(real,p+string(filepath.Separator)) { panic("input containment failure") }
+		b, err := os.ReadFile(path); check(err); sum := sha256.Sum256(b)
+		rel, err := filepath.Rel(p,path); check(err); out[rel] = hex.EncodeToString(sum[:])
+	}
+	return out
+}
+func writeJSON(path string, value any) {
+	b, err := json.MarshalIndent(value,"","  "); check(err)
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL,0600); check(err)
+	_, err = f.Write(append(b,'\n')); check(err); check(f.Close())
+}
+
+func main() {
+	if len(os.Args) != 2 || !filepath.IsAbs(os.Args[1]) { panic("usage: collect ABSOLUTE_PACKET") }
+	p := os.Args[1]
+	real, err := filepath.EvalSymlinks(p); check(err)
+	if real != p { panic("packet must be canonical and nonsymlinked") }
+	root := filepath.Join(p, "kit")
+	kitFiles(root) // Refuse symlinks before creating anything beneath the kit.
+	db := filepath.Join(root, "data/tailwindplus/index/components.sqlite")
+	if _, err := os.Lstat(db); !os.IsNotExist(err) { panic("synthetic index destination must be absent") }
+	check(os.MkdirAll(filepath.Dir(db), 0700))
+	const source = "<section aria-label=\"APPKIT_SYNTHETIC_HOST_FIXTURE\"><h2>Synthetic reference only</h2></section>\n"
+	digest := sha256.Sum256([]byte(source))
+	c := normalize.Component{Section:"Application UI", Group:"Synthetic", Category:"Host trials", Name:"Fixture", FullName:"Application UI / Synthetic / Host trials / Fixture"}
+	b, err := index.NewBuilder(db); check(err); defer b.Close()
+	check(b.AddComponent(c, []normalize.VariantRow{{Section:c.Section, Group:c.Group, Category:c.Category, Name:c.Name, FullName:c.FullName, Framework:"html", Language:"html", TailwindVersion:4, Mode:"light", Code:source, ContentHash:hex.EncodeToString(digest[:]), EmbedText:"Synthetic host fixture"}}))
+	_, err = b.Finalize(); check(err)
+	before := identities(p)
+	writeJSON(filepath.Join(p,"oracle-inputs.json"),before)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second); defer cancel()
+	cmd := exec.CommandContext(ctx, filepath.Join(p, "appkit-mcp"), "-kit-root", root)
+	cmd.Dir = p
+	cmd.Env = []string{"PATH=/usr/bin:/bin", "TMPDIR="+os.TempDir()}
+	client := mcp.NewClient(&mcp.Implementation{Name:"synthetic-host-reference", Version:"1"}, nil)
+	session, err := client.Connect(ctx, &mcp.CommandTransport{Command:cmd, TerminateDuration:time.Second}, nil); check(err)
+	defer session.Close()
+	type step struct { Tool string `json:"tool"`; Args map[string]any `json:"args"`; Result *mcp.CallToolResult `json:"result"` }
+	steps := []step{}
+	call := func(name string, args map[string]any, wantError bool) map[string]any {
+		r, err := session.CallTool(ctx, &mcp.CallToolParams{Name:name, Arguments:args}); check(err)
+		if r.IsError != wantError { panic("unexpected status: "+name) }
+		steps = append(steps, step{name,args,r})
+		return object(r.StructuredContent)
+	}
+	doc := call("get_kit_decision", map[string]any{"id":"intent"}, false)
+	want, err := os.ReadFile(filepath.Join(root,"docs/intent/README.md")); check(err)
+	if doc["body"] != string(want) { panic("intent body mismatch") }
+	page := call("search_capabilities", map[string]any{"query":"comparison", "profile":"go-web", "limit":5}, false)
+	cat, err := catalog.Default(); check(err)
+	if page["revision"] != cat.Revision { panic("catalog identity mismatch") }
+	cap := call("get_capability", map[string]any{"id":"analytics.comparison", "expected_revision":cat.Revision}, false)
+	entry, ok := cat.Get("analytics.comparison"); if !ok { panic("capability absent") }; same(cap["entry"],entry)
+	listArgs := map[string]any{"capability_id":"analytics.comparison", "scope":"core", "expected_catalog_revision":cat.Revision}
+	list := call("list_quality_work", listArgs, false)
+	quality, err := qualityplan.Default(); check(err)
+	wantList, err := quality.ListForCatalog("analytics.comparison", "core", cat.Revision); check(err); same(list,wantList)
+	call("get_quality_work", map[string]any{"id":"core.analytics", "expected_revision":list["revision"], "expected_catalog_revision":strings.Repeat("0",64)}, true)
+	got := call("get_quality_work", map[string]any{"id":"core.analytics", "expected_revision":list["revision"], "expected_catalog_revision":cat.Revision}, false)
+	wantWork, err := quality.GetForCatalog("core.analytics", list["revision"].(string), cat.Revision); check(err); same(got,wantWork)
+	doc = call("get_kit_decision", map[string]any{"id":"contribution-loop"}, false)
+	want, err = os.ReadFile(filepath.Join(root,"docs/design/contribution-loop.md")); check(err)
+	if doc["body"] != string(want) { panic("contribution body mismatch") }
+	refs := call("search_components", map[string]any{"source":"tailwindplus", "limit":1}, false)
+	if refs["count"] != float64(1) { panic("synthetic source missing") }
+	ref := call("get_component", map[string]any{"source":"tailwindplus", "full_name":c.FullName, "framework":"html", "tailwind_version":4, "mode":"light"}, false)
+	if ref["code"] != source { panic("synthetic source mismatch") }
+	check(session.Close())
+	if !reflect.DeepEqual(before,identities(p)) { panic("reference inputs changed during collection") }
+	writeJSON(filepath.Join(p,"expected.json"),steps)
+	fmt.Println("9 stdio calls verified against current documents, catalog, inventory and synthetic source; one expected stale refusal")
+}

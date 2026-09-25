@@ -40,6 +40,9 @@ work item with its gaps and next steps; they report the embedded plan, not live 
 Gallery `/quality` presents that same snapshot with native filters and exact-item
 detail; [the UI assessment](../assessments/2026-09-16-quality-gallery.md) keeps its
 interaction evidence separate from the standards' authored status.
+The shared Go reader rejects repeated `(app, revision.kind, revision.sha256)` within
+one work item, including identical or conflicting statuses. Different revisions/apps
+and reuse across work items remain valid; this is not CUE uniqueness or live proof.
 The nine existing gate names remain canonical in `internal/designreceipts/schema.cue`;
 the planning tests check agreement, current capability/profile fit, repository-contained
 file references and declared receipt/contract byte hashes. Those checks cannot

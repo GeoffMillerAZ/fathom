@@ -14,7 +14,7 @@
   "capability_revisions": [
     {
       "id": "recipe.styleguide.local",
-      "sha256": "565b6155b2a834cb954d8b948876923852f510b3cd8efc23456e14ea5de1ec56"
+      "sha256": "820a6558235601f4c217ceac0f0751fb4915c8c2f0a5989943a7faebf5cd8f7f"
     },
     {
       "id": "shell.layout",
@@ -30,7 +30,7 @@
   "artifacts": [
     {
       "path": "cmd/fathom/ui/app.css",
-      "sha256": "41b4be630db0f844e0ba47e199d7901e1731a421823c5e804621132388fc0555"
+      "sha256": "63566a8b7fbeca0908914b9d1106686427f02a7a0703792bc056c2b01d8ecc77"
     },
     {
       "path": "cmd/fathom/ui/input.css",
@@ -38,7 +38,7 @@
     },
     {
       "path": "cmd/fathom/ui/tokens/theme.css",
-      "sha256": "e5b8a4aa803dd81d37bc18414c3415f486283d8e4a03a67d305b43b6fe82c291"
+      "sha256": "94dfecf82012bd158637f83506c9900462a7a6bc2887ac5537413f20b88547c8"
     },
     {
       "path": "third_party/app-kit/appkit/ui/dashboard/shell.go",
@@ -62,7 +62,7 @@
     },
     {
       "path": "third_party/app-kit/.vendor-commit",
-      "sha256": "65bd03cddd045ec09711168217df591acf26e8636139af22152088f6558a1883"
+      "sha256": "2c8a3dd6010cff5e0dcd03a29e95a1bd142f1b36c56cd3f0d9faa7f28b5f6912"
     },
     {
       "path": "scripts/ui-css.sh",
@@ -74,35 +74,19 @@
     },
     {
       "path": "cmd/fathom/appkit_styleguide.go",
-      "sha256": "b76ce3f3cd8ad9cffeaa211ee8211bc0292c7ac56a542910df93398865f41afb"
+      "sha256": "5963c22e6c0131ff8efd18e1ddf6f2d01fb1fe44c97bc10ad4cda6a25fff327b"
     },
     {
       "path": "cmd/fathom/appkit_styleguide_test.go",
-      "sha256": "3b409ba279385df5d1968148f2c476465db1b0e6928c506323ba32558bc4329e"
+      "sha256": "913d1fa5969940d11b53ff15ad0a282e5377da4f1812e422bf67b9cf9b35abf3"
     },
     {
       "path": "cmd/fathom/ui/guide-baseline.cue",
-      "sha256": "443461ce94d565b18ea6917631f45fed689a8248839533ec15b2dd328c5267bf"
+      "sha256": "57e441aa47d160bf4b235afe869a78f8df6a44c334a6664e5f59131ac6130fa0"
     },
     {
-      "path": "cmd/fathom/observatory_render.go",
-      "sha256": "518f95d61b34dff6e88e13504bc79e6dbdf66c93217f5ae00f9b7f784f3ecb7a"
-    },
-    {
-      "path": "cmd/fathom/main.go",
-      "sha256": "f2611bf90e839654330332a556c252cb6edb22ff562f93b553d254fd40c9fb6f"
-    },
-    {
-      "path": "cmd/fathom/verbs.go",
-      "sha256": "fc68c2636938373ef15b13f7190d0442b45437af640c18ea1e6eb44e40c949d1"
-    },
-    {
-      "path": "go.mod",
-      "sha256": "2aca6a384ce7db176b1077ff1539a005ee4ef1dd308efb5134b2a7fce65eb482"
-    },
-    {
-      "path": "go.sum",
-      "sha256": "56267941161457eb60a16b219fc425ec3de7a750294b34d10edde37250f52e79"
+      "path": "third_party/app-kit/cue/tokens/kit.cue",
+      "sha256": "57e441aa47d160bf4b235afe869a78f8df6a44c334a6664e5f59131ac6130fa0"
     },
     {
       "path": "scripts/ui-css_test.sh",

@@ -50,10 +50,10 @@ the row-label column is offscreen, not removed. Very long labels still produce t
 
 | Retained local role run | Pass / fail | Receipt SHA256 |
 |---|---|---|
-| `/Volumes/m2ext/appkit-analytics-role-browser.eakEpke3/analytics-roles-AzrQX0` | 74 / 9; initial CSP/collector failures | `fa032252275179482d586070f535357b1aa47463848a35325ab8bae8629d6f0b` |
-| `/Volumes/m2ext/appkit-analytics-role-browser.iRWL8mc6/analytics-roles-nXSyKx` | 88 / 0; before first-line oracle | `b0f8439911e3bc7a7bd663f4a8f4cd756b2f6ea61d4d6d9c18566683159a3434` |
-| `/Volumes/m2ext/appkit-analytics-role-browser.nCGm61RW/analytics-roles-ezknVK` | 92 / 4; final oracle, unaligned cells | `c63faa34e0933db68c71e65a4a51614b7b34a22d7cd08bc980bddfc3fcd40bb5` |
-| `/Volumes/m2ext/appkit-analytics-role-browser.kpXy166E/analytics-roles-cGJjyc` | 96 / 0; same oracle, aligned cells | `194c1f7772c94bc7d7277e07b96387c9189378577288baa84236d37ba616777a` |
+| `/Volumes/m2ext/appkit-evidence/appkit-analytics-role-browser.eakEpke3/analytics-roles-AzrQX0` | 74 / 9; initial CSP/collector failures | `fa032252275179482d586070f535357b1aa47463848a35325ab8bae8629d6f0b` |
+| `/Volumes/m2ext/appkit-evidence/appkit-analytics-role-browser.iRWL8mc6/analytics-roles-nXSyKx` | 88 / 0; before first-line oracle | `b0f8439911e3bc7a7bd663f4a8f4cd756b2f6ea61d4d6d9c18566683159a3434` |
+| `/Volumes/m2ext/appkit-evidence/appkit-analytics-role-browser.nCGm61RW/analytics-roles-ezknVK` | 92 / 4; final oracle, unaligned cells | `c63faa34e0933db68c71e65a4a51614b7b34a22d7cd08bc980bddfc3fcd40bb5` |
+| `/Volumes/m2ext/appkit-evidence/appkit-analytics-role-browser.kpXy166E/analytics-roles-cGJjyc` | 96 / 0; same oracle, aligned cells | `194c1f7772c94bc7d7277e07b96387c9189378577288baa84236d37ba616777a` |
 
 Each directory contains `receipt.json`; the final run retains four PNGs and four
 identical1236-byte CSVs. All eight artifacts independently match recorded sizes/hashes
@@ -64,7 +64,7 @@ Its saved CSV SHA is `9da8122be2ea58621a10f74f697bc34dd65b15fc2a9d5677685cfcde3e
 Assertions are repeated observations, not96 independent product requirements.
 
 The maintained production-renderer and six-case journey probes were rerun against
-`/Volumes/m2ext/appkit-analytics-meaning.cpthG2wg/gallery-aligned` at loopback56865:
+`/Volumes/m2ext/appkit-evidence/appkit-analytics-meaning.cpthG2wg/gallery-aligned` at loopback56865:
 
 | Run below that build directory | Result | Receipt SHA256 |
 |---|---|---|
@@ -87,7 +87,7 @@ checks. A source-inventory canary detects reintroduced old width expectations; i
 not itself browser proof. The actual isolated browser rerun passed144/144 checks,
 including the existing native task, long-label specimen and selected actual200% lane.
 
-Retained base: `/Volumes/m2ext/appkit-receipts-migration.hxgcxPdk/`.
+Retained base: `/Volumes/m2ext/appkit-evidence/appkit-receipts-migration.hxgcxPdk/`.
 `evidence/report.json` SHA `06ad957cb54cded75e13b5533c0a30a9d01e9634f1c8217f126e87c4d935e570`;
 `evidence-green/report.json` SHA `88b69cc47cdb22ae0b2334be2cc7b6114e5b39dbb44a6a60e5914068c969e5bf`.
 Both used the same owned binary SHA

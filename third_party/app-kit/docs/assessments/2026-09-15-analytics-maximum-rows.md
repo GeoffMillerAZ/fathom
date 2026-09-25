@@ -71,7 +71,7 @@ new renderer; high-volume and real-consumer acceptance remain separate work.
 
 ## Retained proof and corrected capture oracle
 
-Private root: `/Volumes/m2ext/appkit-analytics-scale.02FdbPYQ`.
+Private root: `/Volumes/m2ext/appkit-evidence/appkit-analytics-scale.02FdbPYQ`.
 The controller saves its selected test/renderer/CSS/harness bytes and a manifest before
 browser work, pins expected response hashes and its executing test binary, validates
 the persisted report and exact artifact inventory, and rechecks source identity afterward.

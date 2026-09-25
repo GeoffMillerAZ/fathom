@@ -1,0 +1,96 @@
+--- a/scripts/ui-css.sh
++++ b/scripts/ui-css.sh
+@@ -83,14 +83,23 @@
+ }
+ 
+ require_file() {
+-  local path="$1" physical
++  local path="$1" physical shasum_stderr shasum_status
+   [ -f "${path}" ] || fail "required source is missing: ${path#"${REPO_ROOT}/"}"
+   [ ! -L "${path}" ] || fail "required source must not be a symlink: ${path#"${REPO_ROOT}/"}"
+-  [ -r "${path}" ] || fail "required source is unreadable: ${path#"${REPO_ROOT}/"}"
+   physical="$(cd "$(dirname "${path}")" && pwd -P)/$(basename "${path}")"
+   inside_repo "${physical}"
+-  # Opening the file catches ACL/read failures that a mode-bit check can miss.
+-  shasum -a 256 "${path}" >/dev/null 2>&1 || fail "required source is unreadable: ${path#"${REPO_ROOT}/"}"
++  # The content read is authoritative. Access predicates can disagree with a
++  # subsequent open on external volumes, while this is the operation the
++  # digest and build actually require.
++  if shasum_stderr="$(shasum -a 256 "${path}" 2>&1 >/dev/null)"; then
++    return
++  else
++    shasum_status=$?
++  fi
++  if [ -n "${shasum_stderr}" ]; then
++    fail "required source is unreadable: ${path#"${REPO_ROOT}/"} (shasum exit ${shasum_status}: ${shasum_stderr})"
++  fi
++  fail "required source is unreadable: ${path#"${REPO_ROOT}/"} (shasum exit ${shasum_status})"
+ }
+ 
+ source_matches() {
+--- a/scripts/ui-css_test.sh
++++ b/scripts/ui-css_test.sh
+@@ -27,6 +27,14 @@
+   grep -Fq "${needle}" "${TMP}/out.log" || { cat "${TMP}/out.log" >&2; fail "${description}: missing refusal text ${needle}"; }
+   ok "${description}"
+ }
++expect_pass() {
++  local description="$1"; shift
++  if ! "$@" >"${TMP}/out.log" 2>&1; then
++    cat "${TMP}/out.log" >&2
++    fail "${description}: unexpectedly failed"
++  fi
++  ok "${description}"
++}
+ assert_outputs_unchanged() {
+   local description="$1" theme_before="$2" css_before="$3"
+   [ "${theme_before}" = "$(shasum -a 256 "${FIXTURE}/cmd/fathom/ui/tokens/theme.css")" ] \
+@@ -124,12 +132,24 @@
+ for arg in "\$@"; do
+   if [ -n "\${UI_CSS_TEST_UNREADABLE:-}" ] && [ -e "\${arg}" ]; then
+     physical="\$(cd "\$(dirname "\${arg}")" && pwd -P)/\$(basename "\${arg}")"
+-    [ "\${physical}" = "\${UI_CSS_TEST_UNREADABLE}" ] && exit 1
++    if [ "\${physical}" = "\${UI_CSS_TEST_UNREADABLE}" ]; then
++      echo "synthetic shasum read denied: \${physical}" >&2
++      exit 77
++    fi
+   fi
+ done
+ exec "${REAL_SHASUM}" "\$@"
+ EOF
+ chmod +x "${TMP}/bin/shasum"
++cat > "${TMP}/bin/[" <<'EOF'
++#!/bin/sh
++case "${1:-}" in
++  -r) exit 1 ;;
++esac
++exec /bin/[ "$@"
++EOF
++chmod +x "${TMP}/bin/["
++printf '%s\n' "enable -n '['" > "${TMP}/disable-test-r.bash"
+ export PATH="${TMP}/bin:${PATH}"
+ export UI_CSS_TEST_TRACE="${TRACE}"
+ 
+@@ -141,6 +161,10 @@
+ 
+ THEME_BEFORE="$(shasum -a 256 "${FIXTURE}/cmd/fathom/ui/tokens/theme.css")"
+ CSS_BEFORE="$(shasum -a 256 "${FIXTURE}/cmd/fathom/ui/app.css")"
++expect_pass "false access predicate cannot override successful content reads" \
++  env BASH_ENV="${TMP}/disable-test-r.bash" bash "${FIXTURE}/scripts/ui-css.sh"
++assert_outputs_unchanged "false-access-predicate build" "${THEME_BEFORE}" "${CSS_BEFORE}"
++
+ mv "${FIXTURE}/cmd/fathom/observatory_render.go" "${TMP}/observatory_render.go"
+ expect_fail "missing selected source refuses before writing" "required source selection is empty" \
+   bash "${FIXTURE}/scripts/ui-css.sh"
+@@ -167,8 +191,10 @@
+ cp "${TMP}/input.css" "${FIXTURE}/cmd/fathom/ui/input.css"
+ 
+ export UI_CSS_TEST_UNREADABLE="${FIXTURE}/cmd/fathom/observatory_apply.go"
+-expect_fail "unreadable selected source refuses before writing" "required source is unreadable" \
++expect_fail "unreadable selected source refuses before writing" "shasum exit 77: synthetic shasum read denied: ${FIXTURE}/cmd/fathom/observatory_apply.go" \
+   bash "${FIXTURE}/scripts/ui-css.sh"
++grep -Fq "required source is unreadable" "${TMP}/out.log" \
++  || fail "unreadable selected source: missing generic refusal text"
+ unset UI_CSS_TEST_UNREADABLE
+ assert_outputs_unchanged "unreadable-source refusal" "${THEME_BEFORE}" "${CSS_BEFORE}"
+ 

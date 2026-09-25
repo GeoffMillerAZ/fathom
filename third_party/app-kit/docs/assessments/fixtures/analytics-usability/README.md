@@ -36,7 +36,7 @@ records executed preparation separately from pending human usability results.
 
 ### Reuse or replay the prepared pair
 
-The private pair is `/Volumes/m2ext/appkit-analytics-pair.u19A9Z/prepared`.
+The private pair is `/Volumes/m2ext/appkit-evidence/appkit-analytics-pair.u19A9Z/prepared`.
 `prepare.mjs <absolute-config.json> <fresh-output>` prepares a new pair, using explicit
 tool/cache paths, pinned template/compiler/preparer hashes, and a current first-party
 snapshot. Reusing the retained pair avoids another build and preserves this experiment.
@@ -46,10 +46,10 @@ Run the automated fixed task with the approved isolated harness and a fresh outp
 
 ```sh
 node docs/assessments/fixtures/analytics-usability/run-pair.mjs \
-  /Volumes/m2ext/appkit-analytics-pair.u19A9Z/prepared \
+  /Volumes/m2ext/appkit-evidence/appkit-analytics-pair.u19A9Z/prepared \
   /Users/geoff/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs \
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' \
-  /Volumes/m2ext/appkit-analytics-pair.u19A9Z/new-browser-run
+  /Volumes/m2ext/appkit-evidence/appkit-analytics-pair.u19A9Z/new-browser-run
 ```
 
 The runner refuses an existing output directory, verifies binary/CSS hashes, freezes

@@ -1,0 +1,63 @@
+// Assessment-only response collector. It starts no server and reads no app data.
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"os"
+
+	"github.com/geoffmilleraz/app-kit/apps/gallery"
+)
+
+type response struct {
+	Path string `json:"path"`; Status int `json:"status"`; Header map[string][]string `json:"header"`; Body string `json:"body"`
+}
+type lane struct {
+	Name string `json:"name"`; Theme string `json:"theme"`; Period string `json:"period"`
+	Compare string `json:"compare"`; Category string `json:"category"`
+	Width int `json:"width"`; Height int `json:"height"`
+	Paths map[string]string `json:"paths"`
+}
+type packet struct { Schema string `json:"schema"`; Lanes []lane `json:"lanes"`; Responses []response `json:"responses"` }
+
+func query(l lane, state string, recipe bool) string {
+	compare := l.Compare
+	if recipe { compare = "none" }
+	return "?" + url.Values{"period": {l.Period}, "compare": {compare}, "category": {l.Category}, "state": {state}, "theme": {l.Theme}}.Encode()
+}
+
+func collect(h http.Handler, path string, want int) response {
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "http://127.0.0.1"+path, nil))
+	if w.Code != want { panic(fmt.Sprintf("%s: status %d, want %d", path, w.Code, want)) }
+	return response{path, w.Code, map[string][]string(w.Header()), w.Body.String()}
+}
+
+func main() {
+	lanes := []lane{
+		{Name: "wide-light", Theme: "light", Width: 1440, Height: 1000, Period: "2026-09", Compare: "previous", Category: "api"},
+		{Name: "narrow-dark", Theme: "dark", Width: 390, Height: 844, Period: "2026-08", Compare: "none", Category: "empty"},
+	}
+	h, responses := gallery.New(), []response{}
+	for i := range lanes {
+		l := &lanes[i]; failed, complete := query(*l, "error", false), query(*l, "complete", false)
+		failedRecipe, completeRecipe := query(*l, "error", true), query(*l, "complete", true)
+		l.Paths = map[string]string{
+			"overviewError": "/analytics"+failed, "overviewComplete": "/analytics"+complete,
+			"detailError": "/analytics/gateway-api"+failed, "overviewExportError": "/analytics/export.csv"+failed,
+			"detailExportError": "/analytics/gateway-api/export.csv"+failed,
+			"recipeError": "/analytics/recipe"+failedRecipe, "recipeComplete": "/analytics/recipe"+completeRecipe,
+			"recipeExportError": "/analytics/recipe/export.csv"+failedRecipe,
+			"recipeTableExportError": "/analytics/recipe/table.csv"+failedRecipe,
+		}
+		for _, key := range []string{"overviewError", "detailError", "overviewExportError", "detailExportError", "recipeError", "recipeExportError", "recipeTableExportError"} {
+			responses = append(responses, collect(h, l.Paths[key], http.StatusServiceUnavailable))
+		}
+		responses = append(responses, collect(h, l.Paths["overviewComplete"], http.StatusOK), collect(h, l.Paths["recipeComplete"], http.StatusOK))
+	}
+	responses = append(responses, collect(h, "/static/app.css", http.StatusOK))
+	if err := json.NewEncoder(os.Stdout).Encode(packet{"appkit-gallery-analytics-source-error-v1", lanes, responses}); err != nil { panic(err) }
+}

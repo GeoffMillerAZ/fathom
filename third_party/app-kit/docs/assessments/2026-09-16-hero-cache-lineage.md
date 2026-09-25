@@ -57,7 +57,7 @@ the strict control oracle from claiming a clean, targeted detection.
 
 ## Retained identity and cleanup
 
-Private root: `/Volumes/m2ext/appkit-hero-font-candidate.AGTWfHOp/hero-lineage-Py3wTx`.
+Private root: `/Volumes/m2ext/appkit-evidence/appkit-hero-font-candidate.AGTWfHOp/hero-lineage-Py3wTx`.
 No licensed inputs or rendered assets are copied into this tracked assessment.
 
 | Artifact | SHA-256 |

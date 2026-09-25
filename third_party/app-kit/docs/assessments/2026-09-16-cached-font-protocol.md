@@ -84,7 +84,7 @@ the two Fetch configurations. The first four keep their historical snapshot. Nei
 diagnostic is a replacement benchmark. `completed:true` permits explicitly unavailable
 error-stage observations and absent warm bodies; it is not an asset-identity pass.
 
-Private parent: `/Volumes/m2ext/appkit-hero-font-candidate.AGTWfHOp/`.
+Private parent: `/Volumes/m2ext/appkit-evidence/appkit-hero-font-candidate.AGTWfHOp/`.
 
 | Packet | Receipt SHA-256 |
 |---|---|

@@ -19,7 +19,7 @@ browser-UI targets are explicitly outside this application-target scope; this is
 not OS-wide network containment. Only a fresh, temporary Chrome profile is used.
 
 The private two-loopback-server canary at
-`/Volumes/m2ext/appkit-theme-transport.du8Ja1dS/canary-EiH5UF/` records:
+`/Volumes/m2ext/appkit-evidence/appkit-theme-transport.du8Ja1dS/canary-EiH5UF/` records:
 
 - Two forbidden-image requests in the deliberately unguarded control, none in the
   guarded cache or degraded lanes; both parent and opaque iframe are exercised.
@@ -37,7 +37,7 @@ are not silently excluded. Earlier parent-only/non-flattened failures remain in 
 
 ## Actual Gallery cache acquisition
 
-Packet: `/Volumes/m2ext/appkit-theme-transport.du8Ja1dS/cache-gallery-ZoBkOm/`.
+Packet: `/Volumes/m2ext/appkit-evidence/appkit-theme-transport.du8Ja1dS/cache-gallery-ZoBkOm/`.
 The frozen `transport.mjs` uses the same source, server, native forms, empty sandbox,
 no-store documents, task matrix and ZIP checks as the prospective
 [contract](fixtures/styleguide-performance/browser-contract.md).
@@ -65,7 +65,7 @@ Guard SHA-256:
 
 ## Degraded acquisition and phase-wait defect
 
-Packet: `/Volumes/m2ext/appkit-theme-transport.du8Ja1dS/degraded-gallery-QPGUR5/`.
+Packet: `/Volumes/m2ext/appkit-evidence/appkit-theme-transport.du8Ja1dS/degraded-gallery-QPGUR5/`.
 The complete60-task attempt takes578.103s and reports only2 producer task passes.
 It retains53 stylesheet-body deadline errors, two closed-target body errors, file-read
 EPERM failures and three canceled downloads. Both owned processes exit0 and both ports
@@ -138,7 +138,7 @@ No Go verification from this session ran alongside this successful acquisition.
 
 Task receipt: `35c1cbf3a35657f0c1ea56bcf22ef59bc25ee8b7bdc2c1c779df170c5ea352e9`.
 Owner receipt: `322d39f5bb376a7bd11520d271d97228123729964351f687557c2e660ccc0157`.
-Independent packet: `/Volumes/m2ext/appkit-theme-transport.du8Ja1dS/transport-check-4tl69m/`;
+Independent packet: `/Volumes/m2ext/appkit-evidence/appkit-theme-transport.du8Ja1dS/transport-check-4tl69m/`;
 receipt: `527b8081af809fd8e405f69877180b3907848f8fc896c1b44d93db21abfb3bfc`.
 This earns the degraded slice only, not cache, memory, cancellation, consumer adoption
 or the whole browser-performance gate. Failed external-volume packets remain failed.
@@ -158,11 +158,11 @@ collector or claiming the entire cache-mode result passed.
 Task receipt: `ddfacf081b2f3f203b4b8619099e25fac1d3ff2d36a4e7954253825f6c688a15`.
 Owner receipt: `93156536022aa624cc8d0a8b3a1d32ed1ba528877ea7fc718187a6ab456b7fd9`.
 The independently retained checker/29 tests and execution are in
-`/Volumes/m2ext/appkit-theme-transport.du8Ja1dS/transport-check-y7HlB8/`.
+`/Volumes/m2ext/appkit-evidence/appkit-theme-transport.du8Ja1dS/transport-check-y7HlB8/`.
 Its verification receipt is
 `cd190c627c34f8e6831d3419c9810b497858257f41f97e8fe74967d1cc70b5bf`.
 An independently compared backup of both internal-disk packets is at
-`/Volumes/m2ext/appkit-theme-transport.du8Ja1dS/internal-evidence-Y9OoDi/`:
+`/Volumes/m2ext/appkit-evidence/appkit-theme-transport.du8Ja1dS/internal-evidence-Y9OoDi/`:
 268 files,121,566,379 bytes. Its manifest maps original paths to byte-identical copies;
 only the ephemeral Chrome profiles are excluded. Originals are not moved or deleted.
 
@@ -176,10 +176,10 @@ successful fresh request. All channel waits have failure deadlines, not timing-b
 success assertions. This proves cooperative context propagation and atomic failure
 output, not arbitrary callback CPU/I/O preemption or browser stop/retry behavior.
 
-The original test is retained at `/Volumes/m2ext/appkit-cancel.Jtq9rl/`; review removed
+The original test is retained at `/Volumes/m2ext/appkit-evidence/appkit-cancel.Jtq9rl/`; review removed
 an unnecessary listener, bounded its waits and moved the partial write before cancel.
 The full style-guide race suite passes in
-`/Volumes/m2ext/appkit-theme-transport.du8Ja1dS/verify-x5HamE/`, alongside quality-plan
+`/Volumes/m2ext/appkit-evidence/appkit-theme-transport.du8Ja1dS/verify-x5HamE/`, alongside quality-plan
 and MCP package checks, relative links, scope budget and selected diff checks.
 That packet retains the selected package files, token source, inventory, documentation,
 runner, exact Go/Node executable bytes and command environments before execution;
@@ -188,7 +188,7 @@ Verification receipt SHA-256:
 `4cb8e688d70eea75191ea721509a697dc3318e92b4a1ecda68cb16f2e104c6d0`.
 Final source/doc reconciliation repeats the full style-guide race suite, phase-wait
 regressions, quality/MCP tests, relative-link/scope-budget and selected diff checks in
-`/Volumes/m2ext/appkit-theme-transport.du8Ja1dS/verify-vFGHqS/`; all pass with unchanged
+`/Volumes/m2ext/appkit-evidence/appkit-theme-transport.du8Ja1dS/verify-vFGHqS/`; all pass with unchanged
 selected inputs. It precedes only these receipt/backup pointers, not a runtime change.
 
 ## Remaining work

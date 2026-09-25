@@ -79,8 +79,8 @@ final proof. Independent review prompted those controls, static-asset pinning,
 duplicate live-ID refusal, allocation-bounded validation, meaningful completion checks
 and separated counts. Final status-copy revision has a separate build identity.
 [Replay instructions](fixtures/client-editor/README.md) describe retained inputs and
-harness/config snapshots. Race snapshots: `/Volumes/m2ext/appkit-p12-host.YzfCdD4F`
-and `/Volumes/m2ext/appkit-p12-host.haEtYcnG` (latter has image-only data CSP).
+harness/config snapshots. Race snapshots: `/Volumes/m2ext/appkit-evidence/appkit-p12-host.YzfCdD4F`
+and `/Volumes/m2ext/appkit-evidence/appkit-p12-host.haEtYcnG` (latter has image-only data CSP).
 Within the private root, `proofs-HDYFxX/receipt.json` separately records the full parent
 inventory and fresh race execution; its exact verifier, manifest, Go source/tests and
 `race.log` are retained. Seven protocol groups are recorded in

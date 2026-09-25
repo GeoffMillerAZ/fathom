@@ -296,7 +296,7 @@ try {
   receipt.manifest = { sha256: manifestSHA256, bytes: manifestBody.length, path: 'manifest.json' };
 
   const buildEnvironment = {
-    GOCACHE: '/Volumes/m2ext/appkit-menu-proof.Vyw3imOW/go-cache',
+    GOCACHE: '/Volumes/m2ext/appkit-evidence/appkit-menu-proof.Vyw3imOW/go-cache',
     GOMODCACHE: '/Users/geoff/.dev-cache/go/modules',
     GOWORK: 'off',
     GOPROXY: 'off',

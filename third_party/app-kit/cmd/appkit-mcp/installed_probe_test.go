@@ -11,11 +11,13 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/geoffmilleraz/app-kit/appkit/catalog"
+	"github.com/geoffmilleraz/app-kit/internal/adoption"
 	"github.com/geoffmilleraz/app-kit/internal/designassets"
 	"github.com/geoffmilleraz/app-kit/internal/qualityplan"
 	"github.com/geoffmilleraz/app-kit/internal/twplus/index"
@@ -48,7 +50,7 @@ func TestInstalledMCPProbe(t *testing.T) {
 	binarySHA := installedProbeFileSHA256(t, binary)
 	moduleVersion, vcsRevision, vcsModified := installedProbeBuildIdentity(binary)
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
+	t.Cleanup(cancel)
 
 	cmd := exec.CommandContext(ctx, binary, "-kit-root", root)
 	cmd.Dir = t.TempDir()
@@ -86,13 +88,34 @@ func TestInstalledMCPProbe(t *testing.T) {
 		t.Fatal("installed appkit-mcp tool discovery failed")
 	}
 	tools := make(map[string]bool, len(listed.Tools))
+	var getCapabilityTool *mcp.Tool
 	for _, tool := range listed.Tools {
 		tools[tool.Name] = true
+		if tool.Name == "get_capability" {
+			getCapabilityTool = tool
+		}
 	}
 	for _, name := range []string{"get_kit_guidance", "get_kit_decision", "search_capabilities", "get_capability", "list_quality_work", "get_quality_work"} {
 		if !tools[name] {
 			t.Fatalf("installed appkit-mcp is missing required tool %q", name)
 		}
+	}
+	if getCapabilityTool == nil {
+		t.Fatal("installed appkit-mcp is missing get_capability schema")
+	}
+	inputSchema, err := json.Marshal(getCapabilityTool.InputSchema)
+	if err != nil {
+		t.Fatal("installed get_capability schema could not be encoded")
+	}
+	var schema struct {
+		Properties map[string]json.RawMessage `json:"properties"`
+		Required   []string                   `json:"required"`
+	}
+	if err := json.Unmarshal(inputSchema, &schema); err != nil {
+		t.Fatal("installed get_capability schema could not be decoded")
+	}
+	if _, ok := schema.Properties["expected_revision"]; !ok || slices.Contains(schema.Required, "expected_revision") {
+		t.Fatal("installed get_capability must expose optional expected_revision")
 	}
 
 	guidance := installedProbeCallText(t, ctx, session, &timings, "get_kit_guidance", map[string]any{})
@@ -115,6 +138,23 @@ func TestInstalledMCPProbe(t *testing.T) {
 		t.Fatal("installed decision/resource intent bytes differ from APPKIT_PROBE_ROOT")
 	}
 	intentSHA := sha256.Sum256(wantIntent)
+	for _, guide := range []struct{ id, path string }{
+		{"catalyst-settings-adapter", "docs/design/catalyst-settings-adapter.md"},
+		{"fathom-maintenance", "docs/design/fathom-maintenance.md"},
+		{"web-desktop-parity", "docs/design/web-desktop-parity.md"},
+	} {
+		want, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(guide.path)))
+		if err != nil || len(want) == 0 {
+			t.Fatalf("cannot read selected intent-router guide %q", guide.id)
+		}
+		got := installedProbeCallText(t, ctx, session, &timings, "get_kit_decision", map[string]any{"id": guide.id})
+		started = time.Now()
+		resource, err := session.ReadResource(ctx, &mcp.ReadResourceParams{URI: "kit://" + guide.id})
+		timings = append(timings, installedProbeTiming{Name: "read_resource:kit://" + guide.id, Duration: time.Since(started)})
+		if err != nil || resource == nil || len(resource.Contents) != 1 || got != string(want) || resource.Contents[0].URI != "kit://"+guide.id || resource.Contents[0].Text != string(want) || resource.Contents[0].MIMEType != "text/markdown" {
+			t.Fatalf("intent-router guide %q tool/resource differs from selected source", guide.id)
+		}
+	}
 
 	var page catalog.Page
 	installedProbeCallJSON(t, ctx, session, &timings, "search_capabilities", map[string]any{"limit": 2}, &page)
@@ -122,24 +162,85 @@ func TestInstalledMCPProbe(t *testing.T) {
 		t.Fatal("installed capability search did not return the requested bounded page")
 	}
 	const capabilityID = "foundation.tokens"
+	var omittedCapability capabilityOutput
+	installedProbeCallJSON(t, ctx, session, &timings, "get_capability", map[string]any{"id": capabilityID}, &omittedCapability)
 	var capability capabilityOutput
-	installedProbeCallJSON(t, ctx, session, &timings, "get_capability", map[string]any{"id": capabilityID}, &capability)
-	if capability.Revision != page.Revision || capability.Entry.ID != capabilityID {
+	installedProbeCallJSON(t, ctx, session, &timings, "get_capability", map[string]any{"id": capabilityID, "expected_revision": page.Revision}, &capability)
+	if capability.Revision != page.Revision || capability.Entry.ID != capabilityID || !reflect.DeepEqual(capability, omittedCapability) {
 		t.Fatal("installed exact capability retrieval disagrees with the catalog revision")
+	}
+	c, err := catalog.Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry, ok := c.Get(capabilityID)
+	if !ok {
+		t.Fatal("probe capability missing from local catalog")
+	}
+	pin, err := adoption.PinCapability(c.SchemaVersion, entry)
+	if err != nil || capability.CapabilityRevision != pin || capability.Revision != c.Revision {
+		t.Fatal("installed capability metadata pin differs from the reviewed catalog; rebuild the binary")
+	}
+	staleRevision := "0" + page.Revision[1:]
+	if page.Revision[0] == '0' {
+		staleRevision = "1" + page.Revision[1:]
+	}
+	started = time.Now()
+	stale, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name: "get_capability", Arguments: map[string]any{"id": capabilityID, "expected_revision": staleRevision},
+	})
+	timings = append(timings, installedProbeTiming{Name: "get_capability:stale_revision", Duration: time.Since(started)})
+	if err != nil || stale == nil || !stale.IsError {
+		t.Fatal("installed appkit-mcp did not refuse a stale catalog revision")
+	}
+	structured, err := json.Marshal(stale.StructuredContent)
+	if err != nil || strings.Contains(string(structured), `"entry"`) || strings.Contains(string(structured), `"capability_revision"`) {
+		t.Fatal("installed stale-revision refusal leaked structured capability output")
+	}
+	restartGuidance := false
+	for _, content := range stale.Content {
+		text, ok := content.(*mcp.TextContent)
+		if !ok {
+			continue
+		}
+		if strings.Contains(text.Text, `"entry"`) || strings.Contains(text.Text, `"capability_revision"`) {
+			t.Fatal("installed stale-revision refusal leaked text capability output")
+		}
+		restartGuidance = restartGuidance || strings.Contains(text.Text, "restart search_capabilities")
+	}
+	if !restartGuidance {
+		t.Fatal("installed stale-revision refusal omitted restart-search guidance")
+	}
+	var guardedRecovery capabilityOutput
+	installedProbeCallJSON(t, ctx, session, &timings, "get_capability", map[string]any{"id": capabilityID, "expected_revision": page.Revision}, &guardedRecovery)
+	if !reflect.DeepEqual(guardedRecovery, capability) {
+		t.Fatal("installed appkit-mcp did not recover after stale-revision refusal")
 	}
 
 	var quality qualityplan.ListResult
 	installedProbeCallJSON(t, ctx, session, &timings, "list_quality_work", map[string]any{
 		"capability_id": "analytics.comparison", "scope": "core",
 	}, &quality)
-	if quality.Revision == "" || len(quality.Items) != 1 {
+	localQuality, err := qualityplan.Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantQuality, err := localQuality.List("analytics.comparison", "core")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if quality.Revision == "" || len(quality.Items) != 1 || quality.Revision != wantQuality.Revision || !reflect.DeepEqual(quality.Items, wantQuality.Items) {
 		t.Fatal("installed quality lookup did not return the expected one-item bounded selection")
 	}
 	var qualityDetail qualityplan.DetailResult
 	installedProbeCallJSON(t, ctx, session, &timings, "get_quality_work", map[string]any{
 		"id": quality.Items[0].ID, "expected_revision": quality.Revision,
 	}, &qualityDetail)
-	if qualityDetail.Revision != quality.Revision || qualityDetail.Item.ID != quality.Items[0].ID {
+	wantQualityDetail, err := localQuality.Get(wantQuality.Items[0].ID, wantQuality.Revision)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if qualityDetail.Revision != quality.Revision || qualityDetail.Item.ID != quality.Items[0].ID || !reflect.DeepEqual(qualityDetail, wantQualityDetail) {
 		t.Fatal("installed exact quality retrieval disagrees with its list revision")
 	}
 

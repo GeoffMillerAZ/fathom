@@ -24,6 +24,8 @@ type SettingsSection struct {
 // side by side at sm and above, stacked at narrower widths. It owns one leading
 // border and a separator after each section; no wrapper or client runtime is added.
 // Scan appkit/ui/form/*.go with the consumer's Tailwind build (L3b).
+// Both columns allow long words to wrap. Reviewed content can override that
+// inherited text flow; native control markup and behavior are not rewritten.
 //
 // A heading ID must be nonempty valid UTF-8, contain no whitespace/control characters and be
 // unique within this call; titles must not be blank. Invalid input returns no
@@ -57,7 +59,7 @@ func RenderSettingsSections(sections []SettingsSection) (string, error) {
 		if section.Description != "" {
 			fmt.Fprintf(&out, `<p class="mt-2 max-w-prose text-sm text-ink-muted">%s</p>`, esc(section.Description))
 		}
-		fmt.Fprintf(&out, `</div><div class="min-w-0">%s</div></section>`, section.Content)
+		fmt.Fprintf(&out, `</div><div class="min-w-0 [overflow-wrap:anywhere]">%s</div></section>`, section.Content)
 	}
 	return out.String(), nil
 }

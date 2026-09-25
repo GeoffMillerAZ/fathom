@@ -31,7 +31,7 @@ directly after index-based location. No service reroot or wiring change was atte
 
 ## Reproduction and identities
 
-Private preparation root: `/Volumes/m2ext/appkit-fathom-display.YRhqkaUe`.
+Private preparation root: `/Volumes/m2ext/appkit-evidence/appkit-fathom-display.YRhqkaUe`.
 `candidate/` contains the exact current CSS-source closure, builder and small pinned
 mirror. Only the two Go files differ. `scripts/ui-css.sh` built and checked identical
 CSS and token output offline; no stylesheet, theme or mirror update is necessary.

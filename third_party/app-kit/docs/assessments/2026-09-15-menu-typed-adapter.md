@@ -37,8 +37,8 @@ there is no web-profile, preview or permanent reusable-layer promotion.
 
 ## Current retained evidence
 
-Private root: `/Volumes/m2ext/appkit-menu-proof.Vyw3imOW/probe.b5g2px7k`.
-Use command-scoped `TMPDIR=/Volumes/m2ext/appkit-menu-proof.Vyw3imOW`; the internal
+Private root: `/Volumes/m2ext/appkit-evidence/appkit-menu-proof.Vyw3imOW/probe.b5g2px7k`.
+Use command-scoped `TMPDIR=/Volumes/m2ext/appkit-evidence/appkit-menu-proof.Vyw3imOW`; the internal
 Data volume was nearly full. No global temp/cache setting or source archive changed.
 
 | Evidence | SHA-256 |
@@ -118,7 +118,7 @@ No commits, dependency upgrades, global changes, deployment or publication occur
 ## Standalone consumer replay
 
 `fixtures/menu-adapter/standalone.mjs` runs from
-`/Volumes/m2ext/appkit-menu-proof.Vyw3imOW/menu-standalone-YsjEWH`.
+`/Volumes/m2ext/appkit-evidence/appkit-menu-proof.Vyw3imOW/menu-standalone-YsjEWH`.
 Receipt SHA-256: `ee076b404185bc29dee829f06751c9b49a3dd1593966720dd720ff99d73486fc`.
 Harness SHA-256: `b9edded867612793a4739eb1758932cbaf2d04e6e92f4e4088e71bd2dc98d0b9`.
 
@@ -218,7 +218,7 @@ That variant is syntax-checked but has not run in Chrome; no new pixel/task pass
 A further isolated hello-page launch with external profile/temp/crash directories and
 command-scoped redirect/disable flags still failed before page load with ENOSPC;
 Chrome PID27378 exited21 and was confirmed absent. The external probe root
-`/Volumes/m2ext/appkit-chrome-probe.0O418fGKBB` was retained. O21 records Fathom symbol
+`/Volumes/m2ext/appkit-evidence/appkit-chrome-probe.0O418fGKBB` was retained. O21 records Fathom symbol
 lookup failures against its internal-volume database. No global workaround was applied.
 
 Read-only inventory found an inactive, cache-only969MiB Go build cache at
@@ -239,7 +239,7 @@ the repair-mode browser harness preserves the original assertions.
 
 The owner authorized relocating only the inactive Go cache. All7,031 files were
 hash/byte verified before removing originals; copy and receipt remain at
-`/Volumes/m2ext/appkit-cache-relocation.1AhLVW/`. Sibling files and preview PID88496
+`/Volumes/m2ext/appkit-evidence/appkit-cache-relocation.1AhLVW/`. Sibling files and preview PID88496
 were preserved. Internal space was already about15GiB before that relocation;
 do not attribute all recovered space to it. Chrome now launches, Fathom resolves
 `AdaptMenu`, and continuity notes can be written. No global configuration changed.
@@ -296,7 +296,7 @@ The eight-file private inventory is template/model/base CSS/defaults, repair mod
 explicit usage and artifact. The app supplies its own bootstrap and retains disposal;
 the test-only browser handle is never exported. Default six-file delivery is unchanged.
 
-Private proof root: `/Volumes/m2ext/appkit-menu-repair-delivery.geXhmN`.
+Private proof root: `/Volumes/m2ext/appkit-evidence/appkit-menu-repair-delivery.geXhmN`.
 
 | Artifact | SHA-256 |
 |---|---|

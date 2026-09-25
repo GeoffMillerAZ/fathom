@@ -2,10 +2,13 @@ package table
 
 import (
 	"fmt"
+
+	"github.com/geoffmilleraz/app-kit/appkit/ui/internal/webref"
 )
 
 // Table renders a generic data table.
 templ Table(p TableParams) {
+	{{ p := withActionColumn(p) }}
 	<div class="overflow-x-auto rounded-lg border border-line bg-surface-raised">
 		<table
 			class="w-full text-sm font-sans border-collapse"
@@ -114,13 +117,19 @@ templ tableRow(p TableParams, row Row, idx int) {
 			</td>
 		} else if row.Href != "" {
 			<td class="px-4 py-2 text-right">
-				<a
-					href={ templ.SafeURL(row.Href) }
-					class="text-xs font-medium text-accent hover:text-accent-hover transition-colors"
-				>
-					Open →
-				</a>
+				if webref.Allowed(row.Href) {
+					<a
+						href={ templ.SafeURL(row.Href) }
+						class="inline-flex min-h-11 min-w-11 items-center justify-center text-xs font-medium text-accent hover:text-accent-hover transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+					>
+						Open →
+					</a>
+				} else {
+					<span role="link" aria-disabled="true" class="inline-flex min-h-11 min-w-11 items-center justify-center text-xs font-medium text-ink-muted">Open unavailable</span>
+				}
 			</td>
+		} else if p.RowHrefs {
+			<td class="px-4 py-2 text-right"></td>
 		}
 	</tr>
 }

@@ -9,6 +9,7 @@ Its [105-check normal and62-check actual200% journeys](../assessments/2026-09-15
 full visual/accessibility/font proof and two-consumer widget promotion remain open.
 Observed checks and live identities: [assessment](../assessments/2026-09-13-app-owned-theme-review.md).
 The [Chrome follow-up](../assessments/2026-09-14-theme-lab-browser.md) adds native edit/export and scoped usability proof.
+The [root-kit export control](../assessments/fixtures/adoption-analytics-2026-09-22/theme-guide/README.md) and separate [frozen Fathom follow-up](../assessments/2026-09-22-fathom-native-export.md) each download identical ZIPs by native pointer and Enter. Fathom's historical failures remain; the scoped follow-up is neither active integration nor full-guide acceptance.
 The [narrow-preview/zoom follow-up](../assessments/2026-09-15-theme-preview-reflow.md) keeps all17 Gallery SVG boxes inside their figures and proves scoped native200% keyboard repair/reset; original chart bytes and code scrollers remain.
 The [request-cost workload](../assessments/2026-09-16-theme-guide-request-cost.md) meets in-process budgets. The [corrected browser follow-up](../assessments/2026-09-16-theme-guide-transport.md) meets120 ordinary and60 degraded task/timing/body checks using INC-52's complete-asset endpoint, preserving historical failures and zero cache hits. Cooperative Go cancellation remains distinct from browser stop/retry; the [memory investigation](../assessments/2026-09-17-theme-guide-memory.md) now retains failed RSS/growth measurements and a blank-Chrome control above the absolute ceiling. Metric review, preview cache and browser cancellation keep full performance open; no historical budget is relaxed.
 
@@ -21,6 +22,10 @@ also reproduces the guard failure without Stop; paused-target metadata does not 
 an exclusion or application-policy change. Full task/containment acceptance stays open.
 
 ## Try the Gallery adapter
+
+[Memory v2](../assessments/fixtures/styleguide-performance/memory-v2-contract.md)
+now specifies separate retained-heap metrics and total browser cost; its pure subcheck
+does not qualify app attribution, detached retention or full performance. V1 is unchanged.
 
 ```sh
 go run ./apps/gallery/cmd/gallery -addr 127.0.0.1:18766 \

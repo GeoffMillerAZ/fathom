@@ -40,7 +40,7 @@ and a before/after comparison; repeated source work alone is not a user-visible 
 
 ## Retained identities
 
-Private root: `/Volumes/m2ext/appkit-theme-request-cost.POyzPh4P/`.
+Private root: `/Volumes/m2ext/appkit-evidence/appkit-theme-request-cost.POyzPh4P/`.
 `baseline/` retains310 selected repository source/test/config inputs, the executed
 runner, explicit environment, tool identities, raw logs, test binary and server.
 Inputs match before/after execution. This is a working-tree build with existing local

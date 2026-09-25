@@ -1,6 +1,7 @@
 package gallery
 
 import (
+	"html"
 	"html/template"
 
 	"github.com/geoffmilleraz/app-kit/appkit/ui/viz"
@@ -9,8 +10,9 @@ import (
 
 // provenance.go is the Gallery holding the kit to its own rule before the kit
 // asks anyone else to follow it (ADR-0017 §6). Every figure on this page states
-// where its numbers came from, including the ones invented for the specimen —
-// which are labelled Estimate, because that is what they are.
+// where its numbers came from. Every value on this specimen page is synthetic;
+// the source kinds and citations demonstrate the API rather than substantiate
+// those example values.
 //
 // ADR-0012 needed no amendment for this. The Gallery is a Go app that serves
 // HTML, so a page rendering a vizframe specimen IS a Gallery page. The gate
@@ -34,11 +36,15 @@ type provenanceData struct {
 // sampleFigure is the same chart under every frame on this page, so the only
 // thing varying between specimens is the provenance treatment.
 func sampleFigure(label string) string {
-	return viz.Bars([]viz.Bar{
+	return provenanceViewport(viz.Bars([]viz.Bar{
 		{Label: "platform", Value: 48, Role: "accent", Suffix: "%"},
 		{Label: "data", Value: 31, Role: "info", Suffix: "%"},
 		{Label: "security", Value: 21, Role: "positive", Suffix: "%"},
-	}, viz.BarsOptions{W: 320, Max: 100, ShowValue: true, AriaLabel: label})
+	}, viz.BarsOptions{W: 320, Max: 100, ShowValue: true, AriaLabel: label}), label)
+}
+
+func provenanceViewport(svg, label string) string {
+	return `<div class="max-w-full overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus" tabindex="0" role="region" aria-label="` + html.EscapeString(label+" visualization, horizontally scrollable if needed") + `">` + svg + `</div>`
 }
 
 // buildProvenance assembles the Provenance page: all three enforcement
@@ -101,12 +107,12 @@ func buildProvenance() (template.HTML, error) {
 			Heading: "CarriesMechanism — the waiver you have to write down",
 			Note:    "A diagram that states no quantity is answerable by reading the thing it describes. Demanding a source line for it produces a ritual line, and a ritual line trains the reader to skip the source row. Silence is strict; this escape is visible in a diff, in a grep, and in the DOM as data-viz-carries=\"mechanism\".",
 			Frame: h(vizframe.MustRender(
-				viz.Steps([]viz.Step{
+				provenanceViewport(viz.Steps([]viz.Step{
 					{Label: "ingest", State: viz.StepDone},
 					{Label: "validate", State: viz.StepDone},
 					{Label: "index", State: viz.StepCurrent},
 					{Label: "serve", State: viz.StepUpcoming},
-				}, viz.StepsOptions{W: 460, AriaLabel: "pipeline stages"}),
+				}, viz.StepsOptions{W: 460, AriaLabel: "pipeline stages"}), "pipeline stages"),
 				vizframe.Options{
 					ID:      "prov-mechanism",
 					Title:   "Corpus pipeline",
@@ -144,11 +150,12 @@ vizframe.MustRender(svg, o) // panic — dev builds and golden tests`,
 const provenanceHTML = `
 <h1 class="text-2xl font-semibold text-ink">Provenance</h1>
 <p class="mt-2 max-w-3xl text-ink-muted">A chart is a claim, and an unsourced claim is worth less than no claim — it invites the reader to wonder what else was drawn rather than measured. <code class="font-mono text-sm text-ink">appkit/ui/vizframe</code> makes the source line structural: <code class="font-mono text-sm text-ink">Render</code> has no code path that emits a figure without saying where it came from.</p>
+<p class="mt-3 max-w-3xl font-medium text-ink">All figures on this page are synthetic examples. Source labels and citations demonstrate the API; they do not substantiate these example values.</p>
 <p class="mt-3 max-w-3xl text-ink-muted">It is a <strong class="text-ink">sibling</strong> package (ADR-0017 §6). It imports nothing from <code class="font-mono text-sm text-ink">ui/viz</code>, <code class="font-mono text-sm text-ink">ui/viz</code> imports nothing from it, and zero of viz's call sites changed. The kit ships the rule; the app picks the enforcement.</p>
 
 <h2 class="mt-8 text-lg font-medium text-ink">Three strengths, one predicate</h2>
 <div class="mt-4 rounded-lg border border-line bg-surface-sunken p-4">
-  <pre class="overflow-x-auto font-mono text-xs leading-relaxed text-ink"><code>{{.RefusedGo}}</code></pre>
+  <pre class="max-w-full overflow-x-auto font-mono text-xs leading-relaxed text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus" tabindex="0" role="region" aria-label="Provenance refusal code example"><code>{{.RefusedGo}}</code></pre>
 </div>
 
 <h2 class="mt-10 text-lg font-medium text-ink">Every kind of source the frame recognises</h2>
@@ -159,9 +166,9 @@ const provenanceHTML = `
   <h3 class="text-base font-medium text-ink">{{.Heading}}</h3>
   <p class="mt-1 max-w-3xl text-sm text-ink-muted">{{.Note}}</p>
   <div class="mt-3 grid gap-4 lg:grid-cols-2">
-    <div>{{.Frame}}</div>
-    <div class="rounded-lg border border-line bg-surface-sunken p-4">
-      <pre class="overflow-x-auto font-mono text-xs leading-relaxed text-ink"><code>{{.Code}}</code></pre>
+    <div class="min-w-0">{{.Frame}}</div>
+    <div class="min-w-0 rounded-lg border border-line bg-surface-sunken p-4">
+      <pre class="max-w-full overflow-x-auto font-mono text-xs leading-relaxed text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus" tabindex="0" role="region" aria-label="{{.Heading}} code example"><code>{{.Code}}</code></pre>
     </div>
   </div>
 </section>
@@ -173,5 +180,5 @@ const provenanceHTML = `
 <p class="mt-2 text-xs text-ink-muted">↑ Nothing between those rules. That is the mechanism working.</p>
 
 <h2 class="mt-10 text-lg font-medium text-ink">The kit holds itself to it first</h2>
-<p class="mt-2 max-w-3xl text-ink-muted">Every <code class="font-mono text-sm text-ink">&lt;figure class="ak-vizframe"&gt;</code> on every Gallery route carries a source line, asserted by <code class="font-mono text-sm text-ink">TestEveryGalleryFigureCarriesASource</code>. That is a property of a <em>page</em> rather than of a call, so only a test can check it — and it is the answer to the one real objection to returning <code class="font-mono text-sm text-ink">""</code>, which is that a blank region is invisible to review.</p>
+<p class="mt-2 max-w-3xl text-ink-muted">Every <code class="font-mono text-sm text-ink">&lt;figure class="ak-vizframe"&gt;</code> on every Gallery route carries a source line or an explicit mechanism waiver, asserted by <code class="font-mono text-sm text-ink [overflow-wrap:anywhere]">TestEveryGalleryFigureCarriesASource</code>. That is a property of a <em>page</em> rather than of a call, so only a test can check it — and it is the answer to the one real objection to returning <code class="font-mono text-sm text-ink">""</code>, which is that a blank region is invisible to review.</p>
 `

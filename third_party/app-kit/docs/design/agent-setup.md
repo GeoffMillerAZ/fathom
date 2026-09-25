@@ -51,6 +51,9 @@ connected and successfully invoked are three separate observations.
 2. `get_kit_guidance`, then `get_kit_decision(id="intent")`; retrieve only relevant
    documents. `search_capabilities` → `get_capability` selects actual integration
    contracts. It is not commercial source search.
+   Root-router design guides are also exact MCP documents/resources, including
+   `catalyst-settings-adapter`, `fathom-maintenance` and `web-desktop-parity`.
+   Use their guidance without inferring implemented targets or configuration authority.
 3. Choose a complete visual reference separately: `search_design_assets` for
    templates/Catalyst, or `search_components` with explicit `source=tailwindplus`
    or `source=matdash` (query may be omitted for filter-only discovery).
@@ -72,7 +75,11 @@ Never silently substitute the raw Tailwind library for the kit contract.
 ## Verification and failure boundaries
 
 Run synthetic protocol tests with `go test ./cmd/appkit-mcp`. The opt-in installed
-binary probe checks real stdio and document identity from a non-kit working directory:
+binary probe checks real stdio and document identity from a non-kit working directory.
+Run it from the reviewed source checkout matching the intended installation: it
+compares embedded catalog/quality metadata to that source, exercises the revision
+guard, checks the three guides above and verifies recovery after refusal. A merely self-consistent old binary is
+not a current installation. Retain the exact probe source and binary hashes:
 
 ```sh
 APPKIT_PROBE_BINARY=/abs/path/to/app-kit/bin/appkit-mcp \
@@ -87,6 +94,23 @@ Then verify **both hosts separately**: retrieve the current intent document, one
 selected capability, quality record and actual source. Record host version, binary
 SHA, document/source identity, calls, failures and exit. A synthetic protocol test
 is not that host trial, and a host trial is not visual or consumer adoption proof.
+
+The [current-source isolated trial](../assessments/2026-09-23-current-mcp-hosts.md)
+passes nine calls in Claude Haiku but retains two incomplete Codex Sol trials.
+Both Codex processes exit0, so exit status and final prose are insufficient.
+The [offline verifier](../assessments/fixtures/host-current/README.md) checks actual
+calls, exact returned bytes, guards and refusal/recovery without another model call.
+If host-side extraction fails, inspect the recorded JSON before claiming a field
+is missing; do not remove revision guards, silently accept new pins or call an
+incomplete session successful. Installed registration and automatic instruction
+loading remain separate checks; no global reconfiguration follows from a trial.
+The [Codex presentation comparison](../assessments/2026-09-23-codex-tool-presentation.md)
+also fails before any MCP call when `code_mode_host` is disabled. Keep that runtime
+prerequisite enabled; it is not a direct-MCP fallback switch for the tested host.
+Explicit host-error events must fail acceptance even when the process exits0.
+For first-party metadata only, [CLI search/exact retrieval](adoption-contract.md#discover-without-mcp-or-gallery)
+provides a host-independent path with the same catalog and pin semantics. Use pinned
+local docs/source separately; CLI success does not repair or certify MCP activation.
 
 All read-only tools need accurate annotations and typed schemas. Bound search/list
 responses; full bodies require exact selection. Errors must be actionable and leave

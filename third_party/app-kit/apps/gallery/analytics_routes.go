@@ -20,8 +20,11 @@ const analyticsMaxQueryBytes = 16 << 10
 // registerAnalytics adds a read-only synthetic journey. ServeMux retains its
 // normal canonical redirects; encoded or malformed detail paths are not aliases.
 func registerAnalytics(mux *http.ServeMux) {
+	mux.HandleFunc(analyticsSignedPath, serveAnalyticsSigned)
+	mux.HandleFunc(analyticsSignedExportPath, serveAnalyticsSigned)
 	mux.HandleFunc("/analytics/recipe", serveAnalyticsRecipe)
 	mux.HandleFunc("/analytics/recipe/export.csv", serveAnalyticsRecipe)
+	mux.HandleFunc(analyticsRecipeTableExportPath, serveAnalyticsRecipe)
 	mux.HandleFunc("/analytics", serveAnalytics)
 	mux.HandleFunc("/analytics/", serveAnalytics)
 }
@@ -99,6 +102,10 @@ func serveAnalytics(w http.ResponseWriter, r *http.Request) {
 	selection, theme, err := analyticsRequestSelection(r)
 	if err != nil {
 		writeAnalyticsError(w, r, http.StatusBadRequest, "These filters could not be read. Choose one listed value per filter and light, dark or system appearance; reset the selection to try again.", defaults, theme)
+		return
+	}
+	if selection.State == analyticsStateError {
+		writeAnalyticsSourceError(w, r, selection, theme, "/analytics")
 		return
 	}
 	j, err := buildAnalyticsJourney(selection)

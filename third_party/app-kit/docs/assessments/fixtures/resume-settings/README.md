@@ -63,7 +63,7 @@ original 268/269 result and 125px post-reload observation. `IMWK5x` identified i
 cause without relabeling either failure: at11.4ms CSS was absent, the document was
 interactive, shell flex rendered block and overflow was125px; at87.1ms, before input,
 CSS had49 rules, the document was complete and overflow was0px. Final frozen run
-`/Volumes/m2ext/appkit-rac-shell-state.sX5bLw` passes288/288. Its browser receipt is
+`/Volumes/m2ext/appkit-evidence/appkit-rac-shell-state.sX5bLw` passes288/288. Its browser receipt is
 `6367a3bd33a01239b164f02ad6ce6b5cc39bae662b9498737d437927c7513261`; run report is
 `8cdcc727302763fdbd34a8fe13efb94223445af96d511f60763117c96888f4da`.
 Test-only missing-CSS and deliberate

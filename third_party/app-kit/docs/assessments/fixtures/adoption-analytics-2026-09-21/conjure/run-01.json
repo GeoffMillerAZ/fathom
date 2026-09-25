@@ -1,0 +1,137 @@
+{
+  "origin": "http://127.0.0.1:54867",
+  "scope": "synthetic status-read workflow; not full dashboard or human acceptance",
+  "checks": [
+    {
+      "name": "desktop-light: explicit theme",
+      "passed": true
+    },
+    {
+      "name": "desktop-light: stylesheet loaded",
+      "passed": true
+    },
+    {
+      "name": "desktop-light: failed read is not empty or converged",
+      "passed": true
+    },
+    {
+      "name": "desktop-light: error is text, not executable markup",
+      "passed": true
+    },
+    {
+      "name": "desktop-light: polite status announcement",
+      "passed": true
+    },
+    {
+      "name": "desktop-light: first-failure fits viewport",
+      "passed": true
+    },
+    {
+      "name": "desktop-light: keyboard reaches a visible control",
+      "passed": true
+    },
+    {
+      "name": "desktop-light: live success clears error",
+      "passed": true
+    },
+    {
+      "name": "desktop-light: failed refresh retains every data fragment",
+      "passed": true
+    },
+    {
+      "name": "desktop-light: patch roots remain unique",
+      "passed": true
+    },
+    {
+      "name": "desktop-light: stale fits viewport",
+      "passed": true
+    },
+    {
+      "name": "desktop-light: new stream does not inherit old data",
+      "passed": true
+    },
+    {
+      "name": "desktop-light: recovery updates count and clears error",
+      "passed": true
+    },
+    {
+      "name": "desktop-light: recovered fits viewport",
+      "passed": true
+    },
+    {
+      "name": "desktop-light: successful empty is distinct",
+      "passed": true
+    },
+    {
+      "name": "desktop-light: orphan cannot claim full convergence",
+      "passed": true
+    },
+    {
+      "name": "desktop-light: closing clients releases all streams",
+      "passed": true
+    },
+    {
+      "name": "mobile-dark: explicit theme",
+      "passed": true
+    },
+    {
+      "name": "mobile-dark: stylesheet loaded",
+      "passed": true
+    },
+    {
+      "name": "mobile-dark: failed read is not empty or converged",
+      "passed": true
+    },
+    {
+      "name": "mobile-dark: error is text, not executable markup",
+      "passed": true
+    },
+    {
+      "name": "mobile-dark: polite status announcement",
+      "passed": true
+    },
+    {
+      "name": "mobile-dark: first-failure fits viewport",
+      "passed": true
+    },
+    {
+      "name": "mobile-dark: keyboard reaches a visible control",
+      "passed": false
+    }
+  ],
+  "errors": [],
+  "blocked": [],
+  "geometry": [
+    {
+      "lane": "desktop-light",
+      "state": "first-failure",
+      "width": 1440,
+      "scroll": 1440
+    },
+    {
+      "lane": "desktop-light",
+      "state": "stale",
+      "width": 1440,
+      "scroll": 1440
+    },
+    {
+      "lane": "desktop-light",
+      "state": "recovered",
+      "width": 1440,
+      "scroll": 1440
+    },
+    {
+      "lane": "mobile-dark",
+      "state": "first-failure",
+      "width": 390,
+      "scroll": 390
+    }
+  ],
+  "browser": "153.0.8010.53",
+  "status": "fail",
+  "failure": "AssertionError [ERR_ASSERTION]: mobile-dark: keyboard reaches a visible control\n    at check (file:///Volumes/m2ext/code/geoffmilleraz/app-kit/docs/assessments/fixtures/adoption-analytics-2026-09-21/conjure/browser-smoke.mjs:18:10)\n    at file:///Volumes/m2ext/code/geoffmilleraz/app-kit/docs/assessments/fixtures/adoption-analytics-2026-09-21/conjure/browser-smoke.mjs:78:5",
+  "finalFixture": {
+    "state": "failed",
+    "active_streams": 0
+  }
+}

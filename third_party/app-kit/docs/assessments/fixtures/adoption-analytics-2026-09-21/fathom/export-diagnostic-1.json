@@ -1,0 +1,36 @@
+{
+  "posts": [
+    {
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store",
+        "content-length": "21777",
+        "content-security-policy": "default-src 'none'; script-src 'none'; style-src 'self'; frame-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
+        "content-type": "text/html; charset=utf-8",
+        "date": "Tue, 22 Sep 2026 05:51:02 GMT",
+        "referrer-policy": "same-origin",
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "DENY"
+      },
+      "action": "preview"
+    }
+  ],
+  "console": [],
+  "downloads": [],
+  "pageErrors": [],
+  "form": {
+    "invalid": [],
+    "reviewed": "f63f8f6e6a0a0f7e6c73292eb29725085b2f31740eae9869efc61ca7faf728ed"
+  },
+  "exportActions": [
+    {
+      "status": "rejected",
+      "error": "TimeoutError: page.waitForEvent: Timeout 8000ms exceeded while waiting for event \"download\"\n=========================== logs ===========================\nwaiting for event \"download\"\n============================================================"
+    },
+    {
+      "status": "fulfilled"
+    }
+  ],
+  "alerts": [],
+  "finalURL": "http://127.0.0.1:18891/dev/theme"
+}

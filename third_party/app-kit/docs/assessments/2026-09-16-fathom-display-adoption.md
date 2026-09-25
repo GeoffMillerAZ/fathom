@@ -92,7 +92,7 @@ both reports identify embedded catalog
 `57da91591dca354d52c240db310e8f0cec6da035b23de09342d4a2a8a1d92fc5`.
 
 Private evidence:
-`/Volumes/m2ext/appkit-adoption-audit.8JK5D5ft/consumer-migration.y2nbGO/`.
+`/Volumes/m2ext/appkit-evidence/appkit-adoption-audit.8JK5D5ft/consumer-migration.y2nbGO/`.
 Its `SHA256SUMS` binds the checker, retained catalog source, v1 before reports, v2
 pins/check reports, old-checker refusals and migrated manifests; SHA-256
 `e454b28feed19d7587e359a283b5eb9219300e0830c5d32de246e66ce1284432`.
@@ -128,7 +128,7 @@ corrected to the existing hyphenated header convention, without weakening its te
 A scoped check resolves247 links, keeps affected intent/ADR budgets and paired routing
 blocks valid; this is not a full intent-doctor or consumer configuration audit.
 Final full MCP race-run evidence and pre-execution source/document snapshots:
-`/Volumes/m2ext/appkit-contribution-verification.T3An4Z/receipt.json`, SHA-256
+`/Volumes/m2ext/appkit-evidence/appkit-contribution-verification.T3An4Z/receipt.json`, SHA-256
 `6a0feaaeb9cdcb0b72bbae247138c3b55682ddea383227d7fdb56f65f47600ee`;
 exit0 and all selected hashes unchanged. The current-document protocol test checks
 both exact tool retrieval and resource bytes, not a running external server reload.

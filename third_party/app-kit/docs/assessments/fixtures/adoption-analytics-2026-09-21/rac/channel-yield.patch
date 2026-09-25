@@ -1,0 +1,424 @@
+diff --git a/cmd/serve/pipeline.go b/cmd/serve/pipeline.go
+index 3265bc0..5e9dbbb 100644
+--- a/cmd/serve/pipeline.go
++++ b/cmd/serve/pipeline.go
+@@ -177,8 +177,9 @@ func chartLegend(items []legendItem) string {
+ // channel, so a colour per channel encoded nothing the label did not — and
+ // four colours with no legend is the exact pattern the standards refuse.
+ func pipelineChannelWidgetHTML(reg *tracker.Registry) string {
++	const exportLink = `<p class="mt-3 text-sm"><a class="underline underline-offset-4" href="/api/export?format=csv&amp;view=channel-yield">Download channel-yield CSV</a></p>`
+ 	if len(reg.Applications) == 0 {
+-		return `<p class="text-base font-medium">No application history yet.</p><p class="mt-2 text-sm text-ink-muted">Record applications and outcomes to compare channels.</p>`
++		return `<p class="text-base font-medium">No application history yet.</p><p class="mt-2 text-sm text-ink-muted">Record applications and outcomes to compare channels.</p>` + exportLink
+ 	}
+ 	channelRows := ops.ChannelYield(reg)
+ 	var channelBars []viz.Bar
+@@ -203,6 +204,7 @@ func pipelineChannelWidgetHTML(reg *tracker.Registry) string {
+ 		fmt.Fprintf(&rows, `<tr class="border-t border-line"><th scope="row" class="py-2 pr-2 text-left font-normal">%s</th><td class="py-2 pr-2 tabular-nums">%d</td><td class="py-2 pr-2 tabular-nums">%d</td><td class="py-2 tabular-nums">%d</td></tr>`, esc(string(row.Channel)), row.Applied, row.Responded, row.Interviews)
+ 	}
+ 	rows.WriteString(`</tbody></table>`)
++	rows.WriteString(exportLink)
+ 	for _, row := range channelRows {
+ 		if row.OutcomeWithoutApplied > 0 {
+ 			fmt.Fprintf(&rows, `<p class="mt-3 text-sm text-caution"><strong>%s: Rates unavailable.</strong> %d %s an outcome without recorded sent evidence. Review the application history before comparing rates.</p>`, esc(string(row.Channel)), row.OutcomeWithoutApplied, pipelineCountPhrase(row.OutcomeWithoutApplied, "application has", "applications have"))
+diff --git a/cmd/serve/settings.go b/cmd/serve/settings.go
+index 72b2291..a136db5 100644
+--- a/cmd/serve/settings.go
++++ b/cmd/serve/settings.go
+@@ -75,6 +75,21 @@ func (s *Server) handleExport(w http.ResponseWriter, r *http.Request) {
+ 		writeErr(w, http.StatusInternalServerError, err.Error())
+ 		return
+ 	}
++	if r.URL.Query().Get("view") == "channel-yield" {
++		if r.URL.Query().Get("format") != "csv" {
++			writeErr(w, http.StatusBadRequest, "channel-yield export requires CSV")
++			return
++		}
++		data, err := channelYieldCSV(reg)
++		if err != nil {
++			writeErr(w, http.StatusInternalServerError, err.Error())
++			return
++		}
++		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
++		w.Header().Set("Content-Disposition", `attachment; filename="channel-yield.csv"`)
++		_, _ = w.Write(data)
++		return
++	}
+ 	if r.URL.Query().Get("format") == "json" {
+ 		w.Header().Set("Content-Type", "application/json")
+ 		w.Header().Set("Content-Disposition", `attachment; filename="pipeline.json"`)
+diff --git a/cmd/serve/analytics_export.go b/cmd/serve/analytics_export.go
+new file mode 100644
+index 0000000..a381bd2
+--- /dev/null
++++ b/cmd/serve/analytics_export.go
+@@ -0,0 +1,60 @@
++package serve
++
++import (
++	"bytes"
++	"encoding/csv"
++	"strconv"
++	"strings"
++	"unicode"
++
++	"github.com/geoffmilleraz/resume-as-code/cmd/metrics"
++	"github.com/geoffmilleraz/resume-as-code/cmd/ops"
++	"github.com/geoffmilleraz/resume-as-code/cmd/tracker"
++)
++
++// channelYieldCSV exports the same ops projection as the Pipeline and People
++// widgets. This is an aggregate, not the historical application-level export.
++func channelYieldCSV(reg *tracker.Registry) ([]byte, error) {
++	var out bytes.Buffer
++	w := csv.NewWriter(&out)
++	w.Write([]string{"channel", "applications_count", "applied_count", "responded_count", "interviews_count", "offers_count", "outcomes_without_applied_count", "response_rate", "interview_rate", "cohort_status", "minimum_applied_for_rate", "source", "scope", "freshness", "channel_rule", "outcome_rule"})
++	for _, row := range ops.ChannelYield(reg) {
++		status := "ready"
++		switch {
++		case row.OutcomeWithoutApplied > 0:
++			status = "incomplete-sent-evidence"
++		case row.Apps == 0:
++			status = "no-applications"
++		case row.Applied < metrics.DefaultRateFloor:
++			status = "below-minimum-applied"
++		}
++		values := []string{
++			string(row.Channel), strconv.Itoa(row.Apps), strconv.Itoa(row.Applied),
++			strconv.Itoa(row.Responded), strconv.Itoa(row.Interviews), strconv.Itoa(row.Offers),
++			strconv.Itoa(row.OutcomeWithoutApplied),
++			row.ResponseRate.RenderFloored(metrics.DefaultRateFloor),
++			row.InterviewRate.RenderFloored(metrics.DefaultRateFloor),
++			status, strconv.Itoa(metrics.DefaultRateFloor),
++			"stored application registry", "all recorded applications; no date filter; closed included",
++			"source freshness not independently verified",
++			"referral contact > firm attribution or executive-search contact > sent/replied campaign > cold-apply",
++			"applied date or applied transition; response from replied touch or screening/interview/offer transition; interview from interview transition",
++		}
++		for i := range values {
++			values[i] = formulaSafeCSVCell(values[i])
++		}
++		w.Write(values)
++	}
++	w.Flush()
++	return out.Bytes(), w.Error()
++}
++
++// CSV quoting is not spreadsheet formula protection. Prefix a risky leading
++// formula character even when preceding whitespace would conceal it.
++func formulaSafeCSVCell(value string) string {
++	first := strings.TrimLeftFunc(value, unicode.IsSpace)
++	if first != "" && strings.ContainsRune("=+-@", []rune(first)[0]) {
++		return "'" + value
++	}
++	return value
++}
+diff --git a/cmd/serve/analytics_acceptance_test.go b/cmd/serve/analytics_acceptance_test.go
+new file mode 100644
+index 0000000..1c1a7f9
+--- /dev/null
++++ b/cmd/serve/analytics_acceptance_test.go
+@@ -0,0 +1,303 @@
++package serve
++
++import (
++	"encoding/csv"
++	"net/http"
++	"net/http/httptest"
++	"reflect"
++	"regexp"
++	"runtime"
++	"strconv"
++	"strings"
++	"testing"
++	"time"
++
++	"github.com/geoffmilleraz/resume-as-code/cmd/tracker"
++)
++
++// This is an overlay-only, fictional-data oracle, not a production fixture.
++func TestCandidateChannelYieldChartTableAndExportBoundary(t *testing.T) {
++	reg := pipelineOutcomeFixture()
++	widget := pipelineChannelWidgetHTML(reg)
++	chart := regexp.MustCompile(`(?s)<svg\b.*?</svg>`).FindString(widget)
++	if chart == "" {
++		t.Fatal("channel-yield chart missing")
++	}
++	texts := regexp.MustCompile(`<text\b[^>]*>([^<]*)</text>`).FindAllStringSubmatch(chart, -1)
++	var gotChart []string
++	for _, match := range texts {
++		gotChart = append(gotChart, match[1])
++	}
++	wantChart := []string{"cold-apply", "5", "outreach", "0", "referral", "0", "firm", "0"}
++	if !reflect.DeepEqual(gotChart, wantChart) {
++		t.Fatalf("SVG label/value sequence = %q, want %q", gotChart, wantChart)
++	}
++	for _, row := range []string{
++		`<th scope="row" class="py-2 pr-2 text-left font-normal">cold-apply</th><td class="py-2 pr-2 tabular-nums">5</td><td class="py-2 pr-2 tabular-nums">4</td><td class="py-2 tabular-nums">2</td>`,
++		`<th scope="row" class="py-2 pr-2 text-left font-normal">outreach</th><td class="py-2 pr-2 tabular-nums">0</td>`,
++		`<th scope="row" class="py-2 pr-2 text-left font-normal">referral</th><td class="py-2 pr-2 tabular-nums">0</td>`,
++		`<th scope="row" class="py-2 pr-2 text-left font-normal">firm</th><td class="py-2 pr-2 tabular-nums">0</td>`,
++	} {
++		if !strings.Contains(widget, row) {
++			t.Errorf("native table lacks known-value row %q", row)
++		}
++	}
++	if !strings.Contains(widget, "80% (4/5)") || !strings.Contains(widget, "40% (2/5)") {
++		t.Error("known-value response/interview denominators missing")
++	}
++	if !strings.Contains(widget, `href="/api/export?format=csv&amp;view=channel-yield"`) {
++		t.Error("channel-yield export is not linked from its owning widget")
++	}
++
++	s := serverWithRegistry(t, reg)
++	rec := httptest.NewRecorder()
++	s.handleExport(rec, httptest.NewRequest(http.MethodGet, "/api/export?format=csv", nil))
++	if rec.Code != http.StatusOK {
++		t.Fatalf("raw registry export status %d", rec.Code)
++	}
++	rows, err := csv.NewReader(strings.NewReader(rec.Body.String())).ReadAll()
++	if err != nil {
++		t.Fatal(err)
++	}
++	wantHeader := []string{"id", "company", "role", "status", "fit", "applied", "location", "remote", "reviewed", "emails", "jobURL"}
++	if len(rows) != 6 || !reflect.DeepEqual(rows[0], wantHeader) {
++		t.Fatalf("raw registry export unexpectedly changed: header=%q rows=%d", rows[0], len(rows))
++	}
++	// The default application-level export must remain distinct from the
++	// opt-in aggregate projection checked below.
++}
++
++func TestCandidateChannelYieldCSVAgreesWithRendererAndRefusesBrokenCohort(t *testing.T) {
++	for _, tc := range []struct {
++		name string
++		reg  func() *tracker.Registry
++		want []string // first data row, exact oracle authored from fictional inputs
++	}{
++		{"coherent", pipelineOutcomeFixture, []string{"cold-apply", "5", "5", "4", "2", "0", "0", "80%", "40%", "ready"}},
++		{"disjoint", pipelineIncompleteFixture, []string{"cold-apply", "6", "5", "1", "1", "0", "1", "rate unavailable: outcome missing applied evidence", "rate unavailable: outcome missing applied evidence", "incomplete-sent-evidence"}},
++	} {
++		t.Run(tc.name, func(t *testing.T) {
++			reg := tc.reg()
++			s := serverWithRegistry(t, reg)
++			rec := httptest.NewRecorder()
++			s.handleExport(rec, httptest.NewRequest(http.MethodGet, "/api/export?format=csv&view=channel-yield", nil))
++			if rec.Code != http.StatusOK {
++				t.Fatalf("analytics export status %d: %s", rec.Code, rec.Body.String())
++			}
++			if got := rec.Header().Get("Content-Disposition"); got != `attachment; filename="channel-yield.csv"` {
++				t.Fatalf("download filename = %q", got)
++			}
++			rows, err := csv.NewReader(strings.NewReader(rec.Body.String())).ReadAll()
++			if err != nil {
++				t.Fatal(err)
++			}
++			if len(rows) != 5 || len(rows[0]) != 16 {
++				t.Fatalf("four-channel CSV shape = %d rows, %d fields", len(rows), len(rows[0]))
++			}
++			if !reflect.DeepEqual(rows[1][:10], tc.want) {
++				t.Errorf("first aggregate row = %q, want %q", rows[1][:10], tc.want)
++			}
++			if rows[1][10] != "5" || rows[1][11] != "stored application registry" ||
++				!strings.Contains(rows[1][12], "no date filter") || rows[1][13] != "source freshness not independently verified" ||
++				!strings.Contains(rows[1][14], "referral contact") || !strings.Contains(rows[1][15], "applied date") {
++				t.Error("floor, scope, attribution or source disclosure absent from CSV")
++			}
++			widget := pipelineChannelWidgetHTML(reg)
++			uiRate := tc.want[7]
++			if tc.name == "disjoint" {
++				uiRate = "Rates unavailable: incomplete sent evidence."
++			}
++			if !strings.Contains(widget, `>5</td>`) || !strings.Contains(widget, uiRate) {
++				t.Error("download does not agree with the selected renderer's applied count and rate")
++			}
++		})
++	}
++	for _, in := range []string{"=1+1", " +SUM(A1)", "\t@cmd", "-1"} {
++		if got := formulaSafeCSVCell(in); !strings.HasPrefix(got, "'") {
++			t.Errorf("formula-like CSV cell %q not neutralized: %q", in, got)
++		}
++	}
++	if got := formulaSafeCSVCell("stored application registry"); got != "stored application registry" {
++		t.Errorf("ordinary metadata changed: %q", got)
++	}
++}
++
++func TestCandidateChannelYieldZeroIsNotMissingAndLegacyJSONRemains(t *testing.T) {
++	for _, tc := range []struct {
++		name string
++		reg  *tracker.Registry
++		want []string
++		ui   string
++	}{
++		{"no-records", &tracker.Registry{Version: 1}, []string{"cold-apply", "0", "0", "0", "0", "0", "0", "not enough outcomes yet (n=0, need 5)", "not enough outcomes yet (n=0, need 5)", "no-applications"}, "No application history yet."},
++		{"measured-zero", candidateFiveSentNoResponse(), []string{"cold-apply", "5", "5", "0", "0", "0", "0", "0%", "0%", "ready"}, "Response: 0% (0/5)."},
++	} {
++		t.Run(tc.name, func(t *testing.T) {
++			s := serverWithRegistry(t, tc.reg)
++			rec := httptest.NewRecorder()
++			s.handleExport(rec, httptest.NewRequest(http.MethodGet, "/api/export?format=csv&view=channel-yield", nil))
++			if rec.Code != http.StatusOK || rec.Header().Get("Content-Type") != "text/csv; charset=utf-8" ||
++				rec.Header().Get("Content-Disposition") != `attachment; filename="channel-yield.csv"` {
++				t.Fatalf("CSV HTTP contract: status=%d headers=%v", rec.Code, rec.Header())
++			}
++			rows, err := csv.NewReader(strings.NewReader(rec.Body.String())).ReadAll()
++			if err != nil {
++				t.Fatal(err)
++			}
++			if len(rows) != 5 || !reflect.DeepEqual(rows[1][:10], tc.want) {
++				t.Fatalf("aggregate zero semantics: rows=%q, want first row=%q", rows, tc.want)
++			}
++			widget := pipelineChannelWidgetHTML(tc.reg)
++			if !strings.Contains(widget, tc.ui) {
++				t.Errorf("UI must distinguish absent data from measured zero: want %q", tc.ui)
++			}
++			if !strings.Contains(widget, `href="/api/export?format=csv&amp;view=channel-yield"`) {
++				t.Error("owning widget must expose the aggregate export in every state")
++			}
++		})
++	}
++
++	s := serverWithRegistry(t, candidateFiveSentNoResponse())
++	rec := httptest.NewRecorder()
++	s.handleExport(rec, httptest.NewRequest(http.MethodGet, "/api/export?format=json", nil))
++	if rec.Code != http.StatusOK || rec.Header().Get("Content-Disposition") != `attachment; filename="pipeline.json"` ||
++		!strings.Contains(rec.Body.String(), `"applications"`) {
++		t.Fatalf("legacy JSON export changed: status=%d headers=%v", rec.Code, rec.Header())
++	}
++}
++
++func candidateFiveSentNoResponse() *tracker.Registry {
++	reg := &tracker.Registry{Version: 1}
++	for i := 0; i < 5; i++ {
++		reg.Applications = append(reg.Applications, tracker.Application{
++			ID: "fictional-sent-" + itoa(i), Company: "Example Synthetic", Role: "Engineer",
++			Status: tracker.StatusApplied, CreatedDate: "2099-01-15", AppliedDate: "2099-01-15",
++		})
++	}
++	return reg
++}
++
++// Fixed before benchmarking: five fictional sent applications per canonical
++// channel, with 0/1/2/3 responses and 0/0/1/2 interviews respectively.
++func candidateTwentyChannelFixture() *tracker.Registry {
++	reg := &tracker.Registry{Version: 1}
++	for channel := 0; channel < 4; channel++ {
++		for n := 0; n < 5; n++ {
++			a := tracker.Application{
++				ID:      "fictional-" + strconv.Itoa(channel) + "-" + strconv.Itoa(n),
++				Company: "Example Synthetic", Role: "Engineer",
++				Status: tracker.StatusApplied, CreatedDate: "2099-01-15", AppliedDate: "2099-01-15",
++			}
++			switch channel {
++			case 1:
++				a.Campaign = &tracker.Campaign{Touches: []tracker.Touch{{N: 1, State: tracker.TouchSent}}}
++			case 2:
++				a.Contacts = []tracker.Contact{{Kind: tracker.ContactReferral}}
++			case 3:
++				a.Contacts = []tracker.Contact{{Kind: tracker.ContactExecSearch}}
++			}
++			if n < channel {
++				a.History = append(a.History, tracker.StatusEvent{To: tracker.StatusScreening})
++			}
++			if n < channel-1 {
++				a.History = append(a.History, tracker.StatusEvent{To: tracker.StatusInterview})
++			}
++			reg.Applications = append(reg.Applications, a)
++		}
++	}
++	return reg
++}
++
++func TestCandidateChannelYieldTwentyRecordFourRowAgreementAndBytes(t *testing.T) {
++	reg := candidateTwentyChannelFixture()
++	if len(reg.Applications) != 20 {
++		t.Fatal("benchmark/acceptance fixture must have exactly 20 fictional records")
++	}
++	widget := pipelineChannelWidgetHTML(reg)
++	csvBytes, err := channelYieldCSV(reg)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if len(widget) > 16<<10 || len(csvBytes) > 8<<10 {
++		t.Fatalf("predeclared bytes exceeded: widget=%d/16384 CSV=%d/8192", len(widget), len(csvBytes))
++	}
++	if !strings.Contains(widget, `href="/api/export?format=csv&amp;view=channel-yield"`) {
++		t.Fatal("20-record widget lacks its aggregate export")
++	}
++	chart := regexp.MustCompile(`(?s)<svg\b.*?</svg>`).FindString(widget)
++	texts := regexp.MustCompile(`<text\b[^>]*>([^<]*)</text>`).FindAllStringSubmatch(chart, -1)
++	var gotChart []string
++	for _, text := range texts {
++		gotChart = append(gotChart, text[1])
++	}
++	wantChart := []string{"cold-apply", "5", "outreach", "5", "referral", "5", "firm", "5"}
++	if !reflect.DeepEqual(gotChart, wantChart) {
++		t.Fatalf("chart = %q, want %q", gotChart, wantChart)
++	}
++	wantRows := [][]string{
++		{"cold-apply", "5", "5", "0", "0", "0", "0", "0%", "0%", "ready"},
++		{"outreach", "5", "5", "1", "0", "0", "0", "20%", "0%", "ready"},
++		{"referral", "5", "5", "2", "1", "0", "0", "40%", "20%", "ready"},
++		{"firm", "5", "5", "3", "2", "0", "0", "60%", "40%", "ready"},
++	}
++	rows, err := csv.NewReader(strings.NewReader(string(csvBytes))).ReadAll()
++	if err != nil || len(rows) != 5 {
++		t.Fatalf("four-channel CSV rows=%d error=%v", len(rows), err)
++	}
++	wantHeader := []string{"channel", "applications_count", "applied_count", "responded_count", "interviews_count", "offers_count", "outcomes_without_applied_count", "response_rate", "interview_rate", "cohort_status", "minimum_applied_for_rate", "source", "scope", "freshness", "channel_rule", "outcome_rule"}
++	if !reflect.DeepEqual(rows[0], wantHeader) {
++		t.Fatalf("CSV header=%q", rows[0])
++	}
++	for i, want := range wantRows {
++		got := rows[i+1]
++		if len(got) != len(wantHeader) || !reflect.DeepEqual(got[:10], want) {
++			t.Errorf("CSV row %d=%q, want prefix %q", i, got, want)
++			continue
++		}
++		if got[10] != "5" || got[11] != "stored application registry" ||
++			got[12] != "all recorded applications; no date filter; closed included" ||
++			got[13] != "source freshness not independently verified" ||
++			!strings.Contains(got[14], "referral contact") || !strings.Contains(got[15], "applied date") {
++			t.Errorf("CSV row %d lost rate floor/source/scope/freshness/rules: %q", i, got[10:])
++		}
++		tableRow := `<th scope="row" class="py-2 pr-2 text-left font-normal">` + want[0] +
++			`</th><td class="py-2 pr-2 tabular-nums">5</td><td class="py-2 pr-2 tabular-nums">` + want[3] +
++			`</td><td class="py-2 tabular-nums">` + want[4] + `</td>`
++		if !strings.Contains(widget, tableRow) {
++			t.Errorf("widget table row %d differs from CSV", i)
++		}
++		if !strings.Contains(widget, "Response: "+want[7]+" ("+want[3]+"/5). Interview: "+want[8]+" ("+want[4]+"/5).") {
++			t.Errorf("widget rate row %d differs from CSV", i)
++		}
++	}
++	t.Logf("20-record pure widget=%d bytes CSV=%d bytes", len(widget), len(csvBytes))
++}
++
++var candidateBenchmarkWidget string
++var candidateBenchmarkCSV []byte
++
++func BenchmarkCandidateChannelYieldWidgetCSV20(b *testing.B) {
++	reg := candidateTwentyChannelFixture()
++	b.ReportAllocs()
++	var before, after runtime.MemStats
++	runtime.ReadMemStats(&before)
++	b.ResetTimer()
++	for i := 0; i < b.N; i++ {
++		candidateBenchmarkWidget = pipelineChannelWidgetHTML(reg)
++		var err error
++		candidateBenchmarkCSV, err = channelYieldCSV(reg)
++		if err != nil {
++			b.Fatal(err)
++		}
++	}
++	b.StopTimer()
++	runtime.ReadMemStats(&after)
++	b.ReportMetric(float64(len(candidateBenchmarkWidget)), "widget-bytes/op")
++	b.ReportMetric(float64(len(candidateBenchmarkCSV)), "csv-bytes/op")
++	if elapsed := b.Elapsed() / time.Duration(b.N); elapsed > 5*time.Millisecond {
++		b.Errorf("pure widget+CSV %s/op exceeds predeclared 5ms/op", elapsed)
++	}
++	if allocated := int64(after.TotalAlloc-before.TotalAlloc) / int64(b.N); allocated > 512<<10 {
++		b.Errorf("pure widget+CSV %d B/op exceeds predeclared 512KiB/op", allocated)
++	}
++}

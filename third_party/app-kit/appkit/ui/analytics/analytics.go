@@ -96,6 +96,10 @@ type Row struct {
 	Value           *float64
 	MissingReason   string
 	Bounds          *Interval
+	// DetailHref optionally links the row label to an app-owned, root-relative
+	// detail destination. Empty retains a plain label. It does not enter CSV,
+	// calculate a route, grant access or make the row's value more trustworthy.
+	DetailHref string
 }
 
 type LegendItem struct {
@@ -221,6 +225,9 @@ func (d Dataset) Validate(now time.Time) error {
 		if err := checkText(prefix+" missing reason", row.MissingReason, false); err != nil {
 			return err
 		}
+		if err := validateDetailHref(row.DetailHref); err != nil {
+			return fmt.Errorf("analytics: %s: %w", prefix, err)
+		}
 		if ids[row.ID] {
 			return fmt.Errorf("analytics: duplicate row id %q", row.ID)
 		}
@@ -271,6 +278,9 @@ func (d Dataset) Validate(now time.Time) error {
 func (w Window) validate() error {
 	if strings.TrimSpace(w.TimeZone) == "" || len(w.TimeZone) > 128 {
 		return fmt.Errorf("analytics: window timezone is required")
+	}
+	if w.TimeZone == "Local" {
+		return fmt.Errorf("analytics: window timezone must use UTC or an explicit IANA name; Local depends on process configuration")
 	}
 	if _, err := time.LoadLocation(w.TimeZone); err != nil {
 		return fmt.Errorf("analytics: invalid window timezone: %w", err)

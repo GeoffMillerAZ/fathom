@@ -10,8 +10,16 @@ ADR-0019/0020/0021 replace the old sequence that blocked UI work behind an unbui
 [ADR-0072](docs/adr/0072-stabilize-and-resume-on-demand.md) replaces the open-ended
 implementation sequence with bounded stabilization and demand-driven continuation.
 Do not complete every remaining experiment as a prerequisite for stopping this campaign.
-The [resumption guide](docs/design/stabilization-and-resumption.md) owns the six parked
+The [resumption guide](docs/design/stabilization-and-resumption.md) owns the six
 packets, exact evidence/spec pointers, activation triggers, budgets and stopping rules.
+The owner resumed bounded **adoption/MCP/contribution, analytics, reusable UI/themes
+and catalog/core** work. [Current scope](docs/intent/scope.md#current-priority-stabilization-then-demand-driven-work)
+owns active priorities and consumer boundaries; consult it before selecting a packet.
+[RAC CSV](docs/assessments/2026-09-22-analytics-adoption-integration.md) and
+[Fathom theme-guide](docs/assessments/2026-09-22-fathom-guide-only.md) receipts record
+their scoped working-tree integrations, not consumer commits, releases or full
+acceptance. Human A/B remains owner-deferred. This roadmap grants no new consumer
+write authority, and Conjure evidence does not retire the selected-app gates.
 
 | Priority | Work | Exit / activation |
 |---|---|---|
@@ -31,12 +39,13 @@ demand-led or owner-batched, not current prerequisites. [Versioned standards](do
 and a CUE inventory distinguish implementation, gate evidence and consumer adoption.
 No deferred failure becomes a pass. [G2 shell behavior/adoption](docs/assessments/2026-09-16-shell-acceptance-matrix.md)
 and [G5 terminal interaction/adoption](docs/assessments/2026-09-16-terminal-acceptance-matrix.md)
-are accepted; broader core gates, analytics, propagation and desktop work remain deferred,
-not passed. The last weighted estimate earns no extra credit from this priority change.
+are accepted; broader analytics, guide, core and desktop acceptance remains open.
+The last weighted estimate earns
+no extra credit from this priority change.
 
 ADR-0029 retains personal-site identities and app-owned living guides. Presets and the
 local experimental loop exist under ADR-0031; remaining consumer and acceptance work
-resumes through a selected packet, including the authorized but deferred Fathom guide. Keep optional neon
+resumes through a selected packet and its current evidence. Keep optional neon
 separate from the palette and font/density/layout choices separate from domain behavior.
 
 ## Each resumed slice

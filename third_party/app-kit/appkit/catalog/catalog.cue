@@ -214,14 +214,14 @@
       "profiles": ["go-web"],
       "dependencies": ["explicit trusted CUE token source and selected kit identity", "app-owned synthetic specimen callbacks and compiled CSS", "exact local loopback origin; no browser JavaScript required"],
       "source": {"path": "apps/styleguide/handler.go", "symbols": ["New", "Options", "Specimen"]},
-      "usage": "Read app-owned-styleguide guidance. Configure NewEngine with immutable source, approved font IDs and selected contrast checks; mount New at the configured base path. Gallery opts in with -theme-source and /theme-lab. Export is a concrete candidate snapshot, never an automatic source patch.",
+      "usage": "Read app-owned-styleguide guidance. Configure NewEngine with immutable source, approved font IDs and selected contrast checks; mount New at the configured base path. Gallery opts in with -theme-source and /theme-lab. Export is a concrete candidate snapshot, never an automatic source patch. Fathom's verified-scoped working-tree return and its remaining limits are recorded in docs/assessments/2026-09-22-fathom-guide-only.md; that evidence does not promote this experimental recipe.",
       "states": ["source baseline", "candidate preview", "invalid edits", "failed or unknown contrast", "stale acknowledgement", "deterministic export", "reset"],
       "app_owns": ["source and selected kit identity", "authentication wrapper", "CSS delivery and scan coverage", "side-effect-free synthetic fixtures", "contrast pair selection", "review and explicit source application"],
       "maturity": "experimental",
       "proof": ["go test ./apps/styleguide", "go test ./apps/gallery", "go test ./apps/gallery/cmd/gallery"],
-      "gaps": ["No real-consumer migration or reusable-widget promotion.", "Browser geometry, keyboard and rendered accessibility are unverified.", "Static system-font profile; no font/image assets or interactive scripts/forms."],
+      "gaps": ["RAC and Fathom have scoped integrations; released propagation, reusable-widget promotion and full two-consumer acceptance remain open.", "Fathom's selected light/wide/dark/narrow preview, refusal, repair, reset and pointer/Enter export checks pass; large-value chart geometry, actual zoom, full accessibility, memory/cancellation and full G3/G4 remain open.", "Preview specimens use the static system-font profile without font/image assets, scripts or forms; the guide's own native editing/export forms remain available."],
       "provenance": {"source": "first-party", "license": "Project-private use; no redistribution grant asserted", "audience": "repository consumers"},
-      "consumers": [],
+      "consumers": ["Resume as Code", "Fathom"],
       "preview": ""
     },
     {
@@ -597,7 +597,11 @@
       "summary": "An experimental typed comparison composition with explicit units, windows, freshness, missing values, table and CSV agreement.",
       "tasks": [
         "analytics comparison",
+        "signed diverging bars",
+        "negative value chart",
         "analytics CSV export",
+        "spreadsheet table export",
+        "analytics row detail links",
         "metric contract",
         "period filter",
         "chart table CSV",
@@ -609,13 +613,13 @@
       "profiles": ["go-web"],
       "dependencies": [
         "Go for typed dataset validation and CSV export",
-        "theme CSS and appkit css scanning of appkit/ui/analytics and appkit/ui/vizframe when using the optional RenderBars composition"
+        "theme CSS and appkit css scanning of appkit/ui/analytics and appkit/ui/vizframe when using RenderBars or RenderDivergingBars"
       ],
       "source": {
         "path": "appkit/ui/analytics/analytics.go",
-        "symbols": ["Dataset", "Contract", "Window"]
+        "symbols": ["Dataset", "Contract", "Window", "Row"]
       },
-      "usage": "Build an analytics.Dataset from app-selected rows and call Dataset.Validate with an explicit clock. Exact implementation anchors: appkit/ui/analytics/analytics.go#Dataset.Validate, appkit/ui/analytics/render.go#RenderBars, and appkit/ui/analytics/csv.go#WriteCSV. Use analytics.WriteCSV for that selection or analytics.RenderBars for an optional chart/context/table composition; read appkit/ui/analytics/README.md. For the L3b renderer, call get_kit_css_setup, include the theme CSS, and scan appkit/ui/analytics/*.go plus appkit/ui/vizframe/*.go relative to the selected kit source root. Open /analytics/recipe for the exact single-dataset renderer and matching WriteCSV download; over-wide plot labels/values retain an explicitly explained table-only fallback. The Gallery /analytics journey composes separate current/prior datasets, lower-level bars, linked detail and its own rectangular CSV adapter; it is not the exact RenderBars renderer or a reusable query engine. The opt-in static checker compares a selected composition against an independent fixture; read appkit/ui/vizcheck/README.md for static-only evidence limits.",
+      "usage": "Build an analytics.Dataset from app-selected rows and call Dataset.Validate with an explicit clock. Implementation anchors: appkit/ui/analytics/analytics.go#Dataset.Validate, appkit/ui/analytics/render.go#RenderBars, appkit/ui/analytics/diverging.go#RenderDivergingBars, appkit/ui/analytics/csv.go#WriteCSV. Use analytics.RenderBars for nonnegative data or opt into analytics.RenderDivergingBars for signed single-dataset observations with a centered symmetric scale; Max is the absolute extent and must not clip rounded magnitudes. Both include context and a visible table; optional Row.DetailHref links a table label to an app-owned root-relative URL, including missing/fallback rows. Empty keeps plain labels; invalid links refuse before output. Missing-reason cells reserve 12rem with native scrolling; rebuild CSS and review changed missing-row snapshots and selected pins (ADR-0076). analytics.WriteCSV exports the same selection without row-detail URLs. Experimental analytics.WriteTableCSV emits one 27-column spreadsheet table with repeated context and the same presentation cells; empty selections contain only headers, so use WriteCSV for empty-selection provenance. Both retain source_href context; app-owned Row.DetailHref is omitted. Gallery /analytics/recipe/table.csv demonstrates the opt-in format; old downloads stay unchanged (ADR-0077). New Row fields require named-field migration for positional literals. Read appkit/ui/analytics/README.md. For L3b, call get_kit_css_setup, include theme CSS and scan appkit/ui/analytics/*.go plus appkit/ui/vizframe/*.go relative to the selected kit source root. Open /analytics/recipe or /analytics/signed for exact renderer specimens and matching CSV; over-wide labels/values retain an explicit table-only fallback. Gallery /analytics composes separate current/prior datasets, linked detail and a rectangular CSV adapter, not a reusable query engine. Use an independent fixture for static checks; read appkit/ui/vizcheck/README.md for static-only evidence limits, not geometry or runtime proof.",
       "states": [
         "empty selection",
         "measured zero",
@@ -631,6 +635,7 @@
         "authorization",
         "queries and filter routes",
         "detail and export adapters",
+        "Row.DetailHref root-relative destinations, authorization and return context; empty preserves plain labels and accepted URLs do not enter CSV",
         "observation clock and comparison windows"
       ],
       "maturity": "experimental",
@@ -643,7 +648,7 @@
         "This is a bounded experiment, not a permanently promoted reusable workflow; independent consumer adoption remains unproven.",
         "Browser task, keyboard, contrast, visual fidelity and measured performance evidence remain separate requirements.",
         "Each dataset is bounded to 200 rows, 2048 bytes per text field, 0–2 decimals and numeric magnitude 1e12; applications select or aggregate larger inputs.",
-        "RenderBars refuses negative values; CSV supports them. Presentation rounding and formula-safe text encoding are not a lossless source export.",
+        "RenderBars still refuses negative values; opt-in RenderDivergingBars and CSV support them. Signed rendering owns one dataset, not paired series or domain calculations. Rounding and formula-safe text encoding are not a lossless source export.",
         "Static chart text/table/source checks do not verify geometry, computed visibility, accessibility or source truth; dynamic charts need post-update browser evidence."
       ],
       "provenance": {
@@ -849,10 +854,11 @@
         "symbols": [
           "Field",
           "Input",
+          "Select",
           "Button"
         ]
       },
-      "usage": "Wrap controls with form.Field and use its help/error plumbing. Scan appkit/ui/form/*.go; keep persistence and validation policy in the app.",
+      "usage": "Wrap controls with form.Field and use its help/error plumbing. Select refuses silent substitution of unavailable nonempty values with a disabled empty prompt; Placeholder owns initial empty selection. Apps explain unavailable values and explicitly choose any valid fallback. Scan appkit/ui/form/*.go; keep persistence and validation policy in the app. Review ADR-0083 and selected metadata pins when upgrading.",
       "states": [
         "default",
         "disabled",
@@ -1070,7 +1076,9 @@
         "about",
         "documentation",
         "table of contents",
-        "prose"
+        "prose",
+        "find fixed static content example",
+        "find fixed FAQ example without JavaScript"
       ],
       "layers": [
         "L1",
@@ -1091,7 +1099,7 @@
           "RenderToCRail"
         ]
       },
-      "usage": "Scan appkit/ui/docs/*.go; import prose.css when using its prose treatment. Supply stable heading IDs and focusable fragment targets. Gallery /content composes a native reading task with app-owned content, destination policy and synthetic recovery; it is not a public site generator or static-host delivery proof.",
+      "usage": "Scan appkit/ui/docs/*.go; import prose.css when using its prose treatment. Supply stable heading IDs and focusable fragment targets. Gallery /content composes a native reading task with app-owned content, destination policy and synthetic recovery. For the separate experimental fixed Gallery exporter, call get_kit_decision(\"static-content-delivery\") or follow docs/design/static-content-delivery.md, then run go run ./apps/gallery/cmd/static-content. Observe its CSS build prerequisite and fresh absolute output paths. It is a bounded example, not a generic site generator, CMS, or certified static profile.",
       "states": [
         "wide",
         "narrow",
@@ -1151,7 +1159,7 @@
           "Table"
         ]
       },
-      "usage": "Render table.Table with typed columns and rows. Use templ and scan both kit and app component sources; queries and sort URLs remain app-owned.",
+      "usage": "Render table.Table with typed columns and rows. Managed Row.Href accepts relative web references or absolute HTTP(S); refused nonempty input becomes inert Open unavailable text. Actions infer one aligned column; RowHrefs can reserve it for empty/unlinked results. Rebuild templ/scanned CSS and review density, snapshots and app-owned footer spans. Queries, sort URLs, custom actions and authorization remain app-owned.",
       "states": [
         "rows",
         "empty",
@@ -1169,7 +1177,8 @@
         "go test ./appkit/ui/table"
       ],
       "gaps": [
-        "No client virtualization or query backend is included."
+        "No client virtualization or query backend is included.",
+        "Managed row-link evidence is scoped; full table accessibility, sorting/selection workflows and consumer acceptance remain separate."
       ],
       "provenance": {
         "source": "first-party",

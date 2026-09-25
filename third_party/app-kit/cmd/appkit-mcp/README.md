@@ -90,7 +90,7 @@ interface.
 |---|---|
 | `search_capabilities` | First-party discovery by task, profile/layer, kind and maturity; bounded summaries with IDs, revision and continuation cursor. |
 | `get_capability` | One first-party record by exact `id`, with source anchors, usage, dependencies, app-owned seams, proof entrypoints and gaps. |
-| `list_quality_work` / `get_quality_work` | Bounded authored standards/gate/adoption inventory at an exact revision; never live checking or certification. |
+| `list_quality_work` / `get_quality_work` | Bounded authored standards/gate/adoption inventory; independent inventory and catalog revision guards. Never live checking or certification. |
 | `search_components` | Ranked search over taxonomy/names/classes — BM25 + structural, or hybrid (BM25 ⊕ vector, RRF) when embeddings are present. Follow with `get_component`. |
 | `get_component` | Full source for one variant by `full_name` + framework/tailwind_version/mode. Lists available variants if ambiguous. |
 | `get_component_preview` | Exact UTF-8 pages of captured preview HTML: default 32 KiB, max 64 KiB; follow `has_more`/`next_offset` with `expected_sha256`. External assets are not bundled; a partial page is not a renderable whole preview. Needs `task twplus:previews`. |

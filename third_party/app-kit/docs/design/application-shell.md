@@ -78,17 +78,27 @@ forms and saves stay private fixtures. Keep identity/schema/persistence/recovery
 The [incubation](../adr/0063-incubate-account-presentation-recipe.md) is not permanent
 promotion; `shell.account-workflow` remains experimental. [Extraction proof](../assessments/2026-09-16-account-presentation-recipe.md) covers215 browser checks and source refusal; MCP serves this exact guide.
 
+Form action rows can use `RenderButton` for cancel/help links. Nonempty unsafe or
+Disabled destinations render noninteractive labels, not submit controls; relative
+references and absolute HTTP(S) remain available. App-owned route authorization and
+unavailability explanations remain necessary ([ADR-0079](../adr/0079-disable-unsafe-form-button-links.md)).
+
 Experimental `form.RenderSettingsSections([]form.SettingsSection{...})` now owns the
 five Profile/Settings description/control rows. Titles/descriptions/heading IDs are
 escaped; duplicate or invalid IDs and blank titles return an error without partial HTML.
 Call before writing the response. Supply an h2 parent, document-unique IDs and reviewed
 content from existing labeled controls; scan `appkit/ui/form/*.go` for CSS. Rows stack
-below sm, use two columns above and wrap long descriptions. The renderer adds no form,
+below sm, use two columns above and wrap long text in both columns, including native
+control labels/help/errors; reviewed content may override inherited wrapping.
+The renderer adds no form,
 fieldset, label, submit action, script or save authority. Appearance remains independent.
 `shell.settings-sections` and [ADR-0064](../adr/0064-incubate-responsive-settings-sections.md)
 keep this presentation experimental; Gallery's controllers are not consumer APIs.
 The [section proof](../assessments/2026-09-16-settings-section-recipe.md) retains72 long-text
 layout checks and215 real-route form checks; neither is two-consumer acceptance.
+The [control-column repair](../assessments/2026-09-22-settings-control-reflow.md) adds
+76 bounded no-script text/native-key checks without changing controls or save behavior;
+standalone controls and full zoom/accessibility acceptance remain separate.
 
 Saving works without scripts. The optional Gallery script tracks dirty fields, warns
 on departure where permitted and labels native submission progress. Keyboard **Resume

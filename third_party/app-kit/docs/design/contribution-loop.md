@@ -119,6 +119,15 @@ keeps that fact separate from current manifest drift, release pins and full-app 
 Use this record's ownership, disposition and revision-bound verification fields; do not
 copy another app's routes, identity or permissions.
 
+RAC's `RAC-ADOPT-04` returns aggregate-selector refusal, missing-sent evidence and
+all-row/native-export checks while keeping `ops.ChannelYield` and routes app-owned.
+The [integration receipt](../assessments/2026-09-22-analytics-adoption-integration.md)
+is pinned by `core.analytics` in the readiness inventory as `verified-scoped`.
+Its artifact identity is the executed synthetic test binary, not a shipped app;
+source identities, closure limits, task results and contribution disposition remain
+in the linked receipt and RAC's contract. This real scoped return does not accept the starter area,
+claim an `analytics.RenderBars` conversion, or complete second-app propagation.
+
 Fathom's freshness/diagnostic/grade-layout repair belongs to its model composition,
 not the stamped kit mirror. Its shared return is the
 [synthetic regression and actual-handler browser fixture](../assessments/fixtures/fathom-handler/README.md)
@@ -126,3 +135,11 @@ and coverage-before-conclusion lesson. The
 [adoption receipt](../assessments/2026-09-16-fathom-display-adoption.md) distinguishes
 originating-app proof from unperformed second-consumer replay. This contributes value
 without inventing a universal freshness API.
+
+Fathom's `FATHOM-GUIDE-01` returns the source-bound local-guide integration to
+`recipe.styleguide.local` and `core.themes-style-guide`, including the exact tested
+binary and [scoped integration receipt](../assessments/2026-09-22-fathom-guide-only.md).
+Consumer history is not promotion: the recipe stays experimental, integration
+partial and performance failed. This catalog metadata correction changes its
+ADR-0065 capability pin; consumer review and installed-MCP delivery are separate,
+not silently applied. [Return regression](../assessments/2026-09-22-bar-resolution-and-guide-discovery.md).

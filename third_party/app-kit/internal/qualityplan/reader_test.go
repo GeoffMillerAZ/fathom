@@ -340,6 +340,74 @@ func TestReaderRejectsSchemaDuplicateAndCatalogProfileDefects(t *testing.T) {
 	}
 }
 
+func TestReaderRefusesDuplicateConsumerIdentityWithinItem(t *testing.T) {
+	loaded := loadInventory(t)
+	for _, tc := range []struct {
+		name   string
+		change func(map[string]any)
+	}{
+		{"identical", func(map[string]any) {}},
+		{"conflicting status", func(consumer map[string]any) { consumer["integration_status"] = "selected" }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			body := mutated(t, loaded.body, func(value map[string]any) {
+				item := value["items"].([]any)[0].(map[string]any)
+				original := item["consumers"].([]any)[0].(map[string]any)
+				duplicate := make(map[string]any, len(original))
+				for key, field := range original {
+					duplicate[key] = field
+				}
+				tc.change(duplicate)
+				item["consumers"] = append(item["consumers"].([]any), duplicate)
+			})
+			if snapshot, err := loadSnapshot(body, readerCatalog(t)); err == nil || snapshot != nil || !strings.Contains(err.Error(), "duplicate consumer identity") {
+				t.Fatalf("duplicate consumer reached snapshot: snapshot=%v err=%v", snapshot, err)
+			}
+		})
+	}
+}
+
+func TestReaderAllowsDistinctConsumerIdentities(t *testing.T) {
+	loaded := loadInventory(t)
+	for _, tc := range []struct {
+		name      string
+		change    func(map[string]any)
+		otherItem bool
+	}{
+		{"different app", func(consumer map[string]any) { consumer["app"] = "another-app" }, false},
+		{"different revision kind", func(consumer map[string]any) {
+			revision := consumer["revision"].(map[string]any)
+			consumer["revision"] = map[string]any{"kind": "source", "sha256": revision["sha256"]}
+		}, false},
+		{"different revision hash", func(consumer map[string]any) {
+			revision := consumer["revision"].(map[string]any)
+			consumer["revision"] = map[string]any{"kind": revision["kind"], "sha256": strings.Repeat("a", 64)}
+		}, false},
+		{"same identity in another item", func(map[string]any) {}, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			body := mutated(t, loaded.body, func(value map[string]any) {
+				items := value["items"].([]any)
+				first := items[0].(map[string]any)
+				original := first["consumers"].([]any)[0].(map[string]any)
+				consumer := make(map[string]any, len(original))
+				for key, field := range original {
+					consumer[key] = field
+				}
+				tc.change(consumer)
+				target := first
+				if tc.otherItem {
+					target = items[1].(map[string]any)
+				}
+				target["consumers"] = append(target["consumers"].([]any), consumer)
+			})
+			if snapshot, err := loadSnapshot(body, readerCatalog(t)); err != nil || snapshot == nil {
+				t.Fatalf("distinct consumer identity rejected: %v", err)
+			}
+		})
+	}
+}
+
 func TestReaderRefusesOversizedSerializedResults(t *testing.T) {
 	loaded := loadInventory(t)
 	largeList := mutated(t, loaded.body, func(value map[string]any) {

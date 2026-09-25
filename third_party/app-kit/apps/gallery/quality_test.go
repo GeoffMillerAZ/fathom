@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	catalogpkg "github.com/geoffmilleraz/app-kit/appkit/catalog"
 	"github.com/geoffmilleraz/app-kit/internal/qualityplan"
 )
 
@@ -125,7 +126,7 @@ func TestQualityRequestsAndHTMLBoundaries(t *testing.T) {
 	}
 	path := "/quality/core.analytics?scope=all&theme=dark&expected_revision=" + core.Revision
 	_, detail := get(t, h, path)
-	for _, want := range []string{"Seven enhancement standards", "Nine recorded gates", "Authoring references", "Reason:", "Next step:", "No recorded consumer assertion", "no source body is served", "authored planning, not certification", "theme=dark", "scope=all", "← Quality work", "focus-visible:outline-2", "focus-visible:outline-offset-2"} {
+	for _, want := range []string{"Seven enhancement standards", "Nine recorded gates", "Authoring references", "Recorded consumers", "Reason:", "Next step:", "no source body is served", "authored planning, not certification", "theme=dark", "scope=all", "← Quality work", "focus-visible:outline-2", "focus-visible:outline-offset-2"} {
 		if !strings.Contains(strings.ToLower(detail), strings.ToLower(want)) {
 			t.Errorf("detail missing %q", want)
 		}
@@ -138,7 +139,12 @@ func TestQualityRequestsAndHTMLBoundaries(t *testing.T) {
 		t.Error("catalog must link to quality work while preserving theme")
 	}
 	_, entry := get(t, h, "/catalog/analytics.comparison?theme=dark")
-	if !strings.Contains(entry, `href="/quality?capability_id=analytics.comparison&amp;theme=dark"`) {
+	current, err := catalogpkg.Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantQuality := `/quality?capability_id=analytics.comparison&amp;expected_catalog_revision=` + current.Revision + `&amp;theme=dark`
+	if !strings.Contains(entry, `href="`+wantQuality+`"`) {
 		t.Error("catalog entry must link to its quality work while preserving theme")
 	}
 }
@@ -168,6 +174,12 @@ func TestQualityDetailOptionalMetadataUsesNativeDisclosure(t *testing.T) {
 	view := qualityDetailView{Result: qualityplan.DetailResult{
 		Item: qualityplan.Item{
 			ID: "fixture.metadata",
+			Consumers: []qualityplan.Consumer{{
+				App: "fixture-app", Revision: qualityplan.ConsumerRevision{Kind: "artifact", SHA256: "fixture-artifact"}, IntegrationStatus: "verified-scoped",
+				Evidence: []qualityplan.Ref{{Path: "docs/<consumer>", Note: "<scoped evidence>"}},
+				Receipt:  &qualityplan.PinnedRef{Path: `receipts/<consumer>`, SHA256: "fixture-receipt"},
+				Review:   &qualityplan.Review{By: `<reviewer>`, Ref: `reviews/<review>`},
+			}},
 			Standards: map[string]qualityplan.StandardStatus{"typed-config": {
 				Status: "partial", Evidence: []qualityplan.Ref{{Path: "docs/<evidence>", Note: "<note>"}}, Review: &qualityplan.Review{By: "reviewer", Ref: "review/<ref>"},
 			}},
@@ -188,12 +200,20 @@ func TestQualityDetailOptionalMetadataUsesNativeDisclosure(t *testing.T) {
 		t.Fatal(err)
 	}
 	text := string(body)
-	for _, want := range []string{"<details", "<summary class=\"min-h-11", "Evidence and review metadata", "Evidence and gate metadata", "Source references", "Selected IDs and acceptance contract", "Receipt: receipts/check: abc123", "Source revision: source-identity", "Artifact revision: artifact-identity", "Acceptance contract: docs/contract: contract-sha", "docs/&lt;evidence&gt;: &lt;note&gt;"} {
+	for _, want := range []string{"<details", "<summary class=\"min-h-11", "Evidence and review metadata", "Evidence and gate metadata", "Source references", "Selected IDs and acceptance contract", "Receipt: receipts/check: abc123", "Source revision: source-identity", "Artifact revision: artifact-identity", "Acceptance contract: docs/contract: contract-sha", "docs/&lt;evidence&gt;: &lt;note&gt;", "fixture-app: verified-scoped", "artifact: fixture-artifact", "docs/&lt;consumer&gt;: &lt;scoped evidence&gt;", "Receipt and review metadata", "Receipt: receipts/&lt;consumer&gt;: fixture-receipt", "Review: &lt;reviewer&gt;: reviews/&lt;review&gt;"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("missing %q", want)
 		}
 	}
-	if strings.Contains(text, `href="docs/`) {
+	if strings.Contains(text, `href="docs/`) || strings.Contains(text, `href="receipts/`) || strings.Contains(text, `href="reviews/`) || strings.Contains(text, "<reviewer>") || strings.Contains(text, "<consumer>") {
 		t.Error("metadata references must remain escaped plain text")
+	}
+	view.Result.Item.Consumers = nil
+	empty, err := htmlf("quality-empty-consumers", qualityDetailHTML, view)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(empty), "No recorded consumer assertion. This is not a claim that no consumer exists.") || strings.Contains(string(empty), "Receipt and review metadata") {
+		t.Fatal("empty consumer state must remain explicit without invented adoption metadata")
 	}
 }

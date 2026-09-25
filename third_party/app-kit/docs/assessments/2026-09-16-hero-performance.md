@@ -55,7 +55,7 @@ Canary execution exit0 means detection plus cleanup, never a passing component.
 
 Initial `hlU4D0` is a failed harness run: disabled JavaScript stalled instrument RAF
 and timer callbacks; Chrome also requested an implicit favicon. The isolated
-`/Volumes/m2ext/appkit-hero-instrumentation.0bFg2CA5/` control showed font readiness in
+`/Volumes/m2ext/appkit-evidence/appkit-hero-instrumentation.0bFg2CA5/` control showed font readiness in
 both modes, but RAF/timer callbacks timed out at500ms only with script execution off.
 The corrected instrument enables those callbacks while CSP still prohibits application
 scripts. An explicit empty data favicon adds31 wrapper bytes; original fragment,
@@ -71,7 +71,7 @@ the final runner counts observed cache hits even if response-body retrieval fail
 
 ## Retained evidence
 
-Private parent: `/Volumes/m2ext/appkit-hero-performance.Bqh5VTtv/`.
+Private parent: `/Volumes/m2ext/appkit-evidence/appkit-hero-performance.Bqh5VTtv/`.
 Each run retains the launcher/runner/oracle/test/contract before execution, copied
 input assets, raw request graphs, metrics, captures, command logs and receipt hashes.
 The launcher executes the private copies and checks source/snapshot identity afterward.

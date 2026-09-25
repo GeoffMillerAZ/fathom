@@ -14,7 +14,7 @@ No fixture child was captured. Its driver never scrolls or recaptures that contr
 The receipt does not record geometry; it does not prove the control was offscreen.
 
 Target remains
-`/Volumes/m2ext/appkit-bundle-seam.tHv3fmlT/actual-artifacts/Relocated.app`, with the
+`/Volumes/m2ext/appkit-evidence/appkit-bundle-seam.tHv3fmlT/actual-artifacts/Relocated.app`, with the
 [historical exact inputs](2026-09-16-private-bundle-runtime.md). The unchanged native
 binary is `98cf0b52661e82d0a51ca2230b7f0c3289252e487b1b798fe4c4583da3350f1b`.
 The retained failed driver source is
@@ -48,7 +48,7 @@ The three final first-party diagnostic sources are now preserved in the
 [frozen source fixture](fixtures/native-disclosure-scroll/README.md); this 2026-09-18
 preservation does not rerun or change the historical failed result below.
 
-Private preparation: `/Volumes/m2ext/appkit-launchservices-scroll-prep.O8b0xs`.
+Private preparation: `/Volumes/m2ext/appkit-evidence/appkit-launchservices-scroll-prep.O8b0xs`.
 The final driver passes36 pure selector/refusal/oracle checks. The existing lifecycle
 suite passes12/12. An initial compile failure used an SDK constant unavailable on this
 host; its source/stderr remain in `failed-compile/`. The final driver instead uses the
@@ -56,7 +56,7 @@ exact advertised `AXScrollToVisible` string. Neither result is native workflow p
 
 The first prepared lifecycle copy still pinned the old workflow inputs and expected
 them beside itself. Prelaunch review caught that incomplete handoff before execution.
-A new private runtime root, `/Volumes/m2ext/appkit-launchservices-scroll-runtime.HSndzK`,
+A new private runtime root, `/Volumes/m2ext/appkit-evidence/appkit-launchservices-scroll-runtime.HSndzK`,
 retains the originals and places the final inputs together. Only five workflow hash
 constants change in its lifecycle probe; config changes only identify the runtime
 handoff/authority. Limits, workflow outcomes and lifecycle oracle remain unchanged.
@@ -120,7 +120,7 @@ Unknown actions, missing required attributes, incomplete traversal and unreadabl
 mismatched identity cannot establish an observed disclosure. Unknown optional
 attributes are omitted, not interpreted; this is not a general accessibility dump.
 
-Private preparation: `/Volumes/m2ext/appkit-native-disclosure-structure.pkqSXV/`.
+Private preparation: `/Volumes/m2ext/appkit-evidence/appkit-native-disclosure-structure.pkqSXV/`.
 The original red self-test and subsequent compiler failures remain retained.
 `final-2/` freezes the source, tests, Swift6.4 arm64 binaries and configuration before
 executing the offline fixture. Its44 checks pass; stderr is empty. No GUI, native
@@ -143,7 +143,7 @@ authority. No opening action is inferred from this synthetic preparation.
 
 The unchanged historical bundle was inspected at 04:28:37–04:28:41 UTC on
 2026-09-17 (September 16 locally). Private preparation and execution root:
-`/Volumes/m2ext/appkit-native-disclosure-runtime.QXnsMm`;
+`/Volumes/m2ext/appkit-evidence/appkit-native-disclosure-runtime.QXnsMm`;
 run: `runs/appkit-launchservices-a7WNXV/`.
 
 A private adaptation of the maintained LaunchServices wrapper pins and retains the

@@ -64,7 +64,7 @@ never edited. The rehearsal preserves original Cmd+N/media failures, not replace
 
 ## Retained evidence
 
-Private parent: `/Volumes/m2ext/appkit-native-delivery-rehearsal.7gjy3tWo/`.
+Private parent: `/Volumes/m2ext/appkit-evidence/appkit-native-delivery-rehearsal.7gjy3tWo/`.
 `INPUTS.md` and copied prior receipt/driver sources bind the input provenance.
 Successful run: `appkit-native-delivery-sC1wc9/`; it retains all three executables,
 executed harness, sandbox/configuration, exact driver observations and server logs.

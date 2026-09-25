@@ -1,0 +1,86 @@
+--- a/cmd/fathom/observatory_render.go
++++ b/cmd/fathom/observatory_render.go
+@@ -249,6 +249,22 @@
+ 	return stat.Stat{Label: "index freshness", Value: "all fresh", ValueRole: "positive", Sub: coverage}
+ }
+ 
++// A failed fleet read cannot turn an absent registry into a measured zero.
++// Rows retained through a partial read are a lower bound, not a fleet total.
++func fleetServiceCountStat(m observatoryModel) stat.Stat {
++	const label = "services indexed"
++	if m.DegradedNote == "" {
++		return stat.Stat{Label: label, Value: fmtThousands(len(m.Services))}
++	}
++	if len(m.Services) == 0 {
++		return stat.Absent(label, "registry coverage unavailable: "+m.DegradedNote)
++	}
++	return stat.Stat{
++		Label: label, Value: "≥\u00a0" + fmtThousands(len(m.Services)),
++		Sub: fmt.Sprintf("%d listed services; fleet coverage unavailable: %s", len(m.Services), m.DegradedNote),
++	}
++}
++
+ func renderObsFleet(m observatoryModel) string {
+ 	totalSymbols, symbolsKnown, totalCalls := 0, 0, 0
+ 	for _, s := range m.Services {
+@@ -276,7 +292,7 @@
+ 	}
+ 	var b strings.Builder
+ 	b.WriteString(stat.RenderBand([]stat.Stat{
+-		{Label: "services indexed", Value: fmtThousands(len(m.Services))},
++		fleetServiceCountStat(m),
+ 		symbolsTile,
+ 		callsTile,
+ 	}, stat.BandOptions{AriaLabel: "fleet totals"}))
+@@ -498,6 +514,15 @@
+ 		note = "not measured"
+ 	}
+ 	return stat.Stat{Label: label, Value: "—", ValueRole: "ink-faint", Sub: note}
++}
++
++// Obligation serves come from the call log; ledger sessions come from the
++// session ledger. Each keeps its own source failure instead of sharing one.
++func impactSourceCount(label string, value int, caption, sourceFailure string) stat.Stat {
++	if sourceFailure != "" {
++		return stat.Absent(label, sourceFailure)
++	}
++	return stat.Stat{Label: label, Value: fmtThousands(value), Sub: caption}
+ }
+ 
+ // renderCostPanel is BA-8's Cost panel (docs/design/budgeted-answers.md
+@@ -603,8 +628,8 @@
+ 	b.WriteString(sectionHeading("Q2 · what did fathom prevent?"))
+ 	b.WriteString(stat.RenderBand([]stat.Stat{
+ 		impactStat("verify catches", imp.VerifyCatchesTotal, imp.VerifyCatchesNote),
+-		{Label: "obligations served (calls)", Value: fmtThousands(imp.ObligationCalls), Sub: "rules injected before edits; conformity checking is IQ-13"},
+-		{Label: "ledger sessions", Value: fmtThousands(imp.LedgerSessions), Sub: imp.DateRange},
++		impactSourceCount("obligations served (calls)", imp.ObligationCalls, "rules injected before edits; conformity checking is IQ-13", m.CallLogNote),
++		impactSourceCount("ledger sessions", imp.LedgerSessions, imp.DateRange, imp.LedgerNote),
+ 	}, stat.BandOptions{AriaLabel: "prevented"}))
+ 
+ 	// Q1 — Saved (law 12: arms or darkness).
+@@ -612,8 +637,13 @@
+ 	var card strings.Builder
+ 	card.WriteString(kv("state", `<span class="font-semibold">`+html.EscapeString(imp.PilotState)+`</span>`))
+ 	armTip := `<span title="Real model tokens the session spent: input + output. Cache reads are excluded — they are re-served context, not new spend, and once inflated this median 3,000x." class="cursor-help underline decoration-dotted decoration-line underline-offset-2">median real tokens</span>`
+-	card.WriteString(kv("ON arm", plural(imp.TokensOnSessions, "session")+` · `+armTip+` `+metricCell(imp.TokensOnMedian, "—", "")))
+-	card.WriteString(kv("OFF arm", plural(imp.TokensOffSessions, "session")+` · `+armTip+` `+metricCell(imp.TokensOffMedian, "—", "")))
++	if imp.LedgerNote != "" {
++		card.WriteString(kv("ON arm", absentCell(imp.LedgerNote)))
++		card.WriteString(kv("OFF arm", absentCell(imp.LedgerNote)))
++	} else {
++		card.WriteString(kv("ON arm", plural(imp.TokensOnSessions, "session")+` · `+armTip+` `+metricCell(imp.TokensOnMedian, "—", "")))
++		card.WriteString(kv("OFF arm", plural(imp.TokensOffSessions, "session")+` · `+armTip+` `+metricCell(imp.TokensOffMedian, "—", "")))
++	}
+ 	if imp.TokensPreSplitRows != nil {
+ 		card.WriteString(kv("pre-split rows", fmtThousands(*imp.TokensPreSplitRows)+` <span class="text-ink-muted">sessions recorded before the in/out split — their totals conflated cache reads, so they count as unknown, never as data</span>`))
+ 	}
+@@ -660,7 +690,7 @@
+ 	b.WriteString(sectionHeading("Q4 · is the knowledge compounding?"))
+ 	b.WriteString(stat.RenderBand([]stat.Stat{
+ 		impactStat("median warm-up (turns to first edit)", imp.FirstEditMedian, imp.FirstEditNote),
+-		{Label: "obligations served", Value: fmtThousands(imp.ObligationCalls), Sub: "growth curve arrives with weekly rollups"},
++		impactSourceCount("obligations served", imp.ObligationCalls, "growth curve arrives with weekly rollups", m.CallLogNote),
+ 	}, stat.BandOptions{AriaLabel: "compounding"}))
+ 
+ 	b.WriteString(sectionHeading("stories"))

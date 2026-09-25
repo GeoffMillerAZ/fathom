@@ -55,6 +55,7 @@ by rendering it wrong.
 | `card` | **L3b + L4** | templ |
 | `kanban` | **L3b + L4** | templ |
 | `table` | **L3b + L4** | templ |
+| `internal` | **L3a** (private implementation only) | Shared `webref` destination-shape checks for managed form/table links; no rendering, CSS scan or consumer API. Delivered through the importing Go package's dependency closure. |
 
 ¹ `explainer` and `export` are **self-contained by contract**: each renders a
 single file carrying its own inline CSS/JS, so they neither consume the kit
@@ -154,12 +155,57 @@ error plumbing; controls carry their own ARIA so a bare control stays consistent
 | `Textarea` | multi-line text |
 | `Select` | dropdown with optional placeholder prompt + selected option |
 | `Checkbox` | single boolean with inline label; optional `Invalid`/`HasHelp` wire `ErrorID`/`HelpID` (caller renders matching messages) |
-| `RadioGroup` | mutually-exclusive options as a `<fieldset>` + `<legend>` (grouped requiredness) |
-| `Button` | action control — `primary` / `ghost` / `danger`; `<button>` or `<a>` (with `Href`) |
+| `RadioGroup` | mutually-exclusive options as a `<fieldset>` + `<legend>`; grouped requiredness and associated help/error feedback |
+| `Button` | action control — `primary` / `ghost` / `danger`; native `<button>`, safe enabled `<a>`, or noninteractive disabled link label |
+
+`Select.Value` selects a matching option. A nonempty value absent from `Options`
+instead selects one disabled empty-value prompt: the escaped `Placeholder`, or
+`Selection unavailable` when none was supplied. The missing raw value is not reflected
+and no valid option is selected. With an initially empty value and a placeholder, that
+placeholder alone is selected; without a placeholder, native first-option behavior and
+app-owned empty-option meaning remain unchanged.
+
+For an unavailable optional value, native `FormData` omits the select entry; `Required`
+blocks submission through native missing-value validation. The renderer does not infer
+invalid/error state, add descriptions, change existing control attributes/classes or
+choose a valid fallback. Apps must validate and explain stale values and explicitly set
+a valid fallback when desired. Matching disabled options keep existing native semantics:
+they can satisfy requiredness while being omitted from submission. Validate membership,
+permissions and submitted values server-side; this missing-value repair is not a policy
+for disabled choices. Rebuild, review snapshots and selected `interaction.forms` pins
+([ADR-0083](adr/0083-render-missing-select-values-as-unavailable.md)).
+The [assessment](assessments/2026-09-23-select-state.md) separates controlled-option
+browser checks from the retained failed native-key choice and consumer acceptance.
+
+Nonempty `Button.Href` selects link mode: relative references (including query/fragment)
+and absolute HTTP(S) are allowed; malformed, protocol-relative, backslash/control-bearing,
+surrounding-whitespace and other/opaque-scheme destinations are refused. Refused or
+`Disabled` links retain an escaped label in a nonfocusable `span` with link role and
+`aria-disabled="true"`, never a form submit. Apps own destination trust, authorization
+and explanations for unavailability. Empty Href keeps the native button contract.
+This tightens previous behavior: rebuild source/CSS and review markup snapshots;
+non-web schemes need separately reviewed app-owned links ([ADR-0079](adr/0079-disable-unsafe-form-button-links.md)).
+
+`RadioGroup` renders its active message and wires every radio with `aria-describedby`;
+error takes priority over help and adds `aria-invalid="true"` plus danger focus styling.
+Give each group a nonempty, document-unique `Name`. Feedback IDs encode its bytes as
+`ak-radio-<hex>-help|error`; reserve those IDs along with existing `Name-index` control
+IDs. Empty names retain no generated description relationship. Selection does not clear
+an app-owned error: rerender after validation with `Error` empty to restore help.
+Names/values, native keyboard grouping and disabled-fieldset inheritance stay unchanged;
+rebuild scanned CSS and review markup snapshots. [Scoped evidence](assessments/2026-09-23-radio-feedback.md)
+does not certify every theme, browser or assistive technology.
+
+Requiredness belongs to the native radio group; the renderer marks its first member.
+Disabling that member does not make enabled peers optional. Disabling the whole
+fieldset instead removes its controls from constraint validation. Keep server-side
+validation app-owned ([bounded native control](assessments/2026-09-23-radio-requiredness.md)).
 
 Experimental `SettingsSection{HeadingID, Title, Description, Content}` and
 `RenderSettingsSections` compose description/control rows, stacked below sm and two
-columns above. Place their h3 headings beneath your h2; use document-unique valid UTF-8
+columns above. Both columns wrap long words, including control labels/help/errors,
+without rewriting native controls; explicit child text-flow styles can override this.
+Place their h3 headings beneath your h2; use document-unique valid UTF-8
 IDs without whitespace/control characters. Duplicate IDs or blank titles fail atomically;
 an empty list renders nothing. Plain-text fields are escaped; `Content` is reviewed HTML.
 The renderer adds no form, fieldset, label, submit action or script. Wrap controls with
@@ -225,10 +271,20 @@ behavior, not an account/settings backend. Read the package contract/tests befor
 
 `Dataset.Validate(now)`, `RenderBars(dataset, options, now)` and
 `WriteCSV(writer, dataset, now)` use one app-supplied metric contract and row selection.
+Experimental `WriteTableCSV(writer, dataset, now)` uses the same cells in one
+27-column spreadsheet table with repeated context; empty selections have headers
+only. Keep `WriteCSV` when empty-selection provenance must travel with the export.
 Units, time window, source freshness, completeness, uncertainty and missing values
 stay explicit. Chart, visible table and CSV use the same presentation rounding;
 CSV is not a lossless source-data export. Bounds: 200 rows, 0–2 decimals, magnitude
 up to 1e12. Negative values export but are rejected by this bars composition.
+`RenderDivergingBars` is the experimental signed alternative. Both high-level
+renderers retain all data in an explained table fallback for positive `RowH < 16`;
+nonpositive row height still uses the 28px default. Low-level `viz.Bars` is unchanged.
+Optional `Row.DetailHref` adds a native root-relative table-label link in both
+renderers, including fallback/missing rows; empty preserves old markup and CSV
+omits row-detail URLs (source links remain in context). Apps own routes, permission and return context. **Breaking for
+positional Row literals:** migrate to named fields; keyed callers may omit the field.
 See the [full contract](../appkit/ui/analytics/README.md); no query engine or domain
 calculation is supplied. Consumer/browser adoption remains a separate G3 requirement.
 
@@ -272,6 +328,21 @@ surface (chrome no longer duplicates it); `kanban` composes it into a board.
 | `kanban.Board` | server-rendered Kanban — `Column`s + `CardItem`s (StageID → Column.ID), composed from `card.Card`; emits `data-*` hooks for the app's hypermedia layer |
 | `table.Table` | generic data table — typed `Column`s (optional sortable `<th>` links) + `Row`s; tolerant of cell/column length mismatch |
 | `router` | embedded dependency-free History-API client router (`router.js`) for static-client surfaces (e.g. GitHub Pages SPAs); served via `Handler` or inlined via `Script`. No build step, no npm toolchain (ADR-0002 as amended by ADR-0017 §3) |
+
+Managed `table.Row.Href` accepts unchanged relative web references and absolute
+HTTP(S) destinations. Unsafe nonempty input renders an inert **Open unavailable**
+label, not an actionable link; empty input adds no action. Enabled Open links have
+44px minimum targets and explicit keyboard focus. Rebuild scanned CSS and review
+row-density/snapshot changes when upgrading. Apps still own route authorization,
+origin trust and explanatory context; custom `RowAction`/`HTMLCells`/`Attrs` and
+row activation remain app-owned escape hatches. This is not sorting, selection or
+whole-table accessibility certification ([ADR-0080](adr/0080-harden-table-row-destinations.md),
+[scoped evidence](assessments/2026-09-23-table-link-safety.md)).
+An action column is now inferred from any nonempty Href or a custom action slot;
+`RowHrefs: true` can reserve it for empty/unlinked results. Every row gets that cell,
+but a missing Href leaves it empty without inventing a control. Review selectors,
+snapshots and app-authored footer spans when upgrading; inference does not mutate
+caller data ([ADR-0081](adr/0081-derive-one-table-action-column.md)).
 
 ## `appkit/ui/hitl` — human-in-the-loop (HTML)
 
@@ -330,6 +401,14 @@ are deliberately not caller-overridable — an app that could relabel `Estimate`
 as `Verified` would make the rule decorative. The source line uses `ink-muted`
 and never `ink-faint` (hazard H-004: a caveat set quieter than the claim it
 qualifies is dishonest), asserted by `TestSourceLineNeverUsesInkFaint`.
+
+The trusted body slot does not choose a layout or resize its SVG. In a grid, let
+cells shrink (`min-w-0`) and wrap a wide body in a named, focus-visible native scroll
+region; keep the caption and source outside that region. Give code examples their
+own keyboard-scrollable viewport and wrap long inline identifiers. Gallery's
+[`/provenance` repair](assessments/2026-09-22-provenance-reflow.md) demonstrates this
+composition without changing the primitive. Its values are synthetic: an illustrative
+publication link is not evidence for made-up data.
 
 ## `appkit/ui/tokens` — the design tokens
 

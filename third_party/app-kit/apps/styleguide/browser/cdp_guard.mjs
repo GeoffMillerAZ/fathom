@@ -37,18 +37,27 @@ function errorText(error) {
   return error instanceof Error ? `${error.name}: ${error.message}` : String(error);
 }
 
-export async function connectGuard(wsURL, {allowedOrigin, events, shaping, protocolEvents} = {}) {
+export async function connectGuard(wsURL, {allowedOrigin, events, shaping, protocolEvents, lifecycleEvents} = {}) {
   const endpoint = exactBrowserWS(wsURL), origin = exactAllowedOrigin(allowedOrigin);
   if (!Array.isArray(events)) throw new Error('events must be a caller-owned array.');
   if (protocolEvents !== undefined && !Array.isArray(protocolEvents)) throw new Error('protocolEvents must be a caller-owned array when supplied.');
+  if (lifecycleEvents !== undefined && (!Array.isArray(lifecycleEvents) || lifecycleEvents.length !== 0)) {
+    throw new Error('lifecycleEvents must be a caller-owned initially empty array when supplied.');
+  }
+  if (lifecycleEvents !== undefined && protocolEvents === lifecycleEvents) {
+    throw new Error('protocolEvents and lifecycleEvents must be distinct arrays.');
+  }
+  if (lifecycleEvents !== undefined && events === lifecycleEvents) {
+    throw new Error('events and lifecycleEvents must be distinct arrays.');
+  }
   const conditions = selectedShaping(shaping);
   const socket = new WebSocket(endpoint);
   const pending = new Map(), setupTasks = new Set(), sessions = new Map();
-  let commandId = 0, protocolSequence = 0, disconnected = false, closeRequested = false;
+  let commandId = 0, protocolSequence = 0, lifecycleSequence = 0, disconnected = false, closeRequested = false;
   const coverage = {
     endpoint, allowedOrigin: origin, shaping: conditions, rootAutoAttach: false,
     ready: false, failed: false, closed: false, sessions: [], errors: [], detach: [],
-    rawNetworkEvents: [], ruleIds: [], appliedRuleEvents: [], unpausedAttachments: [],
+    rawNetworkEvents: [], ruleIds: [], appliedRuleEvents: [], unpausedAttachments: [], unaccountedAttachments: [],
     excludedTargetTypes: ['browser', 'tab', 'browser_ui'],
     targetScope: 'App documents, iframes and workers; browser-internal UI is explicitly excluded, not OS-wide containment.',
   };
@@ -65,6 +74,13 @@ export async function connectGuard(wsURL, {allowedOrigin, events, shaping, proto
   const retainProtocol = item => {
     if (protocolEvents) protocolEvents.push({seq: ++protocolSequence, ...structuredClone(item)});
   };
+  const retainLifecycle = item => {
+    if (!lifecycleEvents) return;
+    const method = item.method ?? '';
+    if (!method.startsWith('Target.') && !method.startsWith('Page.') && !method.startsWith('Runtime.') &&
+        method !== 'HeapProfiler.collectGarbage' && method !== 'Network.enable' && method !== 'Network.setBlockedURLs') return;
+    lifecycleEvents.push({seq: ++lifecycleSequence, monotonic_ms: performance.now(), ...structuredClone(item)});
+  };
   await new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('Browser CDP WebSocket open timeout.')), TIMEOUT_MS);
     socket.addEventListener('open', () => { clearTimeout(timer); resolve(); }, {once: true});
@@ -78,29 +94,49 @@ export async function connectGuard(wsURL, {allowedOrigin, events, shaping, proto
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         pending.delete(id); const error = new Error(`CDP command timeout: ${method}${sessionId ? ` session=${sessionId}` : ''}`);
+        retainLifecycle({kind: 'local-error', direction: 'local', recorded_at: new Date().toISOString(), id, method,
+          sessionId: sessionId ?? null, error: {message: error.message, timeout: true}});
         recordError('command-timeout', error, {method, sessionId: sessionId ?? null}); reject(error);
       }, TIMEOUT_MS);
       pending.set(id, {method, sessionId, resolve, reject, timer});
       try {
         socket.send(JSON.stringify(message));
         if (method.startsWith('Target.')) retainProtocol({kind: 'command', direction: 'outbound', sent_at: new Date().toISOString(), id, method, sessionId: sessionId ?? null, params});
+        retainLifecycle({kind: 'command', direction: 'outbound', sent_at: new Date().toISOString(), id, method,
+          sessionId: sessionId ?? null, params});
       }
-      catch (error) { clearTimeout(timer); pending.delete(id); reject(error); }
+      catch (error) {
+        clearTimeout(timer); pending.delete(id);
+        retainLifecycle({kind: 'local-error', direction: 'local', recorded_at: new Date().toISOString(), id, method,
+          sessionId: sessionId ?? null, error: {message: errorText(error), send_failed: true}});
+        reject(error);
+      }
     });
   };
 
   const configure = async (params, parentSessionId = null) => {
-    const {sessionId, targetInfo, waitingForDebugger} = params;
-    const target = {
-      sessionId, parentSessionId, targetId: targetInfo.targetId, type: targetInfo.type,
-      url: targetInfo.url, waitingForDebugger, recursiveAutoAttach: false,
-      networkEnabled: false, blockedURLs: false, appliedPolicy: false,
-      ruleIds: [], resumed: false, detached: false, error: null,
-    };
-    sessions.set(sessionId, target); coverage.sessions.push(target);
-    events.push({kind: 'attached', at: new Date().toISOString(), ...target});
-    if (!waitingForDebugger) coverage.unpausedAttachments.push({sessionId, targetId: target.targetId, type: target.type, url: target.url});
+    let sessionId, target;
     try {
+      const validID = value => typeof value === 'string' && value.length > 0;
+      if (!params || !validID(params.sessionId) || !params.targetInfo ||
+          !validID(params.targetInfo.targetId) || !validID(params.targetInfo.type) ||
+          typeof params.targetInfo.url !== 'string' || typeof params.waitingForDebugger !== 'boolean') {
+        throw new Error('Malformed auto-attachment identity.');
+      }
+      sessionId = params.sessionId;
+      const {targetInfo, waitingForDebugger} = params;
+      if (sessions.has(sessionId) || [...sessions.values()].some(s => !s.detached && s.targetId === targetInfo.targetId)) {
+        throw new Error('Duplicate auto-attachment session or live target identity.');
+      }
+      target = {
+        sessionId, parentSessionId, targetId: targetInfo.targetId, type: targetInfo.type,
+        url: targetInfo.url, waitingForDebugger, recursiveAutoAttach: false,
+        networkEnabled: false, blockedURLs: false, appliedPolicy: false,
+        ruleIds: [], resumed: false, detached: false, error: null,
+      };
+      sessions.set(sessionId, target); coverage.sessions.push(target);
+      events.push({kind: 'attached', at: new Date().toISOString(), ...target});
+      if (!waitingForDebugger) coverage.unpausedAttachments.push({sessionId, targetId: target.targetId, type: target.type, url: target.url});
       if (!NETWORK_TYPES.has(target.type)) throw new Error(`Unsupported auto-attached target type: ${target.type}`);
       if (RELATED_TYPES.has(target.type)) {
         await send('Target.setAutoAttach', {
@@ -123,11 +159,21 @@ export async function connectGuard(wsURL, {allowedOrigin, events, shaping, proto
         }
         target.ruleIds = [...result.ruleIds]; coverage.ruleIds.push(...result.ruleIds.map(ruleId => ({sessionId, ruleId})));
       }
+      if (lifecycleEvents && RELATED_TYPES.has(target.type)) {
+        await send('Page.enable', {}, sessionId);
+        await send('Runtime.enable', {}, sessionId);
+        await send('Page.setLifecycleEventsEnabled', {enabled: true}, sessionId);
+        await send('Page.getFrameTree', {}, sessionId);
+        await send('Runtime.getIsolateId', {}, sessionId);
+      }
       target.appliedPolicy = true;
+      if (coverage.failed) throw new Error('Guard failed before target resume.');
       await send('Runtime.runIfWaitingForDebugger', {}, sessionId); target.resumed = true;
       events.push({kind: 'policy-applied', at: new Date().toISOString(), sessionId, targetId: target.targetId, ruleIds: target.ruleIds});
     } catch (error) {
-      target.error = errorText(error); recordError('target-setup', error, {sessionId, targetId: target.targetId, type: target.type});
+      if (target) target.error = errorText(error);
+      else coverage.unaccountedAttachments.push({at: new Date().toISOString(), parentSessionId, params: structuredClone(params), error: errorText(error)});
+      recordError('target-setup', error, {sessionId: sessionId ?? null, targetId: target?.targetId ?? null, type: target?.type ?? null});
       throw error; // Never resume a target whose complete policy was not applied.
     }
   };
@@ -145,6 +191,9 @@ export async function connectGuard(wsURL, {allowedOrigin, events, shaping, proto
         const entry = pending.get(message.id); if (!entry) return;
         clearTimeout(entry.timer); pending.delete(message.id);
         if (entry.method.startsWith('Target.')) retainProtocol({kind: 'response', direction: 'inbound', received_at: new Date().toISOString(), id: message.id, method: entry.method, sessionId: entry.sessionId ?? null, ...(message.error ? {error: message.error} : {result: message.result})});
+        retainLifecycle({kind: 'response', direction: 'inbound', received_at: new Date().toISOString(), id: message.id,
+          method: entry.method, sessionId: entry.sessionId ?? null,
+          ...(message.error ? {error: message.error} : {result: message.result})});
         if (message.error) {
           const error = new Error(`CDP ${entry.method}: ${JSON.stringify(message.error)}`);
           recordError('command', error, {method: entry.method, sessionId: entry.sessionId ?? null}); entry.reject(error);
@@ -153,6 +202,8 @@ export async function connectGuard(wsURL, {allowedOrigin, events, shaping, proto
         return;
       }
       if (message.method?.startsWith('Target.')) retainProtocol({kind: 'event', direction: 'inbound', received_at: new Date().toISOString(), method: message.method, sessionId: message.sessionId ?? null, params: message.params});
+      retainLifecycle({kind: 'event', direction: 'inbound', received_at: new Date().toISOString(), method: message.method,
+        sessionId: message.sessionId ?? null, params: message.params});
       if (message.method === 'Target.attachedToTarget') onAttached(message.params, message.sessionId ?? null);
       else if (message.method === 'Target.detachedFromTarget') {
         const item = {at: new Date().toISOString(), parentSessionId: message.sessionId ?? null, ...message.params};
@@ -187,6 +238,7 @@ export async function connectGuard(wsURL, {allowedOrigin, events, shaping, proto
   };
   const ready = (async () => {
     try {
+      if (lifecycleEvents) await send('Target.setDiscoverTargets', {discover: true});
       await send('Target.setAutoAttach', {
         autoAttach: true, waitForDebuggerOnStart: true, flatten: true,
         filter: [{type: 'browser', exclude: true}, {type: 'tab', exclude: true}, {type: 'browser_ui', exclude: true}, {}],
@@ -203,6 +255,7 @@ export async function connectGuard(wsURL, {allowedOrigin, events, shaping, proto
 
   const close = async () => {
     if (coverage.closed || disconnected) return;
+    if (coverage.unaccountedAttachments.length) throw new Error('Refusing to detach with unaccounted auto-attachments; terminate the owned browser.');
     const unsafe = coverage.sessions.filter(target => target.waitingForDebugger && !target.resumed && !target.detached);
     if (unsafe.length) throw new Error(`Refusing to detach with ${unsafe.length} paused unguarded target(s); terminate the owned browser.`);
     closeRequested = true;
@@ -211,5 +264,5 @@ export async function connectGuard(wsURL, {allowedOrigin, events, shaping, proto
       socket.addEventListener('close', () => { clearTimeout(timer); resolve(); }, {once: true}); socket.close(1000, 'guard close');
     });
   };
-  return {send, ready, close, coverage};
+  return {send, ready, close, coverage, ...(lifecycleEvents ? {lifecycleEvents} : {})};
 }

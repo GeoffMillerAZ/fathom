@@ -5,6 +5,11 @@ experimental build-only export of the Gallery's first-party reading/FAQ composit
 Visitors need HTML and CSS only: no Go server, JavaScript, hydration or remote fonts.
 This is a complete bounded example, not a generic site generator or certified profile.
 
+Agent discovery: `search_capabilities(query="static content")` routes through the
+existing `content.docs` primitive to this separate example. Read this whole guide
+with `get_kit_decision("static-content-delivery")` or `kit://static-content-delivery`.
+The primitive's Go-web profile and maturity do not certify this export or its host.
+
 ## Build and inspect
 
 From app-kit, compile CSS with the existing pinned toolchain, then export to a new
@@ -79,3 +84,11 @@ The [maintained local fixture](../assessments/fixtures/static-export/README.md) 
 actual exported bytes using a read-only generic static host. It is neither Gallery
 runtime proof nor an authorized consumer/deployment change. Full accessibility,
 broader performance and selected-consumer acceptance remain separate gates.
+
+The [separate cache-cold replay](../assessments/2026-09-22-static-cold-replay.md) now
+produces identical binaries and all eleven site files from two empty Go caches with
+network, source checkout and shared caches denied. It uses an exact private source
+bundle and small frozen file-proxy closure; the earlier inventory/checker failures
+remain retained. This is selected local Go1.26.3/macOS-arm64/CGO-disabled build proof,
+not independent-host or consumer-hosting acceptance. Review a new closure when source
+or tools change; existing browser receipts retain only their original scope.

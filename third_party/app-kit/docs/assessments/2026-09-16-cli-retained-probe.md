@@ -38,7 +38,7 @@ Nine tests pass on macOS, with zero skipped. They use only generated shell fixtu
 - Eleven altered-report controls reject wrong schema/kind/canaries, missing/duplicate
   checks, omitted runs, wrong binary/arguments and inconsistent outcomes.
 
-The final tests execute retained copies in `/Volumes/m2ext/appkit-cli-retained-proof.FDLo3V/`.
+The final tests execute retained copies in `/Volumes/m2ext/appkit-evidence/appkit-cli-retained-proof.FDLo3V/`.
 `tests-receipt.json` SHA-256: `c4cbe796dc161af7c3e1df6fe418398dac3cafc01e272f85e1f06550610d30f6`.
 It retains exact commands/environment, before/after source hashes and stdout/stderr
 identities; all four source files remain byte-identical. Node26.3.0, Darwin arm64.

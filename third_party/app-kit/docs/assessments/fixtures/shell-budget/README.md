@@ -43,6 +43,6 @@ installed Chrome; no dependency is installed:
 ```sh
 APPKIT_PLAYWRIGHT_MODULE=/Users/geoff/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs \
   node probe.mjs /absolute/private/evidence-parent \
-  /Volumes/m2ext/appkit-gallery-quality.spQ1NymK/gallery \
-  /Volumes/m2ext/appkit-gallery-quality.spQ1NymK/app.css
+  /Volumes/m2ext/appkit-evidence/appkit-gallery-quality.spQ1NymK/gallery \
+  /Volumes/m2ext/appkit-evidence/appkit-gallery-quality.spQ1NymK/app.css
 ```

@@ -207,6 +207,42 @@ func TestRadioGroup_FieldsetLegendAndChecked(t *testing.T) {
 	}
 }
 
+func TestRadioGroup_DisabledRequiredStructure(t *testing.T) {
+	// Structural regression only; native validity is a separate browser fact.
+	for _, tc := range []struct {
+		name                                   string
+		required, firstDisabled, groupDisabled bool
+	}{
+		{"disabled required member", true, true, false},
+		{"enabled required group", true, false, false},
+		{"disabled fieldset", true, false, true},
+		{"optional group", false, true, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := RenderRadioGroup(RadioGroup{
+				Name: "plan", Required: tc.required, Disabled: tc.groupDisabled,
+				Options: []Option{{Value: "a", Label: "A", Disabled: tc.firstDisabled}, {Value: "b", Label: "B"}},
+			})
+			radios := regexp.MustCompile(`<input\b[^>]*>`).FindAllString(got, -1)
+			if len(radios) != 2 {
+				t.Fatalf("expected two native inputs: %s", got)
+			}
+			fieldset := regexp.MustCompile(`<fieldset\b[^>]*>`).FindString(got)
+			if fieldset == "" || strings.Contains(fieldset, " disabled") != tc.groupDisabled {
+				t.Fatalf("fieldset disabled state differs: %s", got)
+			}
+			for i, radio := range radios {
+				if !strings.Contains(radio, `type="radio"`) || !strings.Contains(radio, `name="plan"`) ||
+					strings.Contains(radio, " checked") ||
+					strings.Contains(radio, " required") != (tc.required && i == 0) ||
+					strings.Contains(radio, " disabled") != (tc.firstDisabled && i == 0) {
+					t.Errorf("radio %d lost native group attributes: %s", i, radio)
+				}
+			}
+		})
+	}
+}
+
 func TestButton_Variants(t *testing.T) {
 	if !strings.Contains(RenderButton(Button{Label: "Save"}), `type="submit"`) {
 		t.Error("button should default to submit")

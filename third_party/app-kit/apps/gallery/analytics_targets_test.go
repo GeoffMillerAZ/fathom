@@ -14,7 +14,7 @@ func TestAnalyticsDisclosureSummariesKeepNative44PixelTargets(t *testing.T) {
 		name, path string
 		labels     []string
 	}{
-		{name: "overview", path: "/analytics", labels: []string{"Test a data condition", "Source, time window and interpretation"}},
+		{name: "overview", path: "/analytics", labels: []string{"Change comparison all services · Previous calendar month", "Test a data condition", "Source, time window and interpretation"}},
 		{name: "detail", path: "/analytics/gateway-api", labels: []string{"Source, time window and interpretation"}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -31,7 +31,7 @@ func TestAnalyticsDisclosureSummariesKeepNative44PixelTargets(t *testing.T) {
 				t.Fatal("analytics main landmark is missing")
 			}
 			// The outer Gallery header has its own native navigation disclosure.
-			// This contract concerns the analytics task's two disclosures.
+			// This contract concerns every disclosure inside the analytics task.
 			summaries := analyticsTargetNodes(main, "summary")
 			if len(summaries) != len(test.labels) {
 				t.Fatalf("native summary count = %d, want %d", len(summaries), len(test.labels))

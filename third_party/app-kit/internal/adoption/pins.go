@@ -22,7 +22,11 @@ type PinReport struct {
 	Entries             []catalog.Entry      `json:"entries"`
 }
 
-func capabilityRevision(schemaVersion int, entry catalog.Entry) (CapabilityRevision, error) {
+// PinCapability returns the canonical version-1 metadata pin for an already
+// validated catalog entry. Callers must supply the entry's catalog schema
+// version; this binds metadata identity only and grants no adoption approval or
+// source/runtime assurance.
+func PinCapability(schemaVersion int, entry catalog.Entry) (CapabilityRevision, error) {
 	// Field order, domain/version, full Entry and its array order are the v1 hash
 	// contract. A future serialization change needs a separately versioned format.
 	envelope := struct {
@@ -57,7 +61,7 @@ func Pins(ctx context.Context, root, manifest string) PinReport {
 				r.add(key, "fail", "", fmt.Sprintf("%q is absent from this catalog.", id), "Review the selected exact ID; no replacement is inferred.")
 				continue
 			}
-			pin, err := capabilityRevision(c.SchemaVersion, entry)
+			pin, err := PinCapability(c.SchemaVersion, entry)
 			if err != nil {
 				r.add(key, "unknown", "", "Selected metadata could not be encoded.", "Rebuild a validated checker; do not accept a missing pin.")
 				continue
@@ -81,7 +85,7 @@ func (r *Report) checkCapabilityRevisions(c *catalog.Catalog, pins []CapabilityR
 			r.add(key, "fail", "", fmt.Sprintf("%q selected metadata is absent.", expected.ID), "Review the missing selected capability; do not infer a replacement.")
 			continue
 		}
-		actual, err := capabilityRevision(c.SchemaVersion, entry)
+		actual, err := PinCapability(c.SchemaVersion, entry)
 		if err != nil {
 			r.add(key, "unknown", "", "Selected metadata could not be encoded.", "Rebuild a validated checker; do not accept a missing pin.")
 		} else if actual.SHA256 != expected.SHA256 {

@@ -1,0 +1,105 @@
+diff --git a/cmd/serve/settings.go b/cmd/serve/settings.go
+--- a/cmd/serve/settings.go
++++ b/cmd/serve/settings.go
+@@ -68,6 +68,15 @@
+ 
+ // handleExport streams the pipeline as a downloadable CSV or JSON file.
+ func (s *Server) handleExport(w http.ResponseWriter, r *http.Request) {
++	view := r.URL.Query().Get("view")
++	if view != "" && view != "channel-yield" {
++		writeErr(w, http.StatusBadRequest, "unknown export view")
++		return
++	}
++	if view == "channel-yield" && r.URL.Query().Get("format") != "csv" {
++		writeErr(w, http.StatusBadRequest, "channel-yield export requires CSV")
++		return
++	}
+ 	s.mu.Lock()
+ 	reg, err := s.load()
+ 	s.mu.Unlock()
+@@ -75,11 +84,7 @@
+ 		writeErr(w, http.StatusInternalServerError, err.Error())
+ 		return
+ 	}
+-	if r.URL.Query().Get("view") == "channel-yield" {
+-		if r.URL.Query().Get("format") != "csv" {
+-			writeErr(w, http.StatusBadRequest, "channel-yield export requires CSV")
+-			return
+-		}
++	if view == "channel-yield" {
+ 		data, err := channelYieldCSV(reg)
+ 		if err != nil {
+ 			writeErr(w, http.StatusInternalServerError, err.Error())
+diff --git a/cmd/serve/analytics_export.go b/cmd/serve/analytics_export.go
+--- a/cmd/serve/analytics_export.go
++++ b/cmd/serve/analytics_export.go
+@@ -25,6 +25,8 @@
+ 			status = "incomplete-sent-evidence"
+ 		case row.Apps == 0:
+ 			status = "no-applications"
++		case row.Applied == 0:
++			status = "no-sent-evidence"
+ 		case row.Applied < metrics.DefaultRateFloor:
+ 			status = "below-minimum-applied"
+ 		}
+diff --git a/cmd/serve/analytics_acceptance_test.go b/cmd/serve/analytics_acceptance_test.go
+--- a/cmd/serve/analytics_acceptance_test.go
++++ b/cmd/serve/analytics_acceptance_test.go
+@@ -15,7 +15,7 @@
+ 	"github.com/geoffmilleraz/resume-as-code/cmd/tracker"
+ )
+ 
+-// This is an overlay-only, fictional-data oracle, not a production fixture.
++// This fictional-data oracle uses only temporary registries, not user history.
+ func TestCandidateChannelYieldChartTableAndExportBoundary(t *testing.T) {
+ 	reg := pipelineOutcomeFixture()
+ 	widget := pipelineChannelWidgetHTML(reg)
+@@ -130,6 +130,7 @@
+ 		ui   string
+ 	}{
+ 		{"no-records", &tracker.Registry{Version: 1}, []string{"cold-apply", "0", "0", "0", "0", "0", "0", "not enough outcomes yet (n=0, need 5)", "not enough outcomes yet (n=0, need 5)", "no-applications"}, "No application history yet."},
++		{"no-sent-evidence", candidateOneUnsent(), []string{"cold-apply", "1", "0", "0", "0", "0", "0", "not enough outcomes yet (n=0, need 5)", "not enough outcomes yet (n=0, need 5)", "no-sent-evidence"}, "This is missing sent evidence, not a measured zero response rate."},
+ 		{"measured-zero", candidateFiveSentNoResponse(), []string{"cold-apply", "5", "5", "0", "0", "0", "0", "0%", "0%", "ready"}, "Response: 0% (0/5)."},
+ 	} {
+ 		t.Run(tc.name, func(t *testing.T) {
+@@ -163,9 +164,40 @@
+ 	if rec.Code != http.StatusOK || rec.Header().Get("Content-Disposition") != `attachment; filename="pipeline.json"` ||
+ 		!strings.Contains(rec.Body.String(), `"applications"`) {
+ 		t.Fatalf("legacy JSON export changed: status=%d headers=%v", rec.Code, rec.Header())
++	}
++}
++
++func TestCandidateChannelYieldRejectsNonCSVFormat(t *testing.T) {
++	s := serverWithRegistry(t, candidateFiveSentNoResponse())
++	for _, path := range []string{
++		"/api/export?view=channel-yield",
++		"/api/export?view=channel-yield&format=json",
++	} {
++		rec := httptest.NewRecorder()
++		s.handleExport(rec, httptest.NewRequest(http.MethodGet, path, nil))
++		if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "channel-yield export requires CSV") {
++			t.Errorf("%s: status=%d body=%q; want explicit CSV rejection", path, rec.Code, rec.Body.String())
++		}
++	}
++	for _, path := range []string{
++		"/api/export?view=unknown&format=csv",
++		"/api/export?view=unknown&format=json",
++	} {
++		rec := httptest.NewRecorder()
++		s.handleExport(rec, httptest.NewRequest(http.MethodGet, path, nil))
++		if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "unknown export view") {
++			t.Errorf("%s: status=%d body=%q; want unknown-view rejection", path, rec.Code, rec.Body.String())
++		}
+ 	}
+ }
+ 
++func candidateOneUnsent() *tracker.Registry {
++	return &tracker.Registry{Version: 1, Applications: []tracker.Application{{
++		ID: "fictional-unsent", Company: "Example Synthetic", Role: "Engineer",
++		Status: tracker.StatusLead, CreatedDate: "2099-01-15",
++	}}}
++}
++
+ func candidateFiveSentNoResponse() *tracker.Registry {
+ 	reg := &tracker.Registry{Version: 1}
+ 	for i := 0; i < 5; i++ {

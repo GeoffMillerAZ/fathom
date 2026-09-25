@@ -21,7 +21,8 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: minor (pre-1.0: breaking bumps minor)
 
-- Add opt-in, loopback-only `theme-guide` using app-kit's exact `f7ab0fbd` mirror and synthetic Observatory states, with source-preserving preview/reset/export and an app-owned baseline retaining the existing palette. This adds indirect uniseg v0.4.7 and updates the mirror's SDK/x/time graph; agentic-kit and normal daemon startup are unchanged (docs/app-kit.md).
+- Add opt-in, loopback-only `theme-guide` on app-kit's exact `dc77e66` mirror (re-vendored from the side-branch pin `bcfeb8e`) with synthetic Observatory states and source-preserving preview/reset/export over an app-owned baseline. This adds indirect uniseg v0.4.7 and updates the mirror's SDK/x/time graph; agentic-kit and normal daemon startup are unchanged (docs/app-kit.md).
+- The Observatory's light `positive` role adopts app-kit's contrast-safe `oklch(0.51 0.14 155)` (was 0.55), so the generated theme is byte-identical to the kit's. `appkit.adoption.json` stops pinning high-churn source files and re-pins `recipe.styleguide.local` to the kit's record of this return.
 - Registry counts disclose incomplete coverage; unreadable call logs and session ledgers no longer appear as zero activity. These are independent display repairs, not metric-reader or service-JSON changes.
 - CSS generation requires a successful content read/hash instead of a separate access predicate, preserves read-error causes and still refuses missing, escaped, symlinked or concurrently changed sources before publication.
 

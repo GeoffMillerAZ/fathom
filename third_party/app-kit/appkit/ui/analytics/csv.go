@@ -20,10 +20,69 @@ func WriteCSV(w io.Writer, d Dataset, now time.Time) error {
 	if err := d.Validate(now); err != nil {
 		return err
 	}
-	c := d.Contract
 	roleLabels := d.roleLabels()
 	wc := csv.NewWriter(w)
-	context := [][2]string{
+	for _, row := range csvContext(d.Contract, now) {
+		if err := wc.Write([]string{row[0], csvText(row[1])}); err != nil {
+			return err
+		}
+	}
+	if err := wc.Write(nil); err != nil {
+		return err
+	}
+	if err := wc.Write(csvDataHeader()); err != nil {
+		return err
+	}
+	for _, row := range d.Rows {
+		if err := wc.Write(csvDataRow(row, d.Contract, roleLabels)); err != nil {
+			return err
+		}
+	}
+	wc.Flush()
+	return wc.Error()
+}
+
+// WriteTableCSV is an experimental rectangular alternative to WriteCSV for
+// spreadsheet import: one header, then one row per selected observation. The
+// seventeen context columns (prefixed context_) precede the same ten data columns;
+// context is repeated on every row. Values, order, rounding and formula-safe text
+// encoding are identical to WriteCSV. No app-owned comparison fields are inferred.
+//
+// Empty selections emit only the header, with no fabricated observation. Use
+// WriteCSV when the context of an empty selection must travel with the export.
+// Validation completes before the first write; IO errors are returned. Like
+// WriteCSV, this is presentation evidence, not a lossless source-data format.
+func WriteTableCSV(w io.Writer, d Dataset, now time.Time) error {
+	if err := d.Validate(now); err != nil {
+		return err
+	}
+	context := csvContext(d.Contract, now)
+	header := make([]string, 0, len(context)+10)
+	values := make([]string, 0, len(context))
+	for _, field := range context {
+		header = append(header, "context_"+field[0])
+		values = append(values, csvText(field[1]))
+	}
+	header = append(header, csvDataHeader()...)
+	wc := csv.NewWriter(w)
+	if err := wc.Write(header); err != nil {
+		return err
+	}
+	roleLabels := d.roleLabels()
+	for _, row := range d.Rows {
+		cells := make([]string, 0, len(header))
+		cells = append(cells, values...)
+		cells = append(cells, csvDataRow(row, d.Contract, roleLabels)...)
+		if err := wc.Write(cells); err != nil {
+			return err
+		}
+	}
+	wc.Flush()
+	return wc.Error()
+}
+
+func csvContext(c Contract, now time.Time) [][2]string {
+	return [][2]string{
 		{"chart_id", c.ID}, {"title", c.Title}, {"unit", c.Unit},
 		{"grain", c.Grain}, {"aggregation", c.Aggregation},
 		{"window_kind", string(c.Window.Kind)}, {"window", c.Window.label()},
@@ -34,33 +93,23 @@ func WriteCSV(w io.Writer, d Dataset, now time.Time) error {
 		{"coverage_note", c.CoverageNote}, {"uncertainty", c.Uncertainty},
 		{"decimal_places", strconv.Itoa(c.Decimals)},
 	}
-	for _, row := range context {
-		if err := wc.Write([]string{row[0], csvText(row[1])}); err != nil {
-			return err
+}
+
+func csvDataHeader() []string {
+	return []string{"id", "label", "value", "unit", "state", "missing_reason", "lower", "upper", "role", "role_label"}
+}
+
+func csvDataRow(row Row, c Contract, roleLabels map[string]string) []string {
+	value, low, high, state := "", "", "", "missing"
+	if row.Value != nil {
+		value, state = number(*row.Value, c.Decimals, false), "present"
+		if row.Bounds != nil {
+			low = number(row.Bounds.Low, c.Decimals, false)
+			high = number(row.Bounds.High, c.Decimals, false)
 		}
 	}
-	if err := wc.Write(nil); err != nil {
-		return err
-	}
-	if err := wc.Write([]string{"id", "label", "value", "unit", "state", "missing_reason", "lower", "upper", "role", "role_label"}); err != nil {
-		return err
-	}
-	for _, row := range d.Rows {
-		value, low, high, state := "", "", "", "missing"
-		if row.Value != nil {
-			value, state = number(*row.Value, c.Decimals, false), "present"
-			if row.Bounds != nil {
-				low = number(row.Bounds.Low, c.Decimals, false)
-				high = number(row.Bounds.High, c.Decimals, false)
-			}
-		}
-		role := rowRole(row)
-		if err := wc.Write([]string{csvText(row.ID), csvText(row.Label), value, csvText(c.Unit), state, csvText(row.MissingReason), low, high, csvText(role), csvText(roleLabels[role])}); err != nil {
-			return err
-		}
-	}
-	wc.Flush()
-	return wc.Error()
+	role := rowRole(row)
+	return []string{csvText(row.ID), csvText(row.Label), value, csvText(c.Unit), state, csvText(row.MissingReason), low, high, csvText(role), csvText(roleLabels[role])}
 }
 
 func csvText(s string) string {

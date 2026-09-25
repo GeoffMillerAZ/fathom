@@ -52,7 +52,7 @@ MCP source/protocol tests pass; the installed MCP process was not rebuilt or res
 
 ## Retained evidence and limits
 
-Private root: `/Volumes/m2ext/appkit-shell-recipe.7PB31Ag0/`.
+Private root: `/Volumes/m2ext/appkit-evidence/appkit-shell-recipe.7PB31Ag0/`.
 `final-tested/` preserves nine selected source/test/catalog/browser/config files before
 the final run; subsequent hashes agree with the checkout. `before/` preserves the old
 rendering and catalog, and `before-overlay.json` replays the negative control. Earlier

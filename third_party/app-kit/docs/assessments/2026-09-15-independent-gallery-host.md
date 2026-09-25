@@ -54,7 +54,7 @@ review occurred. Earlier browser/native runtime evidence remains separate.
 
 ## Frozen artifacts
 
-Private root: `/Volumes/m2ext/appkit-independent-host.yubaf0m0/replay-v7/`.
+Private root: `/Volumes/m2ext/appkit-evidence/appkit-independent-host.yubaf0m0/replay-v7/`.
 Candidate version: `v0.0.0-rehearsal.h6b98f004a2a97fa0d7ea3b19d0e29ec2aba45b2d757a77e3ca8a3a108c0af705`.
 Its source identity and private proxy are recorded in the [earlier preparation assessment](2026-09-15-private-candidate-rehearsal.md).
 

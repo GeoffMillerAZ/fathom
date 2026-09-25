@@ -6,7 +6,7 @@ binaries were not changed. No operational command or real data was used.
 
 ## What changed in the isolated copy
 
-Retained root: `/Volumes/m2ext/appkit-cli-candidate-authorized.5NutFn/optin/`.
+Retained root: `/Volumes/m2ext/appkit-evidence/appkit-cli-candidate-authorized.5NutFn/optin/`.
 `overlay/command.go` is selected only by a private Go overlay. It preserves default
 Execute, and adds experiment-only execution/classifier wiring: explicit Exit codes
 win; only complete recognized invocation-origin compositions earn exit2; mixed or

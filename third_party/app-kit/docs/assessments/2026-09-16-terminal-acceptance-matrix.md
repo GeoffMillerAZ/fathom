@@ -33,7 +33,7 @@ the new acquisition does not claim to have rerun every historical canary.
 
 ## Current-code acquisition
 
-Private root: `/Volumes/m2ext/appkit-cli-migration.PTQu01`.
+Private root: `/Volumes/m2ext/appkit-evidence/appkit-cli-migration.PTQu01`.
 The selected source, configuration, harnesses, exact binaries and raw outputs are
 retained. They are bounded working-tree evidence, not complete consumer dependency
 archives, signed receipts or permanent backups.

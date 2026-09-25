@@ -31,7 +31,7 @@ into both joined records must still fail. This does not authenticate revision ha
 
 ## First frozen acquisition and review
 
-Private root: `/Volumes/m2ext/appkit-theme-cancel.F2rbr0oq/jit-check-4lf7xN`.
+Private root: `/Volumes/m2ext/appkit-evidence/appkit-theme-cancel.F2rbr0oq/jit-check-4lf7xN`.
 The first revision passes the positive joined example, 17 missing/drift/claim refusal
 subtests, and race tests for `internal/qualityplan` and `cmd/appkit-mcp` with Go1.26.3.
 Repository-local Go/test/embed sources, the JSON fixture, relevant documents and
@@ -56,7 +56,7 @@ correlated nonexistent-source substitution; and revision/disposition/delivery or
 unsupported verification/promotion claims. Both package race suites pass again.
 Independent source review found no remaining blocking issue in that bounded example.
 
-Private root: `/Volumes/m2ext/appkit-theme-cancel.F2rbr0oq/jit-check-AfLmFL`.
+Private root: `/Volumes/m2ext/appkit-evidence/appkit-theme-cancel.F2rbr0oq/jit-check-AfLmFL`.
 Its acquisition retains the exact source/fixture/document and executable inputs before
 running, verifies unchanged inputs afterward, and keeps command arguments and raw
 outputs. This assessment's final results paragraph postdates that frozen acquisition.

@@ -32,10 +32,78 @@ function fixture({targetInfos = targets(), failGC = false} = {}) {
   }};
   return guard;
 }
-const make = (guard, overrides = {}) => createMemoryMeasurements({guard, browserPid: 1, serverPid: 2, now: (() => { let n = 0; return () => ++n; })(), wallNow: (() => { let n = 0; return () => `2026-09-17T00:00:${String(n++).padStart(2, '0')}.000Z`; })(), sampleFn: async () => ({completed_ms: 999, rows: [{pid: 1, start_identity: 'browser'}, {pid: 2, start_identity: 'server'}], errors: []}), pauseFn: async () => {}, ...overrides});
+const make = (guard, overrides = {}) => {
+  let clock = 0;
+  return createMemoryMeasurements({guard, browserPid: 1, serverPid: 2, now: () => clock, wallNow: (() => { let n = 0; return () => `2026-09-17T00:00:${String(n++).padStart(2, '0')}.000Z`; })(), sampleFn: async () => ({completed_ms: clock, rows: [{pid: 1, start_identity: 'browser'}, {pid: 2, start_identity: 'server'}], errors: []}), pauseFn: async ms => { clock += ms; }, ...overrides});
+};
 async function failedEndpoint(guard) { const memory = await make(guard); const lane = await memory.begin('test', 0); try { await assert.rejects(() => memory.settledEndpoint(lane)); return lane; } finally { await memory.end(lane); } }
+
+async function endpointWithIdleWakes(wakes) {
+  let clock = 0, released = false, postIdleSampleCatchup = false;
+  const samplerWaiters = [], idlePauseRequests = [];
+  const releaseSampler = () => {
+    released = true;
+    for (const resolve of samplerWaiters.splice(0)) resolve();
+  };
+  const pauseFn = async ms => {
+    // Sampling subtracts elapsed acquisition time, so its delay can be fractional
+    // or zero. Only the exact remaining idle deadline belongs to the idle task.
+    if (!released && ms >= 0 && ms <= 100 && ms !== 5000 - clock &&
+        !(postIdleSampleCatchup && ms === 10)) {
+      return new Promise(resolve => samplerWaiters.push(resolve));
+    }
+    if (postIdleSampleCatchup && ms === 10) {
+      clock += ms;
+      for (const resolve of samplerWaiters.splice(0)) resolve();
+      await Promise.resolve();
+      return;
+    }
+    idlePauseRequests.push(ms);
+    const advance = wakes.shift();
+    assert.notEqual(advance, undefined, `unexpected idle pause request ${ms}`);
+    clock += advance;
+    for (const resolve of samplerWaiters.splice(0)) resolve();
+    await Promise.resolve();
+  };
+  const sampleFn = async () => ({completed_ms: clock, rows: [
+    {pid: 1, start_identity: 'browser'}, {pid: 2, start_identity: 'server'},
+  ], errors: []});
+  const guard = fixture(), send = guard.send.bind(guard);
+  guard.send = async (...args) => {
+    if (args[0] === 'Runtime.getHeapUsage') postIdleSampleCatchup = true;
+    return send(...args);
+  };
+  const memory = await createMemoryMeasurements({guard, browserPid: 1, serverPid: 2,
+    now: () => clock, wallNow: () => '2026-09-17T00:00:00.000Z', sampleFn, pauseFn});
+  const lane = await memory.begin('idle-deadline', 0);
+  try {
+    const endpoint = await memory.settledEndpoint(lane);
+    assert.deepEqual(lane.errors, [], 'fake sampler must remain live');
+    return {endpoint, idlePauseRequests, unusedWakes: [...wakes]};
+  } finally {
+    releaseSampler();
+    await memory.end(lane);
+  }
+}
 
 test('refuses near-match paths and retains exact target observation', async () => { const lane = await failedEndpoint(fixture({targetInfos: targets('http://127.0.0.1:18766/theme-lab-evil')})); assert.match(lane.endpoint_attempts[0].error, /Out-of-scope/); assert.deepEqual(lane.topology_observations[0].raw_target_infos, targets('http://127.0.0.1:18766/theme-lab-evil')); });
 test('refuses unknown target types while retaining raw Target.getTargets', async () => { const raw = targets(); raw[0].type = 'other'; const lane = await failedEndpoint(fixture({targetInfos: raw})); assert.match(lane.endpoint_attempts[0].error, /Unexpected live memory target/); assert.deepEqual(lane.topology_observations[0].raw_target_infos, raw); });
 test('retains partial endpoint and failed GC observation', async () => { const lane = await failedEndpoint(fixture({failGC: true})); assert.equal(lane.endpoint_attempts.length, 1); assert.equal(lane.endpoint_attempts[0].gc.length, 1); assert.equal(lane.endpoint_attempts[0].gc[0].ok, false); assert.match(lane.endpoint_attempts[0].error, /synthetic GC failure/); });
-test('valid endpoint uses injected sampler and records wall boundaries', async () => { const memory = await make(fixture()); const lane = await memory.begin('test', 0); try { const endpoint = await memory.settledEndpoint(lane); assert.equal(endpoint.error, undefined); assert.equal(endpoint.targets.length, 2); assert.match(endpoint.wall_started_at, /T/); assert.match(endpoint.wall_completed_at, /T/); assert.equal(lane.endpoint_attempts[0], endpoint); } finally { await memory.end(lane); } });
+test('valid endpoint uses injected sampler and records wall boundaries', async () => { const memory = await make(fixture()); const lane = await memory.begin('test', 0); try { const endpoint = await memory.settledEndpoint(lane); assert.equal(endpoint.error, undefined); assert.equal(endpoint.targets.length, 2); assert.ok(endpoint.idle.completed_ms - endpoint.idle.started_ms >= 5000); assert.match(endpoint.wall_started_at, /T/); assert.match(endpoint.wall_completed_at, /T/); assert.equal(lane.endpoint_attempts[0], endpoint); } finally { await memory.end(lane); } });
+
+test('settled endpoint waits again when a five-second pause wakes early', async () => {
+  const early = 4999.730292;
+  const {endpoint, idlePauseRequests, unusedWakes} = await endpointWithIdleWakes([early, 5000 - early]);
+  assert.ok(endpoint.idle.completed_ms - endpoint.idle.started_ms >= 5000);
+  assert.deepEqual(idlePauseRequests, [5000, 5000 - early]);
+  assert.deepEqual(unusedWakes, []);
+});
+
+test('settled endpoint accepts exact-deadline and oversleep wakeups without another wait', async t => {
+  for (const elapsed of [5000, 5000.5]) await t.test(String(elapsed), async () => {
+    const {endpoint, idlePauseRequests, unusedWakes} = await endpointWithIdleWakes([elapsed]);
+    assert.equal(endpoint.idle.completed_ms - endpoint.idle.started_ms, elapsed);
+    assert.deepEqual(idlePauseRequests, [5000]);
+    assert.deepEqual(unusedWakes, []);
+  });
+});

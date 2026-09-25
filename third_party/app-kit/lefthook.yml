@@ -1,6 +1,7 @@
 # Git hooks for app-kit. Install once:  lefthook install
-# Added by the fathom fleet activation pass (2026-08-14) — only the verify
-# gate lives here; nothing else about this repo's workflow changes.
+# Fathom checks static plan claims; quality-evidence also executes the bounded
+# readiness/receipt checks after final source and documentation edits (INC-57).
+# decision-index executes dual-register/MCP-range consistency (INC-58).
 
 # fathom pre-push gate (done means proven): every claimed [x] plan row must
 # verify against the index. Fail-open on exit 2 (daemon down / not indexed)
@@ -8,6 +9,10 @@
 # binary: a gate that cannot run must fail, not pass.
 pre-push:
   commands:
+    decision-index:
+      run: go test ./cmd/appkit-mcp -run '^TestDecisionsIndexCoversEveryADR$' -count=1
+    quality-evidence:
+      run: go test ./internal/qualityplan -run '^(TestInventoryCompilesAndTracksIndependentFacts|TestJITContributionPathRehearsal)$' -count=1
     fathom-verify:
       run: |
         command -v fathom >/dev/null 2>&1 || { echo "fathom missing — verify gate NOT run"; exit 1; }

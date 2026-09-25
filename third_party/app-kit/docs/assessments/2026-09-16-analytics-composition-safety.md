@@ -33,7 +33,7 @@ sanitization. Applications still own their domain and authorization boundaries.
 
 ## Retained execution
 
-Private root: `/Volumes/m2ext/appkit-analytics-security.o3SeE8`.
+Private root: `/Volumes/m2ext/appkit-evidence/appkit-analytics-security.o3SeE8`.
 Focused recipe tests pass. `run-06-default-temp-packages/` then passes Gallery,
 the static-content command, `ui/analytics` and `ui/vizframe` with Go 1.26.3 and the
 existing offline module caches. Source/test snapshots, commands, environment and
@@ -61,6 +61,6 @@ binary, global configuration, commit or deployment changed.
 
 The updated inventory/guidance also passes `go test ./internal/qualityplan
 ./cmd/appkit-mcp -count=1`. Frozen validation lives at
-`/Volumes/m2ext/appkit-analytics-quality.4VGJtT/run-01-quality-mcp/`, with result
+`/Volumes/m2ext/appkit-evidence/appkit-analytics-quality.4VGJtT/run-01-quality-mcp/`, with result
 receipt `3fe6ca8993f1a239390f3d460481cfcfc73cb37c653e6fe4fe862022fb449cbf`.
 That checks authored metadata and MCP contracts, not an installed agent host.

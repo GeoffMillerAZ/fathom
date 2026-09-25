@@ -1,0 +1,2042 @@
+{
+  "startedAt": "2026-09-23T01:22:53.798Z",
+  "identities": {
+    "baselineBin": {
+      "path": "/Volumes/m2ext/appkit-evidence/appkit-bar-resolution.zA3lsjzJ/baseline-fixture",
+      "size": 8620658,
+      "sha256": "3ae6d4f90b7b9ff4042b04b2965a7cb4c83c8809c400a1a74f315aed67912990"
+    },
+    "candidateBin": {
+      "path": "/Volumes/m2ext/appkit-evidence/appkit-bar-resolution.zA3lsjzJ/candidate-fixture",
+      "size": 8620658,
+      "sha256": "68e5cde8d5b43893bdcca518c303258c5de8998aa91645b23e5f575431dd270b"
+    },
+    "cssPath": {
+      "path": "/Volumes/m2ext/code/geoffmilleraz/app-kit/apps/gallery/ui/app.css",
+      "size": 46106,
+      "sha256": "ae56bfc2ef6cb042bd4305caa0bd421d906681dbaaf209f7c3c9a46144028297"
+    },
+    "pwPath": {
+      "path": "/Users/geoff/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs",
+      "size": 704,
+      "sha256": "a0f5715ea22354f922791a9c53dc012d5d5c067ff9cc4cd35ffb7cd272071a9f"
+    },
+    "chromePath": {
+      "path": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+      "size": 367696,
+      "sha256": "af09314952c541583cc380057318e0a812a2dd1d7627327d564fc2e991736345"
+    },
+    "driver": {
+      "path": "/Volumes/m2ext/appkit-evidence/appkit-bar-resolution.zA3lsjzJ/browser-correction.mjs",
+      "size": 11323,
+      "sha256": "0442959b1330909bacbdbd81c89289de1be92a9a37523e780191bb0e294e8e99"
+    },
+    "helper": {
+      "path": "/Volumes/m2ext/appkit-evidence/appkit-bar-resolution.zA3lsjzJ/browser-owned_process.mjs",
+      "size": 7477,
+      "sha256": "8283a22b3b11530e95745d1996a35bb1c5e9422ae2c5e97f6d310ffa5075f294"
+    }
+  },
+  "checks": [
+    {
+      "ok": true,
+      "name": "baseline-wide-light-spread document complete",
+      "detail": {
+        "status": 200,
+        "bytes": 5930,
+        "sha256": "26667848101ac71073b78cc79d8a31be0143a158c5d8354041dc028e7fde338c"
+      }
+    },
+    {
+      "ok": true,
+      "name": "baseline-wide-light-spread exact CSS complete",
+      "detail": {
+        "status": 200,
+        "bytes": 46106,
+        "sha256": "ae56bfc2ef6cb042bd4305caa0bd421d906681dbaaf209f7c3c9a46144028297"
+      }
+    },
+    {
+      "ok": true,
+      "name": "baseline-wide-light-spread no script restrictive CSP",
+      "detail": "default-src 'none'; style-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+    },
+    {
+      "ok": true,
+      "name": "baseline-wide-light-spread local clean transport",
+      "detail": {
+        "requests": [
+          {
+            "url": "http://127.0.0.1:52280/?case=spread&theme=light",
+            "method": "GET",
+            "type": "document"
+          },
+          {
+            "url": "http://127.0.0.1:52280/app.css",
+            "method": "GET",
+            "type": "stylesheet"
+          }
+        ],
+        "responses": [
+          {
+            "url": "http://127.0.0.1:52280/?case=spread&theme=light",
+            "status": 200,
+            "type": "document"
+          },
+          {
+            "url": "http://127.0.0.1:52280/app.css",
+            "status": 200,
+            "type": "stylesheet"
+          }
+        ],
+        "consoleErrors": []
+      }
+    },
+    {
+      "ok": true,
+      "name": "baseline-wide-light-spread exact table truth",
+      "detail": [
+        [
+          "Small",
+          "1",
+          "Not provided",
+          "Present",
+          "Measured quantity"
+        ],
+        [
+          "Large",
+          "1,000,000,000,000",
+          "Not provided",
+          "Present",
+          "Measured quantity"
+        ],
+        [
+          "Zero",
+          "0",
+          "Not provided",
+          "Present",
+          "Measured quantity"
+        ],
+        [
+          "Missing",
+          "Missing",
+          "Not provided",
+          "Not observed",
+          "Measured quantity"
+        ]
+      ]
+    },
+    {
+      "ok": false,
+      "name": "baseline-wide-light-spread spread semantic fallback",
+      "detail": {
+        "chart": 1,
+        "legend": 1,
+        "warning": false
+      }
+    },
+    {
+      "ok": true,
+      "name": "baseline-wide-light-spread CSV response",
+      "detail": {
+        "status": 200,
+        "sha256": "0a265ab44b319d05530864eaa59ca4944cb3fb3336d32905a71d72398a637066",
+        "bytes": 878
+      }
+    },
+    {
+      "ok": true,
+      "name": "baseline-wide-light-spread independent CSV rows",
+      "detail": [
+        [
+          "small",
+          "Small",
+          "1",
+          "items",
+          "present",
+          "",
+          "",
+          "",
+          "accent",
+          "Measured quantity"
+        ],
+        [
+          "large",
+          "Large",
+          "1000000000000",
+          "items",
+          "present",
+          "",
+          "",
+          "",
+          "accent",
+          "Measured quantity"
+        ],
+        [
+          "zero",
+          "Zero",
+          "0",
+          "items",
+          "present",
+          "",
+          "",
+          "",
+          "accent",
+          "Measured quantity"
+        ],
+        [
+          "missing",
+          "Missing",
+          "",
+          "items",
+          "missing",
+          "Not observed",
+          "",
+          "",
+          "accent",
+          "Measured quantity"
+        ]
+      ]
+    },
+    {
+      "ok": true,
+      "name": "baseline-wide-light-readable document complete",
+      "detail": {
+        "status": 200,
+        "bytes": 5898,
+        "sha256": "273f0d0b0a14fc4bd66c7e4e3bd2aca09b65ae5637278249962617ef05c3935c"
+      }
+    },
+    {
+      "ok": true,
+      "name": "baseline-wide-light-readable exact CSS complete",
+      "detail": {
+        "status": 200,
+        "bytes": 46106,
+        "sha256": "ae56bfc2ef6cb042bd4305caa0bd421d906681dbaaf209f7c3c9a46144028297"
+      }
+    },
+    {
+      "ok": true,
+      "name": "baseline-wide-light-readable no script restrictive CSP",
+      "detail": "default-src 'none'; style-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+    },
+    {
+      "ok": true,
+      "name": "baseline-wide-light-readable local clean transport",
+      "detail": {
+        "requests": [
+          {
+            "url": "http://127.0.0.1:52280/?case=readable&theme=light",
+            "method": "GET",
+            "type": "document"
+          },
+          {
+            "url": "http://127.0.0.1:52280/app.css",
+            "method": "GET",
+            "type": "stylesheet"
+          }
+        ],
+        "responses": [
+          {
+            "url": "http://127.0.0.1:52280/?case=readable&theme=light",
+            "status": 200,
+            "type": "document"
+          },
+          {
+            "url": "http://127.0.0.1:52280/app.css",
+            "status": 200,
+            "type": "stylesheet"
+          }
+        ],
+        "consoleErrors": []
+      }
+    },
+    {
+      "ok": true,
+      "name": "baseline-wide-light-readable exact table truth",
+      "detail": [
+        [
+          "Small",
+          "1",
+          "Not provided",
+          "Present",
+          "Measured quantity"
+        ],
+        [
+          "Large",
+          "10",
+          "Not provided",
+          "Present",
+          "Measured quantity"
+        ],
+        [
+          "Zero",
+          "0",
+          "Not provided",
+          "Present",
+          "Measured quantity"
+        ],
+        [
+          "Missing",
+          "Missing",
+          "Not provided",
+          "Not observed",
+          "Measured quantity"
+        ]
+      ]
+    },
+    {
+      "ok": true,
+      "name": "baseline-wide-light-readable readable real chart",
+      "detail": {
+        "chart": 1,
+        "legend": 1
+      }
+    },
+    {
+      "ok": true,
+      "name": "baseline-wide-light-readable zero and missing chart semantics",
+      "detail": {
+        "chartText": "Synthetic value comparison (items)SmallSmall: 1 items1 itemsLargeLarge: 10 items10 itemsZero0 items",
+        "fills": 2
+      }
+    },
+    {
+      "ok": true,
+      "name": "baseline-wide-light-readable CSV response",
+      "detail": {
+        "status": 200,
+        "sha256": "93b1dd7ae7327cdefcc37024a4792d4b0b2df74b919584d5bd73e44d89cb0385",
+        "bytes": 869
+      }
+    },
+    {
+      "ok": true,
+      "name": "baseline-wide-light-readable independent CSV rows",
+      "detail": [
+        [
+          "small",
+          "Small",
+          "1",
+          "items",
+          "present",
+          "",
+          "",
+          "",
+          "accent",
+          "Measured quantity"
+        ],
+        [
+          "large",
+          "Large",
+          "10",
+          "items",
+          "present",
+          "",
+          "",
+          "",
+          "accent",
+          "Measured quantity"
+        ],
+        [
+          "zero",
+          "Zero",
+          "0",
+          "items",
+          "present",
+          "",
+          "",
+          "",
+          "accent",
+          "Measured quantity"
+        ],
+        [
+          "missing",
+          "Missing",
+          "",
+          "items",
+          "missing",
+          "Not observed",
+          "",
+          "",
+          "accent",
+          "Measured quantity"
+        ]
+      ]
+    },
+    {
+      "ok": true,
+      "name": "baseline-narrow-dark-spread document complete",
+      "detail": {
+        "status": 200,
+        "bytes": 5928,
+        "sha256": "ec3285044d076a25a64dec07ad176386fee6b126a800166259e1492cb7052d9c"
+      }
+    },
+    {
+      "ok": true,
+      "name": "baseline-narrow-dark-spread exact CSS complete",
+      "detail": {
+        "status": 200,
+        "bytes": 46106,
+        "sha256": "ae56bfc2ef6cb042bd4305caa0bd421d906681dbaaf209f7c3c9a46144028297"
+      }
+    },
+    {
+      "ok": true,
+      "name": "baseline-narrow-dark-spread no script restrictive CSP",
+      "detail": "default-src 'none'; style-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+    },
+    {
+      "ok": true,
+      "name": "baseline-narrow-dark-spread local clean transport",
+      "detail": {
+        "requests": [
+          {
+            "url": "http://127.0.0.1:52280/?case=spread&theme=dark",
+            "method": "GET",
+            "type": "document"
+          },
+          {
+            "url": "http://127.0.0.1:52280/app.css",
+            "method": "GET",
+            "type": "stylesheet"
+          }
+        ],
+        "responses": [
+          {
+            "url": "http://127.0.0.1:52280/?case=spread&theme=dark",
+            "status": 200,
+            "type": "document"
+          },
+          {
+            "url": "http://127.0.0.1:52280/app.css",
+            "status": 200,
+            "type": "stylesheet"
+          }
+        ],
+        "consoleErrors": []
+      }
+    },
+    {
+      "ok": true,
+      "name": "baseline-narrow-dark-spread exact table truth",
+      "detail": [
+        [
+          "Small",
+          "1",
+          "Not provided",
+          "Present",
+          "Measured quantity"
+        ],
+        [
+          "Large",
+          "1,000,000,000,000",
+          "Not provided",
+          "Present",
+          "Measured quantity"
+        ],
+        [
+          "Zero",
+          "0",
+          "Not provided",
+          "Present",
+          "Measured quantity"
+        ],
+        [
+          "Missing",
+          "Missing",
+          "Not provided",
+          "Not observed",
+          "Measured quantity"
+        ]
+      ]
+    },
+    {
+      "ok": false,
+      "name": "baseline-narrow-dark-spread spread semantic fallback",
+      "detail": {
+        "chart": 1,
+        "legend": 1,
+        "warning": false
+      }
+    },
+    {
+      "ok": true,
+      "name": "baseline-narrow-dark-spread CSV response",
+      "detail": {
+        "status": 200,
+        "sha256": "0a265ab44b319d05530864eaa59ca4944cb3fb3336d32905a71d72398a637066",
+        "bytes": 878
+      }
+    },
+    {
+      "ok": true,
+      "name": "baseline-narrow-dark-spread independent CSV rows",
+      "detail": [
+        [
+          "small",
+          "Small",
+          "1",
+          "items",
+          "present",
+          "",
+          "",
+          "",
+          "accent",
+          "Measured quantity"
+        ],
+        [
+          "large",
+          "Large",
+          "1000000000000",
+          "items",
+          "present",
+          "",
+          "",
+          "",
+          "accent",
+          "Measured quantity"
+        ],
+        [
+          "zero",
+          "Zero",
+          "0",
+          "items",
+          "present",
+          "",
+          "",
+          "",
+          "accent",
+          "Measured quantity"
+        ],
+        [
+          "missing",
+          "Missing",
+          "",
+          "items",
+          "missing",
+          "Not observed",
+          "",
+          "",
+          "accent",
+          "Measured quantity"
+        ]
+      ]
+    },
+    {
+      "ok": false,
+      "name": "baseline-narrow-dark-spread native table keyboard scroll",
+      "detail": {
+        "reached": true,
+        "before": 0,
+        "after": 0,
+        "overflow": true,
+        "outline": 2
+      }
+    },
+    {
+      "ok": true,
+      "name": "baseline-narrow-dark-readable document complete",
+      "detail": {
+        "status": 200,
+        "bytes": 5896,
+        "sha256": "3eb09a2dc2befa4059c27a229de8b925f40b8b806f55340df72323140c1c2d85"
+      }
+    },
+    {
+      "ok": true,
+      "name": "baseline-narrow-dark-readable exact CSS complete",
+      "detail": {
+        "status": 200,
+        "bytes": 46106,
+        "sha256": "ae56bfc2ef6cb042bd4305caa0bd421d906681dbaaf209f7c3c9a46144028297"
+      }
+    },
+    {
+      "ok": true,
+      "name": "baseline-narrow-dark-readable no script restrictive CSP",
+      "detail": "default-src 'none'; style-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+    },
+    {
+      "ok": true,
+      "name": "baseline-narrow-dark-readable local clean transport",
+      "detail": {
+        "requests": [
+          {
+            "url": "http://127.0.0.1:52280/?case=readable&theme=dark",
+            "method": "GET",
+            "type": "document"
+          },
+          {
+            "url": "http://127.0.0.1:52280/app.css",
+            "method": "GET",
+            "type": "stylesheet"
+          }
+        ],
+        "responses": [
+          {
+            "url": "http://127.0.0.1:52280/?case=readable&theme=dark",
+            "status": 200,
+            "type": "document"
+          },
+          {
+            "url": "http://127.0.0.1:52280/app.css",
+            "status": 200,
+            "type": "stylesheet"
+          }
+        ],
+        "consoleErrors": []
+      }
+    },
+    {
+      "ok": true,
+      "name": "baseline-narrow-dark-readable exact table truth",
+      "detail": [
+        [
+          "Small",
+          "1",
+          "Not provided",
+          "Present",
+          "Measured quantity"
+        ],
+        [
+          "Large",
+          "10",
+          "Not provided",
+          "Present",
+          "Measured quantity"
+        ],
+        [
+          "Zero",
+          "0",
+          "Not provided",
+          "Present",
+          "Measured quantity"
+        ],
+        [
+          "Missing",
+          "Missing",
+          "Not provided",
+          "Not observed",
+          "Measured quantity"
+        ]
+      ]
+    },
+    {
+      "ok": true,
+      "name": "baseline-narrow-dark-readable readable real chart",
+      "detail": {
+        "chart": 1,
+        "legend": 1
+      }
+    },
+    {
+      "ok": true,
+      "name": "baseline-narrow-dark-readable zero and missing chart semantics",
+      "detail": {
+        "chartText": "Synthetic value comparison (items)SmallSmall: 1 items1 itemsLargeLarge: 10 items10 itemsZero0 items",
+        "fills": 2
+      }
+    },
+    {
+      "ok": true,
+      "name": "baseline-narrow-dark-readable CSV response",
+      "detail": {
+        "status": 200,
+        "sha256": "93b1dd7ae7327cdefcc37024a4792d4b0b2df74b919584d5bd73e44d89cb0385",
+        "bytes": 869
+      }
+    },
+    {
+      "ok": true,
+      "name": "baseline-narrow-dark-readable independent CSV rows",
+      "detail": [
+        [
+          "small",
+          "Small",
+          "1",
+          "items",
+          "present",
+          "",
+          "",
+          "",
+          "accent",
+          "Measured quantity"
+        ],
+        [
+          "large",
+          "Large",
+          "10",
+          "items",
+          "present",
+          "",
+          "",
+          "",
+          "accent",
+          "Measured quantity"
+        ],
+        [
+          "zero",
+          "Zero",
+          "0",
+          "items",
+          "present",
+          "",
+          "",
+          "",
+          "accent",
+          "Measured quantity"
+        ],
+        [
+          "missing",
+          "Missing",
+          "",
+          "items",
+          "missing",
+          "Not observed",
+          "",
+          "",
+          "accent",
+          "Measured quantity"
+        ]
+      ]
+    },
+    {
+      "ok": false,
+      "name": "baseline-narrow-dark-readable native table keyboard scroll",
+      "detail": {
+        "reached": true,
+        "before": 0,
+        "after": 0,
+        "overflow": true,
+        "outline": 2
+      }
+    },
+    {
+      "ok": true,
+      "name": "candidate-wide-light-spread document complete",
+      "detail": {
+        "status": 200,
+        "bytes": 4105,
+        "sha256": "9902d4dcd72bcb0145af838da7841679ee82b6a1ebd4ed8bb61b93e3c450ebc8"
+      }
+    },
+    {
+      "ok": true,
+      "name": "candidate-wide-light-spread exact CSS complete",
+      "detail": {
+        "status": 200,
+        "bytes": 46106,
+        "sha256": "ae56bfc2ef6cb042bd4305caa0bd421d906681dbaaf209f7c3c9a46144028297"
+      }
+    },
+    {
+      "ok": true,
+      "name": "candidate-wide-light-spread no script restrictive CSP",
+      "detail": "default-src 'none'; style-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+    },
+    {
+      "ok": true,
+      "name": "candidate-wide-light-spread local clean transport",
+      "detail": {
+        "requests": [
+          {
+            "url": "http://127.0.0.1:52281/?case=spread&theme=light",
+            "method": "GET",
+            "type": "document"
+          },
+          {
+            "url": "http://127.0.0.1:52281/app.css",
+            "method": "GET",
+            "type": "stylesheet"
+          }
+        ],
+        "responses": [
+          {
+            "url": "http://127.0.0.1:52281/?case=spread&theme=light",
+            "status": 200,
+            "type": "document"
+          },
+          {
+            "url": "http://127.0.0.1:52281/app.css",
+            "status": 200,
+            "type": "stylesheet"
+          }
+        ],
+        "consoleErrors": []
+      }
+    },
+    {
+      "ok": true,
+      "name": "candidate-wide-light-spread exact table truth",
+      "detail": [
+        [
+          "Small",
+          "1",
+          "Not provided",
+          "Present",
+          "Measured quantity"
+        ],
+        [
+          "Large",
+          "1,000,000,000,000",
+          "Not provided",
+          "Present",
+          "Measured quantity"
+        ],
+        [
+          "Zero",
+          "0",
+          "Not provided",
+          "Present",
+          "Measured quantity"
+        ],
+        [
+          "Missing",
+          "Missing",
+          "Not provided",
+          "Not observed",
+          "Measured quantity"
+        ]
+      ]
+    },
+    {
+      "ok": true,
+      "name": "candidate-wide-light-spread spread semantic fallback",
+      "detail": {
+        "chart": 0,
+        "legend": 0,
+        "warning": true
+      }
+    },
+    {
+      "ok": true,
+      "name": "candidate-wide-light-spread CSV response",
+      "detail": {
+        "status": 200,
+        "sha256": "0a265ab44b319d05530864eaa59ca4944cb3fb3336d32905a71d72398a637066",
+        "bytes": 878
+      }
+    },
+    {
+      "ok": true,
+      "name": "candidate-wide-light-spread independent CSV rows",
+      "detail": [
+        [
+          "small",
+          "Small",
+          "1",
+          "items",
+          "present",
+          "",
+          "",
+          "",
+          "accent",
+          "Measured quantity"
+        ],
+        [
+          "large",
+          "Large",
+          "1000000000000",
+          "items",
+          "present",
+          "",
+          "",
+          "",
+          "accent",
+          "Measured quantity"
+        ],
+        [
+          "zero",
+          "Zero",
+          "0",
+          "items",
+          "present",
+          "",
+          "",
+          "",
+          "accent",
+          "Measured quantity"
+        ],
+        [
+          "missing",
+          "Missing",
+          "",
+          "items",
+          "missing",
+          "Not observed",
+          "",
+          "",
+          "accent",
+          "Measured quantity"
+        ]
+      ]
+    },
+    {
+      "ok": true,
+      "name": "candidate-wide-light-readable document complete",
+      "detail": {
+        "status": 200,
+        "bytes": 5898,
+        "sha256": "273f0d0b0a14fc4bd66c7e4e3bd2aca09b65ae5637278249962617ef05c3935c"
+      }
+    },
+    {
+      "ok": true,
+      "name": "candidate-wide-light-readable exact CSS complete",
+      "detail": {
+        "status": 200,
+        "bytes": 46106,
+        "sha256": "ae56bfc2ef6cb042bd4305caa0bd421d906681dbaaf209f7c3c9a46144028297"
+      }
+    },
+    {
+      "ok": true,
+      "name": "candidate-wide-light-readable no script restrictive CSP",
+      "detail": "default-src 'none'; style-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+    },
+    {
+      "ok": true,
+      "name": "candidate-wide-light-readable local clean transport",
+      "detail": {
+        "requests": [
+          {
+            "url": "http://127.0.0.1:52281/?case=readable&theme=light",
+            "method": "GET",
+            "type": "document"
+          },
+          {
+            "url": "http://127.0.0.1:52281/app.css",
+            "method": "GET",
+            "type": "stylesheet"
+          }
+        ],
+        "responses": [
+          {
+            "url": "http://127.0.0.1:52281/?case=readable&theme=light",
+            "status": 200,
+            "type": "document"
+          },
+          {
+            "url": "http://127.0.0.1:52281/app.css",
+            "status": 200,
+            "type": "stylesheet"
+          }
+        ],
+        "consoleErrors": []
+      }
+    },
+    {
+      "ok": true,
+      "name": "candidate-wide-light-readable exact table truth",
+      "detail": [
+        [
+          "Small",
+          "1",
+          "Not provided",
+          "Present",
+          "Measured quantity"
+        ],
+        [
+          "Large",
+          "10",
+          "Not provided",
+          "Present",
+          "Measured quantity"
+        ],
+        [
+          "Zero",
+          "0",
+          "Not provided",
+          "Present",
+          "Measured quantity"
+        ],
+        [
+          "Missing",
+          "Missing",
+          "Not provided",
+          "Not observed",
+          "Measured quantity"
+        ]
+      ]
+    },
+    {
+      "ok": true,
+      "name": "candidate-wide-light-readable readable real chart",
+      "detail": {
+        "chart": 1,
+        "legend": 1
+      }
+    },
+    {
+      "ok": true,
+      "name": "candidate-wide-light-readable zero and missing chart semantics",
+      "detail": {
+        "chartText": "Synthetic value comparison (items)SmallSmall: 1 items1 itemsLargeLarge: 10 items10 itemsZero0 items",
+        "fills": 2
+      }
+    },
+    {
+      "ok": true,
+      "name": "candidate-wide-light-readable CSV response",
+      "detail": {
+        "status": 200,
+        "sha256": "93b1dd7ae7327cdefcc37024a4792d4b0b2df74b919584d5bd73e44d89cb0385",
+        "bytes": 869
+      }
+    },
+    {
+      "ok": true,
+      "name": "candidate-wide-light-readable independent CSV rows",
+      "detail": [
+        [
+          "small",
+          "Small",
+          "1",
+          "items",
+          "present",
+          "",
+          "",
+          "",
+          "accent",
+          "Measured quantity"
+        ],
+        [
+          "large",
+          "Large",
+          "10",
+          "items",
+          "present",
+          "",
+          "",
+          "",
+          "accent",
+          "Measured quantity"
+        ],
+        [
+          "zero",
+          "Zero",
+          "0",
+          "items",
+          "present",
+          "",
+          "",
+          "",
+          "accent",
+          "Measured quantity"
+        ],
+        [
+          "missing",
+          "Missing",
+          "",
+          "items",
+          "missing",
+          "Not observed",
+          "",
+          "",
+          "accent",
+          "Measured quantity"
+        ]
+      ]
+    },
+    {
+      "ok": true,
+      "name": "candidate-narrow-dark-spread document complete",
+      "detail": {
+        "status": 200,
+        "bytes": 4103,
+        "sha256": "a790b4419f35747b6db887dd104890188ae30e0846d66c2915eafcdd5ae5d17b"
+      }
+    },
+    {
+      "ok": true,
+      "name": "candidate-narrow-dark-spread exact CSS complete",
+      "detail": {
+        "status": 200,
+        "bytes": 46106,
+        "sha256": "ae56bfc2ef6cb042bd4305caa0bd421d906681dbaaf209f7c3c9a46144028297"
+      }
+    },
+    {
+      "ok": true,
+      "name": "candidate-narrow-dark-spread no script restrictive CSP",
+      "detail": "default-src 'none'; style-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+    },
+    {
+      "ok": true,
+      "name": "candidate-narrow-dark-spread local clean transport",
+      "detail": {
+        "requests": [
+          {
+            "url": "http://127.0.0.1:52281/?case=spread&theme=dark",
+            "method": "GET",
+            "type": "document"
+          },
+          {
+            "url": "http://127.0.0.1:52281/app.css",
+            "method": "GET",
+            "type": "stylesheet"
+          }
+        ],
+        "responses": [
+          {
+            "url": "http://127.0.0.1:52281/?case=spread&theme=dark",
+            "status": 200,
+            "type": "document"
+          },
+          {
+            "url": "http://127.0.0.1:52281/app.css",
+            "status": 200,
+            "type": "stylesheet"
+          }
+        ],
+        "consoleErrors": []
+      }
+    },
+    {
+      "ok": true,
+      "name": "candidate-narrow-dark-spread exact table truth",
+      "detail": [
+        [
+          "Small",
+          "1",
+          "Not provided",
+          "Present",
+          "Measured quantity"
+        ],
+        [
+          "Large",
+          "1,000,000,000,000",
+          "Not provided",
+          "Present",
+          "Measured quantity"
+        ],
+        [
+          "Zero",
+          "0",
+          "Not provided",
+          "Present",
+          "Measured quantity"
+        ],
+        [
+          "Missing",
+          "Missing",
+          "Not provided",
+          "Not observed",
+          "Measured quantity"
+        ]
+      ]
+    },
+    {
+      "ok": true,
+      "name": "candidate-narrow-dark-spread spread semantic fallback",
+      "detail": {
+        "chart": 0,
+        "legend": 0,
+        "warning": true
+      }
+    },
+    {
+      "ok": true,
+      "name": "candidate-narrow-dark-spread CSV response",
+      "detail": {
+        "status": 200,
+        "sha256": "0a265ab44b319d05530864eaa59ca4944cb3fb3336d32905a71d72398a637066",
+        "bytes": 878
+      }
+    },
+    {
+      "ok": true,
+      "name": "candidate-narrow-dark-spread independent CSV rows",
+      "detail": [
+        [
+          "small",
+          "Small",
+          "1",
+          "items",
+          "present",
+          "",
+          "",
+          "",
+          "accent",
+          "Measured quantity"
+        ],
+        [
+          "large",
+          "Large",
+          "1000000000000",
+          "items",
+          "present",
+          "",
+          "",
+          "",
+          "accent",
+          "Measured quantity"
+        ],
+        [
+          "zero",
+          "Zero",
+          "0",
+          "items",
+          "present",
+          "",
+          "",
+          "",
+          "accent",
+          "Measured quantity"
+        ],
+        [
+          "missing",
+          "Missing",
+          "",
+          "items",
+          "missing",
+          "Not observed",
+          "",
+          "",
+          "accent",
+          "Measured quantity"
+        ]
+      ]
+    },
+    {
+      "ok": false,
+      "name": "candidate-narrow-dark-spread native table keyboard scroll",
+      "detail": {
+        "reached": true,
+        "before": 0,
+        "after": 0,
+        "overflow": true,
+        "outline": 2
+      }
+    },
+    {
+      "ok": true,
+      "name": "candidate-narrow-dark-readable document complete",
+      "detail": {
+        "status": 200,
+        "bytes": 5896,
+        "sha256": "3eb09a2dc2befa4059c27a229de8b925f40b8b806f55340df72323140c1c2d85"
+      }
+    },
+    {
+      "ok": true,
+      "name": "candidate-narrow-dark-readable exact CSS complete",
+      "detail": {
+        "status": 200,
+        "bytes": 46106,
+        "sha256": "ae56bfc2ef6cb042bd4305caa0bd421d906681dbaaf209f7c3c9a46144028297"
+      }
+    },
+    {
+      "ok": true,
+      "name": "candidate-narrow-dark-readable no script restrictive CSP",
+      "detail": "default-src 'none'; style-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+    },
+    {
+      "ok": true,
+      "name": "candidate-narrow-dark-readable local clean transport",
+      "detail": {
+        "requests": [
+          {
+            "url": "http://127.0.0.1:52281/?case=readable&theme=dark",
+            "method": "GET",
+            "type": "document"
+          },
+          {
+            "url": "http://127.0.0.1:52281/app.css",
+            "method": "GET",
+            "type": "stylesheet"
+          }
+        ],
+        "responses": [
+          {
+            "url": "http://127.0.0.1:52281/?case=readable&theme=dark",
+            "status": 200,
+            "type": "document"
+          },
+          {
+            "url": "http://127.0.0.1:52281/app.css",
+            "status": 200,
+            "type": "stylesheet"
+          }
+        ],
+        "consoleErrors": []
+      }
+    },
+    {
+      "ok": true,
+      "name": "candidate-narrow-dark-readable exact table truth",
+      "detail": [
+        [
+          "Small",
+          "1",
+          "Not provided",
+          "Present",
+          "Measured quantity"
+        ],
+        [
+          "Large",
+          "10",
+          "Not provided",
+          "Present",
+          "Measured quantity"
+        ],
+        [
+          "Zero",
+          "0",
+          "Not provided",
+          "Present",
+          "Measured quantity"
+        ],
+        [
+          "Missing",
+          "Missing",
+          "Not provided",
+          "Not observed",
+          "Measured quantity"
+        ]
+      ]
+    },
+    {
+      "ok": true,
+      "name": "candidate-narrow-dark-readable readable real chart",
+      "detail": {
+        "chart": 1,
+        "legend": 1
+      }
+    },
+    {
+      "ok": true,
+      "name": "candidate-narrow-dark-readable zero and missing chart semantics",
+      "detail": {
+        "chartText": "Synthetic value comparison (items)SmallSmall: 1 items1 itemsLargeLarge: 10 items10 itemsZero0 items",
+        "fills": 2
+      }
+    },
+    {
+      "ok": true,
+      "name": "candidate-narrow-dark-readable CSV response",
+      "detail": {
+        "status": 200,
+        "sha256": "93b1dd7ae7327cdefcc37024a4792d4b0b2df74b919584d5bd73e44d89cb0385",
+        "bytes": 869
+      }
+    },
+    {
+      "ok": true,
+      "name": "candidate-narrow-dark-readable independent CSV rows",
+      "detail": [
+        [
+          "small",
+          "Small",
+          "1",
+          "items",
+          "present",
+          "",
+          "",
+          "",
+          "accent",
+          "Measured quantity"
+        ],
+        [
+          "large",
+          "Large",
+          "10",
+          "items",
+          "present",
+          "",
+          "",
+          "",
+          "accent",
+          "Measured quantity"
+        ],
+        [
+          "zero",
+          "Zero",
+          "0",
+          "items",
+          "present",
+          "",
+          "",
+          "",
+          "accent",
+          "Measured quantity"
+        ],
+        [
+          "missing",
+          "Missing",
+          "",
+          "items",
+          "missing",
+          "Not observed",
+          "",
+          "",
+          "accent",
+          "Measured quantity"
+        ]
+      ]
+    },
+    {
+      "ok": false,
+      "name": "candidate-narrow-dark-readable native table keyboard scroll",
+      "detail": {
+        "reached": true,
+        "before": 0,
+        "after": 0,
+        "overflow": true,
+        "outline": 2
+      }
+    },
+    {
+      "ok": true,
+      "name": "spread CSV baseline candidate byte identity",
+      "detail": {
+        "baseline": "0a265ab44b319d05530864eaa59ca4944cb3fb3336d32905a71d72398a637066",
+        "candidate": "0a265ab44b319d05530864eaa59ca4944cb3fb3336d32905a71d72398a637066"
+      }
+    },
+    {
+      "ok": true,
+      "name": "readable CSV baseline candidate byte identity",
+      "detail": {
+        "baseline": "93b1dd7ae7327cdefcc37024a4792d4b0b2df74b919584d5bd73e44d89cb0385",
+        "candidate": "93b1dd7ae7327cdefcc37024a4792d4b0b2df74b919584d5bd73e44d89cb0385"
+      }
+    }
+  ],
+  "failures": [
+    {
+      "ok": false,
+      "name": "baseline-wide-light-spread spread semantic fallback",
+      "detail": {
+        "chart": 1,
+        "legend": 1,
+        "warning": false
+      }
+    },
+    {
+      "ok": false,
+      "name": "baseline-narrow-dark-spread spread semantic fallback",
+      "detail": {
+        "chart": 1,
+        "legend": 1,
+        "warning": false
+      }
+    },
+    {
+      "ok": false,
+      "name": "baseline-narrow-dark-spread native table keyboard scroll",
+      "detail": {
+        "reached": true,
+        "before": 0,
+        "after": 0,
+        "overflow": true,
+        "outline": 2
+      }
+    },
+    {
+      "ok": false,
+      "name": "baseline-narrow-dark-readable native table keyboard scroll",
+      "detail": {
+        "reached": true,
+        "before": 0,
+        "after": 0,
+        "overflow": true,
+        "outline": 2
+      }
+    },
+    {
+      "ok": false,
+      "name": "candidate-narrow-dark-spread native table keyboard scroll",
+      "detail": {
+        "reached": true,
+        "before": 0,
+        "after": 0,
+        "overflow": true,
+        "outline": 2
+      }
+    },
+    {
+      "ok": false,
+      "name": "candidate-narrow-dark-readable native table keyboard scroll",
+      "detail": {
+        "reached": true,
+        "before": 0,
+        "after": 0,
+        "overflow": true,
+        "outline": 2
+      }
+    }
+  ],
+  "cells": [
+    {
+      "id": "baseline-wide-light-spread",
+      "documentSha256": "26667848101ac71073b78cc79d8a31be0143a158c5d8354041dc028e7fde338c",
+      "cssSha256": "ae56bfc2ef6cb042bd4305caa0bd421d906681dbaaf209f7c3c9a46144028297",
+      "csvSha256": "0a265ab44b319d05530864eaa59ca4944cb3fb3336d32905a71d72398a637066",
+      "requests": [
+        {
+          "url": "http://127.0.0.1:52280/?case=spread&theme=light",
+          "method": "GET",
+          "type": "document"
+        },
+        {
+          "url": "http://127.0.0.1:52280/app.css",
+          "method": "GET",
+          "type": "stylesheet"
+        }
+      ],
+      "responses": [
+        {
+          "url": "http://127.0.0.1:52280/?case=spread&theme=light",
+          "status": 200,
+          "type": "document"
+        },
+        {
+          "url": "http://127.0.0.1:52280/app.css",
+          "status": 200,
+          "type": "stylesheet"
+        }
+      ]
+    },
+    {
+      "id": "baseline-wide-light-readable",
+      "documentSha256": "273f0d0b0a14fc4bd66c7e4e3bd2aca09b65ae5637278249962617ef05c3935c",
+      "cssSha256": "ae56bfc2ef6cb042bd4305caa0bd421d906681dbaaf209f7c3c9a46144028297",
+      "csvSha256": "93b1dd7ae7327cdefcc37024a4792d4b0b2df74b919584d5bd73e44d89cb0385",
+      "requests": [
+        {
+          "url": "http://127.0.0.1:52280/?case=readable&theme=light",
+          "method": "GET",
+          "type": "document"
+        },
+        {
+          "url": "http://127.0.0.1:52280/app.css",
+          "method": "GET",
+          "type": "stylesheet"
+        }
+      ],
+      "responses": [
+        {
+          "url": "http://127.0.0.1:52280/?case=readable&theme=light",
+          "status": 200,
+          "type": "document"
+        },
+        {
+          "url": "http://127.0.0.1:52280/app.css",
+          "status": 200,
+          "type": "stylesheet"
+        }
+      ]
+    },
+    {
+      "id": "baseline-narrow-dark-spread",
+      "documentSha256": "ec3285044d076a25a64dec07ad176386fee6b126a800166259e1492cb7052d9c",
+      "cssSha256": "ae56bfc2ef6cb042bd4305caa0bd421d906681dbaaf209f7c3c9a46144028297",
+      "csvSha256": "0a265ab44b319d05530864eaa59ca4944cb3fb3336d32905a71d72398a637066",
+      "requests": [
+        {
+          "url": "http://127.0.0.1:52280/?case=spread&theme=dark",
+          "method": "GET",
+          "type": "document"
+        },
+        {
+          "url": "http://127.0.0.1:52280/app.css",
+          "method": "GET",
+          "type": "stylesheet"
+        }
+      ],
+      "responses": [
+        {
+          "url": "http://127.0.0.1:52280/?case=spread&theme=dark",
+          "status": 200,
+          "type": "document"
+        },
+        {
+          "url": "http://127.0.0.1:52280/app.css",
+          "status": 200,
+          "type": "stylesheet"
+        }
+      ]
+    },
+    {
+      "id": "baseline-narrow-dark-readable",
+      "documentSha256": "3eb09a2dc2befa4059c27a229de8b925f40b8b806f55340df72323140c1c2d85",
+      "cssSha256": "ae56bfc2ef6cb042bd4305caa0bd421d906681dbaaf209f7c3c9a46144028297",
+      "csvSha256": "93b1dd7ae7327cdefcc37024a4792d4b0b2df74b919584d5bd73e44d89cb0385",
+      "requests": [
+        {
+          "url": "http://127.0.0.1:52280/?case=readable&theme=dark",
+          "method": "GET",
+          "type": "document"
+        },
+        {
+          "url": "http://127.0.0.1:52280/app.css",
+          "method": "GET",
+          "type": "stylesheet"
+        }
+      ],
+      "responses": [
+        {
+          "url": "http://127.0.0.1:52280/?case=readable&theme=dark",
+          "status": 200,
+          "type": "document"
+        },
+        {
+          "url": "http://127.0.0.1:52280/app.css",
+          "status": 200,
+          "type": "stylesheet"
+        }
+      ]
+    },
+    {
+      "id": "candidate-wide-light-spread",
+      "documentSha256": "9902d4dcd72bcb0145af838da7841679ee82b6a1ebd4ed8bb61b93e3c450ebc8",
+      "cssSha256": "ae56bfc2ef6cb042bd4305caa0bd421d906681dbaaf209f7c3c9a46144028297",
+      "csvSha256": "0a265ab44b319d05530864eaa59ca4944cb3fb3336d32905a71d72398a637066",
+      "requests": [
+        {
+          "url": "http://127.0.0.1:52281/?case=spread&theme=light",
+          "method": "GET",
+          "type": "document"
+        },
+        {
+          "url": "http://127.0.0.1:52281/app.css",
+          "method": "GET",
+          "type": "stylesheet"
+        }
+      ],
+      "responses": [
+        {
+          "url": "http://127.0.0.1:52281/?case=spread&theme=light",
+          "status": 200,
+          "type": "document"
+        },
+        {
+          "url": "http://127.0.0.1:52281/app.css",
+          "status": 200,
+          "type": "stylesheet"
+        }
+      ]
+    },
+    {
+      "id": "candidate-wide-light-readable",
+      "documentSha256": "273f0d0b0a14fc4bd66c7e4e3bd2aca09b65ae5637278249962617ef05c3935c",
+      "cssSha256": "ae56bfc2ef6cb042bd4305caa0bd421d906681dbaaf209f7c3c9a46144028297",
+      "csvSha256": "93b1dd7ae7327cdefcc37024a4792d4b0b2df74b919584d5bd73e44d89cb0385",
+      "requests": [
+        {
+          "url": "http://127.0.0.1:52281/?case=readable&theme=light",
+          "method": "GET",
+          "type": "document"
+        },
+        {
+          "url": "http://127.0.0.1:52281/app.css",
+          "method": "GET",
+          "type": "stylesheet"
+        }
+      ],
+      "responses": [
+        {
+          "url": "http://127.0.0.1:52281/?case=readable&theme=light",
+          "status": 200,
+          "type": "document"
+        },
+        {
+          "url": "http://127.0.0.1:52281/app.css",
+          "status": 200,
+          "type": "stylesheet"
+        }
+      ]
+    },
+    {
+      "id": "candidate-narrow-dark-spread",
+      "documentSha256": "a790b4419f35747b6db887dd104890188ae30e0846d66c2915eafcdd5ae5d17b",
+      "cssSha256": "ae56bfc2ef6cb042bd4305caa0bd421d906681dbaaf209f7c3c9a46144028297",
+      "csvSha256": "0a265ab44b319d05530864eaa59ca4944cb3fb3336d32905a71d72398a637066",
+      "requests": [
+        {
+          "url": "http://127.0.0.1:52281/?case=spread&theme=dark",
+          "method": "GET",
+          "type": "document"
+        },
+        {
+          "url": "http://127.0.0.1:52281/app.css",
+          "method": "GET",
+          "type": "stylesheet"
+        }
+      ],
+      "responses": [
+        {
+          "url": "http://127.0.0.1:52281/?case=spread&theme=dark",
+          "status": 200,
+          "type": "document"
+        },
+        {
+          "url": "http://127.0.0.1:52281/app.css",
+          "status": 200,
+          "type": "stylesheet"
+        }
+      ]
+    },
+    {
+      "id": "candidate-narrow-dark-readable",
+      "documentSha256": "3eb09a2dc2befa4059c27a229de8b925f40b8b806f55340df72323140c1c2d85",
+      "cssSha256": "ae56bfc2ef6cb042bd4305caa0bd421d906681dbaaf209f7c3c9a46144028297",
+      "csvSha256": "93b1dd7ae7327cdefcc37024a4792d4b0b2df74b919584d5bd73e44d89cb0385",
+      "requests": [
+        {
+          "url": "http://127.0.0.1:52281/?case=readable&theme=dark",
+          "method": "GET",
+          "type": "document"
+        },
+        {
+          "url": "http://127.0.0.1:52281/app.css",
+          "method": "GET",
+          "type": "stylesheet"
+        }
+      ],
+      "responses": [
+        {
+          "url": "http://127.0.0.1:52281/?case=readable&theme=dark",
+          "status": 200,
+          "type": "document"
+        },
+        {
+          "url": "http://127.0.0.1:52281/app.css",
+          "status": 200,
+          "type": "stylesheet"
+        }
+      ]
+    }
+  ],
+  "cleanup": {
+    "candidate": {
+      "termination": {
+        "started_at": "2026-09-23T01:22:56.469Z",
+        "exit_observed": true,
+        "close_observed": true,
+        "capture_complete": true,
+        "forced": false,
+        "unresolved_child": null,
+        "ok": true,
+        "completed_at": "2026-09-23T01:22:56.472Z"
+      },
+      "lifecycle": {
+        "name": "candidate",
+        "events": [
+          {
+            "kind": "exit",
+            "at": "2026-09-23T01:22:56.471Z",
+            "code": null,
+            "signal": "SIGTERM"
+          },
+          {
+            "kind": "close",
+            "at": "2026-09-23T01:22:56.472Z",
+            "code": null,
+            "signal": "SIGTERM"
+          }
+        ],
+        "signals": [
+          {
+            "signal": "SIGTERM",
+            "attempted_at": "2026-09-23T01:22:56.469Z",
+            "returned": true,
+            "exception": null,
+            "completed_at": "2026-09-23T01:22:56.469Z"
+          }
+        ],
+        "waits": [
+          {
+            "name": "grace-exit",
+            "started_at": "2026-09-23T01:22:56.469Z",
+            "timeout_ms": 2000,
+            "outcome": "observed",
+            "completed_at": "2026-09-23T01:22:56.471Z",
+            "timer_cleared": true
+          },
+          {
+            "name": "pipe-drain-and-close",
+            "started_at": "2026-09-23T01:22:56.471Z",
+            "timeout_ms": 2000,
+            "outcome": "observed",
+            "completed_at": "2026-09-23T01:22:56.472Z",
+            "timer_cleared": true
+          }
+        ],
+        "exit": {
+          "kind": "exit",
+          "at": "2026-09-23T01:22:56.471Z",
+          "code": null,
+          "signal": "SIGTERM"
+        },
+        "error": null,
+        "close": {
+          "kind": "close",
+          "at": "2026-09-23T01:22:56.472Z",
+          "code": null,
+          "signal": "SIGTERM"
+        },
+        "unresolved_child": null,
+        "pipes": {
+          "stdout": {
+            "present": true,
+            "end": {
+              "at": "2026-09-23T01:22:56.471Z"
+            },
+            "close": {
+              "at": "2026-09-23T01:22:56.472Z"
+            },
+            "error": null,
+            "destroyed_by_owner": false,
+            "destroy_error": null
+          },
+          "stderr": {
+            "present": true,
+            "end": {
+              "at": "2026-09-23T01:22:56.470Z"
+            },
+            "close": {
+              "at": "2026-09-23T01:22:56.472Z"
+            },
+            "error": null,
+            "destroyed_by_owner": false,
+            "destroy_error": null
+          }
+        },
+        "tracked_at": "2026-09-23T01:22:54.444Z",
+        "termination": {
+          "started_at": "2026-09-23T01:22:56.469Z",
+          "exit_observed": true,
+          "close_observed": true,
+          "capture_complete": true,
+          "forced": false,
+          "unresolved_child": null,
+          "ok": true,
+          "completed_at": "2026-09-23T01:22:56.472Z"
+        }
+      },
+      "stdout": "READY http://127.0.0.1:52281\n",
+      "stderr": "",
+      "refusedAfter": true
+    },
+    "baseline": {
+      "termination": {
+        "started_at": "2026-09-23T01:22:56.478Z",
+        "exit_observed": true,
+        "close_observed": true,
+        "capture_complete": true,
+        "forced": false,
+        "unresolved_child": null,
+        "ok": true,
+        "completed_at": "2026-09-23T01:22:56.479Z"
+      },
+      "lifecycle": {
+        "name": "baseline",
+        "events": [
+          {
+            "kind": "exit",
+            "at": "2026-09-23T01:22:56.479Z",
+            "code": null,
+            "signal": "SIGTERM"
+          },
+          {
+            "kind": "close",
+            "at": "2026-09-23T01:22:56.479Z",
+            "code": null,
+            "signal": "SIGTERM"
+          }
+        ],
+        "signals": [
+          {
+            "signal": "SIGTERM",
+            "attempted_at": "2026-09-23T01:22:56.478Z",
+            "returned": true,
+            "exception": null,
+            "completed_at": "2026-09-23T01:22:56.478Z"
+          }
+        ],
+        "waits": [
+          {
+            "name": "grace-exit",
+            "started_at": "2026-09-23T01:22:56.478Z",
+            "timeout_ms": 2000,
+            "outcome": "observed",
+            "completed_at": "2026-09-23T01:22:56.479Z",
+            "timer_cleared": true
+          },
+          {
+            "name": "pipe-drain-and-close",
+            "started_at": "2026-09-23T01:22:56.479Z",
+            "timeout_ms": 2000,
+            "outcome": "already-observed",
+            "completed_at": "2026-09-23T01:22:56.479Z",
+            "timer_cleared": true
+          }
+        ],
+        "exit": {
+          "kind": "exit",
+          "at": "2026-09-23T01:22:56.479Z",
+          "code": null,
+          "signal": "SIGTERM"
+        },
+        "error": null,
+        "close": {
+          "kind": "close",
+          "at": "2026-09-23T01:22:56.479Z",
+          "code": null,
+          "signal": "SIGTERM"
+        },
+        "unresolved_child": null,
+        "pipes": {
+          "stdout": {
+            "present": true,
+            "end": {
+              "at": "2026-09-23T01:22:56.478Z"
+            },
+            "close": {
+              "at": "2026-09-23T01:22:56.479Z"
+            },
+            "error": null,
+            "destroyed_by_owner": false,
+            "destroy_error": null
+          },
+          "stderr": {
+            "present": true,
+            "end": {
+              "at": "2026-09-23T01:22:56.478Z"
+            },
+            "close": {
+              "at": "2026-09-23T01:22:56.479Z"
+            },
+            "error": null,
+            "destroyed_by_owner": false,
+            "destroy_error": null
+          }
+        },
+        "tracked_at": "2026-09-23T01:22:54.437Z",
+        "termination": {
+          "started_at": "2026-09-23T01:22:56.478Z",
+          "exit_observed": true,
+          "close_observed": true,
+          "capture_complete": true,
+          "forced": false,
+          "unresolved_child": null,
+          "ok": true,
+          "completed_at": "2026-09-23T01:22:56.479Z"
+        }
+      },
+      "stdout": "READY http://127.0.0.1:52280\n",
+      "stderr": "",
+      "refusedAfter": true
+    },
+    "chrome": {
+      "termination": {
+        "started_at": "2026-09-23T01:22:56.615Z",
+        "exit_observed": true,
+        "close_observed": true,
+        "capture_complete": true,
+        "forced": false,
+        "unresolved_child": null,
+        "ok": true,
+        "completed_at": "2026-09-23T01:22:56.615Z"
+      },
+      "lifecycle": {
+        "name": "chrome",
+        "events": [
+          {
+            "kind": "exit",
+            "at": "2026-09-23T01:22:56.516Z",
+            "code": 0,
+            "signal": null
+          },
+          {
+            "kind": "close",
+            "at": "2026-09-23T01:22:56.609Z",
+            "code": 0,
+            "signal": null
+          }
+        ],
+        "signals": [],
+        "waits": [
+          {
+            "name": "pipe-drain-and-close",
+            "started_at": "2026-09-23T01:22:56.615Z",
+            "timeout_ms": 2000,
+            "outcome": "already-observed",
+            "completed_at": "2026-09-23T01:22:56.615Z",
+            "timer_cleared": true
+          }
+        ],
+        "exit": {
+          "kind": "exit",
+          "at": "2026-09-23T01:22:56.516Z",
+          "code": 0,
+          "signal": null
+        },
+        "error": null,
+        "close": {
+          "kind": "close",
+          "at": "2026-09-23T01:22:56.609Z",
+          "code": 0,
+          "signal": null
+        },
+        "unresolved_child": null,
+        "pipes": {
+          "stdout": {
+            "present": true,
+            "end": {
+              "at": "2026-09-23T01:22:56.516Z"
+            },
+            "close": {
+              "at": "2026-09-23T01:22:56.516Z"
+            },
+            "error": null,
+            "destroyed_by_owner": false,
+            "destroy_error": null
+          },
+          "stderr": {
+            "present": true,
+            "end": {
+              "at": "2026-09-23T01:22:56.609Z"
+            },
+            "close": {
+              "at": "2026-09-23T01:22:56.609Z"
+            },
+            "error": null,
+            "destroyed_by_owner": false,
+            "destroy_error": null
+          }
+        },
+        "tracked_at": "2026-09-23T01:22:54.413Z",
+        "termination": {
+          "started_at": "2026-09-23T01:22:56.615Z",
+          "exit_observed": true,
+          "close_observed": true,
+          "capture_complete": true,
+          "forced": false,
+          "unresolved_child": null,
+          "ok": true,
+          "completed_at": "2026-09-23T01:22:56.615Z"
+        }
+      }
+    }
+  },
+  "timedOut": false,
+  "playwrightVersion": "1.62.1",
+  "chromeVersion": "153.0.8010.53",
+  "endedAt": "2026-09-23T01:22:56.615Z",
+  "runError": null,
+  "summary": {
+    "checks": 74,
+    "failures": 6,
+    "expectedBaselineSemanticFailures": 2,
+    "unexpectedFailures": 4,
+    "cells": 8
+  },
+  "pass": false
+}

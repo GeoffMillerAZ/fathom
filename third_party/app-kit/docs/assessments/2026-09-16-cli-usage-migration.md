@@ -25,7 +25,7 @@ an app-kit release, full Platform validation or operational-command execution.
 
 ## Red, green and refusal evidence
 
-Private root: `/Volumes/m2ext/appkit-cli-migration.PTQu01`.
+Private root: `/Volumes/m2ext/appkit-evidence/appkit-cli-migration.PTQu01`.
 Exact executed preparation/delivery/test runners, selected source/tests, original
 consumer entrypoints/tests/modfiles and logs are retained. This is not a complete
 archived dependency closure for the consumers. Their existing local app-kit replaces

@@ -92,7 +92,7 @@ viewport captures were inspected: the single fallback is visible without fixed-n
 occlusion. This is a separate local-build repair, not a replacement of the frozen V7
 candidate or its historical screenshots and not a new cold-build/adoption proof.
 
-Private repair root: `/Volumes/m2ext/appkit-appearance-status.DPvXp3F5/`.
+Private repair root: `/Volumes/m2ext/appkit-evidence/appkit-appearance-status.DPvXp3F5/`.
 It retains the Gallery binary, six tested source/config files, old-source overlay, source
 manifest, browser report and14 PNGs. Source/harness hashes match before/after browser use.
 Independent review rehashed every selected source, binary, report and image. The owned
@@ -112,7 +112,7 @@ copy-only change. INC-44 records the defect and its narrow durable checks.
 
 ## Exact retained evidence
 
-Private root: `/Volumes/m2ext/appkit-exact-browser.zRMlUOGI/replay-v7/`.
+Private root: `/Volumes/m2ext/appkit-evidence/appkit-exact-browser.zRMlUOGI/replay-v7/`.
 Candidate: `v0.0.0-rehearsal.h6b98f004a2a97fa0d7ea3b19d0e29ec2aba45b2d757a77e3ca8a3a108c0af705`.
 
 | Artifact | SHA-256 |

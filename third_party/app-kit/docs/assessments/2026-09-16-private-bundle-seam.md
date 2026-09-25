@@ -72,7 +72,7 @@ has its own retained current source/build identity. Later UI work is not in thos
 
 ## Retained evidence
 
-Private root: `/Volumes/m2ext/appkit-bundle-seam.tHv3fmlT/`.
+Private root: `/Volumes/m2ext/appkit-evidence/appkit-bundle-seam.tHv3fmlT/`.
 `red/` contains the executed pre-repair sources/oracle and three demonstrated failures;
 `final/` contains the selected post-repair snapshots, logs and helper binaries.
 `compiled-rehearsal/` is the earlier run; `compiled-replay/` is the reviewed replay.

@@ -17,7 +17,8 @@
 // # Row actions / selection
 //
 // An optional RowAction slot (templ.Component) is rendered in a trailing cell
-// for every row. Pass nil to omit the column.
+// for every row. Without a slot, managed row links infer that column; RowHrefs
+// can explicitly reserve it for empty or currently unlinked results.
 //
 // # Interaction contract (Datastar / hypermedia)
 //
@@ -77,9 +78,12 @@ type Row struct {
 	// escaped Cells[i] string — so a table can mix plain and rich cells. Callers
 	// own the safety of any component they pass.
 	HTMLCells []templ.Component
-	// Href is an optional URL. When non-empty the row renders with a trailing
-	// "Open" action cell containing an anchor link to this URL. The cell is only
-	// emitted when Href is set; it does not affect the column header count.
+	// Href is an optional relative web reference or absolute HTTP(S) URL. A safe
+	// shape renders a native Open link; unsafe nonempty input renders an inert
+	// Open unavailable label. Apps still own origins, routing and authorization.
+	// Any nonempty Href infers a shared trailing action column. Unlinked rows
+	// reserve an empty cell in that column without inventing an action. Enabled
+	// links need rebuilt scanned CSS for minimum target size and focus treatment.
 	Href string
 	// Activate marks the row as a keyboard-activatable target: it renders with
 	// role="button", tabindex="0", and a pointer cursor + focus ring, for apps
@@ -150,17 +154,33 @@ type TableParams struct {
 	// Selectable adds a leading checkbox column when true.
 	Selectable bool
 	// RowAction is an optional trailing-cell slot rendered for every row.
-	// Nil omits the action column entirely.
+	// It takes precedence over Href. Nil does not suppress a column required by
+	// actual row links or explicitly reserved by RowHrefs.
 	RowAction templ.Component
 	// Caption is an optional accessible <caption> element.
 	Caption string
-	// RowHrefs signals that at least one Row has an Href set. When true a
-	// trailing "Open" column header is emitted. The per-row href cell is always
-	// rendered when Row.Href is non-empty; this flag only controls the header.
+	// RowHrefs explicitly reserves a trailing action column, even when Rows is
+	// empty or all Hrefs are empty. Nonempty Hrefs or a RowAction slot infer the
+	// same column without this flag. Every body row reserves the matching cell.
 	RowHrefs bool
 	// Footer is an optional set of summary rows rendered in <tfoot> (subtotals,
 	// totals). Empty omits the footer entirely.
 	Footer []FooterRow
+}
+
+// withActionColumn derives the shared shape once, in linear time and constant
+// space. TableParams is copied; caller parameters, rows and slots are unchanged.
+func withActionColumn(p TableParams) TableParams {
+	if p.RowHrefs || p.RowAction != nil {
+		return p
+	}
+	for _, row := range p.Rows {
+		if row.Href != "" {
+			p.RowHrefs = true
+			break
+		}
+	}
+	return p
 }
 
 // thClass returns the Tailwind class string for a <th> element.

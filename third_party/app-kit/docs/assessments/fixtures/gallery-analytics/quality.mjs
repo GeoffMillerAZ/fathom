@@ -328,6 +328,7 @@ async function runComparisonState(item, theme) {
     ({ context, page, pending } = await makePage(1440, theme));
     await page.goto(origin.origin + '/analytics?theme=' + theme, { waitUntil: 'load' });
     await skip(page);
+    await tabTo(page, '#analytics-selection > summary'); await key(page, 'Enter');
     for (const [field, letters, want] of [['period', 's', comparisonSelection.period], ['compare', 'p', comparisonSelection.compare], ['category', 'api', comparisonSelection.category]]) {
       await tabTo(page, `select[name=${field}]`);
       for (const letter of letters) await key(page, letter);
@@ -414,6 +415,7 @@ try {
       await inspect(page, name + '-overview');
       await screenshot(page, name + '-overview');
       await skip(page);
+      await tabTo(page, '#analytics-selection > summary'); await key(page, 'Enter');
       for (const [field, letters, want] of [['period','a','2026-08'],['compare','n','none'],['category','api','api']]) {
         await tabTo(page, 'select[name=' + field + ']');
         for (const letter of letters) await key(page, letter);

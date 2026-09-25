@@ -54,7 +54,7 @@ The CLI requires `--scoped`; it always reports `complete:false` for this slice.
 
 ## Retention and limits
 
-Private root: `/Volumes/m2ext/appkit-theme-browser-cost.DBCu2J80/`.
+Private root: `/Volumes/m2ext/appkit-evidence/appkit-theme-browser-cost.DBCu2J80/`.
 `acquisition-02/` retains the exact runner/config/contract/source/tool snapshots,
 launch command, raw logs, response bodies,120 ZIPs and cleanup evidence.
 `verify-nhehzI/` retains the reviewed checker/tests and their execution against those
@@ -81,7 +81,7 @@ No runtime optimization was justified by these ordinary-workload results.
 - `acquisition-01/` retains120 failures before preview: the harness selected both
   `meta[name=viewport]` and the form control. The repair selects `select[name=viewport]`;
   no application code, expected task, budget or original receipt changed.
-- The first eight-test checker at `/Volumes/m2ext/appkit-browser-check.refYzQ/` was
+- The first eight-test checker at `/Volumes/m2ext/appkit-evidence/appkit-browser-check.refYzQ/` was
   rejected in review: wrong receipt shape, incomplete matrix acceptance and shared
   mutable test fixtures. It is not acceptance evidence. The replacement's initial34
   tests remain in `checker-1gxjyN/`; the independently reviewed40-case revision adds

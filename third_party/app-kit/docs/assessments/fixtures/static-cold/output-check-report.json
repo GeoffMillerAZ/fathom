@@ -1,0 +1,144 @@
+{
+  "schema_version": "static-cold-output-check-v1",
+  "pass": true,
+  "checks": [
+    {
+      "root": "/Volumes/m2ext/appkit-evidence/appkit-static-replay.ud7EOtjr/cold-1/site",
+      "manifestPass": true,
+      "semanticChecksPass": true,
+      "poisonControls": 3
+    },
+    {
+      "root": "/Volumes/m2ext/appkit-evidence/appkit-static-replay.ud7EOtjr/cold-2/site",
+      "manifestPass": true,
+      "semanticChecksPass": true,
+      "poisonControls": 3
+    }
+  ],
+  "files": {
+    "404-dark.html": {
+      "kind": "file",
+      "bytes": 2412,
+      "sha256": "837d14e19423a023a0816799f99607227e555926f1281ab723f72ec690cfc5e4"
+    },
+    "404-light.html": {
+      "kind": "file",
+      "bytes": 2415,
+      "sha256": "9d0ba009694eddd6c46f83de304d95a7dbeb8c13e1267ed00a2af8baec53f0b8"
+    },
+    "404.html": {
+      "kind": "file",
+      "bytes": 2384,
+      "sha256": "bd74366e5bca491dd51817a622893c82a0009f1137f247344d16faa2b12d2c99"
+    },
+    "app.css": {
+      "kind": "file",
+      "bytes": 18209,
+      "sha256": "bf0b8e787aaecf1e4fdafe4a7e3db724b3ea8a787fa5e03f7959aabfc5ff22ce"
+    },
+    "index-dark.html": {
+      "kind": "file",
+      "bytes": 7743,
+      "sha256": "6f1eda99c53506657e875a55edd03e1d0e90cbce5464e1a7ef76f12a8704ff7d"
+    },
+    "index-light.html": {
+      "kind": "file",
+      "bytes": 7750,
+      "sha256": "03751f334a1964544c88986be52ba8b4bb19b9f985dba4146fe4ee45381e4ebc"
+    },
+    "index.html": {
+      "kind": "file",
+      "bytes": 7695,
+      "sha256": "39cde080f33fdbc1291a937ed8d366143399ad918a6fbbbd335883285fc26946"
+    },
+    "manifest.json": {
+      "kind": "file",
+      "bytes": 1602,
+      "sha256": "317301ea8b114aa59c4182611c3fee3c5a662ee1731782a4591fce4053f2352c"
+    },
+    "profile-dark.html": {
+      "kind": "file",
+      "bytes": 3896,
+      "sha256": "fe43603bf038f2b213eb92b9f61c017276cea70f3e57f6a35b8c32126d555594"
+    },
+    "profile-light.html": {
+      "kind": "file",
+      "bytes": 3899,
+      "sha256": "9682d8e387df565d3659f1449501cbf2612c9e3f3afdf44a0134ed290a88b153"
+    },
+    "profile.html": {
+      "kind": "file",
+      "bytes": 3868,
+      "sha256": "4b80b4b4cace3e70b2ca886bcfe899f7d6a6226ed7292e89c0e75139b2932298"
+    }
+  },
+  "historical": [
+    {
+      "path": "404-dark.html",
+      "current": "837d14e19423a023a0816799f99607227e555926f1281ab723f72ec690cfc5e4",
+      "historical": "837d14e19423a023a0816799f99607227e555926f1281ab723f72ec690cfc5e4",
+      "equal": true
+    },
+    {
+      "path": "404-light.html",
+      "current": "9d0ba009694eddd6c46f83de304d95a7dbeb8c13e1267ed00a2af8baec53f0b8",
+      "historical": "9d0ba009694eddd6c46f83de304d95a7dbeb8c13e1267ed00a2af8baec53f0b8",
+      "equal": true
+    },
+    {
+      "path": "404.html",
+      "current": "bd74366e5bca491dd51817a622893c82a0009f1137f247344d16faa2b12d2c99",
+      "historical": "bd74366e5bca491dd51817a622893c82a0009f1137f247344d16faa2b12d2c99",
+      "equal": true
+    },
+    {
+      "path": "app.css",
+      "current": "bf0b8e787aaecf1e4fdafe4a7e3db724b3ea8a787fa5e03f7959aabfc5ff22ce",
+      "historical": "bf0b8e787aaecf1e4fdafe4a7e3db724b3ea8a787fa5e03f7959aabfc5ff22ce",
+      "equal": true
+    },
+    {
+      "path": "index-dark.html",
+      "current": "6f1eda99c53506657e875a55edd03e1d0e90cbce5464e1a7ef76f12a8704ff7d",
+      "historical": "6f1eda99c53506657e875a55edd03e1d0e90cbce5464e1a7ef76f12a8704ff7d",
+      "equal": true
+    },
+    {
+      "path": "index-light.html",
+      "current": "03751f334a1964544c88986be52ba8b4bb19b9f985dba4146fe4ee45381e4ebc",
+      "historical": "03751f334a1964544c88986be52ba8b4bb19b9f985dba4146fe4ee45381e4ebc",
+      "equal": true
+    },
+    {
+      "path": "index.html",
+      "current": "39cde080f33fdbc1291a937ed8d366143399ad918a6fbbbd335883285fc26946",
+      "historical": "39cde080f33fdbc1291a937ed8d366143399ad918a6fbbbd335883285fc26946",
+      "equal": true
+    },
+    {
+      "path": "manifest.json",
+      "current": "317301ea8b114aa59c4182611c3fee3c5a662ee1731782a4591fce4053f2352c",
+      "historical": "317301ea8b114aa59c4182611c3fee3c5a662ee1731782a4591fce4053f2352c",
+      "equal": true
+    },
+    {
+      "path": "profile-dark.html",
+      "current": "fe43603bf038f2b213eb92b9f61c017276cea70f3e57f6a35b8c32126d555594",
+      "historical": "fe43603bf038f2b213eb92b9f61c017276cea70f3e57f6a35b8c32126d555594",
+      "equal": true
+    },
+    {
+      "path": "profile-light.html",
+      "current": "9682d8e387df565d3659f1449501cbf2612c9e3f3afdf44a0134ed290a88b153",
+      "historical": "9682d8e387df565d3659f1449501cbf2612c9e3f3afdf44a0134ed290a88b153",
+      "equal": true
+    },
+    {
+      "path": "profile.html",
+      "current": "4b80b4b4cace3e70b2ca886bcfe899f7d6a6226ed7292e89c0e75139b2932298",
+      "historical": "4b80b4b4cace3e70b2ca886bcfe899f7d6a6226ed7292e89c0e75139b2932298",
+      "equal": true
+    }
+  ],
+  "claim": "exact twin output/manifest/content checks; historical identity comparison, not a fresh browser or host result"
+}

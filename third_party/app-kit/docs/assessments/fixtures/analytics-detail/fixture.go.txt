@@ -1,0 +1,52 @@
+// Assessment-only synthetic response collector. Never starts a host or reads app data.
+package main
+
+import (
+ "encoding/json"
+ "fmt"
+ "net/http/httptest"
+ "os"
+ "strings"
+ "time"
+
+ "github.com/geoffmilleraz/app-kit/appkit/ui/analytics"
+ "github.com/geoffmilleraz/app-kit/appkit/ui/viz"
+ "github.com/geoffmilleraz/app-kit/appkit/ui/vizframe"
+ "github.com/geoffmilleraz/app-kit/apps/gallery"
+)
+
+type response struct { Status int; Headers map[string][]string; Body string }
+func pointer(v float64) *float64 { return &v }
+func main() {
+ out := map[string]response{}
+ h := gallery.New()
+ for _, c := range []struct{theme, period, category, state string}{
+  {"light", "2026-09", "all", "complete"}, {"dark", "2026-08", "api", "missing"},
+ } {
+  q := "?category="+c.category+"&compare=none&period="+c.period+"&state="+c.state+"&theme="+c.theme
+  for _, path := range []string{"/analytics/recipe", "/analytics/gateway-api", "/analytics/recipe/export.csv"} {
+   r := httptest.NewRecorder(); h.ServeHTTP(r, httptest.NewRequest("GET", "http://127.0.0.1"+path+q, nil))
+   if r.Code != 200 { panic(fmt.Sprintf("%s %d %s", path+q, r.Code, r.Body.String())) }
+   out[path+q] = response{r.Code, r.Header(), r.Body.String()}
+  }
+ }
+ r := httptest.NewRecorder(); h.ServeHTTP(r, httptest.NewRequest("GET", "http://127.0.0.1/static/app.css", nil))
+ if r.Code != 200 { panic("CSS unavailable") }; out["/static/app.css"] = response{r.Code, r.Header(), r.Body.String()}
+ now := time.Date(2026, 9, 23, 0, 0, 0, 0, time.UTC)
+ for _, theme := range []string{"light", "dark"} {
+  d := analytics.Dataset{
+   Contract:analytics.Contract{ID:"linked-edge",Title:"App-owned row destinations",Unit:"USD",Grain:"selected entry",Aggregation:"synthetic amounts",Decimals:2,
+    Window:analytics.Window{Kind:analytics.SnapshotWindow,Start:now,TimeZone:"UTC"}, Source:vizframe.Derived("Synthetic edge fixture."),
+    Freshness:analytics.Freshness{ObservedAt:now,MaxAge:time.Hour},Completeness:analytics.Partial,CoverageNote:"One observation absent.",Uncertainty:"Exact fixture values, not production data."},
+   Rows:[]analytics.Row{
+    {ID:"long",Label:strings.Repeat("Long",100),Value:pointer(-12.5),DetailHref:"/detail/long?q=a&b=c"},
+    {ID:"zero",Label:"Zero",Value:pointer(0),DetailHref:"/detail/zero"},
+    {ID:"missing",Label:"Missing observation",MissingReason:"Not collected",DetailHref:"/detail/missing"},
+   },
+  }
+  body, err := analytics.RenderDivergingBars(d,viz.BarsOptions{},now); if err != nil {panic(err)}
+  html := fmt.Sprintf(`<!doctype html><html lang="en" data-theme="%s"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Linked edge rows</title><link rel="stylesheet" href="/static/app.css"></head><body class="bg-surface text-ink p-4"><main class="mx-auto max-w-4xl">%s</main></body></html>`,theme,body)
+  out["/edge?theme="+theme]=response{200,map[string][]string{"Content-Type":{"text/html; charset=utf-8"},"Content-Security-Policy":{"default-src 'none'; style-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"}},html}
+ }
+ if err:=json.NewEncoder(os.Stdout).Encode(out);err!=nil {panic(err)}
+}

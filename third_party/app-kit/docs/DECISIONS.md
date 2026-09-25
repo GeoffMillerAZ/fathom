@@ -79,6 +79,17 @@ No dated dependency claim in an old record is a current pin.
 | D70 | Opt-in CLI invocation classification and consumer-owned dependency patches (Accepted; default execution and operational policy preserved) | [0070](adr/0070-opt-in-cli-invocation-classification.md) |
 | D71 | Bounded plain-file reading reference (Accepted; build-only Go, explicit CSS and prefix-aware error recovery) | [0071](adr/0071-deliver-a-bounded-static-reading-reference.md) |
 | D72 | Stabilize and resume on demand (Accepted; bounded tasks and budgets, no completion credit for deferral) | [0072](adr/0072-stabilize-and-resume-on-demand.md) |
+| D73 | Separate memory metrics from attribution (Accepted; prospective heap budgets, total browser cost reported, no acquired memory pass) | [0073](adr/0073-separate-memory-metrics-from-attribution.md) |
+| D74 | Incubate signed analytics (Accepted; one dataset, symmetric scale, old renderers unchanged) | [0074](adr/0074-incubate-signed-analytics-comparisons.md) |
+| D75 | Incubate app-owned analytics detail links (Partly superseded by D76 for later layout repair; original link-delta evidence retained) | [0075](adr/0075-incubate-app-owned-analytics-detail-links.md) |
+| D76 | Reserve readable missing-state columns (Accepted; independent layout repair, native scroll, unchanged data/CSV) | [0076](adr/0076-preserve-readable-missing-state-columns.md) |
+| D77 | Incubate rectangular analytics CSV (Accepted; additive writer, shared encoding, unchanged existing exports) | [0077](adr/0077-incubate-rectangular-analytics-export.md) |
+| D78 | Draft explicit adoption selections (Accepted; read-only v2 authoring, no automatic upgrade approval) | [0078](adr/0078-draft-explicit-adoption-selections.md) |
+| D79 | Disable unsafe form-button links (Accepted; web-relative/HTTP(S), no implicit submit) | [0079](adr/0079-disable-unsafe-form-button-links.md) |
+| D80 | Harden managed table row destinations (Accepted; internal web-reference policy, native target/focus) | [0080](adr/0080-harden-table-row-destinations.md) |
+| D81 | Derive one table action column (Accepted; consistent rows, explicit empty-state reservation) | [0081](adr/0081-derive-one-table-action-column.md) |
+| D82 | Discover adoption capabilities without a host (Accepted; shared catalog, guarded exact pins, no consumer reads) | [0082](adr/0082-discover-adoption-capabilities-without-a-host.md) |
+| D83 | Render missing select values as unavailable prompts (Accepted; no valid fallback or automatic error) | [0083](adr/0083-render-missing-select-values-as-unavailable.md) |
 
 ### D1 — Record durable decisions
 
@@ -367,3 +378,47 @@ Accepted. [Record](adr/0071-deliver-a-bounded-static-reading-reference.md); buil
 ### D72 — Stabilize and resume on demand
 
 Accepted. [Record](adr/0072-stabilize-and-resume-on-demand.md); stop the open-ended campaign after a bounded handoff. Retain standards, failed receipts and unfinished outcomes; resume one named need or owner-funded maintenance batch with fixed acceptance, inputs and a stopping budget. Existing MCP/source routing is sufficient; no new semantic layer, consumer migration or completion credit for deferral.
+
+### D73 — Separate retained-memory metrics from app attribution
+
+Accepted. [Record](adr/0073-separate-memory-metrics-from-attribution.md); independently bound observed JS/embedder/backing growth while reporting total browser and server RSS. The pure v2 metrics subcheck never certifies attribution, detached retention or full memory acceptance; future runtime acquisition needs lifecycle evidence and independent controls. Historical v1 limits and failures remain unchanged.
+
+### D74 — Incubate signed single-dataset analytics
+
+Accepted. [Record](adr/0074-incubate-signed-analytics-comparisons.md); one experimental renderer adds centered signed geometry with symmetric scale, explicit zero/missing semantics and unchanged table/CSV truth contracts. Existing renderers remain unchanged; Gallery proof does not establish consumer promotion or a multi-series engine.
+
+### D75 — Incubate app-owned analytical row destinations
+
+Partly superseded by D76 for later layout repair. [Record](adr/0075-incubate-app-owned-analytics-detail-links.md); optional root-relative row URLs become native table links, not routing or authorization policy. Its original empty-link byte comparison remains evidence; CSV stays unchanged. Positional Go row literals need named-field migration; consumer promotion remains open.
+
+### D76 — Reserve readable missing-state columns
+
+Accepted. [Record](adr/0076-preserve-readable-missing-state-columns.md); missing-reason cells receive a relative minimum width with full text/native scrolling. This separate markup repair requires CSS/snapshot review and does not change data, CSV or all-present output; original link-introduction evidence and broader quality gaps remain intact.
+
+### D77 — Incubate rectangular analytics CSV
+
+Accepted. [Record](adr/0077-incubate-rectangular-analytics-export.md); opt-in `WriteTableCSV` repeats context in one rectangular table while retaining the existing report writer. Empty selections contain only headers; domain composition and permanent promotion remain separate.
+
+### D78 — Draft explicit adoption selections
+
+Accepted. [Record](adr/0078-draft-explicit-adoption-selections.md); CLI-only v2 draft authoring binds explicit capability metadata and artifact bytes without writes, inferred choices or upgrade approval. Review/save/check remain separate; existing commands and schemas are unchanged.
+
+### D79 — Disable unsafe form-button links
+
+Accepted. [Record](adr/0079-disable-unsafe-form-button-links.md); nonempty unsafe or disabled destinations become noninteractive link labels, never form submits. Relative web references and HTTP(S) stay enabled; routing, trust and explanations remain app-owned. Rebuild source/scanned CSS and review markup snapshots; consumer upgrades and broader quality acceptance are separate.
+
+### D80 — Harden managed table row destinations
+
+Accepted. [Record](adr/0080-harden-table-row-destinations.md); reuse the form-button web-reference predicate internally for table Open actions. Unsafe destinations are inert disabled labels; accepted native links gain explicit target/focus styling. App-owned slots, routes and permissions remain separate. Rebuild source/CSS and review density/snapshots; no automatic consumer upgrade or table certification.
+
+### D81 — Derive one table action column
+
+Accepted. [Record](adr/0081-derive-one-table-action-column.md); infer an action column once from actual destinations or a custom slot, retaining `RowHrefs` as an explicit reservation. Header and rows share its shape; unlinked rows receive an empty cell, never an invented action. Review rendered selectors/snapshots, app-authored footer spans and selected metadata pins. Full table and consumer acceptance remain separate.
+
+### D82 — Discover adoption capabilities without a host
+
+Accepted. [Record](adr/0082-discover-adoption-capabilities-without-a-host.md); JSON-only CLI search and guarded exact retrieval share the embedded catalog and canonical pins with MCP/Gallery. No host, consumer reads or second registry; metadata discovery remains separate from reviewed drafting, adoption checks and runtime proof.
+
+### D83 — Render missing select values as unavailable prompts
+
+Accepted. [Record](adr/0083-render-missing-select-values-as-unavailable.md); a nonempty value absent from the option set renders an empty selected disabled prompt, never a valid fallback or the raw missing value. A configured placeholder exclusively owns initially empty selection. Apps own validation, explanation and empty-option meaning; rebuild and review snapshots before adoption.

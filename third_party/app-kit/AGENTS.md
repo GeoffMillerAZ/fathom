@@ -80,6 +80,7 @@ The following applies to work in this repository, not the caller's consumer repo
 - Never bypass checksum verification, silently change public contracts or describe
   a planned runtime as shipped. Invariants and evidence: `docs/intent/invariants.md`.
 - `go test ./cmd/appkit-mcp` checks served docs/index and actual tool/resource parity.
+- Pre-push runs `decision-index` for both ADR registers/MCP guidance and `quality-evidence` for receipt/readiness. Update both decision registers with an ADR; review changed standards/evidence fixture pins, never waive hashes. Static Fathom verification cannot replace these runtime checks.
 
 <!-- fathom:begin v3 sha256:6ed8d0796d88b63860afac0b2ef0878f9263b12d26cc1e78a797fe8e0f908129 -->
 ## fathom code intelligence

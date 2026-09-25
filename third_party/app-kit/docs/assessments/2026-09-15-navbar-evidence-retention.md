@@ -51,7 +51,7 @@ gates. Selected inputs retain all nine delivered files, original Elements/font,
 transformer/schema snapshots, maintained fixtures, the generated runtime runner and
 the final executed delivery harness. This is not reconstructed execution closure.
 
-Work root: `/Volumes/m2ext/appkit-navbar-retention.mBbpWeLh`.
+Work root: `/Volumes/m2ext/appkit-evidence/appkit-navbar-retention.mBbpWeLh`.
 The successful private preparation is `prepare.eWTIHE1k/navbar.json`; the earlier
 pre-limit `prepare.2PS31sfW` remains empty. Two encodings match exactly. Main independently
 rehashes147 artifacts and the separately selected contract/source/output/report pins.

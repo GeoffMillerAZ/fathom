@@ -26,12 +26,12 @@ func TestInventoryAnalyticsAppearanceAndTypedNavigation(t *testing.T) {
 		!slices.Equal(analytics.Layers, []string{"L3b"}) || !slices.Equal(analytics.Profiles, []string{"go-web"}) || len(analytics.Consumers) != 0 {
 		t.Fatalf("analytics overstates promotion, preview or profile fit: %+v", analytics)
 	}
-	for _, phrase := range []string{"Dataset.Validate", "analytics.WriteCSV", "analytics.RenderBars", "separate current/prior datasets", "rectangular CSV adapter", "appkit/ui/vizcheck/README.md", "independent fixture", "static-only evidence limits"} {
+	for _, phrase := range []string{"Dataset.Validate", "analytics.WriteCSV", "analytics.RenderBars", "analytics.RenderDivergingBars", "/analytics/signed", "Max is the absolute extent", "separate current/prior datasets", "rectangular CSV adapter", "appkit/ui/vizcheck/README.md", "independent fixture", "static-only evidence limits"} {
 		if !strings.Contains(analytics.Usage, phrase) {
 			t.Errorf("analytics integration omits %q", phrase)
 		}
 	}
-	for _, phrase := range []string{"not a permanently promoted", "consumer adoption", "Browser task", "200 rows", "negative values", "not a lossless", "do not verify geometry", "source truth", "post-update browser evidence"} {
+	for _, phrase := range []string{"not a permanently promoted", "consumer adoption", "Browser task", "200 rows", "RenderBars still refuses negative values", "not a lossless", "do not verify geometry", "source truth", "post-update browser evidence"} {
 		if !strings.Contains(strings.Join(analytics.Gaps, " "), phrase) {
 			t.Errorf("analytics gap disclosure omits %q", phrase)
 		}
@@ -122,6 +122,7 @@ func TestAnalyticsUsageMapsPublicAPIsToExactFiles(t *testing.T) {
 	}{
 		{"appkit/ui/analytics/analytics.go", "Dataset.Validate"},
 		{"appkit/ui/analytics/render.go", "RenderBars"},
+		{"appkit/ui/analytics/diverging.go", "RenderDivergingBars"},
 		{"appkit/ui/analytics/csv.go", "WriteCSV"},
 	} {
 		if !strings.Contains(entry.Usage, anchor.path+"#"+anchor.symbol) {

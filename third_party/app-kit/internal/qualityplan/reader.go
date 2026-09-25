@@ -162,17 +162,33 @@ type Summary struct {
 	CapabilityIDs []string `json:"capability_ids"`
 }
 
-// ListResult is a compact, revision-bound planning projection.
+// ListSelection explains discovery coverage, never quality or completion.
+// AvailableScopes describes matching authored items before applying Scope.
+// Status is matched, filtered-out, or untracked; unknown capabilities are errors.
+type ListSelection struct {
+	CapabilityID    string   `json:"capability_id,omitempty"`
+	Scope           string   `json:"scope"`
+	Status          string   `json:"status"`
+	AvailableScopes []string `json:"available_scopes"`
+	NextAction      string   `json:"next_action"`
+}
+
+// ListResult is a compact, revision-bound planning projection. Revision binds
+// the authored inventory, not the wire format or executing checker build.
+// CatalogRevision separately identifies the validated capability metadata.
 type ListResult struct {
-	Revision                    string    `json:"revision"`
-	EnhancementStandardRevision string    `json:"enhancement_standard_revision"`
-	ClaimBoundary               string    `json:"claim_boundary"`
-	Items                       []Summary `json:"items"`
+	Revision                    string        `json:"revision"`
+	CatalogRevision             string        `json:"catalog_revision"`
+	EnhancementStandardRevision string        `json:"enhancement_standard_revision"`
+	ClaimBoundary               string        `json:"claim_boundary"`
+	Items                       []Summary     `json:"items"`
+	Selection                   ListSelection `json:"selection"`
 }
 
 // DetailResult is one full authored item and its governing standards/policy.
 type DetailResult struct {
 	Revision                    string                        `json:"revision"`
+	CatalogRevision             string                        `json:"catalog_revision"`
 	EnhancementStandardRevision string                        `json:"enhancement_standard_revision"`
 	ClaimBoundary               string                        `json:"claim_boundary"`
 	Item                        Item                          `json:"item"`
@@ -192,6 +208,7 @@ type inventoryDocument struct {
 // List and Get always return detached values.
 type Snapshot struct {
 	revision                    string
+	catalogRevision             string
 	enhancementStandardRevision string
 	standards                   map[string]StandardDefinition
 	backlogPolicy               BacklogPolicy
@@ -206,6 +223,13 @@ func Default() (*Snapshot, error) {
 	if err != nil {
 		return nil, fmt.Errorf("qualityplan: load catalog: %w", err)
 	}
+	return ForCatalog(capabilities)
+}
+
+// ForCatalog validates the embedded authored inventory against one exact catalog.
+// It uses the immutable search snapshot, not its exported inspection copies.
+// Like Default, it performs no file, network or evidence verification I/O.
+func ForCatalog(capabilities *catalog.Catalog) (*Snapshot, error) {
 	return loadSnapshot(embeddedInventory, capabilities)
 }
 
@@ -230,18 +254,38 @@ func loadSnapshot(source []byte, capabilities *catalog.Catalog) (*Snapshot, erro
 	if capabilities == nil {
 		return nil, fmt.Errorf("qualityplan: nil catalog")
 	}
-	profiles := make(map[string]map[string]struct{}, len(capabilities.Entries))
-	for _, entry := range capabilities.Entries {
-		allowed := make(map[string]struct{}, len(entry.Profiles))
-		for _, profile := range entry.Profiles {
-			allowed[profile] = struct{}{}
+	profiles := make(map[string]map[string]struct{})
+	var catalogRevision, cursor string
+	for {
+		page, err := capabilities.Search(catalog.Query{Limit: 50, Cursor: cursor})
+		if err != nil {
+			return nil, fmt.Errorf("qualityplan: read validated catalog: %w", err)
 		}
-		profiles[entry.ID] = allowed
+		catalogRevision = page.Revision
+		for _, entry := range page.Items {
+			allowed := make(map[string]struct{}, len(entry.Profiles))
+			for _, profile := range entry.Profiles {
+				allowed[profile] = struct{}{}
+			}
+			profiles[entry.ID] = allowed
+		}
+		cursor = page.NextCursor
+		if cursor == "" {
+			break
+		}
 	}
 	sort.Slice(document.Items, func(i, j int) bool { return document.Items[i].ID < document.Items[j].ID })
 	for i, item := range document.Items {
 		if i > 0 && document.Items[i-1].ID == item.ID {
 			return nil, fmt.Errorf("qualityplan: duplicate item ID %q", item.ID)
+		}
+		consumerIDs := make(map[[3]string]struct{}, len(item.Consumers))
+		for _, consumer := range item.Consumers {
+			identity := [3]string{consumer.App, consumer.Revision.Kind, consumer.Revision.SHA256}
+			if _, duplicate := consumerIDs[identity]; duplicate {
+				return nil, fmt.Errorf("qualityplan: item %q has duplicate consumer identity for app %q and revision %s:%s", item.ID, consumer.App, consumer.Revision.Kind, consumer.Revision.SHA256)
+			}
+			consumerIDs[identity] = struct{}{}
 		}
 		for _, capabilityID := range item.CapabilityIDs {
 			allowed, ok := profiles[capabilityID]
@@ -260,6 +304,7 @@ func loadSnapshot(source []byte, capabilities *catalog.Catalog) (*Snapshot, erro
 	revision := sha256.Sum256(canonical)
 	return &Snapshot{
 		revision:                    hex.EncodeToString(revision[:]),
+		catalogRevision:             catalogRevision,
 		enhancementStandardRevision: document.EnhancementStandardRevision,
 		standards:                   document.Standards,
 		backlogPolicy:               document.BacklogPolicy,
@@ -298,21 +343,48 @@ func (s *Snapshot) List(capabilityID, scope string) (ListResult, error) {
 	}
 	result := ListResult{
 		Revision:                    s.revision,
+		CatalogRevision:             s.catalogRevision,
 		EnhancementStandardRevision: s.enhancementStandardRevision,
 		ClaimBoundary:               claimBoundary,
 		Items:                       make([]Summary, 0),
+		Selection: ListSelection{
+			CapabilityID: capabilityID, Scope: scope, AvailableScopes: make([]string, 0, 2),
+		},
 	}
+	hasCore, hasOnDemand := false, false
 	for _, item := range s.items {
-		if scope == "core" && !item.Core || scope == "on-demand" && item.Core {
+		if capabilityID != "" && !slices.Contains(item.CapabilityIDs, capabilityID) {
 			continue
 		}
-		if capabilityID != "" && !slices.Contains(item.CapabilityIDs, capabilityID) {
+		if item.Core {
+			hasCore = true
+		} else {
+			hasOnDemand = true
+		}
+		if scope == "core" && !item.Core || scope == "on-demand" && item.Core {
 			continue
 		}
 		result.Items = append(result.Items, Summary{
 			ID: item.ID, Kind: item.Kind, Task: item.Task, Profile: item.Profile,
 			Core: item.Core, State: item.State, CapabilityIDs: slices.Clone(item.CapabilityIDs),
 		})
+	}
+	if hasCore {
+		result.Selection.AvailableScopes = append(result.Selection.AvailableScopes, "core")
+	}
+	if hasOnDemand {
+		result.Selection.AvailableScopes = append(result.Selection.AvailableScopes, "on-demand")
+	}
+	switch {
+	case len(result.Items) > 0:
+		result.Selection.Status = "matched"
+		result.Selection.NextAction = "Inspect matching items with get_quality_work using expected_revision=revision and expected_catalog_revision=catalog_revision from this result. Review their evidence and applicable gates before adoption; these records are authored planning."
+	case len(result.Selection.AvailableScopes) > 0:
+		result.Selection.Status = "filtered-out"
+		result.Selection.NextAction = fmt.Sprintf("Matching authored work exists outside this scope. Repeat list_quality_work with scope=%q (or all) and expected_catalog_revision=catalog_revision from this result; inspect its evidence before adoption.", result.Selection.AvailableScopes[0])
+	default:
+		result.Selection.Status = "untracked"
+		result.Selection.NextAction = "Read just-in-time-conversion/contribution-loop; prepare docs/app-kit.md or an existing issue for consumer review with original exact query/profile, task, capability_id, revision and catalog_revision. Lookup writes nothing."
 	}
 	if err := checkJSONLimit("list", result, maxListJSONBytes); err != nil {
 		return ListResult{}, err
@@ -355,12 +427,47 @@ func (s *Snapshot) Get(id, expectedRevision string) (DetailResult, error) {
 	}
 	result := DetailResult{
 		Revision: s.revision, EnhancementStandardRevision: s.enhancementStandardRevision,
-		ClaimBoundary: claimBoundary, Item: item, Standards: standards, BacklogPolicy: policy,
+		CatalogRevision: s.catalogRevision,
+		ClaimBoundary:   claimBoundary, Item: item, Standards: standards, BacklogPolicy: policy,
 	}
 	if err := checkJSONLimit("detail", result, maxDetailJSONBytes); err != nil {
 		return DetailResult{}, err
 	}
 	return result, nil
+}
+
+// ListForCatalog refuses a changed catalog before selecting authored work.
+// Empty expectedCatalogRevision retains List's current-snapshot behavior.
+func (s *Snapshot) ListForCatalog(capabilityID, scope, expectedCatalogRevision string) (ListResult, error) {
+	if err := s.checkCatalogRevision(expectedCatalogRevision); err != nil {
+		return ListResult{}, err
+	}
+	return s.List(capabilityID, scope)
+}
+
+// GetForCatalog independently checks capability and inventory identities before
+// returning an item. Empty guards retain the corresponding current lookup.
+func (s *Snapshot) GetForCatalog(id, expectedRevision, expectedCatalogRevision string) (DetailResult, error) {
+	if err := s.checkCatalogRevision(expectedCatalogRevision); err != nil {
+		return DetailResult{}, err
+	}
+	return s.Get(id, expectedRevision)
+}
+
+func (s *Snapshot) checkCatalogRevision(expected string) error {
+	if s == nil || s.revision == "" || s.catalogRevision == "" {
+		return fmt.Errorf("qualityplan: uninitialized snapshot")
+	}
+	if expected == "" {
+		return nil
+	}
+	if !isLowerHash(expected) {
+		return fmt.Errorf("qualityplan: invalid expected_catalog_revision; use the exact catalog revision from capability discovery")
+	}
+	if expected != s.catalogRevision {
+		return fmt.Errorf("qualityplan: catalog revision mismatch: expected %s, current %s; restart capability discovery and review before quality lookup", expected, s.catalogRevision)
+	}
+	return nil
 }
 
 func validateID(id string) error {

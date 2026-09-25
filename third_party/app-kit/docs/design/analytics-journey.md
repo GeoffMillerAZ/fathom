@@ -12,12 +12,21 @@ chooses a service to investigate, and exports the same evidence. Counts are not
 normalized for workload volume: fewer failures do not establish a better reliability
 rate, and this fixture cannot establish causes. The copy makes that boundary explicit.
 
-The composition is a compact reliability report: selection, explanation, directly
+The composition is a compact reliability report: applied selection, explanation, directly
 labeled comparisons, exact values, then provenance. MatDash's Dashboard2 source informed
 chart/table hierarchy; it was not copied or rendered for a fidelity claim. Service
 names live outside SVG so long and international labels can wrap. Semantic tokens
 support the Gallery's light/dark/system modes; narrow layouts retain a scrollable,
 keyboard-focusable chart/table region rather than shrinking text into unreadability.
+
+The native “Change comparison” disclosure keeps filter editing available without
+pushing the report behind a full screen of controls. Its closed summary shows the
+applied group and comparison; the month remains in the header. Truth-state warnings
+stay outside all filter disclosures. [Scoped checks](../assessments/2026-09-22-analytics-selection-disclosure.md)
+are separate from historical runtime receipts and the still-open human A/B gate.
+Use this arrangement for read-first reports. A query-building or filter-first app
+may keep controls expanded; never hide the applied scope or a warning that changes
+the interpretation of a number. This is composition guidance, not a required kit API.
 
 Current and previous months have separate UTC windows. Service detail retains the
 overview's comparison scale. Missing current values produce no current bars or numeric
@@ -35,18 +44,21 @@ available in the exact-value table and CSV as reference, not like-for-like compa
 | `/analytics/{service}/export.csv` | the same export contract narrowed to one selected service |
 | `/analytics/recipe` | exact public single-dataset `analytics.RenderBars` specimen |
 | `/analytics/recipe/export.csv` | direct `analytics.WriteCSV` context/value export of that dataset |
+| `/analytics/recipe/table.csv` | opt-in `analytics.WriteTableCSV` rectangular export of the same dataset |
 
 All support GET and HEAD. Other methods return 405; invalid selections return 400;
 unknown or filtered-out services return 404 with a safe recovery link. Noncanonical
 paths may receive Go ServeMux's normal canonical redirect before route validation.
 Responses set a restrictive CSP, no-store and nosniff; error text never echoes input.
+The synthetic source-error selection returns 503 HTML on these routes, including CSV
+destinations, without an attachment or usable dataset. It is not an invalid query.
 
 | Parameter | Values; default |
 |---|---|
 | `period` | `2026-08`, `2026-09`; September |
 | `compare` | `none`, `previous`; previous |
-| `category` | `all`, `api`, `worker`; all |
-| `state` | `complete`, `missing`, `stale`, `partial`; complete |
+| `category` | `all`, `api`, `worker`, `empty` (explicit empty fixture group); all |
+| `state` | `complete`, `missing`, `stale`, `partial`, `error`; complete |
 
 The four owned fields reject duplicate, empty and invalid values. Query parsing is
 bounded to 16 KiB, rejects malformed encoding/NUL/invalid UTF-8, and validates the
@@ -54,6 +66,25 @@ optional Gallery `theme` field. Generated links retain only canonical selection 
 theme context; drill-down, back, export and capability links preserve that context.
 Native GET forms and disclosure controls need no browser runtime. “Load complete
 fixture” changes only the truth state; it does not refresh a backend or change time.
+
+`state=error` demonstrates failure to read the shared synthetic source. The Gallery
+refuses before constructing either reporting window, resolving details or exporting,
+including if a recipe test builder could supply populated stale values. The error
+page keeps the selected month/group/comparison and appearance, but withholds totals,
+charts, exact-value tables, detail links and downloads. Recovery loads the complete
+fixture with the same selection; recipe comparison stays its existing canonical none.
+It does not retry a live service. A source failure takes precedence over an empty
+group; only successful recovery can produce the normal empty result. This is
+Gallery-owned failure policy, not a new shared Dataset state or error backend.
+See the [bounded error/recovery task](../assessments/2026-09-23-analytics-source-error.md).
+
+`category=empty` demonstrates a successful selection with no matching services
+when the source has not failed. It does not establish zero failures or turn missing
+reports into an empty result. The overview omits empty chart/table scaffolding and
+offers “Show all service groups”, changing only the group while preserving the period,
+comparison, condition and theme. A state-only reset is not offered as group recovery.
+The public-renderer specimen keeps its actual shared empty output, with app-owned
+explanation and recovery. See the [bounded task](../assessments/2026-09-23-analytics-empty-selection.md).
 
 The clock is fixed at 2026-10-05 12:00 UTC. The complete source was observed one hour
 earlier; the stale fixture uses an older observation. The page labels its synthetic
@@ -63,14 +94,27 @@ fixtures use an explicit first-20-days ledger and never fill the rest of the mon
 
 ## CSV agreement
 
+The recipe offers two explicit formats. Existing renderer CSV retains its separate
+context section; spreadsheet CSV repeats the same 17 context values on each of its
+10-column data rows (27 columns total). Empty selections in the spreadsheet format
+contain only headers; use renderer CSV to retain empty-selection context. This
+[experimental writer](../adr/0077-incubate-rectangular-analytics-export.md) changes
+neither the existing exports below nor their app-owned selection/series columns.
+
 Exports are one rectangular 33-column table: six selection/series columns, seventeen
 `context_` columns, and the shared ten value columns. Current and previous rows each
 carry their own source, window, freshness and coverage. Service exports narrow copied
 datasets without mutating the overview selection or claiming a different source age.
+With no selected rows, this format contains only headers, not context values or a
+manufactured zero row. The empty overview labels that limitation and links to the
+existing renderer CSV for current-period context only, not both comparison windows.
 
 The adapter uses `analytics.WriteCSV` for validated context, numeric formatting,
 missingness and spreadsheet formula neutralization. It checks the exact context and
 value schema before reshaping; schema drift fails rather than silently dropping fields.
+Shared `Window.TimeZone` requires an explicit IANA name or `UTC`, never Go's special
+host-dependent `Local` sentinel. Callers previously using `Local` must choose their real
+reporting zone; validation refuses before chart/table/CSV output rather than guessing.
 Missing numeric cells remain empty, genuine zero stays numeric zero, and partial
 coverage/lower-bound notes travel with the rows. CSV is presentation evidence, not a
 lossless raw ledger or an independent metric calculation.
@@ -86,9 +130,29 @@ Apps remain responsible for aggregation, authorization and truthful data declara
 
 The separate [public-renderer specimen](../assessments/2026-09-15-analytics-renderer-specimen.md)
 uses the current dataset and canonical `compare=none`, preserving period/category/state
-and theme through native filters and export. Its CSV has the public context/value
+and theme through native filters and export. Optional `Row.DetailHref` now links
+its table labels to Gallery's existing service detail; browser Back returns to the
+selected recipe. The destination's own Back link still returns to the paired overview.
+Apps own both return policies; the kit does not invent routes or a router.
+Its CSV has the public context/value
 format, not this journey's 33-column adapter. Over-wide plot text receives an explicit
 table-only fallback; the full comparison workflow and its data remain unchanged.
+Rounded positive bars below one logical plot pixel also receive an explained
+table-only fallback: never inflate a tiny mark or silently draw a positive value
+as zero. This guard belongs to `analytics.RenderBars`; low-level `viz.Bars`,
+dataset/CSV values and existing CSS classes are unchanged.
+[Resolution regression](../assessments/2026-09-22-bar-resolution-and-guide-discovery.md).
+For native keyboard checks, input dispatch is not visible-state completion: retain
+the immediate sample and wait for an explicit postcondition under a fixed deadline,
+with a no-input control. The [bounded scroll task](../assessments/2026-09-22-analytics-scroll-settling.md)
+checks the rightmost Meaning column and return-left without application scripts;
+its local pass does not replace full accessibility or consumer acceptance.
+Native zoom also needs an inspected raster, not just a passing bounding box. A
+[same-page Fathom capture comparison](../assessments/2026-09-22-native-zoom-paint.md)
+reproduces Playwright's wrong-region 200% screenshot while no-clip compositor captures
+show the chart correctly. Reuse its guarded static-page recipe only within that scope;
+do not change app layout to compensate for capture-coordinate errors or promote an
+uninspected image. Different themes/targets still require their own evidence.
 The public renderer and exports now retain explicit API/Worker group meanings, separate
 from the paired chart's period encoding. [ADR-0056](../adr/0056-preserve-analytics-role-meaning.md)
 adds visible per-row **Meaning** and CSV `role`/`role_label`; table fallback and missing
@@ -135,6 +199,15 @@ loopback/in-process budgets do not cover LCP/INP, remote networks, large dataset
 real devices. Consumer acceptance and human baseline/improved task evidence remain
 required by G3; this is not promotion or a reason to add speculative render caching.
 
+The separate [styled-report readiness acquisition](../assessments/2026-09-22-analytics-report-readiness.md)
+adds24 initial/Apply/detail/return observations after complete document/CSS bodies,
+exact task/style/layout checks and font/frame settlement. Maxima are103.4ms ordinary
+and595.0ms with declared throttling; combined decoded payload stays≤81,186B. This is
+an automation-inclusive readiness endpoint, not LCP/INP, human speed or a real-device
+SLO. The original harness timeout is retained; app-script denial is enforced by the
+unchanged exact CSP while DevTools measurement callbacks can run. Memory, warm-cache,
+cancellation and consumer-performance acceptance remain open; no new cache is needed.
+
 The [human comparison protocol](../assessments/fixtures/analytics-usability/README.md)
 predeclares selection/explanation/detail/return/export tasks, timing and error recording.
 Human results remain pending. A [reconstructed-composition pair](../assessments/2026-09-16-analytics-comparison-pair.md)
@@ -155,6 +228,55 @@ chart makes the distinction explicit: an API ceiling is not recommended dashboar
 density. Apps own meaningful selection/aggregation and honest coverage/export scope.
 
 ## Consumer return: readable meaning
+
+The experimental [signed single-dataset renderer](../adr/0074-incubate-signed-analytics-comparisons.md)
+adds `/analytics/signed` and `/analytics/signed/export.csv`: symmetric signed geometry,
+explicit zero/missing distinctions and the same context/table/CSV. Existing positive-only
+`RenderBars`, paired-period journey and consumer-owned calculations remain unchanged.
+Gallery integration alone does not promote the renderer or complete G3.
+
+### Consumer adoption checks
+
+Apply the same truth contract to each app's actual domain projection, not only to
+Gallery fixtures. The [RAC/Fathom resumption](../assessments/2026-09-21-adoption-analytics-resumption.md)
+found gaps that separate renderer and export unit tests had missed:
+
+- Exercise the visible path from the empty state as well as the populated chart.
+  An export endpoint passing by direct invocation does not prove its link exists.
+- Compare **every selected row**, units, denominator/rate floor and validity fields
+  against independent fixed expectations. A first-row spot check is not agreement.
+- Distinguish an unsent record from a measured zero outcome and a thin sample.
+  Reject unknown explicit aggregate selectors rather than falling back to detailed
+  exports. Only measured roles belong in the chart legend; missing rows keep their
+  table/export meaning. [Integrated regression evidence](../assessments/2026-09-22-analytics-adoption-integration.md).
+- Narrowing an export to a service must preserve the outer snapshot's timestamp,
+  coverage and read-error qualifications. A zero-valued backing field with an
+  unavailable source must never become an unexplained measured zero in JSON/CSV.
+- Distinguish page/export agreement on one frozen fixture from consistency across
+  separate live reads. If the app has no immutable snapshot/version, disclose that
+  boundary; do not claim transactions or independently verified source freshness.
+- Test source failures independently. A call-log failure does not establish a
+  session-ledger failure, and zero listed services under an unavailable registry
+  does not establish an empty fleet. Do not manufacture a successful model merely
+  to make a style-guide specimen look finished.
+- For streaming dashboards, test failure before the first good read, failure after
+  success, recovery and a fresh connection. Retained fragments need an explicit
+  last-good timestamp; a current connection does not mean current data. Match the
+  transport's patch mode to complete versus inner markup, and check stable-id
+  uniqueness across updates. [Conjure's bounded repair](../assessments/2026-09-21-conjure-dashboard-validity.md)
+  returns this lesson without extracting its quarantined consumer code. Observe an
+  actual client patch before asserting reconnect isolation: initial HTML plus an open
+  socket can pass vacuously. Independently test connection-indicator event contracts
+  and overlay geometry; a successful data update can coexist with a broken indicator.
+- Run through the consumer's real routing/auth boundaries when claiming those
+  properties. Direct-handler tests and unchanged middleware are narrower evidence.
+- Predeclare payload and renderer budgets for the actual selected fixture. Record
+  the envelope (widget/page, CSV/JSON, CSS inclusion, dataset size, toolchain) so a
+  fast in-process render is not reported as fast browser loading or better UX.
+
+These are applications of G3's existing agreement/uncertainty requirements, not a
+new blanket framework or prescribed export schema. RAC's scoped integration does not
+establish Fathom integration. Keep domain calculations and authorization app-owned.
 
 Fathom's service-share review exposed a clipped Gauge caption (INC-14). Use existing
 `vizframe` for wrapping explanation, denominator and snapshot/source context; do not

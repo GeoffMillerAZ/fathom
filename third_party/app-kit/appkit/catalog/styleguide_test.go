@@ -12,8 +12,15 @@ func TestLocalStyleguideDiscoveryDoesNotClaimConsumerPromotion(t *testing.T) {
 		t.Fatal(err)
 	}
 	e, ok := c.Get("recipe.styleguide.local")
-	if !ok || e.Kind != "recipe" || e.Maturity != "experimental" || len(e.Consumers) != 0 || e.Preview != "" || !slices.Equal(e.Profiles, []string{"go-web"}) {
+	if !ok || e.Kind != "recipe" || e.Maturity != "experimental" || e.Preview != "" || !slices.Equal(e.Profiles, []string{"go-web"}) {
 		t.Fatalf("local guide overstates availability or promotion: %+v", e)
+	}
+	// Recorded consumer use does not promote a recipe. Keep the actual bounded
+	// history visible alongside the unchanged experimental/runtime limits.
+	if !slices.Equal(e.Consumers, []string{"Resume as Code", "Fathom"}) ||
+		!strings.Contains(strings.Join(e.Gaps, " "), "full two-consumer acceptance remain open") ||
+		!strings.Contains(strings.Join(e.Gaps, " "), "guide's own native editing/export forms remain available") {
+		t.Fatalf("local guide loses scoped consumer history or promotes it: %+v", e)
 	}
 	for _, phrase := range []string{"-theme-source", "concrete candidate snapshot", "app-owned-styleguide"} {
 		if !strings.Contains(e.Usage, phrase) {

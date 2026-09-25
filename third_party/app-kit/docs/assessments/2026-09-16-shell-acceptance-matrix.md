@@ -56,7 +56,7 @@ or replay; a missing observation stays missing.
 
 ## Current acquisition
 
-The retained read-only review at `/Volumes/m2ext/appkit-g2-source-review.gG0T9I`
+The retained read-only review at `/Volumes/m2ext/appkit-evidence/appkit-g2-source-review.gG0T9I`
 matches32 identities: three historical receipts, sixteen Fathom selected sources,
 seven RAC Settings handler/browser/CSS sources and six RAC adoption/vendor artifacts.
 `source-review.json` SHA-256:
@@ -78,7 +78,7 @@ No historical pass is inherited by that run. Results are recorded here after exe
 
 ### Executed Gallery replay
 
-`/Volumes/m2ext/appkit-shell-acceptance-wESNcr/run-report.json`, SHA-256
+`/Volumes/m2ext/appkit-evidence/appkit-shell-acceptance-wESNcr/run-report.json`, SHA-256
 `3d08d91e5851fddb46d1ec0dcfce74689895325f0f1ecad8c5444fa522020a0c`,
 passes215 existing full-route form checks and72 separate long-text component checks.
 The53 selected inputs/configuration and approved browser/module identities were frozen
@@ -140,7 +140,7 @@ run-report SHA-256 is
 `561bf1e1ad8162e9bd7a963bd8c650c2cff4af06e12dff48aeaf6928ff43b802`.
 All selected source/inventory and owned cleanup checks pass; no consumer edit occurred.
 
-Each root is `/Volumes/m2ext/appkit-rac-shell-state.<suffix>` and contains the runner,
+Each root is `/Volumes/m2ext/appkit-evidence/appkit-rac-shell-state.<suffix>` and contains the runner,
 browser, selected code, pre-execution configuration and logs. The browser receipt is
 `tmp/browser/receipt.json`. A non-relaxing follow-up retains geometry, stylesheet and
 focus state at the original oracle, then later screenshot/time/native-Tab observations.

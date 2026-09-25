@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -316,5 +318,18 @@ func TestThemeGuideRejectsNonLoopbackBeforeListening(t *testing.T) {
 	var out, errOut bytes.Buffer
 	if code := cmdThemeGuide([]string{"-addr", "0.0.0.0:18767"}, &out, &errOut); code != 1 || !strings.Contains(errOut.String(), "loopback") {
 		t.Fatalf("nonloopback code=%d, stderr=%q", code, errOut.String())
+	}
+}
+
+// The guide's "selected kit identity" must name the mirror it was built
+// from. A pin bump that forgets this constant would export review bundles
+// claiming a kit revision the binary does not contain.
+func TestThemeGuideKitRevisionMatchesVendoredMirror(t *testing.T) {
+	stamp, err := os.ReadFile(filepath.Join("..", "..", "third_party", "app-kit", ".vendor-commit"))
+	if err != nil {
+		t.Fatalf("read app-kit mirror stamp: %v", err)
+	}
+	if got, want := observatoryGuideRevision, strings.TrimSpace(string(stamp)); got != want {
+		t.Fatalf("observatoryGuideRevision = %s, want the vendored mirror stamp %s", got, want)
 	}
 }

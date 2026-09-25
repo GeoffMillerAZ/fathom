@@ -15,7 +15,7 @@ parent true; true overrides false. Reparented/generated commands use current anc
 Opting in preserves raw callback input, diagnostic text and causes, but wraps selected
 returned errors. It does not change exits or ship an automatic classifier.
 
-Retained root: `/Volumes/m2ext/appkit-cli-optin.WWGmDq`. Preparations `candidate-a`,
+Retained root: `/Volumes/m2ext/appkit-evidence/appkit-cli-optin.WWGmDq`. Preparations `candidate-a`,
 `candidate-b` and a post-test `candidate-c` are byte-identical; the latter revalidates
 both original cached source sums after upstream/oracle execution. Each candidate has
 156 manifest files, all rehashed. Receipt SHA256:

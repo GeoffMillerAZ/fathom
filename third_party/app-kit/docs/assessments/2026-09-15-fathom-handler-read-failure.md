@@ -255,7 +255,7 @@ journeys finish and retain their screenshots even though the overall run fails.
 This extends the oracle, not the consumer's measured capabilities.
 
 Retained root:
-`/Volumes/m2ext/appkit-fathom-quality-final.YaLFho3p/appkit-fathom-handler-wCk5Fw/`.
+`/Volumes/m2ext/appkit-evidence/appkit-fathom-quality-final.YaLFho3p/appkit-fathom-handler-wCk5Fw/`.
 
 | Report under that root | Outcome | SHA256 |
 |---|---|---|

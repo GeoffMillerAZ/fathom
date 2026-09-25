@@ -56,7 +56,7 @@ engines, performance and consumer acceptance are outside this probe.
 
 ## Retained artifacts and reproduction
 
-Private root: `/Volumes/m2ext/appkit-catalog-review.3ebNBEYt/`.
+Private root: `/Volumes/m2ext/appkit-evidence/appkit-catalog-review.3ebNBEYt/`.
 It retains original/final renderer source, final parsed test, CSS/input CSS, module
 files, the old-source overlay, binaries and final red/race logs. The first incomplete
 candidate binary `gallery-after` is not the final tested artifact. Final runs:

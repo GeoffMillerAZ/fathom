@@ -87,7 +87,7 @@ all G2 requirements. A joint requirement-to-evidence review remains necessary.
 
 ## Executed attempts and retention
 
-Private roots are `/Volumes/m2ext/appkit-fathom-recovery-<id>`; each retains eight
+Private roots are `/Volumes/m2ext/appkit-evidence/appkit-fathom-recovery-<id>`; each retains eight
 harness/configuration files, sixteen selected consumer source files, the exact
 synthetic log, run configuration, overlay, command outputs and result receipts.
 
@@ -132,5 +132,5 @@ with no observed P0/P1 visual defect. This does not expand the screenshot scope 
 
 The CUE shell-integration entry now links this evidence while retaining `partial`.
 The pinned `go tool cue vet -c -d '#Inventory'` passes against schema/inventory bytes
-retained before validation in `/Volumes/m2ext/appkit-recovery-metadata.e8PGwG`.
+retained before validation in `/Volumes/m2ext/appkit-evidence/appkit-recovery-metadata.e8PGwG`.
 Inventory SHA-256: `35fd71b6b23fa39e60b23885770539c73d9a49ae10e968c05262f8ef571c3035`.

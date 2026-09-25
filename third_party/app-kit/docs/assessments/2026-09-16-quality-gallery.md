@@ -40,9 +40,9 @@ full accessibility, browser parity, performance or component certification.
 
 ## Retained attempts
 
-`/Volumes/m2ext/appkit-gallery-quality.9mQI1e2I/` preserves the first build, withdrawn
+`/Volumes/m2ext/appkit-evidence/appkit-gallery-quality.9mQI1e2I/` preserves the first build, withdrawn
 before browser testing because native evidence/metadata disclosures were missing.
-The replacement `/Volumes/m2ext/appkit-gallery-quality.wEVGEXIb/` retains build/test
+The replacement `/Volumes/m2ext/appkit-evidence/appkit-gallery-quality.wEVGEXIb/` retains build/test
 logs, private CSS/overlay/binary and selected source. Those source bytes were copied
 after execution only after matching recorded hashes; timing is explicit in
 `receipt-followup.json`. The command ledger was recorded after execution, not a
@@ -57,7 +57,7 @@ repair keeps the focus requirement and selects an actually unassigned known
 capability for the same empty-state assertion. Neither failed attempt is a pass.
 
 The focus repair and narrow synthetic regressions are retained in
-`/Volumes/m2ext/appkit-gallery-quality.spQ1NymK/`. This build retained selected source,
+`/Volumes/m2ext/appkit-evidence/appkit-gallery-quality.spQ1NymK/`. This build retained selected source,
 configuration, overlay and its command script before execution. The passing browser
 run is its `gallery-quality-ghOUY7/` directory. All100 requests were admitted local
 GETs, with no rejected request; Gallery and Chrome152.0.7977.84 both exited0 without
@@ -71,7 +71,7 @@ a signal. The expected and served CSS hashes match. No running preview was repla
 | Browser harness | `f59645f095711aadf88b4f40e5a7d97b065a4b7e32915d95d1509ccde68c8a84` |
 
 Scoped documentation checks are recorded under
-`/Volumes/m2ext/appkit-quality-gallery-docs.YqwiCiIo/{docs-check,mcp-check}/`:
+`/Volumes/m2ext/appkit-evidence/appkit-quality-gallery-docs.YqwiCiIo/{docs-check,mcp-check}/`:
 links/budgets/paired intent guidance and source-MCP document identity. Their scope
 does not establish installed host loading, a full intent audit or a released pin.
 

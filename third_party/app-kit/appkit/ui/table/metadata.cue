@@ -15,7 +15,8 @@ component: {
 		{name: "SortKey", type: "string", required: false, description: "Currently active sort column Key. Empty = no active sort."},
 		{name: "SortDir", type: "string", required: false, description: "Current sort direction: 'asc' or 'desc'."},
 		{name: "Selectable", type: "bool", required: false, description: "Adds a leading checkbox column. App wires data-on-change to a selection endpoint."},
-		{name: "RowAction", type: "templ.Component", required: false, description: "Optional trailing-cell slot rendered for every row. Nil omits the column."},
+		{name: "RowAction", type: "templ.Component", required: false, description: "Optional trailing-cell slot rendered for every row; takes precedence over managed Href links. Nil alone does not suppress an otherwise required action column."},
+		{name: "RowHrefs", type: "bool", required: false, description: "Reserve an action column even for empty/unlinked results. Actual nonempty row Hrefs or a custom action slot infer the column automatically; unlinked rows get an empty action cell."},
 		{name: "Caption", type: "string", required: false, description: "Optional accessible <caption> element rendered above the header row."},
 	]
 
@@ -33,7 +34,7 @@ component: {
 				{name: "ID", type: "string", description: "Row identifier. Emitted as data-table-row on the <tr> and as data-table-select on checkboxes."},
 				{name: "Cells", type: "[]string", description: "Cell values in Column order. Short rows are tolerated; missing cells render empty."},
 				{name: "HTMLCells", type: "[]templ.Component", description: "Rich cell content in Column order; a non-nil entry renders instead of the escaped Cells string."},
-				{name: "Href", type: "string", description: "Navigation URL. When set, a trailing 'Open' action cell links to it."},
+				{name: "Href", type: "string", description: "Relative web reference or absolute HTTP(S) URL for a native Open link. Unsafe nonempty input becomes an inert Open unavailable label; empty input adds no action. Rebuild scanned CSS for 44px targets/focus. Apps own route/origin authorization."},
 				{name: "Activate", type: "bool", description: "Render the row as a keyboard-activatable target (role=button, tabindex=0, pointer cursor + focus ring) for in-page interactions like opening a drawer. Independent of Href."},
 				{name: "Label", type: "string", description: "Accessible name emitted as aria-label on the <tr>; pair with Activate."},
 				{name: "Attrs", type: "templ.Attributes", description: "App-defined attributes emitted verbatim on the <tr> (e.g. a data-* URL a JS island reads on activation). Keys render in sorted order."},

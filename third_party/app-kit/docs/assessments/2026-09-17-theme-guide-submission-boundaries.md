@@ -51,7 +51,7 @@ run**: the owner selected stabilization and demand-driven continuation under
 [ADR-0072](../adr/0072-stabilize-and-resume-on-demand.md). Resume only through R2 in
 the [handoff](../design/stabilization-and-resumption.md), not automatically.
 
-Retained private packet root: `/Volumes/m2ext/appkit-theme-cancel.F2rbr0oq`.
+Retained private packet root: `/Volumes/m2ext/appkit-evidence/appkit-theme-cancel.F2rbr0oq`.
 The following exact receipt bytes were rechecked at handoff:
 
 | Receipt directory | Verified scope | receipt.json SHA-256 |

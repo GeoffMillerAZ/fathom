@@ -1,0 +1,5 @@
+# Unified-diff context prefixes include a space before Go tabs and empty lines.
+# These review packets are data; check applicability and format their source.
+fathom/*.patch -whitespace
+rac/*.patch -whitespace
+conjure/*.patch -whitespace

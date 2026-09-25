@@ -14,7 +14,7 @@ Accessibility controls using existing trust. No installation, signing, policy ch
 external site, real data or application modification. This is separate from the
 [new candidate's cold builds](2026-09-16-current-gallery-candidate.md).
 
-Target: `/Volumes/m2ext/appkit-bundle-seam.tHv3fmlT/actual-artifacts/Relocated.app`.
+Target: `/Volumes/m2ext/appkit-evidence/appkit-bundle-seam.tHv3fmlT/actual-artifacts/Relocated.app`.
 Its exact launcher/server/native/manifest/plist hashes remain the
 [historical runtime identities](2026-09-16-private-bundle-runtime.md).
 The native executable remains SHA-256
@@ -24,14 +24,14 @@ keyboard/pointer acceptance. Cmd+N and media failures remain separate.
 
 ## Initial discovery and readiness follow-up
 
-First private root: `/Volumes/m2ext/appkit-launchservices-workflow.x6HCQWiK/`.
+First private root: `/Volumes/m2ext/appkit-evidence/appkit-launchservices-workflow.x6HCQWiK/`.
 The original 12-test lifecycle suite passed against the private variant. Root then
 executed its frozen wrapper at 20:12:53–20:12:57 UTC on 2026-09-16.
 The inspector saw one window and seven nodes; none of its ten named controls matched.
 That is a completed bounded observation, **not a successful workflow or proof that
 the controls are absent from the application**. No field or form action occurred.
 
-Second private root: `/Volumes/m2ext/appkit-launchservices-workflow-v2.k8zXsfgJ/`.
+Second private root: `/Volumes/m2ext/appkit-evidence/appkit-launchservices-workflow-v2.k8zXsfgJ/`.
 Only the private runner changed: retain the initial observation, wait a bounded
 500 ms and observe again before any menu mutation, then observe after the existing
 first New/Close cycle returns to one window. No extra menu action, AX attribute write
@@ -82,7 +82,7 @@ sources and historical receipts are preserved, including this limitation.
 
 ## Actual workflow attempt: value setter did not change the field
 
-Private root: `/Volumes/m2ext/appkit-launchservices-workflow-actual.UvtkUpfB/`.
+Private root: `/Volumes/m2ext/appkit-evidence/appkit-launchservices-workflow-actual.UvtkUpfB/`.
 The frozen workflow driver has 20 passing pure selector/refusal/oracle checks; the
 unchanged enclosing lifecycle suite passes 12/12. Those are preparation checks, not
 live user-task passes. The driver retains two distinct AX window references, resolves
@@ -122,7 +122,7 @@ reported both absent. Input hashes remained unchanged. The failed receipt is pre
 
 ## Advertised field-press follow-up
 
-Fresh root: `/Volumes/m2ext/appkit-launchservices-workflow-focus.w2QDKi9o/`.
+Fresh root: `/Volumes/m2ext/appkit-evidence/appkit-launchservices-workflow-focus.w2QDKi9o/`.
 The only semantic changes are a required advertised `AXPress` on the exact field
 before the existing setter, reselecting the same field/window afterward, and read-only
 `AXFocused` diagnostics. The original workflow outcomes remain. The driver passes21
@@ -150,7 +150,7 @@ were absent/refused during normal close, before cleanup; all input hashes matche
 
 ## Bounded-read follow-up: Profile outcomes pass, disclosure blocks retry
 
-Fresh root: `/Volumes/m2ext/appkit-launchservices-workflow-transient.dz1eEIAA/`.
+Fresh root: `/Volumes/m2ext/appkit-evidence/appkit-launchservices-workflow-transient.dz1eEIAA/`.
 Only observation handling changes: typed AX read failures retain operation, attribute,
 code and available window/node context. During an existing wait, selected incomplete
 reads may be retried within the original deadlines, with fewer than64 retained
@@ -193,7 +193,7 @@ all source/app hashes remained unchanged.
 
 The separately frozen `activity-only-v1` journey ran at21:06:05–21:06:10 UTC on
 2026-09-16 against the same unchanged historical bundle. Private root:
-`/Volumes/m2ext/appkit-launchservices-activity-only.4DwaQjnI/`.
+`/Volumes/m2ext/appkit-evidence/appkit-launchservices-activity-only.4DwaQjnI/`.
 Its preparation passed33 pure driver checks and the unchanged12 lifecycle tests.
 Root and a separate reviewer checked the new oracle before launch; root rehashed
 the harness, driver, test/configuration and all five selected bundle inputs.

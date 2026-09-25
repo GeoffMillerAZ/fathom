@@ -1,14 +1,17 @@
 package gallery
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"html/template"
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/geoffmilleraz/app-kit/appkit/catalog"
+	"github.com/geoffmilleraz/app-kit/internal/adoption"
 )
 
 type catalogView struct {
@@ -51,7 +54,9 @@ func registerCatalog(mux *http.ServeMux) {
 			writeCatalogError(w, r, err)
 			return
 		}
-		v := catalogView{Page: p, Query: q, Revision: c.Revision, Theme: sanitizeTheme(r.URL.Query().Get("theme")), DetailQuery: "?" + r.URL.Query().Encode(), Reset: previewURL("/catalog", sanitizeTheme(r.URL.Query().Get("theme")))}
+		detailQuery := r.URL.Query()
+		detailQuery.Set("expected_revision", c.Revision)
+		v := catalogView{Page: p, Query: q, Revision: c.Revision, Theme: sanitizeTheme(r.URL.Query().Get("theme")), DetailQuery: "?" + detailQuery.Encode(), Reset: previewURL("/catalog", sanitizeTheme(r.URL.Query().Get("theme")))}
 		if p.NextCursor != "" {
 			next := r.URL.Query()
 			next.Set("cursor", p.NextCursor)
@@ -66,6 +71,12 @@ func registerCatalog(mux *http.ServeMux) {
 		if !ready(w) {
 			return
 		}
+		query, status, err := catalogReviewQuery(r, c.Revision)
+		if err != nil {
+			writeCatalogReviewError(w, r, c, false, status, err)
+			return
+		}
+		query.Del("expected_revision")
 		entry, ok := c.Get(r.PathValue("id"))
 		if !ok {
 			http.NotFound(w, r)
@@ -78,7 +89,7 @@ func registerCatalog(mux *http.ServeMux) {
 			Preview  string
 			Evidence string
 			Quality  string
-		}{entry, c.Revision, "/catalog?" + r.URL.Query().Encode(), previewURL(entry.Preview, sanitizeTheme(r.URL.Query().Get("theme"))), previewURL("/target-evidence?subject_id="+url.QueryEscape(entry.ID), sanitizeTheme(r.URL.Query().Get("theme"))), qualityCapabilityLink(entry.ID, sanitizeTheme(r.URL.Query().Get("theme")))})
+		}{entry, c.Revision, "/catalog?" + query.Encode(), previewURL(entry.Preview, sanitizeTheme(r.URL.Query().Get("theme"))), previewURL("/target-evidence?subject_id="+url.QueryEscape(entry.ID), sanitizeTheme(r.URL.Query().Get("theme"))), qualityCapabilityLink(entry.ID, sanitizeTheme(r.URL.Query().Get("theme")), c.Revision)})
 		writeCatalogPage(w, r, entry.Name, content, err)
 	})
 	mux.HandleFunc("GET /api/catalog", func(w http.ResponseWriter, r *http.Request) {
@@ -106,16 +117,82 @@ func registerCatalog(mux *http.ServeMux) {
 		if !ready(w) {
 			return
 		}
+		if _, status, err := catalogReviewQuery(r, c.Revision); err != nil {
+			writeCatalogReviewError(w, r, c, true, status, err)
+			return
+		}
 		e, ok := c.Get(r.PathValue("id"))
 		if !ok {
 			http.NotFound(w, r)
 			return
 		}
+		pin, err := adoption.PinCapability(c.SchemaVersion, e)
+		if err != nil {
+			http.Error(w, "catalog metadata pin encoding failed", http.StatusInternalServerError)
+			return
+		}
 		writeCatalogJSON(w, r, struct {
-			Revision string        `json:"revision"`
-			Entry    catalog.Entry `json:"entry"`
-		}{c.Revision, e}, "")
+			Revision           string                      `json:"revision"`
+			Entry              catalog.Entry               `json:"entry"`
+			CapabilityRevision adoption.CapabilityRevision `json:"capability_revision"`
+		}{c.Revision, e, pin}, "")
 	})
+}
+
+// catalogReviewQuery checks selection identity before looking up any entry or pin.
+// ParseQuery errors must not turn a malformed supplied guard into an omitted one.
+func catalogReviewQuery(r *http.Request, revision string) (url.Values, int, error) {
+	query, err := url.ParseQuery(r.URL.RawQuery)
+	if err != nil {
+		return nil, http.StatusBadRequest, fmt.Errorf("invalid catalog query encoding; return to current results")
+	}
+	if len(query["expected_revision"]) > 1 {
+		return nil, http.StatusBadRequest, fmt.Errorf("expected_revision must be supplied at most once")
+	}
+	expected := query.Get("expected_revision")
+	if expected != "" {
+		if len(expected) != 64 {
+			return nil, http.StatusBadRequest, fmt.Errorf("expected_revision must be exactly 64 hexadecimal characters (0-9, a-f)")
+		}
+		if _, err := hex.DecodeString(expected); err != nil || strings.ToLower(expected) != expected {
+			return nil, http.StatusBadRequest, fmt.Errorf("expected_revision must be exactly 64 hexadecimal characters (0-9, a-f)")
+		}
+		if expected != revision {
+			return nil, http.StatusConflict, fmt.Errorf("the catalog changed; return to current results and review this capability again")
+		}
+	}
+	return query, http.StatusOK, nil
+}
+
+func writeCatalogReviewError(w http.ResponseWriter, r *http.Request, c *catalog.Catalog, api bool, status int, problem error) {
+	w.Header().Set("Cache-Control", "no-store")
+	if api {
+		http.Error(w, problem.Error(), status)
+		return
+	}
+	query, queryErr := url.ParseQuery(r.URL.RawQuery)
+	reset := url.Values{}
+	for _, key := range []string{"q", "profile", "layer", "kind", "maturity", "limit"} {
+		if value := query.Get(key); value != "" {
+			reset.Set(key, value)
+		}
+	}
+	// Keep a valid selection together. Invalid saved filters must not send the
+	// recovery action into another error or silently reinterpret only some filters.
+	q, err := catalogQuery(reset)
+	if err == nil {
+		_, err = c.Search(q)
+	}
+	resetNote := ""
+	if queryErr != nil || err != nil {
+		reset = url.Values{}
+		resetNote = "Some saved filters are no longer valid. Filters have been cleared so you can review the current catalog."
+	}
+	if theme := sanitizeTheme(query.Get("theme")); theme != "" {
+		reset.Set("theme", theme)
+	}
+	content, err := htmlf("catalog-review", `<h1 class="text-2xl font-semibold">This catalog selection needs review</h1><p class="mt-3 text-ink-muted">{{.Problem}}</p><p class="mt-3 text-ink-muted">Your application and adoption pins have not changed. Review the current results before accepting a new capability contract.</p>{{if .ResetNote}}<p class="mt-3 text-ink-muted">{{.ResetNote}}</p>{{end}}<a href="{{.Reset}}" class="mt-5 inline-flex min-h-11 items-center text-accent underline focus-visible:outline-2 focus-visible:outline-focus">Review current catalog results</a>`, struct{ Problem, Reset, ResetNote string }{problem.Error(), "/catalog?" + reset.Encode(), resetNote})
+	writeCatalogStatus(w, r, "Review catalog selection", content, err, status)
 }
 
 func catalogQuery(v url.Values) (catalog.Query, error) {

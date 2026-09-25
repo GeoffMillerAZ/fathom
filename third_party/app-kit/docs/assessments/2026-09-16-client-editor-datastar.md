@@ -63,7 +63,7 @@ script/helpers, manifest and startup against `harness-inputs.json`, writes those
 bytes once, then imports the retained helpers. Browser config records their identities.
 The four expected503 resource diagnostics remain in the receipt and consume one
 allowance per fulfilled injected response; other console/runtime errors fail.
-Independent `/Volumes/m2ext/appkit-p12-morph-checks.NKAS2e/` retains five seeded
+Independent `/Volumes/m2ext/appkit-evidence/appkit-p12-morph-checks.NKAS2e/` retains five seeded
 helper/manifest/startup mismatch refusals before Chrome launch. Its exact extracted
 cleanup-function probe passes graceful/forced owned-child exits and a never-close
 branch with accelerated timers. This is function proof, not exceptional whole-runner
@@ -75,7 +75,7 @@ preview's implicit named section. The repaired role-based locator passed in
 console classification and exceptional cleanup hardening produced the final trial
 above without changing editor/runtime/output bytes or task expectations.
 
-Race source, command and log: `/Volumes/m2ext/appkit-p12-morph-host.eLNeyC/`.
+Race source, command and log: `/Volumes/m2ext/appkit-evidence/appkit-p12-morph-host.eLNeyC/`.
 [Replay](fixtures/client-editor/README.md) uses the optional `--datastar` build flag.
 
 ## Still open

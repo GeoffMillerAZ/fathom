@@ -1,0 +1,82 @@
+{
+  "schema_version": "static-cold-pair-v1",
+  "pass": true,
+  "runs": [
+    {
+      "receiptPath": "/Volumes/m2ext/appkit-evidence/appkit-static-replay.ud7EOtjr/cold-1/run-receipt.json",
+      "receiptSHA256": "d752637034129f82974de904dbd51299accd3a9f7475cb2c95bf5aa124450eef"
+    },
+    {
+      "receiptPath": "/Volumes/m2ext/appkit-evidence/appkit-static-replay.ud7EOtjr/cold-2/run-receipt.json",
+      "receiptSHA256": "b42d40c40e6f781c010017575b9fa1100638e3d692aaaca3dfca2091d0a02696"
+    }
+  ],
+  "artifacts": {
+    "static-content": {
+      "bytes": 23659394,
+      "sha256": "ad409230e45da412a3d1cfca896c1cd7e75b4217653c0e970a8331d1932bf997"
+    },
+    "app.css": {
+      "bytes": 18209,
+      "sha256": "bf0b8e787aaecf1e4fdafe4a7e3db724b3ea8a787fa5e03f7959aabfc5ff22ce"
+    }
+  },
+  "site": [
+    {
+      "name": "404-dark.html",
+      "bytes": 2412,
+      "sha256": "837d14e19423a023a0816799f99607227e555926f1281ab723f72ec690cfc5e4"
+    },
+    {
+      "name": "404-light.html",
+      "bytes": 2415,
+      "sha256": "9d0ba009694eddd6c46f83de304d95a7dbeb8c13e1267ed00a2af8baec53f0b8"
+    },
+    {
+      "name": "404.html",
+      "bytes": 2384,
+      "sha256": "bd74366e5bca491dd51817a622893c82a0009f1137f247344d16faa2b12d2c99"
+    },
+    {
+      "name": "app.css",
+      "bytes": 18209,
+      "sha256": "bf0b8e787aaecf1e4fdafe4a7e3db724b3ea8a787fa5e03f7959aabfc5ff22ce"
+    },
+    {
+      "name": "index-dark.html",
+      "bytes": 7743,
+      "sha256": "6f1eda99c53506657e875a55edd03e1d0e90cbce5464e1a7ef76f12a8704ff7d"
+    },
+    {
+      "name": "index-light.html",
+      "bytes": 7750,
+      "sha256": "03751f334a1964544c88986be52ba8b4bb19b9f985dba4146fe4ee45381e4ebc"
+    },
+    {
+      "name": "index.html",
+      "bytes": 7695,
+      "sha256": "39cde080f33fdbc1291a937ed8d366143399ad918a6fbbbd335883285fc26946"
+    },
+    {
+      "name": "manifest.json",
+      "bytes": 1602,
+      "sha256": "317301ea8b114aa59c4182611c3fee3c5a662ee1731782a4591fce4053f2352c"
+    },
+    {
+      "name": "profile-dark.html",
+      "bytes": 3896,
+      "sha256": "fe43603bf038f2b213eb92b9f61c017276cea70f3e57f6a35b8c32126d555594"
+    },
+    {
+      "name": "profile-light.html",
+      "bytes": 3899,
+      "sha256": "9682d8e387df565d3659f1449501cbf2612c9e3f3afdf44a0134ed290a88b153"
+    },
+    {
+      "name": "profile.html",
+      "bytes": 3868,
+      "sha256": "4b80b4b4cace3e70b2ca886bcfe899f7d6a6226ed7292e89c0e75139b2932298"
+    }
+  ],
+  "claim": "two filesystem-constrained local Go1.26.3 darwin/arm64 CGO-disabled cache-cold builds; not independent-host, browser or deployed-consumer proof"
+}

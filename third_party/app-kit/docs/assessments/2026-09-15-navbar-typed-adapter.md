@@ -13,7 +13,7 @@ results remain historical evidence, not current repair verdicts or waived gates.
 
 ## Source, compiler and delivery
 
-Private compiler root: `/Volumes/m2ext/appkit-navbar-proof.Sea12gFt/probe`.
+Private compiler root: `/Volumes/m2ext/appkit-evidence/appkit-navbar-proof.Sea12gFt/probe`.
 Command-scoped TMPDIR is its parent, with an existing external Go cache and offline
 module resolution. The first invocation refused a missing output directory before
 writing; after explicitly creating the required empty 0700 directory, the probe passed.
@@ -87,7 +87,7 @@ canary's one-pixel tolerance boundary, not a changed navbar implementation.
 
 The maintained [rehearsal](fixtures/navbar-adapter/standalone.mjs) and
 [consumer test](fixtures/navbar-adapter/consumer_test.go.txt) pass in
-`/Volumes/m2ext/appkit-navbar-proof.Sea12gFt/navbar-standalone-9ZORuX`.
+`/Volumes/m2ext/appkit-evidence/appkit-navbar-proof.Sea12gFt/navbar-standalone-9ZORuX`.
 Receipt SHA-256: `9b6c4720060846e8367c6c2003438493dfee830186369b80525fc66deffec9c2`.
 Harness SHA: `c3453435ed9f006b7c3b41f6d998fd9694b4b4513b725197a7a447e55a7ff9f4`.
 The privately built CLI SHA is
@@ -206,7 +206,7 @@ The repair allows long desktop routes to grow/wrap and gives failing links conta
 focus paint. A distinct CUE envelope binds base, rule, CSS, companion Go/templ and
 wrapper. No CLI variant, permanent layer/profile or consumer pin changes.
 
-Compiler proof: `/Volumes/m2ext/appkit-navbar-repair.RlCczDk0/probe-v2`, receipt SHA
+Compiler proof: `/Volumes/m2ext/appkit-evidence/appkit-navbar-repair.RlCczDk0/probe-v2`, receipt SHA
 `91171695b41fe40b9e2982d834520ac1ef508a1ba6777bc4a924ee5d3c796a61`;
 candidate artifact SHA `77a5a32f909eeb1403be5eff43525d0f581d983d070e612ec6678b9b9532f581`.
 Both templ formatting phases compile and run model/DOM tests with race checking.
@@ -262,7 +262,7 @@ existing preview, consumer or commit changed.
 ## Supplemental maximum-bound and repeated-instance fixtures
 
 The new retained compiler output is
-`/Volumes/m2ext/appkit-navbar-acceptance.hEhhhUJv/probe`, compile receipt SHA
+`/Volumes/m2ext/appkit-evidence/appkit-navbar-acceptance.hEhhhUJv/probe`, compile receipt SHA
 `52cf59d6ba2950c8bef7ddc27032fef20d9d44069da3e1224b50523e739ba3a9`.
 Both synthetic and private source pass unformatted/formatted templ generation and
 model/DOM race tests. The exact candidate and all eight prior renders are unchanged.
@@ -286,7 +286,7 @@ normal-size browser result below retains unresolved keyboard-entry failures.
 The maintained [acceptance harness](fixtures/navbar-adapter/acceptance.mjs), SHA
 `5517f72b46b986954ee6001d36388c583b38ff260a03ead9404f51f7f95ee590`, records
 **523 passed, four failed, zero operational errors** in
-`/Volumes/m2ext/appkit-navbar-acceptance.hEhhhUJv/probe/acceptance-5JN3xE/failure.json`,
+`/Volumes/m2ext/appkit-evidence/appkit-navbar-acceptance.hEhhhUJv/probe/acceptance-5JN3xE/failure.json`,
 SHA `47927d1d646fdab6f84178e53513ba670be043cfed94256be66daff3054bcc99`.
 Chrome152.0.7977.84 runs at1440/390 CSS widths, height1000, DPR1 and visual scale1,
 light/dark with reduced motion requested. The narrow headless outer window clamps to
@@ -343,7 +343,7 @@ dependencies remain unchanged; CLI repair delivery and full target gates remain 
 ## Explicit source-pinned runtime focus repair
 
 The separate passive [focus trace](fixtures/navbar-adapter/focus-entry.mjs) retains
-`/Volumes/m2ext/appkit-navbar-acceptance.hEhhhUJv/probe/focus-entry-HN0uaT/failure.json`,
+`/Volumes/m2ext/appkit-evidence/appkit-navbar-acceptance.hEhhhUJv/probe/focus-entry-HN0uaT/failure.json`,
 SHA `096ae6ef38d319f04227ecabbda13a9ff7b0e5be7accf1a128c0ecb14f2d8951`.
 Its9 passes/two failures are diagnostic, not acceptance: typed fixtures retain link0,
 but maximum fixtures focus link0 and then EL-MENU while Elements' active index stays0.
@@ -359,7 +359,7 @@ connected, open and without an active item; unselected behavior remains uncondit
 No extra event listener, item selection, state owner or altered timeout is introduced.
 
 The independent private replay is retained at
-`/Volumes/m2ext/appkit-navbar-acceptance.hEhhhUJv/runtime.XZgbXqWk`:
+`/Volumes/m2ext/appkit-evidence/appkit-navbar-acceptance.hEhhhUJv/runtime.XZgbXqWk`:
 
 | Input/output | SHA-256 |
 |---|---|
@@ -479,7 +479,7 @@ Both variants refuse cross-checks; no-clobber, private modes and drift exit1 ver
 invalid/could-not-check exit2 remain intact. Full source/repair/runtime replay precedes I/O.
 
 Private delivery root:
-`/Volumes/m2ext/appkit-navbar-acceptance.hEhhhUJv/delivery.oQKi8cBO`.
+`/Volumes/m2ext/appkit-evidence/appkit-navbar-acceptance.hEhhhUJv/delivery.oQKi8cBO`.
 
 | Artifact | SHA-256 |
 |---|---|
@@ -498,7 +498,7 @@ The maintained [repair rehearsal](fixtures/navbar-adapter/repair-standalone.mjs)
 `54bb2553a6daa028b8a795b69f53a13c618d97137450589ffb77eecb35de283b`, and
 [synthetic consumer](fixtures/navbar-adapter/repair-consumer_test.go.txt), SHA
 `57b8ab81d7235ca9d2c772a39a4dc48e337f423c2fa4aa94b57b534eae04360f`, pass in
-`/Volumes/m2ext/appkit-navbar-acceptance.hEhhhUJv/navbar-repair-standalone-ueWgaW`.
+`/Volumes/m2ext/appkit-evidence/appkit-navbar-acceptance.hEhhhUJv/navbar-repair-standalone-ueWgaW`.
 Receipt SHA: `1354f1976e650bd3fd5c889c9720cb45e01f065ce5fcded554377e0367a6dc4d`.
 
 All28 bounded commands have expected outcomes across two fresh consumer/compiler caches.
@@ -538,7 +538,7 @@ minimal optional-field absence and native directory access. Narrow light represe
 add JavaScript-disabled, HTTP503 and late real-module arrival tasks. These are scoped
 synthetic interactions, not actual app adoption, performance, assistive input or200% proof.
 
-Outputs are new private children of `/Volumes/m2ext/appkit-navbar-acceptance.hEhhhUJv`:
+Outputs are new private children of `/Volumes/m2ext/appkit-evidence/appkit-navbar-acceptance.hEhhhUJv`:
 
 | Suffix | Result | Receipt SHA-256 / limitation |
 |---|---|---|

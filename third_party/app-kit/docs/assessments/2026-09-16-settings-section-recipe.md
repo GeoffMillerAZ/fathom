@@ -44,7 +44,7 @@ Consumers scan `appkit/ui/form/*.go` and include theme CSS. Existing form APIs r
 
 ## Retained evidence
 
-Final root: `/Volumes/m2ext/appkit-settings-browser.Y1UdgRIJ/`.
+Final root: `/Volumes/m2ext/appkit-evidence/appkit-settings-browser.Y1UdgRIJ/`.
 `tested/` retains16 selected source/test/catalog/browser/config files before execution,
 the compiled fixture and runner. `verification-receipt.json` binds commands, binary,
 CSS and served catalog revision. `audit-receipt.json` checks those16 current hashes,

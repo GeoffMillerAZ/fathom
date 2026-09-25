@@ -8,7 +8,7 @@ Source files and consumer repositories stay unchanged by the browser workflow.
 
 ## Fixture and build proof
 
-Private root: `/Volumes/m2ext/appkit-theme-cancel.F2rbr0oq/`.
+Private root: `/Volumes/m2ext/appkit-evidence/appkit-theme-cancel.F2rbr0oq/`.
 `green/receipt.json` freezes repository-local Go/test/embed sources and selected tools
 before race tests and compilation. Existing cached dependencies are used; this is not
 a hermetic rebuild, released pin or installed application.

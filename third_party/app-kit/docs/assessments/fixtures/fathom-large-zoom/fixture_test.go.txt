@@ -1,0 +1,184 @@
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"html"
+	"net"
+	"net/http"
+	"os"
+	"os/signal"
+	"strings"
+	"syscall"
+	"testing"
+	"time"
+)
+
+const largeChartCaption = "Synthetic chart-scale task: grade A = 1,000; find_symbol calls = 1,234,567; references calls = 1,000."
+
+func largeChartModel() observatoryModel {
+	m := observatoryGuideModel("complete")
+	zero := 0
+	m.Services = make([]obsServiceRow, 1000)
+	for i := range m.Services {
+		name := fmt.Sprintf("synthetic-%04d", i+1)
+		m.Services[i] = obsServiceRow{
+			fleetServiceRow: fleetServiceRow{
+				Service: name, Symbols: 1, Freshness: "fresh",
+				OpenObservations: &zero, SessionCount: &zero,
+			},
+			Grade: "A", Realization: &realizationReport{Service: name, Grade: "A", Realized: 5, Available: 5},
+		}
+	}
+	m.Misses = []obsMissRow{
+		{Tool: "find_symbol", Calls: 1234567, Hits: 1234567},
+		{Tool: "references", Calls: 1000, Hits: 1000},
+	}
+	return m
+}
+
+func largeChartDocument(scheme string) (string, error) {
+	if scheme != "light" && scheme != "dark" {
+		return "", fmt.Errorf("unknown scheme %q", scheme)
+	}
+	body, err := disableObservatoryGuideLinks(`<p id="large-chart-task" class="mb-4 text-ink-muted">` +
+		html.EscapeString(largeChartCaption) + `</p>` + renderObsFleet(largeChartModel()))
+	if err != nil {
+		return "", err
+	}
+	return `<!doctype html><html lang="en" data-theme="` + scheme + `"><head><meta charset="utf-8">` +
+		`<meta name="viewport" content="width=device-width, initial-scale=1"><title>Fathom large chart fixture</title>` +
+		`<link rel="stylesheet" href="/app.css"></head>` +
+		`<body class="min-h-screen bg-surface font-sans text-sm text-ink"><main id="observatory-main" class="mx-auto w-full max-w-7xl p-4">` +
+		body + `</main></body></html>`, nil
+}
+
+func TestAppKitLargeChartModel(t *testing.T) {
+	m := largeChartModel()
+	if len(m.Services) != 1000 || len(m.Misses) != 2 {
+		t.Fatalf("fixture cardinality = %d services, %d call rows", len(m.Services), len(m.Misses))
+	}
+	for _, row := range m.Services {
+		if row.Realization == nil || row.Realization.Grade != "A" || row.Grade != "A" {
+			t.Fatalf("non-A synthetic service: %#v", row)
+		}
+	}
+	page, err := largeChartDocument("light")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		largeChartCaption,
+		`aria-label="grade distribution on 2026-09-21"`,
+		`aria-label="calls per tool"`,
+		`width="256"`, `width="560"`, "1,234,567", "1,000",
+	} {
+		if !strings.Contains(page, want) {
+			t.Fatalf("large fixture missing %q", want)
+		}
+	}
+	for _, absent := range []string{"<a ", "<table", "fleet coverage unavailable", "unknown scheme"} {
+		if strings.Contains(page, absent) {
+			t.Fatalf("large fixture contains unexpected %q", absent)
+		}
+	}
+	if _, err := largeChartDocument("unknown"); err == nil {
+		t.Fatal("unknown scheme accepted")
+	}
+}
+
+func TestAppKitLargeChartFixture(t *testing.T) {
+	if os.Getenv("APPKIT_LARGE_CHART_FIXTURE") != "1" {
+		t.Skip("set APPKIT_LARGE_CHART_FIXTURE=1 for the isolated browser fixture")
+	}
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	origin := "http://" + listener.Addr().String()
+	guide, err := observatoryGuideMux(origin)
+	if err != nil {
+		listener.Close()
+		t.Fatal(err)
+	}
+
+	allowed := func(r *http.Request) bool {
+		host, _, splitErr := net.SplitHostPort(r.RemoteAddr)
+		peer := net.ParseIP(host)
+		return splitErr == nil && peer != nil && peer.IsLoopback() && r.Host == listener.Addr().String() &&
+			(r.Header.Get("Origin") == "" || r.Header.Get("Origin") == origin)
+	}
+	mux := http.NewServeMux()
+	mux.Handle("/dev/theme", guide)
+	mux.Handle("/dev/theme/", guide)
+	mux.HandleFunc("/app.css", func(w http.ResponseWriter, r *http.Request) {
+		if !allowed(r) {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		w.Header().Set("Content-Type", "text/css; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store")
+		if r.Method == http.MethodGet {
+			_, _ = w.Write(obsAppCSS)
+		}
+	})
+	mux.HandleFunc("/large", func(w http.ResponseWriter, r *http.Request) {
+		if !allowed(r) {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		if r.URL.RawQuery != "scheme=light" && r.URL.RawQuery != "scheme=dark" {
+			http.Error(w, "scheme must be exactly light or dark", http.StatusBadRequest)
+			return
+		}
+		document, renderErr := largeChartDocument(strings.TrimPrefix(r.URL.RawQuery, "scheme="))
+		if renderErr != nil {
+			http.Error(w, "fixture render refused", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'none'; style-src 'self'; style-src-attr 'unsafe-inline'; font-src 'none'; img-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
+		if r.Method == http.MethodGet {
+			_, _ = w.Write([]byte(document))
+		}
+	})
+
+	server := &http.Server{
+		Handler: mux, ReadHeaderTimeout: 3 * time.Second, WriteTimeout: 15 * time.Second,
+		IdleTimeout: 15 * time.Second, MaxHeaderBytes: 16 << 10,
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	done := make(chan error, 1)
+	go func() { done <- server.Serve(listener) }()
+	fmt.Printf("APPKIT_LARGE_CHART_ORIGIN=%s\n", origin)
+	timer := time.NewTimer(180 * time.Second)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+	case <-timer.C:
+	case serveErr := <-done:
+		if !errors.Is(serveErr, http.ErrServerClosed) {
+			t.Fatalf("fixture server stopped early: %v", serveErr)
+		}
+		return
+	}
+	shutdown, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	if err := server.Shutdown(shutdown); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-done; !errors.Is(err, http.ErrServerClosed) {
+		t.Fatalf("fixture server cleanup: %v", err)
+	}
+}

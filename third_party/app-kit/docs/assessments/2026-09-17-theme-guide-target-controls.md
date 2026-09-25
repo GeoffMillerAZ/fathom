@@ -20,7 +20,7 @@ and snapshot identities, caps captured output and keeps workload success separat
 owned-process cleanup. Other selected tools/entry points have before/after identities,
 not a hermetic dependency closure or a claim against malicious change-and-restore races.
 
-Private owner/preflight root: `/Volumes/m2ext/appkit-target-control.ORiayyOU/`.
+Private owner/preflight root: `/Volumes/m2ext/appkit-evidence/appkit-target-control.ORiayyOU/`.
 `preflight-5hvABs/` retains source before syntax and16 synthetic lifecycle/guard tests;
 receipt SHA-256: `1411198ea0c7f83dc799973574b2c34ead394780572c55e538c09e153563147b`.
 
@@ -72,7 +72,7 @@ independent cancellation acceptance unexecuted.
 The probe receipt hashes are respectively
 `19e18f727cbae1ef6581d62b7ce2055d5670ecb1cfa4e6e0cc223f54e7b1b1fb` and
 `1e5410df2a5440fb799f2b2804021d3200b66c4a5b8a2bb62cde076c6d98b05b`.
-Archive `/Volumes/m2ext/appkit-theme-cancel.F2rbr0oq/internal-evidence-xzYgHL/`
+Archive `/Volumes/m2ext/appkit-evidence/appkit-theme-cancel.F2rbr0oq/internal-evidence-xzYgHL/`
 byte-verifies126 files/60,279,636 bytes across all six controls, excluding only ephemeral
 profiles. Original packets remain intact.
 
@@ -143,7 +143,7 @@ internal-UI identity or applicable network containment. The guard remains failed
 The6,673ms run still has verified owner cleanup, exact inputs and source preservation.
 Its probe receipt SHA is `ddb104d1acf05a0b6d2be03e4c622edcc45247adb071c748805b102096344b9f`.
 
-Archive `/Volumes/m2ext/appkit-theme-cancel.F2rbr0oq/internal-evidence-RtvIvo/`
+Archive `/Volumes/m2ext/appkit-evidence/appkit-theme-cancel.F2rbr0oq/internal-evidence-RtvIvo/`
 byte-verifies166 files/145,492,913 bytes for these five acquisitions, excluding only
 ephemeral profiles; originals remain intact.
 
@@ -194,7 +194,7 @@ Probe receipt SHA-256s in table order:
 - `4d3b690e16f2b2f7213026a85a1c479fe2fc5d0dcc920be223230251a3f6f397`
 - `3b82a259f0be71fa36a72be4a0d85561b3b99ff3ec3176f49d115a5e2df13542`
 
-Archive `/Volumes/m2ext/appkit-theme-cancel.F2rbr0oq/internal-evidence-nnzCRS/`
+Archive `/Volumes/m2ext/appkit-evidence/appkit-theme-cancel.F2rbr0oq/internal-evidence-nnzCRS/`
 byte-verifies160 files/144,995,080 bytes, excluding only ephemeral profiles; originals remain.
 
 ## Next evidence needed

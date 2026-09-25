@@ -160,6 +160,46 @@
     "reason": "Agreement across chart, table and export is the comparison recipe's declared task."
   },
   {
+    "name": "Go web analytics row detail links",
+    "query": {"text": "analytics row detail links", "profile": "go-web", "kind": "recipe"},
+    "top": ["analytics.comparison"],
+    "forbidden": ["analytics.bars"],
+    "empty": false,
+    "reason": "The existing experimental recipe accepts app-owned native destinations; selection does not imply a router or consumer promotion."
+  },
+  {
+    "name": "no React analytics row detail recipe",
+    "query": {"text": "analytics row detail links", "profile": "react-web", "kind": "recipe"},
+    "top": [],
+    "forbidden": ["analytics.comparison"],
+    "empty": true,
+    "reason": "The typed detail-link seam is Go-web only; original commercial React sources do not establish a first-party React recipe."
+  },
+  {
+    "name": "Go web negative value chart",
+    "query": {"text": "negative value chart"},
+    "top": ["analytics.comparison"],
+    "forbidden": ["analytics.bars"],
+    "empty": false,
+    "reason": "This exact catalog phrase routes signed observations to the experimental Go-web recipe; it is a lexical regression case, not semantic-language coverage."
+  },
+  {
+    "name": "Go web signed diverging bars",
+    "query": {"text": "signed diverging bars", "profile": "go-web", "kind": "recipe", "maturity": "experimental"},
+    "top": ["analytics.comparison"],
+    "forbidden": ["analytics.bars"],
+    "empty": false,
+    "reason": "The authored signed task selects analytics.comparison rather than the legacy nonnegative primitive; no broader natural-language claim is implied."
+  },
+  {
+    "name": "no portable signed analytics recipe",
+    "query": {"text": "signed diverging bars", "profile": "portable", "kind": "recipe", "maturity": "experimental"},
+    "top": [],
+    "forbidden": ["analytics.comparison", "analytics.bars"],
+    "empty": true,
+    "reason": "The signed renderer is an L3b Go-web recipe; filtering for a portable recipe must refuse both that record and the L3a primitive."
+  },
+  {
     "name": "cross tab appearance persistence",
     "query": {"text": "cross tab synchronization", "layer": "L2", "profile": "portable"},
     "top": ["shell.appearance"],
@@ -222,6 +262,38 @@
     "forbidden": ["data.table"],
     "empty": false,
     "reason": "A documentation outline is content structure, not a record table."
+  },
+  {
+    "name": "static content",
+    "query": {"text": "static content"},
+    "top": ["content.docs"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "The documentation primitive points adopters to the separate bounded static-reading reference without claiming a static-web profile."
+  },
+  {
+    "name": "FAQ without JavaScript",
+    "query": {"text": "FAQ without JavaScript"},
+    "top": ["content.docs"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "The bounded static-reading reference demonstrates native FAQ disclosure without turning the primitive into a site generator."
+  },
+  {
+    "name": "static content CMS refusal",
+    "query": {"text": "static content CMS", "profile": "go-web"},
+    "top": [],
+    "forbidden": ["content.docs"],
+    "empty": true,
+    "reason": "The bounded static-reading reference is not a CMS or generic publishing system."
+  },
+  {
+    "name": "static content portable profile refusal",
+    "query": {"text": "static content", "profile": "portable"},
+    "top": [],
+    "forbidden": ["content.docs"],
+    "empty": true,
+    "reason": "The experimental Gallery exporter does not promote the Go documentation primitive to a certified portable profile."
   },
   {
     "name": "sortable data browser",

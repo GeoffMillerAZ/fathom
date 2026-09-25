@@ -2,7 +2,9 @@
 
 [ADR-0024](../adr/0024-read-only-adoption-contract.md) defines the boundary.
 `inspect` inventories declarations; `check` verifies an explicit consumer-owned selection.
-`pins` retrieves candidate metadata. None executes the app or proves runtime adoption.
+`pins` retrieves candidate metadata; `draft` authors a reviewable v2 selection.
+`search` and `capability` retrieve embedded catalog metadata without a host or consumer root.
+None executes the app or proves runtime adoption.
 
 ## Commands
 
@@ -36,6 +38,35 @@ Default human output uses cli-kit diagnostic tables; NO_COLOR and pipe handling 
 
 If both a mismatch and an unavailable read occur, exit 2 preserves the incomplete-check
 signal and the report retains both findings. Missing selected files are failures, not skips.
+
+### Discover without MCP or Gallery
+
+[ADR-0082](../adr/0082-discover-adoption-capabilities-without-a-host.md) supplies a
+JSON-only first-party discovery path in the same CLI:
+
+```sh
+appkit adoption search --query comparison --profile go-web --limit 5
+appkit adoption capability --id analytics.comparison --expected-catalog-revision REVIEWED_SEARCH_REVISION
+```
+
+Search accepts `--query`, `--layer`, `--profile`, `--kind`, `--maturity`, `--limit`
+and `--cursor`, with the same catalog semantics as MCP. Pages default to10 items
+(maximum50); retain the query, filters and limit when passing `next_cursor` back.
+Valid empty matches are empty arrays, not proof that the task has been implemented.
+Exact retrieval prints `revision`, full `entry` and the canonical v2
+`capability_revision`. Review dependencies, app-owned seams and proof gaps before
+using its ID/pin. The optional guard takes the whole-catalog search revision, not a
+per-capability pin; stale/malformed values refuse before metadata is returned.
+Omitting it reads the binary's current snapshot. Rebuild to refresh that snapshot.
+
+Both commands always print JSON, so neither has `--json`, `--root` or `--manifest`.
+They read no consumer files and use no network, model or licensed corpus. Exit0 means
+retrieval succeeded (or help), not adoption passed; all failures use exit2. Output
+is capped at128KiB before writing; a broken writer may receive partial JSON.
+CLI/MCP/Gallery results agree for identical embedded metadata, not necessarily for
+differently versioned binaries. These commands do not fetch docs or commercial source.
+The [isolated CLI receipt](../assessments/2026-09-23-adoption-cli-discovery.md) records
+package/conformance and synthetic actual-process proof, not real-app acceptance.
 
 ## Authored selection
 
@@ -101,6 +132,24 @@ All profile/layer, artifact, module and router checks remain.
 and full `entries` for the explicit manifest's IDs. Exit0 / `observed` is only current
 metadata retrieval, not agreement, fitness or adoption success. Unknown IDs fail.
 No artifact reads, app commands or manifest writes; review before accepting hashes.
+Exact MCP `get_capability(id)` and Gallery `/api/catalog/{id}` also return one
+`capability_revision: {id, sha256}` alongside the complete `entry` and unchanged
+whole-catalog `revision`. All three paths use the same canonical pin function.
+Review the entry before copying that object into a v2 selection; never substitute
+the whole-catalog revision or hash the wire JSON yourself. A rebuilt server is
+required for this additive field; absence means use `adoption pins`, not infer a pin.
+When following MCP search, pass its whole-catalog `revision` as optional
+`get_capability.expected_revision`. A malformed or changed revision refuses the
+lookup; restart search and review the new selection rather than dropping the guard.
+Omitting it retains latest-snapshot lookup. This precondition needs a rebuilt server;
+it is separate from the returned per-capability pin and does not prove source freshness.
+Gallery exact HTML/JSON routes also accept `?expected_revision=<catalog revision>`;
+generated capability links include it. Stale selections return409 before entry/pin
+content, malformed or duplicate guards return400, and omitted/empty guards keep
+current lookup. Recovery retains valid filters/theme but drops the stale cursor/guard;
+invalid filters reset together with an explanation. Theme switching preserves a guarded
+detail's guard. These are metadata review
+controls, not artifact validation ([evidence](../assessments/2026-09-23-gallery-catalog-revision.md)).
 Empty capability selections still need an artifact/module/router requirement. Rebuild
 before migration; old checkers refuse v2. The [original invocation](../assessments/2026-09-16-selected-adoption-pins.md)
 retains v1 failures; the authorized [RAC/Fathom migration](../assessments/2026-09-16-fathom-display-adoption.md#consumer-v2-metadata-migration)
@@ -132,6 +181,51 @@ contribution records, and the app's ownership boundaries. This completes the sho
 router's handoff without changing its checked bytes or copying kit policy. If the
 selected docs cannot supply the guide, record canonical review as pending; do not
 claim the static checker validates this content or that an agent has read it.
+
+## First-time draft authoring
+
+[ADR-0078](../adr/0078-draft-explicit-adoption-selections.md) adds a CLI-only path
+that needs no existing manifest and emits JSON to stdout, never installs files:
+
+```sh
+appkit adoption draft --root /path/to/consumer --consumer my-app \
+  --profile portable --layer L0 --layer L1 --contract docs/app-kit.md \
+  --capability foundation.tokens --artifact public/theme.css
+```
+
+Discover and review the exact capability first with `search` and `capability`, or
+MCP/Gallery. Optionally pass its whole-catalog
+`revision` as `--expected-catalog-revision` to refuse a changed catalog. The draft
+contains current per-capability metadata pins and hashes of the explicitly listed
+existing files. It rejects duplicate choices, incompatible profile/layers, unsafe
+paths, missing artifacts and read-budget failures; no renderer substitution occurs.
+Repeat `--layer`, `--capability` and `--artifact` once per value (not comma lists).
+Explicit root, consumer slug, profile and contract path are required.
+
+Select `--module-file go.mod --module-version v0.1.0` only for an actual reviewed
+requirement; `--allow-local-replace` explicitly permits development replacement.
+These are declarations, not resolved or inferred versions. `--agents` requires
+both canonical root instruction blocks when subsequently checked; default is false.
+Neither option reads or creates its referenced files. A module-only or agent-only
+selection is valid; empty capabilities/artifacts are JSON arrays, not null.
+Non-CLI selections still need layers, and a wholly empty requirement is refused.
+
+Review stdout before deliberately saving an adoption manifest. Prepare the human
+contract and, if selected, review `adoption router` output into both instruction
+files. Then run `adoption pins --json` to review the selected metadata and
+`adoption check --json` to check the saved contract. Missing contract/module/router
+files can make that check fail even when drafting succeeded. No project commands,
+dependency resolution, documentation completeness or host activation are proven.
+
+Exit0 means **draft produced**, not check passed; all drafting failures use exit2.
+There is no `--json` or output-path option: stdout is always one indented v2 manifest.
+Output is stable for identical explicit inputs, catalog and read bytes. Reads are
+sequential, not an atomic source snapshot. A writer failure may leave partial output;
+do not save it as a valid draft. Never redirect over an existing adoption manifest
+to silence drift: use the existing pins/review/upgrade workflow instead.
+Rebuild older CLI binaries for this additive command; no manifest migration required.
+The [synthetic workflow receipt](../assessments/2026-09-23-adoption-draft.md) retains
+actual-process and regression evidence, not real-consumer or host acceptance.
 
 ## Bounds and proof limits
 

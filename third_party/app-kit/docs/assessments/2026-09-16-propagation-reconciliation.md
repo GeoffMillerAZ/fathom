@@ -28,7 +28,7 @@ remain incomplete. G4 stays open for those requirements, not another navigation 
 
 ## Initial check: two failures retained
 
-The frozen reconciliation at `/Volumes/m2ext/appkit-g4-reconciliation.CBp2by` checks
+The frozen reconciliation at `/Volumes/m2ext/appkit-evidence/appkit-g4-reconciliation.CBp2by` checks
 selected artifacts, paired routing, historical receipt identities and the offline host
 replay. It passed100/102 assertions and failed these manifest pins at that snapshot:
 
@@ -59,13 +59,13 @@ The exact manifest-pinned baseline was recovered at
 `e2c7e83330fef16a738a114d5498278f2caea95e` records that dependency advance; the app-kit
 block is unchanged. A diff against current Git HEAD alone would have misattributed it.
 
-The retained `/Volumes/m2ext/appkit-rac-shell-state.sX5bLw` run already built the exact
+The retained `/Volumes/m2ext/appkit-evidence/appkit-rac-shell-state.sX5bLw` run already built the exact
 current `go.mod` and `vendor/modules.txt`: the source config, copied bytes and288-pass
 browser receipt agree. This is linkage to the earlier scoped run, not new execution or
 certification of agentic-kit. Only RAC's authored `vendor/modules.txt` artifact hash
 and its delivery note changed now; no dependency, renderer, stylesheet or agent block.
 
-Private review root: `/Volumes/m2ext/appkit-adoption-reconcile.HNknpb`.
+Private review root: `/Volumes/m2ext/appkit-evidence/appkit-adoption-reconcile.HNknpb`.
 The exact retained ADR-0065 checker (`004b35b7…249aaa`) reported RAC exit0; Fathom
 still exited1 solely for `scripts/ui-css.sh` at that snapshot. In copied RAC fixtures, restoring the old
 artifact and hiding the selected file each produce exit1 with the exact artifact path;
@@ -165,7 +165,7 @@ browser, consumer binary or compiler. It grants no release or whole-app certific
 | Improvement reaches a second consumer with reviewed feedback | Exact2094/1207 browser receipts, all tested HTML/CSS inputs, harnesses and current/frozen nav/shell bytes; `RAC-NAV-01` returned disposition/owner/revisit | Experimental RAC→kit→Fathom propagation, not permanent API promotion |
 | Candidate and migration notes prepared; publication authorized separately | Content-identified candidate and maintained migration checklist, with no publish/tag | Private preparation only |
 
-Audit packet: `/Volumes/m2ext/appkit-g4-acceptance.yrXRQX/`. The final audit records2536
+Audit packet: `/Volumes/m2ext/appkit-evidence/appkit-g4-acceptance.yrXRQX/`. The final audit records2536
 file observations (including repeats), not2536 behavioral tests. It checks identity and
 recorded coverage; hashes do not authenticate observations. The two failed audit scripts
 and outputs remain separate and immutable:

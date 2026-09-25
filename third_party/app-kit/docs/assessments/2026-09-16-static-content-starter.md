@@ -63,16 +63,16 @@ classes. The test hash was
 After repair, focused ToC and Gallery static-content tests passed. This is a source
 regression, not a measured pre-repair browser comparison or accessibility certification.
 
-The first private preparation at `/Volumes/m2ext/appkit-static-content-SRE6n9`
+The first private preparation at `/Volumes/m2ext/appkit-evidence/appkit-static-content-SRE6n9`
 failed before CSS/build/browser work: the preparer's Go-list template contained an
 incorrectly escaped newline. Its executed source, command, stderr and failure receipt
 remain intact. The corrected preparer changes only that source-list formatting;
 it does not change any task oracle or numeric budget.
 
-The local preparation at `/Volumes/m2ext/appkit-static-content-Dh0hru` passed full
+The local preparation at `/Volumes/m2ext/appkit-evidence/appkit-static-content-Dh0hru` passed full
 Gallery/documentation-package tests and two identical builds. A subsequent explicit
 fragment-focus styling repair has its own passing preparation at
-`/Volumes/m2ext/appkit-static-content-bk2nf9`: 166 retained local source inputs,
+`/Volumes/m2ext/appkit-evidence/appkit-static-content-bk2nf9`: 166 retained local source inputs,
 full package tests, unchanged-source checks and two matching builds. It uses existing
 module/build caches with offline Go resolution, not two cold or standalone builds.
 No working-tree generated CSS or existing preview was replaced.
@@ -96,7 +96,7 @@ global request accounting and preserved graceful-exit/actual-listener-refusal ch
 
 ## First browser acquisition: retained failure
 
-`/Volumes/m2ext/appkit-static-content-bk2nf9/static-content-LtN3gx/receipt.json`
+`/Volumes/m2ext/appkit-evidence/appkit-static-content-bk2nf9/static-content-LtN3gx/receipt.json`
 has SHA-256 `e7da2964a7c41d14d547336b1921772e0f25749abf4aa8726cfa95cdccadc499`.
 The frozen harness is
 `bc3b2eb38777ac4e6b9c70eefaf062a693b9f84bf70d6e6b656f2b008bc8aa59`;
@@ -111,7 +111,7 @@ Browser/Gallery exit 0 with no signal; port 63637 returns `ECONNREFUSED`.
 
 ## Second acquisition: premature submission, not a browser diagnosis
 
-`/Volumes/m2ext/appkit-static-content-bk2nf9/static-content-Y6uGcp/receipt.json`
+`/Volumes/m2ext/appkit-evidence/appkit-static-content-bk2nf9/static-content-Y6uGcp/receipt.json`
 has SHA-256 `d01c981de83b3460d27324effea6fc4d2c0720e21898d037216f167b8886a6a8`.
 It uses the same binary, CSS and budget contract. The revised native sequence
 `Space → Home → ArrowDown → Enter` fails with `wanted empty, selected ready,

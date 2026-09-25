@@ -21,7 +21,7 @@ RSS are separate; **every renderer, including Chrome's internal UI renderer, rem
 in the reported renderer sum**. Missing/disappearing PIDs are failures, not zero RSS.
 Summed process RSS is not unique physical memory or an attribution of all cost to app JS.
 
-Private root: `/Volumes/m2ext/appkit-theme-memory.KZKiDOw5/`.
+Private root: `/Volumes/m2ext/appkit-evidence/appkit-theme-memory.KZKiDOw5/`.
 `green/receipt.json` retains a fresh build and passing full race suites for Gallery,
 styleguide and Gallery command, with selected source/tool identities unchanged.
 This uses existing module caches, not a hermetic dependency closure.
@@ -147,7 +147,7 @@ review finds the native task and cache/degraded startup order unchanged.
 
 ## Fresh startup-sequence replay: still failed
 
-Private root `/Volumes/m2ext/appkit-theme-startup.zlqzNEfd/` retains a fresh race/build
+Private root `/Volumes/m2ext/appkit-evidence/appkit-theme-startup.zlqzNEfd/` retains a fresh race/build
 pass and unchanged source/tool identities. Build receipt SHA-256:
 `f9bffbcee7e4748c7f7852aa5957cccffe0397c4b3f703be8b5960d989bd36f6`.
 The selected Gallery binary is

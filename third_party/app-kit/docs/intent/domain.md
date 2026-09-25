@@ -67,6 +67,18 @@ The kit owns reusable presentation mechanics and the evidence needed to trust th
 
 External platform facts are dated in the assessment; dependency pins remain in source.
 
+A fresh Chrome153 profile exposed a Google Hangouts background page before the
+synthetic app loaded; fresh-profile isolation does not establish extension-free
+topology. The launcher hash also matched the prior Chrome152 record, so it alone
+cannot identify the engine. [INC-64 evidence](../assessments/2026-09-22-theme-memory-controls.md)
+binds version/framework/Info.plist and retains the unknown-target refusal, without
+attributing historical targets or proving the candidate startup switch effective.
+
+The same Chrome153 control later records `ps` command placeholders `(Google Chrome He)`
+for both a CDP renderer and a utility. Missing arguments cannot classify either;
+[INC-65](../assessments/2026-09-22-theme-memory-controls.md) preserves raw rows and the
+qualification failure. The cause of missing arguments and forced shutdown is unproven.
+
 Chromium152 with Playwright script execution disabled still resolves font readiness
 but does not run the tested RAF/timer measurement callbacks ([P01 control](../assessments/2026-09-16-hero-performance.md)).
 Instrument execution and application scripts are separate claims: keep CSP/input

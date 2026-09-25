@@ -11,7 +11,7 @@ and actual consumer adoption remain open. Legacy 439/657 coverage is unchanged.
 
 ## Retained compiler and delivery evidence
 
-Private root: `/Volumes/m2ext/appkit-drawer-proof.o8ATJ5/probe.vD9UBX`.
+Private root: `/Volumes/m2ext/appkit-evidence/appkit-drawer-proof.o8ATJ5/probe.vD9UBX`.
 The command-scoped TMPDIR is its parent; no global cache/temp setting changed.
 
 | Evidence | SHA-256 |
@@ -121,7 +121,7 @@ The unchanged base's actual200% task checks pass below, but its visible-focus sc
 
 The maintained [rehearsal](fixtures/drawer-adapter/standalone.mjs) and
 [synthetic consumer](fixtures/drawer-adapter/consumer_test.go.txt) pass in
-`/Volumes/m2ext/appkit-drawer-proof.o8ATJ5/drawer-standalone-Y1Gg9N`.
+`/Volumes/m2ext/appkit-evidence/appkit-drawer-proof.o8ATJ5/drawer-standalone-Y1Gg9N`.
 Receipt SHA-256: `2296b2083a8d046993aa46574fdfab2e5dad7cb19851c20ff17166a1e425b68c`.
 Harness SHA-256: `b3f373527fd1c11068d2dee127f922d8d284067bb2a66b48174deadd785f97b2`.
 Consumer test SHA-256: `a9cac81e1567ffc7fa784f42dcd5b6637c193ab137dc3d0b74b2e55f0359644c`.
@@ -240,7 +240,7 @@ content changes. No dependency, source archive, runtime, consumer or global sett
 The [maintained CLI rehearsal](fixtures/drawer-adapter/focus-delivery.mjs), SHA-256
 `49f265b0194a9fc6be882e866b2a51fffcc3368159e8fe2e9a917be940f43165`, runs the actual
 binary SHA-256 `7ea28663c1d7d7979098ba8dbc3707b993ad7b61357abc2c8785dc6a6c104369`.
-Private receipt: `/Volumes/m2ext/appkit-drawer-focus-delivery.I4u61jyb/focus-cli-CTgXcJ/receipt.json`,
+Private receipt: `/Volumes/m2ext/appkit-evidence/appkit-drawer-focus-delivery.I4u61jyb/focus-cli-CTgXcJ/receipt.json`,
 SHA-256 `3fde6b27fd963d2109d9d6d4f64e0a718561f45c784f6d7b4bc218b981824f8d`.
 All22 commands return expected exits/output. Two private exports match exactly; wrong
 variant, changed/rehashed CSS, extra-member, permission drift and no-overwrite controls

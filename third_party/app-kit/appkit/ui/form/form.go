@@ -14,6 +14,8 @@ import (
 	"html"
 	"html/template"
 	"strings"
+
+	"github.com/geoffmilleraz/app-kit/appkit/ui/internal/webref"
 )
 
 func esc(s string) string { return html.EscapeString(s) }
@@ -196,7 +198,9 @@ type Option struct {
 }
 
 // Select is a dropdown control. When Placeholder is set, a disabled empty-value
-// option is rendered first and selected when Value is empty.
+// option is rendered first and exclusively selected when Value is empty.
+// An unavailable nonempty Value selects that prompt (or "Selection unavailable")
+// rather than silently selecting a different option. Apps own validation messages.
 type Select struct {
 	ID, Name    string
 	Value       string // the currently selected option value
@@ -210,22 +214,34 @@ type Select struct {
 
 // RenderSelect returns the select control as an HTML string.
 func RenderSelect(s Select) string {
+	unavailable := s.Value != ""
+	for _, o := range s.Options {
+		if o.Value == s.Value {
+			unavailable = false
+			break
+		}
+	}
+	prompt := s.Placeholder
+	if unavailable && prompt == "" {
+		prompt = "Selection unavailable"
+	}
+	selectPrompt := prompt != "" && (s.Value == "" || unavailable)
 	var b strings.Builder
 	fmt.Fprintf(&b, `<select class="%s"`, controlClass(s.Invalid))
 	b.WriteString(attr("id", s.ID))
 	b.WriteString(attr("name", s.Name))
 	ariaWiring(&b, s.ID, s.Required, s.Disabled, s.Invalid, s.HasHelp)
 	b.WriteString(`>`)
-	if s.Placeholder != "" {
+	if prompt != "" {
 		sel := ""
-		if s.Value == "" {
+		if selectPrompt {
 			sel = " selected"
 		}
-		fmt.Fprintf(&b, `<option value="" disabled%s>%s</option>`, sel, esc(s.Placeholder))
+		fmt.Fprintf(&b, `<option value="" disabled%s>%s</option>`, sel, esc(prompt))
 	}
 	for _, o := range s.Options {
 		sel := ""
-		if o.Value == s.Value {
+		if !selectPrompt && o.Value == s.Value {
 			sel = " selected"
 		}
 		fmt.Fprintf(&b, `<option value="%s"%s%s>%s</option>`,
@@ -290,8 +306,27 @@ type RadioGroup struct {
 }
 
 // RenderRadioGroup returns the fieldset of radios as an HTML string.
+// A nonempty Name also identifies the active help/error message. Callers must
+// keep group names and the resulting control/message IDs unique in the document.
 func RenderRadioGroup(g RadioGroup) string {
 	var b strings.Builder
+	feedbackID, feedbackAttr := "", ""
+	if g.Name != "" {
+		switch {
+		case g.Error != "":
+			feedbackID = fmt.Sprintf("ak-radio-%x-error", g.Name)
+		case g.Help != "":
+			feedbackID = fmt.Sprintf("ak-radio-%x-help", g.Name)
+		}
+	}
+	if feedbackID != "" {
+		feedbackAttr = ` aria-describedby="` + feedbackID + `"`
+	}
+	classes := "border-line text-accent focus:ring-2 focus:ring-focus"
+	if g.Error != "" {
+		feedbackAttr += ` aria-invalid="true"`
+		classes = "border-danger text-accent focus:ring-2 focus:ring-danger"
+	}
 	b.WriteString(`<fieldset class="m-0 flex min-w-0 flex-col gap-2 border-0 p-0"`)
 	b.WriteString(boolAttr("disabled", g.Disabled))
 	b.WriteString(`>`)
@@ -314,16 +349,20 @@ func RenderRadioGroup(g RadioGroup) string {
 		if o.Value == g.Value {
 			sel = " checked"
 		}
-		fmt.Fprintf(&b, `<label class="flex items-center gap-2 text-sm text-ink"><input type="radio" class="border-line text-accent focus:ring-2 focus:ring-focus" id="%s" name="%s" value="%s"%s%s%s/>%s</label>`,
-			esc(id), esc(g.Name), esc(o.Value), sel,
-			boolAttr("required", g.Required && i == 0), boolAttr("disabled", o.Disabled), esc(o.Label))
+		fmt.Fprintf(&b, `<label class="flex items-center gap-2 text-sm text-ink"><input type="radio" class="%s" id="%s" name="%s" value="%s"%s%s%s%s/>%s</label>`,
+			classes, esc(id), esc(g.Name), esc(o.Value), sel,
+			boolAttr("required", g.Required && i == 0), boolAttr("disabled", o.Disabled), feedbackAttr, esc(o.Label))
 	}
 	b.WriteString(`</div>`)
+	messageAttr := ""
+	if feedbackID != "" {
+		messageAttr = ` id="` + feedbackID + `"`
+	}
 	switch {
 	case g.Error != "":
-		fmt.Fprintf(&b, `<p class="text-sm text-danger">%s</p>`, esc(g.Error))
+		fmt.Fprintf(&b, `<p class="text-sm text-danger"%s>%s</p>`, messageAttr, esc(g.Error))
 	case g.Help != "":
-		fmt.Fprintf(&b, `<p class="text-sm text-ink-muted">%s</p>`, esc(g.Help))
+		fmt.Fprintf(&b, `<p class="text-sm text-ink-muted"%s>%s</p>`, messageAttr, esc(g.Help))
 	}
 	b.WriteString(`</fieldset>`)
 	return b.String()
@@ -340,13 +379,14 @@ const (
 	ButtonDanger  ButtonVariant = "danger"  // destructive action
 )
 
-// Button is an action control. When Href is set it renders as an anchor styled
-// as a button; otherwise a <button> of the given Type (default "submit").
+// Button is an action control. A nonempty Href selects link mode: enabled safe
+// destinations render an anchor, otherwise a noninteractive disabled link label.
+// An empty Href renders a <button> of the given Type (default "submit").
 type Button struct {
 	Label    string
 	Variant  ButtonVariant
 	Type     string // button type when not a link; default "submit"
-	Href     string // when set, render as <a> (e.g. a cancel link)
+	Href     string // relative URL or absolute HTTP(S); route authorization stays app-owned
 	Name     string // optional form field name (e.g. formaction multi-submit)
 	Value    string
 	Disabled bool
@@ -373,6 +413,18 @@ func buttonClass(v ButtonVariant, full bool) string {
 func RenderButton(btn Button) string {
 	cls := buttonClass(btn.Variant, btn.Full)
 	if btn.Href != "" {
+		if btn.Disabled || !webref.Allowed(btn.Href) {
+			// A refused link must not become an implicit form submit. Do not keep
+			// href or tabindex: neither pointer nor keyboard can activate it.
+			classes := strings.Fields(cls)
+			inert := classes[:0]
+			for _, c := range classes {
+				if !strings.HasPrefix(c, "hover:") && !strings.HasPrefix(c, "focus:") && !strings.HasPrefix(c, "disabled:") {
+					inert = append(inert, c)
+				}
+			}
+			return fmt.Sprintf(`<span role="link" aria-disabled="true" class="%s opacity-50 cursor-not-allowed">%s</span>`, strings.Join(inert, " "), esc(btn.Label))
+		}
 		return fmt.Sprintf(`<a class="%s"%s>%s</a>`, cls, attr("href", btn.Href), esc(btn.Label))
 	}
 	typ := btn.Type

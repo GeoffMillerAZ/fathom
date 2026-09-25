@@ -71,7 +71,7 @@ For appearance review without real measurements, the separate
 synthetic complete/partial/missing/error states. It is not mounted by `serve-http`;
 preview/reset/export do not write tokens or application preferences. See
 [app-kit adoption](../app-kit.md#local-theme-guide-integration-2026-09-22) for the
-exact mirror, unchanged baseline palette, source-preserving export and acceptance limits.
+exact mirror, kit-tracking baseline palette, source-preserving export and acceptance limits.
 
 The service page draws four 30-day series — queried, discovering,
 preventing, gating — from real call-log rows. A day with **no call-log

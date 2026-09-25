@@ -34,7 +34,7 @@ remains binding. Normal close must pass independently of emergency cleanup.
 
 ## Retained synthetic observations
 
-Initial root `/Volumes/m2ext/appkit-bundle-runtime.uP1jLHLQ/` retains the executed
+Initial root `/Volumes/m2ext/appkit-evidence/appkit-bundle-runtime.uP1jLHLQ/` retains the executed
 source/configuration and a13/13 synthetic pass, with no skips or native launch.
 That suite includes an inert check-only refusal: no no-argument launch and no bundle
 executable extraction. Its same-PID helper assertion is not actual exec evidence.
@@ -43,14 +43,14 @@ Review tightened the private outer runner to require a matching test-mode receip
 with exit0 and null error/signal before native execution. The old wrapper remains
 in `tests/run.mjs`. A second review identified an early-discovery cleanup gap, not
 an observed Gallery leak. The synthetic parent-only cleanup canary retains an orphan
-failure under `/Volumes/m2ext/appkit-native-cleanup.KhPtH8/red/`.
+failure under `/Volumes/m2ext/appkit-evidence/appkit-native-cleanup.KhPtH8/red/`.
 
 The cleanup helper now binds a still-live parent, private direct-child path/hash and
 confirmed ancestry before signaling. Parent exit before any child observation records
 native absence as unknown, not success. Unknown identities fail closed; a provisional
 `sandbox-exec` identity is not silently authorized. Test teardown also binds identity.
 
-Root's frozen replay under `/Volumes/m2ext/appkit-bundle-runtime-replay.uhwFzg1N/tests/`
+Root's frozen replay under `/Volumes/m2ext/appkit-evidence/appkit-bundle-runtime-replay.uhwFzg1N/tests/`
 failed14/15: the correct-digest cleanup call received `ps failed` after the earlier
 wrong-digest refusal passed. Both fixture processes had been observed alive. Exact
 sources, stdout and report are preserved. No native app was launched; the prerequisite
@@ -71,7 +71,7 @@ or a general repeatability claim.
 
 ## Exact app inputs and current status
 
-Selected bundle: `/Volumes/m2ext/appkit-bundle-seam.tHv3fmlT/actual-artifacts/Relocated.app`.
+Selected bundle: `/Volumes/m2ext/appkit-evidence/appkit-bundle-seam.tHv3fmlT/actual-artifacts/Relocated.app`.
 The [assembly assessment](2026-09-16-private-bundle-seam.md) identifies the unchanged
 launcher and independently built historical server/native pair. These are not today's
 entire working-tree UI. The manifest declares macOS14.0; no runtime-on14 claim follows.
@@ -92,7 +92,7 @@ absence and listener50593 refusal are established before emergency cleanup. A se
 post-run process check finds no Gallery launcher/server/native or AX driver process.
 Original bundle resources, driver and executed source identities match afterward.
 
-Private evidence root: `/Volumes/m2ext/appkit-bundle-runtime-diagnostic.BYetZkUs/`.
+Private evidence root: `/Volumes/m2ext/appkit-evidence/appkit-bundle-runtime-diagnostic.BYetZkUs/`.
 `tests/` and `native/` retain exclusive source/configuration/wrapper snapshots;
 `native/appkit-native-delivery-bF6GZI/` retains the policy, check receipt, PID transition,
 AX receipts and bounded server output. The standalone driver retains its earlier
@@ -146,8 +146,8 @@ afterward; a separate `ps` check confirmed absence. This is emergency cleanup ev
 not a successful normal-close lifecycle or a reason to relabel the control as passed.
 
 Private roots retain source/configuration and original results:
-`/Volumes/m2ext/appkit-launch-services.t7dyxdyA/` (`preflight/`, `run/`, `diagnosis/`),
-and `/Volumes/m2ext/appkit-launch-services-minimal.9YVSyElK/` (`preflight/`, `run/`,
+`/Volumes/m2ext/appkit-evidence/appkit-launch-services.t7dyxdyA/` (`preflight/`, `run/`, `diagnosis/`),
+and `/Volumes/m2ext/appkit-evidence/appkit-launch-services-minimal.9YVSyElK/` (`preflight/`, `run/`,
 `owned-cleanup/`). Original app bytes and driver pins matched after both launch attempts;
 attribute names were observed, not a proof of unchanged attribute values.
 
@@ -186,9 +186,9 @@ error cannot produce a passing outcome. These are harness changes, not app chang
 
 The initial outer wrapper retained six passing helper tests but refused its own summary
 because Node26 selected the spec reporter rather than TAP. No native run followed that
-failed prerequisite. Its snapshots remain at `/Volumes/m2ext/appkit-launchservices-proof.DUTUB66q/tests/`.
+failed prerequisite. Its snapshots remain at `/Volumes/m2ext/appkit-evidence/appkit-launchservices-proof.DUTUB66q/tests/`.
 The next frozen wrapper explicitly selects TAP: eleven tests and the exact normal
-lifecycle passed at19:26:12–19:26:15 UTC in `/Volumes/m2ext/appkit-launchservices-replay.WYpqCeAg/`.
+lifecycle passed at19:26:12–19:26:15 UTC in `/Volumes/m2ext/appkit-evidence/appkit-launchservices-replay.WYpqCeAg/`.
 Two safety edits landed after that runtime finished; its pass belongs to runner
 `0f6c798919dbd57b8be78395bfbf2fe4feaad9bb405a3155313c3a05e7b7c7fc`, not the later file.
 
@@ -207,7 +207,7 @@ when an absence observation fails. Final exact-source lifecycle replay completes
 | Normal shutdown | Both processes absent and listener56340 refuses before emergency cleanup; no forced signal required |
 | Retained limits | Thirteen AX observations, no shared DOM tasks, physical keyboard input, browser-menu action or signing |
 
-Final private root: `/Volumes/m2ext/appkit-launchservices-final.rIF8XrZU/`.
+Final private root: `/Volumes/m2ext/appkit-evidence/appkit-launchservices-final.rIF8XrZU/`.
 `red/tests/` retains the old-source failure; `tests/` the unchanged12-case pass;
 `native/appkit-launchservices-0ij0HR/` the actual preflight, source/configuration and
 AX/process/normal-close observations. App, driver and harness identities match after

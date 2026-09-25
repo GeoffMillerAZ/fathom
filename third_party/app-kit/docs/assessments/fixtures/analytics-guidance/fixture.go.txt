@@ -1,0 +1,41 @@
+package main
+
+import (
+	"fmt"
+	"os"
+	"strings"
+	"time"
+
+	"github.com/geoffmilleraz/app-kit/appkit/ui/analytics"
+	"github.com/geoffmilleraz/app-kit/appkit/ui/viz"
+	"github.com/geoffmilleraz/app-kit/appkit/ui/vizframe"
+)
+
+func pointer(v float64) *float64 { return &v }
+
+func main() {
+	if len(os.Args) != 2 || (os.Args[1] != "light" && os.Args[1] != "dark") { panic("light or dark required") }
+	now := time.Date(2026, 9, 23, 0, 0, 0, 0, time.UTC)
+	fmt.Printf(`<!doctype html><html lang="en" data-theme="%s"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Signed comparison guidance</title><link rel="stylesheet" href="/app.css"></head><body class="bg-surface text-ink p-4"><main class="mx-auto max-w-4xl"><h1 class="mb-4 text-xl font-semibold">Signed comparison guidance</h1><p class="mb-4">Synthetic comparison: read why a chart is omitted, then inspect its exact values.</p>`, os.Args[1])
+	for _, c := range []struct{id, title string; tiny, large float64; width int; long bool}{
+		{"positive", "Positive small value", .01, 1e12, 2000, false},
+		{"negative", "Negative small value", -.01, 1e12, 2000, false},
+		{"fitting", "Readable signed values", -1, 2, 560, false},
+		{"labels", "Long label alternative", -1, 2, 560, true},
+	} {
+		label := "Tiny"
+		if c.long { label = strings.Repeat("Long", 100) }
+		d := analytics.Dataset{
+			Contract: analytics.Contract{ID:c.id, Title:c.title, Unit:"USD", Grain:"selected entry", Aggregation:"app-owned amount", Decimals:2,
+				Window: analytics.Window{Kind:analytics.SnapshotWindow, Start:now, TimeZone:"UTC"},
+				Source:vizframe.Derived("Synthetic fixed observations."), Freshness:analytics.Freshness{ObservedAt:now, MaxAge:time.Hour},
+				Completeness:analytics.Complete, Uncertainty:"Synthetic exact values; not a forecast."},
+			Rows:[]analytics.Row{{ID:"tiny", Label:label, Value:pointer(c.tiny)}, {ID:"large", Label:"Large", Value:pointer(c.large)}},
+			Legend:[]analytics.LegendItem{{Role:"accent", Label:"Observed amounts"}},
+		}
+		h, err := analytics.RenderDivergingBars(d, viz.BarsOptions{W:c.width}, now)
+		if err != nil { panic(err) }
+		fmt.Printf(`<section class="mb-6">%s</section>`, h)
+	}
+	fmt.Print(`</main></body></html>`)
+}

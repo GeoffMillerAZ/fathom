@@ -19,7 +19,7 @@ consumer migration. Existing shell assets already use this standard-library patt
 
 ## Retained red/green proof
 
-Private root: `/Volumes/m2ext/appkit-css-revalidation.s5h3UgUQ/`.
+Private root: `/Volumes/m2ext/appkit-evidence/appkit-css-revalidation.s5h3UgUQ/`.
 `verify.mjs` freezes itself, selected Go/Node executables and repository-local
 Go/test/embed inputs before execution. It uses existing local module/build caches;
 this is not a hermetic dependency rebuild or a published release.

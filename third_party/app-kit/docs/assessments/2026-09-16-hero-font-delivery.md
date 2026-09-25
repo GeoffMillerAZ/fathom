@@ -103,7 +103,7 @@ This narrows an instrumentation limit without changing the failed performance ga
 
 ## Evidence locations
 
-Private parent: `/Volumes/m2ext/appkit-hero-font-candidate.AGTWfHOp/`.
+Private parent: `/Volumes/m2ext/appkit-evidence/appkit-hero-font-candidate.AGTWfHOp/`.
 Public tooling wheels and their bootstrap source/lock/receipt stay there; the app
 dependency graph and global configuration are unchanged. Licensed input copies stay
 inside private proof roots, never these maintained fixture sources.

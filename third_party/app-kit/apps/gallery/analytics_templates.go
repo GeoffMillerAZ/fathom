@@ -9,11 +9,13 @@ const analyticsHTML = `
       <h1 class="mt-2 text-2xl font-semibold tracking-tight text-ink [overflow-wrap:anywhere]">{{.Title}}</h1>
       <p class="mt-2 text-sm text-ink-muted">{{.CurrentLabel}}{{if .PreviousLabel}}{{if .PlotPrevious}} compared with {{else}}; reference month: {{end}}{{.PreviousLabel}}{{end}} · UTC</p>
     </div>
-    <a href="{{.Export}}" class="inline-flex min-h-11 items-center justify-center rounded-md border border-line-strong bg-surface-raised px-4 py-2 text-sm font-medium text-ink hover:bg-surface-sunken focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">{{.ExportLabel}}</a>
+    <a href="{{.Export}}"{{if not .Rows}} aria-describedby="analytics-empty-export-help"{{end}} class="inline-flex min-h-11 items-center justify-center rounded-md border border-line-strong bg-surface-raised px-4 py-2 text-sm font-medium text-ink hover:bg-surface-sunken focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">{{.ExportLabel}}</a>
   </div>
 </header>
 
 {{if not .Detail}}
+<details id="analytics-selection" class="mt-6 border-b border-line pb-4">
+  <summary class="min-h-11 cursor-pointer py-3 text-sm font-medium text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">Change comparison <span class="mt-1 block text-sm font-normal text-ink-muted">{{.SelectionLabel}}</span></summary>
 <form id="analytics-filter" action="/analytics" method="get" class="mt-6 space-y-4">
   {{if .Theme}}<input type="hidden" name="theme" value="{{.Theme}}">{{end}}
   <fieldset class="grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -35,6 +37,7 @@ const analyticsHTML = `
         <option value="all"{{if eq .Journey.Selection.Category "all"}} selected{{end}}>All services</option>
         <option value="api"{{if eq .Journey.Selection.Category "api"}} selected{{end}}>API services</option>
         <option value="worker"{{if eq .Journey.Selection.Category "worker"}} selected{{end}}>Worker services</option>
+        <option value="empty"{{if eq .Journey.Selection.Category "empty"}} selected{{end}}>Empty group (no fixture services)</option>
       </select>
     </label>
     <div class="flex items-end gap-3">
@@ -51,24 +54,32 @@ const analyticsHTML = `
           <option value="missing"{{if eq .Journey.Selection.State "missing"}} selected{{end}}>Missing source reports</option>
           <option value="stale"{{if eq .Journey.Selection.State "stale"}} selected{{end}}>Stale source observation</option>
           <option value="partial"{{if eq .Journey.Selection.State "partial"}} selected{{end}}>Partial month: first 20 days</option>
+          <option value="error"{{if eq .Journey.Selection.State "error"}} selected{{end}}>Source read failure</option>
         </select>
       </label>
       <p class="max-w-lg text-sm text-ink-muted">These controls switch reproducible fixtures, not a live service. Choose a condition, then Apply filters. Zero remains a measured value in the worker fixture.</p>
     </div>
   </details>
 </form>
+</details>
 {{end}}
 
 <section aria-labelledby="analytics-reading" class="mt-8">
-  <h2 id="analytics-reading" class="text-lg font-semibold text-ink">{{if .Detail}}What this service count means{{else}}What changed in the selection{{end}}</h2>
+  <h2 id="analytics-reading" class="text-lg font-semibold text-ink">{{if not .Rows}}No matching services{{else if .Detail}}What this service count means{{else}}What changed in the selection{{end}}</h2>
   <p class="mt-3 max-w-[72ch] leading-relaxed text-ink">{{.Summary}}</p>
   <div class="mt-4 rounded-md border border-line bg-surface-raised p-4">
     <h3 class="text-sm font-semibold text-ink">{{.StateLabel}}</h3>
     <p class="mt-1 max-w-[72ch] text-sm leading-relaxed text-ink-muted">{{.StateDescription}}</p>
-    {{if ne .Journey.Selection.State "complete"}}<a href="{{.CompleteFixture}}" class="mt-2 inline-flex min-h-11 items-center text-sm text-accent underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-focus">Load the complete fixture</a>{{end}}
+    {{if and .Rows (ne .Journey.Selection.State "complete")}}<a href="{{.CompleteFixture}}" class="mt-2 inline-flex min-h-11 items-center text-sm text-accent underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-focus">Load the complete fixture</a>{{end}}
   </div>
+  {{if not .Rows}}
+  <a href="{{.AllGroups}}" class="mt-3 inline-flex min-h-11 items-center text-sm text-accent underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-focus">Show all service groups</a>
+  <p id="analytics-empty-export-help" class="mt-3 max-w-[72ch] text-sm text-ink-muted">The comparison CSV contains only column headers, with no row or context values. No zero row is manufactured. To retain source and reporting context for the current period only, use the separate renderer export below.</p>
+  <a href="{{.EmptyContextExport}}" class="mt-2 inline-flex min-h-11 items-center text-sm text-accent underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-focus">Export current-period context CSV</a>
+  {{end}}
 </section>
 
+{{if .Rows}}
 <section aria-labelledby="analytics-comparison" class="mt-8">
   <div class="flex flex-wrap items-baseline justify-between gap-2">
     <h2 id="analytics-comparison" class="text-lg font-semibold text-ink">{{if .Detail}}Period values{{else}}Compare services{{end}}</h2>
@@ -110,6 +121,7 @@ const analyticsHTML = `
   </div>
 </section>
 
+{{end}}
 <details class="mt-8 border-t border-line pt-5"{{if .Detail}} open{{end}}>
   <summary class="min-h-11 cursor-pointer py-3 text-sm font-semibold text-ink focus-visible:outline-2 focus-visible:outline-focus">Source, time window and interpretation</summary>
   <dl class="mt-4 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-[10rem_minmax(0,1fr)]">

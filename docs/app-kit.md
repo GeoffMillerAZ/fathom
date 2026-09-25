@@ -30,10 +30,48 @@ architecture; no metric model, daemon behavior or future has been promoted.
   snapshot has its own band. Keep the lower-bound sign with its number and give service
   detail links a keyboard outline and 44px target. Do not patch the mirror in place.
 
+## Current mirror and palette convergence (2026-09-25)
+
+FATHOM-GUIDE-01 landed on main at mirror `f7ab0fbd`, then took one reviewed bump to
+app-kit main `dc77e660e378727cb062fd76e2a8770fd8a4540c` (`task sync-kit` archive,
+file list checked against the maintainer checkout). The 71 kit commits in between touch
+analytics, form, table, `internal/webref`, the adoption CLI/catalog and maintainer-only
+styleguide browser tooling. Dashboard, stat, viz, vizframe, callout, hitl, tokens and the
+styleguide Go API are unchanged; the mirror's `go.mod` is unchanged and root tidy is a no-op.
+Breaking kit corrections, checked against fathom's call sites:
+
+- ADR-0079 turns a form button with an unsafe or disabled `Href` into an inert label.
+  Fathom's two link buttons (`/observatory/story`, `/observatory/wiring/`) are
+  root-relative and pass `webref.Allowed`, so they still render anchors; the scanned
+  `form/*.go` adds only the inert state's `opacity-50`/`cursor-not-allowed` utilities.
+- ADR-0083 select prompt, radio feedback and settings wrap: fathom renders none of them.
+- Analytics `Row.DetailHref`, `WriteTableCSV`, diverging bars and the `Window.TimeZone:
+  "Local"` refusal, plus table row hrefs/action column: fathom imports neither package.
+
+The palette divergence is resolved by adoption. `cmd/fathom/ui/guide-baseline.cue` is a
+byte copy of the mirror's `cue/tokens/kit.cue`: light `positive` moves from
+`oklch(0.55 0.14 155)` to the kit's contrast-safe `oklch(0.51 0.14 155)` (dark is
+unchanged), and the generated `cmd/fathom/ui/tokens/theme.css` is byte-identical to the
+kit's `appkit/ui/tokens/theme.css`. After a later bump, copy the mirror's `kit.cue` over
+the baseline (or record a divergence here), then run `task ui:css`. The manifest pins both
+files, so silent drift fails the adoption check.
+
+`recipe.styleguide.local` is re-pinned `565b6155…` → `820a6558…`. The reviewed catalog
+delta (app-kit `95151b4`) only records this consumer's return: usage cites the Fathom
+receipt, gaps restate the scoped Fathom/RAC evidence, and consumers become Resume as Code
+and Fathom. Maturity (experimental), layers, profiles, dependencies, source symbols,
+states, app ownership and proof are unchanged; `shell.layout` stays `34006292…`.
+`artifacts` no longer pins high-churn consumer files (`main.go`, `verbs.go`,
+`observatory_render.go`, `go.mod`, `go.sum`), which failed the check on every unrelated
+edit. It keeps the CSS/input/theme outputs, baseline plus `kit.cue`, the CSS builder and
+its test, the guide source/test and the mirror anchors. `observatoryGuideRevision` names
+the new mirror; `TestThemeGuideKitRevisionMatchesVendoredMirror` refuses a bump that
+forgets it.
+
 ## Local theme guide integration (2026-09-22)
 
-The owner-authorized working-tree upgrade selects the exact app-kit mirror
-`f7ab0fbd3496e9dc3da8c97b6c4290f09a71ec50`. Its reviewed metadata keeps
+The owner-authorized working-tree upgrade selected the exact app-kit mirror
+`f7ab0fbd3496e9dc3da8c97b6c4290f09a71ec50` (bumped since; see above). Its reviewed metadata kept
 `shell.layout` unchanged and adds the experimental local-guide contract, not an
 application settings backend. The root module adds only indirect uniseg v0.4.7;
 the mirror also selects MCP SDK 1.8.0 and x/time v0.15.0 in the module graph.
@@ -45,8 +83,8 @@ This separate command does not mount routes in the daemon or read the registry,
 call log or session ledger. It renders fixed complete/partial/missing/error models
 through the actual Observatory renderers. Preview links are disabled explicitly.
 Preview, reset and export never rewrite source or preferences; review the exported
-candidate before an explicit source change. The authored baseline retains the existing
-positive `oklch(0.55 0.14 155)` palette, with no default theme change. Eight selected contrast checks
+candidate before an explicit source change. At `f7ab0fbd` the authored baseline kept the
+positive `oklch(0.55 0.14 155)` palette; it now tracks the kit (above). Eight selected contrast checks
 are not whole-screen accessibility certification.
 
 Registry coverage failure now renders absence or a named lower bound. Call-log and
@@ -72,8 +110,9 @@ this integration does not close G3/G4, human usability or the memory/cancellatio
 ## Historical delivery identity and navigation handoff
 
 `go.mod` declares app-kit `v0.0.0` with an in-tree replacement. ADR-019 requires its
-exact stamped mirror: `third_party/app-kit/.vendor-commit` is
-`bcfeb8e94ce4132e1198a69f4cf10dc6764bd353`. Local `go.work` instead resolves the sibling.
+exact stamped mirror: `third_party/app-kit/.vendor-commit` is now
+`dc77e660e378727cb062fd76e2a8770fd8a4540c` (earlier `bcfeb8e`, then `f7ab0fbd`).
+Local `go.work` instead resolves the sibling.
 The adoption checker observes declarations/hashes, not effective Go resolution;
 verify both modes. The owner authorized this scoped mirror refresh on 2026-09-14
 while the other Claude Code session was paused. Its unrelated edits, agentic-kit
@@ -102,6 +141,8 @@ bash scripts/ui-css_test.sh
 bash scripts/ui-css.sh --check
 CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 go test -race ./cmd/fathom -run 'TestObservatory' -count=1
 GOWORK=off CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 go test -race ./cmd/fathom -run 'TestObservatory' -count=1
+GOWORK=off CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 go test -race ./cmd/fathom -run 'ThemeGuide' -count=1
+(cd third_party/app-kit && GOWORK=off go run ./cmd/appkit adoption check -root ../..)
 ```
 
 `TestObservatoryUsesSharedAccessibleShell` pins one main/heading/skip link/focus
@@ -145,7 +186,8 @@ Failed call-log reads invalidate dependent cost/outcome values, not independentl
 measured schema tax. The subsequent owner-authorized stat/emitter upgrade now uses
 the exact `bcfeb8e` mirror, not a synthetic Go overlay. It preserves this app's
 positive0.55 palette and runtime font/radius aliases while correcting metric reflow
-and multi-row dividers. The independent positive0.51 kit change is not included.
+and multi-row dividers. The independent positive0.51 kit change was not included then;
+the 2026-09-25 bump adopts it.
 Actual-mirror exports pass 6,467 metric-layout, 5,560 evidence-journey and 1,207
 navigation browser checks; tablet-light and narrow-dark screenshots were inspected.
 These are synthetic local Chrome tasks, not real data, full accessibility or deployment.
@@ -203,8 +245,8 @@ with its reason and concrete revisit condition. Returning a fix/test/lesson to t
 is separate from adopting it here: Fathom integration needs a reviewed versioned
 upgrade and proof of the original task. Second-consumer proof is required for promotion
 only where the layer contract requires it. Retrieve app-kit MCP
-`get_kit_decision("contribution-loop")` or a reviewed documentation snapshot; the current
-older mirror does not imply that this new document is present. If unavailable, retain
+`get_kit_decision("contribution-loop")` or a reviewed documentation snapshot; the
+`dc77e66` mirror carries `docs/design/contribution-loop.md`. If unavailable, retain
 the local candidate and mark canonical review pending rather than inventing policy.
 
 ### Contribution records
@@ -249,6 +291,33 @@ the local candidate and mark canonical review pending rather than inventing poli
 - **Delivery / verification:** repaired Fathom source plus durable regression passes the
   scoped race suite, 88 HTTP/412 browser checks, 9/9 CSS checks and CSS freshness.
   Second-consumer propagation remains unverified.
+
+**FATHOM-GUIDE-01 — local theme guide and honest-absence repairs**
+
+- **Origin / task:** Fathom Observatory; review theme and contrast changes against the
+  real renderers without live data, and keep failed reads from rendering as zero.
+- **Observed / expected:** the guide needs an app-owned CUE source, one synthetic model per
+  coverage state and disabled operational links. Guide-only race runs exposed three
+  "Absent is never 0" violations (fleet service count, obligation serves, ledger sessions)
+  that must render an absence or a named lower bound.
+- **Evidence:** app-kit `docs/assessments/2026-09-22-fathom-guide-only.md` and its fixture
+  packet; `cmd/fathom/appkit_styleguide_test.go`,
+  `observatory_observation_coverage_test.go` and the 12 regressions in
+  `scripts/ui-css_test.sh`.
+- **Ownership:** app-kit owns `apps/styleguide` (`recipe.styleguide.local`) and the
+  returned lessons; Fathom owns the synthetic models, baseline selection, display repairs
+  and CSS builder.
+- **Disposition:** `returned`. The kit records Fathom as a consumer of the experimental
+  recipe (catalog `95151b4`, `docs/design/contribution-loop.md`) without promoting it;
+  the display repairs stay app-owned.
+- **Next action / owner / revisit:** Fathom maintainer. Revisit on the next reviewed mirror
+  bump, on a `recipe.styleguide.local` pin failure, or when the kit's zoom,
+  memory/cancellation or G3/G4 evidence lands.
+- **Delivery / verification:** landed on Fathom main 2026-09-25 at `f7ab0fbd`, then bumped
+  to `dc77e66`. No fork: the mirror is unmodified and the guide consumes the kit package.
+  Verified in the originating app with build, race suite, CSS builder/check, adoption
+  check and real-store screenshots of home, fleet, service and impact in both themes at
+  1440px and 390px. The second consumer's (RAC) evidence is the kit's; it was not replayed here.
 
 ### Project-local host configuration review
 

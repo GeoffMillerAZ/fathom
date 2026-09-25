@@ -77,6 +77,17 @@ The register at [DECISIONS.md](../DECISIONS.md) is a compact compatibility point
 | [0070](0070-opt-in-cli-invocation-classification.md) | Accepted | dependency | Explicit CLI invocation classification and consumer-owned patched dependencies | upstream equivalence, compatibility/source drift or another CLI selection |
 | [0071](0071-deliver-a-bounded-static-reading-reference.md) | Accepted | architecture | Plain-file reading reference with relative links and no Gallery runtime | repeated consumer configuration, host behavior or measured task failure |
 | [0072](0072-stabilize-and-resume-on-demand.md) | Accepted | strategy | Stabilize and resume one bounded task on demand; preserve quality and failures | named adopter, funded maintenance batch, lost handoff or measured retrieval gap |
+| [0073](0073-separate-memory-metrics-from-attribution.md) | Accepted | architecture | Separate prospective retained-memory metrics from app attribution and total browser cost | qualified lifecycle controls, changed instrument semantics or measured retention failure |
+| [0074](0074-incubate-signed-analytics-comparisons.md) | Accepted | architecture | Experimental signed single-dataset renderer, preserving existing contracts | named richer task, two-consumer promotion, measured failure or numeric disagreement |
+| [0075](0075-incubate-app-owned-analytics-detail-links.md) | Partly superseded by 0076 | architecture | Optional in-app row destinations; app-owned routing, unchanged CSV; original byte-identity evidence retained | external/action need, two-consumer promotion, disagreement or native-link failure |
+| [0076](0076-preserve-readable-missing-state-columns.md) | Accepted | ux | Readable missing-state width with native scrolling; independent HTML repair, preserved data/CSV | font/zoom/viewport failure, unreachable reason or changed complete-data output |
+| [0077](0077-incubate-rectangular-analytics-export.md) | Accepted | data | Experimental single-dataset table CSV; shared cells, unchanged report exports | consumer format/empty-set need, payload budget, encoding drift or promotion evidence |
+| [0078](0078-draft-explicit-adoption-selections.md) | Accepted | architecture | Read-only explicit v2 adoption drafts; reviewed saving and checking remain separate | draft/check disagreement, automatic blessing or repeated multi-file authoring need |
+| [0079](0079-disable-unsafe-form-button-links.md) | Accepted | security | Disable unsafe form-button links; preserve native forms and relative web navigation | legitimate refused destination, browser interpretation drift or disabled activation |
+| [0080](0080-harden-table-row-destinations.md) | Accepted | security | Share internal web-reference refusal for managed table links; native targets and focus | legitimate refused shape, browser interpretation drift or composed target failure |
+| [0081](0081-derive-one-table-action-column.md) | Accepted | ux | Derive one action column; align linked/unlinked rows and preserve explicit reservation | different consumer shape, mutated inputs or footer/header disagreement |
+| [0082](0082-discover-adoption-capabilities-without-a-host.md) | Accepted | architecture | Read-only CLI capability search and guarded exact metadata; no host or second catalog | transport disagreement, output bounds or repeated projection need |
+| [0083](0083-render-missing-select-values-as-unavailable.md) | Accepted | ux | Render missing select values as unavailable prompts, never valid substitutions | representation need, browser semantics or empty-option conflict |
 
 ## Recording and maintenance
 
@@ -96,4 +107,4 @@ Do not rewrite old source/version research as if it were reverified.
 The founding records often exceed the new budget; preserved history does not imply implementation. Protocol/document tests check index and status integrity, not
 architectural truth. Active goals and current platform claims live in root intent.
 
-Next ID: 0073. No reserved IDs. Check the current maximum before allocating.
+Next ID: 0084. No reserved IDs. Check the current maximum before allocating.

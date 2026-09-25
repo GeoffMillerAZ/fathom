@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -202,4 +203,95 @@ func TestQualityMCPAndGalleryShareAuthoredSnapshot(t *testing.T) {
 		got := catalogCall(t, ctx, session, "get_quality_work", qualityGetInput{ID: item.ID, ExpectedRevision: all.Revision})
 		catalogJSONEqual(t, got, catalogHTTP(t, handler, "/api/quality/"+url.PathEscape(item.ID)+"?expected_revision="+all.Revision, http.StatusOK).Body.Bytes())
 	}
+}
+
+func TestQualitySelectionGuidanceRoundTrip(t *testing.T) {
+	ctx, session := qualitySession(t)
+	handler := gallery.New()
+	plan, err := qualityplan.Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	all, err := plan.List("", "all")
+	if err != nil {
+		t.Fatal(err)
+	}
+	represented := make(map[string]bool)
+	for _, item := range all.Items {
+		for _, id := range item.CapabilityIDs {
+			represented[id] = true
+		}
+	}
+	c, err := catalog.Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	untracked := ""
+	for _, entry := range c.Entries {
+		if !represented[entry.ID] {
+			untracked = entry.ID
+			break
+		}
+	}
+	if untracked == "" {
+		t.Fatal("fixture requires a known capability without authored work")
+	}
+	for _, tc := range []struct {
+		name, capability, scope, status string
+		scopes                          []string
+		action                          []string
+	}{
+		{"default selection", "shell.layout", "", "matched", []string{"core"}, []string{"get_quality_work"}},
+		{"hidden by scope", "shell.layout", "on-demand", "filtered-out", []string{"core"}, []string{"scope", "core"}},
+		{"untracked capability", untracked, "all", "untracked", []string{}, []string{
+			"just-in-time-conversion", "contribution-loop", "docs/app-kit.md", "issue",
+			"consumer review", "exact query/profile", "capability_id", "revision", "catalog_revision", "writes nothing",
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			input := qualityListInput{CapabilityID: tc.capability, Scope: tc.scope}
+			body := catalogCall(t, ctx, session, "list_quality_work", input)
+			query := url.Values{"capability_id": {tc.capability}, "scope": {tc.scope}}
+			catalogJSONEqual(t, body, catalogHTTP(t, handler, "/api/quality?"+query.Encode(), http.StatusOK).Body.Bytes())
+			var wire struct {
+				ClaimBoundary string            `json:"claim_boundary"`
+				Items         []json.RawMessage `json:"items"`
+				Selection     struct {
+					CapabilityID    string   `json:"capability_id"`
+					Scope           string   `json:"scope"`
+					Status          string   `json:"status"`
+					AvailableScopes []string `json:"available_scopes"`
+					NextAction      string   `json:"next_action"`
+				} `json:"selection"`
+			}
+			if err := json.Unmarshal(body, &wire); err != nil {
+				t.Fatal(err)
+			}
+			scope := tc.scope
+			if scope == "" {
+				scope = "core"
+			}
+			selection := wire.Selection
+			if selection.CapabilityID != tc.capability || selection.Scope != scope || selection.Status != tc.status || !reflect.DeepEqual(selection.AvailableScopes, tc.scopes) {
+				t.Fatalf("selection does not explain the request/result: %+v", selection)
+			}
+			if (tc.status == "matched") != (len(wire.Items) > 0) || wire.ClaimBoundary != "authored-planning-not-certification" {
+				t.Fatalf("selection lost item/claim boundary: %s", body)
+			}
+			for _, fragment := range tc.action {
+				if !strings.Contains(selection.NextAction, fragment) {
+					t.Errorf("next action %q lacks %q", selection.NextAction, fragment)
+				}
+			}
+			if len(body) > 64<<10 {
+				t.Fatal("selection guidance exceeded the existing response budget")
+			}
+		})
+	}
+	// A refused selection must leave the session usable, not silently become untracked.
+	result, err := session.CallTool(ctx, &mcp.CallToolParams{Name: "list_quality_work", Arguments: qualityListInput{CapabilityID: "unknown.capability"}})
+	if err == nil && (result == nil || !result.IsError) {
+		t.Fatal("unknown capability was not refused")
+	}
+	_ = catalogCall(t, ctx, session, "list_quality_work", qualityListInput{CapabilityID: "shell.layout"})
 }

@@ -70,7 +70,7 @@ page; the 32KiB ceiling is unchanged. No speculative cache was added.
 
 ## Retained execution
 
-Private root: `/Volumes/m2ext/appkit-gallery-flow.wmCjBqzF/`.
+Private root: `/Volumes/m2ext/appkit-evidence/appkit-gallery-flow.wmCjBqzF/`.
 `before/` retains 11 selected source/build inputs; `candidate-v1/` and `final/` each retain
 13 including tests and their executed probe. These snapshots/build commands are operator association,
 not complete hermetic closure, cold reproducibility or an immutable release.

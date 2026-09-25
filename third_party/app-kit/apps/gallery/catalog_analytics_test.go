@@ -20,16 +20,16 @@ func TestCatalogAnalyticsPreviewUsesAdvertisedRendererAndCSV(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want, err := analytics.RenderBars(j.Current, viz.BarsOptions{}, j.Now)
-	if err != nil {
-		t.Fatal(err)
-	}
 	var csv bytes.Buffer
 	if err := analytics.WriteCSV(&csv, j.Current, j.Now); err != nil {
 		t.Fatal(err)
 	}
 	for _, theme := range []string{"", "light", "dark"} {
 		t.Run("theme="+theme, func(t *testing.T) {
+			want, err := analytics.RenderBars(analyticsRecipeDataset(j, theme), viz.BarsOptions{}, j.Now)
+			if err != nil {
+				t.Fatal(err)
+			}
 			query := url.Values{"q": {"analytics"}, "profile": {"go-web"}}
 			if theme != "" {
 				query.Set("theme", theme)
@@ -45,6 +45,10 @@ func TestCatalogAnalyticsPreviewUsesAdvertisedRendererAndCSV(t *testing.T) {
 				t.Fatal("catalog link must render exactly one complete public analytics.RenderBars result")
 			}
 			page := catalogHTML(t, h, target)
+			rowLink := catalogTextElement(page, "a", "Gateway API")
+			if catalogAttribute(rowLink, "href") != analyticsURL("/analytics/gateway-api", selection, theme) {
+				t.Fatal("advertised renderer must link the app-owned row detail with selection/theme intact")
+			}
 			export := catalogTextElement(page, "a", "Export renderer CSV")
 			exportURL := catalogAttribute(export, "href")
 			if exportURL != analyticsURL("/analytics/recipe/export.csv", selection, theme) {

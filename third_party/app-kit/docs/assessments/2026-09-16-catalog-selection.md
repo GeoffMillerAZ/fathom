@@ -3,6 +3,53 @@
 G1 retrieval improvement, not completion of G1 or conversion/consumer certification.
 [ADR-0062](../adr/0062-search-declared-capability-tasks.md) owns the search contract and migration.
 
+## Static-reading discovery follow-up (2026-09-22)
+
+Selected need: the existing first-party static-reading/FAQ export is absent from
+the positive task vocabulary. Under ADR-0062's missed-supported-task trigger, add
+bounded discovery and the exact [delivery guide](../design/static-content-delivery.md)
+to `content.docs`, without changing the primitive's profile or maturity. The export
+remains a separate experimental fixed example, not a CMS or general site generator.
+Acceptance: retain all existing corpus cases; prove the new supported queries through
+catalog, actual MCP and Gallery JSON/HTML; retain incompatible/unsupported refusals
+and exact-get integration caveats. Metadata changes require reviewed selected pins
+and a rebuilt MCP; no consumer pins change automatically. Budget: one vocabulary/test
+patch with independent review, scoped checks and one installed-binary refresh.
+Baseline: clean `75589a4`. Source and failed/successful executed inputs remain under
+`/Volumes/m2ext/appkit-evidence/appkit-static-discovery.77STFy`. No visual/layout, runtime, dependency,
+consumer, licensed-source or host-configuration change is selected.
+
+Implementation and source/protocol verification are complete. Both unfiltered queries
+(`static content`, `FAQ without JavaScript`) now resolve `content.docs`; their task
+phrases explicitly describe finding a fixed example, not adding a public FAQ API.
+The existing primitive remains available/Go-web. Its usage links the separate
+experimental exporter, complete build guide, CSS prerequisite and fresh output paths.
+The guide was also missing from MCP's document loader: it now has exact
+`get_kit_decision("static-content-delivery")` and `kit://static-content-delivery`
+access plus guidance routing. Loading it reads Markdown only; no execution tool is added.
+
+All73 prior corpus objects are unchanged; four additions bring the shared corpus
+to77, including CMS and portable-profile refusals. Catalog, actual MCP, Gallery JSON
+and parsed HTML recommendations pass. Exact document tool/structured/resource bytes
+and missing-root refusal pass. The exporter help command and focused tests pass;
+no static browser/hosting result is inherited by this discovery change.
+
+Initial tests and an intermediate wording mismatch remain retained. The **final**
+unchanged tests also fail against saved old CUE/loader source via `before-overlay.json`
+(`final-oracle-before.log`, exit1), reproducing both search misses and absent guide.
+The complete catalog/MCP/Gallery/qualityplan race suites pass (`final-race.log`, exit0).
+Independent review found no blocker after qualifying the task phrases.
+Final `task check` also passes (`task-check.log`): root vet/tests, CUE, configured
+JavaScript suites and byte-identical generated tokens/themes; no runtime gate promotion.
+
+Paired-oracle/race inputs: `final-inputs.tar`, SHA-256
+`a6f477a73bb4eff42f1c9fc32fea0af8f217786b0b2997d7af58dc18e421a3e0`.
+Same-oracle old-source log: `676041d43f2e8c73050302d272f4fc87f4167e230a61dd4bce08d1ad07c674da`.
+Race log: `9e2c7e3f70f18586598c7c364526b76dd8f9142c637226ded246ab3c02f3e872`.
+Installed-binary delivery is recorded separately in the [refresh assessment](2026-09-22-mcp-installed-refresh.md).
+No profile, maturity, quality gate or consumer pin is promoted. Restart searches with
+the new catalog revision; review any selected `content.docs` v2 metadata pin explicitly.
+
 ## Result
 
 The [shared corpus](../../internal/catalogtest/testdata/selection.json) contains65 cases:
@@ -58,7 +105,7 @@ sortable records and explicit shell navigation have supported cases. Empty-query
 pagination checks the existing stable-ID order. A second review added two related-facet
 queries to catch over-narrow phrase matching. No old expected ranking was manufactured.
 
-Private retained directory: `/Volumes/m2ext/appkit-catalog-selection.a59RZaZv/`.
+Private retained directory: `/Volumes/m2ext/appkit-evidence/appkit-catalog-selection.a59RZaZv/`.
 It includes initial60, corrected63 and final65 case corpora; old engine/metadata;
 the schema, test runner and final source snapshots; each phase's logs; and the Go
 overlay used for same-final-corpus old-source replay without rolling back the worktree.
@@ -124,7 +171,7 @@ Verification: full Gallery, MCP and catalog suites pass with `-race -count=1`; p
 CUE catalog validation passes. The first broad run exposed the inventory test's old
 preview expectation; that exact path assertion was updated, not removed. Read-only
 current-checker v2 checks pass for RAC and Fathom, which select other capabilities;
-no consumer file was written. Evidence: `/Volumes/m2ext/appkit-analytics-discovery.7PsYdRNq/`
+no consumer file was written. Evidence: `/Volumes/m2ext/appkit-evidence/appkit-analytics-discovery.7PsYdRNq/`
 retains old inputs, the three-theme failure excerpt, original broad-run failure and
 final passing log plus both static consumer reports. Contribution-review follow-up
 also retains five missing-guidance assertions before the repair; root guidance now

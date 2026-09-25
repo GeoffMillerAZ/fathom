@@ -13,7 +13,7 @@ retained the initial URL until submission and sent the correct state/theme query
 The application and JavaScript-disabled condition were unchanged.
 
 Diagnostic root:
-`/Volumes/m2ext/appkit-static-content-bk2nf9/select-typeahead-diagnostic-K5frBo`.
+`/Volumes/m2ext/appkit-evidence/appkit-static-content-bk2nf9/select-typeahead-diagnostic-K5frBo`.
 Its `select-diagnostic-receipt.json` has SHA-256
 `eead46658dd41b18e3ffe09ae0da534efafdac156eb47e5857eca9d174d2ceac`.
 All eight requests were admitted; both processes exited 0 with no signal and port
@@ -34,7 +34,7 @@ includes `content-faq-heading`, `content-state`, `gallery-main` and
 `gallery-navigation`. Default content/markup and public APIs are unchanged.
 
 Negative tests reproduced three collisions before repair. Retained proof under
-`/Volumes/m2ext/appkit-static-content-validation-evidence/`:
+`/Volumes/m2ext/appkit-evidence/appkit-static-content-validation-evidence/`:
 
 | File | SHA-256 |
 |---|---|
@@ -52,7 +52,7 @@ run. Focused tests pass (0.442s); the prepared build below includes this final t
 
 ## Fresh preparation
 
-`/Volumes/m2ext/appkit-static-content-gVEUw4` retains 166 source inputs, private CSS,
+`/Volumes/m2ext/appkit-evidence/appkit-static-content-gVEUw4` retains 166 source inputs, private CSS,
 full Gallery/docs-package test output and two identical local builds. The tests pass
 (12.562s and 0.234s); source stability checks pass. Existing module/build caches are
 used with offline Go resolution: this is not cold or standalone build evidence.
@@ -70,7 +70,7 @@ quality-inventory notes are not automatically embedded in this fresh binary.
 ## Browser acquisition
 
 The acquisition at
-`/Volumes/m2ext/appkit-static-content-gVEUw4/static-content-BWBGc5` passes its
+`/Volumes/m2ext/appkit-evidence/appkit-static-content-gVEUw4/static-content-BWBGc5` passes its
 bounded contract: four lanes, 52 document observations, 104 admitted requests,
 60 retained captures and zero failures. All 60 capture hashes were independently
 rechecked against the receipt. The exact executable matches the fresh build above.

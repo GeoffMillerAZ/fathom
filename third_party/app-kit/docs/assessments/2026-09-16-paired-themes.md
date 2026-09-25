@@ -26,7 +26,7 @@ replace those missing inputs. This is an INC-43 recurrence, not replayable RED p
 
 ## Exact final browser replay
 
-Private root: `/Volumes/m2ext/appkit-theme-browser.SELO4r/`.
+Private root: `/Volumes/m2ext/appkit-evidence/appkit-theme-browser.SELO4r/`.
 Before replay, `final-inputs/` froze current CUE/CSS, contrast tests, workbench source,
 browser harness and private Gallery binary; before/after comparisons matched.
 The unchanged harness ran against that candidate in a fresh local Chrome profile,

@@ -29,7 +29,7 @@ These four states are not crossed with every viewport/theme. Existing partial-on
 
 ## First frozen acquisition
 
-Private packet: `/Volumes/m2ext/appkit-theme-cancel.F2rbr0oq/analytics-states-AHYPJF/`.
+Private packet: `/Volumes/m2ext/appkit-evidence/appkit-theme-cancel.F2rbr0oq/analytics-states-AHYPJF/`.
 Owner receipt SHA `cd9139260a47d7d1912c309f478d4b8453bf8afcb7f31e35138036dfb8d55a69`.
 Reviewed input manifest SHA `c1d973247b0019232128fef2b675fd4fa0e40cd8f6cea7c396817b993c4f3921`.
 Harness SHA `f8d8b2682434fca785f2c3d20c7f7000196176ff41deac64cc780e992a78ebca`.

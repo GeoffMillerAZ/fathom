@@ -468,3 +468,56 @@ triage if it matters.
 - **Fix:** TODO
 - **Status:** open
 - **Impact:** TODO
+
+### O35 — thread brief plan summary disagrees with current app-kit plan verification
+
+- **Symptom:** thread brief plan summary disagrees with current app-kit plan verification
+- **Evidence:**
+  - **Tool:** thread brief
+  - **Expected:** Identify the plan source and current app-kit counts, or mark stale totals unknown
+  - **Actual:** At dc4bd2f, brief says 3 plans/45 gated rows/45 checked/0 open; immediately preceding pre-push verified four current plan files,56 total/40 claimed/40 verified
+  - **Repro:** Run fathom thread brief in app-kit at dc4bd2f and compare docs/plans/{cli-kit,experience-platform,motion-provenance,multi-target-kit}.md plus git pre-push output. No cause proven; may be stale ledger or scope mismatch.
+- **Root cause:** TODO
+- **Fix:** TODO
+- **Status:** open
+- **Impact:** TODO
+
+### O36 — find_symbol misses exported async sampleOwnedProcesses in indexed JavaScript
+
+- **Symptom:** find_symbol misses exported async sampleOwnedProcesses in indexed JavaScript
+- **Evidence:**
+  - **Tool:** find_symbol
+  - **Expected:** Exact definition at apps/styleguide/browser/process_rss.mjs:29
+  - **Actual:** matched_via none and unrelated suggestions after successful app-kit ingest; source defines the exported async function
+  - **Repro:** find_symbol({"service":"app-kit","name":"sampleOwnedProcesses"}) at HEAD445fe69; inspect apps/styleguide/browser/process_rss.mjs, unchanged in this task. Root cause unconfirmed.
+  - **Control:** `parseProcessRows` in the same file also misses; `evaluateMemoryV2Metrics` in the fixture directory resolves exactly. This does not isolate an async-parser defect.
+- **Root cause:** TODO
+- **Fix:** TODO
+- **Status:** open
+- **Impact:** TODO
+
+### O37 — Reference lookup parameter mismatch caused accidental fleet expansion during a bounded app-kit lookup
+
+- **Symptom:** Reference lookup parameter mismatch caused accidental fleet expansion during a bounded app-kit lookup
+- **Evidence:**
+  - **Tool:** references
+  - **Expected:** A service-scoped lookup or explicit refusal of an unsupported service argument
+  - **Actual:** Initial name argument refused because query is required; then query plus service=app-kit returned occurrences from app-kit, Conjure and platform-engineering plus a missing demo root. This is caller/tool-contract friction, not a claim that valid services scoping is broken.
+  - **Repro:** MCP references({service:"app-kit",name:"RenderField"}) then references({service:"app-kit",query:"RenderField"}) at app-kit34a0cc5. Compare find_symbol({service:"app-kit",name:"RenderField"}) style; references response recommends narrowing services instead. Known-good references services argument not probed in this task.
+- **Root cause:** TODO
+- **Fix:** TODO
+- **Status:** open
+- **Impact:** TODO
+
+### O38 — query_symbols recommends re-ingest immediately after a successful hash-gated ingest
+
+- **Symptom:** query_symbols recommends re-ingest immediately after a successful hash-gated ingest
+- **Evidence:**
+  - **Tool:** query_symbols
+  - **Expected:** Freshness scoped to returned code evidence, or an actionable distinction between source index and stale context documents
+  - **Actual:** At app-kit 4a3cdd4, ingest returned ok; query_symbols returned relevant static-content Go symbols but also 65 stale sources of82 and reingest_recommended true, citing old skill/handoff documents. Source definitions inspected agree with returned paths. Related freshness friction O14; no claim of incorrect symbols.
+  - **Repro:** ingest service app-kit; query_symbols service app-kit concern ui-experience keywords static,content,reading top10 on 2026-09-23; successful outline of apps/gallery/static_content.go provides known-good comparison
+- **Root cause:** TODO
+- **Fix:** TODO
+- **Status:** open
+- **Impact:** TODO

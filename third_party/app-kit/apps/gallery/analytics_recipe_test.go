@@ -54,7 +54,8 @@ func TestAnalyticsRecipeUsesPublicRendererAndMatchingCSV(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					rendered, err := analytics.RenderBars(journey.Current, viz.BarsOptions{}, journey.Now)
+					linked := analyticsRecipeDataset(journey, "dark")
+					rendered, err := analytics.RenderBars(linked, viz.BarsOptions{}, journey.Now)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -62,7 +63,7 @@ func TestAnalyticsRecipeUsesPublicRendererAndMatchingCSV(t *testing.T) {
 						t.Fatal("recipe did not embed exactly one complete analytics.RenderBars result")
 					}
 					var want bytes.Buffer
-					if err := analytics.WriteCSV(&want, journey.Current, journey.Now); err != nil {
+					if err := analytics.WriteCSV(&want, linked, journey.Now); err != nil {
 						t.Fatal(err)
 					}
 					if !bytes.Equal(exported.Body.Bytes(), want.Bytes()) {
@@ -83,7 +84,7 @@ func TestAnalyticsRecipeIsRegisteredAtExactMuxRoute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want, err := analytics.RenderBars(journey.Current, viz.BarsOptions{}, journey.Now)
+	want, err := analytics.RenderBars(analyticsRecipeDataset(journey, ""), viz.BarsOptions{}, journey.Now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,6 +106,47 @@ func TestAnalyticsRecipeCanonicalizesComparisonAndPreservesTheme(t *testing.T) {
 	}
 	if !strings.Contains(body, "comparison=none") || strings.Contains(body, "comparison=previous") {
 		t.Fatal("renderer dataset retained the unsupported paired comparison")
+	}
+	wantDetail := `href="/analytics/gateway-api?category=api&amp;compare=none&amp;period=2026-08&amp;state=partial&amp;theme=light"`
+	if !strings.Contains(body, wantDetail) {
+		t.Fatalf("renderer detail link did not preserve normalized selection and theme: want %s", wantDetail)
+	}
+	if !strings.Contains(body, "Open a table row label for service detail; browser Back returns here.") {
+		t.Fatal("recipe must explain its native row-detail and return task")
+	}
+}
+
+func TestAnalyticsRecipeDatasetLinksOnlyExistingDetailsWithoutMutation(t *testing.T) {
+	selection := analyticsSelection{Period: analyticsPeriodSeptember, Compare: analyticsCompareNone, Category: analyticsCategoryAll, State: analyticsStateComplete}
+	journey, err := buildAnalyticsJourney(selection)
+	if err != nil {
+		t.Fatal(err)
+	}
+	unknownValue := 17.0
+	journey.Current.Rows = append(journey.Current.Rows, analytics.Row{ID: "unknown-service", Label: "Unknown service", Role: "accent", Value: &unknownValue})
+
+	linked := analyticsRecipeDataset(journey, "dark")
+	for i, row := range journey.Current.Rows {
+		if row.DetailHref != "" {
+			t.Fatalf("source row %q was mutated with %q", row.ID, row.DetailHref)
+		}
+		if i == len(journey.Current.Rows)-1 {
+			if linked.Rows[i].DetailHref != "" {
+				t.Fatalf("unknown row received invented destination %q", linked.Rows[i].DetailHref)
+			}
+			continue
+		}
+		detail, ok := journey.Detail(row.ID)
+		if !ok {
+			t.Fatalf("fixture row %q unexpectedly has no detail", row.ID)
+		}
+		want := analyticsURL("/analytics/"+detail.ID, selection, "dark")
+		if linked.Rows[i].DetailHref != want {
+			t.Fatalf("row %q detail href = %q, want %q", row.ID, linked.Rows[i].DetailHref, want)
+		}
+		if linked.Rows[i].Value != row.Value {
+			t.Fatalf("row %q numeric value pointer changed", row.ID)
+		}
 	}
 }
 

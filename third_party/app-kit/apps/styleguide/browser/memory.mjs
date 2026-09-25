@@ -98,7 +98,11 @@ export async function createMemoryMeasurements({guard, now, browserPid, serverPi
       gc.completed_ms = now(); gc.ok = true;
     }
     endpoint.idle = {started_ms: now(), network_before: guard.coverage.rawNetworkEvents.length, targets_before: before.map(t => t.target_id)};
-    await pauseFn(5000);
+    // A requested timer delay is not proof that the minimum interval elapsed.
+    const idleDeadline = endpoint.idle.started_ms + 5000;
+    for (let remaining = idleDeadline - now(); remaining > 0; remaining = idleDeadline - now()) {
+      await pauseFn(remaining);
+    }
     endpoint.idle.completed_ms = now();
     const after = await topology(lane);
     endpoint.idle.network_after = guard.coverage.rawNetworkEvents.length;

@@ -52,7 +52,7 @@ Neither packet retains complete historical execution/dependency closure.
 
 ## Publication and replay
 
-Work root: `/Volumes/m2ext/appkit-overlay-retention.ooQsuIsc`.
+Work root: `/Volumes/m2ext/appkit-evidence/appkit-overlay-retention.ooQsuIsc`.
 Its independently built `appkit` SHA is
 `744fe2fba251eda3c76d49ba9b7d54ac8060882e6c9e4aa645b59f47cb4a8f2f`.
 Four separate CLI checks return0: P07/P08 base deliveries and both explicit repairs.

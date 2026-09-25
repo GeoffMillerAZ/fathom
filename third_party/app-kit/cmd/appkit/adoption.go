@@ -20,7 +20,7 @@ func adoptionCmd(ctx context.Context, args []string) error {
 }
 
 func runAdoption(ctx context.Context, args []string, stdout, stderr io.Writer) error {
-	usage := "usage: appkit adoption <inspect|check|pins|router> [flags]"
+	usage := "usage: appkit adoption <search|capability|inspect|check|pins|router|draft> [flags]"
 	if len(args) == 0 {
 		return command.Exit(2, errors.New(usage))
 	}
@@ -29,6 +29,12 @@ func runAdoption(ctx context.Context, args []string, stdout, stderr io.Writer) e
 		return command.Exit(2, err)
 	}
 	mode := args[0]
+	if mode == "search" || mode == "capability" {
+		return runAdoptionCatalog(ctx, mode, args[1:], stdout, stderr)
+	}
+	if mode == "draft" {
+		return runAdoptionDraft(ctx, args[1:], stdout, stderr)
+	}
 	if mode != "inspect" && mode != "check" && mode != "pins" && mode != "router" {
 		return command.Exit(2, errors.New(usage))
 	}

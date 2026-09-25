@@ -1,0 +1,166 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"html"
+	"log"
+	"net"
+	"net/http"
+	"net/url"
+	"os"
+	"os/signal"
+	"strings"
+	"syscall"
+	"time"
+
+	"github.com/geoffmilleraz/app-kit/appkit/ui/analytics"
+	"github.com/geoffmilleraz/app-kit/appkit/ui/viz"
+	"github.com/geoffmilleraz/app-kit/appkit/ui/vizframe"
+)
+
+var now = time.Date(2026, 9, 22, 12, 0, 0, 0, time.UTC)
+
+var cases = map[string]viz.BarsOptions{
+	"normal-tiny": {RowH: 1, Gap: 1}, "signed-tiny": {RowH: 1, Gap: 1},
+	"normal-single": {RowH: 1, Gap: 40}, "signed-single": {RowH: 1, Gap: 40},
+	"normal-floor": {RowH: 16, Gap: 1}, "signed-floor": {RowH: 16, Gap: 1},
+	"normal-default": {}, "signed-default": {},
+}
+
+func dataset(kind string) analytics.Dataset {
+	first, second, zero := 2.0, 1.0, 0.0
+	if strings.HasPrefix(kind, "signed-") {
+		first = -2
+	}
+	d := analytics.Dataset{
+		Contract: analytics.Contract{
+			ID: "row-height-" + kind, Title: "Synthetic row height comparison", Unit: "items", Decimals: 0,
+			Grain: "selected synthetic row", Aggregation: "one observation per row",
+			Window:       analytics.Window{Kind: analytics.SnapshotWindow, Start: now, TimeZone: "UTC"},
+			Source:       vizframe.Derived("Fixed synthetic row-height fixture; no real data."),
+			Freshness:    analytics.Freshness{ObservedAt: now, MaxAge: time.Hour},
+			Completeness: analytics.Partial, CoverageNote: "One selected observation is missing.",
+			Uncertainty: "Synthetic exact values; no inference.",
+		},
+		Rows: []analytics.Row{
+			{ID: "first", Label: "Åg first", Value: &first},
+			{ID: "second", Label: "Éy second", Value: &second},
+			{ID: "zero", Label: "Zero", Value: &zero},
+			{ID: "missing", Label: "Missing", MissingReason: "Not observed"},
+		},
+		Legend: []analytics.LegendItem{{Role: "accent", Label: "Observed amount"}},
+	}
+	if strings.HasSuffix(kind, "-single") {
+		d.Rows = d.Rows[:1]
+		d.Contract.Completeness = analytics.Complete
+		d.Contract.CoverageNote = ""
+	}
+	return d
+}
+
+func selection(r *http.Request) (string, string, bool) {
+	q, err := url.ParseQuery(r.URL.RawQuery)
+	if err != nil {
+		return "", "", false
+	}
+	for key, values := range q {
+		if (key != "case" && key != "theme") || len(values) != 1 {
+			return "", "", false
+		}
+	}
+	kind, theme := q.Get("case"), q.Get("theme")
+	_, known := cases[kind]
+	return kind, theme, known && (theme == "light" || theme == "dark") && len(q) == 2
+}
+
+func main() {
+	if len(os.Args) != 2 {
+		log.Fatal("one explicit CSS path required")
+	}
+	css, err := os.ReadFile(os.Args[1])
+	if err != nil {
+		log.Fatal(err)
+	}
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		log.Fatal(err)
+	}
+	origin := "http://" + listener.Addr().String()
+	host := strings.TrimPrefix(origin, "http://")
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Host != host || (r.Method != "GET" && r.Method != "HEAD") {
+			http.Error(w, "refused", http.StatusForbidden)
+			return
+		}
+		w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("Cache-Control", "no-store")
+		if r.URL.Path == "/app.css" {
+			if len(r.URL.Query()) != 0 {
+				http.NotFound(w, r)
+				return
+			}
+			w.Header().Set("Content-Type", "text/css; charset=utf-8")
+			_, _ = w.Write(css)
+			return
+		}
+		if r.URL.Path != "/" && r.URL.Path != "/export.csv" {
+			http.NotFound(w, r)
+			return
+		}
+		kind, theme, ok := selection(r)
+		if !ok {
+			http.NotFound(w, r)
+			return
+		}
+		d := dataset(kind)
+		if r.URL.Path == "/export.csv" {
+			w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+			w.Header().Set("Content-Disposition", `attachment; filename="row-height.csv"`)
+			if err := analytics.WriteCSV(w, d, now); err != nil {
+				log.Print(err)
+			}
+			return
+		}
+		var body string
+		var renderErr error
+		if strings.HasPrefix(kind, "signed-") {
+			body, renderErr = analytics.RenderDivergingBars(d, cases[kind], now)
+		} else {
+			body, renderErr = analytics.RenderBars(d, cases[kind], now)
+		}
+		if renderErr != nil {
+			http.Error(w, "render refused", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		fmt.Fprintf(w, `<!doctype html><html lang="en" data-theme="%s"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Analytics row height fixture</title><link rel="stylesheet" href="/app.css"></head><body class="bg-surface text-ink p-4"><main class="mx-auto max-w-4xl"><h1 class="mb-4 text-2xl font-semibold">Analytics row height fixture</h1>%s<a class="underline" href="/export.csv?case=%s&amp;theme=%s">Export identical values</a></main></body></html>`, theme, body, html.EscapeString(kind), theme)
+	})
+	server := &http.Server{Handler: mux, ReadHeaderTimeout: 3 * time.Second, IdleTimeout: 5 * time.Second}
+	serveErr := make(chan error, 1)
+	go func() { serveErr <- server.Serve(listener) }()
+	fmt.Println("READY " + origin)
+	signalCtx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	maximum := time.NewTimer(90 * time.Second)
+	defer maximum.Stop()
+	select {
+	case err := <-serveErr:
+		if err != nil && err != http.ErrServerClosed {
+			log.Fatal(err)
+		}
+		return
+	case <-signalCtx.Done():
+	case <-maximum.C:
+	}
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		log.Fatal(err)
+	}
+	if err := <-serveErr; err != nil && err != http.ErrServerClosed {
+		log.Fatal(err)
+	}
+}

@@ -32,7 +32,7 @@ Eight typed adapters and zero certified targets remain the current conversion co
 Subsequent [P07/P08 retention](2026-09-15-overlay-evidence-retention.md) explicitly adds
 96 menu/drawer captures; the original viewer run below still concerns P06's 24 images.
 
-Reviewed binary: `/Volumes/m2ext/appkit-evidence-images.6Z1gZ3jP/gallery-v2`, SHA-256
+Reviewed binary: `/Volumes/m2ext/appkit-evidence/appkit-evidence-images.6Z1gZ3jP/gallery-v2`, SHA-256
 `0b78a501e74fd8b52d52a4481a8bf1dbaaad509aa27f0fdaab85580c56441307`.
 It serves an isolated loopback preview at `http://127.0.0.1:55031/target-evidence` while
 PID65722 is running. This is not deployment or permanent service configuration.
@@ -78,7 +78,7 @@ the named private bundle and compares **all24 HTTP image bodies** byte-for-byte 
 retained PNGs. All match, with no errors and unchanged bundle identity. Receipt:
 `.../http-Z2u9yS/receipt.json`, SHA-256
 `cb807c1983837155ca0bc18d95169ee229e5963597f2de1728ff0f9a71164a0f`.
-All abbreviated receipt paths use `/Volumes/m2ext/appkit-evidence-images.6Z1gZ3jP/`.
+All abbreviated receipt paths use `/Volumes/m2ext/appkit-evidence/appkit-evidence-images.6Z1gZ3jP/`.
 
 ## Failures retained, not rewritten
 

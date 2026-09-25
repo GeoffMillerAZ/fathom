@@ -1,0 +1,87 @@
+// Assessment-only actual-handler responses. No listener, real data or consumer reads.
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http/httptest"
+	"net/url"
+	"os"
+
+	"github.com/geoffmilleraz/app-kit/appkit/catalog"
+	"github.com/geoffmilleraz/app-kit/apps/gallery"
+	"github.com/geoffmilleraz/app-kit/internal/qualityplan"
+)
+
+type response struct {
+	Status  int
+	Headers map[string][]string
+	Body    string
+}
+
+type routes struct {
+	CatalogDetail, QualityList, QualityDetail, QualityBack, QualityAll, QualityAllDetail string
+	QualityStale, CatalogRecovery, CatalogRecoveredDetail                                string
+}
+
+func main() {
+	c, err := catalog.Default()
+	if err != nil {
+		panic(err)
+	}
+	plan, err := qualityplan.Default()
+	if err != nil {
+		panic(err)
+	}
+	q, err := plan.List("analytics.comparison", "core")
+	if err != nil {
+		panic(err)
+	}
+	stale := "0" + c.Revision[1:]
+	if stale == c.Revision {
+		stale = "1" + c.Revision[1:]
+	}
+	out := struct {
+		CatalogRevision, QualityRevision string
+		Routes                           map[string]routes
+		Responses                        map[string]response
+	}{c.Revision, q.Revision, map[string]routes{}, map[string]response{}}
+	h := gallery.New()
+	capture := func(path string, want int) {
+		r := httptest.NewRecorder()
+		h.ServeHTTP(r, httptest.NewRequest("GET", "http://127.0.0.1"+path, nil))
+		if r.Code != want {
+			panic(fmt.Sprintf("%s: %d, want %d", path, r.Code, want))
+		}
+		out.Responses[path] = response{r.Code, r.Header(), r.Body.String()}
+	}
+	for _, theme := range []string{"light", "dark"} {
+		catalogList := url.Values{"q": {"analytics.comparison"}, "theme": {theme}}
+		catalogDetail := url.Values{"expected_revision": {c.Revision}, "theme": {theme}}
+		catalogPath := "/catalog/analytics.comparison?" + catalogDetail.Encode()
+		qualityList := url.Values{"capability_id": {"analytics.comparison"}, "expected_catalog_revision": {c.Revision}, "theme": {theme}}
+		qualityDetail := url.Values{"capability_id": {"analytics.comparison"}, "expected_catalog_revision": {c.Revision}, "expected_revision": {q.Revision}, "scope": {"core"}, "theme": {theme}}
+		qualityListPath := "/quality?" + qualityList.Encode()
+		qualityDetailPath := "/quality/core.analytics?" + qualityDetail.Encode()
+		back := url.Values{"capability_id": {"analytics.comparison"}, "expected_catalog_revision": {c.Revision}, "scope": {"core"}, "theme": {theme}}
+		all := url.Values{"capability_id": {"analytics.comparison"}, "expected_catalog_revision": {c.Revision}, "scope": {"all"}, "theme": {theme}}
+		staleQuality := url.Values{"capability_id": {"analytics.comparison"}, "expected_catalog_revision": {stale}, "expected_revision": {q.Revision}, "scope": {"core"}, "theme": {theme}}
+		recovery := url.Values{"q": {"analytics.comparison"}, "theme": {theme}}
+		allDetail := url.Values{"capability_id": {"analytics.comparison"}, "expected_catalog_revision": {c.Revision}, "expected_revision": {q.Revision}, "scope": {"all"}, "theme": {theme}}
+		out.Routes[theme] = routes{catalogPath, qualityListPath, qualityDetailPath, "/quality?" + back.Encode(), "/quality?" + all.Encode(), "/quality/core.analytics?" + allDetail.Encode(), "/quality/core.analytics?" + staleQuality.Encode(), "/catalog?" + recovery.Encode(), "/catalog/analytics.comparison?" + url.Values{"expected_revision": {c.Revision}, "q": {"analytics.comparison"}, "theme": {theme}}.Encode()}
+		capture("/catalog?"+catalogList.Encode(), 200)
+		capture(catalogPath, 200)
+		capture(qualityListPath, 200)
+		capture(qualityDetailPath, 200)
+		capture("/quality?"+back.Encode(), 200)
+		capture("/quality?"+all.Encode(), 200)
+		capture("/quality/core.analytics?"+url.Values{"capability_id": {"analytics.comparison"}, "expected_catalog_revision": {c.Revision}, "expected_revision": {q.Revision}, "scope": {"all"}, "theme": {theme}}.Encode(), 200)
+		capture("/quality/core.analytics?"+staleQuality.Encode(), 409)
+		capture("/catalog?"+recovery.Encode(), 200)
+		capture("/catalog/analytics.comparison?"+url.Values{"expected_revision": {c.Revision}, "q": {"analytics.comparison"}, "theme": {theme}}.Encode(), 200)
+	}
+	capture("/static/app.css", 200)
+	if err := json.NewEncoder(os.Stdout).Encode(out); err != nil {
+		panic(err)
+	}
+}

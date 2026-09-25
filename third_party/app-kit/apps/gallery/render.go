@@ -369,20 +369,20 @@ const shellHTML = `<!doctype html>
   <div class="mx-auto max-w-5xl px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-4">
     <div class="flex items-center gap-3">
       <span class="inline-block size-4 rounded-full bg-accent"></span>
-      <a href="{{.HomeURL}}" class="inline-flex min-h-[44px] items-center rounded-md font-semibold text-ink focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2">app-kit Gallery</a>
+      <a href="{{.HomeURL}}" class="g-home">app-kit Gallery</a>
     </div>
-    <div role="group" aria-label="Theme" class="flex flex-wrap items-center gap-1 text-sm">
-      <a href="{{.ThemeLight}}"{{if eq .Theme "light"}} aria-current="true"{{end}} class="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md border border-line px-3 py-2 {{if eq .Theme "light"}}bg-surface-sunken font-semibold text-ink{{else}}text-ink-muted{{end}} focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2">light</a>
-      <a href="{{.ThemeDark}}"{{if eq .Theme "dark"}} aria-current="true"{{end}} class="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md border border-line px-3 py-2 {{if eq .Theme "dark"}}bg-surface-sunken font-semibold text-ink{{else}}text-ink-muted{{end}} focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2">dark</a>
-      <a href="{{.ThemeSystem}}"{{if eq .Theme ""}} aria-current="true"{{end}} class="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md border border-line px-3 py-2 {{if eq .Theme ""}}bg-surface-sunken font-semibold text-ink{{else}}text-ink-muted{{end}} focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2">OS</a>
+    <div role="group" aria-label="Theme" class="g-theme">
+      <a href="{{.ThemeLight}}"{{if eq .Theme "light"}} aria-current="true"{{end}}>light</a>
+      <a href="{{.ThemeDark}}"{{if eq .Theme "dark"}} aria-current="true"{{end}}>dark</a>
+      <a href="{{.ThemeSystem}}"{{if eq .Theme ""}} aria-current="true"{{end}}>OS</a>
     </div>
-    <nav aria-label="Gallery sections" class="order-last hidden w-full min-w-0 flex-wrap items-center gap-1 text-sm lg:flex">
+    <nav aria-label="Gallery sections" class="g-nav">
       {{range .Nav}}
-      <a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}} class="inline-flex min-h-[44px] min-w-[44px] items-center rounded-md px-3 py-2 focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2 {{if .Active}}bg-accent-soft font-semibold text-ink{{else}}text-ink-muted hover:bg-surface-sunken hover:text-ink{{end}}">{{.Label}}</a>
+      <a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}}>{{.Label}}</a>
       {{end}}
     </nav>
     <details class="order-last w-full min-w-0 lg:hidden" id="gallery-navigation">
-      <summary class="min-h-[44px] cursor-pointer rounded-md border border-line px-3 py-2 text-sm text-ink focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2">Sections{{if .CurrentSection}} <span class="text-ink-muted">· {{.CurrentSection}}</span>{{end}}</summary>
+      <summary class="g-summary">Sections{{if .CurrentSection}} <span class="text-ink-muted">· {{.CurrentSection}}</span>{{end}}</summary>
       <nav aria-label="Gallery sections" class="mt-2 min-w-0">{{.MobileNav}}</nav>
     </details>
   </div>

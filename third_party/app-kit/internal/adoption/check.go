@@ -240,30 +240,7 @@ func Check(ctx context.Context, root, manifest string) Report {
 	} else {
 		r.add("catalog", "pass", "", "Selected catalog revision matches this checker.", "")
 	}
-	_, profileErr := c.Search(catalog.Query{Profile: s.Profile})
-	if profileErr != nil || s.Profile != "cli" && len(s.Layers) == 0 {
-		r.add("profile", "fail", "", "Unknown profile or missing applicable layer selection.", "Select catalog vocabulary appropriate to the consumer; native desktop support is not implied.")
-	} else {
-		r.add("profile", "pass", "", "Selected profile is recognized; target execution is not proven.", "")
-	}
-	for i, layer := range s.Layers {
-		id := fmt.Sprintf("layer:%d", i+1)
-		if _, err := c.Search(catalog.Query{Layer: layer}); err != nil {
-			r.add(id, "fail", "", "Selected layer is not in catalog vocabulary.", "Review the explicit selected layers.")
-		} else {
-			r.add(id, "pass", "", "Selected layer is recognized.", "")
-		}
-	}
-	for i, id := range s.Capabilities {
-		entry, ok := c.Get(id)
-		fit := ok && slices.Contains(entry.Profiles, s.Profile) && (s.Profile == "cli" && len(entry.Layers) == 0 || slices.ContainsFunc(entry.Layers, func(layer string) bool { return slices.Contains(s.Layers, layer) }))
-		key := fmt.Sprintf("capability:%d", i+1)
-		if !fit {
-			r.add(key, "fail", "", fmt.Sprintf("%q is absent or incompatible with the selected profile/layers.", id), "Choose a fitting exact catalog ID; do not silently change renderers.")
-		} else {
-			r.add(key, "pass", "", fmt.Sprintf("%q metadata fits; integration and catalog evidence gaps remain separate.", id), "")
-		}
-	}
+	r.checkSelectionFit(c, s)
 	if body, ok := r.file(rd, "contract", s.Contract, 1<<20, true); ok {
 		if strings.TrimSpace(string(body)) == "" {
 			r.add("contract", "fail", s.Contract, "Human adoption contract is empty.", "Record the actual task, design context, constraints and proof workflow.")
@@ -302,6 +279,34 @@ func Check(ctx context.Context, root, manifest string) Report {
 		}
 	}
 	return r.finish()
+}
+
+// Keep authoring and checking on one profile/layer/metadata-fit contract.
+func (r *Report) checkSelectionFit(c *catalog.Catalog, s *Selection) {
+	_, profileErr := c.Search(catalog.Query{Profile: s.Profile})
+	if profileErr != nil || s.Profile != "cli" && len(s.Layers) == 0 {
+		r.add("profile", "fail", "", "Unknown profile or missing applicable layer selection.", "Select catalog vocabulary appropriate to the consumer; native desktop support is not implied.")
+	} else {
+		r.add("profile", "pass", "", "Selected profile is recognized; target execution is not proven.", "")
+	}
+	for i, layer := range s.Layers {
+		id := fmt.Sprintf("layer:%d", i+1)
+		if _, err := c.Search(catalog.Query{Layer: layer}); err != nil {
+			r.add(id, "fail", "", "Selected layer is not in catalog vocabulary.", "Review the explicit selected layers.")
+		} else {
+			r.add(id, "pass", "", "Selected layer is recognized.", "")
+		}
+	}
+	for i, id := range s.Capabilities {
+		entry, ok := c.Get(id)
+		fit := ok && slices.Contains(entry.Profiles, s.Profile) && (s.Profile == "cli" && len(entry.Layers) == 0 || slices.ContainsFunc(entry.Layers, func(layer string) bool { return slices.Contains(s.Layers, layer) }))
+		key := fmt.Sprintf("capability:%d", i+1)
+		if !fit {
+			r.add(key, "fail", "", fmt.Sprintf("%q is absent or incompatible with the selected profile/layers.", id), "Choose a fitting exact catalog ID; do not silently change renderers.")
+		} else {
+			r.add(key, "pass", "", fmt.Sprintf("%q metadata fits; integration and catalog evidence gaps remain separate.", id), "")
+		}
+	}
 }
 
 func (r *Report) checkModule(rd *reader, requirement *ModuleRequirement) {

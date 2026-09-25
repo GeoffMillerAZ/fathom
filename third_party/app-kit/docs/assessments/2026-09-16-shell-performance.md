@@ -32,7 +32,7 @@ ephemeral loopback Gallery and fictional session data. No remote service, licens
 source, real account, installed binary or existing preview is changed.
 
 The selected existing binary is
-`/Volumes/m2ext/appkit-gallery-quality.spQ1NymK/gallery`, SHA-256
+`/Volumes/m2ext/appkit-evidence/appkit-gallery-quality.spQ1NymK/gallery`, SHA-256
 `001225811396ef0dd2b525cf9d5ab17f4274f7fb0c0036e777ca94888c2b6631`.
 Its embedded CSS is
 `0bb39edec5eb03cfe1a79ddf9ca1559399b56b3312e550b5782b115423b19ff8`.

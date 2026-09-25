@@ -15,6 +15,7 @@ import (
 
 	"github.com/geoffmilleraz/app-kit/appkit/catalog"
 	"github.com/geoffmilleraz/app-kit/apps/gallery"
+	"github.com/geoffmilleraz/app-kit/internal/adoption"
 	"github.com/geoffmilleraz/app-kit/internal/catalogtest"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"golang.org/x/net/html"
@@ -153,6 +154,21 @@ func TestCatalogMCPResourceExactGetAndGalleryParity(t *testing.T) {
 			if exact.Revision != c.Revision || !reflect.DeepEqual(exact.Entry, entry) {
 				t.Fatalf("exact contract differs from source catalog: %+v", exact)
 			}
+			// Decode the wire field independently: absent pins must fail even if
+			// both transports accidentally omit them in the same way.
+			var metadata struct {
+				Pin adoption.CapabilityRevision `json:"capability_revision"`
+			}
+			if err := json.Unmarshal(got, &metadata); err != nil {
+				t.Fatal(err)
+			}
+			pin, err := adoption.PinCapability(c.SchemaVersion, entry)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if metadata.Pin != pin {
+				t.Fatalf("exact get must expose the canonical v2 metadata pin: got %+v, want %+v", metadata.Pin, pin)
+			}
 			if entry.Preview != "" {
 				preview := catalogHTTP(t, handler, entry.Preview, http.StatusOK)
 				if !strings.Contains(preview.Header().Get("Content-Type"), "text/html") || preview.Body.Len() == 0 {
@@ -160,6 +176,88 @@ func TestCatalogMCPResourceExactGetAndGalleryParity(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestGetCapabilityExpectedRevisionGuardsExactReview(t *testing.T) {
+	ctx, session := catalogSession(t)
+	c, err := catalog.Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry := c.Entries[0]
+	omitted := catalogCall(t, ctx, session, "get_capability", capabilityGetInput{ID: entry.ID})
+	current := catalogCall(t, ctx, session, "get_capability", map[string]any{"id": entry.ID, "expected_revision": c.Revision})
+	if string(current) != string(omitted) {
+		t.Fatalf("current expected_revision changed exact output\nwith guard: %s\nomitted: %s", current, omitted)
+	}
+
+	tools, err := session.ListTools(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var schema struct {
+		Properties map[string]json.RawMessage `json:"properties"`
+		Required   []string                   `json:"required"`
+	}
+	for _, tool := range tools.Tools {
+		if tool.Name != "get_capability" {
+			continue
+		}
+		body, err := json.Marshal(tool.InputSchema)
+		if err != nil || json.Unmarshal(body, &schema) != nil {
+			t.Fatalf("decode get_capability input schema: %v: %s", err, body)
+		}
+	}
+	if _, ok := schema.Properties["expected_revision"]; !ok {
+		t.Fatal("get_capability input schema omits expected_revision")
+	}
+	if slices.Contains(schema.Required, "expected_revision") {
+		t.Fatal("expected_revision must remain optional")
+	}
+
+	stale := "0" + c.Revision[1:]
+	if c.Revision[0] == '0' {
+		stale = "1" + c.Revision[1:]
+	}
+	for name, revision := range map[string]string{
+		"short":      "abc",
+		"uppercase":  strings.Repeat("A", 64),
+		"nonhex":     strings.Repeat("g", 64),
+		"whitespace": " " + c.Revision,
+		"stale":      stale,
+	} {
+		t.Run(name, func(t *testing.T) {
+			result, err := session.CallTool(ctx, &mcp.CallToolParams{Name: "get_capability", Arguments: map[string]any{"id": entry.ID, "expected_revision": revision}})
+			if err != nil {
+				t.Fatalf("expected a tool-level refusal: %v", err)
+			}
+			if !result.IsError {
+				t.Fatalf("invalid expected revision silently succeeded: %+v", result)
+			}
+			encoded, err := json.Marshal(result)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result.StructuredContent != nil {
+				t.Fatalf("revision refusal leaked capability output: %s", encoded)
+			}
+			for _, content := range result.Content {
+				text, ok := content.(*mcp.TextContent)
+				if ok && (strings.Contains(text.Text, `"entry"`) || strings.Contains(text.Text, `"capability_revision"`)) {
+					t.Fatalf("revision refusal leaked capability output in text: %q", text.Text)
+				}
+			}
+			if name == "stale" && !strings.Contains(string(encoded), "restart search_capabilities") {
+				t.Fatalf("stale-revision refusal lacks recovery guidance: %s", encoded)
+			}
+		})
+	}
+
+	// A refused request must not poison the session or the immutable catalog.
+	after := catalogCall(t, ctx, session, "get_capability", map[string]any{"id": entry.ID, "expected_revision": c.Revision})
+	if string(after) != string(omitted) {
+		t.Fatalf("post-refusal exact output changed\nafter: %s\nomitted: %s", after, omitted)
 	}
 }
 

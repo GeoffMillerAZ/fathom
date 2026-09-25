@@ -7,7 +7,7 @@ its runtime result is not inherited by a new candidate.
 
 ## Source-selection refusal and repair
 
-The first fresh root, `/Volumes/m2ext/appkit-current-candidate.Eimj5C1d/`, prepared
+The first fresh root, `/Volumes/m2ext/appkit-evidence/appkit-current-candidate.Eimj5C1d/`, prepared
 a 1,221-file candidate, then refused host source `cmd/bundle-launcher/exec_darwin.go`
 before any server/native build. The host directory allowlist predated the private
 packaging commands. `host-rehearsal/` remains empty; the failure and original sources
@@ -20,7 +20,7 @@ the old code and pass with the repair: exact directory selection and a synthetic
 Git-visible snapshot binding bytes/hashes while still rejecting a nested paid path.
 The original tests are unchanged. Both preparer/rehearsal packages pass; their final
 source snapshots and summarized results are retained at
-`/Volumes/m2ext/appkit-host-source-repair.p1uxxFyW/` (`original/`, `red/`, `final/`).
+`/Volumes/m2ext/appkit-evidence/appkit-host-source-repair.p1uxxFyW/` (`original/`, `red/`, `final/`).
 
 Source retention does not imply execution: the host rehearsal still builds only its
 existing server/native targets and runs its selected HTTP/hostwire/preparer tests.
@@ -36,7 +36,7 @@ and replacement/growth canaries would be needed before making that stronger clai
 
 ## Distinct prepared candidate
 
-Fresh root: `/Volumes/m2ext/appkit-current-candidate-final.tHngq0rX/`.
+Fresh root: `/Volumes/m2ext/appkit-evidence/appkit-current-candidate-final.tHngq0rX/`.
 The candidate contains 1,221 selected files / 10,355,531 bytes. Its full version is
 `v0.0.0-rehearsal.h12d33fb44dc0787a00330059dd32760d1a66b57b4182a5bde31836e3cedd65e0`.
 It captures reviewed working-tree bytes at preparation, not a clean commit or later
@@ -79,7 +79,7 @@ outer process deadline and independently bind executable hashes, ancestry and cl
 No AXURL is read. A successful process exit is not a workflow pass: callers must check
 completeness and every required control's status. This preparation ran no live AX traversal.
 
-Private stage: `/Volumes/m2ext/appkit-native-workflow-discovery.M5s4UN/`.
+Private stage: `/Volumes/m2ext/appkit-evidence/appkit-native-workflow-discovery.M5s4UN/`.
 This is the initial inspector identity; the later [disclosure-structure preparation](2026-09-16-native-disclosure-scroll.md#structure-diagnostic-prepared-no-new-native-run)
 adds44 offline checks with a distinct exact executable and no new native run.
 Its subsequent [historical-bundle structure inspection](2026-09-16-native-disclosure-scroll.md#actual-read-only-structure-inspection)

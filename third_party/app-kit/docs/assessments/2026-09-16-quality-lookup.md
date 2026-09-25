@@ -50,7 +50,7 @@ and tools retain their existing contracts.
 
 ## Retained runs
 
-Initial root `/Volumes/m2ext/appkit-quality-lookup.NzILgyxn/` retains selected source,
+Initial root `/Volumes/m2ext/appkit-evidence/appkit-quality-lookup.NzILgyxn/` retains selected source,
 commands and outputs. Its first race run failed an existing CSS test because the
 minimal environment omitted the normal home/cache location (380 passes/1 failure/4
 skips). The source stayed unchanged. Its initial stdio preparation also stopped
@@ -58,10 +58,10 @@ before launching the server: `/usr/bin/test` does not exist on this Mac. The dia
 and original harness remain; a fresh harness uses `/bin/test`, corrected JavaScript
 budget parentheses and UTF-8 stream decoding. No task expectation was weakened.
 
-The corrected race root `/Volumes/m2ext/appkit-quality-lookup-env.uQ9hE0MY/` inherits
+The corrected race root `/Volumes/m2ext/appkit-evidence/appkit-quality-lookup-env.uQ9hE0MY/` inherits
 the unchanged normal home location and checks the already-cached Tailwind4.3.0 binary
 against its existing pin before running. No compiler download/upgrade was needed.
-Actual stdio proof: `/Volumes/m2ext/appkit-quality-stdio.qXZ9W51E/stdio/`.
+Actual stdio proof: `/Volumes/m2ext/appkit-evidence/appkit-quality-stdio.qXZ9W51E/stdio/`.
 Receipts retain selected source identities, not a full clean-build dependency closure.
 
 | Artifact | SHA-256 |
