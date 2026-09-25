@@ -243,9 +243,18 @@ alias to a non-Named RHS as different type kinds outright. `any` and
 `interface{}` are canonicalized to one spelling at render time
 (`normalizeAnyType`) for every Go item, not only type declarations, so a
 func/const/var's plain-text `detail` comparison collapses the two
-spellings too. What this does NOT do, on purpose (documented gaps, not
-silent claims): fields/methods promoted through embedding (apidiff's
-"exported *selectable* fields" and embedded-interface flattening), a
+spellings too. An interface's own embedded-interface fields are tracked
+too (wave 3 gap-closing): adding, removing, or retargeting an embed (e.g.
+`io.Closer`) registers as a change to the enclosing interface's shape,
+via the same asymmetric compatibility rule a named method addition
+already gets — a review of this fix found that `interfaceMethodShapes`
+skipped every embed outright, so `Diff` reported `conserved` on a real,
+apidiff-classified incompatible change the pre-CV-M4 whole-text `Detail`
+comparison used to catch. What this does NOT do, on purpose (documented
+gaps, not silent claims): FLATTENING an embedded interface's own method
+set (resolving what `io.Closer` itself requires, rather than only
+noticing that the embed's own identity changed), fields promoted through
+an embedded STRUCT (apidiff's "exported *selectable* fields"), a
 struct's comparability regression, and anything that needs another
 package's declaration resolved (Go's numeric-widening compatibility
 table, cross-package generic instantiation) — none of CV-M4's three

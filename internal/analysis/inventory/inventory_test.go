@@ -579,3 +579,75 @@ type Reader interface {
 		t.Errorf("sealed interface: Changed = %v, want none", d.Changed)
 	}
 }
+
+// TestDiff_EmbeddedInterfaceAdditionIsChanged pins the fix for a recall
+// regression a review found in TestDiff_InterfaceMethodAdditionIncompatible-
+// UnlessSealed's own class: interfaceMethodShapes used to skip every
+// ast.Field with no Name outright (an embedded interface never entered
+// TypeDetail.Interface under any key, not even an opaque marker), and
+// itemChanged takes the TypeDetail branch exclusively once both sides
+// carry one — never falling back to the old whole-text Detail comparison
+// the PRE-CV-M4 code used to catch this with. Adding io.Closer to an
+// otherwise-unchanged interface is a real, apidiff-classified incompatible
+// change (any external implementer must now also implement Close() error)
+// that used to render as an empty Diff — "conserved" on a genuine
+// incompatible change. This does not resolve io.Closer's own method set
+// (a third declaration, still out of scope); it registers the embed
+// itself being added, removed, or retargeted as a change to Reader's own
+// shape, via the same asymmetric rule a named method addition already
+// gets.
+func TestDiff_EmbeddedInterfaceAdditionIsChanged(t *testing.T) {
+	openBase := []byte(`package widgets
+
+import "io"
+
+type Reader interface {
+	Read() error
+}
+`)
+	openHead := []byte(`package widgets
+
+import "io"
+
+type Reader interface {
+	Read() error
+	io.Closer
+}
+`)
+	baseItems := Extract([]File{{Path: "widgets/reader.go", Content: openBase}}, nil)
+	headItems := Extract([]File{{Path: "widgets/reader.go", Content: openHead}}, nil)
+	if d := Diff(baseItems, headItems); len(d.Changed) != 1 || d.Changed[0] != "api:widgets.Reader" {
+		t.Errorf("embed added to open interface: Changed = %v, want [api:widgets.Reader]", d.Changed)
+	}
+
+	// The reverse direction — removing an embed, which breaks any caller
+	// relying on the promoted method(s) — must also be a loss.
+	if d := Diff(headItems, baseItems); len(d.Changed) != 1 || d.Changed[0] != "api:widgets.Reader" {
+		t.Errorf("embed removed from open interface: Changed = %v, want [api:widgets.Reader]", d.Changed)
+	}
+
+	sealedBase := []byte(`package widgets
+
+import "io"
+
+type Reader interface {
+	Read() error
+	sealed()
+}
+`)
+	sealedHead := []byte(`package widgets
+
+import "io"
+
+type Reader interface {
+	Read() error
+	io.Closer
+	sealed()
+}
+`)
+	baseItems = Extract([]File{{Path: "widgets/reader.go", Content: sealedBase}}, nil)
+	headItems = Extract([]File{{Path: "widgets/reader.go", Content: sealedHead}}, nil)
+	if d := Diff(baseItems, headItems); len(d.Changed) != 0 {
+		t.Errorf("embed added to sealed interface: Changed = %v, want none", d.Changed)
+	}
+}

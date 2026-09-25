@@ -61,13 +61,24 @@ type TypeDetail struct {
 	Struct map[string]string
 	// Interface is non-nil when the declaration's underlying (or alias
 	// RHS) is an interface literal: method name -> normalized signature
-	// text. An embedded interface (a Field with no Name) is not
-	// flattened into this map — this package never resolves another
-	// declaration's own method set — so a change reachable ONLY through
-	// an embedded interface's own methods is a documented gap, same
-	// tier as the struct "comparable" regression apidiff also checks and
-	// this file does not (both need resolving a THIRD declaration's
-	// shape, not just the two sides of the one being compared).
+	// text, PLUS one entry per embedded interface field (a Field with no
+	// Name whose Type is a plain, possibly package-qualified, possibly
+	// generic-instantiated named type — never a type-set element, for
+	// which embeddedFieldName returns "" and the field is skipped),
+	// keyed "embed <base-identifier>" (a space can never appear in a Go
+	// identifier, so this key space never collides with a real method
+	// name) and valued by the embed's own rendered type text
+	// (interfaceMethodShapes). This makes an embed being added, removed,
+	// or retargeted register as a change to THIS interface's own shape,
+	// via the exact same comparison interfaceCompatible already applies
+	// to a named method. It does NOT flatten the embedded interface's
+	// OWN method set into this map — this package never resolves another
+	// declaration's shape — so a change reachable ONLY by looking inside
+	// what the embed itself requires (rather than at the embed's own
+	// identity) is a documented gap, same tier as the struct
+	// "comparable" regression apidiff also checks and this file does not
+	// (both need resolving a THIRD declaration's shape, not just the two
+	// sides of the one being compared).
 	Interface map[string]string
 	// InterfaceHasUnexportedMethod is true when Interface's own BASE side
 	// already declares a method whose name is unexported. apidiff's own
@@ -124,11 +135,13 @@ func structFieldShapes(fset *token.FileSet, st *ast.StructType) map[string]strin
 	return out
 }
 
-// interfaceMethodShapes returns its own immediate named methods (an
-// embedded interface — a Field with no Name — is skipped; see
-// TypeDetail.Interface) keyed by method name, valued by normalized
-// stripped-parameter-name signature text, plus whether any of them is
-// unexported.
+// interfaceMethodShapes returns its own immediate named methods keyed by
+// method name, valued by normalized stripped-parameter-name signature
+// text, PLUS one "embed <base-identifier>" entry per embedded interface
+// field (TypeDetail.Interface's own doc comment) — a type-set element
+// (union `A | B`, tilde `~T`) is still skipped: it is also a Field with no
+// Name, but embeddedFieldName returns "" for it, so no key is emitted —
+// plus whether any NAMED method is unexported.
 func interfaceMethodShapes(fset *token.FileSet, it *ast.InterfaceType) (map[string]string, bool) {
 	out := map[string]string{}
 	hasUnexported := false
@@ -137,7 +150,17 @@ func interfaceMethodShapes(fset *token.FileSet, it *ast.InterfaceType) (map[stri
 	}
 	for _, m := range it.Methods.List {
 		if len(m.Names) != 1 {
-			continue // embedded interface or type-set element — not a named method
+			// An embedded interface or a type-set element — neither has
+			// a Name. embeddedFieldName resolves the former to its base
+			// identifier (mirroring structFieldShapes' own treatment of
+			// an embedded struct field) and returns "" for the latter
+			// (a *ast.BinaryExpr union or *ast.UnaryExpr tilde matches
+			// none of its cases), so a type-set element is correctly
+			// left untracked here.
+			if fname := embeddedFieldName(m.Type); fname != "" {
+				out["embed "+fname] = renderNode(fset, m.Type)
+			}
+			continue
 		}
 		sig, ok := m.Type.(*ast.FuncType)
 		if !ok {
