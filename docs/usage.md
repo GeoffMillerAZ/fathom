@@ -1475,13 +1475,13 @@ fixture change, or lost/moved its `// certifies:` marker) or a hand edit
 to a generated file whose generator inputs did not change. The
 **`conservation`** dimension (ADR-044 §2, CV-24) reads the same
 `Base`/`Root` and reports the same "needs a base ref" reason without
-`--since`, but is built and tested against a caller-PRECOMPUTED
-`in.ConservationPlanes`/`in.ConservationSupported` — `fathom review` and
-`review_diff` do not yet compute and attach that report themselves, so
-today `[x] conservation` (`checked: true`) only appears when a caller
-supplies it directly; run `fathom conserve --since <ref>` alongside
-`fathom review --since <ref>` for the conservation planes' own findings
-until that wiring lands. A ref that does not resolve fails open (every
+`--since`; with it, `fathom review` (and `review_diff`) build a real
+`internal/conserve.Input` via `conserve.NewInput` and run it through
+`conserve.Run` over every registered plane (`conserve.Planes()`) — the
+same composition `fathom conserve` itself uses — so `[x] conservation`
+(`checked: true`) reports the same planes/findings `fathom conserve
+--since <ref>` would over the identical range, with no separate command
+needed. A ref that does not resolve fails open (every
 dimension still runs over the changed-file set `--since` already
 computed); `--manifest` runs never populate `Base` at all, since they
 carry no ref.

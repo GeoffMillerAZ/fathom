@@ -102,6 +102,31 @@ pre-push:
         fi
         echo "$out"
         exit 0
+    # fathom conserve — ADR-044 §6/CV-47: a NON-BLOCKING refactor-
+    # conservation SUMMARY printed on every push, the same warning-only
+    # discipline the review step above already follows (never --strict,
+    # so bin/fathom conserve itself never returns non-zero for a finding —
+    # only for an operational failure). --since prefers the branch's own
+    # upstream (`@{u}`) so a feature branch conserves against what it will
+    # actually merge into, falling back to `origin/main` when there is no
+    # upstream yet (a brand-new branch, a fresh clone that never pushed).
+    # This step ALWAYS exits 0, whatever bin/fathom conserve itself
+    # returns: a missing bin/fathom, an unresolvable ref, or any other
+    # operational error degrades to a single fail-open line, never a
+    # blocking failure (docs/design/coding-agent-excellence.md §5.3) —
+    # `fathom verify` above is the gate; this is advisory visibility only.
+    refactor-conserve:
+      run: |
+        [ -x bin/fathom ] || exit 0
+        since=$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null)
+        [ -n "$since" ] || since="origin/main"
+        out=$(bin/fathom conserve --service fathom --since "$since" --store workspace/db/fleet.sqlite 2>&1)
+        if [ $? -eq 2 ]; then
+          echo "fathom conserve: operational error — skipped (fail-open, see docs/design/coding-agent-excellence.md §5.3)"
+          exit 0
+        fi
+        echo "$out"
+        exit 0
 
 # Best-effort post-commit upkeep.
 #  1. rebuild-binary — when a commit touched Go source, rebuild bin/fathom so the

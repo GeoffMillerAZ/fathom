@@ -16,21 +16,35 @@ package conserve
 // the code never actually left — this check is the one place fathom
 // looks for exactly that.
 //
-// Declared is always DeclaredNone: design §3.3 names no declaration that
-// excuses a resurrection finding (unlike a surface loss's retires:/
-// surface_change: key) — this literalizes the spec exactly as written; a
-// legitimate, honest, single-copy rename produces the identical finding a
-// deceptive copy-and-relabel does (the body-hash comparison alone cannot
-// tell the two apart), and CV-M5 (a later, deferred measurement row) is
-// where the false-positive rate against fathom's own migration history
-// gets checked, not this mechanism.
-
+// Resurrection honesty (amended 2026-09-24, owner decision, design §3.3):
+// an ordinary rename or move must never be a loss — most reappeared
+// bodies are exactly that, nothing was ever claimed about them, and
+// flagging every rename as a "loss" would make the plane noise, not
+// signal. So the SAME body-hash match now splits in two:
+//
+//   - No retirement was CLAIMED for the deleted function (a `retires:`
+//     key), its package, or an import it lived behind (a `gone: import
+//     <path>` row — in.Retired, either from base or from head: a
+//     retirement declared inside the very same range still counts as a
+//     claim here, unlike Declarations' ordinary I45 prior/self split) —
+//     kind "moved", Declared DeclaredPrior. This is deliberately NOT the
+//     ordinary meaning of "prior" (a declaration excusing a loss);
+//     nothing was declared at all. It is planeVerdict's own escape hatch
+//     for "never a loss on its own," reused here because Finding has no
+//     third loss-exempt state and the shape already means exactly that.
+//   - A retirement WAS claimed, and the body still turns up anyway — the
+//     claim was false. THAT is the actual Blindness case ADR-044 exists
+//     to catch (an agent writes a `gone: import legacy` row to satisfy
+//     the gate while quietly keeping the code alive elsewhere): kind
+//     "body_resurrected", Declared DeclaredNone — a loss, exactly as
+//     before this amendment.
 import (
 	"context"
 	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"path"
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/clone"
@@ -48,10 +62,13 @@ func (resurrectionPlane) Check(ctx context.Context, in Input) ([]Finding, []stri
 }
 
 // funcSite is one Go function's identity for Resurrected's purposes: its
-// name (funcDeclName — bare, or "Receiver.Method"), defining file:line,
-// and clone.FuncBodyHash's own hash/statement count for its source text.
+// name (funcDeclName — bare, or "Receiver.Method"), its file's own
+// package clause (pkg — resurrection honesty's package-retirement check),
+// defining file:line, and clone.FuncBodyHash's own hash/statement count
+// for its source text.
 type funcSite struct {
 	name  string
+	pkg   string
 	file  string
 	line  int
 	hash  string
@@ -110,15 +127,36 @@ func Resurrected(in Input) ([]Finding, []string) {
 			if h.name == g.name || h.hash != g.hash {
 				continue
 			}
+			base := fmt.Sprintf("%s:%d", g.file, g.line)
+			headCite := fmt.Sprintf("%s:%d", h.file, h.line)
+			if !in.Retired.ClaimsKey(fmt.Sprintf("api:%s.%s", path.Dir(g.file), g.name)) &&
+				!in.Retired.ClaimsImport(g.pkg) {
+				// No retirement was claimed for this function, its
+				// package, or an import it lived behind — an ordinary,
+				// undeclared rename. Informational, never a loss (design
+				// §3.3, amended 2026-09-24).
+				findings = append(findings, Finding{
+					Plane: "resurrection",
+					Kind:  "moved",
+					Key:   g.name,
+					Detail: fmt.Sprintf(
+						"%s (moved from %s) reappears as %s at %s — identical body, %d statement(s); no retirement was declared, treated as an ordinary move",
+						g.name, g.file, h.name, h.file, g.stmts),
+					Base:     base,
+					Head:     headCite,
+					Declared: DeclaredPrior,
+				})
+				continue
+			}
 			findings = append(findings, Finding{
 				Plane: "resurrection",
 				Kind:  "body_resurrected",
 				Key:   g.name,
 				Detail: fmt.Sprintf(
-					"%s (deleted from %s) reappears as %s at %s — identical body, %d statement(s)",
+					"%s (deleted from %s) reappears as %s at %s — identical body, %d statement(s), despite a retirement claim for it",
 					g.name, g.file, h.name, h.file, g.stmts),
-				Base:     fmt.Sprintf("%s:%d", g.file, g.line),
-				Head:     fmt.Sprintf("%s:%d", h.file, h.line),
+				Base:     base,
+				Head:     headCite,
 				Declared: DeclaredNone,
 				Remedy: fmt.Sprintf(
 					"%s looks copied to %s rather than moved — delete the copy, or rename %s in place so history stays honest",
@@ -135,11 +173,15 @@ func Resurrected(in Input) ([]Finding, []string) {
 // source order in af.Decls). A function with no body (an external/
 // assembly declaration) is skipped — clone.FuncBodyHash has nothing to
 // hash for it, and it can never be "the same body" as anything.
-func funcSitesIn(path string, src []byte) []funcSite {
+func funcSitesIn(filePath string, src []byte) []funcSite {
 	fset := token.NewFileSet()
-	af, err := parser.ParseFile(fset, path, src, parser.ParseComments)
+	af, err := parser.ParseFile(fset, filePath, src, parser.ParseComments)
 	if err != nil {
 		return nil // heuristic scan over already-read content: never fatal
+	}
+	pkgName := ""
+	if af.Name != nil {
+		pkgName = af.Name.Name
 	}
 	var out []funcSite
 	for _, decl := range af.Decls {
@@ -158,7 +200,8 @@ func funcSitesIn(path string, src []byte) []funcSite {
 		}
 		out = append(out, funcSite{
 			name:  funcDeclName(fn),
-			file:  path,
+			pkg:   pkgName,
+			file:  filePath,
 			line:  fset.Position(fn.Pos()).Line,
 			hash:  hash,
 			stmts: stmts,

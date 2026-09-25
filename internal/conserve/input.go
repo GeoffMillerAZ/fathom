@@ -63,6 +63,19 @@ type Input struct {
 	// ("prior", excuses a finding), only inside the range ("self", excuses
 	// nothing — I45), or not at all ("none").
 	Declarations Declarations
+	// Retired is the base+head union of every retirement CLAIM a set of
+	// plans makes (ADR-044 §3.3, resurrection honesty) — a `retires:` key
+	// naming the function, or a `gone: import <path>` row naming its
+	// package or an import it lived behind. Deliberately NOT
+	// Declarations: I45's prior/self split excuses a loss only when the
+	// declaration predates the range, but resurrection.go uses Retired
+	// for the opposite purpose — telling an ordinary, undeclared rename
+	// (nothing to contradict, informational) from a body that reappears
+	// AFTER the range explicitly claimed it gone (the declaration is
+	// false, a loss) — so a retirement declared inside the very same
+	// range that deletes the code still counts as a claim here, per
+	// Retired's own doc comment.
+	Retired Retirement
 }
 
 // Declarations is the base/head split of every retires:/surface_change:
@@ -142,6 +155,79 @@ func declPatternsFromPlans(plans []verify.Plan) []string {
 	return out
 }
 
+// Retirement (ADR-044 §3.3, resurrection honesty) is the base+head UNION
+// of every retirement claim a set of plans makes: a `retires:` key
+// (matched, like Declarations, as an exact string or a "<prefix>*"
+// wildcard) or a `gone: import <path>` row's target. Built once per Run
+// by NewInput (or NewRetirement, for a caller/test with its own plan
+// versions already in hand) and consulted ONLY by resurrection.go's
+// Resurrected — see Input.Retired's own doc comment for why this is a
+// distinct type from Declarations rather than a second use of it.
+type Retirement struct {
+	keys    []string // retires: patterns, base+head combined
+	imports []string // gone: import <path> targets, base+head combined
+}
+
+// ClaimsKey reports whether a retires: pattern (base or head, either
+// counts here) matches key — the exact/"<prefix>*" rule
+// declPatternsMatch already implements for Declarations.
+func (r Retirement) ClaimsKey(key string) bool {
+	return declPatternsMatch(r.keys, key)
+}
+
+// ClaimsImport reports whether some `gone: import <path>` row's target
+// (base or head) is path itself, or ends in a "/"+path segment equal to
+// path — the second form matches "an import it lived behind" a package
+// whose OWN directory-derived key (api:<dir>.Name) uses just the
+// directory, not a real module-qualified import path: a `gone: import
+// example.com/x/legacy` row and a package literally named/dirred "legacy"
+// are the same claim by the ordinary Go convention that an import path's
+// last segment names its package.
+func (r Retirement) ClaimsImport(path string) bool {
+	for _, imp := range r.imports {
+		if imp == path || strings.HasSuffix(imp, "/"+path) {
+			return true
+		}
+	}
+	return false
+}
+
+// NewRetirement builds a Retirement from already-parsed plan versions —
+// NewDeclarations' own precedent, for a caller (a test, or one that read
+// both plan versions for another reason) that wants Retired without any
+// git I/O. Every retires: key and gone: import target from EITHER
+// basePlans or headPlans counts, unlike NewDeclarations' base/head split:
+// see Input.Retired's doc comment for why.
+func NewRetirement(basePlans, headPlans []verify.Plan) Retirement {
+	var keys, imports []string
+	for _, plans := range [][]verify.Plan{basePlans, headPlans} {
+		for _, p := range plans {
+			for _, t := range p.Tasks {
+				keys = append(keys, t.Retires...)
+				if imp, ok := goneImportTarget(t.Gone); ok {
+					imports = append(imports, imp)
+				}
+			}
+		}
+	}
+	sort.Strings(keys)
+	sort.Strings(imports)
+	return Retirement{keys: keys, imports: imports}
+}
+
+// goneImportTarget extracts <path> from a `gone: import <path>` row's raw
+// Task.Gone text — the same "import " prefix internal/verify.
+// parseGoneForm's own "import" case cuts, re-derived here rather than
+// exported from internal/verify since this package needs only this one
+// form, never module/pattern/callers.
+func goneImportTarget(raw string) (string, bool) {
+	rest, ok := strings.CutPrefix(strings.TrimSpace(raw), "import ")
+	if !ok {
+		return "", false
+	}
+	return strings.TrimSpace(rest), true
+}
+
 // NewInput resolves baseRef against root's git history and fills every
 // Input field from it: Base (the resolved sha), Head ("worktree"),
 // ChangedFiles (`git diff --name-only <base>` plus untracked files — the
@@ -185,6 +271,7 @@ func NewInput(ctx context.Context, root, baseRef string, st store.Store, service
 		HeadFile:     func(path string) ([]byte, bool, error) { return worktreeFile(root, path) },
 		Store:        st,
 		Declarations: NewDeclarations(basePlans, headPlans),
+		Retired:      NewRetirement(basePlans, headPlans),
 	}, nil
 }
 

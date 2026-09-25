@@ -169,9 +169,11 @@ package config
 	// as prefilter_skipped, still served raw by ADR-037's fallback).
 	compile_threshold?: number & >=0 & <=1
 
-	// route_confidence: the prompt hook injects one firm route line at or
-	// above this confidence, a hedged one in the confirm band, nothing
-	// below the unsure band.
+	// route_confidence: unchanged at 0.9 (2026-09-24, ADR-042 amendment:
+	// route's own calibration reading failed the check at every cutoff).
+	// The prompt hook injects a HEDGED route line at or above the confirm
+	// floor (0.5) — proceed and confirm render identical wording since
+	// CV-M11, never a firm instruction — and nothing below it.
 	route_confidence?: number & >=0 & <=1
 
 	// route_timeout_ms bounds POST /route's own decider call (O109): the

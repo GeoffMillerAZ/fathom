@@ -2317,6 +2317,28 @@ sample is measured, or route's own prompt/model changes in a way that could plau
 fix the non-monotonicity this reading found — a threshold change alone is not
 expected to.
 
+**Amended 2026-09-24 (ADR-042, wave 2 of the same CV-M11 finding above): the
+`route` site's line is never phrased as a firm instruction, at any
+confidence.** The threshold fix above (leaving `route_confidence` unchanged)
+only stops a wrong threshold from misrepresenting an unfixed miscalibration as
+fixed; it does not, by itself, stop the hook from ever asserting a firm
+suggestion when confidence happens to clear 0.9. Since the same reading found
+confidence uncorrelated with correctness on this site (the ≥0.9 slice's own
+1.0-confidence tail scored *worse* than the band below it), a `proceed`-band
+line is no more trustworthy than a `confirm`-band one — there is no confidence
+level this site can point to as "earned." `cmd/fathom/prompthook.go`'s
+`routeLine` (DP-10) now renders the SAME hedged wording for both the
+`proceed` and `confirm` bands ("this looks X-shaped; Y is the likely opening
+move (confidence N, unconfirmed)"), never the prior firm form ("open with Y"),
+and still says nothing at all below the confirm floor (0.5) or on any
+failure. This changes only what the line SAYS: `routeHandler`'s own
+`applied` bookkeeping (a `proceed`-band answer at or above `route_confidence`
+logged to `decisions.jsonl`) is unchanged, since that log is instrument truth
+about what the port did, not a claim the hook renders to a reader. **Revisit
+when** a routing change (a different prompt, model, or provider) passes the
+calibration check (0.9 right nine times in ten) on a newly measured sample —
+only then does a firm line for a high-confidence band become warranted again.
+
 ## ADR-043: Tested means certified — a certifications layer over declared test evidence, judged elsewhere (2026-09-23)
 
 **Status.** Accepted 2026-09-23. Vision: `docs/vision/33-test-certifications.md`. Design: `docs/design/test-certifications.md`. Plan: `docs/plans/test-certifications.md`.

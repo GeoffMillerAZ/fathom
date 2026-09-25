@@ -188,9 +188,28 @@ at base) → `absence`/`new_deprecated_caller`.
 `clone.FuncBodyHash` hashes a function body identifier-insensitively (the
 `clone` package's normalisation, exposed per function). `conserve.Resurrected`:
 a function present at base in a changed file and gone at head whose hash matches
-a head function under another name, with at least 5 statements →
-`resurrection`/`body_resurrected` naming both. This is the deterministic
-Blindness detector.
+a head function under another name, with at least 5 statements, is a candidate.
+
+**Resurrection honesty (amended 2026-09-24, owner decision).** An ordinary
+rename or move of a function must not be a loss — most reappeared bodies are
+exactly that, and nothing was ever claimed about them. A candidate is a loss
+ONLY when the deleted function, its package, or an import it lived behind was
+declared retired: a `retires:` key naming the function (`api:<dir>.<Name>`,
+matched exactly or by a `"<prefix>*"` wildcard, same rule as `Declarations`),
+or a `gone: import <path>` row whose `<path>` is, or ends in `/`+, the
+function's own package name — from the plan(s) at BASE OR HEAD. Unlike
+`Declarations`' I45 prior/self split (which excuses a loss only when the
+declaration predates the range), a retirement declared inside the very same
+range that deletes the code still counts as a claim here: that is exactly the
+shape of the failure this check exists to catch — an agent writes the
+`gone:`/`retires:` row a refactor program (§4) expects, satisfying the
+surface-absence gate, while the body quietly survives elsewhere. When no
+retirement was ever claimed, the finding is `resurrection`/`moved`, `Declared:
+prior` — informational, never a loss (a normal rename needs no declaration
+and pays no penalty for one it never made). When a retirement WAS claimed and
+the body reappears anyway, the finding is `resurrection`/`body_resurrected`,
+`Declared: none` — a loss: the declared retirement was false. This is the
+deterministic Blindness detector.
 
 ## 4. Stage 4 — refactors as programs
 

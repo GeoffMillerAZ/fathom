@@ -137,6 +137,36 @@ func TestNewInput_ResolvesBaseChangedFilesAndDeclarations(t *testing.T) {
 	}
 }
 
+// TestNewInput_RetiredCombinesBaseAndHeadUnlikeDeclarations pins Input.
+// Retired's own contract (ADR-044 §3.3, resurrection honesty): a
+// retires: key gained only at HEAD still counts as a claim here — unlike
+// Declarations.Declared, which would call the exact same key "self" and
+// exclude it from excusing a loss.
+func TestNewInput_RetiredCombinesBaseAndHeadUnlikeDeclarations(t *testing.T) {
+	repo := newInputTestRepo(t)
+	repo.write("a.go", "package a\n")
+	repo.write("docs/plans/p.md", "- [ ] Row {id: R-1, retires: \"api:foo.Old\"}\n")
+	repo.commitAll("base commit")
+	base := repo.headSHA()
+
+	repo.write("docs/plans/p.md",
+		"- [x] Row {id: R-1, retires: \"api:foo.Old\"}\n- [x] Row2 {id: R-2, gone: import example.com/x/legacy}\n")
+
+	in, err := NewInput(context.Background(), repo.root, base, nil, "svc", []string{"docs/plans/p.md"})
+	if err != nil {
+		t.Fatalf("NewInput: %v", err)
+	}
+	if !in.Retired.ClaimsKey("api:foo.Old") {
+		t.Error("Retired.ClaimsKey(api:foo.Old) = false, want true (declared at base)")
+	}
+	if !in.Retired.ClaimsImport("example.com/x/legacy") {
+		t.Error("Retired.ClaimsImport(example.com/x/legacy) = false, want true — a gone: import row added ONLY at head still counts as a claim here")
+	}
+	if in.Retired.ClaimsImport("example.com/x/something-else") {
+		t.Error("Retired.ClaimsImport matched an unrelated import path")
+	}
+}
+
 func TestNewInput_BadRefIsAnError(t *testing.T) {
 	repo := newInputTestRepo(t)
 	repo.write("a.go", "package a\n")

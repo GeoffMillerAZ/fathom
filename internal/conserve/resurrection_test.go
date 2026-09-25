@@ -6,6 +6,17 @@ package conserve
 // implementation copied behind a new name while the old package import
 // is removed (vision 34 §2's SWE Refactor Bench failure mode) — the
 // deterministic detector this whole plane exists to be.
+//
+// Resurrection honesty (amended 2026-09-24, design §3.3): the same
+// body-hash match now splits on whether a retirement was actually
+// CLAIMED (in.Retired — a retires: key or a gone: import row, base or
+// head). TestResurrected_DeletedBodyReappears and
+// TestResurrected_BlindnessFixture both now declare one, so they stay
+// what they always were — proof that a claimed-gone body which reappears
+// anyway is flagged as a loss.
+// TestResurrected_UndeclaredMoveIsInformationalNotLoss is the OTHER path:
+// the identical fixture, no declaration at all — an ordinary rename,
+// informational, never a loss.
 
 import "testing"
 
@@ -26,18 +37,23 @@ const oldImplBody = `func Compute(n int) int {
 
 func TestResurrected_DeletedBodyReappears(t *testing.T) {
 	base := map[string]string{
-		"old.go": "package pkg\n\n" + oldImplBody + "\n",
+		"pkg/old.go": "package pkg\n\n" + oldImplBody + "\n",
 	}
 	head := map[string]string{
-		// Compute is gone from old.go; the identical body reappears under
-		// a new name, Recompute, in a different changed file.
-		"old.go": "package pkg\n\nfunc Unrelated() {}\n",
-		"new.go": "package pkg\n\n" + renamedBody("Compute", "Recompute") + "\n",
+		// Compute is gone from pkg/old.go; the identical body reappears
+		// under a new name, Recompute, in a different changed file.
+		"pkg/old.go": "package pkg\n\nfunc Unrelated() {}\n",
+		"pkg/new.go": "package pkg\n\n" + renamedBody("Compute", "Recompute") + "\n",
 	}
 	in := Input{
-		ChangedFiles: []string{"new.go", "old.go"},
+		ChangedFiles: []string{"pkg/new.go", "pkg/old.go"},
 		BaseFile:     mapFile(base),
 		HeadFile:     mapFile(head),
+		// Compute was declared retired (retires: api:pkg.Compute) — the
+		// SAME range that deletes it also claims it gone, which still
+		// counts here (unlike I45's ordinary excusal). The body turning
+		// up anyway makes the claim false: a loss.
+		Retired: Retirement{keys: []string{"api:pkg.Compute"}},
 	}
 
 	findings, missing := Resurrected(in)
@@ -59,13 +75,59 @@ func TestResurrected_DeletedBodyReappears(t *testing.T) {
 	}
 }
 
+// TestResurrected_UndeclaredMoveIsInformationalNotLoss is resurrection
+// honesty's other path (design §3.3, amended 2026-09-24): the IDENTICAL
+// fixture to TestResurrected_DeletedBodyReappears, minus the retires:
+// declaration — nothing ever claimed Compute gone, so its reappearance
+// under a new name is an ordinary, undeclared rename: kind "moved",
+// Declared "prior", and never a loss.
+func TestResurrected_UndeclaredMoveIsInformationalNotLoss(t *testing.T) {
+	base := map[string]string{
+		"pkg/old.go": "package pkg\n\n" + oldImplBody + "\n",
+	}
+	head := map[string]string{
+		"pkg/old.go": "package pkg\n\nfunc Unrelated() {}\n",
+		"pkg/new.go": "package pkg\n\n" + renamedBody("Compute", "Recompute") + "\n",
+	}
+	in := Input{
+		ChangedFiles: []string{"pkg/new.go", "pkg/old.go"},
+		BaseFile:     mapFile(base),
+		HeadFile:     mapFile(head),
+		// No Retired at all — nothing was ever claimed retired.
+	}
+
+	findings, missing := Resurrected(in)
+	if len(missing) != 0 {
+		t.Fatalf("missing = %v, want none", missing)
+	}
+	if len(findings) != 1 {
+		t.Fatalf("findings = %+v, want exactly 1", findings)
+	}
+	f := findings[0]
+	if f.Plane != "resurrection" || f.Kind != "moved" || f.Key != "Compute" {
+		t.Errorf("finding = %+v, want plane=resurrection kind=moved key=Compute", f)
+	}
+	if f.Declared != DeclaredPrior {
+		t.Errorf("Declared = %q, want prior (informational, never a loss)", f.Declared)
+	}
+	if f.Base == "" || f.Head == "" {
+		t.Errorf("finding must name BOTH old.go's base site and new.go's head site: %+v", f)
+	}
+	if planeVerdict(nil, findings) != Conserved {
+		t.Errorf("planeVerdict = %q, want conserved — an undeclared move must never be a loss", planeVerdict(nil, findings))
+	}
+}
+
 // TestResurrected_BlindnessFixture is the fixture the task explicitly
 // requires: an old implementation copied behind a new name while the old
 // package import that made it reachable is removed — the classic
-// SWE-Refactor-Bench failure mode (vision 34 §2). Resurrected must flag
-// it even though the caller-side "old package import" story never
-// touches this plane directly: what matters is that the deleted
-// function's body reappears under a new name in the range.
+// SWE-Refactor-Bench failure mode (vision 34 §2) — AND, per resurrection
+// honesty (design §3.3, amended 2026-09-24), the legacy package is
+// explicitly declared retired (`gone: import example.com/x/legacy`,
+// exactly the row an agent would write to satisfy the surface-absence
+// gate). Resurrected must still flag it: the declared retirement is
+// false, since the body demonstrably survives — the actual fake-
+// preservation case ADR-044 exists to catch, not a mere undeclared move.
 func TestResurrected_BlindnessFixture(t *testing.T) {
 	base := map[string]string{
 		// legacy/impl.go held the real implementation; caller.go imported
@@ -85,6 +147,10 @@ func TestResurrected_BlindnessFixture(t *testing.T) {
 		ChangedFiles: []string{"caller.go", "legacy/impl.go"},
 		BaseFile:     mapFile(base),
 		HeadFile:     mapFile(head),
+		// The refactor's own plan claims the legacy package retired —
+		// exactly the "gone: import <path>" row a real refactor program
+		// (ADR-044 §4) would emit for it.
+		Retired: Retirement{imports: []string{"example.com/x/legacy"}},
 	}
 
 	findings, missing := Resurrected(in)

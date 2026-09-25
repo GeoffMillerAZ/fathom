@@ -380,15 +380,30 @@ type routePostResponse struct {
 // question-shape fits prompt and renders DP-10's one-line hint — verbs in
 // the line are the MCP tool names verbatim (find_symbol, references,
 // find_callers, obligations, staleness_report, search, localize), the
-// exact spelling a reader can paste into a tool call:
+// exact spelling a reader can paste into a tool call.
 //
-//   - band "proceed": one firm line.
-//   - band "confirm": one hedged line.
+// Amended 2026-09-24 (ADR-042, CV-M11): the route line is ALWAYS hedged,
+// at any confidence — `docs/bench/readings/decision-port-calibration-
+// 2026-09-24.md` measured route's proceed-band choice matching its own
+// adjudicated gold tool only 45.7% of the time, and sweeping every
+// confidence cutoff never reaches the 0.9-right-nine-times-in-ten bar
+// this ADR requires before a firm line is warranted (the highest-
+// confidence slice was measurably WORSE than the band below it — routing
+// confidence and correctness are not positively correlated on this
+// sample). A firm imperative ("open with X") overstates a suggestion this
+// port has shown it cannot back at any confidence; hedging costs nothing
+// and never overstates:
+//
+//   - band "proceed" or "confirm": one hedged line — same wording either
+//     way, since band no longer changes the phrasing, only whether it
+//     counts as "applied" for the decisions log (routeHandler's own
+//     concern, unchanged).
 //   - anything else — band "unsure", verb "" or "none", provider "none",
 //     a deadline already spent, any transport/HTTP/decode error, or a
 //     non-200 status — returns "": nothing is ever injected on a routing
 //     failure (ADR-016 §5.3's fail-open contract; the hook must never
-//     block, error, or print anything just because routing did not work).
+//     block, error, or print anything just because routing did not work),
+//     and never below the confirm floor either.
 func routeLine(hc *http.Client, baseURL, prompt string, deadline time.Time) string {
 	if !time.Now().Before(deadline) {
 		return "" // routing never starves obligations: nothing left to spend
@@ -422,9 +437,7 @@ func routeLine(hc *http.Client, baseURL, prompt string, deadline time.Time) stri
 		return ""
 	}
 	switch out.Band {
-	case "proceed":
-		return fmt.Sprintf("fathom route: this prompt is %s-shaped — open with %s (confidence %.2f).", out.Shape, out.Verb, out.Confidence)
-	case "confirm":
+	case "proceed", "confirm":
 		return fmt.Sprintf("fathom route: this looks %s-shaped; %s is the likely opening move (confidence %.2f, unconfirmed).", out.Shape, out.Verb, out.Confidence)
 	default:
 		return "" // "unsure", or an unrecognized band string — say nothing

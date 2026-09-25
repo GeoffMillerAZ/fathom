@@ -297,7 +297,7 @@ and every answer is logged and disclosed:
 provider          = "none"   # none | llm | typesafe — none makes no call and changes nothing
 profile           = ""       # llm: the [llm] profile lane to use (default: the compile lane)
 compile_threshold = 0.5      # a guide section whose "is this a binding rule" probability is below this is not compiled (counted, disclosed, still served raw)
-route_confidence  = 0.9      # the prompt hook injects a firm route line at or above this; a hedged one from 0.5; nothing below
+route_confidence  = 0.9      # unchanged at this default (2026-09-24, ADR-042 amendment: route's own calibration reading failed at every cutoff); the prompt hook injects a HEDGED route line at or above the confirm floor (0.5) — never firm, whatever the confidence; nothing below 0.5
 route_timeout_ms  = 3000     # POST /route's own decider budget, in ms (100-30000)
 rank_within_tier  = false    # obligations re-orders rules only inside their governing-scope tier
 rerank_timeout_ms = 1500     # obligations re-rank's own decider budget, in ms (100-60000)
@@ -312,6 +312,22 @@ pushing the one governing rule to the last visible slot on a later touch of
 the same file. Routing and the compile pre-filter are unaffected and keep
 their own measured (small positive / untested) results. Set it `true`
 explicitly to opt back in.
+
+`route_confidence` stays at its default **0.9** (amended 2026-09-24, ADR-042
+decision 8/CV-M11): `docs/bench/readings/decision-port-calibration-2026-09-24.md`
+checked route's proceed-band choice against 82 adjudicated route decisions and
+found it right only 45.7% of the time at confidence ≥ 0.9 — well under this
+ADR's 0.9-right-nine-times-in-ten bar — and sweeping every cutoff in `[0,1]`
+never reaches that bar (the best any threshold achieves is 58.5%, and the
+highest-confidence slice is measurably *worse* than the band below it).
+Raising the threshold would not fix a miscalibration this shape, so it stays
+put. Instead, the prompt hook's own route line is now **always hedged**: a
+`proceed`-band and a `confirm`-band answer render identical wording (`cmd/
+fathom/prompthook.go`'s `routeLine`), and nothing is ever injected below the
+confirm floor (0.5). Routing still logs `applied: true` only for a proceed-band
+answer at or above `route_confidence` (unchanged — that bookkeeping is
+separate from what the line SAYS), and no other `[decide]` site's calibration
+is affected.
 
 `route_timeout_ms` (O109) bounds `POST /route`'s own decider call — the design
 point is a **sub-second decision model** (Jev-class latency measured 70-500ms),
