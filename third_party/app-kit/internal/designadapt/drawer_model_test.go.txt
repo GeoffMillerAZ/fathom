@@ -1,0 +1,254 @@
+package converted
+
+import (
+	"bytes"
+	"context"
+	"errors"
+	"io"
+	"reflect"
+	"strings"
+	"testing"
+)
+
+type drawerFailWriter struct{ err error }
+
+func (w drawerFailWriter) Write([]byte) (int, error) { return 0, w.err }
+
+func fixtureDrawer() Drawer {
+	return Drawer{
+		IDPrefix: "fixture-profile", OpenLabel: "Open profile", Heading: "Profile details", CloseLabel: "Close profile",
+		Name: "Synthetic Person", Handle: "@fixture", OnlineLabel: "Online now", MenuLabel: "Profile actions",
+		ImageURL: "/assets/fixture-person.jpg", ImageAlt: "Synthetic profile portrait",
+		Primary:   &DrawerLink{Label: "View profile", URL: "/profile"},
+		Secondary: &DrawerLink{Label: "Send message", URL: "https://example.test/message"},
+		MenuLinks: []DrawerLink{{Label: "Account settings", URL: "/settings"}, {Label: "Help", URL: "/help"}},
+		Details: []DrawerDetail{
+			{Label: "Role", Text: "Synthetic operator", Kind: "text"},
+			{Label: "About", Text: "A bounded synthetic profile description.", Kind: "paragraph"},
+			{Label: "Joined", Text: "January 2, 2024", Kind: "date", Date: "2024-01-02"},
+		},
+	}
+}
+
+func requireDrawerError(t *testing.T, data Drawer) {
+	t.Helper()
+	if component, err := NewDrawer(data); err == nil || component != nil {
+		t.Fatal("invalid drawer accepted")
+	}
+}
+
+func renderDrawer(t *testing.T, component interface {
+	Render(context.Context, io.Writer) error
+}) string {
+	t.Helper()
+	var out bytes.Buffer
+	if err := component.Render(context.Background(), &out); err != nil {
+		t.Fatal(err)
+	}
+	return out.String()
+}
+
+func TestDrawerEscapesAndSnapshotsAllMutableInputs(t *testing.T) {
+	data := fixtureDrawer()
+	data.Name = `<script>unsafe()</script> & drawer`
+	data.Details[0].Text = `<img src=x> role`
+	component, err := NewDrawer(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data.Primary.Label, data.Primary.URL = "mutated primary", "/mutated-primary"
+	data.Secondary.Label, data.Secondary.URL = "mutated secondary", "/mutated-secondary"
+	data.MenuLinks[0] = DrawerLink{Label: "mutated menu", URL: "/mutated-menu"}
+	data.MenuLinks = append(data.MenuLinks, DrawerLink{Label: "extra", URL: "/extra"})
+	data.Details[0] = DrawerDetail{Label: "mutated detail", Text: "changed", Kind: "text"}
+	data.Details = append(data.Details, DrawerDetail{Label: "extra detail", Text: "changed", Kind: "text"})
+	markup := renderDrawer(t, component)
+	for _, absent := range []string{"<script>", "<img src=x>", "mutated primary", "/mutated-primary", "mutated secondary", "/mutated-secondary", "mutated menu", "/mutated-menu", "mutated detail", "extra detail", "/extra"} {
+		if strings.Contains(markup, absent) {
+			t.Fatalf("render observed markup or caller mutation %q", absent)
+		}
+	}
+	for _, present := range []string{"&lt;script&gt;unsafe()&lt;/script&gt;", "&lt;img src=x&gt;", "/profile", "https://example.test/message", "/settings", "2024-01-02", `id="fixture-profile-dialog"`, `id="fixture-profile-heading"`} {
+		if !strings.Contains(markup, present) {
+			t.Fatalf("render omitted binding %q", present)
+		}
+	}
+	lower := strings.ToLower(markup)
+	for _, forbidden := range []string{"<form", "method=\"post\"", "navigator.clipboard", "clipboard-write"} {
+		if strings.Contains(lower, forbidden) {
+			t.Fatalf("drawer introduced unsupported behavior %q", forbidden)
+		}
+	}
+}
+
+func TestDrawerOptionalContentAndImageAltSemantics(t *testing.T) {
+	data := fixtureDrawer()
+	data.Handle, data.OnlineLabel = "", ""
+	data.Primary, data.Secondary = nil, nil
+	data.MenuLinks, data.Details = nil, nil
+	component, err := NewDrawer(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	markup := renderDrawer(t, component)
+	for _, absent := range []string{"@fixture", "Online now", "View profile", "Send message", "Account settings", "Synthetic operator"} {
+		if strings.Contains(markup, absent) {
+			t.Fatalf("optional content remained %q", absent)
+		}
+	}
+	data = fixtureDrawer()
+	data.ImageDecorative, data.ImageAlt = true, ""
+	if component, err := NewDrawer(data); err != nil || component == nil {
+		t.Fatalf("decorative image rejected: %v", err)
+	}
+	for _, mutate := range []func(*Drawer){
+		func(d *Drawer) { d.ImageDecorative, d.ImageAlt = true, "described" },
+		func(d *Drawer) { d.ImageAlt = "" },
+		func(d *Drawer) { d.ImageAlt = "bad\talt" },
+		func(d *Drawer) { d.ImageAlt = strings.Repeat("x", 513) },
+		func(d *Drawer) { d.ImageAlt = string([]byte{0xff}) },
+	} {
+		data := fixtureDrawer()
+		mutate(&data)
+		requireDrawerError(t, data)
+	}
+}
+
+func TestDrawerRejectsInvalidIDsAndText(t *testing.T) {
+	for _, bad := range []string{"", "1drawer", "-drawer", "drawer space", "drawer.", "dräwer", strings.Repeat("x", 65), string([]byte{0xff})} {
+		data := fixtureDrawer()
+		data.IDPrefix = bad
+		requireDrawerError(t, data)
+	}
+	for _, field := range []string{"OpenLabel", "Heading", "CloseLabel", "Name", "MenuLabel", "Handle", "OnlineLabel"} {
+		for _, bad := range []string{" ", "bad\ncontrol", string([]byte{0xff}), strings.Repeat("x", 257)} {
+			data := fixtureDrawer()
+			reflect.ValueOf(&data).Elem().FieldByName(field).SetString(bad)
+			requireDrawerError(t, data)
+		}
+	}
+	for _, field := range []string{"OpenLabel", "Heading", "CloseLabel", "Name", "MenuLabel"} {
+		data := fixtureDrawer()
+		reflect.ValueOf(&data).Elem().FieldByName(field).SetString("")
+		requireDrawerError(t, data)
+	}
+}
+
+func TestDrawerDestinationsAndCounts(t *testing.T) {
+	badURLs := []string{"", "relative", "#fragment", "//example.test/x", `/bad\path`, "/%2fexample.test", "/bad%5cpath", "/bad%0apath", "https://user@example.test/x", "https:opaque", "https://example.test:0/x", "https://example.test:65536/x", "https://example.test:/x", "http://example.test/x", "javascript:alert(1)", "data:text/plain,x", "blob:https://example.test/id", "file:///tmp/x", "%zz", string([]byte{0xff}), "/" + strings.Repeat("x", 2048)}
+	for _, bad := range badURLs {
+		for _, mutate := range []func(*Drawer){
+			func(d *Drawer) { d.ImageURL = bad },
+			func(d *Drawer) { d.Primary.URL = bad },
+			func(d *Drawer) { d.Secondary.URL = bad },
+			func(d *Drawer) { d.MenuLinks[0].URL = bad },
+		} {
+			data := fixtureDrawer()
+			mutate(&data)
+			requireDrawerError(t, data)
+		}
+	}
+	data := fixtureDrawer()
+	data.MenuLinks = make([]DrawerLink, 12)
+	for i := range data.MenuLinks {
+		data.MenuLinks[i] = DrawerLink{Label: "Item", URL: "/item"}
+	}
+	data.Details = make([]DrawerDetail, 12)
+	for i := range data.Details {
+		data.Details[i] = DrawerDetail{Label: "Detail", Text: "Value", Kind: "text"}
+	}
+	if component, err := NewDrawer(data); err != nil || component == nil {
+		t.Fatalf("exact collection bounds rejected: %v", err)
+	}
+	data.MenuLinks = append(data.MenuLinks, DrawerLink{Label: "Extra", URL: "/extra"})
+	requireDrawerError(t, data)
+	data = fixtureDrawer()
+	data.Details = append(make([]DrawerDetail, 12), DrawerDetail{Label: "Extra", Text: "Value", Kind: "text"})
+	for i := range data.Details[:12] {
+		data.Details[i] = DrawerDetail{Label: "Detail", Text: "Value", Kind: "text"}
+	}
+	requireDrawerError(t, data)
+}
+
+func TestDrawerLinkErrorPrecedenceIsDeterministic(t *testing.T) {
+	data := fixtureDrawer()
+	data.Primary.URL = "invalid-primary"
+	data.Secondary.URL = "invalid-secondary"
+	for i := 0; i < 100; i++ {
+		if err := validateDrawer(data); err == nil || err.Error() != "drawer: invalid Primary" {
+			t.Fatalf("validation %d returned %v", i, err)
+		}
+	}
+}
+
+func TestDrawerDetailKindsDatesAndTextBounds(t *testing.T) {
+	for _, mutate := range []func(*DrawerDetail){
+		func(d *DrawerDetail) { d.Label = "" },
+		func(d *DrawerDetail) { d.Label = strings.Repeat("x", 257) },
+		func(d *DrawerDetail) { d.Text = "" },
+		func(d *DrawerDetail) { d.Text = "line one\nline two" },
+		func(d *DrawerDetail) { d.Text = "value\tvalue" },
+		func(d *DrawerDetail) { d.Text = string([]byte{0xff}) },
+		func(d *DrawerDetail) { d.Text = strings.Repeat("x", 4097) },
+		func(d *DrawerDetail) { d.Kind = "unknown" },
+		func(d *DrawerDetail) { d.Date = "2024-01-02" },
+	} {
+		data := fixtureDrawer()
+		mutate(&data.Details[0])
+		requireDrawerError(t, data)
+	}
+	for _, bad := range []string{"", "0000-01-01", "2024-1-02", "2024-01-2", "2024-02-30", "2024-01-02T00:00:00Z", " 2024-01-02"} {
+		data := fixtureDrawer()
+		data.Details[2].Date = bad
+		requireDrawerError(t, data)
+	}
+}
+
+func TestDrawerExactByteBounds(t *testing.T) {
+	data := fixtureDrawer()
+	data.IDPrefix = "d" + strings.Repeat("x", 63)
+	for _, field := range []string{"OpenLabel", "Heading", "CloseLabel", "Name", "MenuLabel", "Handle", "OnlineLabel"} {
+		reflect.ValueOf(&data).Elem().FieldByName(field).SetString(strings.Repeat("x", 256))
+	}
+	data.ImageAlt = strings.Repeat("x", 512)
+	exactURL := "/" + strings.Repeat("u", 2047)
+	data.ImageURL = exactURL
+	for _, link := range []*DrawerLink{data.Primary, data.Secondary} {
+		link.Label, link.URL = strings.Repeat("x", 256), exactURL
+	}
+	data.MenuLinks[0].Label, data.MenuLinks[0].URL = strings.Repeat("x", 256), exactURL
+	data.Details[0].Label, data.Details[0].Text = strings.Repeat("x", 256), strings.Repeat("x", 4096)
+	if component, err := NewDrawer(data); err != nil || component == nil {
+		t.Fatalf("exact byte bounds rejected: %v", err)
+	}
+	for _, mutate := range []func(*Drawer){
+		func(d *Drawer) { d.IDPrefix = "d" + strings.Repeat("x", 64) },
+		func(d *Drawer) { d.OpenLabel = strings.Repeat("x", 257) },
+		func(d *Drawer) { d.Handle = strings.Repeat("x", 257) },
+		func(d *Drawer) { d.ImageURL = "/" + strings.Repeat("x", 2048) },
+		func(d *Drawer) { d.ImageAlt = strings.Repeat("x", 513) },
+		func(d *Drawer) { d.Primary.Label = strings.Repeat("x", 257) },
+		func(d *Drawer) { d.Details[0].Text = strings.Repeat("x", 4097) },
+	} {
+		data := fixtureDrawer()
+		mutate(&data)
+		requireDrawerError(t, data)
+	}
+}
+
+func TestDrawerCancellationAndWriterFailure(t *testing.T) {
+	component, err := NewDrawer(fixtureDrawer())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	var out bytes.Buffer
+	if err := component.Render(ctx, &out); !errors.Is(err, context.Canceled) || out.Len() != 0 {
+		t.Fatalf("pre-cancelled render: err=%v bytes=%d", err, out.Len())
+	}
+	sentinel := errors.New("writer failure")
+	if err := component.Render(context.Background(), drawerFailWriter{sentinel}); !errors.Is(err, sentinel) {
+		t.Fatal("writer error lost")
+	}
+}

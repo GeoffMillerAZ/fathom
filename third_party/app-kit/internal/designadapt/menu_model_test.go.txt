@@ -1,0 +1,232 @@
+package converted
+
+import (
+	"bytes"
+	"context"
+	"errors"
+	"io"
+	"strings"
+	"testing"
+)
+
+type menuFailWriter struct{ err error }
+
+func (w menuFailWriter) Write([]byte) (int, error) { return 0, w.err }
+
+func fixtureMenu() Menu {
+	return Menu{
+		Label: "Synthetic account menu",
+		Links: []MenuLink{
+			{Label: "View profile", URL: "/fixture/profile"},
+			{Label: "Help", URL: "https://example.test/help"},
+		},
+		Submit: &MenuSubmit{
+			Label: "Sign out", Action: "/fixture/sign-out",
+			CSRFName: "csrf_token", CSRFToken: "synthetic-token", Disabled: false,
+		},
+	}
+}
+
+func menuConstructors() []func(Menu) (interface {
+	Render(context.Context, io.Writer) error
+}, error) {
+	return []func(Menu) (interface {
+		Render(context.Context, io.Writer) error
+	}, error){
+		func(data Menu) (interface {
+			Render(context.Context, io.Writer) error
+		}, error) {
+			return NewMenu(data)
+		},
+		func(data Menu) (interface {
+			Render(context.Context, io.Writer) error
+		}, error) {
+			return NewMenuEnhanced(data)
+		},
+	}
+}
+
+func requireMenuError(t *testing.T, data Menu) {
+	t.Helper()
+	for _, constructor := range menuConstructors() {
+		if component, err := constructor(data); err == nil || component != nil {
+			t.Fatal("invalid menu accepted")
+		}
+	}
+}
+
+func renderMenu(t *testing.T, component interface {
+	Render(context.Context, io.Writer) error
+}) string {
+	t.Helper()
+	var out bytes.Buffer
+	if err := component.Render(context.Background(), &out); err != nil {
+		t.Fatal(err)
+	}
+	return out.String()
+}
+
+func TestMenuConstructorsEscapeAndSnapshot(t *testing.T) {
+	for _, constructor := range menuConstructors() {
+		data := fixtureMenu()
+		data.Label = `<script>unsafe()</script> & menu`
+		data.Links[0].Label = `<img src=x> profile`
+		data.Submit.Label = `<b>sign out</b>`
+		component, err := constructor(data)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data.Label = "mutated menu"
+		data.Links[0] = MenuLink{Label: "mutated link", URL: "/mutated"}
+		data.Links = append(data.Links, MenuLink{Label: "extra", URL: "/extra"})
+		data.Submit.Label, data.Submit.Action, data.Submit.CSRFToken = "mutated submit", "/mutated", "mutated-token"
+		markup := renderMenu(t, component)
+		for _, absent := range []string{"<script>", "<img src=x>", "<b>", "mutated menu", "mutated link", "/mutated", "mutated-token", "/extra"} {
+			if strings.Contains(markup, absent) {
+				t.Fatalf("render observed markup or caller mutation %q", absent)
+			}
+		}
+		for _, present := range []string{"&lt;script&gt;unsafe()&lt;/script&gt;", "&lt;img src=x&gt;", "&lt;b&gt;sign out&lt;/b&gt;", "/fixture/profile", "https://example.test/help", "/fixture/sign-out", "csrf_token", "synthetic-token"} {
+			if !strings.Contains(markup, present) {
+				t.Fatalf("render omitted binding %q", present)
+			}
+		}
+		lowerMarkup := strings.ToLower(markup)
+		if !strings.Contains(lowerMarkup, `method="post"`) || strings.Contains(lowerMarkup, `target=`) {
+			t.Fatal("submit did not retain fixed POST/no-target contract")
+		}
+	}
+}
+
+func TestMenuLinkAndSubmitShapes(t *testing.T) {
+	linksOnly := fixtureMenu()
+	linksOnly.Submit = nil
+	if _, err := NewMenu(linksOnly); err != nil {
+		t.Fatal(err)
+	}
+	exactLinks := fixtureMenu()
+	exactLinks.Submit = nil
+	exactLinks.Links = make([]MenuLink, 12)
+	for i := range exactLinks.Links {
+		exactLinks.Links[i] = MenuLink{Label: "item", URL: "/item"}
+	}
+	if _, err := NewMenuEnhanced(exactLinks); err != nil {
+		t.Fatal(err)
+	}
+	submitOnly := fixtureMenu()
+	submitOnly.Links = nil
+	submitOnly.Submit.Disabled = true
+	component, err := NewMenu(submitOnly)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if markup := renderMenu(t, component); !strings.Contains(markup, "disabled") || !strings.Contains(markup, "synthetic-token") {
+		t.Fatal("disabled submit missing or skipped validated CSRF binding")
+	}
+	empty := fixtureMenu()
+	empty.Links, empty.Submit = nil, nil
+	requireMenuError(t, empty)
+	tooMany := fixtureMenu()
+	tooMany.Links = make([]MenuLink, 13)
+	for i := range tooMany.Links {
+		tooMany.Links[i] = MenuLink{Label: "item", URL: "/item"}
+	}
+	requireMenuError(t, tooMany)
+}
+
+func TestMenuRejectsInvalidTextAndCSRF(t *testing.T) {
+	for _, mutate := range []func(*Menu){
+		func(data *Menu) { data.Label = "" },
+		func(data *Menu) { data.Label = strings.Repeat("x", 161) },
+		func(data *Menu) { data.Label = "bad\nlabel" },
+		func(data *Menu) { data.Label = string([]byte{0xff}) },
+		func(data *Menu) { data.Links[0].Label = " " },
+		func(data *Menu) { data.Links[0].Label = strings.Repeat("x", 257) },
+		func(data *Menu) { data.Submit.Label = "bad\tlabel" },
+		func(data *Menu) { data.Submit.CSRFName = "" },
+		func(data *Menu) { data.Submit.CSRFName = "1token" },
+		func(data *Menu) { data.Submit.CSRFName = "bad.name" },
+		func(data *Menu) { data.Submit.CSRFName = strings.Repeat("x", 65) },
+		func(data *Menu) { data.Submit.CSRFToken = "" },
+		func(data *Menu) { data.Submit.CSRFToken = "bad\ntoken" },
+		func(data *Menu) { data.Submit.CSRFToken = string([]byte{0xff}) },
+		func(data *Menu) { data.Submit.CSRFToken = strings.Repeat("x", 4097) },
+	} {
+		data := fixtureMenu()
+		mutate(&data)
+		requireMenuError(t, data)
+	}
+	for _, hazard := range []string{"acceptCharset", "action", "autocomplete", "checkValidity", "elements", "encoding", "enctype", "id", "length", "METHOD", "name", "noValidate", "rel", "relList", "reportValidity", "requestSubmit", "reset", "submit", "target"} {
+		data := fixtureMenu()
+		data.Submit.CSRFName = hazard
+		requireMenuError(t, data)
+	}
+}
+
+func TestMenuRejectsInvalidDestinations(t *testing.T) {
+	badLinks := []string{"", "relative", "#fragment", "//example.test/x", `/bad\\path`, "/%2fexample.test", "/bad%5cpath", "/bad%0apath", "https://user@example.test/x", "https:opaque", "https://example.test:0/x", "https://example.test:65536/x", "http://example.test/x", "javascript:alert(1)", "data:text/plain,x", "%zz", string([]byte{0xff}), "/" + strings.Repeat("x", 2048)}
+	for _, bad := range badLinks {
+		data := fixtureMenu()
+		data.Links[0].URL = bad
+		requireMenuError(t, data)
+	}
+	badActions := []string{"", "relative", "//example.test/x", "/action?", "/action?next=x", "/action#", "/action#fragment", `/bad\\path`, "/%2fexample.test", "/bad%0apath", "https://example.test/action", "%zz", string([]byte{0xff}), "/" + strings.Repeat("x", 2048)}
+	for _, bad := range badActions {
+		data := fixtureMenu()
+		data.Submit.Action = bad
+		requireMenuError(t, data)
+	}
+	encodedPath := fixtureMenu()
+	encodedPath.Submit.Action = "/action%23part"
+	if _, err := NewMenu(encodedPath); err != nil {
+		t.Fatalf("encoded path character rejected: %v", err)
+	}
+}
+
+func TestMenuExactBoundsAndDisabledTokenValidation(t *testing.T) {
+	data := fixtureMenu()
+	data.Label = strings.Repeat("m", 160)
+	data.Links[0].Label = strings.Repeat("l", 256)
+	data.Links[0].URL = "/" + strings.Repeat("u", 2047)
+	data.Submit.Label = strings.Repeat("s", 256)
+	data.Submit.Action = "/" + strings.Repeat("a", 2047)
+	data.Submit.CSRFName = "_" + strings.Repeat("n", 63)
+	data.Submit.CSRFToken = strings.Repeat("t", 4096)
+	data.Submit.Disabled = true
+	for _, constructor := range menuConstructors() {
+		if component, err := constructor(data); err != nil || component == nil {
+			t.Fatalf("exact bounds rejected: %v", err)
+		}
+	}
+	data.Submit.CSRFToken = ""
+	requireMenuError(t, data)
+}
+
+func TestMenuCancellationAndWriterFailure(t *testing.T) {
+	for _, constructor := range menuConstructors() {
+		component, err := constructor(fixtureMenu())
+		if err != nil {
+			t.Fatal(err)
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		var out bytes.Buffer
+		if err := component.Render(ctx, &out); !errors.Is(err, context.Canceled) || out.Len() != 0 {
+			t.Fatalf("pre-cancelled render: err=%v bytes=%d", err, out.Len())
+		}
+		sentinel := errors.New("writer failure")
+		if err := component.Render(context.Background(), menuFailWriter{sentinel}); !errors.Is(err, sentinel) {
+			t.Fatal("writer error lost")
+		}
+	}
+}
+
+func TestMenuValidationErrorsDoNotExposeValues(t *testing.T) {
+	data := fixtureMenu()
+	secret := "secret-invalid-value"
+	data.Links[0].URL = secret
+	component, err := NewMenu(data)
+	if err == nil || component != nil || strings.Contains(err.Error(), secret) {
+		t.Fatal("invalid destination accepted or exposed")
+	}
+}

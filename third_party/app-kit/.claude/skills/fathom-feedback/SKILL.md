@@ -38,25 +38,31 @@ fathom observe \
 ```
 
 This appends a structured entry to `.fathom/observations.md` at the repo
-root, in the same shape fathom's own team uses internally: **symptom →
-evidence (a real reproduction, not a vague complaint) → root cause → fix →
-status**. `fathom instrument --adoption` surfaces the open-observation count
-alongside traffic/gate stats, so a repo's observation backlog is visible at
-a glance, not buried in a file nobody opens.
+root (`--root DIR` to point elsewhere), in the same shape fathom's own team
+uses internally: **symptom → evidence (a real reproduction, not a vague
+complaint) → root cause → fix → status**. `fathom instrument --adoption`
+surfaces the open-observation count alongside traffic/gate stats, so a
+repo's observation backlog is visible at a glance, not buried in a file
+nobody opens. Two logs exist in fathom's own repo and they are not the same
+file: `.fathom/observations.md` is the structured intake `observe` writes
+and the instruments count; `docs/dogfood-observations.md` is the
+hand-written narrative log (incidents, root causes, the O-numbered
+history). File with `observe`; narrate in the doc only when a human asks.
 
 ## Why this matters more than it looks like it does
 
 There is also a one-number companion verb for the SESSION as a whole:
 
 ```sh
-fathom rate <1-5> [--note "..."]
+fathom rate <1-5> [--note "..."] [--repo .] [--session <id>]   # --list to read them back
 ```
 
-It records how the session went into the local ratings log — the outcome
-half of fathom's own measurement loop. `observe` files a specific,
-reproducible friction; `rate` files the overall verdict. Use both: a 2/5
-with no observation is a mystery, and an observation with no rating never
-moves the aggregate.
+It records how the session went into `~/.fathom/session-ratings.jsonl` —
+the outcome half of fathom's own measurement loop, an optional human
+override on top of the harness-reported numbers (**experimental**: few
+ratings exist yet). `observe` files a specific, reproducible friction;
+`rate` files the overall verdict. Use both: a 2/5 with no observation is a
+mystery, and an observation with no rating never moves the aggregate.
 
 An unrecorded friction point is invisible to the flywheel — it just makes
 *this* session slightly worse and teaches the tool nothing. A recorded one

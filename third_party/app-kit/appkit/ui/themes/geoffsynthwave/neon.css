@@ -1,0 +1,12 @@
+/* Optional static title glow. Quantity/opacity from geoff's committed
+   src/styles/global.css at 375defbac2c9e5c3fa01cada634464b95936f877.
+   Color follows semantic ink; no global heading styles or animation. */
+.ak-neon-title {
+  text-shadow:
+    0 0 3px color-mix(in srgb, var(--ak-color-ink) 60%, transparent),
+    0 0 6px color-mix(in srgb, var(--ak-color-ink) 30%, transparent),
+    0 0 9px color-mix(in srgb, var(--ak-color-ink) 15%, transparent);
+}
+@media print, (forced-colors: active), (prefers-contrast: more) {
+  .ak-neon-title { text-shadow: none; }
+}

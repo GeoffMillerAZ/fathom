@@ -1,63 +1,63 @@
-# app-kit fathom pack
+# app-kit Fathom pack
 
-> The kit ships its law with its code. This pack gives any app-kit-consuming
-> repo the UI doctrine as *delivered configuration* — pre-edit guards that
-> inject at the moment a UI file is touched, and a compiled-obligations
-> layer for the deeper rules — so no project starts from scratch and no
-> session "forgets" the CLAUDE.md it read an hour ago.
+Version v0.2 guards and the v2 semantic candidate distribute current app-kit guidance.
+They support judgment; neither an injected note nor a compiled claim proves UI quality.
+Authority remains the consuming app's intent and the owner's actual task scope.
 
-## What's in it
+## Contents and availability
 
-- `guard-pack.cue` — guards for consumer repos (the **consumer** group) and
-  for work inside app-kit itself (the **kit-self** group). Guards are
-  deterministic, need no compiled layer and no LLM: the note is declared,
-  so they work even where obligations are still dark.
-- `layers/ui-appkit/` — the compiled-obligations layer pack (prompt + kill
-  gate + manifest) for repos that run `fathom compile`: turns the kit's
-  decision docs into cited, glob-scoped claims served on edit.
+- `guard-pack.cue`: four **consumer** guards, then six **kit-self** guards. Deterministic
+  notes need no model, daemon module or compiled layer. Hooks advise; gates refuse.
+- `layers/ui-appkit/`: manifest, prompt and kill criterion for a narrow semantic layer.
+  v2 is **not evaluated, compiled or served**. Installation only stages local files.
+  Historical served obligations can be stale; staging does not replace or refresh them.
+- `cmd/appkit-mcp/fathom_pack_test.go`: source-guidance canaries, scope/budget checks
+  and kit-self/local parity. These are not model precision/recall or host-loading proof.
 
-## Install (consumer repo)
+ADR-0022/ADR-0023 preserve licensed originals, design hierarchy and states; role mapping
+is contextual. Runtime selection is app-specific. A legitimate framework-native reference
+is not a violation merely because a Go/templ profile is the preferred starting point.
 
-1. Copy the **consumer** group's entries from `guard-pack.cue` into your
-   repo's `.fathom/guard.cue` `guards:` list. Keep the provenance line on
-   each entry (`// from app-kit fathom-pack vN`) — the `/fathom:activate`
-   skill re-syncs by that marker. Narrow the scopes to your repo's real
-   paths (the shipped globs are deliberately broad).
-2. `fathom layers install <app-kit>/fathom-pack/layers/ui-appkit` — then
-   compile when your daemon has an LLM profile. Guards work meanwhile.
-3. Prove it by demonstration: edit a scoped UI file and confirm the guard
-   note appears; run one deliberate violation (a raw `bg-indigo-600`)
-   and confirm the injected rule names the role-token law.
+## Install in a consumer
 
-Versioning: this pack's version is the kit's version. A consumer whose
-provenance markers lag the kit's current pack shows up in
-`/fathom:rewire`'s report as drift — same discipline as hooks.
+1. Inspect the app's declared profile and real UI paths. Copy only the applicable
+   **consumer** entries into `.fathom/guard.cue`; retain the `from app-kit fathom-pack v0.2`
+   provenance comments and narrow the scopes. Do not copy kit-self paths into an app.
+2. Review the manifest and source corpus before optionally staging the layer:
 
-## Authoring guards responsibly
+   ```sh
+   fathom layers install --root . /absolute/path/to/app-kit/fathom-pack/layers/ui-appkit
+   ```
 
-Guards spend attention as well as tokens; the discipline that keeps them
-net-positive:
+   Flags precede the positional path in the current CLI. No compilation is implied.
+   Consumer compilation also needs its installed corpus to resolve; kit-relative paths
+   do not magically exist in a consumer. Record the actual kit revision and corpus mapping.
+3. Demonstrate a scoped edit injecting the expected note. Test both applicable and
+   non-applicable files; repeat edits may be deduplicated. A literal color in preserved
+   licensed source is not a valid universal violation fixture.
+4. Run relevant deterministic gates with a seeded failure, plus ordinary package tests.
+   Config audit and doctor explain wiring; actual host output proves that invocation.
 
-1. **The bar**: a guard exists because the mistake *already happened* —
-   the note cites the incident or the decision. Speculative guards are the
-   failure mode: fatigue teaches agents to skim the channel, which is
-   worse than having no channel.
-2. **Scope hygiene**: globs as narrow as the law allows; consumers narrow
-   the shipped globs further on install. A guard firing on files it does
-   not govern is spam with a citation.
-3. **Budgets**: `max_rules` ≤ 4 per entry, notes under ~150 words. The
-   injection channel is token-capped and deduped (repeat edits to the same
-   file do not re-inject), but attention is not capped — write for the
-   agent that has seen this note before.
-4. **Staleness is worse than silence**: every note cites its source, packs
-   version with their kit, and `/fathom:activate` re-syncs by provenance
-   marker — a lagging pack is drift, and a wrong injected rule actively
-   misleads.
-5. **Measure or retire**: the hook beats record fire rates; reviews record
-   catches. A guard that fires often and catches nothing in a quarter is
-   folded into docs or killed — the KILL.md discipline applies to guards
-   as much as layers.
-6. **Guards warn; gates refuse**: hooks fail open by design (a down daemon
-   must never block an edit), so anything that must *hold* belongs in a
-   blocking gate (lefthook/CI/verify) — the guard is the warning at the
-   moment of the edit, not the enforcement.
+Guard provenance is reviewable version identity, not proof of an automatic updater.
+Review local customizations before a refresh; never overwrite them merely to match a kit.
+
+## Semantic admission
+
+Keep `evaled: false` until labeled positive/negative/scope-trap fixtures pass the real-model
+precision/recall criterion in `KILL.md`. Record model, prompt and corpus identities.
+Compilation is a separate opt-in with a reviewed estimate and bounded budget (v2 manifest:
+40k tokens / $1 maximum). Do not bypass evaluation, change shared daemon profiles, or
+label stale served claims current to get a green status. No private paid source belongs
+in this semantic corpus or an unrelated upstream contribution.
+
+## Attention and maintenance
+
+- Add a guard for an observed failure, with its incident/decision citation.
+- Keep scopes narrow, `max_rules` at most four, and notes below the tested 100-word cap.
+- Check positive guidance as well as retired slogans; absence of bad prose is insufficient.
+- Review routing, MCP docs and this pack together when a binding decision changes.
+- Measure real invocation/catches; retire noisy reminders that add no useful guidance.
+- Use blocking tests for computable requirements. Advisory guards are not enforcement.
+
+Repo-local setup, feature selection and remaining evidence live in
+[Fathom maintenance](../docs/design/fathom-maintenance.md).

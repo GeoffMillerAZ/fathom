@@ -54,9 +54,10 @@ The Go MCP ecosystem settled in late 2025. The facts, dated:
   (https://agentmarketcap.ai/blog/2026/04/08/mcp-context-bloat-enterprise-scale-tool-definitions-agent-context-budget,
   2026-04-08). The fixes are small default pages with `has_more`, server-side
   filtering, and search-then-get shapes.
-- **Distribution is solved.** Claude Code (and Codex, Cursor) read a committed
-  project-scope `.mcp.json`; stdio is the default transport and SSE is deprecated in
-  Claude Code in favor of Streamable HTTP (https://code.claude.com/docs/en/mcp).
+- **Host registration differs.** Correction, 2026-09-21: Claude Code reads project
+  `.mcp.json`; Codex reads user or trusted-project `config.toml`. A project JSON
+  file never proved Codex activation. See [agent setup](../design/agent-setup.md)
+  for supported commands and separate host proof. Local adoption uses stdio.
 
 ## Decision
 
@@ -78,9 +79,11 @@ mirror them** — ADRs, DECISIONS.md, and pattern docs are also exposed as MCP
 resources with stable URIs, but every capability is reachable via a tool because
 today's clients use tools far more reliably than resources.
 
-Distribution is `go install` from the private module plus a committed `.mcp.json`
-per project: `{"mcpServers":{"appkit":{"type":"stdio","command":"appkit-mcp"}}}`.
-Configuration is env vars and flags only.
+Distribution is a reviewed built binary or exact private module installation plus
+host-specific registration and explicit kit root. Prefer absolute commands over
+ambient PATH or compilation at startup. A user-scope owner installation may serve
+multiple private projects; consumer intent and pins remain project-owned.
+Server configuration is env vars and flags only. See [agent setup](../design/agent-setup.md).
 
 Boundaries: this ADR decides the SDK, the binary shape, the transport policy, and
 the tool-shape discipline. The full tool inventory, data backing, token budgets,
@@ -153,6 +156,11 @@ deterministic: no sampling, no elicitation.
   auto-attaches resources mid-task → slim the tool surface in favor of resources.
 
 ## Revisit when
+
+2026-09-21 review: the protocol/SDK trigger fired. Exact SDK 1.8.0 passed the
+candidate MCP suite and replaces 1.6.1 for bounded decoding/lifecycle hardening.
+No new sampling, remote authentication or execution surface is admitted; see the
+[setup assessment](../assessments/2026-09-21-mcp-adoption-setup.md) for evidence limits.
 
 - The 2026-07-28 spec revision is final and go-sdk ships support (expected Q3
   2026) — mandatory upgrade-cycle review.

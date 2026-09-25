@@ -1,0 +1,83 @@
+// Generated companion for the private P04 navigation adaptation.
+package converted
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"net/url"
+	"strconv"
+	"strings"
+	"unicode"
+	"unicode/utf8"
+
+	"github.com/a-h/templ"
+)
+
+// Directory is presentation data, not an account store or permission model.
+// URLs select app-owned pages. The source's inert Add button becomes a link.
+type Directory struct {
+	Heading, Introduction, AddLabel, EditLabel string
+	NameLabel, TitleLabel, EmailLabel, RoleLabel string
+	AddURL string
+	Rows []DirectoryRow
+}
+
+type DirectoryRow struct { Name, Title, Email, Role, EditURL string }
+
+// NewDirectoryNavigation validates before any output and snapshots the row slice.
+// All links navigate in the same window; authorization belongs to their handlers.
+// Zero rows renders the table header with an empty body, not an invented record.
+// This preserves source styling, including its small targets and truncated text.
+func NewDirectoryNavigation(data Directory) (templ.Component, error) {
+	for _, field := range []struct { name, value string; max int }{
+		{"Heading", data.Heading, 160}, {"Introduction", data.Introduction, 1200},
+		{"AddLabel", data.AddLabel, 100}, {"EditLabel", data.EditLabel, 100},
+		{"NameLabel", data.NameLabel, 100}, {"TitleLabel", data.TitleLabel, 100},
+		{"EmailLabel", data.EmailLabel, 100}, {"RoleLabel", data.RoleLabel, 100},
+	} {
+		if !directoryText(field.value, field.max) { return nil, fmt.Errorf("directory: invalid %s", field.name) }
+	}
+	if !directoryURL(data.AddURL) { return nil, fmt.Errorf("directory: invalid AddURL") }
+	if len(data.Rows) > 100 { return nil, fmt.Errorf("directory: row count exceeds 100") }
+	for i, row := range data.Rows {
+		if !directoryText(row.Name, 240) || !directoryText(row.Title, 240) || !directoryText(row.Email, 320) || !directoryText(row.Role, 100) || !directoryURL(row.EditURL) {
+			return nil, fmt.Errorf("directory: invalid row %d", i)
+		}
+	}
+	data.Rows = append([]DirectoryRow(nil), data.Rows...)
+	return directoryNavigation(data), nil
+}
+
+// A Go loop preserves exact source separators outside templ control-flow rules.
+func directoryRows(data Directory) templ.Component {
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		for i, row := range data.Rows {
+			if err := directoryRow(data, row).Render(ctx, w); err != nil { return err }
+			if i < len(data.Rows)-1 {
+				if _, err := io.WriteString(w, directoryRowSeparator); err != nil { return err }
+			}
+		}
+		return nil
+	})
+}
+
+func directoryText(s string, limit int) bool {
+	if len(s) > limit || strings.TrimSpace(s) == "" || !utf8.ValidString(s) { return false }
+	for _, r := range s { if unicode.IsControl(r) { return false } }
+	return true
+}
+
+func directoryURL(s string) bool {
+	if !directoryText(s, 2048) || strings.TrimSpace(s) != s || strings.ContainsAny(s, "\\ ") { return false }
+	u, err := url.Parse(s)
+	if err != nil || u.User != nil || u.Opaque != "" { return false }
+	decoded, err := url.PathUnescape(s)
+	if err != nil || !directoryText(decoded, 2048) || strings.Contains(decoded, "\\") { return false }
+	if strings.HasPrefix(s, "/") { return !strings.HasPrefix(decoded, "//") && u.Scheme == "" && u.Host == "" }
+	if port := u.Port(); port != "" {
+		n, err := strconv.ParseUint(port, 10, 16)
+		if err != nil || n == 0 { return false }
+	}
+	return strings.HasPrefix(s, "https://") && u.Scheme == "https" && u.Hostname() != "" && !strings.HasSuffix(u.Host, ":") && u.Fragment == "" && !strings.ContainsAny(u.Host, "% ")
+}

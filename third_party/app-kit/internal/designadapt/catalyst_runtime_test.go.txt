@@ -1,0 +1,161 @@
+package converted
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"net/url"
+	"os"
+	"regexp"
+	"strings"
+	"testing"
+)
+
+func sourcePolicy(t *testing.T) *SettingsPolicy {
+	t.Helper()
+	var countries []SettingsCountry
+	var currencies []SettingsCurrency
+	var raw map[string]string
+	for _, tc := range []struct {
+		body   string
+		target any
+	}{{sourceCountries, &countries}, {sourceCurrencies, &currencies}, {sourceDefaults, &raw}} {
+		if err := json.Unmarshal([]byte(tc.body), tc.target); err != nil {
+			t.Fatal(err)
+		}
+	}
+	values := url.Values{}
+	for _, key := range []string{"name", "bio", "email", "email_is_public", "address", "city", "postal_code", "country[code]", "region", "currency"} {
+		if value, ok := raw[key]; ok {
+			values[key] = []string{value}
+		}
+	}
+	initial, err := ParseSettingsValues(values)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := NewSettingsPolicy(countries, currencies, initial)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return p
+}
+
+func renderSourceForm(t *testing.T, p *SettingsPolicy, v SettingsValues, show bool) string {
+	t.Helper()
+	component, err := NewSettingsForm(p, v, SettingsPresentation{ID: "fixture", Action: "/settings", ResetAction: "/settings/reset", CSRFToken: "synthetic-only", ShowErrors: show, ErrorClass: sourceErrorClass})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var b bytes.Buffer
+	if err := component.Render(context.Background(), &b); err != nil {
+		t.Fatal(err)
+	}
+	return b.String()
+}
+
+func TestCompleteSourceNativeRender(t *testing.T) {
+	p := sourcePolicy(t)
+	body := renderSourceForm(t, p, p.Initial(), false)
+	if err := os.WriteFile("rendered-default.html", []byte(body), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if body != renderSourceForm(t, p, p.Initial(), false) {
+		t.Fatal("render output drift")
+	}
+	for _, heading := range []string{"Settings", "Organization Name", "Organization Bio", "Organization Email", "Address", "Currency"} {
+		if !strings.Contains(body, ">"+heading+"</h") {
+			t.Fatalf("lost source section %s", heading)
+		}
+	}
+	for _, key := range []string{"name", "bio", "email", "email_is_public", "address", "city", "postal_code", "country[code]", "region", "currency"} {
+		if strings.Count(body, `name="`+key+`"`) != 1 {
+			t.Fatalf("missing/duplicate native field %s", key)
+		}
+	}
+	if strings.Count(body, "<section") != 5 || strings.Count(body, "<select") != 3 || strings.Count(body, `type="checkbox"`) != 1 {
+		t.Fatal("incomplete native form")
+	}
+	for _, unexpected := range []string{`role="checkbox"`, `role="combobox"`, `aria-haspopup="listbox"`, `name="country[regions]`, `name="country[name]"`, `<noscript`, `<script`} {
+		if strings.Contains(body, unexpected) {
+			t.Fatalf("source controller authority leaked: %s", unexpected)
+		}
+	}
+	for _, key := range []string{"bio", "email", "country", "region", "currency"} {
+		if strings.Count(body, `id="fixture-`+key+`"`) != 1 || strings.Count(body, `id="fixture-`+key+`-error"`) != 1 {
+			t.Fatalf("missing/repeated field or error ID %s", key)
+		}
+		if !strings.Contains(body, `fixture-`+key+`-error"`) {
+			t.Fatalf("missing error association %s", key)
+		}
+	}
+	if !strings.Contains(body, `for="fixture-email_is_public"`) || !strings.Contains(body, `id="fixture-email_is_public"`) {
+		t.Fatal("checkbox association lost")
+	}
+	if !strings.Contains(body, `formaction="/settings/reset"`) || !strings.Contains(body, `value="reset"`) || !strings.Contains(body, `value="validate"`) {
+		t.Fatal("native action fallback lost")
+	}
+	if strings.Count(body, "<optgroup") != len(p.Countries()) {
+		t.Fatal("no-JS region choices incomplete")
+	}
+	for _, country := range p.Countries() {
+		for _, region := range country.Regions {
+			if !strings.Contains(body, ">"+region+"</option>") {
+				t.Fatal("canonical region lost")
+			}
+		}
+	}
+}
+
+func TestCompleteSourceDraftAndFocus(t *testing.T) {
+	p := sourcePolicy(t)
+	values := p.Initial()
+	values.Name = `</input><script>not-code</script>`
+	values.Bio = strings.Repeat("😀", 241) + `</textarea><script>not-code</script>`
+	values.Email = "invalid example"
+	values.Country = "ZZ"
+	values.Region = "<unknown>"
+	body := renderSourceForm(t, p, values, true)
+	if err := os.WriteFile("rendered-errors.html", []byte(body), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(body, "<script>") || !strings.Contains(body, "&lt;script&gt;") {
+		t.Fatal("draft escaped incorrectly")
+	}
+	if strings.Count(body, "autofocus") != 1 {
+		t.Fatal("expected one first-error focus")
+	}
+	start := strings.Index(body, "<textarea")
+	if start < 0 {
+		t.Fatal("biography control missing")
+	}
+	end := strings.Index(body[start:], ">") + start
+	if end < start || !strings.Contains(body[start:end], "autofocus") || !strings.Contains(body[start:end], `aria-invalid="true"`) {
+		t.Fatal("first invalid biography focus missing")
+	}
+	if !strings.Contains(body, strings.Repeat("😀", 241)) || !strings.Contains(body, "&lt;unknown&gt; (invalid)") {
+		t.Fatal("invalid draft shortened/coerced")
+	}
+}
+
+func TestCompleteSourceMultipleInstances(t *testing.T) {
+	p := sourcePolicy(t)
+	seen := map[string]bool{}
+	for _, prefix := range []string{"first", "second"} {
+		component, err := NewSettingsForm(p, p.Initial(), SettingsPresentation{ID: prefix, Action: "/settings", ResetAction: "/settings/reset", CSRFToken: "synthetic-only"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var b bytes.Buffer
+		if err := component.Render(context.Background(), &b); err != nil {
+			t.Fatal(err)
+		}
+		for _, match := range regexp.MustCompile(`\sid="([^"]+)"`).FindAllStringSubmatch(b.String(), -1) {
+			id := match[1]
+			if seen[id] || !strings.HasPrefix(id, prefix+"-") {
+				t.Fatal("repeated instance has a static or colliding ID")
+			}
+			seen[id] = true
+		}
+	}
+}

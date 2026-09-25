@@ -1,5 +1,61 @@
 {
   "hooks": {
+    "ConfigChange": [
+      {
+        "hooks": [
+          {
+            "command": "fathom config audit --hook",
+            "timeout": 10,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "CwdChanged": [
+      {
+        "hooks": [
+          {
+            "command": "fathom session-hook --event cwd-changed",
+            "timeout": 5,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "DirectoryAdded": [
+      {
+        "hooks": [
+          {
+            "command": "fathom session-hook --event cwd-changed",
+            "timeout": 5,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "FileChanged": [
+      {
+        "hooks": [
+          {
+            "command": "fathom config audit --hook --event file-changed",
+            "timeout": 10,
+            "type": "command"
+          }
+        ],
+        "matcher": "CLAUDE.md|AGENTS.md|concerns.cue|config.toml"
+      }
+    ],
+    "InstructionsLoaded": [
+      {
+        "hooks": [
+          {
+            "command": "fathom session-hook --event instructions-loaded",
+            "timeout": 5,
+            "type": "command"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "hooks": [
@@ -10,6 +66,18 @@
           }
         ],
         "matcher": "Edit|Write|MultiEdit"
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+            "command": "fathom session-hook --event tool-failure",
+            "timeout": 5,
+            "type": "command"
+          }
+        ],
+        "matcher": "mcp__fathom__.*|mcp__plugin_[^_]*_fathom__.*"
       }
     ],
     "SessionStart": [
@@ -24,12 +92,34 @@
         "matcher": "startup|resume|clear|compact"
       }
     ],
+    "Setup": [
+      {
+        "hooks": [
+          {
+            "command": "fathom doctor --brief",
+            "timeout": 15,
+            "type": "command"
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
           {
             "command": "fathom stop-hook",
             "timeout": 10,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "command": "fathom session-hook --event subagent-start",
+            "timeout": 5,
             "type": "command"
           }
         ]

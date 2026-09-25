@@ -1,0 +1,112 @@
+// Local historical-capture task probe. No signed-in Chrome profile, external
+// traffic, source execution, consumer mutation or target certification.
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const origin = new URL(process.env.APPKIT_EVIDENCE_URL);
+assert.equal(origin.hostname, '127.0.0.1');
+assert.equal(origin.protocol, 'http:');
+const root = process.env.APPKIT_EVIDENCE_KIT_ROOT;
+const binary = process.env.APPKIT_EVIDENCE_BINARY;
+const output = fs.mkdtempSync(path.join(process.env.APPKIT_EVIDENCE_OUTPUT_PARENT, 'browser-'));
+const playwrightPath = process.env.APPKIT_PLAYWRIGHT;
+const { chromium } = await import(playwrightPath);
+const sha = bytes => createHash('sha256').update(bytes).digest('hex');
+const inputPaths = ['apps/gallery/target_evidence.go', 'apps/gallery/target_evidence_images.go', 'apps/gallery/target_evidence_render.go', 'apps/gallery/catalog.go', 'apps/gallery/ui/app.css', 'internal/designevidence/store.go', 'internal/designevidence/image.go', 'go.mod', 'go.sum'].map(p => path.join(root, p));
+inputPaths.push(binary, fileURLToPath(import.meta.url), playwrightPath);
+const inputs = Object.fromEntries(inputPaths.map(p => [p, sha(fs.readFileSync(p))]));
+const report = { kind: 'private-retained-image-browser', verification: 'not-verified', selection_method: 'Keyboard type-ahead selects exact native option labels; Tab/Enter exercise focus and native GET submission. Arrow-key popup navigation is NOT proven.', inputs, checks: [], captures: [], errors: [], requests: [], imageResponses: [], timings: [] };
+const check = (name, condition) => { assert.ok(condition, name); report.checks.push(name); };
+const evidenceID = 'evidence@994e15283cbaa57570986429816bd42fadf91455531985c69c4ca48b7c7bbe1e';
+const route = `/target-evidence/${evidenceID}`;
+const details = await (await fetch(new URL(`/api${route}`, origin))).json();
+assert.equal(details.entry.id, evidenceID);
+assert.equal(details.rechecked.verification, 'not-verified');
+const slots = [...new Map(Object.values(details.receipt.results).flatMap(r => r.evidence).filter(e => e.role === 'image').map(e => [e.id, e])).values()].sort((a, b) => a.id.localeCompare(b.id));
+assert.equal(slots.length, 24);
+report.record = { id: evidenceID, revision: details.revision, contract: details.rechecked.contract_sha256, receipt: details.rechecked.receipt_sha256, slots };
+const browser = await chromium.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true });
+report.browser = browser.version();
+try {
+  for (const width of [390, 1440]) for (const theme of ['light', 'dark']) {
+    const key = `${width}-${theme}`;
+    const primary = slots.find(s => s.id === `p06-task-${width}-${theme}-keyboard-2`);
+    const secondary = slots.find(s => s.id === `p06-task-${width}-${theme}-keyboard-1`);
+    assert.ok(primary && secondary);
+    const context = await browser.newContext({ viewport: { width, height: 1000 }, colorScheme: theme, reducedMotion: 'reduce', javaScriptEnabled: false });
+    await context.route('**/*', async request => {
+      const url = new URL(request.request().url());
+      report.requests.push({ case: key, url: url.href });
+      if (url.origin !== origin.origin) { report.errors.push(`external request ${url.href}`); await request.abort(); } else await request.continue();
+    });
+    const page = await context.newPage();
+    page.on('pageerror', e => report.errors.push(e.message));
+    page.on('console', e => { if (e.type() === 'error') report.errors.push(e.text()); });
+    page.on('requestfailed', r => report.errors.push(`failed request ${r.url()}: ${r.failure()?.errorText}`));
+    const started = performance.now();
+    const res = await page.goto(new URL(`/catalog/reference.navigation-adapter?theme=${theme}`, origin).href);
+    check(`${key}: catalog available`, res.status() === 200);
+    await page.getByRole('link', { name: 'Inspect retained target evidence and captures' }).click();
+    check(`${key}: subject and theme retained`, new URL(page.url()).searchParams.get('subject_id') === 'reference.navigation-adapter' && new URL(page.url()).searchParams.get('theme') === theme);
+    await page.locator(`a[href^="${route}?"]`).click();
+    check(`${key}: exact record reached`, new URL(page.url()).pathname === route);
+    check(`${key}: 24 declared choices`, await page.locator('#evidence-image option').count() === 24);
+    await page.locator('#evidence-captures').scrollIntoViewIfNeeded();
+    const first = page.locator('#evidence-image');
+    await first.focus();
+    await page.keyboard.type(primary.id);
+    check(`${key}: keyboard type-ahead first selection`, await first.inputValue() === primary.id);
+    await page.keyboard.press('Tab');
+    check(`${key}: keyboard comparison focus`, await page.locator('#evidence-compare').evaluate(e => e === document.activeElement));
+    await page.keyboard.type(secondary.id);
+    check(`${key}: keyboard type-ahead comparison selection`, await page.locator('#evidence-compare').inputValue() === secondary.id);
+    await page.keyboard.press('Tab');
+    check(`${key}: keyboard submit focus`, await page.getByRole('button', { name: 'Show captures' }).evaluate(e => e === document.activeElement));
+    const focus = await page.getByRole('button', { name: 'Show captures' }).evaluate(e => { const s = getComputedStyle(e), r = e.getBoundingClientRect(); return { outline: s.outlineStyle, width: parseFloat(s.outlineWidth), height: r.height }; });
+    check(`${key}: visible >=2px focus and 44px button`, focus.outline !== 'none' && focus.width >= 2 && focus.height >= 44);
+    await Promise.all([page.waitForURL(u => u.searchParams.has('image') && u.searchParams.has('compare')), page.keyboard.press('Enter')]);
+    check(`${key}: native GET selections persisted`, new URL(page.url()).searchParams.get('image') === primary.id && new URL(page.url()).searchParams.get('compare') === secondary.id);
+    await page.locator('#evidence-captures').scrollIntoViewIfNeeded();
+    for (const img of await page.locator('figure img').all()) { await img.scrollIntoViewIfNeeded(); await img.evaluate(e => e.decode()); }
+    const geometry = await page.locator('figure img').evaluateAll(images => images.map(e => { const r = e.getBoundingClientRect(); return { src: e.getAttribute('src'), naturalWidth: e.naturalWidth, naturalHeight: e.naturalHeight, width: r.width, height: r.height, x: r.x, top: r.top, bottom: r.bottom }; }));
+    check(`${key}: two real decoded captures`, geometry.length === 2 && geometry.every(g => g.naturalWidth > 0 && g.naturalHeight > 0));
+    check(`${key}: selected order`, geometry[0].src.endsWith(primary.id) && geometry[1].src.endsWith(secondary.id));
+    check(`${key}: stacked without clipping or distortion`, geometry[1].top >= geometry[0].bottom && geometry.every(g => g.x >= 0 && g.x + g.width <= width + 1 && Math.abs(g.width / g.height - g.naturalWidth / g.naturalHeight) < 0.01));
+    check(`${key}: no document horizontal overflow`, await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    await page.locator('#evidence-captures').scrollIntoViewIfNeeded();
+    const capture = path.join(output, `${key}.png`);
+    await page.screenshot({ path: capture });
+    report.captures.push({ case: key, path: capture, sha256: sha(fs.readFileSync(capture)), geometry });
+    const figureCapture = path.join(output, `${key}-figure.png`);
+    await page.locator('figure').first().screenshot({ path: figureCapture });
+    report.captures.push({ case: key, path: figureCapture, sha256: sha(fs.readFileSync(figureCapture)) });
+    const fullSize = page.getByRole('link', { name: `Open full-size PNG ${primary.id}`, exact: true });
+    const [imageResponse] = await Promise.all([page.waitForNavigation(), fullSize.click()]);
+    check(`${key}: full-size image response`, imageResponse.status() === 200 && imageResponse.headers()['content-type'] === 'image/png');
+    const imageBytes = await imageResponse.body();
+    check(`${key}: exact historical PNG hash`, sha(imageBytes) === primary.sha256);
+    report.imageResponses.push({ case: key, sha256: sha(imageBytes), bytes: imageBytes.length });
+    await page.goBack();
+    check(`${key}: back preserves capture selection`, await page.locator('#evidence-image').inputValue() === primary.id);
+    const currentImage = await page.locator('figure img').first().getAttribute('src');
+    const other = theme === 'light' ? 'dark' : 'light';
+    await page.getByRole('link', { name: other, exact: true }).click();
+    check(`${key}: theme switch preserves pixels and selections`, await page.locator('figure img').first().getAttribute('src') === currentImage && await page.locator('#evidence-image').inputValue() === primary.id);
+    await page.getByRole('link', { name: '← Target evidence', exact: true }).click();
+    check(`${key}: list recovery drops image parameters`, !new URL(page.url()).searchParams.has('image') && await page.getByRole('heading', { name: '2 matching records' }).count() === 1);
+    report.timings.push({ case: key, task_ms: Math.round(performance.now() - started), note: 'Automated task elapsed, not human task time or a performance qualification.' });
+    await context.close();
+  }
+  check('no browser errors or outside-origin requests', report.errors.length === 0);
+  for (const [p, hash] of Object.entries(inputs)) check(`input unchanged: ${p}`, sha(fs.readFileSync(p)) === hash);
+  fs.writeFileSync(path.join(output, 'receipt.json'), JSON.stringify(report, null, 2)+'\n', { mode: 0o600 });
+  console.log(JSON.stringify({ output, checks: report.checks.length, captures: report.captures.length, errors: report.errors.length }));
+} catch (err) {
+  report.errors.push(err.stack);
+  fs.writeFileSync(path.join(output, 'failure.json'), JSON.stringify(report, null, 2)+'\n', { mode: 0o600 });
+  console.error(JSON.stringify({ output, checks: report.checks.length, error: err.message }));
+  process.exitCode = 1;
+} finally { await browser.close(); }

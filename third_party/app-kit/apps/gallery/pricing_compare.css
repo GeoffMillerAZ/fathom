@@ -1,0 +1,52 @@
+/* Workspace chrome only. Prepared documents retain their own pinned styles. */
+/* Reserve both root and pane gutters: disclosure/fit must not change preview width. */
+html { scrollbar-gutter: stable; background: var(--ak-color-surface); color: var(--ak-color-ink); }
+body { margin: 0; font-family: var(--ak-font-sans); }
+#comparison { padding: 1rem 1.25rem; min-width: 0; }
+#comparison [hidden] { display: none !important; }
+#comparison a { color: var(--ak-color-accent); text-underline-offset: .2em; }
+#comparison :is(a, button, select, summary, [tabindex]):focus-visible { outline: 2px solid var(--ak-color-focus); outline-offset: 3px; }
+.comparison-heading { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+.comparison-heading a { font-size: .8125rem; }
+.comparison-heading h1 { margin: .3rem 0 0; font-size: 1.25rem; font-weight: 650; }
+.comparison-heading h1 span { color: var(--ak-color-ink-muted); font-size: 1rem; font-weight: 400; margin-left: .75rem; }
+.comparison-heading-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem; }
+.comparison-unverified { font-size: .75rem; color: var(--ak-color-ink-muted); }
+#comparison-controls { display: flex; flex-wrap: wrap; align-items: end; gap: .75rem 1rem; padding: .875rem 0; border-block: 1px solid var(--ak-color-line); }
+#comparison-controls label { display: grid; gap: .3rem; font-size: .75rem; color: var(--ak-color-ink-muted); }
+#comparison :is(button, select) { min-height: 2.25rem; padding: .4rem .65rem; border: 1px solid var(--ak-color-line-strong); border-radius: var(--ak-radius-md); background: var(--ak-color-surface-raised); color: var(--ak-color-ink); font: inherit; font-size: .875rem; }
+#comparison button { cursor: pointer; }
+#comparison button:hover { border-color: var(--ak-color-accent); }
+#comparison-scale-label { font-size: .75rem; color: var(--ak-color-ink-muted); padding-block: .65rem; }
+.comparison-sides { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; padding-block: .875rem; }
+.comparison-sides a { padding: .45rem .8rem; border: 1px solid var(--ak-color-line-strong); border-radius: var(--ak-radius-md); font-size: .875rem; text-decoration: none; }
+#comparison .comparison-sides a[aria-current="true"] { color: var(--ak-color-accent-ink); background: var(--ak-color-accent); border-color: var(--ak-color-accent); }
+.comparison-sides p { font-size: .75rem; color: var(--ak-color-ink-muted); margin: 0 0 0 .5rem; }
+.comparison-panes { display: grid; min-width: 0; gap: 1.25rem; }
+#comparison[data-layout="side"] .comparison-panes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.comparison-pane { min-width: 0; }
+.comparison-pane h2 { margin: 0 0 .5rem; font-size: .875rem; font-weight: 600; }
+/* Reserve the scrollbar width so fit-height changes cannot oscillate the scale. */
+.comparison-window { overflow: auto; scrollbar-gutter: stable; max-width: 100%; max-height: max(18rem, calc(100dvh - 17rem)); border: 1px solid var(--ak-color-line-strong); background: var(--ak-color-surface-sunken); }
+.comparison-framebox { position: relative; width: max-content; margin-inline: auto; overflow: hidden; }
+.comparison-framebox iframe { display: block; max-width: none; border: 0; transform-origin: top left; }
+.comparison-note { color: var(--ak-color-ink-muted); font-size: .75rem; margin-block: .7rem; max-width: 75ch; }
+.comparison-evidence { border-top: 1px solid var(--ak-color-line); padding-block: .75rem; margin-top: 1rem; font-size: .8125rem; }
+.comparison-evidence summary { cursor: pointer; color: var(--ak-color-ink-muted); width: fit-content; }
+.comparison-evidence > div { max-width: 75ch; }
+.comparison-evidence p { margin-block: .8rem; line-height: 1.6; }
+.comparison-evidence dt { margin-top: .75rem; font-weight: 600; }
+.comparison-evidence dd { margin: .2rem 0 0; font-family: var(--ak-font-mono); overflow-wrap: anywhere; }
+@media (max-width: 640px) {
+  #comparison { padding: .75rem; }
+  .comparison-heading { align-items: start; }
+  .comparison-heading h1 span { display: block; margin: .15rem 0 0; font-size: .875rem; }
+  .comparison-heading-actions { justify-content: end; gap: .5rem; }
+  .comparison-sides p { width: 100%; margin: .3rem 0 0; }
+  #comparison-controls { gap: .5rem; }
+  .comparison-window { max-height: 65dvh; }
+  .comparison-panes { gap: .75rem; }
+}
+@media (forced-colors: active) {
+  #comparison .comparison-sides a[aria-current="true"] { outline: 2px solid Highlight; }
+}

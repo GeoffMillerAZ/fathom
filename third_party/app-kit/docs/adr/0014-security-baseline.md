@@ -1,6 +1,6 @@
 # ADR-0014: Set the security baseline: token-bootstrapped loopback, eyes-open CSP, keychain secrets, signed updates
 
-- **Status:** Accepted
+- **Status:** Superseded in part by ADR-0021 (CSP permanence) and ADR-0026 (ordinary HTML command CSRF alternative); remaining security requirements stand
 - **Date:** 2026-06-10
 - **Decision drivers:** the Loopback Invariant (ADR-0005) opens a real TCP
   port on every launch; Datastar makes `'unsafe-eval'` non-negotiable

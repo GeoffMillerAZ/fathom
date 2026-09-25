@@ -1,5 +1,11 @@
 # The Gallery — design
 
+Historical implementation sketch. [ADR-0020](../adr/0020-shared-catalog-and-adoption-evidence.md)
+now governs: the shipped Gallery evolves independently of optional NATS/desktop
+services, with shared catalog contracts in [experience-system.md](experience-system.md).
+The registry, knobs and gates described below are not all implemented; see
+[current scope](../intent/scope.md) before planning work.
+
 Decision: `../adr/0012-gallery-living-style-guide.md` (D12). This document is
 the build plan: information architecture, the component registry, knob
 wiring, theming, pattern demos, service exercisers, visual regression, the

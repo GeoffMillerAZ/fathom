@@ -19,6 +19,19 @@ tasks:
     cmds:
       - go run ./cmd/appkit gen --tokens cue/tokens/synthwave/synthwave.cue --css appkit/ui/themes/synthwave/theme.css --dtcg "" --go "" --terminal ""
 
+  gen:personal-themes:
+    desc: Regenerate the independently named personal-site palettes
+    cmds:
+      - go run ./cmd/appkit gen --tokens cue/tokens/geoff-synthwave/geoff-synthwave.cue --css appkit/ui/themes/geoffsynthwave/theme.css --dtcg "" --go "" --terminal ""
+      - go run ./cmd/appkit gen --tokens cue/tokens/geoff-indigo/geoff-indigo.cue --css appkit/ui/themes/geoffindigo/theme.css --dtcg "" --go "" --terminal ""
+
+  gen:paired-themes:
+    desc: Regenerate the Copper, Lagoon and Orchard light/dark palettes
+    cmds:
+      - go run ./cmd/appkit gen --tokens cue/tokens/copper/copper.cue --css appkit/ui/themes/copper/theme.css --dtcg "" --go "" --terminal ""
+      - go run ./cmd/appkit gen --tokens cue/tokens/lagoon/lagoon.cue --css appkit/ui/themes/lagoon/theme.css --dtcg "" --go "" --terminal ""
+      - go run ./cmd/appkit gen --tokens cue/tokens/orchard/orchard.cue --css appkit/ui/themes/orchard/theme.css --dtcg "" --go "" --terminal ""
+
   check:
     desc: The full gate — vet, tests, schema vet, regeneration cleanliness
     cmds:
@@ -26,9 +39,44 @@ tasks:
       - go test ./...
       - go tool cue vet ./internal/tailwind/manifest.cue
       - go tool cue vet ./internal/twplus/schema/tailwindplus.cue
+      - go tool cue vet ./internal/designassets/schema.cue
+      - go tool cue vet ./internal/designconvert/schema.cue
+      - go tool cue vet ./internal/designattempts/schema.cue
+      - go tool cue vet ./internal/designreceipts/schema.cue
+      - go tool cue vet ./internal/designevidence/schema.cue
+      - go tool cue vet ./internal/navigationproof/schema.cue
+      - go tool cue vet ./internal/adoption/schema.cue
+      - go tool cue vet -c -d '#Catalog' appkit/catalog/schema.cue appkit/catalog/catalog.cue
+      - go tool cue vet -c -d '#Inventory' internal/qualityplan/schema.cue internal/qualityplan/inventory.cue
+      - node --test appkit/ui/appearance/appearance_test.mjs
+      - node --test apps/gallery/shell_demo_test.mjs
+      - node --test apps/gallery/shell_live_test.mjs
+      - node --test apps/gallery/shell_live_datastar_test.mjs
+      - node --test apps/gallery/pricing_compare_test.mjs
+      - node --test internal/designadapt/catalyst_enhance_test.mjs
+      - node --test internal/designadapt/menu_repair_test.mjs
+      - node --test docs/assessments/fixtures/hero-adapter/performance_test.mjs
+      - node --test docs/assessments/fixtures/directory-journey/oracle_test.mjs docs/assessments/fixtures/directory-journey/csv_test.mjs
+      - node --test docs/assessments/fixtures/hero-adapter/font-delivery_test.mjs
+      - node --test docs/assessments/fixtures/hero-adapter/font-painted_test.mjs
+      - node --test docs/assessments/fixtures/hero-adapter/cache-lineage_test.mjs docs/assessments/fixtures/hero-adapter/lineage-oracle_test.mjs
+      - node --test docs/assessments/fixtures/catalyst-settings-adapter/zoom-capture_test.mjs
+      - node --test docs/assessments/fixtures/catalyst-settings-adapter/focus-checks_test.mjs
+      - node --test docs/assessments/fixtures/catalyst-settings-adapter/payload-checks_test.mjs
+      - node --test docs/assessments/fixtures/catalyst-settings-adapter/payload-phases_test.mjs
+      - node --test docs/assessments/fixtures/catalyst-settings-adapter/stream-cancel-observer_test.mjs
+      - node --test docs/assessments/fixtures/catalyst-native/cached-static-reference-server_test.mjs
+      - node --test docs/assessments/fixtures/catalyst-native/cached-static-font-alias-reference-server_test.mjs
+      - node --test docs/assessments/fixtures/catalyst-settings-adapter/font-query-aliases_test.mjs
+      - node --test docs/assessments/fixtures/catalyst-settings-adapter/cached-static-checks_test.mjs
+      - node --test docs/assessments/fixtures/catalyst-settings-adapter/cached-static-smoke_test.mjs
+      - node --test docs/assessments/fixtures/catalyst-settings-adapter/warm-font-identity_test.mjs
+      - node --test apps/gallery/browser/config_test.mjs apps/gallery/browser/recovery_assertions_test.mjs apps/gallery/browser/recovery_transport_test.mjs
       - task: gen
       - task: gen:synthwave
-      - git diff --exit-code -- appkit/ui/tokens appkit/cli/theme/palette_gen.go appkit/ui/themes/synthwave
+      - task: gen:personal-themes
+      - task: gen:paired-themes
+      - git diff --exit-code -- appkit/ui/tokens appkit/cli/theme/palette_gen.go appkit/ui/themes/synthwave appkit/ui/themes/geoffindigo appkit/ui/themes/geoffsynthwave appkit/ui/themes/copper appkit/ui/themes/lagoon appkit/ui/themes/orchard
     silent: false
 
   test:
@@ -40,6 +88,11 @@ tasks:
     desc: Build the TailwindPlus corpus index from the licensed dump (D10)
     cmds:
       - go run ./cmd/appkit data build
+
+  matdash:build:
+    desc: Atomically rebuild the private MatDash index using source-declared Tailwind versions
+    cmds:
+      - go run ./cmd/appkit data matdash-build
 
   twplus:eval:
     desc: Golden known-item retrieval suite against the corpus index (G2 proof)
@@ -72,6 +125,16 @@ tasks:
       - go run ./cmd/appkit css -i apps/gallery/ui/input.css -o apps/gallery/ui/app.css --minify
 
   gallery:run:
-    desc: Serve the living style guide (D12) on loopback (http://127.0.0.1:8765)
+    desc: Serve the shared capability catalog and specimens on loopback (http://127.0.0.1:8765)
     cmds:
       - go run ./apps/gallery/cmd/gallery
+
+  receipts:css:
+    desc: Build the synthetic analytical reference CSS with the pinned Tailwind binary
+    cmds:
+      - go run ./cmd/appkit css -i apps/receipts/ui/input.css -o apps/receipts/ui/app.css --minify
+
+  receipts:run:
+    desc: Serve the synthetic receipts task on loopback (http://127.0.0.1:8766)
+    cmds:
+      - go run ./apps/receipts/cmd/receipts

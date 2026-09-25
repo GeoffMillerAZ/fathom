@@ -156,7 +156,7 @@
     },
     "positive": {
       "$type": "color",
-      "$value": "oklch(0.55 0.14 155)",
+      "$value": "oklch(0.51 0.14 155)",
       "$extensions": {
         "com.appkit.scheme": {
           "dark": "oklch(0.70 0.13 155)"

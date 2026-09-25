@@ -23,6 +23,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/geoffmilleraz/app-kit/appkit/cli/command"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/tokens"
 	"github.com/geoffmilleraz/app-kit/internal/tailwind"
 )
@@ -30,7 +31,7 @@ import (
 func main() {
 	if err := run(); err != nil {
 		fmt.Fprintf(os.Stderr, "appkit: %v\n", err)
-		os.Exit(1)
+		os.Exit(command.Code(err))
 	}
 }
 
@@ -39,7 +40,7 @@ func run() error {
 	defer stop()
 
 	if len(os.Args) < 2 {
-		return fmt.Errorf("usage: appkit <css|gen|vendor|data> [args]")
+		return fmt.Errorf("usage: appkit <css|gen|vendor|data|adoption> [args]")
 	}
 	switch os.Args[1] {
 	case "css":
@@ -49,24 +50,39 @@ func run() error {
 	case "vendor":
 		return vendorCmd(os.Args[2:])
 	case "data":
+		if len(os.Args) > 2 {
+			switch os.Args[2] {
+			case "assets-evidence":
+				return dataAssetsEvidence(os.Args[3:])
+			case "assets-evidence-get":
+				return dataAssetsEvidenceGet(os.Args[3:])
+			case "assets-evidence-save":
+				return dataAssetsEvidenceSave(os.Args[3:])
+			}
+		}
 		return dataCmd(ctx, os.Args[2:])
+	case "adoption":
+		return adoptionCmd(ctx, os.Args[2:])
 	default:
-		return fmt.Errorf("unknown command %q (want css, gen, vendor, or data)", os.Args[1])
+		return fmt.Errorf("unknown command %q (want css, gen, vendor, data, or adoption)", os.Args[1])
 	}
 }
 
 // genTokens regenerates token artifacts from a CUE token set. With no flags
 // it regenerates the kit's own committed artifacts (run from the repo root);
-// apps point the flags at their own tokens.cue and output paths.
+// apps point the flags at their own tokens.cue and output paths. Terminal
+// output is implicit only for the default token input; custom inputs must
+// explicitly select -terminal to generate a terminal palette.
 func genTokens(args []string) error {
+	const defaultTokensPath = "cue/tokens/kit.cue"
 	fs := flag.NewFlagSet("appkit gen", flag.ContinueOnError)
 	var (
-		tokensPath = fs.String("tokens", "cue/tokens/kit.cue", "path to the CUE token set (top-level `tokens:` value)")
+		tokensPath = fs.String("tokens", defaultTokensPath, "path to the CUE token set (top-level `tokens:` value)")
 		cssOut     = fs.String("css", "appkit/ui/tokens/theme.css", "output path for the Tailwind @theme CSS ('' to skip)")
 		dtcgOut    = fs.String("dtcg", "appkit/ui/tokens/tokens.dtcg.json", "output path for the DTCG JSON export ('' to skip)")
 		goOut      = fs.String("go", "appkit/ui/tokens/names_gen.go", "output path for generated Go role constants ('' to skip)")
 		goPkg      = fs.String("gopkg", "tokens", "package name for the generated Go file")
-		termOut    = fs.String("terminal", "appkit/cli/theme/palette_gen.go", "output path for the generated terminal color palette ('' to skip)")
+		termOut    = fs.String("terminal", "appkit/cli/theme/palette_gen.go", "output path for the generated terminal color palette (default only for the default token input; '' to skip)")
 		termPkg    = fs.String("terminalpkg", "theme", "package name for the generated terminal palette Go file")
 	)
 	if err := fs.Parse(args); err != nil {
@@ -76,6 +92,25 @@ func genTokens(args []string) error {
 	src, err := os.ReadFile(*tokensPath)
 	if err != nil {
 		return fmt.Errorf("gen: read token set: %w", err)
+	}
+	terminalExplicit := false
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "terminal" {
+			terminalExplicit = true
+		}
+	})
+	if !terminalExplicit {
+		inputInfo, err := os.Stat(*tokensPath)
+		if err != nil {
+			return fmt.Errorf("gen: inspect token set: %w", err)
+		}
+		defaultInfo, err := os.Stat(defaultTokensPath)
+		// Compare the actual input files, not path strings: absolute paths and
+		// aliases of the default input keep its behavior, while a symlink followed
+		// by .. can resolve to a different file despite matching filepath.Clean.
+		if err != nil || !os.SameFile(inputInfo, defaultInfo) {
+			*termOut = ""
+		}
 	}
 	t, err := tokens.Load(src)
 	if err != nil {

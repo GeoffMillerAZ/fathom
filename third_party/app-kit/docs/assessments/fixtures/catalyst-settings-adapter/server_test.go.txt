@@ -1,0 +1,741 @@
+// Synthetic handler proof only. These tests exercise no paid packet bytes and
+// do not prove browser fidelity, source styling, persistence, or host adoption.
+package main
+
+import (
+	"bytes"
+	"compress/gzip"
+	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"regexp"
+	"strconv"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"testing"
+
+	converted "example.test/p10"
+)
+
+func testFixtureConfig(t *testing.T) fixtureConfig {
+	t.Helper()
+	initial := converted.SettingsValues{Name: "Acme", Country: "US", Region: "Arizona", Currency: "USD"}
+	policy, err := converted.NewSettingsPolicy(
+		[]converted.SettingsCountry{{Code: "US", Name: "United States", Regions: []string{"Arizona"}}, {Code: "CA", Name: "Canada", Regions: []string{"Alberta"}}},
+		[]converted.SettingsCurrency{{Code: "USD", Label: "US Dollar"}, {Code: "CAD", Label: "Canadian Dollar"}}, initial,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return fixtureConfig{policy: policy, initial: initial, host: "127.0.0.1:43123", assets: map[string]fixtureAsset{
+		"/source.css":  {body: []byte("/* private bytes are represented by this synthetic test asset */"), mime: "text/css"},
+		"/inter.woff2": {body: []byte("font"), mime: "font/woff2"},
+	}, cssURLs: []string{"/source.css"}}
+}
+
+func fixtureRequest(t *testing.T, handler http.Handler, method, target string, form url.Values, cookie *http.Cookie) *httptest.ResponseRecorder {
+	t.Helper()
+	var body io.Reader
+	if form != nil {
+		body = strings.NewReader(form.Encode())
+	}
+	req := httptest.NewRequest(method, "http://127.0.0.1:43123"+target, body)
+	req.Host = "127.0.0.1:43123"
+	if form != nil {
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.Header.Set("Origin", "http://127.0.0.1:43123")
+	}
+	if cookie != nil {
+		req.AddCookie(cookie)
+	}
+	result := httptest.NewRecorder()
+	handler.ServeHTTP(result, req)
+	return result
+}
+
+func fixtureHeaderRequest(t *testing.T, handler http.Handler, method, target string, headers http.Header) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequest(method, "http://127.0.0.1:43123"+target, nil)
+	req.Host = "127.0.0.1:43123"
+	// A real inbound server request carries the origin-form RequestURI. The v2
+	// alias gate intentionally keys its exact map on that unmodified wire value.
+	req.RequestURI = target
+	for name, values := range headers {
+		for _, value := range values {
+			req.Header.Add(name, value)
+		}
+	}
+	result := httptest.NewRecorder()
+	handler.ServeHTTP(result, req)
+	return result
+}
+
+func fixtureCookie(t *testing.T, response *httptest.ResponseRecorder) *http.Cookie {
+	t.Helper()
+	for _, cookie := range response.Result().Cookies() {
+		if cookie.Name == csrfCookieName {
+			return cookie
+		}
+	}
+	t.Fatal("GET did not establish a CSRF cookie")
+	return nil
+}
+
+func validFixtureForm(config fixtureConfig, cookie *http.Cookie) url.Values {
+	v := url.Values{"_csrf": {cookie.Value}, "_action": {"validate"}}
+	values := config.initial
+	v.Set("name", values.Name)
+	v.Set("bio", values.Bio)
+	v.Set("email", values.Email)
+	v.Set("address", values.Street)
+	v.Set("city", values.City)
+	v.Set("postal_code", values.Postal)
+	v.Set("country[code]", values.Country)
+	v.Set("region", values.Region)
+	v.Set("currency", values.Currency)
+	if values.PublicEmail {
+		v.Set("email_is_public", "on")
+	}
+	return v
+}
+
+func TestFixtureGETAndNativePOST(t *testing.T) {
+	config := testFixtureConfig(t)
+	handler := newFixtureHandler(config)
+	get := fixtureRequest(t, handler, http.MethodGet, "/light/settings", nil, nil)
+	if get.Code != http.StatusOK || !strings.Contains(get.Body.String(), `action="/light/settings"`) || !strings.Contains(get.Body.String(), `href="/source.css"`) {
+		t.Fatalf("GET form: %d %s", get.Code, get.Body.String())
+	}
+	page := get.Body.String()
+	if source, nativeIndex := strings.Index(page, `href="/source.css"`), strings.Index(page, `href="/native.css"`); source < 0 || nativeIndex < source {
+		t.Fatalf("native stylesheet did not follow selected source CSS: %s", page)
+	}
+	for key, want := range map[string]string{"Content-Security-Policy": "script-src 'none'", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"} {
+		if !strings.Contains(get.Header().Get(key), want) {
+			t.Fatalf("missing hardening %s: %q", key, get.Header().Get(key))
+		}
+	}
+	cookie := fixtureCookie(t, get)
+	post := fixtureRequest(t, handler, http.MethodPost, "/light/settings", validFixtureForm(config, cookie), cookie)
+	if post.Code != http.StatusOK || !strings.Contains(post.Body.String(), "validated; nothing was saved") {
+		t.Fatalf("validate response: %d %s", post.Code, post.Body.String())
+	}
+}
+
+func TestFixtureExplicitlyHasNoApplicationIcon(t *testing.T) {
+	handler := newFixtureHandler(testFixtureConfig(t))
+	for _, method := range []string{http.MethodGet, http.MethodHead} {
+		response := fixtureRequest(t, handler, method, "/favicon.ico", nil, nil)
+		if response.Code != http.StatusNoContent || response.Body.Len() != 0 || response.Header().Get("Cache-Control") != "no-store" || response.Header().Get("X-Content-Type-Options") != "nosniff" {
+			t.Fatalf("bodyless icon response: %s %d %#v", method, response.Code, response.Header())
+		}
+	}
+	if response := fixtureRequest(t, handler, http.MethodPost, "/favicon.ico", nil, nil); response.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("icon accepted POST: %d", response.Code)
+	}
+	request := httptest.NewRequest(http.MethodGet, "http://127.0.0.1:43123/favicon.ico", nil)
+	request.Host = "127.0.0.1:9"
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusMisdirectedRequest {
+		t.Fatalf("icon accepted wrong host: %d", response.Code)
+	}
+}
+
+func TestFixtureNativeStylesheetIsScopedAndExact(t *testing.T) {
+	config := testFixtureConfig(t)
+	handler := newFixtureHandler(config)
+	want := converted.SettingsNativeStyles()
+	if want == "" {
+		t.Fatal("native stylesheet accessor is empty")
+	}
+	for _, required := range []string{
+		`form[data-p10-settings] :where(input:not([type="hidden"]):not([type="checkbox"]),textarea,select,button){min-height:44px}`,
+		`form[data-p10-settings] label[data-p10-checkbox-label]{min-height:44px;display:inline-flex;align-items:center}`,
+		`form[data-p10-settings] :where(input:not([type="hidden"]),textarea,select,button):focus-visible{outline:2px solid CanvasText;outline-offset:2px}`,
+		`form[data-p10-settings] [role="status"][tabindex]:focus{outline:2px solid CanvasText;outline-offset:2px}`,
+	} {
+		if !strings.Contains(want, required) {
+			t.Fatalf("missing scoped native rule %q", required)
+		}
+	}
+	if strings.Contains(want, ".p10-fixture-frame") || strings.Contains(fixtureCSS, "min-height:44px") {
+		t.Fatal("fixture frame owns native-control CSS")
+	}
+	get := fixtureRequest(t, handler, http.MethodGet, "/native.css", nil, nil)
+	if get.Code != http.StatusOK || get.Body.String() != want || get.Header().Get("Content-Type") != "text/css; charset=utf-8" || get.Header().Get("Cache-Control") != "no-store" || get.Header().Get("X-Content-Type-Options") != "nosniff" {
+		t.Fatalf("native CSS GET contract: %d %#v %q", get.Code, get.Header(), get.Body.String())
+	}
+	head := fixtureRequest(t, handler, http.MethodHead, "/native.css", nil, nil)
+	if head.Code != http.StatusOK || head.Body.Len() != 0 || head.Header().Get("Content-Type") != "text/css; charset=utf-8" || head.Header().Get("Cache-Control") != "no-store" || head.Header().Get("X-Content-Type-Options") != "nosniff" {
+		t.Fatalf("native CSS HEAD contract: %d %#v %q", head.Code, head.Header(), head.Body.String())
+	}
+	if response := fixtureRequest(t, handler, http.MethodPost, "/native.css", nil, nil); response.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("native CSS accepted POST: %d", response.Code)
+	}
+	wrongHost := httptest.NewRequest(http.MethodGet, "http://127.0.0.1:43123/native.css", nil)
+	wrongHost.Host = "127.0.0.1:9"
+	wrongHostResponse := httptest.NewRecorder()
+	handler.ServeHTTP(wrongHostResponse, wrongHost)
+	if wrongHostResponse.Code != http.StatusMisdirectedRequest {
+		t.Fatalf("native CSS accepted wrong host: %d", wrongHostResponse.Code)
+	}
+	for _, reserved := range []string{"/fixture.css", "/native.css", "/controller.mjs", "/favicon.ico"} {
+		if !fixtureAssetRouteReserved(reserved) {
+			t.Fatalf("fixture route not reserved: %s", reserved)
+		}
+	}
+}
+
+func TestFixtureEnhancementIsExplicitAndKeepsNativeAuthority(t *testing.T) {
+	config := testFixtureConfig(t)
+	handler := newFixtureHandler(config)
+	for _, theme := range []string{"light", "dark"} {
+		native := fixtureRequest(t, handler, http.MethodGet, "/"+theme+"/settings", nil, nil)
+		for _, forbidden := range []string{"<script", "data-p10-config-for", "data-p10-enhance"} {
+			if strings.Contains(native.Body.String(), forbidden) {
+				t.Fatalf("native page emits %s", forbidden)
+			}
+		}
+		if source, nativeIndex := strings.Index(native.Body.String(), `href="/source.css"`), strings.Index(native.Body.String(), `href="/native.css"`); source < 0 || nativeIndex < source {
+			t.Fatalf("native stylesheet ordering lost: %s", native.Body.String())
+		}
+		target := "/" + theme + "/enhanced/settings"
+		get := fixtureRequest(t, handler, http.MethodGet, target, nil, nil)
+		if get.Code != http.StatusOK {
+			t.Fatalf("enhanced GET %d", get.Code)
+		}
+		for _, want := range []string{`<body data-p10-enhance>`, `<script type="module" src="/controller.mjs"></script>`, `data-p10-config-for="p10-settings-form"`, `action="` + target + `"`} {
+			if !strings.Contains(get.Body.String(), want) {
+				t.Fatalf("missing enhanced seam %q", want)
+			}
+		}
+		if source, nativeIndex := strings.Index(get.Body.String(), `href="/source.css"`), strings.Index(get.Body.String(), `href="/native.css"`); source < 0 || nativeIndex < source {
+			t.Fatalf("enhanced native stylesheet ordering lost: %s", get.Body.String())
+		}
+		csp := get.Header().Get("Content-Security-Policy")
+		if !strings.Contains(csp, "script-src 'self'") || strings.Contains(csp, "unsafe-") {
+			t.Fatalf("enhanced CSP %q", csp)
+		}
+		cookie := fixtureCookie(t, get)
+		form := validFixtureForm(config, cookie)
+		form.Set("bio", strings.Repeat("😀", 241))
+		post := fixtureRequest(t, handler, http.MethodPost, target, form, cookie)
+		if post.Code != http.StatusUnprocessableEntity || !strings.Contains(post.Body.String(), form.Get("bio")) || !strings.Contains(post.Body.String(), `data-p10-config-for=`) {
+			t.Fatal("enhanced POST lost independent validation/draft/config")
+		}
+		form.Set("bio", "corrected")
+		post = fixtureRequest(t, handler, http.MethodPost, target, form, cookie)
+		if post.Code != http.StatusOK || !strings.Contains(post.Body.String(), "validated; nothing was saved") {
+			t.Fatal("enhanced correction failed")
+		}
+		form.Set("_action", "reset")
+		post = fixtureRequest(t, handler, http.MethodPost, target+"/reset", form, cookie)
+		if post.Code != http.StatusOK || strings.Contains(post.Body.String(), "corrected") {
+			t.Fatal("enhanced route native reset fallback failed")
+		}
+	}
+	module := fixtureRequest(t, handler, http.MethodGet, "/controller.mjs", nil, nil)
+	if module.Code != http.StatusOK || module.Body.String() != string(settingsController) || !strings.Contains(module.Header().Get("Content-Type"), "text/javascript") || module.Header().Get("Cache-Control") != "no-store" {
+		t.Fatal("embedded module identity/MIME drift")
+	}
+	if post := fixtureRequest(t, handler, http.MethodPost, "/controller.mjs", nil, nil); post.Code != http.StatusMethodNotAllowed {
+		t.Fatal("controller accepted POST")
+	}
+}
+
+func TestFixtureValidationRetentionAndReset(t *testing.T) {
+	config := testFixtureConfig(t)
+	handler := newFixtureHandler(config)
+	get := fixtureRequest(t, handler, http.MethodGet, "/dark/settings", nil, nil)
+	cookie := fixtureCookie(t, get)
+	invalid := validFixtureForm(config, cookie)
+	invalid.Set("bio", strings.Repeat("x", converted.BioLimit+1))
+	invalid.Set("country[code]", "CA")
+	invalid.Set("region", "Arizona")
+	post := fixtureRequest(t, handler, http.MethodPost, "/dark/settings", invalid, cookie)
+	if post.Code != http.StatusUnprocessableEntity || !strings.Contains(post.Body.String(), `autofocus`) || !strings.Contains(post.Body.String(), strings.Repeat("x", converted.BioLimit+1)) {
+		t.Fatalf("invalid draft/focus not retained: %d %s", post.Code, post.Body.String())
+	}
+	reset := validFixtureForm(config, cookie)
+	reset.Set("_action", "reset")
+	reset.Set("name", "discard me")
+	response := fixtureRequest(t, handler, http.MethodPost, "/dark/settings/reset", reset, cookie)
+	if response.Code != http.StatusOK || strings.Contains(response.Body.String(), "discard me") || !strings.Contains(response.Body.String(), `autofocus`) {
+		t.Fatalf("native reset did not restore/focus: %d %s", response.Code, response.Body.String())
+	}
+	reset.Set("country[name]", "hidden source authority")
+	if response := fixtureRequest(t, handler, http.MethodPost, "/dark/settings/reset", reset, cookie); response.Code != http.StatusBadRequest {
+		t.Fatalf("reset accepted unknown framing field: %d", response.Code)
+	}
+}
+
+func TestFixtureRefusesFramingAndBounds(t *testing.T) {
+	config := testFixtureConfig(t)
+	handler := newFixtureHandler(config)
+	get := fixtureRequest(t, handler, http.MethodGet, "/light/settings", nil, nil)
+	cookie := fixtureCookie(t, get)
+	for name, amend := range map[string]func(url.Values){
+		"unknown":        func(v url.Values) { v.Set("country[name]", "not-authoritative") },
+		"duplicate":      func(v url.Values) { v["bio"] = []string{"a", "b"} },
+		"csrf duplicate": func(v url.Values) { v["_csrf"] = []string{cookie.Value, cookie.Value} },
+		"action bad":     func(v url.Values) { v.Set("_action", "save") },
+	} {
+		t.Run(name, func(t *testing.T) {
+			form := validFixtureForm(config, cookie)
+			amend(form)
+			if response := fixtureRequest(t, handler, http.MethodPost, "/light/settings", form, cookie); response.Code != http.StatusBadRequest {
+				t.Fatalf("status %d: %s", response.Code, response.Body.String())
+			}
+		})
+	}
+	large := validFixtureForm(config, cookie)
+	large.Set("name", strings.Repeat("x", maxPOSTBytes))
+	if response := fixtureRequest(t, handler, http.MethodPost, "/light/settings", large, cookie); response.Code != http.StatusRequestEntityTooLarge && response.Code != http.StatusBadRequest {
+		t.Fatalf("large request status %d", response.Code)
+	}
+}
+
+func TestFixtureOriginHostAndRefusal(t *testing.T) {
+	config := testFixtureConfig(t)
+	handler := newFixtureHandler(config)
+	get := fixtureRequest(t, handler, http.MethodGet, "/light/settings", nil, nil)
+	cookie := fixtureCookie(t, get)
+	request := httptest.NewRequest(http.MethodPost, "http://127.0.0.1:43123/light/settings", strings.NewReader(validFixtureForm(config, cookie).Encode()))
+	request.Host = config.host
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Origin", "https://127.0.0.1:43123")
+	request.AddCookie(cookie)
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("cross-origin request accepted: %d", response.Code)
+	}
+	request = httptest.NewRequest(http.MethodPost, "http://127.0.0.1:43123/light/settings", strings.NewReader(validFixtureForm(config, cookie).Encode()))
+	request.Host = config.host
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.AddCookie(cookie)
+	response = httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("headerless protected POST accepted: %d", response.Code)
+	}
+	request.Header.Set("Origin", "http://127.0.0.1:43123/path")
+	response = httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("non-origin Origin accepted: %d", response.Code)
+	}
+	request.Header.Set("Origin", "http://127.0.0.1:43123")
+	request.Header.Add("Origin", "http://127.0.0.1:43123")
+	response = httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("duplicate Origin accepted: %d", response.Code)
+	}
+	request = httptest.NewRequest(http.MethodGet, "http://127.0.0.1:43123/light/settings", nil)
+	request.Host = "127.0.0.1:9"
+	response = httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusMisdirectedRequest {
+		t.Fatalf("wrong host accepted: %d", response.Code)
+	}
+	config.refuse = func(*http.Request) bool { return true }
+	refused := validFixtureForm(config, cookie)
+	refused.Set("name", "draft retained by refusal")
+	response = fixtureRequest(t, newFixtureHandler(config), http.MethodPost, "/light/settings", refused, cookie)
+	if response.Code != http.StatusServiceUnavailable || !strings.Contains(response.Body.String(), "draft retained") || !strings.Contains(response.Body.String(), "draft retained by refusal") {
+		t.Fatalf("refusal seam: %d %s", response.Code, response.Body.String())
+	}
+}
+
+func TestFixtureFirstRefusalRequiresExplicitMode(t *testing.T) {
+	for _, test := range []struct {
+		args           []string
+		valid, refusal bool
+	}{
+		{[]string{"/private/packet"}, true, false},
+		{[]string{"/private/packet", "--refuse-first-validation"}, true, true},
+		{nil, false, false},
+		{[]string{"/private/packet", "--refuse-first-validation=true"}, false, false},
+		{[]string{"/private/packet", "--refuse-first-validation", "extra"}, false, false},
+	} {
+		packet, refusal, err := parseFixtureArgs(test.args)
+		if (err == nil) != test.valid || refusal != test.refusal || test.valid && packet != test.args[0] {
+			t.Fatalf("argument contract: %q %v %v", packet, refusal, err)
+		}
+	}
+}
+
+func TestFixtureCachedStaticDeliveryIsExplicitAndBounded(t *testing.T) {
+	config := testFixtureConfig(t)
+	cache, err := prepareCachedStaticAssets(config.assets)
+	if err != nil {
+		t.Fatal(err)
+	}
+	config.cache = cache
+	handler := newFixtureHandler(config)
+
+	identity := fixtureHeaderRequest(t, handler, http.MethodGet, "/source.css", nil)
+	if identity.Code != http.StatusOK || identity.Body.String() != string(config.assets["/source.css"].body) || identity.Header().Get("Cache-Control") != "private, max-age=60" || identity.Header().Get("Vary") != "Accept-Encoding" || identity.Header().Get("Content-Encoding") != "" || identity.Header().Get("Content-Length") != strconv.Itoa(len(config.assets["/source.css"].body)) || identity.Header().Get("X-Appkit-Decoded-SHA256") != digest(config.assets["/source.css"].body) {
+		t.Fatalf("identity cache response: %d %#v %q", identity.Code, identity.Header(), identity.Body.String())
+	}
+	identityETag := identity.Header().Get("ETag")
+	if identityETag == "" || identityETag[0] != '"' || identityETag[len(identityETag)-1] != '"' {
+		t.Fatalf("identity strong ETag: %q", identityETag)
+	}
+
+	gzipped := fixtureHeaderRequest(t, handler, http.MethodGet, "/source.css", http.Header{"Accept-Encoding": {"gzip, identity;q=1"}})
+	if gzipped.Code != http.StatusOK || gzipped.Header().Get("Content-Encoding") != "gzip" || gzipped.Header().Get("ETag") == identityETag || gzipped.Header().Get("Cache-Control") != "private, max-age=60" || gzipped.Header().Get("Content-Length") != strconv.Itoa(gzipped.Body.Len()) {
+		t.Fatalf("gzip cache response: %d %#v", gzipped.Code, gzipped.Header())
+	}
+	reader, err := gzip.NewReader(bytes.NewReader(gzipped.Body.Bytes()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := io.ReadAll(reader)
+	if closeErr := reader.Close(); err == nil {
+		err = closeErr
+	}
+	if err != nil || digest(decoded) != digest(config.assets["/source.css"].body) {
+		t.Fatalf("gzip decoded static identity: %v %q", err, decoded)
+	}
+
+	head := fixtureHeaderRequest(t, handler, http.MethodHead, "/source.css", http.Header{"Accept-Encoding": {"gzip"}})
+	if head.Code != http.StatusOK || head.Body.Len() != 0 || head.Header().Get("Content-Encoding") != "gzip" || head.Header().Get("ETag") != gzipped.Header().Get("ETag") || head.Header().Get("Content-Length") != strconv.Itoa(gzipped.Body.Len()) {
+		t.Fatalf("gzip HEAD: %d %#v %q", head.Code, head.Header(), head.Body.String())
+	}
+	notModified := fixtureHeaderRequest(t, handler, http.MethodGet, "/source.css", http.Header{"If-None-Match": {"W/" + identityETag}})
+	if notModified.Code != http.StatusNotModified || notModified.Body.Len() != 0 || notModified.Header().Get("ETag") != identityETag || notModified.Header().Get("Cache-Control") != "private, max-age=60" || notModified.Header().Get("Vary") != "Accept-Encoding" {
+		t.Fatalf("conditional GET: %d %#v %q", notModified.Code, notModified.Header(), notModified.Body.String())
+	}
+	notModifiedHead := fixtureHeaderRequest(t, handler, http.MethodHead, "/source.css", http.Header{"Accept-Encoding": {"gzip"}, "If-None-Match": {"W/" + gzipped.Header().Get("ETag")}})
+	if notModifiedHead.Code != http.StatusNotModified || notModifiedHead.Body.Len() != 0 || notModifiedHead.Header().Get("ETag") != gzipped.Header().Get("ETag") || notModifiedHead.Header().Get("Content-Length") != strconv.Itoa(gzipped.Body.Len()) {
+		t.Fatalf("conditional HEAD: %d %#v %q", notModifiedHead.Code, notModifiedHead.Header(), notModifiedHead.Body.String())
+	}
+
+	for name, request := range map[string]*httptest.ResponseRecorder{
+		"gzip and identity q0":               fixtureHeaderRequest(t, handler, http.MethodGet, "/source.css", http.Header{"Accept-Encoding": {"gzip;q=0, identity;q=0"}}),
+		"identity q0":                        fixtureHeaderRequest(t, handler, http.MethodGet, "/source.css", http.Header{"Accept-Encoding": {"identity;q=0"}}),
+		"four decimal gzip with identity q0": fixtureHeaderRequest(t, handler, http.MethodGet, "/source.css", http.Header{"Accept-Encoding": {"gzip;q=0.0001, identity;q=0"}}),
+		"trailing gzip with identity q0":     fixtureHeaderRequest(t, handler, http.MethodGet, "/source.css", http.Header{"Accept-Encoding": {"gzip;q=0junk, identity;q=0"}}),
+		"spaced zero gzip with identity q0":  fixtureHeaderRequest(t, handler, http.MethodGet, "/source.css", http.Header{"Accept-Encoding": {"gzip; q = 0, identity;q=0"}}),
+		"trailing parameter":                 fixtureHeaderRequest(t, handler, http.MethodGet, "/source.css", http.Header{"Accept-Encoding": {"gzip;q=1;extra, identity;q=0"}}),
+		"spaced positive q":                  fixtureHeaderRequest(t, handler, http.MethodGet, "/source.css", http.Header{"Accept-Encoding": {"gzip;q = 1, identity;q=0"}}),
+		"duplicate gzip q":                   fixtureHeaderRequest(t, handler, http.MethodGet, "/source.css", http.Header{"Accept-Encoding": {"gzip;q=1, gzip;q=1, identity;q=0"}}),
+		"malformed identity q":               fixtureHeaderRequest(t, handler, http.MethodGet, "/source.css", http.Header{"Accept-Encoding": {"gzip;q=0, identity;q=0;extra"}}),
+	} {
+		if request.Code != http.StatusNotAcceptable || request.Header().Get("Cache-Control") != "no-store" {
+			t.Fatalf("%s negotiated cache response: %d %#v", name, request.Code, request.Header())
+		}
+	}
+	invalidNaN := fixtureHeaderRequest(t, handler, http.MethodGet, "/source.css", http.Header{"Accept-Encoding": {"gzip;q=NaN"}})
+	if invalidNaN.Code != http.StatusOK || invalidNaN.Header().Get("Content-Encoding") != "" || invalidNaN.Header().Get("ETag") != identityETag {
+		t.Fatalf("invalid gzip q upgraded delivery: %d %#v", invalidNaN.Code, invalidNaN.Header())
+	}
+}
+
+func TestFixtureCachedStaticAdmissionRejectsDocumentsAndDynamicPaths(t *testing.T) {
+	positive := map[string]fixtureAsset{
+		"/_next/static/chunks/0_7fu6wp96o5g.css":                         {body: []byte("css"), mime: "text/css"},
+		"/__appkit_reference_fonts/46d01/font-files/Inter-Regular.woff2": {body: []byte("font"), mime: "font/woff2"},
+		"/flags/us.svg": {body: []byte("svg"), mime: "image/svg+xml"},
+	}
+	if _, err := prepareCachedStaticAssets(positive); err != nil {
+		t.Fatalf("real-format selected static paths refused: %v", err)
+	}
+	for _, target := range []string{
+		"/settings", "/settings/reset", "/light/settings", "/light/settings/reset", "/dark/settings", "/dark/settings/reset",
+		"/light/enhanced/settings", "/light/enhanced/settings/reset", "/dark/enhanced/settings", "/dark/enhanced/settings/reset",
+		"/api/save", "/_next/data/build/settings.json", "/_next/chunks/runtime.css", "/fixture.css", "/native.css", "/controller.mjs", "/favicon.ico",
+	} {
+		if _, err := prepareCachedStaticAssets(map[string]fixtureAsset{target: {body: []byte("not static delivery"), mime: "text/css"}}); err == nil {
+			t.Fatalf("document/dynamic fixture URL admitted to cache: %s", target)
+		}
+	}
+}
+
+func TestFixtureCachedStaticDeliveryRefusesNonCleanOrDynamicTraffic(t *testing.T) {
+	cached := testFixtureConfig(t)
+	var err error
+	cached.cache, err = prepareCachedStaticAssets(cached.assets)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cacheHandler := newFixtureHandler(cached)
+	defaultResponse := fixtureRequest(t, newFixtureHandler(testFixtureConfig(t)), http.MethodGet, "/source.css", nil, nil)
+	if defaultResponse.Code != http.StatusOK || defaultResponse.Header().Get("Cache-Control") != "" || defaultResponse.Header().Get("ETag") != "" {
+		t.Fatalf("default delivery upgraded cache: %d %#v", defaultResponse.Code, defaultResponse.Header())
+	}
+	if response := fixtureRequest(t, newFixtureHandler(testFixtureConfig(t)), http.MethodGet, "/fixture.css", nil, nil); response.Code != http.StatusOK || response.Header().Get("Cache-Control") != "" || response.Header().Get("ETag") != "" {
+		t.Fatalf("default fixture CSS changed: %d %#v", response.Code, response.Header())
+	}
+
+	query := fixtureHeaderRequest(t, cacheHandler, http.MethodGet, "/source.css?probe=1", nil)
+	bareQuery := fixtureHeaderRequest(t, cacheHandler, http.MethodGet, "/source.css?", nil)
+	for name, response := range map[string]*httptest.ResponseRecorder{
+		"query": query, "bare query": bareQuery,
+		"RSC":              fixtureHeaderRequest(t, cacheHandler, http.MethodGet, "/source.css", http.Header{"RSC": {"1"}}),
+		"prefetch":         fixtureHeaderRequest(t, cacheHandler, http.MethodGet, "/source.css", http.Header{"Next-Router-Prefetch": {"1"}}),
+		"segment prefetch": fixtureHeaderRequest(t, cacheHandler, http.MethodGet, "/source.css", http.Header{"Next-Router-Segment-Prefetch": {"1"}}),
+		"state tree":       fixtureHeaderRequest(t, cacheHandler, http.MethodGet, "/source.css", http.Header{"Next-Router-State-Tree": {"1"}}),
+		"next URL":         fixtureHeaderRequest(t, cacheHandler, http.MethodGet, "/source.css", http.Header{"Next-Url": {"/light/settings"}}),
+		"next action":      fixtureHeaderRequest(t, cacheHandler, http.MethodGet, "/source.css", http.Header{"Next-Action": {"1"}}),
+	} {
+		if response.Code != http.StatusOK || response.Header().Get("Cache-Control") != "no-store" || response.Header().Get("ETag") != "" {
+			t.Fatalf("%s became cacheable: %d %#v", name, response.Code, response.Header())
+		}
+	}
+	encodedRequest := httptest.NewRequest(http.MethodGet, "http://127.0.0.1:43123/source.css", nil)
+	encodedRequest.Host = cached.host
+	encodedRequest.URL.RawPath = "/source%2Ecss"
+	encodedRequest.RequestURI = "/source%2Ecss"
+	encodedResponse := httptest.NewRecorder()
+	cacheHandler.ServeHTTP(encodedResponse, encodedRequest)
+	if encodedResponse.Code != http.StatusOK || encodedResponse.Header().Get("Cache-Control") != "no-store" || encodedResponse.Header().Get("ETag") != "" {
+		t.Fatalf("encoded path became cacheable: %d %#v", encodedResponse.Code, encodedResponse.Header())
+	}
+	if response := fixtureRequest(t, cacheHandler, http.MethodPost, "/source.css", nil, nil); response.Code != http.StatusMethodNotAllowed || response.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("asset method guard/cache: %d %#v", response.Code, response.Header())
+	}
+	if response := fixtureRequest(t, cacheHandler, http.MethodGet, "/light/settings", nil, nil); response.Code != http.StatusOK || response.Header().Get("Cache-Control") != "no-store" || response.Header().Get("ETag") != "" {
+		t.Fatalf("document cache policy: %d %#v", response.Code, response.Header())
+	}
+	for _, target := range []string{"/fixture.css", "/native.css", "/controller.mjs", "/favicon.ico", "/not-a-route"} {
+		if response := fixtureRequest(t, cacheHandler, http.MethodGet, target, nil, nil); response.Header().Get("Cache-Control") != "no-store" || response.Header().Get("ETag") != "" {
+			t.Fatalf("dynamic/unknown cache policy %s: %d %#v", target, response.Code, response.Header())
+		}
+	}
+	wrongHost := httptest.NewRequest(http.MethodGet, "http://127.0.0.1:43123/source.css", nil)
+	wrongHost.Host = "127.0.0.1:9"
+	wrongHostResponse := httptest.NewRecorder()
+	cacheHandler.ServeHTTP(wrongHostResponse, wrongHost)
+	if wrongHostResponse.Code != http.StatusMisdirectedRequest || wrongHostResponse.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("cached asset accepted wrong host/cache: %d %#v", wrongHostResponse.Code, wrongHostResponse.Header())
+	}
+}
+
+func TestFixtureCachedStaticDeliveryArgumentsAreExclusive(t *testing.T) {
+	for _, test := range []struct {
+		args                   []string
+		valid, refusal, cached bool
+	}{
+		{[]string{"/private/packet"}, true, false, false},
+		{[]string{"/private/packet", "--refuse-first-validation"}, true, true, false},
+		{[]string{"/private/packet", "--cached-static-delivery=p10-cached-static-v1"}, true, false, true},
+		{[]string{"/private/packet", "--cached-static-delivery=p10-cached-static-v1", "--cached-static-delivery=p10-cached-static-v1"}, false, false, false},
+		{[]string{"/private/packet", "--refuse-first-validation", "--cached-static-delivery=p10-cached-static-v1"}, false, false, false},
+		{[]string{"/private/packet", "--cached-static-delivery=wrong"}, false, false, false},
+	} {
+		packet, refusal, cached, err := parseFixtureDeliveryArgs(test.args)
+		if (err == nil) != test.valid || refusal != test.refusal || cached != test.cached || test.valid && packet != test.args[0] {
+			t.Fatalf("delivery argument contract: %q %v %v %v", packet, refusal, cached, err)
+		}
+	}
+	if got := string(fixtureStartupJSON("127.0.0.1:7", 9, false, false)); got != `{"url":"http://127.0.0.1:7","pid":9}` {
+		t.Fatalf("default startup receipt changed: %s", got)
+	}
+	if got := string(fixtureStartupJSON("127.0.0.1:7", 9, false, true)); got != `{"url":"http://127.0.0.1:7","pid":9,"static_delivery":"p10-cached-static-v1"}` {
+		t.Fatalf("cached startup receipt: %s", got)
+	}
+	if _, _, _, err := parseFixtureDeliveryArgs([]string{"/private/packet", "--cached-static-delivery=" + cachedStaticV2ID}); err == nil {
+		t.Fatal("v1 parser silently admitted v2")
+	}
+	for _, test := range []struct {
+		args                         []string
+		valid, refusal, cachedV1, v2 bool
+	}{
+		{[]string{"/private/packet", "--cached-static-delivery=" + cachedStaticV2ID}, true, false, false, true},
+		{[]string{"/private/packet", "--cached-static-delivery=" + cachedStaticV1ID}, true, false, true, false},
+		{[]string{"/private/packet", "--refuse-first-validation"}, true, true, false, false},
+		{[]string{"/private/packet", "--cached-static-delivery=" + cachedStaticV1ID, "--cached-static-delivery=" + cachedStaticV2ID}, false, false, false, false},
+	} {
+		packet, refusal, v1, v2, err := parseFixtureDeliveryV2Args(test.args)
+		if (err == nil) != test.valid || refusal != test.refusal || v1 != test.cachedV1 || v2 != test.v2 || test.valid && packet != test.args[0] {
+			t.Fatalf("v2 delivery argument contract: %q %v %v %v %v", packet, refusal, v1, v2, err)
+		}
+	}
+	if got := string(fixtureStartupDeliveryJSON("127.0.0.1:7", 9, false, cachedStaticV2ID, "manifest")); got != `{"url":"http://127.0.0.1:7","pid":9,"static_delivery":"p10-cached-static-v2","alias_manifest_sha256":"manifest"}` {
+		t.Fatalf("v2 startup receipt: %s", got)
+	}
+}
+
+func testFontAliasConfig(t *testing.T) (fixtureConfig, *fontAliasDelivery) {
+	t.Helper()
+	cssURL := "/static/p10/inter.css"
+	first := "/static/p10/font-files/Inter-Regular.woff2"
+	second := "/static/p10/font-files/Inter-Bold.woff2"
+	css := []byte(`@font-face{src:url(font-files/Inter-Regular.woff2?v=4.1)}@font-face{src:url('font-files/Inter-Bold.woff2?v=4.1')}@font-face{src:url("font-files/Inter-Regular.woff2?v=4.1")}`)
+	config := testFixtureConfig(t)
+	config.assets = map[string]fixtureAsset{
+		cssURL: {body: css, mime: "text/css"},
+		first:  {body: []byte("first selected font"), mime: "font/woff2"},
+		second: {body: []byte("second selected font"), mime: "font/woff2"},
+	}
+	config.cssURLs = []string{cssURL}
+	cache, err := prepareCachedStaticAssets(config.assets)
+	if err != nil {
+		t.Fatal(err)
+	}
+	aliases, err := prepareFontQueryAliases(config.assets, cache, fontAliasContract{cssSHA256: digest(css), cssBytes: len(css), urlOccurrences: 3, aliasCount: 2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	config.cache, config.aliases = cache, aliases
+	return config, aliases
+}
+
+func TestFixtureCachedStaticV2FontQueryAliasesAreExactAndBounded(t *testing.T) {
+	config, aliases := testFontAliasConfig(t)
+	encoded, err := json.Marshal(aliases.manifest)
+	if err != nil || digest(encoded) != aliases.manifestSHA256 || string(encoded) != `{"schema_version":1,"id":"p10-font-query-aliases-v1","css":{"url":"/static/p10/inter.css","sha256":"`+digest(config.assets["/static/p10/inter.css"].body)+`","bytes":172},"aliases":[{"url":"/static/p10/font-files/Inter-Bold.woff2?v=4.1","canonical_url":"/static/p10/font-files/Inter-Bold.woff2","mime":"font/woff2","sha256":"`+digest(config.assets["/static/p10/font-files/Inter-Bold.woff2"].body)+`","bytes":20},{"url":"/static/p10/font-files/Inter-Regular.woff2?v=4.1","canonical_url":"/static/p10/font-files/Inter-Regular.woff2","mime":"font/woff2","sha256":"`+digest(config.assets["/static/p10/font-files/Inter-Regular.woff2"].body)+`","bytes":19}]}` {
+		t.Fatalf("alias manifest contract: %v %s", err, encoded)
+	}
+	handler := newFixtureHandler(config)
+	identity := fixtureHeaderRequest(t, handler, http.MethodGet, "/static/p10/font-files/Inter-Regular.woff2?v=4.1", nil)
+	if identity.Code != http.StatusOK || !bytes.Equal(identity.Body.Bytes(), config.assets["/static/p10/font-files/Inter-Regular.woff2"].body) || identity.Header().Get("Cache-Control") != "private, max-age=60" || identity.Header().Get("X-AppKit-Font-Aliases-SHA256") != aliases.manifestSHA256 || identity.Header().Get("X-AppKit-Delivery-Experiment") != cachedStaticV2ID {
+		t.Fatalf("v2 identity alias: %d %#v %q", identity.Code, identity.Header(), identity.Body.String())
+	}
+	gzipped := fixtureHeaderRequest(t, handler, http.MethodGet, "/static/p10/font-files/Inter-Regular.woff2?v=4.1", http.Header{"Accept-Encoding": {"gzip"}})
+	reader, gzipErr := gzip.NewReader(bytes.NewReader(gzipped.Body.Bytes()))
+	if gzipErr != nil {
+		t.Fatal(gzipErr)
+	}
+	decoded, readErr := io.ReadAll(reader)
+	if closeErr := reader.Close(); readErr == nil {
+		readErr = closeErr
+	}
+	if gzipped.Code != http.StatusOK || gzipped.Header().Get("Content-Encoding") != "gzip" || readErr != nil || !bytes.Equal(decoded, config.assets["/static/p10/font-files/Inter-Regular.woff2"].body) {
+		t.Fatalf("v2 gzip alias: %d %#v %v %q", gzipped.Code, gzipped.Header(), readErr, decoded)
+	}
+	head := fixtureHeaderRequest(t, handler, http.MethodHead, "/static/p10/font-files/Inter-Regular.woff2?v=4.1", http.Header{"If-None-Match": {identity.Header().Get("ETag")}})
+	if head.Code != http.StatusNotModified || head.Body.Len() != 0 || head.Header().Get("X-AppKit-Font-Aliases-SHA256") != aliases.manifestSHA256 {
+		t.Fatalf("v2 conditional HEAD: %d %#v %q", head.Code, head.Header(), head.Body.String())
+	}
+	for name, response := range map[string]*httptest.ResponseRecorder{
+		"near query":  fixtureHeaderRequest(t, handler, http.MethodGet, "/static/p10/font-files/Inter-Regular.woff2?v=4.10", nil),
+		"extra query": fixtureHeaderRequest(t, handler, http.MethodGet, "/static/p10/font-files/Inter-Regular.woff2?v=4.1&x=1", nil),
+		"POST":        fixtureHeaderRequest(t, handler, http.MethodPost, "/static/p10/font-files/Inter-Regular.woff2?v=4.1", nil),
+	} {
+		wantStatus := http.StatusOK
+		if name == "POST" {
+			wantStatus = http.StatusMethodNotAllowed
+		}
+		if response.Code != wantStatus || response.Header().Get("Cache-Control") != "no-store" || response.Header().Get("ETag") != "" || response.Header().Get("X-AppKit-Delivery-Experiment") != "" {
+			t.Fatalf("%s became a v2 alias: %d %#v", name, response.Code, response.Header())
+		}
+	}
+	for _, header := range []string{"RSC", "Next-Router-Prefetch", "Next-Router-Segment-Prefetch", "Next-Router-State-Tree", "Next-Url", "Next-Action"} {
+		response := fixtureHeaderRequest(t, handler, http.MethodGet, "/static/p10/font-files/Inter-Regular.woff2?v=4.1", http.Header{header: {"1"}})
+		if response.Code != http.StatusOK || response.Header().Get("Cache-Control") != "no-store" || response.Header().Get("ETag") != "" || response.Header().Get("X-AppKit-Delivery-Experiment") != "" {
+			t.Fatalf("%s did not veto v2 alias: %d %#v", header, response.Code, response.Header())
+		}
+	}
+	wrongHost := httptest.NewRequest(http.MethodGet, "http://127.0.0.1:43123/static/p10/font-files/Inter-Regular.woff2?v=4.1", nil)
+	wrongHost.Host = "127.0.0.1:9"
+	wrongHostResponse := httptest.NewRecorder()
+	handler.ServeHTTP(wrongHostResponse, wrongHost)
+	if wrongHostResponse.Code != http.StatusMisdirectedRequest || wrongHostResponse.Header().Get("ETag") != "" {
+		t.Fatalf("v2 alias accepted wrong host: %d %#v", wrongHostResponse.Code, wrongHostResponse.Header())
+	}
+}
+
+func TestFixtureCachedStaticV2FontAliasSetupRefusesDrift(t *testing.T) {
+	config, _ := testFontAliasConfig(t)
+	cache, err := prepareCachedStaticAssets(config.assets)
+	if err != nil {
+		t.Fatal(err)
+	}
+	contract := fontAliasContract{cssSHA256: digest(config.assets["/static/p10/inter.css"].body), cssBytes: len(config.assets["/static/p10/inter.css"].body), urlOccurrences: 3, aliasCount: 2}
+	config.assets["/static/p10/inter.css"] = fixtureAsset{body: []byte(`url(font-files/Inter-Regular.woff2?v=4.1)url(font-files/Inter-Bold.woff2?v=4.10)url(font-files/Inter-Regular.woff2?v=4.1)`), mime: "text/css"}
+	if _, err := prepareFontQueryAliases(config.assets, cache, contract); err == nil {
+		t.Fatal("near font query admitted")
+	}
+	if _, err := prepareP10FontQueryAliases(config.assets, cache); err == nil {
+		t.Fatal("production fixed CSS pin accepted synthetic stylesheet")
+	}
+}
+
+func TestFixtureFirstRefusalFollowsProtectedValidationAndAllowsRetry(t *testing.T) {
+	for _, target := range []string{"/light/settings", "/dark/settings", "/light/enhanced/settings", "/dark/enhanced/settings"} {
+		t.Run(target, func(t *testing.T) {
+			config := testFixtureConfig(t)
+			config.refuse = firstValidationRefusal()
+			handler := newFixtureHandler(config)
+			cookie := fixtureCookie(t, fixtureRequest(t, handler, http.MethodGet, target, nil, nil))
+			values := validFixtureForm(config, cookie)
+			values.Set("bio", strings.Repeat("😀", 241))
+			if got := fixtureRequest(t, handler, http.MethodPost, target, values, cookie); got.Code != http.StatusUnprocessableEntity {
+				t.Fatal("invalid values consumed refusal before validation")
+			}
+			values.Set("bio", "retained recovery draft")
+			wrongOrigin := httptest.NewRequest(http.MethodPost, "http://"+config.host+target, strings.NewReader(values.Encode()))
+			wrongOrigin.Host = config.host
+			wrongOrigin.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			wrongOrigin.Header.Set("Origin", "https://"+config.host)
+			wrongOrigin.AddCookie(cookie)
+			wrongOriginResponse := httptest.NewRecorder()
+			handler.ServeHTTP(wrongOriginResponse, wrongOrigin)
+			if wrongOriginResponse.Code != http.StatusBadRequest {
+				t.Fatal("wrong Origin consumed refusal or escaped framing rejection")
+			}
+			values.Set("_csrf", "incorrect")
+			if got := fixtureRequest(t, handler, http.MethodPost, target, values, cookie); got.Code != http.StatusForbidden {
+				t.Fatal("CSRF refusal lost")
+			}
+			values.Set("_csrf", cookie.Value)
+			values.Set("_action", "reset")
+			if got := fixtureRequest(t, handler, http.MethodPost, target+"/reset", values, cookie); got.Code != http.StatusOK {
+				t.Fatal("reset must remain available")
+			}
+			values.Set("_action", "validate")
+			values.Set("name", "503 retained draft")
+			got := fixtureRequest(t, handler, http.MethodPost, target, values, cookie)
+			body := got.Body.String()
+			status := regexp.MustCompile(`<p\b[^>]*id="p10-settings-status"[^>]*>`).FindString(body)
+			if got.Code != http.StatusServiceUnavailable || !strings.Contains(body, "503 retained draft") || !strings.Contains(body, "retained recovery draft") || !strings.Contains(body, "Try Validate changes again.") || !strings.Contains(status, "autofocus") || !strings.Contains(status, `tabindex="-1"`) || strings.Count(body, " autofocus") != 1 {
+				t.Fatalf("503 retained/focused retry: %d %s", got.Code, status)
+			}
+			got = fixtureRequest(t, handler, http.MethodPost, target, values, cookie)
+			if got.Code != http.StatusOK || !strings.Contains(got.Body.String(), "validated; nothing was saved") || strings.Contains(got.Body.String(), " autofocus") {
+				t.Fatal("native retry did not validate retained draft")
+			}
+		})
+	}
+}
+
+func TestFixtureFirstRefusalIsAtomic(t *testing.T) {
+	refuse := firstValidationRefusal()
+	var count atomic.Int32
+	var workers sync.WaitGroup
+	for range 128 {
+		workers.Go(func() {
+			if refuse(nil) {
+				count.Add(1)
+			}
+		})
+	}
+	workers.Wait()
+	if count.Load() != 1 {
+		t.Fatalf("expected one refusal, got %d", count.Load())
+	}
+}
+
+func TestFixtureReissuesInvalidCookieAndOwnsGeometry(t *testing.T) {
+	config := testFixtureConfig(t)
+	handler := newFixtureHandler(config)
+	bad := &http.Cookie{Name: csrfCookieName, Value: "not-a-token"}
+	response := fixtureRequest(t, handler, http.MethodGet, "/light/settings", nil, bad)
+	reissued := fixtureCookie(t, response)
+	if reissued.Value == bad.Value || !validCSRFToken(reissued.Value) {
+		t.Fatalf("invalid cookie not replaced: %#v", reissued)
+	}
+	for _, want := range []string{"width:calc(100% - 48px)", "font-family:Inter,sans-serif"} {
+		if !strings.Contains(fixtureCSS, want) {
+			t.Fatalf("missing first-party geometry %q", want)
+		}
+	}
+}

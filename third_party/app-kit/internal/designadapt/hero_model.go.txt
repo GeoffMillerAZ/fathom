@@ -1,0 +1,145 @@
+// Generated companion for a private P01 adaptation. No app-kit runtime required.
+package converted
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"net/url"
+	"strconv"
+	"strings"
+	"unicode"
+	"unicode/utf8"
+
+	"github.com/a-h/templ"
+)
+
+// Hero contains presentation copy and destinations. Route behavior and image
+// ownership remain the responsibility of the consuming application.
+type Hero struct {
+	LogoLightURL, LogoDarkURL, LogoAlt                     string
+	Announcement, AnnouncementLabel, AnnouncementURL       string
+	Heading, Introduction                                  string
+	PrimaryLabel, PrimaryURL, SecondaryLabel, SecondaryURL string
+	ImageURL, ImageAlt                                     string
+	ImageDecorative                                        bool
+}
+
+// NewHero validates and snapshots data before returning the source-faithful
+// component.
+func NewHero(data Hero) (templ.Component, error) {
+	if err := validateHero(data); err != nil {
+		return nil, err
+	}
+	return guardedHero(hero(data)), nil
+}
+
+// NewHeroEnhanced opts into the companion CSS usability envelope. Callers must
+// include that stylesheet after the source CSS.
+func NewHeroEnhanced(data Hero) (templ.Component, error) {
+	content, err := NewHero(data)
+	if err != nil {
+		return nil, err
+	}
+	return guardedHero(heroEnhanced(content)), nil
+}
+
+func validateHero(data Hero) error {
+	for _, field := range []struct {
+		name  string
+		value string
+		limit int
+	}{
+		{"LogoAlt", data.LogoAlt, 256},
+		{"Announcement", data.Announcement, 600},
+		{"AnnouncementLabel", data.AnnouncementLabel, 100},
+		{"Heading", data.Heading, 160},
+		{"Introduction", data.Introduction, 1200},
+		{"PrimaryLabel", data.PrimaryLabel, 100},
+		{"SecondaryLabel", data.SecondaryLabel, 100},
+	} {
+		if !heroText(field.value, field.limit) {
+			return fmt.Errorf("hero: invalid %s", field.name)
+		}
+	}
+	for _, field := range []struct{ name, value string }{
+		{"LogoLightURL", data.LogoLightURL},
+		{"LogoDarkURL", data.LogoDarkURL},
+		{"AnnouncementURL", data.AnnouncementURL},
+		{"PrimaryURL", data.PrimaryURL},
+		{"SecondaryURL", data.SecondaryURL},
+		{"ImageURL", data.ImageURL},
+	} {
+		if !heroURL(field.value) {
+			return fmt.Errorf("hero: invalid %s", field.name)
+		}
+	}
+	if data.ImageDecorative {
+		if data.ImageAlt != "" {
+			return fmt.Errorf("hero: decorative image alt must be empty")
+		}
+	} else if !heroText(data.ImageAlt, 512) {
+		return fmt.Errorf("hero: invalid ImageAlt")
+	}
+	return nil
+}
+
+func heroText(value string, limit int) bool {
+	if len(value) > limit || strings.TrimSpace(value) == "" || !utf8.ValidString(value) {
+		return false
+	}
+	for _, r := range value {
+		if unicode.IsControl(r) {
+			return false
+		}
+	}
+	return true
+}
+
+func heroURL(value string) bool {
+	if len(value) == 0 || len(value) > 2048 || strings.TrimSpace(value) != value || !utf8.ValidString(value) || strings.ContainsAny(value, "\\ ") {
+		return false
+	}
+	for _, r := range value {
+		if unicode.IsControl(r) {
+			return false
+		}
+	}
+	decoded, err := url.PathUnescape(value)
+	if err != nil || !utf8.ValidString(decoded) || strings.Contains(decoded, "\\") {
+		return false
+	}
+	for _, r := range decoded {
+		if unicode.IsControl(r) {
+			return false
+		}
+	}
+	u, err := url.Parse(value)
+	if err != nil || u.User != nil || u.Opaque != "" {
+		return false
+	}
+	if strings.HasPrefix(value, "/") {
+		return !strings.HasPrefix(decoded, "//") && u.Scheme == "" && u.Host == ""
+	}
+	if !strings.HasPrefix(value, "https://") || u.Scheme != "https" || u.Hostname() == "" || strings.HasSuffix(u.Host, ":") || strings.ContainsAny(u.Host, "% ") {
+		return false
+	}
+	if port := u.Port(); port != "" {
+		n, err := strconv.ParseUint(port, 10, 16)
+		if err != nil || n == 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func guardedHero(component templ.Component) templ.Component {
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			return component.Render(ctx, w)
+		}
+	})
+}

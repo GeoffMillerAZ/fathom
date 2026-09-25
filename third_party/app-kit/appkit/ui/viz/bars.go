@@ -5,6 +5,8 @@ import (
 	"math"
 	"strconv"
 	"strings"
+
+	"github.com/rivo/uniseg"
 )
 
 // Bar is one row of a Bars chart.
@@ -95,7 +97,14 @@ func Bars(bars []Bar, o BarsOptions) string {
 	labelW := float64(opts.LabelW)
 	valueW := 0.0
 	if opts.ShowValue {
-		valueW = 56 // room for comma-grouped values like 60,727
+		valueW = 56
+		for _, bar := range bars {
+			// Reserve the complete printed value, including units. One em per
+			// display cell is deliberately conservative for the 11px labels;
+			// actual consumer font geometry still needs browser verification.
+			label := fmtGrouped(bar.Value) + bar.Suffix
+			valueW = math.Max(valueW, float64(uniseg.StringWidth(label))*11+8)
+		}
 	}
 	trackX := labelW + 6
 	barMaxW := w - trackX - valueW
@@ -119,7 +128,8 @@ func Bars(bars []Bar, o BarsOptions) string {
 			bw = v / maxVal * barMaxW
 		}
 
-		// Label (left, truncated by the column width via the viewer).
+		// Label (left). This low-level primitive does not wrap or truncate;
+		// the caller must choose fitting columns or a wrapping composition.
 		fmt.Fprintf(&b,
 			`<text x="0" y="%s" dominant-baseline="middle" fill="%s" font-size="11">%s</text>`,
 			fmtNum(mid), inkMuted, esc(bar.Label))

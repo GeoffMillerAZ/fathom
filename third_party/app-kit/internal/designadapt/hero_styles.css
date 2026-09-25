@@ -1,0 +1,36 @@
+/* Optional P01 usability treatment. Load after the source Tailwind CSS.
+   The faithful constructor does not opt into these layout changes. */
+[data-appkit-hero] {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+[data-appkit-hero] :where(div, h1, p, a, span) {
+  min-inline-size: 0;
+}
+[data-appkit-hero] div:has(> a + a) {
+  flex-wrap: wrap;
+  row-gap: 1rem;
+}
+[data-appkit-hero] a {
+  display: inline-flex;
+  align-items: center;
+  column-gap: 0.25em;
+  min-inline-size: 44px;
+  min-block-size: 44px;
+  max-inline-size: 100%;
+  white-space: normal;
+  scroll-margin-block: 0.5rem;
+}
+[data-appkit-hero] a:has(> span[aria-hidden="true"]) {
+  display: inline-grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+[data-appkit-hero] a:focus-visible {
+  outline: 2px solid var(--color-indigo-600, #4f46e5);
+  outline-offset: 4px;
+}
+@media (prefers-color-scheme: dark) {
+  [data-appkit-hero] a:focus-visible {
+    outline-color: var(--color-indigo-400, #818cf8);
+  }
+}

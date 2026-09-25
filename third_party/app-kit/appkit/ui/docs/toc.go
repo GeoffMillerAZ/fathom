@@ -60,8 +60,8 @@ func RenderToC(headings []Heading) string {
 func writeBoxedList(b *strings.Builder, nodes []*node) {
 	b.WriteString(`<ol class="doc-toc__list">`)
 	for _, n := range nodes {
-		fmt.Fprintf(b, `<li class="doc-toc__item doc-toc__item--h%d"><a href="#%s">%s</a>`,
-			n.H.Level, esc(n.H.ID), esc(n.H.Text))
+		fmt.Fprintf(b, `<li class="doc-toc__item doc-toc__item--h%d"><a href="%s">%s</a>`,
+			n.H.Level, fragmentHref(n.H.ID), esc(n.H.Text))
 		if len(n.Kids) > 0 {
 			writeBoxedList(b, n.Kids)
 		}
@@ -107,14 +107,14 @@ func RenderToCPanel(headings []Heading, opts Options) string {
 	}
 	var b strings.Builder
 	b.WriteString(`<details class="border-y border-line" open>`)
-	fmt.Fprintf(&b, `<summary class="cursor-pointer py-2 text-ink `+
+	fmt.Fprintf(&b, `<summary class="min-h-[44px] min-w-[44px] cursor-pointer break-words py-2 text-ink `+
 		`marker:content-none [&::-webkit-details-marker]:hidden `+
 		`focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">%s</summary>`,
 		opts.label())
 	b.WriteString(`<ol class="space-y-1 border-t border-line py-2 text-sm">`)
 	for _, h := range headings {
-		fmt.Fprintf(&b, `<li class=%q><a class="text-ink-muted hover:text-accent" href="#%s">%s</a></li>`,
-			indentFor(h.Level, panelIndent), esc(h.ID), esc(h.Text))
+		fmt.Fprintf(&b, `<li class=%q><a class="block min-h-[44px] min-w-[44px] break-words py-3 text-ink-muted hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus" href="%s">%s</a></li>`,
+			indentFor(h.Level, panelIndent), fragmentHref(h.ID), esc(h.Text))
 	}
 	b.WriteString(`</ol></details>`)
 	return b.String()
@@ -133,8 +133,8 @@ func RenderToCRail(headings []Heading, opts Options) string {
 	b.WriteString(`<nav aria-label="Table of contents">`)
 	b.WriteString(`<ol class="space-y-1.5 border-l border-line text-sm">`)
 	for _, h := range headings {
-		fmt.Fprintf(&b, `<li class=%q><a class="block text-ink-muted hover:text-accent" href="#%s">%s</a></li>`,
-			indentFor(h.Level, railIndent), esc(h.ID), esc(h.Text))
+		fmt.Fprintf(&b, `<li class=%q><a class="block text-ink-muted hover:text-accent" href="%s">%s</a></li>`,
+			indentFor(h.Level, railIndent), fragmentHref(h.ID), esc(h.Text))
 	}
 	b.WriteString(`</ol></nav></div>`)
 	return b.String()

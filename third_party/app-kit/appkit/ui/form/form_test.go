@@ -104,6 +104,90 @@ func TestCheckbox(t *testing.T) {
 	}
 }
 
+// Recorded before Invalid/HasHelp were added: opting out must preserve the
+// complete existing markup, including attribute and utility ordering.
+func TestCheckboxLegacyBytes(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		in   Checkbox
+		want string
+	}{
+		{"zero", Checkbox{}, `<label class="flex items-center gap-2 text-sm text-ink"><input type="checkbox" class="rounded border-line text-accent focus:ring-2 focus:ring-focus" value="true"/></label>`},
+		{"existing fixture", Checkbox{ID: "tos", Name: "tos", Label: "I agree", Checked: true}, `<label class="flex items-center gap-2 text-sm text-ink"><input type="checkbox" class="rounded border-line text-accent focus:ring-2 focus:ring-focus" id="tos" name="tos" value="true" checked/>I agree</label>`},
+		{"escaped flags", Checkbox{ID: `a"b`, Name: "x&y", Value: `yes"now`, Label: "R&D <yes>", Checked: true, Required: true, Disabled: true}, `<label class="flex items-center gap-2 text-sm text-ink"><input type="checkbox" class="rounded border-line text-accent focus:ring-2 focus:ring-focus" id="a&#34;b" name="x&amp;y" value="yes&#34;now" checked required aria-required="true" disabled/>R&amp;D &lt;yes&gt;</label>`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := RenderCheckbox(tc.in); got != tc.want {
+				t.Fatalf("legacy checkbox output changed:\n got: %s\nwant: %s", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestCheckboxHelpAndInvalidWiring(t *testing.T) {
+	for _, tc := range []struct {
+		name, describedBy string
+		invalid, hasHelp  bool
+	}{
+		{"help", "digest-help", false, true},
+		{"error", "digest-error", true, false},
+		{"error takes precedence", "digest-error", true, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := RenderCheckbox(Checkbox{ID: "digest", Name: "digest", Label: "Weekly digest", Invalid: tc.invalid, HasHelp: tc.hasHelp})
+			if !strings.Contains(got, `aria-describedby="`+tc.describedBy+`"`) || strings.Count(got, "aria-describedby=") != 1 {
+				t.Fatalf("wrong description target: %s", got)
+			}
+			if strings.Contains(got, `aria-invalid="true"`) != tc.invalid {
+				t.Fatalf("wrong invalid semantics: %s", got)
+			}
+			if tc.invalid {
+				if !strings.Contains(got, "border-danger") || !strings.Contains(got, "focus:ring-danger") || strings.Contains(got, "border-line") || strings.Contains(got, "focus:ring-focus") || strings.Contains(got, "digest-help") {
+					t.Fatalf("error styling/precedence incorrect: %s", got)
+				}
+			} else if strings.Contains(got, "danger") {
+				t.Fatalf("help alone received invalid styling: %s", got)
+			}
+			if hexColorRE.MatchString(got) {
+				t.Fatalf("checkbox uses hardcoded colors: %s", got)
+			}
+		})
+	}
+}
+
+func TestCheckboxInvalidFlagsAndEscapedIDs(t *testing.T) {
+	const hostileID = `digest"><svg/onload=fixture()>`
+	for _, invalid := range []bool{false, true} {
+		got := RenderCheckbox(Checkbox{ID: hostileID, Label: "R&D <weekly>", Checked: true, Required: true, Disabled: true, Invalid: invalid, HasHelp: true})
+		suffix := "-help"
+		if invalid {
+			suffix = "-error"
+		}
+		for _, want := range []string{
+			`id="digest&#34;&gt;&lt;svg/onload=fixture()&gt;"`,
+			`aria-describedby="digest&#34;&gt;&lt;svg/onload=fixture()&gt;` + suffix + `"`,
+			`value="true" checked required aria-required="true" disabled`,
+			`R&amp;D &lt;weekly&gt;</label>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Errorf("missing escaped target/retained flag %q in %s", want, got)
+			}
+		}
+		if strings.Contains(got, `<svg`) {
+			t.Fatal("checkbox ID became active markup")
+		}
+	}
+	for _, invalid := range []bool{false, true} {
+		got := RenderCheckbox(Checkbox{Invalid: invalid, HasHelp: true})
+		if strings.Contains(got, "aria-describedby") {
+			t.Fatalf("empty ID created a dangling description: %s", got)
+		}
+		if strings.Contains(got, `aria-invalid="true"`) != invalid {
+			t.Fatalf("empty ID lost invalid semantics: %s", got)
+		}
+	}
+}
+
 func TestRadioGroup_FieldsetLegendAndChecked(t *testing.T) {
 	got := RenderRadioGroup(RadioGroup{
 		Name: "ev", Legend: "Do you have evidence?", Value: "yes", Required: true,

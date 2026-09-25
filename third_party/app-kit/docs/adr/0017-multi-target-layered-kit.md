@@ -1,6 +1,6 @@
 # ADR-0017: The kit is multi-target and layered — it guides, it does not dictate
 
-- **Status:** Accepted
+- **Status:** Partly superseded by ADR-0023 (server-only L4, client computation and Go-consumer toolchain/browser-code restrictions); remaining constraints stand
 - **Date:** 2026-08-07
 - **Decision drivers:** the kit already serves two rendering targets and is
   already shipping code into the second one by copy, undetected; one

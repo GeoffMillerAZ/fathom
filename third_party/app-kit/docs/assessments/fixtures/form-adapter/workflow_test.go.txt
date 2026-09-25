@@ -1,0 +1,802 @@
+package converted
+
+// This file is a non-production, synthetic HTTP fixture. Its cookie and request-token
+// checks are test boundaries, not authentication or CSRF assurance for an application.
+
+import (
+	"bytes"
+	"context"
+	"crypto/sha256"
+	"crypto/subtle"
+	"encoding/base64"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"html"
+	"io"
+	"net"
+	"net/http"
+	"net/http/cookiejar"
+	"net/http/httptest"
+	"net/mail"
+	"net/url"
+	"os"
+	"os/signal"
+	"regexp"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+)
+
+const (
+	p05CookieName       = "appkit_p05_fixture"
+	p05MaxBody          = 8 << 10
+	p05MaxSessions      = 32
+	p05DefaultLabel     = "Contact email"
+	p05DefaultError     = "Use an email address permitted by this synthetic fixture."
+	p05BlockedEmail     = "blocked@example.test"
+	p05SuccessfulEmail  = "person@example.test"
+	p05BrowserServeWait = 10 * time.Minute
+)
+
+type p05Session struct {
+	token      string
+	requestSeq uint64
+	theme      string
+	label      string
+	failNext   bool
+	savedValue string
+	saveCount  int
+}
+
+type p05Fixture struct {
+	mu       sync.Mutex
+	sessions map[string]*p05Session
+	order    []string
+	next     uint64
+	css      string
+	original string
+	defaults EmailField
+}
+
+func newP05Fixture(css, original string, defaults EmailField) *p05Fixture {
+	if defaults.ID == "" {
+		defaults.ID = "contact-email"
+	}
+	if defaults.Name == "" {
+		defaults.Name = "contact_email"
+	}
+	if defaults.Label == "" {
+		defaults.Label = p05DefaultLabel
+	}
+	if defaults.Placeholder == "" {
+		defaults.Placeholder = p05SuccessfulEmail
+	}
+	if defaults.Error == "" {
+		defaults.Error = p05DefaultError
+	}
+	return &p05Fixture{
+		sessions: make(map[string]*p05Session),
+		css:      css,
+		original: original,
+		defaults: defaults,
+	}
+}
+
+func (f *p05Fixture) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	f.setHeaders(w)
+	if !p05LoopbackRequest(r) {
+		f.problem(w, http.StatusForbidden, "This synthetic fixture accepts only direct loopback requests.")
+		return
+	}
+	if r.Method == http.MethodPost && !p05SameOrigin(r) {
+		f.problem(w, http.StatusForbidden, "This synthetic form must be submitted from the same origin.")
+		return
+	}
+	switch {
+	case r.Method == http.MethodGet && r.URL.Path == "/demo":
+		f.startDemo(w, r)
+	case r.Method == http.MethodPost && r.URL.Path == "/save":
+		f.save(w, r)
+	case r.Method == http.MethodGet && r.URL.Path == "/done":
+		f.done(w, r)
+	case r.Method == http.MethodGet && r.URL.Path == "/reference-original":
+		f.referenceOriginal(w, r)
+	case r.Method == http.MethodGet && r.URL.Path == "/reference-adapted":
+		f.referenceAdapted(w, r)
+	default:
+		http.NotFound(w, r)
+	}
+}
+
+func (f *p05Fixture) setHeaders(w http.ResponseWriter) {
+	sum := sha256.Sum256([]byte(f.cssText()))
+	styleHash := base64.StdEncoding.EncodeToString(sum[:])
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'sha256-"+styleHash+"'; font-src data:; img-src data:; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
+	// Chrome native navigation POSTs under no-referrer serialize Origin as null.
+	// same-origin preserves the local POST origin without cross-origin referrers.
+	w.Header().Set("Referrer-Policy", "same-origin")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+}
+
+func (f *p05Fixture) startDemo(w http.ResponseWriter, r *http.Request) {
+	theme := r.URL.Query().Get("theme")
+	if theme == "" {
+		theme = "light"
+	}
+	if theme != "light" && theme != "dark" {
+		f.problem(w, http.StatusBadRequest, "Choose the light or dark theme.")
+		return
+	}
+	label := p05DefaultLabel
+	if r.URL.Query().Get("long") == "1" {
+		label = "Contact email used for important synthetic account notices and recovery updates"
+	}
+
+	f.mu.Lock()
+	f.next++
+	id := p05Opaque("session", f.next)
+	s := &p05Session{token: p05Opaque("token-"+id, 1), requestSeq: 1, theme: theme, label: label, failNext: true}
+	f.sessions[id] = s
+	f.order = append(f.order, id)
+	for len(f.order) > p05MaxSessions {
+		delete(f.sessions, f.order[0])
+		f.order = f.order[1:]
+	}
+	view := *s
+	f.mu.Unlock()
+
+	http.SetCookie(w, &http.Cookie{
+		Name: p05CookieName, Value: id, Path: "/", HttpOnly: true,
+		SameSite: http.SameSiteStrictMode, MaxAge: 3600,
+	})
+	field := EmailField{ID: "contact-email", Name: "email", Label: label, Placeholder: p05SuccessfulEmail, Required: true}
+	f.renderDemo(w, http.StatusOK, &view, field, "", "")
+}
+
+func (f *p05Fixture) save(w http.ResponseWriter, r *http.Request) {
+	id, s, ok := f.session(r)
+	if !ok {
+		f.problem(w, http.StatusForbidden, "Start a fresh synthetic session before saving.")
+		return
+	}
+	if r.ContentLength > p05MaxBody {
+		f.problem(w, http.StatusRequestEntityTooLarge, "The submitted form is too large.")
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, p05MaxBody)
+	if err := r.ParseForm(); err != nil {
+		var tooLarge *http.MaxBytesError
+		if errors.As(err, &tooLarge) {
+			f.problem(w, http.StatusRequestEntityTooLarge, "The submitted form is too large.")
+			return
+		}
+		f.problem(w, http.StatusBadRequest, "The submitted form could not be read.")
+		return
+	}
+	if len(r.PostForm) != 2 {
+		f.problem(w, http.StatusBadRequest, "Submit exactly the expected form fields.")
+		return
+	}
+	token, tokenOK := p05One(r.PostForm, "request_token")
+	emailValue, emailOK := p05One(r.PostForm, "email")
+	if !tokenOK || !emailOK {
+		f.problem(w, http.StatusBadRequest, "Submit each expected form field exactly once.")
+		return
+	}
+	if len(emailValue) > 4096 {
+		f.problem(w, http.StatusBadRequest, "The synthetic email value is too long.")
+		return
+	}
+
+	f.mu.Lock()
+	current, stillPresent := f.sessions[id]
+	if !stillPresent || current != s || subtle.ConstantTimeCompare([]byte(token), []byte(current.token)) != 1 {
+		f.mu.Unlock()
+		f.problem(w, http.StatusForbidden, "This synthetic session is no longer current.")
+		return
+	}
+	current.requestSeq++
+	current.token = p05Opaque("token-"+id, current.requestSeq)
+	if !p05EmailSyntax(emailValue) || emailValue == p05BlockedEmail {
+		errText := "Enter one complete email address."
+		if emailValue == p05BlockedEmail {
+			errText = "That synthetic address is blocked. Use person@example.test."
+		}
+		field := EmailField{ID: "contact-email", Name: "email", Label: current.label, Value: emailValue, Placeholder: p05SuccessfulEmail, Error: errText, Required: true, Autofocus: true}
+		view := *current
+		f.mu.Unlock()
+		f.renderDemo(w, http.StatusUnprocessableEntity, &view, field, "", "")
+		return
+	}
+	if current.failNext {
+		current.failNext = false
+		field := EmailField{ID: "contact-email", Name: "email", Label: current.label, Value: emailValue, Placeholder: p05SuccessfulEmail, Required: true}
+		view := *current
+		f.mu.Unlock()
+		f.renderDemo(w, http.StatusServiceUnavailable, &view, field, "We could not save the synthetic email yet.", "Nothing was lost. Check the retained value and retry.")
+		return
+	}
+	current.savedValue = emailValue
+	current.saveCount++
+	f.mu.Unlock()
+	http.Redirect(w, r, "/done", http.StatusSeeOther)
+}
+
+func (f *p05Fixture) done(w http.ResponseWriter, r *http.Request) {
+	_, s, ok := f.session(r)
+	if !ok {
+		f.problem(w, http.StatusForbidden, "Start a fresh synthetic session to view a confirmation.")
+		return
+	}
+	f.mu.Lock()
+	value := s.savedValue
+	theme := s.theme
+	f.mu.Unlock()
+	if value == "" {
+		f.problem(w, http.StatusConflict, "No synthetic email has been saved in this session.")
+		return
+	}
+	var body bytes.Buffer
+	io.WriteString(&body, `<main><section class="card" aria-labelledby="saved-title"><p class="eyebrow">Synthetic fixture</p><h1 id="saved-title">Email saved</h1><p>The saved synthetic value is <strong>`)
+	io.WriteString(&body, html.EscapeString(value))
+	io.WriteString(&body, `</strong>.</p><p>Refreshing this confirmation performs only another GET.</p><a href="/demo?theme=`)
+	io.WriteString(&body, html.EscapeString(theme))
+	io.WriteString(&body, `">Start a fresh session</a></section></main>`)
+	f.page(w, http.StatusOK, "Synthetic email saved", theme, body.String())
+}
+
+func (f *p05Fixture) renderDemo(w http.ResponseWriter, status int, s *p05Session, field EmailField, summary, guidance string) {
+	component, err := NewEmailField(field)
+	if err != nil {
+		f.problem(w, http.StatusInternalServerError, "The synthetic field could not be rendered.")
+		return
+	}
+	var body bytes.Buffer
+	io.WriteString(&body, `<main class="fixture-controls"><section class="card" aria-labelledby="page-title"><p class="eyebrow">Synthetic settings fixture</p><h1 id="page-title">Contact email</h1><p>Test validation and recovery without sending or retaining real email.</p>`)
+	if summary != "" {
+		io.WriteString(&body, `<div id="save-error-summary" class="summary" role="alert" tabindex="-1" autofocus><h2>`)
+		io.WriteString(&body, html.EscapeString(summary))
+		io.WriteString(&body, `</h2><p>`)
+		io.WriteString(&body, html.EscapeString(guidance))
+		io.WriteString(&body, `</p><a href="#contact-email">Review the retained email</a></div>`)
+	}
+	io.WriteString(&body, `<form method="post" action="/save"><input type="hidden" name="request_token" value="`)
+	io.WriteString(&body, html.EscapeString(s.token))
+	io.WriteString(&body, `">`)
+	if err := component.Render(context.Background(), &body); err != nil {
+		f.problem(w, http.StatusInternalServerError, "The synthetic field could not be rendered.")
+		return
+	}
+	io.WriteString(&body, `<button type="submit">Save synthetic email</button></form><nav aria-label="Fixture references"><a href="/reference-original">Original reference</a> <a href="/reference-adapted">Adapted reference</a></nav></section></main>`)
+	title := "Contact email synthetic fixture"
+	if summary != "" {
+		title = "Could not save synthetic email"
+	}
+	f.page(w, status, title, s.theme, body.String())
+}
+
+func (f *p05Fixture) referenceOriginal(w http.ResponseWriter, r *http.Request) {
+	theme := r.URL.Query().Get("theme")
+	if theme == "" {
+		theme = "light"
+	}
+	if theme != "light" && theme != "dark" {
+		f.problem(w, http.StatusBadRequest, "Choose the light or dark theme.")
+		return
+	}
+	body := f.original
+	if body == "" {
+		body = `<p class="reference-note">No local original was supplied for this isolated run.</p>`
+	}
+	f.page(w, http.StatusOK, "Email field reference", theme, `<main><section class="card"><h1>Email field reference</h1><div class="reference-specimen">`+body+`</div></section></main>`)
+}
+
+func (f *p05Fixture) referenceAdapted(w http.ResponseWriter, r *http.Request) {
+	theme := r.URL.Query().Get("theme")
+	if theme == "" {
+		theme = "light"
+	}
+	if theme != "light" && theme != "dark" {
+		f.problem(w, http.StatusBadRequest, "Choose the light or dark theme.")
+		return
+	}
+	component, err := NewEmailField(f.defaults)
+	if err != nil {
+		f.problem(w, http.StatusInternalServerError, "The adapted reference defaults are invalid.")
+		return
+	}
+	var body bytes.Buffer
+	io.WriteString(&body, `<main><section class="card"><h1>Email field reference</h1><div class="reference-specimen">`)
+	if err := component.Render(context.Background(), &body); err != nil {
+		f.problem(w, http.StatusInternalServerError, "The adapted reference could not be rendered.")
+		return
+	}
+	io.WriteString(&body, `</div></section></main>`)
+	f.page(w, http.StatusOK, "Email field reference", theme, body.String())
+}
+
+func (f *p05Fixture) page(w http.ResponseWriter, status int, title, theme, body string) {
+	if theme != "dark" {
+		theme = "light"
+	}
+	w.WriteHeader(status)
+	io.WriteString(w, `<!doctype html><html lang="en" class="`+theme+`"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>`)
+	io.WriteString(w, html.EscapeString(title))
+	io.WriteString(w, `</title><style>`+f.cssText()+`</style></head><body>`+body+`</body></html>`)
+}
+
+func (f *p05Fixture) problem(w http.ResponseWriter, status int, message string) {
+	f.page(w, status, "Synthetic fixture request problem", "light", `<main><section class="card"><h1>Request not accepted</h1><p>`+html.EscapeString(message)+`</p><a href="/demo">Start a fresh synthetic session</a></section></main>`)
+}
+
+func (f *p05Fixture) session(r *http.Request) (string, *p05Session, bool) {
+	cookie, err := r.Cookie(p05CookieName)
+	if err != nil || cookie.Value == "" {
+		return "", nil, false
+	}
+	f.mu.Lock()
+	s, ok := f.sessions[cookie.Value]
+	f.mu.Unlock()
+	return cookie.Value, s, ok
+}
+
+func (f *p05Fixture) cssText() string {
+	css := f.css
+	if css == "" {
+		css = `body{font-family:ui-sans-serif,system-ui,sans-serif;background:#f8fafc;color:#111827}.dark body{background:#111827;color:#f9fafb}`
+	}
+	return css + `
+body{margin:0;line-height:1.5}main{max-width:48rem;margin:0 auto;padding:2rem 1rem}.card{background:#fff;border:1px solid #d1d5db;border-radius:.75rem;padding:1.5rem}.dark .card{background:#1f2937;border-color:#4b5563}.card h1{font-size:1.875rem;font-weight:700;line-height:1.2;letter-spacing:-.02em;margin:.25rem 0 1rem}.card p{max-width:65ch}.eyebrow{font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em}.summary{border:2px solid #b91c1c;border-radius:.5rem;padding:1rem;margin:1rem 0}.fixture-controls input:not([type=hidden]),.fixture-controls button{min-height:44px}.fixture-controls button{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:.5rem;background:#4f46e5;color:#fff;font:inherit;font-weight:700;margin-top:1.25rem;padding:.65rem 1rem}.fixture-controls button:hover{background:#4338ca}.fixture-controls :focus{outline:3px solid #4f46e5;outline-offset:3px}.reference-specimen{margin-top:1.5rem}
+.fixture-controls a{display:inline-flex;align-items:center;min-height:44px;text-decoration:underline;text-underline-offset:3px}.fixture-controls nav{display:flex;gap:.25rem 1rem;flex-wrap:wrap;margin-top:1rem}.summary h2{font-weight:600;margin-bottom:.5rem}.summary p{margin-bottom:.25rem}.dark .fixture-controls :focus{outline-color:#a5b4fc}`
+}
+
+func p05LoopbackRequest(r *http.Request) bool {
+	remoteHost, _, err := net.SplitHostPort(r.RemoteAddr)
+	remoteIP := net.ParseIP(remoteHost)
+	if err != nil || remoteIP == nil || !remoteIP.IsLoopback() {
+		return false
+	}
+	local, ok := r.Context().Value(http.LocalAddrContextKey).(net.Addr)
+	if !ok {
+		return false
+	}
+	localHost, localPort, err := net.SplitHostPort(local.String())
+	localIP := net.ParseIP(localHost)
+	if err != nil || localIP == nil || !localIP.IsLoopback() {
+		return false
+	}
+	requestHost, requestPort, err := net.SplitHostPort(r.Host)
+	if err != nil || requestPort != localPort {
+		return false
+	}
+	requestIP := net.ParseIP(requestHost)
+	return requestIP != nil && requestIP.IsLoopback() && requestIP.Equal(localIP)
+}
+
+func p05SameOrigin(r *http.Request) bool {
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		return true
+	}
+	parsed, err := url.Parse(origin)
+	return err == nil && parsed.Scheme == "http" && parsed.Host == r.Host && parsed.User == nil && parsed.Path == "" && parsed.RawQuery == "" && parsed.Fragment == ""
+}
+
+func p05Opaque(kind string, n uint64) string {
+	sum := sha256.Sum256([]byte(fmt.Sprintf("appkit-p05-%s-%d", kind, n)))
+	return fmt.Sprintf("%x", sum[:16])
+}
+
+func p05One(values url.Values, key string) (string, bool) {
+	v, ok := values[key]
+	return func() (string, bool) {
+		if !ok || len(v) != 1 {
+			return "", false
+		}
+		return v[0], true
+	}()
+}
+
+func p05EmailSyntax(value string) bool {
+	if value == "" || strings.TrimSpace(value) != value || strings.Count(value, "@") != 1 {
+		return false
+	}
+	parsed, err := mail.ParseAddress(value)
+	return err == nil && parsed.Address == value
+}
+
+func p05ReadLocal(path string, limit int64) (string, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil || !info.Mode().IsRegular() {
+		return "", fmt.Errorf("fixture asset is not a regular file")
+	}
+	data, err := io.ReadAll(io.LimitReader(file, limit+1))
+	if err != nil {
+		return "", err
+	}
+	if int64(len(data)) > limit {
+		return "", fmt.Errorf("fixture asset exceeds %d bytes", limit)
+	}
+	return string(data), nil
+}
+
+func p05BrowserFixture() (*p05Fixture, error) {
+	var css, original string
+	var err error
+	if path := os.Getenv("APPKIT_P05_CSS"); path != "" {
+		css, err = p05ReadLocal(path, 4<<20)
+		if err != nil {
+			return nil, fmt.Errorf("APPKIT_P05_CSS: %w", err)
+		}
+		if strings.Contains(strings.ToLower(css), "</style") {
+			return nil, fmt.Errorf("APPKIT_P05_CSS contains an HTML style terminator")
+		}
+	}
+	if path := os.Getenv("APPKIT_P05_ORIGINAL"); path != "" {
+		original, err = p05ReadLocal(path, 1<<20)
+		if err != nil {
+			return nil, fmt.Errorf("APPKIT_P05_ORIGINAL: %w", err)
+		}
+		lower := strings.ToLower(original)
+		if strings.Contains(lower, "<script") || strings.Contains(lower, "</style") {
+			return nil, fmt.Errorf("APPKIT_P05_ORIGINAL contains active or scaffold-breaking markup")
+		}
+	}
+	defaults := EmailField{ID: "fixture-email", Name: "fixture_email", Label: p05DefaultLabel, Placeholder: p05SuccessfulEmail, Error: p05DefaultError}
+	if path := os.Getenv("APPKIT_P05_DEFAULTS"); path != "" {
+		raw, readErr := p05ReadLocal(path, 64<<10)
+		if readErr != nil {
+			return nil, fmt.Errorf("APPKIT_P05_DEFAULTS: %w", readErr)
+		}
+		decoder := json.NewDecoder(strings.NewReader(raw))
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&defaults); err != nil {
+			return nil, fmt.Errorf("APPKIT_P05_DEFAULTS: %w", err)
+		}
+		if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+			return nil, fmt.Errorf("APPKIT_P05_DEFAULTS: trailing JSON")
+		}
+	}
+	if _, err := NewEmailField(defaults); err != nil {
+		return nil, fmt.Errorf("APPKIT_P05_DEFAULTS: %w", err)
+	}
+	return newP05Fixture(css, original, defaults), nil
+}
+
+var p05TokenPattern = regexp.MustCompile(`name="request_token" value="([^"]+)"`)
+
+func p05ReadResponse(t *testing.T, response *http.Response) string {
+	t.Helper()
+	defer response.Body.Close()
+	body, err := io.ReadAll(io.LimitReader(response.Body, 2<<20))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(body)
+}
+
+func p05Token(t *testing.T, body string) string {
+	t.Helper()
+	match := p05TokenPattern.FindStringSubmatch(body)
+	if len(match) != 2 {
+		t.Fatal("request token missing from form")
+	}
+	return match[1]
+}
+
+func p05Client(t *testing.T) *http.Client {
+	t.Helper()
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return &http.Client{Jar: jar, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+}
+
+func p05Post(t *testing.T, client *http.Client, endpoint, token, emailValue string) (*http.Response, string) {
+	t.Helper()
+	values := url.Values{"request_token": {token}, "email": {emailValue}}
+	response, err := client.PostForm(endpoint+"/save", values)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return response, p05ReadResponse(t, response)
+}
+
+func TestEmailFieldNativeRecovery(t *testing.T) {
+	fixture := newP05Fixture("", "", EmailField{})
+	server := httptest.NewServer(fixture)
+	defer server.Close()
+	client := p05Client(t)
+
+	initial, err := client.Get(server.URL + "/demo?theme=dark")
+	if err != nil {
+		t.Fatal(err)
+	}
+	initialBody := p05ReadResponse(t, initial)
+	if initial.StatusCode != http.StatusOK || !strings.Contains(initialBody, `type="email"`) || !strings.Contains(initialBody, `required`) || !strings.Contains(initialBody, `action="/save"`) || strings.Contains(initialBody, `aria-invalid`) || !strings.Contains(initialBody, `class="dark"`) || !strings.Contains(initial.Header.Get("Content-Security-Policy"), "form-action 'self'") || !strings.Contains(initial.Header.Get("Content-Security-Policy"), "font-src data:") || strings.Contains(initialBody, "<script") {
+		t.Fatal("initial GET did not expose the neutral native email form in the retained theme")
+	}
+	if !p05EmailSyntax(p05BlockedEmail) {
+		t.Fatal("the app-rejected fixture address must remain native-email-valid")
+	}
+	token := p05Token(t, initialBody)
+
+	blocked, blockedBody := p05Post(t, client, server.URL, token, p05BlockedEmail)
+	if blocked.StatusCode != http.StatusUnprocessableEntity || !strings.Contains(blockedBody, `value="`+p05BlockedEmail+`"`) || !strings.Contains(blockedBody, `aria-invalid="true"`) || !strings.Contains(blockedBody, `autofocus`) || !strings.Contains(blockedBody, "That synthetic address is blocked") || !strings.Contains(blockedBody, `class="dark"`) {
+		t.Fatal("synthetic domain rejection did not retain and focus the associated invalid field")
+	}
+	token = p05Token(t, blockedBody)
+
+	unavailable, unavailableBody := p05Post(t, client, server.URL, token, p05SuccessfulEmail)
+	if unavailable.StatusCode != http.StatusServiceUnavailable || !strings.Contains(unavailableBody, `<title>Could not save synthetic email</title>`) || !strings.Contains(unavailableBody, `value="`+p05SuccessfulEmail+`"`) || strings.Contains(unavailableBody, `aria-invalid`) || !strings.Contains(unavailableBody, `id="save-error-summary"`) || !strings.Contains(unavailableBody, `tabindex="-1" autofocus`) || strings.Count(unavailableBody, "autofocus") != 1 || !strings.Contains(unavailableBody, `href="#contact-email"`) || !strings.Contains(unavailableBody, `class="dark"`) {
+		t.Fatal("injected save failure did not retain a neutral field and focus retry guidance")
+	}
+	token = p05Token(t, unavailableBody)
+
+	saved, savedBody := p05Post(t, client, server.URL, token, p05SuccessfulEmail)
+	if saved.StatusCode != http.StatusSeeOther || saved.Header.Get("Location") != "/done" || savedBody != "" {
+		t.Fatal("successful retry did not use a 303 confirmation redirect")
+	}
+	confirmation, err := client.Get(server.URL + "/done")
+	if err != nil {
+		t.Fatal(err)
+	}
+	confirmationBody := p05ReadResponse(t, confirmation)
+	if confirmation.StatusCode != http.StatusOK || !strings.Contains(confirmationBody, p05SuccessfulEmail) || !strings.Contains(confirmationBody, "performs only another GET") || !strings.Contains(confirmationBody, `class="dark"`) {
+		t.Fatal("confirmation GET did not report the saved synthetic value")
+	}
+	refresh, err := client.Get(server.URL + "/done")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = p05ReadResponse(t, refresh)
+	fixture.mu.Lock()
+	saves := 0
+	for _, session := range fixture.sessions {
+		saves += session.saveCount
+	}
+	fixture.mu.Unlock()
+	if refresh.StatusCode != http.StatusOK || saves != 1 {
+		t.Fatal("refresh resubmitted or changed the synthetic save")
+	}
+}
+
+func TestEmailFieldRequestBoundaries(t *testing.T) {
+	fixture := newP05Fixture("", "", EmailField{})
+	server := httptest.NewServer(fixture)
+	defer server.Close()
+
+	withoutSession, err := http.PostForm(server.URL+"/save", url.Values{"request_token": {"none"}, "email": {p05SuccessfulEmail}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = p05ReadResponse(t, withoutSession)
+	if withoutSession.StatusCode != http.StatusForbidden {
+		t.Fatal("save without a scoped session was accepted")
+	}
+
+	client := p05Client(t)
+	initial, err := client.Get(server.URL + "/demo?theme=light&long=1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	initialBody := p05ReadResponse(t, initial)
+	if initial.StatusCode != http.StatusOK || !strings.Contains(initialBody, "important synthetic account notices") {
+		t.Fatal("long-label fresh session was not rendered")
+	}
+	setCookies := initial.Cookies()
+	if len(setCookies) != 1 || !setCookies[0].HttpOnly || setCookies[0].Path != "/" || setCookies[0].SameSite != http.SameSiteStrictMode {
+		t.Fatal("fixture cookie was not scoped as expected")
+	}
+	token := p05Token(t, initialBody)
+	foreignValues := url.Values{"request_token": {token}, "email": {p05SuccessfulEmail}}
+	foreignRequest, err := http.NewRequest(http.MethodPost, server.URL+"/save", strings.NewReader(foreignValues.Encode()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	foreignRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	foreignRequest.Header.Set("Origin", "http://127.0.0.1:1")
+	for _, cookie := range client.Jar.Cookies(foreignRequest.URL) {
+		foreignRequest.AddCookie(cookie)
+	}
+	foreign, err := client.Do(foreignRequest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = p05ReadResponse(t, foreign)
+	if foreign.StatusCode != http.StatusForbidden {
+		t.Fatal("foreign POST origin was accepted")
+	}
+
+	foreignHostRequest, err := http.NewRequest(http.MethodGet, server.URL+"/demo", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	foreignHostRequest.Host = "example.test"
+	foreignHost, err := client.Do(foreignHostRequest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = p05ReadResponse(t, foreignHost)
+	if foreignHost.StatusCode != http.StatusForbidden {
+		t.Fatal("foreign Host was accepted")
+	}
+
+	wrong, wrongBody := p05Post(t, client, server.URL, "wrong-session-token", p05SuccessfulEmail)
+	if wrong.StatusCode != http.StatusForbidden || strings.Contains(strings.ToLower(wrongBody), "email saved") {
+		t.Fatal("wrong request token crossed the session boundary")
+	}
+
+	for name, values := range map[string]url.Values{
+		"duplicate": {"request_token": {token}, "email": {p05SuccessfulEmail, "second@example.test"}},
+		"extra":     {"request_token": {token}, "email": {p05SuccessfulEmail}, "unexpected": {"value"}},
+		"missing":   {"request_token": {token}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			request, err := http.NewRequest(http.MethodPost, server.URL+"/save", strings.NewReader(values.Encode()))
+			if err != nil {
+				t.Fatal(err)
+			}
+			request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			for _, cookie := range client.Jar.Cookies(request.URL) {
+				request.AddCookie(cookie)
+			}
+			response, err := client.Do(request)
+			if err != nil {
+				t.Fatal(err)
+			}
+			body := p05ReadResponse(t, response)
+			if response.StatusCode != http.StatusBadRequest || strings.Contains(strings.ToLower(body), "email saved") {
+				t.Fatal("invalid form cardinality was accepted")
+			}
+		})
+	}
+
+	large := strings.Repeat("x", p05MaxBody+1)
+	request, err := http.NewRequest(http.MethodPost, server.URL+"/save", strings.NewReader(large))
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	for _, cookie := range client.Jar.Cookies(request.URL) {
+		request.AddCookie(cookie)
+	}
+	response, err := client.Do(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = p05ReadResponse(t, response)
+	if response.StatusCode != http.StatusRequestEntityTooLarge {
+		t.Fatal("oversized form body was not rejected")
+	}
+
+	for _, route := range []string{"/reference-original?theme=dark", "/reference-adapted?theme=dark"} {
+		reference, err := client.Get(server.URL + route)
+		if err != nil {
+			t.Fatal(err)
+		}
+		referenceBody := p05ReadResponse(t, reference)
+		if reference.StatusCode != http.StatusOK || !strings.Contains(referenceBody, `<title>Email field reference</title>`) || !strings.Contains(referenceBody, `<h1>Email field reference</h1>`) || !strings.Contains(referenceBody, `class="dark"`) {
+			t.Fatalf("reference route %s did not preserve the shared dark scaffold", route)
+		}
+	}
+
+	oldest := p05Client(t)
+	oldestResponse, err := oldest.Get(server.URL + "/demo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = p05ReadResponse(t, oldestResponse)
+	for i := 0; i < p05MaxSessions; i++ {
+		fresh := p05Client(t)
+		freshResponse, err := fresh.Get(server.URL + "/demo")
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = p05ReadResponse(t, freshResponse)
+	}
+	evicted, err := oldest.Get(server.URL + "/done")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = p05ReadResponse(t, evicted)
+	fixture.mu.Lock()
+	count := len(fixture.sessions)
+	fixture.mu.Unlock()
+	if count != p05MaxSessions || evicted.StatusCode != http.StatusForbidden {
+		t.Fatal("bounded session store did not evict its oldest session")
+	}
+}
+
+func TestEmailFieldConcurrentTokenRefusal(t *testing.T) {
+	fixture := newP05Fixture("", "", EmailField{})
+	server := httptest.NewServer(fixture)
+	defer server.Close()
+	client := p05Client(t)
+	initial, err := client.Get(server.URL + "/demo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	initialBody := p05ReadResponse(t, initial)
+	token := p05Token(t, initialBody)
+	cookies := client.Jar.Cookies(initial.Request.URL)
+	if len(cookies) != 1 {
+		t.Fatal("scoped session cookie missing")
+	}
+
+	type result struct {
+		status int
+		err    error
+	}
+	results := make(chan result, 2)
+	start := make(chan struct{})
+	for i := 0; i < 2; i++ {
+		go func() {
+			<-start
+			values := url.Values{"request_token": {token}, "email": {p05SuccessfulEmail}}
+			request, err := http.NewRequest(http.MethodPost, server.URL+"/save", strings.NewReader(values.Encode()))
+			if err != nil {
+				results <- result{err: err}
+				return
+			}
+			request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			request.AddCookie(cookies[0])
+			response, err := client.Do(request)
+			if err != nil {
+				results <- result{err: err}
+				return
+			}
+			_, readErr := io.Copy(io.Discard, io.LimitReader(response.Body, 2<<20))
+			closeErr := response.Body.Close()
+			if readErr == nil {
+				readErr = closeErr
+			}
+			results <- result{status: response.StatusCode, err: readErr}
+		}()
+	}
+	close(start)
+	counts := map[int]int{}
+	for i := 0; i < 2; i++ {
+		got := <-results
+		if got.err != nil {
+			t.Fatal(got.err)
+		}
+		counts[got.status]++
+	}
+	if counts[http.StatusServiceUnavailable] != 1 || counts[http.StatusForbidden] != 1 {
+		t.Fatalf("same request token crossed concurrent session boundary: statuses=%v", counts)
+	}
+}
+
+func TestEmailFieldBrowserServer(t *testing.T) {
+	if os.Getenv("APPKIT_P05_SERVE") != "1" {
+		t.Skip("set APPKIT_P05_SERVE=1 for the isolated browser fixture")
+	}
+	fixture, err := p05BrowserFixture()
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(fixture)
+	defer server.Close()
+	fmt.Printf("APPKIT_P05_URL=%s\n", server.URL)
+
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt)
+	defer signal.Stop(interrupt)
+	timer := time.NewTimer(p05BrowserServeWait)
+	defer timer.Stop()
+	select {
+	case <-interrupt:
+	case <-timer.C:
+	}
+}

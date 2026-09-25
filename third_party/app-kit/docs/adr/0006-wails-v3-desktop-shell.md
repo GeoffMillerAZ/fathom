@@ -1,6 +1,6 @@
 # ADR-0006: Adopt Wails v3 (pinned alpha) as the desktop shell
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR-0021 (desktop proof and mobile boundary)
 - **Date:** 2026-06-10
 - **Decision drivers:** Go must be the host process (D2 — no Node, no
   second toolchain); the shell is replaceable by construction (D5, the

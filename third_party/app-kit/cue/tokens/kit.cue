@@ -46,7 +46,7 @@ tokens: {
 		"accent-ink": {light: "oklch(0.98 0.010 262)", dark: "oklch(0.15 0.020 262)"}
 		"accent-soft": {light: "oklch(0.94 0.040 262)", dark: "oklch(0.28 0.060 262)"}
 
-		positive: {light: "oklch(0.55 0.14 155)", dark: "oklch(0.70 0.13 155)"}
+		positive: {light: "oklch(0.51 0.14 155)", dark: "oklch(0.70 0.13 155)"}
 		"positive-soft": {light: "oklch(0.94 0.05 155)", dark: "oklch(0.30 0.05 155)"}
 		caution: {light: "oklch(0.70 0.14 80)", dark: "oklch(0.78 0.13 85)"}
 		"caution-soft": {light: "oklch(0.95 0.06 90)", dark: "oklch(0.32 0.06 90)"}

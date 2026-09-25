@@ -1,0 +1,502 @@
+package main
+
+import (
+	"bytes"
+	"context"
+	"crypto/sha256"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+)
+
+const (
+	probeBodyLimit       = 1 << 20
+	probeScreenshotLimit = 8 << 20
+	registryBodyLimit    = 16 << 10
+	listServicesPath     = "/rpc"
+	listServicesBody     = `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_services","arguments":{}}}`
+	toolsListPath        = "/rpc/agent"
+	toolsListBody        = `{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}`
+	statusPath           = "/statusz?format=json"
+)
+
+type handlerProbeCheck struct {
+	Scenario string `json:"scenario"`
+	Name     string `json:"name"`
+	Pass     bool   `json:"pass"`
+	Detail   string `json:"detail,omitempty"`
+}
+
+type handlerProbeRequest struct {
+	Scenario  string `json:"scenario"`
+	Surface   string `json:"surface"`
+	Method    string `json:"method"`
+	Path      string `json:"path"`
+	Operation string `json:"operation,omitempty"`
+}
+
+type handlerProbeReport struct {
+	mu       sync.Mutex
+	Checks   []handlerProbeCheck   `json:"checks"`
+	Requests []handlerProbeRequest `json:"requests"`
+	Failures []string              `json:"failures"`
+}
+
+func (p *handlerProbeReport) check(scenario, name string, pass bool, detail string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.Checks = append(p.Checks, handlerProbeCheck{Scenario: scenario, Name: name, Pass: pass, Detail: detail})
+	if !pass {
+		p.Failures = append(p.Failures, scenario+": "+name)
+	}
+}
+
+func (p *handlerProbeReport) request(r handlerProbeRequest) {
+	p.mu.Lock()
+	p.Requests = append(p.Requests, r)
+	p.mu.Unlock()
+}
+
+func (p *handlerProbeReport) counts(scenario string) map[string]int {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	out := map[string]int{}
+	for _, r := range p.Requests {
+		if r.Scenario == scenario && r.Surface == "registry" {
+			out[r.Operation]++
+		}
+	}
+	return out
+}
+
+type allowlistedTransport struct {
+	base     *http.Transport
+	report   *handlerProbeReport
+	mu       sync.RWMutex
+	hosts    map[string]bool
+	scenario string
+}
+
+func (a *allowlistedTransport) allow(rawURL, scenario string) error {
+	u, err := url.Parse(rawURL)
+	if err != nil || u.Scheme != "http" || u.Host == "" {
+		return fmt.Errorf("invalid allowlisted loopback URL")
+	}
+	a.mu.Lock()
+	a.hosts[u.Host] = true
+	a.scenario = scenario
+	a.mu.Unlock()
+	return nil
+}
+
+func (a *allowlistedTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	a.mu.RLock()
+	ok := r.URL.Scheme == "http" && a.hosts[r.URL.Host]
+	scenario := a.scenario
+	a.mu.RUnlock()
+	if !ok {
+		a.report.check(scenario, "outbound transport refuses every unapproved host", false, r.Method+" "+r.URL.Scheme+"://"+r.URL.Host+r.URL.Path)
+		return nil, fmt.Errorf("handler probe refused outbound host %q", r.URL.Host)
+	}
+	return a.base.RoundTrip(r)
+}
+
+type boundedWriter struct {
+	buf      bytes.Buffer
+	max      int
+	overflow bool
+}
+
+func (w *boundedWriter) Write(b []byte) (int, error) {
+	n := len(b)
+	remain := w.max - w.buf.Len()
+	if remain > 0 {
+		if remain > n {
+			remain = n
+		}
+		_, _ = w.buf.Write(b[:remain])
+	}
+	if n > remain {
+		w.overflow = true
+	}
+	return n, nil
+}
+
+func TestAppkitActualObservatoryHandlerProbe(t *testing.T) {
+	root := os.Getenv("APPKIT_FATHOM_HANDLER_REPORT_ROOT")
+	if !filepath.IsAbs(root) {
+		t.Fatal("APPKIT_FATHOM_HANDLER_REPORT_ROOT must name an absolute empty private directory")
+	}
+	info, err := os.Stat(root)
+	if err != nil || !info.IsDir() || info.Mode().Perm()&0o077 != 0 {
+		t.Fatal("APPKIT_FATHOM_HANDLER_REPORT_ROOT must be an existing private directory")
+	}
+	entries, err := os.ReadDir(root)
+	if err != nil || len(entries) != 0 {
+		t.Fatal("APPKIT_FATHOM_HANDLER_REPORT_ROOT must be empty")
+	}
+	report := &handlerProbeReport{}
+	defer func() {
+		data, marshalErr := json.MarshalIndent(report, "", "  ")
+		if marshalErr == nil {
+			var out *os.File
+			out, marshalErr = os.OpenFile(filepath.Join(root, "http-report.json"), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+			if marshalErr == nil {
+				_, marshalErr = out.Write(append(data, '\n'))
+				if closeErr := out.Close(); marshalErr == nil {
+					marshalErr = closeErr
+				}
+			}
+		}
+		if marshalErr != nil {
+			t.Errorf("write bounded handler report: %v", marshalErr)
+		}
+		if len(report.Failures) != 0 {
+			t.Errorf("actual handler probe recorded %d failure(s)", len(report.Failures))
+		}
+	}()
+
+	base, ok := http.DefaultTransport.(*http.Transport)
+	if !ok {
+		t.Fatal("http.DefaultTransport is not the standard transport")
+	}
+	transport := &allowlistedTransport{base: base.Clone(), report: report, hosts: map[string]bool{}}
+	transport.base.Proxy = nil
+	previousTransport := http.DefaultTransport
+	http.DefaultTransport = transport
+	defer func() {
+		http.DefaultTransport = previousTransport
+		transport.base.CloseIdleConnections()
+	}()
+
+	for _, scenario := range []string{"registry-unavailable", "pathless-service"} {
+		runActualHandlerScenario(t, report, transport, root, scenario)
+	}
+}
+
+func runActualHandlerScenario(t *testing.T, report *handlerProbeReport, transport *allowlistedTransport, root, scenario string) {
+	t.Helper()
+	envRoot := hermeticObsEnv(t)
+	callLogDir := filepath.Join(envRoot, "empty-call-log-directory")
+	if err := os.Mkdir(callLogDir, 0o700); err != nil {
+		report.check(scenario, "create unreadable call-log fixture", false, err.Error())
+		return
+	}
+	t.Setenv("FATHOM_CALL_LOG", callLogDir)
+	resetObsCache()
+
+	registry := httptest.NewServer(actualRegistryFixture(report, scenario))
+	defer registry.Close()
+	if err := transport.allow(registry.URL, scenario); err != nil {
+		report.check(scenario, "allow registry origin", false, err.Error())
+		return
+	}
+	mux := http.NewServeMux()
+	mux.Handle("/", landingHandler(registry.URL))
+	mux.Handle("/observatory", observatoryHandler(registry.URL))
+	mux.Handle("/observatory/service", observatoryServicePage(registry.URL))
+	mux.Handle("/assets/app.css", assetsHandler())
+	ui := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		report.request(handlerProbeRequest{Scenario: scenario, Surface: "ui", Method: r.Method, Path: r.URL.RequestURI()})
+		mux.ServeHTTP(w, r)
+	}))
+	defer ui.Close()
+	if err := transport.allow(ui.URL, scenario); err != nil {
+		report.check(scenario, "allow UI origin", false, err.Error())
+		return
+	}
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	home := probeHandlerURL(report, scenario, client, http.MethodGet, ui.URL+"/", http.StatusOK, "text/html")
+	fleet := probeHandlerURL(report, scenario, client, http.MethodGet, ui.URL+"/observatory", http.StatusOK, "text/html")
+	wantService := http.StatusNotFound
+	if scenario == "pathless-service" {
+		wantService = http.StatusOK
+	}
+	service := probeHandlerURL(report, scenario, client, http.MethodGet, ui.URL+"/observatory/service?id=alpha", wantService, map[bool]string{true: "text/html", false: "text/plain"}[wantService == http.StatusOK])
+	back := probeHandlerURL(report, scenario, client, http.MethodGet, ui.URL+"/", http.StatusOK, "text/html")
+	css := probeHandlerURL(report, scenario, client, http.MethodGet, ui.URL+"/assets/app.css", http.StatusOK, "text/css")
+	var serviceJSON string
+	if scenario == "pathless-service" {
+		serviceJSON = probeHandlerURL(report, scenario, client, http.MethodGet, ui.URL+"/observatory/service?id=alpha&format=json", http.StatusOK, "application/json")
+	}
+	for _, path := range []string{"/", "/observatory", "/observatory/service?id=alpha"} {
+		probeHandlerURL(report, scenario, client, http.MethodPost, ui.URL+path, http.StatusMethodNotAllowed, "text/plain")
+	}
+	probeHandlerURL(report, scenario, client, http.MethodGet, ui.URL+"/unknown", http.StatusNotFound, "text/plain")
+	probeHandlerURL(report, scenario, client, http.MethodGet, ui.URL+"/observatory/service?id=missing", http.StatusNotFound, "text/plain")
+
+	report.check(scenario, "landing and back retain the same model", home != "" && home == back, "")
+	report.check(scenario, "actual kit-built CSS returned byte-for-byte", len(css) > 1024 && bytes.Equal([]byte(css), obsAppCSS), fmt.Sprintf("bytes=%d", len(css)))
+	if scenario == "registry-unavailable" {
+		named := strings.Contains(home, "service registry unreachable") && strings.Contains(fleet, "fleet tiles are not measured, never empty-as-healthy")
+		report.check(scenario, "503 registry failure is named, not rendered healthy", named, "")
+		report.check(scenario, "unavailable registry invents no service detail links", !strings.Contains(home+fleet, "/observatory/service?id="), "")
+	} else {
+		named := strings.Contains(fleet, ">alpha<") && strings.Contains(fleet, "/observatory/service?id=alpha") && strings.Contains(service, "unknown: no recorded corpus path")
+		report.check(scenario, "pathless one-symbol service remains navigable", named, "")
+		absent := strings.Contains(service, "no recorded corpus path") && strings.Contains(service, "configuration not inspectable") && strings.Contains(service, "not inspectable") && !strings.Contains(service, "0 pre-edit warnings configured")
+		report.check(scenario, "pathless configuration is named absent, not zero", absent, "")
+		var observed struct {
+			Service string `json:"service"`
+			Path    string `json:"path"`
+			Symbols int    `json:"symbols"`
+			Config  struct {
+				LayersNote  string `json:"layers_note"`
+				GuardNote   string `json:"guard_note"`
+				BindingNote string `json:"binding_note"`
+			} `json:"config"`
+		}
+		err := json.Unmarshal([]byte(serviceJSON), &observed)
+		exact := err == nil && observed.Service == "alpha" && observed.Path == "" && observed.Symbols == 1 &&
+			strings.Contains(observed.Config.LayersNote, "not inspectable") && observed.Config.GuardNote == "not inspectable" && observed.Config.BindingNote == "not inspectable"
+		report.check(scenario, "service JSON retains exact pathless registry identity", exact, "")
+	}
+
+	counts := report.counts(scenario)
+	if scenario == "registry-unavailable" {
+		report.check(scenario, "registry retry is exactly two bounded list_services calls", counts["list_services"] == 2 && len(counts) == 1, fmt.Sprint(counts))
+	} else {
+		report.check(scenario, "successful model uses only exact registry operations", counts["list_services"] == 1 && counts["statusz"] == 1 && counts["tools/list"] == 1 && len(counts) == 3, fmt.Sprint(counts))
+	}
+	runActualHandlerBrowser(report, scenario, ui.URL, root)
+}
+
+func actualRegistryFixture(report *handlerProbeReport, scenario string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		op := "unknown"
+		if r.Method == http.MethodGet && r.URL.RequestURI() == statusPath {
+			op = "statusz"
+		} else if r.Method == http.MethodPost && r.URL.RawQuery == "" {
+			body, err := io.ReadAll(io.LimitReader(r.Body, registryBodyLimit+1))
+			if err == nil && len(body) <= registryBodyLimit {
+				switch {
+				case r.URL.Path == listServicesPath && string(body) == listServicesBody:
+					op = "list_services"
+				case r.URL.Path == toolsListPath && string(body) == toolsListBody:
+					op = "tools/list"
+				}
+			}
+		}
+		report.request(handlerProbeRequest{Scenario: scenario, Surface: "registry", Method: r.Method, Path: r.URL.RequestURI(), Operation: op})
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case op == "list_services" && scenario == "registry-unavailable":
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = io.WriteString(w, `{"error":"synthetic registry unavailable"}`)
+		case op == "list_services":
+			_, _ = io.WriteString(w, `{"jsonrpc":"2.0","id":1,"result":{"services":[{"service":"alpha","symbol_count":1,"languages":["Go"],"path":""}]}}`)
+		case op == "statusz" && scenario == "pathless-service":
+			_, _ = io.WriteString(w, `{"services":[]}`)
+		case op == "tools/list" && scenario == "pathless-service":
+			_, _ = io.WriteString(w, `{"jsonrpc":"2.0","id":1,"result":{"tools":[]}}`)
+		default:
+			report.check(scenario, "registry refused unknown request", false, r.Method+" "+r.URL.RequestURI()+" "+op)
+			http.Error(w, `{"error":"refused"}`, http.StatusForbidden)
+		}
+	})
+}
+
+func probeHandlerURL(report *handlerProbeReport, scenario string, client *http.Client, method, target string, want int, contentType string) string {
+	req, err := http.NewRequest(method, target, nil)
+	if err != nil {
+		report.check(scenario, method+" request constructed", false, err.Error())
+		return ""
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		report.check(scenario, method+" "+req.URL.RequestURI(), false, err.Error())
+		return ""
+	}
+	defer resp.Body.Close()
+	body, readErr := io.ReadAll(io.LimitReader(resp.Body, probeBodyLimit+1))
+	bounded := readErr == nil && len(body) <= probeBodyLimit
+	report.check(scenario, method+" "+req.URL.RequestURI()+" status", resp.StatusCode == want, fmt.Sprintf("want=%d got=%d", want, resp.StatusCode))
+	report.check(scenario, method+" "+req.URL.RequestURI()+" bounded body", bounded, fmt.Sprintf("bytes=%d", len(body)))
+	report.check(scenario, method+" "+req.URL.RequestURI()+" content type", strings.HasPrefix(resp.Header.Get("Content-Type"), contentType), resp.Header.Get("Content-Type"))
+	if !bounded {
+		return ""
+	}
+	return string(body)
+}
+
+func runActualHandlerBrowser(report *handlerProbeReport, scenario, origin, root string) {
+	script := os.Getenv("APPKIT_FATHOM_HANDLER_BROWSER")
+	if script == "" {
+		report.check(scenario, "browser probe is explicitly configured", false, "APPKIT_FATHOM_HANDLER_BROWSER is empty")
+		return
+	}
+	module := os.Getenv("APPKIT_PLAYWRIGHT_MODULE")
+	if !filepath.IsAbs(script) || !filepath.IsAbs(module) {
+		report.check(scenario, "browser inputs are absolute", false, "")
+		return
+	}
+	if _, err := os.Stat(script); err != nil {
+		report.check(scenario, "browser script exists", false, err.Error())
+		return
+	}
+	if _, err := os.Stat(module); err != nil {
+		report.check(scenario, "approved Playwright module exists", false, err.Error())
+		return
+	}
+	outDir := filepath.Join(root, scenario+"-browser")
+	if err := os.Mkdir(outDir, 0o700); err != nil {
+		report.check(scenario, "create fresh browser report directory", false, err.Error())
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "node", script, origin, scenario, outDir, module)
+	stdout, stderr := &boundedWriter{max: probeBodyLimit}, &boundedWriter{max: probeBodyLimit}
+	cmd.Stdout, cmd.Stderr = stdout, stderr
+	err := cmd.Run()
+	if ctx.Err() != nil {
+		err = ctx.Err()
+	}
+	if err != nil || stdout.overflow || stderr.overflow {
+		report.check(scenario, "bounded browser child succeeds", false, fmt.Sprintf("error=%v stdout_bytes=%d stderr_bytes=%d", err, stdout.buf.Len(), stderr.buf.Len()))
+		return
+	}
+	var child struct {
+		Scenario  string   `json:"scenario"`
+		Checks    int      `json:"checks"`
+		Failures  []string `json:"failures"`
+		Completed int      `json:"completed"`
+	}
+	if err := json.Unmarshal(bytes.TrimSpace(stdout.buf.Bytes()), &child); err != nil {
+		report.check(scenario, "browser child emits one bounded JSON receipt", false, fmt.Sprintf("bytes=%d", stdout.buf.Len()))
+		return
+	}
+	stdoutPass := child.Scenario == scenario && child.Checks > 0 && len(child.Failures) == 0 && child.Completed == 4
+	report.check(scenario, "browser child stdout is only a successful bounded summary", stdoutPass, fmt.Sprintf("checks=%d completed=%d failures=%d", child.Checks, child.Completed, len(child.Failures)))
+
+	data, err := boundedRegularFile(filepath.Join(outDir, "browser-report.json"), probeBodyLimit)
+	if err != nil {
+		report.check(scenario, "persisted browser report is bounded and regular", false, err.Error())
+		return
+	}
+	var persisted struct {
+		Scenario string `json:"scenario"`
+		Origin   string `json:"origin"`
+		Source   struct {
+			File   string `json:"file"`
+			SHA256 string `json:"sha256"`
+		} `json:"source"`
+		Checks []struct {
+			Name string `json:"name"`
+			Pass bool   `json:"pass"`
+		} `json:"checks"`
+		Failures      []string          `json:"failures"`
+		Blocked       []json.RawMessage `json:"blocked"`
+		PageErrors    []string          `json:"pageErrors"`
+		ConsoleErrors []string          `json:"consoleErrors"`
+		Screenshots   []struct {
+			File   string `json:"file"`
+			SHA256 string `json:"sha256"`
+		} `json:"screenshots"`
+		DetailScreenshots []struct {
+			File   string `json:"file"`
+			SHA256 string `json:"sha256"`
+		} `json:"detailScreenshots"`
+		Cases []struct {
+			Theme    string `json:"theme"`
+			Width    int    `json:"width"`
+			Finished bool   `json:"finished"`
+		} `json:"cases"`
+	}
+	if err := json.Unmarshal(data, &persisted); err != nil {
+		report.check(scenario, "persisted browser report is valid JSON", false, err.Error())
+		return
+	}
+	scriptSHA, err := boundedRegularFileSHA(script, probeBodyLimit)
+	sourceOK := err == nil && persisted.Source.File == "browser.mjs" && persisted.Source.SHA256 == scriptSHA
+	report.check(scenario, "browser report binds the current browser source", sourceOK, "")
+	report.check(scenario, "browser report binds exact scenario and origin", persisted.Scenario == scenario && persisted.Origin == origin, "")
+	checksOK := len(persisted.Checks) > 0
+	for _, check := range persisted.Checks {
+		checksOK = checksOK && check.Name != "" && check.Pass
+	}
+	clean := len(persisted.Failures) == 0 && len(persisted.Blocked) == 0 && len(persisted.PageErrors) == 0 && len(persisted.ConsoleErrors) == 0
+	report.check(scenario, "every persisted browser check passes", checksOK, fmt.Sprintf("checks=%d", len(persisted.Checks)))
+	report.check(scenario, "persisted browser report has no failures or blocked traffic", clean, "")
+
+	wantCases := map[string]bool{"light/390": false, "light/1440": false, "dark/390": false, "dark/1440": false}
+	casesOK := len(persisted.Cases) == len(wantCases)
+	for _, c := range persisted.Cases {
+		key := fmt.Sprintf("%s/%d", c.Theme, c.Width)
+		if _, exists := wantCases[key]; !exists || wantCases[key] || !c.Finished {
+			casesOK = false
+		} else {
+			wantCases[key] = true
+		}
+	}
+	for _, seen := range wantCases {
+		casesOK = casesOK && seen
+	}
+	report.check(scenario, "persisted browser cases are four unique finished theme-width journeys", casesOK, "")
+
+	wantShots := map[string]bool{}
+	for _, theme := range []string{"light", "dark"} {
+		for _, width := range []int{320, 390, 1440} {
+			wantShots[fmt.Sprintf("%s-%s-%d.png", scenario, theme, width)] = false
+		}
+	}
+	shotsOK := len(persisted.Screenshots) == 4 && len(persisted.DetailScreenshots) == 2
+	for _, shot := range append(persisted.Screenshots, persisted.DetailScreenshots...) {
+		safe := !filepath.IsAbs(shot.File) && filepath.Base(shot.File) == shot.File && filepath.Clean(shot.File) == shot.File
+		seen, expected := wantShots[shot.File]
+		if !safe || !expected || seen {
+			shotsOK = false
+			continue
+		}
+		digest, hashErr := boundedRegularFileSHA(filepath.Join(outDir, shot.File), probeScreenshotLimit)
+		if hashErr != nil || digest != shot.SHA256 {
+			shotsOK = false
+			continue
+		}
+		wantShots[shot.File] = true
+	}
+	for _, seen := range wantShots {
+		shotsOK = shotsOK && seen
+	}
+	report.check(scenario, "four journey and two 320px screenshot hashes match actual bytes", shotsOK, "")
+}
+
+func boundedRegularFile(path string, limit int64) ([]byte, error) {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() || info.Size() > limit {
+		return nil, fmt.Errorf("refused non-regular or oversized file")
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	data, err := io.ReadAll(io.LimitReader(f, limit+1))
+	if err != nil || int64(len(data)) > limit {
+		return nil, fmt.Errorf("bounded file read failed")
+	}
+	return data, nil
+}
+
+func boundedRegularFileSHA(path string, limit int64) (string, error) {
+	data, err := boundedRegularFile(path, limit)
+	if err != nil {
+		return "", err
+	}
+	digest := sha256.Sum256(data)
+	return fmt.Sprintf("%x", digest), nil
+}

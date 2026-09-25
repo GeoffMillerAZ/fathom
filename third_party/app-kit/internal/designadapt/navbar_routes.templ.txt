@@ -1,0 +1,31 @@
+package converted
+
+templ navbarWithRoutes(primary templ.Component, data Navbar, summary string) {
+	<div data-appkit-navbar-repair>
+		@primary
+		<details data-appkit-navbar-routes>
+			<summary>{ summary }</summary>
+			<nav aria-label={ summary }>
+				<ul>
+					for _, link := range data.Links {
+						<li>
+							<a href={ templ.SafeURL(link.URL) }
+								if data.CurrentKey == link.Key {
+									aria-current="page"
+								}
+							>{ link.Label }</a>
+						</li>
+					}
+					if data.Notifications != nil {
+						<li><a href={ templ.SafeURL(data.Notifications.URL) }>{ data.Notifications.Label }</a></li>
+					}
+					if data.Account != nil {
+						for _, link := range data.Account.Links {
+							<li><a href={ templ.SafeURL(link.URL) }>{ link.Label }</a></li>
+						}
+					}
+				</ul>
+			</nav>
+		</details>
+	</div>
+}

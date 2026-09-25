@@ -1,0 +1,1317 @@
+{
+  "schema": 1,
+  "date": "2026-09-13",
+  "status": "asset-bound-native-build-and-static-delivery-only",
+  "assessment": "docs/assessments/2026-09-13-matdash-asset-reference.md",
+  "prior_native_receipt": "docs/assessments/fixtures/matdash-native/receipt.json",
+  "scope": "Separate private source-native variant, not a Go/templ conversion or a browser/offline/application compatibility receipt.",
+  "environment": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "macos": "26.6.2",
+    "node": "26.3.0",
+    "npm": "11.16.0",
+    "typescript": "5.5.4",
+    "vite": "5.4.21",
+    "iconify_react": "5.2.1"
+  },
+  "sources": {
+    "original_root": "data/matdash/packages/main",
+    "original_tree_sha256": "0f22a03dea837acca1a196eb87a58327fb38c58d15fa57014b995e4a27611d42",
+    "original_files": 1245,
+    "original_changed": false,
+    "original_source_tar": "data/design-assets/reference-assets/matdash/63e29e44e14343a179379bcf27695774b9318a2a3c356dcf6a65801cf7f95b30.tar",
+    "prior_repair_tar": "data/design-assets/reference-assets/matdash/8da1c24e9eee0dd3f4be6f8b301442e087d3dd16be7afdb392900a92ddc42d30.tar",
+    "asset_overlay": {
+      "path": "data/design-assets/reference-assets/matdash/cb84cab9c94b7fbb833b915a699c90f4ad51e6368e4061a4ec8304de0ad3237b.tar",
+      "sha256": "cb84cab9c94b7fbb833b915a699c90f4ad51e6368e4061a4ec8304de0ad3237b",
+      "bytes": 1070080,
+      "mode": "600"
+    },
+    "captured_inputs": {
+      "path": "data/design-assets/reference-assets/matdash/8c83c7dd59c21e95d49801ef9ac98aa4995a4c3b879370ae1910d30532f41fca.tar",
+      "sha256": "8c83c7dd59c21e95d49801ef9ac98aa4995a4c3b879370ae1910d30532f41fca",
+      "bytes": 1148928,
+      "mode": "600"
+    },
+    "overlay_members": [
+      {
+        "path": "index.html",
+        "sha256": "ba84499659f27bf834ae0e4eb49eadc2d7ce797b98d71967e897a663f3d69755",
+        "bytes": 539
+      },
+      {
+        "path": "src/css/globals.css",
+        "sha256": "89dce07fd92b84cb5060ff76c74741a3c3cbe04b6b0d6dcfc743e8643f6f22a0",
+        "bytes": 5834
+      },
+      {
+        "path": "src/main.tsx",
+        "sha256": "a7c02c02e7c07157f79bd61e2bd10cb08d0585cae0299f3e00dc6dc883010f3f",
+        "bytes": 720
+      },
+      {
+        "path": "src/components/dashboards/Dashboard2/SalesFromLocation.tsx",
+        "sha256": "3c9d464876c259fcb911da62733134d2aa2ea458f81688f48a3d863eafc7b5f9",
+        "bytes": 3201
+      },
+      {
+        "path": "src/reference-assets/preload-icons.ts",
+        "sha256": "72d348ed097411a0d2e1d50deae47fec84637511abeb429771458d30f81cee63",
+        "bytes": 554
+      },
+      {
+        "path": "src/reference-assets/iconsets.generated.ts",
+        "sha256": "dd9bdd917eb66589e79d8354fd48f2bc90f17c7e79a768eb3276ba59bcd8293e",
+        "bytes": 337866
+      },
+      {
+        "path": "src/reference-assets/iconsets.json",
+        "sha256": "34d0868c0f66f51179525e8cfeb2d8a7a5fb8a0c5b97a16b0735518c8a8218e0",
+        "bytes": 337685
+      },
+      {
+        "path": "src/reference-assets/icon-names.json",
+        "sha256": "e4c0199052ce6f201a7af7a0bbdd6ec1e518c37bbe4fd8181f8158f8681e5670",
+        "bytes": 8858
+      },
+      {
+        "path": "reference-inputs/manrope-original.css",
+        "sha256": "106ba53d25e19a66ef4e9139f0f22f7847b6f9dd9a41412cb293b706c5ba72c8",
+        "bytes": 2168
+      },
+      {
+        "path": "reference-inputs/jakarta-original.css",
+        "sha256": "0a75c56980a34c355f2af4130743341b334ca6f48a355f4ca6054a71b0db281c",
+        "bytes": 6688
+      },
+      {
+        "path": "public/__appkit_reference_assets/ICON-NOTICES.txt",
+        "sha256": "7a1ae54d4119c4913c91b3e72a2cf65c2d0d575caa60582ce5c4f1c374e55d9a",
+        "bytes": 11818
+      },
+      {
+        "path": "public/__appkit_reference_assets/Jakarta-OFL.txt",
+        "sha256": "995c7199cab65954f545996326755daee7b63cc6b42b06c13da1f9502ab08a99",
+        "bytes": 4402
+      },
+      {
+        "path": "public/__appkit_reference_assets/Manrope-OFL.txt",
+        "sha256": "e01b637272e0cbdfb240184dd98ea5cc671556d9894dae2668d92ab2c906787c",
+        "bytes": 4384
+      },
+      {
+        "path": "public/__appkit_reference_assets/fonts/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko20yw.woff2",
+        "sha256": "153fc85b70298beeb1d61a5f723331649e7f23bb77302a66e61cb3e2fbdb5e79",
+        "bytes": 27348
+      },
+      {
+        "path": "public/__appkit_reference_assets/fonts/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko40yyygA.woff2",
+        "sha256": "38e3b8fd8045048eb311d90170a4429ed2c8f405852dc3d91b5af8452758703f",
+        "bytes": 21728
+      },
+      {
+        "path": "public/__appkit_reference_assets/fonts/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko50yyygA.woff2",
+        "sha256": "b275d1258601dda240fc6a1d4a6cad56e691d898f5cdf1b0e4fd6ca0022d8e40",
+        "bytes": 8352
+      },
+      {
+        "path": "public/__appkit_reference_assets/fonts/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko70yyygA.woff2",
+        "sha256": "c46a510ab43925a55ecfe6c2d5fad0ce1902cd48ab276621d41f7afa42e4daee",
+        "bytes": 1716
+      },
+      {
+        "path": "public/__appkit_reference_assets/fonts/xn7gYHE41ni1AdIRggOxSuXd.woff2",
+        "sha256": "c268b459a9329e59fecf39a17618efd44c71735532048d60b12aab76a8c14914",
+        "bytes": 14500
+      },
+      {
+        "path": "public/__appkit_reference_assets/fonts/xn7gYHE41ni1AdIRggSxSuXd.woff2",
+        "sha256": "2fb2e8cbfd52ae46179a8b6024eb162f1f9c6de3d22d6e3a30d8f395de7220be",
+        "bytes": 9444
+      },
+      {
+        "path": "public/__appkit_reference_assets/fonts/xn7gYHE41ni1AdIRggexSg.woff2",
+        "sha256": "a30ddcd349703aff7464c34bef3fffdff405ee50c113440d7c8693c02d210972",
+        "bytes": 24836
+      },
+      {
+        "path": "public/__appkit_reference_assets/fonts/xn7gYHE41ni1AdIRggixSuXd.woff2",
+        "sha256": "6bbb044ab420e07edb0a3042d2eb314b85e83a0182e945a15ab3b9092668dfd5",
+        "bytes": 8520
+      },
+      {
+        "path": "public/__appkit_reference_assets/fonts/xn7gYHE41ni1AdIRggmxSuXd.woff2",
+        "sha256": "3911b66d9f2e005a4b989223405d0e5032619c668597ba467cc76a23c8fffcfb",
+        "bytes": 15120
+      },
+      {
+        "path": "public/__appkit_reference_assets/fonts/xn7gYHE41ni1AdIRggqxSuXd.woff2",
+        "sha256": "de37de877dc17e4577341fa68bb5cb526b53d54cb29721e674208546a3c7849d",
+        "bytes": 2552
+      },
+      {
+        "path": "public/__appkit_reference_assets/jakarta.css",
+        "sha256": "aca6a7ed177475bcd599d0f96388ce3721a942779d943b2c5ac4cbcae4f3e70f",
+        "bytes": 6016
+      },
+      {
+        "path": "public/__appkit_reference_assets/manrope.css",
+        "sha256": "b40db323f8eba563c765550c129ef7ae3cc3acb557155efc3d0de91b2a0e704b",
+        "bytes": 1964
+      },
+      {
+        "path": "public/__appkit_reference_assets/states-10m.json",
+        "sha256": "d76b391ccfa8bff601d51e3e3da5d43a89fa46cd5caca72ce731b383be5596d0",
+        "bytes": 114554
+      },
+      {
+        "path": "public/__appkit_reference_assets/us-atlas-LICENSE.txt",
+        "sha256": "8048290dfdb6e83fbed17e8985c8cfc4ce9da9b842642f3d3e497280790cfa31",
+        "bytes": 734
+      }
+    ],
+    "existing_source_differences_from_original": [
+      {
+        "path": ".npmrc",
+        "original_sha256": "57739718c1255e6634faf8b05862c4464c4c81463cddc4c5a1a25037ebdbd6da",
+        "original_bytes": 21,
+        "current_sha256": "e0be3c9787d5915473e160d569cd3803f18e1795726e88196b1d875a093e8f30",
+        "current_bytes": 45,
+        "changed_from_prior_repaired": false
+      },
+      {
+        "path": "index.html",
+        "original_sha256": "6493c86c8f32e7ff53a6db08f3b719960cb0812c3a976ac27c7b72c65256a296",
+        "original_bytes": 520,
+        "current_sha256": "ba84499659f27bf834ae0e4eb49eadc2d7ce797b98d71967e897a663f3d69755",
+        "current_bytes": 539,
+        "changed_from_prior_repaired": true
+      },
+      {
+        "path": "package.json",
+        "original_sha256": "47be5e2fca24a169207168aef342c89f3a2997f0984d1538260dc123140b97eb",
+        "original_bytes": 3187,
+        "current_sha256": "3f01807fad75002a7f6f03f2819534bce463dc65486eff0ec0eb2cab2f764e83",
+        "current_bytes": 3283,
+        "changed_from_prior_repaired": false
+      },
+      {
+        "path": "src/components/dashboards/Dashboard2/SalesFromLocation.tsx",
+        "original_sha256": "29388fd1e05a8d2bf24de899f89d9ba49d9d66f2683744399fb9acb70f2fe1a7",
+        "original_bytes": 3215,
+        "current_sha256": "3c9d464876c259fcb911da62733134d2aa2ea458f81688f48a3d863eafc7b5f9",
+        "current_bytes": 3201,
+        "changed_from_prior_repaired": true
+      },
+      {
+        "path": "src/components/headless-form/Combobox/BasicComobobox.tsx",
+        "original_sha256": "42508439848ed6d43a63d016322410aa980f6d128d80213a2c4d8411062dfdb8",
+        "original_bytes": 3435,
+        "current_sha256": "83fb902813e890861ef286291a40b4b91c4fc833debd04070a35556053b3c21d",
+        "current_bytes": 3459,
+        "changed_from_prior_repaired": false
+      },
+      {
+        "path": "src/css/globals.css",
+        "original_sha256": "d997ae22b155a867d37f0a60722a24331fa3fde48dccbac4230897a2f2a2290d",
+        "original_bytes": 5926,
+        "current_sha256": "89dce07fd92b84cb5060ff76c74741a3c3cbe04b6b0d6dcfc743e8643f6f22a0",
+        "current_bytes": 5834,
+        "changed_from_prior_repaired": true
+      },
+      {
+        "path": "src/main.tsx",
+        "original_sha256": "68ea8ab18c1b01579e170e39d78a20fc74a389f8df8a69946033491e4b5161c0",
+        "original_bytes": 678,
+        "current_sha256": "a7c02c02e7c07157f79bd61e2bd10cb08d0585cae0299f3e00dc6dc883010f3f",
+        "current_bytes": 720,
+        "changed_from_prior_repaired": true
+      },
+      {
+        "path": "src/views/forms/from-tiptap/TiptapEdit.tsx",
+        "original_sha256": "569ffc17dd27859dfe0df9a3fbf85e673e6552a547d142d840f37a30447fc9ac",
+        "original_bytes": 5131,
+        "current_sha256": "7de4da85378d271ca0e85e9f0aa70268711a2c8d4a3a77b6e6aaf6c4536f9fac",
+        "current_bytes": 5137,
+        "changed_from_prior_repaired": false
+      }
+    ],
+    "existing_source_changes_added_by_this_variant": 4,
+    "source_byte_note": "Original CRLF remains on untouched lines; changed lines can use LF. globals.css gains a final newline. No class/layout or chart-data rewrite.",
+    "preserved_pilot_files": "P11 and already repaired P12 remain identical to prior native reference; frozen original P12 remains separately identified.",
+    "private_storage": "Snapshots remain Git-ignored, mode 600, locally captured rather than official archives. Back up separately; no licensed source bodies embedded in repository fixtures."
+  },
+  "assets": {
+    "font_requests": [
+      {
+        "family": "Manrope",
+        "url": "https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap",
+        "source_sha256": "106ba53d25e19a66ef4e9139f0f22f7847b6f9dd9a41412cb293b706c5ba72c8",
+        "faces": 6,
+        "unique_woff2": 6,
+        "weight": "200 800"
+      },
+      {
+        "family": "Plus Jakarta Sans",
+        "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+        "source_sha256": "0a75c56980a34c355f2af4130743341b334ca6f48a355f4ca6054a71b0db281c",
+        "faces": 16,
+        "unique_woff2": 4,
+        "weights": [
+          400,
+          500,
+          600,
+          700
+        ]
+      }
+    ],
+    "font_request_user_agent": "Mozilla/5.0 AppleWebKit/537.36 Chrome/140.0.0.0 Safari/537.36",
+    "local_font_and_map_files": [
+      {
+        "path": "fonts/xn7gYHE41ni1AdIRggqxSuXd.woff2",
+        "source_url": "https://fonts.gstatic.com/s/manrope/v20/xn7gYHE41ni1AdIRggqxSuXd.woff2",
+        "sha256": "de37de877dc17e4577341fa68bb5cb526b53d54cb29721e674208546a3c7849d",
+        "bytes": 2552
+      },
+      {
+        "path": "fonts/xn7gYHE41ni1AdIRggOxSuXd.woff2",
+        "source_url": "https://fonts.gstatic.com/s/manrope/v20/xn7gYHE41ni1AdIRggOxSuXd.woff2",
+        "sha256": "c268b459a9329e59fecf39a17618efd44c71735532048d60b12aab76a8c14914",
+        "bytes": 14500
+      },
+      {
+        "path": "fonts/xn7gYHE41ni1AdIRggSxSuXd.woff2",
+        "source_url": "https://fonts.gstatic.com/s/manrope/v20/xn7gYHE41ni1AdIRggSxSuXd.woff2",
+        "sha256": "2fb2e8cbfd52ae46179a8b6024eb162f1f9c6de3d22d6e3a30d8f395de7220be",
+        "bytes": 9444
+      },
+      {
+        "path": "fonts/xn7gYHE41ni1AdIRggixSuXd.woff2",
+        "source_url": "https://fonts.gstatic.com/s/manrope/v20/xn7gYHE41ni1AdIRggixSuXd.woff2",
+        "sha256": "6bbb044ab420e07edb0a3042d2eb314b85e83a0182e945a15ab3b9092668dfd5",
+        "bytes": 8520
+      },
+      {
+        "path": "fonts/xn7gYHE41ni1AdIRggmxSuXd.woff2",
+        "source_url": "https://fonts.gstatic.com/s/manrope/v20/xn7gYHE41ni1AdIRggmxSuXd.woff2",
+        "sha256": "3911b66d9f2e005a4b989223405d0e5032619c668597ba467cc76a23c8fffcfb",
+        "bytes": 15120
+      },
+      {
+        "path": "fonts/xn7gYHE41ni1AdIRggexSg.woff2",
+        "source_url": "https://fonts.gstatic.com/s/manrope/v20/xn7gYHE41ni1AdIRggexSg.woff2",
+        "sha256": "a30ddcd349703aff7464c34bef3fffdff405ee50c113440d7c8693c02d210972",
+        "bytes": 24836
+      },
+      {
+        "path": "manrope.css",
+        "original_sha256": "106ba53d25e19a66ef4e9139f0f22f7847b6f9dd9a41412cb293b706c5ba72c8",
+        "sha256": "b40db323f8eba563c765550c129ef7ae3cc3acb557155efc3d0de91b2a0e704b",
+        "bytes": 1964,
+        "transformation": "Replace only exact font URLs with local relative paths; preserve all rules, weights and unicode ranges."
+      },
+      {
+        "path": "fonts/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko70yyygA.woff2",
+        "source_url": "https://fonts.gstatic.com/s/plusjakartasans/v12/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko70yyygA.woff2",
+        "sha256": "c46a510ab43925a55ecfe6c2d5fad0ce1902cd48ab276621d41f7afa42e4daee",
+        "bytes": 1716
+      },
+      {
+        "path": "fonts/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko50yyygA.woff2",
+        "source_url": "https://fonts.gstatic.com/s/plusjakartasans/v12/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko50yyygA.woff2",
+        "sha256": "b275d1258601dda240fc6a1d4a6cad56e691d898f5cdf1b0e4fd6ca0022d8e40",
+        "bytes": 8352
+      },
+      {
+        "path": "fonts/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko40yyygA.woff2",
+        "source_url": "https://fonts.gstatic.com/s/plusjakartasans/v12/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko40yyygA.woff2",
+        "sha256": "38e3b8fd8045048eb311d90170a4429ed2c8f405852dc3d91b5af8452758703f",
+        "bytes": 21728
+      },
+      {
+        "path": "fonts/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko20yw.woff2",
+        "source_url": "https://fonts.gstatic.com/s/plusjakartasans/v12/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko20yw.woff2",
+        "sha256": "153fc85b70298beeb1d61a5f723331649e7f23bb77302a66e61cb3e2fbdb5e79",
+        "bytes": 27348
+      },
+      {
+        "path": "jakarta.css",
+        "original_sha256": "0a75c56980a34c355f2af4130743341b334ca6f48a355f4ca6054a71b0db281c",
+        "sha256": "aca6a7ed177475bcd599d0f96388ce3721a942779d943b2c5ac4cbcae4f3e70f",
+        "bytes": 6016,
+        "transformation": "Replace only exact font URLs with local relative paths; preserve all rules, weights and unicode ranges."
+      },
+      {
+        "path": "states-10m.json",
+        "sha256": "d76b391ccfa8bff601d51e3e3da5d43a89fa46cd5caca72ce731b383be5596d0",
+        "bytes": 114554
+      },
+      {
+        "path": "Manrope-OFL.txt",
+        "sha256": "e01b637272e0cbdfb240184dd98ea5cc671556d9894dae2668d92ab2c906787c",
+        "bytes": 4384
+      },
+      {
+        "path": "Jakarta-OFL.txt",
+        "sha256": "995c7199cab65954f545996326755daee7b63cc6b42b06c13da1f9502ab08a99",
+        "bytes": 4402
+      },
+      {
+        "path": "us-atlas-LICENSE.txt",
+        "sha256": "8048290dfdb6e83fbed17e8985c8cfc4ce9da9b842642f3d3e497280790cfa31",
+        "bytes": 734
+      }
+    ],
+    "font_validation": "Exact bytes/SHA-256 and WOFF2 header/declared length; not font decoding or visual glyph verification. CSS changes only exact source URLs.",
+    "map": {
+      "source_url": "https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json",
+      "exact_url": "https://cdn.jsdelivr.net/npm/us-atlas@3.0.1/states-10m.json",
+      "resolved_version": "3.0.1",
+      "range_and_pin_bytes_equal": true,
+      "sha256": "d76b391ccfa8bff601d51e3e3da5d43a89fa46cd5caca72ce731b383be5596d0",
+      "bytes": 114554,
+      "states_geometries": 56,
+      "nation_geometries": 1,
+      "arcs": 419,
+      "geometry_or_visual_quality_verified": false
+    },
+    "icons": {
+      "candidate_inventory": "icon-candidates.json in captured-inputs TAR",
+      "source_ast_files": 994,
+      "distinct_names": 309,
+      "literal_occurrences": 609,
+      "dynamic_expressions": 35,
+      "collections": 14,
+      "scope": "Static whole-demo literal inventory, including unselected/possibly unused names. Selected shell property forwarding reviewed; no complete dataflow or browser request closure.",
+      "downloads": {
+        "source_inventory_sha256": "03b2c47239c320780d0f6734d345e99957feee1c016b2436a7247351ac8140ee",
+        "requests": 18,
+        "receipts": [
+          {
+            "path": "iconify-collections.json",
+            "url": "https://api.iconify.design/collections?prefixes=carbon,cuida,fad,ic,lets-icons,lucide,map,material-symbols-light,material-symbols,mdi,ri,solar,tabler,tdesign",
+            "sha256": "03c27ed3ffc056af87d059f90a6e79c83ff57e628ecfcb9f6dc9f5beee49c26f",
+            "bytes": 6256,
+            "not_found": [],
+            "http_status": 200
+          },
+          {
+            "path": "iconify-responses/carbon-0.json",
+            "url": "https://api.iconify.design/carbon.json?icons=license",
+            "prefix": "carbon",
+            "names": [
+              "license"
+            ],
+            "sha256": "1fcc9c1b64d41405b10ba6c57f8f68415db02fb27959335cb731072c9a1ff285",
+            "bytes": 323,
+            "not_found": [],
+            "http_status": 200
+          },
+          {
+            "path": "iconify-responses/cuida-0.json",
+            "url": "https://api.iconify.design/cuida.json?icons=alert-outline",
+            "prefix": "cuida",
+            "names": [
+              "alert-outline"
+            ],
+            "sha256": "20e72c74773accef61cdfb4df5893b8b8ea339d8a2f3e2c8d354a2d74704c15a",
+            "bytes": 518,
+            "not_found": [],
+            "http_status": 200
+          },
+          {
+            "path": "iconify-responses/fad-0.json",
+            "url": "https://api.iconify.design/fad.json?icons=armrecording",
+            "prefix": "fad",
+            "names": [
+              "armrecording"
+            ],
+            "sha256": "10ed2aa23f1bbc1ecf90fdb451195a5d932aeda0af0e1d61afad6dd4265a4a1b",
+            "bytes": 201,
+            "not_found": [],
+            "http_status": 200
+          },
+          {
+            "path": "iconify-responses/ic-0.json",
+            "url": "https://api.iconify.design/ic.json?icons=baseline-sync-problem,outline-backpack,outline-forest",
+            "prefix": "ic",
+            "names": [
+              "baseline-sync-problem",
+              "outline-backpack",
+              "outline-forest"
+            ],
+            "sha256": "5038c64bba01189819e25a1af5b0012d6d12d2cafc5b97a8beafb7c4d6c322d3",
+            "bytes": 895,
+            "not_found": [],
+            "http_status": 200
+          },
+          {
+            "path": "iconify-responses/lets-icons-0.json",
+            "url": "https://api.iconify.design/lets-icons.json?icons=setting-line",
+            "prefix": "lets-icons",
+            "names": [
+              "setting-line"
+            ],
+            "sha256": "87dab996423d5dd5aeb6ecbdec03905c5fcb3c720f1f0f4e1d73f8d174934b25",
+            "bytes": 9063,
+            "not_found": [],
+            "http_status": 200
+          },
+          {
+            "path": "iconify-responses/lucide-0.json",
+            "url": "https://api.iconify.design/lucide.json?icons=contact-round,file-spreadsheet",
+            "prefix": "lucide",
+            "names": [
+              "contact-round",
+              "file-spreadsheet"
+            ],
+            "sha256": "1aa0b6919747cbfad22e50f1f2d492d92a74d5d4ddbabfceec7685cfa42e1b46",
+            "bytes": 714,
+            "not_found": [],
+            "http_status": 200
+          },
+          {
+            "path": "iconify-responses/map-0.json",
+            "url": "https://api.iconify.design/map.json?icons=post-box",
+            "prefix": "map",
+            "names": [
+              "post-box"
+            ],
+            "sha256": "128138ec5ff630f4426c91962de4203ffb057497808cfce3a79aaa29000fa281",
+            "bytes": 296,
+            "not_found": [],
+            "http_status": 200
+          },
+          {
+            "path": "iconify-responses/material-symbols-0.json",
+            "url": "https://api.iconify.design/material-symbols.json?icons=account-balance-outline,category-outline,earthquake,groups-outline-rounded,widgets-outline-rounded",
+            "prefix": "material-symbols",
+            "names": [
+              "account-balance-outline",
+              "category-outline",
+              "earthquake",
+              "groups-outline-rounded",
+              "widgets-outline-rounded"
+            ],
+            "sha256": "268dffafebc85d3b4a4f6d576350a47e2ca0f856195b85ce9391f5bf171cf019",
+            "bytes": 2628,
+            "not_found": [],
+            "http_status": 200
+          },
+          {
+            "path": "iconify-responses/material-symbols-light-0.json",
+            "url": "https://api.iconify.design/material-symbols-light.json?icons=photo-frame-outline-sharp",
+            "prefix": "material-symbols-light",
+            "names": [
+              "photo-frame-outline-sharp"
+            ],
+            "sha256": "9c67746df6c7f33c80cc77711cd8f029939f291fe222222b0f0830dca2aa3a47",
+            "bytes": 295,
+            "not_found": [],
+            "http_status": 200
+          },
+          {
+            "path": "iconify-responses/mdi-0.json",
+            "url": "https://api.iconify.design/mdi.json?icons=blog,plus-circle",
+            "prefix": "mdi",
+            "names": [
+              "blog",
+              "plus-circle"
+            ],
+            "sha256": "c4a9fb340d8c67a77d5167ad094dadd01551a2f9a0bcd9f00c748e981561fe13",
+            "bytes": 389,
+            "not_found": [],
+            "http_status": 200
+          },
+          {
+            "path": "iconify-responses/ri-0.json",
+            "url": "https://api.iconify.design/ri.json?icons=stack-fill",
+            "prefix": "ri",
+            "names": [
+              "stack-fill"
+            ],
+            "sha256": "861aad804a109d26690fdc992797246baca1691f09a718521c21ff19e65792d1",
+            "bytes": 473,
+            "not_found": [],
+            "http_status": 200
+          },
+          {
+            "path": "iconify-responses/solar-0.json",
+            "url": "https://api.iconify.design/solar.json?icons=accessibility-broken,accessibility-linear,accumulator-broken,add-circle-outline,adhesive-plaster-outline,airbuds-case-charge-line-duotone,airbuds-case-line-duotone,airbuds-case-minimalistic-line-duotone,align-horizonta-spacing-line-duotone,align-horizontal-center-outline,align-left-line-duotone,align-right-line-duotone,align-vertical-spacing-line-duotone,alt-arrow-down-bold,alt-arrow-down-line-duotone,alt-arrow-down-outline,alt-arrow-right-line-duotone,archive-check-broken,archive-down-minimlistic-broken,archive-minimalistic-broken,arrow-right-outline,atom-line-duotone,banknote-linear,bedside-table-linear,bell-bing-line-duotone,bell-bing-linear,bill-check-linear,bill-check-outline,bill-list-line-duotone,bolt-line-duotone,book-2-outline,book-outline,box-linear,box-minimalistic-line-duotone,branching-paths-down-outline,bug-minimalistic-line-duotone,calculator-linear,calendar-add-broken,calendar-bold-duotone,calendar-line-duotone,calendar-linear,calendar-mark-bold-duotone,calendar-mark-line-duotone,calendar-search-linear,camera-rotate-broken,card-line-duotone,cardholder-line-duotone,cart-3-line-duotone,cart-3-outline,cart-4-outline,cart-broken,cart-large-minimalistic-linear,chandelier-outline,chart-2-bold-duotone,chart-2-outline,chart-line-duotone,chart-linear,chart-square-bold-duotone,chart-square-line-duotone,chat-line-bold-duotone,chat-line-line-duotone,chat-line-outline,chat-round-line-line-duotone,chat-square-like-bold-duotone,check-circle-bold,check-circle-linear,check-circle-outline,check-read-linear,check-square-linear,checklist-bold-duotone",
+            "prefix": "solar",
+            "names": [
+              "accessibility-broken",
+              "accessibility-linear",
+              "accumulator-broken",
+              "add-circle-outline",
+              "adhesive-plaster-outline",
+              "airbuds-case-charge-line-duotone",
+              "airbuds-case-line-duotone",
+              "airbuds-case-minimalistic-line-duotone",
+              "align-horizonta-spacing-line-duotone",
+              "align-horizontal-center-outline",
+              "align-left-line-duotone",
+              "align-right-line-duotone",
+              "align-vertical-spacing-line-duotone",
+              "alt-arrow-down-bold",
+              "alt-arrow-down-line-duotone",
+              "alt-arrow-down-outline",
+              "alt-arrow-right-line-duotone",
+              "archive-check-broken",
+              "archive-down-minimlistic-broken",
+              "archive-minimalistic-broken",
+              "arrow-right-outline",
+              "atom-line-duotone",
+              "banknote-linear",
+              "bedside-table-linear",
+              "bell-bing-line-duotone",
+              "bell-bing-linear",
+              "bill-check-linear",
+              "bill-check-outline",
+              "bill-list-line-duotone",
+              "bolt-line-duotone",
+              "book-2-outline",
+              "book-outline",
+              "box-linear",
+              "box-minimalistic-line-duotone",
+              "branching-paths-down-outline",
+              "bug-minimalistic-line-duotone",
+              "calculator-linear",
+              "calendar-add-broken",
+              "calendar-bold-duotone",
+              "calendar-line-duotone",
+              "calendar-linear",
+              "calendar-mark-bold-duotone",
+              "calendar-mark-line-duotone",
+              "calendar-search-linear",
+              "camera-rotate-broken",
+              "card-line-duotone",
+              "cardholder-line-duotone",
+              "cart-3-line-duotone",
+              "cart-3-outline",
+              "cart-4-outline",
+              "cart-broken",
+              "cart-large-minimalistic-linear",
+              "chandelier-outline",
+              "chart-2-bold-duotone",
+              "chart-2-outline",
+              "chart-line-duotone",
+              "chart-linear",
+              "chart-square-bold-duotone",
+              "chart-square-line-duotone",
+              "chat-line-bold-duotone",
+              "chat-line-line-duotone",
+              "chat-line-outline",
+              "chat-round-line-line-duotone",
+              "chat-square-like-bold-duotone",
+              "check-circle-bold",
+              "check-circle-linear",
+              "check-circle-outline",
+              "check-read-linear",
+              "check-square-linear",
+              "checklist-bold-duotone"
+            ],
+            "sha256": "936c196e94b2baa91aebef3ed6329ced94a3b24e98bd9da08f497fc238cb64a7",
+            "bytes": 80175,
+            "not_found": [],
+            "http_status": 200
+          },
+          {
+            "path": "iconify-responses/solar-1.json",
+            "url": "https://api.iconify.design/solar.json?icons=clapperboard-text-linear,clipboard-list-linear,close-circle-outline,cloud-upload-outline,copy-outline,course-down-linear,course-up-outline,database-bold-duotone,database-linear,document-text-line-duotone,document-text-outline,dollar-minimalistic-linear,download-minimalistic-bold-duotone,download-outline,eye-outline,feed-line-duotone,file-text-linear,filter-outline,filters-bold-duotone,filters-outline,fire-square-bold-duotone,flag-2-outline,flag-line-duotone,folder-broken,folder-error-linear,folder-open-linear,folder-open-outline,football-outline,full-screen-square-line-duotone,gallery-add-linear,gallery-check-broken,gallery-outline,graph-down-outline,graph-line-duotone,graph-linear,graph-new-broken,graph-up-outline,hamburger-menu-line-duotone,hamburger-menu-linear,hamburger-menu-outline,home-2-line-duotone,home-angle-linear,inbox-line-broken,inbox-unread-outline,info-circle-bold,info-circle-broken,info-circle-linear,info-circle-outline,key-square-line-duotone,keyboard-line-duotone,keyboard-outline,laptop-broken,laptop-minimalistic-line-duotone,layers-bold-duotone,layers-line-duotone,layers-linear,letter-bold-duotone,letter-line-duotone,letter-linear,list-check-linear,lock-keyhole-line-duotone,lock-password-linear,login-3-line-duotone,logout-2-outline,magnifer-line-duotone,mailbox-outline,map-arrow-square-line-duotone,map-point-outline,map-point-wave-linear,medal-ribbon-star-linear",
+            "prefix": "solar",
+            "names": [
+              "clapperboard-text-linear",
+              "clipboard-list-linear",
+              "close-circle-outline",
+              "cloud-upload-outline",
+              "copy-outline",
+              "course-down-linear",
+              "course-up-outline",
+              "database-bold-duotone",
+              "database-linear",
+              "document-text-line-duotone",
+              "document-text-outline",
+              "dollar-minimalistic-linear",
+              "download-minimalistic-bold-duotone",
+              "download-outline",
+              "eye-outline",
+              "feed-line-duotone",
+              "file-text-linear",
+              "filter-outline",
+              "filters-bold-duotone",
+              "filters-outline",
+              "fire-square-bold-duotone",
+              "flag-2-outline",
+              "flag-line-duotone",
+              "folder-broken",
+              "folder-error-linear",
+              "folder-open-linear",
+              "folder-open-outline",
+              "football-outline",
+              "full-screen-square-line-duotone",
+              "gallery-add-linear",
+              "gallery-check-broken",
+              "gallery-outline",
+              "graph-down-outline",
+              "graph-line-duotone",
+              "graph-linear",
+              "graph-new-broken",
+              "graph-up-outline",
+              "hamburger-menu-line-duotone",
+              "hamburger-menu-linear",
+              "hamburger-menu-outline",
+              "home-2-line-duotone",
+              "home-angle-linear",
+              "inbox-line-broken",
+              "inbox-unread-outline",
+              "info-circle-bold",
+              "info-circle-broken",
+              "info-circle-linear",
+              "info-circle-outline",
+              "key-square-line-duotone",
+              "keyboard-line-duotone",
+              "keyboard-outline",
+              "laptop-broken",
+              "laptop-minimalistic-line-duotone",
+              "layers-bold-duotone",
+              "layers-line-duotone",
+              "layers-linear",
+              "letter-bold-duotone",
+              "letter-line-duotone",
+              "letter-linear",
+              "list-check-linear",
+              "lock-keyhole-line-duotone",
+              "lock-password-linear",
+              "login-3-line-duotone",
+              "logout-2-outline",
+              "magnifer-line-duotone",
+              "mailbox-outline",
+              "map-arrow-square-line-duotone",
+              "map-point-outline",
+              "map-point-wave-linear",
+              "medal-ribbon-star-linear"
+            ],
+            "sha256": "8f4b0da685f1c5a451a7905f6a3ca590d30b39e339a6c4c66ae6821cec78c490",
+            "bytes": 83137,
+            "not_found": [],
+            "http_status": 200
+          },
+          {
+            "path": "iconify-responses/solar-2.json",
+            "url": "https://api.iconify.design/solar.json?icons=microphone-2-outline,minimize-square-3-outline,mirror-left-line-duotone,mirror-right-line-duotone,money-bag-outline,monitor-line-duotone,moon-bold-duotone,moon-line-duotone,notebook-linear,notes-bold-duotone,notes-line-duotone,notes-linear,notes-minimalistic-bold-duotone,palette-round-line-duotone,paperclip-outline,password-minimalistic-input-outline,password-outline,pen-2-outline,pen-new-square-broken,pen-new-square-outline,pen-outline,phone-calling-rounded-bold-duotone,phone-line-duotone,phone-rounded-linear,pie-chart-2-linear,pie-chart-3-line-duotone,pills-3-linear,plain-2-linear,plain-linear,presentation-graph-broken,presentation-graph-outline,programming-line-duotone,question-circle-line-duotone,question-circle-outline,quit-full-screen-square-line-duotone,recive-twice-square-linear,refresh-bold,refresh-circle-bold-duotone,round-alt-arrow-down-outline,round-arrow-left-linear,round-graph-linear,round-graph-outline,round-transfer-horizontal-line-duotone,round-transfer-vertical-broken,sale-square-outline,screencast-2-line-duotone,settings-line-duotone,settings-minimalistic-line-duotone,settings-outline,share-outline,shield-cross-broken,shield-up-linear,shield-user-outline,shop-2-linear,siderbar-broken,slider-horizontal-line-duotone,slider-minimalistic-horizontal-line-duotone,slider-minimalistic-horizontal-linear,slider-vertical-line-duotone,smartphone-line-duotone,smartphone-rotate-angle-bold,smartphone-update-line-duotone,smile-circle-outline,soundwave-bold-duotone,speaker-minimalistic-broken,star-bold,star-fall-minimalistic-2-broken,star-fall-minimalistic-2-line-duotone,star-line-duotone,stars-linear",
+            "prefix": "solar",
+            "names": [
+              "microphone-2-outline",
+              "minimize-square-3-outline",
+              "mirror-left-line-duotone",
+              "mirror-right-line-duotone",
+              "money-bag-outline",
+              "monitor-line-duotone",
+              "moon-bold-duotone",
+              "moon-line-duotone",
+              "notebook-linear",
+              "notes-bold-duotone",
+              "notes-line-duotone",
+              "notes-linear",
+              "notes-minimalistic-bold-duotone",
+              "palette-round-line-duotone",
+              "paperclip-outline",
+              "password-minimalistic-input-outline",
+              "password-outline",
+              "pen-2-outline",
+              "pen-new-square-broken",
+              "pen-new-square-outline",
+              "pen-outline",
+              "phone-calling-rounded-bold-duotone",
+              "phone-line-duotone",
+              "phone-rounded-linear",
+              "pie-chart-2-linear",
+              "pie-chart-3-line-duotone",
+              "pills-3-linear",
+              "plain-2-linear",
+              "plain-linear",
+              "presentation-graph-broken",
+              "presentation-graph-outline",
+              "programming-line-duotone",
+              "question-circle-line-duotone",
+              "question-circle-outline",
+              "quit-full-screen-square-line-duotone",
+              "recive-twice-square-linear",
+              "refresh-bold",
+              "refresh-circle-bold-duotone",
+              "round-alt-arrow-down-outline",
+              "round-arrow-left-linear",
+              "round-graph-linear",
+              "round-graph-outline",
+              "round-transfer-horizontal-line-duotone",
+              "round-transfer-vertical-broken",
+              "sale-square-outline",
+              "screencast-2-line-duotone",
+              "settings-line-duotone",
+              "settings-minimalistic-line-duotone",
+              "settings-outline",
+              "share-outline",
+              "shield-cross-broken",
+              "shield-up-linear",
+              "shield-user-outline",
+              "shop-2-linear",
+              "siderbar-broken",
+              "slider-horizontal-line-duotone",
+              "slider-minimalistic-horizontal-line-duotone",
+              "slider-minimalistic-horizontal-linear",
+              "slider-vertical-line-duotone",
+              "smartphone-line-duotone",
+              "smartphone-rotate-angle-bold",
+              "smartphone-update-line-duotone",
+              "smile-circle-outline",
+              "soundwave-bold-duotone",
+              "speaker-minimalistic-broken",
+              "star-bold",
+              "star-fall-minimalistic-2-broken",
+              "star-fall-minimalistic-2-line-duotone",
+              "star-line-duotone",
+              "stars-linear"
+            ],
+            "sha256": "6dfc9d085fe097d5baa22d5dba09b175e975c194a146359ebbe732faa9bcbaca",
+            "bytes": 90839,
+            "not_found": [],
+            "http_status": 200
+          },
+          {
+            "path": "iconify-responses/solar-3.json",
+            "url": "https://api.iconify.design/solar.json?icons=sticker-smile-circle-2-linear,sticker-smile-circle-outline,sun-bold-duotone,tablet-line-duotone,tag-bold-duotone,tag-horizontal-broken,tag-horizontal-line-duotone,text-bold-duotone,text-field-bold-duotone,text-italic-circle-linear,text-selection-line-duotone,text-square-2-linear,text-underline-circle-bold,text-underline-cross-broken,three-squares-bold-duotone,three-squares-line-duotone,ticker-star-outline,ticket-sale-bold-duotone,trash-bin-2-outline,trash-bin-minimalistic-2-outline,trash-bin-minimalistic-outline,trash-bin-trash-outline,tuning-square-2-line-duotone,undo-left-linear,undo-left-outline,undo-right-outline,user-check-rounded-broken,user-line-duotone,user-plus-rounded-line-duotone,users-group-two-rounded-bold,users-group-two-rounded-outline,videocamera-outline,wad-of-money-outline,waterdrops-line-duotone,widget-2-broken,widget-3-line-duotone,widget-4-bold-duotone,widget-4-line-duotone,widget-6-bold-duotone,widget-6-line-duotone,widget-add-line-duotone,widget-line-duotone,widget-linear",
+            "prefix": "solar",
+            "names": [
+              "sticker-smile-circle-2-linear",
+              "sticker-smile-circle-outline",
+              "sun-bold-duotone",
+              "tablet-line-duotone",
+              "tag-bold-duotone",
+              "tag-horizontal-broken",
+              "tag-horizontal-line-duotone",
+              "text-bold-duotone",
+              "text-field-bold-duotone",
+              "text-italic-circle-linear",
+              "text-selection-line-duotone",
+              "text-square-2-linear",
+              "text-underline-circle-bold",
+              "text-underline-cross-broken",
+              "three-squares-bold-duotone",
+              "three-squares-line-duotone",
+              "ticker-star-outline",
+              "ticket-sale-bold-duotone",
+              "trash-bin-2-outline",
+              "trash-bin-minimalistic-2-outline",
+              "trash-bin-minimalistic-outline",
+              "trash-bin-trash-outline",
+              "tuning-square-2-line-duotone",
+              "undo-left-linear",
+              "undo-left-outline",
+              "undo-right-outline",
+              "user-check-rounded-broken",
+              "user-line-duotone",
+              "user-plus-rounded-line-duotone",
+              "users-group-two-rounded-bold",
+              "users-group-two-rounded-outline",
+              "videocamera-outline",
+              "wad-of-money-outline",
+              "waterdrops-line-duotone",
+              "widget-2-broken",
+              "widget-3-line-duotone",
+              "widget-4-bold-duotone",
+              "widget-4-line-duotone",
+              "widget-6-bold-duotone",
+              "widget-6-line-duotone",
+              "widget-add-line-duotone",
+              "widget-line-duotone",
+              "widget-linear"
+            ],
+            "sha256": "9399af0d779dccd6d199a0d0fd68844c6622b474eeb868f9433921f3fe292789",
+            "bytes": 57784,
+            "not_found": [],
+            "http_status": 200
+          },
+          {
+            "path": "iconify-responses/tabler-0.json",
+            "url": "https://api.iconify.design/tabler.json?icons=adjustments,archive,arrows-shuffle,bold,book,brand-firebase,brand-tailwind,building-store,calendar,chart-bubble,chart-pie,chevron-left,chevron-right,circle-check,circle-x,database,diamond,dots,edit,hexagons,image-in-picture,italic,layers-intersect,link,list,list-numbers,plus,refresh,shield-lock,tags,trash,u-turn-left,u-turn-right,underline,user-screen,wand",
+            "prefix": "tabler",
+            "names": [
+              "adjustments",
+              "archive",
+              "arrows-shuffle",
+              "bold",
+              "book",
+              "brand-firebase",
+              "brand-tailwind",
+              "building-store",
+              "calendar",
+              "chart-bubble",
+              "chart-pie",
+              "chevron-left",
+              "chevron-right",
+              "circle-check",
+              "circle-x",
+              "database",
+              "diamond",
+              "dots",
+              "edit",
+              "hexagons",
+              "image-in-picture",
+              "italic",
+              "layers-intersect",
+              "link",
+              "list",
+              "list-numbers",
+              "plus",
+              "refresh",
+              "shield-lock",
+              "tags",
+              "trash",
+              "u-turn-left",
+              "u-turn-right",
+              "underline",
+              "user-screen",
+              "wand"
+            ],
+            "sha256": "8661051cff4cf79a7ec47c35878d4be874abef13e9bc08e7537b635300770262",
+            "bytes": 9441,
+            "not_found": [],
+            "http_status": 200
+          },
+          {
+            "path": "iconify-responses/tdesign-0.json",
+            "url": "https://api.iconify.design/tdesign.json?icons=rocket-filled",
+            "prefix": "tdesign",
+            "names": [
+              "rocket-filled"
+            ],
+            "sha256": "9814935bb779864ed96aaae50fcf912a65ecdce5749d1fbad7965a3123730c55",
+            "bytes": 495,
+            "not_found": [],
+            "http_status": 200
+          }
+        ],
+        "errors": [],
+        "missing": []
+      },
+      "lookup_audit": {
+        "schema": 1,
+        "pins": {
+          "downloads": "922fa38a1bc0763949cfb5ed2658946937e11f0d3f2f5decdc40ab757f837dc0",
+          "candidates": "03b2c47239c320780d0f6734d345e99957feee1c016b2436a7247351ac8140ee",
+          "iconify_package": "b2fdd2aac30341d9f94bbb3479e776b57ca4683753ce7c4cb3a4e03cecaf9de0",
+          "iconify_module": "722ba66692c00b39c59ab839739192df75396f920de06ed03a1699027182acd8",
+          "types_package": "15c74b419c62404968d62e4dfa2346c29903b96534e9e8133c7b336638154d55",
+          "react_production": "4b35e378f469c4f492c7514bb106b5833746dbbae80496bd4aa9acc6e9ac4b42"
+        },
+        "library": "@iconify/react@5.2.1",
+        "types": "@iconify/types@2.0.0",
+        "normalization": "UTF-8 JSON.stringify of getIcon own properties sorted lexically; no body edits",
+        "expected": 309,
+        "resolved": 309,
+        "response_files": 17,
+        "collections": 14,
+        "loaded_names": 318,
+        "raw_icons": 309,
+        "aliases": [
+          {
+            "name": "mdi:blog",
+            "parent": "mdi:post"
+          },
+          {
+            "name": "solar:accumulator-broken",
+            "parent": "solar:car-battery-broken"
+          },
+          {
+            "name": "solar:align-horizonta-spacing-line-duotone",
+            "parent": "solar:align-horizontal-spacing-line-duotone"
+          },
+          {
+            "name": "solar:bell-bing-line-duotone",
+            "parent": "solar:bell-ring-line-duotone"
+          },
+          {
+            "name": "solar:bell-bing-linear",
+            "parent": "solar:bell-ring-linear"
+          },
+          {
+            "name": "solar:plain-2-linear",
+            "parent": "solar:plane-2-linear"
+          },
+          {
+            "name": "solar:siderbar-broken",
+            "parent": "solar:sidebar-broken"
+          },
+          {
+            "name": "solar:ticker-star-outline",
+            "parent": "solar:ticket-star-outline"
+          },
+          {
+            "name": "solar:wad-of-money-outline",
+            "parent": "solar:money-roll-outline"
+          }
+        ],
+        "extra_names": [
+          "mdi:post",
+          "solar:align-horizontal-spacing-line-duotone",
+          "solar:bell-ring-line-duotone",
+          "solar:bell-ring-linear",
+          "solar:car-battery-broken",
+          "solar:money-roll-outline",
+          "solar:plane-2-linear",
+          "solar:sidebar-broken",
+          "solar:ticket-star-outline"
+        ],
+        "canonical_icon_bytes": 352835,
+        "body_bytes": 320279,
+        "inventory_sha256": "7eccfd74d9449fc6d900fc79f303435d627b7b13651c7a49dc706ca1228d87d4",
+        "counts": {
+          "tags": {
+            "path": 824,
+            "g": 228,
+            "circle": 22,
+            "rect": 2,
+            "defs": 1,
+            "mask": 1,
+            "ellipse": 1
+          },
+          "attributes": {
+            "fill": 314,
+            "d": 824,
+            "class": 2,
+            "fill-rule": 83,
+            "clip-rule": 82,
+            "cx": 23,
+            "cy": 23,
+            "r": 22,
+            "stroke": 191,
+            "stroke-linecap": 295,
+            "stroke-linejoin": 110,
+            "stroke-width": 192,
+            "width": 2,
+            "height": 2,
+            "x": 2,
+            "y": 2,
+            "rx": 3,
+            "opacity": 159,
+            "id": 1,
+            "mask": 1,
+            "stroke-dasharray": 2,
+            "ry": 1,
+            "transform": 1
+          },
+          "classes": {
+            "alert-outline": 1,
+            "Vector": 1
+          },
+          "dimensions": {
+            "0,0,32,32": 1,
+            "0,0,24,24": 306,
+            "0,0,256,256": 1,
+            "0,0,50,50": 1
+          },
+          "transformations": {
+            "0,false,false": 309
+          }
+        },
+        "local_references": 1,
+        "network_calls": 0,
+        "default_and_alias_canary": "passed",
+        "scope": "Data lookup and restricted static SVG structure only; no component invocation, browser, CSS/visual fidelity, sanitizer or application network claim."
+      },
+      "integration": "Preload exact received collections using unchanged installed Iconify ESM module before mounting; verify each expected name with iconLoaded/getIcon. No renderer, API provider, loader or unknown-name fallback replacement.",
+      "types": "Generated IconifyJSON[] contextual typing; no cast/any or weakened compiler flags. Raw response data retained separately.",
+      "license_notice": "public/__appkit_reference_assets/ICON-NOTICES.txt records author/source/license links and selected names for all fourteen collections. No expanded redistribution rights claimed."
+    }
+  },
+  "build": {
+    "prepared_root": "/tmp/appkit-matdash-assets.H7NSZN/project",
+    "replay_root": "/tmp/appkit-matdash-assets.H7NSZN/replay",
+    "reconstruction_order": [
+      "original_source_tar",
+      "prior_repair_tar",
+      "asset_overlay"
+    ],
+    "dependency_lock_unchanged": true,
+    "lock_sha256": "c286a40f730263a060ecf1830ff00f567fe9d993e90ca8fd46e85a04a7783178",
+    "installs": [
+      {
+        "cwd": "/tmp/appkit-matdash-assets.H7NSZN/project",
+        "command": "env -i PATH=/opt/homebrew/bin:/usr/bin:/bin /opt/homebrew/bin/node /opt/homebrew/lib/node_modules/npm/bin/npm-cli.js ci --offline --ignore-scripts --no-audit --no-fund --update-notifier=false --legacy-peer-deps=false --strict-peer-deps --userconfig=/dev/null --globalconfig=/tmp/appkit-matdash-assets.H7NSZN/empty-global-npmrc --cache=/tmp/appkit-matdash-reference.DxoSoc/npm-cache",
+        "exit_code": 0,
+        "added_packages": 1011
+      },
+      {
+        "cwd": "/tmp/appkit-matdash-assets.H7NSZN/replay",
+        "command": "env -i PATH=/opt/homebrew/bin:/usr/bin:/bin /opt/homebrew/bin/node /opt/homebrew/lib/node_modules/npm/bin/npm-cli.js ci --offline --ignore-scripts --no-audit --no-fund --update-notifier=false --legacy-peer-deps=false --strict-peer-deps --userconfig=/dev/null --globalconfig=/tmp/appkit-matdash-assets.H7NSZN/empty-global-npmrc --cache=/tmp/appkit-matdash-reference.DxoSoc/npm-cache",
+        "exit_code": 0,
+        "added_packages": 1011
+      }
+    ],
+    "lifecycle_scripts_executed": false,
+    "cache": "/tmp/appkit-matdash-reference.DxoSoc/npm-cache",
+    "cache_independently_archived": false,
+    "first_typecheck": {
+      "exit_code": 2,
+      "diagnostic": "TS2345: heterogeneous imported JSON array inferred optional undefined icon properties, incompatible with IconifyJSON index signature.",
+      "fix": "Emit a generated TypeScript array with checked IconifyJSON[] contextual typing. Preserve original strict compiler settings and source coverage."
+    },
+    "successful_runs": [
+      {
+        "cwd": "/tmp/appkit-matdash-assets.H7NSZN/project",
+        "command": "env -i PATH=/opt/homebrew/bin:/usr/bin:/bin /opt/homebrew/bin/node node_modules/typescript/bin/tsc --pretty false",
+        "exit_code": 0
+      },
+      {
+        "cwd": "/tmp/appkit-matdash-assets.H7NSZN/project",
+        "command": "env -i PATH=/opt/homebrew/bin:/usr/bin:/bin /opt/homebrew/bin/node node_modules/vite/bin/vite.js build --logLevel warn",
+        "exit_code": 0
+      },
+      {
+        "cwd": "/tmp/appkit-matdash-assets.H7NSZN/replay",
+        "command": "env -i PATH=/opt/homebrew/bin:/usr/bin:/bin /opt/homebrew/bin/node node_modules/typescript/bin/tsc --pretty false",
+        "exit_code": 0
+      },
+      {
+        "cwd": "/tmp/appkit-matdash-assets.H7NSZN/replay",
+        "command": "env -i PATH=/opt/homebrew/bin:/usr/bin:/bin /opt/homebrew/bin/node node_modules/vite/bin/vite.js build --logLevel warn",
+        "exit_code": 0
+      }
+    ],
+    "files": 383,
+    "bytes": 15247074,
+    "tree_sha256": "02aa4c9faec1290b27405cf0beb9974a06ec620e61bee762a3b10e936f959296",
+    "replay_byte_equal": true,
+    "added": 0,
+    "removed": 0,
+    "changed": 0,
+    "normalization": "none",
+    "css_equivalence": [
+      {
+        "original": {
+          "path": "assets/FullLayout-CLu9E2VE.css",
+          "sha256": "0c8e45ffc61fc19f75ba0c143df34e9714ab603a1986786ef648565a0a1a94a4",
+          "bytes": 3068
+        },
+        "asset_bound": {
+          "path": "assets/FullLayout-CLu9E2VE.css",
+          "sha256": "0c8e45ffc61fc19f75ba0c143df34e9714ab603a1986786ef648565a0a1a94a4",
+          "bytes": 3068
+        },
+        "transformation": "byte-identical"
+      },
+      {
+        "original": {
+          "path": "assets/LandingPages-DvB2Xm2x.css",
+          "sha256": "731681671ddee142213a3242e4a6d3444aeae1c4f7e0630847903dab12922398",
+          "bytes": 26054
+        },
+        "asset_bound": {
+          "path": "assets/LandingPages-DvB2Xm2x.css",
+          "sha256": "731681671ddee142213a3242e4a6d3444aeae1c4f7e0630847903dab12922398",
+          "bytes": 26054
+        },
+        "transformation": "byte-identical"
+      },
+      {
+        "original": {
+          "path": "assets/Thumbnail-CQ1k8mWA.css",
+          "sha256": "90c70c7f7bf56ced2509324ca2e94b0bd166fad889cd145d5290e6c5c2a17462",
+          "bytes": 2020
+        },
+        "asset_bound": {
+          "path": "assets/Thumbnail-CQ1k8mWA.css",
+          "sha256": "90c70c7f7bf56ced2509324ca2e94b0bd166fad889cd145d5290e6c5c2a17462",
+          "bytes": 2020
+        },
+        "transformation": "byte-identical"
+      },
+      {
+        "original": {
+          "path": "assets/index-BXidaBHb.css",
+          "sha256": "2cd10f7e83c1e437d63dcf8ea6f344da131464c34ce9a7cc049d4b84c88fd715",
+          "bytes": 192110
+        },
+        "asset_bound": {
+          "path": "assets/index-B5wpYHXD.css",
+          "sha256": "17713665df14b8c800c0b6e5641668ee2f836836380636d7fc09e2a7126562d2",
+          "bytes": 192025
+        },
+        "transformation": "remove-exact-leading-remote-Manrope-import-only"
+      },
+      {
+        "original": {
+          "path": "assets/index-Cs8yHCv6.css",
+          "sha256": "ee9c807311a6c8226d475eea89deae0e7503a1fb86d3f44b528798d7367e5d5a",
+          "bytes": 13370
+        },
+        "asset_bound": {
+          "path": "assets/index-Cs8yHCv6.css",
+          "sha256": "ee9c807311a6c8226d475eea89deae0e7503a1fb86d3f44b528798d7367e5d5a",
+          "bytes": 13370
+        },
+        "transformation": "byte-identical"
+      },
+      {
+        "original": {
+          "path": "assets/index-bDjfID-q.css",
+          "sha256": "ffe7d699f5672a15836683ec548cf9a6b47f3fe7f159d9ce2c8ef0d48babc03f",
+          "bytes": 10663
+        },
+        "asset_bound": {
+          "path": "assets/index-bDjfID-q.css",
+          "sha256": "ffe7d699f5672a15836683ec548cf9a6b47f3fe7f159d9ce2c8ef0d48babc03f",
+          "bytes": 10663
+        },
+        "transformation": "byte-identical"
+      },
+      {
+        "original": {
+          "path": "assets/react-datepicker-DdjxYr1F.css",
+          "sha256": "7e8854aeb65447943a5448396cbf8a34647b290bea70b4659049f0973bba015b",
+          "bytes": 21657
+        },
+        "asset_bound": {
+          "path": "assets/react-datepicker-DdjxYr1F.css",
+          "sha256": "7e8854aeb65447943a5448396cbf8a34647b290bea70b4659049f0973bba015b",
+          "bytes": 21657
+        },
+        "transformation": "byte-identical"
+      }
+    ],
+    "warning": "Chunks exceed Vite's 500 kB warning threshold; warning retained. Full-demo artifact sizes are not route transfer, startup/input latency or a performance pass.",
+    "cross_platform_build": "not-tested"
+  },
+  "evidence_files": [
+    {
+      "path": "/tmp/appkit-matdash-assets.H7NSZN/icon-candidates.json",
+      "sha256": "03b2c47239c320780d0f6734d345e99957feee1c016b2436a7247351ac8140ee",
+      "bytes": 131677
+    },
+    {
+      "path": "/tmp/appkit-matdash-assets.H7NSZN/icon-downloads.json",
+      "sha256": "922fa38a1bc0763949cfb5ed2658946937e11f0d3f2f5decdc40ab757f837dc0",
+      "bytes": 22104
+    },
+    {
+      "path": "/tmp/appkit-matdash-assets.H7NSZN/iconify-collections.json",
+      "sha256": "03c27ed3ffc056af87d059f90a6e79c83ff57e628ecfcb9f6dc9f5beee49c26f",
+      "bytes": 6256
+    },
+    {
+      "path": "/tmp/appkit-matdash-assets.H7NSZN/icon-resolved.json",
+      "sha256": "58edcfa594f99d603fc4a86dbf39950b38c025517f55499e4d3edae7fcf3cae2",
+      "bytes": 88167
+    },
+    {
+      "path": "/tmp/appkit-matdash-assets.H7NSZN/check-icons.mjs",
+      "sha256": "8fbff5ebf8393ab17be9925e95ec455911fb72d1fb79dfc54582e6d345affb2b",
+      "bytes": 10397
+    },
+    {
+      "path": "/tmp/appkit-matdash-assets.H7NSZN/inventory-icons.cjs",
+      "sha256": "6cdbda5df1fb8250f43741738f20e641c75e5ebd872c6c84f6d503bb0997a52f",
+      "bytes": 5401
+    },
+    {
+      "path": "/tmp/appkit-matdash-assets.H7NSZN/prepare-fonts.mjs",
+      "sha256": "65fef7c3b49ec027ed9534a88c2840d1977978210a3ae7d513fd288260151014",
+      "bytes": 3106
+    },
+    {
+      "path": "/tmp/appkit-matdash-assets.H7NSZN/prepare-icons.mjs",
+      "sha256": "c6b405c957a0fa4e41e40fa0ad0d4d553a8d62f0beae1e5d121587edf976501b",
+      "bytes": 3444
+    },
+    {
+      "path": "/tmp/appkit-matdash-assets.H7NSZN/download-icons.mjs",
+      "sha256": "51c894c18bced77f7be8d5e6d3a3a3b54bf5af88062b15a798b975aa82cc2553",
+      "bytes": 3178
+    },
+    {
+      "path": "/tmp/appkit-matdash-assets.H7NSZN/asset-build-manifest.mjs",
+      "sha256": "fd83ea134398d11d5732fdb2c248b611ac074ffba8bcae53ecf2a142fa1e8e40",
+      "bytes": 3272
+    },
+    {
+      "path": "/tmp/appkit-matdash-assets.H7NSZN/Manrope-METADATA.pb",
+      "sha256": "368beda3aa55b0afe90edc142d67cf37e743258c76481d520172afbc148c6cca",
+      "bytes": 727
+    },
+    {
+      "path": "/tmp/appkit-matdash-assets.H7NSZN/Jakarta-METADATA.pb",
+      "sha256": "e7953d66e52a1e09235d75fc7aef7139c2733c0b5507afcf6e9afbe0fcef1de6",
+      "bytes": 1396
+    }
+  ],
+  "static_delivery": {
+    "fixtures": [
+      {
+        "path": "docs/assessments/fixtures/matdash-native/asset-build.json",
+        "sha256": "ab9a1a037634eff411d93de64a04ade52751638e282a9a2c7016e13b66f5896a",
+        "bytes": 74596
+      },
+      {
+        "path": "docs/assessments/fixtures/matdash-native/asset-reference.mjs",
+        "sha256": "b72ad03e9fc6f1df6568a26f8ea07d55614d3c165014282fc2b67591ab821653",
+        "bytes": 1498
+      },
+      {
+        "path": "docs/assessments/fixtures/matdash-native/asset-reference.test.mjs",
+        "sha256": "017cd5c929f25ba8b8415d2505dfe97f636145b3d488b42b9f3b42f5b5ba8169",
+        "bytes": 15160
+      },
+      {
+        "path": "docs/assessments/fixtures/matdash-native/reference-server.mjs",
+        "sha256": "15d91bd8808b7a26424e9fdfe3f09e0f35a793c48be92c0801538c583aca1c15",
+        "bytes": 11890
+      },
+      {
+        "path": "docs/assessments/fixtures/matdash-native/reference-server.test.mjs",
+        "sha256": "fbb5101933d801da73ce2344a7bd3407e5fb0c5e4a10136cf875012b1b85666f",
+        "bytes": 22191
+      }
+    ],
+    "shared_request_refusal": {
+      "path": "docs/assessments/fixtures/catalyst-native/reference-server.mjs",
+      "sha256": "8985bae8e69bed62892efaf0d4457b89ce2985801d584b6efbbe1f17c347ddc9"
+    },
+    "source_pins": 24,
+    "assets": 383,
+    "routes": 133,
+    "command": "APPKIT_MATDASH_REFERENCE_ROOT=/tmp/appkit-matdash-reference.DxoSoc/replay APPKIT_MATDASH_ASSET_REFERENCE_ROOT=/tmp/appkit-matdash-assets.H7NSZN/replay node --test --test-reporter=dot docs/assessments/fixtures/matdash-native/reference-server.test.mjs docs/assessments/fixtures/matdash-native/asset-reference.test.mjs",
+    "checks": {
+      "total": 71,
+      "passed": 71,
+      "failed": 0,
+      "skipped": 0,
+      "original_and_shared_entry": 57,
+      "asset_specific": 14,
+      "independent_asset_run_passed": 14
+    },
+    "coverage": [
+      "383 exact asset bodies/hash/MIME and 133 declared HTML-shell route responses",
+      "22 original font-face rules preserved by URL-only replacement, ten WOFF2 headers, complete selected local font URL closure",
+      "Pinned local map bytes/structure/counts and presence of all four nonempty license/attribution files",
+      "Missing or changed font/map/preload source refuse in owned canary copies",
+      "Original request/tamper/FIFO/cache guards remain shared; fixed variant metadata cannot be selected by CLI or HTTP",
+      "Missing prerequisites fail, never skip; CLI wrong input and actual SIGINT/SIGTERM shutdown"
+    ],
+    "vendor_app_or_font_code_executed_by_http_tests": false,
+    "library_audit_is_separate": "Icon lookup audit executes the pinned Iconify/React libraries only, with fetch refusal; no MatDash app, component, hook or DOM invocation.",
+    "limitations": [
+      "Static HTML route responses do not mount React.",
+      "Partial frame/base/form CSP is not script/network isolation, authentication or an OS sandbox.",
+      "New preloading must still be observed in browser; declared unknown-name API fallback remains."
+    ]
+  },
+  "remaining_gates": [
+    "Chrome unavailable; no alternate browser substituted; captured source-native visual baselines stay 0/12.",
+    "Font decoding, browser CSS collisions, actual icon sizes/geometry/accessibility and source/target visual fidelity remain unverified.",
+    "Dashboard/editor task/data, focus/keyboard/pointer, narrow/theme/zoom, IME/clipboard/undo/HTML safety and lifecycle checks remain open.",
+    "Editor duplicate code-block registration remains; user-supplied image URLs and unmatched mock requests can still use the network.",
+    "No whole-app offline capability, benchmark/latency pass, consumer adoption proof or converted-target certification."
+  ]
+}

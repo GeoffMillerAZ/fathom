@@ -180,7 +180,7 @@ func TestVendorIsDeterministic(t *testing.T) {
 // catalogue itself (ADR-0017 §1). An L3b package added to vendorSets would hand
 // a non-Go consumer files it cannot render.
 func TestVendorNeverWritesUtilityThemedArtifacts(t *testing.T) {
-	allowed := map[string]bool{"tokens": true, "motion": true, "router": true, "overlay": true, "chat": true}
+	allowed := map[string]bool{"tokens": true, "motion": true, "router": true, "overlay": true, "chat": true, "appearance": true}
 	for _, s := range vendorSets {
 		if !allowed[s.name] {
 			t.Errorf("vendor set %q is not an L0/L1/L2 group; vendoring an L3b renderer or a templ component gives a non-Go consumer files it cannot use", s.name)
@@ -190,5 +190,27 @@ func TestVendorNeverWritesUtilityThemedArtifacts(t *testing.T) {
 				t.Errorf("vendor set %q emits %q; only .css and .js cross the target boundary", s.name, name)
 			}
 		}
+	}
+}
+
+func TestVendorAppearanceIncludesOnlyPortableScript(t *testing.T) {
+	out := t.TempDir()
+	if err := vendorCmd([]string{"-out", out, "-include", "appearance"}); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := os.ReadDir(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 2 {
+		t.Fatalf("want only appearance.js and kit.lock, got %v", entries)
+	}
+	for _, entry := range entries {
+		if entry.Name() != "appearance.js" && entry.Name() != "kit.lock" {
+			t.Errorf("non-portable/unselected artifact: %s", entry.Name())
+		}
+	}
+	if err := vendorCmd([]string{"-out", out, "-include", "appearance", "-check"}); err != nil {
+		t.Fatal(err)
 	}
 }

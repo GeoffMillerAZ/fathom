@@ -1,6 +1,6 @@
 # ADR-0005: Serve every app from a real loopback HTTP listener; shells are chrome (the Loopback Invariant)
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR-0021 (scoped runtime profiles)
 - **Date:** 2026-06-10
 - **Decision drivers:** hard webview transport facts that no amount of code
   can route around; the one-binary-everywhere thesis (VISION.md, question 4);

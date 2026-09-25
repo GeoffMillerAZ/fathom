@@ -1,0 +1,66 @@
+// Generated companion for the private P05 email-field adaptation.
+package converted
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"strings"
+	"unicode"
+	"unicode/utf8"
+
+	"github.com/a-h/templ"
+)
+
+// EmailField contains presentation data, not email validation or persistence.
+// Error empty selects the authored neutral state; nonempty selects source styling.
+// The app owns unique IDs, form handlers, authoritative errors and focus policy.
+type EmailField struct {
+	ID, Name, Label, Value, Placeholder, Error string
+	Required, Autofocus bool
+}
+
+// NewEmailField checks presentation bounds before rendering any response bytes.
+// Invalid email values are deliberately accepted, so a rejection can retain input.
+func NewEmailField(data EmailField) (templ.Component, error) {
+	if !emailFieldIdentifier(data.ID) || !emailFieldIdentifier(data.Name) {
+		return nil, fmt.Errorf("email field: invalid ID or Name")
+	}
+	for _, field := range []struct { name, value string; limit int; required bool }{
+		{"Label", data.Label, 200, true}, {"Value", data.Value, 4096, false},
+		{"Placeholder", data.Placeholder, 320, false}, {"Error", data.Error, 1000, false},
+	} {
+		if len(field.value) > field.limit || !utf8.ValidString(field.value) ||
+			(field.required && strings.TrimSpace(field.value) == "") ||
+			(field.name == "Error" && field.value != "" && strings.TrimSpace(field.value) == "") {
+			return nil, fmt.Errorf("email field: invalid %s", field.name)
+		}
+		for _, r := range field.value {
+			if unicode.IsControl(r) { return nil, fmt.Errorf("email field: invalid %s", field.name) }
+		}
+	}
+	return emailField(data), nil
+}
+
+func emailFieldIdentifier(s string) bool {
+	if len(s) == 0 || len(s) > 64 { return false }
+	for i, c := range []byte(s) {
+		letter := c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z'
+		if !letter && (i == 0 || !(c >= '0' && c <= '9' || c == '-' || c == '_' || c == '.')) { return false }
+	}
+	return true
+}
+
+func emailFieldClass(invalid bool) string {
+	if invalid { return emailFieldErrorClass }
+	return emailFieldNeutralClass
+}
+
+// Conditional composition in Go does not introduce templ control-flow whitespace.
+func emailFieldWhen(show bool, component templ.Component) templ.Component {
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		if err := ctx.Err(); err != nil { return err }
+		if !show { return nil }
+		return component.Render(ctx, w)
+	})
+}

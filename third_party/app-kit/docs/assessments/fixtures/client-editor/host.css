@@ -1,0 +1,12 @@
+/* First-party specimen frame; the private editor and vendor theme CSS are unchanged. */
+body { background: var(--color-surface-ld); color: var(--color-link); }
+.dark body { background: var(--color-darkgray); color: var(--color-bodytext); }
+main { width: min(900px, calc(100% - 2rem)); margin: 2rem auto; }
+main > h1 { font-size: 2rem; font-weight: 700; line-height: 1.25; margin-bottom: .75rem; }
+main > p, main > noscript { display: block; max-width: 70ch; margin-bottom: 1.5rem; }
+main > div:has(> #host-update) { display: flex; flex-wrap: wrap; gap: .75rem; margin-bottom: 1.5rem; }
+main > div > button { padding: .5rem 1rem; min-height: 44px; border: 1px solid var(--color-border); border-radius: .375rem; }
+.dark main > div > button { border-color: var(--color-darkborder); }
+main > div > button:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; }
+#host-state { display: block; min-height: 3rem; padding: 1rem 0; }
+#secondary-slot:not(:empty) { margin-top: 1.5rem; }

@@ -19,9 +19,37 @@ fathom fleet reconcile --repo . && fathom fleet reconcile --repo . --apply
 ```
 
 Dry-run first, read the diff, then apply — reconcile repoints stale
-absolute binary paths to the shim-stable `fathom` and merges missing
-template entries at exactly one scope (project, deferring to user scope).
-Structural changes (scope moves, removals) are yours, not the verb's.
+absolute binary paths to the shim-stable `fathom`, refreshes a behind-
+template stanza to the current wording (SB-7: the stanza now routes by
+**question shape** — where / who-calls / what-breaks via the fathom MCP
+tools; what-governs is `obligations` with no path; is this still true /
+what was known is `staleness_report` (RC-23, docs/vision/28-receipts.md
+§3.5); a literal string, a config value, a log line, or a
+document-versus-document contradiction is grep's — never a blanket
+"index before any grep"),
+merges missing template entries at exactly one scope (project, deferring
+to user scope),
+and plans the nine shipped skills in BOTH repo-scoped shapes
+(`.claude/skills` and `.agents/skills`, the Agent Skills standard path)
+through the same engine: `missing` is created, `stale` (marker-owned,
+behind the shipped source) is rewritten under its marker, and a
+hand-authored file by a skill's name — or a hand edit under the marker —
+is **BLOCKED** by name and left alone. Structural changes (scope moves,
+removals) are yours, not the verb's. The hook template itself derives
+from the harness registry (`fathom harness list`); every hook verb takes
+`--harness <id>` and is wired for `claude-code` in this build.
+Law 15 governs every write: one plan → apply → one receipt per repo in
+`.fathom/receipts.jsonl` (`fathom fleet receipts` lists; `fathom fleet
+undo --last | <receipt-id>` reverses). The dry run tells `stanza: …
+behind the current template` from `up to date (will be re-marked with a
+digest on apply; no prose changes)` — a pre-v3 `<!-- fathom:begin -->`
+region is upgraded to `<!-- fathom:begin v3 sha256:… -->`, not drift. A
+tracked region a human edited is **BLOCKED** and named (exit 1, that file
+byte-identical, other files still applied; unreadable/unparsable files
+named separately): delete the marked block and re-apply to take fathom's
+version, or keep yours and it keeps reporting. `/observatory/wiring/`
+drives the same engine (preview → apply → undo, digest-checked,
+loopback-only).
 
 ## The manual pass (when reconcile is unavailable or you need the audit)
 
@@ -38,13 +66,34 @@ Structural changes (scope moves, removals) are yours, not the verb's.
    deposits — disk-only, inject nothing); PostToolUse(Edit|Write|
    MultiEdit)→`fathom edit-hook` t5; PreToolUse ×3 t5 — (Edit|Write|
    MultiEdit), (Bash), (Grep|Glob|Read) — all →`fathom edit-hook --pre`;
-   Stop→`fathom stop-hook` t10. Reconcile in place at whichever ONE scope
+   Stop→`fathom stop-hook` t10; InstructionsLoaded→`fathom session-hook
+   --event instructions-loaded` t5 and ConfigChange→`fathom config audit
+   --hook` t10 (silent witnesses); and the seven advisory rows —
+   SubagentStart→`fathom session-hook --event subagent-start` t5,
+   PostToolUseFailure(fathom tools, plain AND plugin-scoped)→`fathom
+   session-hook --event tool-failure` t5, FileChanged(CLAUDE.md|AGENTS.md|
+   concerns.cue|config.toml)→`fathom config audit --hook --event
+   file-changed` t10, WorktreeCreate→`fathom session-hook --event
+   worktree-create` t5, CwdChanged and DirectoryAdded→`fathom session-hook
+   --event cwd-changed` t5, Setup→`fathom doctor --brief` t15. A repo wired
+   before those rows existed gains exactly them and loses nothing — they
+   are appended, and everything above is byte-identical.
+   Reconcile in place at whichever ONE scope
    already has fathom hooks; rewrite absolute `/…/fathom` commands to
-   plain `fathom`.
+   plain `fathom`. (`fathom plugin render` emits the same template as
+   `hooks/hooks.json` for the plugin install path.)
+2b. Skills: `.claude/skills/<name>/SKILL.md` and
+   `.agents/skills/<name>/SKILL.md` for all nine, each carrying the
+   `fathom:owned` marker; `fathom doctor`'s `skills_installed` names the
+   missing ones per harness, and `fathom init --skills` re-renders them
+   (refusing, by name, a file it does not own).
 3. `.fathomignore` covers secrets/data/vendored/build — BEFORE any first
    ingest.
-4. `fathom gen-claude-md` and merge — the stanza must say fathom (never a
-   pre-rename name) and spell commands via plain `fathom`.
+4. The stanza is regenerated only through `fathom init` / `fleet
+   reconcile --apply` (the marker region, never your prose) — it must say
+   fathom (never a pre-rename name) and spell commands via plain `fathom`.
+   (`fathom gen-claude-md` is a different verb: a symbol-derived CLAUDE.md
+   written to `workspace/artifacts/`.)
 5. Ingest with BOTH fields — `{"service":"<plain-name>","path":"<canonical
    absolute root>"}`. The daemon now refuses path-like ids, duplicate
    roots (naming the claimant), and nested roots; `rename_service` /

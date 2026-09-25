@@ -1,5 +1,15 @@
 # Getting started — adopting app-kit
 
+Start with [adoption.md](design/adoption.md) for profile selection, both agent hosts,
+verification and returning improvements. This page supplies existing build/startup
+commands; it does not prove native platform support or automatic fleet adoption.
+Project MCP registration examples must be verified in the actual host being used.
+
+At discovery and before handing off material UI/CLI work, use the
+[contribution loop](design/contribution-loop.md) to return useful fixes, fixtures and
+lessons. Its compact record belongs in the app's adoption contract; follow its
+ownership and promotion rules rather than copying app-specific policy into the kit.
+
 This is the end-to-end path from a fresh clone to **using the kit's Assistant
 in another project**: an MCP server that lets any coding agent search your
 licensed TailwindPlus library and read the kit's decisions so it builds the
@@ -100,8 +110,11 @@ Streamable HTTP transport (loopback-only — see
 
 ## 4. Wire it into another project
 
-In the consuming repo, add `.mcp.json` (this is what Claude Code and other MCP
-hosts read). **Recommended** — built binary, explicit kit root:
+Follow [agent setup](design/agent-setup.md) for user-scope commands, Codex TOML,
+private backups and repeatable verification. The `.mcp.json` below is a **Claude
+Code project** example; Codex uses `config.toml`, not this file. Preserve existing
+entries and verify each host separately.
+**Recommended launch configuration** — built binary, explicit kit root:
 
 ```json
 {
@@ -114,20 +127,9 @@ hosts read). **Recommended** — built binary, explicit kit root:
 }
 ```
 
-**No-build alternative** — compiles on launch, mirrors how Throughline already
-calls the `appkit` CLI from a sibling checkout:
-
-```json
-{
-  "mcpServers": {
-    "appkit": {
-      "command": "go",
-      "args": ["run", "-C", "/abs/path/to/app-kit", "./cmd/appkit-mcp"],
-      "env": { "APPKIT_ROOT": "/abs/path/to/app-kit" }
-    }
-  }
-}
-```
+Do not use `go run` as the normal host command: compilation, cache contention and
+dependency resolution at startup create avoidable latency/failure boundaries.
+Build explicitly, verify the executable, then reconnect the host.
 
 `APPKIT_ROOT` lets the server find the corpus index and the ADRs no matter
 what directory the host launches it from. Inside the app-kit checkout itself
@@ -142,6 +144,9 @@ Once connected, the agent has these tools:
 
 | Tool | Use it to… |
 |---|---|
+| `search_capabilities` / `get_capability` | choose compatible first-party integration contracts before selecting source |
+| `list_quality_work` / `get_quality_work` | inspect authored standards, quality gaps and JIT work; not live certification |
+| `search_design_assets` / `get_design_asset` | discover purchased whole templates and Catalyst, with exact archive provenance |
 | `search_components` | find components by intent/keywords (BM25 over taxonomy, names, classes) with optional `section`/`framework`/`tailwind_version`/`mode` filters |
 | `get_component` | get the exact source for one variant by `full_name` + axes |
 | `list_components` / `list_sections` | browse the catalog structurally |
@@ -149,7 +154,9 @@ Once connected, the agent has these tools:
 | `get_kit_theming` | adapt a pulled component to the kit's semantic tokens (palette → role utilities; drop `dark:` color variants) |
 | `list_kit_decisions` / `get_kit_decision` | read the ADR behind any decision (by id or slug) |
 
-The intended flow is **search → get → (adapt)**:
+Start with guidance and the consumer's intent, then **discover capability and visual
+reference separately → exact get → review quality gaps → integrate → prove → return**.
+The narrower commercial-source flow is **search → get → (adapt)**:
 `search_components("testimonial grid")` then `get_component(full_name,
 framework="react", tailwind_version=4, mode="light")`, and — when the consuming
 project themes through app-kit tokens — `get_kit_theming(classes=…)` to turn the

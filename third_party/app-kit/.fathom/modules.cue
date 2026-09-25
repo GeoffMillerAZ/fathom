@@ -18,3 +18,6 @@
 // 	max_rules: 2                     // OPTIONAL: per-edit budget cap (default 2)
 // 	min_tier:  "doc-claimed"         // OPTIONAL: serve nothing below this tier
 // }]
+
+// No applicable evaluated module is selected for this kit. Presence is not binding.
+bindings: []

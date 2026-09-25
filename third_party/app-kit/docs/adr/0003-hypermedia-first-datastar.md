@@ -1,6 +1,6 @@
 # ADR-0003: Build all UI hypermedia-first on Datastar
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR-0021 (scoped runtime profiles)
 - **Date:** 2026-06-10
 - **Decision drivers:** backend state authority; no Node ever (D2); machine
   legibility for agents (D15); determinism over a multi-decade horizon; one

@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "id": "p01-enhanced-local-performance-v1",
+  "target": "retained P01 enhanced Go-rendered hero, unchanged copy/assets/styles",
+  "widths": [390, 1440],
+  "schemes": ["light", "dark"],
+  "repetitions": 2,
+  "phases": ["cold", "warm"],
+  "viewportHeight": 1000,
+  "network": {"latencyMs": 80, "downloadBytesPerSecond": 1250000, "uploadBytesPerSecond": 625000},
+  "cpuSlowdown": 4,
+  "budgets": {
+    "cold": {"bodyBytes": 524288, "requests": 7, "fcpMs": 1000, "lcpMs": 1800, "usableMs": 2000, "heapBytes": 16777216},
+    "warm": {"bodyBytes": 16384, "requests": 7, "fcpMs": 600, "lcpMs": 1000, "usableMs": 1200, "heapBytes": 16777216}
+  },
+  "pins": {
+    "referenceReceipt": "4ba0ff93f8d0524373d701f2618dc336e273878f11fc2c112f4b953e716ac1bd",
+    "source": "356c19f1095d82529cb54014e3b94a67b7531489bb26b96b5fba8686d94beba9",
+    "artifact": "05093df0dfcdaed5c61b22a2685eec0d783ca8b690fc74e16c0adc9f8eff8570",
+    "enhanced": "5c1a178953c15dce091a46b2b711a4cedb94473e9e047796e0c4f84fe6309a2c",
+    "playwrightEntry": "a0f5715ea22354f922791a9c53dc012d5d5c067ff9cc4cd35ffb7cd272071a9f",
+    "browserVersion": "152.0.7977.84"
+  },
+  "definitions": {
+    "bodyBytes": "Sum of actual uncached response bodies observed through CDP, including HTML, CSS, font and images. Identity encoding; excludes headers/TLS and cached bodies. Not total wire bytes.",
+    "requests": "Browser-observed document and resource requests, including cache hits; exact allowlist and byte identity checked separately.",
+    "usableMs": "Upper-bound navigation-relative observation after load, font readiness, decoding all three images and two animation frames; expected visible links/images and native Tab order must also pass. Not TTI or a minimum readiness timestamp.",
+    "fcpMs": "Navigation-relative first-contentful-paint entry in the controlled browser.",
+    "lcpMs": "Latest buffered largest-contentful-paint entry sampled before input after image/font readiness. Lab observation, not field Web Vitals.",
+    "heapBytes": "CDP Performance JSHeapUsedSize after readiness; excludes native image/GPU/process memory and includes instrumentation.",
+    "instrumentation": "Browser JavaScript is enabled for CDP timing callbacks; CSP script-src none and zero script elements prohibit application scripts. An empty inline favicon in the test wrapper suppresses implicit /favicon.ico requests. Source fragment, images, font and CSS remain unchanged.",
+    "warm": "Same context and URL after cold load, HTTP cache enabled, cacheable exact static resources, no-store HTML; at least one observed cache hit required. Not BFCache."
+  },
+  "rationale": "One static hero must leave capacity for the rest of a brochure page: cold bodies <=512 KiB and warm <=16 KiB, no application JavaScript, usable within2 seconds under this10Mbps/80ms/4xCPU laboratory. These are prospective owner-directed engineering targets, not measurements or universal standards. Do not loosen after a failure without a separately reviewed contract change.",
+  "notApplicable": {
+    "dataMarksRows": "No analytics dataset, repeated-row workload or data transform exists in this fixed hero.",
+    "updateLatencyStreamFanout": "No application updates, state store, stream, reconnect or client runtime exists in this target.",
+    "fieldINP": "No field population or interaction sample exists; native link access is tested separately, not represented as an INP score."
+  },
+  "limits": ["Desktop Chromium emulation, not physical mobile, production traffic, global network or field-performance certification.", "Retained Inter is a controlled test font, not proven portal provenance.", "A pass here would close only this named workload, not the entire conversion target or real-consumer integration."]
+}

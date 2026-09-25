@@ -21,6 +21,7 @@
    a consuming app does for every kit component package it uses. */
 @source "../*.go";
 @source "../../../appkit/ui/callout/*.go";
+@source "../../../appkit/ui/docs/*.go";
 @source "../../../appkit/ui/stat/*.go";
 @source "../../../appkit/ui/card/*.go";
 @source "../../../appkit/ui/kanban/*.go";
@@ -33,10 +34,12 @@
 @source "../../../appkit/ui/chat/*.go";
 @source "../../../appkit/ui/chat/*.js";
 @source "../../../appkit/ui/dashboard/*.go";
+@source "../../../appkit/ui/appearance/*.go";
 /* vizframe emits role utilities (L3b, ADR-0017 §1), so the scanner must see its
    Go source or the provenance frame renders unstyled. ui/viz needs no entry —
    it is L3a: zero class=, color only through var(--ak-color-*). */
 @source "../../../appkit/ui/vizframe/*.go";
+@source "../../../appkit/ui/analytics/*.go";
 
 /* Token-driven utilities, built dynamically at render time — force-generated. */
 @source inline("{bg,text,border}-{accent,accent-hover,accent-ink,accent-soft,caution,caution-soft,danger,danger-soft,focus,info,info-soft,ink,ink-faint,ink-inverse,ink-muted,line,line-strong,positive,positive-soft,surface,surface-overlay,surface-raised,surface-sunken}");

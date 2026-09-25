@@ -1,0 +1,261 @@
+--- a/pkg/application/webview_window_options.go
++++ b/pkg/application/webview_window_options.go
+@@ -1,6 +1,12 @@
+ package application
+ 
+ import (
++	"fmt"
++	"net"
++	"net/url"
++	"strconv"
++	"strings"
++
+ 	"github.com/wailsapp/wails/v3/internal/optional"
+ 	"github.com/wailsapp/wails/v3/pkg/events"
+ )
+@@ -613,6 +619,11 @@
+ 
+ // MacWindow contains macOS specific options for Webview Windows
+ type MacWindow struct {
++	// HTTPOnlyOrigin opts this window into an HTTP-only native boundary. It must
++	// be an exact http(s) origin. The macOS host then permits top-level
++	// navigation only within that origin and does not install Wails' URL-scheme
++	// or script-message bridges. Empty preserves the default Wails behaviour.
++	HTTPOnlyOrigin string
+ 	// Backdrop is the backdrop type for the window
+ 	Backdrop MacBackdrop
+ 	// DisableShadow will disable the window shadow
+@@ -667,6 +678,40 @@
+ 	PanelPreferences MacPanelPreferences
+ }
+ 
++func normaliseHTTPOnlyOrigin(raw string) (string, error) {
++	if raw == "" {
++		return "", nil
++	}
++	u, err := url.Parse(raw)
++	if err != nil {
++		return "", fmt.Errorf("invalid HTTP-only origin: %w", err)
++	}
++	scheme := strings.ToLower(u.Scheme)
++	if (scheme != "http" && scheme != "https") || u.Opaque != "" || u.User != nil || u.Hostname() == "" ||
++		u.ForceQuery || u.RawQuery != "" || u.Fragment != "" || (u.EscapedPath() != "" && u.EscapedPath() != "/") || strings.HasSuffix(u.Host, ":") {
++		return "", fmt.Errorf("HTTP-only origin must contain only an http(s) scheme and host")
++	}
++	host := strings.ToLower(u.Hostname())
++	for _, r := range host {
++		if r > 127 || r == '%' {
++			return "", fmt.Errorf("HTTP-only origin host must be an ASCII hostname or IP address")
++		}
++	}
++	port := u.Port()
++	if port == "" {
++		if scheme == "https" {
++			port = "443"
++		} else {
++			port = "80"
++		}
++	}
++	portNumber, err := strconv.Atoi(port)
++	if err != nil || portNumber < 1 || portNumber > 65535 {
++		return "", fmt.Errorf("HTTP-only origin must use a valid effective port")
++	}
++	return scheme + "://" + net.JoinHostPort(host, strconv.Itoa(portNumber)), nil
++}
++
+ // MacWindowClass selects the native AppKit class used for a webview window.
+ type MacWindowClass int
+ 
+--- a/pkg/application/webview_window_options_test.go
++++ b/pkg/application/webview_window_options_test.go
+@@ -3,6 +3,44 @@
+ import (
+ 	"testing"
+ )
++
++func TestNormaliseHTTPOnlyOrigin(t *testing.T) {
++	for _, tc := range []struct {
++		name, input, want string
++		invalid           bool
++	}{
++		{name: "disabled", input: "", want: ""},
++		{name: "http default port", input: "http://Example.COM", want: "http://example.com:80"},
++		{name: "https default port", input: "https://example.com/", want: "https://example.com:443"},
++		{name: "explicit loopback port", input: "http://127.0.0.1:54321", want: "http://127.0.0.1:54321"},
++		{name: "canonical port", input: "http://127.0.0.1:080", want: "http://127.0.0.1:80"},
++		{name: "ipv6", input: "http://[::1]:54321", want: "http://[::1]:54321"},
++		{name: "scheme", input: "file:///tmp/a", invalid: true},
++		{name: "userinfo", input: "http://user@example.com", invalid: true},
++		{name: "path", input: "http://example.com/app", invalid: true},
++		{name: "query", input: "http://example.com?x=1", invalid: true},
++		{name: "empty query", input: "http://example.com?", invalid: true},
++		{name: "fragment", input: "http://example.com#x", invalid: true},
++		{name: "missing host", input: "http:", invalid: true},
++		{name: "dangling port", input: "http://example.com:", invalid: true},
++		{name: "zero port", input: "http://example.com:0", invalid: true},
++		{name: "unicode host", input: "http://éxample.com", invalid: true},
++		{name: "ipv6 zone", input: "http://[fe80::1%25en0]", invalid: true},
++	} {
++		t.Run(tc.name, func(t *testing.T) {
++			got, err := normaliseHTTPOnlyOrigin(tc.input)
++			if tc.invalid {
++				if err == nil {
++					t.Fatalf("normaliseHTTPOnlyOrigin(%q) = %q, want error", tc.input, got)
++				}
++				return
++			}
++			if err != nil || got != tc.want {
++				t.Fatalf("normaliseHTTPOnlyOrigin(%q) = %q, %v; want %q", tc.input, got, err, tc.want)
++			}
++		})
++	}
++}
+ 
+ func TestNewRGBA(t *testing.T) {
+ 	rgba := NewRGBA(100, 150, 200, 255)
+--- a/pkg/application/webview_window_darwin.go
++++ b/pkg/application/webview_window_darwin.go
+@@ -103,7 +103,8 @@
+ 		bool frameless, bool squareCorners, double cornerRadius, bool enableDragAndDrop,
+ 		struct WebviewPreferences preferences, const char* applicationNameForUserAgent,
+ 		bool isPanel, struct PanelPreferences panelPreferences, bool isNotchWindow,
+-		int notchContentWidth, int notchContentHeight, const char* notchScreenID) {
++		int notchContentWidth, int notchContentHeight, const char* notchScreenID,
++		const char* httpOnlyOrigin) {
+ 	NSWindow<WailsWebviewWindow>* window = createNativeWindow(width, height, frameless,
+ 		squareCorners, cornerRadius, isPanel, panelPreferences, isNotchWindow);
+ 
+@@ -117,6 +118,9 @@
+ 	// Set delegate
+ 	[window setDelegate:delegate];
+ 	delegate.windowId = id;
++	if (httpOnlyOrigin != NULL && httpOnlyOrigin[0] != '\0') {
++		delegate.httpOnlyOrigin = [NSString stringWithUTF8String:httpOnlyOrigin];
++	}
+ 
+ 	// Add NSView to window
+ 	NSView* view = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, width-1, height-1)];
+@@ -178,7 +182,9 @@
+ 	} else {
+ 		config.applicationNameForUserAgent = @"wails.io";
+ 	}
+-	[config setURLSchemeHandler:delegate forURLScheme:@"wails"];
++	if (delegate.httpOnlyOrigin == nil) {
++		[config setURLSchemeHandler:delegate forURLScheme:@"wails"];
++	}
+ 
+ #if MAC_OS_X_VERSION_MAX_ALLOWED >= 101500
+  	if (@available(macOS 10.15, *)) {
+@@ -190,7 +196,9 @@
+     WKUserContentController* userContentController = [WKUserContentController new];
+ 	[userContentController autorelease];
+ 
+-    [userContentController addScriptMessageHandler:delegate name:@"external"];
++	if (delegate.httpOnlyOrigin == nil) {
++		[userContentController addScriptMessageHandler:delegate name:@"external"];
++	}
+     config.userContentController = userContentController;
+ 
+ 	WKWebView* webView = [[WKWebView alloc] initWithFrame:frame configuration:config];
+@@ -1454,12 +1462,14 @@
+ 	result := &macosWebviewWindow{
+ 		parent: parent,
+ 	}
+-	result.parent.RegisterHook(events.Mac.WebViewDidFinishNavigation, func(event *WindowEvent) {
+-		// Inject runtime core
+-		js := runtime.Core(globalApplication.impl.GetFlags(globalApplication.options))
+-		js += fmt.Sprintf("window._wails.flags.enableFileDrop=%v;", result.parent.options.EnableFileDrop)
+-		result.execJS(js)
+-	})
++	if parent.options.Mac.HTTPOnlyOrigin == "" {
++		result.parent.RegisterHook(events.Mac.WebViewDidFinishNavigation, func(event *WindowEvent) {
++			// Inject runtime core
++			js := runtime.Core(globalApplication.impl.GetFlags(globalApplication.options))
++			js += fmt.Sprintf("window._wails.flags.enableFileDrop=%v;", result.parent.options.EnableFileDrop)
++			result.execJS(js)
++		})
++	}
+ 	return result
+ }
+ 
+@@ -1625,6 +1635,16 @@
+ 	globalApplication.dispatchOnMainThread(func() {
+ 		options := w.parent.options
+ 		macOptions := options.Mac
++		httpOnlyOrigin, err := normaliseHTTPOnlyOrigin(macOptions.HTTPOnlyOrigin)
++		if err != nil {
++			globalApplication.handleFatalError(err)
++			return
++		}
++		var cHTTPOnlyOrigin *C.char
++		if httpOnlyOrigin != "" {
++			cHTTPOnlyOrigin = C.CString(httpOnlyOrigin)
++			defer C.free(unsafe.Pointer(cHTTPOnlyOrigin))
++		}
+ 
+ 		var appName *C.char
+ 		if s := macOptions.WebviewPreferences.ApplicationNameForUserAgent; s != "" {
+@@ -1650,6 +1670,7 @@
+ 			C.int(notchContentWidth),
+ 			C.int(notchContentHeight),
+ 			cNotchScreenID,
++			cHTTPOnlyOrigin,
+ 		)
+ 		if macOptions.DisableEscapeExitsFullscreen {
+ 			C.windowSetDisableEscapeExitsFullscreen(w.nsWindow, C.bool(true))
+--- a/pkg/application/webview_window_darwin.h
++++ b/pkg/application/webview_window_darwin.h
+@@ -31,6 +31,9 @@
+ @property unsigned int invisibleTitleBarHeight;
+ @property BOOL showToolbarWhenFullscreen;
+ @property NSWindowStyleMask previousStyleMask; // Used to restore the window style mask when using frameless
++// Non-nil only for the opt-in HTTP-only window profile. Stored in canonical
++// scheme://host:effective-port form.
++@property (copy) NSString* httpOnlyOrigin;
+ 
+ - (void)handleLeftMouseUp:(NSWindow *)window;
+ - (void)handleLeftMouseDown:(NSEvent*)event;
+--- a/pkg/application/webview_window_darwin.m
++++ b/pkg/application/webview_window_darwin.m
+@@ -495,7 +495,41 @@
+ - (void) dealloc {
+     // Makes sure to remove the retained properties so the reference counter of the retains are decreased
+     self.leftMouseEvent = nil;
++    self.httpOnlyOrigin = nil;
+     [super dealloc];
++}
++
++static NSString* httpOnlyEffectiveOrigin(NSURL* url) {
++    if (url == nil || url.user != nil || url.password != nil || url.scheme == nil || url.host == nil) {
++        return nil;
++    }
++    NSString* scheme = url.scheme.lowercaseString;
++    if (![scheme isEqualToString:@"http"] && ![scheme isEqualToString:@"https"]) {
++        return nil;
++    }
++    NSString* host = url.host.lowercaseString;
++    NSNumber* port = url.port;
++    if (port == nil) {
++        port = [scheme isEqualToString:@"https"] ? @443 : @80;
++    }
++    if ([host containsString:@":"] && ![host hasPrefix:@"["]) {
++        host = [NSString stringWithFormat:@"[%@]", host];
++    }
++    return [NSString stringWithFormat:@"%@://%@:%@", scheme, host, port];
++}
++
++- (void)webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction
++    decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler {
++    if (self.httpOnlyOrigin == nil) {
++        decisionHandler(WKNavigationActionPolicyAllow);
++        return;
++    }
++    WKFrameInfo* target = navigationAction.targetFrame;
++    WKFrameInfo* source = navigationAction.sourceFrame;
++    NSString* requestedOrigin = httpOnlyEffectiveOrigin(navigationAction.request.URL);
++    BOOL allowed = target != nil && target.isMainFrame && source != nil && source.isMainFrame &&
++        requestedOrigin != nil && [requestedOrigin isEqualToString:self.httpOnlyOrigin];
++    decisionHandler(allowed ? WKNavigationActionPolicyAllow : WKNavigationActionPolicyCancel);
+ }
+ - (void) startDrag:(NSWindow*)window {
+     [window performWindowDragWithEvent:self.leftMouseEvent];

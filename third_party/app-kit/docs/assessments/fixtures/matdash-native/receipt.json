@@ -1,0 +1,371 @@
+{
+  "schema": 1,
+  "date": "2026-09-13",
+  "status": "native-reconstruction-build-and-static-http-only",
+  "assessment": "docs/assessments/2026-09-13-matdash-native-reference.md",
+  "scope": "Private MatDash main source snapshot plus separately reviewed repair. Not a converted Go target, official vendor release, browser/visual baseline, security certification or performance measurement.",
+  "environment": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "node": "v26.3.0",
+    "npm": "11.16.0",
+    "macos": "26.6.2"
+  },
+  "inputs": {
+    "original_root": "data/matdash/packages/main",
+    "pristine_copy": "/tmp/appkit-matdash-reference.DxoSoc/project",
+    "files": 1245,
+    "bytes": 12392681,
+    "tree_sha256": "0f22a03dea837acca1a196eb87a58327fb38c58d15fa57014b995e4a27611d42",
+    "tree_hash_definition": "SHA-256 of UTF-8 compact JSON of regular-file records {path,sha256,bytes}; depth-first traversal with each directory's names sorted using JavaScript default sort, forward-slash paths relative to root.",
+    "original_and_pristine_equal": true,
+    "original_changed": false,
+    "pilot_originals": {
+      "P11": "36c37212b4e5571367618d4e0d8fc9d1dfa35c75266228170f8eac071112b277",
+      "P12": "569ffc17dd27859dfe0df9a3fbf85e673e6552a547d142d840f37a30447fc9ac"
+    },
+    "source_snapshot": {
+      "path": "data/design-assets/reference-assets/matdash/63e29e44e14343a179379bcf27695774b9318a2a3c356dcf6a65801cf7f95b30.tar",
+      "bytes": 16657408,
+      "sha256": "63e29e44e14343a179379bcf27695774b9318a2a3c356dcf6a65801cf7f95b30"
+    },
+    "repair_overlay": {
+      "path": "data/design-assets/reference-assets/matdash/8da1c24e9eee0dd3f4be6f8b301442e087d3dd16be7afdb392900a92ddc42d30.tar",
+      "bytes": 595968,
+      "sha256": "8da1c24e9eee0dd3f4be6f8b301442e087d3dd16be7afdb392900a92ddc42d30"
+    },
+    "archive_scope": "Locally created TAR snapshots, not official ZIP downloads or entries in the Tailwind archive catalog. Git-ignored and owner-readable/writable; back up separately.",
+    "overlay_members": [
+      {
+        "path": ".npmrc",
+        "bytes": 45,
+        "sha256": "e0be3c9787d5915473e160d569cd3803f18e1795726e88196b1d875a093e8f30"
+      },
+      {
+        "path": "package.json",
+        "bytes": 3283,
+        "sha256": "3f01807fad75002a7f6f03f2819534bce463dc65486eff0ec0eb2cab2f764e83"
+      },
+      {
+        "path": "package-lock.json",
+        "bytes": 568407,
+        "sha256": "c286a40f730263a060ecf1830ff00f567fe9d993e90ca8fd46e85a04a7783178"
+      },
+      {
+        "path": "src/views/forms/from-tiptap/TiptapEdit.tsx",
+        "bytes": 5137,
+        "sha256": "7de4da85378d271ca0e85e9f0aa70268711a2c8d4a3a77b6e6aaf6c4536f9fac"
+      },
+      {
+        "path": "src/components/headless-form/Combobox/BasicComobobox.tsx",
+        "bytes": 3459,
+        "sha256": "83fb902813e890861ef286291a40b4b91c4fc833debd04070a35556053b3c21d"
+      }
+    ]
+  },
+  "repair": {
+    "root": "/tmp/appkit-matdash-reference.DxoSoc/repair",
+    "unchanged_original_files": 1241,
+    "existing_file_changes": [
+      {
+        "path": ".npmrc",
+        "original_sha256": "57739718c1255e6634faf8b05862c4464c4c81463cddc4c5a1a25037ebdbd6da",
+        "original_bytes": 21,
+        "repair_sha256": "e0be3c9787d5915473e160d569cd3803f18e1795726e88196b1d875a093e8f30",
+        "repair_bytes": 45
+      },
+      {
+        "path": "package.json",
+        "original_sha256": "47be5e2fca24a169207168aef342c89f3a2997f0984d1538260dc123140b97eb",
+        "original_bytes": 3187,
+        "repair_sha256": "3f01807fad75002a7f6f03f2819534bce463dc65486eff0ec0eb2cab2f764e83",
+        "repair_bytes": 3283
+      },
+      {
+        "path": "src/components/headless-form/Combobox/BasicComobobox.tsx",
+        "original_sha256": "42508439848ed6d43a63d016322410aa980f6d128d80213a2c4d8411062dfdb8",
+        "original_bytes": 3435,
+        "repair_sha256": "83fb902813e890861ef286291a40b4b91c4fc833debd04070a35556053b3c21d",
+        "repair_bytes": 3459
+      },
+      {
+        "path": "src/views/forms/from-tiptap/TiptapEdit.tsx",
+        "original_sha256": "569ffc17dd27859dfe0df9a3fbf85e673e6552a547d142d840f37a30447fc9ac",
+        "original_bytes": 5131,
+        "repair_sha256": "7de4da85378d271ca0e85e9f0aa70268711a2c8d4a3a77b6e6aaf6c4536f9fac",
+        "repair_bytes": 5137
+      }
+    ],
+    "manifest_changes": [
+      {
+        "section": "dependencies",
+        "name": "mui-tiptap",
+        "original": "^1.13.0",
+        "repair": "1.13.0"
+      },
+      {
+        "section": "dependencies",
+        "name": "react",
+        "original": "^19.0.0",
+        "repair": "18.3.1"
+      },
+      {
+        "section": "dependencies",
+        "name": "react-apexcharts",
+        "original": "^1.4.1",
+        "repair": "1.4.1"
+      },
+      {
+        "section": "dependencies",
+        "name": "react-dom",
+        "original": "^19.0.0",
+        "repair": "18.3.1"
+      },
+      {
+        "section": "dependencies",
+        "name": "react-spring",
+        "original": "^9.7.3",
+        "repair": null
+      },
+      {
+        "section": "dependencies",
+        "name": "@dnd-kit/utilities",
+        "original": null,
+        "repair": "3.2.2"
+      },
+      {
+        "section": "dependencies",
+        "name": "clsx",
+        "original": null,
+        "repair": "2.1.1"
+      },
+      {
+        "section": "dependencies",
+        "name": "lowlight",
+        "original": null,
+        "repair": "2.9.0"
+      },
+      {
+        "section": "dependencies",
+        "name": "react-icons",
+        "original": null,
+        "repair": "5.2.1"
+      },
+      {
+        "section": "dependencies",
+        "name": "tailwind-merge",
+        "original": null,
+        "repair": "2.4.0"
+      }
+    ],
+    "new_lock": {
+      "path": "package-lock.json",
+      "bytes": 568407,
+      "sha256": "c286a40f730263a060ecf1830ff00f567fe9d993e90ca8fd46e85a04a7783178"
+    },
+    "typescript_fix": "Use nullable Person state/handler/display callback in BasicComobobox.tsx. Preserve compiler strictness and full-project source coverage.",
+    "lowlight_fix": "Named lowlight import from lowlight/lib/core.js; preserve core-only behavior, add no language grammars.",
+    "preserved": "No CSS, Tailwind configuration, visual class, dashboard layout, chart-data or route exclusions."
+  },
+  "resolution": {
+    "command": "env -i PATH=/opt/homebrew/bin:/usr/bin:/bin /opt/homebrew/bin/node /opt/homebrew/lib/node_modules/npm/bin/npm-cli.js install --package-lock-only --ignore-scripts --no-audit --no-fund --update-notifier=false --legacy-peer-deps=false --strict-peer-deps --fetch-retries=0 --fetch-timeout=30000 --userconfig=/dev/null --globalconfig=/tmp/appkit-matdash-reference.DxoSoc/empty-global-npmrc --cache=/tmp/appkit-matdash-reference.DxoSoc/npm-cache --registry=https://registry.npmjs.org",
+    "strict_failures": [
+      {
+        "cwd": "/tmp/appkit-matdash-reference.DxoSoc/project",
+        "exit_code": 1,
+        "reason": "React 19.3.0 selected from original range conflicts with @casl/react@3.1.0 React 16/17/18 peers.",
+        "log": "/tmp/appkit-matdash-reference.DxoSoc/npm-cache/_logs/2026-09-13T16_47_30_002Z-eresolve-report.txt"
+      },
+      {
+        "cwd": "/tmp/appkit-matdash-reference.DxoSoc/repair",
+        "exit_code": 1,
+        "reason": "After React/wrapper/Lowlight adjustment, latest in-range mui-tiptap selected Tiptap 3 peer heading against Tiptap 2 core.",
+        "log": "/tmp/appkit-matdash-reference.DxoSoc/npm-cache/_logs/2026-09-13T16_51_09_514Z-eresolve-report.txt"
+      },
+      {
+        "cwd": "/tmp/appkit-matdash-reference.DxoSoc/repair",
+        "exit_code": 1,
+        "reason": "After mui-tiptap 1.13.0 pin, unused react-spring umbrella selected a React 19 fiber peer.",
+        "log": "/tmp/appkit-matdash-reference.DxoSoc/npm-cache/_logs/2026-09-13T16_52_53_216Z-eresolve-report.txt"
+      }
+    ],
+    "successful_resolution": {
+      "cwd": "/tmp/appkit-matdash-reference.DxoSoc/repair",
+      "exit_code": 0,
+      "legacy_peers": false,
+      "strict_peers": true,
+      "subsequent_lock_update": "After the four AST-identified hoisted imports were declared, the same strict lock-only command with --offline passed."
+    },
+    "lock_version": 3,
+    "dependency_records": 1084,
+    "registry": "https://registry.npmjs.org",
+    "all_dependency_records_exact_with_https_and_sha512": true,
+    "installation": {
+      "command": "env -i PATH=/opt/homebrew/bin:/usr/bin:/bin /opt/homebrew/bin/node /opt/homebrew/lib/node_modules/npm/bin/npm-cli.js ci --ignore-scripts --no-audit --no-fund --update-notifier=false --legacy-peer-deps=false --strict-peer-deps --fetch-retries=0 --fetch-timeout=30000 --userconfig=/dev/null --globalconfig=/tmp/appkit-matdash-reference.DxoSoc/empty-global-npmrc --cache=/tmp/appkit-matdash-reference.DxoSoc/npm-cache --registry=https://registry.npmjs.org",
+      "cwd": "/tmp/appkit-matdash-reference.DxoSoc/repair",
+      "exit_code": 0,
+      "added_packages": 1011,
+      "lifecycle_scripts_executed": false
+    },
+    "replay_installation": {
+      "command": "env -i PATH=/opt/homebrew/bin:/usr/bin:/bin /opt/homebrew/bin/node /opt/homebrew/lib/node_modules/npm/bin/npm-cli.js ci --offline --ignore-scripts --no-audit --no-fund --update-notifier=false --legacy-peer-deps=false --strict-peer-deps --userconfig=/dev/null --globalconfig=/tmp/appkit-matdash-reference.DxoSoc/empty-global-npmrc --cache=/tmp/appkit-matdash-reference.DxoSoc/npm-cache",
+      "cwd": "/tmp/appkit-matdash-reference.DxoSoc/replay",
+      "exit_code": 0,
+      "added_packages": 1011,
+      "offline": true,
+      "lifecycle_scripts_executed": false,
+      "cache": "/tmp/appkit-matdash-reference.DxoSoc/npm-cache",
+      "cache_separately_archived": false
+    },
+    "installed_verification": {
+      "command": "env -i PATH=/opt/homebrew/bin:/usr/bin:/bin /opt/homebrew/bin/node /opt/homebrew/lib/node_modules/npm/bin/npm-cli.js ls --all --json --legacy-peer-deps=false --strict-peer-deps --userconfig=/dev/null --globalconfig=/tmp/appkit-matdash-reference.DxoSoc/empty-global-npmrc --cache=/tmp/appkit-matdash-reference.DxoSoc/npm-cache",
+      "exit": 0,
+      "root_dependencies": 89,
+      "problems": [],
+      "stderr": "",
+      "installed_records": 1011,
+      "installed_manifest_version_mismatches": 0,
+      "individual_package_bodies_audited": false
+    },
+    "selected_versions": {
+      "react": "18.3.1",
+      "react-dom": "18.3.1",
+      "react-apexcharts": "1.4.1",
+      "apexcharts": "3.48.0",
+      "react-router": "7.18.3",
+      "@tiptap/core": "2.27.3",
+      "lowlight": "2.9.0",
+      "typescript": "5.5.4",
+      "vite": "5.4.21",
+      "flowbite-react": "0.10.2",
+      "mui-tiptap": "1.13.0"
+    },
+    "unexecuted_lifecycle_hooks": [
+      "esbuild@0.21.5",
+      "optional fsevents@2.3.3",
+      "sharp@0.32.6",
+      "unrs-resolver@1.12.2"
+    ],
+    "warnings": [
+      "prebuild-install@7.1.3 deprecated",
+      "eslint@9.39.5 unsupported",
+      "No npm audit or independent vulnerability/security review performed."
+    ]
+  },
+  "build": {
+    "first_typecheck": {
+      "cwd": "/tmp/appkit-matdash-reference.DxoSoc/repair",
+      "command": "env -i PATH=/opt/homebrew/bin:/usr/bin:/bin /opt/homebrew/bin/node node_modules/typescript/bin/tsc --pretty false",
+      "exit_code": 2,
+      "diagnostic": "TS2322 in BasicComobobox.tsx: onChange cannot reject nullable selection."
+    },
+    "successful_runs": [
+      {
+        "cwd": "/tmp/appkit-matdash-reference.DxoSoc/repair",
+        "command": "env -i PATH=/opt/homebrew/bin:/usr/bin:/bin /opt/homebrew/bin/node node_modules/typescript/bin/tsc --pretty false",
+        "exit_code": 0
+      },
+      {
+        "cwd": "/tmp/appkit-matdash-reference.DxoSoc/repair",
+        "command": "env -i PATH=/opt/homebrew/bin:/usr/bin:/bin /opt/homebrew/bin/node node_modules/vite/bin/vite.js build",
+        "exit_code": 0
+      },
+      {
+        "cwd": "/tmp/appkit-matdash-reference.DxoSoc/replay",
+        "command": "env -i PATH=/opt/homebrew/bin:/usr/bin:/bin /opt/homebrew/bin/node node_modules/typescript/bin/tsc --pretty false",
+        "exit_code": 0
+      },
+      {
+        "cwd": "/tmp/appkit-matdash-reference.DxoSoc/replay",
+        "command": "env -i PATH=/opt/homebrew/bin:/usr/bin:/bin /opt/homebrew/bin/node node_modules/vite/bin/vite.js build --logLevel warn",
+        "exit_code": 0
+      }
+    ],
+    "replay_preparation": "Fresh task-owned directory, original source TAR then exact five-member repair overlay; offline npm ci and full build. No source/type exclusions.",
+    "files": 366,
+    "bytes": 14627979,
+    "tree_sha256": "02edbaaa65f1a3c0a6ed314afe02022f102e3c02b06b1281a1483f5330639efc",
+    "raw_output_files_equal": true,
+    "added": 0,
+    "removed": 0,
+    "changed": 0,
+    "normalization": "none",
+    "warnings": [
+      "Vite retains chunk-size warnings over 500 kB; output size is not measured route transfer or user-perceived latency."
+    ],
+    "cross_platform_reproducibility": "not-tested"
+  },
+  "static_delivery": {
+    "shared_refusal_helper": {
+      "path": "docs/assessments/fixtures/catalyst-native/reference-server.mjs",
+      "sha256": "8985bae8e69bed62892efaf0d4457b89ce2985801d584b6efbbe1f17c347ddc9",
+      "scope": "Imports only the pure refuseRequest function; never starts its Next runtime. Reviewed first-party code, not a dynamic vendor loader."
+    },
+    "fixtures": [
+      {
+        "path": "docs/assessments/fixtures/matdash-native/build-assets.json",
+        "bytes": 66975,
+        "sha256": "545f1944260dcccc1abdca03cfc4b5d5ae81af9969457675dd7b78d3ed252a6f"
+      },
+      {
+        "path": "docs/assessments/fixtures/matdash-native/reference-server.mjs",
+        "bytes": 11890,
+        "sha256": "15d91bd8808b7a26424e9fdfe3f09e0f35a793c48be92c0801538c583aca1c15"
+      },
+      {
+        "path": "docs/assessments/fixtures/matdash-native/reference-server.test.mjs",
+        "bytes": 22191,
+        "sha256": "fbb5101933d801da73ce2344a7bd3407e5fb0c5e4a10136cf875012b1b85666f"
+      }
+    ],
+    "pinned_source_count": 17,
+    "asset_count": 366,
+    "declared_route_count": 133,
+    "metadata_pinned_before_json_parse": true,
+    "command": "APPKIT_MATDASH_REFERENCE_ROOT=/tmp/appkit-matdash-reference.DxoSoc/replay node --test docs/assessments/fixtures/matdash-native/reference-server.test.mjs",
+    "observed": {
+      "exit_code": 0,
+      "tests": 57,
+      "passed": 57,
+      "failed": 0,
+      "skipped": 0,
+      "revision_note": "Expanded suite preserves the original checks and adds trusted pinned-metadata entry and license MIME checks. Root and independent review runs passed."
+    },
+    "prior_fixture_run": {
+      "server_sha256": "82b751fb116b77573553ab438922d938476c523656859448025c54e698ee10f9",
+      "tests_sha256": "dce7aedf8b9461efab9c034f23e947ffede14abfeeabed80a0d26c6f69613f93",
+      "passed": 42,
+      "failed": 0,
+      "skipped": 0,
+      "duration_ms": 994.038625
+    },
+    "independent_review": "No actionable findings in bounded static-reference helper/test review; independent expanded 57-test run passed. Not an audit of vendor dependencies or application code.",
+    "coverage": [
+      "Every 366 built asset's exact HTTP bytes, hash, size and MIME",
+      "All 133 declared routes return the pinned HTML shell; dynamic parameter consumes one segment",
+      "Exact loopback authority, origin and fetch metadata; GET/HEAD only, no request body",
+      "Canonical paths and bounded queries; unknown assets, routes and APIs remain 404",
+      "No WebSocket upgrade; server close and real CLI SIGINT/SIGTERM stop owned listeners",
+      "Missing/changed/extra/symlink inputs and deterministic regular-file-to-FIFO canary refuse before serving",
+      "Pinned metadata before path use; cache verified byte snapshots against subsequent owned-copy mutation"
+    ],
+    "limits": {
+      "metadata_bytes": 131072,
+      "per_file_bytes": 4194304,
+      "total_source_and_asset_bytes": 67108864,
+      "files": 2000,
+      "directory_depth": 24,
+      "listener": "one ephemeral 127.0.0.1 port"
+    },
+    "vendor_code_executed_by_server_or_http_tests": false,
+    "runtime_boundary": "Static HTML delivery does not mount React. Browser loading executes vendor client JavaScript. Partial frame/base/form CSP is not script or outbound-network isolation; no authentication or OS sandbox is claimed."
+  },
+  "remaining_gates": [
+    "Chrome unavailable; no substituted browser; source-native visual baselines remain 0/12.",
+    "Fonts, us-atlas geography and named Iconify resources need pinned browser asset closure.",
+    "Unmatched Axios mock requests can pass through; no network-isolation claim.",
+    "Original duplicate StarterKit/code-block-lowlight extensions and core-only highlighting need runtime inspection.",
+    "Dashboard/editor task, expected data, keyboard/pointer/focus, theme/narrow/zoom, IME/undo/clipboard/teardown and HTML safety untested in browser.",
+    "No conversion fidelity, runtime target certification, client offline correctness, performance budgets or consumer integration proof."
+  ]
+}

@@ -1,0 +1,309 @@
+package main
+
+import (
+	"strings"
+	"testing"
+
+	nethtml "golang.org/x/net/html"
+)
+
+func TestAppkitFleetFreshnessDisplayQuality(t *testing.T) {
+	base := syntheticModel()
+	if len(base.Services) == 0 {
+		t.Fatal("syntheticModel must provide a service row")
+	}
+	service := func(name, freshness string) obsServiceRow {
+		row := base.Services[0]
+		row.Service = name
+		row.Freshness = freshness
+		return row
+	}
+
+	tests := []struct {
+		name       string
+		services   []obsServiceRow
+		degraded   string
+		wantValue  string
+		wantReason []string
+		wantRole   string
+		refuseText []string
+	}{
+		{
+			name:      "complete known freshness is positive",
+			services:  []obsServiceRow{service("alpha", "fresh"), service("beta", "fresh")},
+			wantValue: "all fresh",
+			wantRole:  "text-positive",
+		},
+		{
+			name:       "known stale count is exact",
+			services:   []obsServiceRow{service("alpha", "fresh"), service("beta", "stale: indexed a vs HEAD b")},
+			wantValue:  "1 stale repo",
+			wantRole:   "text-caution",
+			refuseText: []string{"all fresh", "≥"},
+		},
+		{
+			name:       "pathless unknown is absent",
+			services:   []obsServiceRow{service("alpha", "unknown: no recorded corpus path")},
+			wantValue:  "—",
+			wantReason: []string{"0 of 1", "unknown", "no recorded corpus path"},
+			wantRole:   "text-ink-faint",
+			refuseText: []string{"all fresh"},
+		},
+		{
+			name:       "blank freshness is unavailable",
+			services:   []obsServiceRow{service("alpha", "")},
+			wantValue:  "—",
+			wantReason: []string{"0 of 1"},
+			wantRole:   "text-ink-faint",
+			refuseText: []string{"all fresh"},
+		},
+		{
+			name:       "empty fleet is absent",
+			wantValue:  "—",
+			wantReason: []string{"no", "service"},
+			wantRole:   "text-ink-faint",
+			refuseText: []string{"all fresh"},
+		},
+		{
+			name:       "unexpected freshness is unavailable",
+			services:   []obsServiceRow{service("alpha", "surprising future state")},
+			wantValue:  "—",
+			wantReason: []string{"0 of 1", "surprising future state"},
+			wantRole:   "text-ink-faint",
+			refuseText: []string{"all fresh"},
+		},
+		{
+			name:       "stale-like unexpected token is unavailable",
+			services:   []obsServiceRow{service("alpha", "staleness? index state unavailable")},
+			wantValue:  "—",
+			wantReason: []string{"0 of 1", "staleness? index state unavailable"},
+			wantRole:   "text-ink-faint",
+			refuseText: []string{"all fresh", "stale repo"},
+		},
+		{
+			name:       "fresh plus unknown cannot claim all fresh",
+			services:   []obsServiceRow{service("alpha", "fresh"), service("beta", "unknown: no recorded corpus path")},
+			wantValue:  "—",
+			wantReason: []string{"1 of 2", "unknown", "no recorded corpus path"},
+			wantRole:   "text-ink-faint",
+			refuseText: []string{"all fresh"},
+		},
+		{
+			name:       "stale plus unknown is a named lower bound",
+			services:   []obsServiceRow{service("alpha", "stale: indexed a vs HEAD b"), service("beta", "unknown: no recorded corpus path")},
+			wantValue:  "≥ 1 stale repo",
+			wantReason: []string{"1 of 2", "unknown", "no recorded corpus path"},
+			wantRole:   "text-caution",
+			refuseText: []string{"all fresh"},
+		},
+		{
+			name: "multiple stale plus unknown keeps the lower-bound count",
+			services: []obsServiceRow{
+				service("alpha", "stale: indexed a vs HEAD b"),
+				service("beta", "stale: indexed c vs HEAD d"),
+				service("gamma", "unknown: statusz unreachable"),
+			},
+			wantValue:  "≥ 2 stale repos",
+			wantReason: []string{"2 of 3", "unknown", "statusz unreachable"},
+			wantRole:   "text-caution",
+			refuseText: []string{"all fresh"},
+		},
+		{
+			name:       "registry degradation overrides poisoned populated rows",
+			services:   []obsServiceRow{service("alpha", "fresh"), service("beta", "stale: indexed a vs HEAD b")},
+			degraded:   "registry unavailable: synthetic refusal",
+			wantValue:  "—",
+			wantReason: []string{"registry unavailable", "synthetic refusal"},
+			wantRole:   "text-ink-faint",
+			refuseText: []string{"all fresh", "stale repo"},
+		},
+		{
+			name:       "registry degradation with an empty fleet is absent",
+			degraded:   "registry unavailable: empty synthetic refusal",
+			wantValue:  "—",
+			wantReason: []string{"registry unavailable", "empty synthetic refusal"},
+			wantRole:   "text-ink-faint",
+			refuseText: []string{"all fresh", "stale repo"},
+		},
+		{
+			name:       "registry degradation invalidates otherwise fresh rows",
+			services:   []obsServiceRow{service("alpha", "fresh"), service("beta", "fresh")},
+			degraded:   "registry unavailable: fresh rows are untrusted",
+			wantValue:  "—",
+			wantReason: []string{"registry unavailable", "fresh rows are untrusted"},
+			wantRole:   "text-ink-faint",
+			refuseText: []string{"all fresh", "stale repo"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			model := base
+			model.Services = tt.services
+			model.DegradedNote = tt.degraded
+			value, reason, classes := appkitDisplayFreshnessTile(t, renderObsFleet(model))
+			if value != tt.wantValue {
+				t.Errorf("index freshness value = %q, want %q", value, tt.wantValue)
+			}
+			combined := strings.ToLower(value + " " + reason)
+			for _, want := range tt.wantReason {
+				if !strings.Contains(combined, strings.ToLower(want)) {
+					t.Errorf("index freshness value/reason %q does not name %q", combined, want)
+				}
+			}
+			if tt.wantRole != "" && !strings.Contains(classes, tt.wantRole) {
+				t.Errorf("index freshness classes = %q, want role %q", classes, tt.wantRole)
+			}
+			for _, refuse := range tt.refuseText {
+				if strings.Contains(combined, strings.ToLower(refuse)) {
+					t.Errorf("index freshness must refuse %q, got %q", refuse, combined)
+				}
+			}
+		})
+	}
+}
+
+func TestAppkitKVLongDiagnosticWraps(t *testing.T) {
+	const label = `<freshness & source>`
+	diagnostic := `<unreadable & path> ` + strings.Repeat("segment/", 96)
+	got := kv(label, absentCell(diagnostic))
+
+	doc, err := nethtml.Parse(strings.NewReader(got))
+	if err != nil {
+		t.Fatal(err)
+	}
+	row := appkitDisplayFirstElement(doc, "div")
+	if row == nil || !appkitDisplayHasClass(row, "min-w-0") {
+		t.Fatalf("kv row must be shrinkable: %q", got)
+	}
+	var children []*nethtml.Node
+	for child := row.FirstChild; child != nil; child = child.NextSibling {
+		if child.Type == nethtml.ElementNode && child.Data == "span" {
+			children = append(children, child)
+		}
+	}
+	if len(children) != 2 {
+		t.Fatalf("kv direct span children = %d, want 2: %q", len(children), got)
+	}
+	value := children[1]
+	prose := appkitDisplayFirstElement(value.FirstChild, "span")
+	if prose == nil || !appkitDisplayHasClass(prose, "block") || !appkitDisplayHasClass(prose, "text-left") {
+		t.Error("unavailable-source prose must retain a left reading edge inside the value column")
+	}
+	for _, class := range []string{"min-w-0", "text-right", "[overflow-wrap:anywhere]"} {
+		if !appkitDisplayHasClass(value, class) {
+			t.Errorf("kv value classes must include %q: %q", class, appkitDisplayAttr(value, "class"))
+		}
+	}
+	if appkitDisplayText(children[0]) != label || appkitDisplayText(value) != diagnostic {
+		t.Errorf("kv must preserve escaped label/diagnostic text: label=%q value=%q", appkitDisplayText(children[0]), appkitDisplayText(value))
+	}
+	if strings.Contains(got, label) || strings.Contains(got, diagnostic) {
+		t.Error("kv output contains hostile text without HTML escaping")
+	}
+}
+
+func appkitDisplayFreshnessTile(t *testing.T, body string) (value, reason, classes string) {
+	t.Helper()
+	doc, err := nethtml.Parse(strings.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var walk func(*nethtml.Node)
+	walk = func(n *nethtml.Node) {
+		if value != "" || n == nil {
+			return
+		}
+		if n.Type == nethtml.ElementNode && n.Data == "dl" && appkitDisplayAttr(n, "aria-label") == "fleet evidence status" {
+			for cell := n.FirstChild; cell != nil; cell = cell.NextSibling {
+				var dt, dd *nethtml.Node
+				for child := cell.FirstChild; child != nil; child = child.NextSibling {
+					if child.Type != nethtml.ElementNode {
+						continue
+					}
+					switch child.Data {
+					case "dt":
+						dt = child
+					case "dd":
+						dd = child
+					}
+				}
+				if dt == nil || dd == nil || strings.TrimSpace(appkitDisplayText(dt)) != "index freshness" {
+					continue
+				}
+				var inspect func(*nethtml.Node)
+				inspect = func(node *nethtml.Node) {
+					if node.Type == nethtml.ElementNode {
+						classes += " " + appkitDisplayAttr(node, "class")
+						if node.Data == "span" && appkitDisplayHasClass(node, "text-2xl") {
+							value = strings.TrimSpace(appkitDisplayText(node))
+						}
+						if node.Data == "span" && appkitDisplayHasClass(node, "text-sm") && appkitDisplayHasClass(node, "font-medium") && appkitDisplayHasClass(node, "text-ink-muted") {
+							reason = strings.TrimSpace(appkitDisplayText(node))
+						}
+					}
+					for child := node.FirstChild; child != nil; child = child.NextSibling {
+						inspect(child)
+					}
+				}
+				inspect(dd)
+				return
+			}
+		}
+		for child := n.FirstChild; child != nil; child = child.NextSibling {
+			walk(child)
+		}
+	}
+	walk(doc)
+	if value == "" {
+		t.Fatal("fleet evidence status index-freshness dt/dd not found")
+	}
+	return value, reason, classes
+}
+
+func appkitDisplayFirstElement(n *nethtml.Node, name string) *nethtml.Node {
+	if n == nil {
+		return nil
+	}
+	if n.Type == nethtml.ElementNode && n.Data == name {
+		return n
+	}
+	for child := n.FirstChild; child != nil; child = child.NextSibling {
+		if found := appkitDisplayFirstElement(child, name); found != nil {
+			return found
+		}
+	}
+	return nil
+}
+
+func appkitDisplayAttr(n *nethtml.Node, key string) string {
+	for _, a := range n.Attr {
+		if a.Key == key {
+			return a.Val
+		}
+	}
+	return ""
+}
+
+func appkitDisplayHasClass(n *nethtml.Node, want string) bool {
+	for _, class := range strings.Fields(appkitDisplayAttr(n, "class")) {
+		if class == want {
+			return true
+		}
+	}
+	return false
+}
+
+func appkitDisplayText(n *nethtml.Node) string {
+	if n == nil {
+		return ""
+	}
+	if n.Type == nethtml.TextNode {
+		return n.Data
+	}
+	var b strings.Builder
+	for child := n.FirstChild; child != nil; child = child.NextSibling {
+		b.WriteString(appkitDisplayText(child))
+	}
+	return b.String()
+}

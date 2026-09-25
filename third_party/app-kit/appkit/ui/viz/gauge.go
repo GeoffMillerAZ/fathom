@@ -4,6 +4,14 @@ import (
 	"fmt"
 	"math"
 	"strings"
+
+	"github.com/rivo/uniseg"
+)
+
+const (
+	gaugeCaptionLineHeight  = 14
+	gaugeCaptionLineReserve = 16
+	gaugeCaptionFontSize    = 11
 )
 
 // GaugeOptions configures a Gauge render.
@@ -20,7 +28,9 @@ type GaugeOptions struct {
 	Graded bool
 	// CenterText overrides the big center label (defaults to the rounded percent).
 	CenterText string
-	// Label is the caption below the gauge.
+	// Label is the caption below the gauge. Long captions wrap conservatively
+	// at grapheme boundaries. Put explanatory prose and source context in an
+	// HTML figure (for example, ui/vizframe); font geometry needs browser review.
 	Label string
 	// AriaLabel is the accessible label.
 	AriaLabel string
@@ -57,6 +67,68 @@ func GradedRole(frac float64) string {
 	}
 }
 
+// gaugeCaptionGraphemeBudget reserves one font em for each grapheme cluster in
+// the drawable width. It is deliberately conservative for wide scripts and
+// emoji, but does not measure a browser's actual font geometry.
+func gaugeCaptionGraphemeBudget(w, pad float64) int {
+	budget := int(math.Floor((w - 2*pad) / gaugeCaptionFontSize))
+	if budget < 1 {
+		return 1
+	}
+	return budget
+}
+
+// wrapGaugeCaption splits a caption at word boundaries into SVG text runs. It
+// counts grapheme clusters, not bytes or runes, so an unbreakable Unicode word
+// is retained without splitting combining sequences or ZWJ emoji. The caller
+// supplies a conservative width budget; a single cluster may still exceed it,
+// and browser review remains the font-geometry oracle.
+func wrapGaugeCaption(caption string, maxGraphemes int) []string {
+	words := strings.Fields(caption)
+	if len(words) == 0 {
+		return nil
+	}
+
+	var lines []string
+	var line []string
+	flush := func() {
+		if len(line) > 0 {
+			lines = append(lines, strings.Join(line, ""))
+			line = nil
+		}
+	}
+	appendWord := func(word []string) {
+		for len(word) > maxGraphemes {
+			lines = append(lines, strings.Join(word[:maxGraphemes], ""))
+			word = word[maxGraphemes:]
+		}
+		if len(word) > 0 {
+			line = append(line, word...)
+		}
+	}
+
+	for _, word := range words {
+		var graphemes []string
+		segmenter := uniseg.NewGraphemes(word)
+		for segmenter.Next() {
+			graphemes = append(graphemes, segmenter.Str())
+		}
+		if len(line) == 0 {
+			appendWord(graphemes)
+			continue
+		}
+		if len(line)+1+len(graphemes) <= maxGraphemes {
+			line = append(line, " ")
+			line = append(line, graphemes...)
+			continue
+		}
+		flush()
+		appendWord(graphemes)
+	}
+	flush()
+	return lines
+}
+
 // Gauge renders a 180° semicircular gauge for value/max — an at-a-glance score
 // dial (case strength, likelihood of success, confidence). The arc fills
 // clockwise from the left; a center number and optional caption sit below.
@@ -81,11 +153,15 @@ func Gauge(value, max float64, o GaugeOptions) string {
 	cx := w / 2         //
 	r := w/2 - pad      //
 	cy := pad + r       // baseline of the semicircle
-	labelH := 0.0
+	captionLines := wrapGaugeCaption(opts.Label, gaugeCaptionGraphemeBudget(w, pad))
+	captionLineCount := 0
 	if opts.Label != "" {
-		labelH = 16
+		captionLineCount = 1
+		if len(captionLines) > 1 {
+			captionLineCount = len(captionLines)
+		}
 	}
-	totalH := int(cy + stroke/2 + 6 + labelH)
+	totalH := int(cy + stroke/2 + 6 + float64(captionLineCount*gaugeCaptionLineReserve))
 
 	fillRole := opts.FillRole
 	if opts.Graded {
@@ -130,9 +206,26 @@ func Gauge(value, max float64, o GaugeOptions) string {
 
 	// Caption.
 	if opts.Label != "" {
-		fmt.Fprintf(&b,
-			`<text x="%s" y="%s" text-anchor="middle" fill="%s" font-size="11">%s</text>`,
-			fmtNum(cx), fmtNum(cy+stroke/2+12), cssColor("ink-muted"), esc(opts.Label))
+		captionY := fmtNum(cy + stroke/2 + 12)
+		if len(captionLines) <= 1 {
+			// Preserve the compact, existing SVG for normal one-line captions.
+			fmt.Fprintf(&b,
+				`<text x="%s" y="%s" text-anchor="middle" fill="%s" font-size="11">%s</text>`,
+				fmtNum(cx), captionY, cssColor("ink-muted"), esc(opts.Label))
+		} else {
+			// tspans concatenate in SVG textContent, so retain the normalized
+			// complete caption in desc without adding spaces to split words.
+			b.WriteString(`<desc>` + esc(strings.Join(strings.Fields(opts.Label), " ")) + `</desc>`)
+			fmt.Fprintf(&b, `<text text-anchor="middle" fill="%s" font-size="11">`, cssColor("ink-muted"))
+			for i, line := range captionLines {
+				if i == 0 {
+					fmt.Fprintf(&b, `<tspan x="%s" y="%s">%s</tspan>`, fmtNum(cx), captionY, esc(line))
+					continue
+				}
+				fmt.Fprintf(&b, `<tspan x="%s" dy="%d">%s</tspan>`, fmtNum(cx), gaugeCaptionLineHeight, esc(line))
+			}
+			b.WriteString(`</text>`)
+		}
 	}
 
 	b.WriteString("</svg>")

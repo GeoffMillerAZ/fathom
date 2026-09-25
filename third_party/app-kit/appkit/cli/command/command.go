@@ -61,6 +61,26 @@ func New(app App) *cobra.Command {
 // opts extend fang's own options (e.g. fang.WithoutManpage); they are
 // applied after the house defaults, so a caller can override any of them.
 func Execute(ctx context.Context, root *cobra.Command, opts ...fang.Option) int {
+	return Code(execute(ctx, root, opts...))
+}
+
+// ExecuteWithClassifier preserves explicit Exit codes before allowing classify
+// to assign a code to an otherwise unclassified execution error. A nil
+// classifier retains Execute's ordinary Code mapping.
+func ExecuteWithClassifier(ctx context.Context, root *cobra.Command, classify func(error) (int, bool), opts ...fang.Option) int {
+	err := execute(ctx, root, opts...)
+	if code, ok := ExplicitCode(err); ok {
+		return code
+	}
+	if err != nil && classify != nil {
+		if code, ok := classify(err); ok {
+			return code
+		}
+	}
+	return Code(err)
+}
+
+func execute(ctx context.Context, root *cobra.Command, opts ...fang.Option) error {
 	house := []fang.Option{
 		fang.WithColorSchemeFunc(theme.FangColorScheme()),
 		fang.WithNotifySignal(os.Interrupt),
@@ -72,5 +92,5 @@ func Execute(ctx context.Context, root *cobra.Command, opts ...fang.Option) int 
 		house = append(house, fang.WithCommit(commit))
 	}
 	house = append(house, opts...)
-	return Code(fang.Execute(ctx, root, house...))
+	return fang.Execute(ctx, root, house...)
 }

@@ -1,0 +1,205 @@
+package converted
+
+import (
+	"bytes"
+	"context"
+	"fmt"
+	"html"
+	"net"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"os/signal"
+	"strings"
+	"syscall"
+	"testing"
+	"time"
+)
+
+// Synthetic GET routes only. No app accounts, datastore, runtime or external assets.
+type navigationFixture struct {
+	host string
+	css  []byte
+	data PageNavigation
+}
+
+func (f navigationFixture) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Referrer-Policy", "no-referrer")
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'self'; font-src data:; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
+	if r.Host != f.host {
+		http.Error(w, "invalid Host", 403)
+		return
+	}
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", "GET")
+		http.Error(w, "GET required", 405)
+		return
+	}
+	if len(r.RequestURI) > 2048 || r.URL.EscapedPath() != r.URL.Path {
+		http.Error(w, "invalid request", 400)
+		return
+	}
+	if r.URL.Path == "/navigation.css" && r.URL.RawQuery == "" {
+		w.Header().Set("Content-Type", "text/css; charset=utf-8")
+		_, _ = w.Write(f.css)
+		return
+	}
+	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	if len(parts) < 2 || (parts[0] != "light" && parts[0] != "dark") || r.URL.Path != "/"+strings.Join(parts, "/") {
+		http.NotFound(w, r)
+		return
+	}
+	theme, mode := parts[0], parts[1]
+	if len(parts) == 3 && parts[2] == "choose" && mode == "get" {
+		query, err := r.URL.Query(), r.ParseForm()
+		if err != nil || len(query) != 1 || len(query["page_key"]) != 1 {
+			http.Error(w, "one page_key required", 400)
+			return
+		}
+		for _, item := range f.data.Items {
+			if query.Get("page_key") == item.Key {
+				http.Redirect(w, r, "/"+theme+"/get/"+item.Key, 303)
+				return
+			}
+		}
+		http.Error(w, "unknown page key", 400)
+		return
+	}
+	if r.URL.RawQuery != "" {
+		http.Error(w, "unexpected query", 400)
+		return
+	}
+	data := f.data
+	data.Items = append([]NavigationItem(nil), data.Items...)
+	var rendered bytes.Buffer
+	if mode == "original" || mode == "reference" {
+		if len(parts) != 2 {
+			http.NotFound(w, r)
+			return
+		}
+		if mode == "original" {
+			rendered.WriteString(sourceExpected)
+		} else {
+			c, err := NewPageNavigationReference(data)
+			if err != nil {
+				http.Error(w, "invalid fixture", 500)
+				return
+			}
+			if err := c.Render(r.Context(), &rendered); err != nil {
+				http.Error(w, "render failed", 500)
+				return
+			}
+		}
+	} else {
+		if (mode != "get" && mode != "links") || len(parts) != 3 {
+			http.NotFound(w, r)
+			return
+		}
+		data.CurrentKey = parts[2]
+		data.NavLabel = "Workspace pages"
+		data.SelectLabel = "Go to page"
+		for i := range data.Items {
+			data.Items[i].URL = "/" + theme + "/" + mode + "/" + data.Items[i].Key
+		}
+		c, err := NewPageNavigationLinks(data)
+		if mode == "get" {
+			c, err = NewPageNavigationGET(data, NavigationGET{Action: "/" + theme + "/get/choose", FieldName: "page_key", SubmitLabel: "Open page"})
+		}
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		if err := c.Render(r.Context(), &rendered); err != nil {
+			http.Error(w, "render failed", 500)
+			return
+		}
+	}
+	title := "P06 source-style reference"
+	if mode == "get" || mode == "links" {
+		for _, item := range data.Items {
+			if item.Key == data.CurrentKey {
+				title = "Workspace — " + item.Label
+			}
+		}
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	fmt.Fprintf(w, `<!doctype html><html lang="en" class="%s"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>%s</title><link rel="stylesheet" href="/navigation.css"></head><body><main><h1>%s</h1><p>Private, synthetic page-navigation review. No application data.</p><div id="specimen" data-current="%s">`, theme, html.EscapeString(title), html.EscapeString(title), html.EscapeString(data.CurrentKey))
+	_, _ = w.Write(rendered.Bytes())
+	fmt.Fprint(w, "</div></main></body></html>")
+}
+
+func TestNavigationFixtureNativeHTTP(t *testing.T) {
+	f := navigationFixture{host: "127.0.0.1:8767", data: fixtureNavigation(t)}
+	for _, theme := range []string{"light", "dark"} {
+		for _, item := range f.data.Items {
+			choose := "/" + theme + "/get/choose?page_key=" + item.Key
+			r := httptest.NewRequest("GET", choose, nil)
+			r.Host = f.host
+			w := httptest.NewRecorder()
+			f.ServeHTTP(w, r)
+			want := "/" + theme + "/get/" + item.Key
+			if w.Code != 303 || w.Header().Get("Location") != want {
+				t.Fatal("native GET did not redirect to exact allowlisted route")
+			}
+			for _, mode := range []string{"get", "links"} {
+				r = httptest.NewRequest("GET", "/"+theme+"/"+mode+"/"+item.Key, nil)
+				r.Host = f.host
+				w = httptest.NewRecorder()
+				f.ServeHTTP(w, r)
+				if w.Code != 200 || !strings.Contains(w.Body.String(), `data-current="`+item.Key+`"`) {
+					t.Fatal("destination state mismatch")
+				}
+			}
+		}
+	}
+	for _, tc := range []struct {
+		method, url, host string
+		code              int
+	}{
+		{"GET", "/light/get/choose", f.host, 400}, {"GET", "/light/get/choose?page_key=page-1&page_key=page-2", f.host, 400},
+		{"GET", "/light/get/choose?page_key=page-1&unknown=x", f.host, 400}, {"GET", "/light/get/choose?page_key=%zz", f.host, 400},
+		{"GET", "/light/get/choose?page_key=https://example.com", f.host, 400}, {"GET", "/light/get/unknown", f.host, 404},
+		{"POST", "/light/get/choose?page_key=page-1", f.host, 405}, {"GET", "/light/get/page-1", "evil.example", 403},
+		{"GET", "/light/get/page-1?secret=x", f.host, 400}, {"GET", "/light/get/%70age-1", f.host, 400},
+	} {
+		r := httptest.NewRequest(tc.method, tc.url, nil)
+		r.Host = tc.host
+		w := httptest.NewRecorder()
+		f.ServeHTTP(w, r)
+		if w.Code != tc.code || w.Header().Get("Location") != "" {
+			t.Fatalf("request refusal: %s %s got %d", tc.method, tc.url, w.Code)
+		}
+	}
+}
+
+func TestServeNavigationPreview(t *testing.T) {
+	if os.Getenv("APPKIT_P06_SERVE") != "1" {
+		t.Skip("explicit local preview only")
+	}
+	css, err := os.ReadFile(os.Getenv("APPKIT_P06_CSS"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := &http.Server{Handler: navigationFixture{host: l.Addr().String(), css: css, data: fixtureNavigation(t)}, ReadHeaderTimeout: 3 * time.Second, WriteTimeout: 5 * time.Second, MaxHeaderBytes: 16 << 10}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	done := make(chan error, 1)
+	go func() { done <- server.Serve(l) }()
+	fmt.Printf("APPKIT_P06_URL=http://%s\n", l.Addr())
+	select {
+	case <-ctx.Done():
+	case err := <-done:
+		t.Fatal(err)
+	}
+	shutdown, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	if err := server.Shutdown(shutdown); err != nil {
+		t.Error(err)
+	}
+}

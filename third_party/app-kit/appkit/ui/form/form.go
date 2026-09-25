@@ -245,6 +245,8 @@ type Checkbox struct {
 	Checked  bool
 	Required bool
 	Disabled bool
+	Invalid  bool // danger styling + aria-invalid; describes ErrorID(ID)
+	HasHelp  bool // describes HelpID(ID) when not invalid
 }
 
 // RenderCheckbox returns the checkbox + inline label as an HTML string.
@@ -253,16 +255,18 @@ func RenderCheckbox(c Checkbox) string {
 	if val == "" {
 		val = "true"
 	}
+	class := "rounded border-line text-accent focus:ring-2 focus:ring-focus"
+	if c.Invalid {
+		class = "rounded border-danger text-accent focus:ring-2 focus:ring-danger"
+	}
 	var b strings.Builder
 	b.WriteString(`<label class="flex items-center gap-2 text-sm text-ink">`)
-	b.WriteString(`<input type="checkbox" class="rounded border-line text-accent focus:ring-2 focus:ring-focus"`)
+	fmt.Fprintf(&b, `<input type="checkbox" class="%s"`, class)
 	b.WriteString(attr("id", c.ID))
 	b.WriteString(attr("name", c.Name))
 	b.WriteString(attr("value", val))
 	b.WriteString(boolAttr("checked", c.Checked))
-	b.WriteString(boolAttr("required", c.Required))
-	b.WriteString(boolAttr(`aria-required="true"`, c.Required))
-	b.WriteString(boolAttr("disabled", c.Disabled))
+	ariaWiring(&b, c.ID, c.Required, c.Disabled, c.Invalid, c.HasHelp)
 	b.WriteString(`/>`)
 	b.WriteString(esc(c.Label))
 	b.WriteString(`</label>`)

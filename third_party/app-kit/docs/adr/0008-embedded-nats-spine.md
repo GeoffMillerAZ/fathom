@@ -1,6 +1,6 @@
 # ADR-0008: Embed NATS JetStream in-process as the event/state spine
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR-0021 (optional event profile)
 - **Date:** 2026-06-10
 - **Decision drivers:** the Tao-of-Datastar loop (ADR-0003) needs a watch/
   fan-out primitive behind every SSE stream; the single-binary story

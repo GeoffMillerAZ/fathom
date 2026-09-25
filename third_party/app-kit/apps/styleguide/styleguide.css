@@ -1,0 +1,51 @@
+/* Stable editor chrome stays separate from candidate identity. */
+body { margin: 0; background: var(--ak-color-surface); color: var(--ak-color-ink); font-family: var(--ak-font-sans); }
+.sg { padding: 1.5rem; max-width: 110rem; margin: auto; }
+.sg [hidden] { display: none !important; }
+.sg a { color: var(--ak-color-accent); text-underline-offset: .2em; }
+.sg :is(a,button,input,select,summary,[tabindex="-1"]):focus-visible { outline: 2px solid var(--ak-color-focus); outline-offset: 3px; }
+.sg [tabindex="-1"] { scroll-margin-block: 1rem; }
+.sg-sections { display: flex; flex-wrap: wrap; gap: .25rem 1.5rem; margin-bottom: 1rem; font-size: .875rem; }
+.sg-sections a, .sg-heading > a, .sg-error a { display: inline-flex; align-items: center; min-height: 44px; }
+.sg-heading { display: flex; justify-content: space-between; align-items: center; gap: 1.5rem; margin-bottom: 1.5rem; }
+.sg-eyebrow { color: var(--ak-color-ink-muted); font-size: .7rem; letter-spacing: .08em; }
+.sg h1 { font-size: 1.75rem; font-weight: 650; margin: .3rem 0; }
+.sg-heading p { margin-block: .5rem; max-width: 70ch; }
+.sg-layout { display: grid; grid-template-columns: minmax(17rem, 22rem) minmax(0,1fr); gap: 2rem; }
+.sg-editor { min-width: 0; }
+.sg-editor details { border-top: 1px solid var(--ak-color-line); padding-block: 1rem; }
+.sg summary { cursor: pointer; font-weight: 600; min-height: 44px; box-sizing: border-box; padding-block: .8rem; }
+.sg-field { padding-block: .65rem; }
+.sg label { display: grid; gap: .35rem; font-size: .8125rem; }
+.sg small { display: block; color: var(--ak-color-ink-muted); margin-top: .3rem; overflow-wrap: anywhere; }
+.sg :is(input,select,button) { font: inherit; font-size: .875rem; min-height: 44px; padding: .5rem .65rem; border: 1px solid var(--ak-color-line-strong); border-radius: var(--ak-radius-md); background: var(--ak-color-surface-raised); color: var(--ak-color-ink); }
+.sg input { width: 100%; box-sizing: border-box; }
+.sg button { cursor: pointer; }
+.sg button:disabled { cursor: not-allowed; opacity: .6; }
+.sg .sg-primary { background: var(--ak-color-accent); color: var(--ak-color-accent-ink); border-color: var(--ak-color-accent); }
+.sg-controls { display: flex; flex-wrap: wrap; align-items: end; gap: .75rem; }
+.sg-review { min-width: 0; }
+.sg-review h2 { margin: 1.5rem 0 .5rem; font-size: 1.125rem; font-weight: 600; }
+.sg-review h2 span { font-size: .8rem; font-weight: 400; color: var(--ak-color-ink-muted); margin-left: .5rem; }
+.sg-preview-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; font-size: .8rem; }
+.sg-preview { display: block; box-sizing: border-box; width: 100%; border: 1px solid var(--ak-color-line-strong); margin: .5rem auto; }
+.sg-preview--narrow { max-width: 390px; }
+.sg-note { font-size: .8125rem; line-height: 1.5; color: var(--ak-color-ink-muted); max-width: 75ch; }
+.sg-table-scroll { overflow: auto; }
+.sg table { border-collapse: collapse; width: 100%; text-align: left; font-size: .8125rem; }
+.sg caption { text-align: left; font-size: .75rem; color: var(--ak-color-ink-muted); padding-block: .5rem; }
+.sg :is(th,td) { padding: .6rem; border-bottom: 1px solid var(--ak-color-line); vertical-align: top; }
+.sg td { overflow-wrap: anywhere; }
+.sg code { font-family: var(--ak-font-mono); font-size: .8em; }
+.sg-export { border-top: 1px solid var(--ak-color-line); margin-top: 1.5rem; }
+.sg-export p { max-width: 75ch; font-size: .875rem; line-height: 1.5; }
+.sg-identity { border-top: 1px solid var(--ak-color-line); padding-top: 1rem; margin-top: 2rem; }
+.sg-identity dt { margin-top: .75rem; font-weight: 600; font-size: .8rem; }
+.sg-identity dd { margin: .2rem 0 0; font-family: var(--ak-font-mono); font-size: .75rem; overflow-wrap: anywhere; }
+.sg-error { border: 1px solid var(--ak-color-danger); padding: 1rem; margin-bottom: 1rem; background: var(--ak-color-danger-soft); }
+.sg-error h2 { margin: 0; font-size: 1rem; }
+.sg-error p { margin-bottom: 0; max-width: 75ch; }
+.sg-field-error { color: var(--ak-color-danger); font-size: .8125rem; margin-block: .4rem; }
+.sg [aria-invalid="true"] { border-color: var(--ak-color-danger); }
+@media (min-width: 1000px) { .sg-editor { position: sticky; top: 1rem; align-self: start; max-height: calc(100dvh - 2rem); overflow: auto; scrollbar-gutter: stable; padding-right: .5rem; } }
+@media (max-width: 999px) { .sg-layout { grid-template-columns: 1fr; } .sg-heading { align-items: start; flex-direction: column; gap: .5rem; } .sg { padding: 1rem; } }

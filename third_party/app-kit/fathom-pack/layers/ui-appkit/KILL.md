@@ -1,6 +1,6 @@
 # ui-appkit — kill gate
 
-**Status: authored 2026-08-07, not yet compiled anywhere.** Enters its
+**Status: v2 corrected 2026-09-13; no passing real-model evaluation recorded.** Enters its
 3-week generalize-or-kill window at first fleet compile.
 
 **Metric:** from hook telemetry — the fraction of edits to ui-appkit-scoped
@@ -17,3 +17,9 @@ cost was one pack directory.
 
 **Owner:** app-kit. The pack versions with the kit; a kit decision change
 that touches a compiled claim bumps the pack and recompiles consumers.
+
+V2 excludes historical ADRs, private assets, assessments and plan claims from its
+compile corpus. Structural guidance/parity canaries run in `go test ./cmd/appkit-mcp`;
+they are not precision/recall evaluation. Keep `evaled: false` until labeled scope-trap
+fixtures pass the actual Fathom real-model gate with recorded model/prompt/input identity.
+Do not use `--unsafe-skip-eval-gate`. Estimate compilation before authorizing spend.

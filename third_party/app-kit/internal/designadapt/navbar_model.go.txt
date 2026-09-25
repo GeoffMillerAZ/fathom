@@ -1,0 +1,198 @@
+// Generated companion for a private P09 navbar adaptation. No app-kit runtime required.
+package converted
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"net/url"
+	"strconv"
+	"strings"
+	"unicode"
+	"unicode/utf8"
+
+	"github.com/a-h/templ"
+)
+
+// Navbar contains presentation labels and app-owned GET destinations. It does
+// not supply authentication, notifications, sign-out, or account behavior.
+type Navbar struct {
+	IDPrefix      string
+	Label         string
+	MobileLabel   string
+	Brand         NavbarBrand
+	Links         []NavbarLink
+	CurrentKey    string
+	Notifications *NavbarDestination
+	Account       *NavbarAccount
+}
+
+type NavbarBrand struct {
+	LightURL string
+	DarkURL  string
+	Alt      string
+}
+
+type NavbarLink struct {
+	Key   string
+	Label string
+	URL   string
+}
+
+type NavbarDestination struct {
+	Label string
+	URL   string
+}
+
+type NavbarAccount struct {
+	Label    string
+	ImageURL string
+	Links    []NavbarDestination
+}
+
+// NewNavbar validates and snapshots caller-owned data before returning the
+// source-styled component. An empty CurrentKey deliberately selects no link.
+func NewNavbar(data Navbar) (templ.Component, error) {
+	if err := validateNavbar(data); err != nil {
+		return nil, err
+	}
+	snapshot := data
+	snapshot.Links = append([]NavbarLink(nil), data.Links...)
+	if data.Notifications != nil {
+		notifications := *data.Notifications
+		snapshot.Notifications = &notifications
+	}
+	if data.Account != nil {
+		account := *data.Account
+		account.Links = append([]NavbarDestination(nil), data.Account.Links...)
+		snapshot.Account = &account
+	}
+	return guardedNavbar(navbar(snapshot)), nil
+}
+
+func validateNavbar(data Navbar) error {
+	if !navbarIdentifier(data.IDPrefix) {
+		return fmt.Errorf("navbar: invalid IDPrefix")
+	}
+	for _, field := range []struct{ name, value string }{
+		{"Label", data.Label}, {"MobileLabel", data.MobileLabel},
+	} {
+		if !navbarText(field.value, 256) {
+			return fmt.Errorf("navbar: invalid %s", field.name)
+		}
+	}
+	if !navbarText(data.Brand.Alt, 512) || !navbarURL(data.Brand.LightURL) || !navbarURL(data.Brand.DarkURL) {
+		return fmt.Errorf("navbar: invalid Brand")
+	}
+	if len(data.Links) < 1 || len(data.Links) > 12 {
+		return fmt.Errorf("navbar: invalid Links")
+	}
+	keys := make(map[string]bool, len(data.Links))
+	for _, link := range data.Links {
+		if !navbarIdentifier(link.Key) || !navbarText(link.Label, 256) || !navbarURL(link.URL) {
+			return fmt.Errorf("navbar: invalid link")
+		}
+		if keys[link.Key] {
+			return fmt.Errorf("navbar: duplicate link key")
+		}
+		keys[link.Key] = true
+	}
+	if data.CurrentKey != "" && !keys[data.CurrentKey] {
+		return fmt.Errorf("navbar: invalid CurrentKey")
+	}
+	if data.Notifications != nil && !navbarDestination(*data.Notifications) {
+		return fmt.Errorf("navbar: invalid Notifications")
+	}
+	if data.Account != nil {
+		if !navbarText(data.Account.Label, 256) || !navbarURL(data.Account.ImageURL) || len(data.Account.Links) < 1 || len(data.Account.Links) > 12 {
+			return fmt.Errorf("navbar: invalid Account")
+		}
+		for _, link := range data.Account.Links {
+			if !navbarDestination(link) {
+				return fmt.Errorf("navbar: invalid account link")
+			}
+		}
+	}
+	return nil
+}
+
+func navbarDestination(value NavbarDestination) bool {
+	return navbarText(value.Label, 256) && navbarURL(value.URL)
+}
+
+func navbarIdentifier(value string) bool {
+	if len(value) == 0 || len(value) > 64 || !utf8.ValidString(value) {
+		return false
+	}
+	for i, b := range []byte(value) {
+		if i == 0 {
+			if b < 'A' || b > 'Z' && b < 'a' || b > 'z' {
+				return false
+			}
+			continue
+		}
+		if b != '_' && b != '-' && (b < 'A' || b > 'Z') && (b < 'a' || b > 'z') && (b < '0' || b > '9') {
+			return false
+		}
+	}
+	return true
+}
+
+func navbarText(value string, limit int) bool {
+	if len(value) > limit || strings.TrimSpace(value) == "" || !utf8.ValidString(value) {
+		return false
+	}
+	for _, r := range value {
+		if unicode.IsControl(r) {
+			return false
+		}
+	}
+	return true
+}
+
+func navbarURL(value string) bool {
+	if len(value) == 0 || len(value) > 2048 || strings.TrimSpace(value) != value || !utf8.ValidString(value) || strings.ContainsAny(value, "\\ ") || navbarHasControl(value) {
+		return false
+	}
+	decoded, err := url.PathUnescape(value)
+	if err != nil || !utf8.ValidString(decoded) || strings.Contains(decoded, "\\") || navbarHasControl(decoded) {
+		return false
+	}
+	u, err := url.Parse(value)
+	if err != nil || u.User != nil || u.Opaque != "" {
+		return false
+	}
+	if strings.HasPrefix(value, "/") {
+		return !strings.HasPrefix(value, "//") && !strings.HasPrefix(decoded, "//") && u.Scheme == "" && u.Host == ""
+	}
+	if !strings.HasPrefix(value, "https://") || u.Scheme != "https" || u.Hostname() == "" || strings.HasSuffix(u.Host, ":") || strings.ContainsAny(u.Host, "% ") {
+		return false
+	}
+	if port := u.Port(); port != "" {
+		n, err := strconv.ParseUint(port, 10, 16)
+		if err != nil || n == 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func navbarHasControl(value string) bool {
+	for _, r := range value {
+		if unicode.IsControl(r) {
+			return true
+		}
+	}
+	return false
+}
+
+func guardedNavbar(component templ.Component) templ.Component {
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			return component.Render(ctx, w)
+		}
+	})
+}

@@ -39,11 +39,15 @@ func renderTempl(c templ.Component) template.HTML {
 
 // pageData is the shell's view model.
 type pageData struct {
-	Title   string
-	Nav     []navLink
-	Theme   string // "", "light", or "dark" — written to <html data-theme>
-	Page    string // active page key, for nav highlighting + theme-link round-trips
-	Content template.HTML
+	Title                              string
+	Nav                                []navLink
+	Theme                              string // "", "light", or "dark" — written to <html data-theme>
+	Page                               string // active page key, for nav highlighting + theme-link round-trips
+	Content                            template.HTML
+	MobileNav                          template.HTML // escaped by dashboard.RenderNav
+	CurrentSection, HomeURL            string
+	ThemeLight, ThemeDark, ThemeSystem string
+	ThemeStylesheet, EffectStylesheet  string // fixed first-party workbench assets only
 }
 
 type navLink struct {
@@ -293,12 +297,42 @@ func vizCards() []vizCard {
 // ---- templates ------------------------------------------------------------
 
 var funcs = template.FuncMap{
-	"upper": strings.ToUpper,
+	"referenceLibraryURL": func(theme string) string { return previewURL("/references", theme) },
+	"referenceURL":        referenceURL,
+	"referenceTitle":      referenceTitle,
+	"referenceKind":       referenceKind,
+	"referenceContext":    referenceContext,
+	"upper":               strings.ToUpper,
+	"capabilityURL":       func(id, query string) string { return "/catalog/" + id + query },
+	"profiles":            func() []string { return []string{"portable", "go-web", "static-web", "react-web", "cli"} },
+	"layers":              func() []string { return []string{"L0", "L1", "L2", "L3a", "L3b", "L4"} },
 }
 
 var shellTmpl = template.Must(template.New("shell").Funcs(funcs).Parse(shellHTML))
 
 func render(d pageData) ([]byte, error) {
+	items := make([]dashboard.NavItem, 0, len(d.Nav))
+	currentPath := ""
+	for _, link := range d.Nav {
+		items = append(items, dashboard.NavItem{Label: link.Label, Href: link.Href})
+		if link.Active && currentPath == "" {
+			currentPath, d.CurrentSection = link.Href, link.Label
+		}
+	}
+	d.MobileNav = template.HTML(dashboard.RenderNav([]dashboard.NavGroup{{Items: items}}, currentPath))
+	d.HomeURL = "/"
+	if theme := sanitizeTheme(d.Theme); theme != "" {
+		d.HomeURL += "?theme=" + theme
+	}
+	if d.ThemeLight == "" {
+		d.ThemeLight = "?theme=light"
+	}
+	if d.ThemeDark == "" {
+		d.ThemeDark = "?theme=dark"
+	}
+	if d.ThemeSystem == "" {
+		d.ThemeSystem = "?"
+	}
 	var b strings.Builder
 	if err := shellTmpl.Execute(&b, d); err != nil {
 		return nil, err
@@ -326,39 +360,45 @@ const shellHTML = `<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{.Title}} · app-kit Gallery</title>
 <link rel="stylesheet" href="/static/app.css">
+{{if .ThemeStylesheet}}<link rel="stylesheet" href="{{.ThemeStylesheet}}">{{end}}
+{{if .EffectStylesheet}}<link rel="stylesheet" href="{{.EffectStylesheet}}">{{end}}
 </head>
 <body class="min-h-screen bg-surface text-ink font-sans">
+<a href="#gallery-main" class="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:rounded-md focus:bg-surface focus:p-3 focus:text-accent">Skip to content</a>
 <header class="border-b border-line bg-surface-raised">
-  <div class="mx-auto max-w-5xl px-6 py-4 flex items-center justify-between gap-4">
+  <div class="mx-auto max-w-5xl px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-4">
     <div class="flex items-center gap-3">
       <span class="inline-block size-4 rounded-full bg-accent"></span>
-      <a href="/" class="font-semibold text-ink">app-kit Gallery</a>
+      <a href="{{.HomeURL}}" class="inline-flex min-h-[44px] items-center rounded-md font-semibold text-ink focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2">app-kit Gallery</a>
     </div>
-    <nav class="flex items-center gap-1 text-sm">
+    <div role="group" aria-label="Theme" class="flex flex-wrap items-center gap-1 text-sm">
+      <a href="{{.ThemeLight}}"{{if eq .Theme "light"}} aria-current="true"{{end}} class="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md border border-line px-3 py-2 {{if eq .Theme "light"}}bg-surface-sunken font-semibold text-ink{{else}}text-ink-muted{{end}} focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2">light</a>
+      <a href="{{.ThemeDark}}"{{if eq .Theme "dark"}} aria-current="true"{{end}} class="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md border border-line px-3 py-2 {{if eq .Theme "dark"}}bg-surface-sunken font-semibold text-ink{{else}}text-ink-muted{{end}} focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2">dark</a>
+      <a href="{{.ThemeSystem}}"{{if eq .Theme ""}} aria-current="true"{{end}} class="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md border border-line px-3 py-2 {{if eq .Theme ""}}bg-surface-sunken font-semibold text-ink{{else}}text-ink-muted{{end}} focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2">OS</a>
+    </div>
+    <nav aria-label="Gallery sections" class="order-last hidden w-full min-w-0 flex-wrap items-center gap-1 text-sm lg:flex">
       {{range .Nav}}
-      <a href="{{.Href}}" class="rounded-md px-3 py-1.5 {{if .Active}}bg-accent text-accent-ink{{else}}text-ink-muted{{end}}">{{.Label}}</a>
+      <a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}} class="inline-flex min-h-[44px] min-w-[44px] items-center rounded-md px-3 py-2 focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2 {{if .Active}}bg-accent-soft font-semibold text-ink{{else}}text-ink-muted hover:bg-surface-sunken hover:text-ink{{end}}">{{.Label}}</a>
       {{end}}
     </nav>
-    <div class="flex items-center gap-1 text-xs">
-      <span class="text-ink-faint">theme</span>
-      <a href="?theme=light&page={{.Page}}" class="rounded-md border border-line px-2 py-1 text-ink-muted">light</a>
-      <a href="?theme=dark&page={{.Page}}" class="rounded-md border border-line px-2 py-1 text-ink-muted">dark</a>
-      <a href="?page={{.Page}}" class="rounded-md border border-line px-2 py-1 text-ink-muted">OS</a>
-    </div>
+    <details class="order-last w-full min-w-0 lg:hidden" id="gallery-navigation">
+      <summary class="min-h-[44px] cursor-pointer rounded-md border border-line px-3 py-2 text-sm text-ink focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2">Sections{{if .CurrentSection}} <span class="text-ink-muted">· {{.CurrentSection}}</span>{{end}}</summary>
+      <nav aria-label="Gallery sections" class="mt-2 min-w-0">{{.MobileNav}}</nav>
+    </details>
   </div>
 </header>
-<main class="mx-auto max-w-5xl px-6 py-8">
+<main id="gallery-main" tabindex="-1" class="mx-auto max-w-5xl min-w-0 px-4 sm:px-6 py-8">
 {{.Content}}
 </main>
 <footer class="mx-auto max-w-5xl px-6 py-10 text-xs text-ink-faint">
-  The living style guide (D12). Every role and component here renders through the kit's token CSS — toggle the theme and watch it re-bind with no rebuild.
+  app-kit experience laboratory · Shared records, real artifacts, explicit proof gaps. Specimens use the kit's semantic tokens; changing theme requires no rebuild.
 </footer>
 </body>
 </html>`
 
 const overviewHTML = `
 <h1 class="text-2xl font-semibold text-ink">The living style guide</h1>
-<p class="mt-2 max-w-2xl text-ink-muted">A kit app, built on the kit, that <em>is</em> the proof of the kit (VISION #2, D12). Every design token is visualized and every <code class="font-mono text-accent">ui/viz</code> primitive is rendered live, themed through the token CSS. This is v0: tokens + visualization. Knob-driven component pages and service exercisers arrive with the Phase 1 spine.</p>
+<p class="mt-2 max-w-2xl text-ink-muted">Running specimens of kit artifacts, themed through the token CSS. Start with the <a href="/catalog" class="text-accent underline">capability catalog</a> to choose an integration. These examples show appearance and local behavior; a specimen is not evidence that a complete consumer workflow or every host has been verified.</p>
 <div class="mt-6 grid gap-4 sm:grid-cols-2">
   <a href="/tokens" class="rounded-lg border border-line bg-surface-raised p-5 hover:border-line-strong">
     <h2 class="font-medium text-ink">Tokens</h2>
@@ -414,7 +454,7 @@ const componentsHTML = `
 <p class="mt-2 text-ink-muted">The <code class="font-mono text-accent">appkit/ui/viz</code> primitives — pure-Go server-rendered SVG, every color resolved to a token role, accessible (role=img + title). Same inputs → byte-identical output.</p>
 <div class="mt-6 grid gap-4 lg:grid-cols-2">
   {{range .Cards}}
-  <figure class="rounded-lg border border-line bg-surface-raised p-5{{if .Wide}} lg:col-span-2{{end}}">
+  <figure class="min-w-0 rounded-lg border border-line bg-surface-raised p-5{{if .Wide}} lg:col-span-2{{end}}">
     <figcaption class="font-medium text-ink">{{.Name}}</figcaption>
     <div class="mt-4 flex min-h-24 items-center justify-center overflow-x-auto rounded-md bg-surface p-4">{{.SVG}}</div>
     <pre class="mt-4 overflow-x-auto rounded-md bg-surface-sunken p-3 text-xs text-ink-muted"><code class="font-mono">{{.Call}}</code></pre>
@@ -558,11 +598,13 @@ func buildMessaging() (template.HTML, error) {
 // layoutData is the Layout page view model: the composition primitives
 // (card, kanban, table) rendered with representative data.
 type layoutData struct {
-	Card     template.HTML
-	Kanban   template.HTML
-	Table    template.HTML
-	StatBand template.HTML
-	DescCard template.HTML
+	Card       template.HTML
+	Kanban     template.HTML
+	Table      template.HTML
+	StatBand   template.HTML
+	StatReflow template.HTML
+	StatDense  template.HTML
+	DescCard   template.HTML
 }
 
 // buildLayout assembles the Layout & composition page — the templ-based
@@ -614,6 +656,26 @@ func buildLayout() (template.HTML, error) {
 		{Label: "Required", Value: "6", Sub: "elements"},
 	}, stat.BandOptions{AriaLabel: "element coverage KPIs"})
 
+	// A real consumer exposed a short unit being squeezed by its source caption.
+	// Keep both rendering forms and awkward content inspectable in the Gallery.
+	reflowItems := []stat.Stat{
+		{Label: "Schema size", Value: "0 B", Sub: "0 tools carried by every connected session"},
+		{Label: "Reported observations", Value: "≥ 7", Sub: "Lower bound: two of three synthetic sources reported"},
+		stat.Absent("Unreported source", "Source unavailable: synthetic/observation/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+	}
+	statReflow := stat.RenderBand(reflowItems, stat.BandOptions{AriaLabel: "synthetic reflow metrics"})
+	for _, item := range reflowItems {
+		statReflow += stat.Render(item)
+	}
+	statReflow += stat.Render(stat.Stat{
+		Label: "Synthetic response time", Value: "123 ms", Sub: "p99 across 1,000 synthetic requests",
+		Delta: "-12%", DeltaRole: "positive", Spark: []float64{180, 165, 170, 140, 123},
+	})
+	denseItems := append(append([]stat.Stat(nil), reflowItems...),
+		stat.Stat{Label: "Synthetic latency", Value: "42 ms", Sub: "Median across 100 requests"},
+		stat.Stat{Label: "Synthetic traffic", Value: "300 B", Sub: "Current fixture, not a period total"},
+	)
+
 	descCard := chrome.RenderDescriptionListCard([]chrome.DescItem{
 		{Term: "Theory", Detail: "Security Deposit Return (§ 1950.5)"},
 		{Term: "Coverage", DetailHTML: template.HTML(callout.Badge("Well-evidenced", "positive"))},
@@ -622,11 +684,13 @@ func buildLayout() (template.HTML, error) {
 	}, chrome.DescListOptions{Title: "Case facts", Subtitle: "Detail-screen metadata."})
 
 	return htmlf("layout", layoutHTML, layoutData{
-		Card:     renderTempl(cardEl),
-		Kanban:   renderTempl(kanban.Board(cols, items)),
-		Table:    renderTempl(tbl),
-		StatBand: template.HTML(statBand),
-		DescCard: template.HTML(descCard),
+		Card:       renderTempl(cardEl),
+		Kanban:     renderTempl(kanban.Board(cols, items)),
+		Table:      renderTempl(tbl),
+		StatBand:   template.HTML(statBand),
+		StatReflow: template.HTML(statReflow),
+		StatDense:  template.HTML(stat.RenderBand(denseItems, stat.BandOptions{AriaLabel: "five metric reflow"})),
+		DescCard:   template.HTML(descCard),
 	})
 }
 
@@ -649,6 +713,13 @@ const layoutHTML = `
 <h2 class="mt-10 text-lg font-medium text-ink">Stat band — <code class="font-mono text-sm">stat.RenderBand</code></h2>
 <p class="mt-1 text-sm text-ink-muted">Shared-border KPI row (TailwindPlus "Stats · With shared borders"), role-colored values + optional sub-caption and trend pill. Stacks on mobile, divides into columns above.</p>
 <div class="mt-4">{{.StatBand}}</div>
+
+<h3 class="mt-6 text-base font-semibold text-ink">Metric readability under pressure</h3>
+<p class="mt-1 max-w-2xl text-sm text-ink-muted">Synthetic zero, lower bound and missing source in band and tile forms. Narrow the window: captions should reflow without separating a short value from its unit or hiding its reason. Long source identifiers remain visible.</p>
+<div id="stat-reflow" class="mt-4 grid gap-4">{{.StatReflow}}</div>
+<h3 class="mt-6 text-base font-semibold text-ink">Dense bands and partial rows</h3>
+<p class="mt-1 text-sm text-ink-muted">Five synthetic metrics exercise two, three and five columns. Row separators should remain continuous; the unoccupied end of a row stays on the same surface.</p>
+<div id="stat-dense-reflow">{{.StatDense}}</div>
 
 <h2 class="mt-10 text-lg font-medium text-ink">Description list (card) — <code class="font-mono text-sm">chrome.RenderDescriptionListCard</code></h2>
 <p class="mt-1 text-sm text-ink-muted">Bordered card with header + divided term/detail rows (TailwindPlus "Description Lists · Left-aligned in card") for detail screens; <code class="font-mono">DetailHTML</code> carries rich values like badges.</p>
@@ -738,28 +809,14 @@ func buildDashboard() (template.HTML, error) {
 	content := `<div class="mb-4">` + band + `</div>` +
 		dashboard.RenderWidgetGrid([]string{outcome, mix, intake, deadlines}, dashboard.WidgetGridOptions{Cols: 3, AriaLabel: "dashboard widgets"})
 
-	nav := `<ul class="flex flex-col gap-1 text-sm">` +
-		`<li><a href="#" class="block rounded-md bg-accent-soft px-3 py-2 font-medium text-accent">Overview</a></li>` +
-		`<li><a href="#" class="block rounded-md px-3 py-2 text-ink-muted hover:bg-surface-sunken hover:text-ink">Cases</a></li>` +
-		`<li><a href="#" class="block rounded-md px-3 py-2 text-ink-muted hover:bg-surface-sunken hover:text-ink">Evidence</a></li>` +
-		`<li><a href="#" class="block rounded-md px-3 py-2 text-ink-muted hover:bg-surface-sunken hover:text-ink">Deadlines</a></li>` +
-		`<li><a href="#" class="block rounded-md px-3 py-2 text-ink-muted hover:bg-surface-sunken hover:text-ink">Reports</a></li>` +
-		`</ul>`
-
-	shell := dashboard.RenderShell(dashboard.Shell{
-		Title:   "Overview",
-		Brand:   `<span class="text-base font-semibold text-ink">⬡ Acme Legal</span>`,
-		Nav:     template.HTML(nav),
-		Actions: `<button class="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-ink hover:bg-accent-hover">New case</button>`,
-		Content: template.HTML(content),
-	})
-	return htmlf("dashboard", dashboardHTML, dashboardData{Shell: h(shell)})
+	return htmlf("dashboard", dashboardHTML, dashboardData{Shell: h(content)})
 }
 
 const dashboardHTML = `
 <h1 class="text-2xl font-semibold text-ink">Dashboard</h1>
-<p class="mt-2 max-w-2xl text-ink-muted"><code class="font-mono text-accent">appkit/ui/dashboard</code> — a <code class="font-mono">Shell</code> (sidebar + topbar + content) wrapping a <code class="font-mono">WidgetGrid</code> of a KPI band, <code class="font-mono">ui/viz</code> charts, and a table. The shell layout is adapted from <strong>MatDash</strong>, re-themed to kit role tokens and rendered in pure Go (no Node). Full-page component — shown here in a contained preview; the sidebar collapses to a "Menu" disclosure below <code class="font-mono">md</code>.</p>
-<div class="mt-4 h-[640px] overflow-hidden rounded-lg border border-line shadow-sm">{{.Shell}}</div>`
+<p class="mt-2 max-w-2xl text-ink-muted">A static <code class="font-mono text-accent">dashboard.WidgetGrid</code> composition with a KPI band, charts and a table. These are synthetic display fixtures, not an operational case-management application.</p>
+<p class="mt-3 max-w-2xl text-ink-muted">For real navigation, profile/settings saves and recovery, open the <a href="/shell" class="text-accent underline">isolated application-shell workflow</a>. Its full-page shell has one main landmark and working destinations.</p>
+<div class="mt-6">{{.Shell}}</div>`
 
 // motionData is the Motion page view model: the two-state vocabulary shown as a
 // living specimen — both states statically (the no-motion baseline), plus a live

@@ -1,0 +1,4 @@
+/* Frozen synthetic consumer input. Only explicit candidate sources are scanned. */
+@import "tailwindcss" source(none);
+@import "./theme.css";
+@import "./kit.sources.css";

@@ -1,0 +1,145 @@
+package converted
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/a-h/templ"
+	"golang.org/x/net/html"
+)
+
+func drawerCanonical(t *testing.T, body string) string {
+	t.Helper()
+	tree, err := html.Parse(strings.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var b bytes.Buffer
+	if err := html.Render(&b, tree); err != nil {
+		t.Fatal(err)
+	}
+	return b.String()
+}
+
+func TestDrawerReferenceAndTypedDOM(t *testing.T) {
+	render := func(c templ.Component, err error) string {
+		t.Helper()
+		if err != nil {
+			t.Fatal(err)
+		}
+		var b bytes.Buffer
+		if err := c.Render(context.Background(), &b); err != nil {
+			t.Fatal(err)
+		}
+		return b.String()
+	}
+	reference := render(DrawerReference(), nil)
+	if drawerCanonical(t, reference) != drawerCanonical(t, drawerSource) {
+		t.Fatal("constant reference differs from original DOM")
+	}
+	var data Drawer
+	if err := json.Unmarshal([]byte(drawerDefaults), &data); err != nil {
+		t.Fatal(err)
+	}
+	if data.IDPrefix != "" || data.ImageURL != "" || data.Primary != nil || data.Secondary != nil || len(data.MenuLinks) != 0 || data.OnlineLabel != "" {
+		t.Fatal("defaults invented app actions/assets/online status")
+	}
+	if _, err := NewDrawer(data); err == nil {
+		t.Fatal("unbound defaults accepted")
+	}
+	data.IDPrefix = "person"
+	data.ImageURL = "/photo.svg"
+	readonly := render(NewDrawer(data))
+	if strings.Contains(readonly, "el-dropdown") || strings.Contains(readonly, "href=") {
+		t.Fatal("read-only drawer invents actions")
+	}
+	data.OnlineLabel = "Online in this synthetic fixture"
+	data.Primary = &DrawerLink{Label: "Message", URL: "/compose"}
+	data.Secondary = &DrawerLink{Label: "Call", URL: "/call-setup"}
+	data.MenuLinks = []DrawerLink{{Label: "View profile", URL: "/profile"}, {Label: "Profile history", URL: "/history"}}
+	typed := render(NewDrawer(data))
+	tree, err := html.Parse(strings.NewReader(typed))
+	if err != nil {
+		t.Fatal(err)
+	}
+	links, buttons, images, dates, terms := 0, 0, 0, 0, 0
+	var walk func(*html.Node)
+	walk = func(n *html.Node) {
+		if n.Type == html.ElementNode {
+			a := map[string]string{}
+			for _, v := range n.Attr {
+				a[v.Key] = v.Val
+			}
+			switch n.Data {
+			case "a":
+				if links >= 4 || a["href"] != []string{"/compose", "/call-setup", "/profile", "/history"}[links] {
+					t.Fatal("link binding/order mismatch")
+				}
+				links++
+			case "button":
+				if a["type"] != "button" {
+					t.Fatal("trigger is a submit control")
+				}
+				buttons++
+			case "dialog":
+				if a["id"] != "person-dialog" || a["aria-labelledby"] != "person-heading" {
+					t.Fatal("dialog name/identity binding mismatch")
+				}
+			case "h2":
+				if a["id"] != "person-heading" {
+					t.Fatal("heading ID mismatch")
+				}
+			case "img":
+				if a["src"] != "/photo.svg" || a["alt"] != "" {
+					t.Fatal("image binding mismatch")
+				}
+				images++
+			case "time":
+				if a["datetime"] != data.Details[3].Date {
+					t.Fatal("date binding mismatch")
+				}
+				dates++
+			case "dt":
+				terms++
+			case "form":
+				t.Fatal("drawer must not infer mutation authority")
+			}
+			if target, ok := a["commandfor"]; ok && target != "person-dialog" {
+				t.Fatal("cross-instance command target")
+			}
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			walk(c)
+		}
+	}
+	walk(tree)
+	if links != 4 || buttons != 3 || images != 1 || dates != 1 || terms != 4 {
+		t.Fatal("incomplete typed structure")
+	}
+	data.IDPrefix = "second"
+	multiple := typed + render(NewDrawer(data))
+	for _, id := range []string{"person-dialog", "person-heading", "second-dialog", "second-heading"} {
+		if strings.Count(multiple, `id="`+id+`"`) != 1 {
+			t.Fatal("repeated-instance ID collision")
+		}
+	}
+	data.IDPrefix = "long"
+	data.Name = strings.Repeat("Long person ", 20)
+	data.Heading = strings.Repeat("Long heading ", 18)
+	data.Primary.Label = strings.Repeat("Compose message ", 15)
+	data.MenuLinks[0].Label = strings.Repeat("Profile destination ", 12)
+	data.Details[0].Text = strings.Repeat("Long profile description with context. ", 90)
+	outputs := map[string]string{"reference.html": reference, "typed.html": typed, "readonly.html": readonly, "long.html": render(NewDrawer(data)), "multiple.html": multiple}
+	if drawerOutput != "" {
+		for name, body := range outputs {
+			if err := os.WriteFile(filepath.Join(drawerOutput, name), []byte(body), 0600); err != nil {
+				t.Fatal("private render write failed")
+			}
+		}
+	}
+}

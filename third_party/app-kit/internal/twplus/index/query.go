@@ -236,18 +236,23 @@ type ComponentSummary struct {
 	NumVariant int    `json:"variants"`
 }
 
-// ListComponents browses the catalog structurally (no text query).
-func (ix *Index) ListComponents(f Filters, limit int) ([]ComponentSummary, error) {
+// ListComponents browses the catalog structurally (no text query). Offset is a
+// zero-based position in the stable full_name ordering for one unchanged index
+// and one unchanged set of filters.
+func (ix *Index) ListComponents(f Filters, limit, offset int) ([]ComponentSummary, error) {
 	if limit <= 0 {
 		limit = 200
+	}
+	if offset < 0 {
+		return nil, fmt.Errorf("twplus/index: list: offset must be non-negative")
 	}
 	var args []any
 	q := `SELECT c.full_name, c.section, c."group", c.category, c.name, COUNT(v.id)
 		FROM component c JOIN variant v ON v.component_id = c.id
 		WHERE 1=1` + f.where("v", &args) + `
 		GROUP BY c.id
-		ORDER BY c.full_name LIMIT ?`
-	args = append(args, limit)
+		ORDER BY c.full_name LIMIT ? OFFSET ?`
+	args = append(args, limit, offset)
 	rows, err := ix.db.Query(q, args...)
 	if err != nil {
 		return nil, fmt.Errorf("twplus/index: list: %w", err)

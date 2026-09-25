@@ -1,0 +1,6 @@
+@import "tailwindcss";
+@import "../../../appkit/ui/tokens/theme.css";
+@import "./report.css";
+@source "../*.go";
+@source "../../../appkit/ui/dashboard/*.go";
+@source "../../../appkit/ui/vizframe/*.go";

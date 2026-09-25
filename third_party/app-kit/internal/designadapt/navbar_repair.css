@@ -1,0 +1,86 @@
+/* Explicit P09 candidate; load after source CSS. Original output remains unwrapped. */
+[data-appkit-navbar-repair] {
+  display: contents;
+}
+
+/* Preserve the original minimum height, but allow multi-line desktop routes. */
+[data-appkit-navbar-repair] > nav > div > div {
+  block-size: auto;
+  min-block-size: 4rem;
+}
+[data-appkit-navbar-repair] > nav > div > div > div:nth-child(2),
+[data-appkit-navbar-repair] > nav > div > div > div:nth-child(2) > div:nth-child(2) {
+  min-inline-size: 0;
+}
+[data-appkit-navbar-repair] > nav > div > div > div:nth-child(2) > div:nth-child(2) {
+  flex-wrap: wrap;
+  column-gap: 2rem;
+}
+[data-appkit-navbar-repair] > nav > div > div > div:nth-child(2) > div:nth-child(2) > a {
+  min-block-size: 4rem;
+  max-inline-size: 100%;
+  margin-inline: 0;
+  padding-block: .75rem;
+  overflow-wrap: anywhere;
+}
+[data-appkit-navbar-repair] > nav el-disclosure a,
+[data-appkit-navbar-repair] > nav el-menu a {
+  min-block-size: 44px;
+  overflow-wrap: anywhere;
+}
+[data-appkit-navbar-repair] > nav el-menu {
+  max-block-size: min(28rem, calc(100dvh - 6rem));
+  overflow: auto;
+}
+[data-appkit-navbar-repair] > nav > div > div > div:nth-child(2) > div:nth-child(2) > a:focus-visible,
+[data-appkit-navbar-repair] > nav el-disclosure a:focus-visible,
+[data-appkit-navbar-repair] > nav el-menu a:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -2px;
+}
+
+/* Native route access is persistent, not conditional on runtime readiness. */
+[data-appkit-navbar-repair] > details[data-appkit-navbar-routes] {
+  max-inline-size: 80rem;
+  margin-inline: auto;
+  padding: .25rem 1rem;
+  color: CanvasText;
+  background-color: Canvas;
+}
+[data-appkit-navbar-repair] > details[data-appkit-navbar-routes] > summary {
+  inline-size: fit-content;
+  max-inline-size: 100%;
+  min-block-size: 44px;
+  margin-inline-start: auto;
+  padding: .625rem .75rem;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+[data-appkit-navbar-repair] > details[data-appkit-navbar-routes] ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  list-style: none;
+  margin: 0;
+  padding: .5rem 0;
+}
+[data-appkit-navbar-repair] > details[data-appkit-navbar-routes] li {
+  max-inline-size: 100%;
+}
+[data-appkit-navbar-repair] > details[data-appkit-navbar-routes] a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 44px;
+  padding: .625rem .75rem;
+  overflow-wrap: anywhere;
+  text-decoration: underline;
+  text-underline-offset: .2em;
+}
+[data-appkit-navbar-repair] > details[data-appkit-navbar-routes] a[aria-current="page"] {
+  font-weight: 700;
+  text-decoration-style: double;
+}
+[data-appkit-navbar-repair] > details[data-appkit-navbar-routes] :is(summary, a):focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -2px;
+}

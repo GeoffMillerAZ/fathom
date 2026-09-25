@@ -5,6 +5,13 @@ data/tailwindplus/index/
 # into a corpus for appkit-mcp; the template source itself never enters git.
 data/matdash/
 data/matdash/index/
+# Private purchased archives and evidence; only the Go traversal boundary is tracked.
+# Keep all packet bodies/manifests ignored and back them up separately from Git.
+/data/design-assets/*
+!/data/design-assets/go.mod
+
+# Private fresh-host transcripts and frozen first-party adoption specimens.
+data/adoption-evidence/
 
 # Generated SQLite indexes and embedding scratch
 *.sqlite-shm
@@ -30,3 +37,12 @@ dist/
 # changes on every ingest; it is a cache, not a source. Committed by accident
 # in 7366363 via `git add -A` and removed in the commit that added this rule.
 workspace/db/
+
+# Machine-local Fathom run receipts and telemetry; curated findings live in docs/.
+/.fathom/receipts.jsonl
+/workspace/artifacts/
+/workspace/logs/
+
+# Retained native-test preparation/failure evidence, not maintained source.
+/.native-scroll-handoff-work.*/
+/.native-scroll-work.*/

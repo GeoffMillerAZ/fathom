@@ -41,6 +41,23 @@ func TestContrast_Symmetric(t *testing.T) {
 	}
 }
 
+// Stat tiles and trend pills use positive as small text, not only as a mark.
+// Preserve the browser-discovered failure on the default light palette.
+func TestPositiveSmallTextContrast(t *testing.T) {
+	tok := mustLoad(t, kitSource(t))
+	for _, scheme := range []string{"light", "dark"} {
+		for _, background := range []string{"surface", "surface-raised", "positive-soft"} {
+			ratio, err := ContrastRoles(tok, "positive", background, scheme)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if ratio < 4.5 {
+				t.Errorf("positive on %s (%s): %.4f:1 below 4.5:1", background, scheme, ratio)
+			}
+		}
+	}
+}
+
 // TestContrast_RefusesWhatItCannotMeasure is the point of the package: an
 // unmeasurable or uncomposited value must error, never return a number that
 // reads like a pass.

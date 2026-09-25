@@ -1,0 +1,27 @@
+/* Build only the reading reference; do not scan the rest of the repository. */
+@import "tailwindcss" source(none);
+@import "../../../../appkit/ui/tokens/theme.css";
+@source "../../static_content.go";
+@source "../../static_content_export.go";
+@source "../../../../appkit/ui/docs/*.go";
+@source "../../../../appkit/ui/callout/*.go";
+
+/* Export-only presentation: semantic current-page state is also visible, and
+   outline destinations read as links before hover/focus. Shared renderers stay
+   unchanged; the ordinary Gallery continues to use its own stylesheet. */
+@layer components {
+  header nav[aria-label="Appearance"] a {
+    border: 1px solid transparent;
+    padding-inline: 0.5rem;
+  }
+  header nav[aria-label="Appearance"] a[aria-current="page"] {
+    border-color: var(--ak-color-accent);
+    background-color: var(--ak-color-accent-soft);
+    font-weight: 600;
+    text-decoration-thickness: 2px;
+  }
+  #static-reference-main details > ol a {
+    text-decoration-line: underline;
+    text-underline-offset: 0.2em;
+  }
+}

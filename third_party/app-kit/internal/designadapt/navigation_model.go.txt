@@ -1,0 +1,123 @@
+// Generated companion for private P06 page navigation. No routing/backend is supplied.
+package converted
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"path"
+	"strings"
+	"unicode"
+	"unicode/utf8"
+
+	"github.com/a-h/templ"
+)
+
+type NavigationItem struct { Key, Label, URL string }
+type PageNavigation struct {
+	Items []NavigationItem
+	CurrentKey, NavLabel, SelectLabel string
+}
+type NavigationGET struct { Action, FieldName, SubmitLabel string }
+
+// Reference preserves the unbound source select and may retain '#' placeholders.
+// It is a design specimen, not usable navigation at narrow widths.
+func NewPageNavigationReference(data PageNavigation) (templ.Component, error) {
+	return newPageNavigation(data, "reference", NavigationGET{})
+}
+// GET uses explicit native submission. The app maps FieldName's stable key to an
+// allowlisted route; never redirect directly to an untrusted submitted destination.
+func NewPageNavigationGET(data PageNavigation, form NavigationGET) (templ.Component, error) {
+	return newPageNavigation(data, "get", form)
+}
+// Links is the static-site adaptation: ordinary wrapping page links, no script.
+func NewPageNavigationLinks(data PageNavigation) (templ.Component, error) {
+	return newPageNavigation(data, "links", NavigationGET{})
+}
+
+type navigationView struct { PageNavigation; Mode string; Form NavigationGET }
+
+func newPageNavigation(data PageNavigation, mode string, form NavigationGET) (templ.Component, error) {
+	if len(data.Items) < 2 || len(data.Items) > 12 || !navigationText(data.NavLabel) || !navigationText(data.SelectLabel) {
+		return nil, fmt.Errorf("page navigation: invalid item count or accessible label")
+	}
+	keys, urls := map[string]bool{}, map[string]bool{}
+	for _, item := range data.Items {
+		if !navigationKey(item.Key) || keys[item.Key] || !navigationText(item.Label) {
+			return nil, fmt.Errorf("page navigation: invalid or duplicate item key/label")
+		}
+		keys[item.Key] = true
+		placeholder := mode == "reference" && item.URL == "#"
+		if !placeholder && (!navigationPath(item.URL) || urls[item.URL]) {
+			return nil, fmt.Errorf("page navigation: invalid or duplicate local path")
+		}
+		urls[item.URL] = true
+	}
+	if !keys[data.CurrentKey] { return nil, fmt.Errorf("page navigation: current key missing") }
+	if mode == "get" && (!navigationPath(form.Action) || !navigationKey(form.FieldName) || !navigationText(form.SubmitLabel)) {
+		return nil, fmt.Errorf("page navigation: invalid native GET contract")
+	}
+	data.Items = append([]NavigationItem(nil), data.Items...)
+	return pageNavigation(navigationView{data, mode, form}), nil
+}
+
+func navigationText(s string) bool {
+	if len(s) > 256 || !utf8.ValidString(s) || strings.TrimSpace(s) == "" { return false }
+	for _, r := range s { if unicode.IsControl(r) { return false } }
+	return true
+}
+func navigationKey(s string) bool {
+	if len(s) == 0 || len(s) > 64 { return false }
+	for i, c := range []byte(s) {
+		letter := c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z'
+		if !letter && (i == 0 || !(c >= '0' && c <= '9' || c == '-' || c == '_')) { return false }
+	}
+	return true
+}
+func navigationPath(s string) bool {
+	if len(s) == 0 || len(s) > 512 || s[0] != '/' || path.Clean(s) != s { return false }
+	for _, c := range []byte(s) {
+		if !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || strings.ContainsRune("/._-~", rune(c))) { return false }
+	}
+	return true
+}
+
+func navigationLinkClass(current bool, mode string) string {
+	c := navigationDefaultClass
+	if current { c = navigationCurrentClass }
+	if mode == "reference" { return c }
+	return strings.Replace(c, "whitespace-nowrap", "whitespace-normal", 1) + " min-h-11 min-w-11 max-w-full [overflow-wrap:anywhere] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:focus-visible:outline-indigo-400"
+}
+func navigationSelectStyle(mode string) string {
+	if mode == "reference" { return navigationSelectClass }
+	return navigationSelectClass + " min-h-11"
+}
+func navigationNavStyle(mode string) string {
+	if mode == "reference" { return navigationNavClass }
+	return "-mb-px flex flex-wrap gap-x-8 gap-y-2"
+}
+
+// Go repetition retains exact source whitespace; templ control-flow does not.
+func navigationItems(data navigationView, options bool) templ.Component {
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		for i, item := range data.Items {
+			if err := ctx.Err(); err != nil { return err }
+			if i > 0 {
+				separator := navigationLinkSeparator
+				if options { separator = navigationOptionSeparator }
+				if _, err := io.WriteString(w, separator); err != nil { return err }
+			}
+			component := navigationLink(item, item.Key == data.CurrentKey, data.Mode)
+			if options { component = navigationOption(item, item.Key == data.CurrentKey, data) }
+			if err := component.Render(ctx, w); err != nil { return err }
+		}
+		return nil
+	})
+}
+func navigationNarrow(data navigationView) templ.Component {
+	switch data.Mode {
+	case "get": return navigationGETForm(data)
+	case "links": return navigationMobileLinks(data)
+	default: return navigationMobile(data)
+	}
+}

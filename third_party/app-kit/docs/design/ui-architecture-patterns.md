@@ -1,5 +1,11 @@
 # UI architecture patterns
 
+The patterns below are historical guidance for the Go hypermedia profile.
+[ADR-0021](../adr/0021-runtime-profiles-and-platform-proof.md) now scopes those
+requirements: portable and terminal consumers choose their own applicable profile,
+and static pages do not require SSE or NATS. For complete task/state contracts,
+use [experience-system.md](experience-system.md).
+
 How a kit app decides its UI architecture. This is the operational
 companion to ADR-0003 (`../adr/0003-hypermedia-first-datastar.md`): the ADR
 says *why* hypermedia-first; this document says *how*, for every screen

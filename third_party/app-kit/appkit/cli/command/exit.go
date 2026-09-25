@@ -35,16 +35,26 @@ func (e *exitError) Error() string {
 
 func (e *exitError) Unwrap() error { return e.err }
 
+// ExplicitCode reports the first code carried by an Exit-wrapped error.
+// The boolean distinguishes an explicit code (including zero or one) from
+// Code's defaults for nil and otherwise unclassified errors.
+func ExplicitCode(err error) (int, bool) {
+	var ex *exitError
+	if errors.As(err, &ex) {
+		return ex.code, true
+	}
+	return 0, false
+}
+
 // Code reports the process exit code err carries: 0 for nil, the code an
 // Exit-wrapped error names (found via errors.As, so a wrapped/joined error
 // still resolves), and 1 for any other non-nil error.
 func Code(err error) int {
+	if code, ok := ExplicitCode(err); ok {
+		return code
+	}
 	if err == nil {
 		return 0
-	}
-	var ex *exitError
-	if errors.As(err, &ex) {
-		return ex.code
 	}
 	return 1
 }

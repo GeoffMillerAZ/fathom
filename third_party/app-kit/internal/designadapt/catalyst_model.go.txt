@@ -1,0 +1,362 @@
+// Generated policy companion for a private converted settings package.
+// It deliberately supplies no renderer, persistence, HTTP handler, or backend.
+package converted
+
+import (
+	"fmt"
+	"net/mail"
+	"net/url"
+	"strings"
+	"unicode"
+	"unicode/utf8"
+)
+
+const (
+	// BioLimit counts Unicode code points, not grapheme clusters.
+	BioLimit = 240
+
+	settingsRequestLimit  = 32 << 10
+	settingsBioBytes      = 16 << 10
+	settingsCountriesMax  = 64
+	settingsCurrenciesMax = 64
+	settingsRegionsMax    = 128
+)
+
+// settingsBioCodePoints measures the text a textarea exposes to a user. Form
+// encoding expands each logical newline to CRLF, but the decoded draft remains
+// raw so recovery can retain exactly what the transport supplied.
+func settingsBioCodePoints(value string) int {
+	return utf8.RuneCountInString(value) - strings.Count(value, "\r\n")
+}
+
+// SettingsValues is the application-owned state for the converted settings form.
+// Empty fields are allowed unless the policy's selected options require a value.
+type SettingsValues struct {
+	Name, Bio, Email, Street, City, Region, Postal, Country, Currency string
+	PublicEmail                                                       bool
+}
+
+type SettingsCountry struct {
+	Code, Name string
+	Regions    []string
+}
+
+type SettingsCurrency struct{ Code, Label string }
+
+// SettingsPolicy owns copies of its configuration. Its snapshots may safely be
+// handed to callers: modifying one cannot alter later validation.
+type SettingsPolicy struct {
+	countries  []SettingsCountry
+	currencies []SettingsCurrency
+	initial    SettingsValues
+}
+
+// SettingsValidation preserves submitted values so a caller can re-render them.
+// FirstError is the first invalid field in authored focus order, or empty.
+type SettingsValidation struct {
+	Values     SettingsValues
+	Errors     map[string]string
+	FirstError string
+}
+
+func NewSettingsPolicy(countries []SettingsCountry, currencies []SettingsCurrency, initial SettingsValues) (*SettingsPolicy, error) {
+	if len(countries) == 0 || len(countries) > settingsCountriesMax {
+		return nil, fmt.Errorf("settings policy: invalid country count")
+	}
+	if len(currencies) == 0 || len(currencies) > settingsCurrenciesMax {
+		return nil, fmt.Errorf("settings policy: invalid currency count")
+	}
+	ownedCountries := make([]SettingsCountry, len(countries))
+	countryCodes := make(map[string]bool, len(countries))
+	for i, country := range countries {
+		if !settingsCode(country.Code, 16) || !settingsText(country.Name, 128, false) || countryCodes[country.Code] || len(country.Regions) == 0 || len(country.Regions) > settingsRegionsMax {
+			return nil, fmt.Errorf("settings policy: invalid or duplicate country")
+		}
+		countryCodes[country.Code] = true
+		regions := make(map[string]bool, len(country.Regions))
+		ownedCountries[i] = SettingsCountry{Code: country.Code, Name: country.Name, Regions: append([]string(nil), country.Regions...)}
+		for _, region := range country.Regions {
+			if !settingsText(region, 128, false) || regions[region] {
+				return nil, fmt.Errorf("settings policy: invalid or duplicate region")
+			}
+			regions[region] = true
+		}
+	}
+	ownedCurrencies := make([]SettingsCurrency, len(currencies))
+	currencyCodes := make(map[string]bool, len(currencies))
+	for i, currency := range currencies {
+		if !settingsCode(currency.Code, 16) || !settingsText(currency.Label, 128, false) || currencyCodes[currency.Code] {
+			return nil, fmt.Errorf("settings policy: invalid or duplicate currency")
+		}
+		currencyCodes[currency.Code] = true
+		ownedCurrencies[i] = currency
+	}
+	if err := validateSettingsValues(initial); err != nil {
+		return nil, fmt.Errorf("settings policy: invalid initial values: %w", err)
+	}
+	policy := &SettingsPolicy{countries: ownedCountries, currencies: ownedCurrencies, initial: initial}
+	result, err := policy.Validate(initial)
+	if err != nil {
+		return nil, fmt.Errorf("settings policy: invalid initial values: %w", err)
+	}
+	if result.FirstError != "" {
+		return nil, fmt.Errorf("settings policy: invalid initial %s: %s", result.FirstError, result.Errors[result.FirstError])
+	}
+	return policy, nil
+}
+
+func (p *SettingsPolicy) Countries() []SettingsCountry {
+	if p == nil {
+		return nil
+	}
+	result := make([]SettingsCountry, len(p.countries))
+	for i, country := range p.countries {
+		result[i] = SettingsCountry{Code: country.Code, Name: country.Name, Regions: append([]string(nil), country.Regions...)}
+	}
+	return result
+}
+
+func (p *SettingsPolicy) Currencies() []SettingsCurrency {
+	if p == nil {
+		return nil
+	}
+	return append([]SettingsCurrency(nil), p.currencies...)
+}
+
+func (p *SettingsPolicy) Initial() SettingsValues {
+	if p == nil {
+		return SettingsValues{}
+	}
+	return p.initial
+}
+
+// ParseSettingsValues admits only the named native form controls. It does not
+// manufacture required text fields; membership and authored email rules belong to
+// SettingsPolicy.Validate. The email rule is intentionally stricter than browser
+// examples: when supplied it accepts only an ASCII addr-spec, with no display name
+// and no whitespace normalization.
+func ParseSettingsValues(values url.Values) (SettingsValues, error) {
+	var result SettingsValues
+	total := 0
+	for key, entries := range values {
+		total += len(key)
+		if total > settingsRequestLimit {
+			return result, fmt.Errorf("settings input: request exceeds limit")
+		}
+		switch key {
+		case "name", "bio", "email", "email_is_public", "address", "city", "postal_code", "currency", "region", "country[code]":
+		default:
+			return result, fmt.Errorf("settings input: unknown field %q", key)
+		}
+		if len(entries) != 1 {
+			return result, fmt.Errorf("settings input: field %q must occur once", key)
+		}
+		value := entries[0]
+		total += len(value)
+		if total > settingsRequestLimit {
+			return result, fmt.Errorf("settings input: request exceeds limit")
+		}
+		if key == "email_is_public" {
+			if value != "on" {
+				return result, fmt.Errorf("settings input: invalid checkbox")
+			}
+			result.PublicEmail = true
+			continue
+		}
+		if err := validateSettingsField(key, value); err != nil {
+			return result, fmt.Errorf("settings input: %w", err)
+		}
+		switch key {
+		case "name":
+			result.Name = value
+		case "bio":
+			result.Bio = value
+		case "email":
+			result.Email = value
+		case "address":
+			result.Street = value
+		case "city":
+			result.City = value
+		case "postal_code":
+			result.Postal = value
+		case "currency":
+			result.Currency = value
+		case "region":
+			result.Region = value
+		case "country[code]":
+			result.Country = value
+		}
+	}
+	return result, nil
+}
+
+// Validate applies the selected-option and authored email/bio policy without
+// changing submitted values. Bio, email, country, region, and currency are kept in
+// source focus order so a renderer can move focus deterministically.
+func (p *SettingsPolicy) Validate(values SettingsValues) (SettingsValidation, error) {
+	result := SettingsValidation{Values: values, Errors: make(map[string]string)}
+	if err := validateSettingsValues(values); err != nil {
+		return result, fmt.Errorf("settings values: %w", err)
+	}
+	if p == nil {
+		result.Errors["country"] = "settings policy is unavailable"
+		result.FirstError = "country"
+		return result, nil
+	}
+	if err := validateSettingsField("bio", values.Bio); err != nil {
+		result.Errors["bio"] = err.Error()
+	} else if settingsBioCodePoints(values.Bio) > BioLimit {
+		result.Errors["bio"] = fmt.Sprintf("must be at most %d Unicode code points", BioLimit)
+	}
+	if err := validateSettingsField("email", values.Email); err != nil {
+		result.Errors["email"] = err.Error()
+	} else if values.Email != "" && !settingsEmail(values.Email) {
+		result.Errors["email"] = "must be an ASCII addr-spec"
+	}
+	country, found := p.country(values.Country)
+	if err := validateSettingsField("country[code]", values.Country); err != nil {
+		result.Errors["country"] = err.Error()
+		found = false
+	} else if !found {
+		result.Errors["country"] = "must select a configured country"
+	}
+	if err := validateSettingsField("region", values.Region); err != nil {
+		result.Errors["region"] = err.Error()
+	} else if found {
+		if !settingsMember(country.Regions, values.Region) {
+			result.Errors["region"] = "must select a configured region"
+		}
+	} else if values.Region != "" {
+		result.Errors["region"] = "cannot be used without a configured country"
+	}
+	if err := validateSettingsField("currency", values.Currency); err != nil {
+		result.Errors["currency"] = err.Error()
+	} else if !p.currency(values.Currency) {
+		result.Errors["currency"] = "must select a configured currency"
+	}
+	for _, key := range []string{"bio", "email", "country", "region", "currency"} {
+		if _, invalid := result.Errors[key]; invalid {
+			result.FirstError = key
+			break
+		}
+	}
+	return result, nil
+}
+
+// RegionAfterCountryChange retains only a literal configured membership. It never
+// chooses a replacement region on the application's behalf.
+func (p *SettingsPolicy) RegionAfterCountryChange(code, current string) string {
+	if country, ok := p.country(code); ok && settingsMember(country.Regions, current) {
+		return current
+	}
+	return ""
+}
+
+func (p *SettingsPolicy) country(code string) (SettingsCountry, bool) {
+	if p == nil {
+		return SettingsCountry{}, false
+	}
+	for _, country := range p.countries {
+		if country.Code == code {
+			return country, true
+		}
+	}
+	return SettingsCountry{}, false
+}
+func (p *SettingsPolicy) currency(code string) bool {
+	if p == nil {
+		return false
+	}
+	for _, currency := range p.currencies {
+		if currency.Code == code {
+			return true
+		}
+	}
+	return false
+}
+func settingsMember(options []string, value string) bool {
+	for _, option := range options {
+		if option == value {
+			return true
+		}
+	}
+	return false
+}
+
+func validateSettingsValues(values SettingsValues) error {
+	for _, field := range []struct{ key, value string }{
+		{"name", values.Name}, {"bio", values.Bio}, {"email", values.Email}, {"address", values.Street},
+		{"city", values.City}, {"region", values.Region}, {"postal_code", values.Postal}, {"country[code]", values.Country}, {"currency", values.Currency},
+	} {
+		if err := validateSettingsField(field.key, field.value); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateSettingsField(key, value string) error {
+	limit := map[string]int{"name": 512, "bio": settingsBioBytes, "email": 320, "address": 512, "city": 256, "region": 128, "postal_code": 64, "country[code]": 16, "currency": 16}[key]
+	if len(value) > limit {
+		return fmt.Errorf("%s exceeds byte limit", key)
+	}
+	if !utf8.ValidString(value) {
+		return fmt.Errorf("%s has invalid UTF-8", key)
+	}
+	for _, r := range value {
+		if unicode.IsControl(r) && !(key == "bio" && (r == '\n' || r == '\r' || r == '\t')) {
+			return fmt.Errorf("%s has control data", key)
+		}
+	}
+	return nil
+}
+
+func settingsCode(value string, limit int) bool {
+	if len(value) == 0 || len(value) > limit || !utf8.ValidString(value) {
+		return false
+	}
+	for _, r := range value {
+		if !(r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r == '-' || r == '_') {
+			return false
+		}
+	}
+	return true
+}
+func settingsText(value string, limit int, empty bool) bool {
+	if len(value) > limit || (!empty && strings.TrimSpace(value) == "") || !utf8.ValidString(value) {
+		return false
+	}
+	for _, r := range value {
+		if unicode.IsControl(r) {
+			return false
+		}
+	}
+	return true
+}
+
+func settingsEmail(value string) bool {
+	if strings.TrimSpace(value) != value || strings.Count(value, "@") != 1 {
+		return false
+	}
+	local, domain, _ := strings.Cut(value, "@")
+	if local == "" || len(local) > 64 || domain == "" || len(domain) > 253 || strings.HasPrefix(local, ".") || strings.HasSuffix(local, ".") || strings.Contains(local, "..") {
+		return false
+	}
+	for _, r := range local {
+		if !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune(".!#$%&'*+/=?^_`{|}~-", r)) {
+			return false
+		}
+	}
+	for _, label := range strings.Split(domain, ".") {
+		if label == "" || len(label) > 63 || label[0] == '-' || label[len(label)-1] == '-' {
+			return false
+		}
+		for _, r := range label {
+			if !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '-') {
+				return false
+			}
+		}
+	}
+	parsed, err := mail.ParseAddress(value)
+	return err == nil && parsed.Name == "" && parsed.Address == value
+}

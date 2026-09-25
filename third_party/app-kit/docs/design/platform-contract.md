@@ -1,5 +1,14 @@
 # The Platform Contract
 
+This is an earlier platform implementation sketch, not shipped API documentation.
+[ADR-0021](../adr/0021-runtime-profiles-and-platform-proof.md) scopes runtime choices
+and platform proof; [scope](../intent/scope.md) names what exists. Dynamic Go/HTTP
+desktop traffic retains the loopback boundary. Portable and terminal consumers do
+not inherit this platform; optional services are built only for an admitted need.
+The [isolated native experiment](../../spikes/wails-gallery/README.md) is the current G6
+implementation/proof boundary. ADR-0026 admits its module and ordinary HTML CSRF path;
+the unimplemented lifecycle/capability sketches below are not its availability claims.
+
 How a kit app boots, authenticates itself to itself, acquires a shell, and
 degrades gracefully when the shell is missing. This is the detailed design
 behind D5 (the Loopback Invariant,

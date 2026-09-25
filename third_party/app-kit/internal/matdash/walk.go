@@ -8,6 +8,8 @@ package matdash
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -49,7 +51,8 @@ var includeSections = map[string]bool{
 
 // Walk traverses srcRoot (the `src` directory of a MatDash package) and calls
 // fn for each indexable .tsx file. It returns the total number of files walked
-// and the number skipped.
+// and the number skipped. Each file's nearest package.json must declare an
+// unambiguous, supported Tailwind major; source is indexed without conversion.
 func Walk(srcRoot string, fn func(Record) error) (walked, skipped int, err error) {
 	err = filepath.WalkDir(srcRoot, func(path string, d fs.DirEntry, werr error) error {
 		if werr != nil {
@@ -149,6 +152,10 @@ func buildRecord(srcRoot, rel string, parts []string) (Record, error) {
 		return Record{}, err
 	}
 	code := string(codeBytes)
+	tailwindVersion, err := sourceTailwindVersion(absPath)
+	if err != nil {
+		return Record{}, err
+	}
 
 	// Content hash: lowercase hex sha256 of the raw bytes.
 	sum := sha256.Sum256(codeBytes)
@@ -174,7 +181,7 @@ func buildRecord(srcRoot, rel string, parts []string) (Record, error) {
 		Code:             code,
 		Language:         "tsx",
 		Framework:        "react",
-		TailwindVersion:  4,
+		TailwindVersion:  tailwindVersion,
 		Mode:             "none",
 		SupportsDarkMode: false,
 	}
@@ -196,7 +203,7 @@ func buildRecord(srcRoot, rel string, parts []string) (Record, error) {
 		FullName:         fullName,
 		Framework:        "react",
 		Language:         "tsx",
-		TailwindVersion:  4,
+		TailwindVersion:  tailwindVersion,
 		Mode:             "none",
 		SupportsDarkMode: false,
 		ContentHash:      contentHash,
@@ -209,6 +216,67 @@ func buildRecord(srcRoot, rel string, parts []string) (Record, error) {
 		Component: comp,
 		Rows:      []normalize.VariantRow{row},
 	}, nil
+}
+
+// Only simple stable declarations whose range stays within one supported major
+// are accepted. Tags, aliases, prereleases and compound ranges need an explicit
+// source declaration; they must not be guessed from the TSX or a kit default.
+var tailwindDeclaration = regexp.MustCompile(`^[~^]?([34])(?:\.(?:0|[1-9][0-9]*)){0,2}$`)
+
+func sourceTailwindVersion(sourcePath string) (int, error) {
+	absPath, err := filepath.Abs(sourcePath)
+	if err != nil {
+		return 0, err
+	}
+	for dir := filepath.Dir(absPath); ; dir = filepath.Dir(dir) {
+		manifestPath := filepath.Join(dir, "package.json")
+		data, err := os.ReadFile(manifestPath)
+		if err == nil {
+			var manifest struct {
+				Dependencies         map[string]string `json:"dependencies"`
+				DevDependencies      map[string]string `json:"devDependencies"`
+				PeerDependencies     map[string]string `json:"peerDependencies"`
+				OptionalDependencies map[string]string `json:"optionalDependencies"`
+			}
+			if err := json.Unmarshal(data, &manifest); err != nil {
+				return 0, fmt.Errorf("parse %s: %w", manifestPath, err)
+			}
+			major := 0
+			for _, group := range []struct {
+				name string
+				deps map[string]string
+			}{
+				{"dependencies", manifest.Dependencies},
+				{"devDependencies", manifest.DevDependencies},
+				{"peerDependencies", manifest.PeerDependencies},
+				{"optionalDependencies", manifest.OptionalDependencies},
+			} {
+				decl, ok := group.deps["tailwindcss"]
+				if !ok {
+					continue
+				}
+				match := tailwindDeclaration.FindStringSubmatch(strings.TrimSpace(decl))
+				if match == nil {
+					return 0, fmt.Errorf("%s: unsupported or ambiguous %s.tailwindcss %q; use a simple numeric, ^ or ~ declaration for Tailwind 3 or 4", manifestPath, group.name, decl)
+				}
+				declaredMajor := int(match[1][0] - '0')
+				if major != 0 && major != declaredMajor {
+					return 0, fmt.Errorf("%s: conflicting tailwindcss majors %d and %d; declare one source Tailwind major", manifestPath, major, declaredMajor)
+				}
+				major = declaredMajor
+			}
+			if major == 0 {
+				return 0, fmt.Errorf("%s: missing tailwindcss dependency; declare the source Tailwind version in this package manifest", manifestPath)
+			}
+			return major, nil
+		}
+		if !errors.Is(err, fs.ErrNotExist) {
+			return 0, fmt.Errorf("read %s: %w", manifestPath, err)
+		}
+		if filepath.Dir(dir) == dir {
+			return 0, fmt.Errorf("no package.json found above %s; index source within its original package containing a tailwindcss dependency", absPath)
+		}
+	}
 }
 
 // classAttr matches className="...", className={"..."}, class="..." in TSX.

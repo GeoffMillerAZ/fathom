@@ -37,10 +37,17 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/geoffmilleraz/app-kit/appkit/ui/appearance"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/chat"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/motion"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/overlay"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/router"
+	"github.com/geoffmilleraz/app-kit/appkit/ui/themes/copper"
+	"github.com/geoffmilleraz/app-kit/appkit/ui/themes/geoffindigo"
+	"github.com/geoffmilleraz/app-kit/appkit/ui/themes/geoffsynthwave"
+	"github.com/geoffmilleraz/app-kit/appkit/ui/themes/lagoon"
+	"github.com/geoffmilleraz/app-kit/appkit/ui/themes/orchard"
+	"github.com/geoffmilleraz/app-kit/appkit/ui/themes/synthwave"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/tokens"
 )
 
@@ -59,16 +66,36 @@ type vendorSet struct {
 
 type vendorOptions struct {
 	darkVariant tokens.DarkVariant
+	theme       string
 }
 
 // vendorSets is the complete catalogue. Adding an L3b package here is a bug,
 // not a feature — see the file header.
 var vendorSets = []vendorSet{
 	{
+		name:  "appearance",
+		layer: "L2",
+		files: func(vendorOptions) map[string]string { return map[string]string{"appearance.js": appearance.Script()} },
+	},
+	{
 		name:  "tokens",
 		layer: "L1",
 		files: func(o vendorOptions) map[string]string {
 			css := tokens.ThemeCSS()
+			switch o.theme {
+			case "synthwave":
+				css = synthwave.CSS()
+			case "copper":
+				css = copper.CSS()
+			case "lagoon":
+				css = lagoon.CSS()
+			case "orchard":
+				css = orchard.CSS()
+			case "geoff-indigo":
+				css = geoffindigo.CSS()
+			case "geoff-synthwave":
+				css = geoffsynthwave.CSS()
+			}
 			if o.darkVariant == tokens.DarkVariantNone {
 				css = tokens.StripDarkVariant(css)
 			}
@@ -115,7 +142,8 @@ func vendorSetNames() []string {
 
 // vendorCmd implements `appkit vendor`.
 //
-//	appkit vendor -out DIR --include tokens,motion,router,overlay,chat
+//	appkit vendor -out DIR --include tokens,motion,router,overlay,chat,appearance
+//	              [--theme appkit|synthwave|copper|lagoon|orchard|geoff-indigo|geoff-synthwave]
 //	              [--dark-variant none|attribute] [--check]
 func vendorCmd(args []string) error {
 	fs := flag.NewFlagSet("appkit vendor", flag.ContinueOnError)
@@ -123,6 +151,7 @@ func vendorCmd(args []string) error {
 		out = fs.String("out", "", "directory to write the vendored artifacts into (required)")
 		inc = fs.String("include", strings.Join(vendorSetNames(), ","),
 			"comma-separated artifact groups: "+strings.Join(vendorSetNames(), ", "))
+		theme = fs.String("theme", "appkit", "tokens theme: appkit (default), synthwave, copper, lagoon, orchard, geoff-indigo or geoff-synthwave; writes one active theme.css")
 		// none is the default here and attribute is the default in `appkit
 		// gen`, deliberately. See the hazard note on
 		// tokens.EmitThemeCSSOpts: emitting @custom-variant dark re-keys the
@@ -131,26 +160,42 @@ func vendorCmd(args []string) error {
 		// palette into an existing Tailwind build almost certainly does not.
 		darkVariant = fs.String("dark-variant", string(tokens.DarkVariantNone),
 			"how to define Tailwind's dark: variant — none (default; leaves your app's dark: on prefers-color-scheme) or attribute (keys it on data-theme)")
-		check = fs.Bool("check", false, "verify the directory against its kit.lock instead of writing; exits 1 on drift")
+		check = fs.Bool("check", false, "verify against kit.lock instead of writing; explicit --theme also checks selected CSS; exits 1 on drift")
 	)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+	explicitTheme := false
+	fs.Visit(func(f *flag.Flag) { explicitTheme = explicitTheme || f.Name == "theme" })
 	if *out == "" {
 		fs.Usage()
 		return errors.New("vendor: -out is required")
 	}
 
-	opts := vendorOptions{darkVariant: tokens.DarkVariant(*darkVariant)}
+	opts := vendorOptions{darkVariant: tokens.DarkVariant(*darkVariant), theme: *theme}
 	switch opts.darkVariant {
 	case tokens.DarkVariantNone, tokens.DarkVariantAttribute:
 	default:
 		return fmt.Errorf("vendor: --dark-variant %q: want none or attribute", *darkVariant)
 	}
+	switch opts.theme {
+	case "appkit", "synthwave", "copper", "lagoon", "orchard", "geoff-indigo", "geoff-synthwave":
+	default:
+		return fmt.Errorf("vendor: --theme %q: want appkit, synthwave, copper, lagoon, orchard, geoff-indigo or geoff-synthwave", *theme)
+	}
 
 	sets, err := selectVendorSets(*inc)
 	if err != nil {
 		return err
+	}
+	if opts.theme != "appkit" {
+		tokensSelected := false
+		for _, s := range sets {
+			tokensSelected = tokensSelected || s.name == "tokens"
+		}
+		if !tokensSelected {
+			return fmt.Errorf("vendor: --theme %q requires tokens in --include", *theme)
+		}
 	}
 
 	files := map[string]string{}
@@ -161,6 +206,15 @@ func vendorCmd(args []string) error {
 	}
 
 	if *check {
+		// Without --theme, retain the historical disk-vs-lock contract: a
+		// pinned older artifact can be clean even when current kit bytes differ.
+		// An explicit theme selection additionally verifies that one CSS file.
+		if desired, selected := files["theme.css"]; explicitTheme && selected {
+			actual, err := os.ReadFile(filepath.Join(*out, "theme.css"))
+			if err != nil || string(actual) != desired {
+				return fmt.Errorf("vendor --check: theme.css does not match explicitly selected --theme %q and --dark-variant %q; re-run `appkit vendor` with those options", opts.theme, opts.darkVariant)
+			}
+		}
 		return checkKitLock(*out, files)
 	}
 	return writeVendor(*out, files, sets, opts)
@@ -229,6 +283,9 @@ func renderKitLock(files map[string]string, sets []vendorSet, opts vendorOptions
 	fmt.Fprintf(&b, "module\t%s\n", modulePath)
 	fmt.Fprintf(&b, "version\t%s\n", moduleVersion())
 	fmt.Fprintf(&b, "dark-variant\t%s\n", opts.darkVariant)
+	if opts.theme != "" && opts.theme != "appkit" {
+		fmt.Fprintf(&b, "theme\t%s\n", opts.theme)
+	}
 	names := make([]string, 0, len(sets))
 	for _, s := range sets {
 		names = append(names, s.name+"("+s.layer+")")

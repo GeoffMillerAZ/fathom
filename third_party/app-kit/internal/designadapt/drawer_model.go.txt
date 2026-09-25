@@ -1,0 +1,222 @@
+// Generated companion for a private drawer adaptation. No app-kit runtime required.
+package converted
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"net/url"
+	"strconv"
+	"strings"
+	"time"
+	"unicode"
+	"unicode/utf8"
+
+	"github.com/a-h/templ"
+)
+
+// Drawer contains presentation data and app-owned navigation. Presence and
+// truthful online state, profile actions and destinations remain app concerns.
+type Drawer struct {
+	IDPrefix        string
+	OpenLabel       string
+	Heading         string
+	CloseLabel      string
+	Name            string
+	Handle          string
+	OnlineLabel     string
+	MenuLabel       string
+	ImageURL        string
+	ImageAlt        string
+	ImageDecorative bool
+	Primary         *DrawerLink
+	Secondary       *DrawerLink
+	MenuLinks       []DrawerLink
+	Details         []DrawerDetail
+}
+
+type DrawerLink struct {
+	Label string
+	URL   string
+}
+
+type DrawerDetail struct {
+	Label string
+	Text  string
+	Kind  string
+	Date  string
+}
+
+// NewDrawer validates and snapshots all caller-owned data before returning the
+// source-styled component.
+func NewDrawer(data Drawer) (templ.Component, error) {
+	if err := validateDrawer(data); err != nil {
+		return nil, err
+	}
+	snapshot := data
+	if data.Primary != nil {
+		primary := *data.Primary
+		snapshot.Primary = &primary
+	}
+	if data.Secondary != nil {
+		secondary := *data.Secondary
+		snapshot.Secondary = &secondary
+	}
+	snapshot.MenuLinks = append([]DrawerLink(nil), data.MenuLinks...)
+	snapshot.Details = append([]DrawerDetail(nil), data.Details...)
+	return guardedDrawer(drawer(snapshot)), nil
+}
+
+func validateDrawer(data Drawer) error {
+	if !drawerIDPrefix(data.IDPrefix) {
+		return fmt.Errorf("drawer: invalid IDPrefix")
+	}
+	for _, field := range []struct {
+		name  string
+		value string
+	}{
+		{"OpenLabel", data.OpenLabel}, {"Heading", data.Heading},
+		{"CloseLabel", data.CloseLabel}, {"Name", data.Name},
+		{"MenuLabel", data.MenuLabel},
+	} {
+		if !drawerText(field.value, 256) {
+			return fmt.Errorf("drawer: invalid %s", field.name)
+		}
+	}
+	for _, field := range []struct{ name, value string }{
+		{"Handle", data.Handle}, {"OnlineLabel", data.OnlineLabel},
+	} {
+		if field.value != "" && !drawerText(field.value, 256) {
+			return fmt.Errorf("drawer: invalid %s", field.name)
+		}
+	}
+	if !drawerLinkURL(data.ImageURL) {
+		return fmt.Errorf("drawer: invalid ImageURL")
+	}
+	if data.ImageDecorative {
+		if data.ImageAlt != "" {
+			return fmt.Errorf("drawer: decorative image alt must be empty")
+		}
+	} else if !drawerText(data.ImageAlt, 512) {
+		return fmt.Errorf("drawer: invalid ImageAlt")
+	}
+	for _, field := range []struct {
+		name string
+		link *DrawerLink
+	}{
+		{"Primary", data.Primary},
+		{"Secondary", data.Secondary},
+	} {
+		name, link := field.name, field.link
+		if link != nil && (!drawerText(link.Label, 256) || !drawerLinkURL(link.URL)) {
+			return fmt.Errorf("drawer: invalid %s", name)
+		}
+	}
+	if len(data.MenuLinks) > 12 {
+		return fmt.Errorf("drawer: invalid MenuLinks")
+	}
+	for _, link := range data.MenuLinks {
+		if !drawerText(link.Label, 256) || !drawerLinkURL(link.URL) {
+			return fmt.Errorf("drawer: invalid menu link")
+		}
+	}
+	if len(data.Details) > 12 {
+		return fmt.Errorf("drawer: invalid Details")
+	}
+	for _, detail := range data.Details {
+		if !drawerText(detail.Label, 256) || !drawerText(detail.Text, 4096) {
+			return fmt.Errorf("drawer: invalid detail")
+		}
+		switch detail.Kind {
+		case "date":
+			parsed, err := time.Parse("2006-01-02", detail.Date)
+			if err != nil || parsed.Year() < 1 || parsed.Format("2006-01-02") != detail.Date {
+				return fmt.Errorf("drawer: invalid detail date")
+			}
+		case "text", "paragraph":
+			if detail.Date != "" {
+				return fmt.Errorf("drawer: unexpected detail date")
+			}
+		default:
+			return fmt.Errorf("drawer: invalid detail kind")
+		}
+	}
+	return nil
+}
+
+func drawerIDPrefix(value string) bool {
+	if len(value) == 0 || len(value) > 64 || !utf8.ValidString(value) {
+		return false
+	}
+	for i, b := range []byte(value) {
+		if i == 0 {
+			if b < 'A' || b > 'Z' && b < 'a' || b > 'z' {
+				return false
+			}
+			continue
+		}
+		if b != '_' && b != '-' && (b < 'A' || b > 'Z') && (b < 'a' || b > 'z') && (b < '0' || b > '9') {
+			return false
+		}
+	}
+	return true
+}
+
+func drawerText(value string, limit int) bool {
+	if len(value) > limit || strings.TrimSpace(value) == "" || !utf8.ValidString(value) {
+		return false
+	}
+	for _, r := range value {
+		if unicode.IsControl(r) {
+			return false
+		}
+	}
+	return true
+}
+
+func drawerLinkURL(value string) bool {
+	if len(value) == 0 || len(value) > 2048 || strings.TrimSpace(value) != value || !utf8.ValidString(value) || strings.ContainsAny(value, "\\ ") || drawerHasControl(value) {
+		return false
+	}
+	decoded, err := url.PathUnescape(value)
+	if err != nil || !utf8.ValidString(decoded) || strings.Contains(decoded, "\\") || drawerHasControl(decoded) {
+		return false
+	}
+	u, err := url.Parse(value)
+	if err != nil || u.User != nil || u.Opaque != "" {
+		return false
+	}
+	if strings.HasPrefix(value, "/") {
+		return !strings.HasPrefix(value, "//") && !strings.HasPrefix(decoded, "//") && u.Scheme == "" && u.Host == ""
+	}
+	if !strings.HasPrefix(value, "https://") || u.Scheme != "https" || u.Hostname() == "" || strings.HasSuffix(u.Host, ":") || strings.ContainsAny(u.Host, "% ") {
+		return false
+	}
+	if port := u.Port(); port != "" {
+		n, err := strconv.ParseUint(port, 10, 16)
+		if err != nil || n == 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func drawerHasControl(value string) bool {
+	for _, r := range value {
+		if unicode.IsControl(r) {
+			return true
+		}
+	}
+	return false
+}
+
+func guardedDrawer(component templ.Component) templ.Component {
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			return component.Render(ctx, w)
+		}
+	})
+}

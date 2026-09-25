@@ -79,7 +79,7 @@ var LightHex = map[Role]string{
 	RoleInkMuted:       "#4f5661",
 	RoleLine:           "#dbdee3",
 	RoleLineStrong:     "#b9bec6",
-	RolePositive:       "#00884d",
+	RolePositive:       "#007a44",
 	RolePositiveSoft:   "#d2f6dd",
 	RoleSurface:        "#f8fafe",
 	RoleSurfaceOverlay: "#fcfdff",

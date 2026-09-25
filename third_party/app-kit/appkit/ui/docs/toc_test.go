@@ -70,6 +70,27 @@ func TestRenderToCPanel_Empty(t *testing.T) {
 	}
 }
 
+// Standalone outline links need their own target/focus treatment. A caller's
+// page padding does not enlarge a link's clickable box or paint its focus ring.
+func TestRenderToCPanel_TargetAndFocusClasses(t *testing.T) {
+	got := RenderToCPanel([]Heading{{Level: 2, Text: strings.Repeat("LongLabel", 32), ID: "long"}}, Options{})
+	for _, tag := range []string{"summary", "a"} {
+		start := strings.Index(got, "<"+tag+" ")
+		if start < 0 {
+			t.Fatalf("missing %s", tag)
+		}
+		attrs := got[start : start+strings.IndexByte(got[start:], '>')]
+		for _, class := range []string{"min-h-[44px]", "min-w-[44px]", "break-words", "focus-visible:outline-2", "focus-visible:outline-offset-2", "focus-visible:outline-focus"} {
+			if !strings.Contains(attrs, class) {
+				t.Errorf("%s missing %s", tag, class)
+			}
+		}
+	}
+	if !strings.Contains(got, `href="#long"`) || strings.Contains(got, "<script") {
+		t.Fatal("outline must retain native fragment navigation")
+	}
+}
+
 func TestRenderToCRail_Empty(t *testing.T) {
 	if got := RenderToCRail(nil, Options{}); got != "" {
 		t.Errorf("RenderToCRail(nil, ...) = %q, want empty", got)

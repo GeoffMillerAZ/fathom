@@ -1,0 +1,184 @@
+// Generated companion for a private P07 adaptation. No app-kit runtime required.
+package converted
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"net/url"
+	"strconv"
+	"strings"
+	"unicode"
+	"unicode/utf8"
+
+	"github.com/a-h/templ"
+)
+
+// Menu contains presentation labels and app-owned destinations. Authentication,
+// authorization, CSRF issuance and action handling remain application concerns.
+type Menu struct {
+	Label  string
+	Links  []MenuLink
+	Submit *MenuSubmit
+}
+
+type MenuLink struct {
+	Label string
+	URL   string
+}
+
+type MenuSubmit struct {
+	Label     string
+	Action    string
+	CSRFName  string
+	CSRFToken string
+	Disabled  bool
+}
+
+// NewMenu validates and snapshots data before returning the source-styled
+// explicit application-action adaptation.
+func NewMenu(data Menu) (templ.Component, error) {
+	if err := validateMenu(data); err != nil {
+		return nil, err
+	}
+	snapshot := data
+	snapshot.Links = append([]MenuLink(nil), data.Links...)
+	if data.Submit != nil {
+		submit := *data.Submit
+		snapshot.Submit = &submit
+	}
+	return guardedMenu(menu(snapshot)), nil
+}
+
+// NewMenuEnhanced opts into the companion CSS usability envelope. Callers must
+// include that stylesheet after the source CSS.
+func NewMenuEnhanced(data Menu) (templ.Component, error) {
+	content, err := NewMenu(data)
+	if err != nil {
+		return nil, err
+	}
+	return guardedMenu(menuEnhanced(content)), nil
+}
+
+func validateMenu(data Menu) error {
+	if !menuText(data.Label, 160) {
+		return fmt.Errorf("menu: invalid Label")
+	}
+	if len(data.Links) > 12 {
+		return fmt.Errorf("menu: invalid Links")
+	}
+	if len(data.Links) == 0 && data.Submit == nil {
+		return fmt.Errorf("menu: no actions")
+	}
+	for _, link := range data.Links {
+		if !menuText(link.Label, 256) || !menuLinkURL(link.URL) {
+			return fmt.Errorf("menu: invalid link")
+		}
+	}
+	if data.Submit != nil {
+		if !menuText(data.Submit.Label, 256) || !menuAction(data.Submit.Action) {
+			return fmt.Errorf("menu: invalid submit")
+		}
+		if !menuCSRFName(data.Submit.CSRFName) || !menuToken(data.Submit.CSRFToken) {
+			return fmt.Errorf("menu: invalid CSRF")
+		}
+	}
+	return nil
+}
+
+func menuText(value string, limit int) bool {
+	if len(value) > limit || strings.TrimSpace(value) == "" || !utf8.ValidString(value) {
+		return false
+	}
+	for _, r := range value {
+		if unicode.IsControl(r) {
+			return false
+		}
+	}
+	return true
+}
+
+func menuLinkURL(value string) bool {
+	if !menuURLBytes(value, 2048) {
+		return false
+	}
+	decoded, err := url.PathUnescape(value)
+	if err != nil || !utf8.ValidString(decoded) || strings.Contains(decoded, "\\") || menuHasControl(decoded) {
+		return false
+	}
+	u, err := url.Parse(value)
+	if err != nil || u.User != nil || u.Opaque != "" {
+		return false
+	}
+	if strings.HasPrefix(value, "/") {
+		return !strings.HasPrefix(value, "//") && !strings.HasPrefix(decoded, "//") && u.Scheme == "" && u.Host == ""
+	}
+	if !strings.HasPrefix(value, "https://") || u.Scheme != "https" || u.Hostname() == "" || strings.HasSuffix(u.Host, ":") || strings.ContainsAny(u.Host, "% ") {
+		return false
+	}
+	if port := u.Port(); port != "" {
+		n, err := strconv.ParseUint(port, 10, 16)
+		if err != nil || n == 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func menuAction(value string) bool {
+	if !menuURLBytes(value, 2048) || !strings.HasPrefix(value, "/") || strings.HasPrefix(value, "//") || strings.ContainsAny(value, "?#") {
+		return false
+	}
+	decoded, err := url.PathUnescape(value)
+	if err != nil || !utf8.ValidString(decoded) || strings.HasPrefix(decoded, "//") || strings.Contains(decoded, "\\") || menuHasControl(decoded) {
+		return false
+	}
+	u, err := url.Parse(value)
+	return err == nil && u.Scheme == "" && u.Host == "" && u.User == nil && u.Opaque == "" && u.RawQuery == "" && !u.ForceQuery && u.Fragment == "" && u.RawFragment == ""
+}
+
+func menuURLBytes(value string, limit int) bool {
+	return len(value) > 0 && len(value) <= limit && strings.TrimSpace(value) == value && utf8.ValidString(value) && !strings.ContainsAny(value, "\\ ") && !menuHasControl(value)
+}
+
+func menuHasControl(value string) bool {
+	for _, r := range value {
+		if unicode.IsControl(r) {
+			return true
+		}
+	}
+	return false
+}
+
+func menuCSRFName(value string) bool {
+	if len(value) == 0 || len(value) > 64 || !utf8.ValidString(value) {
+		return false
+	}
+	for i, r := range value {
+		if r > unicode.MaxASCII || !(r == '_' || r == '-' && i > 0 || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || i > 0 && r >= '0' && r <= '9') {
+			return false
+		}
+	}
+	switch strings.ToLower(value) {
+	case "acceptcharset", "action", "autocomplete", "checkvalidity", "elements", "encoding",
+		"enctype", "id", "length", "method", "name", "novalidate", "rel", "rellist",
+		"reportvalidity", "requestsubmit", "reset", "submit", "target":
+		return false
+	}
+	return true
+}
+
+func menuToken(value string) bool {
+	return len(value) <= 4096 && strings.TrimSpace(value) != "" && utf8.ValidString(value) && !menuHasControl(value)
+}
+
+func guardedMenu(component templ.Component) templ.Component {
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			return component.Render(ctx, w)
+		}
+	})
+}

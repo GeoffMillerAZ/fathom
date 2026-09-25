@@ -1,0 +1,33 @@
+/* Explicit internal P08 candidate; never apply to the unchanged reference.
+   Elements retains dialog/menu focus, selection, Escape and placement ownership. */
+[data-appkit-drawer-focus] { display: contents; }
+[data-appkit-drawer-focus] button[command="show-modal"],
+[data-appkit-drawer-focus] el-dropdown > button,
+[data-appkit-drawer-focus] a {
+  min-block-size: 44px;
+  min-inline-size: 44px;
+  max-inline-size: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  scroll-margin-block: 0.5rem;
+}
+[data-appkit-drawer-focus] a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+[data-appkit-drawer-focus] el-menu a { justify-content: flex-start; }
+[data-appkit-drawer-focus] button[command="show-modal"]:focus-visible,
+[data-appkit-drawer-focus] el-dropdown > button:focus-visible,
+[data-appkit-drawer-focus] a:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -2px;
+}
+[data-appkit-drawer-focus] el-dropdown > button:focus-visible {
+  outline-color: var(--color-gray-900);
+}
+@media (prefers-color-scheme: dark) {
+  [data-appkit-drawer-focus] el-dropdown > button:focus-visible {
+    outline-color: var(--color-gray-100);
+  }
+}

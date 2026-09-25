@@ -1,0 +1,32 @@
+/* P04 opt-in: preserve source palette and typography, expose complete values. */
+[data-appkit-directory] {
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+[data-appkit-directory] :is(h1, p, th, td, dd, a) {
+  overflow-wrap: anywhere;
+}
+[data-appkit-directory] dd {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+/* Wrapping must not squeeze ordinary roles into one-letter columns. Reserve
+   readable space while still allowing unusually long app-owned roles to wrap. */
+[data-appkit-directory] :is(th:nth-child(4), td:nth-child(4)) {
+  min-inline-size: 5rem;
+}
+[data-appkit-directory] a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: 44px;
+  min-block-size: 44px;
+  max-inline-size: 100%;
+}
+/* The source Add action already supplies a colored 2px focus outline.
+   Only table links need an explicit ring; their own text color is retained. */
+[data-appkit-directory] table a:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}

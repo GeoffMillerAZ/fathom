@@ -1,0 +1,92 @@
+// Generated companion for a private P02 adaptation. No app-kit runtime required.
+package converted
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"net/url"
+	"strconv"
+	"strings"
+	"unicode"
+	"unicode/utf8"
+
+	"github.com/a-h/templ"
+)
+
+// templ's control-flow whitespace rules differ from its component-body rules.
+// A Go loop renders the typed item and its exact source separator explicitly.
+func pricingFeatures(features []string) templ.Component {
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		for i, feature := range features {
+			if err := pricingFeature(feature).Render(ctx, w); err != nil { return err }
+			if i < len(features)-1 {
+				if _, err := io.WriteString(w, pricingFeatureSeparator); err != nil { return err }
+			}
+		}
+		return nil
+	})
+}
+
+// Pricing contains presentation copy, not billing authority. Price and currency
+// are app-formatted text; this component neither computes nor collects payment.
+type Pricing struct {
+	Heading, Introduction, Plan, Description, Included string
+	Features []string
+	Payment, Price, Currency, Action, Note, URL string
+}
+
+// NewPricingEnhanced opts into the companion pricing.css containment and 44px
+// CTA rules. Callers must include that stylesheet, after source CSS. NewPricing
+// remains the separately available source-faithful representation.
+func NewPricingEnhanced(data Pricing) (templ.Component, error) {
+	content, err := NewPricing(data)
+	if err != nil { return nil, err }
+	return pricingEnhanced(content), nil
+}
+
+// NewPricing validates before producing any HTML and snapshots mutable input.
+// One native same-window link is the only action. Its destination and any
+// authentication, checkout, tax or availability semantics belong to the app.
+func NewPricing(data Pricing) (templ.Component, error) {
+	for _, field := range []struct { name, value string; max int }{
+		{"Heading", data.Heading, 160}, {"Introduction", data.Introduction, 1200},
+		{"Plan", data.Plan, 160}, {"Description", data.Description, 1200},
+		{"Included", data.Included, 100}, {"Payment", data.Payment, 160},
+		{"Price", data.Price, 64}, {"Currency", data.Currency, 16},
+		{"Action", data.Action, 100}, {"Note", data.Note, 400},
+	} {
+		if !pricingText(field.value, field.max) { return nil, fmt.Errorf("pricing: invalid %s", field.name) }
+	}
+	if len(data.Features) < 1 || len(data.Features) > 12 { return nil, fmt.Errorf("pricing: feature count must be 1..12") }
+	for _, feature := range data.Features {
+		if !pricingText(feature, 240) { return nil, fmt.Errorf("pricing: invalid feature") }
+	}
+	if !pricingURL(data.URL) { return nil, fmt.Errorf("pricing: destination must be a local absolute path or HTTPS URL") }
+	data.Features = append([]string(nil), data.Features...)
+	return pricing(data), nil
+}
+
+func pricingText(s string, limit int) bool {
+	if len(s) > limit || strings.TrimSpace(s) == "" || !utf8.ValidString(s) { return false }
+	for _, r := range s { if unicode.IsControl(r) { return false } }
+	return true
+}
+
+func pricingURL(s string) bool {
+	if !pricingText(s, 2048) || strings.TrimSpace(s) != s || strings.ContainsAny(s, "\\ ") { return false }
+	u, err := url.Parse(s)
+	if err != nil || u.User != nil || u.Opaque != "" { return false }
+	// Refuse encoded control characters/backslashes too, before browser URL
+	// normalization or a consumer's redirect handler can interpret them.
+	decoded, err := url.PathUnescape(s)
+	if err != nil || !pricingText(decoded, 2048) || strings.Contains(decoded, "\\") { return false }
+	if strings.HasPrefix(s, "/") {
+		return !strings.HasPrefix(decoded, "//") && u.Scheme == "" && u.Host == ""
+	}
+	if port := u.Port(); port != "" {
+		n, err := strconv.ParseUint(port, 10, 16)
+		if err != nil || n == 0 { return false }
+	}
+	return strings.HasPrefix(s, "https://") && u.Scheme == "https" && u.Hostname() != "" && !strings.HasSuffix(u.Host, ":") && u.Fragment == "" && !strings.ContainsAny(u.Host, "% ")
+}

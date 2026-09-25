@@ -1,0 +1,138 @@
+// One owned, private-data-disabled Gallery process; no browser or native host.
+package main
+
+import (
+	"bufio"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"net/http/cookiejar"
+	"os/exec"
+	"strings"
+	"syscall"
+	"time"
+)
+
+func must(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+func main() {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "/tmp/appkit-stream-gallery.3X5D1A/gallery", "-addr", "127.0.0.1:0", "-design-assets=")
+	pipe, err := cmd.StderrPipe()
+	must(err)
+	must(cmd.Start())
+	defer func() {
+		if cmd.ProcessState == nil {
+			_ = cmd.Process.Kill()
+		}
+	}()
+	urlReady := make(chan string, 1)
+	go func() {
+		s := bufio.NewScanner(pipe)
+		for s.Scan() {
+			if _, u, ok := strings.Cut(s.Text(), "app-kit Gallery → "); ok {
+				urlReady <- u
+				return
+			}
+		}
+		urlReady <- ""
+	}()
+	var base string
+	select {
+	case base = <-urlReady:
+	case <-ctx.Done():
+		panic("owned process did not publish its listener")
+	}
+	if !strings.HasPrefix(base, "http://127.0.0.1:") {
+		panic("unexpected listener")
+	}
+	jar, err := cookiejar.New(nil)
+	must(err)
+	transport := &http.Transport{Proxy: nil}
+	defer transport.CloseIdleConnections()
+	client := &http.Client{Jar: jar, Transport: transport, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	get := func(path, accept string) *http.Response {
+		r, err := http.NewRequestWithContext(ctx, http.MethodGet, base+path, nil)
+		must(err)
+		if accept != "" {
+			r.Header.Set("Accept", accept)
+		}
+		res, err := client.Do(r)
+		must(err)
+		if res.StatusCode != 200 {
+			panic(fmt.Sprintf("status %d", res.StatusCode))
+		}
+		return res
+	}
+	page := get("/shell/profile", "")
+	body, err := io.ReadAll(io.LimitReader(page.Body, 65537))
+	must(err)
+	must(page.Body.Close())
+	if len(body) > 65536 || !strings.Contains(string(body), "Alex Morgan") {
+		panic("unexpected synthetic profile")
+	}
+	stream := get("/shell/events", "text/event-stream")
+	defer stream.Body.Close()
+	if stream.Header.Get("Content-Type") != "text/event-stream" {
+		panic("not an event response")
+	}
+	reader := bufio.NewReader(stream.Body)
+	var id, event, data string
+	for {
+		line, err := reader.ReadString('\n')
+		must(err)
+		if line == "\n" {
+			break
+		}
+		if len(line) > 8192 {
+			panic("event line budget")
+		}
+		if strings.HasPrefix(line, "id: ") {
+			id = strings.TrimSpace(strings.TrimPrefix(line, "id: "))
+		}
+		if strings.HasPrefix(line, "event: ") {
+			event = strings.TrimSpace(strings.TrimPrefix(line, "event: "))
+		}
+		if strings.HasPrefix(line, "data: signals ") {
+			data = strings.TrimSpace(strings.TrimPrefix(line, "data: signals "))
+		}
+	}
+	var payload struct {
+		Probe struct {
+			Version string `json:"version"`
+			Name    string `json:"display_name"`
+		} `json:"appkitShellProbe"`
+	}
+	must(json.Unmarshal([]byte(data), &payload))
+	if id != "1" || event != "datastar-patch-signals" || payload.Probe.Version != "1" || payload.Probe.Name != "Alex Morgan" {
+		panic("initial snapshot mismatch")
+	}
+	started := time.Now()
+	must(cmd.Process.Signal(syscall.SIGTERM))
+	waited := make(chan error, 1)
+	go func() { waited <- cmd.Wait() }()
+	select {
+	case err := <-waited:
+		must(err)
+	case <-time.After(3 * time.Second):
+		panic("SIGTERM did not exit within 3s")
+	}
+	remainder, err := io.ReadAll(io.LimitReader(reader, 8193))
+	must(err)
+	if len(remainder) != 0 {
+		panic("unexpected data after canceled stream")
+	}
+	r, err := http.NewRequestWithContext(ctx, http.MethodGet, base+"/shell", nil)
+	must(err)
+	if res, err := client.Do(r); err == nil {
+		res.Body.Close()
+		panic("owned listener stayed open")
+	}
+	fmt.Printf("owned_pid=%d profile=200 initial_snapshot=pass active_stream_SIGTERM_exit=0 stream_EOF=pass listener_closed=pass elapsed=%s browser_native=unverified\n", cmd.Process.Pid, time.Since(started).Round(time.Millisecond))
+}

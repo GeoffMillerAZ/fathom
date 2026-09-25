@@ -1,0 +1,83 @@
+package main
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+func TestAppkitCallLogReadErrors(t *testing.T) {
+	valid := `{"ts":"2026-09-15T12:00:00Z","tool":"find_symbol","service":"alpha"}`
+
+	t.Run("directory is a read error", func(t *testing.T) {
+		path := t.TempDir()
+		assertClassifiedCallLogError(t, path, false)
+	})
+
+	t.Run("oversized line discards a valid prefix", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "oversized.jsonl")
+		body := valid + "\n" + strings.Repeat("x", 4*1024*1024+1) + "\n"
+		if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		assertClassifiedCallLogError(t, path, false)
+	})
+
+	t.Run("valid and malformed lines remain a complete read", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "mixed.jsonl")
+		body := valid + "\nnot-json\n" + `{"ts":"2026-09-15T12:01:00Z","tool":"outline","service":"alpha"}` + "\n"
+		if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		entries, skipped, err := classifyCallLogRead(path)
+		if err != nil || len(entries) != 2 || skipped != 1 ||
+			entries[0].TS != "2026-09-15T12:00:00Z" || entries[0].Tool != "find_symbol" || entries[0].Service != "alpha" ||
+			entries[1].TS != "2026-09-15T12:01:00Z" || entries[1].Tool != "outline" || entries[1].Service != "alpha" {
+			t.Fatalf("classify mixed = entries=%+v skipped=%d err=%v", entries, skipped, err)
+		}
+		legacyEntries, legacySkipped, read := readCallLog(path)
+		if !read || legacySkipped != 1 || len(legacyEntries) != 2 {
+			t.Fatalf("read mixed = entries=%+v skipped=%d read=%v", legacyEntries, legacySkipped, read)
+		}
+	})
+
+	t.Run("empty file is a measured empty read", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "empty.jsonl")
+		if err := os.WriteFile(path, nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		entries, skipped, err := classifyCallLogRead(path)
+		if err != nil || entries != nil || skipped != 0 {
+			t.Fatalf("classify empty = entries=%+v skipped=%d err=%v", entries, skipped, err)
+		}
+		legacyEntries, legacySkipped, read := readCallLog(path)
+		if !read || legacyEntries != nil || legacySkipped != 0 {
+			t.Fatalf("read empty = entries=%+v skipped=%d read=%v", legacyEntries, legacySkipped, read)
+		}
+	})
+
+	t.Run("missing file preserves not-exist classification", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "missing.jsonl")
+		entries, skipped, err := classifyCallLogRead(path)
+		if entries != nil || skipped != 0 || !os.IsNotExist(err) {
+			t.Fatalf("classify missing = entries=%+v skipped=%d err=%v", entries, skipped, err)
+		}
+		legacyEntries, legacySkipped, read := readCallLog(path)
+		if legacyEntries != nil || legacySkipped != 0 || read {
+			t.Fatalf("read missing = entries=%+v skipped=%d read=%v", legacyEntries, legacySkipped, read)
+		}
+	})
+}
+
+func assertClassifiedCallLogError(t *testing.T, path string, wantNotExist bool) {
+	t.Helper()
+	entries, skipped, err := classifyCallLogRead(path)
+	if err == nil || os.IsNotExist(err) != wantNotExist || entries != nil || skipped != 0 || !strings.Contains(err.Error(), path) {
+		t.Fatalf("classify error = entries=%+v skipped=%d err=%v", entries, skipped, err)
+	}
+	legacyEntries, legacySkipped, read := readCallLog(path)
+	if legacyEntries != nil || legacySkipped != 0 || read {
+		t.Fatalf("read error = entries=%+v skipped=%d read=%v", legacyEntries, legacySkipped, read)
+	}
+}

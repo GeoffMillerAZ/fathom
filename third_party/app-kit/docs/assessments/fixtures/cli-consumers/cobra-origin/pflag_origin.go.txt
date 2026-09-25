@@ -1,0 +1,24 @@
+// Private experiment added to pflag v1.0.10; upstream files retain their licenses.
+package pflag
+
+// IsBuiltinConversion reports provenance captured before Value.Set was called.
+// It is false for custom values and callback/Go-flag bridges, even if their Type
+// claims a built-in name. Changing Flag.Value after failure cannot change it.
+func (e *InvalidValueError) IsBuiltinConversion() bool { return e.builtin }
+
+func builtinConversionValue(v Value) bool {
+	switch v.(type) {
+	case *boolValue, *boolSliceValue, *bytesHexValue, *bytesBase64Value,
+		*countValue, *durationValue, *durationSliceValue,
+		*float32Value, *float64Value, *float32SliceValue, *float64SliceValue,
+		*intValue, *int8Value, *int16Value, *int32Value, *int64Value,
+		*intSliceValue, *int32SliceValue, *int64SliceValue,
+		*uintValue, *uint8Value, *uint16Value, *uint32Value, *uint64Value, *uintSliceValue,
+		*ipValue, *ipSliceValue, *ipNetValue, *ipNetSliceValue, *ipMaskValue,
+		*stringValue, *stringArrayValue, *stringSliceValue,
+		*stringToIntValue, *stringToInt64Value, *stringToStringValue, *timeValue:
+		return true
+	default:
+		return false
+	}
+}

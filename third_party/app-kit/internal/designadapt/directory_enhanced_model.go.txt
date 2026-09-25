@@ -1,0 +1,14 @@
+// Optional companion for the private P04 directory. Include its scoped CSS
+// after source CSS. The source-styled constructor remains independent.
+package converted
+
+import "github.com/a-h/templ"
+
+// NewDirectoryEnhanced opts into 44px actions, visible Edit focus and wrapping
+// of long values. It neither changes Directory nor supplies a backend/state model.
+// For empty/partial results the app supplies an honest Introduction and row set.
+func NewDirectoryEnhanced(data Directory) (templ.Component, error) {
+	content, err := NewDirectoryNavigation(data)
+	if err != nil { return nil, err }
+	return directoryEnhanced(content), nil
+}

@@ -1,0 +1,528 @@
+{
+  "kind": "private-source-native-build-replay",
+  "source_archive_id": "catalyst@94acb41796a8a97fdef44bf5b2d18f42919e43300cbca90077775f6b36dfa529",
+  "project_prefix": "catalyst-ui-kit/demo/typescript/",
+  "first_project": "/tmp/appkit-catalyst-reference.hY6KVV/catalyst-ui-kit/demo/typescript",
+  "replay_project": "/tmp/appkit-catalyst-replay.WLXXFC/catalyst-ui-kit/demo/typescript",
+  "tools": {
+    "node": "26.3.0",
+    "npm": "11.16.0",
+    "next": "16.2.6"
+  },
+  "install": {
+    "argv": [
+      "/usr/bin/env",
+      "-i",
+      "PATH=/opt/homebrew/bin:/usr/bin:/bin",
+      "TMPDIR=/tmp/appkit-catalyst-replay.WLXXFC/tmp",
+      "/opt/homebrew/bin/node",
+      "/opt/homebrew/lib/node_modules/npm/bin/npm-cli.js",
+      "ci",
+      "--offline",
+      "--ignore-scripts",
+      "--no-audit",
+      "--no-fund",
+      "--update-notifier=false",
+      "--cache=/tmp/appkit-catalyst-reference.hY6KVV/npm-cache",
+      "--userconfig=/dev/null",
+      "--globalconfig=/tmp/appkit-catalyst-replay.WLXXFC/absent-global.npmrc",
+      "--logs-dir=/tmp/appkit-catalyst-replay.WLXXFC/npm-logs"
+    ],
+    "session_id": 9292,
+    "exit_code": 0,
+    "packages_added": 383,
+    "reported_seconds": 3,
+    "installed_lock_version_resolved_integrity_mismatches": 0
+  },
+  "build": {
+    "argv": [
+      "/usr/bin/env",
+      "-i",
+      "PATH=/opt/homebrew/bin:/usr/bin:/bin",
+      "TMPDIR=/tmp/appkit-catalyst-replay.WLXXFC/tmp",
+      "NEXT_TELEMETRY_DISABLED=1",
+      "/opt/homebrew/bin/node",
+      "/tmp/appkit-catalyst-replay.WLXXFC/catalyst-ui-kit/demo/typescript/node_modules/next/dist/bin/next",
+      "build"
+    ],
+    "session_id": 9437,
+    "exit_code": 0,
+    "reported_compile_ms": 1646,
+    "reported_typescript_ms": 1630,
+    "reported_prerender_pages": 10,
+    "reported_prerender_ms": 142
+  },
+  "source_inventory": [
+    {
+      "path": "catalyst-ui-kit/demo/typescript/.gitignore",
+      "sha256": "f37e7e1b90353a16ba7bec8979585311ee6d00311209391e5ab47162df4ca922",
+      "size": 391
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/LICENSE.md",
+      "sha256": "2e77bc2745d057d86f32d7ec45bba54d0705e7949d5faccd467017a1c76a14ff",
+      "size": 9406
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/README.md",
+      "sha256": "ec3a7d5ad9684d08073ff85600fe25b5e041cdc0120a45675b0aa56ae1ccfcf9",
+      "size": 263
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/eslint.config.mjs",
+      "sha256": "71dc5357524ed8fec7fdc2541f27e751ecb3f0bd98f5747a2d5fcb028249c9ad",
+      "size": 467
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/next-env.d.ts",
+      "sha256": "9269d492817e359123ac64c8205e5d05dab63d71a3a7a229e68b5d9a0e8150bf",
+      "size": 201
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/next.config.mjs",
+      "sha256": "3927bd44e2d345db871e63bcbb926ae0c038ff1da09dd55ac0ebb6dad3590b38",
+      "size": 90
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/package-lock.json",
+      "sha256": "3a9469d59cb2c862c35735c5153f43b7ddf27c9f30c867cf64838df1f9b66b3c",
+      "size": 238561
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/package.json",
+      "sha256": "04f5b915bdd1b1ef041291a7a30b4a2af1e0edb43156ab876b2f27ae72c56c53",
+      "size": 914
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/postcss.config.mjs",
+      "sha256": "54b5708e687b8c9ecc8dbeebf29801dbec1213f890c5e018d7ca9c1541a6f7e3",
+      "size": 144
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/prettier.config.mjs",
+      "sha256": "173c1f21d0aea9ba8e58a5ee1d69f0cae98019f10cd47bd7b877ce6b4510fda9",
+      "size": 330
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/public/events/bear-hug-thumb.jpg",
+      "sha256": "6ce77097e7071af7cb786f89ad5aba83ebc236f0573e7c53a754d4402f2819c0",
+      "size": 8216
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/public/events/bear-hug.jpg",
+      "sha256": "35eeb36de33d3e5a0332bb496180686b4a0373a33d7d0d989ae8239c8522709e",
+      "size": 116942
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/public/events/bear-hug.webp",
+      "sha256": "dcec03ace386c25fc222b6df706b0ae7db9cefb99930e5c6e2c06eb57aae55e6",
+      "size": 322304
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/public/events/six-fingers-thumb.jpg",
+      "sha256": "ff83ecca43ce68b8118bf87b5e8490f2538326e102a000d2c9bbcd0145daac74",
+      "size": 7110
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/public/events/six-fingers.jpg",
+      "sha256": "a4e367a4f6a6b54bb157a01ebc4e9f0db2afff0ae9d75b0377ae789ccdc5c3fc",
+      "size": 110469
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/public/events/six-fingers.webp",
+      "sha256": "513333fec507e80a7e320677d4b0c3951b56357ebb169532c8406ccab2fc198a",
+      "size": 674014
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/public/events/viking-people-thumb.jpg",
+      "sha256": "8beb8febca2772d66d70ca334a325dcfe902bce0a5045c840587595913deea97",
+      "size": 10107
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/public/events/viking-people.jpg",
+      "sha256": "e89a7d5ff6ad1d4ab380e4e22c655f24678cb68737b6ae10084b9ea1c47da3c5",
+      "size": 87467
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/public/events/viking-people.webp",
+      "sha256": "e6ec510c09e14458fa19681283d50dbe822137838c1bedccb9b8e7b98ed89707",
+      "size": 286994
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/public/events/we-all-look-the-same-thumb.jpg",
+      "sha256": "f218466f25082214bc704b30f418957cb0165217ca56f4d80db5c0cd700e40ed",
+      "size": 11518
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/public/events/we-all-look-the-same.jpg",
+      "sha256": "ada1ad58531e56dcf39c6a46ec7a6d12ae1ba4cd22e30d3e3f10ec9351d26d87",
+      "size": 129740
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/public/events/we-all-look-the-same.webp",
+      "sha256": "bec7437688c0fc9ea6317ddc6eea0dbe4c9b9cc050daf430e425cd59b37fa1cc",
+      "size": 477920
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/public/flags/ca.svg",
+      "sha256": "83d2005abdafa075317e61be9b244f5f7c3f70c8607e995e0f525aa2fba29eba",
+      "size": 874
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/public/flags/mx.svg",
+      "sha256": "70cb1357bb52b1017dd65e46f2e64f6a3d127eee62244a4df7cb6dd789577217",
+      "size": 2682
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/public/flags/us.svg",
+      "sha256": "90f04831ac4bcedd88320fd9f42c0ab5a5d3fd82e4966240232c8fcbd72452c3",
+      "size": 2415
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/public/teams/catalyst.svg",
+      "sha256": "f78368ac8673995b5efb2654ab38e7374f89bd1ace804d16a7078c8f2083e05a",
+      "size": 705
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/public/users/erica.jpg",
+      "sha256": "be8c737e9b65e235d22c707ce0a928ba855bd5c662ace92801bbc26c5c37cfcf",
+      "size": 9835
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/app/(app)/application-layout.tsx",
+      "sha256": "6a8fbda4bb61341835e4d834f2ec869d4830e173fdd79b233f9c566e532395d6",
+      "size": 6157
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/app/(app)/events/[id]/page.tsx",
+      "sha256": "5473e65405f879bce37d139556f9383d79c6eac364185e19e79476c15f06424b",
+      "size": 3496
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/app/(app)/events/page.tsx",
+      "sha256": "f7667ac4c19fc0feb15a000a169db694445e32f4dc3705636c9d7e8b5cb15e91",
+      "size": 3420
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/app/(app)/layout.tsx",
+      "sha256": "f9ce2fea81518d17cd447b30a5293f1fe68a99ca35d2466060fc903f1369e9da",
+      "size": 292
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/app/(app)/orders/[id]/page.tsx",
+      "sha256": "4f6c3237c7eb3f3fc6344682c03992196aadc0aadceb933f449e0aa0b5a0bf45",
+      "size": 5791
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/app/(app)/orders/[id]/refund.tsx",
+      "sha256": "60dd812a5f74e6e85595eae01b7f8fc039204b4cb42e18b8eb98dbf1936c1d0b",
+      "size": 2215
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/app/(app)/orders/page.tsx",
+      "sha256": "88b4b86947492547d0581779c4640ea7af6beed74f3915b5e0a93cefd7ee247b",
+      "size": 1810
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/app/(app)/page.tsx",
+      "sha256": "bdd2b6153c703fea919f6c6c99cca3692ff902dae0d07174e52e6c3f047ea539",
+      "size": 2510
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/app/(app)/settings/address.tsx",
+      "sha256": "4c0bc2c0b9827c91d6cebe9dc3d4c3bd8c63d62154bafdded843a636ecb28b0f",
+      "size": 1612
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/app/(app)/settings/page.tsx",
+      "sha256": "1ca7f4e14738e917390815dc38d48047588eb324090d337f5c718b9d2ec6fa21",
+      "size": 3278
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/app/(auth)/forgot-password/page.tsx",
+      "sha256": "1acda091b89c4d71cdb41d0f283958d84c25b0c7e1d906a69da1e25f0e588870",
+      "size": 1106
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/app/(auth)/layout.tsx",
+      "sha256": "78cfb5ac141c258b3e3baa05824197a29678ed02ed9f0e3b83d456a8798f17ea",
+      "size": 190
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/app/(auth)/login/page.tsx",
+      "sha256": "f34a3a58663958c7a1b5f6947c5042e7c81d2676ff106d1e7850ad910a1c0da9",
+      "size": 1518
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/app/(auth)/register/page.tsx",
+      "sha256": "4ebd2e86ba8fcb0f321050346da035b47fc7ffdddd1b41c234d3a147332b84ee",
+      "size": 1715
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/app/favicon.ico",
+      "sha256": "e838384198cfdfc07ae7867e16c22189dd59fa575dda4fc00e4f569961b1502f",
+      "size": 6518
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/app/layout.tsx",
+      "sha256": "4cb1963cfefaf9cb15864bf884a5343c99a6d7681ebe4d129a49663b57ba3162",
+      "size": 648
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/app/logo.tsx",
+      "sha256": "285cbfe487e6ecb1f88c2ec17487a824c07f83eb14f1d0f8bd2583f53998e48a",
+      "size": 6440
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/app/stat.tsx",
+      "sha256": "154fdced72398ab1f178f80a21314cbb966fedcbb84a77f3d8164facc4696819",
+      "size": 617
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/components/alert.tsx",
+      "sha256": "ea5333519f9e902061e4ebac387446d8504b5ca2c4fbcd2c9a4879a9feac1d34",
+      "size": 2909
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/components/auth-layout.tsx",
+      "sha256": "fac46c1b482ca97d24036a398b7a00ed8fed2dadf6085133c02cca676fbf748b",
+      "size": 402
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/components/avatar.tsx",
+      "sha256": "8980968af3606f27a949789a8708308dc59da74f7ae9c3d6e1c43c4c6042e650",
+      "size": 2548
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/components/badge.tsx",
+      "sha256": "eb46a52149f22d1a1a4870bc2aec68c0083d8d8791a95285cf776c66be6eca69",
+      "size": 4386
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/components/button.tsx",
+      "sha256": "ac4447d909d707a968d45c68cdd989acd773ec858edbf919b334e1f3eeada6aa",
+      "size": 12604
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/components/checkbox.tsx",
+      "sha256": "c70a00e95a5e6fe2d7412215d522645600be48001adec7198c8c1e4594c94c47",
+      "size": 9000
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/components/combobox.tsx",
+      "sha256": "e13f7d867eb7fa6906063c1810b51e554b44a0d8ca1bb870da1bac0b803924d5",
+      "size": 8039
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/components/description-list.tsx",
+      "sha256": "8791323206696649505622910647a691f0e9516212b3cac39b4af537cf801f00",
+      "size": 1040
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/components/dialog.tsx",
+      "sha256": "b9914fbc1c330c1b8e92d38ca5a7ea050f5715ceb108f351d4e41cd5adf1fe19",
+      "size": 2885
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/components/divider.tsx",
+      "sha256": "78185bd6eaecbe4b026a889cdeaad0ec4fa8e85ed7335346cebbc1e01d805d5b",
+      "size": 424
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/components/dropdown.tsx",
+      "sha256": "3ac4c32af62b5737303e244669eab9614518e89a5f7f8d19687a5624d9674978",
+      "size": 6830
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/components/fieldset.tsx",
+      "sha256": "e8364f73c359b661847b857fed272253f6a2beae7cb6e988ef83efb29aee5d8c",
+      "size": 2589
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/components/heading.tsx",
+      "sha256": "81c9f11a472213ccc6f5638a290572c960438a6997d10a2503679168e094f720",
+      "size": 731
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/components/input.tsx",
+      "sha256": "37a542095374574011a4b9ca64eefa662b3c412c3a14a59d463bcab31896cf3c",
+      "size": 4344
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/components/link.tsx",
+      "sha256": "3e72a37a93796bdaf2cd9e05e63337c8c2829f017ad84687c0de69b58f644311",
+      "size": 416
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/components/listbox.tsx",
+      "sha256": "15789fda48026a66b0ce6cdcd82583ec0ce75bedd8bdc1c5a43001e5813c0eac",
+      "size": 7809
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/components/navbar.tsx",
+      "sha256": "b4b61da02861c611e80e97d9a6ac3bc699156e8d93a5f2041c770eb731c8eb48",
+      "size": 3645
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/components/pagination.tsx",
+      "sha256": "5adeb6afbf74037d95d8caf06576fc6090a74c33ff85407f5a5c5e1e0d563f01",
+      "size": 2875
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/components/radio.tsx",
+      "sha256": "5234e4bbef7d6f90e6cb94d912bdc55c0637ff5b50a1f8027a2cf23cbcb7b844",
+      "size": 8246
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/components/select.tsx",
+      "sha256": "576c044c4587131067246b5e77cdbcc9ecb4d62f2f21529a531e5526d0558c70",
+      "size": 3357
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/components/sidebar-layout.tsx",
+      "sha256": "5c7e75d9d254f4370b1d479f7f7dbb48b9420b860167862222527ee7313478dc",
+      "size": 3349
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/components/sidebar.tsx",
+      "sha256": "8dc6b8ce8695da642e776309d90945da1ec2cce58642d2c5b268eb8edee8f4fd",
+      "size": 4882
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/components/stacked-layout.tsx",
+      "sha256": "ed277757829a8ca585d59f83291a37228e79e8b5f0689124cae385410d21859f",
+      "size": 3108
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/components/switch.tsx",
+      "sha256": "11c002aa756c3f8aeda7db36e6f791151370f647e4e4c165ff28b1eda5425ccb",
+      "size": 9688
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/components/table.tsx",
+      "sha256": "24493d05b532e30ca935157bd14f5e28ab0de1ebe88088c62dfec353d1603c35",
+      "size": 4098
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/components/text.tsx",
+      "sha256": "698c201c294268790cc13a5e0832ad1e19c98447f6ec3f49892dea1328180e5c",
+      "size": 1235
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/components/textarea.tsx",
+      "sha256": "febb2af242693ab7e7b383350cb749243f4261759693e675c2b21cb412b81ac2",
+      "size": 2436
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/data.ts",
+      "sha256": "3445298fa2aa8b4f27e4777993b8df06cef839df5ed85fda36b554cc9cc732c4",
+      "size": 22237
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/src/styles/tailwind.css",
+      "sha256": "64b1a37f5d699d33ab9ed4f88f4a41c486accf25c9760b8ed4750134541cd2c4",
+      "size": 115
+    },
+    {
+      "path": "catalyst-ui-kit/demo/typescript/tsconfig.json",
+      "sha256": "d199a1362d294ad18f53eb88c327842c238774b8f652844d1ac3ac49949cd6bb",
+      "size": 630
+    }
+  ],
+  "source_comparison": {
+    "prebuild_equal": 75,
+    "postbuild_equal": 74,
+    "postbuild_changed": [
+      {
+        "path": "catalyst-ui-kit/demo/typescript/next-env.d.ts",
+        "original_sha256": "9269d492817e359123ac64c8205e5d05dab63d71a3a7a229e68b5d9a0e8150bf",
+        "replay_sha256": "7b550dda9686c16f36a17bf9051d5dbf31e98555b30d114ac49fc49a1e712651",
+        "matches_first_build": true,
+        "note": "Build-generated routes type import and documentation comment update; retained without patch."
+      }
+    ]
+  },
+  "raw_artifact_comparison": [
+    {
+      "path": ".next/BUILD_ID",
+      "first_sha256": "ba4ed34e1acfad305eb2dd772226cfef8ac0d50eab4a2b8b73b83d19eef5154c",
+      "replay_sha256": "827076f012af198e5dc6cd82a830db7dd7e6a46eca223cb3b350a2b9401c11d0",
+      "equal": false
+    },
+    {
+      "path": ".next/server/app/settings.html",
+      "first_sha256": "74a3de02140b61563948f9893cb4045f2cec1b1a6bf08e09da34693464f14517",
+      "replay_sha256": "4ebe87bd710043e254bd7cc31e5618c21a3d63d149e6277a9be82b3e5fd1d60a",
+      "equal": false
+    },
+    {
+      "path": ".next/server/app/settings.rsc",
+      "first_sha256": "7f15bf76f9f6993f2f62efb683d45543f17a0445a92998a41aabca4b94250f8c",
+      "replay_sha256": "4e300e266df7fdfc7e48432728e677e9486945cb40a1175d9cc47a3699bf6378",
+      "equal": false
+    },
+    {
+      "path": ".next/build-manifest.json",
+      "first_sha256": "086fa21378cb0589136fbb62d09b0866bc0b6ac984e8e9e8e2ed719d96b630eb",
+      "replay_sha256": "46b9871d1951a4f2e86f982f5ad89ce1382e46ad46f04105c23634660ff46564",
+      "equal": false
+    },
+    {
+      "path": ".next/routes-manifest.json",
+      "first_sha256": "523c32d1b193672e1211f7db0e8f2a011db4ec483c94c06589434a18ddda35a6",
+      "replay_sha256": "523c32d1b193672e1211f7db0e8f2a011db4ec483c94c06589434a18ddda35a6",
+      "equal": true
+    },
+    {
+      "path": ".next/prerender-manifest.json",
+      "first_sha256": "7aac8b6daeacfefcbc0d0f5dfda0882750eeeae827537b0171b06083a6ebad41",
+      "replay_sha256": "be290e6a78fb065a7ecd47e3fb18c9576222b32279582f4a92fe706b81b787d1",
+      "equal": false
+    },
+    {
+      "path": ".next/server/app/(app)/settings/page.js",
+      "first_sha256": "7df80f8dd0472be009db8770398b86dd61b962c21ea5d3a511afad22c1e53c05",
+      "replay_sha256": "7df80f8dd0472be009db8770398b86dd61b962c21ea5d3a511afad22c1e53c05",
+      "equal": true
+    },
+    {
+      "path": ".next/server/app/(app)/settings/page.js.nft.json",
+      "first_sha256": "ee8ef8b3c6db86b6810e3921f6536fd837acfbaaa0033790b268d4080c2c5af6",
+      "replay_sha256": "ee8ef8b3c6db86b6810e3921f6536fd837acfbaaa0033790b268d4080c2c5af6",
+      "equal": true
+    },
+    {
+      "path": ".next/server/app/(app)/settings/page_client-reference-manifest.js",
+      "first_sha256": "42fb652ea899770766557efa76dbe74a6e464675d4e0ae5f89c6cea20e03ff3c",
+      "replay_sha256": "42fb652ea899770766557efa76dbe74a6e464675d4e0ae5f89c6cea20e03ff3c",
+      "equal": true
+    },
+    {
+      "path": ".next/server/app-paths-manifest.json",
+      "first_sha256": "8b847a68edcbf7ed9875cee8f33a0b064551b56eaf854eb5c70c6b8e4d2c2300",
+      "replay_sha256": "8b847a68edcbf7ed9875cee8f33a0b064551b56eaf854eb5c70c6b8e4d2c2300",
+      "equal": true
+    },
+    {
+      "path": ".next/app-path-routes-manifest.json",
+      "first_sha256": "6a927ca2cd712788140e6b8ac6e7e490c29f33eb4f0aca26194a7dd00fb85214",
+      "replay_sha256": "6a927ca2cd712788140e6b8ac6e7e490c29f33eb4f0aca26194a7dd00fb85214",
+      "equal": true
+    },
+    {
+      "path": ".next/static/chunks/111p4_q~z.uax.css",
+      "first_sha256": "9d662f08e454c8ab6f546133eb76e47c1929dd7b930f52d76679eee7df2435e4",
+      "replay_sha256": "9d662f08e454c8ab6f546133eb76e47c1929dd7b930f52d76679eee7df2435e4",
+      "equal": true
+    }
+  ],
+  "archived_empty_directory": "catalyst-ui-kit/demo/typescript/.git/",
+  "limits": [
+    "No normalization or source patches applied.",
+    "Offline npm install succeeded from the existing cache; cache was not independently populated in this replay.",
+    "Environment flags are not OS network isolation.",
+    "External unpinned Inter stylesheet/font requests remain in original layout; offline browser operation is unproven.",
+    "No browser, server launch, visual equivalence, auth/save behavior, or complete reproducible-build claim."
+  ]
+}
+

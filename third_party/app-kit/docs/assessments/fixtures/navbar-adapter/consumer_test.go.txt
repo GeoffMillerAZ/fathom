@@ -1,0 +1,72 @@
+package consumer
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"os"
+	"strings"
+	"testing"
+
+	"example.invalid/navbar-proof/converted"
+)
+
+func TestDeliveredNavbarConsumer(t *testing.T) {
+	defaults, err := os.ReadFile("converted/defaults.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var unbound converted.Navbar
+	if err := json.Unmarshal(defaults, &unbound); err != nil {
+		t.Fatal(err)
+	}
+	if c, err := converted.NewNavbar(unbound); err == nil || c != nil {
+		t.Fatal("unbound defaults accepted")
+	}
+	data := converted.Navbar{
+		IDPrefix: "fixture-nav", Label: "Primary navigation", MobileLabel: "Open navigation",
+		Brand:         converted.NavbarBrand{LightURL: "/assets/brand-light.svg", DarkURL: "/assets/brand-dark.svg", Alt: "Synthetic company"},
+		Links:         []converted.NavbarLink{{Key: "dashboard", Label: "Dashboard", URL: "/dashboard"}, {Key: "projects", Label: "Projects", URL: "https://example.test/projects"}},
+		CurrentKey:    "projects",
+		Notifications: &converted.NavbarDestination{Label: "Notifications", URL: "/notifications"},
+		Account:       &converted.NavbarAccount{Label: "Open account menu", ImageURL: "/assets/avatar.jpg", Links: []converted.NavbarDestination{{Label: "Profile", URL: "/profile"}, {Label: "Settings", URL: "/settings"}}},
+	}
+	component, err := converted.NewNavbar(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var typed bytes.Buffer
+	if err := component.Render(context.Background(), &typed); err != nil {
+		t.Fatal(err)
+	}
+	oracle, err := os.ReadFile("typed-oracle.html")
+	if err != nil || !bytes.Equal(typed.Bytes(), oracle) {
+		t.Fatal("standalone render differs from private compiler oracle")
+	}
+	if strings.Count(typed.String(), `aria-current="page"`) != 2 || strings.Count(typed.String(), `href="/dashboard"`) != 2 {
+		t.Fatal("paired navigation contract changed")
+	}
+	if err := os.WriteFile("typed.html", typed.Bytes(), 0600); err != nil {
+		t.Fatal(err)
+	}
+	data.CurrentKey, data.Notifications, data.Account = "", nil, nil
+	component, err = converted.NewNavbar(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var minimal bytes.Buffer
+	if err := component.Render(context.Background(), &minimal); err != nil {
+		t.Fatal(err)
+	}
+	for _, absent := range []string{"el-dropdown", "el-menu", "aria-current", "/notifications", "/profile", "/assets/avatar.jpg"} {
+		if strings.Contains(minimal.String(), absent) {
+			t.Fatal("optional behavior remains in minimal navigation")
+		}
+	}
+	if strings.Count(minimal.String(), `href="/dashboard"`) != 2 {
+		t.Fatal("minimal primary navigation lost")
+	}
+	if err := os.WriteFile("minimal.html", minimal.Bytes(), 0600); err != nil {
+		t.Fatal(err)
+	}
+}

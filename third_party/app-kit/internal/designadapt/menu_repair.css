@@ -1,0 +1,5 @@
+/* Experimental P07 companion: load after menu.css and explicitly mount the module.
+   No original/reference or unmounted menu receives this rule. */
+[data-appkit-menu][data-appkit-menu-repair="active"] el-menu {
+  max-block-size: min(calc(100dvh - 2rem), var(--appkit-menu-available-block));
+}

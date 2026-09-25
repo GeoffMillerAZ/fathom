@@ -1,6 +1,6 @@
 # ADR-0012: Build the Gallery — a kit app that IS the living style guide
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR-0020 (shared catalog and independent Gallery)
 - **Date:** 2026-06-10
 - **Decision drivers:**
   - No mature Storybook equivalent exists for server-rendered Go; the gap is real and verified (2026-06).

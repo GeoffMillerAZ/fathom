@@ -10,21 +10,27 @@
 // shape, different corpus + stratum) — same lineage as this org's own
 // platform-standards pack (.fathom/layers/platform-standards/layer.cue).
 name:    "ui-appkit"
-version: "v1"
+version: "v2"
 kind:    "adr-rule"
-corpus: include: ["README.md", "CLAUDE.md", "docs/**"]
+corpus: {
+	include: ["AGENTS.md", "CLAUDE.md", "docs/intent/invariants.md", "docs/intent/principles.md", "docs/design/adoption.md", "docs/design/runtime-selection.md", "docs/design/conversion-pipeline.md", "docs/design/web-desktop-parity.md"]
+	exclude: ["data/**", "vendor/**", "docs/assessments/**", "docs/adr/**", "docs/plans/**"]
+}
 prompt_version: "ui-appkit/content-addressed"
 prompt_file:    "fathom-pack/layers/ui-appkit/prompt.md"
 tier:           "doc-claimed"
 // platform stratum: authored by app-kit (the org's own kit), from the kit's
 // own corpus — not fathom's embedded catalog. D3 requires on-disk eval
 // evidence before this may be BOUND by a consumer repo (only servable+
-// packs are bindable); per KILL.md this pack is "not yet compiled
-// anywhere", so evaled is honestly false. It compiles and serves locally
-// once installed; it is not yet bindable.
+// packs are bindable). This v2 candidate has not been evaluated, compiled
+// or served. Installation only stages files. Historical served obligations
+// may exist with stale citations; staging v2 does not refresh them.
 stratum: "platform"
 evaled:  false
 budgets: {
-	max_tokens_per_run: 200000
-	max_usd_per_run:    1.0
+	max_tokens_per_run:  40000
+	max_usd_per_run:     1.0
+	max_rule_words:      35
+	max_claims_per_file: 8
 }
+serving: {max_rules: 3, max_tokens: 150}

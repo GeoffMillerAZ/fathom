@@ -1,6 +1,6 @@
 # ADR-0013: One repo, one Go module, tagged semver — propagation is `go get -u`
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR-0045
 - **Date:** 2026-06-10
 - **Decision drivers:** the propagation test (VISION.md §North-star #3 — kit
   improvement reaches every app via a version bump and a sub-hour guided

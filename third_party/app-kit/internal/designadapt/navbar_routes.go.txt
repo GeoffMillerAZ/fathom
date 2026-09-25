@@ -1,0 +1,35 @@
+// Explicit private P09 companion. Requires unchanged navbar.go/navbar.templ.
+package converted
+
+import (
+	"fmt"
+
+	"github.com/a-h/templ"
+)
+
+// NewNavbarWithRoutes retains the source-styled navigation and adds persistent,
+// browser-native access to the same GET destinations. It does not certify a UI.
+func NewNavbarWithRoutes(data Navbar, summary string) (templ.Component, error) {
+	if err := validateNavbar(data); err != nil {
+		return nil, err
+	}
+	if !navbarText(summary, 256) {
+		return nil, fmt.Errorf("navbar routes: invalid summary")
+	}
+	snapshot := data
+	snapshot.Links = append([]NavbarLink(nil), data.Links...)
+	if data.Notifications != nil {
+		notification := *data.Notifications
+		snapshot.Notifications = &notification
+	}
+	if data.Account != nil {
+		account := *data.Account
+		account.Links = append([]NavbarDestination(nil), data.Account.Links...)
+		snapshot.Account = &account
+	}
+	primary, err := NewNavbar(snapshot)
+	if err != nil {
+		return nil, err
+	}
+	return guardedNavbar(navbarWithRoutes(primary, snapshot, summary)), nil
+}

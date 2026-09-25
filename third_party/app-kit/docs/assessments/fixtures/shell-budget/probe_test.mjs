@@ -1,0 +1,21 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {assessNavigation, assessResourceChain} from './probe.mjs';
+
+const contract = {budget: {decodedResponseBodyBytes: 10, responseEndMs: 1, domContentLoadedMs: 2, loadEventMs: 3}};
+const valid = () => ({timing: {responseEndMs: 1, domContentLoadedMs: 2, loadEventMs: 3}, resources: [{expected: true, status: 200, terminal: true, bodyAvailable: true, decodedBodyBytes: 10}], taskPassed: true});
+const rejects = (name, mutate, code) => test(name, () => { const observation = valid(); mutate(observation); assert.ok(assessNavigation(contract, observation).some(x => x.code === code)); });
+test('accepts an exact complete observation', () => assert.deepEqual(assessNavigation(contract, valid()), []));
+rejects('rejects decoded-body overbudget', x => x.resources[0].decodedBodyBytes = 11, 'resources.overbudget');
+rejects('rejects missing timing', x => x.timing.responseEndMs = NaN, 'timing.missing');
+rejects('rejects zero completion timing', x => x.timing.loadEventMs = 0, 'timing.missing');
+rejects('rejects unordered completion timing', x => x.timing.domContentLoadedMs = 0.5, 'timing.order');
+rejects('rejects missing resource body', x => x.resources[0].bodyAvailable = false, 'resource.body-unavailable');
+rejects('rejects unsettled resource', x => x.resources[0].terminal = false, 'resource.unsettled');
+rejects('rejects cache-served resource', x => x.resources[0].fromCache = true, 'resource.cache-served');
+rejects('rejects forbidden request', x => x.resources[0].expected = false, 'request.forbidden');
+rejects('rejects globally forbidden attempt', x => x.forbiddenAttempts = [{url: 'https://forbidden.test'}], 'request.forbidden');
+rejects('rejects failed task', x => x.taskPassed = false, 'task.failed');
+test('rejects a missing redirect document', () => assert.ok(assessResourceChain([{method:'POST', url:'http://local.test/shell/action', status:303}], [{method:'POST', path:'/shell/action', status:303}, {method:'GET', path:'/shell/profile', status:200}], []).some(x => x.code === 'chain.document-count')));
+test('rejects a wrong redirect status', () => assert.ok(assessResourceChain([{method:'POST', url:'http://local.test/shell/action', status:200}], [{method:'POST', path:'/shell/action', status:303}], []).some(x => x.code === 'chain.document')));
+test('rejects a missing or wrong asset identity', () => assert.ok(assessResourceChain([{method:'GET',url:'http://local.test/static/app.css',status:200,decodedBodyBytes:1,sha256:'bad'}], [], [{path:'/static/app.css',bytes:2,sha256:'expected'}]).some(x => x.code === 'chain.asset')));

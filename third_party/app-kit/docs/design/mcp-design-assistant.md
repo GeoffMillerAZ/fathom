@@ -1,7 +1,13 @@
 # The Assistant — `appkit-mcp` design
 
-The kit's knowledge made ambient. One Go binary, installed into every project via
-a committed `.mcp.json`, that lets any agent in any repo ask: *what component, what
+[ADR-0020](../adr/0020-shared-catalog-and-adoption-evidence.md) and
+[experience-system.md](experience-system.md) govern the shared catalog/adoption design.
+This earlier sketch includes tools that are not implemented. Consult the
+[MCP README](../../cmd/appkit-mcp/README.md), actual tool discovery and
+[current scope](../intent/scope.md) before claiming availability.
+
+The kit's knowledge made ambient. One Go binary, connected through
+[host-specific registration](agent-setup.md), that lets any agent in any repo ask: *what component, what
 pattern, what tokens, what decision — and why.*
 
 Governing decisions: [ADR-0011](../adr/0011-mcp-design-assistant.md) (SDK, binary

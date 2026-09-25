@@ -1,5 +1,11 @@
 # Dashboards & MatDash
 
+Current routing: [experience system](experience-system.md), [adoption](adoption.md)
+and [scope](../intent/scope.md). The historical sequence below records initial
+integration, not current fleet-wide proof. The source audit found Tailwind 3 in the
+main package manifest while the extractor labels records Tailwind 4 without conversion;
+verify dependencies before adaptation. See the [assessment](../assessments/2026-09-13-app-kit.md).
+
 Status: in progress (2026-06-17, owner-directed). **MatDash React/Tailwind/Vite
 Pro is purchased and on disk** at `data/matdash/` (gitignored — licensed, D6/D10).
 This doc records what it is, how it's stored, and how each kind of app uses it so
@@ -28,12 +34,10 @@ plus ready dashboard pages.
 - **Location:** `data/matdash/` — original, full, on disk. Mirrors
   `data/tailwindplus/`: **gitignored**, never committed, never redistributed
   (D6/D10). Its tooling will live under `internal/` so importers can't reach it.
-- **Backup caveat (important):** because it's gitignored, the bytes are **not in
-  GitHub** — only on this disk. The durable backup is **re-download from the
-  Wrappixel/MatDash account** (purchases are re-downloadable). This doc is the
-  committed *record* that the asset exists and where it lives, so it's never lost
-  track of. (If a true off-disk byte backup is wanted despite license + 236 MB +
-  the `.fig`, it can go in a separate private archive — not this Go module.)
+- **Backup and entitlement:** gitignored data is not backed up by this repository.
+  The purchase channel, tier and re-download availability must be verified against
+  the actual purchase record. Do not infer the vendor account or redistribution
+  entitlement from an installed directory. Keep any licensed backup private.
 
 ## How each app uses it (two paths)
 
@@ -49,14 +53,15 @@ This is the native fit — MatDash *is* React+Vite+Tailwind+Flowbite.
 **Path A — Go server-rendered apps (Throughline, new Go apps): mine → adapt.**
 The Flowbite-React components don't run in a no-Node Go app, but their **layout +
 Tailwind structure** translate. Workflow (same as TailwindPlus):
-- Run a MatDash package in dev (`npm i && npm run dev` inside `data/matdash/...`,
-  a throwaway local step — never added to an app) or read the `.tsx`/rendered
-  HTML, lift the **shell + widget markup**, strip hardcoded colors → kit role
-  utilities (`get_kit_theming`), and render in pure Go.
+- Inspect the source/dependencies and authorized previews; adapt the applicable
+  shell/widget behavior to kit roles and the chosen target. A corpus reference
+  is not a validated Go or Tailwind-version conversion. Kit build rules remain
+  governed by ADR-0017; no new npm execution exception is introduced here.
 - Build it into **`appkit/ui/dashboard`**: `Shell` (sidebar + topbar + content
   region, slots for nav/user/actions), `WidgetGrid` (responsive card grid),
   `KpiWidget` (composing existing `stat` + `viz`). Charts stay kit `ui/viz` (SVG)
-  — MatDash has no real charting either. This is the turnkey layout the kit lacks.
+  for the Go path. MatDash's React package does include ApexCharts/react-apexcharts;
+  those have a different runtime and need explicit adaptation or profile selection.
 
 ## Discovery funnel — making it reachable fleet-wide
 

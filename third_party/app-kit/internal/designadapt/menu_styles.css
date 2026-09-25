@@ -1,0 +1,27 @@
+/* Opt-in usability envelope; the unchanged reference never receives this scope. */
+[data-appkit-menu] { display: contents; }
+[data-appkit-menu] el-dropdown { max-inline-size: 100%; }
+[data-appkit-menu] button,
+[data-appkit-menu] a {
+  min-block-size: 44px;
+  min-inline-size: 44px;
+  max-inline-size: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  scroll-margin-block: 0.5rem;
+}
+[data-appkit-menu] el-dropdown > button > svg { flex-shrink: 0; }
+[data-appkit-menu] el-menu {
+  inline-size: max-content;
+  min-inline-size: min(14rem, calc(100vw - 2rem));
+  max-inline-size: min(24rem, calc(100vw - 2rem));
+  max-block-size: calc(100dvh - 2rem);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+[data-appkit-menu] a:focus-visible,
+[data-appkit-menu] button:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -2px;
+}
+[data-appkit-menu] button:disabled { cursor: not-allowed; }

@@ -1,0 +1,562 @@
+[
+  {
+    "name": "responsive settings section layout",
+    "query": {"text": "settings sections", "profile": "go-web", "kind": "recipe", "maturity": "experimental"},
+    "top": ["shell.settings-sections"],
+    "forbidden": ["shell.account-workflow", "interaction.forms"],
+    "empty": false,
+    "reason": "The exported section renderer supplies responsive presentation, not a form primitive or account backend."
+  },
+  {
+    "name": "settings sections are not a React API",
+    "query": {"text": "settings sections", "profile": "react-web"},
+    "top": [],
+    "forbidden": ["shell.settings-sections"],
+    "empty": true,
+    "reason": "The new renderer is a Go-web recipe, not a React component."
+  },
+  {
+    "name": "private pricing adapter",
+    "query": {"text": "pricing", "profile": "cli", "kind": "reference", "maturity": "experimental"},
+    "top": ["reference.pricing-adapter"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "Pricing source adaptation is an experimental private CLI reference, not a web recipe."
+  },
+  {
+    "name": "private responsive directory adapter",
+    "query": {"text": "responsive table", "profile": "cli", "kind": "reference"},
+    "top": ["reference.directory-adapter"],
+    "forbidden": ["data.table"],
+    "empty": false,
+    "reason": "The query asks for the licensed responsive-table adapter rather than the first-party data-table primitive."
+  },
+  {
+    "name": "private email field adapter",
+    "query": {"text": "email field", "profile": "cli", "kind": "reference"},
+    "top": ["reference.form-adapter"],
+    "forbidden": ["interaction.forms"],
+    "empty": false,
+    "reason": "The email-field source adapter is a CLI reference and does not claim the Go form primitive's profile."
+  },
+  {
+    "name": "private current page navigation adapter",
+    "query": {"text": "current page", "profile": "cli", "kind": "reference"},
+    "top": ["reference.navigation-adapter"],
+    "forbidden": ["shell.layout"],
+    "empty": false,
+    "reason": "Current-page source replay selects the page-navigation adapter under its CLI-only contract."
+  },
+  {
+    "name": "private native details FAQ adapter",
+    "query": {"text": "native details", "profile": "cli", "kind": "reference"},
+    "top": ["reference.faq-adapter"],
+    "forbidden": ["content.docs"],
+    "empty": false,
+    "reason": "Native disclosure generation is an explicit FAQ adapter choice, not generic documentation rendering."
+  },
+  {
+    "name": "private split hero adapter",
+    "query": {"text": "split hero", "profile": "cli", "kind": "reference"},
+    "top": ["reference.hero-adapter"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "The split-hero capability exists only as experimental private adapter tooling."
+  },
+  {
+    "name": "private dropdown menu adapter",
+    "query": {"text": "dropdown menu", "profile": "cli", "kind": "reference"},
+    "top": ["reference.menu-adapter"],
+    "forbidden": ["interaction.overlays"],
+    "empty": false,
+    "reason": "The query names the licensed dropdown source adapter and its explicit Elements boundary."
+  },
+  {
+    "name": "private profile drawer adapter",
+    "query": {"text": "profile drawer", "profile": "cli", "kind": "reference"},
+    "top": ["reference.drawer-adapter"],
+    "forbidden": ["interaction.overlays"],
+    "empty": false,
+    "reason": "The profile-drawer source is separately identified from the general overlay primitive."
+  },
+  {
+    "name": "private responsive navbar adapter",
+    "query": {"text": "responsive navbar", "profile": "cli", "kind": "reference"},
+    "top": ["reference.navbar-adapter"],
+    "forbidden": ["shell.layout"],
+    "empty": false,
+    "reason": "The navbar conversion is an experimental private CLI reference, not certified shell support."
+  },
+  {
+    "name": "Elements HTML to templ translator",
+    "query": {"text": "HTML to templ", "profile": "cli", "kind": "reference"},
+    "top": ["reference.elements-translator"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "Deterministic Elements translation is exposed as a CLI reference with preserved runtime requirements."
+  },
+  {
+    "name": "local token diff style guide",
+    "query": {"text": "token diff", "layer": "L4", "profile": "go-web", "kind": "recipe"},
+    "top": ["recipe.styleguide.local"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "Local theme editing and token diffing belong to the experimental app-mounted style-guide recipe."
+  },
+  {
+    "name": "Geoff synthwave personal theme",
+    "query": {"text": "geoff synthwave", "layer": "L1", "profile": "portable", "kind": "token"},
+    "top": ["foundation.theme.geoff-synthwave"],
+    "forbidden": ["foundation.theme.geoff-indigo"],
+    "empty": false,
+    "reason": "The named personal identity must resolve to its own portable token record."
+  },
+  {
+    "name": "Geoff indigo personal theme",
+    "query": {"text": "geoff indigo", "layer": "L1", "profile": "portable", "kind": "token"},
+    "top": ["foundation.theme.geoff-indigo"],
+    "forbidden": ["foundation.theme.geoff-synthwave"],
+    "empty": false,
+    "reason": "The named personal identity must not collapse into the other theme."
+  },
+  {
+    "name": "portable design tokens",
+    "query": {"text": "design tokens", "layer": "L0", "profile": "portable", "kind": "token"},
+    "top": ["foundation.tokens"],
+    "forbidden": ["cli.theme"],
+    "empty": false,
+    "reason": "Portable semantic token adoption starts from the foundation token contract."
+  },
+  {
+    "name": "portable bar chart",
+    "query": {"text": "bar chart", "layer": "L3a", "profile": "portable", "kind": "primitive"},
+    "top": ["analytics.bars"],
+    "forbidden": ["analytics.comparison"],
+    "empty": false,
+    "reason": "A dependency-light bar comparison uses the L3a primitive rather than the Go-web recipe."
+  },
+  {
+    "name": "portable temporal exploration",
+    "query": {"text": "temporal exploration", "layer": "L3a", "profile": "portable"},
+    "top": ["analytics.timeline"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "Timeline history and event exploration are the declared portable temporal capability."
+  },
+  {
+    "name": "Go web KPI summary",
+    "query": {"text": "KPI summary", "layer": "L3b", "profile": "go-web", "kind": "primitive"},
+    "top": ["analytics.stat"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "A compact Go-web metric summary maps to the stat primitive."
+  },
+  {
+    "name": "analytics chart table CSV journey",
+    "query": {"text": "chart table CSV", "profile": "go-web", "kind": "recipe", "maturity": "experimental"},
+    "top": ["analytics.comparison"],
+    "forbidden": ["analytics.bars"],
+    "empty": false,
+    "reason": "Agreement across chart, table and export is the comparison recipe's declared task."
+  },
+  {
+    "name": "cross tab appearance persistence",
+    "query": {"text": "cross tab synchronization", "layer": "L2", "profile": "portable"},
+    "top": ["shell.appearance"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "Portable appearance persistence includes the declared cross-tab synchronization behavior."
+  },
+  {
+    "name": "typed application navigation",
+    "query": {"text": "typed navigation", "layer": "L3b", "profile": "go-web"},
+    "top": ["shell.layout"],
+    "forbidden": ["reference.navbar-adapter"],
+    "empty": false,
+    "reason": "Typed current-route navigation is implemented by the Go-web shell primitive."
+  },
+  {
+    "name": "account permission recovery workflow",
+    "query": {"text": "permission recovery", "profile": "go-web", "kind": "recipe"},
+    "top": ["shell.account-workflow"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "Profile/settings recovery belongs to the experimental account workflow, without implying an auth backend."
+  },
+  {
+    "name": "Go web form validation",
+    "query": {"text": "form validation", "layer": "L3b", "profile": "go-web", "kind": "primitive"},
+    "top": ["interaction.forms"],
+    "forbidden": ["reference.form-adapter"],
+    "empty": false,
+    "reason": "Application form validation selects the Go-web primitive rather than private source tooling."
+  },
+  {
+    "name": "dialog drawer toast overlays",
+    "query": {"text": "dialog drawer toast", "profile": "go-web", "kind": "primitive"},
+    "top": ["interaction.overlays"],
+    "forbidden": ["reference.drawer-adapter"],
+    "empty": false,
+    "reason": "Dialogs, drawers and toasts share the first-party overlay primitive contract."
+  },
+  {
+    "name": "warning help feedback callouts",
+    "query": {"text": "warning help feedback", "layer": "L3b", "profile": "go-web"},
+    "top": ["interaction.callouts"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "Warnings, help and feedback are the callout primitive's explicit task vocabulary."
+  },
+  {
+    "name": "breadcrumb tabs pagination chrome",
+    "query": {"text": "breadcrumb tabs pagination", "profile": "go-web", "kind": "primitive"},
+    "top": ["interaction.chrome"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "Breadcrumbs, tabs and pagination are grouped in the application-chrome primitive."
+  },
+  {
+    "name": "documentation table of contents",
+    "query": {"text": "table of contents", "layer": "L1", "profile": "go-web"},
+    "top": ["content.docs"],
+    "forbidden": ["data.table"],
+    "empty": false,
+    "reason": "A documentation outline is content structure, not a record table."
+  },
+  {
+    "name": "sortable data browser",
+    "query": {"text": "data browser sort", "layer": "L4", "profile": "go-web"},
+    "top": ["data.table"],
+    "forbidden": ["reference.directory-adapter"],
+    "empty": false,
+    "reason": "Browsing and sorting records maps to the first-party table primitive."
+  },
+  {
+    "name": "kanban stages board",
+    "query": {"text": "kanban stages", "layer": "L4", "profile": "go-web"},
+    "top": ["work.kanban"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "Stage-oriented board work is the declared kanban primitive task."
+  },
+  {
+    "name": "human in the loop approval",
+    "query": {"text": "human in the loop", "profile": "go-web", "kind": "primitive"},
+    "top": ["work.approval"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "Human review and risk approval map to the bounded approval primitive."
+  },
+  {
+    "name": "Cobra command completion",
+    "query": {"text": "cobra completion", "profile": "cli", "kind": "primitive"},
+    "top": ["cli.command"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "Command construction, help and completion are the CLI command primitive's responsibility."
+  },
+  {
+    "name": "NDJSON diagnostics output",
+    "query": {"text": "NDJSON diagnostics", "profile": "cli", "kind": "primitive"},
+    "top": ["cli.output"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "Machine-readable diagnostics and pipe-safe output belong to cli.output."
+  },
+  {
+    "name": "CUE configuration explanation",
+    "query": {"text": "CUE explain", "profile": "cli", "kind": "primitive"},
+    "top": ["cli.config"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "Deterministic CUE configuration and explanation are the CLI config primitive's task."
+  },
+  {
+    "name": "Charm interactive terminal",
+    "query": {"text": "Charm interactive terminal", "profile": "cli", "kind": "primitive"},
+    "top": ["cli.tui"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "Persistent keyboard and mouse terminal interaction maps to the Charm TUI primitive."
+  },
+  {
+    "name": "Charm terminal palette",
+    "query": {"text": "Charm palette", "layer": "L0", "profile": "cli", "kind": "token"},
+    "top": ["cli.theme"],
+    "forbidden": ["foundation.tokens"],
+    "empty": false,
+    "reason": "Terminal palette roles use the CLI theme token record rather than portable web tokens."
+  },
+  {
+    "name": "dark mode appearance synonym",
+    "query": {"text": "dark mode", "profile": "go-web"},
+    "top": ["shell.appearance"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "Dark mode is common user language for the declared light-dark-system appearance preference."
+  },
+  {
+    "name": "help page synonym",
+    "query": {"text": "help page", "profile": "go-web", "kind": "primitive"},
+    "top": ["content.docs"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "A help page is a common task phrase for the documentation and prose primitive."
+  },
+  {
+    "name": "command configuration synonym",
+    "query": {"text": "command configuration", "profile": "cli", "kind": "primitive"},
+    "top": ["cli.config"],
+    "forbidden": ["cli.tui"],
+    "empty": false,
+    "reason": "Application command configuration maps to the explainable CUE config primitive, not terminal interaction."
+  },
+  {
+    "name": "key performance indicator synonym",
+    "query": {"text": "key performance indicator", "profile": "go-web", "kind": "primitive"},
+    "top": ["analytics.stat"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "Key performance indicator is the expanded user phrase for the KPI metric summary primitive."
+  },
+  {
+    "name": "column chart unavailable",
+    "query": {"text": "column chart", "profile": "portable", "kind": "primitive"},
+    "top": [],
+    "forbidden": ["analytics.bars"],
+    "empty": true,
+    "reason": "The portable Bars renderer is horizontal and exposes no vertical column orientation."
+  },
+  {
+    "name": "horizontal bar graph synonym",
+    "query": {"text": "horizontal bar graph", "profile": "portable", "kind": "primitive"},
+    "top": ["analytics.bars"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "The portable labeled-comparison primitive renders horizontal proportional bars."
+  },
+  {
+    "name": "activity history synonym",
+    "query": {"text": "activity history", "profile": "portable", "kind": "primitive"},
+    "top": ["analytics.timeline"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "Activity history is common language for ordered events on a timeline."
+  },
+  {
+    "name": "task board synonym",
+    "query": {"text": "task board", "profile": "go-web", "kind": "primitive"},
+    "top": ["work.kanban"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "A task board with stages is the user-facing phrase for the kanban primitive."
+  },
+  {
+    "name": "review queue synonym",
+    "query": {"text": "review queue", "profile": "go-web", "kind": "primitive"},
+    "top": ["work.approval"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "A bounded review queue is the task framing for human approval work."
+  },
+  {
+    "name": "editable data grid unavailable",
+    "query": {"text": "editable data grid", "profile": "go-web", "kind": "primitive"},
+    "top": [],
+    "forbidden": ["data.table"],
+    "empty": true,
+    "reason": "The table primitive is presentational and does not provide spreadsheet editing or client virtualization."
+  },
+  {
+    "name": "sortable records synonym",
+    "query": {"text": "sortable records", "profile": "go-web", "kind": "primitive"},
+    "top": ["data.table"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "The structured table presents records and emits optional app-owned sorting hooks."
+  },
+  {
+    "name": "account backend unavailable",
+    "query": {"text": "account backend", "profile": "go-web"},
+    "top": [],
+    "forbidden": ["shell.account-workflow", "interaction.forms"],
+    "empty": true,
+    "reason": "The account workflow is UI composition and recovery, not an account-backend API."
+  },
+  {
+    "name": "mobile current route task facets",
+    "query": {"text": "mobile current route", "profile": "go-web"},
+    "top": ["shell.layout"],
+    "forbidden": ["reference.navbar-adapter"],
+    "empty": false,
+    "reason": "Mobile navigation and the current-route indicator are related parts of the implemented shell, not unrelated source-delivery tasks."
+  },
+  {
+    "name": "theme storage recovery task facets",
+    "query": {"text": "theme storage recovery", "profile": "portable"},
+    "top": ["shell.appearance"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "Browser-local theme preference and storage-failure recovery are one supported appearance task."
+  },
+  {
+    "name": "billing backend unavailable",
+    "query": {"text": "billing backend"},
+    "top": [],
+    "forbidden": ["reference.pricing-adapter"],
+    "empty": true,
+    "reason": "Pricing source adaptation does not provide billing behavior."
+  },
+  {
+    "name": "NATS runtime unavailable",
+    "query": {"text": "NATS runtime"},
+    "top": [],
+    "forbidden": [],
+    "empty": true,
+    "reason": "No catalog capability ships a NATS application runtime."
+  },
+  {
+    "name": "Wails desktop shell unavailable",
+    "query": {"text": "Wails desktop shell"},
+    "top": [],
+    "forbidden": ["shell.layout"],
+    "empty": true,
+    "reason": "The isolated Wails experiment is not a shipped desktop-shell capability."
+  },
+  {
+    "name": "WASM execution unavailable",
+    "query": {"text": "WASM execution"},
+    "top": [],
+    "forbidden": [],
+    "empty": true,
+    "reason": "Tooling dependencies do not constitute an application WASM execution capability."
+  },
+  {
+    "name": "full settings backend unavailable",
+    "query": {"text": "full settings backend", "profile": "go-web"},
+    "top": [],
+    "forbidden": ["shell.account-workflow", "interaction.forms"],
+    "empty": true,
+    "reason": "The shell workflow demonstrates UI recovery but leaves settings persistence app-owned."
+  },
+  {
+    "name": "automatic source patch unavailable",
+    "query": {"text": "automatic source patch", "profile": "go-web"},
+    "top": [],
+    "forbidden": ["recipe.styleguide.local"],
+    "empty": true,
+    "reason": "The local style guide previews and exports token changes but does not patch application source automatically."
+  },
+  {
+    "name": "email delivery unavailable",
+    "query": {"text": "email delivery"},
+    "top": [],
+    "forbidden": ["reference.form-adapter", "interaction.forms"],
+    "empty": true,
+    "reason": "Email fields and validation do not imply an email delivery service."
+  },
+  {
+    "name": "Go web primitive inventory paginates in stable ID order",
+    "query": {"profile": "go-web", "kind": "primitive", "limit": 1},
+    "top": ["analytics.bars", "analytics.stat", "analytics.timeline"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "An empty-text filtered inventory uses documented stable ID ordering and must traverse beyond the first one-item page."
+  },
+  {
+    "name": "application shell navigation",
+    "query": {"text": "application shell navigation", "profile": "go-web", "kind": "primitive"},
+    "top": ["shell.layout"],
+    "forbidden": ["interaction.chrome", "reference.navigation-adapter", "reference.navbar-adapter"],
+    "empty": false,
+    "reason": "Global responsive navigation with current-route state belongs to the application shell, not page-local workflow chrome."
+  },
+  {
+    "name": "portable bars incompatible with L3b",
+    "query": {"text": "bar chart", "layer": "L3b", "profile": "portable"},
+    "top": [],
+    "forbidden": ["analytics.bars"],
+    "empty": true,
+    "reason": "The portable bar primitive is L3a and must not be relabeled as an L3b renderer."
+  },
+  {
+    "name": "CLI config incompatible with Go web",
+    "query": {"text": "CUE configuration", "profile": "go-web", "kind": "primitive"},
+    "top": [],
+    "forbidden": ["cli.config"],
+    "empty": true,
+    "reason": "CLI configuration is not a Go-web runtime capability."
+  },
+  {
+    "name": "Go form wrapper incompatible with React",
+    "query": {"text": "form validation", "profile": "react-web"},
+    "top": [],
+    "forbidden": ["interaction.forms", "reference.form-adapter"],
+    "empty": true,
+    "reason": "The Go-web form primitive is not represented as a React wrapper."
+  },
+  {
+    "name": "Go shell incompatible with portable profile",
+    "query": {"text": "typed navigation", "profile": "portable"},
+    "top": [],
+    "forbidden": ["shell.layout"],
+    "empty": true,
+    "reason": "The typed shell renderer requires the declared Go-web profile."
+  },
+  {
+    "name": "private navbar incompatible with Go web",
+    "query": {"text": "responsive navbar", "profile": "go-web", "kind": "reference"},
+    "top": [],
+    "forbidden": ["reference.navbar-adapter"],
+    "empty": true,
+    "reason": "Private adapter metadata is CLI-only and does not certify a web profile."
+  },
+  {
+    "name": "local style guide incompatible with static web",
+    "query": {"text": "token diff", "profile": "static-web", "kind": "recipe"},
+    "top": [],
+    "forbidden": ["recipe.styleguide.local"],
+    "empty": true,
+    "reason": "The app-mounted style guide is a Go-web L4 recipe, not a static-web export."
+  },
+  {
+    "name": "data table incompatible with L3a",
+    "query": {"text": "data browser", "layer": "L3a", "profile": "go-web"},
+    "top": [],
+    "forbidden": ["data.table"],
+    "empty": true,
+    "reason": "The table primitive requires utility-themed L3b or L4 delivery."
+  },
+  {
+    "name": "no proven workflow claim",
+    "query": {"maturity": "proven", "limit": 10},
+    "top": [],
+    "forbidden": ["analytics.comparison", "shell.account-workflow", "recipe.styleguide.local"],
+    "empty": true,
+    "reason": "No current record has earned proven maturity, regardless of scoped evidence."
+  },
+  {
+    "name": "no shipped Go rich editor",
+    "query": {"text": "rich text editor", "profile": "go-web"},
+    "top": [],
+    "forbidden": ["interaction.forms"],
+    "empty": true,
+    "reason": "The private P12 rehearsal is retrievable guidance, not a shipped Go-web editor capability or form primitive."
+  },
+  {
+    "name": "no shipped React rich editor",
+    "query": {"text": "rich text editor", "profile": "react-web"},
+    "top": [],
+    "forbidden": [],
+    "empty": true,
+    "reason": "The P12 React/Tiptap implementation requires separately prepared private source and has no public widget API."
+  },
+  {
+    "name": "no static rich editor",
+    "query": {"text": "rich text editor", "profile": "static-web"},
+    "top": [],
+    "forbidden": [],
+    "empty": true,
+    "reason": "The client-owned rehearsal requires JavaScript and is not a static-web editor recipe."
+  }
+]

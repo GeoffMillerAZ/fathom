@@ -1,0 +1,25 @@
+/* Opt-in P02 hardening. Vendor classes, colors, type scale and focus stay intact.
+   Include alongside the source's compiled Tailwind CSS and intended font. */
+[data-appkit-pricing] {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+[data-appkit-pricing] :where(div, p, h2, h3, h4, ul, li, span) {
+  min-inline-size: 0;
+}
+[data-appkit-pricing] p > span {
+  max-inline-size: 100%;
+}
+[data-appkit-pricing] h4 {
+  flex-shrink: 1;
+}
+[data-appkit-pricing] p:has(> span) {
+  flex-wrap: wrap;
+}
+[data-appkit-pricing] a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: 44px;
+  min-block-size: 44px;
+}

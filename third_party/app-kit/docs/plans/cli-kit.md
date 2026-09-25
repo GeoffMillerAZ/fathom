@@ -1,45 +1,30 @@
 # cli-kit — the terminal target, built and consumed
 
-Turns ADR-0018 into gated work. The five packages shipped 2026-08-21 with
-their first consumer (env-kit's `bosun`, platform-engineering) migrated the
-same day; this plan records the claims so the index can gate them, and holds
-the open tail.
+Turns ADR-0018 into gated work. The five app-kit packages shipped 2026-08-21;
+their in-repo contracts are gated here. Consumer adoption remains separate:
+env-kit's `bosun` is documented as a user, but its behavioral-retention claim
+needs a revision-bound receipt owned with that consumer.
 
-Gate: `fathom verify --service app-kit --plan docs/plans/cli-kit.md`
+Gate: `fathom verify --service app-kit --plan docs/plans/cli-kit.md --strict`
 
-Row grammar note: the V1 tests are table-driven (calls inside subtest
-closures — edge-void mode), so rows carry skip_test with the proving tests
-and gates named in the skip prose; every named test ran green in `task
-check` on 2026-08-21.
+Row grammar note: every contract stays on its checkbox line. Fathom resolves
+calls inside `t.Run`, callbacks and goroutines, so test reachability is gated
+directly; it is static evidence, not a claim that a test ran or passed.
 
 ## 0 — Shipped
 
-- [x] The terminal palette is generated from the CUE tokens — all 23 color
-  roles, OKLCH converted to sRGB, both polarities — and the byte-identity
-  gate covers it. {id: CK-1, skip_test: true, skip: "appkit/cli/theme/palette_gen.go emitted by tokens.EmitTerminalPalette via appkit gen --terminal; task check's git diff --exit-code includes the file; TestPaletteCoversAllRoles, TestPaletteRegenByteIdentical, TestOKLCHConversionKnownValues"}
-- [x] fang's help chrome draws the kit's own roles: a fixed role-to-field
-  mapping, documented in place, adaptive to terminal background. {id: CK-2, skip_test: true, skip: "theme.FangColorScheme with the mapping table in its doc comment; consumed by command.Execute; visible in bosun --help"}
-- [x] command wraps cobra + fang with house defaults and the fleet exit-code
-  convention. {id: CK-3, skip_test: true, skip: "TestExitCodeMapping and TestExecuteVersionFlag in appkit/cli/command; bosun gets --version, completion, man for free"}
-- [x] Output discipline: color-profile detection via colorprofile, NDJSON,
-  and a status table whose plain rendering is byte-compatible with the
-  doctor format — styled adds color to status and remedy only. {id: CK-4, skip_test: true, skip: "TestStatusTablePlainMatchesDoctorGolden, TestStatusTableStyledContainsANSI, TestNDJSONRowShape in appkit/cli/output; the consumer-side proof is env-kit's unchanged TestDoctorRosterGolden"}
-- [x] Layered CUE config with provenance: schema, system, XDG user, project
-  file bounded at the git root, overrides — conflicts refuse, Explain names
-  every loaded AND absent layer with digests. {id: CK-5, skip_test: true, skip: "TestConfigLayerPrecedence, TestConfigProjectWalkBoundedAtGitRoot, TestConfigExplainNamesLayer, TestConfigConflictRefused in appkit/cli/config"}
-- [x] A thin bubbletea v2 runner with deterministic teatest support. {id: CK-6, skip_test: true, skip: "TestRunSmokeModel, TestRunHonorsContextCancel in appkit/cli/tui; mouse and alt-screen are opt-in View decorations per the bubbletea v2 API"}
-- [x] First consumer proven: bosun migrated with zero behavioral drift on
-  plain output and exit codes. {id: CK-7, skip_test: true, skip: "platform-engineering kits/env-kit — its goldens and exit-code tests passed unchanged across the migration; docs/plans/env-kit.md EK-62 is the consumer-side row"}
+- [x] Generate the terminal palette from CUE tokens with the checked OKLCH-to-sRGB role pipeline. {id: CK-1, symbol: EmitTerminalPalette, package: appkit/ui/tokens, reachable_from: TestPaletteRegenByteIdentical}
+- [x] Supply fang help chrome from the kit's fixed light/dark terminal role mapping. {id: CK-2, symbol: FangColorScheme, package: appkit/cli/theme, reachable_from: TestFangColorSchemeUsesLightDarkFunc}
+- [x] Execute cobra commands through fang while retaining the typed CLI exit-code contract. {id: CK-3, symbol: Execute, package: appkit/cli/command, reachable_from: TestExecuteVersionFlag}
+- [x] Render the byte-stable plain doctor table and progressively styled form from one geometry. {id: CK-4, symbol: RenderStatusTable, package: appkit/cli/output, reachable_from: TestStatusTablePlainMatchesDoctorGolden}
+- [x] Load layered CUE configuration with git-root-bounded project discovery and conflict refusal. {id: CK-5, symbol: Load, package: appkit/cli/config, reachable_from: TestConfigLayerPrecedence}
+- [x] Run Bubble Tea v2 models with context cancellation and deterministic test support. {id: CK-6, symbol: Run, package: appkit/cli/tui, reachable_from: TestRunHonorsContextCancel}
+- [-] Capture a revision-bound Bosun adoption receipt proving retained plain output and exit behavior against the consumer's own tests. {id: CK-7, disposition: deferred, reason: "app-kit can prove cross-repo imports but not the consumer test run or retained behavior", trigger: "the platform-engineering consumer revision and exact verification command are recorded in a separately named receipt"}
 
-## 1 — Open tail
+## 1 — Deferred tail
 
-- [ ] cmd/appkit (and appkit-mcp) migrate onto cli-kit, ending the admitted
-  two-style drift. {id: CK-10, skip_test: true, skip: "ADR-0018 revisit trigger; not started"}
-- [ ] Cut the app-kit v0.1.0 tag so consumers can drop replace directives.
-  {id: CK-11, skip_test: true, skip: "ADR-0017 section 4 prerequisite; trigger per ADR-0018 is the third fleet CLI or the second external consumer"}
-- [ ] Styled table polarity: resolve against the real terminal background
-  instead of the documented dark-palette simplification. {id: CK-12, skip_test: true, skip: "DIVERGENCE noted in output.RenderStatusTable's doc; needs a background query a one-shot Detect cannot provide"}
-- [ ] bubbles/huh/glamour/log each join on first consumer need, one pin at a
-  time. {id: CK-13, skip_test: true, skip: "ADR-0018 boundary; a form-bearing bosun init wizard is the likely huh trigger"}
-- [x] Fix the pre-existing synthwave theme.css generator drift found during
-  this work (gen output missing the shipped data-theme light block). {id: CK-14, skip_test: true, skip: "root cause: the committed artifact predated the emitter's H1 symmetric-light fix and task check never watched the themes dir; regenerated, pinned by TestCSSMatchesTheCommittedArtifact (proved RED first), and check now covers appkit/ui/themes/synthwave — task check green 2026-08-21"}
+- [-] Migrate `cmd/appkit` or `appkit-mcp` onto cli-kit when richer CLI UX justifies ending the admitted two-style drift. {id: CK-10, disposition: deferred, reason: "ADR-0018 keeps the kit binaries hand-rolled; apps/terminal is a separate reference and does not show either binary needs migration", trigger: "either binary needs richer CLI UX"}
+- [-] Cut an authorized app-kit release so external consumers can replace local module overrides with a real version. {id: CK-11, disposition: deferred, reason: "tagging and publishing require owner release authority", trigger: "the owner authorizes a release after the ADR-0018 third-fleet-CLI trigger or another evidenced release need"}
+- [-] Resolve styled-table polarity from the actual terminal background instead of the documented dark-palette simplification. {id: CK-12, disposition: deferred, reason: "the current one-shot color-profile detector does not expose terminal background polarity", trigger: "a supported background-polarity signal is available or a consumer demonstrates the need"}
+- [-] Admit bubbles, huh, glamour or log one dependency at a time. {id: CK-13, disposition: deferred, reason: "ADR-0018 excludes speculative terminal dependencies", trigger: "a consumer needs the corresponding interaction, form, markdown or structured-logging capability"}
+- [x] Keep committed synthwave CSS byte-identical to regeneration, including the light-theme branch. {id: CK-14, symbol: CSS, package: appkit/ui/themes/synthwave, reachable_from: TestCSSMatchesTheCommittedArtifact}

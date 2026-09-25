@@ -1,0 +1,7 @@
+module example.com/appkit-candidate-consumer
+
+go 1.26.2
+
+require github.com/geoffmilleraz/app-kit __APPKIT_VERSION__
+
+require github.com/rivo/uniseg v0.4.7 // indirect

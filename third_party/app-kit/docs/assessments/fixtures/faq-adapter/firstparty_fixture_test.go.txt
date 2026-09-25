@@ -1,0 +1,206 @@
+package converted
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"os"
+	"reflect"
+	"strings"
+	"testing"
+
+	"golang.org/x/net/html"
+	"golang.org/x/net/html/atom"
+)
+
+const sourceExpected = SOURCE_LITERAL
+const sourceDefaults = DEFAULTS_LITERAL
+
+type fixtureNode struct {
+	Type            html.NodeType
+	Data, Namespace string
+	Attr            []html.Attribute
+	Children        []fixtureNode
+}
+
+func fixtureShape(n *html.Node) fixtureNode {
+	out := fixtureNode{Type: n.Type, Data: n.Data, Namespace: n.Namespace, Attr: append([]html.Attribute(nil), n.Attr...)}
+	for child := n.FirstChild; child != nil; child = child.NextSibling {
+		out.Children = append(out.Children, fixtureShape(child))
+	}
+	return out
+}
+
+func fixtureFragment(t *testing.T, body string) []fixtureNode {
+	t.Helper()
+	nodes, err := html.ParseFragment(strings.NewReader(body), &html.Node{Type: html.ElementNode, Data: "div", DataAtom: atom.Div})
+	if err != nil {
+		t.Fatal("parse failed")
+	}
+	out := make([]fixtureNode, 0, len(nodes))
+	for _, node := range nodes {
+		out = append(out, fixtureShape(node))
+	}
+	return out
+}
+
+func fixtureRender(t *testing.T, component interface {
+	Render(context.Context, io.Writer) error
+}) string {
+	t.Helper()
+	var out bytes.Buffer
+	if err := component.Render(context.Background(), &out); err != nil {
+		t.Fatal("render failed")
+	}
+	return out.String()
+}
+
+func fixtureDefaults(t *testing.T) FAQ {
+	t.Helper()
+	var data FAQ
+	if err := json.Unmarshal([]byte(sourceDefaults), &data); err != nil {
+		t.Fatal("defaults decode failed")
+	}
+	return data
+}
+
+func fixtureWrite(t *testing.T, env, body string) {
+	t.Helper()
+	name := os.Getenv(env)
+	if name == "" {
+		return
+	}
+	f, err := os.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	if err != nil {
+		t.Fatal("private fixture create failed")
+	}
+	_, writeErr := io.WriteString(f, body)
+	syncErr := f.Sync()
+	closeErr := f.Close()
+	if writeErr != nil || syncErr != nil || closeErr != nil {
+		t.Fatal("private fixture write failed")
+	}
+}
+
+func fixtureNativeModel(body string, models []FAQ) error {
+	nodes, err := html.ParseFragment(strings.NewReader(body), &html.Node{Type: html.ElementNode, Data: "div", DataAtom: atom.Div})
+	if err != nil || len(nodes) != len(models) {
+		return fmt.Errorf("native instance count")
+	}
+	var descendants func(*html.Node, string) []*html.Node
+	descendants = func(n *html.Node, tag string) (out []*html.Node) {
+		if n.Type == html.ElementNode && n.Data == tag { out = append(out, n) }
+		for c := n.FirstChild; c != nil; c = c.NextSibling { out = append(out, descendants(c, tag)...) }
+		return
+	}
+	var text func(*html.Node) string
+	text = func(n *html.Node) (out string) {
+		if n.Type == html.TextNode { return n.Data }
+		for c := n.FirstChild; c != nil; c = c.NextSibling { out += text(c) }
+		return
+	}
+	attr := func(n *html.Node, key string) (string, bool) {
+		for _, a := range n.Attr { if a.Key == key { return a.Val, true } }
+		return "", false
+	}
+	for i, model := range models {
+		headings, items := descendants(nodes[i], "h2"), descendants(nodes[i], "details")
+		if len(headings) != 1 || text(headings[0]) != model.Heading || len(items) != len(model.Items) { return fmt.Errorf("native heading/items %d", i) }
+		for j, item := range model.Items {
+			summaries, paragraphs, divs := descendants(items[j], "summary"), descendants(items[j], "p"), descendants(items[j], "div")
+			_, open := attr(items[j], "open")
+			if len(summaries) != 1 || len(paragraphs) != 1 || len(divs) < 1 || open != item.Open { return fmt.Errorf("native state %d/%d", i, j) }
+			spans := descendants(summaries[0], "span")
+			id, _ := attr(divs[0], "id")
+			if len(spans) < 1 || text(spans[0]) != item.Question || text(paragraphs[0]) != item.Answer || id != model.IDPrefix+"-"+item.Key { return fmt.Errorf("native content/identity %d/%d", i, j) }
+		}
+	}
+	return nil
+}
+
+func TestFirstPartyFAQFixture(t *testing.T) {
+	data := fixtureDefaults(t)
+	reference, err := NewFAQReference(data)
+	if err != nil {
+		t.Fatal("reference constructor failed")
+	}
+	referenceBody := fixtureRender(t, reference)
+	if !reflect.DeepEqual(fixtureFragment(t, sourceExpected), fixtureFragment(t, referenceBody)) {
+		t.Fatal("source/reference namespace-aware DOM, text, classes, attributes, or comments differ")
+	}
+
+	first := data
+	first.IDPrefix = "help-primary"
+	first.Items = append([]FAQItem(nil), data.Items...)
+	second := data
+	second.IDPrefix = "help-secondary"
+	second.Heading = strings.Repeat("H", 256)
+	second.Items = append([]FAQItem(nil), data.Items...)
+	for i := range second.Items {
+		second.Items[i].Question = strings.Repeat(string(rune('A'+i)), 480)
+		second.Items[i].Answer = strings.Repeat(string(rune('a'+i)), 4096)
+	}
+	one, err := NewFAQDetails(first)
+	if err != nil {
+		t.Fatal("first native constructor failed")
+	}
+	two, err := NewFAQDetails(second)
+	if err != nil {
+		t.Fatal("second native constructor failed")
+	}
+	nativeBody := `<section data-fixture-instance="primary">` + fixtureRender(t, one) + `</section><section data-fixture-instance="secondary">` + fixtureRender(t, two) + `</section>`
+	models := []FAQ{first, second}
+	if err := fixtureNativeModel(nativeBody, models); err != nil { t.Fatal(err) }
+	for _, mutation := range []struct{ before, after string }{
+		{strings.Repeat("A", 480), strings.Repeat("B", 480)},
+		{strings.Repeat("a", 4096), strings.Repeat("b", 4096)},
+		{"help-primary-"+first.Items[0].Key, "invented-id"},
+		{"<details open", "<details data-not-open"},
+	} {
+		changed := strings.Replace(nativeBody, mutation.before, mutation.after, 1)
+		if changed == nativeBody || fixtureNativeModel(changed, models) == nil { t.Fatal("native model drift escaped independent oracle") }
+	}
+	if strings.Contains(nativeBody, "el-disclosure") || strings.Contains(nativeBody, "commandfor=") ||
+		strings.Count(nativeBody, "<details") != len(data.Items)*2 || strings.Count(nativeBody, "<summary") != len(data.Items)*2 {
+		t.Fatal("native topology differs")
+	}
+	nodes, err := html.ParseFragment(strings.NewReader(nativeBody), &html.Node{Type: html.ElementNode, Data: "div", DataAtom: atom.Div})
+	if err != nil {
+		t.Fatal("native parse failed")
+	}
+	ids := map[string]bool{}
+	var walk func(*html.Node)
+	walk = func(n *html.Node) {
+		if n.Type == html.ElementNode {
+			for _, attr := range n.Attr {
+				if attr.Key == "id" {
+					if attr.Val == "" || ids[attr.Val] {
+						t.Fatal("duplicate native ID")
+					}
+					ids[attr.Val] = true
+				}
+			}
+		}
+		for child := n.FirstChild; child != nil; child = child.NextSibling {
+			walk(child)
+		}
+	}
+	for _, node := range nodes {
+		walk(node)
+	}
+	if len(ids) < len(data.Items)*2 {
+		t.Fatal("derived instance IDs missing")
+	}
+
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	var sink bytes.Buffer
+	if err := one.Render(canceled, &sink); err == nil {
+		t.Fatal("cancellation was ignored")
+	}
+
+	fixtureWrite(t, "APPKIT_FAQ_REFERENCE_OUT", referenceBody)
+	fixtureWrite(t, "APPKIT_FAQ_NATIVE_OUT", nativeBody)
+}

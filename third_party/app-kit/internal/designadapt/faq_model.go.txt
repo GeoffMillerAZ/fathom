@@ -1,0 +1,121 @@
+// Generated companion for the private P03 FAQ adaptation.
+package converted
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"strings"
+	"unicode"
+	"unicode/utf8"
+
+	"github.com/a-h/templ"
+)
+
+type FAQItem struct {
+	Key, Question, Answer string
+	Open                  bool
+}
+
+type FAQ struct {
+	IDPrefix, Heading string
+	Items             []FAQItem
+}
+
+// NewFAQReference preserves the source Elements structure. Its host must supply
+// the exact runtime named by the generation artifact.
+func NewFAQReference(data FAQ) (templ.Component, error) {
+	return newFAQ(data, false)
+}
+
+// NewFAQDetails renders independent native disclosures and needs no JavaScript.
+func NewFAQDetails(data FAQ) (templ.Component, error) {
+	return newFAQ(data, true)
+}
+
+func newFAQ(data FAQ, details bool) (templ.Component, error) {
+	if !faqIdentity(data.IDPrefix, true) || !faqText(data.Heading, 256, false) || len(data.Items) < 1 || len(data.Items) > 24 {
+		return nil, fmt.Errorf("faq: invalid prefix, heading, or item count")
+	}
+	seen := make(map[string]bool, len(data.Items))
+	for _, item := range data.Items {
+		if !faqIdentity(item.Key, false) || seen[item.Key] || !faqText(item.Question, 512, false) || !faqText(item.Answer, 8192, true) {
+			return nil, fmt.Errorf("faq: invalid or duplicate item")
+		}
+		seen[item.Key] = true
+	}
+	data.Items = append([]FAQItem(nil), data.Items...)
+	component := faqReference(data)
+	if details {
+		component = faqDetails(data)
+	}
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		return component.Render(ctx, w)
+	}), nil
+}
+
+func faqIdentity(s string, prefix bool) bool {
+	if len(s) == 0 || len(s) > 64 {
+		return false
+	}
+	for i, c := range []byte(s) {
+		letter := c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z'
+		digit := c >= '0' && c <= '9'
+		if prefix && i == 0 && !letter || !letter && !digit && c != '_' && !(prefix && c == '-') {
+			return false
+		}
+	}
+	return true
+}
+
+func faqText(s string, limit int, answer bool) bool {
+	if len(s) == 0 || len(s) > limit || !utf8.ValidString(s) || strings.TrimSpace(s) == "" {
+		return false
+	}
+	for _, r := range s {
+		if unicode.IsControl(r) && !(answer && (r == '\t' || r == '\n')) {
+			return false
+		}
+	}
+	return true
+}
+
+func faqPanelID(prefix, key string) string { return prefix + "-" + key }
+
+func faqReferenceItems(data FAQ) templ.Component {
+	return faqItems(data, false)
+}
+
+func faqDetailsItems(data FAQ) templ.Component {
+	return faqItems(data, true)
+}
+
+func faqItems(data FAQ, details bool) templ.Component {
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		for i, item := range data.Items {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			if i > 0 {
+				separator := faqReferenceSeparator
+				if details {
+					separator = "\n"
+				}
+				if _, err := io.WriteString(w, separator); err != nil {
+					return err
+				}
+			}
+			component := faqReferenceItem(data, item)
+			if details {
+				component = faqDetailsItem(data, item)
+			}
+			if err := component.Render(ctx, w); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}

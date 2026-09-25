@@ -1,10 +1,10 @@
 # app-kit UI components
 
-The kit's reusable UI lives under `appkit/ui/`. Everything is **pure-Go,
-server-rendered, token-themed (D7), deterministic, and accessible** — no npm
-toolchain, no client framework. Data-viz components return an SVG `string`; HTML
-components return an HTML `string`; both embed anywhere (in templ,
-`templ.Raw(...)`).
+The kit's reusable UI lives under `appkit/ui/`: Go renderers, token-themed CSS (D7)
+and optional portable scripts. Consumers need no npm toolchain or client framework
+for these packages. Data-viz components return SVG strings; HTML components return
+HTML or templ components. Package tests cover selected semantics and deterministic
+output; accessibility and interaction of a composed application need browser proof.
 
 Colors are **token role names** (`accent`, `positive`, `caution`, `danger`,
 `info`, `ink`, `line`, `surface`, …) resolved to `var(--ak-color-<role>)` at
@@ -37,6 +37,7 @@ by rendering it wrong.
 | `router` | **L2** | `router.js`, History-API client router for static-client surfaces only (D16 boundary still binding) |
 | `viz` | **L3a** | the portable tier. Zero `class=`, color only through `var(--ak-color-*)`; asserted by `TestVizEmitsNoClassAttribute` and `TestVizEmitsNoLiteralColor` |
 | `overlay` | **L2 + L3b** | `overlay.js` is L2; the Go markup emits role utilities |
+| `appearance` | **L2 + L3b** | portable light/dark/system behavior and an optional native-select control; app chooses the storage key, persistence failures remain visible; scan `appkit/ui/appearance/*.go` for the control |
 | `chat` | **L2 + L3b** | `chat.js` is L2; the Go markup emits role utilities |
 | `callout` | **L3b** | |
 | `chrome` | **L3b** | |
@@ -47,6 +48,8 @@ by rendering it wrong.
 | `stat` | **L3b** | composes `viz.Sparkline` (L3a) inside an L3b tile |
 | `topology` | **L3b** | emits literal Tailwind utility strings nine times — the clearest L3b in the kit |
 | `vizframe` | **L3b** | the provenance frame (ADR-0017 §6). Needs `@source ".../appkit/ui/vizframe/*.go"` |
+| `analytics` | **L3b** | opt-in typed comparison recipe with missing/freshness/coverage context, bars, visible table and CSV; scan both `ui/analytics/*.go` and `ui/vizframe/*.go` |
+| `vizcheck` | **L3a test helper** | Go-only static HTML assertions; renders nothing and needs no Tailwind scan or browser runtime |
 | `explainer` | **L3b** ¹ | |
 | `export` | **L3b** ¹ | |
 | `card` | **L3b + L4** | templ |
@@ -116,6 +119,15 @@ status coloring across components.
 `Stat` — a big value + label + optional colored delta + optional trend
 sparkline (composes `viz.Sparkline`).
 
+`Render` and `RenderBand` let captions wrap before squeezing short values/units;
+oversized strings remain visible with emergency word wrapping. Four/five-item bands
+use two columns at tablet width, reaching full density at larger breakpoints. Cell-owned
+separators also support partial final rows. Rebuild
+consumer CSS after upgrading: these are L3b scanner-visible layout changes. The
+Gallery's `/layout#stat-reflow` exercises zero, lower bounds, absence, long source
+identifiers and a delta/sparkline. See [geometry/contrast evidence](assessments/2026-09-14-stat-reflow.md);
+this is not a guarantee that arbitrary labels or values fit every app-owned container.
+
 ## `appkit/ui/overlay` — dialog, drawer, toast (HTML + tiny vanilla JS)
 
 Built on the native `<dialog>` element + a dependency-free `overlay.js` (served
@@ -141,9 +153,20 @@ error plumbing; controls carry their own ARIA so a bare control stays consistent
 | `Input` | single-line control of any text-like `Type` (text/email/number/date/…) |
 | `Textarea` | multi-line text |
 | `Select` | dropdown with optional placeholder prompt + selected option |
-| `Checkbox` | single boolean with inline label |
+| `Checkbox` | single boolean with inline label; optional `Invalid`/`HasHelp` wire `ErrorID`/`HelpID` (caller renders matching messages) |
 | `RadioGroup` | mutually-exclusive options as a `<fieldset>` + `<legend>` (grouped requiredness) |
 | `Button` | action control — `primary` / `ghost` / `danger`; `<button>` or `<a>` (with `Href`) |
+
+Experimental `SettingsSection{HeadingID, Title, Description, Content}` and
+`RenderSettingsSections` compose description/control rows, stacked below sm and two
+columns above. Place their h3 headings beneath your h2; use document-unique valid UTF-8
+IDs without whitespace/control characters. Duplicate IDs or blank titles fail atomically;
+an empty list renders nothing. Plain-text fields are escaped; `Content` is reviewed HTML.
+The renderer adds no form, fieldset, label, submit action or script. Wrap controls with
+`RenderField` as needed and keep validation, authorization, saving and recovery app-owned.
+Scan `appkit/ui/form/*.go` for Tailwind and include theme CSS. The compiled
+`ExampleRenderSettingsSections` and [shell guide](design/application-shell.md) show the
+boundary; [ADR-0064](adr/0064-incubate-responsive-settings-sections.md) retains two-consumer promotion.
 
 ## `appkit/ui/dashboard` — shell, navigation and layout (HTML, no JS)
 
@@ -163,6 +186,18 @@ Navigation items and the mobile disclosure carry a 44px minimum height and expli
 focus treatment. The current item uses the normal ink role on the soft accent surface;
 consumers still verify delivered contrast and target width in their composed shell.
 
+Experimental `AccountDestinations{Profile, Settings, Help, About}` produces a fresh
+`Group(heading)` for `RenderNav`. Omit destinations with neither URL nor label; a supplied
+URL gets its role's default label, while a label without a URL stays disabled. Raw model
+fields are not validated URLs: custom quick/help links need their own destination policy;
+template escaping alone does not reproduce RenderNav's disabled-item behavior.
+`RenderNotice(Notice{Kind, Title, Body})` renders escaped status/error/conflict feedback;
+empty bodies emit nothing and unknown kinds use alert treatment. The app determines
+the outcome and owns actions, announcements/focus during updates, authorization and
+save/recovery. These L3b helpers add no runtime or session backend. See the compiled
+`ExampleAccountDestinations_Group`, [shell guide](design/application-shell.md) and
+[incubation boundary](adr/0063-incubate-account-presentation-recipe.md).
+
 ## `appkit/ui/chrome` — structural creature comforts (HTML, no JS)
 
 | Component | Use it for |
@@ -177,6 +212,32 @@ consumers still verify delivered contrast and target width in their composed she
 
 All server-rendered with plain links/markup, so they honor the loopback
 invariant (D5) — no shell-specific JS.
+
+## `appkit/ui/appearance` — preference behavior and control
+
+`BootstrapScript(Options{StorageKey: "your-existing-key"})` runs before CSS to restore
+light/dark/system. `RenderControl` adds a native selector, status and retry.
+The script emits `appkit:appearance-change`; app-owned canvas charts can redraw on
+effective-theme changes. Empty storage key means session-only. This shares appearance
+behavior, not an account/settings backend. Read the package contract/tests before adoption.
+
+## `appkit/ui/analytics` — opt-in comparison recipe
+
+`Dataset.Validate(now)`, `RenderBars(dataset, options, now)` and
+`WriteCSV(writer, dataset, now)` use one app-supplied metric contract and row selection.
+Units, time window, source freshness, completeness, uncertainty and missing values
+stay explicit. Chart, visible table and CSV use the same presentation rounding;
+CSV is not a lossless source-data export. Bounds: 200 rows, 0–2 decimals, magnitude
+up to 1e12. Negative values export but are rejected by this bars composition.
+See the [full contract](../appkit/ui/analytics/README.md); no query engine or domain
+calculation is supplied. Consumer/browser adoption remains a separate G3 requirement.
+
+## `appkit/ui/vizcheck` — static composition checks
+
+`CheckHTML(markup, spec)` compares an explicit chart/table/source fixture and accounts
+for every SVG under its selected root. Errors and findings both fail the test. No
+CSS/runtime code is added; labels and name declarations are not geometry, computed
+visibility, accessibility or source-truth proof. See the [contract and canaries](../appkit/ui/vizcheck/README.md).
 
 ## `appkit/ui/docs` — prose chrome for rendered documentation (L1 CSS + HTML)
 

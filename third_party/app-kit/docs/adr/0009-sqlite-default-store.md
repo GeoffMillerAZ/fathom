@@ -7,6 +7,19 @@
   one driver for both kit apps and the Assistant's index; FTS5 + sqlite-vec
   in-process (D10); zero ops dependencies for personal-scale apps.
 
+## Current implementation boundary (2026-09-15)
+
+This record preserves a 2026-06 platform design, not a shipped platform spine.
+There is no `appkit/store`, universal application store, or JetStream-backed bus
+in the current kit; [ADR-0021](0021-runtime-profiles-and-platform-proof.md) made
+NATS/JetStream optional and evidence-driven. The implemented SQLite use covered
+here is the private Tailwind Plus index in `internal/twplus/index`, pinned to
+`ncruces/go-sqlite3` v0.35.0. At that pin SQLite remains a Wasm build, but the
+module translates it to Go with wasm2go and its index dependency closure does
+not contain wazero. The v0.34.x/wazero runtime, store API, migration, backup,
+mobile and division-of-labor language below is retained as the dated design and
+rationale; it is not a current dependency or availability claim.
+
 ## Context
 
 Every kit app needs durable storage, and the kit already has two other

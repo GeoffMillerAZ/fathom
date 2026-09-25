@@ -37,7 +37,8 @@ func RenderWidget(w Widget) string {
 // WidgetGridOptions configures the grid.
 type WidgetGridOptions struct {
 	// Cols is the max columns on large screens (1–4, default 3). The grid is
-	// responsive: 1 col on mobile, 2 on sm, Cols on lg.
+	// responsive: 1 col on mobile, 2 on sm, Cols on lg. Cols=1 stays
+	// single-column at every breakpoint (use default Span=1 widgets).
 	Cols int
 	// AriaLabel labels the grid region.
 	AriaLabel string
@@ -51,7 +52,11 @@ func RenderWidgetGrid(widgets []string, o WidgetGridOptions) string {
 	if o.AriaLabel != "" {
 		aria = fmt.Sprintf(` aria-label=%q`, esc(o.AriaLabel))
 	}
-	fmt.Fprintf(&b, `<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 %s"%s>`, gridColsClass(o.Cols), aria)
+	smallCols := "sm:grid-cols-2"
+	if o.Cols == 1 {
+		smallCols = "sm:grid-cols-1"
+	}
+	fmt.Fprintf(&b, `<div class="grid grid-cols-1 gap-4 %s %s"%s>`, smallCols, gridColsClass(o.Cols), aria)
 	for _, w := range widgets {
 		b.WriteString(w)
 	}

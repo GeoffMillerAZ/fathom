@@ -1,0 +1,181 @@
+package xlsx
+
+import (
+	"bytes"
+	"fmt"
+	"slices"
+	"strconv"
+	"testing"
+	"time"
+
+	"github.com/geoffmilleraz/growing-gardens-bi/internal/finance"
+	"github.com/xuri/excelize/v2"
+)
+
+type appKitSyntheticEvent struct {
+	day               int
+	kind              string
+	amount            float64
+	liquid            bool
+	inflow, outflow   float64
+	baseline, overlay float64
+}
+
+// Every expected amount is an independent literal. No seed, Store, wall clock,
+// actual data, exported-cell-derived expectation, or changed failure oracle.
+func TestAppKitSyntheticPendingOverlayAgreement20260913(t *testing.T) {
+	asOf := time.Date(2026, time.September, 7, 0, 0, 0, 0, time.UTC)
+	for _, tc := range []struct {
+		name        string
+		students    []finance.Student
+		policy      finance.DESPaymentPolicy
+		funds       []finance.PendingFund
+		expenses    []finance.FixedExpense
+		withdrawals []finance.OwnerWithdrawal
+		horizon     int
+		events      []appKitSyntheticEvent
+	}{
+		{name: "cash_only_control", horizon: 1},
+		{name: "non_des_tuition_control", horizon: 1,
+			students: []finance.Student{{ID: "synthetic-cash", Name: "Synthetic cash student", WeeklyTuition: 10}},
+			events:   []appKitSyntheticEvent{{0, "tuition", 10, true, 10, 0, 110, 110}}},
+		{name: "des_accrual", horizon: 1,
+			students: []finance.Student{{ID: "synthetic-des", Name: "Synthetic DES student", WeeklyTuition: 10, IsDES: true}},
+			events:   []appKitSyntheticEvent{{0, "des_accrual", 10, false, 0, 0, 100, 100}}},
+		{name: "des_accrual_and_projected", horizon: 7,
+			students: []finance.Student{{ID: "synthetic-des", Name: "Synthetic DES student", WeeklyTuition: 10, IsDES: true}},
+			policy:   finance.DESPaymentPolicy{Cadence: "Weekly"},
+			events:   []appKitSyntheticEvent{{0, "des_accrual", 10, false, 0, 0, 100, 100}, {6, "des_expected", 10, false, 0, 0, 100, 100}}},
+		{name: "recorded_pending_control", horizon: 1,
+			funds:  []finance.PendingFund{{ID: "synthetic-pending", Source: "Synthetic recorded check", Amount: 25, ExpectedDate: "2026-09-07", Status: "Pending", Kind: "Check"}},
+			events: []appKitSyntheticEvent{{0, "pending", 25, false, 0, 0, 100, 125}}},
+		{name: "recorded_cleared_control", horizon: 1,
+			funds:  []finance.PendingFund{{ID: "synthetic-cleared", Source: "Synthetic cleared check", Amount: 25, ExpectedDate: "2026-09-07", Status: "Cleared", Kind: "Check"}},
+			events: []appKitSyntheticEvent{{0, "cleared", 25, true, 25, 0, 125, 125}}},
+		{name: "expense_and_owner_draw_control", horizon: 1,
+			expenses:    []finance.FixedExpense{{ID: "synthetic-expense", Name: "Synthetic expense", Amount: 20, Frequency: "Once", Date: "2026-09-07"}},
+			withdrawals: []finance.OwnerWithdrawal{{ID: "synthetic-draw", Date: "2026-09-07", Amount: 15, Status: "Completed"}},
+			events:      []appKitSyntheticEvent{{0, "once", -20, true, 0, 20, 80, 80}, {0, "ownerdraw", -15, true, 0, 15, 65, 65}}},
+		{name: "mixed_des_accrual_projected_and_recorded_pending", horizon: 7,
+			students: []finance.Student{{ID: "synthetic-des", Name: "Synthetic DES student", WeeklyTuition: 10, IsDES: true}},
+			policy:   finance.DESPaymentPolicy{Cadence: "Weekly"},
+			funds:    []finance.PendingFund{{ID: "synthetic-recorded-des", Source: "Synthetic recorded DES check", Amount: 25, ExpectedDate: "2026-09-07", Status: "Pending", Kind: "DES"}},
+			events:   []appKitSyntheticEvent{{0, "des_accrual", 10, false, 0, 0, 100, 100}, {0, "pending", 25, false, 0, 0, 100, 125}, {6, "des_expected", 10, false, 0, 0, 100, 125}}},
+		{name: "thirty_day_cutoff_control", horizon: 31,
+			funds: []finance.PendingFund{
+				{ID: "synthetic-inside", Source: "Synthetic final included day", Amount: 7, ExpectedDate: "2026-10-06", Status: "Pending", Kind: "Check"},
+				{ID: "synthetic-outside", Source: "Synthetic excluded day", Amount: 9, ExpectedDate: "2026-10-07", Status: "Cleared", Kind: "Check"},
+			},
+			events: []appKitSyntheticEvent{{29, "pending", 7, false, 0, 0, 100, 107}, {30, "cleared", 9, true, 9, 0, 109, 116}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			forecast := finance.Compute(finance.Financials{
+				StartingBalance: 100, DESPolicy: tc.policy, PendingFunds: tc.funds,
+				FixedExpenses: tc.expenses, OwnerWithdrawals: tc.withdrawals,
+			}, tc.students, asOf, tc.horizon)
+			if len(forecast.Days) != tc.horizon || forecast.StartingBalance != 100 {
+				t.Fatal("synthetic forecast opening or horizon changed")
+			}
+			eventIndex, included := 0, 0
+			wantBaseline, wantOverlay := float64(100), float64(100)
+			for dayIndex, day := range forecast.Days {
+				if !day.Date.Equal(asOf.AddDate(0, 0, dayIndex)) {
+					t.Fatal("forecast changed the fixed calendar selection")
+				}
+				for _, event := range day.Events {
+					if eventIndex >= len(tc.events) {
+						t.Fatal("forecast added an unexpected synthetic event")
+					}
+					want := tc.events[eventIndex]
+					if want.day != dayIndex || event.Kind != want.kind || event.Amount != want.amount || event.Liquid != want.liquid {
+						t.Fatalf("synthetic event %d differs: %+v, want %+v", eventIndex, event, want)
+					}
+					wantBaseline, wantOverlay = want.baseline, want.overlay
+					eventIndex++
+					if dayIndex < 30 {
+						included++
+					}
+				}
+				if day.Baseline != wantBaseline || day.Overlay != wantOverlay {
+					t.Fatalf("forecast day %d baseline/overlay=%v/%v, independent oracle=%v/%v", dayIndex, day.Baseline, day.Overlay, wantBaseline, wantOverlay)
+				}
+			}
+			if eventIndex != len(tc.events) {
+				t.Fatal("forecast omitted an expected synthetic event")
+			}
+			body, err := Build(forecast)
+			if err != nil {
+				t.Fatal(err)
+			}
+			book, err := excelize.OpenReader(bytes.NewReader(body))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer book.Close()
+			rows, err := book.GetRows("30-Day Ledger", excelize.Options{RawCellValue: true})
+			if err != nil || len(rows) != 2+included {
+				t.Fatalf("actual XLSX row count=%d, want=%d: %v", len(rows), 2+included, err)
+			}
+			wantHeader := []string{"Date", "Description", "Cash Inflow (+)", "Cash Outflow (−)", "Net Liquid Balance", "Pending In-Flight Overlay"}
+			if !slices.Equal(rows[0], wantHeader) {
+				t.Fatalf("actual XLSX header=%q, want=%q", rows[0], wantHeader)
+			}
+			readNumber := func(address string, calculate bool) float64 {
+				t.Helper()
+				var raw string
+				var err error
+				if calculate {
+					raw, err = book.CalcCellValue("30-Day Ledger", address, excelize.Options{RawCellValue: true})
+				} else {
+					raw, err = book.GetCellValue("30-Day Ledger", address, excelize.Options{RawCellValue: true})
+				}
+				if err != nil {
+					t.Fatal(err)
+				}
+				if raw == "" {
+					return 0
+				}
+				n, err := strconv.ParseFloat(raw, 64)
+				if err != nil {
+					t.Fatalf("actual XLSX %s is not numeric: %q", address, raw)
+				}
+				return n
+			}
+			lastBaseline, lastOverlay := readNumber("E2", false), readNumber("F2", false)
+			if lastBaseline != 100 || lastOverlay != 100 || rows[1][1] != "Starting liquid balance" {
+				t.Fatal("XLSX opening changed")
+			}
+			eventIndex = 0
+			for dayIndex, day := range forecast.Days {
+				if dayIndex >= 30 {
+					break
+				}
+				for _, event := range day.Events {
+					want := tc.events[eventIndex]
+					rowNumber := eventIndex + 3
+					row := rows[rowNumber-1]
+					if row[0] != day.Date.Format("Jan 2, 2006") || row[1] != event.Label {
+						t.Fatal("XLSX changed event date, order or description")
+					}
+					formula, err := book.GetCellFormula("30-Day Ledger", fmt.Sprintf("E%d", rowNumber))
+					if err != nil || formula != fmt.Sprintf("=$E%d+$C%d-$D%d", rowNumber-1, rowNumber, rowNumber) {
+						t.Fatalf("XLSX formula chain changed: %q: %v", formula, err)
+					}
+					inflow := readNumber(fmt.Sprintf("C%d", rowNumber), false)
+					outflow := readNumber(fmt.Sprintf("D%d", rowNumber), false)
+					lastBaseline = readNumber(fmt.Sprintf("E%d", rowNumber), true)
+					lastOverlay = readNumber(fmt.Sprintf("F%d", rowNumber), false)
+					t.Logf("day=%d kind=%s XLSX row=%d inflow/outflow=%.2f/%.2f baseline/overlay=%.2f/%.2f expected=%.2f/%.2f", dayIndex, event.Kind, rowNumber, inflow, outflow, lastBaseline, lastOverlay, want.baseline, want.overlay)
+					if inflow != want.inflow || outflow != want.outflow || lastBaseline != want.baseline || lastOverlay != want.overlay {
+						t.Errorf("XLSX event %d disagrees with independent literal oracle %+v", eventIndex, want)
+					}
+					eventIndex++
+				}
+				if lastBaseline != day.Baseline || lastOverlay != day.Overlay {
+					t.Errorf("XLSX end of day %d baseline/overlay=%v/%v; exact Forecast.Days[%d]=%v/%v", dayIndex, lastBaseline, lastOverlay, dayIndex, day.Baseline, day.Overlay)
+				}
+			}
+			t.Logf("checked %d emitted events and %d forecast days; %d later events excluded by 30-day cutoff", included, min(tc.horizon, 30), len(tc.events)-included)
+		})
+	}
+}

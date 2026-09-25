@@ -1,6 +1,8 @@
 package matdash
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -86,6 +88,7 @@ func TestPathDerivation(t *testing.T) {
 	}
 
 	tmpDir := t.TempDir()
+	writeManifest(t, tmpDir, `{"devDependencies":{"tailwindcss":"^3.4.16"}}`)
 
 	// Write a minimal stub .tsx for every case.
 	for _, c := range cases {
@@ -135,8 +138,8 @@ func TestPathDerivation(t *testing.T) {
 			if row.Language != "tsx" {
 				t.Errorf("Language: got %q want tsx", row.Language)
 			}
-			if row.TailwindVersion != 4 {
-				t.Errorf("TailwindVersion: got %d want 4", row.TailwindVersion)
+			if row.TailwindVersion != 3 {
+				t.Errorf("TailwindVersion: got %d want 3", row.TailwindVersion)
 			}
 			if row.Mode != "none" {
 				t.Errorf("Mode: got %q want none", row.Mode)
@@ -177,6 +180,7 @@ func TestSkipRules(t *testing.T) {
 	}
 
 	tmpDir := t.TempDir()
+	writeManifest(t, tmpDir, `{"devDependencies":{"tailwindcss":"^3.4.16"}}`)
 
 	for _, c := range cases {
 		p := filepath.Join(tmpDir, filepath.FromSlash(c.rel))
@@ -227,6 +231,121 @@ func TestSkipRules(t *testing.T) {
 
 	if got := len(indexed); got != wantCount {
 		t.Errorf("indexed count: got %d want %d; indexed=%v", got, wantCount, indexed)
+	}
+}
+
+func writeManifest(t *testing.T, dir, manifest string) {
+	t.Helper()
+	if err := os.WriteFile(filepath.Join(dir, "package.json"), []byte(manifest), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestWalkSourceTailwindVersion(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		manifest string
+		major    int
+		wantErr  string
+	}{
+		{"v3-dev", `{"devDependencies":{"tailwindcss":"^3.4.16"}}`, 3, ""},
+		{"v3-exact", `{"dependencies":{"tailwindcss":"3.4.16"}}`, 3, ""},
+		{"v4-tilde", `{"dependencies":{"tailwindcss":"~4.1.0"}}`, 4, ""},
+		{"v4-caret", `{"devDependencies":{"tailwindcss":"^4.0.0"}}`, 4, ""},
+		{"v4-major", `{"peerDependencies":{"tailwindcss":"4"}}`, 4, ""},
+		{"v3-optional", `{"optionalDependencies":{"tailwindcss":"3.4"}}`, 3, ""},
+		{"same-major", `{"dependencies":{"tailwindcss":"^3.4.0"},"devDependencies":{"tailwindcss":"3.4.16"}}`, 3, ""},
+		{"no-manifest", "", 0, "no package.json found"},
+		{"no-dependency", `{}`, 0, "missing tailwindcss dependency"},
+		{"malformed", `{`, 0, "parse "},
+		{"non-string", `{"dependencies":{"tailwindcss":4}}`, 0, "parse "},
+		{"unsupported-v2", `{"dependencies":{"tailwindcss":"^2.2.0"}}`, 0, "unsupported or ambiguous"},
+		{"unsupported-v5", `{"dependencies":{"tailwindcss":"5.0.0"}}`, 0, "unsupported or ambiguous"},
+		{"tag", `{"dependencies":{"tailwindcss":"latest"}}`, 0, "unsupported or ambiguous"},
+		{"wildcard", `{"dependencies":{"tailwindcss":"*"}}`, 0, "unsupported or ambiguous"},
+		{"cross-major-range", `{"dependencies":{"tailwindcss":">=3"}}`, 0, "unsupported or ambiguous"},
+		{"alternative-majors", `{"dependencies":{"tailwindcss":"^3.4.16 || ^4.0.0"}}`, 0, "unsupported or ambiguous"},
+		{"prerelease", `{"dependencies":{"tailwindcss":"4.0.0-beta.1"}}`, 0, "unsupported or ambiguous"},
+		{"conflict", `{"dependencies":{"tailwindcss":"^3.4.16"},"devDependencies":{"tailwindcss":"^4.0.0"}}`, 0, "conflicting tailwindcss majors"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			packageRoot := t.TempDir()
+			srcRoot := filepath.Join(packageRoot, "src")
+			componentDir := filepath.Join(srcRoot, "components")
+			if err := os.MkdirAll(componentDir, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if tc.manifest != "" {
+				writeManifest(t, packageRoot, tc.manifest)
+			}
+			const code = "const Card = () => <div className=\"p-4 shadow-sm\">Original source</div>\r\n"
+			if err := os.WriteFile(filepath.Join(componentDir, "Card.tsx"), []byte(code), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			var records []Record
+			walked, _, err := Walk(srcRoot, func(r Record) error {
+				records = append(records, r)
+				return nil
+			})
+			if tc.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tc.wantErr) || !strings.Contains(err.Error(), "package.json") {
+					t.Fatalf("Walk error = %v, want package.json diagnostic containing %q", err, tc.wantErr)
+				}
+				if walked != 0 || len(records) != 0 {
+					t.Fatalf("invalid metadata emitted records: walked=%d records=%d", walked, len(records))
+				}
+				return
+			}
+			if err != nil || walked != 1 || len(records) != 1 {
+				t.Fatalf("Walk: walked=%d records=%d err=%v", walked, len(records), err)
+			}
+			record := records[0]
+			variant, row := record.Component.Variants[0], record.Rows[0]
+			if variant.TailwindVersion != tc.major || row.TailwindVersion != tc.major {
+				t.Errorf("source Tailwind major: variant=%d row=%d want=%d", variant.TailwindVersion, row.TailwindVersion, tc.major)
+			}
+			if variant.Code != code || row.Code != code || row.ContentHash != fmt.Sprintf("%x", sha256.Sum256([]byte(code))) {
+				t.Error("source bytes or source content hash changed")
+			}
+		})
+	}
+}
+
+func TestWalkUsesNearestPackageManifest(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		manifest string
+		wantErr  bool
+	}{
+		{"nested-version", `{"devDependencies":{"tailwindcss":"^4.1.0"}}`, false},
+		{"no-parent-fallback", `{}`, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			packageRoot := t.TempDir()
+			writeManifest(t, packageRoot, `{"devDependencies":{"tailwindcss":"^3.4.16"}}`)
+			srcRoot := filepath.Join(packageRoot, "src")
+			nestedRoot := filepath.Join(srcRoot, "components", "nested")
+			if err := os.MkdirAll(nestedRoot, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			writeManifest(t, nestedRoot, tc.manifest)
+			if err := os.WriteFile(filepath.Join(nestedRoot, "Card.tsx"), []byte(`const Card = () => <div/>`), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			walked, _, err := Walk(srcRoot, func(r Record) error {
+				if r.Rows[0].TailwindVersion != 4 {
+					t.Errorf("Tailwind major = %d, want nearest package's 4", r.Rows[0].TailwindVersion)
+				}
+				return nil
+			})
+			if tc.wantErr {
+				if err == nil || !strings.Contains(err.Error(), filepath.Join(nestedRoot, "package.json")) || walked != 0 {
+					t.Fatalf("expected nearest manifest failure without parent fallback: walked=%d err=%v", walked, err)
+				}
+			} else if err != nil || walked != 1 {
+				t.Fatalf("Walk: walked=%d err=%v", walked, err)
+			}
+		})
 	}
 }
 

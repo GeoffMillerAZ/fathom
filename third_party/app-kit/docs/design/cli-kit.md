@@ -5,6 +5,11 @@ file is the how-to for a CLI that wants the kit's terminal chrome. Reference
 consumer: env-kit's `bosun` (platform-engineering, `kits/env-kit`) — read it
 when a snippet here isn't enough.
 
+Before duplicating a terminal workaround or handing off material CLI work, use the
+[contribution loop](contribution-loop.md). Return reusable input/output, config and
+interaction regressions with synthetic evidence; operational commands and domain
+policy stay in the app. Contribution and consumer upgrade are separate reviewed steps.
+
 ## The five packages, and when you reach for each
 
 | Package | You want | You get |
@@ -36,6 +41,60 @@ hidden `man` command, and Ctrl-C flowing through the context.
 `command.Exit(2, err)` when a check could not run; never conflate it with
 broken — agents and CI branch on the difference. (Lineage: fathom / plat
 doctor; see `command/exit.go`.)
+
+Ordinary unclassified errors still map to **1**. Default `Execute` does not classify
+invocation errors. The historical [Bosun/Surveyor probe](../assessments/2026-09-14-cli-consumer-errors.md)
+retains its four usage exit1 failures; diagnostic restoration alone did not fix them.
+The owner-authorized [opt-in migration](../adr/0070-opt-in-cli-invocation-classification.md)
+adds a separate selected policy without changing unselected consumers.
+The [retained runtime probe](../assessments/fixtures/cli-consumers/README.md) now executes
+private copies and reports diagnostic/exit-policy dimensions separately; nine synthetic
+tests pass. Its [receipt](../assessments/2026-09-16-cli-retained-probe.md) is not a new
+Bosun/Surveyor run or permission to execute either consumer.
+
+`command.ExplicitCode(err)` returns `(code, true)` only when an `Exit` wrapper exists;
+unlike `Code(err)`, it distinguishes explicit 1 (or 0) from a default. Ordered joins
+retain the existing first `errors.As` match. A classifier must honor that policy first.
+ADR-0070 retains ADR-0048/0052's default-off origin wrappers and nearest explicit
+ancestor selection. `ExecuteWithClassifier` invokes a selected classifier once for
+a non-nil error without an explicit exit; nil/declined classification uses `Code`.
+`InvocationOriginCode` returns2 only for complete recognized invocation-origin
+compositions, never message matches. Mixed or unknown errors remain unclassified.
+
+Only a consumer that selects the verified patched Cobra/pflag snapshots may use:
+
+```go
+root.SetInvocationErrorOrigins(true) // requires the explicitly selected patched Cobra
+os.Exit(command.ExecuteWithClassifier(ctx, root, command.InvocationOriginCode,
+	fang.WithErrorHandler(command.UnreportedErrorHandler(nil))))
+```
+
+The root kit dependency graph remains upstream-compatible; the setter does not exist
+there. Each opted-in consumer must explicitly select both generated local dependency
+copies; Go does not inherit app-kit's replacements. The [delivery tool](../assessments/fixtures/cli-consumers/cobra-origin/README.md)
+verifies their full inventories and module wiring. Do not hand-edit copied sources,
+silently fall back when the setter is missing, or migrate another CLI implicitly.
+Changing unknown-command/flag exit1 to2 is a breaking consumer policy change.
+
+## Curated errors without losing unexpected diagnostics
+
+When a leaf has already printed its curated diagnostic, explicitly acknowledge it:
+
+```go
+// Only after the diagnostic was actually reported:
+return command.Reported(command.Exit(code, err))
+// At the process entrypoint, opt in instead of suppressing every Fang error:
+os.Exit(command.Execute(ctx, root,
+	fang.WithErrorHandler(command.UnreportedErrorHandler(nil))))
+```
+
+Nil selects Fang's default rendering for unreported errors; pass a handler to retain
+your own rendering policy. Marking preserves `errors.Is`/`As` and `Code`. A mixed
+join containing any unreported error renders intact, even if that repeats an already
+reported child. A blanket no-op handler still overrides kit defaults; do not use it
+to solve duplicate output. [ADR-0039](../adr/0039-explicit-cli-error-reporting.md) keeps
+this opt-in reporting helper separate from usage classification. Bosun and Surveyor
+now use it in their entrypoint/leaf adapters; this does not prove installed-host delivery.
 
 ## Diagnostic tables (the doctor shape)
 
@@ -79,8 +138,21 @@ is the point.
 `tui.Run(ctx, model, tui.WithAltScreen(), tui.WithMouse())` — mouse is
 opt-in cell-motion; the runner ties program lifetime to the context. Test
 with `tui.NewTest` (80x24, Ascii, deterministic). Reach for a TUI only when
-a table + flags genuinely can't carry the interaction; bosun ships none yet
-and is better for it.
+a table + flags genuinely can't carry the interaction; bosun ships none yet.
+
+The experimental [terminal catalog](terminal-gallery.md) is a bounded interactive
+reference with keyboard/mouse inspection, filtering and inert catalog detail. Its
+model sets `View.MouseMode` itself so F2 can release capture live; **omit** the
+runner's `WithMouse` option when that opt-out is required. A headless test is not
+proof of terminal restoration or two consumer integrations; the guide links their
+separate evidence and the bounded G5 acceptance, without broader host certification.
+
+Give an interactive command **one signal owner**. The terminal reference calls
+`command.Execute(ctx, root, fang.WithNotifySignal())` so Bubble Tea handles SIGINT/
+SIGTERM; the empty Fang override disables its competing context cancellation, not
+Tea's handler or explicit parent-context cancellation. Shared non-TUI defaults remain
+unchanged. INC-17 records a real pinned-dependency shutdown race; repeat the
+[owned-PTY probe](../../apps/terminal/ptyprobe/README.md), not just a typed Ctrl+C test.
 
 ## What NOT to do
 

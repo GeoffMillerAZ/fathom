@@ -1,0 +1,7 @@
+package converted
+
+templ directoryEnhanced(content templ.Component) {
+	<div data-appkit-directory>
+		@content
+	</div>
+}

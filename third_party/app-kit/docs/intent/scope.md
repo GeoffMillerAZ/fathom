@@ -1,0 +1,149 @@
+# Scope
+
+## Current priority: stabilization, then demand-driven work
+
+[ADR-0072](../adr/0072-stabilize-and-resume-on-demand.md) ends the open-ended campaign. The [bounded handoff is verified](../assessments/2026-09-17-stabilization-handoff.md); [stabilization and resumption](../design/stabilization-and-resumption.md) now governs continuation. Remaining G1/G3/G4/G6 work below is deferred, not passed. Resume one named task with fixed acceptance and a budget, never the entire backlog automatically. No new browser matrices or consumer features are landing prerequisites.
+
+## Current boundaries and implementation state
+
+| Surface | State |
+|---|---|
+| CUE tokens, generated CSS/DTCG/Go, portable JS, SVG and utility/templ UI | implemented; contracts in docs/ui-components.md |
+| Named identity/style tools | personal presets/workbench and experimental app-mounted token preview/diff/export; [Gallery browser proof](../assessments/2026-09-14-theme-lab-browser.md) and [narrow-chart repair](../assessments/2026-09-15-theme-preview-reflow.md); [RAC guide](../assessments/2026-09-15-resume-theme-contrast-and-zoom.md) has nine real-renderer specimens, 105 normal/62 actual200% browser checks on an independently built binary, badge-contrast export refusal and pinned CSS freshness checks; full visual/accessibility/font/performance and two-consumer acceptance remain open |
+| Dashboard shell and widget layout; tables/stats/charts/forms/overlays | implemented primitives; [experimental account destinations/notices](../adr/0063-incubate-account-presentation-recipe.md) and [responsive settings sections](../adr/0064-incubate-responsive-settings-sections.md) now feed Gallery, not complete consumer workflows |
+| CLI-kit command/theme/output/config/tui | implemented; [Bosun/Surveyor opt-in invocation migration](../assessments/2026-09-16-cli-usage-migration.md) has red/green, origin/compatibility/upstream race and13/13 sandbox proof; historical failures retained, installed binaries and full release delivery unproven |
+| Terminal catalog reference | experimental read-only first-party discovery, keyboard/mouse inspection and machine output; [G5 interaction/two-consumer outcome accepted](../assessments/2026-09-16-terminal-acceptance-matrix.md), not graphical-emulator/accessibility or installed-host certification |
+| Gallery | shared catalog, private source comparison and [historical target evidence](../design/target-evidence.md) with [PNG inspection](../assessments/2026-09-15-private-image-inspection.md) and [234 retained P06/P07/P08/P09 captures](../assessments/2026-09-15-navbar-evidence-retention.md); larger packets require ADR-0061 readers. Analytics journey, synthetic saves with [browser-Stop](../assessments/2026-09-14-shell-settings-recovery.md), [inline Resume](../assessments/2026-09-14-shell-inline-recovery.md), [native history/version repair](../assessments/2026-09-14-shell-history.md) and explicit snapshot transport; full browser/consumer proof and remaining recipes incomplete |
+| Assistant | bounded first-party discovery/exact records and kit guidance work without licensed corpora; commercial sources optional |
+| Shared catalog | 35 CUE-validated metadata records; nine private typed adapters including [P01 hero](../design/hero-adapter.md), [P07 menu and explicit repair](../design/menu-adapter.md), [P08 profile drawer](../design/profile-drawer-adapter.md) and [P09 navbar](../design/responsive-navbar-adapter.md), plus the separate Elements translator, are experimental CLI references, not certified web components; P07 repair has314 normal/210 zoom/resize/lifecycle checks; P08 has229 base checks, two cold builds and an explicit CSS repair with360 normal/182 actual200% checks. P09 retains38 base and four original-runtime repair failures; its runtime guard passes527 normal/466 actual200%/16 lifecycle checks. [Nine-file repair delivery](../adr/0060-deliver-explicit-navbar-runtime-repair.md) preserves exact original/base/companion identities, with two cold builds and144 normal100% standalone browser checks; full fidelity/accessibility/consumer gates remain open |
+| Private purchased projects | 17 ZIPs imported; original-linked CLI/MCP/Gallery browsing; scoped P10/P11/P12 captures and hardened references; [P10 focus/multiline recovery](../assessments/2026-09-15-catalyst-textarea-transport.md) has1,196 scoped browser checks and exact binary replay, not catalog availability; [font-alias delivery](../assessments/2026-09-15-catalyst-font-alias-delivery.md) passes1,296 HTTP/62 exclusions and three cold samples; [supplemental warm identity](../assessments/2026-09-15-catalyst-warm-font-identity.md) links two fonts while strict body proof remains failed; [P11 task](../../apps/receipts/README.md) has synthetic analytics/HTTP/browser/CSV proof, not a port; full gates remain open |
+| Cross-target conversion | Legacy 439/657 syntax/compiler/DOM; five saved; nine private typed candidates: [P01](../design/hero-adapter.md), [P02](../assessments/2026-09-14-pricing-typed-adapter.md), [P03](../assessments/2026-09-14-faq-typed-adapter.md), [P04](../assessments/2026-09-14-directory-enhanced-adapter.md), [P05](../assessments/2026-09-14-form-typed-adapter.md), [P06](../assessments/2026-09-14-navigation-typed-adapter.md), [P07](../design/menu-adapter.md), [P08](../design/profile-drawer-adapter.md), [P09](../design/responsive-navbar-adapter.md). Separate [Elements proof](../assessments/2026-09-14-elements-conversion.md): four replays, 842 browser checks, 34 identical image pairs. [Integrity](../assessments/2026-09-14-target-evidence-integrity.md) binds ten retained P06 artifacts; separate [prospective semantic checks](../assessments/2026-09-14-navigation-semantic-proof.md) cover 24 Links input/zoom/contrast cases, not full gates. Source failures retained, zero certified targets; adoption and broad family gates remain open |
+| Consumer adoption evidence | [RAC queue](../assessments/2026-09-13-resume-today-uplift.md), [Pipeline/People](../assessments/2026-09-14-resume-pipeline-uplift.md) and [Fathom](../assessments/2026-09-13-fathom-observatory-uplift.md) have scoped checks/lesson returns; [RAC/Fathom navigation](../assessments/2026-09-14-navigation-delivery.md) consumes isolated kit commits with browser/standalone-snapshot proof and Fathom's pinned static reconciliation; tracked-only/full propagation gates remain open; CA/GGB stay deferred |
+| Analytics quality checks | static chart/text/table/source parity, [Gallery quality](../assessments/2026-09-14-gallery-analytics-quality.md), [actual200% zoom/adoption anchors](../assessments/2026-09-15-analytics-zoom-and-adoption.md), [Fathom journeys](../assessments/2026-09-14-fathom-evidence-journey.md) and [stat reflow](../assessments/2026-09-14-stat-reflow.md); [exact renderer](../assessments/2026-09-15-analytics-renderer-specimen.md) adds API/CSV integration, readable fallback and keyboard scrolling; [ADR-0056](../adr/0056-preserve-analytics-role-meaning.md) preserves declared per-row meaning without color and explicitly migrates CSV schemas. The [200-row boundary](../assessments/2026-09-15-analytics-maximum-rows.md) adds268 native-key/DOM/export/capture checks and local budgets, not recommended dashboard density; full accessibility, human tasks and consumer acceptance remain open |
+| Native host experiment | isolated Wails macOS HTTP-only/media patches; 14 containment and 14 native Gallery tasks replay; [camera denial reaches the delegate](../assessments/2026-09-15-native-media-denial.md), microphone/combined time out even with ready windows; full native media gate fails, other permissions/input/delivery remain open; Windows deferred |
+| appkit/app, web, shell, bus, store platform spine | not implemented; old designs are not availability claims |
+| Tagged distribution across consumers | not established; sampled apps use local replaces |
+
+<a id="g2--make-a-complete-application-shell-reusable"></a>
+G2's reusable-shell behavior/adoption outcome is accepted for Gallery, Resume-as-Code
+and Fathom under the [fixed requirement/evidence matrix](../assessments/2026-09-16-shell-acceptance-matrix.md).
+Its completed task is removed from the active backlog; broader core standards, full
+accessibility/performance, permanent API promotion, release and native gates remain open.
+
+<a id="g5--advance-the-existing-terminal-target"></a>
+G5's bounded Charm interaction and two-CLI integration outcome is accepted under the
+[fixed requirement/evidence matrix](../assessments/2026-09-16-terminal-acceptance-matrix.md).
+Its completed task is removed; installed-binary/release delivery and broader terminal
+accessibility/emulator certification are not inferred.
+
+## Retained acceptance outcomes — deferred, not active work orders
+
+These retain the original outcome criteria and evidence, not a continuing execution mandate
+or permission to mutate every consumer. [Roadmap](../../ROADMAP.md) routes demand-triggered work.
+
+Car Assistant and Growing Gardens BI adoption is owner-deferred under [ADR-0032](../adr/0032-defer-car-assistant-and-growing-gardens-adoption.md).
+Resume-as-Code and Fathom remain selected references for G2/G3/G4, not active migration orders; neither selection resumes CA/GGB. Preserve app intent/data and scoped authority; evidence gates remain.
+
+**G1. Discover the right capability from either an agent or the Gallery** <a id="g1--discover-the-right-capability-from-either-an-agent-or-the-gallery"></a>
+
+**Done when:** a first-party catalog resolves real kit primitives and recipes by user task, layer and target, alongside explicitly identified commercial references; Gallery
+and MCP return the same IDs/revision/contracts; guidance works without licensed data;
+a fixed evaluation set checks correct selection, unavailable capabilities, incompatible
+profiles and bounded responses. Existing tool names have a migration path.
+
+[Selection evaluation](../assessments/2026-09-16-catalog-selection.md) covers70 source-reviewed tasks across all35 records through catalog/MCP/Gallery JSON/HTML;11 old-source failures were repaired under [ADR-0062](../adr/0062-search-declared-capability-tasks.md). Later editor refusals and section-layout cases preserve profile and availability boundaries. [Catalog control repair](../assessments/2026-09-16-catalog-control-targets.md) adds 357 scoped browser checks, retaining 156 original target-size failures and native search/detail/return tasks. The [outer-header/analytics follow-up](../assessments/2026-09-16-gallery-header-and-missing-scale.md) adds native narrow-screen navigation and truthful missing-scale copy, with 1,496 browser assertions and 598 retained baseline failures; no public API or consumer change. Neither proves general language understanding, full accessibility, conversion certification or consumer acceptance.
+The owner-admitted [identity workbench](../design/theme-workbench.md) extends G1/G4:
+preserve both personal-site looks; earn app-owned guide mounting, candidate preview,
+reset, validation and reviewed token diff/export using real app fixtures and selected
+kit revision. [Theme-guide request costs](../assessments/2026-09-16-theme-guide-request-cost.md) meet handler budgets; the [corrected browser follow-up](../assessments/2026-09-16-theme-guide-transport.md) meets120 ordinary and60 degraded task/timing/body checks with an explicit complete-asset endpoint. INC-52 preserves the old timing qualification and both degraded failures. A [byte-derived CSS validator](../assessments/2026-09-17-gallery-css-revalidation.md) proves two ordinary-page304 reuses, but120 candidate theme journeys still show no cache reuse. The [memory investigation](../assessments/2026-09-17-theme-guide-memory.md) retains failed RSS/growth measurements; even blank Chrome controls exceed the absolute ceiling, requiring prospective metric review, not a retrospective pass. Preview cache and browser cancellation also remain open. Named preset/preview availability does not complete those tools.
+
+The owner-selected [core-first/JIT scope](../design/just-in-time-conversion.md) under ADR-0069 extends G1/G4: finish shell/settings, analytics, static content, client-boundary and theme/style-guide starter areas against [versioned standards](../design/converted-component-standard.md), with CUE implementation/gate/adoption status. [Copper/Lagoon/Orchard](../assessments/2026-09-16-paired-themes.md) add light/dark pairs and61 frozen browser checks; defaults stay unchanged, full starter acceptance remains open. [Bounded MCP lookup](../assessments/2026-09-16-quality-lookup.md) exposes authored work/status without live evidence checks or certification; installed hosts remain unchanged. The [Gallery quality view](../assessments/2026-09-16-quality-gallery.md) presents the same authored snapshot with native filters and standards/gates/consumer detail; UI evidence is separate from plan status. [Cancellation diagnostics](../assessments/2026-09-17-theme-guide-cancellation.md) retain failed Escape, scoped CDP Stop/retry/export/reset and five clean bounded-owner replays. [Minimal/phase controls](../assessments/2026-09-17-theme-guide-target-controls.md) include an ordinary Preview failure and post-Stop failures before retry, so cancellation is not necessary. Read-only unknown-target inspection is inconclusive; four no-submit idle/edit controls pass while a same-candidate Stop reference fails. Submission/loading diagnosis, eleven cancellation cells and independent acceptance remain open.
+The 12 historical pilots remain evidence, not 12 mandatory full certifications. Other variants and deeper source-specific optimization are on-demand/owner-batched; failed gates remain failed. The [P04 native journey](../assessments/2026-09-16-directory-journey.md) passes 1,203 scoped checks, not real adoption or full certification. The [static-content starter](../assessments/2026-09-16-static-content-starter.md) and its [Gallery follow-up](../assessments/2026-09-16-static-content-browser.md) add reading/recovery and fixed-ID safety. The separate [plain-file export](../assessments/2026-09-16-static-export.md) now proves the bounded reading task without a Go runtime: matching builds/exports, 90 no-JS document observations and 180 exact responses, with 18,209-byte CSS. Prior failures remain retained; full accessibility/performance, consumer hosting/adoption and core standards remain open. Core completion needs its declared task/gate acceptance and a tested JIT/contribution path, not a whole-catalog percentage.
+A separate [private compiler/DOM audit](../assessments/2026-09-13-html-compiler-dom-audit.md)
+passes all 439 syntax-accepted HTML inputs; browser/behavior and target promotion remain open. [P01 performance](../assessments/2026-09-16-hero-performance.md) retains the original658,700-byte failure. A separate [font candidate](../assessments/2026-09-16-hero-font-delivery.md) preserves tested glyphs/pixels and passes eight cold cells at499,059 bytes (24.2% less); eight warm font-body failures remain. [Protocol diagnostics](../assessments/2026-09-16-cached-font-protocol.md) return exact cold streaming/Fetch bytes but no warm body; both raw Fetch modes preserve six warm cache hits without a font response pause. Original assets/budgets stay fixed; mixed-script delivery may cost more. [ADR-0067](../adr/0067-prove-isolated-warm-cache-lineage.md) admits a separate cache-lineage gate; its [first16-observation acquisition](../assessments/2026-09-16-hero-cache-lineage.md) meets numeric budgets but fails warm request-header and unmatched-event evidence. No v1/v2 performance pass; live controls remain unperformed.
+The [Catalyst native reference](../assessments/2026-09-13-catalyst-native-reference.md)
+adds two locked builds and guarded HTTP evidence, not a visual baseline or certified port.
+Its separate [font-bound reference](../assessments/2026-09-13-catalyst-font-reference.md)
+pins the complete upstream font closure without changing the original or certifying fidelity.
+The [MatDash reconstruction](../assessments/2026-09-13-matdash-native-reference.md) preserves
+the original and records a separate repair, byte-identical build replay and static delivery.
+The [browser audit](../assessments/2026-09-13-paid-reference-browser.md) keeps original gaps; [Catalyst](../assessments/2026-09-13-catalyst-hardened-reference.md) and [MatDash](../assessments/2026-09-14-matdash-hardened-reference.md) derivatives add local-only behavior checks, not completed pilot baselines. MatDash's historical replay differs; a separate [strict candidate](../assessments/2026-09-14-matdash-strict-build.md) matches two builds and passes 112 browser checks, not clean-install reproducibility.
+A separate [asset-bound copy](../assessments/2026-09-13-matdash-asset-reference.md) pins declared fonts/map/named icons and preserves application CSS; it is not offline-app proof.
+The [P12 Go-hosted client editor](../assessments/2026-09-16-client-editor-island.md) adds65,535-byte editing/lifecycle proof; its [actual Datastar outer-morph probe](../assessments/2026-09-16-client-editor-datastar.md) preserves draft/history with218 task/global assertions and two identical builds. A separate [actual200% lane](../assessments/2026-09-16-client-editor-zoom.md) passes119 task/global assertions,44 asset checks and large-document/morph tasks; ordinary four-view regression remains green. Full fidelity/accessibility/consumer gates stay open; no public editor API or target certification.
+
+**G3. Make analytics a decision tool of exceptional quality** <a id="g3--make-analytics-a-decision-tool-of-exceptional-quality"></a>
+
+The [runnable A/B comparison](../assessments/2026-09-16-analytics-comparison-pair.md) now passes8/8 fixed-task browser cases using reconstructed prior/current compositions with the same data/runtime; human time/error measurements remain pending. It does not complete G3 or certify the baseline's retained quality failures.
+The [composed-boundary checks](../assessments/2026-09-16-analytics-composition-safety.md) add hostile HTML/CSV and HTTP-download coverage; `core.analytics` security is partial, not certified. The [four-state browser follow-up](../assessments/2026-09-17-analytics-truth-state-journeys.md) passes eight fixed complete/missing/stale/partial journeys in normal/actual200% Chrome, including Gateway detail/back and all33 CSV fields; broader state/theme/viewport, consumer and human acceptance remain open.
+Current references: Resume-as-Code's decision/pipeline UI and Fathom's dashboard/analytics.
+GGB period analysis is deferred; Throughline temporal drill-down remains historical evidence.
+The [GGB export repair](../assessments/2026-09-13-analytics-agreement.md) pins synthetic forecast/XLSX agreement.
+[Fathom triage](../assessments/2026-09-14-fathom-observation-triage.md), [RAC evidence](../assessments/2026-09-14-resume-assessment-evidence.md) and the [reader repair](../assessments/2026-09-15-fathom-handler-read-failure.md#authorized-reader-adoption) retain their scoped proof. The [adopted Fathom display repair](../assessments/2026-09-16-fathom-display-adoption.md) passes88 HTTP/412 actual-source browser checks for freshness and clipping, including320px reflow, plus race/CSS checks; broader dashboard/consumer acceptance remains open.
+**Done when:** a Gallery reference journey supports period/comparison/filter →
+explanation → linked detail → export, with consistent numbers, missing/stale/partial
+states, units/source/uncertainty and accessible alternatives; reusable RAC checks are
+adapted with canaries; at least two apps verify relevant parts against their own data;
+baseline and improved task time/error plus payload/render/update budgets are recorded.
+A new chart count is not the exit test.
+
+**G4. Make adoption and improvement propagation demonstrable** <a id="g4--make-adoption-and-improvement-propagation-demonstrable"></a>
+
+The [current reconciliation](../assessments/2026-09-16-propagation-reconciliation.md#acceptance-audit-original-checklist-proven-extensions-still-open) proves the original six-item checklist against retained artifacts, actual-host transcripts and both navigation integrations. Fathom's authorized fixture/two-artifact repair passes9/9 synthetic CSS checks,22 adoption checks and missing/changed-helper refusals; earlier failures remain retained. G4 stays open for the already-admitted theme-guide and core/JIT extensions, including versioned guide propagation and a readiness-record-backed contribution path, not another navigation upgrade.
+The [maintained private preparer/rehearsal](../assessments/2026-09-15-private-candidate-rehearsal.md) binds908 files; the [actual Gallery host](../assessments/2026-09-15-independent-gallery-host.md) has two identical cold server/native builds without sibling source. [Exact-output browser tasks](../assessments/2026-09-16-exact-gallery-browser.md) pass176 assertions across four script/no-script desktop/narrow sessions with24 captures; a separate appearance-status repair passes143 working-tree checks without replacing that candidate. The [exact native pair](../assessments/2026-09-16-exact-native-delivery.md) now passes AX capacity/reopen/normal shutdown; full native/release acceptance remains open. A [new exact candidate](../assessments/2026-09-16-current-candidate-rehearsal.md#corrected-index-exact-candidate) adds two matching cold consumer builds, strict CSV10 fixture migration and70 passing root-package suites; this does not upgrade the native pair or real apps.
+The historical [CA rehearsal](../assessments/2026-09-13-clean-consumer-build.md) also uses unpublished artifacts, not sibling source.
+A private candidate and [migration checklist](../../tools/releasecandidate/README.md#migration-review-for-an-authorized-consumer-upgrade) are prepared; they do not establish a released pin or inherit later source changes. [Historical v1 checks](../assessments/2026-09-16-selected-adoption-pins.md) retain catalog-only failures; the separately authorized [RAC/Fathom v2 migration](../assessments/2026-09-16-fathom-display-adoption.md#consumer-v2-metadata-migration) passes selected metadata/artifact/module/router checks. [Contribution handoffs](../design/contribution-loop.md) route lessons and reviewed upgrades under ADR-0066; guidance is not host enforcement. [Artifact regression](../design/adoption-contract.md#bounds-and-proof-limits) proves synthetic deletion/restoration refusal; runtime/delivery proof remains separate.
+The [fresh host trial](../assessments/2026-09-13-agent-host-routing.md) separately proves
+synthetic Codex/Claude contract and source retrieval, not real consumer setup or UI quality.
+**Done when:** inventory identifies selected profiles/layers and actual kit revisions;
+both agent harnesses resolve the same short consumer routing contract; missing selected
+artifacts cause a check failure; one clean consumer builds without a sibling checkout;
+one kit improvement reaches a second consumer with reviewed upgrade evidence and a
+reusable feedback disposition. A release candidate is prepared with migration notes;
+publishing/tagging uses the applicable release authorization.
+When G4 is resumed, its retained Done-when requirements include the identity-workbench and ADR-0069 core/JIT extensions above; the original checklist alone cannot retire G4. These are not landing prerequisites.
+The [connected JIT rehearsal](../assessments/2026-09-17-jit-contribution-rehearsal.md) tests synthetic readiness/receipt/contribution joins, not actual consumer execution or propagation. The next real guide/JIT task still needs its own reviewed delivery and consumer evidence.
+
+**G6. Prove web and macOS delivery** <a id="g6--prove-web-and-macos-delivery"></a>
+
+The [synthetic streaming specimen](../assessments/2026-09-13-streaming-proof.md) proves
+bounded HTTP snapshots, isolation, reconnect and compiled-process shutdown locally.
+The [isolated Wails candidate](../../spikes/wails-gallery/README.md) adds guarded HTTP
+and a reproducible macOS patch: [14 actual native containment cases](../assessments/2026-09-14-native-containment.md)
+pass; [shared tasks](../assessments/2026-09-14-native-gallery-workflow.md) add DOM-driven save/conflict/retry/stream/revocation; [process recovery](../assessments/2026-09-15-native-process-recovery.md) adds parent loss, profile refusal and fourteen post-failure Chrome tasks. [Native menus](../assessments/2026-09-15-native-menu-input.md) add AX close/reopen/continuation proof, with Cmd+N still failing; no input certification. The [pinned Datastar Activity observer](../assessments/2026-09-13-datastar-observer.md)
+adds opt-in client integration with Node/HTTP and selected actual browser CSP/interaction
+evidence; full browser/native conformance remains open. Ordinary forms stay independent. The [native disclosure diagnostic](../assessments/2026-09-16-native-disclosure-scroll.md) retains the failed scroll workflow; a later read-only inspection identifies a collapsed `AXSummary` without an advertised press action and verifies cleanup. It does not open fixture controls or prove physical input; native failure/retry remains unproven.
+Windows is deferred by the owner under [ADR-0027](../adr/0027-web-and-macos-now-windows-on-demand.md);
+retain it as a future, not a current completion prerequisite.
+**Done when:** a pinned Wails v3 candidate hosts the same representative Go/HTTP workflow
+in browser and macOS; SSE, POST, authorization, reconnect, multi-window,
+shutdown, native capabilities and packaging/update failure recovery pass the matrix in
+ADR-0021. Publish only the capabilities exercised; a browser fallback remains usable.
+ADR-0033 adds first-class browser tasks and native exceptions via the [parity matrix](../design/web-desktop-parity.md); [ADR-0068](../adr/0068-prepare-private-unsigned-macos-delivery-first.md) selects private bundles/manual rollback. [Assembly proof](../assessments/2026-09-16-private-bundle-seam.md) binds identical actual-artifact bundles; [runtime evidence](../assessments/2026-09-16-private-bundle-runtime.md) adds direct and normal LaunchServices AX lifecycle passes on the named Mac. Earlier request/harness failures remain retained; strict signature verification independently fails. [Exact-bundle AX tasks](../assessments/2026-09-16-native-profile-workflow.md) pass validation/save/conflict and an independent Activity update/pause/reconnect journey with draft retention; full workflow failure/retry, failed-start/manual rollback and separate input/media gates remain open. Installation/signing/production distribution need separate authority. A [distinct candidate and read-only workflow inspector](../assessments/2026-09-16-current-gallery-candidate.md) are prepared; neither inherits the historical runtime passes.
+
+## Compatibility surface
+
+- Exported Go APIs, CUE schemas and generated token names.
+- CSS custom properties/classes, theme semantics, JS globals and interaction hooks.
+- CLI verbs/flags, exit codes, output formats and config precedence.
+- MCP tool names, arguments, response shapes and resource/document IDs.
+- Vendored artifact selection, kit.lock format and integrity behavior.
+- Catalog/recipe IDs and profile/evidence formats once shipped.
+- Document routing and adoption instructions served to consumers.
+
+An incompatible change names affected consumers and migration steps in the same change;
+additive capability is distinguished from breaking a promised contract. Pre-1.0 is not
+permission for silent regressions. Exact released pins are the distribution target;
+local replaces are a development convenience.
+
+## Non-goals
+
+- A universal frontend framework or forced rewrite. **Revisit when:** two independent
+  consumers need the same missing cross-renderer contract and demonstrate its boundary.
+- A new auth/identity, billing or business-metrics backend. **Revisit when:** repeated
+  consumer need proves a kit-owned service boundary beyond presentation.
+- Public redistribution of paid component packs or their derivatives.
+  **Revisit when:** specific rights and an independently reviewed distribution are established.
+- A shared remote MCP service by default. **Revisit when:** a named multi-user/remote
+  workflow needs it and authentication/provenance isolation are designed.
+- Building every roadmap concept concurrently. **Revisit when:** bounded work streams
+  have independent proofs and can integrate without starving a reference app.

@@ -34,9 +34,43 @@ const (
 // index from the licensed dump, then search/get/stats against it.
 func dataCmd(ctx context.Context, args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("usage: appkit data <build|previews|embed|search|get|stats|verify|eval> [flags]")
+		return fmt.Errorf("usage: appkit data <build|matdash-build|previews|embed|search|get|stats|verify|eval|assets-import|assets-list|assets-files|assets-get|assets-translate|assets-translate-elements|assets-adapt-hero|assets-adapt-menu|assets-adapt-drawer|assets-adapt-navbar|assets-adapt-pricing|assets-adapt-directory|assets-adapt-form|assets-adapt-navigation|assets-adapt-faq|assets-conversions|assets-conversion> [flags]")
 	}
 	switch args[0] {
+	case "assets-import":
+		return dataAssetsImport(ctx, args[1:])
+	case "assets-list":
+		return dataAssetsList(args[1:])
+	case "assets-files":
+		return dataAssetsFiles(args[1:])
+	case "assets-get":
+		return dataAssetsGet(args[1:])
+	case "assets-translate":
+		return dataAssetsTranslate(args[1:])
+	case "assets-translate-elements":
+		return dataAssetsTranslateElements(args[1:])
+	case "assets-adapt-hero":
+		return dataAssetsAdaptHero(args[1:])
+	case "assets-adapt-menu":
+		return dataAssetsAdaptMenu(args[1:])
+	case "assets-adapt-drawer":
+		return dataAssetsAdaptDrawer(args[1:])
+	case "assets-adapt-navbar":
+		return dataAssetsAdaptNavbar(args[1:])
+	case "assets-adapt-pricing":
+		return dataAssetsAdaptPricing(args[1:])
+	case "assets-adapt-directory":
+		return dataAssetsAdaptDirectory(args[1:])
+	case "assets-adapt-form":
+		return dataAssetsAdaptForm(args[1:])
+	case "assets-adapt-navigation":
+		return dataAssetsAdaptNavigation(args[1:])
+	case "assets-adapt-faq":
+		return dataAssetsAdaptFAQ(args[1:])
+	case "assets-conversions":
+		return dataAssetsConversions(args[1:])
+	case "assets-conversion":
+		return dataAssetsConversion(args[1:])
 	case "build":
 		return dataBuild(ctx, args[1:])
 	case "matdash-build":
@@ -56,7 +90,7 @@ func dataCmd(ctx context.Context, args []string) error {
 	case "eval":
 		return dataEval(args[1:])
 	default:
-		return fmt.Errorf("unknown data subcommand %q (want build|matdash-build|previews|embed|search|get|stats|verify|eval)", args[0])
+		return fmt.Errorf("unknown data subcommand %q (want build|matdash-build|previews|embed|search|get|stats|verify|eval|assets-import|assets-list|assets-files|assets-get|assets-translate|assets-translate-elements|assets-adapt-hero|assets-adapt-menu|assets-adapt-drawer|assets-adapt-navbar|assets-adapt-pricing|assets-adapt-directory|assets-adapt-form|assets-adapt-navigation|assets-adapt-faq|assets-conversions|assets-conversion)", args[0])
 	}
 }
 
@@ -183,8 +217,9 @@ const (
 // dataMatdashBuild indexes the MatDash React template source tree into a
 // SQLite file, reusing the same index schema as the TailwindPlus corpus.
 // Each .tsx file becomes one component with one variant (framework=react,
-// language=tsx, tailwind_version=4, mode=none).
-// No CUE validation is performed (MatDash has no schema).
+// language=tsx, source-declared Tailwind major, mode=none). Each source file
+// needs a nearest package.json with a provable Tailwind 3 or 4 declaration.
+// No CUE transformation is performed; source bytes remain unchanged.
 func dataMatdashBuild(_ context.Context, args []string) error {
 	fs := flag.NewFlagSet("appkit data matdash-build", flag.ContinueOnError)
 	src := fs.String("src", defaultMatdashSrcPath, "path to the MatDash src directory")
@@ -197,7 +232,19 @@ func dataMatdashBuild(_ context.Context, args []string) error {
 		return fmt.Errorf("data matdash-build: create index dir: %w", err)
 	}
 
-	builder, err := index.NewBuilder(*out)
+	// Build beside the target and publish only after every source declaration
+	// validates. A newly rejected manifest must not erase a working old index.
+	stage, err := os.CreateTemp(filepath.Dir(*out), ".matdash-*.sqlite")
+	if err != nil {
+		return fmt.Errorf("data matdash-build: stage index: %w", err)
+	}
+	stagePath := stage.Name()
+	if err := stage.Close(); err != nil {
+		_ = os.Remove(stagePath)
+		return err
+	}
+	defer os.Remove(stagePath)
+	builder, err := index.NewBuilder(stagePath)
 	if err != nil {
 		return err
 	}
@@ -222,6 +269,12 @@ func dataMatdashBuild(_ context.Context, args []string) error {
 	stats, err := builder.Finalize()
 	if err != nil {
 		return err
+	}
+	if err := builder.Close(); err != nil {
+		return err
+	}
+	if err := os.Rename(stagePath, *out); err != nil {
+		return fmt.Errorf("data matdash-build: publish index: %w", err)
 	}
 
 	idxSize := fileSize(*out)

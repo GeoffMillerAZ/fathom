@@ -44,6 +44,11 @@
 // has reintroduced that failure one layer up; this package cannot protect
 // against that, but it will not cause it.
 //
+// Supply the literal ID, not a URL-encoded or HTML-escaped copy. Links encode
+// the URL fragment and then the HTML attribute independently; caller-owned
+// heading IDs are never renamed. Empty ToC IDs retain a top-of-document link,
+// while an empty heading ID has no permalink.
+//
 // # One consumer today
 //
 // ADR-0017 §1 / D17's ordinary bar for an L3b package is two consumers

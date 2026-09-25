@@ -1,10 +1,11 @@
 // Package index builds and queries the kit's TailwindPlus corpus as one
 // SQLite file: structural columns for browsing, contentless FTS5 for BM25
-// search, and zstd-compressed, content-addressed code blobs. It is cgo-free
-// (ncruces/go-sqlite3 over wazero, D9) so it cross-compiles to a single
-// binary with no native libraries. Semantic (vector) search is deliberately
-// omitted for now — the FTS5 + structural path is the value floor and has no
-// runtime dependency; the schema leaves room to add an embeddings table later.
+// search, and zstd-compressed, content-addressed code blobs. It is cgo-free:
+// the pinned ncruces/go-sqlite3 translates its SQLite Wasm to Go with wasm2go,
+// so this package builds a single binary with no native libraries or wazero
+// runtime dependency. Optional semantic search uses a separate vec1 embeddings
+// file and hybrid rank fusion; the corpus build itself stays deterministic and
+// embedder-free.
 package index
 
 import (

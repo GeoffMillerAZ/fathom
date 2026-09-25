@@ -31,9 +31,10 @@ What we know about how agents actually consume development surfaces, dated:
   https://developers.figma.com/docs/figma-mcp-server/tools-and-prompts/,
   https://storybook.js.org/docs/ai/mcp/overview). D11 adopts this shape for
   the Assistant.
-- **Per-project agent config is a solved, committed artifact.** Claude Code
-  (and Codex, Cursor) read a project-scope `.mcp.json` at the repo root;
-  stdio is the default transport (https://code.claude.com/docs/en/mcp).
+- **Per-project agent config is host-specific.** Correction, 2026-09-21:
+  Claude Code's project `.mcp.json` is not Codex registration; Codex uses
+  `config.toml`. Keep paired instruction routers but verify each host separately
+  using [agent setup](../design/agent-setup.md).
 - **Our own machinery is checkable.** CUE v0.16.1 (2026-04-08) gives `cue vet`
   and committed `gengotypes` output (D7); templ v0.3.1020 (2026-05-10) added a
   `-check` flag for validating templates in CI without regenerating

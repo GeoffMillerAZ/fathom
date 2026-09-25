@@ -1,0 +1,4 @@
+form[data-p10-settings] :where(input:not([type="hidden"]):not([type="checkbox"]),textarea,select,button){min-height:44px}
+form[data-p10-settings] label[data-p10-checkbox-label]{min-height:44px;display:inline-flex;align-items:center}
+form[data-p10-settings] :where(input:not([type="hidden"]),textarea,select,button):focus-visible{outline:2px solid CanvasText;outline-offset:2px}
+form[data-p10-settings] [role="status"][tabindex]:focus{outline:2px solid CanvasText;outline-offset:2px}

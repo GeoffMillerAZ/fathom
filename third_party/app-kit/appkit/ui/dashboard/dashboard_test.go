@@ -66,3 +66,13 @@ func TestGridAndSpanClasses(t *testing.T) {
 		t.Error("spanClass defaults wrong")
 	}
 }
+
+func TestRenderWidgetGridOneColumnStaysStacked(t *testing.T) {
+	got := RenderWidgetGrid([]string{"first", "second"}, WidgetGridOptions{Cols: 1})
+	if strings.Contains(got, "sm:grid-cols-2") || !strings.Contains(got, "sm:grid-cols-1") {
+		t.Fatalf("one-column layout must not become two columns at tablet widths: %s", got)
+	}
+	if !strings.Contains(got, `class="grid grid-cols-1 gap-4 sm:grid-cols-1 lg:grid-cols-1"`) || !strings.Contains(got, "firstsecond") {
+		t.Fatalf("one-column layout lost base/large sizing or supplied order: %s", got)
+	}
+}

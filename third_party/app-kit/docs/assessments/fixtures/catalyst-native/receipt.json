@@ -1,0 +1,182 @@
+{
+  "kind": "private-source-native-reference-rehearsal",
+  "date": "2026-09-13",
+  "archive_id": "catalyst@94acb41796a8a97fdef44bf5b2d18f42919e43300cbca90077775f6b36dfa529",
+  "archive_sha256": "94acb41796a8a97fdef44bf5b2d18f42919e43300cbca90077775f6b36dfa529",
+  "catalog_revision": "7c7c0ab69b86349f1bb8d1df865f7cf8eb4910542c6fe8340252c6593facaab6",
+  "project_prefix": "catalyst-ui-kit/demo/typescript/",
+  "source_inventory": {
+    "receipt": "replay-evidence.json",
+    "receipt_sha256": "f04da4c397a4c4f8df9766fb8c635ab4d572038b1824145469d2a4ba65069acd",
+    "regular_files": 75,
+    "source_bytes": 2696269,
+    "working_copy_changed": [
+      {
+        "path": "next-env.d.ts",
+        "archive_sha256": "9269d492817e359123ac64c8205e5d05dab63d71a3a7a229e68b5d9a0e8150bf",
+        "materialized_sha256": "7b550dda9686c16f36a17bf9051d5dbf31e98555b30d114ac49fc49a1e712651",
+        "archive_bytes": 201,
+        "materialized_bytes": 247
+      }
+    ]
+  },
+  "first_project": "/tmp/appkit-catalyst-reference.hY6KVV/catalyst-ui-kit/demo/typescript",
+  "environment": {
+    "node": "26.3.0",
+    "npm": "11.16.0",
+    "os": "macOS 26.6.2 (25G83)",
+    "arch": "arm64",
+    "next": "16.2.6",
+    "react": "19.2.6",
+    "tailwind": "4.3.3"
+  },
+  "install": {
+    "exit_code": 0,
+    "packages_added": 383,
+    "scripts": "disabled",
+    "commands": [
+      "env -i /opt/homebrew/bin/node /opt/homebrew/lib/node_modules/npm/bin/npm-cli.js ci --ignore-scripts --no-audit --no-fund --update-notifier=false --userconfig=/dev/null --globalconfig=/tmp/appkit-catalyst-reference.hY6KVV/empty-global-npmrc --cache=/tmp/appkit-catalyst-reference.hY6KVV/npm-cache --registry=https://registry.npmjs.org"
+    ],
+    "installed_manifest_version_mismatches": 0,
+    "installed_lock_metadata_mismatches": 0,
+    "limitation": "Registry integrity metadata matched; not an independent audit of every installed package byte."
+  },
+  "build": {
+    "exit_code": 0,
+    "command": "env -i PATH=/opt/homebrew/bin:/usr/bin:/bin NEXT_TELEMETRY_DISABLED=1 /opt/homebrew/bin/node node_modules/next/dist/bin/next build",
+    "prerender_pages": 10,
+    "outputs": [
+      {
+        "path": ".next/BUILD_ID",
+        "sha256": "ba4ed34e1acfad305eb2dd772226cfef8ac0d50eab4a2b8b73b83d19eef5154c",
+        "bytes": 21
+      },
+      {
+        "path": ".next/server/app/settings.html",
+        "sha256": "74a3de02140b61563948f9893cb4045f2cec1b1a6bf08e09da34693464f14517",
+        "bytes": 86371
+      },
+      {
+        "path": ".next/static/chunks/01xlw8hd842-c.js",
+        "sha256": "aee2d073d2a1157cfe5c98907f90b3967de4c3625f9ffb154bd1979ae2b917b0",
+        "bytes": 3377
+      },
+      {
+        "path": ".next/static/chunks/02mglsfs3mrrm.js",
+        "sha256": "e768a135dba2a6792bfb3a52438acd77293ca29e7904429a8eebdabb930d654a",
+        "bytes": 108564
+      },
+      {
+        "path": ".next/static/chunks/03~yq9q893hmn.js",
+        "sha256": "0973c1d64c88adc8e3c950410cb58b288f72118d5965b78049438deb8f2f9683",
+        "bytes": 112594
+      },
+      {
+        "path": ".next/static/chunks/08~mdtbzo3wns.js",
+        "sha256": "a89569a108ef9e384fe84e103cee12dcdc00675e0a12873ed22d3e98bcd2435f",
+        "bytes": 44414
+      },
+      {
+        "path": ".next/static/chunks/0a797yzx-~zkb.js",
+        "sha256": "0cdd2d63b3daa6cd4c6c7f270e8373ae0c787a398b69b88548517d3a6f9e15e3",
+        "bytes": 14896
+      },
+      {
+        "path": ".next/static/chunks/0axn.kz6_oov4.js",
+        "sha256": "9cddaa08ade09ed9e56c3e80905766f1317cb4c96e6368b9e292f3ee4b576d50",
+        "bytes": 227537
+      },
+      {
+        "path": ".next/static/chunks/0eewamb49pw7k.js",
+        "sha256": "fd20d5309ed1ecdbc5ced18b5cea3f061d2b1a2c92381145d4e9eecee44ab78d",
+        "bytes": 54646
+      },
+      {
+        "path": ".next/static/chunks/0fnu9b0~3ptz1.js",
+        "sha256": "6097db2f45b709534f370b4ae3dc2901a44a40ca1debe0d765df3e84ec96b54c",
+        "bytes": 9571
+      },
+      {
+        "path": ".next/static/chunks/0nkc1l9p7zsao.js",
+        "sha256": "bd4b09b36b8aa1f57bf4338df972310a2af4f4b51e6bc82e1d877ebd029099eb",
+        "bytes": 126355
+      },
+      {
+        "path": ".next/static/chunks/0rtw_w3gs1ed9.js",
+        "sha256": "a5660af75b3a23529bbb0a81e8068e885cb25fa5fbe78608218f897965cf9ad6",
+        "bytes": 150333
+      },
+      {
+        "path": ".next/static/chunks/0u9avk-n552m2.js",
+        "sha256": "2fc1e7b342e0365826e3b9ee0217f84939dad8fc884d8e3f6da3c433ef084cd7",
+        "bytes": 23762
+      },
+      {
+        "path": ".next/static/chunks/111p4_q~z.uax.css",
+        "sha256": "9d662f08e454c8ab6f546133eb76e47c1929dd7b930f52d76679eee7df2435e4",
+        "bytes": 160572
+      },
+      {
+        "path": ".next/static/chunks/14ua9c3p9lvxw.js",
+        "sha256": "259398baea7057f8d6ca9f57d47507e9cee9e3b30a0d1ada39b8af266bfd9ebd",
+        "bytes": 141750
+      },
+      {
+        "path": ".next/static/chunks/turbopack-007pfzai79m.1.js",
+        "sha256": "27ddd9af06933ff2c2f3d704c5600afad97800b53b612cffdb8a86a61be488e7",
+        "bytes": 10580
+      }
+    ],
+    "limitation": "Raw replay outputs differ; no byte-reproducible build claim."
+  },
+  "fixes_to_rehearsal_setup": [
+    "Use distinct empty user/global npm config paths: npm refused double-loading /dev/null before installation.",
+    "Retain minimal executable PATH in the sanitized build environment: initial Turbopack build failed without it.",
+    "Resolve the launcher main path through realpathSync on macOS /tmp; initial non-executing invocation was not counted as launch proof."
+  ],
+  "wrapper": {
+    "path": "reference-server.mjs",
+    "sha256": "8985bae8e69bed62892efaf0d4457b89ce2985801d584b6efbbe1f17c347ddc9",
+    "tests": "reference-server.test.mjs",
+    "tests_sha256": "2c3e982f415cee598f42adaeba08a487a6b7df767c81057e3233b1a3079e8adc",
+    "authority": "exact loopback peer/Host, optional same-origin Origin/Fetch Metadata, GET/HEAD only; upgrades refused",
+    "production_auth": false
+  },
+  "test_runs": {
+    "first": {
+      "tests": 42,
+      "pass": 42,
+      "fail": 0,
+      "skip": 0
+    },
+    "replay": {
+      "tests": 42,
+      "pass": 42,
+      "fail": 0,
+      "skip": 0
+    },
+    "missing_selection": {
+      "exit_code": 1,
+      "outcome": "refused before vendor runtime"
+    },
+    "changed_package_canary": {
+      "exit_code": 1,
+      "outcome": "source identity mismatch before vendor runtime"
+    }
+  },
+  "live_observation": {
+    "pid": 37273,
+    "handle": 85285,
+    "url": "http://127.0.0.1:53300/settings",
+    "status": 200,
+    "uncompressed_html_bytes": 86371,
+    "scope": "ephemeral owned local reference, not a stable kit service"
+  },
+  "limitations": [
+    "External rsms.me Inter stylesheet/fonts unpinned and not fetched by these HTTP checks.",
+    "No browser hydration, keyboard/pointer/focus, responsive, theme or visual-equivalence proof.",
+    "No implemented saving/authentication, no consumer integration, no compatible-target certification.",
+    "Sanitized environment and read-only HTTP guard are not an OS filesystem/network sandbox.",
+    "Private vendor source and build outputs remain outside tracked kit source."
+  ]
+}

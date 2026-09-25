@@ -1,0 +1,1202 @@
+{
+  "schema_version": 1,
+  "id": "catalyst-settings-hardened-v3",
+  "base": "Reviewed font-bound Catalyst source-native reference; not the unchanged purchased archive",
+  "scope": "Complete selected source/config/public closure; excludes node_modules, generated .next, VCS, caches and unselected root extras. Not a target certification or save backend.",
+  "roots": [
+    "LICENSE.md",
+    "README.md",
+    "eslint.config.mjs",
+    "next-env.d.ts",
+    "next.config.mjs",
+    "package-lock.json",
+    "package.json",
+    "postcss.config.mjs",
+    "prettier.config.mjs",
+    "public",
+    "src",
+    "tsconfig.json"
+  ],
+  "changes": [
+    {
+      "path": "src/app/(app)/settings/address.tsx",
+      "original_sha256": "4c0bc2c0b9827c91d6cebe9dc3d4c3bd8c63d62154bafdded843a636ecb28b0f",
+      "sha256": "277992b0a600fa65281eedb154a9c9d560c75db7eb22ca5ab35783436018b04d"
+    },
+    {
+      "path": "src/app/(app)/settings/page.tsx",
+      "original_sha256": "1ca7f4e14738e917390815dc38d48047588eb324090d337f5c718b9d2ec6fa21",
+      "sha256": "05d7318bbae1ef8589bfd111f969e8ae5c5e0f2d71513bf075d3078108c16fcc"
+    },
+    {
+      "path": "src/app/(app)/settings/settings-form.tsx",
+      "original_sha256": null,
+      "sha256": "67ea7827bbb6ce60f8625b5bf79988e39f09219436eff80531542179f12835d8"
+    },
+    {
+      "path": "src/app/(app)/settings/settings-state.ts",
+      "original_sha256": null,
+      "sha256": "dcad9baf22c1aca0670176ef67a710ef389b03c5181060ccd44a358134d3c2ce"
+    },
+    {
+      "path": "src/components/listbox.tsx",
+      "original_sha256": "15789fda48026a66b0ce6cdcd82583ec0ce75bedd8bdc1c5a43001e5813c0eac",
+      "sha256": "b7108081c18a756ce15a8c55ddef7ae2fcc87f9450613c444d0b397d6f4bbc52"
+    }
+  ],
+  "original_files": [
+    {
+      "path": "LICENSE.md",
+      "size": 9406,
+      "sha256": "2e77bc2745d057d86f32d7ec45bba54d0705e7949d5faccd467017a1c76a14ff"
+    },
+    {
+      "path": "README.md",
+      "size": 263,
+      "sha256": "ec3a7d5ad9684d08073ff85600fe25b5e041cdc0120a45675b0aa56ae1ccfcf9"
+    },
+    {
+      "path": "eslint.config.mjs",
+      "size": 467,
+      "sha256": "71dc5357524ed8fec7fdc2541f27e751ecb3f0bd98f5747a2d5fcb028249c9ad"
+    },
+    {
+      "path": "next-env.d.ts",
+      "size": 247,
+      "sha256": "7b550dda9686c16f36a17bf9051d5dbf31e98555b30d114ac49fc49a1e712651"
+    },
+    {
+      "path": "next.config.mjs",
+      "size": 90,
+      "sha256": "3927bd44e2d345db871e63bcbb926ae0c038ff1da09dd55ac0ebb6dad3590b38"
+    },
+    {
+      "path": "package-lock.json",
+      "size": 238561,
+      "sha256": "3a9469d59cb2c862c35735c5153f43b7ddf27c9f30c867cf64838df1f9b66b3c"
+    },
+    {
+      "path": "package.json",
+      "size": 914,
+      "sha256": "04f5b915bdd1b1ef041291a7a30b4a2af1e0edb43156ab876b2f27ae72c56c53"
+    },
+    {
+      "path": "postcss.config.mjs",
+      "size": 144,
+      "sha256": "54b5708e687b8c9ecc8dbeebf29801dbec1213f890c5e018d7ca9c1541a6f7e3"
+    },
+    {
+      "path": "prettier.config.mjs",
+      "size": 330,
+      "sha256": "173c1f21d0aea9ba8e58a5ee1d69f0cae98019f10cd47bd7b877ce6b4510fda9"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/LICENSE.txt",
+      "size": 4380,
+      "sha256": "262481e844521b326f5ecd053e59b98c8b2da78c8ee1bdbb6e8174305e54935a"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/Inter-Black.woff2",
+      "size": 111668,
+      "sha256": "12ed0eed6749099b46c7b2e8198dc30c2d7e0f2a4e5fb1d12f0b6ae2c4f33cc4"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/Inter-BlackItalic.woff2",
+      "size": 118420,
+      "sha256": "308e101141e9dee3b6b121614da03969eb8179886975a9eeb5348021b04368fe"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/Inter-Bold.woff2",
+      "size": 114840,
+      "sha256": "fa888127b6da015b65569f0351f3b5c391ad928904951f1c20e9f8462a8d95ea"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/Inter-BoldItalic.woff2",
+      "size": 121500,
+      "sha256": "4a10532d76c90c4597c0ad4bfc9284600e597d3012dd1ec16c1d44e0ad0058ab"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/Inter-ExtraBold.woff2",
+      "size": 114856,
+      "sha256": "6f75025856f8db1b2186e9cb89be9de9894932c8b7b20f4df5e65916ff714e34"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/Inter-ExtraBoldItalic.woff2",
+      "size": 121516,
+      "sha256": "53bb20ba292e2ac28a0777bf0f56f31b98be432a3cc04359e2eb608c758349c7"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/Inter-ExtraLight.woff2",
+      "size": 112728,
+      "sha256": "ba4fc81dbb25871f1bcabc664b1e37703fca0a05f7248a923e7db497c6d211cc"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/Inter-ExtraLightItalic.woff2",
+      "size": 119320,
+      "sha256": "38bad3a6a9ad1a7fcd8082e6423ba5e0baea16598f2cf304e527844f697e32b2"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/Inter-Italic.woff2",
+      "size": 117700,
+      "sha256": "2d078cb3bc8f934740d53b39dd23b0678f2f97477e49ec785dd9d8acd8b96bfc"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/Inter-Light.woff2",
+      "size": 112592,
+      "sha256": "e111a1e2ad914ccda9179b95e83fb10234dd52a1932e0b93c480476227983fd9"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/Inter-LightItalic.woff2",
+      "size": 119608,
+      "sha256": "050265b27d11860a26c66c054210852661abb5d229c4e0bb3525757a830f3790"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/Inter-Medium.woff2",
+      "size": 114348,
+      "sha256": "0ff3e94614e1493eb556314fd247ae6c4a85a7783b4cc86be539940cf83f2a48"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/Inter-MediumItalic.woff2",
+      "size": 120784,
+      "sha256": "1b0df503de488a92082a8c5d72ddc4c0229183ceb645ae1c25c2d0d63778517c"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/Inter-Regular.woff2",
+      "size": 111268,
+      "sha256": "e06f6b1bc553aaea4e4668023ed0ab0a147129c3107f511bc7d03d361b0ae085"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/Inter-SemiBold.woff2",
+      "size": 114812,
+      "sha256": "5cb7103e4e605989afebc03d989c79201e54b21b5183db33981f70db9178a301"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/Inter-SemiBoldItalic.woff2",
+      "size": 121416,
+      "sha256": "5e2a2bc3b5b9af0644f005693b10499dab18065d6aedbf46c8b74ccede27daeb"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/Inter-Thin.woff2",
+      "size": 109548,
+      "sha256": "70ca998635d9fc627dede8108f04d0989e6e03346183f0ad0917723e790f6973"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/Inter-ThinItalic.woff2",
+      "size": 116880,
+      "sha256": "930d666b74e0dc0c26c2821f5643b701f8a41beaf3bb95ce146298104f29169c"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterDisplay-Black.woff2",
+      "size": 110308,
+      "sha256": "05650cb83c70fda2a465eade0c0a1a6c25d37ec49df3cd74b7e564683f9729f1"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterDisplay-BlackItalic.woff2",
+      "size": 116820,
+      "sha256": "9746bf2bd43fe158144b83ede747088e80396daad55b9e6ea7232e0e22ee6fce"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterDisplay-Bold.woff2",
+      "size": 113556,
+      "sha256": "23bc37619593377e128f24660fedb2869d18277b4026cb46e5637be7643faf91"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterDisplay-BoldItalic.woff2",
+      "size": 120432,
+      "sha256": "5a0fe1f01b8777fab4a5f73c757743fa52579c7723b0291777625cb53c0a792a"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterDisplay-ExtraBold.woff2",
+      "size": 113636,
+      "sha256": "97eeee5a6f4f22fef1f607cf8836104d65968f03e59bc068a7586bf18364a8a7"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterDisplay-ExtraBoldItalic.woff2",
+      "size": 120712,
+      "sha256": "159b72ba47887032915420aa1445ae6768197e7ea732230182998f14d1cdb932"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterDisplay-ExtraLight.woff2",
+      "size": 113108,
+      "sha256": "9031b6d2a1a559753d50b311ecb463ddf7acaaae1d992a7e9b009620d8ce6def"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterDisplay-ExtraLightItalic.woff2",
+      "size": 120124,
+      "sha256": "e8d7078160ef92b82c2123857c1b3aefaa4a795a44b56df5fe3edade60d81576"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterDisplay-Italic.woff2",
+      "size": 116988,
+      "sha256": "dfd398d7372b61278e1505bfbdfc5ab0f6511ef887a47a2c90c13475eae585da"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterDisplay-Light.woff2",
+      "size": 112976,
+      "sha256": "01dd2d491ed863177e61f6e9458813baa85453ad97b32c5c1216927d4eebfe65"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterDisplay-LightItalic.woff2",
+      "size": 119692,
+      "sha256": "59b5be56306fd353d067aa6995c2c92bc3feb3ace73684d94e3c6e73fe2beaac"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterDisplay-Medium.woff2",
+      "size": 113476,
+      "sha256": "f1227907684853882ad00d7f97ce9f64bc17b89a2a291a7d4ec84fccfa442934"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterDisplay-MediumItalic.woff2",
+      "size": 120560,
+      "sha256": "6bf254c1a65c806c019f52818add66747da83595a314112917911bcf5fa2f5c5"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterDisplay-Regular.woff2",
+      "size": 108948,
+      "sha256": "3a9463a58c3e7ba1e3cd65b5dbff91a35c508ff78a104cd1121feff83efeb787"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterDisplay-SemiBold.woff2",
+      "size": 113772,
+      "sha256": "d9f63a82b826fb0117c92715c3a52a2d2247bc321bc39341420bf52d91e8277a"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterDisplay-SemiBoldItalic.woff2",
+      "size": 120468,
+      "sha256": "dd9d78314bdd5062302a73c7e2954008bab8158304fa7ac4f0ea8977b841dccb"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterDisplay-Thin.woff2",
+      "size": 108820,
+      "sha256": "21cfe42e7f1031b410e247ed199f43fc362415af81b3a8e442a97f63b4dbe327"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterDisplay-ThinItalic.woff2",
+      "size": 116040,
+      "sha256": "eff21589eacf1f6a596191038d7b47b4dd2455a096b175bb3572ecb6d026a611"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterVariable-Italic.woff2",
+      "size": 387976,
+      "sha256": "e564f652916db6c139570fefb9524a77c4d48f30c92928de9db19b6b5c7a262a"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterVariable.woff2",
+      "size": 352240,
+      "sha256": "693b77d4f32ee9b8bfc995589b5fad5e99adf2832738661f5402f9978429a8e3"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/inter.css",
+      "size": 11497,
+      "sha256": "46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441"
+    },
+    {
+      "path": "public/events/bear-hug-thumb.jpg",
+      "size": 8216,
+      "sha256": "6ce77097e7071af7cb786f89ad5aba83ebc236f0573e7c53a754d4402f2819c0"
+    },
+    {
+      "path": "public/events/bear-hug.jpg",
+      "size": 116942,
+      "sha256": "35eeb36de33d3e5a0332bb496180686b4a0373a33d7d0d989ae8239c8522709e"
+    },
+    {
+      "path": "public/events/bear-hug.webp",
+      "size": 322304,
+      "sha256": "dcec03ace386c25fc222b6df706b0ae7db9cefb99930e5c6e2c06eb57aae55e6"
+    },
+    {
+      "path": "public/events/six-fingers-thumb.jpg",
+      "size": 7110,
+      "sha256": "ff83ecca43ce68b8118bf87b5e8490f2538326e102a000d2c9bbcd0145daac74"
+    },
+    {
+      "path": "public/events/six-fingers.jpg",
+      "size": 110469,
+      "sha256": "a4e367a4f6a6b54bb157a01ebc4e9f0db2afff0ae9d75b0377ae789ccdc5c3fc"
+    },
+    {
+      "path": "public/events/six-fingers.webp",
+      "size": 674014,
+      "sha256": "513333fec507e80a7e320677d4b0c3951b56357ebb169532c8406ccab2fc198a"
+    },
+    {
+      "path": "public/events/viking-people-thumb.jpg",
+      "size": 10107,
+      "sha256": "8beb8febca2772d66d70ca334a325dcfe902bce0a5045c840587595913deea97"
+    },
+    {
+      "path": "public/events/viking-people.jpg",
+      "size": 87467,
+      "sha256": "e89a7d5ff6ad1d4ab380e4e22c655f24678cb68737b6ae10084b9ea1c47da3c5"
+    },
+    {
+      "path": "public/events/viking-people.webp",
+      "size": 286994,
+      "sha256": "e6ec510c09e14458fa19681283d50dbe822137838c1bedccb9b8e7b98ed89707"
+    },
+    {
+      "path": "public/events/we-all-look-the-same-thumb.jpg",
+      "size": 11518,
+      "sha256": "f218466f25082214bc704b30f418957cb0165217ca56f4d80db5c0cd700e40ed"
+    },
+    {
+      "path": "public/events/we-all-look-the-same.jpg",
+      "size": 129740,
+      "sha256": "ada1ad58531e56dcf39c6a46ec7a6d12ae1ba4cd22e30d3e3f10ec9351d26d87"
+    },
+    {
+      "path": "public/events/we-all-look-the-same.webp",
+      "size": 477920,
+      "sha256": "bec7437688c0fc9ea6317ddc6eea0dbe4c9b9cc050daf430e425cd59b37fa1cc"
+    },
+    {
+      "path": "public/flags/ca.svg",
+      "size": 874,
+      "sha256": "83d2005abdafa075317e61be9b244f5f7c3f70c8607e995e0f525aa2fba29eba"
+    },
+    {
+      "path": "public/flags/mx.svg",
+      "size": 2682,
+      "sha256": "70cb1357bb52b1017dd65e46f2e64f6a3d127eee62244a4df7cb6dd789577217"
+    },
+    {
+      "path": "public/flags/us.svg",
+      "size": 2415,
+      "sha256": "90f04831ac4bcedd88320fd9f42c0ab5a5d3fd82e4966240232c8fcbd72452c3"
+    },
+    {
+      "path": "public/teams/catalyst.svg",
+      "size": 705,
+      "sha256": "f78368ac8673995b5efb2654ab38e7374f89bd1ace804d16a7078c8f2083e05a"
+    },
+    {
+      "path": "public/users/erica.jpg",
+      "size": 9835,
+      "sha256": "be8c737e9b65e235d22c707ce0a928ba855bd5c662ace92801bbc26c5c37cfcf"
+    },
+    {
+      "path": "src/app/(app)/application-layout.tsx",
+      "size": 6157,
+      "sha256": "6a8fbda4bb61341835e4d834f2ec869d4830e173fdd79b233f9c566e532395d6"
+    },
+    {
+      "path": "src/app/(app)/events/[id]/page.tsx",
+      "size": 3496,
+      "sha256": "5473e65405f879bce37d139556f9383d79c6eac364185e19e79476c15f06424b"
+    },
+    {
+      "path": "src/app/(app)/events/page.tsx",
+      "size": 3420,
+      "sha256": "f7667ac4c19fc0feb15a000a169db694445e32f4dc3705636c9d7e8b5cb15e91"
+    },
+    {
+      "path": "src/app/(app)/layout.tsx",
+      "size": 292,
+      "sha256": "f9ce2fea81518d17cd447b30a5293f1fe68a99ca35d2466060fc903f1369e9da"
+    },
+    {
+      "path": "src/app/(app)/orders/[id]/page.tsx",
+      "size": 5791,
+      "sha256": "4f6c3237c7eb3f3fc6344682c03992196aadc0aadceb933f449e0aa0b5a0bf45"
+    },
+    {
+      "path": "src/app/(app)/orders/[id]/refund.tsx",
+      "size": 2215,
+      "sha256": "60dd812a5f74e6e85595eae01b7f8fc039204b4cb42e18b8eb98dbf1936c1d0b"
+    },
+    {
+      "path": "src/app/(app)/orders/page.tsx",
+      "size": 1810,
+      "sha256": "88b4b86947492547d0581779c4640ea7af6beed74f3915b5e0a93cefd7ee247b"
+    },
+    {
+      "path": "src/app/(app)/page.tsx",
+      "size": 2510,
+      "sha256": "bdd2b6153c703fea919f6c6c99cca3692ff902dae0d07174e52e6c3f047ea539"
+    },
+    {
+      "path": "src/app/(app)/settings/address.tsx",
+      "size": 1612,
+      "sha256": "4c0bc2c0b9827c91d6cebe9dc3d4c3bd8c63d62154bafdded843a636ecb28b0f"
+    },
+    {
+      "path": "src/app/(app)/settings/page.tsx",
+      "size": 3278,
+      "sha256": "1ca7f4e14738e917390815dc38d48047588eb324090d337f5c718b9d2ec6fa21"
+    },
+    {
+      "path": "src/app/(auth)/forgot-password/page.tsx",
+      "size": 1106,
+      "sha256": "1acda091b89c4d71cdb41d0f283958d84c25b0c7e1d906a69da1e25f0e588870"
+    },
+    {
+      "path": "src/app/(auth)/layout.tsx",
+      "size": 190,
+      "sha256": "78cfb5ac141c258b3e3baa05824197a29678ed02ed9f0e3b83d456a8798f17ea"
+    },
+    {
+      "path": "src/app/(auth)/login/page.tsx",
+      "size": 1518,
+      "sha256": "f34a3a58663958c7a1b5f6947c5042e7c81d2676ff106d1e7850ad910a1c0da9"
+    },
+    {
+      "path": "src/app/(auth)/register/page.tsx",
+      "size": 1715,
+      "sha256": "4ebd2e86ba8fcb0f321050346da035b47fc7ffdddd1b41c234d3a147332b84ee"
+    },
+    {
+      "path": "src/app/favicon.ico",
+      "size": 6518,
+      "sha256": "e838384198cfdfc07ae7867e16c22189dd59fa575dda4fc00e4f569961b1502f"
+    },
+    {
+      "path": "src/app/layout.tsx",
+      "size": 659,
+      "sha256": "d69e6ed489e1d2b48bf6c1a9b0c1761abd8eef2e299eec4feb482730512db0b1"
+    },
+    {
+      "path": "src/app/logo.tsx",
+      "size": 6440,
+      "sha256": "285cbfe487e6ecb1f88c2ec17487a824c07f83eb14f1d0f8bd2583f53998e48a"
+    },
+    {
+      "path": "src/app/stat.tsx",
+      "size": 617,
+      "sha256": "154fdced72398ab1f178f80a21314cbb966fedcbb84a77f3d8164facc4696819"
+    },
+    {
+      "path": "src/components/alert.tsx",
+      "size": 2909,
+      "sha256": "ea5333519f9e902061e4ebac387446d8504b5ca2c4fbcd2c9a4879a9feac1d34"
+    },
+    {
+      "path": "src/components/auth-layout.tsx",
+      "size": 402,
+      "sha256": "fac46c1b482ca97d24036a398b7a00ed8fed2dadf6085133c02cca676fbf748b"
+    },
+    {
+      "path": "src/components/avatar.tsx",
+      "size": 2548,
+      "sha256": "8980968af3606f27a949789a8708308dc59da74f7ae9c3d6e1c43c4c6042e650"
+    },
+    {
+      "path": "src/components/badge.tsx",
+      "size": 4386,
+      "sha256": "eb46a52149f22d1a1a4870bc2aec68c0083d8d8791a95285cf776c66be6eca69"
+    },
+    {
+      "path": "src/components/button.tsx",
+      "size": 12604,
+      "sha256": "ac4447d909d707a968d45c68cdd989acd773ec858edbf919b334e1f3eeada6aa"
+    },
+    {
+      "path": "src/components/checkbox.tsx",
+      "size": 9000,
+      "sha256": "c70a00e95a5e6fe2d7412215d522645600be48001adec7198c8c1e4594c94c47"
+    },
+    {
+      "path": "src/components/combobox.tsx",
+      "size": 8039,
+      "sha256": "e13f7d867eb7fa6906063c1810b51e554b44a0d8ca1bb870da1bac0b803924d5"
+    },
+    {
+      "path": "src/components/description-list.tsx",
+      "size": 1040,
+      "sha256": "8791323206696649505622910647a691f0e9516212b3cac39b4af537cf801f00"
+    },
+    {
+      "path": "src/components/dialog.tsx",
+      "size": 2885,
+      "sha256": "b9914fbc1c330c1b8e92d38ca5a7ea050f5715ceb108f351d4e41cd5adf1fe19"
+    },
+    {
+      "path": "src/components/divider.tsx",
+      "size": 424,
+      "sha256": "78185bd6eaecbe4b026a889cdeaad0ec4fa8e85ed7335346cebbc1e01d805d5b"
+    },
+    {
+      "path": "src/components/dropdown.tsx",
+      "size": 6830,
+      "sha256": "3ac4c32af62b5737303e244669eab9614518e89a5f7f8d19687a5624d9674978"
+    },
+    {
+      "path": "src/components/fieldset.tsx",
+      "size": 2589,
+      "sha256": "e8364f73c359b661847b857fed272253f6a2beae7cb6e988ef83efb29aee5d8c"
+    },
+    {
+      "path": "src/components/heading.tsx",
+      "size": 731,
+      "sha256": "81c9f11a472213ccc6f5638a290572c960438a6997d10a2503679168e094f720"
+    },
+    {
+      "path": "src/components/input.tsx",
+      "size": 4344,
+      "sha256": "37a542095374574011a4b9ca64eefa662b3c412c3a14a59d463bcab31896cf3c"
+    },
+    {
+      "path": "src/components/link.tsx",
+      "size": 416,
+      "sha256": "3e72a37a93796bdaf2cd9e05e63337c8c2829f017ad84687c0de69b58f644311"
+    },
+    {
+      "path": "src/components/listbox.tsx",
+      "size": 7809,
+      "sha256": "15789fda48026a66b0ce6cdcd82583ec0ce75bedd8bdc1c5a43001e5813c0eac"
+    },
+    {
+      "path": "src/components/navbar.tsx",
+      "size": 3645,
+      "sha256": "b4b61da02861c611e80e97d9a6ac3bc699156e8d93a5f2041c770eb731c8eb48"
+    },
+    {
+      "path": "src/components/pagination.tsx",
+      "size": 2875,
+      "sha256": "5adeb6afbf74037d95d8caf06576fc6090a74c33ff85407f5a5c5e1e0d563f01"
+    },
+    {
+      "path": "src/components/radio.tsx",
+      "size": 8246,
+      "sha256": "5234e4bbef7d6f90e6cb94d912bdc55c0637ff5b50a1f8027a2cf23cbcb7b844"
+    },
+    {
+      "path": "src/components/select.tsx",
+      "size": 3357,
+      "sha256": "576c044c4587131067246b5e77cdbcc9ecb4d62f2f21529a531e5526d0558c70"
+    },
+    {
+      "path": "src/components/sidebar-layout.tsx",
+      "size": 3349,
+      "sha256": "5c7e75d9d254f4370b1d479f7f7dbb48b9420b860167862222527ee7313478dc"
+    },
+    {
+      "path": "src/components/sidebar.tsx",
+      "size": 4882,
+      "sha256": "8dc6b8ce8695da642e776309d90945da1ec2cce58642d2c5b268eb8edee8f4fd"
+    },
+    {
+      "path": "src/components/stacked-layout.tsx",
+      "size": 3108,
+      "sha256": "ed277757829a8ca585d59f83291a37228e79e8b5f0689124cae385410d21859f"
+    },
+    {
+      "path": "src/components/switch.tsx",
+      "size": 9688,
+      "sha256": "11c002aa756c3f8aeda7db36e6f791151370f647e4e4c165ff28b1eda5425ccb"
+    },
+    {
+      "path": "src/components/table.tsx",
+      "size": 4098,
+      "sha256": "24493d05b532e30ca935157bd14f5e28ab0de1ebe88088c62dfec353d1603c35"
+    },
+    {
+      "path": "src/components/text.tsx",
+      "size": 1235,
+      "sha256": "698c201c294268790cc13a5e0832ad1e19c98447f6ec3f49892dea1328180e5c"
+    },
+    {
+      "path": "src/components/textarea.tsx",
+      "size": 2436,
+      "sha256": "febb2af242693ab7e7b383350cb749243f4261759693e675c2b21cb412b81ac2"
+    },
+    {
+      "path": "src/data.ts",
+      "size": 22237,
+      "sha256": "3445298fa2aa8b4f27e4777993b8df06cef839df5ed85fda36b554cc9cc732c4"
+    },
+    {
+      "path": "src/styles/tailwind.css",
+      "size": 115,
+      "sha256": "64b1a37f5d699d33ab9ed4f88f4a41c486accf25c9760b8ed4750134541cd2c4"
+    },
+    {
+      "path": "tsconfig.json",
+      "size": 630,
+      "sha256": "d199a1362d294ad18f53eb88c327842c238774b8f652844d1ac3ac49949cd6bb"
+    }
+  ],
+  "files": [
+    {
+      "path": "LICENSE.md",
+      "size": 9406,
+      "sha256": "2e77bc2745d057d86f32d7ec45bba54d0705e7949d5faccd467017a1c76a14ff"
+    },
+    {
+      "path": "README.md",
+      "size": 263,
+      "sha256": "ec3a7d5ad9684d08073ff85600fe25b5e041cdc0120a45675b0aa56ae1ccfcf9"
+    },
+    {
+      "path": "eslint.config.mjs",
+      "size": 467,
+      "sha256": "71dc5357524ed8fec7fdc2541f27e751ecb3f0bd98f5747a2d5fcb028249c9ad"
+    },
+    {
+      "path": "next-env.d.ts",
+      "size": 247,
+      "sha256": "7b550dda9686c16f36a17bf9051d5dbf31e98555b30d114ac49fc49a1e712651"
+    },
+    {
+      "path": "next.config.mjs",
+      "size": 90,
+      "sha256": "3927bd44e2d345db871e63bcbb926ae0c038ff1da09dd55ac0ebb6dad3590b38"
+    },
+    {
+      "path": "package-lock.json",
+      "size": 238561,
+      "sha256": "3a9469d59cb2c862c35735c5153f43b7ddf27c9f30c867cf64838df1f9b66b3c"
+    },
+    {
+      "path": "package.json",
+      "size": 914,
+      "sha256": "04f5b915bdd1b1ef041291a7a30b4a2af1e0edb43156ab876b2f27ae72c56c53"
+    },
+    {
+      "path": "postcss.config.mjs",
+      "size": 144,
+      "sha256": "54b5708e687b8c9ecc8dbeebf29801dbec1213f890c5e018d7ca9c1541a6f7e3"
+    },
+    {
+      "path": "prettier.config.mjs",
+      "size": 330,
+      "sha256": "173c1f21d0aea9ba8e58a5ee1d69f0cae98019f10cd47bd7b877ce6b4510fda9"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/LICENSE.txt",
+      "size": 4380,
+      "sha256": "262481e844521b326f5ecd053e59b98c8b2da78c8ee1bdbb6e8174305e54935a"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/Inter-Black.woff2",
+      "size": 111668,
+      "sha256": "12ed0eed6749099b46c7b2e8198dc30c2d7e0f2a4e5fb1d12f0b6ae2c4f33cc4"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/Inter-BlackItalic.woff2",
+      "size": 118420,
+      "sha256": "308e101141e9dee3b6b121614da03969eb8179886975a9eeb5348021b04368fe"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/Inter-Bold.woff2",
+      "size": 114840,
+      "sha256": "fa888127b6da015b65569f0351f3b5c391ad928904951f1c20e9f8462a8d95ea"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/Inter-BoldItalic.woff2",
+      "size": 121500,
+      "sha256": "4a10532d76c90c4597c0ad4bfc9284600e597d3012dd1ec16c1d44e0ad0058ab"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/Inter-ExtraBold.woff2",
+      "size": 114856,
+      "sha256": "6f75025856f8db1b2186e9cb89be9de9894932c8b7b20f4df5e65916ff714e34"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/Inter-ExtraBoldItalic.woff2",
+      "size": 121516,
+      "sha256": "53bb20ba292e2ac28a0777bf0f56f31b98be432a3cc04359e2eb608c758349c7"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/Inter-ExtraLight.woff2",
+      "size": 112728,
+      "sha256": "ba4fc81dbb25871f1bcabc664b1e37703fca0a05f7248a923e7db497c6d211cc"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/Inter-ExtraLightItalic.woff2",
+      "size": 119320,
+      "sha256": "38bad3a6a9ad1a7fcd8082e6423ba5e0baea16598f2cf304e527844f697e32b2"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/Inter-Italic.woff2",
+      "size": 117700,
+      "sha256": "2d078cb3bc8f934740d53b39dd23b0678f2f97477e49ec785dd9d8acd8b96bfc"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/Inter-Light.woff2",
+      "size": 112592,
+      "sha256": "e111a1e2ad914ccda9179b95e83fb10234dd52a1932e0b93c480476227983fd9"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/Inter-LightItalic.woff2",
+      "size": 119608,
+      "sha256": "050265b27d11860a26c66c054210852661abb5d229c4e0bb3525757a830f3790"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/Inter-Medium.woff2",
+      "size": 114348,
+      "sha256": "0ff3e94614e1493eb556314fd247ae6c4a85a7783b4cc86be539940cf83f2a48"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/Inter-MediumItalic.woff2",
+      "size": 120784,
+      "sha256": "1b0df503de488a92082a8c5d72ddc4c0229183ceb645ae1c25c2d0d63778517c"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/Inter-Regular.woff2",
+      "size": 111268,
+      "sha256": "e06f6b1bc553aaea4e4668023ed0ab0a147129c3107f511bc7d03d361b0ae085"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/Inter-SemiBold.woff2",
+      "size": 114812,
+      "sha256": "5cb7103e4e605989afebc03d989c79201e54b21b5183db33981f70db9178a301"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/Inter-SemiBoldItalic.woff2",
+      "size": 121416,
+      "sha256": "5e2a2bc3b5b9af0644f005693b10499dab18065d6aedbf46c8b74ccede27daeb"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/Inter-Thin.woff2",
+      "size": 109548,
+      "sha256": "70ca998635d9fc627dede8108f04d0989e6e03346183f0ad0917723e790f6973"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/Inter-ThinItalic.woff2",
+      "size": 116880,
+      "sha256": "930d666b74e0dc0c26c2821f5643b701f8a41beaf3bb95ce146298104f29169c"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterDisplay-Black.woff2",
+      "size": 110308,
+      "sha256": "05650cb83c70fda2a465eade0c0a1a6c25d37ec49df3cd74b7e564683f9729f1"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterDisplay-BlackItalic.woff2",
+      "size": 116820,
+      "sha256": "9746bf2bd43fe158144b83ede747088e80396daad55b9e6ea7232e0e22ee6fce"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterDisplay-Bold.woff2",
+      "size": 113556,
+      "sha256": "23bc37619593377e128f24660fedb2869d18277b4026cb46e5637be7643faf91"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterDisplay-BoldItalic.woff2",
+      "size": 120432,
+      "sha256": "5a0fe1f01b8777fab4a5f73c757743fa52579c7723b0291777625cb53c0a792a"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterDisplay-ExtraBold.woff2",
+      "size": 113636,
+      "sha256": "97eeee5a6f4f22fef1f607cf8836104d65968f03e59bc068a7586bf18364a8a7"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterDisplay-ExtraBoldItalic.woff2",
+      "size": 120712,
+      "sha256": "159b72ba47887032915420aa1445ae6768197e7ea732230182998f14d1cdb932"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterDisplay-ExtraLight.woff2",
+      "size": 113108,
+      "sha256": "9031b6d2a1a559753d50b311ecb463ddf7acaaae1d992a7e9b009620d8ce6def"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterDisplay-ExtraLightItalic.woff2",
+      "size": 120124,
+      "sha256": "e8d7078160ef92b82c2123857c1b3aefaa4a795a44b56df5fe3edade60d81576"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterDisplay-Italic.woff2",
+      "size": 116988,
+      "sha256": "dfd398d7372b61278e1505bfbdfc5ab0f6511ef887a47a2c90c13475eae585da"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterDisplay-Light.woff2",
+      "size": 112976,
+      "sha256": "01dd2d491ed863177e61f6e9458813baa85453ad97b32c5c1216927d4eebfe65"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterDisplay-LightItalic.woff2",
+      "size": 119692,
+      "sha256": "59b5be56306fd353d067aa6995c2c92bc3feb3ace73684d94e3c6e73fe2beaac"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterDisplay-Medium.woff2",
+      "size": 113476,
+      "sha256": "f1227907684853882ad00d7f97ce9f64bc17b89a2a291a7d4ec84fccfa442934"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterDisplay-MediumItalic.woff2",
+      "size": 120560,
+      "sha256": "6bf254c1a65c806c019f52818add66747da83595a314112917911bcf5fa2f5c5"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterDisplay-Regular.woff2",
+      "size": 108948,
+      "sha256": "3a9463a58c3e7ba1e3cd65b5dbff91a35c508ff78a104cd1121feff83efeb787"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterDisplay-SemiBold.woff2",
+      "size": 113772,
+      "sha256": "d9f63a82b826fb0117c92715c3a52a2d2247bc321bc39341420bf52d91e8277a"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterDisplay-SemiBoldItalic.woff2",
+      "size": 120468,
+      "sha256": "dd9d78314bdd5062302a73c7e2954008bab8158304fa7ac4f0ea8977b841dccb"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterDisplay-Thin.woff2",
+      "size": 108820,
+      "sha256": "21cfe42e7f1031b410e247ed199f43fc362415af81b3a8e442a97f63b4dbe327"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterDisplay-ThinItalic.woff2",
+      "size": 116040,
+      "sha256": "eff21589eacf1f6a596191038d7b47b4dd2455a096b175bb3572ecb6d026a611"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterVariable-Italic.woff2",
+      "size": 387976,
+      "sha256": "e564f652916db6c139570fefb9524a77c4d48f30c92928de9db19b6b5c7a262a"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/font-files/InterVariable.woff2",
+      "size": 352240,
+      "sha256": "693b77d4f32ee9b8bfc995589b5fad5e99adf2832738661f5402f9978429a8e3"
+    },
+    {
+      "path": "public/__appkit_reference_fonts/46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441/inter.css",
+      "size": 11497,
+      "sha256": "46d01c7807f64a24c1b2853b756ef15f3a2facdf4a9f066eaf5d39c0c9935441"
+    },
+    {
+      "path": "public/events/bear-hug-thumb.jpg",
+      "size": 8216,
+      "sha256": "6ce77097e7071af7cb786f89ad5aba83ebc236f0573e7c53a754d4402f2819c0"
+    },
+    {
+      "path": "public/events/bear-hug.jpg",
+      "size": 116942,
+      "sha256": "35eeb36de33d3e5a0332bb496180686b4a0373a33d7d0d989ae8239c8522709e"
+    },
+    {
+      "path": "public/events/bear-hug.webp",
+      "size": 322304,
+      "sha256": "dcec03ace386c25fc222b6df706b0ae7db9cefb99930e5c6e2c06eb57aae55e6"
+    },
+    {
+      "path": "public/events/six-fingers-thumb.jpg",
+      "size": 7110,
+      "sha256": "ff83ecca43ce68b8118bf87b5e8490f2538326e102a000d2c9bbcd0145daac74"
+    },
+    {
+      "path": "public/events/six-fingers.jpg",
+      "size": 110469,
+      "sha256": "a4e367a4f6a6b54bb157a01ebc4e9f0db2afff0ae9d75b0377ae789ccdc5c3fc"
+    },
+    {
+      "path": "public/events/six-fingers.webp",
+      "size": 674014,
+      "sha256": "513333fec507e80a7e320677d4b0c3951b56357ebb169532c8406ccab2fc198a"
+    },
+    {
+      "path": "public/events/viking-people-thumb.jpg",
+      "size": 10107,
+      "sha256": "8beb8febca2772d66d70ca334a325dcfe902bce0a5045c840587595913deea97"
+    },
+    {
+      "path": "public/events/viking-people.jpg",
+      "size": 87467,
+      "sha256": "e89a7d5ff6ad1d4ab380e4e22c655f24678cb68737b6ae10084b9ea1c47da3c5"
+    },
+    {
+      "path": "public/events/viking-people.webp",
+      "size": 286994,
+      "sha256": "e6ec510c09e14458fa19681283d50dbe822137838c1bedccb9b8e7b98ed89707"
+    },
+    {
+      "path": "public/events/we-all-look-the-same-thumb.jpg",
+      "size": 11518,
+      "sha256": "f218466f25082214bc704b30f418957cb0165217ca56f4d80db5c0cd700e40ed"
+    },
+    {
+      "path": "public/events/we-all-look-the-same.jpg",
+      "size": 129740,
+      "sha256": "ada1ad58531e56dcf39c6a46ec7a6d12ae1ba4cd22e30d3e3f10ec9351d26d87"
+    },
+    {
+      "path": "public/events/we-all-look-the-same.webp",
+      "size": 477920,
+      "sha256": "bec7437688c0fc9ea6317ddc6eea0dbe4c9b9cc050daf430e425cd59b37fa1cc"
+    },
+    {
+      "path": "public/flags/ca.svg",
+      "size": 874,
+      "sha256": "83d2005abdafa075317e61be9b244f5f7c3f70c8607e995e0f525aa2fba29eba"
+    },
+    {
+      "path": "public/flags/mx.svg",
+      "size": 2682,
+      "sha256": "70cb1357bb52b1017dd65e46f2e64f6a3d127eee62244a4df7cb6dd789577217"
+    },
+    {
+      "path": "public/flags/us.svg",
+      "size": 2415,
+      "sha256": "90f04831ac4bcedd88320fd9f42c0ab5a5d3fd82e4966240232c8fcbd72452c3"
+    },
+    {
+      "path": "public/teams/catalyst.svg",
+      "size": 705,
+      "sha256": "f78368ac8673995b5efb2654ab38e7374f89bd1ace804d16a7078c8f2083e05a"
+    },
+    {
+      "path": "public/users/erica.jpg",
+      "size": 9835,
+      "sha256": "be8c737e9b65e235d22c707ce0a928ba855bd5c662ace92801bbc26c5c37cfcf"
+    },
+    {
+      "path": "src/app/(app)/application-layout.tsx",
+      "size": 6157,
+      "sha256": "6a8fbda4bb61341835e4d834f2ec869d4830e173fdd79b233f9c566e532395d6"
+    },
+    {
+      "path": "src/app/(app)/events/[id]/page.tsx",
+      "size": 3496,
+      "sha256": "5473e65405f879bce37d139556f9383d79c6eac364185e19e79476c15f06424b"
+    },
+    {
+      "path": "src/app/(app)/events/page.tsx",
+      "size": 3420,
+      "sha256": "f7667ac4c19fc0feb15a000a169db694445e32f4dc3705636c9d7e8b5cb15e91"
+    },
+    {
+      "path": "src/app/(app)/layout.tsx",
+      "size": 292,
+      "sha256": "f9ce2fea81518d17cd447b30a5293f1fe68a99ca35d2466060fc903f1369e9da"
+    },
+    {
+      "path": "src/app/(app)/orders/[id]/page.tsx",
+      "size": 5791,
+      "sha256": "4f6c3237c7eb3f3fc6344682c03992196aadc0aadceb933f449e0aa0b5a0bf45"
+    },
+    {
+      "path": "src/app/(app)/orders/[id]/refund.tsx",
+      "size": 2215,
+      "sha256": "60dd812a5f74e6e85595eae01b7f8fc039204b4cb42e18b8eb98dbf1936c1d0b"
+    },
+    {
+      "path": "src/app/(app)/orders/page.tsx",
+      "size": 1810,
+      "sha256": "88b4b86947492547d0581779c4640ea7af6beed74f3915b5e0a93cefd7ee247b"
+    },
+    {
+      "path": "src/app/(app)/page.tsx",
+      "size": 2510,
+      "sha256": "bdd2b6153c703fea919f6c6c99cca3692ff902dae0d07174e52e6c3f047ea539"
+    },
+    {
+      "path": "src/app/(app)/settings/address.tsx",
+      "size": 2126,
+      "sha256": "277992b0a600fa65281eedb154a9c9d560c75db7eb22ca5ab35783436018b04d"
+    },
+    {
+      "path": "src/app/(app)/settings/page.tsx",
+      "size": 207,
+      "sha256": "05d7318bbae1ef8589bfd111f969e8ae5c5e0f2d71513bf075d3078108c16fcc"
+    },
+    {
+      "path": "src/app/(app)/settings/settings-form.tsx",
+      "size": 7447,
+      "sha256": "67ea7827bbb6ce60f8625b5bf79988e39f09219436eff80531542179f12835d8"
+    },
+    {
+      "path": "src/app/(app)/settings/settings-state.ts",
+      "size": 1128,
+      "sha256": "dcad9baf22c1aca0670176ef67a710ef389b03c5181060ccd44a358134d3c2ce"
+    },
+    {
+      "path": "src/app/(auth)/forgot-password/page.tsx",
+      "size": 1106,
+      "sha256": "1acda091b89c4d71cdb41d0f283958d84c25b0c7e1d906a69da1e25f0e588870"
+    },
+    {
+      "path": "src/app/(auth)/layout.tsx",
+      "size": 190,
+      "sha256": "78cfb5ac141c258b3e3baa05824197a29678ed02ed9f0e3b83d456a8798f17ea"
+    },
+    {
+      "path": "src/app/(auth)/login/page.tsx",
+      "size": 1518,
+      "sha256": "f34a3a58663958c7a1b5f6947c5042e7c81d2676ff106d1e7850ad910a1c0da9"
+    },
+    {
+      "path": "src/app/(auth)/register/page.tsx",
+      "size": 1715,
+      "sha256": "4ebd2e86ba8fcb0f321050346da035b47fc7ffdddd1b41c234d3a147332b84ee"
+    },
+    {
+      "path": "src/app/favicon.ico",
+      "size": 6518,
+      "sha256": "e838384198cfdfc07ae7867e16c22189dd59fa575dda4fc00e4f569961b1502f"
+    },
+    {
+      "path": "src/app/layout.tsx",
+      "size": 659,
+      "sha256": "d69e6ed489e1d2b48bf6c1a9b0c1761abd8eef2e299eec4feb482730512db0b1"
+    },
+    {
+      "path": "src/app/logo.tsx",
+      "size": 6440,
+      "sha256": "285cbfe487e6ecb1f88c2ec17487a824c07f83eb14f1d0f8bd2583f53998e48a"
+    },
+    {
+      "path": "src/app/stat.tsx",
+      "size": 617,
+      "sha256": "154fdced72398ab1f178f80a21314cbb966fedcbb84a77f3d8164facc4696819"
+    },
+    {
+      "path": "src/components/alert.tsx",
+      "size": 2909,
+      "sha256": "ea5333519f9e902061e4ebac387446d8504b5ca2c4fbcd2c9a4879a9feac1d34"
+    },
+    {
+      "path": "src/components/auth-layout.tsx",
+      "size": 402,
+      "sha256": "fac46c1b482ca97d24036a398b7a00ed8fed2dadf6085133c02cca676fbf748b"
+    },
+    {
+      "path": "src/components/avatar.tsx",
+      "size": 2548,
+      "sha256": "8980968af3606f27a949789a8708308dc59da74f7ae9c3d6e1c43c4c6042e650"
+    },
+    {
+      "path": "src/components/badge.tsx",
+      "size": 4386,
+      "sha256": "eb46a52149f22d1a1a4870bc2aec68c0083d8d8791a95285cf776c66be6eca69"
+    },
+    {
+      "path": "src/components/button.tsx",
+      "size": 12604,
+      "sha256": "ac4447d909d707a968d45c68cdd989acd773ec858edbf919b334e1f3eeada6aa"
+    },
+    {
+      "path": "src/components/checkbox.tsx",
+      "size": 9000,
+      "sha256": "c70a00e95a5e6fe2d7412215d522645600be48001adec7198c8c1e4594c94c47"
+    },
+    {
+      "path": "src/components/combobox.tsx",
+      "size": 8039,
+      "sha256": "e13f7d867eb7fa6906063c1810b51e554b44a0d8ca1bb870da1bac0b803924d5"
+    },
+    {
+      "path": "src/components/description-list.tsx",
+      "size": 1040,
+      "sha256": "8791323206696649505622910647a691f0e9516212b3cac39b4af537cf801f00"
+    },
+    {
+      "path": "src/components/dialog.tsx",
+      "size": 2885,
+      "sha256": "b9914fbc1c330c1b8e92d38ca5a7ea050f5715ceb108f351d4e41cd5adf1fe19"
+    },
+    {
+      "path": "src/components/divider.tsx",
+      "size": 424,
+      "sha256": "78185bd6eaecbe4b026a889cdeaad0ec4fa8e85ed7335346cebbc1e01d805d5b"
+    },
+    {
+      "path": "src/components/dropdown.tsx",
+      "size": 6830,
+      "sha256": "3ac4c32af62b5737303e244669eab9614518e89a5f7f8d19687a5624d9674978"
+    },
+    {
+      "path": "src/components/fieldset.tsx",
+      "size": 2589,
+      "sha256": "e8364f73c359b661847b857fed272253f6a2beae7cb6e988ef83efb29aee5d8c"
+    },
+    {
+      "path": "src/components/heading.tsx",
+      "size": 731,
+      "sha256": "81c9f11a472213ccc6f5638a290572c960438a6997d10a2503679168e094f720"
+    },
+    {
+      "path": "src/components/input.tsx",
+      "size": 4344,
+      "sha256": "37a542095374574011a4b9ca64eefa662b3c412c3a14a59d463bcab31896cf3c"
+    },
+    {
+      "path": "src/components/link.tsx",
+      "size": 416,
+      "sha256": "3e72a37a93796bdaf2cd9e05e63337c8c2829f017ad84687c0de69b58f644311"
+    },
+    {
+      "path": "src/components/listbox.tsx",
+      "size": 7882,
+      "sha256": "b7108081c18a756ce15a8c55ddef7ae2fcc87f9450613c444d0b397d6f4bbc52"
+    },
+    {
+      "path": "src/components/navbar.tsx",
+      "size": 3645,
+      "sha256": "b4b61da02861c611e80e97d9a6ac3bc699156e8d93a5f2041c770eb731c8eb48"
+    },
+    {
+      "path": "src/components/pagination.tsx",
+      "size": 2875,
+      "sha256": "5adeb6afbf74037d95d8caf06576fc6090a74c33ff85407f5a5c5e1e0d563f01"
+    },
+    {
+      "path": "src/components/radio.tsx",
+      "size": 8246,
+      "sha256": "5234e4bbef7d6f90e6cb94d912bdc55c0637ff5b50a1f8027a2cf23cbcb7b844"
+    },
+    {
+      "path": "src/components/select.tsx",
+      "size": 3357,
+      "sha256": "576c044c4587131067246b5e77cdbcc9ecb4d62f2f21529a531e5526d0558c70"
+    },
+    {
+      "path": "src/components/sidebar-layout.tsx",
+      "size": 3349,
+      "sha256": "5c7e75d9d254f4370b1d479f7f7dbb48b9420b860167862222527ee7313478dc"
+    },
+    {
+      "path": "src/components/sidebar.tsx",
+      "size": 4882,
+      "sha256": "8dc6b8ce8695da642e776309d90945da1ec2cce58642d2c5b268eb8edee8f4fd"
+    },
+    {
+      "path": "src/components/stacked-layout.tsx",
+      "size": 3108,
+      "sha256": "ed277757829a8ca585d59f83291a37228e79e8b5f0689124cae385410d21859f"
+    },
+    {
+      "path": "src/components/switch.tsx",
+      "size": 9688,
+      "sha256": "11c002aa756c3f8aeda7db36e6f791151370f647e4e4c165ff28b1eda5425ccb"
+    },
+    {
+      "path": "src/components/table.tsx",
+      "size": 4098,
+      "sha256": "24493d05b532e30ca935157bd14f5e28ab0de1ebe88088c62dfec353d1603c35"
+    },
+    {
+      "path": "src/components/text.tsx",
+      "size": 1235,
+      "sha256": "698c201c294268790cc13a5e0832ad1e19c98447f6ec3f49892dea1328180e5c"
+    },
+    {
+      "path": "src/components/textarea.tsx",
+      "size": 2436,
+      "sha256": "febb2af242693ab7e7b383350cb749243f4261759693e675c2b21cb412b81ac2"
+    },
+    {
+      "path": "src/data.ts",
+      "size": 22237,
+      "sha256": "3445298fa2aa8b4f27e4777993b8df06cef839df5ed85fda36b554cc9cc732c4"
+    },
+    {
+      "path": "src/styles/tailwind.css",
+      "size": 115,
+      "sha256": "64b1a37f5d699d33ab9ed4f88f4a41c486accf25c9760b8ed4750134541cd2c4"
+    },
+    {
+      "path": "tsconfig.json",
+      "size": 630,
+      "sha256": "d199a1362d294ad18f53eb88c327842c238774b8f652844d1ac3ac49949cd6bb"
+    }
+  ],
+  "patch_sha256": "c846a5017fd861ec48189a73a230b37696b81658e0222a376605df8272596082"
+}

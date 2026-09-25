@@ -1,0 +1,341 @@
+package converted
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"io"
+	"reflect"
+	"sort"
+	"strings"
+	"testing"
+
+	"golang.org/x/net/html"
+)
+
+type navigationFailWriter struct{ err error }
+
+func (w navigationFailWriter) Write([]byte) (int, error) { return 0, w.err }
+
+func fixtureNavigation(t *testing.T) PageNavigation {
+	t.Helper()
+	var data PageNavigation
+	if err := json.Unmarshal([]byte(sourceDefaults), &data); err != nil {
+		t.Fatalf("decode source defaults: %v", err)
+	}
+	return data
+}
+
+func operationalNavigation(t *testing.T) PageNavigation {
+	t.Helper()
+	data := fixtureNavigation(t)
+	for i := range data.Items {
+		data.Items[i].URL = "/fixture/route-" + data.Items[i].Key
+	}
+	return data
+}
+
+func renderNavigation(t *testing.T, component interface {
+	Render(context.Context, io.Writer) error
+}) string {
+	t.Helper()
+	var out bytes.Buffer
+	if err := component.Render(context.Background(), &out); err != nil {
+		t.Fatal(err)
+	}
+	return out.String()
+}
+
+func parseNavigation(t *testing.T, markup string) *html.Node {
+	t.Helper()
+	doc, err := html.Parse(strings.NewReader(markup))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return doc
+}
+
+type canonicalNavigationNode struct {
+	Type      html.NodeType
+	Namespace string
+	Data      string
+	Attr      []html.Attribute
+	Children  []canonicalNavigationNode
+}
+
+func canonicalNavigation(n *html.Node) canonicalNavigationNode {
+	attrs := append([]html.Attribute(nil), n.Attr...)
+	sort.Slice(attrs, func(i, j int) bool {
+		a, b := attrs[i], attrs[j]
+		if a.Namespace != b.Namespace {
+			return a.Namespace < b.Namespace
+		}
+		if a.Key != b.Key {
+			return a.Key < b.Key
+		}
+		return a.Val < b.Val
+	})
+	got := canonicalNavigationNode{Type: n.Type, Namespace: n.Namespace, Data: n.Data, Attr: attrs}
+	for child := n.FirstChild; child != nil; child = child.NextSibling {
+		got.Children = append(got.Children, canonicalNavigation(child))
+	}
+	return got
+}
+
+func navigationWalk(n *html.Node, fn func(*html.Node)) {
+	fn(n)
+	for child := n.FirstChild; child != nil; child = child.NextSibling {
+		navigationWalk(child, fn)
+	}
+}
+
+func navigationAttr(n *html.Node, key string) (string, bool) {
+	for _, a := range n.Attr {
+		if a.Namespace == "" && a.Key == key {
+			return a.Val, true
+		}
+	}
+	return "", false
+}
+
+func navigationElements(doc *html.Node, name string) []*html.Node {
+	var found []*html.Node
+	navigationWalk(doc, func(n *html.Node) {
+		if n.Type == html.ElementNode && n.Namespace == "" && n.Data == name {
+			found = append(found, n)
+		}
+	})
+	return found
+}
+
+func navigationTextContent(n *html.Node) string {
+	var out strings.Builder
+	navigationWalk(n, func(child *html.Node) {
+		if child.Type == html.TextNode {
+			out.WriteString(child.Data)
+		}
+	})
+	return out.String()
+}
+
+func requireNavigationError(t *testing.T, data PageNavigation) {
+	t.Helper()
+	if component, err := NewPageNavigationLinks(data); err == nil || component != nil {
+		t.Fatal("invalid navigation accepted")
+	}
+}
+
+func TestRuntimeSourceDefaultsAndExactDOMParity(t *testing.T) {
+	data := fixtureNavigation(t)
+	if len(data.Items) != 4 || data.CurrentKey == "" || data.NavLabel == "" || data.SelectLabel == "" {
+		t.Fatalf("incomplete source defaults: %#v", data)
+	}
+	current := 0
+	for _, item := range data.Items {
+		if item.Key == "" || item.Label == "" || item.URL != "#" {
+			t.Fatalf("invalid source item: %#v", item)
+		}
+		if item.Key == data.CurrentKey {
+			current++
+		}
+	}
+	if current != 1 {
+		t.Fatalf("current default count = %d", current)
+	}
+	component, err := NewPageNavigationReference(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := canonicalNavigation(parseNavigation(t, renderNavigation(t, component)))
+	want := canonicalNavigation(parseNavigation(t, sourceExpected))
+	if !reflect.DeepEqual(got, want) {
+		t.Fatal("source/reference namespace-aware DOM mismatch")
+	}
+}
+
+func TestRuntimeGETAndLinksAreStructurallyDistinct(t *testing.T) {
+	data := operationalNavigation(t)
+	get, err := NewPageNavigationGET(data, NavigationGET{Action: "/fixture/choose", FieldName: "page_key", SubmitLabel: "Open fixture page"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	getDoc := parseNavigation(t, renderNavigation(t, get))
+	forms, selects, buttons := navigationElements(getDoc, "form"), navigationElements(getDoc, "select"), navigationElements(getDoc, "button")
+	if len(forms) != 1 || len(selects) != 1 || len(buttons) != 1 {
+		t.Fatalf("GET controls: forms=%d selects=%d buttons=%d", len(forms), len(selects), len(buttons))
+	}
+	if action, _ := navigationAttr(forms[0], "action"); action != "/fixture/choose" {
+		t.Fatalf("GET action = %q", action)
+	}
+	if method, _ := navigationAttr(forms[0], "method"); method != "get" {
+		t.Fatalf("GET method = %q", method)
+	}
+	if name, _ := navigationAttr(selects[0], "name"); name != "page_key" {
+		t.Fatalf("GET field = %q", name)
+	}
+	assertNavigationBindings(t, getDoc, data, true, 1)
+
+	links, err := NewPageNavigationLinks(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	linksDoc := parseNavigation(t, renderNavigation(t, links))
+	if len(navigationElements(linksDoc, "form")) != 0 || len(navigationElements(linksDoc, "select")) != 0 || len(navigationElements(linksDoc, "button")) != 0 {
+		t.Fatal("Links variant retained GET controls")
+	}
+	assertNavigationBindings(t, linksDoc, data, false, 2)
+}
+
+func assertNavigationBindings(t *testing.T, doc *html.Node, data PageNavigation, expectOptions bool, linkCopies int) {
+	t.Helper()
+	anchors, options := navigationElements(doc, "a"), navigationElements(doc, "option")
+	if len(anchors) != len(data.Items)*linkCopies {
+		t.Fatalf("anchor count = %d", len(anchors))
+	}
+	if expectOptions && len(options) != len(data.Items) {
+		t.Fatalf("option count = %d", len(options))
+	}
+	for i, item := range data.Items {
+		if expectOptions {
+			if value, _ := navigationAttr(options[i], "value"); value != item.Key || navigationTextContent(options[i]) != item.Label {
+				t.Fatalf("option %d binding mismatch", i)
+			}
+			_, selected := navigationAttr(options[i], "selected")
+			if selected != (item.Key == data.CurrentKey) {
+				t.Fatalf("option %s current mismatch", item.Key)
+			}
+		}
+		for copy := 0; copy < linkCopies; copy++ {
+			a := anchors[copy*len(data.Items)+i]
+			href, _ := navigationAttr(a, "href")
+			_, current := navigationAttr(a, "aria-current")
+			if href != item.URL || navigationTextContent(a) != item.Label || current != (item.Key == data.CurrentKey) {
+				t.Fatalf("link %s copy %d binding mismatch", item.Key, copy)
+			}
+			if role, ok := navigationAttr(a, "role"); ok && role == "tab" {
+				t.Fatal("page link incorrectly gained role=tab")
+			}
+		}
+	}
+}
+
+func TestRuntimeEscapesLabelsWithoutInventingElements(t *testing.T) {
+	data := operationalNavigation(t)
+	data.NavLabel = `<img src=x> Fixture navigation & peers`
+	data.SelectLabel = `<script>select()</script>`
+	data.Items[0].Label = `<script>unsafe()</script> & "fixture"`
+	component, err := NewPageNavigationGET(data, NavigationGET{Action: "/fixture/choose", FieldName: "page_key", SubmitLabel: `<img src=x> Open & inspect`})
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc := parseNavigation(t, renderNavigation(t, component))
+	if len(navigationElements(doc, "script")) != 0 || len(navigationElements(doc, "img")) != 0 {
+		t.Fatal("bound label created active elements")
+	}
+	if !strings.Contains(navigationTextContent(doc), data.Items[0].Label) || !strings.Contains(navigationTextContent(doc), `<img src=x> Open & inspect`) {
+		t.Fatal("escaped label text changed")
+	}
+}
+
+func TestRuntimeBoundsKeysPathsAndCurrentRefusals(t *testing.T) {
+	base := operationalNavigation(t)
+	for _, count := range []int{1, 13} {
+		data := base
+		data.Items = append([]NavigationItem(nil), base.Items...)
+		for len(data.Items) < count {
+			i := len(data.Items)
+			data.Items = append(data.Items, NavigationItem{Key: "extra" + strings.Repeat("x", i), Label: "Invented extra", URL: "/fixture/extra" + strings.Repeat("x", i)})
+		}
+		data.Items = data.Items[:count]
+		requireNavigationError(t, data)
+	}
+	for _, bad := range []string{"", "1leading", "bad key", "bad/slash", strings.Repeat("a", 65), string([]byte{0xff})} {
+		data := base
+		data.Items = append([]NavigationItem(nil), base.Items...)
+		data.Items[0].Key = bad
+		requireNavigationError(t, data)
+	}
+	for _, bad := range []string{"", "relative", "//host", "/with?query", "/with#fragment", "/encoded%2fpath", "/back\\slash", "/repeat//slash", "/dot/../segment", "https://example.test/fixture", strings.Repeat("/", 513)} {
+		data := base
+		data.Items = append([]NavigationItem(nil), base.Items...)
+		data.Items[0].URL = bad
+		requireNavigationError(t, data)
+	}
+	for _, mutate := range []func(*PageNavigation){
+		func(d *PageNavigation) { d.Items[1].Key = d.Items[0].Key },
+		func(d *PageNavigation) { d.Items[1].URL = d.Items[0].URL },
+		func(d *PageNavigation) { d.CurrentKey = "missing" },
+		func(d *PageNavigation) { d.NavLabel = " " },
+		func(d *PageNavigation) { d.SelectLabel = "bad\nlabel" },
+		func(d *PageNavigation) { d.Items[0].Label = strings.Repeat("x", 257) },
+	} {
+		data := base
+		data.Items = append([]NavigationItem(nil), base.Items...)
+		mutate(&data)
+		requireNavigationError(t, data)
+	}
+	for _, count := range []int{2, 12} {
+		data := PageNavigation{CurrentKey: "item1", NavLabel: "Fixture pages", SelectLabel: "Choose fixture page"}
+		for i := 1; i <= count; i++ {
+			data.Items = append(data.Items, NavigationItem{Key: "item" + string(rune('A'+i-1)), Label: strings.Repeat("x", 256), URL: "/fixture/item" + string(rune('A'+i-1))})
+		}
+		data.CurrentKey = data.Items[0].Key
+		if _, err := NewPageNavigationLinks(data); err != nil {
+			t.Fatalf("valid bound %d rejected: %v", count, err)
+		}
+	}
+}
+
+func TestRuntimeReferenceIsOnlyVariantAllowingPlaceholder(t *testing.T) {
+	data := fixtureNavigation(t)
+	if _, err := NewPageNavigationReference(data); err != nil {
+		t.Fatalf("reference rejected source placeholder: %v", err)
+	}
+	if component, err := NewPageNavigationLinks(data); err == nil || component != nil {
+		t.Fatal("Links accepted placeholder destination")
+	}
+	if component, err := NewPageNavigationGET(data, NavigationGET{Action: "/fixture/choose", FieldName: "page_key", SubmitLabel: "Open"}); err == nil || component != nil {
+		t.Fatal("GET accepted placeholder destination")
+	}
+	operational := operationalNavigation(t)
+	for _, form := range []NavigationGET{
+		{Action: "#", FieldName: "page_key", SubmitLabel: "Open"},
+		{Action: "/fixture/choose", FieldName: "bad field", SubmitLabel: "Open"},
+		{Action: "/fixture/choose", FieldName: "page_key", SubmitLabel: " "},
+	} {
+		if component, err := NewPageNavigationGET(operational, form); err == nil || component != nil {
+			t.Fatalf("GET accepted invalid contract: %#v", form)
+		}
+	}
+}
+
+func TestRuntimeSnapshotsCallerItems(t *testing.T) {
+	data := operationalNavigation(t)
+	wantLabel, wantURL := data.Items[0].Label, data.Items[0].URL
+	component, err := NewPageNavigationLinks(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data.Items[0].Label, data.Items[0].URL = "Mutated after construction", "/mutated"
+	out := renderNavigation(t, component)
+	if !strings.Contains(out, wantLabel) || !strings.Contains(out, wantURL) || strings.Contains(out, "Mutated after construction") || strings.Contains(out, `/mutated`) {
+		t.Fatal("render observed caller mutation")
+	}
+}
+
+func TestRuntimeWriterFailureAndCancellation(t *testing.T) {
+	component, err := NewPageNavigationLinks(operationalNavigation(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sentinel := errors.New("writer failure")
+	if err := component.Render(context.Background(), navigationFailWriter{sentinel}); !errors.Is(err, sentinel) {
+		t.Fatalf("writer error lost: %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := component.Render(ctx, &bytes.Buffer{}); !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancellation lost: %v", err)
+	}
+}

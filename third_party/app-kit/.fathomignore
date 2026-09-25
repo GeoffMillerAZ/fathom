@@ -7,3 +7,6 @@ tmp/
 node_modules/
 vendor/
 data/
+# Generated root executables previously polluted reference results (O2/O5).
+/appkit-mcp
+/gallery

@@ -1,136 +1,231 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/tokens"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 func TestRetargetUtility(t *testing.T) {
 	cases := []struct {
 		in     string
-		action retargetAction
-		result string
+		review bool
 	}{
-		{"bg-indigo-600", actionMap, "bg-accent"},
-		{"text-gray-900", actionMap, "text-ink"},
-		{"text-gray-500", actionMap, "text-ink-muted"},
-		{"text-gray-300", actionMap, "text-ink-faint"},
-		{"bg-white", actionMap, "bg-surface"},
-		{"bg-gray-50", actionMap, "bg-surface"},
-		{"bg-gray-100", actionMap, "bg-surface-sunken"},
-		{"border-gray-200", actionMap, "border-line"},
-		{"border-gray-500", actionMap, "border-line-strong"},
-		{"ring-indigo-500", actionMap, "ring-focus"},
-		{"bg-red-600", actionMap, "bg-danger"},
-		{"text-green-700", actionMap, "text-positive"},
-		{"bg-amber-400", actionMap, "bg-caution"},
-		{"hover:bg-indigo-700", actionMap, "hover:bg-accent"}, // variant preserved
-		{"dark:bg-gray-800", actionDrop, ""},                  // dark color variant dropped
-		{"flex", actionKeep, ""},                              // not a color utility
-		{"p-4", actionKeep, ""},                               // not a color utility
-		{"bg-[#ff0000]", actionKeep, ""},                      // arbitrary value, no guess
-		{"bg-gray-800", actionKeep, ""},                       // ambiguous dark panel, no guess
-		{"text-transparent", actionKeep, ""},                  // special, no role
+		{"bg-indigo-600", true},
+		{"hover:bg-indigo-700", true},
+		{"focus:ring-indigo-500", true},
+		{"text-white", true},
+		{"text-gray-300", true},
+		{"bg-pink-500", true},
+		{"bg-blue-500", true},
+		{"dark:bg-gray-800", true},
+		{"dark:hover:text-white", true},
+		{"bg-indigo-600/50", true},
+		{"!text-white", true},
+		{"hover:bg-blue-500!", true},
+		{"[&:nth-child(2)]:bg-blue-500", true},
+		{"dark:[&:is(button,a)]:hover:bg-indigo-700", true},
+		{"bg-[color:var(--brand)]", true},
+		{"[color:var(--brand)]", true},
+		{"bg-[#ff0000]", true},
+		{"dark:text-lg", false},
+		{"dark:p-4", false},
+		{"text-transparent", false},
+		{"text-current", false},
+		{"bg-accent", false},
+		{"text-ink-inverse", false},
+		{"hover:bg-surface-raised", false},
+		{"dark:text-ink", false},
+		{"ring-focus", false},
+		{"flex", false},
+		{"p-4", false},
 	}
 	for _, c := range cases {
 		t.Run(c.in, func(t *testing.T) {
 			got := retargetUtility(c.in)
-			if got.Action != c.action {
-				t.Fatalf("retargetUtility(%q) action = %q, want %q (note: %s)", c.in, got.Action, c.action, got.Note)
+			if got.Original != c.in || got.Action != actionKeep || got.Result != "" {
+				t.Fatalf("source class must be kept without a replacement: %+v", got)
 			}
-			if c.action == actionMap && got.Result != c.result {
-				t.Errorf("retargetUtility(%q) result = %q, want %q", c.in, got.Result, c.result)
+			if review := strings.HasPrefix(got.Note, "Review:"); review != c.review {
+				t.Errorf("review = %v, want %v: %+v", review, c.review, got)
 			}
 		})
 	}
 }
 
 func TestRetargetClassList(t *testing.T) {
-	in := "dark:bg-gray-800 bg-white text-gray-900 ring-indigo-500 border-gray-200 flex p-4"
-	_, rewritten := RetargetClassList(in)
-	want := "bg-surface text-ink ring-focus border-line flex p-4"
-	if rewritten != want {
-		t.Errorf("rewritten = %q, want %q", rewritten, want)
-	}
-}
-
-// TestMappingTargetsAreRealRoles guards against drift: every role the mapping
-// can emit must exist in the kit's generated token role set. If a role is
-// renamed in CUE, this fails instead of the Assistant recommending a dead class.
-func TestMappingTargetsAreRealRoles(t *testing.T) {
-	valid := map[string]bool{}
-	for _, r := range tokens.ColorNames {
-		valid[r] = true
-	}
-	// Collect every role the mapping tables / neutralRole can produce.
-	produced := map[string]bool{}
-	for _, r := range semanticFamily {
-		produced[r] = true
-	}
-	produced["focus"] = true // accent ring special-case
-	for _, prop := range []string{"bg", "text", "border"} {
-		for _, shade := range []int{0, 50, 100, 300, 400, 600, 900} {
-			if role, ok, _ := neutralRole(prop, shade); ok {
-				produced[role] = true
-			}
+	for _, in := range []string{
+		"bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-500 focus:ring-indigo-400",
+		"dark:text-lg dark:p-4 dark:bg-gray-800 bg-white text-gray-900",
+		"[&:nth-child(2)]:bg-blue-500 bg-[color:var(--brand)] [@supports(color:oklch(0_0_0))]:text-white",
+		"  bg-accent\ttext-ink-inverse\nhover:bg-surface-raised  bg-accent ",
+		"",
+		" \n\t ",
+	} {
+		verdicts, rewritten := RetargetClassList(in)
+		if rewritten != in {
+			t.Errorf("original class string changed:\n got %q\nwant %q", rewritten, in)
 		}
-	}
-	for role := range produced {
-		if !valid[role] {
-			t.Errorf("mapping emits role %q which is not a kit token role (%v)", role, tokens.ColorNames)
+		tokens := strings.Fields(in)
+		if len(verdicts) != len(tokens) {
+			t.Fatalf("got %d verdicts for %d classes", len(verdicts), len(tokens))
+		}
+		for i, verdict := range verdicts {
+			if verdict.Original != tokens[i] || verdict.Action != actionKeep || verdict.Result != "" {
+				t.Errorf("class %d must be kept without an applied replacement: %+v", i, verdict)
+			}
 		}
 	}
 }
 
 func TestThemingGuideMentionsKeyRules(t *testing.T) {
 	g := themingGuide()
-	for _, want := range []string{"bg-accent", "dark:", "ring-focus", "No Node", "surface"} {
+	for _, want := range []string{
+		"Preserve the original design first",
+		"candidate advice is never an automatic rewrite",
+		"Pink does not establish danger", "blue does not establish accent",
+		"Keep dark: classes", "colons inside brackets",
+		"text-white is not evidence for faint text", "text-on-fill contrast",
+		"Do not collapse their shades", "add consumer roles",
+		"Source-reference selection", "Renderer selection",
+		"Elements is an optional candidate", "not proof of app-kit compatibility",
+		"ADR-0021", "selected layers/profile", "consumer's own build",
+		"bg-accent", "ring-focus", "surface",
+	} {
 		if !strings.Contains(g, want) {
 			t.Errorf("theming guide missing %q", want)
 		}
 	}
+	for _, retired := range []string{
+		"collapse shades", "dark: color variants are redundant",
+		"Color families → roles", "No Node —",
+	} {
+		if strings.Contains(g, retired) {
+			t.Errorf("theming guide retains unsafe instruction %q", retired)
+		}
+	}
 }
 
-// TestThemingGuideDoesNotBanInlineColor — get_kit_theming is reached at the
-// exact moment an agent is choosing colors, and until 2026-08-07 it said "No
-// Node, no inline color styles. Use utilities only (D2)". The kit's own
-// appkit/ui/viz breaks that on every element it emits: zero class=, every color
-// a var(--ak-color-*) presentation attribute. An agent obeying the guidance
-// could not ship an L3a chart, and an agent that shipped one was told it had
-// violated D2. The kit has two theming tiers (ADR-0017 §1) and this is the
-// surface that has to name both.
+// Keep the existing plan-linked regression name: semantic variables in style
+// and presentation attributes remain legitimate L3a token consumption.
 func TestThemingGuideDoesNotBanInlineColor(t *testing.T) {
 	g := themingGuide()
-	lower := strings.ToLower(g)
-
-	// Matched as phrases, not words: the guide legitimately says "non-color
-	// `dark:` utilities only if truly needed" and "these role utilities only
-	// resolve if…", neither of which is the retired rule.
 	for _, banned := range []string{"use utilities only", "inline color styles"} {
-		if strings.Contains(lower, banned) {
-			t.Errorf("theming guide still says %q — it contradicts appkit/ui/viz, which is the kit's own L3a tier", banned)
+		if strings.Contains(strings.ToLower(g), banned) {
+			t.Errorf("theming guide still bans L3a consumption with %q", banned)
 		}
 	}
-	for _, want := range []string{"L3a", "L3b", "var(--ak-color-", "literal"} {
+	for _, want := range []string{"L3a", "L3b/L4", "var(--ak-color-", "literal", "not a universal", "ban on Node"} {
 		if !strings.Contains(g, want) {
-			t.Errorf("theming guide does not mention %q — the tier split has to be legible here, not just in the ADR", want)
+			t.Errorf("theming guide does not explain the scoped contract %q", want)
 		}
-	}
-	// The half of the old rule that was always right.
-	if !strings.Contains(g, "No Node") {
-		t.Error("theming guide dropped the no-Node half of rule 5; only the utilities-only half was wrong")
 	}
 }
 
-// TestThemingGuideMatchesVizReality is the other end of the same claim: the
-// guide asserts ui/viz emits no class= and only var(--ak-color-*). If viz ever
-// drifts, appkit/ui/viz's own TestVizEmitsNoClassAttribute fails first — this
-// records that the guide depends on it, so the dependency is findable from
-// here.
+// appkit/ui/viz's TestVizEmitsNoClassAttribute verifies the renderer side.
 func TestThemingGuideMatchesVizReality(t *testing.T) {
-	if !strings.Contains(themingGuide(), "appkit/ui/viz") {
-		t.Error("theming guide must name the package whose behavior it is describing")
+	if !strings.Contains(themingGuide(), "appkit/ui/viz emits no class attributes") {
+		t.Error("theming guide must name the package whose L3a behavior it describes")
+	}
+}
+
+func TestThemingMCPAdvisoryProtocol(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	server := mcp.NewServer(&mcp.Implementation{Name: "theming-test", Version: "test"}, nil)
+	registerKitTools(server, testDocs())
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	serverSession, err := server.Connect(ctx, serverTransport, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer serverSession.Close()
+	client := mcp.NewClient(&mcp.Implementation{Name: "theming-client-test", Version: "test"}, nil)
+	session, err := client.Connect(ctx, clientTransport, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer session.Close()
+
+	listed, err := session.ListTools(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, tool := range listed.Tools {
+		if tool.Name != "get_kit_theming" {
+			continue
+		}
+		found = true
+		for _, want := range []string{"preserving the original design", "Review notes", "no automatic"} {
+			if !strings.Contains(strings.ToLower(tool.Description), strings.ToLower(want)) {
+				t.Errorf("advertised theming description missing %q: %s", want, tool.Description)
+			}
+		}
+		if tool.InputSchema == nil || tool.OutputSchema == nil {
+			t.Error("typed theming schemas must remain available")
+		}
+	}
+	if !found {
+		t.Fatal("get_kit_theming tool disappeared")
+	}
+
+	const classes = "  bg-indigo-600 text-white\thover:bg-indigo-700 dark:text-lg\n[&:nth-child(2)]:bg-blue-500 bg-accent "
+	for _, in := range []string{"", classes} {
+		result, err := session.CallTool(ctx, &mcp.CallToolParams{
+			Name: "get_kit_theming", Arguments: map[string]any{"classes": in},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if result.IsError || len(result.Content) != 1 {
+			t.Fatalf("theming call failed: %+v", result)
+		}
+		body, ok := result.Content[0].(*mcp.TextContent)
+		if !ok {
+			t.Fatal("theming must retain text content")
+		}
+		encoded, err := json.Marshal(result.StructuredContent)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var output themingOutput
+		if err := json.Unmarshal(encoded, &output); err != nil {
+			t.Fatal(err)
+		}
+		var fields map[string]json.RawMessage
+		if err := json.Unmarshal(encoded, &fields); err != nil {
+			t.Fatal(err)
+		}
+		if in == "" {
+			if len(fields) != 1 || output.Guide != themingGuide() || body.Text != output.Guide {
+				t.Fatalf("guide response shape or served identity changed: %s", encoded)
+			}
+			continue
+		}
+		if len(fields) != 2 || fields["rewritten"] == nil || fields["verdicts"] == nil {
+			t.Fatalf("class response fields changed: %s", encoded)
+		}
+		if output.Rewritten != in || len(output.Verdicts) != 6 {
+			t.Fatalf("protocol changed the original classes or lost verdicts: %+v", output)
+		}
+		for _, v := range output.Verdicts {
+			if v.Action != actionKeep || v.Result != "" {
+				t.Errorf("protocol suggests an applied rewrite without mapping context: %+v", v)
+			}
+		}
+		if strings.Contains(string(encoded), "\"result\":") {
+			t.Error("candidate advice must never appear in the applied result field")
+		}
+		if !strings.Contains(body.Text, in) || !strings.Contains(body.Text, "Review:") {
+			t.Errorf("text-only clients must receive original classes and review advice: %s", body.Text)
+		}
+		if strings.Contains(body.Text, "✗ drop") {
+			t.Error("text response still instructs the client to remove classes")
+		}
 	}
 }
