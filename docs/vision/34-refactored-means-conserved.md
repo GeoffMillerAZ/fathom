@@ -12,29 +12,65 @@ conservation ledger, absence/anti-Blindness) fully proven; stage 4
 conserve --since` as a warning (CV-47); `review --since`/`review_diff`'s
 `conservation` dimension is actually wired (CV-24); the SCIP import bug
 that kept TypeScript/Python edges out of fathom's own symbol space is
-fixed (O115); CV-M5's own false-positive class in `conserve.Resurrected`
-(a genuine large removal over-firing when a long-lived, independently-
-written twin shares its body hash) is fixed and both migrations now replay
-clean (`docs/bench/readings/cv-m5-blindness-replay-2026-09-24.md`'s
-2026-09-24 update). Open: CV-M4 fired this vision's own §6 revisit trigger
-— the Go surface delta is a textual diff, not type-identity-aware, measured
+fixed (O115). Open: CV-M4 fired this vision's own §6 revisit trigger — the
+Go surface delta is a textual diff, not type-identity-aware, measured
 0.615 precision / 0.941 recall against the 0.95/0.95 bar
-(`docs/bench/readings/cv-m4-apidiff-calibration-2026-09-24.md`); the decision
+(`docs/bench/readings/cv-m4-apidiff-calibration-2026-09-24.md`); CV-M5
+found `conserve.Resurrected` over-fires on a genuine large removal
+(`docs/bench/readings/cv-m5-blindness-replay-2026-09-24.md`); the decision
 port's narrow role (§3, decision 8) and the cross-repo test-kit/Review Kit
 rows stay `(op)`/unclaimed in the plan.
 
-**Wave 3 status (2026-09-24, gap-closing).** CV-M4's revisit trigger is
-resolved: `internal/analysis/inventory/apicompat.go` makes the `api:`
-delta apply apidiff's own struct/interface/alias compatibility rules
-(built from the same per-file `go/ast` parse, no `go/types` pass) instead
-of a whole-text diff, and canonicalizes `any`/`interface{}` at render
-time. Re-measured on the full 50 consecutive release pairs the bar asks
-for: precision 0.960, recall 1.000 —
-`docs/bench/readings/cv-m4-apidiff-full50-2026-09-24.md`. One residual
+**Wave 3 status (2026-09-25, gap-closing).** Both wave-2 kill-criterion
+failures are fixed and re-measured PASS. **CV-M4** (the surface delta vs.
+apidiff, 0.95/0.95 bar): `internal/analysis/inventory/apicompat.go` makes
+the `api:` delta apply apidiff's own struct/interface/alias compatibility
+rules (built from the same per-file `go/ast` parse, no `go/types` pass)
+instead of a whole-text diff, and canonicalizes `any`/`interface{}` at
+render time; re-measured on the full 50 consecutive release pairs the bar
+asks for: precision 0.960, recall 1.000
+(`docs/bench/readings/cv-m4-apidiff-full50-2026-09-24.md`). One residual
 false positive (a dependency's own cross-package type alias) is named,
-not fixed — genuinely needs another package's declaration resolved,
-which this fix deliberately does not attempt. CV-M5 and the `(op)`/
-unclaimed rows above remain open.
+not fixed — genuinely needs another package's declaration resolved, which
+this fix deliberately does not attempt. **CV-M5** (the Blindness replay,
+zero genuine-range findings): `conserve.Resurrected`'s head matching pool
+now admits a candidate only when it is itself new in the range or its
+body hash changed in the range, not merely co-located in a changed file;
+both migrations replay clean (DuckDB genuine 0, was 24; vector genuine
+still 0), both seeded copies still flag
+(`docs/bench/readings/cv-m5-blindness-replay-2026-09-24.md`'s 2026-09-24
+update). That replay filed a second, unrelated gap as O117 (`fathom
+conserve`'s default plan discovery hands absolute paths where its plan
+reader expects repo-relative ones), not fixed here.
+
+Three more real gaps this program's own dogfooding surfaced, all fixed:
+`review_diff` (MCP) now flattens the `integrity` plane's own findings onto
+`DimIntegrity` instead of silently reading `checked:true` with zero
+findings once a base resolves; `fathom compile --dry-run` prices a real
+per-model rate instead of always `est. 0.00-0.00`; and a layer's genuine
+first compile no longer refuses at the same pre-flight budget check as a
+re-compile, so CV-41's newly-activated `adr-rules`/`spec-bindings` layers
+could actually start. The fleet recompile these fixes unblocked then ran
+clean (**CV-M8**, `docs/bench/readings/cv-m8-fleet-recompile-2026-09-25.md`).
+**CV-44** (the refactoring pack armed and firing on this repository,
+cross-repo platform-engineering): measured PASS with a caveat —
+`.reviewkit/` arms `refactoring-conservation`/`testing-certifications` at
+warn, and a historical `leadsman sound` demonstration made the two
+`fathom-conserve`-backed requirements genuinely fire on a real finding;
+`testing.certified-targets` reads a false pass here because review-kit's
+`fathom-certify` adapter does not yet thread `--service`
+(`docs/bench/readings/cv-44-reviewkit-armed-2026-09-25.md`) — the vision's
+own "fires at warn within a month" clause needs the arming to stand for a
+month of real use, which starts now. **CV-45**/**CV-46** (the kill-rule
+wording and the refactor-routing stanza) proven `[x]`. **CV-M1**, **CV-M2**,
+**CV-M6**, **CV-M7**, **CV-M9**, **CV-M10** all measured PASS in earlier
+readings this wave's plan update now cites by name instead of a bare
+placeholder; **CV-M11** (the decision port's calibration check) measured
+FAIL on the `route` site (45.7% at confidence ≥0.9, non-monotonic — no
+threshold fixes it) and was handled by policy, not code, in ADR-042's own
+amendment, not this wave. Still `(op)`/unclaimed: CV-M3 (the 30-day
+real-session window) and CV-43 (test-kit's envelope, cross-repo
+platform-engineering).
 
 ## 1. The thesis
 

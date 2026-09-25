@@ -44,13 +44,25 @@ fathom pins a version. Blocks: EP-2's key set, EP-34. Answerable by: owner, with
 reading the diff, and can a stranger re-derive every line of it?** Vision 34's planes are
 one answer; whether they are sufficient is measured on the first real refactor program
 (CV-M6) by counting what the reviewer still had to open. Blocks: the pack's promotion from
-warn to deny. Answerable by: evidence (CV-M6), then owner.
+warn to deny. Answerable by: evidence (CV-M6), then owner. **Evidence so far (not an
+answer): CV-44** (`docs/bench/readings/cv-44-reviewkit-armed-2026-09-25.md`) shows the
+mechanism a promotion decision would rely on genuinely works — a real `leadsman sound`
+against this repository's own history made the `fathom-conserve`-backed requirements fire
+`fail` on a genuine finding, not merely a clean-shaped pass — but does not itself measure
+what a reviewer still had to open, which is what this question still needs.
 
 **Q23. When is a test edit a legitimate refactor and when is it a weakening?** The
 integrity check normalises renames and counts assertions; an assertion rewritten as a
 helper call, a table case merged, or a matcher swapped for an equivalent still flags as
 `edited` or `weakened`. CV-M2's replay sets the false-flag rate. Blocks: arming
-`refactoring.proof-integrity` at deny. Answerable by: evidence (CV-M2).
+`refactoring.proof-integrity` at deny. Answerable by: evidence (CV-M2). **Measured:**
+`docs/bench/readings/cv-m2-guarded-test-commit-replay-2026-09-24.md` — 0 of the last 50
+commits touching guarded tests produced a true loss-kind finding (0% against the design's
+10% ceiling); 9/50 produced `edited`, the informational-only kind, which never gates.
+`docs/bench/readings/cv-m1-guards-pilot-8-replay-2026-09-24.md` confirms the other
+direction: both real i28 cells still flag `deleted`. The false-flag rate this question
+asked for is now measured near zero on this sample; whether that generalizes past 50
+commits, and the deeper conceptual line between an edit and a weakening, stay open.
 
 **Q24. Should conservation block at push, or only in CI, and for whom?** Today it warns
 at push (fail-open, I8/I17) and CI runs `--strict`. A team shipping library APIs may want
@@ -73,4 +85,11 @@ Answerable by: the first consumer who loses one.
 for, and how can fathom measure it honestly?** `fathom report evidence` gives evidence
 density per service (typed share, certificate density, inventory, receipts) and ranks no
 language; a cross-language comparison waits until at least three languages have measured
-typed edges (CV-M7). Answerable by: evidence, then owner.
+typed edges (CV-M7). Answerable by: evidence, then owner. **Evidence so far (threshold not
+met): CV-M7** (`docs/bench/readings/l0-ts-py-2026-09-24.md`) measured the file-resolved
+tier, not typed edges, for two languages: TypeScript (zod) and Python (flask), 26/26
+hand-verified correct; the scip and file tiers separately scored 0.87–0.95 precision,
+3–12% recall (high precision, low recall, as the tier's own name promises). This is real
+per-language measurement but neither the tier this question names (typed edges) nor the
+language count (two, not three) — the cross-language comparison this question asks about
+stays blocked.
