@@ -49,9 +49,16 @@ type consoleSearchCache struct {
 	symbols map[string]consoleSymbolSet
 }
 
+// consoleSymbolSet is one service's symbol names. Entries stay compact —
+// a SearchDoc is built only for a match — because the set is held for the
+// daemon's lifetime (the fleet carries ~137k symbols; O108 bounds memory).
 type consoleSymbolSet struct {
 	watermark string
-	entries   []console.SearchDoc
+	entries   []consoleSymbolEntry
+}
+
+type consoleSymbolEntry struct {
+	name, kind, pkg, ref string
 }
 
 func newConsoleSearchCache() *consoleSearchCache {
@@ -229,9 +236,13 @@ func (sc *consoleSearchCache) lookupSymbols(ctx context.Context, c *client.Clien
 			}
 			continue
 		}
-		for _, d := range set.entries {
-			if strings.Contains(strings.ToLower(d.Title), needle) {
-				out = append(out, d)
+		href := projectHref(svc)
+		for _, e := range set.entries {
+			if strings.Contains(strings.ToLower(e.name), needle) {
+				out = append(out, console.SearchDoc{
+					Group: console.GroupSymbols, Kind: "symbol", Title: e.name,
+					Subtitle: e.kind + " in " + e.pkg, Service: svc, Ref: e.ref, Href: href,
+				})
 			}
 		}
 	}
@@ -275,7 +286,6 @@ func (sc *consoleSearchCache) symbolSet(ctx context.Context, c *client.Client, s
 		return consoleSymbolSet{}, err
 	}
 	set = consoleSymbolSet{watermark: wm}
-	href := projectHref(svc)
 	for _, o := range obs {
 		if o.Symbol == "" || o.SourceKind == "DocChunk" {
 			continue
@@ -284,10 +294,7 @@ func (sc *consoleSearchCache) symbolSet(ctx context.Context, c *client.Client, s
 		if o.Line > 0 && !strings.Contains(ref, ":") {
 			ref += ":" + itoa(o.Line)
 		}
-		set.entries = append(set.entries, console.SearchDoc{
-			Group: console.GroupSymbols, Kind: "symbol", Title: o.Symbol,
-			Subtitle: string(o.SourceKind) + " in " + o.Package, Service: svc, Ref: ref, Href: href,
-		})
+		set.entries = append(set.entries, consoleSymbolEntry{name: o.Symbol, kind: string(o.SourceKind), pkg: o.Package, ref: ref})
 	}
 	sc.mu.Lock()
 	sc.symbols[svc] = set
