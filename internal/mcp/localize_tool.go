@@ -10,12 +10,14 @@
 // gave (parsed frames, test names, quoted literals — the same grep path
 // search.go's own engine runs — and concern terms), then expand by graph
 // proximity (callers/callees over the typed/syntax edges,
-// internal/analysis/callgraph), recency (skipped with a note — no churn
-// analysis is wired into QueryInterface today), and open obligations (a
-// RANKING signal on a candidate already found by something else, never a
-// discovery mechanism on its own — a file cannot be found by "it has
-// rules"). Every hop is logged; the answer is a diagnosis OBJECT with a
-// citation per candidate naming which hop produced it, never a bare list.
+// internal/analysis/callgraph), recency (skipped with a note — no
+// churn/last-touched analysis is wired into QueryInterface today; the
+// unused internal/analysis/churn analyzer this note used to point to was
+// retired, CV-M6), and open obligations (a RANKING signal on a candidate
+// already found by something else, never a discovery mechanism on its own
+// — a file cannot be found by "it has rules"). Every hop is logged; the
+// answer is a diagnosis OBJECT with a citation per candidate naming which
+// hop produced it, never a bare list.
 package mcp
 
 import (
@@ -769,10 +771,12 @@ func runLocalize(ctx context.Context, s *Server, backend QueryInterface, service
 	}
 
 	// Recency (VB-26: "the churn/last-touched analysis if present in the
-	// store, else skip with a note"): internal/analysis/churn exists but
-	// is wired into no QueryInterface method today, so there is nothing
-	// to consult — one honest, logged, zero-yield hop names why, rather
-	// than silently dropping the dimension the plan row names.
+	// store, else skip with a note"): no churn/last-touched analysis is
+	// wired into any QueryInterface method today (the unused
+	// internal/analysis/churn analyzer this note used to point to was
+	// retired, CV-M6), so there is nothing to consult — one honest,
+	// logged, zero-yield hop names why, rather than silently dropping the
+	// dimension the plan row names.
 	if used < allowed {
 		used++
 		hops = append(hops, localizeHop{N: used, Tool: "recency", Arg: "no churn/last-touched analysis wired into the store — skipped", Added: 0})

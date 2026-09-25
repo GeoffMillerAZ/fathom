@@ -355,10 +355,10 @@ type SymbolNode struct {
 // EdgeKind classifies HOW a typed call edge was resolved by the Go typed
 // enrichment pass (internal/fusion.EnrichTypedEdges, ADR-021 §3). It is the
 // empty string for edges that predate typed resolution — the ad hoc,
-// syntax-only edges internal/analysis/schemaexport, internal/analysis/
-// archconformance, and internal/mcp's DOT/arch-conformance handlers still
-// build directly from Observation.Calls never set it — so a reader can tell
-// typed (compiler-grade) evidence from raw syntax by checking Kind != "".
+// syntax-only edges internal/analysis/archconformance and internal/mcp's
+// DOT/arch-conformance handlers still build directly from Observation.Calls
+// never set it — so a reader can tell typed (compiler-grade) evidence from
+// raw syntax by checking Kind != "".
 type EdgeKind string
 
 const (
@@ -408,8 +408,8 @@ const (
 // Edge is a directed call/reference edge between two symbols.
 //
 // FromSymbol/ToSymbol hold "pkg.Name"-style strings and Kind is "" for the
-// legacy syntax-only producers (schemaexport, archconformance, the mcp
-// ad hoc edges built straight from Observation.Calls). The Go typed pass
+// legacy syntax-only producers (archconformance, the mcp ad hoc edges built
+// straight from Observation.Calls). The Go typed pass
 // (internal/fusion.EnrichTypedEdges) populates FromSymbol/ToSymbol with full
 // canonical SymbolKeys ("service::pkg.Name") and Kind; these are the only
 // Edge values the store round-trips (store.PutTypedEdges / TypedEdges).
