@@ -872,7 +872,10 @@ already-installed pack of the same name (whole-directory replace, never a merge)
 
 Compile a semantic layer for a service — an LLM pass over the layer's corpus that emits
 governed claims (ADR-016). `dry_run` defaults to `true`: it estimates cost without
-calling the LLM or writing anything.
+calling the LLM or writing anything, printing a real `cost_usd` range for the model
+`--profile`/`FATHOM_COMPILE_MODEL` resolves when this binary knows a price for it, or
+`cost unknown: no price for model <m>` when it does not — never a fabricated or
+zero-shaped estimate.
 
 ```sh
 fathom compile --service <id> [--layer obligations] [--dry-run=false] \

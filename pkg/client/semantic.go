@@ -488,6 +488,20 @@ func (c *Client) compileLayer(ctx context.Context, service, layerName string, dr
 	// Current corpus watermark for provenance.
 	watermark, _ := c.ServiceWatermark(ctx, service)
 
+	// CV-41 (gap-closing wave 3, item 3): NoPriorRun is true only when this
+	// service has NO compile_runs row at all for layerName — a genuinely
+	// first-ever compile. A read error here degrades to false (the ordinary,
+	// SAFER pre-flight-refusal path stays in force) rather than silently
+	// bypassing a spend guard on a store hiccup — the one place this method
+	// fails CLOSED rather than open, since the thing being skipped is a cost
+	// protection, not an availability nicety. DryRun compiles never reach
+	// compile_runs (semantic.Compile's own "never persisted" DryRun branch),
+	// so this is unaffected by how many dry-run estimates preceded it.
+	noPriorRun := false
+	if priorRuns, rerr := c.st.CompileRuns(ctx, service, layerName); rerr == nil {
+		noPriorRun = len(priorRuns) == 0
+	}
+
 	comp := semantic.Compiler{
 		St:             c.st,
 		LLM:            c.llm,
@@ -522,6 +536,7 @@ func (c *Client) compileLayer(ctx context.Context, service, layerName string, dr
 		DryRun:       dryRun,
 		Escape:       escape,
 		Resume:       resume,
+		NoPriorRun:   noPriorRun,
 	})
 	// DP-3/DP-9: log whatever the pre-filter decided, regardless of err —
 	// a partial run that failed mid-compile may still have asked the

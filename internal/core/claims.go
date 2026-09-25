@@ -310,6 +310,21 @@ type CompileRun struct {
 	EstTokensOutHigh int     `json:"est_tokens_out_high,omitempty"`
 	EstCostLowUSD    float64 `json:"est_cost_low_usd,omitempty"`
 	EstCostHighUSD   float64 `json:"est_cost_high_usd,omitempty"`
+	// PriceKnown is DryRun-only (meaningless on a completed run, which
+	// always knows its own real CostUSD): true when the caller resolved a
+	// real per-model USD rate before estimating, so EstCostLowUSD/
+	// EstCostHighUSD are a genuine computed range; false means no price is
+	// known for the model that would run (an unrecognized --profile pin, an
+	// unpriced FATHOM_COMPILE_MODEL) — EstCostLowUSD/EstCostHighUSD then
+	// stay at their zero value, and a caller must never print that zero as
+	// a confident "$0.00" estimate (the exact failure this field exists to
+	// prevent one level up from O8: a dry run reporting cost_usd
+	// "est. 0.00-0.00" for a model it simply never priced, even with a
+	// profile explicitly given). Set by the caller's own price resolution
+	// (cmd/fathom's rateForModel), never computed inside internal/semantic;
+	// not persisted (compile_runs has no column for it, like every other
+	// Est* field above).
+	PriceKnown       bool `json:"price_known"`
 	CostUSD          float64
 	DurationMS       int64
 	SectionsTotal    int // sections in the corpus
