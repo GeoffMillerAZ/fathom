@@ -65,11 +65,26 @@ func (c *LocalConnector) Discover(_ context.Context, svc core.ServiceRef) ([]cor
 
 	var refs []core.SourceRef
 
-	err = filepath.WalkDir(svc.Path, func(path string, d fs.DirEntry, err error) error {
+	// O39: filepath.WalkDir Lstat's its root and never follows a symlink,
+	// so a root whose LAST component is a link (a checkout reached through
+	// one, or a root recorded in its linked form) read as a non-directory:
+	// zero files, nil error — an ingest that indexed nothing and exited 0,
+	// and a `references` that found no occurrence of a symbol verify_plan
+	// still resolved from the store. Walk the link's target instead; paths
+	// stay relative to the root, so every SourceRef is the same one the
+	// target itself yields, and Fetch still reads through svc.Path.
+	walkRoot := svc.Path
+	if fi, lerr := os.Lstat(svc.Path); lerr == nil && fi.Mode()&os.ModeSymlink != 0 {
+		if target, rerr := filepath.EvalSymlinks(svc.Path); rerr == nil {
+			walkRoot = target
+		}
+	}
+
+	err = filepath.WalkDir(walkRoot, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		rel, relErr := filepath.Rel(svc.Path, path)
+		rel, relErr := filepath.Rel(walkRoot, path)
 		if relErr != nil {
 			rel = ""
 		}
