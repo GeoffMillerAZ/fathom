@@ -87,10 +87,13 @@ tasks:
   tests:attest:
     desc: >-
       Re-attest this repository's own suite with commit/dirty/race bound
-      (CV-6, design doc §1.1, O114): `go test -json ./...`, converted by
-      test-kit's go-test-json adapter (env TESTKIT_GO_JSON — the path to a
-      built test-kit `surveyor` binary; a clear skip, never a failure,
-      when unset), written under `[tests] results_dir`
+      (CV-6, design doc §1.1, O114), plus a bound Go coverage profile for
+      the reading set's execution evidence (CV-67, design doc §3.5): ONE
+      `go test -json -coverpkg=./... -coverprofile=<out>/coverage.out
+      ./...` run, its JSON output converted by test-kit's go-test-json
+      adapter (env TESTKIT_GO_JSON — the path to a built test-kit
+      `surveyor` binary; a clear skip, never a failure, when unset),
+      written under `[tests] results_dir`
       (workspace/artifacts/test-results/ — set it in .fathom/config.toml
       if this checkout predates it). This task never ingests the envelope
       itself: a plain `fathom ingest` (or `bin/fathom tests ingest
@@ -99,6 +102,10 @@ tasks:
       -race to the run and --race to the envelope (off by default — a
       full -race ./... run is slow, and this task's own job is producing
       a commit-bound envelope, not re-deciding this repo's race policy).
+      TESTKIT_COVER=0 skips -coverpkg/-coverprofile and coverage.meta.json
+      entirely — the plain pre-CV-67 run — for a checkout that only wants
+      the envelope (`fathom conserve` falls back to static reach without
+      one, design §3.5's own "Usable only when bound").
     cmds:
       - |
         set -eu
@@ -117,11 +124,25 @@ tasks:
         if [ "${TESTKIT_RACE:-0}" = "1" ]; then raceflag="-race"; racearg="--race"; fi
         dirtyarg=""
         [ "$dirty" = true ] && dirtyarg="--dirty"
-        {{.GO}} test -json $raceflag ./... > "$out/go-test.jsonl" || true
+        coverflags=""
+        if [ "${TESTKIT_COVER:-1}" != "0" ]; then
+          coverflags="-coverpkg=./... -coverprofile=$out/coverage.out"
+        fi
+        testrc=0
+        {{.GO}} test -json $raceflag $coverflags ./... > "$out/go-test.jsonl" || testrc=$?
         "$TESTKIT_GO_JSON" ingest --format go-test-json \
           --component fathom --suite unit --class unit \
           --started-at "$started" --commit "$commit" $dirtyarg $racearg \
           < "$out/go-test.jsonl" > "$out/envelope.json"
+        if [ -n "$coverflags" ]; then
+          passed=true
+          [ "$testrc" -eq 0 ] || passed=false
+          race=false
+          [ "${TESTKIT_RACE:-0}" = "1" ] && race=true
+          printf '{\n  "schema": "fathom.coverage/v1",\n  "commit": "%s",\n  "dirty": %s,\n  "race": %s,\n  "profile": "coverage.out",\n  "passed": %s\n}\n' \
+            "$commit" "$dirty" "$race" "$passed" > "$out/coverage.meta.json"
+          echo "tests:attest: wrote $out/coverage.meta.json + $out/coverage.out (passed=${passed})"
+        fi
         echo "tests:attest: wrote $out/envelope.json bound to commit ${commit} (dirty=${dirty}, race=${TESTKIT_RACE:-0})"
         echo "tests:attest: a plain 'fathom ingest' (or the daemon's next ingest) picks this up from [tests] results_dir; to ingest it right now: bin/fathom tests ingest --service fathom --store <store> --manifest . --results $out"
 

@@ -318,11 +318,14 @@ func conservationResidueSummary(rep conserve.ResidueReport) review.ConservationR
 		items = append(items, review.ConservationResidueItem{
 			Symbol: it.Symbol, File: it.File, Line: it.Line, Change: it.Change,
 			Class: it.Class, Tests: it.Tests, Callers: it.Callers,
+			Evidence: it.Evidence, UnexecutedLines: it.UnexecutedLines,
 		})
 	}
 	return review.ConservationResidueSummary{
 		Changed: rep.Changed, Attested: rep.Attested, Unattested: rep.Unattested, Unreached: rep.Unreached,
+		Partial: rep.Partial, Unexecuted: rep.Unexecuted, UnanalyzedFunctions: rep.UnanalyzedFunctions,
 		Items: items, Truncated: rep.Truncated, Unanalyzed: rep.Unanalyzed, Missing: rep.Missing,
+		CoverageUnusable: rep.CoverageUnusable,
 	}
 }
 

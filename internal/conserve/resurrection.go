@@ -103,6 +103,7 @@ type funcSite struct {
 	pkg       string
 	file      string
 	line      int
+	endLine   int
 	hash      string
 	exactHash string
 	stmts     int
@@ -287,6 +288,7 @@ func funcSitesIn(filePath string, src []byte) (sites []funcSite, ok bool) {
 			pkg:       pkgName,
 			file:      filePath,
 			line:      fset.Position(fn.Pos()).Line,
+			endLine:   fset.Position(fn.End()).Line,
 			hash:      hash,
 			exactHash: hex.EncodeToString(exactSum[:]),
 			stmts:     stmts,

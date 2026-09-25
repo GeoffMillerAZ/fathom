@@ -16,7 +16,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/certify"
@@ -104,6 +106,43 @@ type Input struct {
 	// closure (certify.ExecGit against Root); a caller building Input
 	// directly (most tests) supplies its own, deterministic fake.
 	ReachUnchangedSince func(commit string, files []string) (bool, error)
+
+	// ChangedLines reports the HEAD line ranges `git diff -U0 Base` added
+	// or changed inside path (CV-69, design §3.5's "changed blocks...
+	// overlap a line git diff -U0 base..head added or changed inside the
+	// function"). nil means no repository is available to ask; Residue
+	// then treats a "modified" function's changed-block set the same way
+	// it already treats an "added" one — every block in the function's
+	// span counts — rather than guessing zero changed lines. NewInput
+	// sets this to a real git-backed closure; a caller building Input
+	// directly (most tests) supplies its own fake or leaves it nil.
+	ChangedLines func(path string) ([]LineRange, error)
+
+	// Coverage is the Go coverage profile execution evidence draws from
+	// (CV-67..70, design §3.5), already loaded and repo-path-mapped by
+	// the caller (LoadCoverage — this package's own I/O for it, never
+	// performed inside Residue itself). nil means none was configured or
+	// loadable at all — not itself an error Residue reports (CV-70's own
+	// "an unusable profile is named in the report" is about a profile
+	// that WAS found but fails the bound/dirty/passed bar, tracked by
+	// CoverageMeta/CoverageLoadError below).
+	Coverage *CoverageProfile
+	// CoverageMeta is Coverage's own binding metadata (LoadCoverageMeta).
+	// The zero value (Commit == "") reads as "no meta" — Residue's own
+	// usability check (I44: bound, clean, passed) then refuses it exactly
+	// like a meta that failed the bar for a named reason.
+	CoverageMeta CoverageMeta
+	// CoverageLoadError, set by the caller, names an operational failure
+	// reading or parsing the meta/profile files themselves (as opposed to
+	// a successfully-read meta simply failing the bound/dirty/passed
+	// bar) — surfaced verbatim as ResidueReport.CoverageUnusable.
+	CoverageLoadError string
+}
+
+// LineRange is an inclusive, 1-based line range in a file's HEAD content
+// (CV-69's own "changed lines" shape).
+type LineRange struct {
+	Start, End int
 }
 
 // Declarations is the base/head split of every retires:/surface_change:
@@ -309,7 +348,58 @@ func NewInput(ctx context.Context, root, baseRef string, st store.Store, service
 		ReachUnchangedSince: func(commit string, files []string) (bool, error) {
 			return certify.ReachUnchangedSince(certify.ExecGit, root, commit, files)
 		},
+		ChangedLines: func(path string) ([]LineRange, error) {
+			return gitChangedLines(ctx, root, base, path)
+		},
 	}, nil
+}
+
+// gitChangedLines runs `git diff -U0 <base> -- <path>` inside root and
+// returns the HEAD-side line ranges the unified diff's own hunk headers
+// name as added or changed (CV-69, design §3.5) — the same one-sided
+// "against the worktree" semantics changedFilesSinceBase already uses
+// throughout this file, so an uncommitted edit is included exactly like
+// a committed one.
+func gitChangedLines(ctx context.Context, root, base, path string) ([]LineRange, error) {
+	out, err := exec.CommandContext(ctx, "git", "-C", root, "diff", "--no-renames", "-U0", base, "--", path).Output()
+	if err != nil {
+		return nil, fmt.Errorf("git diff -U0 %s -- %s: %w", base, path, err)
+	}
+	return parseUnifiedHunkRanges(string(out)), nil
+}
+
+// unifiedHunkHeaderRe matches a unified diff's own hunk header: "@@
+// -<oldStart>[,<oldCount>] +<newStart>[,<newCount>] @@" — newCount
+// defaults to 1 when omitted (a single-line hunk), the standard convention
+// every git/diff producer follows.
+var unifiedHunkHeaderRe = regexp.MustCompile(`^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@`)
+
+// parseUnifiedHunkRanges extracts every hunk's "+" (HEAD-side) line range
+// from diff's own unified-format hunk headers. A pure-deletion hunk
+// (newCount == 0, nothing added on the + side) contributes no range.
+func parseUnifiedHunkRanges(diff string) []LineRange {
+	var ranges []LineRange
+	for _, line := range strings.Split(diff, "\n") {
+		m := unifiedHunkHeaderRe.FindStringSubmatch(line)
+		if m == nil {
+			continue
+		}
+		start, err := strconv.Atoi(m[1])
+		if err != nil {
+			continue
+		}
+		count := 1
+		if m[2] != "" {
+			if c, err := strconv.Atoi(m[2]); err == nil {
+				count = c
+			}
+		}
+		if count == 0 {
+			continue
+		}
+		ranges = append(ranges, LineRange{Start: start, End: start + count - 1})
+	}
+	return ranges
 }
 
 // resolveIndexAtHead reports whether store's last-ingested commit for

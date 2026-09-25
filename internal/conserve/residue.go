@@ -48,9 +48,12 @@ type ChangedFunction struct {
 	// Symbol is the funcDeclName convention (resurrection.go): the bare
 	// function name, or "Receiver.Method" for a method.
 	Symbol string
-	// File/Line are the function's own HEAD location.
-	File string
-	Line int
+	// File/Line are the function's own HEAD location. EndLine is its
+	// closing brace's line (CV-69, design §3.5): the span execution
+	// evidence's block lookup matches coverage blocks against.
+	File    string
+	Line    int
+	EndLine int
 	// Change is "added" (no function of this name existed at base,
 	// anywhere in the same changed package directory) or "modified" (one
 	// did, and the exact body text differs).
@@ -188,9 +191,9 @@ func ChangedFunctions(in Input) (funcs []ChangedFunction, unanalyzed []string, m
 				// that simply moved to another changed file in the same
 				// package directory — design §3.4's own "neither".
 			case existed:
-				funcs = append(funcs, ChangedFunction{Symbol: f.name, File: f.file, Line: f.line, Change: "modified"})
+				funcs = append(funcs, ChangedFunction{Symbol: f.name, File: f.file, Line: f.line, EndLine: f.endLine, Change: "modified"})
 			default:
-				funcs = append(funcs, ChangedFunction{Symbol: f.name, File: f.file, Line: f.line, Change: "added"})
+				funcs = append(funcs, ChangedFunction{Symbol: f.name, File: f.file, Line: f.line, EndLine: f.endLine, Change: "added"})
 			}
 		}
 	}
@@ -201,7 +204,7 @@ func ChangedFunctions(in Input) (funcs []ChangedFunction, unanalyzed []string, m
 }
 
 // ResidueItem is one changed function the reading set could not clear —
-// fathom.conserve/v1's own residue.items[] shape (design §3.4).
+// fathom.conserve/v1's own residue.items[] shape (design §3.4/§3.5).
 type ResidueItem struct {
 	Symbol  string   `json:"symbol"`
 	File    string   `json:"file"`
@@ -210,20 +213,68 @@ type ResidueItem struct {
 	Class   string   `json:"class"`
 	Tests   []string `json:"tests"`
 	Callers int      `json:"callers"`
+
+	// Evidence names which evidence classed this item (CV-69, design
+	// §3.5): evidenceExecuted when a usable, commit-bound coverage
+	// profile's own block data decided the class ("attested"/"partial"/
+	// "unexecuted" purely from execution, never call-graph reach);
+	// evidenceStaticReach when static resolved-edge reach plus a
+	// commit-bound passing run decided it instead (design §3.4's
+	// original rule) — because no usable profile existed at all, or this
+	// SPECIFIC function's (or its reaching tests') file changed since the
+	// profile's own bound commit.
+	Evidence string `json:"evidence"`
+
+	// UnexecutedLines names the changed line ranges ("start-end", HEAD
+	// line numbers, ascending) that never ran, for a "partial" item only
+	// (design §3.5's own "the item lists those line ranges
+	// (unexecuted_lines)"). Empty for every other class.
+	UnexecutedLines []string `json:"unexecuted_lines,omitempty"`
 }
 
+// evidenceExecuted/evidenceStaticReach are ResidueItem.Evidence's only two
+// values (CV-69).
+const (
+	evidenceExecuted    = "executed"
+	evidenceStaticReach = "static-reach"
+)
+
 // ResidueReport is fathom.conserve/v1's additive "residue" object (design
-// §3.4): counts and lists only (I43) — never a percentage, ratio or
+// §3.4/§3.5): counts and lists only (I43) — never a percentage, ratio or
 // threshold. Never a plane: it carries no Verdict and never changes one.
 type ResidueReport struct {
-	Changed    int           `json:"changed"`
-	Attested   int           `json:"attested"`
-	Unattested int           `json:"unattested"`
-	Unreached  int           `json:"unreached"`
+	Changed    int `json:"changed"`
+	Attested   int `json:"attested"`
+	Unattested int `json:"unattested"`
+	Unreached  int `json:"unreached"`
+	// Partial/Unexecuted (CV-69, design §3.5) count items an execution-
+	// evidence class placed: Partial when SOME of a function's changed
+	// blocks ran and some did not, Unexecuted when NONE did. Both stay 0
+	// when no usable coverage classed anything — the pre-CV-67 shape.
+	Partial    int `json:"partial"`
+	Unexecuted int `json:"unexecuted"`
+	// UnanalyzedFunctions counts a changed function whose own FILE the
+	// index never analyzed at all (vendor/, an ignore rule, a build-tag
+	// exclusion for this host) — CV-71's own reconciliation: Changed
+	// always equals Attested+Unattested+Unreached+Partial+Unexecuted+
+	// UnanalyzedFunctions, so a reader can see where every changed
+	// function went. Distinct from Unanalyzed below, which names FILES,
+	// not a per-function count.
+	UnanalyzedFunctions int `json:"unanalyzed_functions"`
+
 	Items      []ResidueItem `json:"items"`
 	Truncated  int           `json:"truncated"`
 	Unanalyzed []string      `json:"unanalyzed"`
 	Missing    []string      `json:"missing"`
+
+	// CoverageUnusable names why NO coverage profile could be used at all
+	// (CV-70, design §3.5's "An unusable profile is named in the
+	// report"): unbound (no commit), dirty, from a failing run, or an
+	// operational failure reading/parsing it. "" when a usable profile
+	// classed at least one item by execution, or when no profile was
+	// ever configured at all (itself not a reportable failure — most
+	// runs simply have none).
+	CoverageUnusable string `json:"coverage_unusable,omitempty"`
 }
 
 // Residue computes the reading set (design §3.4, CV-61/CV-62/CV-63):
@@ -325,84 +376,113 @@ func Residue(ctx context.Context, in Input, maxItems int) ResidueReport {
 		}
 	}
 
+	// globalCovOK/covUnusableReason (CV-69/CV-70, design §3.5) gate
+	// execution evidence for the WHOLE run: an unbound, dirty or
+	// failing-run profile is never used, and every item below falls back
+	// to static reach — the pre-CV-67 classification, unchanged. A
+	// profile that DOES clear the bar can still be refused per function
+	// (coverageUsableForFunction) when that function's or its reaching
+	// tests' own file moved since the profile's bound commit.
+	globalCovOK, covUnusableReason := coverageUsableGlobally(in)
+	rep.CoverageUnusable = covUnusableReason
+
 	var excludedFiles []string
 	runsCache := map[string]testRunsCacheEntry{}
 	items := make([]ResidueItem, 0, len(changed))
+	unanalyzedFuncs := 0
 	for _, cf := range changed {
-		item := ResidueItem{Symbol: cf.Symbol, File: cf.File, Line: cf.Line, Change: cf.Change, Tests: []string{}}
+		item := ResidueItem{Symbol: cf.Symbol, File: cf.File, Line: cf.Line, Change: cf.Change, Tests: []string{}, Evidence: evidenceStaticReach}
 
 		node, ok := byFileName[cf.File+"\x00"+cf.Symbol]
-		if !ok {
-			if !filesIndexed[cf.File] {
-				// The WHOLE file carries no node at all — fathom never
-				// analyzed it (an ignore rule, a build-tag exclusion for
-				// this host, or a whole-file extraction gap), so "no test
-				// reaches it" would be a claim with no evidence behind it
-				// (I44/design §3.4 honesty). Named, not misclassed.
-				excludedFiles = append(excludedFiles, cf.File)
-				continue
-			}
-			// The FILE is indexed but this one symbol is not (a
-			// build-tag-excluded function sharing a file with others
-			// that aren't, or a genuine extraction gap for just this
-			// function): honest default — nothing PROVES a test reaches
-			// it, so it is unreached, never guessed otherwise.
-			item.Class = "unreached"
-			items = append(items, item)
+		if !ok && !filesIndexed[cf.File] {
+			// The WHOLE file carries no node at all — fathom never
+			// analyzed it (an ignore rule, a build-tag exclusion for
+			// this host, or a whole-file extraction gap), so "no test
+			// reaches it" would be a claim with no evidence behind it
+			// (I44/design §3.4 honesty). Named, not misclassed — and
+			// counted so Changed still reconciles (CV-71).
+			excludedFiles = append(excludedFiles, cf.File)
+			unanalyzedFuncs++
 			continue
 		}
 
-		key := node.Key()
-		// keyFiles[key] carries every FilePath sharing this exact index
-		// key — GOOS/build-tag twins with the same package-qualified
-		// name collapse to one key (core.SymbolNode.Key() carries no
-		// file), so a test that reaches "the key" cannot be trusted to
-		// have reached THIS twin's specific compiled body. Reach/callers
-		// still walk the shared key (the graph has no finer identity to
-		// offer), but such an item can never read attested: at most
-		// unattested, honestly short of proof rather than a false
-		// positive (CV-M12's own "genuinely... in the right class").
-		ambiguousKey := len(keyFiles[key]) > 1
-		item.Callers = resolvedCallerCount(g, key)
-		reach := callgraph.TestImpactDetail(g, key)
-		if len(reach) == 0 {
-			item.Class = "unreached"
-			items = append(items, item)
-			continue
+		var (
+			ambiguousKey      bool
+			reached           bool
+			attested          bool
+			reachingTestFiles []string
+		)
+		if ok {
+			key := node.Key()
+			// keyFiles[key] carries every FilePath sharing this exact
+			// index key — GOOS/build-tag twins with the same
+			// package-qualified name collapse to one key
+			// (core.SymbolNode.Key() carries no file), so a test that
+			// reaches "the key" cannot be trusted to have reached THIS
+			// twin's specific compiled body. Reach/callers still walk
+			// the shared key (the graph has no finer identity to
+			// offer), but such an item can never read attested: at most
+			// unattested, honestly short of proof rather than a false
+			// positive (CV-M12's own "genuinely... in the right class").
+			ambiguousKey = len(keyFiles[key]) > 1
+			item.Callers = resolvedCallerCount(g, key)
+			reach := callgraph.TestImpactDetail(g, key)
+			if len(reach) > 0 {
+				reached = true
+				tests := make([]string, 0, len(reach))
+				for _, r := range reach {
+					tn, tok := byKey[r.Key]
+					if !tok {
+						continue
+					}
+					tests = append(tests, tn.Name)
+					reachingTestFiles = append(reachingTestFiles, tn.FilePath)
+					if attested || ambiguousKey {
+						continue // one attesting test is enough; still list every reaching test's name
+					}
+					if isAttestedBy(ctx, in, tn, node, runsCache) {
+						attested = true
+					}
+				}
+				sort.Strings(tests)
+				if len(tests) > maxItemTests {
+					tests = tests[:maxItemTests]
+				}
+				item.Tests = tests
+				reachingTestFiles = sortedUniqueSlice(reachingTestFiles)
+			}
+		}
+		// !ok (file indexed, symbol not): reached stays false — a
+		// build-tag-excluded function sharing a file with others that
+		// aren't, or a genuine extraction gap for just this function;
+		// honest default, never guessed. Coverage execution evidence
+		// below does not depend on this symbol being indexed at all
+		// (cf.File/Line/EndLine come from the AST parse, not the index),
+		// so it still gets a chance to class this item correctly.
+
+		staticClass := "unreached"
+		if reached {
+			if attested {
+				staticClass = "attested"
+			} else {
+				staticClass = "unattested"
+			}
 		}
 
-		tests := make([]string, 0, len(reach))
-		attested := false
-		for _, r := range reach {
-			tn, ok := byKey[r.Key]
-			if !ok {
-				continue
-			}
-			tests = append(tests, tn.Name)
-			if attested || ambiguousKey {
-				continue // one attesting test is enough; still list every reaching test's name
-			}
-			if isAttestedBy(ctx, in, tn, node, runsCache) {
-				attested = true
-			}
-		}
-		sort.Strings(tests)
-		if len(tests) > maxItemTests {
-			tests = tests[:maxItemTests]
-		}
-		item.Tests = tests
-		if attested {
-			item.Class = "attested"
+		if blocks, usable := coverageUsableForFunction(in, cf, reachingTestFiles, globalCovOK); usable {
+			item.Evidence = evidenceExecuted
+			classifyByExecution(&item, changedBlocksFor(in, cf, blocks))
 		} else {
-			item.Class = "unattested"
+			item.Class = staticClass
 		}
 		items = append(items, item)
 	}
 	if len(excludedFiles) > 0 {
 		rep.Unanalyzed = mergedSortedUnique(rep.Unanalyzed, excludedFiles)
 	}
+	rep.UnanalyzedFunctions = unanalyzedFuncs
 
-	classRank := map[string]int{"unreached": 0, "unattested": 1}
+	classRank := map[string]int{"unexecuted": 0, "unreached": 1, "partial": 2, "unattested": 3}
 	var listed []ResidueItem
 	for _, it := range items {
 		switch it.Class {
@@ -413,6 +493,12 @@ func Residue(ctx context.Context, in Input, maxItems int) ResidueReport {
 			listed = append(listed, it)
 		case "unreached":
 			rep.Unreached++
+			listed = append(listed, it)
+		case "partial":
+			rep.Partial++
+			listed = append(listed, it)
+		case "unexecuted":
+			rep.Unexecuted++
 			listed = append(listed, it)
 		}
 	}
@@ -488,6 +574,139 @@ func isAttestedBy(ctx context.Context, in Input, test, changed core.SymbolNode, 
 	return unchanged
 }
 
+// coverageUsableGlobally reports whether in.Coverage clears CV-70/I44's
+// bound/dirty/passed bar for the WHOLE run, and names why not otherwise.
+// in.Coverage == nil with no in.CoverageLoadError reads as "nothing was
+// configured at all" — a benign, non-reportable state (most runs simply
+// have no profile), distinct from a profile that WAS found and failed the
+// bar.
+func coverageUsableGlobally(in Input) (usable bool, reason string) {
+	if in.CoverageLoadError != "" {
+		return false, in.CoverageLoadError
+	}
+	if in.Coverage == nil {
+		return false, ""
+	}
+	if in.CoverageMeta.Commit == "" {
+		return false, "coverage meta names no bound commit"
+	}
+	if in.CoverageMeta.Dirty {
+		return false, "coverage meta was captured on a dirty working tree"
+	}
+	if !in.CoverageMeta.Passed {
+		return false, "coverage meta's run did not pass"
+	}
+	return true, ""
+}
+
+// coverageUsableForFunction reports whether cf's own execution can be
+// trusted from in.Coverage (CV-69/CV-70's per-function half of "Usable
+// only when bound"): the global bar (globalOK) cleared, at least one
+// coverage block falls inside cf's own line span, and neither cf's file
+// nor any of testFiles (its reaching tests') changed since
+// in.CoverageMeta.Commit (O114's rule, applied exactly like
+// isAttestedBy already applies it for the static path — this package's
+// own "one rule, never a second implementation that could drift"). On
+// success, returns every coverage block inside cf's span (not yet
+// filtered to the CHANGED ones — changedBlocksFor does that).
+func coverageUsableForFunction(in Input, cf ChangedFunction, testFiles []string, globalOK bool) ([]CoverageBlock, bool) {
+	if !globalOK {
+		return nil, false
+	}
+	blocks := blocksInSpan(in.Coverage, cf.File, cf.Line, cf.EndLine)
+	if len(blocks) == 0 {
+		return nil, false
+	}
+	if in.ReachUnchangedSince == nil {
+		return nil, false
+	}
+	files := append([]string{cf.File}, testFiles...)
+	unchanged, err := in.ReachUnchangedSince(in.CoverageMeta.Commit, sortedUniqueSlice(files))
+	if err != nil || !unchanged {
+		return nil, false
+	}
+	return blocks, true
+}
+
+// blocksInSpan returns cov's blocks for file whose own line range
+// overlaps [startLine, endLine] (a changed function's HEAD span),
+// preserving LoadCoverage's own per-file (StartLine, StartCol) order.
+func blocksInSpan(cov *CoverageProfile, file string, startLine, endLine int) []CoverageBlock {
+	if cov == nil {
+		return nil
+	}
+	var out []CoverageBlock
+	for _, b := range cov.Blocks[file] {
+		if b.EndLine < startLine || b.StartLine > endLine {
+			continue
+		}
+		out = append(out, b)
+	}
+	return out
+}
+
+// changedBlocksFor narrows fnBlocks (every coverage block inside cf's own
+// span) to the ones design §3.5 calls "changed blocks": every block, for
+// an "added" function (design: "for an added function, that is every
+// block") — or when in.ChangedLines is nil or errors, since fathom then
+// has no way to know WHICH lines changed and treating every block as
+// changed is the honest, conservative default (never silently clearing a
+// function fathom simply could not diff); otherwise, only the blocks
+// overlapping a line in.ChangedLines(cf.File) reports as added or
+// changed inside cf's own file.
+func changedBlocksFor(in Input, cf ChangedFunction, fnBlocks []CoverageBlock) []CoverageBlock {
+	if cf.Change != "modified" || in.ChangedLines == nil {
+		return fnBlocks
+	}
+	ranges, err := in.ChangedLines(cf.File)
+	if err != nil {
+		return fnBlocks
+	}
+	var out []CoverageBlock
+	for _, b := range fnBlocks {
+		for _, r := range ranges {
+			if b.EndLine >= r.Start && b.StartLine <= r.End {
+				out = append(out, b)
+				break
+			}
+		}
+	}
+	return out
+}
+
+// classifyByExecution fills item's Class (and UnexecutedLines, for
+// "partial") from changedBlocks' own per-block execution counts (design
+// §3.5's "Classes with execution evidence"): "attested" when every
+// changed block executed — including the vacuous case of NO changed
+// block at all, a comment-only edit, design's own "cleared"; "unexecuted"
+// when none did; "partial" otherwise, naming the unexecuted ranges
+// ("start-end", ascending).
+func classifyByExecution(item *ResidueItem, changedBlocks []CoverageBlock) {
+	if len(changedBlocks) == 0 {
+		item.Class = "attested"
+		return
+	}
+	executed := 0
+	var unexecuted []string
+	for _, b := range changedBlocks {
+		if b.Count > 0 {
+			executed++
+		} else {
+			unexecuted = append(unexecuted, fmt.Sprintf("%d-%d", b.StartLine, b.EndLine))
+		}
+	}
+	switch {
+	case executed == len(changedBlocks):
+		item.Class = "attested"
+	case executed == 0:
+		item.Class = "unexecuted"
+	default:
+		sort.Strings(unexecuted)
+		item.Class = "partial"
+		item.UnexecutedLines = unexecuted
+	}
+}
+
 // resolvedCallerCount counts symbol's callers whose edge is
 // core.EdgeConfidenceResolved (a real typed-pass confirmation, never a
 // syntax-only guess) — the reading set's own ordering key (design §3.4:
@@ -555,4 +774,18 @@ func sortedUniqueStrings(a, b string) []string {
 	out := []string{a, b}
 	sort.Strings(out)
 	return out
+}
+
+// sortedUniqueSlice dedups and sorts ss (dropping any "" entries) —
+// coverageUsableForFunction's own version of sortedUniqueStrings' rule,
+// for an arbitrary-length file list (a function's own file plus every
+// reaching test's file) rather than a fixed pair.
+func sortedUniqueSlice(ss []string) []string {
+	set := make(map[string]bool, len(ss))
+	for _, s := range ss {
+		if s != "" {
+			set[s] = true
+		}
+	}
+	return sortedSet(set)
 }

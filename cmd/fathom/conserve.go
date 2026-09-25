@@ -20,12 +20,15 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"path/filepath"
 	"sort"
 	"strings"
 
+	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/conserve"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
@@ -38,6 +41,7 @@ func cmdConserve(args []string, stdout, stderr io.Writer) int {
 	jsonOut := fs.Bool("json", false, "emit the fathom.conserve/v1 JSON report instead of a text table")
 	strict := fs.Bool("strict", false, "exit 1 when any plane's verdict is \"losses\"")
 	residueMax := fs.Int("residue-max", conserve.DefaultResidueMax, "cap on the reading set's item list (design §3.4); the report says how many were cut")
+	coverageMeta := fs.String("coverage-meta", "", "path to a coverage.meta.json binding a Go coverage profile for the reading set's execution evidence (design §3.5); default: [tests] results_dir/coverage.meta.json when configured")
 	var plans planFlags
 	fs.Var(&plans, "plan", "plan file to read retires:/surface_change: declarations from (repeatable); default: every docs/plans/*.md at the repo root (non-recursive, the same set the gate itself walks)")
 
@@ -74,6 +78,7 @@ func cmdConserve(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 2
 	}
+	loadConserveCoverage(&in, root, *coverageMeta)
 
 	rep := conserve.Run(ctx, in, conserve.Planes())
 	rep.Tiers = conserve.TiersByLanguage(ctx, in)
@@ -100,6 +105,62 @@ func cmdConserve(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	return 0
+}
+
+// loadConserveCoverage resolves and loads the coverage.meta.json (CV-67,
+// design §3.5) execution evidence draws from: coverageMetaFlag when set
+// (`--coverage-meta`), else `[tests] results_dir/coverage.meta.json` when
+// a project or user .fathom/config.toml names one. Neither being
+// configured, or the file simply not existing there, is NOT itself a
+// reportable failure — most runs have no profile at all, and Residue's
+// own CoverageUnusable field stays empty in that case (coverageUsable
+// Globally's own doc comment). An actual read/parse failure for a meta
+// or profile file that DOES exist is recorded on in.CoverageLoadError,
+// surfaced verbatim as ResidueReport.CoverageUnusable — I44's own "the
+// report names why", never silently dropped. This is the one place
+// cmd/fathom does coverage I/O; internal/conserve.Residue itself never
+// reads a file (this package's own "the one place that touches git/I/O"
+// convention, input.go's precedent).
+func loadConserveCoverage(in *conserve.Input, root, coverageMetaFlag string) {
+	metaPath := coverageMetaFlag
+	if metaPath == "" {
+		loaded, err := config.Load(config.DefaultUserPath(), config.DefaultProjectPath())
+		if err != nil {
+			return
+		}
+		resultsDir := loaded.Config.Tests.ResultsDir
+		if resultsDir == "" {
+			return
+		}
+		if !filepath.IsAbs(resultsDir) {
+			resultsDir = filepath.Join(root, resultsDir)
+		}
+		metaPath = filepath.Join(resultsDir, "coverage.meta.json")
+	}
+
+	meta, err := conserve.LoadCoverageMeta(metaPath)
+	if err != nil {
+		if !errors.Is(err, fs.ErrNotExist) {
+			in.CoverageLoadError = err.Error()
+		}
+		return
+	}
+	in.CoverageMeta = meta
+
+	if meta.Profile == "" {
+		in.CoverageLoadError = fmt.Sprintf("%s names no profile", metaPath)
+		return
+	}
+	profilePath := meta.Profile
+	if !filepath.IsAbs(profilePath) {
+		profilePath = filepath.Join(filepath.Dir(metaPath), profilePath)
+	}
+	prof, _, err := conserve.LoadCoverage(root, profilePath)
+	if err != nil {
+		in.CoverageLoadError = err.Error()
+		return
+	}
+	in.Coverage = &prof
 }
 
 // discoverPlanPaths returns every docs/plans/*.md at root, non-recursive —
@@ -170,8 +231,11 @@ func printConserveReport(w io.Writer, rep conserve.Report) {
 // never affects --strict's exit, so it prints last, clearly set apart from
 // the plane-by-plane findings above it.
 func printConserveResidue(w io.Writer, rep conserve.ResidueReport) {
-	fmt.Fprintf(w, "reading set: %d changed, %d attested, %d unattested, %d unreached\n",
-		rep.Changed, rep.Attested, rep.Unattested, rep.Unreached)
+	fmt.Fprintf(w, "reading set: %d changed, %d attested, %d unattested, %d unreached, %d partial, %d unexecuted, %d unanalyzed function(s)\n",
+		rep.Changed, rep.Attested, rep.Unattested, rep.Unreached, rep.Partial, rep.Unexecuted, rep.UnanalyzedFunctions)
+	if rep.CoverageUnusable != "" {
+		fmt.Fprintf(w, "    coverage unusable: %s (falling back to static reach)\n", rep.CoverageUnusable)
+	}
 	for _, m := range rep.Missing {
 		fmt.Fprintf(w, "    missing: %s\n", m)
 	}
@@ -183,8 +247,11 @@ func printConserveResidue(w io.Writer, rep conserve.ResidueReport) {
 		if len(it.Tests) > 0 {
 			tests = strings.Join(it.Tests, ", ")
 		}
-		fmt.Fprintf(w, "  - [%s] %s %s (%s:%d) — callers=%d, tests: %s\n",
-			it.Class, it.Change, it.Symbol, it.File, it.Line, it.Callers, tests)
+		fmt.Fprintf(w, "  - [%s] %s %s (%s:%d) — callers=%d, evidence=%s, tests: %s\n",
+			it.Class, it.Change, it.Symbol, it.File, it.Line, it.Callers, it.Evidence, tests)
+		if len(it.UnexecutedLines) > 0 {
+			fmt.Fprintf(w, "      unexecuted: %s\n", strings.Join(it.UnexecutedLines, ", "))
+		}
 	}
 	if rep.Truncated > 0 {
 		fmt.Fprintf(w, "    (%d more item(s) cut by --residue-max)\n", rep.Truncated)

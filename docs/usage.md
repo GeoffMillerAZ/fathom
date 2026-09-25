@@ -1586,7 +1586,7 @@ code path this CLI calls — a Go embedder gets byte-identical answers.
 ### `conserve` — the refactor-conservation report (ADR-044, CV-19)
 
 ```sh
-fathom conserve --since <git-ref> --service <id> [--store DB] [--json] [--strict] [--plan FILE ...] [--residue-max N]
+fathom conserve --since <git-ref> --service <id> [--store DB] [--json] [--strict] [--plan FILE ...] [--residue-max N] [--coverage-meta FILE]
 ```
 
 Runs every registered `internal/conserve.Plane` (`surface`, `certificates`,
@@ -1710,6 +1710,80 @@ Served two other places: `fathom.conserve/v1`'s additive `residue` object
 (exactly the shape above), and `fathom review --since`'s `conservation`
 dimension, which carries the same counts plus the first five `unreached`
 items alongside its ordinary plane findings.
+
+#### Execution evidence (CV-M13, design §3.5)
+
+The reading set's original rule judged a function `attested` whenever a
+passing, commit-bound test *statically reached* it — CV-M13
+(`docs/bench/readings/cv-m13-reading-set-calibration-2026-09-25.md`)
+measured that against real Go coverage and found it both too generous
+(3.7% of `attested` functions never actually executed — branches no test
+takes, a CLI verb switch, interface fan-out) and too strict (unreached
+functions that DID execute, reached only through the standard library or a
+runtime initializer, outside the first-party call graph).
+
+`task tests:attest` now runs the suite ONCE as `go test -json
+-coverpkg=./... -coverprofile=<results_dir>/coverage.out ./...` (the same
+JSON output still feeds the envelope; `TESTKIT_COVER=0` turns the profile
+off) and writes `<results_dir>/coverage.meta.json`:
+
+```json
+{"schema":"fathom.coverage/v1","commit":"<sha>","dirty":false,"race":false,
+ "profile":"coverage.out","passed":true}
+```
+
+`fathom conserve` reads it from `--coverage-meta FILE`, or from `[tests]
+results_dir/coverage.meta.json` when configured and neither is given. The
+profile is used only when its meta names a commit, `dirty` is false and
+`passed` is true (I44) — an unbound, dirty or failing-run profile is never
+used, and the report names why (`coverage_unusable`). Per function, the
+profile also counts only when neither the function's own file nor any
+reaching test's file changed since that bound commit (the same O114 rule
+certificates use) — a function whose profile has gone stale that way falls
+back to static reach on its own, without disturbing any other item.
+
+With a usable profile, a changed function's coverage blocks inside its own
+span are mapped from the profile (`LoadCoverage`, module-path-aware,
+duplicate blocks across a `-coverpkg` run's per-package sections merged by
+MAXIMUM count) and its *changed blocks* — every block, for an added
+function; only the blocks overlapping a `git diff -U0 base..head`-changed
+line, for a modified one — decide the class purely from execution:
+
+- `attested` — every changed block executed (a comment-only edit has no
+  changed block at all, so it clears);
+- `partial` — the function executed, but some changed blocks never ran
+  (`unexecuted_lines` names those ranges);
+- `unexecuted` — no changed block ran.
+
+Without a usable profile — globally, or for one specific item — the
+original static classes (`attested`/`unattested`/`unreached`) stand for
+that item. Every item's `evidence` field names which rule classed it:
+`"executed"` or `"static-reach"`. Items list every non-`attested` class,
+in order `unexecuted`, `unreached`, `partial`, `unattested`, each by
+resolved caller count then symbol — still counts and lists only (I43), no
+percentage. `unanalyzed_functions` counts a changed function whose own
+file the index never analyzed at all (vendor/, an ignore rule), so
+`changed` always equals the sum of every class plus that count
+(reconciliation, CV-71). Test-case identity: a case id carrying its own
+package (`fathom tests ingest`'s join, `JoinCasesToSymbols`) disambiguates
+a bare `Test*` name shared across packages, which used to leave both
+unjoined (CV-M13's control measurement: 34 of 566 cases).
+
+```json
+{"schema":"fathom.coverage/v1", "...": "...",
+ "residue":{"changed":2,"attested":0,"unattested":0,"unreached":0,
+   "partial":1,"unexecuted":1,"unanalyzed_functions":0,
+   "items":[
+     {"symbol":"Half","file":"widgets/extra.go","line":9,"change":"modified",
+      "class":"partial","tests":[],"callers":0,"evidence":"executed",
+      "unexecuted_lines":["12-14"]},
+     {"symbol":"Dead","file":"widgets/extra.go","line":20,"change":"added",
+      "class":"unexecuted","tests":[],"callers":0,"evidence":"executed"}],
+   "truncated":0,"unanalyzed":[],"missing":[],"coverage_unusable":""}}
+```
+
+The decision port has no role (deterministic execution evidence, ADR-044
+decision 8's "never safety").
 
 ### `refactor` — refactors as programs (CV-33/CV-34, ADR-044 §4)
 

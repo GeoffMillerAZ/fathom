@@ -295,6 +295,16 @@ type ConservationResidueSummary struct {
 	Attested   int
 	Unattested int
 	Unreached  int
+	// Partial/Unexecuted mirror conserve.ResidueReport's own fields
+	// (CV-69, design §3.5): counts placed by execution evidence rather
+	// than static reach. Both stay 0 when no usable coverage profile
+	// classed anything.
+	Partial    int
+	Unexecuted int
+	// UnanalyzedFunctions mirrors conserve.ResidueReport.UnanalyzedFunctions
+	// (CV-71): a changed function whose own file the index never
+	// analyzed at all.
+	UnanalyzedFunctions int
 	// Items mirrors conserve.ResidueReport.Items 1:1 — the caller decides
 	// how much of it to hand over; runConservation itself only ever
 	// SURFACES the first five (design §3.4: "the review conservation
@@ -305,6 +315,10 @@ type ConservationResidueSummary struct {
 	Truncated  int
 	Unanalyzed []string
 	Missing    []string
+	// CoverageUnusable mirrors conserve.ResidueReport.CoverageUnusable
+	// (CV-70): "" unless a coverage profile was found and failed I44's
+	// bound/dirty/passed bar, or an operational read failure occurred.
+	CoverageUnusable string
 }
 
 // ConservationResidueItem mirrors one internal/conserve.ResidueItem.
@@ -312,6 +326,11 @@ type ConservationResidueItem struct {
 	Symbol, File, Change, Class string
 	Line, Callers               int
 	Tests                       []string
+	// Evidence/UnexecutedLines mirror ResidueItem's own execution-evidence
+	// fields (CV-69, design §3.5): Evidence is "executed" or
+	// "static-reach"; UnexecutedLines is set only for a "partial" item.
+	Evidence        string
+	UnexecutedLines []string
 }
 
 // DeclaredLabel mirrors conserve.Finding.DeclaredLabel's own correction
@@ -638,7 +657,9 @@ func runConservation(in Input) Dimension {
 	res := in.ConservationResidue
 	d.Residue = ConservationResidueSummary{
 		Changed: res.Changed, Attested: res.Attested, Unattested: res.Unattested, Unreached: res.Unreached,
+		Partial: res.Partial, Unexecuted: res.Unexecuted, UnanalyzedFunctions: res.UnanalyzedFunctions,
 		Truncated: res.Truncated, Unanalyzed: res.Unanalyzed, Missing: res.Missing,
+		CoverageUnusable: res.CoverageUnusable,
 	}
 	for _, it := range res.Items {
 		if it.Class != "unreached" || len(d.Residue.Items) >= 5 {
