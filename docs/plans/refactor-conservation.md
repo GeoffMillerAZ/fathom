@@ -84,7 +84,7 @@ silently skipped. Design: `docs/design/refactor-conservation.md`.
 - [ ] (op) CV-44: Review Kit's `refactoring-conservation` pack and `fathom-conserve` adapter, armed at warn on this repository (platform-engineering) {id: CV-44, skip: "cross-repo: platform-engineering review-kit"}
 - [ ] ADR-043's kill rule counts warn, not deny {id: CV-45, oracle: lexical, path: ADR.md, pattern: "never fires at warn"}
 - [ ] The stanza routes refactors to `rename_impact` and `safe_delete_check` first {id: CV-46, oracle: lexical, path: CLAUDE.md, pattern: "refactor/delete: rename_impact"}
-- [ ] The pre-push hook runs `fathom conserve --since` as a warning {id: CV-47, oracle: lexical, path: lefthook.yml, pattern: "fathom conserve"}
+- [x] The pre-push hook runs `fathom conserve --since` as a warning {id: CV-47, oracle: lexical, path: lefthook.yml, pattern: "fathom conserve"}
 
 ## Deferred (trigger on file)
 
