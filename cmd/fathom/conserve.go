@@ -197,6 +197,10 @@ func printConserveResidue(w io.Writer, rep conserve.ResidueReport) {
 	if rep.CoverageUnusable != "" {
 		fmt.Fprintf(w, "    coverage unusable: %s (falling back to static reach)\n", rep.CoverageUnusable)
 	}
+	if rep.CoverageUnmapped > 0 {
+		fmt.Fprintf(w, "    coverage unmapped: %d profile file key(s) matched no module here, e.g. %s (functions in them fall back to static reach)\n",
+			rep.CoverageUnmapped, strings.Join(rep.CoverageUnmappedSample, ", "))
+	}
 	for _, m := range rep.Missing {
 		fmt.Fprintf(w, "    missing: %s\n", m)
 	}

@@ -319,6 +319,12 @@ type ConservationResidueSummary struct {
 	// (CV-70): "" unless a coverage profile was found and failed I44's
 	// bound/dirty/passed bar, or an operational read failure occurred.
 	CoverageUnusable string
+	// CoverageUnmapped/CoverageUnmappedSample mirror
+	// conserve.ResidueReport's own: the profile's file keys that matched
+	// no module while the rest mapped (a partial mapping, never total
+	// failure), counted and sampled.
+	CoverageUnmapped       int
+	CoverageUnmappedSample []string
 }
 
 // ConservationResidueItem mirrors one internal/conserve.ResidueItem.
@@ -665,6 +671,7 @@ func runConservation(in Input) Dimension {
 		Partial: res.Partial, Unexecuted: res.Unexecuted, UnanalyzedFunctions: res.UnanalyzedFunctions,
 		Truncated: res.Truncated, Unanalyzed: res.Unanalyzed, Missing: res.Missing,
 		CoverageUnusable: res.CoverageUnusable,
+		CoverageUnmapped: res.CoverageUnmapped, CoverageUnmappedSample: res.CoverageUnmappedSample,
 	}
 	for _, it := range res.Items {
 		if len(d.Residue.Items) >= 5 {

@@ -137,6 +137,15 @@ type Input struct {
 	// a successfully-read meta simply failing the bound/dirty/passed
 	// bar) — surfaced verbatim as ResidueReport.CoverageUnusable.
 	CoverageLoadError string
+	// CoverageSkipped names the profile's file keys LoadCoverage could not
+	// place under any module (its own skipped list) when the rest of the
+	// profile DID map — a partial mapping, sorted. Those files' blocks are
+	// absent from Coverage, so a changed function in one reads no
+	// execution evidence and falls back to static reach; Residue counts
+	// and samples them (ResidueReport.CoverageUnmapped) so the fallback is
+	// named, never silent. A profile that maps NO block at all is total
+	// failure instead: CoverageLoadError, never this field.
+	CoverageSkipped []string
 }
 
 // LineRange is an inclusive, 1-based line range in a file's HEAD content

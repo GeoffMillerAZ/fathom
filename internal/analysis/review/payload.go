@@ -85,6 +85,10 @@ func (r ConservationResidueSummary) payload() map[string]any {
 	if r.CoverageUnusable != "" {
 		resp["coverage_unusable"] = r.CoverageUnusable
 	}
+	if r.CoverageUnmapped > 0 {
+		resp["coverage_unmapped"] = r.CoverageUnmapped
+		resp["coverage_unmapped_sample"] = nonNilStrings(r.CoverageUnmappedSample)
+	}
 	return resp
 }
 

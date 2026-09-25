@@ -1736,7 +1736,12 @@ off) and writes `<results_dir>/coverage.meta.json`:
 results_dir/coverage.meta.json` when configured and neither is given. The
 profile is used only when its meta names a commit, `dirty` is false and
 `passed` is true (I44) — an unbound, dirty or failing-run profile is never
-used, and the report names why (`coverage_unusable`). Per function, the
+used, and the report names why (`coverage_unusable`). A profile whose file
+keys map for some modules but not others (a second module's results left in
+`results_dir`, a module renamed since the run) is still used, and the report
+counts the unplaced keys with a sample (`coverage_unmapped`,
+`coverage_unmapped_sample`): functions in those files have no execution
+evidence and fall back to static reach. Per function, the
 profile also counts only when neither the function's own file nor any
 reaching test's file changed since that bound commit (the same O114 rule
 certificates use) — a function whose profile has gone stale that way falls
@@ -1747,10 +1752,13 @@ span are mapped from the profile (`LoadCoverage`, module-path-aware,
 duplicate blocks across a `-coverpkg` run's per-package sections merged by
 MAXIMUM count) and its *changed blocks* — every block, for an added
 function; only the blocks overlapping a `git diff -U0 base..head`-changed
-line, for a modified one — decide the class purely from execution:
+line, for a modified one — decide the class purely from execution. A
+function counts as modified only when its code tokens changed: a comment,
+blank line or reflowed line inside the body (like a doc comment above it)
+leaves it out of the reading set entirely.
 
-- `attested` — every changed block executed (a comment-only edit has no
-  changed block at all, so it clears);
+- `attested` — every changed block executed (a modified function whose
+  changed lines hold no block, such as a signature-only edit, clears);
 - `partial` — the function executed (some block of it ran, changed or
   not), but some changed block never ran (`unexecuted_lines` names those
   ranges);

@@ -42,7 +42,10 @@ import (
 // repository file (every key in LoadCoverage's own skipped list — a
 // stale results_dir from another module, or a renamed module) is
 // likewise named rather than silently accepted as an empty-but-usable
-// profile.
+// profile. A profile that maps SOME blocks but skips other keys is usable,
+// and the skipped keys go to in.CoverageSkipped — the report counts and
+// samples them (ResidueReport.CoverageUnmapped) rather than letting a
+// partial mapping pass for a complete one.
 func LoadConfiguredCoverage(in *Input, root, metaPathOverride string) {
 	explicit := metaPathOverride != ""
 	metaPath := metaPathOverride
@@ -101,4 +104,5 @@ func LoadConfiguredCoverage(in *Input, root, metaPathOverride string) {
 		return
 	}
 	in.Coverage = &prof
+	in.CoverageSkipped = skipped
 }

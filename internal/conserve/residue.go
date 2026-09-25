@@ -65,10 +65,13 @@ type ChangedFunction struct {
 // "Changed functions"): a head function is "added" when no function of the
 // same receiver-qualified name exists at base ANYWHERE among the SAME
 // changed files' base content in the SAME package directory (path.Dir), and
-// "modified" when one does and the EXACT body text (funcSite.exactHash — a
-// plain sha256 of the unnormalized source slice, never
-// clone.FuncBodyHash's identifier-insensitive hash, which exists for
-// resurrection.go's own, deliberately different question) differs. A
+// "modified" when one does and the exact CODE text (funcSite.codeHash — a
+// sha256 of the function's own token stream with comments dropped and
+// layout ignored, never clone.FuncBodyHash's identifier-insensitive hash,
+// which exists for resurrection.go's own, deliberately different
+// question) differs: a comment, a blank line or a reflowed line inside
+// the body is not a behaviour change, exactly as a doc comment above the
+// `func` keyword already was not. A
 // function whose body is unchanged — whether it sits in the same file or
 // moved to another changed file in the same directory, including one
 // deleted outright at head (its base functions are still pooled here, so a
@@ -84,7 +87,7 @@ type ChangedFunction struct {
 // name-only match would compare an unrelated twin's body, reporting a
 // stable function "modified" or hiding a real edit that happens to land on
 // another twin's old text. Each head function consumes (removes) the
-// first still-available base candidate whose exactHash matches; a head
+// first still-available base candidate whose codeHash matches; a head
 // function that finds no match is "modified" when the name existed at base
 // at all, "added" otherwise. An unconsumed leftover base candidate is
 // simply "deleted" here (never reported, per the paragraph above).
@@ -176,7 +179,7 @@ func ChangedFunctions(in Input) (funcs []ChangedFunction, unanalyzed []string, m
 			candidates, existed := p[f.name]
 			matched := -1
 			for i, bf := range candidates {
-				if bf.exactHash == f.exactHash {
+				if bf.codeHash == f.codeHash {
 					matched = i
 					break
 				}
@@ -275,7 +278,23 @@ type ResidueReport struct {
 	// ever configured at all (itself not a reportable failure — most
 	// runs simply have none).
 	CoverageUnusable string `json:"coverage_unusable,omitempty"`
+
+	// CoverageUnmapped counts the profile's file keys that matched no
+	// module under the repository root while the rest of the profile
+	// mapped (Input.CoverageSkipped) — a partial mapping, not the total
+	// failure CoverageUnusable names. A changed function in one of those
+	// files reads no execution evidence and falls back to static reach,
+	// so the count is a disclosure the reader needs beside every
+	// "executed" class. CoverageUnmappedSample lists the first
+	// coverageUnmappedSampleMax keys, sorted. Both omitted when every key
+	// mapped or no profile was loaded.
+	CoverageUnmapped       int      `json:"coverage_unmapped,omitempty"`
+	CoverageUnmappedSample []string `json:"coverage_unmapped_sample,omitempty"`
 }
+
+// coverageUnmappedSampleMax caps ResidueReport.CoverageUnmappedSample: a
+// sample to act on (which module's results are stale), not the full list.
+const coverageUnmappedSampleMax = 3
 
 // Residue computes the reading set (design §3.4, CV-61/CV-62/CV-63):
 // ChangedFunctions' own output, each classed attested/unattested/unreached
@@ -314,6 +333,12 @@ func Residue(ctx context.Context, in Input, maxItems int) ResidueReport {
 		Items:      []ResidueItem{},
 		Unanalyzed: mergedSortedUnique(unanalyzedFiles(in.ChangedFiles), cfUnanalyzed),
 		Missing:    []string{},
+	}
+	// A fact of the loaded profile, like Changed/Unanalyzed a fact of the
+	// diff: reported on every path, including the unproven ones below.
+	if n := len(in.CoverageSkipped); n > 0 {
+		rep.CoverageUnmapped = n
+		rep.CoverageUnmappedSample = append([]string(nil), in.CoverageSkipped[:min(n, coverageUnmappedSampleMax)]...)
 	}
 
 	missingSet := map[string]bool{}
@@ -689,7 +714,10 @@ func changedBlocksFor(in Input, cf ChangedFunction, fnBlocks []CoverageBlock) []
 // fnBlocks — EVERY block in the function's own span, changed or not
 // (design §3.5's "Classes with execution evidence"): "attested" when
 // every changed block executed — including the vacuous case of NO
-// changed block at all, a comment-only edit, design's own "cleared";
+// changed block at all (a modified function whose changed lines hold no
+// coverage block, e.g. only its signature line), design's own "cleared"
+// (a comment-only edit is not modified at all: ChangedFunctions'
+// codeHash);
 // "unexecuted" when NO block of the function executed at all (design:
 // "no block of the function executed" — fnBlocks, never just
 // changedBlocks: a function whose UNCHANGED blocks ran is a function

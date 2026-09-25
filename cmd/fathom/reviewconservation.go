@@ -97,5 +97,6 @@ func conservationResidueSummary(rep conserve.ResidueReport) review.ConservationR
 		Partial: rep.Partial, Unexecuted: rep.Unexecuted, UnanalyzedFunctions: rep.UnanalyzedFunctions,
 		Items: items, Truncated: rep.Truncated, Unanalyzed: rep.Unanalyzed, Missing: rep.Missing,
 		CoverageUnusable: rep.CoverageUnusable,
+		CoverageUnmapped: rep.CoverageUnmapped, CoverageUnmappedSample: rep.CoverageUnmappedSample,
 	}
 }

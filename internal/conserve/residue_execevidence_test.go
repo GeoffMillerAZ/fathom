@@ -3,7 +3,7 @@ package conserve
 // residue_execevidence_test.go — CV-69/CV-70/CV-71 (docs/design/
 // refactor-conservation.md §3.5, CV-M13): execution evidence.
 // TestResidue_ExecutionEvidenceClasses pins the attested/partial/
-// unexecuted classification (plus the comment-only "cleared" rule);
+// unexecuted classification (plus the no-changed-block "cleared" rule);
 // TestResidue_UnusableCoverageFallsBack pins the global and per-function
 // fallback-to-static-reach rules (I44); TestResidue_CountsReconcile pins
 // CV-71's own "Changed always equals the sum of the classes plus
@@ -21,9 +21,12 @@ import (
 // execution evidence": attested (every changed block executed), partial
 // (some did, naming the unexecuted line ranges), unexecuted (none did),
 // an added function's changed-block set is EVERY block in its span
-// (never git-diff-filtered), and a comment-only edit — a modified
-// function whose only changed LINE carries no coverage block at all —
-// clears to attested with no changed block counted against it.
+// (never git-diff-filtered), and a modified function whose only changed
+// LINE carries no coverage block at all (its signature line: a parameter
+// renamed, the one statement block starting on the next line) clears to
+// attested with no changed block counted against it. (A comment-only
+// edit never gets this far: ChangedFunctions does not call it modified —
+// residue_commentonly_test.go.)
 func TestResidue_ExecutionEvidenceClasses(t *testing.T) {
 	ctx := context.Background()
 	const svc = "svc"
@@ -33,7 +36,7 @@ func TestResidue_ExecutionEvidenceClasses(t *testing.T) {
 			"func Attested() { x := 0 }\n\n" +
 			"func Partial() { a := 0 }\n\n" +
 			"func Unexecuted() { z := 0 }\n\n" +
-			"func CommentOnly() { z := 1; _ = z }\n",
+			"func HeaderOnly(a int) { _ = a }\n",
 	}
 	head := map[string]string{
 		"pkg/x.go": "package pkg\n\n" + // line 1
@@ -41,13 +44,13 @@ func TestResidue_ExecutionEvidenceClasses(t *testing.T) {
 			"func Partial() { a := 1; _ = a; b := 2; _ = b }\n\n" + // line 5
 			"func Unexecuted() { z := 9; _ = z }\n\n" + // line 7
 			"func AddedFn() { y := 5; _ = y }\n\n" + // line 9
-			"func CommentOnly() { // note\n" + // line 11
-			"\tz := 1; _ = z }\n", // line 12
+			"func HeaderOnly(renamed int) {\n" + // line 11
+			"\t_ = renamed }\n", // line 12
 	}
 
 	st := store.NewMemoryStore()
 	var obs []core.Observation
-	for _, name := range []string{"Attested", "Partial", "Unexecuted", "AddedFn", "CommentOnly"} {
+	for _, name := range []string{"Attested", "Partial", "Unexecuted", "AddedFn", "HeaderOnly"} {
 		obs = append(obs, core.Observation{ServiceID: svc, Package: "pkg", Symbol: name, SourceKind: core.KindGoFunc, SourceRef: "pkg/x.go", Line: 1})
 	}
 	if err := st.PutObservations(ctx, obs); err != nil {
@@ -61,7 +64,7 @@ func TestResidue_ExecutionEvidenceClasses(t *testing.T) {
 			{StartLine: 5, StartCol: 34, EndLine: 5, EndCol: 48, NumStmt: 1, Count: 0},  // Partial: unexecuted half
 			{StartLine: 7, StartCol: 20, EndLine: 7, EndCol: 36, NumStmt: 1, Count: 0},  // Unexecuted
 			{StartLine: 9, StartCol: 17, EndLine: 9, EndCol: 33, NumStmt: 1, Count: 9},  // AddedFn: executed (added -> all blocks)
-			{StartLine: 12, StartCol: 2, EndLine: 12, EndCol: 18, NumStmt: 1, Count: 0}, // CommentOnly's real statement block — Count=0 on purpose: must be EXCLUDED (never used) since it never overlaps the changed comment line
+			{StartLine: 12, StartCol: 2, EndLine: 12, EndCol: 16, NumStmt: 1, Count: 0}, // HeaderOnly's statement block — Count=0 on purpose: must be EXCLUDED (never used) since it never overlaps the changed signature line
 		},
 	}}
 
@@ -75,10 +78,10 @@ func TestResidue_ExecutionEvidenceClasses(t *testing.T) {
 			return commit == "c1", nil
 		},
 		// Only the "modified" functions' own single-statement line
-		// changed for Attested/Partial/Unexecuted; CommentOnly's only
-		// changed line is its COMMENT (line 11), never its statement
-		// (line 12) — the fixture design §3.5's "comment-only edit has
-		// no changed block" rests on.
+		// changed for Attested/Partial/Unexecuted; HeaderOnly's only
+		// changed line is its SIGNATURE (line 11), never its statement
+		// (line 12) — the fixture design §3.5's "no changed block
+		// clears" rule rests on.
 		ChangedLines: func(path string) ([]LineRange, error) {
 			if path != "pkg/x.go" {
 				return nil, nil
@@ -102,17 +105,17 @@ func TestResidue_ExecutionEvidenceClasses(t *testing.T) {
 	for _, it := range rep.Items {
 		byName[it.Symbol] = it
 	}
-	// Attested items (Attested itself, CommentOnly once cleared, and
+	// Attested items (Attested itself, HeaderOnly once cleared, and
 	// AddedFn whose one block executed) never appear in Items — the
 	// pre-existing "attested is counted, never listed" rule, unchanged
 	// by execution evidence.
-	for _, name := range []string{"Attested", "CommentOnly", "AddedFn"} {
+	for _, name := range []string{"Attested", "HeaderOnly", "AddedFn"} {
 		if _, ok := byName[name]; ok {
 			t.Errorf("%s must not appear in Items (class attested): %+v", name, rep.Items)
 		}
 	}
 	if rep.Attested != 3 {
-		t.Errorf("Attested = %d, want 3 (Attested, CommentOnly cleared, AddedFn)", rep.Attested)
+		t.Errorf("Attested = %d, want 3 (Attested, HeaderOnly cleared, AddedFn)", rep.Attested)
 	}
 
 	if it, ok := byName["Partial"]; !ok || it.Class != "partial" || it.Evidence != evidenceExecuted {

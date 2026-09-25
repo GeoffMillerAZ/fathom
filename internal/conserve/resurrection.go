@@ -62,6 +62,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/parser"
+	"go/scanner"
 	"go/token"
 	"path"
 	"strings"
@@ -88,25 +89,30 @@ func (resurrectionPlane) Check(ctx context.Context, in Input) ([]Finding, []stri
 //
 // hash is IDENTIFIER-INSENSITIVE (cluster.NormalizedHash, via
 // clone.FuncBodyHash) — Resurrected's own "same shape under a new name"
-// question (CV-31/32) needs exactly that insensitivity. exactHash is the
-// UNNORMALIZED source text's own sha256 — residue.go's ChangedFunctions
-// uses this one: design §3.4/CV-60 define "modified" as "the exact body
-// text differs," a different, stricter question a rename or a literal
-// swap must still answer (a changed identifier, keyword, string literal
-// or type is an ordinary behaviour change, not "the same function").
-// Never conflate the two: hash a rename left alone, exactHash a rename
-// changed on its own is Blindness evidence (CV-32); the reverse
-// (exactHash unchanged, hash changed — impossible, since exact identity
-// implies normalized identity too) never arises.
+// question (CV-31/32) needs exactly that insensitivity. codeHash is the
+// sha256 of the source's own TOKEN stream with every comment dropped
+// (codeTokenHash) — residue.go's ChangedFunctions uses this one: design
+// §3.4/CV-60 define "modified" as "the exact body text differs," a
+// different, stricter question a rename or a literal swap must still
+// answer (a changed identifier, keyword, string literal or type is an
+// ordinary behaviour change, not "the same function"). A comment, a blank
+// line or a line break that moves no token is not code text: hashing the
+// raw source slice made a comment added INSIDE a body read "modified"
+// while the same comment above the `func` keyword (outside the span)
+// already did not (CV-M12's runLocalize). Never conflate the two hashes:
+// hash a rename left alone, codeHash a rename changed on its own is
+// Blindness evidence (CV-32); the reverse (codeHash unchanged, hash
+// changed — impossible, since token identity implies normalized identity
+// too) never arises.
 type funcSite struct {
-	name      string
-	pkg       string
-	file      string
-	line      int
-	endLine   int
-	hash      string
-	exactHash string
-	stmts     int
+	name     string
+	pkg      string
+	file     string
+	line     int
+	endLine  int
+	hash     string
+	codeHash string
+	stmts    int
 }
 
 // Resurrected is resurrectionPlane's own analysis (CV-32), callable
@@ -282,19 +288,48 @@ func funcSitesIn(filePath string, src []byte) (sites []funcSite, ok bool) {
 		if !hashOK {
 			continue
 		}
-		exactSum := sha256.Sum256(body)
 		out = append(out, funcSite{
-			name:      funcDeclName(fn),
-			pkg:       pkgName,
-			file:      filePath,
-			line:      fset.Position(fn.Pos()).Line,
-			endLine:   fset.Position(fn.End()).Line,
-			hash:      hash,
-			exactHash: hex.EncodeToString(exactSum[:]),
-			stmts:     stmts,
+			name:     funcDeclName(fn),
+			pkg:      pkgName,
+			file:     filePath,
+			line:     fset.Position(fn.Pos()).Line,
+			endLine:  fset.Position(fn.End()).Line,
+			hash:     hash,
+			codeHash: codeTokenHash(body),
+			stmts:    stmts,
 		})
 	}
 	return out, true
+}
+
+// codeTokenHash hashes src's Go token stream — every token's kind and
+// literal text, in order — with comments skipped and whitespace never
+// seen, so a comment, a blank line, or a line break that moves no token
+// leaves it unchanged while any change to an identifier, keyword, operator
+// or literal (a string literal's contents included, "//" and all) changes
+// it. A semicolon is hashed by kind alone: the scanner reports an
+// automatically inserted one with the literal "\n" and an explicit one
+// with ";", and which of the two a statement ends with is layout, not
+// code — but WHETHER one is inserted is kept, since that decides how the
+// statement parses. src has already parsed as Go (funcSitesIn), so the
+// scanner's own error handler is not needed.
+func codeTokenHash(src []byte) string {
+	fset := token.NewFileSet()
+	file := fset.AddFile("", fset.Base(), len(src))
+	var s scanner.Scanner
+	s.Init(file, src, nil, 0) // mode 0: comments are skipped, never returned
+	h := sha256.New()
+	for {
+		_, tok, lit := s.Scan()
+		if tok == token.EOF {
+			break
+		}
+		if tok == token.SEMICOLON {
+			lit = ""
+		}
+		fmt.Fprintf(h, "%d\x00%s\x00", tok, lit)
+	}
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 // funcDeclName names fn the same way safe_delete_check and the plan

@@ -360,8 +360,11 @@ nor tagged generated (those belong to the integrity and generated planes),
 `funcSitesIn` at base and at head (the parse resurrection already does). A head
 function is `added` when no function of the same receiver and name exists at
 base in the same package directory, and `modified` when one does and the exact
-body text differs. A function whose body is unchanged but whose file moved is
-neither. Deleted functions are not in the reading set: the compiler proves their
+code text differs: the function's token stream with comments dropped, so a
+comment, blank line or reflowed line inside the body is no more a change than a
+doc comment above it (amended 2026-09-25 after CV-M12's reading listed a
+comment-only `runLocalize` edit). A function whose body is unchanged but whose
+file moved is neither. Deleted functions are not in the reading set: the compiler proves their
 referents gone, and `gone:`/`retires:` rows and the resurrection plane cover the
 rest.
 
@@ -441,7 +444,10 @@ commit, `dirty` is false and `passed` is true (I44). For each function, the
 profile also counts only if neither the function's file nor its test's file
 changed between that commit and HEAD, the same rule O114 gave certificates. An
 unusable profile is named in the report (`coverage_unusable`), and every item
-falls back to static reach. Each item records which evidence classed it
+falls back to static reach. A profile that maps only partly (some file keys
+match no module here) is still used; the unplaced keys are counted and sampled
+(`coverage_unmapped`, `coverage_unmapped_sample`), since functions in those
+files fall back to static reach. Each item records which evidence classed it
 (`evidence`: `executed` or `static-reach`).
 
 **Mapping.** Profile blocks are keyed by import path. They are mapped to
@@ -453,8 +459,9 @@ for an added function, that is every block.
 
 **Classes with execution evidence.**
 
-- `attested`: every changed block executed. A comment-only edit has no changed
-  block, so it is cleared.
+- `attested`: every changed block executed. A modified function whose changed
+  lines hold no block (a signature-only edit) has no changed block, so it is
+  cleared.
 - `partial`: the function executed, but some changed blocks never ran. The item
   lists those line ranges (`unexecuted_lines`).
 - `unexecuted`: no block of the function executed.

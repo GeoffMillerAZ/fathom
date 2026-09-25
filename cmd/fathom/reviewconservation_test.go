@@ -140,7 +140,10 @@ func TestReview_ConservationDimensionLoadsCoverage(t *testing.T) {
 
 	repo.writePlan(".fathom/config.toml", "[tests]\nresults_dir = \"results\"\n")
 	repo.writePlan("results/coverage.out",
-		"mode: set\nexample.com/widgets/pkg/f.go:3.15,5.2 1 0\n")
+		"mode: set\nexample.com/widgets/pkg/f.go:3.15,5.2 1 0\n"+
+			// a key from a module this repository does not hold: a
+			// partial mapping the payload must count, not drop
+			"example.com/elsewhere/x.go:1.1,2.2 1 1\n")
 	repo.writePlan("results/coverage.meta.json", `{
   "schema": "fathom.coverage/v1",
   "commit": "`+head+`",
@@ -206,5 +209,14 @@ func TestReview_ConservationDimensionLoadsCoverage(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("F not found in residue.items (want class=unexecuted evidence=executed): %+v", items)
+	}
+	if n, _ := residue["coverage_unmapped"].(float64); n != 1 {
+		t.Errorf("residue.coverage_unmapped = %v, want 1 (the unplaced example.com/elsewhere key)", residue["coverage_unmapped"])
+	}
+	if sample, _ := residue["coverage_unmapped_sample"].([]any); len(sample) != 1 || sample[0] != "example.com/elsewhere/x.go" {
+		t.Errorf("residue.coverage_unmapped_sample = %v, want [example.com/elsewhere/x.go]", residue["coverage_unmapped_sample"])
+	}
+	if _, ok := residue["coverage_unusable"]; ok {
+		t.Errorf("residue.coverage_unusable = %v, want absent — a partial mapping is not total failure", residue["coverage_unusable"])
 	}
 }

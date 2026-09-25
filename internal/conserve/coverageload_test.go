@@ -171,3 +171,60 @@ func TestLoadConfiguredCoverage_UnusableMetaSkipsTheProfileParse(t *testing.T) {
 		t.Errorf("Residue's CoverageUnusable = %q, want %q", rep.CoverageUnusable, "coverage meta's run did not pass")
 	}
 }
+
+// TestLoadConfiguredCoverage_PartialSkipIsSurfaced pins that a profile whose
+// blocks map for one module but not another (a second module's results
+// left in results_dir, or a module renamed since the run) still names the
+// unplaced keys: coverage_unusable is reserved for TOTAL failure, so
+// before this a partial skip left no trace at all — that module's
+// functions quietly fell back to static reach while the report read as a
+// fully usable profile.
+func TestLoadConfiguredCoverage_PartialSkipIsSurfaced(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte("module example.com/outer\n\ngo 1.22\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	profile := "mode: set\n" +
+		"example.com/outer/pkg/a.go:3.10,5.2 2 1\n" +
+		"example.com/renamed/pkg/b.go:3.10,5.2 2 1\n" +
+		"example.com/renamed/pkg/c.go:3.10,5.2 2 0\n" +
+		"example.com/gone/d.go:1.1,2.2 1 1\n" +
+		"example.com/gone/e.go:1.1,2.2 1 1\n"
+	if err := os.WriteFile(filepath.Join(root, "coverage.out"), []byte(profile), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "coverage.meta.json"),
+		[]byte(`{"schema":"fathom.coverage/v1","commit":"c1","dirty":false,"race":false,"profile":"coverage.out","passed":true}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	in := &Input{Store: store.NewMemoryStore(), IndexAtHead: true}
+	LoadConfiguredCoverage(in, root, filepath.Join(root, "coverage.meta.json"))
+	if in.CoverageLoadError != "" {
+		t.Fatalf("CoverageLoadError = %q, want \"\" — one module's blocks mapped, so the profile is usable", in.CoverageLoadError)
+	}
+	if in.Coverage == nil || len(in.Coverage.Blocks["pkg/a.go"]) != 1 {
+		t.Fatalf("Coverage = %+v, want pkg/a.go's block mapped", in.Coverage)
+	}
+	wantSkipped := []string{"example.com/gone/d.go", "example.com/gone/e.go", "example.com/renamed/pkg/b.go", "example.com/renamed/pkg/c.go"}
+	if len(in.CoverageSkipped) != len(wantSkipped) {
+		t.Fatalf("CoverageSkipped = %v, want %v", in.CoverageSkipped, wantSkipped)
+	}
+	for i, w := range wantSkipped {
+		if in.CoverageSkipped[i] != w {
+			t.Errorf("CoverageSkipped[%d] = %q, want %q", i, in.CoverageSkipped[i], w)
+		}
+	}
+
+	rep := Residue(context.Background(), *in, 0)
+	if rep.CoverageUnusable != "" {
+		t.Errorf("CoverageUnusable = %q, want \"\" (a partial skip is not total failure)", rep.CoverageUnusable)
+	}
+	if rep.CoverageUnmapped != 4 {
+		t.Errorf("CoverageUnmapped = %d, want 4 (every unplaced file key counted)", rep.CoverageUnmapped)
+	}
+	if len(rep.CoverageUnmappedSample) != coverageUnmappedSampleMax ||
+		rep.CoverageUnmappedSample[0] != "example.com/gone/d.go" {
+		t.Errorf("CoverageUnmappedSample = %v, want the first %d keys in sorted order", rep.CoverageUnmappedSample, coverageUnmappedSampleMax)
+	}
+}
