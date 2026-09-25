@@ -971,6 +971,45 @@ staleness and complexity), and `reverse-drift`. Output is exactly
 one file, `<service>-<analyzer>.md`, inside `--out`; generation is a pure function of the
 corpus working tree, so re-running against an unchanged tree reproduces identical bytes.
 
+#### `report evidence` — per-service evidence density (CV-39, ADR-044 §5)
+
+```sh
+fathom report evidence [--service <id>] [--store DB] [--json]
+```
+
+Store-direct, never the daemon. `--service` reports one service; omitted,
+every service the store's observations table knows about gets its own row,
+in `ListServiceIDs`' own alphabetical id order. For each service:
+
+- **typed share of call edges** — the store's own typed edges
+  (`internal/store.TypedEdges`), split by `core.EdgeConfidenceOf` into
+  resolved vs. heuristic, as a count and a ratio;
+- **languages touched**, each with its edge tier (`typed`/`scip`/
+  `file-resolved`/`syntax`, `internal/conserve.TiersByLanguage`) — read from
+  the store's own indexed file paths, never a re-read of the corpus, so a
+  service whose recorded root no longer exists on this machine still gets
+  an honest breakdown;
+- **certificate density** — live over declared targets
+  (`internal/certify.Gaps`'s own summary), `0` when nothing is declared;
+- **inventory item counts by kind** — `internal/analysis/inventory.Extract`
+  over the service's own corpus (`api:`/`json:`/`route:`/`env:`/`rpc:`/
+  `cli:`/configured-pattern keys), best-effort empty when the corpus is not
+  readable from here;
+- **whether receipts re-derive** (Go only) — samples the alphabetically
+  first non-test Go file's first declaration, builds a
+  `symbol_location` receipt against the corpus root's current HEAD, and
+  re-derives it from a bare git checkout with `go/parser` alone
+  (`internal/receiptverify.Verify`, VB-20): `"live"` when it reproduces,
+  `"difference: …"` when it does not, `"unproven: …"`/`"not-applicable:
+  …"` when the check could not even be attempted (no corpus root recorded,
+  no Go sources, no `go.mod`, not a git checkout) — never defaulted to
+  either true or false.
+
+It ranks NO languages: neither the services themselves nor the per-service
+language breakdown are ever reordered by how good a language's edge tier
+is — both stay in their own alphabetical order regardless of which
+service or language happens to have the best tooling support.
+
 ---
 
 ### `init`
@@ -1581,6 +1620,62 @@ language among the changed files. `--strict` exits 1 when any plane's
 verdict is `losses` (2 is reserved for an operational failure — a bad
 `--since` ref, an unreadable store; 0 otherwise, --strict included, when
 no plane reports losses).
+
+### `refactor` — refactors as programs (CV-33/CV-34, ADR-044 §4)
+
+```sh
+fathom refactor plan <symbol|package|import> [--out FILE] [--service <id>] [--store DB]
+fathom refactor status --plan FILE [--json]
+```
+
+`refactor plan` writes a gate-ready, grammar-v2 plan for retiring ONE
+target — a symbol name, an import path, or a repo-relative package
+directory (converted to its import path via `go.mod`'s own `module` line).
+The target may be written before, after, or between the flags; unlike the
+rest of this CLI (`fathom receipt verify`'s own doc note above: Go's `flag`
+package normally stops at the first bare argument), this command
+recognizes its own flag names wherever they fall so the documented
+`<target> [--out FILE] …` order works exactly as written. Store-direct,
+reusing the same `internal/analysis/callgraph` queries `rename_impact`/
+`safe_delete_check` already answer with for a resolved symbol, and a plain
+Go import scan (`go/parser`, `ImportsOnly`) for an import/package target.
+The generated plan carries, in order:
+
+1. a `Baseline: <HEAD sha>` header line (`docs/plans/README.md`'s
+   plan-level pin);
+2. one **ratcheted `gone: pattern` row per package that still references
+   the target today** — grouped from typed, resolved caller edges for a
+   symbol target, or from files that still import the path for an
+   import/package target — each `max:` seeded at today's own lexical
+   match count scoped to that package via `paths:` (so the row already
+   passes the moment a `GoneEvidence` CLI adapter exists to check it);
+3. a **`certified_by:` row per live-certified test** `TestImpact` says
+   reaches the target (symbol targets only), so the refactor cannot
+   silently break a certified behaviour while it proceeds;
+4. the **final, unscoped absence row** — `gone: callers <Symbol>
+   {package: <its own package>}` for a symbol target, `gone: import
+   <path>` for an import/package target — proving the WHOLE corpus, not
+   just the packages seen today;
+5. a closing instruction line naming `fathom conserve --since <baseline>
+   --strict`.
+
+`refactor status` reads one such plan's ratchet rows (any `gone: pattern`
+row with `max:` set — hand-written or `refactor plan`-generated) and
+reports, per row, its live count against `max:`, its count AT the plan's
+own `Baseline:` commit (`git show`/`git ls-tree`, never a second ingest —
+P19: cost scales with the row's own `paths:`, not the repo), and **drift**:
+`max(0, current-baseline)`, references that landed on the branch since the
+baseline. A plan with no `Baseline:` header is refused by name, never
+silently reported as zero rows.
+
+```json
+{"schema":"fathom.refactor.status/v1","plan":"docs/plans/retire-old.md",
+ "baseline":"<sha>",
+ "ratchets":[{"id":"old-g1","pattern":"\\bOldFunc\\b","paths":["internal/caller/"],
+   "max":3,"current":4,"baseline":3,"drift":1,"over_max":true}]}
+```
+
+---
 
 ### `receipt` — a stranger's re-derivation (VB-20)
 

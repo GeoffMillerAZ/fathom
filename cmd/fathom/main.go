@@ -97,11 +97,23 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 	case "layers":
 		return cmdLayers(args[1:], stdout, stderr)
 	case "report":
+		if len(args) > 1 && args[1] == "evidence" {
+			return cmdReportEvidence(args[2:], stdout, stderr)
+		}
 		return cmdReport(args[1:], stdout, stderr)
 	case "review":
 		return cmdReview(args[1:], stdout, stderr)
 	case "conserve":
 		return cmdConserve(args[1:], stdout, stderr)
+	case "refactor":
+		if len(args) > 1 && args[1] == "plan" {
+			return cmdRefactorPlan(args[2:], stdout, stderr)
+		}
+		if len(args) > 1 && args[1] == "status" {
+			return cmdRefactorStatus(args[2:], stdout, stderr)
+		}
+		fmt.Fprintln(stderr, "usage: fathom refactor plan <symbol|package|import> [--out FILE] [--service S] [--store DB]\n       fathom refactor status --plan FILE [--json]")
+		return 2
 	case "review-key":
 		return cmdReviewKey(args[1:], stdout, stderr)
 	case "tests":
