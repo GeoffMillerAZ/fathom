@@ -28,6 +28,8 @@ Release impact: minor (pre-1.0: breaking bumps minor)
 
 **`fathom verify` lint names a claimed row whose only annotation is a skip waiver (`skip_test`/`skip` with no `symbol:`/`oracle:`/`gone:`/spec ID) — it verifies `no-contract`, which only `--strict` blocks.** Of the 28 claimed rows in that shape, 24 now carry lexical or ledger oracles on their evidence and the four voided 2026-09-13 pilots (SB-37/38/39/41, O41) are unchecked pending their receipts-wave-5 reruns; 18 measured or landed rows (CV-M1/2/4..14, CV-43/44, TC-M1/17/18) close with oracles on their readings.
 
+**The observatory story page counts sessions, not ledger rows.** `/observatory/story` (and its JSON) now keeps one row per session id — the last one, the impact page's rule — so `sessions`, verify catches and edit sessions are per session, `ledger_rows` names the rows they came from, and the recent list shows up to eight distinct ids newest first instead of one id repeated.
+
 **A service root that is itself a symlink is now walked (O39).** `fathom ingest --path <link>` indexed zero files and exited 0, and `references` found no occurrence of any symbol in a service whose recorded root names its directory through a symlink, while `verify_plan` still resolved the callers from the store; Discover now walks the link's target with identical repo-relative paths.
 
 **`fathom report evidence` no longer reports zeros from a store it just created.** `--store` now defaults to `[daemon].store`, then the workspace store, and the verb refuses (exit 1, naming the store) when that store does not exist, indexes no service, or does not index the named `--service`; the report names the store it read (`store` in JSON).

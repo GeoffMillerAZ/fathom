@@ -150,7 +150,8 @@ func observatorySessionPage(baseURL string) http.HandlerFunc {
 type weekStory struct {
 	From            string   `json:"from"`
 	To              string   `json:"to"`
-	Sessions        int      `json:"sessions"`
+	Sessions        int      `json:"sessions"`    // distinct sessions (last ledger row per id), never rows
+	LedgerRows      int      `json:"ledger_rows"` // in-window ledger rows the sessions were deduped from
 	Catches         int      `json:"catches"`
 	CatchesRan      int      `json:"catches_ran"`
 	EditSessions    int      `json:"edit_sessions"`
@@ -167,6 +168,17 @@ func buildWeekStory(now time.Time) weekStory {
 		ws.Note = "session ledger not readable — the week cannot be composed, and that is stated rather than faked"
 		return ws
 	}
+	// One session per id, keeping its LAST in-window row — the impact
+	// page's rule (observatory.go, "ONE ROW PER SESSION"): Claude Code's
+	// Stop fires at every turn, so a long session appends many rows and
+	// the last one has seen the most. Counting rows read "1,053 sessions"
+	// for far fewer, and the recent list repeated one id eight times.
+	type sessionAt struct {
+		e sessionLedgerEntry
+		t time.Time
+	}
+	latest := map[string]sessionAt{}
+	var order []string
 	for _, line := range strings.Split(string(data), "\n") {
 		if line == "" {
 			continue
@@ -179,17 +191,46 @@ func buildWeekStory(now time.Time) weekStory {
 		if terr != nil || t.Before(from) {
 			continue
 		}
-		ws.Sessions++
-		if e.VerifyCatches != nil {
-			ws.CatchesRan++
-			ws.Catches += *e.VerifyCatches
+		ws.LedgerRows++
+		key := e.SessionID
+		if key == "" {
+			// No id to dedupe on: counted once on its own terms, never
+			// merged with every other anonymous row (impact's rule).
+			key = "\x00anon:" + e.At + ":" + e.Repo
 		}
-		if e.FirstEditTurn != nil {
+		if _, seen := latest[key]; !seen {
+			order = append(order, key)
+		}
+		latest[key] = sessionAt{e: e, t: t}
+	}
+	recent := make([]sessionAt, 0, len(order))
+	for _, key := range order {
+		s := latest[key]
+		ws.Sessions++
+		if s.e.VerifyCatches != nil {
+			ws.CatchesRan++
+			ws.Catches += *s.e.VerifyCatches
+		}
+		if s.e.FirstEditTurn != nil {
 			ws.EditSessions++
 		}
-		if e.SessionID != "" && len(ws.RecentSessions) < 8 {
-			ws.RecentSessions = append([]string{e.SessionID}, ws.RecentSessions...)
+		if s.e.SessionID != "" {
+			recent = append(recent, s)
 		}
+	}
+	// Newest first by each session's own latest row; ties by id, so the
+	// list is deterministic.
+	sort.Slice(recent, func(i, j int) bool {
+		if !recent[i].t.Equal(recent[j].t) {
+			return recent[i].t.After(recent[j].t)
+		}
+		return recent[i].e.SessionID < recent[j].e.SessionID
+	})
+	for _, s := range recent {
+		if len(ws.RecentSessions) == 8 {
+			break
+		}
+		ws.RecentSessions = append(ws.RecentSessions, s.e.SessionID)
 	}
 	return ws
 }
@@ -203,7 +244,7 @@ func renderWeekStory(ws weekStory, m observatoryModel) string {
 	// The backlog is a current fleet snapshot, not observations filed this week.
 	observations.Label = "open observations (fleet snapshot)"
 	b.WriteString(stat.RenderBand([]stat.Stat{
-		{Label: "sessions", Value: fmtThousands(ws.Sessions)},
+		{Label: "sessions", Value: fmtThousands(ws.Sessions), Sub: "distinct sessions, from " + fmtThousands(ws.LedgerRows) + " ledger rows"},
 		{Label: "verify catches", Value: fmtThousands(ws.Catches), Sub: "verify ran in " + fmtThousands(ws.CatchesRan) + " of " + fmtThousands(ws.Sessions) + " sessions"},
 		{Label: "sessions that edited", Value: fmtThousands(ws.EditSessions), Sub: "carry a first-edit turn"},
 	}, stat.BandOptions{AriaLabel: "week totals"}))
