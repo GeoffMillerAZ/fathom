@@ -18,7 +18,10 @@ package conserve
 // the identical fixture, no declaration at all — an ordinary rename,
 // informational, never a loss.
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 // oldImplBody is a substantial (>=5 statement) function body, used
 // verbatim at base under one name and, in the Blindness fixture, copied
@@ -73,6 +76,11 @@ func TestResurrected_DeletedBodyReappears(t *testing.T) {
 	if f.Base == "" || f.Head == "" {
 		t.Errorf("finding must name BOTH old.go's base site and new.go's head site: %+v", f)
 	}
+	// RK-36: File/Line names the REAPPEARING function's own location —
+	// the reappeared body at head, matching Head's own citation exactly.
+	if got := fmt.Sprintf("%s:%d", f.File, f.Line); got != f.Head {
+		t.Errorf("File/Line = %s, want it to match Head citation %s (the reappearing body's own location)", got, f.Head)
+	}
 }
 
 // TestResurrected_UndeclaredMoveIsInformationalNotLoss is resurrection
@@ -112,6 +120,9 @@ func TestResurrected_UndeclaredMoveIsInformationalNotLoss(t *testing.T) {
 	}
 	if f.Base == "" || f.Head == "" {
 		t.Errorf("finding must name BOTH old.go's base site and new.go's head site: %+v", f)
+	}
+	if got := fmt.Sprintf("%s:%d", f.File, f.Line); got != f.Head {
+		t.Errorf("File/Line = %s, want it to match Head citation %s (the reappearing body's own location)", got, f.Head)
 	}
 	if planeVerdict(nil, findings) != Conserved {
 		t.Errorf("planeVerdict = %q, want conserved — an undeclared move must never be a loss", planeVerdict(nil, findings))

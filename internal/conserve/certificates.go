@@ -57,6 +57,10 @@ func (certificatesPlane) Check(ctx context.Context, in Input) ([]Finding, []stri
 			Detail:   fmt.Sprintf("certifies %s declared at base, no longer declared at head", key),
 			Declared: in.Declarations.Declared(key),
 			Remedy:   fmt.Sprintf("add `retires: %s` to the row that removed it (or restore the certifies marker)", key),
+			// File/Line: the base-side `// certifies:` marker's own
+			// location (LostDeclarations already parses it).
+			File: lost.File,
+			Line: lost.Line,
 		})
 	}
 
@@ -85,6 +89,9 @@ func (certificatesPlane) Check(ctx context.Context, in Input) ([]Finding, []stri
 			Head:     citeOf(m.TestFile, 0),
 			Declared: in.Declarations.Declared(c.Subject),
 			Remedy:   fmt.Sprintf("re-attest %s (task tests:attest / fathom tests ingest), or fix/retire the certifies declaration", m.Test),
+			// File/Line: the certifying test's own file (Meta carries no
+			// line for it; Line 0 is the documented whole-file span).
+			File: m.TestFile,
 		})
 	}
 

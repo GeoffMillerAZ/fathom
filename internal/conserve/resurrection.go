@@ -188,10 +188,16 @@ func Resurrected(in Input) ([]Finding, []string) {
 					Key:   g.name,
 					Detail: fmt.Sprintf(
 						"%s (moved from %s) reappears as %s at %s — identical body, %d statement(s); no retirement was declared, treated as an ordinary move",
-						g.name, g.file, h.name, h.file, g.stmts),
+						g.name, g.file, h.name, h.file, g.stmts,
+					),
 					Base:     base,
 					Head:     headCite,
 					Declared: DeclaredPrior,
+					// File/Line: the reappearing function's own head
+					// location — the finding's subject is the body that
+					// showed back up, not the one that left.
+					File: h.file,
+					Line: h.line,
 				})
 				continue
 			}
@@ -201,13 +207,17 @@ func Resurrected(in Input) ([]Finding, []string) {
 				Key:   g.name,
 				Detail: fmt.Sprintf(
 					"%s (deleted from %s) reappears as %s at %s — identical body, %d statement(s), despite a retirement claim for it",
-					g.name, g.file, h.name, h.file, g.stmts),
+					g.name, g.file, h.name, h.file, g.stmts,
+				),
 				Base:     base,
 				Head:     headCite,
 				Declared: DeclaredNone,
+				File:     h.file,
+				Line:     h.line,
 				Remedy: fmt.Sprintf(
 					"%s looks copied to %s rather than moved — delete the copy, or rename %s in place so history stays honest",
-					g.name, h.name, g.name),
+					g.name, h.name, g.name,
+				),
 			})
 		}
 	}

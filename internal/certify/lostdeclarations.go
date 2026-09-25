@@ -24,10 +24,18 @@ import (
 )
 
 // LostDeclaration is one (kind, id) `// certifies:` target LostDeclarations
-// found declared at base and undeclared at head.
+// found declared at base and undeclared at head. File/Line name where the
+// BASE declaration lived (the marker's own comment position,
+// extractor.CertifyDeclaration.File/Line, already parsed by
+// certifiesTargetsAt and cheap to carry through) — empty only when that
+// marker itself carried no location, which ScanCertifiesMarkers never
+// actually produces today, but conserve.Finding's own contract still
+// treats File="" as "no anchor" rather than assuming one.
 type LostDeclaration struct {
 	Kind string
 	ID   string
+	File string
+	Line int
 }
 
 // LostDeclarations returns every (kind, id) `// certifies:` target
@@ -44,12 +52,12 @@ func LostDeclarations(service string, changedFiles []string, baseFile, headFile 
 	head := certifiesTargetsAt(service, changedFiles, headFile)
 
 	var out []LostDeclaration
-	for target := range base {
-		if head[target] {
+	for target, loc := range base {
+		if _, ok := head[target]; ok {
 			continue
 		}
 		kind, id, _ := strings.Cut(target, ":")
-		out = append(out, LostDeclaration{Kind: kind, ID: id})
+		out = append(out, LostDeclaration{Kind: kind, ID: id, File: loc.file, Line: loc.line})
 	}
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].Kind != out[j].Kind {
@@ -60,10 +68,23 @@ func LostDeclarations(service string, changedFiles []string, baseFile, headFile 
 	return out
 }
 
-// certifiesTargetsAt returns the set of "<kind>:<id>" targets declared by
-// any `// certifies:` marker in any of changedFiles, as read by read.
-func certifiesTargetsAt(service string, changedFiles []string, read func(path string) ([]byte, bool, error)) map[string]bool {
-	out := map[string]bool{}
+// declSite is a `// certifies:` marker's own file:line, kept alongside the
+// "<kind>:<id>" target set certifiesTargetsAt builds — the marker's
+// location (extractor.CertifyDeclaration.File/Line) is already parsed by
+// ScanCertifiesMarkers; carrying it through costs nothing LostDeclarations
+// wasn't already doing.
+type declSite struct {
+	file string
+	line int
+}
+
+// certifiesTargetsAt returns every "<kind>:<id>" target declared by any
+// `// certifies:` marker in any of changedFiles, as read by read, mapped
+// to that marker's own file:line (the first one found, when a target is
+// declared more than once across changedFiles — LostDeclarations only
+// needs A location, not every one).
+func certifiesTargetsAt(service string, changedFiles []string, read func(path string) ([]byte, bool, error)) map[string]declSite {
+	out := map[string]declSite{}
 	if read == nil {
 		return out
 	}
@@ -80,7 +101,11 @@ func certifiesTargetsAt(service string, changedFiles []string, read func(path st
 			continue
 		}
 		for _, d := range decls {
-			out[string(d.Kind)+":"+d.TargetID] = true
+			key := string(d.Kind) + ":" + d.TargetID
+			if _, exists := out[key]; exists {
+				continue
+			}
+			out[key] = declSite{file: d.File, line: d.Line}
 		}
 	}
 	return out

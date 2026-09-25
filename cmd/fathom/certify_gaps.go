@@ -112,6 +112,18 @@ type certifyGapsTarget struct {
 	Gap          bool              `json:"gap"`
 	Remedy       string            `json:"remedy"`
 	Certificates []certifyGapsCert `json:"certificates"`
+	// Source names where the target itself is declared (a certifies
+	// marker, an invariant row, a port interface's declaration, an
+	// incident heading) — nil when Gaps could not place it (RK-36
+	// anchors: additive, omitempty, never invented).
+	Source *certifyGapsSource `json:"source,omitempty"`
+}
+
+// certifyGapsSource is a target's declared location — repo-relative File,
+// 1-based Line (0/omitted means "the file, no more specific line").
+type certifyGapsSource struct {
+	File string `json:"file,omitempty"`
+	Line int    `json:"line,omitempty"`
 }
 
 type certifyGapsCert struct {
@@ -144,9 +156,14 @@ func renderCertifyGapsJSON(w io.Writer, service, indexCommit string, now time.Ti
 				Strength: c.Strength, State: c.State, Tier: c.Tier, RunDigest: c.RunDigest,
 			})
 		}
+		var src *certifyGapsSource
+		if t.Source.File != "" {
+			src = &certifyGapsSource{File: t.Source.File, Line: t.Source.Line}
+		}
 		targets = append(targets, certifyGapsTarget{
 			Kind: t.Kind, ID: t.ID, Severity: t.Severity, Gap: t.Gap, Remedy: t.Remedy,
 			Certificates: certs,
+			Source:       src,
 		})
 	}
 	kinds := make([]string, 0, len(kindSet))

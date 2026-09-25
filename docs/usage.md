@@ -1634,9 +1634,18 @@ directly still sees `declared: "prior"`.
  "planes":[{"plane":"surface","verdict":"losses","missing":[],
    "findings":[{"plane":"surface","kind":"removed","key":"api:foo.Old",
      "detail":"func()","base":"foo.go#L3","declared":"none",
+     "file":"foo.go","line":3,
      "remedy":"add `retires: api:foo.Old` to the row that removed it, or restore it"}]}],
  "tiers":[{"language":"Go","tier":"typed"},{"language":"TypeScript","tier":"file-resolved"}]}
 ```
+
+Every finding also carries `file`/`line` (both `omitempty`) — the
+repo-relative location of the finding's SUBJECT, at HEAD when it still
+exists there, else at BASE — for a Review Kit citation that needs a real
+source anchor rather than the human-readable `base`/`head` strings above.
+Empty when no plane could place the subject at a location cheaply (a
+`governance` claim's own scope glob names no single file, for instance);
+never invented.
 
 `--json` emits the versioned `fathom.conserve/v1` document above (the
 compatibility surface: field names and verdict/declared strings are
@@ -1913,7 +1922,12 @@ with no live certificate, one line per gap with a remedy; `--kind` narrows
 to one target kind; `--json` emits the versioned `fathom.certify.gaps/v1`
 shape the Review Kit adapter's `fathom-certify` parses (schema string, field
 names, and sort order — kind then id — are the wire contract; do not change
-them without a version bump). `certify manifest` regenerates
+them without a version bump). Each target additionally carries `source`
+(`{"file":..., "line":...}`, omitempty) — where the target ITSELF is
+declared: a `// certifies:` marker's own comment line, an invariant's row in
+`docs/intent/invariants.md`, an incident heading in
+`docs/intent/incidents.md`, or a port interface's own declaration — nil when
+`Gaps` could not place it. `certify manifest` regenerates
 `docs/certifications.md` from the layer; `--check` fails (exit 1) instead of
 writing when the committed file differs — a hand edit to that file is a
 defect. `certify orphans` (TC-22) lists `Test*` symbols that certify

@@ -80,6 +80,10 @@ func (surfacePlane) Check(ctx context.Context, in Input) ([]Finding, []string) {
 			Base:     citeOf(it.File, it.Line),
 			Declared: in.Declarations.Declared(key),
 			Remedy:   fmt.Sprintf("add `retires: %s` to the row that removed it, or restore it", key),
+			// File/Line: the item's own base declaration — it no longer
+			// exists at head, so base is the only location left to cite.
+			File: it.File,
+			Line: it.Line,
 		})
 		findings = append(findings, ConsumerLosses(ctx, in, key)...)
 	}
@@ -92,6 +96,10 @@ func (surfacePlane) Check(ctx context.Context, in Input) ([]Finding, []string) {
 			Head:     citeOf(hi.File, hi.Line),
 			Declared: in.Declarations.Declared(key),
 			Remedy:   fmt.Sprintf("add `surface_change: %s` to the row that changed it, or revert the change", key),
+			// File/Line: the item's own head declaration — it still
+			// exists at head, in its changed form.
+			File: hi.File,
+			Line: hi.Line,
 		})
 		findings = append(findings, ConsumerLosses(ctx, in, key)...)
 	}
@@ -169,6 +177,10 @@ func ConsumerLosses(ctx context.Context, in Input, key string) []Finding {
 				Head:     citeOf(call.File, call.Line),
 				Declared: in.Declarations.Declared(key),
 				Remedy:   fmt.Sprintf("coordinate the removal of %s with %s before merging, or restore it", key, id),
+				// File/Line: the still-calling client code's own location —
+				// this finding's subject is the consumer call site.
+				File: call.File,
+				Line: call.Line,
 			})
 		}
 	}

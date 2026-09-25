@@ -11,6 +11,7 @@ package conserve
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -70,6 +71,11 @@ func TestIntegrityPlane_DeletedGuardedTestIsAFinding(t *testing.T) {
 	}
 	if f.Base == "" {
 		t.Errorf("Base citation is empty, want a file:line")
+	}
+	// RK-36: File/Line is the guarded test's own location — KindDeleted
+	// has no head site, so it must fall back to base.
+	if got := fmt.Sprintf("%s:%d", f.File, f.Line); got != f.Base {
+		t.Errorf("File/Line = %s, want it to match Base citation %s (deleted test has no head location)", got, f.Base)
 	}
 }
 

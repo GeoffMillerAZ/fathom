@@ -112,6 +112,10 @@ func DeprecatedCallers(in Input) ([]Finding, []string) {
 				Head:     fmt.Sprintf("%s:%d", path, c.line),
 				Declared: DeclaredNone,
 				Remedy:   fmt.Sprintf("remove the new call to %s, or use its documented successor", c.name),
+				// File/Line: the new call site itself — it exists only at
+				// head (that is the whole finding).
+				File: path,
+				Line: c.line,
 			})
 		}
 	}

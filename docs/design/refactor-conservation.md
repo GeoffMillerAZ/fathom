@@ -112,7 +112,16 @@ The JSON report is `fathom.conserve/v1` (compatibility surface):
 ```
 
 Field names and plane/kind strings are the wire contract; sort order is plane,
-then kind, then key.
+then kind, then key. Every Finding additionally carries `file`/`line` (both
+`omitempty`) — the finding's SUBJECT's own repo-relative location, at HEAD
+when it still exists there, else at BASE — for a citation-grounded caller
+(the Review Kit adapters) that needs a real source anchor and not just the
+human-readable `base`/`head` strings. Populated wherever a plane already has
+the location at hand or cheaply parsed (a guarded test's file:line, a
+reappeared function's head site, a capability inventory item's declaration,
+a `// certifies:` marker's own comment line); left empty, never invented,
+when nothing names one (e.g. a `governance` claim's scope is a glob list,
+never a single file).
 
 ## 1. Stage 1 — proof integrity
 

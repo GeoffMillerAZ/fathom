@@ -66,6 +66,10 @@ type PortImplementation struct {
 type PortTarget struct {
 	ID              string
 	Implementations []PortImplementation
+	// File/Line: the interface's own declaration site (n.FilePath/n.Line —
+	// already read off the index by this same loop).
+	File string
+	Line int
 }
 
 // PortGaps returns every exported Go interface in service's index with
@@ -97,7 +101,7 @@ func PortGaps(ctx context.Context, st store.Store, service, corpusRoot string) (
 		if len(impls) == 0 {
 			continue
 		}
-		out = append(out, PortTarget{ID: n.Name, Implementations: impls})
+		out = append(out, PortTarget{ID: n.Name, Implementations: impls, File: n.FilePath, Line: n.Line})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
 	return out, nil

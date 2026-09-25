@@ -68,8 +68,16 @@ func TestCertificatesPlane_LostDeclarationAndNonLiveState(t *testing.T) {
 		switch {
 		case f.Kind == "lost_declaration" && f.Key == "invariant:I1":
 			sawLost = true
+			// RK-36: the base-side `// certifies:` marker's own line.
+			if f.File != "pkg/x_test.go" || f.Line != 3 {
+				t.Errorf("lost_declaration File/Line = %s:%d, want pkg/x_test.go:3", f.File, f.Line)
+			}
 		case f.Kind == "certificate_unproven" && f.Key == "invariant:I2":
 			sawUnproven = true
+			// RK-36: the certifying test's own file (Meta carries no line).
+			if f.File != "pkg/y_test.go" {
+				t.Errorf("certificate_unproven File = %q, want pkg/y_test.go", f.File)
+			}
 		case f.Key == "invariant:I3":
 			sawLive = true
 		}

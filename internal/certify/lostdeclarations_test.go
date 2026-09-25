@@ -45,6 +45,23 @@ func TestLostDeclarations_RemovedNotRetired(t *testing.T) {
 	}
 }
 
+// TestLostDeclarations_CarriesBaseMarkerLocation pins RK-36: a lost
+// declaration names WHERE the base-side `// certifies:` marker lived —
+// the marker comment's own file:line, already parsed by
+// ScanCertifiesMarkers and threaded through rather than dropped.
+func TestLostDeclarations_CarriesBaseMarkerLocation(t *testing.T) {
+	base := fileMap(map[string]string{"pkg/x_test.go": lostDeclTestSrc})
+	head := fileMap(map[string]string{})
+
+	got := LostDeclarations("svc", []string{"pkg/x_test.go"}, base, head)
+	if len(got) != 1 {
+		t.Fatalf("LostDeclarations = %+v, want exactly one lost declaration", got)
+	}
+	if got[0].File != "pkg/x_test.go" || got[0].Line != 3 {
+		t.Errorf("lost declaration location = %s:%d, want pkg/x_test.go:3 (the `// certifies:` comment line)", got[0].File, got[0].Line)
+	}
+}
+
 // TestLostDeclarations_ScopedToChangedFiles pins "base facts come from
 // the changed files only": a certifies marker in a file NOT in
 // changedFiles never contributes, even if it would otherwise look lost.

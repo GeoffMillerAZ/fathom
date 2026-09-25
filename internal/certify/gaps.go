@@ -15,6 +15,7 @@ package certify
 // TC-19 changes how an "incident" target's liveness is DECIDED, not
 // what target universe is sourced.
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -53,6 +54,20 @@ type GapTarget struct {
 	Gap          bool
 	Remedy       string
 	Certificates []GapCertificate
+	// Source is where the target itself is declared — a `// certifies:`
+	// marker's own position, an invariant row, a port interface's
+	// declaration, or an incident heading — when Gaps could place it
+	// cheaply from data it already read. Zero value (File == "") when no
+	// source names a location for this target's kind (RK-36 anchors: a
+	// caller must never invent one).
+	Source Source
+}
+
+// Source is a target's own declared location (repo-relative File, 1-based
+// Line; Line 0 means "the file, no more specific line").
+type Source struct {
+	File string
+	Line int
 }
 
 // GapSummary totals GapReport's own targets and the service-wide
@@ -75,24 +90,40 @@ type GapReport struct {
 	Summary GapSummary
 }
 
-// incidentIDs reads corpusRoot's docs/intent/incidents.md (when present)
-// and returns every "### INC-N" heading's id, sorted — the SAME
-// incidentHeadingRe resolveIncident (resolve.go) already uses to resolve
-// one id, walked here for every id the file names. A missing or
-// unreadable file yields none — the SAME "nothing to report" honesty an
-// absent docs/intent/ already carries throughout this package (intent.Load
-// itself never treats absence as an error).
-func incidentIDs(corpusRoot string) []string {
+// incidentHeadingPath is docs/intent/incidents.md's own repo-relative
+// path — the one and only place `Gaps` sources an "incident" target from,
+// so citing it as that target's Source.File is never a guess.
+const incidentHeadingPath = "docs/intent/incidents.md"
+
+// incidentHeading is one "### INC-N" heading incidentHeadings found: its
+// id and the 1-based line the heading itself sits on.
+type incidentHeading struct {
+	id   string
+	line int
+}
+
+// incidentHeadings reads corpusRoot's docs/intent/incidents.md (when
+// present) and returns every "### INC-N" heading's id and line, sorted by
+// id — the SAME incidentHeadingRe resolveIncident (resolve.go) already
+// uses to resolve one id, walked here for every id the file names. A
+// missing or unreadable file yields none — the SAME "nothing to report"
+// honesty an absent docs/intent/ already carries throughout this package
+// (intent.Load itself never treats absence as an error). The line is
+// derived from the match's own byte offset (bytes.Count of newlines
+// before it) — free given the file is already read and matched here.
+func incidentHeadings(corpusRoot string) []incidentHeading {
 	body, err := os.ReadFile(filepath.Join(corpusRoot, "docs", "intent", "incidents.md"))
 	if err != nil {
 		return nil
 	}
-	var ids []string
-	for _, m := range incidentHeadingRe.FindAllStringSubmatch(string(body), -1) {
-		ids = append(ids, m[1])
+	var out []incidentHeading
+	for _, m := range incidentHeadingRe.FindAllSubmatchIndex(body, -1) {
+		id := string(body[m[2]:m[3]])
+		line := bytes.Count(body[:m[0]], []byte("\n")) + 1
+		out = append(out, incidentHeading{id: id, line: line})
 	}
-	sort.Strings(ids)
-	return ids
+	sort.Slice(out, func(i, j int) bool { return out[i].id < out[j].id })
+	return out
 }
 
 // markerRemedy is the remedy line for a target with NO certificate
@@ -118,8 +149,16 @@ func Gaps(ctx context.Context, st store.Store, service, corpusRoot string, kinds
 
 	type key struct{ kind, id string }
 	seen := map[key]bool{}
+	sources := map[key]Source{}
 	var order []key
-	add := func(kind, id string) {
+	// add records k in declaration order (first add wins, exactly like
+	// seen already did) and, when src names a real location and none was
+	// recorded yet for k, its Source — so a target sourced from more than
+	// one place (e.g. a certifies marker declaring "invariant I5", which
+	// also has its own row in invariants.md) keeps whichever location was
+	// offered FIRST, matching add's own existing "first considered wins"
+	// rule for everything else about the target.
+	add := func(kind, id string, src Source) {
 		if !include(kind) {
 			return
 		}
@@ -129,6 +168,9 @@ func Gaps(ctx context.Context, st store.Store, service, corpusRoot string, kinds
 		}
 		seen[k] = true
 		order = append(order, k)
+		if src.File != "" {
+			sources[k] = src
+		}
 	}
 
 	decls, err := st.CertifyDeclarationsForService(ctx, service)
@@ -136,16 +178,16 @@ func Gaps(ctx context.Context, st store.Store, service, corpusRoot string, kinds
 		return GapReport{}, fmt.Errorf("Gaps: CertifyDeclarationsForService: %w", err)
 	}
 	for _, d := range decls {
-		add(d.Kind, d.TargetID)
+		add(d.Kind, d.TargetID, Source{File: d.File, Line: d.Line})
 	}
 	if corpusRoot != "" {
 		if corpus, cerr := intent.Load(corpusRoot); cerr == nil {
 			for _, inv := range corpus.Invariants {
-				add("invariant", inv.ID)
+				add("invariant", inv.ID, Source{File: inv.File, Line: inv.Line})
 			}
 		}
-		for _, id := range incidentIDs(corpusRoot) {
-			add("incident", id)
+		for _, h := range incidentHeadings(corpusRoot) {
+			add("incident", h.id, Source{File: incidentHeadingPath, Line: h.line})
 		}
 	}
 
@@ -159,7 +201,7 @@ func Gaps(ctx context.Context, st store.Store, service, corpusRoot string, kinds
 		ports, perr := PortGaps(ctx, st, service, corpusRoot)
 		if perr == nil {
 			for _, p := range ports {
-				add("port", p.ID)
+				add("port", p.ID, Source{File: p.File, Line: p.Line})
 				portImpls[p.ID] = p.Implementations
 			}
 		}
@@ -229,7 +271,7 @@ func Gaps(ctx context.Context, st store.Store, service, corpusRoot string, kinds
 			}
 		}
 
-		t := GapTarget{Kind: k.kind, ID: k.id, Gap: !hasLive, Certificates: certs}
+		t := GapTarget{Kind: k.kind, ID: k.id, Gap: !hasLive, Certificates: certs, Source: sources[k]}
 		if t.Gap {
 			gaps++
 			switch {

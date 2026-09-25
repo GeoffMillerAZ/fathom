@@ -167,6 +167,15 @@ func toConserveFinding(f integrity.Finding) Finding {
 	informational := f.Kind == integrity.KindEdited ||
 		(f.Kind == integrity.KindRenamed && !f.StillNamedElsewhere)
 
+	// File/Line: the guarded test's own location, at HEAD when it still
+	// exists there (KindEdited/KindWeakened/KindSkipped/KindMarkerMoved/
+	// KindRenamed/KindHandEdit), else at BASE (KindDeleted has no head
+	// location at all).
+	file, line := f.HeadFile, f.HeadLine
+	if file == "" {
+		file, line = f.BaseFile, f.BaseLine
+	}
+
 	return Finding{
 		Plane:         integrityPlaneName,
 		Kind:          string(f.Kind),
@@ -176,6 +185,8 @@ func toConserveFinding(f integrity.Finding) Finding {
 		Head:          citeOf(f.HeadFile, f.HeadLine),
 		Declared:      DeclaredNone,
 		Remedy:        remedy,
+		File:          file,
+		Line:          line,
 		informational: informational,
 	}
 }

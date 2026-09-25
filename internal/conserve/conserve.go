@@ -90,6 +90,20 @@ type Finding struct {
 	Declared string `json:"declared"`
 	Remedy   string `json:"remedy,omitempty"`
 
+	// File/Line are the repo-relative location of the finding's SUBJECT —
+	// at HEAD when the subject still exists there, else at BASE (a
+	// deleted test's file and func line, for instance). Additive to the
+	// fathom.conserve/v1 wire contract (both omitempty): a Review Kit
+	// citation needs a real anchor, not the human-readable Base/Head
+	// citation strings above (which mix base and head, and are absent for
+	// several finding kinds). Empty is correct, and expected, when no
+	// plane could place the finding's subject at a location cheaply — a
+	// governance claim's own Subject is a doc section reference, never a
+	// file:line, for example. Never invented: a caller that cannot name a
+	// real location leaves both zero rather than guessing.
+	File string `json:"file,omitempty"`
+	Line int    `json:"line,omitempty"`
+
 	// informational marks a finding a plane reports for visibility but
 	// that must never, by itself, tip planeVerdict to Losses — design doc
 	// §1.3's per-kind rule that `edited` is "informational; never a loss

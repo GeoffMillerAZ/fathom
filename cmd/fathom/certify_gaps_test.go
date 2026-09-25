@@ -141,7 +141,11 @@ const certifyGapsGolden = `{
       "severity": "",
       "gap": true,
       "remedy": "add \"// certifies: incident INC-1 (asserts)\" above a Test* function, or a #Certifies entry naming incident INC-1 in the suite's tests/*.cue manifest",
-      "certificates": []
+      "certificates": [],
+      "source": {
+        "file": "docs/intent/incidents.md",
+        "line": 5
+      }
     },
     {
       "kind": "invariant",
@@ -159,7 +163,11 @@ const certifyGapsGolden = `{
           "tier": "verified",
           "run_digest": ""
         }
-      ]
+      ],
+      "source": {
+        "file": "cart_test.go",
+        "line": 3
+      }
     },
     {
       "kind": "invariant",
@@ -167,7 +175,11 @@ const certifyGapsGolden = `{
       "severity": "",
       "gap": true,
       "remedy": "add \"// certifies: invariant I2 (asserts)\" above a Test* function, or a #Certifies entry naming invariant I2 in the suite's tests/*.cue manifest",
-      "certificates": []
+      "certificates": [],
+      "source": {
+        "file": "docs/intent/invariants.md",
+        "line": 6
+      }
     }
   ],
   "summary": {
@@ -260,6 +272,50 @@ func TestCmdCertifyGaps_RemedyLinesAndJSON(t *testing.T) {
 			t.Errorf("kinds = %v, want [incident]", p.Kinds)
 		}
 	})
+}
+
+// TestCmdCertifyGaps_TargetsCarrySource pins RK-36: every target in this
+// fixture has a real declaration site, and each one's `source` names it —
+// a `// certifies:` marker's own comment line for a declared target
+// (I1, which wins over its OWN invariants.md row since decls are
+// considered first), an invariant's table row for one sourced only from
+// the intent corpus (I2), and an incident heading's own line (INC-1).
+func TestCmdCertifyGaps_TargetsCarrySource(t *testing.T) {
+	_, storePath, service := setUpCertifyGapsFixture(t)
+
+	var out, errBuf bytes.Buffer
+	code := cmdCertifyGaps([]string{"--service", service, "--store", storePath, "--json"}, &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("certify gaps --json exit = %d, stderr: %s", code, errBuf.String())
+	}
+	var p certifyGapsPayload
+	if err := json.Unmarshal(out.Bytes(), &p); err != nil {
+		t.Fatalf("unmarshal: %v\n%s", err, out.String())
+	}
+
+	want := map[string]certifyGapsSource{
+		"invariant:I1":   {File: "cart_test.go", Line: 3},
+		"invariant:I2":   {File: "docs/intent/invariants.md", Line: 6},
+		"incident:INC-1": {File: "docs/intent/incidents.md", Line: 5},
+	}
+	for _, tg := range p.Targets {
+		key := tg.Kind + ":" + tg.ID
+		w, ok := want[key]
+		if !ok {
+			t.Fatalf("unexpected target %s", key)
+		}
+		if tg.Source == nil {
+			t.Errorf("%s: source is nil, want %+v", key, w)
+			continue
+		}
+		if *tg.Source != w {
+			t.Errorf("%s: source = %+v, want %+v", key, *tg.Source, w)
+		}
+		delete(want, key)
+	}
+	if len(want) != 0 {
+		t.Errorf("targets missing from result: %+v", want)
+	}
 }
 
 // TestCmdCertifyGaps_JSONSkipsWhenNothingEverDeclared covers the "no
