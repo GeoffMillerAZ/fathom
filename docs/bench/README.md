@@ -661,19 +661,31 @@ Fixed in code (BP-31), not excused with an unadjudicated bucket.
 `docs/bench/readings/l0-ts-py-2026-09-24.md`: real calibration clones (zod
 4.4.3 TypeScript, flask 3.1.3 Python), real `scip-typescript`/`scip-python`
 runs. A precision/recall read against an independent SCIP truth could not
-be computed — every `SymbolInformation` in both real indexes carries an
-empty `DisplayName` (0 of 23,583 / 0 of 5,551), a live gap in
+be computed at first — every `SymbolInformation` in both real indexes
+carries an empty `DisplayName` (0 of 23,583 / 0 of 5,551), a live gap in
 `internal/scip.ImportIndex`'s name resolution against the only published
-releases of both producers, filed as **O115** and left open (out of this
-reading's scope to fix). What COULD be measured honestly instead: a
-stride-sampled hand spot-check of the file-resolved tier (SU-11) itself —
-**26 of 26 correct** (13/13 zod, 13/13 flask), including one case requiring
-real disambiguation between two same-named nested functions. The scip
-tier's own numbers (precision 0.85 TS / 0.78 Python, recall 1.00 both) score
-`ImportIndex`'s decode against itself, not an independent read — see the
-reading for why. Same discipline as the `references` row above: the honest
-number plus the reason, not a filter invented to produce one that looks
-better.
+releases of both producers, filed as **O115**. What COULD be measured
+honestly at that point: a stride-sampled hand spot-check of the
+file-resolved tier (SU-11) itself — **26 of 26 correct** (13/13 zod, 13/13
+flask), including one case requiring real disambiguation between two
+same-named nested functions.
+
+**O115 is now fixed** (same reading, "O115 fixed — CV-M7 re-run" section):
+`ImportIndex` maps each SCIP definition against the service's own
+extracted symbol table by position instead of trusting `DisplayName`, and
+two further mapping bugs the re-run surfaced (a function parameter
+collapsing onto its enclosing function; a `local <id>` symbol — document-
+scoped per SCIP's own spec — treated as globally unique) are closed too,
+both hand-verified against these same real clones. With the scip tier now
+genuinely fathom-keyed, the file-resolved tier's precision/recall against
+an independent truth is real for the first time: **precision 0.87 TS /
+0.95 Python, recall 0.03 TS / 0.12 Python** — high precision, low recall,
+exactly what a heuristic import/module-scope resolver (never a type
+checker) should read. The scip tier's own pooled numbers (precision 0.65
+TS / 0.21 Python, recall 1.00 both — recall is trivial by construction)
+remain a weaker, self-referential comparison and are reported for
+completeness only; the file-resolved-vs-truth numbers above are this
+reading's real answer.
 
 ## The strengths matrix (vision 27, ADR-033)
 

@@ -18,7 +18,7 @@
 // inverse: scipexport renders fathom's OWN symbol/edge tables as SCIP;
 // this package reads someone ELSE's SCIP index back into fathom's tables.
 //
-// # Occurrence -> edge mapping
+// # Occurrence -> edge mapping, and the O115 fix
 //
 // A SCIP Document pairs Occurrences (a symbol mentioned at a Range) with
 // SymbolInformation (DisplayName, for a symbol the document itself
@@ -26,38 +26,75 @@
 // a DEFINITION site; every other occurrence in that document is a
 // REFERENCE.
 //
-// Definitions nest: a method's definition occurrence sits inside its
-// class's. ImportIndex recovers that nesting from EnclosingRange
-// containment alone — the same structural signal internal/extractor's
-// tsextract.go uses (resolveTSParents/qualifyTSDefs) to build "Owner.name"
-// qualified names — rather than trusting DisplayName to already carry it:
-// a real external indexer's DisplayName is typically the BARE name only
-// ("greet", not "Greeter.greet"), so nesting has to come from geometry,
-// not text. A definition's fathom name is therefore
-// innermostEnclosingDefinition.Name + "." + DisplayName, recursively, and
-// its fathom package is core.QualifiedPackage(doc.RelativePath, pkg),
-// where pkg mirrors tsextract/pyextract's own pkgFromPath (the file's
-// basename, minus extension) — see pkgFromPath below. Two definitions this
-// package derives names for from the SAME document therefore land on
-// EXACTLY the SymbolKey the language's own extractor would have minted
-// for them, which is what lets a reference's edge join fathom's existing
-// symbol table at all.
+// ImportIndex used to derive a definition's fathom-facing name from its
+// SymbolInformation.DisplayName plus containment geometry (an "Owner.name"
+// convention mirroring tsextract.go's own qualifyTSDefs), falling back to
+// the raw SCIP symbol string when a producer omitted DisplayName. That
+// fallback turned out to be the ONLY path real producers ever take: a
+// protobuf scan of scip-typescript 0.4.0's and scip-python 0.6.6's own
+// output (the current, only published releases of each) found ZERO
+// SymbolInformation entries with a non-empty DisplayName across 23,583 and
+// 5,551 definitions respectively (.fathom/observations.md O115). Every
+// imported edge's endpoint was therefore keyed by the raw, opaque SCIP
+// symbol string, which never joins fathom's own core.SymbolKey namespace —
+// `fathom ingest -scip` reported edges written, but find_callers/
+// references/blast_radius resolved none of them, silently.
 //
-// A reference's edge FROM is the innermost definition (in the SAME
+// The fix (O115) never trusts DisplayName or the index's own geometry to
+// reconstruct a name at all. Instead, ImportIndex is handed the SAME
+// service's own already-extracted core.SymbolNode table (the native or
+// file-resolved pass's output for the files this SCIP index covers —
+// always available in practice, since `fathom ingest -scip` only imports
+// after a syntax ingest has written the service) and maps each definition
+// occurrence to the ONE SymbolNode that shares its document path and its
+// Range's start line (1-based, matching core.SymbolNode.Line's own
+// convention — see resolveDefinition). When that position match is
+// AMBIGUOUS (no SymbolNode at that exact file+line, or more than one — a
+// decorator, export keyword, or JSDoc block can shift a producer's own
+// idea of a definition's line relative to the extractor's), ImportIndex
+// falls back to parsing the SCIP symbol string's own descriptor suffix
+// (descriptorLeafName, per SCIP's published grammar) for its last
+// namespace/type/term/method name, and resolves that leaf name against a
+// SymbolNode in the SAME file. A definition resolved by NEITHER path is
+// reported unmapped (Report.Unmapped) and contributes NO edge in either
+// direction — never a guess, and never silently dropped either: every
+// reference an unmapped definition would have produced, and every
+// reference TO a definition this index defines but could not map, is
+// counted under Report.Skipped["unmapped-endpoint"], kept distinct from a
+// genuinely external reference (core.EdgeUnresolved, a symbol no document
+// in this index defines at all) so the two conditions — "not ours" versus
+// "ours, but we couldn't name it" — are never conflated.
+//
+// A reference's edge FROM is the innermost mapped definition (in the SAME
 // document) whose span (EnclosingRange, falling back to Range) contains
 // the reference's own Range start; a reference outside every definition's
 // span (a top-level import statement, most commonly) contributes no edge
-// and is counted in Report.Skipped rather than dropped silently. A
-// reference's edge TO is the referenced symbol's fathom key when some
-// document in the index DEFINES that exact SCIP symbol string (kind
-// core.EdgeDirect, mirroring EnrichTypedEdges' own EdgeDirect for a
-// statically resolved Go call); otherwise the referenced symbol is
-// EXTERNAL to this index (a stdlib call, a dependency this index didn't
-// cover) and the edge is recorded core.EdgeUnresolved — never silently
-// dropped, matching EnrichTypedEdges' own "record it explicitly" rule for
-// a call site it could not resolve.
+// and is counted in Report.Skipped rather than dropped silently.
 //
-// Edges are grouped per fathom package (the FROM symbol's package) because
+// Two further correctness guards the O115 fix required, both found by
+// hand-verifying real scip-typescript/scip-python output rather than by
+// inspection alone:
+//
+//   - A Parameter or TypeParameter descriptor (SCIP's own grammar: a bare
+//     "(name)" or "[name]") is refused BEFORE position matching is even
+//     attempted (descriptorIsParameterLike). A parameter's own Range
+//     normally sits on the EXACT SAME LINE as its enclosing function's
+//     signature, and no fathom extractor ever mints a SymbolNode for a
+//     parameter — so an ungated position join would silently collapse
+//     "this parameter" onto "the function that declares it", and every
+//     later reference to that parameter inside the function's own body
+//     (its `self` in Python alone is nearly every line of nearly every
+//     method) would mint a spurious edge from the function to ITSELF.
+//   - A "local <id>" symbol (SCIP's reserved form for a value with no
+//     cross-reference identity, unique only within its enclosing
+//     document — freely reused by every other document) is looked up
+//     document-scoped (scopedSymbolKey), never in the same flat table
+//     ordinary globally-unique symbols share. Without this, an unrelated
+//     document's "local 5" could silently satisfy a reference to a
+//     completely different document's own "local 5".
+//
+// Edges are grouped per fathom package (the FROM symbol's OWN
+// SymbolNode.PackagePath(), never a geometry-derived guess) because
 // store.PutTypedEdges (internal/store) replaces typed edges at exactly
 // that granularity — the same package-granular replace unit the Go typed
 // pass already uses, so re-importing one changed file's worth of SCIP

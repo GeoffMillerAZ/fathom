@@ -287,8 +287,18 @@ type ImportSCIPResult = scip.Import
 // re-importing one changed file's worth of SCIP output never disturbs
 // another package's rows. It never touches the syntax-extracted symbol
 // table, only typed_edges.
+//
+// O115: internal/scip.ImportIndex maps every SCIP definition against
+// serviceID's OWN already-extracted symbol table (never the SCIP index's
+// own DisplayName, which a real producer never sets), so this reads that
+// table first — always available in practice, since ingest.go only calls
+// ImportSCIP after the syntax pass has written serviceID.
 func (c *Client) ImportSCIP(ctx context.Context, serviceID, path string) (ImportSCIPResult, error) {
-	imp, err := scip.ImportIndexFile(serviceID, path)
+	nodes, err := c.ListAllSymbols(ctx, serviceID)
+	if err != nil {
+		return scip.Import{}, fmt.Errorf("client.ImportSCIP: list symbols: %w", err)
+	}
+	imp, err := scip.ImportIndexFile(serviceID, path, nodes)
 	if err != nil {
 		return scip.Import{}, fmt.Errorf("client.ImportSCIP: %w", err)
 	}

@@ -117,3 +117,26 @@ func BuildTSFixtureIndex() *scippb.Index {
 		Documents: []*scippb.Document{mathDoc, greeterDoc, mainDoc},
 	}
 }
+
+// BuildTSFixtureIndexNoDisplayNames returns BuildTSFixtureIndex's index with
+// every SymbolInformation.DisplayName cleared — the O115 regression
+// fixture (testdata/tsfixture/index-no-display.scip): a raw protobuf scan
+// of the real, currently-published scip-typescript 0.4.0 and scip-python
+// 0.6.6 found ZERO DisplayName entries across 23,583 and 5,551 definitions
+// respectively (.fathom/observations.md O115), so THIS shape — never
+// BuildTSFixtureIndex's own, which happens to carry names no real producer
+// sets — is the one ImportIndex must resolve correctly by definition
+// position against the service's own extracted core.SymbolNode table.
+// Everything else (occurrences, ranges, symbol strings, tool info) is
+// byte-for-byte identical to BuildTSFixtureIndex, so the two fixtures stay
+// a controlled before/after pair rather than two independently-drifting
+// ones.
+func BuildTSFixtureIndexNoDisplayNames() *scippb.Index {
+	idx := BuildTSFixtureIndex()
+	for _, doc := range idx.Documents {
+		for _, info := range doc.Symbols {
+			info.DisplayName = ""
+		}
+	}
+	return idx
+}
