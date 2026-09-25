@@ -11,7 +11,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -126,5 +128,89 @@ func TestCmdReportEvidence_TableRenders(t *testing.T) {
 	}
 	if out.Len() == 0 {
 		t.Fatalf("expected non-empty table output")
+	}
+}
+
+// TestCmdReportEvidence_NoStoreRefuses: with no --store and no store at the
+// resolved default, the verb used to OPEN (and so create) an empty SQLite
+// file there and print a header of measured-looking zeros. It must refuse,
+// naming the store it looked for, and leave nothing behind.
+func TestCmdReportEvidence_NoStoreRefuses(t *testing.T) {
+	repo := newSelfSkipGitRepo(t)
+	code, stdout, stderr := runInDir(t, repo.root, []string{"report", "evidence", "--json"})
+	if code == 0 {
+		t.Fatalf("exit 0 with no store; stdout=%s", stdout)
+	}
+	want := filepath.Join("workspace", "db", "fathom.sqlite")
+	if !strings.Contains(stderr, want) {
+		t.Errorf("stderr %q does not name the store it looked for (%s)", stderr, want)
+	}
+	if strings.Contains(stdout, `"services"`) {
+		t.Errorf("a refused run still printed a report: %s", stdout)
+	}
+	if _, err := os.Stat(filepath.Join(repo.root, want)); !os.IsNotExist(err) {
+		t.Errorf("the refused run created %s (stat err=%v) — an empty store the next run would read as real", want, err)
+	}
+}
+
+// TestCmdReportEvidence_DefaultStoreFromDaemonConfig: omitted, --store
+// resolves the way the other config-aware readers do ([daemon].store,
+// then the workspace default), and the report names the store it read.
+func TestCmdReportEvidence_DefaultStoreFromDaemonConfig(t *testing.T) {
+	storePath := seedReportEvidenceStore(t)
+	repo := newSelfSkipGitRepo(t)
+	repo.writePlan(".fathom/config.toml", "[daemon]\nstore = \""+storePath+"\"\n")
+	code, stdout, stderr := runInDir(t, repo.root, []string{"report", "evidence", "--json"})
+	if code != 0 {
+		t.Fatalf("exit = %d, stderr=%s", code, stderr)
+	}
+	var rep struct {
+		Store    string `json:"store"`
+		Services []struct {
+			Service string `json:"service"`
+		} `json:"services"`
+	}
+	if err := json.Unmarshal([]byte(stdout), &rep); err != nil {
+		t.Fatalf("output is not valid JSON: %v\nstdout=%s", err, stdout)
+	}
+	if rep.Store != storePath {
+		t.Errorf("store = %q, want the [daemon].store path %q", rep.Store, storePath)
+	}
+	if len(rep.Services) != 2 {
+		t.Errorf("services = %+v, want the two seeded services", rep.Services)
+	}
+}
+
+// TestCmdReportEvidence_UnknownServiceRefuses: a --service the store has
+// never indexed used to get a row of zeros indistinguishable from a
+// measured service with no typed edges.
+func TestCmdReportEvidence_UnknownServiceRefuses(t *testing.T) {
+	storePath := seedReportEvidenceStore(t)
+	var out, errBuf bytes.Buffer
+	code := run([]string{"report", "evidence", "--service", "nope", "--store", storePath, "--json"}, &out, &errBuf)
+	if code == 0 {
+		t.Fatalf("exit 0 for a service the store never indexed; stdout=%s", out.String())
+	}
+	if !strings.Contains(errBuf.String(), "nope") || !strings.Contains(errBuf.String(), storePath) {
+		t.Errorf("stderr %q must name the service and the store", errBuf.String())
+	}
+}
+
+// TestCmdReportEvidence_EmptyStoreRefuses: a store that exists but indexes
+// no service at all (a stray file the old default created) is refused, not
+// reported as an empty table.
+func TestCmdReportEvidence_EmptyStoreRefuses(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "empty.sqlite")
+	st, err := store.NewSQLiteStore(path)
+	if err != nil {
+		t.Fatalf("NewSQLiteStore: %v", err)
+	}
+	st.Close()
+	var out, errBuf bytes.Buffer
+	if code := run([]string{"report", "evidence", "--store", path}, &out, &errBuf); code == 0 {
+		t.Fatalf("exit 0 for a store with no indexed service; stdout=%s", out.String())
+	}
+	if !strings.Contains(errBuf.String(), path) {
+		t.Errorf("stderr %q must name the store", errBuf.String())
 	}
 }

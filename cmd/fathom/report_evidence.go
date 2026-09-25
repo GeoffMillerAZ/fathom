@@ -8,7 +8,11 @@ package main
 //	fathom report evidence [--service S] [--store DB] [--json]
 //
 // Store-direct (mirrors cmd/fathom/conserve.go and cmd/fathom/certify_
-// status.go): opens --store directly, never the daemon. --service scopes
+// status.go): opens --store directly, never the daemon. Omitted, --store
+// resolves through resolveStorePath ([daemon].store, then the workspace
+// default); a store that does not exist, indexes no service, or does not
+// index the named --service is refused naming the store — never a table
+// of zeros read from an empty file this verb itself created. --service scopes
 // to one service; omitted, every service the store's observations table
 // knows about is reported, ONE ROW EACH, in store.ListServiceIDs' own
 // alphabetical id order — never resorted by typed share, certificate
@@ -24,6 +28,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -74,29 +79,52 @@ type evidenceRow struct {
 func cmdReportEvidence(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("report evidence", stderr)
 	service := fs.String("service", "", "service ID (default: every service recorded in the store, one row each)")
-	storePath := fs.String("store", defaultStorePath(), "store path (.sqlite/.db)")
+	storeFlag := fs.String("store", "", "store path (.sqlite/.db); default: [daemon].store in config.toml, else "+defaultStorePath())
 	jsonOut := fs.Bool("json", false, "emit the fathom.report.evidence/v1 JSON report instead of a text table")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
 
-	st, err := store.Open(*storePath)
+	// Resolved the way the other config-aware store readers resolve it
+	// (resolveStorePath: [daemon].store, then the workspace default), and
+	// REFUSED when nothing is there: store.Open would create an empty
+	// SQLite file at the default and every row would print as a measured
+	// zero (survey 2026-09-25). A report is only as honest as the store it
+	// names, so it names it.
+	storePath := *storeFlag
+	if storePath == "" {
+		storePath = resolveStorePath()
+	}
+	if _, err := os.Stat(storePath); err != nil {
+		fmt.Fprintf(stderr, "error: no store at %s (%v) — pass --store, or set [daemon].store in config.toml; nothing was read\n", storePath, err)
+		return 1
+	}
+
+	st, err := store.Open(storePath)
 	if err != nil {
-		fmt.Fprintf(stderr, "error: open store %q: %v\n", *storePath, err)
+		fmt.Fprintf(stderr, "error: open store %q: %v\n", storePath, err)
 		return 1
 	}
 	defer st.Close()
 	ctx := context.Background()
 
-	var svcs []string
+	known, err := st.ListServiceIDs(ctx)
+	if err != nil {
+		fmt.Fprintf(stderr, "error: list services in %s: %v\n", storePath, err)
+		return 1
+	}
+	svcs := known
 	if *service != "" {
-		svcs = []string{*service}
-	} else {
-		svcs, err = st.ListServiceIDs(ctx)
-		if err != nil {
-			fmt.Fprintf(stderr, "error: list services: %v\n", err)
+		if !slices.Contains(known, *service) {
+			fmt.Fprintf(stderr, "error: service %q is not indexed in store %s (indexed: %s) — its row would be all zeros, not a measurement\n",
+				*service, storePath, strings.Join(known, ", "))
 			return 1
 		}
+		svcs = []string{*service}
+	}
+	if len(svcs) == 0 {
+		fmt.Fprintf(stderr, "error: store %s indexes no service — nothing to report\n", storePath)
+		return 1
 	}
 
 	c := client.New(connector.NewLocalConnector(), st)
@@ -110,6 +138,7 @@ func cmdReportEvidence(args []string, stdout, stderr io.Writer) int {
 	if *jsonOut {
 		b, jerr := json.MarshalIndent(map[string]any{
 			"schema":   reportEvidenceSchema,
+			"store":    storePath,
 			"services": rows,
 		}, "", "  ")
 		if jerr != nil {
@@ -120,6 +149,7 @@ func cmdReportEvidence(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 
+	fmt.Fprintf(stdout, "report evidence: store %s\n", storePath)
 	printEvidenceReport(stdout, rows)
 	return 0
 }

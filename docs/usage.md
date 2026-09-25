@@ -994,9 +994,15 @@ corpus working tree, so re-running against an unchanged tree reproduces identica
 fathom report evidence [--service <id>] [--store DB] [--json]
 ```
 
-Store-direct, never the daemon. `--service` reports one service; omitted,
-every service the store's observations table knows about gets its own row,
-in `ListServiceIDs`' own alphabetical id order. For each service:
+Store-direct, never the daemon. `--store` defaults to `[daemon].store` in
+config.toml, else the workspace default (`workspace/db/fathom.sqlite`); the
+report names the store it read (`store` in JSON, the first text line). A
+store that does not exist, indexes no service, or does not index the named
+`--service` is refused (exit 1) naming the store — never an empty file
+created on the spot and read back as a row of zeros. `--service` reports
+one service; omitted, every service the store's observations table knows
+about gets its own row, in `ListServiceIDs`' own alphabetical id order. For
+each service:
 
 - **typed share of call edges** — the store's own typed edges
   (`internal/store.TypedEdges`), split by `core.EdgeConfidenceOf` into
