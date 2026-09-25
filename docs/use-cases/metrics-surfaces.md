@@ -66,6 +66,13 @@ spend_total_usd` both work.
 
 ## Observatory series (RG-6/7/8, experimental)
 
+For appearance review without real measurements, the separate
+`fathom theme-guide -addr 127.0.0.1:18767` command serves `/dev/theme` with fixed
+synthetic complete/partial/missing/error states. It is not mounted by `serve-http`;
+preview/reset/export do not write tokens or application preferences. See
+[app-kit adoption](../app-kit.md#local-theme-guide-integration-2026-09-22) for the
+exact mirror, unchanged baseline palette, source-preserving export and acceptance limits.
+
 The service page draws four 30-day series — queried, discovering,
 preventing, gating — from real call-log rows. A day with **no call-log
 rows at all** renders `Absent` with the reason `no call-log rows for
@@ -156,7 +163,7 @@ fathom metrics rotate --keep-days 90
 
 This doc covers: `fathom metrics spend`, `fathom metrics traffic`, `fathom
 metrics channels`, `fathom metrics interventions`, `fathom metrics series`,
-`fathom metrics rollup`, `fathom metrics rotate`, `GET /statusz`, the
+`fathom metrics rollup`, `fathom metrics rotate`, `fathom theme-guide`, `GET /statusz`, the
 `/observatory` pages (fleet, service, wiring, impact, story, brief). Update
 it when any of these verbs' flags, output shape, the observatory series
 semantics, or the `FATHOM_METRICS` tiering behavior change — see also `docs/design/observability-surfaces.md`

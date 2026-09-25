@@ -115,6 +115,11 @@ in the refusal.
 
 ### Plain HTTP endpoints (non-MCP)
 
+The separate CLI command `fathom theme-guide` provides an opt-in synthetic
+Observatory appearance review at loopback `/dev/theme`; it adds no MCP tool or
+daemon route. [App-kit adoption](app-kit.md#local-theme-guide-integration-2026-09-22)
+owns its selected kit identity and experimental preview/reset/export boundary.
+
 `serve-http` also answers a handful of plain (non-JSON-RPC) POST/GET routes
 outside the tool registry — hooks call these directly rather than through
 `tools/call`:

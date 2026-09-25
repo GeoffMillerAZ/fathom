@@ -31,6 +31,7 @@ var verbTable = []verb{
 	{Name: "query", Summary: "Query symbols for a concern"},
 	{Name: "serve-mcp", Summary: "Serve the MCP JSON-RPC protocol over stdio"},
 	{Name: "serve-http", Summary: "Serve the MCP JSON-RPC protocol over HTTP (POST /rpc)"},
+	{Name: "theme-guide", Summary: "Opt-in loopback theme review using synthetic Observatory renderers; no live data or daemon"},
 	{Name: "platform-ingest", Summary: "Ingest all services under a root directory"},
 	{Name: "platform-callers", Summary: "Print cross-repo callers of a symbol"},
 	{Name: "verify", Summary: "Verify plan files against the index (done-means-proven gate)"},

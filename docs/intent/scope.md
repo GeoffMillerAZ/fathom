@@ -81,7 +81,9 @@ on it.
 - Surfaces: 57 CLI verbs (`fathom help`, counted 2026-09-02; ADR-029 adds `harness`);
   MCP over stdio and HTTP with 55 registered tools and a 19-tool agent surface, which
   now serve annotations and a generated `outputSchema` (`docs/mcp-tools.md`); Go client
-  `pkg/client`; the observatory web UI on app-kit (`cmd/fathom/observatory*.go`).
+  `pkg/client`; the observatory web UI on app-kit (`cmd/fathom/observatory*.go`), plus
+  opt-in loopback `theme-guide` over synthetic models (docs/app-kit.md). The guide is
+  experimental, source-preserving, separate from daemon startup and not runtime settings.
 - Store: pure-Go SQLite in WAL mode, the only on-disk backend; one shared fleet store
   served by one always-on loopback daemon (`serve-http`, `127.0.0.1:7575`) under launchd.
   Evidence: ADR-020, ADR-025, `Taskfile.yml` deploy.

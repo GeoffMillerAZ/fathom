@@ -80,6 +80,8 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return runServeMCP(args[1:], stdin, stdout, stderr)
 	case "serve-http":
 		return runServeHTTP(args[1:], stdout, stderr)
+	case "theme-guide":
+		return cmdThemeGuide(args[1:], stdout, stderr)
 	case "platform-ingest":
 		return cmdPlatformIngest(args[1:], stdout, stderr)
 	case "platform-callers":

@@ -27,6 +27,14 @@ expect_fail() {
   grep -Fq "${needle}" "${TMP}/out.log" || { cat "${TMP}/out.log" >&2; fail "${description}: missing refusal text ${needle}"; }
   ok "${description}"
 }
+expect_pass() {
+  local description="$1"; shift
+  if ! "$@" >"${TMP}/out.log" 2>&1; then
+    cat "${TMP}/out.log" >&2
+    fail "${description}: unexpectedly failed"
+  fi
+  ok "${description}"
+}
 assert_outputs_unchanged() {
   local description="$1" theme_before="$2" css_before="$3"
   [ "${theme_before}" = "$(shasum -a 256 "${FIXTURE}/cmd/fathom/ui/tokens/theme.css")" ] \
@@ -44,6 +52,7 @@ mkdir -p "${FIXTURE}/scripts/lib" "${FIXTURE}/cmd/fathom/ui/tokens" \
 cp "${SCRIPT_DIR}/ui-css.sh" "${FIXTURE}/scripts/ui-css.sh"
 cp "${SCRIPT_DIR}/lib/build-cache.sh" "${FIXTURE}/scripts/lib/build-cache.sh"
 cp "${ROOT}/cmd/fathom/ui/input.css" "${FIXTURE}/cmd/fathom/ui/input.css"
+cp "${ROOT}/cmd/fathom/ui/guide-baseline.cue" "${FIXTURE}/cmd/fathom/ui/guide-baseline.cue"
 printf '0000000000000000000000000000000000000000\n' > "${FIXTURE}/third_party/app-kit/.vendor-commit"
 printf 'tokens: {}\n' > "${FIXTURE}/third_party/app-kit/cue/tokens/kit.cue"
 printf 'module github.com/geoffmilleraz/app-kit\n\ngo 1.26.2\n' > "${FIXTURE}/third_party/app-kit/go.mod"
@@ -67,6 +76,7 @@ cat > "${FIXTURE}/third_party/app-kit/cmd/appkit/main.go" <<'GO'
 package main
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"os"
 	"strings"
@@ -89,7 +99,9 @@ func main() {
 	if len(os.Args) < 2 { os.Exit(2) }
 	switch os.Args[1] {
 	case "gen":
-		_ = os.WriteFile(flag("-css"), []byte("/* generated theme */\n"), 0o644)
+		source, err := os.ReadFile(flag("-tokens"))
+		if err != nil { os.Exit(3) }
+		_ = os.WriteFile(flag("-css"), []byte(fmt.Sprintf("/* generated theme from %x */\n", sha256.Sum256(source))), 0o644)
 	case "css":
 		_ = os.WriteFile(flag("-o"), []byte("/* generated app */\n"), 0o644)
 		if mutate := os.Getenv("UI_CSS_TEST_MUTATE"); mutate != "" {
@@ -120,23 +132,39 @@ cat > "${TMP}/bin/shasum" <<EOF
 for arg in "\$@"; do
   if [ -n "\${UI_CSS_TEST_UNREADABLE:-}" ] && [ -e "\${arg}" ]; then
     physical="\$(cd "\$(dirname "\${arg}")" && pwd -P)/\$(basename "\${arg}")"
-    [ "\${physical}" = "\${UI_CSS_TEST_UNREADABLE}" ] && exit 1
+    if [ "\${physical}" = "\${UI_CSS_TEST_UNREADABLE}" ]; then
+      echo "synthetic shasum read denied: \${physical}" >&2
+      exit 77
+    fi
   fi
 done
 exec "${REAL_SHASUM}" "\$@"
 EOF
 chmod +x "${TMP}/bin/shasum"
+cat > "${TMP}/bin/[" <<'EOF'
+#!/bin/sh
+case "${1:-}" in
+  -r) exit 1 ;;
+esac
+exec /bin/[ "$@"
+EOF
+chmod +x "${TMP}/bin/["
+printf '%s\n' "enable -n '['" > "${TMP}/disable-test-r.bash"
 export PATH="${TMP}/bin:${PATH}"
 export UI_CSS_TEST_TRACE="${TRACE}"
 
 (cd "${FIXTURE}" && bash scripts/ui-css.sh >/dev/null)
 grep -Fq "go|${FIXTURE}/third_party/app-kit|GOWORK=off" "${TRACE}" || fail "mirror-local GOWORK=off build was not observed"
-grep -Fq "appkit|${FIXTURE}|gen -tokens third_party/app-kit/cue/tokens/kit.cue" "${TRACE}" || fail "root-local mirrored token generation was not observed"
+grep -Fq "appkit|${FIXTURE}|gen -tokens ${FIXTURE}/cmd/fathom/ui/guide-baseline.cue" "${TRACE}" || fail "root-local app-owned token generation was not observed"
 grep -Fq -- '-terminal ' "${TRACE}" || fail "token generation did not pass the explicit empty terminal output"
-ok "mirrored builder runs with the closed root contract"
+ok "mirrored builder uses the app-owned token source"
 
 THEME_BEFORE="$(shasum -a 256 "${FIXTURE}/cmd/fathom/ui/tokens/theme.css")"
 CSS_BEFORE="$(shasum -a 256 "${FIXTURE}/cmd/fathom/ui/app.css")"
+expect_pass "false access predicate cannot override successful content reads" \
+  env BASH_ENV="${TMP}/disable-test-r.bash" bash "${FIXTURE}/scripts/ui-css.sh"
+assert_outputs_unchanged "false-access-predicate build" "${THEME_BEFORE}" "${CSS_BEFORE}"
+
 mv "${FIXTURE}/cmd/fathom/observatory_render.go" "${TMP}/observatory_render.go"
 expect_fail "missing selected source refuses before writing" "required source selection is empty" \
   bash "${FIXTURE}/scripts/ui-css.sh"
@@ -163,8 +191,10 @@ assert_outputs_unchanged "additive-source refusal" "${THEME_BEFORE}" "${CSS_BEFO
 cp "${TMP}/input.css" "${FIXTURE}/cmd/fathom/ui/input.css"
 
 export UI_CSS_TEST_UNREADABLE="${FIXTURE}/cmd/fathom/observatory_apply.go"
-expect_fail "unreadable selected source refuses before writing" "required source is unreadable" \
+expect_fail "unreadable selected source refuses before writing" "shasum exit 77: synthetic shasum read denied: ${FIXTURE}/cmd/fathom/observatory_apply.go" \
   bash "${FIXTURE}/scripts/ui-css.sh"
+grep -Fq "required source is unreadable" "${TMP}/out.log" \
+  || fail "unreadable selected source: missing generic refusal text"
 unset UI_CSS_TEST_UNREADABLE
 assert_outputs_unchanged "unreadable-source refusal" "${THEME_BEFORE}" "${CSS_BEFORE}"
 
@@ -175,6 +205,20 @@ expect_fail "source changed during build refuses publication" "selected sources 
 unset UI_CSS_TEST_MUTATE
 assert_outputs_unchanged "concurrent-source refusal" "${THEME_BEFORE}" "${CSS_BEFORE}"
 cp "${TMP}/observatory_series.go" "${FIXTURE}/cmd/fathom/observatory_series.go"
+
+cp "${FIXTURE}/cmd/fathom/ui/guide-baseline.cue" "${TMP}/guide-baseline.cue"
+export UI_CSS_TEST_MUTATE="${FIXTURE}/cmd/fathom/ui/guide-baseline.cue"
+expect_fail "token source changed during build refuses publication" "selected sources changed during generation" \
+  bash "${FIXTURE}/scripts/ui-css.sh"
+unset UI_CSS_TEST_MUTATE
+assert_outputs_unchanged "concurrent-token refusal" "${THEME_BEFORE}" "${CSS_BEFORE}"
+cp "${TMP}/guide-baseline.cue" "${FIXTURE}/cmd/fathom/ui/guide-baseline.cue"
+
+printf '// changed after generation\n' >> "${FIXTURE}/cmd/fathom/ui/guide-baseline.cue"
+expect_fail "changed token source makes generated theme stale" "generated token theme is stale" \
+  bash "${FIXTURE}/scripts/ui-css.sh" --check
+assert_outputs_unchanged "token-source stale check" "${THEME_BEFORE}" "${CSS_BEFORE}"
+cp "${TMP}/guide-baseline.cue" "${FIXTURE}/cmd/fathom/ui/guide-baseline.cue"
 
 printf '/* stale */\n' >> "${FIXTURE}/cmd/fathom/ui/app.css"
 STALE_BEFORE="$(shasum -a 256 "${FIXTURE}/cmd/fathom/ui/app.css")"

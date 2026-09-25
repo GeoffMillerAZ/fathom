@@ -6,13 +6,15 @@ architecture; no metric model, daemon behavior or future has been promoted.
 
 ## Selected surface and design
 
-- `go-web`, layers L1/L3b, beginning with `shell.layout`. Existing stat/viz
+- `go-web`, layers L1/L3b/L4, selecting `shell.layout` and experimental
+  `recipe.styleguide.local`. Existing stat/viz
   integrations remain; this manifest is a bounded selection, not every kit import.
 - Operational readers need to distinguish wired, used and paying off, then reach
   the evidence/remedy. Preserve current role-token identity in both light/dark themes.
 - The shared MatDash-derived `dashboard.RenderShell` supplies the sidebar, top bar,
   mobile disclosure and landmarks. App-owned routes, leads, explainers and evidence
-  remain inside it. No paid source, browser runtime or new dependency was copied.
+  remain inside it. No paid source or browser runtime was copied; the guide's
+  reviewed module changes are disclosed below.
 - Missing/unreadable is not zero; instruments, denominators and time windows remain
   explicit. Navigation composition must not change metrics, narratives or write policy.
 - Existing kit callouts name unavailable configuration and absent comparable exploration;
@@ -28,7 +30,46 @@ architecture; no metric model, daemon behavior or future has been promoted.
   snapshot has its own band. Keep the lower-bound sign with its number and give service
   detail links a keyboard outline and 44px target. Do not patch the mirror in place.
 
-## Delivery identity and navigation handoff
+## Local theme guide integration (2026-09-22)
+
+The owner-authorized working-tree upgrade selects the exact app-kit mirror
+`f7ab0fbd3496e9dc3da8c97b6c4290f09a71ec50`. Its reviewed metadata keeps
+`shell.layout` unchanged and adds the experimental local-guide contract, not an
+application settings backend. The root module adds only indirect uniseg v0.4.7;
+the mirror also selects MCP SDK 1.8.0 and x/time v0.15.0 in the module graph.
+Agentic-kit's `beb53a4fb901` pin/mirror and service JSON stay unchanged.
+
+Build with `GOWORK=off`; run the resulting private binary's
+`theme-guide -addr 127.0.0.1:18767`, then open `/dev/theme` at that origin.
+This separate command does not mount routes in the daemon or read the registry,
+call log or session ledger. It renders fixed complete/partial/missing/error models
+through the actual Observatory renderers. Preview links are disabled explicitly.
+Preview, reset and export never rewrite source or preferences; review the exported
+candidate before an explicit source change. The authored baseline retains the existing
+positive `oklch(0.55 0.14 155)` palette, with no default theme change. Eight selected contrast checks
+are not whole-screen accessibility certification.
+
+Registry coverage failure now renders absence or a named lower bound. Call-log and
+ledger failures independently suppress their own dependent counts, while readable
+zero and unrelated valid sources remain intact (I38/ADR-027). No reader, calculation,
+service-JSON field, live data, daemon restart, consumer commit or deployment changed.
+
+Verification and current limitations are recorded in app-kit's
+`docs/assessments/2026-09-22-fathom-guide-only.md`. The exact private source passes
+35 top-level / 96 test-and-subtest race checks, vet, standalone build, 12 CSS
+builder regressions, actual CSS build/check and the selected static adoption checks.
+The current CSS-bearing binary also passes the bounded fresh-Chrome light/wide and
+dark/narrow journey: preview/refusal/repair/reset plus pointer/Enter ZIP exports with
+identical reviewed bytes and clean owned-process shutdown. Large-number chart geometry,
+zoom, full accessibility, memory/cancellation and human usability remain open; the guide
+remains experimental. Earlier failed receipts remain intact.
+The existing identical CLAUDE.md/AGENTS.md routers already route here; no host settings
+change is needed. **FATHOM-GUIDE-01:** adopt the shared guide, keep domain validity
+repairs here, and return sanitized missingness/build-reliability tests and lessons to
+app-kit. Revisit shared promotion only after independent consumer task evidence;
+this integration does not close G3/G4, human usability or the memory/cancellation gates.
+
+## Historical delivery identity and navigation handoff
 
 `go.mod` declares app-kit `v0.0.0` with an in-tree replacement. ADR-019 requires its
 exact stamped mirror: `third_party/app-kit/.vendor-commit` is

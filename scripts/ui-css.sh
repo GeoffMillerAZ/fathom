@@ -14,7 +14,7 @@ fathom_cache_configure
 MIRROR_ROOT="${REPO_ROOT}/third_party/app-kit"
 INPUT="${REPO_ROOT}/cmd/fathom/ui/input.css"
 INPUT_DIR="${REPO_ROOT}/cmd/fathom/ui"
-TOKENS="${MIRROR_ROOT}/cue/tokens/kit.cue"
+TOKENS="${REPO_ROOT}/cmd/fathom/ui/guide-baseline.cue"
 THEME_OUT="${REPO_ROOT}/cmd/fathom/ui/tokens/theme.css"
 CSS_OUT="${REPO_ROOT}/cmd/fathom/ui/app.css"
 
@@ -83,14 +83,23 @@ inside_repo() {
 }
 
 require_file() {
-  local path="$1" physical
+  local path="$1" physical shasum_stderr shasum_status
   [ -f "${path}" ] || fail "required source is missing: ${path#"${REPO_ROOT}/"}"
   [ ! -L "${path}" ] || fail "required source must not be a symlink: ${path#"${REPO_ROOT}/"}"
-  [ -r "${path}" ] || fail "required source is unreadable: ${path#"${REPO_ROOT}/"}"
   physical="$(cd "$(dirname "${path}")" && pwd -P)/$(basename "${path}")"
   inside_repo "${physical}"
-  # Opening the file catches ACL/read failures that a mode-bit check can miss.
-  shasum -a 256 "${path}" >/dev/null 2>&1 || fail "required source is unreadable: ${path#"${REPO_ROOT}/"}"
+  # The content read is authoritative. Access predicates can disagree with a
+  # subsequent open on external volumes, while this is the operation the
+  # digest and build actually require.
+  if shasum_stderr="$(shasum -a 256 "${path}" 2>&1 >/dev/null)"; then
+    return
+  else
+    shasum_status=$?
+  fi
+  if [ -n "${shasum_stderr}" ]; then
+    fail "required source is unreadable: ${path#"${REPO_ROOT}/"} (shasum exit ${shasum_status}: ${shasum_stderr})"
+  fi
+  fail "required source is unreadable: ${path#"${REPO_ROOT}/"} (shasum exit ${shasum_status})"
 }
 
 source_matches() {
@@ -138,6 +147,7 @@ validate_source_contract() {
 selected_files() {
   local declaration
   printf '%s\n' "${INPUT}"
+  printf '%s\n' "${TOKENS}"
   # The CLI's transitive compile/embed closure is broader than cmd/appkit,
   # internal/tailwind, and ui/tokens. Hash the complete, small (about 3 MB)
   # in-tree mirror so no compiled or embedded input is silently omitted.
@@ -203,12 +213,12 @@ BEFORE="$(source_digest)"
   GOWORK=off go build -o "${APPKIT_BIN}" ./cmd/appkit
 )
 
-# Token generation runs from fathom's root and reads the mirrored CUE source.
+# Token generation runs from fathom's root and reads its app-owned CUE source.
 # Empty outputs are explicit; the kit's terminal palette belongs to the mirror.
 (
   cd "${REPO_ROOT}"
   "${APPKIT_BIN}" gen \
-    -tokens third_party/app-kit/cue/tokens/kit.cue \
+    -tokens "${TOKENS}" \
     -css "${CANDIDATE_THEME}" -dtcg "" -go "" -terminal ""
 )
 
