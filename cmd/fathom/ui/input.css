@@ -5,7 +5,9 @@
 @import "tailwindcss" source(none);
 @import "./tokens/theme.css";
 
-/* fathom's complete production observatory source set */
+/* fathom's complete production observatory source set; every console page
+   and component lives in a console_*.go file, scanned by glob (vision 35) */
+@source "../console_*.go";
 @source "../observatory.go";
 @source "../observatory_apply.go";
 @source "../observatory_brief.go";
@@ -14,10 +16,13 @@
 @source "../observatory_story.go";
 
 /* mirrored kit packages imported by the observatory renderers */
+@source "../../../third_party/app-kit/appkit/ui/appearance/*.go";
 @source "../../../third_party/app-kit/appkit/ui/callout/*.go";
+@source "../../../third_party/app-kit/appkit/ui/chrome/*.go";
 @source "../../../third_party/app-kit/appkit/ui/dashboard/*.go";
 @source "../../../third_party/app-kit/appkit/ui/form/*.go";
 @source "../../../third_party/app-kit/appkit/ui/hitl/*.go";
 @source "../../../third_party/app-kit/appkit/ui/stat/*.go";
+@source "../../../third_party/app-kit/appkit/ui/table/*.go";
 @source "../../../third_party/app-kit/appkit/ui/viz/*.go";
 @source "../../../third_party/app-kit/appkit/ui/vizframe/*.go";

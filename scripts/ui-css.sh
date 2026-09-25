@@ -27,17 +27,21 @@ case "${1:-}" in
 esac
 
 SOURCE_DECLARATIONS=(
+  "../console_*.go"
   "../observatory.go"
   "../observatory_apply.go"
   "../observatory_brief.go"
   "../observatory_render.go"
   "../observatory_series.go"
   "../observatory_story.go"
+  "../../../third_party/app-kit/appkit/ui/appearance/*.go"
   "../../../third_party/app-kit/appkit/ui/callout/*.go"
+  "../../../third_party/app-kit/appkit/ui/chrome/*.go"
   "../../../third_party/app-kit/appkit/ui/dashboard/*.go"
   "../../../third_party/app-kit/appkit/ui/form/*.go"
   "../../../third_party/app-kit/appkit/ui/hitl/*.go"
   "../../../third_party/app-kit/appkit/ui/stat/*.go"
+  "../../../third_party/app-kit/appkit/ui/table/*.go"
   "../../../third_party/app-kit/appkit/ui/viz/*.go"
   "../../../third_party/app-kit/appkit/ui/vizframe/*.go"
 )
@@ -51,7 +55,9 @@ render_expected_input() {
 @import "tailwindcss" source(none);
 @import "./tokens/theme.css";
 
-/* fathom's complete production observatory source set */
+/* fathom's complete production observatory source set; every console page
+   and component lives in a console_*.go file, scanned by glob (vision 35) */
+@source "../console_*.go";
 @source "../observatory.go";
 @source "../observatory_apply.go";
 @source "../observatory_brief.go";
@@ -60,11 +66,14 @@ render_expected_input() {
 @source "../observatory_story.go";
 
 /* mirrored kit packages imported by the observatory renderers */
+@source "../../../third_party/app-kit/appkit/ui/appearance/*.go";
 @source "../../../third_party/app-kit/appkit/ui/callout/*.go";
+@source "../../../third_party/app-kit/appkit/ui/chrome/*.go";
 @source "../../../third_party/app-kit/appkit/ui/dashboard/*.go";
 @source "../../../third_party/app-kit/appkit/ui/form/*.go";
 @source "../../../third_party/app-kit/appkit/ui/hitl/*.go";
 @source "../../../third_party/app-kit/appkit/ui/stat/*.go";
+@source "../../../third_party/app-kit/appkit/ui/table/*.go";
 @source "../../../third_party/app-kit/appkit/ui/viz/*.go";
 @source "../../../third_party/app-kit/appkit/ui/vizframe/*.go";
 EOF

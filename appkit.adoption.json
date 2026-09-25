@@ -30,11 +30,11 @@
   "artifacts": [
     {
       "path": "cmd/fathom/ui/app.css",
-      "sha256": "63566a8b7fbeca0908914b9d1106686427f02a7a0703792bc056c2b01d8ecc77"
+      "sha256": "a48d5799c7656b098a98a28c8fdd2c6e0273f31f36536946c7091af7fc64e091"
     },
     {
       "path": "cmd/fathom/ui/input.css",
-      "sha256": "78c7156e0ac001f98c3163cd75f8cef65461a45e220ccda0933e97dde023ddb1"
+      "sha256": "acd490e94698a06b1f00bb61895e961084fc95ae4c6b97992c5baac8db22d132"
     },
     {
       "path": "cmd/fathom/ui/tokens/theme.css",
@@ -66,7 +66,7 @@
     },
     {
       "path": "scripts/ui-css.sh",
-      "sha256": "567476683b7947112068370f4e14c0c1e3ccd70e50509bb52b6f5675cc4aa975"
+      "sha256": "d9c8d4f5135b1b135946640afc0416d270db2adbf29a1001af4c1487f2bc97ea"
     },
     {
       "path": "scripts/lib/build-cache.sh",

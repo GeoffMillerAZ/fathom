@@ -2,6 +2,8 @@ cuelabs.dev/go/oci/ociregistry v0.0.0-20251212221603-3adeb8663819 h1:Zh+Ur3OsoWp
 cuelabs.dev/go/oci/ociregistry v0.0.0-20251212221603-3adeb8663819/go.mod h1:WjmQxb+W6nVNCgj8nXrF24lIz95AHwnSl36tpjDZSU8=
 cuelang.org/go v0.16.1 h1:iPN1lHZd2J0hjcr8hfq9PnIGk7VfPkKFfxH4de+m9sE=
 cuelang.org/go v0.16.1/go.mod h1:/aW3967FeWC5Hc1cDrN4Z4ICVApdMi83wO5L3uF/1hM=
+github.com/a-h/templ v0.3.1020 h1:ypAT/L5ySWEnZ6Zft/5yfoWXYYkhFNvEFOeeqecg4tw=
+github.com/a-h/templ v0.3.1020/go.mod h1:A2DlK61v+K+NRoGnhmYbNYVmtYHcFO5/AisMvBdDxTM=
 github.com/agext/levenshtein v1.2.1 h1:QmvMAjj2aEICytGiWzmxoE0x2KZvE0fvmqMOfy2tjT8=
 github.com/agext/levenshtein v1.2.1/go.mod h1:JEDfjyjHDjOF/1e4FlBE/PkbqA9OfWu2ki2W0IB5558=
 github.com/apparentlymart/go-textseg/v15 v15.0.0 h1:uYvfpb3DyLSCGWnctWKGj857c6ew1u1fNQOlOtuGxQY=
