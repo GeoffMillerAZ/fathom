@@ -1,0 +1,9 @@
+# Authority is a path (ADR-0096 D3, platform-engineering review-kit): the
+# forge's review gate is the ONE approval mechanism for Review Kit
+# dispositions. leadsman refuses dispositions when no rule below covers
+# their directory — and .reviewkit/annotations/ is deliberately uncovered,
+# so anyone can land context there without approval authority (CV-44).
+
+/.reviewkit/dispositions/ @geoffmilleraz
+/.reviewkit/catalog/      @geoffmilleraz
+/.reviewkit/packs/        @geoffmilleraz

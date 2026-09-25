@@ -141,6 +141,26 @@ requirement fails on any finding whose `declared` is not `prior`; the
 `refactoring.uncovered-behaviour` requirement is advisory (typed-judgment
 lane, never a gate by itself).
 
+The arming itself (CV-44) lives entirely in `.reviewkit/` at this
+repository's root: `.reviewkit/packs/{refactoring-conservation,testing-certifications}/pack.cue`
+(the shipped catalog bytes, installed by `leadsman catalog install`, every
+finding still `severity: "off"`), `.reviewkit/config.cue` (enables both
+packs plus a minimal local catalog — this repository has no Standard of
+its own), and `.reviewkit/dispositions/refactoring-conservation.cue` (the
+`#Tailor` dispositions that raise `refactoring.no-undeclared-loss`,
+`refactoring.proof-integrity` and `testing.certified-targets` from that
+shipped `off` to `warn`; tailoring only ever raises severity, never
+lowers it). A disposition under `.reviewkit/dispositions/` is honored only
+when this repository's `CODEOWNERS` covers that path (ADR-0096 D3) —
+`leadsman sound` refuses to load it otherwise, loudly. `leadsman sound
+--since <ref>` (run with `fathom` on `PATH`) writes the rendered posture
+to `docs/review/`; see `docs/bench/readings/cv-44-reviewkit-armed-2026-09-25.md`
+for a real sounding against this repository's own history, including one
+open finding (`testing.certified-targets` needs the `fathom-certify`
+adapter to thread `--service` the way `fathom-conserve` already does,
+before its warn-severity firing can be trusted from the real checkout's
+own directory name).
+
 ## 7. Evidence density, honestly ranked never
 
 ```sh
