@@ -133,8 +133,10 @@ otherwise `Unknown`, never a false "gone" from a stale or partial index.
 every push, **as a warning only** — it never blocks (`fathom verify` above
 is the gate). CI runs the same command with `--strict` to actually fail the
 build. Review Kit's `refactoring-conservation` pack (adapter
-`fathom-conserve`, over `fathom conserve --json --since <base>`) is armed
-at **warn** on this repository — its `refactoring.no-undeclared-loss`
+`fathom-conserve`, over `fathom conserve --json --since <base> --service
+<service>` — `--service` is required, so the adapter is built with the
+sounding's own configured Service rather than left to a directory-name
+guess) is armed at **warn** on this repository — its `refactoring.no-undeclared-loss`
 requirement fails on any finding whose `declared` is not `prior`; the
 `refactoring.uncovered-behaviour` requirement is advisory (typed-judgment
 lane, never a gate by itself).

@@ -21,6 +21,8 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: minor (pre-1.0: breaking bumps minor)
 
+**Docs corrected: the Review Kit `fathom-conserve` adapter's invocation always names `--service`.** `docs/design/refactor-conservation.md` §7a and `docs/use-cases/refactor-conservation.md` §6 showed `fathom conserve --json --since <base>` with no `--service`; `conserve` has no default-from-repo-directory fallback (unlike `certify gaps`/`certify manifest`/`certify status`/`certify orphans`), so every real invocation shaped like the old example would exit 2. Platform-engineering's adapter now threads its sounding's own configured Service through as `--service` (CV-44).
+
 **A resurrection `moved` finding's text no longer contradicts itself.** Its Detail already says "no retirement was declared"; the wire-level `declared` field stays `"prior"` (Finding's only loss-exempt value, unchanged for `no-undeclared-loss`-style consumers reading the JSON), but `fathom conserve`'s text table and `review_diff`'s `conservation` dimension now render it as "no declaration needed" instead of echoing "(declared: prior)" on the same line.
 
 **`fathom refactor plan` refuses a dirty working tree.** `max:` was seeded from the live working tree (`c.Sources()`) while `Baseline:` is the last COMMIT — an uncommitted edit at plan-creation time let the two disagree for the same pinned baseline sha, so `fathom refactor status`'s own baseline count (read from git, not disk) could contradict `max:` from the very first check. `refactor plan` now refuses outright on a dirty tree instead (CV-33).

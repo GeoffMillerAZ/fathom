@@ -280,8 +280,14 @@ deterministic Blindness detector.
   own repository.
 - Review Kit: pack `refactoring-conservation` with requirements
   `refactoring.no-undeclared-loss` (adapter `fathom-conserve` over
-  `fathom conserve --json --since <base>`, fails on a finding with
-  `declared` other than `prior`), `refactoring.proof-integrity` (integrity
+  `fathom conserve --json --since <base> --service <service>` — `--service`
+  is required (cmd/fathom's conserve subcommand has no default-from-
+  repo-directory fallback the way `certify gaps`/`certify manifest`/
+  `certify status`/`certify orphans` do), so the adapter is constructed
+  with the sounding's own configured Service, the same value
+  `NewFathomAdapterAtRoot` already threads through for `fathom verify`
+  bindings — fails on a finding with `declared` other than `prior`),
+  `refactoring.proof-integrity` (integrity
   findings of kind `deleted`, `weakened`, `skipped`, `golden_changed`,
   `marker_moved`), and `refactoring.uncovered-behaviour` (typed-judgment lane,
   advisory). Armed at warn on this repository. The testing-certifications
