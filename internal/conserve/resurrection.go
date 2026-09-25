@@ -57,6 +57,8 @@ package conserve
 //     before this amendment.
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -83,13 +85,27 @@ func (resurrectionPlane) Check(ctx context.Context, in Input) ([]Finding, []stri
 // package clause (pkg — resurrection honesty's package-retirement check),
 // defining file:line, and clone.FuncBodyHash's own hash/statement count
 // for its source text.
+//
+// hash is IDENTIFIER-INSENSITIVE (cluster.NormalizedHash, via
+// clone.FuncBodyHash) — Resurrected's own "same shape under a new name"
+// question (CV-31/32) needs exactly that insensitivity. exactHash is the
+// UNNORMALIZED source text's own sha256 — residue.go's ChangedFunctions
+// uses this one: design §3.4/CV-60 define "modified" as "the exact body
+// text differs," a different, stricter question a rename or a literal
+// swap must still answer (a changed identifier, keyword, string literal
+// or type is an ordinary behaviour change, not "the same function").
+// Never conflate the two: hash a rename left alone, exactHash a rename
+// changed on its own is Blindness evidence (CV-32); the reverse
+// (exactHash unchanged, hash changed — impossible, since exact identity
+// implies normalized identity too) never arises.
 type funcSite struct {
-	name  string
-	pkg   string
-	file  string
-	line  int
-	hash  string
-	stmts int
+	name      string
+	pkg       string
+	file      string
+	line      int
+	hash      string
+	exactHash string
+	stmts     int
 }
 
 // Resurrected is resurrectionPlane's own analysis (CV-32), callable
@@ -126,7 +142,7 @@ func Resurrected(in Input) ([]Finding, []string) {
 		var baseFuncs []funcSite
 		baseByName := map[string]funcSite{}
 		if baseOK {
-			baseFuncs = funcSitesIn(path, baseBody)
+			baseFuncs, _ = funcSitesIn(path, baseBody)
 			for _, f := range baseFuncs {
 				baseByName[f.name] = f
 			}
@@ -134,7 +150,8 @@ func Resurrected(in Input) ([]Finding, []string) {
 
 		headFuncs := map[string]bool{}
 		if headOK {
-			for _, f := range funcSitesIn(path, headBody) {
+			headSites, _ := funcSitesIn(path, headBody)
+			for _, f := range headSites {
 				headFuncs[f.name] = true
 				// CV-M5 (docs/bench/readings/cv-m5-blindness-replay-
 				// 2026-09-24.md): a head function can only be a
@@ -227,14 +244,22 @@ func Resurrected(in Input) ([]Finding, []string) {
 // funcSitesIn parses src (one Go file's content at some point in the
 // range) and returns every top-level function/method declaration's
 // funcSite, in file declaration order (deterministic: go/parser preserves
-// source order in af.Decls). A function with no body (an external/
-// assembly declaration) is skipped — clone.FuncBodyHash has nothing to
-// hash for it, and it can never be "the same body" as anything.
-func funcSitesIn(filePath string, src []byte) []funcSite {
+// source order in af.Decls), plus ok reporting whether src parsed as Go
+// at all. A function with no body (an external/assembly declaration) is
+// skipped — clone.FuncBodyHash has nothing to hash for it, and it can
+// never be "the same body" as anything.
+//
+// ok is false ONLY for an actual parse failure — src is not valid Go at
+// all (residue.go's ChangedFunctions reports this honestly as
+// "unanalyzed", never as a silent zero, the same distinction missing
+// carries for a content READ failure). A src that parses but declares no
+// functions returns ok=true with a nil slice — an ordinary, honest empty
+// result, not a parse failure.
+func funcSitesIn(filePath string, src []byte) (sites []funcSite, ok bool) {
 	fset := token.NewFileSet()
 	af, err := parser.ParseFile(fset, filePath, src, parser.ParseComments)
 	if err != nil {
-		return nil // heuristic scan over already-read content: never fatal
+		return nil, false
 	}
 	pkgName := ""
 	if af.Name != nil {
@@ -242,8 +267,8 @@ func funcSitesIn(filePath string, src []byte) []funcSite {
 	}
 	var out []funcSite
 	for _, decl := range af.Decls {
-		fn, ok := decl.(*ast.FuncDecl)
-		if !ok || fn.Body == nil {
+		fn, declOK := decl.(*ast.FuncDecl)
+		if !declOK || fn.Body == nil {
 			continue
 		}
 		start := fset.Position(fn.Pos()).Offset
@@ -251,20 +276,23 @@ func funcSitesIn(filePath string, src []byte) []funcSite {
 		if start < 0 || end > len(src) || start >= end {
 			continue
 		}
-		hash, stmts, ok := clone.FuncBodyHash(string(src[start:end]))
-		if !ok {
+		body := src[start:end]
+		hash, stmts, hashOK := clone.FuncBodyHash(string(body))
+		if !hashOK {
 			continue
 		}
+		exactSum := sha256.Sum256(body)
 		out = append(out, funcSite{
-			name:  funcDeclName(fn),
-			pkg:   pkgName,
-			file:  filePath,
-			line:  fset.Position(fn.Pos()).Line,
-			hash:  hash,
-			stmts: stmts,
+			name:      funcDeclName(fn),
+			pkg:       pkgName,
+			file:      filePath,
+			line:      fset.Position(fn.Pos()).Line,
+			hash:      hash,
+			exactHash: hex.EncodeToString(exactSum[:]),
+			stmts:     stmts,
 		})
 	}
-	return out
+	return out, true
 }
 
 // funcDeclName names fn the same way safe_delete_check and the plan

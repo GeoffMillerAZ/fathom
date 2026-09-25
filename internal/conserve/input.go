@@ -9,6 +9,7 @@ package conserve
 // changed files only.").
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -426,8 +427,23 @@ func resolveRef(ctx context.Context, root, ref string) (string, error) {
 // gitignore respected) — a brand-new file never `git add`ed shows up in
 // neither the index nor a tracked diff, so it needs the second call
 // (ADR-044 §0).
+//
+// `--no-renames` is explicit rather than relying on the caller's
+// diff.renames default: with rename detection on, `git mv a.go b.go`
+// reports only b.go, so a.go's base content is never even offered to
+// ChangedFunctions' pooling — every function in the pure rename reads as
+// "added" (the pooling fix in residue.go handles a file DELETED at head
+// once base content is provided; it cannot help when the deletion is
+// hidden from ChangedFiles entirely). `--relative` makes the returned
+// paths relative to root itself, not git's toplevel: a service ingested
+// from a subdirectory of a larger repo (ServiceMeta.Path, matching every
+// index FilePath) would otherwise get toplevel-relative paths that never
+// match a single index lookup, silently reading as "nothing changed" or
+// "everything unreached" depending on the caller (input.go's own
+// worktreeFile/gitShowFile join paths onto root the same way the index
+// stores them).
 func changedFilesSinceBase(ctx context.Context, root, base string) ([]string, error) {
-	diffOut, err := exec.CommandContext(ctx, "git", "-C", root, "diff", "--name-only", base).Output()
+	diffOut, err := exec.CommandContext(ctx, "git", "-C", root, "diff", "--no-renames", "--relative", "--name-only", base).Output()
 	if err != nil {
 		return nil, fmt.Errorf("git diff --name-only %s: %w", base, err)
 	}
@@ -455,21 +471,52 @@ func changedFilesSinceBase(ctx context.Context, root, base string) ([]string, er
 }
 
 // gitShowFile reads path's content at ref inside root via `git show
-// <ref>:<path>`. ok is false — never an error — when git ran but the path
-// simply did not exist at ref (the ordinary shape for a new file); err is
-// non-nil only when git itself could not be run at all (not installed, not
-// on PATH).
+// <ref>:<path>`. ok is false — never an error — when git ran and reported
+// the path simply did not exist at ref (the ordinary shape for a new
+// file); err is non-nil when git itself could not be run at all (not
+// installed, not on PATH) OR when git ran but failed for a reason OTHER
+// than the path's ordinary absence — an unreadable or corrupt object, a
+// permission error under .git, a shallow clone missing the blob. Those
+// are real read failures (I38: an unreadable file is never reported as
+// absent), and ChangedFunctions/Resurrected both turn this err into a
+// Missing entry rather than silently treating the file as new — never
+// possible when every such failure came back ok=false, err=nil
+// indistinguishably from "did not exist".
 func gitShowFile(root, ref, path string) ([]byte, bool, error) {
-	cmd := exec.Command("git", "-C", root, "show", ref+":"+filepath.ToSlash(path))
+	// git's own "<rev>:<path>" syntax resolves path against the REPO
+	// TOPLEVEL, never "-C root", unless path is prefixed "./" or "../" —
+	// without the prefix, a service rooted at a subdirectory (root !=
+	// toplevel) would look up the wrong object entirely (or none at all)
+	// for every ordinary, root-relative path this package otherwise uses
+	// throughout (worktreeFile, ChangedFiles via --relative).
+	cmd := exec.Command("git", "-C", root, "show", ref+":./"+filepath.ToSlash(path))
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
 	out, err := cmd.Output()
-	if err != nil {
-		var execErr *exec.Error
-		if errors.As(err, &execErr) {
-			return nil, false, err
-		}
+	if err == nil {
+		return out, true, nil
+	}
+	var execErr *exec.Error
+	if errors.As(err, &execErr) {
+		return nil, false, err
+	}
+	if pathAbsentAtRef(stderr.String()) {
 		return nil, false, nil
 	}
-	return out, true, nil
+	return nil, false, fmt.Errorf("git show %s:%s: %s", ref, path, strings.TrimSpace(stderr.String()))
+}
+
+// pathAbsentAtRef reports whether git's own stderr for a failed `git show
+// <ref>:<path>` says the path simply never existed at ref — git's two
+// documented phrasings for exactly that ("fatal: path '<path>' does not
+// exist in '<ref>'", and "fatal: Path '<path>' exists on disk, but not in
+// '<ref>'" when path exists in the worktree but not that revision) —
+// distinct from every other failure (a corrupt or unreadable object
+// reports "fatal: bad object <ref>:<path>" or "error: unable to open
+// loose object ...", never either phrase above).
+func pathAbsentAtRef(stderr string) bool {
+	s := strings.ToLower(stderr)
+	return strings.Contains(s, "does not exist in") || strings.Contains(s, "exists on disk, but not in")
 }
 
 // worktreeFile reads path's content from the working tree under root. ok

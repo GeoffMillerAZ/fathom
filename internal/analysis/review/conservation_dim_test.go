@@ -181,3 +181,55 @@ func TestReview_ConservationDimensionCarriesResidue(t *testing.T) {
 		}
 	})
 }
+
+// TestReview_ConservationDimensionResidueReachesPayload pins that the
+// residue set on Dimension by runConservation actually reaches the wire:
+// design §3.4/CHANGELOG/docs/usage.md all promise the review conservation
+// dimension carries the reading set's counts and first five unreached
+// items on BOTH review_diff (Verdict.Payload) and `fathom review --json`
+// (ReviewResponse.Payload) — never only on the in-memory struct
+// TestReview_ConservationDimensionCarriesResidue already pins.
+func TestReview_ConservationDimensionResidueReachesPayload(t *testing.T) {
+	v := review.Run(review.Input{
+		Service: "svc", ChangedFiles: []string{"pkg/a.go"}, Base: "deadbeef",
+		ConservationSupported: true,
+		ConservationResidue: review.ConservationResidueSummary{
+			Changed: 1, Attested: 0, Unattested: 0, Unreached: 1,
+			Items: []review.ConservationResidueItem{
+				{Symbol: "ZZUNIQUE", File: "pkg/a.go", Line: 3, Change: "added", Class: "unreached", Tests: []string{}, Callers: 0},
+			},
+			Truncated: 0, Unanalyzed: []string{}, Missing: []string{},
+		},
+	})
+
+	payload := v.Payload(false)
+	dims, ok := payload["dimensions"].([]any)
+	if !ok {
+		t.Fatalf("dimensions = %v, want a slice", payload["dimensions"])
+	}
+	var conservation map[string]any
+	for _, d := range dims {
+		dm := d.(map[string]any)
+		if dm["name"] == review.DimConservation {
+			conservation = dm
+		}
+	}
+	if conservation == nil {
+		t.Fatalf("no conservation dimension in payload: %+v", dims)
+	}
+	residue, ok := conservation["residue"].(map[string]any)
+	if !ok {
+		t.Fatalf("conservation dimension has no \"residue\" object: %+v", conservation)
+	}
+	if residue["changed"] != 1 || residue["unreached"] != 1 {
+		t.Errorf("residue counts = %+v, want changed=1 unreached=1", residue)
+	}
+	items, ok := residue["items"].([]any)
+	if !ok || len(items) != 1 {
+		t.Fatalf("residue.items = %v, want exactly 1 entry", residue["items"])
+	}
+	item := items[0].(map[string]any)
+	if item["symbol"] != "ZZUNIQUE" || item["class"] != "unreached" {
+		t.Errorf("residue.items[0] = %+v, want symbol=ZZUNIQUE class=unreached", item)
+	}
+}

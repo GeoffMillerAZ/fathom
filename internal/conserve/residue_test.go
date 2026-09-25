@@ -46,9 +46,12 @@ func TestChangedFunctions_AddedModifiedMovedDeleted(t *testing.T) {
 		HeadFile:     mapFile(head),
 	}
 
-	funcs, missing := ChangedFunctions(in)
+	funcs, unanalyzed, missing := ChangedFunctions(in)
 	if len(missing) != 0 {
 		t.Fatalf("missing = %v, want none", missing)
+	}
+	if len(unanalyzed) != 0 {
+		t.Fatalf("unanalyzed = %v, want none", unanalyzed)
 	}
 
 	byName := map[string]ChangedFunction{}
@@ -90,12 +93,144 @@ func TestChangedFunctions_ReadErrorIsMissing(t *testing.T) {
 		},
 		BaseFile: mapFile(nil),
 	}
-	funcs, missing := ChangedFunctions(in)
+	funcs, unanalyzed, missing := ChangedFunctions(in)
 	if len(funcs) != 0 {
 		t.Errorf("funcs = %+v, want none", funcs)
 	}
+	if len(unanalyzed) != 0 {
+		t.Errorf("unanalyzed = %v, want none", unanalyzed)
+	}
 	if len(missing) != 1 {
 		t.Fatalf("missing = %v, want exactly one entry", missing)
+	}
+}
+
+// TestChangedFunctions_IdentifierOnlyEditIsModified pins design §3.4/CV-60:
+// "modified" means the EXACT body text differs, not clone.FuncBodyHash's
+// identifier-insensitive shape. An edit that only swaps an identifier, a
+// boolean literal, a string literal or a type name is an ordinary
+// behaviour change and must be reported — clone.FuncBodyHash's own
+// normalization (every identifier-shaped run, keywords included, becomes
+// "X") would otherwise make every one of these invisible.
+func TestChangedFunctions_IdentifierOnlyEditIsModified(t *testing.T) {
+	base := map[string]string{
+		"pkg/a.go": "package pkg\n\n" +
+			"func Enabled() bool { return true }\n\n" +
+			"func Cleanup(p string) error { return os.Remove(p) }\n\n" +
+			"func Msg() string { return \"granted\" }\n\n" +
+			"func Width() int64 { return 1 }\n",
+	}
+	head := map[string]string{
+		"pkg/a.go": "package pkg\n\n" +
+			"func Enabled() bool { return false }\n\n" +
+			"func Cleanup(p string) error { return os.RemoveAll(p) }\n\n" +
+			"func Msg() string { return \"denied\" }\n\n" +
+			"func Width() int32 { return 1 }\n",
+	}
+	in := Input{
+		ChangedFiles: []string{"pkg/a.go"},
+		BaseFile:     mapFile(base),
+		HeadFile:     mapFile(head),
+	}
+	funcs, unanalyzed, missing := ChangedFunctions(in)
+	if len(unanalyzed) != 0 || len(missing) != 0 {
+		t.Fatalf("unanalyzed=%v missing=%v, want none", unanalyzed, missing)
+	}
+	byName := map[string]ChangedFunction{}
+	for _, f := range funcs {
+		byName[f.Symbol] = f
+	}
+	for _, want := range []string{"Enabled", "Cleanup", "Msg", "Width"} {
+		if f, ok := byName[want]; !ok || f.Change != "modified" {
+			t.Errorf("%s = %+v, want change=modified present (funcs=%+v)", want, f, funcs)
+		}
+	}
+}
+
+// TestChangedFunctions_DuplicateNameDoesNotFalseModify pins that same-named
+// functions in one directory (several init(), or GOOS build-tag twins)
+// never compare a head function against the WRONG same-named base twin: an
+// unchanged twin must never read "modified", and an edited twin must never
+// hide behind another twin's unrelated body.
+func TestChangedFunctions_DuplicateNameDoesNotFalseModify(t *testing.T) {
+	base := map[string]string{
+		"pkg/a.go": "package pkg\n\n" +
+			"func init() { x := 1\n_ = x }\n\n" +
+			"func init() { y := 2\n_ = y }\n",
+	}
+	head := map[string]string{
+		// The first init() is untouched; the second is genuinely edited.
+		"pkg/a.go": "package pkg\n\n" +
+			"func init() { x := 1\n_ = x }\n\n" +
+			"func init() { y := 3\n_ = y }\n",
+	}
+	in := Input{
+		ChangedFiles: []string{"pkg/a.go"},
+		BaseFile:     mapFile(base),
+		HeadFile:     mapFile(head),
+	}
+	funcs, _, missing := ChangedFunctions(in)
+	if len(missing) != 0 {
+		t.Fatalf("missing = %v, want none", missing)
+	}
+	if len(funcs) != 1 {
+		t.Fatalf("funcs = %+v, want exactly 1 (only the edited init, not the unchanged twin)", funcs)
+	}
+	if funcs[0].Symbol != "init" || funcs[0].Change != "modified" || funcs[0].Line != 6 {
+		t.Errorf("funcs[0] = %+v, want {init modified line=6} (the SECOND init, the one actually edited)", funcs[0])
+	}
+}
+
+// TestChangedFunctions_RenamedFileFunctionsNotAdded pins that a function
+// unchanged in body but whose file was deleted at head — the shape a pure
+// same-directory rename or split takes once --no-renames guarantees both
+// the old and new paths appear in ChangedFiles — is neither added nor
+// modified: its base body must still be pooled for the SAME package
+// directory's other changed files to match against.
+func TestChangedFunctions_RenamedFileFunctionsNotAdded(t *testing.T) {
+	base := map[string]string{
+		"pkg/a.go": "package pkg\n\nfunc Moved() { x := 1\n_ = x }\n",
+	}
+	head := map[string]string{
+		// pkg/a.go is absent at head (HeadFile ok=false): deleted, its
+		// content having moved verbatim into pkg/b.go.
+		"pkg/b.go": "package pkg\n\nfunc Moved() { x := 1\n_ = x }\n",
+	}
+	in := Input{
+		ChangedFiles: []string{"pkg/a.go", "pkg/b.go"},
+		BaseFile:     mapFile(base),
+		HeadFile:     mapFile(head),
+	}
+	funcs, _, missing := ChangedFunctions(in)
+	if len(missing) != 0 {
+		t.Fatalf("missing = %v, want none", missing)
+	}
+	if len(funcs) != 0 {
+		t.Errorf("funcs = %+v, want none (Moved's base was pooled from the deleted pkg/a.go)", funcs)
+	}
+}
+
+// TestChangedFunctions_UnparseableHeadIsUnanalyzed pins I44/design §3.4's
+// honesty rule: a changed .go file whose HEAD content cannot be parsed as
+// Go at all must be named (unanalyzed), never silently contribute zero
+// changed functions as if it had none.
+func TestChangedFunctions_UnparseableHeadIsUnanalyzed(t *testing.T) {
+	base := map[string]string{"pkg/fix.go": "package fix\n\nfunc Old() { _ = 1 }\n"}
+	head := map[string]string{"pkg/fix.go": "package fix\n\nfunc Old() { _ = 2 \n\nfunc New( {\n"}
+	in := Input{
+		ChangedFiles: []string{"pkg/fix.go"},
+		BaseFile:     mapFile(base),
+		HeadFile:     mapFile(head),
+	}
+	funcs, unanalyzed, missing := ChangedFunctions(in)
+	if len(missing) != 0 {
+		t.Fatalf("missing = %v, want none (a parse failure is not a read failure)", missing)
+	}
+	if len(funcs) != 0 {
+		t.Errorf("funcs = %+v, want none", funcs)
+	}
+	if len(unanalyzed) != 1 || unanalyzed[0] != "pkg/fix.go" {
+		t.Errorf("unanalyzed = %v, want [pkg/fix.go]", unanalyzed)
 	}
 }
 
@@ -148,6 +283,17 @@ func TestResidue_ClassifiesChangedFunctions(t *testing.T) {
 		"TestAttested":   {"Attested"},
 		"TestUnattested": {"Unattested"},
 	})
+
+	// Reach is walked over RESOLVED edges only (CV-61/design §3.4): the
+	// syntax-derived Calls edges residueTestStore's own Observation.Calls
+	// wires up are not enough on their own — a typed edge is what proves
+	// each test genuinely reaches its function.
+	if err := st.PutTypedEdges(ctx, svc, "pkg", []core.Edge{
+		{FromSymbol: keys["TestAttested"], ToSymbol: keys["Attested"], Kind: core.EdgeDirect},
+		{FromSymbol: keys["TestUnattested"], ToSymbol: keys["Unattested"], Kind: core.EdgeDirect},
+	}); err != nil {
+		t.Fatalf("PutTypedEdges: %v", err)
+	}
 
 	if err := st.PutTestRuns(ctx, svc, []store.TestRun{
 		{
@@ -317,6 +463,7 @@ func TestResidue_OrderAndCap(t *testing.T) {
 	// resolved-caller count: R1=2, R2=1, UC=2, UB=2, UA=1 — UC and UB tie
 	// at 2, must then order by symbol (UB < UC).
 	edges := []core.Edge{
+		{FromSymbol: keys["TestAttested"], ToSymbol: keys["Attested"], Kind: core.EdgeDirect},
 		{FromSymbol: keys["TestUA"], ToSymbol: keys["UA"], Kind: core.EdgeDirect},
 		{FromSymbol: keys["TestUB"], ToSymbol: keys["UB"], Kind: core.EdgeDirect},
 		{FromSymbol: keys["PUB2"], ToSymbol: keys["UB"], Kind: core.EdgeDirect}, // UB's 2nd resolved caller
@@ -377,6 +524,269 @@ func TestResidue_OrderAndCap(t *testing.T) {
 	// Counts reflect the FULL classification, never the cap.
 	if capped.Unreached != 2 || capped.Unattested != 3 {
 		t.Errorf("capped Unreached/Unattested = %d/%d, want 2/3 (counts are never truncated)", capped.Unreached, capped.Unattested)
+	}
+}
+
+// TestResidue_ReachRequiresResolvedEdge pins CV-61/design §3.4: reach is
+// walked over RESOLVED call edges only. A test that reaches a changed
+// function ONLY through a syntax-derived, tolerant-name-matched edge (no
+// typed edge at all — the shape residueTestStore's own Observation.Calls
+// wiring produces on its own) must never count as reach: the function is
+// unreached, never attested or even unattested.
+func TestResidue_ReachRequiresResolvedEdge(t *testing.T) {
+	ctx := context.Background()
+	const svc = "svc"
+	st, keys := residueTestStore(t, svc, []string{"F"}, map[string][]string{
+		"TestHeuristic": {"F"},
+	})
+	if err := st.PutTestRuns(ctx, svc, []store.TestRun{{
+		RunDigest: "r1", Suite: "s", StartedAt: "t1", Commit: "c1", Dirty: false,
+		Cases: []store.TestCase{{CaseID: "1", Name: "TestHeuristic", Status: "pass", TestSymbolKey: keys["TestHeuristic"]}},
+	}}); err != nil {
+		t.Fatalf("PutTestRuns: %v", err)
+	}
+
+	head := map[string]string{"pkg/x.go": "package pkg\n\nfunc F() {}\n"}
+	in := Input{
+		Service: svc, ChangedFiles: []string{"pkg/x.go"},
+		BaseFile: mapFile(nil), HeadFile: mapFile(head),
+		Store: st, IndexAtHead: true,
+		ReachUnchangedSince: func(commit string, files []string) (bool, error) { return commit == "c1", nil },
+	}
+	rep := Residue(ctx, in, 0)
+	if len(rep.Missing) != 0 {
+		t.Fatalf("Missing = %v, want none", rep.Missing)
+	}
+	if rep.Unreached != 1 || rep.Attested != 0 || rep.Unattested != 0 {
+		t.Fatalf("Unreached/Attested/Unattested = %d/%d/%d, want 1/0/0 (a syntax-only edge must never count as reach); items=%+v", rep.Unreached, rep.Attested, rep.Unattested, rep.Items)
+	}
+}
+
+// erroringTypedEdgesStore wraps a real store.Store, failing only
+// TypedEdges — TestResidue_TypedEdgesErrorIsMissing's own fixture for a
+// genuine store I/O failure distinct from "no typed edges recorded yet".
+type erroringTypedEdgesStore struct {
+	store.Store
+}
+
+func (erroringTypedEdgesStore) TypedEdges(context.Context, string) ([]core.Edge, error) {
+	return nil, errors.New("disk I/O error")
+}
+
+// TestResidue_TypedEdgesErrorIsMissing pins I44: a failed read of the
+// store's typed edges is an actual missing input (like the QueryObservations
+// read four lines above it in the source), never silently treated as "no
+// typed edges" and classified over syntax edges alone.
+func TestResidue_TypedEdgesErrorIsMissing(t *testing.T) {
+	ctx := context.Background()
+	const svc = "svc"
+	st, _ := residueTestStore(t, svc, []string{"F"}, nil)
+
+	head := map[string]string{"pkg/x.go": "package pkg\n\nfunc F() {}\n"}
+	in := Input{
+		Service: svc, ChangedFiles: []string{"pkg/x.go"},
+		BaseFile: mapFile(nil), HeadFile: mapFile(head),
+		Store: erroringTypedEdgesStore{Store: st}, IndexAtHead: true,
+	}
+	rep := Residue(ctx, in, 0)
+	if len(rep.Missing) == 0 {
+		t.Fatalf("Missing = %v, want at least one entry naming the typed-edges read failure", rep.Missing)
+	}
+	var found bool
+	for _, m := range rep.Missing {
+		if strings.Contains(m, "disk I/O error") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("Missing = %v, want an entry mentioning the store error", rep.Missing)
+	}
+	if len(rep.Items) != 0 || rep.Attested != 0 || rep.Unattested != 0 || rep.Unreached != 0 {
+		t.Errorf("classification ran despite the typed-edges read failure: %+v", rep)
+	}
+}
+
+// TestResidue_IndexExcludedFileIsUnanalyzedNotUnreached pins I44/design
+// §3.4's honesty rule: a changed .go file carrying NO node at all in the
+// index (an ignore rule, a build-tag exclusion for this host, or a
+// whole-file extraction gap — fathom never analyzed it) must be named
+// unanalyzed, never classed unreached — "no test reaches it" is a claim
+// with no evidence behind it when fathom never looked.
+func TestResidue_IndexExcludedFileIsUnanalyzedNotUnreached(t *testing.T) {
+	ctx := context.Background()
+	const svc = "svc"
+	st := store.NewMemoryStore() // nothing under third_party/ was ever indexed
+
+	head := map[string]string{"third_party/kit/x.go": "package kit\n\nfunc Vendored() {}\n"}
+	in := Input{
+		Service: svc, ChangedFiles: []string{"third_party/kit/x.go"},
+		BaseFile: mapFile(nil), HeadFile: mapFile(head),
+		Store: st, IndexAtHead: true,
+	}
+	rep := Residue(ctx, in, 0)
+	if len(rep.Missing) != 0 {
+		t.Fatalf("Missing = %v, want none", rep.Missing)
+	}
+	if rep.Unreached != 0 {
+		t.Errorf("Unreached = %d, want 0 (an unindexed file must never be classed unreached); items=%+v", rep.Unreached, rep.Items)
+	}
+	if len(rep.Items) != 0 {
+		t.Errorf("Items = %+v, want none", rep.Items)
+	}
+	if len(rep.Unanalyzed) != 1 || rep.Unanalyzed[0] != "third_party/kit/x.go" {
+		t.Errorf("Unanalyzed = %v, want [third_party/kit/x.go]", rep.Unanalyzed)
+	}
+}
+
+// TestResidue_AmbiguousBuildTagKeyNeverAttests pins that two GOOS/build-tag
+// twins sharing one index key (core.SymbolNode.Key() carries no file, only
+// service+directory+package+name) can never let a run reaching "the key"
+// attest a SPECIFIC twin's edit: attestation for such an item is refused
+// even when a reaching test has a perfectly good passing, commit-bound,
+// reach-unchanged run — the run cannot prove it exercised THIS twin's
+// compiled body.
+func TestResidue_AmbiguousBuildTagKeyNeverAttests(t *testing.T) {
+	ctx := context.Background()
+	const svc = "svc"
+	st := store.NewMemoryStore()
+
+	openDarwin := core.SymbolNode{Service: svc, Package: "pkg", Name: "Open", Kind: core.KindGoFunc, FilePath: "pkg/sys_darwin.go", Line: 3}
+	openLinux := core.SymbolNode{Service: svc, Package: "pkg", Name: "Open", Kind: core.KindGoFunc, FilePath: "pkg/sys_linux.go", Line: 3}
+	if openDarwin.Key() != openLinux.Key() {
+		t.Fatalf("test setup: build-tag twins must share one index key, got %q vs %q", openDarwin.Key(), openLinux.Key())
+	}
+	testOpen := core.SymbolNode{Service: svc, Package: "pkg", Name: "TestOpen", Kind: core.KindGoFunc, FilePath: "pkg/sys_test.go", Line: 3}
+
+	obs := []core.Observation{
+		{ServiceID: svc, Package: "pkg", Symbol: "Open", SourceKind: core.KindGoFunc, SourceRef: "pkg/sys_darwin.go", Line: 3},
+		{ServiceID: svc, Package: "pkg", Symbol: "Open", SourceKind: core.KindGoFunc, SourceRef: "pkg/sys_linux.go", Line: 3},
+		{ServiceID: svc, Package: "pkg", Symbol: "TestOpen", SourceKind: core.KindGoFunc, SourceRef: "pkg/sys_test.go", Line: 3},
+	}
+	if err := st.PutObservations(ctx, obs); err != nil {
+		t.Fatalf("PutObservations: %v", err)
+	}
+	if err := st.PutTypedEdges(ctx, svc, "pkg", []core.Edge{
+		{FromSymbol: testOpen.Key(), ToSymbol: openLinux.Key(), Kind: core.EdgeDirect},
+	}); err != nil {
+		t.Fatalf("PutTypedEdges: %v", err)
+	}
+	if err := st.PutTestRuns(ctx, svc, []store.TestRun{{
+		RunDigest: "r1", Suite: "s", StartedAt: "t1", Commit: "c1", Dirty: false,
+		Cases: []store.TestCase{{CaseID: "1", Name: "TestOpen", Status: "pass", TestSymbolKey: testOpen.Key()}},
+	}}); err != nil {
+		t.Fatalf("PutTestRuns: %v", err)
+	}
+
+	// Only the linux variant changed at head.
+	head := map[string]string{"pkg/sys_linux.go": "package pkg\n\nfunc Open() error { return nil }\n"}
+	in := Input{
+		Service: svc, ChangedFiles: []string{"pkg/sys_linux.go"},
+		BaseFile: mapFile(nil), HeadFile: mapFile(head),
+		Store: st, IndexAtHead: true,
+		ReachUnchangedSince: func(commit string, files []string) (bool, error) { return commit == "c1", nil },
+	}
+	rep := Residue(ctx, in, 0)
+	if len(rep.Missing) != 0 {
+		t.Fatalf("Missing = %v, want none", rep.Missing)
+	}
+	if rep.Attested != 0 {
+		t.Fatalf("Attested = %d, want 0 (an ambiguous build-tag key must never read attested); items=%+v", rep.Attested, rep.Items)
+	}
+	if rep.Unattested != 1 {
+		t.Fatalf("Unattested = %d, want 1; items=%+v", rep.Unattested, rep.Items)
+	}
+}
+
+// TestResidue_ItemTestsCapped pins the output-size guard: a widely-reached
+// function's reaching-test NAME LIST is capped at maxItemTests, even
+// though every reaching test still participates in classification.
+func TestResidue_ItemTestsCapped(t *testing.T) {
+	ctx := context.Background()
+	const svc = "svc"
+
+	testCalls := map[string][]string{}
+	var testNames []string
+	for i := 0; i < maxItemTests+5; i++ {
+		name := fmt.Sprintf("TestF%02d", i)
+		testNames = append(testNames, name)
+		testCalls[name] = []string{"F"}
+	}
+	st, keys := residueTestStore(t, svc, []string{"F"}, testCalls)
+	var edges []core.Edge
+	for _, name := range testNames {
+		edges = append(edges, core.Edge{FromSymbol: keys[name], ToSymbol: keys["F"], Kind: core.EdgeDirect})
+	}
+	if err := st.PutTypedEdges(ctx, svc, "pkg", edges); err != nil {
+		t.Fatalf("PutTypedEdges: %v", err)
+	}
+
+	head := map[string]string{"pkg/x.go": "package pkg\n\nfunc F() {}\n"}
+	in := Input{
+		Service: svc, ChangedFiles: []string{"pkg/x.go"},
+		BaseFile: mapFile(nil), HeadFile: mapFile(head),
+		Store: st, IndexAtHead: true,
+	}
+	rep := Residue(ctx, in, 0)
+	if len(rep.Items) != 1 {
+		t.Fatalf("Items = %+v, want exactly 1", rep.Items)
+	}
+	if len(rep.Items[0].Tests) != maxItemTests {
+		t.Fatalf("len(Tests) = %d, want %d (capped, out of %d reaching tests)", len(rep.Items[0].Tests), maxItemTests, len(testNames))
+	}
+}
+
+// countingRunsStore wraps a real store.Store, counting each
+// TestCaseRunsForSymbol call per test key —
+// TestResidue_AttestationLookupIsCachedPerCall's own fixture for the N+1
+// query regression (finding: 94% of a real Residue call's wall time spent
+// in exactly this repeated query).
+type countingRunsStore struct {
+	store.Store
+	calls map[string]int
+}
+
+func (s *countingRunsStore) TestCaseRunsForSymbol(ctx context.Context, serviceID, testSymbolKey string, limit int) ([]store.TestCaseRun, error) {
+	s.calls[testSymbolKey]++
+	return s.Store.TestCaseRunsForSymbol(ctx, serviceID, testSymbolKey, limit)
+}
+
+// TestResidue_AttestationLookupIsCachedPerCall pins that a single Test*
+// function shared by several changed functions has its store-backed run
+// history read ONCE per Residue call, never once per (test, changed
+// function) pair.
+func TestResidue_AttestationLookupIsCachedPerCall(t *testing.T) {
+	ctx := context.Background()
+	const svc = "svc"
+	st, keys := residueTestStore(t, svc, []string{"A", "B"}, map[string][]string{
+		"TestShared": {"A", "B"},
+	})
+	if err := st.PutTypedEdges(ctx, svc, "pkg", []core.Edge{
+		{FromSymbol: keys["TestShared"], ToSymbol: keys["A"], Kind: core.EdgeDirect},
+		{FromSymbol: keys["TestShared"], ToSymbol: keys["B"], Kind: core.EdgeDirect},
+	}); err != nil {
+		t.Fatalf("PutTypedEdges: %v", err)
+	}
+	if err := st.PutTestRuns(ctx, svc, []store.TestRun{{
+		RunDigest: "r1", Suite: "s", StartedAt: "t1", Commit: "c1", Dirty: false,
+		Cases: []store.TestCase{{CaseID: "1", Name: "TestShared", Status: "pass", TestSymbolKey: keys["TestShared"]}},
+	}}); err != nil {
+		t.Fatalf("PutTestRuns: %v", err)
+	}
+
+	counting := &countingRunsStore{Store: st, calls: map[string]int{}}
+	head := map[string]string{"pkg/x.go": "package pkg\n\nfunc A() {}\n\nfunc B() {}\n"}
+	in := Input{
+		Service: svc, ChangedFiles: []string{"pkg/x.go"},
+		BaseFile: mapFile(nil), HeadFile: mapFile(head),
+		Store: counting, IndexAtHead: true,
+		ReachUnchangedSince: func(commit string, files []string) (bool, error) { return commit == "c1", nil },
+	}
+	rep := Residue(ctx, in, 0)
+	if rep.Attested != 2 {
+		t.Fatalf("Attested = %d, want 2; items=%+v", rep.Attested, rep.Items)
+	}
+	if got := counting.calls[keys["TestShared"]]; got != 1 {
+		t.Errorf("TestCaseRunsForSymbol(%q,...) called %d times, want exactly 1 (memoized per Residue call)", keys["TestShared"], got)
 	}
 }
 

@@ -1700,7 +1700,9 @@ touching the index, so a stale or partial store never taints them.
 ```json
 {"changed":3,"attested":1,"unattested":1,"unreached":1,
  "items":[{"symbol":"Unreached","file":"widgets/extra.go","line":3,
-   "change":"added","class":"unreached","tests":[],"callers":0}],
+   "change":"added","class":"unreached","tests":[],"callers":0},
+  {"symbol":"Reached","file":"widgets/extra.go","line":9,
+   "change":"modified","class":"unattested","tests":["TestReached"],"callers":1}],
  "truncated":0,"unanalyzed":[],"missing":[]}
 ```
 

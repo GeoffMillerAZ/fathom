@@ -206,6 +206,7 @@ func TestCmdConserve_NoPlanFlagStillReadsRetiresDeclarations(t *testing.T) {
 // does.
 func TestConserve_ResidueInJSONAndText(t *testing.T) {
 	repo := newSelfSkipGitRepo(t)
+	repo.writePlan("go.mod", "module residuefixture\n\ngo 1.21\n")
 	repo.writePlan("widgets/w.go", "package widgets\n\nfunc Reached() int { return 1 }\n")
 	repo.writePlan("widgets/w_test.go", "package widgets\n\nimport \"testing\"\n\nfunc TestReached(t *testing.T) { Reached() }\n")
 	repo.commitAll("base commit")
@@ -300,6 +301,98 @@ func TestConserve_ResidueInJSONAndText(t *testing.T) {
 	// Counts are never truncated, only the item list.
 	if got := residueCap["unattested"]; got != float64(1) {
 		t.Errorf("capped residue.unattested = %v, want 1 (counts are never capped)", got)
+	}
+}
+
+// TestConserve_ResidueNeverChangesPlaneVerdictOrStrictExit closes CV-64's
+// own test gap: TestConserve_ResidueInJSONAndText (the row's cited proof)
+// never exercises --strict or a plane verdict alongside a non-empty
+// residue, so a regression letting the residue influence either would
+// pass the gate while CV-64 stayed checked. This test genuinely combines
+// both: an undeclared surface loss (which DOES flip a plane to "losses"
+// and --strict to exit 1) alongside a real, non-empty reading set (an
+// unattested and an unreached function) — proving the residue rides
+// alongside the plane verdict, never inside it.
+func TestConserve_ResidueNeverChangesPlaneVerdictOrStrictExit(t *testing.T) {
+	repo := newSelfSkipGitRepo(t)
+	repo.writePlan("go.mod", "module residuefixture\n\ngo 1.21\n")
+	repo.writePlan("widgets/w.go", "package widgets\n\nfunc Old() {}\n\nfunc Reached() int { return 1 }\n")
+	repo.writePlan("widgets/w_test.go", "package widgets\n\nimport \"testing\"\n\nfunc TestReached(t *testing.T) { Reached() }\n")
+	repo.commitAll("base commit")
+	base := headSHAOf(t, repo.root)
+
+	// Old is an undeclared surface loss (plane: losses). Reached is
+	// modified with a real reaching test but no ingested run (unattested).
+	// Unreached is a brand-new function nothing calls (unreached).
+	repo.writePlan("widgets/w.go", "package widgets\n\nfunc Reached() int { return 2 }\n")
+	repo.writePlan("widgets/extra.go", "package widgets\n\nfunc Unreached() {}\n")
+	repo.commitAll("head commit")
+
+	storePath := filepath.Join(t.TempDir(), "conserve.sqlite")
+	if code, _, stderr := runInDir(t, repo.root, []string{
+		"ingest", "--service", "svc", "--path", repo.root, "--store", storePath,
+	}); code != 0 {
+		t.Fatalf("ingest exit = %d, stderr: %s", code, stderr)
+	}
+
+	code, stdout, stderr := runInDir(t, repo.root, []string{
+		"conserve", "--since", base, "--service", "svc", "--store", storePath, "--json", "--strict",
+	})
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1 (the surface plane's undeclared loss, NOT the residue); stderr=%s", code, stderr)
+	}
+
+	var rep map[string]any
+	if err := json.Unmarshal([]byte(stdout), &rep); err != nil {
+		t.Fatalf("output is not valid JSON: %v\nstdout=%s", err, stdout)
+	}
+	residue, ok := rep["residue"].(map[string]any)
+	if !ok {
+		t.Fatalf("no residue object: %+v", rep)
+	}
+	// The residue really is non-empty here — this is not a vacuous test.
+	if got := residue["unattested"]; got != float64(1) {
+		t.Fatalf("residue.unattested = %v, want 1 (a genuinely non-empty residue, or this test proves nothing)", got)
+	}
+	if got := residue["unreached"]; got != float64(1) {
+		t.Fatalf("residue.unreached = %v, want 1", got)
+	}
+	planes, _ := rep["planes"].([]any)
+	var sawSurfaceLosses bool
+	for _, p := range planes {
+		pm := p.(map[string]any)
+		if pm["plane"] == "surface" && pm["verdict"] == "losses" {
+			sawSurfaceLosses = true
+		}
+	}
+	if !sawSurfaceLosses {
+		t.Fatalf("expected the surface plane to report losses for the removed api:widgets.Old; planes=%+v", planes)
+	}
+
+	// The inverse: strip the surface loss out and re-run --strict over the
+	// SAME non-empty residue shape — it must exit 0. The residue itself,
+	// however large, must never be what --strict is reacting to.
+	repo2 := newSelfSkipGitRepo(t)
+	repo2.writePlan("go.mod", "module residuefixture2\n\ngo 1.21\n")
+	repo2.writePlan("widgets/w.go", "package widgets\n\nfunc Reached() int { return 1 }\n")
+	repo2.writePlan("widgets/w_test.go", "package widgets\n\nimport \"testing\"\n\nfunc TestReached(t *testing.T) { Reached() }\n")
+	repo2.commitAll("base commit")
+	base2 := headSHAOf(t, repo2.root)
+	repo2.writePlan("widgets/w.go", "package widgets\n\nfunc Reached() int { return 2 }\n")
+	repo2.writePlan("widgets/extra.go", "package widgets\n\nfunc Unreached() {}\n")
+	repo2.commitAll("head commit")
+
+	storePath2 := filepath.Join(t.TempDir(), "conserve2.sqlite")
+	if code, _, stderr := runInDir(t, repo2.root, []string{
+		"ingest", "--service", "svc", "--path", repo2.root, "--store", storePath2,
+	}); code != 0 {
+		t.Fatalf("ingest exit = %d, stderr: %s", code, stderr)
+	}
+	code2, stdout2, stderr2 := runInDir(t, repo2.root, []string{
+		"conserve", "--since", base2, "--service", "svc", "--store", storePath2, "--json", "--strict",
+	})
+	if code2 != 0 {
+		t.Fatalf("exit code = %d, want 0 (no plane losses — a non-empty residue alone must never flip --strict); stderr=%s\nstdout=%s", code2, stderr2, stdout2)
 	}
 }
 

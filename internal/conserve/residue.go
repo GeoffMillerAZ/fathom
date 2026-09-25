@@ -26,11 +26,21 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
 // DefaultResidueMax is Residue's own cap (design §3.4: "capped (default
 // 200, --residue-max)") when a caller passes maxItems <= 0.
 const DefaultResidueMax = 200
+
+// maxItemTests caps how many reaching test names ONE ResidueItem carries
+// (a bound the counts/list-only rule, I43, does not itself set — this is
+// an output-size guard, not a threshold on evidence: every reaching test
+// still participates in classifying attested/unattested/unreached, only
+// the rendered NAME LIST is capped). Without it a widely-called helper's
+// item can carry thousands of test names, growing a single report from
+// kilobytes to megabytes.
+const maxItemTests = 20
 
 // ChangedFunction is one function added or modified in base..head, found by
 // ChangedFunctions — Residue's own raw material before classification.
@@ -52,27 +62,51 @@ type ChangedFunction struct {
 // "Changed functions"): a head function is "added" when no function of the
 // same receiver-qualified name exists at base ANYWHERE among the SAME
 // changed files' base content in the SAME package directory (path.Dir), and
-// "modified" when one does and the exact body text (clone.FuncBodyHash's
-// own hash) differs. A function whose body is unchanged — whether it sits
-// in the same file or moved to another changed file in the same directory
-// — is neither, and never appears. A function present at base and absent
-// from every changed file in its directory at head is "deleted": never
-// reported here (the compiler proves it gone; the resurrection/absence
-// planes cover what the compiler cannot).
+// "modified" when one does and the EXACT body text (funcSite.exactHash — a
+// plain sha256 of the unnormalized source slice, never
+// clone.FuncBodyHash's identifier-insensitive hash, which exists for
+// resurrection.go's own, deliberately different question) differs. A
+// function whose body is unchanged — whether it sits in the same file or
+// moved to another changed file in the same directory, including one
+// deleted outright at head (its base functions are still pooled here, so a
+// same-directory rename never misreads as "added") — is neither, and never
+// appears. A function present at base and absent from every changed file
+// in its directory at head is "deleted": never reported here (the compiler
+// proves it gone; the resurrection/absence planes cover what the compiler
+// cannot).
+//
+// Matching within a name is a MULTISET over exact-text hashes, never a
+// last-write-wins map: Go allows several same-named functions in one
+// directory (multiple init(), or GOOS-suffixed build-tag twins), and a
+// name-only match would compare an unrelated twin's body, reporting a
+// stable function "modified" or hiding a real edit that happens to land on
+// another twin's old text. Each head function consumes (removes) the
+// first still-available base candidate whose exactHash matches; a head
+// function that finds no match is "modified" when the name existed at base
+// at all, "added" otherwise. An unconsumed leftover base candidate is
+// simply "deleted" here (never reported, per the paragraph above).
+//
+// unanalyzed names a changed, non-test, non-generated .go file whose HEAD
+// content could be read but not parsed as Go at all (residue.go's own
+// Unanalyzed convention, extended from "not Go" to "Go fathom could not
+// actually read as Go" — I44/design §3.4's honesty rule: a file fathom
+// never analyzed must be named, never silently vanish as if it had zero
+// changed functions).
 //
 // missing names a changed file whose base or head content could not be
 // READ — an actual error, distinct from "did not exist" (resurrection.go's
 // own Missing convention) — never silently dropped.
-func ChangedFunctions(in Input) (funcs []ChangedFunction, missing []string) {
-	// pool[dir] indexes every base funcSite found across this directory's
-	// own changed files, by name — the matching pool "added"/"modified"
-	// resolve against (design §3.4: "the same package directory", never
-	// only the same file).
-	pool := map[string]map[string]funcSite{}
-	poolFor := func(dir string) map[string]funcSite {
+func ChangedFunctions(in Input) (funcs []ChangedFunction, unanalyzed []string, missing []string) {
+	// pool[dir][name] holds every base funcSite found across this
+	// directory's own changed files sharing that name — the multiset a
+	// same-named head function's exact text is matched, and consumed,
+	// against (design §3.4: "the same package directory", never only the
+	// same file; this doc comment's own "Matching within a name" above).
+	pool := map[string]map[string][]funcSite{}
+	poolFor := func(dir string) map[string][]funcSite {
 		p, ok := pool[dir]
 		if !ok {
-			p = map[string]funcSite{}
+			p = map[string][]funcSite{}
 			pool[dir] = p
 		}
 		return p
@@ -93,12 +127,6 @@ func ChangedFunctions(in Input) (funcs []ChangedFunction, missing []string) {
 			missing = append(missing, fmt.Sprintf("%s: reading head content: %v", filePath, err))
 			continue
 		}
-		if !headOK {
-			continue // deleted at head: nothing to add here
-		}
-		if connector.IsGenerated(filePath, headBody) {
-			continue // generated files: the generated plane's territory
-		}
 		baseBody, baseOK, err := in.BaseFile(filePath)
 		if err != nil {
 			missing = append(missing, fmt.Sprintf("%s: reading base content: %v", filePath, err))
@@ -108,34 +136,68 @@ func ChangedFunctions(in Input) (funcs []ChangedFunction, missing []string) {
 		dir := path.Dir(filePath)
 		if baseOK {
 			p := poolFor(dir)
-			for _, f := range funcSitesIn(filePath, baseBody) {
-				p[f.name] = f
+			if baseSites, parsed := funcSitesIn(filePath, baseBody); parsed {
+				for _, f := range baseSites {
+					p[f.name] = append(p[f.name], f)
+				}
 			}
+			// An unparseable BASE is left as "nothing pooled from this
+			// file" — the same honest-empty shape as a file that was new
+			// at base — rather than failing the whole directory; a head
+			// function in this exact file may still resolve to "modified"
+			// via another changed file's base pool in the same directory.
 		} else {
 			poolFor(dir) // ensure the directory exists even with no base content
 		}
-		files = append(files, headFile{dir: dir, head: funcSitesIn(filePath, headBody)})
+
+		if !headOK {
+			continue // deleted at head: its base was still pooled above
+		}
+		if connector.IsGenerated(filePath, headBody) {
+			continue // generated files: the generated plane's territory
+		}
+		headSites, parsed := funcSitesIn(filePath, headBody)
+		if !parsed {
+			// Readable but not valid Go (e.g. a WIP syntax error, or a
+			// build-ignored fixture under a directory named "_..."):
+			// honestly unanalyzed, never silently zero (I44).
+			unanalyzed = append(unanalyzed, filePath)
+			continue
+		}
+		files = append(files, headFile{dir: dir, head: headSites})
 	}
 
 	for _, fe := range files {
 		p := pool[fe.dir]
 		for _, f := range fe.head {
-			bf, existed := p[f.name]
+			candidates, existed := p[f.name]
+			matched := -1
+			for i, bf := range candidates {
+				if bf.exactHash == f.exactHash {
+					matched = i
+					break
+				}
+			}
 			switch {
-			case !existed:
-				funcs = append(funcs, ChangedFunction{Symbol: f.name, File: f.file, Line: f.line, Change: "added"})
-			case bf.hash != f.hash:
-				funcs = append(funcs, ChangedFunction{Symbol: f.name, File: f.file, Line: f.line, Change: "modified"})
-			default:
+			case matched >= 0:
+				// Consume the matched candidate so a second, genuinely
+				// different same-named head function cannot also claim
+				// it (the multiset rule above).
+				p[f.name] = append(candidates[:matched:matched], candidates[matched+1:]...)
 				// Identical body: an ordinary unchanged function, or one
 				// that simply moved to another changed file in the same
 				// package directory — design §3.4's own "neither".
+			case existed:
+				funcs = append(funcs, ChangedFunction{Symbol: f.name, File: f.file, Line: f.line, Change: "modified"})
+			default:
+				funcs = append(funcs, ChangedFunction{Symbol: f.name, File: f.file, Line: f.line, Change: "added"})
 			}
 		}
 	}
 
+	sort.Strings(unanalyzed)
 	sort.Strings(missing)
-	return funcs, missing
+	return funcs, unanalyzed, missing
 }
 
 // ResidueItem is one changed function the reading set could not clear —
@@ -166,30 +228,40 @@ type ResidueReport struct {
 
 // Residue computes the reading set (design §3.4, CV-61/CV-62/CV-63):
 // ChangedFunctions' own output, each classed attested/unattested/unreached
-// from callgraph.TestImpactDetail over the store's resolved edges and the
-// reaching tests' commit-bound runs. maxItems <= 0 uses DefaultResidueMax.
+// from callgraph.TestImpactDetail over the store's RESOLVED call edges
+// ONLY (callgraph.BuildResolved — never BuildBoth's syntax-derived,
+// tolerant-name-matched edges, which a heuristic caller could satisfy with
+// no typed-pass confirmation at all) and the reaching tests' commit-bound
+// runs. maxItems <= 0 uses DefaultResidueMax.
 //
 // Honesty (I44, CV-62): the reading set classes NOTHING — Items stays
 // empty and Attested/Unattested/Unreached stay zero — when in.IndexAtHead
-// is false, in.FailedTypedPackages is non-empty, in.Store is nil, or a
+// is false, in.FailedTypedPackages is non-empty, in.Store is nil, a
 // changed file's base/head content could not be read (ChangedFunctions'
-// own missing). Every such reason is named in Missing. Changed and
-// Unanalyzed are reported regardless: both are pure facts of the diff
-// itself (ChangedFunctions' own count; every non-.go changed file, by
-// path), computed without touching the store, so a stale or partial index
-// never taints them — exactly how a Plane with a missing input still
-// reports the Findings it safely computed (conserve.go's own Plane
-// contract) alongside an overridden verdict.
+// own missing), or the store's typed edges could not be READ (a store
+// error is never silently treated as "no typed edges"). Every such reason
+// is named in Missing. Changed and Unanalyzed are reported regardless:
+// both are pure facts of the diff itself (ChangedFunctions' own count;
+// every non-.go changed file plus every unparseable .go one, by path),
+// computed without touching the store, so a stale or partial index never
+// taints them — exactly how a Plane with a missing input still reports the
+// Findings it safely computed (conserve.go's own Plane contract) alongside
+// an overridden verdict. A changed .go file whose functions are wholly
+// absent from the index at HEAD (every symbol, not just the one changed —
+// an ignore rule, a build-tag exclusion for this host, or a whole-file
+// extraction gap) is likewise named in Unanalyzed rather than classed
+// "unreached": fathom never analyzed it at all, so "no test reaches it" —
+// resolved-edge reach's own claim — would assert something never checked.
 func Residue(ctx context.Context, in Input, maxItems int) ResidueReport {
 	if maxItems <= 0 {
 		maxItems = DefaultResidueMax
 	}
 
-	changed, cfMissing := ChangedFunctions(in)
+	changed, cfUnanalyzed, cfMissing := ChangedFunctions(in)
 	rep := ResidueReport{
 		Changed:    len(changed),
 		Items:      []ResidueItem{},
-		Unanalyzed: unanalyzedFiles(in.ChangedFiles),
+		Unanalyzed: mergedSortedUnique(unanalyzedFiles(in.ChangedFiles), cfUnanalyzed),
 		Missing:    []string{},
 	}
 
@@ -224,33 +296,73 @@ func Residue(ctx context.Context, in Input, maxItems int) ResidueReport {
 	for _, o := range obs {
 		nodes = append(nodes, o.ToSymbolNode())
 	}
-	edges, _ := in.Store.TypedEdges(ctx, in.Service)
-	g := callgraph.BuildBoth(nodes, edges)
+	edges, err := in.Store.TypedEdges(ctx, in.Service)
+	if err != nil {
+		rep.Missing = []string{fmt.Sprintf("querying typed edges: %v", err)}
+		return rep
+	}
+	// A resolved-only graph (never BuildBoth): design §3.4/CV-61 define
+	// both a class ("unreached: no test reaches it over resolved edges")
+	// and the ordering key (resolvedCallerCount) in terms of resolved
+	// edges alone. Walking BuildBoth's syntax-derived edges too would let
+	// a tolerant, unconfirmed name match "attest" a function no typed pass
+	// ever verified reaches it.
+	g := callgraph.BuildResolved(nodes, edges)
 
 	byFileName := make(map[string]core.SymbolNode, len(nodes))
 	byKey := make(map[string]core.SymbolNode, len(nodes))
+	filesIndexed := make(map[string]bool, len(nodes))
+	keyFiles := make(map[string]map[string]bool, len(nodes))
 	for _, n := range nodes {
 		byKey[n.Key()] = n
+		filesIndexed[n.FilePath] = true
 		if n.Kind == core.KindGoFunc || n.Kind == core.KindGoMethod {
 			byFileName[n.FilePath+"\x00"+n.Name] = n
+			if keyFiles[n.Key()] == nil {
+				keyFiles[n.Key()] = map[string]bool{}
+			}
+			keyFiles[n.Key()][n.FilePath] = true
 		}
 	}
 
+	var excludedFiles []string
+	runsCache := map[string]testRunsCacheEntry{}
 	items := make([]ResidueItem, 0, len(changed))
 	for _, cf := range changed {
 		item := ResidueItem{Symbol: cf.Symbol, File: cf.File, Line: cf.Line, Change: cf.Change, Tests: []string{}}
 
 		node, ok := byFileName[cf.File+"\x00"+cf.Symbol]
 		if !ok {
-			// Not found in the index at HEAD (a build-tag exclusion, or an
-			// extraction gap): honest default — nothing PROVES a test
-			// reaches it, so it is unreached, never guessed otherwise.
+			if !filesIndexed[cf.File] {
+				// The WHOLE file carries no node at all — fathom never
+				// analyzed it (an ignore rule, a build-tag exclusion for
+				// this host, or a whole-file extraction gap), so "no test
+				// reaches it" would be a claim with no evidence behind it
+				// (I44/design §3.4 honesty). Named, not misclassed.
+				excludedFiles = append(excludedFiles, cf.File)
+				continue
+			}
+			// The FILE is indexed but this one symbol is not (a
+			// build-tag-excluded function sharing a file with others
+			// that aren't, or a genuine extraction gap for just this
+			// function): honest default — nothing PROVES a test reaches
+			// it, so it is unreached, never guessed otherwise.
 			item.Class = "unreached"
 			items = append(items, item)
 			continue
 		}
 
 		key := node.Key()
+		// keyFiles[key] carries every FilePath sharing this exact index
+		// key — GOOS/build-tag twins with the same package-qualified
+		// name collapse to one key (core.SymbolNode.Key() carries no
+		// file), so a test that reaches "the key" cannot be trusted to
+		// have reached THIS twin's specific compiled body. Reach/callers
+		// still walk the shared key (the graph has no finer identity to
+		// offer), but such an item can never read attested: at most
+		// unattested, honestly short of proof rather than a false
+		// positive (CV-M12's own "genuinely... in the right class").
+		ambiguousKey := len(keyFiles[key]) > 1
 		item.Callers = resolvedCallerCount(g, key)
 		reach := callgraph.TestImpactDetail(g, key)
 		if len(reach) == 0 {
@@ -267,14 +379,17 @@ func Residue(ctx context.Context, in Input, maxItems int) ResidueReport {
 				continue
 			}
 			tests = append(tests, tn.Name)
-			if attested {
+			if attested || ambiguousKey {
 				continue // one attesting test is enough; still list every reaching test's name
 			}
-			if isAttestedBy(ctx, in, tn, node) {
+			if isAttestedBy(ctx, in, tn, node, runsCache) {
 				attested = true
 			}
 		}
 		sort.Strings(tests)
+		if len(tests) > maxItemTests {
+			tests = tests[:maxItemTests]
+		}
 		item.Tests = tests
 		if attested {
 			item.Class = "attested"
@@ -282,6 +397,9 @@ func Residue(ctx context.Context, in Input, maxItems int) ResidueReport {
 			item.Class = "unattested"
 		}
 		items = append(items, item)
+	}
+	if len(excludedFiles) > 0 {
+		rep.Unanalyzed = mergedSortedUnique(rep.Unanalyzed, excludedFiles)
 	}
 
 	classRank := map[string]int{"unreached": 0, "unattested": 1}
@@ -318,6 +436,29 @@ func Residue(ctx context.Context, in Input, maxItems int) ResidueReport {
 	return rep
 }
 
+// testRunsCacheEntry memoizes one TestCaseRunsForSymbol call's outcome.
+type testRunsCacheEntry struct {
+	runs []store.TestCaseRun
+	err  error
+}
+
+// cachedTestCaseRuns is in.Store.TestCaseRunsForSymbol(ctx, in.Service,
+// testKey, 1), memoized in cache for the lifetime of one Residue call.
+// Without it, a widely-reused Test* function (the common case: a shared
+// helper, or a table test many changed functions all route through) pays
+// for the identical store query once per changed function that reaches
+// it — O(changed x reach) round trips against a query whose answer never
+// changes mid-call. A CPU profile on a 55-commit range measured 94% of
+// Residue's own time in exactly this repeated query (docs/bench).
+func cachedTestCaseRuns(ctx context.Context, in Input, cache map[string]testRunsCacheEntry, testKey string) ([]store.TestCaseRun, error) {
+	if e, ok := cache[testKey]; ok {
+		return e.runs, e.err
+	}
+	runs, err := in.Store.TestCaseRunsForSymbol(ctx, in.Service, testKey, 1)
+	cache[testKey] = testRunsCacheEntry{runs: runs, err: err}
+	return runs, err
+}
+
 // isAttestedBy reports whether test's latest attested run vouches for
 // changed's behaviour (design §3.4's "attested"): the newest run for
 // test's symbol passed, is bound to a commit, was made on a clean tree,
@@ -325,12 +466,14 @@ func Residue(ctx context.Context, in Input, maxItems int) ResidueReport {
 // commit (certify.ReachUnchangedSince, O114's rule, applied without a
 // declared target). Any failure to establish this — no run, a failing or
 // unbound newest run, or in.ReachUnchangedSince itself unavailable — is
-// honestly "not attested through this test," never a guess.
-func isAttestedBy(ctx context.Context, in Input, test, changed core.SymbolNode) bool {
+// honestly "not attested through this test," never a guess. runsCache
+// memoizes the store lookup per test key across one Residue call
+// (cachedTestCaseRuns's own doc comment).
+func isAttestedBy(ctx context.Context, in Input, test, changed core.SymbolNode, runsCache map[string]testRunsCacheEntry) bool {
 	if in.ReachUnchangedSince == nil {
 		return false
 	}
-	runs, err := in.Store.TestCaseRunsForSymbol(ctx, in.Service, test.Key(), 1)
+	runs, err := cachedTestCaseRuns(ctx, in, runsCache, test.Key())
 	if err != nil || len(runs) == 0 {
 		return false
 	}
@@ -373,6 +516,21 @@ func unanalyzedFiles(changedFiles []string) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+// mergedSortedUnique returns the sorted, deduplicated union of a and b —
+// Residue's own Unanalyzed convention, merging ChangedFunctions' own
+// (non-.go plus unparseable-.go) list with the index-exclusion list
+// Residue itself discovers once the store is available.
+func mergedSortedUnique(a, b []string) []string {
+	set := make(map[string]bool, len(a)+len(b))
+	for _, s := range a {
+		set[s] = true
+	}
+	for _, s := range b {
+		set[s] = true
+	}
+	return sortedSet(set)
 }
 
 // sortedSet renders a string set as a sorted slice — Residue's own Missing

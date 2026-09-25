@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -174,6 +175,113 @@ func TestNewInput_BadRefIsAnError(t *testing.T) {
 
 	if _, err := NewInput(context.Background(), repo.root, "not-a-real-ref", nil, "svc", nil); err == nil {
 		t.Fatal("want an error resolving a nonexistent ref, got nil")
+	}
+}
+
+// TestNewInput_RenamedFileDoesNotMisreadAsAdded pins that a pure
+// same-directory `git mv`, with no other edit, never turns the moved
+// file's functions into "added" residue items: --no-renames in
+// changedFilesSinceBase guarantees BOTH the old and new paths appear in
+// ChangedFiles (so ChangedFunctions can pool the old path's base content),
+// whatever the caller's own diff.renames git config says.
+func TestNewInput_RenamedFileDoesNotMisreadAsAdded(t *testing.T) {
+	repo := newInputTestRepo(t)
+	repo.write("pkg/a.go", "package pkg\n\nfunc Keep() {}\n\nfunc Other() {}\n")
+	repo.commitAll("base commit")
+	base := repo.headSHA()
+
+	repo.run("mv", "pkg/a.go", "pkg/b.go")
+	repo.commitAll("pure rename")
+
+	in, err := NewInput(context.Background(), repo.root, base, nil, "svc", nil)
+	if err != nil {
+		t.Fatalf("NewInput: %v", err)
+	}
+
+	var sawOld, sawNew bool
+	for _, f := range in.ChangedFiles {
+		switch f {
+		case "pkg/a.go":
+			sawOld = true
+		case "pkg/b.go":
+			sawNew = true
+		}
+	}
+	if !sawOld || !sawNew {
+		t.Fatalf("ChangedFiles = %v, want both pkg/a.go and pkg/b.go (--no-renames)", in.ChangedFiles)
+	}
+
+	funcs, unanalyzed, missing := ChangedFunctions(in)
+	if len(missing) != 0 || len(unanalyzed) != 0 {
+		t.Fatalf("missing=%v unanalyzed=%v, want none", missing, unanalyzed)
+	}
+	if len(funcs) != 0 {
+		t.Errorf("funcs = %+v, want none (a pure rename is neither added nor modified)", funcs)
+	}
+}
+
+// TestNewInput_SubdirectoryRootChangedFilesAreRelative pins that a service
+// rooted at a subdirectory of the git repo gets ChangedFiles relative to
+// THAT root — matching every index FilePath (ingested relative to the
+// service's own root) — never relative to the git toplevel.
+func TestNewInput_SubdirectoryRootChangedFilesAreRelative(t *testing.T) {
+	repo := newInputTestRepo(t)
+	repo.write("svc/pkg/a.go", "package pkg\n\nfunc F() int { return 1 }\n")
+	repo.write("other/x.txt", "x\n")
+	repo.commitAll("base commit")
+	base := repo.headSHA()
+	repo.write("svc/pkg/a.go", "package pkg\n\nfunc F() int { return 2 }\n")
+
+	svcRoot := repo.root + "/svc"
+	in, err := NewInput(context.Background(), svcRoot, base, nil, "svc", nil)
+	if err != nil {
+		t.Fatalf("NewInput: %v", err)
+	}
+	if len(in.ChangedFiles) != 1 || in.ChangedFiles[0] != "pkg/a.go" {
+		t.Fatalf("ChangedFiles = %v, want exactly [pkg/a.go] (relative to the service root, not the git toplevel)", in.ChangedFiles)
+	}
+
+	funcs, _, missing := ChangedFunctions(in)
+	if len(missing) != 0 {
+		t.Fatalf("missing = %v, want none", missing)
+	}
+	if len(funcs) != 1 || funcs[0].Symbol != "F" || funcs[0].Change != "modified" {
+		t.Errorf("funcs = %+v, want exactly [{F modified}]", funcs)
+	}
+}
+
+// TestGitShowFile_UnreadableBlobIsAnError pins I38: an unreadable base
+// object (a permission error, a corrupt loose object — never the ordinary
+// "this path did not exist at base" shape) must come back as a real
+// error, never silently read as "did not exist".
+func TestGitShowFile_UnreadableBlobIsAnError(t *testing.T) {
+	repo := newInputTestRepo(t)
+	repo.write("pkg/a.go", "package pkg\n\nfunc F() int { return 1 }\n")
+	repo.commitAll("base commit")
+	base := repo.headSHA()
+
+	blob, err := exec.Command("git", "-C", repo.root, "rev-parse", base+":pkg/a.go").Output()
+	if err != nil {
+		t.Fatalf("rev-parse blob: %v", err)
+	}
+	sha := strings.TrimSpace(string(blob))
+	objPath := filepath.Join(repo.root, ".git", "objects", sha[:2], sha[2:])
+	if err := os.Chmod(objPath, 0o000); err != nil {
+		t.Fatalf("chmod 000 %s: %v", objPath, err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(objPath, 0o644) })
+
+	// Control: an ordinary absent-at-base path still reads ok=false, err=nil.
+	if _, ok, err := gitShowFile(repo.root, base, "pkg/never-existed.go"); ok || err != nil {
+		t.Errorf("gitShowFile(never-existed) = ok:%v err:%v, want ok:false err:nil", ok, err)
+	}
+
+	content, ok, err := gitShowFile(repo.root, base, "pkg/a.go")
+	if err == nil {
+		t.Fatalf("gitShowFile(unreadable blob) = content:%q ok:%v err:nil, want a non-nil error", content, ok)
+	}
+	if ok {
+		t.Errorf("gitShowFile(unreadable blob) ok = true, want false")
 	}
 }
 
