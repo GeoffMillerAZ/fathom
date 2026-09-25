@@ -75,6 +75,16 @@ for a layer's genuinely first compile_run, making real progress and
 stopping as `budget_stopped` (resumable with `--continue`, unchanged for
 every later re-compile). The fleet recompile this activation clause exists
 for then ran clean: `docs/bench/readings/cv-m8-fleet-recompile-2026-09-25.md`.
+(4) O117 (`.fathom/observations.md`) is fixed: `fathom conserve`'s default
+plan discovery — the only invocation shape the pre-push gate uses — handed
+`internal/conserve.NewInput` absolute `docs/plans/*.md` paths where its
+git-based reader expects repo-relative ones, so every `retires:`/
+`surface_change:` declaration was silently invisible without an explicit
+`--plan`. `NewInput` now relativizes an absolute plan path against its own
+`root` before reading it, so the resurrection plane's retirement gate
+(§3.3) and the surface/certificates planes' base-side I45 excusal both see
+declarations made anywhere in `docs/plans/*.md` with no `--plan` flag
+needed.
 
 ## 0. Vocabulary and the change range
 

@@ -149,6 +149,53 @@ func TestCmdConserve_MovedFindingTextNeverContradicts(t *testing.T) {
 	}
 }
 
+// TestCmdConserve_NoPlanFlagStillReadsRetiresDeclarations pins the fix for
+// O117 (.fathom/observations.md): `fathom conserve`'s real invocation shape
+// — no --plan, exactly what lefthook.yml's refactor-conserve step runs at
+// pre-push (CV-47) — must still discover docs/plans/*.md and read its
+// retires:/surface_change: declarations, rather than silently seeing zero
+// plans because discoverPlanPaths handed NewInput an absolute path where a
+// repo-relative one was expected (gitShowFile's `git show ref:<abs>`
+// always reports the path absent; worktreeFile's filepath.Join(root, abs)
+// doubles the path). A genuine `retires: api:widgets.Old` row present at
+// base, whose identical body then reappears under a new name at head,
+// must report resurrection/body_resurrected (Declared: none — a real
+// loss: the retirement claim was false), never resurrection/moved
+// (Declared: prior — "no retirement was declared," the wrong reading when
+// one plainly was declared).
+func TestCmdConserve_NoPlanFlagStillReadsRetiresDeclarations(t *testing.T) {
+	repo := newSelfSkipGitRepo(t)
+	// >=5 statements: clone.FuncBodyHash's own floor (design §3.3) — a
+	// 1-line stub body never reaches Resurrected at all.
+	body := "\ta := x + 1\n\tb := a + 1\n\tc := b + 1\n\td := c + 1\n\treturn d\n"
+	repo.writePlan("widgets/w.go", "package widgets\n\nfunc Old(x int) int {\n"+body+"}\n")
+	repo.writePlan("docs/plans/resurrect.md",
+		"- [ ] Retire Old {id: RC-1, retires: api:widgets.Old}\n")
+	repo.commitAll("base commit")
+	base := headSHAOf(t, repo.root)
+
+	// The body reappears under a new name at head — an agent's retirement
+	// claim (declared above, present at base) proving false.
+	repo.writePlan("widgets/w.go", "package widgets\n\nfunc New(x int) int {\n"+body+"}\n")
+
+	storePath := filepath.Join(t.TempDir(), "conserve3.sqlite")
+	// Deliberately NO --plan: lefthook.yml's exact invocation shape
+	// (`bin/fathom conserve --service fathom --since "$since" --store
+	// workspace/db/fleet.sqlite`), the only real pre-push call.
+	code, stdout, stderr := runInDir(t, repo.root, []string{
+		"conserve", "--since", base, "--service", "svc", "--store", storePath,
+	})
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr=%s", code, stderr)
+	}
+	if !strings.Contains(stdout, "[body_resurrected]") {
+		t.Errorf("expected a [body_resurrected] finding (retirement was claimed at base and the body reappeared anyway) with no --plan flag; got:\n%s", stdout)
+	}
+	if strings.Contains(stdout, "[moved]") {
+		t.Errorf("resurrection reported [moved] (\"no retirement was declared\") even though docs/plans/resurrect.md declares retires: api:widgets.Old at base — the declaration was invisible to the default (no --plan) discovery path, exactly O117's bug:\n%s", stdout)
+	}
+}
+
 func headSHAOf(t *testing.T, root string) string {
 	t.Helper()
 	cmd := exec.Command("git", "-C", root, "rev-parse", "HEAD")

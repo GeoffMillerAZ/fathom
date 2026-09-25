@@ -252,7 +252,8 @@ func NewInput(ctx context.Context, root, baseRef string, st store.Store, service
 	}
 
 	var basePlans, headPlans []verify.Plan
-	for _, rel := range planPaths {
+	for _, raw := range planPaths {
+		rel := planPathRelativeTo(root, raw)
 		if b, ok, _ := gitShowFile(root, base, rel); ok {
 			basePlans = append(basePlans, verify.ParseMarkdownPlan(service, b))
 		}
@@ -273,6 +274,35 @@ func NewInput(ctx context.Context, root, baseRef string, st store.Store, service
 		Declarations: NewDeclarations(basePlans, headPlans),
 		Retired:      NewRetirement(basePlans, headPlans),
 	}, nil
+}
+
+// planPathRelativeTo makes p safe for gitShowFile/worktreeFile, both of
+// which require a repo-relative path (NewInput's own doc comment) — an
+// absolute p is silently mishandled by each in a different way: git's own
+// `rev:path` syntax refuses a leading "/", so gitShowFile's `git show
+// <ref>:<p>` always reports the path absent, and worktreeFile's
+// filepath.Join(root, p) does not special-case an already-absolute p, so
+// it doubles the path (filepath.Join("/a/b", "/a/b/c") == "/a/b/a/b/c")
+// into one that never exists. Both failures come back ok=false, err=nil —
+// indistinguishable from "this plan genuinely doesn't exist here" — so a
+// caller whose plan discovery globs under an absolute root (every
+// verifyRepoRoot()-based caller: cmd/fathom's discoverPlanPaths, the sole
+// path lefthook.yml's real pre-push invocation ever takes with no --plan)
+// silently loses every retires:/surface_change: declaration at both base
+// and head (O117, .fathom/observations.md). An absolute p already inside
+// root is rewritten relative to it; a p that is already relative, or
+// absolute but outside root, is returned unchanged so gitShowFile/
+// worktreeFile report it plainly missing rather than silently resolving a
+// different path.
+func planPathRelativeTo(root, p string) string {
+	if !filepath.IsAbs(p) {
+		return p
+	}
+	rel, err := filepath.Rel(root, p)
+	if err != nil || strings.HasPrefix(rel, "..") {
+		return p
+	}
+	return filepath.ToSlash(rel)
 }
 
 // resolveRef resolves ref to a commit sha via `git rev-parse`.
