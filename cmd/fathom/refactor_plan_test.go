@@ -189,6 +189,42 @@ func TestCmdRefactorPlan_UnreadableSourceFailsLoud(t *testing.T) {
 	}
 }
 
+// TestCmdRefactorPlan_RefusesDirtyWorkingTree pins the fix for the defect
+// a review caught: `Baseline:` is git rev-parse HEAD (a committed sha),
+// but max: was seeded from c.Sources(), which reads the LIVE WORKING
+// TREE — so an uncommitted edit at plan-creation time makes max: disagree
+// with the count `fathom refactor status` later computes for that exact
+// same Baseline sha (git show), from the very first status check. Adding
+// a second, uncommitted reference to OldFunc must refuse plan generation
+// rather than silently seed a max: that already excludes it.
+func TestCmdRefactorPlan_RefusesDirtyWorkingTree(t *testing.T) {
+	repo := newRefactorFixtureRepo(t)
+
+	storePath := filepath.Join(t.TempDir(), "refactor4.sqlite")
+	var ing bytes.Buffer
+	if code := run([]string{
+		"ingest", "--service", "refactorfixture", "--path", repo.root, "--store", storePath,
+	}, &ing, &ing); code != 0 {
+		t.Fatalf("ingest failed (%d): %s", code, ing.String())
+	}
+
+	// An UNCOMMITTED edit: a second call site, never committed, so HEAD
+	// (and thus Baseline:) still shows only the original one reference.
+	repo.writePlan("caller/user.go",
+		"package caller\n\nimport \"refactorfixture/oldpkg\"\n\nfunc CallsOld() {\n\toldpkg.OldFunc()\n\toldpkg.OldFunc()\n}\n")
+
+	code, stdout, stderr := runInDir(t, repo.root, []string{
+		"refactor", "plan", "OldFunc",
+		"--service", "refactorfixture", "--store", storePath,
+	})
+	if code == 0 {
+		t.Fatalf("expected refactor plan to refuse a dirty working tree, got exit 0\nstdout=%s", stdout)
+	}
+	if stderr == "" {
+		t.Fatalf("expected stderr to name the dirty working tree as the reason")
+	}
+}
+
 // TestCmdRefactorPlan_ImportTarget pins the import/package shape: the same
 // fixture, targeted by its import path directly rather than a symbol name.
 func TestCmdRefactorPlan_ImportTarget(t *testing.T) {

@@ -21,6 +21,8 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: minor (pre-1.0: breaking bumps minor)
 
+**`fathom refactor plan` refuses a dirty working tree.** `max:` was seeded from the live working tree (`c.Sources()`) while `Baseline:` is the last COMMIT — an uncommitted edit at plan-creation time let the two disagree for the same pinned baseline sha, so `fathom refactor status`'s own baseline count (read from git, not disk) could contradict `max:` from the very first check. `refactor plan` now refuses outright on a dirty tree instead (CV-33).
+
 **`fathom refactor plan` refuses rather than seeding a ratchet's `max:` at 0 from a partial corpus read.** A `c.Sources()` failure (a locked directory, a read error) used to silently fall back to zero source files, so every `gone: pattern` ratchet's `max:` read 0 even for a package the plan's own typed call graph proves has live references today — `fathom refactor status`'s very first run would then fail immediately against a baseline the plan never actually measured. `buildRefactorPlan` now returns an error naming what could not be read instead of writing a plan at all (CV-33).
 
 **`fathom conserve --since <ref>`** — the refactor-conservation report (vision 34, ADR-044). Six self-registering planes (`integrity`, `surface`, `certificates`, `governance`, `absence`, `resurrection`) report `conserved`/`losses`/`unproven` per plane — never a score, and a missing input is always `unproven` (I44) — as `fathom.conserve/v1` JSON or a text table; `--strict` exits 1 on any `losses`. Docs: `docs/design/refactor-conservation.md`, `docs/usage.md`.

@@ -1677,7 +1677,11 @@ A ratchet's `max:` must never come from a partial read: when the corpus
 cannot be fully read (a locked directory, a fetch error), `refactor plan`
 refuses outright and names what could not be read, rather than seeding
 `max: 0` for a package its own typed call graph may already show has live
-references today.
+references today. It also refuses on a DIRTY working tree: `max:` is
+seeded from live disk while `Baseline:` is the last commit, so an
+uncommitted edit would seed a `max:` that disagrees with what `refactor
+status` later reads for that very same baseline sha (`git show`) —
+commit or stash first.
 
 `refactor status` reads one such plan's ratchet rows (any `gone: pattern`
 row with `max:` set — hand-written or `refactor plan`-generated) and

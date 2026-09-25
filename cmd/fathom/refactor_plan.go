@@ -84,6 +84,26 @@ func cmdRefactorPlan(args []string, stdout, stderr io.Writer) int {
 	}
 	baseline := strings.TrimSpace(string(shaOut))
 
+	// Every ratchet's max: is seeded from c.Sources(), which reads the
+	// LIVE WORKING TREE (client.Sources -> LocalConnector -> os.ReadFile),
+	// while Baseline: above is the last COMMIT. A dirty tree at
+	// plan-creation time would let those disagree for the very same
+	// pinned Baseline sha: `fathom refactor status`'s own baseline count
+	// (git show <baseline>:path) reads the committed content, so an
+	// uncommitted edit already present when the plan was written can make
+	// max: and the baseline count contradict each other from the first
+	// status check, before any real drift has landed. Refusing on a dirty
+	// tree keeps the two reads of "today" identical by construction.
+	if dirty, derr := gitPathDirty(root, "."); derr != nil {
+		fmt.Fprintf(stderr, "error: check working tree cleanliness in %s: %v\n", root, derr)
+		return 2
+	} else if dirty {
+		fmt.Fprintln(stderr, "error: refactor plan requires a clean working tree: "+
+			"an uncommitted change would seed max: from content that disagrees with "+
+			"the pinned Baseline commit — commit or stash first")
+		return 2
+	}
+
 	st, err := store.Open(*storePath)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: open store %q: %v\n", *storePath, err)
