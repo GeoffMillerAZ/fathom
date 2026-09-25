@@ -97,9 +97,17 @@ fi
 
 # 4. init as a stranger: temp HOME, --harness=none (stanza + .fathom/ +
 #    skills, no hook file), the copy's own binary.
-if ! HOME="${home}" "${bin}" init --path "${tree}" --url "${url}" --bin "${bin}" --harness=none --skills --service stranger >"${work}/init.log" 2>&1; then
-  echo "stranger-check: FAIL fathom init exited non-zero:" >&2
-  tail -30 "${work}/init.log" >&2
+init_rc=0
+HOME="${home}" "${bin}" init --path "${tree}" --url "${url}" --bin "${bin}" --harness=none --skills --service stranger >"${work}/init.log" 2>&1 || init_rc=$?
+if [ "${init_rc}" -ne 0 ]; then
+  # init prints dozens of routine "ok …" and "MANUAL: …" lines last, so a
+  # plain tail once showed only those and hid the line that failed (a
+  # 2026-09-25 push refusal whose cause the log never named). Print the
+  # non-routine lines first, then the tail.
+  echo "stranger-check: FAIL fathom init exited ${init_rc}; its non-routine output:" >&2
+  grep -vE '^(ok |MANUAL:|shim installed:|[[:space:]])' "${work}/init.log" | tail -30 >&2 || true
+  echo "stranger-check: last 10 lines of init's output:" >&2
+  tail -10 "${work}/init.log" >&2
   exit 1
 fi
 
