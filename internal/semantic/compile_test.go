@@ -632,6 +632,74 @@ func TestCompile_RefusesToStartWhenEstimatedCostExceedsBudget(t *testing.T) {
 	}
 }
 
+// TestCompile_NoPriorRun_SkipsPreflightRefusal_AndBudgetStopsInstead
+// (refactor-conservation gap-closing wave 3, item 3, CV-41): the SAME
+// whole-corpus-exceeds-budget shape TestCompile_RefusesToStartWhenEstimated
+// CostExceedsBudget refuses outright, but with CompileInput.NoPriorRun set
+// (this service's very first compile of this layer) must instead proceed,
+// compile what fits, and stop as BudgetStopped once the REAL usage crosses
+// the token budget — never Refused, and never zero claims for a layer
+// nothing has ever tried to compile before.
+func TestCompile_NoPriorRun_SkipsPreflightRefusal_AndBudgetStopsInstead(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	// A single section whose real usage (scripted below) crosses the small
+	// token budget — the pre-flight bytes/4 estimate (promptOverheadTokens
+	// alone is 260) already exceeds MaxTokensPerRun=100 on ANY non-empty
+	// section, which is exactly the shape that refuses outright today.
+	mock := llmclient.NewMockClient(llmclient.MockEntry{Response: llmclient.Response{
+		Text:  `{"claims":[{"rule":"Inject clocks; never call time.Now() in query logic.","scope":["internal/query/**"],"cite_start":3,"cite_end":3}]}`,
+		Usage: llmclient.Usage{InputTokens: 150, OutputTokens: 50},
+	}})
+	layer, err := LoadLayer(LayerObligations)
+	if err != nil {
+		t.Fatalf("LoadLayer(obligations): %v", err)
+	}
+	layer.Budgets = LayerBudgets{MaxTokensPerRun: 100, MaxUSDPerRun: 1000}
+	c := &Compiler{
+		St:            st,
+		LLM:           mock,
+		Model:         "mock-model",
+		Layer:         layer,
+		InRatePerKTok: 0.001,
+		Now:           fixedNow,
+	}
+
+	in := compileInput(false)
+	in.NoPriorRun = true
+	run, err := c.Compile(ctx, in)
+	if err != nil {
+		t.Fatalf("a NoPriorRun compile must not error on a mid-run budget stop: %v", err)
+	}
+	if run.Refused {
+		t.Errorf("run.Refused = true, want false — NoPriorRun must skip the pre-flight refusal")
+	}
+	if !run.BudgetStopped {
+		t.Errorf("run.BudgetStopped = false, want true — the real usage still crosses the budget mid-run")
+	}
+	if run.SectionsCompiled != 1 || run.ClaimsEmitted != 1 {
+		t.Errorf("compiled/emitted = %d/%d, want 1/1 — a first compile must make real progress, not zero", run.SectionsCompiled, run.ClaimsEmitted)
+	}
+	if mock.CallCount() != 1 {
+		t.Errorf("CallCount = %d, want 1 — NoPriorRun must actually call the LLM, unlike a pre-flight refusal", mock.CallCount())
+	}
+	if run.ResumedFrom != "" {
+		t.Errorf("ResumedFrom = %q, want empty — NoPriorRun names no resume point (nothing was being resumed)", run.ResumedFrom)
+	}
+
+	runs, err := st.CompileRuns(ctx, "svc", "")
+	if err != nil || len(runs) != 1 {
+		t.Fatalf("CompileRuns = %d, %v; want 1 recorded budget-stopped run", len(runs), err)
+	}
+	if runs[0].Refused {
+		t.Errorf("recorded run.Refused = true, want false")
+	}
+	claims, _ := st.ClaimsForService(ctx, "svc", LayerObligations)
+	if len(claims) != 1 {
+		t.Errorf("claims = %d, want 1 — a first compile must persist what it compiled before stopping", len(claims))
+	}
+}
+
 // TestEnforceBudgets_MaxUSDPerRunZeroOrNegativeMeansUnlimited (wave O4,
 // item 2) pins the fix: MaxUSDPerRun<=0 now means "no cost cap", mirroring
 // MaxTokensPerRun's own ">0" convention just above it in enforceBudgets.

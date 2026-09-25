@@ -258,6 +258,10 @@ func compileViaStore(storePath, service, layer, profileFlag string, dryRun, forc
 		c.WithDecision(ports.Decider, ports.Cfg, ports.Recorder)
 	}
 
+	// dryRunPriceKnown is filled by the dry-run branch below (modelprice.go's
+	// rateForModel) and carried onto run.PriceKnown once the run completes —
+	// see that branch's own doc comment.
+	dryRunPriceKnown := false
 	if !dryRun {
 		// The service's actual ingested root (ServiceMeta) — the same
 		// authoritative source CompileLayer itself resolves against, unlike
@@ -344,6 +348,27 @@ func compileViaStore(storePath, service, layer, profileFlag string, dryRun, forc
 			return 1
 		}
 		c.WithLLM(llmCl, compileModelForProfile(p), 0.001, 0.005)
+	} else {
+		// O8 extension (docs/plans/refactor-conservation.md, gap-closing
+		// wave 3, item 2): resolve the model this call WOULD use and this
+		// binary's known price for it (modelprice.go), so a dry run's cost
+		// estimate honors --profile instead of silently computing from a
+		// zero rate no matter what was asked for — before this, WithLLM was
+		// never called on a dry-run path at all, so every dry run's cost
+		// band was zero regardless of --profile. Fail-open, deliberately:
+		// an unresolvable profile (a typo'd --profile name, no config file
+		// at all) must never block a dry run — compileModel()'s own
+		// env/default fallback names the best-effort model instead, and an
+		// unpriced model just means the estimate honestly discloses "cost
+		// unknown" (printCompileRunCore, gated on run.PriceKnown below)
+		// rather than fabricating a number.
+		model := compileModel()
+		if p, _, profErr := resolveActiveProfile(profileFlag); profErr == nil {
+			model = compileModelForProfile(p)
+		}
+		inRate, outRate, known := rateForModel(model)
+		dryRunPriceKnown = known
+		c.WithLLM(nil, model, inRate, outRate)
 	}
 
 	var run core.CompileRun
@@ -362,6 +387,9 @@ func compileViaStore(storePath, service, layer, profileFlag string, dryRun, forc
 	if compErr != nil {
 		fmt.Fprintf(stderr, "error: compile layer %q: %v\n", layer, compErr)
 		return 1
+	}
+	if dryRun {
+		run.PriceKnown = dryRunPriceKnown
 	}
 
 	// O54 NIT: --continue against a layer that turns out to already be
@@ -689,7 +717,21 @@ func printCompileRunCore(w io.Writer, run core.CompileRun) {
 		// range, and cost/duration print as ranges or not at all.
 		fmt.Fprintf(w, "tokens_in:         ~%d (estimate: bytes/4 heuristic — real usage has run ~3x higher)\n", run.TokensIn)
 		fmt.Fprintf(w, "tokens_out:        unknown before a run — est. %d-%d (input x2-x8, layer-dependent)\n", run.EstTokensOutLow, run.EstTokensOutHigh)
-		fmt.Fprintf(w, "cost_usd:          est. %.2f-%.2f (a range, never a point — O8)\n", run.EstCostLowUSD, run.EstCostHighUSD)
+		if run.PriceKnown {
+			fmt.Fprintf(w, "cost_usd:          est. %.2f-%.2f (a range, never a point — O8)\n", run.EstCostLowUSD, run.EstCostHighUSD)
+		} else {
+			// refactor-conservation gap-closing wave 3, item 2: a model this
+			// binary has no price for (modelprice.go's rateForModel) must
+			// never print as a confident "est. 0.00-0.00" — that reads as
+			// "this costs nothing," which is never a proven fact. Name the
+			// model so the caller knows what to price, not just that
+			// pricing failed.
+			model := run.Model
+			if model == "" {
+				model = "(unknown)"
+			}
+			fmt.Fprintf(w, "cost_usd:          cost unknown: no price for model %s\n", model)
+		}
 		fmt.Fprintf(w, "duration:          est. %.0f-%.0f min (at ~100 output tok/s observed)\n", float64(run.EstTokensOutLow)/6000.0, float64(run.EstTokensOutHigh)/6000.0)
 	} else {
 		fmt.Fprintf(w, "tokens_in:         %d\n", run.TokensIn)

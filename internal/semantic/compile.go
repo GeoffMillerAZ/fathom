@@ -184,6 +184,35 @@ type CompileInput struct {
 	// order) as run.ResumedFrom — proof, not a claim, that this call picked
 	// up where the last one left off rather than restarting.
 	Resume bool
+
+	// NoPriorRun is refactor-conservation gap-closing wave 3, item 3
+	// (docs/plans/refactor-conservation.md, CV-41): true when the caller
+	// found NO existing compile_runs row for this (service, layer) at all —
+	// a genuinely first-ever compile, never before attempted. Before this
+	// field existed, a layer whose WHOLE corpus estimate exceeded
+	// max_tokens_per_run was refused outright at the pre-flight gate on
+	// its very first compile, exactly like a re-compile — so CV-41's new
+	// default layer set (adr-rules/spec-bindings activate whenever their
+	// corpus matches) could never activate on any real repository whose
+	// corpus is bigger than one run's budget, without an operator already
+	// knowing to pass --continue for a layer that had never compiled
+	// anything yet. NoPriorRun skips the SAME pre-flight refusal Resume
+	// does, so a first compile makes as much progress as its budget
+	// allows and stops cleanly as BudgetStopped (resumable with
+	// --continue from then on, exactly as an ordinary budget-stopped
+	// layer already is) — never Refused for a layer nothing has ever
+	// tried to compile. Unlike Resume, NoPriorRun never sets
+	// run.ResumedFrom (nothing is being resumed): the two flags are
+	// mutually exclusive in practice (Resume implies a prior run already
+	// exists), but Compile ORs them for the pre-flight gate rather than
+	// asserting exclusivity, so a caller mistake here degrades to "skip
+	// the refusal" rather than a confusing panic. The SECOND call against
+	// the same (service, layer) — even one that stopped on BudgetStopped,
+	// not Refused — sees a real compile_runs row and reverts to the
+	// ordinary pre-flight refusal, exactly the "a plain re-run refuses at
+	// the pre-flight gate — pass --continue" guidance
+	// printCompileRunCore's own BudgetStopped line already prints.
+	NoPriorRun bool
 }
 
 // docSections pairs one governing doc with its already-split sections, so
@@ -396,9 +425,16 @@ func (c *Compiler) Compile(ctx context.Context, in CompileInput) (core.CompileRu
 	// budget-stopped layer is that the REMAINING corpus alone may still
 	// estimate over the same per-run budget — refusing here would turn
 	// "make more progress" into a permanent refusal instead of a resume.
-	// The mid-run gate below still caps this call's real spend exactly as
-	// it always has.
-	if !in.DryRun && c.Layer.Name != "" && !in.Resume {
+	// Also skipped when NoPriorRun is set (CV-41, gap-closing wave 3 item
+	// 3): a layer with no compile_runs row at all for this service has
+	// never been attempted, so refusing its very first compile the same
+	// way a re-compile is refused would make a corpus bigger than one
+	// run's budget permanently unreachable without an operator already
+	// knowing to pass --continue for work that never started — see
+	// CompileInput.NoPriorRun's own doc comment. The mid-run gate below
+	// still caps this call's real spend exactly as it always has, either
+	// way.
+	if !in.DryRun && c.Layer.Name != "" && !in.Resume && !in.NoPriorRun {
 		estTokensIn := 0
 		for _, item := range ordered {
 			if needsCompile(item.sec) {

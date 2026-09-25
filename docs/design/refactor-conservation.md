@@ -25,6 +25,29 @@ passes**, but only after fixing a real gap it found: `fathom verify
 `Unknown` — now fixed (`cmd/fathom/verify_gone_evidence.go`,
 `docs/bench/readings/cv-m6-dogfood-2026-09-24.md`).
 
+**Status (wave 3, gap-closing, 2026-09-25).** Three real gaps this program's
+own dogfooding surfaced, all fixed: (1) `review_diff`'s (MCP) §1.6 wiring
+built a real conservation `Input` and ran every plane for `conservation`
+but never flattened the SAME "integrity" plane's own findings onto
+`DimIntegrity`, so a resolved `since` rendered `checked:true` with zero
+findings instead of the honest "needs a base ref" — `review`/`review_diff`
+now carry BOTH `integrity` and `conservation`
+(`internal/mcp/review_integrity.go`). (2) §6's activation clause (CV-41)
+was inert in practice: a dry-run compile never resolved any price at all
+(`WithLLM` ran only on a spending compile), so `fathom compile --dry-run`
+always showed `cost_usd: est. 0.00-0.00` regardless of `--profile` —
+`cmd/fathom/modelprice.go` gives a dry run a real per-model price when one
+is known, and an honest "cost unknown: no price for model `<m>`" when it
+is not. (3) A layer's pre-flight budget refusal fired on its OWN first
+compile exactly like a re-compile, so CV-41's newly-activated
+`adr-rules`/`spec-bindings` could not actually start on a repository
+bigger than one run's budget without an operator already knowing to pass
+an override — `semantic.CompileInput.NoPriorRun` skips the refusal only
+for a layer's genuinely first compile_run, making real progress and
+stopping as `budget_stopped` (resumable with `--continue`, unchanged for
+every later re-compile). The fleet recompile this activation clause exists
+for then ran clean: `docs/bench/readings/cv-m8-fleet-recompile-2026-09-25.md`.
+
 ## 0. Vocabulary and the change range
 
 - **Base**: a git ref resolved to a commit (`--since <ref>` or a plan's

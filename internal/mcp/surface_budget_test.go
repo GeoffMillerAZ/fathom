@@ -44,9 +44,14 @@ const agentSurfaceTotalByteCeiling = 18700
 // Re-pinned 1200 -> 1260 (ADR-044 §1.6, CV-13): review_diff's genuinely
 // new "since" argument measures 1240 B served; the terse description
 // above leaves no further slack to cut from an already-dense six-property
-// tool without losing real information. The total ceiling above did not
-// move (18106 B measured, still inside 18700).
-const agentSurfacePerToolByteCeiling = 1260
+// tool without losing real information. Re-pinned again 1260 -> 1280
+// (ADR-044 §1.6, refactor-conservation gap-closing wave 3 item 1):
+// review_diff's own top-level Description was previously silent about the
+// integrity/conservation dimensions since already gates — an agent reading
+// only the description had no way to know they existed — naming them
+// (within the existing 260 B description cap) measures 1261 B served. The
+// total ceiling above did not move (18127 B measured, still inside 18700).
+const agentSurfacePerToolByteCeiling = 1280
 
 // TestAgentSurfaceBudget is the O101/TD-2 acceptance test: render the
 // agent surface's tools/list exactly as a connected session receives it

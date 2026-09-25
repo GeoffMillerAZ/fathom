@@ -21,8 +21,8 @@ silently skipped. Design: `docs/design/refactor-conservation.md`.
 - [x] `fathom review --since` and `review_diff` carry an `integrity` dimension; without a base it says so {id: CV-12, symbol: DimIntegrity, package: internal/analysis/review, reachable_from: TestReview_IntegrityDimension}
 - [x] `review_diff` accepts an optional `since` base ref {id: CV-13, symbol: reviewDiffWithBase, package: internal/mcp, reachable_from: TestReviewDiff_SinceArgument}
 - [x] `fathom verify --since <ref>` renders self-declared rows and fails a self-declared claimed skip {id: CV-14, symbol: cmdVerify, package: cmd/fathom, reachable_from: TestCmdVerify_SinceMarksSelfDeclared}
-- [ ] (op) CV-M1: the integrity and self-declaration checks flag both guards-pilot-8 i28 cells and the i36 self-checks {id: CV-M1, skip: "measurement: replay of the recorded cells"}
-- [ ] (op) CV-M2: at most 10% of the last 50 commits that touched guarded tests flag after rename normalization, else the check stays advisory {id: CV-M2, skip: "measurement: 50-commit replay"}
+- [ ] (op) CV-M1: the integrity and self-declaration checks flag both guards-pilot-8 i28 cells and the i36 self-checks {id: CV-M1, skip: "measured PASS: docs/bench/readings/cv-m1-guards-pilot-8-replay-2026-09-24.md — both i28 cells flag deleted (the stronger of the two design-listed outcomes); the i36 self-check cell renders self-declared: skip under fathom verify --since"}
+- [ ] (op) CV-M2: at most 10% of the last 50 commits that touched guarded tests flag after rename normalization, else the check stays advisory {id: CV-M2, skip: "measured PASS: docs/bench/readings/cv-m2-guarded-test-commit-replay-2026-09-24.md — 0/50 commits produced a true loss-kind finding (0% against the 10% bar); 9/50 produced edited, the informational-only kind"}
 - [ ] (op) CV-M3: kill the integrity check if it catches nothing in 30 days of real sessions and the i28 cells {id: CV-M3, skip: "operator measurement: 30-day window"}
 
 ## B. Stage 2 — the conservation ledger
@@ -56,34 +56,34 @@ silently skipped. Design: `docs/design/refactor-conservation.md`.
 - [x] `fathom refactor plan <target>` writes a gate-ready plan with a baseline, ratcheted `gone:` rows per package, certified_by rows and a conserve row {id: CV-33, symbol: cmdRefactorPlan, package: cmd/fathom, reachable_from: TestCmdRefactorPlan_GateReadyPlan}
 - [x] `fathom refactor status` reports each ratchet against its max and the baseline, and drift that landed on main {id: CV-34, symbol: cmdRefactorStatus, package: cmd/fathom, reachable_from: TestCmdRefactorStatus_RatchetAndDrift}
 - [x] Raising a ratchet's `max` inside the range is self-declared {id: CV-35, symbol: AnnotateSelfDeclared, package: internal/verify, reachable_from: TestAnnotateSelfDeclared_RaisedMaxIsSelfDeclared}
-- [ ] (op) CV-M6: retiring this repository's unused analysis packages runs as a refactor program and finishes with every row proven and a clean conserve report {id: CV-M6, skip: "measurement: the dogfood program"}
+- [ ] (op) CV-M6: retiring this repository's unused analysis packages runs as a refactor program and finishes with every row proven and a clean conserve report {id: CV-M6, skip: "measured PASS: docs/bench/readings/cv-m6-dogfood-2026-09-24.md — 18 of 20 zero-Go-importer candidates retired via docs/plans/retire-unused-analyzers.md, every row proven, fathom conserve --strict clean on every plane; found and fixed cmd/fathom verify --store's missing GoneEvidence adapter along the way"}
 
 ## E. Stage 5 — the typed floor beyond Go
 
 - [x] The language tracker records the shipped file-resolved tier {id: CV-37, oracle: lexical, path: docs/languages.md, pattern: "file-resolved tier shipped"}
 - [x] Every conservation report names the edge tier per language touched {id: CV-38, symbol: TiersByLanguage, package: internal/conserve, reachable_from: TestTiersByLanguage}
 - [x] `fathom report evidence` gives per-service evidence density and ranks no languages {id: CV-39, symbol: cmdReportEvidence, package: cmd/fathom, reachable_from: TestCmdReportEvidence_NoRanking}
-- [ ] (op) CV-M7: precision and recall per language at the scip and file tiers, from the free L0 oracle on calibration clones, published beside Go's {id: CV-M7, skip: "measurement: L0 per-language run"}
+- [ ] (op) CV-M7: precision and recall per language at the scip and file tiers, from the free L0 oracle on calibration clones, published beside Go's {id: CV-M7, skip: "measured: docs/bench/readings/l0-ts-py-2026-09-24.md — file-resolved tier 26/26 hand-verified correct on real clones (zod TS, flask Python); found and fixed O115 (scip import keyed by the raw SCIP symbol string, never fathom's own key space), then re-scored the scip and file tiers against a genuine independent truth for the first time (file tier: 0.87-0.95 precision, 3-12% recall — high precision, low recall as its own name promises)"}
 
 ## F. Layers and packs
 
 - [x] A citation whose lines moved re-anchors by its anchor text and the claim stays fresh {id: CV-40, symbol: ReanchorCitation, package: internal/semantic, reachable_from: TestReanchorCitation_MovedLinesStayFresh}
 - [x] The default compile set includes adr-rules and spec-bindings when their corpus exists {id: CV-41, symbol: DefaultLayersFor, package: internal/semantic, reachable_from: TestDefaultLayersFor_CorpusPresence}
-- [ ] (op) CV-M8: the fleet recompile ran for services with no or fully stale layers, dry-run priced, spend recorded {id: CV-M8, skip: "operator run: fleet recompile"}
-- [ ] (op) CV-M9: obligations recall is at least 0.75 under the production model on its labeled fixtures {id: CV-M9, skip: "measurement: obligations eval"}
-- [ ] (op) CV-M10: the findings layer's eval scores {id: CV-M10, skip: "measurement: findings eval"}
+- [ ] (op) CV-M8: the fleet recompile ran for services with no or fully stale layers, dry-run priced, spend recorded {id: CV-M8, skip: "measured: docs/bench/readings/cv-m8-fleet-recompile-2026-09-25.md — 26 layer compiles across 12 services, 2798 claims, $7.05 total over three passes; the dry run priced everything at cost_usd est. 0.00-0.00 until item 2 fixed it, and the default set hit the per-run pre-flight refusal on every sizeable repository until item 3 fixed it"}
+- [ ] (op) CV-M9: obligations recall is at least 0.75 under the production model on its labeled fixtures {id: CV-M9, skip: "measured PASS: schema/semantic/layers/obligations/eval/RESULTS.md — 2026-09-24 production-model recheck clears the 0.75 bar (precision 1.00, recall 0.86, two independent runs)"}
+- [ ] (op) CV-M10: the findings layer's eval scores {id: CV-M10, skip: "measured PASS: schema/semantic/layers/findings/eval/RESULTS.md — 2026-09-24 production-model run: precision 1.00, recall 1.00 on both runs; layer.cue's evaled flipped to true"}
 
 ## G. The decision port
 
 - [x] `[decide] sites` gates which sites may send questions off-host {id: CV-42, symbol: SiteAllowed, package: internal/decide, reachable_from: TestSiteAllowed_Allowlist}
-- [ ] (op) CV-M11: the calibration check (0.9 right nine times in ten) over logged route decisions and reviewed certificate suggestions, with the proceed band raised for any site that fails {id: CV-M11, skip: "measurement: calibration reading"}
+- [ ] (op) CV-M11: the calibration check (0.9 right nine times in ten) over logged route decisions and reviewed certificate suggestions, with the proceed band raised for any site that fails {id: CV-M11, skip: "measured: docs/bench/readings/decision-port-calibration-2026-09-24.md — the route site FAILS the bar (45.7% at confidence >=0.9, non-monotonic with confidence — raising the threshold cannot fix it, so RouteConfidence stays 0.9, ADR-042 amended); certify_suggest passes (5/5 hand-reviewed proceed-band suggestions correct)"}
 
 ## H. Review Kit, test-kit and the gate
 
 - [ ] (op) CV-43: test-kit's envelope records `env.commit`, `env.dirty`, `env.race`, and its go-test-json adapter fills them (platform-engineering) {id: CV-43, skip: "cross-repo: platform-engineering test-kit"}
 - [ ] (op) CV-44: Review Kit's `refactoring-conservation` pack and `fathom-conserve` adapter, armed at warn on this repository (platform-engineering) {id: CV-44, skip: "cross-repo: platform-engineering review-kit"}
-- [ ] ADR-043's kill rule counts warn, not deny {id: CV-45, oracle: lexical, path: ADR.md, pattern: "never fires at warn"}
-- [ ] The stanza routes refactors to `rename_impact` and `safe_delete_check` first {id: CV-46, oracle: lexical, path: CLAUDE.md, pattern: "refactor/delete: rename_impact"}
+- [x] ADR-043's kill rule counts warn, not deny {id: CV-45, oracle: lexical, path: ADR.md, pattern: "never fires at warn"}
+- [x] The stanza routes refactors to `rename_impact` and `safe_delete_check` first {id: CV-46, oracle: lexical, path: CLAUDE.md, pattern: "refactor/delete: rename_impact"}
 - [x] The pre-push hook runs `fathom conserve --since` as a warning {id: CV-47, oracle: lexical, path: lefthook.yml, pattern: "fathom conserve"}
 
 ## Deferred (trigger on file)

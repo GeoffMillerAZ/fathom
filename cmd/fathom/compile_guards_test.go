@@ -624,18 +624,26 @@ budgets: {
 }
 
 // TestCmdCompile_MaxTokensPerRunOverride_UnblocksAPreflightRefusal is the
-// CLI-level end-to-end proof for wave O4 item 2: the fixture's project pack
-// sets max_tokens_per_run so small that a plain compile refuses PRE-FLIGHT
-// (never reaches the LLM for any section — vs-pilot-5's second reading
-// found exactly this class of defect: a fixed per-run budget too small for
-// the corpus, silently limiting how much of `obligations` a bench subject's
-// compile step ever covers); --max-tokens-per-run=all removes the cap and
-// the SAME corpus compiles completely in the very next call, on the same
-// store, with no other guard escape needed (a pre-flight REFUSAL — unlike a
-// mid-run BudgetStopped — never counts as a "completed" prior run either
-// way, so the idempotency guard was never going to be the obstacle here).
+// CLI-level end-to-end proof for wave O4 item 2, UPDATED by refactor-
+// conservation gap-closing wave 3 item 3 (CV-41, docs/plans/
+// refactor-conservation.md): the fixture's project pack sets
+// max_tokens_per_run so small that its whole-corpus PRE-FLIGHT cost
+// estimate exceeds it — vs-pilot-5's second reading found exactly this
+// class of defect, a fixed per-run budget too small for the corpus. Before
+// CV-41's NoPriorRun fix, this refused OUTRIGHT even on the layer's very
+// first compile, so a real repository bigger than one run's budget could
+// never activate this layer without already knowing to pass an override.
+// Now the FIRST compile (no compile_runs row yet) proceeds instead —
+// disclosed by which stdout it lands on, never as a bare "it worked": this
+// fixture's fake claude-cli envelope reports a tiny 1/1-token REAL usage
+// per section, so the mid-run gate never actually crosses the budget
+// either, and the whole 5-section corpus compiles cleanly in one call with
+// no override needed at all. A genuine RE-compile — this service's SECOND
+// real compile_run, once the corpus has GROWN by a section that still
+// needs compiling — reverts to the ordinary pre-flight refusal exactly as
+// before; --max-tokens-per-run=all still unblocks it.
 func TestCmdCompile_MaxTokensPerRunOverride_UnblocksAPreflightRefusal(t *testing.T) {
-	storePath, _, svc := newBudgetStopFixture(t)
+	storePath, root, svc := newBudgetStopFixture(t)
 
 	// This project pack's own `evaled: true` gets forced to false (no
 	// eval/RESULTS.md on disk — packs.go's D3-1 honesty override), so every
@@ -646,47 +654,100 @@ func TestCmdCompile_MaxTokensPerRunOverride_UnblocksAPreflightRefusal(t *testing
 		"--service", svc, "--layer", "obligations", "--store", storePath, "--dry-run=false",
 		"--unsafe-skip-eval-gate",
 	}, &stdout1, &stderr1)
-	if code != 1 {
-		t.Fatalf("first (unbudgeted) compile: exit %d, want 1 (pre-flight refusal); stdout=%q stderr=%q", code, stdout1.String(), stderr1.String())
+	if code != 0 {
+		t.Fatalf("first (never-compiled) compile: exit %d, want 0 — NoPriorRun must skip the pre-flight refusal on this layer's very first compile; stdout=%q stderr=%q", code, stdout1.String(), stderr1.String())
 	}
-	if !strings.Contains(stderr1.String(), "max_tokens_per_run") {
-		t.Errorf("stderr should name the exceeded budget, got %q", stderr1.String())
+	if strings.Contains(stdout1.String(), "refused:") {
+		t.Errorf("a layer's first-ever compile must never refuse outright, got stdout=%q", stdout1.String())
+	}
+	if !strings.Contains(stdout1.String(), "sections_total:    5") || !strings.Contains(stdout1.String(), "sections_compiled: 5") {
+		t.Errorf("stdout must report all 5 sections compiled on the first attempt (this fixture's real usage never crosses the budget), got %q", stdout1.String())
 	}
 	if n := countCompileRuns(t, storePath, svc, "obligations"); n != 1 {
-		t.Fatalf("a refused run is still recorded (ADR-016 §4.1); compile_runs = %d, want 1", n)
+		t.Fatalf("compile_runs = %d, want 1 (the first compile, recorded whether it refused, stopped, or completed)", n)
+	}
+
+	// Grow the corpus by one guide the first compile never saw — a genuine
+	// re-compile, now with a real prior compile_run on the books. The new
+	// section alone still estimates over the tiny token budget at
+	// pre-flight, and NoPriorRun no longer applies (a real row exists), so
+	// this must refuse exactly as an ordinary re-compile always has.
+	sixthGuide := filepath.Join(root, "g6")
+	if err := os.MkdirAll(sixthGuide, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sixthGuide, "CLAUDE.md"), []byte("# Guide 6\n\n- Rule number 6 applies here.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	reIngestBudgetFixture(t, storePath, root, svc)
+
+	var stdout2, stderr2 bytes.Buffer
+	code = cmdCompile([]string{
+		"--service", svc, "--layer", "obligations", "--store", storePath, "--dry-run=false",
+		"--unsafe-skip-eval-gate",
+	}, &stdout2, &stderr2)
+	if code != 1 {
+		t.Fatalf("re-compile over the grown corpus: exit %d, want 1 (pre-flight refusal — a prior compile_run now exists); stdout=%q stderr=%q", code, stdout2.String(), stderr2.String())
+	}
+	if !strings.Contains(stderr2.String(), "max_tokens_per_run") {
+		t.Errorf("stderr should name the exceeded budget, got %q", stderr2.String())
 	}
 
 	// With --max-tokens-per-run=all: the SAME corpus, same store, same
 	// layer default budget everywhere else — but this run's own override
 	// removes the cap, so the pre-flight estimate that just refused above
-	// now passes, and every section actually compiles.
-	var stdout2, stderr2 bytes.Buffer
+	// now passes. This fixture's fake claude-cli always emits an EMPTY
+	// claims array (newBudgetStopFixture's own doc comment), so no claim
+	// ever persists to digest-gate a later call against — every section is
+	// reached again, exactly like the first compile.
+	var stdout3, stderr3 bytes.Buffer
 	code = cmdCompile([]string{
 		"--service", svc, "--layer", "obligations", "--store", storePath, "--dry-run=false",
 		"--unsafe-skip-eval-gate", "--max-tokens-per-run=all",
-	}, &stdout2, &stderr2)
+	}, &stdout3, &stderr3)
 	if code != 0 {
-		t.Fatalf("second (--max-tokens-per-run=all) compile: exit %d; stdout=%q stderr=%q", code, stdout2.String(), stderr2.String())
+		t.Fatalf("override compile: exit %d; stdout=%q stderr=%q", code, stdout3.String(), stderr3.String())
 	}
-	if !strings.Contains(stdout2.String(), "sections_total:    5") {
-		t.Errorf("stdout must report sections_total: 5, got %q", stdout2.String())
+	if !strings.Contains(stdout3.String(), "sections_total:    6") {
+		t.Errorf("stdout must report sections_total: 6, got %q", stdout3.String())
 	}
-	if !strings.Contains(stdout2.String(), "sections_compiled: 5") {
-		t.Errorf("stdout must report sections_compiled: 5 (the override let every section reach the LLM), got %q", stdout2.String())
+	if !strings.Contains(stdout3.String(), "sections_compiled: 6") {
+		t.Errorf("stdout must report sections_compiled: 6, got %q", stdout3.String())
 	}
-	if strings.Contains(stdout2.String(), "budget_stopped:") {
-		t.Errorf("--max-tokens-per-run=all must not budget-stop either, got stdout=%q", stdout2.String())
+	if strings.Contains(stdout3.String(), "budget_stopped:") {
+		t.Errorf("--max-tokens-per-run=all must not budget-stop either, got stdout=%q", stdout3.String())
 	}
-	if strings.Contains(stdout2.String(), "refused:") {
-		t.Errorf("--max-tokens-per-run=all must not refuse, got stdout=%q", stdout2.String())
+	if strings.Contains(stdout3.String(), "refused:") {
+		t.Errorf("--max-tokens-per-run=all must not refuse, got stdout=%q", stdout3.String())
+	}
+}
+
+// reIngestBudgetFixture re-ingests root's now-grown corpus into the
+// existing store so a later compile's own watermark/source resolution
+// sees the new file — compile resolves sources from the live index, not a
+// fresh directory walk each call.
+func reIngestBudgetFixture(t *testing.T, storePath, root, service string) {
+	t.Helper()
+	st, err := store.Open(storePath)
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+	defer st.Close()
+	c := client.New(connector.NewLocalConnector(), st)
+	defer c.Close()
+	if _, err := c.Ingest(context.Background(), client.ServiceRef{ID: service, Path: root}); err != nil {
+		t.Fatalf("re-Ingest: %v", err)
 	}
 }
 
 // TestCmdCompile_MaxUSDPerRunOverride_UnblocksAPreflightRefusal is
-// --max-tokens-per-run's sibling proof for the dollar cap: the SAME
-// fixture's project pack budget (max_usd_per_run left at its own default
-// above, but overridden here to a value too small to pass pre-flight)
-// refuses without an override and completes with --max-usd-per-run=all.
+// --max-tokens-per-run's sibling proof for the dollar cap, updated the same
+// way by CV-41's NoPriorRun fix (see TestCmdCompile_
+// MaxTokensPerRunOverride_UnblocksAPreflightRefusal's own doc comment): the
+// SAME fixture's project pack budget (max_usd_per_run overridden here to a
+// value too small to pass pre-flight) no longer refuses this layer's very
+// first compile; a genuine re-compile over a grown corpus still does, and
+// --max-usd-per-run=all still unblocks it.
 func TestCmdCompile_MaxUSDPerRunOverride_UnblocksAPreflightRefusal(t *testing.T) {
 	storePath, root, svc := newBudgetStopFixture(t)
 	// Loosen the token cap (already proven above) and instead tighten the
@@ -717,23 +778,54 @@ budgets: {
 		"--service", svc, "--layer", "obligations", "--store", storePath, "--dry-run=false",
 		"--unsafe-skip-eval-gate",
 	}, &stdout1, &stderr1)
-	if code != 1 {
-		t.Fatalf("first (unbudgeted) compile: exit %d, want 1 (pre-flight refusal); stdout=%q stderr=%q", code, stdout1.String(), stderr1.String())
+	if code != 0 {
+		t.Fatalf("first (never-compiled) compile: exit %d, want 0 — NoPriorRun must skip the pre-flight refusal on this layer's very first compile; stdout=%q stderr=%q", code, stdout1.String(), stderr1.String())
 	}
-	if !strings.Contains(stderr1.String(), "max_usd_per_run") {
-		t.Errorf("stderr should name the exceeded dollar budget, got %q", stderr1.String())
+	if strings.Contains(stdout1.String(), "refused:") {
+		t.Errorf("a layer's first-ever compile must never refuse outright, got stdout=%q", stdout1.String())
 	}
+	if !strings.Contains(stdout1.String(), "sections_compiled: 5") {
+		t.Errorf("stdout must report all 5 sections compiled on the first attempt, got %q", stdout1.String())
+	}
+
+	// Grow the corpus by one guide — a genuine re-compile, now with a real
+	// prior compile_run on the books. The new section alone still prices
+	// over the tiny dollar budget at pre-flight.
+	sixthGuide := filepath.Join(root, "g6")
+	if err := os.MkdirAll(sixthGuide, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sixthGuide, "CLAUDE.md"), []byte("# Guide 6\n\n- Rule number 6 applies here.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	reIngestBudgetFixture(t, storePath, root, svc)
 
 	var stdout2, stderr2 bytes.Buffer
 	code = cmdCompile([]string{
 		"--service", svc, "--layer", "obligations", "--store", storePath, "--dry-run=false",
-		"--unsafe-skip-eval-gate", "--max-usd-per-run=all",
+		"--unsafe-skip-eval-gate",
 	}, &stdout2, &stderr2)
-	if code != 0 {
-		t.Fatalf("second (--max-usd-per-run=all) compile: exit %d; stdout=%q stderr=%q", code, stdout2.String(), stderr2.String())
+	if code != 1 {
+		t.Fatalf("re-compile over the grown corpus: exit %d, want 1 (pre-flight refusal — a prior compile_run now exists); stdout=%q stderr=%q", code, stdout2.String(), stderr2.String())
 	}
-	if !strings.Contains(stdout2.String(), "sections_compiled: 5") {
-		t.Errorf("stdout must report sections_compiled: 5, got %q", stdout2.String())
+	if !strings.Contains(stderr2.String(), "max_usd_per_run") {
+		t.Errorf("stderr should name the exceeded dollar budget, got %q", stderr2.String())
+	}
+
+	var stdout3, stderr3 bytes.Buffer
+	code = cmdCompile([]string{
+		"--service", svc, "--layer", "obligations", "--store", storePath, "--dry-run=false",
+		"--unsafe-skip-eval-gate", "--max-usd-per-run=all",
+	}, &stdout3, &stderr3)
+	if code != 0 {
+		t.Fatalf("override compile: exit %d; stdout=%q stderr=%q", code, stdout3.String(), stderr3.String())
+	}
+	// This fixture's fake claude-cli always emits an EMPTY claims array
+	// (newBudgetStopFixture's own doc comment), so no claim ever persists
+	// to digest-gate a later call against — every section is reached
+	// again, exactly like the first compile.
+	if !strings.Contains(stdout3.String(), "sections_compiled: 6") {
+		t.Errorf("stdout must report sections_compiled: 6, got %q", stdout3.String())
 	}
 }
 

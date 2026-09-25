@@ -66,7 +66,7 @@ type reviewClaimsBackend interface {
 func registerReviewDiff(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "review_diff",
-		Description: "Composed review verdict: diff impact, obligations, findings, architecture, spec/test coverage, plus test_impact. Reach for it when reviewing a change instead of a manual sequence. Required: service, changed_files.",
+		Description: "Composed review verdict: diff impact, obligations, findings, architecture, spec/test coverage, certifications, plus integrity/conservation when since is given. Reach for it when reviewing a change. Required: service, changed_files.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -402,6 +402,15 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
 	// CV-13 (ADR-044 §1.6): resolve since in the service's OWN indexed
 	// root — never the daemon process's cwd — and fill Input.Base/Root.
 	reviewDiffWithBase(&in, corpusRoot, since)
+	// DimIntegrity (ADR-044 §1.6, CV-12, gap-closing wave 3 item 1): the
+	// "integrity" conserve plane over exactly the base just resolved — a
+	// no-op (leaves IntegrityFindings empty) when Base is still "" or
+	// backend carries no conserveBackend capability, so DimIntegrity's own
+	// "needs a base ref" gate is the only thing a caller with no since ever
+	// sees. Must run BEFORE DimConservation is even reached (Run's own
+	// dimension order), but the ordering here is incidental — the two are
+	// independent computations over the identical base..head range.
+	applyIntegrityDimension(ctx, &in, backend, corpusRoot, service)
 	// DimConservation (ADR-044 §1.6/§2, wave 2): the same base, run
 	// through every registered conserve.Plane — a no-op (leaves
 	// ConservationSupported false) when Base is still "" or backend
