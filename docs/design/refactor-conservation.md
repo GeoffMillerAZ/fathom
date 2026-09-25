@@ -346,6 +346,72 @@ the body reappears anyway, the finding is `resurrection`/`body_resurrected`,
 `Declared: none` — a loss: the declared retirement was false. This is the
 deterministic Blindness detector.
 
+### 3.4 The reading set (the residue, Q22)
+
+Decision 7 hands Review Kit "the residue no test covers" and decision 1 lets the
+decision port order attention over it, but nothing computed the residue, so
+`refactoring.uncovered-behaviour` had no evidence to judge. The reading set is
+that computation: the changed functions in `base..head` whose behaviour no
+commit-bound passing test vouches for. It is what a reviewer still has to open
+after every plane has spoken.
+
+**Changed functions.** For each changed `.go` file that is neither a test file
+nor tagged generated (those belong to the integrity and generated planes),
+`funcSitesIn` at base and at head (the parse resurrection already does). A head
+function is `added` when no function of the same receiver and name exists at
+base in the same package directory, and `modified` when one does and the exact
+body text differs. A function whose body is unchanged but whose file moved is
+neither. Deleted functions are not in the reading set: the compiler proves their
+referents gone, and `gone:`/`retires:` rows and the resurrection plane cover the
+rest.
+
+**Classes.** Each changed function is looked up in the index at HEAD and walked
+back over resolved call edges to `Test*` functions (`callgraph.TestImpactDetail`).
+Then:
+
+- `attested`: at least one reaching test's latest run passed, is bound to a
+  commit, was made on a clean tree, and nothing in the test's file or the
+  function's file changed since that commit (`certify.reachUnchangedSince`, the
+  rule O114 gave certificates, applied without a declared target);
+- `unattested`: tests reach it, but none has such a run;
+- `unreached`: no test reaches it over resolved edges.
+
+**Order and bounds.** Items list `unreached` first, then `unattested`; within a
+class by resolved caller count descending, then symbol. The list is capped
+(default 200, `--residue-max`); the report says how many were cut. No
+percentage, ratio or threshold is computed (I43): counts and lists only, and
+Review Kit judges.
+
+**Honesty.** The reading set is `unproven`, with its missing inputs listed and
+no function classified, when the index is not at HEAD, typed packages failed, or
+the base cannot be read (I44). Changed files in a language without typed edges
+are listed as `unanalyzed` by path: a reviewer reads them, and fathom says so
+instead of implying they were checked.
+
+**Where it is served.** `fathom.conserve/v1` gains an additive `residue` object
+(`changed`, `attested`, `unattested`, `unreached`, `items`, `truncated`,
+`unanalyzed`, `missing`); it is not a plane and never changes a plane's verdict
+or `--strict`'s exit. `fathom conserve` prints the reading set after the planes.
+The review `conservation` dimension carries the counts and the first five
+`unreached` items. Review Kit's `fathom-conserve` adapter reports the residue as
+the evidence for `refactoring.uncovered-behaviour`: fail when any item is
+`unreached` or `unattested` (citing the first item's file and line), ok when
+none, not-yet-checked when the residue is unproven. That requirement stays
+advisory; its typed-judgment lane answers per item.
+
+**The decision port.** The item list is exactly the "frontier" CV-51 needs.
+Ordering it by a model is still deferred: CV-51 fires only when a real refactor's
+reading set exceeds 100 items and a corpus exists to A/B the ordering against
+the deterministic caller-count order. Asking a model whether a changed function's
+behaviour is preserved is refused (decision 8: never safety).
+
+**Kill criterion (CV-M12).** Measured on two real ranges of this repository (the
+CV-M6 dogfood range and a CV wave range) with runs attested at each range's head:
+the files the reading set names, plus the unanalyzed files, are fewer than the
+range's changed files, and a hand check of 20 items finds each one a genuinely
+changed function in the right class. If the reading set narrows nothing, or a
+hand-checked item is wrong in a way the rule cannot fix, it comes out.
+
 ## 4. Stage 4 — refactors as programs
 
 - Plan header `baseline: <sha>` pins the base for every row.

@@ -49,7 +49,7 @@ answer): CV-44** (`docs/bench/readings/cv-44-reviewkit-armed-2026-09-25.md`) sho
 mechanism a promotion decision would rely on genuinely works — a real `leadsman sound`
 against this repository's own history made the `fathom-conserve`-backed requirements fire
 `fail` on a genuine finding, not merely a clean-shaped pass — but does not itself measure
-what a reviewer still had to open, which is what this question still needs.
+what a reviewer still had to open, which is what this question still needs. **Instrument built (2026-09-25):** the reading set (design §3.4, ADR-044's 2026-09-25 amendment) names what a reviewer still has to open — every changed function no commit-bound passing test vouches for, plus changed files fathom cannot analyze. CV-M12 measures it on two real ranges; this question is answered when that reading says how many of a range's changed files the reviewer still had to open, and the owner decides whether that is enough to promote the pack.
 
 **Q23. When is a test edit a legitimate refactor and when is it a weakening?** The
 integrity check normalises renames and counts assertions; an assertion rewritten as a

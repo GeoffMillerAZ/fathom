@@ -86,10 +86,21 @@ silently skipped. Design: `docs/design/refactor-conservation.md`.
 - [x] The stanza routes refactors to `rename_impact` and `safe_delete_check` first {id: CV-46, oracle: lexical, path: CLAUDE.md, pattern: "refactor/delete: rename_impact"}
 - [x] The pre-push hook runs `fathom conserve --since` as a warning {id: CV-47, oracle: lexical, path: lefthook.yml, pattern: "fathom conserve"}
 
+## I. The reading set (design §3.4, Q22)
+
+- [x] Changed functions over base..head are found per changed non-test, non-generated Go file: added, modified by exact body text, and a moved-but-unchanged or deleted function is neither {id: CV-60, symbol: ChangedFunctions, package: internal/conserve, reachable_from: TestChangedFunctions_AddedModifiedMovedDeleted}
+- [x] Each changed function is classed attested, unattested or unreached from its resolved-edge test reach and those tests' commit-bound runs {id: CV-61, symbol: Residue, package: internal/conserve, reachable_from: TestResidue_ClassifiesChangedFunctions}
+- [x] The reading set is unproven, listing what was missing and classing nothing, when the index is not at HEAD, typed packages failed or the base is unreadable; changed files without typed edges are listed unanalyzed (I44) {id: CV-62, symbol: Residue, package: internal/conserve, reachable_from: TestResidue_UnprovenWhenIndexNotAtHead}
+- [x] Items are ordered unreached then unattested, by resolved caller count then symbol, capped with the cut counted; no percentage is computed (I43) {id: CV-63, symbol: Residue, package: internal/conserve, reachable_from: TestResidue_OrderAndCap}
+- [x] `fathom.conserve/v1` carries an additive `residue` object and `fathom conserve` prints the reading set after the planes, without changing any plane verdict or `--strict`'s exit {id: CV-64, symbol: printConserveResidue, package: cmd/fathom, reachable_from: TestConserve_ResidueInJSONAndText}
+- [x] The review `conservation` dimension carries the reading set's counts and first five unreached items {id: CV-65, symbol: runConservation, package: internal/analysis/review, reachable_from: TestReview_ConservationDimensionCarriesResidue}
+- [ ] (op) CV-66: Review Kit's `fathom-conserve` adapter reports the residue as the evidence for `refactoring.uncovered-behaviour` (fail citing the first item, ok when empty, not-yet-checked when unproven) (platform-engineering) {id: CV-66, skip: "cross-repo: platform-engineering review-kit"}
+- [ ] (op) CV-M12: on the CV-M6 dogfood range and one CV wave range, with runs attested at each head, the reading set's files plus unanalyzed files are fewer than the changed files, and a hand check of 20 items finds each a genuinely changed function in the right class; else the reading set comes out {id: CV-M12, skip: "operator measurement: docs/bench/readings/cv-m12-reading-set"}
+
 ## Deferred (trigger on file)
 
 - [-] A cross-language port ledger: a port is complete when the source inventory is closed in the target and behaviour certificates are live against both {id: CV-50, disposition: deferred, reason: "no named port consumer", trigger: "a fleet service ports to another language (F22)"}
-- [-] Decision-port ordering of a very large refactor frontier after the deterministic type-check split {id: CV-51, disposition: deferred, reason: "needs a real frontier and its own A/B", trigger: "a refactor frontier over 100 sites and a corpus to A/B it (F23)"}
+- [-] Decision-port ordering of a very large refactor frontier after the deterministic type-check split {id: CV-51, disposition: deferred, reason: "needs a real frontier and its own A/B", trigger: "a real refactor whose reading set (design §3.4, CV-M12 reports its size) exceeds 100 items, and a corpus to A/B a model ordering against the deterministic caller-count order (F23)"}
 - [-] A same-concept question for renames in languages without typed edges {id: CV-52, disposition: deferred, reason: "must follow measured file-tier precision", trigger: "CV-M7 published and a JavaScript or Python rename corpus exists (F23)"}
 - [-] Architectural decisions compiled into dependency rules the call graph refutes {id: CV-53, disposition: deferred, reason: "no layer without a consumer (TX-4)", trigger: "adr-rules compiled in two or more repositories and one asks for enforcement (F24)"}
 - [-] Data, schema and infrastructure refactors: store formats, SQL DDL, Terraform moved blocks, Kubernetes apiVersion moves {id: CV-54, disposition: deferred, reason: "different conservation law", trigger: "a named consumer's migration (F25)"}
