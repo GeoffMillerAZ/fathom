@@ -10,6 +10,8 @@ import (
 	"encoding/json"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -17,9 +19,23 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/impact"
 	"github.com/geoffmilleraz/fathom/internal/analysis/review"
 	"github.com/geoffmilleraz/fathom/internal/certify"
+	"github.com/geoffmilleraz/fathom/internal/conserve"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/projectrules"
+	"github.com/geoffmilleraz/fathom/internal/store"
 )
+
+// conserveBackend is the optional backend capability DimConservation's
+// review_diff wiring (ADR-044 §1.6/§2, wave 2) uses to build a real
+// internal/conserve.Input — the same optional-capability convention
+// certificationsBackend/obligationsBackend already use. *pkg/client.
+// Client implements it via its own Store() accessor; a minimal test fake
+// that omits it simply leaves the conservation dimension unsupported,
+// exactly like an Evidence without CertificationEvidence leaves
+// certifications unsupported.
+type conserveBackend interface {
+	Store() store.Store
+}
 
 // reviewClaimsBackend is the optional backend capability review_diff's
 // findings bridge (C2-1, FT-7's pre-armed trigger) uses to persist review
@@ -237,6 +253,75 @@ func reviewDiffWithBase(in *review.Input, root, since string) {
 	in.Base = strings.TrimSpace(string(out))
 }
 
+// applyConservationDimension fills in.ConservationSupported/
+// ConservationPlanes when in.Base is set AND backend carries the optional
+// conserveBackend capability — a no-op otherwise (DimConservation's own
+// "needs a base ref"/"conservation input could not be built" gates cover
+// both cases). Builds a real internal/conserve.Input via conserve.NewInput
+// against corpusRoot (the service's own indexed root, resolved by the
+// caller via ServiceMeta — never the daemon process's cwd) and runs it
+// through conserve.Run(ctx, in, conserve.Planes()), the exact composition
+// `fathom conserve`/`fathom review --since` already use (cmd/fathom/
+// reviewconservation.go's own twin of this function). Fails open: an
+// error building the conserve.Input (an unreadable corpus, since Base is
+// by construction already resolvable) leaves ConservationSupported false
+// rather than failing the whole review_diff call.
+func applyConservationDimension(ctx context.Context, in *review.Input, backend QueryInterface, corpusRoot, service string) {
+	if in == nil || in.Base == "" || corpusRoot == "" {
+		return
+	}
+	cb, ok := backend.(conserveBackend)
+	if !ok {
+		return
+	}
+	cin, err := conserve.NewInput(ctx, corpusRoot, in.Base, cb.Store(), service, discoverConservePlanPaths(corpusRoot))
+	if err != nil {
+		return
+	}
+	in.ConservationSupported = true
+	rep := conserve.Run(ctx, cin, conserve.Planes())
+	in.ConservationPlanes = conservationPlaneSummaries(rep.Planes)
+}
+
+// conservationPlaneSummaries flattens internal/conserve.PlaneReport into
+// review.ConservationPlaneSummary 1:1 — cmd/fathom/reviewconservation.go
+// carries its own identical copy (review.Input's own doc comment on
+// ConservationPlanes names this exact conversion; review never imports
+// internal/conserve, so both callers do it themselves, the same
+// intentional duplication CertificationRecord's two builders already
+// have).
+func conservationPlaneSummaries(planes []conserve.PlaneReport) []review.ConservationPlaneSummary {
+	out := make([]review.ConservationPlaneSummary, 0, len(planes))
+	for _, p := range planes {
+		findings := make([]review.ConservationFinding, 0, len(p.Findings))
+		for _, f := range p.Findings {
+			findings = append(findings, review.ConservationFinding{
+				Plane: f.Plane, Kind: f.Kind, Key: f.Key, Detail: f.Detail,
+				Base: f.Base, Head: f.Head, Declared: f.Declared, Remedy: f.Remedy,
+			})
+		}
+		out = append(out, review.ConservationPlaneSummary{
+			Plane: p.Plane, Verdict: p.Verdict, Missing: p.Missing, Findings: findings,
+		})
+	}
+	return out
+}
+
+// discoverConservePlanPaths returns every docs/plans/*.md at root,
+// non-recursive — cmd/fathom/conserve.go's discoverPlanPaths' own twin
+// (docs/plans/README.md: "both the pre-push verify command and CI walk
+// only the top level of docs/plans/"). A glob error or an absent
+// directory yields an empty slice, never a failure: --since still runs,
+// just with no prior declarations to excuse anything.
+func discoverConservePlanPaths(root string) []string {
+	matches, err := filepath.Glob(filepath.Join(root, "docs", "plans", "*.md"))
+	if err != nil {
+		return nil
+	}
+	sort.Strings(matches)
+	return matches
+}
+
 // buildReviewInput does every I/O review.Run itself never performs:
 // ListAllSymbols/TypedEdges for impact, per-changed-file Obligations for the
 // obligations dimension, ServiceMeta + internal/projectrules.ResolveRules
@@ -317,6 +402,11 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
 	// CV-13 (ADR-044 §1.6): resolve since in the service's OWN indexed
 	// root — never the daemon process's cwd — and fill Input.Base/Root.
 	reviewDiffWithBase(&in, corpusRoot, since)
+	// DimConservation (ADR-044 §1.6/§2, wave 2): the same base, run
+	// through every registered conserve.Plane — a no-op (leaves
+	// ConservationSupported false) when Base is still "" or backend
+	// carries no conserveBackend capability.
+	applyConservationDimension(ctx, &in, backend, corpusRoot, service)
 	rules, source, deny, checked, reason, resolveErr := projectrules.ResolveRules(corpusRoot, nil, false)
 	if resolveErr != nil {
 		return review.Input{}, nil, &rpcError{Code: ErrCodeInternal, Message: "review_diff: project rules: " + resolveErr.Error()}

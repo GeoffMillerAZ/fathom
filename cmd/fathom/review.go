@@ -586,6 +586,10 @@ func buildReviewInputFromClient(ctx context.Context, c *client.Client, st store.
 	// when Base is still "", so DimIntegrity's own "needs a base ref" gate
 	// is the only thing a caller with no --since ever sees.
 	applyIntegrityDimension(ctx, &in, gitRunner, corpusRoot, st, service)
+	// DimConservation (ADR-044 §1.6/§2, wave 2): the same base just
+	// resolved, run through every registered conserve.Plane — a no-op
+	// (leaves ConservationSupported false) when Base is still "".
+	applyConservationDimension(ctx, &in, st, corpusRoot, service)
 	rules, source, deny, checked, reason, rerr := projectrules.ResolveRules(corpusRoot, nil, false)
 	if rerr != nil {
 		return review.Input{}, nil, fmt.Errorf("project rules: %w", rerr)

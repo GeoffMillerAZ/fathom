@@ -506,6 +506,16 @@ func (c *Client) ServiceWatermark(ctx context.Context, service string) (string, 
 	return c.conn.Watermark(ctx, svcRef)
 }
 
+// Store returns the underlying store.Store Client was constructed over —
+// an escape hatch for a caller that needs a capability Client itself does
+// not re-export (ADR-044 wave 2: internal/mcp's review_diff wiring builds
+// an internal/conserve.Input, whose Store field wants the real
+// store.Store interface, not Client's own curated subset of it). Callers
+// outside pkg/client should prefer Client's own methods when one exists;
+// this exists for the packages (internal/mcp, cmd/fathom) that already
+// import internal/store directly for other reasons.
+func (c *Client) Store() store.Store { return c.st }
+
 // StoreWatermark returns the STORE's freshness token for serviceID: the git
 // commit recorded at the last ingest joined to that ingest's timestamp.
 //
