@@ -675,6 +675,46 @@ reading for why. Same discipline as the `references` row above: the honest
 number plus the reason, not a filter invented to produce one that looks
 better.
 
+### Refactor-conservation kill criteria (vision 34, ADR-044, 2026-09-24)
+
+`docs/bench/readings/cv-m1-guards-pilot-8-replay-2026-09-24.md`: replaying
+guards-pilot-8's i28 cells (both trials — inverted assertions, deleted
+helper — as real git ranges against the recorded subject commit) and the
+i36 self-check as a reconstructed range both come back exactly as design
+§1.2/§1.3 says they should — both i28 trials `deleted` (not merely
+`renamed`: the body changed too), both i36 rows `self-declared: skip`.
+**CV-M1 passes.**
+
+`docs/bench/readings/cv-m2-guarded-test-commit-replay-2026-09-24.md`: the
+last 50 commits on this repo's own history touching a guarded test file —
+three days of this very program's own development, the hardest population
+to stay quiet on — produce 9 `edited` (informational) findings and **zero**
+true loss-kind flags. **CV-M2 passes, 0% against a 10% bar.**
+
+`docs/bench/readings/cv-m4-apidiff-calibration-2026-09-24.md`: 38 of the
+requested 50 consecutive release pairs (cobra, cli/cli, prometheus; time
+budget, not method, capped the count) against `apidiff`. Precision 0.615,
+recall 0.941 — both under the 0.95 bar, precision badly. Three clean
+disagreement classes: `interface{}`↔`any` modernization (fathom's textual
+signature diff is not type-identity-aware — the dominant false-positive
+driver), Go's additive-struct-is-compatible rule (fathom flags any textual
+struct diff, apidiff only a narrowing one), and a `type X T` → `type X = T`
+alias change (invisible to a textual diff, apidiff's largest incompatible
+change in the sample — the sole false negative). **CV-M4 fails and fires
+ADR-044's own named revisit trigger** (amendment below).
+
+`docs/bench/readings/cv-m5-blindness-replay-2026-09-24.md`: seeded copies
+of fathom's own two migrations (DuckDB removal ADR-025, vector withdrawal
+ADR-041) both flag correctly at the design's 5-statement floor. The vector
+migration's genuine range is clean. The DuckDB migration's genuine range —
+untouched, nothing seeded — produces 24 `body_resurrected` findings: real
+code that `DuckStore` and `SQLiteStore` had independently, convergently
+implemented for years, mistaken for a copy the instant one twin's file is
+deleted, because the check never asks whether the MATCHING head function
+is itself new in the diff. **CV-M5 fails on one of its two migrations** —
+a real false-positive class in the resurrection detector, not a fluke of
+this replay.
+
 ## The strengths matrix (vision 27, ADR-033)
 
 Every claim fathom makes, as a row: what it is compared against, the oracle
