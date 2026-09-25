@@ -18,7 +18,12 @@ type-alias false negative — `docs/bench/readings/cv-m4-apidiff-calibration-202
 §3.3's resurrection detector over-fires on a genuine large, unseeded removal
 (CV-M5, `docs/bench/readings/cv-m5-blindness-replay-2026-09-24.md`); §7's
 decision-port sites and §7a's cross-repo test-kit/Review Kit rows remain
-`(op)`/unclaimed in the plan.
+`(op)`/unclaimed in the plan. **CV-M6 (the dogfood refactor program)
+passes**, but only after fixing a real gap it found: `fathom verify
+--store` had never wired a `verify.GoneEvidence` adapter, so a `gone:` row
+(§3.1) could never be proven true or false via the CLI, only ever
+`Unknown` — now fixed (`cmd/fathom/verify_gone_evidence.go`,
+`docs/bench/readings/cv-m6-dogfood-2026-09-24.md`).
 
 ## 0. Vocabulary and the change range
 
