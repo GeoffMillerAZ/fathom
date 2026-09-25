@@ -718,14 +718,15 @@ ADR-044's own named revisit trigger** (amendment below).
 `docs/bench/readings/cv-m5-blindness-replay-2026-09-24.md`: seeded copies
 of fathom's own two migrations (DuckDB removal ADR-025, vector withdrawal
 ADR-041) both flag correctly at the design's 5-statement floor. The vector
-migration's genuine range is clean. The DuckDB migration's genuine range —
-untouched, nothing seeded — produces 24 `body_resurrected` findings: real
-code that `DuckStore` and `SQLiteStore` had independently, convergently
-implemented for years, mistaken for a copy the instant one twin's file is
-deleted, because the check never asks whether the MATCHING head function
-is itself new in the diff. **CV-M5 fails on one of its two migrations** —
-a real false-positive class in the resurrection detector, not a fluke of
-this replay.
+migration's genuine range was always clean. The DuckDB migration's genuine
+range — untouched, nothing seeded — first produced 24 `body_resurrected`
+findings: real code that `DuckStore` and `SQLiteStore` had independently,
+convergently implemented for years, mistaken for a copy the instant one
+twin's file is deleted, because the check never asked whether the MATCHING
+head function was itself new in the diff. **Fixed and re-run (2026-09-24
+update): `conserve.Resurrected` now requires a matching head function to be
+itself new-or-changed in the range, and CV-M5 passes 2/2** — 0 findings on
+both genuine ranges, both seeded copies still flag.
 
 ## The strengths matrix (vision 27, ADR-033)
 

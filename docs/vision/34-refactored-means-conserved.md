@@ -12,12 +12,14 @@ conservation ledger, absence/anti-Blindness) fully proven; stage 4
 conserve --since` as a warning (CV-47); `review --since`/`review_diff`'s
 `conservation` dimension is actually wired (CV-24); the SCIP import bug
 that kept TypeScript/Python edges out of fathom's own symbol space is
-fixed (O115). Open: CV-M4 fired this vision's own §6 revisit trigger — the
-Go surface delta is a textual diff, not type-identity-aware, measured
+fixed (O115); CV-M5's own false-positive class in `conserve.Resurrected`
+(a genuine large removal over-firing when a long-lived, independently-
+written twin shares its body hash) is fixed and both migrations now replay
+clean (`docs/bench/readings/cv-m5-blindness-replay-2026-09-24.md`'s
+2026-09-24 update). Open: CV-M4 fired this vision's own §6 revisit trigger
+— the Go surface delta is a textual diff, not type-identity-aware, measured
 0.615 precision / 0.941 recall against the 0.95/0.95 bar
-(`docs/bench/readings/cv-m4-apidiff-calibration-2026-09-24.md`); CV-M5
-found `conserve.Resurrected` over-fires on a genuine large removal
-(`docs/bench/readings/cv-m5-blindness-replay-2026-09-24.md`); the decision
+(`docs/bench/readings/cv-m4-apidiff-calibration-2026-09-24.md`); the decision
 port's narrow role (§3, decision 8) and the cross-repo test-kit/Review Kit
 rows stay `(op)`/unclaimed in the plan.
 

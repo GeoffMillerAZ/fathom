@@ -5,9 +5,26 @@ package conserve
 // detector. A function present at base in a changed Go file and gone from
 // that file at head, whose body hash — with at least 5 statements,
 // clone.FuncBodyHash's own statement count — matches a function present
-// in a changed file at head under ANOTHER name, is a finding on the
-// "resurrection" plane (ADR-044 §0's plane list; distinct from "absence",
+// in a changed file at head under ANOTHER name that is ITSELF new or
+// changed in the range (CV-M5, below), is a finding on the "resurrection"
+// plane (ADR-044 §0's plane list; distinct from "absence",
 // deprecatedcallers.go, even though both belong to this same stage).
+//
+// CV-M5 (docs/bench/readings/cv-m5-blindness-replay-2026-09-24.md): the
+// match against head used to consider ANY function in a changed file,
+// merely because its FILE was in the diff, without asking whether that
+// specific head function was itself touched by the change. The real
+// ADR-025 DuckDB removal produced 24 false body_resurrected findings this
+// way: DuckStore and SQLiteStore had implemented the same Store interface
+// with naturally convergent CRUD bodies for years, and sqlite.go was a
+// changed file for unrelated reasons, so deleting DuckStore alone made
+// every one of its untouched twin's methods look "resurrected." A head
+// function is now a candidate ONLY when it is itself new in the range (no
+// function of that name existed at base, in the same file) or its body
+// hash changed in the range (a function of that name existed at base but
+// with different content) — a function whose identical body already
+// existed at base under its own name was never touched by this change and
+// can never be "the reappearance" of something else.
 //
 // This is exactly the failure vision 34 §2 names as fathom's reason to
 // exist here: "SWE Refactor Bench (arXiv 2608.23564): 28 of 520 runs pass
@@ -84,7 +101,7 @@ type funcSite struct {
 func Resurrected(in Input) ([]Finding, []string) {
 	var missing []string
 	var gone []funcSite // base functions absent from their OWN file at head
-	var head []funcSite // every function present in a changed file at head
+	var head []funcSite // functions present in a changed file at head that are THEMSELVES new or changed in the range (CV-M5)
 
 	for _, path := range in.ChangedFiles {
 		if !strings.HasSuffix(path, ".go") {
@@ -95,23 +112,53 @@ func Resurrected(in Input) ([]Finding, []string) {
 			missing = append(missing, fmt.Sprintf("%s: reading head content: %v", path, err))
 			continue
 		}
-		headFuncs := map[string]bool{}
-		if headOK {
-			for _, f := range funcSitesIn(path, headBody) {
-				head = append(head, f)
-				headFuncs[f.name] = true
-			}
-		}
 
 		baseBody, baseOK, err := in.BaseFile(path)
 		if err != nil {
 			missing = append(missing, fmt.Sprintf("%s: reading base content: %v", path, err))
 			continue
 		}
+
+		// baseByName indexes this SAME file's base functions by name — the
+		// only base content Resurrected ever reads (design §0: cost scales
+		// with the change, never a full base re-ingest) — so a head
+		// function's own history can only be checked within its own file.
+		var baseFuncs []funcSite
+		baseByName := map[string]funcSite{}
+		if baseOK {
+			baseFuncs = funcSitesIn(path, baseBody)
+			for _, f := range baseFuncs {
+				baseByName[f.name] = f
+			}
+		}
+
+		headFuncs := map[string]bool{}
+		if headOK {
+			for _, f := range funcSitesIn(path, headBody) {
+				headFuncs[f.name] = true
+				// CV-M5 (docs/bench/readings/cv-m5-blindness-replay-
+				// 2026-09-24.md): a head function can only be a
+				// resurrection TARGET when it is itself new in the range
+				// (no function of this name existed at base, in this same
+				// file) or its body hash changed in the range (a function
+				// of this name existed but with different content). A
+				// function whose identical body already existed at base
+				// under this exact name was never touched by this change
+				// — two long-lived, independently-written implementations
+				// (e.g. DuckStore and SQLiteStore, ADR-025) can converge
+				// on the same body for years before one twin is deleted,
+				// and the survivor's untouched twin must never be treated
+				// as "the deleted one reappeared here."
+				if bf, wasAtBase := baseByName[f.name]; !wasAtBase || bf.hash != f.hash {
+					head = append(head, f)
+				}
+			}
+		}
+
 		if !baseOK {
 			continue // the file itself is new — nothing at base to be gone
 		}
-		for _, f := range funcSitesIn(path, baseBody) {
+		for _, f := range baseFuncs {
 			if !headFuncs[f.name] {
 				gone = append(gone, f)
 			}

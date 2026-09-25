@@ -210,8 +210,179 @@ func TestImportIndex_MapsOccurrencesToTypedEdges(t *testing.T) {
 	if pkgEdgeCount["main"] != 2 {
 		t.Errorf("package main edges = %d, want 2", pkgEdgeCount["main"])
 	}
-	if _, ok := pkgEdgeCount["math"]; ok {
-		t.Errorf("package math should contribute no edges (nothing calls FROM it), got %d", pkgEdgeCount["math"])
+	// O116 (.fathom/observations.md): "math" has a mapped definition (add)
+	// but contributes no edges of its own (nothing in this fixture calls
+	// FROM it) — it must still be LISTED, with zero edges, not absent. A
+	// package present in Import.Packages is exactly what tells a caller
+	// "this import knows about this package's edges, and they are these";
+	// absence must never be how "the current count is zero" is spelled, or
+	// a re-import that corrects a package from some edges down to none can
+	// never clear the stale rows an earlier import left behind (see
+	// TestImportIndex_O116_ReimportClearsPackageThatDropsToZeroEdges).
+	mathEdges, ok := pkgEdgeCount["math"]
+	if !ok {
+		t.Errorf("package math is absent from Import.Packages, want present with 0 edges (O116)")
+	} else if mathEdges != 0 {
+		t.Errorf("package math edges = %d, want 0", mathEdges)
+	}
+}
+
+// TestImportIndex_O116_ZeroEdgePackageStillListed is O116's own regression
+// test (.fathom/observations.md): a package that has at least one mapped
+// definition in this import must appear in Import.Packages even when it
+// contributes zero edges — "math" here, whose sole definition (add) is
+// never called FROM anywhere in this fixture. Before the fix,
+// Import.Packages only ever listed the keys of the internal edgesByPkg map
+// (populated only when at least one edge landed in a package), so a
+// package genuinely part of this import's package set but computing to
+// zero edges this run was indistinguishable, to every caller, from a
+// package the import never touched at all.
+func TestImportIndex_O116_ZeroEdgePackageStillListed(t *testing.T) {
+	raw := loadFixtureIndexBytes(t)
+	extracted := extractFixtureNodes(t)
+
+	imp, err := ImportIndex(fixtureService, raw, extracted)
+	if err != nil {
+		t.Fatalf("ImportIndex: %v", err)
+	}
+
+	var mathPkg *PackageEdges
+	for i := range imp.Packages {
+		if imp.Packages[i].Package == "math" {
+			mathPkg = &imp.Packages[i]
+		}
+	}
+	if mathPkg == nil {
+		t.Fatalf(`Import.Packages has no entry for "math" — a package with a mapped definition and zero edges must still be listed (O116)`)
+	}
+	if len(mathPkg.Edges) != 0 {
+		t.Errorf("package math edges = %d, want 0", len(mathPkg.Edges))
+	}
+}
+
+// TestImportIndex_O116_ReimportClearsPackageThatDropsToZeroEdges reproduces
+// O116's exact shape end to end, against BOTH store backends
+// (.fathom/observations.md): a full import writes 2 edges FROM
+// Greeter.greet under package "greeter"; a later, CORRECTED re-import of
+// the same document — its definitions (Greeter, Greeter.greet) still
+// mapped, still "in the import's package set", but every REFERENCE
+// occurrence gone, so it computes to zero edges this run — must still be
+// looped through store.PutTypedEdges (because it is still present in
+// Import.Packages, now with an empty Edges slice per the fix above),
+// clearing "greeter"'s stale rows rather than leaving the first import's
+// now-wrong edges standing forever. store.PutTypedEdges itself already
+// clears a package's rows correctly the instant it is CALLED with an empty
+// slice (internal/store/contract_test.go's
+// "typed_edges_roundtrip_and_replace") — O116's gap was entirely that
+// nothing ever called it for this package once it dropped to zero edges.
+func TestImportIndex_O116_ReimportClearsPackageThatDropsToZeroEdges(t *testing.T) {
+	backends := []struct {
+		name  string
+		store func(t *testing.T) store.Store
+	}{
+		{"memory", func(t *testing.T) store.Store { return store.NewMemoryStore() }},
+		{"sqlite", func(t *testing.T) store.Store {
+			s, err := store.NewSQLiteStore("")
+			if err != nil {
+				t.Fatalf("NewSQLiteStore: %v", err)
+			}
+			t.Cleanup(func() { _ = s.Close() })
+			return s
+		}},
+	}
+
+	for _, b := range backends {
+		t.Run(b.name, func(t *testing.T) {
+			ctx := context.Background()
+			st := b.store(t)
+			nodes := extractFixtureNodes(t)
+
+			full, err := ImportIndex(fixtureService, loadFixtureIndexBytes(t), nodes)
+			if err != nil {
+				t.Fatalf("ImportIndex(full): %v", err)
+			}
+			for _, pkg := range full.Packages {
+				if err := st.PutTypedEdges(ctx, fixtureService, pkg.Package, pkg.Edges); err != nil {
+					t.Fatalf("PutTypedEdges(%s): %v", pkg.Package, err)
+				}
+			}
+
+			greeterKey := core.SymbolKey(fixtureService, "greeter", "Greeter.greet")
+			before, err := st.TypedEdges(ctx, fixtureService)
+			if err != nil {
+				t.Fatalf("TypedEdges: %v", err)
+			}
+			var beforeFromGreeter int
+			for _, e := range before {
+				if e.FromSymbol == greeterKey {
+					beforeFromGreeter++
+				}
+			}
+			if beforeFromGreeter != 2 {
+				t.Fatalf("edges FROM %q before reimport = %d, want 2 (test setup)", greeterKey, beforeFromGreeter)
+			}
+
+			// The "corrected" re-import: greeter.ts's definitions survive
+			// unchanged (still mapped), but every reference occurrence is
+			// gone — the shape a stricter mapper produces when it decides
+			// every one of Greeter.greet's former occurrences was actually
+			// unmapped or external, the same kind of correction O115's real
+			// fix made in production for some packages.
+			greeterIdx := BuildTSFixtureIndex()
+			greeterDoc := greeterIdx.Documents[1]
+			if greeterDoc.RelativePath != "greeter.ts" {
+				t.Fatalf("test setup: Documents[1] = %q, want greeter.ts", greeterDoc.RelativePath)
+			}
+			var defsOnly []*scippb.Occurrence
+			for _, occ := range greeterDoc.Occurrences {
+				if isDefinition(occ) {
+					defsOnly = append(defsOnly, occ)
+				}
+			}
+			greeterIdx.Documents = []*scippb.Document{{
+				RelativePath: greeterDoc.RelativePath,
+				Language:     greeterDoc.Language,
+				Occurrences:  defsOnly,
+				Symbols:      greeterDoc.Symbols,
+			}}
+			data, err := proto.Marshal(greeterIdx)
+			if err != nil {
+				t.Fatalf("marshal corrected greeter index: %v", err)
+			}
+			corrected, err := ImportIndex(fixtureService, data, nodes)
+			if err != nil {
+				t.Fatalf("ImportIndex(corrected): %v", err)
+			}
+
+			var greeterPkg *PackageEdges
+			for i := range corrected.Packages {
+				if corrected.Packages[i].Package == "greeter" {
+					greeterPkg = &corrected.Packages[i]
+				}
+			}
+			if greeterPkg == nil {
+				t.Fatalf(`corrected import's Packages has no entry for "greeter" — O116 regressed (a package with mapped definitions and zero edges must still be listed)`)
+			}
+			if len(greeterPkg.Edges) != 0 {
+				t.Fatalf("corrected greeter edges = %d, want 0 (test setup)", len(greeterPkg.Edges))
+			}
+
+			for _, pkg := range corrected.Packages {
+				if err := st.PutTypedEdges(ctx, fixtureService, pkg.Package, pkg.Edges); err != nil {
+					t.Fatalf("PutTypedEdges(%s): %v", pkg.Package, err)
+				}
+			}
+
+			after, err := st.TypedEdges(ctx, fixtureService)
+			if err != nil {
+				t.Fatalf("TypedEdges after corrected reimport: %v", err)
+			}
+			for _, e := range after {
+				if e.FromSymbol == greeterKey {
+					t.Errorf("stale edge from %q survived the corrected reimport: %+v (O116)", greeterKey, e)
+				}
+			}
+		})
 	}
 }
 
