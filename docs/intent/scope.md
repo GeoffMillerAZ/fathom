@@ -38,6 +38,10 @@ every headless cell paid a removable ToolSearch turn (O32). Done when the next L
 borrows every grep/none cell by key, re-runs only fathom's, and records payload ≤ 1.0× or
 why not, after BP-41..43 land. Publication stays an operator decision (Q4, F2).
 
+**G13. The Observatory console closes.** Done when: `fathom plans status` shows
+`docs/plans/observatory-console.md` with 0 open non-op rows, UX-M1 and UX-M2 are measured
+PASS, and every contribution row names its app-kit delivery (vision 35, ADR-045).
+
 **G10. Every claim fathom makes is on a ledger, against its alternative (ADR-033).** Waves
 1–5 shipped the matrix, and pilots for M1/M3/M4/M5/M6 landed on
 `docs/bench/scenarios-ledger.jsonl`. **Voided 2026-09-13 by O41 (see G11):** the wired arm
