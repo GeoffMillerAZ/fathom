@@ -1,0 +1,166 @@
+{
+ "tools": {
+  "fathom_commit": "d41cdf1441d284c96e8517c10bcf581bb14811cb (pushclone HEAD; reading set incl. 1d7598e1 fixes)",
+  "surveyor": "pe-land/kits/test-kit ./cmd/surveyor",
+  "go": "go1.26.3 darwin/arm64"
+ },
+ "ranges": {
+  "r1": {
+   "base": "c75b70e8",
+   "head": "4957b916",
+   "attest_run": {
+    "cmd": "go test -json ./... (Taskfile tests:attest shape)",
+    "test_events": {
+     "pass": 6952,
+     "fail": 0,
+     "skip": 13
+    },
+    "failed": [],
+    "envelope_meta": {
+     "suite": {
+      "component": "fathom",
+      "name": "unit",
+      "class": "unit"
+     },
+     "key": "",
+     "verdict": "pass",
+     "totals": {
+      "run": 6965,
+      "passed": 6952,
+      "failed": 0,
+      "skipped": 13,
+      "flaked": 0
+     },
+     "timing": {
+      "startedAt": "2026-09-25T09:05:38Z",
+      "wallClock": "0s"
+     },
+     "env": {
+      "toolchainDigest": "",
+      "runnerClass": "",
+      "arch": "",
+      "os": "",
+      "commit": "4957b9162c018851e3538042247b6055151cf199"
+     },
+     "artifacts": [],
+     "flake": {
+      "maxRetries": 0,
+      "quarantineAfter": 0,
+      "budget": ""
+     }
+    }
+   },
+   "coverage_run": {
+    "cmd": "go test -json -coverpkg=./... -coverprofile ./...",
+    "test_events": {
+     "pass": 6951,
+     "fail": 1,
+     "skip": 13
+    },
+    "failed": [
+     "github.com/geoffmilleraz/fathom/internal/fusion.TestTypedEdges_PerformanceGate"
+    ]
+   },
+   "residue_from_fathom_conserve_json": {
+    "changed": 1,
+    "attested": 1,
+    "unattested": 0,
+    "unreached": 0,
+    "truncated": 0,
+    "missing": []
+   },
+   "unanalyzed": [
+    "CHANGELOG.md",
+    "docs/plans/retire-unused-analyzers.md",
+    "docs/plans/review-verb.md"
+   ]
+  },
+  "r2": {
+   "base": "5afeee42",
+   "head": "78e508d3",
+   "attest_run": {
+    "cmd": "go test -json ./... (Taskfile tests:attest shape)",
+    "test_events": {
+     "pass": 6987,
+     "fail": 0,
+     "skip": 13
+    },
+    "failed": [],
+    "envelope_meta": {
+     "suite": {
+      "component": "fathom",
+      "name": "unit",
+      "class": "unit"
+     },
+     "key": "",
+     "verdict": "pass",
+     "totals": {
+      "run": 7000,
+      "passed": 6987,
+      "failed": 0,
+      "skipped": 13,
+      "flaked": 0
+     },
+     "timing": {
+      "startedAt": "2026-09-25T09:08:36Z",
+      "wallClock": "0s"
+     },
+     "env": {
+      "toolchainDigest": "",
+      "runnerClass": "",
+      "arch": "",
+      "os": "",
+      "commit": "78e508d355ed9a1c2590673009e3037e897312d2"
+     },
+     "artifacts": [],
+     "flake": {
+      "maxRetries": 0,
+      "quarantineAfter": 0,
+      "budget": ""
+     }
+    }
+   },
+   "coverage_run": {
+    "cmd": "go test -json -coverpkg=./... -coverprofile ./...",
+    "test_events": {
+     "pass": 6987,
+     "fail": 0,
+     "skip": 13
+    },
+    "failed": []
+   },
+   "residue_from_fathom_conserve_json": {
+    "changed": 31,
+    "attested": 31,
+    "unattested": 0,
+    "unreached": 0,
+    "truncated": 0,
+    "missing": []
+   },
+   "unanalyzed": [
+    ".fathom/observations.md",
+    ".reviewkit/catalog/standard.cue",
+    ".reviewkit/config.cue",
+    ".reviewkit/dispositions/refactoring-conservation.cue",
+    ".reviewkit/packs/refactoring-conservation/pack.cue",
+    ".reviewkit/packs/testing-certifications/pack.cue",
+    "ADR.md",
+    "CHANGELOG.md",
+    "CODEOWNERS",
+    "docs/bench/README.md",
+    "docs/bench/readings/cv-44-reviewkit-armed-2026-09-25.md",
+    "docs/bench/readings/cv-m4-apidiff-full50-2026-09-24.md",
+    "docs/bench/readings/cv-m5-blindness-replay-2026-09-24.md",
+    "docs/bench/readings/cv-m8-fleet-recompile-2026-09-25.md",
+    "docs/design/refactor-conservation.md",
+    "docs/intent/questions.md",
+    "docs/plans/refactor-conservation.md",
+    "docs/plans/test-certifications.md",
+    "docs/usage.md",
+    "docs/use-cases/refactor-conservation.md",
+    "docs/vision/34-refactored-means-conserved.md",
+    "docs/vision/README.md"
+   ]
+  }
+ }
+}

@@ -1,0 +1,327 @@
+class	change	symbol	file	line	cover_pct	reach_tests	resolved_callers	attesting_test	via_dispatch
+attested	added	BrewCUE	internal/adopt/cue.go	13	100.0	172	8	conjure::internal/adopt/adopt.TestScannerMetadataCannotIntroduceDeclarations	False
+attested	added	DefaultsCUE	internal/adopt/cue.go	18	100.0	165	5	conjure::internal/adopt/adopt.TestScannerMetadataCannotIntroduceDeclarations	False
+attested	added	FileCUE	internal/adopt/cue.go	23	100.0	167	8	conjure::internal/adopt/adopt_test.TestAdoptionRollbackCleansNewDirectories	False
+attested	added	emitBrewCUE	internal/adopt/cue.go	28	88.9	172	1	conjure::internal/adopt/adopt.TestScannerMetadataCannotIntroduceDeclarations	False
+attested	added	emitDefaultsCUE	internal/adopt/cue.go	68	100.0	165	1	conjure::internal/adopt/adopt.TestScannerMetadataCannotIntroduceDeclarations	False
+attested	added	hasIntegralFloat	internal/adopt/cue.go	99	100.0	165	1	conjure::internal/adopt/adopt.TestScannerMetadataCannotIntroduceDeclarations	False
+attested	added	emitFileCUE	internal/adopt/cue.go	108	100.0	167	1	conjure::internal/adopt/adopt_test.TestAdoptionRollbackCleansNewDirectories	False
+attested	added	sanitizeName	internal/adopt/cue.go	126	100.0	173	4	conjure::internal/adopt/adopt.TestScannerMetadataCannotIntroduceDeclarations	False
+attested	added	cueString	internal/adopt/cue.go	148	100.0	173	4	conjure::internal/adopt/adopt.TestScannerMetadataCannotIntroduceDeclarations	False
+attested	added	cueScalar	internal/adopt/cue.go	154	43.8	166	3	conjure::internal/adopt/adopt.TestScannerMetadataCannotIntroduceDeclarations	False
+attested	added	commentText	internal/adopt/cue.go	194	100.0	172	2	conjure::internal/adopt/adopt.TestScannerMetadataCannotIntroduceDeclarations	False
+attested	added	ScanBrew	internal/adopt/scan.go	17	88.9	64	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	ScanDefaults	internal/adopt/scan.go	32	88.0	64	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	ScanFile	internal/adopt/scan.go	78	67.7	74	4	conjure::internal/adopt/adopt_test.TestFileAssetReuseAndTieredAdoption	False
+attested	added	CheckFileCollision	internal/adopt/scan.go	122	71.4	63	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	CommitFile	internal/adopt/scan.go	136	60.0	63	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	displayTarget	internal/adopt/scan.go	153	83.3	75	2	conjure::internal/adopt/adopt.TestDisplayTarget	False
+attested	added	Writer.target	internal/adopt/write.go	73	66.7	170	1	conjure::internal/adopt/adopt_test.TestAdoptionRejectsChangesToExistingFacts	False
+attested	added	Writer.Review	internal/adopt/write.go	89	83.3	170	9	conjure::internal/adopt/adopt_test.TestAdoptionRejectsChangesToExistingFacts	False
+attested	added	Writer.review	internal/adopt/write.go	99	74.1	170	2	conjure::internal/adopt/adopt_test.TestAdoptionRejectsChangesToExistingFacts	False
+attested	added	Writer.Commit	internal/adopt/write.go	180	83.3	169	8	conjure::internal/adopt/adopt_test.TestAdoptionRollbackCleansNewDirectories	False
+attested	added	readImage	internal/adopt/write.go	312	79.4	170	2	conjure::internal/adopt/adopt_test.TestAdoptionRejectsChangesToExistingFacts	False
+attested	added	configImage.hash	internal/adopt/write.go	360	100.0	170	2	conjure::internal/adopt/adopt_test.TestAdoptionRejectsChangesToExistingFacts	False
+attested	added	configImage.copyTo	internal/adopt/write.go	373	75.0	170	1	conjure::internal/adopt/adopt_test.TestAdoptionRejectsChangesToExistingFacts	False
+attested	added	writeScratch	internal/adopt/write.go	381	75.0	170	2	conjure::internal/adopt/adopt_test.TestAdoptionRejectsChangesToExistingFacts	False
+attested	added	publishNew	internal/adopt/write.go	388	82.4	169	1	conjure::internal/adopt/adopt_test.TestAdoptionRollbackCleansNewDirectories	False
+attested	added	makeParents	internal/adopt/write.go	415	71.4	169	2	conjure::internal/adopt/adopt_test.TestAdoptionRollbackCleansNewDirectories	False
+attested	added	onlyNewFacts	internal/adopt/write.go	439	94.4	170	1	conjure::internal/adopt/adopt_test.TestAdoptionRejectsChangesToExistingFacts	False
+attested	added	adoptionFact	internal/adopt/write.go	465	85.7	170	1	conjure::internal/adopt/adopt_test.TestAdoptionRejectsChangesToExistingFacts	False
+attested	added	Path	internal/bootstrap/record.go	35	100.0	68	8	conjure::internal/bootstrap/bootstrap.TestBootstrapContractGolden	False
+attested	added	PublicOrigin	internal/bootstrap/record.go	39	90.0	170	3	conjure::internal/bootstrap/bootstrap.TestBootstrapContractGolden	False
+attested	added	Record.Validate	internal/bootstrap/record.go	54	85.7	170	3	conjure::internal/bootstrap/bootstrap.TestBootstrapContractGolden	False
+attested	added	KnownInstaller	internal/bootstrap/record.go	67	100.0	170	2	conjure::internal/bootstrap/bootstrap.TestBootstrapContractGolden	False
+attested	added	Read	internal/bootstrap/record.go	75	90.9	68	11	conjure::internal/bootstrap/bootstrap.TestBootstrapContractGolden	False
+attested	added	CheckDestination	internal/bootstrap/record.go	108	100.0	67	4	conjure::internal/bootstrap/bootstrap.TestBootstrapContractGolden	False
+attested	added	WriteOnce	internal/bootstrap/record.go	121	75.8	67	5	conjure::internal/bootstrap/bootstrap.TestBootstrapContractGolden	False
+attested	modified	app.newAdoptCmd	internal/cli/adopt.go	15	100.0	63	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	app.newAdoptBrewCmd	internal/cli/adopt.go	21	72.7	63	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	app.newAdoptDefaultsCmd	internal/cli/adopt.go	55	77.8	63	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	app.newAdoptFileCmd	internal/cli/adopt.go	81	73.1	63	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	emitBrewCUE	internal/cli/adopt.go	119	100.0	63	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	emitDefaultsCUE	internal/cli/adopt.go	123	100.0	63	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	emitFileCUE	internal/cli/adopt.go	127	100.0	63	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	adoptOptions.flags	internal/cli/adopt_write.go	21	100.0	63	3	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	adoptOptions.validate	internal/cli/adopt_write.go	28	66.7	63	3	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	selectAdopt	internal/cli/adopt_write.go	35	14.3	63	3	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	adoptionWriter	internal/cli/adopt_write.go	58	57.1	64	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	app.adoptWrite	internal/cli/adopt_write.go	72	62.5	63	3	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	app.newInitCmd	internal/cli/init.go	23	80.4	63	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	dirEmptyOrMissing	internal/cli/init.go	204	72.7	64	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	gitClone	internal/cli/init.go	223	75.0	64	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	writeRepoSkeleton	internal/cli/init.go	258	100.0	63	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	writeInitFile	internal/cli/init.go	264	72.0	64	3	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	adoptionScaffold	internal/cli/init_adopt.go	19	100.0	63	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	adoptionDestination	internal/cli/init_adopt.go	28	86.0	63	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	app.initAdoption	internal/cli/init_adopt.go	90	72.7	63	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	app.printInitResult	internal/cli/init_adopt.go	171	76.9	63	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	publishInitDirectory	internal/cli/init_adopt.go	217	100.0	65	3	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	initShellArg	internal/cli/init_adopt.go	224	100.0	63	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	initCommand	internal/cli/init_adopt.go	225	100.0	63	3	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	initSetupCommand	internal/cli/init_adopt.go	228	100.0	63	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	app.chooseInitialization	internal/cli/init_prompt.go	12	93.2	63	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	app.recordInitialization	internal/cli/init_record.go	14	84.2	63	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	app.newRestoreCmd	internal/cli/restore.go	11	14.8	63	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	newApp	internal/cli/root.go	75	75.0	67	13	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	app.setupLogging	internal/cli/root.go	141	100.0	63	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	app.buildStack	internal/cli/root.go	263	80.0	67	26	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	app.newUICmd	internal/cli/ui.go	33	73.7	64	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	pathHygieneCheck	internal/doctor/doctor.go	232	93.8	67	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	Validate	internal/editorurl/editorurl.go	19	100.0	165	7	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	Effective	internal/editorurl/editorurl.go	54	100.0	164	5	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	Resolve	internal/editorurl/editorurl.go	74	87.5	164	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	within	internal/editorurl/editorurl.go	108	100.0	164	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	resolvedAncestor	internal/editorurl/editorurl.go	115	85.7	164	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	escapePath	internal/editorurl/editorurl.go	140	100.0	164	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	Engine.Doctor	internal/engine/engine.go	142	91.5	71	5	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	Engine.RestorePlan	internal/engine/restore.go	57	83.6	170	6	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	Engine.Restore	internal/engine/restore.go	152	73.5	168	7	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	Engine.appendRestoreRun	internal/engine/restore.go	233	81.2	169	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	ReadRecoveryFile	internal/engine/restore.go	268	77.3	172	8	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	verifyRestore	internal/engine/restore.go	329	100.0	169	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	Engine.Runs	internal/engine/runs.go	52	84.4	168	5	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	adoptionTitle	internal/ui/adoption.go	31	80.0	164	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	adoptionSummary	internal/ui/adoption.go	42	80.0	164	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	adoptionRows	internal/ui/adoption.go	53	100.0	164	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	shortAdoptionValue	internal/ui/adoption.go	64	75.0	164	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	adoptionCard	internal/ui/adoption.go	71	100.0	164	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	checkSeverityRank	internal/ui/checklist.go	8	100.0	170	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	orderedChecks	internal/ui/checklist.go	22	100.0	170	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	checkSeverityClass	internal/ui/checklist.go	33	100.0	170	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	checkSeverityLabel	internal/ui/checklist.go	45	100.0	170	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	decodeEvidence	internal/ui/checklist.go	61	71.4	170	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	shadowedEvidence	internal/ui/checklist.go	72	100.0	170	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	blindTargets	internal/ui/checklist.go	75	100.0	170	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	rawCheckEvidence	internal/ui/checklist.go	76	75.0	170	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	FindDestinations	internal/ui/find.go	21	100.0	169	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	findInventoryHref	internal/ui/find.go	63	100.0	169	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	countHealth	internal/ui/health.go	18	100.0	169	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	healthTCCFailed	internal/ui/health.go	36	100.0	169	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	healthRuntime	internal/ui/health.go	44	100.0	164	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	healthCheckName	internal/ui/health.go	46	100.0	169	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	healthFailureTitle	internal/ui/health.go	60	66.7	169	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	inventoryGroups	internal/ui/inventory.go	20	94.4	170	3	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	kindLabel	internal/ui/inventory.go	69	83.3	170	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	unitSummary	internal/ui/inventory.go	82	71.4	170	3	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	inventoryStats	internal/ui/inventory.go	96	100.0	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	jsonValue	internal/ui/inventory.go	107	75.0	163	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	contentPreview	internal/ui/inventory.go	114	37.5	163	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	recoveryHashLabel	internal/ui/recovery.go	26	66.7	164	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	uniqueRecoveryEntries	internal/ui/recovery.go	33	100.0	164	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	recoveryIdentity	internal/ui/recovery.go	45	100.0	164	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	WelcomeView.position	internal/ui/welcome.go	33	100.0	167	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	setupShellArg	internal/ui/welcome.go	68	100.0	165	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	WelcomeView.setupCommand	internal/ui/welcome.go	69	100.0	165	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	ParseError.Error	internal/uiprefs/store.go	35	100.0	259	68	conjure::internal/adopt/adopt_test.TestWriteRollbackAndConcurrentWriterRefusal	True
+unreached	added	ParseError.Unwrap	internal/uiprefs/store.go	36	0.0	0	0		False
+attested	added	Path	internal/uiprefs/store.go	44	100.0	172	10	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	NewStore	internal/uiprefs/store.go	45	100.0	172	21	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	Store.read	internal/uiprefs/store.go	52	87.5	185	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	Store.Get	internal/uiprefs/store.go	88	100.0	185	11	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	Store.Put	internal/uiprefs/store.go	98	78.7	171	18	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	Refresh	internal/uiprefs/store.go	163	100.0	172	3	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	Store.EffectiveRefresh	internal/uiprefs/store.go	178	100.0	1	1	conjure::internal/uiprefs/uiprefs.TestReadDefaultsErrorsAndClampWithoutWriting	False
+attested	added	adoptionRegistry.prune	internal/webui/adopt.go	58	61.5	163	3	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	adoptionRegistry.bytes	internal/webui/adopt.go	80	100.0	163	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.renderAdopt	internal/webui/adopt.go	99	100.0	163	5	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	webui.handleAdopt	internal/webui/adopt.go	106	100.0	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	webui.handleAdoptBrew	internal/webui/adopt.go	111	100.0	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	webui.handleAdoptDefaults	internal/webui/adopt.go	114	100.0	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	webui.handleAdoptFile	internal/webui/adopt.go	117	100.0	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.adoptScanPage	internal/webui/adopt.go	120	100.0	163	3	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.scanAdoption	internal/webui/adopt.go	124	72.0	163	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	filePerm	internal/webui/adopt.go	255	66.7	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	webui.handleAdoptStream	internal/webui/adopt.go	263	0.0	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	adoptionScan.request	internal/webui/adopt.go	269	100.0	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	webui.handleAdoptReview	internal/webui/adopt.go	309	80.0	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	webui.handleAdoptCommit	internal/webui/adopt.go	368	68.7	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.handleAdoptReceipt	internal/webui/adopt.go	454	100.0	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.issueApplyReview	internal/webui/apply_review.go	22	100.0	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.consumeApplyReview	internal/webui/apply_review.go	42	100.0	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.invalidateApplyReviews	internal/webui/apply_review.go	51	100.0	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	applyRun.isDone	internal/webui/apply_run.go	47	100.0	166	4	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	applyRun.PushEvent	internal/webui/apply_run.go	49	85.7	165	3	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	applyRun.Subscribe	internal/webui/apply_run.go	66	100.0	167	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	applyRun.removeSubscriber	internal/webui/apply_run.go	95	42.9	167	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	applyRun.Finish	internal/webui/apply_run.go	109	100.0	168	6	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	readRecoverySide	internal/webui/comparison.go	25	94.4	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	webui.handleTimelineCompare	internal/webui/comparison.go	52	83.3	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	webui.handleConfig	internal/webui/configbrowser.go	16	100.0	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	webui.handleConfigStream	internal/webui/configbrowser.go	96	85.7	165	3	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.handleUnitExplanation	internal/webui/configdetails.go	10	78.9	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	webui.handleDashboard	internal/webui/dashboard.go	16	100.0	164	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	webui.collectDashboardData	internal/webui/dashboard.go	33	100.0	167	3	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	webui.handleDashboardStream	internal/webui/dashboard.go	59	81.8	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.dashboardTick	internal/webui/dashboard.go	84	100.0	164	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	dashboardStreamState.resolve	internal/webui/dashboard.go	96	88.9	166	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	webui.patchDashboard	internal/webui/dashboard.go	111	100.0	165	3	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.readHealth	internal/webui/doctor.go	14	100.0	167	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	webui.handleDoctor	internal/webui/doctor.go	28	85.7	164	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	webui.handleDoctorStream	internal/webui/doctor.go	45	88.9	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.healthTick	internal/webui/doctor.go	61	100.0	166	4	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.handleFind	internal/webui/find.go	12	90.5	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	webui.handlePlan	internal/webui/handlers.go	12	100.0	165	3	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	webui.handleApplyPage	internal/webui/handlers.go	33	93.3	166	4	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	Handler.ServeHTTP	internal/webui/lifecycle.go	18	100.0	163	78	conjure::internal/cli/cli.TestAdoptBrew	True
+attested	added	Handler.Shutdown	internal/webui/lifecycle.go	23	100.0	69	6	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	newWriteLifecycle	internal/webui/lifecycle.go	42	100.0	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	writeLifecycle.begin	internal/webui/lifecycle.go	46	100.0	163	5	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	writeLifecycle.finish	internal/webui/lifecycle.go	55	100.0	163	5	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	writeLifecycle.stop	internal/webui/lifecycle.go	63	100.0	69	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	writeLifecycle.isStopping	internal/webui/lifecycle.go	74	100.0	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.activeApplyID	internal/webui/plan_availability.go	12	100.0	165	3	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.sessionReceipt	internal/webui/plan_availability.go	24	100.0	166	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.planForReview	internal/webui/plan_availability.go	45	100.0	166	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.renderPlanRunning	internal/webui/plan_availability.go	59	100.0	163	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	webui.handlePlanStream	internal/webui/plan_handlers.go	28	74.2	165	3	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	webui.handlePlanApply	internal/webui/plan_handlers.go	90	80.6	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	webui.runApply	internal/webui/plan_handlers.go	195	75.0	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	webui.handleApplyStream	internal/webui/plan_handlers.go	220	96.0	166	4	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	webui.patchApplyEvent	internal/webui/plan_handlers.go	267	100.0	166	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	webui.emitReceipt	internal/webui/plan_handlers.go	279	100.0	166	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	planUnavailableMessage	internal/webui/plan_handlers.go	320	100.0	166	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	selectedPlanUnits	internal/webui/plan_selection.go	17	95.5	163	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.planSelectionError	internal/webui/plan_selection.go	84	100.0	166	3	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.handlePlanReview	internal/webui/plan_selection.go	94	62.5	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.handleRestoreReceipt	internal/webui/recovery_receipts.go	20	100.0	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.sessionRecoveryReceipts	internal/webui/recovery_receipts.go	38	83.3	163	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.historyUnavailable	internal/webui/recovery_receipts.go	65	100.0	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.handleSelection	internal/webui/selection.go	10	85.7	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.preferences	internal/webui/settings.go	17	100.0	181	5	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.effectiveReadOnly	internal/webui/settings.go	23	100.0	179	36	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.effectiveRefresh	internal/webui/settings.go	27	100.0	171	6	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.effectiveEditor	internal/webui/settings.go	31	80.0	163	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.settingsData	internal/webui/settings.go	39	100.0	163	3	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.renderSettings	internal/webui/settings.go	81	100.0	163	3	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	webui.handleSettings	internal/webui/settings.go	87	60.0	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.settingsSaved	internal/webui/settings.go	95	100.0	163	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	webui.handleSettingsPrefs	internal/webui/settings.go	99	90.3	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	webui.handleSettingsReadonly	internal/webui/settings.go	144	66.7	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	contractHome	internal/webui/settings.go	181	85.7	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.handleTimelineSnapshot	internal/webui/snapshot.go	15	68.8	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	webui.handleTheme	internal/webui/theme.go	9	76.5	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	webui.handleTimelineMachine	internal/webui/timeline.go	19	83.3	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	webui.handleTimelineFiles	internal/webui/timeline.go	39	77.8	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	webui.handleTimelineFile	internal/webui/timeline.go	82	81.0	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	restoreFingerprint	internal/webui/timeline.go	120	100.0	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.renderTimeline	internal/webui/timeline.go	126	100.0	163	9	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	webui.handleTimelineRestore	internal/webui/timeline.go	132	63.8	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.timelineError	internal/webui/timeline.go	237	100.0	163	6	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	undoFingerprint	internal/webui/undo.go	33	100.0	163	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.undoPreview	internal/webui/undo.go	38	93.8	163	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.renderUndo	internal/webui/undo.go	61	100.0	163	3	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.handleUndoPage	internal/webui/undo.go	68	100.0	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	webui.handleUndoPreview	internal/webui/undo.go	79	83.3	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	webui.handleUndo	internal/webui/undo.go	90	68.8	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.handleUndoReceipt	internal/webui/undo.go	155	100.0	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	New	internal/webui/webui.go	83	76.2	163	77	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	webui.middleware	internal/webui/webui.go	194	96.8	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	webui.handleWelcome	internal/webui/welcome.go	15	100.0	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.welcomeView	internal/webui/welcome.go	33	95.8	166	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.bootstrapRecord	internal/webui/welcome.go	69	92.3	166	2	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	modified	webui.handleWelcomeDismiss	internal/webui/welcome.go	90	75.0	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.welcomePreferenceError	internal/webui/welcome.go	102	100.0	163	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	welcomeStreamState.resolve	internal/webui/welcome_stream.go	24	100.0	166	1	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.handleWelcomeStream	internal/webui/welcome_stream.go	38	88.9	165	3	conjure::internal/cli/cli.TestAdoptBrew	False
+attested	added	webui.patchWelcome	internal/webui/welcome_stream.go	67	92.9	166	2	conjure::internal/cli/cli.TestAdoptBrew	False
+unindexed(unreached-or-unanalyzed)	added	AccountDestinations.Group	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/dashboard/account.go	22	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	RenderNotice	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/dashboard/account.go	61	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	MatchPath	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/dashboard/nav.go	40	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	matchNavPath	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/dashboard/nav.go	46	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	navHref	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/dashboard/nav.go	62	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	RenderNav	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/dashboard/nav.go	96	None	0	0		False
+unindexed(unreached-or-unanalyzed)	modified	RenderShell	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/dashboard/shell.go	53	None	0	0		False
+unindexed(unreached-or-unanalyzed)	modified	RenderWidgetGrid	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/dashboard/widget.go	49	None	0	0		False
+unindexed(unreached-or-unanalyzed)	modified	RenderSelect	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/form/form.go	216	None	0	0		False
+unindexed(unreached-or-unanalyzed)	modified	RenderCheckbox	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/form/form.go	269	None	0	0		False
+unindexed(unreached-or-unanalyzed)	modified	RenderRadioGroup	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/form/form.go	311	None	0	0		False
+unindexed(unreached-or-unanalyzed)	modified	RenderButton	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/form/form.go	413	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	RenderSettingsSections	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/form/settings.go	35	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	riskRole	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/hitl/approval.go	28	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	RenderApprovalCard	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/hitl/approval.go	78	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	bodyOf	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/hitl/approval.go	122	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	esc	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/hitl/approval.go	129	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	DiffView	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/hitl/diff.go	28	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	diffCell	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/hitl/diff.go	48	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	toolStatusRole	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/hitl/toolcall.go	37	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	RenderToolCall	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/hitl/toolcall.go	51	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	toolBlock	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/hitl/toolcall.go	94	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	traceDotRole	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/hitl/trace.go	26	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	RunTrace	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/hitl/trace.go	43	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	Allowed	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/internal/webref/webref.go	12	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	RenderBand	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/stat/stat.go	57	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	gridColsClass	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/stat/stat.go	103	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	trendPill	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/stat/stat.go	123	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	Render	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/stat/stat.go	141	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	esc	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/stat/stat.go	182	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	Absent	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/stat/stat.go	190	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	withActionColumn	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/table/table.go	173	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	BarsOptions.withDefaults	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/bars.go	42	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	Bars	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/bars.go	67	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	fmtGrouped	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/bars.go	163	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	CostRewardOptions.withDefaults	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/costreward.go	29	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	CostReward	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/costreward.go	59	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	DonutOptions.withDefaults	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/donut.go	22	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	Donut	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/donut.go	40	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	EventFilter.MatchEvent	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/filter.go	30	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	EventFilter.MatchSpan	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/filter.go	42	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	EventFilter.matchFacets	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/filter.go	56	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	EventFilter.FilterEvents	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/filter.go	71	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	EventFilter.FilterSpans	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/filter.go	82	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	EventFilter.Apply	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/filter.go	99	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	FunnelOptions.withDefaults	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/funnel.go	31	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	Funnel	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/funnel.go	53	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	GaugeOptions.withDefaults	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/gauge.go	39	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	GradedRole	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/gauge.go	59	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	gaugeCaptionGraphemeBudget	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/gauge.go	73	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	wrapGaugeCaption	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/gauge.go	86	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	Gauge	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/gauge.go	137	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	Heatmap	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/heatmap.go	44	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	MeterOptions.withDefaults	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/meter.go	27	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	MeterRow	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/meter.go	51	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	RangeBarsOptions.withDefaults	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/rangebar.go	32	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	RangeBars	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/rangebar.go	56	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	RatingOptions.withDefaults	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/rating.go	29	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	Rating	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/rating.go	53	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	SparklineOptions.withDefaults	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/sparkline.go	24	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	Sparkline	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/sparkline.go	45	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	StackBarOptions.withDefaults	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/stackbar.go	31	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	StackBar	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/stackbar.go	51	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	roundedRectPath	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/stackbar.go	119	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	clampR	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/stackbar.go	157	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	min2	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/stackbar.go	164	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	StepsOptions.withDefaults	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/steps.go	39	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	Steps	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/steps.go	63	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	cssColor	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/svg.go	19	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	esc	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/svg.go	31	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	fmtNum	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/svg.go	41	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	svgOpen	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/svg.go	51	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	svgTitle	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/svg.go	65	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	TimelineOptions.withDefaults	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/timeline.go	82	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	Timeline	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/timeline.go	118	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	renderSingleAxis	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/timeline.go	142	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	renderSwimlanes	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/timeline.go	176	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	renderDensity	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/timeline.go	230	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	timelineLanes	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/timeline.go	366	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	drawSpanBar	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/timeline.go	393	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	drawEventDot	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/timeline.go	414	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	drawMarkers	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/timeline.go	423	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	drawTimeFooter	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/timeline.go	439	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	timeScale.at	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/timeline.go	478	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	buildScale	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/timeline.go	508	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	condensedPoints	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/timeline.go	541	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	spanCovers	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/timeline.go	595	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	gatherAnchors	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/timeline.go	613	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	drawAxis	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/timeline.go	670	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	drawBreakLabels	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/timeline.go	695	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	packSpans	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/timeline.go	709	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	markerAnchor	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/timeline.go	736	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	fmtDate	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/timeline.go	749	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	humanDur	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/timeline.go	754	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	TornadoOptions.withDefaults	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/tornado.go	35	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	Tornado	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/tornado.go	61	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	swing	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/tornado.go	175	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	drawSeg	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/tornado.go	183	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	WaterfallOptions.withDefaults	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/waterfall.go	26	None	0	0		False
+unindexed(unreached-or-unanalyzed)	added	Waterfall	vendor/github.com/geoffmilleraz/app-kit/appkit/ui/viz/waterfall.go	44	None	0	0		False

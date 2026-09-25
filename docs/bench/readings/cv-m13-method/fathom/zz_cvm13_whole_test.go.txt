@@ -1,0 +1,155 @@
+package conserve
+
+// THROWAWAY (CV-M13 supplement, never committed): the reading set's own
+// attested rule applied to EVERY non-test Go function/method in the index
+// at a head, not only the range's changed ones — so reach-vs-execution can
+// be calibrated on a population that actually contains unreached functions.
+// isAttestedBy's ReachUnchangedSince leg is trivially true here (the run is
+// bound to HEAD itself on a clean tree), so only the run-status leg is
+// evaluated, via the same memoized TestCaseRunsForSymbol lookup.
+
+import (
+	"context"
+	"encoding/json"
+	"os"
+	"strings"
+	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/store"
+)
+
+type cvm13WholeItem struct {
+	Name         string     `json:"name"`
+	File         string     `json:"file"`
+	Line         int        `json:"line"`
+	Key          string     `json:"key"`
+	Class        string     `json:"class"`
+	AmbiguousKey bool       `json:"ambiguous_key"`
+	Reaching     int        `json:"reaching_tests"`
+	Attesting    int        `json:"attesting_tests"`
+	NearestAtt   string     `json:"nearest_attester"`
+	NearestPath  []cvm13Hop `json:"nearest_attester_path"`
+}
+
+func TestCVM13Whole(t *testing.T) {
+	storePath := os.Getenv("CVM13_WHOLE_STORE")
+	if storePath == "" {
+		t.Skip("CVM13_WHOLE_STORE unset")
+	}
+	service := "fathom"
+	head := os.Getenv("CVM13_WHOLE_HEAD")
+	outPath := os.Getenv("CVM13_WHOLE_OUT")
+	ctx := context.Background()
+	st, err := store.Open(storePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	in := Input{Service: service, Store: st}
+
+	obs, err := st.QueryObservations(ctx, service, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	nodes := make([]core.SymbolNode, 0, len(obs))
+	for _, o := range obs {
+		nodes = append(nodes, o.ToSymbolNode())
+	}
+	edges, err := st.TypedEdges(ctx, service)
+	if err != nil {
+		t.Fatal(err)
+	}
+	g := callgraph.BuildResolved(nodes, edges)
+	byKey := map[string]core.SymbolNode{}
+	keyFiles := map[string]map[string]bool{}
+	for _, n := range nodes {
+		byKey[n.Key()] = n
+		if n.Kind == core.KindGoFunc || n.Kind == core.KindGoMethod {
+			if keyFiles[n.Key()] == nil {
+				keyFiles[n.Key()] = map[string]bool{}
+			}
+			keyFiles[n.Key()][n.FilePath] = true
+		}
+	}
+	runsCache := map[string]testRunsCacheEntry{}
+	attests := func(tn core.SymbolNode) bool {
+		runs, err := cachedTestCaseRuns(ctx, in, runsCache, tn.Key())
+		if err != nil || len(runs) == 0 {
+			return false
+		}
+		r := runs[0]
+		return r.Status == "pass" && r.Commit == head && !r.Dirty
+	}
+
+	var items []cvm13WholeItem
+	for _, n := range nodes {
+		if n.Kind != core.KindGoFunc && n.Kind != core.KindGoMethod {
+			continue
+		}
+		if !strings.HasSuffix(n.FilePath, ".go") || strings.HasSuffix(n.FilePath, "_test.go") || strings.HasPrefix(n.FilePath, "third_party/") {
+			continue
+		}
+		key := n.Key()
+		it := cvm13WholeItem{Name: n.Name, File: n.FilePath, Line: n.Line, Key: key, AmbiguousKey: len(keyFiles[key]) > 1}
+		reach := callgraph.TestImpactDetail(g, key)
+		it.Reaching = len(reach)
+		if len(reach) == 0 {
+			it.Class = "unreached"
+			items = append(items, it)
+			continue
+		}
+		attSet := map[string]bool{}
+		for _, r := range reach {
+			tn, ok := byKey[r.Key]
+			if !ok || it.AmbiguousKey {
+				continue
+			}
+			if attests(tn) {
+				attSet[r.Key] = true
+			}
+		}
+		it.Attesting = len(attSet)
+		if len(attSet) == 0 {
+			it.Class = "unattested"
+			items = append(items, it)
+			continue
+		}
+		it.Class = "attested"
+		// nearest attesting test by BFS order, with the hop-by-hop path
+		parent := map[string]string{}
+		kind := map[string]core.EdgeKind{}
+		visited := map[string]bool{key: true}
+		queue := []string{key}
+		found := ""
+		for len(queue) > 0 && found == "" {
+			cur := queue[0]
+			queue = queue[1:]
+			for _, c := range callgraph.CallersDetail(g, cur) {
+				if visited[c.Key] {
+					continue
+				}
+				visited[c.Key] = true
+				parent[c.Key] = cur
+				kind[c.Key] = c.Kind
+				if attSet[c.Key] {
+					found = c.Key
+					break
+				}
+				queue = append(queue, c.Key)
+			}
+		}
+		it.NearestAtt = found
+		for cur := found; cur != key && cur != ""; cur = parent[cur] {
+			cn := byKey[cur]
+			it.NearestPath = append(it.NearestPath, cvm13Hop{Caller: cur, CallerFile: cn.FilePath, CallerLine: cn.Line, Callee: parent[cur], Kind: string(kind[cur])})
+		}
+		items = append(items, it)
+	}
+	b, _ := json.MarshalIndent(items, "", " ")
+	if err := os.WriteFile(outPath, b, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("whole-head items: %d", len(items))
+}

@@ -408,25 +408,14 @@ throwaway test-only script, not the production path.
 
 ## Reproduce
 
-All scripts and raw output are preserved under
-`/private/tmp/claude-501/-Volumes-m2ext-code-geoffmilleraz-sextant/e8652946-4037-4a56-8b48-3336a3490e6f/scratchpad/cv-m13/`
-(fathom side: `fathom/method/{attest,cover,readingset}.sh`,
-`fathom/method/{join,wholejoin}.py`,
-`fathom/method/zz_cvm13_{dump,whole}_test.go`; conjure control side:
-`control/run_range.sh`, `control/dump_ablate.sh`, `control/join_cover.py`,
-`control/summarize.py`). Per fathom range: `readingset.sh <clone> <base>
-<tag>` (static reading set + throwaway dump), `cover.sh <clone> <tag>`
-(execution truth), `attest.sh <clone>` (the `tests:attest` envelope), then
-`join.py <tag> <base> <head>` / `wholejoin.py` to produce the per-function
-and whole-head CSV/JSON this reading cites. Per conjure range:
-`run_range.sh <tag> <base> <head>` end to end, then `dump_ablate.sh <tag>
-<base> <head> <storeTag>` per ablation variant, then `join_cover.py` and
-`summarize.py`. All environment variables (`GOCACHE`, `GOMODCACHE`,
-`GOTMPDIR`, `TMPDIR`, `GOWORK=off`, `CGO_ENABLED=1`,
-`MACOSX_DEPLOYMENT_TARGET=14.0`, and `GOFLAGS=-mod=vendor` for conjure
-only) are set at the top of each script. On `go: ... operation not
-permitted` from the external volume's TCC wedge: `tccutil reset
-SystemPolicyRemovableVolumes com.mitchellh.ghostty`, then retry the exact
-same command (this reading needed it once, mid-session, for an unrelated
-source read — none of the measurement runs themselves hit it, per their
-clean exit logs).
+The scripts and result tables are committed beside this reading in
+[`cv-m13-method/`](cv-m13-method/README.md) (fathom side: `attest.sh`, `cover.sh`,
+`readingset.sh`, `join.py`, `wholejoin.py`, and the two throwaway
+`internal/conserve` dump tests as `.go.txt`; conjure side: `run_range.sh`,
+`dump_ablate.sh`, `join_cover.py`, `summarize.py`). Set `CVM13_DIR` to a scratch
+directory first. Per fathom range: `readingset.sh <clone> <base> <tag>`, `cover.sh
+<clone> <tag>`, `attest.sh <clone>`, then `join.py <tag> <base> <head>` / `wholejoin.py`.
+Per conjure range: `run_range.sh <tag> <base> <head>`, `dump_ablate.sh <tag> <base>
+<head> <storeTag>` per ablation variant, then `join_cover.py` and `summarize.py`
+(conjure needs `GOFLAGS=-mod=vendor`). On `operation not permitted` from the external
+volume: `tccutil reset SystemPolicyRemovableVolumes com.mitchellh.ghostty`, then retry.

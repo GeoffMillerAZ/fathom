@@ -1,0 +1,237 @@
+package conserve
+
+// THROWAWAY (CV-M13 calibration, never committed): prints EVERY changed
+// function's reading-set class, not only the unattested/unreached ones
+// Residue lists. The classification loop below is Residue's own loop
+// (residue.go), copied verbatim in logic, extended only to (a) keep the
+// attested items, (b) name which reaching test attested, and (c) record the
+// shortest resolved-edge path from each function to that test, with the
+// typed edge kind on every hop. Its totals are cross-checked against a real
+// Residue call on the same Input.
+
+import (
+	"context"
+	"encoding/json"
+	"os"
+	"sort"
+	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/store"
+)
+
+type cvm13Hop struct {
+	Caller     string `json:"caller"`
+	CallerFile string `json:"caller_file"`
+	CallerLine int    `json:"caller_line"`
+	Callee     string `json:"callee"`
+	Kind       string `json:"edge_kind"`
+}
+
+type cvm13Item struct {
+	Symbol         string     `json:"symbol"`
+	File           string     `json:"file"`
+	Line           int        `json:"line"`
+	Change         string     `json:"change"`
+	Class          string     `json:"class"`
+	Key            string     `json:"key"`
+	AmbiguousKey   bool       `json:"ambiguous_key"`
+	Callers        int        `json:"callers"`
+	ReachingTests  int        `json:"reaching_tests"`
+	AttestingTests []string   `json:"attesting_tests"`
+	FirstAttester  string     `json:"first_attester"`
+	FirstAttPath   []cvm13Hop `json:"first_attester_path"`
+	NearestTest    string     `json:"nearest_test"`
+	NearestPath    []cvm13Hop `json:"nearest_test_path"`
+	ViaDispatch    bool       `json:"first_attester_via_dispatch"`
+	TestsSample    []string   `json:"tests_sample"`
+	DirectCallers  []string   `json:"direct_callers"`
+}
+
+type cvm13Out struct {
+	Root    string        `json:"root"`
+	Base    string        `json:"base"`
+	Residue ResidueReport `json:"residue_real"`
+	Items   []cvm13Item   `json:"items"`
+	Counts  map[string]int `json:"counts_replica"`
+}
+
+func TestCVM13Dump(t *testing.T) {
+	root := os.Getenv("CVM13_ROOT")
+	if root == "" {
+		t.Skip("CVM13_ROOT unset")
+	}
+	base := os.Getenv("CVM13_BASE")
+	storePath := os.Getenv("CVM13_STORE")
+	service := os.Getenv("CVM13_SERVICE")
+	outPath := os.Getenv("CVM13_OUT")
+	ctx := context.Background()
+
+	st, err := store.Open(storePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	in, err := NewInput(ctx, root, base, st, service, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	real := Residue(ctx, in, 1_000_000)
+	if len(real.Missing) > 0 {
+		t.Fatalf("reading set refused: %v", real.Missing)
+	}
+
+	changed, _, _ := ChangedFunctions(in)
+	obs, err := in.Store.QueryObservations(ctx, in.Service, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	nodes := make([]core.SymbolNode, 0, len(obs))
+	for _, o := range obs {
+		nodes = append(nodes, o.ToSymbolNode())
+	}
+	edges, err := in.Store.TypedEdges(ctx, in.Service)
+	if err != nil {
+		t.Fatal(err)
+	}
+	g := callgraph.BuildResolved(nodes, edges)
+
+	byFileName := map[string]core.SymbolNode{}
+	byKey := map[string]core.SymbolNode{}
+	filesIndexed := map[string]bool{}
+	keyFiles := map[string]map[string]bool{}
+	for _, n := range nodes {
+		byKey[n.Key()] = n
+		filesIndexed[n.FilePath] = true
+		if n.Kind == core.KindGoFunc || n.Kind == core.KindGoMethod {
+			byFileName[n.FilePath+"\x00"+n.Name] = n
+			if keyFiles[n.Key()] == nil {
+				keyFiles[n.Key()] = map[string]bool{}
+			}
+			keyFiles[n.Key()][n.FilePath] = true
+		}
+	}
+
+	// bfsParents walks callers from key in TestImpactDetail's own order and
+	// returns parent pointers (caller -> the callee it was discovered from)
+	// plus that hop's edge kind.
+	bfsParents := func(key string) (map[string]string, map[string]core.EdgeKind, []string) {
+		parent := map[string]string{}
+		kind := map[string]core.EdgeKind{}
+		visited := map[string]bool{key: true}
+		queue := []string{key}
+		var order []string
+		for len(queue) > 0 {
+			cur := queue[0]
+			queue = queue[1:]
+			for _, c := range callgraph.CallersDetail(g, cur) {
+				if visited[c.Key] {
+					continue
+				}
+				visited[c.Key] = true
+				parent[c.Key] = cur
+				kind[c.Key] = c.Kind
+				order = append(order, c.Key)
+				queue = append(queue, c.Key)
+			}
+		}
+		return parent, kind, order
+	}
+	pathOf := func(test, target string, parent map[string]string, kind map[string]core.EdgeKind) []cvm13Hop {
+		var hops []cvm13Hop
+		for cur := test; cur != target && cur != ""; cur = parent[cur] {
+			n := byKey[cur]
+			hops = append(hops, cvm13Hop{Caller: cur, CallerFile: n.FilePath, CallerLine: n.Line, Callee: parent[cur], Kind: string(kind[cur])})
+		}
+		return hops
+	}
+
+	var items []cvm13Item
+	counts := map[string]int{}
+	runsCache := map[string]testRunsCacheEntry{}
+	for _, cf := range changed {
+		it := cvm13Item{Symbol: cf.Symbol, File: cf.File, Line: cf.Line, Change: cf.Change, AttestingTests: []string{}, TestsSample: []string{}, DirectCallers: []string{}}
+		node, ok := byFileName[cf.File+"\x00"+cf.Symbol]
+		if !ok {
+			if !filesIndexed[cf.File] {
+				it.Class = "unanalyzed-file"
+			} else {
+				it.Class = "unreached"
+			}
+			counts[it.Class]++
+			items = append(items, it)
+			continue
+		}
+		key := node.Key()
+		it.Key = key
+		it.AmbiguousKey = len(keyFiles[key]) > 1
+		it.Callers = resolvedCallerCount(g, key)
+		for _, c := range callgraph.CallersDetail(g, key) {
+			it.DirectCallers = append(it.DirectCallers, c.Key+" ["+string(c.Kind)+"]")
+		}
+		reach := callgraph.TestImpactDetail(g, key)
+		it.ReachingTests = len(reach)
+		if len(reach) == 0 {
+			it.Class = "unreached"
+			counts[it.Class]++
+			items = append(items, it)
+			continue
+		}
+		parent, kind, order := bfsParents(key)
+		// nearest reaching test by BFS discovery order (fewest hops)
+		reachSet := map[string]bool{}
+		for _, r := range reach {
+			reachSet[r.Key] = true
+		}
+		for _, k := range order {
+			if reachSet[k] {
+				it.NearestTest = k
+				it.NearestPath = pathOf(k, key, parent, kind)
+				break
+			}
+		}
+		attested := false
+		var names []string
+		for _, r := range reach {
+			tn, ok := byKey[r.Key]
+			if !ok {
+				continue
+			}
+			names = append(names, tn.Name)
+			if it.AmbiguousKey {
+				continue
+			}
+			if isAttestedBy(ctx, in, tn, node, runsCache) {
+				it.AttestingTests = append(it.AttestingTests, r.Key)
+				if !attested {
+					attested = true
+					it.FirstAttester = r.Key
+					it.ViaDispatch = r.ViaDispatch
+					it.FirstAttPath = pathOf(r.Key, key, parent, kind)
+				}
+			}
+		}
+		sort.Strings(names)
+		if len(names) > 30 {
+			names = names[:30]
+		}
+		it.TestsSample = names
+		if attested {
+			it.Class = "attested"
+		} else {
+			it.Class = "unattested"
+		}
+		counts[it.Class]++
+		items = append(items, it)
+	}
+
+	if counts["attested"] != real.Attested || counts["unattested"] != real.Unattested || counts["unreached"] != real.Unreached || len(changed) != real.Changed {
+		t.Errorf("replica diverges from Residue: replica %v, real changed=%d att=%d unatt=%d unr=%d", counts, real.Changed, real.Attested, real.Unattested, real.Unreached)
+	}
+	b, _ := json.MarshalIndent(cvm13Out{Root: root, Base: base, Residue: real, Items: items, Counts: counts}, "", "  ")
+	if err := os.WriteFile(outPath, b, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("changed=%d replica=%v real att=%d unatt=%d unr=%d", len(changed), counts, real.Attested, real.Unattested, real.Unreached)
+}

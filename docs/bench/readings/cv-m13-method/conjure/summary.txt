@@ -1,0 +1,24 @@
+== r1 87ccb17..e9d0f2e5d54a3ffd3aca9c548642849e0df274de
+   conserve residue: {'attested': 54, 'changed': 54, 'truncated': 0, 'unattested': 0, 'unreached': 0}
+   baseline                           {'attested': 54}  att&exec=53 att&never=1 flag&exec=0 flag&never=0
+   no_dispatch_no_funcvalue           {'attested': 52, 'unreached': 2}  att&exec=52 att&never=0 flag&exec=1 flag&never=1
+   no_func_value                      {'attested': 53, 'unreached': 1}  att&exec=52 att&never=1 flag&exec=1 flag&never=0
+   no_hub_no_dispatch_no_funcvalue    {'unreached': 15, 'attested': 39}  att&exec=39 att&never=0 flag&exec=14 flag&never=1
+   no_hub_out_edges                   {'unreached': 13, 'attested': 41}  att&exec=40 att&never=1 flag&exec=13 flag&never=0
+   no_iface_dispatch                  {'attested': 53, 'unreached': 1}  att&exec=53 att&never=0 flag&exec=0 flag&never=1
+== r2 e9d0f2e..10efbe49d2a69c70d49a8f0d966b70015c9ad1bd
+   conserve residue: {'attested': 225, 'changed': 326, 'truncated': 0, 'unattested': 0, 'unreached': 1}
+   baseline                           {'attested': 225, 'unreached': 1, 'unindexed(unreached-or-unanalyzed)': 100}  att&exec=224 att&never=1 flag&exec=0 flag&never=1
+   no_dispatch_no_funcvalue           {'attested': 170, 'unreached': 56}  att&exec=170 att&never=0 flag&exec=54 flag&never=2
+   no_func_value                      {'attested': 171, 'unreached': 55}  att&exec=171 att&never=0 flag&exec=53 flag&never=2
+   no_hub_no_dispatch_no_funcvalue    {'attested': 144, 'unreached': 82}  att&exec=144 att&never=0 flag&exec=80 flag&never=2
+   no_hub_out_edges                   {'attested': 199, 'unreached': 27}  att&exec=198 att&never=1 flag&exec=26 flag&never=1
+   no_iface_dispatch                  {'attested': 224, 'unreached': 2}  att&exec=223 att&never=1 flag&exec=1 flag&never=1
+== r3 44fd5ae..e9d0f2e5d54a3ffd3aca9c548642849e0df274de (reuses r1 store/test run/coverage at the same head)
+   conserve residue: {'attested': 144, 'changed': 148, 'truncated': 0, 'unattested': 0, 'unreached': 4}
+   baseline                           {'attested': 144, 'unreached': 4}  att&exec=143 att&never=1 flag&exec=3 flag&never=1
+   no_dispatch_no_funcvalue           {'attested': 142, 'unreached': 6}  att&exec=142 att&never=0 flag&exec=4 flag&never=2
+   no_func_value                      {'attested': 143, 'unreached': 5}  att&exec=142 att&never=1 flag&exec=4 flag&never=1
+   no_hub_no_dispatch_no_funcvalue    {'unreached': 47, 'attested': 101}  att&exec=101 att&never=0 flag&exec=45 flag&never=2
+   no_hub_out_edges                   {'unreached': 45, 'attested': 103}  att&exec=102 att&never=1 flag&exec=44 flag&never=1
+   no_iface_dispatch                  {'attested': 143, 'unreached': 5}  att&exec=143 att&never=0 flag&exec=3 flag&never=2
