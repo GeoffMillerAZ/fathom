@@ -8,22 +8,22 @@ wave is called done.
 
 ## A. Foundations
 
-- [ ] Page projections carry a truth state per value (present, zero, absent, stale, partial, error) with reason, source, denominator and time {id: OC-1, symbol: Value, package: internal/console, reachable_from: TestValue_TruthStatesRoundTripJSON}
-- [ ] The call log is resolved once — the daemon's configured log, then config, then the legacy relative path — and every metrics verb and page uses it, naming which rule chose it {id: OC-2, symbol: ResolveCallLog, package: internal/console, reachable_from: TestResolveCallLog_PrefersDaemonConfiguredLog}
-- [ ] Pages register in one table that drives routing, navigation, search and the JSON parity test {id: OC-3, symbol: registerPage, package: cmd/fathom, reachable_from: TestConsoleRegistry_RoutesNavAndSearchAgree}
-- [ ] The shell has grouped navigation, breadcrumbs, a page heading with meta and actions, a theme control and a skip link {id: OC-4, symbol: renderConsoleShell, package: cmd/fathom, reachable_from: TestConsoleShell_GroupsBreadcrumbsThemeSkipLink}
-- [ ] Error pages (404, 400, unknown service, unreadable store) render on the shell with the reason and the remedy {id: OC-5, symbol: renderConsoleError, package: cmd/fathom, reachable_from: TestConsoleErrors_RenderOnShellWithRemedy}
-- [ ] `/statusz` renders on the shell and shows an unknown typed-edge state as unknown, JSON v3 unchanged {id: OC-6, symbol: renderStatusz, package: cmd/fathom, reachable_from: TestStatusz_OnShellUnknownTypedEdgesVisible}
-- [ ] Old `/observatory*` HTML routes redirect to their new homes and their `?format=json` keeps observatoryModel v1 {id: OC-7, symbol: legacyObservatoryRedirect, package: cmd/fathom, reachable_from: TestLegacyObservatoryRoutes_RedirectAndKeepJSON}
-- [ ] Every page's JSON equals the `--json` output of each verb it names, on the fixture fleet {id: OC-8, symbol: registerPage, package: cmd/fathom, reachable_from: TestConsolePagesRenderTheirVerbs}
-- [ ] A metric shown on several pages has one projection, and every page agrees on it {id: OC-9, symbol: registerPage, package: cmd/fathom, reachable_from: TestConsoleMetricsAgreeAcrossPages}
-- [ ] Panels carry a copyable verb chip, a question, and a footer naming source, denominator and freshness {id: OC-10, symbol: renderPanel, package: cmd/fathom, reachable_from: TestConsolePanels_CarryVerbQuestionAndSource}
-- [ ] `/search` returns grouped results (projects, plans and rows, symbols, rules and records, verbs, pages) as a page and as a fragment {id: OC-11, symbol: Search, package: internal/console, reachable_from: TestSearch_GroupsAndRanksResults}
+- [x] Page projections carry a truth state per value (present, zero, absent, stale, partial, error) with reason, source, denominator and time {id: OC-1, symbol: Value, package: internal/console, reachable_from: TestValue_TruthStatesRoundTripJSON}
+- [x] The call log is resolved once — the daemon's configured log, then config, then the legacy relative path — and every metrics verb and page uses it, naming which rule chose it {id: OC-2, symbol: ResolveCallLog, package: internal/console, reachable_from: TestResolveCallLog_PrefersDaemonConfiguredLog}
+- [x] Pages register in one table that drives routing, navigation, search and the JSON parity test {id: OC-3, symbol: registerPage, package: cmd/fathom, reachable_from: TestConsoleRegistry_RoutesNavAndSearchAgree}
+- [x] The shell has grouped navigation, breadcrumbs, a page heading with meta and actions, a theme control and a skip link {id: OC-4, symbol: renderConsoleShell, package: cmd/fathom, reachable_from: TestConsoleShell_GroupsBreadcrumbsThemeSkipLink}
+- [x] Error pages (404, 400, unknown service, unreadable store) render on the shell with the reason and the remedy {id: OC-5, symbol: renderConsoleError, package: cmd/fathom, reachable_from: TestConsoleErrors_RenderOnShellWithRemedy}
+- [x] `/statusz` renders on the shell and shows an unknown typed-edge state as unknown, JSON v3 unchanged {id: OC-6, symbol: renderStatusz, package: cmd/fathom, reachable_from: TestStatusz_OnShellUnknownTypedEdgesVisible}
+- [x] Old `/observatory*` HTML routes redirect to their new homes and their `?format=json` keeps observatoryModel v1 {id: OC-7, symbol: legacyObservatoryRedirect, package: cmd/fathom, reachable_from: TestLegacyObservatoryRoutes_RedirectAndKeepJSON}
+- [x] Every page's JSON equals the `--json` output of each verb it names, on the fixture fleet {id: OC-8, symbol: registerPage, package: cmd/fathom, reachable_from: TestConsolePagesRenderTheirVerbs}
+- [x] A metric shown on several pages has one projection, and every page agrees on it {id: OC-9, symbol: registerPage, package: cmd/fathom, reachable_from: TestConsoleMetricsAgreeAcrossPages}
+- [x] Panels carry a copyable verb chip, a question, and a footer naming source, denominator and freshness {id: OC-10, symbol: renderPanel, package: cmd/fathom, reachable_from: TestConsolePanels_CarryVerbQuestionAndSource}
+- [x] `/search` returns grouped results (projects, plans and rows, symbols, rules and records, verbs, pages) as a page and as a fragment {id: OC-11, symbol: Search, package: internal/console, reachable_from: TestSearch_GroupsAndRanksResults}
 - [ ] The ⌘K palette opens over any page, moves with the arrow keys, opens on Enter and returns focus on Esc {id: OC-12, oracle: lexical, path: cmd/fathom/console_palette.go, pattern: "palette"}
-- [ ] `/events` streams ingest, compile, verify, session and daemon events with IDs, keepalives, replay and a subscriber bound {id: OC-13, symbol: EventBus, package: internal/console, reachable_from: TestEventBus_ReplayBoundAndKeepalive}
+- [x] `/events` streams ingest, compile, verify, session and daemon events with IDs, keepalives, replay and a subscriber bound {id: OC-13, symbol: EventBus, package: internal/console, reachable_from: TestEventBus_ReplayBoundAndKeepalive}
 - [ ] A panel shows "updated" when an event names its source and never moves content {id: OC-14, oracle: lexical, path: cmd/fathom/console_live.go, pattern: "data-console-source"}
-- [ ] Console page views are counted per route for the panel-traffic measurement {id: OC-15, symbol: countPageView, package: cmd/fathom, reachable_from: TestConsolePageViews_Counted}
-- [ ] Warm renders stay within 150 ms and 250 KB on the fixture fleet {id: OC-16, symbol: registerPage, package: cmd/fathom, reachable_from: TestConsoleBudgets}
+- [x] Console page views are counted per route for the panel-traffic measurement {id: OC-15, symbol: countPageView, package: cmd/fathom, reachable_from: TestConsolePageViews_Counted}
+- [x] Warm renders stay within 150 ms and 250 KB on the fixture fleet {id: OC-16, symbol: registerPage, package: cmd/fathom, reachable_from: TestConsoleBudgets}
 
 ## B. Now and the fleet
 
