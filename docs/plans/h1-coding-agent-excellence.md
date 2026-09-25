@@ -38,5 +38,5 @@ method-edge gap; the tests exist, the static edge doesn't yet.)
 
 ## Open
 
-- [x] Obligations layer compiled on the fleet store + injection coverage ≥90% (operator: migration step 4/4b, then 4-week gate) {id: H1-17, skip_test: true, skip: "operator row; evidence is the instrument: fathom instrument on 2026-08-25 read injection coverage 2042/2067 = 99% over the 168h window (gate ≥90%), obligations compiled and injecting on the fleet store"}
+- [x] Obligations layer compiled on the fleet store + injection coverage ≥90% (operator: migration step 4/4b, then 4-week gate) {id: H1-17, oracle: lexical, path: docs/changelog/0.5.0.md, pattern: "H1-17 \(injection coverage 2042/2067 = 99% over 168 h\)", skip_test: true, skip: "operator row; evidence is the instrument: fathom instrument on 2026-08-25 read injection coverage 2042/2067 = 99% over the 168h window (gate ≥90%), obligations compiled and injecting on the fleet store"}
 - [x] O6: method-call edge attribution in goextract (H1 handoff branch, merged 518e799: dedup + method edges + ctor-scoped inference + alias canonicalization); skip_test workarounds above removed — claims now prove test-reachability {symbol: TestImpact, package: internal/analysis/callgraph}

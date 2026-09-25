@@ -123,6 +123,16 @@ change exit codes in v0. skip-without-reason and self-skip are the two
 exceptions: both are ALSO gate failures (`verify.VerifyPlan`/`Gate`), not
 merely lint.
 
+**A skip is a waiver, never a contract.** `skip_test`/`skip` only exempt a
+`symbol:` from the test-reach requirement. A claimed row whose annotation
+carries nothing else — no `symbol:`, `oracle:`, `gone:`, or spec ID — verifies
+`no-contract` (Unknown): the default pre-push gate lets it through and only
+`--strict` blocks it, however well its `skip:` text names the evidence. Lint
+names that shape on every claimed row (`skip_test/skip is a waiver, not a
+contract`). An `(op)` measurement row closes with the evidence as its
+contract: `oracle: lexical` on the reading (a distinctive `pattern:` in the
+committed file — never the plan row itself), or `oracle: ledger` on the run.
+
 ## Annotation placement (load-bearing)
 
 The annotation block must sit **on the checkbox line itself**. The parser is

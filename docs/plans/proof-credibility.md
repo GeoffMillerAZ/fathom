@@ -13,7 +13,7 @@ Verify: `fathom verify --service fathom --plan docs/plans/proof-credibility.md`.
 - [x] `fathom verify` prints one provenance line when the daemon's commit differs from the local binary's `vcs.revision` — never compared to the cwd repo's HEAD (O5) {id: PC-3, symbol: provenanceNotice, package: cmd/fathom}
 - [x] Doctor `daemon_fresh` compares the daemon's `binary_commit` to the local binary's; `binary_fresh` is re-scoped to the local binary vs its own source stamp and says so {id: PC-4, symbol: checkDaemonFresh, package: cmd/fathom}
 - [x] `plans status` and `intent audit` mark rows whose newest reading came from a stale daemon `measured-stale`, counted as coverage gaps, never as failing (ADR-027) {id: PC-5, symbol: markMeasuredStale, package: cmd/fathom}
-- [x] O20 committed with root cause and fix; status `fixed` once PC-1..5 verify {id: PC-6, skip_test: true, skip: "observation log; evidence is .fathom/observations.md O20's status line"}
+- [x] O20 committed with root cause and fix; status `fixed` once PC-1..5 verify {id: PC-6, oracle: lexical, path: .fathom/observations.md, pattern: "^- \*\*Status:\*\* fixed \(2026-09-02; the sibling hazard", skip_test: true, skip: "observation log; evidence is .fathom/observations.md O20's status line"}
 
 ## Wave 1 — the honesty sweep
 

@@ -69,4 +69,4 @@
 
 - [x] the adoption question answers from a consumer repo: instrument --adoption --service run from app-kit reports that repo honestly {id: IO-30, oracle: lexical, path: CHANGELOG.md, pattern: "IO-30: .*instrument --adoption --service"}
 - [x] doctor produces zero known-false FAILs on a consumer repo {id: IO-31, oracle: lexical, path: CHANGELOG.md, pattern: "IO-31: doctor on app-kit ran 24 checks"}
-- [x] the first counterfactual pilot is pre-registered: criteria + arms filed before the first OFF session {id: IO-32, skip_test: true, skip: "pre-registration artifact under workspace/artifacts/research with its generation timestamp; published range whatever it says"}
+- [x] the first counterfactual pilot is pre-registered: criteria + arms filed before the first OFF session {id: IO-32, oracle: lexical, path: CHANGELOG.md, pattern: "IO-32: the counterfactual pilot was pre-registered before any OFF session", skip_test: true, skip: "pre-registration artifact under workspace/artifacts/research with its generation timestamp; published range whatever it says"}

@@ -37,6 +37,9 @@ func LintPlan(p Plan) []string {
 		if t.Expect.SkipTest && t.Expect.SkipReason == "" {
 			out = append(out, fmt.Sprintf("%s: skip_test without a skip: justification", t.ID))
 		}
+		if msg := skipOnlyClaim(t); msg != "" {
+			out = append(out, fmt.Sprintf("%s: %s", t.ID, msg))
+		}
 		if t.AnnotationSuspect != "" {
 			out = append(out, fmt.Sprintf("%s: annotation block could not be parsed (%q) — the row's contract and author-owned id are VOID; check braces and quoting (O4)", t.ID, t.AnnotationSuspect))
 		}
@@ -54,6 +57,26 @@ func LintPlan(p Plan) []string {
 	}
 	out = append(out, lintNeeds(p)...)
 	return out
+}
+
+// skipOnlyClaim reports a claimed ([x]) row whose only annotation is a skip
+// waiver — `skip_test: true` and/or `skip: "…"` with no symbol:, oracle:,
+// gone:, or spec ID. A waiver exempts a symbol from test_reaches; it is not a
+// contract, so verifyTask reads such a row no-contract (Unknown), which the
+// default gate lets through and only --strict blocks. Twenty-eight rows sat
+// claimed in that state (2026-09-25) because a detailed `skip:` naming the
+// evidence reads like a proof to its author. Only claimed rows are named: the
+// claim is the moment the mistake bites, and an open "(op)" row carrying its
+// waiver early is not yet wrong. "" when the row is not that shape.
+func skipOnlyClaim(t Task) string {
+	e := t.Expect
+	if !t.Claimed || (!e.SkipTest && e.SkipReason == "") {
+		return ""
+	}
+	if e.Symbol != "" || t.Oracle != "" || t.Gone != "" || len(t.SpecIDs) > 0 {
+		return ""
+	}
+	return "skip_test/skip is a waiver, not a contract — this claimed row verifies as no-contract (Unknown; --strict blocks it); give it symbol:, oracle: lexical|ledger (path + pattern or run_id naming the evidence), or gone:"
 }
 
 // lintNeeds validates the needs: eligibility DAG (WF-3): an unknown id, a
