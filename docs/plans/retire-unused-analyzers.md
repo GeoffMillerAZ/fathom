@@ -47,23 +47,23 @@ Baseline: b5540cb1c31446828e6275b8d61ea2bb94da567f
 
 ## Absence rows (one per retired package)
 
-- [ ] github.com/geoffmilleraz/fathom/internal/analysis/antipattern is imported nowhere at head {id: retire-antipattern-gone, gone: import github.com/geoffmilleraz/fathom/internal/analysis/antipattern}
-- [ ] github.com/geoffmilleraz/fathom/internal/analysis/apichangelog is imported nowhere at head {id: retire-apichangelog-gone, gone: import github.com/geoffmilleraz/fathom/internal/analysis/apichangelog}
-- [ ] github.com/geoffmilleraz/fathom/internal/analysis/churn is imported nowhere at head {id: retire-churn-gone, gone: import github.com/geoffmilleraz/fathom/internal/analysis/churn}
-- [ ] github.com/geoffmilleraz/fathom/internal/analysis/cognitive is imported nowhere at head {id: retire-cognitive-gone, gone: import github.com/geoffmilleraz/fathom/internal/analysis/cognitive}
-- [ ] github.com/geoffmilleraz/fathom/internal/analysis/crossrepocycles is imported nowhere at head {id: retire-crossrepocycles-gone, gone: import github.com/geoffmilleraz/fathom/internal/analysis/crossrepocycles}
-- [ ] github.com/geoffmilleraz/fathom/internal/analysis/dataflow is imported nowhere at head {id: retire-dataflow-gone, gone: import github.com/geoffmilleraz/fathom/internal/analysis/dataflow}
-- [ ] github.com/geoffmilleraz/fathom/internal/analysis/deprecation is imported nowhere at head {id: retire-deprecation-gone, gone: import github.com/geoffmilleraz/fathom/internal/analysis/deprecation}
-- [ ] github.com/geoffmilleraz/fathom/internal/analysis/doccoverage is imported nowhere at head {id: retire-doccoverage-gone, gone: import github.com/geoffmilleraz/fathom/internal/analysis/doccoverage}
-- [ ] github.com/geoffmilleraz/fathom/internal/analysis/endpoints is imported nowhere at head {id: retire-endpoints-gone, gone: import github.com/geoffmilleraz/fathom/internal/analysis/endpoints}
-- [ ] github.com/geoffmilleraz/fathom/internal/analysis/erraudit is imported nowhere at head {id: retire-erraudit-gone, gone: import github.com/geoffmilleraz/fathom/internal/analysis/erraudit}
-- [ ] github.com/geoffmilleraz/fathom/internal/analysis/fieldusage is imported nowhere at head {id: retire-fieldusage-gone, gone: import github.com/geoffmilleraz/fathom/internal/analysis/fieldusage}
-- [ ] github.com/geoffmilleraz/fathom/internal/analysis/ineffassign is imported nowhere at head {id: retire-ineffassign-gone, gone: import github.com/geoffmilleraz/fathom/internal/analysis/ineffassign}
-- [ ] github.com/geoffmilleraz/fathom/internal/analysis/license is imported nowhere at head {id: retire-license-gone, gone: import github.com/geoffmilleraz/fathom/internal/analysis/license}
-- [ ] github.com/geoffmilleraz/fathom/internal/analysis/markers is imported nowhere at head {id: retire-markers-gone, gone: import github.com/geoffmilleraz/fathom/internal/analysis/markers}
-- [ ] github.com/geoffmilleraz/fathom/internal/analysis/naming is imported nowhere at head {id: retire-naming-gone, gone: import github.com/geoffmilleraz/fathom/internal/analysis/naming}
-- [ ] github.com/geoffmilleraz/fathom/internal/analysis/schemaexport is imported nowhere at head {id: retire-schemaexport-gone, gone: import github.com/geoffmilleraz/fathom/internal/analysis/schemaexport}
-- [ ] github.com/geoffmilleraz/fathom/internal/analysis/sqlmap is imported nowhere at head {id: retire-sqlmap-gone, gone: import github.com/geoffmilleraz/fathom/internal/analysis/sqlmap}
-- [ ] github.com/geoffmilleraz/fathom/internal/analysis/structtags is imported nowhere at head {id: retire-structtags-gone, gone: import github.com/geoffmilleraz/fathom/internal/analysis/structtags}
+- [x] github.com/geoffmilleraz/fathom/internal/analysis/antipattern is imported nowhere at head {id: retire-antipattern-gone, gone: import github.com/geoffmilleraz/fathom/internal/analysis/antipattern}
+- [x] github.com/geoffmilleraz/fathom/internal/analysis/apichangelog is imported nowhere at head {id: retire-apichangelog-gone, gone: import github.com/geoffmilleraz/fathom/internal/analysis/apichangelog}
+- [x] github.com/geoffmilleraz/fathom/internal/analysis/churn is imported nowhere at head {id: retire-churn-gone, gone: import github.com/geoffmilleraz/fathom/internal/analysis/churn}
+- [x] github.com/geoffmilleraz/fathom/internal/analysis/cognitive is imported nowhere at head {id: retire-cognitive-gone, gone: import github.com/geoffmilleraz/fathom/internal/analysis/cognitive}
+- [x] github.com/geoffmilleraz/fathom/internal/analysis/crossrepocycles is imported nowhere at head {id: retire-crossrepocycles-gone, gone: import github.com/geoffmilleraz/fathom/internal/analysis/crossrepocycles}
+- [x] github.com/geoffmilleraz/fathom/internal/analysis/dataflow is imported nowhere at head {id: retire-dataflow-gone, gone: import github.com/geoffmilleraz/fathom/internal/analysis/dataflow}
+- [x] github.com/geoffmilleraz/fathom/internal/analysis/deprecation is imported nowhere at head {id: retire-deprecation-gone, gone: import github.com/geoffmilleraz/fathom/internal/analysis/deprecation}
+- [x] github.com/geoffmilleraz/fathom/internal/analysis/doccoverage is imported nowhere at head {id: retire-doccoverage-gone, gone: import github.com/geoffmilleraz/fathom/internal/analysis/doccoverage}
+- [x] github.com/geoffmilleraz/fathom/internal/analysis/endpoints is imported nowhere at head {id: retire-endpoints-gone, gone: import github.com/geoffmilleraz/fathom/internal/analysis/endpoints}
+- [x] github.com/geoffmilleraz/fathom/internal/analysis/erraudit is imported nowhere at head {id: retire-erraudit-gone, gone: import github.com/geoffmilleraz/fathom/internal/analysis/erraudit}
+- [x] github.com/geoffmilleraz/fathom/internal/analysis/fieldusage is imported nowhere at head {id: retire-fieldusage-gone, gone: import github.com/geoffmilleraz/fathom/internal/analysis/fieldusage}
+- [x] github.com/geoffmilleraz/fathom/internal/analysis/ineffassign is imported nowhere at head {id: retire-ineffassign-gone, gone: import github.com/geoffmilleraz/fathom/internal/analysis/ineffassign}
+- [x] github.com/geoffmilleraz/fathom/internal/analysis/license is imported nowhere at head {id: retire-license-gone, gone: import github.com/geoffmilleraz/fathom/internal/analysis/license}
+- [x] github.com/geoffmilleraz/fathom/internal/analysis/markers is imported nowhere at head {id: retire-markers-gone, gone: import github.com/geoffmilleraz/fathom/internal/analysis/markers}
+- [x] github.com/geoffmilleraz/fathom/internal/analysis/naming is imported nowhere at head {id: retire-naming-gone, gone: import github.com/geoffmilleraz/fathom/internal/analysis/naming}
+- [x] github.com/geoffmilleraz/fathom/internal/analysis/schemaexport is imported nowhere at head {id: retire-schemaexport-gone, gone: import github.com/geoffmilleraz/fathom/internal/analysis/schemaexport}
+- [x] github.com/geoffmilleraz/fathom/internal/analysis/sqlmap is imported nowhere at head {id: retire-sqlmap-gone, gone: import github.com/geoffmilleraz/fathom/internal/analysis/sqlmap}
+- [x] github.com/geoffmilleraz/fathom/internal/analysis/structtags is imported nowhere at head {id: retire-structtags-gone, gone: import github.com/geoffmilleraz/fathom/internal/analysis/structtags}
 
 > Run `fathom conserve --since b5540cb1c31446828e6275b8d61ea2bb94da567f --strict` before merging this refactor.
