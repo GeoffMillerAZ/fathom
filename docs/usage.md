@@ -1673,6 +1673,12 @@ The generated plan carries, in order:
 5. a closing instruction line naming `fathom conserve --since <baseline>
    --strict`.
 
+A ratchet's `max:` must never come from a partial read: when the corpus
+cannot be fully read (a locked directory, a fetch error), `refactor plan`
+refuses outright and names what could not be read, rather than seeding
+`max: 0` for a package its own typed call graph may already show has live
+references today.
+
 `refactor status` reads one such plan's ratchet rows (any `gone: pattern`
 row with `max:` set — hand-written or `refactor plan`-generated) and
 reports, per row, its live count against `max:`, its count AT the plan's

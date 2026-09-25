@@ -128,9 +128,18 @@ func buildRefactorPlan(ctx context.Context, c *client.Client, svc, root, baselin
 	g := callgraph.Build(nodes)
 	callgraph.AddTypedEdges(g, typed)
 
+	// A Sources() failure must NEVER degrade to an all-zero-referent plan:
+	// every ratchet's max: comes from countPatternInDir over sources
+	// (below), so silently substituting nil here would seed max: 0 for a
+	// package the SAME command's own typed call graph (byPkg/
+	// CallersDetail, built without touching Sources at all) may already
+	// prove has live, resolved references today — a manufactured "proven
+	// gone" baseline the plan never actually measured (I44's own rule for
+	// verify-time evidence applies just as much at plan-generation time).
+	// Fail loud instead, naming what could not be read.
 	sources, srcErr := c.Sources(ctx, svc)
 	if srcErr != nil {
-		sources = nil // best effort: an unreadable corpus still gets a plan, with zero-referent ratchets
+		return "", fmt.Errorf("read corpus sources for %q: %w (refusing to seed a ratchet's max: from a partial read)", svc, srcErr)
 	}
 
 	slug := slugify(target)

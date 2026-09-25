@@ -140,6 +140,55 @@ func TestCmdRefactorPlan_GateReadyPlan(t *testing.T) {
 	}
 }
 
+// TestCmdRefactorPlan_UnreadableSourceFailsLoud pins the fix for the
+// defect a review caught: when c.Sources() cannot read the corpus (a
+// locked directory under the repo root), buildRefactorPlan must NOT
+// silently seed every ratchet's max: at 0 (an all-zero baseline the SAME
+// command's own typed-caller-derived package list already contradicts —
+// `fathom refactor status`'s first run would then see the true nonzero
+// count against a max: 0 baseline the plan never actually measured, and
+// fail immediately). It must refuse to write a plan at all, naming what
+// could not be read.
+func TestCmdRefactorPlan_UnreadableSourceFailsLoud(t *testing.T) {
+	repo := newRefactorFixtureRepo(t)
+
+	// Ingest BEFORE the directory goes unreadable, exactly like the
+	// verifier's repro: the store's typed call graph (byPkg/CallersDetail)
+	// is built from a fully-readable corpus, so it genuinely proves
+	// caller/ references OldFunc. Only AFTERWARD does refactor plan's own
+	// separate, live c.Sources() re-read of the corpus hit a directory
+	// that has since gone unreadable — a transient/partial failure that
+	// must never silently disagree with what the typed graph already
+	// proved.
+	storePath := filepath.Join(t.TempDir(), "refactor3.sqlite")
+	var ing bytes.Buffer
+	if code := run([]string{
+		"ingest", "--service", "refactorfixture", "--path", repo.root, "--store", storePath,
+	}, &ing, &ing); code != 0 {
+		t.Fatalf("ingest failed (%d): %s", code, ing.String())
+	}
+
+	locked := filepath.Join(repo.root, "locked")
+	if err := os.Mkdir(locked, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(locked, 0o755) })
+
+	code, stdout, stderr := runInDir(t, repo.root, []string{
+		"refactor", "plan", "OldFunc",
+		"--service", "refactorfixture", "--store", storePath,
+	})
+	if code == 0 {
+		t.Fatalf("expected a nonzero exit when the corpus could not be fully read, got 0\nstdout=%s", stdout)
+	}
+	if strings.Contains(stdout, "max: 0") {
+		t.Fatalf("must never seed a ratchet's max: at 0 from an unread corpus — a package the same run's own typed callers prove has a live reference:\nstdout=%s\nstderr=%s", stdout, stderr)
+	}
+	if stderr == "" {
+		t.Fatalf("expected stderr to name what could not be read")
+	}
+}
+
 // TestCmdRefactorPlan_ImportTarget pins the import/package shape: the same
 // fixture, targeted by its import path directly rather than a symbol name.
 func TestCmdRefactorPlan_ImportTarget(t *testing.T) {

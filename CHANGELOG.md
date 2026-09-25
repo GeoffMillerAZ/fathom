@@ -21,6 +21,8 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: minor (pre-1.0: breaking bumps minor)
 
+**`fathom refactor plan` refuses rather than seeding a ratchet's `max:` at 0 from a partial corpus read.** A `c.Sources()` failure (a locked directory, a read error) used to silently fall back to zero source files, so every `gone: pattern` ratchet's `max:` read 0 even for a package the plan's own typed call graph proves has live references today — `fathom refactor status`'s very first run would then fail immediately against a baseline the plan never actually measured. `buildRefactorPlan` now returns an error naming what could not be read instead of writing a plan at all (CV-33).
+
 **`fathom conserve --since <ref>`** — the refactor-conservation report (vision 34, ADR-044). Six self-registering planes (`integrity`, `surface`, `certificates`, `governance`, `absence`, `resurrection`) report `conserved`/`losses`/`unproven` per plane — never a score, and a missing input is always `unproven` (I44) — as `fathom.conserve/v1` JSON or a text table; `--strict` exits 1 on any `losses`. Docs: `docs/design/refactor-conservation.md`, `docs/usage.md`.
 
 **The proof-integrity plane catches a certifying test tampered with, not just deleted.** A guarded test (named by a `// certifies:` marker, a manifest entry, an invariant's enforcement cell, or reach of a changed symbol — judged strictly AT BASE, so the same change cannot also launder its own citation) that was deleted, renamed, weakened, skipped (a `t.Skip*`/`testing.Short()` guard or a newly added `//go:build` line), or had its golden data/marker moved over base..head is a finding; an honest edit or a clean rename is informational and never fails `--strict` on its own (CV-7..12, design §1).
