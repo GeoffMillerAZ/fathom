@@ -163,8 +163,20 @@ outside the tool registry — hooks call these directly rather than through
   `_heap_sys_bytes`/`_sys_bytes`, `go_goroutines`, `process_uptime_seconds`,
   `fathom_graph_memo_entries`/`_hits_total`/`_misses_total`,
   `fathom_open_stores`, `fathom_autorefresh_total`,
-  `fathom_typed_pass_total`) — `fathom doctor`'s `daemon_footprint` row reads
-  it.
+  `fathom_typed_pass_total`, and — vision 35 — `fathom_console_page_views_total{route}`
+  and `fathom_console_event_subscribers`) — `fathom doctor`'s `daemon_footprint`
+  row reads it.
+- `GET /events` (OC-13) — the console's live-freshness stream: server-sent
+  events with an `id:`, a keepalive every 25 s, replay of the last 64 events
+  after `Last-Event-ID`, at most 16 subscribers (503 + `Retry-After` past it).
+  `ingest`, `compile`, `verify`, `session` and `daemon` events carry names and
+  IDs only — never content — and name the panel sources they invalidate.
+- The Observatory console's pages (`/`, `/fleet`, `/projects/{svc}`,
+  `/impact`, `/sessions`, `/sessions/{id}`, `/brief`, `/wiring`, `/statusz`,
+  `/search`) and the legacy `/observatory*` routes (308 for HTML, the old JSON
+  for `?format=json`) are HTML surfaces over the same projections, not tools;
+  [usage.md](usage.md#the-observatory-console-and-the-brief) lists them. None
+  of them adds an MCP tool or changes a tool's contract.
 - `GET /debug/pprof/*` (O108) — the stdlib `net/http/pprof` handlers
   (`heap`, `goroutine`, `allocs`, `profile`, `cmdline`, `symbol`, `trace`),
   mounted on the daemon's own mux. Loopback-only, same unauthenticated trust

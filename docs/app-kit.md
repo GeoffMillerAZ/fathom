@@ -30,6 +30,67 @@ architecture; no metric model, daemon behavior or future has been promoted.
   snapshot has its own band. Keep the lower-bound sign with its number and give service
   detail links a keyboard outline and 44px target. Do not patch the mirror in place.
 
+## Observatory console wave F0 (2026-09-25)
+
+Vision 35 / ADR-045 moves every Observatory page onto one console shell
+(`cmd/fathom/console_*.go`, plan `docs/plans/observatory-console.md` section A) on the
+same `dc77e66` mirror; no mirror file changed. Packages the console now uses, beyond the
+existing dashboard/stat/viz/vizframe/callout/form/hitl set:
+
+- `dashboard.RenderNav` with app-owned `NavGroup`s (Now, Fleet, Proof, Knowledge,
+  Evidence, System, Learn — a group appears once a page registers in it; no placeholder
+  destinations) inside `RenderShell` with `SkipLink` and one `ContentID`.
+- `appearance`: `BootstrapScript({StorageKey: "fathom-theme"})` inline before the
+  stylesheet, and `RenderControl` beneath the sidebar groups (also in the mobile
+  disclosure; the control's wrapping label needs no unique IDs). Browser-checked:
+  selecting Dark sets `data-theme="dark"`, saves `fathom-theme`, and the token ground
+  switches.
+- `chrome.Breadcrumbs` (the trail under the top bar) and `chrome.RenderDescriptionList`
+  (the statusz daemon panel).
+- `table.Table` (statusz services, row drill-down to `/projects/{svc}`), which makes
+  `github.com/a-h/templ` a direct root requirement at the mirror's own pin, v0.3.1020.
+- `form.RenderInput` for the top bar's `GET /search` field.
+
+`cmd/fathom/ui/input.css` scans `../console_*.go` by glob and adds the `appearance`,
+`chrome` and `table` packages; `scripts/ui-css.sh`'s audited closure matches it and
+`task ui:css` regenerated `app.css`.
+
+**Built locally as the originating consumer (vision 35 §6), to return:**
+
+- FATHOM-KIT-07 page heading: `renderConsoleHeading` composes the trail, the question,
+  a meta line and verb chips/actions under the kit top bar's `h1` from role utilities.
+  It stays app-local until the kit accepts a heading slot.
+- The verb chip (`renderVerbChip`): selectable command text with a copy button that
+  `cmd/fathom/ui/console.js` reveals only when the Clipboard API exists — the no-JS
+  reading is the plain command.
+
+**Kit defects observed (return with fixtures; local workarounds named):**
+
+- `table.Table` renders `<th>` without `scope="col"`, and its `sr-only` "Actions"
+  header is absolutely positioned inside an `overflow-x-auto` wrapper that is not a
+  containing block — at 390 px the hidden label sits at the table's right edge and
+  widens the whole document (measured: 861 px scroll width on `/statusz`). Workaround:
+  `console_statusz.go` wraps the table in `relative overflow-hidden`. The kit fix is a
+  `relative` scroll wrapper plus `scope="col"`.
+- `chrome.Breadcrumbs` links have no focus-visible treatment and no 44 px target.
+- `viz.Sparkline`/`viz.Bars` take a fixed pixel width; the fleet page wraps them in
+  `[&>svg]:max-w-full [&>svg]:h-auto` so the 640 px traffic sparkline no longer scrolls
+  `main` sideways at 390 px.
+
+**Waiting on contributions:** the ⌘K palette dialog (OC-12, FATHOM-KIT-01 over
+`overlay`) and the live "updated — refresh this panel" affordance (OC-14,
+FATHOM-KIT-06). Their server sides shipped: `/search` answers a full page, an HTML
+fragment and JSON, and `/events` streams names-and-IDs events.
+
+**Proof (2026-09-25):** `go test -race` over `internal/console`, `cmd/fathom`,
+`internal/mcp`, `internal/metrics`, `internal/scope`; `task ui:css`,
+`scripts/ui-css_test.sh` 12/12 and `scripts/ui-css.sh --check`; a scratch `serve-http`
+over a `.backup` copy of the fleet store (18 services) rendered every page — warm renders
+0.3–34 ms, HTML 21–83 KB — with headless Chrome screenshots in both themes at 1440 px
+and a 390 px frame, and an in-browser 390 px layout probe reporting no document-level
+horizontal overflow on any page. This is not UX-M2's certification: keyboard paths and
+contrast were spot-checked, not measured page by page.
+
 ## Current mirror and palette convergence (2026-09-25)
 
 FATHOM-GUIDE-01 landed on main at mirror `f7ab0fbd`, then took one reviewed bump to

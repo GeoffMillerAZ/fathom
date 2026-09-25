@@ -455,11 +455,12 @@ HTTP endpoints:
 | `POST` | `/rpc` | Single JSON-RPC 2.0 request/response (4 MB body limit) — full tool surface |
 | `POST` | `/rpc/{surface}` | Same protocol scoped to a named surface (`agent`, `companion`, `coding`, `investigation`, `shared`, `platform`, `modules`): filters `tools/list`; an off-surface `tools/call` still **executes** and is logged `off_surface:true` (execute-and-flag, ADR-014 amendment) — the hard gate exists only behind `Server.strictSurfaces` and on hosted `/rpc/modules` |
 | `GET` | `/healthz` | Liveness probe — returns `ok` |
-| `GET` | `/events` | SSE stream — sends `hello` event then stays open |
-| `GET` | `/metrics` | Text metrics: `fathom_uptime_seconds`, `fathom_requests_total` |
-| `GET` | `/statusz` | Daemon health, per-service index freshness, channel liveness, last compile per layer, and (schema 2) the daemon's own build stamp `binary_commit` / `binary_dirty` / `built_at` — JSON via `Accept: application/json`/`?format=json`, HTML otherwise (`docs/design/observability-surfaces.md` §8 item 6). Gated inside the `/rpc/modules` bearer-token allowlist when `--modules-token-env` is configured; open on the default loopback-only daemon |
+| `GET` | `/events` | Live freshness (OC-13): SSE with an `id:` per event, a `: keepalive` every 25 s, replay of the last 64 events after `Last-Event-ID` (or `?last_event_id=`), at most 16 subscribers (the 17th gets 503 + `Retry-After`). Kinds: `ingest`, `compile`, `verify` (the verify ledger, polled every 2 s), `session`, `daemon`. Events carry names and IDs only, never content; opens with a `hello` event |
+| `GET` | `/metrics` | Text metrics: `fathom_uptime_seconds`, `fathom_requests_total`, memory and memo gauges, `fathom_console_page_views_total{route=…}` (OC-15: HTML views per console route pattern since start; the durable 30-day record is `~/.fathom/console-views.jsonl`, `FATHOM_CONSOLE_VIEWS` overrides) and `fathom_console_event_subscribers` |
+| `GET` | `/statusz` | Daemon health, per-service index freshness, channel liveness, last compile per layer, and (schema 2) the daemon's own build stamp `binary_commit` / `binary_dirty` / `built_at` — JSON (schema 3, unchanged) via `Accept: application/json`/`?format=json`; HTML on the console shell otherwise, where a service whose typed-edge pass this daemon has not run reads **unknown**, never blank (OC-6; `docs/design/observability-surfaces.md` §8 item 6). Gated inside the `/rpc/modules` bearer-token allowlist when `--modules-token-env` is configured; open on the default loopback-only daemon |
 | `POST` | `/reload` | Reload the store (PlatformStore re-scan in platform mode) |
-| `GET` | `/observatory`, `/observatory/service`, `/observatory/impact`, `/observatory/story`, `/observatory/brief`, `/observatory/session`, `/observatory/wiring/` | The observatory (see below); `?format=json` returns the model |
+| `GET` | `/`, `/fleet`, `/projects/{svc}`, `/impact`, `/sessions`, `/sessions/{id}`, `/brief`, `/wiring`, `/statusz`, `/search` | The Observatory console (see below): every page on one shell; `?format=json` returns the page's envelope (`fathom.console.page/v1`) |
+| `GET` | `/observatory`, `/observatory/service`, `/observatory/impact`, `/observatory/story`, `/observatory/brief`, `/observatory/session`, `/observatory/wiring/` | Legacy routes (OC-7): an HTML request is a **308** to the page's new home; `?format=json` still returns the old JSON unchanged (`observatoryModel` v1 and its per-page slices) |
 | `POST` | `/observatory/wiring/preview` · `apply` · `undo` | Law-15 wiring through `internal/wiring`: `preview` returns the plan + `plan_digest`; `apply` requires it (409 if the repo changed since preview) and returns a `receipt_digest`; `undo` requires that digest. All three refuse non-loopback `Host`, cross-origin `Origin`, unknown service ids, and paths that are not registered service roots (`requireLocalMutation`) |
 
 ```sh
@@ -2298,34 +2299,59 @@ validate --strict` over the rendered tree when a `claude` binary is on PATH
 
 ---
 
-## The observatory and the brief
+## The observatory console and the brief
 
-The daemon serves a value-realization UI (vision 17) next to `/statusz`:
+The daemon serves the Observatory console (vision 35, ADR-045; wave F0 of
+`docs/plans/observatory-console.md`). Every page renders on one app-kit shell:
+a grouped sidebar (Now, Fleet, Proof, Knowledge, Evidence, System, Learn — a
+group shows once a page registers in it), a breadcrumb trail, a page heading
+with the question it answers and the verbs it renders as copyable chips, a
+light/dark/system theme control (browser storage key `fathom-theme`), a skip
+link, and a search field. Error pages (404, 400, an unknown project, an
+unreadable store) render on the same shell with the reason and the remedy.
 
-- `GET /observatory` — fleet tiles: wiring, freshness, traffic, open
-  observations; every warning names its remedy command. `?format=json`
-  returns the model.
-- `GET /observatory/service?id=S` — one repo's adoption gauge, hook
-  wiring, freshness with the exact re-ingest command, and (RG-6) 30-day
-  per-dimension series (queried, discovering, preventing, gating) from
-  real call-log rows — a day with no call-log rows at all renders Absent
-  ("no call-log rows for <date>"), a day the log was alive but this
-  service saw nothing is a measured 0, and sparklines never draw across
-  an absent day.
+| Route | Page |
+|---|---|
+| `/` | Now — the front door (four questions, surfaces) |
+| `/fleet` | Fleet tiles; the JSON carries `fathom fleet report --json` computed by the verb's own function |
+| `/projects/{svc}` | One project (was `/observatory/service?id=S`) |
+| `/impact` | The four questions with their instruments |
+| `/sessions`, `/sessions/{id}` | The week and one session's replay |
+| `/brief` | The shareable brief; `?format=md` downloads it |
+| `/wiring` | Per-repo Preview → Apply → Undo (the POSTs stay at `/observatory/wiring/*` behind the local gate) |
+| `/statusz` | Daemon status (JSON schema 3 unchanged) |
+| `/search?q=` | Projects, plans and plan rows, symbols, rules and records, verbs and pages, grouped; `?format=fragment` is the HTML fragment the command palette will load, `?format=json` the results |
+
+- Every page answers `?format=json` (or `Accept: application/json`) with one
+  envelope: `schema`, `page`, `route`, `title`, `group`, `question`, `verbs`,
+  `metrics` (the shared metrics it shows, each a value with its truth state —
+  `present`, `zero`, `absent`, `stale`, `partial`, `error` — reason, source and
+  denominator), `sections` (each declared verb's `--json`) and `model`.
+- Shared metrics are computed once (`internal/console`): `fleet.services`,
+  `fleet.symbols`, `calls.total` (every row in the resolved call log —
+  unattributed rows are named, never dropped), `sessions.total` (distinct
+  sessions, never ledger rows) and `observations.open` (a partial count stays a
+  "≥" lower bound everywhere, the brief included).
 - The fleet page's grade distribution over 30 days (RG-7) is
   **experimental**: days without a snapshot are Absent — today's fold
   only, until daily snapshots persist (the page says so). Symbols/traffic/
   serves tiles render Absent, never 0, when the call log or store could
-  not be read.
-- `GET /observatory/wiring/` — per-repo wiring plans; `preview` → `apply`
-  → `undo` (see the `serve-http` endpoint table).
-- `GET /observatory/impact` — verify catches and discovery actions with
-  their denominators, and the counterfactual pilot as a state machine
-  (a savings figure exists only as an arm range — law 12). Story rows
-  render under an explicit lens banner (law 14).
+  not be read. A project's 30-day per-dimension series (RG-6) renders a day
+  with no call-log rows as Absent and never draws a sparkline across it.
 - `fathom brief [--print|--out DIR]` — the same impact model as a dated
   local markdown brief, with an explicit "Not measured" section.
   Sharing is a human verb (law 13): the verb writes a file and stops.
+
+**The call log is resolved once** (OC-2). `serve-http` records itself in
+`~/.fathom/daemons/<host>-<port>.json` (its absolute `--call-log`, store, pid and
+commit) once its listener is bound, and renders its own pages from that log.
+Every metrics, instrument and flywheel verb, `fleet report` and `research
+report`/`bundle` then resolve the log the same way: `--call-log`, else
+`FATHOM_CALL_LOG`, else the record of the daemon they talk to (`FATHOM_HTTP`,
+default `localhost:7575`), else a named `--service`'s own root (J5), else
+`[daemon].call_log`, else the legacy default path. A verb run from any directory
+now reads the log the daemon writes. (`metrics rotate` and `review`, which
+write the log, keep their previous resolution.)
 
 ## Capabilities — what is on here, and why anything is off
 

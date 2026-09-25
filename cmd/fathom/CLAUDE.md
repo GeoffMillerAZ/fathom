@@ -1,10 +1,19 @@
 # cmd/fathom — the observatory UI is an app-kit app (never hand-write markup)
 
-The web surfaces (`/`, `/observatory*`, served by serve-http) are rendered
-by Go files here (`observatory_*.go`, `brief.go`, `statusz.go`) on
-**app-kit** (Path A, Go server-rendered): `appkit/ui/dashboard` for layout, `appkit/ui/stat` for KPIs
-(`stat.Absent` for uninstrumented metrics — law 3), `appkit/ui/viz` for charts
-(Sparkline, Gauge, Bars). The doctrine, binding:
+The web surfaces — the Observatory console (vision 35, ADR-045: `/`, `/fleet`,
+`/projects/{svc}`, `/impact`, `/sessions`, `/brief`, `/wiring`, `/statusz`,
+`/search`, served by serve-http; the legacy `/observatory*` routes redirect) —
+are rendered by Go files here on **app-kit** (Path A, Go server-rendered).
+**Every console page and component lives in its own `console_<name>.go` and
+registers in `init()` (`declarePage` → `registerPage`, `console_registry.go`):
+the one table drives routing, the grouped sidebar, search and the JSON parity
+test.** Page projections that a CLI verb also shows live in `internal/console`
+(no UI imports; values carry a truth state). Kit parts: `appkit/ui/dashboard`
+for the shell and grouped nav, `chrome` for breadcrumbs/description lists,
+`appearance` for the theme (key `fathom-theme`), `table` for tables, `stat` for
+KPIs (`stat.Absent` for uninstrumented metrics — law 3; `valueStat` maps a
+projected value), `viz` for charts; a panel is `renderPanel` (question, verb
+chip, source/denominator/freshness footer). The doctrine, binding:
 
 1. **Search before writing.** Query the `appkit` MCP (`search_components`,
    TailwindPlus + MatDash) and the kit packages before authoring ANY
@@ -19,7 +28,9 @@ by Go files here (`observatory_*.go`, `brief.go`, `statusz.go`) on
    `appkit gen` to skip the kit's CLI palette). The build reads
    `cmd/fathom/ui/input.css` whose **@source globs are load-bearing**: any
    new file that renders kit utilities must be listed there or its classes
-   silently never render.
+   silently never render. `console_*.go` is scanned by glob, so a new
+   console page file needs no edit there — a new kit package or a renderer
+   outside that glob does (and `scripts/ui-css.sh`'s audited closure with it).
 4. **A 200 is not a rendering.** Open the pages in a browser (or
    Playwright-screenshot both themes) before claiming UI work done.
 5. **Promote upward (D13).** A generalizable piece moves into app-kit with

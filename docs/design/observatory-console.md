@@ -28,8 +28,10 @@ projection, so they cannot disagree (P10).
 **The call log is resolved once.** CLI verbs today read `./workspace/logs/mcp-calls.jsonl`
 relative to the working directory, so the same verb reports different numbers from
 different directories. `console.ResolveCallLog` returns the daemon's configured `--call-log`
-(from `service_meta`/daemon state), then `[metrics] call_log` in config, then the legacy
-relative path. The result carries which rule chose it, and every metrics verb and page
+(from the daemon's own record, `~/.fathom/daemons/<host>-<port>.json`, written once
+serve-http's listener is bound), then `[daemon].call_log` in config (the one config key
+for the log), then the legacy relative path; an explicit `--call-log` or
+`FATHOM_CALL_LOG` still wins for its own invocation. The result carries which rule chose it, and every metrics verb and page
 uses it.
 
 **Pages register themselves.** `cmd/fathom/console_registry.go` holds a table of `Page{Route,
