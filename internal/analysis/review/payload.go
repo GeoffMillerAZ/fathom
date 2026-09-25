@@ -64,20 +64,32 @@ func (r ConservationResidueSummary) payload() map[string]any {
 	for i, it := range r.Items {
 		items[i] = it.payload()
 	}
-	return map[string]any{
+	resp := map[string]any{
 		"changed":    r.Changed,
 		"attested":   r.Attested,
 		"unattested": r.Unattested,
 		"unreached":  r.Unreached,
-		"items":      items,
-		"truncated":  r.Truncated,
-		"unanalyzed": nonNilStrings(r.Unanalyzed),
-		"missing":    nonNilStrings(r.Missing),
+		// Partial/Unexecuted/UnanalyzedFunctions (CV-69/CV-71, design
+		// §3.5) carry the SAME execution-evidence counts
+		// fathom.conserve/v1's own residue object does — additive, never
+		// only on the in-memory Dimension struct (the CHANGELOG's own
+		// promise that this dimension "carries the new fields").
+		"partial":              r.Partial,
+		"unexecuted":           r.Unexecuted,
+		"unanalyzed_functions": r.UnanalyzedFunctions,
+		"items":                items,
+		"truncated":            r.Truncated,
+		"unanalyzed":           nonNilStrings(r.Unanalyzed),
+		"missing":              nonNilStrings(r.Missing),
 	}
+	if r.CoverageUnusable != "" {
+		resp["coverage_unusable"] = r.CoverageUnusable
+	}
+	return resp
 }
 
 func (it ConservationResidueItem) payload() map[string]any {
-	return map[string]any{
+	resp := map[string]any{
 		"symbol":  it.Symbol,
 		"file":    it.File,
 		"line":    it.Line,
@@ -86,6 +98,13 @@ func (it ConservationResidueItem) payload() map[string]any {
 		"tests":   nonNilStrings(it.Tests),
 		"callers": it.Callers,
 	}
+	if it.Evidence != "" {
+		resp["evidence"] = it.Evidence
+	}
+	if len(it.UnexecutedLines) > 0 {
+		resp["unexecuted_lines"] = nonNilStrings(it.UnexecutedLines)
+	}
+	return resp
 }
 
 func (f Finding) payload() map[string]any {

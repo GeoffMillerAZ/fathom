@@ -1751,9 +1751,10 @@ line, for a modified one — decide the class purely from execution:
 
 - `attested` — every changed block executed (a comment-only edit has no
   changed block at all, so it clears);
-- `partial` — the function executed, but some changed blocks never ran
-  (`unexecuted_lines` names those ranges);
-- `unexecuted` — no changed block ran.
+- `partial` — the function executed (some block of it ran, changed or
+  not), but some changed block never ran (`unexecuted_lines` names those
+  ranges);
+- `unexecuted` — no block of the function executed at all.
 
 Without a usable profile — globally, or for one specific item — the
 original static classes (`attested`/`unattested`/`unreached`) stand for

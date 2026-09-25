@@ -481,13 +481,22 @@ Asking a model whether an unexecuted changed line is "safe" is refused under
 decision 8.
 
 **Kill criterion (CV-M14).** Re-run the CV-M13 ranges with coverage: fathom
-5afeee42..78e508d3 and conjure's two measured ranges. By construction, no
-`attested` item may be unexecuted and no flagged item may have executed.
-`runServeHTTP` must read `partial`, naming `cmd/fathom/servehttp.go` line 131.
-The `slog.Handler` methods must read `attested`. `WithGroup` and
-`ParseError.Unwrap` must read `unexecuted`. Separately, if an attest run with
-`-coverpkg=./...` takes more than twice as long as the plain run on this
-repository, the profile becomes opt-in (`TESTKIT_COVER=1`) instead of default.
+5afeee42..78e508d3 and conjure's three measured ranges (r1, r2, r3). By
+construction, no `attested` item may be unexecuted and no flagged item may
+have executed. `runServeHTTP` must read `partial`, naming
+`cmd/fathom/servehttp.go` line 131. The `slog.Handler` methods (only present
+in conjure's r3, 44fd5ae..e9d0f2e) must read `attested`. `WithGroup` and
+`ParseError.Unwrap` must read `unexecuted`. This prediction is meaningful only
+against a bound, `passed: true` profile at the range's own head (I44: a
+profile whose run did not pass is refused globally, and every item in that
+range falls back to static reach regardless of what actually executed) — the
+literal r3 head commit's own suite fails on an unrelated, date-sensitive test
+unfixed until a later commit, so the operator measurement must re-run tests
+against a tree where that fix is present (or any other tree at r3's head
+whose suite genuinely passes), never treat a failing head as satisfying or
+refuting this criterion. Separately, if an attest run with `-coverpkg=./...`
+takes more than twice as long as the plain run on this repository, the
+profile becomes opt-in (`TESTKIT_COVER=1`) instead of default.
 
 ## 4. Stage 4 — refactors as programs
 

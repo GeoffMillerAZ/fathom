@@ -250,6 +250,102 @@ func TestNewInput_SubdirectoryRootChangedFilesAreRelative(t *testing.T) {
 	}
 }
 
+// TestParseUnifiedHunkRanges_PureDeletionYieldsAPoint pins CV-M13's own
+// calibration method (method/join.py's `deletion_points`): a pure
+// deletion hunk ("@@ -a,d +c,0 @@", nothing added on the + side) still
+// contributes a single-line range {c, c} — never silently dropped.
+// Dropping it entirely would let changedBlocksFor read a deletion-only
+// edit as "no changed block at all", the same vacuous shape design §3.5
+// reserves for a comment-only edit, clearing a real behaviour change
+// (a removed guard, a removed statement) to "attested" without ever
+// checking whether the block it lived in ran.
+func TestParseUnifiedHunkRanges_PureDeletionYieldsAPoint(t *testing.T) {
+	diff := "diff --git a/f.go b/f.go\n" +
+		"--- a/f.go\n" +
+		"+++ b/f.go\n" +
+		"@@ -5 +4,0 @@ func F\n" +
+		"-\tpanic(\"guard\")\n"
+	got := parseUnifiedHunkRanges(diff)
+	want := []LineRange{{Start: 4, End: 4}}
+	if len(got) != 1 || got[0] != want[0] {
+		t.Errorf("parseUnifiedHunkRanges(deletion-only) = %v, want %v", got, want)
+	}
+}
+
+// TestGitChangedLines_DeletionOnlyEditYieldsADeletionPoint runs the real
+// gitChangedLines (not a hand-built diff) against a repo where the ONLY
+// edit is a deletion, and confirms the returned range still overlaps the
+// block that used to contain the deleted line.
+func TestGitChangedLines_DeletionOnlyEditYieldsADeletionPoint(t *testing.T) {
+	repo := newInputTestRepo(t)
+	repo.write("pkg/f.go", "package pkg\n\nfunc F(x int) int {\n\tif x > 0 {\n\t\tpanic(\"guard\")\n\t}\n\treturn x\n}\n")
+	repo.commitAll("base")
+	base := repo.headSHA()
+
+	repo.write("pkg/f.go", "package pkg\n\nfunc F(x int) int {\n\tif x > 0 {\n\t}\n\treturn x\n}\n")
+
+	ranges, err := gitChangedLines(context.Background(), repo.root, base, "pkg/f.go")
+	if err != nil {
+		t.Fatalf("gitChangedLines: %v", err)
+	}
+	if len(ranges) != 1 {
+		t.Fatalf("ranges = %v, want exactly one deletion-point range", ranges)
+	}
+	// The deleted panic() line sat inside the if-body, which now spans
+	// lines 4-5 at head — the deletion point must fall in that span, not
+	// be silently absent.
+	if ranges[0].End < 4 || ranges[0].Start > 5 {
+		t.Errorf("ranges = %v, want a point inside [4,5] (the if-body the deletion emptied)", ranges)
+	}
+}
+
+// TestGitChangedLines_IgnoresExternalDiffAndColorConfig pins that
+// gitChangedLines' own answer does not depend on the caller's git
+// config: a diff.external driver (difftastic's documented
+// `diff.external difft` setup) replaces the unified hunk-header output
+// this function parses, and color.diff=always prefixes each hunk header
+// with an ANSI escape code — either way, without --no-ext-diff
+// --no-color, unifiedHunkHeaderRe matches nothing and every changed line
+// silently vanishes with NO error at all (changedBlocksFor then reads it
+// exactly like a comment-only edit, clearing every changed block to
+// "attested" with no execution ever checked — CV-M14's "no attested item
+// may be unexecuted", broken by a user's own git config).
+func TestGitChangedLines_IgnoresExternalDiffAndColorConfig(t *testing.T) {
+	repo := newInputTestRepo(t)
+	repo.write("pkg/f.go", "package pkg\n\nfunc F() int { return 1 }\n")
+	repo.commitAll("base")
+	base := repo.headSHA()
+	repo.write("pkg/f.go", "package pkg\n\nfunc F() int { return 2 }\n")
+
+	t.Run("color.diff=always", func(t *testing.T) {
+		repo.run("config", "color.diff", "always")
+		defer repo.run("config", "--unset", "color.diff")
+		ranges, err := gitChangedLines(context.Background(), repo.root, base, "pkg/f.go")
+		if err != nil {
+			t.Fatalf("gitChangedLines: %v", err)
+		}
+		if len(ranges) != 1 || ranges[0].Start != 3 {
+			t.Errorf("ranges = %v, want exactly [{3 3}] (color config must not swallow the diff)", ranges)
+		}
+	})
+
+	t.Run("diff.external", func(t *testing.T) {
+		script := filepath.Join(repo.root, "fake-external-diff.sh")
+		if err := os.WriteFile(script, []byte("#!/bin/sh\necho external diff output, no unified hunks here\nexit 0\n"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		repo.run("config", "diff.external", script)
+		defer repo.run("config", "--unset", "diff.external")
+		ranges, err := gitChangedLines(context.Background(), repo.root, base, "pkg/f.go")
+		if err != nil {
+			t.Fatalf("gitChangedLines: %v", err)
+		}
+		if len(ranges) != 1 || ranges[0].Start != 3 {
+			t.Errorf("ranges = %v, want exactly [{3 3}] (diff.external must not swallow the diff)", ranges)
+		}
+	})
+}
+
 // TestGitShowFile_UnreadableBlobIsAnError pins I38: an unreadable base
 // object (a permission error, a corrupt loose object — never the ordinary
 // "this path did not exist at base" shape) must come back as a real

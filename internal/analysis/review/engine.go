@@ -633,15 +633,20 @@ func runCertifications(in Input) Dimension {
 // could not be checked and why, not just that the dimension overall
 // ran).
 //
-// The reading set (design §3.4, CV-65) rides alongside, never inside, the
-// plane findings above: d.Residue carries in.ConservationResidue's own
-// counts, and the residue's first five `unreached` items — ordered exactly
-// as the caller supplied them (unreached-first, resolved-caller-count
-// descending, then symbol — conserve.Residue's own order, ConservationResidue
-// Summary.Items' own doc comment) — never re-sorted or re-classed here.
-// It changes NOTHING about Checked/Reason or the plane findings: the
-// reading set is not a plane (design §3.4) and never overrides
-// runConservation's own base/supported gate above.
+// The reading set (design §3.4/§3.5, CV-65/CV-69) rides alongside, never
+// inside, the plane findings above: d.Residue carries in.ConservationResidue's
+// own counts, and the first five items off the residue's own list — ordered
+// exactly as the caller supplied them (design §3.5's own class order —
+// unexecuted, unreached, partial, unattested — by resolved-caller-count
+// descending, then symbol; ConservationResidueSummary.Items' own doc
+// comment) — never re-sorted or re-classed here. Capped at five items
+// regardless of class: with execution evidence (§3.5) an "unreached-only"
+// filter would silently hide every unexecuted/partial item a usable
+// coverage profile found — exactly the classes CV-M13 exists to surface,
+// and the ones a reviewer most needs to see. It changes NOTHING about
+// Checked/Reason or the plane findings: the reading set is not a plane
+// (design §3.4) and never overrides runConservation's own
+// base/supported gate above.
 func runConservation(in Input) Dimension {
 	d := Dimension{Name: DimConservation}
 	if in.Base == "" {
@@ -662,8 +667,8 @@ func runConservation(in Input) Dimension {
 		CoverageUnusable: res.CoverageUnusable,
 	}
 	for _, it := range res.Items {
-		if it.Class != "unreached" || len(d.Residue.Items) >= 5 {
-			continue
+		if len(d.Residue.Items) >= 5 {
+			break
 		}
 		d.Residue.Items = append(d.Residue.Items, it)
 	}

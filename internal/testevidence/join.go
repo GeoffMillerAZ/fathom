@@ -79,7 +79,7 @@ func JoinCasesToSymbols(cases []Case, suiteName string, symbols []core.SymbolNod
 		case 1:
 			key = candidates[0].key
 		default:
-			key = disambiguateByPackage(c.ID, candidates)
+			key = disambiguateByPackage(c.ID, c.Name, candidates)
 		}
 		if key != "" {
 			stats.Joined++
@@ -100,25 +100,52 @@ func topLevelTestName(caseName string) string {
 
 // disambiguateByPackage picks the one candidate (of several sharing a bare
 // Test* name) whose own directory the case id's package portion — its Go
-// import path, everything before the LAST "." (a bare id with no "."
-// names no package at all and never matches) — ends in: an exact
-// directory match, or a "/"+dir suffix match against the import path's
-// trailing segments (a directory "internal/canon" matches an import path
-// "github.com/geoffmilleraz/conjure/internal/canon" without ever needing
-// to resolve the case's own module path). Never guesses: zero or more
-// than one candidate matching returns "" (still unjoined), exactly like
-// an ordinary unresolved ambiguity.
-func disambiguateByPackage(caseID string, candidates []symbolCandidate) string {
-	pkgPath := packageFromCaseID(caseID)
+// import path, everything the id carries BEFORE its own case name (never
+// just "the last dot": a subtest name commonly contains one itself, e.g.
+// "TestX/v1.2" or a table test keyed by a file path, CV-72/defect
+// evidence) — ends in: an exact directory match, or, when no root-
+// package candidate (dir == "") shares this bare name, a "/"+dir suffix
+// match against the import path's trailing segments (a directory
+// "internal/canon" matches an import path "github.com/geoffmilleraz/
+// conjure/internal/canon" without ever needing to resolve the case's own
+// module path). A root candidate makes the suffix form irreducibly
+// ambiguous: this file has no go.mod, so it cannot tell "example.com/
+// tools" (a ROOT package's own import path, which IS its module path)
+// ending in "/tools" from a genuine "tools/" subdirectory candidate's
+// import path doing the same — both readings are equally consistent
+// with the bare id string alone. Rather than pick one (a real risk: the
+// pre-fix behaviour always silently picked the subdirectory, sending a
+// root-package case to the WRONG symbol whenever a subdirectory
+// happened to share the module's own last path segment), a non-root
+// candidate matches only EXACTLY when a root candidate is present in the
+// same set — never by suffix — and an unresolved root ambiguity stays
+// unjoined, exactly like an ordinary unresolved ambiguity: exactness is
+// the whole contract (design doc §2's "exact name"), and "never guessed"
+// means never guessed in either direction.
+func disambiguateByPackage(caseID, caseName string, candidates []symbolCandidate) string {
+	pkgPath := packageFromCaseID(caseID, caseName)
 	if pkgPath == "" {
 		return ""
 	}
+	hasRoot := false
+	for _, cand := range candidates {
+		if cand.dir == "" {
+			hasRoot = true
+			break
+		}
+	}
+	// The root candidate's own import path IS the module path itself,
+	// which this file has no go.mod to resolve, so it is never matched
+	// here at all — only a non-root candidate is, and only by an EXACT
+	// directory match once hasRoot makes the suffix form ambiguous.
 	match, matches := "", 0
 	for _, cand := range candidates {
 		if cand.dir == "" {
 			continue
 		}
-		if pkgPath == cand.dir || strings.HasSuffix(pkgPath, "/"+cand.dir) {
+		exact := pkgPath == cand.dir
+		suffix := !hasRoot && strings.HasSuffix(pkgPath, "/"+cand.dir)
+		if exact || suffix {
 			matches++
 			match = cand.key
 		}
@@ -130,13 +157,26 @@ func disambiguateByPackage(caseID string, candidates []symbolCandidate) string {
 }
 
 // packageFromCaseID returns the Go import path a case id names before its
-// trailing ".<TestFunc>" — surveyor's go-test-json id convention (CV-M13's
-// own control data, control/r1/envelope.json: "github.com/geoffmilleraz/
-// conjure/internal/canon.TestDeleteJSONC"). "" when id carries no "." at
-// all (an id shaped some other way — never guessed at).
-func packageFromCaseID(id string) string {
-	if i := strings.LastIndexByte(id, '.'); i >= 0 {
-		return id[:i]
+// own trailing ".<c.Name>" — surveyor's go-test-json id convention
+// (CV-M13's own control data, control/r1/envelope.json:
+// "github.com/geoffmilleraz/conjure/internal/canon.TestDeleteJSONC"), cut
+// by the case's OWN name rather than at id's last "." — a subtest name
+// routinely contains a "." of its own (a version string "v1.2", a table
+// test keyed by a file path "internal/b.go", both real shapes in this
+// repository's own suite), and cutting at id's LAST "." then lands
+// inside the subtest name, either matching no candidate at all or
+// suffix-matching the WRONG one. Falls back to name's own top-level
+// Test* function when id does not end in "."+name (a caller-supplied id
+// shaped some other way); "" when neither suffix is found at all —
+// never guessed at.
+func packageFromCaseID(id, name string) string {
+	if pkg, ok := strings.CutSuffix(id, "."+name); ok {
+		return pkg
+	}
+	if top := topLevelTestName(name); top != name {
+		if pkg, ok := strings.CutSuffix(id, "."+top); ok {
+			return pkg
+		}
 	}
 	return ""
 }

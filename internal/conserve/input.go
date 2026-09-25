@@ -360,8 +360,23 @@ func NewInput(ctx context.Context, root, baseRef string, st store.Store, service
 // "against the worktree" semantics changedFilesSinceBase already uses
 // throughout this file, so an uncommitted edit is included exactly like
 // a committed one.
+//
+// --no-ext-diff and --no-color are explicit, never left to the caller's
+// own git config: a diff.external driver (difftastic's documented
+// `diff.external difft` setup) replaces the unified "@@ -a,b +c,d @@"
+// output this function parses with arbitrary text, and color.diff/
+// color.ui=always prefixes each hunk header with an ANSI escape code —
+// either way unifiedHunkHeaderRe matches nothing, parseUnifiedHunkRanges
+// silently returns an empty slice with a NIL error (never surfaced as a
+// failure), and changedBlocksFor then reads an empty, error-free result
+// exactly like a comment-only edit: every changed block of every
+// modified function in path clears to "attested" with no execution ever
+// checked. Forcing both flags off makes this function's own output
+// independent of the caller's git config, the same discipline every
+// other git invocation in this package already gets by never reading
+// user config at all.
 func gitChangedLines(ctx context.Context, root, base, path string) ([]LineRange, error) {
-	out, err := exec.CommandContext(ctx, "git", "-C", root, "diff", "--no-renames", "-U0", base, "--", path).Output()
+	out, err := exec.CommandContext(ctx, "git", "-C", root, "diff", "--no-ext-diff", "--no-color", "--no-renames", "-U0", base, "--", path).Output()
 	if err != nil {
 		return nil, fmt.Errorf("git diff -U0 %s -- %s: %w", base, path, err)
 	}
@@ -376,7 +391,18 @@ var unifiedHunkHeaderRe = regexp.MustCompile(`^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+)
 
 // parseUnifiedHunkRanges extracts every hunk's "+" (HEAD-side) line range
 // from diff's own unified-format hunk headers. A pure-deletion hunk
-// (newCount == 0, nothing added on the + side) contributes no range.
+// (newCount == 0, nothing added on the + side) still contributes a
+// single-line "deletion point" range {c, c} at the hunk's own +c
+// position — CV-M13's own calibration method (method/join.py's
+// `deletion_points`) records exactly this and counts a coverage block
+// "changed" when it CONTAINS one, the same overlap test
+// changedBlocksFor already applies to an ordinary range. Content WAS
+// removed from this HEAD position even though nothing was added there;
+// dropping it silently would let a behaviour-changing deletion (a
+// removed guard, a removed statement) inside a function that never ran
+// clear to "attested" as if it were the vacuous comment-only case design
+// §3.5 actually means (residue.go's own classifyByExecution: zero
+// changed blocks -> attested).
 func parseUnifiedHunkRanges(diff string) []LineRange {
 	var ranges []LineRange
 	for _, line := range strings.Split(diff, "\n") {
@@ -395,6 +421,7 @@ func parseUnifiedHunkRanges(diff string) []LineRange {
 			}
 		}
 		if count == 0 {
+			ranges = append(ranges, LineRange{Start: start, End: start})
 			continue
 		}
 		ranges = append(ranges, LineRange{Start: start, End: start + count - 1})

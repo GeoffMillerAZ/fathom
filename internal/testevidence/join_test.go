@@ -50,6 +50,104 @@ func TestJoinCasesToSymbols_ExactNameAndSubtest(t *testing.T) {
 	}
 }
 
+// TestJoinCasesToSymbols_SubtestNameContainingADot pins the real
+// surveyor id shape a dotted subtest name produces: "<import path>.
+// <TestFunc>/<subtest>", where <subtest> itself commonly contains a "."
+// (a version string "v1.2", a table test keyed by a file path
+// "internal/b.go" — both real shapes found in this repository's and
+// conjure's own control envelopes). Cutting the id at its LAST "."
+// lands inside the subtest name, matching no candidate at all, or —
+// worse — suffix-matching the WRONG package when the subtest ends in
+// "internal/<otherpkg>.go". Cutting by the case's own Name fixes both.
+func TestJoinCasesToSymbols_SubtestNameContainingADot(t *testing.T) {
+	symbols := []core.SymbolNode{
+		{Service: "svc", Package: "a", Name: "TestParse", Kind: core.KindGoFunc, FilePath: "internal/a/a_test.go", Line: 4},
+		{Service: "svc", Package: "b", Name: "TestParse", Kind: core.KindGoFunc, FilePath: "internal/b/b_test.go", Line: 4},
+	}
+
+	cases := []Case{
+		// A dotted version-string subtest — id's LAST "." lands inside
+		// "v1.2", not at the real package boundary.
+		{ID: "example.com/m/internal/a.TestParse/v1.2", Name: "TestParse/v1.2", Status: "pass"},
+		// A table-test subtest keyed by a file path landing in the OTHER
+		// candidate's own directory name — the dangerous case: cutting
+		// at the id's last "." reads pkgPath as ending in "/b", which
+		// suffix-matches internal/b even though this case ran in a.
+		{ID: "example.com/m/internal/a.TestParse/internal/b.go", Name: "TestParse/internal/b.go", Status: "pass"},
+	}
+
+	joined, stats := JoinCasesToSymbols(cases, "unit", symbols)
+	if stats.Joined != 2 {
+		t.Fatalf("Joined = %d, want 2; joined=%+v", stats.Joined, joined)
+	}
+	wantA := core.SymbolNode{Service: "svc", Package: "a", Name: "TestParse", FilePath: "internal/a/a_test.go"}.Key()
+	if joined[0].TestSymbolKey != wantA {
+		t.Errorf("dotted-subtest case joined to %q, want %q (internal/a)", joined[0].TestSymbolKey, wantA)
+	}
+	if joined[1].TestSymbolKey != wantA {
+		t.Errorf("file-path-subtest case joined to %q, want %q (internal/a, NOT internal/b)", joined[1].TestSymbolKey, wantA)
+	}
+}
+
+// TestJoinCasesToSymbols_RootPackageCandidateNeverMisjoinsToASubdirectory
+// pins that a case sharing a bare Test* name with BOTH the repository-
+// root package (a candidate with no directory at all) and a subdirectory
+// package named like the module's own last path segment never gets
+// silently misjoined to the subdirectory just because its import path
+// happens to end in "/"+thatDirectory: this file has no go.mod, so it
+// cannot tell a genuine root-package id from a genuine subdirectory id
+// sharing the same trailing segment — the id "example.com/tools.TestA"
+// is exactly as consistent with "root package, module example.com/
+// tools" as it is with "tools/ subdirectory, module example.com". The
+// PRE-FIX behaviour resolved this straight to the subdirectory candidate
+// every time (a real defect: a root-package test run credited to the
+// wrong symbol). The fix must never do that; staying unjoined here is
+// correct and safe, exactly like any other unresolved ambiguity design
+// doc §2 calls for.
+func TestJoinCasesToSymbols_RootPackageCandidateNeverMisjoinsToASubdirectory(t *testing.T) {
+	symbols := []core.SymbolNode{
+		{Service: "svc", Package: "tools", Name: "TestA", Kind: core.KindGoFunc, FilePath: "a_test.go", Line: 1}, // root package
+		{Service: "svc", Package: "tools", Name: "TestA", Kind: core.KindGoFunc, FilePath: "tools/a_test.go", Line: 1},
+	}
+	cases := []Case{
+		{ID: "example.com/tools.TestA", Name: "TestA", Status: "fail"},
+	}
+
+	joined, stats := JoinCasesToSymbols(cases, "unit", symbols)
+	if stats.Joined != 0 {
+		t.Fatalf("Joined = %d, want 0 (an irreducible root/subdirectory ambiguity must stay unjoined)", stats.Joined)
+	}
+	wantSub := core.SymbolNode{Service: "svc", Package: "tools", Name: "TestA", FilePath: "tools/a_test.go"}.Key()
+	if joined[0].TestSymbolKey == wantSub {
+		t.Errorf("root-ambiguous case joined to the SUBDIRECTORY candidate %q — the dangerous misjoin this fix exists to remove", wantSub)
+	}
+	if joined[0].TestSymbolKey != "" {
+		t.Errorf("root-ambiguous case joined to %q, want unjoined (\"\")", joined[0].TestSymbolKey)
+	}
+}
+
+// TestJoinCasesToSymbols_UnambiguousSubdirectorySuffixStillJoins pins
+// that an ordinary subdirectory suffix match — no root candidate sharing
+// the bare name at all — still joins exactly as CV-72 always intended;
+// the root-collision fix above narrows nothing about this common case.
+func TestJoinCasesToSymbols_UnambiguousSubdirectorySuffixStillJoins(t *testing.T) {
+	symbols := []core.SymbolNode{
+		{Service: "svc", Package: "a", Name: "TestA", Kind: core.KindGoFunc, FilePath: "internal/a/a_test.go", Line: 1},
+		{Service: "svc", Package: "b", Name: "TestA", Kind: core.KindGoFunc, FilePath: "internal/b/a_test.go", Line: 1},
+	}
+	cases := []Case{
+		{ID: "example.com/m/internal/a.TestA", Name: "TestA", Status: "pass"},
+	}
+	joined, stats := JoinCasesToSymbols(cases, "unit", symbols)
+	if stats.Joined != 1 {
+		t.Fatalf("Joined = %d, want 1; joined=%+v", stats.Joined, joined)
+	}
+	want := core.SymbolNode{Service: "svc", Package: "a", Name: "TestA", FilePath: "internal/a/a_test.go"}.Key()
+	if joined[0].TestSymbolKey != want {
+		t.Errorf("joined to %q, want %q", joined[0].TestSymbolKey, want)
+	}
+}
+
 func TestJoinCasesToSymbols_EmptyCasesOrSymbols(t *testing.T) {
 	joined, stats := JoinCasesToSymbols(nil, "unit", nil)
 	if len(joined) != 0 || stats.Total != 0 || stats.Joined != 0 {

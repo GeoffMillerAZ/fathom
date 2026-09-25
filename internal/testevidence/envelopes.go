@@ -135,9 +135,21 @@ func (w envelopeWire) toRun() Run {
 	}
 }
 
+// coverageMetaFilename is the one non-envelope *.json file design §3.5
+// puts in the same [tests] results_dir an envelope lives in
+// (`coverage.meta.json`, CV-67) — LoadEnvelopes' own directory scan must
+// skip it by name, never attempt to decode it as a #TestResult envelope:
+// its fields (schema, commit, dirty, race, profile, passed) silently
+// decode as a zero-valued Run (no suite, no commit, no cases) under
+// envelopeWire's permissive JSON decode, which IngestRuns would then
+// write as a fake, unbound test run — one more per attest, since each
+// run gets its own content digest.
+const coverageMetaFilename = "coverage.meta.json"
+
 // LoadEnvelopes reads attested #TestResult envelopes from path: a single
-// file, or every *.json file in a directory (sorted). Returns one Run per
-// decoded envelope object, in file order.
+// file, or every *.json file in a directory (sorted), skipping
+// coverageMetaFilename. Returns one Run per decoded envelope object, in
+// file order.
 func LoadEnvelopes(path string) ([]Run, error) {
 	info, err := os.Stat(path)
 	if err != nil {
@@ -151,13 +163,13 @@ func LoadEnvelopes(path string) ([]Run, error) {
 			return nil, fmt.Errorf("read dir %s: %w", path, err)
 		}
 		for _, e := range entries {
-			if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
+			if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") || e.Name() == coverageMetaFilename {
 				continue
 			}
 			files = append(files, filepath.Join(path, e.Name()))
 		}
 		sort.Strings(files)
-	} else {
+	} else if filepath.Base(path) != coverageMetaFilename {
 		files = []string{path}
 	}
 

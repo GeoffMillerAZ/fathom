@@ -471,7 +471,7 @@ func Residue(ctx context.Context, in Input, maxItems int) ResidueReport {
 
 		if blocks, usable := coverageUsableForFunction(in, cf, reachingTestFiles, globalCovOK); usable {
 			item.Evidence = evidenceExecuted
-			classifyByExecution(&item, changedBlocksFor(in, cf, blocks))
+			classifyByExecution(&item, changedBlocksFor(in, cf, blocks), blocks)
 		} else {
 			item.Class = staticClass
 		}
@@ -587,13 +587,23 @@ func coverageUsableGlobally(in Input) (usable bool, reason string) {
 	if in.Coverage == nil {
 		return false, ""
 	}
-	if in.CoverageMeta.Commit == "" {
+	return CoverageMetaUsable(in.CoverageMeta)
+}
+
+// CoverageMetaUsable applies CV-70/I44's bound/dirty/passed bar to meta
+// ALONE — coverageUsableGlobally's own rule, factored out and exported so
+// a caller that has not parsed the profile yet (cmd/fathom's coverage
+// loader) can tell a meta is already unusable from the meta.json file
+// alone, without first paying for LoadCoverage's own full profile parse
+// and repo-wide module walk only to throw the answer away unused.
+func CoverageMetaUsable(meta CoverageMeta) (usable bool, reason string) {
+	if meta.Commit == "" {
 		return false, "coverage meta names no bound commit"
 	}
-	if in.CoverageMeta.Dirty {
+	if meta.Dirty {
 		return false, "coverage meta was captured on a dirty working tree"
 	}
-	if !in.CoverageMeta.Passed {
+	if !meta.Passed {
 		return false, "coverage meta's run did not pass"
 	}
 	return true, ""
@@ -675,36 +685,67 @@ func changedBlocksFor(in Input, cf ChangedFunction, fnBlocks []CoverageBlock) []
 }
 
 // classifyByExecution fills item's Class (and UnexecutedLines, for
-// "partial") from changedBlocks' own per-block execution counts (design
-// §3.5's "Classes with execution evidence"): "attested" when every
-// changed block executed — including the vacuous case of NO changed
-// block at all, a comment-only edit, design's own "cleared"; "unexecuted"
-// when none did; "partial" otherwise, naming the unexecuted ranges
-// ("start-end", ascending).
-func classifyByExecution(item *ResidueItem, changedBlocks []CoverageBlock) {
+// "partial") from changedBlocks' own per-block execution counts, against
+// fnBlocks — EVERY block in the function's own span, changed or not
+// (design §3.5's "Classes with execution evidence"): "attested" when
+// every changed block executed — including the vacuous case of NO
+// changed block at all, a comment-only edit, design's own "cleared";
+// "unexecuted" when NO block of the function executed at all (design:
+// "no block of the function executed" — fnBlocks, never just
+// changedBlocks: a function whose UNCHANGED blocks ran is a function
+// that "executed", even when its own changed block never did); "partial"
+// when the function executed (some block of fnBlocks ran) but some
+// changed block did not, naming the unexecuted ranges ("start-end", HEAD
+// line numbers ascending — sorted by START LINE as a number, never as a
+// string: "100-101" is NOT lexicographically before "9-9").
+func classifyByExecution(item *ResidueItem, changedBlocks, fnBlocks []CoverageBlock) {
 	if len(changedBlocks) == 0 {
 		item.Class = "attested"
 		return
 	}
 	executed := 0
-	var unexecuted []string
+	var unexecuted []CoverageBlock
 	for _, b := range changedBlocks {
 		if b.Count > 0 {
 			executed++
 		} else {
-			unexecuted = append(unexecuted, fmt.Sprintf("%d-%d", b.StartLine, b.EndLine))
+			unexecuted = append(unexecuted, b)
 		}
 	}
 	switch {
 	case executed == len(changedBlocks):
 		item.Class = "attested"
-	case executed == 0:
-		item.Class = "unexecuted"
-	default:
-		sort.Strings(unexecuted)
+	case functionExecuted(fnBlocks):
+		sort.Slice(unexecuted, func(i, j int) bool {
+			if unexecuted[i].StartLine != unexecuted[j].StartLine {
+				return unexecuted[i].StartLine < unexecuted[j].StartLine
+			}
+			return unexecuted[i].EndLine < unexecuted[j].EndLine
+		})
+		lines := make([]string, len(unexecuted))
+		for i, b := range unexecuted {
+			lines[i] = fmt.Sprintf("%d-%d", b.StartLine, b.EndLine)
+		}
 		item.Class = "partial"
-		item.UnexecutedLines = unexecuted
+		item.UnexecutedLines = lines
+	default:
+		item.Class = "unexecuted"
 	}
+}
+
+// functionExecuted reports whether ANY block in fnBlocks ran (design
+// §3.5's own test for whether "the function executed"): the function's
+// UNCHANGED blocks count exactly like its changed ones, since the whole
+// point of "partial" (design: "the function executed, but some changed
+// blocks never ran") is that execution is judged at the function level,
+// never narrowed to only the lines a diff happened to touch.
+func functionExecuted(fnBlocks []CoverageBlock) bool {
+	for _, b := range fnBlocks {
+		if b.Count > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // resolvedCallerCount counts symbol's callers whose edge is

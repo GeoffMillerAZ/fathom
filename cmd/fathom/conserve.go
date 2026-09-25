@@ -20,15 +20,12 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"path/filepath"
 	"sort"
 	"strings"
 
-	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/conserve"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
@@ -110,57 +107,21 @@ func cmdConserve(args []string, stdout, stderr io.Writer) int {
 // loadConserveCoverage resolves and loads the coverage.meta.json (CV-67,
 // design §3.5) execution evidence draws from: coverageMetaFlag when set
 // (`--coverage-meta`), else `[tests] results_dir/coverage.meta.json` when
-// a project or user .fathom/config.toml names one. Neither being
-// configured, or the file simply not existing there, is NOT itself a
-// reportable failure — most runs have no profile at all, and Residue's
-// own CoverageUnusable field stays empty in that case (coverageUsable
-// Globally's own doc comment). An actual read/parse failure for a meta
-// or profile file that DOES exist is recorded on in.CoverageLoadError,
-// surfaced verbatim as ResidueReport.CoverageUnusable — I44's own "the
-// report names why", never silently dropped. This is the one place
-// cmd/fathom does coverage I/O; internal/conserve.Residue itself never
-// reads a file (this package's own "the one place that touches git/I/O"
-// convention, input.go's precedent).
+// root's own project (or the user) .fathom/config.toml names one. A thin
+// wrapper over conserve.LoadConfiguredCoverage (internal/conserve/
+// coverageload.go) — the one implementation `fathom review --since` and
+// MCP review_diff now share too, so every surface answers the reading
+// set's execution evidence identically for the same range (CV-65's own
+// promise, design §3.4). Neither being configured, or the default
+// results_dir guess simply not existing there, is NOT itself a
+// reportable failure — most runs have no profile at all. An actual
+// read/parse failure, an explicit `--coverage-meta` naming a path that
+// does not exist, or a profile that loads but maps no block to any
+// repository file at all, is recorded on in.CoverageLoadError, surfaced
+// verbatim as ResidueReport.CoverageUnusable — I44's own "the report
+// names why", never silently dropped.
 func loadConserveCoverage(in *conserve.Input, root, coverageMetaFlag string) {
-	metaPath := coverageMetaFlag
-	if metaPath == "" {
-		loaded, err := config.Load(config.DefaultUserPath(), config.DefaultProjectPath())
-		if err != nil {
-			return
-		}
-		resultsDir := loaded.Config.Tests.ResultsDir
-		if resultsDir == "" {
-			return
-		}
-		if !filepath.IsAbs(resultsDir) {
-			resultsDir = filepath.Join(root, resultsDir)
-		}
-		metaPath = filepath.Join(resultsDir, "coverage.meta.json")
-	}
-
-	meta, err := conserve.LoadCoverageMeta(metaPath)
-	if err != nil {
-		if !errors.Is(err, fs.ErrNotExist) {
-			in.CoverageLoadError = err.Error()
-		}
-		return
-	}
-	in.CoverageMeta = meta
-
-	if meta.Profile == "" {
-		in.CoverageLoadError = fmt.Sprintf("%s names no profile", metaPath)
-		return
-	}
-	profilePath := meta.Profile
-	if !filepath.IsAbs(profilePath) {
-		profilePath = filepath.Join(filepath.Dir(metaPath), profilePath)
-	}
-	prof, _, err := conserve.LoadCoverage(root, profilePath)
-	if err != nil {
-		in.CoverageLoadError = err.Error()
-		return
-	}
-	in.Coverage = &prof
+	conserve.LoadConfiguredCoverage(in, root, coverageMetaFlag)
 }
 
 // discoverPlanPaths returns every docs/plans/*.md at root, non-recursive —

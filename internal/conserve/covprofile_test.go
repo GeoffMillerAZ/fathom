@@ -90,6 +90,93 @@ func TestLoadCoverage_MissingFile(t *testing.T) {
 	}
 }
 
+// TestLoadCoverage_SkipsTestdataAndDotUnderscoreModules pins that
+// findModules never descends into a directory the `go` tool itself
+// ignores for package discovery (testdata/, .-prefixed, _-prefixed —
+// `go help packages`): a fixture go.mod declaring the SAME module path
+// as the real one, planted under testdata/ or an _-prefixed directory,
+// must never claim the real module's own blocks.
+func TestLoadCoverage_SkipsTestdataAndDotUnderscoreModules(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "go.mod", "module example.com/outer\n\ngo 1.22\n")
+	writeFile(t, root, "internal/x/testdata/fixture/go.mod", "module example.com/outer\n\ngo 1.22\n")
+	writeFile(t, root, "_ignored/agent/go.mod", "module example.com/outer\n\ngo 1.22\n")
+	writeFile(t, root, ".hidden/worktree/go.mod", "module example.com/outer\n\ngo 1.22\n")
+
+	profile := "mode: set\nexample.com/outer/pkg/a.go:3.10,5.2 2 7\n"
+	profPath := filepath.Join(root, "coverage.out")
+	if err := os.WriteFile(profPath, []byte(profile), 0o644); err != nil {
+		t.Fatalf("WriteFile profile: %v", err)
+	}
+
+	prof, skipped, err := LoadCoverage(root, profPath)
+	if err != nil {
+		t.Fatalf("LoadCoverage: %v", err)
+	}
+	if len(skipped) != 0 {
+		t.Errorf("skipped = %v, want none", skipped)
+	}
+	blocks, ok := prof.Blocks["pkg/a.go"]
+	if !ok || len(blocks) != 1 || blocks[0].Count != 7 {
+		t.Fatalf("Blocks[pkg/a.go] = %+v (ok=%v), want exactly one block Count=7 mapped to the REAL pkg/a.go, never a testdata/_/. fixture", blocks, ok)
+	}
+	for f := range prof.Blocks {
+		if f != "pkg/a.go" {
+			t.Errorf("unexpected mapped file %q — a testdata/_/. fixture module claimed a block", f)
+		}
+	}
+}
+
+// TestLoadCoverage_IdenticalModulePathPrefersNearestDir pins the tie-
+// break design §3.5's "the module path of the nearest go.mod" requires
+// when two REAL (non-ignored) go.mod files declare the identical module
+// path — a nested full clone outside any dot/underscore/testdata
+// directory, e.g. under a project's own scratch convention. The
+// shallower (nearer root) module must win, deterministically, never an
+// unstable sort's arbitrary pick.
+func TestLoadCoverage_IdenticalModulePathPrefersNearestDir(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "go.mod", "module example.com/outer\n\ngo 1.22\n")
+	writeFile(t, root, "scratch/clone/go.mod", "module example.com/outer\n\ngo 1.22\n")
+
+	profile := "mode: set\nexample.com/outer/pkg/a.go:3.10,5.2 2 4\n"
+	profPath := filepath.Join(root, "coverage.out")
+	if err := os.WriteFile(profPath, []byte(profile), 0o644); err != nil {
+		t.Fatalf("WriteFile profile: %v", err)
+	}
+
+	prof, _, err := LoadCoverage(root, profPath)
+	if err != nil {
+		t.Fatalf("LoadCoverage: %v", err)
+	}
+	if _, ok := prof.Blocks["pkg/a.go"]; !ok {
+		t.Fatalf("Blocks has no entry for pkg/a.go (the nearer, root module); got %+v", prof.Blocks)
+	}
+	if _, ok := prof.Blocks["scratch/clone/pkg/a.go"]; ok {
+		t.Errorf("block wrongly mapped to the deeper nested clone scratch/clone/pkg/a.go; got %+v", prof.Blocks)
+	}
+}
+
+// TestModuleDeclFrom_StripsCommentAndQuotes pins that a valid go.mod
+// `module` line carrying a trailing `//` comment or surrounding quotes —
+// both valid syntax `go list -m` renders as the bare path — extracts the
+// SAME module path a plain line would, rather than a string no profile
+// key ever matches (silently mapping zero blocks).
+func TestModuleDeclFrom_StripsCommentAndQuotes(t *testing.T) {
+	cases := []string{
+		"module example.com/x\n",
+		"module example.com/x // fixture module\n",
+		"module \"example.com/x\"\n",
+		"module example.com/x   //trailing, no space\n",
+	}
+	for _, c := range cases {
+		got, ok := moduleDeclFrom([]byte(c))
+		if !ok || got != "example.com/x" {
+			t.Errorf("moduleDeclFrom(%q) = (%q, %v), want (\"example.com/x\", true)", c, got, ok)
+		}
+	}
+}
+
 func TestLoadCoverageMeta_RoundTrip(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, root, "coverage.meta.json", `{"schema":"fathom.coverage/v1","commit":"abc123","dirty":false,"race":true,"profile":"coverage.out","passed":true}`)

@@ -42,6 +42,12 @@ func applyConservationDimension(ctx context.Context, in *review.Input, st store.
 	if err != nil {
 		return
 	}
+	// CV-65/design §3.4: the conservation dimension carries the SAME
+	// reading set `fathom conserve` would report for this range, execution
+	// evidence included — never silently stuck on static reach just
+	// because this caller, unlike cmdConserve, never loaded a coverage
+	// profile of its own before this fix.
+	conserve.LoadConfiguredCoverage(&cin, corpusRoot, "")
 	in.ConservationSupported = true
 	rep := conserve.Run(ctx, cin, conserve.Planes())
 	in.ConservationPlanes = conservationPlaneSummaries(rep.Planes)

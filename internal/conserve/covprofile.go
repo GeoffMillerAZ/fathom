@@ -190,12 +190,34 @@ type goModule struct {
 	dir        string
 }
 
-// findModules walks root for every go.mod file (skipping .git and any
-// vendor/ directory, which never declares a coverable module of its own)
-// and returns each one's declared module path plus its own repo-relative
-// directory — mapImportPathFile's raw material. Sorted longest modulePath
-// first, so the longest (most specific) prefix match always wins over a
-// shorter one nested inside it.
+// findModules walks root for every go.mod file and returns each one's
+// declared module path plus its own repo-relative directory —
+// mapImportPathFile's raw material. Skipped, never descended into:
+// .git, vendor/ and node_modules/ (never declare a coverable module of
+// their own), plus every directory the `go` tool itself ignores for
+// package discovery — any name starting with "." or "_", and any
+// directory literally named "testdata" (`go help packages`: "Directory
+// and file names that begin with '.' or '_' are ignored ... as are
+// directories named 'testdata'"). That excludes fixture/scratch modules
+// under testdata/ or an _-prefixed directory that `go test ./...` never
+// builds, and — since a dot-prefixed directory is skipped AT ANY DEPTH,
+// not just at root — a nested worktree or agent scratch clone living
+// under a dot-directory, whose own go.mod may declare the SAME module
+// path as the real one (a full clone, never a legitimate nested
+// submodule) and would otherwise silently claim every block belonging to
+// the real files.
+//
+// Sorted longest modulePath first, so a longer (more specific) module
+// path — a genuine nested submodule extending the outer one — always
+// wins the PREFIX match over a shorter one nested inside it. Modules
+// tied on module-path length (most often two go.mod files declaring the
+// IDENTICAL path — an ordinary nested worktree or full-repo clone
+// outside a dot/underscore directory, e.g. under a project's own scratch
+// convention) are broken by directory depth: the SHALLOWER one — nearer
+// root, design §3.5's own "the module path of the nearest go.mod" — wins
+// over a deeper, nested duplicate, and a final lexical tie-break on the
+// directory keeps the order fully deterministic (never an unstable
+// sort's arbitrary pick).
 func findModules(root string) ([]goModule, error) {
 	var mods []goModule
 	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
@@ -203,8 +225,11 @@ func findModules(root string) ([]goModule, error) {
 			return err
 		}
 		if d.IsDir() {
-			switch d.Name() {
-			case ".git", "vendor", "node_modules":
+			name := d.Name()
+			switch {
+			case name == ".git" || name == "vendor" || name == "node_modules":
+				return filepath.SkipDir
+			case p != root && (strings.HasPrefix(name, ".") || strings.HasPrefix(name, "_") || name == "testdata"):
 				return filepath.SkipDir
 			}
 			return nil
@@ -234,20 +259,43 @@ func findModules(root string) ([]goModule, error) {
 	if err != nil {
 		return nil, err
 	}
-	sort.Slice(mods, func(i, j int) bool { return len(mods[i].modulePath) > len(mods[j].modulePath) })
+	sort.Slice(mods, func(i, j int) bool {
+		if len(mods[i].modulePath) != len(mods[j].modulePath) {
+			return len(mods[i].modulePath) > len(mods[j].modulePath)
+		}
+		if len(mods[i].dir) != len(mods[j].dir) {
+			return len(mods[i].dir) < len(mods[j].dir)
+		}
+		return mods[i].dir < mods[j].dir
+	})
 	return mods, nil
 }
 
 // moduleDeclFrom extracts the `module <path>` directive from a go.mod
 // file's content — a plain line scan (this package's only need is the
 // module path; no reason to take a golang.org/x/mod/modfile dependency
-// for one line).
+// for one line). Strips a trailing `//` line comment and surrounding
+// double quotes, both valid go.mod syntax (`go help modfile`) that `go
+// list -m` itself renders as the bare path: without this, "module
+// example.com/x // note" or `module "example.com/x"` extracts a path no
+// profile key ever matches, so every one of that module's blocks lands
+// in LoadCoverage's skipped list instead — a real go.mod silently
+// produces zero mapped blocks and, since loadConserveCoverage's caller
+// still reports a non-nil (only empty) profile, no coverage_unusable
+// reason either.
 func moduleDeclFrom(content []byte) (string, bool) {
 	for _, line := range strings.Split(string(content), "\n") {
 		line = strings.TrimSpace(line)
-		if rest, ok := strings.CutPrefix(line, "module "); ok {
-			return strings.TrimSpace(rest), true
+		rest, ok := strings.CutPrefix(line, "module ")
+		if !ok {
+			continue
 		}
+		rest = strings.TrimSpace(rest)
+		if i := strings.Index(rest, "//"); i >= 0 {
+			rest = strings.TrimSpace(rest[:i])
+		}
+		rest = strings.Trim(rest, `"`)
+		return rest, true
 	}
 	return "", false
 }

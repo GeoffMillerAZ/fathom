@@ -252,6 +252,113 @@ func TestResidue_UnusableCoverageFallsBack(t *testing.T) {
 	})
 }
 
+// TestResidue_PartialWhenFunctionRanButChangedBlockDidNot pins the
+// design §3.5/CV-M14 distinction the pre-fix code collapsed: "unexecuted"
+// means NO block of the function executed at all; "partial" means the
+// function DID execute (some block, changed or not, ran) but some
+// CHANGED block never did. A function whose only changed block never ran
+// is misclassed "unexecuted" — with NO unexecuted_lines named at all,
+// since those are only ever filled for "partial" — whenever the
+// classifier looks only at the changed blocks and ignores the rest of
+// the function's own span. This is exactly CV-M14's own named case:
+// "runServeHTTP ran, but its one changed line never did" must read
+// partial, naming the line.
+func TestResidue_PartialWhenFunctionRanButChangedBlockDidNot(t *testing.T) {
+	ctx := context.Background()
+	const svc = "svc"
+
+	// F(a bool) { x := 1; _ = x; if a { println(1) } } at both base and
+	// head, except the println argument changes from 1 to 2 — the ONLY
+	// changed line sits inside the "if" body, a block that never runs;
+	// the entry block (x := 1 ...) always runs.
+	base := map[string]string{
+		"pkg/f.go": "package pkg\n\nfunc F(a bool) {\n\tx := 1\n\t_ = x\n\tif a {\n\t\tprintln(1)\n\t}\n}\n",
+	}
+	head := map[string]string{
+		"pkg/f.go": "package pkg\n\nfunc F(a bool) {\n\tx := 1\n\t_ = x\n\tif a {\n\t\tprintln(2)\n\t}\n}\n",
+	}
+
+	st := store.NewMemoryStore()
+	if err := st.PutObservations(ctx, []core.Observation{
+		{ServiceID: svc, Package: "pkg", Symbol: "F", SourceKind: core.KindGoFunc, SourceRef: "pkg/f.go", Line: 1},
+	}); err != nil {
+		t.Fatalf("PutObservations: %v", err)
+	}
+
+	// Two blocks, mirroring a real `go tool cover` split for this shape:
+	// the entry statements (ran, count>0) and the if-body (never ran).
+	cov := &CoverageProfile{Mode: "set", Blocks: map[string][]CoverageBlock{
+		"pkg/f.go": {
+			{StartLine: 3, StartCol: 16, EndLine: 6, EndCol: 7, NumStmt: 3, Count: 5},
+			{StartLine: 6, StartCol: 7, EndLine: 8, EndCol: 3, NumStmt: 1, Count: 0},
+		},
+	}}
+
+	in := Input{
+		Service: svc, ChangedFiles: []string{"pkg/f.go"},
+		BaseFile: mapFile(base), HeadFile: mapFile(head),
+		Store: st, IndexAtHead: true,
+		Coverage:     cov,
+		CoverageMeta: CoverageMeta{Commit: "c1", Dirty: false, Passed: true},
+		ReachUnchangedSince: func(commit string, files []string) (bool, error) {
+			return commit == "c1", nil
+		},
+		ChangedLines: func(path string) ([]LineRange, error) {
+			if path != "pkg/f.go" {
+				return nil, nil
+			}
+			return []LineRange{{Start: 7, End: 7}}, nil
+		},
+	}
+
+	rep := Residue(ctx, in, 0)
+	if rep.CoverageUnusable != "" {
+		t.Fatalf("CoverageUnusable = %q, want empty", rep.CoverageUnusable)
+	}
+	if rep.Unexecuted != 0 {
+		t.Errorf("Unexecuted = %d, want 0 — F's entry block ran, so F executed", rep.Unexecuted)
+	}
+	if rep.Partial != 1 {
+		t.Fatalf("Partial = %d, want 1; items=%+v", rep.Partial, rep.Items)
+	}
+	var f *ResidueItem
+	for i := range rep.Items {
+		if rep.Items[i].Symbol == "F" {
+			f = &rep.Items[i]
+		}
+	}
+	if f == nil {
+		t.Fatalf("F not in Items: %+v", rep.Items)
+	}
+	if f.Class != "partial" || f.Evidence != evidenceExecuted {
+		t.Errorf("F = %+v, want class=partial evidence=executed", f)
+	}
+	if len(f.UnexecutedLines) != 1 || f.UnexecutedLines[0] != "6-8" {
+		t.Errorf("F.UnexecutedLines = %v, want [6-8] (naming the unrun if-body)", f.UnexecutedLines)
+	}
+}
+
+// TestResidue_UnexecutedLinesSortedByLineNumber pins that a "partial"
+// item's UnexecutedLines are ordered by START LINE as a number, never as
+// a string: "100-101" is not lexicographically before "9-9", but a
+// numeric-line-number reader expects it to sort after.
+func TestResidue_UnexecutedLinesSortedByLineNumber(t *testing.T) {
+	item := &ResidueItem{}
+	fnBlocks := []CoverageBlock{
+		{StartLine: 5, EndLine: 5, Count: 1},
+		{StartLine: 9, EndLine: 9, Count: 0},
+		{StartLine: 100, EndLine: 101, Count: 0},
+	}
+	classifyByExecution(item, fnBlocks, fnBlocks)
+	if item.Class != "partial" {
+		t.Fatalf("Class = %q, want partial; item=%+v", item.Class, item)
+	}
+	want := []string{"9-9", "100-101"}
+	if len(item.UnexecutedLines) != len(want) || item.UnexecutedLines[0] != want[0] || item.UnexecutedLines[1] != want[1] {
+		t.Errorf("UnexecutedLines = %v, want %v (numeric ascending, not lexicographic)", item.UnexecutedLines, want)
+	}
+}
+
 // TestResidue_CountsReconcile pins CV-71: Changed always equals the sum
 // of every class (Attested+Unattested+Unreached+Partial+Unexecuted) plus
 // UnanalyzedFunctions — a changed function whose own file the index never

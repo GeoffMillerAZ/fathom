@@ -87,6 +87,31 @@ func TestLoadEnvelopes_Directory(t *testing.T) {
 	}
 }
 
+// TestLoadEnvelopes_SkipsCoverageMetaFile pins design §3.5/CV-67: a
+// results_dir directory now ordinarily holds coverage.meta.json
+// alongside envelope.json (both *.json). LoadEnvelopes must skip the
+// former by name, never decode it as a #TestResult — its permissive
+// generic JSON decode would otherwise produce one zero-valued Run
+// (empty suite, empty commit, 0 cases) per attest, and IngestRuns would
+// write that as a fake, unbound test_runs row every time.
+func TestLoadEnvelopes_SkipsCoverageMetaFile(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "envelope.json"), []byte(bareEnvelope), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "coverage.meta.json"),
+		[]byte(`{"schema":"fathom.coverage/v1","commit":"c1","dirty":false,"race":false,"profile":"coverage.out","passed":true}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runs, err := LoadEnvelopes(dir)
+	if err != nil {
+		t.Fatalf("LoadEnvelopes: %v", err)
+	}
+	if len(runs) != 1 {
+		t.Fatalf("want exactly 1 run (the real envelope, coverage.meta.json skipped), got %d: %+v", len(runs), runs)
+	}
+}
+
 // TestLoadEnvelopes_CommitDirtyRace is CV-1's own test (design doc §1.1,
 // O114): runCommitFromEnvelope reads env.commit/env.dirty/env.race off a
 // bare envelope, and accepts an in-toto subject named "gitCommit" as the

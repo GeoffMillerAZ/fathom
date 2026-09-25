@@ -128,12 +128,27 @@ tasks:
         if [ "${TESTKIT_COVER:-1}" != "0" ]; then
           coverflags="-coverpkg=./... -coverprofile=$out/coverage.out"
         fi
+        # A prior meta+profile pair is removed BEFORE the run starts —
+        # never left in place across it — so a run killed mid-test (a
+        # hard kill: CI timeout, OOM) never leaves an OLD, valid-looking
+        # meta paired with a NEW, truncated-or-partial coverage.out (go
+        # test truncates/rewrites it the moment coverage instrumentation
+        # starts writing). Without one, `fathom conserve` correctly reads
+        # "not configured" rather than a stale pairing (I44).
+        if [ -n "$coverflags" ]; then
+          rm -f "$out/coverage.meta.json"
+        fi
         testrc=0
         {{.GO}} test -json $raceflag $coverflags ./... > "$out/go-test.jsonl" || testrc=$?
-        "$TESTKIT_GO_JSON" ingest --format go-test-json \
-          --component fathom --suite unit --class unit \
-          --started-at "$started" --commit "$commit" $dirtyarg $racearg \
-          < "$out/go-test.jsonl" > "$out/envelope.json"
+        # coverage.meta.json is written HERE, right after go test itself
+        # exits and BEFORE the surveyor ingest step below — never after
+        # it. Under `set -eu`, an ingest failure aborts the script; if
+        # the meta write happened only after ingest succeeded, that
+        # abort would leave THIS run's freshly-overwritten coverage.out
+        # paired with the PREVIOUS run's meta (an earlier commit, or a
+        # passed=true meta over a profile from a run that actually
+        # failed) — I44 forbids exactly that pairing, and the previous
+        # ordering could produce it.
         if [ -n "$coverflags" ]; then
           passed=true
           [ "$testrc" -eq 0 ] || passed=false
@@ -143,6 +158,10 @@ tasks:
             "$commit" "$dirty" "$race" "$passed" > "$out/coverage.meta.json"
           echo "tests:attest: wrote $out/coverage.meta.json + $out/coverage.out (passed=${passed})"
         fi
+        "$TESTKIT_GO_JSON" ingest --format go-test-json \
+          --component fathom --suite unit --class unit \
+          --started-at "$started" --commit "$commit" $dirtyarg $racearg \
+          < "$out/go-test.jsonl" > "$out/envelope.json"
         echo "tests:attest: wrote $out/envelope.json bound to commit ${commit} (dirty=${dirty}, race=${TESTKIT_RACE:-0})"
         echo "tests:attest: a plain 'fathom ingest' (or the daemon's next ingest) picks this up from [tests] results_dir; to ingest it right now: bin/fathom tests ingest --service fathom --store <store> --manifest . --results $out"
 
