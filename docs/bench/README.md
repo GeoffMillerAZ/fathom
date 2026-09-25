@@ -715,6 +715,15 @@ alias change (invisible to a textual diff, apidiff's largest incompatible
 change in the sample — the sole false negative). **CV-M4 fails and fires
 ADR-044's own named revisit trigger** (amendment below).
 
+**Wave 3 (gap-closing): CV-M4 fixed and passes.**
+`docs/bench/readings/cv-m4-apidiff-full50-2026-09-24.md`: the full 50
+consecutive release pairs the bar asks for (23 cobra, 17 cli/cli, 10
+prometheus), after `internal/analysis/inventory/apicompat.go` made the
+`api:` delta apply apidiff's own struct/interface/alias compatibility
+rules instead of a whole-text diff. Precision 0.960, recall 1.000 — both
+clear the 0.95 bar. One residual false positive (a dependency's own
+cross-package type alias, out of this fix's scope) is named, not fixed.
+
 `docs/bench/readings/cv-m5-blindness-replay-2026-09-24.md`: seeded copies
 of fathom's own two migrations (DuckDB removal ADR-025, vector withdrawal
 ADR-041) both flag correctly at the design's 5-statement floor. The vector

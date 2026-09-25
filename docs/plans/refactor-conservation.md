@@ -39,7 +39,7 @@ silently skipped. Design: `docs/design/refactor-conservation.md`.
 - [x] `fathom review --since` and `review_diff` carry a `conservation` dimension {id: CV-24, symbol: DimConservation, package: internal/analysis/review, reachable_from: TestReview_ConservationDimension}
 - [x] The plan schema accepts `retires`, `surface_change`, `gone`, `baseline` and `tests` {id: CV-25, oracle: lexical, path: schema/plan/schema.cue, pattern: "surface_change"}
 - [x] This repository declares its tool and verb surfaces {id: CV-26, oracle: lexical, path: .fathom/config.toml, pattern: "surface.pattern"}
-- [ ] (op) CV-M4: the Go surface delta agrees with apidiff at precision and recall of at least 0.95 over 50 release pairs of the calibration repositories {id: CV-M4, skip: "measurement: apidiff agreement run"}
+- [ ] (op) CV-M4: the Go surface delta agrees with apidiff at precision and recall of at least 0.95 over 50 release pairs of the calibration repositories {id: CV-M4, skip: "measured PASS: docs/bench/readings/cv-m4-apidiff-full50-2026-09-24.md — precision 0.960, recall 1.000 over the full 50 pairs (cobra 23, cli/cli 17, prometheus 10), after internal/analysis/inventory/apicompat.go made the api: delta apply apidiff's own struct/interface/alias compatibility rules and normalized any/interface{} at render time; one residual false positive (cobra v1.9.1->v1.10.0, a cross-package type alias in a dependency) named as an out-of-scope class, not fixed"}
 
 ## C. Stage 3 — absence and anti-Blindness
 

@@ -5,25 +5,35 @@ is gated on this document. Every section names what is deterministic, what each
 finding means, and which inputs must be present before a plane may say anything
 other than `unproven`.
 
-**Status (wave 2, 2026-09-24).** §1–3 (proof integrity, the ledger, absence/
+**Status (wave 3, 2026-09-24).** §1–3 (proof integrity, the ledger, absence/
 anti-Blindness) landed and are proven. §4 (refactors as programs) and §5 (the
 typed floor) shipped their CLI verbs (`fathom refactor plan`/`status`,
 `fathom report evidence`). §6's pre-push wiring and the `review`/`review_diff`
-`conservation` dimension are wired. Open: §5's own measured tiers surfaced
-that the `surface` plane's Go delta (§2.1) is a textual comparison, not a
-`go/types` one — CV-M4 fired the ADR's revisit trigger at 0.615p/0.941r
-against its 0.95/0.95 bar (three named disagreement classes:
-`interface{}`/`any` false positives, additive-struct false positives, a
-type-alias false negative — `docs/bench/readings/cv-m4-apidiff-calibration-2026-09-24.md`);
-§3.3's resurrection detector over-fires on a genuine large, unseeded removal
-(CV-M5, `docs/bench/readings/cv-m5-blindness-replay-2026-09-24.md`); §7's
+`conservation` dimension are wired. §3.3's resurrection detector over-fires
+on a genuine large, unseeded removal (CV-M5,
+`docs/bench/readings/cv-m5-blindness-replay-2026-09-24.md`); §7's
 decision-port sites and §7a's cross-repo test-kit/Review Kit rows remain
 `(op)`/unclaimed in the plan. **CV-M6 (the dogfood refactor program)
 passes**, but only after fixing a real gap it found: `fathom verify
 --store` had never wired a `verify.GoneEvidence` adapter, so a `gone:` row
 (§3.1) could never be proven true or false via the CLI, only ever
 `Unknown` — now fixed (`cmd/fathom/verify_gone_evidence.go`,
-`docs/bench/readings/cv-m6-dogfood-2026-09-24.md`).
+`docs/bench/readings/cv-m6-dogfood-2026-09-24.md`). **CV-M4 (wave 3
+gap-closing):** §5's own measured tiers first surfaced that the `surface`
+plane's Go `api:` delta (§2.1) was a purely textual comparison, not a
+type-identity one — CV-M4 fired the ADR's revisit trigger at 0.615p/0.941r
+over 38 pairs against its 0.95/0.95 bar (three named disagreement classes:
+`interface{}`/`any` false positives, additive-struct false positives, a
+type-alias false negative —
+`docs/bench/readings/cv-m4-apidiff-calibration-2026-09-24.md`). Fixed by
+`internal/analysis/inventory/apicompat.go`: every Go `api:` type
+declaration now carries a `TypeDetail` (struct field set, interface method
+set, alias-vs-defined kind) built from the SAME per-file `go/ast` parse
+Extract already does — no `go/types` pass, no second module load — and
+`Diff` applies apidiff's own compatibility rules (§2.2 below) over it
+instead of comparing rendered text; `any`/`interface{}` are canonicalized
+at render time for every Go item, type or not. Re-measured on the full 50
+pairs: `docs/bench/readings/cv-m4-apidiff-full50-2026-09-24.md`.
 
 ## 0. Vocabulary and the change range
 
@@ -153,10 +163,46 @@ file contents (so the same code runs on base and head content):
 
 ### 2.2 Delta
 
-`inventory.Diff(base, head)` yields `removed`, `changed` (same key, different
-`detail`) and `added`. Losses are `removed` and `changed`. A loss is declared
-when a plan row at base carries `surface_change: <key>` or `retires: <key>`
-(prefix match with `*`), otherwise self-declared or undeclared.
+`inventory.Diff(base, head)` yields `removed`, `changed` (same key, a
+comparison over both sides' `detail` — or, for a Go `api:` type
+declaration where both sides carry one, over the richer comparison below
+instead — disagrees) and `added`. Losses are `removed` and `changed`. A
+loss is declared when a plan row at base carries `surface_change: <key>`
+or `retires: <key>` (prefix match with `*`), otherwise self-declared or
+undeclared.
+
+**apidiff agreement (CV-M4, wave 3 amendment).** A Go `api:` declaration
+for an exported top-level `type` carries a `TypeDetail` alongside `detail`
+(`internal/analysis/inventory/apicompat.go`) — struct field name -> type
+text, interface method name -> signature text, and whether the
+declaration is `type X = T` (an alias) or `type X T` (defined) — built
+from the SAME `go/ast` parse `Extract` already does over each side's file
+content (no `go/types` pass, no second module load: P19 stays intact).
+When both sides of a key carry one, `Diff` applies
+`golang.org/x/exp/apidiff`'s own compatibility.go rules instead of
+comparing rendered text: an added exported struct field is never a loss
+(only removing or retyping an EXISTING one is — apidiff's own
+`checkCompatibleObjectSets`); an added interface method is a loss UNLESS
+the base interface already carried an unexported method (apidiff's own
+asymmetric `checkCompatibleInterface` — a sealed interface nobody outside
+the package could implement anyway may grow for free); a `type X T` ->
+`type X = T` flip (or the reverse) is always a loss, whatever the RHS text
+does, since apidiff's own correspondence check treats a Named type and an
+alias to a non-Named RHS as different type kinds outright. `any` and
+`interface{}` are canonicalized to one spelling at render time
+(`normalizeAnyType`) for every Go item, not only type declarations, so a
+func/const/var's plain-text `detail` comparison collapses the two
+spellings too. What this does NOT do, on purpose (documented gaps, not
+silent claims): fields/methods promoted through embedding (apidiff's
+"exported *selectable* fields" and embedded-interface flattening), a
+struct's comparability regression, and anything that needs another
+package's declaration resolved (Go's numeric-widening compatibility
+table, cross-package generic instantiation) — none of CV-M4's three
+measured disagreement classes need cross-package resolution, so a
+`go/types`/`go/packages` pass over the changed package's own transitive
+import graph (apidiff's own cost, ~7–75s/pair on the calibration corpus)
+would buy nothing here; that tier is where a FUTURE disagreement class
+that genuinely needs it would have to land, not this one.
 
 ### 2.3 Cross-repo consumers
 

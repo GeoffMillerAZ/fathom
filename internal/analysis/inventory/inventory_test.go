@@ -1,6 +1,7 @@
 package inventory
 
 import (
+	"reflect"
 	"sort"
 	"testing"
 )
@@ -128,7 +129,11 @@ func register() {
 		t.Fatalf("non-deterministic length: %d vs %d", len(again), len(items))
 	}
 	for i := range items {
-		if items[i] != again[i] {
+		// reflect.DeepEqual, not !=: Item.Type is a *TypeDetail (CV-M4),
+		// a fresh pointer on every Extract call even over identical
+		// content — pointer identity is not what "deterministic" means
+		// here, the pointed-to VALUE is.
+		if !reflect.DeepEqual(items[i], again[i]) {
 			t.Fatalf("non-deterministic output at [%d]: %+v vs %+v", i, items[i], again[i])
 		}
 	}
@@ -302,5 +307,275 @@ func TestDiff_IdenticalIsEmptyDelta(t *testing.T) {
 	d := Diff(items, items)
 	if len(d.Removed) != 0 || len(d.Changed) != 0 || len(d.Added) != 0 {
 		t.Errorf("Diff(x, x) = %+v, want all empty", d)
+	}
+}
+
+// ─── CV-M4 (ADR-044 amendment 2026-09-24): apidiff-agreement fixtures ──────
+//
+// Each test below reproduces one of docs/bench/readings/
+// cv-m4-apidiff-calibration-2026-09-24.md's three measured disagreement
+// classes as a minimal fixture, pinned against a real release pair's own
+// shape (cli/cli, cobra, prometheus) rather than an invented one.
+
+// TestDiff_AnyInterfaceEmptyIsNotChanged pins class A: cli/cli
+// v2.98.0->v2.99.0's `interface{}` -> `any` modernization swept 94 api:
+// keys and apidiff reported zero incompatible changes for the pair — `any`
+// is Go's own predeclared alias for the empty interface, invisible to
+// apidiff's type-identity comparison but not to a printed-signature text
+// diff.
+func TestDiff_AnyInterfaceEmptyIsNotChanged(t *testing.T) {
+	base := []byte(`package api
+
+func (c *Client) GraphQL(host, query string, variables map[string]interface{}, data interface{}) error {
+	return nil
+}
+`)
+	head := []byte(`package api
+
+func (c *Client) GraphQL(host, query string, variables map[string]any, data any) error {
+	return nil
+}
+`)
+	baseItems := Extract([]File{{Path: "api/client.go", Content: base}}, nil)
+	headItems := Extract([]File{{Path: "api/client.go", Content: head}}, nil)
+	d := Diff(baseItems, headItems)
+	if len(d.Changed) != 0 {
+		t.Errorf("Changed = %v, want none (interface{} <-> any is not a loss)", d.Changed)
+	}
+}
+
+// TestDiff_AdditiveStructFieldIsNotChanged pins class B: cobra
+// v1.1.3->v1.2.0 and prometheus v3.11.1->v3.11.2 both add an exported
+// struct field (or merely gofmt-reflow one), and apidiff reports both
+// compatible — Go's own rule (and apidiff's checkCompatibleObjectSets):
+// adding a field to a struct cannot break a keyed struct literal or a
+// field selection that already compiled.
+func TestDiff_AdditiveStructFieldIsNotChanged(t *testing.T) {
+	base := []byte(`package discovery
+
+type SDConfig struct {
+	Server string
+}
+`)
+	head := []byte(`package discovery
+
+type SDConfig struct {
+	Server    string
+	Namespace string
+}
+`)
+	baseItems := Extract([]File{{Path: "discovery/config.go", Content: base}}, nil)
+	headItems := Extract([]File{{Path: "discovery/config.go", Content: head}}, nil)
+	d := Diff(baseItems, headItems)
+	if len(d.Changed) != 0 {
+		t.Errorf("Changed = %v, want none (an added exported field alone is compatible)", d.Changed)
+	}
+}
+
+// TestDiff_RemovedOrRetypedStructFieldIsChanged is class B's other half —
+// the additive rule must stay ASYMMETRIC: removing an existing field, or
+// changing its type, still is a loss (apidiff: "Anything removed or
+// changed from the old set is an incompatible change").
+func TestDiff_RemovedOrRetypedStructFieldIsChanged(t *testing.T) {
+	base := []byte(`package discovery
+
+type SDConfig struct {
+	Server    string
+	Namespace string
+}
+`)
+	removed := []byte(`package discovery
+
+type SDConfig struct {
+	Server string
+}
+`)
+	retyped := []byte(`package discovery
+
+type SDConfig struct {
+	Server    string
+	Namespace int
+}
+`)
+	baseItems := Extract([]File{{Path: "discovery/config.go", Content: base}}, nil)
+
+	removedItems := Extract([]File{{Path: "discovery/config.go", Content: removed}}, nil)
+	if d := Diff(baseItems, removedItems); len(d.Changed) != 1 || d.Changed[0] != "api:discovery.SDConfig" {
+		t.Errorf("field removed: Changed = %v, want [api:discovery.SDConfig]", d.Changed)
+	}
+
+	retypedItems := Extract([]File{{Path: "discovery/config.go", Content: retyped}}, nil)
+	if d := Diff(baseItems, retypedItems); len(d.Changed) != 1 || d.Changed[0] != "api:discovery.SDConfig" {
+		t.Errorf("field retyped: Changed = %v, want [api:discovery.SDConfig]", d.Changed)
+	}
+}
+
+// TestDiff_TypeAliasIntroductionIsChanged pins class C, CV-M4's one false
+// negative: cobra v1.9.0->v1.9.1 turns `type CompletionFunc func(...)`
+// into `type CompletionFunc = func(...)` — apidiff's single largest
+// incompatible change in the whole calibration sample (a defined type and
+// an alias to the identical-looking RHS are still different type KINDS:
+// methods on the old named type are lost, interface satisfaction
+// changes), invisible to a textual signature diff because the RHS text
+// itself never changes.
+func TestDiff_TypeAliasIntroductionIsChanged(t *testing.T) {
+	base := []byte(`package cobra
+
+type CompletionFunc func(cmd *Command, args []string, toComplete string) ([]string, int)
+`)
+	head := []byte(`package cobra
+
+type CompletionFunc = func(cmd *Command, args []string, toComplete string) ([]string, int)
+`)
+	baseItems := Extract([]File{{Path: "cobra/completions.go", Content: base}}, nil)
+	headItems := Extract([]File{{Path: "cobra/completions.go", Content: head}}, nil)
+	d := Diff(baseItems, headItems)
+	if len(d.Changed) != 1 || d.Changed[0] != "api:cobra.CompletionFunc" {
+		t.Errorf("Changed = %v, want [api:cobra.CompletionFunc] (an alias introduction is a different type kind)", d.Changed)
+	}
+}
+
+// TestDiff_AnyInterfaceEmptyInFuncLitValueIsNotChanged extends class A to a
+// `var Foo = func(w interface{}) ... {...}` declaration (no explicit
+// `Type:`, so extractGoAPI's ValueSpec case renders the VALUE — a whole
+// *ast.FuncLit, body included) — cli/cli's own utils.TerminalSize
+// (v2.98.0->v2.99.0's real modernization sweep): the closure's PARAMETER
+// type must still collapse `interface{}`/`any` even though it is reached
+// through a func literal, not a *ast.FuncType used as a type annotation.
+func TestDiff_AnyInterfaceEmptyInFuncLitValueIsNotChanged(t *testing.T) {
+	base := []byte(`package utils
+
+var TerminalSize = func(w interface{}) (int, int, error) {
+	return 0, 0, nil
+}
+`)
+	head := []byte(`package utils
+
+var TerminalSize = func(w any) (int, int, error) {
+	return 0, 0, nil
+}
+`)
+	baseItems := Extract([]File{{Path: "utils/utils.go", Content: base}}, nil)
+	headItems := Extract([]File{{Path: "utils/utils.go", Content: head}}, nil)
+	d := Diff(baseItems, headItems)
+	if len(d.Changed) != 0 {
+		t.Errorf("Changed = %v, want none (interface{} <-> any inside a func-literal value is not a loss)", d.Changed)
+	}
+}
+
+// TestDiff_VarLiteralPromotedToNamedConstIsNotChanged pins a fourth gap
+// the full 50-pair run found beyond CV-M4's three named classes: cobra
+// v1.5.0->v1.6.0 promoted a `var Enable... = true` bool literal to a
+// named constant default (`var Enable... = defaultCommandSorting`).
+// apidiff's own `checkObjects` never looks at a *types.Var's initializer
+// at all, only its TYPE (`bool`, unchanged either way) — so this must not
+// be a loss, whatever the initializer's own text says.
+func TestDiff_VarLiteralPromotedToNamedConstIsNotChanged(t *testing.T) {
+	base := []byte(`package widgets
+
+var EnableSorting = true
+`)
+	head := []byte(`package widgets
+
+const defaultSorting = true
+
+var EnableSorting = defaultSorting
+`)
+	baseItems := Extract([]File{{Path: "widgets/w.go", Content: base}}, nil)
+	headItems := Extract([]File{{Path: "widgets/w.go", Content: head}}, nil)
+	d := Diff(baseItems, headItems)
+	if len(d.Changed) != 0 {
+		t.Errorf("Changed = %v, want none (a var's TYPE, bool, did not change)", d.Changed)
+	}
+}
+
+// TestDiff_VarLiteralKindChangeIsStillChanged pins the asymmetric half:
+// a var whose inferred kind genuinely differs (bool -> string) must still
+// be a loss.
+func TestDiff_VarLiteralKindChangeIsStillChanged(t *testing.T) {
+	base := []byte(`package widgets
+
+var Mode = true
+`)
+	head := []byte(`package widgets
+
+var Mode = "on"
+`)
+	baseItems := Extract([]File{{Path: "widgets/w.go", Content: base}}, nil)
+	headItems := Extract([]File{{Path: "widgets/w.go", Content: head}}, nil)
+	d := Diff(baseItems, headItems)
+	if len(d.Changed) != 1 || d.Changed[0] != "api:widgets.Mode" {
+		t.Errorf("Changed = %v, want [api:widgets.Mode] (bool -> string is a real type change)", d.Changed)
+	}
+}
+
+// TestDiff_ConstValueChangeIsStillChanged pins that this fix is VAR-only:
+// a const's actual VALUE is part of apidiff's own compatibility check
+// (constChanges), so two same-kind but different-value consts must still
+// be a loss — unlike a var, where only the type is ever checked.
+func TestDiff_ConstValueChangeIsStillChanged(t *testing.T) {
+	base := []byte(`package widgets
+
+const MaxRetries = 3
+`)
+	head := []byte(`package widgets
+
+const MaxRetries = 5
+`)
+	baseItems := Extract([]File{{Path: "widgets/w.go", Content: base}}, nil)
+	headItems := Extract([]File{{Path: "widgets/w.go", Content: head}}, nil)
+	d := Diff(baseItems, headItems)
+	if len(d.Changed) != 1 || d.Changed[0] != "api:widgets.MaxRetries" {
+		t.Errorf("Changed = %v, want [api:widgets.MaxRetries] (a const's VALUE is part of apidiff's own check)", d.Changed)
+	}
+}
+
+// TestDiff_InterfaceMethodAdditionIncompatibleUnlessSealed pins the design
+// doc's other named rule (apidiff's own asymmetric interface check,
+// compatibility.go checkCompatibleInterface) alongside the three measured
+// classes: unlike a struct, adding a method to a fully-exported interface
+// IS a loss (it breaks an external implementer's method set); the same
+// addition to an interface that already carries an unexported method is
+// compatible, since nothing outside the package could implement it
+// anyway.
+func TestDiff_InterfaceMethodAdditionIncompatibleUnlessSealed(t *testing.T) {
+	openBase := []byte(`package widgets
+
+type Reader interface {
+	Read() error
+}
+`)
+	openHead := []byte(`package widgets
+
+type Reader interface {
+	Read() error
+	Close() error
+}
+`)
+	baseItems := Extract([]File{{Path: "widgets/reader.go", Content: openBase}}, nil)
+	headItems := Extract([]File{{Path: "widgets/reader.go", Content: openHead}}, nil)
+	if d := Diff(baseItems, headItems); len(d.Changed) != 1 || d.Changed[0] != "api:widgets.Reader" {
+		t.Errorf("open interface: Changed = %v, want [api:widgets.Reader]", d.Changed)
+	}
+
+	sealedBase := []byte(`package widgets
+
+type Reader interface {
+	Read() error
+	sealed()
+}
+`)
+	sealedHead := []byte(`package widgets
+
+type Reader interface {
+	Read() error
+	Close() error
+	sealed()
+}
+`)
+	baseItems = Extract([]File{{Path: "widgets/reader.go", Content: sealedBase}}, nil)
+	headItems = Extract([]File{{Path: "widgets/reader.go", Content: sealedHead}}, nil)
+	if d := Diff(baseItems, headItems); len(d.Changed) != 0 {
+		t.Errorf("sealed interface: Changed = %v, want none", d.Changed)
 	}
 }

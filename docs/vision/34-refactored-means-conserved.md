@@ -21,6 +21,19 @@ found `conserve.Resurrected` over-fires on a genuine large removal
 port's narrow role (§3, decision 8) and the cross-repo test-kit/Review Kit
 rows stay `(op)`/unclaimed in the plan.
 
+**Wave 3 status (2026-09-24, gap-closing).** CV-M4's revisit trigger is
+resolved: `internal/analysis/inventory/apicompat.go` makes the `api:`
+delta apply apidiff's own struct/interface/alias compatibility rules
+(built from the same per-file `go/ast` parse, no `go/types` pass) instead
+of a whole-text diff, and canonicalizes `any`/`interface{}` at render
+time. Re-measured on the full 50 consecutive release pairs the bar asks
+for: precision 0.960, recall 1.000 —
+`docs/bench/readings/cv-m4-apidiff-full50-2026-09-24.md`. One residual
+false positive (a dependency's own cross-package type alias) is named,
+not fixed — genuinely needs another package's declaration resolved,
+which this fix deliberately does not attempt. CV-M5 and the `(op)`/
+unclaimed rows above remain open.
+
 ## 1. The thesis
 
 fathom has two proven ideas. *Done means proven*: a plan checkbox is a claim the
