@@ -212,7 +212,7 @@ func renderSeriesStrip(d dimSeries) string {
 	b.WriteString(`<div class="mt-1 flex flex-wrap items-center gap-2" role="group" aria-label="` + html.EscapeString(fmt.Sprintf("%s — %d-day strip: %s, %d absent", d.Name, len(d.Points), plural(d.Measured, "measured day"), d.Absent)) + `">`)
 	for _, seg := range segs {
 		if seg.Values == nil {
-			b.WriteString(`<span class="shrink-0 rounded-md border border-dashed border-line px-2 py-1 text-xs italic text-ink-faint" title="` + html.EscapeString(seg.Reason) + `" aria-label="` + html.EscapeString("absent — "+seg.Reason) + `">` + html.EscapeString(seg.Run.label()) + `</span>`)
+			b.WriteString(`<span class="shrink-0 rounded-md border border-dashed border-line px-2 py-1 text-xs italic text-ink-muted" title="` + html.EscapeString(seg.Reason) + `" aria-label="` + html.EscapeString("absent — "+seg.Reason) + `">` + html.EscapeString(seg.Run.label()) + `</span>`)
 			continue
 		}
 		w := seriesSegmentMinW
@@ -431,7 +431,7 @@ func absentRuns(dates []string, absent func(i int) bool) []dateRun {
 }
 
 func seriesAbsentNote(s string) string {
-	return `<span class="italic text-ink-faint">` + html.EscapeString(s) + `</span>`
+	return `<span class="italic text-ink-muted">` + html.EscapeString(s) + `</span>`
 }
 
 // ─── rendering ───────────────────────────────────────────────────────────

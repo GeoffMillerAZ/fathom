@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/buildinfo"
+	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/intent"
 )
 
@@ -35,6 +36,9 @@ type fleetServiceRow struct {
 	HooksNote        string `json:"hooks_note"`  // counted fathom hook registrations per scope, or the honest absence
 	StanzaNote       string `json:"stanza_note"` // CLAUDE.md fathom stanza present?
 	OpenObservations *int   `json:"open_observations,omitempty"`
+	// ObservationsError is set when .fathom/observations.md exists and
+	// could not be read: the count is then unknown, never "no file".
+	ObservationsError string `json:"observations_error,omitempty"`
 
 	// Unproven is the newest recorded `fathom intent audit` for this repo
 	// (EP-23) — read from the LOCAL intent ledger, never computed here: a
@@ -55,9 +59,40 @@ type fleetReport struct {
 	GeneratedAt   string `json:"generated_at"`
 	CallLogPath   string `json:"call_log_path"`
 	CallLogNote   string `json:"call_log_note,omitempty"`
-	LedgerNote    string `json:"ledger_note,omitempty"`
+	// CallLog names the rule that chose CallLogPath (OC-2), additively.
+	CallLog    console.ResolvedCallLog `json:"call_log"`
+	LedgerNote string                  `json:"ledger_note,omitempty"`
 
 	Services []fleetServiceRow `json:"services"`
+}
+
+// fleetServiceRowWire is a row as the report writes it: the traffic columns
+// shadow the embedded ints so a call log that was not read omits them
+// instead of writing a 0 beside a note saying "never zero" (doctrine rule
+// 6). encoding/json prefers the shallower field of the same name.
+type fleetServiceRowWire struct {
+	fleetServiceRow
+	CallsTotal *int `json:"calls_total,omitempty"`
+	CallsAgent *int `json:"calls_agent,omitempty"`
+}
+
+// MarshalJSON writes the report with its traffic columns present only when
+// the call log was read (CallLogNote empty).
+func (rep fleetReport) MarshalJSON() ([]byte, error) {
+	type plain fleetReport
+	wire := struct {
+		plain
+		Services []fleetServiceRowWire `json:"services"`
+	}{plain: plain(rep), Services: make([]fleetServiceRowWire, 0, len(rep.Services))}
+	for _, r := range rep.Services {
+		w := fleetServiceRowWire{fleetServiceRow: r}
+		if rep.CallLogNote == "" {
+			total, agent := r.CallsTotal, r.CallsAgent
+			w.CallsTotal, w.CallsAgent = &total, &agent
+		}
+		wire.Services = append(wire.Services, w)
+	}
+	return json.Marshal(wire)
 }
 
 // Bumped to 2 for the unproven column (EP-23). A reader pinned to v1 sees a
@@ -138,11 +173,18 @@ func buildFleetReport(hc *http.Client, url string, now time.Time) (fleetReport, 
 
 	// Call-log aggregation through the one resolution every verb and page
 	// shares (OC-2, console_calllog.go): the daemon's configured log first.
-	callLogPath := resolveConsoleCallLogFor(callLogQuery{BaseURL: url}).Path
-	rep.CallLogPath = callLogPath
-	entries, _, read := readCallLog(callLogPath)
-	if !read {
-		rep.CallLogNote = "call log not readable from here — traffic columns are not measured, never zero"
+	resolved := resolveConsoleCallLogFor(callLogQuery{BaseURL: url})
+	callLogPath := resolved.Path
+	rep.CallLogPath, rep.CallLog = callLogPath, resolved
+	entries, _, callLogErr := classifyCallLogRead(callLogPath)
+	switch {
+	case callLogErr == nil:
+	case callLogPath == "":
+		rep.CallLogNote = resolved.Note + " — traffic columns are not measured, never zero"
+	case os.IsNotExist(callLogErr):
+		rep.CallLogNote = "no call log at " + callLogPath + " — traffic columns are not measured, never zero"
+	default:
+		rep.CallLogNote = "call log unreadable: " + callLogErr.Error() + " — traffic columns are not measured, never zero"
 	}
 	type traffic struct {
 		total, agent int
@@ -168,24 +210,21 @@ func buildFleetReport(hc *http.Client, url string, now time.Time) (fleetReport, 
 		}
 	}
 
-	// Ledger sessions per repo label.
-	sessionsByRepo := map[string]int{}
+	// Ledger sessions per repo label: distinct sessions (the one dedupe rule,
+	// console.DistinctSessionsByRepo — the Stop hook appends a row per
+	// turn), from the ledger sessionLedgerPath names (FATHOM_SESSION_LEDGER
+	// honored, as every other ledger reader does).
+	// A row's repo label is mapped to the service whose root it names ("sextant"
+	// → fathom), so a service is never a false 0 beside its own sessions.
+	roots := make(map[string]string, len(svcs))
+	for name, info := range svcs {
+		roots[name] = info.path
+	}
+	var sessionsByRepo map[string]int
 	ledgerReadable := false
-	if home, herr := os.UserHomeDir(); herr == nil {
-		if data, rerr := os.ReadFile(filepath.Join(home, ".fathom", "session-ledger.jsonl")); rerr == nil {
-			ledgerReadable = true
-			for _, line := range strings.Split(string(data), "\n") {
-				if line == "" {
-					continue
-				}
-				var row struct {
-					Repo string `json:"repo"`
-				}
-				if json.Unmarshal([]byte(line), &row) == nil && row.Repo != "" {
-					sessionsByRepo[strings.ToLower(row.Repo)]++
-				}
-			}
-		}
+	if data, rerr := os.ReadFile(sessionLedgerPath()); rerr == nil {
+		ledgerReadable = true
+		sessionsByRepo = console.DistinctSessionsBy(data, sessionLabelKey(roots))
 	}
 	if !ledgerReadable {
 		rep.LedgerNote = "session ledger not readable — session counts are not measured, never zero"
@@ -204,12 +243,7 @@ func buildFleetReport(hc *http.Client, url string, now time.Time) (fleetReport, 
 		row := fleetServiceRow{Service: name, Path: info.path, Symbols: info.symbols}
 		row.Freshness, row.IndexedCommit, row.RepoHead = fleetFreshness(hc, url, name, info.path)
 		row.HooksNote, row.StanzaNote = fleetWiringNotes(info.path)
-		if info.path != "" {
-			if content, existed, oerr := readObservations(info.path); oerr == nil && existed {
-				n := countOpenObservations(content)
-				row.OpenObservations = &n
-			}
-		}
+		row.OpenObservations, row.ObservationsError = serviceOpenObservations(info.path)
 		if info.path != "" {
 			if n, at, ok := fleetUnprovenColumn(intentLedger, info.path); ok {
 				row.Unproven, row.UnprovenAt = &n, at
@@ -399,7 +433,7 @@ func countFathomHookCommands(hooksObj map[string]any) int {
 func renderFleetReportMD(rep fleetReport) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# fathom fleet report — %s\n\n", rep.GeneratedAt)
-	fmt.Fprintf(&b, "> generated by fathom %s · schema v%d · call log: %s\n", rep.FathomVersion, rep.SchemaVersion, rep.CallLogPath)
+	fmt.Fprintf(&b, "> generated by fathom %s · schema v%d · %s\n", rep.FathomVersion, rep.SchemaVersion, callLogLine(rep.CallLog))
 	if rep.CallLogNote != "" {
 		fmt.Fprintf(&b, "> %s\n", rep.CallLogNote)
 	}
@@ -411,6 +445,8 @@ func renderFleetReportMD(rep fleetReport) string {
 		obs := "—"
 		if r.OpenObservations != nil {
 			obs = fmt.Sprintf("%d", *r.OpenObservations)
+		} else if r.ObservationsError != "" {
+			obs = "unreadable: " + r.ObservationsError
 		}
 		sessions := "—"
 		if r.SessionCount != nil {
@@ -420,8 +456,12 @@ func renderFleetReportMD(rep fleetReport) string {
 		if r.Unproven != nil {
 			unproven = fmt.Sprintf("%d (%s)", *r.Unproven, r.UnprovenAt)
 		}
-		fmt.Fprintf(&b, "| %s | %s | %d | %d (%d) | %s | %s | %s | %s | %s |\n",
-			r.Service, r.Freshness, r.Symbols, r.CallsTotal, r.CallsAgent, sessions, obs, unproven, r.HooksNote, r.StanzaNote)
+		calls := "—"
+		if rep.CallLogNote == "" {
+			calls = fmt.Sprintf("%d (%d)", r.CallsTotal, r.CallsAgent)
+		}
+		fmt.Fprintf(&b, "| %s | %s | %d | %s | %s | %s | %s | %s | %s |\n",
+			r.Service, r.Freshness, r.Symbols, calls, sessions, obs, unproven, r.HooksNote, r.StanzaNote)
 	}
 	b.WriteString("\nEvery unmeasured cell says so — a dash is \"not measured\", never zero (law 3).\n")
 	return b.String()

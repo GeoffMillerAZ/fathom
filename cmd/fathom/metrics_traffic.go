@@ -41,16 +41,18 @@ func cmdMetricsTraffic(args []string, stdout, stderr io.Writer) int {
 	// OC-2: the one call-log resolution (console_calllog.go) — the daemon's
 	// configured log when a daemon record names one, never a log relative
 	// to this command's working directory.
-	callLogPath := resolveConsoleCallLog(*callLogFlag, "").Path
+	resolved := resolveConsoleCallLog(*callLogFlag, "")
+	callLogPath := resolved.Path
 	entries, _ := readCallDataFor(callLogPath, *service, sinceT, untilT) // absent/unreadable log: honest zero traffic, never fatal
 
 	report := metrics.AggregateTraffic(entries, metrics.TrafficOptions{Since: sinceT, Until: untilT, GroupBy: *by})
 
 	if *jsonOut {
-		jsonPrint(stdout, report)
+		jsonPrint(stdout, withCallLog(report, resolved))
 		return 0
 	}
 	fmt.Fprintf(stdout, "traffic: %s .. %s (by %s)\n", report.Since, report.Until, report.GroupBy)
+	fmt.Fprintln(stdout, callLogLine(resolved))
 	if report.TotalCalls == 0 {
 		fmt.Fprintf(stdout, "  %s\n", report.Note)
 		return 0

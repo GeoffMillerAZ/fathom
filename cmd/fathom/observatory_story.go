@@ -100,9 +100,13 @@ func renderSessionStory(st sessionStory) string {
 			events = append(events, viz.Event{At: beat.At, Label: label, Role: beatRole(beat.Channel, beat.Kind), Lane: beat.Channel})
 		}
 		tl := viz.Timeline(events, viz.TimelineOptions{W: 900, AriaLabel: "session timeline"})
+		// The kit's timeline is a fixed 900 px; it scrolls inside its own
+		// keyboard-reachable region so the page never pans sideways at
+		// 390 px (design §2).
+		tl = `<div class="overflow-x-auto" role="region" tabindex="0" aria-label="session timeline — scrolls sideways">` + tl + `</div>`
 		b.WriteString(dashboard.RenderWidget(dashboard.Widget{Title: plural(len(st.Beats), "instrumented event"), Body: template.HTML(tl)}))
 	} else {
-		b.WriteString(dashboard.RenderWidget(dashboard.Widget{Title: "timeline", Body: template.HTML(`<span class="italic text-ink-faint">` + html.EscapeString(st.BeatsNote) + `</span>`)}))
+		b.WriteString(dashboard.RenderWidget(dashboard.Widget{Title: "timeline", Body: template.HTML(`<span class="italic text-ink-muted">` + html.EscapeString(st.BeatsNote) + `</span>`)}))
 	}
 
 	var card strings.Builder
@@ -116,7 +120,7 @@ func renderSessionStory(st sessionStory) string {
 		card.WriteString(kv("verify catches", metricCell(e.VerifyCatches, "verify did not run", "")))
 		card.WriteString(kv("discovery actions", metricCell(e.DiscoveryActionsTotal, e.JoinNote, "")))
 	} else {
-		card.WriteString(`<span class="italic text-ink-faint">` + html.EscapeString(st.LedgerNote) + `</span>`)
+		card.WriteString(`<span class="italic text-ink-muted">` + html.EscapeString(st.LedgerNote) + `</span>`)
 	}
 	b.WriteString(dashboard.RenderWidget(dashboard.Widget{Title: "the session's ledger row", Body: template.HTML(card.String())}))
 	return b.String()
@@ -255,7 +259,7 @@ func renderWeekStory(ws weekStory, m observatoryModel) string {
 	if len(ws.RecentSessions) > 0 {
 		var links strings.Builder
 		for _, id := range ws.RecentSessions {
-			links.WriteString(`<div class="py-0.5"><a class="text-accent font-mono text-xs" href="` + html.EscapeString(sessionHref(id)) + `">` + html.EscapeString(id) + `</a></div>`)
+			links.WriteString(`<div><a class="inline-flex min-h-11 items-center text-accent font-mono text-xs [overflow-wrap:anywhere]" href="` + html.EscapeString(sessionHref(id)) + `">` + html.EscapeString(id) + `</a></div>`)
 		}
 		b.WriteString(dashboard.RenderWidget(dashboard.Widget{Title: "recent sessions (newest first) — open one for its replay", Body: template.HTML(links.String())}))
 	}

@@ -7,6 +7,12 @@ package console
 // Last-Event-ID, and a bound of 16 subscribers. Events carry names and IDs
 // only, never content: a page learns THAT a source changed and offers
 // "updated — refresh this panel"; it never receives what changed.
+//
+// Event IDs count per process, so every SSE id carries the bus's epoch (a
+// boot ID): "<epoch>-<n>". A client reconnecting after a daemon restart
+// sends the old process's id; its epoch differs, so the new bus replays its
+// whole ring — the restart event first — rather than filtering out every
+// event numbered at or below a counter from another process.
 
 import (
 	"encoding/json"
@@ -15,6 +21,7 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -47,6 +54,8 @@ type Event struct {
 	Name    string    `json:"name,omitempty"`
 	Ref     string    `json:"ref,omitempty"`
 	At      time.Time `json:"at"`
+	// Epoch is the publishing bus's boot ID; the SSE id is Epoch-ID.
+	Epoch string `json:"epoch,omitempty"`
 }
 
 // Sources are the panel source keys an event names — a panel carrying
@@ -66,6 +75,9 @@ func (e Event) Sources() []string {
 	case EventVerify:
 		return []string{"plans:" + svc, "verify:" + svc}
 	case EventSession:
+		if svc == "" {
+			return []string{"sessions"} // a repo label that is not a name
+		}
 		return []string{"sessions", "sessions:" + svc}
 	case EventDaemon:
 		return []string{"daemon"}
@@ -76,6 +88,10 @@ func (e Event) Sources() []string {
 // nameOrID is the only shape an event field may take: no spaces, no markup,
 // no prose — a name or an identifier.
 var nameOrID = regexp.MustCompile(`^[A-Za-z0-9._:/@+#-]*$`)
+
+// IsNameOrID reports whether v may be an event field: a name or an
+// identifier, never prose or markup.
+func IsNameOrID(v string) bool { return len(v) <= maxEventFieldLength && nameOrID.MatchString(v) }
 
 // ErrTooManySubscribers is returned when the subscriber bound is reached.
 var ErrTooManySubscribers = errors.New("console: event stream subscriber limit reached")
@@ -94,12 +110,14 @@ func validateEvent(e Event) error {
 	return nil
 }
 
-// BusOptions sizes a bus. Zero values take the design defaults.
+// BusOptions sizes a bus. Zero values take the design defaults; an empty
+// Epoch is derived from the clock at construction (one per process).
 type BusOptions struct {
 	Replay    int
 	MaxSubs   int
 	Keepalive time.Duration
 	Now       func() time.Time
+	Epoch     string
 }
 
 // EventBus is the in-process publish/subscribe hub behind GET /events.
@@ -111,6 +129,7 @@ type EventBus struct {
 	maxSubs   int
 	keepalive time.Duration
 	now       func() time.Time
+	epoch     string
 	subs      map[*Subscription]struct{}
 	dropped   uint64
 }
@@ -129,7 +148,20 @@ func NewEventBus(o BusOptions) *EventBus {
 	if o.Now == nil {
 		o.Now = time.Now
 	}
-	return &EventBus{replay: o.Replay, maxSubs: o.MaxSubs, keepalive: o.Keepalive, now: o.Now, subs: map[*Subscription]struct{}{}}
+	if o.Epoch == "" || !nameOrID.MatchString(o.Epoch) || strings.Contains(o.Epoch, "-") {
+		o.Epoch = strconv.FormatInt(o.Now().UnixNano(), 36)
+	}
+	return &EventBus{replay: o.Replay, maxSubs: o.MaxSubs, keepalive: o.Keepalive, now: o.Now, epoch: o.Epoch, subs: map[*Subscription]struct{}{}}
+}
+
+// Epoch is this bus's boot ID, the prefix of every SSE id it writes.
+func (b *EventBus) Epoch() string { return b.epoch }
+
+// Cursor is the SSE id of the most recent event ("<epoch>-<n>").
+func (b *EventBus) Cursor() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.epoch + "-" + strconv.FormatUint(b.next, 10)
 }
 
 // Subscription is one live subscriber.
@@ -169,6 +201,7 @@ func (b *EventBus) Publish(e Event) (Event, error) {
 	defer b.mu.Unlock()
 	b.next++
 	e.ID = b.next
+	e.Epoch = b.epoch
 	if e.At.IsZero() {
 		e.At = b.now().UTC()
 	}
@@ -189,10 +222,35 @@ func (b *EventBus) Publish(e Event) (Event, error) {
 
 // Subscribe registers a subscriber and returns the replay: every retained
 // event with an ID greater than lastID (all retained events when lastID is
-// 0). It refuses past the subscriber bound.
+// 0). A lastID beyond this bus's last ID cannot be one of its own — it came
+// from another process's stream — so the whole ring is replayed. It
+// refuses past the subscriber bound.
 func (b *EventBus) Subscribe(lastID uint64) (*Subscription, []Event, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	return b.subscribeLocked(lastID, lastID > b.next)
+}
+
+// SubscribeAfter is Subscribe for an SSE Last-Event-ID ("<epoch>-<n>"). An
+// id from another epoch (a previous daemon process), or one this bus cannot
+// parse, replays the whole ring; a bare number is read as this bus's own.
+func (b *EventBus) SubscribeAfter(lastEventID string) (*Subscription, []Event, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	lastEventID = strings.TrimSpace(lastEventID)
+	if lastEventID == "" {
+		return b.subscribeLocked(0, false)
+	}
+	epoch, num, hasEpoch := strings.Cut(lastEventID, "-")
+	if !hasEpoch {
+		num, epoch = epoch, b.epoch
+	}
+	n, err := strconv.ParseUint(num, 10, 64)
+	foreign := err != nil || epoch != b.epoch || n > b.next
+	return b.subscribeLocked(n, foreign)
+}
+
+func (b *EventBus) subscribeLocked(lastID uint64, foreign bool) (*Subscription, []Event, error) {
 	if len(b.subs) >= b.maxSubs {
 		return nil, nil, ErrTooManySubscribers
 	}
@@ -200,7 +258,7 @@ func (b *EventBus) Subscribe(lastID uint64) (*Subscription, []Event, error) {
 	b.subs[s] = struct{}{}
 	var replay []Event
 	for _, e := range b.ring {
-		if e.ID > lastID {
+		if foreign || e.ID > lastID {
 			replay = append(replay, e)
 		}
 	}
@@ -234,7 +292,11 @@ func WriteSSE(w http.ResponseWriter, e Event) error {
 	if err != nil {
 		return err
 	}
-	_, err = fmt.Fprintf(w, "id: %d\nevent: %s\ndata: %s\n\n", e.ID, e.Kind, raw)
+	id := strconv.FormatUint(e.ID, 10)
+	if e.Epoch != "" {
+		id = e.Epoch + "-" + id
+	}
+	_, err = fmt.Fprintf(w, "id: %s\nevent: %s\ndata: %s\n\n", id, e.Kind, raw)
 	return err
 }
 
@@ -248,17 +310,11 @@ func (b *EventBus) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	lastID := uint64(0)
 	raw := r.Header.Get("Last-Event-ID")
 	if raw == "" {
 		raw = r.URL.Query().Get("last_event_id")
 	}
-	if raw != "" {
-		if n, err := strconv.ParseUint(raw, 10, 64); err == nil {
-			lastID = n
-		}
-	}
-	sub, replay, err := b.Subscribe(lastID)
+	sub, replay, err := b.SubscribeAfter(raw)
 	if err != nil {
 		w.Header().Set("Retry-After", "30")
 		http.Error(w, "the event stream serves at most "+strconv.Itoa(b.maxSubs)+" subscribers; retry later", http.StatusServiceUnavailable)
@@ -275,7 +331,7 @@ func (b *EventBus) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			f.Flush()
 		}
 	}
-	fmt.Fprint(w, "event: hello\ndata: {\"server\":\"fathom\"}\n\n")
+	fmt.Fprintf(w, "event: hello\ndata: {\"server\":\"fathom\",\"epoch\":%q}\n\n", b.epoch)
 	for _, e := range replay {
 		if WriteSSE(w, e) != nil {
 			return

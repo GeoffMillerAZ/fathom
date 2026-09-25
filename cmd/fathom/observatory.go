@@ -237,7 +237,7 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 	// uses (console.SessionCount) — read once per model build.
 	ledgerPath := sessionLedgerPath()
 	ledgerData, ledgerErr := os.ReadFile(ledgerPath)
-	m.sessions = console.SessionCount(ledgerPath, ledgerData, ledgerErr)
+	m.sessions = console.SessionCount(ledgerPath, ledgerData, ledgerErr).WithAsOf(now)
 
 	hc := &http.Client{Timeout: 5 * time.Second}
 	svcs, err := fetchServices(hc, baseURL)
@@ -278,11 +278,21 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 		// sessions in a service's repo, separately from whether it is
 		// queried (CallsTotal) — a remote corpus can be queried with zero
 		// sessions of its own.
+		// Sessions are distinct sessions (console.DistinctSessionsByRepo,
+		// the rule every page shares), from the ledger bytes this build
+		// already read for the shared metric.
+		// A row's repo label maps to the service whose root it names.
+		roots := make(map[string]string, len(svcs))
+		for name, info := range svcs {
+			roots[name] = info.path
+		}
+		labelKey := sessionLabelKey(roots)
 		sessionsByRepo := map[string]int{}
 		verifyRunsByRepo := map[string]int{}
-		ledgerReadable := false
-		if data, lerr := os.ReadFile(sessionLedgerPath()); lerr == nil {
-			ledgerReadable = true
+		ledgerReadable := ledgerErr == nil
+		if ledgerReadable {
+			data := ledgerData
+			sessionsByRepo = console.DistinctSessionsBy(data, labelKey)
 			for _, line := range strings.Split(string(data), "\n") {
 				if line == "" {
 					continue
@@ -292,13 +302,12 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 					VerifyCatches *int   `json:"verify_catches"`
 				}
 				if json.Unmarshal([]byte(line), &row) == nil && row.Repo != "" {
-					sessionsByRepo[strings.ToLower(row.Repo)]++
 					// verify_catches is nil when the gate never RAN, so a
 					// non-nil value (including 0) is a run. Counting a nil
 					// as a run would report a gate that never fired as
 					// gating (law 3).
 					if row.VerifyCatches != nil {
-						verifyRunsByRepo[strings.ToLower(row.Repo)]++
+						verifyRunsByRepo[labelKey(row.Repo)]++
 					}
 				}
 			}
@@ -357,18 +366,13 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 			row := obsServiceRow{fleetServiceRow: fleetServiceRow{Service: name, Path: info.path, Symbols: info.symbols}}
 			row.Freshness, row.IndexedCommit, row.RepoHead = fleetFreshness(hc, baseURL, name, info.path)
 			if strings.HasPrefix(row.Freshness, "stale") {
-				row.FreshnessRemedy = "cd " + info.path + " && fathom ingest --service " + name
+				row.FreshnessRemedy = daemonRefreshRemedy(info.path, name)
 			}
 			row.HooksNote, row.StanzaNote = fleetWiringNotes(info.path)
 			if strings.Contains(row.HooksNote, "no fathom hooks") || strings.Contains(row.HooksNote, "absent") {
 				row.WiringRemedy = "fathom fleet reconcile --apply (or: cd " + info.path + " && fathom init)"
 			}
-			if info.path != "" {
-				if content, existed, oerr := readObservations(info.path); oerr == nil && existed {
-					n := countOpenObservations(content)
-					row.OpenObservations = &n
-				}
-			}
+			row.OpenObservations, row.ObservationsError = serviceOpenObservations(info.path)
 			if tr := perSvc[name]; tr != nil {
 				row.CallsTotal, row.CallsAgent, row.LastCallTS = tr.total, tr.agent, tr.last
 			}
@@ -893,7 +897,7 @@ func wiringGrade(s obsServiceRow) (grade, raise string) {
 	case (hooksVisible && !hooksOK) || !stanzaOK:
 		raise = "fathom fleet reconcile --apply (or: cd " + s.Path + " && fathom init)"
 	case !freshOK:
-		raise = "cd " + s.Path + " && fathom ingest --service " + s.Service
+		raise = daemonRefreshRemedy(s.Path, s.Service)
 	case !trafficOK:
 		raise = "wired but unused — open a session in " + s.Path + " and ask a where/who-calls question"
 	}

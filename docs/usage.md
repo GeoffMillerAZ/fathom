@@ -455,13 +455,13 @@ HTTP endpoints:
 | `POST` | `/rpc` | Single JSON-RPC 2.0 request/response (4 MB body limit) — full tool surface |
 | `POST` | `/rpc/{surface}` | Same protocol scoped to a named surface (`agent`, `companion`, `coding`, `investigation`, `shared`, `platform`, `modules`): filters `tools/list`; an off-surface `tools/call` still **executes** and is logged `off_surface:true` (execute-and-flag, ADR-014 amendment) — the hard gate exists only behind `Server.strictSurfaces` and on hosted `/rpc/modules` |
 | `GET` | `/healthz` | Liveness probe — returns `ok` |
-| `GET` | `/events` | Live freshness (OC-13): SSE with an `id:` per event, a `: keepalive` every 25 s, replay of the last 64 events after `Last-Event-ID` (or `?last_event_id=`), at most 16 subscribers (the 17th gets 503 + `Retry-After`). Kinds: `ingest`, `compile`, `verify` (the verify ledger, polled every 2 s), `session`, `daemon`. Events carry names and IDs only, never content; opens with a `hello` event |
+| `GET` | `/events` | Live freshness (OC-13): SSE with an `id:` per event (`<epoch>-<n>`: the epoch is this daemon process's boot ID, named in the opening `hello` event), a `: keepalive` every 25 s, replay of the last 64 events after `Last-Event-ID` (or `?last_event_id=`) — an id from another epoch (a reconnect across a daemon restart) replays the whole ring, the restart event first — at most 16 subscribers (the 17th gets 503 + `Retry-After`). Kinds: `ingest` (a service's indexed content moved; a hash-gated no-op re-ingest is not one), `compile` (one per new run), `verify` (the verify ledger, polled every 2 s), `session` (the row's repo label mapped to the service whose root it names; a label that is not a name fires only the unscoped `sessions` source), `daemon`. Events carry names and IDs only, never content |
 | `GET` | `/metrics` | Text metrics: `fathom_uptime_seconds`, `fathom_requests_total`, memory and memo gauges, `fathom_console_page_views_total{route=…}` (OC-15: HTML views per console route pattern since start; the durable 30-day record is `~/.fathom/console-views.jsonl`, `FATHOM_CONSOLE_VIEWS` overrides) and `fathom_console_event_subscribers` |
-| `GET` | `/statusz` | Daemon health, per-service index freshness, channel liveness, last compile per layer, and (schema 2) the daemon's own build stamp `binary_commit` / `binary_dirty` / `built_at` — JSON (schema 3, unchanged) via `Accept: application/json`/`?format=json`; HTML on the console shell otherwise, where a service whose typed-edge pass this daemon has not run reads **unknown**, never blank (OC-6; `docs/design/observability-surfaces.md` §8 item 6). Gated inside the `/rpc/modules` bearer-token allowlist when `--modules-token-env` is configured; open on the default loopback-only daemon |
+| `GET` | `/statusz` | Daemon health, per-service index freshness, channel liveness, last compile per layer, and (schema 2) the daemon's own build stamp `binary_commit` / `binary_dirty` / `built_at` — JSON (schema 3, unchanged) via `Accept: application/json`/`?format=json`; HTML on the console shell otherwise, where every service names its typed-edge state — run by this daemon, recorded by an earlier daemon process (replayed from the store), failed with its reason, **does not apply** (no `go.mod` at the service root), or **unknown** (a Go module with no pass recorded anywhere), never blank (OC-6; `docs/design/observability-surfaces.md` §8 item 6). Gated inside the `/rpc/modules` bearer-token allowlist when `--modules-token-env` is configured; open on the default loopback-only daemon |
 | `POST` | `/reload` | Reload the store (PlatformStore re-scan in platform mode) |
 | `GET` | `/`, `/fleet`, `/projects/{svc}`, `/impact`, `/sessions`, `/sessions/{id}`, `/brief`, `/wiring`, `/statusz`, `/search` | The Observatory console (see below): every page on one shell; `?format=json` returns the page's envelope (`fathom.console.page/v1`) |
 | `GET` | `/observatory`, `/observatory/service`, `/observatory/impact`, `/observatory/story`, `/observatory/brief`, `/observatory/session`, `/observatory/wiring/` | Legacy routes (OC-7): an HTML request is a **308** to the page's new home; `?format=json` still returns the old JSON unchanged (`observatoryModel` v1 and its per-page slices) |
-| `POST` | `/observatory/wiring/preview` · `apply` · `undo` | Law-15 wiring through `internal/wiring`: `preview` returns the plan + `plan_digest`; `apply` requires it (409 if the repo changed since preview) and returns a `receipt_digest`; `undo` requires that digest. All three refuse non-loopback `Host`, cross-origin `Origin`, unknown service ids, and paths that are not registered service roots (`requireLocalMutation`) |
+| `POST` | `/observatory/wiring/preview` · `apply` · `undo` | Law-15 wiring through `internal/wiring`: `preview` returns the plan + `plan_digest`; `apply` requires it (409 if the repo changed since preview) and returns a `receipt_digest`; `undo` requires that digest. All three refuse non-loopback `Host`, cross-origin `Origin`, unknown service ids, and paths that are not registered service roots (`requireLocalMutation`); a refusal, and a `GET` of any of the three, renders on the console shell with the reason and a way back to `/wiring` |
 
 ```sh
 fathom serve-http --store workspace/db/fathom.sqlite --addr 127.0.0.1:7575
@@ -2320,7 +2320,7 @@ unreadable store) render on the same shell with the reason and the remedy.
 | `/brief` | The shareable brief; `?format=md` downloads it |
 | `/wiring` | Per-repo Preview → Apply → Undo (the POSTs stay at `/observatory/wiring/*` behind the local gate) |
 | `/statusz` | Daemon status (JSON schema 3 unchanged) |
-| `/search?q=` | Projects, plans and plan rows, symbols, rules and records, verbs and pages, grouped; `?format=fragment` is the HTML fragment the command palette will load, `?format=json` the results |
+| `/search?q=` | Projects, plans and plan rows, symbols, rules and records, verbs and pages, grouped; groups are listed by their best match (a tie goes to the smaller group, then that order) and every query word must match; a row or record ID matches exactly (`OC-1`, `ADR-045`); each group shows 8 of an exact total, and `&group=<slug>` (`projects`, `plans-and-rows`, `symbols`, `rules-and-records`, `verbs`, `pages`) pages through all of it, 50 at a time (`&page=N`). A query of more than 8 words or 200 characters is a 400. `?format=fragment` is the HTML fragment the command palette will load, `?format=json` the results |
 
 - Every page answers `?format=json` (or `Accept: application/json`) with one
   envelope: `schema`, `page`, `route`, `title`, `group`, `question`, `verbs`,
@@ -2350,8 +2350,13 @@ report`/`bundle` then resolve the log the same way: `--call-log`, else
 `FATHOM_CALL_LOG`, else the record of the daemon they talk to (`FATHOM_HTTP`,
 default `localhost:7575`), else a named `--service`'s own root (J5), else
 `[daemon].call_log`, else the legacy default path. A verb run from any directory
-now reads the log the daemon writes. (`metrics rotate` and `review`, which
-write the log, keep their previous resolution.)
+now reads the log the daemon writes; `metrics rotate` inspects that same log and
+`review` appends its T5-7 gate row to it. A daemon started with `--call-log ""`
+records logging off, and verbs talking to it then read no log (rule `none`)
+rather than a stale legacy one. Every verb names the log and the rule that chose
+it: a `call_log` object (`path`, `rule`, `note`) in its JSON (`fleet report`
+keeps `call_log_path` beside it) and a `call log: <path> (rule …)` line in its
+text; `research bundle` names it on stderr, never inside the shareable bundle.
 
 ## Capabilities — what is on here, and why anything is off
 

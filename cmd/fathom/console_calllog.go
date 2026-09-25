@@ -22,6 +22,8 @@ package main
 // with doctor's daemon-workspace probes).
 
 import (
+	"bytes"
+	"encoding/json"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -74,13 +76,16 @@ func daemonRecordPathFor(baseURL string) (string, bool) {
 }
 
 // readDaemonRecordFor reads the record the daemon at baseURL wrote, if any.
+// A record whose call_log is "" is still a record: that daemon runs with
+// logging off (rule none), and it is still a previous daemon for the next
+// start's restart/adopt event.
 func readDaemonRecordFor(baseURL string) (console.DaemonRecord, bool) {
 	p, ok := daemonRecordPathFor(baseURL)
 	if !ok {
 		return console.DaemonRecord{}, false
 	}
 	rec, err := console.ReadDaemonRecord(p)
-	if err != nil || rec.CallLog == "" {
+	if err != nil {
 		return console.DaemonRecord{}, false
 	}
 	return rec, true
@@ -135,7 +140,7 @@ func resolveConsoleCallLogFor(q callLogQuery) console.ResolvedCallLog {
 	if p, note, set := servingDaemonCallLog(); set {
 		// Inside the daemon: the pages read what the daemon writes — and a
 		// daemon started with logging off has no log to read (rule none).
-		in.Daemon, in.DaemonNote = p, note
+		in.Daemon, in.DaemonNote, in.DaemonOff = p, note, p == ""
 		return console.ResolveCallLog(in)
 	}
 	in.Env = os.Getenv("FATHOM_CALL_LOG")
@@ -147,7 +152,10 @@ func resolveConsoleCallLogFor(q callLogQuery) console.ResolvedCallLog {
 		base = defaultFathomURL()
 	}
 	if rec, ok := readDaemonRecordFor(base); ok {
-		in.Daemon, in.DaemonNote = rec.CallLog, rec.Note()
+		// The record is the daemon's own answer, logging off included: a
+		// verb must agree with the daemon's pages (P10), never fall through
+		// to a config or legacy log that daemon does not write.
+		in.Daemon, in.DaemonNote, in.DaemonOff = rec.CallLog, rec.Note(), rec.CallLog == ""
 		return console.ResolveCallLog(in)
 	}
 	if q.Service != "" {
@@ -195,4 +203,61 @@ func callLogFactsFor(resolved console.ResolvedCallLog, entries []adoptionCallEnt
 		}
 	}
 	return f
+}
+
+// callLogLine is the text line a verb prints naming the log it read and the
+// rule that chose it (OC-2): "call log: <path> (rule daemon — …)".
+func callLogLine(r console.ResolvedCallLog) string {
+	path := r.Path
+	if path == "" {
+		path = "none"
+	}
+	return "call log: " + path + " (rule " + string(r.Rule) + " — " + r.Note + ")"
+}
+
+// callLogJSON is a verb's JSON value with the call-log resolution it read
+// appended as "call_log": {path, rule, note} (OC-2) — additive, so every
+// existing key keeps its name, meaning and order.
+type callLogJSON struct {
+	v   any
+	log console.ResolvedCallLog
+}
+
+// withCallLog wraps v for JSON output with the resolution that chose its log.
+func withCallLog(v any, log console.ResolvedCallLog) callLogJSON { return callLogJSON{v: v, log: log} }
+
+// MarshalJSON appends "call_log" to v's object; a non-object v is written
+// unchanged (there is no key to add it under).
+func (c callLogJSON) MarshalJSON() ([]byte, error) {
+	raw, err := json.Marshal(c.v)
+	if err != nil {
+		return nil, err
+	}
+	logJSON, err := json.Marshal(c.log)
+	if err != nil {
+		return nil, err
+	}
+	trimmed := bytes.TrimSpace(raw)
+	if len(trimmed) < 2 || trimmed[0] != '{' {
+		return raw, nil
+	}
+	body := bytes.TrimSpace(trimmed[1 : len(trimmed)-1])
+	var b bytes.Buffer
+	b.WriteByte('{')
+	if len(body) > 0 {
+		b.Write(body)
+		b.WriteByte(',')
+	}
+	b.WriteString(`"call_log":`)
+	b.Write(logJSON)
+	b.WriteByte('}')
+	return b.Bytes(), nil
+}
+
+// reviewCallLogPath is where `fathom review` appends its T5-7 gate row: the
+// one resolution the readers use (the daemon's record first), so the
+// forced-channel verdict lands in the log instrument --adoption counts —
+// never a cwd-relative legacy path the readers no longer read.
+func reviewCallLogPath(flag, service string) string {
+	return resolveConsoleCallLog(flag, service).Path
 }

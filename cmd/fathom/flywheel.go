@@ -85,6 +85,7 @@ func cmdFlywheel(args []string, stdout, stderr io.Writer) int {
 		if err := enc.Encode(map[string]any{
 			"generated_at": now.UTC().Format(time.RFC3339),
 			"loops":        checks,
+			"call_log":     resolveConsoleCallLogFor(callLogQuery{Service: *service, BaseURL: *url}),
 		}); err != nil {
 			fmt.Fprintf(stderr, "error: %v\n", err)
 			return 1
@@ -93,7 +94,8 @@ func cmdFlywheel(args []string, stdout, stderr io.Writer) int {
 	}
 
 	closed, open, idle := 0, 0, 0
-	fmt.Fprintf(stdout, "fathom flywheel — are the feedback loops closed?\n\n")
+	fmt.Fprintf(stdout, "fathom flywheel — are the feedback loops closed?\n")
+	fmt.Fprintf(stdout, "%s\n\n", callLogLine(resolveConsoleCallLogFor(callLogQuery{Service: *service, BaseURL: *url})))
 	for _, c := range checks {
 		switch c.Status {
 		case loopClosed:

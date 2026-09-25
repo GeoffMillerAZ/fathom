@@ -233,7 +233,7 @@ func (reg *consoleRegistry) searchDocs() []console.SearchDoc {
 			continue
 		}
 		docs = append(docs, console.SearchDoc{
-			Group: console.GroupPages, Kind: "page", Title: p.Title,
+			Group: console.GroupPages, Kind: "page", ID: p.ID, Title: p.Title,
 			Subtitle: p.Question, Keywords: append([]string{p.Group, p.NavLabel}, p.Aliases...), Href: p.Href,
 		})
 	}

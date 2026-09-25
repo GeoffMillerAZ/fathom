@@ -13,7 +13,7 @@ import (
 func fleetFactsFromModel(m observatoryModel) console.FleetFacts {
 	f := console.FleetFacts{RegistryNote: m.DegradedNote}
 	for _, s := range m.Services {
-		fact := console.ServiceFact{Name: s.Service, SymbolsNote: s.SymbolsNote, OpenObservations: s.OpenObservations}
+		fact := console.ServiceFact{Name: s.Service, SymbolsNote: s.SymbolsNote, OpenObservations: s.OpenObservations, ObservationsErr: s.ObservationsError}
 		if s.SymbolsNote == "" {
 			n := s.Symbols
 			fact.Symbols = &n
@@ -23,17 +23,23 @@ func fleetFactsFromModel(m observatoryModel) console.FleetFacts {
 	return f
 }
 
-// modelCallFacts is the model's one read of the resolved call log. The
-// model's own CallLogNote is its read state and wins (the model's contract:
-// empty means the log was read). A model assembled from a snapshot rather
-// than buildObservatoryModel (a fixture, a preview) carries only per-service
-// counts, so its total is their sum, labeled as such.
+// modelCallFacts is the model's one read of the resolved call log. A model
+// built by buildObservatoryModel carries its facts (a resolved rule), and
+// CallTotal classifies them itself: a missing or unconfigured log is
+// absent, a log that exists and could not be read is an ERROR naming the
+// failure (design §2) — the model's CallLogNote says the same words, but it
+// must not turn that error into an absence. A model assembled from a
+// snapshot rather than buildObservatoryModel (a fixture, a preview) carries
+// no facts: its own CallLogNote is its read state, and otherwise its total
+// is the per-service counts' sum, labeled as such.
 func modelCallFacts(m observatoryModel) console.CallLogFacts {
 	f := m.callFacts
 	switch {
+	case f.Log.Rule != "":
+		return f
 	case m.CallLogNote != "":
 		f.AbsentReason = m.CallLogNote
-	case f.Log.Rule == "":
+	default:
 		rows := 0
 		for _, s := range m.Services {
 			rows += s.CallsTotal
@@ -41,6 +47,15 @@ func modelCallFacts(m observatoryModel) console.CallLogFacts {
 		f = console.CallLogFacts{Rows: rows, Log: console.ResolvedCallLog{Path: "snapshot", Rule: "snapshot", Note: "a model snapshot's per-service call counts"}}
 	}
 	return f
+}
+
+// callLogRuleCaption names the log a call figure was read from and the rule
+// that chose it (OC-2), for a tile's caption.
+func callLogRuleCaption(f console.CallLogFacts) string {
+	if f.Log.Path == "" || f.Log.Rule == "snapshot" {
+		return ""
+	}
+	return "read from " + f.Log.Path + " (rule " + string(f.Log.Rule) + ")"
 }
 
 // modelSessions is the model's shared sessions metric.

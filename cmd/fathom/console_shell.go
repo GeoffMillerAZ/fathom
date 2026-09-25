@@ -110,7 +110,10 @@ func renderConsoleHeading(s consoleShell) string {
 	var b strings.Builder
 	b.WriteString(`<div class="mb-4 flex flex-wrap items-start justify-between gap-3 border-b border-line pb-3" data-console-heading>`)
 	b.WriteString(`<div class="min-w-0 max-w-3xl">`)
-	b.WriteString(chrome.Breadcrumbs(s.Crumbs))
+	// The kit's trail links are text-height (17 px); the wrapper gives each
+	// a 44 px target and a visible focus ring (design §2; the kit defect is
+	// recorded in docs/app-kit.md for return).
+	b.WriteString(`<div class="[&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center [&_a]:rounded-sm [&_a:focus-visible]:outline-2 [&_a:focus-visible]:outline-offset-2 [&_a:focus-visible]:outline-focus">` + chrome.Breadcrumbs(s.Crumbs) + `</div>`)
 	if s.Question != "" {
 		b.WriteString(`<p class="mt-1 text-ink-muted">` + html.EscapeString(s.Question) + `</p>`)
 	}

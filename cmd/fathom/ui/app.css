@@ -704,6 +704,9 @@
   .py-2 {
     padding-block: calc(var(--spacing) * 2);
   }
+  .py-2\.5 {
+    padding-block: calc(var(--spacing) * 2.5);
+  }
   .py-3 {
     padding-block: calc(var(--spacing) * 3);
   }
@@ -1328,6 +1331,57 @@
       grid-template-columns: repeat(5, minmax(0, 1fr));
     }
   }
+  .\[\&_a\]\:inline-flex {
+    & a {
+      display: inline-flex;
+    }
+  }
+  .\[\&_a\]\:min-h-11 {
+    & a {
+      min-height: calc(var(--spacing) * 11);
+    }
+  }
+  .\[\&_a\]\:items-center {
+    & a {
+      align-items: center;
+    }
+  }
+  .\[\&_a\]\:rounded-sm {
+    & a {
+      border-radius: var(--ak-radius-sm);
+    }
+  }
+  .\[\&_a\:focus-visible\]\:outline-2 {
+    & a:focus-visible {
+      outline-style: var(--tw-outline-style);
+      outline-width: 2px;
+    }
+  }
+  .\[\&_a\:focus-visible\]\:outline-offset-2 {
+    & a:focus-visible {
+      outline-offset: 2px;
+    }
+  }
+  .\[\&_a\:focus-visible\]\:outline-focus {
+    & a:focus-visible {
+      outline-color: var(--ak-color-focus);
+    }
+  }
+  .\[\&_span\]\:inline-flex {
+    & span {
+      display: inline-flex;
+    }
+  }
+  .\[\&_span\]\:min-h-11 {
+    & span {
+      min-height: calc(var(--spacing) * 11);
+    }
+  }
+  .\[\&_span\]\:items-center {
+    & span {
+      align-items: center;
+    }
+  }
   .\[\&\:\:-webkit-details-marker\]\:hidden {
     &::-webkit-details-marker {
       display: none;
@@ -1336,6 +1390,11 @@
   .\[\&\>a\]\:min-h-\[44px\] {
     &>a {
       min-height: 44px;
+    }
+  }
+  .\[\&\>button\]\:min-h-11 {
+    &>button {
+      min-height: calc(var(--spacing) * 11);
     }
   }
   .\[\&\>input\]\:min-h-11 {

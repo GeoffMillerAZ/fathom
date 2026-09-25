@@ -51,6 +51,10 @@ type CallLogInputs struct {
 
 	Daemon     string // the daemon's configured --call-log (absolute)
 	DaemonNote string // where that came from: "serve-http pid 123 on 127.0.0.1:7575 since …"
+	// DaemonOff: the daemon's record says it was started with logging off
+	// (--call-log ""). It writes no log, so nothing after it may name one:
+	// a config or legacy log would be a log this daemon never wrote.
+	DaemonOff bool
 
 	Service     string // J5: a named service's own root resolved this path
 	ServiceNote string
@@ -89,6 +93,12 @@ func ResolveCallLog(in CallLogInputs) ResolvedCallLog {
 		return ResolvedCallLog{Path: in.Flag, Rule: RuleFlag, Note: "call log named by --call-log on this invocation"}
 	case in.Env != "":
 		return ResolvedCallLog{Path: in.Env, Rule: RuleEnv, Note: "call log named by FATHOM_CALL_LOG"}
+	case in.DaemonOff:
+		note := "the daemon was started with logging off (--call-log \"\") — call figures are not measured"
+		if in.DaemonNote != "" {
+			note += " (" + in.DaemonNote + ")"
+		}
+		return ResolvedCallLog{Rule: RuleNone, Note: note}
 	case in.Daemon != "":
 		note := "the daemon's configured call log"
 		if in.DaemonNote != "" {

@@ -127,7 +127,7 @@ func realizationGrade(s obsServiceRow, w realizationWindow) realizationReport {
 		freshDim.Met = boolPtr(false)
 		freshDim.Evidence = s.Freshness
 	}
-	freshDim.Remedy = "cd " + orDash(s.Path) + " && fathom ingest --service " + s.Service
+	freshDim.Remedy = daemonRefreshRemedy(s.Path, s.Service)
 	rep.Dims = append(rep.Dims, freshDim)
 
 	// 3 — QUERIED: is anyone actually asking?
@@ -303,4 +303,13 @@ func unrealizedScore(s obsServiceRow) int {
 		return 0
 	}
 	return (s.Realization.Available - s.Realization.Realized) * s.Realization.Sessions
+}
+
+// daemonRefreshRemedy is the command that re-indexes a registered service
+// through the daemon that owns the store (the post-commit hook's own path,
+// HF-2): never a shell `fathom ingest`, whose default store is
+// <repo>/workspace/db/fathom.sqlite — one the daemon never reads — and which
+// against the shared store is the write INC-3 forbids.
+func daemonRefreshRemedy(root, service string) string {
+	return "fathom post-commit-hook --dir " + orDash(root) + " --service " + service + " --timeout 2m"
 }

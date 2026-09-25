@@ -97,8 +97,15 @@ re-renders when the watermarks are unchanged. Budgets:
   query parameters. `chrome.Pagination` pages anything over 50 rows.
 - **Command palette.** ⌘K / Ctrl-K opens `overlay.RenderDialog` with a search field.
   Results come from `/search?q=` as an HTML fragment, grouped (Projects, Plans and rows,
-  Symbols, Rules and records, Verbs, Pages). Arrow keys move, Enter opens, Esc closes and
-  focus returns. Without JavaScript, `/search?q=` is a full page with the same results.
+  Symbols, Rules and records, Verbs, Pages). Groups are listed by their best match (a tie
+  goes to the smaller group, then that order), so an exact hit is never below a group
+  of weaker ones. Every query word
+  must match; a row or record ID matches exactly; the in-order fuzzy match counts only
+  inside a compact span. Each group shows its top 8 of an exact total and links to its
+  own page (`&group=`), paged 50 at a time. A query is bounded (8 words, 200
+  characters; past that, a 400 on the shell). Arrow keys move, Enter opens, Esc closes
+  and focus returns. Without JavaScript, `/search?q=` is a full page with the same
+  results.
 - **Decision port in the palette.** For a free-text query the palette may show one hedged
   "Suggested view" line from the existing route site. That happens only when `[decide]
   provider` is on and `sites` includes `route`, and it never replaces results.
@@ -258,7 +265,12 @@ An in-process bus in `serve-http` publishes:
 
 `/events` streams them as SSE with an ID, sends a keepalive every 25 s, and replays the last
 64 events on reconnect through `Last-Event-ID`. The stream is bounded to 16 subscribers.
-Events carry names and IDs only, never content.
+Events carry names and IDs only, never content. Event IDs count per process, so each SSE
+id carries the process's epoch (`<epoch>-<n>`): a reconnect with an id from another epoch
+(the common case: a daemon restart) replays the whole ring, the restart event first. An
+`ingest` event means the service's indexed content moved (its commit or the store's
+content digest), never a hash-gated no-op re-ingest; a `session` event names the service
+whose root the row's repo label names.
 
 ## 5. App-kit: adoption and contributions
 

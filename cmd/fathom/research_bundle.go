@@ -96,7 +96,11 @@ func cmdResearchBundle(args []string, stdout, stderr io.Writer) int {
 	// OC-2: the one call-log resolution (console_calllog.go) — the daemon's
 	// configured log when a daemon record names one, never a log relative
 	// to this command's working directory.
-	callLogPath := resolveConsoleCallLog(*callLogFlag, "").Path
+	// The bundle is a shareable artifact with an allowlisted schema, so the
+	// resolution (a local path) is named on stderr, never inside it.
+	resolved := resolveConsoleCallLog(*callLogFlag, "")
+	callLogPath := resolved.Path
+	fmt.Fprintln(stderr, "research bundle: "+callLogLine(resolved))
 	entries, _, callLogRead := readCallLog(callLogPath)
 
 	hooksLogPath := *hooksLogFlag

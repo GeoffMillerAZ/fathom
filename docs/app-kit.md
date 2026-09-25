@@ -49,7 +49,10 @@ existing dashboard/stat/viz/vizframe/callout/form/hitl set:
   (the statusz daemon panel).
 - `table.Table` (statusz services, row drill-down to `/projects/{svc}`), which makes
   `github.com/a-h/templ` a direct root requirement at the mirror's own pin, v0.3.1020.
-- `form.RenderInput` for the top bar's `GET /search` field.
+- `form.RenderInput` for the top bar's `GET /search` field; `form.RenderButton` (ghost,
+  link mode) for the brief's "Download markdown" action and `/search`'s "Show all"
+  links; `chrome.RenderEmptyState` for `/search`'s no-query and no-result states;
+  `chrome.RenderPagination` for a result group's own page.
 
 `cmd/fathom/ui/input.css` scans `../console_*.go` by glob and adds the `appearance`,
 `chrome` and `table` packages; `scripts/ui-css.sh`'s audited closure matches it and
@@ -69,13 +72,29 @@ existing dashboard/stat/viz/vizframe/callout/form/hitl set:
 - `table.Table` renders `<th>` without `scope="col"`, and its `sr-only` "Actions"
   header is absolutely positioned inside an `overflow-x-auto` wrapper that is not a
   containing block — at 390 px the hidden label sits at the table's right edge and
-  widens the whole document (measured: 861 px scroll width on `/statusz`). Workaround:
-  `console_statusz.go` wraps the table in `relative overflow-hidden`. The kit fix is a
+  widens the whole document (measured: 861 px scroll width on `/statusz`). Workarounds:
+  `console_statusz.go` wraps the table in `relative overflow-hidden`, and every kit table
+  renders through `renderKitTable` (`console_panel.go`), which adds `scope="col"` to the
+  template's header cells (its only `<th>` elements, all in `<thead>`). The kit fix is a
   `relative` scroll wrapper plus `scope="col"`.
-- `chrome.Breadcrumbs` links have no focus-visible treatment and no 44 px target.
-- `viz.Sparkline`/`viz.Bars` take a fixed pixel width; the fleet page wraps them in
-  `[&>svg]:max-w-full [&>svg]:h-auto` so the 640 px traffic sparkline no longer scrolls
-  `main` sideways at 390 px.
+- `chrome.Breadcrumbs` links have no focus-visible treatment and no 44 px target
+  (measured 17 px). Workaround: `renderConsoleHeading` wraps the trail in
+  `[&_a]:inline-flex [&_a]:min-h-11` with a `focus-visible` outline.
+- `chrome.RenderPagination` links are `px-2 py-1` (about 28 px). Workaround: `/search`'s
+  group pages wrap it in `[&_a]:min-h-11 [&_span]:min-h-11`.
+- `viz.Sparkline`/`viz.Bars`/`viz.Timeline` take a fixed pixel width. Scaling the SVG
+  down (`[&>svg]:max-w-full`) keeps `main` from scrolling but shrinks text: the 560 px
+  tool-load bars drew 11 px labels at ~6 px on a 390 px screen. The traffic sparkline
+  (no text) keeps the scaling; the tool bars and the 900 px session timeline now scroll
+  inside their own keyboard-reachable `overflow-x-auto` region, and the tool bars carry
+  a `table.Table` alternative behind `chrome.RenderDisclosure`. The kit fix is a
+  width-responsive chart or a built-in scroll region plus table alternative.
+- `hitl.DiffView`'s "Show both versions" toggle is `text-ink-faint` (measured 3.15:1
+  light, 2.88:1 dark; `docs/theming-hazards.md` H6 puts ink-faint below the text floor).
+  No local workaround — the toggle is kit markup; return it as `text-ink-muted`.
+- Fathom's own absence notes had the same H6 defect (`metricCell`, session and timeline
+  notes, the not-recorded column): they now use `text-ink-muted`, as `stat.Absent`
+  does for its reason; only a bare decorative "—" stays ink-faint.
 
 **Waiting on contributions:** the ⌘K palette dialog (OC-12, FATHOM-KIT-01 over
 `overlay`) and the live "updated — refresh this panel" affordance (OC-14,

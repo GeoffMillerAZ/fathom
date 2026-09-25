@@ -6,8 +6,6 @@ package main
 // windowed, filterable replay (OC-43).
 
 import (
-	"os"
-
 	"github.com/geoffmilleraz/app-kit/appkit/ui/stat"
 	"github.com/geoffmilleraz/fathom/internal/console"
 )
@@ -36,13 +34,12 @@ type sessionsModel struct {
 func buildSessionsPage(cr *consoleRequest) (consoleOut, error) {
 	m := cr.model()
 	ws := buildWeekStory(cr.now)
-	// The shared sessions metric from this request's own ledger read: the
-	// same projection the model uses, so the pages can be held to agree.
-	src := cr.deps.sources()
-	data, err := os.ReadFile(src.SessionLedger)
-	sessions := console.SessionCount(src.SessionLedger, data, err)
+	// The shared sessions metric is the model's one read of the ledger —
+	// the read every other page shows (OC-9, ADR-045 decision 3). A fresh
+	// read here would disagree with /impact for up to the model's TTL after
+	// every Stop-hook row; the value's as_of names when the read was taken.
 	metrics := consoleModelMetrics(m)
-	metrics[console.MetricSessions] = sessions
+	sessions := metrics[console.MetricSessions]
 	return consoleOut{
 		Meta:    []string{"the week " + ws.From + " … " + ws.To, "generated " + m.GeneratedAt},
 		Model:   sessionsModel{Week: ws},

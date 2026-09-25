@@ -21,9 +21,11 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/app-kit/appkit/ui/callout"
+	"github.com/geoffmilleraz/app-kit/appkit/ui/chrome"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/dashboard"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/form"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/stat"
+	"github.com/geoffmilleraz/app-kit/appkit/ui/table"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/viz"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/vizframe"
 	"github.com/geoffmilleraz/fathom/internal/console"
@@ -42,7 +44,19 @@ func metricCell(v *int, absentNote, presentNote string) string {
 	if absentNote == "" {
 		absentNote = "not measured"
 	}
-	return `<span class="italic text-ink-faint">` + html.EscapeString(absentNote) + `</span>`
+	return `<span class="italic text-ink-muted">` + html.EscapeString(absentNote) + `</span>`
+}
+
+// observationsCell renders a repo's open-observation count, "no
+// observations file" when it has none, or the read error — in the error
+// role — when the file exists and could not be read (never labelled
+// missing: the survey found EPERM-wedged repos reading "no observations
+// file").
+func observationsCell(s fleetServiceRow) string {
+	if s.OpenObservations == nil && s.ObservationsError != "" {
+		return `<span class="text-danger" data-truth-state="error">unreadable — ` + html.EscapeString(s.ObservationsError) + `</span>`
+	}
+	return metricCell(s.OpenObservations, "no observations file", "")
 }
 
 func dimNote(note string) string {
@@ -154,7 +168,7 @@ func obsContent(active string, body string, m observatoryModel) string {
 	if l, ok := obsLeads[active]; ok {
 		b.WriteString(`<p class="mb-2 max-w-3xl text-ink-muted">` + html.EscapeString(l.Lead) + `</p>`)
 		if l.Explain != "" {
-			b.WriteString(`<details class="mb-3 max-w-3xl rounded-md border border-line bg-surface-raised px-3 py-2"><summary class="cursor-pointer text-accent">what am I looking at?</summary><p class="mt-2 text-ink-muted">` + html.EscapeString(l.Explain) + `</p></details>`)
+			b.WriteString(`<details class="mb-3 max-w-3xl rounded-md border border-line bg-surface-raised px-3 py-2"><summary class="min-h-11 cursor-pointer py-2.5 text-accent">what am I looking at?</summary><p class="mt-2 text-ink-muted">` + html.EscapeString(l.Explain) + `</p></details>`)
 		}
 	}
 	banner := func(active bool, detail string) {
@@ -177,6 +191,11 @@ func obsContent(active string, body string, m observatoryModel) string {
 // is a registered page ID or a legacy alias; title is the legacy
 // "fathom · …" title, reduced to its subject for the page heading.
 func obsPage(title, active string, body string, m observatoryModel) string {
+	return obsPageWithCrumbs(title, active, nil, body, m)
+}
+
+// obsPageWithCrumbs is obsPage with an explicit trail (nil: the page's own).
+func obsPageWithCrumbs(title, active string, crumbs []chrome.Crumb, body string, m observatoryModel) string {
 	reg := defaultConsoleRegistry()
 	heading := strings.TrimPrefix(title, "fathom · ")
 	question := ""
@@ -189,8 +208,11 @@ func obsPage(title, active string, body string, m observatoryModel) string {
 		}
 	}
 	footer := `<p class="mx-auto max-w-7xl text-xs text-ink-muted">generated ` + html.EscapeString(m.GeneratedAt) + ` · fathom ` + html.EscapeString(m.FathomVersion) + ` · loopback-only; sharing is a human verb (law 13) — <code class="font-mono">fathom brief</code> writes the shareable file · JSON: add <code class="font-mono">?format=json</code> to any page</p>`
+	if crumbs == nil {
+		crumbs = consoleCrumbs(reg, pageID, heading)
+	}
 	return renderConsoleShell(reg, consoleShell{
-		PageID: pageID, Title: heading, Crumbs: consoleCrumbs(reg, pageID, heading),
+		PageID: pageID, Title: heading, Crumbs: crumbs,
 		Question: question, Meta: modelMeta(m), Body: obsContent(active, body, m), Footer: footer,
 	})
 }
@@ -269,7 +291,11 @@ func renderObsFleet(m observatoryModel) string {
 	// Both are the shared projections: the call total is every row in the
 	// resolved log, unattributed rows named in the caption, never dropped.
 	symbolsTile := valueStat("symbols", console.SymbolTotal(fleetFactsFromModel(m)))
-	callsTile := valueStat("tool calls (log)", console.CallTotal(modelCallFacts(m)))
+	callFacts := modelCallFacts(m)
+	callsTile := valueStat("tool calls (log)", console.CallTotal(callFacts))
+	if caption := callLogRuleCaption(callFacts); caption != "" {
+		callsTile.Sub = strings.TrimPrefix(callsTile.Sub+" · "+caption, " · ")
+	}
 	var b strings.Builder
 	b.WriteString(stat.RenderBand([]stat.Stat{
 		fleetServiceCountStat(m),
@@ -316,7 +342,7 @@ func renderObsFleet(m observatoryModel) string {
 		if strings.HasPrefix(s.Freshness, "stale") {
 			fr = `<span class="text-caution">` + html.EscapeString(shortFreshness(s.Freshness)) + `</span>`
 		} else if s.Freshness != "fresh" {
-			fr = `<span class="italic text-ink-faint">` + html.EscapeString(s.Freshness) + `</span>`
+			fr = `<span class="italic text-ink-muted">` + html.EscapeString(s.Freshness) + `</span>`
 		}
 		body.WriteString(kv("freshness", fr))
 		if m.CallLogNote != "" {
@@ -324,7 +350,7 @@ func renderObsFleet(m observatoryModel) string {
 		} else {
 			body.WriteString(kv("traffic", html.EscapeString(plural(s.CallsTotal, "call"))+` <span class="text-ink-muted">(`+agentCallsTip(s.CallsAgent)+`)</span>`))
 		}
-		body.WriteString(kv("open observations", metricCell(s.OpenObservations, "no observations file", "")))
+		body.WriteString(kv("open observations", observationsCell(s.fleetServiceRow)))
 		if m.CallLogNote == "" && len(s.TrafficDays) > 0 && s.CallsTotal > 0 {
 			spark := make([]float64, len(s.TrafficDays))
 			for i, c := range s.TrafficDays {
@@ -380,8 +406,24 @@ func renderObsFleet(m observatoryModel) string {
 			bars = append(bars, viz.Bar{Label: r.Tool, Value: float64(r.Calls)})
 		}
 		b.WriteString(sectionHeading("which tools carry the load (call log, all time)"))
+		// The chart keeps its legible 11 px labels and scrolls inside its own
+		// keyboard-reachable region at 390 px (scaling the fixed 560 px SVG
+		// down drew them at ~6 px); its table alternative sits behind a
+		// disclosure (design §2: every chart has one).
+		rows := make([]table.Row, 0, len(bars))
+		for i, bar := range bars {
+			rows = append(rows, table.Row{ID: "tool-" + itoa(i), Cells: []string{bar.Label, fmtThousands(int(bar.Value))}})
+		}
+		alt := chrome.RenderDisclosure(chrome.Disclosure{
+			Summary: "calls per tool as a table",
+			Body: template.HTML(renderKitTable(table.TableParams{
+				TableID: "fleet-tool-load", Caption: "calls per tool (call log, all time)",
+				Columns: []table.Column{{Key: "tool", Label: "Tool"}, {Key: "calls", Label: "Calls"}},
+				Rows:    rows,
+			})),
+		})
 		b.WriteString(dashboard.RenderWidget(dashboard.Widget{
-			Body: template.HTML(`<div class="[&>svg]:h-auto [&>svg]:max-w-full">` + viz.Bars(bars, viz.BarsOptions{W: 560, LabelW: 160, ShowValue: true, AriaLabel: "calls per tool"}) + `</div>`),
+			Body: template.HTML(`<div class="overflow-x-auto" role="region" tabindex="0" aria-label="calls per tool — scrolls sideways">` + viz.Bars(bars, viz.BarsOptions{W: 560, LabelW: 160, ShowValue: true, AriaLabel: "calls per tool"}) + `</div><div class="mt-3">` + alt + `</div>`),
 		}))
 	}
 
@@ -412,7 +454,7 @@ func renderObsService(m observatoryModel, id string) (string, bool) {
 		} else {
 			body.WriteString(kv("traffic", plural(s.CallsTotal, "call")+` <span class="text-ink-muted">(`+agentCallsTip(s.CallsAgent)+` · `+fmtThousands(s.CallsAgent)+`/`+fmtThousands(s.CallsTotal)+`)</span>`))
 		}
-		body.WriteString(kv("open observations", metricCell(s.OpenObservations, "no observations file", "")))
+		body.WriteString(kv("open observations", observationsCell(s.fleetServiceRow)))
 		if s.FreshnessRemedy != "" {
 			body.WriteString(remedy(s.FreshnessRemedy))
 		}
@@ -431,12 +473,12 @@ func renderObsService(m observatoryModel, id string) (string, bool) {
 					cfg.WriteString(kv("layer · "+l.Name, state))
 				}
 			} else {
-				cfg.WriteString(kv("semantic layers", `<span class="italic text-ink-faint">`+html.EscapeString(c.LayersNote)+`</span>`))
+				cfg.WriteString(kv("semantic layers", `<span class="italic text-ink-muted">`+html.EscapeString(c.LayersNote)+`</span>`))
 			}
 			if c.GuardCount > 0 {
 				cfg.WriteString(kv("guards", fmtThousands(c.GuardCount)+` pre-edit warnings configured`))
 			} else {
-				cfg.WriteString(kv("guards", `<span class="italic text-ink-faint">`+html.EscapeString(c.GuardNote)+`</span>`))
+				cfg.WriteString(kv("guards", `<span class="italic text-ink-muted">`+html.EscapeString(c.GuardNote)+`</span>`))
 			}
 			cfg.WriteString(kv("bindings", html.EscapeString(c.BindingNote)))
 			if m.CallLogNote != "" {
@@ -460,7 +502,7 @@ func renderObsService(m observatoryModel, id string) (string, bool) {
 		}
 		switch {
 		case m.CallLogNote != "":
-			widgets = append(widgets, dashboard.RenderWidget(dashboard.Widget{Title: "agent-surface share", Body: template.HTML(`<span class="italic text-ink-faint">not measured — ` + html.EscapeString(m.CallLogNote) + `</span>`)}))
+			widgets = append(widgets, dashboard.RenderWidget(dashboard.Widget{Title: "agent-surface share", Body: template.HTML(`<span class="italic text-ink-muted">not measured — ` + html.EscapeString(m.CallLogNote) + `</span>`)}))
 		case s.CallsTotal > 0:
 			g := viz.Gauge(float64(s.CallsAgent), float64(s.CallsTotal), viz.GaugeOptions{
 				AriaLabel: "agent-surface share",
@@ -477,7 +519,7 @@ func renderObsService(m observatoryModel, id string) (string, bool) {
 				Source: vizframe.Derived(source),
 			}))
 		default:
-			widgets = append(widgets, dashboard.RenderWidget(dashboard.Widget{Title: "agent-surface share", Body: template.HTML(`<span class="italic text-ink-faint">no recorded calls for this service in the current log</span>`)}))
+			widgets = append(widgets, dashboard.RenderWidget(dashboard.Widget{Title: "agent-surface share", Body: template.HTML(`<span class="italic text-ink-muted">no recorded calls for this service in the current log</span>`)}))
 		}
 		widgets = append(widgets, renderDimensionSeries(s, m.CallLogNote))
 		return sectionHeading(id) + dashboard.RenderWidgetGrid(widgets, dashboard.WidgetGridOptions{Cols: 2, AriaLabel: "service detail"}), true
@@ -548,7 +590,7 @@ func renderCostPanel(cp costPanel, callLogNote string) string {
 	}
 
 	var tbl strings.Builder
-	tbl.WriteString(`<div class="overflow-x-auto"><table class="w-full border-collapse text-sm"><tr class="border-b border-line text-left"><th class="px-2 py-1 font-medium text-ink-muted">tool</th><th class="px-2 py-1 font-medium text-ink-muted">calls</th><th class="px-2 py-1 font-medium text-ink-muted">tokens (est.)</th><th class="px-2 py-1 font-medium text-ink-muted">elision rate</th></tr>`)
+	tbl.WriteString(`<div class="overflow-x-auto"><table class="w-full border-collapse text-sm"><tr class="border-b border-line text-left"><th scope="col" class="px-2 py-1 font-medium text-ink-muted">tool</th><th scope="col" class="px-2 py-1 font-medium text-ink-muted">calls</th><th scope="col" class="px-2 py-1 font-medium text-ink-muted">tokens (est.)</th><th scope="col" class="px-2 py-1 font-medium text-ink-muted">elision rate</th></tr>`)
 	for i, r := range cp.Tools {
 		if i == 10 {
 			break
@@ -648,12 +690,12 @@ func renderObsImpact(m observatoryModel) string {
 		b.WriteString(dashboard.RenderWidget(dashboard.Widget{Title: "per-tool outcomes", Body: template.HTML(`<p class="text-ink-muted">` + html.EscapeString(m.CallLogNote) + `</p>`)}))
 	} else if len(m.Misses) > 0 {
 		var tbl strings.Builder
-		tbl.WriteString(`<div class="overflow-x-auto"><table class="w-full border-collapse text-sm"><tr class="border-b border-line text-left"><th class="px-2 py-1 font-medium text-ink-muted">tool</th><th class="px-2 py-1 font-medium text-ink-muted">calls</th><th class="px-2 py-1 font-medium text-ink-muted">hits</th><th class="px-2 py-1 font-medium text-ink-muted">misses</th><th class="px-2 py-1 font-medium text-ink-muted">did-you-mean</th><th class="px-2 py-1 font-medium text-ink-muted">outcome not recorded</th></tr>`)
+		tbl.WriteString(`<div class="overflow-x-auto"><table class="w-full border-collapse text-sm"><tr class="border-b border-line text-left"><th scope="col" class="px-2 py-1 font-medium text-ink-muted">tool</th><th scope="col" class="px-2 py-1 font-medium text-ink-muted">calls</th><th scope="col" class="px-2 py-1 font-medium text-ink-muted">hits</th><th scope="col" class="px-2 py-1 font-medium text-ink-muted">misses</th><th scope="col" class="px-2 py-1 font-medium text-ink-muted">did-you-mean</th><th scope="col" class="px-2 py-1 font-medium text-ink-muted">outcome not recorded</th></tr>`)
 		for i, r := range m.Misses {
 			if i == 10 {
 				break
 			}
-			tbl.WriteString(`<tr class="border-b border-line"><td class="px-2 py-1 font-mono text-xs">` + html.EscapeString(r.Tool) + `</td><td class="px-2 py-1 tabular-nums">` + fmtThousands(r.Calls) + `</td><td class="px-2 py-1 tabular-nums text-positive">` + fmtThousands(r.Hits) + `</td><td class="px-2 py-1 tabular-nums text-danger">` + fmtThousands(r.Misses) + `</td><td class="px-2 py-1 tabular-nums text-caution">` + fmtThousands(r.DidYouMean) + `</td><td class="px-2 py-1 tabular-nums text-ink-faint">` + fmtThousands(r.NotRecorded) + `</td></tr>`)
+			tbl.WriteString(`<tr class="border-b border-line"><td class="px-2 py-1 font-mono text-xs">` + html.EscapeString(r.Tool) + `</td><td class="px-2 py-1 tabular-nums">` + fmtThousands(r.Calls) + `</td><td class="px-2 py-1 tabular-nums text-positive">` + fmtThousands(r.Hits) + `</td><td class="px-2 py-1 tabular-nums text-danger">` + fmtThousands(r.Misses) + `</td><td class="px-2 py-1 tabular-nums text-caution">` + fmtThousands(r.DidYouMean) + `</td><td class="px-2 py-1 tabular-nums text-ink-muted">` + fmtThousands(r.NotRecorded) + `</td></tr>`)
 		}
 		tbl.WriteString(`</table></div><div class="mt-2 text-xs text-ink-muted">rows logged before the outcome instrument (IQ-1) count as not-recorded, never as hits. Query text stays out of the log by design — it is user-global and metadata-only.</div>`)
 		b.WriteString(dashboard.RenderWidget(dashboard.Widget{Title: "per-tool outcomes", Body: template.HTML(tbl.String())}))
@@ -676,7 +718,7 @@ func renderObsImpact(m observatoryModel) string {
 	}, stat.BandOptions{AriaLabel: "compounding"}))
 
 	b.WriteString(sectionHeading("stories"))
-	b.WriteString(`<div class="rounded-md border border-dashed border-caution px-3 py-2 text-ink-muted">narrative is a lens, never evidence (law 14). ` + html.EscapeString(imp.StoriesNote) + ` <a class="text-accent" href="/sessions">the week →</a></div>`)
+	b.WriteString(`<div class="rounded-md border border-dashed border-caution px-3 py-2 text-ink-muted">narrative is a lens, never evidence (law 14). ` + html.EscapeString(imp.StoriesNote) + ` <a class="inline-flex min-h-11 items-center text-accent" href="/sessions">the week →</a></div>`)
 	if imp.LedgerNote != "" {
 		b.WriteString(`<div class="mt-2 rounded-md border border-caution bg-caution-soft px-3 py-2">` + html.EscapeString(imp.LedgerNote) + `</div>`)
 	}
@@ -771,6 +813,10 @@ func renderObsLandingBody(m observatoryModel) string {
 		})
 	}
 	observations := fleetOpenObservations(m)
+	obsAnswer := observations.Value + " open observations"
+	if observations.ValueRole == "danger" {
+		obsAnswer = "open observations unreadable"
+	}
 	// OC-9: the call total is the shared projection — every row in the
 	// resolved log, not the per-service sum that silently dropped rows
 	// naming no service.
@@ -788,7 +834,7 @@ func renderObsLandingBody(m observatoryModel) string {
 	questions := []string{
 		q("Q1", "what did the agent not have to do?", saved, "a savings figure exists only as a counterfactual arm range (law 12)", "/impact"),
 		q("Q2", "what did fathom prevent?", catches+" verify catches", imp.VerifyCatchesNote, "/impact"),
-		q("Q3", "where does the agent still flounder?", observations.Value+" open observations", observations.Sub+"; "+callContext, "/impact"),
+		q("Q3", "where does the agent still flounder?", obsAnswer, observations.Sub+"; "+callContext, "/impact"),
 		q("Q4", "is the knowledge compounding?", firstEditAnswer(imp), "warm-up turns before the first edit, per session", "/sessions"),
 	}
 	type entry struct{ href, name, desc string }
@@ -803,7 +849,7 @@ func renderObsLandingBody(m observatoryModel) string {
 	} {
 		widgets = append(widgets, dashboard.RenderWidget(dashboard.Widget{
 			Title: e.name,
-			Body:  template.HTML(`<div class="text-ink-muted">` + html.EscapeString(e.desc) + `</div><div class="mt-2"><a class="text-accent" href="` + e.href + `">open →</a></div>`),
+			Body:  template.HTML(`<div class="text-ink-muted">` + html.EscapeString(e.desc) + `</div><div class="mt-2"><a class="inline-flex min-h-11 items-center text-accent" href="` + e.href + `">open →</a></div>`),
 		}))
 	}
 	var mach strings.Builder
@@ -846,7 +892,7 @@ func writeObsJSON(w http.ResponseWriter, v any) {
 // surface (law 3).
 func contextTaxValue(tools, schemaBytes int) string {
 	if tools == 0 && schemaBytes == 0 {
-		return `<span class="italic text-ink-faint">not measured (agent surface unreachable)</span>`
+		return `<span class="italic text-ink-muted">not measured (agent surface unreachable)</span>`
 	}
 	kb := float64(schemaBytes) / 1024
 	tokens := float64(schemaBytes) / 4 / 1000

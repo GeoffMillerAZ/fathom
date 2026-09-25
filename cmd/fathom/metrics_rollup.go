@@ -62,7 +62,8 @@ func cmdMetricsRollupBuild(args []string, stdout, stderr io.Writer) int {
 	// OC-2: the one call-log resolution (console_calllog.go) — the daemon's
 	// configured log when a daemon record names one, never a log relative
 	// to this command's working directory.
-	callLogPath := resolveConsoleCallLog(*callLogFlag, "").Path
+	resolved := resolveConsoleCallLog(*callLogFlag, "")
+	callLogPath := resolved.Path
 	entries, verdicts := readCallDataFor(callLogPath, *service, sinceT, untilT)
 	traffic := metrics.AggregateTraffic(entries, metrics.TrafficOptions{Since: sinceT, Until: untilT, GroupBy: metrics.TrafficGroupBySurface})
 
@@ -88,9 +89,10 @@ func cmdMetricsRollupBuild(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if *jsonOut {
-		jsonPrint(stdout, rollup)
+		jsonPrint(stdout, withCallLog(rollup, resolved))
 	} else {
 		fmt.Fprintf(stdout, "wrote %s\n", filepath.Join(outDir, rollup.Date+".json"))
+		fmt.Fprintln(stdout, callLogLine(resolved))
 	}
 	return 0
 }
@@ -104,23 +106,33 @@ func cmdMetricsRollupBuild(args []string, stdout, stderr io.Writer) int {
 // overwritten or merged).
 func cmdMetricsRotate(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("metrics rotate", stderr)
-	callLogFlag := fs.String("call-log", "", "MCP tool-call log (JSONL); default: [daemon].call_log in config.toml, else "+defaultCallLogPath())
+	callLogFlag := fs.String("call-log", "", "MCP tool-call log (JSONL); default: the one resolution every metrics verb shares — the daemon's recorded log, then [daemon].call_log, then "+defaultCallLogPath())
 	keepDays := fs.Int("keep-days", 90, "lines older than this many days (by their own ts field) are candidates for archiving")
 	apply := fs.Bool("apply", false, "actually archive the matched lines (default: dry-run report only)")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
 
-	callLogPath := *callLogFlag
+	// OC-2: the retention verb inspects (and with --apply rewrites) the log
+	// every other metrics verb and page reads — the daemon's record first —
+	// never a path relative to this command's working directory.
+	resolved := resolveConsoleCallLog(*callLogFlag, "")
+	callLogPath := resolved.Path
+	fmt.Fprintln(stdout, callLogLine(resolved))
 	if callLogPath == "" {
-		callLogPath = resolveCallLogPath()
+		fmt.Fprintln(stdout, "no call log is configured — nothing to rotate")
+		return 0
 	}
 	cutoff := time.Now().UTC().AddDate(0, 0, -*keepDays)
 
 	f, err := os.Open(callLogPath)
 	if err != nil {
-		fmt.Fprintf(stdout, "no call log at %s — nothing to rotate\n", callLogPath)
-		return 0
+		if os.IsNotExist(err) {
+			fmt.Fprintf(stdout, "no call log at %s — nothing to rotate\n", callLogPath)
+			return 0
+		}
+		fmt.Fprintf(stderr, "error: call log %s is unreadable: %v\n", callLogPath, err)
+		return 1
 	}
 	var keep, archive []string
 	sc := bufio.NewScanner(f)

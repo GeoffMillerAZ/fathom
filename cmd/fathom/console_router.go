@@ -125,6 +125,13 @@ func (d *consoleDeps) pageHandler(p *consolePage) http.HandlerFunc {
 			writeObsJSON(w, consolePageJSONFor(p, r, out, now))
 			return
 		}
+		// HEAD serves no page to anyone: answer the headers before the view
+		// is counted (UX-M4 reads views as pages a person opened) and before
+		// the body and the shell are rendered.
+		if r.Method == http.MethodHead {
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			return
+		}
 		countPageView(d.views, p, now)
 		title := out.Title
 		if title == "" {
@@ -140,9 +147,6 @@ func (d *consoleDeps) pageHandler(p *consolePage) http.HandlerFunc {
 			Body: body, SearchQuery: r.URL.Query().Get("q"),
 		})
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if r.Method == http.MethodHead {
-			return
-		}
 		_, _ = w.Write([]byte(page))
 	}
 }

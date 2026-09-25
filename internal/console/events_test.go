@@ -124,7 +124,7 @@ func TestEventBus_ReplayBoundAndKeepalive(t *testing.T) {
 	}
 
 	// Over HTTP: hello, the replay after Last-Event-ID, then a keepalive.
-	fresh := console.NewEventBus(console.BusOptions{Keepalive: 30 * time.Millisecond})
+	fresh := console.NewEventBus(console.BusOptions{Keepalive: 30 * time.Millisecond, Epoch: "e1"})
 	for _, svc := range []string{"a", "b", "c"} {
 		if _, err := fresh.Publish(console.Event{Kind: console.EventIngest, Service: svc, Ref: "c1"}); err != nil {
 			t.Fatal(err)
@@ -135,7 +135,7 @@ func TestEventBus_ReplayBoundAndKeepalive(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, ts.URL, nil)
-	req.Header.Set("Last-Event-ID", "1")
+	req.Header.Set("Last-Event-ID", "e1-1")
 	resp, err := ts.Client().Do(req)
 	if err != nil {
 		t.Fatal(err)
@@ -159,14 +159,82 @@ func TestEventBus_ReplayBoundAndKeepalive(t *testing.T) {
 	if !strings.Contains(joined, "event: hello") {
 		t.Errorf("stream must open with hello:\n%s", joined)
 	}
-	if strings.Contains(joined, "id: 1\n") || !strings.Contains(joined, "id: 2\nevent: ingest") || !strings.Contains(joined, "id: 3\nevent: ingest") {
-		t.Errorf("replay after Last-Event-ID 1 must carry ids 2 and 3 only:\n%s", joined)
+	if strings.Contains(joined, "id: e1-1\n") || !strings.Contains(joined, "id: e1-2\nevent: ingest") || !strings.Contains(joined, "id: e1-3\nevent: ingest") {
+		t.Errorf("replay after Last-Event-ID e1-1 must carry ids e1-2 and e1-3 only:\n%s", joined)
+	}
+	if !strings.Contains(joined, `"epoch":"e1"`) {
+		t.Errorf("hello must name the stream's epoch:\n%s", joined)
 	}
 	if !strings.Contains(joined, `"sources":["index:b"]`) {
 		t.Errorf("event data must carry its panel sources:\n%s", joined)
 	}
 	if !sawKeepalive {
 		t.Errorf("no keepalive within the stream:\n%s", joined)
+	}
+}
+
+// TestEventBus_ReplaySurvivesDaemonRestart: event IDs are per process, so a
+// browser that reconnects after a daemon restart sends the OLD process's
+// Last-Event-ID. The stream's epoch (a boot ID in every SSE id) tells the
+// new bus the cursor is foreign, and it replays its whole ring — the
+// restart event first — instead of filtering out every event at or below a
+// number from another process.
+func TestEventBus_ReplaySurvivesDaemonRestart(t *testing.T) {
+	old := console.NewEventBus(console.BusOptions{Epoch: "boot1"})
+	for i := 0; i < 5; i++ {
+		if _, err := old.Publish(console.Event{Kind: console.EventVerify, Service: "fathom", Name: "plan.md", Ref: "pass"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cursor := old.Cursor()
+	if cursor != "boot1-5" {
+		t.Fatalf("cursor = %q, want boot1-5", cursor)
+	}
+	fresh := console.NewEventBus(console.BusOptions{Epoch: "boot2"})
+	restart, _ := fresh.Publish(console.Event{Kind: console.EventDaemon, Name: "restart", Ref: "abc"})
+	for i := 0; i < 9; i++ {
+		_, _ = fresh.Publish(console.Event{Kind: console.EventIngest, Service: "fathom", Ref: "c1"})
+	}
+	_, replay, err := fresh.SubscribeAfter(cursor)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(replay) != 10 || replay[0].ID != restart.ID || replay[0].Kind != console.EventDaemon {
+		t.Fatalf("replay after a foreign cursor = %d events (first %+v), want all 10, the restart first", len(replay), replay)
+	}
+	// The same epoch still resumes exactly after its cursor.
+	_, replay, _ = fresh.SubscribeAfter("boot2-8")
+	if len(replay) != 2 || replay[0].ID != 9 {
+		t.Fatalf("replay after boot2-8 = %v, want ids 9 and 10", replay)
+	}
+	// A bare number beyond this bus's last ID cannot be one of its own.
+	small := console.NewEventBus(console.BusOptions{Epoch: "boot3"})
+	_, _ = small.Publish(console.Event{Kind: console.EventDaemon, Name: "restart", Ref: "abc"})
+	if _, replay, _ := small.Subscribe(old.LastID()); len(replay) != 1 {
+		t.Fatalf("a lastID from another process (5 > 1) must replay the ring, got %d", len(replay))
+	}
+	// Over HTTP: the old process's Last-Event-ID still gets the restart.
+	ts := httptest.NewServer(fresh)
+	defer ts.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, ts.URL, nil)
+	req.Header.Set("Last-Event-ID", cursor)
+	resp, err := ts.Client().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	sc := bufio.NewScanner(resp.Body)
+	var got []string
+	for sc.Scan() {
+		got = append(got, sc.Text())
+		if strings.HasPrefix(sc.Text(), "id: boot2-10") {
+			break
+		}
+	}
+	if joined := strings.Join(got, "\n"); !strings.Contains(joined, "id: boot2-1\nevent: daemon") {
+		t.Errorf("a reconnect across a restart must replay the restart event:\n%s", joined)
 	}
 }
 

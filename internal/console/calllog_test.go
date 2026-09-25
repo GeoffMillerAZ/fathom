@@ -34,6 +34,15 @@ func TestResolveCallLog_PrefersDaemonConfiguredLog(t *testing.T) {
 		t.Errorf("note must name the daemon record: %q", got.Note)
 	}
 
+	// A daemon started with logging off is still the daemon's answer: rule
+	// none, never a config or legacy log that daemon does not write.
+	if got := console.ResolveCallLog(console.CallLogInputs{DaemonOff: true, DaemonNote: "pid 9", Config: configLog, Legacy: legacy}); got.Rule != console.RuleNone || got.Path != "" || !strings.Contains(got.Note, "logging off") {
+		t.Errorf("logging-off daemon resolved to %+v, want rule none", got)
+	}
+	if got := console.ResolveCallLog(console.CallLogInputs{Flag: "/x.jsonl", DaemonOff: true}); got.Rule != console.RuleFlag {
+		t.Errorf("an explicit flag still wins over a logging-off daemon: %+v", got)
+	}
+
 	// Without a daemon record: config, then legacy.
 	if got := console.ResolveCallLog(console.CallLogInputs{Config: configLog, Legacy: legacy}); got.Path != configLog || got.Rule != console.RuleConfig {
 		t.Errorf("config + legacy = %+v, want config", got)

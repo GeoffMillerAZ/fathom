@@ -39,8 +39,12 @@ type ServiceFact struct {
 	// says why.
 	Symbols     *int
 	SymbolsNote string
-	// OpenObservations is nil when the repo has no readable observations file.
+	// OpenObservations is nil when the repo reports no count: no
+	// observations file, or one that could not be read (ObservationsErr).
 	OpenObservations *int
+	// ObservationsErr is non-empty when the repo's observations file exists
+	// and could not be read — an error, never "not reporting".
+	ObservationsErr string
 }
 
 // FleetFacts is the registry's answer. RegistryNote is non-empty when the
@@ -93,17 +97,34 @@ func SymbolTotal(f FleetFacts) Value[int] {
 
 // OpenObservations sums open observations across repos with a readable
 // .fathom/observations.md: no reporting repo is absent, partial coverage is
-// a named lower bound, and only complete coverage permits an exact total.
+// a named lower bound, and only complete coverage permits an exact total. A
+// file that exists and could not be read makes the value an ERROR naming
+// the repos and the failure: a total without it would read as fewer
+// defects, which is the one direction an instrument may never degrade in
+// (I38, ADR-027) — the survey watched an EPERM wedge turn "≥ 100" into
+// "≥ 8" with nothing named.
 func OpenObservations(f FleetFacts) Value[int] {
 	total, known := 0, 0
+	var unreadable []string
 	for _, s := range f.Services {
-		if s.OpenObservations != nil {
+		switch {
+		case s.ObservationsErr != "":
+			unreadable = append(unreadable, s.Name+" ("+s.ObservationsErr+")")
+		case s.OpenObservations != nil:
 			total += *s.OpenObservations
 			known++
 		}
 	}
 	const source = "each repo's .fathom/observations.md"
 	n := len(f.Services)
+	if len(unreadable) > 0 {
+		shown := unreadable
+		more := ""
+		if len(shown) > 3 {
+			shown, more = shown[:3], fmt.Sprintf(" and %d more", len(unreadable)-3)
+		}
+		return Errored[int](fmt.Sprintf("observations file unreadable in %d of %s: %s%s — no total is shown, since one without them would read as fewer defects", len(unreadable), countNoun(n, "repo"), strings.Join(shown, "; "), more)).WithSource(source)
+	}
 	if known == 0 {
 		reason := "no observation counts available"
 		if f.RegistryNote != "" {
@@ -176,6 +197,50 @@ func SessionCount(ledgerPath string, data []byte, readErr error) Value[int] {
 // bytes, with the dedupe rule every page shares.
 func DistinctSessions(data []byte) (sessions, rows int) {
 	seen := map[string]bool{}
+	eachLedgerSession(data, func(key, _ string) {
+		rows++
+		seen[key] = true
+	})
+	return len(seen), rows
+}
+
+// DistinctSessionsByRepo counts distinct sessions per repo label (lowered)
+// with the same dedupe rule: the fleet report's and the fleet page's
+// per-repo session column, which counted ledger rows (ADR-045's named
+// contradiction) until it shared this rule. Rows naming no repo are skipped.
+func DistinctSessionsByRepo(data []byte) map[string]int {
+	return DistinctSessionsBy(data, strings.ToLower)
+}
+
+// DistinctSessionsBy is DistinctSessionsByRepo with the row's repo label
+// mapped to a key first (a label to the service whose root it names: the
+// Stop hook labels this repository "sextant", its service is "fathom"), so a
+// session counts once under its key. A label mapped to "" is skipped.
+func DistinctSessionsBy(data []byte, keyOf func(repoLabel string) string) map[string]int {
+	seen := map[string]map[string]bool{}
+	eachLedgerSession(data, func(key, repo string) {
+		if repo == "" {
+			return
+		}
+		repo = keyOf(repo)
+		if repo == "" {
+			return
+		}
+		if seen[repo] == nil {
+			seen[repo] = map[string]bool{}
+		}
+		seen[repo][key] = true
+	})
+	out := make(map[string]int, len(seen))
+	for repo, keys := range seen {
+		out[repo] = len(keys)
+	}
+	return out
+}
+
+// eachLedgerSession calls fn with every parseable ledger row's session key
+// (its session id; a row with none counts once on its own) and repo label.
+func eachLedgerSession(data []byte, fn func(key, repo string)) {
 	for _, line := range bytes.Split(data, []byte{'\n'}) {
 		if len(bytes.TrimSpace(line)) == 0 {
 			continue
@@ -188,14 +253,12 @@ func DistinctSessions(data []byte) (sessions, rows int) {
 		if json.Unmarshal(line, &row) != nil {
 			continue
 		}
-		rows++
 		key := row.SessionID
 		if key == "" {
 			key = "\x00anon:" + row.At + ":" + row.Repo
 		}
-		seen[key] = true
+		fn(key, row.Repo)
 	}
-	return len(seen), rows
 }
 
 // Sources names what the projections read: the resolved call log, the

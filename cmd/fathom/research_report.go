@@ -253,7 +253,8 @@ func cmdResearchReport(args []string, stdout, stderr io.Writer) int {
 	// instrument --adoption and flywheel about the same repo (O25).
 	// OC-2: the one call-log resolution (console_calllog.go): the daemon's
 	// record first, then J5's named-service identity, config, legacy.
-	callLogPath := resolveConsoleCallLog(*callLogFlag, *service).Path
+	resolved := resolveConsoleCallLog(*callLogFlag, *service)
+	callLogPath := resolved.Path
 	entries, skippedMalformed, callLogErr := classifyCallLogRead(callLogPath)
 	callLogRead := callLogErr == nil
 	if !callLogRead {
@@ -309,9 +310,10 @@ func cmdResearchReport(args []string, stdout, stderr io.Writer) int {
 	if *jsonOut {
 		enc := json.NewEncoder(stdout)
 		enc.SetIndent("", "  ")
-		_ = enc.Encode(report)
+		_ = enc.Encode(withCallLog(report, resolved))
 	} else {
 		renderResearchReportText(stdout, report)
+		fmt.Fprintln(stdout, callLogLine(resolved))
 	}
 
 	if !*noWrite {

@@ -284,7 +284,9 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 		outLog.Info(fmt.Sprintf("serve-http: daemon record: call log %s", rec.CallLog))
 	}
 	publishDaemonEvent(consoleDeps.bus, prevRecord, hadPrev, commit)
-	go runConsoleEventSources(context.Background(), newConsoleEventSources(consoleDeps.bus, c, verifyLedgerPath(), sessionLedgerPath()))
+	eventSources := newConsoleEventSources(consoleDeps.bus, c, verifyLedgerPath(), sessionLedgerPath())
+	eventSources.warn = func(msg string) { flog.Warn(msg) }
+	go runConsoleEventSources(context.Background(), eventSources)
 
 	if err := http.Serve(listener, handler); err != nil {
 		flog.Error(fmt.Sprintf("http serve: %v", err))

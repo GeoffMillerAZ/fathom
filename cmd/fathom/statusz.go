@@ -13,6 +13,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sort"
 	"time"
 
@@ -47,10 +49,12 @@ func statuszBuildInfo() StatuszBuildInfo {
 }
 
 // StatuszTypedEdges is one service's typed Go call-edge pass outcome as of
-// the last ingest THIS daemon process ran for it (BP-35,
-// internal/fusion/typedenv.go). Omitted entirely when this process has not
-// ingested the service — which readers must treat as "unknown", never as a
-// pass: the whole defect class here is a degradation that reads healthy.
+// the last pass recorded for it (BP-35, internal/fusion/typedenv.go): by
+// this daemon process, or — Persisted — by an earlier one, replayed from
+// the store (DG-10). Omitted entirely when no pass is recorded anywhere —
+// which readers must treat as "unknown", never as a pass: the whole defect
+// class here is a degradation that reads healthy. (A service with no Go
+// module never records one; the page says so, the v3 JSON does not.)
 type StatuszTypedEdges struct {
 	Packages int    `json:"packages"`
 	Failed   bool   `json:"failed"`
@@ -68,9 +72,16 @@ type StatuszServiceRow struct {
 	Service       string `json:"service"`
 	IndexedCommit string `json:"indexed_commit,omitempty"`
 	FreshnessNote string `json:"freshness_note,omitempty"`
-	// TypedEdges is nil when no ingest of this service has run in this
-	// daemon process — see StatuszTypedEdges.
+	// TypedEdges is nil when no typed-edge pass is recorded for this
+	// service — neither by this daemon process nor in the store (DG-10's
+	// fallback) — see StatuszTypedEdges.
 	TypedEdges *StatuszTypedEdges `json:"typed_edges,omitempty"`
+	// TypedEdgesAbsence says why TypedEdges is nil, for the page only: the
+	// pass does not apply (no Go module at the service root, so
+	// enrichTypedEdges never runs and never records), or no pass was ever
+	// recorded, or whether it applies could not be checked. json:"-" keeps
+	// the v3 contract byte-for-byte (OC-6).
+	TypedEdgesAbsence statuszTypedAbsence `json:"-"`
 	// LastCompilePerLayer maps layer name -> a human-readable summary of
 	// its most recent compile_runs row ("ran_at, model, cost").
 	LastCompilePerLayer map[string]string `json:"last_compile_per_layer,omitempty"`
@@ -114,9 +125,10 @@ func buildStatuszReport(ctx context.Context, c *client.Client, startTime, now ti
 	sort.Strings(services)
 	for _, svc := range services {
 		row := StatuszServiceRow{Service: svc}
+		servicePath := ""
 		if path, commit, found, merr := c.ServiceMeta(ctx, svc); merr == nil && found {
 			row.IndexedCommit = commit
-			_ = path
+			servicePath = path
 		} else {
 			row.FreshnessNote = "not measurable: no ServiceMeta recorded for this service"
 		}
@@ -126,6 +138,8 @@ func buildStatuszReport(ctx context.Context, c *client.Client, startTime, now ti
 				row.TypedEdges.Persisted = true
 				row.TypedEdges.RecordedAt = st.RecordedAt.UTC().Format(time.RFC3339)
 			}
+		} else {
+			row.TypedEdgesAbsence = statuszTypedEdgesAbsence(servicePath)
 		}
 		if runs, rerr := c.CompileRunsFor(ctx, svc); rerr == nil && len(runs) > 0 {
 			// runs is newest-first (Store.CompileRuns' own contract) —
@@ -145,6 +159,36 @@ func buildStatuszReport(ctx context.Context, c *client.Client, startTime, now ti
 		r.Services = append(r.Services, row)
 	}
 	return r
+}
+
+// statuszTypedAbsence is why a service has no typed-edge status.
+type statuszTypedAbsence struct {
+	// NotApplicable is true when the pass cannot run for this service: no
+	// go.mod at its root (enrichTypedEdges returns before recording
+	// anything, so no status will ever exist). Not an unknown.
+	NotApplicable bool
+	// Reason says it in words, for either case.
+	Reason string
+}
+
+// statuszTypedEdgesAbsence classifies a service with no recorded typed-edge
+// pass. The pass only runs for a service whose root holds a go.mod
+// (internal/fusion/typedcalls.go enrichTypedEdges); without one it never
+// records a status, so "unknown" would be false forever. A root that cannot
+// be read stays unknown, with the read error named (ADR-027: an unreadable
+// source never reads as an answer).
+func statuszTypedEdgesAbsence(root string) statuszTypedAbsence {
+	if root == "" {
+		return statuszTypedAbsence{Reason: "no service root is recorded, so whether the Go pass applies cannot be checked"}
+	}
+	_, err := os.Stat(filepath.Join(root, "go.mod"))
+	switch {
+	case err == nil:
+		return statuszTypedAbsence{Reason: "no typed-edge pass is recorded for this service — not by this daemon, not in the store"}
+	case os.IsNotExist(err):
+		return statuszTypedAbsence{NotApplicable: true, Reason: "does not apply — no go.mod at the service root, so the typed Go pass never runs"}
+	}
+	return statuszTypedAbsence{Reason: "the service root could not be read (" + err.Error() + "), so whether the Go pass applies is unknown"}
 }
 
 // statuszBinaryLabel renders the build stamp for the HTML view: the commit

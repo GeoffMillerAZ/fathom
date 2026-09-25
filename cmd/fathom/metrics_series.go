@@ -155,7 +155,8 @@ func cmdMetricsSeries(args []string, stdout, stderr io.Writer) int {
 	// OC-2: the one call-log resolution (console_calllog.go) — the daemon's
 	// configured log when a daemon record names one, never a log relative
 	// to this command's working directory.
-	callLogPath := resolveConsoleCallLog(*callLogFlag, "").Path
+	resolved := resolveConsoleCallLog(*callLogFlag, "")
+	callLogPath := resolved.Path
 	hooksLogPath := *hooksLogFlag
 	if hooksLogPath == "" {
 		hooksLogPath = beatLogPath()
@@ -217,10 +218,11 @@ func cmdMetricsSeries(args []string, stdout, stderr io.Writer) int {
 	sort.Slice(report.Points, func(i, j int) bool { return report.Points[i].Bucket < report.Points[j].Bucket })
 
 	if *jsonOut {
-		jsonPrint(stdout, report)
+		jsonPrint(stdout, withCallLog(report, resolved))
 		return 0
 	}
 	fmt.Fprintf(stdout, "series: %s (bucket=%s, since=%s)\n", report.Metric, report.Bucket, report.Since)
+	fmt.Fprintln(stdout, callLogLine(resolved))
 	for _, p := range report.Points {
 		if p.Value != nil {
 			fmt.Fprintf(stdout, "  %-20s %.4f\n", p.Bucket, *p.Value)

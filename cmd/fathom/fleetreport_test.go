@@ -73,6 +73,80 @@ func TestFleetReport(t *testing.T) {
 	}
 }
 
+// TestFleetReport_DistinctSessionsAndUnmeasuredTraffic pins the fleet
+// report's two honesty rules on the /fleet page's verb section (OC-8,
+// ADR-045): session_count counts distinct sessions from the ledger the
+// session-ledger resolution names (FATHOM_SESSION_LEDGER), never ledger
+// rows from a hardcoded HOME path; and when the call log could not be read
+// the traffic columns are omitted, never 0 beside a note saying "never
+// zero" (doctrine rule 6).
+func TestFleetReport_DistinctSessionsAndUnmeasuredTraffic(t *testing.T) {
+	repo := t.TempDir()
+	// A service whose root's directory name differs from its ID: the Stop
+	// hook labels its sessions "sextant", the service is "fathom".
+	sextant := filepath.Join(t.TempDir(), "sextant")
+	os.MkdirAll(sextant, 0o755)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/statusz" {
+			w.Write([]byte(`{"services":[]}`))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"jsonrpc":"2.0","id":1,"result":{"services":[{"service":"alpha","symbol_count":42,"languages":["go"],"path":"` + repo + `"},{"service":"fathom","symbol_count":7,"languages":["go"],"path":"` + sextant + `"}]}}`))
+	}))
+	defer srv.Close()
+
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	// A HOME ledger the report must NOT read: nine sessions for alpha.
+	var homeRows strings.Builder
+	for i := 0; i < 9; i++ {
+		homeRows.WriteString(`{"session_id":"h-` + string(rune('a'+i)) + `","repo":"alpha"}` + "\n")
+	}
+	os.MkdirAll(filepath.Join(home, ".fathom"), 0o755)
+	os.WriteFile(filepath.Join(home, ".fathom", "session-ledger.jsonl"), []byte(homeRows.String()), 0o644)
+	// The named ledger: four rows (the Stop hook writes one per turn) in
+	// two sessions for alpha.
+	ledger := filepath.Join(t.TempDir(), "ledger.jsonl")
+	os.WriteFile(ledger, []byte(`{"session_id":"s-1","repo":"alpha"}
+{"session_id":"s-1","repo":"alpha"}
+{"session_id":"s-1","repo":"Alpha"}
+{"session_id":"s-2","repo":"alpha"}
+{"session_id":"s-3","repo":"sextant"}
+{"session_id":"s-3","repo":"sextant"}
+`), 0o644)
+	t.Setenv("FATHOM_SESSION_LEDGER", ledger)
+	t.Setenv("FATHOM_CALL_LOG", filepath.Join(t.TempDir(), "missing", "calls.jsonl"))
+
+	var stdout, stderr bytes.Buffer
+	if code := cmdFleetReport([]string{"--url", srv.URL, "--json"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr.String())
+	}
+	var rep map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &rep); err != nil {
+		t.Fatalf("json: %v", err)
+	}
+	row := rep["services"].([]any)[0].(map[string]any)
+	if row["session_count"] != float64(2) {
+		t.Errorf("session_count = %v, want 2 distinct sessions from the named ledger (not 4 rows, not HOME's 9)", row["session_count"])
+	}
+	if f := rep["services"].([]any)[1].(map[string]any); f["service"] != "fathom" || f["session_count"] != float64(1) {
+		t.Errorf("fathom = %v, want its one session, labelled by its root's directory name (never a false 0)", f)
+	}
+	if note, _ := rep["call_log_note"].(string); note == "" {
+		t.Error("an unread call log must be named")
+	}
+	for _, k := range []string{"calls_total", "calls_agent"} {
+		if v, ok := row[k]; ok {
+			t.Errorf("%s = %v on a call log that was not read; an unmeasured column carries no zero", k, v)
+		}
+	}
+	md := renderFleetReportMD(fleetReport{CallLogNote: "call log not read", Services: []fleetServiceRow{{Service: "alpha"}}})
+	if !strings.Contains(md, "| — |") || strings.Contains(md, "| 0 (0) |") {
+		t.Errorf("the markdown traffic cell must be a dash when the log was not read:\n%s", md)
+	}
+}
+
 // EP-23: a repo with no recorded intent audit reports "not measured", never
 // a 0 that a reader would take for "clean" (law 3).
 func TestFleetReportUnprovenColumnHonestNA(t *testing.T) {

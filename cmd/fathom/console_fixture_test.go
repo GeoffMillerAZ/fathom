@@ -111,10 +111,6 @@ func newConsoleFixture(t *testing.T) *consoleFixture {
 	t.Setenv("FATHOM_VERIFY_LEDGER", filepath.Join(dir, "verify-ledger.jsonl"))
 	t.Setenv("FATHOM_HOOKS_LOG", filepath.Join(dir, "hooks.jsonl"))
 	t.Setenv("FATHOM_CONSOLE_VIEWS", f.viewsLog)
-	// fleet report reads the ledger under HOME; keep it the fixture's.
-	homeLedger := filepath.Join(os.Getenv("HOME"), ".fathom", "session-ledger.jsonl")
-	mustWrite(t, homeLedger, consoleFixtureLedger)
-	t.Cleanup(func() { os.Remove(homeLedger) })
 
 	c, err := client.NewConstantClient(client.ModeLocal, consoleFixtureStorePath(t))
 	if err != nil {

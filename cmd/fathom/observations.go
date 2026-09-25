@@ -90,6 +90,28 @@ func readObservations(root string) (content string, ok bool, err error) {
 	return string(data), true, nil
 }
 
+// serviceOpenObservations reads one service root's open-observation count
+// for the fleet surfaces (the fleet report, the observatory model): the
+// count when the file was read, nil with no error when there is no file
+// (the repo does not report), and nil WITH the read error when the file
+// exists and could not be read — a TCC wedge or a permission defect, which
+// must be named, never shown as "no observations file" or folded into a
+// smaller total (I38).
+func serviceOpenObservations(root string) (n *int, errNote string) {
+	if root == "" {
+		return nil, ""
+	}
+	content, existed, err := readObservations(root)
+	switch {
+	case err != nil:
+		return nil, err.Error() + tccWedgeHint(observationsPath(root))
+	case !existed:
+		return nil, ""
+	}
+	c := countOpenObservations(content)
+	return &c, ""
+}
+
 // nextObservationID scans content for the highest existing "### O<N>"
 // entry header and returns N+1 (1 if content carries no entries yet).
 // Entry IDs auto-increment by scanning the file itself, never a stored

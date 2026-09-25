@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"sort"
@@ -250,7 +251,7 @@ func TestConsoleErrors_RenderOnShellWithRemedy(t *testing.T) {
 		status              int
 	}{
 		{"/no-such-page", "Not found", "search the console", http.StatusNotFound},
-		{"/projects/nope-service", "Unknown project", "fathom ingest --service nope-service", http.StatusNotFound},
+		{"/projects/nope-service", "Unknown project", "fathom init --path <repo> --service nope-service --url " + f.ts.URL, http.StatusNotFound},
 		{"/projects/payment", "Unknown project", "Did you mean: payment-service?", http.StatusNotFound},
 		{"/brief?format=pdf", "Unsupported format", "?format=json, ?format=md", http.StatusBadRequest},
 	}
@@ -267,6 +268,13 @@ func TestConsoleErrors_RenderOnShellWithRemedy(t *testing.T) {
 				t.Errorf("%s: error page missing %q", tc.path, want)
 			}
 		}
+	}
+	// The unknown-project remedy must index through THIS daemon: a shell
+	// `fathom ingest` writes <repo>/workspace/db/fathom.sqlite, a store the
+	// daemon never reads, so the project would stay unknown (and against
+	// the shared store it is the forbidden shell ingest, INC-3).
+	if _, _, body := f.get(t, "/projects/nope-service"); strings.Contains(body, "fathom ingest") {
+		t.Error("the unknown-project remedy must not be a shell ingest into a store the daemon never reads")
 	}
 	// JSON asks get JSON with the same reason and remedy.
 	code, hdr, body := f.get(t, "/projects/nope-service?format=json")
@@ -297,32 +305,59 @@ func htmlEscapeTest(s string) string {
 }
 
 // TestStatusz_OnShellUnknownTypedEdgesVisible pins OC-6: /statusz renders
-// on the shell; a service whose typed-edge pass this daemon never ran says
-// "unknown" in words (the survey: 15 of 18 rendered nothing); a failed pass
-// names its reason; and ?format=json is the v3 report with exactly its v3
-// keys.
+// on the shell. Every typed-edge state names its own cause: a pass this
+// process ran shows its packages; a pass replayed from the store says it
+// predates this daemon; a service with no Go module says the pass does not
+// apply (enrichTypedEdges never records one for it) and is not counted
+// unknown; a Go service with no recorded pass anywhere says "unknown" in
+// words (the survey: 15 of 18 rendered nothing); a failed pass names its
+// reason; and ?format=json is the v3 report with exactly its v3 keys.
 func TestStatusz_OnShellUnknownTypedEdgesVisible(t *testing.T) {
 	report := StatuszReport{
 		SchemaVersion: statuszSchemaVersion, GeneratedAt: "2026-09-25T12:00:00Z", UptimeSec: 22700,
 		ChannelsNote: "FATHOM_CHANNELS is not \"off\"",
 		Services: []StatuszServiceRow{
 			{Service: "alpha", IndexedCommit: "abc123", TypedEdges: &StatuszTypedEdges{Packages: 12}},
-			{Service: "beta", IndexedCommit: "def456"},
+			{Service: "beta", IndexedCommit: "def456", TypedEdgesAbsence: statuszTypedAbsence{Reason: "no typed-edge pass is recorded for this service — not by this daemon, not in the store"}},
 			{Service: "gamma", IndexedCommit: "0f0f0f", TypedEdges: &StatuszTypedEdges{Failed: true, Reason: "go/packages: no go.mod"}},
+			{Service: "delta", IndexedCommit: "1a1a1a", TypedEdgesAbsence: statuszTypedAbsence{NotApplicable: true, Reason: "does not apply — no go.mod at the service root, so the typed Go pass never runs"}},
+			{Service: "eps", IndexedCommit: "2b2b2b", TypedEdges: &StatuszTypedEdges{Packages: 4, Persisted: true, RecordedAt: "2026-09-24T08:00:00Z"}},
 		},
 	}
 	body := renderStatusz(report, "http://127.0.0.1:7575")
 	if !strings.Contains(body, "12 packages") {
 		t.Error("a pass that ran must show its package count")
 	}
-	if n := strings.Count(body, "unknown — not ingested by this daemon since it started"); n != 1 {
-		t.Errorf("the one never-ingested service must read unknown, found %d", n)
+	if n := strings.Count(body, "unknown — no typed-edge pass is recorded for this service"); n != 1 {
+		t.Errorf("the one Go service with no recorded pass must read unknown with its cause, found %d", n)
+	}
+	if strings.Contains(body, "not ingested by this daemon since it started") {
+		t.Error("the page must not claim a cause it never checked (the store fallback and no-Go services make it false)")
+	}
+	if !strings.Contains(body, "does not apply — no go.mod at the service root") {
+		t.Error("a service with no Go module must say the pass does not apply")
+	}
+	if !strings.Contains(body, "by an earlier daemon process, replayed from the store") {
+		t.Error("a store-replayed pass must say it predates this daemon")
 	}
 	if !strings.Contains(body, "FAILED — go/packages: no go.mod") {
 		t.Error("a failed pass must name its reason")
 	}
-	if !strings.Contains(body, `data-truth-state="partial"`) || !strings.Contains(body, "unknown for 1 of 3 services") {
-		t.Error("the services panel must say how many typed-edge states are unknown")
+	if !strings.Contains(body, `data-truth-state="partial"`) || !strings.Contains(body, "unknown for 1 of 5 services") {
+		t.Error("the services panel must count only the genuinely unknown typed-edge states")
+	}
+	// The classifier itself: go.mod present → unknown with its cause;
+	// absent → does not apply; unreadable → unknown naming the read error.
+	root := t.TempDir()
+	if a := statuszTypedEdgesAbsence(root); !a.NotApplicable {
+		t.Errorf("no go.mod must be not-applicable, got %+v", a)
+	}
+	mustWrite(t, filepath.Join(root, "go.mod"), "module x\n")
+	if a := statuszTypedEdgesAbsence(root); a.NotApplicable || !strings.Contains(a.Reason, "no typed-edge pass is recorded") {
+		t.Errorf("a Go module with no pass must be unknown, got %+v", a)
+	}
+	if a := statuszTypedEdgesAbsence(""); a.NotApplicable || a.Reason == "" {
+		t.Errorf("no recorded root must be unknown with a reason, got %+v", a)
 	}
 	if !strings.Contains(body, "6h 18m") {
 		t.Error("uptime must be human-readable")
@@ -344,6 +379,15 @@ func TestStatusz_OnShellUnknownTypedEdgesVisible(t *testing.T) {
 		if !strings.Contains(page, want) {
 			t.Errorf("statusz page missing %q", want)
 		}
+	}
+	// The fixture fleet's services hold Go source but no go.mod: the pass
+	// cannot apply to any of them, so none is unknown and the panel is not
+	// partial (the live fleet showed 6 no-module repos pinned "unknown").
+	if n := strings.Count(page, "does not apply — no go.mod"); n != len(consoleFixtureServices) {
+		t.Errorf("every no-module fixture service must read does-not-apply, found %d", n)
+	}
+	if strings.Contains(page, "the typed-edge pass is unknown for") {
+		t.Error("services the pass cannot apply to must not mark the panel partial")
 	}
 	if strings.Contains(page, "<style>") {
 		t.Error("statusz must not carry its own inline stylesheet any more")
@@ -552,6 +596,19 @@ func TestConsolePagesRenderTheirVerbs(t *testing.T) {
 // the fleet tile renders the same call total the JSON carries.
 func TestConsoleMetricsAgreeAcrossPages(t *testing.T) {
 	f := newConsoleFixture(t)
+	// Prime the model, then grow the ledger the way the Stop hook does on a
+	// live daemon (a new session's first row): a page that re-reads the
+	// ledger for itself would now disagree with the model-backed pages. One
+	// metric is one read, so every page must still say the same thing.
+	f.pageJSON(t, "/impact")
+	ledger, err := os.OpenFile(f.ledger, os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ledger.WriteString(`{"schema_version":2,"session_id":"s-late","arm":"on","repo":"ledger-service","at":"2026-09-25T11:59:00Z"}` + "\n"); err != nil {
+		t.Fatal(err)
+	}
+	ledger.Close()
 	byMetric := map[string]map[string]string{} // metric → page → value JSON
 	for _, p := range defaultConsoleRegistry().pages {
 		if len(p.Shows) == 0 {
@@ -603,8 +660,14 @@ func TestConsoleMetricsAgreeAcrossPages(t *testing.T) {
 	if v := value(console.MetricCalls); v.State != console.StatePresent || v.V != f.callRows || !strings.Contains(v.Denominator, "2 unattributed") {
 		t.Errorf("calls.total = %+v, want every one of the %d rows with the %d unattributed named", v, f.callRows, f.anonCalls)
 	}
-	if v := value(console.MetricSessions); v.V != 2 || !strings.Contains(v.Denominator, "from 3 ledger rows") {
-		t.Errorf("sessions.total = %+v, want 2 distinct sessions from 3 rows", v)
+	if v := value(console.MetricSessions); v.V != 2 || !strings.Contains(v.Denominator, "from 3 ledger rows") || !v.AsOf.Equal(f.now) {
+		t.Errorf("sessions.total = %+v, want 2 distinct sessions from 3 rows, as of the model's read (%s)", v, f.now)
+	}
+	// The HTML agrees with the JSON: the sessions page's stat band shows the
+	// model's read, not a fresher one of its own.
+	_, _, sessionsPage := f.get(t, "/sessions")
+	if got := tileValue(t, sessionsPage, "distinct sessions (all time)"); got != "2" {
+		t.Errorf("sessions tile shows %q, the shared metric 2", got)
 	}
 	if v := value(console.MetricServices); v.V != len(consoleFixtureServices) {
 		t.Errorf("fleet.services = %+v, want %d", v, len(consoleFixtureServices))
@@ -738,6 +801,19 @@ func TestConsolePageViews_Counted(t *testing.T) {
 	for _, p := range []string{"/fleet", "/fleet", "/projects/payment-service", "/fleet?format=json", "/projects/nope-service"} {
 		f.get(t, p)
 	}
+	// HEAD serves no page to anyone (link checkers, uptime probes, curl -I):
+	// never a view, and the body is never built.
+	for i := 0; i < 3; i++ {
+		req, _ := http.NewRequest(http.MethodHead, f.ts.URL+"/fleet", nil)
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusOK || !strings.Contains(resp.Header.Get("Content-Type"), "text/html") {
+			t.Errorf("HEAD /fleet = %d %q", resp.StatusCode, resp.Header.Get("Content-Type"))
+		}
+	}
 	_, _, metrics := f.get(t, "/metrics")
 	for _, want := range []string{`fathom_console_page_views_total{route="/fleet"} 2`, `fathom_console_page_views_total{route="/projects/{svc}"} 1`, "fathom_console_event_subscribers 0"} {
 		if !strings.Contains(metrics, want) {
@@ -829,6 +905,45 @@ func TestConsoleSearch_PageFragmentAndJSON(t *testing.T) {
 	}
 }
 
+// A session ledger row names its repo by the directory label the Stop hook
+// derives ("sextant"), not by service ID ("fathom"), and a label may hold a
+// space ("2026 job hunt"). The session event maps the label to the service
+// whose recorded root it names, so the source key a project panel carries
+// (sessions:fathom) matches; a label that is not name-shaped still fires
+// the unscoped "sessions" source — an event is never silently dropped.
+func TestConsoleEvents_SessionEventsNameTheServiceAndNeverDrop(t *testing.T) {
+	roots := map[string]string{"fathom": "/code/sextant", "app-kit": "/code/app-kit"}
+	for label, want := range map[string]string{"sextant": "fathom", "app-kit": "app-kit", "Fathom": "fathom", "imbue": "imbue", "2026 job hunt": ""} {
+		if got := sessionEventService(label, roots); got != want {
+			t.Errorf("sessionEventService(%q) = %q, want %q", label, got, want)
+		}
+	}
+	dir := t.TempDir()
+	verify, sessions := dir+"/verify.jsonl", dir+"/sessions.jsonl"
+	mustWrite(t, verify, "")
+	mustWrite(t, sessions, "")
+	bus := console.NewEventBus(console.BusOptions{})
+	src := newConsoleEventSources(bus, nil, verify, sessions)
+	src.roots = roots
+	var warned []string
+	src.warn = func(msg string) { warned = append(warned, msg) }
+	src.verify.Prime()
+	src.session.Prime()
+	appendLine(t, sessions, `{"session_id":"probe-space-1","repo":"2026 job hunt"}`)
+	appendLine(t, sessions, `{"session_id":"probe-sextant-1","repo":"sextant"}`)
+	src.pollLedgers()
+	_, events, _ := bus.Subscribe(0)
+	if len(events) != 2 {
+		t.Fatalf("events = %+v (warnings %v), want both session rows", events, warned)
+	}
+	if e := events[0]; e.Ref != "probe-space-1" || e.Service != "" || strings.Join(e.Sources(), ",") != "sessions" {
+		t.Errorf("space-label session = %+v %v, want the unscoped sessions source", e, e.Sources())
+	}
+	if e := events[1]; e.Service != "fathom" || strings.Join(e.Sources(), ",") != "sessions,sessions:fathom" {
+		t.Errorf("sextant session = %+v %v, want service fathom", e, e.Sources())
+	}
+}
+
 // TestConsoleEvents_FeedersPublishNamesAndIDs covers OC-13's feeders: an
 // appended verify-ledger row becomes a verify event naming the plans
 // source, a session row a session event, the daemon announces itself, and
@@ -903,6 +1018,51 @@ func TestResolveConsoleCallLog_DaemonRecordReachesVerbs(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), `"total_calls": 1`) {
 		t.Errorf("metrics traffic must read the daemon's log:\n%s", out.String())
+	}
+	// Every metrics verb names the log it read and the rule that chose it
+	// (OC-2's "naming which rule chose it"), in JSON and in text.
+	root := t.TempDir()
+	for _, verb := range [][]string{
+		{"metrics", "traffic", "--json"},
+		{"metrics", "series", "--json", "--root", root, "traffic_total_calls"},
+		{"metrics", "rollup", "--json", "--root", root},
+		{"metrics", "interventions", "--json"},
+		{"instrument", "--adoption", "--json", "--root", root},
+		{"flywheel", "--json"},
+		{"research", "report", "--json", "--no-write", "--root", root},
+	} {
+		out.Reset()
+		errb.Reset()
+		run(verb, &out, &errb)
+		var doc struct {
+			CallLog console.ResolvedCallLog `json:"call_log"`
+		}
+		if err := json.Unmarshal(out.Bytes(), &doc); err != nil {
+			t.Errorf("%v: not JSON: %v\n%s%s", verb, err, out.String(), errb.String())
+			continue
+		}
+		if doc.CallLog.Path != daemonLog || doc.CallLog.Rule != console.RuleDaemon || !strings.Contains(doc.CallLog.Note, "pid 99") {
+			t.Errorf("%v: call_log = %+v, want the daemon's log named with its rule", verb, doc.CallLog)
+		}
+	}
+	for _, verb := range [][]string{{"metrics", "traffic"}, {"metrics", "rotate", "--keep-days", "1"}} {
+		out.Reset()
+		errb.Reset()
+		if code := run(verb, &out, &errb); code != 0 {
+			t.Fatalf("%v: %d %s", verb, code, errb.String())
+		}
+		if !strings.Contains(out.String(), "call log: "+daemonLog+" (rule daemon") {
+			t.Errorf("%v text must name the log and its rule:\n%s", verb, out.String())
+		}
+	}
+	// rotate is a metrics verb too: it inspects the daemon's log, never a
+	// cwd-relative legacy path (it said "no call log … nothing to rotate").
+	if strings.Contains(out.String(), "nothing to rotate") && strings.Contains(out.String(), "no call log") {
+		t.Errorf("metrics rotate must read the daemon's log:\n%s", out.String())
+	}
+	// review's T5-7 gate row goes where the readers read.
+	if got := reviewCallLogPath("", "svc"); got != daemonLog {
+		t.Errorf("review appends to %q, the readers read %q", got, daemonLog)
 	}
 	t.Setenv("FATHOM_CALL_LOG", dir+"/explicit.jsonl")
 	if got := resolveConsoleCallLog("", ""); got.Rule != console.RuleEnv {

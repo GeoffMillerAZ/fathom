@@ -82,3 +82,35 @@ func TestCmdBrief_HonestSections(t *testing.T) {
 		}
 	})
 }
+
+// The "Not measured" section accounts for every value the brief shows that
+// is not a plain measurement: a partial open-defect count is a lower bound,
+// so the section may not claim "every instrument above reported a real
+// value" beside it (the survey's contradiction, still live after F0).
+func TestBriefMD_NotMeasuredNamesPartialObservations(t *testing.T) {
+	one, three, twelve := 1, 3, 12
+	obs := 4
+	m := observatoryModel{
+		Services: []obsServiceRow{
+			{fleetServiceRow: fleetServiceRow{Service: "reports", OpenObservations: &obs}},
+			{fleetServiceRow: fleetServiceRow{Service: "silent"}},
+		},
+		Impact: obsImpact{VerifyCatchesTotal: &one, DiscoveryTotal: &three, FirstEditMedian: &twelve},
+	}
+	md := renderBriefMD(m)
+	notMeasured := md[strings.Index(md, "## Not measured"):]
+	if !strings.Contains(md, "≥ 4") {
+		t.Fatalf("section 4 must keep the lower bound:\n%s", md)
+	}
+	if strings.Contains(notMeasured, "every instrument above reported a real value") {
+		t.Errorf("a partial count above is not a real value:\n%s", notMeasured)
+	}
+	if !strings.Contains(notMeasured, "1 of 2 repos reporting") {
+		t.Errorf("the Not measured section must name the partial open-defect count:\n%s", notMeasured)
+	}
+	// With every repo reporting, the claim is true again.
+	m.Services[1].OpenObservations = &obs
+	if nm := renderBriefMD(m); !strings.Contains(nm[strings.Index(nm, "## Not measured"):], "every instrument above reported a real value") {
+		t.Errorf("complete coverage is a real value")
+	}
+}

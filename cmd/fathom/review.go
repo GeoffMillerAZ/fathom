@@ -260,11 +260,8 @@ func runReviewBody(gitRunner func(args ...string) ([]byte, error), storePathV, s
 	// verdict was otherwise invisible to `instrument --adoption`'s
 	// gate-catch accounting. Best-effort and silent on failure: a logging
 	// side effect must never fail a hook (§5.3, fail-open convention).
-	callLogPath := *callLogFlag
-	if callLogPath == "" {
-		callLogPath = resolveCallLogPath()
-	}
-	appendReviewCallLogEntry(callLogPath, *service, v.Dimensions, reviewLatency, stderr)
+	// OC-2: the readers' own resolution (reviewCallLogPath).
+	appendReviewCallLogEntry(reviewCallLogPath(*callLogFlag, *service), *service, v.Dimensions, reviewLatency, stderr)
 
 	// C2-1 findings bridge, via review.BuildPersist — the one composition
 	// shared with the review_diff MCP tool: mint content-addressed claim
@@ -706,6 +703,9 @@ func reviewVerdictOutcome(dims []review.Dimension) map[string]int {
 // fail the caller (§5.3's fail-open convention — the pre-push hook this
 // feeds always exits 0 regardless).
 func appendReviewCallLogEntry(path, service string, dims []review.Dimension, latency time.Duration, stderr io.Writer) {
+	if path == "" {
+		return // the daemon runs with logging off: there is no log to append to
+	}
 	outcome := reviewVerdictOutcome(dims)
 	if outcome == nil {
 		return

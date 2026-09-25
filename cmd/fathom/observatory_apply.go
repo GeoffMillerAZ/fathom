@@ -46,6 +46,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/app-kit/appkit/ui/callout"
+	"github.com/geoffmilleraz/app-kit/appkit/ui/chrome"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/dashboard"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/form"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/hitl"
@@ -206,46 +207,46 @@ func requireLocalMutation(reg wiringRegistry, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			w.Header().Set("Allow", http.MethodPost)
-			http.Error(w, "method not allowed — the mutating endpoints are POST only", http.StatusMethodNotAllowed)
+			wiringError(w, r, http.StatusMethodNotAllowed, "Method not allowed", "The wiring preview, apply and undo endpoints answer only the Wiring page's POST — a reload, a bookmark or a typed address never re-runs a mutation.")
 			return
 		}
 		if !hostIsLoopback(r.Host) {
-			http.Error(w, fmt.Sprintf("refused: Host %q is not loopback — the mutating endpoints serve this machine only (law 13)", r.Host), http.StatusForbidden)
+			wiringError(w, r, http.StatusForbidden, wiringErrorTitle(http.StatusForbidden), fmt.Sprintf("refused: Host %q is not loopback — the mutating endpoints serve this machine only (law 13)", r.Host))
 			return
 		}
 		if origin := r.Header.Get("Origin"); origin != "" && !sameOrigin(r, origin) {
-			http.Error(w, fmt.Sprintf("refused: Origin %q is not a page this daemon served (Host %q) — only a same-origin page may drive a mutation", origin, r.Host), http.StatusForbidden)
+			wiringError(w, r, http.StatusForbidden, wiringErrorTitle(http.StatusForbidden), fmt.Sprintf("refused: Origin %q is not a page this daemon served (Host %q) — only a same-origin page may drive a mutation", origin, r.Host))
 			return
 		}
 		if site := r.Header.Get("Sec-Fetch-Site"); site != "" && site != "same-origin" && site != "none" {
-			http.Error(w, fmt.Sprintf("refused: Sec-Fetch-Site %q — only a same-origin page may drive a mutation", site), http.StatusForbidden)
+			wiringError(w, r, http.StatusForbidden, wiringErrorTitle(http.StatusForbidden), fmt.Sprintf("refused: Sec-Fetch-Site %q — only a same-origin page may drive a mutation", site))
 			return
 		}
 
 		service := strings.ToLower(strings.TrimSpace(r.FormValue("service")))
 		if service == "" {
-			http.Error(w, "a service id is required (service=<id>) — the registry, not the caller, decides which directory that is", http.StatusBadRequest)
+			wiringError(w, r, http.StatusBadRequest, wiringErrorTitle(http.StatusBadRequest), "a service id is required (service=<id>) — the registry, not the caller, decides which directory that is")
 			return
 		}
 		svc, found, err := reg.resolve(service)
 		if err != nil {
-			http.Error(w, "the registry could not be read: "+err.Error(), http.StatusServiceUnavailable)
+			wiringError(w, r, http.StatusServiceUnavailable, wiringErrorTitle(http.StatusServiceUnavailable), "the registry could not be read: "+err.Error())
 			return
 		}
 		if !found {
-			http.Error(w, fmt.Sprintf("refused: service %q is not in the registry", service), http.StatusBadRequest)
+			wiringError(w, r, http.StatusBadRequest, wiringErrorTitle(http.StatusBadRequest), fmt.Sprintf("refused: service %q is not in the registry", service))
 			return
 		}
 		if svc.Root == "" {
-			http.Error(w, fmt.Sprintf("refused: service %q has no local path in the registry — not a repository fathom can wire", service), http.StatusBadRequest)
+			wiringError(w, r, http.StatusBadRequest, wiringErrorTitle(http.StatusBadRequest), fmt.Sprintf("refused: service %q has no local path in the registry — not a repository fathom can wire", service))
 			return
 		}
 		if p := r.FormValue("path"); p != "" && !samePath(p, svc.Root) {
-			http.Error(w, fmt.Sprintf("refused: path %q is not the registered root of service %q — a caller may name a service, never a directory", p, service), http.StatusBadRequest)
+			wiringError(w, r, http.StatusBadRequest, wiringErrorTitle(http.StatusBadRequest), fmt.Sprintf("refused: path %q is not the registered root of service %q — a caller may name a service, never a directory", p, service))
 			return
 		}
 		if fi, serr := os.Stat(svc.Root); serr != nil || !fi.IsDir() {
-			http.Error(w, fmt.Sprintf("refused: the registered root of %q (%s) is not a directory on this machine", service, svc.Root), http.StatusBadRequest)
+			wiringError(w, r, http.StatusBadRequest, wiringErrorTitle(http.StatusBadRequest), fmt.Sprintf("refused: the registered root of %q (%s) is not a directory on this machine", service, svc.Root))
 			return
 		}
 		ctx := context.WithValue(r.Context(), mutationTargetKey{}, mutationTarget{Service: service, Root: svc.Root})
@@ -330,12 +331,12 @@ func wiringPreviewHandler(baseURL string, now func() time.Time) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t, ok := mutationTargetFrom(r.Context())
 		if !ok {
-			http.Error(w, "internal: preview reached without a resolved target", http.StatusInternalServerError)
+			wiringError(w, r, http.StatusInternalServerError, wiringErrorTitle(http.StatusInternalServerError), "internal: preview reached without a resolved target")
 			return
 		}
 		pv, _, err := previewFor(t)
 		if err != nil {
-			http.Error(w, "preview failed: "+err.Error(), http.StatusInternalServerError)
+			wiringError(w, r, http.StatusInternalServerError, wiringErrorTitle(http.StatusInternalServerError), "preview failed: "+err.Error())
 			return
 		}
 		if wantsJSON(r) {
@@ -344,7 +345,7 @@ func wiringPreviewHandler(baseURL string, now func() time.Time) http.Handler {
 		}
 		m := cachedObservatoryModel(baseURL, now())
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = w.Write([]byte(obsPage("fathom · wiring · "+t.Service, "wiring", renderWiringPreview(pv), m)))
+		_, _ = w.Write([]byte(wiringStepPage(t.Service, renderWiringPreview(pv), m)))
 	})
 }
 
@@ -392,17 +393,17 @@ func wiringApplyHandler(baseURL string, now func() time.Time) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t, ok := mutationTargetFrom(r.Context())
 		if !ok {
-			http.Error(w, "internal: apply reached without a resolved target", http.StatusInternalServerError)
+			wiringError(w, r, http.StatusInternalServerError, wiringErrorTitle(http.StatusInternalServerError), "internal: apply reached without a resolved target")
 			return
 		}
 		want := strings.TrimSpace(r.FormValue("plan_digest"))
 		if want == "" {
-			http.Error(w, "apply requires the plan_digest from a preview — nothing is applied unseen", http.StatusBadRequest)
+			wiringError(w, r, http.StatusBadRequest, wiringErrorTitle(http.StatusBadRequest), "apply requires the plan_digest from a preview — nothing is applied unseen")
 			return
 		}
 		pv, spec, err := previewFor(t)
 		if err != nil {
-			http.Error(w, "apply failed: "+err.Error(), http.StatusInternalServerError)
+			wiringError(w, r, http.StatusInternalServerError, wiringErrorTitle(http.StatusInternalServerError), "apply failed: "+err.Error())
 			return
 		}
 		if pv.PlanDigest != want {
@@ -416,7 +417,7 @@ func wiringApplyHandler(baseURL string, now func() time.Time) http.Handler {
 			m := cachedObservatoryModel(baseURL, now())
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			w.WriteHeader(http.StatusConflict)
-			_, _ = w.Write([]byte(obsPage("fathom · wiring · "+t.Service, "wiring", renderWiringRefused(t, msg), m)))
+			_, _ = w.Write([]byte(wiringStepPage(t.Service, renderWiringRefused(t, msg), m)))
 			return
 		}
 		res, err := wiring.ApplyWiring(t.Root, spec, wiring.ApplyOptions{Now: now, ExpectDigest: pv.Plan.Digest})
@@ -425,7 +426,7 @@ func wiringApplyHandler(baseURL string, now func() time.Time) http.Handler {
 			if strings.Contains(err.Error(), "changed since the plan was previewed") {
 				status = http.StatusConflict
 			}
-			http.Error(w, "apply: "+err.Error(), status)
+			wiringError(w, r, status, wiringErrorTitle(status), "apply: "+err.Error())
 			return
 		}
 		out := wiringApplyResult{Service: t.Service, Root: t.Root, Result: res}
@@ -438,7 +439,7 @@ func wiringApplyHandler(baseURL string, now func() time.Time) http.Handler {
 		}
 		m := cachedObservatoryModel(baseURL, now())
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = w.Write([]byte(obsPage("fathom · wiring · "+t.Service, "wiring", renderWiringApplied(out), m)))
+		_, _ = w.Write([]byte(wiringStepPage(t.Service, renderWiringApplied(out), m)))
 	})
 }
 
@@ -452,12 +453,12 @@ func wiringUndoHandler(baseURL string, now func() time.Time) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t, ok := mutationTargetFrom(r.Context())
 		if !ok {
-			http.Error(w, "internal: undo reached without a resolved target", http.StatusInternalServerError)
+			wiringError(w, r, http.StatusInternalServerError, wiringErrorTitle(http.StatusInternalServerError), "internal: undo reached without a resolved target")
 			return
 		}
 		want := strings.TrimSpace(r.FormValue("receipt_digest"))
 		if want == "" {
-			http.Error(w, "undo requires the receipt_digest from the apply result — nothing is undone unseen", http.StatusBadRequest)
+			wiringError(w, r, http.StatusBadRequest, wiringErrorTitle(http.StatusBadRequest), "undo requires the receipt_digest from the apply result — nothing is undone unseen")
 			return
 		}
 		id := strings.TrimSpace(r.FormValue("receipt"))
@@ -466,7 +467,7 @@ func wiringUndoHandler(baseURL string, now func() time.Time) http.Handler {
 		}
 		target, ferr := wiring.FindReceipt(t.Root, id)
 		if ferr != nil {
-			http.Error(w, "undo: "+ferr.Error(), http.StatusBadRequest)
+			wiringError(w, r, http.StatusBadRequest, wiringErrorTitle(http.StatusBadRequest), "undo: "+ferr.Error())
 			return
 		}
 		if got := receiptDigest(target); got != want {
@@ -502,7 +503,7 @@ func wiringUndoHandler(baseURL string, now func() time.Time) http.Handler {
 				callout.Render(callout.Callout{Kind: callout.Caution, Title: "undo refused — nothing was written", Body: "fathom will not restore over a change it did not make. Resolve the file by hand, or leave it."})+b.String()+wiringBackLink(), m)))
 			return
 		case err != nil:
-			http.Error(w, "undo: "+err.Error(), http.StatusBadRequest)
+			wiringError(w, r, http.StatusBadRequest, wiringErrorTitle(http.StatusBadRequest), "undo: "+err.Error())
 			return
 		}
 		if wantsJSON(r) {
@@ -522,7 +523,7 @@ func wiringUndoHandler(baseURL string, now func() time.Time) http.Handler {
 		b.WriteString(wiringBackLink())
 		m := cachedObservatoryModel(baseURL, now())
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = w.Write([]byte(obsPage("fathom · wiring · "+t.Service, "wiring", b.String(), m)))
+		_, _ = w.Write([]byte(wiringStepPage(t.Service, b.String(), m)))
 	})
 }
 
@@ -539,6 +540,38 @@ func shortDigest(d string) string {
 		d = d[:8]
 	}
 	return "sha256:" + d
+}
+
+// wiringError answers a refused or failed wiring step on the console shell
+// with its reason and the way back (OC-5) — never a bare text/plain line
+// that drops the navigation, and a JSON ask gets the same fields as JSON.
+func wiringError(w http.ResponseWriter, r *http.Request, status int, title, reason string) {
+	renderConsoleError(w, r, defaultConsoleRegistry(), &consoleError{
+		Status: status, Title: title, Reason: reason,
+		Remedy:     "start again from the Wiring page: Preview a service, then Apply with the digest that preview returned",
+		RemedyHref: "/wiring", RemedyLabel: "Open Wiring",
+	})
+}
+
+// wiringErrorTitle names a wiring failure by its status.
+func wiringErrorTitle(status int) string {
+	switch status {
+	case http.StatusForbidden, http.StatusBadRequest:
+		return "Wiring refused"
+	case http.StatusMethodNotAllowed:
+		return "Method not allowed"
+	case http.StatusServiceUnavailable:
+		return "Registry unreadable"
+	}
+	return "Wiring failed"
+}
+
+// wiringStepPage renders a preview, apply or undo result on the shell under
+// its parent page: Observatory / Wiring / <service>.
+func wiringStepPage(service, body string, m observatoryModel) string {
+	return obsPageWithCrumbs("Wiring · "+service, "wiring", []chrome.Crumb{
+		{Label: "Observatory", Href: "/"}, {Label: "Wiring", Href: "/wiring"}, {Label: service},
+	}, body, m)
 }
 
 // wiringRoutes mounts the wiring page and the three guarded mutations.
@@ -559,13 +592,13 @@ func wiringRoutes(reg wiringRegistry, baseURL string, now func() time.Time) http
 func wiringPageHandler(reg wiringRegistry, baseURL string, now func() time.Time) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			wiringError(w, r, http.StatusMethodNotAllowed, wiringErrorTitle(http.StatusMethodNotAllowed), r.Method+" is not served here — the Wiring page is read-only; its Preview buttons POST to the guarded endpoints")
 			return
 		}
 		all, err := reg.list()
 		if wantsJSON(r) {
 			if err != nil {
-				http.Error(w, "the registry could not be read: "+err.Error(), http.StatusServiceUnavailable)
+				wiringError(w, r, http.StatusServiceUnavailable, wiringErrorTitle(http.StatusServiceUnavailable), "the registry could not be read: "+err.Error())
 				return
 			}
 			writeObsJSON(w, map[string]any{"services": all})
@@ -592,10 +625,10 @@ func renderWiringIndex(all []registeredService, err error) string {
 	for _, s := range all {
 		var body strings.Builder
 		if s.Root == "" {
-			body.WriteString(kv("root", `<span class="italic text-ink-faint">no local path — a remote corpus; nothing to wire</span>`))
+			body.WriteString(kv("root", `<span class="italic text-ink-muted">no local path — a remote corpus; nothing to wire</span>`))
 		} else {
 			body.WriteString(kv("root", `<span class="font-mono text-xs break-all">`+html.EscapeString(s.Root)+`</span>`))
-			body.WriteString(`<form method="post" action="/observatory/wiring/preview" class="mt-2"><input type="hidden" name="service" value="` + html.EscapeString(s.Service) + `">` +
+			body.WriteString(`<form method="post" action="/observatory/wiring/preview" class="mt-2 [&>button]:min-h-11"><input type="hidden" name="service" value="` + html.EscapeString(s.Service) + `">` +
 				form.RenderButton(form.Button{Label: "Preview changes", Variant: form.ButtonGhost}) + `</form>`)
 		}
 		widgets = append(widgets, dashboard.RenderWidget(dashboard.Widget{Title: s.Service, Body: template.HTML(body.String())}))

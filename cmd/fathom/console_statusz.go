@@ -5,13 +5,13 @@ package main
 // landmarks) and silent about the case its own code comment calls unknown:
 // typed edges showed for 3 of 18 services and the other 15 rendered nothing,
 // which reads as healthy. Now every service row states its typed-edge pass —
-// ran, failed with a reason, or UNKNOWN because this daemon process has not
-// ingested it since it started — and the JSON at the same path is the v3
+// ran in this process, replayed from the store (a pass from before this
+// daemon started), failed with a reason, does not apply (no Go module at the
+// root: the pass never runs, so it never records), or UNKNOWN because no
+// pass is recorded anywhere — and the JSON at the same path is the v3
 // report, byte-for-byte the shape it always was.
 
 import (
-	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"html"
@@ -100,7 +100,7 @@ func renderStatusz(report StatuszReport, selfURL string) string {
 		if commit == "" {
 			commit = s.FreshnessNote
 		}
-		typed, known := statuszTypedEdgesCell(s.TypedEdges)
+		typed, known := statuszTypedEdgesCell(s.TypedEdges, s.TypedEdgesAbsence)
 		if !known {
 			unknownTyped++
 		}
@@ -112,8 +112,7 @@ func renderStatusz(report StatuszReport, selfURL string) string {
 			HTMLCells: []templ.Component{nil, nil, templ.Raw(typed), templ.Raw(statuszCompileCell(s.LastCompilePerLayer))},
 		})
 	}
-	var tbl bytes.Buffer
-	_ = table.Table(table.TableParams{
+	tbl := renderKitTable(table.TableParams{
 		TableID: "statusz-services",
 		Caption: fmt.Sprintf("%d services in this daemon's store", len(report.Services)),
 		Columns: []table.Column{
@@ -123,19 +122,19 @@ func renderStatusz(report StatuszReport, selfURL string) string {
 			{Key: "compile", Label: "Last compile per layer"},
 		},
 		Rows: rows,
-	}).Render(context.Background(), &tbl)
+	})
 
 	state, reason := console.StatePresent, ""
 	if unknownTyped > 0 {
 		state = console.StatePartial
-		reason = fmt.Sprintf("the typed-edge pass is unknown for %d of %d services — this daemon process has not ingested them since it started; unknown is not a pass", unknownTyped, len(report.Services))
+		reason = fmt.Sprintf("the typed-edge pass is unknown for %d of %d services — each row names why; unknown is not a pass", unknownTyped, len(report.Services))
 	}
 	b.WriteString(`<div class="mt-4">`)
 	b.WriteString(renderPanel(consolePanel{
 		ID: "services", Title: "Services", SourceKey: "index:*",
 		Question:    "Is every service indexed, and did its typed call-edge pass run?",
 		Verb:        verb,
-		Source:      "the daemon's store (service_meta, compile_runs) and this process's typed-edge passes",
+		Source:      "the daemon's store (service_meta, compile_runs, typed_edge_status), this process's typed-edge passes and each service root's go.mod",
 		Denominator: valuePlain(services) + " services",
 		Freshness:   "live — computed for this request",
 		State:       state, Reason: reason,
@@ -143,7 +142,7 @@ func renderStatusz(report StatuszReport, selfURL string) string {
 		// absolutely positioned, and without a positioned ancestor it
 		// widens the whole document at 390 px (a kit contribution to return:
 		// the table's own scroll wrapper should be the containing block).
-		Body: `<div class="relative overflow-hidden rounded-lg">` + tbl.String() + `</div>`,
+		Body: `<div class="relative overflow-hidden rounded-lg">` + tbl + `</div>`,
 	}))
 	b.WriteString(`</div>`)
 	return b.String()
@@ -151,17 +150,25 @@ func renderStatusz(report StatuszReport, selfURL string) string {
 
 // statuszTypedEdgesCell renders one service's typed-edge pass. Unknown is
 // said in words and marked, never left blank (BP-35's defect class: a
-// degradation that reads healthy).
-func statuszTypedEdgesCell(te *StatuszTypedEdges) (cell string, known bool) {
+// degradation that reads healthy); a pass that cannot apply says so and is
+// not counted as unknown. known is false only for an unknown.
+func statuszTypedEdgesCell(te *StatuszTypedEdges, absence statuszTypedAbsence) (cell string, known bool) {
 	if te == nil {
-		return `<span class="inline-block min-w-48 italic text-ink-muted" data-truth-state="absent">unknown — not ingested by this daemon since it started; never read as a pass</span>`, false
+		if absence.NotApplicable {
+			return `<span class="inline-block min-w-48 text-ink-muted" data-truth-state="absent">` + html.EscapeString(absence.Reason) + `</span>`, true
+		}
+		reason := absence.Reason
+		if reason == "" {
+			reason = "no typed-edge pass is recorded for this service"
+		}
+		return `<span class="inline-block min-w-48 italic text-ink-muted" data-truth-state="absent">unknown — ` + html.EscapeString(reason) + `; never read as a pass</span>`, false
 	}
 	if te.Failed {
 		return `<span class="font-medium text-danger" data-truth-state="error">FAILED — ` + html.EscapeString(te.Reason) + `</span>`, true
 	}
 	cell = html.EscapeString(plural(te.Packages, "package"))
 	if te.Persisted {
-		cell += ` <span class="text-ink-muted">(replayed from the store, recorded ` + html.EscapeString(te.RecordedAt) + `)</span>`
+		cell += ` <span class="text-ink-muted">(recorded ` + html.EscapeString(te.RecordedAt) + ` by an earlier daemon process, replayed from the store — this daemon has not run the pass since it started)</span>`
 	}
 	return cell, true
 }

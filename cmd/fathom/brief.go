@@ -411,7 +411,8 @@ func renderBriefMD(m observatoryModel) string {
 	// OC-9: the shared projection — a partial count stays a "≥" lower
 	// bound here exactly as it does on the fleet page (the survey found the
 	// brief dropping it: "≥114" on one page, "114" here).
-	fmt.Fprintf(&b, "- **Open defects across the fleet: %s.** Each is a written bug report with a reproduction, filed by an agent the moment a fathom tool answered worse than expected.\n", valuePlain(console.OpenObservations(fleetFactsFromModel(m))))
+	openDefects := console.OpenObservations(fleetFactsFromModel(m))
+	fmt.Fprintf(&b, "- **Open defects across the fleet: %s.** Each is a written bug report with a reproduction, filed by an agent the moment a fathom tool answered worse than expected.\n", valuePlain(openDefects))
 	if len(m.Misses) > 0 {
 		var noisy []string
 		for i, mr := range m.Misses {
@@ -491,6 +492,13 @@ func renderBriefMD(m observatoryModel) string {
 	}
 	if imp.FirstEditMedian == nil {
 		b.WriteString("- " + imp.FirstEditNote + "\n")
+		absent++
+	}
+	// The shared open-defect count above: a lower bound, an absence or a
+	// read error is not a real value, and the section must say so rather
+	// than contradict the figure it sits under (OC-9, design §2).
+	if openDefects.State != console.StatePresent && openDefects.State != console.StateZero {
+		b.WriteString("- open defects across the fleet: " + valuePlain(openDefects) + "\n")
 		absent++
 	}
 	if absent == 0 {

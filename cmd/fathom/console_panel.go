@@ -9,6 +9,8 @@ package main
 // lower bound, error names what failed — never a colored zero.
 
 import (
+	"bytes"
+	"context"
 	"fmt"
 	"html"
 	"html/template"
@@ -16,6 +18,7 @@ import (
 
 	"github.com/geoffmilleraz/app-kit/appkit/ui/dashboard"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/stat"
+	"github.com/geoffmilleraz/app-kit/appkit/ui/table"
 	"github.com/geoffmilleraz/fathom/internal/console"
 )
 
@@ -161,4 +164,15 @@ func valuePlain(v console.Value[int]) string {
 		return fmtThousands(v.V) + " (stale: " + v.Reason + ")"
 	}
 	return fmtThousands(v.V)
+}
+
+// renderKitTable renders the kit's table.Table with scope="col" on every
+// header cell (design §2: tables use th scope). The pinned kit template
+// writes <th> without scope and only ever inside <thead>, so the header
+// cells are exactly its <th> elements; the kit defect is recorded in
+// docs/app-kit.md for return upstream.
+func renderKitTable(p table.TableParams) string {
+	var buf bytes.Buffer
+	_ = table.Table(p).Render(context.Background(), &buf)
+	return strings.ReplaceAll(buf.String(), "<th ", `<th scope="col" `)
 }

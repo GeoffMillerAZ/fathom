@@ -192,7 +192,8 @@ func cmdInstrumentAdoption(args []string, stdout, stderr io.Writer) int {
 	// named-service identity (its recorded root, that root's config, its
 	// default), then config and the legacy default with doctor's
 	// daemon-workspace probes rooted at --root (IO-10's cwd-independence).
-	callLogPath := resolveConsoleCallLogFor(callLogQuery{Flag: *callLogFlag, Service: *serviceFlag, ProbeRoot: *root}).Path
+	resolved := resolveConsoleCallLogFor(callLogQuery{Flag: *callLogFlag, Service: *serviceFlag, ProbeRoot: *root})
+	callLogPath := resolved.Path
 
 	// IT-1 read-error classification (observation O17, filed 2026-08-23):
 	// readCallLog's own bool collapses "file absent" and "file present but
@@ -256,9 +257,10 @@ func cmdInstrumentAdoption(args []string, stdout, stderr io.Writer) int {
 	if *jsonOut {
 		enc := json.NewEncoder(stdout)
 		enc.SetIndent("", "  ")
-		_ = enc.Encode(report)
+		_ = enc.Encode(withCallLog(report, resolved))
 	} else {
 		renderAdoptionReport(stdout, report)
+		fmt.Fprintln(stdout, callLogLine(resolved))
 	}
 	return 0
 }

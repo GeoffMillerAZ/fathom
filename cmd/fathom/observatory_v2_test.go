@@ -62,8 +62,8 @@ func TestWiringGrade(t *testing.T) {
 
 	stale := full
 	stale.Freshness = "stale: indexed a vs HEAD b"
-	if _, raise := wiringGrade(stale); !strings.Contains(raise, "ingest") {
-		t.Errorf("stale raise = %q, want the ingest command", raise)
+	if _, raise := wiringGrade(stale); !strings.Contains(raise, "fathom post-commit-hook --dir /tmp/svc --service svc") || strings.Contains(raise, "fathom ingest") {
+		t.Errorf("stale raise = %q, want the daemon-routed refresh (a shell ingest writes a store the daemon never reads)", raise)
 	}
 }
 

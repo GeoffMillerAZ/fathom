@@ -7,6 +7,7 @@ package main
 import (
 	"net/http"
 
+	"github.com/geoffmilleraz/app-kit/appkit/ui/form"
 	"github.com/geoffmilleraz/fathom/internal/console"
 )
 
@@ -33,7 +34,8 @@ func buildBriefPage(cr *consoleRequest) (consoleOut, error) {
 		Meta:    modelMeta(m),
 		Model:   briefModel{Markdown: md},
 		Metrics: pageMetrics(cr.page, consoleModelMetrics(m)),
-		Actions: `<a class="inline-flex min-h-11 items-center rounded-md border border-line bg-surface px-3 text-sm font-medium text-ink hover:bg-surface-sunken focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus" href="/brief?format=md">Download markdown</a>`,
+		// The kit's link-mode ghost button (doctrine rule 1), at 44 px.
+		Actions: `<span class="[&>a]:min-h-[44px]">` + form.RenderButton(form.Button{Label: "Download markdown", Href: "/brief?format=md", Variant: form.ButtonGhost}) + `</span>`,
 		Raw: func(w http.ResponseWriter) bool {
 			if cr.r.URL.Query().Get("format") != "md" {
 				return false

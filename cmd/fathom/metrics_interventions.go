@@ -49,8 +49,8 @@ func cmdMetricsInterventions(args []string, stdout, stderr io.Writer) int {
 	// OC-2: the one call-log resolution (console_calllog.go) — the daemon's
 	// configured log when a daemon record names one, never a log relative
 	// to this command's working directory.
-	callLogPath := resolveConsoleCallLog(*callLogFlag, "").Path
-	_, callVerdicts := readCallDataFor(callLogPath, "", sinceT, untilT)
+	resolved := resolveConsoleCallLog(*callLogFlag, "")
+	_, callVerdicts := readCallDataFor(resolved.Path, "", sinceT, untilT)
 
 	hooksLogPath := *hooksLogFlag
 	if hooksLogPath == "" {
@@ -67,10 +67,11 @@ func cmdMetricsInterventions(args []string, stdout, stderr io.Writer) int {
 	report := metrics.AggregateInterventions(callVerdicts, beats, claimEvents, claimEventsQueried, sinceT, untilT)
 
 	if *jsonOut {
-		jsonPrint(stdout, report)
+		jsonPrint(stdout, withCallLog(report, resolved))
 		return 0
 	}
 	fmt.Fprintf(stdout, "interventions: %s .. %s\n", report.Since, report.Until)
+	fmt.Fprintln(stdout, callLogLine(resolved))
 	for _, row := range report.Rows {
 		if row.Count != nil {
 			fmt.Fprintf(stdout, "  %-40s %-6d  (%s)\n", row.Name, *row.Count, row.Mechanism)

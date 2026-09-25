@@ -25,7 +25,7 @@ func buildProjectPage(cr *consoleRequest) (consoleOut, error) {
 	m := cr.model()
 	body, ok := renderObsService(m, id)
 	if !ok {
-		return consoleOut{}, unknownProjectError(id, m)
+		return consoleOut{}, unknownProjectError(id, m, cr.deps.selfURL)
 	}
 	var row obsServiceRow
 	for _, s := range m.Services {
@@ -43,8 +43,13 @@ func buildProjectPage(cr *consoleRequest) (consoleOut, error) {
 }
 
 // unknownProjectError is OC-5's unknown-service page: the name that missed,
-// the closest registered names, and the command that indexes a repository.
-func unknownProjectError(id string, m observatoryModel) *consoleError {
+// the closest registered names, and the command that indexes a repository
+// through THIS daemon (selfURL). The remedy is `fathom init`, doctor's own
+// remedy for a repo missing from the index: it ingests through the daemon's
+// ingest tool. A shell `fathom ingest` would write <repo>/workspace/db —
+// a store this daemon never reads — so the project would stay unknown, and
+// against the shared store it is the forbidden shell ingest (INC-3, SB-7).
+func unknownProjectError(id string, m observatoryModel, selfURL string) *consoleError {
 	if m.DegradedNote != "" {
 		return &consoleError{
 			Status: http.StatusServiceUnavailable, Title: "Store unreadable",
@@ -68,7 +73,7 @@ func unknownProjectError(id string, m observatoryModel) *consoleError {
 	return &consoleError{
 		Status: http.StatusNotFound, Title: "Unknown project",
 		Reason:     reason,
-		Remedy:     "cd <repo> && fathom ingest --service " + id,
+		Remedy:     "fathom init --path <repo> --service " + id + " --url " + selfURL,
 		RemedyHref: "/fleet",
 	}
 }

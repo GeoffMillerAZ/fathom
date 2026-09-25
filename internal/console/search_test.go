@@ -2,12 +2,34 @@ package console_test
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/console"
 )
+
+// fixtureSymbols is a SymbolLookup over docs, honoring its contract: every
+// token matches, results ranked like every group, the total exact.
+func fixtureSymbols(all []console.SearchDoc) console.SymbolLookup {
+	return func(tokens []string, limit int) ([]console.SearchResult, int, error) {
+		var out []console.SearchResult
+		for _, d := range all {
+			d.Group = console.GroupSymbols
+			if sc := console.ScoreDoc(d, tokens); sc > 0 {
+				out = append(out, console.SearchResult{SearchDoc: d, Score: sc})
+			}
+		}
+		sort.SliceStable(out, func(i, j int) bool { return console.RankLess(out[i], out[j]) })
+		total := len(out)
+		if limit > 0 && len(out) > limit {
+			out = out[:limit]
+		}
+		return out, total, nil
+	}
+}
 
 func searchFixture() console.SearchIndex {
 	return console.SearchIndex{
@@ -23,20 +45,11 @@ func searchFixture() console.SearchIndex {
 			{Group: console.GroupVerbs, Kind: "verb", Title: "fleet report", Subtitle: "Fleet operations", Command: "fathom fleet report --json", Href: "/fleet"},
 			{Group: console.GroupVerbs, Kind: "verb", Title: "verify", Subtitle: "Verify plan files against the index", Command: "fathom verify"},
 		},
-		Symbols: func(q string, limit int) ([]console.SearchDoc, error) {
-			all := []console.SearchDoc{
-				{Kind: "symbol", Title: "Charge", Service: "payment-service", Ref: "payment.go:12", Href: "/projects/payment-service"},
-				{Kind: "symbol", Title: "validateCharge", Service: "payment-service", Ref: "payment.go:40", Href: "/projects/payment-service"},
-				{Kind: "symbol", Title: "ChargeResult", Service: "payment-service", Ref: "payment.go:5", Href: "/projects/payment-service"},
-			}
-			var out []console.SearchDoc
-			for _, d := range all {
-				if strings.Contains(strings.ToLower(d.Title), strings.ToLower(q)) {
-					out = append(out, d)
-				}
-			}
-			return out, nil
-		},
+		Symbols: fixtureSymbols([]console.SearchDoc{
+			{Kind: "symbol", Title: "Charge", Service: "payment-service", Ref: "payment.go:12", Href: "/projects/payment-service"},
+			{Kind: "symbol", Title: "validateCharge", Service: "payment-service", Ref: "payment.go:40", Href: "/projects/payment-service"},
+			{Kind: "symbol", Title: "ChargeResult", Service: "payment-service", Ref: "payment.go:5", Href: "/projects/payment-service"},
+		}),
 		Notes: []string{"plans of 1 service could not be read"},
 	}
 }
@@ -67,28 +80,28 @@ func TestSearch_GroupsAndRanksResults(t *testing.T) {
 		t.Errorf("index notes must travel with the results: %v", res.Notes)
 	}
 
-	// Group order is fixed, and a query spanning groups lists each once.
+	// Groups order by their best match — an exact page hit is never below
+	// a group of weaker ones — and a query spanning groups lists each once.
 	res = console.Search(ix, "fleet", 8)
 	var order []console.SearchGroup
 	for _, g := range res.Groups {
 		order = append(order, g.Group)
 	}
-	if want := []console.SearchGroup{console.GroupVerbs, console.GroupPages}; !reflect.DeepEqual(order, want) {
-		t.Errorf("fleet groups = %v, want %v", order, want)
+	if want := []console.SearchGroup{console.GroupPages, console.GroupVerbs}; !reflect.DeepEqual(order, want) {
+		t.Errorf("fleet groups = %v, want %v (the exact page first)", order, want)
 	}
+	// Ties on the best score go to the smaller group, then the fixed order.
 	res = console.Search(ix, "o", 8) // matches nearly everything
-	last := -1
-	for _, g := range res.Groups {
-		idx := -1
-		for i, want := range console.SearchGroupOrder {
-			if want == g.Group {
-				idx = i
+	for i := 1; i < len(res.Groups); i++ {
+		a, b := res.Groups[i-1], res.Groups[i]
+		if a.Results[0].Score < b.Results[0].Score {
+			t.Fatalf("group %s (best %d) above %s (best %d)", a.Group, a.Results[0].Score, b.Group, b.Results[0].Score)
+		}
+		if a.Results[0].Score == b.Results[0].Score {
+			if a.Total > b.Total || (a.Total == b.Total && groupIndex(a.Group) > groupIndex(b.Group)) {
+				t.Fatalf("tied groups out of order (smaller first, then fixed): %v", res.Groups)
 			}
 		}
-		if idx <= last {
-			t.Fatalf("groups out of the fixed order: %v", res.Groups)
-		}
-		last = idx
 	}
 
 	// Multi-token: every token must match; the phrase in order ranks first.
@@ -136,7 +149,9 @@ func TestSearch_GroupsAndRanksResults(t *testing.T) {
 
 	// A failing symbol source is a named note in its group.
 	broken := ix
-	broken.Symbols = func(string, int) ([]console.SearchDoc, error) { return nil, errors.New("store unreadable") }
+	broken.Symbols = func([]string, int) ([]console.SearchResult, int, error) {
+		return nil, 0, errors.New("store unreadable")
+	}
 	res = console.Search(broken, "charge", 8)
 	found := false
 	for _, g := range res.Groups {
@@ -146,5 +161,91 @@ func TestSearch_GroupsAndRanksResults(t *testing.T) {
 	}
 	if !found {
 		t.Errorf("symbol failure must be named: %+v", res.Groups)
+	}
+}
+
+func groupIndex(g console.SearchGroup) int {
+	for i, want := range console.SearchGroupOrder {
+		if want == g {
+			return i
+		}
+	}
+	return -1
+}
+
+// Exact hits are never buried or unreachable (the survey: /search?q=OC-1
+// listed OC-10..OC-19 and never OC-1; "fleet" put the Fleet page ~3,000 px
+// down under 1,314 loosely matching plan rows). A row's ID is matched
+// exactly; the in-order fuzzy match only counts inside a compact span; a
+// capped group pages through every match; and a query is bounded.
+func TestSearch_ExactHitsFirstAndEveryMatchReachable(t *testing.T) {
+	var docs []console.SearchDoc
+	docs = append(docs, console.SearchDoc{Group: console.GroupPlans, Kind: "row", ID: "OC-1", Title: "OC-1 Page projections carry a truth state per value (present, zero, absent, stale, partial, error) with reason, source, denominator and time"})
+	for i := 10; i <= 19; i++ {
+		id := fmt.Sprintf("OC-%d", i)
+		docs = append(docs, console.SearchDoc{Group: console.GroupPlans, Kind: "row", ID: id, Title: id + " short"})
+	}
+	// Loose letter-order matches across a long title are not matches.
+	docs = append(docs,
+		console.SearchDoc{Group: console.GroupPlans, Kind: "row", ID: "RC-55", Title: "RC-55 Find local imports in each file, then export the results table"},
+		console.SearchDoc{Group: console.GroupPages, Kind: "page", Title: "Fleet", Href: "/fleet"},
+		console.SearchDoc{Group: console.GroupPlans, Kind: "row", ID: "FR-1", Title: "FR-1 fleet report names its call log"},
+	)
+	ix := console.SearchIndex{Docs: docs}
+	res := console.Search(ix, "OC-1", 8)
+	if len(res.Groups) == 0 || res.Groups[0].Results[0].ID != "OC-1" {
+		t.Fatalf("OC-1 must rank first in its group: %+v", res.Groups)
+	}
+	res = console.Search(ix, "fleet", 8)
+	if res.Groups[0].Group != console.GroupPages || res.Groups[0].Results[0].Title != "Fleet" {
+		t.Errorf("the exact Fleet page must lead: %+v", res.Groups)
+	}
+	// An exact tie: many symbols named exactly "fleet" do not bury the one
+	// exact page — the smaller group leads.
+	crowd := make([]console.SearchDoc, 0, 30)
+	for i := 0; i < 30; i++ {
+		crowd = append(crowd, console.SearchDoc{Kind: "symbol", Title: "fleet", Service: fmt.Sprintf("svc%02d", i), Ref: "x.go:1"})
+	}
+	ix.Symbols = fixtureSymbols(crowd)
+	if res := console.Search(ix, "fleet", 8); res.Groups[0].Group != console.GroupPages {
+		t.Errorf("tied exact hits: the lone page must lead the crowd: %v", res.Groups[0].Group)
+	}
+	ix.Symbols = nil
+	for _, g := range res.Groups {
+		for _, r := range g.Results {
+			if r.ID == "RC-55" {
+				t.Errorf("a scattered letter-order match is not a fuzzy hit: %q", r.Title)
+			}
+		}
+	}
+	if res := console.Search(ix, "flet", 8); res.Total == 0 {
+		t.Error("a compact fuzzy match (a typo) must still match")
+	}
+
+	// A capped group pages: offset 8 of the 11 OC rows reaches the rest.
+	page2 := console.SearchWith(ix, "OC-1", console.SearchOptions{Group: console.GroupPlans, PerGroup: 8, Offset: 8})
+	if len(page2.Groups) != 1 || page2.Groups[0].Total != 11 || len(page2.Groups[0].Results) != 3 {
+		t.Fatalf("page 2 = %+v, want the last 3 of 11 in the plans group only", page2.Groups)
+	}
+
+	// Symbols: the lookup's total is the group total, never the candidate cap.
+	many := make([]console.SearchDoc, 0, 300)
+	for i := 0; i < 300; i++ {
+		many = append(many, console.SearchDoc{Kind: "symbol", Title: fmt.Sprintf("TestThing%03d", i), Service: "svc", Ref: "x.go:1"})
+	}
+	res = console.Search(console.SearchIndex{Symbols: fixtureSymbols(many)}, "test", 8)
+	if len(res.Groups) != 1 || res.Groups[0].Total != 300 || len(res.Groups[0].Results) != 8 {
+		t.Errorf("symbols = %+v, want 8 shown of an exact 300", res.Groups)
+	}
+
+	// Bounded queries.
+	if err := console.CheckQuery(strings.Repeat("e ", 9)); err == nil {
+		t.Error("nine tokens must be refused")
+	}
+	if err := console.CheckQuery(strings.Repeat("x", console.MaxQueryRunes+1)); err == nil {
+		t.Error("an over-long query must be refused")
+	}
+	if err := console.CheckQuery("resolveCallLog test"); err != nil {
+		t.Errorf("an ordinary query refused: %v", err)
 	}
 }
