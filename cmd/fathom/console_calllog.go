@@ -1,0 +1,198 @@
+package main
+
+// console_calllog.go — OC-2's wiring: every metrics, instrument and
+// flywheel verb, the fleet report and every Observatory page resolve the
+// call log through console.ResolveCallLog (internal/console/calllog.go).
+//
+// The survey (2026-09-25) found the daemon rendering its pages from a log
+// other than the one it writes, and verbs reading a log relative to their
+// working directory. Two changes close it:
+//
+//   - serve-http records itself (~/.fathom/daemons/<host>-<port>.json) once
+//     its listener is bound: its absolute --call-log, store, pid, commit.
+//     A verb run from any directory reads the record for the daemon it
+//     talks to (FATHOM_HTTP, else localhost:7575) and gets the log the
+//     daemon actually writes — rule "daemon".
+//   - inside the daemon process the pages read the daemon's OWN --call-log
+//     (servingDaemonCallLog), never the legacy default.
+//
+// An explicit --call-log or FATHOM_CALL_LOG still wins for its invocation;
+// without a daemon record the pre-existing chain applies unchanged (J5's
+// named-service identity, then [daemon].call_log, then the legacy default
+// with doctor's daemon-workspace probes).
+
+import (
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/config"
+	"github.com/geoffmilleraz/fathom/internal/console"
+)
+
+// servingCallLog is the running daemon's own --call-log, absolute. It is
+// set by runServeHTTP only after the listener is bound, so a serve-http
+// invocation that fails early never leaks it into anything else.
+var servingCallLog struct {
+	sync.RWMutex
+	set        bool
+	path, note string
+}
+
+func setServingCallLog(path, note string) {
+	servingCallLog.Lock()
+	servingCallLog.set, servingCallLog.path, servingCallLog.note = true, path, note
+	servingCallLog.Unlock()
+}
+
+// servingDaemonCallLog reports this process's own daemon log. set is true
+// inside a serving daemon even when its --call-log is empty (logging off).
+func servingDaemonCallLog() (path, note string, set bool) {
+	servingCallLog.RLock()
+	defer servingCallLog.RUnlock()
+	return servingCallLog.path, servingCallLog.note, servingCallLog.set
+}
+
+// daemonRecordPathFor is the record path for the daemon at baseURL.
+func daemonRecordPathFor(baseURL string) (string, bool) {
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return "", false
+	}
+	addr, err := console.DaemonAddrFromURL(baseURL)
+	if err != nil {
+		return "", false
+	}
+	p, err := console.DaemonRecordPath(home, addr)
+	if err != nil {
+		return "", false
+	}
+	return p, true
+}
+
+// readDaemonRecordFor reads the record the daemon at baseURL wrote, if any.
+func readDaemonRecordFor(baseURL string) (console.DaemonRecord, bool) {
+	p, ok := daemonRecordPathFor(baseURL)
+	if !ok {
+		return console.DaemonRecord{}, false
+	}
+	rec, err := console.ReadDaemonRecord(p)
+	if err != nil || rec.CallLog == "" {
+		return console.DaemonRecord{}, false
+	}
+	return rec, true
+}
+
+// recordServingDaemon writes this daemon's record and remembers its own log
+// for the in-process pages. Best effort: a daemon that cannot write its
+// record still serves; verbs then fall back to the pre-existing chain.
+func recordServingDaemon(addr, callLog, storePath, commit string, now time.Time) (console.DaemonRecord, error) {
+	abs := callLog
+	if abs != "" && !filepath.IsAbs(abs) {
+		if a, err := filepath.Abs(abs); err == nil {
+			abs = a
+		}
+	}
+	absStore := storePath
+	if absStore != "" && !filepath.IsAbs(absStore) {
+		if a, err := filepath.Abs(absStore); err == nil {
+			absStore = a
+		}
+	}
+	rec := console.NewDaemonRecord(addr, os.Getpid(), abs, absStore, commit, now)
+	setServingCallLog(abs, "this daemon's own --call-log")
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return rec, err
+	}
+	p, err := console.DaemonRecordPath(home, addr)
+	if err != nil {
+		return rec, err
+	}
+	return rec, console.WriteDaemonRecord(p, rec)
+}
+
+// callLogQuery parameterizes resolveConsoleCallLogFor: the invocation's own
+// --call-log, a named --service (J5's identity rule), the daemon the verb
+// talks to (default FATHOM_HTTP, else localhost:7575) and the root doctor's
+// daemon-workspace probes start from (default ".").
+type callLogQuery struct {
+	Flag, Service, BaseURL, ProbeRoot string
+}
+
+// resolveConsoleCallLog is the one call-log resolution every verb and page
+// uses. flag is the invocation's own --call-log ("" when not given);
+// service is a named --service ("" when none) for J5's identity rule.
+func resolveConsoleCallLog(flag, service string) console.ResolvedCallLog {
+	return resolveConsoleCallLogFor(callLogQuery{Flag: flag, Service: service})
+}
+
+func resolveConsoleCallLogFor(q callLogQuery) console.ResolvedCallLog {
+	in := console.CallLogInputs{Flag: q.Flag}
+	if p, note, set := servingDaemonCallLog(); set {
+		// Inside the daemon: the pages read what the daemon writes — and a
+		// daemon started with logging off has no log to read (rule none).
+		in.Daemon, in.DaemonNote = p, note
+		return console.ResolveCallLog(in)
+	}
+	in.Env = os.Getenv("FATHOM_CALL_LOG")
+	if in.Flag != "" || in.Env != "" {
+		return console.ResolveCallLog(in)
+	}
+	base := q.BaseURL
+	if base == "" {
+		base = defaultFathomURL()
+	}
+	if rec, ok := readDaemonRecordFor(base); ok {
+		in.Daemon, in.DaemonNote = rec.CallLog, rec.Note()
+		return console.ResolveCallLog(in)
+	}
+	if q.Service != "" {
+		hc := &http.Client{Timeout: 2 * time.Second}
+		if p, root := resolveServiceCallLog(hc, base, q.Service); root != "" {
+			in.Service, in.ServiceNote = p, "service "+q.Service+" at "+root
+			return console.ResolveCallLog(in)
+		}
+	}
+	if loaded, err := config.Load(config.DefaultUserPath(), config.DefaultProjectPath()); err == nil {
+		in.Config = loaded.Config.Daemon.CallLog
+	}
+	in.Legacy = defaultCallLogPath()
+	if in.Config == "" {
+		if _, err := os.Stat(in.Legacy); err != nil {
+			root := q.ProbeRoot
+			if root == "" {
+				root = "."
+			}
+			hc := &http.Client{Timeout: 2 * time.Second}
+			in.LegacyProbes = resolveCallLogCandidates(hc, base, true, root)
+		}
+	}
+	return console.ResolveCallLog(in)
+}
+
+// callLogFactsFor folds one read of the resolved log into the shared
+// metric's facts (rows, unattributed rows, absence or read error).
+func callLogFactsFor(resolved console.ResolvedCallLog, entries []adoptionCallEntry, readErr error) console.CallLogFacts {
+	f := console.CallLogFacts{Log: resolved}
+	switch {
+	case resolved.Path == "":
+		return f
+	case readErr != nil && os.IsNotExist(readErr):
+		f.Missing = true
+		return f
+	case readErr != nil:
+		f.ReadErr = readErr.Error()
+		return f
+	}
+	f.Rows = len(entries)
+	for _, e := range entries {
+		if strings.TrimSpace(e.Service) == "" {
+			f.Unattributed++
+		}
+	}
+	return f
+}

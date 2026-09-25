@@ -59,10 +59,10 @@ func cmdMetricsRollupBuild(args []string, stdout, stderr io.Writer) int {
 	}
 	spend := metrics.AggregateSpend(runs, spendBudgetLookup(*root), metrics.SpendOptions{Since: sinceT, Until: untilT, GroupBy: metrics.SpendGroupByLayer})
 
-	callLogPath := *callLogFlag
-	if callLogPath == "" {
-		callLogPath = resolveCallLogPath()
-	}
+	// OC-2: the one call-log resolution (console_calllog.go) — the daemon's
+	// configured log when a daemon record names one, never a log relative
+	// to this command's working directory.
+	callLogPath := resolveConsoleCallLog(*callLogFlag, "").Path
 	entries, verdicts := readCallDataFor(callLogPath, *service, sinceT, untilT)
 	traffic := metrics.AggregateTraffic(entries, metrics.TrafficOptions{Since: sinceT, Until: untilT, GroupBy: metrics.TrafficGroupBySurface})
 

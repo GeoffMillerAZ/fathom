@@ -93,10 +93,10 @@ func cmdResearchBundle(args []string, stdout, stderr io.Writer) int {
 	now := time.Now().UTC()
 	sinceT := now.Add(-*since)
 
-	callLogPath := *callLogFlag
-	if callLogPath == "" {
-		callLogPath = resolveCallLogPath()
-	}
+	// OC-2: the one call-log resolution (console_calllog.go) — the daemon's
+	// configured log when a daemon record names one, never a log relative
+	// to this command's working directory.
+	callLogPath := resolveConsoleCallLog(*callLogFlag, "").Path
 	entries, _, callLogRead := readCallLog(callLogPath)
 
 	hooksLogPath := *hooksLogFlag

@@ -46,10 +46,10 @@ func cmdMetricsInterventions(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	callLogPath := *callLogFlag
-	if callLogPath == "" {
-		callLogPath = resolveCallLogPath()
-	}
+	// OC-2: the one call-log resolution (console_calllog.go) — the daemon's
+	// configured log when a daemon record names one, never a log relative
+	// to this command's working directory.
+	callLogPath := resolveConsoleCallLog(*callLogFlag, "").Path
 	_, callVerdicts := readCallDataFor(callLogPath, "", sinceT, untilT)
 
 	hooksLogPath := *hooksLogFlag

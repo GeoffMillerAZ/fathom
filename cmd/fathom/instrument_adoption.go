@@ -14,11 +14,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
@@ -189,35 +187,12 @@ func cmdInstrumentAdoption(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 
-	// J5 (app-kit O25, O15/O17/O19): a NAMED service resolves its OWN
-	// call log the one shared way every identity-aware instrument now
-	// does (resolveServiceCallLog, calllogidentity.go) — its recorded
-	// corpus path, that root's own config, then the daemon default for
-	// that root — never the CALLER's cwd, which is exactly what let this
-	// command and flywheel/research_report disagree (O25).
-	callLogPath := *callLogFlag
-	resolvedServiceRoot := ""
-	if callLogPath == "" {
-		hc := &http.Client{Timeout: 2 * time.Second}
-		callLogPath, resolvedServiceRoot = resolveServiceCallLog(hc, defaultFathomURL(), *serviceFlag)
-	}
-	if resolvedServiceRoot == "" {
-		if _, statErr := os.Stat(callLogPath); statErr != nil && *callLogFlag == "" {
-			// cwd-independence (IO-10, the audit's coupling defect): from any
-			// repo but the daemon's own checkout, the relative default resolves
-			// to a file that does not exist and the gauge measured nothing.
-			// Reuse doctor's call-log resolution (absolute config wins; else
-			// the fathom checkout; else the daemon's recorded service root) —
-			// the same logic, never re-derived.
-			hc := &http.Client{Timeout: 2 * time.Second}
-			for _, cand := range resolveCallLogCandidates(hc, defaultFathomURL(), true, *root) {
-				if _, err := os.Stat(cand); err == nil {
-					callLogPath = cand
-					break
-				}
-			}
-		}
-	}
+	// OC-2 (console_calllog.go): the one call-log resolution — the
+	// daemon's record first (the log the daemon actually writes), then J5's
+	// named-service identity (its recorded root, that root's config, its
+	// default), then config and the legacy default with doctor's
+	// daemon-workspace probes rooted at --root (IO-10's cwd-independence).
+	callLogPath := resolveConsoleCallLogFor(callLogQuery{Flag: *callLogFlag, Service: *serviceFlag, ProbeRoot: *root}).Path
 
 	// IT-1 read-error classification (observation O17, filed 2026-08-23):
 	// readCallLog's own bool collapses "file absent" and "file present but

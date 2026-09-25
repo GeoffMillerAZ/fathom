@@ -27,7 +27,6 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -252,11 +251,9 @@ func cmdResearchReport(args []string, stdout, stderr io.Writer) int {
 	// (resolveServiceCallLog, calllogidentity.go) — never the caller's
 	// cwd, which is exactly what let this command disagree with
 	// instrument --adoption and flywheel about the same repo (O25).
-	callLogPath := *callLogFlag
-	if callLogPath == "" {
-		hc := &http.Client{Timeout: 2 * time.Second}
-		callLogPath, _ = resolveServiceCallLog(hc, defaultFathomURL(), *service)
-	}
+	// OC-2: the one call-log resolution (console_calllog.go): the daemon's
+	// record first, then J5's named-service identity, config, legacy.
+	callLogPath := resolveConsoleCallLog(*callLogFlag, *service).Path
 	entries, skippedMalformed, callLogErr := classifyCallLogRead(callLogPath)
 	callLogRead := callLogErr == nil
 	if !callLogRead {

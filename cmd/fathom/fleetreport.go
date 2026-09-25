@@ -74,28 +74,71 @@ func cmdFleetReport(args []string, stdout, stderr io.Writer) int {
 	}
 
 	hc := &http.Client{Timeout: 5 * time.Second}
-	svcs, err := fetchServices(hc, *url)
+	rep, err := buildFleetReport(hc, *url, fleetReportNow())
 	if err != nil {
-		fmt.Fprintf(stderr, "error: fleet report needs the daemon's service registry: %v\n", err)
+		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
+	}
+
+	if *jsonOnly {
+		enc := json.NewEncoder(stdout)
+		enc.SetIndent("", "  ")
+		_ = enc.Encode(rep)
+		return 0
+	}
+
+	dir := *outDir
+	if dir == "" {
+		home, herr := os.UserHomeDir()
+		if herr != nil {
+			fmt.Fprintf(stderr, "error: %v\n", herr)
+			return 1
+		}
+		dir = filepath.Join(home, ".fathom", "fleet")
+	}
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
+		return 1
+	}
+	date := time.Now().UTC().Format("2006-01-02")
+	jsonPath := filepath.Join(dir, "report-"+date+".json")
+	mdPath := filepath.Join(dir, "report-"+date+".md")
+	jb, _ := json.MarshalIndent(rep, "", "  ")
+	if err := os.WriteFile(jsonPath, append(jb, '\n'), 0o600); err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
+		return 1
+	}
+	if err := os.WriteFile(mdPath, []byte(renderFleetReportMD(rep)), 0o600); err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
+		return 1
+	}
+	fmt.Fprintf(stdout, "fleet report: %d service(s) → %s and %s\n", len(rep.Services), jsonPath, mdPath)
+	return 0
+}
+
+// fleetReportNow is the fleet report's clock — a variable so the console's
+// JSON-parity test (TestConsolePagesRenderTheirVerbs) can pin the page and
+// the verb to one instant.
+var fleetReportNow = time.Now
+
+// buildFleetReport is `fathom fleet report --json`'s whole computation. The
+// /fleet console page calls the same function for its "fathom fleet report
+// --json" section, so the page and the verb cannot disagree (P10, OC-8).
+func buildFleetReport(hc *http.Client, url string, now time.Time) (fleetReport, error) {
+	svcs, err := fetchServices(hc, url)
+	if err != nil {
+		return fleetReport{}, fmt.Errorf("fleet report needs the daemon's service registry: %w", err)
 	}
 
 	rep := fleetReport{
 		SchemaVersion: fleetReportSchemaVersion,
 		FathomVersion: buildinfo.Version(),
-		GeneratedAt:   time.Now().UTC().Format(time.RFC3339),
+		GeneratedAt:   now.UTC().Format(time.RFC3339),
 	}
 
-	// Call-log aggregation, via the same resolution the adoption gauge uses.
-	callLogPath := resolveCallLogPath()
-	if _, statErr := os.Stat(callLogPath); statErr != nil {
-		for _, cand := range resolveCallLogCandidates(hc, *url, true, ".") {
-			if _, e := os.Stat(cand); e == nil {
-				callLogPath = cand
-				break
-			}
-		}
-	}
+	// Call-log aggregation through the one resolution every verb and page
+	// shares (OC-2, console_calllog.go): the daemon's configured log first.
+	callLogPath := resolveConsoleCallLogFor(callLogQuery{BaseURL: url}).Path
 	rep.CallLogPath = callLogPath
 	entries, _, read := readCallLog(callLogPath)
 	if !read {
@@ -159,7 +202,7 @@ func cmdFleetReport(args []string, stdout, stderr io.Writer) int {
 	for _, name := range names {
 		info := svcs[name]
 		row := fleetServiceRow{Service: name, Path: info.path, Symbols: info.symbols}
-		row.Freshness, row.IndexedCommit, row.RepoHead = fleetFreshness(hc, *url, name, info.path)
+		row.Freshness, row.IndexedCommit, row.RepoHead = fleetFreshness(hc, url, name, info.path)
 		row.HooksNote, row.StanzaNote = fleetWiringNotes(info.path)
 		if info.path != "" {
 			if content, existed, oerr := readObservations(info.path); oerr == nil && existed {
@@ -182,40 +225,7 @@ func cmdFleetReport(args []string, stdout, stderr io.Writer) int {
 		rep.Services = append(rep.Services, row)
 	}
 
-	if *jsonOnly {
-		enc := json.NewEncoder(stdout)
-		enc.SetIndent("", "  ")
-		_ = enc.Encode(rep)
-		return 0
-	}
-
-	dir := *outDir
-	if dir == "" {
-		home, herr := os.UserHomeDir()
-		if herr != nil {
-			fmt.Fprintf(stderr, "error: %v\n", herr)
-			return 1
-		}
-		dir = filepath.Join(home, ".fathom", "fleet")
-	}
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		fmt.Fprintf(stderr, "error: %v\n", err)
-		return 1
-	}
-	date := time.Now().UTC().Format("2006-01-02")
-	jsonPath := filepath.Join(dir, "report-"+date+".json")
-	mdPath := filepath.Join(dir, "report-"+date+".md")
-	jb, _ := json.MarshalIndent(rep, "", "  ")
-	if err := os.WriteFile(jsonPath, append(jb, '\n'), 0o600); err != nil {
-		fmt.Fprintf(stderr, "error: %v\n", err)
-		return 1
-	}
-	if err := os.WriteFile(mdPath, []byte(renderFleetReportMD(rep)), 0o600); err != nil {
-		fmt.Fprintf(stderr, "error: %v\n", err)
-		return 1
-	}
-	fmt.Fprintf(stdout, "fleet report: %d service(s) → %s and %s\n", len(rep.Services), jsonPath, mdPath)
-	return 0
+	return rep, nil
 }
 
 // fleetFreshness compares the daemon's indexed commit against the repo's

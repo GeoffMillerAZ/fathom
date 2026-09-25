@@ -31,7 +31,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -348,31 +347,10 @@ func checkLoopArm(rows []ledgerRow, imp obsImpact, now time.Time) flywheelCheck 
 // (any other error — a real defect, OPEN), which the collapsed bool could
 // not distinguish.
 func flywheelCallLog(baseURL, service string) ([]adoptionCallEntry, error) {
-	// J5 (app-kit O25): a NAMED service resolves its own recorded call log
-	// (resolveServiceCallLog, calllogidentity.go) — the SAME identity
-	// instrument --adoption/research report now share. No service names:
-	// byte-for-byte the pre-existing resolution below.
-	var path, resolvedRoot string
-	if service != "" {
-		hc := &http.Client{Timeout: 4 * time.Second}
-		path, resolvedRoot = resolveServiceCallLog(hc, baseURL, service)
-	}
-	if resolvedRoot == "" {
-		path = resolveCallLogPath()
-		if _, err := os.Stat(path); err != nil {
-			// A real client: resolveCallLogCandidates asks the daemon where
-			// its own log lives, and passing nil made that a nil dereference
-			// on any machine lacking a local call log — which is every clean
-			// checkout.
-			hc := &http.Client{Timeout: 4 * time.Second}
-			for _, cand := range resolveCallLogCandidates(hc, baseURL, true, ".") {
-				if _, e := os.Stat(cand); e == nil {
-					path = cand
-					break
-				}
-			}
-		}
-	}
+	// OC-2 (console_calllog.go): the one call-log resolution every verb and
+	// page shares — the daemon's record, then J5's named-service identity,
+	// then config and the legacy default with the daemon-workspace probes.
+	path := resolveConsoleCallLogFor(callLogQuery{Service: service, BaseURL: baseURL}).Path
 	entries, _, read := readCallLog(path)
 	if read {
 		return entries, nil

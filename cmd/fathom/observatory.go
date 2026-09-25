@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/buildinfo"
+	"github.com/geoffmilleraz/fathom/internal/console"
 )
 
 const observatorySchemaVersion = 1
@@ -196,6 +197,12 @@ type observatoryModel struct {
 	// story, folded from the same call-log entries the Q3 misses table
 	// already reads.
 	Cost costPanel `json:"cost"`
+
+	// The console's shared-metric facts (OC-9, internal/console/metrics.go).
+	// Unexported: observatoryModel v1's JSON is a compatibility surface and
+	// stays byte-for-byte what it was (OC-7).
+	callFacts console.CallLogFacts
+	sessions  console.Value[int]
 }
 
 // obsTrafficDay is one day of call-log traffic.
@@ -226,33 +233,39 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 		m.Narrate = obsArmBanner{Detail: "narrate off (default) — story rows not being captured (fathom narrate on --for 7d to pioneer)"}
 	}
 
+	// OC-9: the shared sessions metric, from the one dedupe rule every page
+	// uses (console.SessionCount) — read once per model build.
+	ledgerPath := sessionLedgerPath()
+	ledgerData, ledgerErr := os.ReadFile(ledgerPath)
+	m.sessions = console.SessionCount(ledgerPath, ledgerData, ledgerErr)
+
 	hc := &http.Client{Timeout: 5 * time.Second}
 	svcs, err := fetchServices(hc, baseURL)
 	if err != nil {
 		m.DegradedNote = "service registry unreachable (" + err.Error() + ") — fleet tiles are not measured, never empty-as-healthy"
+		m.callFacts = console.CallLogFacts{Log: console.ResolvedCallLog{Rule: console.RuleNone, Note: "not read"}, AbsentReason: "call log not read: " + m.DegradedNote}
 	} else {
 		// Traffic fold, same resolution the adoption gauge uses.
 		perSvc := map[string]*struct {
 			total, agent int
 			last         string
 		}{}
-		callLogPath := resolveCallLogPath()
-		if _, statErr := os.Stat(callLogPath); statErr != nil {
-			for _, cand := range resolveCallLogCandidates(hc, baseURL, true, ".") {
-				if _, e := os.Stat(cand); e == nil {
-					callLogPath = cand
-					break
-				}
-			}
-		}
+		// OC-2: the one call-log resolution (console_calllog.go). Inside
+		// the daemon this is the daemon's own --call-log — the survey found
+		// the pages rendering from a different log than the daemon writes.
+		resolvedLog := resolveConsoleCallLogFor(callLogQuery{BaseURL: baseURL})
+		callLogPath := resolvedLog.Path
 		// classifyCallLogRead (instrument_adoption.go) tells "no log yet"
 		// (ENOENT) apart from a log that is right there and unreadable (a
 		// wedged TCC verdict, a permission defect); both are absences the
 		// tiles must name, but only the second is a defect worth a remedy.
 		entries, _, callLogErr := classifyCallLogRead(callLogPath)
 		callLogRead := callLogErr == nil
+		m.callFacts = callLogFactsFor(resolvedLog, entries, callLogErr)
 		switch {
 		case callLogRead:
+		case callLogPath == "":
+			m.CallLogNote = resolvedLog.Note
 		case os.IsNotExist(callLogErr):
 			m.CallLogNote = "no call log at " + callLogPath + " — nothing recorded yet; traffic figures are not measured, never zero"
 		default:
