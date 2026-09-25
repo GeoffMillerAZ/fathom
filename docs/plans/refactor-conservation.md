@@ -53,8 +53,8 @@ silently skipped. Design: `docs/design/refactor-conservation.md`.
 
 ## D. Stage 4 — refactors as programs
 
-- [ ] `fathom refactor plan <target>` writes a gate-ready plan with a baseline, ratcheted `gone:` rows per package, certified_by rows and a conserve row {id: CV-33, symbol: cmdRefactorPlan, package: cmd/fathom, reachable_from: TestCmdRefactorPlan_GateReadyPlan}
-- [ ] `fathom refactor status` reports each ratchet against its max and the baseline, and drift that landed on main {id: CV-34, symbol: cmdRefactorStatus, package: cmd/fathom, reachable_from: TestCmdRefactorStatus_RatchetAndDrift}
+- [x] `fathom refactor plan <target>` writes a gate-ready plan with a baseline, ratcheted `gone:` rows per package, certified_by rows and a conserve row {id: CV-33, symbol: cmdRefactorPlan, package: cmd/fathom, reachable_from: TestCmdRefactorPlan_GateReadyPlan}
+- [x] `fathom refactor status` reports each ratchet against its max and the baseline, and drift that landed on main {id: CV-34, symbol: cmdRefactorStatus, package: cmd/fathom, reachable_from: TestCmdRefactorStatus_RatchetAndDrift}
 - [x] Raising a ratchet's `max` inside the range is self-declared {id: CV-35, symbol: AnnotateSelfDeclared, package: internal/verify, reachable_from: TestAnnotateSelfDeclared_RaisedMaxIsSelfDeclared}
 - [ ] (op) CV-M6: retiring this repository's unused analysis packages runs as a refactor program and finishes with every row proven and a clean conserve report {id: CV-M6, skip: "measurement: the dogfood program"}
 
@@ -62,7 +62,7 @@ silently skipped. Design: `docs/design/refactor-conservation.md`.
 
 - [x] The language tracker records the shipped file-resolved tier {id: CV-37, oracle: lexical, path: docs/languages.md, pattern: "file-resolved tier shipped"}
 - [x] Every conservation report names the edge tier per language touched {id: CV-38, symbol: TiersByLanguage, package: internal/conserve, reachable_from: TestTiersByLanguage}
-- [ ] `fathom report evidence` gives per-service evidence density and ranks no languages {id: CV-39, symbol: cmdReportEvidence, package: cmd/fathom, reachable_from: TestCmdReportEvidence_NoRanking}
+- [x] `fathom report evidence` gives per-service evidence density and ranks no languages {id: CV-39, symbol: cmdReportEvidence, package: cmd/fathom, reachable_from: TestCmdReportEvidence_NoRanking}
 - [ ] (op) CV-M7: precision and recall per language at the scip and file tiers, from the free L0 oracle on calibration clones, published beside Go's {id: CV-M7, skip: "measurement: L0 per-language run"}
 
 ## F. Layers and packs
