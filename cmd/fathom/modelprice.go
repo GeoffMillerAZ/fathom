@@ -25,11 +25,15 @@ package main
 // not priced. Growing this table for a second model is a data decision,
 // not a default.
 const (
-	// knownModelInRatePerKTok / knownModelOutRatePerKTok mirror the flat
-	// per-1k-token USD rate compile.go's and servehttp.go's real-run
-	// WithLLM calls already hardcode (0.001/0.005) — named here so
-	// rateForModel and those call sites read the identical number under
-	// one name instead of a second, silently driftable literal.
+	// knownModelInRatePerKTok / knownModelOutRatePerKTok are the flat
+	// per-1k-token USD rate for defaultCompileModel — the SAME constants
+	// compile.go's and servehttp.go's real (non-dry-run) WithLLM calls
+	// reference directly (a review found they still hardcoded their own
+	// 0.001/0.005 literal here, so rateForModel and those call sites read
+	// the identical number under one name, never a second, silently
+	// driftable literal; TestRealRunWithLLMCallSitesShareNamedRateConstants,
+	// modelprice_test.go, pins both call sites against a lexical drift
+	// check).
 	knownModelInRatePerKTok  = 0.001
 	knownModelOutRatePerKTok = 0.005
 )

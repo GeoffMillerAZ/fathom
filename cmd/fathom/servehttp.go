@@ -128,7 +128,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 			flog.Warn(fmt.Sprintf("compile_layer disabled: %v", profErr))
 		} else if llmCl, llmErr := buildLLMClientForProfile(p); llmErr == nil {
 			model := compileModelForProfile(p)
-			c.WithLLM(llmCl, model, 0.001, 0.005)
+			c.WithLLM(llmCl, model, knownModelInRatePerKTok, knownModelOutRatePerKTok)
 			flog.Info(fmt.Sprintf("serve-http: compile_layer enabled (model %s)", model))
 		} else {
 			flog.Warn(fmt.Sprintf("compile_layer disabled: %v", llmErr))

@@ -347,7 +347,7 @@ func compileViaStore(storePath, service, layer, profileFlag string, dryRun, forc
 			fmt.Fprintf(stderr, "error: %v\nSet ANTHROPIC_API_KEY, or set FATHOM_LLM_PROVIDER=claude-cli with a logged-in Claude Code CLI, or configure a profile in ~/.fathom/config.toml, or use --dry-run=true to estimate cost.\n", llmErr)
 			return 1
 		}
-		c.WithLLM(llmCl, compileModelForProfile(p), 0.001, 0.005)
+		c.WithLLM(llmCl, compileModelForProfile(p), knownModelInRatePerKTok, knownModelOutRatePerKTok)
 	} else {
 		// O8 extension (docs/plans/refactor-conservation.md, gap-closing
 		// wave 3, item 2): resolve the model this call WOULD use and this
