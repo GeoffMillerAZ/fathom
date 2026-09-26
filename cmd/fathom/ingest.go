@@ -50,6 +50,8 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	storePath := fs.String("store", defaultStorePath(), "store path (.sqlite/.db)")
 	mode := fs.String("mode", "local", "connector mode: local or faux")
 	jsonOut := fs.Bool("json", false, "emit the run as JSON (counts, read_failures with errno, outcome ok|degraded|refused) — docs/usage.md §ingest")
+	dryRun := fs.Bool("dry-run", false, "discover and stat only: report files, bytes, oversize files and pruned directories without reading a file or opening the store (RT-70)")
+	statsFlag := fs.Bool("stats", false, "with --dry-run: print the discovery statistics (the default output of --dry-run)")
 	var scipPaths stringList
 	fs.Var(&scipPaths, "scip", "SCIP index file to import as typed edges (ADR-041 decision 5, SU-9; repeatable). Unset: auto-detects index.scip at the repo root and .fathom/scip/*.scip")
 
@@ -67,6 +69,23 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	if !ok {
 		fmt.Fprintf(stderr, "error: unknown --mode %q (want local or faux)\n", *mode)
 		return 1
+	}
+
+	if *statsFlag && !*dryRun {
+		fmt.Fprintln(stderr, "error: --stats needs --dry-run")
+		return 1
+	}
+	if *dryRun {
+		if m != client.ModeLocal {
+			fmt.Fprintln(stderr, "error: --dry-run needs --mode local")
+			return 1
+		}
+		abs, aerr := filepath.Abs(*path)
+		if aerr != nil {
+			fmt.Fprintf(stderr, "error: resolve --path: %v\n", aerr)
+			return 1
+		}
+		return runIngestDryRunStats(context.Background(), connector.NewLocalConnector(), client.ServiceRef{ID: *service, Path: abs}, stdout, *jsonOut)
 	}
 
 	c, err := newIngestClient(m, *storePath)
