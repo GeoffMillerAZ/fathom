@@ -61,7 +61,7 @@
 - [x] `fleet receipts --limit N` states the TOTAL and what the limit hid, never the truncated length as the total — law 3 applied to a count, in the verb whose only job is to tell the truth about what fathom changed (found in review) {id: SH-11, symbol: cmdFleetReceipts, package: cmd/fathom, reachable_from: TestReceiptsLimitDisclosesWhatItHid}
 - [x] the observatory renders Preview changes → typed diff → Apply; apply is refused if the repository changed between preview and apply (plan digest mismatch) {id: SH-7, symbol: wiringApplyHandler, package: cmd/fathom, reachable_from: TestWiringApplyRequiresFreshPlan}
 - [x] the mutating endpoints refuse a non-loopback Host, a cross-site Origin, a service id not in the registry, and any path not already a registered fathom service (law 13) {id: SH-8, symbol: requireLocalMutation, package: cmd/fathom, reachable_from: TestMutationEndpointRefusals}
-- [ ] time-to-remedy is measured and rendered: interval from a wiring gap first appearing to it closing, per repository, with the 2026-08-08 baseline recorded (9 of 17 below A, unbounded) {id: SH-9, symbol: timeToRemedy, package: cmd/fathom, reachable_from: TestTimeToRemedy}
+- [x] time-to-remedy is measured and rendered: interval from a wiring gap first appearing to it closing, per repository, with the 2026-08-08 baseline recorded (9 of 17 below A, unbounded) {id: SH-9, symbol: timeToRemedy, package: cmd/fathom, reachable_from: TestTimeToRemedy}
 
 ---
 
@@ -79,6 +79,16 @@
 - [x] deletion runs on a `secure_delete` connection followed by `wal_checkpoint(TRUNCATE)` and VACUUM; verification includes a RAW-BYTES probe of the store file, derived independently of the deletion — a re-query can only confirm the delete it came from {id: SP-12, symbol: purgePhysicalResidue, package: internal/store, reachable_from: TestPurgeLeavesNoBytesInStoreFile}
 - [x] claim_events retention is disclosed with its count by default and deleted only under `--include-history --force`, which states that claim history integrity is now broken {id: SP-9, symbol: cmdPurge, package: cmd/fathom, reachable_from: TestClaimEventsRetentionDisclosed}
 - [ ] the Scope panel on `/observatory/service`: suppressions with preview, and purge behind a second click requiring a displayed file list, a typed reason, and the service name typed to confirm; the verification result is rendered per table {id: SP-10, symbol: observatoryScopePanel, package: cmd/fathom, reachable_from: TestScopePanelPurgeGuards}
+
+> **SP-10, 2026-09-25 (console wave E): the read-only half ships; the row stays open.** The project
+> workspace's Index tab (`/projects/{svc}/index#scope`, `projectScopePanel`) lists the active
+> suppressions, previews a glob against every location's own path column (`store.ResolvePurge`) and
+> shows the purge's per-location dry run with the exact command only after the file list. No
+> mutation is wired: the daemon has no purge path that also flushes its own live caches (the result
+> cache, the call-graph memo, vectors — `purgecmd.go` leaves them nil and names a daemon purge path
+> that does not exist), so a page-driven purge would verify the store while the process kept serving
+> answers built from the deleted rows. Suppress and unsuppress behind `requireLocalMutation` land
+> with it, so the panel's two operations ship together.
 
 ---
 
@@ -124,7 +134,7 @@
 - [x] the letter carries the first broken rung in ladder order, and a repository with no sessions in the window grades idle rather than F {id: RG-2, symbol: realizationGrade, package: cmd/fathom, reachable_from: TestIdleIsNotFailure}
 - [x] grade computation is pure over a service row plus a window with an injected clock — same inputs, same letter {id: RG-3, symbol: realizationGrade, package: cmd/fathom, reachable_from: TestGradeIsPure}
 - [x] the fleet page ranks by unrealized value (dimensions unrealized × sessions in window), deterministic and stable under equal keys, replacing the sort by call count {id: RG-4, symbol: rankByUnrealized, package: cmd/fathom, reachable_from: TestRankByUnrealizedValue}
-- [ ] the service page renders the realization ladder with evidence inline and the first broken rung carrying its remedy — a button after phase U {id: RG-5, symbol: observatoryServicePage, package: cmd/fathom, reachable_from: TestServicePageRealizationLadder}
+- [x] the service page renders the realization ladder with evidence inline and the first broken rung carrying its remedy — the exact command today (the project overview, `/projects/{svc}`, console wave C; `fathom fleet realization` prints the same ladder), a button after phase U {id: RG-5, symbol: RealizationLadder, package: internal/console, reachable_from: TestRealizationLadder_RemedyOnFirstUnmetRung}
 - [x] per-dimension 30-day series built from real call-log rows, rendering `stat.Absent` with a reason for days with no data — never an interpolated line, never a zero-height bar for an unmeasured dimension {id: RG-6, symbol: dimensionSeries, package: cmd/fathom, reachable_from: TestDimensionSeriesAbsenceIsNamed}
 - [x] the fleet page's grade distribution over 30 days — the honest scoreboard for phase U: if this does not improve, the buttons did not work {id: RG-7, symbol: gradeDistributionSeries, package: cmd/fathom, reachable_from: TestGradeDistributionSeries}
 - [x] the service page renders with EVERY instrument absent and fabricates no zeros (the law-3 regression) {id: RG-8, symbol: observatoryServicePage, package: cmd/fathom, reachable_from: TestServicePageAllAbsent}

@@ -4,10 +4,10 @@ package main
 // §2). GET /search?q= answers the command palette's index — projects, plans
 // and plan rows, symbols (from the store), rules and records (invariants,
 // decisions, futures), verbs (the CLI registry) and pages (the console
-// registry) — as a full page on the shell, as an HTML fragment for the
-// palette (?format=fragment), and as JSON. The ranking is console.Search;
-// this file only gathers the documents. The ⌘K dialog itself (OC-12) waits
-// for the kit's command-palette contribution (FATHOM-KIT-01).
+// registry) — as a full page on the shell, as the ⌘K palette's results
+// fragment (?format=fragment or the kit script's X-AppKit-Palette header;
+// console_palette.go), and as JSON. The ranking is console.Search; this file
+// only gathers the documents.
 
 import (
 	"bufio"
@@ -26,6 +26,7 @@ import (
 
 	"github.com/geoffmilleraz/app-kit/appkit/ui/chrome"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/form"
+	"github.com/geoffmilleraz/app-kit/appkit/ui/palette"
 	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/pkg/client"
@@ -481,6 +482,13 @@ func buildSearchPage(cr *consoleRequest) (consoleOut, error) {
 	query := cr.r.URL.Query()
 	q := strings.TrimSpace(query.Get("q"))
 	if err := console.CheckQuery(q); err != nil {
+		if wantsPaletteFragment(cr.r) {
+			// The palette shows the bound it crossed, not a generic failure.
+			return consoleOut{Raw: func(w http.ResponseWriter) bool {
+				writePaletteFragment(w, renderPaletteQueryError(q, err))
+				return true
+			}}, nil
+		}
 		return consoleOut{}, &consoleError{
 			Status: http.StatusBadRequest, Title: "Search too long",
 			Reason:      err.Error() + ".",
@@ -518,14 +526,19 @@ func buildSearchPage(cr *consoleRequest) (consoleOut, error) {
 		Meta:  []string{searchSummary(res)},
 		Model: res,
 		Raw: func(w http.ResponseWriter) bool {
-			if query.Get("format") != "fragment" {
+			// One URL answers the page, the palette's fragment and JSON.
+			w.Header().Set("Vary", palette.FragmentHeader)
+			if !wantsPaletteFragment(cr.r) {
 				return false
 			}
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			_, _ = w.Write([]byte(renderSearchResults(res)))
+			writePaletteFragment(w, renderPaletteFragment(res, q))
 			return true
 		},
-		Body: func() string { return renderSearchResults(res) },
+		// The no-JavaScript path: the palette trigger is a link here, so the
+		// page carries its own search form above the same ranked results.
+		Body: func() string {
+			return `<div class="mb-4 max-w-2xl">` + consolePaletteSearchForm(q) + `</div>` + renderSearchResults(res)
+		},
 	}, nil
 }
 
@@ -561,7 +574,7 @@ func renderSearchResults(res console.SearchResults) string {
 	if res.Query == "" {
 		b.WriteString(chrome.RenderEmptyState(chrome.EmptyState{
 			Heading: "Search the console",
-			Body:    "Type in the search field above: a project, a plan or row ID (OC-11), a symbol, a rule (ADR-045, I31), a verb (fleet report) or a page.",
+			Body:    "Type in the search field: a project, a plan or row ID (OC-11), a symbol, a rule (ADR-045, I31), a verb (fleet report) or a page.",
 		}))
 	} else if res.Total == 0 {
 		b.WriteString(chrome.RenderEmptyState(chrome.EmptyState{
@@ -620,10 +633,10 @@ func renderSearchResults(res console.SearchResults) string {
 		case res.Group != "":
 			pages := (g.Total + res.PerGroup - 1) / res.PerGroup
 			group := g.Group
-			b.WriteString(`<div class="mt-2 [&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center [&_span]:inline-flex [&_span]:min-h-11 [&_span]:items-center">` + chrome.RenderPagination(chrome.Pagination{
+			b.WriteString(consolePager(chrome.Pagination{
 				Page: res.Offset/res.PerGroup + 1, TotalPages: pages, AriaLabel: string(g.Group) + " pages",
 				HrefFor: func(n int) string { return searchHref(res.Query, group, n) },
-			}) + `</div>`)
+			}))
 		}
 		b.WriteString(`</section>`)
 	}

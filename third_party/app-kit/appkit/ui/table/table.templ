@@ -6,10 +6,14 @@ import (
 	"github.com/geoffmilleraz/app-kit/appkit/ui/internal/webref"
 )
 
-// Table renders a generic data table.
+// Table renders a generic data table. The scroll wrapper is positioned
+// (relative) so it is the containing block for the absolutely positioned
+// sr-only header labels: a table wider than a narrow screen scrolls inside the
+// wrapper instead of letting a hidden label widen the whole document. Every
+// header cell is a column header (scope="col"); the table has no row headers.
 templ Table(p TableParams) {
 	{{ p := withActionColumn(p) }}
-	<div class="overflow-x-auto rounded-lg border border-line bg-surface-raised">
+	<div class="relative overflow-x-auto rounded-lg border border-line bg-surface-raised">
 		<table
 			class="w-full text-sm font-sans border-collapse"
 			if p.TableID != "" {
@@ -33,12 +37,12 @@ templ tableHead(p TableParams) {
 	<thead>
 		<tr class="border-b border-line bg-surface-sunken">
 			if p.Selectable {
-				<th class="w-10 px-3 py-2 text-left">
+				<th scope="col" class="w-10 px-3 py-2 text-left">
 					<span class="sr-only">Select</span>
 				</th>
 			}
 			for _, col := range p.Columns {
-				<th class={ thClass(col) }>
+				<th scope="col" class={ thClass(col) }>
 					if col.HeaderHTML != nil {
 						@col.HeaderHTML
 					} else if col.Sortable {
@@ -58,7 +62,7 @@ templ tableHead(p TableParams) {
 				</th>
 			}
 			if p.RowAction != nil || p.RowHrefs {
-				<th class="px-4 py-2 text-right">
+				<th scope="col" class="px-4 py-2 text-right">
 					<span class="sr-only">Actions</span>
 				</th>
 			}

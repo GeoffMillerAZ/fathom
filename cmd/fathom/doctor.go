@@ -89,6 +89,7 @@ func cmdDoctor(args []string, stdout, stderr io.Writer) int {
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a human table")
 	brief := fs.Bool("brief", false, "FAIL rows only, at most 5 lines, exit 0 always — the payload of the harness Setup event (HP-31; doctor_brief.go)")
+	repoOnly := fs.Bool("repo-only", false, "only the checks that read the repository's own files — hooks, gates, stanza, skills, wiring drift, .fathom config (no daemon, harness process or ledger); the Observatory's project wiring tab renders it (doctor_repoonly.go)")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -136,7 +137,12 @@ func cmdDoctor(args []string, stdout, stderr io.Writer) int {
 	}
 
 	harness := resolveDoctorHarness(*harnessFlag, root)
-	checks := runDoctorChecks(root, explicitSvc, harness, *url)
+	var checks []doctorCheck
+	if *repoOnly {
+		checks = doctorRepoChecks(root, harness)
+	} else {
+		checks = runDoctorChecks(root, explicitSvc, harness, *url)
+	}
 
 	if *brief {
 		// Exit 0 whatever the findings: --brief runs as a hook.
@@ -1914,18 +1920,7 @@ func tallyDoctorChecks(checks []doctorCheck) (pass, warn, fail, skipped int) {
 }
 
 func printDoctorJSON(w io.Writer, harness, svc, root string, checks []doctorCheck) {
-	pass, warn, fail, skipped := tallyDoctorChecks(checks)
-	out := map[string]any{
-		"service": svc,
-		"harness": harness,
-		"root":    root,
-		"checks":  checks,
-		// warn is additive to the pre-existing summary shape (never
-		// renamed/removed) — an older consumer reading only pass/fail/
-		// skipped still sees the same numbers those fields always meant.
-		"summary": map[string]any{"total": len(checks), "pass": pass, "warn": warn, "fail": fail, "skipped": skipped},
-	}
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
-	_ = enc.Encode(out)
+	_ = enc.Encode(doctorJSONPayload(harness, svc, root, checks))
 }

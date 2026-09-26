@@ -47,6 +47,10 @@ func receiptsPath(root string) string {
 	return filepath.Join(statedir.Resolve(root), receiptsFileName)
 }
 
+// ReceiptsPath is where root's receipts log lives — for a reader that keys
+// a cache on the log's size and mtime (every apply and undo appends to it).
+func ReceiptsPath(root string) string { return receiptsPath(root) }
+
 // ErrUndoRefused is returned when any file in a receipt has changed since
 // the receipt was written. Undo is all-or-nothing: a partial restore across
 // a configuration is worse than no restore at all.

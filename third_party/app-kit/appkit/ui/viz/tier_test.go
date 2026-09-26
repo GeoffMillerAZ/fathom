@@ -1,6 +1,7 @@
 package viz
 
 import (
+	"math"
 	"regexp"
 	"strings"
 	"testing"
@@ -41,11 +42,29 @@ func specimens() map[string]string {
 		"CostReward": CostReward([]CostRewardItem{{Label: "a", Reward: 5, Cost: 2}}, CostRewardOptions{}),
 		"Tornado":    Tornado([]TornadoItem{{Label: "a", Low: -3, High: 4}}, TornadoOptions{}),
 		"Heatmap":    Heatmap([][]float64{{0, 0.5}, {1, 0.25}}, HeatmapOptions{}),
+		// Truth-state mode is a distinct output path (hatches, crosses, glyphs,
+		// legend), so it gets its own specimen under both tier assertions.
+		"HeatmapTruthStates": Heatmap([][]float64{{0, 0.5, math.NaN()}, {1, 0.25, 2}}, HeatmapOptions{States: [][]HeatmapCell{
+			{{}, {}, {State: CellMissing, Reason: "not compiled"}},
+			{{State: CellUnknown}, {State: CellError, Reason: "failed"}, {State: CellZero}},
+		}}),
 		"Timeline": Timeline([]Event{
 			{Label: "a", At: t0},
 			{Label: "b", At: t0.Add(3 * time.Hour)},
 		}, TimelineOptions{Spans: []Span{{Label: "s", Start: t0, End: t0.Add(2 * time.Hour)}}}),
+		"LayoutGraph": mustSVG(LayoutGraph([]GraphNode{{ID: "a"}, {ID: "b"}}, []GraphEdge{{From: "a", To: "b"}}, GraphOptions{})),
+		"LayoutEgo": mustSVG(LayoutEgo("f", []GraphNode{{ID: "c"}, {ID: "f"}, {ID: "d"}},
+			[]GraphEdge{{From: "c", To: "f", Emphasis: true}, {From: "f", To: "d", Style: GraphEdgeDashed}}, EgoOptions{})),
 	}
+}
+
+// mustSVG renders a layout for the specimen table; a refused specimen is a
+// broken test fixture, not a skipped assertion.
+func mustSVG(l GraphLayout, err error) string {
+	if err != nil {
+		panic(err)
+	}
+	return l.SVG()
 }
 
 // TestVizEmitsNoClassAttribute — the L3a contract, half one. A class attribute
@@ -99,7 +118,7 @@ func TestVizSpecimensCoverEveryRenderer(t *testing.T) {
 	}
 	// Sanity floor: if the package grows and this list does not, the count drops
 	// below what docs/ui-components.md lists and the mismatch is visible there.
-	if got := len(specimens()); got < 15 {
-		t.Errorf("only %d viz specimens; docs/ui-components.md lists 15 components", got)
+	if got := len(specimens()); got < 17 {
+		t.Errorf("only %d viz specimens; docs/ui-components.md lists 16 components (LayoutGraph and LayoutEgo share a row)", got)
 	}
 }

@@ -1,0 +1,268 @@
+{
+  "browser": "153.0.8010.53",
+  "A": {
+    "platform": "MacIntel",
+    "trigger": {
+      "h": 44,
+      "haspopup": "dialog",
+      "keys": "Meta+K",
+      "hint": "⌘K",
+      "hintHidden": false
+    },
+    "ctrlKOpens": false,
+    "metaKOpens": true,
+    "focusAfterOpen": "gallery-palette-input",
+    "dialogName": "Search the Gallery",
+    "requests": [
+      "overlay:200"
+    ],
+    "results": {
+      "controls": "gallery-palette-listbox",
+      "active": "gallery-palette-option-0",
+      "groups": [
+        "Gallery pages",
+        "Capabilities"
+      ],
+      "options": [
+        "gallery-palette-option-0|true|44px|-1",
+        "gallery-palette-option-1|false|52px|-1"
+      ],
+      "status": "2 results for “overlay”",
+      "pageLink": "/palette/search?theme=light&q=overlay"
+    },
+    "afterDown": "gallery-palette-option-1",
+    "afterDownWrap": "gallery-palette-option-0",
+    "afterUpWrap": "gallery-palette-option-1",
+    "selectedStyle": "solid 2px; bg oklch(0.94 0.04 262)",
+    "escape": {
+      "open": false,
+      "focus": "the full search page"
+    },
+    "reopen": {
+      "focus": "gallery-palette-input",
+      "value": "overlay",
+      "selected": 7
+    },
+    "enterFollows": {
+      "selected": "/catalog/interaction.overlays?theme=light",
+      "landed": "/catalog/interaction.overlays?theme=light"
+    },
+    "staleEnter": "/palette/search?theme=light&q=overlays",
+    "closeButton": false,
+    "backdrop": false,
+    "modifiedClick": {
+      "newTab": "/palette/search?theme=light",
+      "dialogOpen": false
+    }
+  },
+  "B": {
+    "resultsTopIdle": 252,
+    "empty": {
+      "state": "empty",
+      "query": "zzz",
+      "expanded": "false",
+      "active": null,
+      "busy": false
+    },
+    "partial": {
+      "state": "partial",
+      "query": "partial",
+      "expanded": "true",
+      "active": "gallery-palette-option-0",
+      "busy": false
+    },
+    "partialNotice": "Partial results: Synthetic partial answer: the capability catalog was not searched.",
+    "fail": {
+      "state": "error",
+      "query": "fail",
+      "expanded": "false",
+      "active": null,
+      "busy": false
+    },
+    "recovered": {
+      "state": "results",
+      "query": "forms",
+      "expanded": "true",
+      "active": "gallery-palette-option-0",
+      "busy": false
+    },
+    "slowPending": {
+      "state": "results",
+      "query": "forms",
+      "expanded": "true",
+      "active": "gallery-palette-option-0",
+      "busy": true
+    },
+    "resultsTopBusy": 252,
+    "afterSlowSuperseded": {
+      "state": "empty",
+      "query": "slowly",
+      "expanded": "false",
+      "active": null,
+      "busy": false
+    },
+    "stallErrorMs": 5161,
+    "stall": {
+      "state": "error",
+      "query": "stall",
+      "expanded": "false",
+      "active": null,
+      "busy": false
+    },
+    "cleared": {
+      "state": "idle",
+      "query": "",
+      "expanded": "false",
+      "active": null,
+      "busy": false
+    },
+    "requestsOnClear": 0,
+    "requests": [
+      "zzz:200",
+      "partial:200",
+      "fail:503",
+      "forms:200",
+      "slow:none:aborted",
+      "slowly:200",
+      "stall:none:aborted"
+    ]
+  },
+  "C": {
+    "bodyBg": "oklch(0.16 0.012 260)",
+    "dialog": "375x580",
+    "pageOverflowX": false,
+    "resultsOverflowX": false,
+    "options": [
+      "333x172",
+      "333x44"
+    ],
+    "input": "333x44",
+    "pageLink": "144x44",
+    "overlayClose": "24x24",
+    "keyHints": "none"
+  },
+  "D": {
+    "hint": "Ctrl+K",
+    "hintVisible": true,
+    "keys": "Control+K",
+    "metaOpens": false,
+    "ctrlOpens": true,
+    "focus": "gallery-palette-input"
+  },
+  "E": {
+    "trigger": {
+      "keys": null,
+      "haspopup": null,
+      "hintHidden": true,
+      "hintDisplay": "none",
+      "hintText": ""
+    },
+    "shortcutNoop": {
+      "url": "/palette?theme=dark",
+      "open": false
+    },
+    "afterTrigger": "/palette/search?theme=dark",
+    "afterSubmit": "/palette/search?theme=dark&q=overlay",
+    "page": {
+      "theme": "dark",
+      "headings": [
+        "H1:Search the Gallery",
+        "H2:Gallery pages",
+        "H2:Capabilities"
+      ],
+      "links": [
+        "/overlays?theme=dark role=null",
+        "/catalog/interaction.overlays?theme=dark role=null"
+      ],
+      "targets": [
+        44,
+        44,
+        44,
+        56
+      ],
+      "overflowX": false
+    },
+    "linkFocus": "solid 2px",
+    "failPage": {
+      "status": 503,
+      "state": "error"
+    }
+  },
+  "F": {
+    "remountBaseline": {
+      "open": true,
+      "prevented": true
+    },
+    "remountBeforeInit": {
+      "open": false,
+      "prevented": false
+    },
+    "remountWired": true,
+    "remountAfterInit": {
+      "open": true,
+      "prevented": true,
+      "focus": "gallery-palette-input"
+    },
+    "remountEscape": {
+      "open": false,
+      "focus": "the full search page"
+    },
+    "redirectToPalettePage": {
+      "state": "error",
+      "query": "overlay",
+      "expanded": "false",
+      "active": null,
+      "busy": false,
+      "status": "Search failed. Search is unavailable right now. Keep typing to retry, or open the search page."
+    },
+    "redirectToOverlays": {
+      "state": "error",
+      "query": "overlay",
+      "expanded": "false",
+      "active": null,
+      "busy": false,
+      "status": "Search failed. Search is unavailable right now. Keep typing to retry, or open the search page."
+    },
+    "unsearched": {
+      "state": "partial",
+      "count": "0",
+      "status": "No results for “unsearched” (partial)",
+      "text": "No results for “unsearched”Partial results: Synthetic partial answer: no Gallery page matched and the capability catalog was not searched.Matches may exist in sources that were not searched."
+    },
+    "lateTrigger": {
+      "before": {
+        "hint": "",
+        "hintHidden": true,
+        "keys": null,
+        "haspopup": null
+      },
+      "after": {
+        "hint": "⌘K",
+        "hintHidden": false,
+        "keys": "Meta+K",
+        "haspopup": "dialog"
+      }
+    },
+    "lateTriggerClickOpens": true,
+    "initRoot": {
+      "before": false,
+      "after": true,
+      "open": true
+    },
+    "layouts": {
+      "dvorakT_KeyK": {
+        "open": false,
+        "prevented": false
+      },
+      "dvorakK_KeyV": {
+        "open": true,
+        "prevented": true
+      },
+      "cyrillic_KeyK": {
+        "open": true,
+        "prevented": true
+      }
+    },
+    "pageErrors": []
+  }
+}

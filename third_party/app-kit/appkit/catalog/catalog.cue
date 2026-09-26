@@ -437,7 +437,7 @@
           "Bars"
         ]
       },
-      "usage": "Call viz.Bars with labeled values and BarsOptions{ShowValue:true}; include units, period and a text/table alternative in the surrounding view.",
+      "usage": "Call viz.Bars with labeled values and BarsOptions{ShowValue:true}; include units, period and a text/table alternative in the surrounding view. Set Fluid to fill the container width from the W viewBox (the drawing, text included, scales uniformly).",
       "states": [
         "empty",
         "zero",
@@ -455,7 +455,8 @@
         "go test ./appkit/ui/viz"
       ],
       "gaps": [
-        "The primitive does not enforce analytical semantics; the app supplies them."
+        "The primitive does not enforce analytical semantics; the app supplies them.",
+        "Fluid (FATHOM-F0-KIT-04) fills the container width by scaling the whole drawing: text shrinks below W and grows above it, and nothing reflows or wraps. Choose W near the narrowest container, or keep a fixed-width chart in a keyboard-scrollable region beside a table alternative."
       ],
       "provenance": {
         "source": "first-party",
@@ -500,7 +501,7 @@
           "Timeline"
         ]
       },
-      "usage": "Pass stable events and TimelineOptions to viz.Timeline. Use the documented event filter for period/lane/search; retain an accessible event listing.",
+      "usage": "Pass stable events and TimelineOptions to viz.Timeline. Use the documented event filter for period/lane/search; retain an accessible event listing. Set Fluid to fill the container width from the W viewBox (the drawing, text included, scales uniformly).",
       "states": [
         "proportional",
         "sequence",
@@ -519,7 +520,8 @@
         "go test ./appkit/ui/viz"
       ],
       "gaps": [
-        "SVG output alone does not implement keyboard drill-down or application query semantics."
+        "SVG output alone does not implement keyboard drill-down or application query semantics.",
+        "Fluid (FATHOM-F0-KIT-04) fills the container width by scaling the whole drawing: text shrinks below W and grows above it, and nothing reflows or wraps. Choose W near the narrowest container, or keep a fixed-width chart in a keyboard-scrollable region beside a table alternative."
       ],
       "provenance": {
         "source": "first-party",
@@ -530,6 +532,84 @@
         "Throughline"
       ],
       "preview": "/components"
+    },
+    {
+      "id": "analytics.graph",
+      "name": "Layered graph",
+      "kind": "primitive",
+      "summary": "Draw a bounded, deterministic left-to-right graph or one node's callers and callees as portable SVG with a matching table alternative.",
+      "tasks": [
+        "layered graph or layered DAG",
+        "dependency graph",
+        "directed acyclic graph (DAG) or flow diagram",
+        "call graph or code neighbourhood",
+        "call graph or code neighborhood",
+        "ego graph of callers and callees",
+        "blast radius graph"
+      ],
+      "layers": [
+        "L3a"
+      ],
+      "profiles": [
+        "portable",
+        "go-web",
+        "static-web",
+        "react-web"
+      ],
+      "dependencies": [
+        "generated theme CSS when using token colors",
+        "app CSS for the class-free table alternative"
+      ],
+      "source": {
+        "path": "appkit/ui/viz/graph.go",
+        "symbols": [
+          "LayoutGraph",
+          "LayoutEgo",
+          "GraphLayout.SVG",
+          "GraphLayout.Table",
+          "GraphLayout.Notes"
+        ]
+      },
+      "usage": "Call viz.LayoutGraph with GraphNode and GraphEdge values, or viz.LayoutEgo with a focus ID and EgoOptions.Depth; handle a refusal wrapping ErrInvalidGraph before writing any response. Render GraphLayout.SVG and GraphLayout.Table from the same layout and show GraphLayout.Notes beside the figure. Name what solid, dashed and emphasized edges mean with GraphOptions.SolidLabel, GraphOptions.DashedLabel and GraphOptions.EmphasisLabel. Choose GraphOptions.RankMode given with GraphOptions.RankLabels for app-owned columns; GraphOptions.MaxPerRank bounds each column with a stated +N more aggregate. Wrap the SVG in a keyboard-scrollable region for narrow screens and style the class-free table with app CSS, giving its links at least 44px-high hit areas; once any node links, the SVG node boxes are 44px high too. Gallery specimens: /graph.",
+      "states": [
+        "empty graph said in words",
+        "labelled empty column drawn as None",
+        "column over MaxPerRank collapsed into +N more with a note",
+        "cycle-closing edges drawn right to left and counted",
+        "duplicate edges merged and counted",
+        "edges into a +N more node kept apart by line style and emphasis, each with its own count",
+        "repeated labels qualified by group or ID in the table",
+        "ego nodes beyond depth omitted and counted",
+        "invalid input refused before output"
+      ],
+      "app_owns": [
+        "node and edge identity",
+        "meaning of solid, dashed and emphasized edges",
+        "depth, filtering and per-column bound choices",
+        "link destinations and authorization",
+        "table styling and placement",
+        "data freshness and completeness"
+      ],
+      "maturity": "experimental",
+      "proof": [
+        "go test ./appkit/ui/viz",
+        "go test ./apps/gallery"
+      ],
+      "gaps": [
+        "Experimental with one originating consumer: Fathom selected it for its observatory console code neighbourhood (vision 35, FATHOM-KIT-02) but has not integrated it, so no consumer is listed; promotion needs a second consumer.",
+        "Sugiyama-lite: no dummy nodes or edge routing, so edges spanning several columns and cycle-closing edges can pass behind intermediate nodes; crossing reduction is four barycenter sweeps, not an optimum.",
+        "Label widths are estimated per display cell; long labels truncate with an ellipsis and stay whole in the tooltip and table. Browser checks cover Chromium at 1280 and 390 px in light and dark only (docs/assessments/2026-09-25-layered-graph.md).",
+        "The SVG is one role=img picture with title and desc and an aria-hidden drawing; nodes and links are reachable by keyboard and assistive technology only through the table alternative. No screen-reader session was run.",
+        "Legend, aggregate and empty-column wording (Focus, +N more, None) is English and fixed.",
+        "No pan, zoom, aggregate expansion or node-by-node keyboard traversal; no render-time or memory budget was measured beyond the input bounds of 2000 nodes, 8000 edges and 64 columns."
+      ],
+      "provenance": {
+        "source": "first-party",
+        "license": "Project-private use; no redistribution grant asserted",
+        "audience": "repository consumers"
+      },
+      "consumers": [],
+      "preview": "/graph"
     },
     {
       "id": "analytics.stat",
@@ -949,6 +1029,26 @@
       "preview": "/overlays"
     },
     {
+      "id": "interaction.command-palette",
+      "name": "Command palette",
+      "kind": "primitive",
+      "summary": "Open a keyboard search dialog from anywhere, show server-rendered grouped results and degrade to an ordinary GET search page.",
+      "tasks": ["command palette", "command menu", "Mod+K, Cmd+K or Ctrl+K command palette", "keyboard shortcut search", "keyboard search dialog", "search palette", "search modal", "global site search", "quick open", "quick navigation search", "grouped search results", "search page without JavaScript"],
+      "layers": ["L2", "L3b"],
+      "profiles": ["go-web"],
+      "dependencies": ["theme CSS", "appkit css source scanning of appkit/ui/palette/*.go and appkit/ui/overlay/*.go", "embedded palette.js; overlay.js is not required", "one app-owned GET search route"],
+      "source": {"path": "appkit/ui/palette/palette.go", "symbols": ["Palette", "RenderTrigger", "RenderDialog", "RenderResults", "RenderSearchForm", "WantsFragment", "Script", "Handler"]},
+      "usage": "Render palette.RenderTrigger where the search control belongs and palette.RenderDialog once per page, then inline palette.Script or mount palette.Handler once; the AppKitPalette global needs no framework. Scan appkit/ui/palette/*.go and appkit/ui/overlay/*.go and include the theme CSS. Serve one app-owned GET route at Palette.Action: when palette.WantsFragment reports the palette request, write the palette.RenderResults fragment; otherwise render the full search page with palette.RenderSearchForm and the same results at HeadingLevel 2, and send Vary: X-AppKit-Palette. The Action query carries app context as hidden fields. Set Results.Query to the request's query parameter: the script inserts only a response that is exactly one fragment answering its query. After swapping palette or trigger markup, call AppKitPalette.init. Handle refused configuration or results before writing a response. The app decides what is searched, grouping, ranking and destinations; the script fetches with debounce, aborts stale requests, upgrades the fragment to listbox options and moves aria-activedescendant. Read the package doc and Example for the keyboard contract and data-palette hooks; Gallery /palette reproduces every state.",
+      "states": ["closed", "idle", "debounced loading", "grouped results", "no results", "partial results notice", "no results while a source was not searched (partial)", "request error, timeout or non-fragment answer", "stale results fall back to the search page", "no-JavaScript search page", "light/dark", "narrow"],
+      "app_owns": ["search route, authorization and data sources", "grouping, ranking and result destinations", "full search page layout", "caching and Vary", "shortcut conflicts with app key bindings", "localization of built-in secondary copy"],
+      "maturity": "experimental",
+      "proof": ["go test ./appkit/ui/palette", "go test ./apps/gallery"],
+      "gaps": ["Fathom is the originating consumer (vision 35 observatory console, FATHOM-KIT-01) and has not integrated this revision; experimental until two consumers integrate it (ADR-0017 L3b bar).", "Browser evidence covers the Gallery specimen in one Chromium build: shortcut open, focus, arrow selection, Enter, Escape focus return, stale-request cancellation, timeout/error/empty/partial states, redirects to full pages, re-mount and late triggers with init, 390px width and light/dark. Screen-reader output, other engines, touch/IME input, zoom and performance budgets are unverified.", "The shared overlay dialog close button is a 24px target, below the kit's 44px convention; Escape and backdrop clicks also close.", "Built-in secondary copy (Searching…, result counts, key hints, Search failed) is English; label, placeholder, idle and error text are configurable.", "Script lifecycle tests (node --test appkit/ui/palette/palette_test.mjs) use DOM doubles, not a browser."],
+      "provenance": {"source": "first-party", "license": "Project-private use; no redistribution grant asserted", "audience": "repository consumers"},
+      "consumers": [],
+      "preview": "/palette"
+    },
+    {
       "id": "interaction.callouts",
       "name": "Actionable messages",
       "kind": "primitive",
@@ -1037,7 +1137,7 @@
           "Breadcrumbs"
         ]
       },
-      "usage": "Use plain-link chrome controls with app-owned URLs. Scan appkit/ui/chrome/*.go; preserve filter context in links.",
+      "usage": "Use plain-link chrome controls with app-owned URLs. Scan appkit/ui/chrome/*.go; preserve filter context in links. Breadcrumb links render 44px minimum targets with a focus-visible outline.",
       "states": [
         "active",
         "empty",
@@ -1055,7 +1155,9 @@
         "go test ./appkit/ui/chrome"
       ],
       "gaps": [
-        "A skeleton does not implement loading, retry or state preservation."
+        "A skeleton does not implement loading, retry or state preservation.",
+        "RenderPagination links are px-2 py-1 (about 28px high), below the kit's 44px target floor; Fathom's console enlarges them locally.",
+        "FATHOM-F0-KIT-03 (breadcrumb target size and focus) comes from Fathom's unpublished console wave F0, which still wraps the trail locally until it adopts this revision."
       ],
       "provenance": {
         "source": "first-party",
@@ -1064,6 +1166,57 @@
       },
       "consumers": [],
       "preview": "/layout"
+    },
+    {
+      "id": "interaction.live-freshness",
+      "name": "Live freshness regions",
+      "kind": "primitive",
+      "summary": "Mark server-rendered panels as having newer data from an app-owned server-sent event stream, with a polite announcement and a refresh link, without re-rendering or moving them.",
+      "tasks": ["live freshness", "live updates", "server-sent events subscriber", "SSE subscriber", "event stream subscriber", "updated panel refresh link", "stale panel notification", "reconnect with Last-Event-ID"],
+      "layers": ["L2", "L3b"],
+      "profiles": ["go-web"],
+      "dependencies": ["theme CSS", "appkit css source scanning of appkit/ui/live/*.go", "embedded live.js served by Handler or inlined with Script", "an app-owned text/event-stream endpoint"],
+      "source": {"path": "appkit/ui/live/live.go", "symbols": ["Script", "Handler", "Region", "RenderRegion", "RegionAttrs", "RenderStatus", "Page", "RenderPageStatus"]},
+      "usage": "Render live.RenderPageStatus once per page with the app-owned stream URL and followed event names. Wrap each panel with live.RenderRegion, or put live.RegionAttrs on an app-owned wrapper with live.RenderStatus inside it, giving document-unique IDs, source keys, a label and required as-of text; handle refusals before writing the response. Serve live.Script through live.Handler at an app-owned path and load it once: it auto-starts from the page status, or the AppKitLive global's start({url, events, sources}) maps custom payloads; that explicit start adopts the render-time cursor of the page status with the same URL (pass lastEventId otherwise) and connects once the document is parsed. Emit events whose JSON data names source or sources (* after an unreplayable gap), send comment keepalives more often than 60 s and replay from the Last-Event-ID header, which carries the id's UTF-8 bytes. Refresh reloads the page at the region; event data and region HTML are never inserted. Read the package doc for the keyboard and connection contract; scan appkit/ui/live/*.go and include theme CSS.",
+      "states": ["no script or not started: as-of text only", "connecting", "live", "region updated with refresh link", "several regions in one announcement", "reconnecting with bounded, jittered backoff", "accept-then-close server exhausts attempts", "paused while hidden", "manually stopped and resumed", "unavailable after refusal or exhausted attempts", "unsupported browser or refused configuration: no resume control", "missed events replayed", "non-ASCII event ids", "gap wildcard", "no movement at 320 px", "invalid input refusal"],
+      "app_owns": ["event stream endpoint, names, retention and replay", "source keys and event-to-source mapping", "stream authorization, origin and CORS policy", "as-of wording and time zone", "refresh destination and page rendering", "script delivery and CSP"],
+      "maturity": "experimental",
+      "proof": ["go test ./appkit/ui/live", "go test ./apps/gallery"],
+      "gaps": [
+        "Fathom (vision 35 observatory console, FATHOM-KIT-06) is the originating consumer; its /events adoption is not yet integrated or verified against this revision, and permanent promotion needs a second consumer.",
+        "Browser evidence is one local Chromium run of the Gallery fixture (docs/assessments/2026-09-25-live-freshness-and-page-heading.md); screen-reader speech, other engines, real network loss, long-running memory and CSP-restricted hosts are unverified.",
+        "The updated layer relies on the scanned invisible utility; without the L3b CSS build it would show. The script is not packaged for non-Go vendoring, so no portable profile is claimed.",
+        "No event taxonomy, replay store, authorization or content refresh is supplied; a server that cannot replay a gap must send *.",
+        "Connection messages are English only; live.js and live.go keep one tested message list so the reserved line height stays exact, and localized copy would need both."
+      ],
+      "provenance": {"source": "first-party", "license": "Project-private use; no redistribution grant asserted", "audience": "repository consumers"},
+      "consumers": ["Fathom"],
+      "preview": "/live"
+    },
+    {
+      "id": "interaction.page-heading",
+      "name": "Page heading",
+      "kind": "primitive",
+      "summary": "Render a page's single h1 with an optional breadcrumb trail, eyebrow, meta line and actions that wrap below the title on narrow screens.",
+      "tasks": ["page heading", "page title with breadcrumbs", "page header actions", "heading meta line", "page eyebrow"],
+      "layers": ["L3b"],
+      "profiles": ["go-web"],
+      "dependencies": ["theme CSS", "appkit css source scanning of appkit/ui/chrome/*.go and appkit/ui/form/*.go"],
+      "source": {"path": "appkit/ui/chrome/heading.go", "symbols": ["PageHeading", "RenderPageHeading"]},
+      "usage": "Build chrome.PageHeading with a plain-text Title and optional ID, Breadcrumbs (chrome.Crumb values rendered by chrome.Breadcrumbs; a destination that is not relative or HTTP(S) is refused), Eyebrow, up to eight Meta items and up to four Actions: Button values from the form package, rendered unchanged by its RenderButton (Href for links, Type button for script-owned actions). Call chrome.RenderPageHeading before writing the response and handle its error; it writes the page's one h1. Below the sm breakpoint the actions wrap under the title. Scan appkit/ui/chrome/*.go and appkit/ui/form/*.go and include theme CSS.",
+      "states": ["title only", "breadcrumbs, eyebrow, meta and actions", "narrow: actions below the title", "wide: actions at the row end", "long unbroken title and meta", "unsafe action link inert", "unsafe breadcrumb destination refused", "invalid input refusal", "light/dark"],
+      "app_owns": ["page title and the heading hierarchy below the h1", "breadcrumb destinations", "action destinations, forms, scripts and authorization", "meta wording and freshness"],
+      "maturity": "experimental",
+      "proof": ["go test ./appkit/ui/chrome", "go test ./apps/gallery"],
+      "gaps": [
+        "Fathom (vision 35 observatory console, FATHOM-KIT-07) is the originating consumer; its integration is not yet performed or verified against this revision, and permanent promotion needs a second consumer.",
+        "Breadcrumb links keep the existing Breadcrumbs inline targets and hover-only styling; they are not raised to 44px.",
+        "Browser evidence is one local Chromium run of the Gallery specimen at wide/narrow and light/dark (docs/assessments/2026-09-25-live-freshness-and-page-heading.md); zoom, other engines and assistive technology are unverified.",
+        "Meta items are plain text; links or rich meta need an app-owned composition."
+      ],
+      "provenance": {"source": "first-party", "license": "Project-private use; no redistribution grant asserted", "audience": "repository consumers"},
+      "consumers": ["Fathom"],
+      "preview": "/page-heading"
     },
     {
       "id": "content.docs",
@@ -1128,6 +1281,26 @@
       "preview": "/content"
     },
     {
+      "id": "content.code-excerpt",
+      "name": "Code excerpt viewer",
+      "kind": "primitive",
+      "summary": "Show numbered source lines with labelled per-line state, line anchors and permalinks in a keyboard-scrollable viewport.",
+      "tasks": ["code excerpt", "source code excerpt", "source code viewer", "code line numbers", "line anchors", "line permalinks", "changed lines", "not executed lines", "unexecuted changed lines highlighted", "code review excerpt"],
+      "layers": ["L3b"],
+      "profiles": ["go-web"],
+      "dependencies": ["theme CSS", "appkit/ui/code/*.go Tailwind source scanning"],
+      "source": {"path": "appkit/ui/code/excerpt.go", "symbols": ["Excerpt", "Line", "LineState", "StateLabels", "SplitLines", "RenderExcerpt", "MaxLines"]},
+      "usage": "Number app-supplied source text with code.SplitLines, set Line.State to code.LineChanged, code.LineNotExecuted or code.LineHighlighted for the lines the app has classified, and call code.RenderExcerpt before writing a response; handle its error (blank Label, non-increasing numbers, unknown state, unsafe SourceHref, more than MaxLines lines). Line ids are Excerpt.AnchorPrefix+\"L\"+number, so give each excerpt on a page its own prefix. Override wording with code.StateLabels. Scan appkit/ui/code/*.go and include theme CSS. Hidden, format, tag, line-separator and direction-changing characters are shown as code points in the lines, Caption and SourceLabel. Rows are 24px, so each line-number permalink is a 48×24px target. Gallery /agentic/code shows every state, a stated gap, revealed hidden characters, the empty state and a refusal. No syntax highlighting, JavaScript, file fetching or authorization is supplied.",
+      "states": ["normal", "changed", "not executed", "highlighted", "targeted line", "stated gap between lines", "revealed hidden or direction-changing characters", "long lines scroll horizontally", "empty excerpt", "invalid input refusal", "light/dark", "narrow"],
+      "app_owns": ["source text, revision and line-ending normalization", "which lines carry which state and what the state means", "anchor prefix uniqueness within the document", "source link destination and authorization"],
+      "maturity": "experimental",
+      "proof": ["go test ./appkit/ui/code", "go test ./apps/gallery"],
+      "gaps": ["No syntax highlighting engine: text renders escaped in the monospace font. Review excerpts do not need one; add highlighting only for a named consumer task.", "Every line-number permalink is a native tab stop, so long excerpts add many stops; MaxLines bounds input but no measured performance budget exists.", "Divergence: line-number permalinks are 48×24px at a 24px row pitch. That meets WCAG 2.2 2.5.8 (24px minimum) but not the 44px floor the kit uses for standalone controls; dense code rows cannot reach 44px.", "Hidden-character reveal classifies by the unicode tables of the Go release that builds the kit (Unicode 15.0 in Go 1.26); characters assigned later are not classified.", "Scoped Chrome checks cover keyboard scrolling, permalinks, focus, narrow and both themes at the default palette; screen readers, zoom, other engines, forced colors and other palettes remain unverified.", "One originating consumer (Fathom FATHOM-KIT-04) has not integrated it yet; a second consumer is required before promotion."],
+      "provenance": {"source": "first-party", "license": "Project-private use; no redistribution grant asserted", "audience": "repository consumers"},
+      "consumers": [],
+      "preview": "/agentic/code"
+    },
+    {
       "id": "data.table",
       "name": "Structured data table",
       "kind": "primitive",
@@ -1159,7 +1332,7 @@
           "Table"
         ]
       },
-      "usage": "Render table.Table with typed columns and rows. Managed Row.Href accepts relative web references or absolute HTTP(S); refused nonempty input becomes inert Open unavailable text. Actions infer one aligned column; RowHrefs can reserve it for empty/unlinked results. Rebuild templ/scanned CSS and review density, snapshots and app-owned footer spans. Queries, sort URLs, custom actions and authorization remain app-owned.",
+      "usage": "Render table.Table with typed columns and rows. Managed Row.Href accepts relative web references or absolute HTTP(S); refused nonempty input becomes inert Open unavailable text. Actions infer one aligned column; RowHrefs can reserve it for empty/unlinked results. Rebuild templ/scanned CSS and review density, snapshots and app-owned footer spans. Queries, sort URLs, custom actions and authorization remain app-owned. Header cells carry scope=\"col\" and the scroll wrapper is positioned, so a table wider than a narrow screen scrolls inside it instead of widening the page.",
       "states": [
         "rows",
         "empty",
@@ -1178,7 +1351,10 @@
       ],
       "gaps": [
         "No client virtualization or query backend is included.",
-        "Managed row-link evidence is scoped; full table accessibility, sorting/selection workflows and consumer acceptance remain separate."
+        "Managed row-link evidence is scoped; full table accessibility, sorting/selection workflows and consumer acceptance remain separate.",
+        "There is no row-header option: body cells are all <td>, so a table whose first column names its row needs app-owned markup for scope=\"row\".",
+        "The positioned scroll wrapper also contains absolutely positioned cell content (for example a popover in RowAction or HTMLCells) that previously escaped it; fixed-position overlays are unaffected.",
+        "FATHOM-F0-KIT-01/02 (header scopes, narrow-width containment) come from Fathom's unpublished console wave F0, which still carries local workarounds until it adopts this revision."
       ],
       "provenance": {
         "source": "first-party",
@@ -1303,6 +1479,26 @@
       },
       "consumers": [],
       "preview": "/agentic"
+    },
+    {
+      "id": "work.unified-diff",
+      "name": "Unified text diff",
+      "kind": "primitive",
+      "summary": "Review a line-level text change as unified hunks with numbered +/- lines and expandable unchanged context.",
+      "tasks": ["unified diff", "text diff", "line diff", "line-level diff", "diff hunks", "diff viewer", "unified text diff renderer", "proposed text change review", "code review diff"],
+      "layers": ["L3b"],
+      "profiles": ["go-web"],
+      "dependencies": ["theme CSS", "appkit/ui/hitl/*.go Tailwind source scanning"],
+      "source": {"path": "appkit/ui/hitl/unified.go", "symbols": ["UnifiedDiff", "RenderUnifiedDiff"]},
+      "usage": "Pass the complete current and proposed texts as UnifiedDiff.Old and UnifiedDiff.New, or precomputed hunks from hitl.DiffText and LineDiff.Hunks (or an app's own diff) as UnifiedDiff.Hunks, and call hitl.RenderUnifiedDiff before writing a response; handle its error. hitl.DiffText is a deterministic Myers line diff bounded by hitl.MaxDiffLines per side; beyond its edit budget it reports LineDiff.Replaced and the page says so. With precomputed hunks, pass LineDiff.Replaced as UnifiedDiff.Replaced so the page still says so. UnifiedDiff.Context 0 keeps hitl.DefaultContext lines, hitl.NoContext keeps none. Unchanged runs collapse behind native details. Precomputed hunks may be a subset of one comparison: the ranges between them are stated per side as not included, never as unchanged; overlapping hunks and a missing final newline anywhere but a side's last line are refused. Hidden, format, tag, line-separator and direction-changing characters are shown as code points in the lines, Label and side names. Pair with hitl.DiffView for field-level changes and hitl.ApprovalCard for the decision. Scan appkit/ui/hitl/*.go. Gallery /agentic/code shows computed, precomputed and unchanged diffs.",
+      "states": ["added", "removed", "unchanged context", "collapsed unchanged run", "expanded unchanged run", "omitted range between precomputed hunks", "no newline at end of file", "no changes", "diff budget exceeded", "revealed hidden or direction-changing characters", "invalid input refusal", "light/dark", "narrow"],
+      "app_owns": ["both texts and their revisions", "whether a change is allowed, applied or audited", "line-ending normalization", "side names and labels"],
+      "maturity": "experimental",
+      "proof": ["go test ./appkit/ui/hitl", "go test ./apps/gallery"],
+      "gaps": ["No syntax highlighting, word-level intra-line diff, side-by-side view, rename detection or patch application.", "The renderer cannot know whether precomputed hunks are a subset or where the texts end: added/removed counts cover the supplied hunks, and lines after the last hunk are not mentioned.", "Hidden-character reveal classifies by the unicode tables of the Go release that builds the kit (Unicode 15.0 in Go 1.26); characters assigned later are not classified.", "Collapsed runs carry their full text in the HTML; inputs are bounded by MaxDiffLines and a 1000-edit Myers budget, but no measured size or render budget exists.", "Scoped Chrome checks cover keyboard disclosure, focus, narrow and both themes at the default palette; screen readers, zoom, other engines, forced colors and other palettes remain unverified.", "One originating consumer (Fathom FATHOM-KIT-05) has not integrated it yet; a second consumer is required before promotion."],
+      "provenance": {"source": "first-party", "license": "Project-private use; no redistribution grant asserted", "audience": "repository consumers"},
+      "consumers": [],
+      "preview": "/agentic/code"
     },
     {
       "id": "cli.command",
@@ -1590,6 +1786,829 @@
         "bosun"
       ],
       "preview": ""
+    },
+    {
+      "id": "viz.heatmap",
+      "name": "Heatmap with cell truth states",
+      "kind": "primitive",
+      "summary": "Render a matrix as themed intensity cells and, with truth states, keep a measured zero distinct from missing, unknown and error cells.",
+      "tasks": [
+        "heatmap",
+        "matrix heatmap",
+        "coverage matrix",
+        "cell truth states",
+        "missing unknown and error cells",
+        "intensity grid"
+      ],
+      "layers": [
+        "L3a"
+      ],
+      "profiles": [
+        "portable",
+        "go-web",
+        "static-web",
+        "react-web"
+      ],
+      "dependencies": [
+        "generated theme CSS when using token colors"
+      ],
+      "source": {
+        "path": "appkit/ui/viz/heatmap.go",
+        "symbols": [
+          "Heatmap",
+          "HeatmapOptions",
+          "HeatmapCell",
+          "CellState",
+          "CellZero",
+          "CellMissing",
+          "CellUnknown",
+          "CellError"
+        ]
+      },
+      "usage": "Call viz.Heatmap with rows and HeatmapOptions. For truth states set HeatmapOptions.States (row-major, parallel to rows; the grid spans both) or HeatmapOptions.TruthStates: viz.CellMissing and viz.CellUnknown cells are hatched, viz.CellError carries a danger cross, a measured zero is a ramp cell marked 0, NaN becomes missing and an infinite value or unrecognized state becomes unknown. Each cell gets a title with row, column, state and HeatmapCell.Reason; a legend and desc summary name the states present. Leave both unset to keep the original bytes. Call HeatmapOptions.Validate in tests or admission to refuse contradictory input; the renderer itself never refuses. Titles are pointer-only, so render the same cells as an app-owned table (Gallery /components/heatmap), and size Cell so x labels fit.",
+      "states": [
+        "value",
+        "measured zero",
+        "missing: dashed outline and hatch",
+        "unknown: dotted outline, cross-hatch and ?",
+        "error: danger outline and cross",
+        "empty grid",
+        "all missing",
+        "legacy NaN hole without truth states"
+      ],
+      "app_owns": [
+        "cell semantics and reasons",
+        "units and period",
+        "table alternative for keyboard and screen-reader access",
+        "value range",
+        "label length and cell size"
+      ],
+      "maturity": "experimental",
+      "proof": [
+        "go test ./appkit/ui/viz",
+        "go test ./apps/gallery"
+      ],
+      "gaps": [
+        "Truth states are new (FATHOM-KIT-03, requested for Fathom's coverage matrix): no app consumes them yet, and no published Fathom revision records the selection.",
+        "Per-cell titles are pointer tooltips inside role=img; keyboard and assistive-technology users need the app's table alternative. There is no in-chart keyboard navigation.",
+        "The value ramp's low end is below 3:1 on the surface (docs/theming-hazards.md); a measured zero relies on its 0 glyph, which is omitted in cells under 14px unless ShowValues is set, so there a zero looks like the ramp's lowest values.",
+        "X labels and ShowValues labels are centered without wrapping or fitting: at the 26px default a label wider than about four characters (a long layer name, -12.25 or -0.004) runs into its neighbor. Legend text width is estimated, not measured.",
+        "Without truth states the original bytes are kept, including unguarded infinite-value handling; use truth states or Validate.",
+        "Scoped Gallery checks (light/dark, 1440/390px, keyboard scroll regions) are recorded in the quality inventory; no consumer, screen-reader or performance acceptance is claimed."
+      ],
+      "provenance": {
+        "source": "first-party",
+        "license": "Project-private use; no redistribution grant asserted",
+        "audience": "repository consumers"
+      },
+      "consumers": [],
+      "preview": "/components/heatmap"
+    },
+    {
+      "id": "viz.trend-sparkline",
+      "name": "Inline trend sparkline",
+      "kind": "primitive",
+      "summary": "Draw a compact trend line with an optional area fill for inline and KPI contexts.",
+      "tasks": [
+        "sparkline",
+        "inline trend line",
+        "trend line graph",
+        "compact trend"
+      ],
+      "layers": [
+        "L3a"
+      ],
+      "profiles": [
+        "portable",
+        "go-web",
+        "static-web",
+        "react-web"
+      ],
+      "dependencies": [
+        "generated theme CSS when using token colors"
+      ],
+      "source": {
+        "path": "appkit/ui/viz/sparkline.go",
+        "symbols": [
+          "Sparkline",
+          "SparklineOptions"
+        ]
+      },
+      "usage": "Call viz.Sparkline with ordered values and SparklineOptions (stroke role, optional fill role, accessible label). NaN values are filtered out of the line rather than drawn as zero. The stat tile composes it; put the current value, units and period in surrounding text. Set Fluid to fill the container width; W:H sets the aspect ratio and the stroke scales with the drawing.",
+      "states": [
+        "empty",
+        "single value",
+        "flat series",
+        "with area fill"
+      ],
+      "app_owns": [
+        "time axis and period",
+        "units",
+        "meaning of dropped points",
+        "numeric label"
+      ],
+      "maturity": "available",
+      "proof": [
+        "go test ./appkit/ui/viz"
+      ],
+      "gaps": [
+        "No axes, labels or gap marking: a filtered NaN point simply disappears from the line.",
+        "role=img with a title only; the app supplies the value and period as text."
+      ],
+      "provenance": {
+        "source": "first-party",
+        "license": "Project-private use; no redistribution grant asserted",
+        "audience": "repository consumers"
+      },
+      "consumers": [
+        "Fathom"
+      ],
+      "preview": "/components"
+    },
+    {
+      "id": "viz.composition",
+      "name": "Part-to-whole composition",
+      "kind": "primitive",
+      "summary": "Show shares of a whole as one stacked bar or a donut ring with semantic segment roles.",
+      "tasks": [
+        "stacked bar",
+        "donut",
+        "donut ring",
+        "part to whole composition",
+        "share breakdown"
+      ],
+      "layers": [
+        "L3a"
+      ],
+      "profiles": [
+        "portable",
+        "go-web",
+        "static-web",
+        "react-web"
+      ],
+      "dependencies": [
+        "generated theme CSS when using token colors"
+      ],
+      "source": {
+        "path": "appkit/ui/viz/stackbar.go",
+        "symbols": [
+          "StackBar",
+          "Segment",
+          "StackBarOptions"
+        ]
+      },
+      "usage": "Pass viz.Segment values with Label and Role to viz.StackBar for one horizontal bar or to viz.Donut for a ring with optional DonutOptions.CenterText. A zero total renders an empty track or ring. Segment labels become hover titles only, so show counts and shares as text or a table beside the figure.",
+      "states": [
+        "empty or zero total",
+        "single segment",
+        "multiple segments",
+        "center text"
+      ],
+      "app_owns": [
+        "segment order and roles",
+        "totals and percentages",
+        "visible legend",
+        "units"
+      ],
+      "maturity": "available",
+      "proof": [
+        "go test ./appkit/ui/viz"
+      ],
+      "gaps": [
+        "No visible legend or percentage labels; segment labels are pointer titles.",
+        "Meaning must not rest on segment color alone; the app supplies text."
+      ],
+      "provenance": {
+        "source": "first-party",
+        "license": "Project-private use; no redistribution grant asserted",
+        "audience": "repository consumers"
+      },
+      "consumers": [],
+      "preview": "/components"
+    },
+    {
+      "id": "viz.scores",
+      "name": "Scores, ratings and meters",
+      "kind": "primitive",
+      "summary": "Show a single score as a dial, rating pips or a labeled value against a maximum, optionally graded by threshold.",
+      "tasks": [
+        "gauge",
+        "score dial",
+        "rating pips",
+        "confidence rating",
+        "progress meter",
+        "value against maximum"
+      ],
+      "layers": [
+        "L3a"
+      ],
+      "profiles": [
+        "portable",
+        "go-web",
+        "static-web",
+        "react-web"
+      ],
+      "dependencies": [
+        "generated theme CSS when using token colors"
+      ],
+      "source": {
+        "path": "appkit/ui/viz/gauge.go",
+        "symbols": [
+          "Gauge",
+          "GaugeOptions",
+          "GradedRole"
+        ]
+      },
+      "usage": "Use viz.Gauge for a 180-degree dial, viz.Rating for n-of-M pips and viz.MeterRow for a labeled value/max bar. GaugeOptions.Graded and viz.GradedRole map a 0..1 fraction to danger, caution and positive at fixed thirds. State the scale, what the thresholds mean and the source beside the mark.",
+      "states": [
+        "zero",
+        "full",
+        "value above maximum clamped",
+        "graded thresholds",
+        "caption"
+      ],
+      "app_owns": [
+        "scale and thresholds meaning",
+        "what the score measures",
+        "source and period"
+      ],
+      "maturity": "available",
+      "proof": [
+        "go test ./appkit/ui/viz"
+      ],
+      "gaps": [
+        "Graded thresholds are fixed at about one and two thirds; they are not configurable.",
+        "A light-scheme caution mark measures below 3:1 on the surface (docs/theming-hazards.md), so print the value too."
+      ],
+      "provenance": {
+        "source": "first-party",
+        "license": "Project-private use; no redistribution grant asserted",
+        "audience": "repository consumers"
+      },
+      "consumers": [
+        "Fathom"
+      ],
+      "preview": "/components"
+    },
+    {
+      "id": "viz.stages",
+      "name": "Lifecycle steps and funnels",
+      "kind": "primitive",
+      "summary": "Show ordered stages as a done/current/upcoming stepper or a narrowing funnel of counts.",
+      "tasks": [
+        "stepper",
+        "lifecycle progress steps",
+        "funnel",
+        "conversion funnel",
+        "intake to outcome stages"
+      ],
+      "layers": [
+        "L3a"
+      ],
+      "profiles": [
+        "portable",
+        "go-web",
+        "static-web",
+        "react-web"
+      ],
+      "dependencies": [
+        "generated theme CSS when using token colors"
+      ],
+      "source": {
+        "path": "appkit/ui/viz/steps.go",
+        "symbols": [
+          "Steps",
+          "Step",
+          "StepsOptions",
+          "StepState"
+        ]
+      },
+      "usage": "Pass ordered viz.Step values to viz.Steps with done, current or upcoming states; pass viz.Stage counts to viz.Funnel, whose bar widths are relative to the first stage (the largest value when the first is zero). Keep stage names and counts available as text.",
+      "states": [
+        "done",
+        "current",
+        "upcoming",
+        "empty",
+        "zero first stage"
+      ],
+      "app_owns": [
+        "stage order and meaning",
+        "counts and conversion math",
+        "current-step truth"
+      ],
+      "maturity": "available",
+      "proof": [
+        "go test ./appkit/ui/viz"
+      ],
+      "gaps": [
+        "The stepper is a picture, not a navigable wizard: no links or keyboard interaction.",
+        "The funnel does not compute or print conversion rates."
+      ],
+      "provenance": {
+        "source": "first-party",
+        "license": "Project-private use; no redistribution grant asserted",
+        "audience": "repository consumers"
+      },
+      "consumers": [],
+      "preview": "/components"
+    },
+    {
+      "id": "viz.outcome",
+      "name": "Ranges, waterfalls and sensitivity",
+      "kind": "primitive",
+      "summary": "Explain outcomes with low-high range bars, running-total waterfalls, reward-versus-cost bars and tornado sensitivity swings.",
+      "tasks": [
+        "waterfall",
+        "running total bridge",
+        "tornado sensitivity",
+        "sensitivity analysis",
+        "low high range bars",
+        "interval estimate",
+        "cost versus reward"
+      ],
+      "layers": [
+        "L3a"
+      ],
+      "profiles": [
+        "portable",
+        "go-web",
+        "static-web",
+        "react-web"
+      ],
+      "dependencies": [
+        "generated theme CSS when using token colors"
+      ],
+      "source": {
+        "path": "appkit/ui/viz/waterfall.go",
+        "symbols": [
+          "Waterfall",
+          "WaterfallStep",
+          "WaterfallOptions"
+        ]
+      },
+      "usage": "viz.Waterfall draws running-total columns from signed WaterfallStep.Delta values and Total steps; viz.RangeBars draws low-high intervals with an optional most-likely point; viz.CostReward draws diverging reward and cost bars; viz.Tornado sorts swings around TornadoOptions.Baseline. Keep the underlying figures in a table and state units and assumptions.",
+      "states": [
+        "positive and negative deltas",
+        "subtotal and total",
+        "range without a point estimate",
+        "sorted swings",
+        "empty"
+      ],
+      "app_owns": [
+        "estimates and assumptions",
+        "units and currency prefix",
+        "baseline choice",
+        "uncertainty meaning"
+      ],
+      "maturity": "available",
+      "proof": [
+        "go test ./appkit/ui/viz"
+      ],
+      "gaps": [
+        "The renderers draw supplied numbers; they compute no ranges or sensitivities, only the waterfall's running sum.",
+        "role=img with a title only; the app supplies a table alternative."
+      ],
+      "provenance": {
+        "source": "first-party",
+        "license": "Project-private use; no redistribution grant asserted",
+        "audience": "repository consumers"
+      },
+      "consumers": [],
+      "preview": "/components"
+    },
+    {
+      "id": "viz.provenance-frame",
+      "name": "Provenance frame",
+      "kind": "primitive",
+      "summary": "Wrap a figure with a mandatory source line whose kind is published, derived or estimate, and refuse unsourced figures.",
+      "tasks": [
+        "provenance frame",
+        "chart source line",
+        "figure citation",
+        "data provenance"
+      ],
+      "layers": [
+        "L3b"
+      ],
+      "profiles": [
+        "go-web"
+      ],
+      "dependencies": [
+        "theme CSS",
+        "appkit css source scanning"
+      ],
+      "source": {
+        "path": "appkit/ui/vizframe/vizframe.go",
+        "symbols": [
+          "Render",
+          "MustRender",
+          "Options",
+          "Published",
+          "Derived",
+          "Estimate"
+        ]
+      },
+      "usage": "Wrap chart markup with vizframe.Render and vizframe.Options, giving a Source built by vizframe.Published, vizframe.Derived or vizframe.Estimate; Render returns empty output rather than an unsourced figure and vizframe.MustRender panics for tests. Use vizframe.CarriesMechanism only for diagrams that state no quantity. Wrap wide bodies in a named focusable scroll region and scan appkit/ui/vizframe/*.go.",
+      "states": [
+        "published",
+        "derived",
+        "estimate",
+        "draft",
+        "mechanism waiver",
+        "refused unsourced figure"
+      ],
+      "app_owns": [
+        "source truth and links",
+        "figure body",
+        "layout and scrolling"
+      ],
+      "maturity": "available",
+      "proof": [
+        "go test ./appkit/ui/vizframe"
+      ],
+      "gaps": [
+        "The frame checks that a source is stated, not that it is true.",
+        "Body sizing and scrolling remain the caller's composition."
+      ],
+      "provenance": {
+        "source": "first-party",
+        "license": "Project-private use; no redistribution grant asserted",
+        "audience": "repository consumers"
+      },
+      "consumers": [
+        "Fathom"
+      ],
+      "preview": "/provenance"
+    },
+    {
+      "id": "work.agent-trace",
+      "name": "Agent run inspection",
+      "kind": "primitive",
+      "summary": "Show what an agent did: a run event rail, one tool invocation with collapsible arguments and result, and a before/after field diff.",
+      "tasks": [
+        "agent run trace",
+        "tool call inspection",
+        "proposed change diff",
+        "before and after field diff",
+        "agent activity rail"
+      ],
+      "layers": [
+        "L3b"
+      ],
+      "profiles": [
+        "go-web"
+      ],
+      "dependencies": [
+        "theme CSS",
+        "appkit css source scanning"
+      ],
+      "source": {
+        "path": "appkit/ui/hitl/trace.go",
+        "symbols": [
+          "RunTrace",
+          "TraceStep",
+          "TraceState"
+        ]
+      },
+      "usage": "Render run steps with hitl.RunTrace, one invocation with hitl.RenderToolCall and hitl.ToolCall (native details for arguments and result), and field-level edits with hitl.DiffView and hitl.Change, where an empty side marks an addition or removal. Pair a diff with hitl.RenderApprovalCard for decisions. Text is escaped; scan appkit/ui/hitl/*.go.",
+      "states": [
+        "trace done, active, failed, pending",
+        "empty run",
+        "tool ok, error, running, pending",
+        "addition",
+        "removal",
+        "changed field"
+      ],
+      "app_owns": [
+        "run data and redaction of arguments and results",
+        "tool status truth",
+        "authorization of follow-up actions",
+        "live updates"
+      ],
+      "maturity": "available",
+      "proof": [
+        "go test ./appkit/ui/hitl"
+      ],
+      "gaps": [
+        "Static rendering only: no streaming, pagination or line-level text diff.",
+        "Arguments and results are shown as supplied; redacting secrets is app-owned."
+      ],
+      "provenance": {
+        "source": "first-party",
+        "license": "Project-private use; no redistribution grant asserted",
+        "audience": "repository consumers"
+      },
+      "consumers": [
+        "Fathom"
+      ],
+      "preview": "/agentic"
+    },
+    {
+      "id": "foundation.motion",
+      "name": "Motion vocabulary",
+      "kind": "primitive",
+      "summary": "Two-state transitions, bounded staggering and a structural reduced-motion cancel as plain CSS with an optional helper script.",
+      "tasks": [
+        "motion",
+        "reduced motion",
+        "state transition animation",
+        "staggered reveal",
+        "animated count"
+      ],
+      "layers": [
+        "L1",
+        "L2"
+      ],
+      "profiles": [
+        "portable",
+        "go-web",
+        "static-web",
+        "react-web"
+      ],
+      "dependencies": [
+        "theme CSS for role colors",
+        "motion.css after the theme layer; the scripts only for their optional helpers"
+      ],
+      "source": {
+        "path": "appkit/ui/motion/motion.go",
+        "symbols": [
+          "Root",
+          "StateB",
+          "RootClass",
+          "Step",
+          "CSS",
+          "Script",
+          "CountScript"
+        ]
+      },
+      "usage": "Import motion.css after the theme layer with no source scanning, serve motion.CSS or motion.CSSHandler, or vendor it with appkit vendor --include motion. Put motion.Root on a subtree, toggle motion.StateB, and give each moving element one of motion.Fade, motion.Tint, motion.Shift or motion.Anim with motion.WhenA or motion.WhenB; stagger with motion.Step up to motion.MaxStep. The optional motion.Script helper exposes the AppKitMotion browser global; motion.CountScript adds the counting tween.",
+      "states": [
+        "state A",
+        "state B",
+        "reduced motion",
+        "staggered",
+        "without script"
+      ],
+      "app_owns": [
+        "when to change state",
+        "which elements move",
+        "script delivery and CSP"
+      ],
+      "maturity": "available",
+      "proof": [
+        "go test ./appkit/ui/motion"
+      ],
+      "gaps": [
+        "CSS transitions only: no physics, sequencing or scroll-linked animation.",
+        "The reduced-motion cancel is pinned by stylesheet tests; operating-system and browser behavior across hosts is not certified."
+      ],
+      "provenance": {
+        "source": "first-party",
+        "license": "Project-private use; no redistribution grant asserted",
+        "audience": "repository consumers"
+      },
+      "consumers": [],
+      "preview": "/motion"
+    },
+    {
+      "id": "ops.topology",
+      "name": "Fleet health topology",
+      "kind": "primitive",
+      "summary": "Show a region, cluster and workload hierarchy as collapsible rows with app-supplied health badges, metrics and drill-through links.",
+      "tasks": [
+        "topology",
+        "topology tree",
+        "status tree",
+        "hierarchical status"
+      ],
+      "layers": [
+        "L3b"
+      ],
+      "profiles": [
+        "go-web"
+      ],
+      "dependencies": [
+        "theme CSS",
+        "appkit css source scanning"
+      ],
+      "source": {
+        "path": "appkit/ui/topology/tree.go",
+        "symbols": [
+          "Render",
+          "Node",
+          "Options"
+        ]
+      },
+      "usage": "Pass nested topology.Node values with name, status, metric, link and children to topology.Render with topology.Options. topology.Healthy, topology.Degraded and topology.Failed map to positive, caution and danger badges; an empty or unrecognized status renders as topology.Unknown, a neutral badge that never reads as healthy. Groups use native details, so no JavaScript is needed. Scan appkit/ui/topology/*.go and appkit/ui/callout/*.go.",
+      "states": [
+        "healthy",
+        "degraded",
+        "failed",
+        "unknown",
+        "collapsed",
+        "expanded",
+        "leaf",
+        "drill-through link"
+      ],
+      "app_owns": [
+        "health computation and roll-up",
+        "drill-through routes and authorization",
+        "refresh cadence"
+      ],
+      "maturity": "experimental",
+      "proof": [
+        "go test ./appkit/ui/topology"
+      ],
+      "gaps": [
+        "No Gallery specimen or browser evidence: keyboard, narrow and theme behavior are unverified.",
+        "It declares tree and treeitem roles without arrow-key tree navigation; assistive-technology behavior is unproven.",
+        "A tree of health rows, not a node-link graph: no edges between siblings, graph layout or graph navigation.",
+        "Parent status is not rolled up from children; the app supplies each node's status."
+      ],
+      "provenance": {
+        "source": "first-party",
+        "license": "Project-private use; no redistribution grant asserted",
+        "audience": "repository consumers"
+      },
+      "consumers": [],
+      "preview": ""
+    },
+    {
+      "id": "content.explainer",
+      "name": "Self-contained explainer document",
+      "kind": "primitive",
+      "summary": "Assemble a single offline HTML explainer page with inline styles, SVG figures, cards, tables and an optional export toolbar.",
+      "tasks": [
+        "explainer",
+        "single file explainer page",
+        "offline concept document",
+        "shareable design explainer"
+      ],
+      "layers": [
+        "L3b"
+      ],
+      "profiles": [
+        "go-web"
+      ],
+      "dependencies": [
+        "none at runtime: the document inlines its own CSS and the export toolbar script"
+      ],
+      "source": {
+        "path": "appkit/ui/explainer/explainer.go",
+        "symbols": [
+          "Render",
+          "Doc",
+          "Section",
+          "Figure",
+          "Card",
+          "Table"
+        ]
+      },
+      "usage": "Build an explainer.Doc of explainer.Section values and call explainer.Render for a complete HTML document; compose bodies with explainer.Figure, explainer.SVG, explainer.Grid, explainer.Card and explainer.Table. Doc.Lead, Doc.Foot, Section.Intro and Section.Body are trusted HTML; other text is escaped. The document inlines its own dark design and reduced-motion escape instead of the kit theme and motion layers.",
+      "states": [
+        "sections",
+        "figures and tables",
+        "export toolbar",
+        "reduced motion"
+      ],
+      "app_owns": [
+        "content truth and review of trusted HTML",
+        "file delivery",
+        "branding accents"
+      ],
+      "maturity": "experimental",
+      "proof": [
+        "go test ./appkit/ui/explainer"
+      ],
+      "gaps": [
+        "No Gallery specimen or browser evidence.",
+        "The fixed dark design and hex accents do not follow the app's token theme.",
+        "Trusted HTML fields require caller review."
+      ],
+      "provenance": {
+        "source": "first-party",
+        "license": "Project-private use; no redistribution grant asserted",
+        "audience": "repository consumers"
+      },
+      "consumers": [],
+      "preview": ""
+    },
+    {
+      "id": "content.export-toolbar",
+      "name": "Offline export toolbar",
+      "kind": "primitive",
+      "summary": "Add Save as PDF and Save HTML buttons as one inline script that works in themed pages and standalone documents.",
+      "tasks": [
+        "save as PDF",
+        "save HTML copy",
+        "offline export toolbar",
+        "print to PDF"
+      ],
+      "layers": [
+        "L3b"
+      ],
+      "profiles": [
+        "go-web"
+      ],
+      "dependencies": [
+        "browser JavaScript and the browser print dialog",
+        "CSP that permits the inline script"
+      ],
+      "source": {
+        "path": "appkit/ui/export/export.go",
+        "symbols": [
+          "Toolbar",
+          "Options"
+        ]
+      },
+      "usage": "Append export.Toolbar with export.Options before the closing body tag; the zero value enables both buttons. Options select the PDF and HTML buttons, page width, file name and a hex hover accent. The toolbar injects its own inline styles and hides itself in print output.",
+      "states": [
+        "both buttons",
+        "PDF only",
+        "HTML only",
+        "printing"
+      ],
+      "app_owns": [
+        "what the page exposes when saved",
+        "file names",
+        "script policy"
+      ],
+      "maturity": "experimental",
+      "proof": [
+        "go test ./appkit/ui/export"
+      ],
+      "gaps": [
+        "No Gallery specimen or browser evidence; PDF output depends on each browser's print engine.",
+        "The accent is a literal hex color by contract, outside the token theme.",
+        "Save HTML copies the current page, including any data rendered into it."
+      ],
+      "provenance": {
+        "source": "first-party",
+        "license": "Project-private use; no redistribution grant asserted",
+        "audience": "repository consumers"
+      },
+      "consumers": [],
+      "preview": ""
+    },
+    {
+      "id": "content.details",
+      "name": "Disclosures and description lists",
+      "kind": "primitive",
+      "summary": "Reveal optional detail behind a native show-more disclosure and present aligned term and detail metadata.",
+      "tasks": [
+        "show more disclosure",
+        "collapsible section",
+        "description list",
+        "term and detail metadata",
+        "key value details"
+      ],
+      "layers": [
+        "L3b"
+      ],
+      "profiles": [
+        "go-web"
+      ],
+      "dependencies": [
+        "theme CSS",
+        "appkit css source scanning"
+      ],
+      "source": {
+        "path": "appkit/ui/chrome/disclosure.go",
+        "symbols": [
+          "RenderDisclosure",
+          "Disclosure",
+          "RenderDescriptionList",
+          "RenderDescriptionListCard",
+          "DescItem"
+        ]
+      },
+      "usage": "Call chrome.RenderDisclosure with chrome.Disclosure for a native details section, and chrome.RenderDescriptionList or chrome.RenderDescriptionListCard with chrome.DescItem terms and details. Disclosure.Body and DescItem.DetailHTML are trusted HTML; other text is escaped. No JavaScript; scan appkit/ui/chrome/*.go. Breadcrumbs, tabs, pagination and empty states are the separate interaction.chrome capability.",
+      "states": [
+        "collapsed",
+        "expanded",
+        "empty list",
+        "card"
+      ],
+      "app_owns": [
+        "content and review of trusted HTML",
+        "open-state persistence",
+        "term wording"
+      ],
+      "maturity": "available",
+      "proof": [
+        "go test ./appkit/ui/chrome"
+      ],
+      "gaps": [
+        "Open state is not persisted across navigation.",
+        "Trusted HTML fields require caller review."
+      ],
+      "provenance": {
+        "source": "first-party",
+        "license": "Project-private use; no redistribution grant asserted",
+        "audience": "repository consumers"
+      },
+      "consumers": [],
+      "preview": "/agentic"
     }
   ]
 }

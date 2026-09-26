@@ -4,14 +4,25 @@
   "profile": "go-web",
   "layers": [
     "L1",
+    "L2",
     "L3b",
     "L4"
   ],
   "capabilities": [
-    "shell.layout",
-    "recipe.styleguide.local"
+    "interaction.command-palette",
+    "interaction.live-freshness",
+    "recipe.styleguide.local",
+    "shell.layout"
   ],
   "capability_revisions": [
+    {
+      "id": "interaction.command-palette",
+      "sha256": "f5a437e2aae16dca304c9b0848d8c4286a37836d1a838e0ad14206cb34ef49ce"
+    },
+    {
+      "id": "interaction.live-freshness",
+      "sha256": "8ed5e6a1881d074b395678f9b33a43eb5367544d70146a0feae979a88ab0411c"
+    },
     {
       "id": "recipe.styleguide.local",
       "sha256": "820a6558235601f4c217ceac0f0751fb4915c8c2f0a5989943a7faebf5cd8f7f"
@@ -30,11 +41,11 @@
   "artifacts": [
     {
       "path": "cmd/fathom/ui/app.css",
-      "sha256": "a48d5799c7656b098a98a28c8fdd2c6e0273f31f36536946c7091af7fc64e091"
+      "sha256": "7bd16bf38e2506f9dc00f475ca98927d48559aafa8c3e00d0eeb466c322e21a2"
     },
     {
       "path": "cmd/fathom/ui/input.css",
-      "sha256": "acd490e94698a06b1f00bb61895e961084fc95ae4c6b97992c5baac8db22d132"
+      "sha256": "748b8247d07f9243de9a7a0a583f1a9362b77a75ce9703c1c24c63153a983f7c"
     },
     {
       "path": "cmd/fathom/ui/tokens/theme.css",
@@ -62,11 +73,11 @@
     },
     {
       "path": "third_party/app-kit/.vendor-commit",
-      "sha256": "2c8a3dd6010cff5e0dcd03a29e95a1bd142f1b36c56cd3f0d9faa7f28b5f6912"
+      "sha256": "e47c2df77907a3379ed59ed3a383f3a130eb7e250de03479cb3979a3054ccf08"
     },
     {
       "path": "scripts/ui-css.sh",
-      "sha256": "d9c8d4f5135b1b135946640afc0416d270db2adbf29a1001af4c1487f2bc97ea"
+      "sha256": "97f1f762ee532d32812b18d4dba74bb3f8c163e8ce248f6f22989982be0fc887"
     },
     {
       "path": "scripts/lib/build-cache.sh",
@@ -74,7 +85,7 @@
     },
     {
       "path": "cmd/fathom/appkit_styleguide.go",
-      "sha256": "5963c22e6c0131ff8efd18e1ddf6f2d01fb1fe44c97bc10ad4cda6a25fff327b"
+      "sha256": "002d07c74fead0acca2dca81cae294abf9f591e2c71cff33c0cf2ed8ecb04c66"
     },
     {
       "path": "cmd/fathom/appkit_styleguide_test.go",
@@ -90,7 +101,7 @@
     },
     {
       "path": "scripts/ui-css_test.sh",
-      "sha256": "b5090d76cd5163d3921e1ea6ba679907865e5d445a38ef96568c9fa5102e78d2"
+      "sha256": "64d442341876dc25ff05036f531bd52501f03e321002d04adcf772b4fa0e0d25"
     },
     {
       "path": "third_party/app-kit/apps/styleguide/handler.go",
@@ -99,6 +110,22 @@
     {
       "path": "third_party/app-kit/apps/styleguide/draft.go",
       "sha256": "0eff2b612ee52ef94ca5b7a97d8334e0ce6b8f5446085a70269f15bbcba22330"
+    },
+    {
+      "path": "third_party/app-kit/appkit/ui/palette/palette.go",
+      "sha256": "0350091cbafb3687db21500cd82d8e4559576fe0b0675d880d2b476fc9ee675f"
+    },
+    {
+      "path": "third_party/app-kit/appkit/ui/palette/palette.js",
+      "sha256": "9dde452e3f6b546acbb54a41f96e3ce4e2f49567f234ba8189fa254e6c5325f1"
+    },
+    {
+      "path": "third_party/app-kit/appkit/ui/live/live.go",
+      "sha256": "bd5f9c2cb0eb66c339732e6960820250bc414e9d05549084554566f60daccc1f"
+    },
+    {
+      "path": "third_party/app-kit/appkit/ui/live/live.js",
+      "sha256": "9aeef7ae80a4703858bdec3973d2b6ccb6e8820d60e9b544fc92d4a578837330"
     }
   ],
   "agents": true

@@ -16,6 +16,7 @@ func init() {
 		ID: "wiring", Route: "/wiring", Href: "/wiring", Group: "System", Order: 10, Nav: true,
 		Title:    "Wiring",
 		Question: "What would fathom write into each repository, and can I undo it?",
+		Live:     []string{"index"},
 		Build:    buildWiringPage,
 	})
 }

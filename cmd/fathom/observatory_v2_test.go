@@ -121,7 +121,10 @@ func TestImpactFourQuestions(t *testing.T) {
 	}
 }
 
-// TestLandingFourQuestions pins IQ-6.
+// TestLandingFourQuestions pins IQ-6 as vision 35 re-homed it: the front
+// door is the Now page (the attention queue, OC-17), and the four questions
+// stay one step from it — the front door links Impact, which answers each
+// with its instrument (law 12 on savings), and the week.
 func TestLandingFourQuestions(t *testing.T) {
 	hermeticObsEnv(t)
 	h := newUnreachableConsoleHandler(t)
@@ -131,15 +134,20 @@ func TestLandingFourQuestions(t *testing.T) {
 		t.Fatalf("GET / = %d", rec.Code)
 	}
 	body := rec.Body.String()
-	for _, want := range []string{"the four questions", "Q1", "Q2", "Q3", "Q4", "law 12", `href="/sessions"`} {
+	for _, want := range []string{"the four questions", "Q1 to Q4", `href="/impact"`, `href="/sessions"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("landing missing %q", want)
 		}
 	}
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest("GET", "/impact", nil))
+	for _, want := range []string{"Q1", "Q2", "Q3", "Q4", "law 12"} {
+		if !strings.Contains(rec.Body.String(), want) {
+			t.Errorf("impact missing %q", want)
+		}
+	}
 }
 
-// TestObservatorySessionPage pins IQ-4: the replay renders a timeline from
-// beats, the ledger verdict card, and honest absences for unknown ids.
 func TestObservatorySessionPage(t *testing.T) {
 	dir := hermeticObsEnv(t)
 	t.Setenv("FATHOM_HOOKS_LOG", filepath.Join(dir, "beats.jsonl"))
@@ -164,7 +172,9 @@ func TestObservatorySessionPage(t *testing.T) {
 		t.Fatalf("ledger row not resolved: %+v", st.Ledger)
 	}
 	body := renderSessionStory(st)
-	for _, want := range []string{"session s1", "law 14", "timeline", "first edit at turn"} {
+	// The page heading names the session (the console's h1); the body
+	// states law 14 once and carries the timeline and the ledger row.
+	for _, want := range []string{"law 14", "timeline", "first edit at turn"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("session page missing %q", want)
 		}

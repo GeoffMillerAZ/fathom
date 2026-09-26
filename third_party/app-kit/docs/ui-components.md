@@ -37,14 +37,17 @@ by rendering it wrong.
 | `router` | **L2** | `router.js`, History-API client router for static-client surfaces only (D16 boundary still binding) |
 | `viz` | **L3a** | the portable tier. Zero `class=`, color only through `var(--ak-color-*)`; asserted by `TestVizEmitsNoClassAttribute` and `TestVizEmitsNoLiteralColor` |
 | `overlay` | **L2 + L3b** | `overlay.js` is L2; the Go markup emits role utilities |
+| `palette` | **L2 + L3b** | experimental command palette: `palette.js` is L2 (`window.AppKitPalette`, `data-palette-*` hooks); the trigger, dialog and results renderers emit role utilities — scan `appkit/ui/palette/*.go` and `appkit/ui/overlay/*.go` |
 | `appearance` | **L2 + L3b** | portable light/dark/system behavior and an optional native-select control; app chooses the storage key, persistence failures remain visible; scan `appkit/ui/appearance/*.go` for the control |
 | `chat` | **L2 + L3b** | `chat.js` is L2; the Go markup emits role utilities |
+| `live` | **L2 + L3b** | experimental; `live.js` is L2 (`window.AppKitLive`, no dependencies); the region/status helpers emit role utilities, so scan `appkit/ui/live/*.go` |
 | `callout` | **L3b** | |
-| `chrome` | **L3b** | |
+| `chrome` | **L3b** | `RenderPageHeading` renders actions through `form.RenderButton`: scan `appkit/ui/form/*.go` too |
 | `docs` | **L1 + L3b** ² | `prose.css` is the L1 typography layer (`doc-prose`, the boxed `doc-toc`, the heading permalink hook); `toc.go`/`anchor.go` are L3b — `RenderToC`, `RenderToCPanel`, `RenderToCRail`, `RenderPermalink`. Needs `@source ".../appkit/ui/docs/*.go"` plus `@import ".../appkit/ui/docs/prose.css"` |
+| `code` | **L3b** | experimental read-only source excerpt: numbered lines, labelled per-line state, `#L<n>` anchors, keyboard-scrollable viewport; no syntax highlighting. Needs `@source ".../appkit/ui/code/*.go"` |
 | `dashboard` | **L3b** | layout only — charts/KPIs/tables come from `viz`/`stat`/`table` |
 | `form` | **L3b** | |
-| `hitl` | **L3b** | |
+| `hitl` | **L3b** | includes the experimental line-level `RenderUnifiedDiff` and its Myers `DiffText`; scan `appkit/ui/hitl/*.go` |
 | `stat` | **L3b** | composes `viz.Sparkline` (L3a) inside an L3b tile |
 | `topology` | **L3b** | emits literal Tailwind utility strings nine times — the clearest L3b in the kit |
 | `vizframe` | **L3b** | the provenance frame (ADR-0017 §6). Needs `@source ".../appkit/ui/vizframe/*.go"` |
@@ -55,7 +58,7 @@ by rendering it wrong.
 | `card` | **L3b + L4** | templ |
 | `kanban` | **L3b + L4** | templ |
 | `table` | **L3b + L4** | templ |
-| `internal` | **L3a** (private implementation only) | Shared `webref` destination-shape checks for managed form/table links; no rendering, CSS scan or consumer API. Delivered through the importing Go package's dependency closure. |
+| `internal` | **L3a** (private implementation only) | Shared `webref` destination-shape checks for managed form/table/excerpt links and `linetext` line splitting plus hidden-character reveal for `code`/`hitl`; no rendering, class names, CSS scan or consumer API. Delivered through the importing Go package's dependency closure. |
 
 ¹ `explainer` and `export` are **self-contained by contract**: each renders a
 single file carrying its own inline CSS/JS, so they neither consume the kit
@@ -103,9 +106,81 @@ SVG (golden-tested); each emits `role="img"` + `<title>`.
 | **`Waterfall`** | running-total columns (combined recovery → net; up/down/total) |
 | **`CostReward`** | diverging reward-vs-cost bars from a center axis |
 | **`Tornado`** | sorted ± swings around a baseline — which factors move the outcome most (sensitivity) |
+| **`LayoutGraph`** / **`LayoutEgo`** | experimental layered directed graph (longest-path or given columns) and a focus node's callers/callees by depth; one layout renders `SVG()` plus a class-free `Table()` alternative |
+| **`Heatmap`** | matrix intensity grid (coverage maps, activity by period); optional cell truth states keep a measured zero distinct from missing / unknown / error |
 
 `GradedRole(frac)` maps 0..1 → danger / caution / positive for consistent
 status coloring across components.
+
+**Fluid width.** Every chart drawn at a fixed pixel width — `Sparkline`,
+`StackBar`, `Bars`, `Donut` (`Size`), `Funnel`, `MeterRow`, `Gauge`, `Steps`,
+`Timeline`, `RangeBars`, `Waterfall`, `CostReward`, `Tornado` — takes
+`Fluid bool`. Unset, output is byte-identical to before. Set, the opening tag
+becomes `width="100%"` with no `height`, the same `viewBox` and
+`preserveAspectRatio="xMinYMin meet"`: the chart fills its container's width,
+the browser derives the height from the viewBox ratio, and the drawing itself is
+unchanged. No class or inline style is emitted, so it stays L3a and strict-CSP
+safe. Fluid scales; it does not reflow. Text shrinks when the container is
+narrower than `W` and grows when it is wider: a 560px `Bars` in a 340px column
+draws its 11px labels at about 6.7px. Use it for text-free charts (a sparkline
+across a card), set `W` near the narrowest container a text chart must stay
+legible in and bound the container's width, or keep a fixed-width chart in a
+keyboard-scrollable region beside a table alternative. `Heatmap`, `Rating` and
+`LayoutGraph` size themselves from their content and have no Fluid option.
+Gallery `/components` shows a fluid sparkline (FATHOM-F0-KIT-04,
+[evidence](assessments/2026-09-25-fathom-f0-kit-returns.md)).
+
+Experimental `LayoutGraph(nodes, edges, GraphOptions)` and `LayoutEgo(focus, nodes,
+edges, EgoOptions)` validate before output (refusals wrap `ErrInvalidGraph`; inputs
+bounded at 2000 nodes, 8000 edges, 64 columns; text must be valid UTF-8 without
+control characters other than tab/LF/CR, so the SVG stays well-formed XML) and
+return one `GraphLayout`.
+Columns come from longest path (cycles broken deterministically, the closing edges
+drawn right to left) or app-given ranks; barycenter sweeps with stable tie-breaks
+order each column. `MaxPerRank` (default 8) collapses the rest of a column into
+one "+N more" node; edges into it keep one line and table row per style and
+emphasis, each with its own count. Every reduction appears in `Notes()`, the SVG
+`<desc>` and the table. `SVG()` is `role="img"` with `<title>`/`<desc>` over an
+`aria-hidden` drawing; its node links are pointer-only (`tabindex="-1"`), and once
+any node links every node box is at least 44px high. `Table()` is plain
+semantic HTML — no class or style — with captions, header scopes and ordinary links,
+so apps style it (give its links 44px-high hit areas) and keyboard/assistive-technology
+users reach nodes there; repeated labels are qualified by group, or by ID, so each
+row and edge endpoint names one node. Name edge meanings with
+`SolidLabel`/`DashedLabel`/`EmphasisLabel`; wrap wide graphs in a keyboard-scrollable
+region. Catalog `analytics.graph`; Gallery `/graph`;
+[scoped evidence](assessments/2026-09-25-layered-graph.md). Long edges are not
+routed around intermediate nodes, and the originating consumer (Fathom) has not
+integrated it yet.
+
+### Heatmap truth states (experimental)
+
+Set `HeatmapOptions.States` (`[][]HeatmapCell{State, Reason}`, row-major and
+parallel to the rows; the grid spans both) or `HeatmapOptions.TruthStates` to
+render every cell as one of five states. Absence is never drawn as a low value:
+
+| State | Drawn as |
+|---|---|
+| value | the `Role` ramp (`0.12 + 0.85·norm`), unchanged; labels, titles and the range never round a nonzero value to `0` (below 0.005 it keeps two significant digits) |
+| `CellZero` (or a measured `0`) | its ramp fill (the ramp floor when every measured cell is zero) plus a `0` glyph (cells ≥ 14px, or with `ShowValues`); below 14px without `ShowValues` only the fill remains, which the ramp's lowest values share |
+| `CellMissing` (or `NaN`) | no fill; dashed outline and `/` hatch in `ink-muted` |
+| `CellUnknown` (±Inf, unrecognized state) | no fill; dotted outline, cross-hatch and `?` |
+| `CellError` | no fill; solid `danger` outline and cross |
+
+Each cell carries a `<title>` naming row, column, state and reason; a `<desc>`
+summarizes the counts, and a legend lists only the states present (with the
+shared reason when every cell in a state has the same one). Missing, unknown and
+error cells ignore any numeric entry and never stretch the value range. Hatches
+are drawn as geometry, not `<pattern>` references, so the SVG needs no
+document-unique IDs. `HeatmapOptions.Validate(rows)` reports contradictory input
+(unrecognized states, a zero-state cell carrying a number, non-finite values, an
+inverted range, invalid roles); the renderer itself never refuses. Leave both
+fields unset and output is byte-identical to the previous renderer (golden-tested).
+Titles are pointer-only inside `role="img"`: give keyboard and screen-reader users
+the same cells as a table. The Gallery's `/components/heatmap` specimen shows the
+table alternative, an all-missing grid and the legacy comparison. X labels and
+`ShowValues` labels are not fitted to the cell (at the default 26px, `-0.004` or
+`-12.25` runs into its neighbor), so size `Cell` for your labels.
 
 ## `appkit/ui/callout` — messaging (HTML)
 
@@ -142,6 +217,37 @@ open-by-id, light-dismiss, and client toasts.
 | `Toast` / `RenderToastRegion` | notifications — server-rendered flash *or* client `AppKitOverlay.toast()`; roles info/success/caution/danger |
 | `TriggerButton` / `OpenAttr` | open an overlay by id (`data-overlay-open`) |
 | `Script` / `Handler` | inline or serve `overlay.js` |
+
+## `appkit/ui/palette` — command palette (experimental, HTML + tiny vanilla JS)
+
+Catalog `interaction.command-palette`. The trigger is a real link to the app's GET
+search page, so everything works without JavaScript. `palette.js` upgrades it into
+a native modal built on `overlay.RenderDialog` (overlay.js is not required): Mod+K
+(Command on Apple platforms, Control elsewhere; configurable or `none`) opens it
+from anywhere and focuses the input; typing fetches the app's results fragment after
+a debounce and aborts stale requests; ArrowUp/ArrowDown move an
+`aria-activedescendant` selection, Enter follows it, Escape closes and returns focus
+to the invoker. Enter with no selection, or while the displayed results answer an
+older query, submits the GET form, so the full page answers exactly what was typed.
+The script inserts a response only when it is exactly one fragment for the query it
+asked for; a full page (even one rendering the palette) or another query's fragment
+shows the error state. Call `AppKitPalette.init(scope)` after swapping palette or
+trigger markup: it wires new roots, drops swapped-out ones and re-upgrades triggers.
+
+| Component | Use it for |
+|---|---|
+| `Palette` | typed configuration: ID, Action (search page; its query becomes hidden fields), ResultsURL, Param, Label, Placeholder, Shortcut, Debounce, Timeout, IdleText, ErrorText; invalid values are refused, not corrected |
+| `RenderTrigger` | the 44px search link; the script adds the platform-localized shortcut hint and `aria-keyshortcuts` only once its palette is wired |
+| `RenderDialog` | the dialog: combobox input, fixed-height results region, live status, failure template, key hints and an "Open search page" link |
+| `RenderResults` / `Group` / `Result` | one fragment for both the palette and the full page: grouped links plus idle, empty, partial (`Notice`, with or without results) and error states; set `Query` to the request's query; `HeadingLevel` 2 on a page |
+| `RenderSearchForm` | the full page's labeled GET form |
+| `WantsFragment` / `FragmentHeader` | tell the palette request apart on one route; send `Vary: X-AppKit-Palette` |
+| `Script` / `Handler` | inline or serve `palette.js` (revalidating, like `appearance`) |
+
+The app owns the route, authorization, sources, ranking, destinations, the page
+layout and shortcut conflicts. Built-in secondary copy is English. The Gallery's
+`/palette` reproduces every state; `palette_test.mjs` pins the script lifecycle with
+DOM doubles. Fathom originated it; it stays experimental until two consumers integrate it.
 
 ## `appkit/ui/form` — form & input vocabulary (HTML, no JS)
 
@@ -249,15 +355,72 @@ save/recovery. These L3b helpers add no runtime or session backend. See the comp
 | Component | Use it for |
 |---|---|
 | `EmptyState` | "nothing here yet" panel (icon + heading + body + CTA) |
-| `Breadcrumbs` | navigation trail |
+| `Breadcrumbs` | navigation trail; links are 44px targets with a focus-visible outline |
 | `Pagination` | windowed prev/next + page links (server-rendered) |
 | `Tabs` | link-based view switcher (active underline) |
 | `Skeleton` / `SkeletonCard` | loading placeholders (Tailwind `animate-pulse`) |
 | `Disclosure` | collapsible "show more" section on native `<details>` (no JS) |
 | `DescriptionList` | aligned term/detail metadata (`<dl>`) |
+| `PageHeading` / `RenderPageHeading` | experimental: the page's one `h1` with optional `Breadcrumbs` trail, eyebrow, meta line and up to four `form.Button` actions |
 
 All server-rendered with plain links/markup, so they honor the loopback
 invariant (D5) — no shell-specific JS.
+
+`Breadcrumbs` links render the kit's 44px minimum target (`inline-flex min-h-11
+min-w-11`) and a 2px `focus-visible` outline in the focus role; the current page
+and the separators stay plain text. The trail row is therefore 44px tall: rebuild
+scanned CSS and review snapshots when upgrading (FATHOM-F0-KIT-03,
+[evidence](assessments/2026-09-25-fathom-f0-kit-returns.md)). `RenderPagination`
+links are still about 28px high, below that floor.
+
+Experimental `RenderPageHeading(PageHeading{ID, Breadcrumbs, Eyebrow, Title, Meta, Actions})`
+composes the existing `Breadcrumbs` output and `form.RenderButton` actions unchanged
+(unsafe action destinations stay inert labels; set `Type: "button"` for script-owned
+actions). `Breadcrumbs` writes every crumb `Href` as a link, so the heading refuses a
+crumb destination that is not relative or HTTP(S) (`javascript:`, `data:`,
+protocol-relative, padded). Every field is escaped plain text; a blank title, control
+characters, more than eight meta items or four actions, or an invalid `ID` fail before
+output. The title column
+shrinks and wraps long words; below `sm` the actions wrap onto their own row beneath
+the title, with 44px minimum targets. Scan `appkit/ui/chrome/*.go` and `appkit/ui/form/*.go`. Gallery `/page-heading`
+shows full, title-only and long-content variants; Fathom (FATHOM-KIT-07) is the
+originating consumer, with integration and second-consumer promotion still open.
+
+## `appkit/ui/live` — live freshness (L2 + L3b, experimental)
+
+Tells a reader that a server-rendered panel has newer data **without re-rendering or
+moving it**. `live.js` (served by `Handler` or inlined with `Script`) reads an app-owned
+server-sent event stream with `fetch`, matches each event to elements carrying
+`data-live-source` and swaps that region's reserved status line from the app's as-of
+text to "… · Updated — refresh this panel". One polite live region announces the
+change (debounced, once per region). Refresh reloads the page at the region and
+returns focus to it; event data and region HTML are never inserted.
+
+| Piece | Use it for |
+|---|---|
+| `RenderRegion(Region{ID, Sources, Label, AsOf, RefreshHref, Body})` | labelled, programmatically focusable section around reviewed app HTML plus its status line |
+| `RegionAttrs` + `RenderStatus` | the same hooks on an app-owned wrapper (e.g. a dashboard widget footer) |
+| `RenderPageStatus(Page{URL, Events, LastEventID})` | once per page: connection line, one stop/resume native button and the polite announcer; auto-starts the script from the render-time cursor |
+| `AppKitLive.start/stop/state/mark` | explicit configuration (`sources(message)` maps custom payloads; without `lastEventId` it adopts the cursor of the page status with the same URL and connects once the document is parsed), the manual stop hook, diagnostics |
+
+Events carry JSON `{"source": …}` or `{"sources": [...]}` naming app-owned keys; `*`
+marks every region (send it when a replay gap cannot be honored). Reconnects resend
+`Last-Event-ID` as the id's UTF-8 bytes (any id round-trips), back off exponentially
+with equal jitter (8 attempts, 30 s cap; the first retry waits 1–1.5× the 1 s floor or
+a larger server `retry`), treat 60 s of silence as lost, stop on 204 and do not retry
+other 4xx except 408/429. A connection earns a fresh attempt budget only by staying
+open 10 s or delivering an event that advances the cursor, so a server that accepts and
+closes still exhausts the attempts. The stream pauses after the page is hidden for 5 s
+and resumes on return. Without the script the markup says "Live updates are off.
+Reload for newer data." Nothing moves at any width: the region status layers share one
+grid cell, the connection line stacks an invisible copy of every message it can show,
+and the stop/resume control keeps its box (invisible until usable, never offered when
+it cannot act) and reserves its wider label; this relies on the scanned `invisible`
+utility. A refocused region shows a focus-visible ring. The package doc states the
+keyboard and connection contract. There is no event taxonomy, replay store,
+authorization or portable vendoring. Gallery `/live` drives a synthetic fixture
+(publish, gap, dropped streams, refused connections); Fathom (FATHOM-KIT-06) is the
+originating consumer, not yet an adopter.
 
 ## `appkit/ui/appearance` — preference behavior and control
 
@@ -317,6 +480,36 @@ hover/focus treatment, and `RenderToC`'s boxed styling. `RenderToCPanel` and
 `RenderToCRail` need none of it — they emit Tailwind role utilities only, so
 `appkit/ui/docs/*.go` needs the ordinary L3b `@source` line instead.
 
+## `appkit/ui/code` — code excerpt viewer (HTML, no JS)
+
+Experimental. `RenderExcerpt(Excerpt{Label, Caption, SourceHref, AnchorPrefix, Lines})`
+renders numbered source lines in a named, keyboard-scrollable viewport (`tabindex="0"`,
+visible focus ring); code never wraps and the number/marker gutter stays pinned while
+long lines scroll. Each `Line` carries an app-supplied `LineState` — normal, changed,
+not executed or highlighted — shown as a role-tinted row, a text marker, a
+screen-reader label and a legend entry with counts, so color is never the only
+channel. `StateLabels` renames a state ("Uncovered"); the app decides what it means.
+
+Line ids are `AnchorPrefix + "L" + number` (default `#L120`), and each line number is
+a native permalink to its own anchor; a targeted line gets a focus-colored frame via
+CSS `:target`. Give each excerpt on a page its own prefix. Numbers must increase; a
+jump renders an explicit "Lines 122–129 not shown" gap. `SplitLines(start, text)`
+numbers plain text. An empty excerpt says so; a blank label, non-increasing numbers,
+unknown states, more than `MaxLines` lines or an unsafe `SourceHref` return an error
+and no markup. Characters that draw nothing, reorder the line or change how it parses
+render as visible code points in the lines, `Caption` and `SourceLabel`: controls, every
+Unicode format character (bidi overrides and isolates, zero-width, soft hyphen, tag
+characters), U+2028/U+2029 (a space to the browser, a line break to JavaScript),
+default-ignorable fillers and variation selectors. Classification uses the Go release's
+Unicode tables. The caption and link text are also isolated with `<bdi>`.
+
+There is **no syntax-highlighting engine**: review excerpts render escaped monospace
+text, which is what the originating task needs. Rows are 24px, so each line-number
+permalink is a 48×24px target at a 24px pitch: WCAG 2.2 2.5.8's minimum, not the kit's
+44px floor for standalone controls (a recorded divergence). Every line number is a tab
+stop, so keep excerpts bounded. Scan `appkit/ui/code/*.go` and include the theme CSS. Gallery
+`/agentic/code` shows every state, anchors, gap, revealed characters, empty and refused input.
+
 ## `appkit/ui/card`, `kanban`, `table`, `router` — composable layout (templ)
 
 The templ-based composition primitives. `Card` is the single canonical bordered
@@ -343,6 +536,14 @@ An action column is now inferred from any nonempty Href or a custom action slot;
 but a missing Href leaves it empty without inventing a control. Review selectors,
 snapshots and app-authored footer spans when upgrading; inference does not mutate
 caller data ([ADR-0081](adr/0081-derive-one-table-action-column.md)).
+Every header cell carries `scope="col"`; the table has no row headers (body and
+footer cells are `<td>`), so a first column that names its row needs app-owned
+markup. The scroll wrapper is `relative`, which makes it the containing block
+for the sr-only Select/Actions header labels: a table wider than a 390px screen
+scrolls inside the wrapper instead of letting a hidden label widen the whole page.
+The wrapper now also contains absolutely positioned content from custom cells;
+an overlay that must escape it needs fixed positioning (FATHOM-F0-KIT-01/02,
+[evidence](assessments/2026-09-25-fathom-f0-kit-returns.md)).
 
 ## `appkit/ui/hitl` — human-in-the-loop (HTML)
 
@@ -355,6 +556,23 @@ run.
 | `RunTrace` | a vertical event rail of an agent run (done / active / failed / pending) — "what's happening under the hood" |
 | `DiffView` | before → after review of a proposed agent change (current vs proposed, per field; additions/removals) — pair with `ApprovalCard` |
 | `ToolCall` | inspect one agent tool invocation: name + status badge + collapsible args/result (native `<details>`) — "what did the agent do" |
+| `RenderUnifiedDiff` | experimental line-level review of a proposed text change: unified hunks, old/new line numbers, `+`/`-` markers as text, collapsed unchanged context (native `<details>`) — beside the field-level `DiffView` |
+| `DiffText` / `LineDiff.Hunks` | deterministic Myers line diff and git-compatible hunk grouping, usable without rendering |
+
+`RenderUnifiedDiff(UnifiedDiff{Label, Old, New})` compares two texts; `Hunks` accepts
+precomputed hunks instead (pass `LineDiff.Replaced` as `Replaced` so the budget note
+survives). They may be a subset of one comparison, so the lines between them are stated
+per side as "not included" (never as unchanged, never invented); overlapping hunks and a
+"no newline" mark anywhere but a side's last line are refused. Every line carries a spoken label ("Added, proposed line 9"),
+rows are role-tinted with a left rule, the structure is lists (no table), and the
+viewport is a named `tabindex="0"` region that scrolls long lines. Identical texts
+render "No changes"; a change beyond the 1000-edit budget is shown as one replacement
+block and says so. Hidden, format, tag, line-separator and direction-changing characters
+and invalid bytes render as visible code points in the lines, label and side names (the
+same classes as `ui/code`); names are isolated with `<bdi>`. Input is bounded by
+`MaxDiffLines` per side; invalid input returns an error and no markup. There is no
+word-level diff, side-by-side view or syntax highlighting. Apps own both texts,
+line-ending normalization and whether the change is applied. Gallery `/agentic/code`.
 
 ## `appkit/ui/motion` — the motion vocabulary (L1 CSS + optional L2 JS)
 

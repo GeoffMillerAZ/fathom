@@ -51,7 +51,7 @@ func TestObservatoryNavigationRoutesAndUnknownActive(t *testing.T) {
 		{key: "impact", label: "Impact", href: "/impact"},
 		{key: "story", label: "Sessions", href: "/sessions"},
 		{key: "brief", label: "Brief", href: "/brief"},
-		{key: "statusz", label: "Statusz", href: "/statusz"},
+		{key: "statusz", label: "Daemon status", href: "/statusz"},
 	}
 
 	nav := obsNavigation("unknown")

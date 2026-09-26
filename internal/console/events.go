@@ -60,20 +60,22 @@ type Event struct {
 
 // Sources are the panel source keys an event names — a panel carrying
 // data-console-source="plans:fathom" is told it is stale by a verify event
-// for fathom. Deterministic order.
+// for fathom. Each kind also names its fleet-wide key last ("index",
+// "layers", "plans"), so a panel summarizing every service follows one key
+// instead of one per service. Deterministic order.
 func (e Event) Sources() []string {
 	svc := e.Service
 	switch e.Kind {
 	case EventIngest:
-		return []string{"index:" + svc}
+		return []string{"index:" + svc, "index"}
 	case EventCompile:
 		out := []string{"layers:" + svc}
 		if e.Name != "" {
 			out = append(out, "layer:"+svc+"/"+e.Name)
 		}
-		return out
+		return append(out, "layers")
 	case EventVerify:
-		return []string{"plans:" + svc, "verify:" + svc}
+		return []string{"plans:" + svc, "verify:" + svc, "plans"}
 	case EventSession:
 		if svc == "" {
 			return []string{"sessions"} // a repo label that is not a name
@@ -132,6 +134,9 @@ type EventBus struct {
 	epoch     string
 	subs      map[*Subscription]struct{}
 	dropped   uint64
+	// lastBySource is, per panel source key, the ID of the newest event
+	// naming it (SourceGeneration).
+	lastBySource map[string]uint64
 }
 
 // NewEventBus builds a bus.
@@ -205,6 +210,12 @@ func (b *EventBus) Publish(e Event) (Event, error) {
 	if e.At.IsZero() {
 		e.At = b.now().UTC()
 	}
+	if b.lastBySource == nil {
+		b.lastBySource = map[string]uint64{}
+	}
+	for _, k := range e.Sources() {
+		b.lastBySource[k] = e.ID
+	}
 	b.ring = append(b.ring, e)
 	if len(b.ring) > b.replay {
 		b.ring = append([]Event(nil), b.ring[len(b.ring)-b.replay:]...)
@@ -235,11 +246,23 @@ func (b *EventBus) Subscribe(lastID uint64) (*Subscription, []Event, error) {
 // id from another epoch (a previous daemon process), or one this bus cannot
 // parse, replays the whole ring; a bare number is read as this bus's own.
 func (b *EventBus) SubscribeAfter(lastEventID string) (*Subscription, []Event, error) {
+	sub, replay, _, err := b.SubscribeFrom(lastEventID)
+	return sub, replay, err
+}
+
+// SubscribeFrom is SubscribeAfter that also reports a gap: events the
+// client missed that the replay cannot carry — its cursor is from another
+// process (whatever that process published after it is gone), or older
+// than the oldest event the ring still holds. A client told of a gap must
+// treat every source as changed (GapSources); no id is a gap only when the
+// client has no position at all.
+func (b *EventBus) SubscribeFrom(lastEventID string) (*Subscription, []Event, bool, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	lastEventID = strings.TrimSpace(lastEventID)
 	if lastEventID == "" {
-		return b.subscribeLocked(0, false)
+		sub, replay, err := b.subscribeLocked(0, false)
+		return sub, replay, false, err
 	}
 	epoch, num, hasEpoch := strings.Cut(lastEventID, "-")
 	if !hasEpoch {
@@ -247,8 +270,17 @@ func (b *EventBus) SubscribeAfter(lastEventID string) (*Subscription, []Event, e
 	}
 	n, err := strconv.ParseUint(num, 10, 64)
 	foreign := err != nil || epoch != b.epoch || n > b.next
-	return b.subscribeLocked(n, foreign)
+	gap := foreign || (len(b.ring) > 0 && n+1 < b.ring[0].ID)
+	sub, replay, serr := b.subscribeLocked(n, foreign)
+	return sub, replay, gap && serr == nil, serr
 }
+
+// GapSources is the source list a gap event names: "*", every source (the
+// live-freshness contract for a server that cannot replay what was missed).
+var GapSources = []string{"*"}
+
+// GapEvent is the SSE event name of a gap notice.
+const GapEvent = "gap"
 
 func (b *EventBus) subscribeLocked(lastID uint64, foreign bool) (*Subscription, []Event, error) {
 	if len(b.subs) >= b.maxSubs {
@@ -279,6 +311,17 @@ func (b *EventBus) LastID() uint64 {
 	return b.next
 }
 
+// SourceGeneration is the ID of the newest event naming the panel source
+// key (0 before any). A memo whose read feeds panels following that key
+// includes it in its key, so the moment a panel shows "updated — refresh
+// this panel" the refresh recomputes, instead of re-serving the read the
+// affordance just called out of date (design §2 "Live freshness").
+func (b *EventBus) SourceGeneration(key string) uint64 {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.lastBySource[key]
+}
+
 // sseData is the data: payload of one event — the event plus its panel
 // source keys, still names and IDs only.
 type sseData struct {
@@ -301,10 +344,12 @@ func WriteSSE(w http.ResponseWriter, e Event) error {
 }
 
 // ServeHTTP streams the bus as SSE: a hello event (no ID, so it never moves
-// a client's Last-Event-ID), the replay after Last-Event-ID (header, or the
-// last_event_id query parameter for clients that cannot set headers), then
-// live events and a ": keepalive" comment every keepalive interval. Past the
-// subscriber bound it answers 503 with Retry-After instead of queueing.
+// a client's Last-Event-ID), a gap event naming every source ("*") when the
+// client's cursor is from another process or older than the ring, the
+// replay after Last-Event-ID (header, or the last_event_id query parameter
+// for clients that cannot set headers), then live events and a
+// ": keepalive" comment every keepalive interval. Past the subscriber bound
+// it answers 503 with Retry-After instead of queueing.
 func (b *EventBus) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -314,7 +359,7 @@ func (b *EventBus) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if raw == "" {
 		raw = r.URL.Query().Get("last_event_id")
 	}
-	sub, replay, err := b.SubscribeAfter(raw)
+	sub, replay, gap, err := b.SubscribeFrom(raw)
 	if err != nil {
 		w.Header().Set("Retry-After", "30")
 		http.Error(w, "the event stream serves at most "+strconv.Itoa(b.maxSubs)+" subscribers; retry later", http.StatusServiceUnavailable)
@@ -332,6 +377,11 @@ func (b *EventBus) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	fmt.Fprintf(w, "event: hello\ndata: {\"server\":\"fathom\",\"epoch\":%q}\n\n", b.epoch)
+	if gap {
+		// No id: a gap notice never moves the client's cursor; the replay
+		// that follows does.
+		fmt.Fprintf(w, "event: %s\ndata: {\"kind\":%q,\"sources\":[\"*\"]}\n\n", GapEvent, GapEvent)
+	}
 	for _, e := range replay {
 		if WriteSSE(w, e) != nil {
 			return

@@ -10,6 +10,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -19,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/config"
+	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/pkg/client"
@@ -182,17 +184,51 @@ func cmdInstrumentAdoption(args []string, stdout, stderr io.Writer) int {
 	storePath := fs.String("store", "", "optional store path — builds the registered-tool list the same way serve-http constructs its server; omit to use a backend-independent registry (tool registration never depends on the backend, see registeredToolNames)")
 	root := fs.String("root", ".", "project root for .fathom/observations.md")
 	serviceFlag := fs.String("service", "", "scope the report to one service's call-log rows (unattributed rows are excluded and counted) — answers \"is fathom helping in repo X\" from anywhere (IO-10)")
+	url := fs.String("url", defaultFathomURL(), "the daemon whose record names the call log")
 	jsonOut := fs.Bool("json", false, "machine-readable JSON output")
 	if err := fs.Parse(args); err != nil {
 		return 0
 	}
+	report, resolved := instrumentAdoption(adoptionQuery{CallLog: *callLogFlag, Store: *storePath, Root: *root, Service: *serviceFlag, BaseURL: *url}, stderr)
 
+	if *jsonOut {
+		enc := json.NewEncoder(stdout)
+		enc.SetIndent("", "  ")
+		_ = enc.Encode(withCallLog(report, resolved))
+	} else {
+		renderAdoptionReport(stdout, report)
+		fmt.Fprintln(stdout, callLogLine(resolved))
+	}
+	return 0
+}
+
+// adoptionQuery parameterizes instrumentAdoption: the invocation's
+// --call-log, --store, --root and --service, and the daemon whose record
+// names the call log (--url).
+type adoptionQuery struct {
+	CallLog, Store, Root, Service, BaseURL string
+	// preread, when set, is a read of the resolved log the caller already
+	// made (the console's Operate page reads it once for every section).
+	preread *adoptionPreread
+}
+
+// adoptionPreread is one read of the call log: its usage entries, the
+// malformed lines skipped, and the read error.
+type adoptionPreread struct {
+	entries []adoptionCallEntry
+	skipped int
+	err     error
+}
+
+// instrumentAdoption is `fathom instrument --adoption`'s whole computation;
+// the console's Operate page calls it for its section (P10).
+func instrumentAdoption(q adoptionQuery, stderr io.Writer) (AdoptionReport, console.ResolvedCallLog) {
 	// OC-2 (console_calllog.go): the one call-log resolution — the
 	// daemon's record first (the log the daemon actually writes), then J5's
 	// named-service identity (its recorded root, that root's config, its
 	// default), then config and the legacy default with doctor's
 	// daemon-workspace probes rooted at --root (IO-10's cwd-independence).
-	resolved := resolveConsoleCallLogFor(callLogQuery{Flag: *callLogFlag, Service: *serviceFlag, ProbeRoot: *root})
+	resolved := resolveConsoleCallLogFor(callLogQuery{Flag: q.CallLog, Service: q.Service, ProbeRoot: q.Root, BaseURL: q.BaseURL})
 	callLogPath := resolved.Path
 
 	// IT-1 read-error classification (observation O17, filed 2026-08-23):
@@ -205,7 +241,16 @@ func cmdInstrumentAdoption(args []string, stdout, stderr io.Writer) int {
 	// never actually happened. classifyCallLogRead (flywheel.go's own
 	// classification, mirrored here per SP-B3) tells "no log yet" (ENOENT)
 	// apart from a real defect.
-	entries, skippedMalformed, callLogErr := classifyCallLogRead(callLogPath)
+	var (
+		entries          []adoptionCallEntry
+		skippedMalformed int
+		callLogErr       error
+	)
+	if q.preread != nil {
+		entries, skippedMalformed, callLogErr = append([]adoptionCallEntry(nil), q.preread.entries...), q.preread.skipped, q.preread.err
+	} else {
+		entries, skippedMalformed, callLogErr = classifyCallLogRead(callLogPath)
+	}
 	read := callLogErr == nil
 	realReadErr := callLogErr != nil && !os.IsNotExist(callLogErr)
 	callLogReadError := ""
@@ -214,11 +259,11 @@ func cmdInstrumentAdoption(args []string, stdout, stderr io.Writer) int {
 	}
 
 	unattributedExcluded := 0
-	if *serviceFlag != "" {
-		entries, unattributedExcluded = filterEntriesByService(entries, *serviceFlag)
+	if q.Service != "" {
+		entries, unattributedExcluded = filterEntriesByService(entries, q.Service)
 	}
 
-	toolNames, toolErr := registeredToolNames(*storePath)
+	toolNames, toolErr := registeredToolNames(q.Store)
 	toolNote := ""
 	if toolErr != nil {
 		toolNote = fmt.Sprintf("could not resolve the registered-tool list: %v", toolErr)
@@ -226,11 +271,11 @@ func cmdInstrumentAdoption(args []string, stdout, stderr io.Writer) int {
 	}
 
 	var openObs *int
-	if content, existed, obsErr := readObservations(*root); obsErr == nil && existed {
+	if content, existed, obsErr := readObservations(q.Root); obsErr == nil && existed {
 		n := countOpenObservations(content)
 		openObs = &n
 	} else if obsErr != nil {
-		fmt.Fprintf(stderr, "warn: instrument --adoption: reading %s: %v\n", observationsPath(*root), obsErr)
+		fmt.Fprintf(stderr, "warn: instrument --adoption: reading %s: %v\n", observationsPath(q.Root), obsErr)
 	}
 
 	// J5: one identical headline across all three instruments (J5(d)) —
@@ -243,8 +288,8 @@ func cmdInstrumentAdoption(args []string, stdout, stderr io.Writer) int {
 	// IT-11: the verify-gate figure sources from the verify ledger, never
 	// the call log — readVerifyLedger() already honors FATHOM_VERIFY_LEDGER
 	// (verifyledger.go), the "path injectable" this row asks for.
-	report := buildAdoptionReport(callLogPath, read, callLogReadError, entries, skippedMalformed, toolNames, toolNote, openObs, observationsPath(*root), readVerifyLedger())
-	report.ServiceFilter = *serviceFlag
+	report := buildAdoptionReport(callLogPath, read, callLogReadError, entries, skippedMalformed, toolNames, toolNote, openObs, observationsPath(q.Root), readVerifyLedger())
+	report.ServiceFilter = q.Service
 	report.UnattributedExcluded = unattributedExcluded
 	// O17: same fabrication risk as buildAdoptionReport's zeroCall — the
 	// agent-surface partition is equally derived from adoptionToolCounts
@@ -254,15 +299,7 @@ func cmdInstrumentAdoption(args []string, stdout, stderr io.Writer) int {
 		report.ZeroCallAgentTools, report.RegisteredNotOnAgent = partitionZeroCalls(toolNames, mcp.AgentSurfaceTools(), adoptionToolCounts(entries))
 	}
 
-	if *jsonOut {
-		enc := json.NewEncoder(stdout)
-		enc.SetIndent("", "  ")
-		_ = enc.Encode(withCallLog(report, resolved))
-	} else {
-		renderAdoptionReport(stdout, report)
-		fmt.Fprintln(stdout, callLogLine(resolved))
-	}
-	return 0
+	return report, resolved
 }
 
 // resolveCallLogPath mirrors runServeHTTP's own --call-log default
@@ -320,13 +357,26 @@ func readCallLog(path string) (entries []adoptionCallEntry, skippedMalformed int
 // Open errors retain the existing tccWedgeHint behavior; scanner failures
 // are reported without inferring a permissions cause. An incomplete scan
 // discards prefix rows, never presenting partial data as a complete read.
+//
+// Rows the console stamped with its own origin (mcp.OriginConsole: the
+// Observatory reading the registry to render a page) are dropped here, so
+// no usage reader — tool tables, call totals, fleet, impact, flywheel,
+// doctor, research — counts the console reading itself as traffic;
+// callLogReadCounting reports how many.
 func classifyCallLogRead(path string) (entries []adoptionCallEntry, skippedMalformed int, err error) {
+	entries, skippedMalformed, _, err = callLogReadCounting(path)
+	return entries, skippedMalformed, err
+}
+
+// callLogReadCounting is classifyCallLogRead that also counts the console's
+// own reads it left out, for a figure that names them (console.CallTotal).
+func callLogReadCounting(path string) (entries []adoptionCallEntry, skippedMalformed, consoleReads int, err error) {
 	f, openErr := os.Open(path)
 	if openErr != nil {
 		if os.IsNotExist(openErr) {
-			return nil, 0, openErr // honest "no log yet"
+			return nil, 0, 0, openErr // honest "no log yet"
 		}
-		return nil, 0, fmt.Errorf("%w%s", openErr, tccWedgeHint(path))
+		return nil, 0, 0, fmt.Errorf("%w%s", openErr, tccWedgeHint(path))
 	}
 	defer f.Close()
 
@@ -336,23 +386,49 @@ func classifyCallLogRead(path string) (entries []adoptionCallEntry, skippedMalfo
 	// can make the read incomplete.
 	sc.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
 	for sc.Scan() {
-		line := strings.TrimSpace(sc.Text())
-		if line == "" {
-			continue // blank separators are not entries and not malformed
-		}
-		var e adoptionCallEntry
-		if err := json.Unmarshal([]byte(line), &e); err != nil {
+		switch e, kind := decodeCallLogLine(sc.Bytes()); kind {
+		case callLogLineMalformed:
 			skippedMalformed++
-			continue
+		case callLogLineConsole:
+			consoleReads++
+		case callLogLineEntry:
+			entries = append(entries, e)
 		}
-		entries = append(entries, e)
 	}
 	if scanErr := sc.Err(); scanErr != nil {
 		// Partial counts are not a complete observation. Discard even valid
 		// prefix rows so callers cannot report a truncated file as measured.
-		return nil, 0, fmt.Errorf("read call log %s: %w", path, scanErr)
+		return nil, 0, 0, fmt.Errorf("read call log %s: %w", path, scanErr)
 	}
-	return entries, skippedMalformed, nil
+	return entries, skippedMalformed, consoleReads, nil
+}
+
+// callLogLineKind is what one call-log line is to a usage reader.
+type callLogLineKind int
+
+const (
+	callLogLineBlank     callLogLineKind = iota // a separator: not an entry, not malformed
+	callLogLineMalformed                        // not a JSON entry
+	callLogLineConsole                          // the console reading itself (mcp.OriginConsole)
+	callLogLineEntry                            // a call a usage reader counts
+)
+
+// decodeCallLogLine is the one reading of a call-log line every usage
+// reader shares (callLogReadCounting, the console's incremental tail), so
+// a whole-file read and an appended-bytes read can never count differently.
+func decodeCallLogLine(raw []byte) (adoptionCallEntry, callLogLineKind) {
+	line := bytes.TrimSpace(raw)
+	if len(line) == 0 {
+		return adoptionCallEntry{}, callLogLineBlank
+	}
+	var e adoptionCallEntry
+	if err := json.Unmarshal(line, &e); err != nil {
+		return adoptionCallEntry{}, callLogLineMalformed
+	}
+	if mcp.IsConsoleRead(e.Origin) {
+		return e, callLogLineConsole
+	}
+	return e, callLogLineEntry
 }
 
 // registeredToolNames returns the sorted names of every tool the fathom

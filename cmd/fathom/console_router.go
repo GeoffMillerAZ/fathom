@@ -13,6 +13,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/geoffmilleraz/app-kit/appkit/ui/chrome"
+	"github.com/geoffmilleraz/app-kit/appkit/ui/live"
+	"github.com/geoffmilleraz/app-kit/appkit/ui/palette"
 	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
@@ -27,6 +30,40 @@ type consoleDeps struct {
 	startTime time.Time
 	now       func() time.Time
 	search    *consoleSearchCache
+	// storePath is the store this daemon serves (serve-http's --store,
+	// absolute; "" in handler tests without one). A page rendering a verb
+	// that opens a store directly (certify, conserve) names it in the
+	// chip: run as shown, the verb would otherwise read its default
+	// <repo>/workspace/db/fathom.sqlite — another store, other numbers.
+	// The Knowledge pages name it in the remedy commands they print.
+	storePath string
+}
+
+// storeArg is the " --store <path>" a store-direct verb's chip carries, so
+// the command as shown reads the store the page read ("" when this console
+// has no store path).
+func (d *consoleDeps) storeArg() string {
+	if d == nil || d.storePath == "" {
+		return ""
+	}
+	return " --store " + shellWord(d.storePath)
+}
+
+// shellWord quotes s for a POSIX shell when it holds anything beyond the
+// characters a path usually has, or would expand as a leading "~" — the
+// store chips and the Knowledge pages' copyable commands alike.
+func shellWord(s string) string {
+	safe := s != "" && !strings.HasPrefix(s, "~")
+	for _, r := range s {
+		if !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("/._-+@:,=~%", r)) {
+			safe = false
+			break
+		}
+	}
+	if safe {
+		return s
+	}
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }
 
 // newConsoleDeps builds the default dependencies for a handler: the
@@ -59,18 +96,21 @@ const consolePageJSONSchema = "fathom.console.page/v1"
 // the shared metrics it shows, each verb's --json as a section, and the
 // page's own projection.
 type consolePageJSON struct {
-	Schema      string          `json:"schema"`
-	Page        string          `json:"page"`
-	Route       string          `json:"route"`
-	Path        string          `json:"path"`
-	Title       string          `json:"title"`
-	Group       string          `json:"group"`
-	Question    string          `json:"question"`
-	GeneratedAt string          `json:"generated_at"`
-	Verbs       []string        `json:"verbs"`
-	Metrics     console.Metrics `json:"metrics,omitempty"`
-	Sections    map[string]any  `json:"sections,omitempty"`
-	Model       any             `json:"model,omitempty"`
+	Schema      string   `json:"schema"`
+	Page        string   `json:"page"`
+	Route       string   `json:"route"`
+	Path        string   `json:"path"`
+	Title       string   `json:"title"`
+	Group       string   `json:"group"`
+	Question    string   `json:"question"`
+	GeneratedAt string   `json:"generated_at"`
+	Verbs       []string `json:"verbs"`
+	// ProjectVerbs are the per-project verbs the page renders ("{svc}" is
+	// each project); each one's section is keyed by service.
+	ProjectVerbs []string        `json:"project_verbs,omitempty"`
+	Metrics      console.Metrics `json:"metrics,omitempty"`
+	Sections     map[string]any  `json:"sections,omitempty"`
+	Model        any             `json:"model,omitempty"`
 }
 
 func consolePageJSONFor(p *consolePage, r *http.Request, out consoleOut, now time.Time) consolePageJSON {
@@ -78,14 +118,14 @@ func consolePageJSONFor(p *consolePage, r *http.Request, out consoleOut, now tim
 	if title == "" {
 		title = p.Title
 	}
-	verbs := p.Verbs
+	verbs := pageVerbs(p, out)
 	if verbs == nil {
 		verbs = []string{}
 	}
 	return consolePageJSON{
 		Schema: consolePageJSONSchema, Page: p.ID, Route: p.Route, Path: r.URL.Path,
 		Title: title, Group: p.Group, Question: p.Question,
-		GeneratedAt: now.UTC().Format(time.RFC3339), Verbs: verbs,
+		GeneratedAt: now.UTC().Format(time.RFC3339), Verbs: verbs, ProjectVerbs: p.ProjectVerbs,
 		Metrics: out.Metrics, Sections: out.Sections, Model: out.Model,
 	}
 }
@@ -119,6 +159,9 @@ func (d *consoleDeps) pageHandler(p *consolePage) http.HandlerFunc {
 			return
 		}
 		if out.Raw != nil && out.Raw(w) {
+			if out.RawIsView && r.Method == http.MethodGet {
+				countPageView(d.views, p, now)
+			}
 			return
 		}
 		if wantsJSON(r) {
@@ -141,10 +184,20 @@ func (d *consoleDeps) pageHandler(p *consolePage) http.HandlerFunc {
 		if out.Body != nil {
 			body = out.Body()
 		}
+		// OC-14: a body built from source-keyed panels is already live; any
+		// other body follows the page's declared sources as one region.
+		live := strings.Contains(body, "data-live-source=")
+		if !live {
+			body, live = consoleLivePage(title, pageLiveSources(p, cr), now, body)
+		}
+		liveStatus := ""
+		if live {
+			liveStatus = consoleLiveStatus(d.bus.Cursor())
+		}
 		page := renderConsoleShell(d.reg, consoleShell{
-			PageID: p.ID, Title: title, Crumbs: consoleCrumbs(d.reg, p.ID, title),
-			Question: p.Question, Meta: out.Meta, Verbs: p.Verbs, Actions: out.Actions,
-			Body: body, SearchQuery: r.URL.Query().Get("q"),
+			PageID: p.ID, Title: title, Crumbs: pageCrumbs(d.reg, p, out, title),
+			Question: p.Question, Meta: out.Meta, Verbs: pageChips(p, out), Actions: out.Actions,
+			Body: body, Live: liveStatus,
 		})
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		_, _ = w.Write([]byte(page))
@@ -158,6 +211,8 @@ func mountConsole(mux *http.ServeMux, d *consoleDeps, wiring http.Handler) {
 	}
 	mux.Handle("/", consoleNotFound(d.reg))
 	mux.Handle("/assets/console.js", consoleAssetsJSHandler())
+	mux.Handle(consolePaletteScriptPath, palette.Handler())
+	mux.Handle(consoleLiveScriptPath, live.Handler())
 	// GET /events (OC-13): the live-freshness stream — names and IDs only.
 	mux.Handle("/events", d.bus)
 	mountLegacyObservatory(mux, d.selfURL, wiring)
@@ -175,6 +230,39 @@ func modelMeta(m observatoryModel) []string {
 		meta = append(meta, "degraded: registry unreachable")
 	}
 	return meta
+}
+
+// pageCrumbs is the page's trail: the registry's (Observatory, the
+// navigable parent, the page), or Observatory, the page's own trail and
+// the page when it names one (a plan row sits under its plan) — its title,
+// unless the trail already ends in the page's own unlinked crumb.
+func pageCrumbs(reg *consoleRegistry, p *consolePage, out consoleOut, title string) []chrome.Crumb {
+	if out.Crumbs == nil {
+		return consoleCrumbs(reg, p.ID, title)
+	}
+	crumbs := append([]chrome.Crumb{{Label: "Observatory", Href: "/"}}, out.Crumbs...)
+	if len(out.Crumbs) > 0 && out.Crumbs[len(out.Crumbs)-1].Href == "" {
+		// A trail that ends in an unlinked crumb names the page itself.
+		return crumbs
+	}
+	return append(crumbs, chrome.Crumb{Label: title})
+}
+
+// pageVerbs are the commands a request's page renders: its concrete verbs
+// when the page's registered ones are templates.
+func pageVerbs(p *consolePage, out consoleOut) []string {
+	if out.Verbs != nil {
+		return out.Verbs
+	}
+	return p.Verbs
+}
+
+// pageChips are the heading's chips: the page's Chips when it names them.
+func pageChips(p *consolePage, out consoleOut) []string {
+	if out.Chips != nil {
+		return out.Chips
+	}
+	return pageVerbs(p, out)
 }
 
 func containsString(list []string, v string) bool {

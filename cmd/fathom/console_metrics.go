@@ -75,5 +75,6 @@ func consoleModelMetrics(m observatoryModel) console.Metrics {
 		console.MetricCalls:        console.CallTotal(modelCallFacts(m)),
 		console.MetricSessions:     modelSessions(m),
 		console.MetricObservations: console.OpenObservations(f),
+		console.MetricAgentTools:   console.AgentSurfaceTools(m.AgentSurfaceTools, m.AgentSchemaBytes),
 	}
 }

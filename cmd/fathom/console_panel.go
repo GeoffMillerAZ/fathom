@@ -16,6 +16,7 @@ import (
 	"html/template"
 	"strings"
 
+	"github.com/geoffmilleraz/app-kit/appkit/ui/chrome"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/dashboard"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/stat"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/table"
@@ -35,8 +36,11 @@ type consolePanel struct {
 	// other than present or zero.
 	State  console.State
 	Reason string
-	// SourceKey is the live-freshness source (data-console-source), e.g.
-	// "plans:fathom" — an event naming it marks the panel updated (OC-14).
+	// SourceKey names the live-freshness sources the panel follows
+	// (data-console-source), e.g. "plans:fathom"; several keys are
+	// space-separated ("index layers"). An event naming one marks the panel
+	// updated without moving it (OC-14, console_live.go); the panel's
+	// freshness then leads its reserved status line.
 	SourceKey string
 	Body      string // trusted panel content
 	Span      int
@@ -53,6 +57,17 @@ func renderPanel(p consolePanel) string {
 		body.WriteString(line)
 	}
 	body.WriteString(p.Body)
+	// A live panel is a kit region (console_live.go): its freshness leads
+	// the region's reserved status line, where "Updated — refresh this
+	// panel" appears without moving anything.
+	freshness := p.Freshness
+	if freshness == "" {
+		freshness = "as rendered"
+	}
+	regionAttrs, status, isLive := "", "", false
+	if p.SourceKey != "" && p.ID != "" {
+		regionAttrs, status, isLive = consoleLiveRegion(p.ID, p.Title, "freshness: "+freshness, p.SourceKey)
+	}
 	var foot []string
 	if p.Source != "" {
 		foot = append(foot, "source: "+p.Source)
@@ -60,11 +75,14 @@ func renderPanel(p consolePanel) string {
 	if p.Denominator != "" {
 		foot = append(foot, "denominator: "+p.Denominator)
 	}
-	if p.Freshness != "" {
+	if p.Freshness != "" && !isLive {
 		foot = append(foot, "freshness: "+p.Freshness)
 	}
 	if len(foot) > 0 {
 		body.WriteString(`<p class="mt-3 border-t border-line pt-2 text-xs text-ink-muted [overflow-wrap:anywhere]" data-panel-footer>` + html.EscapeString(strings.Join(foot, " · ")) + `</p>`)
+	}
+	if isLive {
+		body.WriteString(status)
 	}
 	var action template.HTML
 	if p.Verb != "" {
@@ -76,44 +94,76 @@ func renderPanel(p consolePanel) string {
 		state = console.StatePresent
 	}
 	attrs := fmt.Sprintf(` data-console-panel data-truth-state="%s"`, html.EscapeString(string(state)))
-	if p.ID != "" {
+	class := "min-w-0"
+	switch {
+	case isLive:
+		attrs += " " + regionAttrs
+		class = consoleRegionClass
+	case p.ID != "":
 		attrs += ` id="` + html.EscapeString(p.ID) + `"`
-	}
-	if p.SourceKey != "" {
-		attrs += ` data-console-source="` + html.EscapeString(p.SourceKey) + `"`
+		if p.SourceKey != "" {
+			attrs += ` data-console-source="` + html.EscapeString(p.SourceKey) + `"`
+		}
 	}
 	if p.Verb != "" {
 		attrs += ` data-console-verb="` + html.EscapeString(p.Verb) + `"`
 	}
-	return `<div class="min-w-0"` + attrs + `>` + widget + `</div>`
+	return `<div class="` + class + `"` + attrs + `>` + widget + `</div>`
 }
 
 // truthStateLine renders a non-plain truth state in words, each state drawn
-// differently; present and zero render nothing (the number speaks).
+// differently; present and zero render nothing (the number speaks). A
+// reason can carry long paths with no break point, so the line wraps
+// anywhere rather than running off its card (FATHOM-UI-01: long
+// diagnostics stay left-aligned and wrapping).
 func truthStateLine(s console.State, reason string) string {
 	r := html.EscapeString(reason)
+	const wrap = ` min-w-0 [overflow-wrap:anywhere]`
 	switch s {
 	case console.StateAbsent:
-		return `<p class="mb-2 italic text-ink-muted" data-truth-line="absent">not measured — ` + r + `</p>`
+		return `<p class="mb-2 italic text-ink-muted` + wrap + `" data-truth-line="absent">not measured — ` + r + `</p>`
 	case console.StateError:
-		return `<p class="mb-2 font-medium text-danger" data-truth-line="error">could not be read — ` + r + `</p>`
+		return `<p class="mb-2 font-medium text-danger` + wrap + `" data-truth-line="error">could not be read — ` + r + `</p>`
 	case console.StateStale:
-		return `<p class="mb-2 text-caution" data-truth-line="stale">stale — ` + r + `</p>`
+		return `<p class="mb-2 text-caution` + wrap + `" data-truth-line="stale">stale — ` + r + `</p>`
 	case console.StatePartial:
-		return `<p class="mb-2 text-ink-muted" data-truth-line="partial">lower bound — ` + r + `</p>`
+		return `<p class="mb-2 text-ink-muted` + wrap + `" data-truth-line="partial">lower bound — ` + r + `</p>`
 	}
 	return ""
 }
 
 // renderVerbChip renders the exact command as selectable monospace text with
 // a copy button the console script reveals (hidden without JavaScript, when
-// the text itself is still selectable).
+// the text itself is still selectable). A chip that is not a fathom command
+// — an agent-surface tool call, a harness's `mcp add` line — is labelled by
+// what it is. The button never shrinks or wraps: a long command squeezes
+// the code, which wraps, never the button's label (it inherits whatever
+// overflow-wrap its container sets).
 func renderVerbChip(cmd string) string {
 	c := html.EscapeString(cmd)
+	what := "the command"
+	if !strings.HasPrefix(cmd, "fathom ") {
+		what = "the call"
+		if !strings.Contains(cmd, "{") {
+			what = "the line"
+		}
+	}
 	return `<span class="inline-flex max-w-full items-center gap-1 rounded-md border border-line bg-surface-sunken py-0.5 pl-2 pr-0.5 font-mono text-xs text-ink" data-verb-chip>` +
 		`<code class="min-w-0 [overflow-wrap:anywhere]">` + c + `</code>` +
-		`<button type="button" hidden data-console-copy="` + c + `" aria-label="Copy the command ` + c + `" class="inline-flex min-h-11 min-w-11 items-center justify-center rounded px-2 font-sans text-xs font-medium text-accent hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">Copy</button>` +
+		`<button type="button" hidden data-console-copy="` + c + `" aria-label="Copy ` + what + ` ` + c + `" class="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center whitespace-nowrap rounded px-2 font-sans text-xs font-medium text-accent hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">Copy</button>` +
 		`</span>`
+}
+
+// consolePager is the kit's pagination with 44 px targets (design §2
+// Accessibility): its links are about 30 px tall (FATHOM-C-KIT-05,
+// docs/app-kit.md), so every console pager wraps them. "" when there is one
+// page.
+func consolePager(p chrome.Pagination) string {
+	nav := chrome.RenderPagination(p)
+	if nav == "" {
+		return ""
+	}
+	return `<div class="mt-2 [&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center [&_span]:inline-flex [&_span]:min-h-11 [&_span]:items-center" data-console-pager>` + nav + `</div>`
 }
 
 // valueStat maps a projected value onto a kit stat tile without losing its
@@ -166,13 +216,13 @@ func valuePlain(v console.Value[int]) string {
 	return fmtThousands(v.V)
 }
 
-// renderKitTable renders the kit's table.Table with scope="col" on every
-// header cell (design §2: tables use th scope). The pinned kit template
-// writes <th> without scope and only ever inside <thead>, so the header
-// cells are exactly its <th> elements; the kit defect is recorded in
-// docs/app-kit.md for return upstream.
+// renderKitTable renders the kit's table.Table (a templ component) to a
+// string. Since mirror d9dd789 the kit itself writes scope="col" on every
+// header cell and makes its scroll wrapper the containing block of its
+// sr-only header labels (FATHOM-F0-KIT-01/02, returned from wave F0), so
+// fathom no longer patches either.
 func renderKitTable(p table.TableParams) string {
 	var buf bytes.Buffer
 	_ = table.Table(p).Render(context.Background(), &buf)
-	return strings.ReplaceAll(buf.String(), "<th ", `<th scope="col" `)
+	return buf.String()
 }

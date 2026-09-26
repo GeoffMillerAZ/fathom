@@ -129,6 +129,11 @@ func languagesOf(files []string) []string {
 	return out
 }
 
+// LanguageOf is languageOfFile for callers outside the package: the
+// Observatory's index tab counts files and symbols per language by the
+// same rule the tier breakdown names them (OC-36).
+func LanguageOf(path string) string { return languageOfFile(path) }
+
 // languageOfFile maps path's extension to docs/languages.md's own
 // language name, "" for anything not recognized.
 func languageOfFile(path string) string {

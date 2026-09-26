@@ -59,13 +59,23 @@ func NewWithOptions(options Options) http.Handler {
 	registerStaticContent(mux)
 	registerShellDemo(mux)
 	registerShellDemoAssets(mux)
+	registerPalette(mux)
+	registerLive(mux)
 	mux.HandleFunc("/overview", page("overview", "Specimen overview", buildOverview))
 	mux.HandleFunc("/tokens", page("tokens", "Tokens", buildTokens))
 	mux.HandleFunc("/components", page("components", "Components", buildComponents))
+	// Linked from /components and the analytics.graph catalog preview rather
+	// than the section nav: every nav entry is paid for by every page's
+	// payload budget (header_payload_test.go).
+	mux.HandleFunc("/graph", page("graph", "Layered graph", buildGraph))
+	mux.HandleFunc(heatmapPath, pageAt(heatmapPath, "components", "Heatmap truth states", buildHeatmap))
 	mux.HandleFunc("/layout", page("layout", "Layout", buildLayout))
 	mux.HandleFunc("/forms", page("forms", "Forms", buildForms))
 	mux.HandleFunc("/overlays", page("overlays", "Overlays", buildOverlays))
 	mux.HandleFunc("/agentic", page("agentic", "Agentic", buildAgentic))
+	// A subpage keeps the Agentic section current without another header link:
+	// every header link counts against the signed analytics page's 20KiB budget.
+	mux.HandleFunc("/agentic/code", pageAt("/agentic/code", "agentic", "Code review", buildCodeReview))
 	mux.HandleFunc("/messaging", page("messaging", "Messaging", buildMessaging))
 	mux.HandleFunc("/provenance", page("provenance", "Provenance", buildProvenance))
 	mux.HandleFunc("/dashboard", page("dashboard", "Dashboard", buildDashboard))
@@ -100,8 +110,15 @@ var nav = []navLink{
 // content; the shell (nav, theme switch, footer) is shared. The "/" route is
 // special-cased to 404 on any unknown path so the catalog stays tight.
 func page(key, title string, build func() (template.HTML, error)) http.HandlerFunc {
+	return pageAt("/"+key, key, title, build)
+}
+
+// pageAt serves one exact path under a navigation section: key selects the
+// current nav entry, so a sub-page such as /components/heatmap or /agentic/code
+// keeps its section highlighted without adding a top-level route.
+func pageAt(path, key, title string, build func() (template.HTML, error)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/"+key {
+		if r.URL.Path != path {
 			http.NotFound(w, r)
 			return
 		}

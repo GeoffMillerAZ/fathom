@@ -38,12 +38,12 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
 
+	readmanifest "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/read-manifest"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
@@ -80,6 +80,12 @@ type PortTarget struct {
 // Gaps' own invariant/incident sourcing already uses for an absent
 // corpus).
 func PortGaps(ctx context.Context, st store.Store, service, corpusRoot string) ([]PortTarget, error) {
+	return portGaps(ctx, st, service, corpusRoot, readmanifest.NewSet())
+}
+
+// portGaps is PortGaps recording every source file it reads in reads, so
+// Gaps can name an unreadable one instead of reporting fewer ports (I38).
+func portGaps(ctx context.Context, st store.Store, service, corpusRoot string, reads *readmanifest.Set) ([]PortTarget, error) {
 	if corpusRoot == "" {
 		return nil, nil
 	}
@@ -97,7 +103,7 @@ func PortGaps(ctx context.Context, st store.Store, service, corpusRoot string) (
 		if n.Kind != core.KindGoInterface || !isExportedName(n.Name) {
 			continue
 		}
-		impls := findPortImplementations(corpusRoot, n, nodes, edges)
+		impls := findPortImplementations(corpusRoot, n, nodes, edges, reads)
 		if len(impls) == 0 {
 			continue
 		}
@@ -140,8 +146,8 @@ func isExportedName(name string) bool {
 
 // findPortImplementations evidences iface's implementers typed >
 // assertion > method_set (this file's own doc comment).
-func findPortImplementations(corpusRoot string, iface core.SymbolNode, nodes []core.SymbolNode, edges []core.Edge) []PortImplementation {
-	methods := portInterfaceMethodNames(corpusRoot, iface)
+func findPortImplementations(corpusRoot string, iface core.SymbolNode, nodes []core.SymbolNode, edges []core.Edge, reads *readmanifest.Set) []PortImplementation {
+	methods := portInterfaceMethodNames(corpusRoot, iface, reads)
 	if len(methods) == 0 {
 		return nil
 	}
@@ -152,7 +158,7 @@ func findPortImplementations(corpusRoot string, iface core.SymbolNode, nodes []c
 	if typed := portTypedCandidates(edges, nodes, candidates, methods); len(typed) > 0 {
 		return renderPortImplementations(typed, "typed")
 	}
-	if asserted := portAssertionCandidates(corpusRoot, iface.Name, candidates); len(asserted) > 0 {
+	if asserted := portAssertionCandidates(corpusRoot, iface.Name, candidates, reads); len(asserted) > 0 {
 		return renderPortImplementations(asserted, "assertion")
 	}
 	return renderPortImplementations(candidates, "method_set")
@@ -165,9 +171,9 @@ func findPortImplementations(corpusRoot string, iface core.SymbolNode, nodes []c
 // conservative, never wrong — a type satisfying the embedded methods too
 // still needs to satisfy the ones found here). Any read/parse failure
 // returns nil — never a fabricated method set.
-func portInterfaceMethodNames(corpusRoot string, iface core.SymbolNode) map[string]bool {
-	content, err := os.ReadFile(filepath.Join(corpusRoot, filepath.FromSlash(iface.FilePath)))
-	if err != nil {
+func portInterfaceMethodNames(corpusRoot string, iface core.SymbolNode, reads *readmanifest.Set) map[string]bool {
+	content, ok := reads.ReadFile(filepath.Join(corpusRoot, filepath.FromSlash(iface.FilePath)))
+	if !ok {
 		return nil
 	}
 	fset := token.NewFileSet()
@@ -319,7 +325,7 @@ func portTypedCandidates(edges []core.Edge, nodes []core.SymbolNode, candidates 
 // returning the subset of candidates it confirms. A file that fails to
 // read is skipped, never an error — the caller falls back to
 // method_set.
-func portAssertionCandidates(corpusRoot, ifaceName string, candidates map[string]core.SymbolNode) map[string]core.SymbolNode {
+func portAssertionCandidates(corpusRoot, ifaceName string, candidates map[string]core.SymbolNode, reads *readmanifest.Set) map[string]core.SymbolNode {
 	re := regexp.MustCompile(`var\s+_\s+(?:[A-Za-z_]\w*\.)?` + regexp.QuoteMeta(ifaceName) + `\s*=\s*(?:\(\*(\w+)\)|(\w+))`)
 	out := map[string]core.SymbolNode{}
 	seen := map[string]bool{}
@@ -328,8 +334,8 @@ func portAssertionCandidates(corpusRoot, ifaceName string, candidates map[string
 			continue
 		}
 		seen[decl.FilePath] = true
-		content, err := os.ReadFile(filepath.Join(corpusRoot, filepath.FromSlash(decl.FilePath)))
-		if err != nil {
+		content, ok := reads.ReadFile(filepath.Join(corpusRoot, filepath.FromSlash(decl.FilePath)))
+		if !ok {
 			continue
 		}
 		for _, m := range re.FindAllStringSubmatch(string(content), -1) {

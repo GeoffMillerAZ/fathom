@@ -17,6 +17,10 @@ type SparklineOptions struct {
 	StrokeRole string
 	// FillRole is the token role for the area fill. Empty = no fill.
 	FillRole string
+	// Fluid fills the container's width instead of drawing at W pixels:
+	// the chart scales uniformly from its W×H viewBox (strokes included)
+	// and the height follows. Off by default (fixed pixel size).
+	Fluid bool
 	// AriaLabel is the accessible label. Defaults to "sparkline".
 	AriaLabel string
 }
@@ -54,7 +58,7 @@ func Sparkline(values []float64, o SparklineOptions) string {
 	}
 
 	var b strings.Builder
-	b.WriteString(svgOpen(opts.W, opts.H, opts.AriaLabel, ""))
+	b.WriteString(chartOpen(opts.W, opts.H, opts.AriaLabel, opts.Fluid))
 	b.WriteString(svgTitle(opts.AriaLabel))
 
 	if len(clean) == 0 {

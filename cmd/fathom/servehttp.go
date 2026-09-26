@@ -221,6 +221,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// The console's dependencies (vision 35): serve-http owns them so the
 	// event feeders below publish to the same bus GET /events streams.
 	consoleDeps := newConsoleDeps(c, "http://"+*addr, time.Now())
+	consoleDeps.storePath = absStorePath(*storePath)
 	inProcessReg.Store(&inProcessRegistry{self: "http://" + *addr, services: inProcessServicesFn})
 	handler := newHTTPHandlerWithAuthDeps(srv, c, modulesToken, *addr, ports, flog, consoleDeps)
 

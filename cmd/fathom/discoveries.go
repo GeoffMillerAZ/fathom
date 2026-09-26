@@ -21,6 +21,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/mcp"
 	"github.com/geoffmilleraz/fathom/internal/statedir"
 )
 
@@ -176,9 +177,10 @@ func readCallLogPointerRows(logPath, service string, since time.Time) []callLogP
 		var row struct {
 			TS       string   `json:"ts"`
 			Service  string   `json:"service"`
+			Origin   string   `json:"origin"`
 			Pointers []string `json:"pointers"`
 		}
-		if json.Unmarshal([]byte(line), &row) != nil || len(row.Pointers) == 0 {
+		if json.Unmarshal([]byte(line), &row) != nil || len(row.Pointers) == 0 || mcp.IsConsoleRead(row.Origin) {
 			continue
 		}
 		if service != "" && row.Service != service {

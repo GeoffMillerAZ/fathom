@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/certify"
@@ -68,9 +69,13 @@ func cmdCertifyGaps(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "error: certify gaps for %q: %v\n", svc, err)
 		return 1
 	}
-
 	if *jsonOut {
-		return renderCertifyGapsJSON(stdout, svc, indexCommit, time.Now(), report)
+		// I38: the JSON carries "unread"; stderr tells a human piping it
+		// that the targets are a lower bound (the table says so itself).
+		if len(report.Unread) > 0 {
+			fmt.Fprintf(stderr, "certify gaps: a lower bound — %d target source(s) could not be read: %s\n", len(report.Unread), strings.Join(report.Unread, "; "))
+		}
+		return renderCertifyGapsJSON(stdout, svc, indexCommit, certifyGapsNow(), report)
 	}
 	// Suggestions (TC-24) are advisory only and never touch the versioned
 	// fathom.certify.gaps/v1 JSON the Review Kit adapter parses — read and
@@ -103,6 +108,10 @@ type certifyGapsPayload struct {
 	// outright pass. Additive and omitempty — the schema string, field
 	// names and sort order stay exactly what that adapter parses.
 	Skip string `json:"skip,omitempty"`
+	// Unread names each target source that exists and could not be read
+	// (I38): the targets are then a lower bound, and no skip is claimed.
+	// Additive and omitempty, like skip.
+	Unread []string `json:"unread,omitempty"`
 }
 
 type certifyGapsTarget struct {
@@ -144,7 +153,24 @@ type certifyGapsSummary struct {
 	Cases       int `json:"cases"`
 }
 
+// certifyGapsNow is the gaps report's generated_at clock — a variable so
+// the console's JSON-parity test can pin the certifications page and the
+// verb to one instant (as fleetReportNow does for the fleet report).
+var certifyGapsNow = time.Now
+
 func renderCertifyGapsJSON(w io.Writer, service, indexCommit string, now time.Time, report certify.GapReport) int {
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(certifyGapsPayloadFor(service, indexCommit, now, report)); err != nil {
+		return 1
+	}
+	return 0
+}
+
+// certifyGapsPayloadFor is the fathom.certify.gaps/v1 document for one
+// service's report — the verb's --json and the certifications page's
+// section.
+func certifyGapsPayloadFor(service, indexCommit string, now time.Time, report certify.GapReport) certifyGapsPayload {
 	kindSet := map[string]bool{}
 	targets := make([]certifyGapsTarget, 0, len(report.Targets))
 	for _, t := range report.Targets {
@@ -184,20 +210,20 @@ func renderCertifyGapsJSON(w io.Writer, service, indexCommit string, now time.Ti
 			JoinedCases: report.Summary.JoinedCases, Cases: report.Summary.Cases,
 		},
 	}
-	if report.Summary.Declared == 0 {
+	payload.Unread = report.Unread
+	if report.Summary.Declared == 0 && len(report.Unread) == 0 {
 		// Same condition and wording `certify status` already treats as
-		// a named skip, never a pass (cmdCertifyStatus).
+		// a named skip, never a pass (cmdCertifyStatus). An unreadable
+		// source is not "nothing declared".
 		payload.Skip = "no manifests found — nothing declared"
 	}
-	enc := json.NewEncoder(w)
-	enc.SetIndent("", "  ")
-	if err := enc.Encode(payload); err != nil {
-		return 1
-	}
-	return 0
+	return payload
 }
 
 func renderCertifyGapsTable(w io.Writer, report certify.GapReport, suggestions []certifySuggestion) {
+	if len(report.Unread) > 0 {
+		fmt.Fprintf(w, "certify gaps: INCOMPLETE — %d source(s) could not be read, so the targets below are a lower bound: %s\n", len(report.Unread), strings.Join(report.Unread, "; "))
+	}
 	if len(report.Targets) == 0 {
 		fmt.Fprintln(w, "certify gaps: no targets found (nothing declared, and no invariant/incident corpus read)")
 	} else {

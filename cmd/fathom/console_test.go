@@ -7,6 +7,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"html"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -79,7 +80,8 @@ func TestConsoleRegistry_RoutesNavAndSearchAgree(t *testing.T) {
 			t.Errorf("page %s did not render on the console shell", p.ID)
 		}
 	}
-	for _, want := range []string{"/", "/fleet", "/projects/{svc}", "/impact", "/sessions", "/sessions/{id}", "/brief", "/wiring", "/statusz", "/search"} {
+	for _, want := range []string{"/", "/fleet", "/projects/{svc}", "/impact", "/sessions", "/sessions/{id}", "/brief", "/wiring", "/statusz", "/search",
+		"/plans", "/plans/{svc}/{plan}", "/plans/{svc}/{plan}/rows/{id}", "/certifications", "/refactors"} {
 		found := false
 		for _, p := range real.pages {
 			if p.Route == want || (want == "/" && p.Route == "/{$}") {
@@ -206,7 +208,7 @@ func TestConsoleShell_GroupsBreadcrumbsThemeSkipLink(t *testing.T) {
 		t.Error("the current page must be marked in the sidebar")
 	}
 	// Breadcrumbs, question, meta, verb chip, actions.
-	for _, want := range []string{`aria-label="Breadcrumb"`, `<a href="/" class="hover:text-ink">Observatory</a>`, `aria-current="page">Fleet</li>`,
+	for _, want := range []string{`aria-label="Breadcrumb"`, `<a href="/" class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-sm hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">Observatory</a>`, `aria-current="page">Fleet</li>`,
 		"How is every project doing?", "3 projects · generated now", `data-verb-chip`, `fathom fleet report --json`,
 		`data-console-copy="fathom fleet report --json"`, `<a href="/brief">Brief</a>`, `data-console-heading`} {
 		if !strings.Contains(got, want) {
@@ -222,12 +224,23 @@ func TestConsoleShell_GroupsBreadcrumbsThemeSkipLink(t *testing.T) {
 	if !strings.Contains(got, `data-appkit-appearance data-appearance-storage-key="fathom-theme"`) {
 		t.Error("the shell must offer the appearance control")
 	}
-	// Search: a real GET form (no-JS path of the palette).
-	if !strings.Contains(got, `<form role="search" action="/search" method="get"`) || !strings.Contains(got, `name="q"`) {
-		t.Error("the top bar must carry the search form")
+	// Search: the top bar's palette trigger is a real link to the search
+	// page (the no-JS path), and the page carries the palette's dialog with
+	// its GET form (OC-12).
+	if !strings.Contains(got, `<a href="/search" data-palette-open="console-palette"`) {
+		t.Error("the top bar must carry the palette trigger, a link to /search")
+	}
+	if !strings.Contains(got, `<form role="search" action="/search" method="get" data-palette-form>`) || !strings.Contains(got, `name="q"`) {
+		t.Error("the page must carry the palette dialog's search form")
 	}
 	assertRoleUtilitiesOnly(t, got)
 }
+
+// kitOwnedPaletteColors are palette-color utilities inside kit markup that
+// fathom composes but does not author: the overlay dialog's scrim. Doctrine
+// rule 2 binds fathom's own markup; a kit exception is returned upstream
+// (docs/app-kit.md, FATHOM-S0-KIT-02) rather than patched here.
+var kitOwnedPaletteColors = []string{"backdrop:bg-black/40"}
 
 // assertRoleUtilitiesOnly fails on literal palette colors or dark: color
 // variants in rendered classes (UI doctrine rule 2).
@@ -235,7 +248,11 @@ func assertRoleUtilitiesOnly(t *testing.T, doc string) {
 	t.Helper()
 	palette := regexp.MustCompile(`\b(?:bg|text|border|ring|fill|stroke)-(?:red|blue|green|yellow|gray|slate|zinc|neutral|stone|orange|amber|lime|emerald|teal|cyan|sky|indigo|violet|purple|fuchsia|pink|rose|white|black)(?:-\d+)?\b`)
 	for _, m := range regexp.MustCompile(`class="([^"]*)"`).FindAllStringSubmatch(doc, -1) {
-		if palette.MatchString(m[1]) || strings.Contains(m[1], "dark:") {
+		class := m[1]
+		for _, k := range kitOwnedPaletteColors {
+			class = strings.ReplaceAll(class, k, "")
+		}
+		if palette.MatchString(class) || strings.Contains(class, "dark:") {
 			t.Errorf("class uses a palette color or dark: variant: %q", m[1])
 		}
 	}
@@ -325,10 +342,19 @@ func TestStatusz_OnShellUnknownTypedEdgesVisible(t *testing.T) {
 		},
 	}
 	body := renderStatusz(report, "http://127.0.0.1:7575")
+	// The rows render twice — the table from lg up, a stacked list below
+	// it — so each count reads the table alone.
+	tableOnly := func(page string) string {
+		i, j := strings.Index(page, "data-statusz-table"), strings.Index(page, "data-statusz-list")
+		if i < 0 || j < i {
+			t.Fatalf("statusz must render its table and its stacked list")
+		}
+		return page[i:j]
+	}
 	if !strings.Contains(body, "12 packages") {
 		t.Error("a pass that ran must show its package count")
 	}
-	if n := strings.Count(body, "unknown — no typed-edge pass is recorded for this service"); n != 1 {
+	if n := strings.Count(tableOnly(body), "unknown — no typed-edge pass is recorded for this service"); n != 1 {
 		t.Errorf("the one Go service with no recorded pass must read unknown with its cause, found %d", n)
 	}
 	if strings.Contains(body, "not ingested by this daemon since it started") {
@@ -383,7 +409,7 @@ func TestStatusz_OnShellUnknownTypedEdgesVisible(t *testing.T) {
 	// The fixture fleet's services hold Go source but no go.mod: the pass
 	// cannot apply to any of them, so none is unknown and the panel is not
 	// partial (the live fleet showed 6 no-module repos pinned "unknown").
-	if n := strings.Count(page, "does not apply — no go.mod"); n != len(consoleFixtureServices) {
+	if n := strings.Count(tableOnly(page), "does not apply — no go.mod"); n != len(consoleFixtureServices) {
 		t.Errorf("every no-module fixture service must read does-not-apply, found %d", n)
 	}
 	if strings.Contains(page, "the typed-edge pass is unknown for") {
@@ -542,50 +568,258 @@ func jsonFieldNames(t reflect.Type) map[string]bool {
 // TestConsolePagesRenderTheirVerbs pins OC-8: every page answers JSON in
 // the console envelope naming its verbs; for each verb a page declares,
 // the page JSON's section equals that verb's --json output on the fixture
-// fleet, byte-for-value. Pages not yet rebuilt declare no verbs.
+// fleet, byte-for-value. Pages not yet rebuilt declare no verbs. A page
+// whose registered verbs name parameters ("{svc}", "{plan}", "{layer}",
+// "{root}", …) renders them filled from the request, each an instance of
+// one of its registry's verbs, and is held to them at every sample URL
+// (samplePath's and consoleExtraSamplePaths'); each runs as its chip reads
+// (consoleVerbArgs).
 func TestConsolePagesRenderTheirVerbs(t *testing.T) {
 	f := newConsoleFixture(t)
+	pinConsoleVerbClocks(t, f)
 	withVerbs := 0
+	// parity runs one section's exact command as its chip reads (a quoted
+	// value stays one argument, as a shell pasting the chip would keep it;
+	// runVerbJSON) and compares.
+	parity := func(where, verb string, section json.RawMessage) {
+		t.Helper()
+		var fromPage any
+		if err := json.Unmarshal(section, &fromPage); err != nil {
+			t.Fatal(err)
+		}
+		fromVerb := runVerbJSON(t, f, verb)
+		dropVolatileVerbFields(verb, fromVerb, fromPage)
+		if !reflect.DeepEqual(fromVerb, fromPage) {
+			a, _ := json.MarshalIndent(fromVerb, "", " ")
+			b, _ := json.MarshalIndent(fromPage, "", " ")
+			t.Errorf("page %s disagrees with `%s`:\nverb: %s\npage: %s", where, verb, a, b)
+		}
+	}
 	for _, p := range defaultConsoleRegistry().pages {
 		if p.ID == "statusz" {
 			continue // ?format=json is the v3 report (OC-6), not the envelope
 		}
-		env := f.pageJSON(t, samplePath(p))
-		if env.Schema != consolePageJSONSchema || env.Page != p.ID || env.Group != p.Group || env.Question != p.Question {
-			t.Errorf("page %s: envelope = %+v", p.ID, env)
-		}
-		if !reflect.DeepEqual(append([]string{}, env.Verbs...), append([]string{}, p.Verbs...)) {
-			t.Errorf("page %s: JSON verbs %v, registry %v", p.ID, env.Verbs, p.Verbs)
-		}
-		for _, verb := range p.Verbs {
-			withVerbs++
-			section, ok := env.Sections[verb]
-			if !ok {
-				t.Errorf("page %s: no section for its verb %q", p.ID, verb)
-				continue
+		for _, path := range append([]string{samplePath(p)}, consoleExtraSamplePaths[p.ID]...) {
+			env := f.pageJSON(t, path)
+			if env.Schema != consolePageJSONSchema || env.Page != p.ID || env.Group != p.Group || env.Question != p.Question {
+				t.Errorf("page %s: envelope = %+v", path, env)
 			}
-			args := append(strings.Fields(verb)[1:], "--url", f.ts.URL)
-			var out, errb bytes.Buffer
-			if code := run(args, &out, &errb); code != 0 {
-				t.Fatalf("%s exited %d: %s", verb, code, errb.String())
+			if !verbsFillTemplates(env.Verbs, p.Verbs) {
+				t.Errorf("page %s: JSON verbs %v are not the registry's %v", path, env.Verbs, p.Verbs)
 			}
-			var fromVerb, fromPage any
-			if err := json.Unmarshal(out.Bytes(), &fromVerb); err != nil {
-				t.Fatalf("%s: %v", verb, err)
-			}
-			if err := json.Unmarshal(section, &fromPage); err != nil {
-				t.Fatal(err)
-			}
-			if !reflect.DeepEqual(fromVerb, fromPage) {
-				a, _ := json.MarshalIndent(fromVerb, "", " ")
-				b, _ := json.MarshalIndent(fromPage, "", " ")
-				t.Errorf("page %s disagrees with `%s`:\nverb: %s\npage: %s", p.ID, verb, a, b)
+			for _, verb := range env.Verbs {
+				withVerbs++
+				section, ok := env.Sections[verb]
+				if !ok {
+					t.Errorf("page %s: no section for its verb %q", path, verb)
+					continue
+				}
+				parity(path, verb, section)
 			}
 		}
 	}
 	if withVerbs == 0 {
 		t.Error("no page declares a verb; the parity framework proved nothing")
 	}
+
+	// A filtered page's sections are keyed by the exact (quoted) command
+	// its chips show, and each equals that command's output.
+	mustWrite(t, os.Getenv("FATHOM_VERIFY_LEDGER"), `{"schema_version":2,"at":"2026-09-24T10:00:00Z","service":"payment-service","plan":"docs/plans/p.md","claimed":3,"failing":1,"origin":"cli"}`+"\n")
+	resetImpactReads()
+	t.Cleanup(resetImpactReads)
+	for _, path := range []string{
+		"/impact?svc=payment-service&kind=verify-refusal&days=7",
+		"/sessions?q=s-1%20x&arm=on&sort=turns&dir=asc",
+		"/sessions/s-1?channel=edit-hook",
+		"/decide?site=route",
+	} {
+		env := f.pageJSON(t, path)
+		if len(env.Sections) == 0 {
+			t.Errorf("%s: no sections", path)
+		}
+		for verb, section := range env.Sections {
+			parity(env.Page, verb, section)
+		}
+	}
+	// Wave F's Evidence and System pages each render their verbs (OC-41..45).
+	for _, id := range []string{"impact", "sessions", "operate", "decide"} {
+		if p, ok := defaultConsoleRegistry().page(id); !ok || len(p.Verbs) == 0 {
+			t.Errorf("page %s must declare the verbs it renders", id)
+		}
+	}
+
+	// Wave G: the Learn pages render verbs, and a page may also carry a
+	// section for a command it computes per request — the chosen project's
+	// own `fathom capabilities --repo R --service S --json` on /learn. Every
+	// such section equals that exact command's output too.
+	for _, id := range []string{"learn", "learn-ask"} {
+		if p, ok := defaultConsoleRegistry().page(id); !ok || len(p.Verbs) == 0 {
+			t.Errorf("page %s must render a verb", id)
+		}
+	}
+	perRequest := 0
+	for _, p := range defaultConsoleRegistry().pages {
+		if p.ID == "statusz" {
+			continue
+		}
+		env := f.pageJSON(t, samplePath(p))
+		for key, section := range env.Sections {
+			// The page's rendered verbs were held above; a per-project
+			// template section ("{svc}") is held below; a filtered page's
+			// quoted command was held in the loop before this one.
+			if containsString(env.Verbs, key) || !strings.HasPrefix(key, "fathom ") || strings.ContainsAny(key, `'"{`) {
+				continue
+			}
+			perRequest++
+			parity(p.ID, key, section)
+		}
+	}
+	if perRequest == 0 {
+		t.Error("no page carries a per-request section; /learn's capabilities section is missing")
+	}
+	// Every panel's verb chip is a command a shell runs (ADR-045 decision
+	// 2): an agent-surface tool call ("staleness_report {…}") is offered as
+	// a call inside a panel, never as the panel's verb — only a try-it
+	// answer, whose whole point is the exact call an agent makes, carries
+	// one (not on these sample paths).
+	chipRE := regexp.MustCompile(`data-console-panel[^>]*data-console-verb="([^"]*)"`)
+	toolCall := regexp.MustCompile(`^[a-z_]+ \{`)
+	for _, p := range defaultConsoleRegistry().pages {
+		_, _, page := f.get(t, samplePath(p))
+		for _, m := range chipRE.FindAllStringSubmatch(page, -1) {
+			if verb := html.UnescapeString(m[1]); toolCall.MatchString(verb) {
+				t.Errorf("page %s: a panel's verb chip %q is an agent-surface call, not a command", p.ID, verb)
+			}
+		}
+	}
+	// The Learn pipeline's stage chips print their headlines:
+	// TestConsoleLearn_StageChipsPrintTheirHeadlines runs each one.
+
+	// Per-project verbs: a page that renders a verb's answer for each
+	// project from a recorded instrument (ProjectVerbs) carries a section
+	// per template, keyed by service, and each concrete verb is run and
+	// held to it. The fleet here has real roots, and one plan is verified
+	// at their HEAD by a real `fathom verify` run, so the recorded proof
+	// has something to agree with.
+	g := newConsoleFixtureOpts(t, consoleFixtureOpts{Rooted: true})
+	rootedProject(t, g, "payment-service")
+	plansDir, err := filepath.Abs(filepath.Join("testdata", "plans"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var vout, verr bytes.Buffer
+	run([]string{"verify", "--service", "payment-service", "--url", g.ts.URL,
+		"--plan", filepath.Join(plansDir, "fixture-a.md"), "--plan", filepath.Join(plansDir, "fixture-b.md")}, &vout, &verr)
+	resetObsCache()
+	compared := map[string]int{}
+	for _, p := range defaultConsoleRegistry().pages {
+		if len(p.ProjectVerbs) == 0 {
+			continue
+		}
+		env := g.pageJSON(t, samplePath(p))
+		if !reflect.DeepEqual(append([]string{}, env.ProjectVerbs...), append([]string{}, p.ProjectVerbs...)) {
+			t.Errorf("page %s: JSON project verbs %v, registry %v", p.ID, env.ProjectVerbs, p.ProjectVerbs)
+		}
+		for _, tmpl := range p.ProjectVerbs {
+			check, ok := consoleProjectVerbChecks[tmpl]
+			if !ok {
+				t.Errorf("page %s renders %q, but no check holds it to the verb", p.ID, tmpl)
+				continue
+			}
+			var bySvc map[string]json.RawMessage
+			if err := json.Unmarshal(env.Sections[tmpl], &bySvc); err != nil {
+				t.Errorf("page %s: section %q is not keyed by service: %v", p.ID, tmpl, err)
+				continue
+			}
+			for _, svc := range consoleRootedFixtureServices() {
+				compared[tmpl] += check(t, g, svc, bySvc[svc])
+			}
+		}
+	}
+	if len(compared) == 0 {
+		t.Error("no page declares a per-project verb; the parity framework proved nothing")
+	}
+	for tmpl, n := range compared {
+		if n == 0 {
+			t.Errorf("%q: nothing was compared (verify: %s %s)", tmpl, vout.String(), verr.String())
+		}
+	}
+}
+
+// consoleProjectVerbChecks hold a page's per-project section (the verb's
+// shape, from a recorded instrument) to the verb itself, run for one
+// service; each returns how many figures it compared.
+var consoleProjectVerbChecks = map[string]func(t *testing.T, f *consoleFixture, svc string, section json.RawMessage) int{
+	// plans status: every plan whose recorded run is at HEAD reads exactly
+	// as the verb computes it now — proven, claimed-unproven (with the
+	// PC-5 measured-stale split folded back) and total, and the rows the
+	// ledger does not split (open, deferred, skipped) as one sum.
+	verbPlansStatusFor: func(t *testing.T, f *consoleFixture, svc string, section json.RawMessage) int {
+		var plans []nowPlanStatus
+		if len(section) > 0 {
+			if err := json.Unmarshal(section, &plans); err != nil {
+				t.Fatalf("plans status section for %s: %v", svc, err)
+			}
+		}
+		args := []string{"plans", "status", "--service", svc, "--url", f.ts.URL, "--json"}
+		current := map[string]nowPlanStatus{}
+		for _, p := range plans {
+			if p.Stale == "" {
+				args = append(args, "--plan", p.Plan)
+				current[p.Plan] = p
+			}
+		}
+		if len(current) == 0 {
+			return 0
+		}
+		var out, errb bytes.Buffer
+		if code := run(args, &out, &errb); code != 0 {
+			t.Fatalf("plans status for %s exited %d: %s", svc, code, errb.String())
+		}
+		var rollups []planRollup
+		if err := json.Unmarshal(out.Bytes(), &rollups); err != nil {
+			t.Fatalf("plans status --json: %v\n%s", err, out.String())
+		}
+		n := 0
+		for _, r := range rollups {
+			p, ok := current[r.Plan]
+			if !ok {
+				t.Errorf("%s: plans status names %s, which the page does not", svc, r.Plan)
+				continue
+			}
+			n++
+			if p.Proven != r.Proven || p.ClaimedUnproven != r.ClaimedUnproven+r.MeasuredStale || p.Total != r.Total ||
+				p.Unclaimed != r.Open+r.DeferredWithTrigger+r.SkippedOther {
+				t.Errorf("%s %s: the page (recorded run at HEAD) says %+v; plans status says %+v", svc, r.Plan, p, r)
+			}
+		}
+		if n != len(current) {
+			t.Errorf("%s: the page shows %d current plans, plans status %d", svc, len(current), n)
+		}
+		return n
+	},
+	// certify status: the verb's own JSON, exactly.
+	verbCertifyStatusFor: func(t *testing.T, f *consoleFixture, svc string, section json.RawMessage) int {
+		if len(section) == 0 {
+			t.Errorf("certify status section has no %s", svc)
+			return 0
+		}
+		var out, errb bytes.Buffer
+		if code := run([]string{"certify", "status", "--service", svc, "--store", f.store, "--json"}, &out, &errb); code != 0 {
+			t.Fatalf("certify status for %s exited %d: %s", svc, code, errb.String())
+		}
+		var fromVerb, fromPage any
+		if err := json.Unmarshal(out.Bytes(), &fromVerb); err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(section, &fromPage); err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(fromVerb, fromPage) {
+			t.Errorf("%s: certify status says %s; the page %s", svc, out.String(), section)
+		}
+		return 1
+	},
 }
 
 // TestConsoleMetricsAgreeAcrossPages pins OC-9: every page that shows a
@@ -605,7 +839,8 @@ func TestConsoleMetricsAgreeAcrossPages(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := ledger.WriteString(`{"schema_version":2,"session_id":"s-late","arm":"on","repo":"ledger-service","at":"2026-09-25T11:59:00Z"}` + "\n"); err != nil {
+	if _, err := ledger.WriteString(`{"schema_version":2,"session_id":"s-late","arm":"on","repo":"ledger-service","at":"2026-09-25T11:59:00Z"}` + "\n" +
+		`{"schema_version":2,"session_id":"s-late-pay","arm":"on","repo":"payment-service","at":"2026-09-25T11:59:30Z"}` + "\n"); err != nil {
 		t.Fatal(err)
 	}
 	ledger.Close()
@@ -630,7 +865,10 @@ func TestConsoleMetricsAgreeAcrossPages(t *testing.T) {
 			t.Errorf("page %s JSON carries %d metrics, declares %d", p.ID, len(env.Metrics), len(p.Shows))
 		}
 	}
-	for _, id := range []console.MetricID{console.MetricServices, console.MetricSymbols, console.MetricCalls, console.MetricSessions, console.MetricObservations} {
+	for _, id := range []console.MetricID{console.MetricServices, console.MetricSymbols, console.MetricCalls, console.MetricSessions, console.MetricObservations, console.MetricAgentTools,
+		console.MetricWiredFresh, console.MetricPlanRowsVerified, console.MetricClaimsFresh, console.MetricCertificatesLive,
+		console.MetricPlansUnproven, console.MetricPlansProven, console.MetricCertGaps, console.MetricCertLive,
+		console.MetricClaims, console.MetricProjectSymbols, console.MetricProjectCalls, console.MetricProjectSessions} {
 		pages := byMetric[string(id)]
 		if len(pages) == 0 {
 			t.Errorf("metric %s is shown on no page", id)
@@ -646,6 +884,42 @@ func TestConsoleMetricsAgreeAcrossPages(t *testing.T) {
 				t.Errorf("metric %s: page %s says %s, page %s says %s", id, firstPage, first, page, v)
 			}
 		}
+	}
+	// A page's panels show a shared metric through that one value too: the
+	// activity tab's sessions panel ("the newest N of M distinct sessions")
+	// and its JSON are project.sessions itself, never a recount from a
+	// fresher read of the ledger of its own.
+	actEnv := f.pageJSON(t, "/projects/payment-service/activity")
+	var act struct {
+		Activity struct {
+			Sessions    json.RawMessage `json:"sessions"`
+			SessionRows []struct {
+				ID string `json:"id"`
+			} `json:"session_rows"`
+		} `json:"activity"`
+	}
+	if err := json.Unmarshal(actEnv.Model, &act); err != nil {
+		t.Fatal(err)
+	}
+	var panelSessions, sharedSessions console.Value[int]
+	if err := json.Unmarshal(act.Activity.Sessions, &panelSessions); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(actEnv.Metrics[string(console.MetricProjectSessions)], &sharedSessions); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(panelSessions, sharedSessions) {
+		t.Errorf("the activity panel counts sessions itself: model.activity.sessions %+v, metrics.project.sessions %+v", panelSessions, sharedSessions)
+	}
+	for _, r := range act.Activity.SessionRows {
+		if r.ID == "s-late-pay" {
+			t.Errorf("the sessions panel lists a session the shared count was never read from: %+v", act.Activity.SessionRows)
+		}
+	}
+	_, _, actPage := f.get(t, "/projects/payment-service/activity")
+	band := tileValue(t, actPage, "distinct sessions")
+	if !strings.Contains(actPage, "of "+band+" distinct sessions") {
+		t.Errorf("the sessions caption disagrees with the band's %s distinct sessions", band)
 	}
 	value := func(id console.MetricID) console.Value[int] {
 		for _, raw := range byMetric[string(id)] {
@@ -681,17 +955,143 @@ func TestConsoleMetricsAgreeAcrossPages(t *testing.T) {
 	if s := statuszServiceCount(report); s.V != value(console.MetricServices).V {
 		t.Errorf("statusz counts %d services, the registry %d", s.V, value(console.MetricServices).V)
 	}
-	var impact obsImpact
-	if err := json.Unmarshal(f.pageJSON(t, "/impact").Model, &impact); err != nil {
+	// Impact, Sessions and Operate show the shared metrics they declare, in
+	// their HTML as in their JSON: the impact tile and the sessions table
+	// read the model's one read of the ledger, the operate tile the model's
+	// call total (wave F).
+	_, _, impactPage := f.get(t, "/impact")
+	if got := tileValue(t, impactPage, "distinct sessions (all time)"); got != fmtThousands(value(console.MetricSessions).V) {
+		t.Errorf("impact's sessions tile says %q, the shared metric %d", got, value(console.MetricSessions).V)
+	}
+	var sessionsModel struct {
+		Table console.SessionTableModel `json:"table"`
+	}
+	if err := json.Unmarshal(f.pageJSON(t, "/sessions").Model, &sessionsModel); err != nil {
 		t.Fatal(err)
 	}
-	if impact.LedgerSessions != value(console.MetricSessions).V {
-		t.Errorf("impact's ledger-sessions tile says %d, the shared metric %d", impact.LedgerSessions, value(console.MetricSessions).V)
+	if sessionsModel.Table.Sessions.V != value(console.MetricSessions).V || sessionsModel.Table.Sessions.Denominator != value(console.MetricSessions).Denominator {
+		t.Errorf("the sessions table lists %+v sessions, the shared metric %+v", sessionsModel.Table.Sessions, value(console.MetricSessions))
+	}
+	_, _, operatePage := f.get(t, "/operate")
+	if !strings.Contains(operatePage, html.EscapeString(valuePlain(value(console.MetricCalls)))+" in the whole log") {
+		t.Errorf("operate must show the shared call total (%s) beside its 7-day count", valuePlain(value(console.MetricCalls)))
 	}
 	// The HTML agrees with the JSON: the fleet tile shows the same total.
 	_, _, fleet := f.get(t, "/fleet")
 	if got := tileValue(t, fleet, "tool calls (log)"); got != fmtThousands(f.callRows) {
 		t.Errorf("fleet tile shows %q calls, the metric says %d", got, f.callRows)
+	}
+	// The brief (the F0 proof's first defect) reads the call total and the
+	// agent surface's size through the same projections: its "tool calls in
+	// the call log" is the shared total, the attributed sum is named as a
+	// subset, and the surface size is the measured tool count — never a
+	// literal.
+	tools := value(console.MetricAgentTools)
+	if tools.State != console.StatePresent || tools.V == 0 {
+		t.Fatalf("surface.agent_tools = %+v, want the fixture's measured agent surface", tools)
+	}
+	var brief briefModel
+	if err := json.Unmarshal(f.pageJSON(t, "/brief").Model, &brief); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		fmtThousands(f.callRows) + " recorded tool calls in the call log (",
+		"**Tool calls recorded:** " + fmtThousands(f.callRows) + " in the current call log (every row in the log;",
+		"attributed to an indexed repository",
+		", a " + fmtThousands(tools.V) + "-tool surface)",
+		"the agent surface is " + fmtThousands(tools.V) + " tools",
+	} {
+		if !strings.Contains(brief.Markdown, want) {
+			t.Errorf("the brief must read the shared metrics: missing %q in\n%s", want, brief.Markdown)
+		}
+	}
+	if strings.Contains(brief.Markdown, "16-tool") {
+		t.Error("the brief still names a literal surface size")
+	}
+
+	// The proof metrics (console wave C) equal their verbs summed over the
+	// fleet: the plans headline is `plans status`'s claimed_unproven and
+	// proven, the certifications totals are `certify gaps`'s summary.
+	assertProofMetricsMatchVerbs(t, f, value)
+
+	// The Knowledge metrics (console wave D) agree with their verbs.
+	assertKnowledgeMetricsAgree(t, f, value(console.MetricServices), value(console.MetricClaims))
+
+	// Wave G: the Learn pages render the shared metrics they carry — the
+	// project count in /learn's heading, the agent surface's size in the
+	// ask page's coverage line — from the same projections.
+	if _, _, learn := f.get(t, "/learn"); !strings.Contains(learn, "one of "+valuePlain(value(console.MetricServices))+" indexed projects") {
+		t.Errorf("/learn must name the shared project count %+v", value(console.MetricServices))
+	}
+	if _, _, ask := f.get(t, "/learn/ask"); !strings.Contains(ask, "of the "+fmtThousands(tools.V)+" on the agent surface") {
+		t.Errorf("/learn/ask must name the shared agent-surface size %d", tools.V)
+	}
+	// The Learn pages' traffic is one read of the call log per project: the
+	// pipeline's rules served are the ask page's obligations asks, its
+	// tool calls answered the sum of every tool's asks, for every project,
+	// in the same truth state.
+	for _, svc := range consoleFixtureServices {
+		var pipe learnModel
+		if err := json.Unmarshal(f.pageJSON(t, "/learn?svc="+svc).Model, &pipe); err != nil {
+			t.Fatal(err)
+		}
+		var ask askModel
+		if err := json.Unmarshal(f.pageJSON(t, "/learn/ask?svc="+svc).Model, &ask); err != nil {
+			t.Fatal(err)
+		}
+		asked := map[string]console.Value[int]{}
+		for _, s := range ask.Guide.Shapes {
+			asked[s.Tool] = s.Asked
+		}
+		for _, st := range pipe.Pipeline.Stages {
+			if st.ID != console.StageServe {
+				continue
+			}
+			if got, want := st.Headline.Value, asked["obligations"]; got.State != want.State || got.V != want.V {
+				t.Errorf("%s: /learn rules served %+v, /learn/ask obligations asked %+v", svc, got, want)
+			}
+			if st.Counts[0].Value.V < st.Headline.Value.V {
+				t.Errorf("%s: tool calls answered %+v below rules served %+v", svc, st.Counts[0].Value, st.Headline.Value)
+			}
+		}
+	}
+
+	// Plan proof in its hardest state — one plan verified at HEAD in a
+	// detached clone, one only at an older commit at the root, one never:
+	// every page says the same stale figure, and the Now and Fleet tiles
+	// draw the same number, stale.
+	g := newConsoleFixtureOpts(t, consoleFixtureOpts{Rooted: true})
+	root, head := rootedProject(t, g, "payment-service")
+	prevPlans := consolePlanExists
+	consolePlanExists = func(_, plan string) bool { return plan != "docs/plans/gone.md" }
+	t.Cleanup(func() { consolePlanExists = prevPlans })
+	writeVerifyLedger(t, []map[string]any{
+		{"schema_version": 2, "at": "2026-09-25T02:58:00Z", "repo_root": "/tmp/pushclone", "service": "payment-service", "plan": "docs/plans/a.md", "commit": head, "total": 10, "claimed": 8, "verified": 8, "origin": "cli"},
+		{"schema_version": 2, "at": "2026-09-19T21:00:33Z", "repo_root": root, "service": "payment-service", "plan": "docs/plans/b.md", "commit": "d8770983", "total": 5, "claimed": 5, "verified": 4, "failing": 1, "origin": "cli"},
+		{"schema_version": 2, "at": "2026-09-19T21:00:33Z", "repo_root": root, "service": "payment-service", "plan": "docs/plans/gone.md", "commit": "d8770983", "total": 5, "claimed": 5, "failing": 5, "origin": "cli"},
+	})
+	plansBy := map[string]string{}
+	for _, p := range defaultConsoleRegistry().pages {
+		for _, id := range p.Shows {
+			if id == console.MetricPlanRowsVerified {
+				plansBy[p.ID] = string(g.pageJSON(t, samplePath(p)).Metrics[string(id)])
+			}
+		}
+	}
+	var planValue console.Value[int]
+	for page, raw := range plansBy {
+		if raw != plansBy["home"] {
+			t.Errorf("plans.verified: page %s says %s, Now %s", page, raw, plansBy["home"])
+		}
+		_ = json.Unmarshal([]byte(raw), &planValue)
+	}
+	if len(plansBy) < 2 || planValue.State != console.StateStale || planValue.V != 12 {
+		t.Errorf("plans.verified over a HEAD run and a stale one = %+v on %d pages", planValue, len(plansBy))
+	}
+	_, _, nowBody := g.get(t, "/")
+	_, _, fleetBody := g.get(t, "/fleet")
+	if a, b := tileValue(t, nowBody, "Plan rows verified"), tileValue(t, fleetBody, "plan rows verified"); a != "12" || a != b {
+		t.Errorf("plan rows tile: Now %q, Fleet %q", a, b)
 	}
 }
 
@@ -711,7 +1111,10 @@ func TestConsolePanels_CarryVerbQuestionAndSource(t *testing.T) {
 		`<code class="min-w-0 [overflow-wrap:anywhere]">fathom plans status --service fathom --json</code>`,
 		`data-console-copy="fathom plans status --service fathom --json"`,
 		`hidden data-console-copy`, // revealed only when the script can copy
-		`data-panel-footer>source: the verify ledger · denominator: 58 plans · freshness: as of 2026-09-25T12:00Z</p>`,
+		// A source-keyed panel is live (OC-14): its freshness leads the
+		// kit's reserved status line instead of repeating in the footer.
+		`data-panel-footer>source: the verify ledger · denominator: 58 plans</p>`,
+		`<span data-live-asof class="col-start-1 row-start-1">freshness: as of 2026-09-25T12:00Z</span>`,
 		`data-console-source="plans:fathom"`, `data-truth-state="present"`, `id="plans"`, `<p>628 proven</p>`,
 	} {
 		if !strings.Contains(got, want) {
@@ -838,8 +1241,14 @@ func TestConsoleBudgets(t *testing.T) {
 		maxBytes  = 250 * 1024
 	)
 	f := newConsoleFixture(t)
+	paths := []string{}
 	for _, p := range defaultConsoleRegistry().pages {
-		path := samplePath(p)
+		paths = append(paths, samplePath(p))
+	}
+	// Filters and window sizes a reader can ask for keep the same budgets
+	// (a replay's ?per= widens its JSON window, never its HTML page).
+	paths = append(paths, "/impact?svc=payment-service&days=7", "/sessions?q=s-1%20x&sort=turns", "/sessions/s-1?per=2000", "/operate?svc=payment-service")
+	for _, path := range paths {
 		f.get(t, path) // cold: builds and caches the model
 		best := time.Duration(1 << 62)
 		size := 0
@@ -875,8 +1284,10 @@ func TestConsoleSearch_PageFragmentAndJSON(t *testing.T) {
 	if code != http.StatusOK || !strings.Contains(page, `<main id="observatory-main"`) || !strings.Contains(page, `id="search-symbols"`) {
 		t.Fatalf("search page = %d:\n%.500s", code, page)
 	}
+	// The fragment is the ⌘K palette's (OC-12): one kit results fragment
+	// answering exactly this query.
 	code, _, frag := f.get(t, "/search?q=charge&format=fragment")
-	if code != http.StatusOK || strings.Contains(frag, "<html") || !strings.Contains(frag, "data-console-search-results") || !strings.Contains(frag, "validateCharge") {
+	if code != http.StatusOK || strings.Contains(frag, "<html") || !strings.Contains(frag, `data-palette-fragment data-palette-state="results" data-palette-query="charge"`) || !strings.Contains(frag, "validateCharge") {
 		t.Errorf("fragment = %d:\n%.500s", code, frag)
 	}
 	env := f.pageJSON(t, "/search?q="+url.QueryEscape("payment"))
@@ -974,6 +1385,12 @@ func TestConsoleEvents_FeedersPublishNamesAndIDs(t *testing.T) {
 	if e := events[2]; e.Kind != console.EventDaemon || e.Name != "adopt" {
 		t.Errorf("daemon event = %+v", e)
 	}
+	// The row's content (tokens_in: 900) must not ride along. Zero the
+	// clock and the epoch first: a timestamp like "…43.900529Z" or a
+	// base-36 epoch can contain "900" by chance, which made this flaky.
+	for i := range events {
+		events[i].At, events[i].Epoch = time.Time{}, ""
+	}
 	raw, _ := json.Marshal(events)
 	if strings.Contains(string(raw), "900") || strings.Contains(string(raw), "tokens") {
 		t.Errorf("events must carry names and IDs only: %s", raw)
@@ -1070,5 +1487,41 @@ func TestResolveConsoleCallLog_DaemonRecordReachesVerbs(t *testing.T) {
 	}
 	if got := resolveConsoleCallLog("/flag.jsonl", ""); got.Rule != console.RuleFlag {
 		t.Errorf("--call-log must win: %+v", got)
+	}
+}
+
+// A page's call-log provenance equals its verb's (OC-8): inside the daemon
+// the pages resolve the daemon's own log, and a verb run from a terminal
+// resolves the same log through the daemon's record — both must name it
+// with the record's own words, or `?format=json` differs from the verb's
+// --json in call_log.note alone.
+func TestRecordServingDaemon_InProcessNoteIsTheRecords(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HOME", dir)
+	t.Setenv("FATHOM_CALL_LOG", "")
+	os.Unsetenv("FATHOM_CALL_LOG")
+	const addr = "127.0.0.1:7598"
+	t.Setenv("FATHOM_HTTP", "http://"+addr)
+	resetServing := func() {
+		servingCallLog.Lock()
+		servingCallLog.set, servingCallLog.path, servingCallLog.note = false, "", ""
+		servingCallLog.Unlock()
+	}
+	t.Cleanup(resetServing)
+	rec, err := recordServingDaemon(addr, filepath.Join(dir, "calls.jsonl"), "", "c0ffee", time.Date(2026, 9, 26, 4, 28, 19, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	inProcess := resolveConsoleCallLog("", "")
+	resetServing() // a verb in its own process: no serving daemon, only the record
+	fromVerb := resolveConsoleCallLog("", "")
+	if inProcess.Rule != console.RuleDaemon || fromVerb.Rule != console.RuleDaemon {
+		t.Fatalf("both resolve the daemon's log: page %+v, verb %+v", inProcess, fromVerb)
+	}
+	if inProcess != fromVerb {
+		t.Errorf("the page and the verb name the log differently:\npage: %+v\nverb: %+v", inProcess, fromVerb)
+	}
+	if !strings.Contains(inProcess.Note, rec.Note()) {
+		t.Errorf("the note is the record's provenance %q: %q", rec.Note(), inProcess.Note)
 	}
 }

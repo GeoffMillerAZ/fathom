@@ -119,6 +119,16 @@ func wiringDriftFor(root, service string, harnessIDs []string, home string) wiri
 	} else {
 		rep.Unreadable = append(rep.Unreadable, "wiring plan — "+err.Error())
 	}
+	rep.Merge(wiringDriftBeyondPlan(root, harnessIDs, home))
+	return rep
+}
+
+// wiringDriftBeyondPlan is the drift no wiring plan can see: owned MCP
+// entries and skill files changed since fathom recorded them. The wiring
+// tab itemizes doctor's wiring_drift row with it (the rest of that row is
+// the preview plan's BLOCKED items), so a drift is counted once.
+func wiringDriftBeyondPlan(root string, harnessIDs []string, home string) wiring.DriftReport {
+	var rep wiring.DriftReport
 	ledger, lerr := wiring.LoadLedger(root)
 	if lerr != nil {
 		ledger = wiring.NewLedger()

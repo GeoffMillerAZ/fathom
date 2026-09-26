@@ -73,13 +73,17 @@
 @source "../../../appkit/ui/table/*.go";
 @source "../../../appkit/ui/chrome/*.go";
 @source "../../../appkit/ui/hitl/*.go";
+@source "../../../appkit/ui/code/*.go";
 @source "../../../appkit/ui/form/*.go";
 @source "../../../appkit/ui/overlay/*.go";
 @source "../../../appkit/ui/overlay/*.js";
+@source "../../../appkit/ui/palette/*.go";
 @source "../../../appkit/ui/chat/*.go";
 @source "../../../appkit/ui/chat/*.js";
 @source "../../../appkit/ui/dashboard/*.go";
 @source "../../../appkit/ui/appearance/*.go";
+/* live (L2 + L3b): the script adds no classes; the Go helpers emit role utilities. */
+@source "../../../appkit/ui/live/*.go";
 /* vizframe emits role utilities (L3b, ADR-0017 §1), so the scanner must see its
    Go source or the provenance frame renders unstyled. ui/viz needs no entry —
    it is L3a: zero class=, color only through var(--ak-color-*). */

@@ -203,3 +203,30 @@ func TestResponseCostAccounting(t *testing.T) {
 		t.Errorf("find_symbol = %+v, want zero truncating/elided (no elided field logged)", fs)
 	}
 }
+
+// TestCallLogger_ConsoleReadsLoggedNotCounted: a call the console makes to
+// render a page (origin OriginConsole) is written to the log with its
+// origin — auditable — but never bumps the surface traffic server_stats
+// reports: a page render must not make an idle surface look used.
+func TestCallLogger_ConsoleReadsLoggedNotCounted(t *testing.T) {
+	var buf bytes.Buffer
+	l := NewCallLogger(&buf)
+	l.log("list_services", "", "platform", "", "", OriginConsole, false, 0, nil, callOutcome{}, time.Millisecond, nil)
+	if got := l.SurfaceTraffic(); len(got) != 0 {
+		t.Errorf("a console read counted as surface traffic: %v", got)
+	}
+	var row struct {
+		Tool   string `json:"tool"`
+		Origin string `json:"origin"`
+	}
+	if err := json.Unmarshal(bytes.TrimSpace(buf.Bytes()), &row); err != nil || row.Tool != "list_services" || row.Origin != OriginConsole {
+		t.Errorf("console read row = %+v (%v), want list_services with origin %q", row, err, OriginConsole)
+	}
+	l.log("list_services", "", "platform", "", "", "", false, 0, nil, callOutcome{}, time.Millisecond, nil)
+	if got := l.SurfaceTraffic()[""]; got.Calls != 1 {
+		t.Errorf("an agent's list_services must still count: %+v", got)
+	}
+	if !IsConsoleRead(OriginConsole) || IsConsoleRead("") || IsConsoleRead("edit-hook") {
+		t.Error("IsConsoleRead must match the console origin only")
+	}
+}

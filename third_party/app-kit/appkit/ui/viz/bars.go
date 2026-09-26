@@ -35,6 +35,10 @@ type BarsOptions struct {
 	// zero value can never deliver. Values >= 1000 render with thousands
 	// separators.
 	ShowValue bool
+	// Fluid fills the container's width instead of drawing at W pixels:
+	// the chart scales uniformly from its W×height viewBox (text included)
+	// and the height follows. Off by default (fixed pixel size).
+	Fluid bool
 	// AriaLabel is the accessible label.
 	AriaLabel string
 }
@@ -77,7 +81,7 @@ func Bars(bars []Bar, o BarsOptions) string {
 	}
 
 	var b strings.Builder
-	b.WriteString(svgOpen(opts.W, totalH, opts.AriaLabel, ""))
+	b.WriteString(chartOpen(opts.W, totalH, opts.AriaLabel, opts.Fluid))
 	b.WriteString(svgTitle(opts.AriaLabel))
 	if n == 0 {
 		b.WriteString("</svg>")

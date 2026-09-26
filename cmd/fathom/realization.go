@@ -18,11 +18,15 @@ package main
 // instead of leaving a reader to guess.
 
 import (
-	"fmt"
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/console"
 )
 
 // realizationDim is one rung.
@@ -71,7 +75,9 @@ type realizationWindow struct {
 	// Calls in the window, NOT calls ever. The incumbent grade's
 	// CallsTotal > 0 test can never go down, which makes it useless as a
 	// health signal — a repository busy in July and silent since is not
-	// currently realizing value.
+	// currently realizing value. Sessions, ObligationServes and VerifyRuns
+	// are the same window's (design §2): distinct sessions, obligations
+	// calls, and the verify ledger's gate runs.
 	Calls            int
 	Sessions         int
 	ObligationServes int
@@ -80,140 +86,66 @@ type realizationWindow struct {
 	// it, every repository with no plans reads as "not gating", which is
 	// a failure it cannot fix.
 	HasPlans bool
+	// WindowDays names the window the call counts cover (0: "the window").
+	WindowDays int
+	// CallLogNote, when set, is why the call log was not read: queried and
+	// preventing are then unknown, never unmet (law 3). VerifyLedgerNote is
+	// the same for the verify ledger and the gating rung; SessionsNote for
+	// the session ledger and the idle rule.
+	CallLogNote      string
+	VerifyLedgerNote string
+	SessionsNote     string
+	// PlansNote, when set, is why docs/plans was not read: gating is then
+	// unknown, never not applicable.
+	PlansNote string
 }
 
 func boolPtr(b bool) *bool { return &b }
 
-// realizationGrade folds the five dimensions for one service.
+// realizationLadderFacts is the ladder projection's input for one row.
+func realizationLadderFacts(s obsServiceRow, w realizationWindow) console.LadderFacts {
+	return console.LadderFacts{
+		Service: s.Service, StanzaNote: s.StanzaNote, HooksNote: s.HooksNote,
+		Freshness: s.Freshness, FreshRemedy: daemonRefreshRemedy(s.Path, s.Service),
+		WindowDays: w.WindowDays, Calls: w.Calls, ObligationServes: w.ObligationServes, CallLogNote: w.CallLogNote,
+		Sessions: w.Sessions, SessionsNote: w.SessionsNote, VerifyRuns: w.VerifyRuns, VerifyLedgerNote: w.VerifyLedgerNote,
+		HasPlans: w.HasPlans, PlansNote: w.PlansNote,
+	}
+}
+
+// realizationGrade folds the five dimensions for one service: the ladder
+// projection (console.RealizationLadder, the one the project overview
+// draws) read as the grade's record. A rung that is not applicable or
+// could not be judged leaves the denominator.
 //
 // Pure over (row, window): same inputs, same letter. No clock, no I/O.
 func realizationGrade(s obsServiceRow, w realizationWindow) realizationReport {
-	rep := realizationReport{Service: s.Service, Sessions: w.Sessions}
+	return realizationReportFrom(console.RealizationLadder(realizationLadderFacts(s, w)))
+}
 
-	// 1 — WIRED: can fathom operate here at all?
-	hooksVisible := s.HooksNote != "" &&
-		!containsAny(s.HooksNote, "user-scope or plugin wiring not visible", "not checkable")
-	wired := s.StanzaNote == "present"
-	wiredEvidence := "CLAUDE.md stanza present"
-	if s.StanzaNote != "present" {
-		wiredEvidence = "no fathom stanza in CLAUDE.md"
-	}
-	if hooksVisible {
-		hooksOK := containsAny(s.HooksNote, "hook reference")
-		wired = wired && hooksOK
-		if !hooksOK {
-			wiredEvidence = "no fathom hook is wired here"
+// realizationReportFrom reads a ladder as the grade's record.
+func realizationReportFrom(l console.Ladder) realizationReport {
+	rep := realizationReport{Service: l.Service, Sessions: l.Sessions, Realized: l.Realized, Available: l.Available}
+	for _, r := range l.Rungs {
+		d := realizationDim{Name: r.Name, Evidence: r.Evidence, Remedy: r.Fix()}
+		switch r.State {
+		case console.RungMet:
+			d.Met = boolPtr(true)
+		case console.RungUnmet:
+			d.Met = boolPtr(false)
 		}
-	} else {
-		wiredEvidence += " (hook wiring not visible from here)"
+		rep.Dims = append(rep.Dims, d)
 	}
-	rep.Dims = append(rep.Dims, realizationDim{
-		Name: "wired", Met: boolPtr(wired), Evidence: wiredEvidence,
-		Remedy: "fathom fleet reconcile --apply",
-	})
-
-	// 2 — FRESH: are the answers current?
-	fresh := s.Freshness == "fresh"
-	freshDim := realizationDim{Name: "fresh", Evidence: "index fresh at HEAD"}
-	switch {
-	case fresh:
-		freshDim.Met = boolPtr(true)
-	case s.Freshness == "" || strings.HasPrefix(s.Freshness, "unknown"):
-		// Nobody could tell. That is an absence of information, not a
-		// defect, and grading it as one would punish every repository
-		// whose daemon is merely unreachable.
-		freshDim.Evidence = "freshness could not be determined (" + orDash(s.Freshness) + ")"
-	default:
-		freshDim.Met = boolPtr(false)
-		freshDim.Evidence = s.Freshness
-	}
-	freshDim.Remedy = daemonRefreshRemedy(s.Path, s.Service)
-	rep.Dims = append(rep.Dims, freshDim)
-
-	// 3 — QUERIED: is anyone actually asking?
-	queried := w.Calls > 0
-	rep.Dims = append(rep.Dims, realizationDim{
-		Name: "queried", Met: boolPtr(queried),
-		Evidence: fmt.Sprintf("%s call(s) in the window", fmtThousands(w.Calls)),
-		Remedy:   "open a session here and ask a where/who-calls question — an index nobody queries realizes nothing",
-	})
-
-	// 4 — PREVENTING: is it acting BEFORE edits, not just answering?
-	preventing := w.ObligationServes > 0
-	rep.Dims = append(rep.Dims, realizationDim{
-		Name: "preventing", Met: boolPtr(preventing),
-		Evidence: fmt.Sprintf("%s rule injection(s) in the window", fmtThousands(w.ObligationServes)),
-		Remedy:   "fathom capabilities  (the obligations row names what is missing here)",
-	})
-
-	// 5 — GATING: is it catching claims?
-	gateDim := realizationDim{Name: "gating"}
-	switch {
-	case !w.HasPlans:
-		// Not applicable: nothing to gate. Leaves the denominator.
-		gateDim.Evidence = "no plans here for the gate to check"
-	default:
-		gateDim.Met = boolPtr(w.VerifyRuns > 0)
-		gateDim.Evidence = fmt.Sprintf("gate ran in %s session(s) in the window", fmtThousands(w.VerifyRuns))
-		gateDim.Remedy = "add `fathom verify --service " + s.Service + "` to the pre-push hook (lefthook.yml)"
-	}
-	rep.Dims = append(rep.Dims, gateDim)
-
-	// Fold. Not-applicable dimensions leave the denominator entirely.
-	for _, d := range rep.Dims {
-		if d.Met == nil {
-			continue
-		}
-		rep.Available++
-		if *d.Met {
-			rep.Realized++
-		}
-	}
-
 	// A repository with no sessions in the window is IDLE, not failing. An
 	// indexed reference corpus nobody codes in is working as intended, and
 	// nine false alarms teach a reader to skim past the real one.
-	if w.Sessions == 0 {
-		rep.Grade = "idle"
-		rep.FirstGap = ""
-		rep.Remedy = ""
-		return rep
-	}
-
-	rep.Grade = gradeLetter(rep.Realized, rep.Available)
-
-	// The first BROKEN rung in ladder order, with its remedy. The letter
-	// alone was never enough to act on.
-	for _, d := range rep.Dims {
-		if d.Met != nil && !*d.Met {
-			rep.FirstGap = d.Name
-			rep.Remedy = d.Remedy
-			break
-		}
-	}
-	if rep.FirstGap != "" {
-		rep.Grade += " — not " + rep.FirstGap
+	rep.Grade = l.Grade
+	if !l.Idle {
+		// The first BROKEN rung in ladder order, with its remedy. The
+		// letter alone was never enough to act on.
+		rep.FirstGap, rep.Remedy = l.FirstUnmet, l.Remedy
 	}
 	return rep
-}
-
-func gradeLetter(realized, available int) string {
-	if available == 0 {
-		return "idle"
-	}
-	frac := float64(realized) / float64(available)
-	switch {
-	case frac >= 1:
-		return "A"
-	case frac >= 0.75:
-		return "B"
-	case frac >= 0.5:
-		return "C"
-	case frac >= 0.25:
-		return "D"
-	default:
-		return "F"
-	}
 }
 
 // rankByUnrealized orders repositories by how much value is on the table:
@@ -245,20 +177,56 @@ func rankByUnrealized(reports []realizationReport) []realizationReport {
 	return out
 }
 
-func containsAny(s string, subs ...string) bool {
-	for _, sub := range subs {
-		if sub != "" && strings.Contains(s, sub) {
-			return true
-		}
-	}
-	return false
-}
-
 func orDash(s string) string {
 	if s == "" {
 		return "—"
 	}
 	return s
+}
+
+// realizationWindowDays is the ladder's window: the fourteen UTC days the
+// traffic sparkline draws (row.TrafficDays), so a rung and the chart beside
+// it can never disagree.
+const realizationWindowDays = 14
+
+// realizationWindowBounds is the ladder's window as [from, to): the start
+// of the UTC day thirteen days before now, to the end of now's UTC day.
+func realizationWindowBounds(now time.Time) (from, to time.Time) {
+	y, mo, d := now.UTC().Date()
+	today := time.Date(y, mo, d, 0, 0, 0, 0, time.UTC)
+	return today.AddDate(0, 0, -(realizationWindowDays - 1)), today.AddDate(0, 0, 1)
+}
+
+// inRealizationWindow reports whether a call-log timestamp's day falls in
+// [fromDay, toDay) — the day prefix the traffic sparkline buckets by, so an
+// injection is in the window exactly when its call is in the chart.
+func inRealizationWindow(ts, fromDay, toDay string) bool {
+	if len(ts) < 10 {
+		return false
+	}
+	day := ts[:10]
+	return day >= fromDay && day < toDay
+}
+
+// windowVerifyRuns counts each service's verify runs in [from, to) from the
+// verify ledger (SD-1, the recorded-run signal: every `fathom verify` run
+// appends to it, a pre-push gate's included). note is set when the ledger
+// could not be read or does not exist: the gating rung is then unknown,
+// never a measured "no runs" (law 3) — a daemon that reads another HOME's
+// ledger would otherwise tell every gating repository to add the gate.
+func windowVerifyRuns(from, to time.Time) (map[string]int, string) {
+	path := verifyLedgerPath()
+	if path == "" {
+		return nil, "no verify ledger is configured (no home directory, no FATHOM_VERIFY_LEDGER)"
+	}
+	if _, err := os.Stat(path); errors.Is(err, fs.ErrNotExist) {
+		return nil, "no verify ledger at " + path + " — no `fathom verify` run is recorded on this machine"
+	}
+	runs, _, readErr := ledgerRuns()
+	if readErr != "" {
+		return nil, "the verify ledger could not be read (" + readErr + ")"
+	}
+	return console.VerifyRunsIn(runs, strings.ToLower, from, to), ""
 }
 
 // sumInts totals a per-day traffic slice — the window's call count.
@@ -275,19 +243,31 @@ func sumInts(xs []int) int {
 // does not apply, and treating absence as failure would hand every
 // plan-less repository a to-do it cannot complete.
 func repoHasPlans(root string) bool {
+	has, _ := repoPlansRead(root)
+	return has
+}
+
+// repoPlansRead is repoHasPlans with the read's failure named: a
+// docs/plans that exists but cannot be read is not "no plans" (I38), so
+// the gating rung reads unknown with this note rather than not applicable.
+func repoPlansRead(root string) (bool, string) {
 	if root == "" {
-		return false
+		return false, ""
 	}
-	entries, err := os.ReadDir(filepath.Join(root, "docs", "plans"))
+	dir := filepath.Join(root, "docs", "plans")
+	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return false
+		if errors.Is(err, fs.ErrNotExist) {
+			return false, ""
+		}
+		return false, "docs/plans was not read (" + err.Error() + ")"
 	}
 	for _, e := range entries {
 		if !e.IsDir() && strings.HasSuffix(e.Name(), ".md") && e.Name() != "README.md" {
-			return true
+			return true, ""
 		}
 	}
-	return false
+	return false, ""
 }
 
 // unrealizedScore is the fleet-ordering key: how much value is on the

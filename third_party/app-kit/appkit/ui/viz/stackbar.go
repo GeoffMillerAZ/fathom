@@ -24,6 +24,10 @@ type StackBarOptions struct {
 	H int
 	// Radius is the corner radius (px). Default 3.
 	Radius int
+	// Fluid fills the container's width instead of drawing at W pixels:
+	// the chart scales uniformly from its W×H viewBox (strokes included)
+	// and the height follows. Off by default (fixed pixel size).
+	Fluid bool
 	// AriaLabel is the accessible label.
 	AriaLabel string
 }
@@ -52,7 +56,7 @@ func StackBar(segments []Segment, o StackBarOptions) string {
 	opts := o.withDefaults()
 
 	var b strings.Builder
-	b.WriteString(svgOpen(opts.W, opts.H, opts.AriaLabel, ""))
+	b.WriteString(chartOpen(opts.W, opts.H, opts.AriaLabel, opts.Fluid))
 	b.WriteString(svgTitle(opts.AriaLabel))
 
 	total := 0.0

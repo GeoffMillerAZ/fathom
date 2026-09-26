@@ -20,6 +20,10 @@ type MeterOptions struct {
 	Label string
 	// ShowPct renders a right-side percentage label when true.
 	ShowPct bool
+	// Fluid fills the container's width instead of drawing at W pixels:
+	// the chart scales uniformly from its W×H viewBox (text included)
+	// and the height follows. Off by default (fixed pixel size).
+	Fluid bool
 	// AriaLabel is the accessible label.
 	AriaLabel string
 }
@@ -88,7 +92,7 @@ func MeterRow(value, max float64, o MeterOptions) string {
 	inkMuted := cssColor("ink-muted")
 
 	var b strings.Builder
-	b.WriteString(svgOpen(opts.W, opts.H, opts.AriaLabel, ""))
+	b.WriteString(chartOpen(opts.W, opts.H, opts.AriaLabel, opts.Fluid))
 	b.WriteString(svgTitle(opts.AriaLabel))
 
 	// Left label.

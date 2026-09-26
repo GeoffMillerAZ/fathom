@@ -171,6 +171,14 @@ func printDaemonRow(w io.Writer, key, val string, si config.SourceInfo, explain 
 }
 
 func printConfigJSON(w io.Writer, loaded config.Loaded, profile config.Profile, prov config.Provenance, activeName string, explain bool) {
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	_ = enc.Encode(configJSONValue(loaded, profile, prov, activeName, explain))
+}
+
+// configJSONValue is `fathom config --json`'s value; the console's Operate
+// page renders `fathom config --explain --json` from it (P10).
+func configJSONValue(loaded config.Loaded, profile config.Profile, prov config.Provenance, activeName string, explain bool) map[string]any {
 	names := make([]string, 0, len(loaded.Config.Profiles))
 	for n := range loaded.Config.Profiles {
 		names = append(names, n)
@@ -216,8 +224,5 @@ func printConfigJSON(w io.Writer, loaded config.Loaded, profile config.Profile, 
 	if explain {
 		out["explain"] = explainMap
 	}
-
-	enc := json.NewEncoder(w)
-	enc.SetIndent("", "  ")
-	_ = enc.Encode(out)
+	return out
 }

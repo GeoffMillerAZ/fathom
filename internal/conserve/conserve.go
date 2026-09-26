@@ -120,6 +120,13 @@ type Finding struct {
 	informational bool
 }
 
+// Informational reports whether the finding is shown for visibility only
+// and can never, by itself, make its plane a loss (an edited test, a
+// cleanly renamed guarded one). Read-only: a renderer that counts losses
+// must not count these (the console's refactor page counted one against a
+// conserved plane).
+func (f Finding) Informational() bool { return f.informational }
+
 // DeclaredLabel renders Declared for a human or a review-verdict reader,
 // correcting the one kind whose wire value would otherwise contradict its
 // own Detail text. resurrection.go's "moved" kind reuses DeclaredPrior as

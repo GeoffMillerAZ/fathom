@@ -84,8 +84,9 @@ func beatRole(channel, kind string) string {
 
 func renderSessionStory(st sessionStory) string {
 	var b strings.Builder
-	b.WriteString(sectionHeading("session " + st.SessionID))
-	b.WriteString(`<div class="mb-3 rounded-md border border-dashed border-caution px-3 py-2 text-ink-muted">a session replay is a lens over mechanism-labeled events, never evidence (law 14)</div>`)
+	// The page heading names the session; an uppercased section label
+	// repeated the id in a case that no longer matched it (F0 proof).
+	b.WriteString(`<div class="mb-3 rounded-md border border-dashed border-caution px-3 py-2 text-ink-muted" data-law14>a session replay is a lens over mechanism-labeled events, never evidence (law 14)</div>`)
 
 	if len(st.Beats) > 0 {
 		events := make([]viz.Event, 0, len(st.Beats))
@@ -99,11 +100,14 @@ func renderSessionStory(st sessionStory) string {
 			}
 			events = append(events, viz.Event{At: beat.At, Label: label, Role: beatRole(beat.Channel, beat.Kind), Lane: beat.Channel})
 		}
-		tl := viz.Timeline(events, viz.TimelineOptions{W: 900, AriaLabel: "session timeline"})
-		// The kit's timeline is a fixed 900 px; it scrolls inside its own
-		// keyboard-reachable region so the page never pans sideways at
-		// 390 px (design §2).
-		tl = `<div class="overflow-x-auto" role="region" tabindex="0" aria-label="session timeline — scrolls sideways">` + tl + `</div>`
+		tl := viz.Timeline(events, viz.TimelineOptions{W: 900, Fluid: true, AriaLabel: "session timeline"})
+		// A text-dense chart, drawn once with the kit's Fluid option: from
+		// md up it fills the card (capped at its native 900 px, so its
+		// labels never scale up); below md it keeps its native width and
+		// scrolls inside its own keyboard-reachable region, so its labels
+		// stay legible and the page never pans sideways at 390 px (design
+		// §2; the kit's own advice for text-dense charts, FATHOM-F0-KIT-04).
+		tl = `<div class="overflow-x-auto" role="region" tabindex="0" aria-label="session timeline — scrolls sideways"><div class="min-w-[900px] max-w-[900px] md:min-w-0">` + tl + `</div></div>`
 		b.WriteString(dashboard.RenderWidget(dashboard.Widget{Title: plural(len(st.Beats), "instrumented event"), Body: template.HTML(tl)}))
 	} else {
 		b.WriteString(dashboard.RenderWidget(dashboard.Widget{Title: "timeline", Body: template.HTML(`<span class="italic text-ink-muted">` + html.EscapeString(st.BeatsNote) + `</span>`)}))

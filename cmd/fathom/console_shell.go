@@ -7,8 +7,10 @@ package main
 // trail (chrome.Breadcrumbs) and the theme (appearance: a bootstrap script
 // before the stylesheet plus the native control, storage key fathom-theme).
 // The page heading's meta-and-actions block is composed here from role
-// utilities: it is FATHOM-KIT-07, which fathom builds just in time as the
-// originating consumer and returns to the kit (vision 35 §6).
+// utilities (FATHOM-KIT-07: the kit's chrome.RenderPageHeading writes its
+// own h1, and the kit shell's top bar already writes one — see
+// docs/app-kit.md, FATHOM-S0-KIT-01). The top bar carries the ⌘K palette
+// trigger and every page carries its dialog (console_palette.go, OC-12).
 
 import (
 	_ "embed"
@@ -20,7 +22,6 @@ import (
 	"github.com/geoffmilleraz/app-kit/appkit/ui/appearance"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/chrome"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/dashboard"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/form"
 )
 
 // consoleThemeKey is the appearance storage key (design §2).
@@ -34,17 +35,19 @@ var consoleJS []byte
 
 // consoleShell is one page's frame.
 type consoleShell struct {
-	PageID      string         // the registered page (nav highlight); "" for none
-	Title       string         // the h1
-	DocTitle    string         // <title>; defaults to Title · fathom observatory
-	Crumbs      []chrome.Crumb // the full trail, Observatory first; current page last
-	Question    string         // what the page answers
-	Meta        []string       // heading meta line
-	Verbs       []string       // the verbs the page renders, as copyable chips
-	Actions     string         // trusted heading actions HTML
-	Body        string         // trusted page content
-	Footer      string         // trusted footer HTML; a default is used when empty
-	SearchQuery string         // prefills the top-bar search field
+	PageID   string         // the registered page (nav highlight); "" for none
+	Title    string         // the h1
+	DocTitle string         // <title>; defaults to Title · fathom observatory
+	Crumbs   []chrome.Crumb // the full trail, Observatory first; current page last
+	Question string         // what the page answers
+	Meta     []string       // heading meta line
+	Verbs    []string       // the verbs the page renders, as copyable chips
+	Actions  string         // trusted heading actions HTML
+	Body     string         // trusted page content
+	Footer   string         // trusted footer HTML; a default is used when empty
+	// Live is the page's live-freshness status line (consoleLiveStatus),
+	// set when the body carries live regions; it also loads the kit script.
+	Live string
 }
 
 // renderConsoleShell renders a complete HTML document on the console shell.
@@ -56,6 +59,7 @@ func renderConsoleShell(reg *consoleRegistry, s consoleShell) string {
 	var content strings.Builder
 	content.WriteString(`<div class="mx-auto w-full max-w-7xl">`)
 	content.WriteString(renderConsoleHeading(s))
+	content.WriteString(s.Live)
 	content.WriteString(s.Body)
 	content.WriteString(`</div>`)
 
@@ -68,7 +72,7 @@ func renderConsoleShell(reg *consoleRegistry, s consoleShell) string {
 		Title:     s.Title,
 		Brand:     template.HTML(`<a href="/" class="text-base font-semibold text-ink hover:text-accent">fathom observatory</a>`),
 		Nav:       template.HTML(consoleNav(reg, reg.navCurrentPath(s.PageID))),
-		Actions:   template.HTML(consoleSearchForm(s.SearchQuery)),
+		Actions:   template.HTML(consoleMobileBrand + consolePaletteTrigger()),
 		Content:   template.HTML(content.String()),
 		Footer:    template.HTML(footer),
 		ContentID: consoleContentID,
@@ -82,26 +86,41 @@ func renderConsoleShell(reg *consoleRegistry, s consoleShell) string {
 	// light preference never flashes the other theme.
 	b.WriteString(`<script>` + appearance.BootstrapScript(appearance.Options{StorageKey: consoleThemeKey}) + `</script>`)
 	b.WriteString(`<link rel="stylesheet" href="/assets/app.css"><script src="/assets/console.js" defer></script>`)
-	b.WriteString(`</head><body class="min-h-screen bg-surface font-sans text-sm text-ink">`)
+	b.WriteString(`<script src="` + consolePaletteScriptPath + `" defer></script>`)
+	if s.Live != "" {
+		b.WriteString(`<script src="` + consoleLiveScriptPath + `" defer></script>`)
+	}
+	// The kit shell's <main> is overflow-y:auto inside an unbounded
+	// min-h-screen column: it never scrolls, yet as a scroll container it
+	// pins every position:sticky descendant to a box that never moves. A
+	// page that positions something sticky marks itself
+	// data-console-sticky, and main then clips sideways (as auto did)
+	// without being a scroll container (FATHOM-G-KIT-04). The classes are
+	// literal — the Tailwind scanner reads source text, not Go values — so
+	// consoleStickyMainClasses names consoleContentID by hand, and
+	// TestConsoleShell_StickyPagesFreeMain holds the two together.
+	b.WriteString(`</head><body class="min-h-screen bg-surface font-sans text-sm text-ink ` + consoleStickyMainClasses + `">`)
 	b.WriteString(shell)
+	// The palette's dialog, once per page (OC-12): Mod+K or the top bar's
+	// trigger opens it; without JavaScript the trigger is a link to /search.
+	b.WriteString(consolePaletteDialog())
 	b.WriteString(`</body></html>`)
 	return b.String()
 }
+
+// consoleStickyMainClasses free the shell's main from being a scroll
+// container on a page marked data-console-sticky (FATHOM-G-KIT-04).
+const consoleStickyMainClasses = `[&:has([data-console-sticky])_#observatory-main]:overflow-x-clip [&:has([data-console-sticky])_#observatory-main]:overflow-y-visible`
+
+// consoleMobileBrand is the brand in the top bar below md, where the kit
+// shell hides the sidebar that carries it (F0 proof, item 8; returned as
+// FATHOM-S0-KIT-01 — the shell has no mobile brand slot).
+const consoleMobileBrand = `<a href="/" class="inline-flex min-h-11 items-center rounded-sm text-base font-semibold text-ink hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus md:hidden" data-console-mobile-brand>fathom</a>`
 
 // consoleNav is the grouped sidebar plus the theme control beneath it.
 func consoleNav(reg *consoleRegistry, currentPath string) string {
 	return dashboard.RenderNav(reg.navGroups(), currentPath) +
 		`<div class="mt-4 border-t border-line px-3 pt-4">` + appearance.RenderControl(appearance.Options{StorageKey: consoleThemeKey}) + `</div>`
-}
-
-// consoleSearchForm is the top bar's search: a real GET form to /search, so
-// every palette result is also a page without JavaScript (design §2).
-func consoleSearchForm(q string) string {
-	return `<form role="search" action="/search" method="get" class="flex min-w-0 items-center">` +
-		`<label for="console-search-q" class="sr-only">Search projects, plans, symbols, rules, verbs and pages</label>` +
-		`<div class="w-36 sm:w-64 [&>input]:min-h-11">` +
-		form.RenderInput(form.Input{ID: "console-search-q", Name: "q", Type: "search", Value: q, Placeholder: "Search…", Autocomplete: "off"}) +
-		`</div></form>`
 }
 
 // renderConsoleHeading is the page heading block under the top bar's h1:
@@ -110,10 +129,9 @@ func renderConsoleHeading(s consoleShell) string {
 	var b strings.Builder
 	b.WriteString(`<div class="mb-4 flex flex-wrap items-start justify-between gap-3 border-b border-line pb-3" data-console-heading>`)
 	b.WriteString(`<div class="min-w-0 max-w-3xl">`)
-	// The kit's trail links are text-height (17 px); the wrapper gives each
-	// a 44 px target and a visible focus ring (design §2; the kit defect is
-	// recorded in docs/app-kit.md for return).
-	b.WriteString(`<div class="[&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center [&_a]:rounded-sm [&_a:focus-visible]:outline-2 [&_a:focus-visible]:outline-offset-2 [&_a:focus-visible]:outline-focus">` + chrome.Breadcrumbs(s.Crumbs) + `</div>`)
+	// The kit's trail links carry their own 44 px target and focus-visible
+	// outline since mirror d9dd789 (FATHOM-F0-KIT-03, returned from F0).
+	b.WriteString(chrome.Breadcrumbs(s.Crumbs))
 	if s.Question != "" {
 		b.WriteString(`<p class="mt-1 text-ink-muted">` + html.EscapeString(s.Question) + `</p>`)
 	}

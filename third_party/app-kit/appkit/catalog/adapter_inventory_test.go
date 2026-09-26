@@ -221,9 +221,16 @@ func TestPrivateAdapterInventoryIsCLIToolingNotCertifiedOutput(t *testing.T) {
 		provenance:        Provenance{Source: "first-party", License: "Metadata contains no licensed source bodies; generated derivatives retain original private-source restrictions", Audience: "metadata available without private archives; execution requires independently verified original access"},
 		privateBackendGap: "account backend or notification provider",
 	})
-	// ADR-0064 adds one first-party settings recipe, not another private adapter.
-	if len(c.Entries) != 35 || actualAdapterCount != 9 || len(adapters) != 9 {
-		t.Fatalf("catalog/private/expected counts = %d/%d/%d, want 35/9/9 (plus a separate Elements translator)", len(c.Entries), actualAdapterCount, len(adapters))
+	// ADR-0064 adds one first-party settings recipe, not another private adapter;
+	// interaction.command-palette (FATHOM-KIT-01) and analytics.graph
+	// (FATHOM-KIT-02) each add one first-party primitive, FATHOM-KIT-03/08
+	// add thirteen first-party records for already-shipped packages (viz family,
+	// vizframe, hitl run inspection, motion, topology, explainer, export, chrome
+	// details), Fathom's code excerpt and unified diff (FATHOM-KIT-04/05) add two
+	// primitives, and Fathom's live freshness and page heading add two more —
+	// none is a private adapter.
+	if len(c.Entries) != 54 || actualAdapterCount != 9 || len(adapters) != 9 {
+		t.Fatalf("catalog/private/expected counts = %d/%d/%d, want 54/9/9 (plus a separate Elements translator)", len(c.Entries), actualAdapterCount, len(adapters))
 	}
 
 	for _, want := range adapters {

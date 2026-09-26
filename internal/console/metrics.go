@@ -26,6 +26,10 @@ const (
 	MetricCalls        MetricID = "calls.total"
 	MetricSessions     MetricID = "sessions.total"
 	MetricObservations MetricID = "observations.open"
+	// MetricAgentTools is how many tools the agent surface serves — the
+	// brief's "standing cost" and the home page's context tax read it, and
+	// the brief once printed a literal "16-tool" beside it (F0 proof).
+	MetricAgentTools MetricID = "surface.agent_tools"
 )
 
 // Metrics is a page's shared-metric section, keyed by ID (JSON orders the
@@ -154,6 +158,10 @@ type CallLogFacts struct {
 	// AbsentReason, when set, is why no read of the log stands behind this
 	// snapshot at all (the model's own read-state note); it wins.
 	AbsentReason string
+	// ConsoleReads is how many rows the console stamped with its own origin
+	// (the Observatory reading the registry to render a page): logged,
+	// never counted as usage, named in the denominator.
+	ConsoleReads int
 }
 
 // CallTotal is every row in the resolved call log — attributed or not. The
@@ -175,7 +183,23 @@ func CallTotal(c CallLogFacts) Value[int] {
 	case c.ReadErr != "":
 		return Errored[int]("call log unreadable: " + c.ReadErr).WithSource(source)
 	}
-	return Measured(c.Rows, source).WithDenominator("every row in the log; " + thousands(c.Rows-c.Unattributed) + " attributed to a service, " + thousands(c.Unattributed) + " unattributed")
+	denom := "every row in the log; " + thousands(c.Rows-c.Unattributed) + " attributed to a service, " + thousands(c.Unattributed) + " unattributed"
+	if c.ConsoleReads > 0 {
+		denom += "; " + thousands(c.ConsoleReads) + " console page reads excluded (not usage)"
+	}
+	return Measured(c.Rows, source).WithDenominator(denom)
+}
+
+// AgentSurfaceTools is how many tools the agent surface serves, from one
+// tools/list on /rpc/agent: tools and schemaBytes are what it returned. A
+// surface that did not answer (both zero) is absent — never a 0-tool
+// surface.
+func AgentSurfaceTools(tools, schemaBytes int) Value[int] {
+	const source = "tools/list on the daemon's /rpc/agent surface"
+	if tools == 0 && schemaBytes == 0 {
+		return Absent[int]("the agent surface did not answer tools/list").WithSource(source)
+	}
+	return Measured(tools, source).WithDenominator(thousands(schemaBytes) + " bytes of tool schema every connected session carries")
 }
 
 // SessionCount is the number of distinct sessions in the session ledger —
@@ -190,6 +214,12 @@ func SessionCount(ledgerPath string, data []byte, readErr error) Value[int] {
 		return Errored[int]("session ledger unreadable: " + readErr.Error()).WithSource(source)
 	}
 	sessions, rows := DistinctSessions(data)
+	return sessionCountValue(source, sessions, rows)
+}
+
+// sessionCountValue is sessions.total's value over a read ledger — the one
+// shape SessionCount and the session table both return.
+func sessionCountValue(source string, sessions, rows int) Value[int] {
 	return Measured(sessions, source).WithDenominator("distinct sessions from " + thousands(rows) + " ledger rows")
 }
 
@@ -238,9 +268,87 @@ func DistinctSessionsBy(data []byte, keyOf func(repoLabel string) string) map[st
 	return out
 }
 
+// DistinctSessionsIn is DistinctSessionsBy over one window: a session
+// counts under its key when any of its rows was written in [from, to). A
+// row with no parseable timestamp cannot be placed in a window and is not
+// counted. The realization ladder's idle rule reads it ("no sessions in the
+// window", docs/design/realization-grade.md §3) — an all-time count would
+// grade a repository busy in July and silent since as active.
+func DistinctSessionsIn(data []byte, keyOf func(repoLabel string) string, from, to time.Time) map[string]int {
+	seen := map[string]map[string]bool{}
+	eachLedgerSessionAt(data, func(key, repo, at string) {
+		if repo == "" {
+			return
+		}
+		ts, err := time.Parse(time.RFC3339, at)
+		if err != nil || ts.Before(from) || !ts.Before(to) {
+			return
+		}
+		repo = keyOf(repo)
+		if repo == "" {
+			return
+		}
+		if seen[repo] == nil {
+			seen[repo] = map[string]bool{}
+		}
+		seen[repo][key] = true
+	})
+	out := make(map[string]int, len(seen))
+	for repo, keys := range seen {
+		out[repo] = len(keys)
+	}
+	return out
+}
+
+// VerifyRunsIn counts the verify gate's runs in [from, to) per service key
+// from the verify ledger (SD-1). One `fathom verify` invocation writes one
+// row per plan, every row stamped with the same instant, so a run is one
+// (service, instant) — never a plan row. A row with no timestamp is not
+// counted. keyOf maps the ledger's service name to the caller's key ("" is
+// skipped).
+func VerifyRunsIn(runs []LedgerRun, keyOf func(service string) string, from, to time.Time) map[string]int {
+	seen := map[string]map[int64]bool{}
+	for _, r := range runs {
+		if r.At.IsZero() || r.At.Before(from) || !r.At.Before(to) {
+			continue
+		}
+		k := keyOf(r.Service)
+		if k == "" {
+			continue
+		}
+		if seen[k] == nil {
+			seen[k] = map[int64]bool{}
+		}
+		seen[k][r.At.Unix()] = true
+	}
+	out := make(map[string]int, len(seen))
+	for k, at := range seen {
+		out[k] = len(at)
+	}
+	return out
+}
+
 // eachLedgerSession calls fn with every parseable ledger row's session key
 // (its session id; a row with none counts once on its own) and repo label.
 func eachLedgerSession(data []byte, fn func(key, repo string)) {
+	eachLedgerRowAt(data, func(key, repo, _ string, _ []byte) { fn(key, repo) })
+}
+
+// eachLedgerSessionAt is eachLedgerSession with the row's timestamp.
+func eachLedgerSessionAt(data []byte, fn func(key, repo, at string)) {
+	eachLedgerRowAt(data, func(key, repo, at string, _ []byte) { fn(key, repo, at) })
+}
+
+// eachLedgerRow is eachLedgerSession with the row's own bytes, for a fold
+// that reads more of a row (the activity tab's session rows) and must still
+// count sessions by the one rule.
+func eachLedgerRow(data []byte, fn func(key, repo string, line []byte)) {
+	eachLedgerRowAt(data, func(key, repo, _ string, line []byte) { fn(key, repo, line) })
+}
+
+// eachLedgerRowAt is the one walk behind them: every parseable row's
+// session key, repo label, timestamp and bytes.
+func eachLedgerRowAt(data []byte, fn func(key, repo, at string, line []byte)) {
 	for _, line := range bytes.Split(data, []byte{'\n'}) {
 		if len(bytes.TrimSpace(line)) == 0 {
 			continue
@@ -257,7 +365,7 @@ func eachLedgerSession(data []byte, fn func(key, repo string)) {
 		if key == "" {
 			key = "\x00anon:" + row.At + ":" + row.Repo
 		}
-		fn(key, row.Repo)
+		fn(key, row.Repo, row.At, line)
 	}
 }
 
@@ -283,7 +391,10 @@ func countNoun(n int, word string) string {
 	if n == 1 {
 		return fmt.Sprintf("%d %s", n, word)
 	}
-	return fmt.Sprintf("%d %ss", n, word)
+	if strings.HasSuffix(word, "s") || strings.HasSuffix(word, "ch") {
+		return thousands(n) + " " + word + "es"
+	}
+	return thousands(n) + " " + word + "s"
 }
 
 // thousands renders 34993 as "34,993" — denominators are read by people.

@@ -46,6 +46,11 @@ type obsServiceRow struct {
 	// preventing, gating — that grades what fathom is DOING here rather
 	// than how it is configured.
 	Realization *realizationReport `json:"realization,omitempty"`
+	// ladder is the rung-level projection the grade folds
+	// (console.RealizationLadder): the project overview and `fathom fleet
+	// realization` render it. Unexported, so observatoryModel v1's JSON is
+	// unchanged.
+	ladder *console.Ladder
 	// Series (RG-6): the 30-day per-dimension activity series from the call
 	// log. Nil when the log could not be read (the model's CallLogNote then
 	// carries the reason) — a series of thirty "no rows" absences would
@@ -58,6 +63,10 @@ type obsServiceRow struct {
 	// model assembled from any other source must set it rather than let
 	// Symbols default to a fabricated 0 (law 3).
 	SymbolsNote string `json:"symbols_note,omitempty"`
+	// languages are the registry's languages for the service (the fleet
+	// table's column, console_projects.go). Unexported: observatoryModel
+	// v1's JSON is a compatibility surface (OC-7).
+	languages []string
 }
 
 // obsArmBanner / obsNarrateBanner surface the active dials loudly.
@@ -161,6 +170,14 @@ type obsImpact struct {
 	// that ignores it flatters the indexed mode.
 	ExpToolSearchTurns int    `json:"exp_toolsearch_turns"`
 	ExpNote            string `json:"exp_note"`
+
+	// The console's Impact view (OC-41) draws each arm as a range, so it
+	// needs the admitted units behind the medians, and the denominators the
+	// notes above only state in words. Unexported: obsImpact is part of
+	// observatoryModel v1's JSON, which stays byte-for-byte (OC-7).
+	armOn, armOff []int
+	catchesRan    int
+	firstEditN    int
 }
 
 type observatoryModel struct {
@@ -209,6 +226,25 @@ type observatoryModel struct {
 	// stays byte-for-byte what it was (OC-7).
 	callFacts console.CallLogFacts
 	sessions  console.Value[int]
+	// The model's one read of the session ledger (its bytes, or the read
+	// error), and what the Evidence pages fold from its one read of the call
+	// log — each tool's dominant caller class and the review runs' findings
+	// — so a page's table never comes from a read its metrics did not: a
+	// page that lists sessions (the activity tab, the sessions pages) lists
+	// the ones that were counted.
+	ledger    []byte
+	ledgerErr error
+	toolClass map[string]console.CallerClass
+	reviews   []console.ReviewRun
+}
+
+// sessionLedgerRead is the session ledger's bytes as this build read them,
+// nil when the read failed (m.sessions then carries the error).
+func (m observatoryModel) sessionLedgerRead() []byte {
+	if m.ledgerErr != nil {
+		return nil
+	}
+	return m.ledger
 }
 
 // obsTrafficDay is one day of call-log traffic.
@@ -244,8 +280,11 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 	ledgerPath := sessionLedgerPath()
 	ledgerData, ledgerErr := os.ReadFile(ledgerPath)
 	m.sessions = console.SessionCount(ledgerPath, ledgerData, ledgerErr).WithAsOf(now)
+	m.ledger, m.ledgerErr = ledgerData, ledgerErr
 
-	hc := &http.Client{Timeout: 5 * time.Second}
+	// The model's reads of the daemon (list_services) carry the console's
+	// origin: the console reading itself is never usage (mcp.OriginConsole).
+	hc := consoleRPCClient(5 * time.Second)
 	svcs, err := fetchServices(hc, baseURL)
 	if err != nil {
 		m.DegradedNote = "service registry unreachable (" + err.Error() + ") — fleet tiles are not measured, never empty-as-healthy"
@@ -265,9 +304,12 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 		// (ENOENT) apart from a log that is right there and unreadable (a
 		// wedged TCC verdict, a permission defect); both are absences the
 		// tiles must name, but only the second is a defect worth a remedy.
-		entries, _, callLogErr := classifyCallLogRead(callLogPath)
+		entries, _, consoleReads, callLogErr := callLogReadCounting(callLogPath)
 		callLogRead := callLogErr == nil
 		m.callFacts = callLogFactsFor(resolvedLog, entries, callLogErr)
+		if callLogRead {
+			m.callFacts.ConsoleReads = consoleReads
+		}
 		switch {
 		case callLogRead:
 		case callLogPath == "":
@@ -278,6 +320,7 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 			m.CallLogNote = "call log unreadable: " + callLogErr.Error() + " — traffic figures are not measured, never zero"
 		}
 		m.Misses = buildMissModel(entries)
+		m.toolClass, m.reviews = toolClassesOf(entries), reviewRunsOf(entries)
 
 		// Ledger sessions per repo (mirrors fleetreport.go's own fold): the
 		// index-only distinction needs to know whether ANYONE runs coding
@@ -294,32 +337,27 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 		}
 		labelKey := sessionLabelKey(roots)
 		sessionsByRepo := map[string]int{}
-		verifyRunsByRepo := map[string]int{}
 		ledgerReadable := ledgerErr == nil
+		// The realization ladder's window (docs/design/realization-grade.md
+		// §2): the same fourteen UTC days the traffic sparkline draws, for
+		// every rung — calls, obligations injections, sessions and gate
+		// runs in the window, never ever.
+		winFrom, winTo := realizationWindowBounds(now)
+		winFromDay, winToDay := winFrom.Format("2006-01-02"), winTo.Format("2006-01-02")
+		windowSessions := map[string]int{}
 		if ledgerReadable {
-			data := ledgerData
-			sessionsByRepo = console.DistinctSessionsBy(data, labelKey)
-			for _, line := range strings.Split(string(data), "\n") {
-				if line == "" {
-					continue
-				}
-				var row struct {
-					Repo          string `json:"repo"`
-					VerifyCatches *int   `json:"verify_catches"`
-				}
-				if json.Unmarshal([]byte(line), &row) == nil && row.Repo != "" {
-					// verify_catches is nil when the gate never RAN, so a
-					// non-nil value (including 0) is a run. Counting a nil
-					// as a run would report a gate that never fired as
-					// gating (law 3).
-					if row.VerifyCatches != nil {
-						verifyRunsByRepo[labelKey(row.Repo)]++
-					}
-				}
-			}
+			sessionsByRepo = console.DistinctSessionsBy(ledgerData, labelKey)
+			windowSessions = console.DistinctSessionsIn(ledgerData, labelKey, winFrom, winTo)
 		}
+		// The gating rung reads the verify ledger (SD-1): every `fathom
+		// verify` run appends to it, a pre-push hook's included — the
+		// session ledger's verify_catches only ever saw runs inside an agent
+		// session, which told repositories that gate on every push to add
+		// the gate (O30's failure, again).
+		verifyRuns, verifyLedgerNote := windowVerifyRuns(winFrom, winTo)
 
 		obligationsBySvc := map[string]int{}
+		windowObligations := map[string]int{}
 		compileBySvc := fetchCompileStates(hc, baseURL)
 		obligationCalls := 0
 		byDay := map[string]int{}
@@ -329,6 +367,9 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 				obligationCalls++
 				if e.Service != "" {
 					obligationsBySvc[strings.ToLower(e.Service)]++
+					if inRealizationWindow(e.TS, winFromDay, winToDay) {
+						windowObligations[strings.ToLower(e.Service)]++
+					}
 				}
 			}
 			if len(e.TS) >= 10 {
@@ -369,7 +410,7 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 		sort.Strings(names)
 		for _, name := range names {
 			info := svcs[name]
-			row := obsServiceRow{fleetServiceRow: fleetServiceRow{Service: name, Path: info.path, Symbols: info.symbols}}
+			row := obsServiceRow{fleetServiceRow: fleetServiceRow{Service: name, Path: info.path, Symbols: info.symbols}, languages: splitLangs(info.langs)}
 			row.Freshness, row.IndexedCommit, row.RepoHead = fleetFreshness(hc, baseURL, name, info.path)
 			if strings.HasPrefix(row.Freshness, "stale") {
 				row.FreshnessRemedy = daemonRefreshRemedy(info.path, name)
@@ -398,15 +439,20 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 			// so the letter and the chart can never disagree.
 			win := realizationWindow{
 				Calls:            sumInts(row.TrafficDays),
-				ObligationServes: obligationsBySvc[name],
-				VerifyRuns:       verifyRunsByRepo[name],
-				HasPlans:         repoHasPlans(info.path),
+				ObligationServes: windowObligations[name],
+				Sessions:         windowSessions[name],
+				VerifyRuns:       verifyRuns[name],
+				WindowDays:       realizationWindowDays,
+				CallLogNote:      m.CallLogNote,
+				VerifyLedgerNote: verifyLedgerNote,
 			}
-			if row.SessionCount != nil {
-				win.Sessions = *row.SessionCount
+			win.HasPlans, win.PlansNote = repoPlansRead(info.path)
+			if !ledgerReadable {
+				win.SessionsNote = "the session ledger was not read (" + ledgerPath + ")"
 			}
-			rr := realizationGrade(row, win)
-			row.Realization = &rr
+			ladder := console.RealizationLadder(realizationLadderFacts(row, win))
+			rr := realizationReportFrom(ladder)
+			row.Realization, row.ladder = &rr, &ladder
 			if callLogRead {
 				row.Series = dimensionSeries(entries, name, now, seriesDays)
 			}
@@ -665,6 +711,7 @@ func buildImpactModel(now time.Time) obsImpact {
 		imp.RatingOffMed = &v
 	}
 	imp.TokensOnSessions, imp.TokensOffSessions = onSessions, offSessions
+	imp.armOn, imp.armOff, imp.catchesRan, imp.firstEditN = onTokens, offTokens, catchesRan, len(firstEditTurns)
 	imp.UncleanArmRows = uncleanArmRows
 	imp.IsolatedSpendRows = isolatedSpendRows
 	if isolatedSpendRows > 0 {

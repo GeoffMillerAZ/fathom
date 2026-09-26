@@ -43,10 +43,29 @@ type consolePage struct {
 	Aliases []string
 	// Verbs are the exact commands whose --json this page's JSON carries as
 	// sections (P10); TestConsolePagesRenderTheirVerbs holds each page to
-	// them. A page not yet rebuilt declares none.
+	// them. A page not yet rebuilt declares none. A parameterized page
+	// declares its verb with "{name}" placeholders and fills it per request
+	// (consoleOut.Verbs).
 	Verbs []string
+	// ProjectVerbs are per-project verbs whose answers the page renders
+	// from a recorded instrument rather than by running them (the verify
+	// ledger's run at HEAD for `plans status`, the store for `certify
+	// status`): "{svc}" is each project. The page's JSON carries a section
+	// per template, keyed by service, in the verb's own JSON shape, and
+	// TestConsolePagesRenderTheirVerbs runs each concrete verb and holds
+	// the page to it.
+	ProjectVerbs []string
 	// Shows are the shared metrics the page renders (OC-9).
 	Shows []console.MetricID
+	// Live are the live-freshness sources the page's body follows when it
+	// is not built from source-keyed panels (OC-14, console_live.go); a
+	// "{svc}" in a key is the request's project.
+	Live []string
+	// Tabs are the ?tab= values the page serves (the project workspace's
+	// tabs, wave E). A link naming any other tab resolves to nothing — a
+	// tab URL the page ignores would render some other view under a label
+	// promising this one.
+	Tabs []string
 	// Formats are the ?format= values the page answers besides HTML and
 	// json ("md" for the brief, "fragment" for search); any other value is
 	// a 400 on the shell naming the ones that work.
@@ -59,15 +78,30 @@ type consolePage struct {
 // consoleOut is one built page.
 type consoleOut struct {
 	Title    string         // overrides the page title (a project page names its project)
-	Crumbs   []chrome.Crumb // trail after Observatory; the current page is appended
+	Crumbs   []chrome.Crumb // trail after Observatory, the current page last; nil: the page's own
 	Meta     []string       // the heading's meta line
 	Actions  string         // trusted heading actions HTML
 	Model    any            // the page's own projection, served as JSON "model"
 	Metrics  console.Metrics
 	Sections map[string]any // verb → that verb's --json value
-	Body     func() string  // HTML, rendered only for an HTML request
+	// Verbs, when set, are this request's concrete commands for a page
+	// whose registered Verbs are templates ("{svc}", "{plan}", "{id}",
+	// "{layer}", "{file}", "{root}", …), filled from the request: the heading's chips
+	// and the JSON's verbs name them, and each has its section. nil means
+	// the registry's Verbs.
+	Verbs []string
+	// Chips, when non-nil, are the heading's verb chips instead of Verbs: a
+	// fleet page rendering one verb per repository names each in its own
+	// row rather than stacking them all in the heading (empty: none).
+	Chips []string
+	Body  func() string // HTML, rendered only for an HTML request
 	// Raw, when set, answers the request itself (a download, a fragment).
 	Raw func(w http.ResponseWriter) bool
+	// RawIsView says Raw's answer is a person opening the page's content
+	// elsewhere — the plan page's drawer showing a row's evidence — so it
+	// counts as a view of this page (UX-M4); a palette keystroke or a
+	// download is not.
+	RawIsView bool
 }
 
 // consoleRequest is one request to a page.
@@ -127,6 +161,11 @@ func registerPage(reg *consoleRegistry, p consolePage) error {
 	for _, v := range p.Verbs {
 		if !strings.HasPrefix(v, "fathom ") {
 			return fmt.Errorf("console: page %q verb %q is not an exact fathom command", p.ID, v)
+		}
+	}
+	for _, v := range p.ProjectVerbs {
+		if !strings.HasPrefix(v, "fathom ") || !strings.Contains(v, "{svc}") {
+			return fmt.Errorf("console: page %q project verb %q must be a fathom command naming {svc}", p.ID, v)
 		}
 	}
 	for _, a := range p.Aliases {
@@ -240,14 +279,15 @@ func (reg *consoleRegistry) searchDocs() []console.SearchDoc {
 	return docs
 }
 
-// pageRendering returns the first page whose Verbs include the command
-// (verb results in the palette link to the page that renders them).
+// pageRendering returns the first page whose Verbs (or per-project verbs)
+// include the command (verb results in the palette link to the page that
+// renders them).
 func (reg *consoleRegistry) pageRendering(verbName string) (*consolePage, bool) {
 	for _, p := range reg.pages {
 		if p.Href == "" {
 			continue
 		}
-		for _, v := range p.Verbs {
+		for _, v := range append(append([]string{}, p.Verbs...), p.ProjectVerbs...) {
 			if v == "fathom "+verbName || strings.HasPrefix(v, "fathom "+verbName+" ") {
 				return p, true
 			}

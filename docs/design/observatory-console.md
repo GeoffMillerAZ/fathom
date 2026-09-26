@@ -48,18 +48,18 @@ Each page lives in its own `cmd/fathom/console_<page>.go` and registers in `init
 
 | Route | Page | Verbs it renders |
 |---|---|---|
-| `/` | Now | `brief --json`, `fleet report --json`, `plans status --json`, `certify status --json` |
+| `/` | Now | `brief --json`, `fleet report --json`; per project, `plans status --json` and `certify status --json` (from the recorded run at HEAD and the store; see JSON) |
 | `/fleet` | Fleet | `fleet report --json` |
-| `/projects/{svc}` (`?tab=`) | Project workspace | per tab (§3) |
+| `/projects/{svc}`, `/projects/{svc}/{index,intent,activity,wiring}` | Project workspace (a tab is a path; governance, plans, proof and refactor open their pages with `?svc=`) | per tab (§3) |
 | `/plans`, `/plans/{svc}/{plan}`, `/plans/{svc}/{plan}/rows/{id}` | Proof ledger | `plans status/next/history --json`, `verify --row --json` |
 | `/certifications` | Certifications | `certify status/gaps --json` |
 | `/refactors` (`?svc=&since=`) | Refactor | `conserve --since --json` |
-| `/layers`, `/layers/{layer}`, `/claims/{id}` | Semantic layers | `layers list/show/coverage --json`, `claims events --json` |
+| `/layers`, `/layers/{layer}`, `/claims`, `/claims/{id}` | Semantic layers | `layers strata/coverage/show --json`, `claim list --json` (the rows behind every claim count), `claim show --json` |
 | `/packs` | Packs | `capabilities --json`, `report evidence --json`, `layers list --json` |
 | `/explain` (`?svc=&file=`) | Serving explainer | `obligations --file --explain --json` |
-| `/impact`, `/sessions`, `/sessions/{id}` | Evidence | `instrument`, `flywheel`, `metrics …`, session ledger |
+| `/impact`, `/sessions`, `/sessions/{id}` | Evidence | `metrics impact --json`, `metrics catches --json`, `metrics sessions [--id S] --json` (the session ledger, the verify ledger, the call log, the hooks log) |
 | `/intent` (`?svc=`) | Intent | `intent audit --json --read-only` |
-| `/operate`, `/decide` | System | `metrics traffic/series`, `flywheel`, `capabilities`, `config explain`, decision log |
+| `/operate`, `/decide` | System | `metrics load --json` (calls per day per surface, tools by caller class), `metrics traffic [--by caller] --json`, `instrument --adoption --json`, `fleet remedy --json`, `config --explain --json`, `harness matrix --json`, `flywheel`, `capabilities`; `decide log --json` |
 | `/wiring` | Wiring | `doctor --json`, `fleet reconcile`, `fleet receipts --json` (preview/apply/undo unchanged) |
 | `/learn`, `/learn/ask`, `/learn/guides/{slug}` | Learn | `capabilities`, `harness capabilities`, use-case guides |
 | `/search` | Palette results | the registry, services, plans, rows, symbols, intent records, verbs |
@@ -74,9 +74,29 @@ onto the shell; its JSON v3 is unchanged.
 projection. `TestConsolePagesRenderTheirVerbs` asserts that, for each page and each verb it
 names, the page JSON's section equals the verb's `--json` output on the fixture fleet.
 
+A per-project verb (`plans status --service {svc}`, `certify status --service {svc}`) is
+declared as a page's `ProjectVerbs`: the page renders its answer for every project from a
+recorded instrument instead of running it, and carries a section per template keyed by
+service, in the verb's own shape. The parity test runs each concrete verb and holds the page
+to it: `certify status` exactly; `plans status` for every plan whose recorded run is at the
+project's HEAD (proven, claimed-unproven, total), after a real `fathom verify` on the fixture.
+
+**Plan proof is the run at HEAD.** The console never runs a verify to render. A plan's
+proof is the newest verify-ledger run recorded at the project's HEAD commit for the same
+service, wherever it ran: the registered root or any clone (the pre-push gate verifies in a
+detached clone). Only when no such run exists does the page fall back to the registered
+root's newest run, and then the value is stale: it names the commit the run proved, its date
+and its age, and its findings read in the past tense. A failure recorded at an older commit
+is never a gate failure on Now nor "failed" on Fleet; a plan no run ever checked is listed,
+never skipped.
+
 **Caching.** A per-projection cache is keyed by its input watermarks: store commit and
 watermark, ledger size and mtime, plan file hashes. The cache is bounded, and nothing
-re-renders when the watermarks are unchanged. Budgets:
+re-renders when the watermarks are unchanged. The project set Now and Fleet share re-folds on
+each 30 s model rebuild from reads cached by their own watermarks: the verify ledger's parse
+by its size and mtime, each project's store facts (claims, certify status, the compile
+record) by the store file's write stamp, the project's HEAD and its intent corpus's stamps,
+and the typed-edge failures by the store stamp. Budgets:
 
 - warm render ≤ 150 ms on the fixture fleet and on the real fleet;
 - HTML ≤ 250 KB per page;
@@ -128,15 +148,20 @@ re-renders when the watermarks are unchanged. Budgets:
 **Now.** The attention queue is an ordered list of items. An item is a problem or pending
 decision with its area, evidence link and remedy. It is ordered by what blocks proof first:
 
-1. gate failures;
-2. unproven claims;
+1. gate failures (at HEAD);
+2. unproven claims (at HEAD, then plans last verified at an older commit, then plans no
+   run ever checked);
 3. stale or failed indexes;
 4. certificate gaps;
 5. uncompiled governing guides;
 6. open observations.
 
+An item carries a truth state: present, stale (recorded of an older commit), partial (a
+lower bound) or error (unreadable; its count is then omitted, never 0).
+
 Beside the queue sit a stat band, "since you last looked" (pushes, deploys, measurements,
-restarts, taken from the ledgers and the daemon state), and a fleet pulse. The fleet
+restarts, taken from the ledgers and the daemon state; paged 50 at a time, every change in
+the window on some page, "new" counted over all of them), and a fleet pulse. The fleet
 pulse shows the realization ladder per project with one shared sparkline scale.
 
 **Fleet.** A sortable, filterable table of every project. Columns: symbols, languages,
@@ -270,7 +295,10 @@ id carries the process's epoch (`<epoch>-<n>`): a reconnect with an id from anot
 (the common case: a daemon restart) replays the whole ring, the restart event first. An
 `ingest` event means the service's indexed content moved (its commit or the store's
 content digest), never a hash-gated no-op re-ingest; a `session` event names the service
-whose root the row's repo label names.
+whose root the row's repo label names. Each event also names a fleet-wide key (`index`,
+`layers`, `plans`, `sessions`, `daemon`) for panels that summarize every service, and a
+reconnect whose cursor the replay cannot cover (another epoch, or older than the ring)
+is first sent a `gap` event naming every source (`*`).
 
 ## 5. App-kit: adoption and contributions
 

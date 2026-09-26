@@ -132,7 +132,21 @@ func agentCallsTip(n int) string {
 // remedy renders the exact command that fixes a warning — the page is a
 // to-do list, not a mood board.
 func remedy(cmd string) string {
-	return `<div class="mt-2 rounded-md bg-surface-sunken px-2 py-1 font-mono text-xs text-caution break-all">$ ` + html.EscapeString(cmd) + `</div>`
+	// Wrap at the command's spaces and only then inside a token too long for
+	// the line: break-all split "--timeout" as "--timeou" / "t" (F0 proof).
+	return `<div class="mt-2 rounded-md bg-surface-sunken px-2 py-1 font-mono text-xs text-caution [overflow-wrap:anywhere]">$ ` + html.EscapeString(cmd) + `</div>`
+}
+
+// pathHTML renders a filesystem path that wraps after its separators — a
+// <wbr> after each "/" — and only breaks inside a name longer than the
+// line, left-aligned in its cell. break-all and a right-aligned value cell
+// once printed a root as "…/sextan" with a lone "t" pushed right (F0 proof).
+func pathHTML(p string) string {
+	parts := strings.Split(p, "/")
+	for i := range parts {
+		parts[i] = html.EscapeString(parts[i])
+	}
+	return `<span class="block text-left font-mono text-xs [overflow-wrap:anywhere]" data-path>` + strings.Join(parts, "/<wbr>") + `</span>`
 }
 
 // obsLead is a page's plain-English framing (EX-5): one sentence a
@@ -322,9 +336,9 @@ func renderObsFleet(m observatoryModel) string {
 		if hasTraffic {
 			b.WriteString(sectionHeading("traffic — last 14 days (call log)"))
 			b.WriteString(dashboard.RenderWidget(dashboard.Widget{
-				// The kit's SVG has a fixed width; let it scale down at 390 px
-				// rather than push the page sideways.
-				Body: template.HTML(`<div class="[&>svg]:h-auto [&>svg]:max-w-full">` + viz.Sparkline(spark, viz.SparklineOptions{W: 640, H: 48, FillRole: "accent-soft"}) + `</div>`),
+				// A text-free chart: the kit's Fluid drawing fills the card at
+				// every width (FATHOM-F0-KIT-04, returned from wave F0).
+				Body: template.HTML(viz.Sparkline(spark, viz.SparklineOptions{W: 640, H: 48, FillRole: "accent-soft", Fluid: true, AriaLabel: "fleet traffic, last 14 days"})),
 			}))
 		}
 	}
@@ -356,7 +370,7 @@ func renderObsFleet(m observatoryModel) string {
 			for i, c := range s.TrafficDays {
 				spark[i] = float64(c)
 			}
-			body.WriteString(`<div class="mt-2">` + viz.Sparkline(spark, viz.SparklineOptions{W: 220, H: 24, FillRole: "accent-soft", AriaLabel: s.Service + " 14-day traffic"}) + `</div>`)
+			body.WriteString(`<div class="mt-2">` + viz.Sparkline(spark, viz.SparklineOptions{W: 220, H: 24, FillRole: "accent-soft", Fluid: true, AriaLabel: s.Service + " 14-day traffic"}) + `</div>`)
 		}
 		// indexOnly (owner ask 2026-08-08): a C/D grade with zero ledger
 		// sessions AND zero agent-originated calls is a remote corpus other
@@ -406,10 +420,15 @@ func renderObsFleet(m observatoryModel) string {
 			bars = append(bars, viz.Bar{Label: r.Tool, Value: float64(r.Calls)})
 		}
 		b.WriteString(sectionHeading("which tools carry the load (call log, all time)"))
-		// The chart keeps its legible 11 px labels and scrolls inside its own
-		// keyboard-reachable region at 390 px (scaling the fixed 560 px SVG
-		// down drew them at ~6 px); its table alternative sits behind a
-		// disclosure (design §2: every chart has one).
+		// A text-dense chart: the kit's Fluid option scales text with the
+		// drawing (its stated limit), so a 560 px drawing shrunk onto a
+		// phone drew 11 px labels at ~6 px and a scrolled one hid every
+		// count (the F0 proof, item 4). The chart is drawn twice, each
+		// Fluid: 560 px from md up (capped at its native width, so its
+		// labels never scale up) and 320 px below md, which fills a phone's
+		// card at close to its native size. Only one is displayed at a
+		// width, so a screen reader meets one chart. The table alternative
+		// sits behind a disclosure (design §2: every chart has one).
 		rows := make([]table.Row, 0, len(bars))
 		for i, bar := range bars {
 			rows = append(rows, table.Row{ID: "tool-" + itoa(i), Cells: []string{bar.Label, fmtThousands(int(bar.Value))}})
@@ -423,7 +442,9 @@ func renderObsFleet(m observatoryModel) string {
 			})),
 		})
 		b.WriteString(dashboard.RenderWidget(dashboard.Widget{
-			Body: template.HTML(`<div class="overflow-x-auto" role="region" tabindex="0" aria-label="calls per tool — scrolls sideways">` + viz.Bars(bars, viz.BarsOptions{W: 560, LabelW: 160, ShowValue: true, AriaLabel: "calls per tool"}) + `</div><div class="mt-3">` + alt + `</div>`),
+			Body: template.HTML(`<div class="hidden max-w-[35rem] md:block" data-chart-width="wide">` + viz.Bars(bars, viz.BarsOptions{W: 560, LabelW: 160, ShowValue: true, Fluid: true, AriaLabel: "calls per tool"}) + `</div>` +
+				`<div class="max-w-80 md:hidden" data-chart-width="narrow">` + viz.Bars(bars, viz.BarsOptions{W: 320, LabelW: 110, ShowValue: true, Fluid: true, AriaLabel: "calls per tool"}) + `</div>` +
+				`<div class="mt-3">` + alt + `</div>`),
 		}))
 	}
 
@@ -438,7 +459,7 @@ func renderObsService(m observatoryModel, id string) (string, bool) {
 			continue
 		}
 		var body strings.Builder
-		body.WriteString(kv("path", `<span class="font-mono text-xs">`+html.EscapeString(s.Path)+`</span>`))
+		body.WriteString(kv("path", pathHTML(s.Path)))
 		if s.SymbolsNote != "" {
 			body.WriteString(kv("symbols", absentCell(s.SymbolsNote)))
 		} else {

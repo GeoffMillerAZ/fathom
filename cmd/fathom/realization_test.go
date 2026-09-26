@@ -256,4 +256,16 @@ func TestRepoHasPlansDistinguishesAbsenceFromEmptiness(t *testing.T) {
 	if !repoHasPlans(root) {
 		t.Error("a real plan file must count")
 	}
+	// An unreadable docs/plans is not "no plans" (I38): the note names why.
+	if os.Getuid() == 0 {
+		return
+	}
+	dir := filepath.Join(root, "docs", "plans")
+	if err := os.Chmod(dir, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+	if has, note := repoPlansRead(root); has || note == "" {
+		t.Errorf("unreadable docs/plans = %v, %q; want the read failure named", has, note)
+	}
 }

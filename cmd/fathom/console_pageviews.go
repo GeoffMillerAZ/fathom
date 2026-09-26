@@ -5,8 +5,11 @@ package main
 // reviewed under law 8's consumer-population rule. The count is keyed by the
 // page's route PATTERN ("/projects/{svc}"), never the concrete URL: which
 // project or session a person opened is not the measurement, and it stays
-// out of the log. Views are HTML page renders; ?format=json reads are
-// machine traffic and are not views.
+// out of the log. Views are HTML page renders — and a page's content opened
+// elsewhere by a person (the plan page's drawer fetching a row's evidence
+// as ?format=fragment, consoleOut.RawIsView); ?format=json reads are
+// machine traffic and are not views, nor is a palette fragment (a
+// keystroke) or a HEAD.
 //
 // Two sinks: an in-memory counter per route (exposed on /metrics as
 // fathom_console_page_views_total{route=…}) and one JSONL row per view in

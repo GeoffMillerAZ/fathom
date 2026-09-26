@@ -36,12 +36,21 @@ SOURCE_DECLARATIONS=(
   "../observatory_story.go"
   "../../../third_party/app-kit/appkit/ui/appearance/*.go"
   "../../../third_party/app-kit/appkit/ui/callout/*.go"
+  "../../../third_party/app-kit/appkit/ui/card/*.go"
   "../../../third_party/app-kit/appkit/ui/chrome/*.go"
+  "../../../third_party/app-kit/appkit/ui/code/*.go"
   "../../../third_party/app-kit/appkit/ui/dashboard/*.go"
+  "../../../third_party/app-kit/appkit/ui/docs/*.go"
+  "../../../third_party/app-kit/appkit/ui/docs/prose.css"
   "../../../third_party/app-kit/appkit/ui/form/*.go"
   "../../../third_party/app-kit/appkit/ui/hitl/*.go"
+  "../../../third_party/app-kit/appkit/ui/kanban/*.go"
+  "../../../third_party/app-kit/appkit/ui/live/*.go"
+  "../../../third_party/app-kit/appkit/ui/overlay/*.go"
+  "../../../third_party/app-kit/appkit/ui/palette/*.go"
   "../../../third_party/app-kit/appkit/ui/stat/*.go"
   "../../../third_party/app-kit/appkit/ui/table/*.go"
+  "../../../third_party/app-kit/appkit/ui/topology/*.go"
   "../../../third_party/app-kit/appkit/ui/viz/*.go"
   "../../../third_party/app-kit/appkit/ui/vizframe/*.go"
 )
@@ -54,6 +63,7 @@ render_expected_input() {
    it can SEE, so every production renderer and consumed kit package is named. */
 @import "tailwindcss" source(none);
 @import "./tokens/theme.css";
+@import "../../../third_party/app-kit/appkit/ui/docs/prose.css";
 
 /* fathom's complete production observatory source set; every console page
    and component lives in a console_*.go file, scanned by glob (vision 35) */
@@ -68,12 +78,20 @@ render_expected_input() {
 /* mirrored kit packages imported by the observatory renderers */
 @source "../../../third_party/app-kit/appkit/ui/appearance/*.go";
 @source "../../../third_party/app-kit/appkit/ui/callout/*.go";
+@source "../../../third_party/app-kit/appkit/ui/card/*.go";
 @source "../../../third_party/app-kit/appkit/ui/chrome/*.go";
+@source "../../../third_party/app-kit/appkit/ui/code/*.go";
 @source "../../../third_party/app-kit/appkit/ui/dashboard/*.go";
+@source "../../../third_party/app-kit/appkit/ui/docs/*.go";
 @source "../../../third_party/app-kit/appkit/ui/form/*.go";
 @source "../../../third_party/app-kit/appkit/ui/hitl/*.go";
+@source "../../../third_party/app-kit/appkit/ui/kanban/*.go";
+@source "../../../third_party/app-kit/appkit/ui/live/*.go";
+@source "../../../third_party/app-kit/appkit/ui/overlay/*.go";
+@source "../../../third_party/app-kit/appkit/ui/palette/*.go";
 @source "../../../third_party/app-kit/appkit/ui/stat/*.go";
 @source "../../../third_party/app-kit/appkit/ui/table/*.go";
+@source "../../../third_party/app-kit/appkit/ui/topology/*.go";
 @source "../../../third_party/app-kit/appkit/ui/viz/*.go";
 @source "../../../third_party/app-kit/appkit/ui/vizframe/*.go";
 EOF

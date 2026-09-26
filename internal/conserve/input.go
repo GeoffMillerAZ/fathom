@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/certify"
+	"github.com/geoffmilleraz/fathom/internal/gitro"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
@@ -385,7 +386,7 @@ func NewInput(ctx context.Context, root, baseRef string, st store.Store, service
 // other git invocation in this package already gets by never reading
 // user config at all.
 func gitChangedLines(ctx context.Context, root, base, path string) ([]LineRange, error) {
-	out, err := exec.CommandContext(ctx, "git", "-C", root, "diff", "--no-ext-diff", "--no-color", "--no-renames", "-U0", base, "--", path).Output()
+	out, err := gitro.Output(ctx, root, "diff", "--no-ext-diff", "--no-color", "--no-renames", "-U0", base, "--", path)
 	if err != nil {
 		return nil, fmt.Errorf("git diff -U0 %s -- %s: %w", base, path, err)
 	}
@@ -501,8 +502,13 @@ func resolveFailedTypedPackages(ctx context.Context, st store.Store, service str
 // uncommitted state (staged, unstaged, or untracked) — mirrors
 // cmd/fathom/plans_archive.go's gitPathDirty, re-derived here (this
 // package cannot import cmd/fathom) with a context for cancellation.
+//
+// It and every other working-tree diff here run through gitro: a report is
+// a read, and `git status`/`git diff` would otherwise refresh and rewrite
+// the repository's .git/index — in a live checkout an agent is committing
+// in (console wave C review, defect 11).
 func gitDirty(ctx context.Context, root string) (bool, error) {
-	out, err := exec.CommandContext(ctx, "git", "-C", root, "status", "--porcelain").Output()
+	out, err := gitro.Output(ctx, root, "status", "--porcelain")
 	if err != nil {
 		return false, err
 	}
@@ -569,7 +575,7 @@ func resolveRef(ctx context.Context, root, ref string) (string, error) {
 // worktreeFile/gitShowFile join paths onto root the same way the index
 // stores them).
 func changedFilesSinceBase(ctx context.Context, root, base string) ([]string, error) {
-	diffOut, err := exec.CommandContext(ctx, "git", "-C", root, "diff", "--no-renames", "--relative", "--name-only", base).Output()
+	diffOut, err := gitro.Output(ctx, root, "diff", "--no-renames", "--relative", "--name-only", base)
 	if err != nil {
 		return nil, fmt.Errorf("git diff --name-only %s: %w", base, err)
 	}

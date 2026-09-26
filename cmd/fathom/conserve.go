@@ -70,17 +70,12 @@ func cmdConserve(args []string, stdout, stderr io.Writer) int {
 	defer st.Close()
 
 	ctx := context.Background()
-	in, err := conserve.NewInput(ctx, root, *since, st, *service, planPaths)
+	rep, err := conserveReportFor(ctx, st, root, *since, *service, planPaths, *coverageMeta, *residueMax)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 2
 	}
-	loadConserveCoverage(&in, root, *coverageMeta)
-
-	rep := conserve.Run(ctx, in, conserve.Planes())
-	rep.Tiers = conserve.TiersByLanguage(ctx, in)
-	residue := conserve.Residue(ctx, in, *residueMax)
-	rep.Residue = &residue
+	residue := *rep.Residue
 
 	if *jsonOut {
 		b, jerr := json.MarshalIndent(rep, "", "  ")
@@ -102,6 +97,23 @@ func cmdConserve(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	return 0
+}
+
+// conserveReportFor is `fathom conserve --since --json`'s whole report:
+// every registered plane over base..worktree, the per-language tiers and
+// the reading set. The console's refactor page (OC-26) calls it with the
+// service's registered root, so the page and the verb cannot disagree.
+func conserveReportFor(ctx context.Context, st store.Store, root, since, service string, planPaths []string, coverageMeta string, residueMax int) (conserve.Report, error) {
+	in, err := conserve.NewInput(ctx, root, since, st, service, planPaths)
+	if err != nil {
+		return conserve.Report{}, err
+	}
+	loadConserveCoverage(&in, root, coverageMeta)
+	rep := conserve.Run(ctx, in, conserve.Planes())
+	rep.Tiers = conserve.TiersByLanguage(ctx, in)
+	residue := conserve.Residue(ctx, in, residueMax)
+	rep.Residue = &residue
+	return rep, nil
 }
 
 // loadConserveCoverage resolves and loads the coverage.meta.json (CV-67,
@@ -196,6 +208,11 @@ func printConserveResidue(w io.Writer, rep conserve.ResidueReport) {
 		rep.Changed, rep.Attested, rep.Unattested, rep.Unreached, rep.Partial, rep.Unexecuted, rep.UnanalyzedFunctions)
 	if rep.CoverageUnusable != "" {
 		fmt.Fprintf(w, "    coverage unusable: %s (falling back to static reach)\n", rep.CoverageUnusable)
+	}
+	if rep.ClassedByExecution == 0 && rep.Changed > 0 && len(rep.Missing) == 0 {
+		fmt.Fprintln(w, "    no execution evidence classed any function: partial and unexecuted were not measured (0 is not a count)")
+	} else if rep.ClassedByExecution > 0 {
+		fmt.Fprintf(w, "    %d function(s) classed by execution evidence, the rest by static reach\n", rep.ClassedByExecution)
 	}
 	if rep.CoverageUnmapped > 0 {
 		fmt.Fprintf(w, "    coverage unmapped: %d profile file key(s) matched no module here, e.g. %s (functions in them fall back to static reach)\n",

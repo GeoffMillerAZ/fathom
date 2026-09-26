@@ -445,7 +445,7 @@ implements):
     `readCallLog`/`resolveCallLogPath`, converts `adoptionCallEntry` →
     `metrics.CallEntry`, calls `metrics.AggregateTraffic`.
   - Tests (`cmd/fathom/metrics_traffic_test.go`): `TestCmdMetricsTraffic_JSON_GroupBySurface`,
-    `_GroupByHour`, `_ServiceFilter`, `_MissingCallLog_HonestZeros`.
+    `_GroupByHour`, `_ServiceFilter`, `_MissingCallLog_AbsentNotZero` (was `_HonestZeros` until the console wave F fix round: a missing log is absent, never zero).
 
 - [x] `fathom metrics channels` {id: Q-18, symbol: cmdMetricsChannels, package: cmd/fathom}
   - `cmd/fathom/metrics_channels.go`: `cmdMetricsChannels(args, stdout,
