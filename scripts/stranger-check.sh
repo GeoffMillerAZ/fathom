@@ -91,7 +91,10 @@ bin="${tree}/bin/fathom"
 # 3. A throwaway daemon on a free port with a temp store.
 port=$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1]); s.close()')
 url="http://127.0.0.1:${port}"
-HOME="${home}" "${bin}" serve-http --store "${work}/store.sqlite" --addr "127.0.0.1:${port}" >"${work}/daemon.log" 2>&1 &
+# --call-log is explicit: its default resolves through the working
+# directory's state dir, which in this repository is the managed daemon's
+# own log, and the throwaway HOME holds no record to refuse against.
+HOME="${home}" "${bin}" serve-http --store "${work}/store.sqlite" --addr "127.0.0.1:${port}" --call-log "${work}/mcp-calls.jsonl" >"${work}/daemon.log" 2>&1 &
 daemon_pid=$!
 for _ in $(seq 1 50); do
   if curl -s --max-time 1 "${url}/healthz" 2>/dev/null | grep -q ok; then break; fi

@@ -269,13 +269,15 @@ func exeInodeOK(p string) (uint64, bool) {
 	return ino, ino != 0
 }
 
-// managedDaemonAddr is the managed daemon's address: [daemon].addr, else
-// the conventional 127.0.0.1:7575.
+// managedDaemonAddr is the managed daemon's address: the installed
+// plist's --addr, else [daemon].addr, else the conventional 127.0.0.1:7575.
 func managedDaemonAddr() string {
-	if loaded, err := config.Load(config.DefaultUserPath(), ""); err == nil && loaded.Config.Daemon.Addr != "" {
-		return loaded.Config.Daemon.Addr
+	configured := ""
+	if loaded, err := config.Load(config.DefaultUserPath(), ""); err == nil {
+		configured = loaded.Config.Daemon.Addr
 	}
-	return "127.0.0.1:7575"
+	home, _ := os.UserHomeDir()
+	return managedDaemonAddrIn(home, configured)
 }
 
 // cmdDaemonPs implements `fathom daemon ps [--json]`.

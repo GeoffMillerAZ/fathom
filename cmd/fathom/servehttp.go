@@ -106,13 +106,21 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 			*autoRefresh = false
 		}
 		if !*allowOperatorState {
-			if home, herr := os.UserHomeDir(); herr == nil && home != "" {
-				recs, _ := listDaemonRecords(home)
-				stores, logs := operatorPaths(recs, firstNonEmpty(loaded.Config.Daemon.Addr, "127.0.0.1:7575"))
-				if err := refuseOperatorState(*storePath, *callLogPath, stores, logs); err != nil {
-					flog.Error(err.Error())
-					return 1
-				}
+			// The managed daemon's paths from its record and its plist,
+			// under HOME and the account's own home (a swapped HOME holds
+			// neither); an unreadable managed record refuses (I38).
+			homes := operatorStateHomes()
+			addrHome := ""
+			if len(homes) > 0 {
+				addrHome = homes[len(homes)-1] // the account's home when HOME is swapped
+			}
+			warns, err := checkOperatorState(*storePath, *callLogPath, homes, managedDaemonAddrIn(addrHome, loaded.Config.Daemon.Addr))
+			for _, w := range warns {
+				flog.Warn(w)
+			}
+			if err != nil {
+				flog.Error(err.Error())
+				return 1
 			}
 		}
 		outLog.Info(fmt.Sprintf("serve-http: unmanaged (idle-exit %s, ttl %s, exit-with-parent %v, auto-refresh %v) — pass --managed for a supervised daemon", *idleExit, *ttl, *exitWithParent, *autoRefresh))

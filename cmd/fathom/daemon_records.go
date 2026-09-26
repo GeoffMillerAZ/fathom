@@ -217,7 +217,7 @@ func listDaemonRecordsWhere(home string, keep func(id string) bool) (recs []stor
 			rec, rerr := console.ReadDaemonRecord(p)
 			if rerr != nil {
 				if !os.IsNotExist(rerr) {
-					errs = append(errs, rerr)
+					errs = append(errs, &recordReadError{Path: p, Err: rerr})
 				}
 				continue
 			}
@@ -235,7 +235,7 @@ func listDaemonRecordsWhere(home string, keep func(id string) bool) (recs []stor
 			p := filepath.Join(legacyDir, e.Name())
 			rec, rerr := console.ReadDaemonRecord(p)
 			if rerr != nil {
-				errs = append(errs, rerr)
+				errs = append(errs, &recordReadError{Path: p, Err: rerr})
 				continue
 			}
 			recs = append(recs, storedRecord{Rec: rec, Path: p, Legacy: true})
