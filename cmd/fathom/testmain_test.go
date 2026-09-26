@@ -39,6 +39,11 @@ import (
 )
 
 func TestMain(m *testing.M) {
+	// A re-exec'd helper (unmanaged_test.go) plays its role in the
+	// environment its parent test already isolated.
+	if role := os.Getenv(testHelperEnv); role != "" {
+		os.Exit(runTestHelper(role))
+	}
 	testisolate.Main(m, func(root string) error {
 		cacheRoot := filepath.Join(root, "cache")
 		if err := os.MkdirAll(cacheRoot, 0o755); err != nil {

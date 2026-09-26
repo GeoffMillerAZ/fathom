@@ -430,14 +430,19 @@ guidance rather than a bare driver error. The process reads JSON-RPC 2.0 message
 Serve the MCP JSON-RPC protocol over HTTP. Suited for multi-client, platform, and CI use.
 
 ```sh
-fathom serve-http --store <path> [--addr <host:port>] [--module <store>]... [--modules-token-env <NAME>]
+fathom serve-http --store <path> [--addr <host:port>] [--managed] [--idle-exit 20m] [--ttl 8h] [--exit-with-parent=true] [--allow-operator-state] [--module <store>]... [--modules-token-env <NAME>]
 ```
 
 | Flag | Default | Description |
 |---|---|---|
 | `--store` | (required, or `[daemon].store` in config.toml) | store path (.sqlite/.db) |
 | `--addr` | `127.0.0.1:7575` | Listen address — loopback by default; surfaces are not a security boundary (ADR-014 amendment) |
-| `--auto-refresh` | `true` | Re-ingest a service on git-HEAD drift before answering |
+| `--auto-refresh` | `true` managed; `false` unmanaged | Re-ingest a service on git-HEAD drift before answering; an explicit flag wins either way |
+| `--managed` | `false` | This is the supervised daemon (ADR-047 §10.1). A launchd job under a fathom label (`XPC_SERVICE_NAME`) is detected as managed without it; a systemd unit passes it. Every other serve-http is **unmanaged** (a scratch daemon) and bounded by the four flags below; it also runs no self-restart watcher or scavenger tick and starts the console feeders only when `/events` is first requested |
+| `--exit-with-parent` | `true` | Unmanaged: exit within 10 s of the parent process's death, SIGKILL included (kqueue `NOTE_EXIT` on macOS, a `getppid` poll everywhere); a daemon started by pid 1 has no parent to watch |
+| `--idle-exit` | `20m` | Unmanaged: exit after this long with no request in flight (an open `/events` stream counts as one); `0` disables |
+| `--ttl` | `8h` | Unmanaged: exit after this long regardless; `0` disables. Every bounded exit — also an unlinked (deleted or replaced) executable or store, checked every 60 s — logs its reason (`parent 4121 exited`, `idle 20m0s`, `ttl 8h0m0s`, `store unlinked`) and removes the daemon's record |
+| `--allow-operator-state` | `false` | Unmanaged: without it, a `--store` or `--call-log` resolving to the managed daemon's (from its record) is refused and serve-http exits 1 before opening anything |
 | `--call-log` | `<repo>/workspace/logs/mcp-calls.jsonl` (else `~/.fathom/logs/mcp-calls.jsonl`) | JSONL tool-call log, resolved from the daemon working directory's repository (§CLI subcommands); empty disables |
 | `--module` | — | Path to a conforming expert-module store, mounted READ-ONLY on `POST /rpc/modules`; repeatable; a non-conforming store aborts startup |
 | `--modules-token-env` | unset | NAME of an env var holding the bearer token for `POST /rpc/modules` (hosted mode); unset = no auth |
