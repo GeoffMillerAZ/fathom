@@ -51,6 +51,7 @@ func newAR(fake QueryInterface, head string) *autoRefreshBackend {
 		headFn:         func(string) string { return head },
 		seen:           make(map[string]string),
 		inflight:       make(map[string]*inlineIngest),
+		failures:       make(map[string]refreshFailure),
 	}
 }
 
