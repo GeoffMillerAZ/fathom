@@ -26,7 +26,6 @@ package client
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -169,13 +168,32 @@ func (c *Client) walkCorpusPaths(ctx context.Context, service string, def semant
 	return out, nil
 }
 
+// corpusSkip is one selected corpus file layerCorpus could not read.
+type corpusSkip struct {
+	path, reason string
+}
+
+func (k corpusSkip) String() string { return k.path + ": " + k.reason }
+
+// skipStrings renders skips as "path: reason" lines (UnreadCorpus's shape).
+func skipStrings(skips []corpusSkip) []string {
+	if len(skips) == 0 {
+		return nil
+	}
+	out := make([]string, len(skips))
+	for i, k := range skips {
+		out[i] = k.String()
+	}
+	return out
+}
+
 // layerCorpus returns def's selected corpus for service with contents, and
-// the paths it could not read (each "path: reason"), sorted. Only the
+// the paths it could not read with why, in path order. Only the
 // selected files are ever read; each is stat'ed first, skipped over
 // HotPathReadCap, and re-read only when its (size, mtime) moved since the
 // memoized copy. A selected path that no longer exists is simply absent —
 // it is not part of the tree any more.
-func (c *Client) layerCorpus(ctx context.Context, service string, def semantic.LayerDef) ([]core.SourceFile, []string, error) {
+func (c *Client) layerCorpus(ctx context.Context, service string, def semantic.LayerDef) ([]core.SourceFile, []corpusSkip, error) {
 	paths, err := c.layerCoveragePaths(ctx, service, def)
 	if err != nil {
 		return nil, nil, err
@@ -189,7 +207,7 @@ func (c *Client) layerCorpus(ctx context.Context, service string, def semantic.L
 	}
 
 	files := make([]core.SourceFile, 0, len(paths))
-	var unread []string
+	var unread []corpusSkip
 	for _, p := range paths {
 		doc, cached := c.cachedCorpusDoc(service, p)
 		switch {
@@ -200,7 +218,7 @@ func (c *Client) layerCorpus(ctx context.Context, service string, def semantic.L
 				if errors.Is(serr, fs.ErrNotExist) {
 					continue
 				}
-				unread = append(unread, fmt.Sprintf("%s: %v", p, serr))
+				unread = append(unread, corpusSkip{p, serr.Error()})
 				continue
 			}
 			if !(cached && doc.fromStat && doc.size == info.Size() && doc.mtimeNs == info.ModTime().UnixNano()) {
@@ -209,11 +227,11 @@ func (c *Client) layerCorpus(ctx context.Context, service string, def semantic.L
 					if errors.Is(rerr, fs.ErrNotExist) {
 						continue
 					}
-					unread = append(unread, fmt.Sprintf("%s: %v", p, rerr))
+					unread = append(unread, corpusSkip{p, rerr.Error()})
 					continue
 				}
 				if skipped != "" {
-					unread = append(unread, p+": "+skipped)
+					unread = append(unread, corpusSkip{p, skipped})
 					continue
 				}
 				doc = corpusDoc{size: rinfo.Size(), mtimeNs: rinfo.ModTime().UnixNano(), fromStat: true, content: data}
@@ -222,11 +240,11 @@ func (c *Client) layerCorpus(ctx context.Context, service string, def semantic.L
 		case !cached:
 			data, ferr := c.conn.Fetch(ctx, core.SourceRef{Service: service, Path: p})
 			if ferr != nil {
-				unread = append(unread, fmt.Sprintf("%s: %v", p, ferr))
+				unread = append(unread, corpusSkip{p, ferr.Error()})
 				continue
 			}
 			if int64(len(data)) > HotPathReadCap {
-				unread = append(unread, p+": "+oversizeNote(int64(len(data)), HotPathReadCap))
+				unread = append(unread, corpusSkip{p, oversizeNote(int64(len(data)), HotPathReadCap)})
 				continue
 			}
 			doc = corpusDoc{content: data}
@@ -265,4 +283,13 @@ func (c *Client) serviceRoot(ctx context.Context, service string) string {
 		return meta.Path
 	}
 	return ""
+}
+
+// skipPaths returns skips' paths, in order.
+func skipPaths(skips []corpusSkip) []string {
+	out := make([]string, len(skips))
+	for i, k := range skips {
+		out[i] = k.path
+	}
+	return out
 }

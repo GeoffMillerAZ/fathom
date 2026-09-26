@@ -349,3 +349,76 @@ func TestRawFallbackReadsOnlyEditedFile(t *testing.T) {
 		}
 	}
 }
+
+// TestRawFallbackNamesUnreadGuide is I38 on the raw fallback (RT-81 review):
+// a guide layerCorpus could not read (over the cap, EPERM) must never
+// vanish silently. (a) With no compile_runs row — the exact case the raw
+// fallback exists for — the served rows' why names the unread guide and
+// coverage carries it even though found is false. (b) With a compile run,
+// an unread nested guide that governs the file must not let the fallback
+// conclude "this file's guide is fully compiled" and go quiet.
+func TestRawFallbackNamesUnreadGuide(t *testing.T) {
+	ctx := context.Background()
+	oversize := bytes.Repeat([]byte("# h\n"), int(client.HotPathReadCap)/4+1)
+	adr := "# ADR\n\n## ADR-001: Keep builds in workspace\n\nAll build artifacts belong under workspace/.\n"
+
+	t.Run("no compile run", func(t *testing.T) {
+		dir := t.TempDir()
+		writeTree(t, dir, map[string]string{
+			"CLAUDE.md": "# Rules\n\n- Run tests before committing.\n",
+			"ADR.md":    adr,
+			"main.go":   "package main\n",
+		})
+		st := store.NewMemoryStore()
+		c := client.New(connector.NewLocalConnector(), st)
+		defer c.Close()
+		if _, err := c.Ingest(ctx, client.ServiceRef{ID: "svc", Path: dir}); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "CLAUDE.md"), oversize, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		rows, why, ok, err := c.RawFallbackObligations(ctx, "svc", "main.go", 3)
+		if err != nil || !ok || len(rows) == 0 {
+			t.Fatalf("rows=%d ok=%v err=%v, want ADR.md's raw rows", len(rows), ok, err)
+		}
+		if !strings.Contains(why, "CLAUDE.md") || !strings.Contains(why, "lower bound") {
+			t.Errorf("why = %q, want the unread CLAUDE.md named as a lower bound", why)
+		}
+		cov, found, err := c.ObligationsLayerCoverage(ctx, "svc")
+		if err != nil || found {
+			t.Fatalf("found=%v err=%v, want found=false (no compile run)", found, err)
+		}
+		if len(cov.UnreadCorpus) != 1 || !strings.HasPrefix(cov.UnreadCorpus[0], "CLAUDE.md: ") {
+			t.Errorf("UnreadCorpus = %v, want CLAUDE.md named even with no compile run", cov.UnreadCorpus)
+		}
+	})
+
+	t.Run("unread nested guide governs", func(t *testing.T) {
+		dir := t.TempDir()
+		writeTree(t, dir, map[string]string{
+			"ADR.md":        adr,
+			"sub/CLAUDE.md": "# Sub\n\n- Keep sub small.\n",
+			"sub/x.go":      "package sub\n",
+		})
+		st := store.NewMemoryStore()
+		c := client.New(connector.NewLocalConnector(), st)
+		defer c.Close()
+		if _, err := c.Ingest(ctx, client.ServiceRef{ID: "svc", Path: dir}); err != nil {
+			t.Fatal(err)
+		}
+		if err := st.RecordCompileRun(ctx, core.CompileRun{RunID: "r1", ServiceID: "svc", Layer: "obligations", RanAt: time.Unix(1, 0).UTC()}); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "sub", "CLAUDE.md"), oversize, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		rows, why, ok, err := c.RawFallbackObligations(ctx, "svc", "sub/x.go", 3)
+		if err != nil || !ok || len(rows) == 0 {
+			t.Fatalf("rows=%d ok=%v err=%v, want the fallback to fire: the governing sub/CLAUDE.md was not read, so it is not known compiled", len(rows), ok, err)
+		}
+		if !strings.Contains(why, "sub/CLAUDE.md") {
+			t.Errorf("why = %q, want the unread governing guide named", why)
+		}
+	})
+}

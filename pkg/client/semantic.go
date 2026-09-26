@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
@@ -356,8 +357,11 @@ func (c *Client) ObligationsLayerCoverage(ctx context.Context, service string) (
 		return semantic.ObligationsLayerCoverage(ctx, c.st, service, semantic.LayerObligations)
 	}
 	cov, found, err := semantic.LiveLayerCoverage(ctx, c.st, service, layerDef, corpus)
-	if err == nil && found && len(unread) > 0 {
-		cov.UnreadCorpus = unread
+	if err == nil && len(unread) > 0 {
+		// Carried whether or not a compile run was recorded: with found
+		// false the caller renders a "coverage unknown" placeholder, and
+		// an unread guide must be named there too, never dropped (I38).
+		cov.UnreadCorpus = skipStrings(unread)
 	}
 	return cov, found, err
 }
@@ -402,7 +406,7 @@ func (c *Client) RawFallbackObligations(ctx context.Context, service, file strin
 	if err != nil {
 		return nil, "", false, nil
 	}
-	corpus, _, err := c.layerCorpus(ctx, service, layerDef)
+	corpus, unread, err := c.layerCorpus(ctx, service, layerDef)
 	if err != nil {
 		return nil, "", false, nil
 	}
@@ -430,7 +434,15 @@ func (c *Client) RawFallbackObligations(ctx context.Context, service, file strin
 		status = "no compile_runs row"
 	default:
 		if _, gok := semantic.NearestUncompiledGuide(cov, file); !gok {
-			return nil, "", false, nil // this file's own governing guide is already fully compiled
+			// Coverage was computed without the unread guides, so "fully
+			// compiled" is only known for the guides that were read. An
+			// unread guide that governs file is not known compiled (I38):
+			// fire, and name it below.
+			if _, uok := semantic.NearestUncompiledGuide(semantic.LayerCoverage{UncompiledScopes: skipPaths(unread)}, file); !uok {
+				return nil, "", false, nil // this file's own governing guide is already fully compiled
+			}
+			status = "governing guide not read"
+			break
 		}
 		if cov.BudgetStopped {
 			status = "budget_stopped"
@@ -440,6 +452,12 @@ func (c *Client) RawFallbackObligations(ctx context.Context, service, file strin
 	}
 
 	why := fmt.Sprintf("compiled layer incomplete: %s; raw nearest guide served", status)
+	if len(unread) > 0 {
+		// I38: a guide the corpus read skipped (over the cap, EPERM) is
+		// named, and the served rows are a lower bound — never a silent
+		// absence.
+		why += fmt.Sprintf("; %d guide(s) not read, rows are a lower bound (%s)", len(unread), strings.Join(skipStrings(unread), "; "))
+	}
 	// wave O2, item 1: the file's own declared symbol names, when the index
 	// has them, are as strong a relevance signal as its stem — resolved
 	// here (the only place in this call chain that already holds a store

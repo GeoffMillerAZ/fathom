@@ -437,10 +437,16 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 			// left exactly as before: no layer_coverage key. Distinct from
 			// found:false, which is an honest answer, not a failure.
 		case !found:
-			result["layer_coverage"] = map[string]any{
+			placeholder := map[string]any{
 				"status": "unknown",
 				"note":   "layer compiled before coverage was recorded; recompile to record coverage",
 			}
+			// I38: a guide the live coverage could not read is named even
+			// when the numbers are unknown — never dropped with them.
+			if len(cov.UnreadCorpus) > 0 {
+				placeholder["unread_corpus"] = cov.UnreadCorpus
+			}
+			result["layer_coverage"] = placeholder
 		default:
 			result["layer_coverage"] = cov
 			// The queried file's nearest guide was never compiled: name it,
