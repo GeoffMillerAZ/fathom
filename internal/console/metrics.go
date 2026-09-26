@@ -307,7 +307,10 @@ func countNoun(n int, word string) string {
 	if n == 1 {
 		return fmt.Sprintf("%d %s", n, word)
 	}
-	return fmt.Sprintf("%d %ss", n, word)
+	if strings.HasSuffix(word, "s") || strings.HasSuffix(word, "ch") {
+		return thousands(n) + " " + word + "es"
+	}
+	return thousands(n) + " " + word + "s"
 }
 
 // thousands renders 34993 as "34,993" — denominators are read by people.
