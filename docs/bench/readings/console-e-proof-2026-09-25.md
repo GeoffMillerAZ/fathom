@@ -132,3 +132,41 @@ The fixture fleet's budget test (`TestConsoleBudgets`) holds every tab under 150
 
 The daemon on 7674 was stopped. The store copy, the ledger and log copies, the scratch
 home and the scratch ingest store were deleted; the screenshots were kept.
+
+## Survey defects fixed, re-run (2026-09-26)
+
+The wave's survey confirmed ten defects in the workspace; commit `a97d1bd5` fixes all ten,
+each with a test that failed on `c5d69dc4` first. Re-run on a scratch daemon at
+127.0.0.1:7674 (binary `a97d1bd5`, scratch `HOME`, a `sqlite3 .backup` of the real
+fleet store through a read-only URI, copies of the call log and the session, verify,
+hooks and intent ledgers, `--auto-refresh=false`, `FATHOM_SELF_RESTART=off`).
+
+| # | Defect | Before | After, on the fleet copy |
+|---|---|---|---|
+| 1 | An unreadable intent corpus rendered "no intent corpus … a choice, not a defect" | the clean absence | `view.corpus` is an **error** naming the files and errno; the tab renders it (fixture test with the router and `ADR.md` at mode 000) |
+| 2 | File-resolved edges drawn solid and counted resolved | `console.announcer`: 1 resolved caller; app-kit `browser.check`: 11 resolved | 0 resolved / 1 heuristic; 0 resolved / 11 heuristic; the links `resolved: false` |
+| 3 | One global lock per tab memo held across the computation | a kept `cue-wasm` Intent tab took 28–35 s behind a cold `fathom` audit | 0.019 s during `fathom`'s 51.6 s cold audit; a kept `pulumi-eks` Index 0.043 s during `platform-engineering`'s cold read |
+| 4 | `project.sessions` computed twice on the Activity tab | band 235 over "the newest 20 of 236" | one value: both said 235 before a ledger append and both 236 after the next model read; the appended session is listed only once it is counted |
+| 5 | "Updated — refresh this panel" re-served the memoized audit | `audited 04:04:10` before and after the refresh | a `fathom` verify row → `audit_at` 05:51:32 → 05:52:52, the probe plan's 3 rows present |
+| 6 | Wiring drift counted doctor summaries and their items | `fathom` 15 | `fathom` 13: 6 apply items (named on `hooks_installed`), 6 BLOCKED (named on `wiring_drift`), `skills_installed` |
+| 7 | Languages panel borrowed the scope-list verb with no daemon record | `fathom scope list …` | no chip; the footer says why |
+| 8 | Activity's `call_log.note` differed from the verb run out of process | two notes | the page section and `fathom metrics traffic …` run from a terminal are equal in every key |
+| 9 | At 390 px the current tab sat past the strip's edge; doctor's Status off-screen | Wiring at x 623–689 in a strip ending at 359 | `ui/console.js` scrolls the strip (never the page) to the `aria-current` tab; the doctor table leads with Status |
+| 10 | A hand-written box for the unreadable-root note | `<p … data-project-root-note>` | `callout.Render` (info for no local root, caution for an unreadable one) |
+
+Also on the copy, per page (`/projects/fathom` and its Index, Intent, Activity and Wiring
+tabs, and `/projects/cue-wasm/wiring`): one `h1`, the skip link first, the current tab
+marked, verb chips present, no `dark:` class, HTML 56–184 KB, warm renders 0.7–14 ms.
+Gate: a scratch ingest of `a97d1bd5`, then `fathom verify --strict --service fathom
+--plan docs/plans/observatory-console.md --store <it>`: 59 tasks, 23 claimed, 23
+verified, 0 failing (exit 0).
+
+**Not re-run: the browser pass.** Chromium would not start on this machine for the
+re-run — the Playwright MCP's Chrome and a directly launched headless Chrome both
+aborted at launch (SIGABRT; crashpad `bootstrap_check_in` error 141; `open` could not
+find the application and `whoami` could not name uid 501), so the both-themes,
+1440/390 px screenshots and the console-error listeners were not repeated for this
+commit. What they would have measured for #9 is pinned by
+`TestProjectWorkspace_PhoneKeepsTheCurrentTabAndStatusInView` only as far as a Go test
+can (the script's presence and the Status-first table); the geometry needs the browser.
+
