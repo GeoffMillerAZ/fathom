@@ -131,6 +131,12 @@ func (s *SQLiteStore) CertifyDeclarationsForService(ctx context.Context, service
 	return filterScoped(ctx, s.gate, serviceID, decls, err, func(d CertifyDeclaration) string { return d.File })
 }
 
+// SourceKindCounts filters by observations.source_ref (RT-144).
+func (s *SQLiteStore) SourceKindCounts(ctx context.Context, serviceID string) ([]SourceKindCount, error) {
+	rows, err := s.sourceKindCountsRaw(ctx, serviceID)
+	return filterScoped(ctx, s.gate, serviceID, rows, err, func(r SourceKindCount) string { return r.SourceRef })
+}
+
 // ---- MemoryStore: the same six (+ CertifyDeclarationsForService) ----
 
 // QueryObservations filters by observations.source_ref.
@@ -199,4 +205,10 @@ func filterTypedEdgeStatus(ctx context.Context, g scopeGate, serviceID string, r
 	}
 	rec.DiscoveryGapFiles, err = filterScoped(ctx, g, serviceID, rec.DiscoveryGapFiles, nil, func(f string) string { return f })
 	return rec, ok, err
+}
+
+// SourceKindCounts filters by observations.source_ref (RT-144).
+func (m *MemoryStore) SourceKindCounts(ctx context.Context, serviceID string) ([]SourceKindCount, error) {
+	rows, err := m.sourceKindCountsRaw(ctx, serviceID)
+	return filterScoped(ctx, m.gate, serviceID, rows, err, func(r SourceKindCount) string { return r.SourceRef })
 }

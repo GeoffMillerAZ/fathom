@@ -317,6 +317,14 @@ type Store interface {
 	// sourceRef). Deleting a missing fingerprint is a no-op, not an error.
 	DeleteFingerprint(ctx context.Context, serviceID, sourceRef string) error
 
+	// SourceKindCounts returns serviceID's observation counts grouped by
+	// (source_ref, source_kind), sorted by (SourceRef, Kind) — the
+	// aggregate list_services answers symbol counts and languages from
+	// (RT-144) without loading a single observation row. Filtered by
+	// suppression like QueryObservations: a suppressed file's symbols are
+	// not counted.
+	SourceKindCounts(ctx context.Context, serviceID string) ([]SourceKindCount, error)
+
 	// ListSourceRefs returns the sorted, distinct set of source_refs known to
 	// the store for serviceID — the union of refs appearing in observations
 	// and fingerprints (fingerprint-only refs exist for files with no
@@ -609,4 +617,12 @@ type Store interface {
 	// ordering TestSuiteStatuses' own last-run read uses), capped at limit
 	// (0 = unbounded). vision 33 stage 1 (TC-6/TC-8).
 	TestCaseRunsForSymbol(ctx context.Context, serviceID, testSymbolKey string, limit int) ([]TestCaseRun, error)
+}
+
+// SourceKindCount is one SourceKindCounts row: how many observations of
+// Kind the file SourceRef holds.
+type SourceKindCount struct {
+	SourceRef string
+	Kind      core.SourceKind
+	Count     int
 }

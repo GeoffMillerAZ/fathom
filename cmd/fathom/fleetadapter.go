@@ -87,6 +87,20 @@ func (f *fleetAdapter) SymbolsFor(service string) []client.SymbolNode {
 	return nodes
 }
 
+// SymbolAggregatesFor answers list_services' symbol count and languages
+// from client.ServiceSymbolAggregates — an aggregate cached per watermark
+// and single-flighted, never a symbol load (RT-144). ok is false on a store
+// error (logged, deduped), which list_services reports as zero symbols,
+// exactly as a failed SymbolsFor always read.
+func (f *fleetAdapter) SymbolAggregatesFor(service string) (int, []core.SourceKind, bool) {
+	agg, err := f.c.ServiceSymbolAggregates(context.Background(), service)
+	if err != nil {
+		f.log.Dedupe(dlog.LevelWarn, "fleet:aggregates:"+service, "fleet: symbol aggregates for %s: %s", service, classifyStoreError(err))
+		return 0, nil, false
+	}
+	return agg.Count, agg.Kinds, true
+}
+
 func (f *fleetAdapter) ObservationsFor(service string) []client.Observation {
 	obs, err := f.c.Observations(context.Background(), service)
 	if err != nil {

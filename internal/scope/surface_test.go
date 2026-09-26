@@ -53,6 +53,7 @@ var storeMethodDisposition = map[string]string{
 	"ListSourceRefs":                "",
 	"ClaimLinks":                    "",
 	"CertifyDeclarationsForService": "",
+	"SourceKindCounts":              "", // RT-144: list_services' symbol counts must not count a hidden file's symbols
 
 	// --- exempt, with the reason ---
 	"PutObservations":                "write path; suppression is a READ decision and must never change what is indexed (§3.5)",
@@ -332,6 +333,13 @@ func TestSuppressionCoversEverySurface(t *testing.T) {
 					}
 					return ""
 				}))
+			})
+			t.Run("SourceKindCounts", func(t *testing.T) {
+				got, err := g.SourceKindCounts(ctx, svc)
+				if err != nil {
+					t.Fatal(err)
+				}
+				assertRefs(t, refsOf(got, func(r store.SourceKindCount) string { return r.SourceRef }))
 			})
 			t.Run("CertifyDeclarationsForService", func(t *testing.T) {
 				got, err := g.CertifyDeclarationsForService(ctx, svc)

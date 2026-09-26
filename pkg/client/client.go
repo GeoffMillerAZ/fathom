@@ -107,6 +107,10 @@ type Client struct {
 	decider   decision.Decider
 	decideCfg config.Decide
 	decideRec *decide.Recorder
+
+	// aggregates memoizes ServiceSymbolAggregates per store watermark
+	// (RT-144, aggregates.go).
+	aggregates aggregateMemo
 }
 
 // New constructs a Client from an explicit connector and store. Callers that

@@ -902,6 +902,33 @@ DELETE FROM fingerprints WHERE service_id = ? AND source_ref = ?
 
 // ListSourceRefs returns the sorted distinct source_refs for serviceID across
 // the observations and fingerprints tables.
+// sourceKindCountsRaw is SourceKindCounts before the suppression filter:
+// one row per (source_ref, source_kind), never an observation row.
+func (s *SQLiteStore) sourceKindCountsRaw(ctx context.Context, serviceID string) ([]SourceKindCount, error) {
+	rows, err := s.db.QueryContext(ctx, `
+SELECT source_ref, source_kind, count(*) FROM observations
+WHERE service_id = ?
+GROUP BY source_ref, source_kind
+ORDER BY source_ref, source_kind
+`, serviceID)
+	if err != nil {
+		return nil, fmt.Errorf("SourceKindCounts: %w", err)
+	}
+	defer rows.Close()
+	var out []SourceKindCount
+	for rows.Next() {
+		var r SourceKindCount
+		if err := rows.Scan(&r.SourceRef, (*string)(&r.Kind), &r.Count); err != nil {
+			return nil, fmt.Errorf("SourceKindCounts scan: %w", err)
+		}
+		out = append(out, r)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("SourceKindCounts rows: %w", err)
+	}
+	return out, nil
+}
+
 func (s *SQLiteStore) listSourceRefsRaw(ctx context.Context, serviceID string) ([]string, error) {
 	rows, err := s.db.QueryContext(ctx, `
 SELECT source_ref FROM observations WHERE service_id = ?
