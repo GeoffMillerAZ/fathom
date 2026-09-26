@@ -93,6 +93,16 @@ always open) as candidates, and FATHOM-G-KIT-03 as the `docs` package's second-c
 evidence (records below). The browser run is
 `docs/bench/readings/console-g-proof-2026-09-25.md`.
 
+The wave's fix pass (same day) found the rail never stuck and its entries were 20 px
+targets: the dashboard shell's `<main>` is a scroll container that never scrolls. Fathom
+works around it without touching the mirror — a page that positions something sticky
+carries `data-console-sticky`, and the console's `<body>` frees `main` for it
+(`overflow-x: clip; overflow-y: visible`); the guide wraps the related links and
+`docs.RenderToCRail` in one bounded sticky block with 44 px entries — and returns it as
+FATHOM-G-KIT-04. The pipeline's graph nodes now carry the stage's name with the count
+(`Source: 2,093`), since the kit's `Table()` names each node and each hand-off by its
+label alone.
+
 ## Console stage 0: the ⌘K palette and live freshness (2026-09-25)
 
 OC-12 adopts `interaction.command-palette` (FATHOM-KIT-01) at mirror `d9dd789`, pinned in
@@ -544,6 +554,24 @@ inside mirror `d9dd789`:
   auto ids, or `{#law-N}`/`{#term-N}` given explicitly), as the package requires.
 - **Disposition:** `evidence` for the kit's D17 two-consumer bar. Next action: app-kit
   maintainer records the second consumer.
+
+**FATHOM-G-KIT-04 — the shell's main pins sticky content; the ToC rail's entries are 20 px (candidate)**
+
+- **Origin / task:** console wave G fix pass, `/learn/guides/{slug}` at 1440 px
+  (`dashboard.RenderShell` with `docs.RenderToCRail`).
+- **Observed / expected:** the shell writes `<main class="flex-1 overflow-y-auto …">`
+  inside a `min-h-screen` flex column with no height bound, so `main` grows with its
+  content and never scrolls — yet as a scroll container it is the sticky reference for
+  every descendant: the rail's `sticky top-6` scrolled away with the 14,000 px guide (top
+  417 px, then −2,583 px after `scrollTo(0, 3000)`; with `main` not a scroll container it
+  stays at 24 px). The rail's links are `block` text rows, 243 × 20 px, below 44 px
+  targets and with no focus-visible ring. Expected: a shell whose `main` is not a scroll
+  container unless the shell bounds it to the viewport, and rail entries that meet the
+  kit's own 44 px floor (as `RenderToCPanel`'s do).
+- **Disposition:** `candidate`; worked around in fathom (`data-console-sticky` and the
+  body's `:has()` classes in `console_shell.go`; the guide's own bounded sticky block with
+  `[&_nav_a]:min-h-11` in `console_learn.go`), the mirror untouched. Next action: app-kit
+  maintainer.
 
 **FATHOM-ADOPT-01 — selected metadata migration**
 

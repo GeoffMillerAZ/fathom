@@ -99,3 +99,73 @@ repository in the wave's scratch directory `cp-G/shots/`, not committed.
 The daemon on 7676 was stopped. The store copy, the ledger and call-log copies and the
 scratch home's `.fathom` were deleted; the shots and the daemon's log (no warning, no
 error) were kept.
+
+## Fix pass (same day): eleven defects the review confirmed
+
+A review of wave G confirmed eleven defects, and each one reproduced on a scratch daemon.
+All eleven are fixed, and each fix has a test that pins it. **One figure above was
+wrong:** "12,689 gate runs over 157 plans (1,503 of 1,577 claimed rows verified…)" counted
+every verify-ledger row and every distinct plan path. That included scratch plans under
+`/tmp`, deleted plans, and the same plan named relative, absolute and from a worktree.
+Counting each of `fathom`'s 64 current plans once, whichever checkout ran it, the gate has
+run on **64 of 64 plans, 1,115 of 1,115 claimed rows verified**, over 11,881 runs. The ledger
+holds 12,946 rows for `fathom`; the 1,065 it leaves out are named in the stage's denominator.
+
+**Measured on the fixed build** (`serve-http --addr 127.0.0.1:7676`, the same scratch
+setup as above: a `.backup` store copy, copied ledgers and call log, a scratch HOME,
+auto-refresh and self-restart off), by the page JSON and HTML:
+
+- **An unreadable call log** (`chmod 000` on the copy, so stat works and the read fails):
+  `/learn?svc=fathom` showed serve's rules served and tool calls answered as `error` with
+  "call log unreadable: open …: permission denied", next to the evidence stage's all-time
+  count in the same state. Every "asked here" on `/learn/ask` was `error`, and so was
+  `never_asked`. The coverage line read "how many of them were called for fathom is
+  unreadable — …". After `chmod 644` the counts came back on the next request: 5,974 rules
+  served, 15,445 calls, and asks of 385 / 248 / 63 / 7 / 5,974 / 36 / 5,923 / 74 / 2.
+- **Try-it elision:** who-calls (`find_callers NewMemoryStore`) is `partial`, listing 161 of
+  277. The caption reads "showing 25 of the 161 it listed; it found 277", the truth line
+  "lower bound — find_callers listed 161 of 277 — it left out 116 to fit its budget", and
+  the tool's own instruction follows ("refine with a package-qualified symbol (pkg.Name)").
+  who-uses (`references`) lists 27 of 296, and literal (`search`) 50 of 301. what-breaks
+  (`blast_radius`) is partial with a lower bound: it hit its symbol cap (500 of 1,070) and
+  its depth cap.
+- **Stage status against the counts:** app-kit's serve stage, conjure's compile and serve
+  stages, and agentic-kit's compile and serve stages now read "Working here — obligations
+  (or layers) is off here: …". Each is shown beside its live counts (for example, 5,608
+  rules served and 102 current claims), with no remedy pressed on a switch whose inputs
+  are simply absent. The stale-index case (extract and index "Stale here", with the
+  daemon-routed `fathom post-commit-hook` refresh) is covered by
+  `TestPipelineView_StatusNeverContradictsTheCounts`; the store copy was fresh.
+- **Links and chips:**
+  - Five stages link to a page that exists: the project page for source, extract, compile
+    and serve, and Impact for evidence. Index and gate say their page is planned
+    (`/projects/fathom?tab=index`, `/plans`). No `?tab=` link remains.
+  - The stage chips are CLI commands that print the headline: `fathom fleet report --json`
+    (extract, evidence), `fathom report evidence …` (index) and `fathom metrics traffic …`
+    (serve).
+  - The source, compile and gate stages carry no chip. They offer the fleet report
+    (freshness), the agent-surface `staleness_report` call (labelled as a call) and
+    `fathom plans status`.
+- **The table alternative** names each node ("Source: 2,095", "Extract: 22,202", …) and
+  each hand-off.
+- **Caching:** three rounds of waiting 31 s, rebuilding the model (`/fleet`, 2.8–3.7 s),
+  then `/learn?svc=fathom` gave 4.1 / 4.1 / 5.8 ms on the first render after each rebuild,
+  down from 1.15–1.47 s. `/learn/ask` gave 3–6 ms, and another project's first draw
+  0.19 s.
+
+**Browser pass: not run.** Chrome aborts at launch in this session (SIGABRT, crashpad
+`bootstrap_check_in … unknown error code (141)`; `launchctl print gui/501` answers
+"141: Reentrancy avoided"). That happens both through the Playwright MCP and when Chrome
+is started directly, so the doctrine's browser proof (rule 4) is still owed for this pass.
+Until it runs, two fixes are proven only by tests, structure and the regenerated
+`app.css`:
+
+- **The guide rail:** `data-console-sticky` frees the shell's `main`, which is now
+  `overflow-x: clip; overflow-y: visible`. One bounded sticky block holds the related links
+  and the outline, whose entries are 44 px.
+- **The no-mid-word-break rules:** Copy buttons are `shrink-0 whitespace-nowrap`, and short
+  single-word answer cells are `whitespace-nowrap`.
+
+The next browser run should measure the rail's top after `scrollTo(0, 3000)` at 1440 px, the
+rail links' height, the Copy labels' line count, and the "resolved" cells at 390 px, in both
+themes.
