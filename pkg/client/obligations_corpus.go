@@ -45,6 +45,59 @@ type obligationsMemo struct {
 	mu     sync.Mutex
 	paths  map[string]corpusPathsEntry // service -> the layer's corpus paths at one key
 	flight map[string]*corpusPathsCall // full key -> the in-flight walk
+	edited map[string]editedEntry      // absolute path -> what was derived from it at a stat
+}
+
+// editedEntry is what the obligations hot path derived from one edited
+// file at one stat (design §4.3: read again only when the stat moves): its
+// fingerprint hash (the freshness check) and its behaviour tokens (the raw
+// fallback's relevance signal). Never the content itself.
+type editedEntry struct {
+	size     int64
+	mtimeNs  int64
+	mode     os.FileMode
+	hash     string
+	hashOK   bool
+	tokens   []string
+	tokensOK bool
+}
+
+// editedMemoMax bounds the edited-file memo; past it the memo starts over
+// rather than grow (an entry is a hash and a short token list).
+const editedMemoMax = 4096
+
+func (e editedEntry) sameStat(info os.FileInfo) bool {
+	return e.size == info.Size() && e.mtimeNs == info.ModTime().UnixNano() && e.mode == info.Mode()
+}
+
+// editedLookup returns the memo entry for path when it was derived at
+// info's stat; a moved stat is a miss.
+func (c *Client) editedLookup(path string, info os.FileInfo) (editedEntry, bool) {
+	m := &c.oblMemo
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	e, ok := m.edited[path]
+	if !ok || !e.sameStat(info) {
+		return editedEntry{}, false
+	}
+	return e, true
+}
+
+// editedStore merges update into path's entry at info's stat (an entry at
+// an older stat is replaced).
+func (c *Client) editedStore(path string, info os.FileInfo, update func(*editedEntry)) {
+	m := &c.oblMemo
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.edited == nil || len(m.edited) >= editedMemoMax {
+		m.edited = map[string]editedEntry{}
+	}
+	e, ok := m.edited[path]
+	if !ok || !e.sameStat(info) {
+		e = editedEntry{size: info.Size(), mtimeNs: info.ModTime().UnixNano(), mode: info.Mode()}
+	}
+	update(&e)
+	m.edited[path] = e
 }
 
 type corpusPathsEntry struct {

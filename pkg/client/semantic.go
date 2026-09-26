@@ -269,14 +269,22 @@ func (c *Client) ObligationsIndexCheck(ctx context.Context, service, file string
 	if err != nil || !found {
 		return false, ""
 	}
-	data, _, skipped, err := readFileCapped(diskPath, HotPathReadCap)
+	// Design §4.3: hash only when the stat moved since the last hash. The
+	// memo keeps the hash, never the verdict, so a stored fingerprint that
+	// moved (a re-ingest) is compared afresh without a read.
+	if e, ok := c.editedLookup(diskPath, info); ok && e.hashOK {
+		return e.hash != stored, ""
+	}
+	data, rinfo, skipped, err := readFileCapped(diskPath, HotPathReadCap)
 	if err != nil {
 		return false, ""
 	}
 	if skipped != "" {
 		return false, "index freshness not checked: " + skipped + "; not refreshed"
 	}
-	return fusion.FingerprintHash(data) != stored, ""
+	hash := fusion.FingerprintHash(data)
+	c.editedStore(diskPath, rinfo, func(e *editedEntry) { e.hash, e.hashOK = hash, true })
+	return hash != stored, ""
 }
 
 // CompileLayer runs the compile for the named manifest layer against
@@ -470,10 +478,10 @@ func (c *Client) RawFallbackObligations(ctx context.Context, service, file strin
 	// BEHAVIOUR. Read the edited file alone, under the cap (RT-81); a file
 	// that is missing or unreadable simply isn't a signal, and one over the
 	// cap is named in why rather than read.
-	if content, skipped := c.editedFileContent(ctx, root, service, file); skipped != "" {
+	if tokens, skipped := c.editedFileTokens(ctx, root, service, file); skipped != "" {
 		why += "; edited file not read for relevance (" + skipped + ")"
-	} else if content != nil {
-		extraTokens = append(extraTokens, semantic.BehaviorTokens(string(content))...)
+	} else {
+		extraTokens = append(extraTokens, tokens...)
 	}
 	rows, rerr := semantic.RawFallbackRules(claims, layerDef, corpus, file, max, why, extraTokens)
 	if rerr != nil || len(rows) == 0 {
@@ -482,23 +490,33 @@ func (c *Client) RawFallbackObligations(ctx context.Context, service, file strin
 	return rows, why, true, nil
 }
 
-// editedFileContent reads the one edited file for the raw fallback's
-// behaviour signal: from the service root on disk, stat'ed and capped at
-// HotPathReadCap; for a connector with no on-disk root, through the
-// connector, capped after the fetch. content is nil (and skipped "") when
-// the file is simply not there.
-func (c *Client) editedFileContent(ctx context.Context, root, service, file string) (content []byte, skipped string) {
+// editedFileTokens derives the raw fallback's behaviour signal from the one
+// edited file: from the service root on disk, stat'ed and capped at
+// HotPathReadCap, and kept against the file's stat so an unchanged file is
+// not read again (design §4.3); for a connector with no on-disk root,
+// through the connector, capped after the fetch. tokens is nil (and
+// skipped "") when the file is simply not there.
+func (c *Client) editedFileTokens(ctx context.Context, root, service, file string) (tokens []string, skipped string) {
 	if root != "" {
 		if st, err := os.Stat(root); err == nil && st.IsDir() {
 			path := file
 			if !filepath.IsAbs(path) {
 				path = filepath.Join(root, filepath.FromSlash(file))
 			}
-			data, _, why, rerr := readFileCapped(path, HotPathReadCap)
-			if rerr != nil {
+			info, serr := os.Stat(path)
+			if serr != nil {
 				return nil, ""
 			}
-			return data, why
+			if e, ok := c.editedLookup(path, info); ok && e.tokensOK {
+				return e.tokens, ""
+			}
+			data, rinfo, why, rerr := readFileCapped(path, HotPathReadCap)
+			if rerr != nil || why != "" {
+				return nil, why
+			}
+			tokens = semantic.BehaviorTokens(string(data))
+			c.editedStore(path, rinfo, func(e *editedEntry) { e.tokens, e.tokensOK = tokens, true })
+			return tokens, ""
 		}
 	}
 	data, err := c.conn.Fetch(ctx, core.SourceRef{Service: service, Path: file})
@@ -508,7 +526,7 @@ func (c *Client) editedFileContent(ctx context.Context, root, service, file stri
 	if int64(len(data)) > HotPathReadCap {
 		return nil, oversizeNote(int64(len(data)), HotPathReadCap)
 	}
-	return data, ""
+	return semantic.BehaviorTokens(string(data)), ""
 }
 
 func (c *Client) compileLayer(ctx context.Context, service, layerName string, dryRun bool, escape string, resume bool, budget *semantic.BudgetOverride) (core.CompileRun, error) {

@@ -422,3 +422,76 @@ func TestRawFallbackNamesUnreadGuide(t *testing.T) {
 		}
 	})
 }
+
+// TestEditedFileReadOnlyWhenStatMoves is design §4.3's stat-first rule for
+// the edited file (RT-26/RT-81 review): the freshness check hashed, and the
+// raw fallback re-read, the edited file on every obligations call. Both
+// now keep what they derived (the hash; the behaviour tokens) against the
+// file's stat and read it again only when the stat moves — while a stored
+// fingerprint that moved (a re-ingest) is still compared afresh.
+func TestEditedFileReadOnlyWhenStatMoves(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	writeTree(t, dir, map[string]string{
+		"CLAUDE.md":   "# Rules\n\n## Non-negotiables — the workspace/ convention\n\nAll build artifacts belong under workspace/.\n",
+		"cmd/emit.go": "package cmd\n\nimport \"os\"\n\nfunc emit(dir string) error {\n\treturn os.WriteFile(dir, nil, 0o644)\n}\n",
+	})
+	c := client.New(connector.NewLocalConnector(), store.NewMemoryStore())
+	defer c.Close()
+	if _, err := c.Ingest(ctx, client.ServiceRef{ID: "svc", Path: dir}); err != nil {
+		t.Fatal(err)
+	}
+	emit := filepath.Join(dir, "cmd", "emit.go")
+	countEmit := func(reads []string) int {
+		n := 0
+		for _, r := range reads {
+			if r == emit {
+				n++
+			}
+		}
+		return n
+	}
+
+	stop := client.ObserveReadsUnder(dir)
+	for i := 0; i < 3; i++ {
+		if stale, _ := c.ObligationsIndexCheck(ctx, "svc", "cmd/emit.go"); stale {
+			t.Fatalf("call %d: unchanged file reported stale", i)
+		}
+		if _, _, ok, err := c.RawFallbackObligations(ctx, "svc", "cmd/emit.go", 1); err != nil || !ok {
+			t.Fatalf("call %d: raw fallback ok=%v err=%v", i, ok, err)
+		}
+	}
+	if n := countEmit(stop()); n != 2 {
+		t.Errorf("edited file read %d times over 3 unchanged calls; want 2 (one hash, one token read), then none", n)
+	}
+
+	// The file changes: its stat moves, so each derivation reads it once.
+	if err := os.WriteFile(emit, []byte("package cmd\n\nfunc emit() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	future := time.Now().Add(2 * time.Second)
+	_ = os.Chtimes(emit, future, future)
+	stop = client.ObserveReadsUnder(dir)
+	stale, _ := c.ObligationsIndexCheck(ctx, "svc", "cmd/emit.go")
+	stale2, _ := c.ObligationsIndexCheck(ctx, "svc", "cmd/emit.go")
+	if n := countEmit(stop()); n != 1 {
+		t.Errorf("after an edit the hash re-read %d times over two checks; want 1", n)
+	}
+	if !stale || !stale2 {
+		t.Errorf("edited file stale=%v,%v; want stale on both checks (the memo keeps the comparison, not the verdict)", stale, stale2)
+	}
+
+	// A re-ingest moves the stored fingerprint; the unchanged stat's hash
+	// is compared against it afresh, without reading.
+	if _, err := c.Ingest(ctx, client.ServiceRef{ID: "svc", Path: dir}); err != nil {
+		t.Fatal(err)
+	}
+	stop = client.ObserveReadsUnder(dir)
+	stale, _ = c.ObligationsIndexCheck(ctx, "svc", "cmd/emit.go")
+	if n := countEmit(stop()); n != 0 {
+		t.Errorf("after a re-ingest with no edit the file was read %d times; want 0", n)
+	}
+	if stale {
+		t.Error("after a re-ingest the file is still reported stale")
+	}
+}
