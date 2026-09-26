@@ -136,6 +136,8 @@ What the data showed, and why it is right:
   nothing and says why: the index was ingested at `95ffaf5b`, HEAD is newer.
 - **Ladder:** wired, queried, preventing and gating met; fresh not met (the
   store copy is a snapshot), so the remedy is the post-commit hook command.
+  (Corrected 2026-09-26, below: preventing counted all time and gating read the
+  session ledger, so other repositories' rungs were wrong.)
 
 At 390 the only horizontal scrolling is inside tables and the board, each in its
 own box (the responsive rule's allowance). Screenshots
@@ -192,6 +194,8 @@ plans, and `/plans` read "2 of 142 plans verified" for minutes).
 4. **An informational finding counted as a loss** on a conserved plane
    (`TestRefactorView_NotRunIsNeverConserved`; `conserve.Finding.Informational`).
 5. **Six lanes wider than the screen** (`TestConsolePlanBoard_LanesAreBounded`).
+   Not fixed by this wave: dropping empty lanes still left five fixed lanes
+   (1,344 px) in a 1,094 px column at 1440 — fixed by the review, below.
 6. **A sentence as the last crumb** (`TestConsolePlanRow_EvidenceReachOracleAndFragment`).
 7. **A long reason overflowing a 390 panel** (truth-state lines wrap anywhere).
 8. **"project &nbsp;cannot be looked up"** on a fleet page
@@ -243,3 +247,78 @@ and the tests used Go temp and `TMPDIR` on the external volume
 
 The daemon on 7672 was stopped; the scratch store copy, ledger copies, scratch
 home and external temp directory were deleted. The screenshots were kept.
+
+## Review fixes (2026-09-26)
+
+The wave's review confirmed fifteen defects on the real fleet; all fifteen are
+fixed on `cp-wave-C` (`2439c8ab`, `9225eb55`, `62faccee`, `811a9970`), each
+pinned by a test that fails on the code it replaced where that could be shown.
+The re-run's race pass then caught one regression of the fix for defect 11 —
+the private index copy was stamped "now", which defeats git's racy-entry check,
+so a same-size edit in the index's own second read as no change — fixed in
+`faf3f3b9` (`TestOutput_RacilyCleanEntryIsStillSeen`), and the probe below
+showed an empty range reading "not measured" where zero is a count, fixed in
+`47db3168`. This section records the re-run.
+
+### How it was run
+
+- **Binary:** `fathom` built from `47db3168` (the checks were first run on
+  `811a9970`; the table's numbers are the final binary's unless noted), module
+  Go env (`GOWORK=off`, CGO on). `go vet` clean, `gofmt -l` clean,
+  `go test -race -count=1` over `cmd/fathom` and
+  `internal/{console,certify,conserve,verify,gitro,analysis/review}` ok,
+  `scripts/ui-css.sh --check` current and `ui-css_test.sh` 12/12.
+- **Daemon:** `serve-http` on `127.0.0.1:7672`, `--auto-refresh=false`,
+  `FATHOM_SELF_RESTART=off`, scratch `HOME`; a `sqlite3 .backup` of the fleet
+  store, copies of the call log and of the session, verify and hooks ledgers.
+  One scratch repository (`probe`, a few commits and a three-row plan) was
+  ingested into the store copy to exercise what the live checkouts must not be
+  used for; its plan is the 143rd in the portfolio below. The
+  live daemon on 7575 and its store were not touched.
+- **Browser:** none could run. The Playwright MCP's Chrome, Chrome headless from
+  the shell (sandboxed and not, with `--disable-crashpad-for-testing`), a
+  WKWebView harness and `safaridriver` all failed to start in this session
+  (Chrome: `bootstrap_check_in … unknown error code (141)`, SIGABRT; WKWebView:
+  its content process never answered; no network to fetch a Playwright
+  browser). So nothing below is a layout measurement. The pages were driven in
+  **jsdom** (their own served scripts, `console.js` and the drawer script, with
+  only `navigator.clipboard`, `dialog.showModal/close`, `fetch` and
+  `EventSource` polyfilled) and read with `curl`; widths are arithmetic over the
+  served classes and `app.css`. Doctrine rule 4's screenshot pass at 1440 and
+  390 px in both themes is still owed on a machine whose browser starts.
+
+### What the pages and verbs say now (real fleet)
+
+| Defect | Before | Now |
+|---|---|---|
+| 1 gating reads the verify ledger | conjure, agentic-kit "B — not gating", remedy "add the pre-push hook" | conjure **A**, gating met on "63 verify run(s) in the last 14 days, recorded in the verify ledger"; agentic-kit **A** on 33; a missing ledger reads unknown |
+| 2 one 14-day window | platform-engineering "3,295 rule injection(s)" beside 1,171 calls; geoffmiller-cloud preventing met on two August calls; study graded on all-time sessions | platform-engineering 578 injections beside 1,126 calls; geoffmiller-cloud preventing **unmet**, 0; study **idle** |
+| 3 the plans trend | 321 plans, 4,154 claimed on every scope | fleet: 129 of 143 current plans with ledger rows, 2,368 claimed, 1,966 proven; `?svc=fathom`: 64 plans; `?svc=app-kit`: absent (too few days); each section equals `fathom plans history [--service S] --json` |
+| 4 stale headline | fathom "claimed, not proven 0" (zero) beside 18 measured-stale rows | fathom "≥ 0", partial, naming the 18 rows and the remedy; fleet "≥ 426" (425 plus the probe's failing row) |
+| 5 `--store` on chips | `fathom certify status --service fathom --json` → 65 targets (default store) vs page 77 | the chips name the daemon's store; run as shown both equal the page's sections (77) except `generated_at` |
+| 6 one label, one number | tile and legend both "proven by the gate" (2,002 vs 1,975) | fathom: tile "proven by the gate" 1,097, denominator "27 of them measurement rows (op)"; legend "1,070 proven, not counting (op) measurements · 27 measurement rows (op) measured"; columns "Proven, (op) included" |
+| 7 undecidable cards | 413 cards blamed `runtime_pass` | all 413 claimed-unknown cards (agentic-kit, platform-engineering) read "no contract — …"; none names `runtime_pass` |
+| 8 oracle bounds | PC-9 "matches nothing" beside proven, no bound; OC-12 "could not be read" | PC-9's contract lists "count: exactly 0 matches"; its oracle reads "… the bound is met"; a failing `eq: 0` (probe P-2) reads "matches 1 time … the bound is not met"; OC-12 reads "does not exist in the working tree — path-absent" (zero, not error) |
+| 9 reading set | fathom since HEAD~5: partial and unexecuted measured zeros | both "not measured — no execution evidence classed any changed function (no coverage profile was loaded …)"; unattested 9 now in the band; `classed_by_execution: 0` in the verb |
+| 10 verify events | 64 events per commit to a busy checkout | probe: a HEAD-only commit recomputed the plan (stamp 08:24:53 → 08:26:26) and published nothing (last id 144 → 144); a commit that changed P-2's verdict published one (145) — on both binaries |
+| 11 index writes | a `/refactors` GET rewrote `.git/index` | probe with stat-dirty files: `.git/index` inode, mtime and hash unchanged across the GET (a plain `git status` afterwards rewrote it — the control); the live checkout's index unchanged across fathom's HEAD~5 report |
+| 12 drawer views | drawer opens never counted | two drawer opens → `fathom_console_page_views_total{route="/plans/{svc}/{plan}/rows/{id}"} 2`, two rows in the views log |
+| 13 drawer Copy | the drawer's chip stayed hidden | jsdom: click the first card (OC-12), the drawer shows OC-12's evidence, its one chip is revealed and bound; Close returns focus to the card; the URL is unchanged |
+| 14 lanes at 1440 | five fixed 256 px lanes (1,344 px) in 1,094 px: the fifth 6 px in view | from `md` up a grid of lanes ≥ 12rem: at 1440, ⌊(1,094 + 16) / 208⌋ = 5 columns of 206 px — all five lanes in one row; at 768 two columns, wrapping, none hidden; below `md` the kit's scroll in its own box (the table lists every row) |
+| 15 44 px targets | pager ~30 px, form 36–38 px, card link ~20 px | pagers wrapped `[&_a]:min-h-11` (`/plans?page=2`, `/certifications?page=2`), the refactor form `[&_select\|input\|button]:min-h-11`, card links `min-h-11` with a focus ring (FATHOM-C-KIT-05) |
+
+### The views, structurally (jsdom, both themes)
+
+Thirteen views × two themes (`/plans`, `/plans?svc=fathom`, `/plans?page=2`,
+the plan, rows OC-2, OC-12 and PC-9, `/certifications` and `?svc=fathom`,
+`/refactors` and `?svc=fathom&since=HEAD~5`, `/projects/fathom`,
+`/projects/conjure`): every one
+200, one `h1`, the skip link the first focusable element with its target
+present, the nav marking the right page, the trail ending in the page's own
+current crumb, every verb chip's Copy button revealed and bound, `data-theme`
+set by the page's appearance script to the stored choice, and no script
+errors. HTML 29–167 KB (budget 250). Warm reads 1–43 ms; first reads that
+compute were slower: OC-2 0.7 s (the call graph), PC-9 3.7 s (its plan's git
+history), `/certifications` 2.5–3.7 s (recomputed because other sessions moved
+the live checkouts' HEADs during the run), and `/refactors?svc=fathom&since=HEAD~5`
+waits its 10 s budget and says the report is still being computed.
