@@ -58,6 +58,23 @@ example: #Bundle & {
 		{arm: "fathom", task_count: 13, success_count: 13, success_rate: 1.0, mean_tokens: 5000, mean_wall_ms: 42000},
 		{arm: "grep", task_count: 13, success_count: 11, success_rate: 0.846, mean_tokens: 8800, mean_wall_ms: 91000},
 	]
+
+	// IR-5: the opt-in retro corpus group — counts over closed labels only.
+	retros: {
+		retros:                4
+		unreadable:            0
+		off_arm_retros:        1
+		guard_fires:           3
+		obligation_injections: 5
+		silent_on_clean:       12
+		unjoinable:            1
+		outcomes: [
+			{channel: "guard", outcome: "committed", firings: 2},
+			{channel: "obligations", outcome: "modified_uncommitted", firings: 1},
+		]
+		custodian_remedied:   1
+		custodian_unremedied: 0
+	}
 }
 
 // A minimal instance: no call_traffic/injection/verify_gate at all (the

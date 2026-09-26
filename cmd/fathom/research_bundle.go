@@ -24,6 +24,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/contextbench"
 	"github.com/geoffmilleraz/fathom/internal/metrics"
 	"github.com/geoffmilleraz/fathom/internal/research/bundle"
+	"github.com/geoffmilleraz/fathom/internal/statedir"
 )
 
 // defaultResearchBundleOutDir is where `fathom research bundle` writes its
@@ -86,6 +87,7 @@ func cmdResearchBundle(args []string, stdout, stderr io.Writer) int {
 	benchDirFlag := fs.String("bench-dir", "", "context-bench results directory; default: --root/"+defaultBenchDir)
 	out := fs.String("out", "", "output directory for bundle.json/bundle.md; default: --root/"+defaultResearchBundleOutDir)
 	dryRun := fs.Bool("dry-run", false, "print the exact bundle to stdout; write nothing")
+	includeRetros := fs.Bool("include-retros", false, "IR-5: fold the local retro corpus (the state directory's artifacts/retros/) into an optional counts-only group; never a file, session or verdict")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
@@ -133,6 +135,17 @@ func cmdResearchBundle(args []string, stdout, stderr io.Writer) int {
 	}
 
 	in := aggregateBundleInput(strings.ToLower(*service), sinceT, now, entries, callLogRead, beats, hooksLogRead, obsContent, obsRead, benchResults, salt)
+	if *includeRetros {
+		// IR-5: opt-in only. The corpus path is local, so it is named on
+		// stderr and never inside the shareable bundle.
+		dir := retroCorpusDir(*root)
+		stats, read := aggregateRetroCorpus(dir, sinceT, now)
+		if read {
+			in.RetrosRead, in.Retros = true, stats
+		} else {
+			fmt.Fprintf(stderr, "research bundle: retro corpus not found at %s — the retros group is omitted (not read, never an all-zero stand-in)\n", dir)
+		}
+	}
 	b := bundle.Build(in)
 
 	if err := bundle.Validate(b); err != nil {
@@ -345,4 +358,104 @@ func aggregateBundleInput(
 	}
 
 	return in
+}
+
+// retroCorpusDir is where `fathom retro --write` and the Stop hook's IT-13
+// retro land their artifacts for the repository at root: the state
+// directory's artifacts/retros/ (workspace/artifacts/retros/ under
+// `[daemon] state_dir = "workspace"`, as in this repository).
+func retroCorpusDir(root string) string {
+	if abs, err := filepath.Abs(root); err == nil {
+		root = abs
+	}
+	return filepath.Join(statedir.Resolve(root), "artifacts", "retros")
+}
+
+// retroChannelLabels / retroOutcomeLabels are the closed vocabularies a
+// retro firing may be counted under in the shareable bundle (IR-5).
+// Anything else collapses to "unrecognized" — a retro artifact is a local
+// file, and nothing read from it reaches the bundle verbatim.
+var retroChannelLabels = map[string]string{"guard": "guard", "obligations": "obligations"}
+
+func retroOutcomeLabel(outcome string) string {
+	switch {
+	case outcome == "committed":
+		return "committed"
+	case outcome == "modified-uncommitted":
+		return "modified_uncommitted"
+	case outcome == "untouched":
+		return "untouched"
+	case strings.HasPrefix(outcome, "unjoinable"):
+		return "unjoinable"
+	}
+	return unrecognizedLabel
+}
+
+// aggregateRetroCorpus reduces the retro artifacts whose window ends inside
+// [since, until] to counts over closed labels (IR-5,
+// docs/design/assess-lanes.md §5). read is false when the directory cannot
+// be listed — "not read", which the bundle renders as an absent group. An
+// artifact that does not parse, or carries no parseable window end, is
+// counted as unreadable, never dropped. No file, session id, path or free
+// text leaves this function.
+func aggregateRetroCorpus(dir string, since, until time.Time) (bundle.RetroStats, bool) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return bundle.RetroStats{}, false
+	}
+	var st bundle.RetroStats
+	cells := map[[2]string]int{}
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
+			continue
+		}
+		data, rerr := os.ReadFile(filepath.Join(dir, e.Name()))
+		var m retroModel
+		if rerr != nil || json.Unmarshal(data, &m) != nil {
+			st.Unreadable++
+			continue
+		}
+		end, perr := time.Parse(time.RFC3339, m.WindowEnd)
+		if perr != nil {
+			st.Unreadable++
+			continue
+		}
+		if end.Before(since) || end.After(until) {
+			continue
+		}
+		st.Retros++
+		if m.Arm == "off" {
+			st.OffArmRetros++
+		}
+		st.GuardFires += m.GuardFires
+		st.ObligationInjections += m.Injections
+		st.SilentOnClean += m.SilentClean
+		st.Unjoinable += m.Unjoinable
+		for _, f := range m.Firings {
+			if f.Channel == "custodian" {
+				switch {
+				case strings.HasPrefix(f.Outcome, "remedied"):
+					st.CustodianRemedied++
+				case strings.HasPrefix(f.Outcome, "unremedied"):
+					st.CustodianUnremedied++
+				}
+				continue
+			}
+			ch, ok := retroChannelLabels[f.Channel]
+			if !ok {
+				ch = unrecognizedLabel
+			}
+			cells[[2]string{sanitizeLabel(ch, false), sanitizeLabel(retroOutcomeLabel(f.Outcome), false)}]++
+		}
+	}
+	for k, n := range cells {
+		st.Outcomes = append(st.Outcomes, bundle.RetroOutcomeCount{Channel: k[0], Outcome: k[1], Firings: n})
+	}
+	sort.Slice(st.Outcomes, func(i, j int) bool {
+		if st.Outcomes[i].Channel != st.Outcomes[j].Channel {
+			return st.Outcomes[i].Channel < st.Outcomes[j].Channel
+		}
+		return st.Outcomes[i].Outcome < st.Outcomes[j].Outcome
+	})
+	return st, true
 }

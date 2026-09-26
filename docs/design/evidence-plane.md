@@ -59,7 +59,10 @@ make fathom the owner of prose it must never edit (law 15).
 needs`), the living docs it names, decision records (`ADR.md` sections or `docs/adr/*.md`;
 "ADR-" means any decision record), and every line carrying one of the four labels
 `Done when`, `Promote when`, `Drop if`, `Revisit when`. `docs/vision/` is never read
-(aspirational prose; a domain truth). Capability `intent-corpus` (seam core, any scope,
+into this corpus (aspirational prose; a domain truth). *Amended 2026-09-25 (ADR-026,
+custodian DP-3):* `fathom intent doctrine` reads the vision series separately for its
+promotion metadata only — status line, condition labels, plan and decision pointers,
+links, dates — and never compiles, evaluates or counts anything from it here. Capability `intent-corpus` (seam core, any scope,
 switchable) is on when the router exists and off-able; off silences the delivery channels
 (attention line, stanza sentence), never the verb.
 
@@ -283,7 +286,8 @@ the clock's age and doctor names its absence.
 Explicit non-goals, in one place: no oracle over prose; no oracle in any hook, in `prime`,
 or in plain `doctor`; no cross-service or cross-root oracle; fathom never writes an
 annotation, a condition, a status, or an incident; never a score, never a cross-repo trend;
-`docs/vision/` is never read.
+`docs/vision/` is never read into the corpus (the doctrine view reads its promotion
+metadata only — ADR-026 amendment 2026-09-25).
 
 ## 10. Decisions this design records, and how they were authorized
 

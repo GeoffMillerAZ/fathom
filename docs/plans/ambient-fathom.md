@@ -3,7 +3,8 @@
 > Governing source: `docs/vision/20-ambient-fathom.md` (this plan is its
 > binding promotion). Designs: `capability-registry.md`,
 > `self-healing-fleet.md`, `scope-and-purge.md`, `anchored-memory.md`,
-> `budgeted-answers.md`, `realization-grade.md` under `docs/design/`.
+> `budgeted-answers.md`, `realization-grade.md`, `assess-lanes.md` (DO-3,
+> IR-3..5; ADR-046) under `docs/design/`.
 >
 > **Covenant (ADR-0070 class):** failing test first, `task validate` green
 > before commit, dated CHANGELOG entry, boxes flip only on
@@ -165,13 +166,13 @@ above. Listed here so they are not lost.
 
 - [x] DO-1 Derived outcome per measured unit — v1: commits landed in the unit beat-window (stated as narrow everywhere it renders; proven-row deltas follow the verify ledger) {id: DO-1, symbol: derivedCommitsForSession, package: cmd/fathom}
 - [x] DO-2 Arm criterion consumes the derived outcome instead of requiring self-ratings; copy stops asking for `fathom rate` as a precondition {id: DO-2, symbol: evaluateABCriterion, package: cmd/fathom}
-- [ ] DO-3 `fathom assess` — the benchmark lane: LLM judges a unit's on-disk work products (diffs, plan deltas, gate results), NEVER transcripts; explicitly invoked, per-run token cost reported {id: DO-3}
+- [x] DO-3 `fathom assess` — the benchmark lane: LLM judges a unit's on-disk work products (diffs, plan deltas, gate results), NEVER transcripts; explicitly invoked, per-run token cost reported. Design `docs/design/assess-lanes.md` §1: typed noul/choice questions through the decision port, a default-off fail-closed capability, a pre-flight token cap, `--dry-run` spends nothing, cost priced through the compile meter {id: DO-3, symbol: cmdAssess, package: cmd/fathom, reachable_from: TestCmdAssess_JudgesWorkProductsNeverTranscripts}
 - [x] DO-4 `fathom rate` demoted to optional human override, named when present, never a verdict precondition {id: DO-4, symbol: evaluateABCriterion, package: cmd/fathom, reachable_from: TestObservatoryImpactPage}
 
 ## Phase IR — intervention outcomes (docs/design/intervention-outcomes.md; owner ask 2026-08-14)
 
 - [x] IR-1 Firing beats carry session + file (edit-hook pre/post, all kinds; custodian attention beat) — absent values omitted, never "" {id: IR-1, symbol: firingMeta, package: cmd/fathom}
 - [x] IR-2 `fathom retro` — mechanical session retro: firings joined to on-disk aftermath (committed / modified / untouched; concern remediation now-state; discovery counts), unjoinable and silent-by-design absences NAMED {id: IR-2, symbol: cmdRetro, package: cmd/fathom}
-- [ ] IR-3 `fathom assess --interventions` — LLM lane judging undecidable rows from on-disk artifacts only (never transcripts); per-run cost in output; capability-gated, default off {id: IR-3}
-- [ ] IR-4 Spend isolation: retro/assess metering excluded from arm and bet unit totals, pre-registered before the first assess run {id: IR-4}
-- [ ] IR-5 Retro corpus under workspace/artifacts/retros/ feeds the research flywheel (sanitized, opt-in bundle path) {id: IR-5}
+- [x] IR-3 `fathom assess --interventions` — LLM lane judging undecidable rows from on-disk artifacts only (never transcripts); per-run cost in output; capability-gated, default off. Only committed / modified-uncommitted firings are asked (one complied/departed/not_applicable/cannot_tell choice per file, guidance re-derived from disk with its provenance); untouched and unstamped firings, and firings whose file has no diff inside the window, are named, never asked (design §1) {id: IR-3, symbol: assessInterventions, package: cmd/fathom, reachable_from: TestCmdAssessInterventions_CapabilityGatedUndecidableOnly}
+- [x] IR-4 Spend isolation: retro/assess metering excluded from arm and bet unit totals, pre-registered before the first assess run. Registered as `IR-4@2026-09-25` (design §3, I46): assess meters on its own ledger, its judge inherits `FATHOM_CHANNELS=off` + `FATHOM_SPEND_LABEL`, and a labelled session-ledger row is never an arm, bet or flywheel unit, counted and named {id: IR-4, symbol: spendIsolatedRow, package: cmd/fathom, reachable_from: TestAssessSpendNeverEntersArmOrBetUnits}
+- [x] IR-5 Retro corpus under workspace/artifacts/retros/ feeds the research flywheel (sanitized, opt-in bundle path). `fathom research bundle --include-retros` adds a counts-only `retros` group over closed labels to the closed CUE allowlist; absent without the flag or the corpus, never zero; no file, session or verdict (design §5) {id: IR-5, symbol: aggregateRetroCorpus, package: cmd/fathom, reachable_from: TestResearchBundle_RetroCorpusIsOptInAndSanitized}

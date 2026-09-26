@@ -319,6 +319,29 @@ func Default() Registry {
 				return Remedy{Cmd: "fathom narrate on --for 7d", Note: "self-expiring by design — narration is for a question you are asking now"}
 			},
 		},
+		{
+			ID:         "assess",
+			Switchable: true,
+			Seam:       SeamCore,
+			Summary:    "An explicitly invoked, priced second opinion: a model judges a session's on-disk work products (diffs, plan deltas, gate results), never its transcript, as typed questions. Off by default; every run reports its own token cost.",
+			Default:    false,
+			// Law 13: a user may default the lane on for repositories that
+			// have not spoken; a repository may govern it either way.
+			Scopes: ScopeAny,
+			Cost:   "model tokens per explicit `fathom assess` run, reported in its output and on the assess ledger; nothing when not invoked",
+			Detect: func(p Probe) State {
+				if p.AssessRuns == 0 {
+					return State{Reason: "no assess run has been recorded for this repository — the lane runs only when explicitly invoked"}
+				}
+				return State{Operating: true, Detail: count(p.AssessRuns, "assess run") + " recorded on the assess ledger"}
+			},
+			Remedy: func(Probe) Remedy {
+				return Remedy{
+					Cmd:  "fathom assess --dry-run",
+					Note: "the dry run shows exactly what would be sent and its estimated tokens, and spends nothing; a live run also needs a [decide] provider",
+				}
+			},
+		},
 	}
 
 	byID := make(map[string]Capability, len(caps))

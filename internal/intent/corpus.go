@@ -13,9 +13,13 @@
 //     finding, never a clean empty (the INC-8 class this repo keeps
 //     re-learning: a plausible zero reads as health).
 //
-// docs/vision/ is deliberately never read: it is aspirational prose, and
-// compiling aspiration into rules is the failure the first fleet compile
-// taught (docs/vision/README.md).
+// docs/vision/ is deliberately never read INTO THIS CORPUS: it is
+// aspirational prose, and compiling aspiration into rules is the failure
+// the first fleet compile taught (docs/vision/README.md). The vision
+// promotion pipeline (visions.go, DP-3, ADR-026 amendment of 2026-09-25) is
+// a separate reader that takes only a vision's promotion metadata — its
+// status line, plan and decision pointers, links, dates and any condition
+// label — and never a condition, an invariant, or a rule from its prose.
 package intent
 
 import (
@@ -91,7 +95,22 @@ type Condition struct {
 
 // Annotated reports whether an author attached an oracle to this condition.
 // An unannotated condition is human-judged, always.
-func (c Condition) Annotated() bool { return len(c.Ann) > 0 }
+//
+// A block that carries ONLY bet keys (bets.go: `bet`, `instrument`,
+// `threshold`, `review`) is a goal's pre-registration, not an oracle: it
+// says how a human will judge the goal on a date, and evaluates nothing.
+// Counting it here would let the surface that enumerates bets inflate K0's
+// demand signal — the count ADR-026 gates the oracle runtime on — with
+// annotations nobody wrote to be evaluated. Any other key still counts, so
+// a mistyped oracle block stays visible rather than vanishing.
+func (c Condition) Annotated() bool {
+	for k := range c.Ann {
+		if !betKeys[k] {
+			return true
+		}
+	}
+	return false
+}
 
 // Invariant is one row of invariants.md.
 type Invariant struct {
@@ -115,6 +134,17 @@ type Surface struct {
 	Line      int
 }
 
+// Goal is one `**G<n>. Title.**` record of scope.md. Whether it is a
+// pre-registered bet or refused is LoadBets' verdict (bets.go); the corpus
+// only records identity, so a refused goal never changes what the audit
+// parses or counts.
+type Goal struct {
+	ID    string // "G2"
+	Title string // "The A/B becomes admissible."
+	File  string // repo-relative
+	Line  int    // 1-based
+}
+
 // Unparsed is a line or shape the parser could not read. Every one is
 // reported with its file and line: a corpus that silently yields nothing is
 // indistinguishable from a healthy one, which is the failure mode this
@@ -131,10 +161,17 @@ type Corpus struct {
 	Tier          Tier
 	RouterPath    string // repo-relative, "" when absent
 	DecisionsHome string // repo-relative path or dir the router names
-	Conditions    []Condition
-	Invariants    []Invariant
-	Surfaces      []Surface
-	Unparsed      []Unparsed
+	// VisionsHome is the vision series' directory and VisionsIndex its
+	// index file, as the router's docs map names them (the router is the
+	// manifest of homes). Only the promotion pipeline reads them.
+	VisionsHome  string
+	VisionsIndex string
+	Conditions   []Condition
+	// Goals are scope.md's `**G<n>.**` records, in file order (DP-4).
+	Goals      []Goal
+	Invariants []Invariant
+	Surfaces   []Surface
+	Unparsed   []Unparsed
 	// NestedRouters are routers below the root (a monorepo's per-product
 	// intent dirs). v1 audits the root only and NAMES these as unaudited
 	// rather than pretending the repo has one corpus.

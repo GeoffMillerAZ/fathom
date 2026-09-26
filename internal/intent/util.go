@@ -1,12 +1,15 @@
 package intent
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 )
 
 // util.go — small deterministic helpers. Every list this package returns is
@@ -152,6 +155,33 @@ func firstExistingPointer(root, routerRel, row string) string {
 func statExists(p string) bool {
 	_, err := os.Stat(p)
 	return err == nil
+}
+
+// statPresence tells a path that is there from one that genuinely is not
+// and from one the reader cannot see (ADR-027, I38): blind is non-nil only
+// for the last — EACCES/EPERM on a directory it cannot search — and is the
+// reader's own error. statExists folds all three into two, which is how an
+// unreadable directory's files became "not in this tree".
+func statPresence(p string) (present bool, blind error) {
+	_, err := os.Stat(p)
+	switch {
+	case err == nil:
+		return true, nil
+	case errors.Is(err, fs.ErrNotExist), errors.Is(err, syscall.ENOTDIR):
+		return false, nil
+	}
+	return false, err
+}
+
+// errnoOf is the operating system's wording for a failed read or listing,
+// the path wrapper stripped ("permission denied") — the path is named
+// beside it.
+func errnoOf(err error) string {
+	var pe *fs.PathError
+	if errors.As(err, &pe) && pe.Err != nil {
+		return pe.Err.Error()
+	}
+	return err.Error()
 }
 
 // recordBearingPointer picks the pointer in a docs-map row that actually

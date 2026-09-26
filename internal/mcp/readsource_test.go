@@ -395,7 +395,9 @@ func TestReadSource_FileOverCeiling_Refused(t *testing.T) {
 // TestReadSource_FirstLineOverByteCap_Truncated: the minified-JS case — a
 // single line longer than the DEFAULT 8000-byte cap (SB-3) must come back
 // TRUNCATED to the cap with the note set, never whole (silently voiding the
-// cap) and never empty (unreadable at any budget).
+// cap) and never empty (unreadable at any budget). Since BP-42 the cap
+// bounds the lines array on the wire, so the line's text is the budget less
+// its own {"line","text"} envelope — within a few dozen bytes of it.
 func TestReadSource_FirstLineOverByteCap_Truncated(t *testing.T) {
 	root := t.TempDir()
 	long := strings.Repeat("x", 200*1024) // 200KB, one line
@@ -408,8 +410,11 @@ func TestReadSource_FirstLineOverByteCap_Truncated(t *testing.T) {
 		t.Fatalf("lines count = %d, want 1", len(raw))
 	}
 	text, _ := raw[0].(map[string]any)["text"].(string)
-	if len(text) != 8000 {
-		t.Errorf("first line length = %d, want exactly 8000 (truncated to the default byte cap)", len(text))
+	if got := linesWireBytes(t, p); got > 8000 {
+		t.Errorf("lines on the wire = %d bytes, want <= 8000 (the default byte cap)", got)
+	}
+	if len(text) < 8000-64 {
+		t.Errorf("first line length = %d, want the cut to fill the default byte cap less the row envelope", len(text))
 	}
 	note, _ := p["note"].(string)
 	if !strings.Contains(note, "byte cap") {
@@ -459,7 +464,7 @@ func TestReadSource_MultiLineByteCap_ElidedNamesDroppedLines(t *testing.T) {
 
 // TestReadSource_MaxBytesOverride_RaisesTheCap (SB-3): a caller-declared
 // max_bytes raises the effective per-call budget above the 8000-byte
-// default, up to the 16000-byte ceiling.
+// default, up to the 16000-byte ceiling (measured on the wire since BP-42).
 func TestReadSource_MaxBytesOverride_RaisesTheCap(t *testing.T) {
 	root := t.TempDir()
 	long := strings.Repeat("x", 200*1024) // 200KB, one line
@@ -472,8 +477,11 @@ func TestReadSource_MaxBytesOverride_RaisesTheCap(t *testing.T) {
 		t.Fatalf("lines count = %d, want 1", len(raw))
 	}
 	text, _ := raw[0].(map[string]any)["text"].(string)
-	if len(text) != 12000 {
-		t.Errorf("first line length = %d, want exactly 12000 (max_bytes honored)", len(text))
+	if got := linesWireBytes(t, p); got > 12000 {
+		t.Errorf("lines on the wire = %d bytes, want <= 12000 (max_bytes honored)", got)
+	}
+	if len(text) < 12000-64 {
+		t.Errorf("first line length = %d, want the cut to fill max_bytes less the row envelope", len(text))
 	}
 }
 
@@ -490,8 +498,11 @@ func TestReadSource_MaxBytesOverride_ClampedAtCeiling(t *testing.T) {
 	p := readSourceCall(t, srv, map[string]any{"service": "svc", "file": "minified.js", "max_bytes": 999999})
 	raw, _ := p["lines"].([]any)
 	text, _ := raw[0].(map[string]any)["text"].(string)
-	if len(text) != 16000 {
-		t.Errorf("first line length = %d, want exactly 16000 (clamped to the ceiling)", len(text))
+	if got := linesWireBytes(t, p); got > 16000 {
+		t.Errorf("lines on the wire = %d bytes, want <= 16000 (clamped to the ceiling)", got)
+	}
+	if len(text) < 16000-64 {
+		t.Errorf("first line length = %d, want the cut to fill the 16000-byte ceiling less the row envelope", len(text))
 	}
 }
 

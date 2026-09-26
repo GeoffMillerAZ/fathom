@@ -116,7 +116,7 @@ func maintainedKnownNames(t *testing.T, root string) map[string]bool {
 		// doctor rows and capability ids the module / intent docs maintain
 		"binding_file", "binding_module_readiness", "binding_modules_mounted",
 		"guard_dead_scopes", "guard_file", "guard_include_modules_unbound",
-		"intent-corpus", "unproven", "unproven_claims",
+		"intent-corpus", "unproven", "unproven_claims", "doctrine",
 	} {
 		known[extra] = true
 	}
@@ -255,4 +255,31 @@ func repoRootForDocs(t *testing.T) string {
 	}
 	t.Skip("repo root not found")
 	return ""
+}
+
+// TestConfigHelpNamesEverySubverb: `fathom help` is where a session learns
+// what `config` does, so every subverb cmdConfig dispatches (audit,
+// propose, …) is named in the config row's summary — the verb-level
+// HF-6 rule one level down. Parsed from source, so a new
+// `args[0] == "x"` without a summary mention fails here.
+func TestConfigHelpNamesEverySubverb(t *testing.T) {
+	src, err := os.ReadFile("configcmd.go")
+	if err != nil {
+		t.Fatalf("read configcmd.go: %v", err)
+	}
+	subs := regexp.MustCompile(`args\[0\] == "([a-z-]+)"`).FindAllStringSubmatch(string(src), -1)
+	if len(subs) < 2 {
+		t.Fatalf("parsed only %d config subverbs — the dispatch shape changed, fix this test", len(subs))
+	}
+	summary := ""
+	for _, v := range verbTable {
+		if v.Name == "config" {
+			summary = v.Summary
+		}
+	}
+	for _, m := range subs {
+		if !regexp.MustCompile(`\| ` + m[1] + `\b`).MatchString(summary) {
+			t.Errorf("config subverb %q is dispatched but `fathom help` does not name it: %q", m[1], summary)
+		}
+	}
 }

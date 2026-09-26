@@ -18,9 +18,13 @@ Run `fathom config audit` in the target repo. Read each finding honestly:
 to match reality, or create what the config promises — then re-run the
 audit and report holds. Register new concerns in `.fathom/concerns.cue`
 (repo governs) or `~/.fathom/concerns.cue` (user defaults): falsifiable
-wants only — `forbidden_pattern`, `command_documented_and_exists`,
-`max_lines`, `pointers_resolve` — each with a `why` naming a failure that
-actually happened. Its `pointers_resolve` corpus also covers the root
+wants only — `forbidden_pattern`, `required_pattern`,
+`command_documented_and_exists`, `commands_resolve`, `max_lines`,
+`max_bytes`, `pointers_resolve`, `stanza_present` and the rest the skill
+lists — each with a `why` naming a failure that actually happened, or
+enable the shipped `packs: ["codex", …]`. `fathom config propose --patch`
+offers a diff for what is mechanically mendable; it writes nothing, so you
+apply it (`git apply`) or edit by hand. Its `pointers_resolve` corpus also covers the root
 `INTENT.md` where one exists (`fathom intent render --playbook` generates
 it from `docs/intent/`). Codex has no `ConfigChange` or `FileChanged`
 event, so the audit never runs itself here even once the session hooks are

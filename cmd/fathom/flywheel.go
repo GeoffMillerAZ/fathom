@@ -35,6 +35,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/assess"
 	"github.com/geoffmilleraz/fathom/internal/custodian"
 	"github.com/geoffmilleraz/fathom/internal/metrics"
 )
@@ -219,6 +220,9 @@ type ledgerRow struct {
 	TokensOut   *int   `json:"tokens_out"`
 	FathomCalls int    `json:"fathom_calls"`
 	RawCalls    int    `json:"raw_discovery_calls"`
+	// SpendLabel marks a row written inside a `fathom assess` judge
+	// (IR-4): never admissible to the arm loop.
+	SpendLabel string `json:"spend_label,omitempty"`
 }
 
 // HasCleanWindow reports whether the row carries an admissible arm-covered
@@ -297,7 +301,7 @@ func checkLoopArm(rows []ledgerRow, imp obsImpact, now time.Time) flywheelCheck 
 	}
 
 	// Armed. Two distinct ways this silently collects nothing.
-	var since, clean, unclean int
+	var since, clean, unclean, isolated int
 	setAt, _ := time.Parse(time.RFC3339, st.SetAt)
 	for _, r := range rows {
 		at, err := time.Parse(time.RFC3339, r.At)
@@ -305,6 +309,10 @@ func checkLoopArm(rows []ledgerRow, imp obsImpact, now time.Time) flywheelCheck 
 			continue
 		}
 		since++
+		if assess.IsolatedSpendLabel(r.SpendLabel) {
+			isolated++ // IR-4: judging spend, never an admissible arm row
+			continue
+		}
 		if r.Arm == "off" && (r.ArmCoverage == "full" || r.HasCleanWindow()) {
 			clean++
 		} else if r.Arm == "off" {
@@ -314,6 +322,9 @@ func checkLoopArm(rows []ledgerRow, imp obsImpact, now time.Time) flywheelCheck 
 	armAge := now.Sub(setAt)
 	c.Evidence = fmt.Sprintf("armed %s; %s row(s) since, %s admissible, %s excluded for coverage",
 		describeAge(armAge), fmtThousands(since), fmtThousands(clean), fmtThousands(unclean))
+	if isolated > 0 {
+		c.Evidence += fmt.Sprintf(", %s excluded as judging spend (IR-4)", fmtThousands(isolated))
+	}
 	if st.SessionsRemaining != nil {
 		c.Evidence += fmt.Sprintf("; %s session(s) of budget left", fmtThousands(*st.SessionsRemaining))
 	}

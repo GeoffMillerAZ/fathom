@@ -271,6 +271,10 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		checkConcerns(root),
 		checkIntent(root),
 		checkUnprovenClaims(root, baseURL, explicitSvc),
+		// DP-3/DP-4 (docs/plans/custodian.md): the doctrine plane — the
+		// vision promotion pipeline and goals as pre-registered bets
+		// (intentdoctrine.go). Warns, never fails.
+		checkDoctrine(root),
 		// vision 33 / ADR-043 stage 1 (TC-14): the certifications layer's
 		// own declared/live/join-rate facts, read directly from the
 		// repo's local store (doctor's only store-direct row — see
@@ -1115,7 +1119,7 @@ func hookMarkerPresent(hooksObj map[string]any, spec hookSpec) bool {
 // as "no fathom verify step" by the literal-substring check, telling a
 // correctly-gated repo to add what it had (O5-adjacent, plan IO-5).
 func lefthookInvokes(content, subcmd string) bool {
-	re := regexp.MustCompile(`(?i)fathom\}?"?'?\s+` + subcmd + `\b`)
+	re := regexp.MustCompile(lefthookInvokesPattern(subcmd))
 	for _, line := range strings.Split(content, "\n") {
 		if re.MatchString(line) {
 			return true
@@ -1124,32 +1128,15 @@ func lefthookInvokes(content, subcmd string) bool {
 	return false
 }
 
-func checkLefthookGates(root string) doctorCheck {
-	const name = "lefthook_gates"
-	remedy := "add a `fathom verify` (and optionally `fathom review`) step to lefthook.yml's pre-push — docs/adoption/claude-code.md §7.4"
-
-	p := filepath.Join(root, "lefthook.yml")
-	data, err := os.ReadFile(p)
-	if err != nil {
-		alt := filepath.Join(root, "lefthook.yaml")
-		data, err = os.ReadFile(alt)
-		if err != nil {
-			return doctorCheck{Name: name, Status: doctorFail, Reason: fmt.Sprintf("no lefthook.yml/lefthook.yaml at %s", root), Remedy: remedy}
-		}
-		p = alt
-	}
-	content := string(data)
-	hasVerify := lefthookInvokes(content, "verify")
-	hasReview := lefthookInvokes(content, "review")
-	switch {
-	case hasVerify && hasReview:
-		return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("%s has both a fathom verify and a fathom review step", p)}
-	case hasVerify:
-		return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("%s has a fathom verify step (no fathom review step present — optional, C3-1)", p)}
-	default:
-		return doctorCheck{Name: name, Status: doctorFail, Reason: fmt.Sprintf("%s has no \"fathom verify\" step in its pre-push commands", p), Remedy: remedy}
-	}
+// lefthookInvokesPattern is the per-line pattern lefthookInvokes applies —
+// and the lefthook pack's lefthook_pre_push_verify entry ships verbatim
+// for "verify" (TestLefthookPackPatternMatchesDoctor holds them equal).
+func lefthookInvokesPattern(subcmd string) string {
+	return `(?i)fathom\}?"?'?\s+` + subcmd + `\b`
 }
+
+// checkLefthookGates renders the lefthook pack's verdict (CC-13,
+// doctor_packrows.go) — the derivation lives in the concern engine.
 
 // ─── 6. hooks firing (Claude Code only) ─────────────────────────────────────
 
@@ -1303,39 +1290,9 @@ func checkHooksFiring(hc *http.Client, baseURL string, daemonUp bool, root, harn
 
 // ─── 7. CLAUDE.md / AGENTS.md stanza ────────────────────────────────────────
 
-// checkStanzaPresent is harness-independent: `fathom init` always writes the
-// identical stanza to both files regardless of --skills, so both are always
-// expected. Read-only twin of init.go's applyStanza three-case detection
-// (absent / well-formed / corrupted), never the write path.
-func checkStanzaPresent(root string) doctorCheck {
-	const name = "stanza_present"
-	remedy := "fathom init --path " + root
-
-	var problems []string
-	for _, fname := range []string{"CLAUDE.md", "AGENTS.md"} {
-		p := filepath.Join(root, fname)
-		data, err := os.ReadFile(p)
-		if err != nil {
-			problems = append(problems, fmt.Sprintf("%s: %v", fname, err))
-			continue
-		}
-		content := string(data)
-		beginIdx := strings.Index(content, fathomStanzaBeginPrefix)
-		endIdx := strings.Index(content, fathomStanzaEnd)
-		switch {
-		case beginIdx >= 0 && endIdx > beginIdx:
-			// well-formed
-		case beginIdx < 0 && endIdx < 0:
-			problems = append(problems, fmt.Sprintf("%s: never wired (no fathom markers)", fname))
-		default:
-			problems = append(problems, fmt.Sprintf("%s: corrupted marker pair (begin=%t end=%t)", fname, beginIdx >= 0, endIdx >= 0))
-		}
-	}
-	if len(problems) > 0 {
-		return doctorCheck{Name: name, Status: doctorFail, Reason: strings.Join(problems, "; "), Remedy: remedy}
-	}
-	return doctorCheck{Name: name, Status: doctorPass, Reason: "fathom stanza well-formed in both CLAUDE.md and AGENTS.md"}
-}
+// checkStanzaPresent renders the claude-code and codex packs' stanza
+// entries (CC-13, doctor_packrows.go) — the three-case detection lives in
+// the concern engine (custodian's stanza_present kind).
 
 // ─── 8. skills installed ────────────────────────────────────────────────────
 

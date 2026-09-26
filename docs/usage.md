@@ -1248,8 +1248,15 @@ shipped work must cite a commit sha, an active plan row id, `fathom
 verify`, or a `workspace/artifacts/retros/` path — and
 `adr_references_resolve` — every path a decision record cites must exist,
 scoped to this repo's own id shape so a sibling repo's records are named
-rather than reported missing. Fathom reports and never edits your prose —
-the session applies fixes. Full model: `docs/design/config-custodian.md`.
+rather than reported missing. CC-12 adds `required_pattern`,
+`stanza_present`, `max_bytes` and `commands_resolve` (the gate chain: every
+`task` target, local Taskfile include and repo script a corpus invokes
+exists), and `where:` names a corpus — `agent-config` (default),
+`lefthook`, `taskfile`, `ci` (CC-11). `packs: [...]` in a `concerns.cue`
+enables the shipped `claude-code`, `codex`, `lefthook` and `taskfile` packs;
+a same-id entry overrides one, `off: true` disables it. Fathom reports and
+never edits your prose — the session applies fixes. Full model:
+`docs/design/config-custodian.md`.
 
 `--code-facts` (VB-28, *experimental*, **off by default**): audit
 code-fact-shaped sentences across every auto-loaded file — CLAUDE.md,
@@ -1263,6 +1270,31 @@ regardless of findings unless `--strict` is also given, in which case any
 stderr and the run reports itself as a lower bound, never a silent clean
 bill. Stays off by default until precision holds ≥ 0.8 on a real labelled
 set (VB-29, `docs/vision/22-config-custodian.md` §3c).
+
+### `config propose` — the diff-offering verb (CC-9)
+
+```sh
+fathom config propose [--repo .] [--json | --patch]
+```
+
+Runs the same audit and, for each violated concern, offers a unified diff
+where the mend is mechanical — v1: a dead pointer or dead script path whose
+basename names exactly one file in the repo (it moved; a markdown link is
+rewritten file-relative, a backtick path root-relative) — and names the
+rest: no file of that name ("gone, not moved"), several ("ambiguous"), a
+renamed task target, and every other kind's remedy (prose, budgets, and
+fathom's own stanza region, which only `fathom init` / `fleet reconcile`
+write). A dead pointer or script on a line inside fathom's markers — the
+stanza, or the `INTENT.md` playbook `fathom intent render` generates — is
+never offered a diff, however mechanical: it is listed with the
+regenerating remedy (`fathom fleet reconcile --repo R --apply`, or fix the
+source under `docs/intent/` and re-render). Relocation candidates are the
+working tree on git's authority, so an unstaged `mv` is a move, and a
+non-ASCII name matches. **It writes nothing** — no repo file, no beat. `--patch` prints only
+the combined diff (`fathom config propose --patch | git apply` from the
+repo root); `--json` is `{repo_root, violated, proposals, patch}`. Exit `0`
+whenever it ran — `config audit` is the gate — and `1` only when a
+concerns file would not load.
 
 ### `daemon` — install, inspect and remove the serve-http agent
 
@@ -1297,7 +1329,8 @@ this machine**, never a fixed one. Off macOS, all of them fall back to
 ### `intent` — the intent corpus, audited (ADR-026, **experimental**)
 
 ```sh
-fathom intent audit  [--root .] [--json] [--kind conditions|invariants|unproven] [--fresh] [--top N]
+fathom intent audit    [--root .] [--json] [--kind conditions|invariants|unproven] [--fresh] [--top N]
+fathom intent doctrine [--root .] [--json] [--kind visions|bets] [--top N]
 fathom intent export --guard [--root .]
 ```
 
@@ -1337,10 +1370,42 @@ carries `coverage.complete` (ADR-027).
 sensitive-surface rows, stamped with per-row provenance so staleness stays
 computable. It prints them; **fathom never writes that file** (law 15).
 
-Two `fathom doctor` rows report the corpus and its debt, and neither can
-FAIL: not adopting the practice is a choice, and honest debt is not a broken
-repo. Switch both off with the `intent-corpus` capability — the verb still
-answers on demand. Full design: `docs/design/evidence-plane.md`.
+`doctrine` computes the doctrine plane's two views (vision 23 §2; ADR-026 as
+amended 2026-09-25). **The vision promotion pipeline:** for every vision in the
+series the router's docs map names, its stage (`landed`, `planned`, `accepted`,
+`for-review`, `deferred`, `conditional`, `stated`, `superseded`, `rejected`,
+`unstated`, or `unreadable`) from its header's `Status:` line or a status its
+index entry leads with, the plans its header or index entry declares as its own
+(a `Plan:`/`Plans:` label, or "… is its promotion") with their claimed rows
+(claimed, not proven — `fathom verify` is the proof), any condition label it
+carries, and its newest dated statement. `landed` is computed, never read: every
+plan that carries the vision has no open row and at least one has claimed work —
+a status word ("shipped"), a plan whose rows are all deferred or refused, and a
+plan it merely cites or builds on are not that evidence (a landed claim with no
+carrying plan is `stated`). Findings are `unstated`, `undated`, `stale` (for
+review past 30 days with no plan; it names any decision the vision cites),
+`broken-link` (a markdown link, a plan pointer, or a cited decision id that does
+not resolve) and `unreadable` (the vision, or a plan that carries it, exists and
+could not be read). Only this metadata is read — never a rule, a condition or a
+count for the audit — and only from the series the router names: a
+`docs/vision/` the router does not route to is not read.
+**Goals as pre-registered bets:** each `**G<n>.**` goal of `scope.md` is a bet
+when its `Done when:` carries `{bet: <name>, instrument: "<fathom verb | task
+target | repo script>", threshold: "…", review: YYYY-MM-DD}` and the instrument
+resolves; otherwise it is refused at load with what it lacks, and a bet whose
+review date passed is listed as due. A bet block is not an oracle annotation and
+never counts toward K0; one on any condition but a scope goal's is listed as
+`misplaced-bet`. A vision home, plan, link target, decisions directory, Taskfile
+or script that exists and cannot be read is named on the coverage manifest —
+every count becomes a lower bound and `--json` carries `coverage.complete`
+(ADR-027) — never an absent series, a broken link or a refused bet. An unknown
+`--kind` exits 1 naming the accepted ones.
+
+Three `fathom doctor` rows report the corpus, its debt, and the doctrine plane
+(`intent`, `unproven_claims`, `doctrine`), and none can FAIL: not adopting the
+practice is a choice, and honest debt is not a broken repo. Switch them off with
+the `intent-corpus` capability — the verbs still answer on demand. Full design:
+`docs/design/evidence-plane.md`.
 
 ### `scope` / `purge` — reversible suppression and verified removal
 
@@ -1377,8 +1442,50 @@ remediation now-state, silent-on-clean counts. Unjoinable (pre-stamp)
 firings are counted and named; OFF-arm windows say channels were silent
 by design. Outcome-shaped evidence, never causality (the arm carries
 that — law 12). `--write` lands the retro under
-`workspace/artifacts/retros/`. The priced judgment lane is `assess`
-(IR-3, not yet built). Design: `docs/design/intervention-outcomes.md`.
+`workspace/artifacts/retros/`. The priced judgment lane is `assess
+--interventions` (below). Design: `docs/design/intervention-outcomes.md`.
+
+### `assess` — a priced second opinion on what shipped (explicit, off by default)
+
+```sh
+fathom assess [--session S | (latest stamped)] [--project DIR] [--interventions] [--dry-run] [--json] [--max-tokens 40000]
+fathom assess spend [--since 720h] [--by label|day|model] [--json]
+```
+
+A model judges one session's **on-disk work products** as typed decision-port
+questions (noul and choice), never its transcript. The unit lane (DO-3) sends
+the commits landed in the session's beat window, the plan rows they flipped,
+and the verify results recorded there. It asks `coherent`, `claims_backed`
+(only when a row flipped), `tests_accompany`, and a five-level `quality`
+choice. `--interventions` (IR-3) sends only the retro rows the mechanics
+cannot decide: a guarded or governed file that was later committed or left
+modified. Each such file gets one `complied` / `departed` / `not_applicable` /
+`cannot_tell` question, with the guidance re-derived from disk and its
+provenance shown, and the file's diff inside the window (an untracked new file
+is diffed against `/dev/null`). Untouched files, unstamped firings, and files
+with no change inside the window are named and never asked.
+
+A live run needs four things. The first is the `assess` capability (`fathom
+capabilities set assess on`, default off), which fails **closed** on a
+malformed config. The second is the pre-flight token cap. The third is a
+`[decide]` provider (`llm` resolves your llm profile, or `typesafe`), and the
+fourth is the `assess` site; both are read from your user config and the
+assessed repository's `.fathom/config.toml`, not your working directory's.
+`--dry-run` needs none of them: it prints exactly what would be sent, after
+DLP redaction with the extended credential catalog, the redaction count and
+the estimated tokens, and spends nothing. Every run prints its own token cost,
+priced through the compile meter. An unpriced model reads "cost unknown",
+never zero, and `assess spend` marks any total with an unknown-cost run
+(unpriced, no usage reported, or failed) as a lower bound.
+
+Verdicts are banded: proceed means a verdict, confirm means leaning (not
+counted), unsure means undecided. They are labelled **uncalibrated** until a
+question set passes the adjudication bar, and they stay on
+`~/.fathom/assess-ledger.jsonl`. IR-4 (pre-registered 2026-09-25) isolates the
+spend: assess runs its judge with `FATHOM_CHANNELS=off` and a
+`FATHOM_SPEND_LABEL`, and a labelled session-ledger row is never an arm, bet
+or flywheel unit. `assess spend` totals the ledger through the `metrics
+spend` aggregation. Design: `docs/design/assess-lanes.md` (ADR-046).
 
 ### `rate` — the session outcome, in one number
 
@@ -2161,14 +2268,18 @@ stdout by default.
 
 ```sh
 fathom research report [--since 168h] [--service S] [--root .] [--out DIR] [--call-log P] [--hooks-log P] [--bench-dir D] [--no-write] [--json]
-fathom research bundle [--since 168h] [--service S] [--root .] [--out DIR] [--dry-run] ...
+fathom research bundle [--since 168h] [--service S] [--root .] [--out DIR] [--dry-run] [--include-retros] ...
 ```
 
 `report` aggregates local evidence (call log, hooks log, context-bench
 results, observations) into `workspace/artifacts/research/report.{md,json}`;
 `bundle` renders the sanitized, shareable summary (schema
-`schema/research-bundle/`) — sharing stays a human verb. Design:
-`docs/design/research-flywheel.md`.
+`schema/research-bundle/`), and sharing it stays a human verb.
+`--include-retros` (IR-5, opt-in) adds a counts-only `retros` group built from
+the retro corpus under the state directory's `artifacts/retros/`. It carries
+channel and outcome cells over closed labels, and never a file, a session or
+a verdict. Without the flag, or with no corpus, the group is absent, never
+zero. Design: `docs/design/research-flywheel.md`, `docs/design/assess-lanes.md` §5.
 
 ### `module` — expert-module lifecycle (**experimental**, law 9: read-only before writable)
 

@@ -183,7 +183,7 @@ func renderConfigAudit(w io.Writer, root string, findings []custodian.Finding) {
 		}
 		fmt.Fprintf(w, "  %s %-18s %s\n", mark, f.Concern.ID, f.Detail)
 		if f.Status == custodian.StatusViolated {
-			fmt.Fprintf(w, "    %-18s want: %s  [%s scope]\n", "", f.Concern.Want, f.Concern.Scope)
+			fmt.Fprintf(w, "    %-18s want: %s  [%s]\n", "", f.Concern.Want, f.Concern.Provenance())
 			if f.Concern.Why != "" {
 				fmt.Fprintf(w, "    %-18s why:  %s\n", "", f.Concern.Why)
 			}
@@ -227,27 +227,37 @@ func configAuditJSON(root string, findings []custodian.Finding) configAuditModel
 	return m
 }
 
-// loadConcernsBoth reads both scopes and resolves them (project governs,
-// law 13). Load errors are returned for loud reporting — never a silent
-// partial read.
+// loadConcernsBoth reads both scopes and resolves them — the packs either
+// scope enables at the lowest precedence, then the user file, then the
+// project file, which governs (law 13; custodian.Resolve, CC-12). Load
+// errors are returned for loud reporting — never a silent partial read: a
+// scope that fails to load contributes neither its concerns nor its packs,
+// and the error says so.
 func loadConcernsBoth(root string) ([]custodian.Concern, []error) {
 	var errs []error
-	var user, project []custodian.Concern
+	var user, project custodian.ScopeFile
 	if home, err := os.UserHomeDir(); err == nil {
-		s, lerr := custodian.LoadFile(filepath.Join(home, ".fathom", custodian.UserFileName), custodian.ScopeUser)
+		s, lerr := custodian.LoadScopeFile(filepath.Join(home, ".fathom", custodian.UserFileName), custodian.ScopeUser)
 		if lerr != nil {
 			errs = append(errs, lerr)
 		} else {
 			user = s
 		}
 	}
-	s, lerr := custodian.LoadFile(filepath.Join(root, ".fathom", custodian.ProjectFileName), custodian.ScopeProject)
+	s, lerr := custodian.LoadScopeFile(filepath.Join(root, ".fathom", custodian.ProjectFileName), custodian.ScopeProject)
 	if lerr != nil {
 		errs = append(errs, lerr)
 	} else {
 		project = s
 	}
-	return custodian.Merge(user, project), errs
+	resolved, rerr := custodian.Resolve(user, project)
+	if rerr != nil {
+		// A shipped pack that does not load is fathom's defect, not the
+		// repo's; the files' own concerns still get audited.
+		errs = append(errs, rerr)
+		return custodian.Merge(user.Concerns, project.Concerns), errs
+	}
+	return resolved, errs
 }
 
 // violatedConcernCount is how many of this repo's registered concerns are

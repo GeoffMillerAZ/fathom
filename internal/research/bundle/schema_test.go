@@ -123,6 +123,18 @@ bad6: #Bundle & {` + commonFields + `
 bad7: #Bundle & {` + commonFields + `
 	bench_arms: [{arm: "fathom\nEVIL", task_count: 1, success_count: 1, success_rate: 1.0, mean_tokens: 0, mean_wall_ms: 0}]
 }`},
+		{"IR-5: a retro outcome label outside #Label's shape", `
+bad8: #Bundle & {` + commonFields + `
+	retros: {` + retroCommon + `
+		outcomes: [{channel: "guard", outcome: "modified-uncommitted", firings: 1}]
+	}
+}`},
+		{"IR-5: a file or session field smuggled into the retros group", `
+bad9: #Bundle & {` + commonFields + `
+	retros: {` + retroCommon + `
+		file: "internal/secret.go"
+	}
+}`},
 	}
 
 	cctx := cuecontext.New()
@@ -195,5 +207,38 @@ func TestValidate_NotInstrumentedBundle(t *testing.T) {
 	}
 	if err := Validate(b); err != nil {
 		t.Fatalf("Validate(not-instrumented bundle) = %v, want nil", err)
+	}
+}
+
+// retroCommon is every required field of #Retros (IR-5).
+const retroCommon = `
+		retros: 2
+		unreadable: 0
+		off_arm_retros: 0
+		guard_fires: 1
+		obligation_injections: 1
+		silent_on_clean: 3
+		unjoinable: 0
+		custodian_remedied: 0
+		custodian_unremedied: 0`
+
+// TestValidate_RetrosGroup proves the opt-in retro group (IR-5) validates
+// through the same closed allowlist as every other group.
+func TestValidate_RetrosGroup(t *testing.T) {
+	b := Bundle{
+		SchemaVersion: SchemaVersionCurrent,
+		WindowSince:   "2026-07-21T00:00:00Z",
+		WindowUntil:   "2026-07-28T00:00:00Z",
+		GeneratedAt:   "2026-07-28T00:00:00Z",
+		FathomVersion: "fathom v0.1.0",
+		GOOS:          "darwin",
+		GOARCH:        "arm64",
+		Retros: &RetroStats{
+			Retros: 2, GuardFires: 1, ObligationInjections: 1,
+			Outcomes: []RetroOutcomeCount{{Channel: "guard", Outcome: "committed", Firings: 1}, {Channel: "obligations", Outcome: "modified_uncommitted", Firings: 1}},
+		},
+	}
+	if err := Validate(b); err != nil {
+		t.Fatalf("Validate(bundle with retros) = %v, want nil", err)
 	}
 }

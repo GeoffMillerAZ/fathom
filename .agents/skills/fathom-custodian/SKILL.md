@@ -57,10 +57,19 @@ concerns: {
 
 Rules the loader enforces (loudly, all errors at once): a concern without
 a machine-evaluable `check` is refused — an uncheckable concern is a
-wish; unknown check kinds are refused by name; `field?:` (CUE optional)
-is refused because in a config instance it sets nothing while looking
-like it does. A project entry with the same name replaces the user entry
+wish; unknown check kinds, unknown fields, a check field its kind does
+not read (`file:` on a `required_pattern`) and a `where:` naming a corpus
+the kind cannot read are refused by name; `field?:` (CUE optional) is
+refused because in a config instance it sets nothing while looking like
+it does. A project entry with the same name replaces the user entry
 wholesale; `off: true` disables an inherited concern (still shown).
+
+**Packs.** Fathom ships curated concern sets as data — `packs:
+["claude-code", "codex", "lefthook", "taskfile"]` in either file enables
+them (stanza present in both agent files, AGENTS.md within Codex's 32 KiB
+read budget, the pre-push hook runs `fathom verify` and the gate, every
+command the docs / hooks / Taskfile invoke exists). A same-id entry in your
+file replaces a pack's wholesale; `<id>: {off: true}` disables it, named.
 Authoring bar: 2–4 concerns whose `why` names a mistake that actually
 happened — speculative contracts teach people to ignore the audit.
 
@@ -73,31 +82,64 @@ on `ConfigChange` surfaces no message anywhere in the harness, and a silent
 refusal is the one thing the custodian may not be. The beat is the record,
 and the next session's attention line carries the violated count.
 
-Six check kinds. Four scan the **agent-config corpus** (`CLAUDE.md` and
-`AGENTS.md` at any depth, git-tracked): `forbidden_pattern` (regexp,
-`file:line` evidence), `command_documented_and_exists` (the
-instruction-outlives-the-command failure, both halves named), `max_lines`
-(router thinness), `pointers_resolve` (markdown links AND backtick repo
-paths, precision-guarded so foreign names — Go modules, kit packages —
-are never flagged; its corpus is WIDER than the other three: it also holds
-the root `INTENT.md`, which `fathom intent render --playbook` generates
-from `docs/intent/` and which is almost entirely pointers, so a corpus file
-that moves breaks it first and loudest). Two are new (**experimental**, CC-14/CC-15):
-`stanza_tools_served` scans only the fathom stanza regions of
-`CLAUDE.md`/`AGENTS.md` (backticked names, plus bare names with an
-underscore such as `find_callers`) and asks the daemon's `/rpc/agent`
-`tools/list` (falls back to `/rpc`) — a pruned or undeployed tool is
-violated with `file:line`; daemon down or an empty registry is `unable to
-check` naming the URL, never violated. It is the one kind that talks to
-the daemon; every other check is offline. `handoff_cites_instruments`
-(`days: N`) scans this repo's handoff notes in `~/.fathom/threads.jsonl`
-within the window — a note claiming shipped/landed/done/fixed work must
-cite a commit sha, an active `docs/plans` row id, `fathom verify`, or a
-`workspace/artifacts/retros/` path; undated rows are named; no thread log
-is a hold. `fathom config propose`/`refresh` (CC-9) have **not** shipped —
-audit is the whole verb.
+Twelve check kinds; every one reads files, no LLM, and only
+`stanza_tools_served` asks the daemon. A corpus check reads the
+**agent-config corpus** (`CLAUDE.md` / `AGENTS.md` at any depth,
+git-tracked) unless its `where:` names another: `lefthook`, `taskfile`
+(the root Taskfile plus its local includes) or `ci` (GitHub workflows,
+GitLab, CircleCI, Azure, Bitbucket, Buildkite).
+
+- `forbidden_pattern` / `required_pattern` — a regexp with `file:line`
+  evidence. Over a YAML corpus a comment never satisfies a required
+  pattern, and `under: "pre-push"` holds it to one top-level key.
+- `command_documented_and_exists` — the instruction-outlives-the-command
+  failure, both halves named; `task X` resolves through the parsed
+  Taskfile (includes, aliases, flattening).
+- `commands_resolve` — every `task` target, local include and repo script
+  the corpus invokes exists (the docs → lefthook → Taskfile → scripts
+  chain), resolved from the directory each command runs in (a task's or
+  include's `dir:`, lefthook `root:`, a GitHub `working-directory:`) and,
+  inside an included Taskfile, in its namespace. What it cannot model
+  (templated, a remote include, outside the repo) is counted as not
+  checkable, never guessed.
+- `pointers_resolve` — markdown links AND backtick repo paths,
+  precision-guarded so foreign names (Go modules, kit packages) are never
+  flagged; its corpus also holds the root `INTENT.md`, which `fathom intent
+  render --playbook` generates from `docs/intent/` and which is almost
+  entirely pointers.
+- One named file: `max_lines` (router thinness), `max_bytes` (Codex stops
+  reading AGENTS.md at `project_doc_max_bytes`), `stanza_present` (the
+  fathom begin marker, then the end marker).
+- `adr_references_resolve` — every `ADR-NNN` a design doc, intent doc,
+  changelog or plan cites resolves to a record; `wiring_current` — the
+  hooks, stanza regions, MCP entries and owned skills fathom trusts match
+  the digests it recorded.
+- **Experimental** (CC-14/CC-15): `stanza_tools_served` scans only the
+  fathom stanza regions (backticked names, plus bare names with an
+  underscore such as `find_callers`) against the daemon's `/rpc/agent`
+  `tools/list` — a pruned or undeployed tool is violated with `file:line`;
+  daemon down or an empty registry is `unable to check` naming the URL,
+  never violated. `handoff_cites_instruments` (`days: N`) scans this repo's
+  handoff notes in `~/.fathom/threads.jsonl` — a note claiming
+  shipped/landed/done/fixed work must cite a commit sha, an active
+  `docs/plans` row id, `fathom verify`, or a `workspace/artifacts/retros/`
+  path; undated rows are named; no thread log is a hold.
 
 ## 3. Act on a violation — you are the hand
+
+```sh
+fathom config propose [--repo .] [--json | --patch]
+```
+
+`config propose` runs the same audit and, for each violation it can mend
+mechanically — a dead pointer or script path whose file moved to exactly
+ONE place — offers a unified diff; everything else gets its remedy (no
+such file anywhere is "gone, not moved"; several is "ambiguous"; a renamed
+task target is not inferable). It writes nothing: read the diff, then
+`fathom config propose --patch | git apply` from the repo root, or edit by
+hand. It never offers a diff inside fathom's own markers (the stanza, the
+`INTENT.md` playbook) — those regenerate through `fathom fleet reconcile
+--repo . --apply` or `fathom intent render --playbook`, never a hand edit.
 
 1. Read the evidence (`file:line`) and decide which is wrong: the config
    (usually — update the instruction to match reality) or the world (a

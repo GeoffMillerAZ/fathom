@@ -301,7 +301,7 @@ route_confidence  = 0.9      # unchanged at this default (2026-09-24, ADR-042 am
 route_timeout_ms  = 3000     # POST /route's own decider budget, in ms (100-30000)
 rank_within_tier  = false    # obligations re-orders rules only inside their governing-scope tier
 rerank_timeout_ms = 1500     # obligations re-rank's own decider budget, in ms (100-60000)
-sites = ["route", "compile_prefilter", "obligations_rerank", "certify_suggest"]  # the egress opt-in — this is the default
+sites = ["route", "compile_prefilter", "obligations_rerank", "certify_suggest", "assess"]  # the egress opt-in — this is the default
 ```
 
 `rank_within_tier` defaults to **false** (amended 2026-09-23, ADR-042): the
@@ -365,19 +365,21 @@ deadline.
 code off-host"): the site names this port is allowed to send a
 `decision.Question` off-host from — `route` (`POST /route`), `compile_prefilter`
 (the compile pre-filter, DP-9), `obligations_rerank` (the obligations
-within-tier re-rank, DP-7/DP-8), and `certify_suggest` (`fathom certify
-suggest`, TC-24). **A site absent from `sites` makes NO call at all**,
+within-tier re-rank, DP-7/DP-8), `certify_suggest` (`fathom certify
+suggest`, TC-24), and `assess` (`fathom assess`, ADR-046 — which also needs
+its own default-off `assess` capability, so listing the site is never, by
+itself, consent to spend). **A site absent from `sites` makes NO call at all**,
 whatever `provider` is set to — this is a second, independent gate a real
 provider must also clear, checked once per call site (`internal/decide.
 SiteAllowed`) rather than re-derived at each one. Every failure discloses why:
 `POST /route` answers its usual none-shaped body with `Error` naming the
 blocked site; `fathom certify suggest` prints one line naming it and exits 0;
 `fathom doctor`'s `decision_provider` row appends `(sites off: <names>)` to a
-passing provider's own Reason whenever `sites` excludes any of the four.
+passing provider's own Reason whenever `sites` excludes any of them.
 Unset (the default, shown above) means every current site, so an
 unconfigured `[decide]` block behaves exactly as it did before `sites`
 existed; `sites = []` disables every site outright — a fully quiet decision
-port with a provider still configured. Closed to the four site names that
+port with a provider still configured. Closed to the five site names that
 exist today (`fathom config` load refuses an unrecognized one by name, the
 same discipline `provider`'s own enum already applies).
 
@@ -706,6 +708,7 @@ may set a **default**; `<repo>/.fathom/capabilities.cue` **governs**.
 ```cue
 capabilities: {
     narrate: on: true          // fathom capabilities set narrate on
+    assess:  on: true          // consent to the priced assess lane (default off; ADR-046)
 }
 // BA-9 (experimental): default answer budget per tool class, in TOKENS.
 budgets: {
@@ -728,6 +731,13 @@ refused with the key named. `fathom capabilities` / `explain <id>` read it;
 `fathom doctor`'s `capabilities` row reds only when something switched on
 is failing to deliver.
 
+`assess` is the one capability that is **consent to spend** (ADR-046): it
+defaults off, and `fathom assess` reads it failing CLOSED — a malformed
+capabilities file refuses the run, where the safety capabilities fail open.
+A live run also needs a `[decide]` provider and the `assess` site; each run
+is metered on `~/.fathom/assess-ledger.jsonl` (`FATHOM_ASSESS_LEDGER`), never
+on the session ledger (IR-4).
+
 ### `concerns.cue` — the config custodian's contracts
 
 `~/.fathom/concerns.cue` (user defaults) and `<repo>/.fathom/concerns.cue`
@@ -739,9 +749,24 @@ model. Kinds: `forbidden_pattern` (`pattern`, `where: "agent-config"`),
 `command_documented_and_exists` (`command`), `max_lines` (`file`, `lines`),
 `pointers_resolve`, and — CC-14/CC-15, **experimental** —
 `stanza_tools_served` (the one kind that asks the daemon; degrades to
-unable-to-check) and `handoff_cites_instruments` (`days`). Full model and
-check table: `docs/design/config-custodian.md`; this repo's own file is a
-worked example.
+unable-to-check) and `handoff_cites_instruments` (`days`) — plus (CC-12)
+`required_pattern` (`pattern`, `where`, and over a YAML corpus `under`: only
+the lines under one top-level key, such as a lefthook hook; a comment never
+matches), `stanza_present` (`file`),
+`max_bytes` (`file`, `bytes`) and `commands_resolve` (`where`: every
+`task` target, local include and repo script the corpus invokes exists).
+`where` names a corpus (CC-11): `agent-config` (default), `lefthook`,
+`taskfile`, `ci`.
+
+`packs: ["claude-code", "codex", "lefthook", "taskfile"]` (either scope; the
+union is enabled) turns on concern sets fathom ships as CUE data; a same-id
+entry in your file replaces a pack's wholesale and `<id>: {off: true}`
+disables it (named `off` in the audit). An unknown pack, an unknown
+top-level field (`pack:` for `packs:`), a `where` on a kind that reads no
+corpus, a check field the kind does not read (`file:` on a
+`required_pattern`), and an optional (`name?:`) concern are refused by name. Full model,
+corpus and pack tables: `docs/design/config-custodian.md`; this repo's own
+file is a worked example.
 
 ---
 
