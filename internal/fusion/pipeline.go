@@ -769,7 +769,7 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 
 			content, fetchErr := p.conn.Fetch(ctx, r)
 			fetched[idx] = fetchResult{content: content, err: fetchErr}
-			if fetchErr != nil && !isReadFailure(fetchErr) {
+			if fetchErr != nil && !isReadFailure(fetchErr) && !isOversize(fetchErr) {
 				var nilPtr unsafe.Pointer
 				heapErr := fetchErr // capture on heap
 				atomic.CompareAndSwapPointer(&firstErrPtr, nilPtr, unsafe.Pointer(&heapErr))
@@ -790,7 +790,7 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	// so the orphan purge below cannot mistake "unreadable" for "deleted".
 	var failures []ReadFailure
 	for i, ref := range refs {
-		if fetched[i].err != nil {
+		if fetched[i].err != nil && !isOversize(fetched[i].err) {
 			failures = append(failures, ReadFailure{Path: ref.Path, Err: fetched[i].err.Error()})
 		}
 	}
@@ -860,6 +860,22 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	var tokenAccum int64
 
 	for i, ref := range refs {
+		if over := asOversize(fetched[i].err); over != nil {
+			// RT-69: over the read cap, decided from the stat — never read.
+			// Fingerprinted by size so an unchanged one is skipped next
+			// time; what it held when it was small is purged, since it
+			// now contributes no observations.
+			skipped, err := p.recordOversize(ctx, svc.ID, ref.Path, over.Size)
+			if err != nil {
+				return report, err
+			}
+			if skipped {
+				report.Skipped++
+			} else {
+				report.Oversize++
+			}
+			continue
+		}
 		if fetched[i].err != nil {
 			// Unreadable this run: no hash-gate, no purge, no fingerprint —
 			// the stored evidence stays until the file can be read again.
@@ -930,7 +946,7 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	report.Extracted = len(pending)
 	report.Symbols = stats.symbols
 	report.Unclassified = stats.unclassified
-	report.Oversize = stats.oversize
+	report.Oversize += stats.oversize
 	report.ClassifiedZero = stats.classifiedZero
 	report.TSEngineFaults = stats.tsFaults
 	report.UnsupportedLanguages = stats.unsupportedLang

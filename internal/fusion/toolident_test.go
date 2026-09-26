@@ -589,3 +589,46 @@ func TestPipeline_StatsAccumulatesAcrossIngests(t *testing.T) {
 		t.Errorf("Stats() unclassified delta = %d, want 1", after-before)
 	}
 }
+
+// RT-69: an oversize file is decided from its stat and never read — the
+// ingest counts it, fingerprints it by size so an unchanged one is skipped
+// next time, and purges what it held when it was small, instead of
+// aborting (a non-read-failure fetch error) or holding its bytes.
+func TestIngest_OversizeNeverReadStableAcrossIngests(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "grows.go", "package x\n\nfunc Small() {}\n")
+	writeFile(t, dir, "small.go", "package x\n\nfunc Ok() {}\n")
+
+	conn := connector.NewLocalConnector()
+	st := store.NewMemoryStore()
+	svc := core.ServiceRef{ID: "grow-svc", Path: dir}
+	p := fusion.New(conn, st, fusion.Config{Concurrency: 1, DisableTypedEdges: true})
+	ctx := context.Background()
+	if _, err := p.Ingest(ctx, svc); err != nil {
+		t.Fatal(err)
+	}
+
+	writeFile(t, dir, "grows.go", "package x\n\nfunc Small() {}\n// "+strings.Repeat("z", fusion.MaxExtractSize)+"\n")
+	rep, err := p.Ingest(ctx, svc)
+	if err != nil {
+		t.Fatalf("an oversize file aborted the ingest: %v", err)
+	}
+	if rep.Oversize != 1 || rep.ReadFailed != 0 {
+		t.Fatalf("report Oversize=%d ReadFailed=%d, want 1 and 0", rep.Oversize, rep.ReadFailed)
+	}
+	obs, _ := st.QueryObservations(ctx, svc.ID, "")
+	if n := len(obsBySource(obs, "grows.go")); n != 0 {
+		t.Fatalf("grows.go kept %d observations from when it was small; an oversize file holds none", n)
+	}
+	if len(obsBySource(obs, "small.go")) == 0 {
+		t.Fatal("the small sibling lost its observations")
+	}
+
+	rep, err = p.Ingest(ctx, svc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rep.Oversize != 0 || rep.Skipped != 2 {
+		t.Fatalf("an unchanged oversize file was reprocessed: Oversize=%d Skipped=%d, want 0 and 2", rep.Oversize, rep.Skipped)
+	}
+}
