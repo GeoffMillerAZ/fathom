@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 
@@ -591,5 +592,57 @@ func TestLayerCoveragePathsSingleFlightWithoutWatermark(t *testing.T) {
 	wg.Wait()
 	if n := g.walks.Load(); n != 1 {
 		t.Errorf("walks = %d across 8 concurrent calls on a service with no watermark, want 1", n)
+	}
+}
+
+// TestObligationsHotPathReaderAgnosticTripwire strengthens the "reads only
+// the guides and the edited file" proofs (RT-81/RT-143 review): those
+// watch readFileCapped and the connector's Fetch, so a regression to a
+// plain os.ReadFile tree walk would slip past them. A FIFO in the tree
+// blocks ANY reader that opens it, whatever the API; an obligations call
+// that finishes proves nothing opened a non-selected file's contents.
+func TestObligationsHotPathReaderAgnosticTripwire(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	writeTree(t, dir, map[string]string{
+		"CLAUDE.md":          "# Rules\n\n- Run tests before committing.\n",
+		"internal/CLAUDE.md": "# internal\n\n- Sort all outputs.\n",
+		"internal/a/a.go":    "package a\n\nfunc A() {}\n",
+	})
+	st := store.NewMemoryStore()
+	c := client.New(connector.NewLocalConnector(), st)
+	defer c.Close()
+	if _, err := c.Ingest(ctx, client.ServiceRef{ID: "svc", Path: dir}); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.RecordCompileRun(ctx, core.CompileRun{RunID: "r1", ServiceID: "svc", Layer: "obligations", RanAt: time.Unix(1, 0).UTC(), SectionsTotal: 2, BudgetStopped: true}); err != nil {
+		t.Fatal(err)
+	}
+	if err := syscall.Mkfifo(filepath.Join(dir, "internal", "a", "tripwire.go"), 0o644); err != nil {
+		t.Skipf("mkfifo: %v", err)
+	}
+	// A new store watermark is not needed: the names-only walk runs on
+	// the first call after ingest anyway.
+	done := make(chan error, 1)
+	go func() {
+		if _, _, err := c.ObligationsLayerCoverage(ctx, "svc"); err != nil {
+			done <- err
+			return
+		}
+		c.ObligationsIndexCheck(ctx, "svc", "internal/a/a.go")
+		_, _, _, err := c.RawFallbackObligations(ctx, "svc", "internal/a/a.go", 2)
+		done <- err
+	}()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(5 * time.Second):
+		// Unblock the stuck reader so the test binary can exit.
+		if f, err := os.OpenFile(filepath.Join(dir, "internal", "a", "tripwire.go"), os.O_WRONLY, 0); err == nil {
+			f.Close()
+		}
+		t.Fatal("an obligations call opened a non-selected file's contents (blocked on the FIFO tripwire)")
 	}
 }
