@@ -20,8 +20,8 @@ SP-10, RG-5, RG-9 (observatory UI/wiring), DO-3, IR-3/4/5 (LLM assess lanes, und
 OP-1 (the A/B, G2), OP-2 (deploy).
 
 **G5. The custodian closes.** Done when: `docs/plans/custodian.md` shows 0 open and 0
-claimed-unproven. Open: CC-9 (`config propose`), CC-11/12/13 (corpus seam, packs, doctor
-convergence), DP-3/4, SD-2/3/4 (SDD panel); DP-2 is refused (superseded by EP-9).
+claimed-unproven. Open: DP-3/4, SD-2/3/4 (SDD panel); DP-2 is refused (superseded by
+EP-9).
 
 **G6. Zero claimed-unproven rows fleet-wide, then CI fails closed.** Done when:
 `fathom plans status` shows 0 claimed-unproven across every active plan and
