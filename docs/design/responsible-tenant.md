@@ -852,7 +852,7 @@ unmanaged:
 | `--ttl 8h` | hard stop |
 | unlinked check | every 60 s, `fstat` of the executable and store; `nlink == 0` → exit (frees the deleted files it holds) |
 | `--auto-refresh=false`, no self-restart watcher, no scavenger tick, feeders lazy | a scratch daemon never re-ingests real repos |
-| operator state refused | `--store`/`--call-log` resolving to the managed daemon's paths (from its record) is refused without `--allow-operator-state` |
+| operator state refused | `--store`/`--call-log` resolving to the managed daemon's paths (from its record or installed plist, under `HOME` and the account's own home, since a swapped `HOME` holds neither) is refused without `--allow-operator-state`; an unreadable managed record refuses too (I38) |
 | `[tenancy.unmanaged] budget 512 MiB` | a leaked scratch daemon cannot become a second 5 GiB ingest engine |
 
 Every exit logs its reason (`parent 4121 exited`, `idle 20m`, `ttl`, `store unlinked`).
@@ -862,7 +862,10 @@ Every exit logs its reason (`parent 4121 exited`, `idle 20m`, `ttl`, `store unli
 `DaemonRecord` schema 2 lives at `~/.fathom/daemon/<id>/record.json` beside the ledger and
 ring (the legacy `~/.fathom/daemons/` is read for one release, then pruned) and adds
 `managed`, `ppid`, `exe` + inode, `cmdline_sha`, `idle_exit`,
-`ttl`, `heartbeat_at` (every 60 s), `state_root`; removed on clean exit. The managed daemon
+`ttl`, `heartbeat_at` (every 60 s), `state_root`; removed on clean exit and, for an unmanaged
+daemon, on SIGTERM/SIGINT/SIGHUP. A daemon recording itself prunes scratch records
+(`addr-<port>-<pid>`) whose pid is gone, and a lookup for an address reads only the managed
+label's directory and `addr-<port>-*` (RT-175). The managed daemon
 prunes records whose pid is dead or reused hourly (metadata, not evidence).
 
 `fathom daemon ps`: records joined with a live census (`ps -axo pid,ppid,etime,rss,command`

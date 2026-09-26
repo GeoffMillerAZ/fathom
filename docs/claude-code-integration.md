@@ -179,8 +179,10 @@ launchctl load ~/Library/LaunchAgents/<reverse-dns>.fathom-http.plist
 tail -f /tmp/fathom-http.log     # expect: serve-http: listening on 127.0.0.1:7575
 ```
 
-No launchd (Linux/CI)? `nohup fathom serve-http --store … --addr :7575 &` works, but it dies with the
-shell — use a systemd unit or supervisor for persistence.
+No launchd (Linux/CI)? Run it under a systemd unit or other supervisor and pass `--managed`.
+Without `--managed` a `serve-http` is an unmanaged scratch daemon (ADR-047 §10.1): it exits when
+the process that started it exits (a `nohup … &` from a shell included), after 20 minutes without a
+request, or after 8 hours, and refuses the managed daemon's store and call log.
 
 **2 — Register over HTTP at user scope.** Remove the stdio entry first, or `add` fails with
 "already exists":

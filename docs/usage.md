@@ -1427,13 +1427,24 @@ heartbeat; `?` without one), parent alive, unlinked executable, record state.
 Verdicts: `ok`, `orphaned` (unmanaged, parent gone), `idle` (unmanaged, no
 request for 1 h), `unlinked`, `no-record`, `stale-record` (the record's process
 is gone or its pid was reused). The managed daemon is never judged orphaned or
-idle; a record-less process on the managed address counts as managed.
+idle; a record-less process on the managed address — the installed plist's
+`--addr`, else `[daemon].addr`, else `127.0.0.1:7575` — counts as managed. A
+daemon with a request in flight (an open `/events` stream) is never idle.
 
 `reap` is a **dry run by default**: it prints what it would kill and prune.
 With `--apply` it kills only unmanaged daemons whose verdict is not `ok`
 (SIGTERM, `--grace`, SIGKILL), re-checking each pid against a fresh census
-first (a reused pid is skipped), never the managed daemon and never its own
-process tree, removes their records and prunes stale ones.
+first (a reused pid is skipped), never the managed daemon, never its own
+process tree, and never a `no-record` daemon whose parent is alive (its record
+lives under another HOME — stranger-check's, a test suite's — and its own
+bounds apply); it removes their records and prunes stale ones whose pid is
+still gone at prune time.
+
+Records do not accumulate: an unmanaged daemon removes its record on its
+bounded exits and on SIGTERM, SIGINT or SIGHUP (exiting 128+signo), and a
+daemon recording itself prunes the records of scratch daemons whose pid is
+gone (a SIGKILL or a crash). The managed daemon's record is kept while it is
+down, so verbs still find its call log.
 
 `status --json`: `{platform, label?, plist?, url, reachable, detail?,
 remedy?, exit_code}` — exit 1 when not reachable, same as the text path.
