@@ -167,7 +167,7 @@ func renderClaimFacts(d console.ClaimPage) string {
 		{Term: "status", Detail: d.Status},
 		{Term: "evidence tier", Detail: d.Tier},
 		{Term: "scope", DetailHTML: template.HTML(`<span class="font-mono text-xs [overflow-wrap:anywhere]">` + html.EscapeString(strings.Join(d.Scope, ", ")) + `</span>`)},
-		{Term: "subject", DetailHTML: template.HTML(`<span class="font-mono text-xs [overflow-wrap:anywhere]">` + html.EscapeString(d.Subject) + `</span>`)},
+		{Term: "subject", DetailHTML: template.HTML(`<span class="block min-w-0 font-mono text-xs [overflow-wrap:anywhere]">` + html.EscapeString(d.Subject) + `</span>`)},
 	}
 	if d.Model != "" {
 		items = append(items, chrome.DescItem{Term: "compiled by", Detail: d.Model + " · " + d.PromptVersion})
@@ -185,7 +185,7 @@ func renderClaimFacts(d console.ClaimPage) string {
 		items = append(items, chrome.DescItem{Term: "valid", Detail: valid})
 	}
 	if d.AssertedBy != "" {
-		items = append(items, chrome.DescItem{Term: "asserted by", Detail: d.AssertedBy})
+		items = append(items, chrome.DescItem{Term: "asserted by", DetailHTML: template.HTML(`<span class="font-mono text-xs [overflow-wrap:anywhere]">` + html.EscapeString(d.AssertedBy) + `</span>`)})
 	}
 	return `<div class="mt-3">` + chrome.RenderDescriptionList(items) + `</div>`
 }
