@@ -325,6 +325,18 @@ type Store interface {
 	// not counted.
 	SourceKindCounts(ctx context.Context, serviceID string) ([]SourceKindCount, error)
 
+	// SourcePackages returns the distinct packages of serviceID's
+	// observations anchored at sourceRef, sorted (RT-27: the refresh-file
+	// route's package lookup, one file's rows, never the whole table).
+	// Filtered by suppression: a suppressed file names no package.
+	SourcePackages(ctx context.Context, serviceID, sourceRef string) ([]string, error)
+
+	// PackageObservations returns serviceID's observations whose package is
+	// one of pkgs, in (source_ref, line, symbol) order — a package's
+	// complete node set without loading any other package's rows (RT-27).
+	// Filtered by suppression on source_ref.
+	PackageObservations(ctx context.Context, serviceID string, pkgs []string) ([]core.Observation, error)
+
 	// ListSourceRefs returns the sorted, distinct set of source_refs known to
 	// the store for serviceID — the union of refs appearing in observations
 	// and fingerprints (fingerprint-only refs exist for files with no

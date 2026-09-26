@@ -212,3 +212,40 @@ func (m *MemoryStore) SourceKindCounts(ctx context.Context, serviceID string) ([
 	rows, err := m.sourceKindCountsRaw(ctx, serviceID)
 	return filterScoped(ctx, m.gate, serviceID, rows, err, func(r SourceKindCount) string { return r.SourceRef })
 }
+
+// SourcePackages filters by the one source_ref it reads (RT-27).
+func (s *SQLiteStore) SourcePackages(ctx context.Context, serviceID, sourceRef string) ([]string, error) {
+	pkgs, err := s.sourcePackagesRaw(ctx, serviceID, sourceRef)
+	return filterSourcePackages(ctx, s.gate, serviceID, sourceRef, pkgs, err)
+}
+
+// SourcePackages filters by the one source_ref it reads (RT-27).
+func (m *MemoryStore) SourcePackages(ctx context.Context, serviceID, sourceRef string) ([]string, error) {
+	pkgs, err := m.sourcePackagesRaw(ctx, serviceID, sourceRef)
+	return filterSourcePackages(ctx, m.gate, serviceID, sourceRef, pkgs, err)
+}
+
+// filterSourcePackages drops every package when sourceRef itself is
+// suppressed — the rows all share that one anchor.
+func filterSourcePackages(ctx context.Context, g scopeGate, serviceID, sourceRef string, pkgs []string, err error) ([]string, error) {
+	if err != nil || len(pkgs) == 0 {
+		return pkgs, err
+	}
+	kept, ferr := filterScoped(ctx, g, serviceID, []string{sourceRef}, nil, func(r string) string { return r })
+	if ferr != nil || len(kept) == 0 {
+		return nil, ferr
+	}
+	return pkgs, nil
+}
+
+// PackageObservations filters by observations.source_ref (RT-27).
+func (s *SQLiteStore) PackageObservations(ctx context.Context, serviceID string, pkgs []string) ([]core.Observation, error) {
+	obs, err := s.packageObservationsRaw(ctx, serviceID, pkgs)
+	return filterScoped(ctx, s.gate, serviceID, obs, err, func(o core.Observation) string { return o.SourceRef })
+}
+
+// PackageObservations filters by observations.source_ref (RT-27).
+func (m *MemoryStore) PackageObservations(ctx context.Context, serviceID string, pkgs []string) ([]core.Observation, error) {
+	obs, err := m.packageObservationsRaw(ctx, serviceID, pkgs)
+	return filterScoped(ctx, m.gate, serviceID, obs, err, func(o core.Observation) string { return o.SourceRef })
+}

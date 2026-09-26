@@ -24,6 +24,7 @@ package fusion
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
@@ -50,6 +51,10 @@ type ReingestReport struct {
 	// PREVIOUS symbol set and may no longer match. Always false when
 	// Refreshed is false.
 	TypedEdgesStale bool
+	// Skipped names why the file was checked but not read or re-extracted
+	// without an error: "oversize (N bytes over the 2097152-byte cap; not
+	// read)" (RT-27). Empty otherwise.
+	Skipped string
 }
 
 // ReingestFile re-extracts relFile (repo-relative, forward-slash) under
@@ -61,13 +66,26 @@ type ReingestReport struct {
 // say — without needing a fresh Pipeline per call.
 func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, repoPath, relFile string) (ReingestReport, error) {
 	absPath := filepath.Join(repoPath, filepath.FromSlash(relFile))
-	content, err := os.ReadFile(absPath)
+	// RT-27: stat before reading. A file over MaxExtractSize is never
+	// opened: it is fingerprinted by size (as an ingest would) and reported
+	// skipped, not failed.
+	fi, err := os.Stat(absPath)
+	if err != nil {
+		return ReingestReport{}, fmt.Errorf("fusion: ReingestFile stat %q: %w", relFile, err)
+	}
+	if fi.Size() > MaxExtractSize {
+		return p.reingestOversize(ctx, st, serviceID, relFile, fi.Size())
+	}
+	content, err := readCapped(absPath, MaxExtractSize)
 	if err != nil {
 		return ReingestReport{}, fmt.Errorf("fusion: ReingestFile read %q: %w", relFile, err)
 	}
+	if int64(len(content)) > MaxExtractSize {
+		return p.reingestOversize(ctx, st, serviceID, relFile, int64(len(content)))
+	}
 	hash := FingerprintHash(content)
 
-	if connector.IsBinary(content) || len(content) > MaxExtractSize {
+	if connector.IsBinary(content) {
 		if err := st.SetFingerprint(ctx, serviceID, relFile, hash); err != nil {
 			return ReingestReport{}, fmt.Errorf("fusion: ReingestFile set fingerprint %q: %w", relFile, err)
 		}
@@ -136,4 +154,39 @@ func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, 
 		Symbols:         len(nodes),
 		TypedEdgesStale: ext == ".go",
 	}, nil
+}
+
+// readCapped reads at most limit+1 bytes of path: a file that grew past the
+// cap after its stat is still bounded, and reads as oversize.
+func readCapped(path string, limit int64) ([]byte, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	return io.ReadAll(io.LimitReader(f, limit+1))
+}
+
+// reingestOversize records an oversize file the way an ingest does
+// (OversizeFingerprint; its old observations purged when the fingerprint
+// moves) without reading it.
+func (p *Pipeline) reingestOversize(ctx context.Context, st store.Store, serviceID, relFile string, size int64) (ReingestReport, error) {
+	rep := ReingestReport{Skipped: fmt.Sprintf("oversize (%d bytes over the %d-byte cap; not read)", size, MaxExtractSize)}
+	fp := OversizeFingerprint(size)
+	stored, found, err := st.Fingerprint(ctx, serviceID, relFile)
+	if err != nil {
+		return ReingestReport{}, fmt.Errorf("fusion: ReingestFile fingerprint %q: %w", relFile, err)
+	}
+	if found && stored == fp {
+		return rep, nil
+	}
+	if found {
+		if err := st.PurgeSource(ctx, serviceID, relFile); err != nil {
+			return ReingestReport{}, fmt.Errorf("fusion: ReingestFile purge %q: %w", relFile, err)
+		}
+	}
+	if err := st.SetFingerprint(ctx, serviceID, relFile, fp); err != nil {
+		return ReingestReport{}, fmt.Errorf("fusion: ReingestFile set fingerprint %q: %w", relFile, err)
+	}
+	return rep, nil
 }

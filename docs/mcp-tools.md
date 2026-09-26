@@ -126,7 +126,11 @@ outside the tool registry — hooks call these directly rather than through
 
 - `POST /refresh-file` — `{service, file}` re-extracts one file's
   observations/syntax edges and fingerprint (SU-5/SU-6, ADR-041 decisions 3
-  and 4); the pre-edit hook's per-file freshness check.
+  and 4); the pre-edit hook's per-file freshness check. It stats before it
+  reads: a file over 2 MiB is never opened, is fingerprinted by size, and
+  answers `{"refreshed": false, "skipped": "oversize (…; not read)"}` —
+  never an error (RT-27). The memoized graph is patched from the file's own
+  rows and its packages' rows, never a whole-service symbol load.
 - `GET /indexed?service=NAME` — `{"service", "indexed"}`: whether the service
   has a `service_meta` row with a non-zero `indexed_at` (RT-80,
   `pkg/client.IsIndexed`; exact id first, then case-insensitive). The

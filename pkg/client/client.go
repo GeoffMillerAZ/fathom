@@ -188,6 +188,32 @@ func (c *Client) ReingestFile(ctx context.Context, serviceID, relFile string) (f
 	return c.pipe.ReingestFile(ctx, c.st, serviceID, meta.Path, relFile)
 }
 
+// SourcePackages returns the distinct packages of the symbols anchored at
+// file (repo-relative) — one file's rows, never the whole symbol table
+// (RT-27).
+func (c *Client) SourcePackages(ctx context.Context, serviceID, file string) ([]string, error) {
+	pkgs, err := c.st.SourcePackages(ctx, serviceID, file)
+	if err != nil {
+		return nil, fmt.Errorf("client.SourcePackages: %w", err)
+	}
+	return pkgs, nil
+}
+
+// PackageSymbols returns every symbol of serviceID whose package is one of
+// pkgs — those packages' complete node sets, no other package's rows
+// (RT-27).
+func (c *Client) PackageSymbols(ctx context.Context, serviceID string, pkgs []string) ([]SymbolNode, error) {
+	obs, err := c.st.PackageObservations(ctx, serviceID, pkgs)
+	if err != nil {
+		return nil, fmt.Errorf("client.PackageSymbols: %w", err)
+	}
+	nodes := make([]SymbolNode, 0, len(obs))
+	for _, o := range obs {
+		nodes = append(nodes, o.ToSymbolNode())
+	}
+	return nodes, nil
+}
+
 // refuseWorktreeReroot applies worktree.CheckReroot against the recorded
 // root for service, when there is one and path is an existing directory.
 func (c *Client) refuseWorktreeReroot(ctx context.Context, service, path string) error {
