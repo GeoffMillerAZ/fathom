@@ -71,9 +71,9 @@ wave is called done.
 
 ## G. Learn
 
-- [ ] How fathom works draws the pipeline with live counts for a chosen project, each stage linking to its page {id: OC-46, symbol: PipelineView, package: internal/console, reachable_from: TestPipelineView_StagesAndCounts}
-- [ ] Ask the right way maps question shapes to tools, each with a read-only try-it answer on the chosen project {id: OC-47, symbol: AskGuide, package: internal/console, reachable_from: TestAskGuide_QuestionShapesToTools}
-- [ ] The use-case guides render with a table of contents, beside a glossary and the laws {id: OC-48, oracle: lexical, path: cmd/fathom/console_learn.go, pattern: "RenderToCRail"}
+- [x] How fathom works draws the pipeline with live counts for a chosen project, each stage linking to its page {id: OC-46, symbol: PipelineView, package: internal/console, reachable_from: TestPipelineView_StagesAndCounts}
+- [x] Ask the right way maps question shapes to tools, each with a read-only try-it answer on the chosen project {id: OC-47, symbol: AskGuide, package: internal/console, reachable_from: TestAskGuide_QuestionShapesToTools}
+- [x] The use-case guides render with a table of contents, beside a glossary and the laws {id: OC-48, oracle: lexical, path: cmd/fathom/console_learn.go, pattern: "RenderToCRail"}
 
 ## H. App-kit contributions (in app-kit, fathom as originating consumer)
 
