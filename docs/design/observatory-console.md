@@ -189,7 +189,7 @@ the window on some page, "new" counted over all of them), and a fleet pulse. The
 pulse shows the realization ladder per project with one shared sparkline scale.
 
 **Fleet.** A sortable, filterable table of every project. Columns: symbols, languages,
-freshness, realization ladder, plans proven/open, claims fresh, certificates live, calls
+freshness, realization ladder, plans proven/open, claims current, certificates live, calls
 over 14 days, and open observations. Above it, `topology.Render` rolls projects up by
 health. Unknown is never green.
 

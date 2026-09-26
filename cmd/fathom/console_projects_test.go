@@ -37,9 +37,10 @@ func writeIntentCorpus(t *testing.T, root string) (invariants, incidents string)
 // TestConsoleProjects_UnreadableIntentCorpusIsALowerBound: the survey's
 // EPERM case. With the corpus readable a project declares three targets;
 // with two of its files unreadable, certify status is a named lower bound
-// (partial) — and with nothing readable, unknown (error) — on the tile, in
-// the queue (which turns partial), in the fleet cell and in the verb's own
-// JSON. Never "no project declares a certification target".
+// (partial) — and with nothing readable, unknown (error) — in the queue
+// (which turns partial), in the fleet cell and in the verb's own JSON; the
+// fleet tile (certify.live, the Certifications page's total) shows no total
+// and names the files. Never "no project declares a certification target".
 func TestConsoleProjects_UnreadableIntentCorpusIsALowerBound(t *testing.T) {
 	ctx := context.Background()
 	st := store.NewMemoryStore()
@@ -58,7 +59,7 @@ func TestConsoleProjects_UnreadableIntentCorpusIsALowerBound(t *testing.T) {
 	if full.State != console.StatePresent || full.V.Declared != 3 || full.V.Gaps != 3 {
 		t.Fatalf("readable corpus = %+v", full)
 	}
-	if v := console.CertificatesLive(project(full)); v.State != console.StateZero || !strings.Contains(v.Denominator, "3 declared targets") {
+	if v := console.ProjectMetrics(project(full))[console.MetricCertLive]; v.State != console.StateZero || !strings.Contains(v.Denominator, "of 3 targets") {
 		t.Errorf("readable tile = %+v", v)
 	}
 
@@ -76,8 +77,11 @@ func TestConsoleProjects_UnreadableIntentCorpusIsALowerBound(t *testing.T) {
 		t.Fatalf("nothing declared, corpus unreadable = %+v; want unknown, naming the files", blind)
 	}
 	p := project(blind)
-	if v := console.CertificatesLive(p); v.State != console.StatePartial || strings.Contains(v.Reason, "no project declares") {
-		t.Errorf("tile over an unreadable corpus = %+v; want a named lower bound", v)
+	// The tile is certify.live, the Certifications page's own total (OC-H3):
+	// a service whose targets could not all be read leaves no total, and
+	// names the files — never "no service declares a target".
+	if v := console.ProjectMetrics(p)[console.MetricCertLive]; v.State != console.StateError || strings.Contains(v.Reason, "declares") || !strings.Contains(v.Reason, "invariants.md") {
+		t.Errorf("tile over an unreadable corpus = %+v; want an error naming the unread files", v)
 	}
 	a := console.AttentionQueue(p)
 	if a.State != console.StatePartial || !strings.Contains(a.Reason, console.SourceCertTargets) || a.ByKind[console.AttentionCertificates] != 1 {

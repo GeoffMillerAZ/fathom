@@ -3160,13 +3160,15 @@ unreadable store) render on the same shell with the reason and the remedy.
   `fleet.symbols`, `calls.total` (every row in the resolved call log —
   unattributed rows are named, never dropped), `sessions.total` (distinct
   sessions, never ledger rows) and `observations.open` (a partial count stays a
-  "≥" lower bound everywhere, the brief included); with wave B,
-  `fleet.wired_fresh`, `plans.verified` (the newest recorded verify run of each
-  plan at its project's registered root), `claims.fresh` and
-  `certificates.live`; with wave C, `plans.claimed_unproven`, `plans.proven`,
-  `certify.gaps` and `certify.live`, the Proof pages' fleet totals; with wave
-  D, `claims.current` (governed claims serving can still use, fleet-wide) on
-  `/layers` and `/packs`.
+  "≥" lower bound everywhere, the brief included); `fleet.wired_fresh`;
+  `plans.proven` and `plans.claimed_unproven` (the claimed rows the gate proves
+  and does not, `plans status` over every plan — the Plans page's headline);
+  `claims.current` (governed claims serving can still use: fresh, stale,
+  contradicted); `certify.live` and `certify.gaps` (`certify gaps` summed over
+  every service). One metric per question (`console.MetricCatalog`): the Now,
+  Fleet, Plans, Layers, Packs and Certifications pages all read these, and
+  the ids that once answered the same questions a second way
+  (`plans.verified`, `claims.fresh`, `certificates.live`) are gone.
 - The Proof pages verify plans in the background through the path `plans
   status` takes, keyed by each plan's content, the index watermark and HEAD: a
   page waits a bounded time, shows a plan still verifying as "not yet

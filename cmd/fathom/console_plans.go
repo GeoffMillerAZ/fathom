@@ -142,20 +142,43 @@ func verifiedRollups(sp console.ServicePlans) ([]planRollup, bool) {
 	return out, true
 }
 
+// plansPortfolio is the Proof ledger's portfolio over roots: every plan
+// snapshotted from the background verification (waiting the portfolio's
+// budget), with the verify ledger's trend. The Plans page renders it, and
+// its fleet headline is the plans metrics every page shows (fleetPlanMetrics).
+func plansPortfolio(cr *consoleRequest, m observatoryModel, roots []serviceRoot) (console.Portfolio, []console.ServicePlans) {
+	pc := plansFor(cr.deps)
+	sps := snapshotPlans(cr.r.Context(), pc, roots, "", consolePlansPortfolioWait)
+	ledger := pc.ledgerRead()
+	return console.PlanPortfolio(console.PortfolioInput{
+		Services: sps, Registered: len(m.Services),
+		Ledger: ledger.Runs, LedgerPath: ledger.Path, LedgerErr: ledger.Err,
+		PlanHref: planHref, MinTrendDays: console.DefaultTrendDays,
+	}), sps
+}
+
+// fleetPlanMetrics is the fleet's plans headline — plans.claimed_unproven
+// and plans.proven, the portfolio over every registered repository — the
+// one projection the Now, Fleet and Plans pages show (OC-9, OC-H3; the
+// ledger-summed plans.verified that answered the same question is gone).
+// With the registry unread no repository can be listed, so neither is
+// measured.
+func fleetPlanMetrics(cr *consoleRequest, m observatoryModel) (unproven, proven console.Value[int]) {
+	if m.DegradedNote != "" {
+		a := console.Absent[int]("no repository can be listed: " + m.DegradedNote)
+		return a, a
+	}
+	pf, _ := plansPortfolio(cr, m, modelServiceRoots(m))
+	return pf.Unproven, pf.Proven
+}
+
 func buildPlansPortfolioPage(cr *consoleRequest) (consoleOut, error) {
 	m := cr.model()
 	roots, scope, err := plansScope(cr, m)
 	if err != nil {
 		return consoleOut{}, err
 	}
-	pc := plansFor(cr.deps)
-	sps := snapshotPlans(cr.r.Context(), pc, roots, "", consolePlansPortfolioWait)
-	ledger := pc.ledgerRead()
-	pf := console.PlanPortfolio(console.PortfolioInput{
-		Services: sps, Registered: len(m.Services),
-		Ledger: ledger.Runs, LedgerPath: ledger.Path, LedgerErr: ledger.Err,
-		PlanHref: planHref, MinTrendDays: console.DefaultTrendDays,
-	})
+	pf, sps := plansPortfolio(cr, m, roots)
 	model := plansPortfolioModel{Scope: scope, Portfolio: pf}
 	verbs := []string{}
 	sections := map[string]any{}

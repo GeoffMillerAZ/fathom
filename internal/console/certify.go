@@ -11,6 +11,7 @@ package console
 import (
 	"fmt"
 	"sort"
+	"strings"
 )
 
 // The certifications layer's shared metrics (OC-9): the fleet's targets
@@ -199,24 +200,79 @@ func CertMatrix(services []CertServiceFacts, scope string, serviceHref func(stri
 		}
 		return a.ID < b.ID
 	})
-	const source = "fathom certify gaps, per service"
-	denom := fmt.Sprintf("targets across %s", countNoun(len(services), "service"))
+	v.Declared, v.Live, v.GapCount = CertifyTotals(services)
+	if scope != "" && len(services) == 1 && services[0].Skip != "" && v.Declared.State == StateAbsent {
+		// A repository's own view names its own skip.
+		reason := services[0].Service + ": " + services[0].Skip
+		v.Declared, v.Live, v.GapCount = Absent[int](reason).WithSource(certifySource), Absent[int](reason).WithSource(certifySource), Absent[int](reason).WithSource(certifySource)
+	}
+	return v
+}
+
+// certifySource names what the certification totals are read from.
+const certifySource = "fathom certify gaps, per service"
+
+// CertifyTotals is the fleet's certification totals over per-service
+// `certify gaps` reports — the targets declared, those with a live
+// certificate (certify.live) and the gaps (certify.gaps) — the one
+// projection behind the Now, Fleet and Certifications pages (OC-9, OC-H3).
+// A service whose report could not be made, or whose targets could not all
+// be read, makes every total an error naming it, never a smaller number
+// (I38); a service that declares nothing adds nothing.
+func CertifyTotals(services []CertServiceFacts) (declared, live, gaps Value[int]) {
+	var d, l, g, repos int
+	var failed []string
+	for _, s := range services {
+		switch {
+		case s.Err != "":
+			failed = append(failed, s.Service+" ("+s.Err+")")
+		case s.Declared > 0:
+			d += s.Declared
+			l += s.Live
+			g += s.Gaps
+			repos++
+		}
+	}
+	sort.Strings(failed)
 	switch {
 	case len(failed) > 0:
 		reason := "certify gaps failed for " + joinFew(failed) + " — no total is shown, since one without them would read as fewer gaps"
-		v.Declared, v.Live, v.GapCount = Errored[int](reason).WithSource(source), Errored[int](reason).WithSource(source), Errored[int](reason).WithSource(source)
-	case declared == 0:
-		reason := "no service declares a certification target"
-		if len(services) == 1 && services[0].Skip != "" {
-			reason = services[0].Service + ": " + services[0].Skip
-		}
-		v.Declared, v.Live, v.GapCount = Absent[int](reason).WithSource(source), Absent[int](reason).WithSource(source), Absent[int](reason).WithSource(source)
-	default:
-		v.Declared = Measured(declared, source).WithDenominator(denom)
-		v.Live = Measured(live, source).WithDenominator(fmt.Sprintf("of %d targets", declared))
-		v.GapCount = Measured(gaps, source).WithDenominator(fmt.Sprintf("of %d targets", declared))
+		e := Errored[int](reason).WithSource(certifySource)
+		return e, e, e
+	case d == 0:
+		a := Absent[int]("no service declares a certification target").WithSource(certifySource)
+		return a, a, a
 	}
-	return v
+	in := countNoun(repos, "repo")
+	return Measured(d, certifySource).WithDenominator("targets declared in " + in),
+		Measured(l, certifySource).WithDenominator(fmt.Sprintf("of %d targets in %s", d, in)),
+		Measured(g, certifySource).WithDenominator(fmt.Sprintf("of %d targets in %s", d, in))
+}
+
+// CertUnreadErr is a service's certify report that could not read every
+// target source, as every page names it: its counts would be a lower bound.
+func CertUnreadErr(unread []string) string {
+	return "certify could not read " + strings.Join(unread, "; ") + " — its targets would be a lower bound"
+}
+
+// CertFactsFromCounts is a project's certify status (the project set's
+// per-project read) as the totals read it — the same facts the
+// Certifications page builds from the same report.
+func CertFactsFromCounts(service string, c Value[CertCounts]) (CertServiceFacts, bool) {
+	f := CertServiceFacts{Service: service, Targets: []CertTargetFact{}}
+	switch {
+	case c.V.Err != "":
+		f.Err = c.V.Err
+	case len(c.V.Unreadable) > 0:
+		f.Err = CertUnreadErr(c.V.Unreadable)
+	case c.State == StateError:
+		f.Err = c.Reason
+	case !c.State.HasValue():
+		return f, false // not read (no local root, no store): adds nothing
+	default:
+		f.Declared, f.Live, f.Gaps, f.Cases, f.JoinedCases = c.V.Declared, c.V.Live, c.V.Gaps, c.V.Cases, c.V.JoinedCases
+	}
+	return f, true
 }
 
 func joinRate(s CertServiceFacts) Value[int] {

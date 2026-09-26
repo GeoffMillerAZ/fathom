@@ -15,6 +15,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -140,8 +141,19 @@ func TestConsoleNow_QueueSinceAndPulse(t *testing.T) {
 	}
 	// The fixture fleet's store: claims and certificates read (no targets
 	// declared: absent, never 0), the ledger and the store named as read.
-	if rep.Summary.CertificatesLive.State != console.StateAbsent || rep.Summary.PlanRowsVerified.V != 3 || rep.Summary.GateRefusals.V != 1 || rep.Summary.GateRefusals.State != console.StatePresent {
+	if rep.Summary.CertifyLive.State != console.StateAbsent || rep.Summary.GateRefusals.V != 1 || rep.Summary.GateRefusals.State != console.StatePresent {
 		t.Errorf("summary = %+v", rep.Summary)
+	}
+	// One metric per question (OC-H3): the summary's claims and
+	// certificates are the page's shared metrics themselves.
+	for id, v := range map[console.MetricID]console.Value[int]{console.MetricClaims: rep.Summary.ClaimsCurrent, console.MetricCertLive: rep.Summary.CertifyLive} {
+		var shared console.Value[int]
+		if err := json.Unmarshal(env.Metrics[string(id)], &shared); err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(v, shared) {
+			t.Errorf("summary %s = %+v, the shared metric %+v", id, v, shared)
+		}
 	}
 	// Since you last looked: the previous view two hours ago; the daemon's
 	// start (its record) is new since.
@@ -307,9 +319,6 @@ func TestConsoleNow_GateStateIsTheRunAtHEAD(t *testing.T) {
 	if stale == nil || stale.Subject != "docs/plans/toolident.md" || !strings.Contains(stale.Title, "was last verified before HEAD") ||
 		!strings.Contains(stale.Detail, "d8770983") || !strings.Contains(stale.Detail, "failed 1") || strings.Contains(stale.Title, "fails") {
 		t.Errorf("stale item = %+v", stale)
-	}
-	if v := rep.Summary.PlanRowsVerified; v.State != console.StateStale || v.V != 52 || !strings.Contains(v.Reason, "before HEAD") {
-		t.Errorf("plan rows verified = %+v; want the HEAD run's 45 plus the stale run's 7, stale", v)
 	}
 
 	var fleet console.FleetTableModel

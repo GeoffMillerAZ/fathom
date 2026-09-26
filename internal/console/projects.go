@@ -41,11 +41,13 @@ const (
 
 // ClaimCounts are one project's governed claims by status.
 type ClaimCounts struct {
-	Total      int `json:"total"`
-	Fresh      int `json:"fresh"`
-	Stale      int `json:"stale"`
-	Superseded int `json:"superseded"`
-	Other      int `json:"other"` // contradicted, refuted
+	Total        int `json:"total"`
+	Fresh        int `json:"fresh"`
+	Stale        int `json:"stale"`
+	Superseded   int `json:"superseded"`
+	Contradicted int `json:"contradicted"`
+	Refuted      int `json:"refuted"`
+	Other        int `json:"other"` // contradicted, refuted, and any other status
 }
 
 // CertCounts are one project's certification targets (certify status):
@@ -58,6 +60,8 @@ type CertCounts struct {
 	Cases       int      `json:"cases"`
 	JoinedCases int      `json:"joined_cases"`
 	Unreadable  []string `json:"unreadable,omitempty"`
+	// Err is the report's own failure, when certify could not make one.
+	Err string `json:"error,omitempty"`
 }
 
 // GuideCoverage is the obligations layer's latest compile as it bears on
@@ -144,23 +148,39 @@ type Projects struct {
 	Now          time.Time
 }
 
-// Shared metrics the Now and Fleet pages both show (OC-9: one projection
-// per metric; TestConsoleMetricsAgreeAcrossPages holds every page to it).
-const (
-	MetricWiredFresh       MetricID = "fleet.wired_fresh"
-	MetricPlanRowsVerified MetricID = "plans.verified"
-	MetricClaimsFresh      MetricID = "claims.fresh"
-	MetricCertificatesLive MetricID = "certificates.live"
-)
+// Shared metrics the Now and Fleet pages show from the project set (OC-9:
+// one projection per metric; TestConsoleMetricsAgreeAcrossPages holds every
+// page to it). Claims and certificates are the same projections the
+// Knowledge and Certifications pages read (OC-H3); the plans headline is
+// the Proof ledger's own (PlanPortfolio), computed in cmd/fathom.
+const MetricWiredFresh MetricID = "fleet.wired_fresh"
 
 // ProjectMetrics is every shared metric projected from the project set.
 func ProjectMetrics(p Projects) Metrics {
-	return Metrics{
-		MetricWiredFresh:       WiredAndFresh(p),
-		MetricPlanRowsVerified: PlanRowsVerified(p),
-		MetricClaimsFresh:      ClaimsFresh(p),
-		MetricCertificatesLive: CertificatesLive(p),
+	m := Metrics{MetricWiredFresh: WiredAndFresh(p)}
+	if v, ok := storeUnread[int](p.Store, storeClaimsSource); ok {
+		m[MetricClaims] = v
+	} else {
+		var facts []ClaimStatusFact
+		for _, r := range p.Rows {
+			if f, ok := ClaimFactFromCounts(r.Service, r.Claim); ok {
+				facts = append(facts, f)
+			}
+		}
+		m[MetricClaims] = ClaimsCurrent(facts)
 	}
+	if v, ok := storeUnread[int](p.Store, certifySource); ok {
+		m[MetricCertLive], m[MetricCertGaps] = v, v
+	} else {
+		var facts []CertServiceFacts
+		for _, r := range p.Rows {
+			if f, ok := CertFactsFromCounts(r.Service, r.Certs); ok {
+				facts = append(facts, f)
+			}
+		}
+		_, m[MetricCertLive], m[MetricCertGaps] = CertifyTotals(facts)
+	}
+	return m
 }
 
 const registryRungsSource = "the observatory model's realization ladder (wired, fresh) over the daemon's registry"
@@ -199,157 +219,13 @@ func WiredAndFresh(p Projects) Value[int] {
 	return Measured(n, registryRungsSource).WithDenominator(denom)
 }
 
+// verifyLedgerSource names what a project's recorded proof is read from.
 const verifyLedgerSource = "the verify ledger (each plan's newest run at HEAD — at the registered root or in any clone — else the root's newest, stale)"
-
-// PlanRowsVerified sums the claimed plan rows each plan's recorded proof
-// verified. Runs that proved an older commit make the sum stale, named
-// with how many plans and repos; plans no run ever checked (or a plans
-// directory that could not be read) make it a lower bound, named.
-func PlanRowsVerified(p Projects) Value[int] {
-	switch p.Ledger.State {
-	case StateError:
-		return Errored[int]("verify ledger unreadable: " + p.Ledger.Reason).WithSource(verifyLedgerSource)
-	case StateAbsent:
-		return Absent[int](nonEmpty(p.Ledger.Reason, "no verify ledger — no `fathom verify` run is recorded")).WithSource(verifyLedgerSource)
-	}
-	verified, claimed, plans, repos, stalePlans := 0, 0, 0, 0, 0
-	var unrunNames, staleNames, unreadNames []string
-	var staleOldest string
-	for _, r := range p.Rows {
-		if r.PlansErr != "" {
-			unreadNames = append(unreadNames, r.Service)
-		}
-		proof := ProjectProof(r)
-		if len(proof.Unrun) > 0 || (len(r.Runs) == 0 && r.HasPlans) {
-			unrunNames = append(unrunNames, r.Service)
-		}
-		if len(r.Runs) == 0 {
-			continue
-		}
-		verified += proof.Verified
-		claimed += proof.Claimed
-		plans += proof.Plans
-		repos++
-		if proof.Stale > 0 {
-			stalePlans += proof.Stale
-			staleNames = append(staleNames, r.Service)
-			if staleOldest == "" || proof.StaleOldest < staleOldest {
-				staleOldest = proof.StaleOldest
-			}
-		}
-	}
-	if repos == 0 {
-		if len(unreadNames) > 0 {
-			return Errored[int](fmt.Sprintf("plans unreadable in %s", shortList(unreadNames, 3))).WithSource(verifyLedgerSource)
-		}
-		return Absent[int]("no verify run is recorded at any registered root, nor at any project's HEAD").WithSource(verifyLedgerSource)
-	}
-	denom := fmt.Sprintf("of %s across %s in %s", thousandsNoun(claimed, "claimed row"), countNoun(plans, "plan"), countNoun(repos, "repo"))
-	var lower []string
-	if len(unrunNames) > 0 {
-		lower = append(lower, fmt.Sprintf("%s with plans no recorded verify run checked (%s)", countNoun(len(unrunNames), "project"), shortList(unrunNames, 3)))
-	}
-	if len(unreadNames) > 0 {
-		lower = append(lower, fmt.Sprintf("plans unreadable in %s", shortList(unreadNames, 3)))
-	}
-	if stalePlans > 0 {
-		reason := fmt.Sprintf("%s in %s %s last verified before HEAD (%s); the oldest run %s", countNoun(stalePlans, "plan"), countNoun(len(staleNames), "repo"), pluralVerb(stalePlans, "was", "were"), shortList(staleNames, 3), dayOf(staleOldest))
-		if age := ageText(staleOldest, p.Now); age != "" {
-			reason += ", " + age + " old"
-		}
-		if len(lower) > 0 {
-			reason += "; also " + strings.Join(lower, "; ")
-		}
-		v := Stale(verified, reason, time.Time{}).WithSource(verifyLedgerSource).WithDenominator(denom)
-		if t, err := time.Parse(time.RFC3339Nano, staleOldest); err == nil {
-			v = v.WithAsOf(t)
-		}
-		return v
-	}
-	if len(lower) > 0 {
-		return Partial(verified, strings.Join(lower, "; ")+"; lower bound").WithSource(verifyLedgerSource).WithDenominator(denom)
-	}
-	return Measured(verified, verifyLedgerSource).WithDenominator(denom)
-}
 
 const storeClaimsSource = "the daemon's store (semantic_claims)"
 
-// ClaimsFresh sums fresh governed claims across projects.
-func ClaimsFresh(p Projects) Value[int] {
-	if v, ok := storeUnread[int](p.Store, storeClaimsSource); ok {
-		return v
-	}
-	fresh, total, stale, superseded, repos := 0, 0, 0, 0, 0
-	var failed []string
-	for _, r := range p.Rows {
-		switch r.Claim.State {
-		case StateError:
-			failed = append(failed, r.Service)
-			continue
-		case StateAbsent:
-			continue
-		}
-		c := r.Claim.V
-		fresh += c.Fresh
-		total += c.Total
-		stale += c.Stale
-		superseded += c.Superseded
-		if c.Total > 0 {
-			repos++
-		}
-	}
-	denom := fmt.Sprintf("of %s in %s · %s stale · %s superseded", thousandsNoun(total, "claim"), countNoun(repos, "repo"), thousands(stale), thousands(superseded))
-	if len(failed) > 0 {
-		return Partial(fresh, fmt.Sprintf("claims unreadable for %s (%s); lower bound", countNoun(len(failed), "project"), shortList(failed, 3))).WithSource(storeClaimsSource).WithDenominator(denom)
-	}
-	return Measured(fresh, storeClaimsSource).WithDenominator(denom)
-}
-
+// storeCertsSource names what a project's certificate counts are read from.
 const storeCertsSource = "certify status over the daemon's store and each repo's intent corpus"
-
-// CertificatesLive sums live certificates over the declared targets. A
-// project whose targets could not all be read (certify.Gaps named an
-// unreadable intent corpus) makes the sum a named lower bound — never a
-// smaller count, and never "declares none" (I38).
-func CertificatesLive(p Projects) Value[int] {
-	if v, ok := storeUnread[int](p.Store, storeCertsSource); ok {
-		return v
-	}
-	live, declared, repos := 0, 0, 0
-	var failed, partial []string
-	for _, r := range p.Rows {
-		switch r.Certs.State {
-		case StateError:
-			failed = append(failed, r.Service)
-			continue
-		case StateAbsent:
-			continue
-		case StatePartial:
-			partial = append(partial, r.Service)
-		}
-		if r.Certs.V.Declared == 0 {
-			continue
-		}
-		live += r.Certs.V.Live
-		declared += r.Certs.V.Declared
-		repos++
-	}
-	if declared == 0 && len(failed) == 0 && len(partial) == 0 {
-		return Absent[int]("no project declares a certification target").WithSource(storeCertsSource)
-	}
-	denom := fmt.Sprintf("of %s in %s", thousandsNoun(declared, "declared target"), countNoun(repos, "repo"))
-	var lower []string
-	if len(failed) > 0 {
-		lower = append(lower, fmt.Sprintf("certificates unreadable for %s (%s)", countNoun(len(failed), "project"), shortList(failed, 3)))
-	}
-	if len(partial) > 0 {
-		lower = append(lower, fmt.Sprintf("targets read in part for %s (%s)", countNoun(len(partial), "project"), shortList(partial, 3)))
-	}
-	if len(lower) > 0 {
-		return Partial(live, strings.Join(lower, "; ")+"; lower bound").WithSource(storeCertsSource).WithDenominator(denom)
-	}
-	return Measured(live, storeCertsSource).WithDenominator(denom)
-}
 
 // storeUnread is the store-wide absence or error every store metric shares.
 func storeUnread[T any](s SourceRead, source string) (Value[T], bool) {

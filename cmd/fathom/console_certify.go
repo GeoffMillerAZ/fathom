@@ -84,7 +84,7 @@ func certifyReport(ctx context.Context, pc *consolePlans, sr serviceRoot) certRe
 		// A source that could not be read makes every count a lower
 		// bound (I38): the repository reads as an error naming them, not
 		// as fewer targets, and the next read asks again.
-		r.err = "certify could not read " + strings.Join(rep.Unread, "; ") + " — its targets would be a lower bound"
+		r.err = console.CertUnreadErr(rep.Unread)
 		return r
 	}
 	r.report = rep

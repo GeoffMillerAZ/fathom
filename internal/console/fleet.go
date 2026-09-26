@@ -102,7 +102,9 @@ type FleetRow struct {
 	// Plans the full totals behind it.
 	PlansVerified Value[int] `json:"plans_verified"`
 	Plans         *PlanProof `json:"plans,omitempty"`
-	ClaimsFresh   Value[int] `json:"claims_fresh"`
+	// ClaimsCurrent is the project's claims serving can still use — the
+	// same definition as the claims.current metric (OC-H3).
+	ClaimsCurrent Value[int] `json:"claims_current"`
 	ClaimsTotal   int        `json:"claims_total"`
 	CertsLive     Value[int] `json:"certificates_live"`
 	CertsDeclared int        `json:"certificates_declared"`
@@ -150,7 +152,7 @@ var FleetSorts = []FleetSort{
 	{"freshness", "Index", false},
 	{"realization", "Realization", true},
 	{"plans", "Plans proven", true},
-	{"claims", "Claims fresh", true},
+	{"claims", "Claims current", true},
 	{"certs", "Certificates", true},
 	{"calls", "Calls, 14 days", true},
 	{"observations", "Observations", true},
@@ -404,12 +406,13 @@ func fleetRow(r ProjectFacts, p Projects, scaleMax int, logged func(int) bool) F
 	}
 	switch r.Claim.State {
 	case StatePresent, StateZero:
-		row.ClaimsFresh = Measured(r.Claim.V.Fresh, storeClaimsSource).WithDenominator(fmt.Sprintf("of %d claims", r.Claim.V.Total))
+		f, _ := ClaimFactFromCounts(r.Service, r.Claim)
+		row.ClaimsCurrent = Measured(f.Counts.Current(), storeClaimsSource).WithDenominator(fmt.Sprintf("of %d claims · %d fresh", r.Claim.V.Total, r.Claim.V.Fresh))
 		row.ClaimsTotal = r.Claim.V.Total
 	case StateError:
-		row.ClaimsFresh = Errored[int](r.Claim.Reason)
+		row.ClaimsCurrent = Errored[int](r.Claim.Reason)
 	default:
-		row.ClaimsFresh = Absent[int](nonEmpty(r.Claim.Reason, "claims not read"))
+		row.ClaimsCurrent = Absent[int](nonEmpty(r.Claim.Reason, "claims not read"))
 	}
 	switch {
 	case r.Certs.State == StateError:
@@ -634,7 +637,7 @@ func fleetSortKey(key string) func(FleetRow) (float64, bool) {
 			return float64(r.Plans.Verified) / float64(r.Plans.Claimed), true
 		}
 	case "claims":
-		return func(r FleetRow) (float64, bool) { return valueOK(r.ClaimsFresh) }
+		return func(r FleetRow) (float64, bool) { return valueOK(r.ClaimsCurrent) }
 	case "certs":
 		return func(r FleetRow) (float64, bool) { return valueOK(r.CertsLive) }
 	case "calls":

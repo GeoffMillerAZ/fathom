@@ -254,6 +254,12 @@ func storeFacts(ctx context.Context, src projectSources, row *console.ProjectFac
 				c.Stale++
 			case core.ClaimSuperseded:
 				c.Superseded++
+			case core.ClaimContradicted:
+				c.Contradicted++
+				c.Other++
+			case core.ClaimRefuted:
+				c.Refuted++
+				c.Other++
 			default:
 				c.Other++
 			}
@@ -291,7 +297,9 @@ func certCounts(ctx context.Context, st store.Store, service, root string) conso
 	const source = "the daemon's store"
 	gaps, err := certify.Gaps(ctx, st, service, root, nil)
 	if err != nil {
-		return console.Errored[console.CertCounts]("certify status failed: " + err.Error())
+		v := console.Errored[console.CertCounts]("certify status failed: " + err.Error())
+		v.V.Err = err.Error() // the report's own failure, as the Certifications page names it
+		return v
 	}
 	c := console.CertCounts{Declared: gaps.Summary.Declared, Live: gaps.Summary.Live, Gaps: gaps.Summary.Gaps,
 		Cases: gaps.Summary.Cases, JoinedCases: gaps.Summary.JoinedCases, Unreadable: gaps.Unread}

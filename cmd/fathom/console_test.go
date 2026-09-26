@@ -869,10 +869,22 @@ func TestConsoleMetricsAgreeAcrossPages(t *testing.T) {
 			t.Errorf("page %s JSON carries %d metrics, declares %d", p.ID, len(env.Metrics), len(p.Shows))
 		}
 	}
-	for _, id := range []console.MetricID{console.MetricServices, console.MetricSymbols, console.MetricCalls, console.MetricSessions, console.MetricObservations, console.MetricAgentTools,
-		console.MetricWiredFresh, console.MetricPlanRowsVerified, console.MetricClaimsFresh, console.MetricCertificatesLive,
-		console.MetricPlansUnproven, console.MetricPlansProven, console.MetricCertGaps, console.MetricCertLive,
-		console.MetricClaims, console.MetricProjectSymbols, console.MetricProjectCalls, console.MetricProjectSessions} {
+	// OC-H3: every metric a page shows is catalogued with the one question
+	// it answers (the catalog admits no second id for a question —
+	// TestMetricCatalog_OneMetricPerQuestion), and every catalogued metric
+	// says the same thing on every page that shows it. Two pages therefore
+	// cannot show two numbers for one question.
+	catalogued := map[string]bool{}
+	for _, spec := range console.MetricCatalog {
+		catalogued[string(spec.ID)] = true
+	}
+	for id, pages := range byMetric {
+		if !catalogued[id] {
+			t.Errorf("pages %v show %s, which the metric catalog does not name — its question may already have a metric", keysOf(pages), id)
+		}
+	}
+	for _, spec := range console.MetricCatalog {
+		id := spec.ID
 		pages := byMetric[string(id)]
 		if len(pages) == 0 {
 			t.Errorf("metric %s is shown on no page", id)
@@ -1060,42 +1072,29 @@ func TestConsoleMetricsAgreeAcrossPages(t *testing.T) {
 		}
 	}
 
-	// Plan proof in its hardest state — one plan verified at HEAD in a
-	// detached clone, one only at an older commit at the root, one never:
-	// every page says the same stale figure, and the Now and Fleet tiles
-	// draw the same number, stale.
-	g := newConsoleFixtureOpts(t, consoleFixtureOpts{Rooted: true})
-	root, head := rootedProject(t, g, "payment-service")
-	prevPlans := consolePlanExists
-	consolePlanExists = func(_, plan string) bool { return plan != "docs/plans/gone.md" }
-	t.Cleanup(func() { consolePlanExists = prevPlans })
-	writeVerifyLedger(t, []map[string]any{
-		{"schema_version": 2, "at": "2026-09-25T02:58:00Z", "repo_root": "/tmp/pushclone", "service": "payment-service", "plan": "docs/plans/a.md", "commit": head, "total": 10, "claimed": 8, "verified": 8, "origin": "cli"},
-		{"schema_version": 2, "at": "2026-09-19T21:00:33Z", "repo_root": root, "service": "payment-service", "plan": "docs/plans/b.md", "commit": "d8770983", "total": 5, "claimed": 5, "verified": 4, "failing": 1, "origin": "cli"},
-		{"schema_version": 2, "at": "2026-09-19T21:00:33Z", "repo_root": root, "service": "payment-service", "plan": "docs/plans/gone.md", "commit": "d8770983", "total": 5, "claimed": 5, "failing": 5, "origin": "cli"},
-	})
-	plansBy := map[string]string{}
-	for _, p := range defaultConsoleRegistry().pages {
-		for _, id := range p.Shows {
-			if id == console.MetricPlanRowsVerified {
-				plansBy[p.ID] = string(g.pageJSON(t, samplePath(p)).Metrics[string(id)])
-			}
-		}
+	// OC-H3: the Now and Fleet tiles and the brief's summary show the
+	// unified metrics through their one value: the plan rows the gate
+	// proves (the Plans page's headline, not a ledger sum beside it), the
+	// current claims (the Layers page's), the live certificates (the
+	// Certifications page's).
+	proven := value(console.MetricPlansProven)
+	if proven.State != console.StatePresent {
+		t.Fatalf("plans.proven = %+v, want the portfolio's verified figure", proven)
 	}
-	var planValue console.Value[int]
-	for page, raw := range plansBy {
-		if raw != plansBy["home"] {
-			t.Errorf("plans.verified: page %s says %s, Now %s", page, raw, plansBy["home"])
-		}
-		_ = json.Unmarshal([]byte(raw), &planValue)
+	_, _, nowBody := f.get(t, "/")
+	_, _, fleetBody := f.get(t, "/fleet")
+	if a, b := tileValue(t, nowBody, "Plan rows proven"), tileValue(t, fleetBody, "plan rows proven"); a != fmtThousands(proven.V) || a != b {
+		t.Errorf("plan rows tile: Now %q, Fleet %q, plans.proven %d", a, b, proven.V)
 	}
-	if len(plansBy) < 2 || planValue.State != console.StateStale || planValue.V != 12 {
-		t.Errorf("plans.verified over a HEAD run and a stale one = %+v on %d pages", planValue, len(plansBy))
+	var now nowReport
+	if err := json.Unmarshal(f.pageJSON(t, "/").Model, &now); err != nil {
+		t.Fatal(err)
 	}
-	_, _, nowBody := g.get(t, "/")
-	_, _, fleetBody := g.get(t, "/fleet")
-	if a, b := tileValue(t, nowBody, "Plan rows verified"), tileValue(t, fleetBody, "plan rows verified"); a != "12" || a != b {
-		t.Errorf("plan rows tile: Now %q, Fleet %q", a, b)
+	if !reflect.DeepEqual(now.Summary.ClaimsCurrent, value(console.MetricClaims)) || !reflect.DeepEqual(now.Summary.CertifyLive, value(console.MetricCertLive)) {
+		t.Errorf("the brief's summary claims %+v certify %+v; the metrics %+v %+v", now.Summary.ClaimsCurrent, now.Summary.CertifyLive, value(console.MetricClaims), value(console.MetricCertLive))
+	}
+	if a, b := tileValue(t, nowBody, "Live certificates"), tileValue(t, fleetBody, "live certificates"); a != b {
+		t.Errorf("live certificates tile: Now %q, Fleet %q", a, b)
 	}
 }
 
