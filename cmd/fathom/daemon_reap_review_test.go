@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -96,5 +97,35 @@ func TestHeartbeatCountsOpenStreamsAsActivity(t *testing.T) {
 	rows := daemonCensus([]storedRecord{{Path: path, Rec: rec}}, []psProc{{PID: rec.PID, PPID: 50, Command: "/w/fathom serve-http --addr 127.0.0.1:7857"}}, now, "127.0.0.1:7575", func(string) (uint64, bool) { return rec.ExeInode, true })
 	if len(rows) != 1 || rows[0].Verdict == "idle" {
 		t.Fatalf("census reads a streaming daemon idle: %+v", rows)
+	}
+}
+
+// TestHeartbeatNeverRecreatesARemovedRecord (RT-20 review): a heartbeat
+// that read the record before a concurrent shutdown (the parent-exit
+// watch) removed it must not write it back — the process then exits and
+// the record would be stale for good.
+func TestHeartbeatNeverRecreatesARemovedRecord(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	resetServingCallLogForTest(t)
+	t0 := time.Date(2026, 9, 26, 12, 0, 0, 0, time.UTC)
+	clock := func() time.Time { return t0 }
+	_, path, err := recordServingDaemonAs(daemonMeta{}, "127.0.0.1:7858", "", "", "c0ffee", t0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lt := &daemonLifetime{
+		managed: true, // no exit bounds: only the heartbeat runs
+		act:     newActivity(clock), recordPath: path, now: clock,
+		logf: func(string) {}, exit: func(int) {},
+	}
+	lt.readRecord = func(p string) (console.DaemonRecord, error) {
+		rec, err := console.ReadDaemonRecord(p)
+		lt.shutdown("parent 1 exited") // lands between the read and the write
+		return rec, err
+	}
+	lt.tick()
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("the heartbeat recreated the record shutdown removed (err=%v)", err)
 	}
 }

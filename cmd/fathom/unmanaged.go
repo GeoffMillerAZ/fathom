@@ -169,6 +169,14 @@ type daemonLifetime struct {
 	now        func() time.Time
 	logf       func(string)
 	exit       func(code int)
+	// readRecord reads the record for the heartbeat (nil:
+	// console.ReadDaemonRecord); a seam for the shutdown race test.
+	readRecord func(string) (console.DaemonRecord, error)
+
+	// mu orders the heartbeat's write against shutdown's removal: once
+	// closed, no heartbeat writes the record back.
+	mu     sync.Mutex
+	closed bool
 }
 
 // tick runs one evaluation; it returns the exit reason when it exited.
@@ -176,7 +184,11 @@ func (l *daemonLifetime) tick() string {
 	inFlight, last := l.act.snapshot()
 	now := l.now()
 	if l.recordPath != "" {
-		if rec, err := console.ReadDaemonRecord(l.recordPath); err == nil {
+		read := l.readRecord
+		if read == nil {
+			read = console.ReadDaemonRecord
+		}
+		if rec, err := read(l.recordPath); err == nil {
 			rec.HeartbeatAt = now.UTC().Format(time.RFC3339)
 			rec.LastActivityAt = last.Format(time.RFC3339)
 			if inFlight > 0 {
@@ -184,7 +196,11 @@ func (l *daemonLifetime) tick() string {
 				// activity now: the census must not read this daemon idle.
 				rec.LastActivityAt = rec.HeartbeatAt
 			}
-			_ = console.WriteDaemonRecord(l.recordPath, rec)
+			l.mu.Lock()
+			if !l.closed {
+				_ = console.WriteDaemonRecord(l.recordPath, rec)
+			}
+			l.mu.Unlock()
 		}
 	}
 	if l.managed {
@@ -207,7 +223,10 @@ func (l *daemonLifetime) shutdown(reason string) { l.shutdownWith(reason, 0) }
 // shutdownWith is shutdown with an exit code (128+signo for a signal).
 func (l *daemonLifetime) shutdownWith(reason string, code int) {
 	l.logf(fmt.Sprintf("serve-http: unmanaged daemon exiting: %s (§10.1; --idle-exit/--ttl/--exit-with-parent, or --managed)", reason))
+	l.mu.Lock()
+	l.closed = true
 	removeDaemonRecord(l.recordPath)
+	l.mu.Unlock()
 	l.exit(code)
 }
 
