@@ -169,6 +169,7 @@ func TestUnmanagedServeHTTPExitsWhenParentKilled(t *testing.T) {
 func TestDaemonLifetimeTick(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	resetServingCallLogForTest(t)
 	t0 := time.Date(2026, 9, 26, 12, 0, 0, 0, time.UTC)
 	now := t0
 	clock := func() time.Time { return now }

@@ -9,6 +9,17 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/console"
 )
 
+// resetServingCallLogForTest undoes the process-global serving call log a
+// recordServingDaemonAs call sets, so an in-process record never leaks
+// into another test's call-log resolution.
+func resetServingCallLogForTest(t *testing.T) {
+	t.Cleanup(func() {
+		servingCallLog.Lock()
+		servingCallLog.set, servingCallLog.path, servingCallLog.note = false, "", ""
+		servingCallLog.Unlock()
+	})
+}
+
 // TestDaemonRecordUnderDaemonDirWithLegacyRead (RT-166, §10.2): serve-http
 // records itself at ~/.fathom/daemon/<id>/record.json (schema 2, id = the
 // label when managed, else addr-<port>-<pid>); a legacy
@@ -17,6 +28,7 @@ import (
 func TestDaemonRecordUnderDaemonDirWithLegacyRead(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	resetServingCallLogForTest(t)
 	now := time.Date(2026, 9, 26, 12, 0, 0, 0, time.UTC)
 
 	if got := daemonID(daemonMeta{Managed: true, Label: "dev.fathom.serve-http"}, "127.0.0.1:7575", 99); got != "dev.fathom.serve-http" {
