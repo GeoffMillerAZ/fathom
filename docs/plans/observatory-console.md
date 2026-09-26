@@ -43,14 +43,14 @@ wave is called done.
 
 ## D. Knowledge
 
-- [ ] The strata view places every layer in its band with current claims, lifecycle, runs and cost {id: OC-27, symbol: Strata, package: internal/console, reachable_from: TestStrata_BandsAndLifecycle}
-- [ ] The coverage matrix shows claims per project and layer, missing drawn as not compiled {id: OC-28, symbol: LayerCoverage, package: internal/console, reachable_from: TestLayerCoverage_MissingIsNotZero}
-- [ ] A layer page shows compile runs with cost, accepted and rejected counts, rejection reasons and uncompiled scopes {id: OC-29, symbol: LayerDetail, package: internal/console, reachable_from: TestLayerDetail_RunsAndRejections}
-- [ ] A claim page shows the statement, citation excerpt, scope, tier, status and event history {id: OC-30, symbol: ClaimDetail, package: internal/console, reachable_from: TestClaimDetail_EventsAndCitation}
-- [ ] The packs page shows dialect packs as a language × capability matrix with measured precision where a reading exists, and layer packs with where each is active {id: OC-31, symbol: PackMatrix, package: internal/console, reachable_from: TestPackMatrix_MeasuredOrSaidUnmeasured}
-- [ ] `obligations --explain` returns every candidate with its scope tier, the ranking, the cap, the served list and each displaced claim's reason; the default output is unchanged {id: OC-32, symbol: ExplainObligations, package: internal/semantic, reachable_from: TestExplainObligations_DisplacedReasons}
-- [ ] Serving never serves two claims whose normalized statements are identical {id: OC-33, symbol: ExplainObligations, package: internal/semantic, reachable_from: TestObligations_DedupesIdenticalStatements}
-- [ ] The serving explainer draws the scope columns, the cap and the served list for a chosen file {id: OC-34, oracle: lexical, path: cmd/fathom/console_explain.go, pattern: "ExplainObligations"}
+- [x] The strata view places every layer in its band with current claims, lifecycle, runs and cost {id: OC-27, symbol: Strata, package: internal/console, reachable_from: TestStrata_BandsAndLifecycle}
+- [x] The coverage matrix shows claims per project and layer, missing drawn as not compiled {id: OC-28, symbol: LayerCoverage, package: internal/console, reachable_from: TestLayerCoverage_MissingIsNotZero}
+- [x] A layer page shows compile runs with cost, accepted and rejected counts, rejection reasons and uncompiled scopes {id: OC-29, symbol: LayerDetail, package: internal/console, reachable_from: TestLayerDetail_RunsAndRejections}
+- [x] A claim page shows the statement, citation excerpt, scope, tier, status and event history {id: OC-30, symbol: ClaimDetail, package: internal/console, reachable_from: TestClaimDetail_EventsAndCitation}
+- [x] The packs page shows dialect packs as a language × capability matrix with measured precision where a reading exists, and layer packs with where each is active {id: OC-31, symbol: PackMatrix, package: internal/console, reachable_from: TestPackMatrix_MeasuredOrSaidUnmeasured}
+- [x] `obligations --explain` returns every candidate with its scope tier, the ranking, the cap, the served list and each displaced claim's reason; the default output is unchanged {id: OC-32, symbol: ExplainObligations, package: internal/semantic, reachable_from: TestExplainObligations_DisplacedReasons}
+- [x] Serving never serves two claims whose normalized statements are identical {id: OC-33, symbol: ExplainObligations, package: internal/semantic, reachable_from: TestObligations_DedupesIdenticalStatements}
+- [x] The serving explainer draws the scope columns, the cap and the served list for a chosen file {id: OC-34, oracle: lexical, path: cmd/fathom/console_explain.go, pattern: "ExplainObligations"}
 
 ## E. The project workspace
 
