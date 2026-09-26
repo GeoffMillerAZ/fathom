@@ -898,8 +898,8 @@ its uncompiled scopes absent (`uncompiled_count`), never a measured 0 or "fully
 covered". A layer whose pack could not be read (a broken project pack, or an unreadable
 `.fathom/layers` of a project holding it) is listed under `unplaced`, not guessed into a
 stratum, and `totals.layers` is a lower bound naming any unreadable catalog. They read the
-store the daemon at `--url` recorded when it bound (its `~/.fathom/daemons/` record,
-OC-2), else `[daemon].store`, else the workspace default — mounted read-only, and a
+store the daemon at `--url` recorded when it bound (its `~/.fathom/daemon/<id>/record.json`
+record, OC-2, RT-166), else `[daemon].store`, else the workspace default — mounted read-only, and a
 missing store is refused rather than created; text output names the store and the rule
 that chose it. `show` without `--json` is unchanged.
 
@@ -2672,8 +2672,9 @@ unreadable store) render on the same shell with the reason and the remedy.
   Sharing is a human verb (law 13): the verb writes a file and stops.
 
 **The call log is resolved once** (OC-2). `serve-http` records itself in
-`~/.fathom/daemons/<host>-<port>.json` (its absolute `--call-log`, store, pid and
-commit) once its listener is bound, and renders its own pages from that log.
+`~/.fathom/daemon/<id>/record.json` (its absolute `--call-log`, store, pid and
+commit; the legacy `~/.fathom/daemons/<host>-<port>.json` is still read this release,
+RT-166) once its listener is bound, and renders its own pages from that log.
 Every metrics, instrument and flywheel verb, `fleet report` and `research
 report`/`bundle` then resolve the log the same way: `--call-log`, else
 `FATHOM_CALL_LOG`, else the record of the daemon they talk to (`FATHOM_HTTP`,

@@ -8,7 +8,8 @@ package main
 // other than the one it writes, and verbs reading a log relative to their
 // working directory. Two changes close it:
 //
-//   - serve-http records itself (~/.fathom/daemons/<host>-<port>.json) once
+//   - serve-http records itself (~/.fathom/daemon/<id>/record.json since
+//     RT-166; the legacy ~/.fathom/daemons/<host>-<port>.json still reads) once
 //     its listener is bound: its absolute --call-log, store, pid, commit.
 //     A verb run from any directory reads the record for the daemon it
 //     talks to (FATHOM_HTTP, else localhost:7575) and gets the log the
