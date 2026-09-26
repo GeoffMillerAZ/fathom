@@ -155,7 +155,7 @@ func renderNow(rep nowReport, m observatoryModel, now time.Time) string {
 	s := rep.Summary
 	// The kit band stacks one tile per row below md; the phone composition
 	// keeps two columns (Phone.dc.html).
-	b.WriteString(`<div class="max-md:[&>dl]:grid-cols-2" data-now-band>`)
+	b.WriteString(`<div class="max-md:[&_dl]:grid-cols-2" data-now-band>`)
 	b.WriteString(stat.RenderBand([]stat.Stat{
 		valueStat("Projects wired and fresh", s.WiredFresh),
 		valueStat("Plan rows verified", s.PlanRowsVerified),

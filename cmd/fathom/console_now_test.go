@@ -243,7 +243,7 @@ func TestConsoleFleet_TableSortFilterAndRollup(t *testing.T) {
 	for _, want := range []string{
 		`data-console-copy="fathom fleet report --json"`, `role="tree" aria-label="projects by health"`,
 		`href="/fleet?health=failed"`, `data-fleet-filters`, `name="health"`, `name="q"`, `name="lang"`,
-		`<input type="hidden" name="sort" value="symbols">`,
+		`<select class="`, `id="fleet-sort" name="sort"`, `<option value="symbols" selected>Symbols</option>`, `<option value="asc" selected>Ascending</option>`,
 		`data-sort="symbols"`, `sorted ascending; activate to sort descending`, `href="/fleet?dir=desc&amp;sort=symbols"`,
 		`data-table="fleet-projects"`, `data-table="fleet-days"`, `data-shared-spark`, `data-health="failed"`,
 	} {

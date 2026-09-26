@@ -226,15 +226,19 @@ func renderFleetFilters(t console.FleetTableModel) string {
 		langOpts = append(langOpts, form.Option{Value: l, Label: l})
 	}
 	var b strings.Builder
-	b.WriteString(`<form method="get" action="/fleet" role="search" aria-label="Filter projects" class="flex flex-wrap items-end gap-3 [&_input]:min-h-11 [&_select]:min-h-11 [&_button]:min-h-11" data-fleet-filters>`)
+	b.WriteString(`<form method="get" action="/fleet" role="search" aria-label="Filter and sort projects" class="flex flex-wrap items-end gap-3 [&_input]:min-h-11 [&_select]:min-h-11 [&_button]:min-h-11" data-fleet-filters>`)
 	b.WriteString(`<div class="w-full sm:w-44">` + form.RenderField(form.Field{Label: "Health", For: "fleet-health", Control: template.HTML(form.RenderSelect(form.Select{ID: "fleet-health", Name: "health", Value: q.Health, Options: healthOpts}))}) + `</div>`)
 	b.WriteString(`<div class="w-full sm:w-56">` + form.RenderField(form.Field{Label: "Project name or path", For: "fleet-q", Control: template.HTML(form.RenderInput(form.Input{ID: "fleet-q", Name: "q", Type: "search", Value: q.Q, Autocomplete: "off"}))}) + `</div>`)
 	b.WriteString(`<div class="w-full sm:w-44">` + form.RenderField(form.Field{Label: "Language", For: "fleet-lang", Control: template.HTML(form.RenderSelect(form.Select{ID: "fleet-lang", Name: "lang", Value: q.Lang, Options: langOpts}))}) + `</div>`)
-	def := console.FleetQuery{}.Normalize()
-	if q.Sort != def.Sort || q.Dir != def.Dir {
-		b.WriteString(`<input type="hidden" name="sort" value="` + html.EscapeString(q.Sort) + `"><input type="hidden" name="dir" value="` + html.EscapeString(q.Dir) + `">`)
+	// Sorting from the form as well as the headers: below xl the table
+	// reads as cards and its header row is hidden.
+	sortOpts := make([]form.Option, 0, len(console.FleetSorts))
+	for _, so := range console.FleetSorts {
+		sortOpts = append(sortOpts, form.Option{Value: so.Key, Label: so.Label})
 	}
-	b.WriteString(`<div class="flex flex-wrap items-center gap-2">` + form.RenderButton(form.Button{Label: "Apply filters", Variant: form.ButtonPrimary}))
+	b.WriteString(`<div class="w-full sm:w-48">` + form.RenderField(form.Field{Label: "Sort by", For: "fleet-sort", Control: template.HTML(form.RenderSelect(form.Select{ID: "fleet-sort", Name: "sort", Value: q.Sort, Options: sortOpts}))}) + `</div>`)
+	b.WriteString(`<div class="w-full sm:w-36">` + form.RenderField(form.Field{Label: "Order", For: "fleet-dir", Control: template.HTML(form.RenderSelect(form.Select{ID: "fleet-dir", Name: "dir", Value: q.Dir, Options: []form.Option{{Value: "desc", Label: "Descending"}, {Value: "asc", Label: "Ascending"}}}))}) + `</div>`)
+	b.WriteString(`<div class="flex flex-wrap items-center gap-2">` + form.RenderButton(form.Button{Label: "Apply", Variant: form.ButtonPrimary}))
 	if q.Filtered() {
 		clear := console.FleetQuery{Sort: q.Sort, Dir: q.Dir}.Normalize()
 		b.WriteString(`<span class="[&>a]:min-h-11">` + form.RenderButton(form.Button{Label: "Clear filters", Href: fleetHref(clear), Variant: form.ButtonGhost}) + `</span>`)
@@ -317,7 +321,11 @@ func fleetRowCells(r console.FleetRow) fleetCells {
 	case "fresh":
 		c.index = `<span class="text-positive">fresh</span>`
 	case "stale":
-		c.index = `<span class="text-caution" title="` + html.EscapeString(r.FreshnessNote) + `">stale</span> <span class="text-xs text-ink-muted">` + html.EscapeString(shortFreshness(r.FreshnessNote)) + `</span>`
+		short := shortFreshness(r.FreshnessNote)
+		if short == "" {
+			short = "stale"
+		}
+		c.index = `<span class="text-caution" title="` + html.EscapeString(r.FreshnessNote) + `">` + html.EscapeString(short) + `</span>`
 	default:
 		c.index = `<span class="italic text-ink-muted" title="` + html.EscapeString(r.FreshnessNote) + `">unknown</span>`
 	}
@@ -379,7 +387,7 @@ func fleetKitTable(t console.FleetTableModel) string {
 		}
 		rows = append(rows, table.Row{ID: "fleet-" + r.Service, Cells: make([]string, len(cells)), HTMLCells: rich})
 	}
-	return renderKitTable(table.TableParams{TableID: "fleet-projects", Caption: "every project; select a column's name to sort by it", Columns: cols, Rows: rows})
+	return renderKitTable(table.TableParams{TableID: "fleet-projects", Caption: "every project; sort by a column's name, or with Sort by above", Columns: cols, Rows: rows})
 }
 
 func nonEmptyKey(k, fallback string) string {
