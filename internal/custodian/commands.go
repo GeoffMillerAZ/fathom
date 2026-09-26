@@ -220,12 +220,24 @@ func (w *yamlCommandWalker) enterDir(n *yaml.Node) func() {
 	case dirFromRoot:
 		w.dir, w.dirUnknown = joinRunDir(".", val, key)
 	default:
-		if w.dirUnknown == "" {
+		// A task's `dir:` may start from Task's own absolute paths:
+		// TASKFILE_DIR is the file's directory, ROOT_DIR the root
+		// Taskfile's — the usual fix for an include-relative path.
+		if m := taskDirVarRe.FindStringSubmatch(val); m != nil {
+			base := "."
+			if m[1] == "TASKFILE_DIR" {
+				base = path.Dir(w.rel)
+			}
+			w.dir, w.dirUnknown = joinRunDir(base, "."+m[2], key)
+		} else if w.dirUnknown == "" {
 			w.dir, w.dirUnknown = joinRunDir(w.dir, val, key)
 		}
 	}
 	return func() { w.dir, w.dirUnknown = saved, savedUnknown }
 }
+
+// taskDirVarRe is a task `dir:` rooted at one of Task's path variables.
+var taskDirVarRe = regexp.MustCompile(`^\{\{\s*\.(TASKFILE_DIR|ROOT_DIR)\s*\}\}(/[^{}$]*)?$`)
 
 // place stamps a ref with this walker's file, line and working directory.
 func (w *yamlCommandWalker) place(r commandRef, line int) commandRef {
@@ -694,6 +706,9 @@ func (res *commandResolver) nearest(dir string) (string, error) {
 // judge decides one ref. corpusGraph is the task graph a Taskfile's own
 // `task:` / `deps:` names resolve in.
 func (res *commandResolver) judge(r commandRef, corpusGraph *taskGraph) (refStatus, string, error) {
+	if r.Qualified != "" && corpusGraph == nil {
+		return refUnknown, "", nil // a Taskfile name with no graph to resolve it in
+	}
 	if r.Qualified != "" {
 		missing, uncheckable := corpusGraph.resolveTarget(r.Qualified)
 		switch {

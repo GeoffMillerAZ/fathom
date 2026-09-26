@@ -522,3 +522,39 @@ func mustRead(t *testing.T, p string) string {
 	}
 	return string(data)
 }
+
+// TestTaskfileDirVariablesResolve: a task's `dir: '{{.TASKFILE_DIR}}'` —
+// the usual fix for an include-relative path — and `{{.ROOT_DIR}}` are
+// Task's own absolute paths (the file's directory, the root Taskfile's),
+// so the audit models them exactly; any other template, and a templated
+// include `dir:` (where Task expands TASKFILE_DIR to nothing), stay not
+// checkable.
+func TestTaskfileDirVariablesResolve(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "scripts", "ci.sh"), "#!/bin/sh\n")
+	writeTestFile(t, filepath.Join(root, "ui", "scripts", "ui.sh"), "#!/bin/sh\n")
+	writeTestFile(t, filepath.Join(root, "Taskfile.yml"), "version: '3'\nincludes:\n  ui: ./ui\n  lib:\n    taskfile: ./lib\n    dir: '{{.TASKFILE_DIR}}/lib'\n")
+	writeTestFile(t, filepath.Join(root, "ui", "Taskfile.yml"), strings.Join([]string{
+		"version: '3'",
+		"tasks:",
+		"  here:",
+		"    dir: '{{.TASKFILE_DIR}}'",
+		"    cmds: [bash scripts/ui.sh]", // 5: ui/scripts/ui.sh
+		"  root:",
+		"    dir: '{{ .ROOT_DIR }}/scripts'",
+		"    cmds: [bash ./ci.sh]", // 8: scripts/ci.sh
+		"  gone:",
+		"    dir: '{{.TASKFILE_DIR}}'",
+		"    cmds: [bash scripts/gone.sh]", // 11: dead in ui/
+		"  user:",
+		"    dir: '{{.USER_WORKING_DIR}}'",
+		"    cmds: [bash scripts/any.sh]", // 14: not checkable
+		"",
+	}, "\n"))
+	writeTestFile(t, filepath.Join(root, "lib", "Taskfile.yml"), "version: '3'\ntasks:\n  x:\n    cmds: [bash scripts/any.sh]\n")
+	f := Audit(root, []Concern{{ID: "tf", Want: "resolves", Check: Check{Kind: KindCommandsResolve, Where: CorpusTaskfile}}})[0]
+	want := []string{"ui/Taskfile.yml:11 → scripts/gone.sh (no such file in ui/)"}
+	if !reflect.DeepEqual(f.Evidence, want) || !strings.Contains(f.Detail, "1 of 3 command reference(s)") || !strings.Contains(f.Detail, "2 not checkable") {
+		t.Fatalf("got %s %q %q, want evidence %q with 2 resolved and 2 not checkable", f.Status, f.Detail, f.Evidence, want)
+	}
+}

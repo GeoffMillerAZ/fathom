@@ -115,8 +115,11 @@ in `sub` calls `sub:build`; `:build` calls the root's), while a shell `task
 X` starts a new process that resolves X against the Taskfile it finds from
 its directory upward. A doc does not say where its reader stands, so an
 agent-config command resolves from the repo root or from the doc's own
-directory. A templated or absolute directory, and CircleCI's / Azure's
-working-directory keys, make a ref not checkable; a folded block (`run: >`)
+directory. A task `dir:` rooted at `{{.TASKFILE_DIR}}` (the file's own
+directory — the usual fix for an include-relative path) or `{{.ROOT_DIR}}`
+is modelled exactly; any other templated or absolute directory, a
+templated include `dir:` (where Task expands `TASKFILE_DIR` to nothing),
+and CircleCI's / Azure's working-directory keys make a ref not checkable; a folded block (`run: >`)
 is read joined and each ref placed back on its source line.
 
 Commands are read for precision, not recall: quoted strings are blanked
