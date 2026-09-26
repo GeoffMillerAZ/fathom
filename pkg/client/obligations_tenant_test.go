@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -493,5 +495,101 @@ func TestEditedFileReadOnlyWhenStatMoves(t *testing.T) {
 	}
 	if stale {
 		t.Error("after a re-ingest the file is still reported stale")
+	}
+}
+
+// gatedConn blocks Discover, once armed, until release is closed, and
+// counts the walks that entered it.
+type gatedConn struct {
+	connector.Connector
+	armed   atomic.Bool
+	release chan struct{}
+	walks   atomic.Int64
+}
+
+func (g *gatedConn) Discover(ctx context.Context, svc core.ServiceRef) ([]core.SourceRef, error) {
+	if g.armed.Load() {
+		g.walks.Add(1)
+		<-g.release
+	}
+	return g.Connector.Discover(ctx, svc)
+}
+
+// TestLayerCoveragePathsLeaderHonoursCancel (RT-143 review): the caller
+// that started the corpus walk waited for it even after its own context
+// was cancelled (a hook past its deadline), while joined callers could
+// leave. The leader now leaves on cancel too; the walk finishes detached
+// and is still memoized for the next caller.
+func TestLayerCoveragePathsLeaderHonoursCancel(t *testing.T) {
+	dir := t.TempDir()
+	writeTree(t, dir, map[string]string{"CLAUDE.md": "# R\n\n- Keep tests green.\n", "main.go": "package main\n"})
+	g := &gatedConn{Connector: connector.NewLocalConnector(), release: make(chan struct{})}
+	c := client.New(g, store.NewMemoryStore())
+	defer c.Close()
+	if _, err := c.Ingest(context.Background(), client.ServiceRef{ID: "svc", Path: dir}); err != nil {
+		t.Fatal(err)
+	}
+	g.armed.Store(true)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		_, _, _ = c.ObligationsLayerCoverage(ctx, "svc")
+	}()
+	for g.walks.Load() == 0 {
+		runtime.Gosched()
+	}
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		close(g.release)
+		t.Fatal("the leading caller kept waiting on the corpus walk after its context was cancelled")
+	}
+	close(g.release)
+	// The detached walk completes and is memoized: the next call walks nothing.
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		if _, _, err := c.ObligationsLayerCoverage(context.Background(), "svc"); err != nil {
+			t.Fatal(err)
+		}
+		if g.walks.Load() == 1 || time.Now().After(deadline) {
+			break
+		}
+	}
+	if n := g.walks.Load(); n != 1 {
+		t.Errorf("walks = %d, want the one detached walk reused", n)
+	}
+}
+
+// TestLayerCoveragePathsSingleFlightWithoutWatermark (RT-143 review): a
+// service with no store watermark (never ingested, no meta) cannot be
+// memoized, but concurrent callers must still share one walk rather than
+// each walking the tree.
+func TestLayerCoveragePathsSingleFlightWithoutWatermark(t *testing.T) {
+	dir := t.TempDir()
+	writeTree(t, dir, map[string]string{"CLAUDE.md": "# R\n\n- Keep tests green.\n", "main.go": "package main\n"})
+	g := &gatedConn{Connector: connector.NewLocalConnector(), release: make(chan struct{})}
+	g.armed.Store(true)
+	c := client.New(g, store.NewMemoryStore())
+	defer c.Close()
+
+	var wg sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, _, _ = c.ObligationsLayerCoverage(context.Background(), dir)
+		}()
+	}
+	for g.walks.Load() == 0 {
+		runtime.Gosched()
+	}
+	time.Sleep(200 * time.Millisecond) // let the other callers arrive and join
+	close(g.release)
+	wg.Wait()
+	if n := g.walks.Load(); n != 1 {
+		t.Errorf("walks = %d across 8 concurrent calls on a service with no watermark, want 1", n)
 	}
 }

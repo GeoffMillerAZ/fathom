@@ -151,44 +151,56 @@ func layerDigest(def semantic.LayerDef) string {
 // SelectCorpus filters a fetched corpus. Memoized per (service, store
 // watermark, layer digest) and single-flighted: concurrent callers at one
 // key share one walk. A service with no store watermark (never ingested)
-// cannot be memoized and walks per call; a discovery error is returned and
-// never memoized.
+// cannot be memoized, but its concurrent callers still share one walk. A
+// discovery error is returned and never memoized. Every caller — the one
+// that started the walk included — leaves when its own ctx is cancelled;
+// the walk itself runs detached and still memoizes its result.
 func (c *Client) layerCoveragePaths(ctx context.Context, service string, def semantic.LayerDef) ([]string, error) {
 	wm, wmErr := c.StoreWatermark(ctx, service)
-	if wmErr != nil || wm == "" {
-		return c.walkCorpusPaths(ctx, service, def)
-	}
+	memoize := wmErr == nil && wm != ""
 	key := service + "\x00" + wm + "\x00" + layerDigest(def)
+	if !memoize {
+		key = service + "\x00<no watermark>\x00" + layerDigest(def)
+	}
 
 	m := &c.oblMemo
 	m.mu.Lock()
-	if e, ok := m.paths[service]; ok && e.key == key {
+	if e, ok := m.paths[service]; memoize && ok && e.key == key {
 		m.mu.Unlock()
 		return e.paths, nil
 	}
-	if call, ok := m.flight[key]; ok {
-		m.mu.Unlock()
-		select {
-		case <-call.done:
-			return call.paths, call.err
-		case <-ctx.Done():
-			return nil, ctx.Err()
+	call, joined := m.flight[key]
+	if !joined {
+		if m.flight == nil {
+			m.flight = map[string]*corpusPathsCall{}
 		}
+		call = &corpusPathsCall{done: make(chan struct{})}
+		m.flight[key] = call
+		// The walk runs detached from every caller's cancellation: callers
+		// joined to this flight must not inherit the first caller's
+		// cancel, and a cancelled first caller still leaves a finished
+		// walk for the next one.
+		go c.runCorpusPathsWalk(context.WithoutCancel(ctx), service, def, key, memoize, call)
 	}
-	if m.flight == nil {
-		m.flight = map[string]*corpusPathsCall{}
-	}
-	call := &corpusPathsCall{done: make(chan struct{})}
-	m.flight[key] = call
 	m.mu.Unlock()
 
-	// The walk runs detached from any one caller's cancellation: callers
-	// joined to this flight must not inherit the first caller's cancel.
-	call.paths, call.err = c.walkCorpusPaths(context.WithoutCancel(ctx), service, def)
+	select {
+	case <-call.done:
+		return call.paths, call.err
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
 
+// runCorpusPathsWalk is one flight's walk: it records the result (memoized
+// only when the key carries a watermark) and releases the flight.
+func (c *Client) runCorpusPathsWalk(ctx context.Context, service string, def semantic.LayerDef, key string, memoize bool, call *corpusPathsCall) {
+	call.paths, call.err = c.walkCorpusPaths(ctx, service, def)
+
+	m := &c.oblMemo
 	m.mu.Lock()
 	delete(m.flight, key)
-	if call.err == nil {
+	if memoize && call.err == nil {
 		if m.paths == nil {
 			m.paths = map[string]corpusPathsEntry{}
 		}
@@ -198,7 +210,6 @@ func (c *Client) layerCoveragePaths(ctx context.Context, service string, def sem
 	}
 	m.mu.Unlock()
 	close(call.done)
-	return call.paths, call.err
 }
 
 // walkCorpusPaths is the one names-only walk layerCoveragePaths memoizes.
