@@ -417,8 +417,16 @@ spec:
 // so an image literally named "build:2.0" got a FALSE reference while the
 // image the file actually builds ("myapp:1.0") got none. *.dockerfile files
 // key by their STEM.
+//
+// RT-145: build/ is on the default cache-directory list, so the probe's
+// corpus re-includes it with `[connector] include` — the documented escape
+// for a repository that keeps real Dockerfiles under build/ (the Go
+// project layout does). TestIngest_CrossRef_BuildDirPrunedByDefaultIsNamed
+// pins the other half: without the include the ref is gone and the ingest
+// names the pruned directory.
 func TestIngest_CrossRef_DotDockerfileKeyedByStemNotDir(t *testing.T) {
 	dir := t.TempDir()
+	writeFile(t, dir, ".fathom/config.toml", "[connector]\ninclude = [\"build\"]\n")
 	writeFile(t, dir, "build/myapp.dockerfile", "FROM golang:1.26\n")
 	writeFile(t, dir, "k8s/deployment.yaml", `apiVersion: apps/v1
 kind: Deployment
@@ -446,6 +454,34 @@ spec:
 		if r.Symbol == "build" {
 			t.Error("image 'build' must NOT get a ref from build/myapp.dockerfile's directory name — that ref is a lie")
 		}
+	}
+}
+
+// TestIngest_CrossRef_BuildDirPrunedByDefaultIsNamed is RT-145's corpus
+// loss made visible (I38): with no `[connector] include`, a Dockerfile
+// under build/ is not discovered, so its image cross-ref is absent — and
+// the ingest report names build as a default-ignored directory rather than
+// dropping it silently.
+func TestIngest_CrossRef_BuildDirPrunedByDefaultIsNamed(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "build/myapp.dockerfile", "FROM golang:1.26\n")
+	writeFile(t, dir, "k8s/deployment.yaml", `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp
+spec:
+  template:
+    spec:
+      containers:
+        - name: app
+          image: myapp:1.0
+`)
+	obs, report := ingestDir(t, dir, "builddir-svc")
+	if refs := obsByKind(obs, core.KindImageDockerfileRef); len(refs) != 0 {
+		t.Fatalf("build/ is default-ignored: want 0 ImageDockerfileRef, got %+v", refs)
+	}
+	if len(report.DefaultIgnoredDirs) != 1 || report.DefaultIgnoredDirs[0] != "build" {
+		t.Fatalf("DefaultIgnoredDirs = %v, want [build] (a pruned directory is named, never silent)", report.DefaultIgnoredDirs)
 	}
 }
 
