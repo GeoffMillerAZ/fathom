@@ -22,6 +22,7 @@ package semantic
 
 import (
 	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -127,9 +128,7 @@ func citedTextResolver(root string, anchorText map[string]string) func(cite, cla
 		}
 		lines, cached := files[path]
 		if !cached {
-			if data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(path))); err == nil && len(data) <= citedFileMaxBytes {
-				lines = strings.Split(string(data), "\n")
-			}
+			lines = readCitedLines(filepath.Join(root, filepath.FromSlash(path)))
 			files[path] = lines
 		}
 		if start < 1 || start > len(lines) {
@@ -146,6 +145,27 @@ func citedTextResolver(root string, anchorText map[string]string) func(cite, cla
 // document larger than this is not a plan file, and a serve-time hot path
 // must never pull an arbitrarily large file into the shared daemon.
 const citedFileMaxBytes = 1 << 20
+
+// readCitedLines stats before it reads (RT-174): a path that is not a
+// regular file (a FIFO would block the read forever) or is over
+// citedFileMaxBytes is never opened, and the read itself is bounded in
+// case the file grew between the stat and the open. nil means "no text".
+func readCitedLines(abs string) []string {
+	info, err := os.Stat(abs)
+	if err != nil || !info.Mode().IsRegular() || info.Size() > citedFileMaxBytes {
+		return nil
+	}
+	f, err := os.Open(abs)
+	if err != nil {
+		return nil
+	}
+	defer f.Close()
+	data, err := io.ReadAll(io.LimitReader(f, citedFileMaxBytes+1))
+	if err != nil || len(data) > citedFileMaxBytes {
+		return nil
+	}
+	return strings.Split(string(data), "\n")
+}
 
 // parseCite splits a "cites" TargetRef — "path#Lstart-Lend" or "path#Lstart"
 // (core.CiteRef's shape) — into its parts.
@@ -168,13 +188,31 @@ func parseCite(ref string) (path string, start, end int, ok bool) {
 	return path, start, end, true
 }
 
-// symbolFileLookup returns a lazily-populated SymbolFile over the service's
-// indexed symbols — the resolution a symbol-only plan row needs
-// ("{id: X, symbol: Name}" with no package). It is lazy on purpose: the vast
-// majority of gated rows name a package, and the observation scan behind
-// this is the most expensive read in the function. A service with no
-// symbol-only rows never pays for it.
-func symbolFileLookup(ctx context.Context, st store.Store, serviceID string) SymbolFile {
+// contractSymbolNames returns the symbol names citedText's symbol-only plan
+// rows ({id, symbol} with no package) name — exactly the names ContractScope
+// will ask its lookup for.
+func contractSymbolNames(citedText string) []string {
+	var out []string
+	for _, line := range strings.Split(citedText, "\n") {
+		kv, _, _ := verify.ParseAnnotation(line)
+		if kv == nil || kv["id"] == "" || strings.TrimSpace(kv["package"]) != "" {
+			continue
+		}
+		if sym := strings.TrimSpace(kv["symbol"]); sym != "" {
+			out = append(out, sym)
+		}
+	}
+	return out
+}
+
+// symbolFileLookup returns a lazily-populated SymbolFile over the declaring
+// files of names — the symbols the served claims' symbol-only plan rows
+// ("{id: X, symbol: Name}" with no package) cite (contractSymbolNames). It
+// reads only those names' rows (store.SymbolSourcesForNames), once, on the
+// first lookup; never the service's whole observation set, which grew
+// every obligations call with the tree (RT-174). A service whose served
+// claims cite no symbol-only row never reads anything.
+func symbolFileLookup(ctx context.Context, st store.Store, serviceID string, names []string) SymbolFile {
 	var (
 		loaded bool
 		byName map[string]string
@@ -183,14 +221,14 @@ func symbolFileLookup(ctx context.Context, st store.Store, serviceID string) Sym
 		if !loaded {
 			loaded = true
 			byName = map[string]string{}
-			obs, err := st.QueryObservations(ctx, serviceID, "")
+			if len(names) == 0 {
+				return "", false
+			}
+			rows, err := st.SymbolSourcesForNames(ctx, serviceID, names)
 			if err != nil {
 				return "", false
 			}
-			for _, o := range obs {
-				if o.Symbol == "" || o.SourceRef == "" {
-					continue
-				}
+			for _, o := range rows {
 				file := o.SourceRef
 				if i := strings.LastIndex(file, ":"); i > 0 {
 					if _, err := strconv.Atoi(file[i+1:]); err == nil {

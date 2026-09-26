@@ -825,7 +825,16 @@ func obligationsCoreTrace(ctx context.Context, st store.Store, serviceID, outFil
 		}
 	}
 	citedText := citedTextResolver(root, anchorText)
-	lookup := symbolFileLookup(ctx, st, serviceID)
+	// RT-174: the symbol-only contract rows the served claims-role claims
+	// cite, resolved in one read of just those names (symbolFileLookup),
+	// never the service's whole observation set.
+	var contractNames []string
+	for _, cl := range served {
+		if layerRole(cl.Layer) == RoleClaims {
+			contractNames = append(contractNames, contractSymbolNames(citedText(primaryCite[cl.ClaimID], cl.ClaimID))...)
+		}
+	}
+	lookup := symbolFileLookup(ctx, st, serviceID, contractNames)
 	// wave O2, item 1/2: path-derived tokens for the lexical relevance
 	// tie-break less() applies STRICTLY INSIDE a governing-scope tier (see
 	// less() below). Computed once here — pure function of outFile alone,

@@ -47,7 +47,44 @@ func obligationsCorpus(t *testing.T, nFiles int) (*client.Client, func()) {
 	if err := st.RecordCompileRun(ctx, core.CompileRun{RunID: "r1", ServiceID: "svc", Layer: "obligations", RanAt: time.Unix(1, 0).UTC(), SectionsTotal: 4, BudgetStopped: true}); err != nil {
 		t.Fatal(err)
 	}
+	seedAllocClaims(t, st)
 	return c, func() { c.Close() }
+}
+
+// seedAllocClaims serves the rules path real work (RT-174): a governing
+// claim over internal/**, and spec-bindings claims citing plan rows — one
+// with a package contract and one symbol-only ({id, symbol}), the shape
+// that made serving resolve the symbol's file by loading every observation
+// in the service on every call.
+func seedAllocClaims(t *testing.T, st store.Store) {
+	t.Helper()
+	mk := func(id, layer, rule, cite, anchor string, scope []string) (core.SemanticClaim, []core.ClaimLink) {
+		cl := core.SemanticClaim{
+			ClaimID: id, ServiceID: "svc", Layer: layer, LayerVersion: "v1", Kind: semantic.KindObligation,
+			Subject: cite, Rule: rule, Scope: scope, Tier: core.TierDocClaimed, TierProfile: "engineering",
+			Status: core.ClaimFresh, ReproKey: id, InputDigest: "d",
+			CompiledAtWatermark: "manifest:aaa", CompiledAt: time.Date(2026, 9, 12, 0, 0, 0, 0, time.UTC),
+		}
+		links := []core.ClaimLink{{ClaimID: id, Rel: core.RelCites, TargetRef: cite, TargetHash: "h", AnchorText: anchor}}
+		for _, g := range scope {
+			links = append(links, core.ClaimLink{ClaimID: id, Rel: core.RelScopes, TargetRef: g})
+		}
+		return cl, links
+	}
+	var claims []core.SemanticClaim
+	var links []core.ClaimLink
+	for _, c := range []struct{ id, layer, rule, cite, anchor string }{
+		{"gov-1", "obligations", "Sort every output.", "internal/CLAUDE.md#L3-L3", "- Sort every output."},
+		{"sb-pkg", "spec-bindings", "Row T-1 binds by package.", "docs/plans/README.md#L3-L3", "- [ ] t {id: T-1, symbol: F0007, package: internal/p000}"},
+		{"sb-sym", "spec-bindings", "Row T-2 binds by symbol only.", "docs/plans/README.md#L3-L3", "- [ ] t {id: T-2, symbol: F0007}"},
+	} {
+		cl, ls := mk(c.id, c.layer, c.rule, c.cite, c.anchor, []string{"internal/**"})
+		claims = append(claims, cl)
+		links = append(links, ls...)
+	}
+	if err := st.PutClaims(context.Background(), claims, links); err != nil {
+		t.Fatal(err)
+	}
 }
 
 // obligationsCallBytes is the mean bytes allocated by one edit's worth of
@@ -58,8 +95,12 @@ func obligationsCallBytes(t *testing.T, c *client.Client, file string, calls int
 	t.Helper()
 	ctx := context.Background()
 	one := func() {
-		if _, err := c.ObligationsLayer(ctx, "svc", file, 6, semantic.ObligationLayerAll); err != nil {
+		obl, err := c.ObligationsLayer(ctx, "svc", file, 6, semantic.ObligationLayerAll)
+		if err != nil {
 			t.Fatal(err)
+		}
+		if len(obl.Rules) < 3 {
+			t.Fatalf("rules path served %d rules, want the governing claim and both spec-bindings rows (the symbol-only row resolved): %+v", len(obl.Rules), obl.Rules)
 		}
 		c.ObligationsIndexCheck(ctx, "svc", file)
 		if _, found, err := c.ObligationsLayerCoverage(ctx, "svc"); err != nil || !found {

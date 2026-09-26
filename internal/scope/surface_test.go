@@ -48,6 +48,7 @@ var storeMethodDisposition = map[string]string{
 	// --- filtered: path-anchored content leaves the store here ---
 	"QueryObservations":             "",
 	"SymbolNamesForSource":          "",
+	"SymbolSourcesForNames":         "",
 	"DocSummaries":                  "",
 	"KnowledgeCards":                "",
 	"TypedEdges":                    "",
@@ -306,6 +307,13 @@ func TestSuppressionCoversEverySurface(t *testing.T) {
 				if len(hidden) != 0 || len(visible) != 1 || visible[0] != "Ok" {
 					t.Errorf("hidden=%v visible=%v, want the suppressed file to declare nothing and the visible one [Ok]", hidden, visible)
 				}
+			})
+			t.Run("SymbolSourcesForNames", func(t *testing.T) {
+				got, err := g.SymbolSourcesForNames(ctx, svc, []string{"Secret", "Ok"})
+				if err != nil {
+					t.Fatal(err)
+				}
+				assertRefs(t, refsOf(got, func(r store.SymbolSource) string { return r.SourceRef }))
 			})
 			t.Run("DocSummaries", func(t *testing.T) {
 				got, err := g.DocSummaries(ctx, svc)
