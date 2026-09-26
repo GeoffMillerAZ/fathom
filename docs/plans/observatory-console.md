@@ -66,7 +66,7 @@ wave is called done.
 - [x] Impact orders its questions, draws arms as ranges with counts, and says "not instrumented" instead of a colored zero {id: OC-41, symbol: ImpactView, package: internal/console, reachable_from: TestImpactView_NotInstrumentedNeverZero}
 - [x] Catches (verify refusals, conserve losses, integrity catches, guard refusals) render on one filterable timeline {id: OC-42, symbol: CatchTimeline, package: internal/console, reachable_from: TestCatchTimeline_KindsAndFilters}
 - [x] The sessions page is a table of sessions, and replay is windowed to a bounded number of events per response {id: OC-43, symbol: SessionWindow, package: internal/console, reachable_from: TestSessionWindow_Bounded}
-- [x] Operate shows the daemon, per-surface traffic with p50, p95 and errors, tools by caller class, the zero-call list, the flywheel and config explain {id: OC-44, symbol: OperateView, package: internal/console, reachable_from: TestOperateView_SurfacesAndCallerClasses}
+- [x] Operate shows the daemon, per-surface traffic with p50, p95 and errors, tools by caller class, the zero-call list, the flywheel, config explain and the harness matrix {id: OC-44, symbol: OperateView, package: internal/console, reachable_from: TestOperateView_SurfacesAndCallerClasses}
 - [x] The decision-port page shows the provider, its sites, the ruling log and the latest calibration table {id: OC-45, symbol: DecideView, package: internal/console, reachable_from: TestDecideView_LogAndCalibration}
 
 ## G. Learn

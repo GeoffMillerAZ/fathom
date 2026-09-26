@@ -215,6 +215,18 @@ swimlanes and its `ViewDensity` strip past 150 catches, `viz.Heatmap` with truth
   which `HeaderHTML` cannot reach. Fathom writes the direction as `sr-only` text.
 - `chrome.RenderPagination` links are still about 28 px (F0's open item): wave F wraps
   them in `[&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center`.
+- **FATHOM-F-KIT-03 (candidate, from the wave F fix round):** `table.Table` has no
+  phone layout. At 390 px its scroll wrapper keeps the page from overflowing, but the
+  columns that carry a table's answer (an outcome, p95, a ruling's choice) sit off-screen
+  with no cue. Fathom restates each such table below `md` as a stacked list of
+  `chrome.RenderDescriptionList` cards (`evTableOrStack`, `console_evidence.go`).
+  Expected: an opt-in `table.Table` stacked mode that restates each row as terms and
+  details below a breakpoint and keeps the real table from it up.
+- A Tailwind class built at run time never reaches the stylesheet: wave F's chart
+  wrapper wrote `min-w-[%dpx]` through `fmt.Sprintf`, Tailwind emitted that literal as an
+  invalid rule, and the real class had none. The fix-round wrapper takes the class as a
+  literal the caller writes (`evChart`), and `TestConsoleWaveF_OperatePanelsNameTheVerbsThatPrintThem`
+  holds `app.css` to it. (Fathom-local; the kit's own classes are all literals.)
 
 ## Current mirror and palette convergence (2026-09-25)
 

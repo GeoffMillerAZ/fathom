@@ -2222,6 +2222,7 @@ fathom metrics impact        [--call-log P] [--url U] [--json]
 fathom metrics catches       [--kind K]... [--service S] [--days N] [--page N] [--per-page 20] [--call-log P] [--url U] [--json]
 fathom metrics sessions      [--arm on|off] [--repo R] [--q TEXT] [--sort at|turns|first_edit|tokens|fathom_calls|catches] [--asc] [--page N] [--per-page 50] [--json]
 fathom metrics sessions      --id SESSION [--channel C]... [--page N] [--per-page 500] [--json]
+fathom metrics load          [--call-log P] [--url U] [--json]
 ```
 
 Design: `docs/design/observability-surfaces.md`. `traffic --by day` groups by UTC
@@ -2231,9 +2232,16 @@ adoption. `impact`, `catches` and `sessions` print the console's Evidence projec
 (vision 35, `internal/console`): the four questions with each arm as a range and "not
 instrumented" instead of a zero; one timeline of verify refusals (the verify ledger),
 conserve losses and integrity catches (`fathom review` rows in the call log) and guard
-refusals (the edit hook's `denied` beats), each kind absent with its reason when its
-instrument recorded nothing to count from; and the session table (one row per session)
-or one session's replay, never more than 2,000 events per response.
+refusals (the edit hook's `denied` beats, read from the hooks log and its rotated
+generation `hooks.jsonl.1`), each kind absent with its reason when its instrument
+recorded nothing to count from in the filtered scope (`--service`, `--days`) and an
+error when its source exists and cannot be read; and the session table (one row per
+session) or one session's replay, never more than 2,000 events per response. `load`
+prints the Operate page's load: calls, p50, p95 and error rate per UTC day per surface
+(a day with no row absent, never zero) and the tools by caller class. With no call log,
+or an unreadable one, `traffic --json` carries `state` (`absent` or `error`) and
+`reason` in place of every count, and `sessions` / `load` print their counts as absent
+or error values — never a zero.
 
 ### `findings` — findings as evidence (**experimental**; entry ≥15–20 resolved findings)
 
@@ -2349,9 +2357,9 @@ unreadable store) render on the same shell with the reason and the remedy.
 | `/` | Now — the front door (four questions, surfaces) |
 | `/fleet` | Fleet tiles; the JSON carries `fathom fleet report --json` computed by the verb's own function |
 | `/projects/{svc}` | One project (was `/observatory/service?id=S`) |
-| `/impact` | The four questions, Q1–Q4 in order: each counterfactual arm a range (p25–p75 of real tokens per turn, median marked) with its session count; every tool's outcome "not instrumented" where no instrument exists, never a colored zero; and the catches timeline — verify refusals, conserve losses, integrity catches, guard refusals — filterable by kind, window (`?days=`) and project (`?svc=`), its rows the table. Renders `fathom metrics impact --json` and `fathom metrics catches --json` |
+| `/impact` | The four questions, Q1–Q4 in order: each counterfactual arm a range (p25–p75 of real tokens per turn, median marked) with its session count; every tool's outcome "not instrumented" where no instrument exists, never a colored zero; and the catches timeline — verify refusals, conserve losses, integrity catches, guard refusals — filterable by kind, window (`?days=`) and project (`?svc=`; a project no registry entry and no instrument names is the shell's 404), its rows the table. Renders `fathom metrics impact --json` and `fathom metrics catches --json` |
 | `/sessions`, `/sessions/{id}` | A table of sessions (one row per session: arm, turns, first edit, tokens, fathom calls, catches), filterable (`?arm=`, `?repo=`, `?q=`), sortable (`?sort=`, `?dir=`), 50 to a page; and one session's replay, windowed — 200 events a page (`?per=`, never more than 2,000 per response), filterable by channel (`?channel=`). Renders `fathom metrics sessions [--id S] --json` |
-| `/operate` | The daemon (version, commit, uptime, memory, goroutines); calls per day per surface as a heatmap whose missing day is hatched, never zero, with p50/p95/errors per day in its table; latency and errors by surface and by caller class; the tools by caller class and the zero-call list; the flywheel; `config --explain`; time-to-remedy; a project's capabilities (`?svc=`). Renders `metrics traffic`, `instrument --adoption`, `fleet remedy` and `config --explain` |
+| `/operate` | The daemon (version, commit, uptime, memory, goroutines); calls per day per surface as a heatmap whose missing day is hatched, never zero, with p50/p95/errors per day in its table; latency and errors by surface and by caller class; the tools by caller class and the zero-call list; the flywheel; `config --explain`; time-to-remedy; a project's capabilities (`?svc=`); the harness matrix. Each panel names the verb that prints it: `metrics load`, `metrics traffic`, `instrument --adoption`, `fleet remedy`, `config --explain` and `harness matrix` |
 | `/decide` | The decision port: provider and sites, the ruling log beside the call log (`?site=`), and the latest calibration reading's table. Renders `fathom decide log --json` |
 | `/brief` | The shareable brief; `?format=md` downloads it |
 | `/wiring` | Per-repo Preview → Apply → Undo (the POSTs stay at `/observatory/wiring/*` behind the local gate) |

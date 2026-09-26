@@ -24,8 +24,9 @@ What the pages now say about the fleet, from a copy of its real ledgers and call
   tools record no outcome and say "not instrumented" in every outcome cell — the survey
   saw them as green and red zeros. The catches timeline holds 573 catches: 538 verify
   refusals, 34 conserve losses and 1 integrity catch from `fathom review` rows in the
-  call log (see the first finding below), and 0 guard refusals — a measured zero, because the hooks log carries the
-  guard hook's PreToolUse beats.
+  call log (see the first finding below), and 0 guard refusals. **That zero was wrong**
+  (corrected in the fix round below): the guard lane read only `hooks.jsonl`, never its
+  rotated generation `hooks.jsonl.1`, which held all 8 refusals (2026-09-21).
 - **Sessions.** 1,888 sessions from 3,278 ledger rows, one row each, 50 to a page.
   This session's replay holds 39,314 events: it renders as 197 windows of 200 (the
   survey's replay of one long session shipped 9.3 MB of JSON).
@@ -107,6 +108,62 @@ nothing. The observatory model itself (not wave F's) still takes 6–11 s cold.
 `<page>-<width>-<theme>.png` for `impact`, `sessions`, `session`, `operate`, `decide` at
 1440 and 390, light and dark — 20 full-page PNGs — kept outside the repository in the
 wave's scratch directory `cp-F/shots/`, with the draft crops the layout was tuned from.
+
+## Fix round (2026-09-26)
+
+A review of this wave confirmed 14 defects; each is fixed and pinned by a test
+(`console_wavef_truth_test.go`, `internal/console/evidence_test.go`,
+`TestConsolePagesRenderTheirVerbs`' filtered pages, `TestConsoleBudgets`' filtered
+paths). The re-run used a binary built from the fix, `serve-http` on `127.0.0.1:7675`
+(`--auto-refresh=false`, `FATHOM_SELF_RESTART=off`, scratch `HOME`), a `sqlite3 .backup`
+of the store and fresh copies of the call log, `decisions.jsonl`, the session, verify and
+hooks ledgers (both generations) and the three fleet report snapshots. The internal disk
+was full during the run, so the copies, the build's temp space and the tests' temp space
+lived on the external volume.
+
+What the real data now says:
+
+- **Guard refusals: 8**, all 2026-09-21 in scenariobench subject worktrees, from
+  `hooks.jsonl.1`; `fathom metrics catches` lists the same 8. The lane's source names
+  both generations. Totals: 538 verify refusals, 55 conserve losses, 2 integrity
+  catches (the call log grew since the first run).
+- **Filters scope every lane.** `?svc=conjure`: 17 refusals of conjure's own 190 verify
+  runs (was "of 15,361"); with `&days=7`, 2 of 71. Conserve and integrity lanes read
+  "not instrumented for conjure" instead of a zero. `?svc=no-such-project` is the
+  shell's 404 (HTML and JSON).
+- **Unreadable sources are errors, never idle or empty.** With the hooks log, call log
+  and decisions log copies at mode 000 (and, by accident, the external volume's TCC
+  wedge mid-run): the replay reads "could not be read — hooks log unreadable";
+  `/operate`'s traffic, surfaces, callers, tools and zero-call panels are
+  `data-truth-state="error"`, the p95 tiles read "unreadable", and none of "no calls in
+  window", "no usage call", "0 of 0 tools" appears; both `metrics traffic` sections
+  carry `state: error` and no `total_calls`; every `/decide` site's rulings, applied
+  and failed counts are errors. `metrics sessions` with no ledger prints "not measured"
+  and a warning, and its JSON carries no count.
+- **Time to remedy:** `median_hours` 128, state stale, `lower_bound: true`, its reason
+  naming both; the tile reads "≥ 128"; closed gaps that opened on or before the first
+  snapshot read "≥ … h"; no repository serializes `episodes: null`.
+- **Every panel names the verb that prints it.** `/operate` renders the new
+  `fathom metrics load --json` (calls per day per surface; tools by caller class —
+  equal to the page's section on real data), gives `--by caller` and the zero-call list
+  (`instrument --adoption`) their own panels, and adds the harness matrix (six
+  harnesses; the chip carries `--url` for this daemon, and the pasted chip prints the
+  section). A pasted `--q 'e865 x'` chip prints the page's section. The replay names
+  its verb in its heading and on both panels.
+
+Budgets on real data (HTML; best of three warm renders): `/impact` 147 KB, 4 ms;
+`/sessions` 182 KB, 16 ms; `/sessions/{id}` 164 KB, 17 ms (and 164 KB at `?per=2000`,
+where it was 1.19 MB); `/operate` 168 KB, 31 ms; `/decide` 112 KB, 2 ms. Each page has
+one `h1`; the served `app.css` carries `.min-w-\[560px\]` and no `%dpx` rule.
+
+**Not re-run: the browser pass.** Chrome aborted at launch (SIGABRT, crashpad
+`bootstrap_check_in` error 141) through the Playwright MCP and when started directly,
+after the internal disk filled; Playwright's own Chromium could not be downloaded. The
+first browser run of the fix (20 views, before the crash) hung on `networkidle`, which
+never settles on these pages: each holds its `/events` stream open. So the both-themes,
+390 px and keyboard checks for this round rest on the page tests and the markup (a
+stacked list below `md` for each answer-carrying table, a sort control outside the
+md-only table) and still need a browser pass.
 
 ## Cleanup
 

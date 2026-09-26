@@ -59,7 +59,7 @@ Each page lives in its own `cmd/fathom/console_<page>.go` and registers in `init
 | `/explain` (`?svc=&file=`) | Serving explainer | `obligations --file --explain --json` |
 | `/impact`, `/sessions`, `/sessions/{id}` | Evidence | `metrics impact --json`, `metrics catches --json`, `metrics sessions [--id S] --json` (the session ledger, the verify ledger, the call log, the hooks log) |
 | `/intent` (`?svc=`) | Intent | `intent audit --json --read-only` |
-| `/operate`, `/decide` | System | `metrics traffic [--by day\|caller] --json`, `instrument --adoption --json`, `fleet remedy --json`, `config --explain --json`, `flywheel`, `capabilities`; `decide log --json` |
+| `/operate`, `/decide` | System | `metrics load --json` (calls per day per surface, tools by caller class), `metrics traffic [--by caller] --json`, `instrument --adoption --json`, `fleet remedy --json`, `config --explain --json`, `harness matrix --json`, `flywheel`, `capabilities`; `decide log --json` |
 | `/wiring` | Wiring | `doctor --json`, `fleet reconcile`, `fleet receipts --json` (preview/apply/undo unchanged) |
 | `/learn`, `/learn/ask`, `/learn/guides/{slug}` | Learn | `capabilities`, `harness capabilities`, use-case guides |
 | `/search` | Palette results | the registry, services, plans, rows, symbols, intent records, verbs |
