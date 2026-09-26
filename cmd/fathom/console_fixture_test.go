@@ -27,8 +27,10 @@ import (
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
-// consoleFixtureServices are the fauxtown services the fixture fleet holds.
-var consoleFixtureServices = []string{"checkout-service", "ledger-service", "payment-service"}
+// consoleFixtureServices are the services the fixture fleet holds: three
+// fauxtown services, and proof-service, a git repository built at test time
+// (console_proof_fixture_test.go).
+var consoleFixtureServices = []string{"checkout-service", "ledger-service", "payment-service", proofServiceName}
 
 var consoleFixtureStore, consoleFixtureRootedStore struct {
 	once sync.Once
@@ -55,10 +57,26 @@ func consoleFixtureStorePath(t *testing.T) string {
 		}
 		path := filepath.Join(dir, "fleet.sqlite")
 		for _, svc := range consoleFixtureServices {
+			src, mode := fauxtownPath(svc), "faux"
+			repo, isRepo := consoleFixtureRepos[svc]
+			if isRepo {
+				root, err := repo.Build(filepath.Join(dir, "src"))
+				if err != nil {
+					consoleFixtureStore.err = "build " + svc + ": " + err.Error()
+					return
+				}
+				src, mode = root, "local"
+			}
 			var out bytes.Buffer
-			if code := run([]string{"ingest", "--service", svc, "--path", fauxtownPath(svc), "--store", path, "--mode", "faux"}, &out, &out); code != 0 {
+			if code := run([]string{"ingest", "--service", svc, "--path", src, "--store", path, "--mode", mode}, &out, &out); code != 0 {
 				consoleFixtureStore.err = "ingest " + svc + ": " + out.String()
 				return
+			}
+			if isRepo && repo.After != nil {
+				if err := repo.After(src, path); err != nil {
+					consoleFixtureStore.err = err.Error()
+					return
+				}
 			}
 		}
 		consoleFixtureStore.path = path
@@ -84,7 +102,7 @@ func consoleFixtureRootedStorePath(t *testing.T) string {
 			return
 		}
 		path := filepath.Join(dir, "fleet.sqlite")
-		for _, svc := range consoleFixtureServices {
+		for _, svc := range consoleRootedFixtureServices() {
 			root, err := filepath.Abs(fauxtownPath(svc))
 			if err != nil {
 				consoleFixtureRootedStore.err = err.Error()
@@ -102,6 +120,19 @@ func consoleFixtureRootedStorePath(t *testing.T) string {
 		t.Fatal(consoleFixtureRootedStore.err)
 	}
 	return consoleFixtureRootedStore.path
+}
+
+// consoleRootedFixtureServices are the rooted fleet's services: the
+// fauxtown services' own directories. A built repository (proof-service,
+// console wave C) serves the default fixture only.
+func consoleRootedFixtureServices() []string {
+	var out []string
+	for _, svc := range consoleFixtureServices {
+		if _, isRepo := consoleFixtureRepos[svc]; !isRepo {
+			out = append(out, svc)
+		}
+	}
+	return out
 }
 
 // consoleFixture is one running console over the fixture fleet.
@@ -176,6 +207,7 @@ func newConsoleFixtureOpts(t *testing.T, o consoleFixtureOpts) *consoleFixture {
 	t.Cleanup(f.ts.Close)
 	f.deps = newConsoleDeps(c, f.ts.URL, f.now)
 	f.deps.now = func() time.Time { return f.now }
+	f.deps.storePath = consoleFixtureStorePath(t) // serve-http's --store
 	// serve-http's own server shape: the fleet backend answers list_services.
 	var logger *mcp.CallLogger
 	if o.LogCalls {
@@ -274,6 +306,21 @@ func samplePath(p *consolePage) string {
 		return "/sessions/s-1"
 	case "/search":
 		return "/search?q=charge"
+	case "/plans/{svc}/{plan}":
+		return "/plans/" + proofServiceName + "/settlement"
+	case "/plans/{svc}/{plan}/rows/{id}":
+		return "/plans/" + proofServiceName + "/settlement/rows/S-2"
+	case "/refactors":
+		return "/refactors?svc=" + proofServiceName + "&since=HEAD~1"
 	}
 	return p.Route
+}
+
+// consoleExtraSamplePaths are further concrete URLs per page: a page whose
+// verbs and sections change with its scope (?svc=) or its subject is held
+// to its verbs at each one, not only at samplePath's.
+var consoleExtraSamplePaths = map[string][]string{
+	"project":        {"/projects/" + proofServiceName},
+	"plans":          {"/plans?svc=" + proofServiceName},
+	"certifications": {"/certifications?svc=" + proofServiceName},
 }

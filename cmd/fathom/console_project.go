@@ -16,6 +16,7 @@ func init() {
 		ID: "project", Route: "/projects/{svc}", Group: "Fleet", Order: 10,
 		Title: "Project", NavParent: "fleet", Aliases: []string{"service"},
 		Question: "Everything about one repository: wiring, freshness, configuration and activity.",
+		Verbs:    []string{"fathom fleet realization --service {svc} --json"},
 		Live:     []string{"index:{svc}", "layers:{svc}", "sessions:{svc}", "plans:{svc}"},
 		Build:    buildProjectPage,
 	})
@@ -35,12 +36,23 @@ func buildProjectPage(cr *consoleRequest) (consoleOut, error) {
 		}
 	}
 	meta := append([]string{row.Path}, modelMeta(m)...)
-	return consoleOut{
+	out := consoleOut{
 		Title: id,
 		Meta:  meta,
 		Model: row,
 		Body:  func() string { return obsContent("service", body, m) },
-	}, nil
+		Verbs: []string{},
+	}
+	// OC-25 (RG-5): the realization ladder leads the overview.
+	if l, ok := modelLadder(m, id); ok {
+		verb := realizationVerb(id)
+		out.Verbs, out.Sections = []string{verb}, map[string]any{verb: l}
+		// The ladder is a live panel, so the router no longer wraps the
+		// page in its region: the rest of the page keeps its own.
+		rest, _ := consoleLivePage(id, pageLiveSources(cr.page, cr), cr.now, body)
+		out.Body = func() string { return obsContent("service", ladderPanel(l)+rest, m) }
+	}
+	return out, nil
 }
 
 // unknownProjectError is OC-5's unknown-service page: the name that missed,

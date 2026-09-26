@@ -79,7 +79,8 @@ func TestConsoleRegistry_RoutesNavAndSearchAgree(t *testing.T) {
 			t.Errorf("page %s did not render on the console shell", p.ID)
 		}
 	}
-	for _, want := range []string{"/", "/fleet", "/projects/{svc}", "/impact", "/sessions", "/sessions/{id}", "/brief", "/wiring", "/statusz", "/search"} {
+	for _, want := range []string{"/", "/fleet", "/projects/{svc}", "/impact", "/sessions", "/sessions/{id}", "/brief", "/wiring", "/statusz", "/search",
+		"/plans", "/plans/{svc}/{plan}", "/plans/{svc}/{plan}/rows/{id}", "/certifications", "/refactors"} {
 		found := false
 		for _, p := range real.pages {
 			if p.Route == want || (want == "/" && p.Route == "/{$}") {
@@ -566,44 +567,50 @@ func jsonFieldNames(t reflect.Type) map[string]bool {
 // TestConsolePagesRenderTheirVerbs pins OC-8: every page answers JSON in
 // the console envelope naming its verbs; for each verb a page declares,
 // the page JSON's section equals that verb's --json output on the fixture
-// fleet, byte-for-value. Pages not yet rebuilt declare no verbs.
+// fleet, byte-for-value. Pages not yet rebuilt declare no verbs. A page
+// whose registered verbs are templates ("{svc}", "{plan}") names the
+// request's concrete commands, each an instance of a template.
 func TestConsolePagesRenderTheirVerbs(t *testing.T) {
 	f := newConsoleFixture(t)
+	pinConsoleVerbClocks(t, f)
 	withVerbs := 0
 	for _, p := range defaultConsoleRegistry().pages {
 		if p.ID == "statusz" {
 			continue // ?format=json is the v3 report (OC-6), not the envelope
 		}
-		env := f.pageJSON(t, samplePath(p))
-		if env.Schema != consolePageJSONSchema || env.Page != p.ID || env.Group != p.Group || env.Question != p.Question {
-			t.Errorf("page %s: envelope = %+v", p.ID, env)
-		}
-		if !reflect.DeepEqual(append([]string{}, env.Verbs...), append([]string{}, p.Verbs...)) {
-			t.Errorf("page %s: JSON verbs %v, registry %v", p.ID, env.Verbs, p.Verbs)
-		}
-		for _, verb := range p.Verbs {
-			withVerbs++
-			section, ok := env.Sections[verb]
-			if !ok {
-				t.Errorf("page %s: no section for its verb %q", p.ID, verb)
-				continue
+		for _, path := range append([]string{samplePath(p)}, consoleExtraSamplePaths[p.ID]...) {
+			env := f.pageJSON(t, path)
+			if env.Schema != consolePageJSONSchema || env.Page != p.ID || env.Group != p.Group || env.Question != p.Question {
+				t.Errorf("page %s: envelope = %+v", path, env)
 			}
-			args := append(strings.Fields(verb)[1:], "--url", f.ts.URL)
-			var out, errb bytes.Buffer
-			if code := run(args, &out, &errb); code != 0 {
-				t.Fatalf("%s exited %d: %s", verb, code, errb.String())
+			if !verbsInstantiate(env.Verbs, p.Verbs) {
+				t.Errorf("page %s: JSON verbs %v are not the registry's %v", path, env.Verbs, p.Verbs)
 			}
-			var fromVerb, fromPage any
-			if err := json.Unmarshal(out.Bytes(), &fromVerb); err != nil {
-				t.Fatalf("%s: %v", verb, err)
-			}
-			if err := json.Unmarshal(section, &fromPage); err != nil {
-				t.Fatal(err)
-			}
-			if !reflect.DeepEqual(fromVerb, fromPage) {
-				a, _ := json.MarshalIndent(fromVerb, "", " ")
-				b, _ := json.MarshalIndent(fromPage, "", " ")
-				t.Errorf("page %s disagrees with `%s`:\nverb: %s\npage: %s", p.ID, verb, a, b)
+			for _, verb := range env.Verbs {
+				withVerbs++
+				section, ok := env.Sections[verb]
+				if !ok {
+					t.Errorf("page %s: no section for its verb %q", path, verb)
+					continue
+				}
+				args, dir := consoleVerbArgs(t, f, verb)
+				var out, errb bytes.Buffer
+				code := runIn(t, dir, args, &out, &errb)
+				if code != 0 {
+					t.Fatalf("%s exited %d: %s", verb, code, errb.String())
+				}
+				var fromVerb, fromPage any
+				if err := json.Unmarshal(out.Bytes(), &fromVerb); err != nil {
+					t.Fatalf("%s: %v", verb, err)
+				}
+				if err := json.Unmarshal(section, &fromPage); err != nil {
+					t.Fatal(err)
+				}
+				if !reflect.DeepEqual(fromVerb, fromPage) {
+					a, _ := json.MarshalIndent(fromVerb, "", " ")
+					b, _ := json.MarshalIndent(fromPage, "", " ")
+					t.Errorf("page %s disagrees with `%s`:\nverb: %s\npage: %s", path, verb, a, b)
+				}
 			}
 		}
 	}
@@ -647,7 +654,7 @@ func TestConsolePagesRenderTheirVerbs(t *testing.T) {
 				t.Errorf("page %s: section %q is not keyed by service: %v", p.ID, tmpl, err)
 				continue
 			}
-			for _, svc := range consoleFixtureServices {
+			for _, svc := range consoleRootedFixtureServices() {
 				compared[tmpl] += check(t, g, svc, bySvc[svc])
 			}
 		}
@@ -781,7 +788,8 @@ func TestConsoleMetricsAgreeAcrossPages(t *testing.T) {
 		}
 	}
 	for _, id := range []console.MetricID{console.MetricServices, console.MetricSymbols, console.MetricCalls, console.MetricSessions, console.MetricObservations, console.MetricAgentTools,
-		console.MetricWiredFresh, console.MetricPlanRowsVerified, console.MetricClaimsFresh, console.MetricCertificatesLive} {
+		console.MetricWiredFresh, console.MetricPlanRowsVerified, console.MetricClaimsFresh, console.MetricCertificatesLive,
+		console.MetricPlansUnproven, console.MetricPlansProven, console.MetricCertGaps, console.MetricCertLive} {
 		pages := byMetric[string(id)]
 		if len(pages) == 0 {
 			t.Errorf("metric %s is shown on no page", id)
@@ -871,6 +879,11 @@ func TestConsoleMetricsAgreeAcrossPages(t *testing.T) {
 	if strings.Contains(brief.Markdown, "16-tool") {
 		t.Error("the brief still names a literal surface size")
 	}
+
+	// The proof metrics (console wave C) equal their verbs summed over the
+	// fleet: the plans headline is `plans status`'s claimed_unproven and
+	// proven, the certifications totals are `certify gaps`'s summary.
+	assertProofMetricsMatchVerbs(t, f, value)
 
 	// Plan proof in its hardest state — one plan verified at HEAD in a
 	// detached clone, one only at an older commit at the root, one never:

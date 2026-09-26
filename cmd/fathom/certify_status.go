@@ -55,22 +55,15 @@ func cmdCertifyStatus(args []string, stdout, stderr io.Writer) int {
 	if *jsonOut {
 		enc := json.NewEncoder(stdout)
 		enc.SetIndent("", "  ")
-		if err := enc.Encode(certifyStatusJSON(svc, report.Summary, report.Unreadable)); err != nil {
+		if err := enc.Encode(certifyStatusDoc(svc, report)); err != nil {
 			return 1
 		}
 		return 0
 	}
-	// I38: a target source that exists and could not be read is named,
-	// and the counts are a lower bound — never "nothing declared".
-	lower := ""
-	if len(report.Unreadable) > 0 {
-		lower = fmt.Sprintf(" — a lower bound: %d target source(s) unreadable: %s", len(report.Unreadable), strings.Join(report.Unreadable, "; "))
+	if len(report.Unread) > 0 {
+		fmt.Fprintf(stdout, "certify status: INCOMPLETE — %d source(s) could not be read, so these counts are a lower bound: %s\n", len(report.Unread), strings.Join(report.Unread, "; "))
 	}
-	if report.Summary.Declared == 0 {
-		if lower != "" {
-			fmt.Fprintf(stdout, "certify status: %s: targets unknown%s\n", svc, lower)
-			return 0
-		}
+	if report.Summary.Declared == 0 && len(report.Unread) == 0 {
 		fmt.Fprintln(stdout, "certify status: no manifests found — nothing declared")
 		return 0
 	}
@@ -78,32 +71,41 @@ func cmdCertifyStatus(args []string, stdout, stderr io.Writer) int {
 	if report.Summary.Cases > 0 {
 		joinRate = float64(report.Summary.JoinedCases) / float64(report.Summary.Cases)
 	}
-	fmt.Fprintf(stdout, "certify status: %s: %d target(s), %d live, %d gap(s), joined %d of %d cases (%.0f%%)%s\n",
+	fmt.Fprintf(stdout, "certify status: %s: %d target(s), %d live, %d gap(s), joined %d of %d cases (%.0f%%)\n",
 		svc, report.Summary.Declared, report.Summary.Live, report.Summary.Gaps,
-		report.Summary.JoinedCases, report.Summary.Cases, joinRate*100, lower)
+		report.Summary.JoinedCases, report.Summary.Cases, joinRate*100)
 	return 0
 }
 
-// certifyStatusJSON is `certify status --json`'s object — the verb's and
-// the Now page's per-project section (console_home.go), one function so
-// they cannot disagree. Nothing declared and everything read is a skip;
-// an unreadable target source is listed ("unreadable"), and then nothing
-// declared is never the skip's "nothing declared".
-func certifyStatusJSON(svc string, s certify.GapSummary, unreadable []string) map[string]any {
-	if s.Declared == 0 && len(unreadable) == 0 {
+// certifyStatusDoc is `certify status --json`'s document for one service's
+// report — the verb's output and the certifications page's section.
+func certifyStatusDoc(svc string, report certify.GapReport) map[string]any {
+	return certifyStatusJSON(svc, report.Summary, report.Unread)
+}
+
+// certifyStatusJSON is that document from a summary and its unread
+// sources — the Now page's per-project section (console_home.go) builds it
+// from a projected value, and one function keeps the three from
+// disagreeing. Nothing declared and everything read is a skip; an
+// unreadable target source is listed ("unread"), the counts are then a
+// lower bound, and nothing declared is never the skip's "nothing declared"
+// (I38).
+func certifyStatusJSON(svc string, s certify.GapSummary, unread []string) map[string]any {
+	if s.Declared == 0 && len(unread) == 0 {
 		return map[string]any{"service": svc, "skip": "no manifests found — nothing declared"}
 	}
 	joinRate := 0.0
 	if s.Cases > 0 {
 		joinRate = float64(s.JoinedCases) / float64(s.Cases)
 	}
-	out := map[string]any{
+	doc := map[string]any{
 		"service": svc, "declared": s.Declared, "live": s.Live,
 		"gaps": s.Gaps, "joined_cases": s.JoinedCases,
 		"cases": s.Cases, "join_rate": joinRate,
 	}
-	if len(unreadable) > 0 {
-		out["unreadable"] = unreadable
+	if len(unread) > 0 {
+		// The counts are a lower bound: these sources were not read (I38).
+		doc["unread"] = unread
 	}
-	return out
+	return doc
 }

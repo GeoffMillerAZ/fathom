@@ -146,7 +146,7 @@ func rungPips(rungs []console.Rung, met, of int) string {
 			cls, glyph, word = "border-positive bg-positive text-ink-inverse", "✓", "met"
 		case console.RungUnmet:
 			cls, glyph, word = "border-danger bg-danger-soft text-danger", "✕", "not met"
-		case console.RungNA:
+		case console.RungNotApplicable:
 			cls, glyph, word = "border-dashed border-line bg-surface-sunken text-ink-muted", "–", "not applicable"
 		}
 		words = append(words, r.Name+": "+word)

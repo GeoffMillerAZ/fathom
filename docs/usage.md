@@ -459,7 +459,7 @@ HTTP endpoints:
 | `GET` | `/metrics` | Text metrics: `fathom_uptime_seconds`, `fathom_requests_total`, memory and memo gauges, `fathom_console_page_views_total{route=…}` (OC-15: HTML views per console route pattern since start; the durable 30-day record is `~/.fathom/console-views.jsonl`, `FATHOM_CONSOLE_VIEWS` overrides) and `fathom_console_event_subscribers` |
 | `GET` | `/statusz` | Daemon health, per-service index freshness, channel liveness, last compile per layer, and (schema 2) the daemon's own build stamp `binary_commit` / `binary_dirty` / `built_at` — JSON (schema 3, unchanged) via `Accept: application/json`/`?format=json`; HTML on the console shell otherwise, where every service names its typed-edge state — run by this daemon, recorded by an earlier daemon process (replayed from the store), failed with its reason, **does not apply** (no `go.mod` at the service root), or **unknown** (a Go module with no pass recorded anywhere), never blank (OC-6; `docs/design/observability-surfaces.md` §8 item 6). Gated inside the `/rpc/modules` bearer-token allowlist when `--modules-token-env` is configured; open on the default loopback-only daemon |
 | `POST` | `/reload` | Reload the store (PlatformStore re-scan in platform mode) |
-| `GET` | `/`, `/fleet`, `/projects/{svc}`, `/impact`, `/sessions`, `/sessions/{id}`, `/brief`, `/wiring`, `/statusz`, `/search` | The Observatory console (see below): every page on one shell; `?format=json` returns the page's envelope (`fathom.console.page/v1`) |
+| `GET` | `/`, `/fleet`, `/projects/{svc}`, `/impact`, `/sessions`, `/sessions/{id}`, `/brief`, `/wiring`, `/statusz`, `/search`, `/plans`, `/plans/{svc}/{plan}`, `/plans/{svc}/{plan}/rows/{id}`, `/certifications`, `/refactors` | The Observatory console (see below): every page on one shell; `?format=json` returns the page's envelope (`fathom.console.page/v1`) |
 | `GET` | `/observatory`, `/observatory/service`, `/observatory/impact`, `/observatory/story`, `/observatory/brief`, `/observatory/session`, `/observatory/wiring/` | Legacy routes (OC-7): an HTML request is a **308** to the page's new home; `?format=json` still returns the old JSON unchanged (`observatoryModel` v1 and its per-page slices) |
 | `POST` | `/observatory/wiring/preview` · `apply` · `undo` | Law-15 wiring through `internal/wiring`: `preview` returns the plan + `plan_digest`; `apply` requires it (409 if the repo changed since preview) and returns a `receipt_digest`; `undo` requires that digest. All three refuse non-loopback `Host`, cross-origin `Origin`, unknown service ids, and paths that are not registered service roots (`requireLocalMutation`); a refusal, and a `GET` of any of the three, renders on the console shell with the reason and a way back to `/wiring` |
 
@@ -764,7 +764,7 @@ fathom verify --service <id> --plan docs/plans/<slug>.md [--plan <more>...] \
 | `--plan` | (required, repeatable) | Markdown plan file(s) to verify |
 | `--service` | (required) | Service ID to verify against |
 | `--store` | `""` | store path (direct mode, bypasses the daemon; required for CI) |
-| `--url` | `defaultFathomURL()` | fathom `serve-http` base URL (HTTP mode; ignored when `--store` is set) |
+| `--url` | `defaultFathomURL()` | fathom `serve-http` base URL (HTTP mode; ignored when `--store` is set). The daemon's response budget cuts a long plan's `verify_plan` answer; the cut rows are verified in follow-up calls, and a row whose verdict never arrives reads unknown (`verdict-elided`), never absent from the gate |
 | `--strict` | `false` | Treat claimed-but-Unknown tasks as failures too (recommended for CI) |
 | `--require-all` | `false` | Wave gate: additionally fail on any open/in-progress task (ADR-018 §2) |
 | `--concern` | `""` | Optional concern for contradiction scoping |
@@ -774,6 +774,7 @@ fathom verify --service <id> --plan docs/plans/<slug>.md [--plan <more>...] \
 | `--quiet-pass` | `false` | Suppress output when the gate passes (exit 0) |
 | `--mutation` | `""` (falls back to `$FATHOM_MUTATION_REPORT`) | VB-34: a mutation-testing report (go-mutesting log output, or fathom's own JSON shape — see `docs/use-cases/test-coverage.md`); a claimed row whose symbol is `test_reaches`-covered but has mutation score 0 gets a `covered-not-asserted` note. `--store`/direct mode only — HTTP mode errors (exit 2) if given |
 | `--strict-mutation` | `false` | Gate-fail a `covered-not-asserted` finding instead of noting it as advisory |
+| `--row` | `""` | Narrow the report and the gate to one row id (the console's row evidence renders `verify … --row ID --json`); every plan is still verified and ledgered in full, and an id no plan holds is exit 2 |
 | `--since` | `""` | ADR-044 §1.4/CV-14 (I45): compare each `--plan` file against its version at this git ref. A claimed row whose `skip_test`/`skip`, `disposition`, `retires:`, `surface_change:`, or a raised `max:` was gained ANYWHERE inside `<ref>`..head (not merely the last edit/commit — the narrower thing no `--since` does) is reported `self-declared` and, for a gained skip, fails the gate exactly as the plain self-skip check does. Text output prints `self-declared: <keys>` under each affected row and, after the summary, `deleted since <ref> (<plan>): <ids>` for rows present at `<ref>` and missing now. Applies only inside a git work tree; a `<ref>` the plan file did not exist at yet counts as every current declaration being self-declared |
 
 A plan row's `certified_by: <Test>` annotation (vision 33 / ADR-043 stage 1,
@@ -1166,6 +1167,8 @@ discipline, and the tie-in/latency-budget checks doctor itself doesn't run.
 ```sh
 fathom plans status  --service <svc> [--plan P]... [--store DB | --url U] [--json]   # per-plan rollup: total/proven/claimed-unproven/measured-stale/open/deferred/other-skipped
 fathom plans next    --service <svc> [--eligible-only] [--free] [--root DIR] [--json] # the ordered work frontier, with {id, symbol, package} anchors
+fathom plans history --service <svc> --plan P [--url U] [--json]                      # the burn-up: scope and claimed rows per commit of the plan, the ledger's proven trend (absent under 14 days of rows), the cross-check
+fathom plans history [--service <svc>] [--url U] [--json]                             # no --plan: the claimed-vs-proven trend of the current plans of one service (or every registered one), from the verify ledger's runs of those plans only
 fathom plans context --service <svc> --row <id> [--budget 4000]                       # render a row's ctx: context pack (elided beyond the byte budget)
 fathom plans lease   --plan P <row-id> [--holder H] [--ttl 2h] [--release] [--root DIR] # TTL advisory lease on a row (.fathom/leases.jsonl)
 fathom plans leases  [--root DIR] [--json]                                            # list live leases
@@ -1174,6 +1177,10 @@ fathom plans restore <plan> [--root DIR]                   # bring it back
 ```
 
 State is always derived from the index by the verify engine, never asserted.
+With `--service` and no `--plan`, plans are discovered in the service's
+registered root and their lexical oracles and self-skip history are read from
+that root too. `status --json` names the measurement rows among `proven` and
+`open` as `op_proven` and `op_open` (subsets, not buckets).
 `measured-stale` (PC-5, ADR-027): when the daemon that answered is not this
 binary's build (or, inside the fathom checkout, not HEAD), a claimed row it did
 not prove is a coverage gap in that column — never `claimed-unproven` — and a
@@ -1414,6 +1421,7 @@ capture (neither is listed in `fathom help`).
 ```sh
 fathom fleet report    [--json | --out ~/.fathom/fleet] [--url U]           # wiring/freshness across every indexed repo
 fathom fleet reconcile [--repo R]... [--apply [--rebaseline]] [--url U]      # dry-run by default; --apply: shim repoint + additive template merge + stanza + baseline digests
+fathom fleet realization --service S [--json] [--url U]                     # the realization ladder: wired → fresh → queried → preventing → gating, the first unmet rung with its remedy
 fathom fleet receipts  [--repo R] [--limit 20] [--json]                      # every write fathom makes in a repo is receipted…
 fathom fleet undo      [--last | <receipt-id>] [--repo R] [--json]           # …and reversible
 ```
@@ -1781,7 +1789,10 @@ resolved caller count then symbol — still counts and lists only (I43), no
 percentage. `unanalyzed_functions` counts a changed function whose own
 file the index never analyzed at all (vendor/, an ignore rule), so
 `changed` always equals the sum of every class plus that count
-(reconciliation, CV-71). Test-case identity: a case id carrying its own
+(reconciliation, CV-71). `classed_by_execution` counts the changed
+functions an execution-evidence profile classed (the attested ones, never
+listed, included): `partial` and `unexecuted` exist only among them, so at
+0 neither was measured and their 0 is not a count. Test-case identity: a case id carrying its own
 package (`fathom tests ingest`'s join, `JoinCasesToSymbols`) disambiguates
 a bare `Test*` name shared across packages, which used to leave both
 unjoined (CV-M13's control measurement: 34 of 566 cases).
@@ -1789,7 +1800,7 @@ unjoined (CV-M13's control measurement: 34 of 566 cases).
 ```json
 {"schema":"fathom.coverage/v1", "...": "...",
  "residue":{"changed":2,"attested":0,"unattested":0,"unreached":0,
-   "partial":1,"unexecuted":1,"unanalyzed_functions":0,
+   "partial":1,"unexecuted":1,"unanalyzed_functions":0,"classed_by_execution":2,
    "items":[
      {"symbol":"Half","file":"widgets/extra.go","line":9,"change":"modified",
       "class":"partial","tests":[],"callers":0,"evidence":"executed",
@@ -2072,7 +2083,11 @@ them without a version bump). Each target additionally carries `source`
 declared: a `// certifies:` marker's own comment line, an invariant's row in
 `docs/intent/invariants.md`, an incident heading in
 `docs/intent/incidents.md`, or a port interface's own declaration — nil when
-`Gaps` could not place it. `certify manifest` regenerates
+`Gaps` could not place it. A target source that exists and could not be read
+(the intent corpus, `incidents.md`, a port's source file) is named in
+`unread` (omitempty; `certify status --json` too, and an INCOMPLETE line in
+text): the counts are then a lower bound and no "no manifests found" skip is
+claimed. `certify manifest` regenerates
 `docs/certifications.md` from the layer; `--check` fails (exit 1) instead of
 writing when the committed file differs — a hand edit to that file is a
 defect. `certify orphans` (TC-22) lists `Test*` symbols that certify
@@ -2321,6 +2336,11 @@ unreadable store) render on the same shell with the reason and the remedy.
 | `/brief` | The shareable brief; `?format=md` downloads it |
 | `/wiring` | Per-repo Preview → Apply → Undo (the POSTs stay at `/observatory/wiring/*` behind the local gate) |
 | `/statusz` | Daemon status (JSON schema 3 unchanged) |
+| `/plans` (`?svc=`, `?page=`) | Every plan across the fleet (or one repository) with a proof bar counted from the gate's verdicts, the claimed-but-unproven gap as the headline (a named lower bound while rows sit measured-stale), and the claimed-vs-proven trend of the scope's current plans once the verify ledger holds 14 days of their rows; carries `fathom plans status --service S --json` per repository and `fathom plans history [--service S] --json` for the trend |
+| `/plans/{svc}/{plan}` | The plan's proof bar, its rows by state on a read-only board (each card names its contract kind; a card opens the row's evidence in a drawer, and is a link without JavaScript), every row as a table, and the burn-up; carries `plans status`, `plans next` and `plans history` for the plan |
+| `/plans/{svc}/{plan}/rows/{id}` | One row's evidence: contract, verdict criterion by criterion, the call path from its test to its symbol (or the line its lexical oracle matched), and its history from the plan's commits; `?format=fragment` is the drawer's body; carries `fathom verify --row ID --json` |
+| `/certifications` (`?svc=`) | Targets by their best certificate's state (heatmap and table), each repository's line, and the gap list with remedies; carries `certify status` (and, for one repository, `certify gaps`), each chip naming the daemon's `--store` |
+| `/refactors?svc=&since=` | `fathom conserve --since` for one repository: the planes as chips (a plane that did not run reads "not run", never "conserved"), the findings, and the reading set with an excerpt of each partial function's unexecuted lines (partial and unexecuted read "not measured" without execution evidence); the chip names the daemon's `--store`, and the page never writes the repository's index; without `svc` a chooser |
 | `/search?q=` | Projects, plans and plan rows, symbols, rules and records, verbs and pages, grouped; groups are listed by their best match (a tie goes to the smaller group, then that order) and every query word must match; a row or record ID matches exactly (`OC-1`, `ADR-045`); each group shows 8 of an exact total, and `&group=<slug>` (`projects`, `plans-and-rows`, `symbols`, `rules-and-records`, `verbs`, `pages`) pages through all of it, 50 at a time (`&page=N`). A query of more than 8 words or 200 characters is a 400. `?format=fragment` is the HTML fragment the command palette will load, `?format=json` the results |
 
 - Every page answers `?format=json` (or `Accept: application/json`) with one
@@ -2335,7 +2355,14 @@ unreadable store) render on the same shell with the reason and the remedy.
   "≥" lower bound everywhere, the brief included); with wave B,
   `fleet.wired_fresh`, `plans.verified` (the newest recorded verify run of each
   plan at its project's registered root), `claims.fresh` and
-  `certificates.live`.
+  `certificates.live`; with wave C, `plans.claimed_unproven`, `plans.proven`,
+  `certify.gaps` and `certify.live`, the Proof pages' fleet totals.
+- The Proof pages verify plans in the background through the path `plans
+  status` takes, keyed by each plan's content, the index watermark and HEAD: a
+  page waits a bounded time, shows a plan still verifying as "not yet
+  verified" (its claims are never counted proven), and its panels say
+  "Updated" over `/events` when the verdicts land. `/refactors` does the same
+  for `fathom conserve`.
 - The fleet page's grade distribution over 30 days (RG-7) is
   **experimental**: days without a snapshot are Absent — today's fold
   only, until daily snapshots persist (the page says so). Symbols/traffic/

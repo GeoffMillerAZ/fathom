@@ -34,12 +34,12 @@ wave is called done.
 
 ## C. Proof
 
-- [ ] The plans portfolio shows a proof bar per plan across the fleet {id: OC-21, symbol: PlanPortfolio, package: internal/console, reachable_from: TestPlanPortfolio_ProofBarsPerPlan}
-- [ ] A plan page shows its proof bar, a board of rows by state with each row's contract kind, and a burn-up from the plan's history {id: OC-22, symbol: PlanLedger, package: internal/console, reachable_from: TestPlanLedger_BoardAndBurnup}
-- [ ] A row's evidence names its contract, verify result, the reach path or oracle match, and its history {id: OC-23, symbol: RowEvidence, package: internal/console, reachable_from: TestRowEvidence_ReachPathAndOracleMatch}
-- [ ] The certifications page shows targets × certificates with states and the gap list {id: OC-24, symbol: CertMatrix, package: internal/console, reachable_from: TestCertMatrix_TargetsByState}
-- [ ] The project overview renders the realization ladder with evidence per rung and the remedy on the first unmet rung (RG-5) {id: OC-25, symbol: RealizationLadder, package: internal/console, reachable_from: TestRealizationLadder_RemedyOnFirstUnmetRung}
-- [ ] The refactor page shows plane chips (a plane not run reads "not run") and the reading set with a code excerpt per partial item {id: OC-26, symbol: RefactorView, package: internal/console, reachable_from: TestRefactorView_NotRunIsNeverConserved}
+- [x] The plans portfolio shows a proof bar per plan across the fleet {id: OC-21, symbol: PlanPortfolio, package: internal/console, reachable_from: TestPlanPortfolio_ProofBarsPerPlan}
+- [x] A plan page shows its proof bar, a board of rows by state with each row's contract kind, and a burn-up from the plan's history {id: OC-22, symbol: PlanLedger, package: internal/console, reachable_from: TestPlanLedger_BoardAndBurnup}
+- [x] A row's evidence names its contract, verify result, the reach path or oracle match, and its history {id: OC-23, symbol: RowEvidence, package: internal/console, reachable_from: TestRowEvidence_ReachPathAndOracleMatch}
+- [x] The certifications page shows targets × certificates with states and the gap list {id: OC-24, symbol: CertMatrix, package: internal/console, reachable_from: TestCertMatrix_TargetsByState}
+- [x] The project overview renders the realization ladder with evidence per rung and the remedy on the first unmet rung (RG-5) {id: OC-25, symbol: RealizationLadder, package: internal/console, reachable_from: TestRealizationLadder_RemedyOnFirstUnmetRung}
+- [x] The refactor page shows plane chips (a plane not run reads "not run") and the reading set with a code excerpt per partial item {id: OC-26, symbol: RefactorView, package: internal/console, reachable_from: TestRefactorView_NotRunIsNeverConserved}
 
 ## D. Knowledge
 

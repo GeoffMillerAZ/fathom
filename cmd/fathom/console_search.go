@@ -633,10 +633,10 @@ func renderSearchResults(res console.SearchResults) string {
 		case res.Group != "":
 			pages := (g.Total + res.PerGroup - 1) / res.PerGroup
 			group := g.Group
-			b.WriteString(`<div class="mt-2 [&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center [&_span]:inline-flex [&_span]:min-h-11 [&_span]:items-center">` + chrome.RenderPagination(chrome.Pagination{
+			b.WriteString(consolePager(chrome.Pagination{
 				Page: res.Offset/res.PerGroup + 1, TotalPages: pages, AriaLabel: string(g.Group) + " pages",
 				HrefFor: func(n int) string { return searchHref(res.Query, group, n) },
-			}) + `</div>`)
+			}))
 		}
 		b.WriteString(`</section>`)
 	}

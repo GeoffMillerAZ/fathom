@@ -46,6 +46,11 @@ type obsServiceRow struct {
 	// preventing, gating — that grades what fathom is DOING here rather
 	// than how it is configured.
 	Realization *realizationReport `json:"realization,omitempty"`
+	// ladder is the rung-level projection the grade folds
+	// (console.RealizationLadder): the project overview and `fathom fleet
+	// realization` render it. Unexported, so observatoryModel v1's JSON is
+	// unchanged.
+	ladder *console.Ladder
 	// Series (RG-6): the 30-day per-dimension activity series from the call
 	// log. Nil when the log could not be read (the model's CallLogNote then
 	// carries the reason) — a series of thirty "no rows" absences would
@@ -297,32 +302,27 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 		}
 		labelKey := sessionLabelKey(roots)
 		sessionsByRepo := map[string]int{}
-		verifyRunsByRepo := map[string]int{}
 		ledgerReadable := ledgerErr == nil
+		// The realization ladder's window (docs/design/realization-grade.md
+		// §2): the same fourteen UTC days the traffic sparkline draws, for
+		// every rung — calls, obligations injections, sessions and gate
+		// runs in the window, never ever.
+		winFrom, winTo := realizationWindowBounds(now)
+		winFromDay, winToDay := winFrom.Format("2006-01-02"), winTo.Format("2006-01-02")
+		windowSessions := map[string]int{}
 		if ledgerReadable {
-			data := ledgerData
-			sessionsByRepo = console.DistinctSessionsBy(data, labelKey)
-			for _, line := range strings.Split(string(data), "\n") {
-				if line == "" {
-					continue
-				}
-				var row struct {
-					Repo          string `json:"repo"`
-					VerifyCatches *int   `json:"verify_catches"`
-				}
-				if json.Unmarshal([]byte(line), &row) == nil && row.Repo != "" {
-					// verify_catches is nil when the gate never RAN, so a
-					// non-nil value (including 0) is a run. Counting a nil
-					// as a run would report a gate that never fired as
-					// gating (law 3).
-					if row.VerifyCatches != nil {
-						verifyRunsByRepo[labelKey(row.Repo)]++
-					}
-				}
-			}
+			sessionsByRepo = console.DistinctSessionsBy(ledgerData, labelKey)
+			windowSessions = console.DistinctSessionsIn(ledgerData, labelKey, winFrom, winTo)
 		}
+		// The gating rung reads the verify ledger (SD-1): every `fathom
+		// verify` run appends to it, a pre-push hook's included — the
+		// session ledger's verify_catches only ever saw runs inside an agent
+		// session, which told repositories that gate on every push to add
+		// the gate (O30's failure, again).
+		verifyRuns, verifyLedgerNote := windowVerifyRuns(winFrom, winTo)
 
 		obligationsBySvc := map[string]int{}
+		windowObligations := map[string]int{}
 		compileBySvc := fetchCompileStates(hc, baseURL)
 		obligationCalls := 0
 		byDay := map[string]int{}
@@ -332,6 +332,9 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 				obligationCalls++
 				if e.Service != "" {
 					obligationsBySvc[strings.ToLower(e.Service)]++
+					if inRealizationWindow(e.TS, winFromDay, winToDay) {
+						windowObligations[strings.ToLower(e.Service)]++
+					}
 				}
 			}
 			if len(e.TS) >= 10 {
@@ -401,15 +404,20 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 			// so the letter and the chart can never disagree.
 			win := realizationWindow{
 				Calls:            sumInts(row.TrafficDays),
-				ObligationServes: obligationsBySvc[name],
-				VerifyRuns:       verifyRunsByRepo[name],
-				HasPlans:         repoHasPlans(info.path),
+				ObligationServes: windowObligations[name],
+				Sessions:         windowSessions[name],
+				VerifyRuns:       verifyRuns[name],
+				WindowDays:       realizationWindowDays,
+				CallLogNote:      m.CallLogNote,
+				VerifyLedgerNote: verifyLedgerNote,
 			}
-			if row.SessionCount != nil {
-				win.Sessions = *row.SessionCount
+			win.HasPlans, win.PlansNote = repoPlansRead(info.path)
+			if !ledgerReadable {
+				win.SessionsNote = "the session ledger was not read (" + ledgerPath + ")"
 			}
-			rr := realizationGrade(row, win)
-			row.Realization = &rr
+			ladder := console.RealizationLadder(realizationLadderFacts(row, win))
+			rr := realizationReportFrom(ladder)
+			row.Realization, row.ladder = &rr, &ladder
 			if callLogRead {
 				row.Series = dimensionSeries(entries, name, now, seriesDays)
 			}

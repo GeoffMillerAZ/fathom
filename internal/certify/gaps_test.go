@@ -12,7 +12,7 @@ import (
 
 // TestGaps_UnreadableIntentCorpusIsNamedNeverDropped: a target source that
 // exists and cannot be read (the external volume's EPERM wedge, a chmod)
-// is named in the report's Unreadable list — never a quietly smaller
+// is named in the report's Unread list — never a quietly smaller
 // target universe that a caller then reads as "declares none" (I38).
 //
 // certifies: invariant I38 (asserts)
@@ -39,8 +39,8 @@ func TestGaps_UnreadableIntentCorpusIsNamedNeverDropped(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if full.Summary.Declared != 3 || len(full.Unreadable) != 0 {
-		t.Fatalf("readable corpus: declared %d, unreadable %v; want 3 targets and nothing unread", full.Summary.Declared, full.Unreadable)
+	if full.Summary.Declared != 3 || len(full.Unread) != 0 {
+		t.Fatalf("readable corpus: declared %d, unreadable %v; want 3 targets and nothing unread", full.Summary.Declared, full.Unread)
 	}
 
 	for _, p := range []string{inv, inc} {
@@ -56,12 +56,12 @@ func TestGaps_UnreadableIntentCorpusIsNamedNeverDropped(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an unreadable corpus file is a named lower bound, not a failed call: %v", err)
 	}
-	joined := strings.Join(part.Unreadable, "; ")
+	joined := strings.Join(part.Unread, "; ")
 	if !strings.Contains(joined, "invariants.md") || !strings.Contains(joined, "incidents.md") || !strings.Contains(strings.ToLower(joined), "permi") {
-		t.Errorf("unreadable = %v; want both files named with the OS's reason", part.Unreadable)
+		t.Errorf("unreadable = %v; want both files named with the OS's reason", part.Unread)
 	}
 	if strings.Count(joined, "incidents.md") != 1 {
-		t.Errorf("each unreadable file is named once: %v", part.Unreadable)
+		t.Errorf("each unreadable file is named once: %v", part.Unread)
 	}
 
 	// The router itself unreadable: nothing of the corpus is read, and the
@@ -74,7 +74,7 @@ func TestGaps_UnreadableIntentCorpusIsNamedNeverDropped(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if blind.Summary.Declared != 0 || !strings.Contains(strings.Join(blind.Unreadable, "; "), "README.md") {
-		t.Errorf("router unreadable: declared %d, unreadable %v", blind.Summary.Declared, blind.Unreadable)
+	if blind.Summary.Declared != 0 || !strings.Contains(strings.Join(blind.Unread, "; "), "README.md") {
+		t.Errorf("router unreadable: declared %d, unreadable %v", blind.Summary.Declared, blind.Unread)
 	}
 }

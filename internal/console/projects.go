@@ -39,24 +39,6 @@ const (
 	SourcePlanFiles = "plan files"
 )
 
-// RungState is one realization rung's state for one project.
-type RungState string
-
-const (
-	RungMet     RungState = "met"
-	RungUnmet   RungState = "unmet"
-	RungNA      RungState = "not_applicable"
-	RungUnknown RungState = "unknown"
-)
-
-// Rung is one step of the realization ladder: wired → fresh → queried →
-// preventing → gating.
-type Rung struct {
-	Name     string    `json:"name"`
-	State    RungState `json:"state"`
-	Evidence string    `json:"evidence"`
-}
-
 // ClaimCounts are one project's governed claims by status.
 type ClaimCounts struct {
 	Total      int `json:"total"`
@@ -380,8 +362,9 @@ func storeUnread[T any](s SourceRead, source string) (Value[T], bool) {
 	return Value[T]{}, false
 }
 
-// rungState is the named rung's state, unknown when the ladder lacks it.
-func rungState(rungs []Rung, name string) RungState {
+// rungState is the named rung's state (ladder.go's Rung states), unknown
+// when the ladder lacks it.
+func rungState(rungs []Rung, name string) string {
 	for _, r := range rungs {
 		if r.Name == name {
 			return r.State
@@ -446,12 +429,4 @@ func shortList(items []string, max int) string {
 		return strings.Join(items, ", ")
 	}
 	return strings.Join(items[:max], ", ") + fmt.Sprintf(" and %d more", len(items)-max)
-}
-
-// shortCommit trims a commit id for display.
-func shortCommit(c string) string {
-	if len(c) > 8 {
-		return c[:8]
-	}
-	return c
 }

@@ -133,8 +133,15 @@ func gatherProjects(ctx context.Context, src projectSources) projectsRead {
 		if s.Realization != nil {
 			row.Grade = s.Realization.Grade
 			row.Realized, row.Available, row.Sessions = s.Realization.Realized, s.Realization.Available, s.Realization.Sessions
-			for _, d := range s.Realization.Dims {
-				row.Rungs = append(row.Rungs, rungOf(d))
+			if s.ladder != nil {
+				// The ladder's own rungs (console.RealizationLadder, the
+				// projection the grade folds): a realizationDim's nil Met
+				// cannot tell "does not apply" from "not measured".
+				row.Rungs = append(row.Rungs, s.ladder.Rungs...)
+			} else {
+				for _, d := range s.Realization.Dims {
+					row.Rungs = append(row.Rungs, rungOf(d))
+				}
 			}
 		}
 		if p.CallLogNote == "" {
@@ -286,11 +293,11 @@ func certCounts(ctx context.Context, st store.Store, service, root string) conso
 		return console.Errored[console.CertCounts]("certify status failed: " + err.Error())
 	}
 	c := console.CertCounts{Declared: gaps.Summary.Declared, Live: gaps.Summary.Live, Gaps: gaps.Summary.Gaps,
-		Cases: gaps.Summary.Cases, JoinedCases: gaps.Summary.JoinedCases, Unreadable: gaps.Unreadable}
-	if len(gaps.Unreadable) == 0 {
+		Cases: gaps.Summary.Cases, JoinedCases: gaps.Summary.JoinedCases, Unreadable: gaps.Unread}
+	if len(gaps.Unread) == 0 {
 		return console.Present(c, source)
 	}
-	unread := boundedList(gaps.Unreadable, 3)
+	unread := boundedList(gaps.Unread, 3)
 	if c.Declared == 0 {
 		// Unknown, not none: the value carries no number (its JSON omits
 		// v), but keeps what could not be read for the verb's own shape.
@@ -331,14 +338,15 @@ func repoHasGuide(root string) bool {
 	return false
 }
 
-// rungOf maps one realization dimension onto the console's rung: a rung
-// that does not apply (no plans to gate) is "not applicable"; any other
-// rung nobody could decide is unknown — never met.
+// rungOf maps one realization dimension onto the console's rung, for a
+// report that carries no ladder: a gating rung with no plans to gate is
+// "not applicable" (the ladder's own evidence says so); any other rung
+// nobody could decide is unknown — never met.
 func rungOf(d realizationDim) console.Rung {
 	r := console.Rung{Name: d.Name, Evidence: d.Evidence}
 	switch {
-	case d.Met == nil && d.Name == "gating":
-		r.State = console.RungNA
+	case d.Met == nil && d.Name == "gating" && strings.HasPrefix(d.Evidence, "no plans here"):
+		r.State = console.RungNotApplicable
 	case d.Met == nil:
 		r.State = console.RungUnknown
 	case *d.Met:

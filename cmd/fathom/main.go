@@ -202,6 +202,9 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		if len(args) > 1 && args[1] == "reconcile" {
 			return cmdFleetReconcile(args[2:], stdout, stderr)
 		}
+		if len(args) > 1 && args[1] == "realization" {
+			return cmdFleetRealization(args[2:], stdout, stderr)
+		}
 		// Phase U (docs/design/self-healing-fleet.md §5): every write fathom
 		// makes inside a repository is receipted, and every receipt is
 		// reversible from the same terminal.
@@ -211,7 +214,7 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		if len(args) > 1 && args[1] == "undo" {
 			return cmdFleetUndo(args[2:], stdout, stderr)
 		}
-		fmt.Fprintln(stderr, "usage: fathom fleet report|reconcile|receipts|undo [flags]")
+		fmt.Fprintln(stderr, "usage: fathom fleet report|reconcile|realization|receipts|undo [flags]")
 		return 1
 	case "stop-hook":
 		return cmdStopHook(args[1:], stdout, stderr)

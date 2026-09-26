@@ -215,7 +215,7 @@ func TestConsoleFleet_TableSortFilterAndRollup(t *testing.T) {
 	if err := json.Unmarshal(env.Model, &m); err != nil {
 		t.Fatal(err)
 	}
-	if m.Total != len(consoleFixtureServices) || len(m.Rows) != m.Total || m.Query.Sort != "symbols" || m.Query.Dir != "asc" {
+	if m.Total != len(consoleRootedFixtureServices()) || len(m.Rows) != m.Total || m.Query.Sort != "symbols" || m.Query.Dir != "asc" {
 		t.Fatalf("fleet model = total %d rows %d query %+v", m.Total, len(m.Rows), m.Query)
 	}
 	for i := 1; i < len(m.Rows); i++ {
@@ -261,7 +261,7 @@ func TestConsoleFleet_TableSortFilterAndRollup(t *testing.T) {
 	if err := json.Unmarshal(f.pageJSON(t, "/fleet?health=failed").Model, &filtered); err != nil {
 		t.Fatal(err)
 	}
-	if filtered.Matched != failed || filtered.Total != len(consoleFixtureServices) {
+	if filtered.Matched != failed || filtered.Total != len(consoleRootedFixtureServices()) {
 		t.Errorf("health=failed kept %d of %d", filtered.Matched, filtered.Total)
 	}
 
@@ -288,7 +288,7 @@ func TestConsoleFleet_TableSortFilterAndRollup(t *testing.T) {
 	if err := json.Unmarshal(f.pageJSON(t, "/fleet?health=green&sort=nope").Model, &odd); err != nil {
 		t.Fatal(err)
 	}
-	if odd.Matched != len(consoleFixtureServices) || odd.Query.Sort != "unrealized" {
+	if odd.Matched != len(consoleRootedFixtureServices()) || odd.Query.Sort != "unrealized" {
 		t.Errorf("bad query = %+v", odd.Query)
 	}
 }

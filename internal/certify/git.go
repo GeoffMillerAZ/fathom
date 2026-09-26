@@ -11,9 +11,11 @@ package certify
 
 import (
 	"bytes"
+	"context"
 	"fmt"
-	"os/exec"
 	"strings"
+
+	"github.com/geoffmilleraz/fathom/internal/gitro"
 )
 
 // GitRunner runs a git command with the given args inside dir and returns
@@ -24,10 +26,12 @@ import (
 type GitRunner func(dir string, args ...string) ([]byte, error)
 
 // ExecGit is the real GitRunner: os/exec against the system git binary.
+// Its callers only read (rev-parse, show, ls-tree, a diff against the
+// working tree), so it runs through gitro: a `git diff` would otherwise
+// refresh and rewrite the repository's .git/index as a side effect — from a
+// console page view, in a checkout an agent is committing in.
 func ExecGit(dir string, args ...string) ([]byte, error) {
-	cmd := exec.Command("git", args...)
-	cmd.Dir = dir
-	out, err := cmd.CombinedOutput()
+	out, err := gitro.CombinedOutput(context.Background(), dir, args...)
 	if err != nil {
 		return out, fmt.Errorf("git %s (in %s): %w\n%s", strings.Join(args, " "), dir, err, out)
 	}

@@ -265,6 +265,14 @@ type ResidueReport struct {
 	// not a per-function count.
 	UnanalyzedFunctions int `json:"unanalyzed_functions"`
 
+	// ClassedByExecution counts the changed functions whose class an
+	// execution-evidence profile decided (Evidence "executed"), the
+	// attested ones — never listed in Items — included. Partial and
+	// Unexecuted can only be non-zero among these, so 0 here means neither
+	// was measured (no usable profile, or every function refused one): a
+	// reader, or the console, must not read their 0 as a count.
+	ClassedByExecution int `json:"classed_by_execution"`
+
 	Items      []ResidueItem `json:"items"`
 	Truncated  int           `json:"truncated"`
 	Unanalyzed []string      `json:"unanalyzed"`
@@ -496,6 +504,7 @@ func Residue(ctx context.Context, in Input, maxItems int) ResidueReport {
 
 		if blocks, usable := coverageUsableForFunction(in, cf, reachingTestFiles, globalCovOK); usable {
 			item.Evidence = evidenceExecuted
+			rep.ClassedByExecution++
 			classifyByExecution(&item, changedBlocksFor(in, cf, blocks), blocks)
 		} else {
 			item.Class = staticClass

@@ -262,9 +262,74 @@ func DistinctSessionsBy(data []byte, keyOf func(repoLabel string) string) map[st
 	return out
 }
 
+// DistinctSessionsIn is DistinctSessionsBy over one window: a session
+// counts under its key when any of its rows was written in [from, to). A
+// row with no parseable timestamp cannot be placed in a window and is not
+// counted. The realization ladder's idle rule reads it ("no sessions in the
+// window", docs/design/realization-grade.md §3) — an all-time count would
+// grade a repository busy in July and silent since as active.
+func DistinctSessionsIn(data []byte, keyOf func(repoLabel string) string, from, to time.Time) map[string]int {
+	seen := map[string]map[string]bool{}
+	eachLedgerSessionAt(data, func(key, repo, at string) {
+		if repo == "" {
+			return
+		}
+		ts, err := time.Parse(time.RFC3339, at)
+		if err != nil || ts.Before(from) || !ts.Before(to) {
+			return
+		}
+		repo = keyOf(repo)
+		if repo == "" {
+			return
+		}
+		if seen[repo] == nil {
+			seen[repo] = map[string]bool{}
+		}
+		seen[repo][key] = true
+	})
+	out := make(map[string]int, len(seen))
+	for repo, keys := range seen {
+		out[repo] = len(keys)
+	}
+	return out
+}
+
+// VerifyRunsIn counts the verify gate's runs in [from, to) per service key
+// from the verify ledger (SD-1). One `fathom verify` invocation writes one
+// row per plan, every row stamped with the same instant, so a run is one
+// (service, instant) — never a plan row. A row with no timestamp is not
+// counted. keyOf maps the ledger's service name to the caller's key ("" is
+// skipped).
+func VerifyRunsIn(runs []LedgerRun, keyOf func(service string) string, from, to time.Time) map[string]int {
+	seen := map[string]map[int64]bool{}
+	for _, r := range runs {
+		if r.At.IsZero() || r.At.Before(from) || !r.At.Before(to) {
+			continue
+		}
+		k := keyOf(r.Service)
+		if k == "" {
+			continue
+		}
+		if seen[k] == nil {
+			seen[k] = map[int64]bool{}
+		}
+		seen[k][r.At.Unix()] = true
+	}
+	out := make(map[string]int, len(seen))
+	for k, at := range seen {
+		out[k] = len(at)
+	}
+	return out
+}
+
 // eachLedgerSession calls fn with every parseable ledger row's session key
 // (its session id; a row with none counts once on its own) and repo label.
 func eachLedgerSession(data []byte, fn func(key, repo string)) {
+	eachLedgerSessionAt(data, func(key, repo, _ string) { fn(key, repo) })
+}
+
+// eachLedgerSessionAt is eachLedgerSession with the row's timestamp.
+func eachLedgerSessionAt(data []byte, fn func(key, repo, at string)) {
 	for _, line := range bytes.Split(data, []byte{'\n'}) {
 		if len(bytes.TrimSpace(line)) == 0 {
 			continue
@@ -281,7 +346,7 @@ func eachLedgerSession(data []byte, fn func(key, repo string)) {
 		if key == "" {
 			key = "\x00anon:" + row.At + ":" + row.Repo
 		}
-		fn(key, row.Repo)
+		fn(key, row.Repo, row.At)
 	}
 }
 
