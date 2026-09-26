@@ -122,6 +122,15 @@ func cmdDoctor(args []string, stdout, stderr io.Writer) int {
 	// session can reach for after seeing the attention line. Law 7 — an
 	// instrument that leaves no trace cannot be shown to have been used.
 	rpcOrigin = "doctor"
+	if *brief {
+		// --brief is the harness Setup hook (HP-31): one deadline, the
+		// breaker, and silence under the kill switch, like every hook.
+		endGuard, silent := beginHookGuard("doctor", "fathom doctor --brief", "", *url)
+		if silent {
+			return 0
+		}
+		defer endGuard()
+	}
 	emitBeat("doctor", "run", nil)
 
 	// svc here is display identity only (the table header). The

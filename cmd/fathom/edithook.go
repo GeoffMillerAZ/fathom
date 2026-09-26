@@ -84,6 +84,15 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	if !ok {
 		return 0
 	}
+	marker := "fathom edit-hook"
+	if *pre {
+		marker = "fathom edit-hook --pre"
+	}
+	endGuard, silent := beginHookGuard("edit-hook", marker, codec.ID(), url)
+	if silent {
+		return 0 // §9: the managed daemon is disabled or paused — no RPC, no output
+	}
+	defer endGuard()
 
 	// Read the hook JSON from stdin and decode it through the codec — the
 	// same envelope for the post-edit and the pre-edit (--pre) paths;

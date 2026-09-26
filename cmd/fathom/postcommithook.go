@@ -70,6 +70,14 @@ func cmdPostCommitHook(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "post-commit: %s is a git worktree of %s — refreshed nothing; left service %q and its recorded root alone (list_services is the record of truth; ingest from %s)\n", root, mainRoot, svc, mainRoot)
 		return 0
 	}
+	// A git hook, not a harness hook: no descriptor deadline (its own
+	// --timeout bounds each call), but the kill switch and the shared
+	// breaker still apply (§9, §11.2).
+	endGuard, silent := beginHookGuard("post-commit-hook", "", "", *url)
+	if silent {
+		return 0 // §9: the managed daemon is disabled or paused — no RPC, no output
+	}
+	defer endGuard()
 	hc := &http.Client{Timeout: *timeout}
 	svc := *service
 	if svc == "" {

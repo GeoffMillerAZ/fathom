@@ -58,6 +58,11 @@ func cmdSessionHookEvent(event string, args []string, stdin io.Reader, stdout, s
 	if !ok {
 		return 0 // I9: unknown harness id is one stderr line, never a failed hook
 	}
+	endGuard, silent := beginHookGuard("session-hook", "fathom session-hook --event "+event, codec.ID(), *url)
+	if silent {
+		return 0 // §9: the managed daemon is disabled or paused — no RPC, no output
+	}
+	defer endGuard()
 	// The root an event is about is resolved per event (eventProjectDir);
 	// --dir overrides it for tests and for an operator replaying a capture.
 	root := func(in harness.HookInput) string {

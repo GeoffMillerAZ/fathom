@@ -41,6 +41,7 @@ func TestMain(m *testing.M) {
 	if cerr == nil {
 		identCacheDir = filepath.Join(cacheRoot, "ident-cache")
 		hookcache.IdentDir = identCacheDir
+		hookcache.HealthDir = filepath.Join(cacheRoot, "hook-health")
 		editSetDir = filepath.Join(cacheRoot, "edit-set")
 		guardStampDir = filepath.Join(cacheRoot, "guard-stamps")
 	}

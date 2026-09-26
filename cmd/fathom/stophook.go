@@ -60,6 +60,11 @@ func cmdStopHook(args []string, stdout, stderr io.Writer) int {
 	if !ok {
 		return 0 // I9: an unknown harness id is one stderr line, never a blocked stop
 	}
+	endGuard, silent := beginHookGuard("stop-hook", "fathom stop-hook", codec.ID(), *url)
+	if silent {
+		return 0 // §9: the managed daemon is disabled or paused — no RPC, no output
+	}
+	defer endGuard()
 	raw, err := io.ReadAll(io.LimitReader(os.Stdin, 1<<20))
 	if err != nil {
 		return 0
