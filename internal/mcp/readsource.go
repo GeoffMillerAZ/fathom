@@ -35,6 +35,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/filter"
@@ -76,6 +77,55 @@ func readSourceBudget(requested int) int {
 		return sourceReadMaxBytes
 	}
 	return requested
+}
+
+// lineWireBytes is what one returned line costs on the wire: its marshaled
+// {"line":N,"text":"…"} row, JSON escaping included — the same measure
+// budget.go's fitToBudget applies to every other budgeted tool's rows
+// (BP-42). json.Marshal escapes HTML characters, so this can only
+// over-count what the server actually sends, never under-count it.
+func lineWireBytes(ln int, text string) int {
+	b, err := json.Marshal(sourceLine{Line: ln, Text: text})
+	if err != nil {
+		return len(text) + 32
+	}
+	return len(b)
+}
+
+// runeFloor moves byte index n back to the start of the rune it falls in,
+// so a cut never splits a multi-byte UTF-8 sequence.
+func runeFloor(s string, n int) int {
+	for n > 0 && n < len(s) && !utf8Start(s[n]) {
+		n--
+	}
+	return n
+}
+
+// fitLineToWire returns the longest prefix of text, cut on a rune boundary,
+// whose row fits in room bytes on the wire. Escaping only ever adds bytes,
+// so no prefix longer than room can fit and the search is bounded by it.
+// A room too small for even one rune still returns the first rune: the
+// smallest readable answer, never an empty line (budget.go's BA-4 rule — a
+// budget is a target, not a refusal).
+func fitLineToWire(ln int, text string, room int) string {
+	lo, hi := 0, len(text)
+	if hi > room {
+		hi = room
+	}
+	for lo < hi {
+		mid := (lo + hi + 1) / 2
+		if lineWireBytes(ln, text[:runeFloor(text, mid)]) <= room {
+			lo = mid
+		} else {
+			hi = mid - 1
+		}
+	}
+	cut := text[:runeFloor(text, lo)]
+	if cut == "" && text != "" {
+		_, size := utf8.DecodeRuneInString(text)
+		cut = text[:size]
+	}
+	return cut
 }
 
 // sourceReadMaxFileBytes is the hard per-file ceiling checked via os.Stat
@@ -346,7 +396,23 @@ func matchesFileOrAncestor(m *filter.Matcher, relFile string, segs []string) boo
 // FIRST line alone exceeds it (the minified-JS case): that line comes back
 // truncated to the budget with the note set — never whole, which would
 // silently void the documented cap.
+//
+// readSourceRange counts each line's raw text against maxBytes: its callers
+// (symbol_context's snippet, obligations' cited lines) re-shape the lines
+// before they reach the wire. read_source itself reads through
+// readSourceLines with onWire set, so its budget bounds the lines as they
+// are sent (BP-42).
 func readSourceRange(ctx context.Context, backend QueryInterface, service, file string, startLine, endLine, maxLines, maxBytes int) (sourceRange, error) {
+	return readSourceLines(ctx, backend, service, file, startLine, endLine, maxLines, maxBytes, false)
+}
+
+// readSourceLines is readSourceRange with the byte accounting chosen: raw
+// text (onWire false), or the returned "lines" array as marshaled — its
+// brackets, separators and each row's {"line","text"} envelope with JSON
+// escaping (onWire true). The measured reason: at the 8000-byte default,
+// run-20260913T094546Z's H1-T11 cell received 11,135 bytes of read_source,
+// because the raw count left the per-line envelope out.
+func readSourceLines(ctx context.Context, backend QueryInterface, service, file string, startLine, endLine, maxLines, maxBytes int, onWire bool) (sourceRange, error) {
 	corpusRoot, err := resolveCorpusRoot(ctx, backend, service)
 	if err != nil {
 		return sourceRange{}, err
@@ -433,22 +499,35 @@ func readSourceRange(ctx context.Context, backend QueryInterface, service, file 
 
 	var out []sourceLine
 	byteCount := 0
+	if onWire {
+		// The array's opening bracket; each row's +1 below is its
+		// separator, or the closing bracket for the last row.
+		byteCount = 1
+	}
 	truncatedForBytes := false
 	for ln := start; ln <= end; ln++ {
 		text := allLines[ln-1]
-		if byteCount+len(text)+1 > maxBytes {
+		cost := len(text) + 1
+		if onWire {
+			cost = lineWireBytes(ln, text) + 1
+		}
+		if byteCount+cost > maxBytes {
 			if len(out) == 0 {
 				// The very first line alone exceeds the budget (minified
 				// JS, generated single-line JSON): return it TRUNCATED to
 				// the budget with the note set — never whole (silently
 				// voiding the documented cap), never empty (making the
 				// line unreadable at any budget).
-				out = append(out, sourceLine{Line: ln, Text: text[:maxBytes]})
+				cut := text[:maxBytes]
+				if onWire {
+					cut = fitLineToWire(ln, text, maxBytes-byteCount-1)
+				}
+				out = append(out, sourceLine{Line: ln, Text: cut})
 			}
 			truncatedForBytes = true
 			break
 		}
-		byteCount += len(text) + 1
+		byteCount += cost
 		out = append(out, sourceLine{Line: ln, Text: text})
 	}
 	actualEnd := start - 1
@@ -483,7 +562,7 @@ func readSourceRange(ctx context.Context, backend QueryInterface, service, file 
 func registerReadSource(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "read_source",
-		Description: "Reads a line range (or capped whole file), line-numbered for citation. Reach for it when you need bytes a hit or snippet didn't carry. Required: service, file.",
+		Description: "Reads a line range (or capped whole file), line-numbered for citation. Not when the index already answered: a find_symbol hit carries file and line. Reach for it when you need bytes a hit or snippet didn't carry. Required: service, file.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -518,7 +597,7 @@ func registerReadSource(s *Server, backend QueryInterface) {
 		}
 
 		maxBytes := readSourceBudget(p.MaxBytes)
-		rng, err := readSourceRange(ctx, backend, p.Service, p.File, p.StartLine, p.EndLine, sourceReadMaxLines, maxBytes)
+		rng, err := readSourceLines(ctx, backend, p.Service, p.File, p.StartLine, p.EndLine, sourceReadMaxLines, maxBytes, true)
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "read_source: " + err.Error()}
 		}
