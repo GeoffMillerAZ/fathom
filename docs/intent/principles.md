@@ -79,6 +79,13 @@ exists and is enforced; never to create one. Source: `docs/handoff/repo-strategy
 claims cite `fathom verify` or test output. Source: `docs/vision/README.md` "How this
 review was grounded", `CLAUDE.md`.
 
+**P23. A guest on the operator's machine.** Fathom declares what it takes in the unit the
+host measures (`phys_footprint`), measures itself and stops itself (shed, refuse, leave,
+each with a reason), does less when the host is struggling, leaves when asked or when its
+parent leaves, and stays visible when it cannot answer. A request pays for its answer, never
+for the repository (P19). Self-protection is deterministic thresholds, never judgement.
+Source: ADR-047, `docs/vision/36-responsible-tenant.md`, INC-23.
+
 ## Tensions
 
 **T1. Fail-open pre-push vs gate strength.** Default: pre-push fails open on exit 2, CI

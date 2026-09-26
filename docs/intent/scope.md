@@ -45,6 +45,14 @@ why not, after BP-41..43 land. Publication stays an operator decision (Q4, F2).
 PASS, and every contribution row names its app-kit delivery (vision 35, ADR-045).
 {bet: console-closes, instrument: "fathom plans status", threshold: "docs/plans/observatory-console.md at 0 open non-op rows; UX-M1 and UX-M2 read PASS", review: 2026-10-25}
 
+**G14. Fathom is a responsible tenant (ADR-047, vision 36).** The owner's 2026-09-26 priority:
+the daemon keeps to a declared `phys_footprint` budget, refuses what cannot fit with a named
+reason, never pays repository-sized costs on a request, and cannot relaunch or leak its way
+back into the machine. Done when: `docs/plans/responsible-tenant.md` has 0 open non-op rows
+and RT-M1 (seven days within budget, no exit rung) and RT-M3 (the stress harness, pre- and
+post-fix) read PASS.
+{bet: responsible-tenant, instrument: "fathom plans status", threshold: "docs/plans/responsible-tenant.md at 0 open non-op rows; RT-M1 and RT-M3 read PASS", review: 2026-10-26}
+
 **G11. A reading, a hand-off and an answer carry their evidence (ADR-034).** The first
 round's 74 rows were voided by an instrument defect (the wired arm never had the tools; O41
 voided G10, ADR-033's ledger goal, on 2026-09-13 and it folds in here);

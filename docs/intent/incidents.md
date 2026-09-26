@@ -29,6 +29,20 @@ and `docs/intent/**` resolves to an existing record.
 Class: wrong-done-claim
 Outcome: pending (`docs/plans/evidence-plane.md` EP-14 `adr_references_resolve`; ADR-026 now exists)
 
+### INC-23 2026-09-26 The daemon took the operator's machine: ~29 GB resident, swap full, a relaunch loop
+What: request paths did work proportional to repository and fleet size (obligations' two whole-tree reads per edit, `list_services` loading every symbol row, cross-service scans), multiplied by concurrency (49 cold `list_services` at once), abandoned work (`context.Background()` on every RPC) and inline re-ingest; launchd `KeepAlive true` relaunched it 5 times in 17 min; jetsam killed neighbours; `SQLITE_FULL` on reads rendered as `symbol_count 0`. Same day: 22 h scratch-daemon leaks and tests writing to the operator call log.
+Evidence: heap profiles heap-0518 (730.7 GB request-path alloc in 62 min), heap-2118, heap-2315; `JetsamEvent-2026-09-26-135805.ips`/`-140229.ips`; `~/.fathom/logs/fathom-http.{log,err}`; the call log (peak 49 concurrent calls, 05:24:08Z); hotfix 4200482a.
+Would have caught it: a declared footprint budget enforced by the daemon, cost-classed admission with cancellation, a 10×-scale cost test per tool and a cold-stampede test counting bytes, and a crash-loop breaker.
+Class: other
+Outcome: ADR-047; invariants I47–I53; principle P23; `docs/plans/responsible-tenant.md` (pending until its rows prove).
+
+### INC-24 2026-09-22 A memory incident was closed "bounded" on an instrument that cannot fall
+What: O108 (swap killed the pre-push gate twice) was closed "mitigated-and-bounded" and O112 "eliminated at the mechanism level" on readings of `HeapSys` (never decreases by definition) and a sequential test counting Discover calls; no invariant, test or decision followed, and the same root cause produced INC-23 four days later.
+Evidence: `.fathom/observations.md` O108, O112; `CHANGELOG.md` "bounded at the peaks"; 0 of 193 scavenge lines show `heap_sys` falling by more than 1 MiB.
+Would have caught it: this file's own rule (every incident yields an invariant, a test or a decision) applied to resource incidents, and a test that counts bytes under concurrency.
+Class: wrong-done-claim
+Outcome: I47 (never report `HeapSys` as a footprint), I48 and RT-M1; corrections RT-138..RT-140 (pending).
+
 ## Closed
 
 ### INC-22 2026-09-19 Two green gates, no push: the ssh session did not survive the pre-push hook
