@@ -66,6 +66,12 @@ type Input struct {
 	Salt                  string
 
 	BenchArms []BenchArmCount
+
+	// RetrosRead gates the Retros group (IR-5) exactly as CallLogRead
+	// gates CallTraffic: false means the corpus was not read (the flag was
+	// not passed, or no corpus directory exists) and Retros is ignored.
+	RetrosRead bool
+	Retros     RetroStats
 }
 
 // Build assembles the sanitized Bundle from typed, already-aggregated
@@ -142,6 +148,18 @@ func Build(in Input) Bundle {
 	}
 
 	sort.Slice(b.BenchArms, func(i, j int) bool { return b.BenchArms[i].Arm < b.BenchArms[j].Arm })
+
+	if in.RetrosRead {
+		r := in.Retros
+		r.Outcomes = append([]RetroOutcomeCount(nil), in.Retros.Outcomes...)
+		sort.Slice(r.Outcomes, func(i, j int) bool {
+			if r.Outcomes[i].Channel != r.Outcomes[j].Channel {
+				return r.Outcomes[i].Channel < r.Outcomes[j].Channel
+			}
+			return r.Outcomes[i].Outcome < r.Outcomes[j].Outcome
+		})
+		b.Retros = &r
+	}
 
 	return b
 }

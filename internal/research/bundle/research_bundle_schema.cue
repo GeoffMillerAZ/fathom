@@ -93,6 +93,35 @@ package researchbundle
 	review_active_findings:   int & >=0
 })
 
+// #RetroOutcomeCount is one (channel, mechanical outcome) cell of the
+// retro corpus (IR-5, docs/design/assess-lanes.md §5): channel is fathom's
+// own firing channel ("guard", "obligations") and outcome its own
+// mechanical outcome ("committed", "modified_uncommitted", "untouched",
+// "unjoinable") — both closed vocabularies mapped through #Label, anything
+// else collapsing to "unrecognized". Never a file, a session, or a path.
+#RetroOutcomeCount: close({
+	channel: #Label
+	outcome: #Label
+	firings: int & >=0
+})
+
+// #Retros is the opt-in retro corpus group (IR-5): present only when the
+// human passed --include-retros AND the corpus directory was read — its
+// absence means "not read", never an all-zero stand-in. Counts only; no
+// assess verdict ever rides here (uncalibrated verdicts stay local).
+#Retros: close({
+	retros:                int & >=0
+	unreadable:            int & >=0
+	off_arm_retros:        int & >=0
+	guard_fires:           int & >=0
+	obligation_injections: int & >=0
+	silent_on_clean:       int & >=0
+	unjoinable:            int & >=0
+	outcomes?: [...#RetroOutcomeCount]
+	custodian_remedied:   int & >=0
+	custodian_unremedied: int & >=0
+})
+
 // #Bundle is the closed top-level shape — the allowlist itself. Any field
 // not named here fails validation by construction: a stray "file_path" or
 // "repo" key introduced upstream by mistake is a hard CUE error, never a
@@ -124,4 +153,6 @@ package researchbundle
 	service_activity?: [...#ServiceHashCount]
 
 	bench_arms?: [...#BenchArmCount]
+
+	retros?: #Retros
 })

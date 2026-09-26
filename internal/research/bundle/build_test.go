@@ -234,3 +234,30 @@ func TestBuild_ReadButZero_IsARealMeasurement(t *testing.T) {
 		t.Errorf("Validate(read-but-zero bundle) = %v, want nil", err)
 	}
 }
+
+// TestBuild_RetrosOnlyWhenOptedIn is IR-5's absence discipline: the retro
+// group exists only when the corpus was read (the caller opted in AND found
+// it); otherwise it is absent — "not read", never an all-zero group.
+func TestBuild_RetrosOnlyWhenOptedIn(t *testing.T) {
+	stats := RetroStats{
+		Retros: 3, GuardFires: 2,
+		Outcomes: []RetroOutcomeCount{
+			{Channel: "obligations", Outcome: "untouched", Firings: 1},
+			{Channel: "guard", Outcome: "committed", Firings: 2},
+		},
+	}
+	if b := Build(Input{Retros: stats}); b.Retros != nil {
+		t.Fatalf("retros group built without RetrosRead: %+v", b.Retros)
+	}
+	b := Build(Input{RetrosRead: true, Retros: stats})
+	if b.Retros == nil || b.Retros.Retros != 3 || b.Retros.GuardFires != 2 {
+		t.Fatalf("retros = %+v", b.Retros)
+	}
+	if got := b.Retros.Outcomes[0]; got.Channel != "guard" || got.Outcome != "committed" {
+		t.Errorf("outcomes not sorted by channel then outcome: %+v", b.Retros.Outcomes)
+	}
+	zero := Build(Input{RetrosRead: true})
+	if zero.Retros == nil || zero.Retros.Retros != 0 {
+		t.Errorf("a read-but-empty corpus is a real zero and must be present: %+v", zero.Retros)
+	}
+}
