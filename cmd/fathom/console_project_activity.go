@@ -64,7 +64,7 @@ func buildProjectActivityPage(cr *consoleRequest) (consoleOut, error) {
 	verb := fillVerb(verbTrafficByTool, map[string]string{"svc": pc.svc, "from": a.from, "to": a.to})
 	out.Verbs = []string{verb}
 	out.Model = projectActivityModel{Activity: act, Traffic: traffic}
-	out.Sections = map[string]any{verb: withCallLog(traffic, resolved)}
+	out.Sections = map[string]any{verb: withCallLog(a.result, resolved)}
 	metricsNow := out.Metrics
 	out.Body = func() string {
 		return renderProjectTabs(pc.svc, "activity") + renderProjectActivity(pc, act, traffic, verb, metricsNow)
@@ -77,6 +77,7 @@ func buildProjectActivityPage(cr *consoleRequest) (consoleOut, error) {
 type projectActivityData struct {
 	act      console.ProjectActivityModel
 	traffic  metrics.TrafficReport
+	result   trafficResult // the verb's answer: traffic, or the log's state
 	resolved console.ResolvedCallLog
 	from, to string
 	at       time.Time
@@ -124,13 +125,17 @@ func readProjectActivity(cr *consoleRequest, pc projectContext, src console.Sour
 	d := projectActivityData{at: cr.now, resolved: src.CallLog}
 	d.act = console.ProjectActivity(src, console.ActivityInput{
 		Service: pc.svc, LabelKey: sessionLabelKey(roots),
-		Sessions: console.ProjectSessions(pc.facts()), Ledger: pc.m.sessionLedger,
+		Sessions: console.ProjectSessions(pc.facts()), Ledger: pc.m.sessionLedgerRead(),
 	})
 	since, _ := time.Parse("2006-01-02", d.act.From)
 	until, _ := time.Parse("2006-01-02", d.act.To)
 	until = until.Add(24*time.Hour - time.Second)
 	d.from, d.to = since.UTC().Format(time.RFC3339), until.UTC().Format(time.RFC3339)
-	d.traffic, d.resolved = metricsTrafficReport("", pc.svc, metrics.TrafficGroupByTool, since, until)
+	// `metrics traffic`'s own computation over the log this page resolved
+	// (the daemon's record, as the verb run against this daemon reads it):
+	// an absent or unreadable log is the verb's named state, never zeros.
+	d.result = trafficReport(d.resolved, pc.svc, metrics.TrafficGroupByTool, since, until)
+	d.traffic = d.result.Report
 	return d
 }
 

@@ -246,6 +246,40 @@ composed from role utilities (44 px targets, `aria-current`) rather than `chrome
 which does not wrap (14 repositories overflow a 390 px screen) and marks links as
 `role="tab"` without panels (FATHOM-C-KIT-03).
 
+## Observatory console wave F (2026-09-26)
+
+Wave F (`/impact`, `/sessions`, `/sessions/{id}`, `/operate`, `/decide`; OC-41..OC-45)
+uses the `d9dd789` mirror unchanged and no new kit package, so `input.css` and
+`scripts/ui-css.sh` are untouched. Newly adopted parts of packages already scanned:
+`viz.RangeBars` (the counterfactual arms, a wide and a narrow drawing), `viz.Timeline`
+swimlanes and its `ViewDensity` strip past 150 catches, `viz.Heatmap` with truth states
+(`CellMissing` for a day with no call-log rows, `CellZero` for a silent surface),
+`viz.StackBar` (a tool's calls by caller class), `viz.Bars` (the calibration buckets),
+`chrome.RenderDisclosure`/`RenderPagination`/`RenderEmptyState`/`RenderDescriptionList`,
+`form.RenderField`/`RenderSelect`/`RenderInput`/`RenderButton` (GET filter forms), and
+`table.Table` with `HeaderHTML` sort links. Candidates to return:
+
+- **FATHOM-F-KIT-01 (candidate):** the heatmap's truth-state legend is sized to the grid
+  and truncates a reason with "…"; Fathom keeps reasons to a few words and puts the full
+  reason in the table alternative. Expected: a legend that wraps, or its own width.
+- **FATHOM-F-KIT-02 (candidate):** `table.Table`'s `Sortable` header is a Datastar
+  button; a server-rendered table needs a link, and `aria-sort` belongs on the `<th>`,
+  which `HeaderHTML` cannot reach. Fathom writes the direction as `sr-only` text.
+- `chrome.RenderPagination` links are still about 28 px (F0's open item): wave F wraps
+  them in `[&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center`.
+- **FATHOM-F-KIT-03 (candidate, from the wave F fix round):** `table.Table` has no
+  phone layout. At 390 px its scroll wrapper keeps the page from overflowing, but the
+  columns that carry a table's answer (an outcome, p95, a ruling's choice) sit off-screen
+  with no cue. Fathom restates each such table below `md` as a stacked list of
+  `chrome.RenderDescriptionList` cards (`evTableOrStack`, `console_evidence.go`).
+  Expected: an opt-in `table.Table` stacked mode that restates each row as terms and
+  details below a breakpoint and keeps the real table from it up.
+- A Tailwind class built at run time never reaches the stylesheet: wave F's chart
+  wrapper wrote `min-w-[%dpx]` through `fmt.Sprintf`, Tailwind emitted that literal as an
+  invalid rule, and the real class had none. The fix-round wrapper takes the class as a
+  literal the caller writes (`evChart`), and `TestConsoleWaveF_OperatePanelsNameTheVerbsThatPrintThem`
+  holds `app.css` to it. (Fathom-local; the kit's own classes are all literals.)
+
 ## Current mirror and palette convergence (2026-09-25)
 
 FATHOM-GUIDE-01 landed on main at mirror `f7ab0fbd`, then took one reviewed bump to

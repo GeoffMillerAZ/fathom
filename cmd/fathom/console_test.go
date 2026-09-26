@@ -7,6 +7,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"html"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -577,6 +578,23 @@ func TestConsolePagesRenderTheirVerbs(t *testing.T) {
 	f := newConsoleFixture(t)
 	pinConsoleVerbClocks(t, f)
 	withVerbs := 0
+	// parity runs one section's exact command as its chip reads (a quoted
+	// value stays one argument, as a shell pasting the chip would keep it;
+	// runVerbJSON) and compares.
+	parity := func(where, verb string, section json.RawMessage) {
+		t.Helper()
+		var fromPage any
+		if err := json.Unmarshal(section, &fromPage); err != nil {
+			t.Fatal(err)
+		}
+		fromVerb := runVerbJSON(t, f, verb)
+		dropVolatileVerbFields(verb, fromVerb, fromPage)
+		if !reflect.DeepEqual(fromVerb, fromPage) {
+			a, _ := json.MarshalIndent(fromVerb, "", " ")
+			b, _ := json.MarshalIndent(fromPage, "", " ")
+			t.Errorf("page %s disagrees with `%s`:\nverb: %s\npage: %s", where, verb, a, b)
+		}
+	}
 	for _, p := range defaultConsoleRegistry().pages {
 		if p.ID == "statusz" {
 			continue // ?format=json is the v3 report (OC-6), not the envelope
@@ -596,30 +614,38 @@ func TestConsolePagesRenderTheirVerbs(t *testing.T) {
 					t.Errorf("page %s: no section for its verb %q", path, verb)
 					continue
 				}
-				args, dir := consoleVerbArgs(t, f, verb)
-				var out, errb bytes.Buffer
-				code := runIn(t, dir, args, &out, &errb)
-				if code != 0 {
-					t.Fatalf("%s exited %d: %s", verb, code, errb.String())
-				}
-				var fromVerb, fromPage any
-				if err := json.Unmarshal(out.Bytes(), &fromVerb); err != nil {
-					t.Fatalf("%s: %v", verb, err)
-				}
-				if err := json.Unmarshal(section, &fromPage); err != nil {
-					t.Fatal(err)
-				}
-				dropVolatileVerbFields(verb, fromVerb, fromPage)
-				if !reflect.DeepEqual(fromVerb, fromPage) {
-					a, _ := json.MarshalIndent(fromVerb, "", " ")
-					b, _ := json.MarshalIndent(fromPage, "", " ")
-					t.Errorf("page %s disagrees with `%s`:\nverb: %s\npage: %s", path, verb, a, b)
-				}
+				parity(path, verb, section)
 			}
 		}
 	}
 	if withVerbs == 0 {
 		t.Error("no page declares a verb; the parity framework proved nothing")
+	}
+
+	// A filtered page's sections are keyed by the exact (quoted) command
+	// its chips show, and each equals that command's output.
+	mustWrite(t, os.Getenv("FATHOM_VERIFY_LEDGER"), `{"schema_version":2,"at":"2026-09-24T10:00:00Z","service":"payment-service","plan":"docs/plans/p.md","claimed":3,"failing":1,"origin":"cli"}`+"\n")
+	resetImpactReads()
+	t.Cleanup(resetImpactReads)
+	for _, path := range []string{
+		"/impact?svc=payment-service&kind=verify-refusal&days=7",
+		"/sessions?q=s-1%20x&arm=on&sort=turns&dir=asc",
+		"/sessions/s-1?channel=edit-hook",
+		"/decide?site=route",
+	} {
+		env := f.pageJSON(t, path)
+		if len(env.Sections) == 0 {
+			t.Errorf("%s: no sections", path)
+		}
+		for verb, section := range env.Sections {
+			parity(env.Page, verb, section)
+		}
+	}
+	// Wave F's Evidence and System pages each render their verbs (OC-41..45).
+	for _, id := range []string{"impact", "sessions", "operate", "decide"} {
+		if p, ok := defaultConsoleRegistry().page(id); !ok || len(p.Verbs) == 0 {
+			t.Errorf("page %s must declare the verbs it renders", id)
+		}
 	}
 
 	// Per-project verbs: a page that renders a verb's answer for each
@@ -882,12 +908,26 @@ func TestConsoleMetricsAgreeAcrossPages(t *testing.T) {
 	if s := statuszServiceCount(report); s.V != value(console.MetricServices).V {
 		t.Errorf("statusz counts %d services, the registry %d", s.V, value(console.MetricServices).V)
 	}
-	var impact obsImpact
-	if err := json.Unmarshal(f.pageJSON(t, "/impact").Model, &impact); err != nil {
+	// Impact, Sessions and Operate show the shared metrics they declare, in
+	// their HTML as in their JSON: the impact tile and the sessions table
+	// read the model's one read of the ledger, the operate tile the model's
+	// call total (wave F).
+	_, _, impactPage := f.get(t, "/impact")
+	if got := tileValue(t, impactPage, "distinct sessions (all time)"); got != fmtThousands(value(console.MetricSessions).V) {
+		t.Errorf("impact's sessions tile says %q, the shared metric %d", got, value(console.MetricSessions).V)
+	}
+	var sessionsModel struct {
+		Table console.SessionTableModel `json:"table"`
+	}
+	if err := json.Unmarshal(f.pageJSON(t, "/sessions").Model, &sessionsModel); err != nil {
 		t.Fatal(err)
 	}
-	if impact.LedgerSessions != value(console.MetricSessions).V {
-		t.Errorf("impact's ledger-sessions tile says %d, the shared metric %d", impact.LedgerSessions, value(console.MetricSessions).V)
+	if sessionsModel.Table.Sessions.V != value(console.MetricSessions).V || sessionsModel.Table.Sessions.Denominator != value(console.MetricSessions).Denominator {
+		t.Errorf("the sessions table lists %+v sessions, the shared metric %+v", sessionsModel.Table.Sessions, value(console.MetricSessions))
+	}
+	_, _, operatePage := f.get(t, "/operate")
+	if !strings.Contains(operatePage, html.EscapeString(valuePlain(value(console.MetricCalls)))+" in the whole log") {
+		t.Errorf("operate must show the shared call total (%s) beside its 7-day count", valuePlain(value(console.MetricCalls)))
 	}
 	// The HTML agrees with the JSON: the fleet tile shows the same total.
 	_, _, fleet := f.get(t, "/fleet")
@@ -1115,8 +1155,14 @@ func TestConsoleBudgets(t *testing.T) {
 		maxBytes  = 250 * 1024
 	)
 	f := newConsoleFixture(t)
+	paths := []string{}
 	for _, p := range defaultConsoleRegistry().pages {
-		path := samplePath(p)
+		paths = append(paths, samplePath(p))
+	}
+	// Filters and window sizes a reader can ask for keep the same budgets
+	// (a replay's ?per= widens its JSON window, never its HTML page).
+	paths = append(paths, "/impact?svc=payment-service&days=7", "/sessions?q=s-1%20x&sort=turns", "/sessions/s-1?per=2000", "/operate?svc=payment-service")
+	for _, path := range paths {
 		f.get(t, path) // cold: builds and caches the model
 		best := time.Duration(1 << 62)
 		size := 0

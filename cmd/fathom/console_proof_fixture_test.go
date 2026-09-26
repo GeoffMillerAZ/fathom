@@ -360,6 +360,31 @@ func pinConsoleVerbClocks(t *testing.T, f *consoleFixture) {
 	t.Cleanup(func() { certifyGapsNow = prev })
 }
 
+// runVerbJSON runs a chip's exact command as consoleVerbArgs reads it —
+// with the fixture's --url unless the chip runs as shown, and without it
+// when the verb defines no --url (the Evidence pages' store and ledger
+// verbs) — and returns its decoded JSON. doctor's exit 1 is its verdict (a
+// check failed), not a failure to run.
+func runVerbJSON(t *testing.T, f *consoleFixture, verb string) any {
+	t.Helper()
+	args, dir := consoleVerbArgs(t, f, verb)
+	var out, errb bytes.Buffer
+	code := runIn(t, dir, args, &out, &errb)
+	if n := len(args); code != 0 && n >= 2 && args[n-2] == "--url" && strings.Contains(errb.String(), "flag provided but not defined: -url") {
+		out.Reset()
+		errb.Reset()
+		code = runIn(t, dir, args[:n-2], &out, &errb)
+	}
+	if code != 0 && !(code == 1 && strings.HasPrefix(verb, "fathom doctor ")) {
+		t.Fatalf("%s exited %d: %s", verb, code, errb.String())
+	}
+	var v any
+	if err := json.Unmarshal(out.Bytes(), &v); err != nil {
+		t.Fatalf("%s: %v\n%s", verb, err, out.String())
+	}
+	return v
+}
+
 // consoleVerbArgs is how the parity test runs a page's verb against the
 // fixture: a daemon verb gets the fixture's --url (its default, the local
 // daemon, is the page's own in the normal setup); a store-direct verb

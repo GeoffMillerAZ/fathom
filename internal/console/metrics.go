@@ -214,6 +214,12 @@ func SessionCount(ledgerPath string, data []byte, readErr error) Value[int] {
 		return Errored[int]("session ledger unreadable: " + readErr.Error()).WithSource(source)
 	}
 	sessions, rows := DistinctSessions(data)
+	return sessionCountValue(source, sessions, rows)
+}
+
+// sessionCountValue is sessions.total's value over a read ledger — the one
+// shape SessionCount and the session table both return.
+func sessionCountValue(source string, sessions, rows int) Value[int] {
 	return Measured(sessions, source).WithDenominator("distinct sessions from " + thousands(rows) + " ledger rows")
 }
 
@@ -385,7 +391,10 @@ func countNoun(n int, word string) string {
 	if n == 1 {
 		return fmt.Sprintf("%d %s", n, word)
 	}
-	return fmt.Sprintf("%d %ss", n, word)
+	if strings.HasSuffix(word, "s") || strings.HasSuffix(word, "ch") {
+		return thousands(n) + " " + word + "es"
+	}
+	return thousands(n) + " " + word + "s"
 }
 
 // thousands renders 34993 as "34,993" — denominators are read by people.

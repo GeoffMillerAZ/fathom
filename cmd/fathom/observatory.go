@@ -164,6 +164,14 @@ type obsImpact struct {
 	// that ignores it flatters the indexed mode.
 	ExpToolSearchTurns int    `json:"exp_toolsearch_turns"`
 	ExpNote            string `json:"exp_note"`
+
+	// The console's Impact view (OC-41) draws each arm as a range, so it
+	// needs the admitted units behind the medians, and the denominators the
+	// notes above only state in words. Unexported: obsImpact is part of
+	// observatoryModel v1's JSON, which stays byte-for-byte (OC-7).
+	armOn, armOff []int
+	catchesRan    int
+	firstEditN    int
 }
 
 type observatoryModel struct {
@@ -212,10 +220,25 @@ type observatoryModel struct {
 	// stays byte-for-byte what it was (OC-7).
 	callFacts console.CallLogFacts
 	sessions  console.Value[int]
-	// sessionLedger is the session ledger's bytes as this build read them —
-	// the read every sessions figure came from — so a page that lists
-	// sessions (the activity tab) lists the ones that were counted.
-	sessionLedger []byte
+	// The model's one read of the session ledger (its bytes, or the read
+	// error), and what the Evidence pages fold from its one read of the call
+	// log — each tool's dominant caller class and the review runs' findings
+	// — so a page's table never comes from a read its metrics did not: a
+	// page that lists sessions (the activity tab, the sessions pages) lists
+	// the ones that were counted.
+	ledger    []byte
+	ledgerErr error
+	toolClass map[string]console.CallerClass
+	reviews   []console.ReviewRun
+}
+
+// sessionLedgerRead is the session ledger's bytes as this build read them,
+// nil when the read failed (m.sessions then carries the error).
+func (m observatoryModel) sessionLedgerRead() []byte {
+	if m.ledgerErr != nil {
+		return nil
+	}
+	return m.ledger
 }
 
 // obsTrafficDay is one day of call-log traffic.
@@ -251,9 +274,7 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 	ledgerPath := sessionLedgerPath()
 	ledgerData, ledgerErr := os.ReadFile(ledgerPath)
 	m.sessions = console.SessionCount(ledgerPath, ledgerData, ledgerErr).WithAsOf(now)
-	if ledgerErr == nil {
-		m.sessionLedger = ledgerData
-	}
+	m.ledger, m.ledgerErr = ledgerData, ledgerErr
 
 	// The model's reads of the daemon (list_services) carry the console's
 	// origin: the console reading itself is never usage (mcp.OriginConsole).
@@ -293,6 +314,7 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 			m.CallLogNote = "call log unreadable: " + callLogErr.Error() + " — traffic figures are not measured, never zero"
 		}
 		m.Misses = buildMissModel(entries)
+		m.toolClass, m.reviews = toolClassesOf(entries), reviewRunsOf(entries)
 
 		// Ledger sessions per repo (mirrors fleetreport.go's own fold): the
 		// index-only distinction needs to know whether ANYONE runs coding
@@ -674,6 +696,7 @@ func buildImpactModel(now time.Time) obsImpact {
 		imp.RatingOffMed = &v
 	}
 	imp.TokensOnSessions, imp.TokensOffSessions = onSessions, offSessions
+	imp.armOn, imp.armOff, imp.catchesRan, imp.firstEditN = onTokens, offTokens, catchesRan, len(firstEditTurns)
 	imp.UncleanArmRows = uncleanArmRows
 	if uncleanArmRows > 0 {
 		imp.UncleanArmNote = itoa(uncleanArmRows) + " OFF-arm session(s) excluded from the comparison: each either began " +

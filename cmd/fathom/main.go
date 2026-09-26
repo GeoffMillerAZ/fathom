@@ -219,7 +219,11 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		if len(args) > 1 && args[1] == "undo" {
 			return cmdFleetUndo(args[2:], stdout, stderr)
 		}
-		fmt.Fprintln(stderr, "usage: fathom fleet report|reconcile|realization|receipts|undo [flags]")
+		// SH-9: time-to-remedy over the report snapshots.
+		if len(args) > 1 && args[1] == "remedy" {
+			return cmdFleetRemedy(args[2:], stdout, stderr)
+		}
+		fmt.Fprintln(stderr, "usage: fathom fleet report|reconcile|realization|receipts|undo|remedy [flags]")
 		return 1
 	case "stop-hook":
 		return cmdStopHook(args[1:], stdout, stderr)
@@ -253,6 +257,8 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return cmdPurge(args[1:], stdout, stderr)
 	case "memory":
 		return cmdMemory(args[1:], stdout, stderr)
+	case "decide":
+		return cmdDecide(args[1:], stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "error: unknown subcommand %q\n", args[0])
 		printUsage(stderr)

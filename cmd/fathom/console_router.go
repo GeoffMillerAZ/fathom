@@ -118,10 +118,7 @@ func consolePageJSONFor(p *consolePage, r *http.Request, out consoleOut, now tim
 	if title == "" {
 		title = p.Title
 	}
-	verbs := p.Verbs
-	if out.Verbs != nil {
-		verbs = out.Verbs
-	}
+	verbs := pageVerbs(p, out)
 	if verbs == nil {
 		verbs = []string{}
 	}

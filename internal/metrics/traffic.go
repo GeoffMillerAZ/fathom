@@ -18,6 +18,14 @@ const (
 	TrafficGroupBySurface = "surface"
 	TrafficGroupByTool    = "tool"
 	TrafficGroupByHour    = "hour"
+	// TrafficGroupByDay groups by UTC calendar day (YYYY-MM-DD) — the
+	// console's traffic-per-day panel (OC-44).
+	TrafficGroupByDay = "day"
+	// TrafficGroupByCaller groups by the caller class the reader stamped on
+	// each entry (CallEntry.Caller: agent, edit hook, gate, refresh,
+	// plumbing, unattributed — console.ClassifyCaller), so plumbing never
+	// passes for adoption (OC-44).
+	TrafficGroupByCaller = "caller"
 )
 
 // CallEntry is the minimal call-log shape AggregateTraffic needs — decoupled
@@ -31,13 +39,16 @@ type CallEntry struct {
 	Surface   string
 	LatencyMS float64
 	Error     string
+	// Caller is the caller class the reader derived for this row (empty
+	// when it did not); only TrafficGroupByCaller reads it.
+	Caller string
 }
 
 // TrafficOptions configures AggregateTraffic.
 type TrafficOptions struct {
 	Since, Until time.Time
 	// GroupBy is one of TrafficGroupBySurface (default), TrafficGroupByTool,
-	// TrafficGroupByHour.
+	// TrafficGroupByHour, TrafficGroupByDay, TrafficGroupByCaller.
 	GroupBy string
 }
 
@@ -158,6 +169,13 @@ func trafficGroupKey(e CallEntry, groupBy string, ts time.Time) string {
 		return e.Tool
 	case TrafficGroupByHour:
 		return ts.UTC().Format("2006-01-02T15:00")
+	case TrafficGroupByDay:
+		return ts.UTC().Format("2006-01-02")
+	case TrafficGroupByCaller:
+		if e.Caller == "" {
+			return "(unclassified)"
+		}
+		return e.Caller
 	default: // TrafficGroupBySurface
 		if e.Surface == "" {
 			return "(unscoped)"

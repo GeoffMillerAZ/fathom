@@ -9,10 +9,10 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
-	"os"
+	"io/fs"
 	"os/exec"
 	"path/filepath"
 	"strconv"
@@ -176,7 +176,7 @@ func rowRevisions(service, id string, revs []planRevisionText) []console.RowRevi
 // ledger that exists and could not be read (absence is zero rows).
 func ledgerRuns() (runs []console.LedgerRun, path, readErr string) {
 	path = verifyLedgerPath()
-	rows, err := readVerifyLedgerErr()
+	rows, err := readVerifyLedgerNamed()
 	if err != "" {
 		return nil, path, err
 	}
@@ -193,30 +193,17 @@ func ledgerRuns() (runs []console.LedgerRun, path, readErr string) {
 	return runs, path, ""
 }
 
-// readVerifyLedgerErr is readVerifyLedger that tells an absent ledger (no
+// readVerifyLedgerNamed is readVerifyLedger that tells an absent ledger (no
 // rows, no error — a machine that has never gated) from one that exists
 // and could not be read (the error, named, so a trend is never drawn from
 // a ledger it could not see).
-func readVerifyLedgerErr() ([]verifyLedgerRow, string) {
-	path := verifyLedgerPath()
-	if path == "" {
-		return nil, ""
-	}
-	data, err := os.ReadFile(path)
+func readVerifyLedgerNamed() ([]verifyLedgerRow, string) {
+	rows, err := readVerifyLedgerErr(verifyLedgerPath())
 	switch {
-	case os.IsNotExist(err):
+	case errors.Is(err, fs.ErrNotExist):
 		return nil, ""
 	case err != nil:
 		return nil, err.Error()
 	}
-	var out []verifyLedgerRow
-	dec := json.NewDecoder(bytes.NewReader(data))
-	for {
-		var r verifyLedgerRow
-		if err := dec.Decode(&r); err != nil {
-			break
-		}
-		out = append(out, r)
-	}
-	return out, ""
+	return rows, ""
 }

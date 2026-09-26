@@ -46,7 +46,7 @@ func seedProjectRoot(t *testing.T, f *consoleFixture, svc, root string) {
 }
 
 // runVerbJSON runs a rendered command exactly as shown and decodes its JSON.
-func runVerbJSON(t *testing.T, verb string) any {
+func runVerbAsShownJSON(t *testing.T, verb string) any {
 	t.Helper()
 	var out, errb bytes.Buffer
 	// doctor's exit 1 is its verdict (a check failed), not a failure to
@@ -78,7 +78,7 @@ func assertSectionsEqualVerbs(t *testing.T, env consolePageJSONWire, want int) {
 		if err := json.Unmarshal(raw, &fromPage); err != nil {
 			t.Fatal(err)
 		}
-		fromVerb := runVerbJSON(t, verb)
+		fromVerb := runVerbAsShownJSON(t, verb)
 		dropVolatileVerbFields(verb, fromVerb, fromPage)
 		if !reflect.DeepEqual(fromVerb, fromPage) {
 			a, _ := json.MarshalIndent(fromVerb, "", " ")
@@ -335,7 +335,7 @@ func TestProjectScopePanel_ReadOnlyPreviewAndPurgePlan(t *testing.T) {
 		if strings.Contains(verb, "scope list") {
 			var fromPage any
 			_ = json.Unmarshal(env.Sections[verb], &fromPage)
-			if !reflect.DeepEqual(runVerbJSON(t, verb), fromPage) {
+			if !reflect.DeepEqual(runVerbAsShownJSON(t, verb), fromPage) {
 				t.Errorf("scope list section disagrees with the verb")
 			}
 		}

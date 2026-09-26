@@ -60,7 +60,7 @@
 - [x] `fleet receipts --limit N` states the TOTAL and what the limit hid, never the truncated length as the total — law 3 applied to a count, in the verb whose only job is to tell the truth about what fathom changed (found in review) {id: SH-11, symbol: cmdFleetReceipts, package: cmd/fathom, reachable_from: TestReceiptsLimitDisclosesWhatItHid}
 - [x] the observatory renders Preview changes → typed diff → Apply; apply is refused if the repository changed between preview and apply (plan digest mismatch) {id: SH-7, symbol: wiringApplyHandler, package: cmd/fathom, reachable_from: TestWiringApplyRequiresFreshPlan}
 - [x] the mutating endpoints refuse a non-loopback Host, a cross-site Origin, a service id not in the registry, and any path not already a registered fathom service (law 13) {id: SH-8, symbol: requireLocalMutation, package: cmd/fathom, reachable_from: TestMutationEndpointRefusals}
-- [ ] time-to-remedy is measured and rendered: interval from a wiring gap first appearing to it closing, per repository, with the 2026-08-08 baseline recorded (9 of 17 below A, unbounded) {id: SH-9, symbol: timeToRemedy, package: cmd/fathom, reachable_from: TestTimeToRemedy}
+- [x] time-to-remedy is measured and rendered: interval from a wiring gap first appearing to it closing, per repository, with the 2026-08-08 baseline recorded (9 of 17 below A, unbounded) {id: SH-9, symbol: timeToRemedy, package: cmd/fathom, reachable_from: TestTimeToRemedy}
 
 ---
 

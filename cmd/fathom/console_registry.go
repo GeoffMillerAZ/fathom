@@ -43,7 +43,9 @@ type consolePage struct {
 	Aliases []string
 	// Verbs are the exact commands whose --json this page's JSON carries as
 	// sections (P10); TestConsolePagesRenderTheirVerbs holds each page to
-	// them. A page not yet rebuilt declares none.
+	// them. A page not yet rebuilt declares none. A parameterized page
+	// declares its verb with "{name}" placeholders and fills it per request
+	// (consoleOut.Verbs).
 	Verbs []string
 	// ProjectVerbs are per-project verbs whose answers the page renders
 	// from a recorded instrument rather than by running them (the verify
