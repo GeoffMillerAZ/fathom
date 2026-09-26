@@ -209,7 +209,8 @@ var unionMemo = struct {
 }{entries: map[string]unionEntry{}, flight: map[string]*unionCall{}}
 
 // unionDigest is the memo key's project half: a stat walk of
-// root/.fathom/layers (relative path, size, mtime in ns, mode per entry,
+// root/.fathom/layers, through symlinks (relative path, size, mtime in ns,
+// mode per entry's target,
 // in WalkDir's lexical order). "" root and an absent directory digest to
 // fixed markers; an unreadable directory digests to an error marker, which
 // buildUnion then resolves to embedded-only exactly as before.
@@ -219,6 +220,16 @@ func unionDigest(root string) string {
 	}
 	dir := filepath.Join(root, filepath.FromSlash(ProjectLayersDir))
 	var b strings.Builder
+	// buildUnion reads through symlinks (os.ReadDir, os.DirFS), so the
+	// digest must stat through them too: walk the resolved directory (a
+	// kit's layers symlinked in) and os.Stat each entry (a symlinked
+	// layer.cue). The resolved path is part of the key, so retargeting the
+	// link moves it. WalkDir still never descends a symlinked subdirectory
+	// — buildUnion does not treat one as a pack either.
+	if resolved, rerr := filepath.EvalSymlinks(dir); rerr == nil && resolved != dir {
+		fmt.Fprintf(&b, "@%s\n", resolved)
+		dir = resolved
+	}
 	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			fmt.Fprintf(&b, "!%s:%v\n", path, err)
@@ -227,7 +238,7 @@ func unionDigest(root string) string {
 			}
 			return nil
 		}
-		info, ierr := d.Info()
+		info, ierr := os.Stat(path)
 		if ierr != nil {
 			fmt.Fprintf(&b, "!%s\n", path)
 			return nil

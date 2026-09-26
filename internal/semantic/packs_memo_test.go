@@ -86,3 +86,81 @@ func TestLoadUnionMemoizedPerDigest(t *testing.T) {
 		t.Fatalf("returning to the first root rebuilt the union (%d builds), want the memo to hold both roots", got)
 	}
 }
+
+// TestLoadUnionMemoDigestFollowsSymlinks: a kit-shipped pack directory is
+// commonly symlinked in (.fathom/layers -> the kit's layers). The digest
+// must stat through the link, or an edit to the kit's layer.cue (or a new
+// kit pack) never moves the key and the daemon serves the old union until
+// restart (I21).
+func TestLoadUnionMemoDigestFollowsSymlinks(t *testing.T) {
+	resetUnionMemoForTest()
+	root := t.TempDir()
+	kit := filepath.Join(t.TempDir(), "kit-layers")
+	writeFixturePack(t, filepath.Join(kit, "custom"), "custom", false)
+	if err := os.MkdirAll(filepath.Join(root, ".fathom"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(kit, filepath.Join(root, ".fathom", "layers")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadLayerIn(root, "custom"); err != nil {
+		t.Fatalf("LoadLayerIn: %v", err)
+	}
+
+	cue := filepath.Join(kit, "custom", "layer.cue")
+	data, err := os.ReadFile(cue)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(cue, append(data, []byte("\nrole: \"claims\"\n")...), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	future := time.Now().Add(2 * time.Second)
+	_ = os.Chtimes(cue, future, future)
+	writeFixturePack(t, filepath.Join(kit, "second"), "second", false)
+
+	def, err := LoadLayerIn(root, "custom")
+	if err != nil {
+		t.Fatalf("LoadLayerIn after kit edit: %v", err)
+	}
+	if def.Role != "claims" {
+		t.Errorf("through a symlinked layers dir, Role = %q after the kit edit, want claims (stale union served)", def.Role)
+	}
+	if _, err := LoadLayerIn(root, "second"); err != nil {
+		t.Errorf("a pack added behind the symlink is not served: %v", err)
+	}
+
+	// A symlinked layer.cue inside a real pack directory moves the key too.
+	resetUnionMemoForTest()
+	root2 := t.TempDir()
+	target := filepath.Join(t.TempDir(), "layer.cue")
+	writeFixturePack(t, filepath.Join(root2, ".fathom", "layers", "custom"), "custom", false)
+	linked := filepath.Join(root2, ".fathom", "layers", "custom", "layer.cue")
+	orig, err := os.ReadFile(linked)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(target, orig, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(linked); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(target, linked); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadLayerIn(root2, "custom"); err != nil {
+		t.Fatalf("LoadLayerIn (linked layer.cue): %v", err)
+	}
+	if err := os.WriteFile(target, append(orig, []byte("\nrole: \"claims\"\n")...), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_ = os.Chtimes(target, future, future)
+	def, err = LoadLayerIn(root2, "custom")
+	if err != nil {
+		t.Fatalf("LoadLayerIn after linked edit: %v", err)
+	}
+	if def.Role != "claims" {
+		t.Errorf("through a symlinked layer.cue, Role = %q after the edit, want claims (stale union served)", def.Role)
+	}
+}
