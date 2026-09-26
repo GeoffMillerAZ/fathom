@@ -437,7 +437,7 @@ fathom serve-http --store <path> [--addr <host:port>] [--module <store>]... [--m
 |---|---|---|
 | `--store` | (required, or `[daemon].store` in config.toml) | store path (.sqlite/.db) |
 | `--addr` | `127.0.0.1:7575` | Listen address — loopback by default; surfaces are not a security boundary (ADR-014 amendment) |
-| `--auto-refresh` | `true` | Re-ingest a service on git-HEAD drift before answering |
+| `--auto-refresh` | `true` | Re-ingest a service on git-HEAD drift before answering. The re-ingest runs detached from the request (a caller that disconnects returns at once; the ingest completes), one service at a time process-wide, and a failed re-ingest is retried by the next read |
 | `--call-log` | `<repo>/workspace/logs/mcp-calls.jsonl` (else `~/.fathom/logs/mcp-calls.jsonl`) | JSONL tool-call log, resolved from the daemon working directory's repository (§CLI subcommands); empty disables |
 | `--module` | — | Path to a conforming expert-module store, mounted READ-ONLY on `POST /rpc/modules`; repeatable; a non-conforming store aborts startup |
 | `--modules-token-env` | unset | NAME of an env var holding the bearer token for `POST /rpc/modules` (hosted mode); unset = no auth |

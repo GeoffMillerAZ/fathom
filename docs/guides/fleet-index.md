@@ -267,7 +267,9 @@ resolves it FRESH against the live index and marks what no longer holds.
 
 - **Data staleness** is handled automatically: `serve-http` re-ingests a
   service on git-HEAD drift before answering (`--auto-refresh`, default on),
-  and you can force it via the `ingest` MCP tool.
+  and you can force it via the `ingest` MCP tool. The inline re-ingest runs
+  detached from its requester, one service at a time, and a failed one is
+  retried by the next read.
 - **Binary staleness** is the one to watch — the daemon runs an **installed
   copy** at `~/.local/libexec/fathom/fathom` (never `bin/fathom` directly,
   so a post-commit rebuild can't swap the running daemon's binary out from

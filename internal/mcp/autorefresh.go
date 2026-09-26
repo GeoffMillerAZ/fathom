@@ -28,13 +28,15 @@ type autoRefreshBackend struct {
 	log    *dlog.Logger
 	headFn func(path string) string // injectable for tests; default = currentGitHead
 
-	mu   sync.Mutex
-	seen map[string]string // service -> commit already refreshed to
+	mu       sync.Mutex
+	seen     map[string]string        // service -> commit successfully refreshed to
+	inflight map[string]*inlineIngest // service -> the detached ingest running now
 
 	// refreshTotal counts every auto-refresh re-ingest this backend has
 	// triggered (O108, cmd/fathom's /metrics fathom_autorefresh_total) —
-	// incremented once per debounced drift, regardless of whether the
-	// ingest that followed succeeded. Process-lifetime; read via
+	// incremented once per ingest attempt for a debounced drift, regardless
+	// of whether the ingest that followed succeeded (a failed attempt is
+	// retried by a later read, RT-151, and counts again). Process-lifetime; read via
 	// AutoRefreshTotal.
 	refreshTotal int64 // atomic
 }
@@ -48,6 +50,7 @@ func NewAutoRefresh(backend QueryInterface, log *dlog.Logger) QueryInterface {
 		log:            log,
 		headFn:         currentGitHead,
 		seen:           make(map[string]string),
+		inflight:       make(map[string]*inlineIngest),
 	}
 }
 
@@ -65,6 +68,12 @@ type serviceWatermarker interface {
 // folders, findings exports) are small by nature. Best-effort: any failure to
 // determine freshness leaves the index as-is (a stale answer is strictly
 // better than a failed query).
+//
+// The ingest itself runs detached from the caller under one process-wide
+// ticket (RT-149): the caller waits for it only while its own ctx lives, so
+// a requester that disconnects returns at once and the ingest still
+// completes. seen[service] is recorded only after a successful ingest
+// (RT-151).
 func (a *autoRefreshBackend) ensure(ctx context.Context, service string) {
 	if service == "" {
 		return
@@ -87,15 +96,61 @@ func (a *autoRefreshBackend) ensure(ctx context.Context, service string) {
 		a.mu.Unlock()
 		return
 	}
-	a.seen[service] = head
-	a.mu.Unlock()
-	atomic.AddInt64(&a.refreshTotal, 1)
-
-	if a.log != nil {
-		a.log.Info(fmt.Sprintf("auto-refresh: %s drifted %s→%s, re-ingesting", service, shortSHA(indexed), shortSHA(head)))
+	// One inline ingest per (service, head) at a time: a read that arrives
+	// while one is already running joins it instead of starting another.
+	fl, running := a.inflight[service]
+	if !running || fl.head != head {
+		if running {
+			// A newer head than the running ingest's: wait for that one
+			// (under this caller's ctx) rather than start a parallel run;
+			// the next read after it finishes sees the new drift.
+			a.mu.Unlock()
+			select {
+			case <-fl.done:
+			case <-ctx.Done():
+			}
+			return
+		}
+		fl = &inlineIngest{head: head, done: make(chan struct{})}
+		a.inflight[service] = fl
+		atomic.AddInt64(&a.refreshTotal, 1)
+		if a.log != nil {
+			a.log.Info(fmt.Sprintf("auto-refresh: %s drifted %s→%s, re-ingesting", service, shortSHA(indexed), shortSHA(head)))
+		}
+		// RT-149 (design §3.5): detached from the requester, so a
+		// disconnect never cancels an ingest midway under a watermark that
+		// claims HEAD.
+		go a.runInlineIngest(context.WithoutCancel(ctx), service, fl)
 	}
-	if err := a.QueryInterface.IngestService(ctx, service); err != nil && a.log != nil {
-		a.log.Warn(fmt.Sprintf("auto-refresh: %s ingest failed: %v", service, err))
+	a.mu.Unlock()
+	select {
+	case <-fl.done:
+	case <-ctx.Done():
+	}
+}
+
+// inlineIngest is one detached auto-refresh ingest in flight for a service.
+type inlineIngest struct {
+	head string
+	done chan struct{} // closed when the ingest has finished, either way
+}
+
+// inlineIngestTicket is the one process-wide ingest ticket (RT-149, design
+// §3.5/§7.1): every autoRefreshBackend's inline ingest holds it, so two
+// services never ingest inline at once. It stands in for wave D's refresh
+// queue heavy slot, which replaces the inline ingest entirely (RT-99).
+var inlineIngestTicket = make(chan struct{}, 1)
+
+// runInlineIngest waits for the process-wide ticket, ingests, and records
+// seen[service] only after a successful ingest (RT-151): a failed ingest is
+// retried by the next read instead of being debounced forever.
+func (a *autoRefreshBackend) runInlineIngest(ctx context.Context, service string, fl *inlineIngest) {
+	inlineIngestTicket <- struct{}{}
+	err := a.QueryInterface.IngestService(ctx, service)
+	<-inlineIngestTicket
+
+	if err != nil && a.log != nil {
+		a.log.Warn(fmt.Sprintf("auto-refresh: %s ingest failed (will retry on the next read): %v", service, err))
 	}
 	// Critic finding F2 (BLOCKING, phase-P fix round): bust the CLI's
 	// service-identity cache (cmd/fathom/identcache.go) on every
@@ -105,6 +160,16 @@ func (a *autoRefreshBackend) ensure(ctx context.Context, service string) {
 	// ingest above succeeded or failed (a failed ingest may still have
 	// changed on-disk state worth invalidating against).
 	hookcache.BustIdent()
+
+	a.mu.Lock()
+	if err == nil {
+		a.seen[service] = fl.head
+	}
+	if a.inflight[service] == fl {
+		delete(a.inflight, service)
+	}
+	a.mu.Unlock()
+	close(fl.done)
 }
 
 // AutoRefreshTotal returns the process-lifetime count of auto-refresh
