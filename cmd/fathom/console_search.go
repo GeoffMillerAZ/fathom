@@ -12,7 +12,9 @@ package main
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"html"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -29,6 +31,7 @@ import (
 	"github.com/geoffmilleraz/app-kit/appkit/ui/palette"
 	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/memo"
+	"github.com/geoffmilleraz/fathom/internal/verify"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
@@ -205,7 +208,6 @@ func gatherSearchDocs(reg *consoleRegistry, services []searchService, degraded s
 }
 
 var (
-	planRowRe   = regexp.MustCompile(`^\s*- \[([ xX-])\] (.*?)\s*\{id: ([A-Za-z0-9_.:-]+)`)
 	adrHeadRe   = regexp.MustCompile(`^## (ADR-\d+):?\s+(.*)$`)
 	invariantRe = regexp.MustCompile(`^\| (I\d+) \| (.*?) \|`)
 	futureRe    = regexp.MustCompile(`^## (F\d+)\.\s+(.*)$`)
@@ -225,49 +227,49 @@ func idTitle(id, text string) string {
 }
 
 // projectSearchDocs reads one project's plans, plan rows and intent
-// records. Links point at the project page (the plan and record pages are
-// later waves); Ref is file:line and Command the verb that shows it. A
-// plans directory or record that exists and cannot be read is returned as
-// the error (the page names it) — never read as "no plans" (I38).
+// records. A plan links to its plan page and a row to its row page — the
+// registry's plan and plan-row routes — so a search, the palette and the
+// JSON all land where the answer is (UX-M1 finding 1: they sent both to the
+// project page, even for an exact row ID). The plans are the verbs'
+// discovery (activePlanFiles) and the rows the plan parser's, the same the
+// row page resolves an ID with, so every result opens a page that exists:
+// an in-progress [~] row or an id that is not the first annotation key is a
+// row here too. Records still link to the project page. Ref is file:line
+// and Command the verb that shows it. A plans directory or record that
+// exists and cannot be read is returned as the error (the page names it) —
+// never read as "no plans" (I38).
 func projectSearchDocs(service, root string) ([]console.SearchDoc, error) {
 	var docs []console.SearchDoc
 	var firstErr error
-	var plans []string
-	//fathom:tenancy-allow whole-read lists docs/plans entries (names only), no file content
-	entries, err := os.ReadDir(filepath.Join(root, "docs", "plans"))
-	if err != nil && !os.IsNotExist(err) {
+	plans, err := activePlanFiles(root)
+	if err != nil {
 		firstErr = err
 	}
-	for _, e := range entries {
-		if !e.IsDir() && strings.HasSuffix(e.Name(), ".md") {
-			plans = append(plans, filepath.Join(root, "docs", "plans", e.Name()))
-		}
-	}
-	sort.Strings(plans)
-	href := projectHref(service)
 	for _, plan := range plans {
-		rel, _ := filepath.Rel(root, plan)
-		name := strings.TrimSuffix(filepath.Base(plan), ".md")
-		if name == "README" {
+		raw, err := readSearchPlan(plan)
+		if err != nil {
+			if firstErr == nil {
+				firstErr = err
+			}
 			continue
 		}
+		rel := filepath.ToSlash(filepath.Join("docs", "plans", filepath.Base(plan)))
+		slug := console.PlanSlug(plan)
 		docs = append(docs, console.SearchDoc{
-			Group: console.GroupPlans, Kind: "plan", Title: name, Service: service, Ref: rel, Href: href,
+			Group: console.GroupPlans, Kind: "plan", Title: slug, Subtitle: planTitle(raw, plan), Service: service, Ref: rel,
+			Href:    planHref(service, slug),
 			Command: "fathom plans status --service " + service + " --plan " + rel,
 		})
-		err := scanLines(plan, func(n int, line string) {
-			if mm := planRowRe.FindStringSubmatch(line); mm != nil {
-				docs = append(docs, console.SearchDoc{
-					Group: console.GroupPlans, Kind: "row", ID: mm[3], Title: idTitle(mm[3], mm[2]),
-					Subtitle: name, Service: service, Ref: rel + ":" + itoa(n), Href: href,
-					Command: "fathom verify --service " + service + " --plan " + rel,
-				})
-			}
-		})
-		if err != nil && firstErr == nil {
-			firstErr = err
+		for _, t := range verify.ParseMarkdownPlan(service, raw).Tasks {
+			docs = append(docs, console.SearchDoc{
+				Group: console.GroupPlans, Kind: "row", ID: t.ID, Title: idTitle(t.ID, t.Title),
+				Subtitle: slug, Service: service, Ref: rel + ":" + itoa(t.Line),
+				Href:    planRowHref(service, slug, t.ID),
+				Command: "fathom verify --service " + service + " --plan " + rel + " --row " + t.ID + " --json",
+			})
 		}
 	}
+	href := projectHref(service)
 	records := []struct {
 		file string
 		re   *regexp.Regexp
@@ -293,6 +295,30 @@ func projectSearchDocs(service, root string) ([]console.SearchDoc, error) {
 		}
 	}
 	return docs, firstErr
+}
+
+// searchPlanMaxBytes caps one plan read by the search index: the largest
+// plan in the fleet is under 100 KB, so a plan past 4 MiB is refused and
+// named (the page's note), never parsed as if it were shorter (I38).
+const searchPlanMaxBytes = 4 << 20
+
+// readSearchPlan reads one plan for the search index under
+// searchPlanMaxBytes, so the index rebuild's cost is bounded per plan
+// rather than following a file's size (tenancy design §4.7).
+func readSearchPlan(path string) ([]byte, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	raw, err := io.ReadAll(io.LimitReader(f, searchPlanMaxBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(raw) > searchPlanMaxBytes {
+		return nil, fmt.Errorf("%s exceeds the %d MiB plan cap", filepath.Base(path), searchPlanMaxBytes>>20)
+	}
+	return raw, nil
 }
 
 func scanLines(path string, fn func(n int, line string)) error {

@@ -9,10 +9,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -141,6 +143,106 @@ func TestProjectSearchDocs_RowIDsAndUnreadablePlans(t *testing.T) {
 	}
 	if _, err := projectSearchDocs("svc", root); err == nil {
 		t.Error("an unreadable docs/plans must be reported, not read as no plans")
+	}
+}
+
+// A plan result opens its plan page and a row result its row page — the
+// routes the registry serves (plan, plan-row), never the project page
+// (UX-M1 finding 1: even an exact row ID landed on /projects/{svc}). Rows
+// are read with the plan parser the row page resolves them with, so an
+// in-progress row, a starred bullet and an id that is not the first
+// annotation key are rows too, and the plan result carries the plan's own
+// title for search.
+func TestProjectSearchDocs_PlansAndRowsLinkToTheirPages(t *testing.T) {
+	root := t.TempDir()
+	mustWrite(t, filepath.Join(root, "docs", "plans", "p.md"), "# The P plan\n\n- [ ] OC-1 Page projections {id: OC-1}\n- [~] Nightly batch {symbol: NightlyBatch, id: NB-2}\n* [x] Starred row {id: ST-3}\n")
+	mustWrite(t, filepath.Join(root, "docs", "plans", "README.md"), "- [ ] not a plan {id: R-1}\n")
+	docs, err := projectSearchDocs("svc", root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]console.SearchDoc{}
+	for _, d := range docs {
+		got[d.Kind+" "+d.ID+d.Title] = d
+	}
+	plan, ok := got["plan p"]
+	if !ok {
+		t.Fatalf("no plan result: %+v", docs)
+	}
+	if plan.Href != planHref("svc", "p") || plan.Subtitle != "The P plan" {
+		t.Errorf("plan result = href %q subtitle %q, want the plan page and the plan's title", plan.Href, plan.Subtitle)
+	}
+	for id, title := range map[string]string{"OC-1": "OC-1 Page projections", "NB-2": "NB-2 Nightly batch", "ST-3": "ST-3 Starred row"} {
+		d, ok := got["row "+id+title]
+		if !ok {
+			t.Errorf("row %s is not indexed as %q: %+v", id, title, docs)
+			continue
+		}
+		if d.Href != planRowHref("svc", "p", id) {
+			t.Errorf("row %s href = %q, want its row page %q", id, d.Href, planRowHref("svc", "p", id))
+		}
+		if want := "fathom verify --service svc --plan docs/plans/p.md --row " + id + " --json"; d.Command != want {
+			t.Errorf("row %s command = %q, want the row page's verb %q", id, d.Command, want)
+		}
+	}
+	for _, d := range docs {
+		if d.ID == "R-1" {
+			t.Error("README.md is not a plan (the verbs' discovery excludes it)")
+		}
+	}
+}
+
+// resultHrefRe reads a search page's result links, in order; paletteHrefRe
+// the palette fragment's options.
+var (
+	resultHrefRe  = regexp.MustCompile(`<li class="min-w-0" data-search-kind="[^"]*"><a [^>]*href="([^"]*)"`)
+	paletteHrefRe = regexp.MustCompile(`<a href="([^"]*)" data-palette-option`)
+)
+
+// Search, the ⌘K fragment and the JSON agree on where a plan or row result
+// goes, and an exact row ID leads: the first result is that row's page, in
+// all three renderings, and every such destination is a page that answers.
+func TestConsoleSearch_PlanAndRowResultsOpenTheirPages(t *testing.T) {
+	f := newConsoleFixture(t)
+	for _, tc := range []struct{ q, want string }{
+		{"S-5", "/plans/proof-service/settlement/rows/S-5"},
+		{"s-6", "/plans/proof-service/settlement/rows/S-6"}, // an in-progress [~] row
+		{"Settlement ledger", "/plans/proof-service/settlement"},
+		{"Audit (fixture plan)", "/plans/proof-service/audit"}, // the plan's title, not its file name
+	} {
+		env := f.pageJSON(t, "/search?q="+url.QueryEscape(tc.q))
+		var res console.SearchResults
+		if err := json.Unmarshal(env.Model, &res); err != nil {
+			t.Fatal(err)
+		}
+		var jsonHrefs []string
+		for _, g := range res.Groups {
+			for _, r := range g.Results {
+				jsonHrefs = append(jsonHrefs, r.Href)
+			}
+		}
+		if len(res.Groups) == 0 || res.Groups[0].Group != console.GroupPlans || len(jsonHrefs) == 0 || jsonHrefs[0] != tc.want {
+			t.Errorf("%q: JSON leads with %v, want %s first", tc.q, jsonHrefs, tc.want)
+			continue
+		}
+		_, _, page := f.get(t, "/search?q="+url.QueryEscape(tc.q))
+		var pageHrefs []string
+		for _, m := range resultHrefRe.FindAllStringSubmatch(page, -1) {
+			pageHrefs = append(pageHrefs, html.UnescapeString(m[1]))
+		}
+		_, _, frag := f.get(t, "/search?format=fragment&q="+url.QueryEscape(tc.q))
+		var fragHrefs []string
+		for _, m := range paletteHrefRe.FindAllStringSubmatch(frag, -1) {
+			if h := html.UnescapeString(m[1]); !strings.HasPrefix(h, "/search?") || !strings.Contains(h, "group=") {
+				fragHrefs = append(fragHrefs, h) // not a "Show all" link
+			}
+		}
+		if strings.Join(pageHrefs, " ") != strings.Join(jsonHrefs, " ") || strings.Join(fragHrefs, " ") != strings.Join(jsonHrefs, " ") {
+			t.Errorf("%q: the renderings disagree:\n json %v\n page %v\n palette %v", tc.q, jsonHrefs, pageHrefs, fragHrefs)
+		}
+		if code, _, _ := f.get(t, tc.want); code != http.StatusOK {
+			t.Errorf("%q: %s = %d", tc.q, tc.want, code)
+		}
 	}
 }
 
