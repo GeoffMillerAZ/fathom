@@ -46,6 +46,11 @@ type obsServiceRow struct {
 	// preventing, gating — that grades what fathom is DOING here rather
 	// than how it is configured.
 	Realization *realizationReport `json:"realization,omitempty"`
+	// ladder is the rung-level projection the grade folds
+	// (console.RealizationLadder): the project overview and `fathom fleet
+	// realization` render it. Unexported, so observatoryModel v1's JSON is
+	// unchanged.
+	ladder *console.Ladder
 	// Series (RG-6): the 30-day per-dimension activity series from the call
 	// log. Nil when the log could not be read (the model's CallLogNote then
 	// carries the reason) — a series of thirty "no rows" absences would
@@ -400,12 +405,18 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 				ObligationServes: obligationsBySvc[name],
 				VerifyRuns:       verifyRunsByRepo[name],
 				HasPlans:         repoHasPlans(info.path),
+				WindowDays:       14,
+				CallLogNote:      m.CallLogNote,
+			}
+			if !ledgerReadable {
+				win.LedgerNote = "the session ledger was not read (" + ledgerPath + ")"
 			}
 			if row.SessionCount != nil {
 				win.Sessions = *row.SessionCount
 			}
-			rr := realizationGrade(row, win)
-			row.Realization = &rr
+			ladder := console.RealizationLadder(realizationLadderFacts(row, win))
+			rr := realizationReportFrom(ladder)
+			row.Realization, row.ladder = &rr, &ladder
 			if callLogRead {
 				row.Series = dimensionSeries(entries, name, now, seriesDays)
 			}

@@ -18,11 +18,12 @@ package main
 // instead of leaving a reader to guess.
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/geoffmilleraz/fathom/internal/console"
 )
 
 // realizationDim is one rung.
@@ -80,140 +81,61 @@ type realizationWindow struct {
 	// it, every repository with no plans reads as "not gating", which is
 	// a failure it cannot fix.
 	HasPlans bool
+	// WindowDays names the window the call counts cover (0: "the window").
+	WindowDays int
+	// CallLogNote, when set, is why the call log was not read: queried and
+	// preventing are then unknown, never unmet (law 3). LedgerNote is the
+	// same for the session ledger and the gating rung.
+	CallLogNote string
+	LedgerNote  string
 }
 
 func boolPtr(b bool) *bool { return &b }
 
-// realizationGrade folds the five dimensions for one service.
+// realizationLadderFacts is the ladder projection's input for one row.
+func realizationLadderFacts(s obsServiceRow, w realizationWindow) console.LadderFacts {
+	return console.LadderFacts{
+		Service: s.Service, StanzaNote: s.StanzaNote, HooksNote: s.HooksNote,
+		Freshness: s.Freshness, FreshRemedy: daemonRefreshRemedy(s.Path, s.Service),
+		WindowDays: w.WindowDays, Calls: w.Calls, ObligationServes: w.ObligationServes, CallLogNote: w.CallLogNote,
+		Sessions: w.Sessions, VerifyRuns: w.VerifyRuns, LedgerNote: w.LedgerNote,
+		HasPlans: w.HasPlans,
+	}
+}
+
+// realizationGrade folds the five dimensions for one service: the ladder
+// projection (console.RealizationLadder, the one the project overview
+// draws) read as the grade's record. A rung that is not applicable or
+// could not be judged leaves the denominator.
 //
 // Pure over (row, window): same inputs, same letter. No clock, no I/O.
 func realizationGrade(s obsServiceRow, w realizationWindow) realizationReport {
-	rep := realizationReport{Service: s.Service, Sessions: w.Sessions}
+	return realizationReportFrom(console.RealizationLadder(realizationLadderFacts(s, w)))
+}
 
-	// 1 — WIRED: can fathom operate here at all?
-	hooksVisible := s.HooksNote != "" &&
-		!containsAny(s.HooksNote, "user-scope or plugin wiring not visible", "not checkable")
-	wired := s.StanzaNote == "present"
-	wiredEvidence := "CLAUDE.md stanza present"
-	if s.StanzaNote != "present" {
-		wiredEvidence = "no fathom stanza in CLAUDE.md"
-	}
-	if hooksVisible {
-		hooksOK := containsAny(s.HooksNote, "hook reference")
-		wired = wired && hooksOK
-		if !hooksOK {
-			wiredEvidence = "no fathom hook is wired here"
+// realizationReportFrom reads a ladder as the grade's record.
+func realizationReportFrom(l console.Ladder) realizationReport {
+	rep := realizationReport{Service: l.Service, Sessions: l.Sessions, Realized: l.Realized, Available: l.Available}
+	for _, r := range l.Rungs {
+		d := realizationDim{Name: r.Name, Evidence: r.Evidence, Remedy: r.Fix()}
+		switch r.State {
+		case console.RungMet:
+			d.Met = boolPtr(true)
+		case console.RungUnmet:
+			d.Met = boolPtr(false)
 		}
-	} else {
-		wiredEvidence += " (hook wiring not visible from here)"
+		rep.Dims = append(rep.Dims, d)
 	}
-	rep.Dims = append(rep.Dims, realizationDim{
-		Name: "wired", Met: boolPtr(wired), Evidence: wiredEvidence,
-		Remedy: "fathom fleet reconcile --apply",
-	})
-
-	// 2 — FRESH: are the answers current?
-	fresh := s.Freshness == "fresh"
-	freshDim := realizationDim{Name: "fresh", Evidence: "index fresh at HEAD"}
-	switch {
-	case fresh:
-		freshDim.Met = boolPtr(true)
-	case s.Freshness == "" || strings.HasPrefix(s.Freshness, "unknown"):
-		// Nobody could tell. That is an absence of information, not a
-		// defect, and grading it as one would punish every repository
-		// whose daemon is merely unreachable.
-		freshDim.Evidence = "freshness could not be determined (" + orDash(s.Freshness) + ")"
-	default:
-		freshDim.Met = boolPtr(false)
-		freshDim.Evidence = s.Freshness
-	}
-	freshDim.Remedy = daemonRefreshRemedy(s.Path, s.Service)
-	rep.Dims = append(rep.Dims, freshDim)
-
-	// 3 — QUERIED: is anyone actually asking?
-	queried := w.Calls > 0
-	rep.Dims = append(rep.Dims, realizationDim{
-		Name: "queried", Met: boolPtr(queried),
-		Evidence: fmt.Sprintf("%s call(s) in the window", fmtThousands(w.Calls)),
-		Remedy:   "open a session here and ask a where/who-calls question — an index nobody queries realizes nothing",
-	})
-
-	// 4 — PREVENTING: is it acting BEFORE edits, not just answering?
-	preventing := w.ObligationServes > 0
-	rep.Dims = append(rep.Dims, realizationDim{
-		Name: "preventing", Met: boolPtr(preventing),
-		Evidence: fmt.Sprintf("%s rule injection(s) in the window", fmtThousands(w.ObligationServes)),
-		Remedy:   "fathom capabilities  (the obligations row names what is missing here)",
-	})
-
-	// 5 — GATING: is it catching claims?
-	gateDim := realizationDim{Name: "gating"}
-	switch {
-	case !w.HasPlans:
-		// Not applicable: nothing to gate. Leaves the denominator.
-		gateDim.Evidence = "no plans here for the gate to check"
-	default:
-		gateDim.Met = boolPtr(w.VerifyRuns > 0)
-		gateDim.Evidence = fmt.Sprintf("gate ran in %s session(s) in the window", fmtThousands(w.VerifyRuns))
-		gateDim.Remedy = "add `fathom verify --service " + s.Service + "` to the pre-push hook (lefthook.yml)"
-	}
-	rep.Dims = append(rep.Dims, gateDim)
-
-	// Fold. Not-applicable dimensions leave the denominator entirely.
-	for _, d := range rep.Dims {
-		if d.Met == nil {
-			continue
-		}
-		rep.Available++
-		if *d.Met {
-			rep.Realized++
-		}
-	}
-
 	// A repository with no sessions in the window is IDLE, not failing. An
 	// indexed reference corpus nobody codes in is working as intended, and
 	// nine false alarms teach a reader to skim past the real one.
-	if w.Sessions == 0 {
-		rep.Grade = "idle"
-		rep.FirstGap = ""
-		rep.Remedy = ""
-		return rep
-	}
-
-	rep.Grade = gradeLetter(rep.Realized, rep.Available)
-
-	// The first BROKEN rung in ladder order, with its remedy. The letter
-	// alone was never enough to act on.
-	for _, d := range rep.Dims {
-		if d.Met != nil && !*d.Met {
-			rep.FirstGap = d.Name
-			rep.Remedy = d.Remedy
-			break
-		}
-	}
-	if rep.FirstGap != "" {
-		rep.Grade += " — not " + rep.FirstGap
+	rep.Grade = l.Grade
+	if !l.Idle {
+		// The first BROKEN rung in ladder order, with its remedy. The
+		// letter alone was never enough to act on.
+		rep.FirstGap, rep.Remedy = l.FirstUnmet, l.Remedy
 	}
 	return rep
-}
-
-func gradeLetter(realized, available int) string {
-	if available == 0 {
-		return "idle"
-	}
-	frac := float64(realized) / float64(available)
-	switch {
-	case frac >= 1:
-		return "A"
-	case frac >= 0.75:
-		return "B"
-	case frac >= 0.5:
-		return "C"
-	case frac >= 0.25:
-		return "D"
-	default:
-		return "F"
-	}
 }
 
 // rankByUnrealized orders repositories by how much value is on the table:
@@ -243,15 +165,6 @@ func rankByUnrealized(reports []realizationReport) []realizationReport {
 		return out[i].Service < out[j].Service
 	})
 	return out
-}
-
-func containsAny(s string, subs ...string) bool {
-	for _, sub := range subs {
-		if sub != "" && strings.Contains(s, sub) {
-			return true
-		}
-	}
-	return false
 }
 
 func orDash(s string) string {
