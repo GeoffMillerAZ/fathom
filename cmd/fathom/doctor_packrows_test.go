@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	skillsdist "github.com/geoffmilleraz/fathom/dist/agents/skills"
 	"github.com/geoffmilleraz/fathom/internal/custodian"
 )
 
@@ -196,5 +197,37 @@ func TestDoctorLefthookGatesReadsOnlyPrePushCommands(t *testing.T) {
 	}
 	if got := checkLefthookGates(root); got.Status != doctorPass || !lefthookRunsVerify(root) {
 		t.Fatalf("a pre-push verify passes the row and the probe: %+v", got)
+	}
+}
+
+// TestCustodianSkillMatchesTheBinary is "instructed means true" for the
+// custodian's own skill: the SKILL.md `fathom init --skills` installs (and
+// this repo mirrors under .claude/ and .agents/) names every check kind the
+// loader accepts, every shipped pack, and the propose verb — and never says
+// the verb has not shipped. A session that loads a stale skill is told the
+// binary does less than it does.
+func TestCustodianSkillMatchesTheBinary(t *testing.T) {
+	data, err := skillsdist.FS.ReadFile("fathom-custodian/SKILL.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(data)
+	for _, k := range custodian.KnownKinds {
+		if !strings.Contains(body, "`"+string(k)+"`") {
+			t.Errorf("the custodian skill never names check kind %q", k)
+		}
+	}
+	for _, p := range custodian.KnownPacks() {
+		if !strings.Contains(body, `"`+p+`"`) {
+			t.Errorf("the custodian skill never names pack %q", p)
+		}
+	}
+	if !strings.Contains(body, "fathom config propose") || strings.Contains(body, "not** shipped") {
+		t.Error("the custodian skill must teach `fathom config propose`, never call it unshipped")
+	}
+	for _, mirror := range []string{"../../.claude/skills/fathom-custodian/SKILL.md", "../../.agents/skills/fathom-custodian/SKILL.md"} {
+		if got, err := os.ReadFile(mirror); err != nil || string(got) != body {
+			t.Errorf("%s differs from the shipped skill (err %v)", mirror, err)
+		}
 	}
 }
