@@ -37,8 +37,12 @@ type threadBetReport struct {
 	// sum, not an estimate (the owner's token rule).
 	BriefBytesTotal int `json:"brief_bytes_total"`
 	// IsolatedSpendRows counts rows written inside a `fathom assess` judge
-	// (IR-4): never a cohort unit, counted so the exclusion is visible.
+	// (IR-4): never a cohort unit, and their brief bytes are not in
+	// BriefBytesTotal. IsolatedSpendNote names the exclusion, and Detail
+	// carries it, so every surface that renders the bet (the brief, the
+	// flywheel) says it — counted AND named.
 	IsolatedSpendRows int    `json:"isolated_spend_rows,omitempty"`
+	IsolatedSpendNote string `json:"isolated_spend_note,omitempty"`
 	Verdict           string `json:"verdict"` // collecting | met | not-met
 	Detail            string `json:"detail"`
 }
@@ -120,6 +124,11 @@ func threadBetCheck(rows []sessionLedgerEntry) threadBetReport {
 			"does not pay its ~600 tokens is context pollution with a good conscience",
 			rep.FreshUnits, derefOr(rep.FreshWarmupMed), derefOr(rep.ResumedWarmupMed),
 			derefOr(rep.FreshAllInMed), derefOr(rep.ResumedAllInMed))
+	}
+	if rep.IsolatedSpendRows > 0 {
+		rep.IsolatedSpendNote = fmtThousands(rep.IsolatedSpendRows) + " session(s) ran inside a `fathom assess` judge (spend_label set) — " +
+			"the cost of judging a unit, so never a bet unit and never in the brief-byte sum (IR-4, pre-registered 2026-09-25)"
+		rep.Detail = strings.TrimSuffix(rep.Detail, ".") + fmt.Sprintf("; %s session(s) excluded as judging spend (IR-4)", fmtThousands(rep.IsolatedSpendRows))
 	}
 	return rep
 }

@@ -25,6 +25,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -41,6 +42,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/buildinfo"
 	"github.com/geoffmilleraz/fathom/internal/capability"
 	"github.com/geoffmilleraz/fathom/internal/config"
+	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/cost"
 	"github.com/geoffmilleraz/fathom/internal/decide"
 	"github.com/geoffmilleraz/fathom/internal/llmsec"
@@ -55,8 +57,9 @@ const assessCallTimeout = 10 * time.Minute
 
 // Seams (package vars so tests inject fakes; production never reassigns).
 var (
-	// assessOpenPorts opens the decision port for a live run — the same
-	// fail-open glue every other port site uses (openDecisionPorts).
+	// assessOpenPorts opens the decision port for a live run against the
+	// ASSESSED repository's config — the same fail-open glue every other
+	// port site uses (openDecisionPorts).
 	assessOpenPorts = defaultAssessOpenPorts
 	// assessGuidance re-derives the guidance a firing served for a file,
 	// from on-disk sources, at assess time.
@@ -360,14 +363,21 @@ func assessInterventions(root, sid string, start, end time.Time, projBeats []ret
 	startS, endS := start.UTC().Format(time.RFC3339), end.UTC().Format(time.RFC3339)
 	var items []assess.Item
 	for _, f := range judged {
+		// The retro's outcome is wider than the evidence assess can show:
+		// `committed` counts commits made after the window too. A question
+		// with no diff asks the judge about nothing, so it is never asked.
+		diff := fileDiffInWindow(root, f.File, startS, endS, f.Outcome == "modified-uncommitted")
+		if strings.TrimSpace(diff) == "" {
+			notes = append(notes, fmt.Sprintf("%s %s: unjudgeable — no change to the file inside the session window (the retro's %q also counts changes made after it), and assess never asks with an empty diff", f.Channel, f.File, f.Outcome))
+			continue
+		}
 		text, prov, gok := assessGuidance(root, f.File, f.Channel)
 		if !gok || strings.TrimSpace(text) == "" {
 			notes = append(notes, fmt.Sprintf("%s %s: unjudgeable — the governing guidance is not recoverable from disk now, and assess never asks with empty guidance", f.Channel, f.File))
 			continue
 		}
 		items = append(items, assess.Item{
-			Channel: f.Channel, File: f.File, Outcome: f.Outcome, Guidance: text, Provenance: prov,
-			Diff: fileDiffInWindow(root, f.File, startS, endS, f.Outcome == "modified-uncommitted"),
+			Channel: f.Channel, File: f.File, Outcome: f.Outcome, Guidance: text, Provenance: prov, Diff: diff,
 		})
 	}
 	if len(items) == 0 {
@@ -387,16 +397,29 @@ func assessInterventions(root, sid string, start, end time.Time, projBeats []ret
 
 // fileDiffInWindow is one file's committed hunks inside the window, plus
 // the working-tree diff when the retro says the file is modified and
-// uncommitted.
+// uncommitted. An untracked new file (the retro reads `git status`'s `??`
+// as modified) never appears in `git diff HEAD`, so it is diffed against
+// /dev/null: its whole content is the change. "" means no evidence.
 func fileDiffInWindow(root, rel, since, until string, withWorkingTree bool) string {
 	var b strings.Builder
 	if out, err := exec.Command("git", "-C", root, "log", "--since="+since, "--until="+until,
 		"--format=--- commit %h %s", "--patch", "--no-color", "--no-ext-diff", "--", rel).Output(); err == nil {
 		b.Write(out)
 	}
-	if withWorkingTree {
-		if out, err := exec.Command("git", "-C", root, "diff", "--no-color", "--no-ext-diff", "HEAD", "--", rel).Output(); err == nil && len(out) > 0 {
-			b.WriteString("--- uncommitted working-tree change\n")
+	if !withWorkingTree {
+		return b.String()
+	}
+	if out, err := exec.Command("git", "-C", root, "diff", "--no-color", "--no-ext-diff", "HEAD", "--", rel).Output(); err == nil && len(out) > 0 {
+		b.WriteString("--- uncommitted working-tree change\n")
+		b.Write(out)
+		return b.String()
+	}
+	if others, err := exec.Command("git", "-C", root, "ls-files", "--others", "--exclude-standard", "--", rel).Output(); err == nil && strings.TrimSpace(string(others)) != "" {
+		// --no-index exits 1 when the two sides differ, which they always do here.
+		out, err := exec.Command("git", "-C", root, "diff", "--no-index", "--no-color", "--no-ext-diff", "--", os.DevNull, rel).Output()
+		var ee *exec.ExitError
+		if (err == nil || (errors.As(err, &ee) && ee.ExitCode() == 1)) && len(out) > 0 {
+			b.WriteString("--- untracked new file (created, never committed)\n")
 			b.Write(out)
 		}
 	}
@@ -457,12 +480,18 @@ type assessOutput struct {
 	Truncations []string `json:"truncations,omitempty"`
 	DryRun      bool     `json:"dry_run,omitempty"`
 	EstTokensIn int      `json:"est_tokens_in"`
-	State       string   `json:"state,omitempty"`
+	// Redactions counts the spans the DLP gate replaced in the state sent
+	// (or, on a dry run, that would be sent); 0 means it found none.
+	Redactions int    `json:"redactions"`
+	State      string `json:"state,omitempty"`
 }
 
-func assessRedactor() func(string) (string, bool) {
-	r := llmsec.NewRedactor(llmsec.DefaultPosture())
-	return r.Redact
+// assessRedactor is the DLP gate on this lane's egress. The state is raw
+// source (commit patches, working-tree diffs), so it runs the kit's
+// extended credential catalog (PEM keys, AWS key IDs, GitHub/Slack/Google
+// tokens, JWTs) on top of the generic policy compile uses.
+func assessRedactor() func(string) (string, int) {
+	return llmsec.NewRedactor(llmsec.ExtendedPosture()).RedactCount
 }
 
 func runAssess(run assessRun, opts assessOpts, stdout, stderr io.Writer) int {
@@ -490,7 +519,7 @@ func runAssess(run assessRun, opts assessOpts, stdout, stderr io.Writer) int {
 	_ = assessSetenv("FATHOM_CHANNELS", "off")
 	_ = assessSetenv(assess.SpendLabelEnv, run.label)
 
-	ports := assessOpenPorts(stderr)
+	ports := assessOpenPorts(run.root, stderr)
 	// Gate 3: a provider.
 	if ports == nil || ports.Decider == nil || ports.Decider.Name() == "none" {
 		fmt.Fprintln(stderr, "error: no decision provider is configured ([decide] provider = none) — assess speaks only through the decision port (ADR-046, I14). Set [decide] provider = \"llm\" (it resolves your llm profile) or \"typesafe\" in ~/.fathom/config.toml. Nothing was sent.")
@@ -504,6 +533,9 @@ func runAssess(run assessRun, opts assessOpts, stdout, stderr io.Writer) int {
 
 	started := time.Now().UTC()
 	row := assess.Row{
+		// Stamped here too (AppendRow stamps its own copy), so the --json
+		// envelope mirrors the ledger row exactly.
+		SchemaVersion: assess.RowSchemaVersion,
 		FathomVersion: buildinfo.Version(),
 		At:            started.Format(time.RFC3339),
 		RunID:         assessRunID(run, started),
@@ -543,7 +575,7 @@ func runAssess(run assessRun, opts assessOpts, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "warning: could not append the assess ledger: %v\n", err)
 	}
 	if opts.asJSON {
-		jsonPrint(stdout, assessOutput{Row: row, Skipped: run.built.Skipped, Truncations: run.built.Truncations, EstTokensIn: est})
+		jsonPrint(stdout, assessOutput{Row: row, Skipped: run.built.Skipped, Truncations: run.built.Truncations, EstTokensIn: est, Redactions: run.built.Redactions})
 		return 0
 	}
 	renderAssess(stdout, run, row)
@@ -647,9 +679,10 @@ func renderAssess(w io.Writer, run assessRun, row assess.Row) {
 func renderAssessDryRun(run assessRun, est int, opts assessOpts, w io.Writer) int {
 	if opts.asJSON {
 		jsonPrint(w, assessOutput{
-			Row: assess.Row{SpendLabel: run.label, Lane: run.lane, Session: run.session, RepoRoot: run.root,
+			Row: assess.Row{SchemaVersion: assess.RowSchemaVersion, SpendLabel: run.label, Lane: run.lane, Session: run.session, RepoRoot: run.root,
 				QuestionSet: run.built.Digest, Questions: len(run.built.Request.Questions), Partial: run.built.Partial, Isolation: assess.IsolationRegistration},
 			Skipped: run.built.Skipped, Truncations: run.built.Truncations, DryRun: true, EstTokensIn: est, State: run.built.Request.State,
+			Redactions: run.built.Redactions,
 		})
 		return 0
 	}
@@ -670,8 +703,10 @@ func renderAssessDryRun(run assessRun, est int, opts assessOpts, w io.Writer) in
 		line += fmt.Sprintf("; at the compile meter's flat rate ~$%.4f before output tokens — a live run reports the provider's real figure", cost.PriceUSD(est, inRate))
 	}
 	fmt.Fprintln(w, line)
-	if run.built.Redacted {
-		fmt.Fprintln(w, "  the DLP gate redacted part of the state below (llmsec, as compile does)")
+	if run.built.Redactions > 0 {
+		fmt.Fprintf(w, "  the DLP gate redacted %d span(s) of the state below (llmsec's extended credential catalog)\n", run.built.Redactions)
+	} else {
+		fmt.Fprintln(w, "  the DLP gate found nothing to redact (llmsec's extended credential catalog — shape matching, not a guarantee)")
 	}
 	fmt.Fprintln(w, "--- state (exactly what a live run would send, after DLP redaction) ---")
 	fmt.Fprintln(w, strings.TrimRight(run.built.Request.State, "\n"))
@@ -680,9 +715,13 @@ func renderAssessDryRun(run assessRun, est int, opts assessOpts, w io.Writer) in
 }
 
 // defaultAssessOpenPorts is the production port opener: the same
-// config load and fail-open glue every decision-port site uses.
-func defaultAssessOpenPorts(stderr io.Writer) *decide.Ports {
-	loaded, err := config.Load(config.DefaultUserPath(), config.DefaultProjectPath())
+// fail-open glue every decision-port site uses, over the user layer and
+// the ASSESSED repository's project layer — never the caller's cwd. The
+// egress allowlist ([decide] sites) that governs a run is the config of
+// the repository whose diffs are sent, so `--project R` from any directory
+// honours R's narrowing (I14; doctor's decide rows read the same layer).
+func defaultAssessOpenPorts(root string, stderr io.Writer) *decide.Ports {
+	loaded, err := config.Load(config.DefaultUserPath(), filepath.Join(root, ".fathom", "config.toml"))
 	if err != nil {
 		fmt.Fprintf(stderr, "warn: decision port disabled: loading config: %v\n", err)
 		return &decide.Ports{Decider: decision.None{}}
@@ -721,21 +760,42 @@ func cmdAssessSpend(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	now := time.Now().UTC()
-	runs, _ := assess.SpendRuns(rows)
-	sinceT := now.Add(-*since)
-	unpriced := 0
-	for _, r := range rows {
-		at, perr := time.Parse(time.RFC3339, r.At)
-		if perr == nil && !at.Before(sinceT) && !at.After(now) && r.CostUSD == nil && r.Error == "" {
-			unpriced++
+	opts := metrics.SpendOptions{Since: now.Add(-*since), Until: now, GroupBy: groupBy}
+	runs, classes := assess.SpendRuns(rows)
+	// Runs whose cost (or tokens) is unknown are aggregated a second time,
+	// through the same grouping, so every group and the total can say it is
+	// a lower bound or unknown — never print the unknown as a zero.
+	var costUnknown, tokensUnknown []core.CompileRun
+	byClass := map[string]int{}
+	for i, run := range runs {
+		if !run.RanAt.IsZero() && (run.RanAt.Before(opts.Since) || run.RanAt.After(opts.Until)) {
+			continue // the window AggregateSpend applies
+		}
+		byClass[classes[i]]++
+		if classes[i] != assess.CostPriced {
+			costUnknown = append(costUnknown, run)
+		}
+		if classes[i] == assess.CostFailed || classes[i] == assess.CostNoUsage {
+			tokensUnknown = append(tokensUnknown, run)
 		}
 	}
-	report := metrics.AggregateSpend(runs, nil, metrics.SpendOptions{Since: sinceT, Until: now, GroupBy: groupBy})
+	report := metrics.AggregateSpend(runs, nil, opts)
+	unknownCost, unknownTokens := spendRunsByGroup(costUnknown, opts), spendRunsByGroup(tokensUnknown, opts)
+	nUnknownCost := len(costUnknown)
 	if *asJSON {
 		jsonPrint(stdout, struct {
 			metrics.SpendReport
-			UnpricedRuns int `json:"unpriced_runs"`
-		}{report, unpriced})
+			CostComplete         bool           `json:"cost_complete"`
+			TokensComplete       bool           `json:"tokens_complete"`
+			UnknownCostRuns      int            `json:"unknown_cost_runs"`
+			UnpricedRuns         int            `json:"unpriced_runs"`
+			NoUsageRuns          int            `json:"no_usage_runs"`
+			FailedRuns           int            `json:"failed_runs"`
+			UnknownCostByGroup   map[string]int `json:"unknown_cost_by_group,omitempty"`
+			UnknownTokensByGroup map[string]int `json:"unknown_tokens_by_group,omitempty"`
+		}{report, nUnknownCost == 0, len(tokensUnknown) == 0, nUnknownCost,
+			byClass[assess.CostUnpriced], byClass[assess.CostNoUsage], byClass[assess.CostFailed],
+			unknownCost, unknownTokens})
 		return 0
 	}
 	fmt.Fprintf(stdout, "assess spend: %s .. %s (by %s) — the assess ledger, never the session ledger (IR-4)\n", report.Since, report.Until, *by)
@@ -744,11 +804,57 @@ func cmdAssessSpend(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 	for _, r := range report.Rows {
-		fmt.Fprintf(stdout, "  %-22s runs=%-4d tokens_in=%-8d tokens_out=%-7d cost=$%.4f\n", r.Group, r.Runs, r.TokensIn, r.TokensOut, r.CostUSD)
+		ut := unknownTokens[r.Group]
+		fmt.Fprintf(stdout, "  %-22s runs=%-4d %-18s %-18s %s\n", r.Group, r.Runs,
+			spendBound("tokens_in", fmt.Sprintf("%d", r.TokensIn), ut, r.Runs),
+			spendBound("tokens_out", fmt.Sprintf("%d", r.TokensOut), ut, r.Runs),
+			spendCost(r.CostUSD, unknownCost[r.Group], r.Runs))
 	}
-	fmt.Fprintf(stdout, "total: runs=%d cost=$%.4f\n", report.TotalRuns, report.TotalCostUSD)
-	if unpriced > 0 {
-		fmt.Fprintf(stdout, "%d run(s) with no known price contribute tokens but no cost — the total is a lower bound, never a complete figure.\n", unpriced)
+	fmt.Fprintf(stdout, "total: runs=%d %s\n", report.TotalRuns, spendCost(report.TotalCostUSD, nUnknownCost, report.TotalRuns))
+	if n := byClass[assess.CostFailed]; n > 0 {
+		fmt.Fprintf(stdout, "%d failed run(s): the provider call failed, so tokens and cost are unknown — a failed CLI or API call may still have been billed.\n", n)
+	}
+	if n := byClass[assess.CostNoUsage]; n > 0 {
+		fmt.Fprintf(stdout, "%d run(s) whose provider reported no token usage contribute neither tokens nor cost.\n", n)
+	}
+	if n := byClass[assess.CostUnpriced]; n > 0 {
+		fmt.Fprintf(stdout, "%d run(s) with no known price for their model contribute tokens but no cost.\n", n)
+	}
+	if nUnknownCost > 0 {
+		fmt.Fprintln(stdout, "Every figure marked ≥ is a lower bound and every \"unknown\" is unmeasured — never a complete figure, never a zero.")
 	}
 	return 0
+}
+
+// spendRunsByGroup counts runs per spend group through AggregateSpend's own
+// grouping and window, so the counts key exactly the report's rows.
+func spendRunsByGroup(runs []core.CompileRun, opts metrics.SpendOptions) map[string]int {
+	if len(runs) == 0 {
+		return nil
+	}
+	out := map[string]int{}
+	for _, r := range metrics.AggregateSpend(runs, nil, opts).Rows {
+		out[r.Group] = r.Runs
+	}
+	return out
+}
+
+// spendBound renders key=v when every run's figure is known, key≥v when
+// some are unknown (a lower bound), and key=unknown when none is.
+func spendBound(key, v string, unknown, runs int) string {
+	switch {
+	case unknown == 0:
+		return key + "=" + v
+	case unknown >= runs:
+		return key + "=unknown"
+	}
+	return key + "≥" + v
+}
+
+func spendCost(usd float64, unknown, runs int) string {
+	s := spendBound("cost", fmt.Sprintf("$%.4f", usd), unknown, runs)
+	if unknown > 0 && unknown < runs {
+		s += fmt.Sprintf(" (%d of %d run(s) unknown)", unknown, runs)
+	}
+	return s
 }

@@ -129,8 +129,9 @@ type Built struct {
 	// partial run never enters a calibration sample.
 	Truncations []string
 	Partial     bool
-	// Redacted is true when the DLP gate changed the state.
-	Redacted bool
+	// Redactions counts the spans the DLP gate replaced in the state (0:
+	// the gate ran and found nothing to redact).
+	Redactions int
 	// Skipped names questions or items deliberately not asked.
 	Skipped []string
 }
@@ -183,8 +184,9 @@ func unitQuestions(withClaims bool) []decision.Question {
 func UnitQuestionSetDigest() string { return digestQuestions(LaneUnit, unitQuestions(true)) }
 
 // BuildUnit renders a unit's work products into one typed request. redact
-// is the DLP gate (llmsec in production); it sees the whole final state.
-func BuildUnit(ev UnitEvidence, caps Caps, redact func(string) (string, bool)) Built {
+// is the DLP gate (llmsec in production): it sees the whole final state and
+// returns the redacted state and how many spans it replaced.
+func BuildUnit(ev UnitEvidence, caps Caps, redact func(string) (string, int)) Built {
 	b := Built{Lane: LaneUnit, Digest: UnitQuestionSetDigest(), Subjects: map[string]string{}}
 	var s strings.Builder
 	s.WriteString("Work products of one coding session, read from disk only: commits, plan deltas and gate results. " +
@@ -264,7 +266,7 @@ func BuildUnit(ev UnitEvidence, caps Caps, redact func(string) (string, bool)) B
 	}
 	b.Partial = len(b.Truncations) > 0
 	b.Request = decision.Request{State: s.String(), Questions: qs}
-	b.Request.State, b.Redacted = redact(b.Request.State)
+	b.Request.State, b.Redactions = redact(b.Request.State)
 	return b
 }
 
@@ -294,7 +296,7 @@ func InterventionQuestionSetDigest() string {
 // one choice per (channel, file), capped at caps.MaxQuestions with the
 // rest named in Skipped. Items are judged in the order given (the caller
 // sorts them).
-func BuildInterventions(items []Item, caps Caps, redact func(string) (string, bool)) Built {
+func BuildInterventions(items []Item, caps Caps, redact func(string) (string, int)) Built {
 	b := Built{Lane: LaneInterventions, Digest: InterventionQuestionSetDigest(), Subjects: map[string]string{}}
 	var s strings.Builder
 	s.WriteString("Changes to files an agent edited after fathom put guidance in front of it, read from disk only. " +
@@ -326,7 +328,7 @@ func BuildInterventions(items []Item, caps Caps, redact func(string) (string, bo
 	}
 	b.Partial = len(b.Truncations) > 0
 	b.Request = decision.Request{State: s.String(), Questions: qs}
-	b.Request.State, b.Redacted = redact(b.Request.State)
+	b.Request.State, b.Redactions = redact(b.Request.State)
 	return b
 }
 

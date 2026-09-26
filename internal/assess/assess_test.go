@@ -10,7 +10,7 @@ import (
 	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
 )
 
-func noRedact(s string) (string, bool) { return s, false }
+func noRedact(s string) (string, int) { return s, 0 }
 
 func sampleUnit() UnitEvidence {
 	catches := 0
@@ -104,11 +104,11 @@ func TestRenderUnitStateCarriesProductsAndNamesCuts(t *testing.T) {
 func TestBuildRedactsBeforeEgress(t *testing.T) {
 	ev := sampleUnit()
 	ev.Commits[0].Patch += "+key := \"SECRET-SHAPED\"\n"
-	b := BuildUnit(ev, DefaultCaps(), func(s string) (string, bool) {
-		return strings.ReplaceAll(s, "SECRET-SHAPED", "[REDACTED]"), strings.Contains(s, "SECRET-SHAPED")
+	b := BuildUnit(ev, DefaultCaps(), func(s string) (string, int) {
+		return strings.ReplaceAll(s, "SECRET-SHAPED", "[REDACTED]"), strings.Count(s, "SECRET-SHAPED")
 	})
-	if strings.Contains(b.Request.State, "SECRET-SHAPED") || !b.Redacted {
-		t.Fatalf("redaction not applied/reported: redacted=%v", b.Redacted)
+	if strings.Contains(b.Request.State, "SECRET-SHAPED") || b.Redactions != 1 {
+		t.Fatalf("redaction not applied/counted: redactions=%d", b.Redactions)
 	}
 }
 
@@ -229,9 +229,9 @@ func TestLedgerRoundTripAndSpendRuns(t *testing.T) {
 	if back[0].SchemaVersion != RowSchemaVersion || back[0].SpendLabel != LabelUnit {
 		t.Errorf("row 0 = %+v", back[0])
 	}
-	runs, unpriced := SpendRuns(back)
-	if len(runs) != 2 || unpriced != 1 {
-		t.Fatalf("runs = %d unpriced = %d", len(runs), unpriced)
+	runs, classes := SpendRuns(back)
+	if len(runs) != 2 || len(classes) != 2 || classes[0] != CostPriced || classes[1] != CostUnpriced {
+		t.Fatalf("runs = %d classes = %v", len(runs), classes)
 	}
 	if runs[0].Layer != LabelUnit || runs[0].TokensIn != 1200 || runs[0].CostUSD != usd || !runs[0].RanAt.Equal(at) {
 		t.Errorf("run 0 = %+v", runs[0])
@@ -247,6 +247,27 @@ func TestLedgerRoundTripAndSpendRuns(t *testing.T) {
 	}
 	if got, _ := ReadRows(p); len(got) != 0 {
 		t.Errorf("malformed line produced rows: %v", got)
+	}
+}
+
+// Every row lands in exactly one cost class, and only a priced one has a
+// cost: a failed call is "failed" whatever it carries (it may still have
+// been billed), and a provider that reported nothing is "no_usage".
+func TestCostClass(t *testing.T) {
+	n, usd := 10, 0.001
+	for _, tc := range []struct {
+		row  Row
+		want string
+	}{
+		{Row{TokensIn: &n, TokensOut: &n, CostUSD: &usd}, CostPriced},
+		{Row{TokensIn: &n, TokensOut: &n}, CostUnpriced},
+		{Row{}, CostNoUsage},
+		{Row{Error: "timeout"}, CostFailed},
+		{Row{Error: "timeout", TokensIn: &n, CostUSD: &usd}, CostFailed},
+	} {
+		if got := CostClass(tc.row); got != tc.want {
+			t.Errorf("CostClass(%+v) = %q, want %q", tc.row, got, tc.want)
+		}
 	}
 }
 

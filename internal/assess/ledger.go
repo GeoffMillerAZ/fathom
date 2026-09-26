@@ -113,13 +113,38 @@ func ReadRows(path string) ([]Row, error) {
 	return out, nil
 }
 
+// Cost classes: what a ledger row's spend figures are known to be. Only
+// CostPriced has a cost; CostUnpriced has tokens and no price; CostNoUsage
+// and CostFailed have neither — and a failed call may still have been
+// billed, so its unknown is never a zero.
+const (
+	CostPriced   = "priced"
+	CostUnpriced = "unpriced" // tokens known, no price for the model in this binary's meter
+	CostNoUsage  = "no_usage" // the provider reported no token usage
+	CostFailed   = "failed"   // the call failed: tokens and cost unknown
+)
+
+// CostClass classifies one row's spend figures.
+func CostClass(r Row) string {
+	switch {
+	case r.Error != "":
+		return CostFailed
+	case r.CostUSD != nil:
+		return CostPriced
+	case r.TokensIn != nil || r.TokensOut != nil:
+		return CostUnpriced
+	}
+	return CostNoUsage
+}
+
 // SpendRuns maps ledger rows onto the compile spend meter's row type
 // (core.CompileRun, the input of metrics.AggregateSpend), with the spend
 // label as the group key, so `fathom assess spend` totals through the same
-// aggregation `fathom metrics spend` uses. A run with no known price
-// contributes its tokens and NO cost; unpriced counts those runs so the
-// caller can say the total is a lower bound.
-func SpendRuns(rows []Row) (runs []core.CompileRun, unpriced int) {
+// aggregation `fathom metrics spend` uses. classes[i] is runs[i]'s
+// CostClass: a run that is not CostPriced contributes NO cost (and, unless
+// it is CostUnpriced, no tokens) — the caller aggregates those runs again
+// to say, per group, that a figure is a lower bound or unknown, never zero.
+func SpendRuns(rows []Row) (runs []core.CompileRun, classes []string) {
 	for _, r := range rows {
 		run := core.CompileRun{RunID: r.RunID, Layer: r.SpendLabel, Model: r.Model}
 		if t, err := time.Parse(time.RFC3339, r.At); err == nil {
@@ -131,12 +156,12 @@ func SpendRuns(rows []Row) (runs []core.CompileRun, unpriced int) {
 		if r.TokensOut != nil {
 			run.TokensOut = *r.TokensOut
 		}
-		if r.CostUSD != nil {
+		class := CostClass(r)
+		if class == CostPriced {
 			run.CostUSD = *r.CostUSD
-		} else if r.Error == "" {
-			unpriced++
 		}
 		runs = append(runs, run)
+		classes = append(classes, class)
 	}
-	return runs, unpriced
+	return runs, classes
 }

@@ -261,3 +261,19 @@ func TestBuild_RetrosOnlyWhenOptedIn(t *testing.T) {
 		t.Errorf("a read-but-empty corpus is a real zero and must be present: %+v", zero.Retros)
 	}
 }
+
+// The Markdown twin carries the same data as the JSON, no more: without the
+// retro group (no --include-retros, or no corpus) it renders no retro
+// section at all, so a bundle built without the flag is byte-identical to
+// one built before the group existed (design §5). With the group, the
+// section renders its counts.
+func TestRenderMarkdown_RetroSectionOnlyWhenTheGroupExists(t *testing.T) {
+	without := RenderMarkdown(Build(Input{}))
+	if strings.Contains(strings.ToLower(without), "retro") {
+		t.Errorf("a bundle without the retro group mentions retros in its Markdown:\n%s", without)
+	}
+	with := RenderMarkdown(Build(Input{RetrosRead: true, Retros: RetroStats{Retros: 2, GuardFires: 1}}))
+	if !strings.Contains(with, "## Retro corpus") || !strings.Contains(with, "retros=2") {
+		t.Errorf("the retro group must render when present:\n%s", with)
+	}
+}

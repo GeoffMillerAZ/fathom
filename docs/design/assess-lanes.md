@@ -99,7 +99,11 @@ Each judged file gets one choice question with four options: `complied`,
 `departed`, `not_applicable` and `cannot_tell`. `cannot_tell` is an explicit
 option, so the judge never has to force a verdict. The state holds the guidance
 and F's diff inside the window: committed hunks, plus the working-tree diff when
-the outcome is `modified-uncommitted`.
+the outcome is `modified-uncommitted`. An untracked new file, which the retro
+counts as modified, is diffed against `/dev/null`, so its content is the change.
+The retro's outcome is wider than that diff (`committed` also counts commits made
+after the window), so a row whose windowed diff is empty is named unjudgeable and
+never asked: a question with no diff asks the judge about nothing.
 
 The guidance is re-derived from disk at assess time, and its provenance is shown
 on every judged row. For guards, it is the matching note in `.fathom/guard.cue`.
@@ -111,11 +115,16 @@ same final diff. The lane asks at most 24 questions per run and names the rest.
 
 ### What both lanes share
 
-- **DLP before egress.** The state passes through `llmsec`'s redactor, the same
-  gate compile uses. A dry run prints the redacted state and the redaction count.
+- **DLP before egress.** The state passes through `llmsec`'s redactor with the
+  kit's extended credential catalog (`llmsec.ExtendedPosture`: the generic policy
+  compile uses, plus PEM private keys, AWS access key IDs, GitHub, Slack and Google
+  tokens and JWTs, DLP-101..106), because this lane sends raw source. A dry run
+  prints the redacted state and the redaction count (`redactions` in `--json`).
+  The gate matches shapes; it is not a guarantee.
 - **Caps are named.** Every diff section is capped: 8 KiB per file for IR-3, and
   48 KiB of state per run. Each cut is stated inside the state and in the output.
-  A truncated run is marked `partial_state` and never enters a calibration sample.
+  A truncated run is marked `partial` (on the ledger row and in `--json`) and never
+  enters a calibration sample.
 - **A pre-flight token cap.** Estimated input tokens are the byte/4 heuristic
   compile uses. Above `--max-tokens` (default 40,000), assess refuses before any
   call and names the estimate.
@@ -128,7 +137,11 @@ same final diff. The lane asks at most 24 questions per run and names the rest.
   M", and missing usage reads "tokens not reported by the provider". Neither is
   ever printed as zero. `fathom assess spend` totals the assess ledger through
   `metrics.AggregateSpend`, the aggregation behind `fathom metrics spend`, grouped
-  by spend label, day or model.
+  by spend label, day or model. A group or total that includes a run of unknown
+  cost reads `cost≥$X` (a lower bound) or `cost=unknown`, and each kind of unknown
+  is named: an unpriced model contributes tokens but no cost, a provider that
+  reported no usage contributes neither, and a failed call's cost is unknown
+  because it may still have been billed.
 
 ## 2. The gates, in order
 
@@ -144,7 +157,10 @@ A live run must clear all four gates, and each refusal names its remedy:
    profile machinery (`[decide].profile`, then `default_profile`, then the env
    overlay). `typesafe` uses its key indirection. `none` refuses.
 4. **The `assess` site in `[decide] sites`.** It is in the default list, and a
-   narrowed list that omits it refuses.
+   narrowed list that omits it refuses. Gates 3 and 4 read the user config and the
+   **assessed** repository's `.fathom/config.toml`, never the caller's working
+   directory's, so `--project R` from anywhere honours R's narrowing (as `fathom
+   doctor`'s decide rows do).
 
 The isolation environment (§3) is set between gates 2 and 3, before the port
 opens, so a refused run changes nothing.
@@ -243,7 +259,8 @@ repository that is `workspace/artifacts/retros/` (`[daemon] state_dir =
 `fathom research bundle --include-retros` folds the artifacts whose window ends
 inside the report window into one optional `retros` group. That group is part of
 the closed CUE allowlist, is validated twice, and is additive, so a bundle without
-the flag is byte-identical to before. It carries these counts:
+the flag is byte-identical to before, its Markdown twin included (the section, like
+the bench arms, renders only when the group exists). It carries these counts:
 
 - retros read, and unreadable artifacts (counted, never dropped)
 - OFF-arm retros

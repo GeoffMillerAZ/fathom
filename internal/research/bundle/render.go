@@ -105,11 +105,12 @@ func RenderMarkdown(b Bundle) string {
 		s.WriteString("\n")
 	}
 
-	s.WriteString("## Retro corpus\n\n")
-	if b.Retros == nil {
-		s.WriteString("not included: the local retro corpus is folded in only when --include-retros is passed and the corpus exists\n\n")
-	} else {
+	// Opt-in like the bench arms: absent from the JSON means absent here,
+	// so a bundle built without --include-retros renders byte-identical to
+	// one built before the group existed (design §5).
+	if b.Retros != nil {
 		r := b.Retros
+		s.WriteString("## Retro corpus\n\n")
 		fmt.Fprintf(&s, "retros=%d unreadable=%d off_arm_retros=%d guard_fires=%d obligation_injections=%d "+
 			"silent_on_clean=%d unjoinable=%d custodian_remedied=%d custodian_unremedied=%d\n\n",
 			r.Retros, r.Unreadable, r.OffArmRetros, r.GuardFires, r.ObligationInjections,

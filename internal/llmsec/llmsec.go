@@ -7,6 +7,8 @@
 package llmsec
 
 import (
+	"strings"
+
 	prellmdlpgate "github.com/geoffmilleraz/agentic-kit/foundations/security/pre-llm-dlp-gate"
 )
 
@@ -15,12 +17,24 @@ type Posture struct {
 	// Passthrough disables all redaction when true. Use only in development
 	// environments where no sensitive data can reach the pipeline.
 	Passthrough bool
+	// Extended compiles the kit's ExtendedPolicy — the generic policy plus
+	// high-precision credential shapes (DLP-101..106: PEM private keys, AWS
+	// access key IDs, GitHub, Slack and Google tokens, JWTs) — instead of
+	// the generic one. For callers that send arbitrary source text off-host.
+	Extended bool
 }
 
 // DefaultPosture returns the recommended production posture: DLP enabled,
 // using the generic default policy from agentic-kit.
 func DefaultPosture() Posture {
 	return Posture{Passthrough: false}
+}
+
+// ExtendedPosture is DefaultPosture with the kit's extended credential
+// catalog: the posture for a lane whose state is raw source (commit
+// patches, working-tree diffs), where a committed key is the likely leak.
+func ExtendedPosture() Posture {
+	return Posture{Extended: true}
 }
 
 // Redactor scrubs sensitive content from text using a compiled DLP gate.
@@ -39,10 +53,14 @@ func NewRedactor(posture Posture) *Redactor {
 	if posture.Passthrough {
 		return r
 	}
-	g, err := prellmdlpgate.NewGate(prellmdlpgate.DefaultPolicy())
+	policy := prellmdlpgate.DefaultPolicy()
+	if posture.Extended {
+		policy = prellmdlpgate.ExtendedPolicy()
+	}
+	g, err := prellmdlpgate.NewGate(policy)
 	if err != nil {
-		// DefaultPolicy is shipped with the binary and must compile cleanly.
-		panic("llmsec: failed to compile default DLP policy: " + err.Error())
+		// Both policies are shipped with the binary and must compile cleanly.
+		panic("llmsec: failed to compile DLP policy " + policy.Name + ": " + err.Error())
 	}
 	r.gate = g
 	return r
@@ -60,4 +78,24 @@ func (r *Redactor) Redact(text string) (out string, changed bool) {
 	}
 	redacted, findings := r.gate.Scan(text)
 	return redacted, len(findings) > 0
+}
+
+// RedactCount is Redact plus how many spans the pass replaced: for each
+// rule that fired, the occurrences of its label the pass added (a label
+// already present in the input is not counted again), and never fewer
+// than the number of rules that fired.
+func (r *Redactor) RedactCount(text string) (out string, n int) {
+	if r.posture.Passthrough || r.gate == nil {
+		return text, 0
+	}
+	redacted, findings := r.gate.Scan(text)
+	for _, f := range findings {
+		if d := strings.Count(redacted, f.Label) - strings.Count(text, f.Label); d > 0 {
+			n += d
+		}
+	}
+	if n < len(findings) {
+		n = len(findings)
+	}
+	return redacted, n
 }

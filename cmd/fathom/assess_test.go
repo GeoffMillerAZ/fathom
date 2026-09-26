@@ -152,7 +152,7 @@ type fakeAssessPorts struct {
 func installFakeAssessPorts(t *testing.T, f *fakeAssessPorts) {
 	t.Helper()
 	orig := assessOpenPorts
-	assessOpenPorts = func(io.Writer) *decide.Ports {
+	assessOpenPorts = func(string, io.Writer) *decide.Ports {
 		f.openedCalls++
 		f.openedEnv = map[string]string{
 			"FATHOM_CHANNELS":    os.Getenv("FATHOM_CHANNELS"),
@@ -304,16 +304,26 @@ func TestCmdAssess_NothingLandedSpendsNothing(t *testing.T) {
 // opens, and a malformed capabilities file fails CLOSED — the opposite of
 // the safety capabilities, because an unreadable file is never consent.
 // This is assess's case in TestEverySwitchableCapabilityHasAnEnforcementCase.
+//
+// Only the last case discriminates fail-closed from fail-open: with the
+// user scope ON, a fail-open read of a malformed project file would resolve
+// to the user's ON and spend. (With no user setting, fail-open and
+// fail-closed both land on the default off.)
 func TestSwitchOffAssessRefusesAndFailsClosed(t *testing.T) {
+	const malformed = "capabilities: {\n\tassess: on?: true\n}\n"
 	for _, tc := range []struct {
-		name, cfg string
+		name, user, cfg string
 	}{
-		{"default off (no config at all)", ""},
-		{"explicitly off", "capabilities: {\n\tassess: on: false\n}\n"},
-		{"malformed config fails closed", "capabilities: {\n\tassess: on?: true\n}\n"},
+		{"default off (no config at all)", "", ""},
+		{"explicitly off", "", "capabilities: {\n\tassess: on: false\n}\n"},
+		{"malformed config fails closed", "", malformed},
+		{"malformed project file fails closed over a user-scope ON", "capabilities: {\n\tassess: on: true\n}\n", malformed},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newAssessFixture(t)
+			if tc.user != "" {
+				assessWrite(t, os.Getenv("HOME"), ".fathom/capabilities.cue", tc.user)
+			}
 			if tc.cfg != "" {
 				assessWrite(t, f.root, ".fathom/capabilities.cue", tc.cfg)
 			}
@@ -328,6 +338,9 @@ func TestSwitchOffAssessRefusesAndFailsClosed(t *testing.T) {
 			}
 			if !strings.Contains(errb.String(), "fathom capabilities set assess on") {
 				t.Errorf("refusal must name the switch: %s", errb.String())
+			}
+			if tc.cfg == malformed && !strings.Contains(errb.String(), "fails CLOSED") {
+				t.Errorf("a malformed capabilities file must be refused as unreadable, not read as off: %s", errb.String())
 			}
 			if rows := readAssessLedger(t, f.ledger); len(rows) != 0 {
 				t.Errorf("a refused run wrote %d ledger rows", len(rows))
@@ -547,6 +560,70 @@ func TestCmdAssessSpend_TotalsThroughTheSpendMeter(t *testing.T) {
 	}
 }
 
+// A run whose cost is unknown is never printed as a zero cost (design §1):
+// a failed call may still have been billed, and a provider that reported
+// no usage contributes neither tokens nor cost. Each group and the total
+// say so, and each kind of unknown is named with what it does and does not
+// contribute.
+func TestCmdAssessSpend_UnknownCostIsNeverPrintedAsZero(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "assess-ledger.jsonl")
+	t.Setenv("FATHOM_ASSESS_LEDGER", p)
+	now := time.Now().UTC()
+	at := now.Add(-time.Hour).Format(time.RFC3339)
+	in, out := 1000, 100
+	usd := 0.0015
+	for _, r := range []assess.Row{
+		{At: at, RunID: "ok", SpendLabel: assess.LabelUnit, Model: defaultCompileModel, TokensIn: &in, TokensOut: &out, CostUSD: &usd},
+		{At: at, RunID: "failed", SpendLabel: assess.LabelUnit, Error: "context deadline exceeded", TokensNote: "unknown: the call failed", CostNote: "unknown: the call failed"},
+		{At: at, RunID: "nousage", SpendLabel: assess.LabelInterventions, TokensNote: "not reported by the provider", CostNote: "unknown: the provider reported no token usage"},
+	} {
+		if err := assess.AppendRow(p, r); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var stdout, stderr bytes.Buffer
+	if code := cmdAssess([]string{"spend"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr.String())
+	}
+	s := stdout.String()
+	if strings.Contains(s, "cost=$0.0000") {
+		t.Errorf("an unknown cost printed as a zero:\n%s", s)
+	}
+	for _, want := range []string{
+		"cost≥$0.0015 (1 of 2 run(s) unknown)", // the unit group: one priced, one failed
+		"cost=unknown",                         // the interventions group: nothing known
+		"total: runs=3 cost≥$0.0015",
+		"1 failed run(s)", "may still have been billed",
+		"1 run(s) whose provider reported no token usage", "neither tokens nor cost",
+		"lower bound",
+	} {
+		if !strings.Contains(s, want) {
+			t.Errorf("spend output missing %q:\n%s", want, s)
+		}
+	}
+	if strings.Contains(s, "contribute tokens but no cost") {
+		t.Errorf("no run here has tokens without a price — that line misdescribes them:\n%s", s)
+	}
+
+	stdout.Reset()
+	if code := cmdAssess([]string{"spend", "--json"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr.String())
+	}
+	var js struct {
+		CostComplete    bool `json:"cost_complete"`
+		UnknownCostRuns int  `json:"unknown_cost_runs"`
+		FailedRuns      int  `json:"failed_runs"`
+		NoUsageRuns     int  `json:"no_usage_runs"`
+		UnpricedRuns    int  `json:"unpriced_runs"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &js); err != nil {
+		t.Fatalf("json: %v\n%s", err, stdout.String())
+	}
+	if js.CostComplete || js.UnknownCostRuns != 2 || js.FailedRuns != 1 || js.NoUsageRuns != 1 || js.UnpricedRuns != 0 {
+		t.Errorf("json cost accounting = %+v", js)
+	}
+}
+
 // IR-4, pre-registered 2026-09-25 before any assess run: judging spend never
 // enters an arm unit, a thread-bet unit, or the flywheel's admissible arm
 // rows — counted and named where it is excluded — and the Stop hook stamps
@@ -593,6 +670,27 @@ func TestAssessSpendNeverEntersArmOrBetUnits(t *testing.T) {
 	if bet.FreshUnits != 1 || bet.IsolatedSpendRows != 1 {
 		t.Errorf("bet fresh units = %d isolated = %d, want 1 and 1", bet.FreshUnits, bet.IsolatedSpendRows)
 	}
+	// Counted AND named: every surface that renders the bet says a judge
+	// row was excluded — the verdict detail (which the flywheel prints) and
+	// the brief's continuity section, whose brief-byte sum is no longer
+	// "all sessions".
+	if !strings.Contains(bet.Detail, "judging spend") || !strings.Contains(bet.IsolatedSpendNote, "assess") {
+		t.Errorf("bet detail %q / note %q — the exclusion must be named, not only counted", bet.Detail, bet.IsolatedSpendNote)
+	}
+	threads := filepath.Join(t.TempDir(), "threads.jsonl")
+	ti, _ := json.Marshal(threadItem{SchemaVersion: 1, ID: "t1", Thread: "main", Kind: "note", Text: "open work", FiledAt: now.Format(time.RFC3339)})
+	if err := os.WriteFile(threads, append(ti, '\n'), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("FATHOM_THREADS", threads)
+	if ev := checkLoopContinuity().Evidence; !strings.Contains(ev, "judging spend") {
+		t.Errorf("flywheel continuity evidence = %q — the bet's exclusion must be named there too", ev)
+	}
+	md := renderBriefMD(observatoryModel{})
+	sec6 := md[strings.Index(md, "## 6 "):]
+	if strings.Contains(sec6, "across all sessions") || !strings.Contains(sec6, "Excluded as judging spend: 1") {
+		t.Errorf("brief section 6 must name the excluded judge row beside a sum that no longer covers all sessions:\n%s", sec6)
+	}
 
 	// The flywheel's arm loop: an OFF arm with one clean OFF row and one
 	// judge row stamped off-and-full — only the first is admissible.
@@ -623,5 +721,171 @@ func TestAssessSpendNeverEntersArmOrBetUnits(t *testing.T) {
 	}
 	if !spendIsolatedRow(got[0]) {
 		t.Error("a labelled row is not isolated")
+	}
+}
+
+// The egress allowlist that governs a run is the ASSESSED repository's,
+// never the caller's working directory's (I14, ADR-044 decision 8: a site
+// not listed makes no call at all). Repo R narrows [decide] sites to
+// forbid the lane; `fathom assess --project R` run from another directory —
+// one whose own config would allow it — must still refuse before anything
+// reaches the provider. This drives the REAL port opener: the user config
+// names a claude-cli profile whose binary is a local capture script (no
+// model), so a leak is a file on disk, not a spend.
+func TestCmdAssess_ProjectSitesGovernFromAForeignCwd(t *testing.T) {
+	f := newAssessFixture(t)
+	clearProfileEnv(t)
+	t.Setenv("FATHOM_CALL_LOG", filepath.Join(t.TempDir(), "calls.jsonl"))
+	home := os.Getenv("HOME")
+
+	capture := filepath.Join(t.TempDir(), "captured-stdin")
+	bin := filepath.Join(t.TempDir(), "claude")
+	if err := os.WriteFile(bin, []byte("#!/bin/sh\ncat > '"+capture+"'\nexit 1\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	assessWrite(t, home, ".fathom/config.toml",
+		"[decide]\nprovider = \"llm\"\nprofile = \"judge\"\n\n[profiles.judge]\nprovider = \"claude-cli\"\nbin = \""+bin+"\"\n")
+	assessWrite(t, home, ".fathom/capabilities.cue", "capabilities: {\n\tassess: on: true\n}\n")
+	// The assessed repository forbids the lane.
+	assessWrite(t, f.root, ".fathom/config.toml", "[decide]\nsites = [\"route\"]\n")
+	// The caller's cwd is a different repository whose config would allow it.
+	foreign := t.TempDir()
+	assessWrite(t, foreign, ".fathom/config.toml", "[decide]\nsites = [\"route\", \"assess\"]\n")
+	t.Chdir(foreign)
+
+	var out, errb bytes.Buffer
+	code := cmdAssess([]string{"--session", f.sid, "--project", f.root}, &out, &errb)
+	if data, err := os.ReadFile(capture); err == nil {
+		t.Fatalf("the judge received %d bytes although %s's [decide] sites forbids assess (leaked %v)",
+			len(data), f.root, strings.Contains(string(data), assessDiffSentinel))
+	}
+	if code != 1 || !strings.Contains(errb.String(), "[decide] sites") {
+		t.Fatalf("exit %d, want 1 with the site refusal\nstdout:\n%s\nstderr:\n%s", code, out.String(), errb.String())
+	}
+	if rows := readAssessLedger(t, f.ledger); len(rows) != 0 {
+		t.Errorf("a refused run wrote %d ledger rows", len(rows))
+	}
+}
+
+// IR-3 asks only about a change it can SHOW: the state holds F's diff
+// inside the window (design §1). The retro's outcome is wider than that
+// diff — `committed` counts commits made after the window, and
+// `modified-uncommitted` includes an untracked new file, which `git diff
+// HEAD` never shows. A firing whose windowed diff is empty is named
+// unjudgeable and never asked; an untracked new file is diffed against
+// /dev/null so its content is the evidence.
+func TestCmdAssessInterventions_EmptyWindowDiffIsNeverAsked(t *testing.T) {
+	f := newAssessFixture(t)
+	origG := assessGuidance
+	assessGuidance = func(root, rel, channel string) (string, string, bool) {
+		return "keep package a free of network imports", "guard note in .fathom/guard.cue at assess time", true
+	}
+	t.Cleanup(func() { assessGuidance = origG })
+
+	// A past session, five hours ago: a guard fired on a.go (committed only
+	// later, outside this window) and on n.go (created, never committed).
+	const newFileSentinel = "NEWFILE-SENTINEL-91d2"
+	assessWrite(t, f.root, "n.go", "package a\n\n// "+newFileSentinel+"\n")
+	old := "sess-old"
+	at := f.now.Add(-5 * time.Hour)
+	hooks := os.Getenv("FATHOM_HOOKS_LOG")
+	fh, err := os.OpenFile(hooks, os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, rel := range []string{"a.go", "n.go"} {
+		_, _ = fh.WriteString(retroBeatLine(at, "edit-hook", "answered", map[string]string{
+			"emitted": "true", "phase": "pre", "target": "file", "session": old, "file": filepath.Join(f.root, rel), "project_dir": f.root,
+		}) + "\n")
+	}
+	fh.Close()
+
+	var out, errb bytes.Buffer
+	if code := cmdAssess([]string{"--interventions", "--dry-run", "--session", old, "--project", f.root}, &out, &errb); code != 0 {
+		t.Fatalf("exit %d\n%s\n%s", code, out.String(), errb.String())
+	}
+	s := out.String()
+	if strings.Contains(s, "did the change to a.go") {
+		t.Errorf("a.go was asked with an empty windowed diff (its commits fall outside the window):\n%s", s)
+	}
+	if !strings.Contains(s, "a.go") || !strings.Contains(s, "no change to the file inside the session window") {
+		t.Errorf("the empty-diff row must be named unjudgeable, not dropped:\n%s", s)
+	}
+	if !strings.Contains(s, "did the change to n.go") || !strings.Contains(s, newFileSentinel) {
+		t.Errorf("an untracked new file must be asked with its content as the diff:\n%s", s)
+	}
+}
+
+// The --json envelope mirrors the ledger row, so it carries the row's
+// schema version — never a 0 no ledger row has. The dry run's envelope has
+// the same row shape and the same version.
+func TestCmdAssess_JSONCarriesTheRowSchemaVersion(t *testing.T) {
+	f := newAssessFixture(t)
+	f.enable(t)
+	installFakeAssessPorts(t, &fakeAssessPorts{
+		mock: decision.NewMockDecider("llm", decision.MockEntry{Response: unitAnswers(defaultCompileModel)}),
+		cfg:  config.Decide{Provider: "llm", Sites: decide.AllSites},
+	})
+	for _, args := range [][]string{
+		{"--session", f.sid, "--project", f.root, "--json"},
+		{"--session", f.sid, "--project", f.root, "--json", "--dry-run"},
+	} {
+		var out, errb bytes.Buffer
+		if code := cmdAssess(args, &out, &errb); code != 0 {
+			t.Fatalf("%v: exit %d: %s", args, code, errb.String())
+		}
+		var got struct {
+			SchemaVersion int `json:"schema_version"`
+		}
+		if err := json.Unmarshal(out.Bytes(), &got); err != nil {
+			t.Fatalf("%v: %v\n%s", args, err, out.String())
+		}
+		if got.SchemaVersion != assess.RowSchemaVersion {
+			t.Errorf("%v: schema_version = %d, want %d (the ledger row's)", args, got.SchemaVersion, assess.RowSchemaVersion)
+		}
+	}
+	if rows := readAssessLedger(t, f.ledger); len(rows) != 1 || rows[0].SchemaVersion != assess.RowSchemaVersion {
+		t.Fatalf("ledger = %+v", rows)
+	}
+}
+
+// DLP before egress (design §1) covers what this lane actually sends: raw
+// commit patches. A credential committed inside the window leaves as a
+// labelled placeholder, and the dry run — which shows exactly what a live
+// run sends — prints the redaction count (text and JSON).
+func TestCmdAssess_DLPRedactsCommittedCredentialsBeforeEgress(t *testing.T) {
+	const aws, gh = "AKIAIOSFODNN7EXAMPLE", "ghp_0123456789abcdefghijklmnopqrstuvwxyzAB"
+	f := newAssessFixture(t)
+	assessWrite(t, f.root, "k.go", "package a\n\nconst k = \""+aws+"\"\nconst g = \""+gh+"\"\n")
+	assessGitAt(t, f.root, f.now.Add(-80*time.Second), "add", "k.go")
+	assessGitAt(t, f.root, f.now.Add(-80*time.Second), "commit", "-q", "-m", "feat: keys")
+
+	var out, errb bytes.Buffer
+	if code := cmdAssess([]string{"--session", f.sid, "--project", f.root, "--dry-run"}, &out, &errb); code != 0 {
+		t.Fatalf("exit %d: %s", code, errb.String())
+	}
+	s := out.String()
+	if strings.Contains(s, aws) || strings.Contains(s, gh) {
+		t.Fatalf("a committed credential would leave the machine unredacted:\n%s", s)
+	}
+	for _, want := range []string{"[REDACTED:AWS_ACCESS_KEY_ID]", "[REDACTED:GITHUB_TOKEN]", "redacted 2 span(s)"} {
+		if !strings.Contains(s, want) {
+			t.Errorf("dry run missing %q:\n%s", want, s)
+		}
+	}
+
+	out.Reset()
+	if code := cmdAssess([]string{"--session", f.sid, "--project", f.root, "--dry-run", "--json"}, &out, &errb); code != 0 {
+		t.Fatalf("exit %d: %s", code, errb.String())
+	}
+	var js struct {
+		Redactions *int   `json:"redactions"`
+		State      string `json:"state"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &js); err != nil {
+		t.Fatal(err)
+	}
+	if js.Redactions == nil || *js.Redactions != 2 || strings.Contains(js.State, aws) {
+		t.Errorf("dry-run JSON redactions = %v (want 2), state leaks = %v", js.Redactions, strings.Contains(js.State, aws))
 	}
 }
