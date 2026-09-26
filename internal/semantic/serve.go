@@ -256,6 +256,11 @@ type Obligations struct {
 	// never by ObligationsFor/ObligationsForLayer, whose live-serving
 	// payload is byte-identical to what it was before this field existed.
 	AsOf string `json:"as_of,omitempty"`
+	// IndexUnchecked (RT-26) carries the obligations tool's index_unchecked
+	// back to a wire consumer (the edit hooks' fetchObligations): why the
+	// edited file's index freshness was not checked (over the hot-path
+	// read cap). Serving never sets it; the tool adds the key itself.
+	IndexUnchecked string `json:"index_unchecked,omitempty"`
 
 	// RankedBy (DP-8, ADR-042 decision 2) names which decision-port Decider
 	// re-ranked this payload's rules within their governing-scope tier:

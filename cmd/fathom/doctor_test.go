@@ -106,6 +106,7 @@ type fakeLayerCoverage struct {
 	SectionsCompiled int
 	BudgetStopped    bool
 	CorpusGrew       int
+	UnreadCorpus     []string
 }
 
 type fakeModuleRow struct {
@@ -171,6 +172,9 @@ func fakeDoctorDaemon(t *testing.T, cfg fakeDaemonCfg) *httptest.Server {
 				corpusGrewField := ""
 				if c.CorpusGrew > 0 {
 					corpusGrewField = fmt.Sprintf(`,"corpus_grew":%d`, c.CorpusGrew)
+				}
+				if len(c.UnreadCorpus) > 0 {
+					corpusGrewField += `,"unread_corpus":` + mustJSON(c.UnreadCorpus)
 				}
 				covField = fmt.Sprintf(`,"layer_coverage":{"sections_total":%d,"sections_compiled":%d,"budget_stopped":%v%s}`,
 					c.SectionsTotal, c.SectionsCompiled, c.BudgetStopped, corpusGrewField)
@@ -1438,6 +1442,25 @@ func TestCheckObligationsServed(t *testing.T) {
 		got := checkObligationsServed(http.DefaultClient, srv.URL, root, "", true)
 		if strings.Contains(got.Reason, "corpus_grew") {
 			t.Errorf("reason must not mention corpus_grew when it is zero: %s", got.Reason)
+		}
+	})
+
+	// RT-143 / I38: a coverage computed without an unread guide is a lower
+	// bound. "4/4 compiled" with ADR.md unread must not PASS as complete,
+	// and the reason must name the unread guide.
+	t.Run("unread corpus guide makes full coverage a named lower bound", func(t *testing.T) {
+		srv := fakeDoctorDaemon(t, fakeDaemonCfg{
+			services: []string{"alpha"}, obligRules: 2, watermark: "wm",
+			obligLayerCoverage: &fakeLayerCoverage{SectionsTotal: 4, SectionsCompiled: 4, UnreadCorpus: []string{"ADR.md: file is 3.0 MiB, over the 2.0 MiB read cap"}},
+		})
+		defer srv.Close()
+		root := namedDir(t, "alpha")
+		got := checkObligationsServed(http.DefaultClient, srv.URL, root, "", true)
+		if got.Status != doctorWarn {
+			t.Errorf("status = %v, want warn: coverage is only a lower bound", got.Status)
+		}
+		if !strings.Contains(got.Reason, "ADR.md: file is 3.0 MiB") || !strings.Contains(got.Reason, "lower bound") {
+			t.Errorf("reason must name the unread guide as a lower bound: %s", got.Reason)
 		}
 	})
 
