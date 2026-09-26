@@ -108,7 +108,7 @@ func daemonRestartHint(storeHint string) string {
 
 func cmdDaemon(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "usage: fathom daemon install|status|uninstall")
+		fmt.Fprintln(stderr, "usage: fathom daemon install|status|uninstall|ps|reap")
 		return 2
 	}
 	sub, rest := args[0], args[1:]
@@ -119,8 +119,12 @@ func cmdDaemon(args []string, stdout, stderr io.Writer) int {
 		return cmdDaemonStatus(rest, stdout, stderr)
 	case "uninstall":
 		return cmdDaemonUninstall(rest, stdout, stderr)
+	case "ps":
+		return cmdDaemonPs(rest, stdout, stderr)
+	case "reap":
+		return cmdDaemonReap(rest, stdout, stderr)
 	default:
-		fmt.Fprintf(stderr, "error: unknown daemon subcommand %q (install|status|uninstall)\n", sub)
+		fmt.Fprintf(stderr, "error: unknown daemon subcommand %q (install|status|uninstall|ps|reap)\n", sub)
 		return 2
 	}
 }

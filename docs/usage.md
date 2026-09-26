@@ -1414,7 +1414,26 @@ concerns file would not load.
 fathom daemon install [--label dev.fathom.serve-http] [--store PATH] [--addr :7575] [--bin PATH] [--force]
 fathom daemon status  [--url http://localhost:7575] [--json]
 fathom daemon uninstall [--label NAME]
+fathom daemon ps   [--json]
+fathom daemon reap [--apply] [--grace 5s]
 ```
+
+`ps` joins the daemon records (`~/.fathom/daemon/<id>/record.json`, schema 2,
+`<id>` = the launchd label when managed, else `addr-<port>-<pid>`; the legacy
+`~/.fathom/daemons/<host>-<port>.json` is still read for this release) with a
+live census of every `serve-http` process of any fathom executable, record or
+not. Columns: pid, addr, managed, age, RSS, idle (from the record's 60 s
+heartbeat; `?` without one), parent alive, unlinked executable, record state.
+Verdicts: `ok`, `orphaned` (unmanaged, parent gone), `idle` (unmanaged, no
+request for 1 h), `unlinked`, `no-record`, `stale-record` (the record's process
+is gone or its pid was reused). The managed daemon is never judged orphaned or
+idle; a record-less process on the managed address counts as managed.
+
+`reap` is a **dry run by default**: it prints what it would kill and prune.
+With `--apply` it kills only unmanaged daemons whose verdict is not `ok`
+(SIGTERM, `--grace`, SIGKILL), re-checking each pid against a fresh census
+first (a reused pid is skipped), never the managed daemon and never its own
+process tree, removes their records and prunes stale ones.
 
 `status --json`: `{platform, label?, plist?, url, reachable, detail?,
 remedy?, exit_code}` — exit 1 when not reachable, same as the text path.
