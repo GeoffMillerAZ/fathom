@@ -22,6 +22,12 @@ func chainRepo(t *testing.T) string {
 		"./scripts/ci.sh --strict", // 5
 		"```",                      // 6
 		"A pointer, not a command: `scripts/gone.sh`.", // 7
+		"```text", // 8
+		"task list for the release: none of this is a command", // 9
+		"```",                      // 10
+		"```",                      // 11: an unlabelled fence is a command line
+		"task --list && task nope", // 12
+		"```",                      // 13
 		"",
 	}, "\n"))
 	writeTestFile(t, filepath.Join(root, "lefthook.yml"), strings.Join([]string{
@@ -79,7 +85,7 @@ func TestChainChecks_DocsLefthookTaskfileScripts(t *testing.T) {
 	fs := Audit(root, []Concern{chain(CorpusAgentConfig), chain(CorpusLefthook), chain(CorpusTaskfile), chain(CorpusCI)})
 
 	wantEvidence := map[string][]string{
-		CorpusAgentConfig: {"CLAUDE.md:2 → task deploy (no such target)"},
+		CorpusAgentConfig: {"CLAUDE.md:2 → task deploy (no such target)", "CLAUDE.md:12 → task nope (no such target)"},
 		CorpusLefthook:    {"lefthook.yml:7 → scripts/fmt.sh (no such file)"},
 		CorpusTaskfile: {
 			"Taskfile.yml:9 → task gone (no such target)",
@@ -111,10 +117,10 @@ func TestChainChecks_DocsLefthookTaskfileScripts(t *testing.T) {
 		t.Fatal(err)
 	}
 	mended := strings.NewReplacer(
-		"deps: [test, gone]", "deps: [test]",
+		"deps: [test, gone]", "deps: [test, nope]",
 		"      - task ui:nope\n", "",
 		"  missing: ./missing/Taskfile.yml\n", "",
-		"  test:\n", "  deploy:\n    cmds: [echo ship]\n  test:\n",
+		"  test:\n", "  deploy:\n    cmds: [echo ship]\n  nope:\n    cmds: [echo named]\n  test:\n",
 	).Replace(string(tf))
 	writeTestFile(t, filepath.Join(root, "Taskfile.yml"), mended)
 	fs = Audit(root, []Concern{chain(CorpusAgentConfig), chain(CorpusLefthook), chain(CorpusTaskfile)})
@@ -123,8 +129,8 @@ func TestChainChecks_DocsLefthookTaskfileScripts(t *testing.T) {
 			t.Errorf("%s: mended chain must hold, got %+v", f.Concern.Check.Where, f)
 		}
 	}
-	if !strings.Contains(fs[0].Detail, "3 command reference(s) resolve") {
-		t.Errorf("agent-config: validate, deploy and the fenced ./scripts/ci.sh resolve (prose and the bare pointer are not commands): %q", fs[0].Detail)
+	if !strings.Contains(fs[0].Detail, "4 command reference(s) resolve") {
+		t.Errorf("agent-config: validate, deploy, the sh-fenced ./scripts/ci.sh and the unlabelled fence's nope resolve (prose, a text fence and the bare pointer are not commands): %q", fs[0].Detail)
 	}
 }
 

@@ -12,8 +12,9 @@ package custodian
 //
 // Precision first — a false violation teaches people to ignore the
 // custodian — so commands are read only where the corpus puts commands:
-// code spans and fenced blocks in markdown (never prose: "this task never
-// ingests" is not `task never`), and the command-bearing keys of the YAML
+// code spans and shell fences in markdown (never prose: "this task never
+// ingests" is not `task never`; never a ```text or ```go block), and the
+// command-bearing keys of the YAML
 // corpora (never `desc:`, never comments). Quoted strings are blanked
 // before a line is read, so `echo "no task the corpus runs"` names
 // nothing. A ref this audit cannot judge (templated, behind a flag, into
@@ -190,26 +191,38 @@ func (w *yamlCommandWalker) names(n *yaml.Node) {
 	}
 }
 
-// markdownCommands reads commands from a markdown file's code: fenced
-// blocks line by line, and inline code spans. A bare path in a span is a
-// POINTER (pointers_resolve's job), so spans contribute a script only
-// when it is invoked (`bash scripts/x.sh`, `./scripts/x.sh`).
+// markdownCommands reads commands from a markdown file's code: shell
+// fences line by line (an unlabelled fence, or sh / bash / shell / zsh /
+// console — a ```text or ```go block is not a command line), and inline
+// code spans. A bare path in a span is a POINTER (pointers_resolve's job),
+// so spans contribute a script only when it is invoked (`bash
+// scripts/x.sh`, `./scripts/x.sh`).
 func markdownCommands(rel, text string) ([]commandRef, int) {
 	var refs []commandRef
 	unknown := 0
-	inFence := false
+	inFence, shellFence := false, false
 	for i, ln := range strings.Split(text, "\n") {
 		trimmed := strings.TrimSpace(ln)
 		if strings.HasPrefix(trimmed, "```") || strings.HasPrefix(trimmed, "~~~") {
+			if !inFence {
+				lang := ""
+				if f := strings.Fields(strings.ToLower(strings.TrimLeft(trimmed, "`~"))); len(f) > 0 {
+					lang = f[0]
+				}
+				shellFence = shellFenceInfo[lang]
+			}
 			inFence = !inFence
 			continue
 		}
 		var lineRefs []commandRef
-		if inFence {
+		switch {
+		case inFence && shellFence:
 			cmd := strings.TrimPrefix(strings.TrimPrefix(trimmed, "$ "), "% ")
 			r, unk := shellRefs(cmd, true)
 			lineRefs, unknown = r, unknown+unk
-		} else {
+		case inFence:
+			// another language's code: not a command line
+		default:
 			for _, m := range backtickTokenRe.FindAllStringSubmatch(ln, -1) {
 				r, unk := shellRefs(m[1], false)
 				lineRefs = append(lineRefs, r...)
@@ -222,6 +235,12 @@ func markdownCommands(rel, text string) ([]commandRef, int) {
 		}
 	}
 	return refs, unknown
+}
+
+// shellFenceInfo are the fence labels read as command lines ("" is an
+// unlabelled fence).
+var shellFenceInfo = map[string]bool{
+	"": true, "sh": true, "bash": true, "shell": true, "zsh": true, "console": true, "shell-session": true,
 }
 
 var (

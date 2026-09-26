@@ -86,7 +86,7 @@ resolvers behind the same engine — never a per-tool custodian.
 
 | corpus | files | commands live in |
 |---|---|---|
-| `agent-config` | CLAUDE.md / AGENTS.md at any depth (git's authority, vendored trees out) | code spans and fenced blocks — never prose |
+| `agent-config` | CLAUDE.md / AGENTS.md at any depth (git's authority, vendored trees out) | code spans and shell fences (unlabelled, `sh`, `bash`, `shell`, `zsh`, `console`) — never prose, never another language's fence |
 | `lefthook` | `lefthook.yml`, else `lefthook.yaml` (lefthook loads one) | `run:` |
 | `taskfile` | the root Taskfile (Task's own search order) plus the local Taskfiles it includes | `cmd`/`cmds` (shell), `task:` and `deps` (names) |
 | `ci` | `.github/workflows/*.yml` and `*.yaml`, `.gitlab-ci.yml`, `.circleci/config.yml`, `azure-pipelines.yml`, `bitbucket-pipelines.yml`, `.buildkite/pipeline.yml` | `run`, `script`, `before_script`, `after_script`, `command(s)` |
