@@ -304,6 +304,7 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 		// every rung — calls, obligations injections, sessions and gate
 		// runs in the window, never ever.
 		winFrom, winTo := realizationWindowBounds(now)
+		winFromDay, winToDay := winFrom.Format("2006-01-02"), winTo.Format("2006-01-02")
 		windowSessions := map[string]int{}
 		if ledgerReadable {
 			sessionsByRepo = console.DistinctSessionsBy(ledgerData, labelKey)
@@ -327,7 +328,7 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 				obligationCalls++
 				if e.Service != "" {
 					obligationsBySvc[strings.ToLower(e.Service)]++
-					if inRealizationWindow(e.TS, winFrom, winTo) {
+					if inRealizationWindow(e.TS, winFromDay, winToDay) {
 						windowObligations[strings.ToLower(e.Service)]++
 					}
 				}

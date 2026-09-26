@@ -197,14 +197,15 @@ func realizationWindowBounds(now time.Time) (from, to time.Time) {
 	return today.AddDate(0, 0, -(realizationWindowDays - 1)), today.AddDate(0, 0, 1)
 }
 
-// inRealizationWindow reports whether a call-log timestamp falls in
-// [from, to).
-func inRealizationWindow(ts string, from, to time.Time) bool {
-	t, err := time.Parse(time.RFC3339, ts)
-	if err != nil {
+// inRealizationWindow reports whether a call-log timestamp's day falls in
+// [fromDay, toDay) — the day prefix the traffic sparkline buckets by, so an
+// injection is in the window exactly when its call is in the chart.
+func inRealizationWindow(ts, fromDay, toDay string) bool {
+	if len(ts) < 10 {
 		return false
 	}
-	return !t.Before(from) && t.Before(to)
+	day := ts[:10]
+	return day >= fromDay && day < toDay
 }
 
 // windowVerifyRuns counts each service's verify runs in [from, to) from the

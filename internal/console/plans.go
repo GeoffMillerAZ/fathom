@@ -676,10 +676,10 @@ type LedgerRun struct {
 	Origin   string    `json:"origin,omitempty"`
 }
 
-// PlanKey is the ledger's identity for a plan: its service and file name.
-// Ledger rows come from clones and worktrees whose roots differ, so the
-// root is not part of the key.
-func (r LedgerRun) PlanKey() string { return r.Service + "|" + filepath.Base(r.Plan) }
+// PlanKey is the ledger's identity for a plan: its service (case-folded,
+// as the registry's names are) and file name. Ledger rows come from clones
+// and worktrees whose roots differ, so the root is not part of the key.
+func (r LedgerRun) PlanKey() string { return strings.ToLower(r.Service) + "|" + filepath.Base(r.Plan) }
 
 // TrendPoint is one day of the claimed-vs-proven trend: for each plan, its
 // last gate run on or before that day, summed.

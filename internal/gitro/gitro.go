@@ -14,8 +14,9 @@
 // GIT_INDEX_FILE, removed once the command has run: the answer is the
 // repository's own, and its index is never locked or written. The copy is
 // taken whole (git replaces the index by renaming a finished file, so a
-// read sees one complete version), and core.splitIndex is off for the
-// command, so no shared-index file is written into .git either.
+// read sees one complete version) and keeps the index's modification time
+// (git's racy-entry check compares against it), and core.splitIndex is off
+// for the command, so no shared-index file is written into .git either.
 package gitro
 
 import (
@@ -112,15 +113,27 @@ func privateIndex(ctx context.Context, dir string) (string, func(), error) {
 	}
 	cleanup := func() { _ = os.RemoveAll(tmp) }
 	dst := filepath.Join(tmp, "index")
-	raw, err := os.ReadFile(src)
-	switch {
-	case errors.Is(err, fs.ErrNotExist):
+	st, err := os.Stat(src)
+	if errors.Is(err, fs.ErrNotExist) {
 		return dst, cleanup, nil
-	case err != nil:
+	}
+	var raw []byte
+	if err == nil {
+		raw, err = os.ReadFile(src)
+	}
+	if err != nil {
 		cleanup()
 		return "", func() {}, err
 	}
 	if err := os.WriteFile(dst, raw, 0o600); err != nil {
+		cleanup()
+		return "", func() {}, err
+	}
+	// The copy keeps the index's modification time: git trusts an entry's
+	// stat only when the entry is older than the index file ("racy git"),
+	// so a copy stamped now would read a same-size edit made in the index's
+	// own second as no change.
+	if err := os.Chtimes(dst, st.ModTime(), st.ModTime()); err != nil {
 		cleanup()
 		return "", func() {}, err
 	}

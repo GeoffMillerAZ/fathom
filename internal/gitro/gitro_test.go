@@ -130,3 +130,44 @@ func TestOutput_NoIndexYet(t *testing.T) {
 		t.Errorf("a read created .git/index: %v", err)
 	}
 }
+
+// TestOutput_RacilyCleanEntryIsStillSeen pins the copy's timestamp: git
+// trusts an index entry's stat only when the entry is older than the index
+// file itself ("racy git"); an edit that keeps the size and lands in the
+// index's own second is caught only by re-reading the content. A copy
+// stamped "now" made every such entry look settled, and a same-size edit
+// right after a commit read as no change (TestReview_ConservationDimension
+// WiredEndToEnd failed under load). The copy keeps the index's mtime.
+func TestOutput_RacilyCleanEntryIsStillSeen(t *testing.T) {
+	dir := t.TempDir()
+	git(t, dir, "init", "-q")
+	git(t, dir, "config", "core.trustctime", "false") // the edit's ctime cannot be set back; mtime and size decide
+	f := filepath.Join(dir, "w.go")
+	then := time.Now().Add(-time.Hour).Truncate(time.Second)
+	if err := os.WriteFile(f, []byte("func Old() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(f, then, then); err != nil {
+		t.Fatal(err)
+	}
+	git(t, dir, "add", "-A")
+	git(t, dir, "commit", "-q", "-m", "base")
+	// The index was written in the entry's own second, and the file then
+	// changed without changing size or mtime.
+	if err := os.Chtimes(filepath.Join(dir, ".git", "index"), then, then); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(f, []byte("func New() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(f, then, then); err != nil {
+		t.Fatal(err)
+	}
+	out, err := Output(context.Background(), dir, "diff", "--name-only", "HEAD")
+	if err != nil || strings.TrimSpace(string(out)) != "w.go" {
+		t.Errorf("a same-size edit in the index's own second = %q (%v), want w.go", out, err)
+	}
+	if out, _ := Output(context.Background(), dir, "status", "--porcelain"); !strings.Contains(string(out), "w.go") {
+		t.Errorf("status = %q, want w.go modified", out)
+	}
+}
