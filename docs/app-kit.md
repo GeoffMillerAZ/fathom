@@ -490,12 +490,15 @@ inside mirror `d9dd789`:
 - **Observed / expected:** the tab bar is one `flex` row with no overflow handling (nine
   tabs are ~700 px, a 390 px screen would pan the page) and each tab is ~36 px high;
   its `role="tablist"`/`role="tab"` links carry `aria-current` but no tab panels, so a
-  screen reader announces tabs that behave as links. Expected: an opt-in scrolling
-  row, 44 px targets with a focus-visible outline, and either link semantics
+  screen reader announces tabs that behave as links. A scrolling row also leaves the
+  current tab past the strip's edge at 390 px (the survey measured Wiring at x 623–689
+  in a strip ending at 359). Expected: an opt-in scrolling row that opens on the
+  current tab, 44 px targets with a focus-visible outline, and either link semantics
   (`nav` + `aria-current`) or full tab semantics.
 - **Local workaround:** `renderProjectTabs` wraps the bar in its own `overflow-x-auto`
   region and gives each link `min-h-11`, `whitespace-nowrap` and a focus outline through
-  arbitrary variants on the wrapper; the kit markup is untouched.
+  arbitrary variants on the wrapper; `ui/console.js` scrolls that region (never the
+  page) so the `aria-current` tab is in view on load; the kit markup is untouched.
 - **Disposition:** `candidate`. Next action: app-kit maintainer.
 
 **FATHOM-E-KIT-02 — `dashboard.RenderWidget`'s header row never wraps (candidate)**

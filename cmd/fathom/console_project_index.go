@@ -30,7 +30,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"sync"
+	"time"
 
 	"github.com/geoffmilleraz/app-kit/appkit/ui/chrome"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/form"
@@ -97,8 +97,13 @@ func buildProjectIndexPage(cr *consoleRequest) (consoleOut, error) {
 
 	vals := map[string]string{"svc": pc.svc, "store": storePath}
 	out.Verbs = []string{fillVerb(verbScopeList, vals)}
+	// The languages panel's chip is the evidence verb, whose figures it
+	// shows — or no chip at all when that verb is not offered: the scope
+	// list prints none of the panel's languages, engines or tiers.
+	languagesVerb := ""
 	if storeKnown {
-		out.Verbs = []string{fillVerb(verbReportEvidence, vals), fillVerb(verbScopeList, vals)}
+		languagesVerb = fillVerb(verbReportEvidence, vals)
+		out.Verbs = []string{languagesVerb, fillVerb(verbScopeList, vals)}
 	}
 	out.Model = projectIndexModel{Profile: profile, Neighborhood: nb, Suggestions: idx.graph.suggestions, Scope: sc}
 	if wantsJSON(cr.r) {
@@ -114,7 +119,7 @@ func buildProjectIndexPage(cr *consoleRequest) (consoleOut, error) {
 	}
 	out.Body = func() string {
 		return renderProjectTabs(pc.svc, "index") + projectBody(
-			renderIndexLanguagesPanel(pc, profile, out.Verbs[0], storeKnown)+
+			renderIndexLanguagesPanel(pc, profile, languagesVerb, storeKnown)+
 				`<div class="mt-4 grid gap-4 lg:grid-cols-2">`+renderIndexEdgesPanel(pc, profile)+renderIndexInventoryPanel(pc, profile)+`</div>`+
 				`<div class="mt-4 grid gap-4">`+renderNeighborhoodPanel(pc, nb, idx.graph.suggestions, q, cr.deps.selfURL)+projectScopePanel(pc, sc)+`</div>`)
 	}
@@ -148,40 +153,30 @@ type projectIndexData struct {
 	graph projectGraph
 }
 
-var projectIndexMemo struct {
-	sync.Mutex
-	entries map[string]projectIndexData
-	order   []string
-}
+// projectIndexMemo keeps the six most recent projects' index facts and
+// graphs (console_memo.go: a project's cold read never holds up another's
+// kept one).
+var projectIndexMemo = consoleMemo[projectIndexData]{max: 6}
 
 // projectIndexFor reads (or recalls) one project's index facts and graph.
 // The memo key is the store's watermark (StoreWatermark: the ingest's
 // commit and time), so only a re-ingest invalidates it; "" never memoizes.
+// The read runs detached from the request that started it: the requests
+// waiting on the same read must not see it cancelled by that one's client
+// going away.
 func projectIndexFor(ctx context.Context, c *client.Client, pc projectContext) projectIndexData {
 	wm, _ := c.StoreWatermark(ctx, pc.svc)
 	key := pc.svc + "@" + wm + "@" + pc.root + "@" + pc.rootNote
-	projectIndexMemo.Lock()
-	defer projectIndexMemo.Unlock()
-	if wm != "" {
-		if d, ok := projectIndexMemo.entries[key]; ok {
-			return d
+	d, _ := projectIndexMemo.do(key, time.Now(), func() (projectIndexData, time.Duration) {
+		d := computeProjectIndex(context.WithoutCancel(ctx), c, pc)
+		// A read that failed is never memoized: the next view retries it (an
+		// EPERM wedge on the volume clears; a memoized error would not).
+		failed := d.facts.LanguagesErr != "" || d.facts.EdgesErr != "" || d.facts.InventoryErr != ""
+		if wm == "" || failed {
+			return d, 0
 		}
-	}
-	d := computeProjectIndex(ctx, c, pc)
-	// A read that failed is never memoized: the next view retries it (an
-	// EPERM wedge on the volume clears; a memoized error would not).
-	failed := d.facts.LanguagesErr != "" || d.facts.EdgesErr != "" || d.facts.InventoryErr != ""
-	if wm != "" && !failed {
-		if projectIndexMemo.entries == nil {
-			projectIndexMemo.entries = map[string]projectIndexData{}
-		}
-		projectIndexMemo.entries[key] = d
-		projectIndexMemo.order = append(projectIndexMemo.order, key)
-		for len(projectIndexMemo.order) > 6 {
-			delete(projectIndexMemo.entries, projectIndexMemo.order[0])
-			projectIndexMemo.order = projectIndexMemo.order[1:]
-		}
-	}
+		return d, -1
+	})
 	return d
 }
 
@@ -353,10 +348,16 @@ func projectNeighborhood(svc string, pg projectGraph, q string) console.Neighbor
 		}
 	}
 	if in.Focus != "" {
+		// An edge is resolved only by the one confidence rule
+		// (core.EdgeConfidenceOf): a file-resolved edge carries a kind and is
+		// still heuristic — per-file import matching, no type checker — so it
+		// is drawn dashed and counted heuristic, as the edge-kinds panel
+		// beside it says ("never used for proof").
 		edgesOf := func(infos []callgraph.EdgeInfo) []console.NeighborEdge {
 			out := make([]console.NeighborEdge, 0, len(infos))
 			for _, e := range infos {
-				out = append(out, console.NeighborEdge{Key: e.Key, Resolved: e.Kind != "", Kind: string(e.Kind)})
+				resolved := core.EdgeConfidenceOf(core.Edge{Kind: e.Kind}) == core.EdgeConfidenceResolved
+				out = append(out, console.NeighborEdge{Key: e.Key, Resolved: resolved, Kind: string(e.Kind)})
 			}
 			return out
 		}

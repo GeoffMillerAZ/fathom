@@ -21,11 +21,13 @@ import (
 // resolved it.
 type NeighborEdge struct {
 	Key string
-	// Resolved: the typed pass confirmed this exact (caller, callee) pair;
-	// false is a syntax-only (heuristic) edge.
+	// Resolved: core.EdgeConfidenceOf calls this exact (caller, callee)
+	// pair resolved — a typed pass confirmed it. false is a heuristic edge:
+	// syntax-only, unresolved, or file-resolved (a kind, and still never
+	// type-checked).
 	Resolved bool
-	// Kind is the typed edge kind ("direct", "iface-dispatch", …); "" for a
-	// heuristic edge.
+	// Kind is the stored edge kind ("direct", "iface-dispatch",
+	// "file-resolved", …); "" for a syntax-only edge.
 	Kind string
 }
 

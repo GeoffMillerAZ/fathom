@@ -17,8 +17,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/scope"
+	"github.com/geoffmilleraz/fathom/internal/wiring"
 )
 
 // seedProjectRoot points the cached model's row for svc at root — the
@@ -224,11 +227,7 @@ func TestIntentView_ReadOnlyAuditWritesNothing(t *testing.T) {
 	}
 }
 
-func resetIntentAuditMemo() {
-	intentAuditMemo.Lock()
-	intentAuditMemo.entries = nil
-	intentAuditMemo.Unlock()
-}
+func resetIntentAuditMemo() { intentAuditMemo.reset() }
 
 // The wiring and index tabs' JSON sections equal their verbs run exactly as
 // rendered, on a repository that is on this machine (OC-8 for the tabs the
@@ -355,4 +354,327 @@ func TestProjectScopePanel_ReadOnlyPreviewAndPurgePlan(t *testing.T) {
 	if resp.StatusCode != http.StatusMethodNotAllowed {
 		t.Errorf("POST to the index tab = %d, want 405", resp.StatusCode)
 	}
+}
+
+// The code neighbourhood's adapter classifies each edge through
+// core.EdgeConfidenceOf, the one confidence rule (OC-37): a file-resolved
+// edge (per-file import-graph matching, ADR-041 decision 5) carries a kind
+// and is still heuristic — drawn dashed, counted heuristic, never "resolved
+// (type-checked)" — while a direct typed edge is resolved.
+func TestProjectNeighborhood_FileResolvedEdgesAreHeuristic(t *testing.T) {
+	nodes := []core.SymbolNode{
+		{Service: "svc", Package: "web", Name: "reveal", Kind: core.KindGoFunc, Calls: []string{"svc::web.announcer"}},
+		{Service: "svc", Package: "web", Name: "boot", Kind: core.KindGoFunc, Calls: []string{"svc::web.announcer"}},
+		{Service: "svc", Package: "web", Name: "announcer", Kind: core.KindGoFunc},
+	}
+	edges := []core.Edge{
+		{FromService: "svc", FromSymbol: "svc::web.reveal", ToSymbol: "svc::web.announcer", Kind: core.EdgeFileResolved},
+		{FromService: "svc", FromSymbol: "svc::web.boot", ToSymbol: "svc::web.announcer", Kind: core.EdgeDirect},
+	}
+	pg := projectGraph{nodes: nodes, g: callgraph.BuildBoth(nodes, edges), isTest: map[string]bool{}}
+	nb := projectNeighborhood("svc", pg, "svc::web.announcer")
+	if nb.Focus != "svc::web.announcer" {
+		t.Fatalf("focus = %q (%s)", nb.Focus, nb.Unresolved)
+	}
+	if nb.CallersResolved != 1 || nb.CallersHeuristic != 1 {
+		t.Errorf("callers = %d resolved, %d heuristic; want the direct edge resolved and the file-resolved one heuristic", nb.CallersResolved, nb.CallersHeuristic)
+	}
+	byKind := map[string]bool{}
+	for _, l := range nb.Links {
+		byKind[l.Kind] = l.Resolved
+	}
+	if resolved, ok := byKind[string(core.EdgeFileResolved)]; !ok || resolved {
+		t.Errorf("the file-resolved link must be drawn heuristic: %+v", nb.Links)
+	}
+	if resolved, ok := byKind[string(core.EdgeDirect)]; !ok || !resolved {
+		t.Errorf("the direct link must be drawn resolved: %+v", nb.Links)
+	}
+	svg, _, err := layoutNeighborhood("svc", nb)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// One dashed edge (the file-resolved one) plus the legend's dashed
+	// swatch, which the kit draws only when a dashed edge exists.
+	if n := strings.Count(svg, `stroke-dasharray="5 4"`); n != 2 {
+		t.Errorf("exactly one edge (the file-resolved one) is dashed: %d dashed strokes, want the edge and its legend swatch", n)
+	}
+}
+
+// panelOpenTag is the opening tag of the panel whose id is id ("" when the
+// page has no such panel): its attributes carry the panel's truth state,
+// its live sources and its verb (data-console-verb).
+func panelOpenTag(page, id string) string {
+	i := strings.Index(page, `id="`+id+`"`)
+	if i < 0 {
+		return ""
+	}
+	start := strings.LastIndex(page[:i], "<div")
+	end := strings.Index(page[i:], ">")
+	if start < 0 || end < 0 {
+		return ""
+	}
+	return page[start : i+end+1]
+}
+
+// A panel's verb chip names the command that produces its figures, or
+// nothing: with no daemon record the evidence verb is not offered, and the
+// languages panel must not borrow the scope list's command in its place.
+func TestProjectIndexTab_LanguagesPanelNeverBorrowsAVerb(t *testing.T) {
+	f := newConsoleFixture(t)
+	_, _, page := f.get(t, "/projects/payment-service/index")
+	if tag := panelOpenTag(page, "index-languages"); !strings.Contains(tag, `data-console-verb="fathom report evidence --service payment-service --store `) {
+		t.Fatalf("with a daemon record the languages panel names the evidence verb: %s", tag)
+	}
+	recPath, ok := daemonRecordPathFor(f.ts.URL)
+	if !ok {
+		t.Fatal("no daemon record path")
+	}
+	if err := os.Remove(recPath); err != nil {
+		t.Fatal(err)
+	}
+	_, _, page = f.get(t, "/projects/payment-service/index")
+	tag := panelOpenTag(page, "index-languages")
+	if tag == "" {
+		t.Fatal("no languages panel")
+	}
+	if strings.Contains(tag, "data-console-verb") {
+		t.Errorf("with no daemon record the languages panel offers no verb, never another panel's: %s", tag)
+	}
+	if !strings.Contains(page, "the evidence verb is not offered") {
+		t.Error("the panel says why no verb is offered")
+	}
+}
+
+// A tab that reads the repository's files and has nothing to read on this
+// machine says why in the kit's callout (doctrine rule 1: never a
+// hand-written box the kit already has), with its ARIA role and icon: an
+// info note for a remote corpus with no local root, a caution for a
+// registered root this machine cannot read.
+func TestProjectWiringTab_RootNoteIsAKitCallout(t *testing.T) {
+	f := newConsoleFixture(t)
+	for _, tc := range []struct {
+		root, text, open string
+	}{
+		{"", "no local root is recorded for payment-service", `<div role="note" class="rounded-md border border-info bg-info-soft`},
+		{filepath.Join(t.TempDir(), "gone"), "is not readable on this machine", `<div role="alert" class="rounded-md border border-caution bg-caution-soft`},
+	} {
+		seedProjectRoot(t, f, "payment-service", tc.root)
+		_, _, page := f.get(t, "/projects/payment-service/wiring")
+		if strings.Contains(page, "data-project-root-note") {
+			t.Error("the root note is a hand-written box, not the kit's callout")
+		}
+		i := strings.Index(page, tc.text)
+		if i < 0 {
+			t.Fatalf("root %q: the wiring tab must say why there is nothing to read", tc.root)
+		}
+		open := strings.LastIndex(page[:i], `<div role="`)
+		if open < 0 || !strings.HasPrefix(page[open:], tc.open) {
+			t.Errorf("root %q: the note must be callout.Render's callout %s:\n%.300s", tc.root, tc.open, page[max(open, 0):])
+		}
+		assertRoleUtilitiesOnly(t, page)
+	}
+}
+
+// The intent tab never reports an unreadable corpus as "no corpus" (I38,
+// law 3): with the router and the decision records present and unreadable
+// (the EPERM wedge's shape), the tab renders an error naming the files and
+// the errno — never the clean "a choice, not a defect" absence — and its
+// JSON says the same, while its section still equals the verb run exactly
+// as rendered.
+func TestIntentTab_UnreadableCorpusIsNeverNoCorpus(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("root reads every file")
+	}
+	root := t.TempDir()
+	writeCorpusFixture(t, root)
+	state := t.TempDir()
+	t.Setenv("FATHOM_INTENT_LEDGER", filepath.Join(state, "intent-ledger.jsonl"))
+	f := newConsoleFixture(t)
+	t.Setenv("FATHOM_INTENT_LEDGER", filepath.Join(state, "intent-ledger.jsonl"))
+	seedProjectRoot(t, f, "payment-service", root)
+	resetIntentAuditMemo()
+	t.Cleanup(resetIntentAuditMemo)
+	for _, p := range []string{filepath.Join(root, "docs", "intent", "README.md"), filepath.Join(root, "ADR.md")} {
+		if err := os.Chmod(p, 0); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = os.Chmod(p, 0o644) })
+	}
+	code, _, page := f.get(t, "/projects/payment-service/intent")
+	if code != http.StatusOK {
+		t.Fatalf("intent tab = %d", code)
+	}
+	if strings.Contains(page, "a choice, not a defect") || strings.Contains(page, "no intent corpus") {
+		t.Error("an unreadable corpus rendered as no corpus")
+	}
+	tag := panelOpenTag(page, "intent")
+	if !strings.Contains(tag, `data-truth-state="error"`) {
+		t.Errorf("the corpus panel must be an error: %s", tag)
+	}
+	for _, want := range []string{"docs/intent/README.md", "ADR.md", "permission denied", `data-truth-line="error"`} {
+		if !strings.Contains(page, want) {
+			t.Errorf("the tab must name %q", want)
+		}
+	}
+	env := f.pageJSON(t, "/projects/payment-service/intent")
+	var m projectIntentModel
+	if err := json.Unmarshal(env.Model, &m); err != nil || m.View == nil {
+		t.Fatalf("model = %s (%v)", env.Model, err)
+	}
+	if m.View.Corpus.State != console.StateError || !strings.Contains(m.View.Corpus.Reason, "permission denied") {
+		t.Errorf("view.corpus = %+v, want an error naming the unreadable files", m.View.Corpus)
+	}
+	assertSectionsEqualVerbs(t, env, 1)
+}
+
+// The intent tab keeps an audit per (root, HEAD) only while nothing its
+// panels follow has moved (design §1 "Caching", §2 "Live freshness"): an
+// event naming plans:{svc} — the moment every intent panel shows "updated —
+// refresh this panel" — makes the refresh re-run the audit instead of
+// re-serving the one the affordance just called out of date; an event for
+// another project leaves it kept.
+func TestIntentTab_RefreshAfterAnUpdateReaudits(t *testing.T) {
+	root := t.TempDir()
+	writeCorpusFixture(t, root)
+	ledger := filepath.Join(t.TempDir(), "intent-ledger.jsonl")
+	f := newConsoleFixture(t)
+	t.Setenv("FATHOM_INTENT_LEDGER", ledger)
+	resetIntentAuditMemo()
+	t.Cleanup(resetIntentAuditMemo)
+	auditAt := func() string {
+		t.Helper()
+		seedProjectRoot(t, f, "payment-service", root) // the model is rebuilt as the clock moves
+		var m projectIntentModel
+		if err := json.Unmarshal(f.pageJSON(t, "/projects/payment-service/intent").Model, &m); err != nil || m.AuditAt == "" {
+			t.Fatalf("intent model = %+v (%v)", m, err)
+		}
+		return m.AuditAt
+	}
+	first := auditAt()
+	f.now = f.now.Add(time.Minute)
+	if got := auditAt(); got != first {
+		t.Fatalf("with nothing moved the audit is kept: %s, then %s", first, got)
+	}
+	if _, err := f.deps.bus.Publish(console.Event{Kind: console.EventVerify, Service: "checkout-service", Name: "other.md", Ref: "fail"}); err != nil {
+		t.Fatal(err)
+	}
+	if got := auditAt(); got != first {
+		t.Errorf("another project's verify event re-ran this project's audit: %s, then %s", first, got)
+	}
+	if _, err := f.deps.bus.Publish(console.Event{Kind: console.EventVerify, Service: "payment-service", Name: "plan.md", Ref: "fail"}); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := auditAt(), f.now.UTC().Format(time.RFC3339); got != want {
+		t.Errorf("after a verify event for the project the refresh must re-audit: audit_at %s, want %s", got, want)
+	}
+	// A recorded CLI audit (the intent ledger grew) is new data for the debt
+	// panel: it is re-read too.
+	f.now = f.now.Add(time.Minute)
+	mustWrite(t, ledger, `{"schema_version":1,"kind":"debt","at":"2026-09-25T12:00:30Z","repo_root":"`+root+`","by_kind":{"U4":1}}`+"\n")
+	if got, want := auditAt(), f.now.UTC().Format(time.RFC3339); got != want {
+		t.Errorf("after the intent ledger grew the audit must re-read it: audit_at %s, want %s", got, want)
+	}
+}
+
+// The wiring tab keeps a read of the repository for a minute only while
+// nothing its panels follow has moved: an ingest event for the project
+// (index:{svc}, the source its panels follow — the moment they show
+// "updated — refresh this panel") makes the refresh re-read the repository,
+// and so does a new receipt (an apply or undo); an event for another
+// project does not.
+func TestWiringTab_RefreshAfterAnUpdateRereads(t *testing.T) {
+	root := t.TempDir()
+	mustWrite(t, filepath.Join(root, "CLAUDE.md"), "# Project\n")
+	f := newConsoleFixture(t)
+	projectWiringMemo.reset()
+	t.Cleanup(projectWiringMemo.reset)
+	failing := func() int {
+		t.Helper()
+		seedProjectRoot(t, f, "payment-service", root)
+		var wv console.WiringViewModel
+		if err := json.Unmarshal(f.pageJSON(t, "/projects/payment-service/wiring").Model, &wv); err != nil || !wv.Fail.Known() {
+			t.Fatalf("wiring model = %+v (%v)", wv, err)
+		}
+		return wv.Fail.V
+	}
+	before := failing()
+	// config_valid now fails — on disk, not yet on the page.
+	mustWrite(t, filepath.Join(root, ".fathom", "config.toml"), "this is = [not toml\n")
+	f.now = f.now.Add(10 * time.Second)
+	if got := failing(); got != before {
+		t.Fatalf("with no event the read is kept: %d failing, then %d", before, got)
+	}
+	if _, err := f.deps.bus.Publish(console.Event{Kind: console.EventIngest, Service: "checkout-service", Ref: "c0ffee"}); err != nil {
+		t.Fatal(err)
+	}
+	if got := failing(); got != before {
+		t.Errorf("another project's ingest re-read this repository: %d, then %d", before, got)
+	}
+	if _, err := f.deps.bus.Publish(console.Event{Kind: console.EventIngest, Service: "payment-service", Ref: "c0ffee"}); err != nil {
+		t.Fatal(err)
+	}
+	if got := failing(); got != before+1 {
+		t.Errorf("after an ingest event for the project the refresh must re-read it: %d failing, want %d", got, before+1)
+	}
+	// A receipt (an apply through the console or the CLI) is new data too.
+	if err := os.Remove(filepath.Join(root, ".fathom", "config.toml")); err != nil {
+		t.Fatal(err)
+	}
+	mustWrite(t, wiring.ReceiptsPath(root), `{"id":"r1","time":"2026-09-25T12:00:00Z","files":[]}`+"\n")
+	if got := failing(); got != before {
+		t.Errorf("after a new receipt the tab must re-read the repository: %d failing, want %d", got, before)
+	}
+}
+
+// At 390 px nine tabs overflow their strip, which scrolls sideways in its
+// own region: the console's script brings the current tab into that
+// region's view on load (never scrolling the page itself, so an anchored
+// refresh stays put), and without JavaScript the h1 and the trail still
+// name the tab. The doctor table leads with each check's Status, so a phone
+// sees PASS/FAIL before it scrolls sideways.
+func TestProjectWorkspace_PhoneKeepsTheCurrentTabAndStatusInView(t *testing.T) {
+	js := string(consoleJS)
+	for _, want := range []string{"[data-project-tabs]", `[aria-current="page"]`, "scrollLeft"} {
+		if !strings.Contains(js, want) {
+			t.Errorf("console.js must bring the current tab into its strip's view: missing %q", want)
+		}
+	}
+	if strings.Contains(js, "scrollIntoView") {
+		t.Error("scrollIntoView scrolls the page too; the strip is scrolled by itself")
+	}
+	root := t.TempDir()
+	mustWrite(t, filepath.Join(root, "CLAUDE.md"), "# Project\n")
+	f := newConsoleFixture(t)
+	seedProjectRoot(t, f, "payment-service", root)
+	_, _, page := f.get(t, "/projects/payment-service/wiring")
+	if !strings.Contains(page, `data-project-tabs`) || !strings.Contains(page, `aria-current="page" href="/projects/payment-service/wiring"`) {
+		t.Fatal("the wiring tab is the marked tab in the strip")
+	}
+	i := strings.Index(page, `id="wiring-doctor"`)
+	if i < 0 {
+		t.Fatal("no doctor panel")
+	}
+	tbl := page[i:]
+	first := strings.Index(tbl, "<th")
+	end := strings.Index(tbl, "</th>")
+	if first < 0 || end < first || !strings.HasPrefix(stripTags(tbl[first:end]), "Status") {
+		t.Errorf("the doctor table's first column must be Status:\n%.600s", tbl[max(first, 0):])
+	}
+}
+
+// stripTags drops markup from an HTML fragment, leaving its text.
+func stripTags(s string) string {
+	var b strings.Builder
+	in := false
+	for _, r := range s {
+		switch {
+		case r == '<':
+			in = true
+		case r == '>':
+			in = false
+		case !in:
+			b.WriteRune(r)
+		}
+	}
+	return strings.TrimSpace(b.String())
 }

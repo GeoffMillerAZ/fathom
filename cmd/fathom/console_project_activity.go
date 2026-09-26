@@ -10,15 +10,17 @@ package main
 // the tab's window, computed by the verb's own function; the day strip, the
 // recent calls and the sessions are console.ProjectActivity. The headline
 // calls and sessions are the project's shared metrics (the model's one
-// read), so this tab and the overview can never disagree about them.
+// read), so this tab and the overview can never disagree about them — and
+// the sessions panel lists the sessions of that same read under that same
+// count.
 
 import (
 	"fmt"
 	"html"
 	"html/template"
 	"math"
+	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/a-h/templ"
@@ -87,34 +89,48 @@ type projectActivityData struct {
 // and the traffic verb's own reader), ~0.6 s on a 90,000-row log.
 const projectActivityTTL = 20 * time.Second
 
-var projectActivityMemo struct {
-	sync.Mutex
-	entries map[string]projectActivityData
+// projectActivityMemo keeps recent reads (console_memo.go: one project's
+// cold read never holds up another's kept one).
+var projectActivityMemo = consoleMemo[projectActivityData]{max: 32}
+
+// projectActivityKey names one read: the project, the window's day, the
+// resolved call log and ledger, the model snapshot whose session count the
+// tab shows (its sessions are listed from that snapshot's read), and the
+// generations of the panels' live sources (index:{svc}, sessions:{svc}),
+// so a refresh the "updated" affordance offers reads again.
+func projectActivityKey(cr *consoleRequest, pc projectContext, src console.Sources) string {
+	bus := cr.deps.bus
+	return strings.Join([]string{pc.svc, cr.now.UTC().Format("2006-01-02"), src.CallLog.Path, src.SessionLedger, pc.m.GeneratedAt,
+		strconv.FormatUint(bus.SourceGeneration("index:"+pc.svc), 10), strconv.FormatUint(bus.SourceGeneration("sessions:"+pc.svc), 10)}, "\x00")
 }
 
 func projectActivityFor(cr *consoleRequest, pc projectContext) projectActivityData {
+	src := cr.deps.sources()
+	d, _ := projectActivityMemo.do(projectActivityKey(cr, pc, src), cr.now, func() (projectActivityData, time.Duration) {
+		return readProjectActivity(cr, pc, src), projectActivityTTL
+	})
+	return d
+}
+
+// readProjectActivity is one read of the call log for a project's window,
+// with its sessions from the model's one read of the ledger: the count is
+// the shared project.sessions metric and the rows are folded from the same
+// bytes (OC-9 — the panel can never count differently from the band).
+func readProjectActivity(cr *consoleRequest, pc projectContext, src console.Sources) projectActivityData {
 	roots := make(map[string]string, len(pc.m.Services))
 	for _, s := range pc.m.Services {
 		roots[s.Service] = s.Path
 	}
-	src := cr.deps.sources()
-	key := pc.svc + "\x00" + cr.now.UTC().Format("2006-01-02") + "\x00" + src.CallLog.Path + "\x00" + src.SessionLedger
-	projectActivityMemo.Lock()
-	defer projectActivityMemo.Unlock()
-	if d, ok := projectActivityMemo.entries[key]; ok && cr.now.Sub(d.at) < projectActivityTTL && !cr.now.Before(d.at) {
-		return d
-	}
 	d := projectActivityData{at: cr.now, resolved: src.CallLog}
-	d.act = console.ProjectActivity(src, console.ActivityInput{Service: pc.svc, LabelKey: sessionLabelKey(roots)})
+	d.act = console.ProjectActivity(src, console.ActivityInput{
+		Service: pc.svc, LabelKey: sessionLabelKey(roots),
+		Sessions: console.ProjectSessions(pc.facts()), Ledger: pc.m.sessionLedger,
+	})
 	since, _ := time.Parse("2006-01-02", d.act.From)
 	until, _ := time.Parse("2006-01-02", d.act.To)
 	until = until.Add(24*time.Hour - time.Second)
 	d.from, d.to = since.UTC().Format(time.RFC3339), until.UTC().Format(time.RFC3339)
 	d.traffic, d.resolved = metricsTrafficReport("", pc.svc, metrics.TrafficGroupByTool, since, until)
-	if projectActivityMemo.entries == nil || len(projectActivityMemo.entries) > 32 {
-		projectActivityMemo.entries = map[string]projectActivityData{}
-	}
-	projectActivityMemo.entries[key] = d
 	return d
 }
 

@@ -265,6 +265,13 @@ func DistinctSessionsBy(data []byte, keyOf func(repoLabel string) string) map[st
 // eachLedgerSession calls fn with every parseable ledger row's session key
 // (its session id; a row with none counts once on its own) and repo label.
 func eachLedgerSession(data []byte, fn func(key, repo string)) {
+	eachLedgerRow(data, func(key, repo string, _ []byte) { fn(key, repo) })
+}
+
+// eachLedgerRow is eachLedgerSession with the row's own bytes, for a fold
+// that reads more of a row (the activity tab's session rows) and must still
+// count sessions by the one rule.
+func eachLedgerRow(data []byte, fn func(key, repo string, line []byte)) {
 	for _, line := range bytes.Split(data, []byte{'\n'}) {
 		if len(bytes.TrimSpace(line)) == 0 {
 			continue
@@ -281,7 +288,7 @@ func eachLedgerSession(data []byte, fn func(key, repo string)) {
 		if key == "" {
 			key = "\x00anon:" + row.At + ":" + row.Repo
 		}
-		fn(key, row.Repo)
+		fn(key, row.Repo, line)
 	}
 }
 

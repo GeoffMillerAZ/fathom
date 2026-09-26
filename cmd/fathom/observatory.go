@@ -203,6 +203,10 @@ type observatoryModel struct {
 	// stays byte-for-byte what it was (OC-7).
 	callFacts console.CallLogFacts
 	sessions  console.Value[int]
+	// sessionLedger is the session ledger's bytes as this build read them —
+	// the read every sessions figure came from — so a page that lists
+	// sessions (the activity tab) lists the ones that were counted.
+	sessionLedger []byte
 }
 
 // obsTrafficDay is one day of call-log traffic.
@@ -238,6 +242,9 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 	ledgerPath := sessionLedgerPath()
 	ledgerData, ledgerErr := os.ReadFile(ledgerPath)
 	m.sessions = console.SessionCount(ledgerPath, ledgerData, ledgerErr).WithAsOf(now)
+	if ledgerErr == nil {
+		m.sessionLedger = ledgerData
+	}
 
 	// The model's reads of the daemon (list_services) carry the console's
 	// origin: the console reading itself is never usage (mcp.OriginConsole).

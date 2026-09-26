@@ -34,6 +34,15 @@ type ActivityInput struct {
 	Days int
 	// Limit bounds the recent calls and sessions listed (default 20).
 	Limit int
+	// Sessions is the project's shared project.sessions metric
+	// (ProjectSessions over the model's one read of the session ledger): the
+	// tab shows that value, never a recount of its own (OC-9). A zero Value
+	// is "not read".
+	Sessions Value[int]
+	// Ledger is the session ledger's bytes as that same read saw them; the
+	// sessions listed are folded from them, by the one dedupe rule, so the
+	// list and the count are one read.
+	Ledger []byte
 }
 
 // ActivityCall is one logged tool call.
@@ -79,7 +88,8 @@ type ProjectActivityModel struct {
 	// reading itself — excluded, named.
 	ConsoleReads int `json:"console_reads_excluded"`
 	// Sessions is the distinct sessions in the ledger for the project (all
-	// time); SessionRows the newest of them.
+	// time) — the shared project.sessions metric itself; SessionRows the
+	// newest of them, from the same read.
 	Sessions      Value[int]        `json:"sessions"`
 	SessionRows   []ActivitySession `json:"session_rows"`
 	SessionLedger string            `json:"session_ledger"`
@@ -190,53 +200,45 @@ func ProjectActivity(src Sources, in ActivityInput) ProjectActivityModel {
 	}
 	m.Recent = append(m.Recent, recent...)
 
-	m.Sessions, m.SessionRows = projectSessions(src.SessionLedger, svc, in.LabelKey, limit)
+	m.Sessions = in.Sessions
+	if m.Sessions.State == "" {
+		m.Sessions = Absent[int]("the session ledger was not read for this snapshot")
+	}
+	if m.Sessions.Known() {
+		m.SessionRows = append(m.SessionRows, sessionRows(in.Ledger, in.Service, in.LabelKey, limit)...)
+	}
 	return m
 }
 
-// projectSessions folds the ledger into the project's distinct sessions,
-// newest first, with the same dedupe rule every page shares (one per
-// session id; a row with none counts once on its own).
-func projectSessions(path, svc string, labelKey func(string) string, limit int) (Value[int], []ActivitySession) {
-	source := "session ledger " + path
-	raw, err := os.ReadFile(path)
-	switch {
-	case path == "":
-		return Absent[int]("no session ledger is configured"), []ActivitySession{}
-	case err != nil && errors.Is(err, fs.ErrNotExist):
-		return Absent[int]("no session ledger at " + path + " — sessions are not measured, never zero").WithSource(source), []ActivitySession{}
-	case err != nil:
-		return Errored[int]("session ledger unreadable: " + err.Error()).WithSource(source), []ActivitySession{}
-	}
+// sessionRows folds ledger bytes into the project's distinct sessions,
+// newest first, at most limit of them — keyed by the one dedupe rule every
+// count shares (eachLedgerRow: one per session id; a row with none counts
+// once on its own), so the rows are exactly the sessions the shared count
+// counted. A row whose optional fields do not decode still names its
+// session; those fields are then not recorded.
+func sessionRows(data []byte, service string, labelKey func(string) string, limit int) []ActivitySession {
 	if labelKey == nil {
-		labelKey = strings.ToLower
+		labelKey = func(l string) string {
+			if strings.EqualFold(strings.TrimSpace(l), service) {
+				return service
+			}
+			return strings.ToLower(l)
+		}
 	}
 	byKey := map[string]*ActivitySession{}
-	rows := 0
-	for _, line := range strings.Split(string(raw), "\n") {
-		if strings.TrimSpace(line) == "" {
-			continue
+	eachLedgerRow(data, func(key, repo string, line []byte) {
+		if repo == "" || labelKey(repo) != service {
+			return
 		}
 		var r struct {
-			SessionID     string `json:"session_id"`
-			Arm           string `json:"arm"`
-			Repo          string `json:"repo"`
-			At            string `json:"at"`
-			TurnCount     *int   `json:"turn_count"`
-			FirstEditTurn *int   `json:"first_edit_turn"`
-			FathomCalls   *int   `json:"fathom_calls"`
+			SessionID     string          `json:"session_id"`
+			Arm           json.RawMessage `json:"arm"`
+			At            string          `json:"at"`
+			TurnCount     json.RawMessage `json:"turn_count"`
+			FirstEditTurn json.RawMessage `json:"first_edit_turn"`
+			FathomCalls   json.RawMessage `json:"fathom_calls"`
 		}
-		if json.Unmarshal([]byte(line), &r) != nil || r.Repo == "" {
-			continue
-		}
-		if labelKey(r.Repo) != svc {
-			continue
-		}
-		rows++
-		key := r.SessionID
-		if key == "" {
-			key = "\x00anon:" + r.At + ":" + r.Repo
-		}
+		_ = json.Unmarshal(line, &r) // the key fields decoded in eachLedgerRow
 		s := byKey[key]
 		if s == nil {
 			s = &ActivitySession{ID: r.SessionID}
@@ -244,9 +246,11 @@ func projectSessions(path, svc string, labelKey func(string) string, limit int) 
 		}
 		s.Rows++
 		if r.At >= s.At {
-			s.At, s.Arm, s.Turns, s.FirstEditTurn, s.FathomCalls = r.At, r.Arm, r.TurnCount, r.FirstEditTurn, r.FathomCalls
+			var arm string
+			_ = json.Unmarshal(r.Arm, &arm)
+			s.At, s.Arm, s.Turns, s.FirstEditTurn, s.FathomCalls = r.At, arm, optionalCount(r.TurnCount), optionalCount(r.FirstEditTurn), optionalCount(r.FathomCalls)
 		}
-	}
+	})
 	out := make([]ActivitySession, 0, len(byKey))
 	for _, s := range byKey {
 		out = append(out, *s)
@@ -257,11 +261,20 @@ func projectSessions(path, svc string, labelKey func(string) string, limit int) 
 		}
 		return out[i].ID < out[j].ID
 	})
-	n := len(out)
 	if len(out) > limit {
 		out = out[:limit]
 	}
-	return Measured(n, source).WithDenominator(fmt.Sprintf("distinct sessions from %s ledger rows whose repo label names %s", thousands(rows), svc)), out
+	return out
+}
+
+// optionalCount decodes an optional count field: nil when it is missing or
+// is not a number — not recorded, never a 0.
+func optionalCount(raw json.RawMessage) *int {
+	var n int
+	if len(raw) == 0 || json.Unmarshal(raw, &n) != nil {
+		return nil
+	}
+	return &n
 }
 
 // readCallRows reads the rows of a JSONL call log that keep passes;

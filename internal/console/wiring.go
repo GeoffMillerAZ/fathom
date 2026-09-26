@@ -3,10 +3,11 @@ package console
 // wiring.go — OC-40 (vision 35 §3 "Wiring: doctor checks, drift, and
 // receipts"; design §3): one repository's wiring as three instruments side
 // by side — doctor's repository-side checks, the drift between what fathom
-// recorded and what is on disk (doctor's wiring rows plus the preview
-// plan's apply and BLOCKED items), and the receipts every apply leaves —
-// beside the existing preview → apply → undo, which this projection never
-// performs. It only reads.
+// recorded and what is on disk (each thing that differs counted once: the
+// preview plan's apply and BLOCKED items, the drift beyond the plan, and
+// the doctor rows no item accounts for), and the receipts every apply
+// leaves — beside the existing preview → apply → undo, which this
+// projection never performs. It only reads.
 //
 // A repository whose root is not on this machine has no doctor rows, no
 // plan and no receipts to read: every figure is then absent with the
@@ -33,7 +34,8 @@ type WiringCheck struct {
 type WiringPlanItem struct {
 	File    string `json:"file"`
 	Target  string `json:"target"`
-	Verdict string `json:"verdict"` // apply | skip | blocked
+	Kind    string `json:"kind,omitempty"` // region | key (wiring.Item.Kind)
+	Verdict string `json:"verdict"`        // apply | skip | blocked
 	Reason  string `json:"reason"`
 	Cause   string `json:"cause,omitempty"`
 }
@@ -54,7 +56,16 @@ type WiringFacts struct {
 	// RootNote, when set, is why the root cannot be read here (no local
 	// root, not a directory on this machine); everything else is ignored.
 	RootNote string
-	Checks   []WiringCheck
+	// Harness is the harness doctor's rows were read for ("claude",
+	// "codex", …): the preview plan is Claude-shaped, so only under Claude
+	// do its hook items itemize doctor's hooks_installed.
+	Harness string
+	Checks  []WiringCheck
+	// BeyondPlan is the drift doctor's wiring_drift row sees that no
+	// preview plan can: owned MCP entries and skill files changed since
+	// fathom recorded them. With it, wiring_drift is itemized — its hook
+	// and stanza drift are the plan's BLOCKED items, the rest these.
+	BeyondPlan []WiringDrift
 	// Plan is the preview's plan (read-only: PlanWiring); PlanErr why it
 	// could not be computed.
 	Plan       []WiringPlanItem
@@ -74,6 +85,9 @@ type WiringDrift struct {
 	What   string `json:"what"`
 	Detail string `json:"detail"`
 	Remedy string `json:"remedy,omitempty"`
+	// Doctor names the failing doctor row that summarizes this thing (its
+	// "6 drift(s): …" or its missing hooks): that row is not counted again.
+	Doctor string `json:"doctor,omitempty"`
 }
 
 // WiringViewModel is the wiring tab's projection.
@@ -117,6 +131,7 @@ func WiringView(f WiringFacts) WiringViewModel {
 	}
 	src := f.Source
 	counts := map[string]int{}
+	var failing []WiringCheck // doctor's failing or warning wiring rows
 	for _, c := range f.Checks {
 		c.Group = wiringCheckGroups[c.Name]
 		if c.Group == "" {
@@ -125,7 +140,7 @@ func WiringView(f WiringFacts) WiringViewModel {
 		counts[c.Status]++
 		m.Checks = append(m.Checks, c)
 		if c.Group == "wiring" && (c.Status == "fail" || c.Status == "warn") {
-			m.Drift = append(m.Drift, WiringDrift{Source: "doctor", What: c.Name, Detail: c.Reason, Remedy: c.Remedy})
+			failing = append(failing, c)
 		}
 	}
 	// Wiring rows first, each group in doctor's own order.
@@ -143,21 +158,47 @@ func WiringView(f WiringFacts) WiringViewModel {
 		m.Skip = Measured(counts["skipped"], src).WithDenominator(denom)
 	}
 
+	failingRow := map[string]WiringCheck{}
+	for _, c := range failing {
+		failingRow[c.Name] = c
+	}
+	var planDrift, beyond []WiringDrift
+	itemized := map[string]bool{} // failing doctor rows the plan (or beyond-plan drift) itemizes
 	if f.PlanErr != "" {
 		e := Errored[int]("the wiring preview could not be computed: " + f.PlanErr)
 		m.PlanApply, m.PlanCurrent, m.PlanBlocked = e, e, e
 	} else {
 		apply, skip, blocked := 0, 0, 0
 		for _, it := range f.Plan {
+			var d WiringDrift
 			switch it.Verdict {
 			case "apply":
 				apply++
-				m.Drift = append(m.Drift, WiringDrift{Source: "plan", What: it.File + " · " + it.Target, Detail: "Apply would write this: " + it.Reason, Remedy: "Preview changes, then Apply (or: fathom fleet reconcile --apply)"})
+				d = WiringDrift{Source: "plan", What: it.File + " · " + it.Target, Detail: "Apply would write this: " + it.Reason, Remedy: "Preview changes, then Apply (or: fathom fleet reconcile --apply)"}
 			case "blocked":
 				blocked++
-				m.Drift = append(m.Drift, WiringDrift{Source: "plan", What: it.File + " · " + it.Target, Detail: "BLOCKED (" + it.Cause + "): " + it.Reason, Remedy: "resolve by hand — fathom never merges a drifted region (law 15)"})
+				d = WiringDrift{Source: "plan", What: it.File + " · " + it.Target, Detail: "BLOCKED (" + it.Cause + "): " + it.Reason, Remedy: "resolve by hand — fathom never merges a drifted region (law 15)"}
 			default:
 				skip++
+				continue
+			}
+			if row := summarizingRow(it, f.Harness); row != "" {
+				if _, ok := failingRow[row]; ok {
+					d.Doctor = row
+					itemized[row] = true
+				}
+			}
+			planDrift = append(planDrift, d)
+		}
+		// wiring_drift's MCP and skill drift: things no plan names.
+		if c, ok := failingRow["wiring_drift"]; ok {
+			for _, d := range f.BeyondPlan {
+				d.Source, d.Doctor = "doctor", "wiring_drift"
+				if d.Remedy == "" {
+					d.Remedy = c.Remedy
+				}
+				beyond = append(beyond, d)
+				itemized["wiring_drift"] = true
 			}
 		}
 		pd := fmt.Sprintf("of %d items the preview plan names", len(f.Plan))
@@ -166,13 +207,21 @@ func WiringView(f WiringFacts) WiringViewModel {
 		m.PlanBlocked = Measured(blocked, "wiring.PlanWiring (the preview's engine, read-only)").WithDenominator(pd)
 		m.PlanDigest = f.PlanDigest
 	}
+	// A failing row no item accounts for is a thing of its own; one the plan
+	// itemizes is named on its items and never counted again on top of them.
+	for _, c := range failing {
+		if !itemized[c.Name] {
+			m.Drift = append(m.Drift, WiringDrift{Source: "doctor", What: c.Name, Detail: c.Reason, Remedy: c.Remedy})
+		}
+	}
+	m.Drift = append(append(m.Drift, beyond...), planDrift...)
 	switch {
 	case f.PlanErr != "" && len(m.Drift) == 0:
 		m.DriftCount = Errored[int]("drift is unknown: the preview plan could not be computed (" + f.PlanErr + ")")
 	case f.PlanErr != "":
 		m.DriftCount = Partial(len(m.Drift), "the preview plan could not be computed ("+f.PlanErr+"); doctor's rows only — a lower bound")
 	default:
-		m.DriftCount = Measured(len(m.Drift), src).WithDenominator("doctor's failing or warning wiring rows plus the preview plan's apply and BLOCKED items")
+		m.DriftCount = Measured(len(m.Drift), src).WithDenominator("things on disk that differ, each counted once: the preview plan's apply and BLOCKED items, owned MCP entries and skills changed since fathom recorded them, and doctor's failing or warning wiring rows no item accounts for (a row that summarizes items is named on them, never added to them)")
 	}
 
 	switch {
@@ -187,4 +236,20 @@ func WiringView(f WiringFacts) WiringViewModel {
 		m.ReceiptsTotal = Measured(f.ReceiptsTotal, "wiring.LoadReceipts").WithDenominator(d)
 	}
 	return m
+}
+
+// summarizingRow is the doctor row whose failure a plan item is one thing
+// of: the BLOCKED drift wiring_drift counts, the hooks hooks_installed
+// finds missing (under Claude, whose settings the plan writes), the stanza
+// regions stanza_present checks. "" when no row summarizes the item.
+func summarizingRow(it WiringPlanItem, harness string) string {
+	switch {
+	case it.Verdict == "blocked" && it.Cause == "drift":
+		return "wiring_drift"
+	case it.Kind == "key" && harness == "claude":
+		return "hooks_installed"
+	case it.Kind == "region":
+		return "stanza_present"
+	}
+	return ""
 }

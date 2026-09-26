@@ -13,8 +13,8 @@ package main
 import (
 	"fmt"
 	"html"
+	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/geoffmilleraz/app-kit/appkit/ui/form"
@@ -84,52 +84,78 @@ type projectWiringData struct {
 
 // projectWiringTTL: the preview plan walks the repository's wiring files
 // (seconds on a large checkout), so one read per repository is reused for
-// a minute; Preview recomputes the plan fresh before anything is applied.
+// a minute while nothing its panels follow has moved (projectWiringKey);
+// Preview recomputes the plan fresh before anything is applied.
 const projectWiringTTL = time.Minute
 
-var projectWiringMemo struct {
-	sync.Mutex
-	entries map[string]projectWiringData
+// projectWiringMemo keeps recent reads (console_memo.go: one repository's
+// cold read never holds up another's kept one).
+var projectWiringMemo = consoleMemo[projectWiringData]{max: 32}
+
+// projectWiringKey is the read's input watermarks: the repository, the
+// generation of its panels' live source index:{svc} (an ingest — the moment
+// they show "updated — refresh this panel", so the refresh re-reads), and
+// the receipts log's size and mtime (every apply and undo appends to it).
+func projectWiringKey(cr *consoleRequest, pc projectContext) string {
+	key := pc.svc + "\x00" + pc.root + "\x00" + pc.rootNote + "\x00" + strconv.FormatUint(cr.deps.bus.SourceGeneration("index:"+pc.svc), 10)
+	if pc.rootNote == "" {
+		key += "\x00" + fileWatermark(wiring.ReceiptsPath(pc.root))
+	}
+	return key
 }
 
 func projectWiringFor(cr *consoleRequest, pc projectContext) projectWiringData {
-	key := pc.svc + "\x00" + pc.root + "\x00" + pc.rootNote
-	projectWiringMemo.Lock()
-	defer projectWiringMemo.Unlock()
-	if d, ok := projectWiringMemo.entries[key]; ok && cr.now.Sub(d.at) < projectWiringTTL && !cr.now.Before(d.at) {
-		return d
-	}
+	d, _ := projectWiringMemo.do(projectWiringKey(cr, pc), cr.now, func() (projectWiringData, time.Duration) {
+		return readProjectWiring(cr, pc), projectWiringTTL
+	})
+	return d
+}
+
+// readProjectWiring is one read of a repository's doctor rows, preview plan
+// and receipts.
+func readProjectWiring(cr *consoleRequest, pc projectContext) projectWiringData {
 	d := projectWiringData{at: cr.now}
 	d.facts = console.WiringFacts{Service: pc.svc, Root: pc.root, RootNote: pc.rootNote, Source: "fathom doctor --repo-only"}
-	if pc.rootNote == "" {
-		d.harness = resolveDoctorHarness("auto", pc.root)
-		d.checks = doctorRepoChecks(pc.root, d.harness)
-		for _, c := range d.checks {
-			d.facts.Checks = append(d.facts.Checks, console.WiringCheck{Name: c.Name, Status: string(c.Status), Reason: c.Reason, Remedy: c.Remedy})
-		}
-		// The preview's own engine, read-only: the same plan Preview shows.
-		if pv, _, perr := previewFor(mutationTarget{Service: pc.svc, Root: pc.root}); perr != nil {
-			d.facts.PlanErr = perr.Error()
-		} else {
-			d.facts.PlanDigest = pv.PlanDigest
-			for _, it := range pv.Plan.Items {
-				d.facts.Plan = append(d.facts.Plan, console.WiringPlanItem{File: it.File, Target: it.Target, Verdict: string(it.Verdict), Reason: it.Reason, Cause: it.Cause})
-			}
-		}
-		d.receipts, d.total, d.receiptsErr = loadReceiptsLimited(pc.root, projectReceiptsLimit)
-		if d.receiptsErr != nil {
-			d.facts.ReceiptsErr = d.receiptsErr.Error()
-		} else {
-			d.facts.ReceiptsTotal = d.total
-			for _, r := range d.receipts {
-				d.facts.Receipts = append(d.facts.Receipts, console.WiringReceipt{ID: r.ID, Time: r.Time, Fathom: r.Fathom, UndoOf: r.UndoOf, Files: len(r.Files)})
-			}
+	if pc.rootNote != "" {
+		return d
+	}
+	d.harness = resolveDoctorHarness("auto", pc.root)
+	d.facts.Harness = d.harness
+	d.checks = doctorRepoChecks(pc.root, d.harness)
+	for _, c := range d.checks {
+		d.facts.Checks = append(d.facts.Checks, console.WiringCheck{Name: c.Name, Status: string(c.Status), Reason: c.Reason, Remedy: c.Remedy})
+	}
+	// The preview's own engine, read-only: the same plan Preview shows.
+	if pv, _, perr := previewFor(mutationTarget{Service: pc.svc, Root: pc.root}); perr != nil {
+		d.facts.PlanErr = perr.Error()
+	} else {
+		d.facts.PlanDigest = pv.PlanDigest
+		for _, it := range pv.Plan.Items {
+			d.facts.Plan = append(d.facts.Plan, console.WiringPlanItem{File: it.File, Target: it.Target, Kind: it.Kind, Verdict: string(it.Verdict), Reason: it.Reason, Cause: it.Cause})
 		}
 	}
-	if projectWiringMemo.entries == nil || len(projectWiringMemo.entries) > 32 {
-		projectWiringMemo.entries = map[string]projectWiringData{}
+	// What wiring_drift sees beyond any plan (owned MCP entries, skills),
+	// read as that row reads it, so its drift is itemized — counted once.
+	var ids []string
+	if id, ok := harnessIDFor(d.harness); ok {
+		ids = []string{id}
 	}
-	projectWiringMemo.entries[key] = d
+	for _, dr := range wiringDriftBeyondPlan(pc.root, ids, wiringDriftHome()).Drifts {
+		what := dr.Kind + " " + dr.Path
+		if dr.Target != "" {
+			what += " " + dr.Target
+		}
+		d.facts.BeyondPlan = append(d.facts.BeyondPlan, console.WiringDrift{What: what, Detail: dr.Reason})
+	}
+	d.receipts, d.total, d.receiptsErr = loadReceiptsLimited(pc.root, projectReceiptsLimit)
+	if d.receiptsErr != nil {
+		d.facts.ReceiptsErr = d.receiptsErr.Error()
+	} else {
+		d.facts.ReceiptsTotal = d.total
+		for _, r := range d.receipts {
+			d.facts.Receipts = append(d.facts.Receipts, console.WiringReceipt{ID: r.ID, Time: r.Time, Fathom: r.Fathom, UndoOf: r.UndoOf, Files: len(r.Files)})
+		}
+	}
 	return d
 }
 
@@ -171,7 +197,11 @@ func renderProjectWiring(pc projectContext, v console.WiringViewModel, verbs []s
 		} else {
 			drift.WriteString(`<ul class="grid gap-2">`)
 			for _, d := range v.Drift {
-				drift.WriteString(`<li class="min-w-0 rounded-md border border-line bg-surface px-3 py-2"><p class="font-medium text-ink [overflow-wrap:anywhere]">` + html.EscapeString(d.What) + ` <span class="text-xs font-normal text-ink-muted">(` + html.EscapeString(d.Source) + `)</span></p>` +
+				seen := d.Source
+				if d.Doctor != "" {
+					seen += " · doctor " + d.Doctor
+				}
+				drift.WriteString(`<li class="min-w-0 rounded-md border border-line bg-surface px-3 py-2"><p class="font-medium text-ink [overflow-wrap:anywhere]">` + html.EscapeString(d.What) + ` <span class="text-xs font-normal text-ink-muted">(` + html.EscapeString(seen) + `)</span></p>` +
 					`<p class="text-ink-muted [overflow-wrap:anywhere]">` + html.EscapeString(clipText(d.Detail, 280)) + `</p>`)
 				if d.Remedy != "" {
 					drift.WriteString(`<p class="mt-1 text-xs text-ink [overflow-wrap:anywhere]">remedy: <code class="font-mono">` + html.EscapeString(clipText(d.Remedy, 240)) + `</code></p>`)
@@ -193,11 +223,13 @@ func renderProjectWiring(pc projectContext, v console.WiringViewModel, verbs []s
 	if len(v.Checks) > 0 {
 		rows := make([]table.Row, 0, len(v.Checks))
 		for _, c := range v.Checks {
-			rows = append(rows, table.Row{ID: "check-" + c.Name, Cells: []string{c.Group, c.Name, strings.ToUpper(c.Status), clipText(c.Reason, 360), clipText(c.Remedy, 200)}})
+			rows = append(rows, table.Row{ID: "check-" + c.Name, Cells: []string{strings.ToUpper(c.Status), c.Name, c.Group, clipText(c.Reason, 360), clipText(c.Remedy, 200)}})
 		}
+		// Status leads: on a phone the table scrolls sideways in its own
+		// region, and PASS/FAIL is what a reader scans for first.
 		doc.WriteString(renderKitTable(table.TableParams{
 			TableID: "project-doctor", Caption: fmt.Sprintf("%d repository-side doctor rows, wiring first", len(v.Checks)),
-			Columns: []table.Column{{Key: "group", Label: "Group"}, {Key: "check", Label: "Check"}, {Key: "status", Label: "Status"}, {Key: "reason", Label: "Reason"}, {Key: "remedy", Label: "Remedy"}},
+			Columns: []table.Column{{Key: "status", Label: "Status"}, {Key: "check", Label: "Check"}, {Key: "group", Label: "Group"}, {Key: "reason", Label: "Reason"}, {Key: "remedy", Label: "Remedy"}},
 			Rows:    rows,
 		}))
 		doc.WriteString(`<p class="mt-2 text-xs text-ink-muted">The full diagnosis — daemon, harness registration, hooks firing, serving — is <code class="font-mono">fathom doctor --path ` + html.EscapeString(shellWord(pc.root)) + `</code> (41 rows; it dials the daemon, so it is not run on a page load).</p>`)

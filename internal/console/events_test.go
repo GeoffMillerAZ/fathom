@@ -333,3 +333,44 @@ func TestEventBus_GapNamesEverySource(t *testing.T) {
 		}
 	}
 }
+
+// TestEventBus_SourceGenerationFollowsTheAffordance pins what a memo keyed
+// on a panel's sources can rely on: the generation of a source key moves
+// exactly when an event names it — the moment a panel following that key
+// shows "updated — refresh this panel" — and never for another key, so the
+// refresh the affordance offers recomputes, and nothing else does.
+func TestEventBus_SourceGenerationFollowsTheAffordance(t *testing.T) {
+	b := console.NewEventBus(console.BusOptions{})
+	if g := b.SourceGeneration("plans:fathom"); g != 0 {
+		t.Fatalf("before any event = %d", g)
+	}
+	if _, err := b.Publish(console.Event{Kind: console.EventVerify, Service: "fathom", Name: "console.md", Ref: "fail"}); err != nil {
+		t.Fatal(err)
+	}
+	g1 := b.SourceGeneration("plans:fathom")
+	if g1 == 0 || b.SourceGeneration("plans") != g1 {
+		t.Fatalf("a verify event for fathom names plans:fathom and plans: %d, %d", g1, b.SourceGeneration("plans"))
+	}
+	if _, err := b.Publish(console.Event{Kind: console.EventVerify, Service: "app-kit", Name: "x.md", Ref: "pass"}); err != nil {
+		t.Fatal(err)
+	}
+	if b.SourceGeneration("plans:fathom") != g1 {
+		t.Error("another service's event moved fathom's generation")
+	}
+	if b.SourceGeneration("index:fathom") != 0 {
+		t.Error("a verify event moved the index key")
+	}
+	if _, err := b.Publish(console.Event{Kind: console.EventIngest, Service: "fathom", Ref: "c0ffee"}); err != nil {
+		t.Fatal(err)
+	}
+	if g := b.SourceGeneration("index:fathom"); g <= g1 {
+		t.Errorf("an ingest for fathom = %d, want past %d", g, g1)
+	}
+	// Refused events move nothing.
+	if _, err := b.Publish(console.Event{Kind: console.EventVerify, Service: "has space"}); err == nil {
+		t.Fatal("prose in an event must be refused")
+	}
+	if b.SourceGeneration("plans:has space") != 0 {
+		t.Error("a refused event moved a generation")
+	}
+}

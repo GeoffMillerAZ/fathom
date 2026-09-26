@@ -11,9 +11,11 @@ import (
 // TestProjectActivity_FromResolvedLog pins OC-39: a project's tool calls
 // come from the RESOLVED call log (the path ResolveCallLog chose, named in
 // the model), scoped to the project and the window, with the console's own
-// reads excluded and counted; its sessions come from the ledger, one per
-// session id, through the label mapping the model uses. A day with no rows
-// is a measured zero; a missing log is absent and an unreadable one an
+// reads excluded and counted; its sessions are the shared project.sessions
+// metric itself (OC-9: one projection, never a recount), and the sessions
+// listed come from the same read of the ledger, one per session id by the
+// one dedupe rule, through the label mapping the model uses. A day with no
+// rows is a measured zero; a missing log is absent and an unreadable one an
 // error — never zeros.
 func TestProjectActivity_FromResolvedLog(t *testing.T) {
 	dir := t.TempDir()
@@ -35,12 +37,18 @@ func TestProjectActivity_FromResolvedLog(t *testing.T) {
 		`{"ts":"2026-09-25T09:32:00Z","tool":"verify_plan","service":"","latency_ms":9}`,                            // unattributed
 		`not json`,
 	}, "\n")+"\n")
-	write(ledger, strings.Join([]string{
+	ledgerRead := []byte(strings.Join([]string{
 		`{"session_id":"s-1","arm":"on","repo":"sextant","at":"2026-09-24T10:00:00Z","turn_count":3}`,
 		`{"session_id":"s-1","arm":"on","repo":"sextant","at":"2026-09-24T10:05:00Z","turn_count":7,"first_edit_turn":2}`,
 		`{"session_id":"s-2","arm":"off","repo":"fathom","at":"2026-09-25T09:00:00Z","turn_count":4}`,
 		`{"session_id":"s-3","arm":"on","repo":"app-kit","at":"2026-09-25T09:00:00Z"}`,
-	}, "\n")+"\n")
+		// A count that does not decode still names its session: the shared
+		// count counts it, so the list must too.
+		`{"session_id":"s-4","arm":"on","repo":"fathom","at":"2026-09-20T09:00:00Z","turn_count":"many"}`,
+	}, "\n") + "\n")
+	// The ledger on disk has grown since the model's read (a session the
+	// shared count never saw): the tab lists from the read, never the file.
+	write(ledger, string(ledgerRead)+`{"session_id":"s-late","arm":"on","repo":"fathom","at":"2026-09-25T11:59:00Z"}`+"\n")
 	now := time.Date(2026, 9, 25, 12, 0, 0, 0, time.UTC)
 	resolved := ResolveCallLog(CallLogInputs{Daemon: logPath, DaemonNote: "recorded by serve-http pid 1"})
 	src := Sources{CallLog: resolved, SessionLedger: ledger, Now: func() time.Time { return now }}
@@ -50,7 +58,9 @@ func TestProjectActivity_FromResolvedLog(t *testing.T) {
 		}
 		return strings.ToLower(l)
 	}
-	m := ProjectActivity(src, ActivityInput{Service: "fathom", LabelKey: labelKey})
+	n := DistinctSessionsBy(ledgerRead, labelKey)["fathom"]
+	shared := ProjectSessions(ProjectFacts{Name: "fathom", Sessions: &n, SessionsState: SessionCount(ledger, ledgerRead, nil)})
+	m := ProjectActivity(src, ActivityInput{Service: "fathom", LabelKey: labelKey, Sessions: shared, Ledger: ledgerRead})
 
 	if m.CallLog.Path != logPath || m.CallLog.Rule != RuleDaemon {
 		t.Fatalf("the model must name the resolved log and its rule: %+v", m.CallLog)
@@ -80,19 +90,29 @@ func TestProjectActivity_FromResolvedLog(t *testing.T) {
 	if len(m.Recent) != 3 || m.Recent[0].Tool != "references" || m.Recent[1].Error != "boom" {
 		t.Errorf("recent newest first = %+v", m.Recent)
 	}
-	if m.Sessions.V != 2 || len(m.SessionRows) != 2 || m.SessionRows[0].ID != "s-2" {
-		t.Fatalf("sessions = %+v %+v", m.Sessions, m.SessionRows)
+	if m.Sessions != shared || m.Sessions.V != 3 {
+		t.Fatalf("sessions = %+v, want the shared metric %+v itself", m.Sessions, shared)
+	}
+	if len(m.SessionRows) != m.Sessions.V || m.SessionRows[0].ID != "s-2" || m.SessionRows[2].ID != "s-4" {
+		t.Fatalf("the sessions listed are the ones counted, newest first: %+v", m.SessionRows)
 	}
 	s1 := m.SessionRows[1]
 	if s1.Rows != 2 || s1.Turns == nil || *s1.Turns != 7 || s1.FirstEditTurn == nil || *s1.FirstEditTurn != 2 {
 		t.Errorf("a session keeps its newest row and counts its rows: %+v", s1)
 	}
-	if !strings.Contains(m.Sessions.Denominator, "from 3 ledger rows") {
-		t.Errorf("sessions denominator = %q", m.Sessions.Denominator)
+	if s4 := m.SessionRows[2]; s4.Turns != nil || s4.Arm != "on" {
+		t.Errorf("a count that does not decode is not recorded, the session still listed: %+v", s4)
+	}
+	// Not read for this snapshot: absent, and no rows.
+	if unread := ProjectActivity(src, ActivityInput{Service: "fathom", LabelKey: labelKey, Ledger: ledgerRead}); unread.Sessions.State != StateAbsent || len(unread.SessionRows) != 0 {
+		t.Errorf("no shared read = %+v %+v", unread.Sessions, unread.SessionRows)
 	}
 
 	// A missing log is absent — every day, never a row of zeros.
-	gone := ProjectActivity(Sources{CallLog: ResolvedCallLog{Path: filepath.Join(dir, "none.jsonl"), Rule: RuleDaemon}, SessionLedger: filepath.Join(dir, "none-ledger.jsonl"), Now: src.Now}, ActivityInput{Service: "fathom"})
+	noLedger := filepath.Join(dir, "none-ledger.jsonl")
+	_, readErr := os.ReadFile(noLedger)
+	gone := ProjectActivity(Sources{CallLog: ResolvedCallLog{Path: filepath.Join(dir, "none.jsonl"), Rule: RuleDaemon}, SessionLedger: noLedger, Now: src.Now},
+		ActivityInput{Service: "fathom", Sessions: ProjectSessions(ProjectFacts{Name: "fathom", SessionsState: SessionCount(noLedger, nil, readErr)})})
 	if gone.WindowCalls.State != StateAbsent || gone.Days[0].Calls.State != StateAbsent || gone.Sessions.State != StateAbsent {
 		t.Errorf("missing sources = %+v %+v %+v", gone.WindowCalls, gone.Days[0].Calls, gone.Sessions)
 	}

@@ -66,6 +66,13 @@ type IntentViewModel struct {
 	Tier          string `json:"tier"`
 	Router        string `json:"router,omitempty"`
 	DecisionsHome string `json:"decisions_home,omitempty"`
+	// Corpus is the corpus's tier with its truth state: present when the
+	// corpus was read whole, partial when some of it could not be read,
+	// absent when the repository has no router and no decision records (a
+	// choice, not a defect), and an ERROR when it has no readable router or
+	// record because one that exists could not be read — an unreadable file
+	// is never reported as no corpus (I38).
+	Corpus Value[string] `json:"corpus"`
 	// ReadOnly is always true: the view is built only from a read-only run.
 	ReadOnly   bool              `json:"read_only"`
 	Invariants []IntentInvariant `json:"invariants"`
@@ -97,6 +104,7 @@ func IntentView(c intent.Corpus, a intent.Audit, ledger []intent.LedgerRow, now 
 		Uncomputable: []string{}, Debt: []IntentDebtPoint{},
 	}
 	const source = "fathom intent audit --read-only"
+	m.Corpus = corpusState(c, source)
 
 	claimsByRef := map[string][]intent.Claim{}
 	for _, cl := range a.Unproven {
@@ -206,4 +214,21 @@ func IntentView(c intent.Corpus, a intent.Audit, ledger []intent.LedgerRow, now 
 		m.ClockStarted = row.At
 	}
 	return m
+}
+
+// corpusState is the corpus's tier as a truth state, decided by the
+// corpus's own reads (a source outside the corpus that could not be read
+// makes the audit's counts a lower bound; it does not make the corpus
+// missing).
+func corpusState(c intent.Corpus, source string) Value[string] {
+	note := readcoverage.Note(c.Coverage)
+	switch {
+	case c.Tier == intent.TierNone && note != "":
+		return Errored[string]("the intent corpus could not be read: " + note + " — a router or decision record that exists and cannot be read is never reported as no corpus (I38)").WithSource(source)
+	case c.Tier == intent.TierNone:
+		return Absent[string]("no intent corpus: " + c.Root + " has no docs/intent/ router and no decision records — nothing to audit (a choice, not a defect)").WithSource(source)
+	case note != "":
+		return Partial(string(c.Tier), "the corpus was read in part: "+note+" — every count below is a lower bound").WithSource(source)
+	}
+	return Measured(string(c.Tier), source).WithDenominator("the corpus's tier: a docs/intent/ router, or decision records alone")
 }

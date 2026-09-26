@@ -14,7 +14,6 @@ package main
 // the project (coordinated by URL: those pages own the views).
 
 import (
-	"html"
 	"net/http"
 	"net/url"
 	"os"
@@ -22,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/geoffmilleraz/app-kit/appkit/ui/callout"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/chrome"
 	"github.com/geoffmilleraz/fathom/internal/console"
 )
@@ -225,12 +225,19 @@ func shellWord(s string) string {
 }
 
 // projectRootCallout names why a tab that reads the repository's files has
-// nothing to read on this machine.
+// nothing to read on this machine, in the kit's callout (doctrine rule 1):
+// an info note for a remote corpus with no local root, a caution for a
+// registered root this machine cannot read (unavailable configuration,
+// docs/app-kit.md).
 func projectRootCallout(pc projectContext) string {
 	if pc.rootNote == "" {
 		return ""
 	}
-	return `<p class="mb-3 max-w-3xl rounded-md border border-line bg-surface-raised px-3 py-2 text-ink-muted [overflow-wrap:anywhere]" data-project-root-note>` + html.EscapeString(pc.rootNote) + `</p>`
+	c := callout.Callout{Kind: callout.Info, Title: "Nothing to read on this machine", Body: pc.rootNote}
+	if pc.root != "" {
+		c.Kind, c.Title = callout.Caution, "The repository cannot be read here"
+	}
+	return `<div class="mb-3 max-w-3xl [overflow-wrap:anywhere]">` + callout.Render(c) + `</div>`
 }
 
 // unknownProjectError is OC-5's unknown-service page: the name that missed,

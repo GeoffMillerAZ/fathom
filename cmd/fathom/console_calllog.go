@@ -109,7 +109,10 @@ func recordServingDaemon(addr, callLog, storePath, commit string, now time.Time)
 		}
 	}
 	rec := console.NewDaemonRecord(addr, os.Getpid(), abs, absStore, commit, now)
-	setServingCallLog(abs, "this daemon's own --call-log")
+	// The record's own provenance: a verb run from a terminal names this
+	// log through the record (resolveConsoleCallLogFor), so the pages must
+	// use the same words or their JSON differs from the verb's (OC-8).
+	setServingCallLog(abs, rec.Note())
 	home, err := os.UserHomeDir()
 	if err != nil || home == "" {
 		return rec, err

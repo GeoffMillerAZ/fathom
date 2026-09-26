@@ -13,15 +13,16 @@ package main
 // rendering a page never appends a clock, baseline, debt or cache row to the
 // user's intent ledger, and the index oracle's requests carry the console's
 // origin, so looking at the tab is never usage. An audit reads the whole
-// corpus, the tree and the verify ledger, so one run is kept per (root,
-// HEAD) for five minutes and its time is stated.
+// corpus, the tree and the verify ledger, so one run is kept while its
+// inputs are unchanged (intentAuditKey), five minutes at most, and its time
+// is stated.
 
 import (
 	"fmt"
 	"html"
 	"html/template"
+	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/geoffmilleraz/app-kit/appkit/ui/chrome"
@@ -52,37 +53,51 @@ type projectIntentModel struct {
 	View     *console.IntentViewModel `json:"view,omitempty"`
 }
 
-type intentAuditMemoEntry struct {
+// intentAuditResult is one read-only audit run, as the memo keeps it.
+type intentAuditResult struct {
 	run intentAuditRun
 	err error
-	at  time.Time
 }
 
-var intentAuditMemo struct {
-	sync.Mutex
-	entries map[string]intentAuditMemoEntry
-}
+// intentAuditMemo keeps recent audits (console_memo.go: the lock guards the
+// map, never an audit, so one project's cold audit never holds up another
+// project's kept one).
+var intentAuditMemo = consoleMemo[intentAuditResult]{max: 16}
 
 // intentAuditTTL bounds how stale a shown audit may be. An audit of a large
 // repository walks its whole tree and asks the index about every named test
-// (18–50 s on this repository's own checkout), so one run per (root, HEAD)
-// is kept for five minutes and its time is stated on every panel.
+// (18–50 s on this repository's own checkout), so a run is kept while its
+// inputs are unchanged — for five minutes at most — and its time is stated
+// on every panel.
 const intentAuditTTL = 5 * time.Minute
 
+// intentAuditRetryTTL is how long a run that failed, or could not read
+// every source, is kept: the EPERM wedge behind it clears in seconds, and
+// the full audit must then replace the partial one soon.
+const intentAuditRetryTTL = 30 * time.Second
+
+// intentAuditKey is the audit's input watermarks (design §1 "Caching"): the
+// root and service, the commit (the corpus and the tree), the generation of
+// the panels' own live source plans:{svc} — a verify-ledger row for the
+// project, which the audit reads for U1/U2 and which makes every intent
+// panel say "updated — refresh this panel" — and the intent ledger's size
+// and mtime (the debt over time and the fired conditions). A refresh the
+// affordance offers therefore re-runs the audit; nothing else does.
+func intentAuditKey(root, svc string, plansGeneration uint64) string {
+	return strings.Join([]string{root, svc, gitHeadShort(root), strconv.FormatUint(plansGeneration, 10), fileWatermark(intent.LedgerPath())}, "\x00")
+}
+
 // readOnlyIntentAudit runs (or recalls) the read-only audit for root.
-func readOnlyIntentAudit(root, svc, selfURL string, now time.Time) (intentAuditRun, time.Time, error) {
-	key := root + "\x00" + svc + "\x00" + gitHeadShort(root)
-	intentAuditMemo.Lock()
-	defer intentAuditMemo.Unlock()
-	if e, ok := intentAuditMemo.entries[key]; ok && now.Sub(e.at) < intentAuditTTL && !now.Before(e.at) {
-		return e.run, e.at, e.err
-	}
-	run, err := runIntentAudit(intentAuditOptions{Root: root, Service: svc, URL: selfURL, ReadOnly: true, HTTP: consoleRPCClient(30 * time.Second)})
-	if intentAuditMemo.entries == nil || len(intentAuditMemo.entries) > 16 {
-		intentAuditMemo.entries = map[string]intentAuditMemoEntry{}
-	}
-	intentAuditMemo.entries[key] = intentAuditMemoEntry{run: run, err: err, at: now}
-	return run, now, err
+func readOnlyIntentAudit(root, svc, selfURL string, plansGeneration uint64, now time.Time) (intentAuditRun, time.Time, error) {
+	r, at := intentAuditMemo.do(intentAuditKey(root, svc, plansGeneration), now, func() (intentAuditResult, time.Duration) {
+		run, err := runIntentAudit(intentAuditOptions{Root: root, Service: svc, URL: selfURL, ReadOnly: true, HTTP: consoleRPCClient(30 * time.Second)})
+		keep := intentAuditTTL
+		if err != nil || !run.Audit.Coverage.Complete() {
+			keep = intentAuditRetryTTL
+		}
+		return intentAuditResult{run: run, err: err}, keep
+	})
+	return r.run, at, r.err
 }
 
 func buildProjectIntentPage(cr *consoleRequest) (consoleOut, error) {
@@ -107,7 +122,7 @@ func buildProjectIntentPage(cr *consoleRequest) (consoleOut, error) {
 		}
 		return out, nil
 	}
-	run, at, aerr := readOnlyIntentAudit(pc.root, pc.svc, cr.deps.selfURL, cr.now)
+	run, at, aerr := readOnlyIntentAudit(pc.root, pc.svc, cr.deps.selfURL, cr.deps.bus.SourceGeneration("plans:"+pc.svc), cr.now)
 	if aerr != nil {
 		model.Error = aerr.Error()
 		out.Model = model
@@ -130,11 +145,14 @@ func buildProjectIntentPage(cr *consoleRequest) (consoleOut, error) {
 
 func renderProjectIntent(pc projectContext, v console.IntentViewModel, verb string, at time.Time) string {
 	var b strings.Builder
-	if v.Tier == string(intent.TierNone) {
+	// No corpus to show: absent when the repository has none (a choice),
+	// an error naming the files when one exists and cannot be read (I38) —
+	// the projection decides which, from the corpus's own reads.
+	if !v.Corpus.Known() {
 		b.WriteString(renderPanel(consolePanel{
 			ID: "intent", Title: "Intent", Verb: verb,
 			Question: "What does this repository promise?",
-			State:    console.StateAbsent, Reason: "no intent corpus: " + pc.root + " has no docs/intent/ router and no decision records — nothing to audit (a choice, not a defect)",
+			State:    v.Corpus.State, Reason: v.Corpus.Reason,
 			Source: "fathom intent audit --read-only", Freshness: "audited " + at.UTC().Format("15:04:05 UTC"), SourceKey: "plans:" + pc.svc,
 		}))
 		return b.String()
@@ -151,7 +169,7 @@ func renderProjectIntent(pc projectContext, v console.IntentViewModel, verb stri
 		valueStat("conditions fired", v.Fired),
 		valueStat("recorded audits", v.DebtState),
 	}, stat.BandOptions{AriaLabel: pc.svc + " intent"}))
-	fresh := "audited " + at.UTC().Format("2006-01-02 15:04:05 UTC") + " (read-only; kept five minutes per commit)"
+	fresh := "audited " + at.UTC().Format("2006-01-02 15:04:05 UTC") + " (read-only; re-run when the commit, a verify row for " + pc.svc + " or the intent ledger changes, else kept up to five minutes)"
 
 	// Invariants.
 	var inv strings.Builder
