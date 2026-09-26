@@ -1,8 +1,13 @@
 # 12 — The governed knowledge engine: module host, expertchat, hosted chat
 
-**Status:** Phase F (below) is landed and stamped — the store-format spec and
-the research flywheel are real, in code, on `main`. Phases G–I are a founding
-doc, awaiting owner greenlight, same discipline as `11-dial-to-eleven.md`.
+**Status:** accepted 2026-07-28 — the owner decision of §1 pulled phases G–I
+forward that day. Phase F is landed (the store-format spec and the research
+flywheel, on `main`); phase G became `docs/plans/gke-wave1.md` and
+`docs/plans/gke-module-host.md`; phase H is agentic-kit's (`expertchat`); phase I,
+the hosted chat path, is held by two standing non-goals in `docs/intent/scope.md`
+(no hosted multi-tenant expert backend, no first-party chat) until their Revisit
+conditions hold. Restated 2026-09-25.
+Plans: `docs/plans/gke-wave1.md`, `docs/plans/gke-module-host.md`.
 **Successor to** `11-dial-to-eleven.md` (Phases A–E complete or in flight, K
 in flight) — this doc does not re-litigate that program; it governs what the
 just-landed spec and flywheel unlock next.

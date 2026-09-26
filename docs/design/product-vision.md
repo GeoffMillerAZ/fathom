@@ -135,9 +135,11 @@ green internally, do not release — re-examine the wedge.
   12-governed-knowledge-engine.md` for what it unlocks next and the owner
   decision to pull the module-host/chat capability forward from H3 ahead of
   this section's external-adoption entry condition, which remains unmet.
-- **Layer 2 = failure-mode playbook**, entry-conditioned (obligations gate passed
-  AND corpus ≥15–20 findings), compiled from a non-git folder corpus so
-  watermarks/portability/tier-profiles get a real consumer. The generic layer
+- **Layer 2 = `adr-rules`** (shipped 2026-07-17, `docs/plans/layer-catalog.md` LC-5;
+  `docs/vision/06-use-cases.md` §2 moved it ahead). The **failure-mode playbook**
+  stays entry-conditioned (obligations gate passed AND corpus ≥15–20 findings),
+  compiled from a non-git folder corpus so watermarks/portability/tier-profiles get
+  a real consumer (`docs/intent/futures.md` F4). The generic layer
   runtime is extracted only now — generalize from two instances, not one.
 - **User #2 probe, bounded:** one-page "auditable AI evidence" brief + one demo
   store for the compliance-engineering engagement. One brief, one store — not a
