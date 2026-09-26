@@ -19,9 +19,9 @@ wave is called done.
 - [x] A metric shown on several pages has one projection, and every page agrees on it {id: OC-9, symbol: registerPage, package: cmd/fathom, reachable_from: TestConsoleMetricsAgreeAcrossPages}
 - [x] Panels carry a copyable verb chip, a question, and a footer naming source, denominator and freshness {id: OC-10, symbol: renderPanel, package: cmd/fathom, reachable_from: TestConsolePanels_CarryVerbQuestionAndSource}
 - [x] `/search` returns grouped results (projects, plans and rows, symbols, rules and records, verbs, pages) as a page and as a fragment {id: OC-11, symbol: Search, package: internal/console, reachable_from: TestSearch_GroupsAndRanksResults}
-- [ ] The ⌘K palette opens over any page, moves with the arrow keys, opens on Enter and returns focus on Esc {id: OC-12, oracle: lexical, path: cmd/fathom/console_palette.go, pattern: "palette"}
+- [x] The ⌘K palette opens over any page, moves with the arrow keys, opens on Enter and returns focus on Esc {id: OC-12, oracle: lexical, path: cmd/fathom/console_palette.go, pattern: "palette"}
 - [x] `/events` streams ingest, compile, verify, session and daemon events with IDs, keepalives, replay and a subscriber bound {id: OC-13, symbol: EventBus, package: internal/console, reachable_from: TestEventBus_ReplayBoundAndKeepalive}
-- [ ] A panel shows "updated" when an event names its source and never moves content {id: OC-14, oracle: lexical, path: cmd/fathom/console_live.go, pattern: "data-console-source"}
+- [x] A panel shows "updated" when an event names its source and never moves content {id: OC-14, oracle: lexical, path: cmd/fathom/console_live.go, pattern: "data-console-source"}
 - [x] Console page views are counted per route for the panel-traffic measurement {id: OC-15, symbol: countPageView, package: cmd/fathom, reachable_from: TestConsolePageViews_Counted}
 - [x] Warm renders stay within 150 ms and 250 KB on the fixture fleet {id: OC-16, symbol: registerPage, package: cmd/fathom, reachable_from: TestConsoleBudgets}
 
@@ -82,7 +82,7 @@ wave is called done.
 - [ ] (op) OC-51: FATHOM-KIT-03 heatmap truth states land in app-kit and fathom's coverage matrix uses them {id: OC-51, skip: "cross-repo: app-kit"}
 - [ ] (op) OC-52: FATHOM-KIT-04 the code excerpt lands in app-kit and fathom's refactor and claim pages use it {id: OC-52, skip: "cross-repo: app-kit"}
 - [ ] (op) OC-53: FATHOM-KIT-05..08 unified diff, live freshness, page heading and catalog entries land in app-kit {id: OC-53, skip: "cross-repo: app-kit"}
-- [ ] Fathom's mirror is pinned to the app-kit revision carrying its contributions, and each contribution record in docs/app-kit.md names its delivery {id: OC-54, oracle: lexical, path: docs/app-kit.md, pattern: "FATHOM-KIT-01"}
+- [x] Fathom's mirror is pinned to the app-kit revision carrying its contributions, and each contribution record in docs/app-kit.md names its delivery {id: OC-54, oracle: lexical, path: docs/app-kit.md, pattern: "FATHOM-KIT-01"}
 
 ## I. Measurements
 
