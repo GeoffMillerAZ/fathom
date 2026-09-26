@@ -60,12 +60,12 @@ const (
 	selfRestartCooldown = 5 * time.Minute
 )
 
-// adoptionExitCode is the code the daemon exits with when it adopts a new
+// adoptionExitCode returns the code the daemon exits with when it adopts a new
 // binary (RT-11, design §8.2): 75 (EX_TEMPFAIL), never 0. Under plist
 // schema 2 KeepAlive is {SuccessfulExit: false}, so exit 0 means "stay
 // down" (the kill switch, a breaker stop) and an adoption must be non-zero
 // to be relaunched; under schema 1 (KeepAlive true) any exit relaunches.
-const adoptionExitCode = 75
+func adoptionExitCode() int { return 75 }
 
 // selfRestartDisabled lets an operator switch the behaviour off without a
 // rebuild. Off is a legitimate choice — some deployments want the binary
@@ -209,8 +209,8 @@ func watchOwnBinary(path string, log *dlog.Logger, cfg selfRestartConfig) {
 			}
 		}
 		log.Info(fmt.Sprintf("self-restart: adopting %s (%s → %s)%s — exiting %d so launchd restarts on the new code",
-			ver, shortHash(start), shortHash(pending), buildAgeSuffix(), adoptionExitCode))
-		cfg.exit(adoptionExitCode)
+			ver, shortHash(start), shortHash(pending), buildAgeSuffix(), adoptionExitCode()))
+		cfg.exit(adoptionExitCode())
 		return
 	}
 }

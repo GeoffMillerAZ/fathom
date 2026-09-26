@@ -21,8 +21,8 @@ import (
 // {SuccessfulExit: false}, where exit 0 — the old adoption code — would
 // leave the daemon down after every deploy.
 func TestSelfRestartExitCodeMatchesPlistSchema(t *testing.T) {
-	if adoptionExitCode != 75 {
-		t.Fatalf("adoptionExitCode = %d, want 75 (EX_TEMPFAIL)", adoptionExitCode)
+	if adoptionExitCode() != 75 {
+		t.Fatalf("adoptionExitCode() = %d, want 75 (EX_TEMPFAIL)", adoptionExitCode())
 	}
 	v1 := plistBody("dev.fathom.serve-http", "/usr/local/bin/fathom", "/s.sqlite", ":7575", "/logs", "/c.jsonl", "/usr/bin", nil)
 	const v1KeepAlive = "<key>KeepAlive</key><true/>"
@@ -36,7 +36,7 @@ func TestSelfRestartExitCodeMatchesPlistSchema(t *testing.T) {
 		plist string
 		dict  bool
 	}{{"schema 1", v1, false}, {"schema 2", v2, true}} {
-		dict, relaunch, err := keepAliveRelaunches(tc.plist, adoptionExitCode)
+		dict, relaunch, err := keepAliveRelaunches(tc.plist, adoptionExitCode())
 		if err != nil {
 			t.Fatalf("%s: %v", tc.name, err)
 		}
@@ -44,7 +44,7 @@ func TestSelfRestartExitCodeMatchesPlistSchema(t *testing.T) {
 			t.Errorf("%s: KeepAlive dict = %v, want %v", tc.name, dict, tc.dict)
 		}
 		if !relaunch {
-			t.Errorf("%s: launchd would not relaunch after adoption exit %d — a deploy would leave the daemon down", tc.name, adoptionExitCode)
+			t.Errorf("%s: launchd would not relaunch after adoption exit %d — a deploy would leave the daemon down", tc.name, adoptionExitCode())
 		}
 		// Exit 0 relaunches under KeepAlive true and stays down under the
 		// dict: the adoption code must be non-zero exactly because of the dict.
@@ -100,8 +100,8 @@ func TestWatchOwnBinaryHashesOnlyOnStatChange(t *testing.T) {
 		case <-time.After(5 * time.Second):
 			t.Fatalf("never adopted; log:\n%s", out.String())
 		}
-		if got := exited.Load(); got != adoptionExitCode {
-			t.Errorf("exit = %d, want %d", got, adoptionExitCode)
+		if got := exited.Load(); got != int32(adoptionExitCode()) {
+			t.Errorf("exit = %d, want %d", got, adoptionExitCode())
 		}
 		if got := hashes.Load(); got != 2 {
 			t.Errorf("hashes = %d, want 2 (baseline + the one change)", got)

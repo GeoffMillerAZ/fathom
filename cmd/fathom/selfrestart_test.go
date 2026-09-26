@@ -90,8 +90,8 @@ func TestSelfRestartAdoptsAVerifiedBinary(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatalf("the watcher never adopted the new binary; log:\n%s", out.String())
 	}
-	if exited.Load() != adoptionExitCode {
-		t.Errorf("exit code = %d, want %d — a non-zero exit is what lets launchd (KeepAlive {SuccessfulExit: false}) restart on the new code", exited.Load(), adoptionExitCode)
+	if exited.Load() != int32(adoptionExitCode()) {
+		t.Errorf("exit code = %d, want %d — a non-zero exit is what lets launchd (KeepAlive {SuccessfulExit: false}) restart on the new code", exited.Load(), adoptionExitCode())
 	}
 	if !strings.Contains(out.String(), "adopting") {
 		t.Errorf("the adoption must be announced; a silent self-restart is indistinguishable from a crash:\n%s", out.String())
