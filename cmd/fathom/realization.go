@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/console"
 )
@@ -74,7 +75,9 @@ type realizationWindow struct {
 	// Calls in the window, NOT calls ever. The incumbent grade's
 	// CallsTotal > 0 test can never go down, which makes it useless as a
 	// health signal — a repository busy in July and silent since is not
-	// currently realizing value.
+	// currently realizing value. Sessions, ObligationServes and VerifyRuns
+	// are the same window's (design §2): distinct sessions, obligations
+	// calls, and the verify ledger's gate runs.
 	Calls            int
 	Sessions         int
 	ObligationServes int
@@ -86,10 +89,12 @@ type realizationWindow struct {
 	// WindowDays names the window the call counts cover (0: "the window").
 	WindowDays int
 	// CallLogNote, when set, is why the call log was not read: queried and
-	// preventing are then unknown, never unmet (law 3). LedgerNote is the
-	// same for the session ledger and the gating rung.
-	CallLogNote string
-	LedgerNote  string
+	// preventing are then unknown, never unmet (law 3). VerifyLedgerNote is
+	// the same for the verify ledger and the gating rung; SessionsNote for
+	// the session ledger and the idle rule.
+	CallLogNote      string
+	VerifyLedgerNote string
+	SessionsNote     string
 	// PlansNote, when set, is why docs/plans was not read: gating is then
 	// unknown, never not applicable.
 	PlansNote string
@@ -103,7 +108,7 @@ func realizationLadderFacts(s obsServiceRow, w realizationWindow) console.Ladder
 		Service: s.Service, StanzaNote: s.StanzaNote, HooksNote: s.HooksNote,
 		Freshness: s.Freshness, FreshRemedy: daemonRefreshRemedy(s.Path, s.Service),
 		WindowDays: w.WindowDays, Calls: w.Calls, ObligationServes: w.ObligationServes, CallLogNote: w.CallLogNote,
-		Sessions: w.Sessions, VerifyRuns: w.VerifyRuns, LedgerNote: w.LedgerNote,
+		Sessions: w.Sessions, SessionsNote: w.SessionsNote, VerifyRuns: w.VerifyRuns, VerifyLedgerNote: w.VerifyLedgerNote,
 		HasPlans: w.HasPlans, PlansNote: w.PlansNote,
 	}
 }
@@ -177,6 +182,50 @@ func orDash(s string) string {
 		return "—"
 	}
 	return s
+}
+
+// realizationWindowDays is the ladder's window: the fourteen UTC days the
+// traffic sparkline draws (row.TrafficDays), so a rung and the chart beside
+// it can never disagree.
+const realizationWindowDays = 14
+
+// realizationWindowBounds is the ladder's window as [from, to): the start
+// of the UTC day thirteen days before now, to the end of now's UTC day.
+func realizationWindowBounds(now time.Time) (from, to time.Time) {
+	y, mo, d := now.UTC().Date()
+	today := time.Date(y, mo, d, 0, 0, 0, 0, time.UTC)
+	return today.AddDate(0, 0, -(realizationWindowDays - 1)), today.AddDate(0, 0, 1)
+}
+
+// inRealizationWindow reports whether a call-log timestamp falls in
+// [from, to).
+func inRealizationWindow(ts string, from, to time.Time) bool {
+	t, err := time.Parse(time.RFC3339, ts)
+	if err != nil {
+		return false
+	}
+	return !t.Before(from) && t.Before(to)
+}
+
+// windowVerifyRuns counts each service's verify runs in [from, to) from the
+// verify ledger (SD-1, the recorded-run signal: every `fathom verify` run
+// appends to it, a pre-push gate's included). note is set when the ledger
+// could not be read or does not exist: the gating rung is then unknown,
+// never a measured "no runs" (law 3) — a daemon that reads another HOME's
+// ledger would otherwise tell every gating repository to add the gate.
+func windowVerifyRuns(from, to time.Time) (map[string]int, string) {
+	path := verifyLedgerPath()
+	if path == "" {
+		return nil, "no verify ledger is configured (no home directory, no FATHOM_VERIFY_LEDGER)"
+	}
+	if _, err := os.Stat(path); errors.Is(err, fs.ErrNotExist) {
+		return nil, "no verify ledger at " + path + " — no `fathom verify` run is recorded on this machine"
+	}
+	runs, _, readErr := ledgerRuns()
+	if readErr != "" {
+		return nil, "the verify ledger could not be read (" + readErr + ")"
+	}
+	return console.VerifyRunsIn(runs, strings.ToLower, from, to), ""
 }
 
 // sumInts totals a per-day traffic slice — the window's call count.

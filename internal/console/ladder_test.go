@@ -97,3 +97,46 @@ func TestRealizationLadder_RemedyOnFirstUnmetRung(t *testing.T) {
 		t.Errorf("not wired = %+v", l.Rungs)
 	}
 }
+
+// TestRealizationLadder_GatingReadsTheVerifyLedger pins the gating rung to
+// its signal (docs/design/realization-grade.md §2: "verify runs in the
+// window"): the runs the verify ledger records (SD-1 — the recorded-run
+// signal that closed O30, where a pre-push gate's runs never reached the
+// session ledger), named as such. A verify ledger that could not be read
+// makes gating unknown, never unmet — and a session ledger that could not
+// be read never grades a repository idle.
+func TestRealizationLadder_GatingReadsTheVerifyLedger(t *testing.T) {
+	f := wiredFacts()
+	f.Calls, f.Sessions, f.ObligationServes, f.VerifyRuns = 10, 2, 3, 4
+	l := RealizationLadder(f)
+	g := l.Rungs[4]
+	if g.State != RungMet || !strings.Contains(g.Evidence, "4 verify run(s) in the last 14 days") ||
+		!strings.Contains(g.Evidence, "verify ledger") || strings.Contains(g.Evidence, "session") {
+		t.Errorf("gating = %+v", g)
+	}
+	if l.Grade != "A" || l.FirstUnmet != "" {
+		t.Errorf("a gating repository = %q, first unmet %q", l.Grade, l.FirstUnmet)
+	}
+
+	f.VerifyRuns = 0
+	l = RealizationLadder(f)
+	if l.Rungs[4].State != RungUnmet || l.FirstUnmet != "gating" || !strings.Contains(l.Remedy, "pre-push") {
+		t.Errorf("no runs in the window = %+v, remedy %q", l.Rungs[4], l.Remedy)
+	}
+
+	f.VerifyLedgerNote = "no verify ledger at /h/.fathom/verify-ledger.jsonl"
+	l = RealizationLadder(f)
+	if l.Rungs[4].State != RungUnknown || !strings.Contains(l.Rungs[4].Evidence, "not measured — no verify ledger") ||
+		l.FirstUnmet != "" || l.Grade != "A" || l.Available != 4 {
+		t.Errorf("an unread verify ledger = %+v grade %q (%d/%d)", l.Rungs[4], l.Grade, l.Realized, l.Available)
+	}
+
+	// Sessions not measured: the rungs are graded, never "idle".
+	f = wiredFacts()
+	f.Calls, f.ObligationServes, f.VerifyRuns = 1, 1, 1
+	f.SessionsNote = "the session ledger could not be read (permission denied)"
+	l = RealizationLadder(f)
+	if l.Idle || l.Grade != "A" || !strings.Contains(l.SessionsNote, "permission denied") {
+		t.Errorf("unread sessions = idle %v grade %q note %q", l.Idle, l.Grade, l.SessionsNote)
+	}
+}

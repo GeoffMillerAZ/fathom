@@ -12,6 +12,10 @@ package console
 // plans has nothing to gate) is not applicable; neither counts against the
 // repository. Only the FIRST unmet rung carries a remedy: five remedies for
 // a ladder whose bottom rung is broken are noise.
+//
+// Every traffic rung reads one window (design §2: "in the window, not
+// ever"): calls, obligations injections, sessions and the verify ledger's
+// gate runs over the same days, so its evidence says which days it counts.
 
 import (
 	"fmt"
@@ -43,11 +47,17 @@ type LadderFacts struct {
 	Calls            int
 	ObligationServes int
 	CallLogNote      string
-	// Sessions and VerifyRuns come from the session ledger; LedgerNote,
-	// when set, is why it was not read (gating is then unknown).
-	Sessions   int
-	VerifyRuns int
-	LedgerNote string
+	// Sessions are the distinct sessions in the window (the session
+	// ledger); SessionsNote, when set, is why the ledger was not read — a
+	// repository whose sessions are not measured is graded, never "idle".
+	Sessions     int
+	SessionsNote string
+	// VerifyRuns are the gate runs in the window that the verify ledger
+	// records (SD-1: the recorded-run signal that closed O30 — a pre-push
+	// gate's runs never reach the session ledger); VerifyLedgerNote, when
+	// set, is why that ledger was not read (gating is then unknown).
+	VerifyRuns       int
+	VerifyLedgerNote string
 	// HasPlans says whether the gate has anything to check here;
 	// PlansNote, when set, is why docs/plans was not read (gating is then
 	// unknown — an unreadable directory is never "no plans").
@@ -78,6 +88,9 @@ type Ladder struct {
 	// for a repository with no sessions in the window: idle is not F.
 	Grade string `json:"grade"`
 	Idle  bool   `json:"idle"`
+	// SessionsNote names why the window's sessions were not measured (the
+	// ladder is then graded, never idle, and Sessions is not a count).
+	SessionsNote string `json:"sessions_note,omitempty"`
 	// FirstUnmet names the first unmet rung and Remedy its fix; both stay
 	// set on an idle repository, which is told, not graded.
 	FirstUnmet string `json:"first_unmet,omitempty"`
@@ -89,7 +102,7 @@ type Ladder struct {
 
 // RealizationLadder builds one repository's ladder (OC-25, RG-5).
 func RealizationLadder(f LadderFacts) Ladder {
-	l := Ladder{Service: f.Service, Sessions: f.Sessions}
+	l := Ladder{Service: f.Service, Sessions: f.Sessions, SessionsNote: f.SessionsNote}
 	add := func(name, state, evidence, fix string) {
 		l.Rungs = append(l.Rungs, Rung{Name: name, Order: len(l.Rungs) + 1, State: state, Evidence: evidence, fix: fix})
 	}
@@ -151,10 +164,10 @@ func RealizationLadder(f LadderFacts) Ladder {
 		add("gating", RungUnknown, "not measured — "+f.PlansNote, gateFix)
 	case !f.HasPlans:
 		add("gating", RungNotApplicable, "no plans here for the gate to check", "")
-	case f.LedgerNote != "":
-		add("gating", RungUnknown, "not measured — "+f.LedgerNote, gateFix)
+	case f.VerifyLedgerNote != "":
+		add("gating", RungUnknown, "not measured — "+f.VerifyLedgerNote, gateFix)
 	default:
-		add("gating", metState(f.VerifyRuns > 0), fmt.Sprintf("gate ran in %s session(s) recorded in the session ledger", thousands(f.VerifyRuns)), gateFix)
+		add("gating", metState(f.VerifyRuns > 0), fmt.Sprintf("%s verify run(s) %s, recorded in the verify ledger", thousands(f.VerifyRuns), window), gateFix)
 	}
 
 	for i := range l.Rungs {
@@ -171,7 +184,7 @@ func RealizationLadder(f LadderFacts) Ladder {
 			}
 		}
 	}
-	if f.Sessions == 0 {
+	if f.Sessions == 0 && f.SessionsNote == "" {
 		l.Grade, l.Idle = "idle", true
 		return l
 	}

@@ -63,6 +63,9 @@ func renderLadderPanel(l console.Ladder) string {
 	default:
 		b.WriteString(`<p class="mt-3 text-sm text-positive">Every rung that applies is met.</p>`)
 	}
+	if l.SessionsNote != "" {
+		b.WriteString(`<p class="mt-2 text-sm text-caution [overflow-wrap:anywhere]" data-ladder-sessions>Sessions in the window are not measured (` + html.EscapeString(l.SessionsNote) + `), so the repository is graded on its rungs, never called idle.</p>`)
+	}
 	return b.String()
 }
 
@@ -72,7 +75,7 @@ func ladderPanel(l console.Ladder) string {
 		ID: "realization", Title: "Realization", SourceKey: "index:" + l.Service + " sessions:" + l.Service,
 		Question:    "Is fathom actually doing its job here? The first unmet rung carries the remedy.",
 		Verb:        realizationVerb(l.Service),
-		Source:      "the registry, the call log the daemon writes (14-day window), the session ledger and the repository's plans",
+		Source:      "the registry, and over the last 14 days the call log the daemon writes, the session ledger and the verify ledger; the repository's plans",
 		Denominator: fmt.Sprintf("%d of %d rungs that apply are met — grade %s", l.Realized, l.Available, l.Grade),
 		Freshness:   "as of the observatory model's read",
 		Body:        renderLadderPanel(l),

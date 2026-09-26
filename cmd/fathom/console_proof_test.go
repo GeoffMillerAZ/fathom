@@ -424,3 +424,93 @@ func TestConsoleProofPages_UnreachableRegistryIsNamed(t *testing.T) {
 	}
 	resetObsCache()
 }
+
+// TestConsoleProjectLadder_WindowAndVerifyLedger pins the ladder's inputs
+// to its design (docs/design/realization-grade.md §2): every rung reads the
+// last fourteen days, never all time, and gating reads the verify ledger
+// (SD-1), the ledger a pre-push gate's runs reach — a repository whose gate
+// runs on every push is never told to add the gate. A ledger that does not
+// exist is not measured, never "0 runs".
+func TestConsoleProjectLadder_WindowAndVerifyLedger(t *testing.T) {
+	f := newConsoleFixture(t)
+	ladder := func() console.Ladder {
+		t.Helper()
+		resetObsCache()
+		env := f.pageJSON(t, "/projects/"+proofServiceName)
+		var l console.Ladder
+		if err := json.Unmarshal(env.Sections[realizationVerb(proofServiceName)], &l); err != nil {
+			t.Fatal(err)
+		}
+		return l
+	}
+	if g := ladder().Rungs[4]; g.State != console.RungUnknown || !strings.Contains(g.Evidence, "no verify ledger at") {
+		t.Errorf("no verify ledger = %+v, want unknown naming the missing ledger", g)
+	}
+
+	root := proofServiceRoot(t)
+	row := func(at, service, plan string) string {
+		return fmt.Sprintf(`{"schema_version":2,"at":%q,"repo_root":%q,"service":%q,"plan":%q,"total":3,"claimed":2,"verified":2,"failing":0,"origin":"cli"}`+"\n", at, root, service, plan)
+	}
+	mustWrite(t, os.Getenv("FATHOM_VERIFY_LEDGER"),
+		row("2026-08-01T09:00:00Z", proofServiceName, "docs/plans/settlement.md")+ // before the window
+			row("2026-09-20T09:00:00Z", proofServiceName, "docs/plans/settlement.md")+
+			row("2026-09-20T09:00:00Z", proofServiceName, "docs/plans/audit.md")+ // the same run's second plan
+			row("2026-09-24T09:00:00Z", proofServiceName, "docs/plans/settlement.md")+
+			row("2026-09-24T10:00:00Z", proofServiceName+"-sv", "docs/plans/settlement.md")) // a scratch service
+	appendTo := func(path, text string) {
+		t.Helper()
+		fh, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0o644)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer fh.Close()
+		if _, err := fh.WriteString(text); err != nil {
+			t.Fatal(err)
+		}
+	}
+	appendTo(f.callLog, `{"ts":"2026-08-01T10:00:00Z","tool":"obligations","service":"proof-service","surface":"","latency_ms":2}
+{"ts":"2026-08-02T10:00:00Z","tool":"obligations","service":"proof-service","surface":"","latency_ms":2}
+{"ts":"2026-09-23T10:00:00Z","tool":"obligations","service":"proof-service","surface":"","latency_ms":2}
+`)
+	appendTo(f.ledger, `{"schema_version":1,"session_id":"s-july","arm":"on","repo":"proof-service","at":"2026-07-20T10:00:00Z","turn_count":2}
+`)
+
+	l := ladder()
+	byName := map[string]console.Rung{}
+	for _, r := range l.Rungs {
+		byName[r.Name] = r
+	}
+	if g := byName["gating"]; g.State != console.RungMet || !strings.Contains(g.Evidence, "2 verify run(s) in the last 14 days, recorded in the verify ledger") {
+		t.Errorf("gating = %+v, want met on the verify ledger's two runs in the window", g)
+	}
+	if p := byName["preventing"]; p.State != console.RungMet || !strings.Contains(p.Evidence, "1 rule injection(s) in the last 14 days") {
+		t.Errorf("preventing = %+v, want the window's one injection, not all three", p)
+	}
+	if q := byName["queried"]; !strings.Contains(q.Evidence, "1 call(s) in the last 14 days") {
+		t.Errorf("queried = %+v", q)
+	}
+	// Its only session is from July: idle in the window, however many
+	// sessions it had ever.
+	if !l.Idle || l.Sessions != 0 || l.Grade != "idle" {
+		t.Errorf("a repository silent for the window = idle %v, sessions %d, grade %q", l.Idle, l.Sessions, l.Grade)
+	}
+	var fleet observatoryModel
+	resetObsCache()
+	if err := json.Unmarshal([]byte(mustGetBody(t, f, "/observatory?format=json")), &fleet); err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range fleet.Services {
+		if s.Service == proofServiceName && (s.SessionCount == nil || *s.SessionCount != 1) {
+			t.Errorf("the fleet's all-time session column = %v, want 1 (the ladder's window is its own)", s.SessionCount)
+		}
+	}
+}
+
+func mustGetBody(t *testing.T, f *consoleFixture, path string) string {
+	t.Helper()
+	code, _, body := f.get(t, path)
+	if code != http.StatusOK {
+		t.Fatalf("GET %s = %d", path, code)
+	}
+	return body
+}

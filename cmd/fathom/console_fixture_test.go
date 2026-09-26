@@ -252,3 +252,12 @@ func samplePath(p *consolePage) string {
 	}
 	return p.Route
 }
+
+// consoleExtraSamplePaths are further concrete URLs per page: a page whose
+// verbs and sections change with its scope (?svc=) or its subject is held
+// to its verbs at each one, not only at samplePath's.
+var consoleExtraSamplePaths = map[string][]string{
+	"project":        {"/projects/" + proofServiceName},
+	"plans":          {"/plans?svc=" + proofServiceName},
+	"certifications": {"/certifications?svc=" + proofServiceName},
+}

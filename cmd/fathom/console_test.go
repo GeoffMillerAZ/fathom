@@ -578,37 +578,39 @@ func TestConsolePagesRenderTheirVerbs(t *testing.T) {
 		if p.ID == "statusz" {
 			continue // ?format=json is the v3 report (OC-6), not the envelope
 		}
-		env := f.pageJSON(t, samplePath(p))
-		if env.Schema != consolePageJSONSchema || env.Page != p.ID || env.Group != p.Group || env.Question != p.Question {
-			t.Errorf("page %s: envelope = %+v", p.ID, env)
-		}
-		if !verbsInstantiate(env.Verbs, p.Verbs) {
-			t.Errorf("page %s: JSON verbs %v are not the registry's %v", p.ID, env.Verbs, p.Verbs)
-		}
-		for _, verb := range env.Verbs {
-			withVerbs++
-			section, ok := env.Sections[verb]
-			if !ok {
-				t.Errorf("page %s: no section for its verb %q", p.ID, verb)
-				continue
+		for _, path := range append([]string{samplePath(p)}, consoleExtraSamplePaths[p.ID]...) {
+			env := f.pageJSON(t, path)
+			if env.Schema != consolePageJSONSchema || env.Page != p.ID || env.Group != p.Group || env.Question != p.Question {
+				t.Errorf("page %s: envelope = %+v", path, env)
 			}
-			args, dir := consoleVerbArgs(t, f, verb)
-			var out, errb bytes.Buffer
-			code := runIn(t, dir, args, &out, &errb)
-			if code != 0 {
-				t.Fatalf("%s exited %d: %s", verb, code, errb.String())
+			if !verbsInstantiate(env.Verbs, p.Verbs) {
+				t.Errorf("page %s: JSON verbs %v are not the registry's %v", path, env.Verbs, p.Verbs)
 			}
-			var fromVerb, fromPage any
-			if err := json.Unmarshal(out.Bytes(), &fromVerb); err != nil {
-				t.Fatalf("%s: %v", verb, err)
-			}
-			if err := json.Unmarshal(section, &fromPage); err != nil {
-				t.Fatal(err)
-			}
-			if !reflect.DeepEqual(fromVerb, fromPage) {
-				a, _ := json.MarshalIndent(fromVerb, "", " ")
-				b, _ := json.MarshalIndent(fromPage, "", " ")
-				t.Errorf("page %s disagrees with `%s`:\nverb: %s\npage: %s", p.ID, verb, a, b)
+			for _, verb := range env.Verbs {
+				withVerbs++
+				section, ok := env.Sections[verb]
+				if !ok {
+					t.Errorf("page %s: no section for its verb %q", path, verb)
+					continue
+				}
+				args, dir := consoleVerbArgs(t, f, verb)
+				var out, errb bytes.Buffer
+				code := runIn(t, dir, args, &out, &errb)
+				if code != 0 {
+					t.Fatalf("%s exited %d: %s", verb, code, errb.String())
+				}
+				var fromVerb, fromPage any
+				if err := json.Unmarshal(out.Bytes(), &fromVerb); err != nil {
+					t.Fatalf("%s: %v", verb, err)
+				}
+				if err := json.Unmarshal(section, &fromPage); err != nil {
+					t.Fatal(err)
+				}
+				if !reflect.DeepEqual(fromVerb, fromPage) {
+					a, _ := json.MarshalIndent(fromVerb, "", " ")
+					b, _ := json.MarshalIndent(fromPage, "", " ")
+					t.Errorf("page %s disagrees with `%s`:\nverb: %s\npage: %s", path, verb, a, b)
+				}
 			}
 		}
 	}
