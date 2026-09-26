@@ -27,6 +27,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"cuelang.org/go/cue/cuecontext"
 )
@@ -140,7 +141,122 @@ func warnBrokenPackOnce(key, format string, args ...any) {
 // union, because DriftedFindings/ObligationsFor resolve through here on the
 // serve hot path and one half-authored pack must not silently disable
 // code_drifted (or anything else) for every OTHER layer.
+//
+// RT-83 (docs/design/responsible-tenant.md §4.3): the compiled union is
+// memoized per (root, digest of root/.fathom/layers). The embedded packs
+// are fixed for the life of the binary, so the digest need only cover the
+// project directory: every entry's relative path, size, mtime and mode
+// (unionDigest — a stat walk of a handful of small files, never a read).
+// Editing, adding or removing a project pack moves the digest and costs
+// exactly one rebuild; concurrent callers at the same key share one build.
+// Errors are never memoized. The returned map is shared between callers
+// and must be treated as read-only (every caller in this package copies
+// out of it).
 func loadUnion(root string) (map[string]LayerInfo, error) {
+	digest := unionDigest(root)
+
+	unionMemo.mu.Lock()
+	if e, ok := unionMemo.entries[root]; ok && e.digest == digest {
+		unionMemo.mu.Unlock()
+		return e.infos, nil
+	}
+	flightKey := root + "\x00" + digest
+	if call, ok := unionMemo.flight[flightKey]; ok {
+		unionMemo.mu.Unlock()
+		<-call.done
+		return call.infos, call.err
+	}
+	call := &unionCall{done: make(chan struct{})}
+	unionMemo.flight[flightKey] = call
+	unionMemo.mu.Unlock()
+
+	call.infos, call.err = buildUnion(root)
+
+	unionMemo.mu.Lock()
+	delete(unionMemo.flight, flightKey)
+	if call.err == nil {
+		if len(unionMemo.entries) >= unionMemoMaxRoots {
+			// Bounded: one entry per root, and far more roots than a
+			// fleet registers means something is minting them — start
+			// over rather than grow.
+			unionMemo.entries = map[string]unionEntry{}
+		}
+		unionMemo.entries[root] = unionEntry{digest: digest, infos: call.infos}
+	}
+	unionMemo.mu.Unlock()
+	close(call.done)
+	return call.infos, call.err
+}
+
+// unionMemoMaxRoots bounds the union memo (one small map per root).
+const unionMemoMaxRoots = 256
+
+type unionEntry struct {
+	digest string
+	infos  map[string]LayerInfo
+}
+
+type unionCall struct {
+	done  chan struct{}
+	infos map[string]LayerInfo
+	err   error
+}
+
+var unionMemo = struct {
+	mu      sync.Mutex
+	entries map[string]unionEntry
+	flight  map[string]*unionCall
+}{entries: map[string]unionEntry{}, flight: map[string]*unionCall{}}
+
+// unionDigest is the memo key's project half: a stat walk of
+// root/.fathom/layers (relative path, size, mtime in ns, mode per entry,
+// in WalkDir's lexical order). "" root and an absent directory digest to
+// fixed markers; an unreadable directory digests to an error marker, which
+// buildUnion then resolves to embedded-only exactly as before.
+func unionDigest(root string) string {
+	if root == "" {
+		return "embedded-only"
+	}
+	dir := filepath.Join(root, filepath.FromSlash(ProjectLayersDir))
+	var b strings.Builder
+	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			fmt.Fprintf(&b, "!%s:%v\n", path, err)
+			if d != nil && d.IsDir() {
+				return fs.SkipDir
+			}
+			return nil
+		}
+		info, ierr := d.Info()
+		if ierr != nil {
+			fmt.Fprintf(&b, "!%s\n", path)
+			return nil
+		}
+		rel, _ := filepath.Rel(dir, path)
+		fmt.Fprintf(&b, "%s\x00%d\x00%d\x00%o\n", rel, info.Size(), info.ModTime().UnixNano(), info.Mode())
+		return nil
+	})
+	if err != nil {
+		fmt.Fprintf(&b, "!walk:%v", err)
+	}
+	return b.String()
+}
+
+// unionBuilds counts real union compiles (buildUnion runs) — the RT-83
+// test's observable.
+var unionBuilds atomic.Int64
+
+func unionBuildCount() int64 { return unionBuilds.Load() }
+
+func resetUnionMemoForTest() {
+	unionMemo.mu.Lock()
+	unionMemo.entries = map[string]unionEntry{}
+	unionMemo.mu.Unlock()
+}
+
+// buildUnion is the uncached union compile loadUnion memoizes.
+func buildUnion(root string) (map[string]LayerInfo, error) {
+	unionBuilds.Add(1)
 	cctx := cuecontext.New()
 	layerSchema, err := compileLayerSchema(cctx)
 	if err != nil {
