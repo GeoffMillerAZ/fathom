@@ -138,18 +138,7 @@ var taskfileNames = []string{
 
 // rootTaskfile returns the Taskfile `task` would run at root ("" when
 // there is none).
-func rootTaskfile(root string) (string, error) {
-	for _, name := range taskfileNames {
-		ok, err := present(filepath.Join(root, name))
-		if err != nil {
-			return "", err
-		}
-		if ok {
-			return name, nil
-		}
-	}
-	return "", nil
-}
+func rootTaskfile(root string) (string, error) { return taskfileIn(root, ".") }
 
 // resolveTaskfiles is the root Taskfile plus every LOCAL Taskfile it
 // includes (transitively): an included file's commands are the chain too.

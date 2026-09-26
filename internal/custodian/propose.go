@@ -270,11 +270,20 @@ func relocateScript(root string, ix *repoIndex, d deadCommand) (Edit, string) {
 	if err != nil {
 		return Edit{}, err.Error()
 	}
+	// The new path is written from where the command runs: the root for a
+	// doc or a root-run hook, the task's / hook's own directory otherwise.
 	newPath := cand
-	if strings.HasPrefix(d.Name, "./") {
-		newPath = "./" + cand
+	if len(d.Dirs) == 1 && d.Dirs[0] != "." {
+		r, err := filepath.Rel(filepath.FromSlash(d.Dirs[0]), filepath.FromSlash(cand))
+		if err != nil {
+			return Edit{}, err.Error()
+		}
+		newPath = filepath.ToSlash(r)
 	}
-	re := regexp.MustCompile(`(^|[\s"'=])` + regexp.QuoteMeta(d.Name) + `($|[\s"';&|)])`)
+	if strings.HasPrefix(d.Name, "./") && !strings.HasPrefix(newPath, "../") {
+		newPath = "./" + newPath
+	}
+	re := scriptWordRe(d.Name)
 	repl := "${1}" + strings.ReplaceAll(newPath, "$", "$$") + "${2}"
 	sub := func(s string) string { return re.ReplaceAllString(s, repl) }
 	updated := sub(line)

@@ -60,7 +60,7 @@ violation — when the daemon is down or the registry is empty/malformed.
 | `required_pattern` (CC-12) | `pattern`, `where` | ≥1 line of the corpus matches | "no line matches" naming the files searched; an EMPTY corpus is a violation (nothing there does the required thing); matching lines are the evidence when it holds |
 | `stanza_present` (CC-12) | `file` | the file has the fathom begin marker, then the end marker | `<file>: never wired (no fathom markers)` or `<file>: corrupted marker pair (begin=… end=…)` at the marker's line; absent → violated, unreadable → unable (I38) |
 | `max_bytes` (CC-12) | `file`, `bytes` | the file exists and is ≤ `bytes` | `<file> is N bytes (max M)`; absence is a violation |
-| `commands_resolve` (CC-12) | `where` | every in-repo command the corpus invokes resolves: a `task X` target in the root Taskfile or a local include (namespaced, aliased, flattened), a local include itself, a repo script path | `file:line → task X (no such target)` / `file:line → scripts/x.sh (no such file)`; an empty corpus is unable-to-check naming it; refs behind a flag, a template or a remote include are counted as not checkable, never guessed |
+| `commands_resolve` (CC-12) | `where` | every in-repo command the corpus invokes resolves, from the directory it runs in: a `task X` target in the Taskfile Task would find there, or in a local include (namespaced, aliased, flattened); a Taskfile's own `task:` / `deps:` call in its include's namespace (`:x` is the root's); a local include itself; a repo script path | `file:line → task X (no such target)` / `file:line → scripts/x.sh (no such file in web/)`, naming the file's own directory when the path resolves only from there; an empty corpus is unable-to-check naming it; a script that exists and cannot be stat'd is unable-to-check (I38); refs behind a flag, a template, a remote include, outside the repo or in a directory the audit cannot model are counted as not checkable, never guessed |
 | `handoff_cites_instruments` (CC-15) | `days` | every handoff thread note filed for this repo in the window that claims shipped/landed/done/fixed work carries a citation — a commit sha (letters + digits), an active `docs/plans` row id, `fathom verify`, or a `workspace/artifacts/retros/` path | the uncited item ids; rows with unparseable timestamps are counted and named; no threads file → holds |
 
 An invalid regexp or unreadable input is `unable-to-check (reason)` —
@@ -99,6 +99,21 @@ and `.config/` spellings and `lefthook-local.yml` are not resolved
 (doctor's `lefthook_gates` row renders this corpus and has always read the
 two names above; widening it is its own change), and Taskfile `vars` with
 `sh:` are not read as commands.
+
+A command resolves from where it runs, not where it is written (probed
+against task 3.52 and lefthook 1.13): a Taskfile include runs in its
+includer's directory unless it sets `dir:` (joined to the including file's
+directory), and a task's `dir:` is joined to that; lefthook's `root:` and a
+GitHub step's `working-directory:` (or its job's or workflow's
+`defaults.run`) are joined to the repo root. Inside an included Taskfile a
+`task:` / `deps:` call resolves in the include's namespace (`deps: [build]`
+in `sub` calls `sub:build`; `:build` calls the root's), while a shell `task
+X` starts a new process that resolves X against the Taskfile it finds from
+its directory upward. A doc does not say where its reader stands, so an
+agent-config command resolves from the repo root or from the doc's own
+directory. A templated or absolute directory, and CircleCI's / Azure's
+working-directory keys, make a ref not checkable; a folded block (`run: >`)
+is read joined and each ref placed back on its source line.
 
 Commands are read for precision, not recall: quoted strings are blanked
 and comments cut before a line is read, only the command word of each

@@ -8,12 +8,25 @@ package custodian
 // under its namespace (or none, with `flatten: true`) and its file joins
 // the taskfile corpus; a remote or templated include makes its namespace
 // uncheckable, named — never assumed present, never assumed missing.
+//
+// Each loaded file is also a NODE carrying what Task itself uses to run
+// it, because a Taskfile's commands mean different things in different
+// files (probed against task 3.52):
+//
+//   - namespace: inside an include, `task: build` and `deps: [build]` call
+//     `<ns>:build`; a leading ':' calls the root's; a flattened include
+//     shares its parent's namespace.
+//   - directory: an include runs in its includer's directory — NOT its own
+//     — unless it sets `dir:` (joined to the including file's directory);
+//     a task's `dir:` is joined to that.
 
 import (
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -22,6 +35,7 @@ import (
 // taskGraph is one repo's resolved Taskfile set.
 type taskGraph struct {
 	files   []string            // repo-relative, sorted: root Taskfile + local includes
+	nodes   []taskNode          // every file under every namespace it is included as, in load order
 	targets map[string]struct{} // fully-qualified target names and aliases
 	// opaque names namespaces whose include this audit cannot follow
 	// (remote, templated, outside the repo): a ref into one is uncheckable.
@@ -32,29 +46,45 @@ type taskGraph struct {
 	broken map[string]string
 }
 
+// taskNode is one Taskfile as Task runs it: the file, the namespace its
+// calls resolve in, and the directory its tasks run in.
+type taskNode struct {
+	file   string // repo-relative
+	prefix string // namespace with its trailing ':' ("" at the root, or flattened into it)
+	// dir is where its tasks run (before a task's own `dir:`), repo-relative
+	// ("." is the root); dirUnknown says why it cannot be modelled
+	// (templated, absolute, outside the repo) — a script under it is not
+	// checkable.
+	dir        string
+	dirUnknown string
+}
+
 const maxTaskIncludeDepth = 8
 
-// loadTaskGraph parses the root Taskfile (repo-relative `first`) and its
-// local includes.
+// loadTaskGraph parses a Taskfile (repo-relative `first`, the one `task`
+// runs from its directory) and its local includes.
 func loadTaskGraph(root, first string) (*taskGraph, error) {
 	g := &taskGraph{
 		targets: map[string]struct{}{},
 		opaque:  map[string]string{},
 		broken:  map[string]string{},
 	}
-	if err := g.load(root, first, "", map[string]bool{}, map[string]bool{}, 0); err != nil {
+	top := taskNode{file: first, dir: path.Dir(first)}
+	if err := g.load(root, top, map[string]bool{}, map[string]bool{}, 0, true); err != nil {
 		return nil, err
 	}
 	sort.Strings(g.files)
 	return g, nil
 }
 
-// load registers one Taskfile's targets under prefix. visiting keys on
-// (prefix, file) — the same file included under a namespace AND its
-// aliases is read once per name it answers to — and the depth bound ends
-// an include cycle (whose prefixes grow on every lap) as a named opaque
-// namespace rather than a hang.
-func (g *taskGraph) load(root, rel, prefix string, visiting, listed map[string]bool, depth int) error {
+// load registers one Taskfile's targets under its node's prefix. visiting
+// keys on (prefix, file) — the same file included under a namespace AND
+// its aliases is read once per name it answers to — and the depth bound
+// ends an include cycle (whose prefixes grow on every lap) as a named
+// opaque namespace rather than a hang. record is false under an alias: the
+// alias names the same tasks, so its commands are not read twice.
+func (g *taskGraph) load(root string, node taskNode, visiting, listed map[string]bool, depth int, record bool) error {
+	rel, prefix := node.file, node.prefix
 	key := prefix + "\x00" + rel
 	if visiting[key] {
 		return nil
@@ -63,6 +93,9 @@ func (g *taskGraph) load(root, rel, prefix string, visiting, listed map[string]b
 	if !listed[rel] {
 		listed[rel] = true
 		g.files = append(g.files, rel)
+	}
+	if record {
+		g.nodes = append(g.nodes, node)
 	}
 
 	data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel)))
@@ -100,7 +133,7 @@ func (g *taskGraph) load(root, rel, prefix string, visiting, listed map[string]b
 	for i := 0; i+1 < len(includes.Content); i += 2 {
 		ns := includes.Content[i].Value
 		spec := includes.Content[i+1]
-		path, optional, flatten, aliases := includeSpec(spec)
+		incPath, incDir, optional, flatten, aliases := includeSpec(spec)
 		prefixes := []string{prefix + ns + ":"}
 		for _, a := range aliases {
 			prefixes = append(prefixes, prefix+a+":")
@@ -115,17 +148,17 @@ func (g *taskGraph) load(root, rel, prefix string, visiting, listed map[string]b
 				}
 			}
 		}
-		if path == "" || strings.Contains(path, "{{") || strings.Contains(path, "://") || strings.HasPrefix(path, "~") {
-			mark(g.opaque, fmt.Sprintf("include %q is remote or templated (%s)", ns, path))
+		if incPath == "" || strings.Contains(incPath, "{{") || strings.Contains(incPath, "://") || strings.HasPrefix(incPath, "~") {
+			mark(g.opaque, fmt.Sprintf("include %q is remote or templated (%s)", ns, incPath))
 			continue
 		}
-		target := path
+		target := incPath
 		if !filepath.IsAbs(target) {
-			target = filepath.Join(root, filepath.FromSlash(dir), filepath.FromSlash(path))
+			target = filepath.Join(root, filepath.FromSlash(dir), filepath.FromSlash(incPath))
 		}
 		relTarget, err := filepath.Rel(root, target)
 		if err != nil || strings.HasPrefix(relTarget, "..") {
-			mark(g.opaque, fmt.Sprintf("include %q points outside the repo (%s)", ns, path))
+			mark(g.opaque, fmt.Sprintf("include %q points outside the repo (%s)", ns, incPath))
 			continue
 		}
 		fileRel, err := taskfileAt(root, filepath.ToSlash(relTarget))
@@ -134,7 +167,7 @@ func (g *taskGraph) load(root, rel, prefix string, visiting, listed map[string]b
 		}
 		if fileRel == "" {
 			if !optional {
-				mark(g.broken, fmt.Sprintf("%s includes %q → %s, which does not exist", rel, ns, path))
+				mark(g.broken, fmt.Sprintf("%s includes %q → %s, which does not exist", rel, ns, incPath))
 			}
 			continue
 		}
@@ -142,8 +175,13 @@ func (g *taskGraph) load(root, rel, prefix string, visiting, listed map[string]b
 			mark(g.opaque, fmt.Sprintf("include %q nests deeper than %d levels", ns, maxTaskIncludeDepth))
 			continue
 		}
-		for _, p := range prefixes {
-			if err := g.load(root, fileRel, p, visiting, listed, depth+1); err != nil {
+		child := taskNode{file: fileRel, dir: node.dir, dirUnknown: node.dirUnknown}
+		if incDir != "" {
+			child.dir, child.dirUnknown = joinRunDir(dir, incDir, "include "+strconv.Quote(ns)+" dir")
+		}
+		for j, p := range prefixes {
+			child.prefix = p
+			if err := g.load(root, child, visiting, listed, depth+1, record && j == 0); err != nil {
 				return err
 			}
 		}
@@ -151,15 +189,42 @@ func (g *taskGraph) load(root, rel, prefix string, visiting, listed map[string]b
 	return nil
 }
 
+// joinRunDir joins a working-directory value (a Taskfile `dir:`, lefthook
+// `root:`, a CI `working-directory:`) to base, both repo-relative. A value
+// this audit cannot model — templated, absolute, home-relative, or leaving
+// the repo — returns why instead, and every ref under it is not checkable.
+func joinRunDir(base, val, what string) (dir, unknown string) {
+	switch {
+	case strings.ContainsAny(val, "{}$`~") || strings.Contains(val, "%"):
+		return "", fmt.Sprintf("%s %q is templated", what, val)
+	case filepath.IsAbs(val) || strings.HasPrefix(val, "/"):
+		return "", fmt.Sprintf("%s %q is absolute", what, val)
+	}
+	j := path.Clean(path.Join(base, filepath.ToSlash(val)))
+	if escapesRepo(j) {
+		return "", fmt.Sprintf("%s %q leaves the repo", what, val)
+	}
+	return j, ""
+}
+
+// escapesRepo reports a cleaned repo-relative slash path that leaves the
+// repo.
+func escapesRepo(p string) bool {
+	return p == ".." || strings.HasPrefix(p, "../") || path.IsAbs(p)
+}
+
 // includeSpec reads an include entry: a bare path, or a mapping with
-// taskfile / optional / flatten / aliases.
-func includeSpec(n *yaml.Node) (path string, optional, flatten bool, aliases []string) {
+// taskfile / dir / optional / flatten / aliases.
+func includeSpec(n *yaml.Node) (file, dir string, optional, flatten bool, aliases []string) {
 	switch n.Kind {
 	case yaml.ScalarNode:
-		return n.Value, false, false, nil
+		return n.Value, "", false, false, nil
 	case yaml.MappingNode:
 		if v := mappingValue(n, "taskfile"); v != nil {
-			path = v.Value
+			file = v.Value
+		}
+		if v := mappingValue(n, "dir"); v != nil && v.Kind == yaml.ScalarNode {
+			dir = v.Value
 		}
 		if v := mappingValue(n, "optional"); v != nil {
 			optional = v.Value == "true"
@@ -175,7 +240,7 @@ func includeSpec(n *yaml.Node) (path string, optional, flatten bool, aliases []s
 			}
 		}
 	}
-	return path, optional, flatten, aliases
+	return file, dir, optional, flatten, aliases
 }
 
 // taskfileAt resolves an include target: a file as named, or a directory
@@ -199,6 +264,23 @@ func taskfileAt(root, rel string) (string, error) {
 		}
 		if ok {
 			return filepath.ToSlash(filepath.Join(filepath.Clean(rel), name)), nil
+		}
+	}
+	return "", nil
+}
+
+// taskfileIn returns the Taskfile `task` would run in dir (repo-relative),
+// in Task's own spelling order — "" when dir has none. An unstattable
+// candidate is an error, never "none" (I38).
+func taskfileIn(root, dir string) (string, error) {
+	for _, name := range taskfileNames {
+		rel := path.Join(dir, name)
+		ok, err := present(filepath.Join(root, filepath.FromSlash(rel)))
+		if err != nil {
+			return "", err
+		}
+		if ok {
+			return rel, nil
 		}
 	}
 	return "", nil

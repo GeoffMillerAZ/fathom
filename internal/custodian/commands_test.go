@@ -66,7 +66,10 @@ func chainRepo(t *testing.T) string {
 		"    cmds: [go test ./...]",                      // 19
 		"",
 	}, "\n"))
-	writeTestFile(t, filepath.Join(root, "ui", "Taskfile.yml"), "version: '3'\ntasks:\n  css:\n    cmds: [bash ../scripts/ci.sh]\n")
+	// An include without `dir:` runs in the ROOT, so its script path is
+	// root-relative (TestCommandsResolveFromTheirWorkingDirectory holds the
+	// include-relative mistake).
+	writeTestFile(t, filepath.Join(root, "ui", "Taskfile.yml"), "version: '3'\ntasks:\n  css:\n    cmds: [bash scripts/ci.sh]\n")
 	writeTestFile(t, filepath.Join(root, "scripts", "ci.sh"), "#!/bin/sh\n")
 	return root
 }
@@ -258,4 +261,264 @@ func TestMaxBytes(t *testing.T) {
 	if f := Audit(root, []Concern{c})[0]; f.Status != StatusHolds {
 		t.Fatalf("at budget must hold: %+v", f)
 	}
+}
+
+// TestTaskfileIncludeCallsResolveInTheirNamespace: inside an included
+// Taskfile, a `task:` call and a `deps:` entry resolve in that include's
+// namespace (Task runs `sub:build` for `deps: [build]` in sub/), a leading
+// ':' names the root's, and a flattened include shares its parent's
+// namespace. Both directions of the root-namespace mistake are pinned: a
+// correct intra-include call is never reported dead, and an include
+// calling a name only the root defines — which Task fails with `Task
+// "sub:lint" does not exist` — never holds.
+func TestTaskfileIncludeCallsResolveInTheirNamespace(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "Taskfile.yml"), strings.Join([]string{
+		"version: '3'",
+		"includes:",
+		"  sub: ./sub",
+		"  flat:",
+		"    taskfile: ./flat",
+		"    flatten: true",
+		"tasks:",
+		"  validate:",
+		"    cmds:",
+		"      - task: sub:check",
+		"  lint:",
+		"    cmds: [echo lint]",
+		"",
+	}, "\n"))
+	writeTestFile(t, filepath.Join(root, "sub", "Taskfile.yml"), strings.Join([]string{
+		"version: '3'",        // 1
+		"tasks:",              // 2
+		"  build:",            // 3
+		"    cmds: [echo b]",  // 4
+		"  check:",            // 5
+		"    deps: [build]",   // 6: sub:build
+		"    cmds:",           // 7
+		"      - task: build", // 8: sub:build
+		"      - task: :lint", // 9: the root's lint
+		"      - task: lint",  // 10: sub:lint — does not exist
+		"",
+	}, "\n"))
+	writeTestFile(t, filepath.Join(root, "flat", "Taskfile.yml"), strings.Join([]string{
+		"version: '3'",        // 1
+		"tasks:",              // 2
+		"  flatcheck:",        // 3
+		"    cmds:",           // 4
+		"      - task: lint",  // 5: flattened — the root's lint
+		"      - task: build", // 6: the root has no build
+		"",
+	}, "\n"))
+	c := Concern{ID: "tf", Want: "every call resolves", Check: Check{Kind: KindCommandsResolve, Where: CorpusTaskfile}}
+	f := Audit(root, []Concern{c})[0]
+	want := []string{
+		"flat/Taskfile.yml:6 → task build (no such target)",
+		`sub/Taskfile.yml:10 → task lint (no such target sub:lint — a call inside an include resolves in its namespace; the root's is :lint)`,
+	}
+	if f.Status != StatusViolated || !reflect.DeepEqual(f.Evidence, want) {
+		t.Fatalf("got %s %q\nevidence %q\nwant %q", f.Status, f.Detail, f.Evidence, want)
+	}
+	if !strings.Contains(f.Detail, "2 of 7 command reference(s)") {
+		t.Errorf("sub:check, sub:build twice, :lint and the flattened lint resolve beside the two dead calls: %q", f.Detail)
+	}
+
+	// Mend both the way Task would accept them.
+	writeTestFile(t, filepath.Join(root, "sub", "Taskfile.yml"), strings.Replace(mustRead(t, filepath.Join(root, "sub", "Taskfile.yml")), "      - task: lint\n", "      - task: :lint\n", 1))
+	writeTestFile(t, filepath.Join(root, "flat", "Taskfile.yml"), strings.Replace(mustRead(t, filepath.Join(root, "flat", "Taskfile.yml")), "      - task: build\n", "      - task: sub:build\n", 1))
+	if f := Audit(root, []Concern{c})[0]; f.Status != StatusHolds {
+		t.Fatalf("mended calls must hold: %+v", f)
+	}
+}
+
+// TestCommandsResolveFromTheirWorkingDirectory: a script path and a
+// `task X` resolve from the directory the command actually runs in — a
+// Taskfile task's `dir:`, an include's `dir:` (an include without one runs
+// in its includer's directory, NOT its own), lefthook's `root:`, a GitHub
+// step's `working-directory:` or its job's defaults, and for a nested
+// CLAUDE.md the Taskfile Task finds from that directory. A directory this
+// audit cannot model (templated, a CI key it does not read) makes the ref
+// not checkable, never dead and never resolved.
+func TestCommandsResolveFromTheirWorkingDirectory(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "scripts", "ci.sh"), "#!/bin/sh\n")
+	writeTestFile(t, filepath.Join(root, "web", "scripts", "build.sh"), "#!/bin/sh\n")
+	writeTestFile(t, filepath.Join(root, "ui", "scripts", "ui.sh"), "#!/bin/sh\n")
+	writeTestFile(t, filepath.Join(root, "Taskfile.yml"), strings.Join([]string{
+		"version: '3'",                     // 1
+		"includes:",                        // 2
+		"  ui: ./ui",                       // 3: runs in the root
+		"  ui2:",                           // 4
+		"    taskfile: ./ui2",              // 5
+		"    dir: ./ui2",                   // 6: runs in ui2/
+		"tasks:",                           // 7
+		"  build:",                         // 8
+		"    dir: web",                     // 9
+		"    cmds:",                        // 10
+		"      - ./scripts/build.sh",       // 11: web/scripts/build.sh
+		"      - bash scripts/ci.sh",       // 12: web/scripts/ci.sh does not exist
+		"  templated:",                     // 13
+		"    dir: '{{.USER_WORKING_DIR}}'", // 14
+		"    cmds: [bash scripts/any.sh]",  // 15: not checkable
+		"",
+	}, "\n"))
+	writeTestFile(t, filepath.Join(root, "ui", "Taskfile.yml"), strings.Join([]string{
+		"version: '3'",                      // 1
+		"tasks:",                            // 2
+		"  css:",                            // 3
+		"    cmds: [bash ../scripts/ci.sh]", // 4: from the root this leaves the repo
+		"  js:",                             // 5
+		"    cmds: [bash scripts/ui.sh]",    // 6: ui/scripts/ui.sh, but it runs in the root
+		"",
+	}, "\n"))
+	writeTestFile(t, filepath.Join(root, "ui2", "Taskfile.yml"), "version: '3'\ntasks:\n  css:\n    cmds: [bash ../scripts/ci.sh]\n")
+	writeTestFile(t, filepath.Join(root, "lefthook.yml"), strings.Join([]string{
+		"pre-commit:",                   // 1
+		"  commands:",                   // 2
+		"    build:",                    // 3
+		"      root: \"web/\"",          // 4
+		"      run: ./scripts/build.sh", // 5: web/scripts/build.sh
+		"    ci:",                       // 6
+		"      root: web",               // 7
+		"      run: bash scripts/ci.sh", // 8: web/scripts/ci.sh does not exist
+		"",
+	}, "\n"))
+	writeTestFile(t, filepath.Join(root, ".github", "workflows", "ci.yml"), strings.Join([]string{
+		"on: push",                        // 1
+		"defaults:",                       // 2
+		"  run:",                          // 3
+		"    working-directory: web",      // 4
+		"jobs:",                           // 5
+		"  test:",                         // 6
+		"    runs-on: ubuntu-latest",      // 7
+		"    steps:",                      // 8
+		"      - run: ./scripts/build.sh", // 9: web/ from the workflow default
+		"      - run: bash scripts/ci.sh", // 10: web/scripts/ci.sh does not exist
+		"        working-directory: .",    // 11
+		"      - run: bash scripts/ci.sh", // 12: web/ again — dead
+		"      - run: bash scripts/ci.sh", // 13
+		"        working-directory: ${{ github.workspace }}/x", // 14: not checkable
+		"",
+	}, "\n"))
+	writeTestFile(t, filepath.Join(root, "web", "Taskfile.yml"), "version: '3'\ntasks:\n  serve:\n    cmds: [echo serve]\n")
+	writeTestFile(t, filepath.Join(root, "web", "CLAUDE.md"), "# web\nRun `task serve` here; `task nothing` is gone.\n")
+
+	chain := func(where string) Concern {
+		return Concern{ID: where, Want: "resolves", Check: Check{Kind: KindCommandsResolve, Where: where}}
+	}
+	fs := Audit(root, []Concern{chain(CorpusTaskfile), chain(CorpusLefthook), chain(CorpusCI), chain(CorpusAgentConfig)})
+	want := map[string][]string{
+		CorpusTaskfile: {
+			"Taskfile.yml:12 → scripts/ci.sh (no such file — it resolves from the repo root, the file's own directory, but the command runs in web/)",
+			"ui/Taskfile.yml:4 → ../scripts/ci.sh (leaves the repo from the repo root — it resolves from ui/, the file's own directory, but the command runs in the repo root)",
+			"ui/Taskfile.yml:6 → scripts/ui.sh (no such file — it resolves from ui/, the file's own directory, but the command runs in the repo root)",
+		},
+		CorpusLefthook:    {"lefthook.yml:8 → scripts/ci.sh (no such file — it resolves from the repo root, the file's own directory, but the command runs in web/)"},
+		CorpusCI:          {".github/workflows/ci.yml:12 → scripts/ci.sh (no such file in web/)"},
+		CorpusAgentConfig: {"web/CLAUDE.md:2 → task nothing (no such target)"},
+	}
+	for _, f := range fs {
+		w := f.Concern.Check.Where
+		if f.Status != StatusViolated || !reflect.DeepEqual(f.Evidence, want[w]) {
+			t.Errorf("%s: got %s %q\n evidence %q\n want     %q", w, f.Status, f.Detail, f.Evidence, want[w])
+		}
+	}
+	// config propose writes a moved script's path from where the command
+	// runs: web/ for the hook, the root for the include that runs there.
+	props, err := Propose(root, fs[:2])
+	if err != nil {
+		t.Fatal(err)
+	}
+	newLines := map[string]bool{}
+	for _, p := range props {
+		for _, e := range p.Edits {
+			newLines[e.File+": "+strings.TrimSpace(e.New)] = true
+		}
+	}
+	for _, w := range []string{
+		"Taskfile.yml: - bash ../scripts/ci.sh",
+		"ui/Taskfile.yml: cmds: [bash scripts/ci.sh]",
+		"ui/Taskfile.yml: cmds: [bash ui/scripts/ui.sh]",
+		"lefthook.yml: run: bash ../scripts/ci.sh",
+	} {
+		if !newLines[w] {
+			t.Errorf("want the edit %q among %v", w, newLines)
+		}
+	}
+
+	for _, tc := range []struct {
+		i      int
+		detail string
+	}{
+		{0, "3 of 5 command reference(s) do not resolve across 3 Taskfile(s); 1 not checkable"}, // build.sh and ui2's ../scripts/ci.sh resolve
+		{1, "1 of 2 command reference(s)"},
+		{2, "1 of 3 command reference(s) do not resolve across 1 CI config(s); 1 not checkable"},
+		{3, "1 of 2 command reference(s)"}, // `task serve` resolves in web/Taskfile.yml
+	} {
+		if !strings.Contains(fs[tc.i].Detail, tc.detail) {
+			t.Errorf("%s detail %q, want it to contain %q", fs[tc.i].Concern.Check.Where, fs[tc.i].Detail, tc.detail)
+		}
+	}
+}
+
+// TestCommandsResolveUnstattableScriptIsUnableToCheck is I38 for the
+// script half: a script that exists but cannot be stat'd (EACCES, or the
+// macOS TCC wedge's EPERM) is unable-to-check naming the error, never
+// "no such file".
+func TestCommandsResolveUnstattableScriptIsUnableToCheck(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root reads through a 000 directory")
+	}
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "lefthook.yml"), "pre-push:\n  commands:\n    gate:\n      run: bash scripts/ci.sh && fathom verify\n")
+	writeTestFile(t, filepath.Join(root, "scripts", "ci.sh"), "#!/bin/sh\n")
+	dir := filepath.Join(root, "scripts")
+	if err := os.Chmod(dir, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+	f := Audit(root, []Concern{{ID: "lh", Want: "resolves", Check: Check{Kind: KindCommandsResolve, Where: CorpusLefthook}}})[0]
+	if f.Status != StatusUnable || !strings.Contains(f.Detail, "permission denied") || !strings.Contains(f.Detail, "scripts/ci.sh") {
+		t.Fatalf("an unstattable script is unable-to-check naming the path and errno, never absent: %+v", f)
+	}
+}
+
+// TestFoldedScalarRefsKeepTheirSourceLine: a folded block (`run: >`)
+// joins its source lines into one, so a ref is mapped back to the source
+// line that carries it — the evidence names line 6, not the block's first
+// line, and config propose can mend it in place.
+func TestFoldedScalarRefsKeepTheirSourceLine(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "lefthook.yml"), strings.Join([]string{
+		"pre-push:",                        // 1
+		"  commands:",                      // 2
+		"    gate:",                        // 3
+		"      run: >",                     // 4
+		"        echo start &&",            // 5
+		"        bash scripts/check.sh &&", // 6
+		"        fathom verify",            // 7
+		"",
+	}, "\n"))
+	writeTestFile(t, filepath.Join(root, "scripts", "ci", "check.sh"), "#!/bin/sh\n")
+	c := Concern{ID: "lh", Want: "resolves", Check: Check{Kind: KindCommandsResolve, Where: CorpusLefthook}}
+	fs := Audit(root, []Concern{c})
+	if want := []string{"lefthook.yml:6 → scripts/check.sh (no such file)"}; !reflect.DeepEqual(fs[0].Evidence, want) {
+		t.Fatalf("evidence %q, want %q", fs[0].Evidence, want)
+	}
+	props, err := Propose(root, fs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(props) != 1 || len(props[0].Edits) != 1 || props[0].Edits[0].New != "        bash scripts/ci/check.sh &&" {
+		t.Fatalf("the folded line is mended in place: %+v", props)
+	}
+}
+
+func mustRead(t *testing.T, p string) string {
+	t.Helper()
+	data, err := os.ReadFile(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(data)
 }

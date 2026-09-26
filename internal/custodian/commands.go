@@ -18,11 +18,24 @@ package custodian
 // corpora (never `desc:`, never comments). Quoted strings are blanked
 // before a line is read, so `echo "no task the corpus runs"` names
 // nothing. A ref this audit cannot judge (templated, behind a flag, into
-// a remote include) is counted and named, never guessed either way.
+// a remote include, outside the repo) is counted and named, never guessed
+// either way.
+//
+// A command resolves from where it RUNS, not from where it is written: a
+// Taskfile task's `dir:` and its include's (an include without one runs in
+// its includer's directory), lefthook's `root:`, a GitHub step's
+// `working-directory:` or its job's `defaults.run`. Inside an included
+// Taskfile a `task:` / `deps:` call resolves in the include's namespace
+// (taskfile.go). A markdown doc does not say where its reader stands, so
+// a doc's command resolves from the repo root or from the doc's own
+// directory — and a `task X` there against the Taskfile Task would find
+// from either. A working directory this audit cannot model makes the ref
+// not checkable, never dead and never resolved.
 
 import (
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -38,6 +51,18 @@ type commandRef struct {
 	Line   int // 1-based
 	Script bool
 	Name   string // the task target, or the script path as written
+	// Qualified is the target a Taskfile's own `task:` / `deps:` call
+	// resolves to in the corpus's task graph — inside an include, the
+	// include's namespace + Name (a leading ':' is the root's). Empty for a
+	// shell `task X`, which a new task process resolves against the
+	// Taskfile it finds from the directory it runs in.
+	Qualified string
+	// Dirs are the directories the command may run in, repo-relative ("."
+	// is the root): one for a YAML corpus, the root and the doc's own
+	// directory for markdown. DirUnknown says why the directory cannot be
+	// modelled; a script or shell `task X` under it is not checkable.
+	Dirs       []string
+	DirUnknown string
 }
 
 // deadCommand is a commandRef that does not resolve, with the reason.
@@ -58,21 +83,46 @@ func (d deadCommand) evidence() string {
 
 // commandSyntax says where a corpus's files carry commands: shellKeys hold
 // shell text, nameKeys hold bare task names (the Taskfile's `task:` call
-// and `deps:` list).
+// and `deps:` list), and dirKeys set the working directory of the
+// commands beside and beneath them.
 type commandSyntax struct {
 	markdown  bool
 	shellKeys map[string]bool
 	nameKeys  map[string]bool
+	dirKeys   []dirKey
+	// ghDefaults reads GitHub Actions' `defaults: {run: {working-directory}}`
+	// at the workflow and job levels.
+	ghDefaults bool
 }
+
+// dirKey is one key that sets a working directory, and how its value is
+// read.
+type dirKey struct {
+	key  string
+	rule dirRule
+}
+
+// dirRule is how a working-directory key's value is read.
+type dirRule int
+
+const (
+	dirFromBase dirRule = iota // joined to the enclosing directory (a Taskfile task's `dir:`)
+	dirFromRoot                // joined to the repo root (lefthook `root:`, GitHub `working-directory:`)
+	dirOpaque                  // a directory this audit does not model (CircleCI, Azure)
+)
 
 func syntaxFor(where string) commandSyntax {
 	switch where {
 	case CorpusLefthook:
-		return commandSyntax{shellKeys: set("run")}
+		return commandSyntax{shellKeys: set("run"), dirKeys: []dirKey{{"root", dirFromRoot}}}
 	case CorpusTaskfile:
-		return commandSyntax{shellKeys: set("cmd", "cmds"), nameKeys: set("task", "deps")}
+		return commandSyntax{shellKeys: set("cmd", "cmds"), nameKeys: set("task", "deps"), dirKeys: []dirKey{{"dir", dirFromBase}}}
 	case CorpusCI:
-		return commandSyntax{shellKeys: set("run", "script", "before_script", "after_script", "command", "commands")}
+		return commandSyntax{
+			shellKeys:  set("run", "script", "before_script", "after_script", "command", "commands"),
+			dirKeys:    []dirKey{{"working-directory", dirFromRoot}, {"working_directory", dirOpaque}, {"workingDirectory", dirOpaque}},
+			ghDefaults: true,
+		}
 	default:
 		return commandSyntax{markdown: true}
 	}
@@ -87,9 +137,11 @@ func set(keys ...string) map[string]bool {
 }
 
 // extractCommands returns the in-repo command refs one corpus file makes,
-// plus how many refs it saw but cannot judge.
-func extractCommands(where, rel string, data []byte) ([]commandRef, int, error) {
+// plus how many refs it saw but cannot judge. node places a Taskfile in its
+// include (namespace and directory); the other corpora run from the root.
+func extractCommands(where string, node taskNode, data []byte) ([]commandRef, int, error) {
 	syn := syntaxFor(where)
+	rel := node.file
 	if syn.markdown {
 		refs, unk := markdownCommands(rel, string(data))
 		return refs, unk, nil
@@ -98,16 +150,26 @@ func extractCommands(where, rel string, data []byte) ([]commandRef, int, error) 
 	if err := yaml.Unmarshal(data, &doc); err != nil {
 		return nil, 0, fmt.Errorf("%s does not parse as YAML: %w", rel, err)
 	}
-	w := &yamlCommandWalker{rel: rel, syn: syn}
+	dir := node.dir
+	if dir == "" && node.dirUnknown == "" {
+		dir = "."
+	}
+	w := &yamlCommandWalker{rel: rel, syn: syn, lines: strings.Split(string(data), "\n"), prefix: node.prefix, dir: dir, dirUnknown: node.dirUnknown}
 	w.walk(&doc)
 	return w.refs, w.unknown, nil
 }
 
 type yamlCommandWalker struct {
-	rel     string
-	syn     commandSyntax
-	refs    []commandRef
-	unknown int
+	rel   string
+	syn   commandSyntax
+	lines []string // the file's source lines, to place a ref inside a folded scalar
+	// prefix is a Taskfile node's namespace; dir / dirUnknown the working
+	// directory of the commands being walked.
+	prefix     string
+	dir        string
+	dirUnknown string
+	refs       []commandRef
+	unknown    int
 }
 
 func (w *yamlCommandWalker) walk(n *yaml.Node) {
@@ -117,6 +179,7 @@ func (w *yamlCommandWalker) walk(n *yaml.Node) {
 			w.walk(c)
 		}
 	case yaml.MappingNode:
+		defer w.enterDir(n)()
 		for i := 0; i+1 < len(n.Content); i += 2 {
 			key, val := n.Content[i].Value, n.Content[i+1]
 			switch {
@@ -131,26 +194,90 @@ func (w *yamlCommandWalker) walk(n *yaml.Node) {
 	}
 }
 
+// enterDir applies the working directory a mapping sets for the commands
+// in and under it (its own dir key, else GitHub's `defaults.run`), and
+// returns the restore.
+func (w *yamlCommandWalker) enterDir(n *yaml.Node) func() {
+	key, val, rule := "", "", dirRule(-1)
+	for _, dk := range w.syn.dirKeys {
+		if v := mappingValue(n, dk.key); v != nil && v.Kind == yaml.ScalarNode {
+			key, val, rule = dk.key, v.Value, dk.rule
+			break
+		}
+	}
+	if rule < 0 && w.syn.ghDefaults {
+		if v := mappingValue(mappingValue(mappingValue(n, "defaults"), "run"), "working-directory"); v != nil && v.Kind == yaml.ScalarNode {
+			key, val, rule = "defaults.run.working-directory", v.Value, dirFromRoot
+		}
+	}
+	if rule < 0 {
+		return func() {}
+	}
+	saved, savedUnknown := w.dir, w.dirUnknown
+	switch rule {
+	case dirOpaque:
+		w.dir, w.dirUnknown = "", fmt.Sprintf("%s %q is a working directory this audit does not model", key, val)
+	case dirFromRoot:
+		w.dir, w.dirUnknown = joinRunDir(".", val, key)
+	default:
+		if w.dirUnknown == "" {
+			w.dir, w.dirUnknown = joinRunDir(w.dir, val, key)
+		}
+	}
+	return func() { w.dir, w.dirUnknown = saved, savedUnknown }
+}
+
+// place stamps a ref with this walker's file, line and working directory.
+func (w *yamlCommandWalker) place(r commandRef, line int) commandRef {
+	r.File, r.Line = w.rel, line
+	if w.dirUnknown != "" {
+		r.DirUnknown = w.dirUnknown
+	} else {
+		r.Dirs = []string{w.dir}
+	}
+	return r
+}
+
 // shell reads a shell-bearing value: a scalar, or a sequence whose scalars
 // are shell and whose mappings are walked (a Taskfile cmd entry like
 // `{task: test}` or `{cmd: ...}`).
 func (w *yamlCommandWalker) shell(n *yaml.Node) {
 	switch n.Kind {
 	case yaml.ScalarNode:
-		first := n.Line
-		if n.Style&(yaml.LiteralStyle|yaml.FoldedStyle) != 0 {
-			first = n.Line + 1 // a block scalar's text starts under its indicator
-		}
-		for i, ln := range strings.Split(n.Value, "\n") {
-			line := first + i
-			if n.Style&(yaml.LiteralStyle|yaml.FoldedStyle) == 0 {
-				line = n.Line // a folded plain/quoted scalar has no reliable per-line position
+		switch {
+		case n.Style&yaml.LiteralStyle != 0:
+			// A literal block keeps its lines: line i of the value is source
+			// line n.Line+1+i.
+			for i, ln := range strings.Split(n.Value, "\n") {
+				refs, unk := shellRefs(ln, true)
+				w.unknown += unk
+				for _, r := range refs {
+					w.refs = append(w.refs, w.place(r, n.Line+1+i))
+				}
 			}
-			refs, unk := shellRefs(ln, true)
+		case n.Style&yaml.FoldedStyle != 0:
+			// A folded block joins its source lines, so read the joined
+			// command and place each ref back on the source line carrying it.
+			refs, unk := shellRefs(n.Value, true)
 			w.unknown += unk
+			start, block := blockLines(w.lines, n.Line)
+			cursor := 0
 			for _, r := range refs {
-				r.File, r.Line = w.rel, line
-				w.refs = append(w.refs, r)
+				line := start
+				if at := findRefLine(block, cursor, r); at >= 0 {
+					line, cursor = start+at, at
+				}
+				w.refs = append(w.refs, w.place(r, line))
+			}
+		default:
+			// A plain or quoted scalar spanning lines has no reliable
+			// per-line position: every ref sits on the key's line.
+			for _, ln := range strings.Split(n.Value, "\n") {
+				refs, unk := shellRefs(ln, true)
+				w.unknown += unk
+				for _, r := range refs {
+					w.refs = append(w.refs, w.place(r, n.Line))
+				}
 			}
 		}
 	case yaml.SequenceNode:
@@ -166,8 +293,61 @@ func (w *yamlCommandWalker) shell(n *yaml.Node) {
 	}
 }
 
+// blockLines returns the source lines of the block scalar whose indicator
+// sits on line indicator (1-based): the lines under it indented at least
+// as deep as its first non-blank line, and the 1-based line they start on.
+func blockLines(lines []string, indicator int) (int, []string) {
+	start := indicator + 1
+	var out []string
+	indent := -1
+	for i := indicator; i < len(lines); i++ { // lines[indicator] is source line indicator+1
+		ln := lines[i]
+		if strings.TrimSpace(ln) == "" {
+			out = append(out, ln)
+			continue
+		}
+		ind := len(ln) - len(strings.TrimLeft(ln, " \t"))
+		if indent < 0 {
+			indent = ind
+		}
+		if ind < indent {
+			break
+		}
+		out = append(out, ln)
+	}
+	return start, out
+}
+
+// findRefLine finds the first block line at or after from that carries r
+// — its script path, or `task NAME` — as whole words; -1 when r spans a
+// fold.
+func findRefLine(block []string, from int, r commandRef) int {
+	var re *regexp.Regexp
+	if r.Script {
+		re = scriptWordRe(r.Name)
+	} else {
+		re = regexp.MustCompile(`(^|[\s;&|(])task\s+` + regexp.QuoteMeta(r.Name) + `($|[\s;&|)])`)
+	}
+	for i := from; i < len(block); i++ {
+		if re.MatchString(block[i]) {
+			return i
+		}
+	}
+	return -1
+}
+
+// scriptWordRe matches a script path as a whole word on a line — bounded
+// by space, quotes, shell separators, or a YAML flow sequence's brackets
+// and commas. Group 1 and 2 are the boundaries, so a substitution keeps
+// them.
+func scriptWordRe(p string) *regexp.Regexp {
+	return regexp.MustCompile(`(^|[\s"'=\[{,(])` + regexp.QuoteMeta(p) + `($|[\s"';&|)\]},])`)
+}
+
 // names reads a task-name-bearing value: `task: build`, or a deps list
-// whose scalars are names and whose mappings carry their own `task:`.
+// whose scalars are names and whose mappings carry their own `task:`. The
+// name resolves in this file's include namespace; a leading ':' is the
+// root's.
 func (w *yamlCommandWalker) names(n *yaml.Node) {
 	switch n.Kind {
 	case yaml.ScalarNode:
@@ -176,7 +356,11 @@ func (w *yamlCommandWalker) names(n *yaml.Node) {
 		case !taskNameRe.MatchString(n.Value):
 			w.unknown++
 		default:
-			w.refs = append(w.refs, commandRef{File: w.rel, Line: n.Line, Name: n.Value})
+			q := w.prefix + n.Value
+			if strings.HasPrefix(n.Value, ":") {
+				q = n.Value[1:]
+			}
+			w.refs = append(w.refs, commandRef{File: w.rel, Line: n.Line, Name: n.Value, Qualified: q})
 		}
 	case yaml.SequenceNode:
 		for _, c := range n.Content {
@@ -200,6 +384,12 @@ func (w *yamlCommandWalker) names(n *yaml.Node) {
 func markdownCommands(rel, text string) ([]commandRef, int) {
 	var refs []commandRef
 	unknown := 0
+	// A doc does not say where its reader stands: its commands resolve from
+	// the repo root or from the doc's own directory.
+	dirs := []string{"."}
+	if d := path.Dir(rel); d != "." {
+		dirs = append(dirs, d)
+	}
 	inFence, shellFence := false, false
 	for i, ln := range strings.Split(text, "\n") {
 		trimmed := strings.TrimSpace(ln)
@@ -230,7 +420,7 @@ func markdownCommands(rel, text string) ([]commandRef, int) {
 			}
 		}
 		for _, r := range lineRefs {
-			r.File, r.Line = rel, i+1
+			r.File, r.Line, r.Dirs = rel, i+1, dirs
 			refs = append(refs, r)
 		}
 	}
@@ -244,8 +434,9 @@ var shellFenceInfo = map[string]bool{
 }
 
 var (
-	// taskNameRe is a literal Task target name (namespaces use ':').
-	taskNameRe = regexp.MustCompile(`^[A-Za-z0-9_][A-Za-z0-9_:.-]*$`)
+	// taskNameRe is a literal Task target name (namespaces use ':'; a
+	// leading ':' names the root Taskfile's).
+	taskNameRe = regexp.MustCompile(`^:?[A-Za-z0-9_][A-Za-z0-9_:.-]*$`)
 	// scriptPathRe is an in-repo script path worth holding to existence.
 	scriptPathRe = regexp.MustCompile(`^(\./)?[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)*\.(sh|bash|zsh|py|rb|pl)$`)
 	// quotedRe blanks quoted strings before a line is read.
@@ -356,76 +547,83 @@ func commentStart(line string) int {
 // deadCommands evaluates every command ref across a corpus. It returns
 // the refs that do not resolve, how many resolved, how many were seen but
 // not judgeable, and an error only for an unreadable input (I38: that is
-// unable-to-check, never a smaller count).
+// unable-to-check, never a smaller count — a script that exists and
+// cannot be stat'd included).
 func deadCommands(root, where string, files []string) (dead []deadCommand, resolved, unknown int, err error) {
-	var graph *taskGraph
-	graphLoaded := false
-	var graphErr error
-	taskfileName := ""
-	loadGraph := func() {
-		if graphLoaded {
-			return
+	res := &commandResolver{root: root, graphs: map[string]*taskGraph{}}
+
+	// The Taskfile corpus is read per NODE — each file under the namespace
+	// and directory it is included with; every other corpus per file, from
+	// the root.
+	var nodes []taskNode
+	var corpusGraph *taskGraph
+	first := ""
+	if where == CorpusTaskfile {
+		var ferr error
+		if first, ferr = rootTaskfile(root); ferr != nil {
+			return nil, 0, 0, ferr
 		}
-		graphLoaded = true
-		taskfileName, graphErr = rootTaskfile(root)
-		if graphErr != nil || taskfileName == "" {
-			return
+		if first != "" {
+			if corpusGraph, err = res.graph(first); err != nil {
+				return nil, 0, 0, err
+			}
+			want := map[string]bool{}
+			for _, f := range files {
+				want[f] = true
+			}
+			for _, n := range corpusGraph.nodes {
+				if want[n.file] {
+					nodes = append(nodes, n)
+				}
+			}
+			// Evidence in file order, as every other corpus reports it.
+			sort.SliceStable(nodes, func(i, j int) bool { return nodes[i].file < nodes[j].file })
 		}
-		graph, graphErr = loadTaskGraph(root, taskfileName)
+	} else {
+		for _, rel := range files {
+			nodes = append(nodes, taskNode{file: rel, dir: "."})
+		}
 	}
 
-	for _, rel := range files {
-		data, rerr := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel)))
+	seen := map[string]bool{}
+	for _, node := range nodes {
+		data, rerr := os.ReadFile(filepath.Join(root, filepath.FromSlash(node.file)))
 		if rerr != nil {
-			return nil, 0, 0, fmt.Errorf("%s unreadable: %w", rel, rerr)
+			return nil, 0, 0, fmt.Errorf("%s unreadable: %w", node.file, rerr)
 		}
-		refs, unk, xerr := extractCommands(where, rel, data)
+		refs, unk, xerr := extractCommands(where, node, data)
 		if xerr != nil {
 			return nil, 0, 0, xerr
 		}
 		unknown += unk
 		for _, r := range refs {
-			if r.Script {
-				switch ok, outside := scriptStatus(root, rel, r.Name); {
-				case outside:
-				case ok:
-					resolved++
-				default:
-					dead = append(dead, deadCommand{commandRef: r, Why: "no such file"})
-				}
+			status, why, jerr := res.judge(r, corpusGraph)
+			if jerr != nil {
+				return nil, 0, 0, jerr
+			}
+			// A file included twice is read twice; a ref judged the same
+			// way twice counts once.
+			key := fmt.Sprintf("%s:%d:%t:%s:%d:%s", r.File, r.Line, r.Script, r.Name, status, why)
+			if seen[key] {
 				continue
 			}
-			loadGraph()
-			if graphErr != nil {
-				return nil, 0, 0, graphErr
-			}
-			if graph == nil {
-				dead = append(dead, deadCommand{commandRef: r, Why: "no Taskfile at the repo root"})
-				continue
-			}
-			missing, uncheckable := graph.resolveTarget(r.Name)
-			switch {
-			case uncheckable != "":
-				unknown++
-			case missing != "":
-				dead = append(dead, deadCommand{commandRef: r, Why: missing})
-			default:
+			seen[key] = true
+			switch status {
+			case refResolved:
 				resolved++
+			case refUnknown:
+				unknown++
+			default:
+				dead = append(dead, deadCommand{commandRef: r, Why: why})
 			}
 		}
 	}
 
 	// A Taskfile's broken local include breaks every `task` run, whether or
 	// not anything names a target inside it: it is a dead link of its own.
-	if where == CorpusTaskfile {
-		loadGraph()
-		if graphErr != nil {
-			return nil, 0, 0, graphErr
-		}
-		if graph != nil {
-			for _, why := range sortedValues(graph.broken) {
-				dead = append(dead, deadCommand{commandRef: commandRef{File: taskfileName, Line: 0, Name: "include"}, Why: why})
-			}
+	if corpusGraph != nil {
+		for _, why := range sortedValues(corpusGraph.broken) {
+			dead = append(dead, deadCommand{commandRef: commandRef{File: first, Line: 0, Name: "include"}, Why: why})
 		}
 	}
 	return dead, resolved, unknown, nil
@@ -444,25 +642,178 @@ func sortedValues(m map[string]string) []string {
 	return out
 }
 
-// scriptStatus resolves a script path relative to the repo root or to the
-// citing file's directory (Taskfiles and hooks run from either). outside
-// reports a path that escapes the repo from both bases — not this repo's
-// to hold, so neither resolved nor dead.
-func scriptStatus(root, rel, p string) (resolves, outside bool) {
-	clean := filepath.FromSlash(strings.TrimPrefix(p, "./"))
-	bases := []string{root, filepath.Join(root, filepath.Dir(filepath.FromSlash(rel)))}
+type refStatus int
+
+const (
+	refResolved refStatus = iota
+	refDead
+	refUnknown
+)
+
+// commandResolver judges refs, loading each Taskfile's graph once.
+type commandResolver struct {
+	root   string
+	graphs map[string]*taskGraph // by the Taskfile it was loaded from
+	near   map[string]string     // dir → the Taskfile Task finds from it ("" for none)
+}
+
+func (res *commandResolver) graph(taskfile string) (*taskGraph, error) {
+	if g, ok := res.graphs[taskfile]; ok {
+		return g, nil
+	}
+	g, err := loadTaskGraph(res.root, taskfile)
+	if err != nil {
+		return nil, err
+	}
+	res.graphs[taskfile] = g
+	return g, nil
+}
+
+// nearest is the Taskfile Task finds when started in dir: dir's own, else
+// the nearest parent's, up to the repo root ("" when none).
+func (res *commandResolver) nearest(dir string) (string, error) {
+	if res.near == nil {
+		res.near = map[string]string{}
+	}
+	if tf, ok := res.near[dir]; ok {
+		return tf, nil
+	}
+	tf, err := taskfileIn(res.root, dir)
+	if err != nil {
+		return "", err
+	}
+	if tf == "" && dir != "." {
+		if tf, err = res.nearest(path.Dir(dir)); err != nil {
+			return "", err
+		}
+	}
+	res.near[dir] = tf
+	return tf, nil
+}
+
+// judge decides one ref. corpusGraph is the task graph a Taskfile's own
+// `task:` / `deps:` names resolve in.
+func (res *commandResolver) judge(r commandRef, corpusGraph *taskGraph) (refStatus, string, error) {
+	if r.Qualified != "" {
+		missing, uncheckable := corpusGraph.resolveTarget(r.Qualified)
+		switch {
+		case uncheckable != "":
+			return refUnknown, "", nil
+		case missing == "":
+			return refResolved, "", nil
+		case missing == "no such target" && r.Qualified != strings.TrimPrefix(r.Name, ":"):
+			why := fmt.Sprintf("no such target %s — a call inside an include resolves in its namespace", r.Qualified)
+			if m, u := corpusGraph.resolveTarget(r.Name); m == "" && u == "" {
+				why += "; the root's is :" + r.Name
+			}
+			return refDead, why, nil
+		}
+		return refDead, missing, nil
+	}
+	if r.DirUnknown != "" {
+		return refUnknown, "", nil
+	}
+	if r.Script {
+		return scriptStatus(res.root, r.File, r.Dirs, r.Name)
+	}
+
+	// A shell `task X`: a new task process, resolving X at the root of the
+	// Taskfile it finds from each directory the command may run in.
+	name := strings.TrimPrefix(r.Name, ":")
+	status, why := refDead, ""
+	found := false
+	for _, dir := range r.Dirs {
+		tf, err := res.nearest(dir)
+		if err != nil {
+			return 0, "", err
+		}
+		if tf == "" {
+			continue
+		}
+		found = true
+		g, err := res.graph(tf)
+		if err != nil {
+			return 0, "", err
+		}
+		missing, uncheckable := g.resolveTarget(name)
+		switch {
+		case uncheckable != "":
+			status = refUnknown
+		case missing == "":
+			return refResolved, "", nil
+		case why == "":
+			why = missing
+		}
+	}
+	if !found {
+		if len(r.Dirs) == 1 && r.Dirs[0] != "." {
+			return refDead, fmt.Sprintf("no Taskfile in %s/ or above it", r.Dirs[0]), nil
+		}
+		return refDead, "no Taskfile at the repo root", nil
+	}
+	if status == refUnknown {
+		return refUnknown, "", nil
+	}
+	return refDead, why, nil
+}
+
+// scriptStatus resolves a script path from the directories its command
+// may run in. A candidate that exists and cannot be stat'd is an error
+// (I38), never "no such file". A path that leaves the repo from every
+// directory is not this repo's to hold — not checkable — unless it
+// resolves from the citing file's own directory while the command runs
+// elsewhere: the include-relative path Task runs from the root.
+func scriptStatus(root, rel string, dirs []string, p string) (refStatus, string, error) {
+	clean := path.Clean(strings.TrimPrefix(p, "./"))
+	stat := func(cand string) (bool, error) {
+		ok, err := present(filepath.Join(root, filepath.FromSlash(cand)))
+		if err != nil {
+			return false, fmt.Errorf("%s: %s cannot be checked: %w", rel, cand, err)
+		}
+		return ok, nil
+	}
 	inside := 0
-	for _, base := range bases {
-		cand := filepath.Join(base, clean)
-		if r, err := filepath.Rel(root, cand); err != nil || r == ".." || strings.HasPrefix(r, ".."+string(filepath.Separator)) {
+	for _, dir := range dirs {
+		cand := path.Join(dir, clean)
+		if escapesRepo(cand) {
 			continue
 		}
 		inside++
-		if ok, _ := present(cand); ok {
-			return true, false
+		ok, err := stat(cand)
+		if err != nil {
+			return 0, "", err
+		}
+		if ok {
+			return refResolved, "", nil
 		}
 	}
-	return false, inside == 0
+
+	// Name the likeliest mistake: the path is right relative to the file
+	// that cites it, and wrong from where the command runs.
+	hint := ""
+	if own := path.Dir(rel); len(dirs) == 1 && dirs[0] != own {
+		if cand := path.Join(own, clean); !escapesRepo(cand) {
+			if ok, err := stat(cand); err == nil && ok {
+				hint = fmt.Sprintf(" — it resolves from %s, the file's own directory, but the command runs in %s", runDirNoun(own), runDirNoun(dirs[0]))
+			}
+		}
+	}
+	switch {
+	case inside > 0 && len(dirs) == 1 && dirs[0] != "." && hint == "":
+		return refDead, "no such file in " + dirs[0] + "/", nil
+	case inside > 0:
+		return refDead, "no such file" + hint, nil
+	case hint != "":
+		return refDead, "leaves the repo from " + runDirNoun(dirs[0]) + hint, nil
+	}
+	return refUnknown, "", nil
+}
+
+func runDirNoun(dir string) string {
+	if dir == "." {
+		return "the repo root"
+	}
+	return dir + "/"
 }
 
 func checkCommandsResolve(root string, files []string, c Concern) Finding {
@@ -480,7 +831,7 @@ func checkCommandsResolve(root string, files []string, c Concern) Finding {
 	}
 	unk := ""
 	if unknown > 0 {
-		unk = fmt.Sprintf("; %d not checkable (templated, flagged, or into a remote include)", unknown)
+		unk = fmt.Sprintf("; %d not checkable (templated, flagged, into a remote include, outside the repo, or run from a directory this audit cannot model)", unknown)
 	}
 	if len(dead) > 0 {
 		for _, d := range dead {
