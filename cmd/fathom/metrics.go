@@ -15,7 +15,7 @@ import (
 
 func cmdMetrics(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "error: metrics requires a verb: spend | traffic | channels | interventions | series | rollup | rotate | impact | catches | sessions")
+		fmt.Fprintln(stderr, "error: metrics requires a verb: spend | traffic | channels | interventions | series | rollup | rotate | impact | catches | sessions | load")
 		printMetricsUsage(stderr)
 		return 1
 	}
@@ -38,10 +38,12 @@ func cmdMetrics(args []string, stdout, stderr io.Writer) int {
 		return cmdMetricsImpact(args[1:], stdout, stderr)
 	case "catches":
 		return cmdMetricsCatches(args[1:], stdout, stderr)
+	case "load":
+		return cmdMetricsLoad(args[1:], stdout, stderr)
 	case "sessions":
 		return cmdMetricsSessions(args[1:], stdout, stderr)
 	default:
-		fmt.Fprintf(stderr, "error: unknown metrics verb %q (want spend | traffic | channels | interventions | series | rollup | rotate | impact | catches | sessions)\n", args[0])
+		fmt.Fprintf(stderr, "error: unknown metrics verb %q (want spend | traffic | channels | interventions | series | rollup | rotate | impact | catches | sessions | load)\n", args[0])
 		printMetricsUsage(stderr)
 		return 1
 	}
@@ -60,6 +62,7 @@ func printMetricsUsage(w io.Writer) {
 	fmt.Fprintln(w, "  fathom metrics catches       [--kind K]... [--service S] [--days N] [--page N] [--per-page N] [--call-log PATH] [--url U] [--json]")
 	fmt.Fprintln(w, "  fathom metrics sessions      [--arm on|off] [--repo R] [--q TEXT] [--sort KEY] [--asc] [--page N] [--per-page N] [--json]")
 	fmt.Fprintln(w, "  fathom metrics sessions      --id SESSION [--channel C]... [--page N] [--per-page N] [--json]")
+	fmt.Fprintln(w, "  fathom metrics load          [--call-log PATH] [--url U] [--json]")
 }
 
 // resolveMetricsWindow is every metrics verb's shared --since/--from/--to

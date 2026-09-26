@@ -62,17 +62,24 @@ func cmdHarnessLadder(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
+// harnessMatrixDefaultURL is the daemon URL `harness matrix` renders the
+// `mcp add` lines with unless --url names another (the Operate page's chip
+// adds --url when its daemon listens elsewhere).
+const harnessMatrixDefaultURL = "http://127.0.0.1:7575"
+
 // cmdHarnessMatrix renders the adoption matrix (RP-18) — the table
 // docs/adoption/other-harnesses.md pins between its markers — as Markdown
 // or --json rows.
 func cmdHarnessMatrix(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("harness matrix", stderr)
-	url := fs.String("url", "http://127.0.0.1:7575", "daemon base URL the `mcp add` lines are rendered with")
+	url := fs.String("url", harnessMatrixDefaultURL, "daemon base URL the `mcp add` lines are rendered with")
 	jsonOut := fs.Bool("json", false, "emit the rows as JSON")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
-	now := time.Now()
+	// The console's clock (time.Now outside tests): the demotion clock the
+	// Operate page's harness panel reads is the same instant (P10).
+	now := consoleVerbNow()
 	if *jsonOut {
 		enc := json.NewEncoder(stdout)
 		enc.SetIndent("", "  ")

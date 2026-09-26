@@ -42,7 +42,10 @@ func init() {
 		ID: "session", Route: "/sessions/{id}", Group: "Evidence", Order: 11, NavParent: "sessions",
 		Title:    "Session",
 		Question: "What happened in one session, event by event?",
-		Build:    buildSessionPage,
+		// The exact command names the session and the window: the page's
+		// JSON and heading carry it filled in (consoleOut.Verbs).
+		Verbs: []string{"fathom metrics sessions --id {id} --per-page {per} --json"},
+		Build: buildSessionPage,
 	})
 }
 
@@ -82,32 +85,43 @@ func buildSessionsPage(cr *consoleRequest) (consoleOut, error) {
 	m := cr.model()
 	q := cr.r.URL.Query()
 	f := sessionFilterFrom(q)
-	tbl := console.SessionTable(m.ledger, f, evPage(q), 50)
+	tbl := console.SessionTable(sessionLedgerPath(), m.ledger, m.ledgerErr, f, evPage(q), 50)
 	verb := sessionsCommand(f, tbl.Page)
 	// The shared sessions metric is the model's one read of the ledger —
 	// the read the table above is built from too (OC-9, ADR-045 decision 3).
 	metrics := consoleModelMetrics(m)
 	sessions := metrics[console.MetricSessions]
+	meta := "sessions " + valuePlain(tbl.Sessions)
+	if tbl.Sessions.Known() {
+		meta = fmt.Sprintf("%s from %s", plural(tbl.Sessions.V, "session"), plural(tbl.LedgerRows.V, "ledger row"))
+	}
 	return consoleOut{
-		Meta:     []string{"generated " + m.GeneratedAt, fmt.Sprintf("%s from %s", plural(tbl.Sessions, "session"), plural(tbl.LedgerRows, "ledger row"))},
+		Meta:     []string{"generated " + m.GeneratedAt, meta},
 		Model:    sessionsPageModel{Table: tbl},
 		Metrics:  pageMetrics(cr.page, metrics),
 		Sections: map[string]any{verb: tbl},
 		Body: func() string {
-			band := stat.RenderBand([]stat.Stat{
-				valueStat("distinct sessions (all time)", sessions),
-				{Label: "matching this filter", Value: fmtThousands(tbl.Matching), Sub: "of " + plural(tbl.Sessions, "session")},
-				{Label: "ledger rows", Value: fmtThousands(tbl.LedgerRows), Sub: "the Stop hook appends one per turn; " + plural(tbl.Anonymous, "row") + " with no session id count once each"},
-			}, stat.BandOptions{AriaLabel: "sessions"})
+			matching := valueStat("matching this filter", tbl.Matching)
+			rows := valueStat("ledger rows", tbl.LedgerRows)
+			denominator := ""
+			if tbl.Matching.Known() {
+				matching.Sub = "of " + plural(tbl.Sessions.V, "session")
+				rows.Sub = "the Stop hook appends one per turn; " + plural(tbl.Anonymous.V, "row") + " with no session id count once each"
+				denominator = plural(tbl.Matching.V, "matching session") + " of " + plural(tbl.Sessions.V, "session")
+			}
+			band := stat.RenderBand([]stat.Stat{valueStat("distinct sessions (all time)", sessions), matching, rows}, stat.BandOptions{AriaLabel: "sessions"})
 			state, reason := console.StatePresent, ""
-			if !sessions.Known() {
+			switch {
+			case !tbl.Sessions.Known():
+				state, reason = tbl.Sessions.State, tbl.Sessions.Reason
+			case !sessions.Known():
 				state, reason = sessions.State, sessions.Reason
 			}
 			return band + `<div class="mt-4">` + renderPanel(consolePanel{
 				ID: "sessions-table", Title: "Sessions", SourceKey: "sessions",
 				Question: "Which sessions ran, under which arm, and how far did each get?",
 				Verb:     verb, Source: "the session ledger (" + sessionLedgerPath() + "), the last row per session id",
-				Denominator: plural(tbl.Matching, "matching session") + " of " + plural(tbl.Sessions, "session"),
+				Denominator: denominator,
 				Freshness:   "as of the model read at " + m.GeneratedAt,
 				State:       state, Reason: reason,
 				Body: renderSessionFilter(tbl) + renderSessionTable(cr, tbl),
@@ -154,35 +168,71 @@ func sessionFigure(v *int) string {
 	return `<span class="tabular-nums">` + fmtThousands(*v) + `</span>`
 }
 
-// sessionSortHeader is a column header that sorts the table by key: a link
-// that flips the direction when the column is already the sort.
-func sessionSortHeader(cr *consoleRequest, tbl console.SessionTableModel, key, label string) templComponent {
-	q := cr.r.URL.Query()
+// sessionSortHref is the table sorted by key: newest (descending) first, or
+// the other direction when key is already the sort.
+func sessionSortHref(cr *consoleRequest, tbl console.SessionTableModel, key string) string {
 	dir := "desc"
-	state := ""
-	if tbl.Filter.Sort == key {
-		if tbl.Filter.Asc {
-			state = ` <span aria-hidden="true">↑</span><span class="sr-only"> (sorted ascending)</span>`
-		} else {
-			dir = "asc"
-			state = ` <span aria-hidden="true">↓</span><span class="sr-only"> (sorted descending)</span>`
-		}
+	if tbl.Filter.Sort == key && !tbl.Filter.Asc {
+		dir = "asc"
 	}
 	next := url.Values{}
-	for k, vs := range q {
+	for k, vs := range cr.r.URL.Query() {
 		if k != "page" && k != "format" {
 			next[k] = vs
 		}
 	}
 	next.Set("sort", key)
 	next.Set("dir", dir)
-	return evRaw(`<a href="/sessions?` + html.EscapeString(next.Encode()) + `" class="inline-flex min-h-11 items-center gap-1 text-ink hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">` + html.EscapeString(label) + state + `</a>`)
+	return "/sessions?" + next.Encode()
+}
+
+// sessionSortState is how the column key is sorted, in words and an arrow.
+func sessionSortState(tbl console.SessionTableModel, key string) string {
+	switch {
+	case tbl.Filter.Sort != key:
+		return ""
+	case tbl.Filter.Asc:
+		return ` <span aria-hidden="true">↑</span><span class="sr-only"> (sorted ascending)</span>`
+	}
+	return ` <span aria-hidden="true">↓</span><span class="sr-only"> (sorted descending)</span>`
+}
+
+// sessionSortHeader is a column header that sorts the table by key: a link
+// that flips the direction when the column is already the sort.
+func sessionSortHeader(cr *consoleRequest, tbl console.SessionTableModel, key, label string) templComponent {
+	return evRaw(`<a href="` + html.EscapeString(sessionSortHref(cr, tbl, key)) + `" class="inline-flex min-h-11 items-center gap-1 text-ink hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">` + html.EscapeString(label) + sessionSortState(tbl, key) + `</a>`)
+}
+
+// sessionSortLabels names each sort key as the table's header does.
+var sessionSortLabels = map[string]string{"at": "last row", "turns": "turns", "first_edit": "first edit", "tokens": "tokens", "fathom_calls": "fathom calls", "catches": "verify catches"}
+
+// renderSessionSortChips is the sort below md, where the table (and its
+// sortable headers) is hidden: one chip per key, the current one marked
+// with its direction, each a plain link.
+func renderSessionSortChips(cr *consoleRequest, tbl console.SessionTableModel) string {
+	chips := make([]evChip, 0, len(console.SessionSorts))
+	for _, key := range console.SessionSorts {
+		label := sessionSortLabels[key]
+		if tbl.Filter.Sort == key {
+			if tbl.Filter.Asc {
+				label += " ↑"
+			} else {
+				label += " ↓"
+			}
+		}
+		chips = append(chips, evChip{Label: label, Href: sessionSortHref(cr, tbl, key), Selected: tbl.Filter.Sort == key})
+	}
+	return evChips("Sort by", chips)
 }
 
 // renderSessionTable is the table (from md up) and the same rows stacked
-// (below md), then the pages.
+// (below md) with a sort control of their own, then the pages. With no
+// readable ledger it renders nothing: the panel's truth line names why.
 func renderSessionTable(cr *consoleRequest, tbl console.SessionTableModel) string {
-	if tbl.Matching == 0 {
+	if !tbl.Matching.Known() {
+		return ""
+	}
+	if tbl.Matching.V == 0 {
 		return chrome.RenderEmptyState(chrome.EmptyState{Heading: "No session matches", Body: "Nothing in the ledger matches this filter — clear it to see every session."})
 	}
 	rows := make([]table.Row, 0, len(tbl.Rows))
@@ -217,8 +267,9 @@ func renderSessionTable(cr *consoleRequest, tbl console.SessionTableModel) strin
 		{Key: "catches", Label: "Verify catches", Align: "right", HeaderHTML: sessionSortHeader(cr, tbl, "catches", "Verify catches")},
 	}
 	tb := renderKitTable(table.TableParams{TableID: "sessions", Columns: cols, Rows: rows,
-		Caption: fmt.Sprintf("sessions %s–%s of %s, one row per session", fmtThousands((tbl.Page-1)*tbl.PerPage+1), fmtThousands((tbl.Page-1)*tbl.PerPage+len(tbl.Rows)), fmtThousands(tbl.Matching))})
+		Caption: fmt.Sprintf("sessions %s–%s of %s, one row per session", fmtThousands((tbl.Page-1)*tbl.PerPage+1), fmtThousands((tbl.Page-1)*tbl.PerPage+len(tbl.Rows)), fmtThousands(tbl.Matching.V))})
 	return `<div class="hidden md:block" data-sessions-table>` + tb + `</div>` +
+		`<div class="md:hidden" data-sessions-sort>` + renderSessionSortChips(cr, tbl) + `</div>` +
 		`<ul class="flex flex-col gap-3 md:hidden" aria-label="sessions" data-sessions-list>` + list.String() + `</ul>` +
 		`<p class="mt-2 text-xs text-ink-muted">— = not recorded for that session (a row that predates the field), never zero.</p>` +
 		evPagination(cr.r.URL.Path, cr.r.URL.Query(), tbl.Page, tbl.Pages, "session pages")
@@ -236,12 +287,13 @@ func sessionLink(id string) string {
 // page's HTML budget, far under the response bound.
 const sessionPageWindow = 200
 
-// replayCommand is the exact `metrics sessions --id` command the replay shows.
+// replayCommand is the exact `metrics sessions --id` command the replay
+// shows, each value quoted where a shell would split it.
 func replayCommand(id string, channels []string, page, perPage int) string {
 	var b strings.Builder
-	b.WriteString("fathom metrics sessions --id " + id)
+	b.WriteString("fathom metrics sessions --id " + shellQuote(id))
 	for _, c := range channels {
-		b.WriteString(" --channel " + c)
+		b.WriteString(" --channel " + shellQuote(c))
 	}
 	if page > 1 {
 		b.WriteString(" --page " + strconv.Itoa(page))
@@ -261,12 +313,17 @@ func buildSessionPage(cr *consoleRequest) (consoleOut, error) {
 			}
 		}
 	}
+	// ?per= widens a JSON window up to the response bound; the HTML page
+	// never draws more than its own window, the size its budget is set for.
 	per := sessionPageWindow
 	if n, err := strconv.Atoi(q.Get("per")); err == nil && n > 0 {
 		per = min(n, console.MaxWindowEvents)
+		if !wantsJSON(cr.r) {
+			per = min(per, sessionPageWindow)
+		}
 	}
 	m := cr.model()
-	rp := buildSessionReplay(m.ledger, id, channels, evPage(q), per)
+	rp := buildSessionReplay(sessionLedgerPath(), m.ledger, m.ledgerErr, id, channels, evPage(q), per)
 	verb := replayCommand(id, channels, rp.Window.Page, rp.Window.PerPage)
 	// The top bar's h1 truncates, so it names the session by its short id;
 	// the meta line carries the full id as selectable text. The law-14
@@ -274,6 +331,7 @@ func buildSessionPage(cr *consoleRequest) (consoleOut, error) {
 	return consoleOut{
 		Title:    "Session " + shortSessionID(id),
 		Meta:     []string{"session id " + id},
+		Verbs:    []string{verb},
 		Model:    rp,
 		Sections: map[string]any{verb: rp},
 		Body:     func() string { return renderSessionReplay(cr, rp, verb) },
@@ -291,16 +349,14 @@ func renderSessionReplay(cr *consoleRequest, rp sessionReplay, verb string) stri
 	b.WriteString(`<div class="mb-3 rounded-md border border-dashed border-caution px-3 py-2 text-ink-muted" data-law14>a session replay is a lens over mechanism-labeled events, never evidence (law 14)</div>`)
 
 	var body strings.Builder
-	if w.Events == 0 {
-		body.WriteString(`<p class="italic text-ink-muted" data-truth-line="absent">not measured — ` + html.EscapeString(w.Note) + `</p>`)
-	} else {
-		chips := []evChip{{Label: "every channel", Href: evHref(path, q, "channel", ""), Selected: len(q["channel"]) == 0, Count: fmtThousands(w.Events)}}
+	if w.Events.Known() {
+		chips := []evChip{{Label: "every channel", Href: evHref(path, q, "channel", ""), Selected: len(q["channel"]) == 0, Count: valuePlainShort(w.Events)}}
 		for _, c := range w.Channels {
 			chips = append(chips, evChip{Label: c.Channel, Href: evHref(path, q, "channel", c.Channel), Selected: len(q["channel"]) > 0 && c.Selected, Count: fmtThousands(c.Events)})
 		}
 		body.WriteString(evChips("Channel", chips))
 		body.WriteString(fmt.Sprintf(`<p class="mb-2 text-xs text-ink-muted" data-replay-window>window %d of %d · %s of %s · %s → %s UTC</p>`,
-			w.Page, w.Pages, plural(len(w.Window), "event"), fmtThousands(w.Matching), html.EscapeString(evShortTime(w.From)), html.EscapeString(evShortTime(w.To))))
+			w.Page, w.Pages, plural(len(w.Window), "event"), valuePlainShort(w.Matching), html.EscapeString(evShortTime(w.From)), html.EscapeString(evShortTime(w.To))))
 		if len(w.Window) > 0 {
 			events := make([]viz.Event, 0, len(w.Window))
 			for _, e := range w.Window {
@@ -326,13 +382,18 @@ func renderSessionReplay(cr *consoleRequest, rp sessionReplay, verb string) stri
 		}
 		body.WriteString(evPagination(path, q, w.Page, w.Pages, "replay windows"))
 	}
+	replayState, replayReason := console.StatePresent, ""
+	if w.Events.State != console.StatePresent {
+		replayState, replayReason = w.Events.State, w.Events.Reason
+	}
 	b.WriteString(renderPanel(consolePanel{
 		ID: "replay", Title: "Replay", SourceKey: "sessions",
 		Question: "What did the hooks record in this session, in order?",
 		Verb:     verb, Source: "the hooks log (" + beatLogPath() + ", and its rotated generation), the beats naming this session",
 		Denominator: fmt.Sprintf("at most %d events per window (%d per window here)", console.MaxWindowEvents, w.PerPage),
 		Freshness:   "read at most 30 s ago (the model's TTL)",
-		Body:        body.String(),
+		State:       replayState, Reason: replayReason,
+		Body: body.String(),
 	}))
 
 	var card strings.Builder
@@ -353,14 +414,16 @@ func renderSessionReplay(cr *consoleRequest, rp sessionReplay, verb string) stri
 			{Term: "discovery actions", DetailHTML: template.HTML(sessionFigure(e.DiscoveryActionsTotal))},
 		}))
 	}
-	state, reason := console.StatePresent, ""
-	if rp.Ledger == nil {
-		state, reason = console.StateAbsent, rp.LedgerNote
+	state, reason := rp.LedgerState, rp.LedgerNote
+	if rp.Ledger != nil {
+		state, reason = console.StatePresent, ""
 	}
+	// The ledger row is the "ledger" object of the replay verb's own JSON,
+	// so the panel names that verb — the table verb prints no such row.
 	b.WriteString(`<div class="mt-4">` + renderPanel(consolePanel{
 		ID: "ledger-row", Title: "The session's ledger row", SourceKey: "sessions",
 		Question: "What did the Stop hook record for this session at its last turn?",
-		Verb:     "fathom metrics sessions --q " + shortSessionID(w.SessionID) + " --json", Source: "the session ledger (" + sessionLedgerPath() + ")",
+		Verb:     verb, Source: "the session ledger (" + sessionLedgerPath() + "), the replay JSON's \"ledger\" object",
 		Freshness: "as of the model read", State: state, Reason: reason,
 		Body: card.String(),
 	}) + `</div>`)

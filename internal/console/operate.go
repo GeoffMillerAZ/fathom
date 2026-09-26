@@ -87,9 +87,18 @@ type ClassTraffic struct {
 	ErrorRate float64     `json:"error_rate_percent"`
 }
 
-// OperateModel is the Operate page's traffic projection.
+// OperateModel is the Operate page's projection: the daemon and its load.
 type OperateModel struct {
-	Daemon      DaemonPanel     `json:"daemon"`
+	Daemon DaemonPanel `json:"daemon"`
+	LoadModel
+}
+
+// LoadModel is the traffic a CLI verb can compute from the call log alone —
+// `fathom metrics load --json` prints exactly this, and the Operate page's
+// traffic and tool panels render it (P10): calls per day per surface with
+// p50, p95 and error rate, the caller classes, and the tools by caller
+// class. ToolsCalled is absent or an error when the log was not read.
+type LoadModel struct {
 	CallLog     ResolvedCallLog `json:"call_log"`
 	Days        []string        `json:"days"`
 	Surfaces    []string        `json:"surfaces"`
@@ -100,7 +109,7 @@ type OperateModel struct {
 	WindowCalls Value[int]      `json:"window_calls"`
 	Classes     []ClassTraffic  `json:"classes"`
 	Tools       []ToolLoad      `json:"tools"`
-	ToolsCalled int             `json:"tools_called"`
+	ToolsCalled Value[int]      `json:"tools_called"`
 }
 
 // SurfaceLabel names a surface the way `metrics traffic` does.
@@ -132,21 +141,10 @@ func (a *latAcc) stats() (p50, p95, errRate float64) {
 
 func inAxis(axis map[string]int, day string) bool { _, ok := axis[day]; return ok }
 
-// OperateView projects the daemon and its traffic.
+// OperateView projects the daemon and its load.
 func OperateView(in OperateInputs) OperateModel {
-	if in.Days <= 0 {
-		in.Days = 14
-	}
-	if in.WindowDays <= 0 {
-		in.WindowDays = 7
-	}
-	if in.TopTools <= 0 {
-		in.TopTools = 10
-	}
 	now := in.Now.UTC()
-	m := OperateModel{CallLog: in.CallLog}
-
-	// The daemon.
+	m := OperateModel{LoadModel: LoadView(in)}
 	d := in.Daemon
 	m.Daemon = DaemonPanel{Version: d.Version, Commit: d.Commit, Dirty: d.Dirty, Addr: d.Addr}
 	const self = "this daemon process"
@@ -167,6 +165,24 @@ func OperateView(in OperateInputs) OperateModel {
 		m.Daemon.HeapMB = Present(int(d.HeapBytes>>20), self).WithDenominator("Go heap in use")
 	}
 	m.Daemon.Goroutines = Measured(d.Goroutines, self)
+	return m
+}
+
+// LoadView projects the call log's load (in.Daemon is not read): the
+// per-day, per-surface matrix, the caller classes and the tools by caller
+// class. OperateView carries it unchanged.
+func LoadView(in OperateInputs) LoadModel {
+	if in.Days <= 0 {
+		in.Days = 14
+	}
+	if in.WindowDays <= 0 {
+		in.WindowDays = 7
+	}
+	if in.TopTools <= 0 {
+		in.TopTools = 10
+	}
+	now := in.Now.UTC()
+	m := LoadModel{CallLog: in.CallLog, Tools: []ToolLoad{}}
 
 	// The day axis: Days calendar days ending today, oldest first.
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
@@ -193,6 +209,7 @@ func OperateView(in OperateInputs) OperateModel {
 		} else {
 			m.WindowCalls = Absent[int](reason).WithSource(source)
 		}
+		m.ToolsCalled = m.WindowCalls
 		return m
 	}
 
@@ -279,10 +296,10 @@ func OperateView(in OperateInputs) OperateModel {
 		m.Classes = append(m.Classes, ClassTraffic{Class: c, Calls: len(a.lat), Share: float64(len(a.lat)) / float64(len(window)), P50MS: p50, P95MS: p95, ErrorRate: er})
 	}
 	loads := ToolLoads(window)
-	m.ToolsCalled = len(loads)
+	m.ToolsCalled = Measured(len(loads), source).WithDenominator(fmt.Sprintf("distinct tools called in the last %d days (console reads excluded)", in.WindowDays))
 	if len(loads) > in.TopTools {
 		loads = loads[:in.TopTools]
 	}
-	m.Tools = loads
+	m.Tools = append(m.Tools, loads...)
 	return m
 }

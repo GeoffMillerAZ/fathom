@@ -96,9 +96,11 @@ func renderDecide(cr *consoleRequest, dm console.DecideModel, verb string) strin
 		if !s.On {
 			state = `<span class="font-medium text-ink-muted">✗ not in [decide] sites</span>`
 		}
-		rows = append(rows, table.Row{ID: "site-" + s.Site, Cells: []string{"", "", "", strconv.Itoa(s.Applied), strconv.Itoa(s.Errors)}, HTMLCells: []templComponent{
+		// Every count is the log's: with no log each is "not measured", with
+		// an unreadable one each names the failure — never a 0 beside it.
+		rows = append(rows, table.Row{ID: "site-" + s.Site, HTMLCells: []templComponent{
 			evRaw(`<a href="` + html.EscapeString(evHref("/decide", cr.r.URL.Query(), "site", s.Site)) + `#rulings" class="inline-flex min-h-11 items-center font-mono text-xs text-accent underline-offset-4 hover:underline">` + html.EscapeString(s.Site) + `</a>`),
-			evRaw(state), evRaw(evCell(s.Rulings, "not measured"))}})
+			evRaw(state), evRaw(evCell(s.Rulings, "not measured")), evRaw(evCell(s.Applied, "not measured")), evRaw(evCell(s.Errors, "not measured"))}})
 	}
 	sites.WriteString(`<div class="mt-3">` + renderKitTable(table.TableParams{TableID: "decide-sites", Caption: "sites: where a decision may be asked",
 		Columns: []table.Column{{Key: "site", Label: "Site"}, {Key: "on", Label: "Egress"}, {Key: "rulings", Label: "Rulings", Align: "right"}, {Key: "applied", Label: "Applied", Align: "right"}, {Key: "errors", Label: "Failed", Align: "right"}},
@@ -222,7 +224,7 @@ func renderRulings(cr *consoleRequest, dm console.DecideModel) string {
 	chips := []evChip{{Label: "every site", Href: evHref("/decide", q, "site", "") + "#rulings", Selected: dm.Filter.Site == ""}}
 	for _, s := range dm.Sites {
 		if !s.Rulings.Known() || s.Rulings.V == 0 {
-			continue
+			continue // no chip for a site with nothing to filter to
 		}
 		chips = append(chips, evChip{Label: s.Site, Href: evHref("/decide", q, "site", s.Site) + "#rulings", Selected: dm.Filter.Site == s.Site, Count: fmtThousands(s.Rulings.V)})
 	}
@@ -235,6 +237,7 @@ func renderRulings(cr *consoleRequest, dm console.DecideModel) string {
 		return b.String()
 	}
 	var rows []table.Row
+	var stack []evStackItem
 	for i, r := range dm.Rows {
 		applied := "no"
 		if r.Applied {
@@ -249,12 +252,25 @@ func renderRulings(cr *consoleRequest, dm console.DecideModel) string {
 		if r.Error == "" {
 			conf = strconv.FormatFloat(r.Confidence, 'f', 2, 64)
 		}
+		when := evShortTime(r.TS)
 		rows = append(rows, table.Row{ID: "ruling-" + strconv.Itoa(i), Cells: []string{"", r.Site, r.Kind, "", conf, fmtThousands(int(r.LatencyMS)), applied},
-			HTMLCells: []templComponent{evRaw(`<span class="whitespace-nowrap tabular-nums">` + html.EscapeString(evShortTime(r.TS)) + `</span>`), nil, nil, evRaw(`<span class="[overflow-wrap:anywhere]">` + html.EscapeString(outcome) + `</span>`)}})
+			HTMLCells: []templComponent{evRaw(`<span class="whitespace-nowrap tabular-nums">` + html.EscapeString(when) + `</span>`), nil, nil, evRaw(`<span class="[overflow-wrap:anywhere]">` + html.EscapeString(outcome) + `</span>`)}})
+		// Below md the choice, confidence, latency and applied columns would
+		// scroll off; each ruling reads whole instead.
+		stack = append(stack, evStackItem{
+			Heading: `<span class="font-mono text-xs">` + html.EscapeString(r.Site) + `</span> <span class="text-xs font-normal text-ink-muted">· <span class="tabular-nums">` + html.EscapeString(when) + `</span></span>`,
+			Items: []chrome.DescItem{
+				{Term: "kind · choice", Detail: strings.TrimPrefix(r.Kind+" · "+outcome, " · ")},
+				{Term: "confidence · latency", Detail: conf + " · " + fmtThousands(int(r.LatencyMS)) + " ms"},
+				{Term: "applied", Detail: applied},
+			},
+		})
 	}
-	b.WriteString(renderKitTable(table.TableParams{TableID: "decide-rulings", Caption: fmt.Sprintf("rulings %s–%s of %s, newest first", fmtThousands((dm.Page-1)*dm.PerPage+1), fmtThousands((dm.Page-1)*dm.PerPage+len(dm.Rows)), fmtThousands(dm.Matching)),
+	caption := fmt.Sprintf("rulings %s–%s of %s, newest first", fmtThousands((dm.Page-1)*dm.PerPage+1), fmtThousands((dm.Page-1)*dm.PerPage+len(dm.Rows)), fmtThousands(dm.Matching))
+	tbl := renderKitTable(table.TableParams{TableID: "decide-rulings", Caption: caption,
 		Columns: []table.Column{{Key: "ts", Label: "When (UTC)"}, {Key: "site", Label: "Site"}, {Key: "kind", Label: "Kind"}, {Key: "choice", Label: "Choice"}, {Key: "conf", Label: "Confidence", Align: "right"}, {Key: "latency", Label: "Latency (ms)", Align: "right"}, {Key: "applied", Label: "Applied"}},
-		Rows:    rows}))
+		Rows:    rows})
+	b.WriteString(`<p class="mb-2 text-xs text-ink-muted md:hidden">` + html.EscapeString(caption) + `</p>` + evTableOrStack("decide-rulings", "rulings", tbl, stack))
 	b.WriteString(`<p class="mt-2 text-xs text-ink-muted">applied: the ruling changed what was served; an unsure-band answer is never counted as applied (I42). A failed call answered nothing and applied nothing (DP-22).</p>`)
 	b.WriteString(evPagination("/decide", q, dm.Page, dm.Pages, "ruling pages"))
 	return b.String()

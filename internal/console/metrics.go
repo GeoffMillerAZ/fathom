@@ -214,6 +214,12 @@ func SessionCount(ledgerPath string, data []byte, readErr error) Value[int] {
 		return Errored[int]("session ledger unreadable: " + readErr.Error()).WithSource(source)
 	}
 	sessions, rows := DistinctSessions(data)
+	return sessionCountValue(source, sessions, rows)
+}
+
+// sessionCountValue is sessions.total's value over a read ledger — the one
+// shape SessionCount and the session table both return.
+func sessionCountValue(source string, sessions, rows int) Value[int] {
 	return Measured(sessions, source).WithDenominator("distinct sessions from " + thousands(rows) + " ledger rows")
 }
 

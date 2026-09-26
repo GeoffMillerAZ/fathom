@@ -9,10 +9,10 @@ package main
 // number of its own.
 
 import (
-	"fmt"
 	"html"
 	"html/template"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -87,11 +87,14 @@ func evChips(label string, chips []evChip) string {
 
 // evChart frames a chart: the drawing (inside a keyboard-reachable region
 // that scrolls on its own below md when it is wider than a phone) and, below
-// it, its table alternative behind the kit's disclosure.
-func evChart(label, svg string, minWidthPx int, tableSummary, table string) string {
+// it, its table alternative behind the kit's disclosure. minWidthClass is
+// the chart's floor below md as a LITERAL Tailwind class the caller writes
+// out (e.g. "min-w-[560px]"): Tailwind emits only classes it can see in the
+// source, so a class built at run time never reaches app.css.
+func evChart(label, svg, minWidthClass, tableSummary, table string) string {
 	var b strings.Builder
-	if minWidthPx > 0 {
-		b.WriteString(fmt.Sprintf(`<div class="overflow-x-auto" role="region" tabindex="0" aria-label="%s — scrolls sideways on a narrow screen"><div class="min-w-[%dpx] md:min-w-0">`, html.EscapeString(label), minWidthPx))
+	if minWidthClass != "" {
+		b.WriteString(`<div class="overflow-x-auto" role="region" tabindex="0" aria-label="` + html.EscapeString(label) + ` — scrolls sideways on a narrow screen"><div class="` + html.EscapeString(minWidthClass) + ` md:min-w-0">`)
 		b.WriteString(svg)
 		b.WriteString(`</div></div>`)
 	} else {
@@ -172,13 +175,51 @@ func evMS(ms float64) string {
 	return strconv.FormatFloat(ms, 'f', 0, 64) + " ms"
 }
 
-// evCommand renders a verb for a panel's chip with the request's flags.
+// evCommand renders a verb for a panel's chip with the request's flags,
+// each value quoted where a shell would split or expand it, so the copied
+// chip runs exactly what the page ran (design §2: "the exact command,
+// copyable").
 func evCommand(base string, flags ...string) string {
 	parts := []string{base}
 	for i := 0; i+1 < len(flags); i += 2 {
 		if flags[i+1] != "" {
-			parts = append(parts, flags[i], flags[i+1])
+			parts = append(parts, flags[i], shellQuote(flags[i+1]))
 		}
 	}
 	return strings.Join(append(parts, "--json"), " ")
+}
+
+// shellSafe matches a word a POSIX shell passes through unchanged.
+var shellSafe = regexp.MustCompile(`^[A-Za-z0-9_@%+=:,./-]+$`)
+
+// shellQuote is s as one shell word: unchanged when nothing in it is
+// special, else single-quoted, an embedded quote written as close-quote,
+// backslash-quote, reopen-quote.
+func shellQuote(s string) string {
+	if s != "" && shellSafe.MatchString(s) {
+		return s
+	}
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
+
+// evStackItem is one table row restated for a phone: a heading line and
+// the row's other cells as terms and details.
+type evStackItem struct {
+	Heading string // trusted HTML
+	Items   []chrome.DescItem
+}
+
+// evTableOrStack is a table from md up and the same rows as a stacked list
+// below md (the sessions and catches pattern): at 390 px a table that
+// scrolls sideways hides the columns that carry its answer, so a phone
+// reads each row whole instead. id names both (data-stack="<id>").
+func evTableOrStack(id, aria, tableHTML string, items []evStackItem) string {
+	var b strings.Builder
+	b.WriteString(`<div class="hidden md:block" data-table-wide="` + html.EscapeString(id) + `">` + tableHTML + `</div>`)
+	b.WriteString(`<ul class="flex flex-col gap-3 md:hidden" aria-label="` + html.EscapeString(aria) + `" data-stack="` + html.EscapeString(id) + `">`)
+	for _, it := range items {
+		b.WriteString(`<li class="min-w-0 rounded-lg border border-line bg-surface-raised px-3 pb-3 pt-2 [overflow-wrap:anywhere]"><p class="font-medium text-ink">` + it.Heading + `</p>` + chrome.RenderDescriptionList(it.Items) + `</li>`)
+	}
+	b.WriteString(`</ul>`)
+	return b.String()
 }

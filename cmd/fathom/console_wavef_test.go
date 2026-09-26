@@ -107,7 +107,7 @@ func TestConsoleWaveF_PagesRenderTheirStates(t *testing.T) {
 	if err := json.Unmarshal(f.pageJSON(t, "/sessions").Model, &sm); err != nil {
 		t.Fatal(err)
 	}
-	if sm.Table.Sessions != 2 || len(sm.Table.Rows) != 2 || sm.Table.LedgerRows != 3 {
+	if sm.Table.Sessions.V != 2 || len(sm.Table.Rows) != 2 || sm.Table.LedgerRows.V != 3 {
 		t.Errorf("sessions table = %+v, want 2 sessions from 3 rows", sm.Table)
 	}
 	_, _, none := f.get(t, "/sessions?arm=off")
@@ -199,8 +199,8 @@ func TestConsoleWaveF_ReplayWindowedAndEqualToItsVerb(t *testing.T) {
 	if err := json.Unmarshal(env.Model, &rp); err != nil {
 		t.Fatal(err)
 	}
-	if rp.Window.Events != 2600 || len(rp.Window.Window) != sessionPageWindow || rp.Ledger == nil || rp.Ledger.SessionID != "s-1" {
-		t.Errorf("replay = %d events, window %d, ledger %v", rp.Window.Events, len(rp.Window.Window), rp.Ledger)
+	if rp.Window.Events.V != 2600 || len(rp.Window.Window) != sessionPageWindow || rp.Ledger == nil || rp.Ledger.SessionID != "s-1" {
+		t.Errorf("replay = %+v events, window %d, ledger %v", rp.Window.Events, len(rp.Window.Window), rp.Ledger)
 	}
 	if first := rp.Window.Window[0].Detail; first != "file=a.go phase=post" {
 		t.Errorf("an event's labels are its meta minus the session and provenance, the file relative to the project: %q", first)
@@ -216,15 +216,32 @@ func TestConsoleWaveF_ReplayWindowedAndEqualToItsVerb(t *testing.T) {
 	if err := json.Unmarshal(f.pageJSON(t, "/sessions/s-1?channel=discovery").Model, &disc); err != nil {
 		t.Fatal(err)
 	}
-	if disc.Window.Matching != 650 {
-		t.Errorf("channel filter = %d matching, want 650", disc.Window.Matching)
+	if disc.Window.Matching.V != 650 {
+		t.Errorf("channel filter = %+v matching, want 650", disc.Window.Matching)
 	}
 
-	// Parity: the section is the verb's JSON.
+	// Parity: the section is the verb's JSON, and the page names it — in
+	// its heading and on both panels (the ledger row is in the same JSON).
 	verb := "fathom metrics sessions --id s-1 --per-page 200 --json"
 	section, ok := env.Sections[verb]
 	if !ok {
 		t.Fatalf("the replay's section must be keyed by %q: %v", verb, keysOf(env.Sections))
+	}
+	if !reflect.DeepEqual(env.Verbs, []string{verb}) {
+		t.Errorf("the replay page's verbs = %v, want [%s]", env.Verbs, verb)
+	}
+	heading := page[strings.Index(page, "data-console-heading"):]
+	heading = heading[:strings.Index(heading, "data-console-panel")]
+	if !strings.Contains(heading, `data-console-copy="`+verb+`"`) {
+		t.Error("the replay page's heading must carry its verb chip")
+	}
+	if n := strings.Count(page, `data-console-verb="`+verb+`"`); n != 2 {
+		t.Errorf("the replay and ledger-row panels must both name %q (%d do)", verb, n)
+	}
+	// The HTML page keeps its budget whatever ?per= asks; JSON may window
+	// up to the 2,000-event bound.
+	if code, _, wide := f.get(t, "/sessions/s-1?per=2000"); code != 200 || len(wide) > 250*1024 || !strings.Contains(wide, "window 1 of 13") {
+		t.Errorf("/sessions/s-1?per=2000 = %d, %d bytes: the HTML window stays %d events", code, len(wide), sessionPageWindow)
 	}
 	var out, errb bytes.Buffer
 	if code := run(strings.Fields(verb)[1:], &out, &errb); code != 0 {

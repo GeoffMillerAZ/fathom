@@ -89,12 +89,14 @@ type DecideFilter struct {
 }
 
 // SiteState is one decision site and whether [decide] sites lets it ask.
+// Its counts come from the decisions log: with no log they are absent, with
+// an unreadable one an error — never a 0 beside "unreadable".
 type SiteState struct {
 	Site    string     `json:"site"`
 	On      bool       `json:"on"`
 	Rulings Value[int] `json:"rulings"`
-	Applied int        `json:"applied"`
-	Errors  int        `json:"errors"`
+	Applied Value[int] `json:"applied"`
+	Errors  Value[int] `json:"errors"`
 }
 
 // DecideModel is the decision-port page's projection.
@@ -198,12 +200,13 @@ func DecideView(in DecideInputs, f DecideFilter, page, perPage int) DecideModel 
 		st := SiteState{Site: s, On: on[s]}
 		switch {
 		case in.LogReason != "":
-			st.Rulings = absent()
+			st.Rulings, st.Applied, st.Errors = absent(), absent(), absent()
 		case perSite[s] != nil:
 			st.Rulings = Measured(perSite[s].rulings, source)
-			st.Applied, st.Errors = perSite[s].applied, perSite[s].errors
+			st.Applied = Measured(perSite[s].applied, source)
+			st.Errors = Measured(perSite[s].errors, source)
 		default:
-			st.Rulings = Measured(0, source)
+			st.Rulings, st.Applied, st.Errors = Measured(0, source), Measured(0, source), Measured(0, source)
 		}
 		m.Sites = append(m.Sites, st)
 	}

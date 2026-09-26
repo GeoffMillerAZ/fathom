@@ -43,7 +43,9 @@ type consolePage struct {
 	Aliases []string
 	// Verbs are the exact commands whose --json this page's JSON carries as
 	// sections (P10); TestConsolePagesRenderTheirVerbs holds each page to
-	// them. A page not yet rebuilt declares none.
+	// them. A page not yet rebuilt declares none. A parameterized page
+	// declares its verb with "{name}" placeholders and fills it per request
+	// (consoleOut.Verbs).
 	Verbs []string
 	// Shows are the shared metrics the page renders (OC-9).
 	Shows []console.MetricID
@@ -69,7 +71,11 @@ type consoleOut struct {
 	Model    any            // the page's own projection, served as JSON "model"
 	Metrics  console.Metrics
 	Sections map[string]any // verb → that verb's --json value
-	Body     func() string  // HTML, rendered only for an HTML request
+	// Verbs, when set, are the page's declared Verbs filled in for this
+	// request (a parameterized page's exact commands): the heading's chips
+	// and the JSON's "verbs" name them.
+	Verbs []string
+	Body  func() string // HTML, rendered only for an HTML request
 	// Raw, when set, answers the request itself (a download, a fragment).
 	Raw func(w http.ResponseWriter) bool
 }

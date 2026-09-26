@@ -6,14 +6,19 @@ package main
 // error rate from the resolved call log, a day with no rows drawn as
 // absent (hatched), never zero; the tools labelled by caller class and the
 // zero-call list; the flywheel's loops; time-to-remedy from the fleet
-// report snapshots; a project's capabilities; and `config --explain`.
+// report snapshots; a project's capabilities; `config --explain`; and the
+// harness matrix.
 //
-// Every section is a verb's own computation (P10): `metrics traffic`
-// (trafficReportFrom), `instrument --adoption` (instrumentAdoption),
-// `fleet remedy` (buildRemedyReport), `config --explain` (configJSONValue),
-// `flywheel` (runFlywheelChecks) and `capabilities` (capabilityJSON). The
-// page reads the call log once per projection and keeps the projection for
-// the model's TTL: the log is tens of megabytes and grows with every call.
+// Every panel is a verb's own computation and names that verb (P10):
+// `metrics load` (console.LoadView: calls per day per surface, tools by
+// caller class), `metrics traffic` (trafficResultFrom), `instrument
+// --adoption` (instrumentAdoption: the zero-call list), `fleet remedy`
+// (buildRemedyReport), `config --explain` (configJSONValue), `flywheel`
+// (runFlywheelChecks), `capabilities` (capabilityJSON) and `harness matrix`
+// (harness.AdoptionRows). An unreadable call log is an error on every panel
+// that reads it — never an idle daemon. The page reads the call log once
+// per projection and keeps the projection for the model's TTL: the log is
+// tens of megabytes and grows with every call.
 
 import (
 	"fmt"
@@ -39,17 +44,19 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/capability"
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/internal/harness"
 	"github.com/geoffmilleraz/fathom/internal/metrics"
 )
 
 // The verbs whose --json the page carries (parity: TestConsolePagesRenderTheirVerbs).
 const (
+	operateLoadVerb    = "fathom metrics load --json"
 	operateTrafficVerb = "fathom metrics traffic --json"
-	operateDaysVerb    = "fathom metrics traffic --by day --since 336h --json"
 	operateCallerVerb  = "fathom metrics traffic --by caller --json"
 	operateAdoptVerb   = "fathom instrument --adoption --json"
 	operateRemedyVerb  = "fathom fleet remedy --json"
 	operateConfigVerb  = "fathom config --explain --json"
+	operateHarnessVerb = "fathom harness matrix --json"
 )
 
 func init() {
@@ -57,7 +64,7 @@ func init() {
 		ID: "operate", Route: "/operate", Href: "/operate", Group: "System", Order: -10, Nav: true,
 		Title:    "Operate",
 		Question: "Is the daemon healthy, what does it answer, for whom, and are the loops that improve fathom turning?",
-		Verbs:    []string{operateTrafficVerb, operateDaysVerb, operateCallerVerb, operateAdoptVerb, operateRemedyVerb, operateConfigVerb},
+		Verbs:    []string{operateLoadVerb, operateTrafficVerb, operateCallerVerb, operateAdoptVerb, operateRemedyVerb, operateConfigVerb, operateHarnessVerb},
 		Shows:    []console.MetricID{console.MetricServices, console.MetricCalls, console.MetricAgentTools},
 		Build:    buildOperatePage,
 	})
@@ -66,10 +73,10 @@ func init() {
 // operateProjection is everything the page reads, computed once per TTL.
 type operateProjection struct {
 	View         console.OperateModel
-	Traffic      metrics.TrafficReport
-	Days         metrics.TrafficReport
-	Callers      metrics.TrafficReport
+	Traffic      trafficResult
+	Callers      trafficResult
 	Adoption     AdoptionReport
+	Harnesses    []harness.AdoptionRow
 	Remedy       remedyReport
 	Config       map[string]any
 	Flywheel     []flywheelCheck
@@ -87,10 +94,14 @@ type operatePageModel struct {
 }
 
 // remedyNow is time-to-remedy's headline with its truth state: the median
-// over closed gaps (a lower bound when any opened on or before the first
-// snapshot), stale when the latest snapshot is over a week old.
+// over closed gaps, stale when the latest snapshot is over a week old, and
+// a lower bound when any closed gap opened on or before the first snapshot.
+// A value carries one state, so a stale lower bound is state stale (its
+// reason naming both) with LowerBound set: "≥" is kept everywhere (design
+// §3 Impact), stale or not.
 type remedyNow struct {
 	MedianHours console.Value[int] `json:"median_hours"`
+	LowerBound  bool               `json:"lower_bound,omitempty"`
 	Latest      string             `json:"latest_snapshot,omitempty"`
 }
 
@@ -153,14 +164,13 @@ func buildOperateProjection(d *consoleDeps, m observatoryModel, resolved console
 		facts.ConsoleReads = consoleReads
 	}
 	reason, isErr, _ := callLogState(facts)
-	p.View = console.OperateView(console.OperateInputs{
-		Daemon: daemonFacts(d), Calls: callRowsOf(entries), CallLog: resolved,
-		CallLogReason: reason, CallLogError: isErr, Now: now, Days: 14, WindowDays: 7, TopTools: 10,
-	})
-	week, fortnight := now.Add(-7*24*time.Hour), now.Add(-336*time.Hour)
-	p.Traffic = trafficReportFrom(entries, "", metrics.TrafficGroupBySurface, week, now)
-	p.Days = trafficReportFrom(entries, "", metrics.TrafficGroupByDay, fortnight, now)
-	p.Callers = trafficReportFrom(entries, "", metrics.TrafficGroupByCaller, week, now)
+	in := operateLoadInputs(entries, resolved, reason, isErr, now)
+	in.Daemon = daemonFacts(d)
+	p.View = console.OperateView(in)
+	week := now.Add(-7 * 24 * time.Hour)
+	p.Traffic = trafficResultFrom(entries, reason, isErr, "", metrics.TrafficGroupBySurface, week, now)
+	p.Callers = trafficResultFrom(entries, reason, isErr, "", metrics.TrafficGroupByCaller, week, now)
+	p.Harnesses = harness.AdoptionRows(d.selfURL, now)
 	pre := &adoptionPreread{entries: entries, skipped: skipped, err: readErr}
 	if resolved.Path == "" {
 		pre = nil
@@ -187,6 +197,13 @@ func buildOperateProjection(d *consoleDeps, m observatoryModel, resolved console
 	}
 	p.Flywheel = flywheelChecksFrom(m.Impact, entries, logErr, now)
 	return p
+}
+
+// operateLoadInputs is the load's inputs over one read of the call log —
+// what `fathom metrics load` and the page both project (console.LoadView).
+func operateLoadInputs(entries []adoptionCallEntry, resolved console.ResolvedCallLog, reason string, isErr bool, now time.Time) console.OperateInputs {
+	return console.OperateInputs{Calls: callRowsOf(entries), CallLog: resolved,
+		CallLogReason: reason, CallLogError: isErr, Now: now, Days: 14, WindowDays: 7, TopTools: 10}
 }
 
 // ioDiscard swallows a verb computation's warnings on the page path (the
@@ -244,18 +261,28 @@ func remedyHeadline(r remedyReport, now time.Time) remedyNow {
 		out.MedianHours = console.Absent[int](r.Note).WithSource(source)
 		return out
 	}
-	v := console.Measured(int(math.Round(*r.MedianHours)), source).WithDenominator(fmt.Sprintf("median over %s; %d still open", plural(r.Closed, "closed gap"), r.Open))
+	closed, open := 0, 0
+	if r.Closed != nil {
+		closed = *r.Closed
+	}
+	if r.Open != nil {
+		open = *r.Open
+	}
+	denom := fmt.Sprintf("median over %s; %d still open", plural(closed, "closed gap"), open)
+	const lowerBound = "a lower bound — a gap already open in the first snapshot opened on or before it, so its interval (and the median over it) is at least this"
+	v := console.Measured(int(math.Round(*r.MedianHours)), source).WithDenominator(denom)
+	out.LowerBound = r.MedianLowerBound
+	if out.LowerBound {
+		v = console.Partial(v.V, lowerBound).WithSource(source).WithDenominator(denom)
+	}
 	if latest, err := time.Parse(time.RFC3339, r.Latest); err == nil {
 		v = v.WithAsOf(latest)
 		if age := now.Sub(latest); age > 7*24*time.Hour {
-			v = console.Stale(v.V, fmt.Sprintf("the latest snapshot is %d days old — fathom fleet report records today's", int(age.Hours()/24)), latest).WithSource(source).WithDenominator(v.Denominator)
-		}
-	}
-	for _, repo := range r.Repos {
-		for _, e := range repo.Episodes {
-			if e.OpenedOnOrBefore && e.Hours != nil && v.State != console.StateStale {
-				v = console.Partial(v.V, "a lower bound — gaps already open in the first snapshot opened on or before it").WithSource(source).WithDenominator(v.Denominator).WithAsOf(v.AsOf)
+			reason := fmt.Sprintf("the latest snapshot is %d days old — fathom fleet report records today's", int(age.Hours()/24))
+			if out.LowerBound {
+				reason += "; and " + lowerBound
 			}
+			v = console.Stale(v.V, reason, latest).WithSource(source).WithDenominator(denom)
 		}
 	}
 	out.MedianHours = v
@@ -275,12 +302,13 @@ func buildOperatePage(cr *consoleRequest) (consoleOut, error) {
 		Model:   operatePageModel{Operate: p.View, Flywheel: p.Flywheel, Capabilities: caps, RemedyNow: rem},
 		Metrics: pageMetrics(cr.page, metricsAll),
 		Sections: map[string]any{
+			operateLoadVerb:    p.View.LoadModel,
 			operateTrafficVerb: withCallLog(p.Traffic, p.CallLog),
-			operateDaysVerb:    withCallLog(p.Days, p.CallLog),
 			operateCallerVerb:  withCallLog(p.Callers, p.CallLog),
 			operateAdoptVerb:   withCallLog(p.Adoption, p.CallLog),
 			operateRemedyVerb:  p.Remedy,
 			operateConfigVerb:  p.Config,
+			operateHarnessVerb: p.Harnesses,
 		},
 		Body: func() string { return renderOperate(cr, p, caps, svc, names, rem, metricsAll) },
 	}
@@ -294,14 +322,18 @@ func renderOperate(cr *consoleRequest, p operateProjection, caps *capabilityMode
 
 	// The band: the daemon, memory, and the surfaces' headline latency.
 	surfaceRow := func(group string) *metrics.TrafficRow {
-		for i := range p.Traffic.Rows {
-			if p.Traffic.Rows[i].Group == group {
-				return &p.Traffic.Rows[i]
+		for i := range p.Traffic.Report.Rows {
+			if p.Traffic.Report.Rows[i].Group == group {
+				return &p.Traffic.Report.Rows[i]
 			}
 		}
 		return nil
 	}
 	latencyStat := func(label, group string) stat.Stat {
+		if p.Traffic.Reason != "" {
+			// An unread log is not a quiet surface: the tile says why.
+			return valueStat(label, v.WindowCalls)
+		}
 		r := surfaceRow(group)
 		if r == nil || r.P95MS == nil {
 			return stat.Absent(label, "no call on this surface in the last 7 days")
@@ -342,33 +374,72 @@ func renderOperate(cr *consoleRequest, p operateProjection, caps *capabilityMode
 
 	b.WriteString(`<div class="mt-4 grid gap-4 xl:grid-cols-2">`)
 	// Traffic per day and surface: a truth-state heatmap, then its table.
+	// The panels that read the call log carry its read state: an unreadable
+	// log is an error on each of them, never an idle daemon.
+	logState, logReason := console.StatePresent, ""
+	if !v.WindowCalls.Known() {
+		logState, logReason = v.WindowCalls.State, v.WindowCalls.Reason
+	}
 	b.WriteString(`<div class="min-w-0 xl:col-span-2">` + renderPanel(consolePanel{
 		ID: "traffic", Title: "Calls per day, per surface", SourceKey: "sessions",
 		Question: "Which surfaces answered how much, how fast and how reliably, day by day? A hatched day has no call-log rows — absent, not zero.",
-		Verb:     operateDaysVerb, Source: p.CallLog.Path + " (rule " + string(p.CallLog.Rule) + ")",
+		Verb:     operateLoadVerb, Source: p.CallLog.Path + " (rule " + string(p.CallLog.Rule) + ")",
 		Denominator: "usage calls per UTC day, 14 days; console reads excluded", Freshness: fresh,
 		State: v.WindowCalls.State, Reason: v.WindowCalls.Reason,
 		Body: renderTrafficHeatmap(v),
 	}) + `</div>`)
 
-	// Latency and errors per surface and per caller class (7 days).
+	// Latency and errors per surface and per caller class (7 days): one
+	// panel per verb, so each table's chip is the command that prints it.
 	b.WriteString(`<div class="grid min-w-0 gap-4 xl:col-span-2 xl:grid-cols-2">`)
 	b.WriteString(renderPanel(consolePanel{
-		ID: "surfaces", Title: "Latency and errors, by surface and by caller", SourceKey: "sessions",
-		Question: "What does each surface and each caller class cost in latency, and how often does it fail?",
+		ID: "surfaces", Title: "Latency and errors, by surface", SourceKey: "sessions",
+		Question: "What does each surface cost in latency, and how often does it fail?",
 		Verb:     operateTrafficVerb, Source: p.CallLog.Path, Denominator: "the last 7 days; console reads excluded", Freshness: fresh,
-		Body: renderTrafficTable("by surface", "operate-surfaces", p.Traffic) + `<div class="mt-4">` + renderTrafficTable("by caller class", "operate-callers", p.Callers) + `</div>`,
+		State: logState, Reason: logReason,
+		Body: renderTrafficTable("by surface", "operate-surfaces", p.Traffic),
 	}))
+	b.WriteString(renderPanel(consolePanel{
+		ID: "callers", Title: "Latency and errors, by caller class", SourceKey: "sessions",
+		Question: "Who calls — agents, the edit hook, gates, refresh, plumbing — and what does each cost?",
+		Verb:     operateCallerVerb, Source: p.CallLog.Path + " (caller: origin and surface)", Denominator: "the last 7 days; console reads excluded", Freshness: fresh,
+		State: logState, Reason: logReason,
+		Body: renderTrafficTable("by caller class", "operate-callers", p.Callers),
+	}))
+	b.WriteString(`</div>`)
+	b.WriteString(`<div class="min-w-0 xl:col-span-2">`)
 
-	// What carries the load: tools by caller class, and the zero-call list.
+	// What carries the load: the tools by caller class (`metrics load`).
+	toolsDenom := ""
+	if v.ToolsCalled.Known() {
+		toolsDenom = fmt.Sprintf("the %d most-called of %s called in the last 7 days", len(v.Tools), plural(v.ToolsCalled.V, "tool"))
+	}
 	b.WriteString(renderPanel(consolePanel{
 		ID: "tools", Title: "What carries the load", SourceKey: "sessions",
 		Question: "Which tools are called, and by whom — so plumbing never passes for adoption?",
-		Verb:     operateAdoptVerb, Source: p.CallLog.Path + " (caller: origin and surface)",
-		Denominator: fmt.Sprintf("%d of %s called in the last 7 days", len(v.Tools), plural(v.ToolsCalled, "tool")), Freshness: fresh,
-		Body: renderToolLoads(v, p.Adoption),
+		Verb:     operateLoadVerb, Source: p.CallLog.Path + " (caller: origin and surface)",
+		Denominator: toolsDenom, Freshness: fresh,
+		State: logState, Reason: logReason,
+		Body: renderToolLoads(v),
 	}))
 	b.WriteString(`</div>`)
+
+	// The tools never called, from `instrument --adoption`.
+	zeroState, zeroReason := console.StatePresent, ""
+	switch {
+	case p.Adoption.CallLogReadError != "":
+		zeroState, zeroReason = console.StateError, "the call log is unreadable: "+p.Adoption.CallLogReadError
+	case !p.Adoption.CallLogRead:
+		zeroState, zeroReason = console.StateAbsent, "no call log was read, so no tool can be said to be uncalled"
+	}
+	b.WriteString(`<div class="min-w-0 xl:col-span-2">` + renderPanel(consolePanel{
+		ID: "zero-calls", Title: "Tools never called", SourceKey: "sessions",
+		Question: "Which registered tools has no one ever called — use them or prune them?",
+		Verb:     operateAdoptVerb, Source: p.CallLog.Path + " and the served binary's own tool list",
+		Denominator: zeroCallDenominator(p.Adoption), Freshness: fresh,
+		State: zeroState, Reason: zeroReason,
+		Body: renderZeroCalls(p.Adoption),
+	}) + `</div>`)
 
 	// The flywheel.
 	b.WriteString(renderPanel(consolePanel{
@@ -400,7 +471,7 @@ func renderOperate(cr *consoleRequest, p operateProjection, caps *capabilityMode
 	// Capabilities of one project.
 	capVerb := "fathom capabilities --json"
 	if caps != nil {
-		capVerb = "fathom capabilities --service " + svc + " --repo " + caps.RepoRoot + " --json"
+		capVerb = "fathom capabilities --service " + shellQuote(svc) + " --repo " + shellQuote(caps.RepoRoot) + " --json"
 	}
 	b.WriteString(`<div class="min-w-0 xl:col-span-2">` + renderPanel(consolePanel{
 		ID: "capabilities", Title: "Capabilities", SourceKey: "index",
@@ -410,8 +481,57 @@ func renderOperate(cr *consoleRequest, p operateProjection, caps *capabilityMode
 		Body: renderCapabilities(cr, caps, svc, names),
 	}) + `</div>`)
 
+	// The harness matrix: which coding-agent harnesses fathom wires, how.
+	harnessVerb := operateHarnessVerb
+	if cr.deps.selfURL != "" && cr.deps.selfURL != harnessMatrixDefaultURL {
+		harnessVerb = "fathom harness matrix --url " + shellQuote(cr.deps.selfURL) + " --json"
+	}
+	b.WriteString(`<div class="min-w-0 xl:col-span-2">` + renderPanel(consolePanel{
+		ID: "harnesses", Title: "Harnesses", SourceKey: "daemon",
+		Question: "Which coding-agent harnesses can fathom wire, at which tier, through which files?",
+		Verb:     harnessVerb, Source: "the harness registry (internal/harness), each row's MCP line rendered for this daemon",
+		Denominator: plural(len(p.Harnesses), "harness"), Freshness: fresh,
+		Body: renderHarnessMatrix(p.Harnesses),
+	}) + `</div>`)
+
 	b.WriteString(`</div>`)
 	return b.String()
+}
+
+// renderHarnessMatrix is `fathom harness matrix --json` as a table (from md
+// up) and a stacked list (below md): tier, the instruction files, the
+// skills path, the MCP config and its add line, and what each descriptor
+// was verified against — "unverified" said in its own cell.
+func renderHarnessMatrix(rows []harness.AdoptionRow) string {
+	if len(rows) == 0 {
+		return `<p class="italic text-ink-muted">the harness registry is empty</p>`
+	}
+	var trows []table.Row
+	var stack []evStackItem
+	for _, r := range rows {
+		mcp := `<span class="[overflow-wrap:anywhere]">` + html.EscapeString(strings.Join(r.MCPConfig, ", ")) + `</span>`
+		if r.MCPAdd != "" {
+			mcp += `<code class="mt-1 block font-mono text-xs text-ink-muted [overflow-wrap:anywhere]">` + html.EscapeString(r.MCPAdd) + `</code>`
+		}
+		files := `<span class="[overflow-wrap:anywhere]">` + html.EscapeString(strings.Join(r.InstructionFile, ", ")) + `</span>`
+		skills := `<span class="[overflow-wrap:anywhere]">` + html.EscapeString(strings.Join(r.SkillsPath, ", ")) + `</span>`
+		verified := nonEmptyStr(r.VerifiedAgainst, "unverified")
+		trows = append(trows, table.Row{ID: "harness-" + r.ID, Cells: []string{r.Display, r.Tier, "", "", "", verified},
+			HTMLCells: []templComponent{nil, nil, evRaw(files), evRaw(skills), evRaw(mcp)}})
+		stack = append(stack, evStackItem{
+			Heading: html.EscapeString(r.Display) + ` <span class="text-xs font-normal text-ink-muted">· tier ` + html.EscapeString(r.Tier) + `</span>`,
+			Items: []chrome.DescItem{
+				{Term: "instruction files", DetailHTML: template.HTML(files)},
+				{Term: "skills", DetailHTML: template.HTML(skills)},
+				{Term: "MCP config", DetailHTML: template.HTML(mcp)},
+				{Term: "verified against", Detail: verified},
+			},
+		})
+	}
+	tbl := renderKitTable(table.TableParams{TableID: "operate-harnesses", Caption: "the harness matrix (tier after the 60-day demotion clock)",
+		Columns: []table.Column{{Key: "harness", Label: "Harness"}, {Key: "tier", Label: "Tier"}, {Key: "files", Label: "Instruction files"}, {Key: "skills", Label: "Skills"}, {Key: "mcp", Label: "MCP config"}, {Key: "verified", Label: "Verified against"}},
+		Rows:    trows})
+	return evTableOrStack("operate-harnesses", "harnesses", tbl, stack)
 }
 
 // renderTrafficHeatmap is the surfaces × days heatmap with truth states:
@@ -470,16 +590,23 @@ func renderTrafficHeatmap(v console.OperateModel) string {
 	for _, d := range v.DayTotals {
 		totals = append(totals, `<li class="whitespace-nowrap"><span class="text-ink-muted">`+html.EscapeString(d.Day[5:])+`</span> `+evCell(d.Calls, "no rows")+`</li>`)
 	}
-	return evChart("calls per day per surface", svg, 560, "every day and surface as a table", tbl) +
+	return evChart("calls per day per surface", svg, "min-w-[560px]", "every day and surface as a table", tbl) +
 		`<ul class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs" aria-label="calls per day, every surface">` + strings.Join(totals, "") + `</ul>`
 }
 
-// renderTrafficTable is one `metrics traffic` report as a table.
-func renderTrafficTable(caption, id string, r metrics.TrafficReport) string {
+// renderTrafficTable is one `metrics traffic` report as a table (from md
+// up) and a stacked list (below md, where p95 and errors would scroll off).
+// An unread log renders nothing here: the panel's truth line names why.
+func renderTrafficTable(caption, id string, res trafficResult) string {
+	if res.Reason != "" {
+		return ""
+	}
+	r := res.Report
 	if r.TotalCalls == 0 {
 		return `<p class="italic text-ink-muted">` + html.EscapeString(caption) + `: ` + html.EscapeString(r.Note) + `</p>`
 	}
 	var rows []table.Row
+	var stack []evStackItem
 	for _, row := range r.Rows {
 		er := row.ErrorRateNote
 		if row.ErrorRate != nil {
@@ -487,10 +614,19 @@ func renderTrafficTable(caption, id string, r metrics.TrafficReport) string {
 		}
 		share := evPercent(float64(row.Calls) * 100 / float64(r.TotalCalls))
 		rows = append(rows, table.Row{ID: id + "-" + row.Group, Cells: []string{row.Group, fmtThousands(row.Calls), share, evMS(*row.P50MS), evMS(*row.P95MS), er}})
+		stack = append(stack, evStackItem{
+			Heading: html.EscapeString(row.Group) + ` <span class="text-xs font-normal text-ink-muted">· ` + plural(row.Calls, "call") + ` · ` + share + `</span>`,
+			Items: []chrome.DescItem{
+				{Term: "p50 · p95", Detail: evMS(*row.P50MS) + " · " + evMS(*row.P95MS)},
+				{Term: "errors", Detail: er},
+			},
+		})
 	}
-	return renderKitTable(table.TableParams{TableID: id, Caption: caption + ", " + r.Since[:10] + " … " + r.Until[:10],
+	title := caption + ", " + r.Since[:10] + " … " + r.Until[:10]
+	tbl := renderKitTable(table.TableParams{TableID: id, Caption: title,
 		Columns: []table.Column{{Key: "group", Label: "Group"}, {Key: "calls", Label: "Calls", Align: "right"}, {Key: "share", Label: "Share", Align: "right"}, {Key: "p50", Label: "p50", Align: "right"}, {Key: "p95", Label: "p95", Align: "right"}, {Key: "err", Label: "Errors", Align: "right"}},
 		Rows:    rows})
+	return `<p class="mb-2 text-xs text-ink-muted md:hidden">` + html.EscapeString(title) + `</p>` + evTableOrStack(id, caption, tbl, stack)
 }
 
 // classRole colors a caller class in the share bars.
@@ -510,13 +646,18 @@ func classRole(c console.CallerClass) string {
 	return "line-strong"
 }
 
-// renderToolLoads is the load table (a share bar split by caller class per
-// tool, its calls and its dominant caller) and the zero-call lists.
-func renderToolLoads(v console.OperateModel, a AdoptionReport) string {
+// renderToolLoads is the load table: a share bar split by caller class per
+// tool, its calls and its dominant caller. An unread log renders nothing
+// (the panel's truth line names why); a read log with no call in the week
+// is a measured nothing, said so.
+func renderToolLoads(v console.OperateModel) string {
 	var b strings.Builder
-	if len(v.Tools) == 0 {
+	switch {
+	case !v.ToolsCalled.Known():
+		return ""
+	case len(v.Tools) == 0:
 		b.WriteString(`<p class="italic text-ink-muted">no usage call in the last 7 days</p>`)
-	} else {
+	default:
 		maxCalls := v.Tools[0].Calls
 		var rows []table.Row
 		for _, t := range v.Tools {
@@ -543,31 +684,40 @@ func renderToolLoads(v console.OperateModel, a AdoptionReport) string {
 		}
 		b.WriteString(`<p class="mt-2 flex flex-wrap gap-3 text-xs text-ink-muted" aria-label="caller classes">` + strings.Join(legend, "") + `</p>`)
 	}
-	// The zero-call list, from `instrument --adoption`.
-	switch {
-	case a.CallLogReadError != "":
-		b.WriteString(`<p class="mt-3 text-danger">zero-call list not computed — the call log is unreadable: ` + html.EscapeString(a.CallLogReadError) + `</p>`)
-	case !a.CallLogRead:
-		b.WriteString(`<p class="mt-3 italic text-ink-muted">zero-call list not measured — no call log was read</p>`)
-	default:
-		var list strings.Builder
-		list.WriteString(`<p class="mb-2 text-ink-muted">` + fmt.Sprintf("%d of %d registered tools were never called; %d of them are on the agent surface (use them or prune them).", len(a.ZeroCallTools), a.RegisteredToolCount, len(a.ZeroCallAgentTools)) + `</p>`)
-		list.WriteString(`<ul class="flex flex-wrap gap-2" aria-label="tools never called">`)
-		agent := map[string]bool{}
-		for _, t := range a.ZeroCallAgentTools {
-			agent[t] = true
-		}
-		for _, t := range a.ZeroCallTools {
-			mark := ""
-			if agent[t] {
-				mark = ` <span class="text-ink-muted">(agent surface)</span>`
-			}
-			list.WriteString(`<li class="rounded-md border border-line px-2 py-1 font-mono text-xs">` + html.EscapeString(t) + mark + `</li>`)
-		}
-		list.WriteString(`</ul>`)
-		b.WriteString(`<div class="mt-3">` + chrome.RenderDisclosure(chrome.Disclosure{Summary: fmt.Sprintf("%d registered tools with no call at all", len(a.ZeroCallTools)), Body: template.HTML(list.String())}) + `</div>`)
-	}
 	return b.String()
+}
+
+// zeroCallDenominator is the zero-call list's count over the served
+// binary's registered tools ("" when no log was read).
+func zeroCallDenominator(a AdoptionReport) string {
+	if a.CallLogReadError != "" || !a.CallLogRead {
+		return ""
+	}
+	return fmt.Sprintf("%d of %d registered tools never called", len(a.ZeroCallTools), a.RegisteredToolCount)
+}
+
+// renderZeroCalls is `instrument --adoption`'s zero-call list. An unread
+// log renders nothing: the panel's truth line names why.
+func renderZeroCalls(a AdoptionReport) string {
+	if a.CallLogReadError != "" || !a.CallLogRead {
+		return ""
+	}
+	var list strings.Builder
+	list.WriteString(`<p class="mb-2 text-ink-muted">` + fmt.Sprintf("%d of %d registered tools were never called; %d of them are on the agent surface (use them or prune them).", len(a.ZeroCallTools), a.RegisteredToolCount, len(a.ZeroCallAgentTools)) + `</p>`)
+	list.WriteString(`<ul class="flex flex-wrap gap-2" aria-label="tools never called">`)
+	agent := map[string]bool{}
+	for _, t := range a.ZeroCallAgentTools {
+		agent[t] = true
+	}
+	for _, t := range a.ZeroCallTools {
+		mark := ""
+		if agent[t] {
+			mark = ` <span class="text-ink-muted">(agent surface)</span>`
+		}
+		list.WriteString(`<li class="rounded-md border border-line px-2 py-1 font-mono text-xs">` + html.EscapeString(t) + mark + `</li>`)
+	}
+	list.WriteString(`</ul>`)
+	return chrome.RenderDisclosure(chrome.Disclosure{Summary: fmt.Sprintf("%d registered tools with no call at all", len(a.ZeroCallTools)), Body: template.HTML(list.String())})
 }
 
 // renderFlywheel lists each loop with its status in words (never color
@@ -597,21 +747,47 @@ func renderFlywheel(loops []flywheelCheck) string {
 }
 
 // renderRemedy is time-to-remedy's headline, the gaps per repository and
-// the recorded baseline.
+// the recorded baseline. With no snapshot every count is not measured —
+// never "0 gaps across 0 snapshots"; a lower-bound median and a closed gap
+// that opened on or before the first snapshot read "≥"; the grade column is
+// the latest snapshot's, dated, never "now".
 func renderRemedy(r remedyReport, rem remedyNow) string {
 	var b strings.Builder
 	head := valueStat("median time to remedy (hours)", rem.MedianHours)
 	if rem.MedianHours.Known() {
+		if rem.LowerBound && !strings.HasPrefix(head.Value, "≥") {
+			head.Value = "≥\u00a0" + head.Value
+		}
 		days := float64(rem.MedianHours.V) / 24
 		head.Sub = strconv.FormatFloat(days, 'f', 1, 64) + " days · " + rem.MedianHours.Denominator
+		if rem.MedianHours.State == console.StateStale {
+			head.Sub += " · stale: " + rem.MedianHours.Reason
+		}
+	}
+	count := func(label string, n *int, sub string) stat.Stat {
+		if n == nil {
+			s := stat.Absent(label, r.Note)
+			s.ValueRole = "ink-muted"
+			return s
+		}
+		return stat.Stat{Label: label, Value: fmtThousands(*n), Sub: sub}
+	}
+	graded := "of the repositories graded"
+	if r.Graded != nil {
+		graded = fmt.Sprintf("of %s graded", plural(*r.Graded, "repo"))
 	}
 	b.WriteString(stat.RenderBand([]stat.Stat{
 		head,
-		{Label: "gaps closed", Value: fmtThousands(r.Closed), Sub: "across " + plural(r.Snapshots, "snapshot")},
-		{Label: "gaps still open", Value: fmtThousands(r.Open), Sub: "no time to remedy yet"},
-		{Label: "below grade A, latest snapshot", Value: fmtThousands(r.BelowA), Sub: fmt.Sprintf("of %s graded", plural(r.Graded, "repo"))},
+		count("gaps closed", r.Closed, "across "+plural(r.Snapshots, "snapshot")),
+		count("gaps still open", r.Open, "no time to remedy yet"),
+		count("below grade A, latest snapshot", r.BelowA, graded),
 	}, stat.BandOptions{AriaLabel: "time to remedy"}))
+	latest := ""
+	if len(r.Latest) >= 10 {
+		latest = r.Latest[:10]
+	}
 	var rows []table.Row
+	var stack []evStackItem
 	for _, repo := range r.Repos {
 		for i, e := range repo.Episodes {
 			opened := e.OpenedAt[:10]
@@ -619,9 +795,12 @@ func renderRemedy(r remedyReport, rem remedyNow) string {
 				opened = "≤ " + opened
 			}
 			span := "open"
-			if e.Hours != nil {
+			switch {
+			case e.Hours != nil && e.OpenedOnOrBefore:
+				span = "≥ " + strconv.FormatFloat(*e.Hours, 'f', 1, 64) + " h"
+			case e.Hours != nil:
 				span = strconv.FormatFloat(*e.Hours, 'f', 1, 64) + " h"
-			} else if e.OpenHours != nil {
+			case e.OpenHours != nil:
 				span = "open ≥ " + strconv.FormatFloat(*e.OpenHours, 'f', 1, 64) + " h"
 			}
 			closed := "—"
@@ -631,14 +810,28 @@ func renderRemedy(r remedyReport, rem remedyNow) string {
 			nowrap := func(t string) templComponent {
 				return evRaw(`<span class="whitespace-nowrap">` + html.EscapeString(t) + `</span>`)
 			}
-			rows = append(rows, table.Row{ID: "gap-" + repo.Service + "-" + strconv.Itoa(i), Cells: []string{repo.Service, strings.Join(e.Grades, " → "), "", "", "", repo.Latest},
+			grades := strings.Join(e.Grades, " → ")
+			rows = append(rows, table.Row{ID: "gap-" + repo.Service + "-" + strconv.Itoa(i), Cells: []string{repo.Service, grades, "", "", "", repo.Latest},
 				HTMLCells: []templComponent{nil, nil, nowrap(opened), nowrap(closed), nowrap(span)}})
+			stack = append(stack, evStackItem{
+				Heading: html.EscapeString(repo.Service) + ` <span class="text-xs font-normal text-ink-muted">· ` + html.EscapeString(span) + `</span>`,
+				Items: []chrome.DescItem{
+					{Term: "grade during the gap", Detail: grades},
+					{Term: "opened · closed", Detail: opened + " · " + closed},
+					{Term: "grade at the latest snapshot", Detail: nonEmptyStr(repo.Latest, "not graded")},
+				},
+			})
 		}
 	}
 	if len(rows) > 0 {
-		b.WriteString(`<div class="mt-3">` + renderKitTable(table.TableParams{TableID: "operate-remedy", Caption: "wiring gaps, per repository (≤: open on or before the first snapshot)",
-			Columns: []table.Column{{Key: "repo", Label: "Repository"}, {Key: "grades", Label: "Grade during the gap"}, {Key: "opened", Label: "Opened"}, {Key: "closed", Label: "Closed"}, {Key: "span", Label: "Time to remedy", Align: "right"}, {Key: "latest", Label: "Grade now"}},
-			Rows:    rows}) + `</div>`)
+		caption := "wiring gaps, per repository (≤: open on or before the first snapshot; ≥: a lower bound)"
+		if latest != "" {
+			caption += "; the latest snapshot is " + latest
+		}
+		tbl := renderKitTable(table.TableParams{TableID: "operate-remedy", Caption: caption,
+			Columns: []table.Column{{Key: "repo", Label: "Repository"}, {Key: "grades", Label: "Grade during the gap"}, {Key: "opened", Label: "Opened"}, {Key: "closed", Label: "Closed"}, {Key: "span", Label: "Time to remedy", Align: "right"}, {Key: "latest", Label: "Grade at the latest snapshot"}},
+			Rows:    rows})
+		b.WriteString(`<div class="mt-3"><p class="mb-2 text-xs text-ink-muted md:hidden">` + html.EscapeString(caption) + `</p>` + evTableOrStack("operate-remedy", "wiring gaps, per repository", tbl, stack) + `</div>`)
 	}
 	b.WriteString(`<p class="mt-2 text-xs text-ink-muted">` + html.EscapeString(r.Note) + `. Baseline ` + html.EscapeString(r.Baseline.Date) + `: ` + html.EscapeString(r.Baseline.Note) + `</p>`)
 	return b.String()

@@ -81,7 +81,7 @@ var verbTable = []verb{
 	{Name: "module", Summary: "Expert-module lifecycle: init | sources | map | compile | eval | doctor | pack | runs"},
 	{Name: "rules", Summary: "Compiled governance (VB-13/VB-14): gen-test [--root DIR] [--out DIR] emits a Go test from .fathom/guard.cue's layer_rules | replay --since <ref|N> [--rules FILE] [--json]: evaluate today's rules against past commits (VB-16)"},
 	{Name: "receipt", Summary: "A stranger's re-derivation (VB-20): verify [--repo DIR] <receipt.json> checks a saved answer against a bare git checkout with go/types and git alone — no daemon, no store"},
-	{Name: "metrics", Summary: "Observability surfaces: spend | traffic | channels | interventions | series | rollup | rotate | impact (the four questions, arms as ranges) | catches (the catches timeline) | sessions (the session table, or one session's windowed replay)"},
+	{Name: "metrics", Summary: "Observability surfaces: spend | traffic | channels | interventions | series | rollup | rotate | impact (the four questions, arms as ranges) | catches (the catches timeline) | sessions (the session table, or one session's windowed replay) | load (calls per day per surface, tools by caller class)"},
 	{Name: "findings", Summary: "Findings as evidence: near <symbol|file> (call-graph precedent) | status (entry-condition progress)"},
 	{Name: "memory", Summary: "Anchored memory: add | list | review | show — a memory with no anchor is refused, and drift expires it"},
 	{Name: "scope", Summary: "Reversible suppression: list | suppress <glob> --reason R | unsuppress <id> | preview <glob>"},

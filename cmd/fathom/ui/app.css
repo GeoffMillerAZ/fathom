@@ -513,8 +513,8 @@
   .min-w-64 {
     min-width: calc(var(--spacing) * 64);
   }
-  .min-w-\[\%dpx\] {
-    min-width: %dpx;
+  .min-w-\[560px\] {
+    min-width: 560px;
   }
   .min-w-\[900px\] {
     min-width: 900px;

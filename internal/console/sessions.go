@@ -47,13 +47,15 @@ type SessionFilter struct {
 // SessionSorts are the columns the table sorts by.
 var SessionSorts = []string{"at", "turns", "first_edit", "tokens", "fathom_calls", "catches"}
 
-// SessionTableModel is one page of the session table.
+// SessionTableModel is one page of the session table. Every count carries
+// its truth state: with no ledger, or an unreadable one, each is absent or
+// an error with its reason — the JSON carries no zero for any of them.
 type SessionTableModel struct {
 	Filter     SessionFilter `json:"filter"`
-	Sessions   int           `json:"sessions"`       // distinct sessions in the ledger
-	Matching   int           `json:"matching"`       // after the filter
-	LedgerRows int           `json:"ledger_rows"`    // parseable rows they were deduped from
-	Anonymous  int           `json:"anonymous_rows"` // rows with no session id, each counted once
+	Sessions   Value[int]    `json:"sessions"`       // distinct sessions in the ledger (sessions.total's projection)
+	Matching   Value[int]    `json:"matching"`       // after the filter
+	LedgerRows Value[int]    `json:"ledger_rows"`    // parseable rows they were deduped from
+	Anonymous  Value[int]    `json:"anonymous_rows"` // rows with no session id, each counted once
 	Page       int           `json:"page"`
 	Pages      int           `json:"pages"`
 	PerPage    int           `json:"per_page"`
@@ -82,12 +84,22 @@ type ledgerSessionRow struct {
 
 // SessionTable dedupes the ledger bytes into sessions (the last row per id
 // wins: the final stop has seen the most of the transcript), filters, sorts
-// and returns one page (1-based, clamped; perPage defaults to 50).
-func SessionTable(ledger []byte, f SessionFilter, page, perPage int) SessionTableModel {
+// and returns one page (1-based, clamped; perPage defaults to 50). readErr
+// is the ledger read's error: a missing ledger makes every count absent, an
+// unreadable one an error — SessionCount's own classification, so the table
+// and the shared sessions metric never disagree about the ledger.
+func SessionTable(ledgerPath string, ledger []byte, readErr error, f SessionFilter, page, perPage int) SessionTableModel {
 	if perPage <= 0 {
 		perPage = 50
 	}
-	m := SessionTableModel{Filter: f, PerPage: perPage}
+	m := SessionTableModel{Filter: f, PerPage: perPage, Page: 1, Pages: 1, Rows: []SessionRow{}, Repos: []string{}, Arms: []string{}}
+	if readErr != nil {
+		v := SessionCount(ledgerPath, nil, readErr)
+		m.Sessions, m.Matching, m.LedgerRows, m.Anonymous = v, v, v, v
+		return m
+	}
+	source := "session ledger " + ledgerPath
+	var ledgerRows, anonymous int
 	latest := map[string]*SessionRow{}
 	var order []string
 	repos, arms := map[string]bool{}, map[string]bool{}
@@ -99,11 +111,11 @@ func SessionTable(ledger []byte, f SessionFilter, page, perPage int) SessionTabl
 		if json.Unmarshal(line, &r) != nil {
 			continue
 		}
-		m.LedgerRows++
+		ledgerRows++
 		key := r.SessionID
 		if key == "" {
 			key = "\x00anon:" + r.At + ":" + r.Repo
-			m.Anonymous++
+			anonymous++
 		}
 		row, seen := latest[key]
 		if !seen {
@@ -125,7 +137,9 @@ func SessionTable(ledger []byte, f SessionFilter, page, perPage int) SessionTabl
 			arms[r.Arm] = true
 		}
 	}
-	m.Sessions = len(order)
+	m.Sessions = sessionCountValue(source, len(order), ledgerRows)
+	m.LedgerRows = Measured(ledgerRows, source).WithDenominator("parseable ledger rows (the Stop hook appends one per turn)")
+	m.Anonymous = Measured(anonymous, source).WithDenominator("rows with no session id, each counted as its own session")
 	var rows []SessionRow
 	q := strings.ToLower(strings.TrimSpace(f.Query))
 	for _, key := range order {
@@ -142,12 +156,13 @@ func SessionTable(ledger []byte, f SessionFilter, page, perPage int) SessionTabl
 		rows = append(rows, r)
 	}
 	sortSessions(rows, f.Sort, f.Asc)
-	m.Matching = len(rows)
-	m.Pages = max(1, (m.Matching+perPage-1)/perPage)
+	matching := len(rows)
+	m.Matching = Measured(matching, source).WithDenominator("of " + countNoun(len(order), "session") + " after the filter")
+	m.Pages = max(1, (matching+perPage-1)/perPage)
 	page = min(max(page, 1), m.Pages)
 	m.Page = page
 	start := (page - 1) * perPage
-	m.Rows = append([]SessionRow{}, rows[start:min(start+perPage, m.Matching)]...)
+	m.Rows = append([]SessionRow{}, rows[start:min(start+perPage, matching)]...)
 	m.Repos = sortedKeys(repos)
 	m.Arms = sortedKeys(arms)
 	return m
@@ -255,11 +270,15 @@ const (
 	DefaultWindowEvents = 500
 )
 
-// SessionWindowModel is one window of a session's replay.
+// SessionWindowModel is one window of a session's replay. Events and
+// Matching carry their truth state: a hooks log that is missing is absent,
+// one that exists and could not be read is an error naming the failure, and
+// a session with no beat in a readable log is absent with that reason —
+// never a zero standing in for any of them.
 type SessionWindowModel struct {
 	SessionID string         `json:"session_id"`
-	Events    int            `json:"events"`   // the session's events, all channels
-	Matching  int            `json:"matching"` // after the channel filter
+	Events    Value[int]     `json:"events"`   // the session's events, all channels
+	Matching  Value[int]     `json:"matching"` // after the channel filter
 	Channels  []ChannelCount `json:"channels"`
 	Page      int            `json:"page"`
 	Pages     int            `json:"pages"`
@@ -267,20 +286,57 @@ type SessionWindowModel struct {
 	From      string         `json:"from,omitempty"` // first and last event in this window
 	To        string         `json:"to,omitempty"`
 	Window    []ReplayEvent  `json:"window"`
-	Note      string         `json:"note,omitempty"`
+}
+
+// ReplaySource is the hooks-log read a replay is built from: the session's
+// events, where they were read, and — when the log could not be read — the
+// reason (Error: the log exists and failed, rather than being absent).
+// Partial names a generation (the rotated hooks.jsonl.1) that could not be
+// read while the other was: the counts are then lower bounds.
+type ReplaySource struct {
+	Events  []ReplayEvent
+	Source  string
+	Reason  string
+	Error   bool
+	Partial string
 }
 
 // SessionWindow orders a session's events oldest first, keeps the channels
 // asked for (none = every channel) and returns one page of at most
 // MaxWindowEvents of them (perPage ≤ 0 means DefaultWindowEvents).
-func SessionWindow(sessionID string, events []ReplayEvent, channels []string, page, perPage int) SessionWindowModel {
+func SessionWindow(sessionID string, src ReplaySource, channels []string, page, perPage int) SessionWindowModel {
 	switch {
 	case perPage <= 0:
 		perPage = DefaultWindowEvents
 	case perPage > MaxWindowEvents:
 		perPage = MaxWindowEvents
 	}
-	m := SessionWindowModel{SessionID: sessionID, Events: len(events), PerPage: perPage}
+	events := src.Events
+	m := SessionWindowModel{SessionID: sessionID, PerPage: perPage, Page: 1, Pages: 1, Window: []ReplayEvent{}}
+	switch {
+	case src.Reason != "" && src.Error:
+		m.Events = Errored[int](src.Reason).WithSource(src.Source)
+		m.Matching = m.Events
+		return m
+	case src.Reason != "":
+		m.Events = Absent[int](src.Reason).WithSource(src.Source)
+		m.Matching = m.Events
+		return m
+	case len(events) == 0:
+		reason := "no beat in the hooks log names this session id — its hooks were not wired, or its beats rotated out of the log's two generations"
+		if src.Partial != "" {
+			reason = "no beat in the readable part of the hooks log names this session id — " + src.Partial
+		}
+		m.Events = Absent[int](reason).WithSource(src.Source)
+		m.Matching = m.Events
+		return m
+	}
+	const denom = "beats naming this session, every channel"
+	if src.Partial != "" {
+		m.Events = Partial(len(events), src.Partial).WithSource(src.Source).WithDenominator(denom)
+	} else {
+		m.Events = Measured(len(events), src.Source).WithDenominator(denom)
+	}
 	want := map[string]bool{}
 	for _, c := range channels {
 		if c = strings.TrimSpace(c); c != "" {
@@ -306,18 +362,21 @@ func SessionWindow(sessionID string, events []ReplayEvent, channels []string, pa
 	}()) {
 		m.Channels = append(m.Channels, ChannelCount{Channel: c, Events: counts[c], Selected: len(want) == 0 || want[c]})
 	}
-	m.Matching = len(kept)
-	m.Pages = max(1, (m.Matching+perPage-1)/perPage)
+	matching := len(kept)
+	if src.Partial != "" {
+		m.Matching = Partial(matching, src.Partial).WithSource(src.Source)
+	} else {
+		m.Matching = Measured(matching, src.Source)
+	}
+	m.Matching = m.Matching.WithDenominator("after the channel filter, of " + thousands(len(events)) + " events")
+	m.Pages = max(1, (matching+perPage-1)/perPage)
 	page = min(max(page, 1), m.Pages)
 	m.Page = page
 	start := (page - 1) * perPage
-	m.Window = append([]ReplayEvent{}, kept[start:min(start+perPage, m.Matching)]...)
+	m.Window = append([]ReplayEvent{}, kept[start:min(start+perPage, matching)]...)
 	if len(m.Window) > 0 {
 		m.From = m.Window[0].At.UTC().Format(time.RFC3339)
 		m.To = m.Window[len(m.Window)-1].At.UTC().Format(time.RFC3339)
-	}
-	if m.Events == 0 {
-		m.Note = "no beats recorded for this session id"
 	}
 	return m
 }

@@ -72,15 +72,29 @@ func TestTimeToRemedy(t *testing.T) {
 	if len(repos["delta"].Episodes) != 0 {
 		t.Errorf("an unreadable call log grades unknown, never a gap: %+v", repos["delta"])
 	}
-	if rep.Closed != 1 || rep.Open != 1 || rep.MedianHours == nil || *rep.MedianHours != 36 || rep.BelowA != 1 || rep.Graded != 4 {
-		t.Errorf("report = closed %d open %d median %v below-A %d of %d", rep.Closed, rep.Open, rep.MedianHours, rep.BelowA, rep.Graded)
+	if rep.Closed == nil || *rep.Closed != 1 || *rep.Open != 1 || rep.MedianHours == nil || *rep.MedianHours != 36 || *rep.BelowA != 1 || *rep.Graded != 4 {
+		t.Errorf("report = closed %v open %v median %v below-A %v of %v", rep.Closed, rep.Open, rep.MedianHours, rep.BelowA, rep.Graded)
+	}
+	if !rep.MedianLowerBound {
+		t.Error("beta's gap was open in the first snapshot, so the median is a lower bound")
+	}
+	if raw, _ := json.Marshal(repos["alpha"]); !strings.Contains(string(raw), `"episodes":[]`) {
+		t.Errorf("a repository with no gap lists no episodes, never null: %s", raw)
 	}
 	if rep.Baseline.Date != "2026-08-08" || rep.Baseline.BelowA != 9 || rep.Baseline.Of != 17 || !strings.Contains(rep.Baseline.Note, "unbounded") {
 		t.Errorf("baseline = %+v", rep.Baseline)
 	}
 	// No snapshots: not measured, said so.
-	if none := buildRemedyReport(t.TempDir()); none.Snapshots != 0 || none.MedianHours != nil || !strings.Contains(none.Note, "not measured") {
+	none := buildRemedyReport(t.TempDir())
+	if none.Snapshots != 0 || none.MedianHours != nil || !strings.Contains(none.Note, "not measured") {
 		t.Errorf("no snapshots = %+v", none)
+	}
+	// With no snapshot there is nothing to count: no gap count is a zero.
+	raw, _ := json.Marshal(none)
+	for _, key := range []string{"closed_gaps", "open_gaps", "below_a_latest", "graded_latest", "repos"} {
+		if strings.Contains(string(raw), `"`+key+`"`) {
+			t.Errorf("no snapshots: the JSON carries %s: %s", key, raw)
+		}
 	}
 	// The verb prints the same report.
 	var out, errb bytes.Buffer
@@ -88,11 +102,11 @@ func TestTimeToRemedy(t *testing.T) {
 		t.Fatalf("fleet remedy: %d %s", code, errb.String())
 	}
 	var fromVerb remedyReport
-	if err := json.Unmarshal(out.Bytes(), &fromVerb); err != nil || fromVerb.Closed != 1 || fromVerb.Open != 1 {
+	if err := json.Unmarshal(out.Bytes(), &fromVerb); err != nil || fromVerb.Closed == nil || *fromVerb.Closed != 1 || *fromVerb.Open != 1 {
 		t.Errorf("verb JSON = %s (%v)", out.String(), err)
 	}
 	out.Reset()
-	if code := run([]string{"fleet", "remedy", "--dir", dir}, &out, &errb); code != 0 || !strings.Contains(out.String(), "median time-to-remedy: 36.0 h") || !strings.Contains(out.String(), "baseline 2026-08-08: 9 of 17 below A") {
+	if code := run([]string{"fleet", "remedy", "--dir", dir}, &out, &errb); code != 0 || !strings.Contains(out.String(), "median time-to-remedy: ≥ 36.0 h") || !strings.Contains(out.String(), "baseline 2026-08-08: 9 of 17 below A") {
 		t.Errorf("verb text = %q", out.String())
 	}
 }

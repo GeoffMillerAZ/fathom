@@ -83,22 +83,35 @@ type remedyRepo struct {
 	Episodes []remedyEpisode `json:"episodes"`
 }
 
-// remedyReport is `fathom fleet remedy --json`.
+// remedyReport is `fathom fleet remedy --json`. The gap counts are nil —
+// omitted, never 0 — when no snapshot was read: with nothing to count from
+// they are not measured (cmd/fathom/CLAUDE.md rule 6). MedianLowerBound is
+// set when a closed gap opened on or before the first snapshot: its
+// interval is a lower bound, so the median over them is one too.
 type remedyReport struct {
-	SchemaVersion int            `json:"schema_version"`
-	SnapshotDir   string         `json:"snapshot_dir"`
-	Snapshots     int            `json:"snapshots"`
-	First         string         `json:"first_snapshot,omitempty"`
-	Latest        string         `json:"latest_snapshot,omitempty"`
-	Repos         []remedyRepo   `json:"repos"`
-	Closed        int            `json:"closed_gaps"`
-	Open          int            `json:"open_gaps"`
-	MedianHours   *float64       `json:"median_hours_to_remedy,omitempty"`
-	BelowA        int            `json:"below_a_latest"`
-	Graded        int            `json:"graded_latest"`
-	Baseline      remedyBaseline `json:"baseline"`
-	Note          string         `json:"note"`
-	Skipped       []string       `json:"skipped_snapshots,omitempty"`
+	SchemaVersion    int            `json:"schema_version"`
+	SnapshotDir      string         `json:"snapshot_dir"`
+	Snapshots        int            `json:"snapshots"`
+	First            string         `json:"first_snapshot,omitempty"`
+	Latest           string         `json:"latest_snapshot,omitempty"`
+	Repos            []remedyRepo   `json:"repos,omitempty"`
+	Closed           *int           `json:"closed_gaps,omitempty"`
+	Open             *int           `json:"open_gaps,omitempty"`
+	MedianHours      *float64       `json:"median_hours_to_remedy,omitempty"`
+	MedianLowerBound bool           `json:"median_lower_bound,omitempty"`
+	BelowA           *int           `json:"below_a_latest,omitempty"`
+	Graded           *int           `json:"graded_latest,omitempty"`
+	Baseline         remedyBaseline `json:"baseline"`
+	Note             string         `json:"note"`
+	Skipped          []string       `json:"skipped_snapshots,omitempty"`
+}
+
+// remedyCount is a gap count for text: the number, or "not measured".
+func remedyCount(n *int) string {
+	if n == nil {
+		return "not measured"
+	}
+	return fmtThousands(*n)
 }
 
 const remedySchemaVersion = 1
@@ -153,8 +166,9 @@ func timeToRemedy(snaps []remedySnapshot) remedyReport {
 	sort.Strings(names)
 	latest := snaps[len(snaps)-1].At
 	var closed []float64
+	var nClosed, nOpen, nGraded, nBelowA int
 	for _, name := range names {
-		repo := remedyRepo{Service: name}
+		repo := remedyRepo{Service: name, Episodes: []remedyEpisode{}}
 		var cur *remedyEpisode
 		for i, o := range perRepo[name] {
 			switch {
@@ -173,7 +187,10 @@ func timeToRemedy(snaps []remedySnapshot) remedyReport {
 				cur.ClosedAt, cur.Hours = o.at.UTC().Format(time.RFC3339), &h
 				repo.Episodes = append(repo.Episodes, *cur)
 				closed = append(closed, h)
-				rep.Closed++
+				nClosed++
+				if cur.OpenedOnOrBefore {
+					rep.MedianLowerBound = true
+				}
 				cur = nil
 			}
 			repo.Latest = o.grade
@@ -183,28 +200,32 @@ func timeToRemedy(snaps []remedySnapshot) remedyReport {
 			h := roundHours(latest.Sub(opened))
 			cur.OpenHours = &h
 			repo.Episodes = append(repo.Episodes, *cur)
-			rep.Open++
+			nOpen++
 		}
 		if repo.Latest != "" {
-			rep.Graded++
+			nGraded++
 			if repo.Latest != "A" {
-				rep.BelowA++
+				nBelowA++
 			}
 		}
 		rep.Repos = append(rep.Repos, repo)
 	}
+	rep.Closed, rep.Open, rep.Graded, rep.BelowA = &nClosed, &nOpen, &nGraded, &nBelowA
 	if len(closed) > 0 {
 		sort.Float64s(closed)
 		med := closed[len(closed)/2]
 		rep.MedianHours = &med
 	}
 	switch {
-	case rep.Closed == 0 && rep.Open > 0:
-		rep.Note = fmt.Sprintf("no wiring gap has closed across %d snapshot(s) — time-to-remedy is unbounded for all %d open gap(s)", len(snaps), rep.Open)
-	case rep.Closed == 0:
+	case nClosed == 0 && nOpen > 0:
+		rep.Note = fmt.Sprintf("no wiring gap has closed across %d snapshot(s) — time-to-remedy is unbounded for all %d open gap(s)", len(snaps), nOpen)
+	case nClosed == 0:
 		rep.Note = fmt.Sprintf("no wiring gap appeared across %d snapshot(s)", len(snaps))
 	default:
-		rep.Note = fmt.Sprintf("%d gap(s) closed, %d open, across %d snapshot(s); a gap in the first snapshot opened on or before it, so its interval is a lower bound", rep.Closed, rep.Open, len(snaps))
+		rep.Note = fmt.Sprintf("%d gap(s) closed, %d open, across %d snapshot(s); a gap in the first snapshot opened on or before it, so its interval is a lower bound", nClosed, nOpen, len(snaps))
+		if rep.MedianLowerBound {
+			rep.Note += " — and the median over such intervals is a lower bound too"
+		}
 	}
 	return rep
 }
@@ -282,13 +303,19 @@ func cmdFleetRemedy(args []string, stdout, stderr io.Writer) int {
 	}
 	fmt.Fprintf(stdout, "fleet time-to-remedy — %d snapshot(s) in %s\n", rep.Snapshots, rep.SnapshotDir)
 	if rep.MedianHours != nil {
-		fmt.Fprintf(stdout, "median time-to-remedy: %.1f h over %d closed gap(s); %d still open\n", *rep.MedianHours, rep.Closed, rep.Open)
+		bound := ""
+		if rep.MedianLowerBound {
+			bound = "≥ "
+		}
+		fmt.Fprintf(stdout, "median time-to-remedy: %s%.1f h over %s closed gap(s); %s still open\n", bound, *rep.MedianHours, remedyCount(rep.Closed), remedyCount(rep.Open))
 	}
 	fmt.Fprintln(stdout, rep.Note)
 	for _, r := range rep.Repos {
 		for _, e := range r.Episodes {
 			span := "open"
-			if e.Hours != nil {
+			if e.Hours != nil && e.OpenedOnOrBefore {
+				span = fmt.Sprintf("closed after ≥ %.1f h", *e.Hours)
+			} else if e.Hours != nil {
 				span = fmt.Sprintf("closed after %.1f h", *e.Hours)
 			} else if e.OpenHours != nil {
 				span = fmt.Sprintf("open %.1f h at the latest snapshot", *e.OpenHours)

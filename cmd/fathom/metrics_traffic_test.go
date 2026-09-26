@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -68,7 +69,10 @@ func TestCmdMetricsTraffic_ServiceFilter(t *testing.T) {
 	}
 }
 
-func TestCmdMetricsTraffic_MissingCallLog_HonestZeros(t *testing.T) {
+func TestCmdMetricsTraffic_MissingCallLog_AbsentNotZero(t *testing.T) {
+	// No call log is not an idle daemon: the report keeps its window and
+	// grouping, says the log is absent and why, and carries no count at
+	// all (cmd/fathom/CLAUDE.md rule 6 — JSON carries no zero for it).
 	logPath := filepath.Join(t.TempDir(), "does-not-exist.jsonl")
 	var out, errBuf bytes.Buffer
 	code := cmdMetricsTraffic([]string{"--call-log", logPath, "--json"}, &out, &errBuf)
@@ -77,10 +81,26 @@ func TestCmdMetricsTraffic_MissingCallLog_HonestZeros(t *testing.T) {
 	}
 	var payload map[string]any
 	json.Unmarshal(out.Bytes(), &payload)
-	if payload["total_calls"].(float64) != 0 {
-		t.Fatalf("total_calls = %v, want 0", payload["total_calls"])
+	if _, ok := payload["total_calls"]; ok {
+		t.Fatalf("total_calls = %v, want no count for a log that does not exist", payload["total_calls"])
 	}
-	if payload["note"] == "" {
-		t.Error("note is empty, want an honest empty-window note")
+	if payload["state"] != "absent" || !strings.Contains(payload["reason"].(string), logPath) || payload["group_by"] != "surface" {
+		t.Errorf("payload = %v, want state absent with the path as its reason", payload)
+	}
+	// A log that exists and cannot be read is an error naming the failure.
+	dir := t.TempDir()
+	out.Reset()
+	if code := cmdMetricsTraffic([]string{"--call-log", dir, "--json"}, &out, &errBuf); code != 0 {
+		t.Fatalf("exit = %d", code)
+	}
+	payload = nil
+	json.Unmarshal(out.Bytes(), &payload)
+	if payload["state"] != "error" || payload["total_calls"] != nil {
+		t.Errorf("unreadable log payload = %v, want state error and no counts", payload)
+	}
+	out.Reset()
+	cmdMetricsTraffic([]string{"--call-log", logPath}, &out, &errBuf)
+	if !strings.Contains(out.String(), "not measured") {
+		t.Errorf("text = %q, want the absence named", out.String())
 	}
 }

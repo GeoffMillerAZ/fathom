@@ -571,6 +571,21 @@ func jsonFieldNames(t reflect.Type) map[string]bool {
 func TestConsolePagesRenderTheirVerbs(t *testing.T) {
 	f := newConsoleFixture(t)
 	withVerbs := 0
+	// parity runs one section's exact command (a quoted value stays one
+	// argument, as a shell pasting the chip would keep it) and compares.
+	parity := func(pageID, verb string, section json.RawMessage) {
+		t.Helper()
+		var fromPage any
+		if err := json.Unmarshal(section, &fromPage); err != nil {
+			t.Fatal(err)
+		}
+		fromVerb := runVerbJSON(t, f, verb)
+		if !reflect.DeepEqual(fromVerb, fromPage) {
+			a, _ := json.MarshalIndent(fromVerb, "", " ")
+			b, _ := json.MarshalIndent(fromPage, "", " ")
+			t.Errorf("page %s disagrees with `%s`:\nverb: %s\npage: %s", pageID, verb, a, b)
+		}
+	}
 	for _, p := range defaultConsoleRegistry().pages {
 		if p.ID == "statusz" {
 			continue // ?format=json is the v3 report (OC-6), not the envelope
@@ -579,45 +594,47 @@ func TestConsolePagesRenderTheirVerbs(t *testing.T) {
 		if env.Schema != consolePageJSONSchema || env.Page != p.ID || env.Group != p.Group || env.Question != p.Question {
 			t.Errorf("page %s: envelope = %+v", p.ID, env)
 		}
-		if !reflect.DeepEqual(append([]string{}, env.Verbs...), append([]string{}, p.Verbs...)) {
+		// A parameterized page declares its verbs with {placeholders}; its
+		// JSON names the exact commands this request rendered.
+		if len(env.Verbs) != len(p.Verbs) {
 			t.Errorf("page %s: JSON verbs %v, registry %v", p.ID, env.Verbs, p.Verbs)
 		}
-		for _, verb := range p.Verbs {
+		for i := 0; i < len(p.Verbs) && i < len(env.Verbs); i++ {
+			if !verbMatchesPattern(p.Verbs[i], env.Verbs[i]) {
+				t.Errorf("page %s: JSON verb %q is not its declared %q", p.ID, env.Verbs[i], p.Verbs[i])
+			}
+		}
+		for _, verb := range env.Verbs {
 			withVerbs++
 			section, ok := env.Sections[verb]
 			if !ok {
 				t.Errorf("page %s: no section for its verb %q", p.ID, verb)
 				continue
 			}
-			args := append(strings.Fields(verb)[1:], "--url", f.ts.URL)
-			var out, errb bytes.Buffer
-			code := run(args, &out, &errb)
-			if code != 0 && strings.Contains(errb.String(), "flag provided but not defined: -url") {
-				// A verb that talks to no daemon (fleet remedy, config,
-				// metrics sessions) takes no --url: run it as written.
-				out.Reset()
-				errb.Reset()
-				code = run(strings.Fields(verb)[1:], &out, &errb)
-			}
-			if code != 0 {
-				t.Fatalf("%s exited %d: %s", verb, code, errb.String())
-			}
-			var fromVerb, fromPage any
-			if err := json.Unmarshal(out.Bytes(), &fromVerb); err != nil {
-				t.Fatalf("%s: %v", verb, err)
-			}
-			if err := json.Unmarshal(section, &fromPage); err != nil {
-				t.Fatal(err)
-			}
-			if !reflect.DeepEqual(fromVerb, fromPage) {
-				a, _ := json.MarshalIndent(fromVerb, "", " ")
-				b, _ := json.MarshalIndent(fromPage, "", " ")
-				t.Errorf("page %s disagrees with `%s`:\nverb: %s\npage: %s", p.ID, verb, a, b)
-			}
+			parity(p.ID, verb, section)
 		}
 	}
 	if withVerbs == 0 {
 		t.Error("no page declares a verb; the parity framework proved nothing")
+	}
+	// A filtered page's sections are keyed by the exact (quoted) command
+	// its chips show, and each equals that command's output.
+	mustWrite(t, os.Getenv("FATHOM_VERIFY_LEDGER"), `{"schema_version":2,"at":"2026-09-24T10:00:00Z","service":"payment-service","plan":"docs/plans/p.md","claimed":3,"failing":1,"origin":"cli"}`+"\n")
+	resetImpactReads()
+	t.Cleanup(resetImpactReads)
+	for _, path := range []string{
+		"/impact?svc=payment-service&kind=verify-refusal&days=7",
+		"/sessions?q=s-1%20x&arm=on&sort=turns&dir=asc",
+		"/sessions/s-1?channel=edit-hook",
+		"/decide?site=route",
+	} {
+		env := f.pageJSON(t, path)
+		if len(env.Sections) == 0 {
+			t.Errorf("%s: no sections", path)
+		}
+		for verb, section := range env.Sections {
+			parity(env.Page, verb, section)
+		}
 	}
 	// Wave F's Evidence and System pages each render their verbs (OC-41..45).
 	for _, id := range []string{"impact", "sessions", "operate", "decide"} {
@@ -625,6 +642,16 @@ func TestConsolePagesRenderTheirVerbs(t *testing.T) {
 			t.Errorf("page %s must declare the verbs it renders", id)
 		}
 	}
+}
+
+// verbMatchesPattern reports whether cmd is the declared verb, where a
+// "{name}" token in the declaration stands for one argument.
+func verbMatchesPattern(pattern, cmd string) bool {
+	if !strings.Contains(pattern, "{") {
+		return pattern == cmd
+	}
+	re := "^" + regexp.MustCompile(`\\\{[a-z]+\\\}`).ReplaceAllString(regexp.QuoteMeta(pattern), `\S+`) + "$"
+	return regexp.MustCompile(re).MatchString(cmd)
 }
 
 // TestConsoleMetricsAgreeAcrossPages pins OC-9: every page that shows a
@@ -734,8 +761,8 @@ func TestConsoleMetricsAgreeAcrossPages(t *testing.T) {
 	if err := json.Unmarshal(f.pageJSON(t, "/sessions").Model, &sessionsModel); err != nil {
 		t.Fatal(err)
 	}
-	if sessionsModel.Table.Sessions != value(console.MetricSessions).V {
-		t.Errorf("the sessions table lists %d sessions, the shared metric %d", sessionsModel.Table.Sessions, value(console.MetricSessions).V)
+	if sessionsModel.Table.Sessions.V != value(console.MetricSessions).V || sessionsModel.Table.Sessions.Denominator != value(console.MetricSessions).Denominator {
+		t.Errorf("the sessions table lists %+v sessions, the shared metric %+v", sessionsModel.Table.Sessions, value(console.MetricSessions))
 	}
 	_, _, operatePage := f.get(t, "/operate")
 	if !strings.Contains(operatePage, html.EscapeString(valuePlain(value(console.MetricCalls)))+" in the whole log") {
@@ -921,8 +948,14 @@ func TestConsoleBudgets(t *testing.T) {
 		maxBytes  = 250 * 1024
 	)
 	f := newConsoleFixture(t)
+	paths := []string{}
 	for _, p := range defaultConsoleRegistry().pages {
-		path := samplePath(p)
+		paths = append(paths, samplePath(p))
+	}
+	// Filters and window sizes a reader can ask for keep the same budgets
+	// (a replay's ?per= widens its JSON window, never its HTML page).
+	paths = append(paths, "/impact?svc=payment-service&days=7", "/sessions?q=s-1%20x&sort=turns", "/sessions/s-1?per=2000", "/operate?svc=payment-service")
+	for _, path := range paths {
 		f.get(t, path) // cold: builds and caches the model
 		best := time.Duration(1 << 62)
 		size := 0

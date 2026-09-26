@@ -146,14 +146,44 @@ func TestCatchTimeline_KindsAndFilters(t *testing.T) {
 			t.Errorf("lane %s selected = %v", s.Kind, s.Selected)
 		}
 	}
-	// Service and window filters narrow every lane.
+	// Service and window filters narrow every lane — the counts, the
+	// denominators, and whether the lane's instrument recorded anything in
+	// that scope at all: a service no `fathom review` run names has no
+	// conservation instrument there, so its lane is absent, never a zero.
 	svc := CatchTimeline(in, CatchFilter{Service: "app-kit"}, 1, 50)
-	if svc.Total != 1 || count(svc, CatchConserveLoss).State != StateZero {
-		t.Errorf("service filter = total %d, conserve %+v", svc.Total, count(svc, CatchConserveLoss))
+	if svc.Total != 1 {
+		t.Errorf("service filter = total %d, want 1", svc.Total)
+	}
+	if v := count(svc, CatchVerifyRefusal); v.V != 1 || v.State != StatePresent || !strings.Contains(v.Denominator, "of 1 recorded verify run") {
+		t.Errorf("a service's verify lane counts over that service's runs: %+v", v)
+	}
+	for _, k := range []CatchKind{CatchConserveLoss, CatchIntegrity, CatchGuardRefusal} {
+		if v := count(svc, k); v.State != StateAbsent || !strings.Contains(v.Reason, "for app-kit") {
+			t.Errorf("lane %s for a service with no instrument there = %+v, want absent naming the service", k, v)
+		}
+	}
+	if fs := CatchTimeline(in, CatchFilter{Service: "fathom"}, 1, 50); count(fs, CatchConserveLoss).State != StatePresent || count(fs, CatchGuardRefusal).V != 1 {
+		t.Errorf("a service the instruments name keeps its measured lanes: %+v", fs.Kinds)
+	}
+	unknown := CatchTimeline(in, CatchFilter{Service: "no-such-project"}, 1, 50)
+	for _, s := range unknown.Kinds {
+		if s.Count.State != StateAbsent || s.Count.Denominator != "" {
+			t.Errorf("an unknown service's lane %s = %+v, want absent (never a measured zero over the fleet's denominator)", s.Kind, s.Count)
+		}
+	}
+	if in.NamesService("no-such-project") || !in.NamesService("APP-KIT") || !in.NamesService("fathom") {
+		t.Error("NamesService: a service is named when any instrument's row names it (case-insensitive)")
 	}
 	win := CatchTimeline(in, CatchFilter{From: at("2026-09-23T00:00:00Z")}, 1, 50)
 	if win.Total != 3 || win.Filter.FromText != "2026-09-23T00:00:00Z" {
 		t.Errorf("window filter = %d %q", win.Total, win.Filter.FromText)
+	}
+	if v := count(win, CatchVerifyRefusal); v.State != StateAbsent || !strings.Contains(v.Reason, "in this window") {
+		t.Errorf("a window with no verify run has no verify instrument reading: %+v", v)
+	}
+	both := CatchTimeline(in, CatchFilter{Service: "fathom", From: at("2026-09-21T00:00:00Z")}, 1, 50)
+	if v := count(both, CatchVerifyRefusal); v.State != StateZero || !strings.Contains(v.Denominator, "of 1 recorded verify run") {
+		t.Errorf("a scope with runs but no refusal is a measured zero over the scope's runs: %+v", v)
 	}
 	// Paging.
 	p2 := CatchTimeline(in, CatchFilter{}, 2, 2)
@@ -170,6 +200,23 @@ func TestCatchTimeline_KindsAndFilters(t *testing.T) {
 	if !strings.Contains(count(empty, CatchConserveLoss).Reason, "conservation dimension") || !strings.Contains(count(empty, CatchGuardRefusal).Reason, "guard-hook beat") {
 		t.Errorf("reasons must name the missing instrument: %+v", empty.Kinds)
 	}
+	// An instrument that exists and could not be read is an error naming
+	// the failure — drawn differently from an absence.
+	failed := CatchTimeline(CatchInputs{VerifyReason: "verify ledger unreadable: EPERM", VerifyError: true,
+		ReviewReason: "call log unreadable: EPERM", ReviewError: true,
+		GuardReason: "hooks log unreadable: EPERM", GuardError: true}, CatchFilter{}, 1, 50)
+	for _, s := range failed.Kinds {
+		if s.Count.State != StateError || !strings.Contains(s.Count.Reason, "EPERM") {
+			t.Errorf("lane %s over an unreadable instrument = %+v, want an error", s.Kind, s.Count)
+		}
+	}
+	// A hooks-log generation that could not be read makes the guard count a
+	// lower bound, never a complete count.
+	part := in
+	part.GuardPartial = "the rotated hooks log could not be read"
+	if v := count(CatchTimeline(part, CatchFilter{}, 1, 50), CatchGuardRefusal); v.State != StatePartial || v.V != 1 || v.Reason == "" {
+		t.Errorf("guard lane with an unread generation = %+v, want a partial lower bound", v)
+	}
 }
 
 // TestSessionWindow_Bounded pins OC-43: the table is one row per session
@@ -184,9 +231,13 @@ func TestSessionWindow_Bounded(t *testing.T) {
 {"session_id":"","repo":"fathom","at":"2026-09-25T11:00:00Z"}
 not json
 `
-	tbl := SessionTable([]byte(ledger), SessionFilter{}, 1, 50)
-	if tbl.Sessions != 3 || tbl.LedgerRows != 4 || tbl.Anonymous != 1 || len(tbl.Rows) != 3 {
+	tbl := SessionTable("/l.jsonl", []byte(ledger), nil, SessionFilter{}, 1, 50)
+	if tbl.Sessions.V != 3 || tbl.LedgerRows.V != 4 || tbl.Anonymous.V != 1 || len(tbl.Rows) != 3 {
 		t.Fatalf("table = %+v, want 3 sessions from 4 rows", tbl)
+	}
+	// The table's session count is the shared sessions.total projection.
+	if shared := SessionCount("/l.jsonl", []byte(ledger), nil); tbl.Sessions.V != shared.V || tbl.Sessions.Denominator != shared.Denominator || tbl.Sessions.Source != shared.Source {
+		t.Errorf("table sessions %+v, shared metric %+v", tbl.Sessions, shared)
 	}
 	if tbl.Rows[0].At != "2026-09-25T11:00:00Z" || tbl.Rows[1].ID != "s-2" || tbl.Rows[2].ID != "s-1" {
 		t.Errorf("newest first: %+v", tbl.Rows)
@@ -198,13 +249,38 @@ not json
 	if tbl.Rows[0].Turns != nil || tbl.Rows[0].FathomCalls != nil {
 		t.Errorf("an unrecorded figure stays nil, never zero: %+v", tbl.Rows[0])
 	}
-	if off := SessionTable([]byte(ledger), SessionFilter{Arm: "off"}, 1, 50); off.Matching != 1 || off.Rows[0].ID != "s-2" {
+	if off := SessionTable("/l.jsonl", []byte(ledger), nil, SessionFilter{Arm: "off"}, 1, 50); off.Matching.V != 1 || off.Rows[0].ID != "s-2" {
 		t.Errorf("arm filter = %+v", off)
 	}
-	if byTurns := SessionTable([]byte(ledger), SessionFilter{Sort: "turns"}, 1, 50); byTurns.Rows[0].ID != "s-1" || byTurns.Rows[2].Turns != nil {
+	if none := SessionTable("/l.jsonl", []byte(ledger), nil, SessionFilter{Arm: "nope"}, 1, 50); none.Matching.State != StateZero || none.Sessions.V != 3 {
+		t.Errorf("a filter matching nothing is a measured zero: %+v", none.Matching)
+	}
+	// No ledger, or an unreadable one: every count is absent or an error
+	// with its reason — the JSON carries no zero for any of them.
+	for _, c := range []struct {
+		err  error
+		want State
+	}{{os.ErrNotExist, StateAbsent}, {os.ErrPermission, StateError}} {
+		m := SessionTable("/missing.jsonl", nil, c.err, SessionFilter{}, 1, 50)
+		for name, v := range map[string]Value[int]{"sessions": m.Sessions, "matching": m.Matching, "ledger_rows": m.LedgerRows, "anonymous_rows": m.Anonymous} {
+			if v.State != c.want || v.Reason == "" {
+				t.Errorf("%v: %s = %+v, want %s with a reason", c.err, name, v, c.want)
+			}
+		}
+		raw, _ := json.Marshal(m)
+		for _, key := range []string{`"sessions":{"v"`, `"matching":{"v"`, `"ledger_rows":{"v"`, `"anonymous_rows":{"v"`} {
+			if strings.Contains(string(raw), key) {
+				t.Errorf("%v: the table's JSON carries a number for an unmeasured count: %s", c.err, raw)
+			}
+		}
+		if len(m.Rows) != 0 {
+			t.Errorf("%v: no rows without a ledger", c.err)
+		}
+	}
+	if byTurns := SessionTable("/l.jsonl", []byte(ledger), nil, SessionFilter{Sort: "turns"}, 1, 50); byTurns.Rows[0].ID != "s-1" || byTurns.Rows[2].Turns != nil {
 		t.Errorf("sort by turns (unrecorded last) = %+v", byTurns.Rows)
 	}
-	if paged := SessionTable([]byte(ledger), SessionFilter{}, 9, 2); paged.Page != 2 || paged.Pages != 2 || len(paged.Rows) != 1 {
+	if paged := SessionTable("/l.jsonl", []byte(ledger), nil, SessionFilter{}, 9, 2); paged.Page != 2 || paged.Pages != 2 || len(paged.Rows) != 1 {
 		t.Errorf("paging clamps = page %d of %d, %d rows", paged.Page, paged.Pages, len(paged.Rows))
 	}
 
@@ -218,24 +294,24 @@ not json
 		// Out of order on purpose: the window sorts by time.
 		events = append(events, ReplayEvent{At: base.Add(time.Duration(5000-i) * time.Second), Channel: ch, Kind: "seen"})
 	}
-	w := SessionWindow("s-1", events, nil, 1, 1_000_000)
-	if len(w.Window) != MaxWindowEvents || w.PerPage != MaxWindowEvents || w.Pages != 3 || w.Events != 5000 {
+	w := SessionWindow("s-1", ReplaySource{Events: events}, nil, 1, 1_000_000)
+	if len(w.Window) != MaxWindowEvents || w.PerPage != MaxWindowEvents || w.Pages != 3 || w.Events.V != 5000 {
 		t.Fatalf("window = %d events, per page %d, %d pages; want at most %d", len(w.Window), w.PerPage, w.Pages, MaxWindowEvents)
 	}
 	if !w.Window[0].At.Before(w.Window[1].At) {
 		t.Error("the window runs oldest first")
 	}
-	def := SessionWindow("s-1", events, nil, 3, 0)
+	def := SessionWindow("s-1", ReplaySource{Events: events}, nil, 3, 0)
 	if def.PerPage != DefaultWindowEvents || def.Page != 3 || len(def.Window) != DefaultWindowEvents || def.From == "" {
 		t.Errorf("default window = %+v", def.Page)
 	}
-	last := SessionWindow("s-1", events, nil, 99, 0)
+	last := SessionWindow("s-1", ReplaySource{Events: events}, nil, 99, 0)
 	if last.Page != last.Pages || len(last.Window) != 5000-(last.Pages-1)*DefaultWindowEvents {
 		t.Errorf("the last page is clamped: page %d of %d, %d events", last.Page, last.Pages, len(last.Window))
 	}
-	disc := SessionWindow("s-1", events, []string{"discovery"}, 1, 0)
-	if disc.Matching != 1000 || disc.Events != 5000 || len(disc.Channels) != 2 {
-		t.Errorf("channel filter = matching %d of %d, channels %+v", disc.Matching, disc.Events, disc.Channels)
+	disc := SessionWindow("s-1", ReplaySource{Events: events}, []string{"discovery"}, 1, 0)
+	if disc.Matching.V != 1000 || disc.Events.V != 5000 || len(disc.Channels) != 2 {
+		t.Errorf("channel filter = matching %+v of %+v, channels %+v", disc.Matching, disc.Events, disc.Channels)
 	}
 	for _, c := range disc.Channels {
 		if c.Selected != (c.Channel == "discovery") {
@@ -246,8 +322,22 @@ not json
 	if len(raw) > 400*1024 {
 		t.Errorf("one window's JSON is %d bytes", len(raw))
 	}
-	if none := SessionWindow("nope", nil, nil, 1, 0); none.Note == "" || len(none.Window) != 0 {
+	if none := SessionWindow("nope", ReplaySource{}, nil, 1, 0); none.Events.State != StateAbsent || none.Events.Reason == "" || len(none.Window) != 0 {
 		t.Errorf("an unknown session names the absence: %+v", none)
+	}
+	// A hooks log that exists and could not be read is an error naming the
+	// failure, never "no beats recorded"; a generation that could not be
+	// read makes the counts lower bounds.
+	bad := SessionWindow("s-1", ReplaySource{Reason: "hooks log unreadable: permission denied", Error: true}, nil, 1, 0)
+	if bad.Events.State != StateError || !strings.Contains(bad.Events.Reason, "permission denied") || bad.Matching.State != StateError {
+		t.Errorf("unreadable hooks log = %+v", bad)
+	}
+	if raw, _ := json.Marshal(bad); strings.Contains(string(raw), `"events":{"v"`) {
+		t.Errorf("an unreadable log's replay carries a number: %s", raw)
+	}
+	part := SessionWindow("s-1", ReplaySource{Events: events[:10], Partial: "the rotated hooks log could not be read"}, nil, 1, 0)
+	if part.Events.State != StatePartial || part.Events.V != 10 {
+		t.Errorf("a partly read log = %+v, want a partial lower bound", part.Events)
 	}
 }
 
@@ -328,10 +418,27 @@ func TestOperateView_SurfacesAndCallerClasses(t *testing.T) {
 	if m.Daemon.MemoryMB.V != 300 || m.Daemon.UptimeSec.V != 3600 || m.Daemon.Goroutines.V != 42 {
 		t.Errorf("daemon = %+v", m.Daemon)
 	}
+	// The load a CLI verb prints (`fathom metrics load`) is OperateView's
+	// traffic part exactly — the page's panels and the verb share it.
+	load := LoadView(OperateInputs{Calls: rows, CallLog: ResolvedCallLog{Path: "/logs/mcp-calls.jsonl", Rule: RuleDaemon}, Now: now, Days: 3})
+	lj, _ := json.Marshal(load)
+	mj, _ := json.Marshal(m.LoadModel)
+	if string(lj) != string(mj) {
+		t.Errorf("LoadView disagrees with OperateView:\nload %s\nview %s", lj, mj)
+	}
 	// Unreadable log: an error, every day.
 	bad := OperateView(OperateInputs{CallLogReason: "EPERM", CallLogError: true, Now: now, Days: 2})
 	if bad.WindowCalls.State != StateError || bad.DayTotals[1].Calls.State != StateError || bad.Daemon.MemoryMB.State != StateAbsent {
 		t.Errorf("unreadable log = %+v", bad)
+	}
+	if bad.ToolsCalled.State != StateError || len(bad.Tools) != 0 {
+		t.Errorf("unreadable log: tools called = %+v, want an error, never 0 tools", bad.ToolsCalled)
+	}
+	if raw, _ := json.Marshal(bad); strings.Contains(string(raw), `"tools_called":{"v"`) {
+		t.Errorf("unreadable log carries a tool count: %s", raw)
+	}
+	if m.ToolsCalled.V != 5 || m.ToolsCalled.State != StatePresent {
+		t.Errorf("tools called = %+v, want 5 measured", m.ToolsCalled)
 	}
 }
 
@@ -379,7 +486,7 @@ func TestDecideView_LogAndCalibration(t *testing.T) {
 	if strings.Join(order, ",") != "route,compile_prefilter,obligations_rerank,certify_suggest,obligations" {
 		t.Errorf("site order = %v (the vocabulary, then logged sites outside it)", order)
 	}
-	if !sites["route"].On || sites["compile_prefilter"].On || sites["route"].Rulings.V != 2 || sites["route"].Errors != 1 || sites["compile_prefilter"].Rulings.State != StateZero {
+	if !sites["route"].On || sites["compile_prefilter"].On || sites["route"].Rulings.V != 2 || sites["route"].Errors.V != 1 || sites["route"].Applied.State != StateZero || sites["compile_prefilter"].Rulings.State != StateZero || sites["compile_prefilter"].Applied.State != StateZero {
 		t.Errorf("sites = %+v", m.Sites)
 	}
 	if m.Rows[0].TS != "2026-09-23T11:00:00Z" || m.Rows[3].TS != "2026-09-21T10:00:00Z" {
@@ -395,6 +502,20 @@ func TestDecideView_LogAndCalibration(t *testing.T) {
 	raw, _ := json.Marshal(none)
 	if strings.Contains(string(raw), `"rulings":{"v"`) {
 		t.Errorf("absent rulings carry a number: %s", raw)
+	}
+	// A site's applied and failed counts come from the same log: with no
+	// log they are absent, and with an unreadable one an error — never 0.
+	if s := none.Sites[0]; s.Applied.State != StateAbsent || s.Errors.State != StateAbsent {
+		t.Errorf("missing log: site %s applied %+v errors %+v, want absent", s.Site, s.Applied, s.Errors)
+	}
+	for _, key := range []string{`"applied":{"v"`, `"errors":{"v"`, `"applied":0`, `"errors":0`} {
+		if strings.Contains(string(raw), key) {
+			t.Errorf("missing log: the JSON carries %s: %s", key, raw)
+		}
+	}
+	unreadable := DecideView(DecideInputs{LogPath: "/x/decisions.jsonl", LogReason: "decisions log unreadable: permission denied", LogError: true, AllSites: []string{"route"}}, DecideFilter{}, 1, 50)
+	if s := unreadable.Sites[0]; s.Applied.State != StateError || s.Errors.State != StateError || s.Rulings.State != StateError {
+		t.Errorf("unreadable log: site %+v, want every count an error", s)
 	}
 	if _, ok := ParseCalibrationReading("x.md", []byte("# nothing here\n")); ok {
 		t.Error("a reading with no bucket table must not parse")

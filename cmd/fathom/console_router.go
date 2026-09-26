@@ -80,7 +80,7 @@ func consolePageJSONFor(p *consolePage, r *http.Request, out consoleOut, now tim
 	if title == "" {
 		title = p.Title
 	}
-	verbs := p.Verbs
+	verbs := pageVerbs(p, out)
 	if verbs == nil {
 		verbs = []string{}
 	}
@@ -90,6 +90,15 @@ func consolePageJSONFor(p *consolePage, r *http.Request, out consoleOut, now tim
 		GeneratedAt: now.UTC().Format(time.RFC3339), Verbs: verbs,
 		Metrics: out.Metrics, Sections: out.Sections, Model: out.Model,
 	}
+}
+
+// pageVerbs are the commands a built page names: its declared verbs, or —
+// for a parameterized page — the exact commands this request filled in.
+func pageVerbs(p *consolePage, out consoleOut) []string {
+	if out.Verbs != nil {
+		return out.Verbs
+	}
+	return p.Verbs
 }
 
 // pageHandler serves one registered page.
@@ -155,7 +164,7 @@ func (d *consoleDeps) pageHandler(p *consolePage) http.HandlerFunc {
 		}
 		page := renderConsoleShell(d.reg, consoleShell{
 			PageID: p.ID, Title: title, Crumbs: consoleCrumbs(d.reg, p.ID, title),
-			Question: p.Question, Meta: out.Meta, Verbs: p.Verbs, Actions: out.Actions,
+			Question: p.Question, Meta: out.Meta, Verbs: pageVerbs(p, out), Actions: out.Actions,
 			Body: body, Live: liveStatus,
 		})
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")

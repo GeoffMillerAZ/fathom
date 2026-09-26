@@ -14,7 +14,13 @@ package console
 //     (the edit hook's "denied" beat, ADR-038).
 //
 // A kind whose instrument recorded nothing it could count from is absent
-// with its reason — never an empty lane that reads as "caught nothing".
+// with its reason — never an empty lane that reads as "caught nothing". That
+// holds per scope: a service or window filter decides, for each lane,
+// whether its instrument recorded anything THERE, so a project no `fathom
+// review` run names reads "not instrumented for <project>", never a zero, and
+// the verify lane's denominator is the scope's runs, never the fleet's. An
+// instrument that exists and could not be read is an error naming the
+// failure, drawn differently from an absence.
 
 import (
 	"sort"
@@ -89,17 +95,46 @@ type GuardBeat struct {
 }
 
 // CatchInputs are the four instruments' rows, already read. A non-empty
-// *Reason means that instrument could not be read at all.
+// *Reason means that instrument could not be read at all; its *Error flag
+// says the source exists and failed (an error) rather than being absent.
 type CatchInputs struct {
 	VerifyRuns   []VerifyRun
 	VerifyReason string
+	VerifyError  bool
 	VerifySource string
 	Reviews      []ReviewRun
 	ReviewReason string
+	ReviewError  bool
 	ReviewSource string
 	GuardBeats   []GuardBeat
 	GuardReason  string
+	GuardError   bool
+	// GuardPartial names a hooks-log generation that could not be read
+	// while another was: the guard count is then a lower bound.
+	GuardPartial string
 	GuardSource  string
+}
+
+// NamesService reports whether any instrument's row names service
+// (case-insensitive), in any window: a service filter naming none of them
+// names nothing the timeline could ever show.
+func (in CatchInputs) NamesService(service string) bool {
+	for _, r := range in.VerifyRuns {
+		if strings.EqualFold(r.Service, service) {
+			return true
+		}
+	}
+	for _, r := range in.Reviews {
+		if strings.EqualFold(r.Service, service) {
+			return true
+		}
+	}
+	for _, b := range in.GuardBeats {
+		if strings.EqualFold(b.Service, service) {
+			return true
+		}
+	}
+	return false
 }
 
 // CatchFilter narrows the timeline: kinds (none = all), one service, and a
@@ -205,11 +240,17 @@ func CatchTimeline(in CatchInputs, f CatchFilter, page, perPage int) CatchTimeli
 	m := CatchTimelineModel{Filter: f, PerPage: perPage}
 	var all []Catch
 	counts := map[CatchKind]int{}
-	add := func(c Catch) {
-		if f.Service != "" && !strings.EqualFold(c.Service, f.Service) {
-			return
+	// inScope is the filter every lane is counted over: the service and the
+	// window. Whether an instrument recorded anything is decided in the
+	// same scope, so a filter never turns "no instrument here" into a zero.
+	inScope := func(service string, at time.Time) bool {
+		if f.Service != "" && !strings.EqualFold(service, f.Service) {
+			return false
 		}
-		if !f.inWindow(c.At) {
+		return f.inWindow(at)
+	}
+	add := func(c Catch) {
+		if !inScope(c.Service, c.At) {
 			return
 		}
 		counts[c.Kind]++
@@ -218,13 +259,18 @@ func CatchTimeline(in CatchInputs, f CatchFilter, page, perPage int) CatchTimeli
 		}
 	}
 
-	// Verify refusals: one ledger row whose verdict carried a failing row.
+	// Verify refusals: one ledger row whose verdict carried a failing row,
+	// counted over the scope's recorded runs.
+	verifyRuns := 0
 	for _, r := range in.VerifyRuns {
-		if r.Failing <= 0 {
-			continue
-		}
 		t, ok := parseAt(r.At)
 		if !ok {
+			continue
+		}
+		if inScope(r.Service, t) {
+			verifyRuns++
+		}
+		if r.Failing <= 0 {
 			continue
 		}
 		origin := r.Origin
@@ -241,15 +287,16 @@ func CatchTimeline(in CatchInputs, f CatchFilter, page, perPage int) CatchTimeli
 		if !ok {
 			continue
 		}
+		scoped := inScope(r.Service, t)
 		if n, checked := r.Outcome["conservation"]; checked {
-			reviewedConservation = true
+			reviewedConservation = reviewedConservation || scoped
 			if n > 0 {
 				add(Catch{At: t, Kind: CatchConserveLoss, Service: r.Service, Subject: "fathom review",
 					Detail: countNoun(n, "conservation finding")})
 			}
 		}
 		if n, checked := r.Outcome["integrity"]; checked {
-			reviewedIntegrity = true
+			reviewedIntegrity = reviewedIntegrity || scoped
 			if n > 0 {
 				add(Catch{At: t, Kind: CatchIntegrity, Service: r.Service, Subject: "fathom review",
 					Detail: countNoun(n, "integrity finding")})
@@ -259,7 +306,7 @@ func CatchTimeline(in CatchInputs, f CatchFilter, page, perPage int) CatchTimeli
 	// Guard refusals: the pre-hook's denied beat.
 	guardFired := false
 	for _, b := range in.GuardBeats {
-		guardFired = true
+		guardFired = guardFired || inScope(b.Service, b.At.UTC())
 		if b.Kind != "denied" {
 			continue
 		}
@@ -271,6 +318,24 @@ func CatchTimeline(in CatchInputs, f CatchFilter, page, perPage int) CatchTimeli
 			Detail: "enforce:true guard (ADR-038)"})
 	}
 
+	// The scope in words, for a lane whose instrument recorded nothing in
+	// it: "" (everything), " for conjure", " in this window", or both.
+	scope, there := "", ""
+	if f.Service != "" {
+		scope += " for " + f.Service
+	}
+	if !f.From.IsZero() || !f.To.IsZero() {
+		scope += " in this window"
+	}
+	if scope != "" {
+		there = " there"
+	}
+	unread := func(reason string, isErr bool) Value[int] {
+		if isErr {
+			return Errored[int](reason)
+		}
+		return Absent[int](reason)
+	}
 	for _, k := range CatchKinds {
 		s := CatchKindSummary{Kind: k, Label: CatchKindLabel(k), Selected: f.wants(k)}
 		n := counts[k]
@@ -278,11 +343,11 @@ func CatchTimeline(in CatchInputs, f CatchFilter, page, perPage int) CatchTimeli
 		case CatchVerifyRefusal:
 			switch {
 			case in.VerifyReason != "":
-				s.Count = Absent[int](in.VerifyReason)
-			case len(in.VerifyRuns) == 0:
-				s.Count = Absent[int]("not instrumented — the verify ledger records no `fathom verify` run")
+				s.Count = unread(in.VerifyReason, in.VerifyError)
+			case verifyRuns == 0:
+				s.Count = Absent[int]("not instrumented" + scope + " — the verify ledger records no `fathom verify` run" + there)
 			default:
-				s.Count = Measured(n, "").WithDenominator("runs refused, of " + countNoun(len(in.VerifyRuns), "recorded verify run"))
+				s.Count = Measured(n, "").WithDenominator("runs refused, of " + countNoun(verifyRuns, "recorded verify run"))
 			}
 			s.Count = s.Count.WithSource(in.VerifySource)
 		case CatchConserveLoss, CatchIntegrity:
@@ -293,21 +358,24 @@ func CatchTimeline(in CatchInputs, f CatchFilter, page, perPage int) CatchTimeli
 			}
 			switch {
 			case in.ReviewReason != "":
-				s.Count = Absent[int](in.ReviewReason)
+				s.Count = unread(in.ReviewReason, in.ReviewError)
 			case !checked:
-				s.Count = Absent[int]("not instrumented — no `fathom review` run in the call log checked its " + dim + " dimension")
+				s.Count = Absent[int]("not instrumented" + scope + " — no `fathom review` run in the call log checked its " + dim + " dimension" + there)
 			default:
 				s.Count = Measured(n, "").WithDenominator("review runs whose " + dim + " dimension reported findings")
 			}
 			s.Count = s.Count.WithSource(in.ReviewSource)
 		case CatchGuardRefusal:
+			const denom = "edits or commands an enforce:true guard denied"
 			switch {
 			case in.GuardReason != "":
-				s.Count = Absent[int](in.GuardReason)
+				s.Count = unread(in.GuardReason, in.GuardError)
 			case !guardFired:
-				s.Count = Absent[int]("not instrumented — no PreToolUse guard-hook beat in the hooks log (the guard hook is not wired, or never fired)")
+				s.Count = Absent[int]("not instrumented" + scope + " — no PreToolUse guard-hook beat in the hooks log" + there + " (the guard hook is not wired, or never fired)")
+			case in.GuardPartial != "":
+				s.Count = Partial(n, in.GuardPartial).WithDenominator(denom)
 			default:
-				s.Count = Measured(n, "").WithDenominator("edits or commands an enforce:true guard denied")
+				s.Count = Measured(n, "").WithDenominator(denom)
 			}
 			s.Count = s.Count.WithSource(in.GuardSource)
 		}

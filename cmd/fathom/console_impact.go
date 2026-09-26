@@ -16,11 +16,14 @@ package main
 import (
 	"fmt"
 	"html"
+	"html/template"
+	"net/http"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/geoffmilleraz/app-kit/appkit/ui/chrome"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/stat"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/table"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/viz"
@@ -115,8 +118,11 @@ func buildImpactPage(cr *consoleRequest) (consoleOut, error) {
 	for _, s := range m.Services {
 		roots[s.Service] = s.Path
 	}
-	cm := console.CatchTimeline(catchInputsFrom(impactCatchSources(m, facts, sessionLabelKey(roots), cr.now)),
-		catchFilterFrom(kinds, service, days, cr.now), evPage(q), catchPageSize)
+	catchIn := catchInputsFrom(impactCatchSources(m, facts, sessionLabelKey(roots), cr.now))
+	if _, registered := roots[service]; service != "" && !registered && !catchIn.NamesService(service) {
+		return consoleOut{}, unknownCatchProjectError(service, cr)
+	}
+	cm := console.CatchTimeline(catchIn, catchFilterFrom(kinds, service, days, cr.now), evPage(q), catchPageSize)
 	catchVerb := catchCommand(cm.Filter, days, cm.Page)
 	metrics := consoleModelMetrics(m)
 	return consoleOut{
@@ -129,6 +135,20 @@ func buildImpactPage(cr *consoleRequest) (consoleOut, error) {
 		},
 		Body: func() string { return renderImpactPage(cr, m, im, cm, catchVerb, days, metrics) },
 	}, nil
+}
+
+// unknownCatchProjectError is the shell's 404 for a project filter that
+// names nothing: no registered project and no instrument's row (design §2:
+// an unknown service renders on the shell with the reason and the remedy),
+// never a timeline of lanes that each read "not instrumented".
+func unknownCatchProjectError(service string, cr *consoleRequest) *consoleError {
+	return &consoleError{
+		Status: http.StatusNotFound, Title: "Unknown project",
+		Reason:      "No indexed project is named " + service + ", and no verify run, review run or guard beat names it — there is nothing to show for it.",
+		Remedy:      "clear the project filter to see every project's catches",
+		RemedyHref:  evHref(cr.r.URL.Path, cr.r.URL.Query(), "svc", ""),
+		RemedyLabel: "Show every project",
+	}
 }
 
 // catchCommand is the exact `metrics catches` command the timeline shows.
@@ -193,8 +213,9 @@ func renderImpactPage(cr *consoleRequest, m observatoryModel, im console.ImpactM
 		Question:    "Which verify refusals, conserve losses, integrity catches and guard refusals happened, and when?",
 		Verb:        catchVerb,
 		Source:      "the verify ledger, `fathom review` rows in the call log, and the hooks log's guard beats",
-		Denominator: catchCount(cm.Total) + " in the window", Freshness: "live — read for this request",
-		Body: renderCatchTimeline(cr, cm, days),
+		Denominator: catchCount(cm.Total) + " in the window",
+		Freshness:   "read at most 30 s ago — the verify ledger and hooks log reads are reused for 30 s, the review rows are the model's read",
+		Body:        renderCatchTimeline(cr, cm, days),
 	}))
 
 	// Q3 — per-tool outcomes.
@@ -312,7 +333,7 @@ func renderArmRanges(im console.ImpactModel) string {
 	tbl := renderKitTable(table.TableParams{TableID: "impact-arms", Caption: "counterfactual arms (" + console.ArmUnit + ")",
 		Columns: []table.Column{{Key: "arm", Label: "Arm"}, {Key: "units", Label: "Sessions", Align: "right"}, {Key: "p25", Label: "p25", Align: "right"}, {Key: "median", Label: "Median", Align: "right"}, {Key: "p75", Label: "p75", Align: "right"}},
 		Rows:    rows})
-	b.WriteString(evChart("", "", 0, "the arms as a table", tbl))
+	b.WriteString(evChart("", "", "", "the arms as a table", tbl))
 	return b.String()
 }
 
@@ -345,7 +366,23 @@ func renderToolOutcomes(im console.ImpactModel) string {
 			{Key: "instrumented", Label: "Outcome recorded", Align: "right"}, {Key: "hits", Label: "Hits", Align: "right"},
 			{Key: "misses", Label: "Misses", Align: "right"}, {Key: "dym", Label: "Did you mean", Align: "right"}},
 		Rows: rows})
-	return tbl + `<p class="mt-2 text-xs text-ink-muted">"not instrumented": none of the tool's calls records an outcome (rows before IQ-1, or a tool with no result count) — there is no number, so none is drawn. Caller: the class making most of the tool's calls (agent, edit hook, gate, refresh, plumbing, unattributed).</p>`
+	// Below md the outcome columns — the point of the table — would sit
+	// off-screen in a sideways scroll: each tool reads whole instead.
+	var stack []evStackItem
+	for i, o := range im.Tools {
+		if i == shown {
+			break
+		}
+		stack = append(stack, evStackItem{
+			Heading: `<code class="font-mono text-xs">` + html.EscapeString(o.Tool) + `</code> <span class="text-xs font-normal text-ink-muted">· ` + html.EscapeString(string(o.Class)) + ` · ` + plural(o.Calls, "call") + `</span>`,
+			Items: []chrome.DescItem{
+				{Term: "outcome recorded", DetailHTML: template.HTML(evCell(o.Instrumented, ""))},
+				{Term: "hits · misses", DetailHTML: template.HTML(evCell(o.Hits, "not instrumented") + " · " + evCell(o.Misses, "not instrumented"))},
+				{Term: "did you mean", DetailHTML: template.HTML(evCell(o.DidYouMean, "not instrumented"))},
+			},
+		})
+	}
+	return `<p class="mb-2 text-xs text-ink-muted md:hidden">` + html.EscapeString(caption) + `</p>` + evTableOrStack("impact-tools", "per-tool outcomes", tbl, stack) + `<p class="mt-2 text-xs text-ink-muted">"not instrumented": none of the tool's calls records an outcome (rows before IQ-1, or a tool with no result count) — there is no number, so none is drawn. Caller: the class making most of the tool's calls (agent, edit hook, gate, refresh, plumbing, unattributed).</p>`
 }
 
 // renderCatchTimeline is the catches panel's body: kind and window chips,

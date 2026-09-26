@@ -131,13 +131,21 @@ func appendVerifyLedgerFrom(origin, root string, planFiles []string, service str
 // readVerifyLedger returns all parseable rows; absent file is zero rows,
 // no error — a machine that has never gated is normal.
 func readVerifyLedger() []verifyLedgerRow {
-	path := verifyLedgerPath()
+	rows, _ := readVerifyLedgerErr(verifyLedgerPath())
+	return rows
+}
+
+// readVerifyLedgerErr is readVerifyLedger over path with the read's error:
+// os.ErrNotExist (wrapped) when there is no ledger, the open or read
+// failure when it exists and cannot be read — a reader that must tell an
+// absent ledger from an unreadable one (the catches timeline) uses this.
+func readVerifyLedgerErr(path string) ([]verifyLedgerRow, error) {
 	if path == "" {
-		return nil
+		return nil, os.ErrNotExist
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	var out []verifyLedgerRow
 	dec := json.NewDecoder(bytes.NewReader(data))
@@ -148,5 +156,5 @@ func readVerifyLedger() []verifyLedgerRow {
 		}
 		out = append(out, r)
 	}
-	return out
+	return out, nil
 }
