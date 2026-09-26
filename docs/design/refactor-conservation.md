@@ -505,6 +505,55 @@ refuting this criterion. Separately, if an attest run with `-coverpkg=./...`
 takes more than twice as long as the plain run on this repository, the
 profile becomes opt-in (`TESTKIT_COVER=1`) instead of default.
 
+### 3.6 What a reviewer still opens (Q22's answer, 2026-09-25)
+
+Q22 asked what a reviewer must be shown to accept a large agent refactor without
+reading the diff, and whether a stranger can re-derive it. The measured answer is
+the reading set with execution evidence. CV-M12, CV-M13 and CV-M14 measured it on
+overlapping ranges.
+
+- **This repository's CV wave-3 range** (`5afeee42..78e508d3`: 47 changed files,
+  31 changed Go functions). With a bound, passing coverage profile, 18 functions
+  read `attested` and 13 read `partial`. None read `unexecuted`. Each partial item
+  names the changed line ranges that never ran; for `runServeHTTP` that is lines
+  129-133, the O119 fix (CV-M14). CV-M13's independent changed-line join found 13
+  such functions on the same range: seven in
+  `internal/analysis/inventory/apicompat.go`, three in
+  `internal/mcp/review_integrity.go`, and `runServeHTTP`, `planPathRelativeTo` and
+  `Resurrected`. The reviewer opens those 13 functions at their named lines. They
+  also open the 21 changed files the reading set does not analyze: docs, the ADR,
+  CHANGELOG, `.reviewkit/*.cue` and CODEOWNERS (CV-M12). That replaces opening all
+  47 files.
+- **Static reach alone was not enough.** CV-M12 classed all 31 of those functions
+  `attested` and flagged none. Over the whole head, 168 of 4,534 functions that
+  static reach called attested never ran, and 31 of 91 it called unreached did
+  (CV-M13).
+- **The CV-M6 dogfood range** (`c75b70e8..4957b916`: 41 changed files, 36 of them
+  deletions). CV-M12's reading set named one changed function and 3 unanalyzed
+  files. The function was a comment-only edit, which the amended rule in §3.4 no
+  longer counts. The absence and resurrection planes cover the deleted files, so
+  the reading set does not list them.
+- **A weaker-tested repository.** On conjure's r2 range (326 changed functions; 100
+  of them in vendored files the index excludes) the reading set flags 105 `partial`
+  and 2 `unexecuted` of the 226 it classifies (CV-M14). Weaker tests make the
+  flagged set larger; they do not make the change look reviewed. With coverage,
+  the three functions the control's hand check found never ran
+  (`jsonShapeError.Error`, `fanoutHandler.WithGroup`, `ParseError.Unwrap`) each read
+  `unexecuted`.
+
+**Re-derivation.** A stranger can re-derive the numbers for this repository's
+ranges from the repository alone. Each reading carries its reproduce recipe, and
+CV-M13's scripts are committed under `docs/bench/readings/cv-m13-method/`. CV-M14
+cross-checked every named case against the raw `go tool cover` profile. The
+conjure numbers need that repository, which a stranger does not have. No 400-file
+range has been measured; the largest is conjure r2, with 326 changed functions.
+On this repository, the evidence that flagged items are real rests on one range
+(the 13 partial functions above). No seeded undertested range has been run here.
+
+**What stays open.** Promoting `refactoring-conservation` from warn to deny is the
+owner's decision, with this section as its evidence (`docs/intent/questions.md`
+Q28).
+
 ## 4. Stage 4 — refactors as programs
 
 - Plan header `baseline: <sha>` pins the base for every row.
