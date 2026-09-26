@@ -539,14 +539,25 @@ not met, and no targeted run has measured it since: the one targeted row,
   asked for (the default is 25) cost 3.6–3.8 KB, and a free-text query
   (`"workspace/ convention"`, `"shell fathom ingest"`) was refused in about
   200 bytes, where the 2026-09-13 run paid 6 KB for `func (s *`.
-- The bytes moved to the orientation tools. On H1-T06, answered by the first
-  `find_symbol` (492 bytes) in two cells of three, the agent went on to
-  `repo_map` (12.2 KB) and `query_symbols` (6.6 KB). On H1-T08 it spent
-  5.9 KB on an `outline` of `docs/usage.md`. On H1-T11 it read the whole
-  fleet-index guide through `read_source` (9.6–12.9 KB a call).
-- `read_source`'s 8000-byte budget counted raw text, so a default read
-  reached the model as 11,135 bytes: the per-line `{line, text}` envelope
-  was left out. Since BP-42 the budget bounds the `lines` array as sent.
+- The bytes moved past the answer, and each cell paid for something
+  different. On H1-T06, t1 and t3 called `find_symbol` for
+  `PutObservations`, and its 492-byte hit named both implementations the
+  task asks for. t1 then spent 12.2 KB on `repo_map` and 6.6 KB on
+  `query_symbols`; t3 spent 3.6 KB on `references`, 3.4 KB on
+  `read_source` and 1.6 KB on `symbol_context`. t2 never looked the
+  method up with `find_symbol`: it opened with `references` (3.8 KB) and
+  `query_symbols` (6.6 KB). `repo_map` appears in one cell of three. On
+  H1-T08 every cell spent 5.9 KB on an `outline` of `docs/usage.md`. On
+  H1-T11 every cell read the fleet-index guide through `read_source` from
+  line 1: t1 lines 1–120 (9.6 KB) and t2 lines 1–200 (11.2 KB, stopped at
+  line 136 by the byte cap) at the default budget; only t3 read the whole
+  162-line file, at `max_bytes` 16000 (12.9 KB).
+- `read_source`'s 8000-byte budget counted raw text, so default reads
+  reached the model over it. t2's 136 lines, 7.9 KB of raw text, arrived as
+  11,189 bytes, 10,849 of them the `lines` array; t1's 120 lines arrived as
+  9,618 bytes without reaching the cap at all. The per-line
+  `{line, text}` envelope and its JSON escaping were left out. Since BP-42
+  the budget bounds the `lines` array as sent.
 
 BP-45 re-measures these three tasks on a binary carrying BP-42. BP-46
 measures `pack_context` against the bare tools on the same task shapes:
