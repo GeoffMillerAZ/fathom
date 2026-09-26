@@ -40,6 +40,9 @@ func cmdBrief(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	if *jsonOut {
+		// The Now page's projection (console_home.go), at the console
+		// verbs' injectable clock (fleetReportNow) so the page's JSON parity
+		// test pins the verb and the page to one instant.
 		rep := briefNowReport(context.Background(), *url, *storePath, fleetReportNow())
 		enc := json.NewEncoder(stdout)
 		enc.SetIndent("", "  ")

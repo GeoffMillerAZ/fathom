@@ -94,11 +94,10 @@ func gatherSince(ctx context.Context, src sinceSources) console.Since {
 	var pushErrs, readErrs []string
 	since := src.now.Add(-console.SinceMaxWindow - 24*time.Hour)
 	for _, s := range src.model.Services {
-		gitDir, commonDir, ok := gitDirs(s.Path)
+		_, commonDir, ok := gitDirs(s.Path)
 		if !ok {
 			continue
 		}
-		_ = gitDir
 		ref, data, err := remoteTrackingReflog(commonDir)
 		switch {
 		case err != nil && !os.IsNotExist(err):
@@ -284,7 +283,9 @@ func commitSubjects(ctx context.Context, root string, entries []console.ReflogEn
 	}
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	args := append([]string{"-C", root, "log", "--no-walk", "--format=%H%x09%s"}, missing...)
+	// --ignore-missing: a commit the reflog names and the repository no
+	// longer has (a force-push, a pruned fetch) leaves the others named.
+	args := append([]string{"-C", root, "log", "--no-walk", "--ignore-missing", "--format=%H%x09%s"}, missing...)
 	raw, err := exec.CommandContext(cctx, "git", args...).Output()
 	if err != nil {
 		return out
