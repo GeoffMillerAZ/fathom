@@ -57,13 +57,13 @@
       "rule": {
         "id": "I31",
         "text": "Project-emitted artifacts default to workspace/ (gitignored); CLI -store/-call-log defaults resolve under the enclosing repository's workspace/ (from any subdirectory) or ~/.fathom/ outside a repository -- defaultStorePath/defaultCallLogPath (cmd/fathom/defaultpaths.go) -- never the bare cwd.",
-        "source": "docs/intent/invariants.md#L62"
+        "source": "docs/intent/invariants.md#L63"
       },
       "predictions": {
         "full": "win: the workspace/ default-path convention is bound to edits under cmd/fathom's flag/path-default files, so an obligation serves the rule exactly where a new debug-dump default path is being written, well before the naive 'just write it next to cwd' fix lands",
         "control": "no-effect: a generic notes-file instruction carries no per-file trigger naming defaultStorePath's contract, so the control has no reason to route a brand-new output path through the shared helper instead of the cwd"
       },
-      "derivation": "Rule text and enforcement lifted verbatim from docs/intent/invariants.md I31 (line 62, verified 2026-08-25); the naive fix mirrors the brief's own example (\"write an artifact outside workspace/\"). Detector is I31's own pinned test, cmd/fathom/defaultpaths_test.go:15.",
+      "derivation": "Rule text and enforcement lifted verbatim from docs/intent/invariants.md I31 (line 63, re-verified 2026-09-25 after I46 moved it); the naive fix mirrors the brief's own example (\"write an artifact outside workspace/\"). Detector is I31's own pinned test, cmd/fathom/defaultpaths_test.go:15.",
       "violation_probe": {
         "description": "wave N14 item 2 (guards-pilot-6 second reading): TestDefaultStorePathNeverTheCwd only pins the pre-existing defaultStorePath/defaultCallLogPath and never exercises a brand-new verb's own default path at all, so a debug-dump implementation that hardcodes ~/.fathom/debug unconditionally — never calling workspacePath/stateLogPath — passed it on two real guards-pilot-6 sessions. This probe writes exactly that naive violation.",
         "commands": [
@@ -160,13 +160,13 @@
       "rule": {
         "id": "I19",
         "text": "No third-party or customer org names, hosts, or catalogs in code, docs, tests, or fixtures.",
-        "source": "docs/intent/invariants.md#L60"
+        "source": "docs/intent/invariants.md#L61"
       },
       "predictions": {
         "full": "win: the fixture is new, small, and directly named in the diff, so the obligation reaches exactly the file being written before a plausible-sounding real hostname or org name lands in it",
         "control": "no-effect: a prose reminder sitting in a notes file, unread mid-edit, does not stop a realistic-sounding example from feeling like the natural thing to type into a new golden fixture"
       },
-      "derivation": "Rule text and enforcement lifted verbatim from docs/intent/invariants.md I19 (line 60, verified 2026-08-25) and ADR-011; the naive fix is the brief's own worked example (\"an org-specific name in a fixture\")."
+      "derivation": "Rule text and enforcement lifted verbatim from docs/intent/invariants.md I19 (line 61, re-verified 2026-09-25 after I46 moved it) and ADR-011; the naive fix is the brief's own worked example (\"an org-specific name in a fixture\")."
     },
     {
       "id": "guards-i1-packagedeps-sorted",
@@ -303,13 +303,13 @@
       "rule": {
         "id": "I36",
         "text": "One doc per use case under docs/use-cases/ whose ## Maintained contract names only registered tools and dispatched verbs.",
-        "source": "docs/intent/invariants.md#L64"
+        "source": "docs/intent/invariants.md#L65"
       },
       "predictions": {
         "full": "win: docs/CLAUDE.md's use-case upkeep contract is a doc-shaped obligation bound to edits under docs/use-cases/, which fires on a brand-new file there even though the prompt itself invites skipping the contract line",
         "control": "no-effect: a prompt that explicitly frames the contract line as optional boilerplate, with no obligation naming it, leaves the control arm with every reason to leave it out"
       },
-      "derivation": "Rule text and enforcement lifted verbatim from docs/intent/invariants.md I36 (line 64, verified 2026-08-25) and docs/CLAUDE.md's docs-upkeep contract; the naive fix is the brief's own worked example (\"a use-case doc without a Maintained line\")."
+      "derivation": "Rule text and enforcement lifted verbatim from docs/intent/invariants.md I36 (line 65, re-verified 2026-09-25 after I46 moved it) and docs/CLAUDE.md's docs-upkeep contract; the naive fix is the brief's own worked example (\"a use-case doc without a Maintained line\")."
     },
     {
       "id": "guards-i16-raw-cp-deploy",
@@ -356,13 +356,13 @@
       "rule": {
         "id": "I16",
         "text": "Agent-config files never instruct a raw-cp deploy; task deploy signs when the identity exists, temp+renames, and asserts the daemon serves HEAD.",
-        "source": "docs/intent/invariants.md#L57"
+        "source": "docs/intent/invariants.md#L58"
       },
       "predictions": {
         "full": "no-effect: the raw-cp prohibition already sits in CLAUDE.md's Non-negotiables table within the file's first 20 lines, over a real incident (O25) -- the wired arm's obligation adds nothing a short, prominent file did not already surface to a careful reader",
         "control": "no-effect: the control arm reads that exact same short, prominent table directly and needs no served obligation to see the rule it is about to contradict"
       },
-      "derivation": "Rule text and enforcement lifted verbatim from docs/intent/invariants.md I16 (line 57, verified 2026-08-25) and ADR entry O25/INC-13; detector is the same task config-audit gate the rule cites. This is the corpus's registered no-effect case (vision 27 M1: 'rule at the top of a short CLAUDE.md') -- CLAUDE.md's own Non-negotiables table already states this rule prominently, so wiring fathom is predicted to add nothing over reading the file, for either arm."
+      "derivation": "Rule text and enforcement lifted verbatim from docs/intent/invariants.md I16 (line 58, re-verified 2026-09-25 after I46 moved it) and ADR entry O25/INC-13; detector is the same task config-audit gate the rule cites. This is the corpus's registered no-effect case (vision 27 M1: 'rule at the top of a short CLAUDE.md') -- CLAUDE.md's own Non-negotiables table already states this rule prominently, so wiring fathom is predicted to add nothing over reading the file, for either arm."
     },
     {
       "id": "guards-i28-duckdb-path",
