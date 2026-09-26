@@ -18,6 +18,7 @@ func init() {
 		Question: "What would I show someone who has never heard of fathom?",
 		Shows:    []console.MetricID{console.MetricObservations},
 		Formats:  []string{"md"},
+		Live:     []string{"index", "sessions", "plans"},
 		Build:    buildBriefPage,
 	})
 }

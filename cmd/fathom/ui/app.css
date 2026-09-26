@@ -194,6 +194,9 @@
   .collapse {
     visibility: collapse;
   }
+  .invisible {
+    visibility: hidden;
+  }
   .visible {
     visibility: visible;
   }
@@ -255,6 +258,12 @@
   }
   .z-50 {
     z-index: 50;
+  }
+  .col-start-1 {
+    grid-column-start: 1;
+  }
+  .row-start-1 {
+    grid-row-start: 1;
   }
   .container {
     width: 100%;
@@ -516,6 +525,9 @@
   .grow {
     flex-grow: 1;
   }
+  .basis-40 {
+    flex-basis: calc(var(--spacing) * 40);
+  }
   .basis-60 {
     flex-basis: calc(var(--spacing) * 60);
   }
@@ -541,6 +553,12 @@
   }
   .cursor-pointer {
     cursor: pointer;
+  }
+  .resize {
+    resize: both;
+  }
+  .scroll-mt-4 {
+    scroll-margin-top: calc(var(--spacing) * 4);
   }
   .list-disc {
     list-style-type: disc;
@@ -872,6 +890,9 @@
   }
   .py-3 {
     padding-block: calc(var(--spacing) * 3);
+  }
+  .py-3\.5 {
+    padding-block: calc(var(--spacing) * 3.5);
   }
   .py-4 {
     padding-block: calc(var(--spacing) * 4);
@@ -1402,6 +1423,12 @@
   .focus-visible\:outline-focus {
     &:focus-visible {
       outline-color: var(--ak-color-focus);
+    }
+  }
+  .focus-visible\:outline-none {
+    &:focus-visible {
+      --tw-outline-style: none;
+      outline-style: none;
     }
   }
   .disabled\:opacity-50 {

@@ -131,7 +131,7 @@ func renderStatusz(report StatuszReport, selfURL string) string {
 	}
 	b.WriteString(`<div class="mt-4">`)
 	b.WriteString(renderPanel(consolePanel{
-		ID: "services", Title: "Services", SourceKey: "index:*",
+		ID: "services", Title: "Services", SourceKey: "index layers",
 		Question:    "Is every service indexed, and did its typed call-edge pass run?",
 		Verb:        verb,
 		Source:      "the daemon's store (service_meta, compile_runs, typed_edge_status), this process's typed-edge passes and each service root's go.mod",

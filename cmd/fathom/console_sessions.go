@@ -16,12 +16,14 @@ func init() {
 		Title: "Sessions", Aliases: []string{"story"},
 		Question: "What did agents do, with fathom and without?",
 		Shows:    []console.MetricID{console.MetricSessions, console.MetricObservations},
+		Live:     []string{"sessions"},
 		Build:    buildSessionsPage,
 	})
 	declarePage(consolePage{
 		ID: "session", Route: "/sessions/{id}", Group: "Evidence", Order: 11, NavParent: "sessions",
 		Title:    "Session",
 		Question: "What happened in one session, event by event?",
+		Live:     []string{"sessions"},
 		Build:    buildSessionPage,
 	})
 }

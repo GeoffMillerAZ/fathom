@@ -66,7 +66,7 @@ can omit its top-bar title (returned as FATHOM-S0-KIT-01 below). `analytics.grap
 `viz.heatmap` truth states, `content.code-excerpt` and `work.unified-diff` wait for the
 pages that need them (waves C–E); none is imported yet, so none is scanned.
 
-## Console stage 0: the ⌘K palette (2026-09-25)
+## Console stage 0: the ⌘K palette and live freshness (2026-09-25)
 
 OC-12 adopts `interaction.command-palette` (FATHOM-KIT-01) at mirror `d9dd789`, pinned in
 `appkit.adoption.json` (layer L2 added for its script; `palette.go` and `palette.js`
@@ -87,10 +87,31 @@ pinned as artifacts). `cmd/fathom/console_palette.go` configures one palette
   `palette.RenderSearchForm`. The full page keeps fathom's richer rendering (verb chips,
   group pages, pagination) over the same results.
 
-`cmd/fathom/ui/input.css` and `scripts/ui-css.sh` add `overlay/*.go` and `palette/*.go`.
-Tests: `TestConsolePalette_OverEveryPageWithFragmentAndNoJSFallback`,
-`TestConsolePalette_ResultsNameTotalsAndRealDestinations`. The keyboard contract is
-the kit's (its script tests and Gallery run); fathom's browser run is in
+OC-14 adopts `interaction.live-freshness` (FATHOM-KIT-06), pinned likewise (`live.go`,
+`live.js`). `cmd/fathom/console_live.go` wires the kit's helper to `GET /events`:
+
+- Every `renderPanel` panel names the sources it follows twice on one element:
+  fathom's `data-console-source` and the kit's region attributes (`live.RegionAttrs`,
+  `data-live-source`, focusable, with a focus-visible ring), plus the kit's reserved
+  status line (`live.RenderStatus`), which now carries the panel's freshness instead of
+  the footer. A page whose body is not yet built from panels (the pages F0 moved over
+  unchanged) is one region, `page-live`, following the sources its model reads
+  (`consolePage.Live`; the project page fills in its own service), status line first.
+- A page with regions renders `live.RenderPageStatus` under its heading, with the
+  stream position it was rendered at (`EventBus.Cursor`), and loads `/assets/live.js`
+  (`live.Handler`). The kit script follows the five event kinds and `gap`.
+- The bus side (OC-13, additive): each event also names a fleet-wide key (`index`,
+  `layers`, `plans`), so a panel summarizing every service follows one key instead of one
+  per service (18 services exceed the kit's 16-source bound); and a reconnect whose cursor
+  the replay cannot cover (another process's id, or older than the 64-event ring) is sent
+  a `gap` event naming `*` first, the kit's contract for a server that cannot replay.
+
+`cmd/fathom/ui/input.css` and `scripts/ui-css.sh` add `overlay/*.go`, `palette/*.go` and
+`live/*.go`. Tests: `TestConsolePalette_OverEveryPageWithFragmentAndNoJSFallback`,
+`TestConsolePalette_ResultsNameTotalsAndRealDestinations`,
+`TestConsoleLive_PanelsCarrySourcesAndMarkWithoutMoving` and
+`TestEventBus_GapNamesEverySource`. The keyboard and connection contracts are the kit's
+(its script tests and Gallery runs); fathom's browser run is in
 `docs/bench/readings/console-stage0-proof-2026-09-25.md`.
 
 ## Observatory console wave F0 (2026-09-25)

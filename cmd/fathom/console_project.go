@@ -16,6 +16,7 @@ func init() {
 		ID: "project", Route: "/projects/{svc}", Group: "Fleet", Order: 10,
 		Title: "Project", NavParent: "fleet", Aliases: []string{"service"},
 		Question: "Everything about one repository: wiring, freshness, configuration and activity.",
+		Live:     []string{"index:{svc}", "layers:{svc}", "sessions:{svc}", "plans:{svc}"},
 		Build:    buildProjectPage,
 	})
 }

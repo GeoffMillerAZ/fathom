@@ -15,6 +15,7 @@ func init() {
 		Title:    "Impact",
 		Question: "Has fathom helped, measured honestly, with ranges and arm counts?",
 		Shows:    []console.MetricID{console.MetricSessions, console.MetricObservations},
+		Live:     []string{"sessions", "plans"},
 		Build:    buildImpactPage,
 	})
 }

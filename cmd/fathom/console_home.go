@@ -14,6 +14,7 @@ func init() {
 		Title: "Now", NavLabel: "Home",
 		Question: "What needs my attention, and what changed since I last looked?",
 		Shows:    []console.MetricID{console.MetricServices, console.MetricCalls, console.MetricObservations},
+		Live:     []string{"index", "sessions", "plans"},
 		Build:    buildHomePage,
 	})
 }

@@ -270,7 +270,10 @@ id carries the process's epoch (`<epoch>-<n>`): a reconnect with an id from anot
 (the common case: a daemon restart) replays the whole ring, the restart event first. An
 `ingest` event means the service's indexed content moved (its commit or the store's
 content digest), never a hash-gated no-op re-ingest; a `session` event names the service
-whose root the row's repo label names.
+whose root the row's repo label names. Each event also names a fleet-wide key (`index`,
+`layers`, `plans`, `sessions`, `daemon`) for panels that summarize every service, and a
+reconnect whose cursor the replay cannot cover (another epoch, or older than the ring)
+is first sent a `gap` event naming every source (`*`).
 
 ## 5. App-kit: adoption and contributions
 

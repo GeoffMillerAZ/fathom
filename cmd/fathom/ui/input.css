@@ -22,6 +22,7 @@
 @source "../../../third_party/app-kit/appkit/ui/dashboard/*.go";
 @source "../../../third_party/app-kit/appkit/ui/form/*.go";
 @source "../../../third_party/app-kit/appkit/ui/hitl/*.go";
+@source "../../../third_party/app-kit/appkit/ui/live/*.go";
 @source "../../../third_party/app-kit/appkit/ui/overlay/*.go";
 @source "../../../third_party/app-kit/appkit/ui/palette/*.go";
 @source "../../../third_party/app-kit/appkit/ui/stat/*.go";

@@ -165,7 +165,7 @@ func TestEventBus_ReplayBoundAndKeepalive(t *testing.T) {
 	if !strings.Contains(joined, `"epoch":"e1"`) {
 		t.Errorf("hello must name the stream's epoch:\n%s", joined)
 	}
-	if !strings.Contains(joined, `"sources":["index:b"]`) {
+	if !strings.Contains(joined, `"sources":["index:b","index"]`) {
 		t.Errorf("event data must carry its panel sources:\n%s", joined)
 	}
 	if !sawKeepalive {
@@ -275,5 +275,61 @@ func TestLedgerTail_ReportsOnlyAppendedLines(t *testing.T) {
 	missing.Prime()
 	if lines, err := missing.Poll(); err != nil || lines != nil {
 		t.Errorf("missing ledger = %q, %v; want nothing and no error", lines, err)
+	}
+}
+
+// TestEventBus_GapNamesEverySource pins the live-freshness gap contract: a
+// client whose cursor the replay cannot cover — another process's id, an id
+// older than the ring, an unparseable id — is told first that every source
+// ("*") may have changed, with no id (a notice never moves the cursor); a
+// client resuming inside the ring, or with no position, is not.
+func TestEventBus_GapNamesEverySource(t *testing.T) {
+	bus := console.NewEventBus(console.BusOptions{Epoch: "g1", Replay: 4})
+	for i := 0; i < 6; i++ { // ids 1..6; the ring keeps 3..6
+		if _, err := bus.Publish(console.Event{Kind: console.EventVerify, Service: "fathom", Name: "p.md", Ref: "pass"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for id, want := range map[string]bool{"": false, "g1-2": false, "g1-6": false, "g1-1": true, "g0-9": true, "junk": true} {
+		sub, _, gap, err := bus.SubscribeFrom(id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		sub.Close()
+		if gap != want {
+			t.Errorf("SubscribeFrom(%q) gap = %v, want %v", id, gap, want)
+		}
+	}
+	ts := httptest.NewServer(bus)
+	defer ts.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, ts.URL, nil)
+	req.Header.Set("Last-Event-ID", "g1-1")
+	resp, err := ts.Client().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	sc := bufio.NewScanner(resp.Body)
+	var got []string
+	for sc.Scan() {
+		got = append(got, sc.Text())
+		if strings.HasPrefix(sc.Text(), "id: g1-6") {
+			break
+		}
+	}
+	joined := strings.Join(got, "\n")
+	gapAt := strings.Index(joined, "event: gap\ndata: {\"kind\":\"gap\",\"sources\":[\"*\"]}")
+	if gapAt < 0 || gapAt > strings.Index(joined, "id: g1-3") {
+		t.Errorf("a gap must be announced, with no id, before the replay:\n%s", joined)
+	}
+	if strings.Contains(joined[:gapAt+1], "id: g1") {
+		t.Errorf("the gap notice must carry no id:\n%s", joined)
+	}
+	for _, key := range []string{"plans:fathom", "verify:fathom", "plans"} {
+		if !strings.Contains(joined, `"`+key+`"`) {
+			t.Errorf("a verify event must name %q (its service keys and the fleet-wide key):\n%s", key, joined)
+		}
 	}
 }

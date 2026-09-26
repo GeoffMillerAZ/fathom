@@ -20,6 +20,7 @@ func init() {
 		Question: "How is every project doing: wired, fresh, proven, used?",
 		Verbs:    []string{"fathom fleet report --json"},
 		Shows:    []console.MetricID{console.MetricServices, console.MetricSymbols, console.MetricCalls, console.MetricObservations},
+		Live:     []string{"index", "layers", "sessions"},
 		Build:    buildFleetPage,
 	})
 }

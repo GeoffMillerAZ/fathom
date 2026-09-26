@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/geoffmilleraz/app-kit/appkit/ui/live"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/palette"
 	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/pkg/client"
@@ -142,10 +143,20 @@ func (d *consoleDeps) pageHandler(p *consolePage) http.HandlerFunc {
 		if out.Body != nil {
 			body = out.Body()
 		}
+		// OC-14: a body built from source-keyed panels is already live; any
+		// other body follows the page's declared sources as one region.
+		live := strings.Contains(body, "data-live-source=")
+		if !live {
+			body, live = consoleLivePage(title, pageLiveSources(p, cr), now, body)
+		}
+		liveStatus := ""
+		if live {
+			liveStatus = consoleLiveStatus(d.bus.Cursor())
+		}
 		page := renderConsoleShell(d.reg, consoleShell{
 			PageID: p.ID, Title: title, Crumbs: consoleCrumbs(d.reg, p.ID, title),
 			Question: p.Question, Meta: out.Meta, Verbs: p.Verbs, Actions: out.Actions,
-			Body: body,
+			Body: body, Live: liveStatus,
 		})
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		_, _ = w.Write([]byte(page))
@@ -160,6 +171,7 @@ func mountConsole(mux *http.ServeMux, d *consoleDeps, wiring http.Handler) {
 	mux.Handle("/", consoleNotFound(d.reg))
 	mux.Handle("/assets/console.js", consoleAssetsJSHandler())
 	mux.Handle(consolePaletteScriptPath, palette.Handler())
+	mux.Handle(consoleLiveScriptPath, live.Handler())
 	// GET /events (OC-13): the live-freshness stream — names and IDs only.
 	mux.Handle("/events", d.bus)
 	mountLegacyObservatory(mux, d.selfURL, wiring)

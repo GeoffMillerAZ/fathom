@@ -47,6 +47,10 @@ type consolePage struct {
 	Verbs []string
 	// Shows are the shared metrics the page renders (OC-9).
 	Shows []console.MetricID
+	// Live are the live-freshness sources the page's body follows when it
+	// is not built from source-keyed panels (OC-14, console_live.go); a
+	// "{svc}" in a key is the request's project.
+	Live []string
 	// Formats are the ?format= values the page answers besides HTML and
 	// json ("md" for the brief, "fragment" for search); any other value is
 	// a 400 on the shell naming the ones that work.

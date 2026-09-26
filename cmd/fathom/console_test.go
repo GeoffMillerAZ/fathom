@@ -726,7 +726,10 @@ func TestConsolePanels_CarryVerbQuestionAndSource(t *testing.T) {
 		`<code class="min-w-0 [overflow-wrap:anywhere]">fathom plans status --service fathom --json</code>`,
 		`data-console-copy="fathom plans status --service fathom --json"`,
 		`hidden data-console-copy`, // revealed only when the script can copy
-		`data-panel-footer>source: the verify ledger · denominator: 58 plans · freshness: as of 2026-09-25T12:00Z</p>`,
+		// A source-keyed panel is live (OC-14): its freshness leads the
+		// kit's reserved status line instead of repeating in the footer.
+		`data-panel-footer>source: the verify ledger · denominator: 58 plans</p>`,
+		`<span data-live-asof class="col-start-1 row-start-1">freshness: as of 2026-09-25T12:00Z</span>`,
 		`data-console-source="plans:fathom"`, `data-truth-state="present"`, `id="plans"`, `<p>628 proven</p>`,
 	} {
 		if !strings.Contains(got, want) {

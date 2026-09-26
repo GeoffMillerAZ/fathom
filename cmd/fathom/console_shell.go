@@ -45,6 +45,9 @@ type consoleShell struct {
 	Actions  string         // trusted heading actions HTML
 	Body     string         // trusted page content
 	Footer   string         // trusted footer HTML; a default is used when empty
+	// Live is the page's live-freshness status line (consoleLiveStatus),
+	// set when the body carries live regions; it also loads the kit script.
+	Live string
 }
 
 // renderConsoleShell renders a complete HTML document on the console shell.
@@ -56,6 +59,7 @@ func renderConsoleShell(reg *consoleRegistry, s consoleShell) string {
 	var content strings.Builder
 	content.WriteString(`<div class="mx-auto w-full max-w-7xl">`)
 	content.WriteString(renderConsoleHeading(s))
+	content.WriteString(s.Live)
 	content.WriteString(s.Body)
 	content.WriteString(`</div>`)
 
@@ -83,6 +87,9 @@ func renderConsoleShell(reg *consoleRegistry, s consoleShell) string {
 	b.WriteString(`<script>` + appearance.BootstrapScript(appearance.Options{StorageKey: consoleThemeKey}) + `</script>`)
 	b.WriteString(`<link rel="stylesheet" href="/assets/app.css"><script src="/assets/console.js" defer></script>`)
 	b.WriteString(`<script src="` + consolePaletteScriptPath + `" defer></script>`)
+	if s.Live != "" {
+		b.WriteString(`<script src="` + consoleLiveScriptPath + `" defer></script>`)
+	}
 	b.WriteString(`</head><body class="min-h-screen bg-surface font-sans text-sm text-ink">`)
 	b.WriteString(shell)
 	// The palette's dialog, once per page (OC-12): Mod+K or the top bar's

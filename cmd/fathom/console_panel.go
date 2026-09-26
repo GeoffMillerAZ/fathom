@@ -35,8 +35,11 @@ type consolePanel struct {
 	// other than present or zero.
 	State  console.State
 	Reason string
-	// SourceKey is the live-freshness source (data-console-source), e.g.
-	// "plans:fathom" — an event naming it marks the panel updated (OC-14).
+	// SourceKey names the live-freshness sources the panel follows
+	// (data-console-source), e.g. "plans:fathom"; several keys are
+	// space-separated ("index layers"). An event naming one marks the panel
+	// updated without moving it (OC-14, console_live.go); the panel's
+	// freshness then leads its reserved status line.
 	SourceKey string
 	Body      string // trusted panel content
 	Span      int
@@ -53,6 +56,17 @@ func renderPanel(p consolePanel) string {
 		body.WriteString(line)
 	}
 	body.WriteString(p.Body)
+	// A live panel is a kit region (console_live.go): its freshness leads
+	// the region's reserved status line, where "Updated — refresh this
+	// panel" appears without moving anything.
+	freshness := p.Freshness
+	if freshness == "" {
+		freshness = "as rendered"
+	}
+	regionAttrs, status, isLive := "", "", false
+	if p.SourceKey != "" && p.ID != "" {
+		regionAttrs, status, isLive = consoleLiveRegion(p.ID, p.Title, "freshness: "+freshness, p.SourceKey)
+	}
 	var foot []string
 	if p.Source != "" {
 		foot = append(foot, "source: "+p.Source)
@@ -60,11 +74,14 @@ func renderPanel(p consolePanel) string {
 	if p.Denominator != "" {
 		foot = append(foot, "denominator: "+p.Denominator)
 	}
-	if p.Freshness != "" {
+	if p.Freshness != "" && !isLive {
 		foot = append(foot, "freshness: "+p.Freshness)
 	}
 	if len(foot) > 0 {
 		body.WriteString(`<p class="mt-3 border-t border-line pt-2 text-xs text-ink-muted [overflow-wrap:anywhere]" data-panel-footer>` + html.EscapeString(strings.Join(foot, " · ")) + `</p>`)
+	}
+	if isLive {
+		body.WriteString(status)
 	}
 	var action template.HTML
 	if p.Verb != "" {
@@ -76,16 +93,21 @@ func renderPanel(p consolePanel) string {
 		state = console.StatePresent
 	}
 	attrs := fmt.Sprintf(` data-console-panel data-truth-state="%s"`, html.EscapeString(string(state)))
-	if p.ID != "" {
+	class := "min-w-0"
+	switch {
+	case isLive:
+		attrs += " " + regionAttrs
+		class = consoleRegionClass
+	case p.ID != "":
 		attrs += ` id="` + html.EscapeString(p.ID) + `"`
-	}
-	if p.SourceKey != "" {
-		attrs += ` data-console-source="` + html.EscapeString(p.SourceKey) + `"`
+		if p.SourceKey != "" {
+			attrs += ` data-console-source="` + html.EscapeString(p.SourceKey) + `"`
+		}
 	}
 	if p.Verb != "" {
 		attrs += ` data-console-verb="` + html.EscapeString(p.Verb) + `"`
 	}
-	return `<div class="min-w-0"` + attrs + `>` + widget + `</div>`
+	return `<div class="` + class + `"` + attrs + `>` + widget + `</div>`
 }
 
 // truthStateLine renders a non-plain truth state in words, each state drawn
