@@ -92,3 +92,70 @@ func TestPackagesNeedingIsolation_Transitive(t *testing.T) {
 		t.Fatalf("got %v, want %s", got, want)
 	}
 }
+
+func writeFixture(t *testing.T, root string, files map[string]string) {
+	t.Helper()
+	for rel, body := range files {
+		p := filepath.Join(root, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// TestPackagesNeedingIsolation_TestImportCycle (RT-19 review): test
+// imports make per-directory cycles normal — q's external test imports p,
+// and p imports q. q's test binary reaches statedir through p and r. The
+// walk used to memoise "false" for a node it met while still on the DFS
+// stack and ranged over a map, so q was missed ~90% of runs. Every run
+// must now give the same, complete answer.
+func TestPackagesNeedingIsolation_TestImportCycle(t *testing.T) {
+	root := t.TempDir()
+	writeFixture(t, root, map[string]string{
+		"internal/statedir/s.go": "package statedir\n",
+		"internal/p/p.go":        "package p\nimport (\n_ \"example.com/m/internal/q\"\n_ \"example.com/m/internal/r\"\n)\n",
+		"internal/p/p_test.go":   "package p\n",
+		"internal/q/q.go":        "package q\n",
+		"internal/q/q_test.go":   "package q_test\nimport _ \"example.com/m/internal/p\"\n",
+		"internal/r/r.go":        "package r\nimport _ \"example.com/m/internal/statedir\"\n",
+		"internal/z/z.go":        "package z\nimport _ \"example.com/m/internal/q\"\n",
+		"internal/z/z_test.go":   "package z\n",
+		"internal/w/w_test.go":   "package w\nimport _ \"example.com/m/internal/q\"\n",
+	})
+	// z imports q (whose production code reaches nothing) and w's test
+	// imports q: neither reaches statedir — q's TEST imports are not
+	// compiled into its importers.
+	want := "internal/p,internal/q"
+	for i := 0; i < 50; i++ {
+		got, err := packagesNeedingIsolation(root, "example.com/m")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Join(got, ",") != want {
+			t.Fatalf("run %d: got %v, want %s", i, got, want)
+		}
+	}
+}
+
+// TestUsesEntryPointIsACall (RT-19 review): the entry point counts only
+// as a call from TestMain — a mention in a comment or string does not.
+func TestUsesEntryPointIsACall(t *testing.T) {
+	root := t.TempDir()
+	writeFixture(t, root, map[string]string{
+		"a/a_test.go": "package a\n// TODO: call testisolate.Main(m) here\nvar s = \"testisolate.IsolateAndRun(\"\n",
+		"b/b_test.go": "package b\nimport (\n\"testing\"\ntiso \"github.com/geoffmilleraz/fathom/internal/testisolate\"\n)\nfunc TestMain(m *testing.M) { tiso.Main(m) }\n",
+		"c/c_test.go": "package c\nimport (\n\"os\"\n\"testing\"\n\"github.com/geoffmilleraz/fathom/internal/testisolate\"\n)\nfunc TestMain(m *testing.M) { os.Exit(testisolate.IsolateAndRun(m, testisolate.Options{})) }\n",
+	})
+	for dir, want := range map[string]bool{"a": false, "b": true, "c": true} {
+		got, err := usesEntryPoint(filepath.Join(root, dir))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got != want {
+			t.Errorf("usesEntryPoint(%s) = %v, want %v", dir, got, want)
+		}
+	}
+}
