@@ -459,7 +459,7 @@ HTTP endpoints:
 | `GET` | `/metrics` | Text metrics: `fathom_uptime_seconds`, `fathom_requests_total`, memory and memo gauges, `fathom_console_page_views_total{route=…}` (OC-15: HTML views per console route pattern since start; the durable 30-day record is `~/.fathom/console-views.jsonl`, `FATHOM_CONSOLE_VIEWS` overrides) and `fathom_console_event_subscribers` |
 | `GET` | `/statusz` | Daemon health, per-service index freshness, channel liveness, last compile per layer, and (schema 2) the daemon's own build stamp `binary_commit` / `binary_dirty` / `built_at` — JSON (schema 3, unchanged) via `Accept: application/json`/`?format=json`; HTML on the console shell otherwise, where every service names its typed-edge state — run by this daemon, recorded by an earlier daemon process (replayed from the store), failed with its reason, **does not apply** (no `go.mod` at the service root), or **unknown** (a Go module with no pass recorded anywhere), never blank (OC-6; `docs/design/observability-surfaces.md` §8 item 6). Gated inside the `/rpc/modules` bearer-token allowlist when `--modules-token-env` is configured; open on the default loopback-only daemon |
 | `POST` | `/reload` | Reload the store (PlatformStore re-scan in platform mode) |
-| `GET` | `/`, `/fleet`, `/projects/{svc}`, `/impact`, `/sessions`, `/sessions/{id}`, `/brief`, `/wiring`, `/statusz`, `/search` | The Observatory console (see below): every page on one shell; `?format=json` returns the page's envelope (`fathom.console.page/v1`) |
+| `GET` | `/`, `/fleet`, `/projects/{svc}`, `/impact`, `/sessions`, `/sessions/{id}`, `/brief`, `/wiring`, `/statusz`, `/search`, `/operate`, `/decide` | The Observatory console (see below): every page on one shell; `?format=json` returns the page's envelope (`fathom.console.page/v1`) |
 | `GET` | `/observatory`, `/observatory/service`, `/observatory/impact`, `/observatory/story`, `/observatory/brief`, `/observatory/session`, `/observatory/wiring/` | Legacy routes (OC-7): an HTML request is a **308** to the page's new home; `?format=json` still returns the old JSON unchanged (`observatoryModel` v1 and its per-page slices) |
 | `POST` | `/observatory/wiring/preview` · `apply` · `undo` | Law-15 wiring through `internal/wiring`: `preview` returns the plan + `plan_digest`; `apply` requires it (409 if the repo changed since preview) and returns a `receipt_digest`; `undo` requires that digest. All three refuse non-loopback `Host`, cross-origin `Origin`, unknown service ids, and paths that are not registered service roots (`requireLocalMutation`); a refusal, and a `GET` of any of the three, renders on the console shell with the reason and a way back to `/wiring` |
 
@@ -958,7 +958,7 @@ always, even on a missing or empty log; a broken instrument must never gate anyt
 
 ```sh
 fathom instrument [--log <path>] [--window 168h]
-fathom instrument --adoption [--service <id>] [--call-log <path>] [--store <path>] [--root <dir>] [--json]
+fathom instrument --adoption [--service <id>] [--call-log <path>] [--store <path>] [--root <dir>] [--url U] [--json]
 ```
 
 | Flag | Default | Description |
@@ -1415,7 +1415,15 @@ fathom fleet report    [--json | --out ~/.fathom/fleet] [--url U]           # wi
 fathom fleet reconcile [--repo R]... [--apply [--rebaseline]] [--url U]      # dry-run by default; --apply: shim repoint + additive template merge + stanza + baseline digests
 fathom fleet receipts  [--repo R] [--limit 20] [--json]                      # every write fathom makes in a repo is receipted…
 fathom fleet undo      [--last | <receipt-id>] [--repo R] [--json]           # …and reversible
+fathom fleet remedy    [--dir ~/.fathom/fleet] [--json]                      # time-to-remedy per repository from the report snapshots (SH-9)
 ```
+
+`remedy` grades every dated `report-<date>.json` snapshot with the fleet page's
+wiring grade: a gap opens at the first snapshot grading a repository below A and
+closes at the first later one grading it A again. A gap already in the first
+snapshot opened on or before it (its interval is a lower bound); a snapshot that
+could not read the call log grades that repository unknown, never unused. The
+2026-08-08 baseline (9 of 17 below A, unbounded) is recorded beside the median.
 
 `reconcile --apply` writes stanza regions and hooks only through
 `internal/wiring` — the same plan → apply → receipt path as `init`, with the
@@ -1428,6 +1436,19 @@ baseline for entries that have none, and `--apply --rebaseline` re-records a
 drifted one when the change is yours. Dry-run distinguishes `stale` from `up to date
 (will be re-marked with a digest on apply; no prose changes)` for a v1
 region awaiting its digest.
+
+### `decide` — the decision port's log
+
+```sh
+fathom decide log [--site S] [--page N] [--per-page 50] [--readings DIR] [--call-log P] [--url U] [--json]
+```
+
+The provider and its sites (`[decide]`), the ruling log — `decisions.jsonl`
+beside the resolved call log: site, kind, choice, confidence, latency, applied,
+and a failed call's error — newest first, and the table of the newest
+`docs/bench/readings/decision-port-calibration-*.md` under `--readings` or any
+registered service's root (parsed, never recomputed: the log carries no gold
+labels). A missing log or reading is named, never zero.
 
 ### `prime` — the Codex pull tier
 
@@ -2191,15 +2212,28 @@ by `serve-http --module`; no external consumer exists yet.
 
 ```sh
 fathom metrics spend         --store P [--service S] [--module LAYER] [--by layer|day|model] [--since DUR | --from RFC3339 --to RFC3339] [--root D] [--json]
-fathom metrics traffic       [--service S] [--by surface|tool|hour] [--since DUR | --from … --to …] [--call-log P] [--json]
+fathom metrics traffic       [--service S] [--by surface|tool|hour|day|caller] [--since DUR | --from … --to …] [--call-log P] [--url U] [--json]
 fathom metrics channels      [--since DUR | --from … --to …] [--hooks-log P] [--json]
 fathom metrics interventions [--since DUR | --from … --to …] [--store P] [--call-log P] [--hooks-log P] [--json]
 fathom metrics series        <metric> --bucket hour|day [--since DUR] [--root D] [--json]
 fathom metrics rollup        [--date YYYY-MM-DD] [--root D] [--store P] [--call-log P] [--hooks-log P] [--json]
 fathom metrics rotate        [--call-log P] [--keep-days N] [--apply]
+fathom metrics impact        [--call-log P] [--url U] [--json]
+fathom metrics catches       [--kind K]... [--service S] [--days N] [--page N] [--per-page 20] [--call-log P] [--url U] [--json]
+fathom metrics sessions      [--arm on|off] [--repo R] [--q TEXT] [--sort at|turns|first_edit|tokens|fathom_calls|catches] [--asc] [--page N] [--per-page 50] [--json]
+fathom metrics sessions      --id SESSION [--channel C]... [--page N] [--per-page 500] [--json]
 ```
 
-Design: `docs/design/observability-surfaces.md`.
+Design: `docs/design/observability-surfaces.md`. `traffic --by day` groups by UTC
+day and `--by caller` by caller class — agent, edit hook, gate, refresh, plumbing or
+unattributed, from each row's origin and surface — so plumbing never passes for
+adoption. `impact`, `catches` and `sessions` print the console's Evidence projections
+(vision 35, `internal/console`): the four questions with each arm as a range and "not
+instrumented" instead of a zero; one timeline of verify refusals (the verify ledger),
+conserve losses and integrity catches (`fathom review` rows in the call log) and guard
+refusals (the edit hook's `denied` beats), each kind absent with its reason when its
+instrument recorded nothing to count from; and the session table (one row per session)
+or one session's replay, never more than 2,000 events per response.
 
 ### `findings` — findings as evidence (**experimental**; entry ≥15–20 resolved findings)
 
@@ -2315,8 +2349,10 @@ unreadable store) render on the same shell with the reason and the remedy.
 | `/` | Now — the front door (four questions, surfaces) |
 | `/fleet` | Fleet tiles; the JSON carries `fathom fleet report --json` computed by the verb's own function |
 | `/projects/{svc}` | One project (was `/observatory/service?id=S`) |
-| `/impact` | The four questions with their instruments |
-| `/sessions`, `/sessions/{id}` | The week and one session's replay |
+| `/impact` | The four questions, Q1–Q4 in order: each counterfactual arm a range (p25–p75 of real tokens per turn, median marked) with its session count; every tool's outcome "not instrumented" where no instrument exists, never a colored zero; and the catches timeline — verify refusals, conserve losses, integrity catches, guard refusals — filterable by kind, window (`?days=`) and project (`?svc=`), its rows the table. Renders `fathom metrics impact --json` and `fathom metrics catches --json` |
+| `/sessions`, `/sessions/{id}` | A table of sessions (one row per session: arm, turns, first edit, tokens, fathom calls, catches), filterable (`?arm=`, `?repo=`, `?q=`), sortable (`?sort=`, `?dir=`), 50 to a page; and one session's replay, windowed — 200 events a page (`?per=`, never more than 2,000 per response), filterable by channel (`?channel=`). Renders `fathom metrics sessions [--id S] --json` |
+| `/operate` | The daemon (version, commit, uptime, memory, goroutines); calls per day per surface as a heatmap whose missing day is hatched, never zero, with p50/p95/errors per day in its table; latency and errors by surface and by caller class; the tools by caller class and the zero-call list; the flywheel; `config --explain`; time-to-remedy; a project's capabilities (`?svc=`). Renders `metrics traffic`, `instrument --adoption`, `fleet remedy` and `config --explain` |
+| `/decide` | The decision port: provider and sites, the ruling log beside the call log (`?site=`), and the latest calibration reading's table. Renders `fathom decide log --json` |
 | `/brief` | The shareable brief; `?format=md` downloads it |
 | `/wiring` | Per-repo Preview → Apply → Undo (the POSTs stay at `/observatory/wiring/*` behind the local gate) |
 | `/statusz` | Daemon status (JSON schema 3 unchanged) |

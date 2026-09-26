@@ -194,6 +194,28 @@ and a 390 px frame, and an in-browser 390 px layout probe reporting no document-
 horizontal overflow on any page. This is not UX-M2's certification: keyboard paths and
 contrast were spot-checked, not measured page by page.
 
+## Observatory console wave F (2026-09-26)
+
+Wave F (`/impact`, `/sessions`, `/sessions/{id}`, `/operate`, `/decide`; OC-41..OC-45)
+uses the `d9dd789` mirror unchanged and no new kit package, so `input.css` and
+`scripts/ui-css.sh` are untouched. Newly adopted parts of packages already scanned:
+`viz.RangeBars` (the counterfactual arms, a wide and a narrow drawing), `viz.Timeline`
+swimlanes and its `ViewDensity` strip past 150 catches, `viz.Heatmap` with truth states
+(`CellMissing` for a day with no call-log rows, `CellZero` for a silent surface),
+`viz.StackBar` (a tool's calls by caller class), `viz.Bars` (the calibration buckets),
+`chrome.RenderDisclosure`/`RenderPagination`/`RenderEmptyState`/`RenderDescriptionList`,
+`form.RenderField`/`RenderSelect`/`RenderInput`/`RenderButton` (GET filter forms), and
+`table.Table` with `HeaderHTML` sort links. Candidates to return:
+
+- **FATHOM-F-KIT-01 (candidate):** the heatmap's truth-state legend is sized to the grid
+  and truncates a reason with "…"; Fathom keeps reasons to a few words and puts the full
+  reason in the table alternative. Expected: a legend that wraps, or its own width.
+- **FATHOM-F-KIT-02 (candidate):** `table.Table`'s `Sortable` header is a Datastar
+  button; a server-rendered table needs a link, and `aria-sort` belongs on the `<th>`,
+  which `HeaderHTML` cannot reach. Fathom writes the direction as `sr-only` text.
+- `chrome.RenderPagination` links are still about 28 px (F0's open item): wave F wraps
+  them in `[&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center`.
+
 ## Current mirror and palette convergence (2026-09-25)
 
 FATHOM-GUIDE-01 landed on main at mirror `f7ab0fbd`, then took one reviewed bump to
