@@ -33,3 +33,10 @@ var IdentDir = filepath.Join(os.TempDir(), "fathom-ident-cache")
 func BustIdent() {
 	_ = os.RemoveAll(IdentDir)
 }
+
+// HealthDir is os.TempDir()/fathom-hook-health — where every hook process
+// on the machine shares one daemon-health breaker file per daemon URL
+// (internal/hookguard, docs/design/responsible-tenant.md §11.2). The
+// per-user temp dir, like IdentDir, so concurrent sessions see the same
+// breaker. A package var so tests can redirect it.
+var HealthDir = filepath.Join(os.TempDir(), "fathom-hook-health")
