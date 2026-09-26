@@ -751,7 +751,8 @@ union is enabled) turns on concern sets fathom ships as CUE data; a same-id
 entry in your file replaces a pack's wholesale and `<id>: {off: true}`
 disables it (named `off` in the audit). An unknown pack, an unknown
 top-level field (`pack:` for `packs:`), a `where` on a kind that reads no
-corpus, and an optional (`name?:`) concern are refused by name. Full model,
+corpus, a check field the kind does not read (`file:` on a
+`required_pattern`), and an optional (`name?:`) concern are refused by name. Full model,
 corpus and pack tables: `docs/design/config-custodian.md`; this repo's own
 file is a worked example.
 

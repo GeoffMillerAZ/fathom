@@ -267,12 +267,15 @@ func parseCheck(id string, v cue.Value) (Check, []error) {
 	if serr != nil {
 		return ck, []error{fmt.Errorf("concern %q: check: %w", id, serr)}
 	}
-	sawDays, sawBytes := false, false
+	var seen []string // the fields this check sets, for the kind-applicability refusal
 	for sub.Next() {
 		name := sub.Selector().Unquoted()
 		if sub.IsOptional() {
 			errs = append(errs, fmt.Errorf("concern %q declares check field %q as OPTIONAL (%s?:) — write it without the question mark", id, name, name))
 			continue
+		}
+		if _, ok := checkFieldKinds[name]; ok {
+			seen = append(seen, name)
 		}
 		switch name {
 		case "kind":
@@ -323,7 +326,6 @@ func parseCheck(id string, v cue.Value) (Check, []error) {
 				errs = append(errs, fmt.Errorf("concern %q: check.bytes must be an integer: %w", id, err))
 				continue
 			}
-			sawBytes = true
 			ck.Bytes = int(n)
 		case "days":
 			n, err := sub.Value().Int64()
@@ -331,7 +333,6 @@ func parseCheck(id string, v cue.Value) (Check, []error) {
 				errs = append(errs, fmt.Errorf("concern %q: check.days must be an integer: %w", id, err))
 				continue
 			}
-			sawDays = true
 			ck.Days = int(n)
 		default:
 			errs = append(errs, fmt.Errorf("concern %q: check has unknown field %q", id, name))
@@ -340,18 +341,20 @@ func parseCheck(id string, v cue.Value) (Check, []error) {
 	if len(errs) > 0 {
 		return ck, errs
 	}
-	// `days` is the handoff window and nothing else's: a key that no kind
-	// reads is a wish about behaviour that does not exist, refused like
-	// any other unknown field (the schema stays closed).
-	if sawBytes && ck.Kind != KindMaxBytes {
-		errs = append(errs, fmt.Errorf("concern %q: check.bytes applies to %s only, not %q", id, KindMaxBytes, ck.Kind))
-	}
-	if sawDays {
-		if ck.Kind != KindHandoffCitesInstruments {
-			errs = append(errs, fmt.Errorf("concern %q: check.days applies to %s only, not %q", id, KindHandoffCitesInstruments, ck.Kind))
-		} else if ck.Days <= 0 {
-			errs = append(errs, fmt.Errorf("concern %q: check.days must be > 0 (omit it for the default of %d)", id, DefaultHandoffDays))
+	// A field the kind does not read is a wish about behaviour that does
+	// not exist — `file:` scoping a required_pattern would load, scan the
+	// whole corpus, and say nothing — so it is refused like any other
+	// unknown field (the schema stays closed). An unknown kind is
+	// validateCheck's to name.
+	if isKnownKind(ck.Kind) {
+		for _, name := range seen {
+			if kinds := checkFieldKinds[name]; !containsKind(kinds, ck.Kind) {
+				errs = append(errs, fmt.Errorf("concern %q: check.%s applies to %s only, not %q", id, name, kindNames(kinds), ck.Kind))
+			}
 		}
+	}
+	if ck.Kind == KindHandoffCitesInstruments && contains(seen, "days") && ck.Days <= 0 {
+		errs = append(errs, fmt.Errorf("concern %q: check.days must be > 0 (omit it for the default of %d)", id, DefaultHandoffDays))
 	}
 	if len(errs) > 0 {
 		return ck, errs
@@ -432,6 +435,37 @@ func validateCheck(id string, ck *Check) []error {
 		}
 	}
 	return errs
+}
+
+// checkFieldKinds names, per check field, the kinds that read it; a field
+// set on any other kind is refused at load. `where` is bounded separately
+// (validateCheck, against the corpus registry).
+var checkFieldKinds = map[string][]CheckKind{
+	"pattern": {KindForbiddenPattern, KindRequiredPattern},
+	"command": {KindCommandDocumentedAndExists},
+	"file":    {KindMaxLines, KindMaxBytes, KindStanzaPresent},
+	"lines":   {KindMaxLines},
+	"bytes":   {KindMaxBytes},
+	"days":    {KindHandoffCitesInstruments},
+}
+
+func isKnownKind(k CheckKind) bool { return containsKind(KnownKinds, k) }
+
+func containsKind(ks []CheckKind, k CheckKind) bool {
+	for _, v := range ks {
+		if v == k {
+			return true
+		}
+	}
+	return false
+}
+
+func kindNames(ks []CheckKind) string {
+	parts := make([]string, len(ks))
+	for i, k := range ks {
+		parts[i] = string(k)
+	}
+	return strings.Join(parts, ", ")
 }
 
 func contains(xs []string, x string) bool {

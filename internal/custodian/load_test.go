@@ -167,3 +167,27 @@ func TestProjectScopeGoverns(t *testing.T) {
 		t.Fatalf("union not sorted by ID: %+v", got)
 	}
 }
+
+// TestLoaderRefusesCheckFieldsItsKindDoesNotRead: a check field no part
+// of its kind reads — `file:` scoping a required_pattern, `pattern:` on a
+// commands_resolve — is refused by name at load, not ignored while the
+// audit scans something else (the "loaded and did nothing" class the
+// unknown-field refusals close). Every field a kind DOES read still loads
+// (TestValidFixtureLoads).
+func TestLoaderRefusesCheckFieldsItsKindDoesNotRead(t *testing.T) {
+	for _, tc := range []struct{ check, want string }{
+		{`{kind: "required_pattern", file: "lefthook.yml", pattern: "fathom verify"}`, `check.file applies to max_lines, max_bytes, stanza_present only, not "required_pattern"`},
+		{`{kind: "commands_resolve", where: "taskfile", pattern: "x"}`, `check.pattern applies to forbidden_pattern, required_pattern only, not "commands_resolve"`},
+		{`{kind: "stanza_present", file: "CLAUDE.md", lines: 3}`, `check.lines applies to max_lines only, not "stanza_present"`},
+		{`{kind: "max_lines", file: "CLAUDE.md", lines: 3, command: "task x"}`, `check.command applies to command_documented_and_exists only, not "max_lines"`},
+		{`{kind: "command_documented_and_exists", command: "task x", file: "CLAUDE.md"}`, `check.file applies to max_lines, max_bytes, stanza_present only`},
+		{`{kind: "forbidden_pattern", pattern: "x", bytes: 9}`, `check.bytes applies to max_bytes only, not "forbidden_pattern"`},
+		{`{kind: "wiring_current", file: "CLAUDE.md"}`, `check.file applies to`},
+	} {
+		p := filepath.Join(t.TempDir(), "concerns.cue")
+		writeTestFile(t, p, "concerns: {c: {want: \"w\", check: "+tc.check+"}}\n")
+		if _, err := LoadFile(p, ScopeProject); err == nil || !strings.Contains(err.Error(), tc.want) {
+			t.Errorf("%s: want refusal containing %q, got %v", tc.check, tc.want, err)
+		}
+	}
+}

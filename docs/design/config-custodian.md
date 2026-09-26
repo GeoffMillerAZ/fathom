@@ -36,6 +36,10 @@ Loader discipline is the capability loader's, reused deliberately:
 - unknown fields refused; unknown check kinds refused **by name** with the
   accepted list — an uncheckable concern is a wish, and the loader is
   where wishes are turned away;
+- a check field its kind does not read is refused naming the kinds that do
+  (`check.file applies to max_lines, max_bytes, stanza_present only, not
+  "required_pattern"`): scoping a `required_pattern` with `file:` would load,
+  scan the whole corpus, and say nothing;
 - concerns sorted by ID after merge; no map order reaches output.
 
 ## 2. Check kinds — mechanical, index-free, offline-safe (one daemon exception)
