@@ -539,6 +539,9 @@ func newHTTPHandlerDeps(srv *mcp.Server, c *client.Client, selfAddr string, port
 	// route, never an MCP tool — the session hook's own repo-wide "open
 	// findings: N" brief line.
 	mux.Handle("/findings/summary", findingsSummaryHandler(c))
+	// GET /indexed?service= (RT-80): the meta-only "is service X indexed"
+	// probe verify, the hooks, plans and the console ask.
+	mux.Handle("/indexed", indexedHandler(c))
 	// POST /refresh-file {service, file} (SU-5/SU-6, ADR-041 decisions 3
 	// and 4): the pre-edit hook's per-file freshness refresh.
 	mux.Handle("/refresh-file", refreshFileHandler(c, srv))

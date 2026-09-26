@@ -127,6 +127,12 @@ outside the tool registry — hooks call these directly rather than through
 - `POST /refresh-file` — `{service, file}` re-extracts one file's
   observations/syntax edges and fingerprint (SU-5/SU-6, ADR-041 decisions 3
   and 4); the pre-edit hook's per-file freshness check.
+- `GET /indexed?service=NAME` — `{"service", "indexed"}`: whether the service
+  has a `service_meta` row with a non-zero `indexed_at` (RT-80,
+  `pkg/client.IsIndexed`; exact id first, then case-insensitive). The
+  meta-only "is X indexed" probe `fathom verify`, the stop and edit hooks,
+  `fathom plans`, `fathom init` and the console ask; they fall back to
+  `list_services` only against a daemon that answers this route 4xx.
 - `GET /findings/summary?service=NAME` — repo-wide open finding-kind claim
   count plus the oldest compiled-at (FL-21, `docs/vision/30-findings-loop.md`
   §3.4).
