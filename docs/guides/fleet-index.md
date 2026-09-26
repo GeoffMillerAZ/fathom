@@ -281,7 +281,9 @@ resolves it FRESH against the live index and marks what no longer holds.
 `task deploy` is the only sanctioned path from "committed a daemon fix" to
 "agents actually get it". It builds, installs to
 `~/.local/libexec/fathom/fathom` via write-to-temp + rename, signs with the
-stable `fathom-dev` codesigning identity when present, kickstarts the
+stable `fathom-dev` codesigning identity — and **fails** (`fathom-dev signing
+identity missing`, the running daemon untouched) when it is absent, instead
+of installing an ad-hoc binary (RT-147) — kickstarts the
 launchd job, then **asserts** the running process is the freshly built
 binary and that `fathom version` matches `git rev-parse HEAD`. Run it from a
 real terminal (launchd + TCC interactions don't survive sandboxed shells).
@@ -295,6 +297,18 @@ Never hand-roll it with `cp`:
   prompt, so the daemon hangs or crash-loops
   (`.fathom/observations.md` O10, closed structurally 2026-08-08 — the
   grant now follows the `fathom-dev` identity, not the hash).
+
+## Stopping the daemon: `fathom daemon stop`
+
+`fathom daemon stop` is the off switch that works when nothing else does: it
+writes `~/.fathom/daemon/disabled.json`, kills the managed pid (SIGTERM,
+10 s, SIGKILL) and proves the port closed. Every launchd relaunch then exits
+0 in under 50 ms before touching config, store or port. `fathom daemon
+start` undoes it. With no binary at hand, `touch
+~/.fathom/daemon/disabled.json` and kill the process. Under a schema-1 plist
+launchd keeps relaunching every 10 s (harmlessly); `fathom daemon install
+--reconcile` (after `task deploy`) and a reload from your terminal make
+exit 0 stay down. `docs/usage.md` §daemon has the full contract.
 
 ## Daemon memory footprint (O108)
 
