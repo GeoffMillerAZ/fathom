@@ -54,12 +54,12 @@ wave is called done.
 
 ## E. The project workspace
 
-- [ ] The project workspace has tabs that are URLs: overview, index, governance, plans, proof, refactor, intent, activity, wiring {id: OC-35, symbol: projectTabs, package: cmd/fathom, reachable_from: TestProjectWorkspace_TabsAreURLs}
-- [ ] The index tab shows languages with engine and tier, typed share, edge kinds and inventory keys {id: OC-36, symbol: IndexProfile, package: internal/console, reachable_from: TestIndexProfile_TiersEdgesInventory}
-- [ ] The code neighborhood shows a symbol's callers and callees with resolved and heuristic edges distinct, aggregating beyond a bound {id: OC-37, symbol: Neighborhood, package: internal/console, reachable_from: TestNeighborhood_BoundedAndAggregated}
-- [ ] `intent audit --read-only` renders the audit without appending ledger rows, and the intent tab uses it {id: OC-38, symbol: IntentView, package: internal/console, reachable_from: TestIntentView_ReadOnlyAuditWritesNothing}
-- [ ] The activity tab lists a project's sessions and tool calls from the resolved call log {id: OC-39, symbol: ProjectActivity, package: internal/console, reachable_from: TestProjectActivity_FromResolvedLog}
-- [ ] The wiring tab shows doctor checks, drift and receipts beside the existing preview, apply and undo {id: OC-40, symbol: WiringView, package: internal/console, reachable_from: TestWiringView_DoctorDriftReceipts}
+- [x] The project workspace has tabs that are URLs: overview, index, governance, plans, proof, refactor, intent, activity, wiring {id: OC-35, symbol: projectTabs, package: cmd/fathom, reachable_from: TestProjectWorkspace_TabsAreURLs}
+- [x] The index tab shows languages with engine and tier, typed share, edge kinds and inventory keys {id: OC-36, symbol: IndexProfile, package: internal/console, reachable_from: TestIndexProfile_TiersEdgesInventory}
+- [x] The code neighborhood shows a symbol's callers and callees with resolved and heuristic edges distinct, aggregating beyond a bound {id: OC-37, symbol: Neighborhood, package: internal/console, reachable_from: TestNeighborhood_BoundedAndAggregated}
+- [x] `intent audit --read-only` renders the audit without appending ledger rows, and the intent tab uses it {id: OC-38, symbol: IntentView, package: internal/console, reachable_from: TestIntentView_ReadOnlyAuditWritesNothing}
+- [x] The activity tab lists a project's sessions and tool calls from the resolved call log {id: OC-39, symbol: ProjectActivity, package: internal/console, reachable_from: TestProjectActivity_FromResolvedLog}
+- [x] The wiring tab shows doctor checks, drift and receipts beside the existing preview, apply and undo {id: OC-40, symbol: WiringView, package: internal/console, reachable_from: TestWiringView_DoctorDriftReceipts}
 
 ## F. Evidence and system
 

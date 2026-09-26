@@ -92,31 +92,7 @@ func cmdScopeList(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
 	}
-	now := time.Now()
-
-	entries := make([]scopeListEntry, 0, len(sups))
-	for _, s := range sups {
-		state := scope.SuppressionState(s, now)
-		if !*all && state != scope.StateActive {
-			continue
-		}
-		if *service != "" && s.Service != "" && s.Service != *service {
-			continue
-		}
-		e := scopeListEntry{
-			ID: s.ID, Service: s.Service, Pattern: s.Pattern, Reason: s.Reason,
-			State: string(state), CreatedAt: s.CreatedAt.UTC().Format(time.RFC3339),
-			CreatedBy: s.CreatedBy,
-		}
-		if s.ExpiresAt != nil {
-			e.ExpiresAt = s.ExpiresAt.UTC().Format(time.RFC3339)
-		}
-		if s.RemovedAt != nil {
-			e.RemovedAt = s.RemovedAt.UTC().Format(time.RFC3339)
-		}
-		entries = append(entries, e)
-	}
-	sort.Slice(entries, func(i, j int) bool { return entries[i].ID < entries[j].ID })
+	entries := scopeListEntries(sups, time.Now(), *service, *all)
 
 	if *asJSON {
 		return emitScopeJSON(stdout, stderr, entries)
@@ -139,6 +115,37 @@ func cmdScopeList(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stdout, "             %q (%s)\n", e.Reason, e.CreatedBy)
 	}
 	return 0
+}
+
+// scopeListEntries is `fathom scope list`'s rows: the suppressions active
+// at now (every one with all), scoped to service or fleet-wide, by id —
+// the verb prints them and the project index tab carries them as the
+// verb's section (P10).
+func scopeListEntries(sups []scope.Suppression, now time.Time, service string, all bool) []scopeListEntry {
+	entries := make([]scopeListEntry, 0, len(sups))
+	for _, s := range sups {
+		state := scope.SuppressionState(s, now)
+		if !all && state != scope.StateActive {
+			continue
+		}
+		if service != "" && s.Service != "" && s.Service != service {
+			continue
+		}
+		e := scopeListEntry{
+			ID: s.ID, Service: s.Service, Pattern: s.Pattern, Reason: s.Reason,
+			State: string(state), CreatedAt: s.CreatedAt.UTC().Format(time.RFC3339),
+			CreatedBy: s.CreatedBy,
+		}
+		if s.ExpiresAt != nil {
+			e.ExpiresAt = s.ExpiresAt.UTC().Format(time.RFC3339)
+		}
+		if s.RemovedAt != nil {
+			e.RemovedAt = s.RemovedAt.UTC().Format(time.RFC3339)
+		}
+		entries = append(entries, e)
+	}
+	sort.Slice(entries, func(i, j int) bool { return entries[i].ID < entries[j].ID })
+	return entries
 }
 
 func cmdScopeSuppress(args []string, stdout, stderr io.Writer) int {

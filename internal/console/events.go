@@ -134,6 +134,9 @@ type EventBus struct {
 	epoch     string
 	subs      map[*Subscription]struct{}
 	dropped   uint64
+	// lastBySource is, per panel source key, the ID of the newest event
+	// naming it (SourceGeneration).
+	lastBySource map[string]uint64
 }
 
 // NewEventBus builds a bus.
@@ -206,6 +209,12 @@ func (b *EventBus) Publish(e Event) (Event, error) {
 	e.Epoch = b.epoch
 	if e.At.IsZero() {
 		e.At = b.now().UTC()
+	}
+	if b.lastBySource == nil {
+		b.lastBySource = map[string]uint64{}
+	}
+	for _, k := range e.Sources() {
+		b.lastBySource[k] = e.ID
 	}
 	b.ring = append(b.ring, e)
 	if len(b.ring) > b.replay {
@@ -300,6 +309,17 @@ func (b *EventBus) LastID() uint64 {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	return b.next
+}
+
+// SourceGeneration is the ID of the newest event naming the panel source
+// key (0 before any). A memo whose read feeds panels following that key
+// includes it in its key, so the moment a panel shows "updated — refresh
+// this panel" the refresh recomputes, instead of re-serving the read the
+// affordance just called out of date (design §2 "Live freshness").
+func (b *EventBus) SourceGeneration(key string) uint64 {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.lastBySource[key]
 }
 
 // sseData is the data: payload of one event — the event plus its panel

@@ -71,7 +71,7 @@ type consolePage struct {
 // consoleOut is one built page.
 type consoleOut struct {
 	Title    string         // overrides the page title (a project page names its project)
-	Crumbs   []chrome.Crumb // trail after Observatory; the current page is appended
+	Crumbs   []chrome.Crumb // trail after Observatory, the current page last; nil: the page's own
 	Meta     []string       // the heading's meta line
 	Actions  string         // trusted heading actions HTML
 	Model    any            // the page's own projection, served as JSON "model"
@@ -79,7 +79,7 @@ type consoleOut struct {
 	Sections map[string]any // verb → that verb's --json value
 	// Verbs, when set, are this request's concrete commands for a page
 	// whose registered Verbs are templates ("{svc}", "{plan}", "{id}",
-	// "{layer}", "{file}"), filled from the request: the heading's chips
+	// "{layer}", "{file}", "{root}", …), filled from the request: the heading's chips
 	// and the JSON's verbs name them, and each has its section. nil means
 	// the registry's Verbs.
 	Verbs []string

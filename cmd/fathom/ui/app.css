@@ -8,6 +8,7 @@
     --spacing: 0.25rem;
     --container-sm: 24rem;
     --container-md: 28rem;
+    --container-xl: 36rem;
     --container-2xl: 42rem;
     --container-3xl: 48rem;
     --container-4xl: 56rem;
@@ -524,6 +525,9 @@
   }
   .max-w-sm {
     max-width: var(--container-sm);
+  }
+  .max-w-xl {
+    max-width: var(--container-xl);
   }
   .min-w-0 {
     min-width: calc(var(--spacing) * 0);
@@ -2057,6 +2061,11 @@
       border-radius: var(--ak-radius-sm);
     }
   }
+  .\[\&_a\]\:text-accent {
+    & a {
+      color: var(--ak-color-accent);
+    }
+  }
   .\[\&_a\]\:focus-visible\:outline-2 {
     & a {
       &:focus-visible {
@@ -2079,9 +2088,35 @@
       }
     }
   }
+  .\[\&_a\:focus-visible\]\:outline-2 {
+    & a:focus-visible {
+      outline-style: var(--tw-outline-style);
+      outline-width: 2px;
+    }
+  }
+  .\[\&_a\:focus-visible\]\:outline-focus {
+    & a:focus-visible {
+      outline-color: var(--ak-color-focus);
+    }
+  }
   .\[\&_button\]\:min-h-11 {
     & button {
       min-height: calc(var(--spacing) * 11);
+    }
+  }
+  .\[\&_caption\]\:py-2 {
+    & caption {
+      padding-block: calc(var(--spacing) * 2);
+    }
+  }
+  .\[\&_caption\]\:text-left {
+    & caption {
+      text-align: left;
+    }
+  }
+  .\[\&_caption\]\:text-ink-muted {
+    & caption {
+      color: var(--ak-color-ink-muted);
     }
   }
   .\[\&_caption\]\:max-xl\:block {
@@ -2108,6 +2143,58 @@
   .\[\&_input\]\:min-h-11 {
     & input {
       min-height: calc(var(--spacing) * 11);
+    }
+  }
+  .\[\&_nav\]\:min-w-max {
+    & nav {
+      min-width: max-content;
+    }
+  }
+  .\[\&_nav\>a\]\:inline-flex {
+    & nav>a {
+      display: inline-flex;
+    }
+  }
+  .\[\&_nav\>a\]\:min-h-11 {
+    & nav>a {
+      min-height: calc(var(--spacing) * 11);
+    }
+  }
+  .\[\&_nav\>a\]\:items-center {
+    & nav>a {
+      align-items: center;
+    }
+  }
+  .\[\&_nav\>a\]\:whitespace-nowrap {
+    & nav>a {
+      white-space: nowrap;
+    }
+  }
+  .\[\&_nav\>a\]\:focus-visible\:outline-2 {
+    & nav>a {
+      &:focus-visible {
+        outline-style: var(--tw-outline-style);
+        outline-width: 2px;
+      }
+    }
+  }
+  .\[\&_nav\>a\]\:focus-visible\:outline-offset-\[-2px\] {
+    & nav>a {
+      &:focus-visible {
+        outline-offset: -2px;
+      }
+    }
+  }
+  .\[\&_nav\>a\]\:focus-visible\:outline-focus {
+    & nav>a {
+      &:focus-visible {
+        outline-color: var(--ak-color-focus);
+      }
+    }
+  }
+  .\[\&_section\>div\:first-child\]\:flex-wrap {
+    & section>div:first-child {
+      flex-wrap: wrap;
     }
   }
   .\[\&_select\]\:min-h-11 {
@@ -2150,6 +2237,17 @@
       }
     }
   }
+  .\[\&_table\]\:w-full {
+    & table {
+      width: 100%;
+    }
+  }
+  .\[\&_table\]\:text-sm {
+    & table {
+      font-size: var(--text-sm);
+      line-height: var(--tw-leading, var(--text-sm--line-height));
+    }
+  }
   .\[\&_table\]\:max-xl\:block {
     & table {
       @media (width < 80rem) {
@@ -2176,6 +2274,27 @@
       @media (width < 64rem) {
         display: block;
       }
+    }
+  }
+  .\[\&_td\]\:border-t {
+    & td {
+      border-top-style: var(--tw-border-style);
+      border-top-width: 1px;
+    }
+  }
+  .\[\&_td\]\:border-line {
+    & td {
+      border-color: var(--ak-color-line);
+    }
+  }
+  .\[\&_td\]\:px-2 {
+    & td {
+      padding-inline: calc(var(--spacing) * 2);
+    }
+  }
+  .\[\&_td\]\:py-1 {
+    & td {
+      padding-block: calc(var(--spacing) * 1);
     }
   }
   .\[\&_td\]\:max-xl\:flex {
@@ -2267,6 +2386,32 @@
       & td {
         padding-inline: calc(var(--spacing) * 2);
       }
+    }
+  }
+  .\[\&_th\]\:px-2 {
+    & th {
+      padding-inline: calc(var(--spacing) * 2);
+    }
+  }
+  .\[\&_th\]\:py-1 {
+    & th {
+      padding-block: calc(var(--spacing) * 1);
+    }
+  }
+  .\[\&_th\]\:text-left {
+    & th {
+      text-align: left;
+    }
+  }
+  .\[\&_th\]\:font-medium {
+    & th {
+      --tw-font-weight: var(--font-weight-medium);
+      font-weight: var(--font-weight-medium);
+    }
+  }
+  .\[\&_th\]\:text-ink-muted {
+    & th {
+      color: var(--ak-color-ink-muted);
     }
   }
   .xl\:\[\&_th\]\:px-2 {

@@ -227,7 +227,9 @@ func newConsoleFixtureOpts(t *testing.T, o consoleFixtureOpts) *consoleFixture {
 	h = newHTTPHandlerDeps(srv, c, strings.TrimPrefix(f.ts.URL, "http://"), nil, f.deps)
 	t.Setenv("FATHOM_HTTP", f.ts.URL)
 	// serve-http records itself once bound (recordServingDaemon, OC-2): a
-	// verb run against this URL reads the store and log the daemon names.
+	// verb run against this URL reads the store and log the daemon names,
+	// and the record names the store a page's store-direct verb reads
+	// (--store).
 	recordConsoleFixtureDaemon(t, f)
 
 	prev := fleetReportNow
@@ -324,7 +326,9 @@ func samplePath(p *consolePage) string {
 	case "/explain":
 		return "/explain?svc=payment-service&file=payment.go"
 	}
-	return p.Route
+	// A project's workspace tabs (/projects/{svc}/<tab>) open on the
+	// fixture's project too.
+	return strings.ReplaceAll(p.Route, "{svc}", "payment-service")
 }
 
 // consoleExtraSamplePaths are further concrete URLs per page: a page whose

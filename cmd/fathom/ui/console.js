@@ -1,8 +1,9 @@
 // fathom observatory console — the small L2 layer (vision 35 §5: works
-// without JavaScript; better with it). Today it only makes verb chips
-// copyable — the page's own, and any a script inserts later and announces
-// with a 'console:content' event: every chip's command is selectable text
-// without it. Classic script, no dependencies, no network.
+// without JavaScript; better with it). It makes verb chips copyable — the
+// page's own, and any a script inserts later and announces with a
+// 'console:content' event: every chip's command is selectable text without
+// it — and keeps the workspace's current tab in view on a phone. Classic
+// script, no dependencies, no network.
 //
 // A chip's accessible name is its aria-label ("Copy the command …"), which a
 // changed button text never reaches, so the outcome is also announced
@@ -45,8 +46,28 @@
       });
     });
   }
-  if (d.readyState === 'loading') d.addEventListener('DOMContentLoaded', function () { reveal(d); });
-  else reveal(d);
+  // The workspace's tab strip scrolls sideways inside its own region at
+  // phone widths (nine tabs never fit 390 px), so the current tab can sit
+  // past the strip's edge. Bring it into the strip's view on load —
+  // scrolling the strip alone, never the page, so a refresh to an anchored
+  // panel stays where the reader is. Without JavaScript the h1 and the
+  // trail still name the tab.
+  function currentTabInView(root) {
+    Array.prototype.forEach.call(root.querySelectorAll('[data-project-tabs]'), function (strip) {
+      var tab = strip.querySelector('[aria-current="page"]');
+      if (!tab || strip.scrollWidth <= strip.clientWidth) return;
+      var s = strip.getBoundingClientRect();
+      var r = tab.getBoundingClientRect();
+      if (r.left >= s.left && r.right <= s.right) return;
+      strip.scrollLeft += (r.left - s.left) - (s.width - r.width) / 2;
+    });
+  }
+  function ready() {
+    reveal(d);
+    currentTabInView(d);
+  }
+  if (d.readyState === 'loading') d.addEventListener('DOMContentLoaded', ready);
+  else ready();
   // Content inserted after load (the plan page's evidence drawer) announces
   // itself with a bubbling 'console:content' event; its chips get their
   // Copy buttons like the page's own.

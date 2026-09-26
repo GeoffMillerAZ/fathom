@@ -367,10 +367,11 @@ func pinConsoleVerbClocks(t *testing.T, f *consoleFixture) {
 // the daemon's --store itself, since as copied it would otherwise read its
 // default store, not the page's. A verb that reads the working tree from
 // its directory (verify, conserve, plans with an explicit --plan) runs in
-// the repository's root, as an operator runs it.
+// the repository's root, as an operator runs it. A chip's quoting is a
+// shell's (shellFields).
 func consoleVerbArgs(t *testing.T, f *consoleFixture, verb string) (args []string, dir string) {
 	t.Helper()
-	fields := strings.Fields(verb)[1:]
+	fields := shellFields(verb)[1:]
 	name := fields[0]
 	if len(fields) > 1 && !strings.HasPrefix(fields[1], "-") {
 		name += " " + fields[1]
@@ -380,6 +381,11 @@ func consoleVerbArgs(t *testing.T, f *consoleFixture, verb string) (args []strin
 		if !strings.Contains(verb, " --store "+consoleFixtureStorePath(t)+" ") {
 			t.Fatalf("`%s` opens a store directly but its chip names no --store %s: copied as shown it reads another store", verb, consoleFixtureStorePath(t))
 		}
+		args = append([]string{}, fields...)
+	case "metrics traffic", "scope list", "report evidence", "fleet receipts", "intent audit", "doctor":
+		// The workspace tabs' verbs (console wave E) name every input they
+		// read — the root, the store, the daemon, the window — and run
+		// exactly as the chip reads.
 		args = append([]string{}, fields...)
 	default:
 		args = append(append([]string{}, fields...), "--url", f.ts.URL)

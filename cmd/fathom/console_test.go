@@ -568,10 +568,11 @@ func jsonFieldNames(t reflect.Type) map[string]bool {
 // the console envelope naming its verbs; for each verb a page declares,
 // the page JSON's section equals that verb's --json output on the fixture
 // fleet, byte-for-value. Pages not yet rebuilt declare no verbs. A page
-// whose registered verbs name parameters ("{svc}", "{plan}", "{layer}")
-// renders them filled from the request, each an instance of one of its
-// registry's verbs, and is held to them at every sample URL (samplePath's
-// and consoleExtraSamplePaths').
+// whose registered verbs name parameters ("{svc}", "{plan}", "{layer}",
+// "{root}", …) renders them filled from the request, each an instance of
+// one of its registry's verbs, and is held to them at every sample URL
+// (samplePath's and consoleExtraSamplePaths'); each runs as its chip reads
+// (consoleVerbArgs).
 func TestConsolePagesRenderTheirVerbs(t *testing.T) {
 	f := newConsoleFixture(t)
 	pinConsoleVerbClocks(t, f)
@@ -608,6 +609,7 @@ func TestConsolePagesRenderTheirVerbs(t *testing.T) {
 				if err := json.Unmarshal(section, &fromPage); err != nil {
 					t.Fatal(err)
 				}
+				dropVolatileVerbFields(verb, fromVerb, fromPage)
 				if !reflect.DeepEqual(fromVerb, fromPage) {
 					a, _ := json.MarshalIndent(fromVerb, "", " ")
 					b, _ := json.MarshalIndent(fromPage, "", " ")
@@ -764,7 +766,8 @@ func TestConsoleMetricsAgreeAcrossPages(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := ledger.WriteString(`{"schema_version":2,"session_id":"s-late","arm":"on","repo":"ledger-service","at":"2026-09-25T11:59:00Z"}` + "\n"); err != nil {
+	if _, err := ledger.WriteString(`{"schema_version":2,"session_id":"s-late","arm":"on","repo":"ledger-service","at":"2026-09-25T11:59:00Z"}` + "\n" +
+		`{"schema_version":2,"session_id":"s-late-pay","arm":"on","repo":"payment-service","at":"2026-09-25T11:59:30Z"}` + "\n"); err != nil {
 		t.Fatal(err)
 	}
 	ledger.Close()
@@ -792,7 +795,7 @@ func TestConsoleMetricsAgreeAcrossPages(t *testing.T) {
 	for _, id := range []console.MetricID{console.MetricServices, console.MetricSymbols, console.MetricCalls, console.MetricSessions, console.MetricObservations, console.MetricAgentTools,
 		console.MetricWiredFresh, console.MetricPlanRowsVerified, console.MetricClaimsFresh, console.MetricCertificatesLive,
 		console.MetricPlansUnproven, console.MetricPlansProven, console.MetricCertGaps, console.MetricCertLive,
-		console.MetricClaims} {
+		console.MetricClaims, console.MetricProjectSymbols, console.MetricProjectCalls, console.MetricProjectSessions} {
 		pages := byMetric[string(id)]
 		if len(pages) == 0 {
 			t.Errorf("metric %s is shown on no page", id)
@@ -808,6 +811,42 @@ func TestConsoleMetricsAgreeAcrossPages(t *testing.T) {
 				t.Errorf("metric %s: page %s says %s, page %s says %s", id, firstPage, first, page, v)
 			}
 		}
+	}
+	// A page's panels show a shared metric through that one value too: the
+	// activity tab's sessions panel ("the newest N of M distinct sessions")
+	// and its JSON are project.sessions itself, never a recount from a
+	// fresher read of the ledger of its own.
+	actEnv := f.pageJSON(t, "/projects/payment-service/activity")
+	var act struct {
+		Activity struct {
+			Sessions    json.RawMessage `json:"sessions"`
+			SessionRows []struct {
+				ID string `json:"id"`
+			} `json:"session_rows"`
+		} `json:"activity"`
+	}
+	if err := json.Unmarshal(actEnv.Model, &act); err != nil {
+		t.Fatal(err)
+	}
+	var panelSessions, sharedSessions console.Value[int]
+	if err := json.Unmarshal(act.Activity.Sessions, &panelSessions); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(actEnv.Metrics[string(console.MetricProjectSessions)], &sharedSessions); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(panelSessions, sharedSessions) {
+		t.Errorf("the activity panel counts sessions itself: model.activity.sessions %+v, metrics.project.sessions %+v", panelSessions, sharedSessions)
+	}
+	for _, r := range act.Activity.SessionRows {
+		if r.ID == "s-late-pay" {
+			t.Errorf("the sessions panel lists a session the shared count was never read from: %+v", act.Activity.SessionRows)
+		}
+	}
+	_, _, actPage := f.get(t, "/projects/payment-service/activity")
+	band := tileValue(t, actPage, "distinct sessions")
+	if !strings.Contains(actPage, "of "+band+" distinct sessions") {
+		t.Errorf("the sessions caption disagrees with the band's %s distinct sessions", band)
 	}
 	value := func(id console.MetricID) console.Value[int] {
 		for _, raw := range byMetric[string(id)] {
@@ -1316,5 +1355,41 @@ func TestResolveConsoleCallLog_DaemonRecordReachesVerbs(t *testing.T) {
 	}
 	if got := resolveConsoleCallLog("/flag.jsonl", ""); got.Rule != console.RuleFlag {
 		t.Errorf("--call-log must win: %+v", got)
+	}
+}
+
+// A page's call-log provenance equals its verb's (OC-8): inside the daemon
+// the pages resolve the daemon's own log, and a verb run from a terminal
+// resolves the same log through the daemon's record — both must name it
+// with the record's own words, or `?format=json` differs from the verb's
+// --json in call_log.note alone.
+func TestRecordServingDaemon_InProcessNoteIsTheRecords(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HOME", dir)
+	t.Setenv("FATHOM_CALL_LOG", "")
+	os.Unsetenv("FATHOM_CALL_LOG")
+	const addr = "127.0.0.1:7598"
+	t.Setenv("FATHOM_HTTP", "http://"+addr)
+	resetServing := func() {
+		servingCallLog.Lock()
+		servingCallLog.set, servingCallLog.path, servingCallLog.note = false, "", ""
+		servingCallLog.Unlock()
+	}
+	t.Cleanup(resetServing)
+	rec, err := recordServingDaemon(addr, filepath.Join(dir, "calls.jsonl"), "", "c0ffee", time.Date(2026, 9, 26, 4, 28, 19, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	inProcess := resolveConsoleCallLog("", "")
+	resetServing() // a verb in its own process: no serving daemon, only the record
+	fromVerb := resolveConsoleCallLog("", "")
+	if inProcess.Rule != console.RuleDaemon || fromVerb.Rule != console.RuleDaemon {
+		t.Fatalf("both resolve the daemon's log: page %+v, verb %+v", inProcess, fromVerb)
+	}
+	if inProcess != fromVerb {
+		t.Errorf("the page and the verb name the log differently:\npage: %+v\nverb: %+v", inProcess, fromVerb)
+	}
+	if !strings.Contains(inProcess.Note, rec.Note()) {
+		t.Errorf("the note is the record's provenance %q: %q", rec.Note(), inProcess.Note)
 	}
 }

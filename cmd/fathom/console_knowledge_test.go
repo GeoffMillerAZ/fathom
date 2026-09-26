@@ -367,50 +367,54 @@ func TestKnowledgeVerbs_ReadTheDaemonsStoreReadOnly(t *testing.T) {
 	}
 }
 
-// verbsFillTemplates reports whether every rendered verb fills one of the
-// registry's verbs — a "{name}" token matches one word, a bracketed group
-// ("[--layer {layer}]") is present or absent, and no placeholder is left
-// unfilled — and a page with no parameters renders exactly its registry
-// verbs.
+// verbsFillTemplates reports whether rendered are the page's declared verbs
+// filled for one request. A page with no parameters renders exactly its
+// registry verbs. Otherwise each rendered verb fills the next matching
+// declared template, in order: a "{name}" placeholder matches the value
+// (quoted by fillVerb when it holds a space), a bracketed group
+// ("[--layer {layer}]") is present or absent, no placeholder is left
+// unfilled, and a verb whose input the request lacks (a root not on this
+// machine) may be left out, never rendered half-filled.
 func verbsFillTemplates(rendered, registry []string) bool {
 	templated := false
-	var expanded []string
 	for _, r := range registry {
-		if strings.Contains(r, "{") {
-			templated = true
-		}
-		expanded = append(expanded, expandOptionalGroups(r)...)
+		templated = templated || strings.Contains(r, "{")
 	}
 	if !templated {
 		return strings.Join(rendered, "\n") == strings.Join(registry, "\n")
 	}
+	matches := func(v, tmpl string) bool {
+		for _, t := range expandOptionalGroups(tmpl) {
+			if templateRe(t).MatchString(v) {
+				return true
+			}
+		}
+		return false
+	}
+	j := 0
 	for _, v := range rendered {
-		if strings.Contains(v, "{") {
+		if unfilledPlaceholderRe.MatchString(v) {
 			return false // a placeholder the page left unfilled
 		}
-		ok := false
-		for _, tmpl := range expanded {
-			vt, tt := strings.Fields(v), strings.Fields(tmpl)
-			if len(vt) != len(tt) {
-				continue
-			}
-			match := true
-			for i := range tt {
-				if !(strings.HasPrefix(tt[i], "{") && strings.HasSuffix(tt[i], "}")) && tt[i] != vt[i] {
-					match = false
-					break
-				}
-			}
-			if match {
-				ok = true
-				break
-			}
+		for j < len(registry) && !matches(v, registry[j]) {
+			j++
 		}
-		if !ok {
+		if j == len(registry) {
 			return false
 		}
+		j++
 	}
 	return true
+}
+
+var unfilledPlaceholderRe = regexp.MustCompile(`\{[a-z]+\}`)
+
+// templateRe matches a filled template: each "{name}" placeholder is one
+// or more characters (a quoted value may hold spaces).
+func templateRe(t string) *regexp.Regexp {
+	q := regexp.QuoteMeta(t)
+	q = regexp.MustCompile(`\\\{[a-z]+\\\}`).ReplaceAllString(q, `.+?`)
+	return regexp.MustCompile("^" + q + "$")
 }
 
 // expandOptionalGroups expands a verb template's bracketed groups into

@@ -325,11 +325,24 @@ func VerifyRunsIn(runs []LedgerRun, keyOf func(service string) string, from, to 
 // eachLedgerSession calls fn with every parseable ledger row's session key
 // (its session id; a row with none counts once on its own) and repo label.
 func eachLedgerSession(data []byte, fn func(key, repo string)) {
-	eachLedgerSessionAt(data, func(key, repo, _ string) { fn(key, repo) })
+	eachLedgerRowAt(data, func(key, repo, _ string, _ []byte) { fn(key, repo) })
 }
 
 // eachLedgerSessionAt is eachLedgerSession with the row's timestamp.
 func eachLedgerSessionAt(data []byte, fn func(key, repo, at string)) {
+	eachLedgerRowAt(data, func(key, repo, at string, _ []byte) { fn(key, repo, at) })
+}
+
+// eachLedgerRow is eachLedgerSession with the row's own bytes, for a fold
+// that reads more of a row (the activity tab's session rows) and must still
+// count sessions by the one rule.
+func eachLedgerRow(data []byte, fn func(key, repo string, line []byte)) {
+	eachLedgerRowAt(data, func(key, repo, _ string, line []byte) { fn(key, repo, line) })
+}
+
+// eachLedgerRowAt is the one walk behind them: every parseable row's
+// session key, repo label, timestamp and bytes.
+func eachLedgerRowAt(data []byte, fn func(key, repo, at string, line []byte)) {
 	for _, line := range bytes.Split(data, []byte{'\n'}) {
 		if len(bytes.TrimSpace(line)) == 0 {
 			continue
@@ -346,7 +359,7 @@ func eachLedgerSessionAt(data []byte, fn func(key, repo, at string)) {
 		if key == "" {
 			key = "\x00anon:" + row.At + ":" + row.Repo
 		}
-		fn(key, row.Repo, row.At)
+		fn(key, row.Repo, row.At, line)
 	}
 }
 
