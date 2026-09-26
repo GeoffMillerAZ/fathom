@@ -59,6 +59,7 @@ func cmdIntentAudit(args []string, stdout, stderr io.Writer) int {
 	kind := fs.String("kind", "", "restrict to kinds: conditions|invariants|unproven (comma-separated)")
 	top := fs.Int("top", intentTopDefault, "max rows per section before eliding (0 = all)")
 	asJSON := fs.Bool("json", false, "emit JSON")
+	readOnly := fs.Bool("read-only", false, "render the audit and write NOTHING: no intent-ledger rows (clock, baseline, debt, the enforcement-probe cache) and no beat — the Observatory's intent tab runs it this way (OC-38)")
 	format := fs.String("format", "", "output format: text (default) | json | sarif — SARIF 2.1.0 of the unproven claims, one rule per kind (U1, U2, …), located at the claim's file:line when the evidence names one (PC-21)")
 	if err := fs.Parse(args); err != nil {
 		return 1
@@ -78,21 +79,67 @@ func cmdIntentAudit(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
 	}
-	corpus, err := intent.Load(abs)
+	run, err := runIntentAudit(intentAuditOptions{Root: abs, Service: *service, URL: *url, ReadOnly: *readOnly})
 	if err != nil {
-		fmt.Fprintf(stderr, "error: reading the intent corpus: %v\n", err)
+		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
 	}
+	corpus, audit, ledger := run.Corpus, run.Audit, run.Ledger
 
-	svc := *service
+	switch *format {
+	case "json":
+		return emitIntentJSON(stdout, corpus, audit, ledger)
+	case "sarif":
+		_, _ = stdout.Write(verify.RenderSARIF("fathom intent audit", intentAuditSARIF(abs, corpus, audit)))
+		return 0
+	}
+	renderIntentAudit(stdout, corpus, audit, ledger, strings.Split(*kind, ","), *top)
+	return 0
+}
+
+// intentAuditOptions parameterizes one audit run.
+type intentAuditOptions struct {
+	Root, Service, URL string
+	// ReadOnly runs the audit and writes nothing: no clock, baseline or
+	// debt row, no enforcement-probe cache row, no beat (OC-38). An audit
+	// that appends ledger rows by being LOOKED AT (the 2026-09-25 survey)
+	// cannot back a page a person reloads.
+	ReadOnly bool
+	// HTTP, when set, carries the index oracle's requests (the console
+	// passes its origin-stamped client).
+	HTTP *http.Client
+}
+
+// intentAuditRun is one run's inputs and findings.
+type intentAuditRun struct {
+	Service string
+	Corpus  intent.Corpus
+	Audit   intent.Audit
+	Ledger  []intent.LedgerRow
+}
+
+// runIntentAudit is `fathom intent audit` minus its rendering: the verb
+// and the Observatory's intent tab both call it, so the page renders
+// exactly what the verb prints.
+func runIntentAudit(o intentAuditOptions) (intentAuditRun, error) {
+	abs := o.Root
+	corpus, err := intent.Load(abs)
+	if err != nil {
+		return intentAuditRun{}, fmt.Errorf("reading the intent corpus: %w", err)
+	}
+
+	svc := o.Service
 	if svc == "" {
 		// The daemon-backed deterministic resolver, exactly as every hook
 		// uses it. The bare basename is NOT good enough: this repo's
 		// directory is "sextant" while its indexed service is "fathom", and
 		// resolving by basename is the O1 class that once zeroed obligations
 		// on a third of edits.
-		hc := &http.Client{Timeout: 5 * time.Second}
-		if cand, ok := resolveIndexedCandidate(hc, *url, abs); ok {
+		hc := o.HTTP
+		if hc == nil {
+			hc = &http.Client{Timeout: 5 * time.Second}
+		}
+		if cand, ok := resolveIndexedCandidate(hc, o.URL, abs); ok {
 			svc = cand.name
 		} else if cands := serviceCandidates(abs); len(cands) > 0 {
 			svc = cands[0].name
@@ -103,9 +150,10 @@ func cmdIntentAudit(args []string, stdout, stderr io.Writer) int {
 	guardNotes, guardScopes, guardNote2 := repoGuardNotes(abs)
 	contracts, contractNote, contractCoverage := planRowContracts(abs)
 	ledger := intent.ReadLedger()
+	head := gitHeadShort(abs)
 	audit := intent.RunAudit(intent.AuditInput{
 		Corpus:   corpus,
-		Symbols:  newIndexOracle(*url, svc, abs, gitHeadShort(abs)),
+		Symbols:  newIndexOracle(o.URL, svc, abs, head, o.ReadOnly, o.HTTP),
 		PlanRows: rows,
 		PlanNote: note,
 
@@ -123,20 +171,24 @@ func cmdIntentAudit(args []string, stdout, stderr io.Writer) int {
 		Ledger:      ledger,
 		Now:         time.Now().UTC(),
 	})
+	run := intentAuditRun{Service: svc, Corpus: corpus, Audit: audit, Ledger: ledger}
+	if o.ReadOnly {
+		return run, nil
+	}
 
 	// Law 6: the clock starts the first time the audit runs with a consumer
 	// population present, and never moves after.
 	population := intentPopulation(abs)
 	if len(population) > 1 {
-		_ = intent.StartClock(abs, gitHeadShort(abs), population)
+		_ = intent.StartClock(abs, head, population)
 	}
 	// K1's counterfactual (EP-24), recorded ONCE: the pre-plane rate of
 	// answering a decision. A kill clock with nothing to be faster than is
 	// a clock measuring itself (law 12).
 	bDays, bMedian, bNote := intentBaseline(abs, corpus.DecisionsHome, time.Now(), 90)
-	_ = intent.RecordBaseline(abs, gitHeadShort(abs), time.Now().UTC().Format(time.RFC3339), bDays, bMedian, bNote)
+	_ = intent.RecordBaseline(abs, head, time.Now().UTC().Format(time.RFC3339), bDays, bMedian, bNote)
 	_ = intent.AppendLedger(intent.LedgerRow{
-		Kind: intent.KindDebt, RepoRoot: abs, Commit: gitHeadShort(abs),
+		Kind: intent.KindDebt, RepoRoot: abs, Commit: head,
 		ByKind: audit.ByKind, Annotated: audit.Annotated, MS: audit.Elapsed.Milliseconds(),
 	})
 	// ADR-027 kill criterion: the discipline is theatre if no manifest is
@@ -151,16 +203,7 @@ func cmdIntentAudit(args []string, stdout, stderr io.Writer) int {
 		"unproven":            itoa(len(audit.Unproven)),
 		"incomplete_coverage": incomplete,
 	})
-
-	switch *format {
-	case "json":
-		return emitIntentJSON(stdout, corpus, audit, ledger)
-	case "sarif":
-		_, _ = stdout.Write(verify.RenderSARIF("fathom intent audit", intentAuditSARIF(abs, corpus, audit)))
-		return 0
-	}
-	renderIntentAudit(stdout, corpus, audit, ledger, strings.Split(*kind, ","), *top)
-	return 0
+	return run, nil
 }
 
 // fileLineRe matches a "path:line" citation (with an optional trailing
@@ -339,6 +382,17 @@ func joinInvIDs(invs []intent.Invariant) string {
 }
 
 func emitIntentJSON(w io.Writer, c intent.Corpus, a intent.Audit, ledger []intent.LedgerRow) int {
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(intentAuditPayload(c, a, ledger)); err != nil {
+		return 1
+	}
+	return 0
+}
+
+// intentAuditPayload is `intent audit --json`'s document — the verb prints
+// it and the intent tab carries it as the verb's section (P10).
+func intentAuditPayload(c intent.Corpus, a intent.Audit, ledger []intent.LedgerRow) map[string]any {
 	clock, hasClock := intent.Clock(ledger, c.Root)
 	payload := map[string]any{
 		"root":           c.Root,
@@ -370,12 +424,7 @@ func emitIntentJSON(w io.Writer, c intent.Corpus, a intent.Audit, ledger []inten
 		payload["clock_started_at"] = clock.At
 		payload["population"] = clock.Population
 	}
-	enc := json.NewEncoder(w)
-	enc.SetIndent("", "  ")
-	if err := enc.Encode(payload); err != nil {
-		return 1
-	}
-	return 0
+	return payload
 }
 
 // planRowStates reads the newest verify-ledger row per plan at HEAD. It

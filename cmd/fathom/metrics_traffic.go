@@ -10,6 +10,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/metrics"
 )
 
@@ -38,14 +39,7 @@ func cmdMetricsTraffic(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	// OC-2: the one call-log resolution (console_calllog.go) — the daemon's
-	// configured log when a daemon record names one, never a log relative
-	// to this command's working directory.
-	resolved := resolveConsoleCallLog(*callLogFlag, "")
-	callLogPath := resolved.Path
-	entries, _ := readCallDataFor(callLogPath, *service, sinceT, untilT) // absent/unreadable log: honest zero traffic, never fatal
-
-	report := metrics.AggregateTraffic(entries, metrics.TrafficOptions{Since: sinceT, Until: untilT, GroupBy: *by})
+	report, resolved := metricsTrafficReport(*callLogFlag, *service, *by, sinceT, untilT)
 
 	if *jsonOut {
 		jsonPrint(stdout, withCallLog(report, resolved))
@@ -68,4 +62,15 @@ func cmdMetricsTraffic(args []string, stdout, stderr io.Writer) int {
 	fmt.Fprintf(stdout, "total: calls=%d discovery=%d plumbing=%d other=%d\n", report.TotalCalls, report.DiscoveryCalls, report.PlumbingCalls, report.OtherCalls)
 	fmt.Fprintf(stdout, "%s\n", report.Note)
 	return 0
+}
+
+// metricsTrafficReport is `metrics traffic`'s report over [since, until] —
+// the verb prints it and the project activity tab carries it as the verb's
+// section (P10). OC-2: the one call-log resolution (console_calllog.go) —
+// the daemon's configured log when a daemon record names one, never a log
+// relative to the working directory.
+func metricsTrafficReport(callLogFlag, service, by string, since, until time.Time) (metrics.TrafficReport, console.ResolvedCallLog) {
+	resolved := resolveConsoleCallLog(callLogFlag, "")
+	entries, _ := readCallDataFor(resolved.Path, service, since, until) // absent/unreadable log: honest zero traffic, never fatal
+	return metrics.AggregateTraffic(entries, metrics.TrafficOptions{Since: since, Until: until, GroupBy: by}), resolved
 }

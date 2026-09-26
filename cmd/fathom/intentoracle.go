@@ -28,9 +28,23 @@ type indexOracle struct {
 	// commits, so a second audit at the same commit costs nothing.
 	commit string
 	root   string
+	// readOnly (`intent audit --read-only`, OC-38): the per-HEAD answer is
+	// read from the ledger but never written to it.
+	readOnly bool
+	// hc, when set, carries the requests (the console passes its own
+	// origin-stamped client, so a page's audit is never counted as usage).
+	hc *http.Client
 }
 
-func newIndexOracle(baseURL, service, root, commit string) intent.SymbolOracle {
+// httpClient is the oracle's client: the caller's, else a plain one.
+func (o *indexOracle) httpClient() *http.Client {
+	if o.hc != nil {
+		return o.hc
+	}
+	return &http.Client{Timeout: o.timeout}
+}
+
+func newIndexOracle(baseURL, service, root, commit string, readOnly bool, hc *http.Client) intent.SymbolOracle {
 	if service == "" {
 		return nil
 	}
@@ -38,7 +52,7 @@ func newIndexOracle(baseURL, service, root, commit string) intent.SymbolOracle {
 	// verify run (measured p50 2.8s, p95 6.7s), and the audit verb is
 	// unbudgeted. The doctor row never pays this — it reads the cached
 	// per-HEAD answer from the ledger.
-	return &indexOracle{baseURL: baseURL, service: service, root: root, commit: commit, timeout: 30 * time.Second}
+	return &indexOracle{baseURL: baseURL, service: service, root: root, commit: commit, timeout: 30 * time.Second, readOnly: readOnly, hc: hc}
 }
 
 // Known answers every requested name in one round trip. A name ending in
@@ -113,7 +127,7 @@ func (o *indexOracle) resolveNames(names []string) (map[string]bool, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := (&http.Client{Timeout: o.timeout}).Do(req)
+	resp, err := o.httpClient().Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("daemon unreachable at %s: %w", o.baseURL, err)
 	}
@@ -184,9 +198,9 @@ func (o *indexOracle) cached(names []string) (map[string]bool, bool) {
 	return nil, false
 }
 
-// store records the answer for this commit.
+// store records the answer for this commit — never on a read-only run.
 func (o *indexOracle) store(resolved map[string]bool) {
-	if o.commit == "" {
+	if o.commit == "" || o.readOnly {
 		return
 	}
 	blob, err := json.Marshal(resolved)
@@ -226,7 +240,7 @@ func (o *indexOracle) familyExists(prefix string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	resp, err := (&http.Client{Timeout: o.timeout}).Do(req)
+	resp, err := o.httpClient().Do(req)
 	if err != nil {
 		return false, fmt.Errorf("daemon unreachable at %s: %w", o.baseURL, err)
 	}

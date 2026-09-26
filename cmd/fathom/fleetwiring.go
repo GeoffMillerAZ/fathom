@@ -67,28 +67,17 @@ func cmdFleetReceipts(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	receipts, err := wiring.LoadReceipts(root)
+	receipts, total, err := loadReceiptsLimited(root, *limit)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
-	}
-	// Law 3 applied to a COUNT: the number rendered must be the number
-	// measured. Truncating and then printing the truncated length told a
-	// reader fathom had written twice where it wrote five times, and hid
-	// that three still-undoable receipts existed.
-	total := len(receipts)
-	if *limit > 0 && total > *limit {
-		receipts = receipts[:*limit]
 	}
 	hidden := total - len(receipts)
 
 	if *asJSON {
 		enc := json.NewEncoder(stdout)
 		enc.SetIndent("", "  ")
-		if err := enc.Encode(map[string]any{
-			"root": root, "receipts": receipts,
-			"total": total, "shown": len(receipts), "hidden_by_limit": hidden,
-		}); err != nil {
+		if err := enc.Encode(fleetReceiptsPayload(root, receipts, total)); err != nil {
 			fmt.Fprintf(stderr, "error: %v\n", err)
 			return 1
 		}
@@ -118,6 +107,32 @@ func cmdFleetReceipts(args []string, stdout, stderr io.Writer) int {
 	}
 	fmt.Fprintln(stdout, "undo the most recent with: fathom fleet undo --last")
 	return 0
+}
+
+// loadReceiptsLimited reads root's receipts, newest first, keeping at most
+// limit (0 = all) and returning the TOTAL. Law 3 applied to a COUNT: the
+// number rendered must be the number measured. Truncating and then printing
+// the truncated length told a reader fathom had written twice where it
+// wrote five times, and hid that three still-undoable receipts existed.
+func loadReceiptsLimited(root string, limit int) ([]wiring.Receipt, int, error) {
+	receipts, err := wiring.LoadReceipts(root)
+	if err != nil {
+		return nil, 0, err
+	}
+	total := len(receipts)
+	if limit > 0 && total > limit {
+		receipts = receipts[:limit]
+	}
+	return receipts, total, nil
+}
+
+// fleetReceiptsPayload is `fleet receipts --json`'s document — the verb
+// prints it and the project wiring tab carries it as the verb's section.
+func fleetReceiptsPayload(root string, receipts []wiring.Receipt, total int) map[string]any {
+	return map[string]any{
+		"root": root, "receipts": receipts,
+		"total": total, "shown": len(receipts), "hidden_by_limit": total - len(receipts),
+	}
 }
 
 func cmdFleetUndo(args []string, stdout, stderr io.Writer) int {
