@@ -79,11 +79,7 @@ func buildLayersPage(cr *consoleRequest) (consoleOut, error) {
 		return consoleOut{}, err
 	}
 	ctx := cr.r.Context()
-	strata, err := console.Strata(ctx, src)
-	if err != nil {
-		return consoleOut{}, err
-	}
-	cov, err := console.LayerCoverage(ctx, src)
+	strata, cov, err := console.LayersOverview(ctx, src)
 	if err != nil {
 		return consoleOut{}, err
 	}
@@ -420,7 +416,7 @@ func renderCoverage(m console.CoverageMatrix) string {
 		}
 		b.WriteString(`<div class="grid gap-4 lg:grid-cols-[auto_minmax(0,1fr)]"><div class="min-w-0">`)
 		b.WriteString(`<p class="mb-2 text-xs text-ink-muted" data-coverage-key>columns: ` + html.EscapeString(strings.Join(key, " · ")) + `</p>`)
-		b.WriteString(`<div class="overflow-x-auto" role="region" tabindex="0" aria-label="coverage matrix — scrolls sideways" data-coverage-heatmap>` + svg + `</div>`)
+		b.WriteString(`<div class="overflow-x-auto rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus" role="region" tabindex="0" aria-label="coverage matrix — scrolls sideways" data-coverage-heatmap>` + svg + `</div>`)
 		b.WriteString(`<div class="mt-3">` + chrome.RenderDisclosure(chrome.Disclosure{Summary: "The coverage matrix as a table", Body: template.HTML(renderCoverageTable(m))}) + `</div></div><div class="min-w-0">`)
 	}
 	if len(m.NeverCompiled) > 0 {

@@ -121,6 +121,20 @@ func Strata(ctx context.Context, src KnowledgeSource) (StrataView, error) {
 	if err != nil {
 		return StrataView{}, err
 	}
+	return strataFrom(k), nil
+}
+
+// LayersOverview is Strata and LayerCoverage from one read of the store —
+// the /layers page shows both, and each equals its verb's own answer.
+func LayersOverview(ctx context.Context, src KnowledgeSource) (StrataView, CoverageMatrix, error) {
+	k, err := readKnowledge(ctx, src)
+	if err != nil {
+		return StrataView{}, CoverageMatrix{}, err
+	}
+	return strataFrom(k), coverageFrom(k), nil
+}
+
+func strataFrom(k knowledge) StrataView {
 	out := StrataView{Bands: []StrataBand{
 		{Stratum: StratumDialect, Title: "Dialect", Summary: "How code becomes an index: one extractor per language, typed edges where a checker or a SCIP index provides them.", Dialects: dialectLevels()},
 		{Stratum: StratumProvider, Title: "Provider", Summary: "What an external technology means. Parked until a named consumer needs it.", Parked: true, Reason: "no provider packs — parked pack type (TX-3, docs/design/pack-taxonomy.md)"},
@@ -202,7 +216,7 @@ func Strata(ctx context.Context, src KnowledgeSource) (StrataView, error) {
 		out.Totals.CostUSD = c
 	}
 	out.Lifecycle = lifecycle(k, total)
-	return out, nil
+	return out
 }
 
 // MetricClaims is the fleet's current governed claims — shown on /layers
@@ -408,6 +422,10 @@ func LayerCoverage(ctx context.Context, src KnowledgeSource) (CoverageMatrix, er
 	if err != nil {
 		return CoverageMatrix{}, err
 	}
+	return coverageFrom(k), nil
+}
+
+func coverageFrom(k knowledge) CoverageMatrix {
 	out := CoverageMatrix{Layers: []string{}, Rows: []CoverageRow{}, NeverCompiled: []LayerAbsence{}}
 	for _, layer := range k.layerNames() {
 		b := layerBlock(k, layer)
@@ -454,7 +472,7 @@ func LayerCoverage(ctx context.Context, src KnowledgeSource) (CoverageMatrix, er
 	} else {
 		out.Covered = Measured(covered, storeSource).WithDenominator(denom)
 	}
-	return out, nil
+	return out
 }
 
 // LayerPage is one layer's page: its definition, compile runs with cost,
