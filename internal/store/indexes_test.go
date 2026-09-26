@@ -98,3 +98,35 @@ func TestMemoryStore_EnsureIndexesIsNoOp(t *testing.T) {
 		t.Fatalf("MemoryStore.EnsureIndexes: %v", err)
 	}
 }
+
+// TestSymbolNamesForSource_QueryPlanRangesSourceRef pins RT-81: the
+// per-file symbol read must seek the (service_id, source_ref) index on
+// BOTH columns. An OR'd equality-plus-range predicate plans as
+// idx_observations_service_id (service_id=?) on a store with no
+// sqlite_stat tables (the store never runs ANALYZE), i.e. a lookup of
+// every observation in the service per obligations call.
+func TestSymbolNamesForSource_QueryPlanRangesSourceRef(t *testing.T) {
+	s, err := NewSQLiteStore("")
+	if err != nil {
+		t.Fatalf("NewSQLiteStore: %v", err)
+	}
+	defer s.Close()
+	rows, err := s.db.QueryContext(context.Background(), "EXPLAIN QUERY PLAN "+symbolRowsForSourceQuery, symbolRowsForSourceArgs("svc", "pkg/a.go")...)
+	if err != nil {
+		t.Fatalf("EXPLAIN QUERY PLAN: %v", err)
+	}
+	defer rows.Close()
+	var details []string
+	for rows.Next() {
+		var id, parent, notused int
+		var detail string
+		if err := rows.Scan(&id, &parent, &notused, &detail); err != nil {
+			t.Fatalf("scan: %v", err)
+		}
+		details = append(details, detail)
+	}
+	joined := strings.Join(details, " | ")
+	if !strings.Contains(joined, "idx_observations_service_source") || !strings.Contains(joined, "source_ref>") {
+		t.Fatalf("per-file symbol read does not range the (service_id, source_ref) index: %s", joined)
+	}
+}

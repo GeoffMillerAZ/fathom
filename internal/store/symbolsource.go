@@ -42,14 +42,27 @@ func distinctSymbolNames(rows []symbolRow) []string {
 	return out
 }
 
-// symbolRowsForSourceRaw reads file's (symbol, source_ref) rows through the
-// (service_id, source_ref) index: an equality probe plus the ":<line>"
-// range [file+":", file+";") — ';' is the byte after ':'.
-func (s *SQLiteStore) symbolRowsForSourceRaw(ctx context.Context, serviceID, file string) ([]symbolRow, error) {
-	rows, err := s.db.QueryContext(ctx, `
+// symbolRowsForSourceQuery reads file's candidate (symbol, source_ref) rows
+// as ONE range [file, file+";") over the (service_id, source_ref) index —
+// ';' is the byte after ':', so the range holds file itself and every
+// "file:<line>" ref. refNamesFile then drops the other refs the range can
+// hold (a sibling "file.bak", "file/x"). An OR'd equality-plus-range
+// predicate plans on idx_observations_service_id alone when the store has
+// no sqlite_stat tables (it never runs ANALYZE): a lookup of every
+// observation in the service per obligations call
+// (TestSymbolNamesForSource_QueryPlanRangesSourceRef).
+const symbolRowsForSourceQuery = `
 SELECT symbol, source_ref FROM observations
-WHERE service_id = ? AND (source_ref = ? OR (source_ref >= ? AND source_ref < ?))
-`, serviceID, file, file+":", file+";")
+WHERE service_id = ? AND source_ref >= ? AND source_ref < ?
+`
+
+func symbolRowsForSourceArgs(serviceID, file string) []any {
+	return []any{serviceID, file, file + ";"}
+}
+
+// symbolRowsForSourceRaw reads file's (symbol, source_ref) rows.
+func (s *SQLiteStore) symbolRowsForSourceRaw(ctx context.Context, serviceID, file string) ([]symbolRow, error) {
+	rows, err := s.db.QueryContext(ctx, symbolRowsForSourceQuery, symbolRowsForSourceArgs(serviceID, file)...)
 	if err != nil {
 		return nil, fmt.Errorf("SymbolNamesForSource query: %w", err)
 	}
