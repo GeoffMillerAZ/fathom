@@ -39,7 +39,7 @@ type refreshFileResponse struct {
 	// the index is current.
 	Error string `json:"error,omitempty"`
 	// Skipped names why a file was checked but not re-extracted without an
-	// error — "oversize (N bytes over the 2 MiB cap; not read)" (RT-27, I38).
+	// error — "oversize (N bytes; over the 2097152-byte cap; not read)" (RT-27, I38).
 	Skipped string `json:"skipped,omitempty"`
 }
 
@@ -97,7 +97,10 @@ func buildRefreshFileResponse(ctx context.Context, c *client.Client, patcher gra
 	// patched (or dropped) here or the next query answers from the
 	// pre-refresh graph (O99). Only when something is memoized at all —
 	// otherwise the next query builds fresh from current data anyway.
-	if report.Refreshed && patcher != nil && patcher.HasCachedGraph(service) {
+	// An oversize file whose old rows were purged (report.Purged) moves the
+	// graph's inputs just as a refresh does: its package lookup now finds
+	// no rows, so the memo is dropped rather than left serving them.
+	if (report.Refreshed || report.Purged) && patcher != nil && patcher.HasCachedGraph(service) {
 		out.GraphPatched = patchGraphForFile(ctx, c, patcher, service, file)
 	}
 	return out

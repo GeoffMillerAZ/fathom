@@ -149,3 +149,42 @@ func TestRefreshFileStatCapAndPackageLookup(t *testing.T) {
 		t.Fatalf("oversize refresh skipped = %q, want it named oversize", out.Skipped)
 	}
 }
+
+// RT-27 review: a file that grew past the cap has its old rows purged by
+// the refresh; the memoized graph must not keep serving them (O99). And
+// the skip text names the file's size and the cap, not the size as the
+// amount "over" the cap.
+func TestRefreshFile_OversizePurgeDropsGraphMemo(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "target.go")
+	if err := os.WriteFile(target, []byte("package main\n\nfunc Original() int { return 1 }\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c := client.New(connector.NewLocalConnector(), store.NewMemoryStore())
+	t.Cleanup(func() { _ = c.Close() })
+	ctx := context.Background()
+	if _, err := c.Ingest(ctx, client.ServiceRef{ID: "grew", Path: dir}); err != nil {
+		t.Fatalf("Ingest: %v", err)
+	}
+	if err := os.Truncate(target, 3<<20); err != nil {
+		t.Fatal(err)
+	}
+	p := &recordingPatcher{has: true}
+	out := buildRefreshFileResponse(ctx, c, p, "grew", "target.go")
+	if out.Error != "" || out.Refreshed {
+		t.Fatalf("response = %+v, want an oversize skip", out)
+	}
+	if p.dropped == 0 && len(p.patched) == 0 {
+		t.Fatalf("oversize refresh purged target.go's rows but left the graph memo untouched: %+v", out)
+	}
+	if want := "oversize (3145728 bytes; over the 2097152-byte cap; not read)"; out.Skipped != want {
+		t.Fatalf("skipped = %q, want %q", out.Skipped, want)
+	}
+
+	// Unchanged since: nothing purged, the memo is left alone.
+	p2 := &recordingPatcher{has: true}
+	out = buildRefreshFileResponse(ctx, c, p2, "grew", "target.go")
+	if p2.dropped != 0 || len(p2.patched) != 0 {
+		t.Fatalf("an unchanged oversize file touched the memo: %+v %+v", out, p2)
+	}
+}

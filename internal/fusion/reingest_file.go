@@ -52,9 +52,14 @@ type ReingestReport struct {
 	// Refreshed is false.
 	TypedEdgesStale bool
 	// Skipped names why the file was checked but not read or re-extracted
-	// without an error: "oversize (N bytes over the 2097152-byte cap; not
+	// without an error: "oversize (N bytes; over the 2097152-byte cap; not
 	// read)" (RT-27). Empty otherwise.
 	Skipped string
+	// Purged is true when the call removed the file's stored observations
+	// without replacing them (a file that grew past the cap): the rows a
+	// memoized graph was built from are gone, so a caller holding one must
+	// patch or drop it exactly as after a refresh (SU-4 / O99).
+	Purged bool
 }
 
 // ReingestFile re-extracts relFile (repo-relative, forward-slash) under
@@ -171,7 +176,7 @@ func readCapped(path string, limit int64) ([]byte, error) {
 // (OversizeFingerprint; its old observations purged when the fingerprint
 // moves) without reading it.
 func (p *Pipeline) reingestOversize(ctx context.Context, st store.Store, serviceID, relFile string, size int64) (ReingestReport, error) {
-	rep := ReingestReport{Skipped: fmt.Sprintf("oversize (%d bytes over the %d-byte cap; not read)", size, MaxExtractSize)}
+	rep := ReingestReport{Skipped: fmt.Sprintf("oversize (%d bytes; over the %d-byte cap; not read)", size, MaxExtractSize)}
 	fp := OversizeFingerprint(size)
 	stored, found, err := st.Fingerprint(ctx, serviceID, relFile)
 	if err != nil {
@@ -184,6 +189,7 @@ func (p *Pipeline) reingestOversize(ctx context.Context, st store.Store, service
 		if err := st.PurgeSource(ctx, serviceID, relFile); err != nil {
 			return ReingestReport{}, fmt.Errorf("fusion: ReingestFile purge %q: %w", relFile, err)
 		}
+		rep.Purged = true
 	}
 	if err := st.SetFingerprint(ctx, serviceID, relFile, fp); err != nil {
 		return ReingestReport{}, fmt.Errorf("fusion: ReingestFile set fingerprint %q: %w", relFile, err)
