@@ -15,8 +15,20 @@ package custodian
 // fathom's own stanza region — gets the remedy a person or `fathom init` /
 // `fleet reconcile` must supply, because a diff there would be fathom
 // writing someone's prose for them (law 15, unsoftened).
+//
+// A line inside a region fathom writes — the stanza between its begin and
+// end markers, the INTENT.md playbook `fathom intent render` generates — is
+// never offered a diff, however mechanical the mend: a hand-applied edit to
+// a digest-bearing v3 stanza is exactly what `fleet reconcile` refuses as
+// drift (I13), and an edit to generated text is overwritten by the next
+// render. Those are listed unmended with the regenerating remedy.
+//
+// The relocation index is the WORKING TREE on git's authority: files git
+// lists that are on disk. An unstaged `mv` is a move, not an ambiguity with
+// the path it left.
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -70,12 +82,14 @@ func Propose(root string, findings []Finding) ([]Proposal, error) {
 		return idx, nil
 	}
 
+	regions := regionIndex{root: root, got: map[string][]markerRegion{}}
 	var out []Proposal
 	for _, f := range findings {
 		if f.Status != StatusViolated {
 			continue
 		}
 		p := Proposal{Concern: f.Concern, Detail: f.Detail}
+		owned := 0 // unmended because the line is fathom's own
 		switch f.Concern.Check.Kind {
 		case KindPointersResolve:
 			dead, _, err := scanPointers(root, f.Files)
@@ -87,6 +101,13 @@ func Propose(root string, findings []Finding) ([]Proposal, error) {
 				return nil, err
 			}
 			for _, d := range dead {
+				if why, err := regions.owner(d.File, d.Line); err != nil {
+					return nil, err
+				} else if why != "" {
+					p.Unmended = append(p.Unmended, fmt.Sprintf("%s:%d → %s: %s", d.File, d.Line, d.Target, why))
+					owned++
+					continue
+				}
 				e, why := relocatePointer(root, ix, d)
 				if why != "" {
 					p.Unmended = append(p.Unmended, fmt.Sprintf("%s:%d → %s: %s", d.File, d.Line, d.Target, why))
@@ -94,7 +115,7 @@ func Propose(root string, findings []Finding) ([]Proposal, error) {
 				}
 				p.Edits = append(p.Edits, e)
 			}
-			p.Remedy = remedyIfUnmended(p, "fix each remaining pointer by hand — point it at what replaced the file, or delete the sentence")
+			p.Remedy = remedyIfUnmended(p, owned, "fix each remaining pointer by hand — point it at what replaced the file, or delete the sentence")
 		case KindCommandsResolve:
 			dead, _, _, err := deadCommands(root, f.Concern.Check.Where, f.Files)
 			if err != nil {
@@ -105,6 +126,13 @@ func Propose(root string, findings []Finding) ([]Proposal, error) {
 				return nil, err
 			}
 			for _, d := range dead {
+				if why, err := regions.owner(d.File, d.Line); err != nil {
+					return nil, err
+				} else if why != "" {
+					p.Unmended = append(p.Unmended, d.evidence()+": "+why)
+					owned++
+					continue
+				}
 				if !d.Script {
 					p.Unmended = append(p.Unmended, d.evidence()+": a task target's rename is not mechanically inferable — `task --list` shows what exists")
 					continue
@@ -116,7 +144,7 @@ func Propose(root string, findings []Finding) ([]Proposal, error) {
 				}
 				p.Edits = append(p.Edits, e)
 			}
-			p.Remedy = remedyIfUnmended(p, "restore each remaining target or script, or edit the line to what replaced it")
+			p.Remedy = remedyIfUnmended(p, owned, "restore each remaining target or script, or edit the line to what replaced it")
 		default:
 			p.Remedy = remedyFor(root, f)
 		}
@@ -125,11 +153,92 @@ func Propose(root string, findings []Finding) ([]Proposal, error) {
 	return out, nil
 }
 
-func remedyIfUnmended(p Proposal, remedy string) string {
-	if len(p.Unmended) == 0 {
+// remedyIfUnmended names what the session must do for the evidence no
+// diff mends: the remedy for the ones it may edit, and — when some sit
+// inside fathom's markers — that those are regenerated, never hand-edited.
+func remedyIfUnmended(p Proposal, owned int, remedy string) string {
+	const regen = "the ones inside fathom's markers: regenerate as each says, never hand-edit (law 15)"
+	switch {
+	case len(p.Unmended) == 0:
 		return ""
+	case owned == len(p.Unmended):
+		return regen
+	case owned > 0:
+		return remedy + "; " + regen
 	}
 	return remedy
+}
+
+// markerRegion is a span of lines (1-based, inclusive) fathom writes.
+type markerRegion struct {
+	begin, end int
+	family     string // "" for the stanza; "intent-playbook"; any other fathom:<family>
+}
+
+var (
+	markerBeginRe = regexp.MustCompile(`<!--\s*fathom:(?:([a-z][a-z0-9-]*)\s+)?begin\b`)
+	markerEndRe   = regexp.MustCompile(`<!--\s*fathom:(?:([a-z][a-z0-9-]*)\s+)?end\b`)
+)
+
+// markerRegions finds fathom's marker regions in a file's lines, markers
+// included. An unclosed begin runs to the end of the file: a corrupted
+// pair is still fathom's to repair, never a session's to hand-edit.
+func markerRegions(lines []string) []markerRegion {
+	var out []markerRegion
+	open := -1
+	family := ""
+	for i, ln := range lines {
+		if open < 0 {
+			if m := markerBeginRe.FindStringSubmatch(ln); m != nil {
+				open, family = i+1, m[1]
+			}
+			continue
+		}
+		if m := markerEndRe.FindStringSubmatch(ln); m != nil && m[1] == family {
+			out = append(out, markerRegion{begin: open, end: i + 1, family: family})
+			open = -1
+		}
+	}
+	if open >= 0 {
+		out = append(out, markerRegion{begin: open, end: len(lines), family: family})
+	}
+	return out
+}
+
+// regionIndex reads each file's marker regions once.
+type regionIndex struct {
+	root string
+	got  map[string][]markerRegion
+}
+
+// owner says why line n of rel is fathom's to write, with the remedy
+// that regenerates it — "" when the line is the session's. An unreadable
+// file is an error (I38): its lines cannot be vouched for either way.
+func (ri *regionIndex) owner(rel string, n int) (string, error) {
+	regs, ok := ri.got[rel]
+	if !ok {
+		lines, err := readFileLines(ri.root, rel)
+		if err != nil {
+			return "", fmt.Errorf("%s unreadable: %w", rel, err)
+		}
+		regs = markerRegions(lines)
+		ri.got[rel] = regs
+	}
+	for _, r := range regs {
+		if n < r.begin || n > r.end {
+			continue
+		}
+		at := fmt.Sprintf("%s:%d", rel, r.begin)
+		switch r.family {
+		case "":
+			return fmt.Sprintf("inside fathom's stanza region (%s) — never hand-edit it (law 15; a hand-edited v3 region reads as drift and fleet reconcile refuses it, I13): `fathom fleet reconcile --repo %s --apply` rewrites it from the current template", at, ri.root), nil
+		case "intent-playbook":
+			return fmt.Sprintf("inside the playbook `fathom intent render --playbook` generates (%s) — fix the pointer in its source under docs/intent/, then re-render; an edit here is overwritten", at), nil
+		default:
+			return fmt.Sprintf("inside a region fathom generates (%s, fathom:%s) — regenerate it rather than editing it by hand", at, r.family), nil
+		}
+	}
+	return "", nil
 }
 
 // remedyFor names what the session (or fathom's own writer, inside its
@@ -166,20 +275,37 @@ type repoIndex struct {
 
 // indexRepo lists the repo's files on git's authority (tracked plus
 // untracked-not-ignored) inside a work tree, else by a walk with the
-// audit's skip list; vendored trees are never relocation targets.
+// audit's skip list; vendored trees are never relocation targets. What
+// git lists is kept only when it is on disk: `--cached` still names a
+// path moved or deleted in the working tree and not yet staged, and that
+// path is where a file WAS. `-z` keeps a non-ASCII name unquoted.
 func indexRepo(root string) (*repoIndex, error) {
 	var files []string
+	listed := false
 	if fi, err := os.Stat(filepath.Join(root, ".git")); err == nil && (fi.IsDir() || fi.Mode().IsRegular()) {
-		out, gerr := exec.Command("git", "-C", root, "ls-files", "--cached", "--others", "--exclude-standard").Output()
+		out, gerr := exec.Command("git", "-C", root, "ls-files", "-z", "--cached", "--others", "--exclude-standard").Output()
 		if gerr == nil {
-			for _, ln := range strings.Split(string(out), "\n") {
-				if ln = strings.TrimSpace(ln); ln != "" {
-					files = append(files, ln)
+			listed = true
+			seen := map[string]bool{}
+			for _, f := range strings.Split(string(out), "\x00") {
+				if f == "" || seen[f] {
+					continue // unmerged paths list once per stage
 				}
+				seen[f] = true
+				fi, err := os.Lstat(filepath.Join(root, filepath.FromSlash(f)))
+				switch {
+				case errors.Is(err, fs.ErrNotExist):
+					continue // moved or deleted in the working tree
+				case err == nil && fi.IsDir():
+					continue // a submodule, not a file
+				}
+				// A path that exists and cannot be stat'd stays a candidate:
+				// dropping it would call a file gone that is there (I38).
+				files = append(files, f)
 			}
 		}
 	}
-	if files == nil {
+	if !listed {
 		err := fs.WalkDir(os.DirFS(root), ".", func(p string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err

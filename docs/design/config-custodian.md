@@ -162,7 +162,13 @@ refuses one that does not. Packs are embedded only; a pack search path
   path whose basename names exactly ONE repo file (a move; zero is "gone",
   two or more "ambiguous", both named) — and the remedy otherwise (prose,
   budgets, renamed targets; fathom's own stanza region goes through `fathom
-  init` / `fleet reconcile`, never a hand-applied diff). It writes nothing:
+  init` / `fleet reconcile`, never a hand-applied diff). A line inside any
+  fathom marker region (the stanza; the `INTENT.md` playbook) is never
+  offered a diff — a hand-edited v3 region reads as drift that reconcile
+  refuses (I13), and generated text is overwritten on the next render — so
+  it is listed with the regenerating remedy. The relocation index is the
+  working tree on git's authority (`git ls-files -z`, kept only when on
+  disk): an unstaged move is a move, not an ambiguity. It writes nothing:
   no repo file, no beat, no receipt. `TestConfigPropose_OffersDiffNeverWrites`
   hashes the tree before and after, then applies `--patch` with `git apply`
   and re-audits. Exit 0 whenever it ran; the audit is the gate.

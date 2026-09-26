@@ -2,7 +2,9 @@ package custodian
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -87,5 +89,126 @@ func TestPatchUnifiedDiffShape(t *testing.T) {
 	}
 	if data, _ := os.ReadFile(filepath.Join(root, "f.md")); string(data) != strings.Join(lines, "\n") {
 		t.Fatal("Patch must never write")
+	}
+}
+
+// TestProposeNeverEditsInsideFathomMarkers is law 15 / I13 for propose: a
+// dead pointer or script inside fathom's own marker regions — the stanza
+// (a digest-bearing v3 region `fleet reconcile` refuses once hand-edited)
+// and the INTENT.md playbook `fathom intent render` regenerates — is never
+// offered a diff. It is listed unmended with the regenerating remedy; the
+// same dead pointer outside the markers is still mended.
+func TestProposeNeverEditsInsideFathomMarkers(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "docs", "vision", "archive", "27-strengths-bench.md"), "x\n")
+	writeTestFile(t, filepath.Join(root, "docs", "intent", "archive", "scope.md"), "x\n")
+	writeTestFile(t, filepath.Join(root, "scripts", "ci", "check.sh"), "#!/bin/sh\n")
+	writeTestFile(t, filepath.Join(root, "CLAUDE.md"), strings.Join([]string{
+		"# router", // 1
+		"See `docs/vision/27-strengths-bench.md`.",  // 2: mendable
+		"<!-- fathom:begin v3 sha256:abc -->",       // 3
+		"Cite `docs/vision/27-strengths-bench.md`.", // 4: fathom's
+		"Gate: `bash scripts/check.sh`.",            // 5: fathom's
+		"<!-- fathom:end -->",                       // 6
+		"",
+	}, "\n"))
+	writeTestFile(t, filepath.Join(root, "INTENT.md"), strings.Join([]string{
+		"<!-- fathom:intent-playbook begin -->", // 1
+		"Scope: `docs/intent/scope.md`.",        // 2: generated
+		"<!-- fathom:intent-playbook end -->",   // 3
+		"",
+	}, "\n"))
+	fs := Audit(root, []Concern{
+		{ID: "pointers_hold", Want: "pointers resolve", Check: Check{Kind: KindPointersResolve}},
+		{ID: "cmds", Want: "commands resolve", Check: Check{Kind: KindCommandsResolve}},
+	})
+	props, err := Propose(root, fs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(props) != 2 {
+		t.Fatalf("both concerns are violated: %+v", props)
+	}
+	ptr, cmd := props[0], props[1]
+	if len(ptr.Edits) != 1 || ptr.Edits[0].File != "CLAUDE.md" || ptr.Edits[0].Line != 2 {
+		t.Fatalf("only the pointer outside the markers is mended: %+v", ptr.Edits)
+	}
+	if len(ptr.Unmended) != 2 ||
+		!strings.HasPrefix(ptr.Unmended[0], "CLAUDE.md:4 → docs/vision/27-strengths-bench.md: inside fathom's stanza region (CLAUDE.md:3)") ||
+		!strings.Contains(ptr.Unmended[0], "fathom fleet reconcile --repo "+root+" --apply") ||
+		!strings.HasPrefix(ptr.Unmended[1], "INTENT.md:2 → docs/intent/scope.md: inside the playbook `fathom intent render --playbook` generates (INTENT.md:1)") ||
+		!strings.Contains(ptr.Unmended[1], "docs/intent/") {
+		t.Fatalf("the pointers inside fathom's markers are named with their remedy: %q", ptr.Unmended)
+	}
+	if !strings.Contains(ptr.Remedy, "never hand-edit") {
+		t.Errorf("the remedy covers the marker regions: %q", ptr.Remedy)
+	}
+	if len(cmd.Edits) != 0 || len(cmd.Unmended) != 1 || !strings.Contains(cmd.Unmended[0], "inside fathom's stanza region") {
+		t.Fatalf("a script inside the stanza is not mended either: %+v", cmd)
+	}
+	patch, err := Patch(root, append(ptr.Edits, cmd.Edits...))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(patch, "fathom:begin") && strings.Contains(patch, "+Cite") {
+		t.Fatalf("the patch must not touch the stanza body:\n%s", patch)
+	}
+}
+
+// TestProposeIndexFollowsTheWorkingTree: relocation candidates are what
+// is on disk, on git's authority — an ordinary unstaged `mv` is a move
+// (not "ambiguous" with the path it left), a deleted-unstaged target is
+// gone (not relocated onto itself), and a non-ASCII name is matched
+// (git quotes it without -z).
+func TestProposeIndexFollowsTheWorkingTree(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not on PATH")
+	}
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "docs", "guide.md"), "# guide\n")
+	writeTestFile(t, filepath.Join(root, "docs", "old.md"), "# old\n")
+	writeTestFile(t, filepath.Join(root, "docs", "design", "café.md"), "# café\n")
+	writeTestFile(t, filepath.Join(root, "CLAUDE.md"), "See [the guide](docs/guide.md), [old](docs/old.md) and [café](docs/café.md).\n")
+	git := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", append([]string{"-C", root, "-c", "user.name=t", "-c", "user.email=t@example.invalid", "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null"}, args...)...)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+	git("init", "-q")
+	git("add", "-A")
+	git("commit", "-qm", "init")
+	// An ordinary move and a delete, neither staged.
+	if err := os.MkdirAll(filepath.Join(root, "docs", "guides"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(filepath.Join(root, "docs", "guide.md"), filepath.Join(root, "docs", "guides", "guide.md")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(root, "docs", "old.md")); err != nil {
+		t.Fatal(err)
+	}
+
+	props, err := Propose(root, Audit(root, []Concern{{ID: "p", Want: "resolve", Check: Check{Kind: KindPointersResolve}}}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(props) != 1 {
+		t.Fatalf("one violated concern: %+v", props)
+	}
+	var whys []string
+	for _, e := range props[0].Edits {
+		whys = append(whys, e.Why)
+	}
+	want := []string{
+		"docs/guide.md moved to docs/guides/guide.md (the only file named guide.md)",
+		"docs/café.md moved to docs/design/café.md (the only file named café.md)",
+	}
+	if !reflect.DeepEqual(whys, want) {
+		t.Fatalf("edits %q, want %q (unmended: %q)", whys, want, props[0].Unmended)
+	}
+	if len(props[0].Unmended) != 1 || !strings.Contains(props[0].Unmended[0], "no file named old.md anywhere in the repo") {
+		t.Fatalf("a deleted target is gone, not relocated onto itself: %q", props[0].Unmended)
 	}
 }
