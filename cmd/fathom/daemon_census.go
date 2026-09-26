@@ -4,8 +4,9 @@ package main
 // `fathom daemon ps` joins the daemon records with a live census of
 // serve-http processes and names what is wrong with each; `fathom daemon
 // reap` is dry-run by default and, with --apply, kills only unmanaged
-// daemons whose verdict is not ok — never the managed daemon — and prunes
-// stale records. Before this, 15 stale records and two 22-hour scratch
+// daemons whose verdict is not ok — never the managed daemon, and never a
+// record-less one whose parent is alive — and prunes stale records whose
+// pid is still gone at prune time. Before this, 15 stale records and two 22-hour scratch
 // daemons were found by hand (INC-23).
 
 import (
@@ -241,11 +242,17 @@ func renderDaemonCensus(w io.Writer, rows []censusRow, now time.Time) {
 	_ = now
 }
 
-// liveCensus runs ps and reads the records.
+// liveCensus reads the records, then runs ps: a daemon that starts in
+// between is a live process without a record (no-record, kept while its
+// parent lives), never a live record read as stale.
 func liveCensus() ([]censusRow, error) {
 	home, err := os.UserHomeDir()
 	if err != nil || home == "" {
 		return nil, fmt.Errorf("daemon census: no home directory: %v", err)
+	}
+	recs, errs := listDaemonRecords(home)
+	for _, e := range errs {
+		fmt.Fprintf(os.Stderr, "warning: unreadable daemon record: %v\n", e)
 	}
 	out, err := exec.Command("ps", "-axo", "pid=,ppid=,etime=,rss=,command=").Output()
 	if err != nil {
@@ -256,10 +263,6 @@ func liveCensus() ([]censusRow, error) {
 		if p, ok := parsePsLine(line); ok {
 			procs = append(procs, p)
 		}
-	}
-	recs, errs := listDaemonRecords(home)
-	for _, e := range errs {
-		fmt.Fprintf(os.Stderr, "warning: unreadable daemon record: %v\n", e)
 	}
 	return daemonCensus(recs, procs, time.Now(), managedDaemonAddr(), exeInodeOK), nil
 }
@@ -375,6 +378,11 @@ func runDaemonReap(args []string, stdout, stderr io.Writer, env reapEnv) int {
 			fmt.Fprintf(stdout, "keep pid %d: the managed daemon (%s) is never reaped\n", r.PID, r.Verdict)
 		case r.PID == env.self || r.PID == env.selfParent:
 			fmt.Fprintf(stdout, "keep pid %d: this reap's own process tree\n", r.PID)
+		case r.Verdict == "no-record" && r.ParentAlive:
+			// Its record lives under another HOME (stranger-check, a
+			// testisolate'd suite): its parent is alive and its own
+			// bounds are in force. Not a kill target on the record alone.
+			fmt.Fprintf(stdout, "keep pid %d: no record under this HOME, but its parent (pid %d) is alive and its own bounds apply\n", r.PID, r.PPID)
 		default:
 			kills = append(kills, r)
 		}
@@ -425,10 +433,18 @@ func runDaemonReap(args []string, stdout, stderr io.Writer, env reapEnv) int {
 			env.removeRecord(r.RecordPath)
 		}
 	}
+	pruned := 0
 	for _, r := range prunes {
+		// Re-check: a daemon that bound and wrote its record after the
+		// census's ps reads as stale-record; its record is kept.
+		if env.alive(r.PID) {
+			fmt.Fprintf(stdout, "keep %s: pid %d is alive now (it started after the census)\n", r.RecordPath, r.PID)
+			continue
+		}
 		env.removeRecord(r.RecordPath)
+		pruned++
 		fmt.Fprintf(stdout, "pruned %s\n", r.RecordPath)
 	}
-	fmt.Fprintf(stdout, "reaped %d daemon(s), pruned %d stale record(s)\n", killed, len(prunes))
+	fmt.Fprintf(stdout, "reaped %d daemon(s), pruned %d stale record(s)\n", killed, pruned)
 	return 0
 }

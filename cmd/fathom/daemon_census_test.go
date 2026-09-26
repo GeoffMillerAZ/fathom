@@ -148,6 +148,9 @@ func TestDaemonReapDryRunKillsNothing(t *testing.T) {
 		if rows[i].PID == 100 {
 			rows[i].Verdict = "unlinked"
 		}
+		if rows[i].PID == 700 { // a record-less scratch daemon whose parent has since died
+			rows[i].Verdict, rows[i].ParentAlive = "orphaned", false
+		}
 	}
 	rows = append(rows, censusRow{PID: 42, Verdict: "orphaned", Command: "fathom serve-http"}) // ourselves, somehow
 

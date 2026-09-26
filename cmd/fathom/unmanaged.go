@@ -179,6 +179,11 @@ func (l *daemonLifetime) tick() string {
 		if rec, err := console.ReadDaemonRecord(l.recordPath); err == nil {
 			rec.HeartbeatAt = now.UTC().Format(time.RFC3339)
 			rec.LastActivityAt = last.Format(time.RFC3339)
+			if inFlight > 0 {
+				// A request in flight (an open /events stream) is
+				// activity now: the census must not read this daemon idle.
+				rec.LastActivityAt = rec.HeartbeatAt
+			}
 			_ = console.WriteDaemonRecord(l.recordPath, rec)
 		}
 	}
