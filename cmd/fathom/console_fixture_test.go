@@ -325,6 +325,8 @@ func samplePath(p *consolePage) string {
 		return "/claims?layer=obligations&svc=payment-service"
 	case "/explain":
 		return "/explain?svc=payment-service&file=payment.go"
+	case "/learn/guides/{slug}":
+		return "/learn/guides/fleet-health"
 	}
 	// A project's workspace tabs (/projects/{svc}/<tab>) open on the
 	// fixture's project too.

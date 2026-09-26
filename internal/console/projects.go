@@ -388,14 +388,27 @@ func freshnessClass(f string) string {
 	return "unknown"
 }
 
-// ProjectHref is a project's workspace route, with a tab when given
-// (design §3: each tab is a URL).
+// ProjectHref is a project's workspace route, or one of its tabs (design
+// §3: each tab is a URL). The workspace's own tabs are routes under it
+// (/projects/{svc}/index, console wave E); governance, plans, proof and
+// refactor open the Knowledge and Proof pages filtered to the project —
+// the one mapping the workspace's tab bar (cmd/fathom projectTabList) and
+// every link into a tab share.
 func ProjectHref(service, tab string) string {
-	h := "/projects/" + url.PathEscape(service)
-	if tab != "" {
-		h += "?tab=" + url.QueryEscape(tab)
+	q := url.QueryEscape(service)
+	switch tab {
+	case "":
+		return "/projects/" + url.PathEscape(service)
+	case "governance":
+		return "/layers?svc=" + q
+	case "plans":
+		return "/plans?svc=" + q
+	case "proof":
+		return "/certifications?svc=" + q
+	case "refactor":
+		return "/refactors?svc=" + q
 	}
-	return h
+	return "/projects/" + url.PathEscape(service) + "/" + url.PathEscape(tab)
 }
 
 // thousandsNoun is countNoun with a thousands separator: "4,025 claims".

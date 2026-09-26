@@ -74,7 +74,7 @@ func TestAttentionQueue_OrdersByProofBlockingFirst(t *testing.T) {
 	gate := a.Items[0]
 	if gate.Service != "fathom" || gate.Subject != "docs/plans/receipts.md" || gate.Count != 3 ||
 		gate.Remedy != "cd /src/fathom && fathom verify --service fathom --plan docs/plans/receipts.md" ||
-		gate.Evidence.Href != "/projects/fathom?tab=plans" || gate.Area != "Gate" || gate.AsOf != "2026-09-19T08:00:00Z" {
+		gate.Evidence.Href != "/plans?svc=fathom" || gate.Area != "Gate" || gate.AsOf != "2026-09-19T08:00:00Z" {
 		t.Errorf("gate item = %+v", gate)
 	}
 	if !strings.Contains(gate.Detail, "954a3296") || !strings.Contains(gate.Detail, "exits 1") {
@@ -89,7 +89,7 @@ func TestAttentionQueue_OrdersByProofBlockingFirst(t *testing.T) {
 	if a.Items[2].Service != "stale" || a.Items[2].Remedy != "fathom post-commit-hook --dir /src/stale --service stale --timeout 2m" || a.Items[3].Service != "remote" || !strings.Contains(a.Items[3].Title, "cannot be determined") {
 		t.Errorf("index items = %+v / %+v", a.Items[2], a.Items[3])
 	}
-	if c := a.Items[4]; c.Count != 45 || c.Area != "Proof" || c.Evidence.Href != "/projects/guides?tab=proof" || c.Remedy != "fathom certify gaps --service guides" {
+	if c := a.Items[4]; c.Count != 45 || c.Area != "Proof" || c.Evidence.Href != "/certifications?svc=guides" || c.Remedy != "fathom certify gaps --service guides" {
 		t.Errorf("certificate item = %+v", c)
 	}
 	if g := a.Items[5]; !strings.Contains(g.Title, "internal/CLAUDE.md") || !strings.Contains(g.Detail, "the last obligations compile (2026-09-20, 72 sections) did not compile them — it stopped at its budget") || g.Remedy != "fathom compile --service guides --layer obligations" {

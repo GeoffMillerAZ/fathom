@@ -131,7 +131,7 @@ func TestConsoleNow_QueueSinceAndPulse(t *testing.T) {
 		t.Fatalf("attention = %+v", a.Items)
 	}
 	gate := a.Items[0]
-	if gate.Service != "payment-service" || gate.Subject != "docs/plans/pay.md" || gate.Count != 1 || !strings.Contains(gate.Remedy, "fathom verify --service payment-service --plan docs/plans/pay.md") || gate.Evidence.Href != "/projects/payment-service?tab=plans" {
+	if gate.Service != "payment-service" || gate.Subject != "docs/plans/pay.md" || gate.Count != 1 || !strings.Contains(gate.Remedy, "fathom verify --service payment-service --plan docs/plans/pay.md") || gate.Evidence.Href != "/plans?svc=payment-service" {
 		t.Errorf("gate item = %+v (the registered root's run, never the scratch clone's)", gate)
 	}
 	if a.Items[1].Count != 2 {
@@ -171,7 +171,7 @@ func TestConsoleNow_QueueSinceAndPulse(t *testing.T) {
 		`data-console-copy="fathom brief --json"`, `data-console-copy="fathom fleet report --json"`,
 		`id="attention"`, `id="since"`, `id="pulse"`, `data-attention-item data-kind="gate"`,
 		`data-console-copy="cd ` + root + ` &amp;&amp; fathom verify --service payment-service --plan docs/plans/pay.md"`,
-		`href="/projects/payment-service?tab=plans"`, `data-change="restart"`, `data-shared-spark`,
+		`href="/plans?svc=payment-service"`, `data-change="restart"`, `data-shared-spark`,
 		"Calls per day as a table", `data-last-look>Last look ` + f.now.Add(-2*time.Hour).UTC().Format("01-02 15:04") + ` UTC (2 h ago).`,
 		"Machine surfaces and the four questions",
 	} {

@@ -134,12 +134,23 @@ func truthStateLine(s console.State, reason string) string {
 
 // renderVerbChip renders the exact command as selectable monospace text with
 // a copy button the console script reveals (hidden without JavaScript, when
-// the text itself is still selectable).
+// the text itself is still selectable). A chip that is not a fathom command
+// — an agent-surface tool call, a harness's `mcp add` line — is labelled by
+// what it is. The button never shrinks or wraps: a long command squeezes
+// the code, which wraps, never the button's label (it inherits whatever
+// overflow-wrap its container sets).
 func renderVerbChip(cmd string) string {
 	c := html.EscapeString(cmd)
+	what := "the command"
+	if !strings.HasPrefix(cmd, "fathom ") {
+		what = "the call"
+		if !strings.Contains(cmd, "{") {
+			what = "the line"
+		}
+	}
 	return `<span class="inline-flex max-w-full items-center gap-1 rounded-md border border-line bg-surface-sunken py-0.5 pl-2 pr-0.5 font-mono text-xs text-ink" data-verb-chip>` +
 		`<code class="min-w-0 [overflow-wrap:anywhere]">` + c + `</code>` +
-		`<button type="button" hidden data-console-copy="` + c + `" aria-label="Copy the command ` + c + `" class="inline-flex min-h-11 min-w-11 items-center justify-center rounded px-2 font-sans text-xs font-medium text-accent hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">Copy</button>` +
+		`<button type="button" hidden data-console-copy="` + c + `" aria-label="Copy ` + what + ` ` + c + `" class="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center whitespace-nowrap rounded px-2 font-sans text-xs font-medium text-accent hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">Copy</button>` +
 		`</span>`
 }
 

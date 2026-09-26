@@ -648,6 +648,53 @@ func TestConsolePagesRenderTheirVerbs(t *testing.T) {
 		}
 	}
 
+	// Wave G: the Learn pages render verbs, and a page may also carry a
+	// section for a command it computes per request — the chosen project's
+	// own `fathom capabilities --repo R --service S --json` on /learn. Every
+	// such section equals that exact command's output too.
+	for _, id := range []string{"learn", "learn-ask"} {
+		if p, ok := defaultConsoleRegistry().page(id); !ok || len(p.Verbs) == 0 {
+			t.Errorf("page %s must render a verb", id)
+		}
+	}
+	perRequest := 0
+	for _, p := range defaultConsoleRegistry().pages {
+		if p.ID == "statusz" {
+			continue
+		}
+		env := f.pageJSON(t, samplePath(p))
+		for key, section := range env.Sections {
+			// The page's rendered verbs were held above; a per-project
+			// template section ("{svc}") is held below; a filtered page's
+			// quoted command was held in the loop before this one.
+			if containsString(env.Verbs, key) || !strings.HasPrefix(key, "fathom ") || strings.ContainsAny(key, `'"{`) {
+				continue
+			}
+			perRequest++
+			parity(p.ID, key, section)
+		}
+	}
+	if perRequest == 0 {
+		t.Error("no page carries a per-request section; /learn's capabilities section is missing")
+	}
+	// Every panel's verb chip is a command a shell runs (ADR-045 decision
+	// 2): an agent-surface tool call ("staleness_report {…}") is offered as
+	// a call inside a panel, never as the panel's verb — only a try-it
+	// answer, whose whole point is the exact call an agent makes, carries
+	// one (not on these sample paths).
+	chipRE := regexp.MustCompile(`data-console-panel[^>]*data-console-verb="([^"]*)"`)
+	toolCall := regexp.MustCompile(`^[a-z_]+ \{`)
+	for _, p := range defaultConsoleRegistry().pages {
+		_, _, page := f.get(t, samplePath(p))
+		for _, m := range chipRE.FindAllStringSubmatch(page, -1) {
+			if verb := html.UnescapeString(m[1]); toolCall.MatchString(verb) {
+				t.Errorf("page %s: a panel's verb chip %q is an agent-surface call, not a command", p.ID, verb)
+			}
+		}
+	}
+	// The Learn pipeline's stage chips print their headlines:
+	// TestConsoleLearn_StageChipsPrintTheirHeadlines runs each one.
+
 	// Per-project verbs: a page that renders a verb's answer for each
 	// project from a recorded instrument (ProjectVerbs) carries a section
 	// per template, keyed by service, and each concrete verb is run and
@@ -969,6 +1016,45 @@ func TestConsoleMetricsAgreeAcrossPages(t *testing.T) {
 
 	// The Knowledge metrics (console wave D) agree with their verbs.
 	assertKnowledgeMetricsAgree(t, f, value(console.MetricServices), value(console.MetricClaims))
+
+	// Wave G: the Learn pages render the shared metrics they carry — the
+	// project count in /learn's heading, the agent surface's size in the
+	// ask page's coverage line — from the same projections.
+	if _, _, learn := f.get(t, "/learn"); !strings.Contains(learn, "one of "+valuePlain(value(console.MetricServices))+" indexed projects") {
+		t.Errorf("/learn must name the shared project count %+v", value(console.MetricServices))
+	}
+	if _, _, ask := f.get(t, "/learn/ask"); !strings.Contains(ask, "of the "+fmtThousands(tools.V)+" on the agent surface") {
+		t.Errorf("/learn/ask must name the shared agent-surface size %d", tools.V)
+	}
+	// The Learn pages' traffic is one read of the call log per project: the
+	// pipeline's rules served are the ask page's obligations asks, its
+	// tool calls answered the sum of every tool's asks, for every project,
+	// in the same truth state.
+	for _, svc := range consoleFixtureServices {
+		var pipe learnModel
+		if err := json.Unmarshal(f.pageJSON(t, "/learn?svc="+svc).Model, &pipe); err != nil {
+			t.Fatal(err)
+		}
+		var ask askModel
+		if err := json.Unmarshal(f.pageJSON(t, "/learn/ask?svc="+svc).Model, &ask); err != nil {
+			t.Fatal(err)
+		}
+		asked := map[string]console.Value[int]{}
+		for _, s := range ask.Guide.Shapes {
+			asked[s.Tool] = s.Asked
+		}
+		for _, st := range pipe.Pipeline.Stages {
+			if st.ID != console.StageServe {
+				continue
+			}
+			if got, want := st.Headline.Value, asked["obligations"]; got.State != want.State || got.V != want.V {
+				t.Errorf("%s: /learn rules served %+v, /learn/ask obligations asked %+v", svc, got, want)
+			}
+			if st.Counts[0].Value.V < st.Headline.Value.V {
+				t.Errorf("%s: tool calls answered %+v below rules served %+v", svc, st.Counts[0].Value, st.Headline.Value)
+			}
+		}
+	}
 
 	// Plan proof in its hardest state — one plan verified at HEAD in a
 	// detached clone, one only at an older commit at the root, one never:

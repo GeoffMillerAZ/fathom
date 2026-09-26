@@ -67,6 +67,13 @@ func cmdHarnessLadder(args []string, stdout, stderr io.Writer) int {
 // adds --url when its daemon listens elsewhere).
 const harnessMatrixDefaultURL = "http://127.0.0.1:7575"
 
+// harnessMatrixNow is the matrix's demotion clock — one clock for the verb
+// and the pages that render its JSON (the Ask page, console_learn_ask.go,
+// and the Operate page's harness panel), so they agree on a tier however
+// long after a descriptor's verification they run. It is the console's
+// verb clock (time.Now outside tests) unless a test pins it alone.
+var harnessMatrixNow = consoleVerbNow
+
 // cmdHarnessMatrix renders the adoption matrix (RP-18) — the table
 // docs/adoption/other-harnesses.md pins between its markers — as Markdown
 // or --json rows.
@@ -77,9 +84,7 @@ func cmdHarnessMatrix(args []string, stdout, stderr io.Writer) int {
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
-	// The console's clock (time.Now outside tests): the demotion clock the
-	// Operate page's harness panel reads is the same instant (P10).
-	now := consoleVerbNow()
+	now := harnessMatrixNow()
 	if *jsonOut {
 		enc := json.NewEncoder(stdout)
 		enc.SetIndent("", "  ")

@@ -66,6 +66,43 @@ can omit its top-bar title (returned as FATHOM-S0-KIT-01 below). `analytics.grap
 `viz.heatmap` truth states, `content.code-excerpt` and `work.unified-diff` wait for the
 pages that need them (waves C–E); none is imported yet, so none is scanned.
 
+## Console wave G: the Learn pages (2026-09-25)
+
+OC-46..OC-48 (`cmd/fathom/console_learn*.go`, projections `internal/console/learn.go`,
+`ask.go`, `guides.go`) adopt two more kit pieces at mirror `d9dd789`; no mirror file
+changed:
+
+- `viz.LayoutGraph` (FATHOM-KIT-02, `analytics.graph`) draws `/learn`'s pipeline: given
+  ranks (one column per stage, the stage name as the column heading), the stage's live
+  count and unit in its box, each box linking to the stage's page. The SVG sits in a
+  keyboard-scrollable region (it is ~1,030 px wide; it fits at 1440 and scrolls at 390)
+  and the kit's own `Table()` alternative sits behind `chrome.RenderDisclosure`, its
+  links given 44 px targets by the wrapper, as the kit asks.
+- `docs` (`content.docs`): the guides render as `doc-prose` with `docs.RenderToCRail` from
+  `xl` up (placed first in the document so the outline precedes the prose for keyboard
+  and screen-reader readers) and `docs.RenderToCPanel` below it. `cmd/fathom/ui/input.css`
+  imports `appkit/ui/docs/prose.css` (L1) and scans `appkit/ui/docs/*.go`;
+  `scripts/ui-css.sh`'s audited closure lists both, and `task ui:css` regenerated
+  `app.css`.
+- Also composed: `form.RenderSelect`/`RenderField`/`RenderButton` (the project picker, a
+  GET form), `form.RenderInput` (the try-it input), `chrome.RenderDescriptionList`,
+  `table.Table` and `renderPanel` throughout.
+
+Returned: FATHOM-G-KIT-01 (graph node truth states) and FATHOM-G-KIT-02 (the ToC panel
+always open) as candidates, and FATHOM-G-KIT-03 as the `docs` package's second-consumer
+evidence (records below). The browser run is
+`docs/bench/readings/console-g-proof-2026-09-25.md`.
+
+The wave's fix pass (same day) found the rail never stuck and its entries were 20 px
+targets: the dashboard shell's `<main>` is a scroll container that never scrolls. Fathom
+works around it without touching the mirror — a page that positions something sticky
+carries `data-console-sticky`, and the console's `<body>` frees `main` for it
+(`overflow-x: clip; overflow-y: visible`); the guide wraps the related links and
+`docs.RenderToCRail` in one bounded sticky block with 44 px entries — and returns it as
+FATHOM-G-KIT-04. The pipeline's graph nodes now carry the stage's name with the count
+(`Source: 2,093`), since the kit's `Table()` names each node and each hand-off by its
+label alone.
+
 ## Console stage 0: the ⌘K palette and live freshness (2026-09-25)
 
 OC-12 adopts `interaction.command-palette` (FATHOM-KIT-01) at mirror `d9dd789`, pinned in
@@ -510,7 +547,7 @@ inside mirror `d9dd789`:
 | ID | Kit capability | Delivered at | Fathom integration |
 |---|---|---|---|
 | FATHOM-KIT-01 | `interaction.command-palette` (`appkit/ui/palette`) | `d52acea`, fixes `843a669` `77b25b9`, merge `9dc6f5d` | OC-12, `cmd/fathom/console_palette.go` |
-| FATHOM-KIT-02 | `analytics.graph` (`viz.LayoutGraph`, `viz.LayoutEgo`) | `dc8f035`, fix `209249f`, merge `6ed6ea5` | OC-37, the code neighborhood (`cmd/fathom/console_project_index.go`, `LayoutEgo` + `Table()`) |
+| FATHOM-KIT-02 | `analytics.graph` (`viz.LayoutGraph`, `viz.LayoutEgo`) | `dc8f035`, fix `209249f`, merge `6ed6ea5` | OC-37, the code neighborhood (`cmd/fathom/console_project_index.go`, `LayoutEgo` + `Table()`, wave E); OC-46, the Learn pipeline (`cmd/fathom/console_learn_pipeline.go`, `LayoutGraph`, wave G) |
 | FATHOM-KIT-03 | `viz.heatmap` truth states | `0f45523`, fix `8f663ab`, merge `b861d49` | the certifications matrix (OC-24, `console_certify.go`, wave C); the `/layers` coverage matrix (OC-28, `cmd/fathom/console_layers.go`, wave D) |
 | FATHOM-KIT-04 | `content.code-excerpt` (`code.RenderExcerpt`) | `94e6815`, fix `5bf90cd`, merge `fd47ef0` | the refactor page and a row's oracle match (OC-26, OC-23, wave C); the `/claims/{id}` citation (OC-30, `cmd/fathom/console_claim.go`, wave D) |
 | FATHOM-KIT-05 | `work.unified-diff` (`hitl.RenderUnifiedDiff`) | `94e6815`, fix `5bf90cd`, merge `fd47ef0` | pending: review surfaces |
@@ -727,6 +764,58 @@ inside mirror `d9dd789`:
   `[&_section>div:first-child]:flex-wrap` (`projectBody`); shared `renderPanel` is
   unchanged.
 - **Disposition:** `candidate`. Next action: app-kit maintainer.
+
+**FATHOM-G-KIT-01 — graph nodes have no truth state (candidate)**
+
+- **Origin / task:** console wave G, `/learn`'s pipeline (`viz.LayoutGraph`, one node per
+  stage with its live count).
+- **Observed / expected:** a stage whose instrument did not answer can only be drawn as a
+  normal box labelled "—"; the absence reads the same as a measured value in the
+  picture, and only the table alternative and the stage panel say why. Expected: the
+  heatmap's truth states (FATHOM-KIT-03) for nodes — missing/unknown/error drawn
+  distinctly (dashed or hatched box, a legend entry, the reason in the node's title).
+- **Disposition:** `candidate`; Fathom keeps "—" and names the reason on the stage panel.
+  Next action: app-kit maintainer.
+
+**FATHOM-G-KIT-02 — the narrow ToC panel is always open (candidate)**
+
+- **Origin / task:** console wave G, `/learn/guides/{slug}` at 390 px
+  (`docs.RenderToCPanel`).
+- **Observed / expected:** the disclosure renders `open`, and each entry is a 44 px row,
+  so a guide with 22 outline entries (`getting-started`) spends its first 1,155 px on the
+  outline before any prose. Expected: an `Options` field to render it closed (or closed
+  above a heading count).
+- **Disposition:** `candidate`; not patched (the panel is kit markup). Next action:
+  app-kit maintainer.
+
+**FATHOM-G-KIT-03 — `docs` has its second consumer (evidence)**
+
+- **Origin / task:** console wave G renders the use-case guides, the glossary and the laws
+  with `docs.RenderToCRail`, `docs.RenderToCPanel` and `prose.css` (`doc-prose`, the
+  `doc-link--unresolved` treatment for a link with no page).
+- **Observed:** `docs` shipped with one consumer (platform-engineering's portal) under a
+  named D17 exception; Fathom is the second. Heading ids stay the caller's (goldmark's
+  auto ids, or `{#law-N}`/`{#term-N}` given explicitly), as the package requires.
+- **Disposition:** `evidence` for the kit's D17 two-consumer bar. Next action: app-kit
+  maintainer records the second consumer.
+
+**FATHOM-G-KIT-04 — the shell's main pins sticky content; the ToC rail's entries are 20 px (candidate)**
+
+- **Origin / task:** console wave G fix pass, `/learn/guides/{slug}` at 1440 px
+  (`dashboard.RenderShell` with `docs.RenderToCRail`).
+- **Observed / expected:** the shell writes `<main class="flex-1 overflow-y-auto …">`
+  inside a `min-h-screen` flex column with no height bound, so `main` grows with its
+  content and never scrolls — yet as a scroll container it is the sticky reference for
+  every descendant: the rail's `sticky top-6` scrolled away with the 14,000 px guide (top
+  417 px, then −2,583 px after `scrollTo(0, 3000)`; with `main` not a scroll container it
+  stays at 24 px). The rail's links are `block` text rows, 243 × 20 px, below 44 px
+  targets and with no focus-visible ring. Expected: a shell whose `main` is not a scroll
+  container unless the shell bounds it to the viewport, and rail entries that meet the
+  kit's own 44 px floor (as `RenderToCPanel`'s do).
+- **Disposition:** `candidate`; worked around in fathom (`data-console-sticky` and the
+  body's `:has()` classes in `console_shell.go`; the guide's own bounded sticky block with
+  `[&_nav_a]:min-h-11` in `console_learn.go`), the mirror untouched. Next action: app-kit
+  maintainer.
 
 **FATHOM-ADOPT-01 — selected metadata migration**
 

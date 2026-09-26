@@ -15,7 +15,6 @@ package main
 
 import (
 	"net/http"
-	"net/url"
 	"os"
 	"sort"
 	"strings"
@@ -55,10 +54,10 @@ type projectTab struct {
 var projectTabList = []projectTab{
 	{ID: "overview", Label: "Overview", Page: "project"},
 	{ID: "index", Label: "Index", Page: "project-index", Suffix: "/index"},
-	{ID: "governance", Label: "Governance", Href: func(s string) string { return "/layers?svc=" + url.QueryEscape(s) }},
-	{ID: "plans", Label: "Plans", Href: func(s string) string { return "/plans?svc=" + url.QueryEscape(s) }},
-	{ID: "proof", Label: "Proof", Href: func(s string) string { return "/certifications?svc=" + url.QueryEscape(s) }},
-	{ID: "refactor", Label: "Refactor", Href: func(s string) string { return "/refactors?svc=" + url.QueryEscape(s) }},
+	{ID: "governance", Label: "Governance", Href: func(s string) string { return console.ProjectHref(s, "governance") }},
+	{ID: "plans", Label: "Plans", Href: func(s string) string { return console.ProjectHref(s, "plans") }},
+	{ID: "proof", Label: "Proof", Href: func(s string) string { return console.ProjectHref(s, "proof") }},
+	{ID: "refactor", Label: "Refactor", Href: func(s string) string { return console.ProjectHref(s, "refactor") }},
 	{ID: "intent", Label: "Intent", Page: "project-intent", Suffix: "/intent"},
 	{ID: "activity", Label: "Activity", Page: "project-activity", Suffix: "/activity"},
 	{ID: "wiring", Label: "Wiring", Page: "project-wiring", Suffix: "/wiring"},
