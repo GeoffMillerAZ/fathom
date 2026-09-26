@@ -60,6 +60,12 @@ func consoleFixtureStorePath(t *testing.T) string {
 				return
 			}
 		}
+		// Governed claims, compile runs and verdicts for the Knowledge
+		// pages (console_knowledge_test.go).
+		if err := seedConsoleFixtureKnowledge(path); err != nil {
+			consoleFixtureStore.err = "seed knowledge: " + err.Error()
+			return
+		}
 		consoleFixtureStore.path = path
 	})
 	if consoleFixtureStore.err != "" {
@@ -146,6 +152,9 @@ func newConsoleFixtureOpts(t *testing.T, o consoleFixtureOpts) *consoleFixture {
 	srv := mcp.NewServerWithFleetAndLogger(c, &fleetAdapter{c: c, log: testDiscardLogger()}, logger)
 	h = newHTTPHandlerDeps(srv, c, strings.TrimPrefix(f.ts.URL, "http://"), nil, f.deps)
 	t.Setenv("FATHOM_HTTP", f.ts.URL)
+	// serve-http records its store once bound (OC-2): a Knowledge verb run
+	// with --url reads the fixture's store through that record.
+	recordConsoleFixtureDaemon(t, f)
 
 	prev := fleetReportNow
 	fleetReportNow = func() time.Time { return f.now }
@@ -225,6 +234,12 @@ func samplePath(p *consolePage) string {
 		return "/sessions/s-1"
 	case "/search":
 		return "/search?q=charge"
+	case "/layers/{layer}":
+		return "/layers/obligations"
+	case "/claims/{id}":
+		return "/claims/" + consoleFixtureClaimID
+	case "/explain":
+		return "/explain?svc=payment-service&file=payment.go"
 	}
 	return p.Route
 }

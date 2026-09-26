@@ -186,7 +186,7 @@ func Strata(ctx context.Context, src KnowledgeSource) (StrataView, error) {
 		}
 		return v
 	}
-	out.Totals.Claims = fleet(Measured(total.Current(), storeSource).WithDenominator("current claims (fresh, stale, contradicted) across " + countNoun(len(k.Services), "project")))
+	out.Totals.Claims = currentClaims(k)
 	out.Totals.Runs = fleet(Measured(runs, storeSource).WithDenominator("real compile runs (dry runs and refusals excluded)"))
 	out.Totals.Emitted = fleet(Measured(emitted, storeSource).WithDenominator("claims emitted by real compile runs"))
 	out.Totals.Rejected = fleet(Measured(rejected, storeSource).WithDenominator("candidate claims the compile's verification rejected"))
@@ -203,6 +203,31 @@ func Strata(ctx context.Context, src KnowledgeSource) (StrataView, error) {
 	}
 	out.Lifecycle = lifecycle(k, total)
 	return out, nil
+}
+
+// MetricClaims is the fleet's current governed claims — shown on /layers
+// and /packs, computed once by currentClaims (OC-9's rule).
+const MetricClaims MetricID = "claims.current"
+
+// currentClaims counts the claims serving can still use (fresh, stale,
+// contradicted) across every project; an unreadable project makes it a
+// lower bound naming the project.
+func currentClaims(k knowledge) Value[int] {
+	var st StatusCounts
+	var unreadable []string
+	for _, s := range k.Services {
+		if s.Err != "" {
+			unreadable = append(unreadable, s.Service)
+			continue
+		}
+		for _, c := range s.Claims {
+			st.add(c.Status)
+		}
+	}
+	if len(unreadable) > 0 {
+		return Partial(st.Current(), fmt.Sprintf("lower bound; %s unreadable: %s", countNoun(len(unreadable), "project"), strings.Join(unreadable, ", "))).WithSource(storeSource)
+	}
+	return Measured(st.Current(), storeSource).WithDenominator("current claims (fresh, stale, contradicted) across " + countNoun(len(k.Services), "project"))
 }
 
 // lifecycle counts the claim events by verdict.

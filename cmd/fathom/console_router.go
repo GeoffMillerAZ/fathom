@@ -81,6 +81,9 @@ func consolePageJSONFor(p *consolePage, r *http.Request, out consoleOut, now tim
 		title = p.Title
 	}
 	verbs := p.Verbs
+	if out.Verbs != nil {
+		verbs = out.Verbs
+	}
 	if verbs == nil {
 		verbs = []string{}
 	}
@@ -155,7 +158,7 @@ func (d *consoleDeps) pageHandler(p *consolePage) http.HandlerFunc {
 		}
 		page := renderConsoleShell(d.reg, consoleShell{
 			PageID: p.ID, Title: title, Crumbs: consoleCrumbs(d.reg, p.ID, title),
-			Question: p.Question, Meta: out.Meta, Verbs: p.Verbs, Actions: out.Actions,
+			Question: p.Question, Meta: out.Meta, Verbs: pageVerbs(p, out), Actions: out.Actions,
 			Body: body, Live: liveStatus,
 		})
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -189,6 +192,15 @@ func modelMeta(m observatoryModel) []string {
 		meta = append(meta, "degraded: registry unreachable")
 	}
 	return meta
+}
+
+// pageVerbs is what a request rendered: the page's filled verbs, else its
+// registry verbs.
+func pageVerbs(p *consolePage, out consoleOut) []string {
+	if out.Verbs != nil {
+		return out.Verbs
+	}
+	return p.Verbs
 }
 
 func containsString(list []string, v string) bool {

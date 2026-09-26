@@ -19,6 +19,7 @@
 @source "../../../third_party/app-kit/appkit/ui/appearance/*.go";
 @source "../../../third_party/app-kit/appkit/ui/callout/*.go";
 @source "../../../third_party/app-kit/appkit/ui/chrome/*.go";
+@source "../../../third_party/app-kit/appkit/ui/code/*.go";
 @source "../../../third_party/app-kit/appkit/ui/dashboard/*.go";
 @source "../../../third_party/app-kit/appkit/ui/form/*.go";
 @source "../../../third_party/app-kit/appkit/ui/hitl/*.go";

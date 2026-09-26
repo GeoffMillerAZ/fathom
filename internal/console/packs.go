@@ -28,7 +28,10 @@ type PacksView struct {
 	// Readings are the published precision/recall readings the matrix
 	// cites, one row per (language, tier) measured.
 	Readings []DialectReading `json:"readings"`
-	Notes    []string         `json:"notes,omitempty"`
+	// Claims is the fleet's current governed claims (MetricClaims), the sum
+	// the layer packs contribute.
+	Claims Value[int] `json:"claims"`
+	Notes  []string   `json:"notes,omitempty"`
 }
 
 // DialectPack is one language's row.
@@ -170,7 +173,7 @@ func PackMatrix(ctx context.Context, src KnowledgeSource) (PacksView, error) {
 	if err != nil {
 		return PacksView{}, err
 	}
-	out := PacksView{Dialects: []DialectPack{}, Layers: []LayerPack{}, Readings: DialectReadings}
+	out := PacksView{Dialects: []DialectPack{}, Layers: []LayerPack{}, Readings: DialectReadings, Claims: currentClaims(k)}
 	for _, p := range k.PackErr {
 		out.Notes = append(out.Notes, "pack catalog unreadable: "+p)
 	}

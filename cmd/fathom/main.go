@@ -98,9 +98,14 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return cmdClaim(args[1:], stdout, stderr)
 	case "layers":
 		return cmdLayers(args[1:], stdout, stderr)
+	case "obligations":
+		return cmdObligations(args[1:], stdout, stderr)
 	case "report":
 		if len(args) > 1 && args[1] == "evidence" {
 			return cmdReportEvidence(args[2:], stdout, stderr)
+		}
+		if len(args) > 1 && args[1] == "packs" {
+			return cmdReportPacks(args[2:], stdout, stderr)
 		}
 		return cmdReport(args[1:], stdout, stderr)
 	case "review":

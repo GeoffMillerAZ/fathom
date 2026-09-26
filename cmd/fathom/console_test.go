@@ -578,10 +578,13 @@ func TestConsolePagesRenderTheirVerbs(t *testing.T) {
 		if env.Schema != consolePageJSONSchema || env.Page != p.ID || env.Group != p.Group || env.Question != p.Question {
 			t.Errorf("page %s: envelope = %+v", p.ID, env)
 		}
-		if !reflect.DeepEqual(append([]string{}, env.Verbs...), append([]string{}, p.Verbs...)) {
+		// A page whose registry verbs name parameters ({layer}, {svc}, …)
+		// renders them filled from the request; each rendered verb must be
+		// one of its registry's, and each is held to its section.
+		if !verbsFillTemplates(env.Verbs, p.Verbs) {
 			t.Errorf("page %s: JSON verbs %v, registry %v", p.ID, env.Verbs, p.Verbs)
 		}
-		for _, verb := range p.Verbs {
+		for _, verb := range env.Verbs {
 			withVerbs++
 			section, ok := env.Sections[verb]
 			if !ok {
@@ -654,7 +657,7 @@ func TestConsoleMetricsAgreeAcrossPages(t *testing.T) {
 			t.Errorf("page %s JSON carries %d metrics, declares %d", p.ID, len(env.Metrics), len(p.Shows))
 		}
 	}
-	for _, id := range []console.MetricID{console.MetricServices, console.MetricSymbols, console.MetricCalls, console.MetricSessions, console.MetricObservations, console.MetricAgentTools} {
+	for _, id := range []console.MetricID{console.MetricServices, console.MetricSymbols, console.MetricCalls, console.MetricSessions, console.MetricObservations, console.MetricAgentTools, console.MetricClaims} {
 		pages := byMetric[string(id)]
 		if len(pages) == 0 {
 			t.Errorf("metric %s is shown on no page", id)
@@ -744,6 +747,7 @@ func TestConsoleMetricsAgreeAcrossPages(t *testing.T) {
 	if strings.Contains(brief.Markdown, "16-tool") {
 		t.Error("the brief still names a literal surface size")
 	}
+	assertKnowledgeMetricsAgree(t, f, value(console.MetricServices), value(console.MetricClaims))
 }
 
 // TestConsolePanels_CarryVerbQuestionAndSource pins OC-10: a panel states

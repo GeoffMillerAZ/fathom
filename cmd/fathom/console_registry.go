@@ -69,7 +69,11 @@ type consoleOut struct {
 	Model    any            // the page's own projection, served as JSON "model"
 	Metrics  console.Metrics
 	Sections map[string]any // verb → that verb's --json value
-	Body     func() string  // HTML, rendered only for an HTML request
+	// Verbs, when set, are the exact commands this request rendered: a page
+	// whose registry Verbs name parameters ({layer}, {id}, {svc}, {file})
+	// fills them from the request. nil means the registry's Verbs.
+	Verbs []string
+	Body  func() string // HTML, rendered only for an HTML request
 	// Raw, when set, answers the request itself (a download, a fragment).
 	Raw func(w http.ResponseWriter) bool
 }
