@@ -100,7 +100,10 @@ type ExplainCandidate struct {
 	// Rank is the 1-based position in serving's ranking, before the cap.
 	Rank int `json:"rank"`
 	// Served is true when the rule reached the served list; Position is its
-	// 1-based place there, the order the agent reads.
+	// 1-based place in that compiled list. The obligations tool prepends
+	// raw-fallback rows (ADR-037) before it, so the agent reads the rule
+	// after those: a page showing both numbers the compiled rules by
+	// Position and the raw rows apart, never one rule at two places.
 	Served   bool `json:"served"`
 	Position int  `json:"position,omitempty"`
 	// Reserved marks a rule that took one of the nearest tier's reserved
@@ -298,7 +301,7 @@ func explainDisplacement(trace *explainTrace, i int, file string, rankOf, positi
 		case RankKeyRole:
 			return &Displacement{Reason: DisplacedRole, By: by, Why: "governs rules (human-authored guides and ADRs) rank ahead of claims rules, and the cap filled first"}
 		case RankKeyScopeTier:
-			return &Displacement{Reason: DisplacedTier, By: by, Why: fmt.Sprintf("nearer-scope rules (%s) filled the cap before this %s rule", tierWords(k.governing.name()), tierWords(d.governing.name()))}
+			return &Displacement{Reason: DisplacedTier, By: by, Why: fmt.Sprintf("nearer-scope rules (scoped to %s) filled the cap before this rule, scoped to %s", tierWords(k.governing.name()), tierWords(d.governing.name()))}
 		default:
 			return &Displacement{Reason: DisplacedRank, By: by, Why: fmt.Sprintf("same scope tier as the rule served at #%d; ranked lower on %s", p, rankKeyWords(key))}
 		}

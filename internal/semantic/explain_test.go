@@ -144,6 +144,12 @@ func TestExplainObligations_DisplacedReasons(t *testing.T) {
 	if d := candidateByRule(t, ex2)["Root rule."].Displaced; d == nil || d.Reason != DisplacedTier || !strings.Contains(d.Why, "its package directory") {
 		t.Errorf("a farther rule behind a full nearer tier = %+v, want tier", d)
 	}
+	// The reason reads as a sentence: both tiers are named once, with no
+	// determiner stacked on the tier's own ("this the repository root").
+	if d := candidateByRule(t, ex2)["Root rule."].Displaced; d == nil ||
+		d.Why != "nearer-scope rules (scoped to its package directory) filled the cap before this rule, scoped to the repository root" {
+		t.Errorf("tier displacement reads %q", d.Why)
+	}
 	st3 := store.NewMemoryStore()
 	for _, n := range []string{"1", "2", "3", "4", "5", "6", "7"} {
 		seedServed(t, st3, "r"+n, "Root rule "+n+".", []string{"**"}, core.ClaimFresh)
