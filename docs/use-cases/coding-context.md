@@ -27,7 +27,7 @@ hooks, gates, CLAUDE.md/AGENTS.md — lives in [coding-agents.md](coding-agents.
 | `pack_context` | MCP tool | Packs ranked evidence items into a token budget; `concern` and `service` required |
 | `brief` | MCP tool | Paste-ready markdown brief combining symbol resolution + concern query; respects a char budget |
 | `symbol_context` | MCP tool | Definition + direct callers + direct callees + related tests for one symbol |
-| `read_source` | MCP tool | Bounded, line-numbered raw-text read from the indexed corpus (200 lines / 16000 bytes per call) — the agent surface's `sed -n`; refuses ignored or suppressed paths by name |
+| `read_source` | MCP tool | Bounded, line-numbered raw-text read from the indexed corpus (200 lines / 8000 bytes per call by default, `max_bytes` up to 16000; the bytes are the `lines` array as sent, envelope and escaping included) — the agent surface's `sed -n`; refuses ignored or suppressed paths by name |
 | `references` | MCP tool | Fleet-wide occurrence search for an identifier or string, evidence-tiered — the structured alternative to grepping repo by repo |
 | `memory_search` | MCP tool | Anchored memories for a service, filtered by `query` and/or `file`; every entry carries `tier` and `state` (**experimental** — new, unmeasured) |
 | `find_callees` | MCP tool | Direct callees of a named symbol |
@@ -144,7 +144,7 @@ Returns all three results in one response. Use `batch` when the calls are indepe
 
 **Re-ingest when stale**: `serve-mcp` is a long-running process; the index can fall behind after commits. Check `staleness_report` or inspect the `staleness` field on `query_symbols` results. To refresh in-session, call the `ingest` MCP tool — a concurrent CLI `ingest` can contend with the session's own writes (SQLite serializes writers, ADR-020) and fail past `busy_timeout`.
 
-**Budget units**: `pack_context` and `repo_map` `budget` is in tokens (default 4000). `brief` `budget` is in characters (default 16000). Set these according to your model's context headroom. Elision is always disclosed in the response, never silent.
+**Budget units**: `pack_context` and `repo_map` `budget` is in tokens (default 4000). `brief` `budget` is in characters (default 16000). `read_source` `max_bytes` is in bytes of the `lines` array as sent (default 8000, ceiling 16000). Set these according to your model's context headroom. Elision is always disclosed in the response, never silent.
 
 **Project-settable defaults** (**experimental**, BA-9): a `budgets` block in `.fathom/capabilities.cue` (project, governs) or `~/.fathom/capabilities.cue` (user default) sets the class defaults in tokens — `budgets: { list: 1500, composite: 4000, map: 2500 }`, where `list` = `query_symbols`/`references`, `composite` = `pack_context`, `map` = `repo_map`. The block is closed: an unknown key is refused with a did-you-mean. `find_symbol`, `find_callers`, `symbol_context` and `outline` are not class-budgeted. Honoured by the `serve-http` daemon; stdio `serve-mcp` still uses the built-ins.
 

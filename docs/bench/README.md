@@ -525,6 +525,45 @@ before any fathom tool (obligations 0.15): given everything, the agent
 greps first, reaches for the index second, and pays for both. That is the
 cost story of the whole matrix in one row, and it is why SB-48 exists.
 
+### The losing tasks, re-read per call (BP-41..46, 2026-09-25, no spend)
+
+The fathom-arm transcripts of the same rerun, read per call for the three
+tasks BP-41 named. It is the one fathom-only run since the compact
+`references`, the `read_source` budget and the stop sentences landed
+(fathom cells at 3655eaa). Payload against the borrowed grep cells: H1-T06
+32.3×, H1-T08 3.53×, H1-T11 3.73×. BP-41's bar, ≤ 1.0 on each task, is
+not met, and no targeted run has measured it since: the one targeted row,
+`run-20260913T034838Z`, carries no fathom payload bytes.
+
+- `references` is no longer where the bytes go. A 50-row call the agent
+  asked for (the default is 25) cost 3.6–3.8 KB, and a free-text query
+  (`"workspace/ convention"`, `"shell fathom ingest"`) was refused in about
+  200 bytes, where the 2026-09-13 run paid 6 KB for `func (s *`.
+- The bytes moved past the answer, and each cell paid for something
+  different. On H1-T06, t1 and t3 called `find_symbol` for
+  `PutObservations`, and its 492-byte hit named both implementations the
+  task asks for. t1 then spent 12.2 KB on `repo_map` and 6.6 KB on
+  `query_symbols`; t3 spent 3.6 KB on `references`, 3.4 KB on
+  `read_source` and 1.6 KB on `symbol_context`. t2 never looked the
+  method up with `find_symbol`: it opened with `references` (3.8 KB) and
+  `query_symbols` (6.6 KB). `repo_map` appears in one cell of three. On
+  H1-T08 every cell spent 5.9 KB on an `outline` of `docs/usage.md`. On
+  H1-T11 every cell read the fleet-index guide through `read_source` from
+  line 1: t1 lines 1–120 (9.6 KB) and t2 lines 1–200 (11.2 KB, stopped at
+  line 136 by the byte cap) at the default budget; only t3 read the whole
+  162-line file, at `max_bytes` 16000 (12.9 KB).
+- `read_source`'s 8000-byte budget counted raw text, so default reads
+  reached the model over it. t2's 136 lines, 7.9 KB of raw text, arrived as
+  11,189 bytes, 10,849 of them the `lines` array; t1's 120 lines arrived as
+  9,618 bytes without reaching the cap at all. The per-line
+  `{line, text}` envelope and its JSON escaping were left out. Since BP-42
+  the budget bounds the `lines` array as sent.
+
+BP-45 re-measures these three tasks on a binary carrying BP-42. BP-46
+measures `pack_context` against the bare tools on the same task shapes:
+no fathom cell here called it, so there is nothing to read yet. Both need
+operator spend.
+
 ### The 2026-09-13 run, read (O31, O32)
 
 The first replicated run — three arms, 13 tasks, n=3, $7.90, run
