@@ -49,8 +49,8 @@ PASS, and every contribution row names its app-kit delivery (vision 35, ADR-045)
 the daemon keeps to a declared `phys_footprint` budget, refuses what cannot fit with a named
 reason, never pays repository-sized costs on a request, and cannot relaunch or leak its way
 back into the machine. Done when: `docs/plans/responsible-tenant.md` has 0 open non-op rows
-and RT-M1 (seven days within budget, no exit rung) and RT-M3 (the stress harness, pre- and
-post-fix) read PASS.
+and RT-M1 (seven days within budget, no exit rung) and RT-M3 (the stress harness on the
+wave-B and post-wave-D binaries) read PASS.
 {bet: responsible-tenant, instrument: "fathom plans status", threshold: "docs/plans/responsible-tenant.md at 0 open non-op rows; RT-M1 and RT-M3 read PASS", review: 2026-10-26}
 
 **G11. A reading, a hand-off and an answer carry their evidence (ADR-034).** The first

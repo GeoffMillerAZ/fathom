@@ -3,7 +3,10 @@
 Status: accepted 2026-09-26 (ADR-047). Vision: `docs/vision/36-responsible-tenant.md`.
 Plan: `docs/plans/responsible-tenant.md` (RT-1..). Incident: INC-23. Invariants I47–I53.
 Grounded in the read-only audit of `4200482a` (82 hazards; the hazard ids below are that
-audit's) and the heap profiles `heap-0518`, `heap-2118`, `heap-2315`.
+audit's) and the heap profiles `heap-0518`, `heap-2118`, `heap-2315`. Revised 2026-09-26
+after a design review (ADR-047's amendment): wave A now removes the known causes, class
+assignments follow today's costs, the swap-fraction triggers are gone, the exit rung halts
+an ingest before it exits, and the diagnostics socket and Linux readers are deferred.
 
 The design has five parts that must all exist; each is useless alone:
 
@@ -33,24 +36,26 @@ invalid testdata pairs (`schema/CLAUDE.md`).
 ```toml
 # ~/.fathom/config.toml
 [tenancy]
-budget          = "auto"      # phys_footprint; auto = clamp(RAM/8, 1GiB, 4GiB); Linux: min(auto, 0.5 × cgroup memory.max)
+budget          = "auto"      # phys_footprint; auto = clamp(RAM/8, 1GiB, 4GiB)
 shed_at         = 0.75        # × budget
 refuse_at       = 1.00        # × budget
 exit_at         = 2.00        # × budget, capped at RAM/4; exit needs 2 consecutive samples
-exit_enabled    = true        # managed daemons; false keeps shed/refuse only (disclosed)
-gc_hint         = "budget"    # SetMemoryLimit target: "budget" | "exit" | "off" | an IEC size
-admission       = "enforce"   # "observe" (decide, log, meter, never refuse) | "enforce" | "off"
+exit_enabled    = true        # managed daemons; false keeps shed/refuse only (disclosed); an ingest is halted before any exit (§2.1)
+gc_hint         = "exit"      # SetMemoryLimit target: "exit" | "budget" | "off" | an IEC size
+admission       = "observe"   # default until RT-96: "observe" (decide, log, meter, never refuse) | "enforce" | "off"
 gomaxprocs      = "auto"      # max(2, NumCPU/2)
 child_parallelism = 2         # GOFLAGS=-p for go list / typed pass
 notify          = true        # one local notification on a breaker stop or safe-mode entry, ≤ 1/hour
 
 [tenancy.host]
-shed_on_pressure   = "warn"      # macOS kern.memorystatus_vm_pressure_level 2; Linux PSI some avg10 ≥ 10
-refuse_on_pressure = "critical"  # level 4; PSI ≥ 40
-shed_swap_fraction   = 0.80
-refuse_swap_fraction = 0.90
-min_swap_volume_free = "5GiB"    # /System/Volumes/VM on macOS
+shed_on_pressure   = "warn"      # macOS kern.memorystatus_vm_pressure_level 2
+refuse_on_pressure = "critical"  # level 4
+refuse_on_swap_growth = "2GiB"   # swap used grew this much in swap_growth_window while fathom ≥ shed mark
+swap_growth_window    = "5m"
+min_swap_volume_free  = "5GiB"   # /System/Volumes/VM on macOS
 min_store_volume_free = "2GiB"   # below it: store_distress
+# No swap-used FRACTION trigger: macOS grows swap files on demand, so used/total is
+# routinely 80% at normal pressure (this machine, 2026-09-26: 4.9 of 6.1 GB, level 1).
 
 [tenancy.breaker]
 safe_after = 3      # counted exits in safe_window → safe mode
@@ -66,11 +71,12 @@ budget = "512MiB"
 
 [tenancy.caches]
 fraction = 0.25     # of budget; one global byte budget across all memo groups
+shed_trim = 0.50    # at shed, LRU-evict down to this fraction of the cache budget
 idle_drop = "30m"
 ```
 
 Precedence: flags > env > user config > defaults (the `memoryLimitFromEnvOrConfig` order).
-Env: `FATHOM_TENANCY_BUDGET`, `FATHOM_TENANCY_ADMISSION`. `FATHOM_TENANCY_ADMISSION=off`
+Env: `FATHOM_TENANCY_BUDGET`, `FATHOM_TENANCY_ADMISSION`, `FATHOM_TENANCY_EXIT` (`off`). `FATHOM_TENANCY_ADMISSION=off`
 is the escape hatch; it prints a loud startup line and doctor WARNs on every run.
 
 **Migration from `[daemon].memory_limit` / `FATHOM_MEMORY_LIMIT`.** If only the old key is
@@ -101,12 +107,15 @@ func ResolveBudget(cfg Config, host HostFacts) (Budget, []Note) // notes name ev
 
 type Sample struct {
     At time.Time
-    Footprint int64          // phys_footprint (darwin), RSS+swap (linux)
+    Late time.Duration       // how late this sample ran against its 2 s tick
+    Footprint int64          // phys_footprint (darwin), RSS (linux); -1 = Unknown
+    Children int64           // summed phys_footprint of the child-process tree (go list, git, rg)
+    DiskWritten int64        // cumulative bytes written (rusage ri_diskio_byteswritten)
     GoTotalMinusReleased int64 // /memory/classes/total − /memory/classes/heap/released
     HeapLive int64           // /gc/heap/live:bytes
     GCCPUFraction float64    // Δ/cpu/classes/gc/total ÷ Δ/cpu/classes/total
     Pressure PressureLevel   // Normal | Warn | Critical | Unknown
-    SwapUsed, SwapTotal int64
+    SwapUsed int64           // growth over a window is a trigger; the used/total fraction never is
     VolumeFree map[string]int64 // store dir, TMPDIR, swap volume
     InFlight map[Class]int; Oldest InFlightEntry
 }
@@ -117,27 +126,65 @@ type Ladder struct{ /* hysteresis state */ }
 func (l *Ladder) Step(s Sample, b Budget) (Level, Transition) // pure
 ```
 
-Host readers (`hostdarwin.go`, `hostlinux.go`, `hostother.go`): macOS
+Host readers (`hostdarwin.go`, `hostother.go`): macOS
 `unix.SysctlUint32("kern.memorystatus_vm_pressure_level")` (1/2/4), `vm.swapusage`
 (`xsw_usage`), `hw.memsize`, `unix.Statfs`; the existing cgo `processPhysFootprintBytes`
-(`rss_darwin.go`) for the footprint. Linux: `/proc/pressure/memory`, `/proc/self/status`
-(`VmRSS` + `VmSwap`), `/proc/meminfo`, cgroup `memory.max`. Elsewhere: `Unknown`,
-disclosed, never treated as healthy (I38). Sampling costs one syscall set and one
-`metrics.Read` — no stop-the-world `ReadMemStats` anywhere in the sampler.
+(`rss_darwin.go`) for the footprint, and `proc_pid_rusage` over the child pids for
+`Children` and `DiskWritten`. Elsewhere (Linux included) `hostother.go` reads RSS from
+`/proc/self/status` and reports pressure and swap `Unknown`; PSI, cgroup budgets and a
+systemd unit wait for a Linux adopter (RT-D8, ADR-047's own revisit trigger). Sampling
+costs one syscall set and one `metrics.Read` into preallocated buffers — no stop-the-world
+`ReadMemStats` and no allocation in the sampler (`TestLadder_LateSampleEscalatesAndSamplerZeroAlloc`).
 
-Cadence: every 2 s (the measured runaway was ~7.5 GB/min, so ~250 MB resolution).
+**Unknown readings.** An `Unknown` pressure or swap reading is disclosed in `/statusz`,
+`resources` and doctor and is never a rung trigger, so a sysctl failure or an unsupported
+platform does not park the daemon in `shed`. An `Unknown` footprint disables the ladder,
+disclosed as `ladder: off (footprint unknown)`; admission still applies in its configured
+mode and the producer governor then follows admission alone.
+
+**Children.** `go list -export`, `git` and `rg` run as children and their memory is not in
+the daemon's `phys_footprint`. `Footprint + Children` is what the ladder compares with the
+shed and refuse marks (P23: declare what you take); the exit rung compares the daemon's own
+footprint and kills the child tree before it exits. Both numbers are in `resources`, the
+ring and `/metrics` (`fathom_children_footprint_bytes`).
+
+Cadence: every 2 s (the measured runaway was ~7.5 GB/min, so ~250 MB resolution). The
+sampler records its own lateness: a sample more than 3× late (≥ 6 s, the GC limiter or swap
+stalled it) counts as a second consecutive over-mark sample, so a stalled sampler escalates
+instead of waiting. Sampling alone cannot bound an I/O-bound stampede (a 32-way
+`os.ReadFile` burst grows by GB per second), which is why the producers check the level
+themselves (§2.1).
 
 ### 2.1 The ladder
 
 | Level | Enter when (any) | Actions (each logged, counted, shown in `/statusz`) |
 |---|---|---|
 | `normal` | below all marks | admission per slots |
-| `shed` | footprint ≥ `shed_at`; pressure ≥ warn; swap ≥ 80% | `memo.Drop(Shed)` (every registered cache); pause the refresh queue, console jobs and feeders; auto-refresh answers stale with `refresh: deferred (shed)`; start the flight recorder; `debug.FreeOSMemory()` once on entry (then at most 1 per 30 s, after each heavy ticket release) |
-| `refuse` | footprint ≥ `refuse_at`; pressure critical; swap ≥ 90%; swap-volume free < 5 GiB | also: `tree`, `fleet`, `ingest` return 503 for everyone; `index` wait drops to 0 for hooks and 1 s for agents; in-flight `tree`/`fleet` tickets past 50% of their deadline are cancelled (`outcome: abandoned-by-governor`); adoption suspended; decision port closed; one diag capture (§13.4) |
-| `exit` | footprint ≥ exit mark for 2 consecutive samples; or pressure critical for 60 s with footprint > budget | diag capture; `exit` lifecycle row `{reason: over_budget, footprint, top in-flight, diag}`; drain 5 s; `os.Exit(70)` |
+| `shed` | footprint + children ≥ `shed_at`; pressure ≥ warn | `memo.Trim(Shed)`: LRU eviction down to `shed_trim` (50%) of the cache budget, one rebuild flight process-wide while shed (before wave C's `memo`: drop the console and fleet memos, keep the graph and symbol caches); pause background work (auto-refresh via `ensure()` in wave B, the refresh queue from wave D, console jobs, feeders); auto-refresh answers stale with `refresh: deferred (shed)`; start the flight recorder; `debug.FreeOSMemory()` once on entry (then at most 1 per 30 s, after each heavy ticket release) |
+| `refuse` | footprint + children ≥ `refuse_at`; pressure critical; swap used grew > 2 GiB in 5 min while fathom ≥ the shed mark; swap-volume free < 5 GiB | also: `memo.Drop(Refuse)` (every cache); `tree`, `fleet`, `ingest` return 503 for everyone; `index` wait drops to 0 for hooks and 1 s for agents; **every** in-flight `tree`/`fleet` ticket is cancelled, youngest first (`outcome: abandoned-by-governor`); tree, fleet and ingest producers halt (below); adoption suspended; decision port closed; one diag capture (§13.4) |
+| `exit` | own footprint ≥ exit mark for 2 consecutive samples (a > 3× late sample counts as the second); or pressure critical for 60 s with footprint > budget | first, if an ingest or typed pass is in flight: every producer halts, the ingest is aborted (its watermark does not move, RT-109), its children are killed, its service is **quarantined**, `debug.FreeOSMemory()`, and the next sample decides; if still over (or nothing was in flight): kill the child tree, diag capture (heap only, ≤ 1 s), `exit` lifecycle row `{reason: over_budget, footprint, top in-flight, diag}`, `os.Exit(70)` at once — no drain |
 
 Step-down: 60 s below 0.6 × the current rung's threshold. Entry needs 2 consecutive
-samples except `exit`'s own rule.
+samples except `exit`'s own rule. The swap-used fraction alone never moves the ladder
+(`TestLadder_SwapFractionAloneNeverSheds`); RT-M13 pre-registers that the daemon spends
+≤ 2% of a week in shed or above, else the host triggers are retuned.
+
+**The producer governor.** The ladder publishes its level in one atomic. Every byte
+producer reads it before each unit of work — `LocalConnector.Fetch` and `Sources` before
+each file, `corpus` reads and scans before each file, store row decoding every 1,000 rows,
+the ingest fetch workers before each file — and returns `ErrOverBudget` when
+`tenancy.ProducerAllows(class)` says no: tree, fleet and ingest producers at `refuse`, every
+producer at the exit mark. A runaway loop therefore halts within one file or 1,000 rows of
+the rung, independent of sampling latency, and its caller returns a named partial (§3.4).
+This is what bounds memory in waves A–B, before per-call `Charge` exists in most producers.
+
+**Quarantine.** A service whose ingest was halted at the exit mark, or was in flight when
+the daemon exited `over_budget`, is written to the lifecycle ledger as
+`quarantine{service, footprint, reason}`. `ensure()`, the refresh queue and warm-up never
+re-queue it; `/statusz`, `resources` and the primer name it (`quarantined: app-kit exceeded
+budget during ingest — fathom ingest app-kit to retry`); an explicit `ingest` clears it.
+Without this, `ingest_state = in_progress` would re-ingest the same service at every start,
+exit again, and walk the breaker to a fleet-wide stop.
 
 **Store distress** is a separate flag, not a rung: store-volume free < 2 GiB, or any
 `SQLITE_FULL`/`SQLITE_IOERR` from the store. Ingest and writes are refused with the named
@@ -147,7 +194,13 @@ reason; a read that fails returns a named error, never zero. This fixes
 
 ### 2.2 GC hint and runtime
 
-`applyMemoryLimit` takes `Budget.GCHint` (default the budget) instead of a fixed 3 GiB.
+`applyMemoryLimit` takes `Budget.GCHint` (default the exit mark) instead of a fixed 3 GiB.
+A limit at the budget would make the band between the refuse and exit marks a GC-thrash
+band (the Go GC guide warns against a limit near the live heap; the limiter may take up to
+half of GOMAXPROCS while in-flight work finishes). The ladder does the bounding; the hint
+only keeps the heap from outrunning the exit mark. RT-M7 reads the GC CPU fraction below
+the refuse mark and inside refuse windows (the fraction is in every refuse diag capture) and
+moves the hint to `off` if it thrashes.
 `GOMAXPROCS = max(2, NumCPU/2)` for managed daemons unless `GOMAXPROCS` is in the env.
 The typed-pass sampler (`samplePeakHeapInuse`) moves to `runtime/metrics` and its log line
 is relabelled `process heap during pass` with the concurrent in-flight tickets beside it;
@@ -157,7 +210,8 @@ typed-pass-peak-misattributes-process-heap).
 ### 2.3 Lifecycle ledger and breaker
 
 `~/.fathom/daemon/<id>/lifecycle.jsonl` (`<id>` = the launchd label when managed, else
-`addr-<port>-<pid>`), append-only, rotated at 1 MiB keeping one generation, rows carry
+`addr-<port>-<pid>`, or the value of `serve-http --lifecycle-id <id>` — used by the stress
+harness so an unmanaged daemon keeps one ledger across its simulated relaunches), append-only, rotated at 1 MiB keeping one generation, rows carry
 `schema_version` and `fathom_version` (I32's pattern):
 
 | Row | Fields |
@@ -169,6 +223,8 @@ typed-pass-peak-misattributes-process-heap).
 | `breaker` | trip reason |
 | `stop` | by, reason, until |
 | `store_wait` | errno, label (`tcc-wedge` / `volume-not-mounted`) |
+| `quarantine` | service, footprint, reason; cleared by an explicit `ingest` |
+| `deploy` | pid being replaced, new binary hash; written by `task deploy` before its kickstart |
 
 At start, a `start` without a following `exit` means the predecessor died unclean
 (SIGKILL, jetsam, force-quit); the new process writes a synthesized `exit{reason:
@@ -179,7 +235,11 @@ its pid and adds `jetsam: largestProcess` or `resource: disk writes`.
 `func EvaluateBreaker(rows []LifecycleRow, now time.Time, cfg BreakerConfig) BreakerVerdict`
 — pure, evaluated at startup **after the kill-switch check and before config, store or
 bind**. Counted exits: `over_budget`, `unclean`, `port_held` (foreign holder), panics.
-Not counted: `adopt`, `stop`, `store_wait`, `drain`.
+Not counted: `adopt`, `stop`, `store_wait`, `drain` (SIGTERM), and an `unclean` death of a
+pid named by a `deploy` row written in the preceding 60 s (a `launchctl kickstart -k` whose
+SIGTERM did not reach a drained exit). Without the last rule, three agent deploys in 30
+minutes would put the daemon in safe mode and five would stop it
+(`TestDeployKickstartNotCountedByBreaker`).
 
 | Condition | Result |
 |---|---|
@@ -191,9 +251,14 @@ Safe mode: auto-refresh off (stale served with disclosure); console feeders and 
 — run fathom resources`; `point`/`index` served; decision port closed. After 30 min at
 `normal` it steps to normal mode under the warm-up rules.
 
-**Warm-up** for `warmup` (120 s) after any start: heavy classes get 1 slot each; the refresh
-queue drains one service per 30 s in demand order. This absorbs the cold-cache stampede the
-empty `seen` map causes today.
+**Warm-up** for `warmup` (120 s) after any start: heavy classes get 1 slot each and
+`ensure()` runs no inline ingest (wave B); from wave D the refresh queue drains one service
+per 30 s in demand order. This absorbs the cold-cache stampede the empty `seen` map causes
+today.
+
+`disabled.json` and `paused.json` govern only the managed daemon (and hooks addressing its
+URL); an unmanaged daemon never reads them, so a breaker stop does not block a proof agent's
+scratch daemon, and a scratch daemon's ledger never trips the managed one.
 
 ---
 
@@ -207,24 +272,34 @@ registration panics at init without one; `TestEveryToolDeclaresCostClass` enumer
 registry, and `docs/mcp-tools.md` gains a cost column held by `TestMcpToolsDocMatchesRegistry`
 (I11).
 
-| Class | Slots (4 GiB budget) | Per-call byte ceiling | Server deadline | Queue wait hook / console / agent / cli | Examples (initial; reassigned as §4 shrinks costs) |
+| Class | Slots (4 GiB budget) | Per-call byte ceiling | Server deadline | Queue wait hook / console / agent / cli | Tools, by today's cost (a tool moves down only in the commit that rewrites it) |
 |---|---|---|---|---|---|
-| `point` | 16 × budget/GiB = 64 | 8 MiB | 10 s | 100 ms / 2 s / 5 s / 30 s | `capabilities`, `server_stats`, `list_services` (after §6), `obligations` (after §4.3), `find_symbol` (SQL point lookup), `staleness_report`, `read_source`, `memory_search`, `history` |
-| `index` | `max(2, min(NumCPU−2, budget/512 MiB))` = 8 | 64 MiB | 30 s | 100 ms / 2 s / 5 s / 30 s | `symbol_context`, `find_callers`, `find_callees`, `query_symbols`, `pack_context`, `repo_map`, `verify_plan`, `test_impact`, `rename_impact`, `reachable`, `dead_code`, `community`, `localize`, `blast_radius` (after §6) |
-| `tree` | `max(1, budget/2 GiB)` = 2 | budget/16 = 256 MiB | 60 s | refuse / 2 s / 5 s / 30 s | `search`, `secret_scan`, `cloc`, `spec_coverage`, `traceability`, `safe_delete_check`, `review_change`, `list_sources`, `discoveries`, `references` (one service); `obligations` **until §4.3 lands** |
-| `fleet` | 1 | budget/8 = 512 MiB | 120 s | refuse / refuse / 20 s / 30 s | `references` with `services: ["*"]`, `fleet_drift`, `cross_repo_blast_radius`, `review_diff`, `dep_drift` |
+| `point` | 16 × budget/GiB = 64 | 8 MiB | 10 s | 100 ms / 2 s / 5 s / 30 s | `capabilities`, `server_stats`, `staleness_report`, `read_source`, `memory_search`, `history`; later `list_services` (RT-144, then RT-79), `obligations` (RT-81 + RT-143 + RT-83), `find_symbol` (RT-85) |
+| `index` | `max(2, min(NumCPU−2, budget/512 MiB))` = 8 | 64 MiB | 30 s | 100 ms / 2 s / 5 s / 30 s | `find_symbol`, `find_callers` (until RT-85), `find_callees`, `query_symbols`, `pack_context`, `repo_map`, `verify_plan`, `test_impact`, `rename_impact`, `reachable`, `dead_code`, `community`, `localize`; later `symbol_context` (RT-84 + RT-75), `blast_radius` (§6) |
+| `tree` | `max(1, budget/2 GiB)` = 2 | budget/16 = 256 MiB | 60 s | refuse / 2 s / 5 s / 30 s | `symbol_context` (until RT-84 + RT-75), `obligations` (until its wave-A rewrites carry a cost assertion), `search`, `secret_scan`, `cloc`, `spec_coverage`, `traceability`, `safe_delete_check`, `review_change`, `list_sources`, `discoveries`, `references` (one service) |
+| `fleet` | 1 | budget/8 = 512 MiB | 120 s | refuse / refuse / 20 s / 30 s | `list_services` (until RT-144 lands with its cost assertion), `references` with `services: ["*"]`, `fleet_drift`, `cross_repo_blast_radius`, `review_diff`, `dep_drift` |
 | `ingest` | 1 machine-wide | streamed (§7) | detached | never inline: enqueue | `ingest`, `onboard_service`, auto-refresh, post-commit, typed and CUE passes, `compile_layer` |
 | `egress` | 2 | 8 MiB | port timeout | refuse at refuse/safe | decision-port calls (`/route`, obligations re-rank when enabled) |
 
-Envelope at 4 GiB: 64×8 + 8×64 + 2×256 + 1×512 MiB = 2 GiB = 0.5 × budget. On a 1 GiB
+**A class reflects the tool's current cost.** The first class assignment (wave B) comes
+from the audit's measured costs, committed as `internal/mcp/testdata/toolcost.json`; a tool
+moves to a cheaper class only in the commit that rewrites it, and that commit carries the
+tool's cost assertion (its RT-93 row, or before RT-93 exists an allocation assertion in the
+rewrite's own test). `TestCostClassMatchesMeasuredCost` fails when a declared class is
+cheaper than the committed measured cost. Assigning by post-rewrite cost would put
+`list_services` (~271k rows, ~250 MB a call before RT-144) in 64 `point` slots, and a cold
+relaunch storm would exit on ordinary traffic.
+
+**Envelope at 4 GiB:** 64×8 + 8×64 + 2×256 + 1×512 MiB = 2 GiB = 0.5 × budget. On a 1 GiB
 budget: 16×8 + 2×64 + 1×64 + 1×128 = 448 MiB. Slot counts and ceilings are derived by
 `ResolveBudget`; they are not separately configurable (fewer knobs; RT-M2 retunes the
-formula, not a table).
+formula, not a table). **The envelope holds only after wave C**: until the rewrites land and
+`Charge` is called by `corpus`, row decoding and rg, the per-call ceilings enforce little.
+In wave A the cause fixes and the `Sources` slot bound the known paths; in wave B the
+ladder and the producer governor bound memory whatever the cause.
 
 Argument-dependent classes: `references` without `services` is `tree` on the caller's own
-service; with `["*"]` it is `fleet`. `obligations` is `tree` until its single-file path
-lands — the near-term protection against the next incident: at most two whole-tree
-obligations reads at once, and edit hooks get a fast refusal they render as silence.
+service (when an identity resolves, §4.5); with `["*"]` it is `fleet`.
 
 ### 3.2 The gate
 
@@ -251,7 +326,8 @@ prevented the 19-minute `list_services` runs behind 2-second hooks. `mode=observ
 the whole decision, logs and counts every would-refuse, and admits.
 
 `Charge` is called by the byte producers: `corpus` reads and scans, store row decoding
-(column bytes), ripgrep output, log readers. On `ErrOverBudget` the producer stops and
+(column bytes), ripgrep output, log readers (wave C; in wave B only the producer governor,
+§2.1, stops them). On `ErrOverBudget` the producer stops and
 returns what it has with `budget: {partial: true, elided: N, bytes_read, reason}`, rendered
 with `readcoverage.RenderCount` as a lower bound.
 
@@ -286,8 +362,18 @@ parallel ingest.
 ### 3.5 Context and the HTTP server
 
 - `/rpc` ctx derives from `r.Context()` with the class deadline (`servehttp.go`'s
-  `context.Background()` for every RPC is deleted). Only `refresh` jobs and `memo` flights
-  marked `Keep` run detached.
+  `context.Background()` for every RPC is deleted). Only `refresh` jobs, `memo` flights
+  marked `Keep`, and `ensure()`'s inline ingest run detached.
+- **`ensure()` before the refresh queue exists** (waves A–C). Today it calls
+  `IngestService(ctx, …)` with the request ctx after setting `seen[service] = head`, and the
+  watermark is recorded before extraction. Once the ctx follows the client, a 2 s hook
+  disconnect would cancel an inline ingest midway under a watermark that claims HEAD, never
+  retried. So, before RT-58 switches the ctx (it `needs:` these): the inline ingest runs
+  under `context.WithoutCancel(ctx)` holding one process-wide ingest ticket (wave A,
+  RT-149); `seen` is set only after a successful ingest (wave A, RT-151); the watermark
+  advances only at the final commit (RT-109, moved to wave B); and `ensure()` is skipped at
+  `shed` and above, in safe mode, during warm-up and for a quarantined service (wave B,
+  RT-150). Wave D's queue then replaces the inline ingest entirely (RT-99).
 - `http.Server{ReadHeaderTimeout: 5s, IdleTimeout: 120s, MaxHeaderBytes: 64 KiB}` replaces
   bare `http.Serve`; per-route write deadlines via `http.ResponseController`: 150 s for
   `/rpc` (the fleet ceiling + margin), none for `/events` SSE.
@@ -334,12 +420,22 @@ func IngestScan(ctx context.Context, root string, fn func(FileStat, []byte) erro
 
 ### 4.2 Discovery
 
-- **Git worktree:** `git ls-files -co --exclude-standard -z` through `internal/gitro`
-  (read-only git), with `.fathomignore` and `~/.fathom/ignore` layered on top. App-kit's
+- **Wave A (no schema, no git):** the existing walk keeps `skipDir` and adds a default
+  ignore list (`.cache`, `target`, `dist`, `build`, `.tools`, `__pycache__`, `.venv`,
+  `.gradle`, `.next`, `.turbo`, `coverage`); `[connector] include` re-includes one. App-kit's
   `.cache/` (19,659 fingerprinted files, ~2.3 GiB) and `compute/.tools`/`target/` drop out.
-- **Non-git corpora (ADR-017):** the existing walk with `skipDir` plus a default list
-  (`.cache`, `target`, `dist`, `build`, `.tools`, `__pycache__`, `.venv`, `.gradle`, `.next`,
-  `.turbo`, `coverage`).
+  With RT-69 (stat before read, 2 MiB cap, ctx checked in `Fetch` and `Sources`) this takes
+  most of app-kit's 5.3 GiB pass-2 content out before streaming ingest exists.
+- **Git worktree (wave C):** `git ls-files -co --exclude-standard -z` through
+  `internal/gitro` (read-only git), with `.fathomignore` and `~/.fathom/ignore` layered on
+  top — and `skipDir`/`IsSkippedDir` and the default ignore list **still applied to every
+  path it returns**. `ls-files` lists committed files, so without that a committed `vendor/`
+  (Go) or `testdata/` (fathom's own `internal/connector/testdata/fauxtown`) would enter the
+  corpus and change symbol counts, the opposite of the intent. The fixture carries a
+  committed `vendor/` and `testdata/`. The default flips only after RT-M11: `ingest
+  --dry-run --stats` over every registered service with and without it, and no service
+  loses more than 1% of its observations outside gitignored directories.
+- **Non-git corpora (ADR-017):** the walk with `skipDir` plus the default list.
 - `[connector] include` re-includes a gitignored directory an adopter genuinely indexes;
   `respect_gitignore = false` per service is the kill-criterion fallback.
 - Discovery honours ctx every 256 entries; `LocalConnector.Fetch` stats before reading and
@@ -348,6 +444,13 @@ func IngestScan(ctx context.Context, root string, fn func(FileStat, []byte) erro
   I25/I38. `fathom ingest --dry-run --stats` (stat only) measures the before/after delta.
 
 ### 4.3 Obligations (72% of request allocation)
+
+Wave A lands the schema-free forms, because obligations is the cause that survived the
+hotfix (heap-2118: 4.95 GB in use under `ObligationsLayerCoverage` → `Sources`): RT-81 (the
+fallback reads only the edited file), RT-143 (layer coverage from the hotfix's
+`SourcePaths` — names only — memoized per `(service, watermark, layer digest)` and
+single-flighted) and RT-83 (the `loadUnion` memo). Wave C's RT-82 swaps `SourcePaths` for
+`file_stats`.
 
 - Layer coverage needs corpus **paths** plus globs: from `file_stats` via SQL, memoized per
   `(service, watermark, layerDigest)` in a `memo` group.
@@ -364,8 +467,13 @@ func IngestScan(ctx context.Context, root string, fn func(FileStat, []byte) erro
 
 ### 4.4 `list_services`, identity and "is X indexed"
 
-- Served from `service_summary` + `service_meta` (§6): one select of ~21 rows.
-- `IsIndexed(service)` (a `service_meta` row with `indexed_at > 0`) replaces
+- Wave A (RT-144): symbol counts from `SELECT service_id, count(*) FROM observations GROUP
+  BY service_id` and languages from `SELECT DISTINCT source_ref` streamed into an extension
+  set (no row retained), cached per watermark and single-flighted; unsupported languages stay
+  on the hotfix's names-only walk (RT-1). No `service_summary` table is needed, and the
+  133.8 GB/62 min symbol load is gone.
+- Wave C (RT-79): served from `service_summary` + `service_meta` (§6): one select of ~21 rows.
+- `IsIndexed(service)` (wave A; a `service_meta` row with `indexed_at > 0`) replaces
   `daemonServiceIndexed` (`verify.go`), the stop-hook and edit-hook claim checks,
   `plans.go`, and `console_plansdata.go`'s probe — yes/no questions that pay the full
   answer today.
@@ -380,8 +488,14 @@ func IngestScan(ctx context.Context, root string, fn func(FileStat, []byte) erro
   (new index `observations(service_id, symbol)`); the `ORDER BY ingested_at` in
   `queryObservationsRaw` is dropped (sorted in Go on the small result) — no temp B-tree,
   no `SQLITE_FULL` on reads.
-- `references`: default scope is the caller's own service (argument or identity header);
-  `services: ["*"]` is `fleet` class (**Breaking**). Candidates by SQL name lookup; text
+- `references`: default scope is the caller's own service when the caller's identity
+  resolves (`X-Fathom-Caller` from hooks and the CLI, which know their cwd); `services:
+  ["*"]` is `fleet` class (**Breaking**). Agents connect straight to `/rpc/agent` over HTTP
+  (`claude mcp add --transport http`) and send no cwd or caller header, so for them no
+  identity resolves: a call with no `services` and no identity returns a named `-32602`
+  (`references: name the services to search — indexed: fathom, app-kit, …; or pass
+  services: ["*"] for the fleet`), never a silent fleet scan and never an empty result
+  (`TestReferences_NoIdentityNamesChoices`; migration note in `docs/upgrades/`). Candidates by SQL name lookup; text
   occurrences via `corpus.Scan` with `[references] scan_bytes = 64 MiB, scan_wall = 5 s`,
   early stop at `max`, binaries skipped, `bufio.Scanner` lines (no `strings.Split` of whole
   files); typed edges per service as needed. Partial: `≥ N occurrences (scanned 812/2,236
@@ -401,6 +515,13 @@ func IngestScan(ctx context.Context, root string, fn func(FileStat, []byte) erro
 
 ### 4.6 Type-level removal
 
+**Wave A backstop.** Until the type-level removal lands, `(*Client).Sources` takes one of two
+process-wide slots (`acquireSourcesSlot`); a caller whose ctx is marked hook-origin never
+waits for a slot and gets a named skip (`coverage skipped: whole-tree read in progress`).
+This bounds the remaining request-path whole-tree readers (`console_project_index.go`,
+`report_evidence.go`, `review.go`, `extra_tools.go`, `discoveries_tool.go`, …) to two at a
+time before each is rewritten.
+
 `Sources` is deleted from `mcp.QueryInterface` and `autoRefreshBackend`;
 `client.(*Client).Sources` is renamed `SourcesForIngest` (deprecated for external callers —
 `pkg/client` is on the compatibility surface, CHANGELOG entry). Query code gets
@@ -415,23 +536,30 @@ with `go/parser` and resolves imports per file. Outside an allowlist of packages
 (`internal/fusion`, `internal/refresh`, `internal/corpus`, the `cmd/fathom` ingest verbs),
 it forbids:
 
+Every rule is syntactic — decidable from one file's AST and its imports, with no call-graph
+or data-flow analysis — so it is neither noisy nor silently ineffective:
+
 | Rule id | Pattern |
 |---|---|
-| `whole-read` | `os.ReadFile`, `io.ReadAll` on an `*os.File`, `filepath.WalkDir`/`os.ReadDir` on a service root |
-| `sources` | `SourcesForIngest`, `ListAllSymbols`, unfiltered `QueryObservations(service)` in handler packages |
-| `graph-build` | `callgraph.Build` outside the `graphstore` memo group |
+| `whole-read` | a call to `os.ReadFile`, `io.ReadAll`, `filepath.WalkDir`, `filepath.Walk` or `os.ReadDir` in a handler package (`internal/mcp`, `cmd/fathom` outside the ingest verbs) |
+| `sources` | a reference to `SourcesForIngest`, `ListAllSymbols` or `callgraph.Build` in a handler package (`callgraph.Build` is allowed only in the `graphstore` group) |
 | `exec-noctx` | `exec.Command` (require `CommandContext`) |
 | `bg-ctx` | `context.Background()`/`TODO()` in `internal/mcp`, `cmd/fathom/console_*.go`, `servehttp.go` |
 | `bare-go` | a `go` statement outside `console.Jobs`, `refresh`, `memo`, `tenancy` |
-| `cache-map` | a package-level mutex-guarded `map` written from a handler (a cache outside `memo`) |
+| `pkg-map` | a package-level `map` var in `cmd/fathom` or `internal/mcp` (each needs an allowlist entry naming why it is not a cache, or it moves into `memo`) |
 | `raw-serve` | `http.Serve`, `http.ListenAndServe` |
-| `remarshal` | `json.Marshal` of a value followed by `json.Unmarshal` of the same bytes |
-| `test-live-url` | `:7575` literal in a `_test.go` file |
+| `test-live-url` | a `:7575` literal in a `_test.go` file |
+| `test-env` | in a `_test.go` file, an `exec.Cmd`'s `Env` assigned from a literal or slice that does not start from `os.Environ()` (it would drop `FATHOM_HTTP`/`FATHOM_TEST`) |
+
+Not linted, because a parser cannot decide them: "a cache written from a handler" (replaced
+by `pkg-map`), "a whole read on a service root" (replaced by the package-scoped
+`whole-read`), and marshal/unmarshal of the same bytes (RT-90's test covers the one known
+cascade).
 
 Escape hatch: `//fathom:tenancy-allow <rule> <reason>` on the line. Every use is listed in
 `.fathom/tenancy-allow.txt`; `TestTenancyAllowlistOnlyShrinks` fails when the count rises
 above the committed number. Wave C seeds it with today's violations and later waves burn it
-down; RT-49 closes it at zero or with each remaining entry justified.
+down; RT-137 closes it at zero or with each remaining entry justified.
 
 ### 4.8 Cost tests (`internal/mcp/costtest`)
 
@@ -461,7 +589,8 @@ func NewGroup[K comparable, V any](name string, opts Options) *Group[K, V] // re
 type Options struct{ MaxEntries int; WatermarkScoped bool; Priority int }
 func (g *Group[K, V]) Get(ctx context.Context, key K, build func(context.Context) (V, int64, error)) (V, error)
 func (g *Group[K, V]) GetStale(ctx context.Context, key K, build …) (V, Freshness, error) // stale-while-revalidate
-func Drop(reason DropReason)                   // Shed, Refuse, Idle, Watermark(service)
+func Trim(reason DropReason, fraction float64) // Shed: LRU-evict to fraction × cache budget
+func Drop(reason DropReason)                   // Refuse, Idle, Watermark(service)
 func Stats() []GroupStats                      // entries, bytes, hits, misses, flights, cancelled, evictions by reason
 ```
 
@@ -471,7 +600,16 @@ func Stats() []GroupStats                      // entries, bytes, hits, misses, 
 - Size is the builder's estimate; one global LRU across groups under `caches.fraction ×
   budget` (1 GiB here). Entries for a service are evicted eagerly on
   `refresh.WatermarkBumped(service)`. Empty watermarks are never keys (I21 kept).
+- Shed trims, refuse drops. Dropping every cache at shed would make every following request
+  rebuild the snapshot and graphs (hundreds of MB), pushing the footprint straight back into
+  shed. At shed the registry evicts by LRU down to 50% of the cache budget and admits one
+  rebuild flight process-wide while shed (others wait on it or are served stale with
+  disclosure); only `refuse` drops everything. `TestShedTrimToHalfSingleRebuildHysteresis`
+  drives a shed → rebuild → shed cycle and asserts it settles under the hysteresis.
 - Idle: after 30 min without tickets, `Drop(Idle)` then `debug.FreeOSMemory()`.
+- I21's clause "result caching of whole tool answers is still absent" stands for MCP tool
+  answers: no memo group caches a tool's response. `obsModel` and `operate` cache console
+  page projections, which are not tool answers; I51 governs them.
 - Groups (migrations): `graphstore` keyed `(service, watermark, kind)` — replaces
   `callgraph.CachedCallGraph`, `projectIndexMemo`'s graph, the console plans graphs;
   `BuildBoth` becomes two keys — so no service's graph is held three times.
@@ -500,16 +638,25 @@ Additive tables (`CREATE … IF NOT EXISTS`), written in the ingest's final tran
 | `ingest_state(service_id, state, pid, started_at, target_commit)` | refresh | the watermark-before-extraction bug | 21 rows |
 
 Indexes: `observations(service_id, symbol)`. Pragmas at open: `cache_size = -8192`,
-`soft_heap_limit = 268435456`, `journal_size_limit = 67108864`, `temp_store` left at file
+`soft_heap_limit = 268435456` (advisory), `hard_heap_limit = 536870912`,
+`journal_size_limit = 67108864`, `temp_store` left at file
 (sorts removed instead).
 
-Migration: until a service's first post-upgrade ingest the new tables are empty for it;
-the tool answers `summary unavailable until next index (refresh queued)` — a named absence
-(I38), never a whole-tree fallback. The refresh queue backfills services one at a time in
-demand order.
+Migration: `service_summary` and `observation_calls` are derivable from rows the store
+already has, so they are backfilled by SQL at first use, never by a re-ingest: `SELECT
+service_id, count(*) … GROUP BY service_id` plus the distinct-extension aggregate for the
+summary, `INSERT INTO observation_calls SELECT … FROM observations, json_each(calls)` for
+the call index — one service per transaction under the ingest slot, no content reads
+(`TestSummaryBackfilledWithoutIngest`). Until a service's backfill commits, `list_services`
+keeps wave A's aggregate path (RT-144) and cross-service callers keep today's query, so
+there is no window of degraded answers and no 21-service re-ingest after the deploy. Only
+`file_stats` genuinely needs a walk: until a service's first post-upgrade ingest,
+consumers of it (RT-82, the stat manifest) answer from `SourcePaths` or name the absence
+(I38), never a whole-tree content read.
 
-Watermark ordering: `ingest_state='in_progress'` is written first; `recordIngestMeta` moves
-to the final commit. `ensure` treats `in_progress` with a dead or foreign pid as "re-ingest
+Watermark ordering (RT-109, wave B — cancellation, the producer governor and quarantine all
+need an aborted ingest to leave the old watermark): `ingest_state='in_progress'` is written
+first; `recordIngestMeta` moves to the final commit. `ensure` treats `in_progress` with a dead or foreign pid as "re-ingest
 needed" (`TestWatermarkNotAdvancedByKilledIngest`).
 
 ADR-017 amendment: a service whose stored watermark is a git SHA never takes the content
@@ -534,7 +681,8 @@ whole-service case.
 - Ordering: most recently queried first, then oldest drift; after any start, 60 s wait then
   one service at a time (warm-up). The ordering function is an interface (the decision-port
   option stays free, §vision 8).
-- Paused at `shed`, refused at `refuse` and in safe mode; `store_distress` refuses.
+- Paused at `shed`, refused at `refuse`, in safe mode and for a quarantined service;
+  `store_distress` refuses.
 - The ingest runs under the worker's daemon-lifetime ctx; `wait: true` callers wait under
   their own ctx and never cancel the shared job; drain on shutdown stops at a batch boundary.
 - HEAD without a fork: `gitro.Head(root)` reads `.git/HEAD`, `refs/…` or `packed-refs`
@@ -592,7 +740,8 @@ whole-service case.
   children. On probation (RT-M6); fallback `Standard` + `Nice 5` + children under
   `taskpolicy -b`.
 - `HardResourceLimits.ResidentSetSize` is not used (advisory on macOS).
-- systemd mapping (documented for adopters): `MemoryHigh = budget`, `MemoryMax = exit
+- systemd mapping, documentation only (no unit is generated and no Linux reader beyond RSS
+  is built until an adopter exists, RT-D8): `MemoryHigh = budget`, `MemoryMax = exit
   mark`, `Restart=on-failure`, `RestartSec=60`, `StartLimitBurst=5`,
   `StartLimitIntervalSec=3600`, `Nice=5`, `IOSchedulingClass=idle`.
 
@@ -613,7 +762,7 @@ whole-service case.
   `XPC_SERVICE_NAME` when under launchd, else `labelInstalled`), parse with
   `encoding/xml`, diff the tenancy keys (KeepAlive shape, ThrottleInterval, ProcessType,
   LowPriorityIO, Nice, ExitTimeOut, `--managed`, schema marker) against schema 2. WARN with
-  the exact remedy: `fathom daemon install --reconcile --label com.geoffmilleraz.fathom-http`
+  the exact remedy: `fathom daemon install --reconcile --label <label>` (the resolved label)
   then the reload line.
 - `--reconcile` rewrites only the tenancy keys and keeps the label, `ProgramArguments`
   paths, store, call log, `WorkingDirectory` and the environment dict; writes
@@ -634,18 +783,31 @@ whole-service case.
 3. Bind (was after the store open).
 4. Store open. On failure, stay up in `waiting-for-store`: `/healthz` and `/statusz` answer
    with the errno; `tools/call` returns 503; reopen with backoff 5 s → 5 min; a
-   `store_wait` row (not counted). EPERM on a path that `stat`s is labelled `tcc-wedge`
-   (remedy names the tccutil line); ENOENT under `/Volumes/` is `volume-not-mounted`.
+   `store_wait` row (not counted). EPERM on a path that `stat`s is labelled `tcc-wedge`;
+   its remedy names the responsible process — the daemon binary
+   (`~/.local/libexec/fathom/fathom`), its signing identity from `codesign -dv`, and the
+   Full Disk Access / Removable Volumes grant it needs — never a terminal's bundle id (a
+   `tccutil reset … <terminal>` does nothing for a launchd job). An ad-hoc signature
+   (`Codesigning ID: a.out`) is named as the likely cause. ENOENT under `/Volumes/` is
+   `volume-not-mounted`.
+6. Signing: `task deploy` fails loudly (`fathom-dev signing identity missing`) instead of
+   `|| true`-installing an ad-hoc binary whose TCC grant is void (RT-147); `fathom daemon
+   status` and `resources` report the running binary's signing identity (RT-148).
 5. Port held: probe `/statusz`; a managed fathom of the same label → log "already served by
    pid N", exit 0; anything else → exit 75 (counted as `port_held`), `resources` and doctor
    name the holder's pid and command line, `daemon reap` handles a scratch holder.
 
 ### 8.5 Drain
 
-`signal.Notify(SIGTERM)`: stop admitting heavy classes; let `point`/`index` finish for up to
-5 s; let an in-flight ingest reach its next batch boundary for up to 15 s (`ingest_state`
-stays `in_progress` if it cannot finish, so the next start resumes); write the exit row;
-remove the daemon record. `debug.SetCrashOutput(~/.fathom/daemon/<id>/crash.log)` makes
+`signal.Notify(SIGTERM)`: **first** write the `exit{reason: drain}` row (so a SIGKILL that
+races the drain still leaves a not-counted exit); stop admitting heavy classes; in parallel,
+let `point`/`index` finish and an in-flight ingest reach its next batch boundary, all within
+**12 s in total** (under `ExitTimeOut 20`; `ingest_state` stays `in_progress` if it cannot
+finish, so the next start resumes); remove the daemon record; **exit 0**. SIGTERM → exit 0
+means an Activity Monitor "Quit" or `fathom daemon stop` stays down under schema 2, and
+`launchctl kickstart -k` (which restarts the job itself) is unaffected. `task deploy` writes
+a `deploy` intent row (pid, new binary hash) before its kickstart, so a kickstart whose
+SIGTERM did not reach a drained exit is still not counted (§2.3). `debug.SetCrashOutput(~/.fathom/daemon/<id>/crash.log)` makes
 runtime fatals durable.
 
 ---
@@ -662,6 +824,16 @@ runtime fatals durable.
 | no binary available | `touch ~/.fathom/daemon/disabled.json` and kill the process; an empty file reads "disabled, reason unknown" |
 
 Hooks `stat` both files before any RPC and return silently in < 5 ms when disabled.
+
+**Under an installed schema-1 plist** (`KeepAlive true`, until the operator runs RT-28's
+reconcile) exit 0 does not stay down: launchd relaunches every 10 s. `stop` and the breaker
+read the installed plist's schema and say so instead of claiming otherwise: `launchd will
+relaunch every 10 s and each start exits in < 50 ms; to stop fully, run from your terminal:
+launchctl bootout gui/$UID/<label>` followed by the `--reconcile` line. Under v1 the
+kill-switch check writes no lifecycle row, so ~360 starts an hour do not flood the ledger
+(`TestStopUnderV1PlistNamesRelaunchAndBootout`).
+
+`disabled.json` and `paused.json` govern only the managed daemon (§2.3).
 
 ---
 
@@ -687,7 +859,9 @@ Every exit logs its reason (`parent 4121 exited`, `idle 20m`, `ttl`, `store unli
 
 ### 10.2 Registry and census
 
-`DaemonRecord` schema 2 adds `managed`, `ppid`, `exe` + inode, `cmdline_sha`, `idle_exit`,
+`DaemonRecord` schema 2 lives at `~/.fathom/daemon/<id>/record.json` beside the ledger and
+ring (the legacy `~/.fathom/daemons/` is read for one release, then pruned) and adds
+`managed`, `ppid`, `exe` + inode, `cmdline_sha`, `idle_exit`,
 `ttl`, `heartbeat_at` (every 60 s), `state_root`; removed on clean exit. The managed daemon
 prunes records whose pid is dead or reused hourly (metadata, not evidence).
 
@@ -710,12 +884,16 @@ the parent, asserts exit within 10 s.
 
 ### 10.4 Tests never reach the operator
 
-- `internal/testisolate.Main(m)`: sets `FATHOM_HTTP=http://127.0.0.1:1`, temp dirs for
+- `internal/testisolate.Main(m)`: sets `FATHOM_HTTP=http://127.0.0.1:1` and `FATHOM_TEST=1`, temp dirs for
   `FATHOM_STATE_DIR`, `XDG_STATE_HOME`, `FATHOM_CALL_LOG`, `HOME` and the hook caches;
   **exits 2** if it cannot (today a failed `MkdirTemp` silently keeps the real HOME).
 - Backstop: `defaultFathomURL()` and `custodian.DefaultDaemonURL()` return
-  `http://127.0.0.1:1` when `testing.Testing()` and `FATHOM_HTTP` is unset.
-- Every client sends `X-Fathom-Caller: pid=…;ppid=…;origin=…;session=…;test=0|1`; the
+  `http://127.0.0.1:1` when `testing.Testing()` or `FATHOM_TEST=1` and `FATHOM_HTTP` is
+  unset. `testing.Testing()` is false in a child process, so a test that execs the built
+  `fathom` binary is covered by the env var it inherits; a test that builds `cmd.Env` by hand
+  without `os.Environ()` is caught by the lint's `test-env` rule (§4.7).
+- Every client sends `X-Fathom-Caller: pid=…;ppid=…;origin=…;session=…;test=0|1`, with
+  `test=1` derived from `FATHOM_TEST=1` as well as `testing.Testing()`; the
   managed daemon answers `test=1` with 409 and counts `fathom_test_callers_rejected_total`;
   unmanaged daemons accept tests.
 - `TestEveryPackageWithDaemonDefaultsIsIsolated` walks the import graph and fails for any
@@ -740,7 +918,8 @@ wall time ≤ deadline.
 `$HOOK_CACHE/daemon-health-<sha8(baseURL)>.json` `{state, until, failures, last_error}`,
 written by rename.
 
-- Opens on timeout, 5xx or refused: backoff 5 s, 10 s, 20 s … 300 s.
+- Opens on 2 failures (timeout, 5xx or refused) within 10 s — one timeout alone would blank
+  obligations for every session for 5 s: backoff 5 s, 10 s, 20 s … 300 s.
 - On 503 with `Retry-After`: `until` = Retry-After (≤ 60 s); busy is not a failure.
 - Half-open: one hook holds an `O_EXCL` lease (5 s TTL) and probes `GET /healthz` (300 ms);
   every other hook fails open at once.
@@ -758,7 +937,9 @@ written by rename.
 - `gitToplevel` memoized in-process and cached per cwd (keyed by cwd and `.git` mtime, 10
   min TTL).
 - Observe-only paths (the Read|Grep|Glob observer; post-bash with no write targets) exit
-  before any git or daemon work.
+  before any git or daemon work, and are registered non-blocking (async) in the hook
+  template where the harness supports it, so an agent's tool call never waits on them
+  (RT-169).
 - The Stop hook reads the transcript from a per-session offset stamp, not up to 16 MB each
   turn.
 - `custodian.walkAgentConfigFiles`: depth 6, 20,000 entries, a deadline 2 s under the hook
@@ -767,7 +948,9 @@ written by rename.
 
 Targets (from `hooks.jsonl`): no-op paths p50 ≤ 30 ms; breaker-open fail-open p50 ≤ 15 ms;
 post-bash p99 ≤ 4.0 s (5,017 ms max today). Doctor `hook_budget`: p99 vs deadline per
-channel, breaker-open minutes, harness kills (a `seen` beat with no `answered`/`error`).
+channel, breaker-open minutes, edits served while the breaker was open (the guard feature
+degrades silently then, so it is counted), harness kills (a `seen` beat with no
+`answered`/`error`).
 
 ---
 
@@ -780,7 +963,7 @@ channel, breaker-open minutes, harness kills (a `seen` beat with no `answered`/`
 | call log | rotate at 64 MiB: rollup, gzip, archive (never deleted) up to 1 GiB, then report | rotate + gzip: yes; delete: never |
 | verify / session / intent ledgers, `decisions.jsonl` | rotate + gzip at 32 MiB, keep all (I33 needs history) | rotate: yes |
 | `session-stamps` | delete after 30 days | yes |
-| `~/.fathom/daemons` with a dead pid | delete | yes |
+| `~/.fathom/daemon/<id>/record.json` (and legacy `~/.fathom/daemons`) with a dead pid | delete | yes |
 | `$TMPDIR` `fathom-edit-set`, `fathom-*-test-*`, `fathom-stranger-check` | delete after 1 day | yes |
 | `workspace/artifacts/scenariobench/worktrees` | keep last 5 runs or 14 days; `.pin` exempts | no; reported |
 | `workspace/tmp/fathom-bin-*` | keep last 3 | no; reported |
@@ -805,6 +988,23 @@ class, the largest classes, internal-disk free. Targets: `workspace/` ≤ 3 GiB 
 - Gate runs use `taskpolicy -b` on macOS or `nice -n 10`, and `go test -p 4`.
 - The post-commit relink runs in the background, niced; the post-commit ingest becomes
   `POST /refresh-request` (202, coalesced), refused at refuse and in safe mode.
+- The post-commit hook's failure message says what happened (`daemon refresh failed: …;
+  nothing was ingested; run fathom ingest <svc> when the daemon is back`). Today it announces
+  "falling back to a store-direct ingest" and returns without running one
+  (`postcommithook.go:119`) — a false claim during exactly the incidents it reports (wave A,
+  RT-170).
+- The gate lease is proven by `scripts/gate-lease_test.sh`, run by `task scripts-check`: two
+  concurrent holders of the lease around a stub command must serialize.
+
+### 12.4 Disk writes
+
+The audit's macOS resource report showed 8.6 GB dirtied in 1,395 s against a ~99 KB/s
+limit. Contract: ≤ 2 GiB/day written by the managed daemon outside explicit ingest. The
+sampler reads cumulative bytes written (`proc_pid_rusage`'s `ri_diskio_byteswritten`, self
+and children); the ring keeps it per minute; `resources` and doctor's `disk_retention` row
+judge the day against the budget (`DiskWriteVerdict`); `fathom_bytes_written_total` carries
+it by subsystem. RT-M12 reads seven days. A breach is disclosed, not enforced: the
+writers are the call log, the WAL and ingest, each bounded by its own mechanism.
 
 ---
 
@@ -824,15 +1024,15 @@ Exit 0 within budget; 1 over budget, crash-looping, breaker-stopped or scratch d
 leaked; 2 files unreadable.
 
 ```
-fathom resources — com.geoffmilleraz.fathom-http (managed, plist schema 2)
+fathom resources — <label> (managed, plist schema 2, signed fathom-dev)
 state      normal · budget 4.0 GiB (auto: RAM 32 GiB / 8) · exit mark 8.0 GiB
-footprint  1.2 GiB now · 24h max 3.4 GiB (09-26 21:14, shed) · ▁▁▂▅▃▁
-lifecycle  up 3h12m · 2 starts/24h · 0 unclean · breaker closed
+footprint  1.2 GiB now (+0.1 children) · 24h max 3.4 GiB (09-26 21:14, shed) · ▁▁▂▅▃▁
+lifecycle  up 3h12m · 2 starts/24h · 0 unclean · breaker closed · 0 quarantined
 host       pressure normal · swap 3.1/22.0 GiB · internal disk 41 GiB free
 in-flight  point 3 · index 1 · tree 0/2 · fleet 0/1 · ingest idle · refused 24h: 17 (tree 14)
 hooks      post-edit p99 1.9s/4.0s · breaker open 0 min/24h
 scratch    0 unmanaged daemons
-disk       ~/.fathom 212 MB · workspace 2.8 GiB (reclaimable 0.4) · call log 23 MB
+disk       ~/.fathom 212 MB · workspace 2.8 GiB (reclaimable 0.4) · call log 23 MB · written 0.3/2.0 GiB today
 diag       last capture 09-26 21:14 refuse → ~/.fathom/daemon/…/diag/…
 ```
 
@@ -858,7 +1058,8 @@ the ring's last sample with its age, never nothing (I38).
   `fathom_bytes_read_total{tool}`, `fathom_bytes_written_total{subsystem}`,
   `fathom_cache_bytes{group}`, `fathom_lifecycle_starts_total{reason}`,
   `fathom_memory_released_bytes`, `fathom_gc_cpu_fraction`, `fathom_sqlite_memory_used_bytes`,
-  `fathom_test_callers_rejected_total`. `HeapSys` stays only as a labelled virtual-size gauge.
+  `fathom_test_callers_rejected_total`, `fathom_children_footprint_bytes`,
+  `fathom_quarantined_services`. `HeapSys` stays only as a labelled virtual-size gauge.
 - **Scavenger line:** logs total−released and phys_footprint before and after.
 - **Call log:** per row `class`, `queued_ms`, `bytes_read`, `outcome ∈ {ok, partial,
   refused, abandoned}`, caller identity; `schema_version` bump (I32).
@@ -869,14 +1070,18 @@ Triggers: first crossing of each power of two (1, 2, 4, 8 GiB) per process; entr
 `refuse`; `exit`; pressure critical. Written to `~/.fathom/daemon/<id>/diag/<ts>-<trigger>/`:
 `heap.pb.gz`, `goroutine.txt` (labelled by `pprof.Do(tool, origin)` in the dispatch
 wrapper), `inflight.json`, `trace.out` from `trace.FlightRecorder` (started at `shed`, 8 MiB
-window), `metrics.txt`. Rate: ≤ 1 per 10 min; retention 10 captures / 200 MiB. Logged at
+window), `metrics.txt` (including `fathom_gc_cpu_fraction`, which RT-M7 reads for refuse
+windows). The exit rung writes only the heap profile and `inflight.json`, within 1 s. Rate: ≤ 1 per 10 min; retention 10 captures / 200 MiB. Logged at
 info with the path; the latest shows in doctor and `resources`.
 
-### 13.5 Diagnostics socket
+### 13.5 pprof and diagnostics (the socket deferred)
 
-`~/.fathom/daemon/<id>/diag.sock` (0600) serves `/metrics`, `/tenancy`, `/debug/inflight`
-and pprof with its own 4-goroutine budget, `seconds` capped at 30, one profile at a time,
-not subject to admission. pprof leaves the TCP mux (404 with a pointer; **Breaking**).
+pprof and `/debug/inflight` stay on the TCP mux behind the loopback `Host` check (§3.5),
+with `seconds` capped at 30 and one profile at a time; `/metrics` stays where it is. A
+private unix socket (`diag.sock`, its own goroutine budget, outside admission) would be a
+new breaking surface whose only argument is reachability under saturation, which the Host
+check plus admission may already give. It is deferred (RT-D7) until RT-M3 records `/metrics`
+unreachable under load.
 
 ---
 
@@ -914,7 +1119,7 @@ not subject to admission. pprof leaves the TCP mux (404 with a pointer; **Breaki
 ### 15.1 In the gate (`task validate`, `-race`)
 
 - `internal/tenancy`: ladder transitions and hysteresis (table, fake sampler and clock);
-  breaker safe-mode and stop; budget resolution per RAM class (8/16/32/64 GiB, cgroup);
+  breaker safe-mode and stop; budget resolution per RAM class (8/16/32/64 GiB);
   gate priority (a hook never waits behind console work), zero-wait try-acquire < 1 ms,
   waiters released on ctx cancel, `observe` never refuses but logs.
 - `TestEveryToolDeclaresCostClass`, `TestEveryToolHasCostRow`, the cost tests (§4.8), the
@@ -933,6 +1138,14 @@ not subject to admission. pprof leaves the TCP mux (404 with a pointer; **Breaki
 - `TestUnmanagedServeHTTPExitsWhenParentKilled`; `TestEveryPackageWithDaemonDefaultsIsIsolated`;
   `TestTestCallerRefusedByManagedDaemon`.
 - `TestNoHookRPCOutlivesItsDescriptorBudget`; `TestHookBreakerSingleProber`.
+- Review additions: `TestCostClassMatchesMeasuredCost`, `TestProducerHaltsWithinOneFile`,
+  `TestLadder_SwapFractionAloneNeverSheds`, `TestLadder_LateSampleEscalatesAndSamplerZeroAlloc`,
+  `TestExitMarkHaltsIngestBeforeExiting`, `TestIngestInFlightAtOverBudgetExitQuarantines`,
+  `TestEnsureIngestSurvivesRequestCancelAndSerializes`, `TestEnsureSeenOnlyAfterSuccess`,
+  `TestDeployKickstartNotCountedByBreaker`, `TestStopUnderV1PlistNamesRelaunchAndBootout`,
+  `TestReferences_NoIdentityNamesChoices`, `TestSummaryBackfilledWithoutIngest`,
+  `TestShedTrimToHalfSingleRebuildHysteresis`, `TestDiscover_HonoursGitignoreAndKeepsSkipDir`,
+  `TestCallerHeaderTestFlagFromEnv`, `TestTCCWedgeRemedyNamesDaemonBinary`.
 - `TestResourcesRendersFromRingWhenDaemonDown`; `TestGCDryRunDeletesNothing`;
   `TestStdioRotationStreamsAndHardCaps`; `TestBudgetConfigUserScopeOnly`; CUE pairs.
 
@@ -941,21 +1154,31 @@ not subject to admission. pprof leaves the TCP mux (404 with a pointer; **Breaki
 Runnable by anyone, heavy, run only on a quiet machine with the operator's go-ahead.
 
 - Builds the binary under test into `workspace/tmp/`, copies the fleet store into a
-  `mktemp -d`, starts an **unmanaged** daemon on a free port with `--parent-pid $$`,
-  `[tenancy] budget` forced to 1 GiB (so the ladder is exercised without endangering the
-  host), and an app-kit-shaped fixture corpus (generated: 40k files, 5 GiB including a
-  gitignored cache dir and 400 files over 2 MiB).
+  `mktemp -d` under `workspace/tmp/` on the external volume (never the 91%-full internal
+  disk), starts an **unmanaged** daemon on a free port with `--parent-pid $$` and
+  `--lifecycle-id tenancy-stress-<run>` (so the breaker sees every simulated relaunch in one
+  ledger; the default unmanaged id `addr-<port>-<pid>` would start a fresh ledger each time),
+  `[tenancy] budget` forced to 1 GiB and `exit_enabled = true` (so the ladder is exercised
+  without endangering the host), and an app-kit-shaped fixture corpus (generated under
+  `workspace/tmp/`: 40k files, 5 GiB including a gitignored cache dir and 400 files over
+  2 MiB). It refuses to start when the port, store or call log resolve to the managed
+  daemon's, or the fixture dir is on the internal disk; `--self-check` exercises those
+  refusals and is run by `scripts/tenancy-stress_test.sh` in `task scripts-check`.
+- Every run needs the operator's explicit go-ahead (`--i-have-the-operators-go-ahead`),
+  on a quiet machine.
 - Load mix (the 2026-09-26 shape at 2× the 2026-09-24 peak rate, ~1,560 calls/min):
   32 concurrent cold `list_services`, 16 concurrent `obligations` on the fixture, 4
   `references` with `services: ["*"]`, one ingest, plus the recorded call-log mix.
 - Then five SIGKILL/relaunch cycles (relaunch simulated by the harness with a 60 s
   throttle).
-- Samples `/metrics` over the diag socket every 1 s; writes a reading to
+- Samples `/metrics` over TCP every 1 s and records each sample's reachability (the RT-D7
+  trigger); writes a reading to
   `docs/bench/readings/tenancy-stress-<date>.md` with the plain-language verdict first.
-- **Pass (pre-fix binary, seatbelt only):** max footprint ≤ exit mark + one sample of
-  growth; a diag capture exists; safe mode by the 3rd start; breaker stop by the 5th;
-  `fathom resources` exits 1 and names `list_services`/`obligations`.
-- **Pass (post-fix binary):** no exit rung; max footprint ≤ budget; hook-origin p99 ≤ 2 s;
+- **Pass (the wave-B binary — seatbelt without brakes; the literal pre-fix binary has no
+  ladder):** max footprint ≤ exit mark + 1 GiB, measured; a diag capture exists; safe mode by
+  the 3rd start; breaker stop by the 5th; `fathom resources` exits 1 and names
+  `list_services`/`obligations`.
+- **Pass (the post-wave-D binary):** no exit rung; max footprint ≤ budget; hook-origin p99 ≤ 2 s;
   refusals only in `tree`/`fleet`; after a SIGKILL, no ingest in the first 60 s and one
   service at a time.
 
@@ -971,14 +1194,15 @@ RT-M0..RT-M9 in vision 36 §6, read from the ring, lifecycle ledger, call log an
 Each step is a reviewable commit with a `Verified:` line, `task validate` green, then `task
 deploy` (never a raw `cp`). The plan's waves:
 
-| Wave | Content | Why first |
+| Wave | Content | Why here |
 |---|---|---|
-| **A. Tonight** | the hotfix (4200482a, RT-1); kill switch; hook deadline + breaker + disabled check; self-restart exits 75 with stat-gated hashing; plist schema 2 + `install --reconcile`; test-isolation backstop; unmanaged parent-death/idle/TTL exit + `daemon ps|reap`; obligations as `tree` with the stat cap and single-file fallback | the machine is safe while the rest lands; operator applies `reap --apply` and the reconcile after `task deploy` |
-| **B. Seatbelt** | tenancy sampler, ladder, exit rung, lifecycle ledger, breaker, safe mode, warm-up; runtime/metrics instruments; ring + `fathom resources`; doctor rows + primer line; store-wait and bind-first; admission gate in `observe` (RT-M0 starts) with `r.Context()` and server timeouts | bounded regardless of cause |
-| **C. Brakes** | `internal/corpus` + gitignore discovery + stat-first reads; `Sources` out of `QueryInterface`; `internal/memo` with graphstore/snapshot; derived tables + indexes + pragmas; obligations/list_services/nav/references/search rewrites; tenancy lint + ratchet; cost and stampede tests; admission to `enforce` after RT-M0 | removes the causes |
-| **D. Ingest** | refresh queue; streaming stat-gated ingest; typed/CUE gating; extractor reuse + wazero Close; `ingest_state` watermark; `gitro.Head` | ingest ≤ 300 MiB and off reads |
-| **E. Console and hygiene** | console tails, `console.Jobs`, in-process calls, lazy feeders, Tenancy panel; diag capture + socket + Host check; `fathom gc` + WAL + stdio rotation; gate lease; hook fan-out trims; custodian cap | the long tail |
-| **F. Close** | ratchet at zero; stress-harness readings (RT-M3, RT-M5); field readings (RT-M1, M2, M6–M9); record corrections (O108, O112, CHANGELOG, fleet-index, configuration.md, memorylimit.go); domain.md platform facts | honesty debt paid |
+| **A. First deploy** | the causes, in forms with no schema change: the hotfix (RT-1, RT-2); obligations' single-file fallback, layer coverage from `SourcePaths` memoized and single-flighted, the `loadUnion` memo (RT-81, RT-143, RT-83); `list_services` from SQL aggregates (RT-144); `IsIndexed` (RT-80); connector stat-before-read, 2 MiB cap, ctx, default cache ignores, dry-run stats (RT-69, RT-145, RT-70); two `Sources` slots, hooks never waiting (RT-146); `ensure()` detached under one ingest ticket, `seen` after success (RT-149, RT-151); the stat caps (RT-26, RT-27). The off switch and hygiene: kill switch (managed only; honest under a v1 plist); hook deadline and breaker; adoption exits 75 with stat-gated hashing; test isolation with `FATHOM_TEST`; unmanaged parent-death/idle/TTL; signing fails loudly and is reported; the post-commit message corrected | replaying 20 sessions editing app-kit against this binary no longer reads any whole tree's contents on the edit path, `list_services` loads no symbol row, and inline ingests run one at a time |
+| **A2. Posture and census** | plist schema 2 + `install --reconcile`; daemon records under `~/.fathom/daemon/<id>/`; `daemon ps|reap`; then the operator's RT-28 | ships with A when time allows; RT-28 needs reconcile, reap and signing |
+| **B. Seatbelt** | tenancy sampler (children, disk writes, lateness, no allocation), ladder with pressure / swap-growth / swap-volume triggers, producer governor, refuse cancelling every heavy ticket, exit rung that halts ingest first and skips the drain, quarantine, `ingest_state` watermark (RT-109), `ensure()` gated by level; lifecycle ledger with `--lifecycle-id`, deploy intent, breaker, safe mode, warm-up; SIGTERM → drain row first, 12 s, exit 0; GC hint at the exit mark; runtime/metrics instruments; ring + `fathom resources`; doctor rows + primer line; store-wait (with the right TCC remedy) and bind-first; admission gate in `observe` with classes by today's cost, `r.Context()` (after RT-149/150/109) and server timeouts | bounded regardless of cause: the ladder and the governor bound memory; the admission envelope does not hold yet |
+| **C. Brakes** | `internal/corpus` + gitignore discovery (keeping `skipDir`; the default flips after RT-M11) + stat-first reads; `Sources` out of `QueryInterface`; `internal/memo` (shed trims, refuse drops) with graphstore/snapshot; derived tables backfilled by SQL + indexes + pragmas (`hard_heap_limit` too); `file_stats`-backed obligations, summary rows, nav, `references` (named `-32602` without identity), search rewrites, each moving its tool's class down with its cost row; tenancy lint (syntactic rules) + ratchet; cost and stampede tests; RT-M0 starts after RT-79/81/82/85, then admission to `enforce` | removes the causes structurally; the envelope holds from here |
+| **D. Ingest** | refresh queue; streaming stat-gated ingest; typed/CUE gating; extractor reuse + wazero Close; `gitro.Head`; RT-M10 feasibility per RAM class | ingest ≤ 300 MiB and off reads |
+| **E. Console and hygiene** | console tails, `console.Jobs`, in-process calls, lazy feeders, Tenancy panel; diag capture; pprof capped behind the Host check; `fathom gc` + WAL + stdio rotation; gate lease with its script test; hook fan-out trims and async observe-only registration; custodian cap; stress harness with `--self-check` | the long tail |
+| **F. Close** | ratchet at zero; stress-harness readings (RT-M3, RT-M5, RT-M10); field readings (RT-M1, M2, M4, M6–M9, M11–M13); record corrections (O108, O112, CHANGELOG, fleet-index, configuration.md, memorylimit.go); domain.md platform facts | honesty debt paid |
 
 ---
 
@@ -991,10 +1215,12 @@ deploy` (never a raw `cp`). The plan's waves:
 - Scope G14.
 - Compatibility surface additions: `-32050` + the 503 envelope, the 409, `[tenancy]`,
   `fathom resources --json`, `fathom daemon stop|start|pause|resume|ps|reap`, plist schema 2,
-  the lifecycle ledger row shapes.
+  the lifecycle ledger row shapes (`quarantine`, `deploy` included), `serve-http
+  --lifecycle-id`, SIGTERM → exit 0, `references`' named `-32602` without identity.
 - `docs/intent/domain.md` platform facts (in wave F): `SetMemoryLimit` is soft and excludes
   mmap'd memory; `HeapSys` never falls; `ps` RSS ≠ `phys_footprint`; jetsam kills
   neighbours before the largest process; swap on the internal disk leads to `SQLITE_FULL`;
+  macOS grows swap files on demand, so the swap-used fraction is not a pressure signal;
   `KeepAlive` dict semantics and the 10 s default throttle; `ResidentSetSize` is advisory;
   Background QoS is inherited by children; `.gitignore` is the authority for build and tool
   caches in git worktrees.
