@@ -37,9 +37,12 @@ fathom_cache_configure
 cd "${REPO_ROOT}"
 
 start=$SECONDS
-work="${TMPDIR:-/tmp}/fathom-stranger-check"
-rm -rf "${work}"
-mkdir -p "${work}"
+# RT-25 (docs/design/responsible-tenant.md §10.3): a PRIVATE work dir per
+# run, removed by the trap. The fixed ${TMPDIR}/fathom-stranger-check was
+# shared by concurrent runs (one run's rm -rf pulled the tree from under
+# another) and left 227 MB behind. FATHOM_STRANGER_KEEP=1 keeps it for a
+# post-mortem and prints where.
+work="$(mktemp -d "${TMPDIR:-/tmp}/fathom-stranger-check.XXXXXX")"
 tree="${work}/tree"
 home="${work}/home"
 mkdir -p "${tree}" "${home}"
@@ -48,6 +51,11 @@ cleanup() {
   if [ -n "${daemon_pid:-}" ]; then
     kill "${daemon_pid}" 2>/dev/null || true
     wait "${daemon_pid}" 2>/dev/null || true
+  fi
+  if [ "${FATHOM_STRANGER_KEEP:-0}" = "1" ]; then
+    echo "stranger-check: work dir kept at ${work}" >&2
+  else
+    rm -rf "${work}"
   fi
 }
 trap cleanup EXIT
