@@ -29,13 +29,6 @@ proven 2026-09-25.
 **G5. The custodian closes.** Done when: `docs/plans/custodian.md` shows 0 open and 0
 claimed-unproven. Open: SD-2/3/4 (SDD panel); DP-2 is refused (superseded by EP-9).
 
-**G6. Zero claimed-unproven rows fleet-wide, then CI fails closed.** Done when:
-`fathom plans status` shows 0 claimed-unproven across every active plan and
-`fathom verify --strict` exits 0 for every top-level plan. 0 claimed-unproven, and
-672 claimed / 662 verified / 0 refuted across 51 plans on 2026-09-02 (the 10 unverified
-are claimed rows with no contract the gate can refute, each naming why).
-`docs/plans/proof-credibility.md` PC-20 is what is left.
-
 **G9. The bench is honest, cheap to re-run, and the 2026-09-13 reading is the baseline.**
 BP-1..25 proved (L0 index oracle, L1 payload replay, L2 corpus gate, per-key cell memoization,
 H2-3 registered). The first replicated home run (run-20260913T002832Z) is FAIL on cost

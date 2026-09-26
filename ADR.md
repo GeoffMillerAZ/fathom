@@ -382,12 +382,12 @@ the dropped count (P3).
 **Not resolved by this amendment.** The guards pilots and the
 decision-port A/B (`docs/bench/readings/decision-port-ab-2026-09-23.md`)
 show the task's governing rule missing from the served set regardless of
-ranking or headroom. That is a selection problem, not a budget problem; it
-stays open under HF-4 / Q13, and `rank_within_tier = false` (ADR-042
-amendment, 2026-09-23) is a mitigation, not a fix.
+ranking or headroom. That is a selection problem, not a budget problem; it stays open
+as `docs/plans/verbs.md` VB-40 (carried by honesty-fixes HF-4 until 2026-09-25), and
+`rank_within_tier = false` (ADR-042 amendment, 2026-09-23) is a mitigation, not a fix.
 **Revisit when** a single-adopter window of 14 days or more without bench
-traffic moves post-edit p90 more than 15% from 320, or HF-4/Q13's selection
-work lands (a better selector may let the ceiling come back down).
+traffic moves post-edit p90 more than 15% from 320, or the selection work
+(`docs/plans/verbs.md` VB-40) lands (a better selector may let the ceiling come back down).
 
 ## ADR-017 — Born-portable stores: repo-relative anchors, domain-neutral freshness
 
@@ -1941,7 +1941,7 @@ itself cannot get past.
    (design §2.5's shape already has no separate content to check).
 3. `internal/harness.HookOutput` gains `Deny`/`DenyReason`; `claudeCodec`/`codexCodec` render the
    documented `hookSpecificOutput.permissionDecision:"deny"` shape (verbatim against
-   `testdata/codecs/codex/pre-tool.deny.json`, whose header comment is updated — the shape fathom
+   `internal/harness/testdata/codecs/codex/pre-tool.deny.json`, whose header comment is updated — the shape fathom
    now emits, narrowly, not the shape it never emits) on `EventPreTool` only; Gemini's codec
    refuses `Deny` outright rather than silently downgrading it to advisory. `HookInput` gains
    `NewContent`/`OldContent`, decoded from Claude Code's Write `content` / Edit

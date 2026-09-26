@@ -40,17 +40,6 @@ share it through git. Blocks: EP-6, K1 on a second machine (F15). Answerable by:
 the only evaluator; if the practice accepts several, the grammar moves to agentic-kit and
 fathom pins a version. Blocks: EP-2's key set, EP-34. Answerable by: owner, with the kit.
 
-**Q22. What would a reviewer need to be shown to accept a 400-file agent refactor without
-reading the diff, and can a stranger re-derive every line of it?** Vision 34's planes are
-one answer; whether they are sufficient is measured on the first real refactor program
-(CV-M6) by counting what the reviewer still had to open. Blocks: the pack's promotion from
-warn to deny. Answerable by: evidence (CV-M6), then owner. **Evidence so far (not an
-answer): CV-44** (`docs/bench/readings/cv-44-reviewkit-armed-2026-09-25.md`) shows the
-mechanism a promotion decision would rely on genuinely works — a real `leadsman sound`
-against this repository's own history made the `fathom-conserve`-backed requirements fire
-`fail` on a genuine finding, not merely a clean-shaped pass — but does not itself measure
-what a reviewer still had to open, which is what this question still needs. **Instrument built (2026-09-25):** the reading set (design §3.4, ADR-044's 2026-09-25 amendment) names what a reviewer still has to open — every changed function no commit-bound passing test vouches for, plus changed files fathom cannot analyze. CV-M12 measures it on two real ranges; this question is answered when that reading says how many of a range's changed files the reviewer still had to open, and the owner decides whether that is enough to promote the pack.
-
 **Q23. When is a test edit a legitimate refactor and when is it a weakening?** The
 integrity check normalises renames and counts assertions; an assertion rewritten as a
 helper call, a table case merged, or a matcher swapped for an equivalent still flags as
@@ -93,3 +82,12 @@ hand-verified correct; the scip and file tiers separately scored 0.87–0.95 pre
 per-language measurement but neither the tier this question names (typed edges) nor the
 language count (two, not three) — the cross-language comparison this question asks about
 stays blocked.
+
+**Q28. Promote the `refactoring-conservation` pack from warn to deny?** Q22 (what a reviewer
+must be shown to accept a large agent refactor without reading the diff) is answered by
+measurement in `docs/design/refactor-conservation.md` §3.6: on this repository's CV wave-3
+range the reviewer opens 13 of 31 changed functions, each at the changed lines that never
+ran, plus the 21 changed files fathom does not analyze, instead of 47 files; on a
+weaker-tested repository the flagged set grows instead of hiding the gaps. At deny the
+pack's findings block instead of warn. Blocks: arming the pack at deny
+(`.reviewkit/config.cue`). Answerable by: owner.
