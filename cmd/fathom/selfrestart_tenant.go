@@ -15,11 +15,13 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/buildinfo"
+	"github.com/geoffmilleraz/fathom/internal/dlog"
 )
 
 // binaryStat is the (size, mtime, inode) triple the watcher compares
@@ -52,24 +54,64 @@ func binaryStatChanged(prev, cur binaryStat) bool {
 // selfRestartManaged reports whether this serve-http is the managed daemon,
 // the only one that watches its own binary (design §8.2, §10.1): started
 // with --managed (plist schema 2), or launched by launchd under the label of
-// the fathom agent installed on this machine (XPC_SERVICE_NAME, which
+// any fathom agent installed on this machine (XPC_SERVICE_NAME, which
 // launchd sets to the job's label; a shell-started daemon inherits its
 // terminal's value, which is never a fathom agent's label). It returns the
 // label the lifecycle ledger is kept under.
-func selfRestartManaged(managedFlag bool, xpcServiceName string, installedLabel func() string) (bool, string) {
+func selfRestartManaged(managedFlag bool, xpcServiceName string, installedLabels func() []string) (bool, string) {
+	installed := installedLabels()
 	label := ""
-	if xpcServiceName != "" && xpcServiceName != "0" {
-		if inst := installedLabel(); inst != "" && inst == xpcServiceName {
-			label = inst
-		}
+	if xpcServiceName != "" && xpcServiceName != "0" && slices.Contains(installed, xpcServiceName) {
+		label = xpcServiceName
 	}
 	if managedFlag {
 		if label == "" {
-			label = firstNonEmpty(installedLabel(), defaultDaemonLabel)
+			first := ""
+			if len(installed) > 0 {
+				first = installed[0]
+			}
+			label = firstNonEmpty(first, defaultDaemonLabel)
 		}
 		return true, label
 	}
 	return label != "", label
+}
+
+// selfRestartStart carries startSelfRestart's inputs, each injectable.
+type selfRestartStart struct {
+	managedFlag     bool
+	xpcServiceName  string
+	installedLabels func() []string
+	disabled        bool
+	executable      func() (string, error)
+	watch           func(path string, cfg selfRestartConfig) // runs the watcher (serve-http: go watchOwnBinary)
+}
+
+// startSelfRestart is serve-http's self-restart wiring: it starts the
+// binary watcher only for the managed daemon and not when the operator
+// pinned the binary, and logs which it did. It reports whether it started.
+func startSelfRestart(log *dlog.Logger, in selfRestartStart) bool {
+	isManaged, label := selfRestartManaged(in.managedFlag, in.xpcServiceName, in.installedLabels)
+	switch {
+	case !isManaged:
+		log.Info("self-restart: off — unmanaged daemon (not started by the installed launchd agent, no --managed)")
+		return false
+	case in.disabled:
+		log.Info("self-restart: OFF (FATHOM_SELF_RESTART=off) — a deploy will need a manual restart")
+		return false
+	}
+	exe, err := in.executable()
+	if err != nil {
+		log.Warn(fmt.Sprintf("self-restart: disabled — cannot resolve this process's own path (%v)", err))
+		return false
+	}
+	in.watch(exe, selfRestartConfig{
+		poll:     selfRestartPoll,
+		cooldown: selfRestartCooldown,
+		ledger:   lifecycleLedgerPath(label),
+		exit:     os.Exit,
+	})
+	return true
 }
 
 // lifecycleLedgerPath is ~/.fathom/daemon/<label>/lifecycle.jsonl (design
@@ -129,25 +171,41 @@ func lastAdoption(ledger string) (time.Time, bool, error) {
 		last  time.Time
 		found bool
 	)
-	sc := bufio.NewScanner(f)
-	sc.Buffer(make([]byte, 0, 64*1024), 64*1024)
-	for sc.Scan() {
-		var r lifecycleRow
-		if json.Unmarshal(sc.Bytes(), &r) != nil || r.Row != "adopt" {
-			continue // a torn first line after the seek, or another row kind
+	rd := bufio.NewReaderSize(f, 64*1024)
+	for {
+		line, rerr := readLedgerLine(rd)
+		if len(line) > 0 {
+			var r lifecycleRow
+			if json.Unmarshal(line, &r) == nil && r.Row == "adopt" {
+				if t, perr := time.Parse(time.RFC3339Nano, r.At); perr == nil && (!found || t.After(last)) {
+					last, found = t, true
+				}
+			}
+			// else: a torn first line after the seek, an overlong line, or
+			// another row kind — skipped.
 		}
-		t, perr := time.Parse(time.RFC3339Nano, r.At)
-		if perr != nil {
-			continue
+		if rerr == io.EOF {
+			break
 		}
-		if !found || t.After(last) {
-			last, found = t, true
+		if rerr != nil {
+			return time.Time{}, false, rerr
 		}
-	}
-	if err := sc.Err(); err != nil {
-		return time.Time{}, false, err
 	}
 	return last, found, nil
+}
+
+// readLedgerLine returns the next line without its newline, or nil for a
+// line longer than the reader's buffer (skipped whole, never an error that
+// discards the rows after it).
+func readLedgerLine(rd *bufio.Reader) ([]byte, error) {
+	line, isPrefix, err := rd.ReadLine()
+	if !isPrefix {
+		return line, err
+	}
+	for isPrefix && err == nil {
+		_, isPrefix, err = rd.ReadLine()
+	}
+	return nil, err
 }
 
 // appendAdoptRow appends an `adopt` row (old and new binary) to the ledger.

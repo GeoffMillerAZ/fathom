@@ -6,6 +6,7 @@ package main
 // hashing, a cross-process cooldown in the lifecycle ledger, managed only).
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -29,6 +30,10 @@ func TestSelfRestartExitCodeMatchesPlistSchema(t *testing.T) {
 	if !strings.Contains(v1, v1KeepAlive) {
 		t.Fatalf("rendered plist no longer carries %q; update this test to the schema it renders:\n%s", v1KeepAlive, v1)
 	}
+	// No schema-2 renderer exists yet (RT-13); until it does, schema 2 is the
+	// schema-1 render with the design's KeepAlive dict (§8.1) swapped in.
+	// RT-13 replaces this line with its own render, so the row is then
+	// proven against the plist fathom actually writes.
 	v2 := strings.Replace(v1, v1KeepAlive, "<key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>", 1)
 
 	for _, tc := range []struct {
@@ -157,7 +162,7 @@ func TestWatchOwnBinaryHashesOnlyOnStatChange(t *testing.T) {
 	})
 
 	t.Run("managed only", func(t *testing.T) {
-		installed := func() string { return "com.example.fathom" }
+		installed := func() []string { return []string{"com.example.fathom"} }
 		for _, tc := range []struct {
 			flag bool
 			xpc  string
@@ -174,7 +179,7 @@ func TestWatchOwnBinaryHashesOnlyOnStatChange(t *testing.T) {
 				t.Errorf("selfRestartManaged(%v, %q) = %v, want %v", tc.flag, tc.xpc, got, tc.want)
 			}
 		}
-		if got, _ := selfRestartManaged(false, "com.example.fathom", func() string { return "" }); got {
+		if got, _ := selfRestartManaged(false, "com.example.fathom", func() []string { return nil }); got {
 			t.Error("managed with no installed fathom agent; an unrelated launchd job is not fathom's")
 		}
 	})
@@ -204,5 +209,203 @@ func TestBinaryStatChanged(t *testing.T) {
 	}
 	if st, err := statBinary(f); err != nil || st.size != 1 || st.ino == 0 {
 		t.Errorf("statBinary = %+v, %v", st, err)
+	}
+}
+
+// TestWatchOwnBinaryRetriesAFailedHash: a hash error on a changed binary is
+// logged and retried on the next poll, never recorded as "seen" — otherwise
+// the verified new binary is never adopted and nothing says why (property 4,
+// I38).
+func TestWatchOwnBinaryRetriesAFailedHash(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell-script fixtures are POSIX")
+	}
+	dir := t.TempDir()
+	bin := filepath.Join(dir, "fathom")
+	fakeBinary(t, bin, "fathom v0.1.0 @ aaaaaaaaaaaa", 0)
+	var calls atomic.Int32
+	hash := func(p string) (string, error) {
+		if calls.Add(1) == 2 { // the first hash after the change
+			return "", errors.New("read interrupted")
+		}
+		return hashFile(p)
+	}
+	var exited atomic.Int32
+	exited.Store(-1)
+	var out syncBuffer
+	done := make(chan struct{})
+	go func() {
+		watchOwnBinary(bin, dlogOver(&out), selfRestartConfig{
+			poll: 2 * time.Millisecond, exit: func(c int) { exited.Store(int32(c)) }, hash: hash,
+		})
+		close(done)
+	}()
+	time.Sleep(20 * time.Millisecond)
+	fakeBinary(t, bin, "fathom v0.1.0 @ bbbbbbbbbbbbbbbb", 0)
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatalf("a transient hash failure stranded the deploy (hashes=%d); log:\n%s", calls.Load(), out.String())
+	}
+	if !strings.Contains(out.String(), "read interrupted") {
+		t.Errorf("the hash failure must be logged:\n%s", out.String())
+	}
+}
+
+// TestWatchOwnBinaryReverifiesAfterATransientRefusal: a good binary whose
+// first `version` run fails (a timeout under memory pressure, a slow first
+// exec while syspolicyd scans it) is re-verified after the refusal backoff,
+// not stranded until the next deploy.
+func TestWatchOwnBinaryReverifiesAfterATransientRefusal(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell-script fixtures are POSIX")
+	}
+	dir := t.TempDir()
+	bin := filepath.Join(dir, "fathom")
+	fakeBinary(t, bin, "fathom v0.1.0 @ aaaaaaaaaaaa", 0)
+	var exited atomic.Int32
+	exited.Store(-1)
+	var out syncBuffer
+	done := make(chan struct{})
+	go func() {
+		watchOwnBinary(bin, dlogOver(&out), selfRestartConfig{
+			poll: 2 * time.Millisecond, cooldown: 20 * time.Millisecond,
+			exit: func(c int) { exited.Store(int32(c)) },
+		})
+		close(done)
+	}()
+	time.Sleep(20 * time.Millisecond)
+	marker := filepath.Join(dir, "ran-once")
+	body := "#!/bin/sh\nif [ ! -f '" + marker + "' ]; then touch '" + marker + "'; exit 1; fi\necho 'fathom v0.1.0 @ bbbbbbbbbbbb'\n"
+	if err := os.WriteFile(bin, []byte(body), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatalf("a good binary refused once was never re-verified; log:\n%s", out.String())
+	}
+	if got := exited.Load(); got != int32(adoptionExitCode()) {
+		t.Errorf("exit = %d, want %d", got, adoptionExitCode())
+	}
+	if !strings.Contains(out.String(), "REFUSED") {
+		t.Errorf("the first refusal must still be logged:\n%s", out.String())
+	}
+}
+
+// TestWatchOwnBinaryUnreadableLedgerFallsBackToUptime: when the lifecycle
+// ledger cannot be read, the cross-process cooldown is unknown, and the
+// uncertainty resolves toward waiting — the watcher adopts only once this
+// process has itself run for a full cooldown, which bounds adoptions to one
+// per cooldown across processes without the ledger.
+func TestWatchOwnBinaryUnreadableLedgerFallsBackToUptime(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell-script fixtures are POSIX")
+	}
+	dir := t.TempDir()
+	bin := filepath.Join(dir, "fathom")
+	ledger := filepath.Join(dir, "ledger-is-a-dir")
+	if err := os.MkdirAll(ledger, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	fakeBinary(t, bin, "fathom v0.1.0 @ aaaaaaaaaaaa", 0)
+	start := time.Date(2026, 9, 26, 12, 0, 0, 0, time.UTC)
+	var clock atomic.Int64
+	clock.Store(start.UnixNano())
+	var exited atomic.Int32
+	exited.Store(-1)
+	var out syncBuffer
+	done := make(chan struct{})
+	go func() {
+		watchOwnBinary(bin, dlogOver(&out), selfRestartConfig{
+			poll: 2 * time.Millisecond, cooldown: 5 * time.Minute, ledger: ledger,
+			exit: func(c int) { exited.Store(int32(c)) },
+			now:  func() time.Time { return time.Unix(0, clock.Load()) },
+		})
+		close(done)
+	}()
+	time.Sleep(20 * time.Millisecond)
+	fakeBinary(t, bin, "fathom v0.1.0 @ bbbbbbbbbbbbbbbb", 0)
+	clock.Store(start.Add(time.Minute).UnixNano())
+	select {
+	case <-done:
+		t.Fatalf("adopted with an unreadable ledger 1 min into this process; the cooldown is unknown:\n%s", out.String())
+	case <-time.After(time.Second):
+	}
+	if !strings.Contains(out.String(), "cannot read the lifecycle ledger") {
+		t.Errorf("the unreadable ledger must be named:\n%s", out.String())
+	}
+	clock.Store(start.Add(5 * time.Minute).UnixNano())
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatalf("never adopted once this process had run a full cooldown; log:\n%s", out.String())
+	}
+}
+
+// TestLastAdoptionSkipsOverlongLines: a ledger line longer than the scanner
+// buffer is skipped like any other unparseable row, never an error that
+// discards the rows after it.
+func TestLastAdoptionSkipsOverlongLines(t *testing.T) {
+	ledger := filepath.Join(t.TempDir(), "lifecycle.jsonl")
+	at := time.Date(2026, 9, 26, 12, 0, 0, 0, time.UTC)
+	long := `{"row":"note","x":"` + strings.Repeat("y", 100*1024) + `"}` + "\n"
+	if err := os.WriteFile(ledger, []byte(long), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := appendAdoptRow(ledger, at, "a", "b"); err != nil {
+		t.Fatal(err)
+	}
+	last, ok, err := lastAdoption(ledger)
+	if err != nil || !ok || !last.Equal(at) {
+		t.Fatalf("lastAdoption = %v, %v, %v; want %v, true, nil", last, ok, err, at)
+	}
+}
+
+// TestStartSelfRestartOnlyWhenManaged pins the serve-http wiring of RT-12:
+// an unmanaged serve-http never starts the watcher (so a scratch daemon
+// never hashes its binary or writes the operator's ledger) and says so; a
+// managed one starts it with the production cooldown and the ledger under
+// its own label — matched against every installed fathom agent, not only
+// the alphabetically first.
+func TestStartSelfRestartOnlyWhenManaged(t *testing.T) {
+	installed := func() []string { return []string{"com.example.a-fathom", "com.example.fathom"} }
+	exe := func() (string, error) { return "/opt/fathom", nil }
+	for _, tc := range []struct {
+		name     string
+		flag     bool
+		xpc      string
+		disabled bool
+		want     bool
+		wantLog  string
+		label    string
+	}{
+		{"shell-started", false, "application.com.mitchellh.ghostty.1", false, false, "unmanaged daemon", ""},
+		{"no launchd", false, "", false, false, "unmanaged daemon", ""},
+		{"second installed agent", false, "com.example.fathom", false, true, "", "com.example.fathom"},
+		{"--managed", true, "", false, true, "", "com.example.a-fathom"},
+		{"managed but pinned", true, "", true, false, "FATHOM_SELF_RESTART=off", ""},
+	} {
+		var out syncBuffer
+		var got []string
+		started := startSelfRestart(dlogOver(&out), selfRestartStart{
+			managedFlag: tc.flag, xpcServiceName: tc.xpc, installedLabels: installed,
+			disabled: tc.disabled, executable: exe,
+			watch: func(path string, cfg selfRestartConfig) {
+				got = append(got, path, cfg.ledger)
+				if cfg.cooldown != selfRestartCooldown || cfg.poll != selfRestartPoll {
+					t.Errorf("%s: watcher config %+v, want the production poll and cooldown", tc.name, cfg)
+				}
+			},
+		})
+		if started != tc.want || (len(got) > 0) != tc.want {
+			t.Errorf("%s: started = %v (watch calls %v), want %v", tc.name, started, got, tc.want)
+		}
+		if tc.wantLog != "" && !strings.Contains(out.String(), tc.wantLog) {
+			t.Errorf("%s: log %q lacks %q", tc.name, out.String(), tc.wantLog)
+		}
+		if tc.want && len(got) == 2 && !strings.Contains(got[1], filepath.Join("daemon", tc.label, "lifecycle.jsonl")) {
+			t.Errorf("%s: ledger = %q, want one under label %s", tc.name, got[1], tc.label)
+		}
 	}
 }

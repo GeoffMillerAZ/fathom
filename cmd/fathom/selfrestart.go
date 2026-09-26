@@ -118,6 +118,7 @@ func watchOwnBinary(path string, log *dlog.Logger, cfg selfRestartConfig) {
 	if cfg.now == nil {
 		cfg.now = time.Now
 	}
+	startedAt := cfg.now() // the uptime fallback when the ledger is unreadable
 	startStat, serr := statBinary(path)
 	start, err := cfg.hash(path)
 	if serr != nil || err != nil {
@@ -133,10 +134,11 @@ func watchOwnBinary(path string, log *dlog.Logger, cfg selfRestartConfig) {
 		path, shortHash(start), cfg.poll*2))
 
 	var (
-		seen          = startStat // the stat last observed
+		seen          = startStat // the stat last observed and hashed
 		pending       string      // hash of changed bytes awaiting adoption
-		refusedAt     time.Time   // in-process backoff after a refused candidate
+		refusedAt     time.Time   // backoff after a refused candidate; retried after it
 		deferNoticeOf string      // pending hash whose cooldown deferral was logged
+		hashErrOf     binaryStat  // stat whose hash failure was logged
 	)
 	for {
 		time.Sleep(cfg.poll)
@@ -150,12 +152,24 @@ func watchOwnBinary(path string, log *dlog.Logger, cfg selfRestartConfig) {
 			// (3) Settle: a changed stat is hashed once and must then hold
 			// still for a full poll, so a file still being written is never
 			// adopted half-copied.
-			seen = st
 			cur, herr := cfg.hash(path)
-			if herr != nil || cur == start {
+			if herr != nil {
+				// Not recorded as seen: the next poll hashes it again, so a
+				// transient read failure never strands a deploy, and the
+				// failure is named once per stat (4, I38).
+				if hashErrOf != st {
+					log.Warn(fmt.Sprintf("self-restart: %s changed but cannot be hashed (%v); retrying on the next poll", path, herr))
+					hashErrOf = st
+				}
+				pending = ""
+				continue
+			}
+			seen = st
+			if cur == start {
 				pending = ""
 			} else {
 				pending = cur
+				refusedAt = time.Time{}
 			}
 			continue
 		}
@@ -165,7 +179,7 @@ func watchOwnBinary(path string, log *dlog.Logger, cfg selfRestartConfig) {
 
 		// (2) Rate limit: after a refusal, and across processes.
 		now := cfg.now()
-		if !refusedAt.IsZero() && now.Sub(refusedAt) < cfg.cooldown {
+		if !refusedAt.IsZero() && now.Sub(refusedAt) < max(cfg.cooldown, cfg.poll) {
 			continue
 		}
 		if cfg.ledger != "" && cfg.cooldown > 0 {
@@ -173,10 +187,18 @@ func watchOwnBinary(path string, log *dlog.Logger, cfg selfRestartConfig) {
 			switch {
 			case lerr != nil:
 				// I38: an unreadable ledger is named, not read as "no
-				// adoption"; the in-process refusal backoff still applies.
+				// adoption". The cooldown is then unknown, and the
+				// uncertainty resolves toward waiting: adopt only once this
+				// process has itself run a full cooldown, which still bounds
+				// adoptions to one per cooldown across processes.
+				up := now.Sub(startedAt)
 				if deferNoticeOf != pending {
-					log.Warn(fmt.Sprintf("self-restart: cannot read the lifecycle ledger %s (%v); the cross-process cooldown is unknown for this adoption", cfg.ledger, lerr))
+					log.Warn(fmt.Sprintf("self-restart: cannot read the lifecycle ledger %s (%v); the cross-process cooldown is unknown, so adoption waits until this process has run %s (up %s)",
+						cfg.ledger, lerr, cfg.cooldown, up.Round(time.Second)))
 					deferNoticeOf = pending
+				}
+				if up < cfg.cooldown {
+					continue
 				}
 			case ok && now.Sub(last) < cfg.cooldown:
 				if deferNoticeOf != pending {
@@ -194,11 +216,12 @@ func watchOwnBinary(path string, log *dlog.Logger, cfg selfRestartConfig) {
 			log.Warn(fmt.Sprintf("self-restart: REFUSED — %s changed but will not run (%v). "+
 				"Keeping this process, so the fleet stays served by working code. "+
 				"An unsigned binary fails exactly this way; `task deploy` signs.", path, verr))
-			// start is deliberately NOT updated: if the operator repairs
-			// the binary in place, its stat changes, the next poll hashes
-			// it and re-verifies rather than treating the bad one as the
-			// baseline.
-			pending = ""
+			// start is deliberately NOT updated, and pending is kept: the
+			// candidate is re-verified after the refusal backoff (the
+			// cooldown), so a good binary whose first run failed
+			// transiently (a version timeout under memory pressure, a
+			// slow first exec) is not stranded; a repaired binary's stat
+			// change re-hashes it at once.
 			refusedAt = now
 			continue
 		}

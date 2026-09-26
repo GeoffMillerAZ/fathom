@@ -232,24 +232,16 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// fix and then waiting for someone to run `launchctl`. Only the managed
 	// daemon watches (RT-12): a scratch serve-http never adopts, never
 	// hashes its binary and never writes the operator's lifecycle ledger.
-	isManaged, managedLabel := selfRestartManaged(*managed, os.Getenv("XPC_SERVICE_NAME"), labelInstalled)
-	switch {
-	case !isManaged:
-		outLog.Info("self-restart: off — unmanaged daemon (not started by the installed launchd agent, no --managed)")
-	case selfRestartDisabled():
-		outLog.Info("self-restart: OFF (FATHOM_SELF_RESTART=off) — a deploy will need a manual restart")
-	default:
-		if exe, exeErr := os.Executable(); exeErr != nil {
-			outLog.Warn(fmt.Sprintf("self-restart: disabled — cannot resolve this process's own path (%v)", exeErr))
-		} else {
-			go watchOwnBinary(exe, outLog, selfRestartConfig{
-				poll:     selfRestartPoll,
-				cooldown: selfRestartCooldown,
-				ledger:   lifecycleLedgerPath(managedLabel),
-				exit:     os.Exit,
-			})
-		}
-	}
+	startSelfRestart(outLog, selfRestartStart{
+		managedFlag:     *managed,
+		xpcServiceName:  os.Getenv("XPC_SERVICE_NAME"),
+		installedLabels: labelsInstalled,
+		disabled:        selfRestartDisabled(),
+		executable:      os.Executable,
+		watch: func(path string, cfg selfRestartConfig) {
+			go watchOwnBinary(path, outLog, cfg)
+		},
+	})
 
 	// Periodic OS-memory return (memscavenge.go, O108): bounds how long any
 	// one peak (a large graph build, a burst of concurrent cache misses)
