@@ -536,10 +536,19 @@ overlapping ranges.
 - **A weaker-tested repository.** On conjure's r2 range (326 changed functions; 100
   of them in vendored files the index excludes) the reading set flags 105 `partial`
   and 2 `unexecuted` of the 226 it classifies (CV-M14). Weaker tests make the
-  flagged set larger; they do not make the change look reviewed. With coverage,
-  the three functions the control's hand check found never ran
-  (`jsonShapeError.Error`, `fanoutHandler.WithGroup`, `ParseError.Unwrap`) each read
-  `unexecuted`.
+  flagged set larger; they do not make the change look reviewed. Across conjure's
+  three ranges, CV-M13's hand check confirmed four changed functions never ran.
+  Static reach called two of them `attested`: `jsonShapeError.Error` (r1 and r3)
+  and `webui.handleAdoptStream` (r2, 163 reaching tests, 0.0% covered). It called
+  the other two `unreached`: `ParseError.Unwrap` (r2) and `fanoutHandler.WithGroup`
+  (r3). With coverage, CV-M14 cross-checked three of the four against the raw
+  profile and each reads `unexecuted`: `jsonShapeError.Error` (r1's only
+  `unexecuted` item), `ParseError.Unwrap` (r2) and `fanoutHandler.WithGroup` (r3,
+  a supplementary reconstruction). CV-M14 does not name r2's second `unexecuted`
+  item. CV-M13's r2 coverage join has exactly two functions at 0.0%,
+  `ParseError.Unwrap` and `handleAdoptStream`
+  (`docs/bench/readings/cv-m13-method/conjure/r2-classes-with-coverage.tsv`), but
+  no reading records `handleAdoptStream`'s class under coverage.
 
 **Re-derivation.** A stranger can re-derive the numbers for this repository's
 ranges from the repository alone. Each reading carries its reproduce recipe, and

@@ -383,11 +383,11 @@ the dropped count (P3).
 decision-port A/B (`docs/bench/readings/decision-port-ab-2026-09-23.md`)
 show the task's governing rule missing from the served set regardless of
 ranking or headroom. That is a selection problem, not a budget problem; it stays open
-under Q13 (carried by HF-4 until 2026-09-25, now `docs/plans/verbs.md` VB-37), and
+as `docs/plans/verbs.md` VB-40 (carried by honesty-fixes HF-4 until 2026-09-25), and
 `rank_within_tier = false` (ADR-042 amendment, 2026-09-23) is a mitigation, not a fix.
 **Revisit when** a single-adopter window of 14 days or more without bench
-traffic moves post-edit p90 more than 15% from 320, or HF-4/Q13's selection
-work lands (a better selector may let the ceiling come back down).
+traffic moves post-edit p90 more than 15% from 320, or the selection work
+(`docs/plans/verbs.md` VB-40) lands (a better selector may let the ceiling come back down).
 
 ## ADR-017 — Born-portable stores: repo-relative anchors, domain-neutral freshness
 
