@@ -450,6 +450,9 @@
   .w-12 {
     width: calc(var(--spacing) * 12);
   }
+  .w-24 {
+    width: calc(var(--spacing) * 24);
+  }
   .w-29 {
     width: calc(var(--spacing) * 29);
   }
@@ -476,6 +479,9 @@
   }
   .max-w-80 {
     max-width: calc(var(--spacing) * 80);
+  }
+  .max-w-\[26rem\] {
+    max-width: 26rem;
   }
   .max-w-\[35rem\] {
     max-width: 35rem;
@@ -506,6 +512,9 @@
   }
   .min-w-64 {
     min-width: calc(var(--spacing) * 64);
+  }
+  .min-w-\[\%dpx\] {
+    min-width: %dpx;
   }
   .min-w-\[900px\] {
     min-width: 900px;
@@ -1487,6 +1496,11 @@
       display: grid;
     }
   }
+  .sm\:w-40 {
+    @media (width >= 40rem) {
+      width: calc(var(--spacing) * 40);
+    }
+  }
   .sm\:shrink-0 {
     @media (width >= 40rem) {
       flex-shrink: 0;
@@ -1505,6 +1519,11 @@
   .sm\:grid-cols-3 {
     @media (width >= 40rem) {
       grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+  .sm\:grid-cols-\[10rem_5rem_1fr\] {
+    @media (width >= 40rem) {
+      grid-template-columns: 10rem 5rem 1fr;
     }
   }
   .sm\:flex-row {
@@ -1653,6 +1672,16 @@
       grid-template-columns: repeat(4, minmax(0, 1fr));
     }
   }
+  .xl\:col-span-2 {
+    @media (width >= 80rem) {
+      grid-column: span 2 / span 2;
+    }
+  }
+  .xl\:grid-cols-2 {
+    @media (width >= 80rem) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
   .xl\:grid-cols-5 {
     @media (width >= 80rem) {
       grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -1678,6 +1707,21 @@
       border-radius: var(--ak-radius-sm);
     }
   }
+  .\[\&_button\]\:min-h-11 {
+    & button {
+      min-height: calc(var(--spacing) * 11);
+    }
+  }
+  .\[\&_input\]\:min-h-11 {
+    & input {
+      min-height: calc(var(--spacing) * 11);
+    }
+  }
+  .\[\&_select\]\:min-h-11 {
+    & select {
+      min-height: calc(var(--spacing) * 11);
+    }
+  }
   .\[\&_span\]\:inline-flex {
     & span {
       display: inline-flex;
@@ -1696,6 +1740,11 @@
   .\[\&\:\:-webkit-details-marker\]\:hidden {
     &::-webkit-details-marker {
       display: none;
+    }
+  }
+  .\[\&\>a\]\:min-h-11 {
+    &>a {
+      min-height: calc(var(--spacing) * 11);
     }
   }
   .\[\&\>a\]\:min-h-\[44px\] {

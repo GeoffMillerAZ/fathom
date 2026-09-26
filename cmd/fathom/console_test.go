@@ -7,6 +7,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"html"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -590,7 +591,15 @@ func TestConsolePagesRenderTheirVerbs(t *testing.T) {
 			}
 			args := append(strings.Fields(verb)[1:], "--url", f.ts.URL)
 			var out, errb bytes.Buffer
-			if code := run(args, &out, &errb); code != 0 {
+			code := run(args, &out, &errb)
+			if code != 0 && strings.Contains(errb.String(), "flag provided but not defined: -url") {
+				// A verb that talks to no daemon (fleet remedy, config,
+				// metrics sessions) takes no --url: run it as written.
+				out.Reset()
+				errb.Reset()
+				code = run(strings.Fields(verb)[1:], &out, &errb)
+			}
+			if code != 0 {
 				t.Fatalf("%s exited %d: %s", verb, code, errb.String())
 			}
 			var fromVerb, fromPage any
@@ -609,6 +618,12 @@ func TestConsolePagesRenderTheirVerbs(t *testing.T) {
 	}
 	if withVerbs == 0 {
 		t.Error("no page declares a verb; the parity framework proved nothing")
+	}
+	// Wave F's Evidence and System pages each render their verbs (OC-41..45).
+	for _, id := range []string{"impact", "sessions", "operate", "decide"} {
+		if p, ok := defaultConsoleRegistry().page(id); !ok || len(p.Verbs) == 0 {
+			t.Errorf("page %s must declare the verbs it renders", id)
+		}
 	}
 }
 
@@ -705,12 +720,26 @@ func TestConsoleMetricsAgreeAcrossPages(t *testing.T) {
 	if s := statuszServiceCount(report); s.V != value(console.MetricServices).V {
 		t.Errorf("statusz counts %d services, the registry %d", s.V, value(console.MetricServices).V)
 	}
-	var impact obsImpact
-	if err := json.Unmarshal(f.pageJSON(t, "/impact").Model, &impact); err != nil {
+	// Impact, Sessions and Operate show the shared metrics they declare, in
+	// their HTML as in their JSON: the impact tile and the sessions table
+	// read the model's one read of the ledger, the operate tile the model's
+	// call total (wave F).
+	_, _, impactPage := f.get(t, "/impact")
+	if got := tileValue(t, impactPage, "distinct sessions (all time)"); got != fmtThousands(value(console.MetricSessions).V) {
+		t.Errorf("impact's sessions tile says %q, the shared metric %d", got, value(console.MetricSessions).V)
+	}
+	var sessionsModel struct {
+		Table console.SessionTableModel `json:"table"`
+	}
+	if err := json.Unmarshal(f.pageJSON(t, "/sessions").Model, &sessionsModel); err != nil {
 		t.Fatal(err)
 	}
-	if impact.LedgerSessions != value(console.MetricSessions).V {
-		t.Errorf("impact's ledger-sessions tile says %d, the shared metric %d", impact.LedgerSessions, value(console.MetricSessions).V)
+	if sessionsModel.Table.Sessions != value(console.MetricSessions).V {
+		t.Errorf("the sessions table lists %d sessions, the shared metric %d", sessionsModel.Table.Sessions, value(console.MetricSessions).V)
+	}
+	_, _, operatePage := f.get(t, "/operate")
+	if !strings.Contains(operatePage, html.EscapeString(valuePlain(value(console.MetricCalls)))+" in the whole log") {
+		t.Errorf("operate must show the shared call total (%s) beside its 7-day count", valuePlain(value(console.MetricCalls)))
 	}
 	// The HTML agrees with the JSON: the fleet tile shows the same total.
 	_, _, fleet := f.get(t, "/fleet")
