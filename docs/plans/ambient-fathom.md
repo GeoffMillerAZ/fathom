@@ -79,6 +79,16 @@
 - [x] claim_events retention is disclosed with its count by default and deleted only under `--include-history --force`, which states that claim history integrity is now broken {id: SP-9, symbol: cmdPurge, package: cmd/fathom, reachable_from: TestClaimEventsRetentionDisclosed}
 - [ ] the Scope panel on `/observatory/service`: suppressions with preview, and purge behind a second click requiring a displayed file list, a typed reason, and the service name typed to confirm; the verification result is rendered per table {id: SP-10, symbol: observatoryScopePanel, package: cmd/fathom, reachable_from: TestScopePanelPurgeGuards}
 
+> **SP-10, 2026-09-25 (console wave E): the read-only half ships; the row stays open.** The project
+> workspace's Index tab (`/projects/{svc}/index#scope`, `projectScopePanel`) lists the active
+> suppressions, previews a glob against every location's own path column (`store.ResolvePurge`) and
+> shows the purge's per-location dry run with the exact command only after the file list. No
+> mutation is wired: the daemon has no purge path that also flushes its own live caches (the result
+> cache, the call-graph memo, vectors — `purgecmd.go` leaves them nil and names a daemon purge path
+> that does not exist), so a page-driven purge would verify the store while the process kept serving
+> answers built from the deleted rows. Suppress and unsuppress behind `requireLocalMutation` land
+> with it, so the panel's two operations ship together.
+
 ---
 
 ## W — Anchored memory (`docs/design/anchored-memory.md`, law 14)
