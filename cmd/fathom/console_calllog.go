@@ -95,6 +95,17 @@ func readDaemonRecordFor(baseURL string) (console.DaemonRecord, bool) {
 // recordServingDaemon writes this daemon's record and remembers its own log
 // for the in-process pages. Best effort: a daemon that cannot write its
 // record still serves; verbs then fall back to the pre-existing chain.
+// absStorePath is p made absolute against the working directory ("" stays "").
+func absStorePath(p string) string {
+	if p == "" || filepath.IsAbs(p) {
+		return p
+	}
+	if a, err := filepath.Abs(p); err == nil {
+		return a
+	}
+	return p
+}
+
 func recordServingDaemon(addr, callLog, storePath, commit string, now time.Time) (console.DaemonRecord, error) {
 	abs := callLog
 	if abs != "" && !filepath.IsAbs(abs) {
@@ -102,13 +113,7 @@ func recordServingDaemon(addr, callLog, storePath, commit string, now time.Time)
 			abs = a
 		}
 	}
-	absStore := storePath
-	if absStore != "" && !filepath.IsAbs(absStore) {
-		if a, err := filepath.Abs(absStore); err == nil {
-			absStore = a
-		}
-	}
-	rec := console.NewDaemonRecord(addr, os.Getpid(), abs, absStore, commit, now)
+	rec := console.NewDaemonRecord(addr, os.Getpid(), abs, absStorePath(storePath), commit, now)
 	setServingCallLog(abs, "this daemon's own --call-log")
 	home, err := os.UserHomeDir()
 	if err != nil || home == "" {

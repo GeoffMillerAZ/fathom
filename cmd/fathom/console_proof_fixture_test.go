@@ -360,45 +360,6 @@ func pinConsoleVerbClocks(t *testing.T, f *consoleFixture) {
 	t.Cleanup(func() { certifyGapsNow = prev })
 }
 
-// verbsInstantiate reports whether a page's concrete verbs are instances of
-// its registered ones: equal when the registry names no template, else each
-// concrete command fills one template's placeholders ("{svc}") with a value.
-func verbsInstantiate(concrete, templates []string) bool {
-	templated := false
-	for _, v := range templates {
-		templated = templated || strings.Contains(v, "{")
-	}
-	if !templated {
-		return strings.Join(concrete, "\n") == strings.Join(templates, "\n")
-	}
-	for _, c := range concrete {
-		if strings.Contains(c, "{") {
-			return false
-		}
-		cf := strings.Fields(c)
-		matched := false
-		for _, tmpl := range templates {
-			tf := strings.Fields(tmpl)
-			if len(tf) != len(cf) {
-				continue
-			}
-			ok := true
-			for i := range tf {
-				if strings.HasPrefix(tf[i], "{") && strings.HasSuffix(tf[i], "}") {
-					ok = ok && cf[i] != ""
-					continue
-				}
-				ok = ok && tf[i] == cf[i]
-			}
-			matched = matched || ok
-		}
-		if !matched {
-			return false
-		}
-	}
-	return true
-}
-
 // consoleVerbArgs is how the parity test runs a page's verb against the
 // fixture: a daemon verb gets the fixture's --url (its default, the local
 // daemon, is the page's own in the normal setup); a store-direct verb

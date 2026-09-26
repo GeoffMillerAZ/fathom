@@ -22,7 +22,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
@@ -78,6 +77,12 @@ func consoleFixtureStorePath(t *testing.T) string {
 					return
 				}
 			}
+		}
+		// Governed claims, compile runs and verdicts for the Knowledge
+		// pages (console_knowledge_test.go).
+		if err := seedConsoleFixtureKnowledge(path); err != nil {
+			consoleFixtureStore.err = "seed knowledge: " + err.Error()
+			return
 		}
 		consoleFixtureStore.path = path
 	})
@@ -221,11 +226,9 @@ func newConsoleFixtureOpts(t *testing.T, o consoleFixtureOpts) *consoleFixture {
 	srv := mcp.NewServerWithFleetAndLogger(c, &fleetAdapter{c: c, log: testDiscardLogger()}, logger)
 	h = newHTTPHandlerDeps(srv, c, strings.TrimPrefix(f.ts.URL, "http://"), nil, f.deps)
 	t.Setenv("FATHOM_HTTP", f.ts.URL)
-	// serve-http records itself once bound (recordServingDaemon): a verb
-	// run against this URL reads the store and log the daemon names.
-	if p, ok := daemonRecordPathFor(f.ts.URL); ok {
-		_ = console.WriteDaemonRecord(p, console.NewDaemonRecord(strings.TrimPrefix(f.ts.URL, "http://"), os.Getpid(), f.callLog, storePath, "", f.now))
-	}
+	// serve-http records itself once bound (recordServingDaemon, OC-2): a
+	// verb run against this URL reads the store and log the daemon names.
+	recordConsoleFixtureDaemon(t, f)
 
 	prev := fleetReportNow
 	fleetReportNow = func() time.Time { return f.now }
@@ -312,15 +315,26 @@ func samplePath(p *consolePage) string {
 		return "/plans/" + proofServiceName + "/settlement/rows/S-2"
 	case "/refactors":
 		return "/refactors?svc=" + proofServiceName + "&since=HEAD~1"
+	case "/layers/{layer}":
+		return "/layers/obligations"
+	case "/claims/{id}":
+		return "/claims/" + consoleFixtureClaimID
+	case "/claims":
+		return "/claims?layer=obligations&svc=payment-service"
+	case "/explain":
+		return "/explain?svc=payment-service&file=payment.go"
 	}
 	return p.Route
 }
 
 // consoleExtraSamplePaths are further concrete URLs per page: a page whose
-// verbs and sections change with its scope (?svc=) or its subject is held
-// to its verbs at each one, not only at samplePath's.
+// verbs and sections change with its scope (?svc=), its query (filters,
+// paging) or its subject is held to its verbs at each one, not only at
+// samplePath's.
 var consoleExtraSamplePaths = map[string][]string{
 	"project":        {"/projects/" + proofServiceName},
 	"plans":          {"/plans?svc=" + proofServiceName},
 	"certifications": {"/certifications?svc=" + proofServiceName},
+	"claims":         {"/claims", "/claims?layer=obligations&status=all", "/claims?svc=checkout-service&status=superseded", "/claims?status=stale&page=2"},
+	"layer":          {"/layers/spec-bindings", "/layers/adr-rules"},
 }

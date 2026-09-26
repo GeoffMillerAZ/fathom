@@ -30,7 +30,7 @@ import (
 // (docs/plans/layer-catalog.md LC-13).
 func cmdLayers(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "error: layers requires a verb: list | show | install")
+		fmt.Fprintln(stderr, "error: layers requires a verb: list | show | install | strata | coverage")
 		printLayersUsage(stderr)
 		return 1
 	}
@@ -41,8 +41,12 @@ func cmdLayers(args []string, stdout, stderr io.Writer) int {
 		return cmdLayersShow(args[1:], stdout, stderr)
 	case "install":
 		return cmdLayersInstall(args[1:], stdout, stderr)
+	case "strata":
+		return cmdLayersStrata(args[1:], stdout, stderr)
+	case "coverage":
+		return cmdLayersCoverage(args[1:], stdout, stderr)
 	default:
-		fmt.Fprintf(stderr, "error: unknown layers verb %q (want list | show | install)\n", args[0])
+		fmt.Fprintf(stderr, "error: unknown layers verb %q (want list | show | install | strata | coverage)\n", args[0])
 		printLayersUsage(stderr)
 		return 1
 	}
@@ -51,8 +55,10 @@ func cmdLayers(args []string, stdout, stderr io.Writer) int {
 func printLayersUsage(w io.Writer) {
 	fmt.Fprintln(w, "Usage:")
 	fmt.Fprintln(w, "  fathom layers list    [--root DIR] [--store PATH --service NAME]")
-	fmt.Fprintln(w, "  fathom layers show    <name> [--root DIR]")
+	fmt.Fprintln(w, "  fathom layers show    <name> [--root DIR] | <name> --json [--store DB | --url U]")
 	fmt.Fprintln(w, "  fathom layers install <dir>  [--root DIR] [--force]")
+	fmt.Fprintln(w, "  fathom layers strata   [--json] [--store DB | --url U]")
+	fmt.Fprintln(w, "  fathom layers coverage [--json] [--store DB | --url U]")
 }
 
 // layersRoot resolves --root, defaulting to the current working directory —
@@ -260,7 +266,11 @@ func layersLastCompile(storePath, service string) (map[string]string, error) {
 func cmdLayersShow(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("layers show", stderr)
 	root := fs.String("root", "", "project root to union with embedded packs (default: current directory)")
-	if err := fs.Parse(args); err != nil {
+	// OC-29: --json is the console layer page's projection — the pack as
+	// the fleet resolves it plus its compile runs, rejection reasons and
+	// uncompiled scopes, read from the daemon's store (knowledge_verbs.go).
+	kf := addKnowledgeFlags(fs)
+	if err := fs.Parse(reorderFlagsFirst(fs, args)); err != nil {
 		return 1
 	}
 	if fs.NArg() != 1 {
@@ -269,6 +279,9 @@ func cmdLayersShow(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	name := fs.Arg(0)
+	if *kf.json {
+		return cmdLayersShowJSON(name, kf, stdout, stderr)
+	}
 
 	r, err := layersRoot(*root)
 	if err != nil {

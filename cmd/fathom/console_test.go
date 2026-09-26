@@ -568,8 +568,10 @@ func jsonFieldNames(t reflect.Type) map[string]bool {
 // the console envelope naming its verbs; for each verb a page declares,
 // the page JSON's section equals that verb's --json output on the fixture
 // fleet, byte-for-value. Pages not yet rebuilt declare no verbs. A page
-// whose registered verbs are templates ("{svc}", "{plan}") names the
-// request's concrete commands, each an instance of a template.
+// whose registered verbs name parameters ("{svc}", "{plan}", "{layer}")
+// renders them filled from the request, each an instance of one of its
+// registry's verbs, and is held to them at every sample URL (samplePath's
+// and consoleExtraSamplePaths').
 func TestConsolePagesRenderTheirVerbs(t *testing.T) {
 	f := newConsoleFixture(t)
 	pinConsoleVerbClocks(t, f)
@@ -583,7 +585,7 @@ func TestConsolePagesRenderTheirVerbs(t *testing.T) {
 			if env.Schema != consolePageJSONSchema || env.Page != p.ID || env.Group != p.Group || env.Question != p.Question {
 				t.Errorf("page %s: envelope = %+v", path, env)
 			}
-			if !verbsInstantiate(env.Verbs, p.Verbs) {
+			if !verbsFillTemplates(env.Verbs, p.Verbs) {
 				t.Errorf("page %s: JSON verbs %v are not the registry's %v", path, env.Verbs, p.Verbs)
 			}
 			for _, verb := range env.Verbs {
@@ -789,7 +791,8 @@ func TestConsoleMetricsAgreeAcrossPages(t *testing.T) {
 	}
 	for _, id := range []console.MetricID{console.MetricServices, console.MetricSymbols, console.MetricCalls, console.MetricSessions, console.MetricObservations, console.MetricAgentTools,
 		console.MetricWiredFresh, console.MetricPlanRowsVerified, console.MetricClaimsFresh, console.MetricCertificatesLive,
-		console.MetricPlansUnproven, console.MetricPlansProven, console.MetricCertGaps, console.MetricCertLive} {
+		console.MetricPlansUnproven, console.MetricPlansProven, console.MetricCertGaps, console.MetricCertLive,
+		console.MetricClaims} {
 		pages := byMetric[string(id)]
 		if len(pages) == 0 {
 			t.Errorf("metric %s is shown on no page", id)
@@ -884,6 +887,9 @@ func TestConsoleMetricsAgreeAcrossPages(t *testing.T) {
 	// fleet: the plans headline is `plans status`'s claimed_unproven and
 	// proven, the certifications totals are `certify gaps`'s summary.
 	assertProofMetricsMatchVerbs(t, f, value)
+
+	// The Knowledge metrics (console wave D) agree with their verbs.
+	assertKnowledgeMetricsAgree(t, f, value(console.MetricServices), value(console.MetricClaims))
 
 	// Plan proof in its hardest state — one plan verified at HEAD in a
 	// detached clone, one only at an older commit at the root, one never:

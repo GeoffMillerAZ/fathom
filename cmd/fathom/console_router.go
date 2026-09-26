@@ -31,10 +31,11 @@ type consoleDeps struct {
 	now       func() time.Time
 	search    *consoleSearchCache
 	// storePath is the store this daemon serves (serve-http's --store,
-	// absolute). A page rendering a verb that opens a store directly
-	// (certify, conserve) names it in the chip: run as shown, the verb
-	// would otherwise read its default <repo>/workspace/db/fathom.sqlite —
-	// another store, other numbers.
+	// absolute; "" in handler tests without one). A page rendering a verb
+	// that opens a store directly (certify, conserve) names it in the
+	// chip: run as shown, the verb would otherwise read its default
+	// <repo>/workspace/db/fathom.sqlite — another store, other numbers.
+	// The Knowledge pages name it in the remedy commands they print.
 	storePath string
 }
 
@@ -49,9 +50,10 @@ func (d *consoleDeps) storeArg() string {
 }
 
 // shellWord quotes s for a POSIX shell when it holds anything beyond the
-// characters a path usually has.
+// characters a path usually has, or would expand as a leading "~" — the
+// store chips and the Knowledge pages' copyable commands alike.
 func shellWord(s string) string {
-	safe := s != ""
+	safe := s != "" && !strings.HasPrefix(s, "~")
 	for _, r := range s {
 		if !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("/._-+@:,=~", r)) {
 			safe = false

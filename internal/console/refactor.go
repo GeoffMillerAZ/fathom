@@ -109,13 +109,6 @@ type PlaneChip struct {
 	Reason   string   `json:"reason,omitempty"`
 }
 
-// ExcerptLine is one line of a partial item's excerpt.
-type ExcerptLine struct {
-	Number     int    `json:"number"`
-	Text       string `json:"text"`
-	Unexecuted bool   `json:"unexecuted,omitempty"`
-}
-
 // ResidueItemView is a reading-set item, with its excerpt when partial.
 type ResidueItemView struct {
 	ResidueItem

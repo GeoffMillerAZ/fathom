@@ -78,9 +78,10 @@ type consoleOut struct {
 	Metrics  console.Metrics
 	Sections map[string]any // verb → that verb's --json value
 	// Verbs, when set, are this request's concrete commands for a page
-	// whose registered Verbs are templates ("{svc}", "{plan}", "{id}"):
-	// the heading's chips and the JSON's verbs name them, and each has
-	// its section.
+	// whose registered Verbs are templates ("{svc}", "{plan}", "{id}",
+	// "{layer}", "{file}"), filled from the request: the heading's chips
+	// and the JSON's verbs name them, and each has its section. nil means
+	// the registry's Verbs.
 	Verbs []string
 	// Chips, when non-nil, are the heading's verb chips instead of Verbs: a
 	// fleet page rendering one verb per repository names each in its own

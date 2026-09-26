@@ -54,7 +54,7 @@ Each page lives in its own `cmd/fathom/console_<page>.go` and registers in `init
 | `/plans`, `/plans/{svc}/{plan}`, `/plans/{svc}/{plan}/rows/{id}` | Proof ledger | `plans status/next/history --json`, `verify --row --json` |
 | `/certifications` | Certifications | `certify status/gaps --json` |
 | `/refactors` (`?svc=&since=`) | Refactor | `conserve --since --json` |
-| `/layers`, `/layers/{layer}`, `/claims/{id}` | Semantic layers | `layers list/show/coverage --json`, `claims events --json` |
+| `/layers`, `/layers/{layer}`, `/claims`, `/claims/{id}` | Semantic layers | `layers strata/coverage/show --json`, `claim list --json` (the rows behind every claim count), `claim show --json` |
 | `/packs` | Packs | `capabilities --json`, `report evidence --json`, `layers list --json` |
 | `/explain` (`?svc=&file=`) | Serving explainer | `obligations --file --explain --json` |
 | `/impact`, `/sessions`, `/sessions/{id}` | Evidence | `instrument`, `flywheel`, `metrics …`, session ledger |

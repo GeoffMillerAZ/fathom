@@ -501,6 +501,9 @@
   .max-w-7xl {
     max-width: var(--container-7xl);
   }
+  .max-w-60 {
+    max-width: calc(var(--spacing) * 60);
+  }
   .max-w-80 {
     max-width: calc(var(--spacing) * 80);
   }
@@ -678,6 +681,9 @@
       margin-block-start: calc(calc(var(--spacing) * 2) * var(--tw-space-y-reverse));
       margin-block-end: calc(calc(var(--spacing) * 2) * calc(1 - var(--tw-space-y-reverse)));
     }
+  }
+  .gap-x-1 {
+    column-gap: calc(var(--spacing) * 1);
   }
   .gap-x-2 {
     column-gap: calc(var(--spacing) * 2);
@@ -1853,6 +1859,21 @@
       grid-template-columns: repeat(3, minmax(0, 1fr));
     }
   }
+  .md\:grid-cols-\[12rem_1fr\] {
+    @media (width >= 48rem) {
+      grid-template-columns: 12rem 1fr;
+    }
+  }
+  .md\:grid-cols-\[minmax\(0\,1fr\)_minmax\(0\,1fr\)_minmax\(0\,1fr\)_auto\] {
+    @media (width >= 48rem) {
+      grid-template-columns: minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) auto;
+    }
+  }
+  .md\:grid-cols-\[minmax\(0\,1fr\)_minmax\(0\,2fr\)_minmax\(0\,1fr\)_auto\] {
+    @media (width >= 48rem) {
+      grid-template-columns: minmax(0,1fr) minmax(0,2fr) minmax(0,1fr) auto;
+    }
+  }
   .md\:grid-cols-\[repeat\(auto-fit\,minmax\(12rem\,1fr\)\)\] {
     @media (width >= 48rem) {
       grid-template-columns: repeat(auto-fit,minmax(12rem,1fr));
@@ -1866,6 +1887,11 @@
   .md\:p-6 {
     @media (width >= 48rem) {
       padding: calc(var(--spacing) * 6);
+    }
+  }
+  .md\:pt-6 {
+    @media (width >= 48rem) {
+      padding-top: calc(var(--spacing) * 6);
     }
   }
   .lg\:col-span-1 {
@@ -1928,6 +1954,16 @@
       grid-template-columns: repeat(4, minmax(0, 1fr));
     }
   }
+  .lg\:grid-cols-\[auto_minmax\(0\,1fr\)\] {
+    @media (width >= 64rem) {
+      grid-template-columns: auto minmax(0,1fr);
+    }
+  }
+  .lg\:grid-cols-\[minmax\(0\,3fr\)_minmax\(0\,2fr\)\] {
+    @media (width >= 64rem) {
+      grid-template-columns: minmax(0,3fr) minmax(0,2fr);
+    }
+  }
   .lg\:text-left {
     @media (width >= 64rem) {
       text-align: left;
@@ -1946,9 +1982,24 @@
       border-width: 0;
     }
   }
+  .xl\:col-span-3 {
+    @media (width >= 80rem) {
+      grid-column: span 3 / span 3;
+    }
+  }
   .xl\:hidden {
     @media (width >= 80rem) {
       display: none;
+    }
+  }
+  .xl\:grid-cols-3 {
+    @media (width >= 80rem) {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+  .xl\:grid-cols-4 {
+    @media (width >= 80rem) {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
     }
   }
   .xl\:grid-cols-5 {
@@ -2285,6 +2336,11 @@
   .\[\&\>button\]\:min-h-11 {
     &>button {
       min-height: calc(var(--spacing) * 11);
+    }
+  }
+  .\[\&\>button\]\:w-full {
+    &>button {
+      width: 100%;
     }
   }
   .\[\&\>svg\]\:max-w-full {

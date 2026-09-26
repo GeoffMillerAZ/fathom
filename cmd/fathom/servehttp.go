@@ -213,9 +213,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// The console's dependencies (vision 35): serve-http owns them so the
 	// event feeders below publish to the same bus GET /events streams.
 	consoleDeps := newConsoleDeps(c, "http://"+*addr, time.Now())
-	if abs, absErr := filepath.Abs(*storePath); absErr == nil {
-		consoleDeps.storePath = abs
-	}
+	consoleDeps.storePath = absStorePath(*storePath)
 	handler := newHTTPHandlerWithAuthDeps(srv, c, modulesToken, *addr, ports, flog, consoleDeps)
 
 	// Adopt a new binary without a human (selfrestart.go). launchd's

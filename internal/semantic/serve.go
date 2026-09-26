@@ -676,6 +676,15 @@ func noteNoEligibleRerank(out *Obligations, opts ObligationsOptions) {
 // ObligationsOptions existed. Non-zero only via ObligationsForOpts/
 // ObligationsForLayerOpts.
 func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile string, max int, match func(cl core.SemanticClaim, scope []string) int, layerFilter ObligationLayerFilter, asOf *time.Time, opts ObligationsOptions) (Obligations, error) {
+	return obligationsCoreTrace(ctx, st, serviceID, outFile, max, match, layerFilter, asOf, opts, nil)
+}
+
+// obligationsCoreTrace is obligationsCore with an optional explain trace
+// (OC-32, explain.go): a nil trace — every serving caller — records
+// nothing and changes nothing; ExplainObligations passes one to see the
+// same ranking, dedupe and cap decisions serving made, from the one code
+// path that makes them.
+func obligationsCoreTrace(ctx context.Context, st store.Store, serviceID, outFile string, max int, match func(cl core.SemanticClaim, scope []string) int, layerFilter ObligationLayerFilter, asOf *time.Time, opts ObligationsOptions, trace *explainTrace) (Obligations, error) {
 	if max <= 0 || max > MaxObligations {
 		max = MaxObligations
 	}
@@ -876,72 +885,28 @@ func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile str
 	// after that block runs, and for the cap branch's own later re-sort
 	// (both read whatever decideRelevance holds at the time they run).
 	var decideRelevance map[string]float64
+	// The ORDER contract lives in compareScored (explain.go) so the explain
+	// trace names the key that decided an ordering from the same comparison
+	// serving sorts by — one definition, never two that could drift.
 	less := func(a, b scored) bool {
-		if af, bf := a.cl.Status == core.ClaimFresh, b.cl.Status == core.ClaimFresh; af != bf {
-			return af // BP-17/D5: fresh before stale or contradicted
-		}
-		if a.claims != b.claims {
-			return !a.claims // BP-18/D1: governs before claims
-		}
-		// VB-8 (ADR-035 decision 2): proximity to the edited path is the
-		// PRIMARY tie-break inside a role/freshness tier — exact file beats
-		// package beats a named ancestor directory beats the repo root.
-		// Only meaningful for a file-scoped call (outFile != ""); a
-		// root-scope answer has no path to be proximate to, so every
-		// candidate carries the same noGoverningScope and this comparison
-		// is always a no-op there. wave O3, item 1 (wave O4, item 1 narrowed
-		// the bar): crossTierCloser lets a farther-tier claim with STRONG
-		// lexical relevance leapfrog a nearer-tier claim that is not itself
-		// strong — an ancestor-directory-only hit no longer blocks this,
-		// only a hit on the file's own package/stem/symbol does — see its
-		// own doc comment; every other case reproduces plain closerThan
-		// exactly.
-		if outFile != "" && a.governing != b.governing {
-			return crossTierCloser(a.governing, b.governing, a.strong, b.strong)
-		}
-		// DP-7 (ADR-042 decision 2): STRICTLY INSIDE a governing-scope tier
-		// (a.governing == b.governing, or a root-scope call — VB-8 above
-		// already settled the tier itself, this never overrides it), a
-		// decision-port re-rank's noul answer decides NEXT, before the
-		// lexical relevance tie-break below — but only when BOTH sides
-		// cleared I42's unsure-band floor (usableNoul): an absent answer, or
-		// one below decision.UnsureBelow, falls straight through to the
-		// EXACT same comparison this rule would have made before
-		// decideRelevance ever existed, so such a claim's rank relative to
-		// every other claim is untouched — "never moves a rule". With no
-		// rerank ever run, decideRelevance is nil and this block is always
-		// a no-op: the ORIGINAL, unchanged comparator.
-		if outFile != "" && decideRelevance != nil {
-			if ra, oka := usableNoul(a.cl.ClaimID, decideRelevance); oka {
-				if rb, okb := usableNoul(b.cl.ClaimID, decideRelevance); okb && ra != rb {
-					return ra > rb
-				}
-			}
-		}
-		// wave O2 (vs-pilot-6 second reading §5): STRICTLY INSIDE a
-		// governing-scope tier (same a.governing/b.governing — VB-8 above
-		// already decided the tier itself, this never overrides it), the
-		// lexical relevance score decides NEXT — several same-tier, same-
-		// freshness, same-role claims (a nested guide's own several
-		// sections, all floored to the same directory) no longer fall
-		// straight to the byte-length/rule-text tie-break below, which is
-		// closer to alphabetical/document order than to "which rule
-		// actually names this file".
-		if outFile != "" && a.relevance != b.relevance {
-			return a.relevance > b.relevance
-		}
-		// The keyword score (byte length of the matched glob) breaks ties
-		// INSIDE a tier — two claims scoped to the same directory still
-		// need a deterministic order.
-		if a.specificity != b.specificity {
-			return a.specificity > b.specificity
-		}
-		if a.cl.Rule != b.cl.Rule {
-			return a.cl.Rule < b.cl.Rule
-		}
-		return a.cl.ClaimID < b.cl.ClaimID
+		l, _ := compareScored(a, b, outFile, decideRelevance)
+		return l
 	}
 	sort.Slice(matched, func(i, j int) bool { return less(matched[i], matched[j]) })
+	if trace != nil {
+		trace.ranked = append([]scored(nil), matched...)
+		trace.src = primaryCite
+	}
+
+	// OC-33: one statement is served once. Two claims whose normalized
+	// statements are identical (a recompile that minted the same rule twice,
+	// differing only in backticks — "Inject clocks (`now func() …`)" beside
+	// "Inject clocks (now func() …)" — or two layers restating one ADR line)
+	// would spend two of the six slots on one rule and push a real one past
+	// the cap. The first in ranking order is kept; the rest never compete
+	// for a slot and are not counted as displaced (nothing distinct was
+	// lost). ExplainObligations names each as a duplicate of the kept rule.
+	matched = dedupeStatements(matched, trace)
 
 	// DP-7 (ADR-042 decision 2, vision 32 §2 item 2): re-rank the eligible
 	// set within its governing-scope tiers, AFTER the tiering sort just
@@ -1015,6 +980,11 @@ func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile str
 		reservedIDs := make(map[string]bool, len(reserved))
 		for _, m := range reserved {
 			reservedIDs[m.cl.ClaimID] = true
+		}
+		if trace != nil && outFile != "" {
+			// A root-scope call has no path to be near: nothing is reserved.
+			trace.reserved = reservedIDs
+			trace.reserveN = reserveN
 		}
 		kept := make([]scored, 0, max)
 		kept = append(kept, reserved...)
@@ -1118,6 +1088,9 @@ func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile str
 			ob.Relevance = &v
 		}
 		out.Rules = append(out.Rules, ob)
+		if trace != nil {
+			trace.servedIDs = append(trace.servedIDs, m.cl.ClaimID)
+		}
 		if m.cl.CompiledAtWatermark != "" && out.Watermark == "" {
 			out.Watermark = m.cl.CompiledAtWatermark
 		}
