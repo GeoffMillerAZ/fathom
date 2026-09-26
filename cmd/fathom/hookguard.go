@@ -18,7 +18,6 @@ package main
 import (
 	"net/http"
 	"sort"
-	"strings"
 	"sync/atomic"
 	"time"
 
@@ -39,6 +38,11 @@ var hookBudgetScale = 1.0
 func init() {
 	// Installed before main or any test runs, so no goroutine can race the
 	// assignment. The wrapper is inert until a hook activates a guard.
+	// It is no longer a *http.Transport: nothing fathom runs type-asserts
+	// it (cue's tool/http does, but only inside a tools/flow `cue cmd`
+	// run, which fathom never starts), and net/http then enforces
+	// Client.Timeout by cancelling the request context — which is why
+	// hookguard counts a context whose deadline has passed as a failure.
 	http.DefaultTransport = &hookguard.Transport{Base: http.DefaultTransport, Active: activeHookGuard}
 }
 
@@ -104,14 +108,15 @@ func beginHookGuard(channel, marker, harnessID, baseURL string) (end func(), sil
 		if len(skips) == 0 {
 			return
 		}
-		meta := map[string]string{}
-		var kinds []string
-		for v, n := range skips {
+		// One beat per verdict, named as §11.2 names them (breaker_open,
+		// busy, deadline_spent), with the count of RPCs it held off.
+		kinds := make([]string, 0, len(skips))
+		for v := range skips {
 			kinds = append(kinds, string(v))
-			meta[string(v)] = itoa(n)
 		}
 		sort.Strings(kinds)
-		meta["verdicts"] = strings.Join(kinds, ",")
-		emitBeat(channel, "guard_skip", meta)
+		for _, k := range kinds {
+			emitBeat(channel, k, map[string]string{"skipped": itoa(skips[hookguard.Verdict(k)])})
+		}
 	}, false
 }

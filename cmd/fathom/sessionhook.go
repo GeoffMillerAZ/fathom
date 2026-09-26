@@ -306,6 +306,15 @@ func buildSessionContext(baseURL, projDir string) string {
 		// responding: saying otherwise would send the agent to Grep for
 		// the whole session over a few seconds of load (§11.2).
 		var skip *hookguard.SkipError
+		if errors.As(err, &skip) && skip.Verdict == hookguard.Open {
+			// The shared breaker is open: other hooks already saw this
+			// daemon fail and are shielding it. §11.2 says hooks stay
+			// silent then (I9, P18) — the old "not responding … Restart
+			// it" line told every new session to restart a daemon the
+			// breaker was giving room to recover. The skip is recorded as
+			// a breaker_open beat.
+			return ""
+		}
 		if errors.As(err, &skip) && skip.Verdict == hookguard.Busy {
 			return fmt.Sprintf("fathom daemon (%s) is busy right now (hooks back off until %s) — its MCP tools may refuse briefly with a Retry-After; retry them before falling back to Grep/Read.", baseURL, skip.Until.Local().Format("15:04:05"))
 		}

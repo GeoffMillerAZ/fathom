@@ -96,6 +96,15 @@ func runHookVerb(t *testing.T, verb []string, payload string) (code int, stdout 
 	return code, out.String(), time.Since(start)
 }
 
+// hookLocalWorkSlack is how far past its deadline a hook may run in
+// TestNoHookRPCOutlivesItsDescriptorBudget: the local git and file work
+// that follows the last RPC, which the time scale does not shrink. Measured
+// at most ~120 ms under -race on the fixture repo (codex session-hook);
+// 250 ms stays well inside the unscaled max(1 s, 20%) margin the deadline
+// leaves before the harness kills the hook. Bounding local work on large
+// repos is §11.3's fan-out rows, not the deadline's.
+const hookLocalWorkSlack = 250 * time.Millisecond
+
 // TestNoHookRPCOutlivesItsDescriptorBudget is RT-7 (§11.1): every hook
 // binding of every harness descriptor, run against a daemon that never
 // answers, finishes every RPC by its deadline — descriptor TimeoutSec
@@ -168,9 +177,9 @@ func TestNoHookRPCOutlivesItsDescriptorBudget(t *testing.T) {
 				}
 			}
 			h.mu.Unlock()
-			// No retry pile-up after the deadline: the whole hook ends close
-			// to it (local git and file work is the remainder).
-			if elapsed > budget+time.Second {
+			// The whole hook ends by the deadline plus hookLocalWorkSlack:
+			// no retry pile-up after it, and only a little local work.
+			if elapsed > budget+hookLocalWorkSlack {
 				t.Errorf("%s %q: hook took %v against a %v budget (%d RPCs)", d.ID, b.Verb, elapsed.Round(time.Millisecond), budget, n)
 			}
 		}
