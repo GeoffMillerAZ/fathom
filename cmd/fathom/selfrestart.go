@@ -14,9 +14,10 @@ package main
 // three counterfactual sessions collected nothing. The fix existed. The
 // daemon kept running the old code because one command needed hands.
 //
-// launchd's KeepAlive is already true for this job, so the daemon exiting
-// IS a restart. It therefore watches its own executable and, when the bytes
-// on disk change, verifies the replacement and steps aside.
+// launchd relaunches this job on a non-zero exit (KeepAlive true under
+// plist schema 1, {SuccessfulExit: false} under schema 2), so the daemon
+// exiting 75 IS a restart. It therefore watches its own executable and,
+// when the bytes on disk change, verifies the replacement and steps aside.
 //
 // Four safety properties, because a self-restarting daemon that gets this
 // wrong is a crash loop that takes the whole fleet's tooling down:
@@ -46,6 +47,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/buildinfo"
 	"github.com/geoffmilleraz/fathom/internal/dlog"
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
 const (
@@ -137,9 +139,12 @@ func watchOwnBinary(path string, log *dlog.Logger, poll, cooldown time.Duration,
 			continue
 		}
 
-		log.Info(fmt.Sprintf("self-restart: adopting %s (%s → %s)%s — exiting so launchd restarts on the new code",
-			ver, shortHash(start), shortHash(cur), buildAgeSuffix()))
-		exit(0)
+		// Exit 75, never 0: a schema-2 plist (KeepAlive {SuccessfulExit:
+		// false}) reads 0 as "stay down", and tenancyContract >= 1 — which
+		// `daemon install --reconcile` gates on — promises this (§8.2).
+		log.Info(fmt.Sprintf("self-restart: adopting %s (%s → %s)%s — exiting %d so launchd restarts on the new code",
+			ver, shortHash(start), shortHash(cur), buildAgeSuffix(), tenancy.ExitRetryLater))
+		exit(tenancy.ExitRetryLater)
 		return
 	}
 }

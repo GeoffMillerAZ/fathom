@@ -90,8 +90,15 @@ func TestSelfRestartAdoptsAVerifiedBinary(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatalf("the watcher never adopted the new binary; log:\n%s", out.String())
 	}
-	if exited.Load() != 0 {
-		t.Errorf("exit code = %d, want 0 — a clean exit is what lets launchd restart on the new code", exited.Load())
+	// A schema-2 plist (KeepAlive {SuccessfulExit: false}) reads exit 0 as
+	// "stay down", so adoption exits 75 — and this binary may claim
+	// tenancy_contract >= 1 (which `daemon install --reconcile` gates on)
+	// only because it does (design §8.2, §8.3).
+	if exited.Load() != 75 {
+		t.Errorf("exit code = %d, want 75 — exit 0 under a schema-2 plist leaves the daemon down", exited.Load())
+	}
+	if tenancyContract >= 1 && exited.Load() == 0 {
+		t.Errorf("tenancy_contract %d is claimed by a binary that exits 0 on adoption", tenancyContract)
 	}
 	if !strings.Contains(out.String(), "adopting") {
 		t.Errorf("the adoption must be announced; a silent self-restart is indistinguishable from a crash:\n%s", out.String())
