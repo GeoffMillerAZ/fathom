@@ -1915,7 +1915,7 @@ itself cannot get past.
    (design §2.5's shape already has no separate content to check).
 3. `internal/harness.HookOutput` gains `Deny`/`DenyReason`; `claudeCodec`/`codexCodec` render the
    documented `hookSpecificOutput.permissionDecision:"deny"` shape (verbatim against
-   `testdata/codecs/codex/pre-tool.deny.json`, whose header comment is updated — the shape fathom
+   `internal/harness/testdata/codecs/codex/pre-tool.deny.json`, whose header comment is updated — the shape fathom
    now emits, narrowly, not the shape it never emits) on `EventPreTool` only; Gemini's codec
    refuses `Deny` outright rather than silently downgrading it to advisory. `HookInput` gains
    `NewContent`/`OldContent`, decoded from Claude Code's Write `content` / Edit
