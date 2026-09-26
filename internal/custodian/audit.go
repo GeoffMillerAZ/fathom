@@ -17,27 +17,55 @@ import (
 // Finding per concern, in input (ID-sorted) order; a disabled concern is
 // reported as off — named, never silently absent.
 //
+// Each corpus a concern names is resolved once per call through the
+// corpus registry (corpus.go, CC-11) — agent-config, lefthook, taskfile,
+// ci — and every corpus-reading kind runs over whatever its `where:`
+// resolves to: one engine, many corpora.
+//
 // Options (options.go) inject the two things the CC-14/CC-15 kinds read
 // beyond the tree — the daemon's tool registry and the user's thread log
 // — plus the clock; every default is the live one, so callers with no
 // opinion pass nothing.
 func Audit(root string, concerns []Concern, opts ...Option) []Finding {
 	env := newAuditEnv(opts)
-	files, filesErr := AgentConfigFiles(root)
+	cache := corpusCache{root: root, got: map[string]corpusResult{}}
 	out := make([]Finding, 0, len(concerns))
 	for _, c := range concerns {
 		if c.Off {
 			out = append(out, Finding{Concern: c, Status: StatusOff, Detail: offDetail(c)})
 			continue
 		}
-		out = append(out, checkConcern(root, files, filesErr, c, env))
+		out = append(out, checkConcern(root, &cache, c, env))
 	}
 	return out
 }
 
+// corpusCache resolves each named corpus at most once per Audit call.
+type corpusCache struct {
+	root string
+	got  map[string]corpusResult
+}
+
+type corpusResult struct {
+	files []string
+	err   error
+}
+
+func (cc *corpusCache) files(name string) ([]string, error) {
+	if r, ok := cc.got[name]; ok {
+		return r.files, r.err
+	}
+	files, err := ResolveCorpus(cc.root, name)
+	cc.got[name] = corpusResult{files: files, err: err}
+	return files, err
+}
+
 func offDetail(c Concern) string {
-	if c.Scope == ScopeProject {
+	switch c.Scope {
+	case ScopeProject:
 		return "off (this repo)"
+	case ScopePack:
+		return "off (pack " + c.Pack + ")"
 	}
 	return "off (user scope)"
 }
@@ -45,29 +73,39 @@ func offDetail(c Concern) string {
 // checkConcern evaluates one active concern. Every path ends in a status
 // with a detail — an unevaluable check is unable-to-check with the reason,
 // never a silent skip and never a fake pass (law 3).
-func checkConcern(root string, files []string, filesErr error, c Concern, env auditEnv) Finding {
-	f := Finding{Concern: c}
-	needsCorpus := c.Check.Kind == KindForbiddenPattern ||
-		c.Check.Kind == KindCommandDocumentedAndExists ||
-		c.Check.Kind == KindPointersResolve ||
-		c.Check.Kind == KindStanzaToolsServed
-	if needsCorpus && filesErr != nil {
-		f.Status = StatusUnable
-		f.Detail = fmt.Sprintf("agent-config discovery failed: %v", filesErr)
-		return f
+func checkConcern(root string, cache *corpusCache, c Concern, env auditEnv) Finding {
+	var files []string
+	if corporaFor(c.Check.Kind) != nil {
+		if c.Check.Where == "" {
+			c.Check.Where = CorpusAgentConfig // a hand-built Check; the loader defaults it too
+		}
+		var err error
+		files, err = cache.files(c.Check.Where)
+		if err != nil {
+			return Finding{Concern: c, Status: StatusUnable, Detail: fmt.Sprintf("%s discovery failed: %v", c.Check.Where, err)}
+		}
 	}
 
+	var f Finding
 	switch c.Check.Kind {
 	case KindForbiddenPattern:
-		return checkForbiddenPattern(root, files, c)
+		f = checkForbiddenPattern(root, files, c)
+	case KindRequiredPattern:
+		f = checkRequiredPattern(root, files, c)
 	case KindCommandDocumentedAndExists:
-		return checkCommandDocumented(root, files, c)
+		f = checkCommandDocumented(root, files, c)
+	case KindCommandsResolve:
+		f = checkCommandsResolve(root, files, c)
 	case KindMaxLines:
 		return checkMaxLines(root, c)
+	case KindMaxBytes:
+		return checkMaxBytes(root, c)
+	case KindStanzaPresent:
+		return checkStanzaPresent(root, c)
 	case KindPointersResolve:
-		return checkPointersResolve(root, files, c)
+		f = checkPointersResolve(root, files, c)
 	case KindStanzaToolsServed:
-		return checkStanzaToolsServed(root, files, c, env)
+		f = checkStanzaToolsServed(root, files, c, env)
 	case KindHandoffCitesInstruments:
 		return checkHandoffCitesInstruments(root, c, env)
 	case KindADRReferencesResolve:
@@ -77,10 +115,12 @@ func checkConcern(root string, files []string, filesErr error, c Concern, env au
 	default:
 		// The loader refuses unknown kinds; reaching here means a caller
 		// constructed a Check by hand. Same honesty either way.
-		f.Status = StatusUnable
-		f.Detail = fmt.Sprintf("unknown check kind %q", c.Check.Kind)
-		return f
+		return Finding{Concern: c, Status: StatusUnable, Detail: fmt.Sprintf("unknown check kind %q", c.Check.Kind)}
 	}
+	if f.Files == nil {
+		f.Files = files
+	}
+	return f
 }
 
 func checkForbiddenPattern(root string, files []string, c Concern) Finding {
@@ -110,7 +150,47 @@ func checkForbiddenPattern(root string, files []string, c Concern) Finding {
 		return f
 	}
 	f.Status = StatusHolds
-	f.Detail = fmt.Sprintf("no match across %s", countNoun(len(files), "agent-config file"))
+	f.Detail = fmt.Sprintf("no match across %s", countNoun(len(files), corpusNoun(c.Check.Where)))
+	return f
+}
+
+// checkRequiredPattern is forbidden_pattern's dual: at least one line of
+// the corpus must match. The matching lines are the evidence either way —
+// where the required thing lives is worth knowing when it holds.
+func checkRequiredPattern(root string, files []string, c Concern) Finding {
+	f := Finding{Concern: c}
+	re, err := regexp.Compile(c.Check.Pattern)
+	if err != nil {
+		f.Status = StatusUnable
+		f.Detail = fmt.Sprintf("pattern does not compile: %v", err)
+		return f
+	}
+	if len(files) == 0 {
+		f.Status = StatusViolated
+		f.Detail = fmt.Sprintf("no %s(s) at all — the corpus is %s, and nothing there can satisfy `%s`", corpusNoun(c.Check.Where), CorpusAbout(c.Check.Where), c.Check.Pattern)
+		return f
+	}
+	for _, rel := range files {
+		lines, err := readFileLines(root, rel)
+		if err != nil {
+			f.Status = StatusUnable
+			f.Detail = fmt.Sprintf("%s unreadable: %v", rel, err)
+			f.Evidence = nil
+			return f
+		}
+		for i, ln := range lines {
+			if re.MatchString(ln) {
+				f.Evidence = append(f.Evidence, fmt.Sprintf("%s:%d", rel, i+1))
+			}
+		}
+	}
+	if len(f.Evidence) == 0 {
+		f.Status = StatusViolated
+		f.Detail = fmt.Sprintf("no line matches required pattern `%s` across %s", c.Check.Pattern, countNoun(len(files), corpusNoun(c.Check.Where)))
+		return f
+	}
+	f.Status = StatusHolds
+	f.Detail = fmt.Sprintf("%d line(s) match `%s` across %s", len(f.Evidence), c.Check.Pattern, countNoun(len(files), corpusNoun(c.Check.Where)))
 	return f
 }
 
@@ -132,7 +212,7 @@ func checkCommandDocumented(root string, files []string, c Concern) Finding {
 	}
 	if documentedIn == 0 {
 		f.Status = StatusViolated
-		f.Detail = fmt.Sprintf("%q is not documented in any of %s", cmdStr, countNoun(len(files), "agent-config file"))
+		f.Detail = fmt.Sprintf("%q is not documented in any of %s", cmdStr, countNoun(len(files), corpusNoun(c.Check.Where)))
 		return f
 	}
 
@@ -201,6 +281,77 @@ func checkMaxLines(root string, c Concern) Finding {
 	return f
 }
 
+// checkMaxBytes holds a file to a byte budget — the size the harness
+// counts, not the lines a human counts. A missing file is a violation
+// (the concern expects it); one that exists and cannot be stat'd is
+// unable-to-check, never "absent" (I38).
+func checkMaxBytes(root string, c Concern) Finding {
+	f := Finding{Concern: c}
+	fi, err := os.Stat(filepath.Join(root, filepath.FromSlash(c.Check.File)))
+	if errors.Is(err, fs.ErrNotExist) {
+		f.Status = StatusViolated
+		f.Detail = fmt.Sprintf("%s is absent — the concern expects it to exist", c.Check.File)
+		return f
+	}
+	if err != nil {
+		f.Status = StatusUnable
+		f.Detail = fmt.Sprintf("%s unreadable: %v", c.Check.File, err)
+		return f
+	}
+	n := fi.Size()
+	f.Detail = fmt.Sprintf("%s is %d bytes (max %d)", c.Check.File, n, c.Check.Bytes)
+	if n > int64(c.Check.Bytes) {
+		f.Status = StatusViolated
+		f.Evidence = []string{c.Check.File}
+		return f
+	}
+	f.Status = StatusHolds
+	return f
+}
+
+// checkStanzaPresent is the three-case stanza detection fathom init writes
+// against (absent / well-formed / corrupted), read-only. Its details are
+// file-prefixed sentences because doctor's stanza_present row renders
+// them verbatim (CC-13): the row joins the non-holding details of the
+// claude-code and codex entries, exactly as it used to join its own.
+func checkStanzaPresent(root string, c Concern) Finding {
+	f := Finding{Concern: c}
+	file := c.Check.File
+	data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(file)))
+	if err != nil {
+		f.Detail = fmt.Sprintf("%s: %v", file, err)
+		if errors.Is(err, fs.ErrNotExist) {
+			f.Status = StatusViolated
+		} else {
+			f.Status = StatusUnable // exists and unreadable is never "absent" (I38)
+		}
+		return f
+	}
+	content := string(data)
+	begin := strings.Index(content, stanzaBeginPrefix)
+	end := strings.Index(content, stanzaEnd)
+	lineOf := func(idx int) string { return fmt.Sprintf("%s:%d", file, strings.Count(content[:idx], "\n")+1) }
+	switch {
+	case begin >= 0 && end > begin:
+		f.Status = StatusHolds
+		f.Detail = fmt.Sprintf("%s: fathom stanza well-formed", file)
+	case begin < 0 && end < 0:
+		f.Status = StatusViolated
+		f.Detail = fmt.Sprintf("%s: never wired (no fathom markers)", file)
+		f.Evidence = []string{file}
+	default:
+		f.Status = StatusViolated
+		f.Detail = fmt.Sprintf("%s: corrupted marker pair (begin=%t end=%t)", file, begin >= 0, end >= 0)
+		if begin >= 0 {
+			f.Evidence = append(f.Evidence, lineOf(begin))
+		}
+		if end >= 0 {
+			f.Evidence = append(f.Evidence, lineOf(end))
+		}
+	}
+	return f
+}
+
 // markdownLinkRe captures relative markdown-link targets; backtick
 // pointer coverage lives beside it (backtickTokenRe + repoPathRe) because
 // this house style points with `docs/foo.md`, not links — a check blind
@@ -246,15 +397,24 @@ func PointersCorpus(root string, files []string) []string {
 	return append(append([]string{}, files...), intentFile)
 }
 
-func checkPointersResolve(root string, files []string, c Concern) Finding {
-	f := Finding{Concern: c}
-	resolved := 0
+// pointerRef is one pointer in an agent-config file: a markdown link
+// target (fragment stripped) or a backticked repo path.
+type pointerRef struct {
+	File   string
+	Line   int // 1-based
+	Target string
+	Link   bool // markdown link (file-relative) vs backtick path (root- or file-relative)
+}
+
+// scanPointers walks the pointers corpus and returns the pointers that do
+// not resolve plus how many did. An unreadable file is an error (I38:
+// unable-to-check upstream, never a smaller count). config propose
+// (propose.go) reads the same scan to offer relocations.
+func scanPointers(root string, files []string) (dead []pointerRef, resolved int, err error) {
 	for _, rel := range PointersCorpus(root, files) {
 		lines, err := readFileLines(root, rel)
 		if err != nil {
-			f.Status = StatusUnable
-			f.Detail = fmt.Sprintf("%s unreadable: %v", rel, err)
-			return f
+			return nil, 0, fmt.Errorf("%s unreadable: %v", rel, err)
 		}
 		for i, ln := range lines {
 			for _, m := range markdownLinkRe.FindAllStringSubmatch(ln, -1) {
@@ -272,7 +432,7 @@ func checkPointersResolve(root string, files []string, c Concern) Finding {
 				// contract).
 				abs := filepath.Join(root, filepath.Dir(filepath.FromSlash(rel)), filepath.FromSlash(target))
 				if _, err := os.Stat(abs); err != nil {
-					f.Evidence = append(f.Evidence, fmt.Sprintf("%s:%d → %s", rel, i+1, target))
+					dead = append(dead, pointerRef{File: rel, Line: i + 1, Target: target, Link: true})
 				} else {
 					resolved++
 				}
@@ -314,9 +474,23 @@ func checkPointersResolve(root string, files []string, c Concern) Finding {
 					resolved++
 					continue
 				}
-				f.Evidence = append(f.Evidence, fmt.Sprintf("%s:%d → %s", rel, i+1, target))
+				dead = append(dead, pointerRef{File: rel, Line: i + 1, Target: target})
 			}
 		}
+	}
+	return dead, resolved, nil
+}
+
+func checkPointersResolve(root string, files []string, c Concern) Finding {
+	f := Finding{Concern: c, Files: PointersCorpus(root, files)}
+	dead, resolved, err := scanPointers(root, files)
+	if err != nil {
+		f.Status = StatusUnable
+		f.Detail = err.Error()
+		return f
+	}
+	for _, d := range dead {
+		f.Evidence = append(f.Evidence, fmt.Sprintf("%s:%d → %s", d.File, d.Line, d.Target))
 	}
 	if len(f.Evidence) > 0 {
 		f.Status = StatusViolated

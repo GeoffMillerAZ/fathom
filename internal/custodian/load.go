@@ -31,43 +31,119 @@ func (e *LoadError) Error() string {
 
 func (e *LoadError) Unwrap() []error { return e.Errs }
 
-// LoadFile reads one scope's concerns file.
+// ScopeFile is one scope's parsed concerns.cue: the concerns it writes and
+// the shipped packs it enables (CC-12).
+type ScopeFile struct {
+	Concerns []Concern
+	Packs    []string
+}
+
+// LoadFile reads one scope's concerns file and returns the concerns it
+// writes itself (the packs it enables are LoadScopeFile's; Resolve expands
+// them).
+func LoadFile(path string, scope Scope) ([]Concern, error) {
+	sf, err := LoadScopeFile(path, scope)
+	return sf.Concerns, err
+}
+
+// LoadScopeFile reads one scope's concerns file: its concerns and the packs
+// it enables.
 //
 // Three states, not two (the O22 lesson): an ABSENT file is zero concerns
-// with no error; a present file whose `concerns` field is absent (an
-// all-commented scaffold) is the same; a present, malformed file is a loud
-// *LoadError naming every problem. Nothing is dropped quietly.
-func LoadFile(path string, scope Scope) ([]Concern, error) {
+// with no error; a present file with neither field (an all-commented
+// scaffold) is the same; a present, malformed file is a loud *LoadError
+// naming every problem. Nothing is dropped quietly — which is also why an
+// unknown TOP-LEVEL field is refused: `pack: ["lefthook"]` for `packs:`
+// would otherwise enable nothing and say nothing.
+func LoadScopeFile(path string, scope Scope) (ScopeFile, error) {
 	data, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
-		return nil, nil
+		return ScopeFile{}, nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("concerns: read %s: %w", path, err)
+		return ScopeFile{}, fmt.Errorf("concerns: read %s: %w", path, err)
 	}
+	doc, errs := parseDocument(data, path, scope, false)
+	if len(errs) > 0 {
+		return ScopeFile{}, &LoadError{Path: path, Scope: scope, Errs: errs}
+	}
+	return ScopeFile{Concerns: doc.concerns, Packs: doc.packs}, nil
+}
 
+// parsedDocument is one CUE file's content: a scope file (concerns +
+// packs) or a pack file (pack metadata + concerns).
+type parsedDocument struct {
+	concerns []Concern
+	packs    []string
+	meta     packMeta
+	sawMeta  bool
+}
+
+// parseDocument decodes a concerns-shaped CUE file. isPack selects the
+// pack-file grammar (`pack` + `concerns`) over the scope-file grammar
+// (`concerns` + `packs`); every other top-level field is refused by name.
+func parseDocument(data []byte, filename string, scope Scope, isPack bool) (parsedDocument, []error) {
+	var doc parsedDocument
 	cctx := cuecontext.New()
-	v := cctx.CompileBytes(data, cue.Filename(path))
+	v := cctx.CompileBytes(data, cue.Filename(filename))
 	if v.Err() != nil {
-		return nil, &LoadError{Path: path, Scope: scope, Errs: []error{v.Err()}}
+		return doc, []error{v.Err()}
 	}
-
-	root := v.LookupPath(cue.ParsePath("concerns"))
-	if !root.Exists() {
-		return nil, nil // an all-commented scaffold, or a blank file
+	top, err := v.Fields(cue.Optional(true))
+	if err != nil {
+		return doc, []error{fmt.Errorf("concerns: %w", err)}
 	}
+	known := "concerns, packs"
+	if isPack {
+		known = "pack, concerns"
+	}
+	var errs []error
+	for top.Next() {
+		name := top.Selector().Unquoted()
+		if top.IsOptional() {
+			errs = append(errs, fmt.Errorf("top-level %q is declared OPTIONAL (%s?:) — in a configuration file that declares the field may exist rather than setting it, so it has no effect; write %q: without the question mark", name, name, name))
+			continue
+		}
+		switch {
+		case name == "concerns":
+			cs, cerrs := parseConcerns(top.Value(), scope)
+			errs = append(errs, cerrs...)
+			doc.concerns = cs
+		case name == "packs" && !isPack:
+			ps, perrs := parsePackList(top.Value())
+			errs = append(errs, perrs...)
+			doc.packs = ps
+		case name == "pack" && isPack:
+			m, merrs := parsePackMeta(top.Value())
+			errs = append(errs, merrs...)
+			doc.meta, doc.sawMeta = m, true
+		default:
+			errs = append(errs, fmt.Errorf("unknown top-level field %q (known: %s)", name, known))
+		}
+	}
+	if len(errs) > 0 {
+		sort.SliceStable(errs, func(i, j int) bool { return errs[i].Error() < errs[j].Error() })
+		return parsedDocument{}, errs
+	}
+	return doc, nil
+}
 
+// parseConcerns decodes the `concerns` struct, sorted by ID.
+func parseConcerns(root cue.Value, scope Scope) ([]Concern, []error) {
 	fields, ferr := root.Fields(cue.Optional(true))
 	if ferr != nil {
-		return nil, &LoadError{Path: path, Scope: scope, Errs: []error{fmt.Errorf("concerns: %w", ferr)}}
+		return nil, []error{fmt.Errorf("concerns: %w", ferr)}
 	}
-
 	var (
 		out  []Concern
 		errs []error
 	)
 	for fields.Next() {
 		id := fields.Selector().Unquoted()
+		if fields.IsOptional() {
+			errs = append(errs, fmt.Errorf("concern %q is declared OPTIONAL (%s?:) — write it without the question mark", id, id))
+			continue
+		}
 		c, centErrs := parseConcern(id, fields.Value(), scope)
 		if len(centErrs) > 0 {
 			errs = append(errs, centErrs...)
@@ -75,12 +151,40 @@ func LoadFile(path string, scope Scope) ([]Concern, error) {
 		}
 		out = append(out, c)
 	}
-	if len(errs) > 0 {
-		sort.SliceStable(errs, func(i, j int) bool { return errs[i].Error() < errs[j].Error() })
-		return nil, &LoadError{Path: path, Scope: scope, Errs: errs}
-	}
 	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
-	return out, nil
+	return out, errs
+}
+
+// parsePackList decodes `packs: ["lefthook", …]`: every name must be a
+// shipped pack (refused by name with the list — an unknown pack would
+// otherwise enable nothing, silently), duplicates collapse, output sorted.
+func parsePackList(v cue.Value) ([]string, []error) {
+	list, err := v.List()
+	if err != nil {
+		return nil, []error{fmt.Errorf("packs must be a list of pack names (known packs: %s): %w", strings.Join(KnownPacks(), ", "), err)}
+	}
+	seen := map[string]bool{}
+	var (
+		out  []string
+		errs []error
+	)
+	for list.Next() {
+		name, err := list.Value().String()
+		if err != nil {
+			errs = append(errs, fmt.Errorf("packs: every entry must be a pack name string: %w", err))
+			continue
+		}
+		if !isKnownPack(name) {
+			errs = append(errs, fmt.Errorf("packs: unknown pack %q (known packs: %s)", name, strings.Join(KnownPacks(), ", ")))
+			continue
+		}
+		if !seen[name] {
+			seen[name] = true
+			out = append(out, name)
+		}
+	}
+	sort.Strings(out)
+	return out, errs
 }
 
 // parseConcern walks one entry's fields WITH optionals visible, so a
@@ -163,7 +267,7 @@ func parseCheck(id string, v cue.Value) (Check, []error) {
 	if serr != nil {
 		return ck, []error{fmt.Errorf("concern %q: check: %w", id, serr)}
 	}
-	sawDays := false
+	sawDays, sawBytes := false, false
 	for sub.Next() {
 		name := sub.Selector().Unquoted()
 		if sub.IsOptional() {
@@ -213,6 +317,14 @@ func parseCheck(id string, v cue.Value) (Check, []error) {
 				continue
 			}
 			ck.Lines = int(n)
+		case "bytes":
+			n, err := sub.Value().Int64()
+			if err != nil {
+				errs = append(errs, fmt.Errorf("concern %q: check.bytes must be an integer: %w", id, err))
+				continue
+			}
+			sawBytes = true
+			ck.Bytes = int(n)
 		case "days":
 			n, err := sub.Value().Int64()
 			if err != nil {
@@ -231,6 +343,9 @@ func parseCheck(id string, v cue.Value) (Check, []error) {
 	// `days` is the handoff window and nothing else's: a key that no kind
 	// reads is a wish about behaviour that does not exist, refused like
 	// any other unknown field (the schema stays closed).
+	if sawBytes && ck.Kind != KindMaxBytes {
+		errs = append(errs, fmt.Errorf("concern %q: check.bytes applies to %s only, not %q", id, KindMaxBytes, ck.Kind))
+	}
 	if sawDays {
 		if ck.Kind != KindHandoffCitesInstruments {
 			errs = append(errs, fmt.Errorf("concern %q: check.days applies to %s only, not %q", id, KindHandoffCitesInstruments, ck.Kind))
@@ -247,15 +362,17 @@ func parseCheck(id string, v cue.Value) (Check, []error) {
 
 // validateCheck enforces kind-specific requirements at load, so the audit
 // never discovers an unevaluable check at run time. It also defaults and
-// bounds `where`: v1's only corpus is agent-config, and naming a corpus
-// that does not exist yet is refused rather than silently scanning
-// nothing.
+// bounds `where` against the corpus registry (corpus.go, CC-11): a kind
+// that reads a corpus defaults to agent-config and accepts only the
+// corpora it can read; a kind that reads none refuses `where` outright —
+// naming a corpus that does not exist, or one the kind would ignore, is
+// refused rather than silently scanning something else.
 func validateCheck(id string, ck *Check) []error {
 	var errs []error
 	switch ck.Kind {
-	case KindForbiddenPattern:
+	case KindForbiddenPattern, KindRequiredPattern:
 		if ck.Pattern == "" {
-			errs = append(errs, fmt.Errorf("concern %q: forbidden_pattern requires a pattern", id))
+			errs = append(errs, fmt.Errorf("concern %q: %s requires a pattern", id, ck.Kind))
 		} else if _, err := regexp.Compile(ck.Pattern); err != nil {
 			errs = append(errs, fmt.Errorf("concern %q: pattern does not compile: %v", id, err))
 		}
@@ -270,10 +387,19 @@ func validateCheck(id string, ck *Check) []error {
 		if ck.Lines <= 0 {
 			errs = append(errs, fmt.Errorf("concern %q: max_lines requires lines > 0", id))
 		}
-	case KindPointersResolve:
+	case KindMaxBytes:
+		if ck.File == "" {
+			errs = append(errs, fmt.Errorf("concern %q: max_bytes requires a file", id))
+		}
+		if ck.Bytes <= 0 {
+			errs = append(errs, fmt.Errorf("concern %q: max_bytes requires bytes > 0", id))
+		}
+	case KindStanzaPresent:
+		if ck.File == "" {
+			errs = append(errs, fmt.Errorf("concern %q: stanza_present requires a file", id))
+		}
+	case KindPointersResolve, KindStanzaToolsServed, KindCommandsResolve:
 		// no fields beyond where
-	case KindStanzaToolsServed:
-		// no fields beyond where; the registry is the daemon's, at audit time
 	case KindADRReferencesResolve:
 		// no fields: the corpus is every doc that cites decisions, and the
 		// record set is whichever home the repo actually has
@@ -285,18 +411,36 @@ func validateCheck(id string, ck *Check) []error {
 		}
 	case "":
 		errs = append(errs, fmt.Errorf("concern %q: check.kind is required (known kinds: %s)", id, kindList()))
+		return errs
 	default:
 		errs = append(errs, fmt.Errorf("concern %q: unknown check kind %q — a concern whose check cannot be stated mechanically is refused (known kinds: %s)", id, ck.Kind, kindList()))
+		return errs
 	}
-	switch ck.Kind {
-	case KindForbiddenPattern, KindCommandDocumentedAndExists, KindPointersResolve, KindStanzaToolsServed:
-		if ck.Where == "" {
-			ck.Where = CorpusAgentConfig
-		} else if ck.Where != CorpusAgentConfig {
-			errs = append(errs, fmt.Errorf("concern %q: unknown corpus %q in check.where — v1 audits %q only (lefthook/taskfile corpora arrive as packs, CC-12)", id, ck.Where, CorpusAgentConfig))
+
+	accepted := corporaFor(ck.Kind)
+	switch {
+	case accepted == nil && ck.Where != "":
+		errs = append(errs, fmt.Errorf("concern %q: %s reads no corpus, so check.where %q would be ignored — remove it", id, ck.Kind, ck.Where))
+	case accepted == nil:
+	case ck.Where == "":
+		ck.Where = CorpusAgentConfig
+	case !contains(accepted, ck.Where):
+		if _, registered := registry[ck.Where]; !registered {
+			errs = append(errs, fmt.Errorf("concern %q: unknown corpus %q in check.where (registered corpora: %s)", id, ck.Where, strings.Join(KnownCorpora(), ", ")))
+		} else {
+			errs = append(errs, fmt.Errorf("concern %q: %s reads the %s corpus only, not %q", id, ck.Kind, strings.Join(accepted, ", "), ck.Where))
 		}
 	}
 	return errs
+}
+
+func contains(xs []string, x string) bool {
+	for _, v := range xs {
+		if v == x {
+			return true
+		}
+	}
+	return false
 }
 
 func kindList() string {
@@ -335,15 +479,24 @@ func ExampleTemplate() []byte {
 // (vision 22, "instructed means true"). This file GOVERNS: an entry here
 // beats ~/.fathom/concerns.cue (law 13).
 //
-// A concern is a FALSIFIABLE WANT about this repo's agent config
-// (CLAUDE.md / AGENTS.md). Run ` + "`fathom config audit`" + ` for evidence;
+// A concern is a FALSIFIABLE WANT about this repo's configuration — agent
+// config (CLAUDE.md / AGENTS.md), lefthook, Taskfile, CI. Run
+// ` + "`fathom config audit`" + ` for evidence;
 // fathom reports and never edits your prose — you decide.
 //
-// Uncomment and adapt. Check kinds: forbidden_pattern,
-// command_documented_and_exists, max_lines, pointers_resolve,
-// stanza_tools_served (the fathom stanza names only tools the daemon
-// serves), handoff_cites_instruments (a handoff note claiming shipped
-// work cites a commit / plan row / verify run / retro; days: 7).
+// Uncomment and adapt. Check kinds: forbidden_pattern, required_pattern,
+// command_documented_and_exists, commands_resolve (every task target and
+// script a corpus invokes exists), max_lines, max_bytes, pointers_resolve,
+// stanza_present, stanza_tools_served (the fathom stanza names only tools
+// the daemon serves), handoff_cites_instruments (a handoff note claiming
+// shipped work cites a commit / plan row / verify run / retro; days: 7).
+// Corpora for where: agent-config (default), lefthook, taskfile, ci.
+//
+// Packs: curated concern sets fathom ships — claude-code, codex, lefthook,
+// taskfile. Enable them, then override any entry by writing its id here
+// (replaced wholesale) or disable it with <id>: {off: true}:
+//
+// packs: ["claude-code", "lefthook", "taskfile"]
 //
 // concerns: {
 // 	gate_documented: {

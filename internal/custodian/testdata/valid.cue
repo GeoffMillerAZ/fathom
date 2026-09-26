@@ -1,4 +1,7 @@
-// A positive fixture: every check kind, loaded by TestValidFixtureLoads.
+// A positive fixture: every check kind, loaded by TestValidFixtureLoads,
+// and a pack list (CC-12).
+packs: ["lefthook", "taskfile"]
+
 concerns: {
 	deploy_safety: {
 		want:  "no raw-cp deploy instruction anywhere in agent config"
@@ -33,5 +36,22 @@ concerns: {
 	wiring_current: {
 		want:  "hooks, stanza regions, MCP server entries and owned skills match the digests fathom recorded"
 		check: {kind: "wiring_current"}
+	}
+	hook_runs_verify: {
+		want:  "the pre-push hook runs fathom verify"
+		why:   "I17: an unproven [x] row blocks a push only when the hook runs verify"
+		check: {kind: "required_pattern", pattern: "fathom verify", where: "lefthook"}
+	}
+	claude_md_wired: {
+		want:  "CLAUDE.md carries the fathom stanza"
+		check: {kind: "stanza_present", file: "CLAUDE.md"}
+	}
+	agents_md_fits: {
+		want:  "AGENTS.md fits in what Codex reads"
+		check: {kind: "max_bytes", file: "AGENTS.md", bytes: 32768}
+	}
+	taskfile_chain: {
+		want:  "every task and script the Taskfile calls exists"
+		check: {kind: "commands_resolve", where: "taskfile"}
 	}
 }

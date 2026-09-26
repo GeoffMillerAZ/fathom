@@ -1248,8 +1248,15 @@ shipped work must cite a commit sha, an active plan row id, `fathom
 verify`, or a `workspace/artifacts/retros/` path — and
 `adr_references_resolve` — every path a decision record cites must exist,
 scoped to this repo's own id shape so a sibling repo's records are named
-rather than reported missing. Fathom reports and never edits your prose —
-the session applies fixes. Full model: `docs/design/config-custodian.md`.
+rather than reported missing. CC-12 adds `required_pattern`,
+`stanza_present`, `max_bytes` and `commands_resolve` (the gate chain: every
+`task` target, local Taskfile include and repo script a corpus invokes
+exists), and `where:` names a corpus — `agent-config` (default),
+`lefthook`, `taskfile`, `ci` (CC-11). `packs: [...]` in a `concerns.cue`
+enables the shipped `claude-code`, `codex`, `lefthook` and `taskfile` packs;
+a same-id entry overrides one, `off: true` disables it. Fathom reports and
+never edits your prose — the session applies fixes. Full model:
+`docs/design/config-custodian.md`.
 
 `--code-facts` (VB-28, *experimental*, **off by default**): audit
 code-fact-shaped sentences across every auto-loaded file — CLAUDE.md,

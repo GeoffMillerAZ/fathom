@@ -7,7 +7,22 @@
 // definition is the belt to those braces.
 
 #Concerns: {
+	// packs enables shipped concern packs (CC-12, internal/custodian/packs);
+	// the union of both scopes' lists is enabled.
+	packs?: [...#PackName]
 	concerns?: [string]: #Concern
+}
+
+#PackName: "claude-code" | "codex" | "lefthook" | "taskfile"
+
+// #Pack is a shipped pack file (internal/custodian/packs/<name>.cue).
+#Pack: {
+	pack: {
+		name:    #PackName
+		version: int & >0
+		about:   string
+	}
+	concerns: [string]: #Concern
 }
 
 #Concern: {
@@ -23,12 +38,15 @@
 }
 
 #Check: {
-	kind:     "forbidden_pattern" | "command_documented_and_exists" | "max_lines" | "pointers_resolve" | "stanza_tools_served" | "handoff_cites_instruments" | "adr_references_resolve"
+	kind:     "forbidden_pattern" | "required_pattern" | "command_documented_and_exists" | "commands_resolve" | "max_lines" | "max_bytes" | "pointers_resolve" | "stanza_present" | "stanza_tools_served" | "handoff_cites_instruments" | "adr_references_resolve" | "wiring_current"
 	pattern?: string
-	where?:   "agent-config"
+	// where names a corpus in the registry (corpus.go, CC-11); the Go
+	// loader also refuses a corpus the kind cannot read.
+	where?:   "agent-config" | "lefthook" | "taskfile" | "ci"
 	command?: string
 	file?:    string
 	lines?:   int & >0
+	bytes?:   int & >0
 	// days is the handoff_cites_instruments window (default 7); the Go
 	// loader refuses it on any other kind.
 	days?: int & >0

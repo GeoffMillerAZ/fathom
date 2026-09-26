@@ -739,9 +739,21 @@ model. Kinds: `forbidden_pattern` (`pattern`, `where: "agent-config"`),
 `command_documented_and_exists` (`command`), `max_lines` (`file`, `lines`),
 `pointers_resolve`, and — CC-14/CC-15, **experimental** —
 `stanza_tools_served` (the one kind that asks the daemon; degrades to
-unable-to-check) and `handoff_cites_instruments` (`days`). Full model and
-check table: `docs/design/config-custodian.md`; this repo's own file is a
-worked example.
+unable-to-check) and `handoff_cites_instruments` (`days`) — plus (CC-12)
+`required_pattern` (`pattern`, `where`), `stanza_present` (`file`),
+`max_bytes` (`file`, `bytes`) and `commands_resolve` (`where`: every
+`task` target, local include and repo script the corpus invokes exists).
+`where` names a corpus (CC-11): `agent-config` (default), `lefthook`,
+`taskfile`, `ci`.
+
+`packs: ["claude-code", "codex", "lefthook", "taskfile"]` (either scope; the
+union is enabled) turns on concern sets fathom ships as CUE data; a same-id
+entry in your file replaces a pack's wholesale and `<id>: {off: true}`
+disables it (named `off` in the audit). An unknown pack, an unknown
+top-level field (`pack:` for `packs:`), a `where` on a kind that reads no
+corpus, and an optional (`name?:`) concern are refused by name. Full model,
+corpus and pack tables: `docs/design/config-custodian.md`; this repo's own
+file is a worked example.
 
 ---
 
