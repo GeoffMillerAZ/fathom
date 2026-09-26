@@ -240,6 +240,62 @@
     "reason": "Dialogs, drawers and toasts share the first-party overlay primitive contract."
   },
   {
+    "name": "keyboard command palette",
+    "query": {"text": "command palette", "profile": "go-web"},
+    "top": ["interaction.command-palette"],
+    "forbidden": ["interaction.overlays", "cli.theme"],
+    "empty": false,
+    "reason": "The palette composes the overlay dialog but is its own experimental L2 + L3b capability, not a terminal palette."
+  },
+  {
+    "name": "search page without JavaScript",
+    "query": {"text": "search page without JavaScript", "layer": "L3b", "profile": "go-web"},
+    "top": ["interaction.command-palette"],
+    "forbidden": ["content.docs"],
+    "empty": false,
+    "reason": "The palette's trigger is a real link to an app-owned GET search page that renders the same results."
+  },
+  {
+    "name": "keyboard shortcut site search",
+    "query": {"text": "keyboard shortcut search", "profile": "go-web"},
+    "top": ["interaction.command-palette"],
+    "forbidden": ["interaction.overlays"],
+    "empty": false,
+    "reason": "Mod+K opening a site-wide search is the palette's defining behaviour; the plain overlay dialog has no shortcut or search."
+  },
+  {
+    "name": "cmd k command palette",
+    "query": {"text": "Cmd+K command palette", "profile": "go-web"},
+    "top": ["interaction.command-palette"],
+    "forbidden": ["cli.theme"],
+    "empty": false,
+    "reason": "Users name the palette by its shortcut; punctuation normalizes to the declared Mod+K, Cmd+K or Ctrl+K phrase."
+  },
+  {
+    "name": "global site search",
+    "query": {"text": "global search", "profile": "go-web"},
+    "top": ["interaction.command-palette"],
+    "forbidden": ["content.docs"],
+    "empty": false,
+    "reason": "The palette searches app-owned sources from any page; docs pages are content, not a search capability."
+  },
+  {
+    "name": "quick open",
+    "query": {"text": "quick open", "profile": "go-web"},
+    "top": ["interaction.command-palette"],
+    "forbidden": ["interaction.overlays"],
+    "empty": false,
+    "reason": "Quick open and command menu are common names for the same keyboard search dialog."
+  },
+  {
+    "name": "no React command palette",
+    "query": {"text": "command palette", "profile": "react-web"},
+    "top": [],
+    "forbidden": ["interaction.command-palette"],
+    "empty": true,
+    "reason": "The palette's fragments come from Go renderers; no React component or portable markup contract is claimed."
+  },
+  {
     "name": "warning help feedback callouts",
     "query": {"text": "warning help feedback", "layer": "L3b", "profile": "go-web"},
     "top": ["interaction.callouts"],
@@ -416,6 +472,54 @@
     "reason": "Activity history is common language for ordered events on a timeline."
   },
   {
+    "name": "portable call graph neighbourhood",
+    "query": {"text": "call graph", "layer": "L3a", "profile": "portable"},
+    "top": ["analytics.graph"],
+    "forbidden": ["analytics.bars", "analytics.timeline"],
+    "empty": false,
+    "reason": "A symbol's callers and callees are the declared ego-graph task of the experimental L3a layered graph."
+  },
+  {
+    "name": "Go web dependency graph synonym",
+    "query": {"text": "dependency graph", "profile": "go-web", "kind": "primitive"},
+    "top": ["analytics.graph"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "Dependency graph is common language for the layered directed-graph renderer."
+  },
+  {
+    "name": "US code neighborhood wording",
+    "query": {"text": "code neighborhood"},
+    "top": ["analytics.graph"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "The originating consumer's plan says code neighborhood (US spelling) for a symbol's callers and callees; search must not depend on the kit's British spelling."
+  },
+  {
+    "name": "layered DAG wording",
+    "query": {"text": "layered DAG", "layer": "L3a"},
+    "top": ["analytics.graph"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "DAG is the common abbreviation for the directed acyclic graphs the layered renderer draws."
+  },
+  {
+    "name": "no L3b layered graph",
+    "query": {"text": "layered graph", "layer": "L3b", "profile": "go-web"},
+    "top": [],
+    "forbidden": ["analytics.graph"],
+    "empty": true,
+    "reason": "The layered graph is L3a SVG plus a class-free table; it must not be relabeled as an L3b utility-themed renderer."
+  },
+  {
+    "name": "force-directed network graph unavailable",
+    "query": {"text": "force directed network graph"},
+    "top": [],
+    "forbidden": ["analytics.graph"],
+    "empty": true,
+    "reason": "Only a deterministic left-to-right layered layout exists; no force-directed or free network layout is implemented."
+  },
+  {
     "name": "task board synonym",
     "query": {"text": "task board", "profile": "go-web", "kind": "primitive"},
     "top": ["work.kanban"],
@@ -528,9 +632,81 @@
     "reason": "Email fields and validation do not imply an email delivery service."
   },
   {
+    "name": "live freshness SSE subscriber",
+    "query": {"text": "server-sent events", "layer": "L2", "profile": "go-web"},
+    "top": ["interaction.live-freshness"],
+    "forbidden": ["interaction.overlays", "shell.appearance"],
+    "empty": false,
+    "reason": "Following an app-owned event stream to mark panels updated is the live-freshness primitive's declared task."
+  },
+  {
+    "name": "SSE abbreviation finds live freshness",
+    "query": {"text": "sse"},
+    "top": ["interaction.live-freshness"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "Consumers name the task by its abbreviation (FATHOM-KIT-06: an app-supplied SSE URL); CLI, MCP and Gallery share this search."
+  },
+  {
+    "name": "event stream finds live freshness",
+    "query": {"text": "event stream", "profile": "go-web"},
+    "top": ["interaction.live-freshness"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "An app-owned event stream is the live-freshness input, whichever name the consumer uses."
+  },
+  {
+    "name": "stale panel refresh link",
+    "query": {"text": "updated panel refresh link", "profile": "go-web", "kind": "primitive"},
+    "top": ["interaction.live-freshness"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "The updated affordance with a refresh link belongs to the live-freshness primitive, which never re-renders the panel."
+  },
+  {
+    "name": "live updates are not a portable artifact",
+    "query": {"text": "live updates", "profile": "portable"},
+    "top": [],
+    "forbidden": ["interaction.live-freshness"],
+    "empty": true,
+    "reason": "live.js is not packaged for non-Go vendoring, so only the Go-web profile is claimed."
+  },
+  {
+    "name": "no realtime content sync",
+    "query": {"text": "realtime content sync"},
+    "top": [],
+    "forbidden": ["interaction.live-freshness"],
+    "empty": true,
+    "reason": "Live freshness announces newer data; it does not synchronize or replace content."
+  },
+  {
+    "name": "page heading with actions",
+    "query": {"text": "page header actions", "profile": "go-web", "kind": "primitive"},
+    "top": ["interaction.page-heading"],
+    "forbidden": ["shell.layout"],
+    "empty": false,
+    "reason": "A page-level title with actions is the page-heading primitive, not global shell navigation."
+  },
+  {
+    "name": "page title with breadcrumbs",
+    "query": {"text": "page title breadcrumbs", "profile": "go-web"},
+    "top": ["interaction.page-heading"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "The page heading composes the existing breadcrumb trail above its h1."
+  },
+  {
+    "name": "page heading is not a React component",
+    "query": {"text": "page heading", "profile": "react-web"},
+    "top": [],
+    "forbidden": ["interaction.page-heading"],
+    "empty": true,
+    "reason": "The heading is a Go-web L3b renderer, not a React component."
+  },
+  {
     "name": "Go web primitive inventory paginates in stable ID order",
     "query": {"profile": "go-web", "kind": "primitive", "limit": 1},
-    "top": ["analytics.bars", "analytics.stat", "analytics.timeline"],
+    "top": ["analytics.bars", "analytics.graph", "analytics.stat", "analytics.timeline"],
     "forbidden": [],
     "empty": false,
     "reason": "An empty-text filtered inventory uses documented stable ID ordering and must traverse beyond the first one-item page."
@@ -630,5 +806,253 @@
     "forbidden": [],
     "empty": true,
     "reason": "The client-owned rehearsal requires JavaScript and is not a static-web editor recipe."
+  },
+  {
+    "name": "heatmap",
+    "query": {"text": "heatmap"},
+    "top": ["viz.heatmap"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "The matrix heatmap is a declared L3a viz capability."
+  },
+  {
+    "name": "portable cell truth states",
+    "query": {"text": "cell truth states", "layer": "L3a", "profile": "portable", "kind": "primitive"},
+    "top": ["viz.heatmap"],
+    "forbidden": ["analytics.comparison"],
+    "empty": false,
+    "reason": "Missing, unknown and error cells distinct from zero are the heatmap's experimental truth-state task."
+  },
+  {
+    "name": "coverage matrix",
+    "query": {"text": "coverage matrix", "profile": "go-web"},
+    "top": ["viz.heatmap"],
+    "forbidden": ["ops.topology"],
+    "empty": false,
+    "reason": "A project-by-layer coverage matrix selects the heatmap, not the health tree."
+  },
+  {
+    "name": "heatmap is not an L3b renderer",
+    "query": {"text": "heatmap", "layer": "L3b"},
+    "top": [],
+    "forbidden": ["viz.heatmap"],
+    "empty": true,
+    "reason": "The heatmap emits class-free SVG and must not be relabeled as a utility-themed renderer."
+  },
+  {
+    "name": "trend line graph",
+    "query": {"text": "trend line graph", "profile": "portable"},
+    "top": ["viz.trend-sparkline"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "An inline trend line is the portable sparkline."
+  },
+  {
+    "name": "part to whole donut",
+    "query": {"text": "donut", "layer": "L3a", "profile": "portable"},
+    "top": ["viz.composition"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "Donut rings and stacked bars share the part-to-whole composition entry."
+  },
+  {
+    "name": "score gauge",
+    "query": {"text": "gauge", "profile": "portable", "kind": "primitive"},
+    "top": ["viz.scores"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "Dials, rating pips and value/max meters share the scores entry."
+  },
+  {
+    "name": "conversion funnel",
+    "query": {"text": "conversion funnel", "profile": "portable"},
+    "top": ["viz.stages"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "Funnels and lifecycle steppers share the stages entry."
+  },
+  {
+    "name": "sensitivity analysis",
+    "query": {"text": "sensitivity analysis", "layer": "L3a"},
+    "top": ["viz.outcome"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "Tornado swings, waterfalls and range bars share the outcome entry."
+  },
+  {
+    "name": "figure provenance frame",
+    "query": {"text": "provenance frame", "profile": "go-web"},
+    "top": ["viz.provenance-frame"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "The mandatory figure source line is the provenance frame's task."
+  },
+  {
+    "name": "agent run trace",
+    "query": {"text": "agent run trace", "profile": "go-web", "kind": "primitive"},
+    "top": ["work.agent-trace"],
+    "forbidden": ["work.approval"],
+    "empty": false,
+    "reason": "Inspecting what an agent did is separate from approving a proposed action."
+  },
+  {
+    "name": "tool call inspection",
+    "query": {"text": "tool call inspection"},
+    "top": ["work.agent-trace"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "One tool invocation with arguments and result is part of agent run inspection."
+  },
+  {
+    "name": "portable reduced motion",
+    "query": {"text": "reduced motion", "profile": "portable"},
+    "top": ["foundation.motion"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "The motion stylesheet and its structural reduced-motion cancel are vendorable portable artifacts."
+  },
+  {
+    "name": "topology",
+    "query": {"text": "topology"},
+    "top": ["ops.topology"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "The fleet health tree is the declared topology capability."
+  },
+  {
+    "name": "topology is not portable",
+    "query": {"text": "topology", "profile": "portable"},
+    "top": [],
+    "forbidden": ["ops.topology"],
+    "empty": true,
+    "reason": "The topology tree is an L3b Go renderer."
+  },
+  {
+    "name": "node link graph unavailable",
+    "query": {"text": "node link graph"},
+    "top": [],
+    "forbidden": ["ops.topology", "viz.trend-sparkline", "analytics.bars"],
+    "empty": true,
+    "reason": "No catalog capability declares a general node-link graph: the topology tree has no edges or graph layout, and the experimental layered graph (analytics.graph) declares only layered, dependency, call and ego graph tasks, not a free node-link layout."
+  },
+  {
+    "name": "health rollup unavailable",
+    "query": {"text": "fleet health rollup"},
+    "top": [],
+    "forbidden": ["ops.topology"],
+    "empty": true,
+    "reason": "The topology tree renders each node's app-supplied status; it does not roll parent health up from children (ADR-0062: declare a task only when the implementation supports it)."
+  },
+  {
+    "name": "offline explainer page",
+    "query": {"text": "explainer"},
+    "top": ["content.explainer"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "The self-contained explainer document is an experimental Go renderer."
+  },
+  {
+    "name": "save as PDF",
+    "query": {"text": "save as PDF"},
+    "top": ["content.export-toolbar"],
+    "forbidden": ["analytics.comparison"],
+    "empty": false,
+    "reason": "Browser print and HTML save belong to the export toolbar, not the analytics CSV export."
+  },
+  {
+    "name": "description list metadata",
+    "query": {"text": "description list", "profile": "go-web"},
+    "top": ["content.details"],
+    "forbidden": ["interaction.chrome"],
+    "empty": false,
+    "reason": "Term/detail metadata and show-more disclosures are separate from navigation chrome."
+  },
+  {
+    "name": "code excerpt with line anchors",
+    "query": {"text": "code excerpt", "profile": "go-web", "layer": "L3b"},
+    "top": ["content.code-excerpt"],
+    "forbidden": ["content.docs", "work.unified-diff"],
+    "empty": false,
+    "reason": "Numbered review excerpts with per-line state are a separate primitive from prose documentation and from line diffs."
+  },
+  {
+    "name": "unexecuted changed lines",
+    "query": {"text": "not executed lines", "profile": "go-web"},
+    "top": ["content.code-excerpt"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "The excerpt presents app-supplied not-executed line state with a text label; it does not measure coverage."
+  },
+  {
+    "name": "unified text diff for review",
+    "query": {"text": "unified diff", "profile": "go-web"},
+    "top": ["work.unified-diff"],
+    "forbidden": ["recipe.styleguide.local", "work.approval"],
+    "empty": false,
+    "reason": "Line-level unified hunks are the hitl text diff, not the style guide's token diff or the approval card."
+  },
+  {
+    "name": "code review offers excerpt and diff only",
+    "query": {"text": "code review", "profile": "go-web"},
+    "top": ["content.code-excerpt", "work.unified-diff"],
+    "forbidden": ["content.docs"],
+    "empty": false,
+    "reason": "Both experimental review renderers declare code review tasks; neither is a documentation page."
+  },
+  {
+    "name": "no syntax highlighting engine",
+    "query": {"text": "syntax highlighting"},
+    "top": [],
+    "forbidden": ["content.code-excerpt", "work.unified-diff"],
+    "empty": true,
+    "reason": "The excerpt and diff render escaped monospace text; the kit ships no syntax-highlighting engine."
+  },
+  {
+    "name": "code excerpt is not a React component",
+    "query": {"text": "code excerpt", "profile": "react-web"},
+    "top": [],
+    "forbidden": ["content.code-excerpt"],
+    "empty": true,
+    "reason": "The excerpt is a Go-web L3b renderer, not a React component."
+  },
+  {
+    "name": "originating wording: unexecuted changed lines",
+    "query": {"text": "unexecuted changed lines", "profile": "go-web"},
+    "top": ["content.code-excerpt"],
+    "forbidden": ["work.unified-diff"],
+    "empty": false,
+    "reason": "FATHOM-KIT-04 asks for an excerpt with its unexecuted changed lines highlighted; the excerpt presents that app-supplied state."
+  },
+  {
+    "name": "source code viewer",
+    "query": {"text": "source code viewer", "profile": "go-web"},
+    "top": ["content.code-excerpt"],
+    "forbidden": ["content.docs"],
+    "empty": false,
+    "reason": "A reviewer's name for a numbered, read-only source view is the code excerpt, not a documentation page."
+  },
+  {
+    "name": "originating wording: line-level diff",
+    "query": {"text": "line-level diff", "profile": "go-web"},
+    "top": ["work.unified-diff"],
+    "forbidden": ["content.code-excerpt"],
+    "empty": false,
+    "reason": "The review surfaces need a line-level diff beside the field-level DiffView; that is the unified text diff."
+  },
+  {
+    "name": "diff viewer",
+    "query": {"text": "diff viewer", "profile": "go-web"},
+    "top": ["work.unified-diff"],
+    "forbidden": ["content.code-excerpt"],
+    "empty": false,
+    "reason": "A diff viewer for text is the unified diff renderer."
+  },
+  {
+    "name": "request title: unified text diff renderer",
+    "query": {"text": "unified text diff renderer", "profile": "go-web"},
+    "top": ["work.unified-diff"],
+    "forbidden": [],
+    "empty": false,
+    "reason": "FATHOM-KIT-05 is titled as a text diff renderer; its own wording must find the capability."
   }
 ]

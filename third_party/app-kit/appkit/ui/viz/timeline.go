@@ -62,6 +62,10 @@ type TimelineOptions struct {
 	W int
 	// View selects the time→x mapping (default proportional).
 	View TimelineView
+	// Fluid fills the container's width instead of drawing at W pixels:
+	// the chart scales uniformly from its W×height viewBox (text included)
+	// and the height follows. Off by default (fixed pixel size).
+	Fluid bool
 	// AriaLabel is the accessible label.
 	AriaLabel string
 	// Start / End pin the axis range; zero values mean "derive from the data".
@@ -151,7 +155,7 @@ func renderSingleAxis(events []Event, opts TimelineOptions, scale timeScale, x0,
 	totalH := int(axisY + tlLabelH)
 
 	var b strings.Builder
-	b.WriteString(svgOpen(opts.W, totalH, opts.AriaLabel, ""))
+	b.WriteString(chartOpen(opts.W, totalH, opts.AriaLabel, opts.Fluid))
 	b.WriteString(svgTitle(opts.AriaLabel))
 
 	for i, span := range opts.Spans {
@@ -188,7 +192,7 @@ func renderSwimlanes(events []Event, opts TimelineOptions, scale timeScale, lane
 	}
 
 	var b strings.Builder
-	b.WriteString(svgOpen(opts.W, totalH, opts.AriaLabel, ""))
+	b.WriteString(chartOpen(opts.W, totalH, opts.AriaLabel, opts.Fluid))
 	b.WriteString(svgTitle(opts.AriaLabel))
 
 	// Row guides + lane labels.
@@ -252,7 +256,7 @@ func renderDensity(events []Event, opts TimelineOptions, lanes []string, x0, x1 
 	totalH := int(axisY + tlLabelH)
 
 	var b strings.Builder
-	b.WriteString(svgOpen(opts.W, totalH, opts.AriaLabel, ""))
+	b.WriteString(chartOpen(opts.W, totalH, opts.AriaLabel, opts.Fluid))
 	b.WriteString(svgTitle(opts.AriaLabel))
 
 	if !have {

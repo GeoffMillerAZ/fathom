@@ -30,6 +30,7 @@ type TornadoOptions struct {
 	Prefix    string  // applied to the baseline + end labels when item has none.
 	Suffix    string
 	AriaLabel string
+	Fluid     bool // fill the container width: the W viewBox scales uniformly, text included. Default off (fixed pixels).
 }
 
 func (o *TornadoOptions) withDefaults() TornadoOptions {
@@ -67,7 +68,7 @@ func Tornado(items []TornadoItem, o TornadoOptions) string {
 	}
 
 	var b strings.Builder
-	b.WriteString(svgOpen(opts.W, totalH, opts.AriaLabel, ""))
+	b.WriteString(chartOpen(opts.W, totalH, opts.AriaLabel, opts.Fluid))
 	b.WriteString(svgTitle(opts.AriaLabel))
 	if n == 0 {
 		b.WriteString("</svg>")

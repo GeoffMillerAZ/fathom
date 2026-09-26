@@ -289,7 +289,15 @@ func vizCards() []vizCard {
 			Call: `viz.Gauge(38, 100, viz.GaugeOptions{Graded: true, Label: "likely outcome"})`,
 			SVG:  template.HTML(viz.Gauge(38, 100, viz.GaugeOptions{W: 180, Graded: true, Label: "likely outcome", AriaLabel: "likelihood 38%"})),
 		},
+		{
+			// Fluid fills the card at any width; the 320×48 viewBox sets the
+			// aspect ratio. A text-free chart is where uniform scaling is safe.
+			Name: "Sparkline — fluid (fills its container)",
+			Call: `viz.Sparkline(values, viz.SparklineOptions{W: 320, H: 48, FillRole: "accent-soft", Fluid: true})`,
+			SVG:  template.HTML(viz.Sparkline([]float64{4, 7, 5, 9, 8, 12, 10, 14, 11, 16, 13, 18}, viz.SparklineOptions{W: 320, H: 48, FillRole: "accent-soft", AriaLabel: "fluid trend", Fluid: true})),
+		},
 	}
+	cards = append(cards, heatmapCard())
 	cards = append(cards, outcomeCards()...)
 	return append(cards, timelineCards()...)
 }
@@ -408,6 +416,14 @@ const overviewHTML = `
     <h2 class="font-medium text-ink">Components</h2>
     <p class="mt-1 text-sm text-ink-muted">The {{.NumViz}} ui/viz primitives, server-rendered SVG, themed by role.</p>
   </a>
+  <a href="/live" class="rounded-lg border border-line bg-surface-raised p-5 hover:border-line-strong">
+    <h2 class="font-medium text-ink">Live freshness</h2>
+    <p class="mt-1 text-sm text-ink-muted">Experimental SSE subscriber that marks panels updated without moving them, against a synthetic fixture.</p>
+  </a>
+  <a href="/page-heading" class="rounded-lg border border-line bg-surface-raised p-5 hover:border-line-strong">
+    <h2 class="font-medium text-ink">Page heading</h2>
+    <p class="mt-1 text-sm text-ink-muted">Experimental title, eyebrow, meta, actions and breadcrumbs, with long-content and minimal variants.</p>
+  </a>
 </div>`
 
 const tokensHTML = `
@@ -452,6 +468,8 @@ const tokensHTML = `
 const componentsHTML = `
 <h1 class="text-2xl font-semibold text-ink">Components</h1>
 <p class="mt-2 text-ink-muted">The <code class="font-mono text-accent">appkit/ui/viz</code> primitives — pure-Go server-rendered SVG, every color resolved to a token role, accessible (role=img + title). Same inputs → byte-identical output.</p>
+<p class="mt-2 text-ink-muted">The experimental layered graph and ego graph have their own page: <a href="/graph" class="text-accent underline">layered graph specimens</a>.</p>
+<p class="mt-2 text-sm text-ink-muted">The <a href="/components/heatmap" class="text-accent underline underline-offset-4">heatmap truth-state specimen</a> adds a table alternative, an all-missing grid and the legacy comparison.</p>
 <div class="mt-6 grid gap-4 lg:grid-cols-2">
   {{range .Cards}}
   <figure class="min-w-0 rounded-lg border border-line bg-surface-raised p-5{{if .Wide}} lg:col-span-2{{end}}">
@@ -1050,6 +1068,7 @@ const agenticHTML = `
 <h2 class="mt-10 text-lg font-medium text-ink">Diff — <code class="font-mono text-sm">hitl.DiffView</code></h2>
 <p class="mt-1 max-w-2xl text-sm text-ink-muted">Before → after review of a proposed agent change — current value (danger) vs proposed (positive); a missing side reads as an addition or removal. Pair with the approval card to let a person approve or reject.</p>
 <div class="mt-4 max-w-xl rounded-lg border border-line bg-surface-raised p-5">{{.Diff}}</div>
+<p class="mt-3 max-w-2xl text-sm text-ink-muted">Reviewing lines of a text rather than fields? <a class="text-accent underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus" href="/agentic/code">Code review specimens</a> show the experimental unified diff and code excerpt.</p>
 
 <h2 class="mt-10 text-lg font-medium text-ink">Tool call — <code class="font-mono text-sm">hitl.ToolCall</code></h2>
 <p class="mt-1 max-w-2xl text-sm text-ink-muted">Inspect a single agent tool invocation — name, status, and the arguments &amp; result under a collapsible (native <code class="font-mono">&lt;details&gt;</code>, no JS). The "what did the agent actually do" view.</p>
@@ -1203,6 +1222,7 @@ const overlaysHTML = `
 <p class="mt-2 max-w-2xl text-ink-muted">Modal <code class="font-mono text-accent">Dialog</code>, slide-over <code class="font-mono text-accent">Drawer</code>, and <code class="font-mono text-accent">Toast</code> — built on the native <code class="font-mono">&lt;dialog&gt;</code> element + a dependency-free <code class="font-mono">overlay.js</code> (served like <code class="font-mono">router.js</code>). Loopback-safe: the markup is meaningful without JS (native dialog + Escape); the script only adds open-by-id, light-dismiss, and client toasts.</p>
 
 <div class="mt-6 flex flex-wrap items-center gap-3">{{range .Triggers}}{{.}}{{end}}</div>
+<p class="mt-4 max-w-2xl text-sm text-ink-muted">The experimental <a href="/palette" class="text-accent underline underline-offset-4">command palette</a> composes this dialog with a keyboard search contract and server-rendered results.</p>
 
 <h2 class="mt-10 text-lg font-medium text-ink">Toast roles</h2>
 <p class="mt-1 text-sm text-ink-muted">Server-rendered after a POST-redirect (the flash pattern, no JS), or spawned client-side via <code class="font-mono">AppKitOverlay.toast()</code>. Shown inline here:</p>

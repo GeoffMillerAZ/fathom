@@ -322,9 +322,9 @@ func renderObsFleet(m observatoryModel) string {
 		if hasTraffic {
 			b.WriteString(sectionHeading("traffic — last 14 days (call log)"))
 			b.WriteString(dashboard.RenderWidget(dashboard.Widget{
-				// The kit's SVG has a fixed width; let it scale down at 390 px
-				// rather than push the page sideways.
-				Body: template.HTML(`<div class="[&>svg]:h-auto [&>svg]:max-w-full">` + viz.Sparkline(spark, viz.SparklineOptions{W: 640, H: 48, FillRole: "accent-soft"}) + `</div>`),
+				// A text-free chart: the kit's Fluid drawing fills the card at
+				// every width (FATHOM-F0-KIT-04, returned from wave F0).
+				Body: template.HTML(viz.Sparkline(spark, viz.SparklineOptions{W: 640, H: 48, FillRole: "accent-soft", Fluid: true, AriaLabel: "fleet traffic, last 14 days"})),
 			}))
 		}
 	}
@@ -356,7 +356,7 @@ func renderObsFleet(m observatoryModel) string {
 			for i, c := range s.TrafficDays {
 				spark[i] = float64(c)
 			}
-			body.WriteString(`<div class="mt-2">` + viz.Sparkline(spark, viz.SparklineOptions{W: 220, H: 24, FillRole: "accent-soft", AriaLabel: s.Service + " 14-day traffic"}) + `</div>`)
+			body.WriteString(`<div class="mt-2">` + viz.Sparkline(spark, viz.SparklineOptions{W: 220, H: 24, FillRole: "accent-soft", Fluid: true, AriaLabel: s.Service + " 14-day traffic"}) + `</div>`)
 		}
 		// indexOnly (owner ask 2026-08-08): a C/D grade with zero ledger
 		// sessions AND zero agent-originated calls is a remote corpus other
@@ -406,10 +406,15 @@ func renderObsFleet(m observatoryModel) string {
 			bars = append(bars, viz.Bar{Label: r.Tool, Value: float64(r.Calls)})
 		}
 		b.WriteString(sectionHeading("which tools carry the load (call log, all time)"))
-		// The chart keeps its legible 11 px labels and scrolls inside its own
-		// keyboard-reachable region at 390 px (scaling the fixed 560 px SVG
-		// down drew them at ~6 px); its table alternative sits behind a
-		// disclosure (design §2: every chart has one).
+		// A text-dense chart: the kit's Fluid option scales text with the
+		// drawing (its stated limit), so a 560 px drawing shrunk onto a
+		// phone drew 11 px labels at ~6 px and a scrolled one hid every
+		// count (the F0 proof, item 4). The chart is drawn twice, each
+		// Fluid: 560 px from md up (capped at its native width, so its
+		// labels never scale up) and 320 px below md, which fills a phone's
+		// card at close to its native size. Only one is displayed at a
+		// width, so a screen reader meets one chart. The table alternative
+		// sits behind a disclosure (design §2: every chart has one).
 		rows := make([]table.Row, 0, len(bars))
 		for i, bar := range bars {
 			rows = append(rows, table.Row{ID: "tool-" + itoa(i), Cells: []string{bar.Label, fmtThousands(int(bar.Value))}})
@@ -423,7 +428,9 @@ func renderObsFleet(m observatoryModel) string {
 			})),
 		})
 		b.WriteString(dashboard.RenderWidget(dashboard.Widget{
-			Body: template.HTML(`<div class="overflow-x-auto" role="region" tabindex="0" aria-label="calls per tool — scrolls sideways">` + viz.Bars(bars, viz.BarsOptions{W: 560, LabelW: 160, ShowValue: true, AriaLabel: "calls per tool"}) + `</div><div class="mt-3">` + alt + `</div>`),
+			Body: template.HTML(`<div class="hidden max-w-[35rem] md:block" data-chart-width="wide">` + viz.Bars(bars, viz.BarsOptions{W: 560, LabelW: 160, ShowValue: true, Fluid: true, AriaLabel: "calls per tool"}) + `</div>` +
+				`<div class="max-w-80 md:hidden" data-chart-width="narrow">` + viz.Bars(bars, viz.BarsOptions{W: 320, LabelW: 110, ShowValue: true, Fluid: true, AriaLabel: "calls per tool"}) + `</div>` +
+				`<div class="mt-3">` + alt + `</div>`),
 		}))
 	}
 

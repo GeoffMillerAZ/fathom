@@ -32,6 +32,10 @@ type StepsOptions struct {
 	CurrentRole string
 	// TrackRole colors upcoming steps + connectors. Default "line".
 	TrackRole string
+	// Fluid fills the container's width instead of drawing at W pixels:
+	// the chart scales uniformly from its W×height viewBox (text included)
+	// and the height follows. Off by default (fixed pixel size).
+	Fluid bool
 	// AriaLabel is the accessible label.
 	AriaLabel string
 }
@@ -71,7 +75,7 @@ func Steps(steps []Step, o StepsOptions) string {
 	totalH := int(cy + curR + labelGap + 6)
 
 	var b strings.Builder
-	b.WriteString(svgOpen(opts.W, totalH, opts.AriaLabel, ""))
+	b.WriteString(chartOpen(opts.W, totalH, opts.AriaLabel, opts.Fluid))
 	b.WriteString(svgTitle(opts.AriaLabel))
 	if n == 0 {
 		b.WriteString("</svg>")

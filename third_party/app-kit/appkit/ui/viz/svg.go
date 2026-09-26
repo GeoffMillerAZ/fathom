@@ -61,6 +61,25 @@ func svgOpen(w, h int, ariaLabel string, extraAttrs string) string {
 	return base + ">"
 }
 
+// chartOpen returns the opening <svg> tag of a chart drawn in a w×h viewBox.
+// Fixed (the default) is svgOpen's tag byte for byte. Fluid swaps the fixed
+// width/height for width="100%" with no height attribute, so the chart fills
+// its container's width and the browser derives the height from the unchanged
+// viewBox ratio; preserveAspectRatio pins the drawing top-left if a consumer
+// constrains the height. The drawing is identical either way, and no class or
+// inline style is emitted (L3a, strict-CSP safe).
+func chartOpen(w, h int, ariaLabel string, fluid bool) string {
+	if !fluid {
+		return svgOpen(w, h, ariaLabel, "")
+	}
+	label := esc(ariaLabel)
+	if label == "" {
+		label = "chart"
+	}
+	return fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" width="100%%" role="img" aria-label="%s" viewBox="0 0 %d %d" preserveAspectRatio="xMinYMin meet">`,
+		label, w, h)
+}
+
 // svgTitle returns a <title> element for screen-reader accessibility.
 func svgTitle(label string) string {
 	return "<title>" + esc(label) + "</title>"

@@ -30,7 +30,7 @@
   "artifacts": [
     {
       "path": "cmd/fathom/ui/app.css",
-      "sha256": "a48d5799c7656b098a98a28c8fdd2c6e0273f31f36536946c7091af7fc64e091"
+      "sha256": "783b73c4f7eaa1ff640b85d991d7860849dd5fdf9b719a24ca9b0112ced2dae2"
     },
     {
       "path": "cmd/fathom/ui/input.css",
@@ -62,7 +62,7 @@
     },
     {
       "path": "third_party/app-kit/.vendor-commit",
-      "sha256": "2c8a3dd6010cff5e0dcd03a29e95a1bd142f1b36c56cd3f0d9faa7f28b5f6912"
+      "sha256": "e47c2df77907a3379ed59ed3a383f3a130eb7e250de03479cb3979a3054ccf08"
     },
     {
       "path": "scripts/ui-css.sh",
@@ -74,7 +74,7 @@
     },
     {
       "path": "cmd/fathom/appkit_styleguide.go",
-      "sha256": "5963c22e6c0131ff8efd18e1ddf6f2d01fb1fe44c97bc10ad4cda6a25fff327b"
+      "sha256": "002d07c74fead0acca2dca81cae294abf9f591e2c71cff33c0cf2ed8ecb04c66"
     },
     {
       "path": "cmd/fathom/appkit_styleguide_test.go",

@@ -286,6 +286,293 @@ items: [
 		}]
 	},
 	{
+		id:                            "candidate.command-palette"
+		kind:                          "candidate"
+		owner:                         "app-kit maintainer; originating consumer Fathom (FATHOM-KIT-01, vision 35 observatory console)"
+		task:                          "Open the command palette from anywhere with Mod+K, type to fetch server-rendered grouped results, move with ArrowUp/ArrowDown, follow a result with Enter, close with Escape back to the invoker, and complete the same search on a plain GET page without JavaScript. Critical states: idle, debounced loading, grouped results, no results, partial results, error or timeout, stale results falling back to the search page, and the no-JavaScript page in light/dark and at narrow width."
+		profile:                       "go-web"
+		priority:                      "high"
+		core:                          false
+		state:                         "queued"
+		enhancement_standard_revision: "converted-core-v1"
+		capability_ids: ["interaction.command-palette", "interaction.overlays"]
+		source_refs: [
+			{path: "appkit/ui/palette/palette.go", note: "Experimental L3b renderers, typed configuration and the shared results fragment."},
+			{path: "appkit/ui/palette/palette.js", note: "L2 script: shortcut, debounce, stale-request abort, listbox upgrade, selection and focus return."},
+			{path: "apps/gallery/palette.go", note: "Gallery specimen and no-JavaScript search page with reserved synthetic state queries."},
+			{path: "docs/assessments/2026-09-25-command-palette.md", note: "Scoped Gallery browser evidence, gate decisions and limits; Fathom integration not yet performed."},
+		]
+		standards: {
+			"typed-config": {status: "partial", reason: "Typed Palette/Results with defaults and atomic refusals exist; no reviewer or consumer has exercised the public options.", next_step: "Review the option set against Fathom's integration and keep refusals atomic.", evidence: [{path: "appkit/ui/palette/palette_test.go", note: "29 configuration and 12 results refusals before output."}]}
+			"semantic-theme": {status: "partial", reason: "Role utilities only; light/dark inspected in the Gallery without measured contrast ratios.", next_step: "Measure selected-option, muted and notice contrast in both schemes and in consumer themes.", evidence: [{path: "docs/assessments/2026-09-25-command-palette.md", note: "Light 1440px and dark 390px observations."}]}
+			"native-interaction": {status: "partial", reason: "Real link trigger, native dialog/form, combobox/listbox with aria-activedescendant and focus return pass scoped Chromium checks.", next_step: "Verify screen readers, other engines, touch/IME input and zoom.", evidence: [{path: "docs/assessments/2026-09-25-command-palette.md", note: "Keyboard contract rows A and D."}]}
+			"honest-states": {status: "partial", reason: "Idle, loading, results, empty, partial (including zero results while a source was not searched), error and timeout states are distinct in markup and announcement and reproducible with synthetic queries.", next_step: "Confirm each state with Fathom's real sources, including its stale index and unavailable-source cases.", evidence: [{path: "docs/assessments/2026-09-25-command-palette.md", note: "State rows B and E."}]}
+			"bounded-performance": {status: "partial", reason: "Debounce, per-request timeout, stale-request abort, 512 KiB response and 200-result bounds exist; no workload or budget was measured.", next_step: "Name Fathom's search workload and measure first results, update latency and memory.", evidence: [{path: "appkit/ui/palette/palette_test.mjs", note: "Deterministic debounce, abort and timeout checks with doubles."}]}
+			"safe-composition": {status: "partial", reason: "All text is escaped, destinations and URLs are validated, fragments are same-origin and marker-checked; routes and authorization stay app-owned.", next_step: "Review Fathom's search route authorization and caching (Vary) in its integration.", evidence: [{path: "appkit/ui/palette/palette_test.go", note: "Escaping, unsafe destination and cross-origin refusals."}]}
+			"reproducible-delivery": {status: "partial", reason: "Golden markup, deterministic rendering and pinned-Tailwind Gallery CSS; no versioned consumer build or migration exercised.", next_step: "Integrate from a versioned kit revision in Fathom with its own CSS scan and retain the build.", evidence: [{path: "appkit/ui/palette/testdata/dialog.html.golden", note: "Golden dialog markup."}]}
+		}
+		gates: {
+			reproducibility: {status: "partial", reason: "Goldens and deterministic rendering pass on a working tree over dc77e66 only.", next_step: "Replay from a versioned kit revision in a clean consumer build.", evidence: [{path: "appkit/ui/palette/testdata/results.html.golden", note: "Golden results fragment."}]}
+			structure: {status: "partial", reason: "Parsed-DOM tests and the browser role upgrade cover the Gallery specimen only.", next_step: "Check Fathom's composed pages: one h1, landmarks and unique ids with the palette mounted.", evidence: [{path: "appkit/ui/palette/palette_test.go", note: "Ids, label association, hooks and heading levels."}, {path: "docs/assessments/2026-09-25-command-palette.md", note: "Browser role, group and option checks."}]}
+			visual: {status: "partial", reason: "Light and dark, wide and 390px views were inspected without a reviewed baseline.", next_step: "Review captures in Fathom's themes, including zoom and long labels.", evidence: [{path: "docs/assessments/2026-09-25-command-palette.md", note: "Scenario A and C observations."}]}
+			interaction: {status: "partial", reason: "Shortcut, arrows, Enter, Escape, stale Enter, dismissal and modified click pass in one Chromium build.", next_step: "Repeat with assistive technology, other engines and touch/IME input.", evidence: [{path: "docs/assessments/fixtures/command-palette/results.json", note: "Run of record."}]}
+			lifecycle: {status: "partial", reason: "Debounce, abort of superseded and closed requests, timeout, reopen, re-mount after a markup swap, late triggers and init(root) are exercised with doubles and in one Chromium run; simultaneous instances and navigation-heavy sessions are not.", next_step: "Exercise two palettes and navigation-heavy sessions with Fathom's swaps.", evidence: [{path: "appkit/ui/palette/palette_test.mjs", note: "Lifecycle doubles."}, {path: "docs/assessments/fixtures/command-palette/results.json", note: "Scenario B request log."}]}
+			security: {status: "partial", reason: "Escaping, href and URL refusal and same-origin insertion of exactly one fragment answering the requested query (full pages, including redirects to pages carrying the palette, are refused) are tested; CSP and consumer authorization are not.", next_step: "Review Fathom's route, CSP and caching with negative requests.", evidence: [{path: "appkit/ui/palette/palette_test.go", note: "Hostile text and destinations."}, {path: "appkit/ui/palette/palette_test.mjs", note: "Cross-origin and non-fragment refusals."}]}
+			data: {status: "partial", reason: "Fixed synthetic queries produce expected groups, counts and distinct empty/partial/error states.", next_step: "Check that Fathom's results match its verbs and never present absent data as zero results.", evidence: [{path: "apps/gallery/palette_test.go", note: "Fixture expectations for results, empty, partial and error."}]}
+			performance: {status: "not-run", next_step: "Run only after Fathom names a search workload and budgets."}
+			integration: {status: "not-run", next_step: "Integrate in Fathom, remove any local fork, rerun its task journeys and record the contribution disposition."}
+		}
+		consumers: []
+	},
+	{
+		id:                            "candidate.fathom-layered-graph"
+		kind:                          "candidate"
+		owner:                         "app-kit maintainer; originating consumer Fathom (observatory console, vision 35, FATHOM-KIT-02)"
+		task:                          "Show one code symbol's callers and callees to a bounded depth, or a layered dependency flow, as a deterministic picture with a table alternative that states every reduction."
+		profile:                       "go-web"
+		priority:                      "high"
+		core:                          false
+		state:                         "queued"
+		enhancement_standard_revision: "converted-core-v1"
+		capability_ids: ["analytics.graph"]
+		source_refs: [
+			{path: "appkit/ui/viz/graph.go", note: "Experimental L3a LayoutGraph/LayoutEgo with the class-free Table alternative."},
+			{path: "apps/gallery/graph.go", note: "Gallery /graph specimens with synthetic data, linked from /components and the catalog preview."},
+			{path: "docs/ui-components.md", note: "viz tier row and graph contract."},
+			{path: "docs/assessments/2026-09-25-layered-graph.md", note: "Scoped package and Chromium evidence; Fathom has selected, not integrated, the renderer."},
+		]
+		standards: {
+			"typed-config": {status: "partial", reason: "Typed nodes, edges, kinds, styles, rank modes and bounds refuse invalid input before output with a compiled example; no independent review or consumer integration yet.", next_step: "Integrate with Fathom's own symbol IDs and routes and review the option surface before any promotion.", evidence: [{path: "appkit/ui/viz/graph_test.go", note: "25 layout and 6 ego refusals (control characters included), defaults and bounds."}, {path: "appkit/ui/viz/graph_example_test.go", note: "Compiled public example."}]}
+			"semantic-theme": {status: "partial", reason: "Only var(--ak-color-*) roles; with the default kit tokens, text pairs clear 4.5:1 and meaning-bearing marks (edges, the focus border and the legend-named dashed aggregate border, now ink-muted) clear 3:1 against both adjacent fills in light and dark; dashed/width cues back color. Normal node borders stay decorative (line-strong, about 1.8:1) because text identifies those boxes. App-owned themes, forced colors and print are unchecked.", next_step: "Measure the same role pairs under the consumer's theme and check forced-colors rendering.", evidence: [{path: "appkit/ui/viz/graph_test.go", note: "TestGraph_RolePairsMeetContrastFloors, TestGraph_AggregateCueIsMeasuredRole and TestGraph_DashedMeaningIsNotColorOnly."}, {path: "docs/assessments/2026-09-25-layered-graph.md", note: "Light/dark 1280 and 390 px captures reviewed."}]}
+			"native-interaction": {status: "partial", reason: "Keyboard users reach nodes and destinations through native table links that name each node uniquely; SVG links are pointer-only and removed from the tab order; narrow layout scrolls inside a named region. Table links, SVG node links and disclosures measure at least 44px high in the Gallery; the table's link size is app CSS, so a consumer must style it the same way.", next_step: "Verify in Fathom's composed page, including zoom and a screen-reader pass.", evidence: [{path: "docs/assessments/2026-09-25-layered-graph.md", note: "Tab order, disclosure, link activation, 44px target sizes, AX tree and region scroll in four Chromium cells."}]}
+			"honest-states": {status: "partial", reason: "Empty graph, empty columns, collapsed columns, omitted ego nodes, cycle-closing and merged edges are stated in the picture, description and table; edges into a collapsed node keep one line and count per style and emphasis rather than taking the OR of their members; freshness, partial or stale data remain app-owned.", next_step: "Map Fathom's absent, stale and partial index states onto the notes and empty wording.", evidence: [{path: "appkit/ui/viz/graph_test.go", note: "Bounded, per-style aggregate lane, hidden-edge, ego omission and empty-state tests."}]}
+			"bounded-performance": {status: "not-started", next_step: "Name Fathom's neighbourhood workload and measure layout time, SVG bytes and memory against a budget before claiming performance."}
+			"safe-composition": {status: "partial", reason: "All caller text is escaped and node links accept only relative or http(s) references; routes and authorization stay app-owned.", next_step: "Review Fathom's symbol routes and authorization when it integrates the renderer.", evidence: [{path: "appkit/ui/viz/graph_test.go", note: "Hostile text and href refusal tests."}]}
+			"reproducible-delivery": {status: "partial", reason: "Same input yields byte-identical SVG and table goldens; no versioned consumer upgrade or replay exists yet.", next_step: "Adopt through a reviewed kit pin in Fathom and replay its fixture.", evidence: [{path: "appkit/ui/viz/graph_test.go", note: "Golden and determinism tests."}]}
+		}
+		gates: {
+			reproducibility: {status: "partial", reason: "Golden SVG/table bytes (including self-loop and same-column arc geometry) and a 25-run determinism check pass; no consumer build closure.", next_step: "Replay from a pinned kit revision inside Fathom.", evidence: [{path: "appkit/ui/viz/graph_test.go", note: "Goldens under appkit/ui/viz/testdata/graph_*."}]}
+			structure: {status: "partial", reason: "role=img with title/desc over an aria-hidden drawing that parses as standalone XML, table captions and header scopes with each node named uniquely (label, then group, then ID), zero class attributes; checked in package tests and the Chromium AX tree.", next_step: "Repeat inside the consumer page structure.", evidence: [{path: "appkit/ui/viz/tier_test.go", note: "L3a no-class/no-literal-color specimens include LayoutGraph and LayoutEgo."}, {path: "docs/assessments/2026-09-25-layered-graph.md", note: "AX tree: five images with names and descriptions, no exposed children or links."}]}
+			visual: {status: "partial", reason: "Twenty specimen captures in Chromium, light/dark, 1280 and 390 px, reviewed after two fixes; nine re-captures of the neighbourhood, bounded and given-columns specimens reviewed after the 2026-09-25 review fixes (44px linked boxes, per-style aggregate lines, measured aggregate border).", next_step: "Review under Fathom's theme and fonts, where width estimates may crowd labels.", evidence: [{path: "docs/assessments/2026-09-25-layered-graph.md", note: "Scoped visual review; captures retained outside the repository."}]}
+			interaction: {status: "partial", reason: "Keyboard tab order skips SVG links, Space opens the table, Enter follows a table link, pointer follows an SVG node link, ArrowRight scrolls the narrow region; every graph table link, SVG node link and disclosure summary measures at least 44px high.", next_step: "Run the consumer's task journey, zoom and a screen reader.", evidence: [{path: "docs/assessments/fixtures/layered-graph/browser-check.js", note: "Executed harness bytes."}, {path: "docs/assessments/2026-09-25-layered-graph.md", note: "Results for four viewport/theme cells."}]}
+			lifecycle: {status: "not-run", next_step: "Decide with Fathom whether live freshness re-renders the graph and test repeated renders if it does."}
+			security: {status: "partial", reason: "Hostile labels, IDs, groups and options are escaped; javascript: and protocol-relative links are refused before output.", next_step: "Review consumer destinations and authorization.", evidence: [{path: "appkit/ui/viz/graph_test.go", note: "TestGraph_EscapesEveryCallerString and TestGraph_InvalidInputFailsBeforeOutput."}]}
+			data: {status: "partial", reason: "SVG and table render one layout; fixture ranks, sides, collapse counts and notes match expected values.", next_step: "Check Fathom's real neighbourhood counts against its verbs.", evidence: [{path: "appkit/ui/viz/graph_test.go", note: "Rank, ego and bounding expectations."}, {path: "apps/gallery/graph_test.go", note: "Served specimens carry the same notes and tables."}]}
+			performance: {status: "not-run", next_step: "Measure only after Fathom names a workload and budget."}
+			integration: {status: "not-run", next_step: "Integrate in Fathom's code neighbourhood and blast-radius views, then record the contribution and its verification."}
+		}
+		consumers: [{
+			app: "fathom"
+			revision: {kind: "selection", sha256: "b9630e3d2b6ec4667362cfd23e8911025093d2af3af923fce66f2b351e676272"}
+			integration_status: "selected"
+			evidence: [{path: "docs/assessments/2026-09-25-layered-graph.md", note: "Revision is Fathom docs/design/observatory-console.md naming FATHOM-KIT-02 at f8b40609; selection only, no integration or adoption."}]
+		}]
+	},
+	{
+		id:                            "candidate.fathom-heatmap-truth-states"
+		kind:                          "candidate"
+		owner:                         "app-kit maintainer; requested for Fathom's coverage matrix (FATHOM-KIT-03), whose selection is not yet in a published Fathom revision"
+		task:                          "Read a project by layer coverage matrix in which a measured value, a measured zero and missing (not compiled), unknown and error cells stay distinct, each with its reason, and inspect the same cells as a table. Critical states: value, measured zero, missing, unknown, error, all-missing grid, empty grid, hostile text, and unchanged output for legacy callers."
+		profile:                       "go-web"
+		priority:                      "high"
+		core:                          false
+		state:                         "queued"
+		enhancement_standard_revision: "converted-core-v1"
+		capability_ids: ["viz.heatmap"]
+		source_refs: [
+			{path: "appkit/ui/viz/heatmap.go", note: "First-party L3a renderer; truth states are opt-in through HeatmapOptions.States or TruthStates, and the original path is unchanged."},
+			{path: "apps/gallery/heatmap.go", note: "Gallery /components/heatmap specimen: one synthetic fixture drives the chart, its table alternative, an all-missing grid and the legacy comparison."},
+			{path: "docs/assessments/2026-09-25-heatmap-truth-states.md", note: "Scoped package and Chromium evidence, the unrecorded Fathom selection and retained limits."},
+		]
+		standards: {
+			"typed-config": {status: "partial", reason: "Typed CellState, HeatmapCell and an opt-in Validate exist, but the renderer stays total instead of refusing and no independent review has accepted the options surface.", next_step: "Review the options with Fathom's integration and decide whether opt-in Validate is sufficient admission.", evidence: [{path: "appkit/ui/viz/heatmap_truth_test.go", note: "Validate refusals, unrecognized states, zero contradictions and non-finite values."}]}
+			"semantic-theme": {status: "partial", reason: "Marks use ink-muted, danger and ink roles that clear their floors in both default schemes, but the value ramp's low end stays below 3:1 and forced-colors and print were not checked.", next_step: "Review the selected consumer theme, forced-colors and print output; decide whether a ramp floor option is needed.", evidence: [{path: "appkit/ui/viz/heatmap_truth_test.go", note: "Role contrast measured on surface and surface-raised, light and dark."}, {path: "docs/assessments/2026-09-25-heatmap-truth-states.md", note: "Light and dark captures at 1440 and 390px inspected."}]}
+			"native-interaction": {status: "partial", reason: "The SVG is a non-interactive image; keyboard and assistive access depend on the app's table alternative, which is only demonstrated in the Gallery.", next_step: "Verify the table alternative and focus behavior in Fathom's composed page.", evidence: [{path: "docs/assessments/2026-09-25-heatmap-truth-states.md", note: "Tab order, focus-visible scroll regions and arrow-key scrolling at 390px dark."}]}
+			"honest-states": {status: "partial", reason: "All five states, all-missing and empty grids are implemented and golden-tested in the kit; real consumer reasons and review are pending.", next_step: "Exercise Fathom's actual not-compiled, stale and failed reasons and have the result reviewed.", evidence: [{path: "appkit/ui/viz/heatmap_truth_test.go", note: "Mixed, all-missing, hostile and large-cell goldens; absent cells never fill or widen the range."}, {path: "apps/gallery/heatmap_test.go", note: "Chart titles and table cells agree cell by cell."}]}
+			"bounded-performance": {status: "not-started", next_step: "Name Fathom's largest coverage matrix and measure render bytes and time against its 250 KB page budget."}
+			"safe-composition": {status: "partial", reason: "Labels, reasons and unrecognized states are escaped and the output parses as XML; no independent security review was performed.", next_step: "Review the consumer's reason sources and confirm no trusted markup reaches the renderer.", evidence: [{path: "appkit/ui/viz/heatmap_truth_test.go", note: "Hostile-text golden and escaping assertions."}]}
+			"reproducible-delivery": {status: "partial", reason: "Output is deterministic and legacy goldens were frozen from the unmodified renderer, but no versioned consumer delivery or replay exists.", next_step: "Deliver through Fathom's reviewed kit mirror and replay its build without a sibling checkout.", evidence: [{path: "appkit/ui/viz/testdata/heatmap_legacy.svg.golden", note: "Pre-change legacy output, still byte-identical."}]}
+		}
+		gates: {
+			reproducibility: {status: "partial", reason: "Deterministic goldens only; no clean versioned consumer build.", next_step: "Replay from a versioned candidate in Fathom's build.", evidence: [{path: "appkit/ui/viz/testdata/heatmap_legacy.svg.golden", note: "Legacy bytes frozen before the change."}, {path: "appkit/ui/viz/heatmap_truth_test.go", note: "Determinism and truth-state goldens."}]}
+			structure: {status: "partial", reason: "role=img, title, desc, per-cell titles and well-formed XML are asserted; the Gallery table has scoped headers; no accessibility-tree review.", next_step: "Review the composed page structure in Fathom.", evidence: [{path: "appkit/ui/viz/heatmap_truth_test.go", note: "Structure and XML well-formedness."}, {path: "apps/gallery/heatmap_test.go", note: "Table header scopes and caption."}]}
+			visual: {status: "partial", reason: "Light and dark captures at 1440 and 390px were inspected in one Chromium lane; captures are not retained in the repository.", next_step: "Review Fathom's coverage matrix in both themes with its real labels.", evidence: [{path: "docs/assessments/2026-09-25-heatmap-truth-states.md", note: "Viewport, theme, fixture and observed results."}]}
+			interaction: {status: "partial", reason: "Keyboard scroll regions and pointer hit-testing pass in the Gallery; the chart itself has no interaction.", next_step: "Repeat keyboard and pointer checks in Fathom's page.", evidence: [{path: "docs/assessments/2026-09-25-heatmap-truth-states.md", note: "Tab order, arrow scrolling and hit-testing."}]}
+			lifecycle: {status: "not-run", next_step: "Check repeated renders and page updates once Fathom's live-freshness flow re-renders the matrix."}
+			security: {status: "partial", reason: "Escaping of hostile caller text is tested; no independent review.", next_step: "Review reason and label sources in the consumer.", evidence: [{path: "appkit/ui/viz/heatmap_truth_test.go", note: "Hostile-text golden."}]}
+			data: {status: "partial", reason: "State resolution, range exclusion and chart/table agreement pass on synthetic fixtures; no consumer data.", next_step: "Adapt the agreement check to Fathom's coverage data.", evidence: [{path: "apps/gallery/heatmap_test.go", note: "Cell-by-cell chart and table agreement."}, {path: "appkit/ui/viz/heatmap_truth_test.go", note: "Declared absence ignores numeric entries and the range."}]}
+			performance: {status: "not-run", next_step: "Measure render bytes and time for Fathom's largest matrix."}
+			integration: {status: "not-run", next_step: "Once Fathom publishes its selection, pin that revision here; then integrate in Fathom's coverage matrix under authority, remove any local workaround and retain the build and browser evidence."}
+		}
+		// No consumer is pinned: the FATHOM-KIT-03 selection exists only in an
+		// unpublished Fathom draft, so its revision cannot be checked here.
+		consumers: []
+	},
+	{
+		id:                            "candidate.code-excerpt"
+		kind:                          "candidate"
+		owner:                         "app-kit maintainer; originating consumer Fathom (FATHOM-KIT-04, observatory console refactor page)"
+		task:                          "Read a bounded source excerpt with numbered lines whose changed, not-executed and highlighted states are labelled in text; follow a line permalink; scroll long lines by keyboard without wrapping, in light and dark and at narrow width; see an explicit gap, empty state or refusal instead of silent output."
+		profile:                       "go-web"
+		priority:                      "high"
+		core:                          false
+		state:                         "queued"
+		enhancement_standard_revision: "converted-core-v1"
+		capability_ids: ["content.code-excerpt"]
+		source_refs: [
+			{path: "appkit/ui/code/excerpt.go", note: "Experimental first-party L3b renderer; no licensed source adapted."},
+			{path: "apps/gallery/code_review.go", note: "Gallery /agentic/code specimen with synthetic source, every state, gap, reveal, empty and refused input."},
+			{path: "docs/assessments/2026-09-25-code-review-renderers.md", note: "Scoped unit, contrast and Chrome keyboard/narrow/theme evidence at 94e6815 and review repairs at 5bf90cd; not consumer integration."},
+		]
+		standards: {
+			"typed-config": {status: "partial", reason: "Typed Excerpt, Line, LineState and StateLabels with atomic refusal of blank labels, non-increasing numbers, unknown states, unsafe links and oversized input; no independent review.", next_step: "Review the public fields with Fathom's integration before any promotion.", evidence: [{path: "appkit/ui/code/excerpt_test.go", note: "Refusal, default, override and boundary cases."}]}
+			"semantic-theme": {status: "partial", reason: "Role utilities only; ink, ink-muted, state rules and focus frame measured in both schemes of the default palette.", next_step: "Measure the other first-party palettes and forced-colors rendering.", evidence: [{path: "appkit/ui/code/excerpt_test.go", note: "TestExcerptRoleContrast and TestExcerptUsesRoleUtilitiesOnly."}, {path: "docs/assessments/2026-09-25-code-review-renderers.md", note: "Light caution rule failure that moved not-executed to danger."}]}
+			"native-interaction": {status: "partial", reason: "Native links, named tabindex region and :target frame pass scoped Chrome keyboard, pointer and narrow checks. Line-number permalinks measure 48x24px at a 24px pitch (WCAG 2.2 2.5.8); they were 48x20px at 20px before 5bf90cd, when only the caption link and summary were measured. They stay below the kit's 44px standalone floor, a recorded catalog divergence.", next_step: "Screen-reader, zoom and other-engine checks; decide whether long excerpts need fewer tab stops.", evidence: [{path: "docs/assessments/2026-09-25-code-review-renderers.md", note: "Browser matrix T1-T3, T5-T7 and the review repairs."}, {path: "appkit/ui/code/excerpt_test.go", note: "TestExcerptLineRowsMeetMinimumTargetSize."}]}
+			"honest-states": {status: "partial", reason: "Stated gaps, empty excerpt, refusals and revealed hidden characters; the app owns state meaning.", next_step: "Confirm Fathom's not-run and partial reading-set states map onto these without inventing coverage.", evidence: [{path: "appkit/ui/code/excerpt_test.go", note: "Gap, empty and refusal tests."}]}
+			"bounded-performance": {status: "not-started", next_step: "Name Fathom's refactor-page workload, then measure payload and render time against a budget; MaxLines only bounds input."}
+			"safe-composition": {status: "partial", reason: "Escapes all text and refuses non-web links. Reveals, by Unicode class, controls, every format character (bidi, zero-width, tag), U+2028/U+2029, default-ignorable fillers, variation selectors and invalid bytes in lines, caption and link text; caption and link text are bdi-isolated. Before 5bf90cd a hand-picked list missed 153 format characters and the separators, and the caption was not revealed. Classification follows Go's Unicode 15.0 tables; no trusted slots.", next_step: "Review caller-supplied anchor prefix uniqueness and link authorization in Fathom.", evidence: [{path: "appkit/ui/code/excerpt_test.go", note: "Escaping, line-separator, tag-character and caption reveal tests."}, {path: "appkit/ui/internal/linetext/linetext_test.go", note: "Class-by-class hidden-character enumeration."}]}
+			"reproducible-delivery": {status: "partial", reason: "Deterministic golden output; no consumer upgrade or standalone consumer build yet.", next_step: "Deliver through Fathom's kit mirror and rebuild its scanned CSS.", evidence: [{path: "appkit/ui/code/testdata/excerpt_review.html.golden", note: "Reviewed golden HTML."}]}
+		}
+		gates: {
+			reproducibility: {status: "partial", reason: "Golden HTML and repeated-render determinism in the kit only.", next_step: "Replay in the consumer's clean build.", evidence: [{path: "appkit/ui/code/excerpt_test.go", note: "TestRenderExcerptGolden."}]}
+			structure: {status: "partial", reason: "Package and Gallery structure tests; no independent review.", next_step: "Independent structure review with the consumer page.", evidence: [{path: "appkit/ui/code/excerpt_test.go", note: "Anchors, labels, legend and list structure."}, {path: "apps/gallery/code_review_test.go", note: "Specimen builder and route."}]}
+			visual: {status: "partial", reason: "1440 and 390 captures in light and dark were inspected but not retained.", next_step: "Retain reviewed captures for the other palettes and the consumer page.", evidence: [{path: "docs/assessments/2026-09-25-code-review-renderers.md", note: "Visual inspection notes and targeted-frame repair."}]}
+			interaction: {status: "partial", reason: "Scoped Chrome keyboard, pointer and narrow tasks pass on synthetic data. Every line-number permalink is measured since 5bf90cd (48x24px at a 24px pitch); the earlier pass measured only the caption link and summary.", next_step: "Screen reader, zoom and a second engine.", evidence: [{path: "docs/assessments/2026-09-25-code-review-renderers.md", note: "Browser matrix results."}, {path: "docs/assessments/fixtures/code-review/browser-matrix.js", note: "Executed harness."}]}
+			lifecycle: {status: "not-run", next_step: "Check repeated rendering inside Fathom's live-refresh page; no script is involved."}
+			security: {status: "partial", reason: "Escaping, link refusal and class-based hidden-character reveal in lines, caption and link text, unit-tested and observed in Chrome.", next_step: "Review in the consumer's CSP and authorization context.", evidence: [{path: "appkit/ui/code/excerpt_test.go", note: "TestExcerptEscapesAndRevealsHiddenCharacters, TestExcerptRevealsLineTerminatorsAndTagCharacters and TestExcerptRevealsCaptionLabelAndLinkText."}]}
+			data: {status: "partial", reason: "Numbers, states and legend counts equal the input in fixtures; the app owns what a state means.", next_step: "Verify against Fathom's reading-set data.", evidence: [{path: "appkit/ui/code/excerpt_test.go", note: "Legend counts and line data."}]}
+			performance: {status: "not-run", next_step: "Run only after the consumer supplies a workload and budget."}
+			integration: {status: "not-run", next_step: "Integrate in Fathom's refactor page, rebuild its scanned CSS, rerun its task and record the contribution in its docs/app-kit.md."}
+		}
+		consumers: []
+	},
+	{
+		id:                            "candidate.unified-diff"
+		kind:                          "candidate"
+		owner:                         "app-kit maintainer; originating consumer Fathom (FATHOM-KIT-05, observatory console review surfaces)"
+		task:                          "Review a proposed text change as unified hunks with old and new line numbers, text +/- markers and spoken line labels; expand and collapse unchanged context by keyboard; see stated omitted ranges, no-change, no-final-newline and diff-budget states in light and dark and at narrow width."
+		profile:                       "go-web"
+		priority:                      "high"
+		core:                          false
+		state:                         "queued"
+		enhancement_standard_revision: "converted-core-v1"
+		capability_ids: ["work.unified-diff"]
+		source_refs: [
+			{path: "appkit/ui/hitl/unified.go", note: "Experimental first-party L3b renderer beside hitl.DiffView."},
+			{path: "appkit/ui/hitl/linediff.go", note: "Deterministic Myers line diff and hunk grouping."},
+			{path: "apps/gallery/code_review.go", note: "Gallery /agentic/code computed, precomputed and unchanged specimens."},
+			{path: "docs/assessments/2026-09-25-code-review-renderers.md", note: "Scoped unit, contrast and Chrome keyboard/narrow/theme evidence at 94e6815 and review repairs at 5bf90cd; not consumer integration."},
+		]
+		standards: {
+			"typed-config": {status: "partial", reason: "Typed UnifiedDiff, Hunk and DiffLine; texts or hunks, never both; Replaced only with hunks; overlapping hunks, mismatched numbers and a no-newline mark before a side's last line refused atomically; caller hunks never mutated.", next_step: "Review the public fields with Fathom's integration before any promotion.", evidence: [{path: "appkit/ui/hitl/unified_test.go", note: "Refusal and precomputed-hunk tests."}]}
+			"semantic-theme": {status: "partial", reason: "Role utilities only; text, rules and focus measured in both schemes of the default palette.", next_step: "Measure the other first-party palettes and forced-colors rendering.", evidence: [{path: "appkit/ui/hitl/unified_test.go", note: "TestUnifiedDiffRoleContrast."}]}
+			"native-interaction": {status: "partial", reason: "Named tabindex region and native details pass scoped Chrome keyboard and narrow checks.", next_step: "Screen-reader, zoom and other-engine checks.", evidence: [{path: "docs/assessments/2026-09-25-code-review-renderers.md", note: "Browser matrix T4-T7."}]}
+			"honest-states": {status: "partial", reason: "No-change, no-final-newline and budget-fallback states are stated in text, the budget note also for precomputed hunks through UnifiedDiff.Replaced. Ranges skipped between precomputed hunks are stated per side and never called unchanged; before 5bf90cd they read 'Unchanged <old> X-Y' from old-side numbers only. Added/removed counts cover the supplied hunks only.", next_step: "Confirm Fathom's review data never implies an applied change.", evidence: [{path: "appkit/ui/hitl/unified_test.go", note: "TestUnifiedDiffHonestEmptyAndBudgetStates, TestUnifiedDiffOmittedRangesNeverClaimUnchanged and TestUnifiedDiffPrecomputedNoNewlineAndBudget."}]}
+			"bounded-performance": {status: "not-started", next_step: "Name a consumer workload and measure HTML size and render time; MaxDiffLines and the 1000-edit budget only bound input and search."}
+			"safe-composition": {status: "partial", reason: "Escapes all text and names. Reveals, by Unicode class, controls, format and tag characters, U+2028/U+2029, default-ignorable fillers, variation selectors and invalid bytes in lines, label and side names, which are bdi-isolated. Before 5bf90cd a hand-picked list missed 153 format characters and the separators, and names were not revealed. Classification follows Go's Unicode 15.0 tables; no trusted slots.", next_step: "Review in the consumer's CSP and authorization context.", evidence: [{path: "appkit/ui/hitl/unified_test.go", note: "TestUnifiedDiffEscapesAndRevealsHiddenCharacters."}]}
+			"reproducible-delivery": {status: "partial", reason: "Deterministic diff and golden HTML; no consumer upgrade yet.", next_step: "Deliver through Fathom's kit mirror and rebuild its scanned CSS.", evidence: [{path: "appkit/ui/hitl/testdata/unified_config.html.golden", note: "Reviewed golden HTML."}]}
+		}
+		gates: {
+			reproducibility: {status: "partial", reason: "Golden HTML and seeded determinism checks in the kit only.", next_step: "Replay in the consumer's clean build.", evidence: [{path: "appkit/ui/hitl/unified_test.go", note: "TestRenderUnifiedDiffGolden."}, {path: "appkit/ui/hitl/linediff_test.go", note: "Seeded determinism."}]}
+			structure: {status: "partial", reason: "Table-free list structure, labels and hunk headers tested; no independent review.", next_step: "Independent structure review with the consumer page.", evidence: [{path: "appkit/ui/hitl/unified_test.go", note: "Markers, numbers and labels."}, {path: "apps/gallery/code_review_test.go", note: "Specimen builder and route."}]}
+			visual: {status: "partial", reason: "1440 and 390 captures in light and dark were inspected but not retained.", next_step: "Retain reviewed captures for the other palettes and the consumer page.", evidence: [{path: "docs/assessments/2026-09-25-code-review-renderers.md", note: "Visual inspection notes."}]}
+			interaction: {status: "partial", reason: "Scoped Chrome keyboard disclosure and narrow tasks pass on synthetic data.", next_step: "Screen reader, zoom and a second engine.", evidence: [{path: "docs/assessments/2026-09-25-code-review-renderers.md", note: "Browser matrix results."}, {path: "docs/assessments/fixtures/code-review/browser-matrix.js", note: "Executed harness."}]}
+			lifecycle: {status: "not-run", next_step: "Check repeated rendering and disclosure state inside the consumer page; no script is involved."}
+			security: {status: "partial", reason: "Escaping and class-based hidden-character reveal in lines, label and side names, unit-tested and observed in Chrome.", next_step: "Review in the consumer's CSP and authorization context.", evidence: [{path: "appkit/ui/hitl/unified_test.go", note: "Escaping, line-separator, tag-character and name reveal tests."}]}
+			data: {status: "partial", reason: "Scripts rebuild both texts and match an independent LCS on 400 seeded cases; hunk headers match git diff; every DiffText hunk set and a subset of it pass the precomputed validation on the same cases.", next_step: "Verify against Fathom's review data.", evidence: [{path: "appkit/ui/hitl/linediff_test.go", note: "TestDiffTextIsMinimalAndValid and TestHunksMatchUnifiedConventions."}]}
+			performance: {status: "not-run", next_step: "Run only after the consumer supplies a workload and budget."}
+			integration: {status: "not-run", next_step: "Integrate in Fathom's review surfaces, rebuild its scanned CSS, rerun its task and record the contribution in its docs/app-kit.md."}
+		}
+		consumers: []
+	},
+	{
+		id:                            "candidate.fathom-live-freshness"
+		kind:                          "candidate"
+		owner:                         "app-kit maintainer; originating consumer Fathom (FATHOM-KIT-06, vision 35 observatory console)"
+		task:                          "Follow an app-owned SSE stream and mark server-rendered panels updated with one polite announcement and a refresh link, never re-rendering or moving content. Critical states: no script or off, connecting, live, updated, reconnecting with bounded backoff, paused while hidden, stopped and resumed, unavailable, replay from the render-time cursor and the gap wildcard."
+		profile:                       "go-web"
+		priority:                      "high"
+		core:                          false
+		state:                         "queued"
+		enhancement_standard_revision: "converted-core-v1"
+		capability_ids: ["interaction.live-freshness"]
+		source_refs: [
+			{path: "appkit/ui/live/live.go", note: "Experimental L3b helpers and the documented global, hook, keyboard and connection contract."},
+			{path: "appkit/ui/live/live.js", note: "Dependency-free L2 subscriber; the one global is AppKitLive."},
+			{path: "apps/gallery/live_freshness.go", note: "Synthetic Gallery SSE fixture with bounded replay, subscribers and fault controls; not a reusable event bus."},
+			{path: "docs/assessments/2026-09-25-live-freshness-and-page-heading.md", note: "Implemented and queued for Fathom integration and acceptance; scoped kit-side browser evidence only."},
+		]
+		standards: {
+			"typed-config": {status: "partial", reason: "Region and Page validate IDs, source keys, labels, as-of text, URLs (including the port range a browser accepts), event names and an unpadded cursor of at most 256 bytes before output; the script refuses invalid options before connecting. Consumer configuration review is open.", next_step: "Review Fathom's source keys, event names and cursor against these refusals when it integrates.", evidence: [{path: "appkit/ui/live/live_test.go", note: "Atomic refusal table, escaping and golden output."}, {path: "appkit/ui/live/live_test.mjs", note: "Script option refusals open no stream."}]}
+			"semantic-theme": {status: "partial", reason: "Role utilities only; light and dark text contrast measured in one browser; forced colors, zoom and other identities are unmeasured.", next_step: "Check forced colors, actual zoom and a consumer identity.", evidence: [{path: "docs/assessments/2026-09-25-live-freshness-and-page-heading.md", note: "Canvas-converted light/dark contrast; an earlier invalid oklch instrument is retained as not evidence."}]}
+			"native-interaction": {status: "partial", reason: "Native button and link; one stop/resume control keeps focus and is offered only when it can act; refresh reloads and focuses the region without scrolling and the region paints its focus-visible ring (a review found focus:outline-none had cancelled it; now checked by computed style); keyboard paths pass in one Chromium run.", next_step: "Verify screen-reader speech, other engines and a real tab switch.", evidence: [{path: "docs/assessments/2026-09-25-live-freshness-and-page-heading.md", note: "Keyboard publish, refresh, stop and resume checks, including the painted region focus ring."}, {path: "appkit/ui/live/live_test.mjs", note: "Focus return, modified clicks and one-shot restore."}]}
+			"honest-states": {status: "partial", reason: "Off, connecting, live, updated, reconnecting, paused, stopped, unavailable and unsupported states are declared, tested and shown as off without JavaScript; after a refused configuration or in an unsupported browser no resume control is offered and no resume is announced.", next_step: "Map Fathom's replay window and gap behavior onto the wildcard in its own stream.", evidence: [{path: "appkit/ui/live/live_test.mjs", note: "Twenty-seven state-machine tests with a fake stream and clock, two against a real local server."}, {path: "docs/assessments/2026-09-25-live-freshness-and-page-heading.md", note: "Browser states including the no-JavaScript context."}]}
+			"bounded-performance": {status: "partial", reason: "Attempts, delays, event size, sources per event, tracked regions, fixture subscribers and replay window are bounded and tested; the attempt budget resets only after 10 s open or an event that advances the cursor, so a server that accepts and closes is retried a bounded number of times, and the first retry is jittered. No payload, memory or latency budget was measured.", next_step: "Name Fathom's workload and measure script cost, reconnect churn and long-running memory.", evidence: [{path: "appkit/ui/live/live_test.mjs", note: "Bounded jittered backoff, give-up against an accept-then-close server (fake and real) and oversized-event drop."}]}
+			"safe-composition": {status: "partial", reason: "Event data is never inserted; labels and as-of text are escaped; the script uses same-origin credentials; fixture controls accept loopback same-origin requests only. CSP-restricted hosts are untested.", next_step: "Test under Fathom's CSP and review its stream authorization.", evidence: [{path: "appkit/ui/live/live_test.go", note: "Hostile text and URL escaping; dependency-free single-global check."}, {path: "apps/gallery/live_freshness_test.go", note: "Cross-site, foreign-origin, remote-peer and malformed request refusals."}]}
+			"reproducible-delivery": {status: "partial", reason: "Deterministic golden markup and an embedded script with a revalidating Handler; no versioned consumer delivery or vendoring.", next_step: "Deliver through a versioned kit revision to Fathom and verify its CSS scan.", evidence: [{path: "appkit/ui/live/live_test.go", note: "Golden region and page status; Handler GET/HEAD/ETag."}]}
+		}
+		gates: {
+			reproducibility: {status: "not-run", next_step: "Rebuild Fathom from a versioned kit revision and compare artifacts."}
+			structure: {status: "partial", reason: "Markup semantics, reserved-space layers and one-h1 composition are checked in Go and one browser.", next_step: "Repeat inside Fathom's composed panels.", evidence: [{path: "appkit/ui/live/live_test.go", note: "Structural and golden checks."}, {path: "docs/assessments/2026-09-25-live-freshness-and-page-heading.md", note: "Browser structure checks."}]}
+			visual: {status: "partial", reason: "Wide light and narrow dark captures were reviewed and contrast computed. Zero box movement is measured for marking at 390 and 1280 px and, after a review found the connection line grew at 320-340 px, for marking, stop, resume and reconnect at 320, 340 and 360 px; the script-free line already has the running height.", next_step: "Review zoom, forced colors and Fathom's panels.", evidence: [{path: "docs/assessments/2026-09-25-live-freshness-and-page-heading.md", note: "Scoped visual and movement evidence."}]}
+			interaction: {status: "partial", reason: "Keyboard publish, refresh, stop, resume and focus return with a painted focus ring pass in one Chromium run.", next_step: "Verify assistive technology and other engines.", evidence: [{path: "docs/assessments/2026-09-25-live-freshness-and-page-heading.md", note: "45 browser checks on the corrected build."}, {path: "appkit/ui/live/live_test.mjs", note: "Event contract and click handling."}]}
+			lifecycle: {status: "partial", reason: "Dropped streams, refused connections, bounded give-up, stop/resume and synthetic hidden pause replay correctly; real tab switches and network loss are untested.", next_step: "Exercise real visibility changes, network loss and long sessions.", evidence: [{path: "docs/assessments/2026-09-25-live-freshness-and-page-heading.md", note: "Lifecycle checks against the fixture."}, {path: "apps/gallery/live_freshness_test.go", note: "Fixture replay, gap, drop, outage and capacity."}]}
+			security: {status: "partial", reason: "No event data reaches the DOM and hostile text is escaped; fixture mutations need loopback same-origin requests. No CSP or authorization review of a consumer stream.", next_step: "Review Fathom's /events authorization, origin and CSP.", evidence: [{path: "apps/gallery/live_freshness_test.go", note: "Refusal table."}, {path: "appkit/ui/live/live_test.mjs", note: "Hostile event data stays out of markup."}]}
+			data: {status: "partial", reason: "Only regions following a named source are marked; replay uses the render-time cursor, also on an explicit start, and ids of any script round-trip as UTF-8; the as-of text stays visible when updated. Real event semantics are app-owned.", next_step: "Verify Fathom's event-to-source mapping against its pages.", evidence: [{path: "docs/assessments/2026-09-25-live-freshness-and-page-heading.md", note: "Cursor, replay and wildcard results; the lost-event defect and its fix are retained."}]}
+			performance: {status: "not-run", next_step: "Measure script cost, reconnect churn and memory for a named Fathom workload."}
+			integration: {status: "not-run", next_step: "Integrate in Fathom's observatory console, remove any local fork and verify its task."}
+		}
+		consumers: [{
+			app: "fathom"
+			revision: {kind: "source", sha256: "b9630e3d2b6ec4667362cfd23e8911025093d2af3af923fce66f2b351e676272"}
+			integration_status: "selected"
+			evidence: [{path: "docs/assessments/2026-09-25-live-freshness-and-page-heading.md", note: "Revision is Fathom's docs/design/observatory-console.md at f8b40609, which selects FATHOM-KIT-06; nothing is integrated."}]
+		}]
+	},
+	{
+		id:                            "candidate.fathom-page-heading"
+		kind:                          "candidate"
+		owner:                         "app-kit maintainer; originating consumer Fathom (FATHOM-KIT-07, vision 35 observatory console)"
+		task:                          "Render a page's one h1 with an optional breadcrumb trail, eyebrow, meta line and up to four actions that wrap below the title at narrow width. Critical states: title only, full, long unbroken content, narrow actions below, unsafe action inert, invalid input refused, light and dark."
+		profile:                       "go-web"
+		priority:                      "high"
+		core:                          false
+		state:                         "queued"
+		enhancement_standard_revision: "converted-core-v1"
+		capability_ids: ["interaction.page-heading"]
+		source_refs: [
+			{path: "appkit/ui/chrome/heading.go", note: "Experimental L3b PageHeading and RenderPageHeading composing Breadcrumbs and form buttons unchanged."},
+			{path: "apps/gallery/page_heading.go", note: "Gallery specimen with full, title-only and long-content variants."},
+			{path: "docs/assessments/2026-09-25-live-freshness-and-page-heading.md", note: "Implemented and queued for Fathom integration and acceptance; scoped kit-side browser evidence only."},
+		]
+		standards: {
+			"typed-config": {status: "partial", reason: "Typed fields with bounded meta and actions; blank or control-character text and invalid IDs fail before output.", next_step: "Review Fathom's page titles, meta and actions against the bounds.", evidence: [{path: "appkit/ui/chrome/heading_test.go", note: "Refusal table and goldens."}]}
+			"semantic-theme": {status: "partial", reason: "Role utilities only; eyebrow and meta contrast measured in light and dark in one browser.", next_step: "Check forced colors, zoom and Fathom's identity.", evidence: [{path: "docs/assessments/2026-09-25-live-freshness-and-page-heading.md", note: "Canvas-converted contrast."}]}
+			"native-interaction": {status: "partial", reason: "Native links and buttons, reading order equals DOM order, 44px action targets and visible focus; breadcrumb links keep the existing inline targets.", next_step: "Decide breadcrumb target size in chrome and verify assistive technology.", evidence: [{path: "docs/assessments/2026-09-25-live-freshness-and-page-heading.md", note: "Keyboard order and target measurements."}]}
+			"honest-states": {status: "partial", reason: "Unsafe destinations render the shared inert label and invalid headings refuse to render; loading and error states belong to the page.", next_step: "Confirm Fathom's error pages use the same heading contract.", evidence: [{path: "appkit/ui/chrome/heading_test.go", note: "Inert action and refusal checks."}]}
+			"bounded-performance": {status: "not-started", next_step: "Measure the heading within Fathom's 250 KB page budget."}
+			"safe-composition": {status: "partial", reason: "All text is escaped; actions reuse form.RenderButton unchanged (unsafe destinations inert); Breadcrumbs writes every href as a link, so the heading refuses breadcrumb destinations that are not relative or HTTP(S) before output.", next_step: "Review Fathom's action and breadcrumb destinations and authorization.", evidence: [{path: "appkit/ui/chrome/heading_test.go", note: "Hostile text, javascript: action and javascript:, data:, protocol-relative and padded breadcrumb destinations."}]}
+			"reproducible-delivery": {status: "partial", reason: "Deterministic golden output; no versioned consumer delivery.", next_step: "Deliver through a versioned kit revision and verify Fathom's CSS scan of chrome and form.", evidence: [{path: "appkit/ui/chrome/heading_test.go", note: "Full and minimal goldens."}]}
+		}
+		gates: {
+			reproducibility: {status: "not-run", next_step: "Rebuild Fathom from a versioned kit revision."}
+			structure: {status: "partial", reason: "One h1, order and composition are checked in Go and in one browser across three variants.", next_step: "Repeat in Fathom's pages.", evidence: [{path: "appkit/ui/chrome/heading_test.go", note: "Structure checks."}, {path: "docs/assessments/2026-09-25-live-freshness-and-page-heading.md", note: "Six variant/viewport cells."}]}
+			visual: {status: "partial", reason: "Wide light and narrow dark captures reviewed; no overflow; actions beside or below as designed.", next_step: "Review zoom and Fathom's layout.", evidence: [{path: "docs/assessments/2026-09-25-live-freshness-and-page-heading.md", note: "Scoped layout evidence."}]}
+			interaction: {status: "partial", reason: "Keyboard order and focus indication pass in one Chromium run.", next_step: "Verify assistive technology and other engines.", evidence: [{path: "docs/assessments/2026-09-25-live-freshness-and-page-heading.md", note: "Keyboard checks."}]}
+			lifecycle: {status: "not-run", next_step: "Confirm the static heading has no lifecycle surface in Fathom or record a reviewed N/A."}
+			security: {status: "partial", reason: "Escaping, inert unsafe actions and refused unsafe breadcrumb destinations are tested; consumer destinations are app-owned.", next_step: "Review Fathom's action and breadcrumb destinations.", evidence: [{path: "appkit/ui/chrome/heading_test.go", note: "Hostile input and unsafe destinations."}]}
+			data: {status: "not-run", next_step: "Verify Fathom's meta and freshness text against its data."}
+			performance: {status: "not-run", next_step: "Measure within a named Fathom page workload."}
+			integration: {status: "not-run", next_step: "Integrate in Fathom's console shell and verify its pages."}
+		}
+		consumers: [{
+			app: "fathom"
+			revision: {kind: "source", sha256: "b9630e3d2b6ec4667362cfd23e8911025093d2af3af923fce66f2b351e676272"}
+			integration_status: "selected"
+			evidence: [{path: "docs/assessments/2026-09-25-live-freshness-and-page-heading.md", note: "Revision is Fathom's docs/design/observatory-console.md at f8b40609, which selects FATHOM-KIT-07; nothing is integrated."}]
+		}]
+	},
+	{
 		id:                            "candidate.personal-site-series-navigation"
 		kind:                          "candidate"
 		owner:                         "app-kit maintainer"

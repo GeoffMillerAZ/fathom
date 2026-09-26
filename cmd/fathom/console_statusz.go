@@ -138,11 +138,9 @@ func renderStatusz(report StatuszReport, selfURL string) string {
 		Denominator: valuePlain(services) + " services",
 		Freshness:   "live — computed for this request",
 		State:       state, Reason: reason,
-		// relative + overflow-hidden: the kit table's sr-only header cell is
-		// absolutely positioned, and without a positioned ancestor it
-		// widens the whole document at 390 px (a kit contribution to return:
-		// the table's own scroll wrapper should be the containing block).
-		Body: `<div class="relative overflow-hidden rounded-lg">` + tbl + `</div>`,
+		// The kit table scrolls inside its own positioned wrapper at 390 px
+		// (FATHOM-F0-KIT-02); the page never pans sideways.
+		Body: tbl,
 	}))
 	b.WriteString(`</div>`)
 	return b.String()

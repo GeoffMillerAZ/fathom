@@ -24,6 +24,10 @@ type FunnelOptions struct {
 	StageH int
 	// Gap is the vertical gap between stages. Default 6.
 	Gap int
+	// Fluid fills the container's width instead of drawing at W pixels:
+	// the chart scales uniformly from its W×height viewBox (text included)
+	// and the height follows. Off by default (fixed pixel size).
+	Fluid bool
 	// AriaLabel is the accessible label.
 	AriaLabel string
 }
@@ -57,7 +61,7 @@ func Funnel(stages []Stage, o FunnelOptions) string {
 	if n == 0 {
 		totalH := opts.StageH
 		var b strings.Builder
-		b.WriteString(svgOpen(opts.W, totalH, opts.AriaLabel, ""))
+		b.WriteString(chartOpen(opts.W, totalH, opts.AriaLabel, opts.Fluid))
 		b.WriteString(svgTitle(opts.AriaLabel))
 		b.WriteString("</svg>")
 		return b.String()
@@ -83,7 +87,7 @@ func Funnel(stages []Stage, o FunnelOptions) string {
 	barMaxW := w - labelW - 8 // 8px gap between bar and label
 
 	var b strings.Builder
-	b.WriteString(svgOpen(opts.W, totalH, opts.AriaLabel, ""))
+	b.WriteString(chartOpen(opts.W, totalH, opts.AriaLabel, opts.Fluid))
 	b.WriteString(svgTitle(opts.AriaLabel))
 
 	inkMuted := cssColor("ink-muted")

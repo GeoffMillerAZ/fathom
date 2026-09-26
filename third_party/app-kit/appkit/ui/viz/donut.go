@@ -15,6 +15,10 @@ type DonutOptions struct {
 	Thickness int
 	// CenterText is optional text in the center of the ring (escaped internally).
 	CenterText string
+	// Fluid fills the container's width instead of drawing at Size pixels:
+	// the chart scales uniformly from its Size×Size viewBox (text included)
+	// and the height follows. Off by default (fixed pixel size).
+	Fluid bool
 	// AriaLabel is the accessible label.
 	AriaLabel string
 }
@@ -44,7 +48,7 @@ func Donut(segments []Segment, o DonutOptions) string {
 	r := (size - float64(opts.Thickness)) / 2
 
 	var b strings.Builder
-	b.WriteString(svgOpen(opts.Size, opts.Size, opts.AriaLabel, ""))
+	b.WriteString(chartOpen(opts.Size, opts.Size, opts.AriaLabel, opts.Fluid))
 	b.WriteString(svgTitle(opts.AriaLabel))
 
 	total := 0.0

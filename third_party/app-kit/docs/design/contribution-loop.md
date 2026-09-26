@@ -143,3 +143,11 @@ Consumer history is not promotion: the recipe stays experimental, integration
 partial and performance failed. This catalog metadata correction changes its
 ADR-0065 capability pin; consumer review and installed-MCP delivery are separate,
 not silently applied. [Return regression](../assessments/2026-09-22-bar-resolution-and-guide-discovery.md).
+
+Fathom's `FATHOM-F0-KIT-01..04` (console wave F0) returned four shared defects with
+local workarounds: missing table header scopes, a hidden table header label that
+widened a 390px page, small unfocused breadcrumb links and fixed-width charts. The kit
+fixed each with tests and a Gallery browser run
+([receipt](../assessments/2026-09-25-fathom-f0-kit-returns.md)). The disposition is
+`returned`. Fathom adoption, removing its workarounds, and second-consumer propagation
+are separate and unverified.

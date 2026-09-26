@@ -1,6 +1,9 @@
 package gallery
 
 import (
+	"os"
+	"regexp"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -29,5 +32,31 @@ func TestComponentFiguresShrinkWithoutDroppingChartsOrCode(t *testing.T) {
 	if !strings.Contains(css, `.min-w-0{min-width:0}`) &&
 		!strings.Contains(css, `.min-w-0{min-width:calc(var(--spacing) * 0)}`) {
 		t.Fatal("served CSS must implement the figure's shrink contract")
+	}
+}
+
+// components_reflow.mjs (the INC-39 harness) pins the exact figure captions it
+// expects in the narrow component preview. It is opt-in, so this keeps its
+// list in step with vizCards(): adding a card without updating the harness
+// fails here instead of only in the next browser run.
+func TestComponentsReflowHarnessPinsEveryCard(t *testing.T) {
+	src, err := os.ReadFile("../styleguide/browser/components_reflow.mjs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	list := regexp.MustCompile(`(?m)^const captions = \[(.*)\];$`).FindSubmatch(src)
+	if list == nil {
+		t.Fatal("components_reflow.mjs has no captions list")
+	}
+	var harness []string
+	for _, m := range regexp.MustCompile(`'([^']*)'`).FindAllSubmatch(list[1], -1) {
+		harness = append(harness, string(m[1]))
+	}
+	var cards []string
+	for _, card := range vizCards() {
+		cards = append(cards, card.Name)
+	}
+	if !slices.Equal(harness, cards) {
+		t.Fatalf("components_reflow.mjs captions (%d) differ from vizCards (%d):\nharness %q\ncards   %q", len(harness), len(cards), harness, cards)
 	}
 }

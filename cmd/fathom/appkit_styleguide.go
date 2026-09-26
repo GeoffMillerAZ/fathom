@@ -23,7 +23,7 @@ import (
 //go:embed ui/guide-baseline.cue
 var observatoryGuideSource []byte
 
-const observatoryGuideRevision = "dc77e660e378727cb062fd76e2a8770fd8a4540c"
+const observatoryGuideRevision = "d9dd78919099fccc3e3b70b06eeefff8bff5b72e"
 
 func observatoryGuideModel(state string) observatoryModel {
 	m := observatoryModel{

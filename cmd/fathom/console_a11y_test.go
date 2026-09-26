@@ -16,6 +16,7 @@ import (
 	"time"
 
 	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
+	"github.com/geoffmilleraz/app-kit/appkit/ui/table"
 )
 
 var thOpenRe = regexp.MustCompile(`<th\b[^>]*>`)
@@ -30,26 +31,48 @@ func TestConsoleA11y_ScopeTargetsChartsAndOverflow(t *testing.T) {
 				t.Errorf("%s: header cell without scope: %s", path, th)
 			}
 		}
-		// The breadcrumb trail's links get a 44 px target.
-		if i := strings.Index(body, `aria-label="Breadcrumb"`); i >= 0 && !strings.Contains(body[:i], `[&_a]:min-h-11`) {
-			t.Errorf("%s: breadcrumb links need a 44 px target wrapper", path)
+		// The breadcrumb trail's links carry the kit's own 44 px target and
+		// focus outline (FATHOM-F0-KIT-03): no local wrapper patches them.
+		if i := strings.Index(body, `aria-label="Breadcrumb"`); i >= 0 {
+			trail := body[i:]
+			trail = trail[:strings.Index(trail, "</nav>")]
+			if strings.Contains(trail, "<a ") && !strings.Contains(trail, `class="inline-flex min-h-11 min-w-11`) {
+				t.Errorf("%s: breadcrumb links need the kit's 44 px target", path)
+			}
+		}
+		// Wave F0's stopgaps are gone now that the kit carries the fixes.
+		for _, stopgap := range []string{`[&_a]:min-h-11 [&_a]:items-center [&_a]:rounded-sm`, `[&>svg]:max-w-full`, `relative overflow-hidden rounded-lg`} {
+			if strings.Contains(body, stopgap) {
+				t.Errorf("%s: F0 stopgap %q is still rendered", path, stopgap)
+			}
 		}
 	}
-	// /statusz renders the kit table: its header cells carry scope too.
-	if _, _, st := f.get(t, "/statusz"); !strings.Contains(st, `<th scope="col"`) {
-		t.Error("/statusz's table must carry th scope")
+	// /statusz renders the kit table: its header cells carry scope, written
+	// by the kit itself (FATHOM-F0-KIT-01), inside the kit's positioned
+	// scroll wrapper (FATHOM-F0-KIT-02).
+	if _, _, st := f.get(t, "/statusz"); !strings.Contains(st, `<th scope="col"`) || !strings.Contains(st, `<div class="relative overflow-x-auto`) {
+		t.Error("/statusz's table must carry th scope inside the kit's positioned scroll wrapper")
+	}
+	if got := renderKitTable(table.TableParams{Columns: []table.Column{{Key: "a", Label: "A"}}}); strings.Count(got, `scope="col"`) != len(thOpenRe.FindAllString(got, -1)) {
+		t.Errorf("the kit table must scope every header cell itself:\n%s", got)
 	}
 
-	// The tool-load chart: legible labels in a scroll region, and a table
-	// alternative behind a disclosure.
+	// The tool-load chart: drawn twice with the kit's Fluid option — a wide
+	// drawing from md up, capped at its native width, and a narrow drawing
+	// for phones — plus a table alternative behind a disclosure.
 	_, _, fleet := f.get(t, "/fleet")
-	if strings.Contains(fleet, `[&>svg]:max-w-full"><svg role="img" aria-label="calls per tool"`) {
-		t.Error("the tool chart must not scale its labels down to fit 390 px")
-	}
-	for _, want := range []string{`aria-label="calls per tool — scrolls sideways"`, "calls per tool as a table", `data-table="fleet-tool-load"`} {
+	for _, want := range []string{
+		`<div class="hidden max-w-[35rem] md:block" data-chart-width="wide"><svg xmlns="http://www.w3.org/2000/svg" width="100%" role="img" aria-label="calls per tool" viewBox="0 0 560 `,
+		`<div class="max-w-80 md:hidden" data-chart-width="narrow"><svg xmlns="http://www.w3.org/2000/svg" width="100%" role="img" aria-label="calls per tool" viewBox="0 0 320 `,
+		"calls per tool as a table", `data-table="fleet-tool-load"`,
+	} {
 		if !strings.Contains(fleet, want) {
 			t.Errorf("/fleet tool chart missing %q", want)
 		}
+	}
+	// Text-free sparklines are Fluid: they fill their card at every width.
+	if strings.Contains(fleet, `aria-label="payment-service 14-day traffic"`) && !strings.Contains(fleet, `width="100%" role="img" aria-label="payment-service 14-day traffic"`) {
+		t.Error("a service tile's sparkline must be the kit's Fluid drawing")
 	}
 
 	// A session replay's fixed-width timeline scrolls in its own region.
@@ -57,8 +80,8 @@ func TestConsoleA11y_ScopeTargetsChartsAndOverflow(t *testing.T) {
 		{Channel: "edit-hook", Kind: "emitted", At: time.Date(2026, 9, 25, 10, 0, 0, 0, time.UTC)},
 		{Channel: "session-hook", At: time.Date(2026, 9, 25, 10, 5, 0, 0, time.UTC)},
 	}})
-	if !strings.Contains(st, `<div class="overflow-x-auto" role="region" tabindex="0" aria-label="session timeline — scrolls sideways"><svg`) {
-		t.Errorf("the session timeline must scroll inside its own region:\n%.600s", st)
+	if !strings.Contains(st, `<div class="overflow-x-auto" role="region" tabindex="0" aria-label="session timeline — scrolls sideways"><div class="min-w-[900px] max-w-[900px] md:min-w-0"><svg xmlns="http://www.w3.org/2000/svg" width="100%"`) {
+		t.Errorf("the session timeline must be Fluid from md up and scroll inside its own region below it:\n%.600s", st)
 	}
 
 	// Recent-session links are 44 px targets.

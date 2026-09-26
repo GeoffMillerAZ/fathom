@@ -52,7 +52,14 @@ type Crumb struct {
 	Href  string
 }
 
-// Breadcrumbs renders a navigation trail. Returns "" for no crumbs.
+// crumbLinkClass gives every crumb link the kit's 44px minimum target and a
+// visible keyboard focus outline. Consumers must scan appkit/ui/chrome/*.go so
+// the utilities exist in their CSS.
+const crumbLinkClass = "inline-flex min-h-11 min-w-11 items-center justify-center rounded-sm hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+
+// Breadcrumbs renders a navigation trail. Returns "" for no crumbs. Each link
+// is at least 44px square with a focus-visible outline; the current page and
+// separators stay plain text.
 func Breadcrumbs(crumbs []Crumb) string {
 	if len(crumbs) == 0 {
 		return ""
@@ -66,7 +73,7 @@ func Breadcrumbs(crumbs []Crumb) string {
 		if i == len(crumbs)-1 || c.Href == "" {
 			fmt.Fprintf(&b, `<li class="text-ink" aria-current="page">%s</li>`, esc(c.Label))
 		} else {
-			fmt.Fprintf(&b, `<li><a href="%s" class="hover:text-ink">%s</a></li>`, esc(c.Href), esc(c.Label))
+			fmt.Fprintf(&b, `<li><a href="%s" class="%s">%s</a></li>`, esc(c.Href), crumbLinkClass, esc(c.Label))
 		}
 	}
 	b.WriteString(`</ol></nav>`)

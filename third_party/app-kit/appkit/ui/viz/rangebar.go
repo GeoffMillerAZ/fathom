@@ -27,6 +27,7 @@ type RangeBarsOptions struct {
 	Max       float64 // scale max; 0 derives from the largest High.
 	HideRange bool    // hide the "low–high" value labels at the right (shown by default).
 	AriaLabel string
+	Fluid     bool // fill the container width: the W viewBox scales uniformly, text included. Default off (fixed pixels).
 }
 
 func (o *RangeBarsOptions) withDefaults() RangeBarsOptions {
@@ -64,7 +65,7 @@ func RangeBars(items []RangeItem, o RangeBarsOptions) string {
 	}
 
 	var b strings.Builder
-	b.WriteString(svgOpen(opts.W, totalH, opts.AriaLabel, ""))
+	b.WriteString(chartOpen(opts.W, totalH, opts.AriaLabel, opts.Fluid))
 	b.WriteString(svgTitle(opts.AriaLabel))
 	if n == 0 {
 		b.WriteString("</svg>")

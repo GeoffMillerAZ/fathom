@@ -30,6 +30,42 @@ architecture; no metric model, daemon behavior or future has been promoted.
   snapshot has its own band. Keep the lower-bound sign with its number and give service
   detail links a keyboard outline and 44px target. Do not patch the mirror in place.
 
+## Mirror d9dd789: the console's kit contributions land (2026-09-25)
+
+The mirror moves from `dc77e66` to app-kit main `d9dd78919099fccc3e3b70b06eeefff8bff5b72e`
+(`scripts/sync-vendor.sh app-kit` pointed at a clone of the kit at that commit; the 116
+changed kit files match `git diff --name-status dc77e66 d9dd789` one for one). The 26 kit
+commits in between are Fathom's own vision-35 contributions and wave F0's returns. The
+mirror's `go.mod`/`go.sum`, `cue/tokens/kit.cue` (so `guide-baseline.cue` and
+`theme.css` stay byte-identical) and the dashboard, stat, vizframe and styleguide files
+the manifest pins are unchanged; `shell.layout` and `recipe.styleguide.local` keep their
+metadata pins. Existing call sites are unaffected: every new viz option is opt-in and
+the table and breadcrumb changes are additive markup.
+
+**F0 stopgaps removed** now that the kit carries each fix:
+
+- `renderKitTable` (`console_panel.go`) only renders the templ component; the kit writes
+  `scope="col"` itself (FATHOM-F0-KIT-01).
+- `/statusz` drops its `relative overflow-hidden` wrapper: the kit's scroll wrapper is
+  positioned (FATHOM-F0-KIT-02).
+- `renderConsoleHeading` drops its `[&_a]` breadcrumb wrapper: the kit's trail links are
+  44 px with a focus-visible outline (FATHOM-F0-KIT-03).
+- The fixed-width charts take the kit's opt-in `Fluid` drawing (FATHOM-F0-KIT-04): the
+  fleet traffic sparkline (its `[&>svg]:max-w-full` scaling hack is gone) and each service
+  tile's sparkline fill their cards. Fluid scales text with the drawing (the kit's stated
+  limit), so the text-dense tool-load bars are drawn twice, 560 px from `md` up (capped at
+  that native width) and 320 px below it, one displayed at a time; the 900 px session
+  timeline is Fluid from `md` up and keeps its native width in its own scroll region below.
+  `chrome.RenderPagination`'s ~28 px links and `hitl.DiffView`'s ink-faint toggle were not
+  changed by the kit, so `/search`'s pagination wrapper stays.
+
+**Not adopted, with the reason:** `chrome.RenderPageHeading` (FATHOM-KIT-07) writes the
+page's `h1`, and `dashboard.RenderShell`'s top bar already writes one, so composing both
+would give every page two `h1`s. `renderConsoleHeading` stays app-local until the shell
+can omit its top-bar title (returned as FATHOM-S0-KIT-01 below). `analytics.graph`,
+`viz.heatmap` truth states, `content.code-excerpt` and `work.unified-diff` wait for the
+pages that need them (waves C–E); none is imported yet, so none is scanned.
+
 ## Observatory console wave F0 (2026-09-25)
 
 Vision 35 / ADR-045 moves every Observatory page onto one console shell
@@ -67,7 +103,7 @@ existing dashboard/stat/viz/vizframe/callout/form/hitl set:
   `cmd/fathom/ui/console.js` reveals only when the Clipboard API exists — the no-JS
   reading is the plain command.
 
-**Kit defects observed (return with fixtures; local workarounds named):**
+**Kit defects observed (return with fixtures; local workarounds named).** Returned as FATHOM-F0-KIT-01..04 and fixed in the kit at `c2996cc`, `4b7182c` and `75c9d0b`; the workarounds are gone since mirror `d9dd789` (above), except pagination and the DiffView toggle, which the kit left for later:
 
 - `table.Table` renders `<th>` without `scope="col"`, and its `sr-only` "Actions"
   header is absolutely positioned inside an `overflow-x-auto` wrapper that is not a
@@ -191,7 +227,7 @@ this integration does not close G3/G4, human usability or the memory/cancellatio
 
 `go.mod` declares app-kit `v0.0.0` with an in-tree replacement. ADR-019 requires its
 exact stamped mirror: `third_party/app-kit/.vendor-commit` is now
-`dc77e660e378727cb062fd76e2a8770fd8a4540c` (earlier `bcfeb8e`, then `f7ab0fbd`).
+`d9dd78919099fccc3e3b70b06eeefff8bff5b72e` (earlier `bcfeb8e`, `f7ab0fbd`, then `dc77e66`).
 Local `go.work` instead resolves the sibling.
 The adoption checker observes declarations/hashes, not effective Go resolution;
 verify both modes. The owner authorized this scoped mirror refresh on 2026-09-14
@@ -330,6 +366,54 @@ only where the layer contract requires it. Retrieve app-kit MCP
 the local candidate and mark canonical review pending rather than inventing policy.
 
 ### Contribution records
+
+**FATHOM-KIT-01..08 — the console's just-in-time kit pieces (vision 35 §6, ADR-045)**
+
+Fathom is the originating consumer of each; each stays experimental in the kit until a
+second consumer integrates it (ADR-0066). Delivery is the app-kit main commit, all
+inside mirror `d9dd789`:
+
+| ID | Kit capability | Delivered at | Fathom integration |
+|---|---|---|---|
+| FATHOM-KIT-01 | `interaction.command-palette` (`appkit/ui/palette`) | `d52acea`, fixes `843a669` `77b25b9`, merge `9dc6f5d` | OC-12, `cmd/fathom/console_palette.go` |
+| FATHOM-KIT-02 | `analytics.graph` (`viz.LayoutGraph`, `viz.LayoutEgo`) | `dc8f035`, fix `209249f`, merge `6ed6ea5` | pending: the code neighborhood (OC-37) |
+| FATHOM-KIT-03 | `viz.heatmap` truth states | `0f45523`, fix `8f663ab`, merge `b861d49` | pending: the coverage matrix (OC-28) |
+| FATHOM-KIT-04 | `content.code-excerpt` (`code.RenderExcerpt`) | `94e6815`, fix `5bf90cd`, merge `fd47ef0` | pending: refactor and claim pages (OC-26, OC-30) |
+| FATHOM-KIT-05 | `work.unified-diff` (`hitl.RenderUnifiedDiff`) | `94e6815`, fix `5bf90cd`, merge `fd47ef0` | pending: review surfaces |
+| FATHOM-KIT-06 | `interaction.live-freshness` (`appkit/ui/live`) | `e7d66c9`, fix `f965851`, merge `54f5fac` | OC-14, `cmd/fathom/console_live.go` |
+| FATHOM-KIT-07 | `interaction.page-heading` (`chrome.RenderPageHeading`) | `e7d66c9`, fix `f965851`, merge `54f5fac` | not adopted: the shell's top bar already writes the `h1` (FATHOM-S0-KIT-01) |
+| FATHOM-KIT-08 | catalog records for shipped, uncatalogued packages | `a80d967`, merge `b861d49` | none needed (catalog metadata) |
+
+- **Evidence:** the kit's receipts `docs/assessments/2026-09-25-command-palette.md`,
+  `-layered-graph.md`, `-heatmap-truth-states.md`, `-code-review-renderers.md` and
+  `-live-freshness-and-page-heading.md` in the mirror.
+- **Disposition:** `delivered` in the kit; Fathom adoption per row above. Next action:
+  Fathom maintainer integrates each piece with the wave whose page needs it.
+
+**FATHOM-F0-KIT-01..04 — wave F0's four kit defects**
+
+- **Origin / task:** console wave F0 (`/statusz` services table, the page heading's trail,
+  the fleet and session charts at 390 px); observed in `docs/bench/readings/console-f0-proof-2026-09-25.md`.
+- **Observed / expected:** 01 `table.Table` header cells without `scope`; 02 its sr-only
+  "Actions" label widened the document at 390 px (861 px measured); 03 breadcrumb links
+  17 px with no focus-visible treatment; 04 every viz chart fixed-width.
+- **Evidence:** kit receipt `docs/assessments/2026-09-25-fathom-f0-kit-returns.md`
+  (Gallery run before/after, `TestFathomF0KitReturnsAreServed`).
+- **Disposition:** `returned`, fixed at `c2996cc` (01/02), `4b7182c` (03), `75c9d0b` (04,
+  opt-in `Fluid`, which scales text rather than reflowing it).
+- **Delivery / verification:** adopted at mirror `d9dd789`; the local stopgaps are
+  removed and `TestConsoleA11y_ScopeTargetsChartsAndOverflow` refuses their return.
+
+**FATHOM-S0-KIT-01 — the shell and the page heading cannot compose (candidate)**
+
+- **Origin / task:** console stage 0 adopting FATHOM-KIT-07.
+- **Observed / expected:** `dashboard.RenderShell` always writes its `Title` as the top
+  bar's `h1`, and `chrome.RenderPageHeading` writes the page's `h1`; a page using both has
+  two. Below `md` the top bar also shows no brand (the brand lives in the hidden sidebar),
+  so Fathom adds a `md:hidden` brand link to its `Actions` slot.
+- **Disposition:** `candidate` — a shell option to render the title as non-heading text
+  (or omit it) and to show the brand in the mobile top bar. Next action: app-kit
+  maintainer; revisit when a second consumer composes the page heading inside the shell.
 
 **FATHOM-ADOPT-01 — selected metadata migration**
 

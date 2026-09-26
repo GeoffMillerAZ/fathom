@@ -1,6 +1,8 @@
 package chrome
 
 import (
+	"regexp"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -34,6 +36,42 @@ func TestBreadcrumbs(t *testing.T) {
 	}
 	if Breadcrumbs(nil) != "" {
 		t.Errorf("empty breadcrumbs should be empty string")
+	}
+}
+
+// FATHOM-F0-KIT-03: a crumb link is a navigation control, so it gets the kit's
+// 44px minimum target and a visible keyboard focus outline (the bare link
+// measured 17px high with no focus treatment in Fathom's console). The current
+// page stays plain text; the separator stays decorative.
+func TestBreadcrumbs_LinksHaveTargetSizeAndVisibleFocus(t *testing.T) {
+	got := Breadcrumbs([]Crumb{{Label: "A", Href: "/a"}, {Label: "Cases", Href: "/cases"}, {Label: "Timeline"}})
+	links := regexp.MustCompile(`<a [^>]*>`).FindAllString(got, -1)
+	if len(links) != 2 {
+		t.Fatalf("want 2 crumb links, got %d: %s", len(links), got)
+	}
+	for _, link := range links {
+		class := regexp.MustCompile(`class="([^"]*)"`).FindStringSubmatch(link)
+		if class == nil {
+			t.Fatalf("crumb link has no class: %s", link)
+		}
+		fields := strings.Fields(class[1])
+		for _, want := range []string{
+			"inline-flex", "items-center", "min-h-11", "min-w-11",
+			"focus-visible:outline-2", "focus-visible:outline-offset-2", "focus-visible:outline-focus",
+		} {
+			if !slices.Contains(fields, want) {
+				t.Errorf("crumb link %s lacks %q", link, want)
+			}
+		}
+		// Tailwind v4: focus:outline-none would cancel the focus-visible ring.
+		for _, bad := range []string{"outline-none", "focus:outline-none"} {
+			if slices.Contains(fields, bad) {
+				t.Errorf("crumb link %s must not carry %q", link, bad)
+			}
+		}
+	}
+	if !strings.Contains(got, `<li class="text-ink" aria-current="page">Timeline</li>`) {
+		t.Errorf("current crumb must stay plain text: %s", got)
 	}
 }
 

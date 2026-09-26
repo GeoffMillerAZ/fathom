@@ -166,13 +166,13 @@ func valuePlain(v console.Value[int]) string {
 	return fmtThousands(v.V)
 }
 
-// renderKitTable renders the kit's table.Table with scope="col" on every
-// header cell (design §2: tables use th scope). The pinned kit template
-// writes <th> without scope and only ever inside <thead>, so the header
-// cells are exactly its <th> elements; the kit defect is recorded in
-// docs/app-kit.md for return upstream.
+// renderKitTable renders the kit's table.Table (a templ component) to a
+// string. Since mirror d9dd789 the kit itself writes scope="col" on every
+// header cell and makes its scroll wrapper the containing block of its
+// sr-only header labels (FATHOM-F0-KIT-01/02, returned from wave F0), so
+// fathom no longer patches either.
 func renderKitTable(p table.TableParams) string {
 	var buf bytes.Buffer
 	_ = table.Table(p).Render(context.Background(), &buf)
-	return strings.ReplaceAll(buf.String(), "<th ", `<th scope="col" `)
+	return buf.String()
 }

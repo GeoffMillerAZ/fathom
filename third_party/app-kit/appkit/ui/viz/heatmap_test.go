@@ -108,3 +108,26 @@ func TestHeatmap_Deterministic(t *testing.T) {
 		t.Errorf("heatmap is non-deterministic")
 	}
 }
+
+// legacyHeatmapFixture is the pre-truth-state call shape: NaN holes, a ragged
+// row, labels, values and a frontier. Its golden was generated from the renderer
+// BEFORE truth states existed, so it proves existing callers get identical bytes.
+func legacyHeatmapFixture() string {
+	return Heatmap([][]float64{
+		{0, 2.5, 5, math.NaN()},
+		{1, math.NaN(), 7.25, 10},
+		{3, 4},
+	}, HeatmapOptions{
+		Role:       "info",
+		XLabels:    []string{"q1", "q2", "q3", "q4"},
+		YLabels:    []string{"north", "south", "<east>"},
+		ShowValues: true,
+		Frontier:   []float64{0.5, 1, math.NaN(), 2},
+		AriaLabel:  "legacy coverage",
+	})
+}
+
+func TestHeatmap_LegacyGolden(t *testing.T) {
+	assertGolden(t, legacyHeatmapFixture(), "heatmap_legacy")
+	assertGolden(t, Heatmap([][]float64{{0, 0.5}, {1, 0.25}}, HeatmapOptions{}), "heatmap_default")
+}

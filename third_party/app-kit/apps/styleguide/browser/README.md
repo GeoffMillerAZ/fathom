@@ -27,7 +27,7 @@ Use `node apps/styleguide/browser/usability.mjs --zoom=200` for the normal check
 plus an actual200% Chrome Appearance lane in a separate0700 temporary profile.
 It checks native keyboard repair/correction/source/reset and expanded-state geometry;
 captures are viewport-only, not full-page zoom images. Default invocation stays unchanged.
-Use `node apps/styleguide/browser/components_reflow.mjs` for the exact17-component
+Use `node apps/styleguide/browser/components_reflow.mjs` for the exact19-component
 narrow specimen inventory, figure/SVG bounds and selected computed paint across six
 viewport/scheme cases. It disables page scripts; screenshots need separate review.
 APPKIT_BROWSER_VARIANT labels a run; it never changes expected application behavior.

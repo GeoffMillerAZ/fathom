@@ -49,6 +49,8 @@ tasks:
       - go tool cue vet -c -d '#Catalog' appkit/catalog/schema.cue appkit/catalog/catalog.cue
       - go tool cue vet -c -d '#Inventory' internal/qualityplan/schema.cue internal/qualityplan/inventory.cue
       - node --test appkit/ui/appearance/appearance_test.mjs
+      - node --test appkit/ui/palette/palette_test.mjs
+      - node --test appkit/ui/live/live_test.mjs
       - node --test apps/gallery/shell_demo_test.mjs
       - node --test apps/gallery/shell_live_test.mjs
       - node --test apps/gallery/shell_live_datastar_test.mjs

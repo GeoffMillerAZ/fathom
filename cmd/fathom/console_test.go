@@ -206,7 +206,7 @@ func TestConsoleShell_GroupsBreadcrumbsThemeSkipLink(t *testing.T) {
 		t.Error("the current page must be marked in the sidebar")
 	}
 	// Breadcrumbs, question, meta, verb chip, actions.
-	for _, want := range []string{`aria-label="Breadcrumb"`, `<a href="/" class="hover:text-ink">Observatory</a>`, `aria-current="page">Fleet</li>`,
+	for _, want := range []string{`aria-label="Breadcrumb"`, `<a href="/" class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-sm hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">Observatory</a>`, `aria-current="page">Fleet</li>`,
 		"How is every project doing?", "3 projects · generated now", `data-verb-chip`, `fathom fleet report --json`,
 		`data-console-copy="fathom fleet report --json"`, `<a href="/brief">Brief</a>`, `data-console-heading`} {
 		if !strings.Contains(got, want) {
