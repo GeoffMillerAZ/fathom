@@ -73,6 +73,7 @@ var verbTable = []verb{
 	{Name: "rate", Summary: "Rate this session 1-5: the OUTCOME half of the A/B criterion (fewer tokens is not a win if you got less done)"},
 	{Name: "arm", Summary: "A/B counterfactual arm (law 12): off --for D --sessions N [--note ...] | on"},
 	{Name: "narrate", Summary: "Self-expiring story mode: on --for D --sessions N [--note ...] | off"},
+	{Name: "assess", Summary: "Priced, explicit, off by default: a model judges a unit's on-disk work (typed questions, never the transcript): [--session S] [--interventions] [--dry-run] [--json] | spend"},
 	{Name: "retro", Summary: "Did the firings help? Join a session's interventions to outcomes: [--session S | latest stamped] [--write] [--json]"},
 	{Name: "brief", Summary: "Write the shareable markdown value brief (honesty covenant included) to ~/.fathom/briefs, or --print"},
 	{Name: "thread", Summary: "Continuity threads: brief | note | point | list | close | promote | handoff — the work, not the session (vision 21)"},

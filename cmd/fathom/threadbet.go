@@ -35,9 +35,12 @@ type threadBetReport struct {
 	ResumedAllInMed *int `json:"resumed_allin_median,omitempty"`
 	// BriefBytesTotal is what continuity has actually SPENT — a ledger
 	// sum, not an estimate (the owner's token rule).
-	BriefBytesTotal int    `json:"brief_bytes_total"`
-	Verdict         string `json:"verdict"` // collecting | met | not-met
-	Detail          string `json:"detail"`
+	BriefBytesTotal int `json:"brief_bytes_total"`
+	// IsolatedSpendRows counts rows written inside a `fathom assess` judge
+	// (IR-4): never a cohort unit, counted so the exclusion is visible.
+	IsolatedSpendRows int    `json:"isolated_spend_rows,omitempty"`
+	Verdict           string `json:"verdict"` // collecting | met | not-met
+	Detail            string `json:"detail"`
 }
 
 // threadBetCheck folds deduped ledger rows into the two cohorts.
@@ -60,6 +63,12 @@ func threadBetCheck(rows []sessionLedgerEntry) threadBetReport {
 		return (*e.TokensIn + *e.TokensOut + cache) / *e.TurnCount, true
 	}
 	for _, e := range rows {
+		if spendIsolatedRow(e) {
+			// IR-4 (pre-registered 2026-09-25): judging spend is never a
+			// bet unit, and its brief bytes were never continuity's spend.
+			rep.IsolatedSpendRows++
+			continue
+		}
 		rep.BriefBytesTotal += e.BriefBytes
 		switch {
 		case (e.SessionSource == "startup" || e.SessionSource == "clear") && e.BriefInjected:

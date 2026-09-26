@@ -179,6 +179,8 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return cmdFlywheel(args[1:], stdout, stderr)
 	case "rate":
 		return cmdRate(args[1:], stdout, stderr)
+	case "assess":
+		return cmdAssess(args[1:], stdout, stderr)
 	case "retro":
 		return cmdRetro(args[1:], stdout, stderr)
 	case "thread":

@@ -191,6 +191,22 @@ func TestSiteAllowed_Allowlist(t *testing.T) {
 		}
 	})
 
+	t.Run("assess is a known site (ADR-046): the priced lane speaks only through the port", func(t *testing.T) {
+		if decide.SiteAssess != "assess" {
+			t.Errorf("SiteAssess = %q, want \"assess\" (the [decide] sites vocabulary)", decide.SiteAssess)
+		}
+		found := false
+		for _, s := range decide.AllSites {
+			found = found || s == decide.SiteAssess
+		}
+		if !found {
+			t.Error("AllSites does not list assess — doctor could never name it as blocked")
+		}
+		if decide.SiteAllowed(config.Decide{Sites: []string{decide.SiteRoute}}, decide.SiteAssess) {
+			t.Error("a narrowed allowlist without assess must refuse it")
+		}
+	})
+
 	t.Run("a nil or empty Sites allows nothing (fail-closed egress, never fail-open)", func(t *testing.T) {
 		if decide.SiteAllowed(config.Decide{}, decide.SiteRoute) {
 			t.Error("SiteAllowed with a zero-value Decide{} (nil Sites) = true, want false")

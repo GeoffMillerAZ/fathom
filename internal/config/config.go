@@ -178,8 +178,9 @@ type Decide struct {
 	// port"): the site names allowed to send a decision.Question off-host
 	// through this Decide port — "route" (POST /route), "compile_prefilter"
 	// (the compile pre-filter, DP-9), "obligations_rerank" (the obligations
-	// within-tier re-rank, DP-7/DP-8) and "certify_suggest" (`fathom certify
-	// suggest`, TC-24). A site not listed here makes NO call at all,
+	// within-tier re-rank, DP-7/DP-8), "certify_suggest" (`fathom certify
+	// suggest`, TC-24) and "assess" (`fathom assess`, ADR-046 — also gated
+	// by the default-off assess capability). A site not listed here makes NO call at all,
 	// regardless of Provider — internal/decide.SiteAllowed is the single
 	// gate every call site consults. A present-but-empty list (`sites = []`)
 	// disables every site; an absent key (the common case) leaves the
@@ -217,7 +218,10 @@ var DefaultDecide = Decide{
 	// every existing site's behaviour unchanged — Provider "none" still
 	// makes no call either way, and a real provider calls every site it
 	// always called before Sites existed. A repo narrows this explicitly.
-	Sites: []string{"route", "compile_prefilter", "obligations_rerank", "certify_suggest"},
+	// "assess" (ADR-046) joins the default like every other site: the
+	// provider is the egress arm, and assess additionally needs its own
+	// default-off capability and an explicit invocation before it spends.
+	Sites: []string{"route", "compile_prefilter", "obligations_rerank", "certify_suggest", "assess"},
 }
 
 // Tests configures vision 33 / ADR-043 stage 0's test-evidence ingest

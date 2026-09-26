@@ -103,6 +103,37 @@ func cmdRetro(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
+	m, ok := buildRetroModel(root, sid, projBeats)
+	if !ok {
+		fmt.Fprintf(stdout, "no firings stamped with session %s for %s.\n", sid, root)
+		return 0
+	}
+
+	if *asJSON {
+		enc := json.NewEncoder(stdout)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(m); err != nil {
+			fmt.Fprintf(stderr, "error: %v\n", err)
+			return 1
+		}
+	} else {
+		renderRetro(stdout, m)
+	}
+	if *write {
+		if p, err := writeRetroArtifact(root, m); err != nil {
+			fmt.Fprintf(stderr, "warning: could not write retro artifact: %v\n", err)
+		} else {
+			fmt.Fprintf(stdout, "\nretro written: %s\n", p)
+		}
+	}
+	return 0
+}
+
+// buildRetroModel is the retro's join, shared by `fathom retro` and IR-3's
+// intervention lane (`fathom assess --interventions`), so the priced lane
+// judges exactly the rows the mechanical retro reports — never a second,
+// drifting derivation. ok=false when no beat carries the session stamp.
+func buildRetroModel(root, sid string, projBeats []retroBeat) (retroModel, bool) {
 	var inSession []retroBeat
 	for _, b := range projBeats {
 		if b.Meta["session"] == sid {
@@ -110,8 +141,7 @@ func cmdRetro(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	if len(inSession) == 0 {
-		fmt.Fprintf(stdout, "no firings stamped with session %s for %s.\n", sid, root)
-		return 0
+		return retroModel{}, false
 	}
 	sort.Slice(inSession, func(i, j int) bool { return inSession[i].At.Before(inSession[j].At) })
 	start, end := inSession[0].At, inSession[len(inSession)-1].At
@@ -188,25 +218,7 @@ func cmdRetro(args []string, stdout, stderr io.Writer) int {
 			m.Firings = append(m.Firings, retroFiringOutcome{Channel: "custodian", Outcome: outcome})
 		}
 	}
-
-	if *asJSON {
-		enc := json.NewEncoder(stdout)
-		enc.SetIndent("", "  ")
-		if err := enc.Encode(m); err != nil {
-			fmt.Fprintf(stderr, "error: %v\n", err)
-			return 1
-		}
-	} else {
-		renderRetro(stdout, m)
-	}
-	if *write {
-		if p, err := writeRetroArtifact(root, m); err != nil {
-			fmt.Fprintf(stderr, "warning: could not write retro artifact: %v\n", err)
-		} else {
-			fmt.Fprintf(stdout, "\nretro written: %s\n", p)
-		}
-	}
-	return 0
+	return m, true
 }
 
 func renderRetro(w io.Writer, m retroModel) {

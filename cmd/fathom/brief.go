@@ -393,6 +393,9 @@ func renderBriefMD(m observatoryModel) string {
 	if imp.UncleanArmRows > 0 {
 		fmt.Fprintf(&b, "- **Excluded from the comparison: %s** — %s\n", fmtThousands(imp.UncleanArmRows), imp.UncleanArmNote)
 	}
+	if imp.IsolatedSpendRows > 0 {
+		fmt.Fprintf(&b, "- **Excluded as judging spend: %s** — %s\n", fmtThousands(imp.IsolatedSpendRows), imp.IsolatedSpendNote)
+	}
 
 	switch {
 	case imp.TokensOffSessions == 0:

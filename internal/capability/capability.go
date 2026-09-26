@@ -121,6 +121,10 @@ type Probe struct {
 	LedgerSessions    int
 	AgentSurfaceTools int
 	AgentSchemaBytes  int
+	// AssessRuns is how many assess runs the assess ledger holds for this
+	// repository (ADR-046) — the only observable evidence the priced lane
+	// has ever been used here.
+	AssessRuns int
 }
 
 // Capability is one registered, toggleable thing.
