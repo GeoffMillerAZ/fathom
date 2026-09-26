@@ -129,6 +129,11 @@ func ResolveCallLog(in CallLogInputs) ResolvedCallLog {
 // DaemonRecord is what a serve-http process records about itself when it
 // starts, so a CLI verb run from any directory can find the log the daemon
 // actually writes. Names and paths only.
+//
+// Schema 2 (ADR-047 §10.2, RT-166) lives at ~/.fathom/daemon/<id>/record.json
+// and adds the fields `fathom daemon ps` joins with the live census; a
+// schema-1 record (the legacy ~/.fathom/daemons/<host>-<port>.json) still
+// reads, with those fields empty.
 type DaemonRecord struct {
 	SchemaVersion int    `json:"schema_version"`
 	Addr          string `json:"addr"`
@@ -137,10 +142,26 @@ type DaemonRecord struct {
 	Store         string `json:"store,omitempty"`
 	BinaryCommit  string `json:"binary_commit,omitempty"`
 	StartedAt     string `json:"started_at"`
+
+	ID             string `json:"id,omitempty"`               // the record's directory name: label when managed, else addr-<port>-<pid>
+	Managed        bool   `json:"managed,omitempty"`          // launchd/systemd-owned (§10.1)
+	PPID           int    `json:"ppid,omitempty"`             // parent at start
+	Exe            string `json:"exe,omitempty"`              // resolved executable path
+	ExeInode       uint64 `json:"exe_inode,omitempty"`        // its inode at start (a replaced binary changes it)
+	CmdlineSHA     string `json:"cmdline_sha,omitempty"`      // sha256 of the argv, hex
+	IdleExit       string `json:"idle_exit,omitempty"`        // Go duration; "" = none (managed)
+	TTL            string `json:"ttl,omitempty"`              // Go duration; "" = none (managed)
+	HeartbeatAt    string `json:"heartbeat_at,omitempty"`     // rewritten every 60 s
+	LastActivityAt string `json:"last_activity_at,omitempty"` // the last request, as of the heartbeat
+	StateRoot      string `json:"state_root,omitempty"`       // the ~/.fathom/daemon/<id> directory
 }
 
 // DaemonRecordSchemaVersion is the record's wire version.
-const DaemonRecordSchemaVersion = 1
+const DaemonRecordSchemaVersion = 2
+
+// daemonRecordLegacySchema is the schema-1 record, still read for one
+// release (RT-166).
+const daemonRecordLegacySchema = 1
 
 // Note renders the record's provenance for ResolvedCallLog.Note.
 func (r DaemonRecord) Note() string {
@@ -217,8 +238,8 @@ func ReadDaemonRecord(path string) (DaemonRecord, error) {
 	if err := json.Unmarshal(raw, &rec); err != nil {
 		return DaemonRecord{}, fmt.Errorf("console: daemon record %s: %w", path, err)
 	}
-	if rec.SchemaVersion != DaemonRecordSchemaVersion {
-		return DaemonRecord{}, fmt.Errorf("console: daemon record %s: schema_version %d, want %d", path, rec.SchemaVersion, DaemonRecordSchemaVersion)
+	if rec.SchemaVersion != DaemonRecordSchemaVersion && rec.SchemaVersion != daemonRecordLegacySchema {
+		return DaemonRecord{}, fmt.Errorf("console: daemon record %s: schema_version %d, want %d or %d", path, rec.SchemaVersion, daemonRecordLegacySchema, DaemonRecordSchemaVersion)
 	}
 	return rec, nil
 }
