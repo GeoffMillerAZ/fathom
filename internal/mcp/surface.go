@@ -154,6 +154,18 @@ func WithOrigin(ctx context.Context, origin string) context.Context {
 	return context.WithValue(ctx, originKey{}, origin)
 }
 
+// OriginConsole is the origin the Observatory console stamps on its own
+// reads of the daemon (the model's list_services, the fleet page's registry
+// read): the console reading itself is not usage. The call log records the
+// row with this origin, so it stays auditable, and every usage reader —
+// tool tables, call totals, fleet and impact counts, the in-memory surface
+// traffic server_stats reports — leaves it out (IsConsoleRead).
+const OriginConsole = "console"
+
+// IsConsoleRead reports whether a call-log row's origin is the console
+// reading itself, never usage.
+func IsConsoleRead(origin string) bool { return origin == OriginConsole }
+
 // originFrom extracts the caller-declared origin ("" = agent/unknown).
 func originFrom(ctx context.Context) string {
 	o, _ := ctx.Value(originKey{}).(string)

@@ -100,6 +100,16 @@ const consoleFixtureLedger = `{"schema_version":1,"session_id":"s-1","arm":"on",
 
 func newConsoleFixture(t *testing.T) *consoleFixture {
 	t.Helper()
+	return newConsoleFixtureOpts(t, consoleFixtureOpts{})
+}
+
+// consoleFixtureOpts varies the fixture. LogCalls gives the daemon's MCP
+// server a call logger appending to the fixture's call log — the log its
+// pages read — as serve-http's --call-log does.
+type consoleFixtureOpts struct{ LogCalls bool }
+
+func newConsoleFixtureOpts(t *testing.T, o consoleFixtureOpts) *consoleFixture {
+	t.Helper()
 	dir := hermeticObsEnv(t)
 	f := &consoleFixture{dir: dir, now: time.Date(2026, 9, 25, 12, 0, 0, 0, time.UTC), callRows: 5, anonCalls: 2}
 	f.callLog = filepath.Join(dir, "mcp-calls.jsonl")
@@ -124,7 +134,16 @@ func newConsoleFixture(t *testing.T) *consoleFixture {
 	f.deps = newConsoleDeps(c, f.ts.URL, f.now)
 	f.deps.now = func() time.Time { return f.now }
 	// serve-http's own server shape: the fleet backend answers list_services.
-	srv := mcp.NewServerWithFleetAndLogger(c, &fleetAdapter{c: c, log: testDiscardLogger()}, nil)
+	var logger *mcp.CallLogger
+	if o.LogCalls {
+		logFile, err := os.OpenFile(f.callLog, os.O_APPEND|os.O_WRONLY, 0o644)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { logFile.Close() })
+		logger = mcp.NewCallLogger(logFile)
+	}
+	srv := mcp.NewServerWithFleetAndLogger(c, &fleetAdapter{c: c, log: testDiscardLogger()}, logger)
 	h = newHTTPHandlerDeps(srv, c, strings.TrimPrefix(f.ts.URL, "http://"), nil, f.deps)
 	t.Setenv("FATHOM_HTTP", f.ts.URL)
 

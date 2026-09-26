@@ -320,13 +320,26 @@ func readCallLog(path string) (entries []adoptionCallEntry, skippedMalformed int
 // Open errors retain the existing tccWedgeHint behavior; scanner failures
 // are reported without inferring a permissions cause. An incomplete scan
 // discards prefix rows, never presenting partial data as a complete read.
+//
+// Rows the console stamped with its own origin (mcp.OriginConsole: the
+// Observatory reading the registry to render a page) are dropped here, so
+// no usage reader — tool tables, call totals, fleet, impact, flywheel,
+// doctor, research — counts the console reading itself as traffic;
+// callLogReadCounting reports how many.
 func classifyCallLogRead(path string) (entries []adoptionCallEntry, skippedMalformed int, err error) {
+	entries, skippedMalformed, _, err = callLogReadCounting(path)
+	return entries, skippedMalformed, err
+}
+
+// callLogReadCounting is classifyCallLogRead that also counts the console's
+// own reads it left out, for a figure that names them (console.CallTotal).
+func callLogReadCounting(path string) (entries []adoptionCallEntry, skippedMalformed, consoleReads int, err error) {
 	f, openErr := os.Open(path)
 	if openErr != nil {
 		if os.IsNotExist(openErr) {
-			return nil, 0, openErr // honest "no log yet"
+			return nil, 0, 0, openErr // honest "no log yet"
 		}
-		return nil, 0, fmt.Errorf("%w%s", openErr, tccWedgeHint(path))
+		return nil, 0, 0, fmt.Errorf("%w%s", openErr, tccWedgeHint(path))
 	}
 	defer f.Close()
 
@@ -345,14 +358,18 @@ func classifyCallLogRead(path string) (entries []adoptionCallEntry, skippedMalfo
 			skippedMalformed++
 			continue
 		}
+		if mcp.IsConsoleRead(e.Origin) {
+			consoleReads++
+			continue
+		}
 		entries = append(entries, e)
 	}
 	if scanErr := sc.Err(); scanErr != nil {
 		// Partial counts are not a complete observation. Discard even valid
 		// prefix rows so callers cannot report a truncated file as measured.
-		return nil, 0, fmt.Errorf("read call log %s: %w", path, scanErr)
+		return nil, 0, 0, fmt.Errorf("read call log %s: %w", path, scanErr)
 	}
-	return entries, skippedMalformed, nil
+	return entries, skippedMalformed, consoleReads, nil
 }
 
 // registeredToolNames returns the sorted names of every tool the fathom

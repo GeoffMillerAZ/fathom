@@ -14,7 +14,7 @@ func init() {
 		ID: "impact", Route: "/impact", Href: "/impact", Group: "Evidence", Order: 0, Nav: true,
 		Title:    "Impact",
 		Question: "Has fathom helped, measured honestly, with ranges and arm counts?",
-		Shows:    []console.MetricID{console.MetricSessions, console.MetricObservations},
+		Shows:    []console.MetricID{console.MetricSessions, console.MetricObservations, console.MetricAgentTools},
 		Live:     []string{"sessions", "plans"},
 		Build:    buildImpactPage,
 	})

@@ -225,10 +225,16 @@ func verifyRanSessions(note string) int {
 	return n
 }
 
-// renderBriefMD is the pure rendering core (OB-7's test surface).
+// renderBriefMD is the pure rendering core (OB-7's test surface). Its call
+// total and the agent surface's tool count are the shared projections every
+// console page shows (consoleModelMetrics, OC-9), never a sum or a literal of
+// its own: the F0 proof found the brief calling the attributed subset "the
+// call log" and the 25-tool surface "16-tool".
 func renderBriefMD(m observatoryModel) string {
 	imp := m.Impact
 	f := foldBriefFleet(m)
+	shared := consoleModelMetrics(m)
+	calls, tools := shared[console.MetricCalls], shared[console.MetricAgentTools]
 	var b strings.Builder
 
 	fmt.Fprintf(&b, "# fathom value brief — %s\n\n", m.GeneratedAt)
@@ -241,8 +247,8 @@ func renderBriefMD(m observatoryModel) string {
 	if m.DegradedNote != "" {
 		b.WriteString("**Scale:** " + m.DegradedNote + "\n\n")
 	} else {
-		fmt.Fprintf(&b, "**Scale:** %s repositories indexed, %s symbols, %s recorded tool calls (%s of them through the curated 16-tool agent surface).\n\n",
-			fmtThousands(f.Services), fmtThousands(f.Symbols), fmtThousands(f.Calls), fmtThousands(f.AgentCalls))
+		fmt.Fprintf(&b, "**Scale:** %s repositories indexed, %s symbols, %s recorded tool calls in the call log (%s of them attributed to an indexed repository, %s of those through the curated agent surface%s).\n\n",
+			fmtThousands(f.Services), fmtThousands(f.Symbols), valuePlain(calls), fmtThousands(f.Calls), fmtThousands(f.AgentCalls), briefSurfaceSize(tools))
 	}
 
 	fmt.Fprintf(&b, "**What it demonstrably did** over %s coding sessions", fmtThousands(imp.LedgerSessions))
@@ -289,7 +295,11 @@ func renderBriefMD(m observatoryModel) string {
 	} else {
 		fmt.Fprintf(&b, "- **Repositories indexed:** %s, holding %s symbols (functions, types, and the edges between them)\n", fmtThousands(f.Services), fmtThousands(f.Symbols))
 		fmt.Fprintf(&b, "- **Wiring grade:** %s of %s repositories are grade A (indexed, hooks installed, rules present). A repository below A still answers queries — it just cannot act before an edit.\n", fmtThousands(f.GradeA), fmtThousands(f.Services))
-		fmt.Fprintf(&b, "- **Tool calls recorded:** %s in the current call log; %s of those came through the curated agent surface\n", fmtThousands(f.Calls), fmtThousands(f.AgentCalls))
+		callsText := valuePlain(calls) + " in the current call log"
+		if calls.Known() && calls.Denominator != "" {
+			callsText += " (" + calls.Denominator + ")"
+		}
+		fmt.Fprintf(&b, "- **Tool calls recorded:** %s; %s of the %s attributed to an indexed repository came through the curated agent surface\n", callsText, fmtThousands(f.AgentCalls), fmtThousands(f.Calls))
 		if len(m.Services) > 0 {
 			var top []string
 			for i, s := range m.Services {
@@ -302,9 +312,11 @@ func renderBriefMD(m observatoryModel) string {
 				b.WriteString("- **Busiest repositories** (calls): " + strings.Join(top, " · ") + "\n")
 			}
 		}
-		if m.AgentSurfaceTools > 0 {
+		if tools.Known() {
 			fmt.Fprintf(&b, "- **Standing cost:** the agent surface is %s tools, %s bytes of tool schema that every connected session carries before doing any work. This is fathom's fixed overhead and it is counted here honestly.\n",
-				fmtThousands(m.AgentSurfaceTools), fmtThousands(m.AgentSchemaBytes))
+				fmtThousands(tools.V), fmtThousands(m.AgentSchemaBytes))
+		} else {
+			fmt.Fprintf(&b, "- **Standing cost:** not measured (%s).\n", tools.Reason)
 		}
 		b.WriteString("\n**Reading:** usage is real and concentrated. Traffic is not evidence of value on its own — the sections below are.\n")
 	}
@@ -508,4 +520,13 @@ func renderBriefMD(m observatoryModel) string {
 	b.WriteString("\n---\n\n")
 	b.WriteString("Narrative story rows, when captured, are a lens over mechanism-labeled events. They are deliberately not quoted as evidence in this brief (law 14). Nothing in this file was sent anywhere — fathom wrote it locally and stopped.\n")
 	return b.String()
+}
+
+// briefSurfaceSize names the agent surface's size from the shared metric,
+// or nothing when the surface did not answer.
+func briefSurfaceSize(tools console.Value[int]) string {
+	if !tools.Known() {
+		return ""
+	}
+	return ", a " + fmtThousands(tools.V) + "-tool surface"
 }

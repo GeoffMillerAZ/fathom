@@ -239,7 +239,9 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 	ledgerData, ledgerErr := os.ReadFile(ledgerPath)
 	m.sessions = console.SessionCount(ledgerPath, ledgerData, ledgerErr).WithAsOf(now)
 
-	hc := &http.Client{Timeout: 5 * time.Second}
+	// The model's reads of the daemon (list_services) carry the console's
+	// origin: the console reading itself is never usage (mcp.OriginConsole).
+	hc := consoleRPCClient(5 * time.Second)
 	svcs, err := fetchServices(hc, baseURL)
 	if err != nil {
 		m.DegradedNote = "service registry unreachable (" + err.Error() + ") — fleet tiles are not measured, never empty-as-healthy"
@@ -259,9 +261,12 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 		// (ENOENT) apart from a log that is right there and unreadable (a
 		// wedged TCC verdict, a permission defect); both are absences the
 		// tiles must name, but only the second is a defect worth a remedy.
-		entries, _, callLogErr := classifyCallLogRead(callLogPath)
+		entries, _, consoleReads, callLogErr := callLogReadCounting(callLogPath)
 		callLogRead := callLogErr == nil
 		m.callFacts = callLogFactsFor(resolvedLog, entries, callLogErr)
+		if callLogRead {
+			m.callFacts.ConsoleReads = consoleReads
+		}
 		switch {
 		case callLogRead:
 		case callLogPath == "":

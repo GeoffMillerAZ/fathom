@@ -645,7 +645,7 @@ func TestConsoleMetricsAgreeAcrossPages(t *testing.T) {
 			t.Errorf("page %s JSON carries %d metrics, declares %d", p.ID, len(env.Metrics), len(p.Shows))
 		}
 	}
-	for _, id := range []console.MetricID{console.MetricServices, console.MetricSymbols, console.MetricCalls, console.MetricSessions, console.MetricObservations} {
+	for _, id := range []console.MetricID{console.MetricServices, console.MetricSymbols, console.MetricCalls, console.MetricSessions, console.MetricObservations, console.MetricAgentTools} {
 		pages := byMetric[string(id)]
 		if len(pages) == 0 {
 			t.Errorf("metric %s is shown on no page", id)
@@ -707,6 +707,33 @@ func TestConsoleMetricsAgreeAcrossPages(t *testing.T) {
 	_, _, fleet := f.get(t, "/fleet")
 	if got := tileValue(t, fleet, "tool calls (log)"); got != fmtThousands(f.callRows) {
 		t.Errorf("fleet tile shows %q calls, the metric says %d", got, f.callRows)
+	}
+	// The brief (the F0 proof's first defect) reads the call total and the
+	// agent surface's size through the same projections: its "tool calls in
+	// the call log" is the shared total, the attributed sum is named as a
+	// subset, and the surface size is the measured tool count — never a
+	// literal.
+	tools := value(console.MetricAgentTools)
+	if tools.State != console.StatePresent || tools.V == 0 {
+		t.Fatalf("surface.agent_tools = %+v, want the fixture's measured agent surface", tools)
+	}
+	var brief briefModel
+	if err := json.Unmarshal(f.pageJSON(t, "/brief").Model, &brief); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		fmtThousands(f.callRows) + " recorded tool calls in the call log (",
+		"**Tool calls recorded:** " + fmtThousands(f.callRows) + " in the current call log (every row in the log;",
+		"attributed to an indexed repository",
+		", a " + fmtThousands(tools.V) + "-tool surface)",
+		"the agent surface is " + fmtThousands(tools.V) + " tools",
+	} {
+		if !strings.Contains(brief.Markdown, want) {
+			t.Errorf("the brief must read the shared metrics: missing %q in\n%s", want, brief.Markdown)
+		}
+	}
+	if strings.Contains(brief.Markdown, "16-tool") {
+		t.Error("the brief still names a literal surface size")
 	}
 }
 

@@ -16,7 +16,7 @@ func init() {
 		ID: "brief", Route: "/brief", Href: "/brief", Group: "Evidence", Order: 20, Nav: true,
 		Title:    "Brief",
 		Question: "What would I show someone who has never heard of fathom?",
-		Shows:    []console.MetricID{console.MetricObservations},
+		Shows:    []console.MetricID{console.MetricCalls, console.MetricObservations, console.MetricAgentTools},
 		Formats:  []string{"md"},
 		Live:     []string{"index", "sessions", "plans"},
 		Build:    buildBriefPage,

@@ -7,7 +7,6 @@ package main
 // as the sortable fleet table (OC-19, OC-20).
 
 import (
-	"net/http"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/console"
@@ -36,8 +35,8 @@ func buildFleetPage(cr *consoleRequest) (consoleOut, error) {
 	// The verb section is computed for JSON only: the fleet report walks
 	// every repository and is not on the HTML render path.
 	if wantsJSON(cr.r) {
-		hc := &http.Client{Timeout: 5 * time.Second}
-		rep, err := buildFleetReport(hc, cr.deps.selfURL, fleetReportNow())
+		// The page's registry read is the console reading itself.
+		rep, err := buildFleetReport(consoleRPCClient(5*time.Second), cr.deps.selfURL, fleetReportNow())
 		if err != nil {
 			out.Sections = map[string]any{"fathom fleet report --json": map[string]string{"error": err.Error()}}
 		} else {

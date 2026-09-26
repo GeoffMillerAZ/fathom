@@ -33,6 +33,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/internal/mcp"
 )
 
 // servingCallLog is the running daemon's own --call-log, absolute. It is
@@ -260,4 +261,27 @@ func (c callLogJSON) MarshalJSON() ([]byte, error) {
 // never a cwd-relative legacy path the readers no longer read.
 func reviewCallLogPath(flag, service string) string {
 	return resolveConsoleCallLog(flag, service).Path
+}
+
+// consoleOriginTransport stamps every request with the console's origin
+// (mcp.OriginConsole), overriding any process origin: a read the console
+// makes to render a page is the console reading itself, never usage.
+type consoleOriginTransport struct{ base http.RoundTripper }
+
+func (t consoleOriginTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	r = r.Clone(r.Context())
+	r.Header.Set(originHeaderName, mcp.OriginConsole)
+	base := t.base
+	if base == nil {
+		base = http.DefaultTransport
+	}
+	return base.RoundTrip(r)
+}
+
+// consoleRPCClient is the HTTP client for the console's own reads of the
+// daemon (the observatory model's registry read, the fleet page's report):
+// the call log records them with the console's origin, and every usage
+// reader leaves them out (classifyCallLogRead).
+func consoleRPCClient(timeout time.Duration) *http.Client {
+	return &http.Client{Timeout: timeout, Transport: consoleOriginTransport{}}
 }

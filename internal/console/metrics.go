@@ -26,6 +26,10 @@ const (
 	MetricCalls        MetricID = "calls.total"
 	MetricSessions     MetricID = "sessions.total"
 	MetricObservations MetricID = "observations.open"
+	// MetricAgentTools is how many tools the agent surface serves — the
+	// brief's "standing cost" and the home page's context tax read it, and
+	// the brief once printed a literal "16-tool" beside it (F0 proof).
+	MetricAgentTools MetricID = "surface.agent_tools"
 )
 
 // Metrics is a page's shared-metric section, keyed by ID (JSON orders the
@@ -154,6 +158,10 @@ type CallLogFacts struct {
 	// AbsentReason, when set, is why no read of the log stands behind this
 	// snapshot at all (the model's own read-state note); it wins.
 	AbsentReason string
+	// ConsoleReads is how many rows the console stamped with its own origin
+	// (the Observatory reading the registry to render a page): logged,
+	// never counted as usage, named in the denominator.
+	ConsoleReads int
 }
 
 // CallTotal is every row in the resolved call log — attributed or not. The
@@ -175,7 +183,23 @@ func CallTotal(c CallLogFacts) Value[int] {
 	case c.ReadErr != "":
 		return Errored[int]("call log unreadable: " + c.ReadErr).WithSource(source)
 	}
-	return Measured(c.Rows, source).WithDenominator("every row in the log; " + thousands(c.Rows-c.Unattributed) + " attributed to a service, " + thousands(c.Unattributed) + " unattributed")
+	denom := "every row in the log; " + thousands(c.Rows-c.Unattributed) + " attributed to a service, " + thousands(c.Unattributed) + " unattributed"
+	if c.ConsoleReads > 0 {
+		denom += "; " + thousands(c.ConsoleReads) + " console page reads excluded (not usage)"
+	}
+	return Measured(c.Rows, source).WithDenominator(denom)
+}
+
+// AgentSurfaceTools is how many tools the agent surface serves, from one
+// tools/list on /rpc/agent: tools and schemaBytes are what it returned. A
+// surface that did not answer (both zero) is absent — never a 0-tool
+// surface.
+func AgentSurfaceTools(tools, schemaBytes int) Value[int] {
+	const source = "tools/list on the daemon's /rpc/agent surface"
+	if tools == 0 && schemaBytes == 0 {
+		return Absent[int]("the agent surface did not answer tools/list").WithSource(source)
+	}
+	return Measured(tools, source).WithDenominator(thousands(schemaBytes) + " bytes of tool schema every connected session carries")
 }
 
 // SessionCount is the number of distinct sessions in the session ledger —

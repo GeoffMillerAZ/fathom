@@ -57,3 +57,28 @@ not json
 		t.Errorf("DistinctSessions = %d sessions from %d rows, want 5 from 6", sessions, rows)
 	}
 }
+
+// TestAgentSurfaceTools_AbsentNeverZero: a surface that did not answer
+// tools/list is not measured — never a 0-tool surface — and a measured
+// count names its schema bytes.
+func TestAgentSurfaceTools_AbsentNeverZero(t *testing.T) {
+	if v := console.AgentSurfaceTools(0, 0); v.State != console.StateAbsent || v.Reason == "" {
+		t.Errorf("unanswered surface = %+v, want absent with a reason", v)
+	}
+	if v := console.AgentSurfaceTools(25, 18117); v.State != console.StatePresent || v.V != 25 || !strings.Contains(v.Denominator, "18,117 bytes") {
+		t.Errorf("measured surface = %+v", v)
+	}
+}
+
+// TestCallTotal_NamesConsoleReadsExcluded: the console's own reads are
+// left out of the total and named in its denominator.
+func TestCallTotal_NamesConsoleReadsExcluded(t *testing.T) {
+	log := console.ResolvedCallLog{Path: "/l", Rule: console.RuleDaemon, Note: "n"}
+	v := console.CallTotal(console.CallLogFacts{Log: log, Rows: 5, Unattributed: 2, ConsoleReads: 11})
+	if v.V != 5 || !strings.Contains(v.Denominator, "11 console page reads excluded (not usage)") {
+		t.Errorf("call total = %+v", v)
+	}
+	if v := console.CallTotal(console.CallLogFacts{Log: log, Rows: 5}); strings.Contains(v.Denominator, "console") {
+		t.Errorf("no console reads, no mention: %+v", v)
+	}
+}

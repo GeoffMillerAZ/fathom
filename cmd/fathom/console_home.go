@@ -13,7 +13,7 @@ func init() {
 		ID: "home", Route: "/{$}", Href: "/", Group: "Now", Order: 0, Nav: true,
 		Title: "Now", NavLabel: "Home",
 		Question: "What needs my attention, and what changed since I last looked?",
-		Shows:    []console.MetricID{console.MetricServices, console.MetricCalls, console.MetricObservations},
+		Shows:    []console.MetricID{console.MetricServices, console.MetricCalls, console.MetricObservations, console.MetricAgentTools},
 		Live:     []string{"index", "sessions", "plans"},
 		Build:    buildHomePage,
 	})

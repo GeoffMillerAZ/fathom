@@ -392,9 +392,10 @@ func aggregateCallLogPointers(logPath, service string, since time.Time) []discov
 		var row struct {
 			TS       string   `json:"ts"`
 			Service  string   `json:"service"`
+			Origin   string   `json:"origin"`
 			Pointers []string `json:"pointers"`
 		}
-		if json.Unmarshal(line, &row) != nil || len(row.Pointers) == 0 {
+		if json.Unmarshal(line, &row) != nil || len(row.Pointers) == 0 || IsConsoleRead(row.Origin) {
 			continue
 		}
 		if service != "" && row.Service != service {

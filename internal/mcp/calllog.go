@@ -208,8 +208,13 @@ func (l *CallLogger) log(tool, service, group, surface, via, origin string, offS
 	b = append(b, '\n')
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	l.surfaceCalls[surface]++
-	l.surfaceLastTS[surface] = now
+	// The console reading itself is logged (auditable) but is not traffic:
+	// server_stats' surface_traffic answers "is anything flowing?", and a
+	// page render must never make an idle surface look used.
+	if !IsConsoleRead(origin) {
+		l.surfaceCalls[surface]++
+		l.surfaceLastTS[surface] = now
+	}
 	_, _ = l.w.Write(b)
 }
 
