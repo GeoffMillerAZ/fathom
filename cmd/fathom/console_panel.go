@@ -111,18 +111,20 @@ func renderPanel(p consolePanel) string {
 }
 
 // truthStateLine renders a non-plain truth state in words, each state drawn
-// differently; present and zero render nothing (the number speaks).
+// differently; present and zero render nothing (the number speaks). A
+// reason often carries a path, so it wraps anywhere rather than widen a
+// 390 px panel.
 func truthStateLine(s console.State, reason string) string {
 	r := html.EscapeString(reason)
 	switch s {
 	case console.StateAbsent:
-		return `<p class="mb-2 italic text-ink-muted" data-truth-line="absent">not measured — ` + r + `</p>`
+		return `<p class="mb-2 italic text-ink-muted [overflow-wrap:anywhere]" data-truth-line="absent">not measured — ` + r + `</p>`
 	case console.StateError:
-		return `<p class="mb-2 font-medium text-danger" data-truth-line="error">could not be read — ` + r + `</p>`
+		return `<p class="mb-2 font-medium text-danger [overflow-wrap:anywhere]" data-truth-line="error">could not be read — ` + r + `</p>`
 	case console.StateStale:
-		return `<p class="mb-2 text-caution" data-truth-line="stale">stale — ` + r + `</p>`
+		return `<p class="mb-2 text-caution [overflow-wrap:anywhere]" data-truth-line="stale">stale — ` + r + `</p>`
 	case console.StatePartial:
-		return `<p class="mb-2 text-ink-muted" data-truth-line="partial">lower bound — ` + r + `</p>`
+		return `<p class="mb-2 text-ink-muted [overflow-wrap:anywhere]" data-truth-line="partial">lower bound — ` + r + `</p>`
 	}
 	return ""
 }

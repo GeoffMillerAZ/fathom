@@ -36,10 +36,13 @@ SOURCE_DECLARATIONS=(
   "../observatory_story.go"
   "../../../third_party/app-kit/appkit/ui/appearance/*.go"
   "../../../third_party/app-kit/appkit/ui/callout/*.go"
+  "../../../third_party/app-kit/appkit/ui/card/*.go"
   "../../../third_party/app-kit/appkit/ui/chrome/*.go"
+  "../../../third_party/app-kit/appkit/ui/code/*.go"
   "../../../third_party/app-kit/appkit/ui/dashboard/*.go"
   "../../../third_party/app-kit/appkit/ui/form/*.go"
   "../../../third_party/app-kit/appkit/ui/hitl/*.go"
+  "../../../third_party/app-kit/appkit/ui/kanban/*.go"
   "../../../third_party/app-kit/appkit/ui/live/*.go"
   "../../../third_party/app-kit/appkit/ui/overlay/*.go"
   "../../../third_party/app-kit/appkit/ui/palette/*.go"
@@ -71,10 +74,13 @@ render_expected_input() {
 /* mirrored kit packages imported by the observatory renderers */
 @source "../../../third_party/app-kit/appkit/ui/appearance/*.go";
 @source "../../../third_party/app-kit/appkit/ui/callout/*.go";
+@source "../../../third_party/app-kit/appkit/ui/card/*.go";
 @source "../../../third_party/app-kit/appkit/ui/chrome/*.go";
+@source "../../../third_party/app-kit/appkit/ui/code/*.go";
 @source "../../../third_party/app-kit/appkit/ui/dashboard/*.go";
 @source "../../../third_party/app-kit/appkit/ui/form/*.go";
 @source "../../../third_party/app-kit/appkit/ui/hitl/*.go";
+@source "../../../third_party/app-kit/appkit/ui/kanban/*.go";
 @source "../../../third_party/app-kit/appkit/ui/live/*.go";
 @source "../../../third_party/app-kit/appkit/ui/overlay/*.go";
 @source "../../../third_party/app-kit/appkit/ui/palette/*.go";

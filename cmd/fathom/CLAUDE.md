@@ -2,7 +2,8 @@
 
 The web surfaces — the Observatory console (vision 35, ADR-045: `/`, `/fleet`,
 `/projects/{svc}`, `/impact`, `/sessions`, `/brief`, `/wiring`, `/statusz`,
-`/search`, served by serve-http; the legacy `/observatory*` routes redirect) —
+`/search`, `/plans`, `/certifications`, `/refactors`, served by serve-http;
+the legacy `/observatory*` routes redirect) —
 are rendered by Go files here on **app-kit** (Path A, Go server-rendered).
 **Every console page and component lives in its own `console_<name>.go` and
 registers in `init()` (`declarePage` → `registerPage`, `console_registry.go`):
@@ -14,8 +15,10 @@ for the shell and grouped nav, `chrome` for breadcrumbs/description lists,
 over `/search` (`console_palette.go`), `live` for "updated — refresh this panel" over
 `/events` (`console_live.go`: every panel names its sources), `table` for tables, `stat` for
 KPIs (`stat.Absent` for uninstrumented metrics — law 3; `valueStat` maps a
-projected value), `viz` for charts; a panel is `renderPanel` (question, verb
-chip, source/denominator/freshness footer). The doctrine, binding:
+projected value), `viz` for charts, `kanban` for the proof board (read-only:
+`readOnlyBoard`), `overlay` for drawers, `code` for source excerpts; a panel
+is `renderPanel` (question, verb chip, source/denominator/freshness footer).
+The doctrine, binding:
 
 1. **Search before writing.** Query the `appkit` MCP (`search_components`,
    TailwindPlus + MatDash) and the kit packages before authoring ANY

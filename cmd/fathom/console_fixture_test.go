@@ -26,8 +26,10 @@ import (
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
-// consoleFixtureServices are the fauxtown services the fixture fleet holds.
-var consoleFixtureServices = []string{"checkout-service", "ledger-service", "payment-service"}
+// consoleFixtureServices are the services the fixture fleet holds: three
+// fauxtown services, and proof-service, a git repository built at test time
+// (console_proof_fixture_test.go).
+var consoleFixtureServices = []string{"checkout-service", "ledger-service", "payment-service", proofServiceName}
 
 var consoleFixtureStore struct {
 	once sync.Once
@@ -54,10 +56,26 @@ func consoleFixtureStorePath(t *testing.T) string {
 		}
 		path := filepath.Join(dir, "fleet.sqlite")
 		for _, svc := range consoleFixtureServices {
+			src, mode := fauxtownPath(svc), "faux"
+			repo, isRepo := consoleFixtureRepos[svc]
+			if isRepo {
+				root, err := repo.Build(filepath.Join(dir, "src"))
+				if err != nil {
+					consoleFixtureStore.err = "build " + svc + ": " + err.Error()
+					return
+				}
+				src, mode = root, "local"
+			}
 			var out bytes.Buffer
-			if code := run([]string{"ingest", "--service", svc, "--path", fauxtownPath(svc), "--store", path, "--mode", "faux"}, &out, &out); code != 0 {
+			if code := run([]string{"ingest", "--service", svc, "--path", src, "--store", path, "--mode", mode}, &out, &out); code != 0 {
 				consoleFixtureStore.err = "ingest " + svc + ": " + out.String()
 				return
+			}
+			if isRepo && repo.After != nil {
+				if err := repo.After(src, path); err != nil {
+					consoleFixtureStore.err = err.Error()
+					return
+				}
 			}
 		}
 		consoleFixtureStore.path = path
@@ -225,6 +243,12 @@ func samplePath(p *consolePage) string {
 		return "/sessions/s-1"
 	case "/search":
 		return "/search?q=charge"
+	case "/plans/{svc}/{plan}":
+		return "/plans/" + proofServiceName + "/settlement"
+	case "/plans/{svc}/{plan}/rows/{id}":
+		return "/plans/" + proofServiceName + "/settlement/rows/S-2"
+	case "/refactors":
+		return "/refactors?svc=" + proofServiceName + "&since=HEAD~1"
 	}
 	return p.Route
 }

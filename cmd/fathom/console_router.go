@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/geoffmilleraz/app-kit/appkit/ui/chrome"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/live"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/palette"
 	"github.com/geoffmilleraz/fathom/internal/console"
@@ -81,6 +82,9 @@ func consolePageJSONFor(p *consolePage, r *http.Request, out consoleOut, now tim
 		title = p.Title
 	}
 	verbs := p.Verbs
+	if out.Verbs != nil {
+		verbs = out.Verbs
+	}
 	if verbs == nil {
 		verbs = []string{}
 	}
@@ -154,8 +158,8 @@ func (d *consoleDeps) pageHandler(p *consolePage) http.HandlerFunc {
 			liveStatus = consoleLiveStatus(d.bus.Cursor())
 		}
 		page := renderConsoleShell(d.reg, consoleShell{
-			PageID: p.ID, Title: title, Crumbs: consoleCrumbs(d.reg, p.ID, title),
-			Question: p.Question, Meta: out.Meta, Verbs: p.Verbs, Actions: out.Actions,
+			PageID: p.ID, Title: title, Crumbs: pageCrumbs(d.reg, p, out, title),
+			Question: p.Question, Meta: out.Meta, Verbs: pageChips(p, out), Actions: out.Actions,
 			Body: body, Live: liveStatus,
 		})
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -189,6 +193,39 @@ func modelMeta(m observatoryModel) []string {
 		meta = append(meta, "degraded: registry unreachable")
 	}
 	return meta
+}
+
+// pageCrumbs is the page's trail: the registry's (Observatory, the
+// navigable parent, the page), or Observatory, the page's own trail and
+// the page when it names one (a plan row sits under its plan) — its title,
+// unless the trail already ends in the page's own unlinked crumb.
+func pageCrumbs(reg *consoleRegistry, p *consolePage, out consoleOut, title string) []chrome.Crumb {
+	if out.Crumbs == nil {
+		return consoleCrumbs(reg, p.ID, title)
+	}
+	crumbs := append([]chrome.Crumb{{Label: "Observatory", Href: "/"}}, out.Crumbs...)
+	if len(out.Crumbs) > 0 && out.Crumbs[len(out.Crumbs)-1].Href == "" {
+		// A trail that ends in an unlinked crumb names the page itself.
+		return crumbs
+	}
+	return append(crumbs, chrome.Crumb{Label: title})
+}
+
+// pageVerbs are the commands a request's page renders: its concrete verbs
+// when the page's registered ones are templates.
+func pageVerbs(p *consolePage, out consoleOut) []string {
+	if out.Verbs != nil {
+		return out.Verbs
+	}
+	return p.Verbs
+}
+
+// pageChips are the heading's chips: the page's Chips when it names them.
+func pageChips(p *consolePage, out consoleOut) []string {
+	if out.Chips != nil {
+		return out.Chips
+	}
+	return pageVerbs(p, out)
 }
 
 func containsString(list []string, v string) bool {

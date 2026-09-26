@@ -31,6 +31,9 @@ type ConserveFinding struct {
 	Remedy   string `json:"remedy,omitempty"`
 	File     string `json:"file,omitempty"`
 	Line     int    `json:"line,omitempty"`
+	// Informational findings are shown for visibility and never make
+	// their plane a loss (conserve's own rule: an edited test, say).
+	Informational bool `json:"informational,omitempty"`
 }
 
 // ConservePlane is one plane's report.
@@ -202,7 +205,7 @@ func RefactorView(in RefactorInput) RefactorPage {
 			chip.Findings = len(pl.Findings)
 			chip.Missing = pl.Missing
 			for _, f := range pl.Findings {
-				if f.Declared != "prior" {
+				if f.Declared != "prior" && !f.Informational {
 					chip.Losses++
 				}
 				p.Findings = append(p.Findings, f)
@@ -210,6 +213,9 @@ func RefactorView(in RefactorInput) RefactorPage {
 			switch pl.Verdict {
 			case "conserved":
 				chip.Role = "positive"
+				if chip.Findings > 0 {
+					chip.Reason = fmt.Sprintf("nothing lost; %s shown for visibility", countNoun(chip.Findings, "finding"))
+				}
 			case "losses":
 				chip.Role = "danger"
 				chip.Reason = fmt.Sprintf("%s not excused by a prior declaration", countNoun(chip.Losses, "finding"))

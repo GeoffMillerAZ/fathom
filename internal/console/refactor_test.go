@@ -31,7 +31,7 @@ func TestRefactorView_NotRunIsNeverConserved(t *testing.T) {
 		Service: "proof", Since: "HEAD~1", Ran: true, Base: "0123456789abcdef", Head: "worktree",
 		Registered: []string{"absence", "integrity", "surface"},
 		Planes: []ConservePlane{
-			{Plane: "absence", Verdict: "conserved", Missing: []string{}, Findings: []ConserveFinding{}},
+			{Plane: "absence", Verdict: "conserved", Missing: []string{}, Findings: []ConserveFinding{{Plane: "absence", Kind: "edited", Key: "TestZ", Declared: "none", Informational: true}}},
 			{Plane: "integrity", Verdict: "losses", Missing: []string{}, Findings: []ConserveFinding{{Plane: "integrity", Kind: "deleted", Key: "TestX", Declared: "none"}, {Plane: "integrity", Kind: "edited", Key: "TestY", Declared: "prior"}}},
 			{Plane: "surface", Verdict: "unproven", Missing: []string{"typed pass failed"}, Findings: []ConserveFinding{}},
 		},
@@ -50,8 +50,8 @@ func TestRefactorView_NotRunIsNeverConserved(t *testing.T) {
 	for _, c := range p.Planes {
 		chips[c.Plane] = c
 	}
-	if chips["absence"].Verdict != "conserved" || chips["absence"].Role != "positive" {
-		t.Errorf("absence = %+v", chips["absence"])
+	if c := chips["absence"]; c.Verdict != "conserved" || c.Role != "positive" || c.Losses != 0 || !strings.Contains(c.Reason, "shown for visibility") {
+		t.Errorf("absence (a conserved plane with an informational finding) = %+v, want no loss counted", c)
 	}
 	if chips["integrity"].Verdict != "losses" || chips["integrity"].Losses != 1 || chips["integrity"].Findings != 2 {
 		t.Errorf("integrity = %+v", chips["integrity"])
@@ -67,7 +67,7 @@ func TestRefactorView_NotRunIsNeverConserved(t *testing.T) {
 			t.Errorf("%s = %+v, want not run naming that no plane is registered", name, c)
 		}
 	}
-	if len(p.Findings) != 2 {
+	if len(p.Findings) != 3 {
 		t.Errorf("findings = %+v", p.Findings)
 	}
 	r := p.Residue

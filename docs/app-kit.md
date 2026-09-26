@@ -194,6 +194,37 @@ and a 390 px frame, and an in-browser 390 px layout probe reporting no document-
 horizontal overflow on any page. This is not UX-M2's certification: keyboard paths and
 contrast were spot-checked, not measured page by page.
 
+## Observatory console wave C — the Proof pages (2026-09-25)
+
+Wave C (`/plans`, `/plans/{svc}/{plan}`, `/plans/{svc}/{plan}/rows/{id}`,
+`/certifications`, `/refactors`, the project overview's ladder; OC-21..OC-26) stays on
+mirror `d9dd789`; no mirror file changed. Packages it adds to the console:
+
+- `kanban.Board` (with `card`) for a plan's rows by state — read-only through
+  `readOnlyBoard` (FATHOM-C-KIT-01 below); each lane shows its first 12 cards and the
+  table beside it lists every row; an empty lane is named under the board rather than
+  drawn (claimed-not-proven is always drawn).
+- `overlay.RenderDrawer` for a row's evidence over the board: the card link fetches the
+  row page's `?format=fragment` into the drawer (a small inline script, `showModal`,
+  focus back to the card on close); without JavaScript the card is a link to the page.
+- `code.RenderExcerpt` (FATHOM-KIT-04) for the line a lexical oracle matched
+  (`LineHighlighted`, labelled "First match") and a partial function's unexecuted changed
+  lines on `/refactors` (`LineNotExecuted`, labelled "Changed, never ran").
+- `viz.Heatmap` truth states (FATHOM-KIT-03) for the certifications matrix: a zero count
+  is `CellZero`, drawn as a zero, with the matrix as a `table.Table` behind
+  `chrome.RenderDisclosure`. The coverage matrix (OC-28) is still to come.
+- `viz.StackBar` (fluid) for proof bars and, one per row on a shared scale, for the
+  burn-up and the ledger trends — the chart is its own table (FATHOM-C-KIT-02).
+- `stat.Absent` for the trend until the verify ledger holds 14 days of rows (SD-3),
+  `chrome.RenderPagination`, `chrome.RenderEmptyState`, `chrome.RenderDescriptionList`,
+  and `form.RenderSelect`/`RenderInput`/`RenderButton` for `/refactors`' GET chooser.
+
+`cmd/fathom/ui/input.css` and `scripts/ui-css.sh` add `card`, `code` and `kanban`.
+The repository filter on `/plans` and `/certifications` is a wrapping list of links
+composed from role utilities (44 px targets, `aria-current`) rather than `chrome.Tabs`,
+which does not wrap (14 repositories overflow a 390 px screen) and marks links as
+`role="tab"` without panels (FATHOM-C-KIT-03).
+
 ## Current mirror and palette convergence (2026-09-25)
 
 FATHOM-GUIDE-01 landed on main at mirror `f7ab0fbd`, then took one reviewed bump to
@@ -425,8 +456,8 @@ inside mirror `d9dd789`:
 |---|---|---|---|
 | FATHOM-KIT-01 | `interaction.command-palette` (`appkit/ui/palette`) | `d52acea`, fixes `843a669` `77b25b9`, merge `9dc6f5d` | OC-12, `cmd/fathom/console_palette.go` |
 | FATHOM-KIT-02 | `analytics.graph` (`viz.LayoutGraph`, `viz.LayoutEgo`) | `dc8f035`, fix `209249f`, merge `6ed6ea5` | pending: the code neighborhood (OC-37) |
-| FATHOM-KIT-03 | `viz.heatmap` truth states | `0f45523`, fix `8f663ab`, merge `b861d49` | pending: the coverage matrix (OC-28) |
-| FATHOM-KIT-04 | `content.code-excerpt` (`code.RenderExcerpt`) | `94e6815`, fix `5bf90cd`, merge `fd47ef0` | pending: refactor and claim pages (OC-26, OC-30) |
+| FATHOM-KIT-03 | `viz.heatmap` truth states | `0f45523`, fix `8f663ab`, merge `b861d49` | the certifications matrix (OC-24, `console_certify.go`); pending: the coverage matrix (OC-28) |
+| FATHOM-KIT-04 | `content.code-excerpt` (`code.RenderExcerpt`) | `94e6815`, fix `5bf90cd`, merge `fd47ef0` | the refactor page and a row's oracle match (OC-26, OC-23); pending: the claim page (OC-30) |
 | FATHOM-KIT-05 | `work.unified-diff` (`hitl.RenderUnifiedDiff`) | `94e6815`, fix `5bf90cd`, merge `fd47ef0` | pending: review surfaces |
 | FATHOM-KIT-06 | `interaction.live-freshness` (`appkit/ui/live`) | `e7d66c9`, fix `f965851`, merge `54f5fac` | OC-14, `cmd/fathom/console_live.go` |
 | FATHOM-KIT-07 | `interaction.page-heading` (`chrome.RenderPageHeading`) | `e7d66c9`, fix `f965851`, merge `54f5fac` | not adopted: the shell's top bar already writes the `h1` (FATHOM-S0-KIT-01) |
@@ -483,6 +514,53 @@ inside mirror `d9dd789`:
   service name the row's drill-down link and renders no action column, which also frees a
   column's width at 390 px.
 - **Disposition:** `candidate`. Next action: app-kit maintainer.
+
+**FATHOM-C-KIT-01 — `kanban.Board` has no read-only mode (candidate)**
+
+- **Origin / task:** console wave C, a plan's rows by state (`console_plan.go`).
+- **Observed / expected:** every card is `draggable="true"` with a grab cursor, and its
+  title link hovers to `text-neon-pink`, a token only the synthwave theme defines. A
+  ledger the page cannot change must not look movable. Expected: a read-only option
+  (no drag hooks or cursor) and a role-token hover. The lane also has no bound or "and N
+  more" affordance; Fathom caps lanes itself.
+- **Disposition:** `candidate`; local workaround `readOnlyBoard` strips the three
+  affordances, pinned by `TestConsolePlanPage_BoardDrawerAndBurnup`. Next action:
+  app-kit maintainer.
+- **Also observed (browser proof):** lanes are a fixed `w-64`, so a six-lane board is
+  wider than a 1440 px content column and its last lanes sit behind the board's own
+  horizontal scroll. Fathom draws a lane only when it has rows (claimed-not-proven
+  always) and names the empty ones under the board. Expected: a lane width option or
+  lanes that share the row.
+
+**FATHOM-C-KIT-02 — no multi-series or time-axis chart (candidate)**
+
+- **Origin / task:** the burn-up (scope and claimed per commit) and the ledger trends.
+- **Observed / expected:** `viz` has single-series `Sparkline` (auto-scaled, no axis)
+  and horizontal `StackBar`; a burn-up needs scope and done on one time axis. Fathom
+  draws one `StackBar` per point on a shared scale inside a table row — honest and
+  accessible, but long for a long history (bounded to 30 commits and 14 days).
+- **Disposition:** `candidate` — a line/area chart with a shared scale, a time axis and
+  a table alternative. Next action: app-kit maintainer; revisit when a second consumer
+  needs a trend with more than one series.
+
+**FATHOM-C-KIT-03 — a wrapping filter nav (candidate)**
+
+- **Origin / task:** the repository filter on `/plans` and `/certifications`.
+- **Observed / expected:** `chrome.Tabs` does not wrap and is a `tablist` of links with
+  no tab panels; with 14 repositories it overflows 390 px. Fathom composes a wrapping
+  link list with 44 px targets and `aria-current`.
+- **Disposition:** `candidate`. Next action: app-kit maintainer.
+
+**FATHOM-C-KIT-04 — `dashboard.Widget`'s header does not stack when narrow (candidate)**
+
+- **Origin / task:** the wave C browser proof at 390 px.
+- **Observed / expected:** the widget draws its title and its action side by side at
+  every width, so a panel whose action is a long verb chip (`fathom plans next --service
+  fathom --plan docs/plans/observatory-console.md --json`) squeezes its title to one
+  word per line ("Rows / by / state"). Expected: title and action stack below `sm`.
+  Nothing overflows; it reads badly.
+- **Disposition:** `candidate`; no local workaround (the header is the kit's). Next
+  action: app-kit maintainer.
 
 **FATHOM-ADOPT-01 — selected metadata migration**
 

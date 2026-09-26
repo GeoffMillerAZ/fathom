@@ -69,7 +69,16 @@ type consoleOut struct {
 	Model    any            // the page's own projection, served as JSON "model"
 	Metrics  console.Metrics
 	Sections map[string]any // verb → that verb's --json value
-	Body     func() string  // HTML, rendered only for an HTML request
+	// Verbs, when set, are this request's concrete commands for a page
+	// whose registered Verbs are templates ("{svc}", "{plan}", "{id}"):
+	// the heading's chips and the JSON's verbs name them, and each has
+	// its section.
+	Verbs []string
+	// Chips, when non-nil, are the heading's verb chips instead of Verbs: a
+	// fleet page rendering one verb per repository names each in its own
+	// row rather than stacking them all in the heading (empty: none).
+	Chips []string
+	Body  func() string // HTML, rendered only for an HTML request
 	// Raw, when set, answers the request itself (a download, a fragment).
 	Raw func(w http.ResponseWriter) bool
 }
