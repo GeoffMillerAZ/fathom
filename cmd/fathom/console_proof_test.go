@@ -158,7 +158,7 @@ func TestConsolePlanPage_BoardDrawerAndBurnup(t *testing.T) {
 		`data-kanban-col="remaining"`, `data-kanban-col="claimed"`, `data-kanban-col="proven"`,
 		`data-kanban-col="op-measured"`, `data-kanban-col="op-waiting"`, `data-kanban-col="deferred"`,
 		`href="/plans/proof-service/settlement/rows/S-2"`, "symbol + test reach", "lexical oracle",
-		"Every row as a table", `id="row-drawer"`, `data-row-drawer-body`, "dlg.showModal()", `new CustomEvent("console:content",{bubbles:true})`,
+		"The other 6 rows as a table", `id="row-drawer"`, `data-row-drawer-body`, "dlg.showModal()", `new CustomEvent("console:content",{bubbles:true})`,
 		`id="burnup"`, `data-table-row="rev-`, "Proven by the gate over time", "data-cross-check",
 	)
 	// The ledger is read-only: nothing on the board looks draggable.
@@ -188,6 +188,111 @@ func TestConsolePlanPage_BoardDrawerAndBurnup(t *testing.T) {
 	}
 }
 
+// "Which rows of plan P remain?" is answered on the plan page itself, at
+// the third click (UX-M1 T1): a Remaining panel lists every row `fathom
+// plans next` lists — none cut by the board's lane cap, none behind a
+// closed disclosure — each linking to its row page, and the page's JSON
+// lists the same IDs as the verb, counted as `plans status` counts them.
+func TestConsolePlanPage_RemainingAnswersWhichRowsRemain(t *testing.T) {
+	f := newConsoleFixture(t)
+	const plan = "/plans/proof-service/settlement"
+	_, _, page := f.get(t, plan)
+	at, board := strings.Index(page, "data-plan-remaining"), strings.Index(page, "data-plan-board")
+	if at < 0 || board < 0 || at > board {
+		t.Fatalf("the plan page must lead with its remaining rows, before the board (remaining at %d, board at %d)", at, board)
+	}
+	panel := page[at:board]
+	if strings.Contains(panel, "<details") {
+		t.Error("the remaining rows must not sit behind a disclosure")
+	}
+
+	next := "fathom plans next --service proof-service --plan docs/plans/settlement.md --json"
+	status := "fathom plans status --service proof-service --plan docs/plans/settlement.md --json"
+	verbIDs := func(v any) []string {
+		var ids []string
+		for _, r := range v.([]any) {
+			ids = append(ids, r.(map[string]any)["id"].(string))
+		}
+		return ids
+	}
+	want := verbIDs(runVerbJSON(t, f, next))
+	if strings.Join(want, ",") != "S-4,S-5,S-6,S-M2" {
+		t.Fatalf("plans next on the fixture = %v", want)
+	}
+	for _, id := range want {
+		if !strings.Contains(panel, `href="`+plan+`/rows/`+id+`"`) {
+			t.Errorf("remaining row %s is not linked in the panel", id)
+		}
+	}
+
+	env := f.pageJSON(t, plan)
+	var v planPageModel
+	if err := json.Unmarshal(env.Model, &v); err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, r := range v.Remaining.Rows {
+		got = append(got, r.ID)
+	}
+	var section any
+	if err := json.Unmarshal(env.Sections[next], &section); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Join(got, ",") != strings.Join(want, ",") || strings.Join(verbIDs(section), ",") != strings.Join(want, ",") {
+		t.Errorf("remaining: model %v, page section %v, verb %v", got, verbIDs(section), want)
+	}
+	st := runVerbJSON(t, f, status).([]any)[0].(map[string]any)
+	n := int(st["open"].(float64) + st["claimed_unproven"].(float64))
+	if ms, ok := st["measured_stale"].(float64); ok {
+		n += int(ms)
+	}
+	if n != len(got) || v.Remaining.State != console.StatePresent {
+		t.Errorf("remaining %d (%s), plans status counts %d", len(got), v.Remaining.State, n)
+	}
+}
+
+// The remaining panel lists every row however many there are — the board's
+// per-lane cap (boardLaneCards) never applies to it.
+func TestConsolePlanRemaining_ListsEveryRow(t *testing.T) {
+	var rows []console.PlanRowView
+	for i := 0; i < 3*boardLaneCards; i++ {
+		id := fmt.Sprintf("R-%d", i)
+		rows = append(rows, console.PlanRowView{PlanRowFact: console.PlanRowFact{ID: id, Title: "open row " + id}, State: console.RowOpen, Contract: console.ContractReach, Href: "/plans/s/p/rows/" + id})
+	}
+	out := renderPlanRemaining(console.PlanRemaining{State: console.StatePresent, Rows: rows})
+	for _, r := range rows {
+		if !strings.Contains(out, `href="`+r.Href+`"`) {
+			t.Errorf("row %s missing", r.ID)
+		}
+	}
+	if strings.Contains(out, "<details") {
+		t.Error("no disclosure")
+	}
+	if none := renderPlanRemaining(console.PlanRemaining{State: console.StateZero, Rows: []console.PlanRowView{}}); !strings.Contains(none, "Nothing remains") {
+		t.Errorf("nothing remaining must say so:\n%s", none)
+	}
+}
+
+// Every row sits in exactly one table — a remaining row in the Remaining
+// table, any other behind the board's disclosure — so listing every
+// remaining row adds nothing per row to the page: the 250 KB budget holds
+// on a plan of any size as it did before (listing them twice measured
+// 205 KB of body alone for 120 remaining rows).
+func TestConsolePlanPage_EachRowInExactlyOneTable(t *testing.T) {
+	var rows []console.PlanRowFact
+	for i := 0; i < 30; i++ {
+		rows = append(rows, console.PlanRowFact{ID: fmt.Sprintf("R-%d", i), Title: "row", Claimed: i%2 == 0, Verified: true, Status: "pass"})
+	}
+	v := console.PlanLedger(console.PlanLedgerInput{Plan: console.PlanFacts{Rows: rows, Verified: true}, RowHref: func(id string) string { return "/plans/s/p/rows/" + id }})
+	page := renderPlanPage(v, "s", []string{"fathom plans status", "fathom plans next", "fathom plans history"})
+	for _, r := range rows {
+		if n := strings.Count(page, `data-table-row="remaining-`+r.ID+`"`) + strings.Count(page, `data-table-row="row-`+r.ID+`"`); n != 1 {
+			t.Errorf("row %s is in %d tables, want exactly one", r.ID, n)
+		}
+	}
+	mustContain(t, "plan page", page, "The other 15 rows as a table")
+}
+
 // renderPlanBoard caps each lane and says where the rest are.
 func TestConsolePlanBoard_LanesAreBounded(t *testing.T) {
 	var cards []console.BoardCard
@@ -199,7 +304,7 @@ func TestConsolePlanBoard_LanesAreBounded(t *testing.T) {
 	if n := strings.Count(out, "data-kanban-card="); n != boardLaneCards {
 		t.Errorf("lane shows %d cards, want %d", n, boardLaneCards)
 	}
-	mustContain(t, "bounded board", out, "data-board-cut", "3 rows more are in the table below", ">15</span>")
+	mustContain(t, "bounded board", out, "data-board-cut", "3 rows more are in the Remaining list above or the table below", ">15</span>")
 
 	// An empty lane is named, not drawn — except claimed-not-proven, whose
 	// emptiness is the news.

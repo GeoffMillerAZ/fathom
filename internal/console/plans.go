@@ -936,21 +936,48 @@ type PlanRowView struct {
 	Href     string `json:"href"`
 }
 
-// PlanLedgerView is one plan's page: its proof bar, its board of rows by
-// state with each row's contract kind, and its burn-up.
+// PlanLedgerView is one plan's page: its proof bar, the rows that remain,
+// its board of rows by state with each row's contract kind, and its
+// burn-up.
 type PlanLedgerView struct {
-	Service string         `json:"service"`
-	Plan    string         `json:"plan"`
-	Rel     string         `json:"rel"`
-	Title   string         `json:"title"`
-	State   State          `json:"state"`
-	Reason  string         `json:"reason,omitempty"`
-	Rollup  *PlanRollup    `json:"rollup,omitempty"`
-	Bar     ProofBar       `json:"bar"`
-	Columns []BoardColumn  `json:"columns"`
-	Rows    []PlanRowView  `json:"rows"`
-	Burnup  Burnup         `json:"burnup"`
-	Stamp   PlanStampFacts `json:"stamp"`
+	Service   string         `json:"service"`
+	Plan      string         `json:"plan"`
+	Rel       string         `json:"rel"`
+	Title     string         `json:"title"`
+	State     State          `json:"state"`
+	Reason    string         `json:"reason,omitempty"`
+	Rollup    *PlanRollup    `json:"rollup,omitempty"`
+	Bar       ProofBar       `json:"bar"`
+	Remaining PlanRemaining  `json:"remaining"`
+	Columns   []BoardColumn  `json:"columns"`
+	Rows      []PlanRowView  `json:"rows"`
+	Burnup    Burnup         `json:"burnup"`
+	Stamp     PlanStampFacts `json:"stamp"`
+}
+
+// PlanRemaining answers "which rows of this plan remain" (UX-M1 T1): every
+// row `fathom plans next` lists, in document order, however many there are
+// — the board caps its lanes, this list never does. Its length is `plans
+// status`'s open + claimed_unproven + measured_stale. Before the gate's
+// verdicts arrive it is a lower bound: the unclaimed rows are listed and
+// the claimed rows are counted in Pending (each remains unless the gate
+// proves it), never listed as remaining nor dropped as proven.
+type PlanRemaining struct {
+	State   State         `json:"state"`
+	Reason  string        `json:"reason,omitempty"`
+	Rows    []PlanRowView `json:"rows"`
+	Pending int           `json:"pending,omitempty"`
+}
+
+// Remains reports whether a row in this state is one `fathom plans next`
+// lists: not proven, not measured, not deferred or refused, and not a
+// claim whose verdict has not arrived.
+func Remains(state string) bool {
+	switch state {
+	case RowOpen, RowInProgress, RowClaimedFailing, RowClaimedUnknown, RowMeasuredStale, RowOpWaiting:
+		return true
+	}
+	return false
 }
 
 // PlanStampFacts says which index the verdicts came from.
@@ -988,11 +1015,31 @@ func PlanLedger(in PlanLedgerInput) PlanLedgerView {
 		v.Rollup, v.State = &r, StatePresent
 	}
 	cards := map[string][]BoardCard{}
+	v.Remaining.Rows = []PlanRowView{}
 	for _, r := range p.Rows {
 		state := RowState(r, p.DaemonStale)
 		c := ContractOf(r)
-		v.Rows = append(v.Rows, PlanRowView{PlanRowFact: r, State: state, Contract: c.Kind, Href: href(r.ID)})
+		row := PlanRowView{PlanRowFact: r, State: state, Contract: c.Kind, Href: href(r.ID)}
+		v.Rows = append(v.Rows, row)
+		switch {
+		case Remains(state):
+			v.Remaining.Rows = append(v.Remaining.Rows, row)
+		case state == RowPending:
+			v.Remaining.Pending++
+		}
 		cards[state] = append(cards[state], BoardCard{ID: r.ID, Title: r.Title, State: state, Contract: c.Kind, Detail: cardDetail(r, state), Href: href(r.ID)})
+	}
+	switch {
+	case v.Remaining.Pending > 0:
+		v.Remaining.State = StatePartial
+		v.Remaining.Reason = fmt.Sprintf("%s not yet verified at the current index; each remains unless the gate's verdict proves it", countNoun(v.Remaining.Pending, "claimed row"))
+		if p.Err != "" {
+			v.Remaining.State, v.Remaining.Reason = StateError, "the gate could not verify this plan ("+p.Err+"), so its "+countNoun(v.Remaining.Pending, "claimed row")+" may remain too"
+		}
+	case len(v.Remaining.Rows) == 0:
+		v.Remaining.State = StateZero
+	default:
+		v.Remaining.State = StatePresent
 	}
 	for _, col := range boardColumns {
 		bc := BoardColumn{ID: col.id, Label: col.label, Cards: []BoardCard{}}

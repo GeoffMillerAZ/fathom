@@ -166,6 +166,7 @@ Release impact: minor (pre-1.0: breaking bumps minor)
 
 **Search and the plan page answer "which rows of plan P remain" within three clicks (OC-55..OC-57, UX-M1).**
 - A plan result on `/search`, in the ⌘K palette and in `/search?format=json` opens its plan page and a row result its row page — both opened the project page, even for an exact row ID. Rows are read with the plan parser the row page uses, so an in-progress `[~]` row or an `id:` that is not the first annotation key is found, a plan is found by its title too, and a row's chip is `fathom verify … --row ID --json`.
+- A plan page leads with a Remaining panel listing every row `fathom plans next` lists, each linking to its row page — the board shows 12 cards a lane, so 23 of the observatory plan's 43 open rows were a closed table away — and its JSON carries them as `model.remaining` (a named lower bound while claims await their verdicts). The board's table alternative now lists the other rows, so each row sits in one table and the page grows by no row.
 
 **The console moves to app-kit `d9dd789`, the kit revision carrying fathom's own vision-35 contributions (FATHOM-KIT-01..08) and wave F0's four returned defects (FATHOM-F0-KIT-01..04).** Tables scope their headers and scroll inside their own box, breadcrumb links are 44 px targets with a focus outline, and the fleet traffic and per-service sparklines fill their cards at every width; the tool-load chart draws a phone-sized version below `md` instead of scrolling its counts off the card.
 

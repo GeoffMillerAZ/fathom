@@ -1,9 +1,10 @@
 package main
 
 // console_plan.go — one plan's page, /plans/{svc}/{plan} (OC-22): the proof
-// bar, a board of its rows by the state the gate computed (the kit's
-// kanban, read-only, each card naming its contract kind) with the same rows
-// as a table, the evidence drawer the cards open, and the burn-up from the
+// bar, every row that remains (what `plans next` lists, uncapped — OC-56),
+// a board of its rows by the state the gate computed (the kit's kanban,
+// read-only, each card naming its contract kind) with the same rows as a
+// table, the evidence drawer the cards open, and the burn-up from the
 // plan's git history cross-checked with the verify ledger (the proven trend
 // gated on 14 days of ledger rows, SD-3).
 
@@ -161,15 +162,32 @@ func renderPlanPage(v console.PlanLedgerView, service string, verbs []string) st
 		Body:        barBody,
 	}))
 
+	// The remaining rows lead (UX-M1 T1): the page answers "which rows of
+	// this plan remain" at the click that opens it, every row listed —
+	// the board below caps its lanes, this list never does.
+	b.WriteString(`<div class="mt-4" data-plan-remaining>`)
+	b.WriteString(renderPanel(consolePanel{
+		ID: "remaining", Title: remainingTitle(v.Remaining), SourceKey: live,
+		Question:    "Which rows remain — open, in progress, claimed but not proven, or waiting on a measurement?",
+		Verb:        verbs[1],
+		Source:      "the same verdicts: every row plans next lists, in document order",
+		Denominator: fmt.Sprintf("%s of %s", plural(len(v.Remaining.Rows), "row"), plural(v.Bar.Total, "row")),
+		Freshness:   planStamp(v.Stamp),
+		State:       v.Remaining.State,
+		Reason:      v.Remaining.Reason,
+		Body:        renderPlanRemaining(v.Remaining),
+	}))
+	b.WriteString(`</div>`)
+
 	b.WriteString(`<div class="mt-4">`)
 	b.WriteString(renderPanel(consolePanel{
 		ID: "board", Title: "Rows by state", SourceKey: live,
-		Question:    "Which rows remain, which are claimed but not proven, and what does each one's contract check?",
-		Verb:        verbs[1],
+		Question:    "Where does every row stand, and what does each one's contract check?",
+		Verb:        verbs[0],
 		Source:      "the same verdicts; each card names the contract the gate checks",
 		Denominator: plural(len(v.Rows), "row"),
 		Freshness:   planStamp(v.Stamp),
-		Body:        renderPlanBoard(v) + `<div class="mt-3">` + chrome.RenderDisclosure(chrome.Disclosure{Summary: "Every row as a table", Body: template.HTML(renderPlanRowsTable(v))}) + `</div>`,
+		Body:        renderPlanBoard(v) + renderOtherRowsDisclosure(v),
 	}))
 	b.WriteString(`</div>`)
 
@@ -256,7 +274,7 @@ func renderPlanBoard(v console.PlanLedgerView) string {
 	board := renderKanbanBoard(cols, cards)
 	note := ""
 	if cut > 0 {
-		note = `<p class="mt-2 text-xs text-ink-muted" data-board-cut>` + fmt.Sprintf("Each lane shows its first %d cards; %s more are in the table below — every lane's badge counts all its rows.", boardLaneCards, plural(cut, "row")) + `</p>`
+		note = `<p class="mt-2 text-xs text-ink-muted" data-board-cut>` + fmt.Sprintf("Each lane shows its first %d cards; %s more are in the Remaining list above or the table below — every lane's badge counts all its rows.", boardLaneCards, plural(cut, "row")) + `</p>`
 	}
 	if len(empty) > 0 {
 		note += `<p class="mt-2 text-xs text-ink-muted" data-board-empty>` + html.EscapeString("No rows are "+strings.Join(empty, ", ")+" — those lanes are not drawn.") + `</p>`
@@ -306,18 +324,71 @@ const (
 	laneFitClass  = `md:w-auto md:min-w-0`
 )
 
-func renderPlanRowsTable(v console.PlanLedgerView) string {
-	rows := make([]table.Row, 0, len(v.Rows))
+// renderOtherRowsDisclosure is the board's table alternative for the rows
+// the Remaining table does not list — proven, measured, not yet verified,
+// deferred and refused — so each row is in exactly one table and listing
+// every remaining row costs the page nothing per row (the 250 KB budget:
+// the two tables together are the one table this replaced). Nothing to
+// list, no disclosure.
+func renderOtherRowsDisclosure(v console.PlanLedgerView) string {
+	var other []console.PlanRowView
 	for _, r := range v.Rows {
+		if !console.Remains(r.State) {
+			other = append(other, r)
+		}
+	}
+	if len(other) == 0 {
+		return ""
+	}
+	summary := "The other " + plural(len(other), "row") + " as a table"
+	if len(v.Remaining.Rows) == 0 {
+		summary = "Every row as a table"
+	}
+	return `<div class="mt-3">` + chrome.RenderDisclosure(chrome.Disclosure{
+		Summary: summary,
+		Body:    template.HTML(planRowsKitTable("plan-rows", "row-", "Every row the Remaining list does not hold, in document order", other)),
+	}) + `</div>`
+}
+
+// remainingTitle is the remaining panel's title with its count — a lower
+// bound while claimed rows still wait for their verdicts.
+func remainingTitle(r console.PlanRemaining) string {
+	if r.State == console.StatePartial || r.State == console.StateError {
+		return fmt.Sprintf("Remaining (at least %s)", fmtThousands(len(r.Rows)))
+	}
+	return fmt.Sprintf("Remaining (%s)", fmtThousands(len(r.Rows)))
+}
+
+// renderPlanRemaining lists every remaining row — never capped, never
+// behind a disclosure — each ID linking to its row page. With nothing
+// remaining it says so; a lower bound with no unclaimed row lists nothing
+// (the panel's truth line names the rows still being verified).
+func renderPlanRemaining(r console.PlanRemaining) string {
+	if len(r.Rows) == 0 {
+		if r.State == console.StateZero {
+			return chrome.RenderEmptyState(chrome.EmptyState{
+				Heading: "Nothing remains",
+				Body:    "Every row is proven, measured, deferred or refused: plans next lists none.",
+			})
+		}
+		return ""
+	}
+	return planRowsKitTable("plan-remaining", "remaining-", "Every remaining row in document order", r.Rows)
+}
+
+// planRowsKitTable is a table of plan rows: the ID links to the row page.
+func planRowsKitTable(tableID, rowPrefix, caption string, in []console.PlanRowView) string {
+	rows := make([]table.Row, 0, len(in))
+	for _, r := range in {
 		link := `<a href="` + html.EscapeString(r.Href) + `" class="inline-flex min-h-11 items-center font-mono text-xs text-accent underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">` + html.EscapeString(r.ID) + `</a>`
 		rows = append(rows, table.Row{
-			ID:        "row-" + r.ID,
+			ID:        rowPrefix + r.ID,
 			Cells:     []string{r.ID, r.Title, stateBadge[r.State].Label, r.Contract},
 			HTMLCells: []templ.Component{templ.Raw(link)},
 		})
 	}
 	return renderKitTable(table.TableParams{
-		TableID: "plan-rows", Caption: "Every row in document order",
+		TableID: tableID, Caption: caption,
 		Columns: []table.Column{{Key: "id", Label: "Row"}, {Key: "title", Label: "Title"}, {Key: "state", Label: "State"}, {Key: "contract", Label: "Contract"}},
 		Rows:    rows,
 	})
