@@ -1108,7 +1108,7 @@ strictly read-only: it never writes a file, calls a mutating MCP tool, or restar
 anything.
 
 ```sh
-fathom doctor [--harness claude|codex|gemini-cli|cursor|copilot|agents|auto] [--path <dir>] [--service <id>] [--url <base>] [--json]
+fathom doctor [--harness claude|codex|gemini-cli|cursor|copilot|agents|auto] [--path <dir>] [--service <id>] [--url <base>] [--json] [--repo-only]
 ```
 
 | Flag | Default | Description |
@@ -1118,6 +1118,7 @@ fathom doctor [--harness claude|codex|gemini-cli|cursor|copilot|agents|auto] [--
 | `--service` | resolved from `--path` | Service ID — the same identity `fathom init` resolves |
 | `--url` | `http://localhost:7575` | fathom `serve-http` base URL |
 | `--json` | off | Machine-readable report instead of the human table |
+| `--repo-only` | off | Only the eleven rows that read the repository's own files and the user scope's config — `hooks_installed`, `lefthook_gates`, `harness_hooks`, `stanza_present`, `skills_installed`, `wiring_drift`, `config_valid`, `binding_file`, `guard_file`, `guard_include_modules_unbound`, `user_scope_ignore` — no daemon, harness process or ledger; the Observatory's project wiring tab renders it. Exit codes unchanged |
 
 The founding eleven checks: `mcp_registration`, `daemon_reachable`, `binary_fresh` (the running
 binary's own build vs `git rev-parse HEAD` of its own source tree — the LOCAL binary only,
@@ -1297,7 +1298,7 @@ this machine**, never a fixed one. Off macOS, all of them fall back to
 ### `intent` — the intent corpus, audited (ADR-026, **experimental**)
 
 ```sh
-fathom intent audit  [--root .] [--json] [--kind conditions|invariants|unproven] [--fresh] [--top N]
+fathom intent audit  [--root .] [--json] [--kind conditions|invariants|unproven] [--fresh] [--top N] [--read-only]
 fathom intent export --guard [--root .]
 ```
 
@@ -1307,6 +1308,10 @@ at) and reports three things: **what it declares**, **what an instrument can
 show**, and **what nothing shows**. It never edits the corpus, never
 evaluates a condition an author did not annotate, and never scores a
 repository.
+
+`--read-only` renders the same audit and writes nothing: no clock, baseline or
+debt row and no enforcement-probe cache row in `~/.fathom/intent-ledger.jsonl`,
+and no beat. The Observatory's intent tab runs it this way.
 
 Three tiers, all normal: a router-bearing repo gets the full audit; a repo
 with decision records and no router gets the conditions from their
@@ -2314,7 +2319,11 @@ unreadable store) render on the same shell with the reason and the remedy.
 |---|---|
 | `/` | Now — the front door (four questions, surfaces) |
 | `/fleet` | Fleet tiles; the JSON carries `fathom fleet report --json` computed by the verb's own function |
-| `/projects/{svc}` | One project (was `/observatory/service?id=S`) |
+| `/projects/{svc}` | One project's workspace (was `/observatory/service?id=S`): nine tabs, each a URL — Overview here; Index, Intent, Activity and Wiring at `/projects/{svc}/index`, `/intent`, `/activity`, `/wiring`; Governance, Plans, Proof and Refactor open `/layers`, `/plans`, `/certifications` and `/refactors` with `?svc=` |
+| `/projects/{svc}/index` | Languages with engine and tier, typed share and edge kinds, inventory keys (`fathom report evidence --service S --store P --json`); `?symbol=` draws the code neighborhood (callers and callees to depth 2, resolved solid and heuristic dashed, six per column and the rest aggregated, with a table); the read-only Scope panel (`fathom scope list`; `?scope=<glob>` previews what a suppression would hide and what a purge would delete, per location, and names the commands — the page runs neither) |
+| `/projects/{svc}/intent` | `fathom intent audit --read-only`: invariants with rung and audit state, decisions/futures/questions with their conditions, unproven claims, debt over time; a run is kept five minutes per commit |
+| `/projects/{svc}/activity` | The project's calls from the resolved call log (a day strip, `fathom metrics traffic --by tool` over the 14-day window, the newest calls) and its sessions from the ledger |
+| `/projects/{svc}/wiring` | `fathom doctor --repo-only` rows, drift (failing wiring rows plus the preview plan's apply and BLOCKED items), receipts (`fathom fleet receipts`), beside the unchanged Preview → Apply → Undo |
 | `/impact` | The four questions with their instruments |
 | `/sessions`, `/sessions/{id}` | The week and one session's replay |
 | `/brief` | The shareable brief; `?format=md` downloads it |

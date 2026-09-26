@@ -63,7 +63,7 @@ type consolePage struct {
 // consoleOut is one built page.
 type consoleOut struct {
 	Title    string         // overrides the page title (a project page names its project)
-	Crumbs   []chrome.Crumb // trail after Observatory; the current page is appended
+	Crumbs   []chrome.Crumb // trail after Observatory, the current page last; nil: the page's own
 	Meta     []string       // the heading's meta line
 	Actions  string         // trusted heading actions HTML
 	Model    any            // the page's own projection, served as JSON "model"
@@ -72,6 +72,10 @@ type consoleOut struct {
 	Body     func() string  // HTML, rendered only for an HTML request
 	// Raw, when set, answers the request itself (a download, a fragment).
 	Raw func(w http.ResponseWriter) bool
+	// Verbs are the exact commands this request rendered, when the page's
+	// declared Verbs are templates naming the request's project ("{svc}",
+	// "{root}", …); nil uses the declared Verbs as they stand.
+	Verbs []string
 }
 
 // consoleRequest is one request to a page.

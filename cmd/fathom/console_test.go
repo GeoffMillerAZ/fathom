@@ -578,17 +578,23 @@ func TestConsolePagesRenderTheirVerbs(t *testing.T) {
 		if env.Schema != consolePageJSONSchema || env.Page != p.ID || env.Group != p.Group || env.Question != p.Question {
 			t.Errorf("page %s: envelope = %+v", p.ID, env)
 		}
-		if !reflect.DeepEqual(append([]string{}, env.Verbs...), append([]string{}, p.Verbs...)) {
+		// A page whose verbs name its project declares templates ("{svc}",
+		// "{root}", …) and renders the exact commands: each rendered verb
+		// fills one declared template, in order, and runs exactly as shown.
+		if !verbsFillTemplates(env.Verbs, p.Verbs) {
 			t.Errorf("page %s: JSON verbs %v, registry %v", p.ID, env.Verbs, p.Verbs)
 		}
-		for _, verb := range p.Verbs {
+		for _, verb := range env.Verbs {
 			withVerbs++
 			section, ok := env.Sections[verb]
 			if !ok {
 				t.Errorf("page %s: no section for its verb %q", p.ID, verb)
 				continue
 			}
-			args := append(strings.Fields(verb)[1:], "--url", f.ts.URL)
+			args := shellFields(verb)[1:]
+			if containsString(p.Verbs, verb) {
+				args = append(args, "--url", f.ts.URL)
+			}
 			var out, errb bytes.Buffer
 			if code := run(args, &out, &errb); code != 0 {
 				t.Fatalf("%s exited %d: %s", verb, code, errb.String())
@@ -600,6 +606,7 @@ func TestConsolePagesRenderTheirVerbs(t *testing.T) {
 			if err := json.Unmarshal(section, &fromPage); err != nil {
 				t.Fatal(err)
 			}
+			dropVolatileVerbFields(verb, fromVerb, fromPage)
 			if !reflect.DeepEqual(fromVerb, fromPage) {
 				a, _ := json.MarshalIndent(fromVerb, "", " ")
 				b, _ := json.MarshalIndent(fromPage, "", " ")
@@ -654,7 +661,7 @@ func TestConsoleMetricsAgreeAcrossPages(t *testing.T) {
 			t.Errorf("page %s JSON carries %d metrics, declares %d", p.ID, len(env.Metrics), len(p.Shows))
 		}
 	}
-	for _, id := range []console.MetricID{console.MetricServices, console.MetricSymbols, console.MetricCalls, console.MetricSessions, console.MetricObservations, console.MetricAgentTools} {
+	for _, id := range []console.MetricID{console.MetricServices, console.MetricSymbols, console.MetricCalls, console.MetricSessions, console.MetricObservations, console.MetricAgentTools, console.MetricProjectSymbols, console.MetricProjectCalls, console.MetricProjectSessions} {
 		pages := byMetric[string(id)]
 		if len(pages) == 0 {
 			t.Errorf("metric %s is shown on no page", id)

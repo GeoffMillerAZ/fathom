@@ -424,7 +424,7 @@ inside mirror `d9dd789`:
 | ID | Kit capability | Delivered at | Fathom integration |
 |---|---|---|---|
 | FATHOM-KIT-01 | `interaction.command-palette` (`appkit/ui/palette`) | `d52acea`, fixes `843a669` `77b25b9`, merge `9dc6f5d` | OC-12, `cmd/fathom/console_palette.go` |
-| FATHOM-KIT-02 | `analytics.graph` (`viz.LayoutGraph`, `viz.LayoutEgo`) | `dc8f035`, fix `209249f`, merge `6ed6ea5` | pending: the code neighborhood (OC-37) |
+| FATHOM-KIT-02 | `analytics.graph` (`viz.LayoutGraph`, `viz.LayoutEgo`) | `dc8f035`, fix `209249f`, merge `6ed6ea5` | OC-37, the code neighborhood (`cmd/fathom/console_project_index.go`, `LayoutEgo` + `Table()`) |
 | FATHOM-KIT-03 | `viz.heatmap` truth states | `0f45523`, fix `8f663ab`, merge `b861d49` | pending: the coverage matrix (OC-28) |
 | FATHOM-KIT-04 | `content.code-excerpt` (`code.RenderExcerpt`) | `94e6815`, fix `5bf90cd`, merge `fd47ef0` | pending: refactor and claim pages (OC-26, OC-30) |
 | FATHOM-KIT-05 | `work.unified-diff` (`hitl.RenderUnifiedDiff`) | `94e6815`, fix `5bf90cd`, merge `fd47ef0` | pending: review surfaces |
@@ -482,6 +482,33 @@ inside mirror `d9dd789`:
   arrow on its own line; expected `whitespace-nowrap` on the action. Fathom now makes the
   service name the row's drill-down link and renders no action column, which also frees a
   column's width at 390 px.
+- **Disposition:** `candidate`. Next action: app-kit maintainer.
+
+**FATHOM-E-KIT-01 — `chrome.Tabs` on a phone and at 44 px (candidate)**
+
+- **Origin / task:** console wave E, the project workspace's nine link tabs (OC-35).
+- **Observed / expected:** the tab bar is one `flex` row with no overflow handling (nine
+  tabs are ~700 px, a 390 px screen would pan the page) and each tab is ~36 px high;
+  its `role="tablist"`/`role="tab"` links carry `aria-current` but no tab panels, so a
+  screen reader announces tabs that behave as links. Expected: an opt-in scrolling
+  row, 44 px targets with a focus-visible outline, and either link semantics
+  (`nav` + `aria-current`) or full tab semantics.
+- **Local workaround:** `renderProjectTabs` wraps the bar in its own `overflow-x-auto`
+  region and gives each link `min-h-11`, `whitespace-nowrap` and a focus outline through
+  arbitrary variants on the wrapper; the kit markup is untouched.
+- **Disposition:** `candidate`. Next action: app-kit maintainer.
+
+**FATHOM-E-KIT-02 — `dashboard.RenderWidget`'s header row never wraps (candidate)**
+
+- **Origin / task:** console wave E; a panel's verb chip naming a `--store` or `--root`
+  path (the index and wiring tabs).
+- **Observed / expected:** the widget header is `flex items-center justify-between`
+  with no wrap, so a long action squeezes the `h2` to a word per line (at 390 px and in
+  a half-width column at 1440). Expected: the row wraps, the action dropping under the
+  title.
+- **Local workaround:** the workspace tabs render their panels inside a wrapper with
+  `[&_section>div:first-child]:flex-wrap` (`projectBody`); shared `renderPanel` is
+  unchanged.
 - **Disposition:** `candidate`. Next action: app-kit maintainer.
 
 **FATHOM-ADOPT-01 — selected metadata migration**

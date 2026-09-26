@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/geoffmilleraz/app-kit/appkit/ui/chrome"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/live"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/palette"
 	"github.com/geoffmilleraz/fathom/internal/console"
@@ -81,6 +82,9 @@ func consolePageJSONFor(p *consolePage, r *http.Request, out consoleOut, now tim
 		title = p.Title
 	}
 	verbs := p.Verbs
+	if out.Verbs != nil {
+		verbs = out.Verbs
+	}
 	if verbs == nil {
 		verbs = []string{}
 	}
@@ -153,9 +157,16 @@ func (d *consoleDeps) pageHandler(p *consolePage) http.HandlerFunc {
 		if live {
 			liveStatus = consoleLiveStatus(d.bus.Cursor())
 		}
+		crumbs, verbs := consoleCrumbs(d.reg, p.ID, title), p.Verbs
+		if out.Crumbs != nil {
+			crumbs = append([]chrome.Crumb{{Label: "Observatory", Href: "/"}}, out.Crumbs...)
+		}
+		if out.Verbs != nil {
+			verbs = out.Verbs
+		}
 		page := renderConsoleShell(d.reg, consoleShell{
-			PageID: p.ID, Title: title, Crumbs: consoleCrumbs(d.reg, p.ID, title),
-			Question: p.Question, Meta: out.Meta, Verbs: p.Verbs, Actions: out.Actions,
+			PageID: p.ID, Title: title, Crumbs: crumbs,
+			Question: p.Question, Meta: out.Meta, Verbs: verbs, Actions: out.Actions,
 			Body: body, Live: liveStatus,
 		})
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")

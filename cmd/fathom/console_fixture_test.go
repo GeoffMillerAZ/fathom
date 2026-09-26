@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
@@ -146,6 +147,14 @@ func newConsoleFixtureOpts(t *testing.T, o consoleFixtureOpts) *consoleFixture {
 	srv := mcp.NewServerWithFleetAndLogger(c, &fleetAdapter{c: c, log: testDiscardLogger()}, logger)
 	h = newHTTPHandlerDeps(srv, c, strings.TrimPrefix(f.ts.URL, "http://"), nil, f.deps)
 	t.Setenv("FATHOM_HTTP", f.ts.URL)
+	// serve-http records itself once bound (console_calllog.go); the record
+	// names the store a page's store-direct verb reads (--store).
+	if recPath, ok := daemonRecordPathFor(f.ts.URL); ok {
+		if err := console.WriteDaemonRecord(recPath, console.NewDaemonRecord(strings.TrimPrefix(f.ts.URL, "http://"), os.Getpid(), f.callLog, consoleFixtureStorePath(t), "", f.now)); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { os.Remove(recPath) })
+	}
 
 	prev := fleetReportNow
 	fleetReportNow = func() time.Time { return f.now }
@@ -226,5 +235,7 @@ func samplePath(p *consolePage) string {
 	case "/search":
 		return "/search?q=charge"
 	}
-	return p.Route
+	// A project's workspace tabs (/projects/{svc}/<tab>) open on the
+	// fixture's project too.
+	return strings.ReplaceAll(p.Route, "{svc}", "payment-service")
 }

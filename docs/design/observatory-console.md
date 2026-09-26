@@ -50,7 +50,7 @@ Each page lives in its own `cmd/fathom/console_<page>.go` and registers in `init
 |---|---|---|
 | `/` | Now | `brief --json`, `fleet report --json`, `plans status --json`, `certify status --json` |
 | `/fleet` | Fleet | `fleet report --json` |
-| `/projects/{svc}` (`?tab=`) | Project workspace | per tab (§3) |
+| `/projects/{svc}`, `/projects/{svc}/{index,intent,activity,wiring}` | Project workspace (a tab is a path; governance, plans, proof and refactor open their pages with `?svc=`) | per tab (§3) |
 | `/plans`, `/plans/{svc}/{plan}`, `/plans/{svc}/{plan}/rows/{id}` | Proof ledger | `plans status/next/history --json`, `verify --row --json` |
 | `/certifications` | Certifications | `certify status/gaps --json` |
 | `/refactors` (`?svc=&since=`) | Refactor | `conserve --since --json` |
