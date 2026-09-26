@@ -1061,15 +1061,17 @@ map names for its *promotion metadata only* — a header `Status:` line or a sta
 index entry leads with, condition labels its author wrote, plan and decision pointers in
 its header or index entry (plans resolved in `docs/plans` or `docs/plans/archive`, rows
 counted by the plan parser, claimed not proven), relative markdown links, and dates —
-and reports per vision a computed stage, broken links, an undated or unstated promise,
-and a for-review promise with no plan past 30 days; nothing is compiled, evaluated,
-edited or scored; (3) a scope goal is a pre-registered bet — a `{bet, instrument,
-threshold, review}` block on its `Done when:`, tokenized by the plan tokenizer, the
-instrument resolved to a registered `fathom` verb, a Taskfile target or a repo script —
-or it is refused at load, and a passed review date is listed as due for a human; a
-bet-only block never counts as an oracle annotation, so K0 cannot be inflated by the
-surface that enumerates bets; (4) one doctor row, `doctrine`, warns and never fails;
-no MCP tool, no hook, no injected channel. **Revisit when.** A vision finding is
+and reports per vision a computed stage (`landed` only from the rows of the plans it
+declares as its own, never from a status word or a plan it merely cites), broken links,
+an undated or unstated promise, and a for-review promise with no plan past 30 days;
+nothing is compiled, evaluated, edited or scored; (3) a scope goal is a pre-registered
+bet — a `{bet, instrument, threshold, review}` block on its `Done when:`, tokenized by
+the plan tokenizer, the instrument resolved to a registered `fathom` verb, a Taskfile
+target or a repo script — or it is refused at load, and a passed review date is listed
+as due for a human; a bet-only block never counts as an oracle annotation, so K0 cannot
+be inflated by the surface that enumerates bets, and one outside a goal is named as
+misplaced; (4) one doctor row, `doctrine`, warns and never fails; no MCP tool, no hook,
+no injected channel. **Revisit when.** A vision finding is
 reported as a rule, an obligation, or an unproven claim anywhere (the narrowing has
 leaked); bet blocks are mistaken for oracle annotations in K0's count; or the kit's
 `intent-prune`/`intent-decide` drop a bet block (the Q18 class).

@@ -103,12 +103,15 @@ Visions are promises, and checking their prose would be theater. What can be
 checked is where each one stands on the pipeline the repo already practices —
 vision → decision → plan rows → proven code — so that is all `doctrine`
 computes, per vision: its stage from its own `Status:` line (or a status its
-index entry leads with), the plans that carry it and their claimed rows, whether
-its links and cited decision ids resolve, and the age of its newest dated
-statement. A vision naming no status, trigger or plan is listed `unstated`; one
-left for review over 30 days with no plan is listed `stale`. This repository,
-2026-09-25: 35 visions — 12 landed, 10 planned, 4 for review (all stale), 9
-unstated — and one README link to a plan that was archived.
+index entry leads with), the plans it declares as its own (`Plan:`) and their
+claimed rows, whether its links and cited decision ids resolve, and the age of
+its newest dated statement. `landed` is computed from those plans' rows — never
+from a status word, and never from a plan the vision only builds on. A vision
+naming no status, trigger or plan is listed `unstated`; one left for review over
+30 days with no plan is listed `stale`. This repository, 2026-09-25: 35 visions —
+7 landed, 10 planned, 5 for review (all stale), 1 stated, 12 unstated — and two
+broken links: a README link to a plan since archived, and a plan pointer into
+the kit's repository.
 
 A goal counts only as a pre-registered bet: an instrument this repo can run, a
 threshold, a review date, written on its `Done when:` —

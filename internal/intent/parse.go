@@ -1,10 +1,13 @@
 package intent
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"syscall"
 
 	"github.com/geoffmilleraz/fathom/internal/adr"
 	"github.com/geoffmilleraz/fathom/internal/verify"
@@ -516,11 +519,30 @@ func (c *Corpus) parseGoals(rel, body string) {
 }
 
 // visionPointer resolves a docs-map row's answer cell to the vision
-// series' home directory and index file. The first backticked pointer whose
-// path names a vision directory and resolves inside the repo wins; a
-// pointer to a file makes its directory the home and the file the index.
+// series' home directory and index file. Every backticked pointer whose
+// path names a vision directory and stays inside the repo is a candidate,
+// in document order: a directory pointer, or a file that is not itself a
+// numbered vision (README.md, an index), names the home and its index. A
+// numbered vision file (`01-thesis.md` — a row's "start with the thesis")
+// names only the home; it wins only when nothing else does, and then the
+// index is the home's README.md. So a row that names a starting vision
+// before the index makes neither the vision the index nor the index a
+// vision.
+//
+// A pointer the reader cannot stat (EACCES on a directory it cannot
+// search) is kept, never dropped as absent (ADR-027, I38): the pipeline then
+// fails to list the home and names that on its manifest, instead of
+// reporting "no vision series".
 func visionPointer(root, routerRel, cell string) (home, index string) {
 	base := filepath.Dir(filepath.Join(root, routerRel))
+	memberHome := ""
+	readmeOf := func(dirRel string) string {
+		idx := filepath.Join(root, dirRel, "README.md")
+		if present, blind := statPresence(idx); present || blind != nil {
+			return filepath.ToSlash(filepath.Join(dirRel, "README.md"))
+		}
+		return ""
+	}
 	for _, m := range backtickRe.FindAllStringSubmatch(cell, -1) {
 		tok := strings.TrimSpace(m[1])
 		if tok == "" || strings.ContainsAny(tok, " *<") || !strings.Contains(strings.ToLower(tok), "vision") {
@@ -531,17 +553,30 @@ func visionPointer(root, routerRel, cell string) (home, index string) {
 		if err != nil || strings.HasPrefix(relPath, "..") {
 			continue
 		}
+		var isDir bool
 		info, err := os.Stat(cand)
-		if err != nil {
-			continue
-		}
-		if info.IsDir() {
-			idx := filepath.Join(cand, "README.md")
-			if statExists(idx) {
-				r, _ := filepath.Rel(root, idx)
-				return filepath.ToSlash(relPath), filepath.ToSlash(r)
+		switch {
+		case err == nil:
+			isDir = info.IsDir()
+		case errors.Is(err, fs.ErrNotExist), errors.Is(err, syscall.ENOTDIR):
+			// A dead file pointer inside a vision directory that IS there
+			// still names that directory: the pipeline reads the series
+			// and names the missing index, rather than "no vision series".
+			if filepath.Ext(cand) == "" {
+				continue
 			}
-			return filepath.ToSlash(relPath), ""
+			if present, blind := statPresence(filepath.Dir(cand)); !present && blind == nil {
+				continue
+			}
+		default:
+			// Blind: a pointer with no extension names the directory.
+			isDir = filepath.Ext(cand) == ""
+		}
+		if isDir {
+			if err != nil {
+				return filepath.ToSlash(relPath), ""
+			}
+			return filepath.ToSlash(relPath), readmeOf(relPath)
 		}
 		dir := filepath.Dir(relPath)
 		if !strings.Contains(strings.ToLower(dir), "vision") {
@@ -549,7 +584,16 @@ func visionPointer(root, routerRel, cell string) (home, index string) {
 			// pipeline tracks a directory of promises.
 			continue
 		}
+		if leadingNumRe.MatchString(filepath.Base(relPath)) {
+			if memberHome == "" {
+				memberHome = dir
+			}
+			continue
+		}
 		return filepath.ToSlash(dir), filepath.ToSlash(relPath)
+	}
+	if memberHome != "" {
+		return filepath.ToSlash(memberHome), readmeOf(memberHome)
 	}
 	return "", ""
 }

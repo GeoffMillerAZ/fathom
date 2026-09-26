@@ -38,7 +38,8 @@ type doctrineReport struct {
 	Corpus   intent.Corpus
 	Pipeline intent.VisionPipeline
 	Bets     []intent.GoalBet
-	// BetFindings are refusals and passed review dates.
+	// BetFindings are refusals, passed review dates, and bet blocks placed
+	// anywhere but a scope.md goal (intent.MisplacedBets).
 	BetFindings []intent.Claim
 	Coverage    readmanifest.Manifest
 	// Now is the one clock every date in the report was judged against.
@@ -50,13 +51,14 @@ func buildDoctrine(root string, now time.Time) doctrineReport {
 	start := time.Now()
 	c, _ := intent.Load(root) // Load never fails; what it cannot read is on c.Coverage
 	vp := intent.LoadVisions(c, now)
-	bets := intent.LoadBets(c, isVerb)
+	bets, betReads := intent.LoadBets(c, isVerb)
 	merged := readmanifest.NewSet()
 	merged.Merge(c.Coverage)
 	merged.Merge(vp.Coverage)
+	merged.Merge(betReads) // an unreadable Taskfile or script makes every count a lower bound
 	return doctrineReport{
 		Root: root, Corpus: c, Pipeline: vp, Bets: bets,
-		BetFindings: intent.BetFindings(bets, now),
+		BetFindings: append(intent.BetFindings(bets, now), intent.MisplacedBets(c)...),
 		Coverage:    merged.Manifest(),
 		Now:         now,
 		Elapsed:     time.Since(start),
@@ -70,6 +72,11 @@ func cmdIntentDoctrine(args []string, stdout, stderr io.Writer) int {
 	top := fs.Int("top", intentTopDefault, "max findings per section before eliding (0 = all)")
 	asJSON := fs.Bool("json", false, "emit JSON (unbudgeted)")
 	if err := fs.Parse(args); err != nil {
+		return 1
+	}
+	kinds, kerr := doctrineKinds(*kind)
+	if kerr != nil {
+		fmt.Fprintf(stderr, "error: %v\n", kerr)
 		return 1
 	}
 	abs, err := filepath.Abs(*root)
@@ -96,8 +103,29 @@ func cmdIntentDoctrine(args []string, stdout, stderr io.Writer) int {
 	if *asJSON {
 		return emitDoctrineJSON(stdout, rep)
 	}
-	renderDoctrine(stdout, rep, strings.Split(*kind, ","), *top)
+	renderDoctrine(stdout, rep, kinds, *top)
 	return 0
+}
+
+// doctrineKindNames are the sections --kind selects.
+var doctrineKindNames = []string{"visions", "bets"}
+
+// doctrineKinds parses --kind. An unknown kind is an error naming the
+// accepted ones: a typo that silently matched nothing printed a header-only
+// report and exited 0 — a plausible zero (ADR-027).
+func doctrineKinds(flag string) ([]string, error) {
+	if strings.TrimSpace(flag) == "" {
+		return nil, nil
+	}
+	var out []string
+	for _, k := range strings.Split(flag, ",") {
+		k = strings.ToLower(strings.TrimSpace(k))
+		if !sliceContains(doctrineKindNames, k) {
+			return nil, fmt.Errorf("unknown --kind %q (want %s, comma-separated)", k, strings.Join(doctrineKindNames, "|"))
+		}
+		out = append(out, k)
+	}
+	return out, nil
 }
 
 // stageOrder is the pipeline's reading order: furthest along first, the
@@ -122,17 +150,11 @@ func renderStages(vs []intent.Vision) string {
 	return strings.Join(parts, ", ")
 }
 
+// renderDoctrine writes the report; kinds (already validated by
+// doctrineKinds) selects sections, nil for all.
 func renderDoctrine(w io.Writer, rep doctrineReport, kinds []string, top int) {
 	want := func(k string) bool {
-		if len(kinds) == 0 || (len(kinds) == 1 && strings.TrimSpace(kinds[0]) == "") {
-			return true
-		}
-		for _, s := range kinds {
-			if strings.EqualFold(strings.TrimSpace(s), k) {
-				return true
-			}
-		}
-		return false
+		return len(kinds) == 0 || sliceContains(kinds, k)
 	}
 	vp := rep.Pipeline
 	fmt.Fprintf(w, "doctrine plane for %s\n", rep.Root)
@@ -172,6 +194,9 @@ func renderDoctrine(w io.Writer, rep doctrineReport, kinds []string, top int) {
 		}
 		if len(rep.Bets) == 0 {
 			fmt.Fprintln(w, "\ngoals: none — no `**G<n>.**` goal in docs/intent/scope.md")
+			if len(rep.BetFindings) > 0 {
+				renderFindings(w, "goal findings", rep.BetFindings, top) // a misplaced bet block still shows
+			}
 		} else {
 			fmt.Fprintf(w, "\ngoals: %d — %d bet(s), %d refused\n", len(rep.Bets), bets, refused)
 			now := rep.Now.UTC().Truncate(24 * time.Hour)
@@ -352,7 +377,7 @@ func checkDoctrine(root string) doctorCheck {
 	}
 	rep := buildDoctrine(root, time.Now().UTC())
 	vp := rep.Pipeline
-	if vp.Home == "" && len(rep.Bets) == 0 {
+	if vp.Home == "" && len(rep.Bets) == 0 && len(rep.BetFindings) == 0 {
 		if !rep.Coverage.Complete() {
 			return doctorCheck{
 				Name: name, Status: doctorSkipped,
@@ -396,14 +421,20 @@ func checkDoctrine(root string) doctorCheck {
 	}
 	goalPart += fmt.Sprintf(", %d refused", refused)
 	parts = append(parts, goalPart)
-	due := 0
+	due, misplaced := 0, 0
 	for _, f := range rep.BetFindings {
-		if f.Kind == "review-due" {
+		switch f.Kind {
+		case "review-due":
 			due++
+		case "misplaced-bet":
+			misplaced++
 		}
 	}
 	if due > 0 {
 		parts = append(parts, fmt.Sprintf("%d bet review(s) DUE", due))
+	}
+	if misplaced > 0 {
+		parts = append(parts, fmt.Sprintf("%d misplaced bet block(s) outside a scope goal", misplaced))
 	}
 
 	status, remedy := doctorPass, ""

@@ -161,3 +161,115 @@ func TestCheckDoctrine_WarnsNeverFails(t *testing.T) {
 		}
 	})
 }
+
+// lockOutDoctrine makes p unreadable for the rest of the test, restoring
+// mode after it; it skips when the process ignores file modes (root).
+func lockOutDoctrine(t *testing.T, p string, restore os.FileMode) {
+	t.Helper()
+	if err := os.Chmod(p, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(p, restore) })
+	if f, err := os.Open(p); err == nil {
+		_ = f.Close()
+		t.Skip("running with privileges that ignore file modes")
+	}
+}
+
+// TestCheckDoctrine_UnreadableVisionHomeIsNotAPass (ADR-027, I38): a vision
+// home that exists and cannot be listed never reads as a PASS over zero
+// visions — the row warns, the count is a named lower bound, and the verb's
+// JSON says coverage is incomplete.
+func TestCheckDoctrine_UnreadableVisionHomeIsNotAPass(t *testing.T) {
+	root := t.TempDir()
+	writeDoctrineFixture(t, root)
+	for rel, body := range map[string]string{
+		// No findings at all: one bet, both visions stated and dated.
+		"docs/intent/scope.md": "# Scope\n\n## Current goals\n\n" +
+			"**G1. The arm bench.** Done when: 20 units.\n" +
+			"{bet: arm-bench, instrument: \"fathom flywheel\", threshold: \"≥20 units per arm\", review: 2099-01-01}\n",
+		"docs/vision/02-bare.md": "# 02 — Bare\n\nStatus: accepted 2026-09-20.\n\n## 1\n",
+	} {
+		if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(rel)), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got := checkDoctrine(root); got.Status != doctorPass {
+		t.Fatalf("precondition: a finding-free fixture passes, got %+v", got)
+	}
+
+	lockOutDoctrine(t, filepath.Join(root, "docs", "vision"), 0o755)
+	got := checkDoctrine(root)
+	if got.Status == doctorPass {
+		t.Errorf("an unlistable vision home must not PASS: %+v", got)
+	}
+	for _, want := range []string{"≥ 0 vision(s)", "COVERAGE INCOMPLETE", "docs/vision"} {
+		if !strings.Contains(got.Reason, want) {
+			t.Errorf("reason lacks %q: %s", want, got.Reason)
+		}
+	}
+
+	var out, errBuf bytes.Buffer
+	if code := cmdIntent([]string{"doctrine", "--root", root, "--json"}, &out, &errBuf); code != 0 {
+		t.Fatalf("doctrine --json exit %d: %s", code, errBuf.String())
+	}
+	var payload struct {
+		Coverage struct {
+			Complete bool `json:"complete"`
+		} `json:"coverage"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload.Coverage.Complete {
+		t.Error("--json must say coverage is incomplete when the vision home cannot be listed")
+	}
+}
+
+// TestCmdIntentDoctrine_UnknownKindIsRefused: a --kind typo is an error
+// naming the accepted kinds, never a silent header-only report that exits 0.
+func TestCmdIntentDoctrine_UnknownKindIsRefused(t *testing.T) {
+	root := t.TempDir()
+	writeDoctrineFixture(t, root)
+	for _, kind := range []string{"vision", "goals", "visions,bet"} {
+		var out, errBuf bytes.Buffer
+		code := cmdIntent([]string{"doctrine", "--root", root, "--kind", kind}, &out, &errBuf)
+		if code == 0 {
+			t.Errorf("--kind %q exited 0:\n%s", kind, out.String())
+		}
+		if !strings.Contains(errBuf.String(), "visions") || !strings.Contains(errBuf.String(), "bets") {
+			t.Errorf("--kind %q: the error must name the accepted kinds: %q", kind, errBuf.String())
+		}
+	}
+	var out, errBuf bytes.Buffer
+	if code := cmdIntent([]string{"doctrine", "--root", root, "--kind", "Visions, bets"}, &out, &errBuf); code != 0 {
+		t.Errorf("accepted kinds must still work: exit %d %s", code, errBuf.String())
+	}
+}
+
+// TestCheckDoctrine_MisplacedBetBlockIsNamed: a bet block outside a scope.md
+// goal is named by the verb and warns in the doctor row — even in a repo
+// with no vision series and no goals — never dropped from every surface.
+func TestCheckDoctrine_MisplacedBetBlockIsNamed(t *testing.T) {
+	root := t.TempDir()
+	writeCorpusFixture(t, root)
+	futures := "# Future directions\n\n## F1. A future.\n\n" +
+		"Promote when: the bench says so {instrument: \"fathom flywheel\", threshold: \"20 units\", review: 2026-10-01}\n"
+	if err := os.WriteFile(filepath.Join(root, "docs", "intent", "futures.md"), []byte(futures), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "docs", "intent", "scope.md"), []byte("# Scope\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var out, errBuf bytes.Buffer
+	if code := cmdIntent([]string{"doctrine", "--root", root}, &out, &errBuf); code != 0 {
+		t.Fatalf("doctrine exit %d: %s", code, errBuf.String())
+	}
+	if !strings.Contains(out.String(), "misplaced-bet") || !strings.Contains(out.String(), "F1") {
+		t.Errorf("the misplaced bet block on F1 must be named:\n%s", out.String())
+	}
+	got := checkDoctrine(root)
+	if got.Status != doctorWarn || !strings.Contains(got.Reason, "misplaced") {
+		t.Errorf("a misplaced bet block must warn in the doctor row: %+v", got)
+	}
+}

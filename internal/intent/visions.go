@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	readmanifest "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/read-manifest"
@@ -29,9 +30,12 @@ import (
 //     status its index entry LEADS with ("— ACCEPTED 2026-09-13 (ADR-033)");
 //   - its trigger: any condition label its author wrote (`Promote when:` …),
 //     through the corpus's own condition grammar;
-//   - its plans: plan pointers in its header or index entry, resolved in
-//     docs/plans (or docs/plans/archive — an archived plan was proven), with
-//     row counts parsed by the plan grammar's own parser;
+//   - its plans: the plans its header or index entry DECLARES as its own (a
+//     `Plan:`/`Plans:` label, or a pointer its sentence calls the vision's
+//     promotion), resolved in docs/plans (or docs/plans/archive — an
+//     archived plan was proven), with row counts parsed by the plan
+//     grammar's own parser. A plan it merely cites or builds on is resolved
+//     (a dead pointer is still a broken link) but never carries its stage;
 //   - its links: every relative markdown link, and every decision id its
 //     header or index entry cites;
 //   - its date: the newest date on its status, index entry, or header, so
@@ -46,17 +50,20 @@ import (
 type VisionStage string
 
 const (
-	StageLanded      VisionStage = "landed"      // every named plan is archived or has no open row
-	StagePlanned     VisionStage = "planned"     // a named plan still has open rows
-	StageAccepted    VisionStage = "accepted"    // status says accepted/adopted; no plan named
+	// StageLanded is computed, never read: no plan that carries the vision
+	// has an open row, and at least one carries claimed work. No status
+	// word ("shipped", "complete") assigns it.
+	StageLanded      VisionStage = "landed"
+	StagePlanned     VisionStage = "planned"     // a plan that carries it still has open rows (or no rows yet)
+	StageAccepted    VisionStage = "accepted"    // status says accepted/adopted; no plan carries work
 	StageForReview   VisionStage = "for-review"  // status says for review / proposed / awaiting
 	StageDeferred    VisionStage = "deferred"    // status says deferred
 	StageSuperseded  VisionStage = "superseded"  // terminal
 	StageRejected    VisionStage = "rejected"    // terminal
-	StageStated      VisionStage = "stated"      // a status line with no recognized stage word
+	StageStated      VisionStage = "stated"      // a status shown verbatim that names no stage fathom can place — including a landed claim no carrying plan evidences
 	StageConditional VisionStage = "conditional" // no status, but a named trigger
-	StageUnstated    VisionStage = "unstated"    // names no status, trigger, or plan
-	StageUnreadable  VisionStage = "unreadable"  // the file could not be read (ADR-027)
+	StageUnstated    VisionStage = "unstated"    // names no status, trigger, or plan that carries work
+	StageUnreadable  VisionStage = "unreadable"  // the file, or a plan that carries it, exists and could not be read (ADR-027)
 )
 
 // VisionPlan is one plan a vision names, with its rows counted statically.
@@ -74,13 +81,17 @@ type VisionPlan struct {
 
 // Vision is one document of the series and where it stands.
 type Vision struct {
-	File       string       `json:"file"`
-	Number     string       `json:"number"`
-	Title      string       `json:"title"`
-	Status     string       `json:"status,omitempty"`
-	StatusFrom string       `json:"status_from,omitempty"` // "doc" | "index"
-	Stage      VisionStage  `json:"stage"`
+	File       string      `json:"file"`
+	Number     string      `json:"number"`
+	Title      string      `json:"title"`
+	Status     string      `json:"status,omitempty"`
+	StatusFrom string      `json:"status_from,omitempty"` // "doc" | "index"
+	Stage      VisionStage `json:"stage"`
+	// Plans are the plans that CARRY the vision: declared as its own in its
+	// header or index entry. CitedPlans are plans it names otherwise (builds
+	// on, closes a trigger of) — resolved, listed, never its stage.
 	Plans      []VisionPlan `json:"plans,omitempty"`
+	CitedPlans []string     `json:"cited_plans,omitempty"`
 	ADRs       []string     `json:"adrs,omitempty"`
 	Triggers   []string     `json:"triggers,omitempty"`
 	Dated      string       `json:"dated,omitempty"`
@@ -133,26 +144,27 @@ var (
 		{"accepted", StageAccepted}, {"adopted", StageAccepted},
 		{"for review", StageForReview}, {"awaiting", StageForReview}, {"founding doc", StageForReview},
 		{"proposed", StageForReview}, {"draft", StageForReview},
-		{"complete", StageLanded}, {"landed", StageLanded}, {"shipped", StageLanded},
 	}
-)
+	// landedClaimWords say a promise landed. An index entry that LEADS with
+	// one states a status (leadingStatus), but no status word is ever a
+	// stage: landed is computed from the plans that carry a vision (vision
+	// 23 §5 — fathom computes status or does not show it), so a status made
+	// only of these is `stated`, shown verbatim.
+	landedClaimWords = []string{"complete", "landed", "shipped"}
 
-// visionsHome resolves the vision series: what the router names, else the
-// conventional docs/vision. A repo with neither has no pipeline, named.
-func (c *Corpus) visionsHome() (home, index string) {
-	if c.VisionsHome != "" {
-		return c.VisionsHome, c.VisionsIndex
-	}
-	cand := filepath.Join(c.Root, "docs", "vision")
-	if info, err := os.Stat(cand); err == nil && info.IsDir() {
-		idx := filepath.Join(cand, "README.md")
-		if statExists(idx) {
-			return "docs/vision", "docs/vision/README.md"
-		}
-		return "docs/vision", ""
-	}
-	return "", ""
-}
+	// Carrier detection (declaresCarrier): a clause ends at sentence or list
+	// punctuation or a table rule followed by whitespace; the last label
+	// before a plan pointer in its clause says whether the vision declares
+	// it (`Plan:`, `Plans:`, "plan `…`", "Plan rows: … in") or cites it.
+	clauseEndRe    = regexp.MustCompile("[.;!?|][*_)\"'`]*(?:\\s|$)")
+	carrierLabelRe = regexp.MustCompile(`(?i)\bplans?\b`)
+	citeLabelRe    = regexp.MustCompile(`(?i)\b(?:builds? on|built on|successor to|supersedes|superseded by|see also|related|inputs?|depends on|prior art|cites?|sources?|closes|closed)\b`)
+	promotionRe    = regexp.MustCompile(`(?i)\bpromotion\b`)
+	// pathTokRe blanks paths and code spans out of a clause before labels
+	// are looked for, so the "plans" inside `docs/plans/x.md` is no label.
+	pathTokRe    = regexp.MustCompile("`[^`]*`|\\S*/\\S*")
+	adrFileNumRe = regexp.MustCompile(`(?i)^(?:adr-?)?(\d+)`)
+)
 
 // LoadVisions computes the promotion pipeline for c's repository. now is
 // injected so staleness is deterministic.
@@ -164,16 +176,39 @@ func LoadVisions(c Corpus, now time.Time) (vp VisionPipeline) {
 	// manifest of what was and was not read (ADR-027).
 	defer func() { vp.Coverage = reads.Manifest() }()
 
-	vp.Home, vp.Index = c.visionsHome()
+	// The vision series is the one the router's docs map names, and only
+	// that (ADR-026 amendment 2026-09-25, part 2): a docs/vision/ the router
+	// does not route to is not read.
+	vp.Home, vp.Index = c.VisionsHome, c.VisionsIndex
 	if vp.Home == "" {
-		vp.Absent = "no vision series — the router's docs map names none and docs/vision/ does not exist"
+		vp.Absent = "no vision series — the router's docs map names none (a docs-map row whose question names the vision series)"
+		if c.RouterPath == "" {
+			vp.Absent = "no vision series — no intent router (docs/intent/README.md) was read, so none is named"
+		}
 		return vp
 	}
 	homeAbs := filepath.Join(c.Root, filepath.FromSlash(vp.Home))
-	files, err := filepath.Glob(filepath.Join(homeAbs, "*.md"))
+	entries, err := os.ReadDir(homeAbs)
 	if err != nil {
-		vp.Uncomputable = append(vp.Uncomputable, "vision home "+vp.Home+" could not be listed: "+err.Error())
+		if errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR) {
+			reads.Record(homeAbs, readmanifest.Absent())
+			vp.Absent = "no vision series — the router's docs map names " + vp.Home + ", which is not a directory in this tree"
+			vp.Home, vp.Index = "", ""
+			return vp
+		}
+		// ADR-027, I38: a home that exists and cannot be listed is
+		// blindness on the manifest — never zero visions, never complete.
+		reads.Record(homeAbs, readmanifest.Unreadable(err))
+		vp.Uncomputable = append(vp.Uncomputable, "vision home "+vp.Home+" could not be listed ("+errnoOf(err)+
+			") — no vision in it was seen, so every count here is a lower bound")
 		return vp
+	}
+	var files []string
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") {
+			continue
+		}
+		files = append(files, filepath.Join(homeAbs, e.Name()))
 	}
 	sort.Strings(files)
 
@@ -181,12 +216,15 @@ func LoadVisions(c Corpus, now time.Time) (vp VisionPipeline) {
 	indexLines := []string{}
 	if vp.Index != "" {
 		b, rerr := readRecorded(reads, filepath.Join(c.Root, filepath.FromSlash(vp.Index)))
-		if rerr != nil {
-			vp.Uncomputable = append(vp.Uncomputable, "index "+vp.Index+" could not be read ("+rerr.Error()+") — index-entry statuses and dates are not in this view")
-		} else {
+		switch {
+		case errors.Is(rerr, fs.ErrNotExist):
+			vp.Uncomputable = append(vp.Uncomputable, "index "+vp.Index+", which the router's docs map names, is not in this tree — index-entry statuses and dates are not in this view")
+		case rerr != nil:
+			vp.Uncomputable = append(vp.Uncomputable, "index "+vp.Index+" could not be read ("+errnoOf(rerr)+") — index-entry statuses and dates are not in this view")
+		default:
 			indexLines = splitLines(string(b))
 			vp.IndexStatus = indexStatus(indexLines)
-			found = append(found, checkLinks(c.Root, vp.Index, indexLines)...)
+			found = append(found, checkLinks(c.Root, vp.Index, indexLines, reads)...)
 		}
 	}
 
@@ -195,7 +233,7 @@ func LoadVisions(c Corpus, now time.Time) (vp VisionPipeline) {
 		vp.Uncomputable = append(vp.Uncomputable, "decision ids: "+decNote)
 	}
 	var foreign []string
-	plans := planCache{root: c.Root, reads: reads, parsed: map[string]*VisionPlan{}}
+	plans := planCache{root: c.Root, reads: reads, parsed: map[string]planState{}}
 
 	for _, abs := range files {
 		rel := filepath.ToSlash(relTo(c.Root, abs))
@@ -250,31 +288,48 @@ func LoadVisions(c Corpus, now time.Time) (vp VisionPipeline) {
 
 		// Plans and decision ids: the header and the index entry only — the
 		// promotion metadata, not the prose.
-		meta := []metaLine{}
-		for i, ln := range pre {
-			meta = append(meta, metaLine{file: rel, line: i + 1, text: ln})
-		}
+		srcs := []metaSource{{file: rel, first: 1, lines: pre}}
 		if idxLine > 0 {
-			meta = append(meta, metaLine{file: vp.Index, line: idxLine, text: indexLines[idxLine-1]})
+			srcs = append(srcs, metaSource{file: vp.Index, first: idxLine, lines: indexLines[idxLine-1 : idxLine]})
 		}
 		seenPlan := map[string]bool{}
 		seenADR := map[string]bool{}
-		for _, ml := range meta {
-			links := linkTargets(ml.text)
-			for _, tok := range planPointerRe.FindAllString(ml.text, -1) {
-				vpn, ok, blind := plans.resolve(tok)
-				if blind {
-					continue // unreadable: named on the coverage manifest, never "not in the tree"
+		var cited, decided []string
+		var blindCarriers []finding
+		for _, src := range srcs {
+			for _, pm := range planMentions(src.file, src.first, src.lines) {
+				vpn, blindPath, blindErr := plans.resolve(pm.tok)
+				if blindErr != "" {
+					// It exists (or cannot be told apart from existing) and
+					// could not be read: named on the coverage manifest, never
+					// "not in this tree" (ADR-027, I38). A plan that carries
+					// the vision makes its stage unknowable, and says so.
+					if pm.carrier && !seenPlan["blind:"+blindPath] {
+						seenPlan["blind:"+blindPath] = true
+						blindCarriers = append(blindCarriers, finding{file: pm.file, line: pm.line, kind: "unreadable", Claim: Claim{
+							Ref:      pm.file + ":" + itoa(pm.line),
+							Detail:   "names plan `" + blindPath + "`, which exists and could not be read (" + blindErr + ") — where this promise stands is unknown, not unplanned",
+							Remedy:   "check the plan is readable; on an external volume this is usually a wedged TCC verdict — `tccutil reset SystemPolicyRemovableVolumes <terminal bundle id>`",
+							Evidence: "read " + blindPath,
+						}})
+					}
+					continue
 				}
-				if !ok {
-					if isLinkTarget(links, tok) {
+				if vpn == nil {
+					if pm.linked {
 						continue // a markdown link: checkLinks already names it
 					}
-					found = append(found, finding{file: ml.file, line: ml.line, kind: "broken-link", Claim: Claim{
-						Ref: ml.file + ":" + itoa(ml.line), Detail: "names plan `" + tok + "`, which is not in this tree",
+					found = append(found, finding{file: pm.file, line: pm.line, kind: "broken-link", Claim: Claim{
+						Ref: pm.file + ":" + itoa(pm.line), Detail: "names plan `" + pm.tok + "`, which is not in this tree",
 						Remedy:   "fix the pointer; a plan in another repository is not this pipeline's evidence",
 						Evidence: "resolved against docs/plans and docs/plans/archive",
 					}})
+					continue
+				}
+				if !pm.carrier {
+					if !contains(cited, vpn.Path) {
+						cited = append(cited, vpn.Path)
+					}
 					continue
 				}
 				if seenPlan[vpn.Path] {
@@ -282,42 +337,58 @@ func LoadVisions(c Corpus, now time.Time) (vp VisionPipeline) {
 				}
 				seenPlan[vpn.Path] = true
 				p := *vpn
-				p.Named = tok
+				p.Named = pm.tok
 				v.Plans = append(v.Plans, p)
 			}
-			for _, m := range adrIDRe.FindAllStringSubmatch(ml.text, -1) {
-				id := "ADR-" + m[1]
-				if seenADR[id+ml.file] {
-					continue
-				}
-				seenADR[id+ml.file] = true
-				if !contains(v.ADRs, id) {
-					v.ADRs = append(v.ADRs, id)
-				}
-				if decisions == nil {
-					continue // uncomputable, named once above
-				}
-				if foreignNumbering(m[1], width) {
-					// "platform-engineering ADR-0098": another repository's
-					// numbering (zero-padded to a different width than this
-					// home's ids). Out of scope, like a sibling-repo path —
-					// named below, never reported as missing here.
-					if !contains(foreign, id) {
-						foreign = append(foreign, id)
+			for i, ln := range src.lines {
+				line := src.first + i
+				for _, m := range adrIDRe.FindAllStringSubmatch(ln, -1) {
+					id := "ADR-" + m[1]
+					if seenADR[id+src.file] {
+						continue
 					}
-					continue
-				}
-				n, _ := strconv.Atoi(m[1])
-				if !decisions[n] {
-					found = append(found, finding{file: ml.file, line: ml.line, kind: "broken-link", Claim: Claim{
-						Ref: ml.file + ":" + itoa(ml.line), Detail: "cites " + id + ", which no decision record in " + c.decisionsHome() + " carries",
-						Remedy:   "fix the id, or record the decision (intent-decide)",
-						Evidence: "decision ids read from " + c.decisionsHome(),
-					}})
+					seenADR[id+src.file] = true
+					if !contains(v.ADRs, id) {
+						v.ADRs = append(v.ADRs, id)
+					}
+					if decisions == nil {
+						if !contains(decided, id) {
+							decided = append(decided, id) // unchecked, named once above
+						}
+						continue
+					}
+					if foreignNumbering(m[1], width) {
+						// "platform-engineering ADR-0098": another repository's
+						// numbering (zero-padded to a different width than this
+						// home's ids). Out of scope, like a sibling-repo path —
+						// named below, never reported as missing here.
+						if !contains(foreign, id) {
+							foreign = append(foreign, id)
+						}
+						continue
+					}
+					n, _ := strconv.Atoi(m[1])
+					if !decisions[n] {
+						found = append(found, finding{file: src.file, line: line, kind: "broken-link", Claim: Claim{
+							Ref: src.file + ":" + itoa(line), Detail: "cites " + id + ", which no decision record in " + c.decisionsHome() + " carries",
+							Remedy:   "fix the id, or record the decision (intent-decide)",
+							Evidence: "decision ids read from " + c.decisionsHome(),
+						}})
+						continue
+					}
+					if !contains(decided, id) {
+						decided = append(decided, id)
+					}
 				}
 			}
 		}
 		sort.Strings(v.ADRs)
+		sort.Strings(decided)
+		for _, cp := range cited {
+			if !seenPlan[cp] {
+				v.CitedPlans = append(v.CitedPlans, cp)
+			}
+		}
 
 		// Dates: the newest on the status paragraph, the index entry, or the header.
 		var dateSrc []string
@@ -332,9 +403,13 @@ func LoadVisions(c Corpus, now time.Time) (vp VisionPipeline) {
 		}
 
 		v.Stage = visionStage(stage, v.Plans, len(v.Triggers) > 0)
+		if len(blindCarriers) > 0 {
+			v.Stage = StageUnreadable
+			found = append(found, blindCarriers...)
+		}
 		vp.Visions = append(vp.Visions, v)
 
-		found = append(found, checkLinks(c.Root, rel, lines)...)
+		found = append(found, checkLinks(c.Root, rel, lines, reads)...)
 		switch {
 		case v.Stage == StageUnstated:
 			ev := "header (lines 1–" + itoa(len(pre)) + ")"
@@ -343,16 +418,29 @@ func LoadVisions(c Corpus, now time.Time) (vp VisionPipeline) {
 			} else if vp.Index != "" {
 				ev += "; no entry in " + vp.Index
 			}
+			detail := "names no status, trigger, or plan — where this promise stands cannot be computed"
+			if len(v.Plans) > 0 {
+				detail = "names no status or trigger, and its plan carries no claimed or open row (every row deferred or refused) — where this promise stands cannot be computed"
+			}
 			found = append(found, finding{file: rel, kind: "unstated", Claim: Claim{
-				Ref: rel, Detail: "names no status, trigger, or plan — where this promise stands cannot be computed",
-				Remedy:   "add a `Status:` line to its header (accepted | for review | superseded | rejected, dated), or name the plan that carries it",
+				Ref: rel, Detail: detail,
+				Remedy:   "add a `Status:` line to its header (accepted | for review | superseded | rejected, dated), or name the plan that carries it (`Plan: docs/plans/<plan>.md`)",
 				Evidence: ev + " read",
 			}})
 		case v.Stage == StageForReview && v.AgeDays > vp.StaleDays:
+			detail := fmt.Sprintf("%q — for review %d days (since %s) with no plan carrying it and no decision; threshold %d", v.Status, v.AgeDays, v.Dated, vp.StaleDays)
+			remedy := "decide it: accept (a decision record and a plan), reject, or supersede — and restate its status"
+			if len(decided) > 0 {
+				// It cites a decision: never told it has none (the remedy
+				// would ask for a record that already exists).
+				ids := strings.Join(decided, ", ")
+				detail = fmt.Sprintf("%q — for review %d days (since %s) with no plan carrying it; it cites %s; threshold %d", v.Status, v.AgeDays, v.Dated, ids, vp.StaleDays)
+				remedy = "if " + ids + " decided it, restate its status to match (accepted with the plan that carries it, rejected, or superseded); otherwise decide it"
+			}
 			found = append(found, finding{file: rel, line: docLine, kind: "stale", Claim: Claim{
 				Ref:      rel + lineSuffix(docLine),
-				Detail:   fmt.Sprintf("%q — for review %d days (since %s) with no plan and no decision; threshold %d", v.Status, v.AgeDays, v.Dated, vp.StaleDays),
-				Remedy:   "decide it: accept (a decision record and a plan), reject, or supersede — and restate its status",
+				Detail:   detail,
+				Remedy:   remedy,
 				Evidence: "status from " + v.StatusFrom,
 			}})
 		}
@@ -396,10 +484,83 @@ type finding struct {
 	kind string
 }
 
-type metaLine struct {
-	file string
-	line int
-	text string
+// metaSource is one run of a vision's promotion metadata — its header, or
+// its index entry — with the 1-based line of its first line.
+type metaSource struct {
+	file  string
+	first int
+	lines []string
+}
+
+// planMention is one plan pointer in a vision's promotion metadata.
+type planMention struct {
+	tok     string
+	file    string
+	line    int
+	carrier bool // declared as the vision's own plan, not merely cited
+	linked  bool // (the tail of) a markdown link target on its line
+}
+
+// planMentions finds every plan pointer in one metadata source, with the
+// line it sits on and whether the vision DECLARES it as its carrier. Lines
+// are joined so a label that wraps ("Plan:\n`docs/plans/x.md`") still
+// governs its pointer.
+func planMentions(file string, first int, lines []string) []planMention {
+	joined := strings.Join(lines, "\n")
+	starts := make([]int, len(lines))
+	off := 0
+	for i, ln := range lines {
+		starts[i] = off
+		off += len(ln) + 1
+	}
+	var out []planMention
+	for _, loc := range planPointerRe.FindAllStringIndex(joined, -1) {
+		li := sort.Search(len(starts), func(i int) bool { return starts[i] > loc[0] }) - 1
+		tok := joined[loc[0]:loc[1]]
+		out = append(out, planMention{
+			tok: tok, file: file, line: first + li,
+			carrier: declaresCarrier(joined, loc[0], loc[1]),
+			linked:  isLinkTarget(linkTargets(lines[li]), tok),
+		})
+	}
+	return out
+}
+
+// declaresCarrier reports whether the plan pointer at text[start:end] is
+// the vision's own plan rather than one it cites. Within the pointer's
+// clause, the last label before it must be a plan label (`Plan:`,
+// `Plans:`, "plan `…`", "Plan rows: … in") and not a citation label
+// ("Builds on:", "Successor to", "closes the trigger", "Inputs:" …); with
+// no label at all, the clause after it must call it the vision's promotion
+// ("… is its binding promotion"). A plan a vision builds on is evidence
+// about another promise, never this one's stage.
+func declaresCarrier(text string, start, end int) bool {
+	from := 0
+	for _, m := range clauseEndRe.FindAllStringIndex(text[:start], -1) {
+		from = m[1]
+	}
+	before := pathTokRe.ReplaceAllString(text[from:start], " ")
+	lastCarrier, lastCite := lastMatch(carrierLabelRe, before), lastMatch(citeLabelRe, before)
+	if lastCarrier > lastCite {
+		return true
+	}
+	if lastCite >= 0 {
+		return false
+	}
+	after := text[end:]
+	if m := clauseEndRe.FindStringIndex(after); m != nil {
+		after = after[:m[0]]
+	}
+	return promotionRe.MatchString(after)
+}
+
+// lastMatch is the offset of re's last match in s, or -1.
+func lastMatch(re *regexp.Regexp, s string) int {
+	locs := re.FindAllStringIndex(s, -1)
+	if len(locs) == 0 {
+		return -1
+	}
+	return locs[len(locs)-1][0]
 }
 
 func lineSuffix(n int) string {
@@ -528,8 +689,13 @@ func leadingStatus(rest string) string {
 		}
 	}
 	low := strings.ToLower(t)
+	words := make([]string, 0, len(visionStageMap)+len(landedClaimWords))
 	for _, sw := range visionStageMap {
-		if strings.HasPrefix(low, sw.word) {
+		words = append(words, sw.word)
+	}
+	words = append(words, landedClaimWords...)
+	for _, w := range words {
+		if strings.HasPrefix(low, w) {
 			end := len(t)
 			for _, stop := range []string{" — ", " – ", " |", "|", ". "} {
 				if k := strings.Index(t, stop); k >= 0 && k < end {
@@ -542,8 +708,10 @@ func leadingStatus(rest string) string {
 	return ""
 }
 
-// classifyStatus maps a status to a stage: the EARLIEST stage word wins, so
-// "founding doc … Successor to 10 (complete …)" is for-review, not landed.
+// classifyStatus maps a status to a stage: the EARLIEST stage word wins, and
+// a landed claim ("complete", "landed", "shipped") is never a stage word —
+// so "Phase F is landed; Phases G–I are a founding doc" is for-review, and a
+// status of only "shipped" is `stated` until a carrying plan evidences it.
 func classifyStatus(status string) VisionStage {
 	if status == "" {
 		return ""
@@ -558,19 +726,27 @@ func classifyStatus(status string) VisionStage {
 	return best
 }
 
-// visionStage combines the stated stage with the computed evidence: a
-// terminal status stands; a named plan outranks a stated intention; a
-// trigger alone is a conditional promise.
+// visionStage combines the stated stage with the computed evidence. A
+// terminal status stands. A plan that carries the vision outranks what its
+// status says: an open row (or a live plan with no rows yet) is planned;
+// when no carrying plan has an open row and at least one has claimed work,
+// the promise landed — the only way `landed` is ever assigned. A plan whose
+// rows are all deferred or refused carries nothing, so the stated stage
+// stands. A trigger alone is a conditional promise.
 func visionStage(stated VisionStage, plans []VisionPlan, hasTrigger bool) VisionStage {
 	if stated == StageSuperseded || stated == StageRejected {
 		return stated
 	}
-	if len(plans) > 0 {
-		for _, p := range plans {
-			if !p.Archived && (p.Open > 0 || p.Total == 0) {
-				return StagePlanned
-			}
+	claimed := false
+	for _, p := range plans {
+		if !p.Archived && (p.Open > 0 || p.Total == 0) {
+			return StagePlanned
 		}
+		if p.Claimed > 0 {
+			claimed = true
+		}
+	}
+	if claimed {
 		return StageLanded
 	}
 	if stated != "" {
@@ -615,7 +791,9 @@ func linkTargets(ln string) map[string]bool {
 // checkLinks reports every relative markdown link in a document that does
 // not resolve. Web links, bare anchors, links inside code, and links that
 // leave the repository (a sibling repo is out of scope — F18) are skipped.
-func checkLinks(root, rel string, lines []string) []finding {
+// A target the reader cannot see (EACCES on a directory it cannot search)
+// is recorded on reads as unreadable and is never a broken link (ADR-027).
+func checkLinks(root, rel string, lines []string, reads *readmanifest.Set) []finding {
 	var out []finding
 	base := filepath.Dir(filepath.Join(root, filepath.FromSlash(rel)))
 	fence := false
@@ -643,7 +821,12 @@ func checkLinks(root, rel string, lines []string) []finding {
 			if r, err := filepath.Rel(root, cand); err != nil || strings.HasPrefix(r, "..") {
 				continue
 			}
-			if statExists(cand) {
+			present, blind := statPresence(cand)
+			if present {
+				continue
+			}
+			if blind != nil {
+				reads.Record(cand, readmanifest.Unreadable(blind))
 				continue
 			}
 			detail := "links `" + raw + "`, which is not in the tree"
@@ -675,7 +858,11 @@ func decisionIDs(c Corpus, reads *readmanifest.Set) (map[int]bool, int, string) 
 	abs := filepath.Join(c.Root, filepath.FromSlash(home))
 	info, err := os.Stat(abs)
 	if err != nil {
-		return nil, 0, "decisions home " + home + " does not exist"
+		if errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR) {
+			return nil, 0, "decisions home " + home + " does not exist"
+		}
+		reads.Record(abs, readmanifest.Unreadable(err))
+		return nil, 0, "decisions home " + home + " could not be read (" + errnoOf(err) + "), so cited ADR ids are not checked"
 	}
 	out := map[int]bool{}
 	widths := map[int]int{}
@@ -685,10 +872,19 @@ func decisionIDs(c Corpus, reads *readmanifest.Set) (map[int]bool, int, string) 
 		widths[len(digits)]++
 	}
 	if info.IsDir() {
-		entries, _ := filepath.Glob(filepath.Join(abs, "*.md"))
-		num := regexp.MustCompile(`(?i)^(?:adr-?)?(\d+)`)
+		// A directory that exists and cannot be listed leaves every cited
+		// id unchecked and named — never an empty set that turns each one
+		// into "no decision record carries it" (ADR-027, I38).
+		entries, lerr := os.ReadDir(abs)
+		if lerr != nil {
+			reads.Record(abs, readmanifest.Unreadable(lerr))
+			return nil, 0, "decisions home " + home + " could not be listed (" + errnoOf(lerr) + "), so cited ADR ids are not checked"
+		}
 		for _, e := range entries {
-			if m := num.FindStringSubmatch(filepath.Base(e)); m != nil {
+			if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") {
+				continue
+			}
+			if m := adrFileNumRe.FindStringSubmatch(e.Name()); m != nil {
 				add(m[1])
 			}
 		}
@@ -722,59 +918,77 @@ func foreignNumbering(digits string, width int) bool {
 type planCache struct {
 	root   string
 	reads  *readmanifest.Set
-	parsed map[string]*VisionPlan
+	parsed map[string]planState // by candidate path; a genuinely absent path is not cached
 }
 
-// resolve returns the plan a pointer names; blind is true when the plan
-// exists and could not be read (an instrument failure, ADR-027).
-func (pc planCache) resolve(tok string) (plan *VisionPlan, ok, blind bool) {
+// planState is one candidate path's outcome: its parsed plan, or blind —
+// the reader's error when the path exists (or cannot be told apart from
+// existing) and could not be read.
+type planState struct {
+	plan  *VisionPlan
+	blind string
+}
+
+// resolve returns the plan a pointer names. blindPath/blindErr are set when
+// a candidate could not be seen — the plan exists and was unreadable, or
+// its directory could not be searched — an instrument failure recorded on
+// the manifest (ADR-027), never "not in this tree".
+func (pc planCache) resolve(tok string) (plan *VisionPlan, blindPath, blindErr string) {
 	name := filepath.Base(tok)
-	var cands []struct {
-		rel      string
-		archived bool
-	}
-	live := struct {
-		rel      string
-		archived bool
-	}{"docs/plans/" + name, false}
-	arch := struct {
-		rel      string
-		archived bool
-	}{"docs/plans/archive/" + name, true}
+	live, arch := "docs/plans/"+name, "docs/plans/archive/"+name
+	cands := []string{live, arch}
 	if strings.Contains(tok, "archive/") {
-		cands = append(cands, arch, live)
-	} else {
-		cands = append(cands, live, arch)
+		cands = []string{arch, live}
 	}
-	for _, cand := range cands {
-		if p, seen := pc.parsed[cand.rel]; seen {
-			return p, p != nil, p == nil
-		}
-		abs := filepath.Join(pc.root, filepath.FromSlash(cand.rel))
-		if !statExists(abs) {
-			continue
-		}
-		b, err := readRecorded(pc.reads, abs)
-		if err != nil {
-			pc.parsed[cand.rel] = nil
-			return nil, false, true
-		}
-		vpn := &VisionPlan{Path: cand.rel, Archived: cand.archived}
-		for _, t := range verify.ParseMarkdownPlan("", b).Tasks {
-			vpn.Total++
-			switch {
-			case t.Claimed:
-				vpn.Claimed++
-			case t.Skipped:
-				vpn.Skipped++
-			default:
-				vpn.Open++
+	for _, rel := range cands {
+		st, seen := pc.parsed[rel]
+		if !seen {
+			var there bool
+			st, there = pc.load(rel, rel == arch)
+			if !there {
+				continue
 			}
+			pc.parsed[rel] = st
 		}
-		pc.parsed[cand.rel] = vpn
-		return vpn, true, false
+		if st.plan != nil {
+			return st.plan, "", ""
+		}
+		if blindErr == "" {
+			blindPath, blindErr = rel, st.blind
+		}
 	}
-	return nil, false, false
+	return nil, blindPath, blindErr
+}
+
+// load reads one candidate plan path; there is false only when the path
+// genuinely is not in the tree.
+func (pc planCache) load(rel string, archived bool) (st planState, there bool) {
+	abs := filepath.Join(pc.root, filepath.FromSlash(rel))
+	present, blind := statPresence(abs)
+	if blind != nil {
+		pc.reads.Record(abs, readmanifest.Unreadable(blind))
+		return planState{blind: errnoOf(blind)}, true
+	}
+	if !present {
+		return planState{}, false
+	}
+	b, err := readRecorded(pc.reads, abs)
+	if err != nil {
+		return planState{blind: errnoOf(err)}, true
+	}
+	vpn := &VisionPlan{Path: rel, Archived: archived}
+	for _, t := range verify.ParseMarkdownPlan("", b).Tasks {
+		vpn.Total++
+		switch {
+		case t.Claimed:
+			vpn.Claimed++
+		case t.Skipped:
+			vpn.Skipped++
+		default:
+			vpn.Open++
+		}
+	}
+	return planState{plan: vpn}, true
 }
 
 // isLinkTarget reports whether tok is (the tail of) a markdown link target

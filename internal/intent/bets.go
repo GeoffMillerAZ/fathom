@@ -3,8 +3,11 @@ package intent
 import (
 	"fmt"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
+
+	readmanifest "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/read-manifest"
 )
 
 // bets.go — DP-4 (docs/plans/custodian.md; vision 23 §2 "GOALS gated
@@ -49,18 +52,62 @@ type GoalBet struct {
 }
 
 // LoadBets returns every goal of the corpus in file order, each a bet or a
-// refusal. isVerb resolves `fathom <verb>` instruments; nil leaves them
-// unchecked (named as such, never guessed either way).
-func LoadBets(c Corpus, isVerb func(string) bool) []GoalBet {
-	targets := taskTargets(c.Root)
+// refusal, and the manifest of what resolving their instruments read
+// outside the corpus (Taskfile.yml, a script's path). isVerb resolves
+// `fathom <verb>` instruments; nil leaves them unchecked (named as such,
+// never guessed either way). An instrument the reader could not see — a
+// Taskfile or script that exists and cannot be read — is likewise
+// unchecked and named on the manifest, never a refusal that blames the
+// author for the reader's blindness (ADR-027, I38).
+func LoadBets(c Corpus, isVerb func(string) bool) ([]GoalBet, readmanifest.Manifest) {
+	r := &instrumentResolver{root: c.Root, isVerb: isVerb, reads: readmanifest.NewSet()}
+	r.reads.RelativeTo(c.Root)
 	out := make([]GoalBet, 0, len(c.Goals))
 	for _, g := range c.Goals {
-		out = append(out, loadBet(c, g, isVerb, targets))
+		out = append(out, loadBet(c, g, r))
+	}
+	return out, r.reads.Manifest()
+}
+
+// MisplacedBets names every bet block — a block carrying any bet key — on
+// a condition that is not a scope.md goal's. LoadBets reads only goals and
+// Condition.Annotated never counts a bet-only block toward K0, so without
+// this list such a block would be read by nothing and named by nothing.
+func MisplacedBets(c Corpus) []Claim {
+	goals := map[string]bool{}
+	for _, g := range c.Goals {
+		goals[g.File+"\x00"+g.ID] = true
+	}
+	var out []Claim
+	for _, cond := range c.Conditions {
+		if goals[cond.File+"\x00"+cond.Record] {
+			continue
+		}
+		var keys []string
+		for k := range cond.Ann {
+			if betKeys[k] {
+				keys = append(keys, k)
+			}
+		}
+		if len(keys) == 0 {
+			continue
+		}
+		sort.Strings(keys)
+		ref := cond.Record
+		if ref == "" {
+			ref = cond.File
+		}
+		out = append(out, Claim{
+			Kind: "misplaced-bet", Ref: ref,
+			Detail:   fmt.Sprintf("its %s carries a bet block (%s) — only a scope.md goal's Done when is a bet, so nothing reads this one", cond.Label, strings.Join(keys, ", ")),
+			Remedy:   "move the block to the scope.md goal it measures, or drop it; a bet block evaluates nothing where it is (and is no oracle annotation)",
+			Evidence: cond.File + ":" + itoa(cond.Line),
+		})
 	}
 	return out
 }
 
-func loadBet(c Corpus, g Goal, isVerb func(string) bool, targets map[string]bool) GoalBet {
+func loadBet(c Corpus, g Goal, r *instrumentResolver) GoalBet {
 	gb := GoalBet{Goal: g}
 	var conds []Condition
 	for _, cond := range c.Conditions {
@@ -114,7 +161,7 @@ func loadBet(c Corpus, g Goal, isVerb func(string) bool, targets map[string]bool
 		}
 	}
 	if gb.Instrument != "" {
-		kind, reason := resolveInstrument(c.Root, gb.Instrument, isVerb, targets)
+		kind, reason := r.resolve(gb.Instrument)
 		if reason != "" {
 			why = append(why, reason)
 		}
@@ -126,11 +173,32 @@ func loadBet(c Corpus, g Goal, isVerb func(string) bool, targets map[string]bool
 	return gb
 }
 
-// resolveInstrument checks that an instrument names something a human can
-// run in this repo: a registered `fathom` verb, a Taskfile target, or a
-// script in the tree. Anything else — prose, a function name, a command
-// this repo cannot resolve — is refused with the accepted forms named.
-func resolveInstrument(root, instrument string, isVerb func(string) bool, targets map[string]bool) (kind, refusal string) {
+// instrumentResolver resolves bet instruments, reading Taskfile.yml once
+// and only when a `task` instrument needs it, and recording every read
+// outside the corpus on its manifest.
+type instrumentResolver struct {
+	root    string
+	isVerb  func(string) bool
+	reads   *readmanifest.Set
+	loaded  bool
+	targets map[string]bool
+	tfErr   error // Taskfile.yml exists and could not be read
+}
+
+func (r *instrumentResolver) taskTargets() (map[string]bool, error) {
+	if !r.loaded {
+		r.targets, r.tfErr = readTaskTargets(r.root, r.reads)
+		r.loaded = true
+	}
+	return r.targets, r.tfErr
+}
+
+// resolve checks that an instrument names something a human can run in
+// this repo: a registered `fathom` verb, a Taskfile target, or a script in
+// the tree. Anything else — prose, a function name, a command this repo
+// cannot resolve — is refused with the accepted forms named. What the
+// reader cannot see is unchecked, never refused.
+func (r *instrumentResolver) resolve(instrument string) (kind, refusal string) {
 	fields := strings.Fields(strings.Trim(instrument, "`"))
 	if len(fields) == 0 {
 		return "", "instrument is empty"
@@ -140,21 +208,31 @@ func resolveInstrument(root, instrument string, isVerb func(string) bool, target
 		if len(fields) < 2 {
 			return "", "instrument `fathom` names no verb"
 		}
-		if isVerb == nil {
+		if r.isVerb == nil {
 			return "fathom verb (unchecked)", ""
 		}
-		if !isVerb(fields[1]) {
+		if !r.isVerb(fields[1]) {
 			return "", fmt.Sprintf("instrument `%s` names no registered fathom verb (%q)", instrument, fields[1])
 		}
 		return "fathom verb", ""
 	case "task":
+		targets, err := r.taskTargets()
+		if err != nil {
+			return "task target (unchecked — Taskfile.yml could not be read: " + errnoOf(err) + ")", ""
+		}
 		if len(fields) >= 2 && targets[fields[1]] {
 			return "task target", ""
 		}
 		return "", fmt.Sprintf("instrument `%s` names no Taskfile target", instrument)
 	}
 	if strings.Contains(fields[0], "/") && !filepath.IsAbs(fields[0]) && !strings.HasPrefix(fields[0], "..") {
-		if statExists(filepath.Join(root, filepath.FromSlash(fields[0]))) {
+		abs := filepath.Join(r.root, filepath.FromSlash(fields[0]))
+		present, blind := statPresence(abs)
+		if blind != nil {
+			r.reads.Record(abs, readmanifest.Unreadable(blind))
+			return "repo script (unchecked — " + fields[0] + " could not be read: " + errnoOf(blind) + ")", ""
+		}
+		if present {
 			return "repo script", ""
 		}
 		return "", fmt.Sprintf("instrument `%s` names a script that is not in the tree", instrument)

@@ -271,3 +271,242 @@ func TestVisionPipeline_RealSeries(t *testing.T) {
 	}
 	t.Logf("stages %v, %d finding(s)", stages, len(vp.Findings))
 }
+
+// lockOut makes p (a file or a directory) unreadable for the rest of the
+// test and restores mode after it; it skips when the process ignores file
+// modes, as root does.
+func lockOut(t *testing.T, p string, restore os.FileMode) {
+	t.Helper()
+	if err := os.Chmod(p, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(p, restore) })
+	if f, err := os.Open(p); err == nil {
+		_ = f.Close()
+		t.Skip("running with privileges that ignore file modes")
+	}
+}
+
+var reviewNow = time.Date(2026, 9, 25, 0, 0, 0, 0, time.UTC)
+
+// TestVisionPipeline_UnreadableHomeIsALowerBoundNotZero (ADR-027, I38): a
+// vision home that exists and cannot be listed is blindness named on the
+// manifest — never a confident zero visions with complete coverage, and
+// never "no vision series".
+func TestVisionPipeline_UnreadableHomeIsALowerBoundNotZero(t *testing.T) {
+	root := visionFixture(t)
+	lockOut(t, filepath.Join(root, "docs", "vision"), 0o755)
+	c, _ := intent.Load(root)
+	vp := intent.LoadVisions(c, reviewNow)
+	if vp.Home != "docs/vision" || vp.Absent != "" {
+		t.Errorf("home=%q absent=%q — the router names docs/vision; an unreadable home is not an absent one", vp.Home, vp.Absent)
+	}
+	if vp.Coverage.Complete() {
+		t.Fatalf("an unlistable vision home must make coverage incomplete; got %d vision(s) with complete coverage", len(vp.Visions))
+	}
+	if !strings.Contains(strings.Join(vp.Uncomputable, " "), "docs/vision") {
+		t.Errorf("the unlistable home must be named as not computed, got %v", vp.Uncomputable)
+	}
+	for _, f := range vp.Findings {
+		if f.Kind == "unstated" || f.Kind == "broken-link" {
+			t.Errorf("blindness reported as a finding about the author: %+v", f)
+		}
+	}
+}
+
+// TestVisionPipeline_UnreadableDecisionDirIsNotABrokenLink (ADR-027, I38): a
+// decisions DIRECTORY that cannot be listed leaves cited ids unchecked and
+// named — never every id "carried by no record".
+func TestVisionPipeline_UnreadableDecisionDirIsNotABrokenLink(t *testing.T) {
+	root := t.TempDir()
+	writeTree(t, root, map[string]string{
+		"docs/intent/README.md": "# R\n\n## Docs map\n\n| Question | Read |\n|---|---|\n" +
+			"| Decisions | `../adr/` |\n" +
+			"| The vision series | `../vision/README.md` |\n",
+		"docs/adr/001-thing.md": "# ADR-001 a thing\n",
+		"docs/adr/002-other.md": "# ADR-002 another\n",
+		"docs/vision/README.md": "# V\n",
+		"docs/vision/01-a.md":   "# 01 — A\n\nStatus: accepted 2026-09-20 (ADR-001).\n\n## 1\n",
+	})
+	c, _ := intent.Load(root)
+	if c.DecisionsHome != "docs/adr" {
+		t.Fatalf("decisions home = %q, want docs/adr", c.DecisionsHome)
+	}
+	lockOut(t, filepath.Join(root, "docs", "adr"), 0o755)
+	vp := intent.LoadVisions(c, reviewNow)
+	for _, f := range vp.Findings {
+		if strings.Contains(f.Detail, "ADR-001") {
+			t.Errorf("an unlistable decisions home reported a cited id as missing: %+v", f)
+		}
+	}
+	if vp.Coverage.Complete() {
+		t.Error("an unlistable decisions home must make coverage incomplete")
+	}
+	if !strings.Contains(strings.Join(vp.Uncomputable, " "), "docs/adr") {
+		t.Errorf("the unlistable decisions home must be named, got %v", vp.Uncomputable)
+	}
+}
+
+// TestVisionPipeline_UnreadablePlanDirIsBlindNotBroken (ADR-027, I38): a
+// plan or a link behind a directory the reader cannot search exists and
+// could not be read — named on the manifest, the vision's stage unknown,
+// never "not in this tree" and never a stage it did not earn.
+func TestVisionPipeline_UnreadablePlanDirIsBlindNotBroken(t *testing.T) {
+	root := visionFixture(t)
+	lockOut(t, filepath.Join(root, "docs", "plans"), 0o755)
+	c, _ := intent.Load(root)
+	vp := intent.LoadVisions(c, reviewNow)
+	for _, f := range vp.Findings {
+		if f.Kind == "broken-link" && strings.Contains(f.Detail, "plans/") {
+			t.Errorf("a plan behind an unreadable directory was reported absent: %+v", f)
+		}
+	}
+	if vp.Coverage.Complete() {
+		t.Error("an unsearchable plans directory must make coverage incomplete")
+	}
+	v3 := visionByNumber(t, vp, "03")
+	if v3.Stage != intent.StageUnreadable {
+		t.Errorf("03: stage=%q, want unreadable — its plan exists and could not be read, so where it stands is unknown", v3.Stage)
+	}
+	if got := findingsFor(vp, "docs/vision/03-planned.md", "unreadable"); len(got) != 1 || !strings.Contains(got[0].Detail, "docs/plans/alpha.md") {
+		t.Errorf("03: want one unreadable finding naming docs/plans/alpha.md, got %+v", got)
+	}
+}
+
+// TestVisionPipeline_LandedOnlyFromEvidence (vision 23 §5: fathom computes
+// status or does not show it): `landed` is computed from the plans that
+// CARRY a vision — declared as its plan — with no open row and claimed
+// work. A status word, a plan whose rows are all deferred or refused, and a
+// plan the vision merely cites or builds on are not that evidence.
+func TestVisionPipeline_LandedOnlyFromEvidence(t *testing.T) {
+	root := t.TempDir()
+	writeTree(t, root, map[string]string{
+		"docs/intent/README.md": "# R\n\n## Docs map\n\n| Question | Read |\n|---|---|\n" +
+			"| The vision series | `../vision/README.md` |\n",
+		"docs/plans/allskipped.md": "# s\n\n" +
+			"- [-] X-1 one {id: X-1, disposition: deferred, reason: \"later\", trigger: \"never\"}\n" +
+			"- [-] X-2 two {id: X-2, disposition: refused, reason: \"no\"}\n",
+		"docs/plans/done.md":    "# d\n\n- [x] D-1 d {id: D-1, symbol: Y, package: p}\n",
+		"docs/vision/README.md": "# V\n",
+		"docs/vision/01-a.md":   "# 01 — A\n\nStatus: accepted 2026-09-20. Plan: `docs/plans/allskipped.md`.\n\n## 1\n",
+		"docs/vision/02-b.md":   "# 02 — B\n\nStatus: shipped 2026-09-20.\n\n## 1\n",
+		"docs/vision/03-c.md": "# 03 — C\n\n**Status:** founding doc, owner-commissioned 2026-09-20.\n" +
+			"**Builds on:** the shipped machinery, and the falsifiability\nrecord (docs/plans/done.md D-1).\n\n## 1\n",
+		"docs/vision/04-d.md": "# 04 — D\n\n**Status:** Phase F is landed; Phases G–I are a founding doc, awaiting owner greenlight (2026-09-20).\n\n## 1\n",
+		"docs/vision/05-e.md": "# 05 — E\n\nStatus: accepted 2026-09-20. Plan:\n`docs/plans/done.md`. Supersedes nothing; it closes the trigger\n`docs/plans/allskipped.md` X-1.\n\n## 1\n",
+	})
+	c, _ := intent.Load(root)
+	vp := intent.LoadVisions(c, reviewNow)
+
+	want := map[string]intent.VisionStage{
+		"01": intent.StageAccepted,  // its only plan carries no claimed or open row
+		"02": intent.StageStated,    // "shipped" with no plan: shown, never computed as landed
+		"03": intent.StageForReview, // the plan it builds on is not its carrier
+		"04": intent.StageForReview, // a prose "landed" is not a stage; "founding doc" is the stated one
+		"05": intent.StageLanded,    // its declared plan is fully claimed; the plan it closes a trigger on is cited
+	}
+	for n, stage := range want {
+		if v := visionByNumber(t, vp, n); v.Stage != stage {
+			t.Errorf("%s: stage=%q, want %q (plans %+v, status %q)", n, v.Stage, stage, v.Plans, v.Status)
+		}
+	}
+	if v := visionByNumber(t, vp, "03"); len(v.Plans) != 0 {
+		t.Errorf("03: a plan named under `Builds on:` is cited, not the vision's carrier: %+v", v.Plans)
+	}
+	if v := visionByNumber(t, vp, "05"); len(v.Plans) != 1 || v.Plans[0].Path != "docs/plans/done.md" {
+		t.Errorf("05: carriers = %+v, want only its declared plan docs/plans/done.md", v.Plans)
+	}
+}
+
+// TestVisionPipeline_StaleNamesTheDecisionItCites: a for-review vision that
+// cites a decision is never told it has "no decision" — the remedy names the
+// decision it already cites.
+func TestVisionPipeline_StaleNamesTheDecisionItCites(t *testing.T) {
+	root := t.TempDir()
+	writeTree(t, root, map[string]string{
+		"docs/intent/README.md": "# R\n\n## Docs map\n\n| Question | Read |\n|---|---|\n" +
+			"| Decisions | `../../ADR.md` |\n| The vision series | `../vision/README.md` |\n",
+		"ADR.md":                "# Decisions\n\n## ADR-001 — a thing\n",
+		"docs/vision/README.md": "# V\n",
+		"docs/vision/03-x.md":   "# 03 — X\n\nStatus: for review 2026-06-01. Accepted in ADR-001.\n\n## 1\n",
+		"docs/vision/04-y.md":   "# 04 — Y\n\nStatus: for review 2026-06-01.\n\n## 1\n",
+	})
+	c, _ := intent.Load(root)
+	vp := intent.LoadVisions(c, reviewNow)
+	got := findingsFor(vp, "docs/vision/03-x.md", "stale")
+	if len(got) != 1 {
+		t.Fatalf("03: want one stale finding (for review 116 days, no plan), got %+v", vp.Findings)
+	}
+	if strings.Contains(got[0].Detail, "no decision") || !strings.Contains(got[0].Detail+got[0].Remedy, "ADR-001") {
+		t.Errorf("03 cites ADR-001 — the finding must name it, never say \"no decision\": %+v", got[0])
+	}
+	if got := findingsFor(vp, "docs/vision/04-y.md", "stale"); len(got) != 1 || !strings.Contains(got[0].Detail, "no decision") {
+		t.Errorf("04 cites nothing — \"no plan and no decision\" is true of it: %+v", got)
+	}
+}
+
+// TestVisionPipeline_HomeOnlyFromTheRouter (ADR-026 amendment 2026-09-25,
+// part 2): the pipeline reads the vision series the router's docs map
+// names, and only that — a docs/vision/ the router does not route to is not
+// read.
+func TestVisionPipeline_HomeOnlyFromTheRouter(t *testing.T) {
+	root := t.TempDir()
+	writeTree(t, root, map[string]string{
+		"docs/intent/README.md": "# R\n\n## Docs map\n\n| Question | Read |\n|---|---|\n| Decisions | `../../ADR.md` |\n",
+		"ADR.md":                "# Decisions\n\n## ADR-001 — a thing\n",
+		"docs/vision/01-x.md":   "# 01 — X\n\nStatus: accepted 2026-09-01.\n\n## 1\n",
+	})
+	c, _ := intent.Load(root)
+	vp := intent.LoadVisions(c, reviewNow)
+	if vp.Home != "" || len(vp.Visions) != 0 || vp.Absent == "" {
+		t.Errorf("the router routes to no vision series: want no home, no visions and a named absence; got home=%q visions=%d absent=%q",
+			vp.Home, len(vp.Visions), vp.Absent)
+	}
+}
+
+// TestVisionPipeline_RowNamingAVisionFirstStillFindsTheIndex: a docs-map
+// row that names a starting vision before the index makes neither the
+// vision the index nor the index a vision.
+func TestVisionPipeline_RowNamingAVisionFirstStillFindsTheIndex(t *testing.T) {
+	root := t.TempDir()
+	writeTree(t, root, map[string]string{
+		"docs/intent/README.md": "# R\n\n## Docs map\n\n| Question | Read |\n|---|---|\n" +
+			"| The vision series (start with the thesis) | `../vision/01-thesis.md`, then `../vision/README.md` |\n",
+		"docs/vision/README.md":    "# Visions\n\nStatus: for review.\n",
+		"docs/vision/01-thesis.md": "# 01 — Thesis\n\nStatus: accepted 2026-09-20.\n\n## 1\n",
+		"docs/vision/02-b.md":      "# 02 — B\n\nStatus: accepted 2026-09-20.\n\n## 1\n",
+	})
+	c, _ := intent.Load(root)
+	if c.VisionsHome != "docs/vision" || c.VisionsIndex != "docs/vision/README.md" {
+		t.Fatalf("home=%q index=%q, want docs/vision with index docs/vision/README.md", c.VisionsHome, c.VisionsIndex)
+	}
+	vp := intent.LoadVisions(c, reviewNow)
+	if len(vp.Visions) != 2 {
+		t.Errorf("want 01 and 02 as visions, got %+v", vp.Visions)
+	}
+	visionByNumber(t, vp, "01")
+	if got := findingsFor(vp, "docs/vision/README.md", "unstated"); len(got) != 0 {
+		t.Errorf("the index was read as a vision: %+v", got)
+	}
+}
+
+// TestVisionPipeline_DeadIndexPointerStillNamesTheSeries: a router that
+// points at a vision index which is not there still routes to the vision
+// directory — the series is read and the missing index is named, never
+// "no vision series".
+func TestVisionPipeline_DeadIndexPointerStillNamesTheSeries(t *testing.T) {
+	root := t.TempDir()
+	writeTree(t, root, map[string]string{
+		"docs/intent/README.md": "# R\n\n## Docs map\n\n| Question | Read |\n|---|---|\n" +
+			"| The vision series | `../vision/README.md` |\n",
+		"docs/vision/01-a.md": "# 01 — A\n\nStatus: accepted 2026-09-20.\n\n## 1\n",
+	})
+	c, _ := intent.Load(root)
+	vp := intent.LoadVisions(c, reviewNow)
+	if vp.Home != "docs/vision" || len(vp.Visions) != 1 {
+		t.Fatalf("home=%q visions=%d absent=%q — the router names docs/vision through its (missing) index", vp.Home, len(vp.Visions), vp.Absent)
+	}
+	if !strings.Contains(strings.Join(vp.Uncomputable, " "), "docs/vision/README.md") {
+		t.Errorf("the missing index must be named, got %v", vp.Uncomputable)
+	}
+}

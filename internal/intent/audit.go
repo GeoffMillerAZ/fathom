@@ -1,7 +1,9 @@
 package intent
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -570,18 +572,32 @@ func trimTo(s string, n int) string {
 	return s[:n-1] + "…"
 }
 
-// taskTargets reads Taskfile.yml's target names.
+// taskTargets reads Taskfile.yml's target names (the audit's U4 gate-step
+// check; an unreadable Taskfile reads as none there, as it always has).
 func taskTargets(root string) map[string]bool {
+	out, _ := readTaskTargets(root, readmanifest.NewSet())
+	return out
+}
+
+// taskTargetRe is a Taskfile target line: two-space indent, name, colon.
+var taskTargetRe = regexp.MustCompile(`(?m)^  ([a-z0-9:_-]+):\s*$`)
+
+// readTaskTargets reads Taskfile.yml's target names and records the read on
+// reads. err is non-nil only when the Taskfile exists and could not be read
+// — a genuinely absent Taskfile is simply no targets.
+func readTaskTargets(root string, reads *readmanifest.Set) (map[string]bool, error) {
 	out := map[string]bool{}
-	body, err := os.ReadFile(filepath.Join(root, "Taskfile.yml"))
+	body, err := readRecorded(reads, filepath.Join(root, "Taskfile.yml"))
 	if err != nil {
-		return out
+		if errors.Is(err, fs.ErrNotExist) {
+			return out, nil
+		}
+		return out, err
 	}
-	re := regexp.MustCompile(`(?m)^  ([a-z0-9:_-]+):\s*$`)
-	for _, m := range re.FindAllStringSubmatch(string(body), -1) {
+	for _, m := range taskTargetRe.FindAllStringSubmatch(string(body), -1) {
 		out[m[1]] = true
 	}
-	return out
+	return out, nil
 }
 
 // lefthookSteps reads lefthook.yml's "<hook> <step>" pairs.
