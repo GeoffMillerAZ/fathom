@@ -420,6 +420,27 @@ func (c *Client) Services(ctx context.Context) ([]string, error) {
 	return ids, nil
 }
 
+// SourcePaths lists the service's source file paths WITHOUT reading any
+// file — connector discovery only. A question answered by paths (which
+// languages a repository holds) must use this, never Sources: Sources
+// fetches every file's contents, and on list_services' path that read whole
+// repositories into memory per caller (2026-09-26, ~30 GB).
+func (c *Client) SourcePaths(ctx context.Context, service string) ([]string, error) {
+	svcRef := core.ServiceRef{ID: service, Path: service}
+	if meta, found, err := c.st.GetServiceMeta(ctx, service); err == nil && found && meta.Path != "" {
+		svcRef.Path = meta.Path
+	}
+	refs, err := c.conn.Discover(ctx, svcRef)
+	if err != nil {
+		return nil, fmt.Errorf("client.SourcePaths discover %q: %w", service, err)
+	}
+	out := make([]string, 0, len(refs))
+	for _, ref := range refs {
+		out = append(out, ref.Path)
+	}
+	return out, nil
+}
+
 // Sources discovers and fetches every source file for the named service using
 // the client's connector. It calls Discover(svc) then Fetch for each ref and
 // returns the results as []SourceFile sorted by path.

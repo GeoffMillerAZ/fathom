@@ -21,8 +21,12 @@ import (
 type countingConnector struct {
 	mu       sync.Mutex
 	discover map[string]int
+	fetches  int
 	refs     map[string][]core.SourceRef
 	content  map[string][]byte
+	// gate, when set, blocks Discover until closed — to hold concurrent
+	// cold callers inside the walk together.
+	gate chan struct{}
 }
 
 func newCountingConnector() *countingConnector {
@@ -35,14 +39,20 @@ func newCountingConnector() *countingConnector {
 
 func (c *countingConnector) Discover(_ context.Context, svc core.ServiceRef) ([]core.SourceRef, error) {
 	c.mu.Lock()
-	defer c.mu.Unlock()
 	c.discover[svc.ID]++
-	return c.refs[svc.ID], nil
+	gate := c.gate
+	refs := c.refs[svc.ID]
+	c.mu.Unlock()
+	if gate != nil {
+		<-gate
+	}
+	return refs, nil
 }
 
 func (c *countingConnector) Fetch(_ context.Context, ref core.SourceRef) ([]byte, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	c.fetches++
 	return c.content[ref.Path], nil
 }
 
@@ -301,5 +311,67 @@ func TestSymbolsFor_GenericErrorNotTaggedCantopen(t *testing.T) {
 	}
 	if !strings.Contains(line, "disk full") {
 		t.Errorf("log line %q lost the underlying error text", line)
+	}
+}
+
+// 2026-09-26 incident: list_services answered "which languages here are
+// unsupported" through client.Sources, which FETCHES every file's contents.
+// On a cold cache every concurrent caller read every repository into memory
+// at once — the daemon reached ~30 GB in minutes and the operator
+// force-quit it. The answer depends on paths only, so a read must never
+// fetch a file, and concurrent cold callers share one walk per service.
+func TestFleetAdapter_UnsupportedLanguagesFor_NeverReadsFileContents(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	conn := newCountingConnector()
+	if err := st.SetServiceMeta(ctx, store.ServiceMeta{ServiceID: "demo", Path: t.TempDir(), IndexedCommit: "c1", IndexedAt: 1}); err != nil {
+		t.Fatal(err)
+	}
+	conn.addSwiftFile("demo", "demo/a.swift")
+	conn.addSwiftFile("demo", "demo/b.swift")
+	fa := newTestFleetAdapter(conn, st)
+	if got := fa.UnsupportedLanguagesFor("demo"); got["swift"] != 2 {
+		t.Fatalf("UnsupportedLanguagesFor = %v, want {swift:2}", got)
+	}
+	conn.mu.Lock()
+	fetches := conn.fetches
+	conn.mu.Unlock()
+	if fetches != 0 {
+		t.Fatalf("a list_services read fetched %d file(s); the answer depends on paths only and must fetch none", fetches)
+	}
+}
+
+func TestFleetAdapter_UnsupportedLanguagesFor_ConcurrentColdCallsWalkOnce(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	conn := newCountingConnector()
+	if err := st.SetServiceMeta(ctx, store.ServiceMeta{ServiceID: "demo", Path: t.TempDir(), IndexedCommit: "c1", IndexedAt: 1}); err != nil {
+		t.Fatal(err)
+	}
+	conn.addSwiftFile("demo", "demo/a.swift")
+	conn.gate = make(chan struct{})
+	fa := newTestFleetAdapter(conn, st)
+
+	const callers = 32
+	var wg sync.WaitGroup
+	results := make([]map[string]int, callers)
+	for i := 0; i < callers; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			results[i] = fa.UnsupportedLanguagesFor("demo")
+		}(i)
+	}
+	// Let every caller reach the adapter before the one walk finishes.
+	time.Sleep(50 * time.Millisecond)
+	close(conn.gate)
+	wg.Wait()
+	if n := conn.discoverCalls("demo"); n != 1 {
+		t.Fatalf("%d concurrent cold callers walked the tree %d times, want 1", callers, n)
+	}
+	for i, r := range results {
+		if r["swift"] != 1 {
+			t.Fatalf("caller %d got %v, want {swift:1}", i, r)
+		}
 	}
 }

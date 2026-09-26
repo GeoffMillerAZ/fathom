@@ -26,6 +26,18 @@ type fleetAdapter struct {
 
 	unsupportedMu    sync.Mutex
 	unsupportedCache map[string]unsupportedLangCacheEntry
+	// unsupportedFlight holds one in-flight computation per service, so
+	// concurrent cold callers share a single walk instead of each walking
+	// (2026-09-26: 32 callers, 32 walks, each fetching every file).
+	unsupportedFlight map[string]*unsupportedCall
+}
+
+// unsupportedCall is one in-flight unsupportedLanguagesCompute; waiters
+// block on done and read the result.
+type unsupportedCall struct {
+	done        chan struct{}
+	langs       map[string]int
+	rootMissing bool
 }
 
 // unsupportedLangCacheEntry is UnsupportedLanguagesFor's per-service memo
@@ -134,14 +146,40 @@ func (f *fleetAdapter) RootMissing(service string) (missing bool, remedy string)
 func (f *fleetAdapter) unsupportedLanguagesCached(ctx context.Context, service string) (langs map[string]int, rootMissing bool) {
 	watermark, wmErr := f.c.StoreWatermark(ctx, service)
 
+	f.unsupportedMu.Lock()
 	if wmErr == nil {
-		f.unsupportedMu.Lock()
 		if e, ok := f.unsupportedCache[service]; ok && e.watermark == watermark {
 			f.unsupportedMu.Unlock()
 			return e.langs, e.rootMissing
 		}
-		f.unsupportedMu.Unlock()
 	}
+	// One computation per service at a time: a caller that finds one in
+	// flight waits for it instead of starting its own walk.
+	if call, ok := f.unsupportedFlight[service]; ok {
+		f.unsupportedMu.Unlock()
+		<-call.done
+		return call.langs, call.rootMissing
+	}
+	if f.unsupportedFlight == nil {
+		f.unsupportedFlight = make(map[string]*unsupportedCall)
+	}
+	call := &unsupportedCall{done: make(chan struct{})}
+	f.unsupportedFlight[service] = call
+	f.unsupportedMu.Unlock()
+	defer func() {
+		f.unsupportedMu.Lock()
+		delete(f.unsupportedFlight, service)
+		f.unsupportedMu.Unlock()
+		close(call.done)
+	}()
+	call.langs, call.rootMissing = f.unsupportedLanguagesCompute(ctx, service, watermark, wmErr)
+	return call.langs, call.rootMissing
+}
+
+// unsupportedLanguagesCompute does the one walk for unsupportedLanguagesCached.
+// It reads file NAMES only (client.SourcePaths): the answer is a function of
+// paths, and fetching contents here once held whole repositories in memory.
+func (f *fleetAdapter) unsupportedLanguagesCompute(ctx context.Context, service, watermark string, wmErr error) (langs map[string]int, rootMissing bool) {
 
 	path, _, found, metaErr := f.c.ServiceMeta(ctx, service)
 	if metaErr != nil {
@@ -168,7 +206,7 @@ func (f *fleetAdapter) unsupportedLanguagesCached(ctx context.Context, service s
 		// before this change.
 	}
 
-	files, err := f.c.Sources(ctx, service)
+	paths, err := f.c.SourcePaths(ctx, service)
 	if err != nil {
 		f.log.Dedupe(dlog.LevelWarn, "fleet:sources:"+service, "fleet: sources for %s: %s", service, classifyStoreError(err))
 		// Cache the failure too (nil langs), keyed on the SAME watermark:
@@ -180,11 +218,11 @@ func (f *fleetAdapter) unsupportedLanguagesCached(ctx context.Context, service s
 		return nil, false
 	}
 	var out map[string]int
-	for _, sf := range files {
-		if sf.Lang != core.LangUnclassified {
+	for _, p := range paths {
+		if connector.LanguageForPath(p) != core.LangUnclassified {
 			continue
 		}
-		lang, ok := connector.UnsupportedLanguageForPath(sf.Path)
+		lang, ok := connector.UnsupportedLanguageForPath(p)
 		if !ok {
 			continue
 		}
