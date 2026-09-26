@@ -1,5 +1,11 @@
 # 06 — The use-case portfolio: focus, options, traps
 
+**Status:** accepted 2026-07-17 in part — §2's decision (layer 2 =
+ADR/architecture-rules) shipped as the adr-rules pack (LC-5, proven); §1's
+verdicts stay review prose, and the failure-mode playbook stays an
+entry-conditioned future (`docs/intent/futures.md` F4).
+Plan: `docs/plans/layer-catalog.md`.
+
 **Verdict.** Pour everything into the obligations + verify loop for AI
 coding agents, with **ADR-derived architecture rules as the layer-2
 candidate** and the spec-driven-development wave as the distribution

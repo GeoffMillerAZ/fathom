@@ -1,6 +1,9 @@
 # 16 — The skills pack: adoption as one install
 
-> Status: FOR REVIEW · Date: 2026-08-07 · Non-binding, companion to 14/15.
+> Status: accepted 2026-08-07 — the same owner directive as vision 14 promoted
+> it. Plan: `docs/plans/impact-observatory-activation.md` (§G, IO-23..26, all
+> proven).
+> Drafted for review 2026-08-07 · Non-binding, companion to 14/15.
 > Owner directive: a fathom skills pack that works on major code assistants
 > (`/fathom:xyz`), turning the rewire/activate prompts into reusable
 > skills, "super easy to adopt and keep fathom working great." Grounded in

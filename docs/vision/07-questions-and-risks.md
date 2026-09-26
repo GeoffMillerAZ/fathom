@@ -1,5 +1,10 @@
 # 07 — Red team: risks, and the questions you're not asking
 
+**Status:** accepted 2026-07-16 as a record — its decisions were taken where
+they belong: D2 as ADR-014's amendment (vision 05), D3 as the findings tracer
+(vision 03), R1 and R2 as `docs/intent/scope.md` non-goals; Q4 (who pays) was
+never answered and stays open as `docs/intent/questions.md` Q4.
+
 **Verdict.** You are reaching too far — in sequence, not in architecture —
 and the evidence is your own telemetry. The kernel is genuinely good and
 the wedge is real; the correct move this quarter is ruthless subtraction.

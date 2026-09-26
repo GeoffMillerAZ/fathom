@@ -1,5 +1,9 @@
 # 02 — Product shape: kernel, module packs, satellites
 
+**Status:** accepted 2026-07-16 — §3's M1 became ADR-016's amendment that day,
+and M2 with layer 2 (the adr-rules pack) followed on 2026-07-17; both are
+proven. Plans: `docs/plans/m1-manifest.md`, `docs/plans/layer-catalog.md`.
+
 **Verdict.** One repo, one binary, forever. Well-architected reviews, code
 reviews, investigations, and compliance are **not** separate tools and
 **not** permanent Go packages — they are **expert-module packs**:

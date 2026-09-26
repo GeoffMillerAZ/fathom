@@ -1,6 +1,12 @@
 # 15 — Reach: obligation packs, language packs, and the dependency plane
 
-> Status: FOR REVIEW · Date: 2026-08-07 · Non-binding, companion to 14.
+> Status: accepted 2026-08-07 — the same owner directive as vision 14 promoted
+> it. Plans: `docs/plans/impact-observatory-activation.md` (§H's reach rows,
+> deferred with triggers, and IO-26's app-kit pack), `docs/plans/cpp-toolchain.md`
+> (IO-27's trigger, fired 2026-08-08 — Conan stays deferred). ADR-041 later
+> adopted SCIP import outright (the IO-29 spike row stays deferred), and §3's
+> depgraph library is ci-kit's, in platform-engineering.
+> Drafted for review 2026-08-07 · Non-binding, companion to 14.
 > Answers three owner directives: (1) make agents actually follow UI/house
 > standards at edit time (the CLAUDE.md-is-ignored problem); (2) excellent
 > support for all major languages/tools — C++ named concretely (an external

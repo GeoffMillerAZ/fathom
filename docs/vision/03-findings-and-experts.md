@@ -1,5 +1,9 @@
 # 03 — Findings, connected experts, hosted, chat
 
+**Status:** accepted 2026-07-16 — §5's build-now list (D3) became the findings
+tracer that day, now proven; ADR-041 (2026-09-19) withdrew its DuckDB `ATTACH`
+federation. Plan: `docs/plans/findings-tracer.md`.
+
 **Verdict.** The findings backend you need is mostly shipped and you should
 not build a new one: findings are **documents in a corpus, compiled into
 the existing `semantic_claims` stratum as `Kind:"finding"`** — a slot your

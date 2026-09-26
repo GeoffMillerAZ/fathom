@@ -1,8 +1,13 @@
 # 13 — The Expert Suite: builder and chat, dial at 11
 
-**Status:** founding doc, owner-commissioned 2026-07-28 ("you are the owner,
+**Status:** accepted 2026-07-28 — owner-commissioned that day ("you are the owner,
 the expert, the designer, the architect… set your vision for what the
-potential for world-class product in this category is").
+potential for world-class product in this category is"); §9's phases J, O, P,
+Q and R each became a gated plan by 2026-07-30, all proven; K and M belong to
+the fathom-studio repository; L and N have no plan here.
+Plans: `docs/plans/expert-suite-j.md`, `docs/plans/expert-suite-o.md`,
+`docs/plans/expert-suite-p.md`, `docs/plans/expert-suite-q.md`,
+`docs/plans/expert-suite-r.md`.
 **Builds on:** `12-governed-knowledge-engine.md` (module host, expertchat,
 law 9), `docs/spec/` (store-format-v0, expert-module-v0), the shipped
 compile/eval/serve machinery (ADR-016/017/024), and the falsifiability

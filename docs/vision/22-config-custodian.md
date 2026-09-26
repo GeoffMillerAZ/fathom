@@ -1,5 +1,8 @@
 # 22 — The config custodian: instructed means true
 
+**Status:** accepted 2026-08-13 — custodian v1 shipped the audit that day with
+§3b owner-confirmed (commit 8e3ee92c). Plan: `docs/plans/custodian.md`.
+
 > Owner ask, 2026-08-13: *"fathom is really good at understanding your
 > project — can it keep CLAUDE.md/AGENTS.md DRY, thin routers but very
 > capable? Hooks to keep them updated? CUE config making fathom a

@@ -1,5 +1,9 @@
 # 23 — The doctrine plane: every governing artifact earns its verb
 
+**Status:** accepted 2026-08-13 — it landed as the custodian's spec with vision
+22 (commit 8e3ee92c); §2's promotion pipeline and goals-as-bets are ADR-026's
+2026-09-25 amendment (DP-3, DP-4). Plan: `docs/plans/custodian.md`.
+
 > Owner asks, 2026-08-13: *"Does fathom work as a progress tracker too for
 > implementation? … We can add the missing UI dashboards to SDD — make the
 > UI earn its place. Should we elevate ADRs and VISION and GOALS to first

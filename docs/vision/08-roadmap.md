@@ -1,8 +1,14 @@
 # 08 — The consolidated roadmap and your decision checklist
 
+**Status:** accepted 2026-07-16 — §1's slices ran as plans and §5's lines became
+records (ADR-014's amendment, ADR-016's M1 amendment, ADR-018), though its
+checklist boxes were never ticked; the who-pays line (07 Q4) is still open as
+`docs/intent/questions.md` Q4. Plans: `docs/plans/gap1-instrumentation.md`,
+`docs/plans/surfaces-week1.md`, `docs/plans/m1-manifest.md`.
+
 > **Delta, 2026-07-16 (round 2 — agentic-kit v0.7.0 landed the fathom asks):**
 > the kit now ships the three seams this roadmap's next slices compose
-> (`docs/plans/2026-07-fathom-asks.md` there, gate-verified):
+> (its [`2026-07-fathom-asks.md`](../../third_party/agentic-kit/docs/plans/2026-07-fathom-asks.md), mirrored in-tree by ADR-019, gate-verified there):
 > `prompttemplate.Template.TextHash()` → §1 item 6's content-addressed
 > PromptVersion becomes a method call; `llmclient/structured`
 > (`ErrTruncated`/`ErrMalformed`) → the obligations compile's

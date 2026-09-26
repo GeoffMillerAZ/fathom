@@ -1,5 +1,8 @@
 # 09 — Deterministic SDD: the reconciler, not the machine
 
+**Status:** accepted 2026-07-15 as ADR-018 (pilot KEEP 2026-08-26); the v0
+reconciler shipped the same day. Plan: `docs/plans/sdd-reconciler-v0.md`.
+
 > **Delta, 2026-07-15 (post-agentic-kit upgrade + implementation):** the
 > handoff program executed faster than this doc assumed. H1 fixed the gate's
 > recall — **O6 (method-call edges) is fixed and merged** along with callgraph

@@ -1,5 +1,10 @@
 # 01 — The thesis: what fathom is at its best
 
+**Status:** accepted 2026-08-25 as a record, not as a binding spec — the intent
+corpus adopted that day (commit c18ded21) carries its load-bearing parts:
+`docs/intent/domain.md` cites §1–2 and `docs/intent/scope.md`'s non-goals cite
+§2–3; ADR-044 rejects a transformation engine on its §3.
+
 **Verdict.** Fathom is not a code-search engine, an analyzer, or a reviewer.
 It is a **governed knowledge engine for code**: the system that makes
 knowledge *about* code behave like code — versioned, cited, tested for

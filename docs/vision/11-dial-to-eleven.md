@@ -1,7 +1,12 @@
 # 11 — Dial to eleven: the activation program
 
-**Status:** founding doc, awaiting owner greenlight. Successor to
-`10-rearchitecture.md` (complete 2026-07-22, all five slices shipped).
+**Status:** accepted 2026-07-22 (drafted as a founding doc awaiting owner
+greenlight) — its six phases became gated plans that day (commit 6d7855cf),
+which §5 names as what greenlight means; vision 12 found A–E complete or in
+flight. Plans: `docs/plans/activation.md`, `docs/plans/archive/falsifiability.md`,
+`docs/plans/review-verb.md`, `docs/plans/expert-depth.md`,
+`docs/plans/new-use-cases.md`, `docs/plans/kit-uplift.md`.
+**Successor to** `10-rearchitecture.md` (complete 2026-07-22, all five slices shipped).
 **Inputs:** an 8-agent grounded design workflow (4 evidence readers over the
 call log / semantic store / deferred inventory / kit boundary + 4 pillar
 designers), a use-case divergence pass, an adversarial verification pass on

@@ -1,5 +1,11 @@
 # 04 — Making fathom incredible for coding agents
 
+**Status:** accepted 2026-07-16 — §6's order of work ran as plans (Gap 1, Gap 3
+with §4 item 3, Gap 4), all proven; ADR-029 (2026-09-02) amended §5's
+sequencing rule; the H1 exit it schedules is still unjudged (futures F2).
+Plans: `docs/plans/gap1-instrumentation.md`,
+`docs/plans/o8-precision-and-speclines.md`, `docs/plans/init-and-adoption.md`.
+
 **Verdict.** The coding-agent thesis is right and half-proven; the
 differentiator is the governed-claims pipeline delivered through forced
 channels, not code preprocessing (see [01 §2](01-thesis.md)). The single

@@ -1,6 +1,11 @@
 # 14 — The impact observatory: proving help, not asserting it
 
-> Status: FOR REVIEW · Date: 2026-08-07 · Non-binding (this directory is
+> Status: accepted 2026-08-07 — the owner's directive that day ("implement
+> everything until fully implemented") promoted it row by row.
+> Plan: `docs/plans/impact-observatory-activation.md` (§A–F, all proven), and
+> §8's web rung fired into vision 17. Laws 12–14 are
+> `docs/intent/principles.md` P12–P14.
+> Drafted for review 2026-08-07 · Non-binding (this directory is
 > excluded from the obligations corpus). Builds on: 11 (dial to eleven,
 > laws 1–8), 12 (law 9), 13 (laws 10–12), 07 (the red-team verdict),
 > docs/design/observability-surfaces.md, research-flywheel.md,
