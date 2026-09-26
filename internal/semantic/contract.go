@@ -222,34 +222,16 @@ func symbolFileLookup(ctx context.Context, st store.Store, serviceID string) Sym
 // is as strong a lexical signal as one that names its stem. A caller
 // (pkg/client.Client.RawFallbackObligations) resolves these and passes
 // them to semantic.RawFallbackRules as extraTokens — RawFallbackRules
-// itself never touches a store directly. One QueryObservations scan;
-// returns nil (never an error) on a store read failure or when file
-// declares nothing the index has seen, the same honest-absence contract
-// symbolFileLookup's own lookup makes. Deterministic regardless of store
-// iteration order: sorted before return.
+// itself never touches a store directly. Since RT-81 it reads only file's
+// own rows (store.SymbolNamesForSource, the (service_id, source_ref)
+// index) — never the service's whole observation set, which grew every
+// edit's cost with the tree. Returns nil (never an error) on a store read
+// failure or when file declares nothing the index has seen, the same
+// honest-absence contract symbolFileLookup's own lookup makes. Sorted.
 func SymbolNamesForFile(ctx context.Context, st store.Store, serviceID, file string) []string {
-	obs, err := st.QueryObservations(ctx, serviceID, "")
-	if err != nil {
+	names, err := st.SymbolNamesForSource(ctx, serviceID, file)
+	if err != nil || len(names) == 0 {
 		return nil
 	}
-	seen := map[string]bool{}
-	var names []string
-	for _, o := range obs {
-		if o.Symbol == "" || o.SourceRef == "" {
-			continue
-		}
-		f := o.SourceRef
-		if i := strings.LastIndex(f, ":"); i > 0 {
-			if _, err := strconv.Atoi(f[i+1:]); err == nil {
-				f = f[:i]
-			}
-		}
-		if f != file || seen[o.Symbol] {
-			continue
-		}
-		seen[o.Symbol] = true
-		names = append(names, o.Symbol)
-	}
-	sort.Strings(names)
 	return names
 }
