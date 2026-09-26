@@ -170,9 +170,8 @@ func renderLayerPackTable(m console.PacksView) string {
 			Cells: []string{l.Name, "", l.Stratum, l.Role, evaled, active, installed, ""},
 			HTMLCells: []templ.Component{
 				templ.Raw(knowledgeLink(layerHref(l.Name), l.Name)), templ.Raw(sourceBadge(l.Source)), nil, nil, nil,
-				templ.Raw(`<span class="[overflow-wrap:anywhere]">` + html.EscapeString(active) + `</span>`),
-				templ.Raw(`<span class="[overflow-wrap:anywhere]">` + html.EscapeString(installed) + `</span>`),
-				templ.Raw(valueText(l.Contributes)),
+				nil, nil,
+				templ.Raw(claimsWord(l.Contributes)),
 			},
 		})
 	}

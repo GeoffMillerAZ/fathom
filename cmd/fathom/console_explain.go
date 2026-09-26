@@ -22,6 +22,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/a-h/templ"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/chrome"
@@ -87,6 +89,53 @@ func servingExplanation(ctx context.Context, c *client.Client, svc, file string,
 	return console.ServingView(in), nil
 }
 
+// explainCache keeps recent explanations per daemon. The two enrichments
+// read the project's whole corpus from disk (hundreds of milliseconds on a
+// large repository), so an explanation is reused while no event has been
+// published since it was built — an ingest or a compile moves the event
+// bus's cursor — and for at most explainCacheTTL. Bounded.
+var explainCache = struct {
+	sync.Mutex
+	entries map[string]explainCacheEntry
+}{entries: map[string]explainCacheEntry{}}
+
+type explainCacheEntry struct {
+	cursor string
+	at     time.Time
+	se     console.ServingExplanation
+}
+
+const (
+	explainCacheTTL = 30 * time.Second
+	explainCacheMax = 32
+)
+
+// cachedServingExplanation is servingExplanation behind explainCache.
+func cachedServingExplanation(cr *consoleRequest, svc, file string, layer semantic.ObligationLayerFilter) (console.ServingExplanation, error) {
+	key := fmt.Sprintf("%p\x00%s\x00%s\x00%s", cr.deps, svc, file, layer)
+	cursor := ""
+	if cr.deps.bus != nil {
+		cursor = cr.deps.bus.Cursor()
+	}
+	explainCache.Lock()
+	if e, ok := explainCache.entries[key]; ok && e.cursor == cursor && !cr.now.Before(e.at) && cr.now.Sub(e.at) < explainCacheTTL {
+		explainCache.Unlock()
+		return e.se, nil
+	}
+	explainCache.Unlock()
+	se, err := servingExplanation(cr.r.Context(), cr.deps.c, svc, file, layer)
+	if err != nil {
+		return se, err
+	}
+	explainCache.Lock()
+	if len(explainCache.entries) >= explainCacheMax {
+		clear(explainCache.entries)
+	}
+	explainCache.entries[key] = explainCacheEntry{cursor: cursor, at: cr.now, se: se}
+	explainCache.Unlock()
+	return se, nil
+}
+
 // rerankProvider is the decision-port provider serving re-ranks within a
 // tier with, "" when [decide] rank_within_tier is off or no provider is set.
 func rerankProvider() string {
@@ -149,7 +198,7 @@ func buildExplainPage(cr *consoleRequest) (consoleOut, error) {
 		out.Body = func() string { return renderExplainForm(model) + renderExplainIntro(services) }
 		return out, nil
 	}
-	se, err := servingExplanation(cr.r.Context(), cr.deps.c, svc, file, semantic.ObligationLayerFilter(layer))
+	se, err := cachedServingExplanation(cr, svc, file, semantic.ObligationLayerFilter(layer))
 	if err != nil {
 		if uk, ok := err.(*unknownKnowledgeService); ok {
 			return consoleOut{}, &consoleError{Status: http.StatusNotFound, Title: "Unknown project",
@@ -285,7 +334,7 @@ func renderExplainColumns(se console.ServingExplanation) string {
 	if len(se.Tiers) == 1 {
 		cols = ""
 	}
-	b.WriteString(`<ol class="grid gap-3 ` + cols + `" aria-label="candidates by scope tier, nearest first">`)
+	b.WriteString(`<ol class="grid items-start gap-3 ` + cols + `" aria-label="candidates by scope tier, nearest first">`)
 	for _, t := range se.Tiers {
 		b.WriteString(`<li class="flex min-w-0 flex-col rounded-md border border-line bg-surface p-3" data-scope-tier="` + html.EscapeString(t.Tier) + `">`)
 		b.WriteString(`<h3 class="text-sm font-semibold text-ink">` + html.EscapeString(scopeTierTitle(t.Tier)) + `</h3>`)
@@ -341,7 +390,7 @@ func renderCandidate(c semantic.ExplainCandidate) string {
 	}
 	return `<li class="min-w-0 border-l-2 ` + border + ` pl-2" data-candidate="` + html.EscapeString(c.ClaimID) + `" data-outcome="` + candidateOutcome(c) + `">` +
 		`<p class="text-sm text-ink [overflow-wrap:anywhere]"><span class="text-xs text-ink-muted">#` + fmtThousands(c.Rank) + `</span> ` + html.EscapeString(c.Rule) + status + `</p>` +
-		`<p class="font-mono text-xs text-ink-muted [overflow-wrap:anywhere]">` + knowledgeLink(claimHref(c.ClaimID, ""), c.Src) + ` · ` + html.EscapeString(c.Layer) + `</p>` +
+		`<p class="text-xs text-ink-muted">` + pathLink(claimHref(c.ClaimID, ""), c.Src) + ` · ` + html.EscapeString(c.Layer) + `</p>` +
 		`<p class="text-xs">` + outcome + `</p></li>`
 }
 
@@ -385,10 +434,9 @@ func renderExplainTable(se console.ServingExplanation) string {
 			outcome = c.Displaced.Reason + " — " + c.Displaced.Why
 		}
 		rows = append(rows, table.Row{
-			ID:        "cand-" + c.ClaimID,
-			Cells:     []string{fmtThousands(c.Rank), scopeTierTitle(c.ScopeTier), c.Rule, c.Layer, c.Status, outcome},
-			HTMLCells: []templ.Component{nil, nil, templ.Raw(`<span class="[overflow-wrap:anywhere]">` + html.EscapeString(c.Rule) + `</span>`), nil, nil, templ.Raw(`<span class="[overflow-wrap:anywhere]">` + html.EscapeString(outcome) + `</span>`)},
-			Muted:     !c.Served,
+			ID:    "cand-" + c.ClaimID,
+			Cells: []string{fmtThousands(c.Rank), scopeTierTitle(c.ScopeTier), c.Rule, c.Layer, c.Status, outcome},
+			Muted: !c.Served,
 		})
 	}
 	caption := fmt.Sprintf("All %d candidates in ranking order", len(se.Candidates))
@@ -416,6 +464,7 @@ func renderAgentSees(se console.ServingExplanation) string {
 		}
 	}
 	var rows []table.Row
+	var stacked strings.Builder
 	raw := len(se.RawFallback)
 	for i, r := range se.AgentSees {
 		scope := "nearest uncompiled guide"
@@ -435,14 +484,20 @@ func renderAgentSees(se console.ServingExplanation) string {
 		rows = append(rows, table.Row{
 			ID:        fmt.Sprintf("seen-%d", i+1),
 			Cells:     []string{fmtThousands(i + 1), r.Tier, r.Rule, r.Src, scope},
-			HTMLCells: []templ.Component{nil, nil, templ.Raw(`<span class="[overflow-wrap:anywhere]">` + ruleHTML + `</span>`), templ.Raw(`<span class="font-mono text-xs [overflow-wrap:anywhere]">` + html.EscapeString(r.Src) + `</span>`)},
+			HTMLCells: []templ.Component{nil, nil, templ.Raw(ruleHTML), templ.Raw(`<span class="font-mono text-xs">` + html.EscapeString(r.Src) + `</span>`)},
 		})
+		stacked.WriteString(`<li class="min-w-0 rounded-lg border border-line bg-surface-raised p-3"><p class="text-xs text-ink-muted">#` + fmtThousands(i+1) + ` · ` + html.EscapeString(r.Tier) + ` · ` + html.EscapeString(scope) + `</p>` +
+			`<p class="mt-1 text-sm text-ink [overflow-wrap:anywhere]">` + ruleHTML + `</p>` +
+			`<p class="mt-1 font-mono text-xs text-ink-muted [overflow-wrap:anywhere]">` + html.EscapeString(r.Src) + `</p></li>`)
 	}
-	tbl := renderKitTable(table.TableParams{
+	// From lg up the list is the kit table; below lg, where five columns
+	// squeeze a rule to a word per line, the same rows stack (as /statusz's
+	// services do). One is displayed at a width.
+	tbl := `<div class="hidden lg:block" data-explain-served-table>` + renderKitTable(table.TableParams{
 		TableID: "explain-served", Caption: "Injected at the edit, in order",
 		Columns: []table.Column{{Key: "n", Label: "#", Align: "right"}, {Key: "tier", Label: "Tier"}, {Key: "rule", Label: "Rule"}, {Key: "src", Label: "Source"}, {Key: "scope", Label: "Scope"}},
 		Rows:    rows,
-	})
+	}) + `</div><ol class="flex flex-col gap-3 lg:hidden" aria-label="injected at the edit, in order" data-explain-served-list>` + stacked.String() + `</ol>`
 	if se.RawWhy != "" {
 		tbl += `<p class="mt-2 text-xs text-ink-muted">` + plural(raw, "raw row") + ` served first because ` + html.EscapeString(se.RawWhy) + `.</p>`
 	}

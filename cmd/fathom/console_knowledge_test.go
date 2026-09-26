@@ -222,7 +222,8 @@ func TestConsoleKnowledgePages_OnShellWithVerbsAndTruthStates(t *testing.T) {
 	_, _, layers := f.get(t, "/layers")
 	// The kit's label gutter is fixed (docs/app-kit.md, FATHOM-D-KIT-01):
 	// long names are shortened there and whole in the table alternative.
-	if !strings.Contains(layers, "ledger-ser…, obligations: missing — not compiled") || !strings.Contains(layers, `data-table="coverage"`) {
+	if !strings.Contains(layers, "ledger-ser…, oblig: missing — not compiled") || !strings.Contains(layers, `data-table="coverage"`) ||
+		!strings.Contains(layers, "columns: adr = adr-rules · oblig = obligations") {
 		t.Error("the heatmap must name a not-compiled cell as missing in its title, beside the table alternative")
 	}
 

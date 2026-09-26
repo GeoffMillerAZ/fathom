@@ -144,9 +144,29 @@ func dollarText(v console.Value[float64]) string {
 // layerHref is a layer page.
 func layerHref(layer string) string { return "/layers/" + url.PathEscape(layer) }
 
-// knowledgeLink is an inline 44 px link.
+// knowledgeLink is an inline 44 px link. Names break only where the text
+// allows (a hyphen, a space), so a table column is never squeezed to a
+// letter wide; pathLink breaks a path anywhere.
 func knowledgeLink(href, text string) string {
-	return `<a href="` + html.EscapeString(href) + `" class="inline-flex min-h-11 items-center rounded-sm font-medium text-accent underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus [overflow-wrap:anywhere]">` + html.EscapeString(text) + `</a>`
+	return `<a href="` + html.EscapeString(href) + `" class="inline-flex min-h-11 items-center rounded-sm font-medium text-accent underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">` + html.EscapeString(text) + `</a>`
+}
+
+// pathLink is knowledgeLink for a path or citation, which may break
+// anywhere.
+func pathLink(href, text string) string {
+	return `<a href="` + html.EscapeString(href) + `" class="inline-flex min-h-11 items-center rounded-sm font-mono text-xs text-accent underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus [overflow-wrap:anywhere]">` + html.EscapeString(text) + `</a>`
+}
+
+// claimsWord renders a count inside a table cell: the number, or a short
+// word with the reason as its title — never 0 for nothing compiled.
+func claimsWord(v console.Value[int]) string {
+	switch v.State {
+	case console.StateAbsent:
+		return `<span class="italic text-ink-muted" data-truth-state="absent" title="` + html.EscapeString(v.Reason) + `">not compiled</span>`
+	case console.StateError:
+		return `<span class="text-danger" data-truth-state="error" title="` + html.EscapeString(v.Reason) + `">unreadable</span>`
+	}
+	return valueText(v)
 }
 
 // sourceBadge names where a pack comes from, in words.
@@ -284,6 +304,21 @@ func renderLayerBlock(l console.LayerBlock) string {
 	var b strings.Builder
 	b.WriteString(`<div class="min-w-0 rounded-md border border-line bg-surface p-3" data-layer-block="` + html.EscapeString(l.Name) + `" data-truth-state="` + html.EscapeString(string(l.Claims.State)) + `">`)
 	b.WriteString(`<div class="flex flex-wrap items-center justify-between gap-2">` + knowledgeLink(layerHref(l.Name), l.Name) + sourceBadge(l.Source) + `</div>`)
+	if l.Claims.State == console.StateAbsent && !l.Runs.Known() {
+		// Nothing compiled: one line says so, instead of three absences.
+		b.WriteString(`<p class="text-sm italic text-ink-muted" data-truth-line="absent">not compiled — ` + html.EscapeString(l.Claims.Reason) + `</p>`)
+		if l.Refusals > 0 {
+			b.WriteString(`<p class="mt-1 text-xs text-ink-muted">` + plural(l.Refusals, "refused estimate") + `</p>`)
+		}
+		if len(l.InstalledIn) > 0 {
+			b.WriteString(`<p class="mt-1 text-xs text-ink-muted">installed in ` + html.EscapeString(strings.Join(l.InstalledIn, ", ")) + `</p>`)
+		}
+		if l.Note != "" {
+			b.WriteString(`<p class="mt-1 text-xs text-caution [overflow-wrap:anywhere]">` + html.EscapeString(l.Note) + `</p>`)
+		}
+		b.WriteString(`</div>`)
+		return b.String()
+	}
 	b.WriteString(`<p class="text-sm text-ink">` + valueText(l.Claims) + ` <span class="text-ink-muted">current claims</span></p>`)
 	runs := valueText(l.Runs) + " runs · " + dollarText(l.CostUSD)
 	if l.Refusals > 0 {
@@ -295,7 +330,7 @@ func renderLayerBlock(l console.LayerBlock) string {
 	}
 	b.WriteString(lifecycleBar(l.Name, l.Statuses))
 	if l.Note != "" {
-		b.WriteString(`<p class="mt-1 text-xs text-caution">` + html.EscapeString(l.Note) + `</p>`)
+		b.WriteString(`<p class="mt-1 text-xs text-caution [overflow-wrap:anywhere]">` + html.EscapeString(l.Note) + `</p>`)
 	}
 	b.WriteString(`</div>`)
 	return b.String()
@@ -309,7 +344,7 @@ func renderStrataTable(s console.StrataView) string {
 			rows = append(rows, table.Row{
 				ID:        "layer-" + l.Name,
 				Cells:     []string{band.Title, l.Name, l.Source, "", fmtThousands(l.Statuses.Fresh), fmtThousands(l.Statuses.Stale), fmtThousands(l.Statuses.Contradicted), fmtThousands(l.Statuses.Superseded), "", ""},
-				HTMLCells: []templ.Component{nil, templ.Raw(knowledgeLink(layerHref(l.Name), l.Name)), nil, templ.Raw(valueText(l.Claims)), nil, nil, nil, nil, templ.Raw(valueText(l.Runs)), templ.Raw(dollarText(l.CostUSD))},
+				HTMLCells: []templ.Component{nil, templ.Raw(knowledgeLink(layerHref(l.Name), l.Name)), nil, templ.Raw(claimsWord(l.Claims)), nil, nil, nil, nil, templ.Raw(claimsWord(l.Runs)), templ.Raw(dollarText(l.CostUSD))},
 			})
 		}
 	}
@@ -374,26 +409,57 @@ func renderCoverage(m console.CoverageMatrix) string {
 			states = append(states, st)
 			ylabels = append(ylabels, heatmapLabel(r.Service))
 		}
+		keys := coverageKeys(m.Layers)
 		svg := viz.Heatmap(rows, viz.HeatmapOptions{
-			Role: "accent", Cell: 34, XLabels: m.Layers, YLabels: ylabels, ShowValues: true,
+			Role: "accent", Cell: 38, XLabels: keys, YLabels: ylabels, ShowValues: true,
 			States: states, AriaLabel: "current claims per project and layer; hatched cells were never compiled",
 		})
+		var key []string
+		for i, l := range m.Layers {
+			key = append(key, keys[i]+" = "+l)
+		}
+		b.WriteString(`<div class="grid gap-4 lg:grid-cols-[auto_minmax(0,1fr)]"><div class="min-w-0">`)
+		b.WriteString(`<p class="mb-2 text-xs text-ink-muted" data-coverage-key>columns: ` + html.EscapeString(strings.Join(key, " · ")) + `</p>`)
 		b.WriteString(`<div class="overflow-x-auto" role="region" tabindex="0" aria-label="coverage matrix — scrolls sideways" data-coverage-heatmap>` + svg + `</div>`)
-		b.WriteString(`<div class="mt-3">` + chrome.RenderDisclosure(chrome.Disclosure{Summary: "The coverage matrix as a table", Body: template.HTML(renderCoverageTable(m))}) + `</div>`)
+		b.WriteString(`<div class="mt-3">` + chrome.RenderDisclosure(chrome.Disclosure{Summary: "The coverage matrix as a table", Body: template.HTML(renderCoverageTable(m))}) + `</div></div><div class="min-w-0">`)
 	}
 	if len(m.NeverCompiled) > 0 {
-		b.WriteString(`<h3 class="mt-4 text-sm font-semibold text-ink">Never compiled in any project</h3><ul class="mt-1 flex flex-col gap-1 text-sm" data-never-compiled>`)
+		b.WriteString(`<h3 class="text-sm font-semibold text-ink">Never compiled in any project</h3><ul class="mt-1 flex flex-col gap-2 text-sm" data-never-compiled>`)
 		for _, a := range m.NeverCompiled {
 			where := ""
 			if len(a.InstalledIn) > 0 {
 				where = " — installed in " + html.EscapeString(strings.Join(a.InstalledIn, ", "))
 			}
-			b.WriteString(`<li class="min-w-0">` + knowledgeLink(layerHref(a.Layer), a.Layer) + ` ` + sourceBadge(a.Source) + ` <span class="text-ink-muted">` + html.EscapeString(a.Reason) + where + `</span></li>`)
+			b.WriteString(`<li class="min-w-0 rounded-md border border-line bg-surface px-3 py-1"><div class="flex flex-wrap items-center gap-2">` + knowledgeLink(layerHref(a.Layer), a.Layer) + sourceBadge(a.Source) + `</div><p class="text-xs text-ink-muted">` + html.EscapeString(a.Reason) + where + `</p></li>`)
 		}
 		b.WriteString(`</ul>`)
 	}
 	b.WriteString(`<p class="mt-3 text-xs text-ink-muted">A missing layer is compiled with a dry run first: ` + `<code class="font-mono">fathom compile --layer &lt;layer&gt; --service &lt;project&gt;</code> estimates the cost and spends nothing.</p>`)
+	if len(m.Layers) > 0 && len(m.Rows) > 0 {
+		b.WriteString(`</div></div>`)
+	}
 	return b.String()
+}
+
+// coverageKeys names the heatmap's columns in at most five characters (the
+// kit draws a column label under a cell without fitting it): a layer's
+// first word, else its first five letters; the key line beside the chart
+// spells each out.
+func coverageKeys(layers []string) []string {
+	out := make([]string, len(layers))
+	seen := map[string]bool{}
+	for i, l := range layers {
+		k, _, _ := strings.Cut(l, "-")
+		if utf8.RuneCountInString(k) > 5 {
+			k = string([]rune(k)[:5])
+		}
+		if seen[k] {
+			k = fmt.Sprintf("L%d", i+1)
+		}
+		seen[k] = true
+		out[i] = k
+	}
+	return out
 }
 
 // renderCoverageTable is the matrix's table alternative: every cell in
