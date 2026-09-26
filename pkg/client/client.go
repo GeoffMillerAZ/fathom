@@ -107,6 +107,11 @@ type Client struct {
 	decider   decision.Decider
 	decideCfg config.Decide
 	decideRec *decide.Recorder
+
+	// oblMemo is the obligations hot path's memo (RT-143/RT-81,
+	// obligations_corpus.go): the layer corpus's paths per store
+	// watermark and its guides' contents per stat.
+	oblMemo obligationsMemo
 }
 
 // New constructs a Client from an explicit connector and store. Callers that

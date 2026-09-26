@@ -3,11 +3,17 @@ package client_test
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
@@ -65,5 +71,281 @@ func TestObligationsIndexStaleSkipsOversize(t *testing.T) {
 	}
 	if len(reads) != 1 || reads[0] != small {
 		t.Errorf("reads = %v, want exactly the small file, read through the capped reader", reads)
+	}
+}
+
+// countingConn wraps a connector and counts discovery walks and content
+// fetches, so a test can prove what an obligations call touched.
+type countingConn struct {
+	connector.Connector
+	mu       sync.Mutex
+	discover int
+	fetched  []string
+}
+
+func (cc *countingConn) Discover(ctx context.Context, svc core.ServiceRef) ([]core.SourceRef, error) {
+	cc.mu.Lock()
+	cc.discover++
+	cc.mu.Unlock()
+	return cc.Connector.Discover(ctx, svc)
+}
+
+func (cc *countingConn) Fetch(ctx context.Context, ref core.SourceRef) ([]byte, error) {
+	cc.mu.Lock()
+	cc.fetched = append(cc.fetched, ref.Path)
+	cc.mu.Unlock()
+	return cc.Connector.Fetch(ctx, ref)
+}
+
+func (cc *countingConn) reset() {
+	cc.mu.Lock()
+	cc.discover, cc.fetched = 0, nil
+	cc.mu.Unlock()
+}
+
+func (cc *countingConn) counts() (int, []string) {
+	cc.mu.Lock()
+	defer cc.mu.Unlock()
+	return cc.discover, append([]string(nil), cc.fetched...)
+}
+
+// writeTree writes files (repo-relative path -> content) under dir.
+func writeTree(t testing.TB, dir string, files map[string]string) {
+	t.Helper()
+	for p, body := range files {
+		abs := filepath.Join(dir, filepath.FromSlash(p))
+		if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(abs, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// TestLayerCoverageFromSourcePathsSingleFlightNeverReadsContents is RT-143
+// (design §4.3): obligations' layer coverage and raw fallback each ran
+// client.Sources — a discovery walk and a read of every file in the tree —
+// on every call. Now the corpus paths come from one names-only walk per
+// (service, store watermark, layer digest), shared by concurrent callers;
+// only the layer's own guides (and, for the raw fallback, the edited file)
+// are ever read; nothing goes through the connector's whole-tree Fetch;
+// and a repeat call at the same watermark reads nothing at all. A guide
+// edit is still seen at once (its stat moved); a new guide at the next
+// ingest.
+func TestLayerCoverageFromSourcePathsSingleFlightNeverReadsContents(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	tree := map[string]string{
+		"CLAUDE.md":          "# Rules\n\n- Run tests before committing.\n",
+		"internal/CLAUDE.md": "# internal\n\n- Sort all outputs.\n",
+	}
+	for i := 0; i < 40; i++ {
+		tree[fmt.Sprintf("internal/pkg%02d/file.go", i)] = fmt.Sprintf("package pkg%02d\n\nfunc F%02d() {}\n", i, i)
+	}
+	writeTree(t, dir, tree)
+
+	st := store.NewMemoryStore()
+	cc := &countingConn{Connector: connector.NewLocalConnector()}
+	c := client.New(cc, st)
+	defer c.Close()
+	if _, err := c.Ingest(ctx, client.ServiceRef{ID: "svc", Path: dir}); err != nil {
+		t.Fatal("Ingest:", err)
+	}
+	if err := st.RecordCompileRun(ctx, core.CompileRun{
+		RunID: "r1", ServiceID: "svc", Layer: "obligations",
+		RanAt: time.Unix(1, 0).UTC(), SectionsTotal: 2, BudgetStopped: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	cc.reset()
+
+	edited := filepath.Join(dir, "internal", "pkg07", "file.go")
+	stop := client.ObserveReadsUnder(dir)
+	var wg sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			cov, found, err := c.ObligationsLayerCoverage(ctx, "svc")
+			if err != nil || !found || cov.SectionsTotal != 2 {
+				t.Errorf("coverage: cov=%+v found=%v err=%v, want 2 live sections", cov, found, err)
+			}
+			if _, _, ok, err := c.RawFallbackObligations(ctx, "svc", "internal/pkg07/file.go", 2); err != nil || !ok {
+				t.Errorf("raw fallback: ok=%v err=%v, want the uncompiled guides served", ok, err)
+			}
+		}()
+	}
+	wg.Wait()
+	reads := stop()
+
+	discovers, fetched := cc.counts()
+	if discovers != 1 {
+		t.Errorf("discovery walks = %d across 16 concurrent calls, want exactly 1", discovers)
+	}
+	if len(fetched) != 0 {
+		head := fetched
+		if len(head) > 5 {
+			head = head[:5]
+		}
+		t.Errorf("connector fetched %d files (first: %v); want none — whole-tree content reads are gone", len(fetched), head)
+	}
+	allowed := map[string]bool{
+		filepath.Join(dir, "CLAUDE.md"):             true,
+		filepath.Join(dir, "internal", "CLAUDE.md"): true,
+		edited: true,
+	}
+	for _, r := range reads {
+		if !allowed[r] {
+			t.Errorf("read %s: only the layer's guides and the edited file may be read", r)
+		}
+	}
+
+	// A repeat call at the same watermark reads no guide again.
+	stop = client.ObserveReadsUnder(dir)
+	if _, _, err := c.ObligationsLayerCoverage(ctx, "svc"); err != nil {
+		t.Fatal(err)
+	}
+	if again := stop(); len(again) != 0 {
+		t.Errorf("repeat coverage call read %v, want nothing (guides memoized by stat)", again)
+	}
+
+	// A guide edit is seen on the next call, with no walk.
+	writeTree(t, dir, map[string]string{"internal/CLAUDE.md": "# internal\n\n- Sort all outputs.\n\n## More\n\n- And more.\n"})
+	future := time.Now().Add(2 * time.Second)
+	_ = os.Chtimes(filepath.Join(dir, "internal", "CLAUDE.md"), future, future)
+	cov, _, err := c.ObligationsLayerCoverage(ctx, "svc")
+	if err != nil || cov.SectionsTotal != 3 {
+		t.Errorf("after a guide edit: cov=%+v err=%v, want 3 sections", cov, err)
+	}
+
+	// A new guide arrives with the next ingest: one more walk, not per call.
+	writeTree(t, dir, map[string]string{"cmd/CLAUDE.md": "# cmd\n\n- Flags are documented.\n"})
+	if _, err := c.Ingest(ctx, client.ServiceRef{ID: "svc", Path: dir}); err != nil {
+		t.Fatal(err)
+	}
+	cc.reset()
+	for i := 0; i < 3; i++ {
+		cov, _, err = c.ObligationsLayerCoverage(ctx, "svc")
+	}
+	if err != nil || cov.SectionsTotal != 4 {
+		t.Errorf("after ingesting a new guide: cov=%+v err=%v, want 4 sections", cov, err)
+	}
+	if discovers, _ := cc.counts(); discovers != 1 {
+		t.Errorf("walks after the new watermark = %d over 3 calls, want 1", discovers)
+	}
+}
+
+// TestLayerCoverageNamesOversizeGuideAsLowerBound: a guide over the
+// hot-path cap is never read; coverage names it in unread_corpus, so its
+// sections_total is a lower bound, not a silent omission (I38).
+func TestLayerCoverageNamesOversizeGuideAsLowerBound(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	writeTree(t, dir, map[string]string{
+		"CLAUDE.md": "# Rules\n\n- Run tests before committing.\n",
+		"ADR.md":    "# ADR\n",
+		"main.go":   "package main\n",
+	})
+	st := store.NewMemoryStore()
+	c := client.New(connector.NewLocalConnector(), st)
+	defer c.Close()
+	if _, err := c.Ingest(ctx, client.ServiceRef{ID: "svc", Path: dir}); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.RecordCompileRun(ctx, core.CompileRun{RunID: "r1", ServiceID: "svc", Layer: "obligations", RanAt: time.Unix(1, 0).UTC()}); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "ADR.md"), bytes.Repeat([]byte("# h\n"), int(client.HotPathReadCap)/4+1), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	stop := client.ObserveReadsUnder(dir)
+	cov, found, err := c.ObligationsLayerCoverage(ctx, "svc")
+	reads := stop()
+	if err != nil || !found {
+		t.Fatalf("found=%v err=%v", found, err)
+	}
+	if len(cov.UnreadCorpus) != 1 || !strings.HasPrefix(cov.UnreadCorpus[0], "ADR.md: ") || !strings.Contains(cov.UnreadCorpus[0], "read cap") {
+		t.Errorf("UnreadCorpus = %v, want ADR.md named with the cap", cov.UnreadCorpus)
+	}
+	if cov.SectionsTotal != 1 {
+		t.Errorf("SectionsTotal = %d, want 1 (CLAUDE.md only — a lower bound)", cov.SectionsTotal)
+	}
+	for _, r := range reads {
+		if strings.HasSuffix(r, "ADR.md") {
+			t.Errorf("oversize ADR.md was read")
+		}
+	}
+}
+
+// TestRawFallbackReadsOnlyEditedFile is RT-81 (design §4.3): the raw
+// fallback fetched every file in the tree to find the edited one's content
+// for its behaviour signal. It now reads the edited file alone (beside the
+// layer's own guides), through the capped reader; an edited file over the
+// cap is not read at all, the raw rows are still served from the guides,
+// and why names the skip.
+func TestRawFallbackReadsOnlyEditedFile(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	tree := map[string]string{
+		"CLAUDE.md":   "# Rules\n\n## Non-negotiables — the workspace/ convention\n\nAll build artifacts belong under workspace/.\n",
+		"cmd/emit.go": "package cmd\n\nimport \"os\"\n\nfunc emit(dir string) error {\n\treturn os.WriteFile(dir, nil, 0o644)\n}\n",
+		"cmd/huge.go": "package cmd\n",
+	}
+	for i := 0; i < 30; i++ {
+		tree[fmt.Sprintf("lib/l%02d.go", i)] = fmt.Sprintf("package lib\n\nfunc L%02d() {}\n", i)
+	}
+	writeTree(t, dir, tree)
+	cc := &countingConn{Connector: connector.NewLocalConnector()}
+	c := client.New(cc, store.NewMemoryStore())
+	defer c.Close()
+	if _, err := c.Ingest(ctx, client.ServiceRef{ID: "svc", Path: dir}); err != nil {
+		t.Fatal(err)
+	}
+	cc.reset()
+
+	stop := client.ObserveReadsUnder(dir)
+	rows, _, ok, err := c.RawFallbackObligations(ctx, "svc", "cmd/emit.go", 1)
+	reads := stop()
+	if err != nil || !ok || len(rows) != 1 {
+		t.Fatalf("rows=%+v ok=%v err=%v, want one raw row", rows, ok, err)
+	}
+	_, fetched := cc.counts()
+	if len(fetched) != 0 {
+		t.Errorf("connector fetched %d files; want none", len(fetched))
+	}
+	emit := filepath.Join(dir, "cmd", "emit.go")
+	nEmit := 0
+	for _, r := range reads {
+		switch r {
+		case emit:
+			nEmit++
+		case filepath.Join(dir, "CLAUDE.md"):
+		default:
+			t.Errorf("read %s; only the edited file and the layer's guides may be read", r)
+		}
+	}
+	if nEmit != 1 {
+		t.Errorf("edited file read %d times, want exactly once", nEmit)
+	}
+
+	// The edited file grows past the cap: never read, rows still served
+	// from the guides, and why says the file was not read.
+	if err := os.WriteFile(filepath.Join(dir, "cmd", "huge.go"), bytes.Repeat([]byte("// x\n"), int(client.HotPathReadCap)/5+1), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	stop = client.ObserveReadsUnder(dir)
+	rows, why, ok, err := c.RawFallbackObligations(ctx, "svc", "cmd/huge.go", 1)
+	reads = stop()
+	if err != nil || !ok || len(rows) != 1 {
+		t.Fatalf("oversize edited file: rows=%+v ok=%v err=%v, want the guide's raw row", rows, ok, err)
+	}
+	if !strings.Contains(why, "not read") || !strings.Contains(why, "read cap") {
+		t.Errorf("why = %q, want it to name the unread edited file and the cap", why)
+	}
+	for _, r := range reads {
+		if strings.HasSuffix(r, "huge.go") {
+			t.Errorf("oversize edited file was read")
+		}
 	}
 }
