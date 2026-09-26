@@ -89,7 +89,7 @@ wave is called done.
 
 ## I. Measurements
 
-- [ ] (op) UX-M1: ten operator tasks answered in three clicks or fewer from Now, each answer equal to its verb's JSON {id: UX-M1, skip: "operator measurement 2026-09-26 (docs/bench/readings/ux-m1-m2-console-2026-09-26.md): fails narrowly — 9 of 10 tasks in three clicks or fewer at 1440 px (7 of 10 at 390 px), all 10 answers equal their verb; plan rows remaining takes 4 because the board lists 12 cards per lane and search links plans and rows to the project page"}
+- [ ] (op) UX-M1: ten operator tasks answered in three clicks or fewer from Now, each answer equal to its verb's JSON {id: UX-M1, skip: "operator measurement 2026-09-26, HTTP-level (docs/bench/readings/ux-m1-recount-nav-2026-09-26.md): after OC-55..OC-57, 10 of 10 tasks in three clicks or fewer at 1440 px and 8 of 10 at 390 px (the serving explainer and sessions by arm take 4 there: the Menu tap plus a two-click form), all 10 answers equal their verb; the vision's scripted browser journeys are not yet run, because Chrome aborts at launch"}
 - [ ] (op) UX-M2: every page passes both themes, 390 px with no horizontal overflow, a keyboard path, no console errors and its budgets {id: UX-M2, skip: "operator measurement 2026-09-26 (docs/bench/readings/ux-m1-m2-console-2026-09-26.md): not certified — Chrome aborts at launch, so themes, 390 px overflow, console errors and focus are unmeasured; the static pass holds on all 31 pages and HTML is 49-193 KB, but warm renders stall 3.6-4.4 s once per 30 s model rebuild and 22 s on the intent tab"}
 - [ ] (op) UX-M4: after 30 days of page-view counting, pages nobody opened are reviewed under law 8 {id: UX-M4, skip: "operator measurement: 30-day window"}
 
