@@ -25,10 +25,15 @@ const referencesDefaultMax = 25
 
 // occWireMaxBytes bounds one rendered occurrence on the wire (SB-1): a
 // combined "file:line" location, trimmed text, and a one-character
-// confidence code, GUARANTEED by trimming the text (never the location or
+// confidence code, held by trimming the text (never the location or
 // confidence, which are exact facts) until the marshaled row fits — rather
 // than a fixed byte split per field that could silently drift from
-// encoding/json's actual output.
+// encoding/json's actual output. The bound is conditional on the location:
+// the fixed envelope {"c":"h","loc":"","text":""} is 28 bytes, so a
+// file:line longer than 72 bytes (fewer with a per-row svc) cannot fit
+// even with no text. Such a row keeps its location whole, carries an empty
+// text, and exceeds the bound by exactly what the location costs (BP-41,
+// TestReferencesOccurrenceLongPathKeepsLocationWhole).
 const occWireMaxBytes = 100
 
 // occTextMaxChars is the independent, tighter ceiling on occurrence text
@@ -170,7 +175,9 @@ func occWireSize(w referenceOccurrence) int {
 // at up to occWireMaxBytes (100) bytes (SB-1, O31/O32): a combined
 // "file:line" location, the occurrence text trimmed to at most
 // occTextMaxChars (60) runes and then further shrunk if needed to hit the
-// byte cap, and confidence collapsed to a single character. includeService
+// byte cap, and confidence collapsed to a single character. A location too
+// long to leave room empties the text and keeps the row over the cap
+// rather than cut the path (see occWireMaxBytes). includeService
 // is set only when the response's occurrences span more than one service —
 // service, tier and depth are otherwise CONSTANT across every occurrence
 // row (a mention is always depth 1, tier pre-scan) and are lifted to the

@@ -235,7 +235,8 @@ type referenceDefinition struct {
 }
 
 // referenceOccurrence is one compact occurrence row on the wire (SB-1): a
-// combined "file:line" location, text trimmed to fit the 100-byte cap, a
+// combined "file:line" location (never cut), text trimmed to fit the
+// 100-byte cap (emptied when the location alone overflows it), a
 // one-character confidence code, and an optional per-row service — set
 // only when a response's occurrences span more than one service (the
 // common single-service case lifts it to the envelope instead; see
