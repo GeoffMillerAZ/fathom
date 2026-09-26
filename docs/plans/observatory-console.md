@@ -27,10 +27,10 @@ wave is called done.
 
 ## B. Now and the fleet
 
-- [ ] The attention queue orders problems by what blocks proof first, each with its area, evidence link and remedy {id: OC-17, symbol: AttentionQueue, package: internal/console, reachable_from: TestAttentionQueue_OrdersByProofBlockingFirst}
-- [ ] "Since you last looked" lists pushes, deploys, measurements and restarts from the ledgers and daemon state {id: OC-18, symbol: SinceLastLook, package: internal/console, reachable_from: TestSinceLastLook_FromLedgers}
-- [ ] The fleet page is a sortable, filterable table with a health rollup where unknown is never green {id: OC-19, symbol: FleetTable, package: internal/console, reachable_from: TestFleetTable_SortFilterAndUnknownNotGreen}
-- [ ] Sparklines across projects share one scale and never draw across an absent day {id: OC-20, symbol: FleetTable, package: internal/console, reachable_from: TestFleetTable_SharedScaleAndAbsentDays}
+- [x] The attention queue orders problems by what blocks proof first, each with its area, evidence link and remedy {id: OC-17, symbol: AttentionQueue, package: internal/console, reachable_from: TestAttentionQueue_OrdersByProofBlockingFirst}
+- [x] "Since you last looked" lists pushes, deploys, measurements and restarts from the ledgers and daemon state {id: OC-18, symbol: SinceLastLook, package: internal/console, reachable_from: TestSinceLastLook_FromLedgers}
+- [x] The fleet page is a sortable, filterable table with a health rollup where unknown is never green {id: OC-19, symbol: FleetTable, package: internal/console, reachable_from: TestFleetTable_SortFilterAndUnknownNotGreen}
+- [x] Sparklines across projects share one scale and never draw across an absent day {id: OC-20, symbol: FleetTable, package: internal/console, reachable_from: TestFleetTable_SharedScaleAndAbsentDays}
 
 ## C. Proof
 
