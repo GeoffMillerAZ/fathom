@@ -14,9 +14,21 @@ import (
 	"os"
 
 	"github.com/geoffmilleraz/fathom/internal/scope"
+	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
 func main() {
+	prepareProcess()
+	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
+}
+
+// prepareProcess is the real binary's process-wide setup, done here and
+// never in a package init so `go test` stays hermetic.
+func prepareProcess() {
+	// RT-164 (§10.4): every request to a daemon carries X-Fathom-Caller,
+	// including the ones not built by originHeader (the session primer,
+	// /refresh-file, /route, /metrics, /statusz, the custodian's reads).
+	client.InstallCallerTransport(func() string { return rpcOrigin })
 	// Arm the suppression read filter for the REAL binary: the store's
 	// per-call gate reads state exclusively through $FATHOM_SUPPRESSIONS
 	// (scope.EnvVar), and defaulting it HERE — never in a package init —
@@ -28,7 +40,6 @@ func main() {
 			_ = os.Setenv(scope.EnvVar, p)
 		}
 	}
-	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
 }
 
 // run dispatches to the appropriate subcommand handler.
