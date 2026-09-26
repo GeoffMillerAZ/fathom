@@ -154,6 +154,29 @@ refuses one that does not. Packs are embedded only; a pack search path
   attended-within-N-days record to distinguish consumed from accumulating;
   designing that record is the row's work, not a footnote here).
 
+## 3b. Doctor convergence (CC-13, O27)
+
+Doctor rows that a pack fully expresses render the concern audit's
+findings instead of re-deriving them (law 10: one evaluation engine, many
+surfaces; `cmd/fathom/doctor_packrows.go`):
+
+- `lefthook_gates` ← lefthook `lefthook_pre_push_verify` (its pattern is
+  `lefthookInvokes`', held equal by a test), plus the optional review step
+  as a doctor-side informational `required_pattern` — optional (C3-1), so
+  no pack ships it as a want;
+- `stanza_present` ← claude-code `claude_code_stanza_present` + codex
+  `codex_stanza_present`, the row joining their file-prefixed details.
+
+The entries are evaluated as shipped (a repo's same-id override governs
+its own audit, not these wiring rows). Output is unchanged for users —
+`TestDoctorConvergence_RowsUnchanged` runs the retired bespoke checks
+beside the converged rows over every fixture and requires identical rows —
+with one deliberate difference: a `lefthook.yml` that exists and cannot be
+read is named unreadable, where the bespoke check reported it missing
+(I38). Not migrated, because no pack expresses them fully: `binary_on_path`
+(a PATH fact), `hooks_installed` / `skills_installed` (harness registry,
+embedded skills), and every row that asks the daemon.
+
 ## 4. Tokenomics
 
 The standing loop is file reads and regexps — zero LLM calls, and zero
