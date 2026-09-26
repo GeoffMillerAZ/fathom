@@ -221,31 +221,61 @@ func (c *Client) RootObligationsLayer(ctx context.Context, service string, maxRu
 // only when both the disk file and the stored fingerprint exist AND they
 // disagree. Any error (disk, store, missing meta) returns false — the caller
 // should treat the index as authoritative when freshness cannot be determined.
+// A file over HotPathReadCap is never read and returns false; callers that
+// can carry the skip use ObligationsIndexCheck, which names it.
 //
 // Fingerprint formula matches the fusion pipeline (Pass 3) exactly via
 // fusion.FingerprintHash — the epoch-salted content hash.
 func (c *Client) ObligationsIndexStale(ctx context.Context, service, file string) bool {
+	stale, _ := c.ObligationsIndexCheck(ctx, service, file)
+	return stale
+}
+
+// ObligationsIndexCheck is ObligationsIndexStale with the skip named (RT-26,
+// docs/design/responsible-tenant.md §4.3): it stats the file before reading
+// it, and a file over HotPathReadCap (or not a regular file) is never read.
+// Such a file is reported not stale — nothing was compared, so nothing may
+// claim the index is behind or trigger a refresh — and unchecked names why,
+// so a caller reports the freshness as unknown rather than as current
+// (invariant I38). The stored fingerprint is looked up before the read, so
+// a file the index never fingerprinted is not read either. unchecked is ""
+// whenever the comparison ran or could not run for an ordinary reason
+// (missing file, no metadata, no fingerprint).
+func (c *Client) ObligationsIndexCheck(ctx context.Context, service, file string) (stale bool, unchecked string) {
 	// Resolve disk path: absolute passthrough; otherwise join with meta root.
 	diskPath := file
 	if !filepath.IsAbs(diskPath) {
 		meta, found, err := c.st.GetServiceMeta(ctx, service)
 		if err != nil || !found || meta.Path == "" {
-			return false
+			return false, ""
 		}
 		diskPath = filepath.Join(meta.Path, file)
 	}
 
-	data, err := os.ReadFile(diskPath)
+	info, err := os.Stat(diskPath)
 	if err != nil {
-		return false
+		return false, ""
 	}
-	diskHash := fusion.FingerprintHash(data)
+	if !info.Mode().IsRegular() || info.Size() > HotPathReadCap {
+		why := "not a regular file"
+		if info.Mode().IsRegular() {
+			why = oversizeNote(info.Size(), HotPathReadCap)
+		}
+		return false, "index freshness not checked: " + why + "; not refreshed"
+	}
 
 	stored, found, err := c.st.Fingerprint(ctx, service, file)
 	if err != nil || !found {
-		return false
+		return false, ""
 	}
-	return diskHash != stored
+	data, _, skipped, err := readFileCapped(diskPath, HotPathReadCap)
+	if err != nil {
+		return false, ""
+	}
+	if skipped != "" {
+		return false, "index freshness not checked: " + skipped + "; not refreshed"
+	}
+	return fusion.FingerprintHash(data) != stored, ""
 }
 
 // CompileLayer runs the compile for the named manifest layer against
