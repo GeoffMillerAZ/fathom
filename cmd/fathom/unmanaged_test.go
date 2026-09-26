@@ -7,8 +7,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"testing"
 	"time"
@@ -59,6 +61,44 @@ func processGone(pid int) bool {
 // serve-http whose parent is SIGKILLed exits within 10 s, names the
 // reason, and removes its record.
 func TestUnmanagedServeHTTPExitsWhenParentKilled(t *testing.T) {
+	// The watch itself: no watch under pid 1; the kqueue NOTE_EXIT path
+	// fires when the watched process dies even while getppid says nothing
+	// changed; the poll path fires on reparenting alone.
+	if watchParentExit(1, time.Hour, os.Getppid, func(string) {}) {
+		t.Fatal("watching pid 1")
+	}
+	sleeper := exec.Command("sleep", "30")
+	if err := sleeper.Start(); err != nil {
+		t.Fatal(err)
+	}
+	fired := make(chan string, 2)
+	watchParentExit(sleeper.Process.Pid, time.Hour, func() int { return sleeper.Process.Pid }, func(r string) { fired <- r })
+	time.Sleep(50 * time.Millisecond) // let the kqueue watch register
+	_ = sleeper.Process.Kill()
+	_ = sleeper.Wait()
+	{ // off darwin only the poll path exists
+		select {
+		case r := <-fired:
+			if r != fmt.Sprintf("parent %d exited", sleeper.Process.Pid) {
+				t.Fatalf("reason %q", r)
+			}
+		case <-time.After(3 * time.Second):
+			if runtime.GOOS == "darwin" {
+				t.Fatal("kqueue NOTE_EXIT did not fire within 3 s")
+			}
+		}
+	}
+	polled := make(chan string, 1)
+	var ppid atomic.Int64
+	ppid.Store(int64(os.Getpid())) // a live pid: kqueue stays quiet, only the poll can fire
+	watchParentExit(os.Getpid(), 10*time.Millisecond, func() int { return int(ppid.Load()) }, func(r string) { polled <- r })
+	ppid.Store(1) // reparented to init
+	select {
+	case <-polled:
+	case <-time.After(3 * time.Second):
+		t.Fatal("getppid poll did not fire on reparenting")
+	}
+
 	if testing.Short() {
 		t.Skip("spawns serve-http")
 	}
