@@ -340,10 +340,19 @@ func TestStatusz_OnShellUnknownTypedEdgesVisible(t *testing.T) {
 		},
 	}
 	body := renderStatusz(report, "http://127.0.0.1:7575")
+	// The rows render twice — the table from lg up, a stacked list below
+	// it — so each count reads the table alone.
+	tableOnly := func(page string) string {
+		i, j := strings.Index(page, "data-statusz-table"), strings.Index(page, "data-statusz-list")
+		if i < 0 || j < i {
+			t.Fatalf("statusz must render its table and its stacked list")
+		}
+		return page[i:j]
+	}
 	if !strings.Contains(body, "12 packages") {
 		t.Error("a pass that ran must show its package count")
 	}
-	if n := strings.Count(body, "unknown — no typed-edge pass is recorded for this service"); n != 1 {
+	if n := strings.Count(tableOnly(body), "unknown — no typed-edge pass is recorded for this service"); n != 1 {
 		t.Errorf("the one Go service with no recorded pass must read unknown with its cause, found %d", n)
 	}
 	if strings.Contains(body, "not ingested by this daemon since it started") {
@@ -398,7 +407,7 @@ func TestStatusz_OnShellUnknownTypedEdgesVisible(t *testing.T) {
 	// The fixture fleet's services hold Go source but no go.mod: the pass
 	// cannot apply to any of them, so none is unknown and the panel is not
 	// partial (the live fleet showed 6 no-module repos pinned "unknown").
-	if n := strings.Count(page, "does not apply — no go.mod"); n != len(consoleFixtureServices) {
+	if n := strings.Count(tableOnly(page), "does not apply — no go.mod"); n != len(consoleFixtureServices) {
 		t.Errorf("every no-module fixture service must read does-not-apply, found %d", n)
 	}
 	if strings.Contains(page, "the typed-edge pass is unknown for") {

@@ -64,6 +64,13 @@ func TestConsoleCosmetics_F0ProofMinorItems(t *testing.T) {
 	if !strings.Contains(statusz, `<a href="/projects/payment-service" class="inline-flex min-h-11`) {
 		t.Error("/statusz's service names must be the drill-down links")
 	}
+	// Below lg the same rows stack as one description list per service
+	// (four columns squeezed the text to a word per line at 390 px); one
+	// rendering is displayed at a width.
+	if !strings.Contains(statusz, `<div class="hidden lg:block" data-statusz-table>`) || !strings.Contains(statusz, `<ul class="flex flex-col gap-3 lg:hidden" aria-label="services" data-statusz-list>`) ||
+		strings.Count(statusz, `<li class="min-w-0 rounded-lg border border-line bg-surface-raised px-3 pb-3"><a href="/projects/`) != len(consoleFixtureServices) {
+		t.Error("/statusz must render its services as a table from lg up and a stacked list below it")
+	}
 
 	// Item 7: the session page's h1 is short enough not to truncate, the
 	// full id is in the meta line, law 14 is stated once, and no

@@ -41,7 +41,7 @@
   "artifacts": [
     {
       "path": "cmd/fathom/ui/app.css",
-      "sha256": "7fdc56b5bfc773ab687a4dbe4ad54eed11c8c45ec5bfeac87866e59cac155ac2"
+      "sha256": "ed8edc6b8fb126a4189a281921e333dfca97585967202a80116c89d54e307068"
     },
     {
       "path": "cmd/fathom/ui/input.css",
