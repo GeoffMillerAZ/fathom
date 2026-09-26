@@ -70,7 +70,7 @@ func cmdCertifyGaps(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if *jsonOut {
-		return renderCertifyGapsJSON(stdout, svc, indexCommit, time.Now(), report)
+		return renderCertifyGapsJSON(stdout, svc, indexCommit, certifyGapsNow(), report)
 	}
 	// Suggestions (TC-24) are advisory only and never touch the versioned
 	// fathom.certify.gaps/v1 JSON the Review Kit adapter parses — read and
@@ -144,7 +144,24 @@ type certifyGapsSummary struct {
 	Cases       int `json:"cases"`
 }
 
+// certifyGapsNow is the gaps report's generated_at clock — a variable so
+// the console's JSON-parity test can pin the certifications page and the
+// verb to one instant (as fleetReportNow does for the fleet report).
+var certifyGapsNow = time.Now
+
 func renderCertifyGapsJSON(w io.Writer, service, indexCommit string, now time.Time, report certify.GapReport) int {
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(certifyGapsPayloadFor(service, indexCommit, now, report)); err != nil {
+		return 1
+	}
+	return 0
+}
+
+// certifyGapsPayloadFor is the fathom.certify.gaps/v1 document for one
+// service's report — the verb's --json and the certifications page's
+// section.
+func certifyGapsPayloadFor(service, indexCommit string, now time.Time, report certify.GapReport) certifyGapsPayload {
 	kindSet := map[string]bool{}
 	targets := make([]certifyGapsTarget, 0, len(report.Targets))
 	for _, t := range report.Targets {
@@ -189,12 +206,7 @@ func renderCertifyGapsJSON(w io.Writer, service, indexCommit string, now time.Ti
 		// a named skip, never a pass (cmdCertifyStatus).
 		payload.Skip = "no manifests found — nothing declared"
 	}
-	enc := json.NewEncoder(w)
-	enc.SetIndent("", "  ")
-	if err := enc.Encode(payload); err != nil {
-		return 1
-	}
-	return 0
+	return payload
 }
 
 func renderCertifyGapsTable(w io.Writer, report certify.GapReport, suggestions []certifySuggestion) {

@@ -61,6 +61,7 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 	quiet := fs.Bool("quiet", false, "print only failing (and, with --strict, unknown) task rows plus the summary; composes with --quiet-pass")
 	mutationPath := fs.String("mutation", "", "VB-34: mutation-testing report (go-mutesting log output, or fathom's own JSON shape); a claimed row whose symbol has mutation score 0 gets a covered-not-asserted note (falls back to $"+mutationReportEnvVar+"; direct/--store mode only)")
 	strictMutation := fs.Bool("strict-mutation", false, "gate-fail a covered-not-asserted finding instead of noting it as advisory")
+	rowID := fs.String("row", "", "narrow the report and the gate to one row id (the console's row evidence renders `verify --row ID --json`); every plan is still verified and ledgered in full")
 	since := fs.String("since", "", "git ref to compare each --plan file against (ADR-044 §1.4, I45): a claimed row's skip/disposition/retires/surface_change/raised-max gained since <ref> is reported self-declared and never excuses a loss; rows present at <ref> and missing now are reported deleted. Applies only inside a git work tree; a ref the plan file did not exist at counts as every current row being self-declared.")
 
 	if err := fs.Parse(args); err != nil {
@@ -222,29 +223,25 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, notice)
 	}
 
-	// Compute gate locally over all reports.
-	var allFail []string
-	for _, rep := range reports {
-		var gr verify.GateResult
-		if *requireAll {
-			gr = verify.GateRequireAll(rep, *strict)
-		} else {
-			gr = verify.Gate(rep, *strict)
+	// --row narrows what is reported and gated to one row (the ledger
+	// above already recorded every plan in full).
+	if *rowID != "" {
+		narrowed, found := narrowReportsToRow(reports, *rowID)
+		if !found {
+			fmt.Fprintf(stderr, "error: no row %q in %s\n", *rowID, strings.Join(plans, ", "))
+			return 2
 		}
-		allFail = append(allFail, gr.Failures...)
+		reports = narrowed
 	}
+
+	// Compute gate locally over all reports.
+	allFail := verifyGateFailures(reports, *requireAll, *strict)
 	gatePass := len(allFail) == 0
 
 	if *format == "sarif" {
 		_, _ = stdout.Write(verify.RenderSARIF("fathom verify", verify.GateSARIF(plans, reports, *strict)))
 	} else if *format == "json" {
-		out := map[string]any{
-			"gate": map[string]any{
-				"pass":     gatePass,
-				"failures": allFail,
-			},
-			"reports": reportsToMaps(reports),
-		}
+		out := verifyJSONDoc(reports, allFail)
 		enc := json.NewEncoder(stdout)
 		enc.SetIndent("", "  ")
 		_ = enc.Encode(out)

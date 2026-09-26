@@ -70,17 +70,12 @@ func cmdConserve(args []string, stdout, stderr io.Writer) int {
 	defer st.Close()
 
 	ctx := context.Background()
-	in, err := conserve.NewInput(ctx, root, *since, st, *service, planPaths)
+	rep, err := conserveReportFor(ctx, st, root, *since, *service, planPaths, *coverageMeta, *residueMax)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 2
 	}
-	loadConserveCoverage(&in, root, *coverageMeta)
-
-	rep := conserve.Run(ctx, in, conserve.Planes())
-	rep.Tiers = conserve.TiersByLanguage(ctx, in)
-	residue := conserve.Residue(ctx, in, *residueMax)
-	rep.Residue = &residue
+	residue := *rep.Residue
 
 	if *jsonOut {
 		b, jerr := json.MarshalIndent(rep, "", "  ")
@@ -102,6 +97,23 @@ func cmdConserve(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	return 0
+}
+
+// conserveReportFor is `fathom conserve --since --json`'s whole report:
+// every registered plane over base..worktree, the per-language tiers and
+// the reading set. The console's refactor page (OC-26) calls it with the
+// service's registered root, so the page and the verb cannot disagree.
+func conserveReportFor(ctx context.Context, st store.Store, root, since, service string, planPaths []string, coverageMeta string, residueMax int) (conserve.Report, error) {
+	in, err := conserve.NewInput(ctx, root, since, st, service, planPaths)
+	if err != nil {
+		return conserve.Report{}, err
+	}
+	loadConserveCoverage(&in, root, coverageMeta)
+	rep := conserve.Run(ctx, in, conserve.Planes())
+	rep.Tiers = conserve.TiersByLanguage(ctx, in)
+	residue := conserve.Residue(ctx, in, residueMax)
+	rep.Residue = &residue
+	return rep, nil
 }
 
 // loadConserveCoverage resolves and loads the coverage.meta.json (CV-67,

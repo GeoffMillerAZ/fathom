@@ -51,36 +51,41 @@ func cmdCertifyStatus(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	if report.Summary.Declared == 0 {
-		if *jsonOut {
-			enc := json.NewEncoder(stdout)
-			enc.SetIndent("", "  ")
-			_ = enc.Encode(map[string]any{"service": svc, "skip": "no manifests found — nothing declared"})
-			return 0
-		}
-		fmt.Fprintln(stdout, "certify status: no manifests found — nothing declared")
-		return 0
-	}
-
-	joinRate := 0.0
-	if report.Summary.Cases > 0 {
-		joinRate = float64(report.Summary.JoinedCases) / float64(report.Summary.Cases)
-	}
-
 	if *jsonOut {
 		enc := json.NewEncoder(stdout)
 		enc.SetIndent("", "  ")
-		if err := enc.Encode(map[string]any{
-			"service": svc, "declared": report.Summary.Declared, "live": report.Summary.Live,
-			"gaps": report.Summary.Gaps, "joined_cases": report.Summary.JoinedCases,
-			"cases": report.Summary.Cases, "join_rate": joinRate,
-		}); err != nil {
+		if err := enc.Encode(certifyStatusDoc(svc, report)); err != nil {
 			return 1
 		}
 		return 0
+	}
+	if report.Summary.Declared == 0 {
+		fmt.Fprintln(stdout, "certify status: no manifests found — nothing declared")
+		return 0
+	}
+	joinRate := 0.0
+	if report.Summary.Cases > 0 {
+		joinRate = float64(report.Summary.JoinedCases) / float64(report.Summary.Cases)
 	}
 	fmt.Fprintf(stdout, "certify status: %s: %d target(s), %d live, %d gap(s), joined %d of %d cases (%.0f%%)\n",
 		svc, report.Summary.Declared, report.Summary.Live, report.Summary.Gaps,
 		report.Summary.JoinedCases, report.Summary.Cases, joinRate*100)
 	return 0
+}
+
+// certifyStatusDoc is `certify status --json`'s document for one service's
+// report — the verb's output and the certifications page's section.
+func certifyStatusDoc(svc string, report certify.GapReport) map[string]any {
+	if report.Summary.Declared == 0 {
+		return map[string]any{"service": svc, "skip": "no manifests found — nothing declared"}
+	}
+	joinRate := 0.0
+	if report.Summary.Cases > 0 {
+		joinRate = float64(report.Summary.JoinedCases) / float64(report.Summary.Cases)
+	}
+	return map[string]any{
+		"service": svc, "declared": report.Summary.Declared, "live": report.Summary.Live,
+		"gaps": report.Summary.Gaps, "joined_cases": report.Summary.JoinedCases,
+		"cases": report.Summary.Cases, "join_rate": joinRate,
+	}
 }

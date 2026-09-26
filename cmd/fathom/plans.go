@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
@@ -22,11 +23,12 @@ import (
 //
 //	plans status  — per-plan rollup {proven, claimed-unproven, open, deferred-with-trigger}
 //	plans next    — the ordered, evidence-derived work frontier
+//	plans history — a plan's burn-up from its git history and the verify ledger
 //	plans archive — governed artifact lifecycle (E4-1)
 //	plans restore — the archive/restore round-trip (E4-1)
 func cmdPlans(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "error: plans requires a subcommand (status, next, archive, restore)")
+		fmt.Fprintln(stderr, "error: plans requires a subcommand (status, next, history, archive, restore)")
 		return 1
 	}
 	switch args[0] {
@@ -34,6 +36,8 @@ func cmdPlans(args []string, stdout, stderr io.Writer) int {
 		return cmdPlansStatus(args[1:], stdout, stderr)
 	case "next":
 		return cmdPlansNext(args[1:], stdout, stderr)
+	case "history":
+		return cmdPlansHistory(args[1:], stdout, stderr)
 	case "context":
 		return cmdPlansContext(args[1:], stdout, stderr)
 	case "lease":
@@ -45,7 +49,7 @@ func cmdPlans(args []string, stdout, stderr io.Writer) int {
 	case "restore":
 		return cmdPlansRestore(args[1:], stdout, stderr)
 	default:
-		fmt.Fprintf(stderr, "error: unknown plans subcommand %q (want status, next, context, lease, leases, archive, restore)\n", args[0])
+		fmt.Fprintf(stderr, "error: unknown plans subcommand %q (want status, next, history, context, lease, leases, archive, restore)\n", args[0])
 		return 1
 	}
 }
@@ -88,7 +92,66 @@ func activePlanFiles(root string) ([]string, error) {
 // slice is sorted by TaskID, which is why this rebuilds rows from the
 // locally-parsed Plan.Tasks and only looks up each one's verdict by ID).
 func computePlanRows(planFiles []string, service, storePath, urlStr string) ([][]planRow, error) {
-	root := verifyRepoRoot()
+	return computePlanRowsIn(planFiles, service, storePath, urlStr, planVerifyOpts{})
+}
+
+// planVerifyOpts are computePlanRows' two injectable inputs: the working
+// tree the plans came from and the daemon client.
+type planVerifyOpts struct {
+	// Root is the tree lexical oracles (ADR-030) and the self-skip
+	// comparison (O56) read: the tree the plan files came from. Empty is
+	// the cwd's git toplevel (verifyRepoRoot) — right for --plan files
+	// named on the command line, wrong for plans discovered in a service's
+	// registered root, which is why discovery passes that root here.
+	Root string
+	// HTTP is the daemon client (the console's own origin-stamped client,
+	// so its reads are never usage); nil is a plain 60 s client.
+	HTTP *http.Client
+}
+
+// planComputed is one plan verified: the locally parsed plan and the
+// report the engine returned for it, overlays applied — exactly what
+// `fathom verify --plan` reports for the same file and tree.
+type planComputed struct {
+	File   string
+	Plan   verify.Plan
+	Report verify.Report
+}
+
+// rows joins the plan's tasks, in document order, with their verdicts.
+func (pc planComputed) rows() []planRow {
+	verdictByID := make(map[string]verify.TaskVerdict, len(pc.Report.Tasks))
+	for _, tv := range pc.Report.Tasks {
+		verdictByID[tv.TaskID] = tv
+	}
+	rows := make([]planRow, 0, len(pc.Plan.Tasks))
+	for _, t := range pc.Plan.Tasks {
+		rows = append(rows, planRow{PlanFile: pc.File, Task: t, Verdict: verdictByID[t.ID]})
+	}
+	return rows
+}
+
+// computePlanRowsIn is computePlanRows with the working tree and client
+// given.
+func computePlanRowsIn(planFiles []string, service, storePath, urlStr string, opts planVerifyOpts) ([][]planRow, error) {
+	computed, err := computePlanReports(planFiles, service, storePath, urlStr, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := make([][]planRow, len(computed))
+	for i, pc := range computed {
+		out[i] = pc.rows()
+	}
+	return out, nil
+}
+
+// computePlanReports parses and verifies each plan file, returning the
+// plan and its report per file in planFiles' order.
+func computePlanReports(planFiles []string, service, storePath, urlStr string, opts planVerifyOpts) ([]planComputed, error) {
+	root := opts.Root
+	if root == "" {
+		root = verifyRepoRoot()
+	}
 	localPlans := make([]verify.Plan, 0, len(planFiles))
 	raws := make([][]byte, 0, len(planFiles))
 	for _, pf := range planFiles {
@@ -96,16 +159,7 @@ func computePlanRows(planFiles []string, service, storePath, urlStr string) ([][
 		if err != nil {
 			return nil, fmt.Errorf("reading plan %q: %w", pf, err)
 		}
-		lp := verify.ParseMarkdownPlan(service, raw)
-		// O56: same self-skip comparison cmdVerify runs — "done means
-		// proven" computed progress must not read a self-graded skip as
-		// proven either.
-		if absPF, aerr := filepath.Abs(pf); aerr == nil {
-			if rel, ok := relativeToRoot(root, absPF); ok {
-				lp = verify.AnnotateSelfSkip(lp, priorSelfSkipPlan(root, rel, service, raw))
-			}
-		}
-		localPlans = append(localPlans, lp)
+		localPlans = append(localPlans, parsePlanForVerify(service, root, pf, raw))
 		raws = append(raws, raw)
 	}
 
@@ -124,7 +178,10 @@ func computePlanRows(planFiles []string, service, storePath, urlStr string) ([][
 		// (and the FIRST call may pay an auto-refresh), so the per-call
 		// ceiling must absorb queueing that the serial loop never saw —
 		// with 10s the fan-out timed out where slow-but-serial survived.
-		hc := &http.Client{Timeout: 60 * time.Second}
+		hc := opts.HTTP
+		if hc == nil {
+			hc = &http.Client{Timeout: 60 * time.Second}
+		}
 		indexed, err := daemonServiceIndexed(hc, urlStr, service)
 		if err != nil {
 			return nil, fmt.Errorf("probing daemon for service %q: %w", service, err)
@@ -146,11 +203,7 @@ func computePlanRows(planFiles []string, service, storePath, urlStr string) ([][
 				defer wg.Done()
 				sem <- struct{}{}
 				defer func() { <-sem }()
-				reports[i], verifyErrs[i] = verifyViaHTTP(hc, urlStr, service, "", raws[i], localPlans[i])
-				if verifyErrs[i] == nil {
-					verify.OverlayLocal(&reports[i], localPlans[i], files)
-					verify.OverlaySelfSkip(&reports[i], localPlans[i])
-				}
+				reports[i], verifyErrs[i] = verifyPlanViaDaemon(hc, urlStr, service, raws[i], localPlans[i], files)
 			}(i)
 		}
 		wg.Wait()
@@ -161,19 +214,41 @@ func computePlanRows(planFiles []string, service, storePath, urlStr string) ([][
 		}
 	}
 
-	out := make([][]planRow, len(planFiles))
+	out := make([]planComputed, len(planFiles))
 	for i, pf := range planFiles {
-		verdictByID := make(map[string]verify.TaskVerdict, len(reports[i].Tasks))
-		for _, tv := range reports[i].Tasks {
-			verdictByID[tv.TaskID] = tv
-		}
-		rows := make([]planRow, 0, len(localPlans[i].Tasks))
-		for _, t := range localPlans[i].Tasks {
-			rows = append(rows, planRow{PlanFile: pf, Task: t, Verdict: verdictByID[t.ID]})
-		}
-		out[i] = rows
+		out[i] = planComputed{File: pf, Plan: localPlans[i], Report: reports[i]}
 	}
 	return out, nil
+}
+
+// parsePlanForVerify parses one plan file the way the gate does: the
+// markdown grammar, then the O56 self-skip comparison against the git
+// history of the tree it came from.
+func parsePlanForVerify(service, root, pf string, raw []byte) verify.Plan {
+	lp := verify.ParseMarkdownPlan(service, raw)
+	// O56: same self-skip comparison cmdVerify runs — "done means
+	// proven" computed progress must not read a self-graded skip as
+	// proven either.
+	if absPF, aerr := filepath.Abs(pf); aerr == nil {
+		if rel, ok := relativeToRoot(root, absPF); ok {
+			lp = verify.AnnotateSelfSkip(lp, priorSelfSkipPlan(root, rel, service, raw))
+		}
+	}
+	return lp
+}
+
+// verifyPlanViaDaemon is the gate's daemon path for one parsed plan: the
+// daemon's verdicts, then the working tree's lexical oracles and the local
+// self-skip result overlaid (cmdVerify's own sequence).
+func verifyPlanViaDaemon(hc *http.Client, urlStr, service string, raw []byte, lp verify.Plan, files verify.FileEvidence) (verify.Report, error) {
+	rep, err := verifyViaHTTP(hc, urlStr, service, "", raw, lp)
+	if err != nil {
+		return rep, err
+	}
+	verify.OverlayLocal(&rep, lp, files)
+	verify.OverlaySelfSkip(&rep, lp)
+	verify.OverlaySelfDeclared(&rep, lp)
+	return rep, nil
 }
 
 // discoverPlansForService resolves plan files for a --service (FR-1,
@@ -185,58 +260,57 @@ func computePlanRows(planFiles []string, service, storePath, urlStr string) ([][
 // scope stays activePlanFiles' (non-recursive, README excluded — READMEs
 // describe, plans claim).
 func discoverPlansForService(explicit planFlags, service, baseURL string) (files []string, note string, err error) {
+	files, note, _, err = discoverPlansForServiceRoot(explicit, service, baseURL)
+	return files, note, err
+}
+
+// discoverPlansForServiceRoot is discoverPlansForService that also returns
+// the tree the plans' evidence must be read from: the service's registered
+// root when discovery scanned it, "" (the cwd's toplevel) otherwise. The
+// lexical oracles once read the cwd even for plans discovered in another
+// repository's root — the same wrong-tree bug FR-1 fixed for discovery.
+func discoverPlansForServiceRoot(explicit planFlags, service, baseURL string) (files []string, note, root string, err error) {
 	if len(explicit) > 0 {
-		return explicit, "", nil
+		return explicit, "", "", nil
 	}
-	root := ""
 	hc := &http.Client{Timeout: 4 * time.Second}
 	if svcs, ferr := fetchServices(hc, baseURL); ferr == nil {
 		if info, ok := svcs[strings.ToLower(service)]; ok {
 			root = info.path
 		}
 	}
-	if root == "" {
+	scan, registered := root, root != ""
+	if scan == "" {
 		if cwd, cerr := os.Getwd(); cerr == nil {
-			root = cwd
+			scan = cwd
 			note = fmt.Sprintf("plans: service %q has no registered path reachable from here — scanning the current directory's docs/plans", service)
 		}
 	}
-	matches, gerr := activePlanFiles(root)
+	matches, gerr := activePlanFiles(scan)
 	if gerr != nil {
-		return nil, "", gerr
+		return nil, "", "", gerr
 	}
 	if note == "" {
-		note = fmt.Sprintf("plans: scanning %s", filepath.Join(root, "docs", "plans"))
+		note = fmt.Sprintf("plans: scanning %s", filepath.Join(scan, "docs", "plans"))
 	}
-	return matches, note, nil
+	if !registered {
+		root = ""
+	}
+	return matches, note, root, nil
 }
 
 // ─── plans status (E3-1) ────────────────────────────────────────────────────
 
-// planRollup is one plan's computed rollup — the four named buckets from
-// docs/plans/new-use-cases.md's E3 design, plus SkippedOther so every row is
-// accounted for (a [-] task without disposition:deferred still counts
-// somewhere; verify never silently drops state).
-type planRollup struct {
-	Plan            string `json:"plan"`
-	Total           int    `json:"total"`
-	Proven          int    `json:"proven"`
-	ClaimedUnproven int    `json:"claimed_unproven"`
-	// MeasuredStale (PC-5): claimed rows the daemon could not prove while
-	// the daemon's binary was stale — counted here, never as unproven.
-	MeasuredStale       int `json:"measured_stale,omitempty"`
-	Open                int `json:"open"`
-	DeferredWithTrigger int `json:"deferred_with_trigger"`
-	SkippedOther        int `json:"skipped_other"`
-}
+// planRollup is one plan's computed rollup — `plans status --json`'s wire
+// shape, which is the console's own projection type (console.PlanRollup):
+// the four named buckets from docs/plans/new-use-cases.md's E3 design, plus
+// SkippedOther so every row is accounted for (a [-] task without
+// disposition:deferred still counts somewhere; verify never silently drops
+// state), plus the "(op)" measurement rows among proven and open.
+type planRollup = console.PlanRollup
 
-// rollupPlan computes one plan's rollup from its rows. Bucket precedence
-// (each row lands in exactly one bucket):
-//  1. Skipped + disposition:deferred → DeferredWithTrigger
-//  2. Skipped (any other reason, including no disposition) → SkippedOther
-//  3. Claimed + verified Pass → Proven
-//  4. Claimed + not Pass (Fail or Unknown) → ClaimedUnproven
-//  5. Neither claimed nor skipped ([ ] open or [~] in-progress) → Open
+// rollupPlan computes one plan's rollup from its rows (console.RollupPlan's
+// bucket precedence: the one rollup the verb and the console pages share).
 func rollupPlan(planFile string, rows []planRow) planRollup {
 	return rollupPlanStale(planFile, rows, false)
 }
@@ -245,28 +319,7 @@ func rollupPlan(planFile string, rows []planRow) planRollup {
 // answered was measured-stale, a claimed row it did not prove is a
 // coverage gap (MeasuredStale), not ClaimedUnproven.
 func rollupPlanStale(planFile string, rows []planRow, daemonStale bool) planRollup {
-	r := planRollup{Plan: planFile, Total: len(rows)}
-	for _, row := range rows {
-		t := row.Task
-		switch {
-		case t.Skipped && t.Disposition == "deferred":
-			r.DeferredWithTrigger++
-		case t.Skipped:
-			r.SkippedOther++
-		case t.Claimed:
-			switch {
-			case row.Verdict.Status == verify.Pass:
-				r.Proven++
-			case daemonStale:
-				r.MeasuredStale++
-			default:
-				r.ClaimedUnproven++
-			}
-		default:
-			r.Open++
-		}
-	}
-	return r
+	return console.RollupPlan(planFile, planRowFacts(rows), daemonStale)
 }
 
 func cmdPlansStatus(args []string, stdout, stderr io.Writer) int {
@@ -285,7 +338,7 @@ func cmdPlansStatus(args []string, stdout, stderr io.Writer) int {
 		fs.Usage()
 		return 1
 	}
-	files, scanNote, err := discoverPlansForService(plans, *service, *url)
+	files, scanNote, root, err := discoverPlansForServiceRoot(plans, *service, *url)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
@@ -299,7 +352,7 @@ func cmdPlansStatus(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	rowSets, err := computePlanRows(files, *service, *storePath, *url)
+	rowSets, err := computePlanRowsIn(files, *service, *storePath, *url, planVerifyOpts{Root: root})
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
@@ -307,7 +360,7 @@ func cmdPlansStatus(args []string, stdout, stderr io.Writer) int {
 
 	daemonStale, staleWhy := false, ""
 	if *storePath == "" {
-		daemonStale, staleWhy = liveDaemonStale(&http.Client{Timeout: 5 * time.Second}, *url, verifyRepoRoot())
+		daemonStale, staleWhy = liveDaemonStale(&http.Client{Timeout: 5 * time.Second}, *url, firstNonEmpty(root, verifyRepoRoot()))
 	}
 	rollups := make([]planRollup, len(files))
 	for i, pf := range files {
@@ -583,7 +636,7 @@ func cmdPlansNext(args []string, stdout, stderr io.Writer) int {
 		fs.Usage()
 		return 1
 	}
-	files, scanNote, err := discoverPlansForService(plans, *service, *url)
+	files, scanNote, planRoot, err := discoverPlansForServiceRoot(plans, *service, *url)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
@@ -597,7 +650,7 @@ func cmdPlansNext(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	rowSets, err := computePlanRows(files, *service, *storePath, *url)
+	rowSets, err := computePlanRowsIn(files, *service, *storePath, *url, planVerifyOpts{Root: planRoot})
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
