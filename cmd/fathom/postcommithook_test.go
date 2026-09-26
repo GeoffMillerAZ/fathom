@@ -72,7 +72,7 @@ func TestPostCommitHookPrefersDaemon(t *testing.T) {
 
 // TestPostCommitHookFailsOpenAndSaysWhy: a daemon that is down, wedged, or
 // refusing (IT-15) must leave the commit alone and SAY so — a silent
-// fallback to the store-direct path is how INC-3 stayed invisible.
+// route around the daemon is how INC-3 stayed invisible.
 func TestPostCommitHookFailsOpenAndSaysWhy(t *testing.T) {
 	root := t.TempDir()
 	var out, errBuf bytes.Buffer
@@ -87,10 +87,45 @@ func TestPostCommitHookFailsOpenAndSaysWhy(t *testing.T) {
 	}
 	msg := errBuf.String()
 	if !strings.Contains(msg, "daemon refresh failed") {
-		t.Errorf("the fallback must name the failure, never route around it silently: %q", msg)
+		t.Errorf("the failure line must name the failure, never route around it silently: %q", msg)
 	}
-	if !strings.Contains(msg, "IT-15") {
-		t.Errorf("the fallback line must say the store-direct path still refuses an empty overwrite: %q", msg)
+}
+
+// TestPostCommitMessageNamesNoFallback pins RT-170 (design §12.3): the
+// failure line says what happened — the daemon refresh failed, nothing was
+// ingested — and how to refresh through the daemon when it is back. It used
+// to announce "falling back to a store-direct ingest" and then return
+// without running one: a false claim made during exactly the incidents it
+// reports. Both failure shapes are checked: daemon down and daemon refusing.
+func TestPostCommitMessageNamesNoFallback(t *testing.T) {
+	refusing := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"jsonrpc":"2.0","id":1,"error":{"code":-32000,"message":"ingest refused: 0 of 12 files readable"}}`))
+	}))
+	defer refusing.Close()
+
+	for _, url := range []string{"http://127.0.0.1:1", refusing.URL} {
+		root := t.TempDir()
+		var out, errBuf bytes.Buffer
+		if code := cmdPostCommitHook([]string{
+			"--dir", root, "--url", url, "--service", "svc", "--timeout", "1s",
+		}, &out, &errBuf); code != 0 {
+			t.Errorf("%s: exit %d, want 0 (I9)", url, code)
+		}
+		msg := errBuf.String()
+		for _, want := range []string{"daemon refresh failed", "nothing was ingested", "post-commit-hook --dir " + root, `"svc"`} {
+			if !strings.Contains(msg, want) {
+				t.Errorf("%s: failure line lacks %q: %q", url, want, msg)
+			}
+		}
+		// The temp root's own name contains this test's name; judge the
+		// line's words, not the path it quotes.
+		words := strings.ToLower(strings.ReplaceAll(msg, root, "<root>"))
+		for _, lie := range []string{"falling back", "fallback", "store-direct"} {
+			if strings.Contains(words, lie) {
+				t.Errorf("%s: failure line announces a fallback it does not run (%q): %q", url, lie, msg)
+			}
+		}
 	}
 }
 
