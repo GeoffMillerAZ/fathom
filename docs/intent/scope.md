@@ -5,14 +5,20 @@ Computed progress: `fathom plans status --service fathom` (51 active plans, 779 
 
 ## Current goals
 
+A goal is a pre-registered bet — `{bet, instrument, threshold, review}` on its `Done when:`,
+the instrument a `fathom` verb, a Taskfile target or a repo script — or `fathom intent
+doctrine` refuses it at load and names what it lacks (DP-4, ADR-026 amendment 2026-09-25).
+
 **G2. The A/B becomes admissible.** Done when: `fathom flywheel` reports ≥20
 arm-homogeneous units per arm (MI-5) and a keep/retract verdict is recorded under law 12.
 Every production savings claim stays inadmissible until then (0 admissible ON-arm units
 on 2026-08-21, `docs/vision/24-work-frontier.md` §7).
+{bet: arm-bench, instrument: "fathom flywheel", threshold: "≥20 arm-homogeneous units per arm (MI-5), then a keep/retract verdict under law 12", review: 2026-10-25}
 
 **G3. The continuity-thread bet reaches its sample.** Done when: `threadBetCheck`
 reports 20 units and the flywheel's continuity loop states keep or kill
 (`docs/vision/21-continuity-threads.md`; 4 of 20 on 2026-08-21).
+{bet: thread-bet, instrument: "fathom flywheel", threshold: "20 fresh-with-brief units (threadBetCheck), then the continuity loop states keep or kill", review: 2026-10-25}
 
 **G4. Ambient fathom closes.** Done when: `fathom plans status` shows
 `docs/plans/ambient-fathom.md` with 0 open and 0 claimed-unproven rows. Open: SH-9,

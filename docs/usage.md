@@ -1297,7 +1297,8 @@ this machine**, never a fixed one. Off macOS, all of them fall back to
 ### `intent` — the intent corpus, audited (ADR-026, **experimental**)
 
 ```sh
-fathom intent audit  [--root .] [--json] [--kind conditions|invariants|unproven] [--fresh] [--top N]
+fathom intent audit    [--root .] [--json] [--kind conditions|invariants|unproven] [--fresh] [--top N]
+fathom intent doctrine [--root .] [--json] [--kind visions|bets] [--top N]
 fathom intent export --guard [--root .]
 ```
 
@@ -1337,10 +1338,29 @@ carries `coverage.complete` (ADR-027).
 sensitive-surface rows, stamped with per-row provenance so staleness stays
 computable. It prints them; **fathom never writes that file** (law 15).
 
-Two `fathom doctor` rows report the corpus and its debt, and neither can
-FAIL: not adopting the practice is a choice, and honest debt is not a broken
-repo. Switch both off with the `intent-corpus` capability — the verb still
-answers on demand. Full design: `docs/design/evidence-plane.md`.
+`doctrine` computes the doctrine plane's two views (vision 23 §2; ADR-026 as
+amended 2026-09-25). **The vision promotion pipeline:** for every vision in the
+series the router's docs map names, its stage (`landed`, `planned`, `accepted`,
+`for-review`, `deferred`, `conditional`, `stated`, `superseded`, `rejected`, or
+`unstated`) from its header's `Status:` line or a status its index entry leads
+with, the plans its header or index entry names with their claimed rows (claimed,
+not proven — `fathom verify` is the proof), any condition label it carries, and
+its newest dated statement; findings are `unstated`, `undated`, `stale` (for
+review past 30 days with no plan), `broken-link` (a markdown link, a plan
+pointer, or a decision id that does not resolve) and `unreadable`. Only this
+metadata is read — never a rule, a condition or a count for the audit.
+**Goals as pre-registered bets:** each `**G<n>.**` goal of `scope.md` is a bet
+when its `Done when:` carries `{bet: <name>, instrument: "<fathom verb | task
+target | repo script>", threshold: "…", review: YYYY-MM-DD}` and the instrument
+resolves; otherwise it is refused at load with what it lacks, and a bet whose
+review date passed is listed as due. A bet block is not an oracle annotation and
+never counts toward K0.
+
+Three `fathom doctor` rows report the corpus, its debt, and the doctrine plane
+(`intent`, `unproven_claims`, `doctrine`), and none can FAIL: not adopting the
+practice is a choice, and honest debt is not a broken repo. Switch them off with
+the `intent-corpus` capability — the verbs still answer on demand. Full design:
+`docs/design/evidence-plane.md`.
 
 ### `scope` / `purge` — reversible suppression and verified removal
 

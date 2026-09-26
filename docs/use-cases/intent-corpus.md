@@ -29,7 +29,7 @@ is reported as one.
 fathom intent audit                  # what it declares, what shows, what does not
 fathom intent audit --kind unproven  # just the debt, with a remedy per finding
 fathom intent audit --json           # for a script; unbudgeted
-fathom doctor                        # two rows that summarize both, and never FAIL
+fathom doctor                        # rows that summarize it all, and never FAIL
 ```
 
 `audit` reads three sources and joins them:
@@ -91,6 +91,37 @@ None of that is a failing grade. It is a list with a remedy on every line.
   the debt, naming nothing. `--json` carries `coverage.complete` so a machine
   reader can tell a real zero from one nobody could see.
 
+## The doctrine plane: where each vision stands, and which goals are bets
+
+```sh
+fathom intent doctrine               # every vision and goal, each finding with a remedy
+fathom intent doctrine --kind bets   # just the goals
+fathom intent doctrine --json        # for a script
+```
+
+Visions are promises, and checking their prose would be theater. What can be
+checked is where each one stands on the pipeline the repo already practices —
+vision → decision → plan rows → proven code — so that is all `doctrine`
+computes, per vision: its stage from its own `Status:` line (or a status its
+index entry leads with), the plans that carry it and their claimed rows, whether
+its links and cited decision ids resolve, and the age of its newest dated
+statement. A vision naming no status, trigger or plan is listed `unstated`; one
+left for review over 30 days with no plan is listed `stale`. This repository,
+2026-09-25: 35 visions — 12 landed, 10 planned, 4 for review (all stale), 9
+unstated — and one README link to a plan that was archived.
+
+A goal counts only as a pre-registered bet: an instrument this repo can run, a
+threshold, a review date, written on its `Done when:` —
+
+```
+**G2. The A/B becomes admissible.** Done when: `fathom flywheel` reports ≥20 …
+{bet: arm-bench, instrument: "fathom flywheel", threshold: "≥20 arm-homogeneous units per arm (MI-5), then a keep/retract verdict under law 12", review: 2026-10-25}
+```
+
+— or it is refused at load, naming what it lacks. When a review date passes
+the bet is listed as due; the keep-or-kill decision is yours, recorded on the
+goal. A bet block evaluates nothing and never counts as an oracle annotation.
+
 ## In a session
 
 One line reaches the SessionStart primer, sharing the custodian's rather than
@@ -134,7 +165,8 @@ switch turns off a reporting channel, not a capability.
 ## Maintained
 
 This doc covers: `fathom intent audit` (`--root`, `--json`, `--kind`,
-`--fresh`, `--top`), `fathom intent export --guard`, `fathom doctor`'s
-`intent` and `unproven_claims` rows (incl. the measured-stale count), the `intent-corpus` capability, the
+`--fresh`, `--top`), `fathom intent doctrine` (`--root`, `--json`, `--kind`,
+`--top`), `fathom intent export --guard`, `fathom doctor`'s
+`intent`, `unproven_claims` and `doctrine` rows (incl. the measured-stale count), the `intent-corpus` capability, the
 session attention line, and `fathom fleet report`'s `unproven` column.
 Update it when these change.

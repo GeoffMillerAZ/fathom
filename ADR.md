@@ -1050,6 +1050,30 @@ wants intent as data (`export --cue`). (5) Plan `trigger:` vocabulary actually
 repeats across two repos (the real F9). (6) Decision latency measures as the
 bottleneck the broad form would remove.
 
+**Amended 2026-09-25 (custodian DP-3, DP-4): the doctrine plane's two computed views,
+and decision 1's "never reads `docs/vision/`" narrowed to the corpus.** Vision 23 §2
+accepted the vision promotion pipeline and goals-as-bets before this record, and the
+custodian plan kept both rows open after it; decision 1's clause, read literally, forbade
+the first. Its reason was compiling aspiration into rules. So: (1) the intent *corpus*
+(conditions, invariants, surfaces, the audit and every U-kind) still never reads
+`docs/vision/`; (2) `fathom intent doctrine` reads the vision series the router's docs
+map names for its *promotion metadata only* — a header `Status:` line or a status the
+index entry leads with, condition labels its author wrote, plan and decision pointers in
+its header or index entry (plans resolved in `docs/plans` or `docs/plans/archive`, rows
+counted by the plan parser, claimed not proven), relative markdown links, and dates —
+and reports per vision a computed stage, broken links, an undated or unstated promise,
+and a for-review promise with no plan past 30 days; nothing is compiled, evaluated,
+edited or scored; (3) a scope goal is a pre-registered bet — a `{bet, instrument,
+threshold, review}` block on its `Done when:`, tokenized by the plan tokenizer, the
+instrument resolved to a registered `fathom` verb, a Taskfile target or a repo script —
+or it is refused at load, and a passed review date is listed as due for a human; a
+bet-only block never counts as an oracle annotation, so K0 cannot be inflated by the
+surface that enumerates bets; (4) one doctor row, `doctrine`, warns and never fails;
+no MCP tool, no hook, no injected channel. **Revisit when.** A vision finding is
+reported as a rule, an obligation, or an unproven claim anywhere (the narrowing has
+leaked); bet blocks are mistaken for oracle annotations in K0's count; or the kit's
+`intent-prune`/`intent-decide` drop a bet block (the Q18 class).
+
 ## ADR-027: Coverage before conclusion — an instrument may not degrade toward "healthy" (2026-08-27)
 
 **Status.** Accepted. **Type.** Architecture / process. Design:

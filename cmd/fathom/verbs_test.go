@@ -116,7 +116,7 @@ func maintainedKnownNames(t *testing.T, root string) map[string]bool {
 		// doctor rows and capability ids the module / intent docs maintain
 		"binding_file", "binding_module_readiness", "binding_modules_mounted",
 		"guard_dead_scopes", "guard_file", "guard_include_modules_unbound",
-		"intent-corpus", "unproven", "unproven_claims",
+		"intent-corpus", "unproven", "unproven_claims", "doctrine",
 	} {
 		known[extra] = true
 	}

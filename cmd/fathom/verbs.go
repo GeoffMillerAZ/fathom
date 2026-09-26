@@ -57,7 +57,7 @@ var verbTable = []verb{
 	{Name: "session-end-hook", Summary: "SessionEnd hook: deposit one continuity item only when the session leaves uncommitted work, stashes, or claimed-unproven rows"},
 	{Name: "pre-compact-hook", Summary: "PreCompact hook: file one pointer to the pre-compaction span (the transcript itself is never read)"},
 	{Name: "post-commit-hook", Summary: "post-commit hook: refresh this repo's index THROUGH THE DAEMON (never a shell ingest against the shared store — INC-3); always exits 0"},
-	{Name: "intent", Summary: "The intent corpus (ADR-026): audit — conditions, invariant rungs, unproven claims | export --guard"},
+	{Name: "intent", Summary: "The intent corpus (ADR-026): audit — conditions, invariant rungs, unproven claims | doctrine — the vision promotion pipeline and goals as pre-registered bets | export --guard"},
 	{Name: "export", Summary: "export scip --service <s> [--store PATH] [-o index.scip]: write the symbol and typed-edge tables as a SCIP index (VB-32)"},
 	{Name: "daemon", Summary: "The serve-http launchd agent: install (writes the plist with YOUR paths and starts it) | status | uninstall"},
 	{Name: "gen-plan-cue", Summary: "Emit the generated CUE shadow of a Markdown plan (round-trip verified)"},

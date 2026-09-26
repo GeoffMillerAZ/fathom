@@ -271,6 +271,10 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		checkConcerns(root),
 		checkIntent(root),
 		checkUnprovenClaims(root, baseURL, explicitSvc),
+		// DP-3/DP-4 (docs/plans/custodian.md): the doctrine plane — the
+		// vision promotion pipeline and goals as pre-registered bets
+		// (intentdoctrine.go). Warns, never fails.
+		checkDoctrine(root),
 		// vision 33 / ADR-043 stage 1 (TC-14): the certifications layer's
 		// own declared/live/join-rate facts, read directly from the
 		// repo's local store (doctor's only store-direct row — see
