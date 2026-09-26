@@ -1053,3 +1053,22 @@ func clearProviderEnv(t *testing.T) {
 		t.Setenv(v, "")
 	}
 }
+
+// RT-145: `[connector] include` validates and loads, so a corpus that
+// re-includes a default-ignored cache directory does not break `fathom
+// config` or any command that loads the project layer.
+func TestLoad_ConnectorInclude(t *testing.T) {
+	dir := t.TempDir()
+	project := filepath.Join(dir, "project.toml")
+	writeTOML(t, project, "[connector]\ninclude = [\"coverage\", \"compute/.tools\"]\n")
+	loaded, err := Load("", project)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := loaded.Config.Connector.Include, []string{"coverage", "compute/.tools"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("Connector.Include = %v, want %v", got, want)
+	}
+	if loaded.Provenance["connector.include"].Source != SourceProject {
+		t.Fatalf("connector.include provenance = %+v", loaded.Provenance["connector.include"])
+	}
+}

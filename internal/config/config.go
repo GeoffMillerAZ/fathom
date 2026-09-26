@@ -254,8 +254,19 @@ type Surface struct {
 	Pattern []SurfacePattern
 }
 
+// Connector configures discovery (schema.cue #Connector, RT-145):
+// `[connector] include` re-includes directories the default cache list
+// (.cache, .tools, target, dist, build, __pycache__, .venv, .gradle, .next,
+// .turbo, coverage) would prune — a bare name re-includes every directory
+// with that name, an entry with a slash one repo-relative path. The
+// connector reads it from the corpus's own .fathom/config.toml.
+type Connector struct {
+	Include []string
+}
+
 // Config is the merged, in-memory form of one or more config.toml layers.
 type Config struct {
+	Connector      Connector
 	DefaultProfile string
 	Profiles       map[string]Profile
 	Daemon         Daemon

@@ -41,3 +41,13 @@ regex = 'registerTool\(toolDescriptor\{\s*\n\s*Name:\s*"([a-zA-Z_][a-zA-Z0-9_]*)
 kind = "verb"
 glob = "cmd/fathom/verbs.go"
 regex = '\{Name:\s*"([a-z][a-z0-9-]*)"'
+
+# RT-145 (docs/design/responsible-tenant.md §4.2): discovery skips the
+# default cache directories (.cache, .tools, target, dist, build,
+# __pycache__, .venv, .gradle, .next, .turbo, coverage). This repository
+# commits source under two of those names — the Go packages
+# internal/analysis/coverage and third_party/agentic-kit/.../coverage, and
+# dist/ (the shipped skills, dist/agents/skills/dist.go) — so it
+# re-includes them.
+[connector]
+include = ["coverage", "dist"]

@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/connector"
@@ -260,6 +261,7 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stdout, "excluded: %d pattern(s) (%d project, %d user-scope ~/.fathom/ignore, %d service-scoped ignore.d/%s)\n",
 			counts.Project+counts.User+counts.Service, counts.Project, counts.User, counts.Service, *service)
 	}
+	printDefaultIgnoredDirs(stdout, report.DefaultIgnoredDirs)
 	if readErr != nil {
 		outcome := "degraded"
 		if readErr.Refused {
@@ -396,4 +398,24 @@ func resolveSCIPPaths(root string, explicit []string) []string {
 		out = append(out, matches...)
 	}
 	return out
+}
+
+// defaultIgnoredShown caps how many default-ignored directories the ingest
+// summary names inline; the count is always exact.
+const defaultIgnoredShown = 8
+
+// printDefaultIgnoredDirs names the directories the connector's default
+// cache list pruned (RT-145) — counted and named, never a silent drop.
+func printDefaultIgnoredDirs(w io.Writer, dirs []string) {
+	if len(dirs) == 0 {
+		return
+	}
+	shown := dirs
+	more := ""
+	if len(shown) > defaultIgnoredShown {
+		shown = shown[:defaultIgnoredShown]
+		more = fmt.Sprintf(", … and %d more", len(dirs)-defaultIgnoredShown)
+	}
+	fmt.Fprintf(w, "excluded: %d default-ignored cache dir(s) (%s%s) — re-include one with [connector] include in .fathom/config.toml\n",
+		len(dirs), strings.Join(shown, ", "), more)
 }

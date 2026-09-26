@@ -84,6 +84,15 @@ func mergeLayer(cfg *Config, prov Provenance, raw map[string]any, source Source,
 		mergeTestsFields(&cfg.Tests, tm, source, path, prov)
 	}
 
+	if cm, ok := raw["connector"].(map[string]any); ok {
+		if v, ok := cm["include"]; ok {
+			if list, ok := stringSlice(v); ok {
+				cfg.Connector.Include = list
+				prov["connector.include"] = SourceInfo{source, path}
+			}
+		}
+	}
+
 	if sm, ok := raw["surface"].(map[string]any); ok {
 		mergeSurfaceFields(&cfg.Surface, sm, source, path, prov)
 	}

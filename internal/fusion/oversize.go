@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync/atomic"
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
 )
@@ -50,5 +51,6 @@ func (p *Pipeline) recordOversize(ctx context.Context, serviceID, ref string, si
 	if err := p.st.SetFingerprint(ctx, serviceID, ref, fp); err != nil {
 		return false, fmt.Errorf("fusion: set fingerprint %q: %w", ref, err)
 	}
+	atomic.AddInt64(&p.oversizeTotal, 1)
 	return false, nil
 }

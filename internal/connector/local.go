@@ -35,6 +35,21 @@ type LocalConnector struct {
 	// roots remembers, per service ID, the root directory of the most recent
 	// Discover, so Fetch can resolve the repo-relative paths Discover emits.
 	roots sync.Map // service ID (string) -> root dir (string)
+	// exclusions remembers, per service ID, what the most recent Discover
+	// pruned (RT-145) — see Exclusions.
+	exclusions sync.Map // service ID (string) -> Exclusions
+}
+
+// Exclusions reports what the most recent Discover of service excluded at
+// the directory level (RT-145). The zero value when service was never
+// discovered by this connector.
+func (c *LocalConnector) Exclusions(service string) Exclusions {
+	if v, ok := c.exclusions.Load(service); ok {
+		ex := v.(Exclusions)
+		ex.DefaultIgnored = append([]string(nil), ex.DefaultIgnored...)
+		return ex
+	}
+	return Exclusions{}
 }
 
 // NewLocalConnector returns a ready-to-use LocalConnector.
@@ -84,6 +99,8 @@ func (c *LocalConnector) Discover(ctx context.Context, svc core.ServiceRef) ([]c
 	}
 
 	entries := 0
+	include := loadConnectorInclude(svc.Path)
+	var ex Exclusions
 	err = filepath.WalkDir(walkRoot, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -104,9 +121,20 @@ func (c *LocalConnector) Discover(ctx context.Context, svc core.ServiceRef) ([]c
 
 		if d.IsDir() {
 			if skipDir(d.Name()) {
+				ex.SkippedDirs++
 				return filepath.SkipDir
 			}
-			if ignore != nil && rel != "." && rel != "" && ignore.Match(rel+"/") {
+			if rel == "." || rel == "" {
+				// The corpus root itself is never a default-ignored cache
+				// (a service rooted at a directory named build is indexed).
+				return nil
+			}
+			if defaultIgnoredDir(d.Name(), rel, include) {
+				ex.DefaultIgnored = append(ex.DefaultIgnored, rel)
+				return filepath.SkipDir
+			}
+			if ignore != nil && ignore.Match(rel+"/") {
+				ex.IgnoredDirs++
 				return filepath.SkipDir
 			}
 			return nil
@@ -137,6 +165,8 @@ func (c *LocalConnector) Discover(ctx context.Context, svc core.ServiceRef) ([]c
 	sort.Slice(refs, func(i, j int) bool {
 		return refs[i].Path < refs[j].Path
 	})
+	sort.Strings(ex.DefaultIgnored)
+	c.exclusions.Store(svc.ID, ex)
 	return refs, nil
 }
 
