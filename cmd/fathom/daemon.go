@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 )
 
@@ -107,27 +108,63 @@ func daemonRestartHint(storeHint string) string {
 }
 
 func cmdDaemon(args []string, stdout, stderr io.Writer) int {
+	const subs = "install|status|uninstall|stop|start|pause|resume"
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "usage: fathom daemon install|status|uninstall")
+		fmt.Fprintln(stderr, "usage: fathom daemon "+subs)
 		return 2
 	}
 	sub, rest := args[0], args[1:]
 	switch sub {
 	case "install":
+		if hasFlag(rest, "reconcile") {
+			return runDaemonReconcile(rest, stdout, stderr, realDaemonOps{})
+		}
 		return cmdDaemonInstall(rest, stdout, stderr)
 	case "status":
 		return cmdDaemonStatus(rest, stdout, stderr)
 	case "uninstall":
 		return cmdDaemonUninstall(rest, stdout, stderr)
+	case "stop":
+		return cmdDaemonStop(rest, stdout, stderr)
+	case "start":
+		return cmdDaemonStart(rest, stdout, stderr)
+	case "pause":
+		return runDaemonPause(true, rest, stdout, stderr, realDaemonOps{})
+	case "resume":
+		return runDaemonPause(false, rest, stdout, stderr, realDaemonOps{})
 	default:
-		fmt.Fprintf(stderr, "error: unknown daemon subcommand %q (install|status|uninstall)\n", sub)
+		fmt.Fprintf(stderr, "error: unknown daemon subcommand %q (%s)\n", sub, subs)
 		return 2
 	}
 }
 
-// plistBody renders the launchd agent. KeepAlive + RunAtLoad because the
-// daemon is meant to be always-there; a fathom that needs starting by hand
-// is a fathom the agent silently stops using.
+// plistBody renders the launchd agent, schema 2 (design §8.1, RT-13).
+// RunAtLoad because the daemon is meant to be always-there; a fathom that
+// needs starting by hand is a fathom the agent silently stops using. But
+// always-there is not always-relaunched (INC-23): KeepAlive relaunches only
+// an UNSUCCESSFUL exit, so exit 0 (the kill switch, a breaker stop, a
+// drained SIGTERM) stays down; ThrottleInterval 60 bounds a crash loop and
+// gives hook breakers time to open; ProcessType Background, low-priority
+// I/O and Nice 5 put the daemon (and the git/go children it spawns) in the
+// class Apple gives indexing, not the operator's foreground; ExitTimeOut 20
+// covers the 12 s drain. `--managed` is what makes this process obey
+// ~/.fathom/daemon/disabled.json. The keys schema 2 owns are
+// plistTenancyKeys (plist_posture.go); `daemon install --reconcile`
+// rewrites only those in an installed plist.
+// hasFlag reports whether args carry --name (or -name, --name=true).
+func hasFlag(args []string, name string) bool {
+	for _, a := range args {
+		if a == "--" {
+			return false
+		}
+		n, v, hasV := strings.Cut(strings.TrimLeft(a, "-"), "=")
+		if strings.HasPrefix(a, "-") && n == name && (!hasV || v == "true" || v == "1") {
+			return true
+		}
+	}
+	return false
+}
+
 func plistBody(label, bin, store, addr, logDir, callLog, pathEnv string, goEnv []string) string {
 	var goEnvXML strings.Builder
 	for _, kv := range goEnv {
@@ -140,11 +177,13 @@ func plistBody(label, bin, store, addr, logDir, callLog, pathEnv string, goEnv [
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
+  %s
   <key>Label</key><string>%s</string>
   <key>ProgramArguments</key>
   <array>
     <string>%s</string>
     <string>serve-http</string>
+    <string>--managed</string>
     <string>--store</string><string>%s</string>
     <string>--addr</string><string>%s</string>
     <string>--call-log</string><string>%s</string>
@@ -163,11 +202,17 @@ func plistBody(label, bin, store, addr, logDir, callLog, pathEnv string, goEnv [
          values, written at install time from this shell's own go env. -->%s
   </dict>
   <key>RunAtLoad</key><true/>
-  <key>KeepAlive</key><true/>
+  <key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>
+  <key>ThrottleInterval</key><integer>60</integer>
+  <key>ProcessType</key><string>Background</string>
+  <key>LowPriorityIO</key><true/>
+  <key>LowPriorityBackgroundIO</key><true/>
+  <key>Nice</key><integer>5</integer>
+  <key>ExitTimeOut</key><integer>20</integer>
   <key>StandardOutPath</key><string>%s/fathom-http.log</string>
   <key>StandardErrorPath</key><string>%s/fathom-http.err</string>
 </dict></plist>
-`, label, bin, store, addr, callLog, pathEnv, goEnvXML.String(), logDir, logDir)
+`, plistSchemaMarker, label, bin, store, addr, callLog, pathEnv, goEnvXML.String(), logDir, logDir)
 }
 
 // daemonPathEnv builds the PATH launchd gives the daemon. launchd starts
@@ -338,18 +383,53 @@ func cmdDaemonInstall(args []string, stdout, stderr io.Writer) int {
 }
 
 func cmdDaemonStatus(args []string, stdout, stderr io.Writer) int {
+	return runDaemonStatus(args, stdout, stderr, realDaemonOps{})
+}
+
+// runDaemonStatus is `fathom daemon status`: the installed agent, its
+// launchd posture (RT-15), the kill switch, the running binary's signature
+// (RT-148) and reachability.
+func runDaemonStatus(args []string, stdout, stderr io.Writer, ops daemonOps) int {
 	fs := newFlagSet("daemon status", stderr)
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
-	jsonOut := fs.Bool("json", false, "emit label, plist, reachability and the remedy as JSON (docs/usage.md §daemon)")
+	jsonOut := fs.Bool("json", false, "emit label, plist, posture, switch, signature, reachability and the remedy as JSON (docs/usage.md §daemon)")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
 
-	label := labelInstalled()
+	label, plistPath, post, postOK := installedPosture("")
+	var postureLine, postureFix string
+	if postOK {
+		if len(post.Drift) == 0 {
+			postureLine = fmt.Sprintf("schema %d (exit 0 stays down, 60 s throttle, Background)", post.Schema)
+		} else {
+			postureLine = postureReason(post)
+			postureFix = postureRemedy(label, plistPath, post)
+		}
+	}
+	switchLine := ""
+	if dir, err := daemonStateDir(); err == nil {
+		if v := readKillSwitch(dir, ops.Now()); v.Message != "" {
+			switchLine = v.Message
+		}
+	}
+	var signing *signingIdentity
+	if addr, err := console.DaemonAddrFromURL(*url); err == nil && runtime.GOOS == "darwin" {
+		if bin, _ := runningDaemonBinary(ops, addr, post.Binary); bin != "" {
+			si := binarySigningIdentity(ops, bin)
+			signing = &si
+		}
+	}
+
 	if *jsonOut { // RP-17: daemon_json.go
-		st := daemonStatusJSON{Platform: runtime.GOOS, Label: label, URL: *url}
+		st := daemonStatusJSON{Platform: runtime.GOOS, Label: label, URL: *url, Switch: switchLine, Signing: signing}
 		if label != "" {
 			st.Plist = filepath.Join(launchAgentsDir(), label+".plist")
+		}
+		if postOK {
+			st.PlistSchema = post.Schema
+			st.PostureDrift = post.Drift
+			st.PostureRemedy = postureFix
 		}
 		st.Reachable, st.Detail = daemonHealthy(*url)
 		if !st.Reachable {
@@ -365,10 +445,22 @@ func cmdDaemonStatus(args []string, stdout, stderr io.Writer) int {
 		// would be. A plist missing these is the 2026-09-12 defect still
 		// present, and the reader must be able to see that from here.
 		printPlistGoEnv(stdout, filepath.Join(launchAgentsDir(), label+".plist"))
+		if postureLine != "" {
+			fmt.Fprintf(stdout, "posture:       %s\n", postureLine)
+		}
+		if postureFix != "" {
+			fmt.Fprintf(stdout, "reconcile:     %s\n", postureFix)
+		}
 	case runtime.GOOS == "darwin":
 		fmt.Fprintln(stdout, "launchd agent: none installed — `fathom daemon install` writes one")
 	default:
 		fmt.Fprintf(stdout, "launchd agent: n/a on %s — run `fathom serve-http` under your own supervisor\n", runtime.GOOS)
+	}
+	if switchLine != "" {
+		fmt.Fprintf(stdout, "switch:        %s\n", switchLine)
+	}
+	if signing != nil {
+		fmt.Fprintf(stdout, "signing:       %s\n", signing.String())
 	}
 
 	// Reachability is the fact that matters; an installed agent that is not

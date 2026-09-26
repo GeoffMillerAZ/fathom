@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"runtime/debug"
@@ -72,7 +73,20 @@ func revisionDirty() bool {
 	return dirty
 }
 
-func cmdVersion(_ []string, stdout, _ io.Writer) int {
+// cmdVersion prints the build identity; `--json` adds the responsible-tenant
+// contract this binary speaks (tenancy_contract, design §8.3), which
+// `daemon install --reconcile` reads from the INSTALLED binary before it
+// writes a schema-2 plist.
+func cmdVersion(args []string, stdout, _ io.Writer) int {
+	if hasFlag(args, "json") {
+		rev, when, dirty := vcsInfo()
+		enc := json.NewEncoder(stdout)
+		_ = enc.Encode(map[string]any{
+			"version": Version, "revision": rev, "revision_time": when, "dirty": dirty,
+			"tenancy_contract": tenancyContract,
+		})
+		return 0
+	}
 	fmt.Fprintln(stdout, BuildRevision())
 	return 0
 }

@@ -1403,16 +1403,63 @@ repo root); `--json` is `{repo_root, violated, proposals, patch}`. Exit `0`
 whenever it ran — `config audit` is the gate — and `1` only when a
 concerns file would not load.
 
-### `daemon` — install, inspect and remove the serve-http agent
+### `daemon` — install, inspect, stop and remove the serve-http agent
 
 ```sh
 fathom daemon install [--label dev.fathom.serve-http] [--store PATH] [--addr :7575] [--bin PATH] [--force]
+fathom daemon install --reconcile [--label NAME] [--adopt]
 fathom daemon status  [--url http://localhost:7575] [--json]
+fathom daemon stop    [--for 2h] [--reason TEXT] [--url URL] [--label NAME]
+fathom daemon start   [--label NAME]
+fathom daemon pause   [--reason TEXT]
+fathom daemon resume
 fathom daemon uninstall [--label NAME]
 ```
 
-`status --json`: `{platform, label?, plist?, url, reachable, detail?,
-remedy?, exit_code}` — exit 1 when not reachable, same as the text path.
+`status --json`: `{platform, label?, plist?, plist_schema?, posture_drift?,
+posture_remedy?, switch?, signing?, url, reachable, detail?, remedy?,
+exit_code}` — exit 1 when not reachable, same as the text path.
+
+**The kill switch (responsible tenant §9, RT-3..RT-6).** `stop` writes
+`~/.fathom/daemon/disabled.json {by, reason, since, until?}` first, then
+finds the managed pid from the daemon record — cross-checked against the live
+process (still a `serve-http`, started no later than the record: a reused pid
+is never signalled) or, without a record, the port's listener when it is a
+fathom `serve-http` — sends SIGTERM, waits 10 s, sends SIGKILL, and reports
+success only when the process is gone **and** the port is closed, printing
+the proof (`pid 75018 gone after 3.1 s (SIGTERM); :7575 closed; launchd will
+not relaunch: disabled.json`). Exit 1 when either fails. The managed daemon
+(`serve-http --managed`, or a launchd job whose label names fathom) reads the
+switch as its first action — before config, store or bind — and exits 0 in
+under 50 ms; with `--for` it exits 75 (retried later) until `until`, then
+starts normally. An empty file (`touch ~/.fathom/daemon/disabled.json`, the
+"no binary available" switch) reads "disabled, reason unknown". A scratch
+(unmanaged) `serve-http` ignores both files. `start` removes the switch,
+appends an `operator_reset` row to `~/.fathom/daemon/<label>/lifecycle.jsonl`
+(the breaker window restarts) and kickstarts the label. `pause` writes
+`paused.json`; the managed daemon re-reads it every 2 s and stays up in safe
+mode; `resume` removes it. **Under an installed schema-1 plist** (`KeepAlive
+true`) exit 0 does not stay down: `stop` says launchd will relaunch every
+10 s, each start exiting in < 50 ms, and prints `launchctl bootout` and the
+`--reconcile` line. From an agent shell (`CLAUDECODE` or `CODEX_*` set)
+every `launchctl` line is printed, never run — running it from an agent's
+Bash tool wedges.
+
+**Plist schema 2 (§8.1, RT-13).** `install` writes `KeepAlive
+{SuccessfulExit: false}` (exit 0 stays down; crashes and signals relaunch),
+`ThrottleInterval 60`, `ProcessType Background`, `LowPriorityIO`,
+`LowPriorityBackgroundIO`, `Nice 5`, `ExitTimeOut 20`, `serve-http
+--managed`, and a `<!-- fathom-plist-schema: 2 -->` marker. `install
+--reconcile` brings an installed plist there in place: it rewrites only
+those keys (and inserts `--managed` after `serve-http`), keeps the label,
+paths, store, call log, `WorkingDirectory`, the environment and every
+comment byte for byte, writes `<plist>.bak.<UTC ts>` and a receipt at
+`~/.fathom/daemon/<label>/reconcile-<ts>.json`, needs `--adopt` for a plist
+fathom did not write, and refuses unless the plist's binary answers
+`version --json` with `tenancy_contract >= 1` (order: `task deploy`,
+confirm, reconcile, reload). Doctor's `daemon_posture` row and `status`
+WARN on drift with the exact command. `status` also prints the running
+binary's codesigning identity and names an ad-hoc one (RT-148).
 
 macOS/launchd. `install` writes `~/Library/LaunchAgents/<label>.plist` with
 **your** resolved binary (symlinks followed, so launchd runs the stable

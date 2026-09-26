@@ -18,10 +18,21 @@ type daemonStatusJSON struct {
 	Plist string `json:"plist,omitempty"`
 	URL   string `json:"url"`
 	// Reachable is the fact that matters: /healthz answered 200.
-	Reachable bool   `json:"reachable"`
-	Detail    string `json:"detail,omitempty"`
-	Remedy    string `json:"remedy,omitempty"`
-	ExitCode  int    `json:"exit_code"`
+	// PlistSchema, PostureDrift and PostureRemedy are the installed plist's
+	// launchd posture against schema 2 (RT-15); the remedy is reconcile
+	// then the reload line, for the operator's terminal.
+	PlistSchema   int      `json:"plist_schema,omitempty"`
+	PostureDrift  []string `json:"posture_drift,omitempty"`
+	PostureRemedy string   `json:"posture_remedy,omitempty"`
+	// Switch is the kill switch's state line when disabled.json or
+	// paused.json is set (RT-3/RT-6).
+	Switch string `json:"switch,omitempty"`
+	// Signing is the running daemon binary's codesigning identity (RT-148).
+	Signing   *signingIdentity `json:"signing,omitempty"`
+	Reachable bool             `json:"reachable"`
+	Detail    string           `json:"detail,omitempty"`
+	Remedy    string           `json:"remedy,omitempty"`
+	ExitCode  int              `json:"exit_code"`
 }
 
 // renderDaemonStatusJSON writes the envelope and returns its exit code
