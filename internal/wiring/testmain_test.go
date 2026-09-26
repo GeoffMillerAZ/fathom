@@ -1,30 +1,17 @@
 package wiring
 
-// testmain_test.go — mirrors cmd/fathom/testmain_test.go's hermetic-home
-// mechanism: since receiptsPath (receipt.go, O63 item 5) defaults to
-// internal/statedir.Resolve(root), which falls back to
-// $HOME/.local/state/fathom/<repo-id>/ for a repository with no
-// FATHOM_STATE_DIR override, a bare `go test` here would otherwise write
-// real receipt files under the developer's actual home directory — a
-// fresh one per test (each using its own t.TempDir() root, so each hashes
-// to its own state dir), never cleaned up. Redirecting HOME to a hermetic,
-// binary-lifetime temp dir closes that the same way cmd/fathom already
-// does; tests that want their own fresh override still use t.Setenv,
-// which saves/restores relative to this hermetic baseline.
+// testmain_test.go — receiptsPath (receipt.go, O63 item 5) defaults to
+// internal/statedir.Resolve(root), which falls back to the user's state
+// home; a bare `go test` would otherwise write real receipt files under
+// the developer's home. testisolate.Main (RT-19, §10.4) gives the binary
+// a private HOME, state dir and call log and an unroutable daemon URL, or
+// refuses to run (exit 2); tests that want their own fresh override still
+// use t.Setenv, which saves/restores relative to this isolated baseline.
 
 import (
-	"os"
 	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/testisolate"
 )
 
-func TestMain(m *testing.M) {
-	home, err := os.MkdirTemp("", "fathom-wiring-test-home-")
-	if err == nil {
-		os.Setenv("HOME", home)
-	}
-	code := m.Run() // os.Exit below would skip a deferred cleanup, so run it inline first
-	if home != "" {
-		os.RemoveAll(home)
-	}
-	os.Exit(code)
-}
+func TestMain(m *testing.M) { testisolate.Main(m) }

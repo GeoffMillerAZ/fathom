@@ -830,8 +830,19 @@ func TestEnsureClone_OperatorGlobalFsckAndAutocrlfDontBreakSubjectClone(t *testi
 	// codepath a real network clone uses (never the local hardlink
 	// optimization a plain path would take), matching ensureClone's own
 	// clone of an https:// URL.
+	//
+	// The operator's global config is simulated, never read: the suite
+	// runs under testisolate (RT-19), whose HOME has no ~/.gitconfig, so
+	// the sanity clone gets the fsckObjects config explicitly (before
+	// RT-19 it passed only on a machine whose real config set it).
+	globalConfig := filepath.Join(t.TempDir(), "gitconfig-fsck")
+	if err := os.WriteFile(globalConfig, []byte("[fetch]\n\tfsckObjects = true\n[core]\n\tautocrlf = input\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	plainDest := filepath.Join(t.TempDir(), "plain")
-	out, err := exec.Command("git", "clone", "--no-single-branch", "file://"+bare, plainDest).CombinedOutput()
+	plain := exec.Command("git", "clone", "--no-single-branch", "file://"+bare, plainDest)
+	plain.Env = append(os.Environ(), "GIT_CONFIG_GLOBAL="+globalConfig)
+	out, err := plain.CombinedOutput()
 	if err == nil {
 		t.Fatalf("fixture bug: a plain clone of the malformed bare repo succeeded; want the zeroPaddedFilemode fsck failure this test means to reproduce (%s)", out)
 	}
@@ -843,10 +854,6 @@ func TestEnsureClone_OperatorGlobalFsckAndAutocrlfDontBreakSubjectClone(t *testi
 	// config for ensureClone's own subprocess only — the exact thing under
 	// test, unlike the hermetic fixture setup above (which never goes
 	// through ensureClone/runInEnv at all).
-	globalConfig := filepath.Join(t.TempDir(), "gitconfig-fsck")
-	if err := os.WriteFile(globalConfig, []byte("[fetch]\n\tfsckObjects = true\n[core]\n\tautocrlf = input\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
 	t.Setenv("GIT_CONFIG_GLOBAL", globalConfig)
 
 	cloneDir := filepath.Join(t.TempDir(), "clone")

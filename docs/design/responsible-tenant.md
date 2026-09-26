@@ -885,8 +885,11 @@ the parent, asserts exit within 10 s.
 ### 10.4 Tests never reach the operator
 
 - `internal/testisolate.Main(m)`: sets `FATHOM_HTTP=http://127.0.0.1:1` and `FATHOM_TEST=1`, temp dirs for
-  `FATHOM_STATE_DIR`, `XDG_STATE_HOME`, `FATHOM_CALL_LOG`, `HOME` and the hook caches;
-  **exits 2** if it cannot (today a failed `MkdirTemp` silently keeps the real HOME).
+  `XDG_STATE_HOME`, `HOME`, `FATHOM_THREADS` and the hook caches, and unsets an inherited
+  `FATHOM_STATE_DIR` and `FATHOM_CALL_LOG` (both then resolve per repository under the
+  isolated `XDG_STATE_HOME`; pinning one path folded every repository's state and every
+  service's log into one); **exits 2** if it cannot (today a failed `MkdirTemp` silently
+  keeps the real HOME).
 - Backstop: `defaultFathomURL()` and `custodian.DefaultDaemonURL()` return
   `http://127.0.0.1:1` when `testing.Testing()` or `FATHOM_TEST=1` and `FATHOM_HTTP` is
   unset. `testing.Testing()` is false in a child process, so a test that execs the built

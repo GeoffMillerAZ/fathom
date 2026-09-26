@@ -3,6 +3,8 @@ package main
 import (
 	"io"
 	"net/http"
+
+	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
 // originHeaderName carries the caller's channel identity to the daemon so
@@ -26,5 +28,8 @@ func originHeader(baseURL string, body io.Reader) (*http.Request, error) {
 	if rpcOrigin != "" {
 		req.Header.Set(originHeaderName, rpcOrigin)
 	}
+	// RT-164 (§10.4): who is calling, and whether it is a test — a test
+	// that execs this binary inherits FATHOM_TEST=1 and is marked too.
+	req.Header.Set(client.CallerHeaderName, client.CallerHeader(rpcOrigin, ""))
 	return req, nil
 }

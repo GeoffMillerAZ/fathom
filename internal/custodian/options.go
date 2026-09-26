@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/testisolate"
 )
 
 // Option adjusts one Audit run. The four v1 kinds read only the tree;
@@ -68,7 +70,9 @@ func DefaultDaemonURL() string {
 	if u := os.Getenv("FATHOM_HTTP"); u != "" {
 		return u
 	}
-	return "http://localhost:7575"
+	// RT-17/RT-18 (§10.4): a test binary, or a process a test started
+	// (FATHOM_TEST=1), never falls back to the operator's daemon.
+	return testisolate.DaemonURLBackstop("http://localhost:7575")
 }
 
 // DefaultThreadsPath is `fathom thread`'s resolution: FATHOM_THREADS,

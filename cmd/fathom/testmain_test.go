@@ -23,34 +23,31 @@ package main
 // `task test`/`task validate`, but a bare `go test` does not), so a stray
 // stamp could land in the REAL machine temp dir on any invocation outside
 // that wrapper. Redirecting them here closes that gap unconditionally.
+// RT-19 (docs/design/responsible-tenant.md §10.4): the HOME, state dir,
+// call log and daemon URL now come from testisolate.Main, which refuses to
+// run (exit 2) when it cannot isolate — before, a failed MkdirTemp silently
+// kept the real HOME, and these tests appended rows to the operator's call
+// log through the live daemon (INC-23). The package's own temp-dir caches
+// are redirected under the isolated root by the setup callback.
 import (
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/hookcache"
+	"github.com/geoffmilleraz/fathom/internal/testisolate"
 )
 
 func TestMain(m *testing.M) {
-	home, err := os.MkdirTemp("", "fathom-cmd-test-home-")
-	if err == nil {
-		os.Setenv("HOME", home)
-	}
-
-	cacheRoot, cerr := os.MkdirTemp("", "fathom-cmd-test-cache-")
-	if cerr == nil {
+	testisolate.Main(m, func(root string) error {
+		cacheRoot := filepath.Join(root, "cache")
+		if err := os.MkdirAll(cacheRoot, 0o755); err != nil {
+			return err
+		}
 		identCacheDir = filepath.Join(cacheRoot, "ident-cache")
 		hookcache.IdentDir = identCacheDir
 		editSetDir = filepath.Join(cacheRoot, "edit-set")
 		guardStampDir = filepath.Join(cacheRoot, "guard-stamps")
-	}
-
-	code := m.Run() // os.Exit below would skip a deferred cleanup, so run it inline first
-	if home != "" {
-		os.RemoveAll(home)
-	}
-	if cacheRoot != "" {
-		os.RemoveAll(cacheRoot)
-	}
-	os.Exit(code)
+		return nil
+	})
 }
