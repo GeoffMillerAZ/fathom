@@ -11,13 +11,16 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"html"
 	"net/http"
 	"os"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"strings"
 	"testing"
 	"testing/fstest"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
@@ -69,6 +72,19 @@ func TestConsoleLearn_PipelineStagesCountsAndLinks(t *testing.T) {
 			t.Errorf("the pipeline lacks stage %d · %s", i+1, st)
 		}
 	}
+	// The table alternative — the keyboard and screen-reader path to the
+	// drawing — names each node by its stage, in its links and in every
+	// hand-off, never by a bare count.
+	graphTable := page[strings.Index(page, "data-learn-graph-table"):]
+	graphTable = graphTable[:strings.Index(graphTable, "</details>")]
+	for _, st := range []string{"Source", "Extract", "Index", "Compile", "Serve", "Gate", "Evidence"} {
+		if !regexp.MustCompile(`<th scope="row">(<a [^>]*>)?` + st + `: `).MatchString(graphTable) {
+			t.Errorf("the table alternative does not name the %s node by its stage", st)
+		}
+	}
+	if !strings.Contains(graphTable, "<td>Source: ") || !strings.Contains(graphTable, "<td>Extract: ") {
+		t.Error("the hand-offs must name the stages they join")
+	}
 	// Seven stage panels, each with its question and, where a verb prints
 	// its headline, that exact verb.
 	for _, id := range console.PipelineStageIDs() {
@@ -86,17 +102,28 @@ func TestConsoleLearn_PipelineStagesCountsAndLinks(t *testing.T) {
 			t.Errorf("/learn lacks the verb %q", verb)
 		}
 	}
-	// Every stage link is a page the console serves.
+	// Every stage either links to a page the console serves — a ?tab= only
+	// when the page declares that tab — or says its page is not built yet;
+	// no link promises a destination that renders something else.
 	reg := defaultConsoleRegistry()
 	links := regexp.MustCompile(`href="([^"]+)"[^>]*data-stage-link`).FindAllStringSubmatch(page, -1)
-	if len(links) != 7 {
-		t.Fatalf("stage links = %d, want 7", len(links))
+	if nopage := strings.Count(page, "data-stage-nopage"); len(links)+nopage != 7 || len(links) < 5 {
+		t.Fatalf("stage links = %d and pages not built = %d, want 7 stages with at least 5 links", len(links), nopage)
 	}
 	for _, l := range links {
-		path, _, _ := strings.Cut(strings.ReplaceAll(l[1], "&amp;", "&"), "?")
-		if _, _, ok := resolveConsoleHref(reg, []string{path}); !ok {
-			t.Errorf("stage link %s resolves to no registered page", l[1])
+		href := strings.ReplaceAll(l[1], "&amp;", "&")
+		if _, _, ok := resolveConsoleHref(reg, []string{href}); !ok {
+			t.Errorf("stage link %s resolves to no registered page (or an undeclared tab)", href)
 		}
+		if strings.Contains(href, "?tab=") {
+			t.Errorf("stage link %s names a tab the project workspace does not serve yet", href)
+		}
+	}
+	if !strings.Contains(page, "Open payment-service&#39;s project page") {
+		t.Error("the project workspace link must name the page it opens, not a tab")
+	}
+	if !strings.Contains(page, "(/projects/payment-service?tab=index is planned)") || !strings.Contains(page, "(/plans is planned)") {
+		t.Error("a stage with no page must name the page that is planned")
 	}
 	assertRoleUtilitiesOnly(t, page)
 
@@ -155,11 +182,13 @@ func TestConsoleLearn_PipelineStagesCountsAndLinks(t *testing.T) {
 {"schema_version":2,"at":"2026-09-25T10:00:00Z","service":"payment-service","plan":"docs/plans/a.md","total":4,"claimed":3,"verified":3}
 {"schema_version":2,"at":"2026-09-25T10:00:00Z","service":"ledger-service","plan":"docs/plans/b.md","total":1,"claimed":1,"verified":0}
 `)
-	g := readVerifyLedgerFor(os.Getenv("FATHOM_VERIFY_LEDGER"), "payment-service")
+	planRoot := t.TempDir()
+	mustWrite(t, filepath.Join(planRoot, "docs", "plans", "a.md"), "- [x] a {id: A-1, symbol: X}\n")
+	g := readVerifyLedgerFor(os.Getenv("FATHOM_VERIFY_LEDGER"), "payment-service", planRoot)
 	if g.runs.V != 2 || g.plans.V != 1 || g.verified.V != 3 || g.claimed.V != 3 {
 		t.Errorf("gate from the ledger = %+v", g)
 	}
-	if g := readVerifyLedgerFor(os.Getenv("FATHOM_VERIFY_LEDGER"), "checkout-service"); g.runs.State != console.StateZero || g.verified.State != console.StateAbsent {
+	if g := readVerifyLedgerFor(os.Getenv("FATHOM_VERIFY_LEDGER"), "checkout-service", planRoot); g.runs.State != console.StateZero || g.verified.State != console.StateAbsent {
 		t.Errorf("a readable ledger with no row for the project is a measured zero of runs: %+v", g)
 	}
 
@@ -195,8 +224,8 @@ func TestConsoleLearn_PipelineStagesCountsAndLinks(t *testing.T) {
 }
 
 // A stage links to the most specific page the console has registered: the
-// design's page once a wave registers it, the project workspace's tab until
-// then.
+// design's page once a wave registers it, the project workspace's tab once
+// the workspace declares it, the workspace itself until then.
 func TestConsoleLearn_StageLinksFollowTheRegistry(t *testing.T) {
 	build := func(*consoleRequest) (consoleOut, error) { return consoleOut{}, nil }
 	reg := newConsoleRegistry()
@@ -208,9 +237,22 @@ func TestConsoleLearn_StageLinksFollowTheRegistry(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	pages := []string{"/packs", "/projects/pay?tab=index"}
-	if href, _, ok := resolveConsoleHref(reg, pages); !ok || href != "/projects/pay?tab=index" {
-		t.Errorf("without /packs = %q %v", href, ok)
+	// A tab resolves only when the page declares it: until the project
+	// workspace serves ?tab=index, the link falls through to the page
+	// itself — never a tab URL that renders the overview.
+	pages := []string{"/packs", "/projects/pay?tab=index", "/projects/pay"}
+	if href, _, ok := resolveConsoleHref(reg, pages); !ok || href != "/projects/pay" {
+		t.Errorf("without /packs or the index tab = %q %v", href, ok)
+	}
+	if _, _, ok := resolveConsoleHref(reg, []string{"/projects/pay?tab=index"}); ok {
+		t.Error("an undeclared tab must not resolve")
+	}
+	withTabs := newConsoleRegistry()
+	if err := registerPage(withTabs, consolePage{ID: "project", Route: "/projects/{svc}", Group: "Fleet", Title: "Project", Question: "?", Tabs: []string{"index", "plans"}, Build: build}); err != nil {
+		t.Fatal(err)
+	}
+	if href, _, ok := resolveConsoleHref(withTabs, pages); !ok || href != "/projects/pay?tab=index" {
+		t.Errorf("with the index tab declared = %q %v", href, ok)
 	}
 	if err := registerPage(reg, consolePage{ID: "packs", Route: "/packs", Href: "/packs", Group: "Knowledge", Title: "Packs", Question: "?", Build: build}); err != nil {
 		t.Fatal(err)
@@ -438,5 +480,379 @@ func TestConsoleLearnGuides_TableOfContentsGlossaryAndLaws(t *testing.T) {
 	}
 	if bad := loadGuideLibrary(fstest.MapFS{}); len(bad.problems) != 3 {
 		t.Errorf("missing documents must be named, got %v", bad.problems)
+	}
+}
+
+// An unreadable call log is the external-volume wedge exactly: stat works,
+// the read fails. The Learn pages then say the traffic could not be read —
+// an error naming what failed — never a measured 0 of rules served, tools
+// answered or asks per tool; and the pages recover when the log does.
+func TestConsoleLearn_UnreadableCallLogIsAnErrorNeverZero(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root reads a chmod 000 file")
+	}
+	f := newLearnFixture(t, consoleFixtureOpts{})
+	if err := os.Chmod(f.callLog, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(f.callLog, 0o644) })
+	if _, err := os.Stat(f.callLog); err != nil {
+		t.Fatalf("the wedge's tell is a working stat: %v", err)
+	}
+
+	m := learnModelOf(t, f.pageJSON(t, "/learn?svc=payment-service"))
+	for _, st := range m.Pipeline.Stages {
+		if st.ID != console.StageServe {
+			continue
+		}
+		for _, c := range append([]console.PipelineCount{st.Headline}, st.Counts...) {
+			if c.Value.State != console.StateError || !strings.Contains(c.Value.Reason, "call log unreadable") {
+				t.Errorf("serve %q over an unreadable log = %+v, want an error naming the log", c.Label, c.Value)
+			}
+		}
+	}
+	_, _, page := f.get(t, "/learn?svc=payment-service")
+	serve := page[strings.Index(page, `id="stage-serve"`):]
+	serve = serve[:strings.Index(serve, `id="stage-gate"`)]
+	if !strings.Contains(serve, "unreadable — call log unreadable") || strings.Contains(serve, `<dd class="text-ink">0</dd>`) {
+		t.Errorf("the serve panel must say its log is unreadable:\n%s", serve)
+	}
+
+	var ask askModel
+	if err := json.Unmarshal(f.pageJSON(t, "/learn/ask?svc=payment-service").Model, &ask); err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range ask.Guide.Shapes {
+		if s.Asked.State != console.StateError {
+			t.Errorf("%s asked over an unreadable log = %+v, want an error", s.ID, s.Asked)
+		}
+	}
+	if ask.Guide.NeverAsked.Known() {
+		t.Errorf("never asked over an unreadable log = %+v, want no number", ask.Guide.NeverAsked)
+	}
+	_, _, askPage := f.get(t, "/learn/ask?svc=payment-service")
+	if strings.Contains(askPage, "of them never called") {
+		t.Error("the coverage line must not count never-called tools from a log it could not read")
+	}
+	if !strings.Contains(askPage, `data-truth-state="error"`) {
+		t.Error("the routing panel must carry the log's error state")
+	}
+
+	// The wedge clears: the counts come back without a restart.
+	if err := os.Chmod(f.callLog, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	m = learnModelOf(t, f.pageJSON(t, "/learn?svc=payment-service"))
+	for _, st := range m.Pipeline.Stages {
+		if st.ID == console.StageServe && (st.Headline.Value.State != console.StatePresent || st.Headline.Value.V != 1) {
+			t.Errorf("serve after the log is readable again = %+v", st.Headline.Value)
+		}
+	}
+}
+
+// The gate stage counts the project's own current plans — the plans
+// `fathom plans status --service S` reads from the recorded root — once
+// each, at each plan's latest run, whichever checkout ran it: a plan named
+// by a relative path, by its absolute path, or from a worktree or the
+// pre-push gate's clone is one plan. A scratch plan under /tmp and a
+// deleted plan are not this project's plans, and are said to be left out,
+// never counted as gated.
+func TestReadVerifyLedgerFor_CountsTheProjectsCurrentPlansOnce(t *testing.T) {
+	root := t.TempDir()
+	for _, p := range []string{"docs/plans/a.md", "docs/plans/b.md", "docs/plans/README.md", ".claude/worktrees/w/docs/plans/a.md"} {
+		mustWrite(t, filepath.Join(root, p), "- [x] row {id: R-1, symbol: X}\n")
+	}
+	scratch := filepath.Join(t.TempDir(), "demo-plan.md")
+	mustWrite(t, scratch, "- [x] scratch\n")
+	row := func(at, repoRoot, plan string, claimed, verified int) string {
+		raw, _ := json.Marshal(map[string]any{"schema_version": 2, "at": at, "repo_root": repoRoot, "service": "pay", "plan": plan, "claimed": claimed, "verified": verified})
+		return string(raw) + "\n"
+	}
+	ledger := filepath.Join(t.TempDir(), "verify-ledger.jsonl")
+	mustWrite(t, ledger,
+		row("2026-09-20T10:00:00Z", root, "docs/plans/a.md", 3, 1)+ // a, relative
+			row("2026-09-21T10:00:00Z", "", filepath.Join(root, "docs/plans/a.md"), 3, 3)+ // a, absolute: the latest
+			row("2026-09-22T10:00:00Z", root, "docs/plans/b.md", 2, 1)+ // b
+			row("2026-09-23T10:00:00Z", root, scratch, 5, 0)+ // scratch plan
+			row("2026-09-23T11:00:00Z", root, "docs/plans/gone.md", 7, 0)+ // deleted plan
+			row("2026-09-24T10:00:00Z", filepath.Join(root, ".claude/worktrees/w"), "docs/plans/a.md", 9, 0)+ // a worktree's copy
+			`{"schema_version":2,"at":"2026-09-24T10:00:00Z","service":"other","plan":"docs/plans/a.md","claimed":1,"verified":0}`+"\n")
+
+	g := readVerifyLedgerFor(ledger, "pay", root)
+	if g.runs.V != 4 || g.plans.V != 2 || g.verified.V != 1 || g.claimed.V != 11 {
+		t.Errorf("gate = runs %+v plans %+v verified %+v claimed %+v; want 4 runs over 2 plans, 1 of 11 claimed rows verified (a's latest run is the worktree's)", g.runs, g.plans, g.verified, g.claimed)
+	}
+	if !strings.Contains(g.runs.Denominator, "of 6 rows for pay") || !strings.Contains(g.runs.Denominator, "2 name no current plan") || !strings.Contains(g.plans.Denominator, "of the 2 plans") {
+		t.Errorf("the left-out rows and the current plans must be named: %q / %q", g.runs.Denominator, g.plans.Denominator)
+	}
+	// A symlinked path to the same checkout is the same plan.
+	link := filepath.Join(t.TempDir(), "link")
+	if err := os.Symlink(root, link); err != nil {
+		t.Fatal(err)
+	}
+	if got := ledgerPlanPath(verifyLedgerRow{Plan: filepath.Join(link, "docs/plans/b.md")}, root); got != "docs/plans/b.md" {
+		t.Errorf("a plan through a symlinked root = %q", got)
+	}
+	// No recorded root: the ledger cannot be matched to the project's
+	// plans, so nothing is counted — absent with the reason.
+	if g := readVerifyLedgerFor(ledger, "pay", ""); g.runs.State != console.StateAbsent || !strings.Contains(g.runs.Reason, "no corpus root") {
+		t.Errorf("no root = %+v", g.runs)
+	}
+	// A project whose plans directory cannot be read is an error, never
+	// "the gate never ran".
+	if os.Geteuid() != 0 {
+		plans := filepath.Join(root, "docs", "plans")
+		if err := os.Chmod(plans, 0o000); err != nil {
+			t.Fatal(err)
+		}
+		g := readVerifyLedgerFor(ledger, "pay", root)
+		_ = os.Chmod(plans, 0o755)
+		if g.runs.State != console.StateError || !strings.Contains(g.runs.Reason, "permission denied") {
+			t.Errorf("an unreadable plans directory = %+v", g.runs)
+		}
+		// A cached count is not an answer for a source unreadable now.
+		resetLearnCache()
+		t.Cleanup(resetLearnCache)
+		if g := cachedVerifyLedgerFor(ledger, "pay", root); g.runs.V != 4 {
+			t.Fatalf("cached gate = %+v", g.runs)
+		}
+		for _, locked := range []string{ledger, plans} {
+			_ = os.Chmod(locked, 0o000)
+			g := cachedVerifyLedgerFor(ledger, "pay", root)
+			_ = os.Chmod(locked, 0o755)
+			if g.runs.State != console.StateError {
+				t.Errorf("%s unreadable after a cached read = %+v, want an error", locked, g.runs)
+			}
+		}
+	}
+}
+
+// A stage panel's verb chip is a CLI command that prints the stage's
+// headline (ADR-045 decision 2; the stageVerb contract): run it and the
+// headline is in its output. A stage whose headline no CLI verb prints
+// carries no chip — the footer names its instrument — and an agent-surface
+// call is shown as a call, never as "the command".
+func TestConsoleLearn_StageChipsPrintTheirHeadlines(t *testing.T) {
+	f := newLearnFixture(t, consoleFixtureOpts{})
+	m := learnModelOf(t, f.pageJSON(t, "/learn?svc=payment-service"))
+	_, _, page := f.get(t, "/learn?svc=payment-service")
+	chipOf := func(id console.PipelineStageID) string {
+		t.Helper()
+		m := regexp.MustCompile(`id="stage-` + string(id) + `"[^>]*?(?: data-console-verb="([^"]*)")?>`).FindStringSubmatch(page)
+		if m == nil {
+			t.Fatalf("no panel for stage %s", id)
+		}
+		return html.UnescapeString(m[1])
+	}
+	headline := map[console.PipelineStageID]console.Value[int]{}
+	for _, st := range m.Pipeline.Stages {
+		headline[st.ID] = st.Headline.Value
+		chip := chipOf(st.ID)
+		if chip != "" && !strings.HasPrefix(chip, "fathom ") {
+			t.Errorf("stage %s's chip %q is not a CLI command", st.ID, chip)
+		}
+	}
+	for _, id := range []console.PipelineStageID{console.StageSource, console.StageCompile, console.StageGate} {
+		if chip := chipOf(id); chip != "" {
+			t.Errorf("no CLI verb prints stage %s's headline, yet its chip names %q", id, chip)
+		}
+	}
+	// The agent-surface call that carries compile's counts is offered as a
+	// call, labelled as one.
+	if !strings.Contains(page, `aria-label="Copy the call staleness_report {&#34;service&#34;:&#34;payment-service&#34;}"`) {
+		t.Error("compile's staleness_report call must be offered as an agent-surface call")
+	}
+
+	runJSON := func(args ...string) map[string]any {
+		t.Helper()
+		var out, errb bytes.Buffer
+		if code := run(args, &out, &errb); code != 0 {
+			t.Fatalf("%v: %d %s", args, code, errb.String())
+		}
+		var v map[string]any
+		if err := json.Unmarshal(out.Bytes(), &v); err != nil {
+			t.Fatalf("%v: %v", args, err)
+		}
+		return v
+	}
+	row := func(v map[string]any, key string) map[string]any {
+		for _, r := range v[key].([]any) {
+			if r.(map[string]any)["service"] == "payment-service" {
+				return r.(map[string]any)
+			}
+		}
+		t.Fatalf("no payment-service row under %s", key)
+		return nil
+	}
+	fleet := row(runJSON(append(strings.Fields(chipOf(console.StageExtract))[1:], "--url", f.ts.URL)...), "services")
+	if got := headline[console.StageExtract]; !got.Known() || float64(got.V) != fleet["symbols"] {
+		t.Errorf("extract headline %+v, `%s` symbols %v", got, chipOf(console.StageExtract), fleet["symbols"])
+	}
+	if chipOf(console.StageEvidence) != chipOf(console.StageExtract) {
+		t.Fatalf("evidence chip = %q", chipOf(console.StageEvidence))
+	}
+	if got := headline[console.StageEvidence]; !got.Known() || float64(got.V) != fleet["session_count"] {
+		t.Errorf("evidence headline %+v, the fleet report's session_count %v", got, fleet["session_count"])
+	}
+	evidence := row(runJSON(append(strings.Fields(chipOf(console.StageIndex))[1:], "--store", consoleFixtureStorePath(t))...), "services")
+	if got := headline[console.StageIndex]; got.Known() && float64(got.V) != evidence["edges"] {
+		t.Errorf("index headline %+v, `%s` edges %v", got, chipOf(console.StageIndex), evidence["edges"])
+	}
+}
+
+// The Learn facts are cached on their inputs' watermarks, never on the
+// model's 30-second clock (design §1): a model rebuild with nothing else
+// changed re-reads neither the store, the call log, the verify ledger nor
+// the capability probe; a call appended to the log is read — and only it.
+func TestConsoleLearn_FactsReusedAcrossModelBuilds(t *testing.T) {
+	f := newLearnFixture(t, consoleFixtureOpts{})
+	mustWrite(t, os.Getenv("FATHOM_VERIFY_LEDGER"), `{"schema_version":2,"at":"2026-09-24T10:00:00Z","service":"payment-service","plan":"docs/plans/a.md","claimed":1,"verified":1}`+"\n")
+	first := learnModelOf(t, f.pageJSON(t, "/learn?svc=payment-service"))
+	entries := func() [3]int {
+		learnStoreCache.Lock()
+		learnGateCache.Lock()
+		learnCapsCache.Lock()
+		defer learnStoreCache.Unlock()
+		defer learnGateCache.Unlock()
+		defer learnCapsCache.Unlock()
+		return [3]int{len(learnStoreCache.entries), len(learnGateCache.entries), len(learnCapsCache.entries)}
+	}
+	cached, offset := entries(), callLogTail.offset
+	if cached != [3]int{1, 1, 1} {
+		t.Fatalf("the store, gate and switch reads must each be cached once: %v", cached)
+	}
+
+	// A new model build (the 30 s horizon passing) with no input changed.
+	f.now = f.now.Add(time.Minute)
+	resetObsCache()
+	second := learnModelOf(t, f.pageJSON(t, "/learn?svc=payment-service"))
+	if got := entries(); got != cached {
+		t.Errorf("a model rebuild re-read the Learn facts: cache entries %v → %v", cached, got)
+	}
+	if callLogTail.offset != offset {
+		t.Errorf("a model rebuild re-parsed the call log: offset %d → %d", offset, callLogTail.offset)
+	}
+	if !reflect.DeepEqual(first.Pipeline.Stages[3].Headline, second.Pipeline.Stages[3].Headline) {
+		t.Errorf("compile headline moved with nothing changed: %+v → %+v", first.Pipeline.Stages[3].Headline, second.Pipeline.Stages[3].Headline)
+	}
+
+	// A call appended to the log is read, and only the appended bytes.
+	fh, err := os.OpenFile(f.callLog, os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _ = fh.WriteString(`{"ts":"2026-09-25T11:00:00Z","tool":"obligations","service":"payment-service","surface":"agent","latency_ms":2}` + "\n")
+	fh.Close()
+	third := learnModelOf(t, f.pageJSON(t, "/learn?svc=payment-service"))
+	for _, st := range third.Pipeline.Stages {
+		if st.ID == console.StageServe && st.Headline.Value.V != 2 {
+			t.Errorf("rules served after one more obligations call = %+v, want 2", st.Headline.Value)
+		}
+	}
+	if callLogTail.offset <= offset {
+		t.Error("the appended call must be read")
+	}
+}
+
+// The is-it-done example comes from the project's plans. Plans the daemon
+// cannot read (the external-volume wedge: a directory it cannot list, a
+// plan it cannot open) are an error naming what failed — never "no claimed
+// plan row was found" — and a cleared wedge is read again at once.
+func TestSamplePlanRow_UnreadablePlansAreAnErrorNotNone(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root reads a chmod 000 file")
+	}
+	t.Setenv("FATHOM_VERIFY_LEDGER", filepath.Join(t.TempDir(), "none.jsonl"))
+	root := t.TempDir()
+	plan := filepath.Join(root, "docs", "plans", "a.md")
+	mustWrite(t, plan, "# A\n\n- [x] charge {symbol: validateCharge}\n")
+	choice := learnChoice{Service: "pay", Row: obsServiceRow{}}
+	choice.Row.Path = root
+
+	if row, note, err := samplePlanRow(choice); row != "- [x] charge {symbol: validateCharge}" || err != nil || !strings.Contains(note, "docs/plans/a.md") {
+		t.Fatalf("readable plans = %q %q %v", row, note, err)
+	}
+	for _, locked := range []string{filepath.Dir(plan), plan} {
+		if err := os.Chmod(locked, 0o000); err != nil {
+			t.Fatal(err)
+		}
+		row, note, err := samplePlanRow(choice)
+		_ = os.Chmod(locked, 0o755)
+		if row != "" || err == nil || !strings.Contains(note, "could not be read") || strings.Contains(note, "no claimed plan row") {
+			t.Errorf("%s unreadable = %q %q %v; want an error, never none found", locked, row, note, err)
+		}
+	}
+	// A project with no plans at all is the honest none.
+	empty := learnChoice{Service: "pay"}
+	empty.Row.Path = t.TempDir()
+	if row, note, err := samplePlanRow(empty); row != "" || err != nil || !strings.Contains(note, "no claimed plan row") {
+		t.Errorf("no plans = %q %q %v", row, note, err)
+	}
+
+	// The guide carries the failure as the sample's error; a try-it with
+	// no input is then an error, not a refusal that reads as "none".
+	view := console.AskGuide(console.AskFacts{Service: "pay", Samples: map[string]console.AskSample{
+		"row": {Note: "the plans could not be read", Err: "open docs/plans: permission denied"},
+	}})
+	for _, s := range view.Shapes {
+		if s.ID == "is-it-done" && s.SampleError != "open docs/plans: permission denied" {
+			t.Errorf("is-it-done sample error = %q", s.SampleError)
+		}
+	}
+}
+
+// A guide's outline rail sticks: the kit shell's main is a scroll
+// container that never scrolls, so a page that positions something sticky
+// frees it (data-console-sticky, the body's :has() classes, present in the
+// built CSS); the rail is one bounded sticky block with its related links,
+// and every entry is a 44 px target.
+func TestConsoleShell_StickyPagesFreeMain(t *testing.T) {
+	if !strings.Contains(consoleStickyMainClasses, "#"+consoleContentID+"]") {
+		t.Fatalf("the sticky classes must name the shell's main (#%s): %s", consoleContentID, consoleStickyMainClasses)
+	}
+	css := string(obsAppCSS)
+	for _, rule := range []string{":has([data-console-sticky]) #observatory-main", "overflow-x: clip", "overflow-y: visible"} {
+		if !strings.Contains(strings.ReplaceAll(css, "\\", ""), rule) {
+			t.Errorf("the built CSS lacks %q — run task ui:css", rule)
+		}
+	}
+	f := newLearnFixture(t, consoleFixtureOpts{})
+	_, _, page := f.get(t, "/learn/guides/getting-started")
+	if !strings.Contains(page, `<body class="min-h-screen bg-surface font-sans text-sm text-ink `+consoleStickyMainClasses+`">`) || !strings.Contains(page, "data-guide data-console-sticky") {
+		t.Error("a guide must mark itself sticky and the shell must free its main")
+	}
+	rail := page[strings.Index(page, "data-guide-rail>"):]
+	rail = rail[:strings.Index(rail, "</aside>")]
+	if !strings.Contains(rail, `data-guide-rail-sticky`) || !strings.Contains(rail, "[&_.sticky]:static") || !strings.Contains(rail, "[&_nav_a]:min-h-11") {
+		t.Error("the rail must be one bounded sticky block whose links are 44 px targets")
+	}
+	if strings.Index(rail, "data-guide-related") > strings.Index(rail, `aria-label="Table of contents"`) {
+		t.Error("the related links lead the rail")
+	}
+	// Other pages keep the shell as it is.
+	if _, _, learn := f.get(t, "/learn"); strings.Contains(strings.ReplaceAll(learn, consoleStickyMainClasses, ""), "data-console-sticky") {
+		t.Error("only a page that positions something sticky frees the shell's main")
+	}
+}
+
+// No word breaks inside itself where the layout squeezes it: a verb chip's
+// Copy button never shrinks or wraps (a long `mcp add` line in a dd that
+// breaks anywhere squeezed it to "Cop / y"), and a short single-word cell
+// of a try-it answer ("resolved") stays whole while long paths still break.
+func TestConsoleLearnAsk_NoMidWordBreaks(t *testing.T) {
+	chip := renderVerbChip("claude mcp add --transport http fathom http://127.0.0.1:7575/rpc/agent")
+	if !strings.Contains(chip, "shrink-0") || !strings.Contains(chip, "whitespace-nowrap") || !strings.Contains(chip, `aria-label="Copy the line claude mcp add`) {
+		t.Errorf("the copy button must neither shrink nor wrap, and name what it copies: %s", chip)
+	}
+	if got := askCell("resolved"); !strings.Contains(got, "whitespace-nowrap") || strings.Contains(got, "anywhere") {
+		t.Errorf("a short word cell = %s", got)
+	}
+	if got := askCell("internal/indexbench/freshness.go:107 FreshnessProbe"); !strings.Contains(got, "[overflow-wrap:anywhere]") {
+		t.Errorf("a long path cell must still break anywhere: %s", got)
+	}
+	f := newLearnFixture(t, consoleFixtureOpts{})
+	_, _, tried := f.get(t, "/learn/ask?try=who-calls")
+	if !strings.Contains(tried, `<span class="whitespace-nowrap">heuristic</span>`) {
+		t.Error("the answer's edge column must keep its word whole")
 	}
 }

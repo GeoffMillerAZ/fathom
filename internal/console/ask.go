@@ -33,9 +33,12 @@ type AskShape struct {
 	Arg      string `json:"arg,omitempty"`
 	ArgLabel string `json:"arg_label,omitempty"`
 	// Sample is this project's example input and SampleNote where it came
-	// from — or, with Sample empty, why there is none.
-	Sample     string `json:"sample,omitempty"`
-	SampleNote string `json:"sample_note,omitempty"`
+	// from — or, with Sample empty, why there is none. SampleError is set
+	// when the example's source could not be read (an instrument failure,
+	// never "none found").
+	Sample      string `json:"sample,omitempty"`
+	SampleNote  string `json:"sample_note,omitempty"`
+	SampleError string `json:"sample_error,omitempty"`
 	// OnAgentSurface: the tool is on /rpc/agent, the surface every
 	// connected agent session sees.
 	OnAgentSurface bool `json:"on_agent_surface"`
@@ -92,10 +95,13 @@ func AskShapeByID(id string) (AskShape, bool) {
 }
 
 // AskSample is one example input read from the project, and where it came
-// from (or, when Value is empty, why there is none).
+// from (or, when Value is empty, why there is none). Err is set when the
+// source could not be read: the note then says what failed, and the
+// example is an error, not an absence.
 type AskSample struct {
 	Value string
 	Note  string
+	Err   string
 }
 
 // AskFacts is what the caller read for one project.
@@ -163,7 +169,7 @@ func AskGuide(f AskFacts) AskView {
 		}
 		if s.sampleKind != "" {
 			if smp, ok := f.Samples[s.sampleKind]; ok {
-				s.Sample, s.SampleNote = smp.Value, smp.Note
+				s.Sample, s.SampleNote, s.SampleError = smp.Value, smp.Note, smp.Err
 			} else {
 				s.SampleNote = "no example could be read from this project"
 			}
@@ -171,13 +177,16 @@ func AskGuide(f AskFacts) AskView {
 		v.Shapes = append(v.Shapes, s)
 	}
 	v.ToolsTaught = len(taught)
-	if f.Calls.Known() {
+	reason := f.Calls.Reason
+	if reason == "" {
+		reason = "the call log was not read"
+	}
+	switch {
+	case f.Calls.Known():
 		v.NeverAsked = Measured(never, f.Calls.Source).WithDenominator(fmt.Sprintf("of the %d tools this guide teaches, never called for %s in %s", len(taught), f.Service, f.Window))
-	} else {
-		reason := f.Calls.Reason
-		if reason == "" {
-			reason = "the call log was not read"
-		}
+	case f.Calls.State == StateError:
+		v.NeverAsked = Errored[int](reason).WithSource(f.Calls.Source)
+	default:
 		v.NeverAsked = Absent[int](reason)
 	}
 	return v
@@ -256,21 +265,119 @@ type AskAnswer struct {
 	Args  map[string]any `json:"args,omitempty"`
 	Call  string         `json:"call"`
 	// State is present (rows found), zero (the tool answered and found
-	// nothing), absent (the call was not made — Reason says why) or error.
+	// nothing), partial (the tool cut its answer to fit its budget —
+	// Reason says what it left out, in its own words), absent (the call
+	// was not made — Reason says why) or error.
 	State   State      `json:"state"`
 	Reason  string     `json:"reason,omitempty"`
 	Summary string     `json:"summary,omitempty"`
 	Columns []string   `json:"columns,omitempty"`
 	Rows    [][]string `json:"rows,omitempty"`
-	// Total is how many rows the tool reported; Rows shows at most
+	// Listed is how many rows the tool listed; Rows shows at most
 	// AskAnswerRows of them.
-	Total int `json:"total"`
+	Listed int `json:"listed"`
+	// Total is how many rows the tool reported: the rows it listed plus
+	// the ones it said it left out. TotalLowerBound is set when the tool
+	// said it stopped early without saying by how much (a bare
+	// truncated flag, a depth cap): Total is then "at least".
+	Total           int  `json:"total"`
+	TotalLowerBound bool `json:"total_lower_bound,omitempty"`
+	// HowToGetMore is the tool's own instruction for the rest of a cut
+	// answer (the elided block's how_to_get_more, the elision line's
+	// refinement); "" for a complete answer.
+	HowToGetMore string `json:"how_to_get_more,omitempty"`
+}
+
+// askListField is the list each tool's rows are drawn from — the list a
+// budget cut (the elided block, the elision line) is about when it names
+// that list's size — and what its entries are called. staleness_report's
+// rows are facts, not a list.
+var askListField = map[string][2]string{
+	"find_symbol":  {"symbols", "symbols"},
+	"find_callers": {"callers", "callers"},
+	"references":   {"occurrences", "occurrences"},
+	"blast_radius": {"by_depth", "depth rows"},
+	"obligations":  {"rules", "rules"},
+	"verify_plan":  {"tasks", "plan rows"},
+	"search":       {"hits", "hits"},
+	"localize":     {"candidates", "candidates"},
+}
+
+// elisionLineRE is RC-19's one-line disclosure (internal/mcp.elisionLine).
+var elisionLineRE = regexp.MustCompile(`^elided: (\d+) more — refine with (.+)$`)
+
+// askCut is what a tool said it left out of the list the rows come from.
+type askCut struct {
+	dropped    int      // rows of that list the tool dropped, by its own count
+	stated     int      // the tool's own total for that list (0: none stated)
+	lowerBound bool     // the tool stopped early without saying by how much
+	notes      []string // the tool's disclosure, in words
+	more       string   // how to get the rest, in the tool's words
+}
+
+// askCutOf reads a tool's budget disclosure (docs/design/budgeted-answers.md
+// §2: silent truncation is a defect) against the rows listed from its list
+// field. An elided block counts toward these rows only when its kept count
+// (of − count) is exactly that list's length: the dispatcher's budget trims
+// whichever array is largest, and a cut of another list (find_callers'
+// typed_callers) says nothing about the rows shown.
+func askCutOf(tool string, obj map[string]any, listed int) askCut {
+	var c askCut
+	field, noun := askListField[tool][0], askListField[tool][1]
+	if field == "" {
+		return c
+	}
+	inList := len(asSlice(obj[field]))
+	if tool == "find_callers" {
+		if m := elisionLineRE.FindStringSubmatch(str(obj["elision"])); m != nil {
+			n, _ := strconv.Atoi(m[1])
+			c.dropped += n
+			c.more = "refine with " + m[2]
+		}
+	}
+	if el, ok := obj["elided"].(map[string]any); ok {
+		count, of := atoi(el["count"]), atoi(el["of"])
+		if count > 0 && of-count == inList {
+			c.dropped += count
+			if c.more == "" {
+				c.more = str(el["how_to_get_more"])
+			}
+			if ord := str(el["ordering"]); ord != "" && ord != "as returned" {
+				c.notes = append(c.notes, "the "+noun+" it kept are the first by "+ord)
+			}
+		}
+	}
+	if tool == "localize" {
+		c.stated = atoi(obj["candidates_total"])
+	}
+	if tool == "blast_radius" {
+		if obj["truncated"] == true {
+			total, symbols := atoi(obj["total_symbols"]), len(asSlice(obj["symbols"]))
+			c.notes = append(c.notes, fmt.Sprintf("the walk stopped at its symbol cap: %s of %s symbols listed, and the depth rows count only those", thousands(symbols), thousands(total)))
+		}
+		if obj["depth_capped"] == true {
+			c.lowerBound = true
+			c.notes = append(c.notes, "the walk stopped at its depth cap (depth "+str(obj["max_depth"])+"); callers beyond it were not followed")
+		}
+	} else if obj["truncated"] == true && c.dropped == 0 && c.stated <= listed {
+		c.lowerBound = true
+		c.notes = append(c.notes, tool+" says its answer is truncated without saying by how much")
+	}
+	return c
 }
 
 // AskNotAsked is a try-it that was not sent, with the reason.
 func AskNotAsked(s AskShape, service, input, reason string) AskAnswer {
 	args := AskArgs(s, service, input)
 	return AskAnswer{Shape: s.ID, Tool: s.Tool, Input: input, Args: args, Call: AskCall(s.Tool, args), State: StateAbsent, Reason: reason}
+}
+
+// AskUnreadable is a try-it that could not be sent because what it needed
+// could not be read (its example's source) — an error naming what failed.
+func AskUnreadable(s AskShape, service, input, reason string) AskAnswer {
+	a := AskNotAsked(s, service, input, reason)
+	a.State = StateError
+	return a
 }
 
 // AskAnswerFrom projects one tool's JSON answer (raw, the tool's text
@@ -421,10 +528,10 @@ func AskAnswerFrom(s AskShape, service, input string, raw []byte, callErr error)
 			rows = append(rows, []string{str(m["file"]), str(m["symbol"]), str(m["score"]), strings.Join(firstStrings(m["why"], 2), "; ")})
 		}
 	}
-	a.Total = len(rows)
-	if n := atoi(obj["candidates_total"]); s.Tool == "localize" && n > a.Total {
-		a.Total = n
-	}
+	a.Listed = len(rows)
+	cut := askCutOf(s.Tool, obj, a.Listed)
+	a.Total = max(a.Listed+cut.dropped, cut.stated)
+	a.TotalLowerBound = cut.lowerBound
 	if len(rows) > AskAnswerRows {
 		rows = rows[:AskAnswerRows]
 	}
@@ -432,9 +539,24 @@ func AskAnswerFrom(s AskShape, service, input string, raw []byte, callErr error)
 	if a.Summary == "" {
 		a.Summary = s.Tool + " answered"
 	}
-	if a.Total == 0 && s.Tool != "staleness_report" {
+	switch {
+	case a.Total > a.Listed || len(cut.notes) > 0 || cut.lowerBound:
+		a.State = StatePartial
+		reason := s.Tool + " listed " + thousands(a.Listed)
+		if left := a.Total - a.Listed; left > 0 {
+			total := thousands(a.Total)
+			if a.TotalLowerBound {
+				total = "at least " + total
+			}
+			reason += fmt.Sprintf(" of %s — it left out %s to fit its budget", total, thousands(left))
+		} else if a.TotalLowerBound {
+			reason += " and stopped early, so there may be more"
+		}
+		a.Reason = strings.Join(append([]string{reason}, cut.notes...), "; ")
+		a.HowToGetMore = cut.more
+	case a.Total == 0 && s.Tool != "staleness_report":
 		a.State = StateZero
-	} else {
+	default:
 		a.State = StatePresent
 	}
 	return a

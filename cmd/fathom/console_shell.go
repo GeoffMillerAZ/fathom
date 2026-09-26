@@ -90,7 +90,16 @@ func renderConsoleShell(reg *consoleRegistry, s consoleShell) string {
 	if s.Live != "" {
 		b.WriteString(`<script src="` + consoleLiveScriptPath + `" defer></script>`)
 	}
-	b.WriteString(`</head><body class="min-h-screen bg-surface font-sans text-sm text-ink">`)
+	// The kit shell's <main> is overflow-y:auto inside an unbounded
+	// min-h-screen column: it never scrolls, yet as a scroll container it
+	// pins every position:sticky descendant to a box that never moves. A
+	// page that positions something sticky marks itself
+	// data-console-sticky, and main then clips sideways (as auto did)
+	// without being a scroll container (FATHOM-G-KIT-04). The classes are
+	// literal — the Tailwind scanner reads source text, not Go values — so
+	// consoleStickyMainClasses names consoleContentID by hand, and
+	// TestConsoleShell_StickyPagesFreeMain holds the two together.
+	b.WriteString(`</head><body class="min-h-screen bg-surface font-sans text-sm text-ink ` + consoleStickyMainClasses + `">`)
 	b.WriteString(shell)
 	// The palette's dialog, once per page (OC-12): Mod+K or the top bar's
 	// trigger opens it; without JavaScript the trigger is a link to /search.
@@ -98,6 +107,10 @@ func renderConsoleShell(reg *consoleRegistry, s consoleShell) string {
 	b.WriteString(`</body></html>`)
 	return b.String()
 }
+
+// consoleStickyMainClasses free the shell's main from being a scroll
+// container on a page marked data-console-sticky (FATHOM-G-KIT-04).
+const consoleStickyMainClasses = `[&:has([data-console-sticky])_#observatory-main]:overflow-x-clip [&:has([data-console-sticky])_#observatory-main]:overflow-y-visible`
 
 // consoleMobileBrand is the brand in the top bar below md, where the kit
 // shell hides the sidebar that carries it (F0 proof, item 8; returned as

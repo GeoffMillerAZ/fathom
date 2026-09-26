@@ -547,15 +547,22 @@ func renderGuidePage(e console.GuideEntry, doc renderedGuide, lib guideLibrary) 
 		b.WriteString(renderPanel(consolePanel{ID: "guide-error", SourceKey: "daemon", Title: "The guide could not be rendered", State: console.StateError, Reason: doc.err, Source: e.Source}))
 	}
 	related := renderGuideRelated(e, lib)
-	b.WriteString(`<div class="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1fr)_16rem]" data-guide>`)
+	// data-console-sticky: the page positions something sticky, so the
+	// shell's main stops being a scroll container that never scrolls
+	// (renderConsoleShell; FATHOM-G-KIT-04).
+	b.WriteString(`<div class="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1fr)_16rem]" data-guide data-console-sticky>`)
 	// The rail comes first in the document, so a keyboard or screen-reader
 	// reader meets the outline before the prose; from xl up the grid places
-	// it on the right. The related links lead it: the kit's rail is itself
-	// sticky, and anything below a long outline would stay out of reach.
-	b.WriteString(`<aside class="hidden space-y-6 xl:col-start-2 xl:row-start-1 xl:block" aria-label="On this page" data-guide-rail>`)
+	// it on the right. One sticky block holds the related links and the
+	// outline, bounded by the viewport and scrolling on its own, so neither
+	// scrolls out of reach on a long guide; the kit rail's own sticky is
+	// made static inside it. Every entry is a 44 px target with a visible
+	// focus ring (the kit rail's links are 20 px — FATHOM-G-KIT-04).
+	b.WriteString(`<aside class="hidden xl:col-start-2 xl:row-start-1 xl:block" aria-label="On this page" data-guide-rail>`)
+	b.WriteString(`<div class="sticky top-6 max-h-[calc(100dvh-3rem)] space-y-6 overflow-y-auto pr-1 [&_.sticky]:static [&_nav_a]:flex [&_nav_a]:min-h-11 [&_nav_a]:items-center [&_nav_a]:rounded-sm [&_nav_a:focus-visible]:outline-2 [&_nav_a:focus-visible]:outline-offset-2 [&_nav_a:focus-visible]:outline-focus" data-guide-rail-sticky>`)
 	b.WriteString(related)
 	b.WriteString(docs.RenderToCRail(doc.headings, docs.Options{}))
-	b.WriteString(`</aside>`)
+	b.WriteString(`</div></aside>`)
 	b.WriteString(`<div class="min-w-0 xl:col-start-1 xl:row-start-1">`)
 	if panel := docs.RenderToCPanel(doc.headings, docs.Options{}); panel != "" {
 		b.WriteString(`<div class="mb-6 xl:hidden" data-guide-toc-panel>` + panel + `</div>`)

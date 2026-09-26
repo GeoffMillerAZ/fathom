@@ -7,6 +7,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"html"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -646,6 +647,23 @@ func TestConsolePagesRenderTheirVerbs(t *testing.T) {
 	if perRequest == 0 {
 		t.Error("no page carries a per-request section; /learn's capabilities section is missing")
 	}
+	// Every panel's verb chip is a command a shell runs (ADR-045 decision
+	// 2): an agent-surface tool call ("staleness_report {…}") is offered as
+	// a call inside a panel, never as the panel's verb — only a try-it
+	// answer, whose whole point is the exact call an agent makes, carries
+	// one (not on these sample paths).
+	chipRE := regexp.MustCompile(`data-console-panel[^>]*data-console-verb="([^"]*)"`)
+	toolCall := regexp.MustCompile(`^[a-z_]+ \{`)
+	for _, p := range defaultConsoleRegistry().pages {
+		_, _, page := f.get(t, samplePath(p))
+		for _, m := range chipRE.FindAllStringSubmatch(page, -1) {
+			if verb := html.UnescapeString(m[1]); toolCall.MatchString(verb) {
+				t.Errorf("page %s: a panel's verb chip %q is an agent-surface call, not a command", p.ID, verb)
+			}
+		}
+	}
+	// The Learn pipeline's stage chips print their headlines:
+	// TestConsoleLearn_StageChipsPrintTheirHeadlines runs each one.
 }
 
 // TestConsoleMetricsAgreeAcrossPages pins OC-9: every page that shows a
@@ -788,6 +806,35 @@ func TestConsoleMetricsAgreeAcrossPages(t *testing.T) {
 	}
 	if _, _, ask := f.get(t, "/learn/ask"); !strings.Contains(ask, "of the "+fmtThousands(tools.V)+" on the agent surface") {
 		t.Errorf("/learn/ask must name the shared agent-surface size %d", tools.V)
+	}
+	// The Learn pages' traffic is one read of the call log per project: the
+	// pipeline's rules served are the ask page's obligations asks, its
+	// tool calls answered the sum of every tool's asks, for every project,
+	// in the same truth state.
+	for _, svc := range consoleFixtureServices {
+		var pipe learnModel
+		if err := json.Unmarshal(f.pageJSON(t, "/learn?svc="+svc).Model, &pipe); err != nil {
+			t.Fatal(err)
+		}
+		var ask askModel
+		if err := json.Unmarshal(f.pageJSON(t, "/learn/ask?svc="+svc).Model, &ask); err != nil {
+			t.Fatal(err)
+		}
+		asked := map[string]console.Value[int]{}
+		for _, s := range ask.Guide.Shapes {
+			asked[s.Tool] = s.Asked
+		}
+		for _, st := range pipe.Pipeline.Stages {
+			if st.ID != console.StageServe {
+				continue
+			}
+			if got, want := st.Headline.Value, asked["obligations"]; got.State != want.State || got.V != want.V {
+				t.Errorf("%s: /learn rules served %+v, /learn/ask obligations asked %+v", svc, got, want)
+			}
+			if st.Counts[0].Value.V < st.Headline.Value.V {
+				t.Errorf("%s: tool calls answered %+v below rules served %+v", svc, st.Counts[0].Value, st.Headline.Value)
+			}
+		}
 	}
 }
 

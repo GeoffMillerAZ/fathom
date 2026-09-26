@@ -26,7 +26,7 @@ func pipelineFacts() PipelineFacts {
 			{ID: "index", Operating: true, Detail: "2,200 symbols"},
 			{ID: "layers", Operating: true},
 			{ID: "modules", Operating: false, Reason: "no module bound"},
-			{ID: "obligations", Operating: false, Reason: "rules authored, never compiled", Remedy: "fathom compile --service pay"},
+			{ID: "obligations", Operating: false, Broken: true, Reason: "rules authored, never compiled", Remedy: "fathom compile --service pay"},
 			{ID: "agent-surface", Operating: true},
 			{ID: "guards", Operating: true},
 			{ID: "verify-gate", Operating: true},
@@ -101,11 +101,13 @@ func TestPipelineView_StagesAndCounts(t *testing.T) {
 		t.Errorf("gate note = %v", n)
 	}
 
-	// Status: a required switch off turns its stage off with its reason and
-	// remedy; an optional one (modules, narrate) never does.
+	// Status: a required switch that is broken, on a stage whose own
+	// counts show it at work, is a working stage with the break named and
+	// its remedy — never "off" beside live counts; an optional switch
+	// (modules, narrate) never decides.
 	serve := stage(StageServe)
-	if serve.Status != StageOff || serve.StatusReason != "obligations: rules authored, never compiled" || serve.Remedy != "fathom compile --service pay" {
-		t.Errorf("serve with obligations off = %s %q %q", serve.Status, serve.StatusReason, serve.Remedy)
+	if serve.Status != StageWorking || !strings.Contains(serve.StatusReason, "obligations is broken here: rules authored, never compiled") || serve.Remedy != "fathom compile --service pay" {
+		t.Errorf("serve with obligations broken = %s %q %q", serve.Status, serve.StatusReason, serve.Remedy)
 	}
 	if st := stage(StageCompile); st.Status != StageOperating || len(st.Capabilities) != 2 || !st.Capabilities[0].Required || st.Capabilities[1].Required {
 		t.Errorf("compile: modules is optional and off, layers required and on: %+v", st)
@@ -169,6 +171,80 @@ func TestPipelineView_StagesAndCounts(t *testing.T) {
 			if err := c.Value.Validate(); err != nil {
 				t.Errorf("%s %q: %v", s.ID, c.Label, err)
 			}
+		}
+	}
+}
+
+// TestPipelineView_StatusNeverContradictsTheCounts: a switch that is off
+// because its inputs do not exist here (ABSENT: no rules authored, no pack
+// installed) says nothing about a stage its own counts show at work — the
+// stage is working without it and no remedy is pressed on it; the same
+// switch on a stage that shows no work turns it off with the remedy; a
+// stale index makes extract and index stale, with the daemon-routed
+// refresh, never off.
+func TestPipelineView_StatusNeverContradictsTheCounts(t *testing.T) {
+	status := func(f PipelineFacts, id PipelineStageID) PipelineStage {
+		t.Helper()
+		for _, s := range PipelineView(f).Stages {
+			if s.ID == id {
+				return s
+			}
+		}
+		t.Fatalf("no stage %s", id)
+		return PipelineStage{}
+	}
+	setCap := func(f *PipelineFacts, c CapabilityState) {
+		for i := range f.Capabilities {
+			if f.Capabilities[i].ID == c.ID {
+				f.Capabilities[i] = c
+			}
+		}
+	}
+	absentRules := CapabilityState{ID: "obligations", Reason: "no obligation rules are authored for this repository (.fathom/rules/ is empty or absent)", Remedy: "fathom layers install <pack>"}
+
+	// Serving compiled layer claims with no rules authored: working.
+	f := pipelineFacts()
+	setCap(&f, absentRules)
+	if s := status(f, StageServe); s.Status != StageWorking || s.Remedy != "" || !strings.Contains(s.StatusReason, "obligations is off here") {
+		t.Errorf("serve with rules absent and 120 served = %s %q %q", s.Status, s.StatusReason, s.Remedy)
+	}
+	// Nothing served and no rules authored: off, with the remedy.
+	f.RulesServed = Measured(0, "log")
+	if s := status(f, StageServe); s.Status != StageOff || s.Remedy != "fathom layers install <pack>" || !strings.HasPrefix(s.StatusReason, "obligations: no obligation rules") {
+		t.Errorf("serve with rules absent and none served = %s %q %q", s.Status, s.StatusReason, s.Remedy)
+	}
+	// Not measured is not "no work": an unread log leaves the stage off.
+	f.RulesServed = Errored[int]("call log unreadable")
+	if s := status(f, StageServe); s.Status != StageOff {
+		t.Errorf("serve with rules absent and an unreadable log = %s", s.Status)
+	}
+
+	// Compiled claims with no pack installed in the repository: working.
+	f = pipelineFacts()
+	setCap(&f, CapabilityState{ID: "layers", Reason: "no layer packs are installed in this repository", Remedy: "fathom layers install <pack>"})
+	if s := status(f, StageCompile); s.Status != StageWorking || s.Remedy != "" {
+		t.Errorf("compile with 40 current claims and no pack = %s %q", s.Status, s.Remedy)
+	}
+	f.ClaimsCurrent = Absent[int]("no layer has been compiled")
+	if s := status(f, StageCompile); s.Status != StageOff || s.Remedy != "fathom layers install <pack>" {
+		t.Errorf("compile with nothing compiled and no pack = %s %q", s.Status, s.Remedy)
+	}
+
+	// A broken switch on a stage that shows no work: off, with its remedy.
+	f = pipelineFacts()
+	f.RulesServed = Measured(0, "log")
+	if s := status(f, StageServe); s.Status != StageOff || s.Remedy != "fathom compile --service pay" {
+		t.Errorf("serve with obligations broken and none served = %s %q", s.Status, s.Remedy)
+	}
+
+	// A stale index: extract and index are stale — the stage runs on an
+	// old copy — with the daemon-routed refresh, not a shell ingest.
+	f = pipelineFacts()
+	f.Freshness, f.FreshnessRemedy = "stale: 3 commits behind", "fathom post-commit-hook --service pay"
+	setCap(&f, CapabilityState{ID: "index", Broken: true, Reason: "the index is behind the repository's current commit (stale: 3 commits behind)", Remedy: "fathom ingest --service pay"})
+	for _, id := range []PipelineStageID{StageExtract, StageIndex} {
+		if s := status(f, id); s.Status != StageStale || s.Remedy != "fathom post-commit-hook --service pay" || !strings.Contains(s.StatusReason, "behind HEAD") {
+			t.Errorf("%s over a stale index = %s %q %q", id, s.Status, s.StatusReason, s.Remedy)
 		}
 	}
 }

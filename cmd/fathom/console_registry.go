@@ -51,6 +51,11 @@ type consolePage struct {
 	// is not built from source-keyed panels (OC-14, console_live.go); a
 	// "{svc}" in a key is the request's project.
 	Live []string
+	// Tabs are the ?tab= values the page serves (the project workspace's
+	// tabs, wave E). A link naming any other tab resolves to nothing — a
+	// tab URL the page ignores would render some other view under a label
+	// promising this one.
+	Tabs []string
 	// Formats are the ?format= values the page answers besides HTML and
 	// json ("md" for the brief, "fragment" for search); any other value is
 	// a 400 on the shell naming the ones that work.

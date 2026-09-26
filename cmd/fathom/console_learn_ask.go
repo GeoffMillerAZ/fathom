@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html"
 	"html/template"
@@ -34,6 +35,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/a-h/templ"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/chrome"
@@ -100,7 +102,7 @@ func buildLearnAskPage(cr *consoleRequest) (consoleOut, error) {
 	facts := learnFacts{traffic: learnTraffic{Total: console.Absent[int](choice.How), Window: "the last 30 days"}}
 	samples := map[string]console.AskSample{}
 	if choice.Service != "" {
-		facts = cachedLearnFacts(cr, m, choice)
+		facts = learnFacts{traffic: readLearnTraffic(cr, choice.Service)}
 		samples = cachedAskSamples(cr, choice)
 	}
 	view := console.AskGuide(console.AskFacts{
@@ -144,6 +146,11 @@ func askTry(cr *consoleRequest, choice learnChoice, shape console.AskShape, inpu
 		return console.AskNotAsked(shape, "", input, "no project to ask about: "+choice.How)
 	}
 	if problem := console.AskInputProblem(shape, input); problem != "" {
+		if shape.Sample == "" && shape.SampleError != "" && strings.TrimSpace(input) == "" {
+			// No example because its source could not be read: an error,
+			// never a refusal that reads as "nothing to ask about".
+			return console.AskUnreadable(shape, choice.Service, input, problem+" — "+shape.SampleNote+": "+shape.SampleError)
+		}
 		if shape.Sample == "" && shape.SampleNote != "" && strings.TrimSpace(input) == "" {
 			problem += " (" + shape.SampleNote + ")"
 		}
@@ -194,7 +201,8 @@ var askSampleCache struct {
 }
 
 // cachedAskSamples reads a project's example inputs once per store
-// watermark (they come from its indexed symbols and its plans).
+// watermark (they come from its indexed symbols and its plans). A read that
+// failed is never kept: a cleared wedge is read again on the next request.
 func cachedAskSamples(cr *consoleRequest, choice learnChoice) map[string]console.AskSample {
 	key := choice.Service
 	if cr.deps.c != nil {
@@ -209,6 +217,11 @@ func cachedAskSamples(cr *consoleRequest, choice learnChoice) map[string]console
 	}
 	askSampleCache.Unlock()
 	s := readAskSamples(cr, choice)
+	for _, smp := range s {
+		if smp.Err != "" {
+			return s
+		}
+	}
 	askSampleCache.Lock()
 	if askSampleCache.entries == nil || len(askSampleCache.entries) > 64 {
 		askSampleCache.entries = map[string]map[string]console.AskSample{}
@@ -237,7 +250,11 @@ func readAskSamples(cr *consoleRequest, choice learnChoice) map[string]console.A
 		ctx, cancel := context.WithTimeout(cr.r.Context(), 10*time.Second)
 		nodes, err := cr.deps.c.ListAllSymbols(ctx, svc)
 		cancel()
-		if err == nil {
+		switch {
+		case err != nil:
+			failed := console.AskSample{Note: "the project's symbols could not be read", Err: err.Error()}
+			out["symbol"], out["pattern"], out["file"] = failed, failed, failed
+		default:
 			if name, file, n := mostCalledSymbol(nodes); name != "" {
 				why := fmt.Sprintf("the function the most call sites in %s name (%s)", svc, plural(n, "call site"))
 				out["symbol"] = console.AskSample{Value: name, Note: why}
@@ -246,10 +263,10 @@ func readAskSamples(cr *consoleRequest, choice learnChoice) map[string]console.A
 			}
 		}
 	}
-	if row, note := samplePlanRow(choice); row != "" {
-		out["row"] = console.AskSample{Value: row, Note: note}
-	} else {
-		out["row"] = console.AskSample{Note: note}
+	row, note, err := samplePlanRow(choice)
+	out["row"] = console.AskSample{Value: row, Note: note}
+	if err != nil {
+		out["row"] = console.AskSample{Note: note, Err: err.Error()}
 	}
 	return out
 }
@@ -307,62 +324,87 @@ func mostCalledSymbol(nodes []core.SymbolNode) (name, file string, calls int) {
 var claimedRowRE = regexp.MustCompile(`^\s*- \[x\] .+\{.*\b(symbol|oracle):.*\}\s*$`)
 
 // samplePlanRow finds a claimed plan row with a contract in the project's
-// plans — read-only, from the recorded root.
-func samplePlanRow(choice learnChoice) (string, string) {
+// current plans (docs/plans under the recorded root, read-only): the plan
+// the gate ran on most recently for the project first, whichever checkout
+// ran it, then the rest by name — never a scratch or deleted plan the
+// ledger names. A source that could not be read (the verify ledger, the
+// plans directory, a plan) is returned as the error when no row was found,
+// and the note says the plans could not be read — never that none was
+// found.
+func samplePlanRow(choice learnChoice) (row, note string, err error) {
 	root := choice.Row.Path
 	if root == "" {
-		return "", "no corpus root is recorded for " + choice.Service
+		return "", "no corpus root is recorded for " + choice.Service, nil
+	}
+	var failures []error
+	dir := filepath.Join(root, "docs", "plans")
+	current, derr := currentPlanPaths(root) // a glob would swallow an unreadable directory
+	if derr != nil {
+		failures = append(failures, derr)
 	}
 	var plans []string
 	seen := map[string]bool{}
-	if rows, err := verifyLedgerRowsAt(verifyLedgerPath()); err == nil {
+	rows, lerr := verifyLedgerRowsAt(verifyLedgerPath())
+	switch {
+	case lerr == nil:
 		sort.SliceStable(rows, func(i, j int) bool { return rows[i].At > rows[j].At })
 		for _, r := range rows {
-			if r.Service == choice.Service && r.Plan != "" && !seen[r.Plan] {
-				seen[r.Plan] = true
-				plans = append(plans, r.Plan)
+			if r.Service != choice.Service {
+				continue
 			}
-		}
-	}
-	if names, err := filepath.Glob(filepath.Join(root, "docs", "plans", "*.md")); err == nil {
-		sort.Strings(names)
-		for _, n := range names {
-			if rel, err := filepath.Rel(root, n); err == nil && !seen[rel] && filepath.Base(n) != "README.md" {
+			if rel := ledgerPlanPath(r, root); current[rel] && !seen[rel] {
 				seen[rel] = true
 				plans = append(plans, rel)
 			}
 		}
+	case !errors.Is(lerr, os.ErrNotExist):
+		failures = append(failures, fmt.Errorf("the verify ledger: %w", lerr))
 	}
-	for _, p := range plans {
-		full := p
-		if !filepath.IsAbs(full) {
-			full = filepath.Join(root, p)
+	var names []string
+	for rel := range current {
+		names = append(names, rel)
+	}
+	sort.Strings(names)
+	for _, rel := range names {
+		if !seen[rel] {
+			seen[rel] = true
+			plans = append(plans, rel)
 		}
-		if row := firstClaimedRow(full); row != "" {
-			rel := p
-			if r, err := filepath.Rel(root, full); err == nil {
-				rel = r
+	}
+	for _, rel := range plans {
+		found, ferr := firstClaimedRow(filepath.Join(root, filepath.FromSlash(rel)))
+		if ferr != nil {
+			if !errors.Is(ferr, os.ErrNotExist) {
+				failures = append(failures, ferr)
 			}
-			return row, "the first claimed row with a contract in " + filepath.ToSlash(rel)
+			continue
+		}
+		if found != "" {
+			return found, "the first claimed row with a contract in " + rel, nil
 		}
 	}
-	return "", "no claimed plan row with a contract was found under " + filepath.Join(root, "docs", "plans")
+	if len(failures) > 0 {
+		return "", "the project's plans could not be read", errors.Join(failures...)
+	}
+	return "", "no claimed plan row with a contract was found under " + dir, nil
 }
 
-func firstClaimedRow(path string) string {
+// firstClaimedRow is a plan's first claimed row with a contract ("" when it
+// has none), or why the plan could not be read.
+func firstClaimedRow(path string) (string, error) {
 	fh, err := os.Open(path)
 	if err != nil {
-		return ""
+		return "", err
 	}
 	defer fh.Close()
 	sc := bufio.NewScanner(fh)
 	sc.Buffer(make([]byte, 0, 64*1024), 1<<20)
 	for sc.Scan() {
 		if line := sc.Text(); claimedRowRE.MatchString(line) && len(line) <= 2000 {
-			return strings.TrimSpace(line)
+			return strings.TrimSpace(line), nil
 		}
 	}
-	return ""
+	return "", sc.Err()
 }
 
 // verifyLedgerRowsAt reads the verify ledger through the shared cache.
@@ -446,12 +488,19 @@ func renderAskShapes(choice learnChoice, view console.AskView, facts learnFacts,
 		}
 		list.WriteString(`</li>`)
 	}
+	never := valueText(view.NeverAsked) + ` of them never called for ` + html.EscapeString(orDash(choice.Service)) + ` in ` + html.EscapeString(view.Window)
+	if !view.NeverAsked.Known() {
+		// No count from a log that was not read: say so, never a number.
+		never = `how many of them were called for ` + html.EscapeString(orDash(choice.Service)) + ` is ` + valueText(view.NeverAsked)
+	}
 	footnote := `<p class="mt-3 text-ink-muted" data-ask-coverage>This guide teaches ` + plural(view.ToolsTaught, "tool") +
-		` of the ` + valueText(view.AgentTools) + ` on the agent surface every connected session sees; ` +
-		valueText(view.NeverAsked) + ` of them never called for ` + html.EscapeString(orDash(choice.Service)) + ` in ` + html.EscapeString(view.Window) + `.</p>`
+		` of the ` + valueText(view.AgentTools) + ` on the agent surface every connected session sees; ` + never + `.</p>`
 	state, reason := console.StatePresent, ""
-	if !view.Shapes[0].Asked.Known() {
-		state, reason = console.StateAbsent, "how often each tool was asked here is not measured — "+view.Shapes[0].Asked.Reason
+	switch asked := view.Shapes[0].Asked; asked.State {
+	case console.StateError:
+		state, reason = console.StateError, "how often each tool was asked here could not be read — "+asked.Reason
+	case console.StateAbsent, "":
+		state, reason = console.StateAbsent, "how often each tool was asked here is not measured — "+asked.Reason
 	}
 	return renderPanel(consolePanel{
 		ID: "shapes", Title: "Route by the shape of the question",
@@ -481,8 +530,11 @@ func renderAskAnswer(choice learnChoice, view console.AskView, a console.AskAnsw
 		body.WriteString(`<form method="get" action="/learn/ask#answer" class="mb-4 flex min-w-0 flex-wrap items-end gap-2 [&_button]:min-h-11 [&_input]:min-h-11" data-ask-form>`)
 		body.WriteString(`<input type="hidden" name="svc" value="` + html.EscapeString(choice.Service) + `"><input type="hidden" name="try" value="` + html.EscapeString(shape.ID) + `">`)
 		help := shape.SampleNote
-		if shape.Sample != "" {
+		switch {
+		case shape.Sample != "":
 			help = "Example from " + choice.Service + ": " + shape.SampleNote
+		case shape.SampleError != "":
+			help = shape.SampleNote + ": " + shape.SampleError
 		}
 		field := form.RenderField(form.Field{
 			Label: shape.ArgLabel, For: "ask-input", Help: help,
@@ -504,23 +556,32 @@ func renderAskAnswer(choice learnChoice, view console.AskView, a console.AskAnsw
 		for i, r := range a.Rows {
 			cells := make([]templ.Component, len(r))
 			for j, v := range r {
-				cells[j] = templ.Raw(`<span class="[overflow-wrap:anywhere]">` + html.EscapeString(v) + `</span>`)
+				cells[j] = templ.Raw(askCell(v))
 			}
 			rows = append(rows, table.Row{ID: fmt.Sprintf("answer-%d", i), Cells: r, HTMLCells: cells})
 		}
 		caption := fmt.Sprintf("%s's answer on %s", shape.Tool, choice.Service)
-		if a.Total > len(a.Rows) {
-			caption += fmt.Sprintf(" — showing %d of %d", len(a.Rows), a.Total)
+		switch {
+		case a.State == console.StatePartial:
+			caption += " — " + askShownWords(a)
+		case a.Total > len(a.Rows):
+			caption += fmt.Sprintf(" — showing %d of %s", len(a.Rows), fmtThousands(a.Total))
 		}
 		body.WriteString(renderKitTable(table.TableParams{TableID: "learn-ask-answer", Caption: caption, Columns: cols, Rows: rows}))
+	}
+	if a.HowToGetMore != "" {
+		body.WriteString(`<p class="mt-3 text-ink-muted [overflow-wrap:anywhere]" data-ask-more>To get the rest, ` + html.EscapeString(shape.Tool) + ` says: ` + html.EscapeString(a.HowToGetMore) + `</p>`)
 	}
 	title := "Answer"
 	if shape.Question != "" {
 		title = "Answer: " + shape.Question
 	}
 	denom := ""
-	if a.State == console.StatePresent || a.State == console.StateZero {
+	switch a.State {
+	case console.StatePresent, console.StateZero:
 		denom = plural(a.Total, "row") + " in the answer"
+	case console.StatePartial:
+		denom = askTotalWords(a) + " rows in the tool's answer, " + fmtThousands(a.Listed) + " of them listed"
 	}
 	return renderPanel(consolePanel{
 		ID: "answer", SourceKey: liveKeyIfValid("index:" + choice.Service), Title: title,
@@ -532,6 +593,37 @@ func renderAskAnswer(choice learnChoice, view console.AskView, a console.AskAnsw
 		State:       a.State, Reason: a.Reason,
 		Body: body.String(),
 	})
+}
+
+// askCell is one answer cell. A short single word ("resolved", "GoFunc",
+// "payment.go:26") never breaks inside itself — breaking anywhere would let
+// the table squeeze its column to a few letters a line; a long path or a
+// line of code may break anywhere, so the table still fits a phone.
+func askCell(v string) string {
+	if utf8.RuneCountInString(v) <= 16 && !strings.ContainsAny(v, " \t") {
+		return `<span class="whitespace-nowrap">` + html.EscapeString(v) + `</span>`
+	}
+	return `<span class="[overflow-wrap:anywhere]">` + html.EscapeString(v) + `</span>`
+}
+
+// askTotalWords is a cut answer's total as the tool stated it: "277", or
+// "at least 3" when the tool stopped early without a count.
+func askTotalWords(a console.AskAnswer) string {
+	if a.TotalLowerBound {
+		return "at least " + fmtThousands(a.Total)
+	}
+	return fmtThousands(a.Total)
+}
+
+// askShownWords is a cut answer's caption: the rows shown, the rows the
+// tool listed, and the total it reported — three different numbers, each
+// named.
+func askShownWords(a console.AskAnswer) string {
+	words := fmt.Sprintf("showing %d of the %s it listed", len(a.Rows), fmtThousands(a.Listed))
+	if a.Total > a.Listed {
+		return words + "; it found " + askTotalWords(a)
+	}
+	return words + "; there may be more"
 }
 
 // countWord is "1 harness" / "6 harnesses" for a noun plural can't form.

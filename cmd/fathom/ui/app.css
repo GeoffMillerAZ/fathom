@@ -224,6 +224,9 @@
   .relative {
     position: relative;
   }
+  .static {
+    position: static;
+  }
   .sticky {
     position: sticky;
   }
@@ -432,6 +435,9 @@
   }
   .max-h-\[90dvh\] {
     max-height: 90dvh;
+  }
+  .max-h-\[calc\(100dvh-3rem\)\] {
+    max-height: calc(100dvh - 3rem);
   }
   .max-h-dvh {
     max-height: 100dvh;
@@ -977,6 +983,9 @@
   }
   .pr-0\.5 {
     padding-right: calc(var(--spacing) * 0.5);
+  }
+  .pr-1 {
+    padding-right: calc(var(--spacing) * 1);
   }
   .pr-2 {
     padding-right: calc(var(--spacing) * 2);
@@ -1768,6 +1777,11 @@
       grid-template-columns: minmax(0,1fr) 16rem;
     }
   }
+  .\[\&_\.sticky\]\:static {
+    & .sticky {
+      position: static;
+    }
+  }
   .\[\&_\:target\]\:scroll-mt-4 {
     & :target {
       scroll-margin-top: calc(var(--spacing) * 4);
@@ -1860,6 +1874,42 @@
       min-height: calc(var(--spacing) * 11);
     }
   }
+  .\[\&_nav_a\]\:flex {
+    & nav a {
+      display: flex;
+    }
+  }
+  .\[\&_nav_a\]\:min-h-11 {
+    & nav a {
+      min-height: calc(var(--spacing) * 11);
+    }
+  }
+  .\[\&_nav_a\]\:items-center {
+    & nav a {
+      align-items: center;
+    }
+  }
+  .\[\&_nav_a\]\:rounded-sm {
+    & nav a {
+      border-radius: var(--ak-radius-sm);
+    }
+  }
+  .\[\&_nav_a\:focus-visible\]\:outline-2 {
+    & nav a:focus-visible {
+      outline-style: var(--tw-outline-style);
+      outline-width: 2px;
+    }
+  }
+  .\[\&_nav_a\:focus-visible\]\:outline-offset-2 {
+    & nav a:focus-visible {
+      outline-offset: 2px;
+    }
+  }
+  .\[\&_nav_a\:focus-visible\]\:outline-focus {
+    & nav a:focus-visible {
+      outline-color: var(--ak-color-focus);
+    }
+  }
   .\[\&_select\]\:min-h-11 {
     & select {
       min-height: calc(var(--spacing) * 11);
@@ -1934,6 +1984,16 @@
   .\[\&\:\:-webkit-details-marker\]\:hidden {
     &::-webkit-details-marker {
       display: none;
+    }
+  }
+  .\[\&\:has\(\[data-console-sticky\]\)_\#observatory-main\]\:overflow-x-clip {
+    &:has([data-console-sticky]) #observatory-main {
+      overflow-x: clip;
+    }
+  }
+  .\[\&\:has\(\[data-console-sticky\]\)_\#observatory-main\]\:overflow-y-visible {
+    &:has([data-console-sticky]) #observatory-main {
+      overflow-y: visible;
     }
   }
   .\[\&\>a\]\:min-h-\[44px\] {

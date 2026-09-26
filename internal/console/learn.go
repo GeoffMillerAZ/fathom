@@ -40,10 +40,17 @@ const (
 	// StageOperating: every switch the stage needs is on (for the source
 	// stage: the index is fresh at HEAD).
 	StageOperating StageStatus = "operating"
-	// StageOff: a switch the stage needs is off here; Reason and Remedy say
-	// which and what turns it on.
+	// StageWorking: the stage's own headline shows it at work here while a
+	// switch it can use is off — absent (its inputs do not exist here, and
+	// the stage works without them) or broken (Remedy fixes it). A status
+	// never contradicts the counts drawn beside it.
+	StageWorking StageStatus = "working"
+	// StageOff: a switch the stage needs is off here and the stage's own
+	// headline shows no work; Reason and Remedy say which and what turns it
+	// on.
 	StageOff StageStatus = "off"
-	// StageStale: the source stage's index is behind HEAD.
+	// StageStale: the index is behind HEAD — the source stage, and the
+	// stages that read the index (extract, index) run on the older copy.
 	StageStale StageStatus = "stale"
 	// StageUnknown: nothing reported whether the stage works here — never
 	// read as operating.
@@ -56,12 +63,17 @@ const (
 type CapabilityState struct {
 	ID        string `json:"id"`
 	Operating bool   `json:"operating"`
-	Detail    string `json:"detail,omitempty"`
-	Reason    string `json:"reason,omitempty"`
-	Remedy    string `json:"remedy,omitempty"`
-	// Required is set by PipelineView: a required switch that is off turns
-	// its stage off; an optional one (narrate, guards, modules) is listed
-	// but never does.
+	// Broken separates the two ways a switch is off (internal/capability):
+	// absent — its inputs do not exist here, normal and often deliberate —
+	// and broken — its inputs exist and something fails to deliver them.
+	Broken bool   `json:"broken,omitempty"`
+	Detail string `json:"detail,omitempty"`
+	Reason string `json:"reason,omitempty"`
+	Remedy string `json:"remedy,omitempty"`
+	// Required is set by PipelineView: a required switch that is off
+	// decides its stage's status (working, off or stale, against the
+	// stage's own counts); an optional one (narrate, guards, modules) is
+	// listed but never does.
 	Required bool `json:"required"`
 }
 
@@ -179,7 +191,11 @@ type pipelineStageDef struct {
 // pipelineStages is the pipeline in order (vision 35 §4.1). The switches
 // are `fathom capabilities` IDs (internal/capability.Default); the pages
 // are the design's routes (design §1), most specific first — a route no
-// wave has registered yet falls through to the project workspace's tab.
+// wave has registered yet falls through to the project workspace's tab
+// once the workspace serves it, then to the workspace itself where its
+// overview shows the stage's facts (symbols, freshness, layers, rules
+// served). The index and the gate have no page yet: no link, and the stage
+// says so.
 var pipelineStages = []pipelineStageDef{
 	{
 		id: StageSource, title: "Source", pieces: "your repository at a commit",
@@ -194,7 +210,7 @@ var pipelineStages = []pipelineStageDef{
 		does:     "One dialect pack per language turns each file into symbols and call edges; the pack decides how exact those edges can be.",
 		question: "Which dialect packs turn this project's files into symbols?",
 		required: []string{"index"},
-		pages:    []string{"/packs", "/projects/{svc}?tab=index"},
+		pages:    []string{"/packs", "/projects/{svc}?tab=index", "/projects/{svc}"},
 		live:     "index:{svc}",
 	},
 	{
@@ -211,7 +227,7 @@ var pipelineStages = []pipelineStageDef{
 		question: "Which governing claims have layer packs compiled here?",
 		required: []string{"layers"},
 		optional: []string{"modules"},
-		pages:    []string{"/layers", "/projects/{svc}?tab=governance"},
+		pages:    []string{"/layers", "/projects/{svc}?tab=governance", "/projects/{svc}"},
 		live:     "layers:{svc}",
 	},
 	{
@@ -220,7 +236,7 @@ var pipelineStages = []pipelineStageDef{
 		question: "Are rules and answers reaching the agent before it edits?",
 		required: []string{"obligations", "agent-surface"},
 		optional: []string{"guards"},
-		pages:    []string{"/explain?svc={svc}", "/projects/{svc}?tab=governance"},
+		pages:    []string{"/explain?svc={svc}", "/projects/{svc}?tab=governance", "/projects/{svc}"},
 		live:     "sessions:{svc}",
 	},
 	{
@@ -365,8 +381,13 @@ func stageCounts(id PipelineStageID, f PipelineFacts) (PipelineCount, []Pipeline
 }
 
 // stageStatus decides whether a stage works here. The source stage reads
-// freshness; every other stage reads its required switches. No report is
-// unknown — never operating.
+// freshness; every other stage reads its required switches against its own
+// headline, so the status never contradicts the counts beside it: a stale
+// index makes the stages that read it stale (with the daemon-routed
+// refresh); a switch off on a stage whose headline shows work is a working
+// stage with the switch named (and its remedy when it is broken); a switch
+// off on a stage that shows no work turns it off. No report is unknown —
+// never operating.
 func stageStatus(d pipelineStageDef, f PipelineFacts, caps map[string]CapabilityState) (StageStatus, string, string) {
 	if d.id == StageSource {
 		switch {
@@ -386,19 +407,35 @@ func stageStatus(d pipelineStageDef, f PipelineFacts, caps map[string]Capability
 		}
 		return StageUnknown, reason, ""
 	}
+	headline, _, _ := stageCounts(d.id, f)
+	working := headline.Value.Known() && headline.Value.V > 0
 	var missing []string
 	for _, id := range d.required {
 		c, ok := caps[id]
-		switch {
-		case !ok:
+		if !ok {
 			missing = append(missing, id+" (not reported)")
-		case !c.Operating:
-			reason := c.Reason
-			if reason == "" {
-				reason = "off"
-			}
-			return StageOff, id + ": " + reason, c.Remedy
+			continue
 		}
+		if c.Operating {
+			continue
+		}
+		reason := c.Reason
+		if reason == "" {
+			reason = "off"
+		}
+		switch {
+		case id == "index" && c.Broken && strings.HasPrefix(f.Freshness, "stale"):
+			remedy := f.FreshnessRemedy
+			if remedy == "" {
+				remedy = c.Remedy
+			}
+			return StageStale, "the index is behind HEAD (" + strings.TrimSpace(strings.TrimPrefix(f.Freshness, "stale:")) + ")", remedy
+		case working && c.Broken:
+			return StageWorking, id + " is broken here: " + reason + " — the stage works, but not fully", c.Remedy
+		case working:
+			return StageWorking, id + " is off here: " + reason + " — this stage's own counts show it at work without it", ""
+		}
+		return StageOff, id + ": " + reason, c.Remedy
 	}
 	if len(missing) > 0 {
 		return StageUnknown, "the capability report does not name " + strings.Join(missing, ", "), ""

@@ -10,8 +10,9 @@ package main
 // console_learn_ask.go.
 //
 // Every number is a projection in internal/console (PipelineView) over
-// facts read once per project and model build; a stage whose instrument
-// did not answer says so, never 0.
+// facts each cached on its own input watermarks (the store's, the call
+// log's, the verify ledger's), never on the model's clock; a stage whose
+// instrument did not answer says so, never 0.
 
 import (
 	"bufio"
@@ -21,6 +22,7 @@ import (
 	"fmt"
 	"html"
 	"html/template"
+	"io"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -73,7 +75,7 @@ func buildLearnPage(cr *consoleRequest) (consoleOut, error) {
 	if err != nil {
 		return consoleOut{}, err
 	}
-	facts := cachedLearnFacts(cr, m, choice)
+	facts := readLearnFacts(cr, m, choice)
 	pipe := console.PipelineView(facts.pipeline)
 	shared := pageMetrics(cr.page, consoleModelMetrics(m))
 	out := consoleOut{
@@ -106,7 +108,7 @@ func buildLearnPage(cr *consoleRequest) (consoleOut, error) {
 	return out, nil
 }
 
-// ─── the facts, read once per project and model build ──────────────────────
+// ─── the facts, each read cached on its own input watermarks ───────────────
 
 // learnFacts is one project's reads for the Learn pages.
 type learnFacts struct {
@@ -131,43 +133,66 @@ type learnTraffic struct {
 	LogPath string
 }
 
-var learnCache struct {
+// learnKeyed is a small cache of one kind of read, keyed by its input
+// watermarks (design §1): an entry is reused only while every input it was
+// read from is unchanged, and a read that failed is never kept — a cleared
+// wedge shows its counts on the next request, not at the next watermark.
+type learnKeyed[T any] struct {
 	sync.Mutex
-	entries map[string]learnFacts
+	entries map[string]learnKeyedEntry[T]
 }
 
-// cachedLearnFacts reads a project's facts once per model build (the
-// model's own 30 s horizon) and store watermark.
-func cachedLearnFacts(cr *consoleRequest, m observatoryModel, choice learnChoice) learnFacts {
-	key := choice.Service + "\x00" + m.GeneratedAt
-	if cr.deps.c != nil && choice.Service != "" {
-		if wm, err := cr.deps.c.StoreWatermark(cr.r.Context(), choice.Service); err == nil {
-			key += "\x00" + wm
-		}
-	}
-	learnCache.Lock()
-	if f, ok := learnCache.entries[key]; ok {
-		learnCache.Unlock()
-		return f
-	}
-	learnCache.Unlock()
-	f := readLearnFacts(cr, m, choice)
-	learnCache.Lock()
-	if learnCache.entries == nil || len(learnCache.entries) > 64 {
-		learnCache.entries = map[string]learnFacts{}
-	}
-	learnCache.entries[key] = f
-	learnCache.Unlock()
-	return f
+type learnKeyedEntry[T any] struct {
+	v       T
+	expires time.Time // zero: kept until its key changes
 }
 
-// resetLearnCache forgets every project's facts (tests).
+func (c *learnKeyed[T]) get(key string, now time.Time) (T, bool) {
+	c.Lock()
+	defer c.Unlock()
+	e, ok := c.entries[key]
+	if !ok || (!e.expires.IsZero() && now.After(e.expires)) {
+		var zero T
+		return zero, false
+	}
+	return e.v, true
+}
+
+func (c *learnKeyed[T]) put(key string, v T, expires time.Time) {
+	c.Lock()
+	defer c.Unlock()
+	if c.entries == nil || len(c.entries) > 64 {
+		c.entries = map[string]learnKeyedEntry[T]{}
+	}
+	c.entries[key] = learnKeyedEntry[T]{v: v, expires: expires}
+}
+
+func (c *learnKeyed[T]) reset() {
+	c.Lock()
+	c.entries = nil
+	c.Unlock()
+}
+
+var (
+	learnStoreCache learnKeyed[console.PipelineFacts]
+	learnGateCache  learnKeyed[learnGate]
+	learnCapsCache  learnKeyed[learnCaps]
+)
+
+// resetLearnCache forgets every project's cached reads (tests).
 func resetLearnCache() {
-	learnCache.Lock()
-	learnCache.entries = nil
-	learnCache.Unlock()
+	learnStoreCache.reset()
+	learnGateCache.reset()
+	learnCapsCache.reset()
+	resetCallLogTail()
 }
 
+// readLearnFacts assembles a project's facts for a request. Nothing here
+// is keyed on the model's clock: the store's side is reused while the
+// store's watermark and compile runs are unchanged, the traffic is the
+// call log read incrementally, the gate is reused while the verify ledger
+// and the plans directory are unchanged, and the switches while the model
+// facts and the files the probe reads are unchanged.
 func readLearnFacts(cr *consoleRequest, m observatoryModel, choice learnChoice) learnFacts {
 	svc, row := choice.Service, choice.Row
 	var out learnFacts
@@ -213,7 +238,10 @@ func readLearnFacts(cr *consoleRequest, m observatoryModel, choice learnChoice) 
 
 	ctx, cancel := context.WithTimeout(cr.r.Context(), 10*time.Second)
 	defer cancel()
-	readLearnStoreFacts(ctx, cr, svc, &f)
+	sf := cachedLearnStoreFacts(ctx, cr, svc)
+	f.Files, f.Languages, f.UnclassifiedFiles = sf.Files, sf.Languages, sf.UnclassifiedFiles
+	f.Edges, f.TypedEdges = sf.Edges, sf.TypedEdges
+	f.ClaimsCurrent, f.ClaimsFlagged, f.ClaimsRetired, f.Layers, f.CompileRuns = sf.ClaimsCurrent, sf.ClaimsFlagged, sf.ClaimsRetired, sf.Layers, sf.CompileRuns
 
 	out.traffic = readLearnTraffic(cr, svc)
 	f.WindowCalls = out.traffic.Total
@@ -225,7 +253,7 @@ func readLearnFacts(cr *consoleRequest, m observatoryModel, choice learnChoice) 
 		f.RulesServed = console.Value[int]{State: out.traffic.Total.State, Reason: out.traffic.Total.Reason, Source: out.traffic.Total.Source}
 	}
 
-	g := readVerifyLedgerFor(verifyLedgerPath(), svc)
+	g := cachedVerifyLedgerFor(verifyLedgerPath(), svc, row.Path)
 	f.GateRuns, f.GatePlans, f.GateVerified, f.GateClaimed = g.runs, g.plans, g.verified, g.claimed
 
 	// The switches: `fathom capabilities` for the project's root, by the
@@ -235,21 +263,112 @@ func readLearnFacts(cr *consoleRequest, m observatoryModel, choice learnChoice) 
 	} else if root, err := filepath.Abs(row.Path); err != nil {
 		f.CapabilitiesNote = "the recorded root could not be resolved: " + err.Error()
 	} else {
-		reg := capability.Default()
-		probe := buildCapabilityProbe(cr.deps.selfURL, root, svc, cr.now)
-		res, _ := loadCapabilityConfig(reg, root)
-		out.capModel = capabilityJSON(probe, reg.DetectAll(probe, res))
-		out.capVerb = learnCapabilitiesVerb(root, svc)
-		for _, c := range out.capModel.Capabilities {
-			remedy := c.Cmd
-			if remedy == "" {
-				remedy = c.Note
-			}
-			f.Capabilities = append(f.Capabilities, console.CapabilityState{ID: c.ID, Operating: c.Operating, Detail: c.Detail, Reason: c.Reason, Remedy: remedy})
-		}
+		caps := cachedLearnCapabilities(cr, m, row, root, svc)
+		out.capModel, out.capVerb = caps.model, learnCapabilitiesVerb(root, svc)
+		f.Capabilities = caps.states
 	}
 	out.pipeline = f
 	return out
+}
+
+// learnCaps is one project's `fathom capabilities`: the verb's model, and
+// the rows as the pipeline reads them (with ABSENT and BROKEN told apart).
+type learnCaps struct {
+	model  capabilityModel
+	states []console.CapabilityState
+}
+
+// learnFactsMaxAge bounds how long a cached read is reused while its key
+// holds, for the inputs a key cannot see: a decision record the probe reads
+// from elsewhere, a claim's status moved by feedback (fathom claim refute).
+const learnFactsMaxAge = 10 * time.Minute
+
+// cachedLearnCapabilities runs the capability probe once per change of its
+// inputs: the model facts it reads for the project and the files under the
+// project's root it reads.
+func cachedLearnCapabilities(cr *consoleRequest, m observatoryModel, row obsServiceRow, root, svc string) learnCaps {
+	key := strings.Join([]string{svc, root, learnProbeModelKey(m, row), learnProbeFilesKey(root)}, "\x00")
+	now := time.Now()
+	if c, ok := learnCapsCache.get(key, now); ok {
+		return c
+	}
+	reg := capability.Default()
+	probe := buildCapabilityProbe(cr.deps.selfURL, root, svc, cr.now)
+	res, _ := loadCapabilityConfig(reg, root)
+	reports := reg.DetectAll(probe, res)
+	out := learnCaps{model: capabilityJSON(probe, reports)}
+	for _, r := range reports {
+		remedy := r.Remedy.Cmd
+		if remedy == "" {
+			remedy = r.Remedy.Note
+		}
+		out.states = append(out.states, console.CapabilityState{
+			ID: r.Capability.ID, Operating: r.State.Operating, Broken: r.State.Broken,
+			Detail: r.State.Detail, Reason: r.State.Reason, Remedy: remedy,
+		})
+	}
+	learnCapsCache.put(key, out, now.Add(learnFactsMaxAge))
+	return out
+}
+
+// learnProbeModelKey is every model fact buildCapabilityProbe reads for a
+// project.
+func learnProbeModelKey(m observatoryModel, row obsServiceRow) string {
+	layers := "no configuration snapshot"
+	if row.Config != nil {
+		var names []string
+		for _, l := range row.Config.Layers {
+			names = append(names, l.Name)
+		}
+		layers = strings.Join(names, ",")
+	}
+	return fmt.Sprintf("%s|%d|%s|%s|%s|%s|%s|%v|%d|%d|%d", row.Path, row.Symbols, row.Freshness, row.HooksNote, row.StanzaNote,
+		row.CompileNote, layers, m.Narrate.Active, m.Impact.LedgerSessions, m.AgentSurfaceTools, m.AgentSchemaBytes)
+}
+
+// learnProbeFilesKey is a stat signature of the files and directories the
+// capability probe reads under a root (the rules, bindings, guards, layer
+// packs and settings in .fathom, the lefthook files, the intent corpus and
+// the decision records) plus the user's settings — a size or mtime change,
+// or a file added or removed, changes it.
+func learnProbeFilesKey(root string) string {
+	var b strings.Builder
+	stat := func(p string, listDir bool) {
+		info, err := os.Stat(p)
+		if err != nil {
+			b.WriteString(p + ":-;")
+			return
+		}
+		fmt.Fprintf(&b, "%s:%d:%d;", p, info.Size(), info.ModTime().UnixNano())
+		if !info.IsDir() || !listDir {
+			return
+		}
+		entries, err := os.ReadDir(p)
+		if err != nil {
+			b.WriteString(p + ":unreadable;")
+			return
+		}
+		for _, e := range entries {
+			if fi, err := e.Info(); err == nil {
+				fmt.Fprintf(&b, "%s:%d:%d;", e.Name(), fi.Size(), fi.ModTime().UnixNano())
+			}
+		}
+	}
+	for _, dir := range []string{".fathom", ".fathom/rules", ".fathom/layers", "docs/intent", "docs/adr"} {
+		stat(filepath.Join(root, dir), true)
+	}
+	if nested, err := filepath.Glob(filepath.Join(root, "docs", "intent", "*", "")); err == nil {
+		for _, d := range nested {
+			stat(d, true)
+		}
+	}
+	for _, f := range []string{"lefthook.yml", "lefthook.yaml", ".lefthook.yml", "ADR.md"} {
+		stat(filepath.Join(root, f), false)
+	}
+	if p := capability.DefaultUserPath(); p != "" {
+		stat(p, false)
+	}
+	return b.String()
 }
 
 // learnCapabilitiesVerb is the exact `fathom capabilities` command for a
@@ -268,16 +387,49 @@ func shellWord(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }
 
-// readLearnStoreFacts reads the store's side: the files and languages the
-// index holds, the typed-edge table, the claims and the compile runs.
-func readLearnStoreFacts(ctx context.Context, cr *consoleRequest, svc string, f *console.PipelineFacts) {
+// cachedLearnStoreFacts reads the store's side of a project once per change
+// of its inputs: the service's store watermark (every ingest moves it) and
+// its compile runs (every compile records one). A read that failed is
+// never kept.
+func cachedLearnStoreFacts(ctx context.Context, cr *consoleRequest, svc string) console.PipelineFacts {
+	var f console.PipelineFacts
 	if cr.deps.c == nil {
 		why := "this daemon has no store open"
 		for _, v := range []*console.Value[int]{&f.Files, &f.Edges, &f.TypedEdges, &f.ClaimsCurrent, &f.ClaimsFlagged, &f.ClaimsRetired, &f.CompileRuns} {
 			*v = console.Absent[int](why)
 		}
-		return
+		return f
 	}
+	runs, runsErr := cr.deps.c.Store().CompileRuns(ctx, svc, "")
+	wm, wmErr := cr.deps.c.StoreWatermark(ctx, svc)
+	key := ""
+	if runsErr == nil && wmErr == nil {
+		var last string
+		if n := len(runs); n > 0 {
+			last = fmt.Sprintf("%+v", runs[n-1])
+		}
+		key = fmt.Sprintf("%s\x00%s\x00%d\x00%s", svc, wm, len(runs), last)
+		if cached, ok := learnStoreCache.get(key, time.Now()); ok {
+			return cached
+		}
+	}
+	readLearnStoreFacts(ctx, cr, svc, &f, runs, runsErr)
+	failed := false
+	for _, v := range []console.Value[int]{f.Files, f.Edges, f.ClaimsCurrent, f.CompileRuns} {
+		failed = failed || v.State == console.StateError
+	}
+	if key != "" && !failed {
+		// A claim's status can also move by feedback (fathom claim refute),
+		// which neither input records: the age bounds that lag.
+		learnStoreCache.put(key, f, time.Now().Add(learnFactsMaxAge))
+	}
+	return f
+}
+
+// readLearnStoreFacts reads the store's side: the files and languages the
+// index holds, the typed-edge table and the claims, beside the compile runs
+// the caller read.
+func readLearnStoreFacts(ctx context.Context, cr *consoleRequest, svc string, f *console.PipelineFacts, runs []core.CompileRun, runsErr error) {
 	st := cr.deps.c.Store()
 	const storeSource = "the daemon's store"
 
@@ -327,7 +479,6 @@ func readLearnStoreFacts(ctx context.Context, cr *consoleRequest, svc string, f 
 		f.TypedEdges = console.Measured(resolved, src).WithDenominator(fmt.Sprintf("of %s, resolved by a type checker or SCIP index", fmtThousands(len(edges))))
 	}
 
-	runs, runsErr := st.CompileRuns(ctx, svc, "")
 	real := 0
 	for _, r := range runs {
 		if !r.DryRun {
@@ -374,8 +525,9 @@ func readLearnStoreFacts(ctx context.Context, cr *consoleRequest, svc string, f 
 }
 
 // readLearnTraffic counts the project's tool calls in the window, by tool,
-// from the resolved call log with the verb's own reader — console reads
-// excluded. A missing or unreadable log is absent or an error, never 0.
+// from the resolved call log — the verb's own line decoding and window,
+// read incrementally (callLogRows), console reads excluded. A missing log
+// is absent and an unreadable one an error naming what failed, never 0.
 func readLearnTraffic(cr *consoleRequest, svc string) learnTraffic {
 	t := learnTraffic{
 		Window: "the last 30 days",
@@ -392,7 +544,10 @@ func readLearnTraffic(cr *consoleRequest, svc string) learnTraffic {
 		t.Total = console.Absent[int](reason)
 		return t
 	}
-	if _, err := os.Stat(resolved.Path); err != nil {
+	// The read itself decides, not a stat: on the external-volume wedge
+	// stat succeeds and the read fails, and an unread log is never 0.
+	rows, err := callLogRows(resolved.Path)
+	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			t.Total = console.Absent[int]("no call log at " + resolved.Path + " — nothing recorded yet; traffic is not measured, never zero").WithSource(source)
 		} else {
@@ -402,7 +557,7 @@ func readLearnTraffic(cr *consoleRequest, svc string) learnTraffic {
 	}
 	until := cr.now.UTC()
 	since := until.Add(-learnTrafficWindow)
-	entries, _ := readCallDataFor(resolved.Path, svc, since, until)
+	entries := callEntriesFor(rows, svc, since, until)
 	rep := metrics.AggregateTraffic(entries, metrics.TrafficOptions{Since: since, Until: until, GroupBy: metrics.TrafficGroupByTool})
 	t.ByTool = map[string]int{}
 	for _, r := range rep.Rows {
@@ -426,16 +581,74 @@ var verifyLedgerCache struct {
 	readErr error
 }
 
-// readVerifyLedgerFor counts the gate runs recorded for a project and sums,
-// over each plan's latest run, the claimed rows and the verified ones. The
-// ledger is read once per size and modification time. No ledger is absent
-// (the gate has not run on this machine), an unreadable one an error; a
-// readable ledger with no row for the project is a measured zero.
-func readVerifyLedgerFor(path, svc string) learnGate {
+// cachedVerifyLedgerFor is readVerifyLedgerFor reused while the ledger
+// (its size and mtime) and the project's plans directory (its mtime: a plan
+// added or removed) are unchanged and both can still be read; a failed read
+// is never kept, and one that fails now is reported now.
+func cachedVerifyLedgerFor(path, svc, root string) learnGate {
+	key := ""
+	if path != "" && root != "" && learnReadable(path) && learnReadable(filepath.Join(root, "docs", "plans")) {
+		li, lerr := os.Stat(path)
+		pi, perr := os.Stat(filepath.Join(root, "docs", "plans"))
+		plansSig := "-"
+		if perr == nil {
+			plansSig = fmt.Sprintf("%d", pi.ModTime().UnixNano())
+		}
+		if lerr == nil && (perr == nil || errors.Is(perr, os.ErrNotExist)) {
+			key = fmt.Sprintf("%s\x00%d\x00%d\x00%s\x00%s\x00%s", path, li.Size(), li.ModTime().UnixNano(), svc, root, plansSig)
+			if g, ok := learnGateCache.get(key, time.Now()); ok {
+				return g
+			}
+		}
+	}
+	g := readVerifyLedgerFor(path, svc, root)
+	if key != "" && g.runs.State != console.StateError {
+		learnGateCache.put(key, g, time.Time{})
+	}
+	return g
+}
+
+// learnReadable reports whether a file or directory can be read now — or
+// does not exist, which its reader reports as such. A cached read is used
+// only while its source is readable: the wedge makes stat succeed and
+// open fail, and an unreadable source is an error now, not an old count.
+func learnReadable(p string) bool {
+	fh, err := os.Open(p)
+	if err != nil {
+		return errors.Is(err, os.ErrNotExist)
+	}
+	defer fh.Close()
+	if info, err := fh.Stat(); err == nil && info.IsDir() {
+		_, err = fh.ReadDir(1)
+		return err == nil || errors.Is(err, io.EOF)
+	}
+	return true
+}
+
+// readVerifyLedgerFor is the gate's history on a project's current plans —
+// the plans `fathom plans status --service S` reads (docs/plans/*.md under
+// the recorded root, README excluded): the verify runs recorded on them,
+// how many of them the gate has run on, and, over each plan's latest run,
+// its claimed rows and the verified ones. A plan is its repository-relative
+// path, whichever checkout ran it — the root itself, a worktree, the
+// pre-push gate's fresh clone — and however the row named it (relative to
+// its repo_root, or absolute), so one plan is counted once. A row naming
+// anything else — a scratch plan under /tmp, a plan since deleted — is not
+// a run on this project's plans: it is named in the denominator as left
+// out, never counted as a plan gated.
+//
+// No ledger is absent (the gate has not run on this machine), an unreadable
+// ledger or plans directory an error; a readable ledger with no run on the
+// project's plans is a measured zero.
+func readVerifyLedgerFor(path, svc, root string) learnGate {
 	source := "verify ledger " + path
 	absent := func(reason string) learnGate {
 		a := console.Absent[int](reason).WithSource(source)
 		return learnGate{a, a, a, a}
+	}
+	errored := func(reason string) learnGate {
+		e := console.Errored[int](reason).WithSource(source)
+		return learnGate{e, e, e, e}
 	}
 	if path == "" {
 		return absent("no verify ledger path could be resolved")
@@ -445,35 +658,62 @@ func readVerifyLedgerFor(path, svc string) learnGate {
 		if errors.Is(err, os.ErrNotExist) {
 			return absent("no verify ledger at " + path + " — the gate has not run on this machine")
 		}
-		e := console.Errored[int]("verify ledger unreadable: " + err.Error()).WithSource(source)
-		return learnGate{e, e, e, e}
+		return errored("verify ledger unreadable: " + err.Error())
 	}
 	rows, rerr := verifyLedgerRows(path, info)
 	if rerr != nil {
-		e := console.Errored[int]("verify ledger unreadable: " + rerr.Error()).WithSource(source)
-		return learnGate{e, e, e, e}
+		return errored("verify ledger unreadable: " + rerr.Error())
+	}
+	if root == "" {
+		return absent("no corpus root is recorded for " + svc + ", so the gate's runs cannot be matched to its plans")
+	}
+	plans, perr := currentPlanPaths(root)
+	if perr != nil {
+		return errored("the project's plans could not be listed: " + perr.Error())
 	}
 	type latest struct {
 		at                string
 		verified, claimed int
 	}
 	byPlan := map[string]latest{}
-	runs := 0
+	resolved := map[[2]string]string{}
+	runs, elsewhere, forSvc := 0, 0, 0
 	for _, r := range rows {
 		if r.Service != svc {
 			continue
 		}
+		forSvc++
+		k := [2]string{r.RepoRoot, r.Plan}
+		plan, seen := resolved[k]
+		if !seen {
+			plan = ledgerPlanPath(r, root)
+			resolved[k] = plan
+		}
+		if !plans[plan] {
+			elsewhere++
+			continue
+		}
 		runs++
-		if cur, ok := byPlan[r.Plan]; !ok || r.At >= cur.at {
-			byPlan[r.Plan] = latest{at: r.At, verified: r.Verified, claimed: r.Claimed}
+		if cur, ok := byPlan[plan]; !ok || r.At >= cur.at {
+			byPlan[plan] = latest{at: r.At, verified: r.Verified, claimed: r.Claimed}
 		}
 	}
+	plansDir := filepath.ToSlash(filepath.Join("docs", "plans"))
+	left := ""
+	if elsewhere > 0 {
+		verb := "name"
+		if elsewhere == 1 {
+			verb = "names"
+		}
+		left = fmt.Sprintf("; %s %s no current plan (a scratch copy, a deleted plan) and are not counted", fmtThousands(elsewhere), verb)
+	}
 	g := learnGate{
-		runs:  console.Measured(runs, source).WithDenominator(fmt.Sprintf("gate runs recorded for %s, of %s in the ledger", svc, plural(len(rows), "row"))),
-		plans: console.Measured(len(byPlan), source).WithDenominator("plans the gate ran on for " + svc),
+		runs: console.Measured(runs, source).WithDenominator(fmt.Sprintf("gate runs on %s's %s in %s, from any checkout, of %s for %s in the ledger%s",
+			svc, plural(len(plans), "current plan"), plansDir, plural(forSvc, "row"), svc, left)),
+		plans: console.Measured(len(byPlan), source).WithDenominator(fmt.Sprintf("of the %s in %s the gate has run on", plural(len(plans), "plan"), plansDir)),
 	}
 	if runs == 0 {
-		a := console.Absent[int]("the gate has never run for " + svc + " on this machine").WithSource(source)
+		a := console.Absent[int]("the gate has never run on " + svc + "'s current plans on this machine").WithSource(source)
 		g.verified, g.claimed = a, a
 		return g
 	}
@@ -482,26 +722,97 @@ func readVerifyLedgerFor(path, svc string) learnGate {
 		v += l.verified
 		c += l.claimed
 	}
-	denom := "summed over each plan's latest gate run for " + svc
+	denom := "summed over each current plan's latest gate run for " + svc
 	g.verified = console.Measured(v, source).WithDenominator(denom)
 	g.claimed = console.Measured(c, source).WithDenominator(denom)
 	return g
 }
 
+// currentPlanPaths is a project's current plans — docs/plans/*.md under
+// root, README excluded, as activePlanFiles lists them — by repository-
+// relative path. A missing directory is no plans; an unreadable one is an
+// error (a glob would swallow it).
+func currentPlanPaths(root string) (map[string]bool, error) {
+	entries, err := os.ReadDir(filepath.Join(root, "docs", "plans"))
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return map[string]bool{}, nil
+		}
+		return nil, err
+	}
+	out := map[string]bool{}
+	for _, e := range entries {
+		if !e.IsDir() && filepath.Ext(e.Name()) == ".md" && !strings.EqualFold(e.Name(), "README.md") {
+			out[filepath.ToSlash(filepath.Join("docs", "plans", e.Name()))] = true
+		}
+	}
+	return out, nil
+}
+
+// ledgerPlanPath is the repository-relative path of the plan a ledger row
+// names ("" when it names none): a relative plan is already relative to the
+// checkout it ran in (the row's repo_root); an absolute one is made
+// relative to that checkout, else to the project's root — lexically, then
+// with symlinks resolved (a symlinked home or checkout path is the same
+// place).
+func ledgerPlanPath(r verifyLedgerRow, root string) string {
+	p := r.Plan
+	if p == "" {
+		return ""
+	}
+	if !filepath.IsAbs(p) {
+		return filepath.ToSlash(filepath.Clean(p))
+	}
+	for _, base := range []string{r.RepoRoot, root} {
+		if rel, ok := relInside(base, p); ok {
+			return rel
+		}
+	}
+	dir, err := filepath.EvalSymlinks(filepath.Dir(p))
+	if err != nil {
+		return ""
+	}
+	for _, base := range []string{r.RepoRoot, root} {
+		if base == "" {
+			continue
+		}
+		if canon, err := filepath.EvalSymlinks(base); err == nil {
+			if rel, ok := relInside(canon, filepath.Join(dir, filepath.Base(p))); ok {
+				return rel
+			}
+		}
+	}
+	return ""
+}
+
+// relInside is p relative to base when p lies inside base.
+func relInside(base, p string) (string, bool) {
+	if base == "" {
+		return "", false
+	}
+	rel, err := filepath.Rel(base, p)
+	if err != nil || rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", false
+	}
+	return filepath.ToSlash(rel), true
+}
+
 // verifyLedgerRows parses the ledger, reusing the last parse while its size
 // and modification time are unchanged.
 func verifyLedgerRows(path string, info os.FileInfo) ([]verifyLedgerRow, error) {
+	// Opened on every read: a ledger that cannot be read now is an error
+	// now, never the rows of an earlier read.
+	fh, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer fh.Close()
 	c := &verifyLedgerCache
 	c.Lock()
 	defer c.Unlock()
 	if c.path == path && c.size == info.Size() && c.mod.Equal(info.ModTime()) {
 		return c.rows, c.readErr
 	}
-	fh, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer fh.Close()
 	var rows []verifyLedgerRow
 	sc := bufio.NewScanner(fh)
 	sc.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
@@ -515,23 +826,29 @@ func verifyLedgerRows(path string, info os.FileInfo) ([]verifyLedgerRow, error) 
 			rows = append(rows, r)
 		}
 	}
-	c.path, c.size, c.mod, c.rows, c.readErr = path, info.Size(), info.ModTime(), rows, sc.Err()
-	if c.readErr != nil {
-		c.rows = nil
+	if err := sc.Err(); err != nil {
+		// A failed read is never kept: the next request reads again.
+		return nil, err
 	}
-	return c.rows, c.readErr
+	c.path, c.size, c.mod, c.rows, c.readErr = path, info.Size(), info.ModTime(), rows, nil
+	return c.rows, nil
 }
 
 // ─── rendering ──────────────────────────────────────────────────────────────
 
 // resolveConsoleHref picks the first page a route list names that the
-// console has registered — "/packs" until a wave registers it falls through
-// to the project workspace's tab — and returns it as a link.
+// console serves — "/packs" until a wave registers it falls through to the
+// project workspace's tab, and that tab until the workspace declares it
+// (consolePage.Tabs) to the workspace itself — and returns it as a link.
 func resolveConsoleHref(reg *consoleRegistry, pages []string) (href, title string, ok bool) {
 	for _, p := range pages {
-		path, _, _ := strings.Cut(p, "?")
+		path, query, _ := strings.Cut(p, "?")
+		tab := ""
+		if q, err := url.ParseQuery(query); err == nil {
+			tab = q.Get("tab")
+		}
 		for _, page := range reg.pages {
-			if routeMatches(page.Route, path) {
+			if routeMatches(page.Route, path) && (tab == "" || containsString(page.Tabs, tab)) {
 				return p, page.Title, true
 			}
 		}
@@ -563,15 +880,15 @@ func routeMatches(pattern, path string) bool {
 	return true
 }
 
-// stageLinkLabel names a stage's destination for its link.
+// stageLinkLabel names a stage's destination for its link: the page it
+// opens, and the tab only when the link is to one.
 func stageLinkLabel(href, title string, choice learnChoice) string {
 	path, query, _ := strings.Cut(href, "?")
 	if strings.HasPrefix(path, "/projects/") {
-		label := "Open " + choice.Service
 		if q, err := url.ParseQuery(query); err == nil && q.Get("tab") != "" {
-			label += " — " + q.Get("tab")
+			return "Open " + choice.Service + " — " + q.Get("tab") + " tab"
 		}
-		return label
+		return "Open " + choice.Service + "'s project page"
 	}
 	return "Open " + title
 }
@@ -605,19 +922,22 @@ func renderLearnPipeline(reg *consoleRegistry, choice learnChoice, pipe console.
 }
 
 // renderPipelineGraph draws the pipeline with the kit's layered graph
-// (FATHOM-KIT-02): one column per stage, the stage's headline count in its
-// box, the box linking to the stage's page; the kit's own table
-// alternative behind a disclosure.
+// (FATHOM-KIT-02): one column per step, the stage and its headline count in
+// its box ("Source: 2,093", the unit beneath), the box linking to the
+// stage's page; the kit's own table alternative behind a disclosure. The
+// node label carries the stage's name because the table alternative — the
+// keyboard and screen-reader path, the drawing's links being pointer-only —
+// names each node, and each hand-off, by that label alone.
 func renderPipelineGraph(reg *consoleRegistry, choice learnChoice, pipe console.Pipeline, m observatoryModel) string {
 	nodes := make([]viz.GraphNode, 0, len(pipe.Stages))
 	labels := make([]string, 0, len(pipe.Stages))
 	for _, st := range pipe.Stages {
 		href, _, _ := resolveConsoleHref(reg, st.Pages)
 		nodes = append(nodes, viz.GraphNode{
-			ID: string(st.ID), Label: pipelineNodeLabel(st.Headline.Value), Group: st.Headline.Label,
+			ID: string(st.ID), Label: st.Title + ": " + pipelineNodeLabel(st.Headline.Value), Group: st.Headline.Label,
 			Rank: st.Step - 1, Href: href,
 		})
-		labels = append(labels, fmt.Sprintf("%d · %s", st.Step, st.Title))
+		labels = append(labels, fmt.Sprintf("Step %d", st.Step))
 	}
 	edges := make([]viz.GraphEdge, 0, len(pipe.Edges))
 	for _, e := range pipe.Edges {
@@ -665,17 +985,21 @@ func pipelineLiveKeys(pipe console.Pipeline) string {
 	return strings.Join(keys, " ")
 }
 
-// stageVerb is the exact command that prints a stage's headline for the
-// project, or "" when no verb does (the footer names the instrument).
+// stageVerb is the exact CLI command that prints a stage's headline for
+// the project, or "" when none does and the footer names the instrument:
+// the source stage's files are the store's source refs, which no verb
+// prints (the fleet report carries its commits and freshness, offered in
+// the body); compile's current claims are printed by the agent surface's
+// staleness_report, a tool call rather than a command (offered in the body,
+// labelled as a call); the gate's headline is the verify ledger's (the body
+// offers `fathom plans status` to prove it now).
 func stageVerb(st console.PipelineStage, choice learnChoice, facts learnFacts) string {
 	svc := shellWord(choice.Service)
 	switch st.ID {
-	case console.StageSource, console.StageExtract, console.StageEvidence:
+	case console.StageExtract, console.StageEvidence:
 		return "fathom fleet report --json"
 	case console.StageIndex:
 		return "fathom report evidence --service " + svc + " --json"
-	case console.StageCompile:
-		return console.AskCall("staleness_report", map[string]any{"service": choice.Service})
 	case console.StageServe:
 		return facts.traffic.Verb
 	}
@@ -706,11 +1030,18 @@ func renderPipelineStage(reg *consoleRegistry, choice learnChoice, st console.Pi
 		}
 		body.WriteString(`</ul>`)
 	}
-	if st.ID == console.StageGate {
+	switch st.ID {
+	case console.StageSource:
+		body.WriteString(`<p class="mt-3 text-ink-muted">The indexed commit, HEAD and freshness: ` + renderVerbChip("fathom fleet report --json") + `</p>`)
+	case console.StageCompile:
+		body.WriteString(`<p class="mt-3 text-ink-muted">Each layer's claims by status, from the agent surface: ` + renderVerbChip(console.AskCall("staleness_report", map[string]any{"service": choice.Service})) + `</p>`)
+	case console.StageGate:
 		body.WriteString(`<p class="mt-3 text-ink-muted">Prove it now: ` + renderVerbChip("fathom plans status --service "+shellWord(choice.Service)) + `</p>`)
 	}
 	if href, title, ok := resolveConsoleHref(reg, st.Pages); ok {
 		body.WriteString(`<p class="mt-3"><a href="` + html.EscapeString(href) + `" class="inline-flex min-h-11 items-center font-medium text-accent underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus" data-stage-link>` + html.EscapeString(stageLinkLabel(href, title, choice)) + ` →</a></p>`)
+	} else if len(st.Pages) > 0 {
+		body.WriteString(`<p class="mt-3 italic text-ink-muted [overflow-wrap:anywhere]" data-stage-nopage>No console page shows this stage in full yet (` + html.EscapeString(st.Pages[0]) + ` is planned).</p>`)
 	}
 
 	source := st.Headline.Value.Source
@@ -751,6 +1082,8 @@ func stageStatusLine(st console.PipelineStage) string {
 	switch st.Status {
 	case console.StageOperating:
 		cls, word = "text-positive", "Operating here"
+	case console.StageWorking:
+		cls, word = "text-ink", "Working here"
 	case console.StageOff:
 		cls, word = "font-medium text-danger", "Off here"
 	case console.StageStale:
@@ -763,8 +1096,12 @@ func stageStatusLine(st console.PipelineStage) string {
 		line += ` — ` + html.EscapeString(st.StatusReason)
 	}
 	line += `</p>`
-	if st.Remedy != "" {
+	switch {
+	case strings.HasPrefix(st.Remedy, "fathom "):
 		line += `<p class="-mt-2 mb-3 text-ink-muted">Remedy: ` + renderVerbChip(st.Remedy) + `</p>`
+	case st.Remedy != "":
+		// A remedy that is a note ("nothing to run — …") is not a command.
+		line += `<p class="-mt-2 mb-3 text-ink-muted [overflow-wrap:anywhere]">Remedy: ` + html.EscapeString(st.Remedy) + `</p>`
 	}
 	return line
 }
@@ -783,7 +1120,13 @@ func stageSwitchLine(c console.CapabilityState) string {
 		}
 		return `<span class="font-mono text-xs text-ink">` + html.EscapeString(c.ID) + `</span> <span class="text-positive">on</span> <span class="text-ink-muted">(` + need + `)` + detail + `</span>`
 	}
-	return `<span class="font-mono text-xs text-ink">` + html.EscapeString(c.ID) + `</span> <span class="font-medium text-caution">off</span> <span class="text-ink-muted">(` + need + `) — ` + html.EscapeString(c.Reason) + `</span>`
+	// Absent (its inputs do not exist here) and broken (they exist and fail)
+	// are different to act on, so they read differently — in words first.
+	state := `<span class="font-medium text-ink-muted">off</span>`
+	if c.Broken {
+		state = `<span class="font-medium text-caution">broken</span>`
+	}
+	return `<span class="font-mono text-xs text-ink">` + html.EscapeString(c.ID) + `</span> ` + state + ` <span class="text-ink-muted">(` + need + `) — ` + html.EscapeString(c.Reason) + `</span>`
 }
 
 // renderLearnSwitches is the project's `fathom capabilities` as a table —

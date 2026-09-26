@@ -10,6 +10,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -349,20 +350,14 @@ func callLogReadCounting(path string) (entries []adoptionCallEntry, skippedMalfo
 	// can make the read incomplete.
 	sc.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
 	for sc.Scan() {
-		line := strings.TrimSpace(sc.Text())
-		if line == "" {
-			continue // blank separators are not entries and not malformed
-		}
-		var e adoptionCallEntry
-		if err := json.Unmarshal([]byte(line), &e); err != nil {
+		switch e, kind := decodeCallLogLine(sc.Bytes()); kind {
+		case callLogLineMalformed:
 			skippedMalformed++
-			continue
-		}
-		if mcp.IsConsoleRead(e.Origin) {
+		case callLogLineConsole:
 			consoleReads++
-			continue
+		case callLogLineEntry:
+			entries = append(entries, e)
 		}
-		entries = append(entries, e)
 	}
 	if scanErr := sc.Err(); scanErr != nil {
 		// Partial counts are not a complete observation. Discard even valid
@@ -370,6 +365,34 @@ func callLogReadCounting(path string) (entries []adoptionCallEntry, skippedMalfo
 		return nil, 0, 0, fmt.Errorf("read call log %s: %w", path, scanErr)
 	}
 	return entries, skippedMalformed, consoleReads, nil
+}
+
+// callLogLineKind is what one call-log line is to a usage reader.
+type callLogLineKind int
+
+const (
+	callLogLineBlank     callLogLineKind = iota // a separator: not an entry, not malformed
+	callLogLineMalformed                        // not a JSON entry
+	callLogLineConsole                          // the console reading itself (mcp.OriginConsole)
+	callLogLineEntry                            // a call a usage reader counts
+)
+
+// decodeCallLogLine is the one reading of a call-log line every usage
+// reader shares (callLogReadCounting, the console's incremental tail), so
+// a whole-file read and an appended-bytes read can never count differently.
+func decodeCallLogLine(raw []byte) (adoptionCallEntry, callLogLineKind) {
+	line := bytes.TrimSpace(raw)
+	if len(line) == 0 {
+		return adoptionCallEntry{}, callLogLineBlank
+	}
+	var e adoptionCallEntry
+	if err := json.Unmarshal(line, &e); err != nil {
+		return adoptionCallEntry{}, callLogLineMalformed
+	}
+	if mcp.IsConsoleRead(e.Origin) {
+		return e, callLogLineConsole
+	}
+	return e, callLogLineEntry
 }
 
 // registeredToolNames returns the sorted names of every tool the fathom
