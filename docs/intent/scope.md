@@ -25,54 +25,57 @@ reports 20 units and the flywheel's continuity loop states keep or kill
 SP-10, RG-5, RG-9 (observatory UI/wiring), OP-1 (the A/B, G2), OP-2 (deploy). DO-3 and
 IR-3/4/5 (the assess lanes) are designed (`docs/design/assess-lanes.md`, ADR-046) and
 proven 2026-09-25.
+{bet: ambient-closes, instrument: "fathom plans status", threshold: "docs/plans/ambient-fathom.md at 0 open and 0 claimed-unproven rows", review: 2026-10-25}
 
 **G5. The custodian closes.** Done when: `docs/plans/custodian.md` shows 0 open and 0
 claimed-unproven. Open: SD-2/3/4 (SDD panel); DP-2 is refused (superseded by EP-9).
+{bet: custodian-closes, instrument: "fathom plans status", threshold: "docs/plans/custodian.md at 0 open and 0 claimed-unproven rows", review: 2026-10-25}
 
 **G9. The bench is honest, cheap to re-run, and the 2026-09-13 reading is the baseline.**
 BP-1..25 proved (L0 index oracle, L1 payload replay, L2 corpus gate, per-key cell memoization,
 H2-3 registered). The first replicated home run (run-20260913T002832Z) is FAIL on cost
 either way: fathom passed 31/33 to grep's 28/33 but returned 1.90× the bytes (O31), and
-every headless cell paid a removable ToolSearch turn (O32). Done when the next L4 (BP-44)
+every headless cell paid a removable ToolSearch turn (O32). Done when: the next L4 (BP-44)
 borrows every grep/none cell by key, re-runs only fathom's, and records payload ≤ 1.0× or
 why not, after BP-41..43 land. Publication stays an operator decision (Q4, F2).
+{bet: bench-payload, instrument: "fathom plans status", threshold: "BP-44 proven in docs/plans/bench-pyramid.md with fathom's payload ≤ 1.0× grep's, or the reading names why not", review: 2026-10-25}
 
 **G13. The Observatory console closes.** Done when: `fathom plans status` shows
 `docs/plans/observatory-console.md` with 0 open non-op rows, UX-M1 and UX-M2 are measured
 PASS, and every contribution row names its app-kit delivery (vision 35, ADR-045).
-
-**G10. Every claim fathom makes is on a ledger, against its alternative (ADR-033).** Waves
-1–5 shipped the matrix, and pilots for M1/M3/M4/M5/M6 landed on
-`docs/bench/scenarios-ledger.jsonl`. **Voided 2026-09-13 by O41 (see G11):** the wired arm
-never had its tools connected, so every pilot reading here is history, not proof.
+{bet: console-closes, instrument: "fathom plans status", threshold: "docs/plans/observatory-console.md at 0 open non-op rows; UX-M1 and UX-M2 read PASS", review: 2026-10-25}
 
 **G11. A reading, a hand-off and an answer carry their evidence (ADR-034).** The first
-round's 74 rows were voided by an instrument defect (the wired arm never had the tools);
+round's 74 rows were voided by an instrument defect (the wired arm never had the tools; O41
+voided G10, ADR-033's ledger goal, on 2026-09-13 and it folds in here);
 every cell now carries its server status and surface calls, published readings are plan
 rows the gate verifies against the ledger, every tool answers under a budget with a
 receipt, discoveries reach workers and the next session as fresh-resolved pointers, and
-coverage is a code fact by layer. Done when the reruns in `docs/plans/receipts.md` wave 5
+coverage is a code fact by layer. Done when: the reruns in `docs/plans/receipts.md` wave 5
 carry readings with `surface_calls > 0` and the discoveries kill criteria are decided.
+{bet: receipts-rerun, instrument: "fathom plans status", threshold: "docs/plans/receipts.md wave 5 proven with surface_calls > 0 on every reading; the discoveries kill criteria decided", review: 2026-10-25}
 
 **G12. The surface leads with the answers grep cannot give, and every answer is falsifiable
 (ADR-035).** The four impact verbs and a safe-delete check join the agent surface,
 obligations names the governing rule, a layer rule compiles to a test, receipts carry a
-re-derivable resolution tier, and fathom is measured on a corpus it did not write. Done
-when `docs/plans/verbs.md` waves A–D are proven and M10–M13 carry readings, honest either
-way. **2026-09-17:** waves A–D proven (VB-1..36); M7's freshness kill fired (VB-18 —
+re-derivable resolution tier, and fathom is measured on a corpus it did not write.
+Done when: `docs/plans/verbs.md` waves A–D are proven and M10–M13 carry readings, honest
+either way. **2026-09-17:** waves A–D proven (VB-1..36); M7's freshness kill fired (VB-18 —
 freshness leaves positioning); M11/M11b and M8 held; M10 is on hold pending ADR-037's
 raw-guide re-measure; M13's governance pilot and M15's historical-PR review stay open;
 M12/M12b and M14 are a published null or stay advisory. Governance now bites at the edit
 for checkable rules (ADR-037, ADR-038); fathom reads level with the best tools at lower
 cost, not a token-savings win (`docs/bench/README.md` "Where fathom stands").
+{bet: verbs-readings, instrument: "fathom plans status", threshold: "docs/plans/verbs.md M10 and M13 carry a reading (M11 and M12 are read), honest either way", review: 2026-10-25}
 
 **G7. The evidence plane's waves 1–2 ship and its oracle gate is read (ADR-026).** Waves 1
 and 2 shipped 2026-08-27: the verb, the ledger, the doctor rows, the clock, the shared
 attention line, the capped primer, the guard proposal with provenance, U12/U13, the fleet
-column, and K5's pair with K1's measured baseline (2 records, median 78 days). Done when
+column, and K5's pair with K1's measured baseline (2 records, median 78 days). Done when:
 the clock row records whether K0's demand signal (≥3 annotations across ≥2 repos) was met
 by day 30 — either outcome closes the goal, and EP-16/17/18 are the only rows still waiting
 on it.
+{bet: evidence-plane-k0, instrument: "fathom intent audit", threshold: "the clock row records K0's demand signal (≥3 annotations across ≥2 repos) met or missed at day 30", review: 2026-09-27}
 
 ## Current boundaries
 
