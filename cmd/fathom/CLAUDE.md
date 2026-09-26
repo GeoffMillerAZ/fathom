@@ -12,7 +12,7 @@ test.** Page projections that a CLI verb also shows live in `internal/console`
 for the shell and grouped nav, `chrome` for breadcrumbs/description lists,
 `appearance` for the theme (key `fathom-theme`), `palette` for the ⌘K palette
 over `/search` (`console_palette.go`), `live` for "updated — refresh this panel" over
-`/events` (`console_live.go`: every panel names its sources), `table` for tables, `stat` for
+`/events` (`console_live.go`: every panel names its sources), `table` for tables, `topology` for the fleet's health rollup, `stat` for
 KPIs (`stat.Absent` for uninstrumented metrics — law 3; `valueStat` maps a
 projected value), `viz` for charts; a panel is `renderPanel` (question, verb
 chip, source/denominator/freshness footer). The doctrine, binding:

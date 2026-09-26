@@ -194,6 +194,27 @@ and a 390 px frame, and an in-browser 390 px layout probe reporting no document-
 horizontal overflow on any page. This is not UX-M2's certification: keyboard paths and
 contrast were spot-checked, not measured page by page.
 
+## Observatory console wave B: Now and the fleet (2026-09-25)
+
+Wave B (plan section B, OC-17..OC-20) rebuilds `/` and `/fleet` on the `d9dd789`
+mirror; no mirror file changed. New kit package in the console: `topology.Render`
+(the fleet's health rollup, groups collapsed, each group's name a filter link),
+which joins `cmd/fathom/ui/input.css` and `scripts/ui-css.sh`'s audited closure.
+Composed from what the console already used: `stat.RenderBand` (both pages' bands;
+Now's keeps two columns below `md`, as the phone mockup does), `renderPanel`
+(every panel names its verb and sources), `table.Table` for the pulse, the fleet
+and every sparkline's per-day table alternative, `chrome.RenderDisclosure` (the
+rest of the queue, earlier changes, the table alternatives, the machine surfaces),
+`chrome.RenderEmptyState`, `chrome.RenderPagination`, `callout.Badge` (areas and
+health), `form.RenderSelect`/`RenderInput`/`RenderField`/`RenderButton` (the fleet's
+GET filter form).
+
+**Built locally as the originating consumer, to return (candidates below):** the
+shared-scale traffic sparkline (FATHOM-B-KIT-01), link-mode sortable table headers
+(FATHOM-B-KIT-03) and the one-rendering card table (FATHOM-B-KIT-04). The rung
+pips (the realization ladder as five labelled marks) and the attention list stay
+fathom's own domain views (design §5).
+
 ## Current mirror and palette convergence (2026-09-25)
 
 FATHOM-GUIDE-01 landed on main at mirror `f7ab0fbd`, then took one reviewed bump to
@@ -482,6 +503,52 @@ inside mirror `d9dd789`:
   arrow on its own line; expected `whitespace-nowrap` on the action. Fathom now makes the
   service name the row's drill-down link and renders no action column, which also frees a
   column's width at 390 px.
+- **Disposition:** `candidate`. Next action: app-kit maintainer.
+
+**FATHOM-B-KIT-01 — a sparkline on a shared scale that never draws across a gap (candidate)**
+
+- **Origin / task:** console wave B, the fleet's calls per day (OC-20: sparklines across
+  projects share one scale and never draw across an absent day).
+- **Observed / expected:** `viz.Sparkline` scales every call to its own min and max and
+  drops a `NaN` point by joining its neighbours, so rows cannot share a scale (13 calls
+  looked like 22k, the survey's defect) and a day the instrument never observed is
+  drawn through. Expected: `SparklineOptions` with an explicit value domain (`Min`,
+  `Max`) and gap segments (a missing point splits the line and is drawn as a gap).
+- **Local build:** `sharedSparkline` (`cmd/fathom/console_fleetviz.go`) keeps viz's L3a
+  discipline — no class attribute, role colors as `var(--ak-color-*)`, `role="img"`
+  with a title — and every chart has its per-day table.
+- **Disposition:** `candidate`. Next action: app-kit maintainer.
+
+**FATHOM-B-KIT-02 — `topology.Render`'s links and summaries are text-sized (candidate)**
+
+- **Origin / task:** the fleet's health rollup.
+- **Observed / expected:** drill-through links and group summaries have no 44 px target
+  or focus-visible outline, the console's floor. Fathom's wrapper adds both with
+  descendant variants (`[&_a]:min-h-11`, `[&_summary]:min-h-11`, focus outlines).
+  Expected: the kit's own `min-h-11` and focus treatment, as `chrome.Breadcrumbs` got in
+  FATHOM-F0-KIT-03.
+- **Disposition:** `candidate`. Next action: app-kit maintainer.
+
+**FATHOM-B-KIT-03 — `table.Table`'s sortable header is a script-driven button (candidate)**
+
+- **Origin / task:** the fleet table's sort (design §2: filters and sort are URL state;
+  pages work without JavaScript).
+- **Observed / expected:** a `Sortable` column renders `<button data-table-sort>` for a
+  Datastar handler, and the header cell carries no `aria-sort`. Fathom renders each
+  sortable header through `HeaderHTML` as a link to the sorted route that names the
+  current direction in words (`sortHeader`). Expected: a link mode (`SortHref`) and
+  `aria-sort` on the active `<th>`.
+- **Disposition:** `candidate`. Next action: app-kit maintainer.
+
+**FATHOM-B-KIT-04 — a table that reads as cards below a breakpoint, from one rendering (candidate)**
+
+- **Origin / task:** the fleet table and Now's pulse at 390 px; wave F0's `/statusz`
+  rendered its rows twice (a table and a stacked list), which at the fleet's size
+  pushed the page past half its 250 KB budget.
+- **Observed / expected:** fathom wraps the kit table in descendant variants
+  (`cardTableLG`/`cardTableXL`: `thead` hidden, rows and cells as blocks, a per-cell
+  label shown only below the breakpoint). Expected: a kit option (`Cards: "lg"`) with the
+  labels drawn from the column headers.
 - **Disposition:** `candidate`. Next action: app-kit maintainer.
 
 **FATHOM-ADOPT-01 — selected metadata migration**
