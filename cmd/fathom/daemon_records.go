@@ -127,7 +127,56 @@ func recordServingDaemonAs(meta daemonMeta, addr, callLog, storePath, commit str
 	if legacy, lerr := console.DaemonRecordPath(home, addr); lerr == nil {
 		_ = os.Remove(legacy)
 	}
+	pruneDeadScratchRecords(home, rec.ID, pidGone)
 	return rec, p, nil
+}
+
+// pidGone reports whether no process has pid (ESRCH); a pid that exists
+// but is not ours to signal (EPERM) is alive.
+func pidGone(pid int) bool {
+	return pid > 0 && errors.Is(syscall.Kill(pid, 0), syscall.ESRCH)
+}
+
+// pruneDeadScratchRecords removes the records of scratch daemons
+// (addr-<port>-<pid>) whose pid is gone, keeping self. A scratch record id
+// is unique per process, so without this every daemon that died without
+// its clean exit (SIGKILL, a crash) would leave one for good, and every
+// lookup would pay for it (I48). A managed daemon's record is kept: a verb
+// names its call log through it while launchd restarts it. The pid comes
+// from the directory name; the record is not read.
+func pruneDeadScratchRecords(home, self string, gone func(int) bool) {
+	dir := daemonRecordsDir(home)
+	ents, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+	for _, e := range ents {
+		if !e.IsDir() || e.Name() == self {
+			continue
+		}
+		_, pid, ok := scratchRecordID(e.Name())
+		if !ok || !gone(pid) {
+			continue
+		}
+		removeDaemonRecord(filepath.Join(dir, e.Name(), "record.json"))
+	}
+}
+
+// scratchRecordID parses addr-<port>-<pid>.
+func scratchRecordID(id string) (port string, pid int, ok bool) {
+	rest, found := strings.CutPrefix(id, "addr-")
+	if !found {
+		return "", 0, false
+	}
+	i := strings.LastIndex(rest, "-")
+	if i <= 0 {
+		return "", 0, false
+	}
+	pid, err := strconv.Atoi(rest[i+1:])
+	if err != nil || pid <= 0 {
+		return "", 0, false
+	}
+	return rest[:i], pid, true
 }
 
 // removeDaemonRecord removes a record on clean exit, and its directory
@@ -152,10 +201,16 @@ type storedRecord struct {
 // legacy ~/.fathom/daemons/*.json, sorted by path. An unreadable record is
 // returned in errs (named, never silently absent — I38).
 func listDaemonRecords(home string) (recs []storedRecord, errs []error) {
+	return listDaemonRecordsWhere(home, nil)
+}
+
+// listDaemonRecordsWhere is listDaemonRecords reading only the record
+// directories keep accepts by name (nil keeps all).
+func listDaemonRecordsWhere(home string, keep func(id string) bool) (recs []storedRecord, errs []error) {
 	newDir := daemonRecordsDir(home)
 	if ents, err := os.ReadDir(newDir); err == nil {
 		for _, e := range ents {
-			if !e.IsDir() {
+			if !e.IsDir() || (keep != nil && !keep(e.Name())) {
 				continue
 			}
 			p := filepath.Join(newDir, e.Name(), "record.json")
@@ -211,8 +266,14 @@ func sameDaemonAddr(a, b string) bool {
 
 // findDaemonRecord returns the record for addr: a schema-2 record first
 // (newest started_at, then path), else the legacy one.
+// Only the directories that can be addr's are read: a managed label's, and
+// addr-<port>-* for addr's port — it sits on the console's request path.
 func findDaemonRecord(home, addr string) (console.DaemonRecord, bool) {
-	recs, _ := listDaemonRecords(home)
+	_, wantPort, _ := net.SplitHostPort(addr)
+	recs, _ := listDaemonRecordsWhere(home, func(id string) bool {
+		port, _, scratch := scratchRecordID(id)
+		return !scratch || port == wantPort
+	})
 	var best *storedRecord
 	for i := range recs {
 		r := &recs[i]

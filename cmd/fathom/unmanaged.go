@@ -197,10 +197,30 @@ func (l *daemonLifetime) tick() string {
 }
 
 // shutdown logs the reason, removes the record and exits 0.
-func (l *daemonLifetime) shutdown(reason string) {
+func (l *daemonLifetime) shutdown(reason string) { l.shutdownWith(reason, 0) }
+
+// shutdownWith is shutdown with an exit code (128+signo for a signal).
+func (l *daemonLifetime) shutdownWith(reason string, code int) {
 	l.logf(fmt.Sprintf("serve-http: unmanaged daemon exiting: %s (§10.1; --idle-exit/--ttl/--exit-with-parent, or --managed)", reason))
 	removeDaemonRecord(l.recordPath)
-	l.exit(0)
+	l.exit(code)
+}
+
+// exitOnSignal shuts an unmanaged daemon down on the first signal from
+// sigs, removing its record and exiting 128+signo as the default action
+// would. kill, pkill, `daemon reap` and a script's trap all send SIGTERM;
+// without this each left the record behind for good (its id is unique per
+// process, so nothing overwrote it).
+func exitOnSignal(sigs <-chan os.Signal, l *daemonLifetime) {
+	sig, ok := <-sigs
+	if !ok {
+		return
+	}
+	code := 1
+	if s, isSys := sig.(syscall.Signal); isSys {
+		code = 128 + int(s)
+	}
+	l.shutdownWith("signal "+sig.String(), code)
 }
 
 func (l *daemonLifetime) run(every time.Duration) {

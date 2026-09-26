@@ -9,11 +9,13 @@ import (
 	"net/http"
 	"net/http/pprof"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"runtime/debug"
 	"strings"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/capability"
@@ -364,6 +366,11 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 		lifetime.exe = identify(exe)
 	}
 	go lifetime.run(daemonLifetimeTick)
+	if !managed {
+		sigs := make(chan os.Signal, 1)
+		signal.Notify(sigs, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP)
+		go exitOnSignal(sigs, lifetime)
+	}
 	if !managed && *exitWithParent {
 		if !watchParentExit(startPPID, parentExitPoll, os.Getppid, lifetime.shutdown) {
 			outLog.Info(fmt.Sprintf("serve-http: parent-exit watch off (started by pid %d)", startPPID))
