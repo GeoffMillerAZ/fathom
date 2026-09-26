@@ -766,7 +766,8 @@ whole-service case.
   then the reload line.
 - `--reconcile` rewrites only the tenancy keys and keeps the label, `ProgramArguments`
   paths, store, call log, `WorkingDirectory` and the environment dict; writes
-  `<plist>.bak.<ts>` and a receipt (law 15). A plist fathom did not write needs `--adopt`
+  a backup `~/.fathom/daemon/<label>/<label>.plist.bak.<ts>` (beside the receipt, never
+  in `LaunchAgents`, where launchd could load a same-label v1 job) and a receipt (law 15). A plist fathom did not write needs `--adopt`
   (this machine's hand-written one).
 - Order is enforced: `--reconcile` refuses unless the installed binary's `version --json`
   reports `tenancy_contract >= 1` (it exits 75 on adoption). Sequence: `task deploy`,

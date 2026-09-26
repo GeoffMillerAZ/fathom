@@ -45,9 +45,9 @@ and the operator can switch the daemon off with nothing else working.
 - [x] The kill switch: `disabled.json` is read before config, store or bind and a disabled daemon exits 0 in under 50 ms (§9) {id: RT-3, symbol: checkKillSwitch, package: cmd/fathom, reachable_from: TestDisabledFileCheckedBeforeStoreOpen}
 - [x] `disabled.json` and `paused.json` govern only the managed daemon (and hooks addressing its URL); an unmanaged daemon ignores them (§9) {id: RT-167, symbol: checkKillSwitch, package: cmd/fathom, reachable_from: TestKillSwitchIgnoredByUnmanagedDaemon}
 - [x] `fathom daemon stop` writes the switch, kills with a pid-reuse guard, and proves the port closed before it reports success (§9) {id: RT-4, symbol: runDaemonStop, package: cmd/fathom, reachable_from: TestStopProofRequiresPortClosed}
-- [x] Under an installed schema-1 plist, `stop` and the breaker say launchd will relaunch every 10 s and each start exits in < 50 ms, print the `launchctl bootout` and `--reconcile` lines, and the kill-switch check writes no lifecycle row (§9) {id: RT-157, symbol: runDaemonStop, package: cmd/fathom, reachable_from: TestStopUnderV1PlistNamesRelaunchAndBootout}
+- [x] Under an installed schema-1 plist, `stop` says launchd will relaunch every 10 s and each start exits in < 50 ms (or, for a label a relaunch would not recognise as managed, that it will NOT see the switch), prints the `launchctl bootout` and `--reconcile` lines, and the kill-switch check writes no lifecycle row; the breaker's own disabled.json write carries the same clause with RT-38 (§9) {id: RT-157, symbol: runDaemonStop, package: cmd/fathom, reachable_from: TestStopUnderV1PlistNamesRelaunchAndBootout}
 - [x] `fathom daemon stop` kills a daemon that ignores SIGTERM (§9) {id: RT-5, symbol: runDaemonStop, package: cmd/fathom, reachable_from: TestStopKillsDaemonIgnoringSIGTERM}
-- [x] `--for <dur>` exits 75 until expiry, an empty `disabled.json` disables, `daemon start` resets the breaker window, `pause`/`resume` move to and from safe mode (§9) {id: RT-6, symbol: EvaluateKillSwitch, package: internal/tenancy, reachable_from: TestTimedPauseExits75UntilExpiry}
+- [x] `--for <dur>` exits 75 until expiry, an empty `disabled.json` disables, `daemon start` resets the breaker window, `pause`/`resume` set and clear the safe-mode flag and say it has no effect until RT-39/RT-150 (§9) {id: RT-6, symbol: EvaluateKillSwitch, package: internal/tenancy, reachable_from: TestTimedPauseExits75UntilExpiry}
 - [ ] Every hook invocation carries one monotonic deadline (`TimeoutSec − max(1 s, 20%)`) that every RPC derives from and sends as `X-Fathom-Deadline` (§11.1) {id: RT-7, symbol: HookDeadline, package: internal/hookguard, reachable_from: TestNoHookRPCOutlivesItsDescriptorBudget}
 - [ ] `fetchServices` retries only on refused/reset and only within the hook deadline, never after a timeout (§11.1) {id: RT-8, symbol: fetchServices, package: cmd/fathom, reachable_from: TestFetchServicesNeverRetriesAfterTimeout}
 - [ ] Hooks share a per-URL breaker file that opens on 2 failures in 10 s (or at once on a 503 with `Retry-After`), backs off exponentially, and admits exactly one half-open prober under an O_EXCL lease (§11.2) {id: RT-9, symbol: BreakerAllows, package: internal/hookguard, reachable_from: TestHookBreakerSingleProber}
@@ -69,8 +69,9 @@ and the operator can switch the daemon off with nothing else working.
 
 ## A2. Posture and census — ship with A, or next if time is short
 
-RT-28 needs RT-14 (reconcile) and RT-24 (reap); if these slip, wave A deploys without
-them and RT-28 waits.
+RT-28 needs RT-11 (adoption exits 75: a schema-2 plist leaves an exit-0 adoption down),
+RT-14 (reconcile) and RT-24 (reap); if these slip, wave A deploys without them and RT-28
+waits.
 
 - [x] Plist schema 2: KeepAlive {SuccessfulExit: false}, ThrottleInterval 60, ProcessType Background, LowPriorityIO, LowPriorityBackgroundIO, Nice 5, ExitTimeOut 20, `--managed` (§8.1) {id: RT-13, symbol: plistBody, package: cmd/fathom, reachable_from: TestPlistV2RoundTripAndReconcileKeepsOperatorKeys}
 - [x] `fathom daemon install --reconcile` rewrites only the tenancy keys, keeps label, paths, store, call log, WorkingDirectory and env, writes a backup and receipt, needs `--adopt` for a hand-written plist, and refuses before the binary reports `tenancy_contract >= 1` (§8.3) {id: RT-14, symbol: reconcilePlist, package: cmd/fathom, reachable_from: TestPlistV2RoundTripAndReconcileKeepsOperatorKeys}
@@ -78,7 +79,7 @@ them and RT-28 waits.
 - [ ] Daemon records move to `~/.fathom/daemon/<id>/record.json`; the legacy `~/.fathom/daemons/` is read for one release and pruned (§10.2) {id: RT-166, symbol: daemonRecordPath, package: cmd/fathom, reachable_from: TestDaemonRecordUnderDaemonDirWithLegacyRead}
 - [ ] `fathom daemon ps` joins records with a live census and names orphaned, idle, unlinked, no-record and stale-record daemons (§10.2) {id: RT-23, symbol: daemonCensus, package: cmd/fathom, reachable_from: TestDaemonCensusVerdicts}
 - [ ] `fathom daemon reap` is dry-run by default and never touches the managed label (§10.2) {id: RT-24, symbol: runDaemonReap, package: cmd/fathom, reachable_from: TestDaemonReapDryRunKillsNothing}
-- [ ] (op) RT-28: operator deploys the wave-A binary with `task deploy` (which now fails without the signing identity), reconciles this machine's plist (`--adopt`), reloads from their own terminal, and runs `fathom daemon reap --apply` on the leaked scratch daemons {id: RT-28, skip: "operator action on the live machine", needs: "RT-14,RT-24,RT-147"}
+- [ ] (op) RT-28: operator deploys the wave-A binary with `task deploy` (which now fails without the signing identity), reconciles this machine's plist (`--adopt`), reloads from their own terminal, and runs `fathom daemon reap --apply` on the leaked scratch daemons {id: RT-28, skip: "operator action on the live machine", needs: "RT-11,RT-14,RT-24,RT-147"}
 
 ## B. Seatbelt — bounded whatever the cause
 

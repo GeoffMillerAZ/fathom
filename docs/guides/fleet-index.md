@@ -304,7 +304,8 @@ Never hand-roll it with `cp`:
 writes `~/.fathom/daemon/disabled.json`, kills the managed pid (SIGTERM,
 10 s, SIGKILL) and proves the port closed. Every launchd relaunch then exits
 0 in under 50 ms before touching config, store or port. `fathom daemon
-start` undoes it. With no binary at hand, `touch
+start` undoes it (`status`, doctor and the session primer name it as the
+remedy while the switch is set; `task deploy` installs but does not start). With no binary at hand, `touch
 ~/.fathom/daemon/disabled.json` and kill the process. Under a schema-1 plist
 launchd keeps relaunching every 10 s (harmlessly); `fathom daemon install
 --reconcile` (after `task deploy`) and a reload from your terminal make

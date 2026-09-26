@@ -1429,7 +1429,9 @@ fathom `serve-http` — sends SIGTERM, waits 10 s, sends SIGKILL, and reports
 success only when the process is gone **and** the port is closed, printing
 the proof (`pid 75018 gone after 3.1 s (SIGTERM); :7575 closed; launchd will
 not relaunch: disabled.json`). Exit 1 when either fails. The managed daemon
-(`serve-http --managed`, or a launchd job whose label names fathom) reads the
+(`serve-http --managed`, or a launchd job whose label is the `Label` of an
+installed fathom `serve-http` agent — the label need not contain "fathom")
+reads the
 switch as its first action — before config, store or bind — and exits 0 in
 under 50 ms; with `--for` it exits 75 (retried later) until `until`, then
 starts normally. An empty file (`touch ~/.fathom/daemon/disabled.json`, the
@@ -1437,11 +1439,19 @@ starts normally. An empty file (`touch ~/.fathom/daemon/disabled.json`, the
 (unmanaged) `serve-http` ignores both files. `start` removes the switch,
 appends an `operator_reset` row to `~/.fathom/daemon/<label>/lifecycle.jsonl`
 (the breaker window restarts) and kickstarts the label. `pause` writes
-`paused.json`; the managed daemon re-reads it every 2 s and stays up in safe
-mode; `resume` removes it. **Under an installed schema-1 plist** (`KeepAlive
+`paused.json`; the managed daemon re-reads it every 2 s, stays up and sets
+its safe-mode flag (logged); in this release the flag has no effect yet —
+auto-refresh off and heavy requests refused arrive with RT-39/RT-150, so
+`stop` is the switch that takes load off now. `resume` removes it. While the
+switch is set, `status`, doctor and the session primer name `fathom daemon
+start` (with the switch's reason) as the remedy instead of a kickstart, and
+`task deploy` installs the binary, then stops with that message instead of
+waiting on a health check the switch will fail. A switch file that exists
+but cannot be read still applies, named unreadable (I38). **Under an installed schema-1 plist** (`KeepAlive
 true`) exit 0 does not stay down: `stop` says launchd will relaunch every
 10 s, each start exiting in < 50 ms, and prints `launchctl bootout` and the
-`--reconcile` line. From an agent shell (`CLAUDECODE` or `CODEX_*` set)
+`--reconcile` line (or, when the plist's label would not be recognised as
+the managed daemon, says each relaunch will NOT see the switch). From an agent shell (`CLAUDECODE` or `CODEX_*` set)
 every `launchctl` line is printed, never run — running it from an agent's
 Bash tool wedges.
 
@@ -1453,13 +1463,19 @@ Bash tool wedges.
 --reconcile` brings an installed plist there in place: it rewrites only
 those keys (and inserts `--managed` after `serve-http`), keeps the label,
 paths, store, call log, `WorkingDirectory`, the environment and every
-comment byte for byte, writes `<plist>.bak.<UTC ts>` and a receipt at
+comment byte for byte, writes a backup
+`~/.fathom/daemon/<label>/<label>.plist.bak.<UTC ts>` (never beside the live
+plist, where launchd could load it) and a receipt at
 `~/.fathom/daemon/<label>/reconcile-<ts>.json`, needs `--adopt` for a plist
 fathom did not write, and refuses unless the plist's binary answers
 `version --json` with `tenancy_contract >= 1` (order: `task deploy`,
 confirm, reconcile, reload). Doctor's `daemon_posture` row and `status`
 WARN on drift with the exact command. `status` also prints the running
-binary's codesigning identity and names an ad-hoc one (RT-148).
+daemon's codesigning identity — read from the live process (`codesign -dv
+<pid>`), since a deploy replaces the file under it, or from the plist's
+binary on disk when none is running, and says which — and names an ad-hoc
+one (RT-148). Adoption by the self-restart watcher exits 75, so schema 2
+relaunches it; that is what `tenancy_contract` 1 promises.
 
 macOS/launchd. `install` writes `~/Library/LaunchAgents/<label>.plist` with
 **your** resolved binary (symlinks followed, so launchd runs the stable
