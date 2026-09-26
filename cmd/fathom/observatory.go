@@ -58,6 +58,10 @@ type obsServiceRow struct {
 	// model assembled from any other source must set it rather than let
 	// Symbols default to a fabricated 0 (law 3).
 	SymbolsNote string `json:"symbols_note,omitempty"`
+	// languages are the registry's languages for the service (the fleet
+	// table's column, console_projects.go). Unexported: observatoryModel
+	// v1's JSON is a compatibility surface (OC-7).
+	languages []string
 }
 
 // obsArmBanner / obsNarrateBanner surface the active dials loudly.
@@ -368,7 +372,7 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 		sort.Strings(names)
 		for _, name := range names {
 			info := svcs[name]
-			row := obsServiceRow{fleetServiceRow: fleetServiceRow{Service: name, Path: info.path, Symbols: info.symbols}}
+			row := obsServiceRow{fleetServiceRow: fleetServiceRow{Service: name, Path: info.path, Symbols: info.symbols}, languages: splitLangs(info.langs)}
 			row.Freshness, row.IndexedCommit, row.RepoHead = fleetFreshness(hc, baseURL, name, info.path)
 			if strings.HasPrefix(row.Freshness, "stale") {
 				row.FreshnessRemedy = daemonRefreshRemedy(info.path, name)

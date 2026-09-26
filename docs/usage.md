@@ -1396,6 +1396,7 @@ evaluated until ratings exist.
 
 ```sh
 fathom brief [--print | --out ~/.fathom/briefs] [--url U]   # the shareable markdown value brief, honesty covenant included ("Not measured" is a section, not a gap)
+fathom brief --json [--store S] [--url U]                  # the console's Now page as JSON: attention queue, since your last look, stat band, fleet pulse; reads the store the daemon recorded, read-only
 fathom flywheel [--json] [--url U]                          # every feedback loop: CLOSED / OPEN / IDLE — exit 1 if any loop is OPEN
 ```
 
@@ -2312,8 +2313,8 @@ unreadable store) render on the same shell with the reason and the remedy.
 
 | Route | Page |
 |---|---|
-| `/` | Now — the front door (four questions, surfaces) |
-| `/fleet` | Fleet tiles; the JSON carries `fathom fleet report --json` computed by the verb's own function |
+| `/` | Now — the attention queue (gate failures, unproven claims, stale or unknown indexes, certificate gaps, uncompiled governing guides, open observations: each with its evidence link and remedy), what changed since your last look, a stat band and the fleet pulse; the JSON carries `fathom brief --json` and `fathom fleet report --json` |
+| `/fleet` | Every project in one table — `?sort=<column>&dir=asc\|desc`, `?health=failed\|degraded\|unknown\|healthy`, `?q=` (name or path), `?lang=`, `?page=` — rolled up by health; the default order is unrealized value (RG-4); the JSON carries `fathom fleet report --json` computed by the verb's own function |
 | `/projects/{svc}` | One project (was `/observatory/service?id=S`) |
 | `/impact` | The four questions with their instruments |
 | `/sessions`, `/sessions/{id}` | The week and one session's replay |
@@ -2331,7 +2332,10 @@ unreadable store) render on the same shell with the reason and the remedy.
   `fleet.symbols`, `calls.total` (every row in the resolved call log —
   unattributed rows are named, never dropped), `sessions.total` (distinct
   sessions, never ledger rows) and `observations.open` (a partial count stays a
-  "≥" lower bound everywhere, the brief included).
+  "≥" lower bound everywhere, the brief included); with wave B,
+  `fleet.wired_fresh`, `plans.verified` (the newest recorded verify run of each
+  plan at its project's registered root), `claims.fresh` and
+  `certificates.live`.
 - The fleet page's grade distribution over 30 days (RG-7) is
   **experimental**: days without a snapshot are Absent — today's fold
   only, until daily snapshots persist (the page says so). Symbols/traffic/

@@ -610,6 +610,132 @@ func TestConsolePagesRenderTheirVerbs(t *testing.T) {
 	if withVerbs == 0 {
 		t.Error("no page declares a verb; the parity framework proved nothing")
 	}
+
+	// Per-project verbs: a page that renders a verb's answer for each
+	// project from a recorded instrument (ProjectVerbs) carries a section
+	// per template, keyed by service, and each concrete verb is run and
+	// held to it. The fleet here has real roots, and one plan is verified
+	// at their HEAD by a real `fathom verify` run, so the recorded proof
+	// has something to agree with.
+	g := newConsoleFixtureOpts(t, consoleFixtureOpts{Rooted: true})
+	rootedProject(t, g, "payment-service")
+	plansDir, err := filepath.Abs(filepath.Join("testdata", "plans"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var vout, verr bytes.Buffer
+	run([]string{"verify", "--service", "payment-service", "--url", g.ts.URL,
+		"--plan", filepath.Join(plansDir, "fixture-a.md"), "--plan", filepath.Join(plansDir, "fixture-b.md")}, &vout, &verr)
+	resetObsCache()
+	compared := map[string]int{}
+	for _, p := range defaultConsoleRegistry().pages {
+		if len(p.ProjectVerbs) == 0 {
+			continue
+		}
+		env := g.pageJSON(t, samplePath(p))
+		if !reflect.DeepEqual(append([]string{}, env.ProjectVerbs...), append([]string{}, p.ProjectVerbs...)) {
+			t.Errorf("page %s: JSON project verbs %v, registry %v", p.ID, env.ProjectVerbs, p.ProjectVerbs)
+		}
+		for _, tmpl := range p.ProjectVerbs {
+			check, ok := consoleProjectVerbChecks[tmpl]
+			if !ok {
+				t.Errorf("page %s renders %q, but no check holds it to the verb", p.ID, tmpl)
+				continue
+			}
+			var bySvc map[string]json.RawMessage
+			if err := json.Unmarshal(env.Sections[tmpl], &bySvc); err != nil {
+				t.Errorf("page %s: section %q is not keyed by service: %v", p.ID, tmpl, err)
+				continue
+			}
+			for _, svc := range consoleFixtureServices {
+				compared[tmpl] += check(t, g, svc, bySvc[svc])
+			}
+		}
+	}
+	if len(compared) == 0 {
+		t.Error("no page declares a per-project verb; the parity framework proved nothing")
+	}
+	for tmpl, n := range compared {
+		if n == 0 {
+			t.Errorf("%q: nothing was compared (verify: %s %s)", tmpl, vout.String(), verr.String())
+		}
+	}
+}
+
+// consoleProjectVerbChecks hold a page's per-project section (the verb's
+// shape, from a recorded instrument) to the verb itself, run for one
+// service; each returns how many figures it compared.
+var consoleProjectVerbChecks = map[string]func(t *testing.T, f *consoleFixture, svc string, section json.RawMessage) int{
+	// plans status: every plan whose recorded run is at HEAD reads exactly
+	// as the verb computes it now — proven, claimed-unproven (with the
+	// PC-5 measured-stale split folded back) and total, and the rows the
+	// ledger does not split (open, deferred, skipped) as one sum.
+	verbPlansStatusFor: func(t *testing.T, f *consoleFixture, svc string, section json.RawMessage) int {
+		var plans []nowPlanStatus
+		if len(section) > 0 {
+			if err := json.Unmarshal(section, &plans); err != nil {
+				t.Fatalf("plans status section for %s: %v", svc, err)
+			}
+		}
+		args := []string{"plans", "status", "--service", svc, "--url", f.ts.URL, "--json"}
+		current := map[string]nowPlanStatus{}
+		for _, p := range plans {
+			if p.Stale == "" {
+				args = append(args, "--plan", p.Plan)
+				current[p.Plan] = p
+			}
+		}
+		if len(current) == 0 {
+			return 0
+		}
+		var out, errb bytes.Buffer
+		if code := run(args, &out, &errb); code != 0 {
+			t.Fatalf("plans status for %s exited %d: %s", svc, code, errb.String())
+		}
+		var rollups []planRollup
+		if err := json.Unmarshal(out.Bytes(), &rollups); err != nil {
+			t.Fatalf("plans status --json: %v\n%s", err, out.String())
+		}
+		n := 0
+		for _, r := range rollups {
+			p, ok := current[r.Plan]
+			if !ok {
+				t.Errorf("%s: plans status names %s, which the page does not", svc, r.Plan)
+				continue
+			}
+			n++
+			if p.Proven != r.Proven || p.ClaimedUnproven != r.ClaimedUnproven+r.MeasuredStale || p.Total != r.Total ||
+				p.Unclaimed != r.Open+r.DeferredWithTrigger+r.SkippedOther {
+				t.Errorf("%s %s: the page (recorded run at HEAD) says %+v; plans status says %+v", svc, r.Plan, p, r)
+			}
+		}
+		if n != len(current) {
+			t.Errorf("%s: the page shows %d current plans, plans status %d", svc, len(current), n)
+		}
+		return n
+	},
+	// certify status: the verb's own JSON, exactly.
+	verbCertifyStatusFor: func(t *testing.T, f *consoleFixture, svc string, section json.RawMessage) int {
+		if len(section) == 0 {
+			t.Errorf("certify status section has no %s", svc)
+			return 0
+		}
+		var out, errb bytes.Buffer
+		if code := run([]string{"certify", "status", "--service", svc, "--store", f.store, "--json"}, &out, &errb); code != 0 {
+			t.Fatalf("certify status for %s exited %d: %s", svc, code, errb.String())
+		}
+		var fromVerb, fromPage any
+		if err := json.Unmarshal(out.Bytes(), &fromVerb); err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(section, &fromPage); err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(fromVerb, fromPage) {
+			t.Errorf("%s: certify status says %s; the page %s", svc, out.String(), section)
+		}
+		return 1
+	},
 }
 
 // TestConsoleMetricsAgreeAcrossPages pins OC-9: every page that shows a
@@ -654,7 +780,8 @@ func TestConsoleMetricsAgreeAcrossPages(t *testing.T) {
 			t.Errorf("page %s JSON carries %d metrics, declares %d", p.ID, len(env.Metrics), len(p.Shows))
 		}
 	}
-	for _, id := range []console.MetricID{console.MetricServices, console.MetricSymbols, console.MetricCalls, console.MetricSessions, console.MetricObservations, console.MetricAgentTools} {
+	for _, id := range []console.MetricID{console.MetricServices, console.MetricSymbols, console.MetricCalls, console.MetricSessions, console.MetricObservations, console.MetricAgentTools,
+		console.MetricWiredFresh, console.MetricPlanRowsVerified, console.MetricClaimsFresh, console.MetricCertificatesLive} {
 		pages := byMetric[string(id)]
 		if len(pages) == 0 {
 			t.Errorf("metric %s is shown on no page", id)
@@ -743,6 +870,44 @@ func TestConsoleMetricsAgreeAcrossPages(t *testing.T) {
 	}
 	if strings.Contains(brief.Markdown, "16-tool") {
 		t.Error("the brief still names a literal surface size")
+	}
+
+	// Plan proof in its hardest state — one plan verified at HEAD in a
+	// detached clone, one only at an older commit at the root, one never:
+	// every page says the same stale figure, and the Now and Fleet tiles
+	// draw the same number, stale.
+	g := newConsoleFixtureOpts(t, consoleFixtureOpts{Rooted: true})
+	root, head := rootedProject(t, g, "payment-service")
+	prevPlans := consolePlanExists
+	consolePlanExists = func(_, plan string) bool { return plan != "docs/plans/gone.md" }
+	t.Cleanup(func() { consolePlanExists = prevPlans })
+	writeVerifyLedger(t, []map[string]any{
+		{"schema_version": 2, "at": "2026-09-25T02:58:00Z", "repo_root": "/tmp/pushclone", "service": "payment-service", "plan": "docs/plans/a.md", "commit": head, "total": 10, "claimed": 8, "verified": 8, "origin": "cli"},
+		{"schema_version": 2, "at": "2026-09-19T21:00:33Z", "repo_root": root, "service": "payment-service", "plan": "docs/plans/b.md", "commit": "d8770983", "total": 5, "claimed": 5, "verified": 4, "failing": 1, "origin": "cli"},
+		{"schema_version": 2, "at": "2026-09-19T21:00:33Z", "repo_root": root, "service": "payment-service", "plan": "docs/plans/gone.md", "commit": "d8770983", "total": 5, "claimed": 5, "failing": 5, "origin": "cli"},
+	})
+	plansBy := map[string]string{}
+	for _, p := range defaultConsoleRegistry().pages {
+		for _, id := range p.Shows {
+			if id == console.MetricPlanRowsVerified {
+				plansBy[p.ID] = string(g.pageJSON(t, samplePath(p)).Metrics[string(id)])
+			}
+		}
+	}
+	var planValue console.Value[int]
+	for page, raw := range plansBy {
+		if raw != plansBy["home"] {
+			t.Errorf("plans.verified: page %s says %s, Now %s", page, raw, plansBy["home"])
+		}
+		_ = json.Unmarshal([]byte(raw), &planValue)
+	}
+	if len(plansBy) < 2 || planValue.State != console.StateStale || planValue.V != 12 {
+		t.Errorf("plans.verified over a HEAD run and a stale one = %+v on %d pages", planValue, len(plansBy))
+	}
+	_, _, nowBody := g.get(t, "/")
+	_, _, fleetBody := g.get(t, "/fleet")
+	if a, b := tileValue(t, nowBody, "Plan rows verified"), tileValue(t, fleetBody, "plan rows verified"); a != "12" || a != b {
+		t.Errorf("plan rows tile: Now %q, Fleet %q", a, b)
 	}
 }
 

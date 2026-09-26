@@ -27,5 +27,6 @@
 @source "../../../third_party/app-kit/appkit/ui/palette/*.go";
 @source "../../../third_party/app-kit/appkit/ui/stat/*.go";
 @source "../../../third_party/app-kit/appkit/ui/table/*.go";
+@source "../../../third_party/app-kit/appkit/ui/topology/*.go";
 @source "../../../third_party/app-kit/appkit/ui/viz/*.go";
 @source "../../../third_party/app-kit/appkit/ui/vizframe/*.go";

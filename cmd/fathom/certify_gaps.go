@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/certify"
@@ -67,6 +68,11 @@ func cmdCertifyGaps(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		fmt.Fprintf(stderr, "error: certify gaps for %q: %v\n", svc, err)
 		return 1
+	}
+	// I38: an unreadable target source is named, and the list below is a
+	// lower bound (stderr: the versioned JSON shape is unchanged).
+	if len(report.Unreadable) > 0 {
+		fmt.Fprintf(stderr, "certify gaps: a lower bound — %d target source(s) could not be read: %s\n", len(report.Unreadable), strings.Join(report.Unreadable, "; "))
 	}
 
 	if *jsonOut {

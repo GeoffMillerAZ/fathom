@@ -15,6 +15,8 @@ package main
 // off, what turning it on would let the brief say, and the exact command.
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -32,8 +34,23 @@ func cmdBrief(args []string, stdout, stderr io.Writer) int {
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
 	outDir := fs.String("out", "", "output directory (default ~/.fathom/briefs)")
 	printOnly := fs.Bool("print", false, "print the brief to stdout instead of writing a file")
+	jsonOut := fs.Bool("json", false, "print the Now page's projection as JSON — the attention queue, what changed since the last look, the stat band and the fleet pulse (vision 35 §3); writes nothing")
+	storePath := fs.String("store", "", "with --json: the store to read claims, certify status and compile runs from, read-only (default: the store the daemon at --url recorded)")
 	if err := fs.Parse(args); err != nil {
 		return 1
+	}
+	if *jsonOut {
+		// The Now page's projection (console_home.go), at the console
+		// verbs' injectable clock (fleetReportNow) so the page's JSON parity
+		// test pins the verb and the page to one instant.
+		rep := briefNowReport(context.Background(), *url, *storePath, fleetReportNow())
+		enc := json.NewEncoder(stdout)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(rep); err != nil {
+			fmt.Fprintf(stderr, "error: %v\n", err)
+			return 1
+		}
+		return 0
 	}
 
 	now := time.Now()

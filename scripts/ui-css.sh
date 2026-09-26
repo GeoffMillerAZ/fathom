@@ -45,6 +45,7 @@ SOURCE_DECLARATIONS=(
   "../../../third_party/app-kit/appkit/ui/palette/*.go"
   "../../../third_party/app-kit/appkit/ui/stat/*.go"
   "../../../third_party/app-kit/appkit/ui/table/*.go"
+  "../../../third_party/app-kit/appkit/ui/topology/*.go"
   "../../../third_party/app-kit/appkit/ui/viz/*.go"
   "../../../third_party/app-kit/appkit/ui/vizframe/*.go"
 )
@@ -80,6 +81,7 @@ render_expected_input() {
 @source "../../../third_party/app-kit/appkit/ui/palette/*.go";
 @source "../../../third_party/app-kit/appkit/ui/stat/*.go";
 @source "../../../third_party/app-kit/appkit/ui/table/*.go";
+@source "../../../third_party/app-kit/appkit/ui/topology/*.go";
 @source "../../../third_party/app-kit/appkit/ui/viz/*.go";
 @source "../../../third_party/app-kit/appkit/ui/vizframe/*.go";
 EOF
