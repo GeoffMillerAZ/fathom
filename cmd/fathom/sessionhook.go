@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -383,14 +384,20 @@ func buildSessionContext(baseURL, projDir string) string {
 // collapsing them once rendered a confident false not-indexed instruction
 // for an indexed repo). One retry with its own timeout, decoupled from the
 // caller's healthz-sized client.
-// inProcessServices and inProcessSelfURL are set by serve-http: a registry
-// lookup aimed at the daemon's own URL is answered in process (the same
+// inProcessRegistry is published by serve-http: a registry lookup aimed at
+// the daemon's own URL is answered in process (the same
 // mcp.ServiceSummaries list_services returns) instead of over loopback HTTP.
-// Both stay unset in every CLI process.
-var (
-	inProcessServices func(ctx context.Context) (map[string]svcInfo, error)
-	inProcessSelfURL  string
-)
+// It stays unset in every CLI process. One atomic pointer carries both
+// fields: they are written once at startup and read from request and
+// feeder goroutines, and a test that starts serve-http while an earlier
+// test's goroutine still resolves a call log must not race (-race gate,
+// 2026-09-26).
+type inProcessRegistry struct {
+	self     string
+	services func(ctx context.Context) (map[string]svcInfo, error)
+}
+
+var inProcessReg atomic.Pointer[inProcessRegistry]
 
 // svcInfoFromSummaries converts list_services' identity rows into the
 // registry map every caller of fetchServices reads, skipping malformed IDs
@@ -417,8 +424,8 @@ func sameDaemonURL(baseURL, self string) bool {
 }
 
 func fetchServices(hc *http.Client, baseURL string) (map[string]svcInfo, error) {
-	if f := inProcessServices; f != nil && sameDaemonURL(baseURL, inProcessSelfURL) {
-		return f(context.Background())
+	if r := inProcessReg.Load(); r != nil && r.services != nil && sameDaemonURL(baseURL, r.self) {
+		return r.services(context.Background())
 	}
 	m, err := fetchServicesOnce(hc, baseURL)
 	if err == nil {

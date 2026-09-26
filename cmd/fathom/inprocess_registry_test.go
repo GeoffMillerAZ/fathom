@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 )
@@ -23,15 +24,14 @@ func TestFetchServices_InProcessForOwnDaemon(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	prevF, prevURL := inProcessServices, inProcessSelfURL
-	t.Cleanup(func() { inProcessServices, inProcessSelfURL = prevF, prevURL })
-	inProcessSelfURL = ts.URL + "/"
-	inProcessServices = func(ctx context.Context) (map[string]svcInfo, error) {
+	prev := inProcessReg.Load()
+	t.Cleanup(func() { inProcessReg.Store(prev) })
+	inProcessReg.Store(&inProcessRegistry{self: ts.URL + "/", services: func(ctx context.Context) (map[string]svcInfo, error) {
 		return svcInfoFromSummaries([]mcp.ServiceSummary{
 			{Service: "Fathom", SymbolCount: 7, Languages: []string{"cue", "go"}, Path: "/repo"},
 			{Service: "../escape", SymbolCount: 1},
 		}), nil
-	}
+	}})
 
 	got, err := fetchServices(&http.Client{}, ts.URL)
 	if err != nil {
@@ -57,4 +57,24 @@ func TestFetchServices_InProcessForOwnDaemon(t *testing.T) {
 	if hits != 1 || got2["other"].symbols != 3 {
 		t.Fatalf("another daemon's URL must go over HTTP: hits=%d got=%+v", hits, got2)
 	}
+}
+
+// serve-http publishes the registry while other goroutines (a request, a
+// feeder, an earlier test's abandoned review) resolve call logs through
+// fetchServices: publish and read must not race.
+func TestInProcessRegistry_PublishAndReadConcurrently(t *testing.T) {
+	prev := inProcessReg.Load()
+	t.Cleanup(func() { inProcessReg.Store(prev) })
+	const self = "http://127.0.0.1:1"
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for i := 0; i < 200; i++ {
+			_, _ = fetchServices(&http.Client{Timeout: time.Millisecond}, "http://127.0.0.1:2")
+		}
+	}()
+	for i := 0; i < 200; i++ {
+		inProcessReg.Store(&inProcessRegistry{self: self, services: func(context.Context) (map[string]svcInfo, error) { return nil, nil }})
+	}
+	<-done
 }
