@@ -1,10 +1,13 @@
 package intent
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"syscall"
 
 	"github.com/geoffmilleraz/fathom/internal/adr"
 	"github.com/geoffmilleraz/fathom/internal/verify"
@@ -46,6 +49,14 @@ func (c *Corpus) parseRouter(body string) {
 				Line:      i + 1,
 			})
 		}
+		if c.VisionsHome == "" && !inSurfaces && strings.HasPrefix(t, "|") && !isTableRule(t) {
+			// The docs-map row whose QUESTION cell names the vision series
+			// is the vision home (DP-3). The question cell, not the whole
+			// row: "product-vision.md" in another row's answer is not it.
+			if cells := tableCells(t); len(cells) >= 2 && strings.Contains(strings.ToLower(cells[0]), "vision") {
+				c.VisionsHome, c.VisionsIndex = visionPointer(c.Root, c.RouterPath, strings.Join(cells[1:], " "))
+			}
+		}
 		if strings.Contains(strings.ToLower(t), "decision") && strings.Contains(t, "|") && c.DecisionsHome == "" {
 			// A docs-map row routinely names TWO pointers: the index and the
 			// records ("`decisions/README.md` (index); records are the
@@ -75,6 +86,7 @@ func (c *Corpus) parseLivingDoc(rel, body string) {
 	}
 	if filepath.Base(rel) == "scope.md" {
 		c.expectShape(rel, body, goalRe, "goal (`**G<n>.`)")
+		c.parseGoals(rel, body)
 	}
 	if filepath.Base(rel) == "futures.md" {
 		c.expectShape(rel, body, futureRe, "future (`## F<n>.`)")
@@ -470,4 +482,118 @@ func (c *Corpus) read(abs string) ([]byte, bool) {
 		return b, err == nil
 	}
 	return c.reads.ReadFile(abs)
+}
+
+// goalTitleRe reads a goal opener's title: `**G2. The A/B becomes
+// admissible.**` → "The A/B becomes admissible.".
+var goalTitleRe = regexp.MustCompile(`^\*\*G\d+\.\s*(.*?)\*\*`)
+
+// parseGoals records scope.md's goals by identity (DP-4). Whether each is a
+// bet is LoadBets' verdict over the goal's conditions, which
+// parseConditionsIn already attributed to it by record id — one condition
+// grammar, one tokenizer, no second parser for the same lines.
+func (c *Corpus) parseGoals(rel, body string) {
+	lines := splitLines(body)
+	for i, ln := range lines {
+		t := strings.TrimSpace(ln)
+		m := goalRe.FindStringSubmatch(t)
+		if m == nil {
+			continue
+		}
+		// A long title wraps ("**G12. … falsifiable\n(ADR-035).**"): join
+		// the paragraph's next lines until the bold closes.
+		joined := t
+		for j := i + 1; j < len(lines) && j <= i+3 && strings.Count(joined, "**") < 2; j++ {
+			nxt := strings.TrimSpace(lines[j])
+			if nxt == "" {
+				break
+			}
+			joined += " " + nxt
+		}
+		title := ""
+		if tm := goalTitleRe.FindStringSubmatch(joined); tm != nil {
+			title = strings.TrimSpace(tm[1])
+		}
+		c.Goals = append(c.Goals, Goal{ID: m[1], Title: title, File: rel, Line: i + 1})
+	}
+}
+
+// visionPointer resolves a docs-map row's answer cell to the vision
+// series' home directory and index file. Every backticked pointer whose
+// path names a vision directory and stays inside the repo is a candidate,
+// in document order: a directory pointer, or a file that is not itself a
+// numbered vision (README.md, an index), names the home and its index. A
+// numbered vision file (`01-thesis.md` — a row's "start with the thesis")
+// names only the home; it wins only when nothing else does, and then the
+// index is the home's README.md. So a row that names a starting vision
+// before the index makes neither the vision the index nor the index a
+// vision.
+//
+// A pointer the reader cannot stat (EACCES on a directory it cannot
+// search) is kept, never dropped as absent (ADR-027, I38): the pipeline then
+// fails to list the home and names that on its manifest, instead of
+// reporting "no vision series".
+func visionPointer(root, routerRel, cell string) (home, index string) {
+	base := filepath.Dir(filepath.Join(root, routerRel))
+	memberHome := ""
+	readmeOf := func(dirRel string) string {
+		idx := filepath.Join(root, dirRel, "README.md")
+		if present, blind := statPresence(idx); present || blind != nil {
+			return filepath.ToSlash(filepath.Join(dirRel, "README.md"))
+		}
+		return ""
+	}
+	for _, m := range backtickRe.FindAllStringSubmatch(cell, -1) {
+		tok := strings.TrimSpace(m[1])
+		if tok == "" || strings.ContainsAny(tok, " *<") || !strings.Contains(strings.ToLower(tok), "vision") {
+			continue
+		}
+		cand := filepath.Clean(filepath.Join(base, tok))
+		relPath, err := filepath.Rel(root, cand)
+		if err != nil || strings.HasPrefix(relPath, "..") {
+			continue
+		}
+		var isDir bool
+		info, err := os.Stat(cand)
+		switch {
+		case err == nil:
+			isDir = info.IsDir()
+		case errors.Is(err, fs.ErrNotExist), errors.Is(err, syscall.ENOTDIR):
+			// A dead file pointer inside a vision directory that IS there
+			// still names that directory: the pipeline reads the series
+			// and names the missing index, rather than "no vision series".
+			if filepath.Ext(cand) == "" {
+				continue
+			}
+			if present, blind := statPresence(filepath.Dir(cand)); !present && blind == nil {
+				continue
+			}
+		default:
+			// Blind: a pointer with no extension names the directory.
+			isDir = filepath.Ext(cand) == ""
+		}
+		if isDir {
+			if err != nil {
+				return filepath.ToSlash(relPath), ""
+			}
+			return filepath.ToSlash(relPath), readmeOf(relPath)
+		}
+		dir := filepath.Dir(relPath)
+		if !strings.Contains(strings.ToLower(dir), "vision") {
+			// A single vision FILE (`VISION.md`) is not a series; the
+			// pipeline tracks a directory of promises.
+			continue
+		}
+		if leadingNumRe.MatchString(filepath.Base(relPath)) {
+			if memberHome == "" {
+				memberHome = dir
+			}
+			continue
+		}
+		return filepath.ToSlash(dir), filepath.ToSlash(relPath)
+	}
+	if memberHome != "" {
+		return filepath.ToSlash(memberHome), readmeOf(memberHome)
+	}
+	return "", ""
 }

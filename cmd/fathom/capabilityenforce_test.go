@@ -264,20 +264,25 @@ func TestEnforcementFailsOpenOnBrokenConfig(t *testing.T) {
 
 // TestSwitchOffSilencesIntentRowsNotTheVerb (EP-10) is intent-corpus's
 // enforcement case. `off` must change observed behaviour, and the behaviour
-// it changes is the REPORTING channel: doctor stops narrating the corpus.
+// it changes is the REPORTING channel: doctor stops narrating the corpus —
+// all three rows, `intent`, `unproven_claims` and `doctrine` (DP-3/DP-4).
 // The verb keeps answering — switching off a report is not the same as
 // making the tool refuse a direct question, and conflating the two is how a
 // switch becomes a gag.
 func TestSwitchOffSilencesIntentRowsNotTheVerb(t *testing.T) {
 	root := t.TempDir()
-	writeCorpusFixture(t, root)
+	writeDoctrineFixture(t, root)
 	t.Setenv("FATHOM_INTENT_LEDGER", filepath.Join(root, "l.jsonl"))
 	t.Setenv("FATHOM_VERIFY_LEDGER", filepath.Join(root, "v.jsonl"))
+	t.Setenv("FATHOM_HOOKS_LOG", filepath.Join(root, "hooks.jsonl"))
 
-	// On (the default when a router exists): the row narrates the corpus.
+	// On (the default when a router exists): the rows narrate the corpus.
 	on := checkIntent(root)
 	if !strings.Contains(on.Reason, "condition(s)") {
 		t.Fatalf("with the capability on, the row must narrate the corpus: %q", on.Reason)
+	}
+	if onDoctrine := checkDoctrine(root); !strings.Contains(onDoctrine.Reason, "vision(s)") {
+		t.Fatalf("with the capability on, the doctrine row must narrate the pipeline: %q", onDoctrine.Reason)
 	}
 
 	// Off: the row says so and stops reading.
@@ -298,6 +303,10 @@ func TestSwitchOffSilencesIntentRowsNotTheVerb(t *testing.T) {
 	if offClaims := checkUnprovenClaims(root, "http://127.0.0.1:1", "svc"); !strings.Contains(offClaims.Reason, "switched off") {
 		t.Errorf("unproven_claims must honour the same switch: %q", offClaims.Reason)
 	}
+	offDoctrine := checkDoctrine(root)
+	if !strings.Contains(offDoctrine.Reason, "switched off") || strings.Contains(offDoctrine.Reason, "vision(s)") {
+		t.Errorf("doctrine must honour the same switch and stop narrating: %q", offDoctrine.Reason)
+	}
 
 	// The VERB still answers — off silences a report, never a question.
 	var out, errBuf bytes.Buffer
@@ -306,5 +315,12 @@ func TestSwitchOffSilencesIntentRowsNotTheVerb(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "conditions:") {
 		t.Errorf("the verb must still answer on demand:\n%s", out.String())
+	}
+	out.Reset()
+	if code := cmdIntent([]string{"doctrine", "--root", root}, &out, &errBuf); code != 0 {
+		t.Fatalf("the doctrine verb must keep working when the capability is off: exit %d %s", code, errBuf.String())
+	}
+	if !strings.Contains(out.String(), "visions:") {
+		t.Errorf("the doctrine verb must still answer on demand:\n%s", out.String())
 	}
 }

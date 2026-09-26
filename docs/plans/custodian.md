@@ -29,8 +29,8 @@
 
 - [x] DP-1 Doctrine catalog design doc: one CUE catalog, entries declaring their enforcement surface(s) (obligation | concern | conformance); laws + runbooks as entries; ENGINEERING_PRACTICES.md as render/audited view, never parallel truth {id: DP-1, oracle: lexical, path: docs/design/doctrine-catalog.md, pattern: "enforcement surface"}
 - [-] DP-2 ADR assertions: accepted ADRs may carry machine-checkable claims; `fathom adr audit` reports decided-but-violated with evidence; assertion-refusal rate measured (vision 23 §6 falsification) {id: DP-2, disposition: refused, reason: "superseded by EP-9 (evidence-plane.md): fathom intent audit over ADR revisit trailers IS the adr audit (ADR-026); a second verb would be the O4 drift; revive only for an ADR assertion the intent audit's oracle vocabulary cannot express"}
-- [ ] DP-3 Vision promotion pipeline, computed: every vision names status/trigger or plan rows; links resolve; staleness dated; surfaced per vision {id: DP-3}
-- [ ] DP-4 Goals as pre-registered bets only: instrument + threshold + review date or refused at load; existing bets (arm bench, thread bet) enumerated by the same surface {id: DP-4}
+- [x] DP-3 Vision promotion pipeline, computed: every vision names status/trigger or plan rows; links resolve; staleness dated; surfaced per vision — `fathom intent doctrine` and doctor's `doctrine` row, vision promotion metadata only (ADR-026 amendment 2026-09-25) {id: DP-3, symbol: LoadVisions, package: internal/intent, reachable_from: TestCmdIntentDoctrine_ListsVisionsAndBets}
+- [x] DP-4 Goals as pre-registered bets only: instrument + threshold + review date or refused at load; existing bets (arm bench, thread bet) enumerated by the same surface — scope.md G2 `arm-bench` and G3 `thread-bet` load as bets, every other goal is refused with what it lacks {id: DP-4, symbol: LoadBets, package: internal/intent, reachable_from: TestCheckDoctrine_WarnsNeverFails}
 
 ## Phase SD — the SDD surface (vision 23 §4; the UI earns its place)
 

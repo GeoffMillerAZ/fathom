@@ -1329,7 +1329,8 @@ this machine**, never a fixed one. Off macOS, all of them fall back to
 ### `intent` — the intent corpus, audited (ADR-026, **experimental**)
 
 ```sh
-fathom intent audit  [--root .] [--json] [--kind conditions|invariants|unproven] [--fresh] [--top N]
+fathom intent audit    [--root .] [--json] [--kind conditions|invariants|unproven] [--fresh] [--top N]
+fathom intent doctrine [--root .] [--json] [--kind visions|bets] [--top N]
 fathom intent export --guard [--root .]
 ```
 
@@ -1369,10 +1370,42 @@ carries `coverage.complete` (ADR-027).
 sensitive-surface rows, stamped with per-row provenance so staleness stays
 computable. It prints them; **fathom never writes that file** (law 15).
 
-Two `fathom doctor` rows report the corpus and its debt, and neither can
-FAIL: not adopting the practice is a choice, and honest debt is not a broken
-repo. Switch both off with the `intent-corpus` capability — the verb still
-answers on demand. Full design: `docs/design/evidence-plane.md`.
+`doctrine` computes the doctrine plane's two views (vision 23 §2; ADR-026 as
+amended 2026-09-25). **The vision promotion pipeline:** for every vision in the
+series the router's docs map names, its stage (`landed`, `planned`, `accepted`,
+`for-review`, `deferred`, `conditional`, `stated`, `superseded`, `rejected`,
+`unstated`, or `unreadable`) from its header's `Status:` line or a status its
+index entry leads with, the plans its header or index entry declares as its own
+(a `Plan:`/`Plans:` label, or "… is its promotion") with their claimed rows
+(claimed, not proven — `fathom verify` is the proof), any condition label it
+carries, and its newest dated statement. `landed` is computed, never read: every
+plan that carries the vision has no open row and at least one has claimed work —
+a status word ("shipped"), a plan whose rows are all deferred or refused, and a
+plan it merely cites or builds on are not that evidence (a landed claim with no
+carrying plan is `stated`). Findings are `unstated`, `undated`, `stale` (for
+review past 30 days with no plan; it names any decision the vision cites),
+`broken-link` (a markdown link, a plan pointer, or a cited decision id that does
+not resolve) and `unreadable` (the vision, or a plan that carries it, exists and
+could not be read). Only this metadata is read — never a rule, a condition or a
+count for the audit — and only from the series the router names: a
+`docs/vision/` the router does not route to is not read.
+**Goals as pre-registered bets:** each `**G<n>.**` goal of `scope.md` is a bet
+when its `Done when:` carries `{bet: <name>, instrument: "<fathom verb | task
+target | repo script>", threshold: "…", review: YYYY-MM-DD}` and the instrument
+resolves; otherwise it is refused at load with what it lacks, and a bet whose
+review date passed is listed as due. A bet block is not an oracle annotation and
+never counts toward K0; one on any condition but a scope goal's is listed as
+`misplaced-bet`. A vision home, plan, link target, decisions directory, Taskfile
+or script that exists and cannot be read is named on the coverage manifest —
+every count becomes a lower bound and `--json` carries `coverage.complete`
+(ADR-027) — never an absent series, a broken link or a refused bet. An unknown
+`--kind` exits 1 naming the accepted ones.
+
+Three `fathom doctor` rows report the corpus, its debt, and the doctrine plane
+(`intent`, `unproven_claims`, `doctrine`), and none can FAIL: not adopting the
+practice is a choice, and honest debt is not a broken repo. Switch them off with
+the `intent-corpus` capability — the verbs still answer on demand. Full design:
+`docs/design/evidence-plane.md`.
 
 ### `scope` / `purge` — reversible suppression and verified removal
 
