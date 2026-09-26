@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/assess"
+	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/harness"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
@@ -231,7 +232,7 @@ func runStopHookWith(codec harness.Codec, projDir string, hc *http.Client, baseU
 		return 0, nil // unindexed project → silent
 	}
 
-	var complaints, timedOutPlans []string
+	var complaints, timedOutPlans, busyPlans []string
 	verifiedAny := false
 	for _, e := range entries {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") || strings.EqualFold(e.Name(), "README.md") {
@@ -257,6 +258,13 @@ func runStopHookWith(codec harness.Codec, projDir string, hc *http.Client, baseU
 				timedOutPlans = append(timedOutPlans, rel)
 				continue
 			}
+			if strings.Contains(err.Error(), core.ErrSourcesBusy.Error()) {
+				// RT-146: the daemon skipped this hook's whole-tree read
+				// (spec coverage needs it). Operational, never evidence —
+				// named as an advisory, like a timeout.
+				busyPlans = append(busyPlans, rel)
+				continue
+			}
 			return 0, nil // other operational errors (daemon down, bad response) → silent
 		}
 		verifiedAny = true
@@ -274,11 +282,12 @@ func runStopHookWith(codec harness.Codec, projDir string, hc *http.Client, baseU
 		n := len(complaints)
 		catches = &n
 	}
-	if len(complaints) == 0 && len(timedOutPlans) == 0 {
+	if len(complaints) == 0 && len(timedOutPlans) == 0 && len(busyPlans) == 0 {
 		return 0, catches
 	}
 	sort.Strings(complaints)
 	sort.Strings(timedOutPlans)
+	sort.Strings(busyPlans)
 
 	var sections []string
 	if len(complaints) > 0 {
@@ -290,6 +299,12 @@ func runStopHookWith(codec harness.Codec, projDir string, hc *http.Client, baseU
 		sections = append(sections, fmt.Sprintf(
 			"⚠️ done-means-proven: verify timed out (>%s) for %s — newly claimed task(s) there could not be confirmed this session; treat them as unconfirmed until verify runs clean.",
 			stopHookVerifyTimeout, strings.Join(timedOutPlans, ", "),
+		))
+	}
+	if len(busyPlans) > 0 {
+		sections = append(sections, fmt.Sprintf(
+			"⚠️ done-means-proven: %s for %s — newly claimed task(s) there could not be confirmed this session; treat them as unconfirmed until verify runs clean.",
+			core.ErrSourcesBusy.Error(), strings.Join(busyPlans, ", "),
 		))
 	}
 	msg := strings.Join(sections, "\n\n")

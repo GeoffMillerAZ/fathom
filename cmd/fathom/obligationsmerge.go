@@ -34,12 +34,15 @@ const mergeObligationsConcurrency = 4
 // mergedObligations is the union of every resolved file's obligations,
 // already capped and ordered for rendering.
 type mergedObligations struct {
-	rules      []semantic.Obligation
-	displaced  int
-	stale      bool
-	namedFiles []string // files that actually carried >=1 rule, resolution order
-	resolved   int      // files whose fetch got a definite answer before the deadline
-	total      int      // files the caller asked to resolve (len(files))
+	rules     []semantic.Obligation
+	displaced int
+	stale     bool
+	// coverageSkipped (RT-146) is the named skip any file's answer carried:
+	// the daemon refused a hook-origin whole-tree read for it.
+	coverageSkipped string
+	namedFiles      []string // files that actually carried >=1 rule, resolution order
+	resolved        int      // files whose fetch got a definite answer before the deadline
+	total           int      // files the caller asked to resolve (len(files))
 }
 
 // mergeObligationsAcrossFiles fetches obligations for every file in files
@@ -105,6 +108,9 @@ func mergeObligationsAcrossFiles(url, service string, files []string, deadline t
 			m.namedFiles = append(m.namedFiles, files[i])
 		}
 		m.stale = m.stale || r.indexStale
+		if r.obl.CoverageSkipped != "" {
+			m.coverageSkipped = r.obl.CoverageSkipped
+		}
 		m.displaced += r.obl.Displaced
 		for _, rule := range r.obl.Rules {
 			k := ruleKey{rule.Rule, rule.Src}

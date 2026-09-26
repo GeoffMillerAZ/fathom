@@ -256,6 +256,12 @@ type Obligations struct {
 	// never by ObligationsFor/ObligationsForLayer, whose live-serving
 	// payload is byte-identical to what it was before this field existed.
 	AsOf string `json:"as_of,omitempty"`
+	// CoverageSkipped (RT-146) is the named skip the obligations tool
+	// reports when a hook-origin whole-tree read was refused, so its raw
+	// fallback or layer coverage could not be computed this call. Set only
+	// by a consumer decoding the tool's "coverage_skipped" field (the edit
+	// hook); never set by ObligationsFor.
+	CoverageSkipped string `json:"coverage_skipped,omitempty"`
 
 	// RankedBy (DP-8, ADR-042 decision 2) names which decision-port Decider
 	// re-ranked this payload's rules within their governing-scope tier:

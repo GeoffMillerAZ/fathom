@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/certify"
@@ -165,7 +166,15 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 			allSpecs = append(allSpecs, t.SpecIDs...)
 		}
 		if len(allSpecs) > 0 {
-			matrix = buildSpecMatrix(ctx, backend, p.Service, nodes, allSpecs)
+			var merr error
+			matrix, merr = buildSpecMatrix(ctx, backend, p.Service, nodes, allSpecs)
+			if merr != nil {
+				// RT-146 / I38: a hook's whole-tree read was skipped. An
+				// empty matrix would fail every spec-backed row falsely, so
+				// the call refuses by name instead (the Stop hook renders
+				// it as advisory, never as a failing claim).
+				return nil, &rpcError{Code: ErrCodeInternal, Message: "verify_plan: " + merr.Error()}
+			}
 			haveMat = true
 		}
 
@@ -264,21 +273,29 @@ var (
 
 // buildSpecMatrix builds an sdd coverage matrix from a service's symbols and
 // source files, mirroring the spec_coverage tool's extraction.
-func buildSpecMatrix(ctx context.Context, backend QueryInterface, service string, nodes []core.SymbolNode, specs []string) sdd.Matrix {
+//
+// A skipped whole-tree read (core.ErrSourcesBusy, RT-146) is returned, never
+// folded into a symbol-only matrix; any other Sources error keeps the old
+// best-effort behaviour.
+func buildSpecMatrix(ctx context.Context, backend QueryInterface, service string, nodes []core.SymbolNode, specs []string) (sdd.Matrix, error) {
 	codeRefs := map[string][]string{}
 	for _, n := range nodes {
 		if refs := sdd.ExtractRefs(n.Signature + " " + n.Name); len(refs) > 0 {
 			codeRefs[n.Name] = refs
 		}
 	}
-	if files, err := backend.Sources(ctx, service); err == nil {
+	files, err := backend.Sources(ctx, service)
+	if errors.Is(err, core.ErrSourcesBusy) {
+		return sdd.Matrix{}, err
+	}
+	if err == nil {
 		for _, f := range files {
 			if refs := sdd.ExtractRefs(string(f.Content)); len(refs) > 0 {
 				codeRefs[f.Path] = append(codeRefs[f.Path], refs...)
 			}
 		}
 	}
-	return sdd.BuildMatrix(specs, codeRefs)
+	return sdd.BuildMatrix(specs, codeRefs), nil
 }
 
 // verifyReportToMap renders a verify.Report as a deterministic JSON-friendly map.

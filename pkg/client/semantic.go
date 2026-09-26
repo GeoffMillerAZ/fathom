@@ -323,6 +323,11 @@ func (c *Client) ObligationsLayerCoverage(ctx context.Context, service string) (
 		return semantic.ObligationsLayerCoverage(ctx, c.st, service, semantic.LayerObligations)
 	}
 	files, err := c.Sources(ctx, service)
+	if errors.Is(err, ErrSourcesBusy) {
+		// RT-146 / I38: a hook's whole-tree read was skipped — say so,
+		// never fall back to numbers that look like a live answer.
+		return semantic.LayerCoverage{}, false, err
+	}
 	if err != nil {
 		return semantic.ObligationsLayerCoverage(ctx, c.st, service, semantic.LayerObligations)
 	}
@@ -367,6 +372,9 @@ func (c *Client) RawFallbackObligations(ctx context.Context, service, file strin
 		return nil, "", false, nil
 	}
 	files, err := c.Sources(ctx, service)
+	if errors.Is(err, ErrSourcesBusy) {
+		return nil, "", false, err // RT-146: the named skip, never a silent "nothing to add"
+	}
 	if err != nil {
 		return nil, "", false, nil
 	}

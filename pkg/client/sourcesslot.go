@@ -11,7 +11,9 @@ package client
 
 import (
 	"context"
-	"errors"
+	"sync"
+
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // maxConcurrentSources is the process-wide whole-tree read bound.
@@ -21,7 +23,9 @@ var sourcesSlots = make(chan struct{}, maxConcurrentSources)
 
 // ErrSourcesBusy is the named skip a hook-origin Sources call gets when both
 // slots are held. Callers render it as a skip, never as an empty corpus.
-var ErrSourcesBusy = errors.New("coverage skipped: whole-tree read in progress")
+// It is core.ErrSourcesBusy, so internal/mcp names it without importing
+// this package.
+var ErrSourcesBusy = core.ErrSourcesBusy
 
 type hookOriginKey struct{}
 
@@ -37,23 +41,96 @@ func IsHookOrigin(ctx context.Context) bool {
 	return v
 }
 
+type sourcesScopeKey struct{}
+
+// sourcesScope is one request's hold on a whole-tree slot. The slot bounds
+// whole trees in memory, not only the read phase: a request's Sources
+// result lives on while the request renders, so inside a scope the slot is
+// taken on the first Sources call and released only when the request ends
+// (done). A second Sources in the same scope reuses it — never a
+// self-deadlock.
+type sourcesScope struct {
+	mu      sync.Mutex
+	held    bool
+	ended   bool
+	abandon <-chan struct{}
+}
+
+// WithSourcesScope marks ctx as one request's scope for whole-tree reads
+// (RT-146): the first Sources under it takes a slot and keeps it until done
+// is called; done is idempotent. abandon, when non-nil, ends a wait for a
+// slot and cancels the read itself — the daemon passes the HTTP request's
+// Done channel, since its /rpc ctx is deliberately detached from the
+// connection (an ingest must survive a disconnect) and has no deadline.
+func WithSourcesScope(ctx context.Context, abandon <-chan struct{}) (context.Context, func()) {
+	sc := &sourcesScope{abandon: abandon}
+	done := func() {
+		sc.mu.Lock()
+		defer sc.mu.Unlock()
+		if sc.held {
+			<-sourcesSlots
+			sc.held = false
+		}
+		sc.ended = true
+	}
+	return context.WithValue(ctx, sourcesScopeKey{}, sc), done
+}
+
+func scopeFrom(ctx context.Context) *sourcesScope {
+	sc, _ := ctx.Value(sourcesScopeKey{}).(*sourcesScope)
+	return sc
+}
+
+// abandonOf is the scope's abandon channel (nil outside a scope; a nil
+// channel never fires in a select).
+func abandonOf(ctx context.Context) <-chan struct{} {
+	if sc := scopeFrom(ctx); sc != nil {
+		return sc.abandon
+	}
+	return nil
+}
+
 // acquireSourcesSlot takes a whole-tree read slot, returning its release.
 // A hook-origin ctx gets ErrSourcesBusy at once when none is free; any
-// other ctx waits until a slot frees or ctx ends.
+// other ctx waits until a slot frees, ctx ends, or its scope is abandoned.
+// Inside a live scope the slot is held until the scope's done, and the
+// returned release is a no-op.
 func acquireSourcesSlot(ctx context.Context) (release func(), err error) {
-	release = func() { <-sourcesSlots }
+	if sc := scopeFrom(ctx); sc != nil {
+		sc.mu.Lock()
+		defer sc.mu.Unlock()
+		if !sc.ended {
+			if sc.held {
+				return func() {}, nil
+			}
+			if err := takeSourcesSlot(ctx, sc.abandon); err != nil {
+				return nil, err
+			}
+			sc.held = true
+			return func() {}, nil
+		}
+	}
+	if err := takeSourcesSlot(ctx, abandonOf(ctx)); err != nil {
+		return nil, err
+	}
+	return func() { <-sourcesSlots }, nil
+}
+
+func takeSourcesSlot(ctx context.Context, abandon <-chan struct{}) error {
 	select {
 	case sourcesSlots <- struct{}{}:
-		return release, nil
+		return nil
 	default:
 	}
 	if IsHookOrigin(ctx) {
-		return nil, ErrSourcesBusy
+		return ErrSourcesBusy
 	}
 	select {
 	case sourcesSlots <- struct{}{}:
-		return release, nil
+		return nil
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return ctx.Err()
+	case <-abandon:
+		return context.Canceled
 	}
 }

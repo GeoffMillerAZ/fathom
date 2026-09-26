@@ -43,3 +43,13 @@ func markHookOrigin(ctx context.Context, origin string) context.Context {
 	}
 	return ctx
 }
+
+// rpcSourcesScope makes one /rpc request a whole-tree scope (RT-146): a
+// client.Sources slot taken while serving it is held until done (after the
+// response is written, since the tree lives that long), and a client
+// disconnect ends a wait for a slot and the read itself — the /rpc ctx is
+// deliberately detached from the connection so an ingest survives one, and
+// has no deadline of its own.
+func rpcSourcesScope(ctx context.Context, r *http.Request) (context.Context, func()) {
+	return client.WithSourcesScope(ctx, r.Context().Done())
+}

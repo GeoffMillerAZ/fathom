@@ -605,6 +605,8 @@ func newHTTPHandlerDeps(srv *mcp.Server, c *client.Client, selfAddr string, port
 		// diet-sized; a client that validates structured output can ask.
 		ctx := mcp.WithContracts(mcp.WithOrigin(mcp.WithRequestScope(context.Background(), surface, true), r.Header.Get("X-Fathom-Origin")), r.URL.Query().Get("contracts") == "true")
 		ctx = markHookOrigin(ctx, r.Header.Get("X-Fathom-Origin"))
+		ctx, doneSources := rpcSourcesScope(ctx, r)
+		defer doneSources()
 		// MCP-Protocol-Version (2025-06-18+ Streamable HTTP): clients send
 		// the negotiated revision on every post-initialize request. It is
 		// TOLERATED here (RP-12) — never a 400 — and answered with the

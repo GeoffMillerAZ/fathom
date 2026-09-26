@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -250,6 +251,9 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 		"service": obl.Service,
 		"file":    obl.File,
 	}
+	// coverageSkipped (RT-146): set when a hook-origin whole-tree read was
+	// refused for the raw fallback or the layer coverage below.
+	var coverageSkipped string
 	if obl.AsOf != "" {
 		result["as_of"] = obl.AsOf
 	}
@@ -306,7 +310,14 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 	// before this ever adds a row.
 	if !rootScope && obl.File != "" && obl.AsOf == "" && servedLayer != string(semantic.ObligationLayerClaims) {
 		if rfb, ok := backend.(rawFallbackBackend); ok {
-			if rows, _, rok, rerr := rfb.RawFallbackObligations(ctx, service, obl.File, semantic.RawFallbackReserve); rerr == nil && rok && len(rows) > 0 {
+			rows, _, rok, rerr := rfb.RawFallbackObligations(ctx, service, obl.File, semantic.RawFallbackReserve)
+			switch {
+			case errors.Is(rerr, core.ErrSourcesBusy):
+				// RT-146 / I38: the hook's whole-tree read was skipped, so
+				// the raw fallback could not be computed — named below as
+				// coverage_skipped, never a silent "no gap".
+				coverageSkipped = core.ErrSourcesBusy.Error()
+			case rerr == nil && rok && len(rows) > 0:
 				obl.Rules = append(rows, obl.Rules...)
 			}
 		}
@@ -412,6 +423,11 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 	if cb, ok := backend.(layerCoverageBackend); ok && obl.AsOf == "" {
 		cov, found, cerr := cb.ObligationsLayerCoverage(ctx, service)
 		switch {
+		case errors.Is(cerr, core.ErrSourcesBusy):
+			// RT-146 / I38: coverage could not be measured this call —
+			// named, never omitted as if there were nothing to report.
+			coverageSkipped = core.ErrSourcesBusy.Error()
+			result["layer_coverage"] = map[string]any{"status": "skipped", "note": coverageSkipped}
 		case cerr != nil:
 			// An actual RPC/store error answering the coverage question is
 			// left exactly as before: no layer_coverage key. Distinct from
@@ -437,6 +453,9 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 				result["note"] = fmt.Sprintf("%s governs this path and was not compiled: %s; run `fathom compile --layer obligations --continue`", guide, coverage)
 			}
 		}
+	}
+	if coverageSkipped != "" {
+		result["coverage_skipped"] = coverageSkipped
 	}
 	return result, summary
 }

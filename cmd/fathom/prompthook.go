@@ -199,6 +199,9 @@ func renderPromptObligations(url, projDir, prompt, sessionID string, deadline ti
 	if m.stale {
 		sb.WriteString("\n⚠️ index is behind your working tree for one of these paths")
 	}
+	if m.coverageSkipped != "" {
+		sb.WriteString("\n⚠️ " + m.coverageSkipped) // RT-146 / I38
+	}
 	if m.resolved < m.total {
 		fmt.Fprintf(&sb, "\n⚠️ partial: %d of %d resolved (time budget)", m.resolved, m.total)
 	}
