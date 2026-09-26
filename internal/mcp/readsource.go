@@ -410,8 +410,9 @@ func readSourceRange(ctx context.Context, backend QueryInterface, service, file 
 // text (onWire false), or the returned "lines" array as marshaled — its
 // brackets, separators and each row's {"line","text"} envelope with JSON
 // escaping (onWire true). The measured reason: at the 8000-byte default,
-// run-20260913T094546Z's H1-T11 cell received 11,135 bytes of read_source,
-// because the raw count left the per-line envelope out.
+// run-20260913T094546Z's H1-T11 t2 cell received 11,189 bytes of
+// read_source, 10,849 of them the lines array, because the raw count left
+// the per-line envelope out.
 func readSourceLines(ctx context.Context, backend QueryInterface, service, file string, startLine, endLine, maxLines, maxBytes int, onWire bool) (sourceRange, error) {
 	corpusRoot, err := resolveCorpusRoot(ctx, backend, service)
 	if err != nil {
@@ -517,10 +518,15 @@ func readSourceLines(ctx context.Context, backend QueryInterface, service, file 
 				// JS, generated single-line JSON): return it TRUNCATED to
 				// the budget with the note set — never whole (silently
 				// voiding the documented cap), never empty (making the
-				// line unreadable at any budget).
-				cut := text[:maxBytes]
+				// line unreadable at any budget). The cut is chosen per
+				// accounting: on the wire this branch also fires for a line
+				// SHORTER than maxBytes raw (its row's envelope and escaping
+				// push it over), so text[:maxBytes] would slice past its end.
+				var cut string
 				if onWire {
 					cut = fitLineToWire(ln, text, maxBytes-byteCount-1)
+				} else {
+					cut = text[:maxBytes]
 				}
 				out = append(out, sourceLine{Line: ln, Text: cut})
 			}
