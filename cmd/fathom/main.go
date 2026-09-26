@@ -211,7 +211,11 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		if len(args) > 1 && args[1] == "undo" {
 			return cmdFleetUndo(args[2:], stdout, stderr)
 		}
-		fmt.Fprintln(stderr, "usage: fathom fleet report|reconcile|receipts|undo [flags]")
+		// SH-9: time-to-remedy over the report snapshots.
+		if len(args) > 1 && args[1] == "remedy" {
+			return cmdFleetRemedy(args[2:], stdout, stderr)
+		}
+		fmt.Fprintln(stderr, "usage: fathom fleet report|reconcile|receipts|undo|remedy [flags]")
 		return 1
 	case "stop-hook":
 		return cmdStopHook(args[1:], stdout, stderr)

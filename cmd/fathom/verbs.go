@@ -76,7 +76,7 @@ var verbTable = []verb{
 	{Name: "retro", Summary: "Did the firings help? Join a session's interventions to outcomes: [--session S | latest stamped] [--write] [--json]"},
 	{Name: "brief", Summary: "Write the shareable markdown value brief (honesty covenant included) to ~/.fathom/briefs, or --print"},
 	{Name: "thread", Summary: "Continuity threads: brief | note | point | list | close | promote | handoff — the work, not the session (vision 21)"},
-	{Name: "fleet", Summary: "Fleet operations: report | reconcile [--apply] | receipts | undo <receipt> (every write receipted, every receipt reversible)"},
+	{Name: "fleet", Summary: "Fleet operations: report | reconcile [--apply] | receipts | undo <receipt> (every write receipted, every receipt reversible) | remedy: time-to-remedy per repository from the report snapshots"},
 	{Name: "research", Summary: "The research flywheel: report (aggregate local evidence) | bundle (sanitized, shareable summary)"},
 	{Name: "module", Summary: "Expert-module lifecycle: init | sources | map | compile | eval | doctor | pack | runs"},
 	{Name: "rules", Summary: "Compiled governance (VB-13/VB-14): gen-test [--root DIR] [--out DIR] emits a Go test from .fathom/guard.cue's layer_rules | replay --since <ref|N> [--rules FILE] [--json]: evaluate today's rules against past commits (VB-16)"},
