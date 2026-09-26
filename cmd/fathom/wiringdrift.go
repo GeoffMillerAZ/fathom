@@ -70,26 +70,29 @@ func mcpFilesFor(root, home string, ids []string) []wiring.MCPFile {
 // carries the fathom:owned marker, in the three shapes installSkills
 // writes (.claude/skills, .agents/skills, ~/.codex/prompts). A present
 // file without the marker is someone else's and is not fathom's to watch.
+// Each carries what this binary renders for its target (renderSkill), so a
+// file equal to fathom's own shipped skill never reads as drift.
 func ownedSkillFiles(root, home string) []wiring.SkillFile {
 	var out []wiring.SkillFile
-	consider := func(path, label string) {
+	consider := func(path, label, target, name string) {
+		shipped, _ := renderSkill(target, name)
 		data, err := os.ReadFile(path)
 		if err != nil {
 			if !errors.Is(err, os.ErrNotExist) {
 				// Unreadable: hand it on so DriftSkills names it (I38).
-				out = append(out, wiring.SkillFile{Path: path, Label: label})
+				out = append(out, wiring.SkillFile{Path: path, Label: label, Shipped: shipped})
 			}
 			return
 		}
 		if bytes.Contains(data, []byte(skillMarker)) {
-			out = append(out, wiring.SkillFile{Path: path, Label: label})
+			out = append(out, wiring.SkillFile{Path: path, Label: label, Shipped: shipped})
 		}
 	}
 	for _, name := range skillsdist.Names {
-		consider(filepath.Join(root, ".claude", "skills", name, "SKILL.md"), ".claude/skills/"+name+"/SKILL.md")
-		consider(filepath.Join(root, ".agents", "skills", name, "SKILL.md"), ".agents/skills/"+name+"/SKILL.md")
+		consider(filepath.Join(root, ".claude", "skills", name, "SKILL.md"), ".claude/skills/"+name+"/SKILL.md", skillsTargetClaude, name)
+		consider(filepath.Join(root, ".agents", "skills", name, "SKILL.md"), ".agents/skills/"+name+"/SKILL.md", skillsTargetAgents, name)
 		if home != "" {
-			consider(filepath.Join(home, ".codex", "prompts", name+".md"), "~/.codex/prompts/"+name+".md")
+			consider(filepath.Join(home, ".codex", "prompts", name+".md"), "~/.codex/prompts/"+name+".md", skillsTargetCodexPrompts, name)
 		}
 	}
 	return out

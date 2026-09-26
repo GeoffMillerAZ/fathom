@@ -13,6 +13,7 @@ package wiring
 // into a committed ledger through its hash).
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -68,9 +69,19 @@ type MCPFile struct {
 
 // SkillFile is one fathom-owned skill file (its content carries the owned
 // marker): Path absolute, Label repo-relative (or "~/…"), the ledger key.
+// Shipped is what this binary renders for that path (nil when unknown): a
+// file equal to it is fathom's own content, so a baseline that lags it —
+// .fathom/owned.json is per checkout, the shipped skill changes in git — is
+// not drift, and recording it is what `fathom init --skills` would do.
 type SkillFile struct {
-	Path  string
-	Label string
+	Path    string
+	Label   string
+	Shipped []byte
+}
+
+// isShipped reports whether data is exactly the rendering this binary ships.
+func (f SkillFile) isShipped(data []byte) bool {
+	return f.Shipped != nil && bytes.Equal(data, f.Shipped)
 }
 
 // ledger ids for the two new kinds; hooks and stanzas keep theirs.
@@ -260,7 +271,7 @@ func DriftSkills(ledger Ledger, files []SkillFile, read readFn) DriftReport {
 			rep.Unrecorded = append(rep.Unrecorded, DriftKindSkill+" "+f.Label)
 			continue
 		}
-		if owned.Digest != dig {
+		if owned.Digest != dig && !f.isShipped(data) {
 			rep.Drifts = append(rep.Drifts, Drift{
 				Kind: DriftKindSkill, Path: f.Label,
 				Reason: "the skill file changed since fathom recorded it on " + orUnrecorded(owned.Wrote) +
@@ -385,10 +396,11 @@ func RecordBaselines(root string, mcp []MCPFile, skills []SkillFile, wrote strin
 		if rerr != nil {
 			continue
 		}
-		if _, has := ownedKey(ledger, f.Label, skillKeyID); has && !rebaseline {
+		dig := digest(string(data))
+		if owned, has := ownedKey(ledger, f.Label, skillKeyID); has && !rebaseline && (owned.Digest == dig || !f.isShipped(data)) {
 			continue
 		}
-		ledger.Record(f.Label, OwnedKey{ID: skillKeyID, Digest: digest(string(data)), Wrote: wrote})
+		ledger.Record(f.Label, OwnedKey{ID: skillKeyID, Digest: dig, Wrote: wrote})
 		recorded = append(recorded, DriftKindSkill+" "+f.Label)
 	}
 	sort.Strings(recorded)
