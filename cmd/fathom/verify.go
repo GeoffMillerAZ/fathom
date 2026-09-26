@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -435,65 +436,72 @@ type httpVerifyResult struct {
 		Fail    int `json:"fail"`
 		Unknown int `json:"unknown"`
 	} `json:"summary"`
-	Tasks []struct {
-		ID       string `json:"id"`
-		Title    string `json:"title"`
-		Status   string `json:"status"`
-		Label    string `json:"label"`
-		Criteria []struct {
-			Name   string `json:"name"`
-			Status string `json:"status"`
-			Detail string `json:"detail"`
-		} `json:"criteria"`
-	} `json:"tasks"`
+	Tasks []httpVerifyTask `json:"tasks"`
+	// Elided is the dispatch budget's disclosure (SU-3, budgeted_handler.go):
+	// a long plan's tasks array is cut to what fits, and the rest of the
+	// rows arrive in follow-up calls (verifyViaHTTP).
+	Elided *struct {
+		Count int `json:"count"`
+		Of    int `json:"of"`
+	} `json:"elided,omitempty"`
 }
+
+type httpVerifyTask struct {
+	ID       string `json:"id"`
+	Title    string `json:"title"`
+	Status   string `json:"status"`
+	Label    string `json:"label"`
+	Criteria []struct {
+		Name   string `json:"name"`
+		Status string `json:"status"`
+		Detail string `json:"detail"`
+	} `json:"criteria"`
+}
+
+// maxVerifyFollowUps bounds the follow-up verify_plan calls one plan may
+// take when the dispatch budget cuts its answer.
+const maxVerifyFollowUps = 64
 
 // verifyViaHTTP calls verify_plan on the daemon and merges the verdicts with
 // the locally-parsed claimed/skipped state. Gate is always computed locally.
+//
+// The daemon's dispatch budget (SU-3) cuts a long plan's tasks array to what
+// fits and says so in an elided block; the rows it cut are verified in
+// follow-up calls that carry only those rows (every other row replaced by a
+// placeholder, so positional md-NNN ids stay put). A row whose verdict still
+// never arrives is reported Unknown with the reason — never left out, which
+// would let the gate pass a claim it never checked.
 func verifyViaHTTP(hc *http.Client, baseURL, service, concern string, planMD []byte, localPlan verify.Plan) (verify.Report, error) {
-	args := map[string]any{
-		"service":       service,
-		"plan_markdown": string(planMD),
-	}
-	if concern != "" {
-		args["concern"] = concern
-	}
-	reqBody, err := json.Marshal(map[string]any{
-		"jsonrpc": "2.0",
-		"id":      1,
-		"method":  "tools/call",
-		"params": map[string]any{
-			"name":      "verify_plan",
-			"arguments": args,
-		},
-	})
+	hvr, err := callVerifyPlan(hc, baseURL, service, concern, planMD)
 	if err != nil {
-		return verify.Report{}, fmt.Errorf("marshal request: %w", err)
+		return verify.Report{}, err
 	}
-
-	req, err := originHeader(baseURL, bytes.NewReader(reqBody))
-	if err != nil {
-		return verify.Report{}, fmt.Errorf("build request: %w", err)
+	tasks := hvr.Tasks
+	got := make(map[string]bool, len(tasks))
+	for _, t := range tasks {
+		got[t.ID] = true
 	}
-	resp, err := hc.Do(req)
-	if err != nil {
-		return verify.Report{}, fmt.Errorf("POST %s/rpc: %w", baseURL, err)
-	}
-	defer resp.Body.Close()
-	raw, err := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
-	if err != nil {
-		return verify.Report{}, fmt.Errorf("reading response: %w", err)
-	}
-
-	// Unwrap MCP content envelope: {"result":{"content":[{"text":"<json>"}]}}
-	innerJSON, err := unwrapRPCResult(raw)
-	if err != nil {
-		return verify.Report{}, fmt.Errorf("unwrap verify_plan response: %w", err)
-	}
-
-	var hvr httpVerifyResult
-	if err := json.Unmarshal(innerJSON, &hvr); err != nil {
-		return verify.Report{}, fmt.Errorf("parse verify_plan result: %w", err)
+	for i := 0; i < maxVerifyFollowUps && hvr.Elided != nil && hvr.Elided.Count > 0; i++ {
+		sub, ok := verifyFollowUpPlan(planMD, localPlan, got)
+		if !ok {
+			break
+		}
+		next, err := callVerifyPlan(hc, baseURL, service, concern, sub)
+		if err != nil {
+			return verify.Report{}, err
+		}
+		added := 0
+		for _, t := range next.Tasks {
+			if !got[t.ID] && localPlanHas(localPlan, t.ID) {
+				tasks = append(tasks, t)
+				got[t.ID] = true
+				added++
+			}
+		}
+		hvr.Elided = next.Elided
+		if added == 0 {
+			break
+		}
 	}
 
 	// Build verify.Report with locally-known claimed/skipped (gate is local).
@@ -506,8 +514,8 @@ func verifyViaHTTP(hc *http.Client, baseURL, service, concern string, planMD []b
 		inProgressByID[t.ID] = t.InProgress
 	}
 
-	verdicts := make([]verify.TaskVerdict, 0, len(hvr.Tasks))
-	for _, ht := range hvr.Tasks {
+	verdicts := make([]verify.TaskVerdict, 0, len(localPlan.Tasks))
+	for _, ht := range tasks {
 		var criteria []verify.Criterion
 		for _, hc := range ht.Criteria {
 			criteria = append(criteria, verify.Criterion{
@@ -527,16 +535,132 @@ func verifyViaHTTP(hc *http.Client, baseURL, service, concern string, planMD []b
 			InProgress: inProgressByID[ht.ID],
 		})
 	}
+	// A row the daemon never answered for: Unknown, with the reason.
+	for _, t := range localPlan.Tasks {
+		if got[t.ID] {
+			continue
+		}
+		got[t.ID] = true
+		verdicts = append(verdicts, verify.TaskVerdict{
+			TaskID: t.ID, Title: t.Title, Status: verify.Unknown, Label: "verdict-elided",
+			Criteria: []verify.Criterion{{Name: "verdict", Status: verify.Unknown,
+				Detail: "the daemon's verify_plan answer was cut by its response budget and this row's verdict never arrived — verify with --store, or narrow the plan"}},
+			Claimed: t.Claimed, Skipped: t.Skipped, InProgress: t.InProgress,
+		})
+	}
+	sort.SliceStable(verdicts, func(i, j int) bool { return verdicts[i].TaskID < verdicts[j].TaskID })
+	var sum verify.Summary
+	if len(tasks) == len(hvr.Tasks) && hvr.Elided == nil {
+		// Nothing was cut: the daemon's own summary stands.
+		sum = verify.Summary{Total: hvr.Summary.Total, Pass: hvr.Summary.Pass, Fail: hvr.Summary.Fail, Unknown: hvr.Summary.Unknown}
+	} else {
+		sum.Total = len(verdicts)
+		for _, v := range verdicts {
+			switch v.Status {
+			case verify.Pass:
+				sum.Pass++
+			case verify.Fail:
+				sum.Fail++
+			default:
+				sum.Unknown++
+			}
+		}
+	}
 	return verify.Report{
 		Service: hvr.Service,
 		Tasks:   verdicts,
-		Summary: verify.Summary{
-			Total:   hvr.Summary.Total,
-			Pass:    hvr.Summary.Pass,
-			Fail:    hvr.Summary.Fail,
-			Unknown: hvr.Summary.Unknown,
-		},
+		Summary: sum,
 	}, nil
+}
+
+// callVerifyPlan is one verify_plan call.
+func callVerifyPlan(hc *http.Client, baseURL, service, concern string, planMD []byte) (httpVerifyResult, error) {
+	args := map[string]any{
+		"service":       service,
+		"plan_markdown": string(planMD),
+	}
+	if concern != "" {
+		args["concern"] = concern
+	}
+	reqBody, err := json.Marshal(map[string]any{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name":      "verify_plan",
+			"arguments": args,
+		},
+	})
+	if err != nil {
+		return httpVerifyResult{}, fmt.Errorf("marshal request: %w", err)
+	}
+
+	req, err := originHeader(baseURL, bytes.NewReader(reqBody))
+	if err != nil {
+		return httpVerifyResult{}, fmt.Errorf("build request: %w", err)
+	}
+	resp, err := hc.Do(req)
+	if err != nil {
+		return httpVerifyResult{}, fmt.Errorf("POST %s/rpc: %w", baseURL, err)
+	}
+	defer resp.Body.Close()
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
+	if err != nil {
+		return httpVerifyResult{}, fmt.Errorf("reading response: %w", err)
+	}
+
+	// Unwrap MCP content envelope: {"result":{"content":[{"text":"<json>"}]}}
+	innerJSON, err := unwrapRPCResult(raw)
+	if err != nil {
+		return httpVerifyResult{}, fmt.Errorf("unwrap verify_plan response: %w", err)
+	}
+
+	var hvr httpVerifyResult
+	if err := json.Unmarshal(innerJSON, &hvr); err != nil {
+		return httpVerifyResult{}, fmt.Errorf("parse verify_plan result: %w", err)
+	}
+	return hvr, nil
+}
+
+// verifyFollowUpPlan is the plan markdown for a follow-up call: the rows
+// whose verdicts have not arrived kept verbatim, every row that has one
+// replaced by a placeholder row, so the parser's positional md-NNN ids are
+// unchanged. A placeholder's own id starts with "~", which sorts after every
+// other id, so the budget's cut (a prefix in id order) never spends itself
+// on placeholders before a missing row. ok is false when no row is missing.
+func verifyFollowUpPlan(planMD []byte, plan verify.Plan, got map[string]bool) ([]byte, bool) {
+	lines := strings.Split(string(planMD), "\n")
+	keep := map[int]bool{}
+	missing := 0
+	for _, t := range plan.Tasks {
+		if !got[t.ID] {
+			keep[t.Line] = true
+			missing++
+		}
+	}
+	if missing == 0 {
+		return nil, false
+	}
+	var b strings.Builder
+	for i, t := range plan.Tasks {
+		if keep[t.Line] && t.Line >= 1 && t.Line <= len(lines) {
+			b.WriteString(lines[t.Line-1])
+		} else {
+			fmt.Fprintf(&b, "- [-] . {id: ~%d}", i+1)
+		}
+		b.WriteByte('\n')
+	}
+	return []byte(b.String()), true
+}
+
+// localPlanHas reports whether the plan has a row with id.
+func localPlanHas(plan verify.Plan, id string) bool {
+	for _, t := range plan.Tasks {
+		if t.ID == id {
+			return true
+		}
+	}
+	return false
 }
 
 // daemonServiceIndexed reports whether the daemon's index has symbols for
