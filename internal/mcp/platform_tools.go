@@ -52,6 +52,40 @@ func registerPlatformTools(s *Server, backend QueryInterface, fleet FleetBackend
 
 // ─── list_services ────────────────────────────────────────────────────────────
 
+// ServiceSummary is one list_services row's identity: the service, its
+// symbol count, the languages its symbols come from, and its recorded
+// corpus root ("" when none is recorded).
+type ServiceSummary struct {
+	Service     string
+	SymbolCount int
+	Languages   []string
+	Path        string
+}
+
+// ServiceSummaries computes list_services' identity fields in process. The
+// tool handler and the daemon-hosted console both call it, so the console
+// shows exactly what list_services returns without a loopback HTTP round
+// trip — which timed out under load and rendered project pages as "store
+// unreadable" — and without writing a call-log row for a page render.
+func ServiceSummaries(ctx context.Context, backend QueryInterface, fleet FleetBackend) []ServiceSummary {
+	if fleet == nil {
+		return nil
+	}
+	svcs := fleet.Services()
+	out := make([]ServiceSummary, 0, len(svcs))
+	for _, svc := range svcs {
+		nodes := fleet.SymbolsFor(svc)
+		sum := ServiceSummary{Service: svc, SymbolCount: len(nodes), Languages: langStrings(nodes)}
+		if backend != nil {
+			if path, _, found, err := backend.ServiceMeta(ctx, svc); err == nil && found && path != "" {
+				sum.Path = path
+			}
+		}
+		out = append(out, sum)
+	}
+	return out
+}
+
 func registerListServices(s *Server, backend QueryInterface, fleet FleetBackend) {
 	s.registerTool(toolDescriptor{
 		Name:        "list_services",
@@ -65,23 +99,24 @@ func registerListServices(s *Server, backend QueryInterface, fleet FleetBackend)
 		if fleet == nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: "no fleet backend configured"}
 		}
-		svcs := fleet.Services()
-		entries := make([]any, 0, len(svcs))
-		for _, svc := range svcs {
-			nodes := fleet.SymbolsFor(svc)
-			langs := langSet(nodes)
+		sums := ServiceSummaries(ctx, backend, fleet)
+		entries := make([]any, 0, len(sums))
+		for _, sum := range sums {
+			svc := sum.Service
+			langs := make([]any, len(sum.Languages))
+			for i, l := range sum.Languages {
+				langs[i] = l
+			}
 			entry := map[string]any{
 				"service":      svc,
-				"symbol_count": len(nodes),
+				"symbol_count": sum.SymbolCount,
 				"languages":    langs,
 			}
 			// Recorded corpus path (ServiceMeta) — empty/omitted when the
 			// backend is absent or the service has no recorded root (e.g.
 			// remote corpora). Always absolute post-O10.
-			if backend != nil {
-				if path, _, found, err := backend.ServiceMeta(ctx, svc); err == nil && found && path != "" {
-					entry["path"] = path
-				}
+			if sum.Path != "" {
+				entry["path"] = sum.Path
 			}
 			// Unsupported languages (O69): a known programming language with
 			// no registered extractor, named and counted rather than left
@@ -163,7 +198,7 @@ func registerListServices(s *Server, backend QueryInterface, fleet FleetBackend)
 			}
 			entries = append(entries, entry)
 		}
-		return map[string]any{"services": entries, "count": len(svcs)}, nil
+		return map[string]any{"services": entries, "count": len(sums)}, nil
 	})
 }
 
@@ -315,6 +350,16 @@ func matchesSymbol(callee, target string) bool {
 // langSet derives the set of detected languages from SymbolNode kinds and
 // returns a sorted []any for JSON serialisation.
 func langSet(nodes []core.SymbolNode) []any {
+	langs := langStrings(nodes)
+	out := make([]any, len(langs))
+	for i, l := range langs {
+		out[i] = l
+	}
+	return out
+}
+
+// langStrings is langSet's sorted, de-duplicated language list as strings.
+func langStrings(nodes []core.SymbolNode) []string {
 	seen := make(map[string]struct{}, 4)
 	for _, n := range nodes {
 		if lang := kindToLang(n.Kind); lang != "" {
@@ -326,11 +371,7 @@ func langSet(nodes []core.SymbolNode) []any {
 		langs = append(langs, l)
 	}
 	sort.Strings(langs)
-	out := make([]any, len(langs))
-	for i, l := range langs {
-		out[i] = l
-	}
-	return out
+	return langs
 }
 
 // kindToLang maps a SourceKind to a short language tag.

@@ -184,10 +184,18 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	}
 
 	var srv *mcp.Server
+	fleet := &fleetAdapter{c: c, log: flog}
 	if moduleHost != nil {
-		srv = mcp.NewServerWithModules(backend, &fleetAdapter{c: c, log: flog}, logger, moduleHost)
+		srv = mcp.NewServerWithModules(backend, fleet, logger, moduleHost)
 	} else {
-		srv = mcp.NewServerWithFleetAndLogger(backend, &fleetAdapter{c: c, log: flog}, logger)
+		srv = mcp.NewServerWithFleetAndLogger(backend, fleet, logger)
+	}
+	// The daemon answers its own service registry in process: a page render
+	// never round-trips list_services over loopback HTTP (it timed out under
+	// load and rendered project pages as "store unreadable") and never writes
+	// a call-log row of its own.
+	inProcessServices = func(ctx context.Context) (map[string]svcInfo, error) {
+		return svcInfoFromSummaries(mcp.ServiceSummaries(ctx, backend, fleet)), nil
 	}
 	// BA-9: budget defaults are project-settable. The `budgets` block of
 	// <cwd>/.fathom/capabilities.cue (the daemon's working repo) and
@@ -213,6 +221,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// The console's dependencies (vision 35): serve-http owns them so the
 	// event feeders below publish to the same bus GET /events streams.
 	consoleDeps := newConsoleDeps(c, "http://"+*addr, time.Now())
+	inProcessSelfURL = "http://" + *addr
 	handler := newHTTPHandlerWithAuthDeps(srv, c, modulesToken, *addr, ports, flog, consoleDeps)
 
 	// Adopt a new binary without a human (selfrestart.go). launchd's

@@ -15,6 +15,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/harness"
+	"github.com/geoffmilleraz/fathom/internal/mcp"
 )
 
 // cmdSessionHook implements the "session-hook" subcommand: a Claude Code
@@ -382,7 +383,43 @@ func buildSessionContext(baseURL, projDir string) string {
 // collapsing them once rendered a confident false not-indexed instruction
 // for an indexed repo). One retry with its own timeout, decoupled from the
 // caller's healthz-sized client.
+// inProcessServices and inProcessSelfURL are set by serve-http: a registry
+// lookup aimed at the daemon's own URL is answered in process (the same
+// mcp.ServiceSummaries list_services returns) instead of over loopback HTTP.
+// Both stay unset in every CLI process.
+var (
+	inProcessServices func(ctx context.Context) (map[string]svcInfo, error)
+	inProcessSelfURL  string
+)
+
+// svcInfoFromSummaries converts list_services' identity rows into the
+// registry map every caller of fetchServices reads, skipping malformed IDs
+// exactly as the HTTP decode does.
+func svcInfoFromSummaries(sums []mcp.ServiceSummary) map[string]svcInfo {
+	out := make(map[string]svcInfo, len(sums))
+	for _, s := range sums {
+		if err := core.ValidServiceID(s.Service); err != nil {
+			continue
+		}
+		out[strings.ToLower(s.Service)] = svcInfo{symbols: s.SymbolCount, langs: joinLangs(s.Languages), path: s.Path}
+	}
+	return out
+}
+
+// sameDaemonURL reports whether baseURL names the daemon at self, ignoring a
+// trailing slash and the localhost / 127.0.0.1 spelling.
+func sameDaemonURL(baseURL, self string) bool {
+	norm := func(u string) string {
+		u = strings.TrimRight(strings.TrimSpace(u), "/")
+		return strings.Replace(u, "://localhost:", "://127.0.0.1:", 1)
+	}
+	return self != "" && norm(baseURL) == norm(self)
+}
+
 func fetchServices(hc *http.Client, baseURL string) (map[string]svcInfo, error) {
+	if f := inProcessServices; f != nil && sameDaemonURL(baseURL, inProcessSelfURL) {
+		return f(context.Background())
+	}
 	m, err := fetchServicesOnce(hc, baseURL)
 	if err == nil {
 		return m, nil

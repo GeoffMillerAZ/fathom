@@ -685,3 +685,39 @@ type pathMetaBackend struct{ mcp.QueryInterface }
 func (pathMetaBackend) ServiceMeta(_ context.Context, service string) (string, string, bool, error) {
 	return "/corpora/" + service, "deadbeef", true, nil
 }
+
+// TestServiceSummaries_MatchesListServices pins the in-process registry the
+// daemon's console reads to what list_services returns, field for field.
+func TestServiceSummaries_MatchesListServices(t *testing.T) {
+	fleet := fleetFixture()
+	srv := newFleetServer(fleet)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1002, Method: "tools/call",
+		Params: map[string]any{"name": "list_services", "arguments": map[string]any{}},
+	})
+	p := platformToolPayload(t, resp)
+	entries, _ := p["services"].([]any)
+	sums := mcp.ServiceSummaries(context.Background(), nil, fleet)
+	if len(sums) != len(entries) {
+		t.Fatalf("ServiceSummaries returned %d rows, list_services %d", len(sums), len(entries))
+	}
+	for i, raw := range entries {
+		e := raw.(map[string]any)
+		s := sums[i]
+		if e["service"] != s.Service {
+			t.Errorf("row %d: service %v vs %q", i, e["service"], s.Service)
+		}
+		if int(e["symbol_count"].(float64)) != s.SymbolCount {
+			t.Errorf("row %d: symbol_count %v vs %d", i, e["symbol_count"], s.SymbolCount)
+		}
+		langs, _ := e["languages"].([]any)
+		if len(langs) != len(s.Languages) {
+			t.Fatalf("row %d: languages %v vs %v", i, langs, s.Languages)
+		}
+		for j := range langs {
+			if langs[j] != s.Languages[j] {
+				t.Errorf("row %d: language %d %v vs %q", i, j, langs[j], s.Languages[j])
+			}
+		}
+	}
+}
