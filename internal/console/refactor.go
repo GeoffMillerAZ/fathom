@@ -296,6 +296,8 @@ func residueView(in RefactorInput, notRun string) ResidueView {
 func executionClasses(r *Residue, source, of string) (partial, unexecuted Value[int]) {
 	analyzed := r.Changed - r.UnanalyzedFunctions
 	switch {
+	case analyzed <= 0:
+		// No changed function to class: zero is a count, not an absence.
 	case r.ClassedByExecution == 0:
 		why := "no coverage profile was loaded for this range"
 		if r.CoverageUnusable != "" {

@@ -141,6 +141,11 @@ func TestRefactorView_NoExecutionEvidenceIsNotMeasured(t *testing.T) {
 	if r := RefactorView(in).Residue; !strings.Contains(r.Partial.Reason, "dirty tree") {
 		t.Errorf("unusable coverage = %+v", r.Partial)
 	}
+	// No changed function at all: nothing could be partial — a measured 0.
+	empty := RefactorInput{Service: "fathom", Since: "HEAD~1", Ran: true, Residue: &Residue{Missing: []string{}}}
+	if r := RefactorView(empty).Residue; r.Partial.State != StateZero || r.Unexecuted.State != StateZero {
+		t.Errorf("no changed functions = %+v / %+v, want measured zeros", r.Partial, r.Unexecuted)
+	}
 	// Some functions classed by execution, the rest by static reach: a
 	// lower bound naming the split.
 	in.Residue.CoverageUnusable = ""
