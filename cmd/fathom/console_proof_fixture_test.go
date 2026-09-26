@@ -400,10 +400,13 @@ func verbsInstantiate(concrete, templates []string) bool {
 }
 
 // consoleVerbArgs is how the parity test runs a page's verb against the
-// fixture: a daemon verb gets the fixture's --url, a store-direct verb
-// (certify, conserve) the fixture's --store; a verb that reads the working
-// tree from its directory (verify, conserve, plans with an explicit --plan)
-// runs in the repository's root, as an operator runs it.
+// fixture: a daemon verb gets the fixture's --url (its default, the local
+// daemon, is the page's own in the normal setup); a store-direct verb
+// (certify, conserve) runs exactly as its chip reads — the chip must name
+// the daemon's --store itself, since as copied it would otherwise read its
+// default store, not the page's. A verb that reads the working tree from
+// its directory (verify, conserve, plans with an explicit --plan) runs in
+// the repository's root, as an operator runs it.
 func consoleVerbArgs(t *testing.T, f *consoleFixture, verb string) (args []string, dir string) {
 	t.Helper()
 	fields := strings.Fields(verb)[1:]
@@ -413,7 +416,10 @@ func consoleVerbArgs(t *testing.T, f *consoleFixture, verb string) (args []strin
 	}
 	switch name {
 	case "certify status", "certify gaps", "conserve":
-		args = append(append([]string{}, fields...), "--store", consoleFixtureStorePath(t))
+		if !strings.Contains(verb, " --store "+consoleFixtureStorePath(t)+" ") {
+			t.Fatalf("`%s` opens a store directly but its chip names no --store %s: copied as shown it reads another store", verb, consoleFixtureStorePath(t))
+		}
+		args = append([]string{}, fields...)
 	default:
 		args = append(append([]string{}, fields...), "--url", f.ts.URL)
 	}

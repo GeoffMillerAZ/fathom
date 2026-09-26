@@ -258,7 +258,7 @@ func TestConsoleCertifications_MatrixGapsAndScope(t *testing.T) {
 	}
 	mustContain(t, "/certifications", page,
 		`id="cert-matrix"`, `role="img"`, "The matrix as a table", `data-table="cert-matrix"`,
-		`data-console-copy="fathom certify status --service proof-service --json"`,
+		`data-console-copy="fathom certify status --service proof-service --store `+consoleFixtureStorePath(t)+` --json"`,
 		`data-table-row="gap-proof-service-incident-INC-1"`, `data-table-row="gap-proof-service-invariant-I2"`,
 		"// certifies: invariant I2", "docs/intent/invariants.md:6",
 	)
@@ -274,7 +274,7 @@ func TestConsoleCertifications_MatrixGapsAndScope(t *testing.T) {
 
 	// A repository's scope names both verbs; its gaps section is the verb's.
 	senv := f.pageJSON(t, "/certifications?svc=proof-service")
-	gapsVerb := "fathom certify gaps --service proof-service --json"
+	gapsVerb := "fathom certify gaps --service proof-service --store " + consoleFixtureStorePath(t) + " --json"
 	if len(senv.Verbs) != 2 || senv.Sections[gapsVerb] == nil {
 		t.Fatalf("scoped verbs = %v", senv.Verbs)
 	}
@@ -311,7 +311,7 @@ func TestConsoleRefactors_PlanesNeverConservedByDefault(t *testing.T) {
 		`data-plane="generated" data-verdict="not run"`, "no plane by this name is registered",
 		`data-plane="integrity" data-verdict="conserved"`,
 		`id="reading-set"`, "changed functions", `data-table-row="item-0"`,
-		`data-console-copy="fathom conserve --since HEAD~1 --service proof-service --json"`,
+		`data-console-copy="fathom conserve --since HEAD~1 --service proof-service --store `+consoleFixtureStorePath(t)+` --json"`,
 	)
 	assertRoleUtilitiesOnly(t, page)
 	env := f.pageJSON(t, "/refactors?svc=proof-service&since=HEAD~1")
@@ -326,6 +326,11 @@ func TestConsoleRefactors_PlanesNeverConservedByDefault(t *testing.T) {
 	}
 	if m.Residue.Changed.V != 2 {
 		t.Errorf("reading set = %+v", m.Residue.Changed)
+	}
+	// proof-service loads no coverage profile: which changed lines ran is
+	// not measured, never a colored 0.
+	if m.Residue.Partial.State != console.StateAbsent || m.Residue.Unexecuted.State != console.StateAbsent || !strings.Contains(m.Residue.Partial.Reason, "no execution evidence") {
+		t.Errorf("partial/unexecuted with no execution evidence = %+v / %+v", m.Residue.Partial, m.Residue.Unexecuted)
 	}
 	for _, bad := range []string{"--help", "-x", "a b", "HEAD%3Brm"} {
 		if code, _, _ := f.get(t, "/refactors?svc=proof-service&since="+strings.ReplaceAll(bad, " ", "%20")); code != http.StatusBadRequest {
@@ -551,4 +556,18 @@ func keysOf[V any](m map[string]V) []string {
 		out = append(out, k)
 	}
 	return out
+}
+
+// A store-direct verb's chip names the daemon's store, quoted for a shell
+// when its path needs it: copied as shown it reads what the page read.
+func TestConsoleStoreArg_NamesTheDaemonsStore(t *testing.T) {
+	if got := (&consoleDeps{storePath: "/v/workspace/db/fleet.sqlite"}).storeArg(); got != " --store /v/workspace/db/fleet.sqlite" {
+		t.Errorf("storeArg = %q", got)
+	}
+	if got := (&consoleDeps{storePath: "/Users/a b/it's.sqlite"}).storeArg(); got != ` --store '/Users/a b/it'\''s.sqlite'` {
+		t.Errorf("a path with a space and a quote = %q", got)
+	}
+	if got := (&consoleDeps{}).storeArg(); got != "" {
+		t.Errorf("no store path = %q", got)
+	}
 }

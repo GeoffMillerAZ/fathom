@@ -131,6 +131,12 @@ func TestResidue_ExecutionEvidenceClasses(t *testing.T) {
 	if rep.Partial != 1 || rep.Unexecuted != 1 {
 		t.Fatalf("Partial/Unexecuted = %d/%d, want 1/1; items=%+v", rep.Partial, rep.Unexecuted, rep.Items)
 	}
+	// Every changed function here was classed by execution evidence, the
+	// attested ones (never listed) included: the count a reader needs to
+	// know Partial and Unexecuted were measured at all.
+	if rep.ClassedByExecution != 5 {
+		t.Errorf("ClassedByExecution = %d, want 5", rep.ClassedByExecution)
+	}
 }
 
 // TestResidue_UnusableCoverageFallsBack pins CV-70/I44: a profile whose
@@ -185,6 +191,11 @@ func TestResidue_UnusableCoverageFallsBack(t *testing.T) {
 		it, ok := byName["F"]
 		if !ok || it.Class != "unattested" || it.Evidence != evidenceStaticReach {
 			t.Fatalf("F item = %+v (ok=%v), want class=unattested evidence=static-reach (fell back)", it, ok)
+		}
+		// Nothing was classed by execution: Partial and Unexecuted were
+		// not measured, and the report says so with a count of 0.
+		if rep.ClassedByExecution != 0 {
+			t.Errorf("ClassedByExecution = %d, want 0 (every item fell back)", rep.ClassedByExecution)
 		}
 	})
 

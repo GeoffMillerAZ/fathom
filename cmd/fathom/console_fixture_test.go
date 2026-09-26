@@ -151,6 +151,7 @@ func newConsoleFixtureOpts(t *testing.T, o consoleFixtureOpts) *consoleFixture {
 	t.Cleanup(f.ts.Close)
 	f.deps = newConsoleDeps(c, f.ts.URL, f.now)
 	f.deps.now = func() time.Time { return f.now }
+	f.deps.storePath = consoleFixtureStorePath(t) // serve-http's --store
 	// serve-http's own server shape: the fleet backend answers list_services.
 	var logger *mcp.CallLogger
 	if o.LogCalls {

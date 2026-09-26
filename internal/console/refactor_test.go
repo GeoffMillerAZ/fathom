@@ -36,7 +36,7 @@ func TestRefactorView_NotRunIsNeverConserved(t *testing.T) {
 			{Plane: "surface", Verdict: "unproven", Missing: []string{"typed pass failed"}, Findings: []ConserveFinding{}},
 		},
 		Residue: &Residue{
-			Changed: 3, Attested: 1, Partial: 1, Unreached: 1,
+			Changed: 3, Attested: 1, Partial: 1, Unreached: 1, ClassedByExecution: 3,
 			Items: []ResidueItem{
 				{Symbol: "Settle", File: "settle.go", Line: 3, Class: "partial", Evidence: "executed", UnexecutedLines: []string{"7-9"}},
 				{Symbol: "Audit", File: "settle.go", Line: 20, Class: "unreached"},
@@ -107,5 +107,46 @@ func TestRefactorView_NotRunIsNeverConserved(t *testing.T) {
 	}
 	if _, _, ok := parseLineRange("9-3"); ok {
 		t.Error("an inverted range is refused")
+	}
+}
+
+// TestRefactorView_NoExecutionEvidenceIsNotMeasured pins "absent never 0"
+// on the reading set: partial and unexecuted exist only where execution
+// evidence classed a function (design §3.5), so with none they are not
+// measured — never a colored zero — and with some of the changed functions
+// classed by static reach instead, they are a named lower bound.
+func TestRefactorView_NoExecutionEvidenceIsNotMeasured(t *testing.T) {
+	in := RefactorInput{
+		Service: "fathom", Since: "HEAD~5", Ran: true, Base: "437761a6", Head: "worktree",
+		Residue: &Residue{
+			Changed: 9, Unattested: 9, ClassedByExecution: 0, Missing: []string{},
+			Items: []ResidueItem{{Symbol: "F", File: "f.go", Line: 3, Class: "unattested", Evidence: "static-reach"}},
+		},
+	}
+	r := RefactorView(in).Residue
+	if r.State != StatePresent || r.Unattested.V != 9 || r.Unattested.State != StatePresent {
+		t.Fatalf("static classes = %+v", r)
+	}
+	for name, v := range map[string]Value[int]{"partial": r.Partial, "unexecuted": r.Unexecuted} {
+		if v.State != StateAbsent || !strings.Contains(v.Reason, "no execution evidence") {
+			t.Errorf("%s with no execution evidence = %+v, want absent with the reason", name, v)
+		}
+		raw, _ := json.Marshal(v)
+		if strings.Contains(string(raw), `"v"`) {
+			t.Errorf("%s: an unmeasured class carries no number: %s", name, raw)
+		}
+	}
+	// A coverage profile that could not be used names why.
+	in.Residue.CoverageUnusable = "the profile was taken on a dirty tree"
+	if r := RefactorView(in).Residue; !strings.Contains(r.Partial.Reason, "dirty tree") {
+		t.Errorf("unusable coverage = %+v", r.Partial)
+	}
+	// Some functions classed by execution, the rest by static reach: a
+	// lower bound naming the split.
+	in.Residue.CoverageUnusable = ""
+	in.Residue.ClassedByExecution, in.Residue.Partial = 4, 1
+	r = RefactorView(in).Residue
+	if r.Partial.State != StatePartial || r.Partial.V != 1 || !strings.Contains(r.Partial.Reason, "4 of 9") {
+		t.Errorf("partly classed by execution = %+v", r.Partial)
 	}
 }

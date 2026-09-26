@@ -1168,6 +1168,7 @@ discipline, and the tie-in/latency-budget checks doctor itself doesn't run.
 fathom plans status  --service <svc> [--plan P]... [--store DB | --url U] [--json]   # per-plan rollup: total/proven/claimed-unproven/measured-stale/open/deferred/other-skipped
 fathom plans next    --service <svc> [--eligible-only] [--free] [--root DIR] [--json] # the ordered work frontier, with {id, symbol, package} anchors
 fathom plans history --service <svc> --plan P [--url U] [--json]                      # the burn-up: scope and claimed rows per commit of the plan, the ledger's proven trend (absent under 14 days of rows), the cross-check
+fathom plans history [--service <svc>] [--url U] [--json]                             # no --plan: the claimed-vs-proven trend of the current plans of one service (or every registered one), from the verify ledger's runs of those plans only
 fathom plans context --service <svc> --row <id> [--budget 4000]                       # render a row's ctx: context pack (elided beyond the byte budget)
 fathom plans lease   --plan P <row-id> [--holder H] [--ttl 2h] [--release] [--root DIR] # TTL advisory lease on a row (.fathom/leases.jsonl)
 fathom plans leases  [--root DIR] [--json]                                            # list live leases
@@ -1787,7 +1788,10 @@ resolved caller count then symbol — still counts and lists only (I43), no
 percentage. `unanalyzed_functions` counts a changed function whose own
 file the index never analyzed at all (vendor/, an ignore rule), so
 `changed` always equals the sum of every class plus that count
-(reconciliation, CV-71). Test-case identity: a case id carrying its own
+(reconciliation, CV-71). `classed_by_execution` counts the changed
+functions an execution-evidence profile classed (the attested ones, never
+listed, included): `partial` and `unexecuted` exist only among them, so at
+0 neither was measured and their 0 is not a count. Test-case identity: a case id carrying its own
 package (`fathom tests ingest`'s join, `JoinCasesToSymbols`) disambiguates
 a bare `Test*` name shared across packages, which used to leave both
 unjoined (CV-M13's control measurement: 34 of 566 cases).
@@ -1795,7 +1799,7 @@ unjoined (CV-M13's control measurement: 34 of 566 cases).
 ```json
 {"schema":"fathom.coverage/v1", "...": "...",
  "residue":{"changed":2,"attested":0,"unattested":0,"unreached":0,
-   "partial":1,"unexecuted":1,"unanalyzed_functions":0,
+   "partial":1,"unexecuted":1,"unanalyzed_functions":0,"classed_by_execution":2,
    "items":[
      {"symbol":"Half","file":"widgets/extra.go","line":9,"change":"modified",
       "class":"partial","tests":[],"callers":0,"evidence":"executed",
@@ -2331,11 +2335,11 @@ unreadable store) render on the same shell with the reason and the remedy.
 | `/brief` | The shareable brief; `?format=md` downloads it |
 | `/wiring` | Per-repo Preview → Apply → Undo (the POSTs stay at `/observatory/wiring/*` behind the local gate) |
 | `/statusz` | Daemon status (JSON schema 3 unchanged) |
-| `/plans` (`?svc=`, `?page=`) | Every plan across the fleet (or one repository) with a proof bar counted from the gate's verdicts, the claimed-but-unproven gap as the headline, and the verify ledger's claimed-vs-proven trend once it holds 14 days of rows; carries `fathom plans status --service S --json` per repository |
+| `/plans` (`?svc=`, `?page=`) | Every plan across the fleet (or one repository) with a proof bar counted from the gate's verdicts, the claimed-but-unproven gap as the headline (a named lower bound while rows sit measured-stale), and the claimed-vs-proven trend of the scope's current plans once the verify ledger holds 14 days of their rows; carries `fathom plans status --service S --json` per repository and `fathom plans history [--service S] --json` for the trend |
 | `/plans/{svc}/{plan}` | The plan's proof bar, its rows by state on a read-only board (each card names its contract kind; a card opens the row's evidence in a drawer, and is a link without JavaScript), every row as a table, and the burn-up; carries `plans status`, `plans next` and `plans history` for the plan |
 | `/plans/{svc}/{plan}/rows/{id}` | One row's evidence: contract, verdict criterion by criterion, the call path from its test to its symbol (or the line its lexical oracle matched), and its history from the plan's commits; `?format=fragment` is the drawer's body; carries `fathom verify --row ID --json` |
-| `/certifications` (`?svc=`) | Targets by their best certificate's state (heatmap and table), each repository's line, and the gap list with remedies; carries `certify status` (and, for one repository, `certify gaps`) |
-| `/refactors?svc=&since=` | `fathom conserve --since` for one repository: the planes as chips (a plane that did not run reads "not run", never "conserved"), the findings, and the reading set with an excerpt of each partial function's unexecuted lines; without `svc` a chooser |
+| `/certifications` (`?svc=`) | Targets by their best certificate's state (heatmap and table), each repository's line, and the gap list with remedies; carries `certify status` (and, for one repository, `certify gaps`), each chip naming the daemon's `--store` |
+| `/refactors?svc=&since=` | `fathom conserve --since` for one repository: the planes as chips (a plane that did not run reads "not run", never "conserved"), the findings, and the reading set with an excerpt of each partial function's unexecuted lines (partial and unexecuted read "not measured" without execution evidence); the chip names the daemon's `--store`, and the page never writes the repository's index; without `svc` a chooser |
 | `/search?q=` | Projects, plans and plan rows, symbols, rules and records, verbs and pages, grouped; groups are listed by their best match (a tie goes to the smaller group, then that order) and every query word must match; a row or record ID matches exactly (`OC-1`, `ADR-045`); each group shows 8 of an exact total, and `&group=<slug>` (`projects`, `plans-and-rows`, `symbols`, `rules-and-records`, `verbs`, `pages`) pages through all of it, 50 at a time (`&page=N`). A query of more than 8 words or 200 characters is a 400. `?format=fragment` is the HTML fragment the command palette will load, `?format=json` the results |
 
 - Every page answers `?format=json` (or `Accept: application/json`) with one

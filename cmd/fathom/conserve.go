@@ -209,6 +209,11 @@ func printConserveResidue(w io.Writer, rep conserve.ResidueReport) {
 	if rep.CoverageUnusable != "" {
 		fmt.Fprintf(w, "    coverage unusable: %s (falling back to static reach)\n", rep.CoverageUnusable)
 	}
+	if rep.ClassedByExecution == 0 && rep.Changed > 0 && len(rep.Missing) == 0 {
+		fmt.Fprintln(w, "    no execution evidence classed any function: partial and unexecuted were not measured (0 is not a count)")
+	} else if rep.ClassedByExecution > 0 {
+		fmt.Fprintf(w, "    %d function(s) classed by execution evidence, the rest by static reach\n", rep.ClassedByExecution)
+	}
 	if rep.CoverageUnmapped > 0 {
 		fmt.Fprintf(w, "    coverage unmapped: %d profile file key(s) matched no module here, e.g. %s (functions in them fall back to static reach)\n",
 			rep.CoverageUnmapped, strings.Join(rep.CoverageUnmappedSample, ", "))

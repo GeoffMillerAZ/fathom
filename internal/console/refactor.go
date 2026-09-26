@@ -59,18 +59,21 @@ type ResidueItem struct {
 
 // Residue is the reading set's counts and items.
 type Residue struct {
-	Changed             int           `json:"changed"`
-	Attested            int           `json:"attested"`
-	Unattested          int           `json:"unattested"`
-	Unreached           int           `json:"unreached"`
-	Partial             int           `json:"partial"`
-	Unexecuted          int           `json:"unexecuted"`
-	UnanalyzedFunctions int           `json:"unanalyzed_functions"`
-	Items               []ResidueItem `json:"items"`
-	Truncated           int           `json:"truncated"`
-	Unanalyzed          []string      `json:"unanalyzed"`
-	Missing             []string      `json:"missing"`
-	CoverageUnusable    string        `json:"coverage_unusable,omitempty"`
+	Changed             int `json:"changed"`
+	Attested            int `json:"attested"`
+	Unattested          int `json:"unattested"`
+	Unreached           int `json:"unreached"`
+	Partial             int `json:"partial"`
+	Unexecuted          int `json:"unexecuted"`
+	UnanalyzedFunctions int `json:"unanalyzed_functions"`
+	// ClassedByExecution counts the changed functions an execution-evidence
+	// profile classed; Partial and Unexecuted exist only among them.
+	ClassedByExecution int           `json:"classed_by_execution"`
+	Items              []ResidueItem `json:"items"`
+	Truncated          int           `json:"truncated"`
+	Unanalyzed         []string      `json:"unanalyzed"`
+	Missing            []string      `json:"missing"`
+	CoverageUnusable   string        `json:"coverage_unusable,omitempty"`
 }
 
 // RefactorInput is what the refactor page reads for one service and range.
@@ -264,10 +267,9 @@ func residueView(in RefactorInput, notRun string) ResidueView {
 		of := fmt.Sprintf("of %d changed functions", r.Changed)
 		v.Changed = Measured(r.Changed, source).WithDenominator("changed functions in the range")
 		v.Attested = Measured(r.Attested, source).WithDenominator(of)
-		v.Partial = Measured(r.Partial, source).WithDenominator(of)
-		v.Unexecuted = Measured(r.Unexecuted, source).WithDenominator(of)
 		v.Unattested = Measured(r.Unattested, source).WithDenominator(of)
 		v.Unreached = Measured(r.Unreached, source).WithDenominator(of)
+		v.Partial, v.Unexecuted = executionClasses(r, source, of)
 	}
 	v.Truncated, v.Coverage = r.Truncated, r.CoverageUnusable
 	v.Unanalyzed = append(v.Unanalyzed, r.Unanalyzed...)
@@ -284,6 +286,28 @@ func residueView(in RefactorInput, notRun string) ResidueView {
 		v.Items = append(v.Items, iv)
 	}
 	return v
+}
+
+// executionClasses are the partial and unexecuted counts with their truth:
+// both exist only where execution evidence classed a function (design
+// §3.5), so with none they are not measured — a 0 there is conserve's
+// "nothing classed", never a count — and with some functions classed by
+// static reach instead they are a lower bound naming the split.
+func executionClasses(r *Residue, source, of string) (partial, unexecuted Value[int]) {
+	analyzed := r.Changed - r.UnanalyzedFunctions
+	switch {
+	case r.ClassedByExecution == 0:
+		why := "no coverage profile was loaded for this range"
+		if r.CoverageUnusable != "" {
+			why = "the coverage profile could not be used: " + r.CoverageUnusable
+		}
+		reason := "no execution evidence classed any changed function (" + why + "), so which changed lines ran is not measured; the classes stand on static reach"
+		return Absent[int](reason).WithSource(source), Absent[int](reason).WithSource(source)
+	case r.ClassedByExecution < analyzed:
+		reason := fmt.Sprintf("%d of %d changed functions were classed by execution evidence, the rest by static reach — a lower bound", r.ClassedByExecution, analyzed)
+		return Partial(r.Partial, reason).WithSource(source).WithDenominator(of), Partial(r.Unexecuted, reason).WithSource(source).WithDenominator(of)
+	}
+	return Measured(r.Partial, source).WithDenominator(of), Measured(r.Unexecuted, source).WithDenominator(of)
 }
 
 // maxExcerptLines bounds one excerpt: every line number is a keyboard stop.

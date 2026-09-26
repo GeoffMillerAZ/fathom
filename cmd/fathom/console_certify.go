@@ -32,7 +32,7 @@ func init() {
 		ID: "certifications", Route: "/certifications", Href: "/certifications", Group: "Proof", Order: 3, Nav: true,
 		Title:    "Certifications",
 		Question: "Which invariants, ports and incidents have live test proof, and which are gaps?",
-		Verbs:    []string{"fathom certify status --service {svc} --json", "fathom certify gaps --service {svc} --json"},
+		Verbs:    []string{"fathom certify status --service {svc} --store {store} --json", "fathom certify gaps --service {svc} --store {store} --json"},
 		Shows:    []console.MetricID{console.MetricServices, console.MetricCertGaps, console.MetricCertLive},
 		Build:    buildCertificationsPage,
 	})
@@ -145,13 +145,13 @@ func buildCertificationsPage(cr *consoleRequest) (consoleOut, error) {
 			continue
 		}
 		facts = append(facts, f)
-		status := "fathom certify status --service " + sr.Service + " --json"
+		status := "fathom certify status --service " + sr.Service + cr.deps.storeArg() + " --json"
 		verbs = append(verbs, status)
 		if r.err == "" {
 			sections[status] = certifyStatusDoc(sr.Service, r.report)
 		}
 		if scope != "" {
-			gaps := "fathom certify gaps --service " + sr.Service + " --json"
+			gaps := "fathom certify gaps --service " + sr.Service + cr.deps.storeArg() + " --json"
 			verbs = append(verbs, gaps)
 			if r.err == "" {
 				sections[gaps] = certifyGapsPayloadFor(sr.Service, r.indexCommit, cr.now, r.report)
@@ -173,7 +173,7 @@ func buildCertificationsPage(cr *consoleRequest) (consoleOut, error) {
 	}
 	out := consoleOut{
 		Meta: meta, Model: model, Metrics: metrics, Sections: sections, Verbs: verbs,
-		Body: func() string { return renderCertifications(model, scope, roots) },
+		Body: func() string { return renderCertifications(model, scope, roots, cr.deps.storeArg()) },
 	}
 	if scope == "" && len(verbs) > 0 {
 		out.Chips, out.Actions = []string{}, verbsDisclosure(verbs)
@@ -226,7 +226,7 @@ func certMatrixTable(v console.CertMatrixView) string {
 	return renderKitTable(table.TableParams{TableID: "cert-matrix", Caption: "Targets by kind and by their best certificate's state (only live satisfies)", Columns: cols, Rows: rows})
 }
 
-func renderCertifications(m certificationsModel, scope string, roots []serviceRoot) string {
+func renderCertifications(m certificationsModel, scope string, roots []serviceRoot, storeArg string) string {
 	v := m.CertMatrixView
 	var b strings.Builder
 	b.WriteString(renderCertScopeNav(v, scope))
@@ -237,11 +237,11 @@ func renderCertifications(m certificationsModel, scope string, roots []serviceRo
 		{Label: "repositories declaring", Value: fmtThousands(len(v.Services)), Sub: "in this scope"},
 	}, stat.BandOptions{AriaLabel: "certifications at a glance"}) + `</div>`)
 
-	verb := "fathom certify status --service <svc> --json"
-	gapsVerb := "fathom certify gaps --service <svc> --json"
+	verb := "fathom certify status --service <svc>" + storeArg + " --json"
+	gapsVerb := "fathom certify gaps --service <svc>" + storeArg + " --json"
 	if scope != "" {
-		verb = "fathom certify status --service " + scope + " --json"
-		gapsVerb = "fathom certify gaps --service " + scope + " --json"
+		verb = "fathom certify status --service " + scope + storeArg + " --json"
+		gapsVerb = "fathom certify gaps --service " + scope + storeArg + " --json"
 	}
 	matrix := `<p class="italic text-ink-muted">no certification targets in this scope</p>`
 	if len(v.Rows) > 0 {

@@ -43,7 +43,7 @@ func init() {
 		ID: "refactors", Route: "/refactors", Href: "/refactors", Group: "Proof", Order: 4, Nav: true,
 		Title:    "Refactors",
 		Question: "What did a change keep, what did it lose, and what is left for a human to read?",
-		Verbs:    []string{"fathom conserve --since {since} --service {svc} --json"},
+		Verbs:    []string{"fathom conserve --since {since} --service {svc} --store {store} --json"},
 		Build:    buildRefactorsPage,
 	})
 }
@@ -148,7 +148,7 @@ func refactorInput(sr serviceRoot, since string, e *conserveEntry, ok bool) cons
 	if r := rep.Residue; r != nil {
 		res := &console.Residue{
 			Changed: r.Changed, Attested: r.Attested, Unattested: r.Unattested, Unreached: r.Unreached,
-			Partial: r.Partial, Unexecuted: r.Unexecuted, UnanalyzedFunctions: r.UnanalyzedFunctions,
+			Partial: r.Partial, Unexecuted: r.Unexecuted, UnanalyzedFunctions: r.UnanalyzedFunctions, ClassedByExecution: r.ClassedByExecution,
 			Truncated: r.Truncated, Unanalyzed: r.Unanalyzed, Missing: r.Missing, CoverageUnusable: r.CoverageUnusable,
 		}
 		in.Sources = map[string]string{}
@@ -203,12 +203,12 @@ func buildRefactorsPage(cr *consoleRequest) (consoleOut, error) {
 		return consoleOut{}, &consoleError{
 			Status: http.StatusBadRequest, Title: "Unusable base ref",
 			Reason: "since=" + since + " is not a git revision this page will pass to git (letters, digits and . _ / ~ ^ @ { } + -, not starting with -).",
-			Remedy: "fathom conserve --since HEAD~1 --service " + sr.Service, RemedyHref: "/refactors?svc=" + url.QueryEscape(sr.Service), RemedyLabel: "Compare with the last commit",
+			Remedy: "fathom conserve --since HEAD~1 --service " + sr.Service + cr.deps.storeArg(), RemedyHref: "/refactors?svc=" + url.QueryEscape(sr.Service), RemedyLabel: "Compare with the last commit",
 		}
 	}
 	e, ok := refactorReport(plansFor(cr.deps), sr, since, consoleRefactorWait)
 	view := console.RefactorView(refactorInput(sr, since, e, ok))
-	verb := "fathom conserve --since " + since + " --service " + sr.Service + " --json"
+	verb := "fathom conserve --since " + since + " --service " + sr.Service + cr.deps.storeArg() + " --json"
 	sections := map[string]any{}
 	if ok && e.err == "" {
 		sections[verb] = e.report
@@ -331,7 +331,8 @@ func renderReadingSet(r console.ResidueView) string {
 	case r.State == console.StatePresent:
 		b.WriteString(stat.RenderBand([]stat.Stat{
 			valueStat("changed functions", r.Changed),
-			valueStat("attested — every changed line ran", r.Attested),
+			valueStat("attested — a passing run vouches for it", r.Attested),
+			valueStat("unattested — reached, no attesting run", r.Unattested),
 			valueStat("partial — some changed lines never ran", r.Partial),
 			valueStat("unexecuted — never ran", r.Unexecuted),
 			valueStat("unreached by any test", r.Unreached),
