@@ -525,6 +525,34 @@ before any fathom tool (obligations 0.15): given everything, the agent
 greps first, reaches for the index second, and pays for both. That is the
 cost story of the whole matrix in one row, and it is why SB-48 exists.
 
+### The losing tasks, re-read per call (BP-41..46, 2026-09-25, no spend)
+
+The fathom-arm transcripts of the same rerun, read per call for the three
+tasks BP-41 named. It is the one fathom-only run since the compact
+`references`, the `read_source` budget and the stop sentences landed
+(fathom cells at 3655eaa). Payload against the borrowed grep cells: H1-T06
+32.3×, H1-T08 3.53×, H1-T11 3.73×. BP-41's bar, ≤ 1.0 on each task, is
+not met, and no targeted run has measured it since: the one targeted row,
+`run-20260913T034838Z`, carries no fathom payload bytes.
+
+- `references` is no longer where the bytes go. A 50-row call the agent
+  asked for (the default is 25) cost 3.6–3.8 KB, and a free-text query
+  (`"workspace/ convention"`, `"shell fathom ingest"`) was refused in about
+  200 bytes, where the 2026-09-13 run paid 6 KB for `func (s *`.
+- The bytes moved to the orientation tools. On H1-T06, answered by the first
+  `find_symbol` (492 bytes) in two cells of three, the agent went on to
+  `repo_map` (12.2 KB) and `query_symbols` (6.6 KB). On H1-T08 it spent
+  5.9 KB on an `outline` of `docs/usage.md`. On H1-T11 it read the whole
+  fleet-index guide through `read_source` (9.6–12.9 KB a call).
+- `read_source`'s 8000-byte budget counted raw text, so a default read
+  reached the model as 11,135 bytes: the per-line `{line, text}` envelope
+  was left out. Since BP-42 the budget bounds the `lines` array as sent.
+
+BP-45 re-measures these three tasks on a binary carrying BP-42. BP-46
+measures `pack_context` against the bare tools on the same task shapes:
+no fathom cell here called it, so there is nothing to read yet. Both need
+operator spend.
+
 ### The 2026-09-13 run, read (O31, O32)
 
 The first replicated run — three arms, 13 tasks, n=3, $7.90, run
