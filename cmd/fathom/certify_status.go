@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/store"
@@ -59,7 +60,10 @@ func cmdCertifyStatus(args []string, stdout, stderr io.Writer) int {
 		}
 		return 0
 	}
-	if report.Summary.Declared == 0 {
+	if len(report.Unread) > 0 {
+		fmt.Fprintf(stdout, "certify status: INCOMPLETE — %d source(s) could not be read, so these counts are a lower bound: %s\n", len(report.Unread), strings.Join(report.Unread, "; "))
+	}
+	if report.Summary.Declared == 0 && len(report.Unread) == 0 {
 		fmt.Fprintln(stdout, "certify status: no manifests found — nothing declared")
 		return 0
 	}
@@ -76,16 +80,21 @@ func cmdCertifyStatus(args []string, stdout, stderr io.Writer) int {
 // certifyStatusDoc is `certify status --json`'s document for one service's
 // report — the verb's output and the certifications page's section.
 func certifyStatusDoc(svc string, report certify.GapReport) map[string]any {
-	if report.Summary.Declared == 0 {
+	if report.Summary.Declared == 0 && len(report.Unread) == 0 {
 		return map[string]any{"service": svc, "skip": "no manifests found — nothing declared"}
 	}
 	joinRate := 0.0
 	if report.Summary.Cases > 0 {
 		joinRate = float64(report.Summary.JoinedCases) / float64(report.Summary.Cases)
 	}
-	return map[string]any{
+	doc := map[string]any{
 		"service": svc, "declared": report.Summary.Declared, "live": report.Summary.Live,
 		"gaps": report.Summary.Gaps, "joined_cases": report.Summary.JoinedCases,
 		"cases": report.Summary.Cases, "join_rate": joinRate,
 	}
+	if len(report.Unread) > 0 {
+		// The counts are a lower bound: these sources were not read (I38).
+		doc["unread"] = report.Unread
+	}
+	return doc
 }

@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/certify"
@@ -103,6 +104,10 @@ type certifyGapsPayload struct {
 	// outright pass. Additive and omitempty — the schema string, field
 	// names and sort order stay exactly what that adapter parses.
 	Skip string `json:"skip,omitempty"`
+	// Unread names each target source that exists and could not be read
+	// (I38): the targets are then a lower bound, and no skip is claimed.
+	// Additive and omitempty, like skip.
+	Unread []string `json:"unread,omitempty"`
 }
 
 type certifyGapsTarget struct {
@@ -201,15 +206,20 @@ func certifyGapsPayloadFor(service, indexCommit string, now time.Time, report ce
 			JoinedCases: report.Summary.JoinedCases, Cases: report.Summary.Cases,
 		},
 	}
-	if report.Summary.Declared == 0 {
+	payload.Unread = report.Unread
+	if report.Summary.Declared == 0 && len(report.Unread) == 0 {
 		// Same condition and wording `certify status` already treats as
-		// a named skip, never a pass (cmdCertifyStatus).
+		// a named skip, never a pass (cmdCertifyStatus). An unreadable
+		// source is not "nothing declared".
 		payload.Skip = "no manifests found — nothing declared"
 	}
 	return payload
 }
 
 func renderCertifyGapsTable(w io.Writer, report certify.GapReport, suggestions []certifySuggestion) {
+	if len(report.Unread) > 0 {
+		fmt.Fprintf(w, "certify gaps: INCOMPLETE — %d source(s) could not be read, so the targets below are a lower bound: %s\n", len(report.Unread), strings.Join(report.Unread, "; "))
+	}
 	if len(report.Targets) == 0 {
 		fmt.Fprintln(w, "certify gaps: no targets found (nothing declared, and no invariant/incident corpus read)")
 	} else {

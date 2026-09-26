@@ -48,8 +48,11 @@ type LadderFacts struct {
 	Sessions   int
 	VerifyRuns int
 	LedgerNote string
-	// HasPlans says whether the gate has anything to check here.
-	HasPlans bool
+	// HasPlans says whether the gate has anything to check here;
+	// PlansNote, when set, is why docs/plans was not read (gating is then
+	// unknown — an unreadable directory is never "no plans").
+	HasPlans  bool
+	PlansNote string
 }
 
 // Rung is one step of the ladder.
@@ -144,6 +147,8 @@ func RealizationLadder(f LadderFacts) Ladder {
 	// 5 — GATING: is it catching claims?
 	gateFix := "add `fathom verify --service " + f.Service + "` to the pre-push hook (lefthook.yml)"
 	switch {
+	case f.PlansNote != "":
+		add("gating", RungUnknown, "not measured — "+f.PlansNote, gateFix)
 	case !f.HasPlans:
 		add("gating", RungNotApplicable, "no plans here for the gate to check", "")
 	case f.LedgerNote != "":

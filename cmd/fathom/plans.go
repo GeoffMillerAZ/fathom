@@ -2,8 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -66,20 +68,27 @@ type planRow struct {
 
 // activePlanFiles returns the sorted list of active (non-archived) plan
 // files under <root>/docs/plans/ — the same non-recursive scope as the
-// pre-push/CI verify gate (E4-2): filepath.Glob's "*.md" never descends into
-// docs/plans/archive/, and README.md is excluded (READMEs describe, plans
-// claim).
+// pre-push/CI verify gate (E4-2): "*.md" in that directory only, never
+// docs/plans/archive/, and README.md excluded (READMEs describe, plans
+// claim). No docs/plans is no plans; a docs/plans that cannot be read is
+// an error, never zero plans (I38) — filepath.Glob, used here before,
+// drops a directory read error and answered "no plans".
 func activePlanFiles(root string) ([]string, error) {
-	matches, err := filepath.Glob(filepath.Join(root, "docs", "plans", "*.md"))
+	dir := filepath.Join(root, "docs", "plans")
+	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("reading %s: %w", dir, err)
 	}
-	out := make([]string, 0, len(matches))
-	for _, m := range matches {
-		if strings.EqualFold(filepath.Base(m), "README.md") {
+	out := make([]string, 0, len(entries))
+	for _, e := range entries {
+		name := e.Name()
+		if ok, _ := filepath.Match("*.md", name); !ok || strings.EqualFold(name, "README.md") {
 			continue
 		}
-		out = append(out, m)
+		out = append(out, filepath.Join(dir, name))
 	}
 	sort.Strings(out)
 	return out, nil
@@ -245,10 +254,16 @@ func verifyPlanViaDaemon(hc *http.Client, urlStr, service string, raw []byte, lp
 	if err != nil {
 		return rep, err
 	}
-	verify.OverlayLocal(&rep, lp, files)
-	verify.OverlaySelfSkip(&rep, lp)
-	verify.OverlaySelfDeclared(&rep, lp)
+	overlayPlanReport(&rep, lp, files)
 	return rep, nil
+}
+
+// overlayPlanReport lays the working tree over a daemon report: the lexical
+// oracles read from files, the local self-skip and self-declared results.
+func overlayPlanReport(rep *verify.Report, lp verify.Plan, files verify.FileEvidence) {
+	verify.OverlayLocal(rep, lp, files)
+	verify.OverlaySelfSkip(rep, lp)
+	verify.OverlaySelfDeclared(rep, lp)
 }
 
 // discoverPlansForService resolves plan files for a --service (FR-1,

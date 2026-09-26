@@ -2071,7 +2071,11 @@ them without a version bump). Each target additionally carries `source`
 declared: a `// certifies:` marker's own comment line, an invariant's row in
 `docs/intent/invariants.md`, an incident heading in
 `docs/intent/incidents.md`, or a port interface's own declaration — nil when
-`Gaps` could not place it. `certify manifest` regenerates
+`Gaps` could not place it. A target source that exists and could not be read
+(the intent corpus, `incidents.md`, a port's source file) is named in
+`unread` (omitempty; `certify status --json` too, and an INCOMPLETE line in
+text): the counts are then a lower bound and no "no manifests found" skip is
+claimed. `certify manifest` regenerates
 `docs/certifications.md` from the layer; `--check` fails (exit 1) instead of
 writing when the committed file differs — a hand edit to that file is a
 defect. `certify orphans` (TC-22) lists `Test*` symbols that certify

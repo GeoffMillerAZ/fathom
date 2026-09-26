@@ -404,10 +404,10 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 				Calls:            sumInts(row.TrafficDays),
 				ObligationServes: obligationsBySvc[name],
 				VerifyRuns:       verifyRunsByRepo[name],
-				HasPlans:         repoHasPlans(info.path),
 				WindowDays:       14,
 				CallLogNote:      m.CallLogNote,
 			}
+			win.HasPlans, win.PlansNote = repoPlansRead(info.path)
 			if !ledgerReadable {
 				win.LedgerNote = "the session ledger was not read (" + ledgerPath + ")"
 			}

@@ -18,6 +18,8 @@ package main
 // instead of leaving a reader to guess.
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -88,6 +90,9 @@ type realizationWindow struct {
 	// same for the session ledger and the gating rung.
 	CallLogNote string
 	LedgerNote  string
+	// PlansNote, when set, is why docs/plans was not read: gating is then
+	// unknown, never not applicable.
+	PlansNote string
 }
 
 func boolPtr(b bool) *bool { return &b }
@@ -99,7 +104,7 @@ func realizationLadderFacts(s obsServiceRow, w realizationWindow) console.Ladder
 		Freshness: s.Freshness, FreshRemedy: daemonRefreshRemedy(s.Path, s.Service),
 		WindowDays: w.WindowDays, Calls: w.Calls, ObligationServes: w.ObligationServes, CallLogNote: w.CallLogNote,
 		Sessions: w.Sessions, VerifyRuns: w.VerifyRuns, LedgerNote: w.LedgerNote,
-		HasPlans: w.HasPlans,
+		HasPlans: w.HasPlans, PlansNote: w.PlansNote,
 	}
 }
 
@@ -188,19 +193,31 @@ func sumInts(xs []int) int {
 // does not apply, and treating absence as failure would hand every
 // plan-less repository a to-do it cannot complete.
 func repoHasPlans(root string) bool {
+	has, _ := repoPlansRead(root)
+	return has
+}
+
+// repoPlansRead is repoHasPlans with the read's failure named: a
+// docs/plans that exists but cannot be read is not "no plans" (I38), so
+// the gating rung reads unknown with this note rather than not applicable.
+func repoPlansRead(root string) (bool, string) {
 	if root == "" {
-		return false
+		return false, ""
 	}
-	entries, err := os.ReadDir(filepath.Join(root, "docs", "plans"))
+	dir := filepath.Join(root, "docs", "plans")
+	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return false
+		if errors.Is(err, fs.ErrNotExist) {
+			return false, ""
+		}
+		return false, "docs/plans was not read (" + err.Error() + ")"
 	}
 	for _, e := range entries {
 		if !e.IsDir() && strings.HasSuffix(e.Name(), ".md") && e.Name() != "README.md" {
-			return true
+			return true, ""
 		}
 	}
-	return false
+	return false, ""
 }
 
 // unrealizedScore is the fleet-ordering key: how much value is on the

@@ -69,6 +69,11 @@ func TestRealizationLadder_RemedyOnFirstUnmetRung(t *testing.T) {
 	if l.Rungs[4].State != RungNotApplicable || l.Rungs[4].Fix() != "" || l.Grade != "A" || l.FirstUnmet != "" {
 		t.Errorf("no plans = %+v grade %q", l.Rungs[4], l.Grade)
 	}
+	// An unreadable docs/plans is not "no plans": gating is unknown.
+	f.PlansNote = "docs/plans was not read (operation not permitted)"
+	if l := RealizationLadder(f); l.Rungs[4].State != RungUnknown || !strings.Contains(l.Rungs[4].Evidence, "not permitted") {
+		t.Errorf("unreadable plans = %+v", l.Rungs[4])
+	}
 
 	// Unknown freshness is not a defect.
 	f = wiredFacts()

@@ -18,10 +18,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+
+	readmanifest "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/read-manifest"
 
 	"github.com/geoffmilleraz/fathom/internal/intent"
 	"github.com/geoffmilleraz/fathom/internal/store"
@@ -88,6 +89,14 @@ type GapSummary struct {
 type GapReport struct {
 	Targets []GapTarget
 	Summary GapSummary
+	// Unread names every source the target universe is read from (the
+	// intent corpus, incidents.md, a port's source file) that exists and
+	// could not be read, with the operating system's reason (I38). When
+	// it is non-empty the targets are a lower bound, never the universe:
+	// an unreadable incidents.md once made every incident target vanish
+	// without a word, and a wholly unreadable repository read as "nothing
+	// declared".
+	Unread []string
 }
 
 // incidentHeadingPath is docs/intent/incidents.md's own repo-relative
@@ -106,14 +115,14 @@ type incidentHeading struct {
 // present) and returns every "### INC-N" heading's id and line, sorted by
 // id — the SAME incidentHeadingRe resolveIncident (resolve.go) already
 // uses to resolve one id, walked here for every id the file names. A
-// missing or unreadable file yields none — the SAME "nothing to report"
-// honesty an absent docs/intent/ already carries throughout this package
-// (intent.Load itself never treats absence as an error). The line is
+// missing file yields none (intent.Load itself never treats absence as an
+// error); an unreadable one yields none too, and reads records why, so
+// Gaps names it rather than reporting fewer incidents (I38). The line is
 // derived from the match's own byte offset (bytes.Count of newlines
 // before it) — free given the file is already read and matched here.
-func incidentHeadings(corpusRoot string) []incidentHeading {
-	body, err := os.ReadFile(filepath.Join(corpusRoot, "docs", "intent", "incidents.md"))
-	if err != nil {
+func incidentHeadings(corpusRoot string, reads *readmanifest.Set) []incidentHeading {
+	body, ok := reads.ReadFile(filepath.Join(corpusRoot, "docs", "intent", "incidents.md"))
+	if !ok {
 		return nil
 	}
 	var out []incidentHeading
@@ -173,6 +182,9 @@ func Gaps(ctx context.Context, st store.Store, service, corpusRoot string, kinds
 		}
 	}
 
+	reads := readmanifest.NewSet()
+	reads.RelativeTo(corpusRoot)
+
 	decls, err := st.CertifyDeclarationsForService(ctx, service)
 	if err != nil {
 		return GapReport{}, fmt.Errorf("Gaps: CertifyDeclarationsForService: %w", err)
@@ -182,11 +194,14 @@ func Gaps(ctx context.Context, st store.Store, service, corpusRoot string, kinds
 	}
 	if corpusRoot != "" {
 		if corpus, cerr := intent.Load(corpusRoot); cerr == nil {
+			reads.Merge(corpus.Coverage)
 			for _, inv := range corpus.Invariants {
 				add("invariant", inv.ID, Source{File: inv.File, Line: inv.Line})
 			}
+		} else {
+			reads.Record(filepath.Join(corpusRoot, "docs", "intent"), readmanifest.Unreadable(cerr))
 		}
-		for _, h := range incidentHeadings(corpusRoot) {
+		for _, h := range incidentHeadings(corpusRoot, reads) {
 			add("incident", h.id, Source{File: incidentHeadingPath, Line: h.line})
 		}
 	}
@@ -198,7 +213,7 @@ func Gaps(ctx context.Context, st store.Store, service, corpusRoot string, kinds
 	// whether it carries a conformance certificate.
 	portImpls := map[string][]PortImplementation{}
 	if corpusRoot != "" && include("port") {
-		ports, perr := PortGaps(ctx, st, service, corpusRoot)
+		ports, perr := portGaps(ctx, st, service, corpusRoot, reads)
 		if perr == nil {
 			for _, p := range ports {
 				add("port", p.ID, Source{File: p.File, Line: p.Line})
@@ -309,11 +324,16 @@ func Gaps(ctx context.Context, st store.Store, service, corpusRoot string, kinds
 		}
 	}
 
+	var unread []string
+	for _, e := range reads.Manifest().Unreadable() {
+		unread = append(unread, e.Path+": "+e.Outcome.Detail)
+	}
 	return GapReport{
 		Targets: targets,
 		Summary: GapSummary{
 			Declared: len(targets), Live: live, Gaps: gaps,
 			JoinedCases: casesJoined, Cases: casesTotal,
 		},
+		Unread: unread,
 	}, nil
 }
