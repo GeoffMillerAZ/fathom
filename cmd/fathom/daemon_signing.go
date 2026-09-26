@@ -13,10 +13,8 @@ package main
 import (
 	"fmt"
 	"os"
-	"path/filepath"
+	"strconv"
 	"strings"
-
-	"github.com/geoffmilleraz/fathom/internal/console"
 )
 
 // signingIdentity is what `codesign -dv` says about one binary.
@@ -27,13 +25,30 @@ type signingIdentity struct {
 	AdHoc      bool   `json:"adhoc"`
 	Unsigned   bool   `json:"unsigned,omitempty"`
 	Error      string `json:"error,omitempty"`
+	// Source says what was read: "running pid N" (codesign on the live
+	// process) or the on-disk file (no running daemon found).
+	Source string `json:"source,omitempty"`
 }
 
-// binarySigningIdentity runs `codesign -dv path` (which prints to stderr;
-// ops.Run returns combined output) and parses the identity.
-func binarySigningIdentity(ops daemonOps, path string) signingIdentity {
-	si := signingIdentity{Binary: path}
-	out, err := ops.Run("codesign", "-dv", path)
+// binarySigningIdentityOf reads target's signature (a pid or a path) and
+// records where the reading came from, so status never passes a reading of
+// the file on disk off as the running process's.
+func binarySigningIdentityOf(ops daemonOps, target, source string) signingIdentity {
+	si := binarySigningIdentity(ops, target)
+	si.Source = source
+	return si
+}
+
+// binarySigningIdentity runs `codesign -dv target` (which prints to stderr;
+// ops.Run returns combined output) and parses the identity. target is a
+// path or a pid: codesign reads a pid's signature from the running process
+// itself, which after a deploy's `mv` is no longer the file at its path.
+func binarySigningIdentity(ops daemonOps, target string) signingIdentity {
+	si := signingIdentity{Binary: target}
+	if _, err := strconv.Atoi(target); err == nil {
+		si.Binary = "pid " + target
+	}
+	out, err := ops.Run("codesign", "-dv", target)
 	text := string(out)
 	if strings.Contains(text, "not signed at all") {
 		si.Unsigned = true
@@ -45,6 +60,8 @@ func binarySigningIdentity(ops daemonOps, path string) signingIdentity {
 			continue
 		}
 		switch k {
+		case "Executable":
+			si.Binary = v
 		case "Identifier":
 			si.Identifier = v
 		case "Authority":
@@ -63,8 +80,16 @@ func binarySigningIdentity(ops daemonOps, path string) signingIdentity {
 	return si
 }
 
-// String is the status line's value.
+// String is the status line's value, naming what was read.
 func (s signingIdentity) String() string {
+	line := s.identity()
+	if s.Source != "" {
+		line += " [" + s.Source + "]"
+	}
+	return line
+}
+
+func (s signingIdentity) identity() string {
 	switch {
 	case s.Error != "":
 		return fmt.Sprintf("unknown for %s (codesign: %s)", s.Binary, s.Error)
@@ -79,24 +104,20 @@ func (s signingIdentity) String() string {
 	}
 }
 
-// runningDaemonBinary resolves the executable of the daemon serving addr:
-// the record's pid's command (when it is still a serve-http), else the
-// installed plist's ProgramArguments[0]. "" when neither is known.
-func runningDaemonBinary(ops daemonOps, addr, plistBinary string) (string, string) {
-	home, _ := os.UserHomeDir()
-	if p, err := console.DaemonRecordPath(home, addr); err == nil {
-		if rec, err := console.ReadDaemonRecord(p); err == nil && rec.PID > 0 {
-			if pi, alive := ops.Proc(rec.PID); alive && strings.Contains(pi.Command, "serve-http") {
-				if exe := strings.Fields(pi.Command)[0]; filepath.IsAbs(exe) {
-					return exe, fmt.Sprintf("running pid %d", rec.PID)
-				}
-			}
-		}
+// runningDaemonBinary resolves what to read the serving daemon's signature
+// from, and says which: the live process (its pid, found by
+// findManagedDaemon behind the pid-reuse guard) — never the file at its
+// path, which a deploy's `mv` replaces while the old process keeps serving
+// — else the on-disk binary the installed plist names. It returns the
+// codesign target, its source line and the pid (0 for the file).
+func runningDaemonBinary(ops daemonOps, addr, plistBinary string) (string, string, int) {
+	if pid, _ := findManagedDaemon(ops, addr); pid > 0 {
+		return strconv.Itoa(pid), fmt.Sprintf("running pid %d", pid), pid
 	}
 	if plistBinary != "" {
-		return plistBinary, "the installed plist's binary (no running daemon record)"
+		return plistBinary, "on-disk file named by the installed plist; no running daemon found", 0
 	}
-	return "", ""
+	return "", "", 0
 }
 
 // checkDaemonPosture is doctor's daemon_posture row: the installed plist's

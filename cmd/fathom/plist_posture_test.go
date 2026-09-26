@@ -215,9 +215,19 @@ func TestPlistV2RoundTripAndReconcileKeepsOperatorKeys(t *testing.T) {
 	if rc := runDaemonReconcile([]string{"--label", "com.example.mine"}, &out, &errBuf, ops); rc != 0 {
 		t.Fatalf("reconcile: rc=%d %s", rc, errBuf.String())
 	}
-	backup := plistPath + ".bak.20260926T210700Z"
+	// The backup lives with the receipt under ~/.fathom/daemon/<label>/,
+	// never beside the live plist, where launchd (or a bootstrap of the
+	// directory) could load the v1 job under the same label.
+	backup := filepath.Join(home, ".fathom", "daemon", "com.example.mine", "com.example.mine.plist.bak.20260926T210700Z")
 	if raw, err := os.ReadFile(backup); err != nil || !bytes.Equal(raw, v1) {
 		t.Fatalf("the backup must hold the original plist: %v", err)
+	}
+	if ents, _ := os.ReadDir(agents); len(ents) != 1 || ents[0].Name() != "com.example.mine.plist" {
+		var names []string
+		for _, e := range ents {
+			names = append(names, e.Name())
+		}
+		t.Fatalf("reconcile must leave only the live plist in LaunchAgents: %v", names)
 	}
 	receiptPath := filepath.Join(home, ".fathom", "daemon", "com.example.mine", "reconcile-20260926T210700Z.json")
 	raw, err := os.ReadFile(receiptPath)

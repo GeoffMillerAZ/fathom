@@ -85,3 +85,16 @@ func TestSwitchRecordRoundTrip(t *testing.T) {
 		t.Fatalf("round trip: %+v %v", got, err)
 	}
 }
+
+// I38: a switch file that exists but cannot be read still applies, and the
+// message says it was unreadable (not "not valid JSON", not absent).
+func TestUnreadableSwitchAppliesAndSaysSo(t *testing.T) {
+	v := EvaluateKillSwitch(KillSwitchInput{Disabled: SwitchFile{Present: true, ReadErr: "permission denied"}, Now: t0})
+	if v.Action != ActionExitStay || !strings.Contains(v.Message, "unreadable") || !strings.Contains(v.Message, "permission denied") || !strings.Contains(v.Message, "reason unknown") {
+		t.Fatalf("an unreadable disabled.json must disable and say why: %+v", v)
+	}
+	v = EvaluateKillSwitch(KillSwitchInput{Paused: SwitchFile{Present: true, ReadErr: "permission denied"}, Now: t0})
+	if v.Action != ActionSafeMode || !strings.Contains(v.Message, "unreadable") {
+		t.Fatalf("an unreadable paused.json must pause and say why: %+v", v)
+	}
+}

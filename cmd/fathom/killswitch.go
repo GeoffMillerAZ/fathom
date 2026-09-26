@@ -13,12 +13,18 @@ package main
 // scratch serve-http never reads them, so a breaker stop cannot block it.
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
+	"sort"
 	"strings"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/dlog"
@@ -39,8 +45,9 @@ func daemonStateDir() (string, error) {
 
 // isManagedInvocation reports whether this serve-http is the managed daemon:
 // started with `--managed` (plist schema 2), or under launchd with an
-// XPC_SERVICE_NAME naming a fathom label (a schema-1 plist predates the
-// flag). It scans raw args because it runs before flag parsing.
+// XPC_SERVICE_NAME equal to the label of an installed fathom agent (a
+// schema-1 plist predates the flag; design §10.1). It scans raw args
+// because it runs before flag parsing.
 func isManagedInvocation(args []string, getenv func(string) string) bool {
 	managed := false
 	for _, a := range args {
@@ -59,30 +66,71 @@ func isManagedInvocation(args []string, getenv func(string) string) bool {
 	return isFathomLaunchdLabel(getenv("XPC_SERVICE_NAME"))
 }
 
-// isFathomLaunchdLabel reports whether a launchd job label is a fathom
-// serve-http label (dev.fathom.serve-http, or an adopter's own *fathom*
-// label). A terminal's XPC_SERVICE_NAME ("0", "application.…") is not.
+// isFathomLaunchdLabel reports whether a launchd job label is the managed
+// fathom daemon's: the default label, or the Label key of an installed
+// fathom serve-http agent in ~/Library/LaunchAgents. The label is the
+// adopter's (`daemon install --label`, ADR-011), so no substring of it is
+// assumed. A terminal's XPC_SERVICE_NAME ("0", "application.…") is never
+// an installed agent's label. Cost: one directory read and a small read
+// per fathom plist — well inside the switch's 50 ms.
 func isFathomLaunchdLabel(label string) bool {
 	if label == "" || label == "0" || strings.HasPrefix(label, "application.") {
 		return false
 	}
-	return strings.Contains(strings.ToLower(label), "fathom")
+	if label == defaultDaemonLabel {
+		return true
+	}
+	return slices.Contains(installedAgentLabels(), label)
 }
 
-// readSwitchFile stats then reads one switch file. A read error on a file
-// that stats is treated as present-and-empty: the operator's switch still
-// holds (reason unknown) rather than being ignored because it is unreadable.
+// installedAgentLabels returns the Label key of every installed fathom
+// serve-http agent (the value launchd gives a job as XPC_SERVICE_NAME),
+// sorted. A plist that does not parse or has no Label is skipped.
+func installedAgentLabels() []string {
+	dir := launchAgentsDir()
+	if dir == "" {
+		return nil
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil
+	}
+	var labels []string
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".plist") {
+			continue
+		}
+		raw, err := os.ReadFile(filepath.Join(dir, e.Name()))
+		if err != nil || !bytes.Contains(raw, []byte("serve-http")) || !bytes.Contains(raw, []byte("fathom")) {
+			continue
+		}
+		if post, err := plistPosture(raw); err == nil && post.Label != "" {
+			labels = append(labels, post.Label)
+		}
+	}
+	sort.Strings(labels)
+	return labels
+}
+
+// readSwitchFile stats then reads one switch file. Only "no such file"
+// (or a non-directory in the path, under which none can exist) is absent:
+// any other stat or read failure is present with the reason unknown and the
+// error named (I38) — the operator's switch still holds rather than being
+// ignored because it is unreadable.
 func readSwitchFile(path string) tenancy.SwitchFile {
 	fi, err := os.Stat(path)
 	if err != nil {
-		return tenancy.SwitchFile{}
+		if errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR) {
+			return tenancy.SwitchFile{}
+		}
+		return tenancy.SwitchFile{Present: true, ReadErr: err.Error()}
 	}
 	if fi.Size() > 64<<10 {
-		return tenancy.SwitchFile{Present: true}
+		return tenancy.SwitchFile{Present: true, ReadErr: fmt.Sprintf("%d bytes, over the 64 KiB read cap", fi.Size())}
 	}
 	raw, err := os.ReadFile(path)
 	if err != nil {
-		return tenancy.SwitchFile{Present: true}
+		return tenancy.SwitchFile{Present: true, ReadErr: err.Error()}
 	}
 	return tenancy.SwitchFile{Present: true, Raw: raw}
 }
@@ -152,7 +200,7 @@ func watchPauseSwitch(dir string, tick time.Duration, now func() time.Time, log 
 			if paused {
 				log.Warn(v.Message)
 			} else {
-				log.Info("fathom: resumed — paused.json removed; leaving safe mode")
+				log.Info("fathom: resumed — paused.json removed; safe-mode flag cleared")
 			}
 		}
 	}

@@ -42,7 +42,9 @@ var (
 // tenancyContract is the responsible-tenant contract this binary speaks
 // (`fathom version --json`). `daemon install --reconcile` refuses to write a
 // schema-2 plist for a binary below 1: an older binary exits 0 on adoption,
-// which a schema-2 KeepAlive would treat as "stay down".
+// which a schema-2 KeepAlive would treat as "stay down". Contract 1 is true
+// of this binary because watchOwnBinary exits 75 on adoption
+// (TestSelfRestartAdoptsAVerifiedBinary holds the two together).
 const tenancyContract = 1
 
 // writeSwitchFile writes a switch record atomically under dir.
@@ -100,6 +102,17 @@ func reloadLines(uid int, label, plistPath string) []string {
 // installed plist rather than assumed (RT-157).
 func relaunchClause(ops daemonOps, label string, rec tenancy.SwitchRecord) []string {
 	lbl, _, post, ok := installedPosture(label)
+	if ok && post.UnconditionalKeepAlive && !isFathomLaunchdLabel(post.Label) {
+		// A schema-1 relaunch knows it is managed only by XPC_SERVICE_NAME
+		// (the plist's Label key); one that is not recognised starts a FULL
+		// daemon every throttle, so the fast-exit claim would be false.
+		svc := firstNonEmpty(post.Label, lbl)
+		return []string{
+			fmt.Sprintf("launchd will relaunch every %d s and each relaunch will NOT see the kill switch: the plist's Label %q is not recognised as the managed daemon (schema %d: KeepAlive true, no --managed); stop it now from your terminal:", post.ThrottleSeconds, post.Label, post.Schema),
+			fmt.Sprintf("  launchctl bootout gui/%d/%s", ops.UID(), svc),
+			"  " + reconcileCommand(lbl, post) + "   # adds --managed; then reload",
+		}
+	}
 	if ok && post.UnconditionalKeepAlive {
 		return []string{
 			fmt.Sprintf("launchd will relaunch every %d s and each start exits in < 50 ms (the installed plist is schema %d: KeepAlive true); to stop fully, run from your terminal:", post.ThrottleSeconds, post.Schema),
@@ -353,9 +366,11 @@ func runDaemonStart(args []string, stdout, stderr io.Writer, ops daemonOps) int 
 	return 0
 }
 
-// runDaemonPause is `fathom daemon pause|resume`: paused.json moves the
-// managed daemon to (and from) safe mode on its next 2 s tick, without
-// stopping it.
+// runDaemonPause is `fathom daemon pause|resume`: paused.json sets (and its
+// removal clears) the managed daemon's safe-mode flag on its next 2 s tick,
+// without stopping it. In wave A nothing reads the flag yet — its effects
+// are RT-39 (applySafeMode) and RT-150 (the ensure skip) — so the output
+// says pause records the intent only.
 func runDaemonPause(pause bool, args []string, stdout, stderr io.Writer, ops daemonOps) int {
 	name := "daemon resume"
 	if pause {
@@ -377,7 +392,8 @@ func runDaemonPause(pause bool, args []string, stdout, stderr io.Writer, ops dae
 			fmt.Fprintf(stderr, "error: %v\n", err)
 			return 1
 		}
-		fmt.Fprintf(stdout, "paused: %s written — the managed daemon enters safe mode within 2 s and stays up; `fathom daemon resume` returns it to normal\n", p)
+		fmt.Fprintf(stdout, "paused: %s written — the managed daemon marks itself paused within 2 s (logged) and stays up; `fathom daemon resume` clears it\n", p)
+		fmt.Fprintln(stdout, "note: pausing records the intent only in this release — auto-refresh and heavy requests are not yet curtailed (RT-39, RT-150); `fathom daemon stop` is the switch that takes load off now")
 		return 0
 	}
 	p := filepath.Join(dir, tenancy.PausedFile)
@@ -385,7 +401,7 @@ func runDaemonPause(pause bool, args []string, stdout, stderr io.Writer, ops dae
 		fmt.Fprintf(stderr, "error: removing %s: %v\n", p, err)
 		return 1
 	}
-	fmt.Fprintf(stdout, "resumed: %s removed — the managed daemon leaves safe mode within 2 s\n", p)
+	fmt.Fprintf(stdout, "resumed: %s removed — the managed daemon clears its paused mark within 2 s\n", p)
 	return 0
 }
 
@@ -470,8 +486,20 @@ func runDaemonReconcile(args []string, stdout, stderr io.Writer, ops daemonOps) 
 		return 1
 	}
 	ts := ops.Now().UTC().Format("20060102T150405Z")
-	backup := plistPath + ".bak." + ts
-	if err := os.WriteFile(backup, raw, 0o644); err != nil {
+	// The backup goes with the receipt under ~/.fathom/daemon/<label>/,
+	// never beside the live plist: LaunchAgents is launchd's directory, and
+	// a copy there carries the same Label with the v1 KeepAlive.
+	stateDir, err := daemonStateDir()
+	if err != nil {
+		fmt.Fprintf(stderr, "error: cannot resolve ~/.fathom/daemon for the backup: %v — the plist is untouched\n", err)
+		return 1
+	}
+	backup := filepath.Join(stateDir, lbl, lbl+".plist.bak."+ts)
+	if err := os.MkdirAll(filepath.Dir(backup), 0o700); err != nil {
+		fmt.Fprintf(stderr, "error: %v — the plist is untouched\n", err)
+		return 1
+	}
+	if err := os.WriteFile(backup, raw, 0o600); err != nil {
 		fmt.Fprintf(stderr, "error: writing the backup %s: %v — the plist is untouched\n", backup, err)
 		return 1
 	}
@@ -491,17 +519,11 @@ func runDaemonReconcile(args []string, stdout, stderr io.Writer, ops daemonOps) 
 		Binary: post.Binary, TenancyContract: contract, Changes: changes,
 		SHA256Before: sha256Hex(string(raw)), SHA256After: sha256Hex(string(out)), Reload: reload,
 	}
-	receiptPath := ""
-	if dir, err := daemonStateDir(); err == nil {
-		receiptPath = filepath.Join(dir, lbl, "reconcile-"+ts+".json")
-		body, _ := json.MarshalIndent(rec, "", "  ")
-		if err := os.MkdirAll(filepath.Dir(receiptPath), 0o700); err == nil {
-			err = os.WriteFile(receiptPath, append(body, '\n'), 0o600)
-		}
-		if err != nil {
-			fmt.Fprintf(stderr, "warning: the receipt was not written (%v); the backup is %s\n", err, backup)
-			receiptPath = ""
-		}
+	receiptPath := filepath.Join(stateDir, lbl, "reconcile-"+ts+".json")
+	body, _ := json.MarshalIndent(rec, "", "  ")
+	if err := os.WriteFile(receiptPath, append(body, '\n'), 0o600); err != nil {
+		fmt.Fprintf(stderr, "warning: the receipt was not written (%v); the backup is %s\n", err, backup)
+		receiptPath = ""
 	}
 	fmt.Fprintf(stdout, "reconciled %s to schema %d (backup %s)\n", plistPath, plistSchemaCurrent, backup)
 	for _, c := range changes {

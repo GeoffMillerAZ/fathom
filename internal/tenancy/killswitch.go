@@ -12,6 +12,7 @@ package tenancy
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 )
@@ -42,10 +43,26 @@ type SwitchRecord struct {
 }
 
 // SwitchFile is one switch file as the caller found it: Present when it
-// exists, Raw its bytes (possibly empty or malformed).
+// exists (or may exist: a stat or read that failed for any reason but "no
+// such file" — I38), Raw its bytes (possibly empty or malformed), ReadErr
+// why it could not be read, when it could not.
 type SwitchFile struct {
 	Present bool
 	Raw     []byte
+	ReadErr string
+}
+
+// unreadableError marks a switch file that is present but unreadable.
+type unreadableError struct{ msg string }
+
+func (e unreadableError) Error() string { return e.msg }
+
+// parseSwitchFile decodes f, turning a read failure into an unreadableError.
+func parseSwitchFile(f SwitchFile) (SwitchRecord, error) {
+	if f.ReadErr != "" {
+		return SwitchRecord{}, unreadableError{f.ReadErr}
+	}
+	return ParseSwitch(f.Raw)
 }
 
 // KillSwitchInput is everything EvaluateKillSwitch needs; the caller does
@@ -127,7 +144,7 @@ func MarshalSwitch(rec SwitchRecord) []byte {
 // applies: a switch the operator wrote is never ignored for its syntax.
 func EvaluateKillSwitch(in KillSwitchInput) KillSwitchVerdict {
 	if in.Disabled.Present {
-		rec, err := ParseSwitch(in.Disabled.Raw)
+		rec, err := parseSwitchFile(in.Disabled)
 		v := KillSwitchVerdict{Record: rec, Malformed: err != nil}
 		if !rec.Until.IsZero() && !in.Now.Before(rec.Until) {
 			// The timed stop has passed: start normally, and say so once.
@@ -149,10 +166,10 @@ func EvaluateKillSwitch(in KillSwitchInput) KillSwitchVerdict {
 		return v
 	}
 	if in.Paused.Present {
-		rec, err := ParseSwitch(in.Paused.Raw)
+		rec, err := parseSwitchFile(in.Paused)
 		return KillSwitchVerdict{
 			Action: ActionSafeMode, Record: rec, Malformed: err != nil,
-			Message: "fathom: paused " + describe(rec, err) + " — serving in safe mode; `fathom daemon resume` returns to normal",
+			Message: "fathom: paused " + describe(rec, err) + " — serving with the safe-mode flag set (its effects, auto-refresh off and heavy requests refused, arrive with RT-39/RT-150; nothing is curtailed yet); `fathom daemon resume` clears it",
 		}
 	}
 	return KillSwitchVerdict{Action: ActionRun}
@@ -160,6 +177,10 @@ func EvaluateKillSwitch(in KillSwitchInput) KillSwitchVerdict {
 
 // describe renders "by X since T: reason" for the verdict line.
 func describe(rec SwitchRecord, parseErr error) string {
+	var unreadable unreadableError
+	if errors.As(parseErr, &unreadable) {
+		return "(the switch file is unreadable: " + unreadable.msg + "; reason unknown)"
+	}
 	if parseErr != nil {
 		return "(the switch file is not valid JSON: " + parseErr.Error() + "; reason unknown)"
 	}

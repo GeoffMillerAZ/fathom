@@ -290,6 +290,14 @@ tasks:
         fi
         codesign -s fathom-dev --force --timestamp=none "$HOME/.local/libexec/fathom/fathom.new"
       - mv -f "$HOME/.local/libexec/fathom/fathom.new" "$HOME/.local/libexec/fathom/fathom"
+      # The operator's kill switch (`fathom daemon stop`) keeps the daemon
+      # down on purpose: a kickstart would exit 0 at once and the health
+      # check below would wait 60 s for nothing. Installed, not started.
+      - |
+        if [ -e "$HOME/.fathom/daemon/disabled.json" ]; then
+          echo "deploy: installed the new binary, but the kill switch is set ($HOME/.fathom/daemon/disabled.json) — the daemon stays stopped on purpose. Run 'fathom daemon start' to start it on the new binary, then 'task deploy' again to assert it is serving." >&2
+          exit 1
+        fi
       # The label is this machine's, resolved — not assumed. `fathom daemon
       # status` prints it; an adopter with no agent gets `fathom daemon install`.
       - 'label=$(bin/fathom daemon status 2>/dev/null | awk "/^launchd agent:/ {print \$3}"); [ -n "$label" ] && launchctl kickstart -k gui/$(id -u)/"$label" || echo "no launchd agent installed — run: fathom daemon install"'

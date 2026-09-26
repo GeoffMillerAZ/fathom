@@ -251,6 +251,8 @@ type plistPostureReport struct {
 	ThrottleSeconds int
 	// Binary is ProgramArguments[0].
 	Binary string
+	// Label is the Label key: what launchd sets XPC_SERVICE_NAME to.
+	Label string
 	// Drift lists each tenancy key that differs from schema 2, sorted.
 	Drift []string
 }
@@ -267,6 +269,9 @@ func plistPosture(raw []byte) (plistPostureReport, error) {
 		rep.FathomWritten = true
 	} else if bytes.Contains(raw, []byte("BP-37")) && bytes.Contains(raw, []byte("serve-http")) {
 		rep.FathomWritten = true // the v1 template's own comment
+	}
+	if l, ok := p.entry("Label"); ok && l.Kind == "string" {
+		rep.Label = l.Text
 	}
 	if ka, ok := p.entry("KeepAlive"); ok && ka.Kind == "true" {
 		rep.UnconditionalKeepAlive = true

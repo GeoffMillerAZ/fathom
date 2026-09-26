@@ -73,19 +73,31 @@ func TestDaemonStatusReportsSigningIdentity(t *testing.T) {
 	}
 	ops = newFakeDaemonOps(stopT0.Add(time.Hour))
 	ops.procs[4242] = procInfo{PID: 4242, Start: stopT0.Add(-time.Second), Command: "/opt/fathom/fathom serve-http --managed"}
-	ops.runOut["codesign -dv /opt/fathom/fathom"] = []byte(codesignAdhoc)
+	// The running process is ad-hoc; the file now at its path was replaced
+	// (a deploy's mv) by a signed one. Status must read the PROCESS.
+	ops.runOut["codesign -dv 4242"] = []byte(codesignAdhoc)
+	ops.runOut["codesign -dv /opt/fathom/fathom"] = []byte(codesignIdentity)
 	var out, errBuf bytes.Buffer
 	if rc := runDaemonStatus([]string{"--url", srv.URL}, &out, &errBuf, ops); rc != 0 {
 		t.Fatalf("status: rc=%d %s %s", rc, out.String(), errBuf.String())
 	}
-	if !strings.Contains(out.String(), "signing:") || !strings.Contains(out.String(), "AD-HOC") || !strings.Contains(out.String(), "/opt/fathom/fathom") {
+	if !strings.Contains(out.String(), "signing:") || !strings.Contains(out.String(), "AD-HOC") || !strings.Contains(out.String(), "/opt/fathom/fathom") || !strings.Contains(out.String(), "running pid 4242") {
 		t.Fatalf("status must name the running binary's signature:\n%s", out.String())
 	}
 	out.Reset()
 	runDaemonStatus([]string{"--url", srv.URL, "--json"}, &out, &errBuf, ops)
 	var st daemonStatusJSON
-	if err := json.Unmarshal(out.Bytes(), &st); err != nil || st.Signing == nil || !st.Signing.AdHoc || st.Signing.Binary != "/opt/fathom/fathom" {
-		t.Fatalf("status --json must carry the signature: %v %s", err, out.String())
+	if err := json.Unmarshal(out.Bytes(), &st); err != nil || st.Signing == nil || !st.Signing.AdHoc || st.Signing.Binary != "/opt/fathom/fathom" || st.Signing.Source != "running pid 4242" {
+		t.Fatalf("status --json must carry the running process's signature: %v %s", err, out.String())
+	}
+
+	// No running daemon: the reading is of the on-disk file, and says so.
+	ops = newFakeDaemonOps(stopT0.Add(time.Hour))
+	ops.runOut["codesign -dv /opt/fathom/fathom"] = []byte(codesignIdentity)
+	target, source, _ := runningDaemonBinary(ops, "127.0.0.1:1", "/opt/fathom/fathom")
+	si = binarySigningIdentityOf(ops, target, source)
+	if si.Binary != "/opt/fathom/fathom" || !strings.Contains(si.String(), "on-disk") {
+		t.Fatalf("a reading of the file on disk must say so: %+v %q", si, si.String())
 	}
 }
 

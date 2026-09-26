@@ -15,6 +15,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
 // daemon.go — `fathom daemon install|status|uninstall`.
@@ -91,10 +92,24 @@ func labelInstalled() string {
 	return found[0]
 }
 
+// restartHintNow is daemonRestartHint's clock (a timed stop's expiry).
+var restartHintNow = time.Now
+
 // daemonRestartHint is the ONE place that renders "how do I get the daemon
 // back". Every caller (doctor, the session hook, init) uses it, so no
 // adopter is ever handed another machine's service name.
+//
+// A set kill switch comes first: the daemon is down because the operator
+// stopped it, not because it failed, and a kickstart would only produce
+// another exit 0 (and wedges when an agent runs it). The hint is then
+// `fathom daemon start` with the switch's own reason.
 func daemonRestartHint(storeHint string) string {
+	if dir, err := daemonStateDir(); err == nil {
+		switch v := readKillSwitch(dir, restartHintNow()); v.Action {
+		case tenancy.ActionExitStay, tenancy.ActionExitRetry:
+			return "fathom daemon start   # stopped on purpose, not a fault — " + strings.TrimPrefix(v.Message, "fathom: ")
+		}
+	}
 	if storeHint == "" {
 		storeHint = "workspace/db/fathom.sqlite"
 	}
@@ -415,8 +430,8 @@ func runDaemonStatus(args []string, stdout, stderr io.Writer, ops daemonOps) int
 	}
 	var signing *signingIdentity
 	if addr, err := console.DaemonAddrFromURL(*url); err == nil && runtime.GOOS == "darwin" {
-		if bin, _ := runningDaemonBinary(ops, addr, post.Binary); bin != "" {
-			si := binarySigningIdentity(ops, bin)
+		if target, source, _ := runningDaemonBinary(ops, addr, post.Binary); target != "" {
+			si := binarySigningIdentityOf(ops, target, source)
 			signing = &si
 		}
 	}
