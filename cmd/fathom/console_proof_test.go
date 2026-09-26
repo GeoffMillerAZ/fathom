@@ -54,8 +54,16 @@ func TestConsolePlansPortfolio_PageProofBarsAndHeadline(t *testing.T) {
 	if i := strings.Index(heading, "data-verbs-disclosure"); i < 0 || strings.Contains(heading[:i], "data-verb-chip") {
 		t.Error("the fleet portfolio's heading must list its per-repository verbs behind one disclosure")
 	}
-	if !strings.Contains(page, "The verb this page renders") {
+	if !strings.Contains(page, "The 2 verbs this page renders") {
 		t.Error("the disclosure must name how many verbs it holds")
+	}
+	// The trend panel renders the verb that prints the fleet's trend; the
+	// proof bar's proven segment never borrows the headline's words for a
+	// smaller number (the headline counts the (op) rows, the segment not).
+	mustContain(t, "/plans trend and labels", page,
+		`data-console-verb="fathom plans history --json"`, "proven, not counting (op) measurements", "Proven, (op) included")
+	if strings.Contains(page, "proven by the gate: ") {
+		t.Error("a mini-bar segment must not be labelled with the headline's \"proven by the gate\"")
 	}
 	assertRoleUtilitiesOnly(t, page)
 
@@ -77,6 +85,10 @@ func TestConsolePlansPortfolio_PageProofBarsAndHeadline(t *testing.T) {
 	senv := f.pageJSON(t, "/plans?svc=proof-service")
 	if _, ok := senv.Metrics[string(console.MetricPlansUnproven)]; ok {
 		t.Error("a repository's gap must not be reported as the fleet metric")
+	}
+	// The scoped page's trend is the repository's, from its own verb.
+	if _, ok := senv.Sections["fathom plans history --service proof-service --json"]; !ok || !strings.Contains(scoped, `data-console-verb="fathom plans history --service proof-service --json"`) {
+		t.Errorf("the scoped trend must render `plans history --service proof-service`: sections %v", keysOf(senv.Sections))
 	}
 	if code, _, _ := f.get(t, "/plans?svc=no-such-repo"); code != http.StatusNotFound {
 		t.Errorf("unknown repository = %d, want 404 on the shell", code)
@@ -382,6 +394,12 @@ func TestConsolePlanBurnup_ProvenTrendAfterFourteenDays(t *testing.T) {
 	for d := 0; d < 14; d++ {
 		at := time.Date(2026, 9, 11+d, 8, 0, 0, 0, time.UTC).Format(time.RFC3339)
 		fmt.Fprintf(&ledger, `{"schema_version":2,"at":%q,"repo_root":%q,"service":"proof-service","plan":"docs/plans/settlement.md","commit":%q,"total":10,"claimed":5,"verified":%d,"failing":%d,"origin":"cli"}`+"\n", at, root, commit, 3+d%2, 2-d%2)
+		// What the ledger also keeps and the portfolio's trend must never
+		// sum: a scratch service re-running the plan, a plan since
+		// deleted, and README.md.
+		fmt.Fprintf(&ledger, `{"schema_version":2,"at":%q,"repo_root":"/tmp/scratch","service":"proof-service-sv","plan":"docs/plans/settlement.md","total":10,"claimed":9,"verified":9,"failing":0}`+"\n", at)
+		fmt.Fprintf(&ledger, `{"schema_version":2,"at":%q,"repo_root":%q,"service":"proof-service","plan":"docs/plans/retired.md","total":40,"claimed":40,"verified":40,"failing":0}`+"\n", at, root)
+		fmt.Fprintf(&ledger, `{"schema_version":2,"at":%q,"repo_root":%q,"service":"proof-service","plan":"docs/plans/README.md","total":3,"claimed":3,"verified":0,"failing":0}`+"\n", at, root)
 	}
 	mustWrite(t, os.Getenv("FATHOM_VERIFY_LEDGER"), ledger.String())
 
@@ -402,7 +420,19 @@ func TestConsolePlanBurnup_ProvenTrendAfterFourteenDays(t *testing.T) {
 	var pm plansPortfolioModel
 	_ = json.Unmarshal(penv.Model, &pm)
 	if pm.Trend.State != console.StatePresent || pm.Trend.Days != 14 {
-		t.Errorf("fleet trend = %+v", pm.Trend)
+		t.Fatalf("fleet trend = %+v", pm.Trend)
+	}
+	if last := pm.Trend.Points[len(pm.Trend.Points)-1]; last.Plans != 1 || last.Claimed != 5 {
+		t.Errorf("the fleet trend's last day = %+v, want settlement.md alone (the only current plan with ledger rows)", last)
+	}
+}
+
+// rowOracle names a file that does not exist as the gate's path-absent (a
+// measured nothing), never as a file that could not be read.
+func TestRowOracle_MissingFileIsPathAbsent(t *testing.T) {
+	m := rowOracle(t.TempDir(), console.PlanRowFact{OraclePath: "cmd/fathom/console_palette.go", OraclePattern: "palette"})
+	if !m.Missing || m.Err == "" {
+		t.Errorf("a missing oracle file = %+v", m)
 	}
 }
 
@@ -513,4 +543,12 @@ func mustGetBody(t *testing.T, f *consoleFixture, path string) string {
 		t.Fatalf("GET %s = %d", path, code)
 	}
 	return body
+}
+
+func keysOf[V any](m map[string]V) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	return out
 }

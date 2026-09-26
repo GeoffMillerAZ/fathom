@@ -8,9 +8,11 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"html"
 	"html/template"
+	"io/fs"
 	"net/http"
 	"net/url"
 	"sort"
@@ -151,7 +153,9 @@ func rowReach(ctx context.Context, pc *consolePlans, service string, row console
 func rowOracle(root string, row console.PlanRowFact) console.OracleMatch {
 	raw, err := verify.DirFiles(root).ReadRepoFile(row.OraclePath)
 	if err != nil {
-		return console.OracleMatch{Path: row.OraclePath, Pattern: row.OraclePattern, Err: err.Error()}
+		// A file that is not there is the gate's path-absent — a measured
+		// nothing — not a file that could not be read.
+		return console.OracleMatch{Path: row.OraclePath, Pattern: row.OraclePattern, Err: err.Error(), Missing: errors.Is(err, fs.ErrNotExist)}
 	}
 	return console.MatchOracle(row.OraclePath, row.OraclePattern, string(raw), 2)
 }
@@ -302,8 +306,19 @@ func renderReach(r console.ReachView) string {
 }
 
 func renderOracle(o console.OracleView, id string) string {
+	where := `<p class="font-mono text-xs [overflow-wrap:anywhere]">` + html.EscapeString(o.Path) + ` · pattern ` + html.EscapeString(o.Pattern) + `</p>`
+	// The count and the row's bound, in words: "matches nothing" beside a
+	// proven verdict is the row's "exactly 0", never a contradiction.
+	bound := ""
+	if o.BoundMet != nil && o.State != console.StateError {
+		role := "text-positive"
+		if !*o.BoundMet {
+			role = "text-danger"
+		}
+		bound = `<p class="mb-2 text-sm [overflow-wrap:anywhere] ` + role + `" data-oracle-bound>` + html.EscapeString(o.Reason) + `</p>`
+	}
 	if o.State != console.StatePresent {
-		return `<p class="font-mono text-xs [overflow-wrap:anywhere]">` + html.EscapeString(o.Path) + ` · pattern ` + html.EscapeString(o.Pattern) + `</p>`
+		return bound + where
 	}
 	lines := make([]code.Line, 0, len(o.Lines))
 	for i, t := range o.Lines {
@@ -324,7 +339,7 @@ func renderOracle(o console.OracleView, id string) string {
 	if err != nil {
 		return `<p class="text-danger">` + html.EscapeString(err.Error()) + `</p>`
 	}
-	return `<p class="mb-2 text-sm">pattern <code class="font-mono text-xs [overflow-wrap:anywhere]">` + html.EscapeString(o.Pattern) + `</code> matches ` + plural(o.Count, "time") + `; first at line ` + strconv.Itoa(o.Line) + `</p>` + excerpt
+	return bound + `<p class="mb-2 text-sm">pattern <code class="font-mono text-xs [overflow-wrap:anywhere]">` + html.EscapeString(o.Pattern) + `</code> matches ` + plural(o.Count, "time") + `; first at line ` + strconv.Itoa(o.Line) + `</p>` + excerpt
 }
 
 // anchorSafe keeps the characters an excerpt anchor prefix allows.

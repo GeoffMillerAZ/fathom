@@ -261,3 +261,116 @@ func TestPlanLedger_BoardAndBurnup(t *testing.T) {
 		t.Errorf("no history = %+v", v.Burnup)
 	}
 }
+
+// TestPlansTrend_CountsTheScopesCurrentPlans pins the portfolio's trend to
+// the plans the portfolio shows (SD-3, vision 35 §5 "filter state lives in
+// the URL"): the verify-ledger runs of each in-scope service's CURRENT
+// plans, matched by service and file name — never a scratch service the
+// registry does not hold, a plan file since deleted, or README.md, all of
+// which the ledger keeps for good — and a service whose plans could not be
+// read makes the trend an error, never a smaller line.
+func TestPlansTrend_CountsTheScopesCurrentPlans(t *testing.T) {
+	var runs []LedgerRun
+	for d := 1; d <= 14; d++ {
+		at := time.Date(2026, 9, d, 10, 0, 0, 0, time.UTC)
+		runs = append(runs,
+			LedgerRun{At: at, Service: "proof", Plan: "docs/plans/a.md", Claimed: 5, Verified: 4, Total: 9},
+			LedgerRun{At: at, Service: "proof", Plan: "docs/plans/gone.md", Claimed: 50, Verified: 50},   // deleted since
+			LedgerRun{At: at, Service: "proof-sv", Plan: "docs/plans/a.md", Claimed: 7, Verified: 7},     // a scratch service
+			LedgerRun{At: at, Service: "proof", Plan: "docs/plans/README.md", Claimed: 9},                // never a plan
+			LedgerRun{At: at, Service: "other", Plan: "/tmp/x/docs/plans/b.md", Claimed: 3, Verified: 1}, // a clone's run of a current plan
+		)
+	}
+	svcs := []ServicePlans{
+		{Service: "proof", Root: "/r", Plans: []PlanFacts{{Service: "proof", Path: "/r/docs/plans/a.md"}}},
+		{Service: "other", Root: "/o", Plans: []PlanFacts{{Service: "other", Path: "/o/docs/plans/b.md"}}},
+		{Service: "empty", Root: "/e"},
+	}
+	tr := PlansTrend(runs, "/l.jsonl", "", 14, svcs)
+	if tr.State != StatePresent || len(tr.Points) != 14 {
+		t.Fatalf("fleet trend = %+v", tr)
+	}
+	if last := tr.Points[13]; last.Plans != 2 || last.Claimed != 8 || last.Proven != 5 {
+		t.Errorf("fleet trend's last day = %+v, want the two current plans only (2 plans, 8 claimed, 5 proven)", last)
+	}
+	if !strings.Contains(tr.Scope, "2 current plans") {
+		t.Errorf("the trend names what it counts: %q", tr.Scope)
+	}
+	// Scoped to one repository: its plans alone.
+	tr = PlansTrend(runs, "/l.jsonl", "", 14, svcs[:1])
+	if last := tr.Points[len(tr.Points)-1]; tr.State != StatePresent || last.Plans != 1 || last.Claimed != 5 || last.Proven != 4 {
+		t.Errorf("proof's trend = %+v", tr)
+	}
+	// The portfolio draws exactly this trend.
+	pf := PlanPortfolio(PortfolioInput{Services: svcs, Registered: 3, Ledger: runs, LedgerPath: "/l.jsonl", MinTrendDays: 14})
+	if got := pf.Trend.Points[13]; got.Plans != 2 || got.Claimed != 8 {
+		t.Errorf("the portfolio's trend = %+v", got)
+	}
+	// An unreadable repository: an error naming it.
+	bad := append(append([]ServicePlans{}, svcs...), ServicePlans{Service: "gamma", Err: "operation not permitted"})
+	if tr := PlansTrend(runs, "/l.jsonl", "", 14, bad); tr.State != StateError || !strings.Contains(tr.Reason, "gamma") || len(tr.Points) != 0 {
+		t.Errorf("an unreadable repository = %+v", tr)
+	}
+	// No plans in scope: absent, never an empty line.
+	if tr := PlansTrend(runs, "/l.jsonl", "", 14, svcs[2:]); tr.State != StateAbsent || !strings.Contains(tr.Reason, "no plans") {
+		t.Errorf("no plans = %+v", tr)
+	}
+}
+
+// TestPlanPortfolio_MeasuredStaleIsALowerBound pins PC-5 on the headline:
+// claimed rows a stale daemon did not prove are kept out of
+// claimed_unproven, and they are not proven either — so the headline is a
+// named lower bound with the remedy, never a clean measured count (a
+// stale reading may not be hidden, cmd/fathom/measuredstale.go).
+func TestPlanPortfolio_MeasuredStaleIsALowerBound(t *testing.T) {
+	stale := PlanFacts{Service: "fathom", Path: "/f/docs/plans/x.md", Rel: "docs/plans/x.md", Verified: true, DaemonStale: true,
+		Rows: []PlanRowFact{{ID: "1", Claimed: true, Verified: true, Status: "fail"}, {ID: "2", Claimed: true, Verified: true, Status: "pass"}, {ID: "3", Claimed: true, Verified: true, Status: "unknown"}}}
+	pf := PlanPortfolio(PortfolioInput{Registered: 1, Services: []ServicePlans{{Service: "fathom", Plans: []PlanFacts{stale}}}})
+	if pf.Bar.Count(RowMeasuredStale) != 2 {
+		t.Fatalf("bar = %+v", pf.Bar)
+	}
+	for name, v := range map[string]Value[int]{"fleet": pf.Unproven, "fathom": pf.Services[0].Unproven} {
+		if v.State != StatePartial || v.V != 0 || !strings.Contains(v.Reason, "2 claimed rows") || !strings.Contains(v.Reason, "stale") ||
+			!strings.Contains(v.Reason, "lower bound") || !strings.Contains(v.Reason, "restart the daemon") {
+			t.Errorf("%s headline with stale rows = %+v, want a named lower bound", name, v)
+		}
+	}
+	if pf.Proven.V != 1 || pf.Proven.State != StatePresent {
+		t.Errorf("proven = %+v", pf.Proven)
+	}
+}
+
+// One label, one number (OC-9, UX-M3): the headline's "proven by the gate"
+// counts every proven row, the (op) measurements among them; the bar's
+// proven segment leaves those to their own segment, so it may not carry
+// the headline's words for a smaller number.
+func TestProofBar_ProvenSegmentIsNotTheHeadlinesLabel(t *testing.T) {
+	bar := ProofBarOf(fixtureRows(), false)
+	for _, s := range bar.Segments {
+		if s.Key == RowProven && (s.Label == "proven by the gate" || !strings.Contains(s.Label, "(op)")) {
+			t.Errorf("the proven segment = %q: it excludes the (op) rows the headline counts, and must say so", s.Label)
+		}
+	}
+	pf := PlanPortfolio(PortfolioInput{Registered: 1, Services: []ServicePlans{{Service: "proof", Plans: []PlanFacts{{Service: "proof", Path: "/r/docs/plans/s.md", Rows: fixtureRows(), Verified: true}}}}})
+	if pf.Proven.V != 3 || !strings.Contains(pf.Proven.Denominator, "1 of them a measurement row (op)") {
+		t.Errorf("proven headline = %+v, want its (op) share named", pf.Proven)
+	}
+}
+
+// A claimed row the gate cannot decide says why on its card — never
+// runtime_pass, which is unknown on every row, proven ones included, and
+// never decides one: a no-contract row is undecidable because it names no
+// contract, and ingesting CI would not change that.
+func TestCardDetail_UndecidableNamesTheRealCause(t *testing.T) {
+	runtime := CriterionFact{Name: "runtime_pass", Status: "unknown", Detail: "no CI/coverage evidence ingested — static checks cannot prove the test passes"}
+	noContract := PlanRowFact{ID: "md-001", Title: "x", Claimed: true, Verified: true, Status: "unknown", Label: "no-contract", Criteria: []CriterionFact{runtime}}
+	d := cardDetail(noContract, RowClaimedUnknown)
+	if strings.Contains(d, "runtime_pass") || !strings.Contains(d, "no contract") {
+		t.Errorf("no-contract card detail = %q", d)
+	}
+	oracle := PlanRowFact{ID: "S-3", Claimed: true, Oracle: "lexical", Verified: true, Status: "unknown", Label: "oracle-unevaluated",
+		Criteria: []CriterionFact{runtime, {Name: "lexical_oracle", Status: "unknown", Detail: "no repo file access on this evidence source"}}}
+	if d := cardDetail(oracle, RowClaimedUnknown); !strings.HasPrefix(d, "lexical_oracle: no repo file access") {
+		t.Errorf("an unevaluated oracle's card detail = %q", d)
+	}
+}

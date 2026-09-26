@@ -47,6 +47,9 @@ type OracleMatch struct {
 	FirstLine int      `json:"first_line,omitempty"`
 	Lines     []string `json:"lines,omitempty"`
 	Err       string   `json:"error,omitempty"`
+	// Missing is set when the file does not exist in the working tree —
+	// the gate's path-absent, a measured nothing, not a read failure.
+	Missing bool `json:"missing,omitempty"`
 }
 
 // RowRevision is the row's checkbox at one commit of its plan.
@@ -105,6 +108,12 @@ type OracleView struct {
 	Line      int      `json:"line,omitempty"`
 	FirstLine int      `json:"first_line,omitempty"`
 	Lines     []string `json:"lines,omitempty"`
+	// Bound is the row's count bound in words (CV-29; "at least 1 match"
+	// when it authors none) and BoundMet whether the count meets it — the
+	// verify engine's own rule, so a count and a verdict never read as a
+	// contradiction.
+	Bound    string `json:"bound,omitempty"`
+	BoundMet *bool  `json:"bound_met,omitempty"`
 }
 
 // RowChange is one change of the row's checkbox in the plan's history.
@@ -181,7 +190,7 @@ func RowEvidence(in RowEvidenceInput) RowEvidenceView {
 		v.Verdict.Reason = "skipped rows are exempt from the gate; the disposition is the contract"
 	}
 	v.Reach = reachView(v.Contract, r, in.Reach, in.MaxTests)
-	v.Oracle = oracleView(v.Contract, in.Oracle)
+	v.Oracle = oracleView(v.Contract, r, in.Oracle)
 	v.History = historyView(in.History, in.HistoryNote)
 	return v
 }
@@ -226,7 +235,7 @@ func reachView(c Contract, r PlanRowFact, f *ReachFacts, maxTests int) ReachView
 	return v
 }
 
-func oracleView(c Contract, m *OracleMatch) OracleView {
+func oracleView(c Contract, r PlanRowFact, m *OracleMatch) OracleView {
 	if c.Kind != ContractLexical {
 		return OracleView{State: StateAbsent, Reason: "does not apply — a " + c.Kind + " row has no lexical oracle"}
 	}
@@ -234,13 +243,31 @@ func oracleView(c Contract, m *OracleMatch) OracleView {
 		return OracleView{State: StateAbsent, Reason: "the working tree was not read for this row"}
 	}
 	v := OracleView{Path: m.Path, Pattern: m.Pattern, Count: m.Count, Line: m.Line, FirstLine: m.FirstLine, Lines: m.Lines}
+	v.Bound = orText(BoundText(r.OracleEq, r.OracleMin, r.OracleMax), "at least 1 match (no bound authored)")
+	if m.Err != "" && !m.Missing {
+		v.State, v.Reason, v.Bound = StateError, m.Path+" could not be read: "+m.Err, ""
+		return v
+	}
+	if m.Missing {
+		// The gate fails the row as path-absent whatever its bound.
+		v.State, v.Count = StateZero, 0
+		v.Reason = m.Path + " does not exist in the working tree — the gate reads the row as path-absent"
+		met := false
+		v.BoundMet = &met
+		return v
+	}
+	met := BoundMet(m.Count, r.OracleEq, r.OracleMin, r.OracleMax)
+	v.BoundMet = &met
+	verdict := "the row requires " + v.Bound + ", so the bound is met"
+	if !met {
+		verdict = "the row requires " + v.Bound + ", so the bound is not met"
+	}
 	switch {
-	case m.Err != "":
-		v.State, v.Reason = StateError, m.Path+" could not be read: "+m.Err
 	case m.Count == 0:
-		v.State, v.Reason = StateZero, "the pattern matches nothing in "+m.Path
+		v.State, v.Reason = StateZero, "the pattern matches nothing in "+m.Path+" — "+verdict
 	default:
 		v.State = StatePresent
+		v.Reason = fmt.Sprintf("the pattern matches %s in %s — %s", countNoun(m.Count, "time"), m.Path, verdict)
 	}
 	return v
 }

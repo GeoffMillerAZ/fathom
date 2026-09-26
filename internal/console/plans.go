@@ -63,6 +63,12 @@ type PlanRowFact struct {
 	OraclePath    string   `json:"oracle_path,omitempty"`
 	OraclePattern string   `json:"oracle_pattern,omitempty"`
 	Gone          string   `json:"gone,omitempty"`
+	// OracleEq, OracleMin and OracleMax are a lexical or gone: row's count
+	// bound (CV-29): the gate decides pass or fail on the match count
+	// against them, so "matches nothing" is a pass for an `eq: 0` row.
+	OracleEq  *int `json:"oracle_eq,omitempty"`
+	OracleMin *int `json:"oracle_min,omitempty"`
+	OracleMax *int `json:"oracle_max,omitempty"`
 
 	// The verdict. Verified is false while no verdict has been computed
 	// for the current watermark; Status is then empty.
@@ -120,10 +126,12 @@ func ContractOf(r PlanRowFact) Contract {
 		c.Kind = ContractGone
 		add("gone", r.Gone)
 		add("package", r.Package)
+		add("count", BoundText(r.OracleEq, r.OracleMin, r.OracleMax))
 	case r.Oracle == "lexical":
 		c.Kind = ContractLexical
 		add("path", r.OraclePath)
 		add("pattern", r.OraclePattern)
+		add("count", BoundText(r.OracleEq, r.OracleMin, r.OracleMax))
 	case r.Oracle != "":
 		c.Kind = ContractLedger
 		add("oracle", r.Oracle)
@@ -150,6 +158,38 @@ func ContractOf(r PlanRowFact) Contract {
 		add("skip", r.SkipReason)
 	}
 	return c
+}
+
+// BoundText states a row's authored count bound (CV-29) in words: "exactly
+// 0 (the pattern must not match)", "at least 2", "at most 3", "2 to 5"; ""
+// when the row authors none (the oracle's own default then holds).
+func BoundText(eq, min, max *int) string {
+	switch {
+	case eq != nil && *eq == 0:
+		return "exactly 0 matches (the pattern must not match)"
+	case eq != nil:
+		return fmt.Sprintf("exactly %d matches", *eq)
+	case min != nil && max != nil:
+		return fmt.Sprintf("%d to %d matches", *min, *max)
+	case min != nil:
+		return fmt.Sprintf("at least %d matches", *min)
+	case max != nil:
+		return fmt.Sprintf("at most %d matches", *max)
+	}
+	return ""
+}
+
+// BoundMet reports whether a lexical oracle's match count meets the row's
+// bound — the verify engine's rule (lexicalBoundsVerdict): eq exact, min and
+// max a range, and with none authored at least one match.
+func BoundMet(count int, eq, min, max *int) bool {
+	switch {
+	case eq != nil:
+		return count == *eq
+	case min != nil || max != nil:
+		return (min == nil || count >= *min) && (max == nil || count <= *max)
+	}
+	return count >= 1
 }
 
 // PlanRollup is one plan's computed rollup — `fathom plans status --json`'s
@@ -277,7 +317,7 @@ type ProofBar struct {
 
 // proofBarOrder is the fixed segment order and its roles.
 var proofBarOrder = []BarSegment{
-	{Key: RowProven, Label: "proven by the gate", Role: "positive"},
+	{Key: RowProven, Label: "proven, not counting (op) measurements", Role: "positive"},
 	{Key: RowOpMeasured, Label: "measurement rows (op) measured", Role: "info"},
 	{Key: RowClaimedFailing, Label: "claimed but failing", Role: "danger"},
 	{Key: RowClaimedUnknown, Label: "claimed, the gate cannot decide", Role: "caution"},
@@ -439,7 +479,7 @@ func PlanPortfolio(in PortfolioInput) Portfolio {
 		href = func(service, slug string) string { return "/plans/" + service + "/" + slug }
 	}
 	fleet := map[string]int{}
-	var unproven, proven, verifiedPlans, totalPlans int
+	var unproven, proven, opProven, stale, verifiedPlans, totalPlans int
 	var pending, failed, unreadable []string
 	for _, sp := range in.Services {
 		ps := PortfolioService{Service: sp.Service, Plans: len(sp.Plans), Err: sp.Err}
@@ -454,7 +494,7 @@ func PlanPortfolio(in PortfolioInput) Portfolio {
 			continue
 		}
 		out.WithPlans++
-		svcUnproven, svcProven, svcVerified := 0, 0, 0
+		svcUnproven, svcProven, svcOpProven, svcStale, svcVerified := 0, 0, 0, 0, 0
 		var svcPending, svcFailed []string
 		for _, p := range sp.Plans {
 			totalPlans++
@@ -479,6 +519,8 @@ func PlanPortfolio(in PortfolioInput) Portfolio {
 				pp.State = StatePresent
 				svcUnproven += r.ClaimedUnproven
 				svcProven += r.Proven
+				svcOpProven += r.OpProven
+				svcStale += r.MeasuredStale
 				svcVerified++
 				verifiedPlans++
 				for _, seg := range pp.Bar.Segments {
@@ -489,15 +531,108 @@ func PlanPortfolio(in PortfolioInput) Portfolio {
 		}
 		unproven += svcUnproven
 		proven += svcProven
-		ps.Unproven = gapValue(svcUnproven, svcVerified, len(sp.Plans), svcPending, svcFailed, nil, "claimed rows the gate does not prove")
-		ps.Proven = gapValue(svcProven, svcVerified, len(sp.Plans), svcPending, svcFailed, nil, "rows the gate proves")
+		opProven += svcOpProven
+		stale += svcStale
+		ps.Unproven = unprovenValue(gapValue(svcUnproven, svcVerified, len(sp.Plans), svcPending, svcFailed, nil, "claimed rows the gate does not prove"), svcStale)
+		ps.Proven = provenValue(gapValue(svcProven, svcVerified, len(sp.Plans), svcPending, svcFailed, nil, "rows the gate proves"), svcOpProven)
 		out.Services = append(out.Services, ps)
 	}
 	out.Bar = ProofBarFromCounts(fleet)
-	out.Unproven = gapValue(unproven, verifiedPlans, totalPlans, pending, failed, unreadable, "claimed rows the gate does not prove")
-	out.Proven = gapValue(proven, verifiedPlans, totalPlans, pending, failed, unreadable, "rows the gate proves")
-	out.Trend = LedgerTrend(in.Ledger, in.LedgerPath, in.LedgerErr, in.MinTrendDays, nil)
+	out.Unproven = unprovenValue(gapValue(unproven, verifiedPlans, totalPlans, pending, failed, unreadable, "claimed rows the gate does not prove"), stale)
+	out.Proven = provenValue(gapValue(proven, verifiedPlans, totalPlans, pending, failed, unreadable, "rows the gate proves"), opProven)
+	out.Trend = PlansTrend(in.Ledger, in.LedgerPath, in.LedgerErr, in.MinTrendDays, in.Services)
 	return out
+}
+
+// unprovenValue makes a claimed-but-unproven count a named lower bound when
+// some claimed rows were measured by a stale daemon (PC-5): those rows are
+// kept out of the count, and they are not proven either, so the count
+// alone would read as "this many and no more" — a stale 0 as nothing
+// unproven. A stale reading may not be hidden (measuredstale.go).
+func unprovenValue(v Value[int], stale int) Value[int] {
+	if stale == 0 || !v.State.HasValue() {
+		return v
+	}
+	reason := fmt.Sprintf("%s the daemon measured stale are not counted here (PC-5) and are not proven either, so this is a lower bound — task deploy or restart the daemon on the current binary, then reload", countNoun(stale, "claimed row"))
+	if v.State == StatePartial {
+		reason = v.Reason + "; " + reason
+	}
+	out := Partial(v.V, reason).WithSource(v.Source)
+	out.Denominator = v.Denominator
+	return out
+}
+
+// provenValue names the (op) measurement rows inside a proven count: the
+// headline's "proven by the gate" counts them (as `plans status`'s proven
+// does), while the proof bar gives them their own segment.
+func provenValue(v Value[int], op int) Value[int] {
+	if op > 0 && v.State.HasValue() && v.Denominator != "" {
+		noun := "a measurement row (op)"
+		if op > 1 {
+			noun = "measurement rows (op)"
+		}
+		v.Denominator += fmt.Sprintf(", %s of them %s", thousands(op), noun)
+	}
+	return v
+}
+
+// PlansTrend is the claimed-vs-proven trend over the plans a portfolio
+// shows (SD-3): the verify-ledger runs of each service's CURRENT plans,
+// matched by service and file name. The ledger keeps every run it ever
+// recorded — scratch service IDs re-running another repository's plans,
+// plan files since deleted or archived, README.md — and summing them drew
+// a fleet of 321 plans beside a portfolio of 142. A service whose plans
+// could not be read makes the trend an error naming it (I38): a trend
+// without its plans would read as less work.
+func PlansTrend(runs []LedgerRun, path, readErr string, minDays int, services []ServicePlans) Trend {
+	current := map[string]map[string]bool{}
+	var unreadable []string
+	plans, repos := 0, 0
+	for _, sp := range services {
+		if sp.Err != "" {
+			unreadable = append(unreadable, sp.Service+" ("+sp.Err+")")
+			continue
+		}
+		if len(sp.Plans) == 0 {
+			continue
+		}
+		repos++
+		key := strings.ToLower(sp.Service)
+		if current[key] == nil {
+			current[key] = map[string]bool{}
+		}
+		for _, p := range sp.Plans {
+			if !current[key][filepath.Base(p.Path)] {
+				current[key][filepath.Base(p.Path)] = true
+				plans++
+			}
+		}
+	}
+	repoWord := "repositories"
+	if repos == 1 {
+		repoWord = "repository"
+	}
+	scope := fmt.Sprintf("the %s of %d %s, by service and file name — scratch services, deleted plans and README.md are not counted",
+		countNoun(plans, "current plan"), repos, repoWord)
+	if len(unreadable) > 0 {
+		if minDays <= 0 {
+			minDays = DefaultTrendDays
+		}
+		return Trend{State: StateError, Source: "verify ledger " + path, Need: minDays, Scope: scope,
+			Reason: fmt.Sprintf("docs/plans unreadable in %s — the trend counts the current plans, so none is drawn without them", joinFew(unreadable))}
+	}
+	if plans == 0 {
+		if minDays <= 0 {
+			minDays = DefaultTrendDays
+		}
+		return Trend{State: StateAbsent, Source: "verify ledger " + path, Need: minDays, Scope: scope,
+			Reason: "no plans under docs/plans in this scope — there is no trend to draw"}
+	}
+	t := LedgerTrend(runs, path, readErr, minDays, func(r LedgerRun) bool {
+		return current[strings.ToLower(r.Service)][filepath.Base(r.Plan)]
+	})
+	t.Scope = scope
+	return t
 }
 
 // gapValue states a plans total with its coverage: exact when every plan was
@@ -561,9 +696,12 @@ type TrendPoint struct {
 // rows on MinDays distinct days it is absent with the count, never a line
 // drawn through too little data.
 type Trend struct {
-	State  State        `json:"state"`
-	Reason string       `json:"reason,omitempty"`
-	Source string       `json:"source"`
+	State  State  `json:"state"`
+	Reason string `json:"reason,omitempty"`
+	Source string `json:"source"`
+	// Scope names the plans the trend counts (a portfolio's trend: its
+	// current plans; a plan's burn-up: that plan).
+	Scope  string       `json:"scope,omitempty"`
 	Days   int          `json:"days"`
 	Need   int          `json:"days_needed"`
 	Points []TrendPoint `json:"points,omitempty"`
@@ -867,17 +1005,35 @@ func PlanLedger(in PlanLedgerInput) PlanLedgerView {
 	return v
 }
 
+// runtimeCriterion is the verify engine's runtime clause, reported unknown
+// on every row until CI evidence is ingested.
+const runtimeCriterion = "runtime_pass"
+
 // cardDetail is the one line a card carries under its title: why a claimed
 // row is not proven, or what a deferred row waits for.
 func cardDetail(r PlanRowFact, state string) string {
 	switch state {
-	case RowClaimedFailing, RowClaimedUnknown:
+	case RowClaimedFailing:
 		for _, c := range r.Criteria {
-			if c.Status == "fail" || (state == RowClaimedUnknown && c.Status == "unknown") {
+			if c.Status == "fail" {
 				return c.Name + ": " + c.Detail
 			}
 		}
 		return r.Label
+	case RowClaimedUnknown:
+		// runtime_pass is unknown on every row, proven ones included — it
+		// never decides one — so it is never the reason a row is
+		// undecidable. A row with no contract is undecidable because it
+		// names none: no CI run would change that.
+		if r.Label == "no-contract" || ContractOf(r).Kind == ContractNone {
+			return "no contract — the row names no symbol, oracle or gone: pattern, so the gate cannot decide it; give it one"
+		}
+		for _, c := range r.Criteria {
+			if c.Status == "unknown" && c.Name != runtimeCriterion {
+				return c.Name + ": " + c.Detail
+			}
+		}
+		return orText(r.Label, "the gate could not decide this row")
 	case RowPending:
 		return "the gate's verdict has not arrived yet"
 	case RowDeferred:

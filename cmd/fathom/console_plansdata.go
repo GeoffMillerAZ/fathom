@@ -139,19 +139,9 @@ func modelServiceRoots(m observatoryModel) []serviceRoot {
 // entries returned are the ones to wait on.
 func (p *consolePlans) servicePlans(ctx context.Context, sr serviceRoot, only string) (console.ServicePlans, []*planEntry) {
 	out := console.ServicePlans{Service: sr.Service, Root: sr.Root}
-	if sr.Root == "" {
-		return out, nil
-	}
-	dir := filepath.Join(sr.Root, "docs", "plans")
-	if _, err := os.Stat(dir); err != nil {
-		if !os.IsNotExist(err) {
-			out.Err = err.Error()
-		}
-		return out, nil
-	}
-	files, err := activePlanFiles(sr.Root)
-	if err != nil {
-		out.Err = err.Error()
+	files, errText := servicePlanFiles(sr.Root)
+	if errText != "" {
+		out.Err = errText
 		return out, nil
 	}
 	var waits []*planEntry
@@ -166,6 +156,27 @@ func (p *consolePlans) servicePlans(ctx context.Context, sr serviceRoot, only st
 		}
 	}
 	return out, waits
+}
+
+// servicePlanFiles is a service's active plans: docs/plans/*.md under its
+// root, non-recursive, README excluded (the verbs' discovery). A root with
+// no docs/plans has none; a docs/plans that exists and cannot be read is
+// the error, never "no plans" (I38).
+func servicePlanFiles(root string) ([]string, string) {
+	if root == "" {
+		return nil, ""
+	}
+	if _, err := os.Stat(filepath.Join(root, "docs", "plans")); err != nil {
+		if os.IsNotExist(err) {
+			return nil, ""
+		}
+		return nil, err.Error()
+	}
+	files, err := activePlanFiles(root)
+	if err != nil {
+		return nil, err.Error()
+	}
+	return files, ""
 }
 
 // plan snapshots one plan: its verdicts when they are cached at the current

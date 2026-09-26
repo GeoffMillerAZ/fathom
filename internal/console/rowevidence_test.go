@@ -95,3 +95,57 @@ func TestRowEvidence_ReachPathAndOracleMatch(t *testing.T) {
 		t.Errorf("missing row = %+v", v)
 	}
 }
+
+// TestRowEvidence_OracleBoundIsPartOfTheContract pins CV-29's bounds on the
+// evidence: a lexical row's eq/min/max is part of its contract (listed
+// field by field) and of the oracle's reading, so "matches nothing" beside
+// "proven" is explained by the row's own "exactly 0", a match beside a
+// failing "exactly 0" says the bound is not met, and a file that does not
+// exist is the gate's path-absent — a measured nothing, never "could not be
+// read".
+func TestRowEvidence_OracleBoundIsPartOfTheContract(t *testing.T) {
+	zero, two := 0, 2
+	absence := PlanRowFact{ID: "PC-9", Title: "no stale id", Claimed: true, Oracle: "lexical", OraclePath: "docs/intent/scope.md", OraclePattern: "th-c214dd26", OracleEq: &zero, Verified: true, Status: "pass"}
+	floor := PlanRowFact{ID: "RC-13", Claimed: true, Oracle: "lexical", OraclePath: "README.md", OraclePattern: "x", OracleMin: &two, Verified: true, Status: "pass"}
+	plan := PlanFacts{Service: "fathom", Rel: "docs/plans/p.md", Rows: []PlanRowFact{absence, floor}, Verified: true}
+
+	c := ContractOf(absence)
+	if !containsField(c, "count", "exactly 0") {
+		t.Errorf("an eq: 0 row's contract = %+v, want its bound", c.Fields)
+	}
+	if !containsField(ContractOf(floor), "count", "at least 2") {
+		t.Errorf("a min: 2 row's contract = %+v", ContractOf(floor).Fields)
+	}
+
+	m := MatchOracle("docs/intent/scope.md", "th-c214dd26", "# Scope\n", 2)
+	v := RowEvidence(RowEvidenceInput{Service: "fathom", Plan: plan, RowID: "PC-9", Oracle: &m})
+	if v.Oracle.State != StateZero || !strings.HasPrefix(v.Oracle.Bound, "exactly 0 matches") || v.Oracle.BoundMet == nil || !*v.Oracle.BoundMet ||
+		!strings.Contains(v.Oracle.Reason, "exactly 0") {
+		t.Errorf("a proven absence = %+v", v.Oracle)
+	}
+
+	// The same bound with a match: present, and the bound says it is not met.
+	absence.Status = "fail"
+	plan.Rows[0] = absence
+	m = MatchOracle("docs/intent/scope.md", "th-c214dd26", "# Scope\nth-c214dd26\n", 2)
+	v = RowEvidence(RowEvidenceInput{Service: "fathom", Plan: plan, RowID: "PC-9", Oracle: &m})
+	if v.Oracle.State != StatePresent || v.Oracle.BoundMet == nil || *v.Oracle.BoundMet || !strings.Contains(v.Oracle.Reason, "not met") {
+		t.Errorf("a failing absence = %+v", v.Oracle)
+	}
+
+	// A file that does not exist: the gate's path-absent, a measured zero.
+	missing := OracleMatch{Path: "cmd/fathom/console_palette.go", Pattern: "palette", Missing: true, Err: "open …: no such file or directory"}
+	v = RowEvidence(RowEvidenceInput{Service: "fathom", Plan: plan, RowID: "PC-9", Oracle: &missing})
+	if v.Oracle.State != StateZero || !strings.Contains(v.Oracle.Reason, "does not exist") || !strings.Contains(v.Oracle.Reason, "path-absent") {
+		t.Errorf("a missing oracle file = %+v", v.Oracle)
+	}
+}
+
+func containsField(c Contract, name, want string) bool {
+	for _, f := range c.Fields {
+		if f.Name == name && strings.Contains(f.Value, want) {
+			return true
+		}
+	}
+	return false
+}

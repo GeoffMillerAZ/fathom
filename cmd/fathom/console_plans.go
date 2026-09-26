@@ -35,7 +35,7 @@ func init() {
 		ID: "plans", Route: "/plans", Href: "/plans", Group: "Proof", Order: 0, Nav: true,
 		Title:    "Plans",
 		Question: "What is planned, what is proven done, what remains, and how is it trending?",
-		Verbs:    []string{"fathom plans status --service {svc} --json"},
+		Verbs:    []string{"fathom plans status --service {svc} --json", "fathom plans history --service {svc} --json", "fathom plans history --json"},
 		Shows:    []console.MetricID{console.MetricServices, console.MetricPlansUnproven, console.MetricPlansProven},
 		Build:    buildPlansPortfolioPage,
 	})
@@ -171,6 +171,12 @@ func buildPlansPortfolioPage(cr *consoleRequest) (consoleOut, error) {
 			model.PendingSections = append(model.PendingSections, verb)
 		}
 	}
+	// The trend is the scope's own (vision 35 §5: filter state lives in the
+	// URL), rendered from the verb that prints it: the current plans of this
+	// repository, or of every registered one.
+	trendVerb := plansTrendVerb(scope)
+	verbs = append(verbs, trendVerb)
+	sections[trendVerb] = pf.Trend
 	model.Pages = (len(pf.Plans) + plansPageSize - 1) / plansPageSize
 	model.Page = pageParam(cr.r, model.Pages)
 	all := consoleModelMetrics(m)
@@ -187,7 +193,7 @@ func buildPlansPortfolioPage(cr *consoleRequest) (consoleOut, error) {
 	}
 	out := consoleOut{
 		Meta: meta, Model: model, Metrics: metrics, Sections: sections, Verbs: verbs,
-		Body: func() string { return renderPlansPortfolio(model, roots, scope, metrics, sps) },
+		Body: func() string { return renderPlansPortfolio(model, roots, scope, metrics, sps, trendVerb) },
 	}
 	if scope == "" && len(verbs) > 0 {
 		// One verb per repository: listed behind one disclosure rather than
@@ -195,6 +201,14 @@ func buildPlansPortfolioPage(cr *consoleRequest) (consoleOut, error) {
 		out.Chips, out.Actions = []string{}, verbsDisclosure(verbs)
 	}
 	return out, nil
+}
+
+// plansTrendVerb is the verb that prints a scope's claimed-vs-proven trend.
+func plansTrendVerb(scope string) string {
+	if scope != "" {
+		return "fathom plans history --service " + scope + " --json"
+	}
+	return "fathom plans history --json"
 }
 
 // pageParam reads ?page=, clamped to [1, pages].
@@ -217,7 +231,7 @@ func plansLiveKey(scope string) string {
 	return "plans"
 }
 
-func renderPlansPortfolio(m plansPortfolioModel, roots []serviceRoot, scope string, metrics console.Metrics, sps []console.ServicePlans) string {
+func renderPlansPortfolio(m plansPortfolioModel, roots []serviceRoot, scope string, metrics console.Metrics, sps []console.ServicePlans, trendVerb string) string {
 	pf := m.Portfolio
 	var b strings.Builder
 	b.WriteString(renderPlansScopeNav(sps, scope))
@@ -273,10 +287,10 @@ func renderPlansPortfolio(m plansPortfolioModel, roots []serviceRoot, scope stri
 
 	b.WriteString(`<div class="mt-4">`)
 	b.WriteString(renderPanel(consolePanel{
-		ID: "trend", Title: "Claimed against proven over time", SourceKey: "plans",
+		ID: "trend", Title: "Claimed against proven over time", SourceKey: plansLiveKey(scope),
 		Question:    "Is the gap between what is claimed and what is proven closing?",
-		Verb:        "fathom plans history --service <svc> --plan <plan> --json",
-		Source:      pf.Trend.Source + " — each plan's last gate run carried forward per day",
+		Verb:        trendVerb,
+		Source:      pf.Trend.Source + " — " + pf.Trend.Scope + "; each plan's last gate run carried forward per day",
 		Denominator: fmt.Sprintf("%d days of ledger rows (the trend needs %d)", pf.Trend.Days, pf.Trend.Need),
 		State:       pf.Trend.State,
 		Reason:      pf.Trend.Reason,
@@ -455,7 +469,7 @@ func renderPlansTable(m plansPortfolioModel) string {
 		Caption: fmt.Sprintf("Plans %d–%d of %d, by repository and file", lo+1, hi, len(pf.Plans)),
 		Columns: []table.Column{
 			{Key: "plan", Label: "Plan"}, {Key: "repository", Label: "Repository"}, {Key: "shape", Label: "Proof bar"},
-			{Key: "proven", Label: "Proven", Align: "right"}, {Key: "unproven", Label: "Claimed, not proven", Align: "right"},
+			{Key: "proven", Label: "Proven, (op) included", Align: "right"}, {Key: "unproven", Label: "Claimed, not proven", Align: "right"},
 			{Key: "open", Label: "Open", Align: "right"}, {Key: "set-aside", Label: "Deferred or skipped", Align: "right"},
 		},
 		Rows: rows,
@@ -505,7 +519,7 @@ func renderPlansPerRepository(pf console.Portfolio) string {
 		Caption: "Each repository's plans — open one for its exact plans status",
 		Columns: []table.Column{
 			{Key: "repository", Label: "Repository"}, {Key: "plans", Label: "Plans", Align: "right"}, {Key: "rows", Label: "Rows", Align: "right"},
-			{Key: "shape", Label: "Proof bar"}, {Key: "unproven", Label: "Claimed, not proven", Align: "right"}, {Key: "proven", Label: "Proven", Align: "right"},
+			{Key: "shape", Label: "Proof bar"}, {Key: "unproven", Label: "Claimed, not proven", Align: "right"}, {Key: "proven", Label: "Proven, (op) included", Align: "right"},
 		},
 		Rows: rows,
 	})

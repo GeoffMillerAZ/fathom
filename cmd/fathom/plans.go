@@ -25,7 +25,9 @@ import (
 //
 //	plans status  — per-plan rollup {proven, claimed-unproven, open, deferred-with-trigger}
 //	plans next    — the ordered, evidence-derived work frontier
-//	plans history — a plan's burn-up from its git history and the verify ledger
+//	plans history — a plan's burn-up from its git history and the verify ledger;
+//	                without --plan, the claimed-vs-proven trend of a service's (or
+//	                the registry's) current plans
 //	plans archive — governed artifact lifecycle (E4-1)
 //	plans restore — the archive/restore round-trip (E4-1)
 func cmdPlans(args []string, stdout, stderr io.Writer) int {

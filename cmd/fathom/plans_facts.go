@@ -43,6 +43,7 @@ func planTaskFact(t verify.Task, v *verify.TaskVerdict) console.PlanRowFact {
 		Symbol: t.Expect.Symbol, Package: t.Expect.Package, ReachableFrom: t.Expect.ReachableFrom,
 		SkipTest: t.Expect.SkipTest, SkipReason: t.Expect.SkipReason, CertifiedBy: t.Expect.CertifiedBy,
 		Oracle: t.Oracle, OraclePath: t.OraclePath, OraclePattern: t.OraclePattern, Gone: t.Gone,
+		OracleEq: t.Eq, OracleMin: t.Min, OracleMax: t.Max,
 	}
 	if v != nil {
 		f.Verified = true

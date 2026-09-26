@@ -5,6 +5,13 @@ package main
 // cross-checked with the verify ledger's runs of it, with the gate's proven
 // trend drawn only once the ledger holds 14 days of this plan's rows (SD-3).
 // The plan page's burn-up panel renders this verb's JSON (P10).
+//
+// Without --plan it prints the claimed-vs-proven trend of the current plans
+// of one service (--service) or of every registered service: the verify
+// ledger's runs of those plans only, matched by service and file name
+// (console.PlansTrend) — the ledger also holds scratch services, deleted
+// plans and README.md, which a portfolio's trend must never sum. /plans'
+// trend panel renders this verb's JSON, at the page's own ?svc= scope.
 
 import (
 	"encoding/json"
@@ -24,15 +31,18 @@ const planHistoryMaxPoints = 30
 
 func cmdPlansHistory(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("plans history", stderr)
-	service := fs.String("service", "", "service ID (required)")
-	plan := fs.String("plan", "", "the plan: a path, a path under the service's registered root, or a name under its docs/plans (required)")
+	service := fs.String("service", "", "service ID (required with --plan; without --plan, the trend of this service's plans instead of the registry's)")
+	plan := fs.String("plan", "", "the plan: a path, a path under the service's registered root, or a name under its docs/plans (omit for the claimed-vs-proven trend of the current plans)")
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL (resolves the service's registered root)")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a table")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
-	if *service == "" || *plan == "" {
-		fmt.Fprintln(stderr, "error: --service and --plan are required")
+	if *plan == "" {
+		return plansTrendCmd(*service, *url, *jsonOut, stdout, stderr)
+	}
+	if *service == "" {
+		fmt.Fprintln(stderr, "error: --service is required with --plan")
 		fs.Usage()
 		return 1
 	}
@@ -145,4 +155,58 @@ type ledgerRead struct {
 	Runs []console.LedgerRun
 	Path string
 	Err  string
+}
+
+// plansTrendCmd prints the claimed-vs-proven trend of the current plans of
+// one service, or of every registered service when service is "".
+func plansTrendCmd(service, url string, jsonOut bool, stdout, stderr io.Writer) int {
+	svcs, err := fetchServices(&http.Client{Timeout: 5 * time.Second}, url)
+	if err != nil {
+		fmt.Fprintf(stderr, "error: the service registry at %s could not be read: %v\n", url, err)
+		return 1
+	}
+	var roots []serviceRoot
+	for name, info := range svcs {
+		if service == "" || strings.EqualFold(name, service) {
+			roots = append(roots, serviceRoot{Service: name, Root: info.path})
+		}
+	}
+	if service != "" && len(roots) == 0 {
+		fmt.Fprintf(stderr, "error: no indexed service named %q\n", service)
+		return 1
+	}
+	runs, lpath, lerr := ledgerRuns()
+	t := plansTrendOf(roots, ledgerRead{Runs: runs, Path: lpath, Err: lerr})
+	if jsonOut {
+		enc := json.NewEncoder(stdout)
+		enc.SetIndent("", "  ")
+		_ = enc.Encode(t)
+		return 0
+	}
+	fmt.Fprintf(stdout, "claimed against proven: %s\n", t.Scope)
+	if t.State != console.StatePresent {
+		fmt.Fprintf(stdout, "  not drawn: %s\n", t.Reason)
+		return 0
+	}
+	for _, p := range t.Points {
+		fmt.Fprintf(stdout, "  %s  proven %4d of %4d claimed  failing %3d  plans %3d\n", p.Day, p.Proven, p.Claimed, p.Failing, p.Plans)
+	}
+	return 0
+}
+
+// plansTrendOf is the trend of the current plans under roots — the one
+// discovery (servicePlanFiles) both this verb and /plans read, so the page
+// and the verb count the same plans.
+func plansTrendOf(roots []serviceRoot, ledger ledgerRead) console.Trend {
+	sps := make([]console.ServicePlans, 0, len(roots))
+	for _, sr := range roots {
+		sp := console.ServicePlans{Service: sr.Service, Root: sr.Root}
+		files, errText := servicePlanFiles(sr.Root)
+		sp.Err = errText
+		for _, f := range files {
+			sp.Plans = append(sp.Plans, console.PlanFacts{Service: sr.Service, Path: f})
+		}
+		sps = append(sps, sp)
+	}
+	return console.PlansTrend(ledger.Runs, ledger.Path, ledger.Err, console.DefaultTrendDays, sps)
 }
