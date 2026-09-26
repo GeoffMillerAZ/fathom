@@ -69,6 +69,12 @@ while IFS= read -r declaration; do
   mkdir -p "$(dirname "${target}")"
   printf 'package fixture\n' > "${target}"
 done < <(sed -n 's/^[[:space:]]*@source "\([^"]*\)";[[:space:]]*$/\1/p' "${FIXTURE}/cmd/fathom/ui/input.css")
+# ...and for every kit stylesheet it imports (the docs prose, L1).
+while IFS= read -r declaration; do
+  target="${FIXTURE}/cmd/fathom/ui/${declaration}"
+  mkdir -p "$(dirname "${target}")"
+  printf '/* fixture */\n' > "${target}"
+done < <(sed -n 's/^[[:space:]]*@import "\(\.\.\/[^"]*\.css\)";[[:space:]]*$/\1/p' "${FIXTURE}/cmd/fathom/ui/input.css")
 
 # A tiny appkit command lets the real script exercise its build/stage/check
 # flow without a network request or the real generated outputs.

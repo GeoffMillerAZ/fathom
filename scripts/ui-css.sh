@@ -38,6 +38,8 @@ SOURCE_DECLARATIONS=(
   "../../../third_party/app-kit/appkit/ui/callout/*.go"
   "../../../third_party/app-kit/appkit/ui/chrome/*.go"
   "../../../third_party/app-kit/appkit/ui/dashboard/*.go"
+  "../../../third_party/app-kit/appkit/ui/docs/*.go"
+  "../../../third_party/app-kit/appkit/ui/docs/prose.css"
   "../../../third_party/app-kit/appkit/ui/form/*.go"
   "../../../third_party/app-kit/appkit/ui/hitl/*.go"
   "../../../third_party/app-kit/appkit/ui/live/*.go"
@@ -57,6 +59,7 @@ render_expected_input() {
    it can SEE, so every production renderer and consumed kit package is named. */
 @import "tailwindcss" source(none);
 @import "./tokens/theme.css";
+@import "../../../third_party/app-kit/appkit/ui/docs/prose.css";
 
 /* fathom's complete production observatory source set; every console page
    and component lives in a console_*.go file, scanned by glob (vision 35) */
@@ -73,6 +76,7 @@ render_expected_input() {
 @source "../../../third_party/app-kit/appkit/ui/callout/*.go";
 @source "../../../third_party/app-kit/appkit/ui/chrome/*.go";
 @source "../../../third_party/app-kit/appkit/ui/dashboard/*.go";
+@source "../../../third_party/app-kit/appkit/ui/docs/*.go";
 @source "../../../third_party/app-kit/appkit/ui/form/*.go";
 @source "../../../third_party/app-kit/appkit/ui/hitl/*.go";
 @source "../../../third_party/app-kit/appkit/ui/live/*.go";

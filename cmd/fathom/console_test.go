@@ -610,6 +610,42 @@ func TestConsolePagesRenderTheirVerbs(t *testing.T) {
 	if withVerbs == 0 {
 		t.Error("no page declares a verb; the parity framework proved nothing")
 	}
+	// Wave G: the Learn pages render verbs, and a page may also carry a
+	// section for a command it computes per request — the chosen project's
+	// own `fathom capabilities --repo R --service S --json` on /learn. Every
+	// such section equals that exact command's output too.
+	for _, id := range []string{"learn", "learn-ask"} {
+		if p, ok := defaultConsoleRegistry().page(id); !ok || len(p.Verbs) == 0 {
+			t.Errorf("page %s must render a verb", id)
+		}
+	}
+	perRequest := 0
+	for _, p := range defaultConsoleRegistry().pages {
+		if p.ID == "statusz" {
+			continue
+		}
+		for key, section := range f.pageJSON(t, samplePath(p)).Sections {
+			if containsString(p.Verbs, key) || !strings.HasPrefix(key, "fathom ") || strings.ContainsAny(key, `'"`) {
+				continue
+			}
+			perRequest++
+			var out, errb bytes.Buffer
+			if code := run(append(strings.Fields(key)[1:], "--url", f.ts.URL), &out, &errb); code != 0 {
+				t.Fatalf("%s exited %d: %s", key, code, errb.String())
+			}
+			var fromVerb, fromPage any
+			if err := json.Unmarshal(out.Bytes(), &fromVerb); err != nil {
+				t.Fatalf("%s: %v", key, err)
+			}
+			_ = json.Unmarshal(section, &fromPage)
+			if !reflect.DeepEqual(fromVerb, fromPage) {
+				t.Errorf("page %s's section differs from `%s`", p.ID, key)
+			}
+		}
+	}
+	if perRequest == 0 {
+		t.Error("no page carries a per-request section; /learn's capabilities section is missing")
+	}
 }
 
 // TestConsoleMetricsAgreeAcrossPages pins OC-9: every page that shows a
@@ -743,6 +779,15 @@ func TestConsoleMetricsAgreeAcrossPages(t *testing.T) {
 	}
 	if strings.Contains(brief.Markdown, "16-tool") {
 		t.Error("the brief still names a literal surface size")
+	}
+	// Wave G: the Learn pages render the shared metrics they carry — the
+	// project count in /learn's heading, the agent surface's size in the
+	// ask page's coverage line — from the same projections.
+	if _, _, learn := f.get(t, "/learn"); !strings.Contains(learn, "one of "+valuePlain(value(console.MetricServices))+" indexed projects") {
+		t.Errorf("/learn must name the shared project count %+v", value(console.MetricServices))
+	}
+	if _, _, ask := f.get(t, "/learn/ask"); !strings.Contains(ask, "of the "+fmtThousands(tools.V)+" on the agent surface") {
+		t.Errorf("/learn/ask must name the shared agent-surface size %d", tools.V)
 	}
 }
 

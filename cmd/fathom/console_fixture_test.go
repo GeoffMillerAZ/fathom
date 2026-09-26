@@ -225,6 +225,8 @@ func samplePath(p *consolePage) string {
 		return "/sessions/s-1"
 	case "/search":
 		return "/search?q=charge"
+	case "/learn/guides/{slug}":
+		return "/learn/guides/fleet-health"
 	}
 	return p.Route
 }

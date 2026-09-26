@@ -62,6 +62,11 @@ func cmdHarnessLadder(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
+// harnessMatrixNow is the matrix's demotion clock — one clock for the verb
+// and the Ask page that renders its JSON (console_learn_ask.go), so the two
+// agree on a tier however long after a descriptor's verification they run.
+var harnessMatrixNow = time.Now
+
 // cmdHarnessMatrix renders the adoption matrix (RP-18) — the table
 // docs/adoption/other-harnesses.md pins between its markers — as Markdown
 // or --json rows.
@@ -72,7 +77,7 @@ func cmdHarnessMatrix(args []string, stdout, stderr io.Writer) int {
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
-	now := time.Now()
+	now := harnessMatrixNow()
 	if *jsonOut {
 		enc := json.NewEncoder(stdout)
 		enc.SetIndent("", "  ")

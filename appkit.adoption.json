@@ -41,11 +41,11 @@
   "artifacts": [
     {
       "path": "cmd/fathom/ui/app.css",
-      "sha256": "ed8edc6b8fb126a4189a281921e333dfca97585967202a80116c89d54e307068"
+      "sha256": "8dda8540272b038cd4ea2794e2050faff1f19331849006b7b115e3d50f729a69"
     },
     {
       "path": "cmd/fathom/ui/input.css",
-      "sha256": "cce7bf50d571b604cfd8c2d2774062fbfdbfd95abb1b02d5f3cc5323dde3370e"
+      "sha256": "9089f018b6098d0e0cbc60585ce84119904f2bf80c425ed083489a4ef63f2193"
     },
     {
       "path": "cmd/fathom/ui/tokens/theme.css",
@@ -77,7 +77,7 @@
     },
     {
       "path": "scripts/ui-css.sh",
-      "sha256": "cb1ed7e263ffefba43802fd49b7365929bf3d9c1e445341d287c097c317278bd"
+      "sha256": "dd0fc384137a4e1923256257b13d6be3806c5db69ec9736bbf1875bb269363c3"
     },
     {
       "path": "scripts/lib/build-cache.sh",
@@ -101,7 +101,7 @@
     },
     {
       "path": "scripts/ui-css_test.sh",
-      "sha256": "b5090d76cd5163d3921e1ea6ba679907865e5d445a38ef96568c9fa5102e78d2"
+      "sha256": "64d442341876dc25ff05036f531bd52501f03e321002d04adcf772b4fa0e0d25"
     },
     {
       "path": "third_party/app-kit/apps/styleguide/handler.go",
