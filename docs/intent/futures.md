@@ -121,7 +121,10 @@ futures may justify a free option today. The repo's own sequence is
 - Preserve: `verify --store <tmp>` keeps working; ambient-fathom's claimed-Unknown rows
   are reconciled first (`th-c214dd26`).
 - Promote when: `th-c214dd26` is decided and scope G6 is done. Fired 2026-09-25: G6 held
-  and left `scope.md` (PC-20); promotion is the owner's decision, not yet made.
+  and left `scope.md` (PC-20). **Promoted 2026-09-25 (owner) for the gate this repo has:**
+  the pre-push verify step now runs `--strict` against its own scratch ingest of HEAD, so a
+  claimed row that reads Unknown blocks the push; `scripts/ci.sh` already did. A hosted
+  runner stays unbuilt, so the rest of this future waits on a runner.
 - Drop if: the repo stays without a CI runner by decision.
 
 ## F11. Adopt the kit's `mcp-server` under `internal/mcp`
@@ -132,8 +135,11 @@ futures may justify a free option today. The repo's own sequence is
 
 ## F12. An LLM-judged evaluation lane on `qa-harness`
 
-- Confidence: speculative. Horizon: someday. Evidence: ADR-023, FA-12.
-- Promote when: a second consumer needs LLM-enriched artifacts graded. Drop if: never.
+- Confidence: plausible. Horizon: later. Evidence: ADR-023, FA-12, ADR-046.
+- The lane now exists (`fathom assess`, ADR-046), so ADR-023's trigger fired on 2026-09-25;
+  the owner kept evaluation bespoke until there is a corpus to replay.
+- Promote when: M-A1's adjudicated sample exists (≥10 adjudicated units per question set).
+  Drop if: M-A1 removes every assess question.
 
 ## F13. Vectors as an additive in-store column
 

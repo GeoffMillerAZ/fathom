@@ -29,7 +29,8 @@ pre-push:
       run: task validate
     # fathom verify gate — §5.1 + §5.3 of docs/design/coding-agent-excellence.md:
     # gating only [x] claimed tasks in docs/plans/*.md.
-    # exit 1 (claimed task unproven) → BLOCK push.
+    # exit 1 (claimed task unproven, or claimed and Unknown under --strict —
+    # futures F10, promoted 2026-09-25) → BLOCK push.
     # exit 2 (daemon down / plan unreadable) → warn and ALLOW push (fail-open).
     #
     # Scope (E4-2, docs/plans/new-use-cases.md): ACTIVE plans only. The glob
@@ -64,7 +65,7 @@ pre-push:
         fi
         rc=0
         for f in "${plans[@]}"; do
-          bin/fathom verify --store "$store" --service fathom --plan "$f" --quiet
+          bin/fathom verify --strict --store "$store" --service fathom --plan "$f" --quiet
           code=$?
           if [ $code -eq 1 ]; then rc=1; fi
           if [ $code -eq 2 ]; then

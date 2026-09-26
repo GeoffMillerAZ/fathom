@@ -814,7 +814,7 @@ fathom-uplift-asks.md`, FA-12) rather than forced here.
 
 **Revisit when.** "If fathom later adds an LLM-judged evaluation lane (e.g. grading
 LLM-enriched knowledge cards), *that* lane is the natural `qa-harness` adoption
-point" — FA-12's second-consumer trigger (`docs/intent/futures.md` F12).
+point" — FA-12's second-consumer trigger (`docs/intent/futures.md` F12). **Fired 2026-09-25 by ADR-046 (the assess lanes). Owner's disposition: evaluation stays bespoke; `qa-harness` is evaluated as the assess lanes' corpus and baseline once M-A1's adjudicated sample exists, because before it there is nothing for the harness to replay or gate against.**
 
 ## ADR-024: Pack taxonomy adopted as vocabulary, not machinery (2026-07-23)
 
@@ -2479,7 +2479,7 @@ only then does a firm line for a high-confidence band become warranted again.
 - One capability, one `[decide]` site, and one additive session-ledger field (`spend_label`).
 - One additive research-bundle group (`retros`).
 - `buildRetroModel` is shared by `retro` and the intervention lane.
-- ADR-023's "Revisit when" fires (an LLM-judged evaluation lane now exists). Its disposition, keeping it bespoke with this note or scheduling `qa-harness` adoption at M-A1, is the owner's.
+- ADR-023's "Revisit when" fires (an LLM-judged evaluation lane now exists). Disposed 2026-09-25 by the owner: it stays bespoke, and `qa-harness` adoption is evaluated at M-A1 (recorded on ADR-023).
 
 **Revisit when.**
 - A question set's proceed band fails M-A1 at every threshold: remove the question.
