@@ -425,8 +425,8 @@ inside mirror `d9dd789`:
 |---|---|---|---|
 | FATHOM-KIT-01 | `interaction.command-palette` (`appkit/ui/palette`) | `d52acea`, fixes `843a669` `77b25b9`, merge `9dc6f5d` | OC-12, `cmd/fathom/console_palette.go` |
 | FATHOM-KIT-02 | `analytics.graph` (`viz.LayoutGraph`, `viz.LayoutEgo`) | `dc8f035`, fix `209249f`, merge `6ed6ea5` | pending: the code neighborhood (OC-37) |
-| FATHOM-KIT-03 | `viz.heatmap` truth states | `0f45523`, fix `8f663ab`, merge `b861d49` | pending: the coverage matrix (OC-28) |
-| FATHOM-KIT-04 | `content.code-excerpt` (`code.RenderExcerpt`) | `94e6815`, fix `5bf90cd`, merge `fd47ef0` | pending: refactor and claim pages (OC-26, OC-30) |
+| FATHOM-KIT-03 | `viz.heatmap` truth states | `0f45523`, fix `8f663ab`, merge `b861d49` | OC-28, the `/layers` coverage matrix (`cmd/fathom/console_layers.go`, wave D) |
+| FATHOM-KIT-04 | `content.code-excerpt` (`code.RenderExcerpt`) | `94e6815`, fix `5bf90cd`, merge `fd47ef0` | OC-30, the `/claims/{id}` citation (`cmd/fathom/console_claim.go`, wave D; `appkit/ui/code` scanned); pending: the refactor page (OC-26) |
 | FATHOM-KIT-05 | `work.unified-diff` (`hitl.RenderUnifiedDiff`) | `94e6815`, fix `5bf90cd`, merge `fd47ef0` | pending: review surfaces |
 | FATHOM-KIT-06 | `interaction.live-freshness` (`appkit/ui/live`) | `e7d66c9`, fix `f965851`, merge `54f5fac` | OC-14, `cmd/fathom/console_live.go` |
 | FATHOM-KIT-07 | `interaction.page-heading` (`chrome.RenderPageHeading`) | `e7d66c9`, fix `f965851`, merge `54f5fac` | not adopted: the shell's top bar already writes the `h1` (FATHOM-S0-KIT-01) |
@@ -483,6 +483,20 @@ inside mirror `d9dd789`:
   service name the row's drill-down link and renders no action column, which also frees a
   column's width at 390 px.
 - **Disposition:** `candidate`. Next action: app-kit maintainer.
+
+**FATHOM-D-KIT-01 — the heatmap's row-label gutter is fixed at 70 px (candidate)**
+
+- **Origin / task:** console wave D's coverage matrix (OC-28): projects × layers with
+  truth states, rows labeled by project name.
+- **Observed / expected:** `viz.Heatmap` reserves a 70 px left gutter whenever `YLabels`
+  is set, so a label longer than about eleven characters at the 10 px label size is
+  clipped by the SVG viewport, and each cell's `<title>` names the row by that same
+  label. Expected: an option to size the gutter to its labels (or a separate full name
+  for the title). Fathom shortens a label past eleven characters with an ellipsis and
+  carries every name whole in the table alternative beside the chart.
+- **Disposition:** `candidate`, not patched locally beyond the shortened label. Next
+  action: app-kit maintainer; revisit when a second consumer labels heatmap rows with
+  identifiers longer than the gutter.
 
 **FATHOM-ADOPT-01 — selected metadata migration**
 

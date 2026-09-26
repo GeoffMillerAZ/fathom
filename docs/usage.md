@@ -459,7 +459,7 @@ HTTP endpoints:
 | `GET` | `/metrics` | Text metrics: `fathom_uptime_seconds`, `fathom_requests_total`, memory and memo gauges, `fathom_console_page_views_total{route=…}` (OC-15: HTML views per console route pattern since start; the durable 30-day record is `~/.fathom/console-views.jsonl`, `FATHOM_CONSOLE_VIEWS` overrides) and `fathom_console_event_subscribers` |
 | `GET` | `/statusz` | Daemon health, per-service index freshness, channel liveness, last compile per layer, and (schema 2) the daemon's own build stamp `binary_commit` / `binary_dirty` / `built_at` — JSON (schema 3, unchanged) via `Accept: application/json`/`?format=json`; HTML on the console shell otherwise, where every service names its typed-edge state — run by this daemon, recorded by an earlier daemon process (replayed from the store), failed with its reason, **does not apply** (no `go.mod` at the service root), or **unknown** (a Go module with no pass recorded anywhere), never blank (OC-6; `docs/design/observability-surfaces.md` §8 item 6). Gated inside the `/rpc/modules` bearer-token allowlist when `--modules-token-env` is configured; open on the default loopback-only daemon |
 | `POST` | `/reload` | Reload the store (PlatformStore re-scan in platform mode) |
-| `GET` | `/`, `/fleet`, `/projects/{svc}`, `/impact`, `/sessions`, `/sessions/{id}`, `/brief`, `/wiring`, `/statusz`, `/search` | The Observatory console (see below): every page on one shell; `?format=json` returns the page's envelope (`fathom.console.page/v1`) |
+| `GET` | `/`, `/fleet`, `/projects/{svc}`, `/layers`, `/layers/{layer}`, `/claims/{id}`, `/packs`, `/explain`, `/impact`, `/sessions`, `/sessions/{id}`, `/brief`, `/wiring`, `/statusz`, `/search` | The Observatory console (see below): every page on one shell; `?format=json` returns the page's envelope (`fathom.console.page/v1`) |
 | `GET` | `/observatory`, `/observatory/service`, `/observatory/impact`, `/observatory/story`, `/observatory/brief`, `/observatory/session`, `/observatory/wiring/` | Legacy routes (OC-7): an HTML request is a **308** to the page's new home; `?format=json` still returns the old JSON unchanged (`observatoryModel` v1 and its per-page slices) |
 | `POST` | `/observatory/wiring/preview` · `apply` · `undo` | Law-15 wiring through `internal/wiring`: `preview` returns the plan + `plan_digest`; `apply` requires it (409 if the repo changed since preview) and returns a `receipt_digest`; `undo` requires that digest. All three refuse non-loopback `Host`, cross-origin `Origin`, unknown service ids, and paths that are not registered service roots (`requireLocalMutation`); a refusal, and a `GET` of any of the three, renders on the console shell with the reason and a way back to `/wiring` |
 
@@ -797,7 +797,16 @@ Human-judgment triage on a compiled semantic-layer claim, store-direct only (v0)
 fathom claim add          --store <path> --service <id> --scope <glob> [--scope <glob> ...] --rule "..." [--remedy "..."] [--cite path#Lstart-Lend] [--json]
 fathom claim refute       --store <path> --service <id> --claim <claim-id> --note "..." [--author <name>] [--dry-run] [--json]
 fathom claim corroborate  --store <path> --service <id> --claim <claim-id> --note "..." [--author <name>]
+fathom claim show         <claim-id> [--service <id>] [--json] [--store <path> | --url <daemon>]
 ```
+
+`show` (OC-30) prints one claim whole — statement, citation, scope, tier, status,
+provenance and every verdict recorded against it — and `--json` is exactly the
+console's `/claims/{id}` section. The citation is excerpted with two lines of
+context from the service's recorded root; a stale or contradicted claim whose
+compile-time text was kept shows that text, labeled, never the current lines as its
+source (J2). `--service` is needed only when two services hold the same id. It reads
+the Knowledge store (see `layers strata` below), never writes.
 
 `add` (SU-17, docs/plans/substrate.md §D) mints one content-addressed, human-authored
 claim without waiting for a pattern to recur — "remember this" as a single utterance.
@@ -850,8 +859,26 @@ enable/disable verb.
 ```sh
 fathom layers list    [--root <dir>] [--store <path> --service <id>] [--json]
 fathom layers show    <name> [--root <dir>]
+fathom layers show    <name> --json [--store <path> | --url <daemon>]
 fathom layers install <dir>  [--root <dir>] [--force]
+fathom layers strata   [--json] [--store <path> | --url <daemon>]
+fathom layers coverage [--json] [--store <path> | --url <daemon>]
 ```
+
+The console's Knowledge verbs (vision 35, OC-27..OC-29) print the projections
+`/layers` and `/layers/{layer}` render, fleet-wide: `strata` places every layer in its
+stratum (dialect, provider — parked — platform, concern) with current claims, its
+lifecycle, real compile runs and their cost, plus fleet totals and the claim-event
+lifecycle; `coverage` is current claims per project and layer, a cell nothing compiled
+absent ("not compiled", no number in its JSON) and a compile that left no current claim
+a measured zero; `show <name> --json` is the layer page — its definition as the fleet
+resolves it, every compile run with its kind, cost and accepted/rejected counts, the
+rejection reasons, each project's uncompiled scopes with the `--continue` command, and
+the dry-run command. A refused run's estimate is never counted as spend. They read the
+store the daemon at `--url` recorded when it bound (its `~/.fathom/daemons/` record,
+OC-2), else `[daemon].store`, else the workspace default — mounted read-only, and a
+missing store is refused rather than created; text output names the store and the rule
+that chose it. `show` without `--json` is unchanged.
 
 `list --json`: `{root, store_read, layers: [{name, source, overrides, kind,
 tier, stratum, evaled, drift_tracked, corpus_include, load_error?, claims?,
@@ -866,6 +893,34 @@ definition and prompt provenance. `install <dir>` validates a directory against 
 and copies it into `<root>/.fathom/layers/<name>/`; `--force` replaces an
 already-installed pack of the same name (whole-directory replace, never a merge). See
 [docs/layers.md](layers.md) for the catalog reference.
+
+---
+
+### `obligations`
+
+What governs a file, as the obligations tool serves it to an agent — and, with
+`--explain`, why (OC-32).
+
+```sh
+fathom obligations --service <id> [--file <path>] [--layer rules|claims|all] [--explain] [--json] [--store <path> | --url <daemon>]
+```
+
+Without `--explain` it prints the served list: the raw-fallback rows the tool prepends
+for an uncompiled governing guide (ADR-037), then the compiled rules, in the order the
+agent reads them, with `displaced`, `deduped` and the layer's coverage. `--explain` adds
+every scope-matched candidate with its scope tier (`exact_file`, `package`,
+`parent_dir`, `root`) and rank, the cap and the nearest tier's reserved slots, and each
+displaced rule's reason — `duplicate`, `tier`, `rank`, `freshness`, `role` or
+`reserve` — naming the served rule that held its place; `--explain --json` is exactly
+the console's `/explain` section. The explanation runs the serving engine itself
+(`semantic.ExplainObligations`) and never calls a decision-port provider; when `[decide]
+rank_within_tier` is on it says serving re-orders within a tier. `--file` omitted asks
+the root-scope question. `--layer` defaults to `rules`, the obligations tool's own
+default. CLI only: the MCP `obligations` tool's arguments are unchanged (the agent
+surface's argument schemas are pinned and paid by every session). Serving serves one
+statement once: two claims whose normalized statements are identical (case, backticks,
+asterisks, whitespace and trailing punctuation aside) take one slot, and the duplicate
+is not counted as displaced (OC-33).
 
 ---
 
@@ -988,6 +1043,21 @@ over the service's sources), `authorship` (the Co-Authored-By trailer ledger joi
 staleness and complexity), and `reverse-drift`. Output is exactly
 one file, `<service>-<analyzer>.md`, inside `--out`; generation is a pure function of the
 corpus working tree, so re-running against an unchanged tree reproduces identical bytes.
+
+#### `report packs` — the dialect and layer pack matrix (OC-31)
+
+```sh
+fathom report packs [--json] [--store <path> | --url <daemon>]
+```
+
+Every registered language with its extraction engine, typed-edge producer (`native`,
+`scip` with its delegate, `syntax`), the fleet's indexed files and projects in it, the
+integrity plane's reach (`checked` for Go, `unproven` for other code languages) and the
+inventory kinds its files feed; precision and recall only where a published reading
+measured them (`console.DialectReadings`, each citing its document), "unmeasured" —
+absent, no number — otherwise. Layer packs follow with their source (embedded, project,
+or a kit's `fathom-pack`), stratum and the projects where each holds claims. `--json`
+is the console's `/packs` section; the store resolves as for `layers strata`.
 
 #### `report evidence` — per-service evidence density (CV-39, ADR-044 §5)
 
@@ -2315,6 +2385,11 @@ unreadable store) render on the same shell with the reason and the remedy.
 | `/` | Now — the front door (four questions, surfaces) |
 | `/fleet` | Fleet tiles; the JSON carries `fathom fleet report --json` computed by the verb's own function |
 | `/projects/{svc}` | One project (was `/observatory/service?id=S`) |
+| `/layers` | The strata, the projects × layers coverage matrix (a cell nothing compiled is hatched "not compiled", never 0) and the claim lifecycle — `fathom layers strata --json`, `fathom layers coverage --json` |
+| `/layers/{layer}` | One layer's compile runs, rejection reasons, projects and uncompiled scopes — `fathom layers show <layer> --json` |
+| `/claims/{id}` | One claim: statement, citation excerpt, scope, tier, status, events (`?svc=` when two projects hold the id) — `fathom claim show <id> --json` |
+| `/packs` | Dialect packs as a language × capability matrix and layer packs with where each is active — `fathom report packs --json` |
+| `/explain?svc=&file=` | The serving explainer: candidates by scope tier, the cap, the served list and each displaced rule's reason — `fathom obligations --explain --json` |
 | `/impact` | The four questions with their instruments |
 | `/sessions`, `/sessions/{id}` | The week and one session's replay |
 | `/brief` | The shareable brief; `?format=md` downloads it |
@@ -2331,7 +2406,8 @@ unreadable store) render on the same shell with the reason and the remedy.
   `fleet.symbols`, `calls.total` (every row in the resolved call log —
   unattributed rows are named, never dropped), `sessions.total` (distinct
   sessions, never ledger rows) and `observations.open` (a partial count stays a
-  "≥" lower bound everywhere, the brief included).
+  "≥" lower bound everywhere, the brief included); `claims.current` (governed
+  claims serving can still use, fleet-wide) on `/layers` and `/packs`.
 - The fleet page's grade distribution over 30 days (RG-7) is
   **experimental**: days without a snapshot are Absent — today's fold
   only, until daily snapshots persist (the page says so). Symbols/traffic/
