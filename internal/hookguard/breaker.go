@@ -4,12 +4,12 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"io"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/hookcache"
@@ -40,7 +40,7 @@ const (
 	backoffBase    = 5 * time.Second
 	backoffCap     = 300 * time.Second
 	retryAfterCap  = 60 * time.Second
-	leaseTTL       = 5 * time.Second
+	stateLockWait  = 100 * time.Millisecond
 	// ProbeTimeout bounds the half-open GET /healthz.
 	ProbeTimeout  = 300 * time.Millisecond
 	switchReadCap = 4 << 10
@@ -150,8 +150,9 @@ type breakerState struct {
 	URL       string    `json:"url"`
 	State     string    `json:"state"` // closed | open | busy
 	Until     time.Time `json:"until,omitempty"`
-	Failures  []int64   `json:"failures,omitempty"` // unix ms within the window
-	Opens     int       `json:"opens,omitempty"`    // consecutive opens since the last success
+	Failures  []int64   `json:"failures,omitempty"`  // unix ms within the window
+	Opens     int       `json:"opens,omitempty"`     // consecutive opens since the last real RPC success
+	OpenedAt  int64     `json:"opened_at,omitempty"` // unix ms of the latest open
 	LastError string    `json:"last_error,omitempty"`
 }
 
@@ -289,52 +290,121 @@ func backoff(opens int) time.Duration {
 	return d
 }
 
-// RecordSuccess closes the breaker. It writes only when there is state to
-// reset, so the healthy path costs one small read.
-func (g *Guard) RecordSuccess(base string) {
-	s := g.readState(base)
-	if s.State == "closed" && len(s.Failures) == 0 && s.Opens == 0 {
+// withStateLock serializes one read-modify-write of the shared breaker
+// file across hook processes with flock(2) on a sibling lock file: two
+// hooks failing at the same moment must both count, or "2 failures in
+// 10 s" never holds under the very concurrency the breaker exists for.
+// The critical section is a small read and a rename; a lock not had
+// within stateLockWait runs fn unlocked (fail open, I9) rather than stall
+// a hook.
+func (g *Guard) withStateLock(base string, fn func()) {
+	if os.MkdirAll(g.healthDir(), 0o755) != nil {
+		fn()
 		return
 	}
-	g.writeState(base, breakerState{State: "closed"})
+	f, err := os.OpenFile(g.statePath(base)+".lock", os.O_CREATE|os.O_RDWR, 0o644)
+	if err != nil {
+		fn()
+		return
+	}
+	defer f.Close()
+	fd := int(f.Fd())
+	locked := false
+	for wait := time.Duration(0); wait < stateLockWait; wait += time.Millisecond {
+		if syscall.Flock(fd, syscall.LOCK_EX|syscall.LOCK_NB) == nil {
+			locked = true
+			break
+		}
+		time.Sleep(time.Millisecond)
+	}
+	if locked {
+		defer syscall.Flock(fd, syscall.LOCK_UN)
+	}
+	fn()
+}
+
+// RecordSuccess closes the breaker and resets the backoff ladder after a
+// real RPC succeeded (not a probe: see RecordProbeSuccess).
+func (g *Guard) RecordSuccess(base string) { g.RecordSuccessSince(base, time.Time{}) }
+
+// RecordSuccessSince is RecordSuccess for an RPC sent at started: an RPC
+// that was already in flight when other hooks opened the breaker, and
+// answered late, does not close that fresher "open". It writes only when
+// there is state to reset, so the healthy path costs one small read and
+// no lock.
+func (g *Guard) RecordSuccessSince(base string, started time.Time) {
+	clean := func(s breakerState) bool { return s.State == "closed" && len(s.Failures) == 0 && s.Opens == 0 }
+	if clean(g.readState(base)) {
+		return
+	}
+	g.withStateLock(base, func() {
+		s := g.readState(base)
+		if clean(s) {
+			return
+		}
+		if s.State == "open" && !started.IsZero() && s.OpenedAt > started.UnixMilli() {
+			return // this success predates the open other hooks just wrote
+		}
+		g.writeState(base, breakerState{State: "closed"})
+	})
+}
+
+// RecordProbeSuccess closes a half-open breaker after a good GET /healthz
+// but keeps the backoff ladder: /healthz is cheap and can answer while
+// real RPCs still hang (the incident shape), so only a real RPC success
+// (RecordSuccessSince) resets it. Otherwise every cycle would reopen at
+// 5 s and cost two more hooks their whole deadline.
+func (g *Guard) RecordProbeSuccess(base string) {
+	g.withStateLock(base, func() {
+		s := g.readState(base)
+		g.writeState(base, breakerState{State: "closed", Opens: s.Opens})
+	})
 }
 
 // RecordFailure counts a timeout, 5xx or refused connection; the second
 // within 10 s opens the breaker with the next backoff.
 func (g *Guard) RecordFailure(base string, err error) {
-	s := g.readState(base)
-	now := g.now()
-	if s.State == "open" && now.Before(s.Until) {
-		return // already open: another hook got there first
-	}
-	cutoff := now.Add(-failureWindow).UnixMilli()
-	kept := s.Failures[:0:0]
-	for _, f := range s.Failures {
-		if f > cutoff {
-			kept = append(kept, f)
+	g.withStateLock(base, func() {
+		s := g.readState(base)
+		now := g.now()
+		if s.State == "open" && now.Before(s.Until) {
+			return // already open: another hook got there first
 		}
-	}
-	kept = append(kept, now.UnixMilli())
-	s.LastError = errString(err)
-	if len(kept) >= failuresToOpen {
-		s.Opens++
-		s.State, s.Until, s.Failures = "open", now.Add(backoff(s.Opens)), nil
-	} else {
-		if s.State != "open" {
-			s.State = "closed"
+		cutoff := now.Add(-failureWindow).UnixMilli()
+		kept := s.Failures[:0:0]
+		for _, f := range s.Failures {
+			if f > cutoff {
+				kept = append(kept, f)
+			}
 		}
-		s.Failures = kept
-	}
-	g.writeState(base, s)
+		kept = append(kept, now.UnixMilli())
+		s.LastError = errString(err)
+		if len(kept) >= failuresToOpen {
+			g.open(&s, now)
+		} else {
+			if s.State != "open" {
+				s.State = "closed"
+			}
+			s.Failures = kept
+		}
+		g.writeState(base, s)
+	})
+}
+
+// open advances the backoff ladder one rung from now.
+func (g *Guard) open(s *breakerState, now time.Time) {
+	s.Opens++
+	s.State, s.Until, s.Failures, s.OpenedAt = "open", now.Add(backoff(s.Opens)), nil, now.UnixMilli()
 }
 
 // RecordProbeFailure re-opens a half-open breaker with the doubled backoff.
 func (g *Guard) RecordProbeFailure(base string, err error) {
-	s := g.readState(base)
-	now := g.now()
-	s.Opens++
-	s.State, s.Until, s.Failures, s.LastError = "open", now.Add(backoff(s.Opens)), nil, errString(err)
-	g.writeState(base, s)
+	g.withStateLock(base, func() {
+		s := g.readState(base)
+		g.open(&s, g.now())
+		s.LastError = errString(err)
+		g.writeState(base, s)
+	})
 }
 
 // RecordBusy holds hooks off for Retry-After (capped at 60 s). Busy is not
@@ -346,9 +416,11 @@ func (g *Guard) RecordBusy(base string, retryAfter time.Duration) {
 	if retryAfter <= 0 {
 		return
 	}
-	s := g.readState(base)
-	s.State, s.Until, s.Failures, s.LastError = "busy", g.now().Add(retryAfter), nil, "daemon busy (503 Retry-After)"
-	g.writeState(base, s)
+	g.withStateLock(base, func() {
+		s := g.readState(base)
+		s.State, s.Until, s.Failures, s.LastError = "busy", g.now().Add(retryAfter), nil, "daemon busy (503 Retry-After)"
+		g.writeState(base, s)
+	})
 }
 
 func errString(err error) string {
@@ -362,29 +434,29 @@ func errString(err error) string {
 	return msg
 }
 
-// acquireLease takes the half-open probe lease with O_EXCL. A lease older
-// than its 5 s TTL belongs to a hook that died mid-probe and is broken.
+// acquireLease takes the half-open probe lease: a non-blocking flock(2)
+// on the lease file, held for the probe. The kernel drops it when its
+// holder exits, so a hook that died mid-probe leaves nothing to break —
+// the old O_EXCL-plus-TTL lease had to delete stale files, and two hooks
+// breaking one stale lease could each delete the other's fresh one and
+// both probe. The file itself stays (unlinking a flocked file races the
+// next opener onto a different inode).
 func (g *Guard) acquireLease(base string) (release func(), ok bool) {
 	if os.MkdirAll(g.healthDir(), 0o755) != nil {
 		return nil, false
 	}
-	p := g.leasePath(base)
-	for attempt := 0; attempt < 2; attempt++ {
-		f, err := os.OpenFile(p, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
-		if err == nil {
-			_ = f.Close()
-			return func() { _ = os.Remove(p) }, true
-		}
-		if !errors.Is(err, os.ErrExist) {
-			return nil, false
-		}
-		fi, serr := os.Stat(p)
-		if serr != nil || time.Since(fi.ModTime()) < leaseTTL {
-			return nil, false
-		}
-		_ = os.Remove(p) // stale: its holder died
+	f, err := os.OpenFile(g.leasePath(base), os.O_CREATE|os.O_RDWR, 0o644)
+	if err != nil {
+		return nil, false
 	}
-	return nil, false
+	if syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB) != nil {
+		_ = f.Close()
+		return nil, false
+	}
+	return func() {
+		_ = syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
+		_ = f.Close()
+	}, true
 }
 
 func defaultHealthDir() string { return hookcache.HealthDir }

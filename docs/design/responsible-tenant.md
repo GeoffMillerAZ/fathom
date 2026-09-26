@@ -244,7 +244,7 @@ minutes would put the daemon in safe mode and five would stop it
 | Condition | Result |
 |---|---|
 | ≥ 3 counted exits in 30 min | start in **safe mode** |
-| ≥ 5 counted exits in 60 min, or a safe-mode process exited over budget | write `disabled.json{reason: breaker, detail, since}`, notify once, exit 0 — launchd stays down |
+| ≥ 5 counted exits in 60 min, or a safe-mode process exited over budget | write `disabled.json{reason: breaker, detail, since, addr}`, notify once, exit 0 — launchd stays down |
 
 Safe mode: auto-refresh off (stale served with disclosure); console feeders and jobs off;
 `tree`/`fleet` refused with `fathom safe mode since 21:07: 3 over-budget exits in 30 min
@@ -257,7 +257,10 @@ per 30 s in demand order. This absorbs the cold-cache stampede the empty `seen` 
 today.
 
 `disabled.json` and `paused.json` govern only the managed daemon (and hooks addressing its
-URL); an unmanaged daemon never reads them, so a breaker stop does not block a proof agent's
+URL). Every writer (`daemon stop`, `pause`, this breaker) records the managed daemon's
+listen URL as `addr`; a hook compares its own URL with `addr`, and with
+`http://127.0.0.1:7575` only when a hand-made file has none — so a managed daemon on another
+port is silenced only when the writer names it. An unmanaged daemon never reads them, so a breaker stop does not block a proof agent's
 scratch daemon, and a scratch daemon's ledger never trips the managed one.
 
 ---
@@ -816,7 +819,7 @@ runtime fatals durable.
 
 | Command | Mechanism |
 |---|---|
-| `fathom daemon stop [--for 2h] [--reason …]` | write `~/.fathom/daemon/disabled.json {by, reason, since, until?}`; find the managed pid from the record, cross-checked by the census (executable path and start time must match — pid reuse guard); SIGTERM, 10 s, SIGKILL; poll until the port is closed and no process remains; print the proof (`pid 75018 gone after 3.1 s; :7575 closed; launchd will not relaunch: disabled.json`) |
+| `fathom daemon stop [--for 2h] [--reason …]` | write `~/.fathom/daemon/disabled.json {by, reason, since, until?, addr}`; find the managed pid from the record, cross-checked by the census (executable path and start time must match — pid reuse guard); SIGTERM, 10 s, SIGKILL; poll until the port is closed and no process remains; print the proof (`pid 75018 gone after 3.1 s; :7575 closed; launchd will not relaunch: disabled.json`) |
 | launchd relaunch after a stop | the new process's first action reads `disabled.json` and exits 0 in < 50 ms; launchd stays down |
 | `--for <dur>` | while `until` is in the future a fresh process exits 75 (retried every 60 s at < 50 ms, disclosed); after it, normal start |
 | `fathom daemon start` | remove `disabled.json`; write an `operator_reset` row (breaker window reset); `launchctl kickstart gui/$UID/<label>` — printed instead in an agent shell |
@@ -911,7 +914,9 @@ SessionEnd 3 s → 2 s). Every RPC derives from it and sends `X-Fathom-Deadline`
 remaining). `fetchServices`' fresh 4 s retry client is replaced by a retry only on
 `ECONNREFUSED`/`ECONNRESET` and only within the deadline — never after a timeout.
 `TestNoHookRPCOutlivesItsDescriptorBudget`: every descriptor against a hanging server,
-wall time ≤ deadline.
+every RPC ended by the deadline and hook wall time ≤ deadline + 250 ms of local work (inside
+the max(1 s, 20%) margin before the harness kill). The deadline bounds RPCs, not local git
+and file work; bounding that on large repos is §11.3's.
 
 ### 11.2 Shared breaker
 
@@ -921,8 +926,14 @@ written by rename.
 - Opens on 2 failures (timeout, 5xx or refused) within 10 s — one timeout alone would blank
   obligations for every session for 5 s: backoff 5 s, 10 s, 20 s … 300 s.
 - On 503 with `Retry-After`: `until` = Retry-After (≤ 60 s); busy is not a failure.
-- Half-open: one hook holds an `O_EXCL` lease (5 s TTL) and probes `GET /healthz` (300 ms);
-  every other hook fails open at once.
+- Half-open: one hook holds a non-blocking `flock` lease (the kernel drops it when its holder
+  dies, so there is no stale lease to break) and probes `GET /healthz` (300 ms); every other
+  hook fails open at once. A good probe closes the breaker but keeps the backoff ladder
+  (`/healthz` can answer while real RPCs hang); only a real RPC success resets it.
+- Every read-modify-write of the file holds a short `flock`, so concurrent failures all
+  count; a success from an RPC sent before the latest open does not close it.
+- A caller's own `http.Client.Timeout` counts as a failure (the timeout, not the caller,
+  ended it); only a cancellation before any deadline does not.
 - While open: serve the identity cache stale where possible; otherwise silent (I9, P18);
   beats record `breaker_open` and `busy`.
 - `TestHookBreakerSingleProber`: 32 concurrent hook processes, exactly one probe.

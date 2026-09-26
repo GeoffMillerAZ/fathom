@@ -194,7 +194,7 @@ func TestHookBreakerSingleProber(t *testing.T) {
 	wg.Wait()
 
 	if got := probes.Load(); got != 1 {
-		t.Fatalf("probes = %d, want exactly 1 (one half-open prober under the O_EXCL lease)", got)
+		t.Fatalf("probes = %d, want exactly 1 (one half-open prober under the lease)", got)
 	}
 	if skipped.Load() == 0 {
 		t.Fatalf("no hook failed open while the prober held the lease")
@@ -206,12 +206,14 @@ func TestHookBreakerSingleProber(t *testing.T) {
 	if d := BreakerAllows(mk(), srv.URL); d.Verdict != Allow {
 		t.Fatalf("after a good probe: %v, want allow", d.Verdict)
 	}
-	if _, err := os.Stat(mk().leasePath(srv.URL)); !os.IsNotExist(err) {
-		t.Fatalf("lease not released: %v", err)
+	release, ok := mk().acquireLease(srv.URL)
+	if !ok {
+		t.Fatal("probe lease not released")
 	}
+	release()
 }
 
-func TestStaleLeaseIsBroken(t *testing.T) {
+func TestLeftoverLeaseFileDoesNotBlock(t *testing.T) {
 	clk := &fakeClock{now: time.Now()}
 	g := newTestGuard(t, clk)
 	if err := os.MkdirAll(g.HealthDir, 0o755); err != nil {
@@ -227,7 +229,7 @@ func TestStaleLeaseIsBroken(t *testing.T) {
 	}
 	release, ok := g.acquireLease(testURL)
 	if !ok {
-		t.Fatal("a lease older than its 5 s TTL must be broken")
+		t.Fatal("a lease file its (dead) holder left behind must not block the next prober")
 	}
 	release()
 }

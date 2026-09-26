@@ -123,13 +123,11 @@ func (g *Guard) roundTrip(base http.RoundTripper, req *http.Request) (*http.Resp
 	if v := g.Deadline.HeaderValue(); v != "" {
 		out.Header.Set(DeadlineHeader, v)
 	}
+	started := g.now()
 	resp, err := base.RoundTrip(out)
 	if err != nil {
 		cancel()
-		if req.Context().Err() == nil || errors.Is(err, context.DeadlineExceeded) {
-			// The caller did not give up on its own: the daemon refused,
-			// reset, or outlasted the hook's deadline — a failure. A
-			// caller's own cancellation is not the daemon's fault.
+		if !callerGaveUp(req.Context(), err, time.Now()) {
 			g.RecordFailure(target, err)
 		}
 		return nil, err
@@ -140,13 +138,34 @@ func (g *Guard) roundTrip(base http.RoundTripper, req *http.Request) (*http.Resp
 	case resp.StatusCode >= 500:
 		g.RecordFailure(target, fmt.Errorf("HTTP %d", resp.StatusCode))
 	default:
-		g.RecordSuccess(target)
+		g.RecordSuccessSince(target, started)
 	}
 	resp.Body = &cancelBody{ReadCloser: resp.Body, cancel: cancel}
 	return resp, nil
 }
 
-// halfOpen runs the single probe: whoever wins the O_EXCL lease re-reads
+// callerGaveUp reports an RPC error that is the caller's own doing — its
+// context cancelled before any deadline — which is not the daemon's fault
+// and is not counted. Everything else is a failure: a refused or reset
+// connection, the hook deadline, and the caller's http.Client.Timeout.
+// The last matters most: because http.DefaultTransport is wrapped (not a
+// *http.Transport), net/http enforces Client.Timeout by cancelling the
+// request context, so a hung daemon usually surfaces as context.Canceled
+// with the context's deadline already passed. On hook paths those client
+// timeouts (edit-hook --pre's 2 s, the primer's 2 s) fire before the hook
+// deadline, so trusting only DeadlineExceeded left the breaker closed on a
+// hung daemon about half the time.
+func callerGaveUp(ctx context.Context, err error, now time.Time) bool {
+	if ctx.Err() == nil || IsTimeout(err) {
+		return false
+	}
+	if dl, ok := ctx.Deadline(); ok && !now.Before(dl) {
+		return false // the caller's own timeout ran out: the daemon was too slow
+	}
+	return true
+}
+
+// halfOpen runs the single probe: whoever wins the lease re-reads
 // the state (a racer that read "open" before the winner closed it must not
 // probe again) and sends GET /healthz under ProbeTimeout; every loser
 // fails open at once.
@@ -177,7 +196,7 @@ func (g *Guard) halfOpen(base http.RoundTripper, target string, parent context.C
 		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4<<10))
 		resp.Body.Close()
 		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-			g.RecordSuccess(target)
+			g.RecordProbeSuccess(target)
 			return nil
 		}
 		err = fmt.Errorf("healthz HTTP %d", resp.StatusCode)
