@@ -57,11 +57,11 @@ violation — when the daemon is down or the registry is empty/malformed.
 | kind | fields | holds when | violated evidence |
 |---|---|---|---|
 | `forbidden_pattern` | `pattern` (Go regexp), `where` | no line of any agent-config file matches | `file:line` per match |
-| `command_documented_and_exists` | `command` | the command string appears in ≥1 agent-config file AND it exists (`task X` → an `X:` target in `Taskfile.yml`; else `$PATH` lookup of argv[0]) | which half failed, named |
+| `command_documented_and_exists` | `command`, `where` | the command string appears in ≥1 corpus file (over a YAML corpus, on a line that is not a comment) AND it exists (`task X` → a target in the parsed Taskfile graph `commands_resolve` uses — any root spelling, includes, aliases, flattening; else `$PATH` lookup of argv[0]) | which half failed, named; a target behind a remote include is unable-to-check |
 | `max_lines` | `file`, `lines` | the file exists and has ≤ `lines` lines | `<file> is N lines (max M)`; absence is a violation (`absent — the concern expects it`) |
 | `pointers_resolve` | `where` | every relative markdown-link target (file-relative, fragment stripped; http/mailto/absolute/`#` skipped) AND every backtick repo-path (this house style's pointer form — ≥2 path-charset segments, no globs; runtime dirs workspace/tmp/ref/bin skipped; `../` escapes skipped; a token whose first segment is not a directory the repo even has is a foreign name — Go module, kit package — not a pointer; root-relative or file-relative resolution both accepted) resolves | `file:line → target` per dead pointer |
 | `stanza_tools_served` (CC-14) | — | every tool name in the fathom stanza region of CLAUDE.md/AGENTS.md (backticked names, and bare names containing an underscore such as `find_callers`/`pack_context`/`verify_plan`; single-word names only when backticked) is served by the daemon's `/rpc/agent` `tools/list` (falls back to `/rpc`) | `file:line` per pruned/undeployed tool; daemon down or an empty/malformed registry → `unable to check` naming the URL |
-| `required_pattern` (CC-12) | `pattern`, `where` | ≥1 line of the corpus matches | "no line matches" naming the files searched; an EMPTY corpus is a violation (nothing there does the required thing); matching lines are the evidence when it holds |
+| `required_pattern` (CC-12) | `pattern`, `where`, `under` | ≥1 line of the corpus matches — over a YAML corpus never a comment line or a trailing comment (a commented-out step runs nothing), and with `under` only the lines under that top-level key (a lefthook hook) | "no line matches" naming the files searched; "no `pre-push` key in lefthook.yml"; an EMPTY corpus is a violation (nothing there does the required thing); matching lines are the evidence when it holds |
 | `stanza_present` (CC-12) | `file` | the file has the fathom begin marker, then the end marker | `<file>: never wired (no fathom markers)` or `<file>: corrupted marker pair (begin=… end=…)` at the marker's line; absent → violated, unreadable → unable (I38) |
 | `max_bytes` (CC-12) | `file`, `bytes` | the file exists and is ≤ `bytes` | `<file> is N bytes (max M)`; absence is a violation |
 | `commands_resolve` (CC-12) | `where` | every in-repo command the corpus invokes resolves, from the directory it runs in: a `task X` target in the Taskfile Task would find there, or in a local include (namespaced, aliased, flattened); a Taskfile's own `task:` / `deps:` call in its include's namespace (`:x` is the root's); a local include itself; a repo script path | `file:line → task X (no such target)` / `file:line → scripts/x.sh (no such file in web/)`, naming the file's own directory when the path resolves only from there; an empty corpus is unable-to-check naming it; a script that exists and cannot be stat'd is unable-to-check (I38); refs behind a flag, a template, a remote include, outside the repo or in a directory the audit cannot model are counted as not checkable, never guessed |
@@ -137,7 +137,7 @@ would make fathom's releases the bottleneck for what is plainly content.
 |---|---|---|
 | `claude-code` | `claude_code_stanza_present`, `agent_config_commands_resolve`, `agent_config_pointers_resolve` | a CLAUDE.md never wired or with a deleted marker; a documented target or script that is gone (O25); a dead pointer |
 | `codex` | `codex_stanza_present`, `codex_agents_md_fits` (≤ 32 KiB, `project_doc_max_bytes`), the two `agent_config_*` entries | the same for AGENTS.md; instructions past Codex's read budget silently absent |
-| `lefthook` | `lefthook_pre_push_verify`, `lefthook_runs_gate` (`task validate`), `lefthook_commands_resolve` | a hook that no longer runs verify (I17) or the gate the docs promise; a hook naming a renamed target or moved script |
+| `lefthook` | `lefthook_pre_push_verify` (`under: "pre-push"`), `lefthook_runs_gate` (`task validate`), `lefthook_commands_resolve` | a pre-push hook that no longer runs verify (I17 — a commented-out or pre-commit verify gates nothing) or the gate the docs promise; a hook naming a renamed target or moved script |
 | `taskfile` | `taskfile_commands_resolve` | a task calling a missing task, include or script — found at push time otherwise |
 
 Enabling and overriding are law 13's shape: `packs: [...]` in either scope
@@ -206,9 +206,13 @@ The entries are evaluated as shipped (a repo's same-id override governs
 its own audit, not these wiring rows). Output is unchanged for users —
 `TestDoctorConvergence_RowsUnchanged` runs the retired bespoke checks
 beside the converged rows over every fixture and requires identical rows —
-with one deliberate difference: a `lefthook.yml` that exists and cannot be
+with two deliberate differences: a `lefthook.yml` that exists and cannot be
 read is named unreadable, where the bespoke check reported it missing
-(I38). Not migrated, because no pack expresses them fully: `binary_on_path`
+(I38); and a commented-out `fathom verify`, or one only in pre-commit,
+fails the row whose reason has always said "in its pre-push commands",
+where the bespoke raw-line check passed it (I17,
+`TestDoctorLefthookGatesReadsOnlyPrePushCommands`). The capability table's
+`VerifyInLefthook` reads the same entry. Not migrated, because no pack expresses them fully: `binary_on_path`
 (a PATH fact), `hooks_installed` / `skills_installed` (harness registry,
 embedded skills), and every row that asks the daemon.
 

@@ -299,6 +299,13 @@ func parseCheck(id string, v cue.Value) (Check, []error) {
 				continue
 			}
 			ck.Where = s
+		case "under":
+			s, err := sub.Value().String()
+			if err != nil {
+				errs = append(errs, fmt.Errorf("concern %q: check.under must be a string: %w", id, err))
+				continue
+			}
+			ck.Under = s
 		case "command":
 			s, err := sub.Value().String()
 			if err != nil {
@@ -434,6 +441,11 @@ func validateCheck(id string, ck *Check) []error {
 			errs = append(errs, fmt.Errorf("concern %q: %s reads the %s corpus only, not %q", id, ck.Kind, strings.Join(accepted, ", "), ck.Where))
 		}
 	}
+	// `under` names a top-level key of a YAML corpus file (a lefthook
+	// hook): markdown has none, so there it would scope nothing.
+	if ck.Under != "" && ck.Where != "" && !yamlCorpus(ck.Where) {
+		errs = append(errs, fmt.Errorf("concern %q: check.under reads a top-level key of a YAML corpus (%s, %s, %s), not %q", id, CorpusLefthook, CorpusTaskfile, CorpusCI, ck.Where))
+	}
 	return errs
 }
 
@@ -442,6 +454,7 @@ func validateCheck(id string, ck *Check) []error {
 // (validateCheck, against the corpus registry).
 var checkFieldKinds = map[string][]CheckKind{
 	"pattern": {KindForbiddenPattern, KindRequiredPattern},
+	"under":   {KindRequiredPattern},
 	"command": {KindCommandDocumentedAndExists},
 	"file":    {KindMaxLines, KindMaxBytes, KindStanzaPresent},
 	"lines":   {KindMaxLines},

@@ -7,7 +7,9 @@
 //
 // lefthook_pre_push_verify is what doctor's lefthook_gates row renders
 // (CC-13); its pattern is lefthookInvokes' (cmd/fathom), held equal by
-// TestLefthookPackPatternMatchesDoctor.
+// TestLefthookPackPatternMatchesDoctor. It reads only the pre-push hook,
+// and never a comment: a verify in pre-commit, or a commented-out one,
+// gates no push.
 pack: {
 	name:    "lefthook"
 	version: 1
@@ -16,9 +18,9 @@ pack: {
 
 concerns: {
 	lefthook_pre_push_verify: {
-		want:  "the lefthook config runs `fathom verify` (any spelling of the binary: bin/fathom, $FATHOM, an absolute path)"
-		why:   "I17: a claimed-but-unproven plan row blocks a push only when the hook runs verify — and the literal-substring check this replaced told a correctly gated repo to add what it had (IO-5)"
-		check: {kind: "required_pattern", where: "lefthook", pattern: #"(?i)fathom\}?"?'?\s+verify\b"#}
+		want:  "the lefthook pre-push hook runs `fathom verify` (any spelling of the binary: bin/fathom, $FATHOM, an absolute path) on a line that is not a comment"
+		why:   "I17: a claimed-but-unproven plan row blocks a push only when the pre-push hook runs verify — a commented-out step or a pre-commit verify gates nothing — and the literal-substring check this replaced told a correctly gated repo to add what it had (IO-5)"
+		check: {kind: "required_pattern", where: "lefthook", under: "pre-push", pattern: #"(?i)fathom\}?"?'?\s+verify\b"#}
 	}
 	lefthook_runs_gate: {
 		want:  "the lefthook config runs the repo's deterministic gate, `task validate`, and that target exists (override this entry with your gate's command)"

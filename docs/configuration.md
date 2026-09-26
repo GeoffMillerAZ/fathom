@@ -740,7 +740,9 @@ model. Kinds: `forbidden_pattern` (`pattern`, `where: "agent-config"`),
 `pointers_resolve`, and — CC-14/CC-15, **experimental** —
 `stanza_tools_served` (the one kind that asks the daemon; degrades to
 unable-to-check) and `handoff_cites_instruments` (`days`) — plus (CC-12)
-`required_pattern` (`pattern`, `where`), `stanza_present` (`file`),
+`required_pattern` (`pattern`, `where`, and over a YAML corpus `under`: only
+the lines under one top-level key, such as a lefthook hook; a comment never
+matches), `stanza_present` (`file`),
 `max_bytes` (`file`, `bytes`) and `commands_resolve` (`where`: every
 `task` target, local include and repo script the corpus invokes exists).
 `where` names a corpus (CC-11): `agent-config` (default), `lefthook`,

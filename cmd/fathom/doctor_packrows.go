@@ -18,9 +18,13 @@ package main
 // diagnosis on every repo whether or not it enabled a pack. Output is
 // unchanged for users — TestDoctorConvergence_RowsUnchanged runs the
 // retired bespoke checks beside these over the same fixtures and requires
-// identical rows. One deliberate difference, I38's: a lefthook.yml that
+// identical rows. Two deliberate differences: I38's — a lefthook.yml that
 // exists and cannot be read is named as unreadable, where the bespoke
-// check fell through to "no lefthook.yml/lefthook.yaml at <root>".
+// check fell through to "no lefthook.yml/lefthook.yaml at <root>" — and
+// I17's: the verify entry reads only the pre-push hook's non-comment lines,
+// so a commented-out verify or a pre-commit-only one fails the row whose
+// reason has always said "in its pre-push commands" (the retired raw-line
+// check passed both).
 //
 // Not migrated, because no pack expresses them fully: binary_on_path (a
 // PATH fact, not a config file), hooks_installed / skills_installed (their

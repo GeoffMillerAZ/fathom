@@ -11,6 +11,8 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 // Audit evaluates every concern against the repository at root. One
@@ -157,6 +159,11 @@ func checkForbiddenPattern(root string, files []string, c Concern) Finding {
 // checkRequiredPattern is forbidden_pattern's dual: at least one line of
 // the corpus must match. The matching lines are the evidence either way —
 // where the required thing lives is worth knowing when it holds.
+//
+// Over a YAML corpus (lefthook, taskfile, ci) a comment never satisfies
+// the pattern — a commented-out step runs nothing — and `under` holds the
+// match to the lines under one top-level key (the lefthook pack's
+// pre-push, I17: a verify in pre-commit gates no push).
 func checkRequiredPattern(root string, files []string, c Concern) Finding {
 	f := Finding{Concern: c}
 	re, err := regexp.Compile(c.Check.Pattern)
@@ -170,6 +177,9 @@ func checkRequiredPattern(root string, files []string, c Concern) Finding {
 		f.Detail = fmt.Sprintf("no %s(s) at all — the corpus is %s, and nothing there can satisfy `%s`", corpusNoun(c.Check.Where), CorpusAbout(c.Check.Where), c.Check.Pattern)
 		return f
 	}
+	yamlText := yamlCorpus(c.Check.Where)
+	under := c.Check.Under
+	var keyless []string // files with no `under` key
 	for _, rel := range files {
 		lines, err := readFileLines(root, rel)
 		if err != nil {
@@ -178,22 +188,110 @@ func checkRequiredPattern(root string, files []string, c Concern) Finding {
 			f.Evidence = nil
 			return f
 		}
-		for i, ln := range lines {
+		lo, hi := 1, len(lines)
+		if under != "" {
+			var found bool
+			lo, hi, found, err = topLevelKeySpan(lines, under)
+			if err != nil {
+				f.Status = StatusUnable
+				f.Detail = fmt.Sprintf("%s does not parse as YAML, so what runs under `%s` cannot be read: %v", rel, under, err)
+				f.Evidence = nil
+				return f
+			}
+			if !found {
+				keyless = append(keyless, rel)
+				continue
+			}
+		}
+		for i := lo - 1; i < hi; i++ {
+			ln := lines[i]
+			if yamlText {
+				ln = codeText(ln)
+			}
 			if re.MatchString(ln) {
 				f.Evidence = append(f.Evidence, fmt.Sprintf("%s:%d", rel, i+1))
 			}
 		}
 	}
-	if len(f.Evidence) == 0 {
+	scope := ""
+	if under != "" {
+		scope = fmt.Sprintf(" under `%s`", under)
+	}
+	switch {
+	case len(f.Evidence) > 0:
+		f.Status = StatusHolds
+		f.Detail = fmt.Sprintf("%d line(s)%s match `%s` across %s", len(f.Evidence), scope, c.Check.Pattern, countNoun(len(files), corpusNoun(c.Check.Where)))
+	case len(keyless) == len(files):
+		f.Status = StatusViolated
+		f.Detail = fmt.Sprintf("no `%s` key in %s — nothing runs under it, so nothing there can satisfy `%s`", under, strings.Join(keyless, ", "), c.Check.Pattern)
+	case under != "":
+		f.Status = StatusViolated
+		f.Detail = fmt.Sprintf("no line under `%s` matches required pattern `%s` across %s (comments are not commands)", under, c.Check.Pattern, countNoun(len(files), corpusNoun(c.Check.Where)))
+	default:
 		f.Status = StatusViolated
 		f.Detail = fmt.Sprintf("no line matches required pattern `%s` across %s", c.Check.Pattern, countNoun(len(files), corpusNoun(c.Check.Where)))
-		return f
 	}
-	f.Status = StatusHolds
-	f.Detail = fmt.Sprintf("%d line(s) match `%s` across %s", len(f.Evidence), c.Check.Pattern, countNoun(len(files), corpusNoun(c.Check.Where)))
 	return f
 }
 
+// yamlCorpus reports a corpus whose files are YAML (their comments are
+// not commands, and `under` names a top-level key of them).
+func yamlCorpus(where string) bool {
+	return where == CorpusLefthook || where == CorpusTaskfile || where == CorpusCI
+}
+
+// codeText returns a YAML-corpus line with its comment cut. A line whose
+// first non-blank character is '#' is all comment — a YAML comment, or a
+// shell comment inside a block scalar; either way it runs nothing — and an
+// unquoted '#' after a blank starts a trailing one.
+func codeText(line string) string {
+	inSingle, inDouble := false, false
+	for i := 0; i < len(line); i++ {
+		switch ch := line[i]; {
+		case ch == '\\' && inDouble:
+			i++
+		case ch == '\'' && !inDouble:
+			inSingle = !inSingle
+		case ch == '"' && !inSingle:
+			inDouble = !inDouble
+		case ch == '#' && !inSingle && !inDouble && (i == 0 || line[i-1] == ' ' || line[i-1] == '\t'):
+			return line[:i]
+		}
+	}
+	return line
+}
+
+// topLevelKeySpan finds a top-level key of a YAML file and returns the
+// 1-based line span from the key to the line before the next top-level key
+// (or the end of the file).
+func topLevelKeySpan(lines []string, key string) (lo, hi int, found bool, err error) {
+	var doc yaml.Node
+	if err := yaml.Unmarshal([]byte(strings.Join(lines, "\n")), &doc); err != nil {
+		return 0, 0, false, err
+	}
+	top := documentMapping(&doc)
+	if top == nil {
+		return 0, 0, false, nil
+	}
+	for i := 0; i+1 < len(top.Content); i += 2 {
+		if top.Content[i].Value != key {
+			continue
+		}
+		lo, hi = top.Content[i].Line, len(lines)
+		if i+2 < len(top.Content) {
+			hi = top.Content[i+2].Line - 1
+		}
+		return lo, hi, true, nil
+	}
+	return 0, 0, false, nil
+}
+
+// checkCommandDocumented holds a command to both halves: it is named in
+// the corpus (over a YAML corpus, on a line that is not a comment — a
+// commented-out step runs nothing), and it exists — a `task X` target in
+// the parsed Taskfile graph commands_resolve uses (includes, aliases,
+// flattening; never a grep for an indented key, which read a `vars:` entry
+// named like the target as the target), else the binary on PATH.
 func checkCommandDocumented(root string, files []string, c Concern) Finding {
 	f := Finding{Concern: c}
 	cmdStr := c.Check.Command
@@ -206,7 +304,7 @@ func checkCommandDocumented(root string, files []string, c Concern) Finding {
 			f.Detail = fmt.Sprintf("%s unreadable: %v", rel, err)
 			return f
 		}
-		if bytes.Contains(data, []byte(cmdStr)) {
+		if documents(data, cmdStr, yamlCorpus(c.Check.Where)) {
 			documentedIn++
 		}
 	}
@@ -218,20 +316,45 @@ func checkCommandDocumented(root string, files []string, c Concern) Finding {
 
 	argv := strings.Fields(cmdStr)
 	if argv[0] == "task" && len(argv) > 1 {
-		data, path, err := readTaskfile(root)
+		name := argv[1]
+		if strings.HasPrefix(name, "-") || !taskNameRe.MatchString(name) {
+			f.Status = StatusUnable
+			f.Detail = fmt.Sprintf("documented in %d file(s), but %q is not a literal target (a flag or template before it changes what resolves)", documentedIn, name)
+			return f
+		}
+		first, err := rootTaskfile(root)
 		if err != nil {
-			f.Status = StatusViolated
-			f.Detail = fmt.Sprintf("documented in %d file(s) but there is no Taskfile.yml at the repo root to define %q", documentedIn, cmdStr)
+			f.Status = StatusUnable
+			f.Detail = fmt.Sprintf("the root Taskfile cannot be checked: %v", err)
 			return f
 		}
-		target := regexp.MustCompile(`(?m)^[ \t]+` + regexp.QuoteMeta(argv[1]) + `:`)
-		if !target.Match(data) {
+		if first == "" {
 			f.Status = StatusViolated
-			f.Detail = fmt.Sprintf("documented in %d file(s) but %s has no %q target — the instruction outlived the command (the O25 shape)", documentedIn, filepath.Base(path), argv[1])
+			f.Detail = fmt.Sprintf("documented in %d file(s) but there is no Taskfile at the repo root to define %q", documentedIn, cmdStr)
 			return f
 		}
-		f.Status = StatusHolds
-		f.Detail = fmt.Sprintf("documented in %d file(s); `%s` target exists in %s", documentedIn, argv[1], filepath.Base(path))
+		g, err := loadTaskGraph(root, first)
+		if err != nil {
+			f.Status = StatusUnable
+			f.Detail = err.Error()
+			return f
+		}
+		name = strings.TrimPrefix(name, ":")
+		missing, uncheckable := g.resolveTarget(name)
+		switch {
+		case uncheckable != "":
+			f.Status = StatusUnable
+			f.Detail = fmt.Sprintf("documented in %d file(s); whether %q exists cannot be checked: %s", documentedIn, name, uncheckable)
+		case missing == "no such target":
+			f.Status = StatusViolated
+			f.Detail = fmt.Sprintf("documented in %d file(s) but %s has no %q target — the instruction outlived the command (the O25 shape)", documentedIn, first, name)
+		case missing != "":
+			f.Status = StatusViolated
+			f.Detail = fmt.Sprintf("documented in %d file(s) but %q does not resolve: %s", documentedIn, name, missing)
+		default:
+			f.Status = StatusHolds
+			f.Detail = fmt.Sprintf("documented in %d file(s); `%s` target exists in %s", documentedIn, name, first)
+		}
 		return f
 	}
 
@@ -245,15 +368,18 @@ func checkCommandDocumented(root string, files []string, c Concern) Finding {
 	return f
 }
 
-func readTaskfile(root string) ([]byte, string, error) {
-	for _, name := range []string{"Taskfile.yml", "Taskfile.yaml"} {
-		p := filepath.Join(root, name)
-		data, err := os.ReadFile(p)
-		if err == nil {
-			return data, p, nil
+// documents reports whether a corpus file names cmd — anywhere in
+// markdown, on a non-comment line of a YAML corpus.
+func documents(data []byte, cmd string, yamlText bool) bool {
+	if !yamlText {
+		return bytes.Contains(data, []byte(cmd))
+	}
+	for _, ln := range strings.Split(string(data), "\n") {
+		if strings.Contains(codeText(ln), cmd) {
+			return true
 		}
 	}
-	return nil, "", errors.New("no Taskfile.yml or Taskfile.yaml at the repo root")
+	return false
 }
 
 func checkMaxLines(root string, c Concern) Finding {

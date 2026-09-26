@@ -142,6 +142,7 @@ type Check struct {
 	Kind    CheckKind `json:"kind"`
 	Pattern string    `json:"pattern,omitempty"` // forbidden_pattern / required_pattern (Go regexp)
 	Where   string    `json:"where,omitempty"`   // corpus name (corpus.go registry); default agent-config
+	Under   string    `json:"under,omitempty"`   // required_pattern over a YAML corpus: only lines under this top-level key
 	Command string    `json:"command,omitempty"` // command_documented_and_exists
 	File    string    `json:"file,omitempty"`    // max_lines / max_bytes / stanza_present (repo-relative)
 	Lines   int       `json:"lines,omitempty"`   // max_lines budget

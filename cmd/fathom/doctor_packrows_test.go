@@ -125,8 +125,8 @@ func TestDoctorConvergence_RowsUnchanged(t *testing.T) {
 
 // TestLefthookPackPatternMatchesDoctor: the lefthook pack ships, as data,
 // the exact pattern lefthookInvokes applies for "verify" (the capability
-// probe still calls lefthookInvokes) — one definition of "runs fathom
-// verify", held equal.
+// probe's `.lefthook.yml` fallback still calls lefthookInvokes) — one
+// definition of "runs fathom verify", held equal — scoped to pre-push.
 func TestLefthookPackPatternMatchesDoctor(t *testing.T) {
 	c, err := custodian.PackConcern("lefthook", "lefthook_pre_push_verify")
 	if err != nil {
@@ -134,6 +134,9 @@ func TestLefthookPackPatternMatchesDoctor(t *testing.T) {
 	}
 	if c.Check.Pattern != lefthookInvokesPattern("verify") {
 		t.Fatalf("pack pattern %q drifted from doctor's %q", c.Check.Pattern, lefthookInvokesPattern("verify"))
+	}
+	if c.Check.Under != "pre-push" {
+		t.Fatalf("the verify entry must read the pre-push hook only (I17), got under %q", c.Check.Under)
 	}
 }
 
@@ -158,5 +161,40 @@ func TestDoctorLefthookUnreadableIsNamed(t *testing.T) {
 	}
 	if legacy := legacyCheckLefthookGates(root); !strings.Contains(legacy.Reason, "no lefthook.yml") {
 		t.Fatalf("the retired check's I38 failure this replaces: %+v", legacy)
+	}
+}
+
+// TestDoctorLefthookGatesReadsOnlyPrePushCommands is the row's second
+// deliberate difference from the retired check (I17): its reason has
+// always said "in its pre-push commands", and now the evidence agrees — a
+// commented-out verify, or a verify that runs only in pre-commit, gates no
+// push and fails the row, where the retired raw-line check passed it. The
+// capability probe reads the same pack entry, so the two never disagree.
+func TestDoctorLefthookGatesReadsOnlyPrePushCommands(t *testing.T) {
+	for name, body := range map[string]string{
+		"commented":       "pre-push:\n  commands:\n    gate:\n      run: task validate\n#   verify:\n#     run: bin/fathom verify --service x\n",
+		"pre_commit_only": "pre-commit:\n  commands:\n    v:\n      run: bin/fathom verify --service x\npre-push:\n  commands:\n    gate:\n      run: task validate\n",
+	} {
+		root := t.TempDir()
+		if err := os.WriteFile(filepath.Join(root, "lefthook.yml"), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		got := checkLefthookGates(root)
+		if got.Status != doctorFail || !strings.Contains(got.Reason, `has no "fathom verify" step in its pre-push commands`) {
+			t.Errorf("%s: a verify that gates no push must fail the row: %+v", name, got)
+		}
+		if legacy := legacyCheckLefthookGates(root); legacy.Status != doctorPass {
+			t.Errorf("%s: the retired check's false pass this replaces: %+v", name, legacy)
+		}
+		if lefthookRunsVerify(root) {
+			t.Errorf("%s: the capability probe must agree with the row", name)
+		}
+	}
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "lefthook.yml"), []byte("pre-push:\n  commands:\n    v:\n      run: bin/fathom verify --service x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got := checkLefthookGates(root); got.Status != doctorPass || !lefthookRunsVerify(root) {
+		t.Fatalf("a pre-push verify passes the row and the probe: %+v", got)
 	}
 }

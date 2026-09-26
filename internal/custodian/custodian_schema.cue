@@ -43,6 +43,10 @@
 	// where names a corpus in the registry (corpus.go, CC-11); the Go
 	// loader also refuses a corpus the kind cannot read.
 	where?:   "agent-config" | "lefthook" | "taskfile" | "ci"
+	// under holds a required_pattern over a YAML corpus to the lines under
+	// one top-level key (a lefthook hook); the Go loader refuses it
+	// elsewhere.
+	under?:   string
 	command?: string
 	file?:    string
 	lines?:   int & >0
