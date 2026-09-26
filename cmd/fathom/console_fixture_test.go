@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
@@ -146,6 +147,11 @@ func newConsoleFixtureOpts(t *testing.T, o consoleFixtureOpts) *consoleFixture {
 	srv := mcp.NewServerWithFleetAndLogger(c, &fleetAdapter{c: c, log: testDiscardLogger()}, logger)
 	h = newHTTPHandlerDeps(srv, c, strings.TrimPrefix(f.ts.URL, "http://"), nil, f.deps)
 	t.Setenv("FATHOM_HTTP", f.ts.URL)
+	// serve-http records itself once bound (recordServingDaemon): a verb
+	// run against this URL reads the store and log the daemon names.
+	if p, ok := daemonRecordPathFor(f.ts.URL); ok {
+		_ = console.WriteDaemonRecord(p, console.NewDaemonRecord(strings.TrimPrefix(f.ts.URL, "http://"), os.Getpid(), f.callLog, consoleFixtureStorePath(t), "", f.now))
+	}
 
 	prev := fleetReportNow
 	fleetReportNow = func() time.Time { return f.now }

@@ -184,32 +184,73 @@ func attentionSources(p Projects) []SourceRead {
 	return append(out, obs)
 }
 
-// gateItems are a project's gate failures and unproven claims, one item
-// per plan whose newest recorded run carries them.
+// gateItems are a project's gate failures, one item per plan whose newest
+// recorded run carries them, and its unproven claims: one item per plan when
+// a single plan has them, else one item for the project (a dozen plans of
+// rows without contracts is one piece of work, not a dozen alarms).
 func gateItems(r ProjectFacts) []AttentionItem {
 	var out []AttentionItem
+	var unproven []VerifyRun
 	for _, run := range r.Runs {
-		ran := "the newest verify run (" + runWhen(run) + ")"
 		if run.Failing > 0 {
 			out = append(out, AttentionItem{
 				Kind: AttentionGate, Service: r.Service, Subject: run.Plan, Count: run.Failing, weight: run.Failing,
 				Title:    fmt.Sprintf("%s in %s %s the gate", countNoun(run.Failing, "claimed row"), path.Base(run.Plan), pluralVerb(run.Failing, "fails", "fail")),
-				Detail:   fmt.Sprintf("%s · %s: %d claimed, %d verified, %d failing — `fathom verify` exits 1", r.Service, ran, run.Claimed, run.Verified, run.Failing),
+				Detail:   fmt.Sprintf("%s · the newest verify run (%s): %d claimed, %d verified, %d failing — `fathom verify` exits 1", r.Service, runWhen(run), run.Claimed, run.Verified, run.Failing),
 				Evidence: Link{Label: "Plans · " + r.Service, Href: ProjectHref(r.Service, "plans")},
 				Remedy:   inRoot(r.Path, "fathom verify --service "+r.Service+" --plan "+run.Plan),
 				AsOf:     run.At,
 			})
 		}
-		if n := run.Unproven(); n > 0 {
-			out = append(out, AttentionItem{
-				Kind: AttentionUnproven, Service: r.Service, Subject: run.Plan, Count: n, weight: n,
-				Title:    fmt.Sprintf("%s in %s %s checked done, but the gate cannot prove %s", countNoun(n, "row"), path.Base(run.Plan), pluralVerb(n, "is", "are"), pluralVerb(n, "it", "them")),
-				Detail:   fmt.Sprintf("%s · %s: %d claimed, %d verified — `fathom verify --strict` exits 1 on a claimed row with no contract the gate can test", r.Service, ran, run.Claimed, run.Verified),
-				Evidence: Link{Label: "Plans · " + r.Service, Href: ProjectHref(r.Service, "plans")},
-				Remedy:   inRoot(r.Path, "fathom verify --strict --service "+r.Service+" --plan "+run.Plan),
-				AsOf:     run.At,
-			})
+		if run.Unproven() > 0 {
+			unproven = append(unproven, run)
 		}
+	}
+	evidence := Link{Label: "Plans · " + r.Service, Href: ProjectHref(r.Service, "plans")}
+	switch len(unproven) {
+	case 0:
+	case 1:
+		run := unproven[0]
+		n := run.Unproven()
+		out = append(out, AttentionItem{
+			Kind: AttentionUnproven, Service: r.Service, Subject: run.Plan, Count: n, weight: n,
+			Title:    fmt.Sprintf("%s in %s %s checked done, but the gate cannot prove %s", countNoun(n, "row"), path.Base(run.Plan), pluralVerb(n, "is", "are"), pluralVerb(n, "it", "them")),
+			Detail:   fmt.Sprintf("%s · the newest verify run (%s): %d claimed, %d verified — `fathom verify --strict` exits 1 on a claimed row with no contract the gate can test", r.Service, runWhen(run), run.Claimed, run.Verified),
+			Evidence: evidence,
+			Remedy:   inRoot(r.Path, "fathom verify --strict --service "+r.Service+" --plan "+run.Plan),
+			AsOf:     run.At,
+		})
+	default:
+		sort.SliceStable(unproven, func(i, j int) bool {
+			if a, b := unproven[i].Unproven(), unproven[j].Unproven(); a != b {
+				return a > b
+			}
+			return unproven[i].Plan < unproven[j].Plan
+		})
+		total, oldest, newest := 0, "", ""
+		var named []string
+		for _, run := range unproven {
+			total += run.Unproven()
+			if oldest == "" || run.At < oldest {
+				oldest = run.At
+			}
+			if run.At > newest {
+				newest = run.At
+			}
+			named = append(named, fmt.Sprintf("%s %d", path.Base(run.Plan), run.Unproven()))
+		}
+		when := dayOf(oldest)
+		if d := dayOf(newest); d != when {
+			when += " to " + d
+		}
+		out = append(out, AttentionItem{
+			Kind: AttentionUnproven, Service: r.Service, Count: total, weight: total,
+			Title:    fmt.Sprintf("%s across %d plans in %s %s checked done, but the gate cannot prove %s", thousandsNoun(total, "row"), len(unproven), r.Service, pluralVerb(total, "is", "are"), pluralVerb(total, "it", "them")),
+			Detail:   fmt.Sprintf("%s · the newest run of each plan (%s): %s — `fathom verify --strict` exits 1 on each", r.Service, when, shortList(named, 4)),
+			Evidence: evidence,
+			Remedy:   inRoot(r.Path, "fathom plans status --service "+r.Service),
+			AsOf:     newest,
+		})
 	}
 	return out
 }
@@ -270,7 +311,7 @@ func certificateItems(r ProjectFacts) []AttentionItem {
 	}
 	return []AttentionItem{{
 		Kind: AttentionCertificates, Service: r.Service, Subject: "certificates", Count: c.Gaps, weight: c.Gaps,
-		Title:    fmt.Sprintf("%d of %s in %s %s no live certificate", c.Gaps, countNoun(c.Declared, "certification target"), r.Service, pluralVerb(c.Gaps, "has", "have")),
+		Title:    fmt.Sprintf("%d of %s in %s %s no live certificate", c.Gaps, thousandsNoun(c.Declared, "certification target"), r.Service, pluralVerb(c.Gaps, "has", "have")),
 		Detail:   fmt.Sprintf("%s · certify status: %d live, %d gaps — each gap names the marker or manifest field that would certify it", r.Service, c.Live, c.Gaps),
 		Evidence: Link{Label: "Proof · " + r.Service, Href: ProjectHref(r.Service, "proof")},
 		Remedy:   r.CertRemedy,

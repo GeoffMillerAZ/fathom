@@ -59,8 +59,10 @@ func TestConsoleA11y_ScopeTargetsChartsAndOverflow(t *testing.T) {
 
 	// The tool-load chart: drawn twice with the kit's Fluid option — a wide
 	// drawing from md up, capped at its native width, and a narrow drawing
-	// for phones — plus a table alternative behind a disclosure.
-	_, _, fleet := f.get(t, "/fleet")
+	// for phones — plus a table alternative behind a disclosure. Wave B
+	// rebuilt /fleet as the project table; the chart still renders where
+	// renderObsFleet does (the theme guide's specimen).
+	fleet := renderObsFleet(cachedObservatoryModel(f.ts.URL, f.now))
 	for _, want := range []string{
 		`<div class="hidden max-w-[35rem] md:block" data-chart-width="wide"><svg xmlns="http://www.w3.org/2000/svg" width="100%" role="img" aria-label="calls per tool" viewBox="0 0 560 `,
 		`<div class="max-w-80 md:hidden" data-chart-width="narrow"><svg xmlns="http://www.w3.org/2000/svg" width="100%" role="img" aria-label="calls per tool" viewBox="0 0 320 `,

@@ -17,7 +17,9 @@ package console
 //     measured day — so a quiet project looks quiet.
 //
 // Sort and filter state are URL parameters (FleetQuery), so every view is a
-// real route and back returns to it.
+// real route and back returns to it. The default order is RG-4's: by
+// unrealized value — unmet rungs × sessions in the window — so the busy
+// project with the most left on the table leads.
 
 import (
 	"fmt"
@@ -90,6 +92,9 @@ type FleetRow struct {
 	LadderMet     int    `json:"ladder_met"`
 	LadderOf      int    `json:"ladder_applicable"`
 	Grade         string `json:"grade,omitempty"`
+	// Unrealized is (rungs that apply − rungs met) × sessions in the
+	// window: the default order (RG-4).
+	Unrealized int `json:"unrealized"`
 	// PlansVerified is the claimed rows the newest recorded runs proved;
 	// Plans the full totals behind it.
 	PlansVerified Value[int] `json:"plans_verified"`
@@ -103,11 +108,13 @@ type FleetRow struct {
 	Observations  Value[int] `json:"open_observations"`
 }
 
-// HealthGroup is one state of the rollup.
+// HealthGroup is one state of the rollup: its projects, and why each is
+// there.
 type HealthGroup struct {
-	Health   Health   `json:"health"`
-	Count    int      `json:"count"`
-	Services []string `json:"services"`
+	Health   Health            `json:"health"`
+	Count    int               `json:"count"`
+	Services []string          `json:"services"`
+	Why      map[string]string `json:"why"`
 }
 
 // FleetQuery is the table's URL state.
@@ -133,6 +140,7 @@ type FleetSort struct {
 
 // FleetSorts are the sortable columns in table order.
 var FleetSorts = []FleetSort{
+	{"unrealized", "Unrealized value", true},
 	{"service", "Project", false},
 	{"health", "Health", false},
 	{"symbols", "Symbols", true},
@@ -168,7 +176,7 @@ func ParseFleetQuery(v url.Values) FleetQuery {
 func (q FleetQuery) Normalize() FleetQuery {
 	s, ok := fleetSort(q.Sort)
 	if !ok {
-		s, _ = fleetSort("health")
+		s, _ = fleetSort("unrealized")
 	}
 	q.Sort = s.Key
 	if q.Dir != "asc" && q.Dir != "desc" {
@@ -326,7 +334,8 @@ func FleetTable(p Projects, q FleetQuery) FleetTableModel {
 
 // fleetRow projects one project.
 func fleetRow(r ProjectFacts, p Projects, scaleMax int, logged func(int) bool) FleetRow {
-	row := FleetRow{Service: r.Service, Href: ProjectHref(r.Service, ""), Path: r.Path, Languages: r.Languages, Grade: r.Grade, Ladder: r.Rungs}
+	row := FleetRow{Service: r.Service, Href: ProjectHref(r.Service, ""), Path: r.Path, Languages: r.Languages, Grade: r.Grade, Ladder: r.Rungs,
+		Unrealized: (r.Available - r.Realized) * r.Sessions}
 	if row.Ladder == nil {
 		row.Ladder = []Rung{}
 	}
@@ -495,11 +504,12 @@ func projectHealth(r ProjectFacts, p Projects, row FleetRow) (Health, string) {
 func rollup(rows []FleetRow) []HealthGroup {
 	out := make([]HealthGroup, 0, len(HealthOrder))
 	for _, h := range HealthOrder {
-		g := HealthGroup{Health: h, Services: []string{}}
+		g := HealthGroup{Health: h, Services: []string{}, Why: map[string]string{}}
 		for _, r := range rows {
 			if r.Health == h {
 				g.Count++
 				g.Services = append(g.Services, r.Service)
+				g.Why[r.Service] = r.HealthWhy
 			}
 		}
 		sort.Strings(g.Services)
@@ -567,10 +577,14 @@ func fleetSortKey(key string) func(FleetRow) (float64, bool) {
 		return func(r FleetRow) (float64, bool) { return valueOK(r.CertsLive) }
 	case "calls":
 		return func(r FleetRow) (float64, bool) { return valueOK(r.Calls) }
+	case "unrealized":
+		return func(r FleetRow) (float64, bool) { return float64(r.Unrealized), true }
+	case "health":
+		return func(r FleetRow) (float64, bool) { return float64(r.Health.Rank()), true }
 	case "observations":
 		return func(r FleetRow) (float64, bool) { return valueOK(r.Observations) }
 	}
-	return func(r FleetRow) (float64, bool) { return float64(r.Health.Rank()), true }
+	return func(r FleetRow) (float64, bool) { return float64(r.Unrealized), true }
 }
 
 func valueOK(v Value[int]) (float64, bool) {

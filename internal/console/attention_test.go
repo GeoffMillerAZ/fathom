@@ -122,6 +122,24 @@ func TestAttentionQueue_OrdersByProofBlockingFirst(t *testing.T) {
 		t.Errorf("an unreadable observations file must be named: %+v", last)
 	}
 
+	// Several plans with unproven rows in one project are one item, the
+	// largest named first, with the command that lists every one.
+	many := attentionFixture()
+	many.Rows = []ProjectFacts{{Service: "pe", Path: "/src/pe", Freshness: "fresh", HasPlans: true, Runs: []VerifyRun{
+		{Plan: "docs/plans/a.md", At: "2026-09-14T00:00:00Z", Claimed: 10, Verified: 8},
+		{Plan: "docs/plans/b.md", At: "2026-09-20T00:00:00Z", Claimed: 50, Verified: 7},
+		{Plan: "docs/plans/c.md", At: "2026-09-20T00:00:00Z", Claimed: 5, Verified: 4, Failing: 1},
+	}}}
+	agg := AttentionQueue(many)
+	if len(agg.Items) != 2 || agg.Items[0].Kind != AttentionGate || agg.Items[1].Kind != AttentionUnproven {
+		t.Fatalf("items = %+v", agg.Items)
+	}
+	u := agg.Items[1]
+	if u.Count != 45 || u.Subject != "" || !strings.Contains(u.Title, "45 rows across 2 plans in pe") || !strings.Contains(u.Detail, "b.md 43, a.md 2") ||
+		!strings.Contains(u.Detail, "2026-09-14 to 2026-09-20") || u.Remedy != "cd /src/pe && fathom plans status --service pe" {
+		t.Errorf("aggregated unproven item = %+v", u)
+	}
+
 	// Nothing wrong and everything read: a measured empty queue.
 	clean := Projects{Ledger: SourceRead{Name: SourceVerifyLedger, State: StatePresent}, Store: SourceRead{Name: SourceStore, State: StatePresent},
 		Rows: []ProjectFacts{{Service: "ok", Freshness: "fresh", Claim: Present(ClaimCounts{}, "s"), Certs: Present(CertCounts{}, "s"), Guide: Present(GuideCoverage{}, "s")}}}

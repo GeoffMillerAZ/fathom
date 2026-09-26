@@ -103,7 +103,14 @@ type ProjectFacts struct {
 	TypedEdgesFailed string `json:"typed_edges_failed,omitempty"`
 	Rungs            []Rung `json:"rungs,omitempty"`
 	Grade            string `json:"grade,omitempty"`
-	HasPlans         bool   `json:"has_plans"`
+	// Realized and Available are the ladder's fold (rungs met of rungs
+	// that apply) and Sessions the sessions in the window: the fleet's
+	// default order ranks by unrealized value, (Available − Realized) ×
+	// Sessions (RG-4, "where should I spend the next ten minutes").
+	Realized  int  `json:"realized"`
+	Available int  `json:"available"`
+	Sessions  int  `json:"sessions_in_window"`
+	HasPlans  bool `json:"has_plans"`
 	// Runs is the newest verify run of each plan at the registered root.
 	Runs  []VerifyRun          `json:"runs,omitempty"`
 	Claim Value[ClaimCounts]   `json:"claims"`
@@ -225,7 +232,7 @@ func PlanRowsVerified(p Projects) Value[int] {
 	if repos == 0 {
 		return Absent[int]("no verify run is recorded at any registered root").WithSource(verifyLedgerSource)
 	}
-	denom := fmt.Sprintf("of %s across %s in %s", countNoun(claimed, "claimed row"), countNoun(plans, "plan"), countNoun(repos, "repo"))
+	denom := fmt.Sprintf("of %s across %s in %s", thousandsNoun(claimed, "claimed row"), countNoun(plans, "plan"), countNoun(repos, "repo"))
 	if unrun > 0 {
 		return Partial(verified, fmt.Sprintf("%s with plans %s no recorded verify run (%s); lower bound", countNoun(unrun, "project"), verbFor(unrun), shortList(unrunNames, 3))).WithSource(verifyLedgerSource).WithDenominator(denom)
 	}
@@ -258,7 +265,7 @@ func ClaimsFresh(p Projects) Value[int] {
 			repos++
 		}
 	}
-	denom := fmt.Sprintf("of %s in %s · %d stale · %d superseded", countNoun(total, "claim"), countNoun(repos, "repo"), stale, superseded)
+	denom := fmt.Sprintf("of %s in %s · %s stale · %s superseded", thousandsNoun(total, "claim"), countNoun(repos, "repo"), thousands(stale), thousands(superseded))
 	if len(failed) > 0 {
 		return Partial(fresh, fmt.Sprintf("claims unreadable for %s (%s); lower bound", countNoun(len(failed), "project"), shortList(failed, 3))).WithSource(storeClaimsSource).WithDenominator(denom)
 	}
@@ -292,7 +299,7 @@ func CertificatesLive(p Projects) Value[int] {
 	if declared == 0 && len(failed) == 0 {
 		return Absent[int]("no project declares a certification target").WithSource(storeCertsSource)
 	}
-	denom := fmt.Sprintf("of %s in %s", countNoun(declared, "declared target"), countNoun(repos, "repo"))
+	denom := fmt.Sprintf("of %s in %s", thousandsNoun(declared, "declared target"), countNoun(repos, "repo"))
 	if len(failed) > 0 {
 		return Partial(live, fmt.Sprintf("certificates unreadable for %s (%s); lower bound", countNoun(len(failed), "project"), shortList(failed, 3))).WithSource(storeCertsSource).WithDenominator(denom)
 	}
@@ -320,6 +327,10 @@ func rungState(rungs []Rung, name string) RungState {
 	return RungUnknown
 }
 
+// FreshnessClass folds a freshness reading ("fresh", "stale: …",
+// "unknown: …") to fresh, stale or unknown.
+func FreshnessClass(f string) string { return freshnessClass(f) }
+
 // freshnessClass folds a freshness string to fresh, stale or unknown.
 func freshnessClass(f string) string {
 	switch {
@@ -340,6 +351,17 @@ func ProjectHref(service, tab string) string {
 	}
 	return h
 }
+
+// thousandsNoun is countNoun with a thousands separator: "4,025 claims".
+func thousandsNoun(n int, word string) string {
+	if n == 1 {
+		return "1 " + word
+	}
+	return thousands(n) + " " + word + "s"
+}
+
+// NonEmptyReason is s, or fallback when s is empty: a reason is never blank.
+func NonEmptyReason(s, fallback string) string { return nonEmpty(s, fallback) }
 
 func nonEmpty(s, fallback string) string {
 	if s == "" {

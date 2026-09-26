@@ -654,7 +654,8 @@ func TestConsoleMetricsAgreeAcrossPages(t *testing.T) {
 			t.Errorf("page %s JSON carries %d metrics, declares %d", p.ID, len(env.Metrics), len(p.Shows))
 		}
 	}
-	for _, id := range []console.MetricID{console.MetricServices, console.MetricSymbols, console.MetricCalls, console.MetricSessions, console.MetricObservations, console.MetricAgentTools} {
+	for _, id := range []console.MetricID{console.MetricServices, console.MetricSymbols, console.MetricCalls, console.MetricSessions, console.MetricObservations, console.MetricAgentTools,
+		console.MetricWiredFresh, console.MetricPlanRowsVerified, console.MetricClaimsFresh, console.MetricCertificatesLive} {
 		pages := byMetric[string(id)]
 		if len(pages) == 0 {
 			t.Errorf("metric %s is shown on no page", id)

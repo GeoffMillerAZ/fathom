@@ -31,17 +31,17 @@ func fleetFixture() Projects {
 		Ledger: SourceRead{Name: SourceVerifyLedger, State: StatePresent},
 		Store:  SourceRead{Name: SourceStore, State: StatePresent},
 		Rows: []ProjectFacts{
-			{Service: "busy", Path: "/src/busy", Symbols: intp(15000), Languages: []string{"go"}, Freshness: "fresh", Rungs: met("wired", "fresh", "queried", "preventing", "gating"),
+			{Service: "busy", Path: "/src/busy", Symbols: intp(15000), Realized: 5, Available: 5, Sessions: 10, Languages: []string{"go"}, Freshness: "fresh", Rungs: met("wired", "fresh", "queried", "preventing", "gating"),
 				HasPlans: true, Runs: []VerifyRun{{Plan: "p.md", Total: 10, Claimed: 10, Verified: 10}},
 				Claim: store(300), Certs: Present(CertCounts{Declared: 4, Live: 1, Gaps: 3}, "s"), OpenObservations: intp(2),
 				Traffic: []int{100, 400, 0, 250, 90, 0, 60}},
-			{Service: "quiet", Path: "/src/quiet", Symbols: intp(900), Languages: []string{"python"}, Freshness: "fresh", Rungs: met("wired", "fresh", "queried"),
+			{Service: "quiet", Path: "/src/quiet", Symbols: intp(900), Realized: 3, Available: 4, Sessions: 1, Languages: []string{"python"}, Freshness: "fresh", Rungs: met("wired", "fresh", "queried"),
 				Claim: store(5), Certs: Present(CertCounts{}, "s"),
 				Traffic: []int{1, 0, 0, 2, 0, 0, 1}},
-			{Service: "failing", Path: "/src/failing", Symbols: intp(3000), Languages: []string{"go", "typescript"}, Freshness: "fresh", Rungs: met("wired", "fresh"),
+			{Service: "failing", Path: "/src/failing", Symbols: intp(3000), Realized: 2, Available: 5, Sessions: 4, Languages: []string{"go", "typescript"}, Freshness: "fresh", Rungs: met("wired", "fresh"),
 				HasPlans: true, Runs: []VerifyRun{{Plan: "p.md", Total: 10, Claimed: 9, Verified: 6, Failing: 3}},
 				Claim: store(10), Certs: Present(CertCounts{}, "s"), Traffic: []int{5, 5, 0, 5, 5, 5, 5}},
-			{Service: "stale", Path: "/src/stale", Symbols: intp(2000), Languages: []string{"go"}, Freshness: "stale: indexed a vs HEAD b", Rungs: met("wired"),
+			{Service: "stale", Path: "/src/stale", Symbols: intp(2000), Realized: 1, Available: 5, Sessions: 3, Languages: []string{"go"}, Freshness: "stale: indexed a vs HEAD b", Rungs: met("wired"),
 				Claim: store(1), Certs: Present(CertCounts{}, "s"), Traffic: []int{0, 0, 0, 0, 0, 0, 0}},
 			{Service: "remote", Symbols: intp(500), Freshness: "unknown: no recorded corpus path", Rungs: met("wired"),
 				Claim: store(0), Certs: Present(CertCounts{}, "s"), Traffic: []int{0, 3, 0, 0, 0, 0, 0}},
@@ -67,9 +67,22 @@ func rowByName(rows []FleetRow, name string) FleetRow {
 // problem outranks an unknown.
 func TestFleetTable_SortFilterAndUnknownNotGreen(t *testing.T) {
 	p := fleetFixture()
-	m := FleetTable(p, ParseFleetQuery(url.Values{}))
+	// The default order is RG-4's: unrealized value (unmet rungs × sessions
+	// in the window), the busier project first on a tie.
+	def := FleetTable(p, ParseFleetQuery(url.Values{}))
+	if def.Query.Sort != "unrealized" || def.Query.Dir != "desc" {
+		t.Fatalf("default query = %+v", def.Query)
+	}
+	var byValue []string
+	for _, r := range def.Rows {
+		byValue = append(byValue, r.Service)
+	}
+	if got := strings.Join(byValue, ","); got != "failing,stale,quiet,busy,remote,unrun" {
+		t.Errorf("default (unrealized value) order = %s", got)
+	}
+	m := FleetTable(p, ParseFleetQuery(url.Values{"sort": {"health"}}))
 	if m.Total != 6 || m.Matched != 6 || len(m.Rows) != 6 || m.Query.Sort != "health" || m.Query.Dir != "asc" {
-		t.Fatalf("default table = total %d matched %d rows %d query %+v", m.Total, m.Matched, len(m.Rows), m.Query)
+		t.Fatalf("health table = total %d matched %d rows %d query %+v", m.Total, m.Matched, len(m.Rows), m.Query)
 	}
 	health := map[string]Health{}
 	for _, r := range m.Rows {
@@ -141,7 +154,7 @@ func TestFleetTable_SortFilterAndUnknownNotGreen(t *testing.T) {
 	if l := FleetTable(p, ParseFleetQuery(url.Values{"lang": {"TypeScript"}})); l.Matched != 1 || l.Rows[0].Service != "failing" {
 		t.Errorf("lang filter = %d", l.Matched)
 	}
-	if b := ParseFleetQuery(url.Values{"sort": {"nope"}, "dir": {"sideways"}, "health": {"green"}, "page": {"-3"}}); b.Sort != "health" || b.Dir != "asc" || b.Health != "" || b.Page != 1 {
+	if b := ParseFleetQuery(url.Values{"sort": {"nope"}, "dir": {"sideways"}, "health": {"green"}, "page": {"-3"}}); b.Sort != "unrealized" || b.Dir != "desc" || b.Health != "" || b.Page != 1 {
 		t.Errorf("bad query normalized to %+v", b)
 	}
 	if v := ParseFleetQuery(url.Values{"sort": {"calls"}, "health": {"failed"}}).Values(); v.Get("sort") != "calls" || v.Get("dir") != "desc" || v.Get("health") != "failed" {
