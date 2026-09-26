@@ -798,15 +798,25 @@ fathom claim add          --store <path> --service <id> --scope <glob> [--scope 
 fathom claim refute       --store <path> --service <id> --claim <claim-id> --note "..." [--author <name>] [--dry-run] [--json]
 fathom claim corroborate  --store <path> --service <id> --claim <claim-id> --note "..." [--author <name>]
 fathom claim show         <claim-id> [--service <id>] [--json] [--store <path> | --url <daemon>]
+fathom claim list         [--layer <name>] [--service <id>] [--status current|fresh|stale|contradicted|superseded|refuted|all] [--page N] [--json] [--store <path> | --url <daemon>]
 ```
 
 `show` (OC-30) prints one claim whole — statement, citation, scope, tier, status,
 provenance and every verdict recorded against it — and `--json` is exactly the
 console's `/claims/{id}` section. The citation is excerpted with two lines of
-context from the service's recorded root; a stale or contradicted claim whose
-compile-time text was kept shows that text, labeled, never the current lines as its
-source (J2). `--service` is needed only when two services hold the same id. It reads
-the Knowledge store (see `layers strata` below), never writes.
+context from the service's recorded root; a stale, contradicted, superseded or
+refuted claim whose compile-time text was kept shows that text, labeled, never the
+current lines as its source (J2) — superseded and refuted are terminal verdicts, so
+the sweep never re-anchors their citation and the range freezes while the file moves
+on. Without kept text, such a claim's excerpt is the current lines at the range with a
+note that they may have moved. `--service` is needed only when two services hold the
+same id. It reads the Knowledge store (see `layers strata` below), never writes.
+
+`list` is the rows behind every claim count: the claims of a layer, a project and a
+status (`current` — fresh, stale, contradicted — by default), ordered by project,
+layer, status and statement, 50 a page, each with its first citation. `--json` is
+exactly the console's `/claims` section for the same filter; the strata, coverage,
+layer and packs pages link each count to it.
 
 `add` (SU-17, docs/plans/substrate.md §D) mints one content-addressed, human-authored
 claim without waiting for a pattern to recur — "remember this" as a single utterance.
@@ -873,8 +883,15 @@ lifecycle; `coverage` is current claims per project and layer, a cell nothing co
 absent ("not compiled", no number in its JSON) and a compile that left no current claim
 a measured zero; `show <name> --json` is the layer page — its definition as the fleet
 resolves it, every compile run with its kind, cost and accepted/rejected counts, the
-rejection reasons, each project's uncompiled scopes with the `--continue` command, and
-the dry-run command. A refused run's estimate is never counted as spend. They read the
+rejection reasons, each project's uncompiled scopes with the resume command (`fathom
+compile --layer L --service S --store <the store> --continue --dry-run=false`:
+`--continue` runs in direct `--store` mode only, and a compile spends only with
+`--dry-run=false`), and the dry-run command. A refused run's estimate is never counted
+as spend, and a layer with no real compile run has its accepted and rejected counts and
+its uncompiled scopes absent (`uncompiled_count`), never a measured 0 or "fully
+covered". A layer whose pack could not be read (a broken project pack, or an unreadable
+`.fathom/layers` of a project holding it) is listed under `unplaced`, not guessed into a
+stratum, and `totals.layers` is a lower bound naming any unreadable catalog. They read the
 store the daemon at `--url` recorded when it bound (its `~/.fathom/daemons/` record,
 OC-2), else `[daemon].store`, else the workspace default — mounted read-only, and a
 missing store is refused rather than created; text output names the store and the rule
@@ -1054,10 +1071,22 @@ Every registered language with its extraction engine, typed-edge producer (`nati
 `scip` with its delegate, `syntax`), the fleet's indexed files and projects in it, the
 integrity plane's reach (`checked` for Go, `unproven` for other code languages) and the
 inventory kinds its files feed; precision and recall only where a published reading
-measured them (`console.DialectReadings`, each citing its document), "unmeasured" —
-absent, no number — otherwise. Layer packs follow with their source (embedded, project,
-or a kit's `fathom-pack`), stratum and the projects where each holds claims. `--json`
-is the console's `/packs` section; the store resolves as for `layers strata`.
+measured them (`console.DialectReadings`, each citing its document and naming the edge
+tier it measured — `file` for the TypeScript and Python readings, which is not the
+`scip` tier those languages can reach), "unmeasured" — absent, no number — otherwise.
+`typed_share` is the share of the store's `typed_edges` rows from the language's files
+that a resolver confirmed (a type checker or an imported SCIP index; `file-resolved`
+and `unresolved` rows are heuristic), with `edge_kinds` counting them by kind: a
+`scip`-level language whose delegate never ran reads a measured 0 ("no SCIP index
+imported"), and one with no typed-edge row at all is absent. Layer packs follow with
+their source (embedded, project, a kit's `fathom-pack`, `orphan` when no pack defines
+a layer the store holds claims for, `unknown` when the pack catalog of a project
+holding it could not be read), stratum and the projects where each holds claims. A
+project pack that failed to load keeps its load error and has no stratum or role
+(never a default), and an unreadable `.fathom/layers` is a note and makes
+`layer_count` a lower bound — the union loader's silent embedded-only fallback is not
+taken for a complete catalog. `--json` is the console's `/packs` section; the store
+resolves as for `layers strata`.
 
 #### `report evidence` — per-service evidence density (CV-39, ADR-044 §5)
 
@@ -2387,6 +2416,7 @@ unreadable store) render on the same shell with the reason and the remedy.
 | `/projects/{svc}` | One project (was `/observatory/service?id=S`) |
 | `/layers` | The strata, the projects × layers coverage matrix (a cell nothing compiled is hatched "not compiled", never 0) and the claim lifecycle — `fathom layers strata --json`, `fathom layers coverage --json` |
 | `/layers/{layer}` | One layer's compile runs, rejection reasons, projects and uncompiled scopes — `fathom layers show <layer> --json` |
+| `/claims?layer=&svc=&status=` | The claims a count counts, 50 a page (`&page=N`), each linked to its page; every claim count on `/layers`, `/layers/{layer}` and `/packs` links here — `fathom claim list --json` |
 | `/claims/{id}` | One claim: statement, citation excerpt, scope, tier, status, events (`?svc=` when two projects hold the id) — `fathom claim show <id> --json` |
 | `/packs` | Dialect packs as a language × capability matrix and layer packs with where each is active — `fathom report packs --json` |
 | `/explain?svc=&file=` | The serving explainer: candidates by scope tier, the cap, the served list and each displaced rule's reason — `fathom obligations --explain --json` |
