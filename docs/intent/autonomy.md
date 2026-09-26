@@ -32,7 +32,8 @@ Rationale: `agentic-kit/docs/project-intent/operating.md` §1.
   or rewrite history on any branch.
 - `fathom purge` (irreversible), `fathom fleet reconcile --apply` across other repos,
   `fathom scope suppress` outside this repo.
-- Spend LLM budget: `fathom compile --dry-run=false`, `fathom smoke`, any compile of
+- Spend LLM budget: `fathom compile --dry-run=false`, `fathom smoke`, a live `fathom
+  assess` (ADR-046; its `--dry-run` spends nothing and needs no ask), any compile of
   another service's layers (a dry run under-reported one compile 25× and $0.64).
 - Add a dependency; bump the `agentic-kit` pin (then `task sync-kit`); change anything on
   the compatibility surface (`scope.md`).

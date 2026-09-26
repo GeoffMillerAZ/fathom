@@ -77,7 +77,8 @@ data says so.
 
 ## 5. Out of scope for v1
 
-`assess` itself (IR-3 — needs the provider lane + prompt + cost meter);
+`assess` itself (IR-3 — designed and built in `docs/design/assess-lanes.md`,
+ADR-046: typed decision-port questions, spend isolated under IR-4);
 turn-position within the session (ts ordering suffices until someone
 needs more); any auto-filed observation from a retro (a human or an
 explicitly-invoked agent reads the retro and decides — instrument, not
