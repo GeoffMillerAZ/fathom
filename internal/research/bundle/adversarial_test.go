@@ -141,6 +141,7 @@ func TestBundle_TypeSystemHasNoFreeTextField(t *testing.T) {
 		OpenObservations:  &obs,
 		ServiceActivity:   []ServiceHashCount{{ServiceHash: strings.Repeat("a", 64), Calls: 1}},
 		BenchArms:         []BenchArmCount{{Arm: "fathom", TaskCount: 1}},
+		Retros:            &RetroStats{Outcomes: []RetroOutcomeCount{{Channel: "guard", Outcome: "committed", Firings: 1}}},
 	}
 	raw, err := json.Marshal(b)
 	if err != nil {

@@ -53,6 +53,7 @@ func TestDetectNeverReturnsBareBoolean(t *testing.T) {
 		ObligationRules: 6, ObligationsCompiled: true, NarrateActive: true, LedgerSessions: 4,
 		AgentSurfaceTools: 17, AgentSchemaBytes: 11839,
 		IntentRouterPresent: true, IntentDecisionsHome: "ADR.md", IntentConditions: 67,
+		AssessRuns: 3,
 	}
 	for _, c := range Default().All() {
 		st := c.Detect(full)
@@ -287,5 +288,31 @@ func TestReportsAreSorted(t *testing.T) {
 			t.Fatalf("reports are unsorted at %d: %q then %q",
 				i, reports[i-1].Capability.ID, reports[i].Capability.ID)
 		}
+	}
+}
+
+// TestAssessIsOffByDefaultAndPriced pins the assess lane's registry entry
+// (ADR-046): a priced lane is never on without a switch someone flipped,
+// it says what it costs, and its remedy is the dry run that spends nothing.
+func TestAssessIsOffByDefaultAndPriced(t *testing.T) {
+	c, ok := Default().Get("assess")
+	if !ok {
+		t.Fatal("assess is not registered")
+	}
+	if c.Default {
+		t.Error("assess defaults ON — a priced lane must never spend without a switch someone flipped")
+	}
+	if !c.Switchable {
+		t.Error("assess must be a real switch: cmdAssess reads it and refuses when off")
+	}
+	if !strings.Contains(c.Cost, "token") {
+		t.Errorf("cost %q must say it spends model tokens", c.Cost)
+	}
+	got := Resolution{}.For(c)
+	if got.On {
+		t.Error("no configuration resolved assess ON")
+	}
+	if rem := c.Remedy(Probe{}); !strings.Contains(rem.Cmd, "--dry-run") {
+		t.Errorf("remedy %q should be the dry run, which spends nothing", rem.Cmd)
 	}
 }

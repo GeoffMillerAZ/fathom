@@ -2453,3 +2453,36 @@ only then does a firm line for a high-confidence band become warranted again.
 - UX-M1 fails: an operator task needs more than three clicks from Now, or a page answer differs from its verb.
 - UX-M4 finds pages nobody opened in 30 days of a real consumer population.
 - A render budget is missed by the SVG renderers (then OC-61's trigger fires).
+
+## ADR-046: The assess lanes — typed judgments of on-disk work through the decision port, spend kept out of every unit (2026-09-25)
+
+**Status.** Accepted 2026-09-25. The shape (two lanes, never transcripts, explicitly invoked, priced, isolated from the benchmark) was owner-authorized on 2026-08-14 (`docs/design/continuity-threads.md` §4.1, `docs/design/intervention-outcomes.md` §1). This record settles what those documents left undesigned. Design: `docs/design/assess-lanes.md`. Rows: DO-3, IR-3, IR-4, IR-5 in `docs/plans/ambient-fathom.md`.
+
+**Context.** `docs/intent/scope.md` G4 listed DO-3 and IR-3/4/5 as the undesigned LLM assess lanes. The mechanical lanes already existed: DO-1's derived outcome and IR-2's `fathom retro`. What was missing was the priced lane for the rows mechanics cannot decide, a meter that keeps judging spend out of the A/B and the continuity bet, and a sanitized route for the retro corpus into the research flywheel.
+
+**Decision.**
+1. *Every judgment is a typed decision-port question.* Binary properties are noul and levels or outcomes are choice. Nothing is a score, because the port's score answer carries no spread and would always band as proceed. No free-form judge exists, and no transcript is read (DF-4 stands).
+2. *The only egress is the decision port* (`[decide] provider`, the new `assess` site). I14 is amended to name the two CLI verbs that open the port (`certify suggest`, `assess`), still never a hook. The `llm` provider is the existing llm profile machinery.
+3. *Consent is a capability, `assess`, default off and fail-closed.* A malformed capabilities file refuses the run, the opposite of the safety capabilities, because an unreadable file is never consent to spend. A live run needs, in order: the capability, a pre-flight token cap, a provider, and the site. `--dry-run` needs none of them and spends nothing.
+4. *Spend isolation is pre-registered as `IR-4@2026-09-25`, before any assess run.* Assess spend is metered on its own ledger (`~/.fathom/assess-ledger.jsonl`) and priced through the compile meter's table. The judge process inherits `FATHOM_CHANNELS=off` and `FATHOM_SPEND_LABEL`. A session-ledger row carrying a spend label is never an arm unit, a thread-bet unit, or an admissible flywheel arm row; each exclusion is counted and named. Invariant I46.
+5. *Verdicts are banded and uncalibrated until measured.* Proceed is the verdict, confirm is leaning, unsure is undecided. The label lifts per question-set digest only after proceed-band agreement reaches at least 9 in 10 on at least 10 adjudicated units (ADR-044 decision 8's bar). Until then verdicts stay local and feed no figure.
+6. *The retro corpus reaches the flywheel only through the bundle*, behind `--include-retros`, as a counts-only group over closed labels. This is additive to the closed CUE allowlist, and absent means not read.
+
+**Alternatives rejected.**
+- *A free-form LLM judge with a rationale.* It is unbandable, uncalibratable and needs a parser, and prose invites quoting as evidence (law 14). A rationale field is reconsidered only if adjudicators find more than half of proceed-band verdicts unusable without one.
+- *A new egress beside the port* (an `--profile` client in the verb). It widens I14 for no capability the port lacks.
+- *Metering assess inside `compile_runs`.* It puts a non-compile row into the store's compile ledger (a sensitive surface). The assess ledger reuses the meter's pricing and aggregation instead.
+- *Adopting `qa-harness` now* (ADR-023's trigger). There is no corpus or baseline until the adjudicated sample exists.
+
+**Consequences.**
+- One new pure package, `internal/assess`, plus a `fathom assess` verb with a `spend` subverb.
+- One capability, one `[decide]` site, and one additive session-ledger field (`spend_label`).
+- One additive research-bundle group (`retros`).
+- `buildRetroModel` is shared by `retro` and the intervention lane.
+- ADR-023's "Revisit when" fires (an LLM-judged evaluation lane now exists). Its disposition, keeping it bespoke with this note or scheduling `qa-harness` adoption at M-A1, is the owner's.
+
+**Revisit when.**
+- A question set's proceed band fails M-A1 at every threshold: remove the question.
+- `llm` and `typesafe` agree on less than 80% of proceed verdicts for the same units (M-A2): the question is provider-specific.
+- The adjudicated sample exists (M-A1): ADR-023's `qa-harness` adoption point.
+- IR-3's "guidance as served now" measurably differs from what was served at firing time: record the served set at IR-1.

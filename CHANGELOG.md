@@ -302,6 +302,9 @@ Evidence: `docs/app-kit.md`.
 
 ### Added
 
+- `fathom assess` (DO-3, IR-3; ADR-046) asks a model typed decision-port questions about one session's committed work products, or with `--interventions` about the retro rows mechanics cannot decide, and never reads its transcript. A live run needs the default-off, fail-closed `assess` capability, a `[decide]` provider and the new `assess` site from the assessed repository's config, while `--dry-run` spends nothing; each run's cost lands on `~/.fathom/assess-ledger.jsonl`, which `fathom assess spend` totals.
+- Judging spend is isolated under `IR-4@2026-09-25` (I46): the session ledger gains an additive `spend_label`, and a labelled row is never an arm, thread-bet or flywheel unit. The impact model, the brief, the thread bet and the flywheel each count and name the exclusion.
+- `fathom research bundle --include-retros` (IR-5) adds an optional, counts-only `retros` group to the bundle's closed allowlist, from the retro corpus under the state directory's `artifacts/retros/`. Bundles built without the flag are unchanged, JSON and Markdown alike.
 - `search` — new agent-surface tool: grep with a receipt (enclosing symbol/kind, test/generated/vendored flags, ident/comment/string classification); excludes vendored and `workspace/` trees by default (RC-24, 19-tool agent surface).
 - `fathom discoveries`/`discoveries` MCP tool and `fathom routes` — recent call-log pointers (symbol ids, file paths), resolved fresh against the live index, handed to subagents and the next session (RC-25..33).
 - Kotlin extraction (`.kt`/`.kts`): classes/objects/interfaces, functions, properties, imports, same-file call edges.

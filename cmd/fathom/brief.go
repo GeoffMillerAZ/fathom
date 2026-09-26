@@ -393,6 +393,9 @@ func renderBriefMD(m observatoryModel) string {
 	if imp.UncleanArmRows > 0 {
 		fmt.Fprintf(&b, "- **Excluded from the comparison: %s** — %s\n", fmtThousands(imp.UncleanArmRows), imp.UncleanArmNote)
 	}
+	if imp.IsolatedSpendRows > 0 {
+		fmt.Fprintf(&b, "- **Excluded as judging spend: %s** — %s\n", fmtThousands(imp.IsolatedSpendRows), imp.IsolatedSpendNote)
+	}
 
 	switch {
 	case imp.TokensOffSessions == 0:
@@ -449,7 +452,12 @@ func renderBriefMD(m observatoryModel) string {
 		fmt.Fprintf(&b, "- **All-in cost:** %s vs %s tokens per turn (in + out + cache reads weighted at the 10%% pricing assumption)\n",
 			fmtThousands(*bet.FreshAllInMed), fmtThousands(*bet.ResumedAllInMed))
 	}
-	fmt.Fprintf(&b, "- **What continuity itself has spent:** %s brief bytes across all sessions — a ledger sum, not an estimate\n", fmtThousands(bet.BriefBytesTotal))
+	if bet.IsolatedSpendRows > 0 {
+		fmt.Fprintf(&b, "- **What continuity itself has spent:** %s brief bytes across every working session — a ledger sum, not an estimate\n", fmtThousands(bet.BriefBytesTotal))
+		fmt.Fprintf(&b, "- **Excluded as judging spend: %s** — %s\n", fmtThousands(bet.IsolatedSpendRows), bet.IsolatedSpendNote)
+	} else {
+		fmt.Fprintf(&b, "- **What continuity itself has spent:** %s brief bytes across all sessions — a ledger sum, not an estimate\n", fmtThousands(bet.BriefBytesTotal))
+	}
 	fmt.Fprintf(&b, "- **Verdict: %s** — %s\n", bet.Verdict, bet.Detail)
 
 	// ---- Work order ----

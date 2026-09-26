@@ -74,8 +74,8 @@ package config
 // }
 //
 // 10. An unrecognised [decide] sites entry (ADR-044 decision 8): closed to
-//     the four sites that exist today ("route", "compile_prefilter",
-//     "obligations_rerank", "certify_suggest") — an entry outside that set
+//     the five sites that exist today ("route", "compile_prefilter",
+//     "obligations_rerank", "certify_suggest", "assess") — an entry outside that set
 //     is refused by name, the same discipline as provider's own enum:
 // bad10: #Config & {
 // 	decide: sites: ["route", "made_up_site"]

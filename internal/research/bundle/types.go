@@ -68,6 +68,38 @@ type Bundle struct {
 	ServiceActivity []ServiceHashCount `json:"service_activity,omitempty"`
 
 	BenchArms []BenchArmCount `json:"bench_arms,omitempty"`
+
+	// Retros is the opt-in retro corpus group (IR-5,
+	// docs/design/assess-lanes.md §5): nil unless the human passed
+	// --include-retros AND the corpus directory was read — "not read",
+	// never an all-zero stand-in. Counts over closed labels only.
+	Retros *RetroStats `json:"retros,omitempty"`
+}
+
+// RetroStats aggregates the local retro corpus (the per-session artifacts
+// `fathom retro --write` and the Stop hook land under the state directory's
+// artifacts/retros/). Every field is a count; Outcomes' labels are fathom's
+// own closed vocabularies, mapped by the caller (cmd/fathom's
+// aggregateRetroCorpus) — never a file, session id, or path.
+type RetroStats struct {
+	Retros               int                 `json:"retros"`
+	Unreadable           int                 `json:"unreadable"`
+	OffArmRetros         int                 `json:"off_arm_retros"`
+	GuardFires           int                 `json:"guard_fires"`
+	ObligationInjections int                 `json:"obligation_injections"`
+	SilentOnClean        int                 `json:"silent_on_clean"`
+	Unjoinable           int                 `json:"unjoinable"`
+	Outcomes             []RetroOutcomeCount `json:"outcomes,omitempty"`
+	CustodianRemedied    int                 `json:"custodian_remedied"`
+	CustodianUnremedied  int                 `json:"custodian_unremedied"`
+}
+
+// RetroOutcomeCount is one (channel, mechanical outcome) cell: how many
+// firings on that channel ended in that outcome across the corpus.
+type RetroOutcomeCount struct {
+	Channel string `json:"channel"`
+	Outcome string `json:"outcome"`
+	Firings int    `json:"firings"`
 }
 
 // CallTrafficStats is the MCP call log's aggregate view over the report

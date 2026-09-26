@@ -79,6 +79,7 @@ func buildCapabilityProbe(baseURL, root, svc string, now time.Time) capability.P
 	// Facts that are cheaper to read locally than to fetch, and that must
 	// work when the daemon is down.
 	p.ObligationRules = countRuleSources(root)
+	p.AssessRuns = countAssessRuns(root)
 	p.ModuleBindings = countModuleBindings(root)
 	p.VerifyInLefthook = lefthookRunsVerify(root)
 	guards := inspectGuardRules(root)

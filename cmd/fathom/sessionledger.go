@@ -189,6 +189,14 @@ type sessionLedgerEntry struct {
 	PayloadCostEstimateTotal *int   `json:"payload_cost_estimate_total,omitempty"`
 	DiscoveryActionsTotal    *int   `json:"discovery_actions_total,omitempty"`
 	JoinNote                 string `json:"join_note,omitempty"`
+
+	// SpendLabel (IR-4, docs/design/assess-lanes.md §3) is set when this
+	// row was written inside a judge process `fathom assess` started — the
+	// Stop hook copies FATHOM_SPEND_LABEL, which assess exports before its
+	// decision port opens. Such a row measures the cost of JUDGING a unit,
+	// so spendIsolatedRow keeps it out of every arm and bet unit. Absent on
+	// every ordinary row (additive; older rows parse unchanged).
+	SpendLabel string `json:"spend_label,omitempty"`
 }
 
 // appendSessionLedger appends one entry to sessionLedgerPath() as a single

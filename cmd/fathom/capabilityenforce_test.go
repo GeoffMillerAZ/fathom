@@ -34,6 +34,7 @@ func TestEverySwitchableCapabilityHasAnEnforcementCase(t *testing.T) {
 		"guards":        true, // TestSwitchOffStopsGuards
 		"verify-gate":   true, // TestSwitchOffSkipsVerifyButKeepsLedger
 		"intent-corpus": true, // TestSwitchOffSilencesIntentRowsNotTheVerb
+		"assess":        true, // TestSwitchOffAssessRefusesAndFailsClosed
 	}
 	for _, c := range capability.Default().All() {
 		if c.Switchable && !covered[c.ID] {

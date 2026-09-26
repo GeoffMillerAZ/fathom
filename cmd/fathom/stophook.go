@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/assess"
 	"github.com/geoffmilleraz/fathom/internal/harness"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
@@ -165,6 +166,9 @@ func recordSessionLedgerEntry(sessionID, transcriptPath, projDir string, now tim
 	beats, _ := readBeatLogTail(beatLogPath(), sessionLedgerBeatTailBytes)
 	e := buildSessionLedgerEntry(sessionID, repo, ts, beats, now)
 	e.VerifyCatches = verifyCatches
+	// IR-4: a session running inside an assess judge inherits the spend
+	// label; stamping it is what keeps judging spend out of every unit.
+	e.SpendLabel = strings.TrimSpace(os.Getenv(assess.SpendLabelEnv))
 
 	// The amended unit (production-tokenomics.md §5, 2026-08-12): a session
 	// that began BEFORE the arm still contributes its arm-covered WINDOW,

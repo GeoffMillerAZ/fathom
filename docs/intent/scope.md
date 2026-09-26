@@ -22,8 +22,9 @@ reports 20 units and the flywheel's continuity loop states keep or kill
 
 **G4. Ambient fathom closes.** Done when: `fathom plans status` shows
 `docs/plans/ambient-fathom.md` with 0 open and 0 claimed-unproven rows. Open: SH-9,
-SP-10, RG-5, RG-9 (observatory UI/wiring), DO-3, IR-3/4/5 (LLM assess lanes, undesigned),
-OP-1 (the A/B, G2), OP-2 (deploy).
+SP-10, RG-5, RG-9 (observatory UI/wiring), OP-1 (the A/B, G2), OP-2 (deploy). DO-3 and
+IR-3/4/5 (the assess lanes) are designed (`docs/design/assess-lanes.md`, ADR-046) and
+proven 2026-09-25.
 
 **G5. The custodian closes.** Done when: `docs/plans/custodian.md` shows 0 open and 0
 claimed-unproven. Open: SD-2/3/4 (SDD panel); DP-2 is refused (superseded by EP-9).

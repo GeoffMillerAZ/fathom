@@ -203,6 +203,7 @@ usually no, and fathom should be the one saying so:
 | guards | one hook round-trip per edit, shared with obligations |
 | session ledger | one transcript parse per session end |
 | narrate | story rows written per session |
+| assess | model tokens per explicit `fathom assess` run, reported in its own output; off by default (ADR-046) |
 
 `fathom capabilities --cost` totals the standing per-session cost. When
 phase X (budgeted answers) lands, this table stops being hand-maintained

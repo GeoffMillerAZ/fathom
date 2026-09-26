@@ -106,10 +106,16 @@ type obsImpact struct {
 	CriterionNote string `json:"criterion_note"`
 	// UncleanArmRows counts ledger rows excluded from the paired
 	// comparison because their session predates the arm they wear.
-	UncleanArmRows  int    `json:"unclean_arm_rows,omitempty"`
-	UncleanArmNote  string `json:"unclean_arm_note,omitempty"`
-	TokensOnMedian  *int   `json:"tokens_on_median,omitempty"`
-	TokensOffMedian *int   `json:"tokens_off_median,omitempty"`
+	UncleanArmRows int    `json:"unclean_arm_rows,omitempty"`
+	UncleanArmNote string `json:"unclean_arm_note,omitempty"`
+	// IsolatedSpendRows counts ledger rows written inside a judge process
+	// `fathom assess` started (spend_label set): judging spend, never an
+	// arm unit (IR-4, pre-registered 2026-09-25). Counted and named here,
+	// never silently dropped.
+	IsolatedSpendRows int    `json:"isolated_spend_rows,omitempty"`
+	IsolatedSpendNote string `json:"isolated_spend_note,omitempty"`
+	TokensOnMedian    *int   `json:"tokens_on_median,omitempty"`
+	TokensOffMedian   *int   `json:"tokens_off_median,omitempty"`
 	// Spend-shaped medians are in+out only (cache reads excluded — the
 	// 2026-08-08 inflation finding); these two carry the disclosure.
 	TokensPreSplitRows *int `json:"tokens_pre_split_rows,omitempty"`
@@ -473,6 +479,7 @@ func buildImpactModel(now time.Time) obsImpact {
 		cacheReadTruncatedExcluded  int
 		onSessions, offSessions     int
 		uncleanArmRows              int
+		isolatedSpendRows           int
 		firstAt, lastAt             string
 		firstEditTurns              []int
 		expRatios                   []int
@@ -592,6 +599,14 @@ func buildImpactModel(now time.Time) obsImpact {
 		// by construction, so a partial row with an untruncated window of
 		// ≥ abMinTurnsPerUnit turns is admitted AS ITS WINDOW, at a
 		// per-turn rate. Everything else stays excluded and NAMED.
+		//
+		// IR-4 (pre-registered 2026-09-25): a row written inside a judge
+		// process carries the cost of JUDGING a unit, never of working one
+		// — counted here, never a unit (armUnitFor refuses it too).
+		if spendIsolatedRow(e) {
+			isolatedSpendRows++
+			continue
+		}
 		unit, ok := armUnitFor(e)
 		switch {
 		case ok && e.Arm == "off":
@@ -651,6 +666,12 @@ func buildImpactModel(now time.Time) obsImpact {
 	}
 	imp.TokensOnSessions, imp.TokensOffSessions = onSessions, offSessions
 	imp.UncleanArmRows = uncleanArmRows
+	imp.IsolatedSpendRows = isolatedSpendRows
+	if isolatedSpendRows > 0 {
+		imp.IsolatedSpendNote = itoa(isolatedSpendRows) + " session(s) ran inside a `fathom assess` judge (spend_label set) — " +
+			"the cost of judging a unit, never of working one, so never an arm unit (IR-4, pre-registered 2026-09-25). " +
+			"Counted here, never silently dropped."
+	}
 	if uncleanArmRows > 0 {
 		imp.UncleanArmNote = itoa(uncleanArmRows) + " OFF-arm session(s) excluded from the comparison: each either began " +
 			"before the arm was set (so its totals include assisted activity) or predates coverage stamping (so its " +
@@ -991,6 +1012,9 @@ const abMinTurnsPerUnit = 10
 //     unit, same rate over the window's own span;
 //   - anything else: no unit. The caller counts it, named, per law 3.
 func armUnitFor(e sessionLedgerEntry) (int, bool) {
+	if spendIsolatedRow(e) {
+		return 0, false // IR-4: judging spend is never a unit
+	}
 	rate := func(in, out, turns *int) (int, bool) {
 		if in == nil || out == nil || turns == nil || *turns < abMinTurnsPerUnit {
 			return 0, false

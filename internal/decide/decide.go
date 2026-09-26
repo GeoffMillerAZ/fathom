@@ -28,9 +28,9 @@ type Ports struct {
 
 // Site name constants for [decide] sites (ADR-044 decision 8, design doc
 // §7, I14): the only sites a decision.Decider may ever be asked from. These
-// four literals are exactly what config.DefaultDecide.Sites lists — a
+// five literals are exactly what config.DefaultDecide.Sites lists — a
 // config.Decide loaded through config.Load and never touching [decide]
-// sites carries all four, so SiteAllowed(cfg, <any of these>) is true by
+// sites carries all five, so SiteAllowed(cfg, <any of these>) is true by
 // default and every existing call site's behaviour is unchanged.
 const (
 	// SiteRoute is POST /route (DP-9, cmd/fathom/route.go): one
@@ -52,13 +52,19 @@ const (
 	// cmd/fathom/certify_suggest.go): one batched request per content-sized
 	// chunk of ungoverned Test* symbols.
 	SiteCertifySuggest = "certify_suggest"
+	// SiteAssess is `fathom assess` (DO-3/IR-3, ADR-046,
+	// docs/design/assess-lanes.md): one batched request per explicitly
+	// invoked run, typed noul/choice questions over a unit's on-disk work
+	// products. Also gated by the default-off `assess` capability, so
+	// listing it here is never, by itself, consent to spend.
+	SiteAssess = "assess"
 )
 
 // AllSites lists every known site name, in the same order config.toml's
 // documentation and DefaultDecide.Sites present them — for iteration (e.g.
 // fathom doctor's decision_provider row naming every site a narrowed
 // allowlist excludes).
-var AllSites = []string{SiteRoute, SiteCompilePrefilter, SiteObligationsRerank, SiteCertifySuggest}
+var AllSites = []string{SiteRoute, SiteCompilePrefilter, SiteObligationsRerank, SiteCertifySuggest, SiteAssess}
 
 // SiteAllowed reports whether cfg's [decide] sites allowlist lets site send
 // a decision.Question off-host (ADR-044 decision 8, I14: "the only off-host

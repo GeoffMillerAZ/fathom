@@ -105,6 +105,26 @@ func RenderMarkdown(b Bundle) string {
 		s.WriteString("\n")
 	}
 
+	// Opt-in like the bench arms: absent from the JSON means absent here,
+	// so a bundle built without --include-retros renders byte-identical to
+	// one built before the group existed (design §5).
+	if b.Retros != nil {
+		r := b.Retros
+		s.WriteString("## Retro corpus\n\n")
+		fmt.Fprintf(&s, "retros=%d unreadable=%d off_arm_retros=%d guard_fires=%d obligation_injections=%d "+
+			"silent_on_clean=%d unjoinable=%d custodian_remedied=%d custodian_unremedied=%d\n\n",
+			r.Retros, r.Unreadable, r.OffArmRetros, r.GuardFires, r.ObligationInjections,
+			r.SilentOnClean, r.Unjoinable, r.CustodianRemedied, r.CustodianUnremedied)
+		if len(r.Outcomes) > 0 {
+			s.WriteString("| channel | outcome | firings |\n|---|---|---|\n")
+			for _, o := range r.Outcomes {
+				fmt.Fprintf(&s, "| %s | %s | %d |\n", o.Channel, o.Outcome, o.Firings)
+			}
+			s.WriteString("\n")
+		}
+		s.WriteString("Outcome-shaped counts, never causality: the arm carries causality (law 12).\n\n")
+	}
+
 	return s.String()
 }
 
