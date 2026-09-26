@@ -141,6 +141,16 @@ refuses one that does not. Packs are embedded only; a pack search path
   violation; **no concerns registered exits 0 with the absence named** and
   the two paths to write. `--json` is the observatory's model (law 10: one
   shape, many surfaces).
+- **`fathom config propose [--repo R] [--json | --patch]`** (CC-9) — the
+  diff-offering verb (vision 22 §2's PROPOSE): for each violated concern a
+  unified diff where the mend is mechanical — a dead pointer or dead script
+  path whose basename names exactly ONE repo file (a move; zero is "gone",
+  two or more "ambiguous", both named) — and the remedy otherwise (prose,
+  budgets, renamed targets; fathom's own stanza region goes through `fathom
+  init` / `fleet reconcile`, never a hand-applied diff). It writes nothing:
+  no repo file, no beat, no receipt. `TestConfigPropose_OffersDiffNeverWrites`
+  hashes the tree before and after, then applies `--patch` with `git apply`
+  and re-audits. Exit 0 whenever it ran; the audit is the gate.
 - **Doctor row** (`concerns`) — the capability-row discipline: a load
   error or a violation is the only red; zero concerns is a passing row
   with the absence in its reason.

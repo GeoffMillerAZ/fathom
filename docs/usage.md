@@ -1271,6 +1271,25 @@ stderr and the run reports itself as a lower bound, never a silent clean
 bill. Stays off by default until precision holds ≥ 0.8 on a real labelled
 set (VB-29, `docs/vision/22-config-custodian.md` §3c).
 
+### `config propose` — the diff-offering verb (CC-9)
+
+```sh
+fathom config propose [--repo .] [--json | --patch]
+```
+
+Runs the same audit and, for each violated concern, offers a unified diff
+where the mend is mechanical — v1: a dead pointer or dead script path whose
+basename names exactly one file in the repo (it moved; a markdown link is
+rewritten file-relative, a backtick path root-relative) — and names the
+rest: no file of that name ("gone, not moved"), several ("ambiguous"), a
+renamed task target, and every other kind's remedy (prose, budgets, and
+fathom's own stanza region, which only `fathom init` / `fleet reconcile`
+write). **It writes nothing** — no repo file, no beat. `--patch` prints only
+the combined diff (`fathom config propose --patch | git apply` from the
+repo root); `--json` is `{repo_root, violated, proposals, patch}`. Exit `0`
+whenever it ran — `config audit` is the gate — and `1` only when a
+concerns file would not load.
+
 ### `daemon` — install, inspect and remove the serve-http agent
 
 ```sh
