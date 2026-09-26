@@ -453,7 +453,16 @@ func (c *Client) SourcePaths(ctx context.Context, service string) ([]string, err
 // available — so source-scanning tools work regardless of the server's
 // working directory. It falls back to the service ID as path so connectors
 // that only need the ID (like FauxConnector) keep working.
+//
+// RT-146: at most two Sources reads run at once process-wide
+// (acquireSourcesSlot); a hook-origin ctx (WithHookOrigin) never waits and
+// gets ErrSourcesBusy. The fetch loop stops when ctx ends.
 func (c *Client) Sources(ctx context.Context, service string) ([]core.SourceFile, error) {
+	release, err := acquireSourcesSlot(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer release()
 	svcRef := core.ServiceRef{ID: service, Path: service}
 	if meta, found, err := c.st.GetServiceMeta(ctx, service); err == nil && found && meta.Path != "" {
 		svcRef.Path = meta.Path
@@ -466,6 +475,9 @@ func (c *Client) Sources(ctx context.Context, service string) ([]core.SourceFile
 
 	files := make([]SourceFile, 0, len(refs))
 	for _, ref := range refs {
+		if cerr := ctx.Err(); cerr != nil {
+			return nil, cerr
+		}
 		data, err := c.conn.Fetch(ctx, ref)
 		if err != nil {
 			// Skip files that cannot be fetched (e.g. permission errors).
