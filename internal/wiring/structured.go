@@ -55,6 +55,26 @@ type Key struct {
 	// left as "someone else's". An entry that already matches is skipped
 	// unchanged. The engine default (false) stays strict.
 	AdoptUntracked bool
+	// ShippedTimeout is, for a KindJSONHook key whose Timeout the caller
+	// adopted from the file, the timeout fathom's template ships (0: Timeout
+	// is already the template's). An entry equal to the shipped rendering is
+	// fathom's own even when the per-checkout ledger names an older release.
+	ShippedTimeout int
+}
+
+// shippedValue is the value fathom's template ships at this key: want,
+// unless the caller adopted a timeout that differs from the template's.
+func (k Key) shippedValue(want string) string {
+	if k.Kind != KindJSONHook || k.ShippedTimeout == 0 || k.ShippedTimeout == k.Timeout {
+		return want
+	}
+	sk := k
+	sk.Timeout = k.ShippedTimeout
+	v, err := sk.desired()
+	if err != nil {
+		return want
+	}
+	return v
 }
 
 // ID is the key's stable address, and the string the ownership ledger

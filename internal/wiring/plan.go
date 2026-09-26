@@ -384,6 +384,12 @@ func planKey(root string, k Key, ledger Ledger) Item {
 	case !isOwned:
 		it.Verdict = VerdictApply
 		it.Reason = "fathom's own entry (identified by its marker, unrecorded in " + ledgerRelPath + ") is out of date — updating it to the current template and recording ownership"
+	case owned.Digest != digest(current) && current == k.shippedValue(want):
+		// The ledger is per checkout: when fathom's template moves in git the
+		// recorded digest lags an entry that is exactly the shipped template.
+		// That is fathom's own content, not a hand edit.
+		it.Verdict = VerdictSkip
+		it.Reason = "already current (the shipped template; the digest recorded on " + orUnrecorded(owned.Wrote) + " names an older one)"
 	case owned.Digest != digest(current):
 		it.Verdict, it.Cause = VerdictBlocked, CauseDrift
 		it.Reason = "the entry changed since fathom wrote it on " + orUnrecorded(owned.Wrote) + " (recorded " + short(owned.Digest) +

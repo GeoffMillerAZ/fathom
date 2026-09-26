@@ -66,13 +66,15 @@ func planOwnedFile(root string, f OwnedFile, ledger Ledger) Item {
 
 	owned, isOwned := ownedKey(ledger, f.File, ownedFileID)
 	switch {
+	case current == f.Body:
+		// Before drift: a file equal to the shipped source is fathom's own even
+		// when the per-checkout ledger recorded an older release.
+		it.Verdict = VerdictSkip
+		it.Reason = "already current"
 	case isOwned && owned.Digest != digest(current):
 		it.Verdict, it.Cause = VerdictBlocked, CauseDrift
 		it.Reason = f.File + " was edited by hand under fathom's marker since fathom wrote it on " + orUnrecorded(owned.Wrote) +
 			" (recorded " + short(owned.Digest) + ", now " + short(digest(current)) + ") — fathom will not merge; delete the marker line to keep yours, or remove the file to take fathom's"
-	case current == f.Body:
-		it.Verdict = VerdictSkip
-		it.Reason = "already current"
 	default:
 		it.Verdict = VerdictApply
 		it.Reason = "fathom's own file is behind the shipped source — rewriting it under its marker and recording the digest"

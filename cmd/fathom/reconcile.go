@@ -202,10 +202,38 @@ var stanzaFiles = []string{"CLAUDE.md", "AGENTS.md"}
 // stanzaServiceID resolves the service id the stanza is rendered with: the
 // registry's, else the directory basename as a daemon-unreachable fallback.
 func stanzaServiceID(root, service string) string {
-	if service == "" {
-		return strings.ToLower(filepath.Base(root))
+	if service != "" {
+		return service
 	}
-	return service
+	if named := stanzaNamedService(root); named != "" {
+		return named
+	}
+	return strings.ToLower(filepath.Base(root))
+}
+
+// stanzaServiceRe reads the service id out of the template's own sentence.
+var stanzaServiceRe = regexp.MustCompile(`indexed by fathom as service "([^"\s]+)"`)
+
+// stanzaNamedService is the service id the repo's existing fathom region
+// already names, "" when none does. Without it a --repo reconcile (no
+// registry lookup) rendered the stanza under the directory's name and
+// --apply rewrote a checkout at …/sextant, registered as "fathom", to name
+// a service that does not exist.
+func stanzaNamedService(root string) string {
+	for _, f := range stanzaFiles {
+		data, err := os.ReadFile(filepath.Join(root, f))
+		if err != nil {
+			continue
+		}
+		begin := strings.Index(string(data), "<!-- fathom:begin")
+		if begin < 0 {
+			continue
+		}
+		if m := stanzaServiceRe.FindSubmatch(data[begin:]); m != nil {
+			return string(m[1])
+		}
+	}
+	return ""
 }
 
 // stanzaPlan is the wiring plan for the stanza regions of one repository —
@@ -327,6 +355,7 @@ func shimHookKeys(root string) ([]wiring.Key, []string) {
 				continue
 			}
 			k := hookKeyFor(hs, template)
+			k.ShippedTimeout = k.Timeout
 			if entry.timeout > 0 {
 				k.Timeout = entry.timeout
 			}
@@ -358,6 +387,20 @@ func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 	// stanza with an inferred dirname would rewrite a repo that chose a
 	// different id with the WRONG name — the registry knows, so ask it.
 	svcByRoot := map[string]string{}
+	if len(roots) > 0 {
+		// --repo roots take the registry's id too when the daemon answers;
+		// otherwise stanzaServiceID falls back to what the stanza names.
+		hc := &http.Client{Timeout: 2 * time.Second}
+		if svcs, err := fetchServices(hc, *url); err == nil {
+			for _, r := range roots {
+				for name, info := range svcs {
+					if info.path != "" && sameRepoPath(r, info.path) {
+						svcByRoot[r] = strings.ToLower(name)
+					}
+				}
+			}
+		}
+	}
 	if len(roots) == 0 {
 		hc := &http.Client{Timeout: 4 * time.Second}
 		svcs, err := fetchServices(hc, *url)
