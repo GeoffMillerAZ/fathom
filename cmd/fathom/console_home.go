@@ -16,13 +16,19 @@ package main
 //     per day on one shared scale (console.FleetTable, OC-20).
 //
 // The page's JSON carries `fathom brief --json` — the same projection the
-// verb prints (brief.go) — and `fathom fleet report --json`.
+// verb prints (brief.go) — and `fathom fleet report --json`; and, per
+// project, the two verbs the queue's proof figures answer from recorded
+// instruments: `fathom plans status` (each plan's verify run at HEAD, from
+// the ledger) and `fathom certify status` (certify.Gaps over the store and
+// the repo's intent corpus), each in the verb's own shape and held to it
+// by TestConsolePagesRenderTheirVerbs.
 
 import (
 	"context"
 	"fmt"
 	"html"
 	"html/template"
+	"strconv"
 	"strings"
 	"time"
 
@@ -31,6 +37,7 @@ import (
 	"github.com/geoffmilleraz/app-kit/appkit/ui/form"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/stat"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/table"
+	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/console"
 )
 
@@ -38,14 +45,64 @@ func init() {
 	declarePage(consolePage{
 		ID: "home", Route: "/{$}", Href: "/", Group: "Now", Order: 0, Nav: true,
 		Title: "Now", NavLabel: "Home",
-		Question: "What needs my attention, and what changed since I last looked?",
-		Verbs:    []string{"fathom brief --json", "fathom fleet report --json"},
+		Question:     "What needs my attention, and what changed since I last looked?",
+		Verbs:        []string{"fathom brief --json", "fathom fleet report --json"},
+		ProjectVerbs: []string{verbPlansStatusFor, verbCertifyStatusFor},
 		Shows: []console.MetricID{
 			console.MetricServices, console.MetricAgentTools, console.MetricSessions,
 			console.MetricWiredFresh, console.MetricPlanRowsVerified, console.MetricClaimsFresh, console.MetricCertificatesLive,
 		},
 		Build: buildHomePage,
 	})
+}
+
+// The per-project verbs the Now page renders from recorded instruments.
+const (
+	verbPlansStatusFor   = "fathom plans status --service {svc} --json"
+	verbCertifyStatusFor = "fathom certify status --service {svc} --json"
+)
+
+// nowPlanStatus is one plan as `fathom plans status --json` counts it,
+// read from the plan's recorded verify run: proven is the run's verified
+// rows, claimed_unproven its other claimed rows (failing and unprovable),
+// unclaimed the open, deferred and skipped rows the ledger does not split.
+// A run that proved an older commit says so (stale) — only a run at HEAD
+// is the verb's answer today.
+type nowPlanStatus struct {
+	Plan            string `json:"plan"`
+	Total           int    `json:"total"`
+	Proven          int    `json:"proven"`
+	ClaimedUnproven int    `json:"claimed_unproven"`
+	Unclaimed       int    `json:"unclaimed"`
+	Failing         int    `json:"failing"`
+	At              string `json:"at"`
+	Commit          string `json:"commit,omitempty"`
+	Stale           string `json:"stale,omitempty"`
+}
+
+// nowProjectSections are the Now page's per-project verb sections, keyed
+// by service.
+func nowProjectSections(p console.Projects) map[string]any {
+	plans := map[string][]nowPlanStatus{}
+	certs := map[string]map[string]any{}
+	for _, r := range p.Rows {
+		for _, run := range r.Runs {
+			unclaimed := run.Total - run.Claimed
+			if unclaimed < 0 {
+				unclaimed = 0
+			}
+			plans[r.Service] = append(plans[r.Service], nowPlanStatus{
+				Plan: run.Plan, Total: run.Total, Proven: run.Verified, ClaimedUnproven: run.Claimed - run.Verified,
+				Unclaimed: unclaimed, Failing: run.Failing, At: run.At, Commit: run.Commit, Stale: run.StaleReason,
+			})
+		}
+		c := r.Certs
+		if c.State == console.StateAbsent || (c.State == console.StateError && len(c.V.Unreadable) == 0) {
+			continue // no store, or the store failed: the verb has no answer either
+		}
+		certs[r.Service] = certifyStatusJSON(r.Service, certify.GapSummary{Declared: c.V.Declared, Live: c.V.Live, Gaps: c.V.Gaps, Cases: c.V.Cases, JoinedCases: c.V.JoinedCases}, c.V.Unreadable)
+	}
+	return map[string]any{verbPlansStatusFor: plans, verbCertifyStatusFor: certs}
 }
 
 // nowReportSchema names the Now projection's wire version.
@@ -109,8 +166,9 @@ func consoleSharedMetrics(m observatoryModel, pr projectsRead) console.Metrics {
 func buildHomePage(cr *consoleRequest) (consoleOut, error) {
 	m := cr.model()
 	pr := cr.projects()
+	sincePage, _ := strconv.Atoi(cr.r.URL.Query().Get("since_page"))
 	since := gatherSince(cr.r.Context(), sinceSources{
-		baseURL: cr.deps.selfURL, callLog: modelCallFacts(m).Log.Path, viewsLog: cr.deps.views.logPath, model: m, now: cr.now,
+		baseURL: cr.deps.selfURL, callLog: modelCallFacts(m).Log.Path, viewsLog: cr.deps.views.logPath, model: m, now: cr.now, page: sincePage,
 	})
 	rep := buildNowReport(m, pr, since, cr.now)
 	out := consoleOut{
@@ -121,7 +179,9 @@ func buildHomePage(cr *consoleRequest) (consoleOut, error) {
 		Body:    func() string { return renderNow(rep, m, cr.now) },
 	}
 	if wantsJSON(cr.r) {
-		out.Sections = map[string]any{"fathom brief --json": rep, "fathom fleet report --json": fleetReportSection(cr)}
+		out.Sections = nowProjectSections(pr.projects)
+		out.Sections["fathom brief --json"] = rep
+		out.Sections["fathom fleet report --json"] = fleetReportSection(cr)
 	}
 	return out, nil
 }
@@ -210,7 +270,7 @@ func renderAttentionPanel(a console.Attention, m observatoryModel) string {
 		ID: "attention", Title: "Needs attention",
 		Question:    "What blocks proof first, and which command fixes it?",
 		Verb:        "fathom brief --json",
-		Source:      "the verify ledger (the newest run of each plan at its registered root), the daemon's store (certify status, the obligations compile), the registry's freshness and each repo's .fathom/observations.md",
+		Source:      "the verify ledger (each plan's run at the project's HEAD, from any clone; else the registered root's newest, stale), the daemon's store (certify status, the obligations compile), the registry's freshness and each repo's .fathom/observations.md",
 		Denominator: fmt.Sprintf("%s across %s", plural(len(a.Items), "item"), plural(a.Projects, "project")),
 		Freshness:   "as of " + m.GeneratedAt,
 		State:       a.State, Reason: a.Reason,
@@ -312,6 +372,10 @@ func renderSincePanel(s console.Since, now time.Time) string {
 	case s.State == console.StateZero:
 		body.WriteString(chrome.RenderEmptyState(chrome.EmptyState{Heading: "Nothing recorded since " + dayOnly(s.From), Body: "No push, deploy, measurement or restart is in the ledgers this page reads."}))
 	case len(s.Items) > 0:
+		first := (s.Page-1)*s.PerPage + 1
+		if s.Pages > 1 {
+			fmt.Fprintf(&body, `<p class="mb-1 text-xs text-ink-muted" data-since-shown>Changes %d–%d of %s, newest first.</p>`, first, first+len(s.Items)-1, fmtThousands(s.Total))
+		}
 		shown := s.Items
 		if len(shown) > nowSinceShown {
 			shown = shown[:nowSinceShown]
@@ -319,8 +383,21 @@ func renderSincePanel(s console.Since, now time.Time) string {
 		body.WriteString(renderChangeList(shown))
 		if rest := s.Items[len(shown):]; len(rest) > 0 {
 			body.WriteString(`<div class="mt-2">` + chrome.RenderDisclosure(chrome.Disclosure{
-				Summary: fmt.Sprintf("Show %s earlier", plural(len(rest), "change")),
+				Summary: fmt.Sprintf("Show %s earlier on this page", plural(len(rest), "change")),
 				Body:    template.HTML(renderChangeList(rest)),
+			}) + `</div>`)
+		}
+		if s.Pages > 1 {
+			// Every change in the window is on some page: the list is paged,
+			// never cut (design §2).
+			body.WriteString(`<div class="mt-3 [&_a]:min-h-11 [&_span]:min-h-11" data-since-pages>` + chrome.RenderPagination(chrome.Pagination{
+				Page: s.Page, TotalPages: s.Pages, AriaLabel: "changes pages",
+				HrefFor: func(n int) string {
+					if n <= 1 {
+						return "/#since"
+					}
+					return "/?since_page=" + strconv.Itoa(n) + "#since"
+				},
 			}) + `</div>`)
 		}
 	}
@@ -330,12 +407,16 @@ func renderSincePanel(s console.Since, now time.Time) string {
 			read = append(read, src.Name)
 		}
 	}
+	denom := fmt.Sprintf("%s since %s", plural(s.Total, "change"), dayOnly(s.From))
+	if s.Pages > 1 {
+		denom += fmt.Sprintf(" · page %d of %d", s.Page, s.Pages)
+	}
 	return renderPanel(consolePanel{
 		ID: "since", Title: "Since you last looked",
 		Question:    "What changed: pushes, deploys, measurements and restarts?",
 		Verb:        "fathom brief --json",
 		Source:      "read: " + strings.Join(read, ", ") + " — each change is a ledger row, never inferred",
-		Denominator: fmt.Sprintf("%s since %s", plural(s.Total, "change"), dayOnly(s.From)),
+		Denominator: denom,
 		Freshness:   "as rendered",
 		State:       s.State, Reason: s.Reason,
 		SourceKey: "daemon index",

@@ -30,7 +30,7 @@ import (
 // consoleFixtureServices are the fauxtown services the fixture fleet holds.
 var consoleFixtureServices = []string{"checkout-service", "ledger-service", "payment-service"}
 
-var consoleFixtureStore struct {
+var consoleFixtureStore, consoleFixtureRootedStore struct {
 	once sync.Once
 	path string
 	err  string
@@ -69,11 +69,47 @@ func consoleFixtureStorePath(t *testing.T) string {
 	return consoleFixtureStore.path
 }
 
+// consoleFixtureRootedStorePath ingests the fixture fleet once per test
+// binary from the fauxtown directories themselves (local mode), so each
+// project's registered root is a real directory inside this checkout: its
+// HEAD is readable, and a verify run at that commit is the project's
+// current proof. (The faux-mode store records each root as the bare
+// service name, which resolves nowhere: HEAD unknown.)
+func consoleFixtureRootedStorePath(t *testing.T) string {
+	t.Helper()
+	consoleFixtureRootedStore.once.Do(func() {
+		dir := filepath.Join(os.Getenv("HOME"), "console-fixture-rooted")
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			consoleFixtureRootedStore.err = err.Error()
+			return
+		}
+		path := filepath.Join(dir, "fleet.sqlite")
+		for _, svc := range consoleFixtureServices {
+			root, err := filepath.Abs(fauxtownPath(svc))
+			if err != nil {
+				consoleFixtureRootedStore.err = err.Error()
+				return
+			}
+			var out bytes.Buffer
+			if code := run([]string{"ingest", "--service", svc, "--path", root, "--store", path}, &out, &out); code != 0 {
+				consoleFixtureRootedStore.err = "ingest " + svc + ": " + out.String()
+				return
+			}
+		}
+		consoleFixtureRootedStore.path = path
+	})
+	if consoleFixtureRootedStore.err != "" {
+		t.Fatal(consoleFixtureRootedStore.err)
+	}
+	return consoleFixtureRootedStore.path
+}
+
 // consoleFixture is one running console over the fixture fleet.
 type consoleFixture struct {
 	ts        *httptest.Server
 	deps      *consoleDeps
 	client    *client.Client
+	store     string
 	dir       string
 	callLog   string
 	ledger    string
@@ -106,8 +142,9 @@ func newConsoleFixture(t *testing.T) *consoleFixture {
 
 // consoleFixtureOpts varies the fixture. LogCalls gives the daemon's MCP
 // server a call logger appending to the fixture's call log — the log its
-// pages read — as serve-http's --call-log does.
-type consoleFixtureOpts struct{ LogCalls bool }
+// pages read — as serve-http's --call-log does. Rooted serves the store
+// whose projects have real roots (consoleFixtureRootedStorePath).
+type consoleFixtureOpts struct{ LogCalls, Rooted bool }
 
 func newConsoleFixtureOpts(t *testing.T, o consoleFixtureOpts) *consoleFixture {
 	t.Helper()
@@ -123,7 +160,12 @@ func newConsoleFixtureOpts(t *testing.T, o consoleFixtureOpts) *consoleFixture {
 	t.Setenv("FATHOM_HOOKS_LOG", filepath.Join(dir, "hooks.jsonl"))
 	t.Setenv("FATHOM_CONSOLE_VIEWS", f.viewsLog)
 
-	c, err := client.NewConstantClient(client.ModeLocal, consoleFixtureStorePath(t))
+	storePath := consoleFixtureStorePath(t)
+	if o.Rooted {
+		storePath = consoleFixtureRootedStorePath(t)
+	}
+	f.store = storePath
+	c, err := client.NewConstantClient(client.ModeLocal, storePath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,7 +192,7 @@ func newConsoleFixtureOpts(t *testing.T, o consoleFixtureOpts) *consoleFixture {
 	// serve-http records itself once bound (recordServingDaemon): a verb
 	// run against this URL reads the store and log the daemon names.
 	if p, ok := daemonRecordPathFor(f.ts.URL); ok {
-		_ = console.WriteDaemonRecord(p, console.NewDaemonRecord(strings.TrimPrefix(f.ts.URL, "http://"), os.Getpid(), f.callLog, consoleFixtureStorePath(t), "", f.now))
+		_ = console.WriteDaemonRecord(p, console.NewDaemonRecord(strings.TrimPrefix(f.ts.URL, "http://"), os.Getpid(), f.callLog, storePath, "", f.now))
 	}
 
 	prev := fleetReportNow
@@ -207,16 +249,17 @@ func (f *consoleFixture) pageJSON(t *testing.T, path string) consolePageJSONWire
 
 // consolePageJSONWire decodes the envelope with raw sections and metrics.
 type consolePageJSONWire struct {
-	Schema   string                     `json:"schema"`
-	Page     string                     `json:"page"`
-	Route    string                     `json:"route"`
-	Title    string                     `json:"title"`
-	Group    string                     `json:"group"`
-	Question string                     `json:"question"`
-	Verbs    []string                   `json:"verbs"`
-	Metrics  map[string]json.RawMessage `json:"metrics"`
-	Sections map[string]json.RawMessage `json:"sections"`
-	Model    json.RawMessage            `json:"model"`
+	Schema       string                     `json:"schema"`
+	Page         string                     `json:"page"`
+	Route        string                     `json:"route"`
+	Title        string                     `json:"title"`
+	Group        string                     `json:"group"`
+	Question     string                     `json:"question"`
+	Verbs        []string                   `json:"verbs"`
+	ProjectVerbs []string                   `json:"project_verbs"`
+	Metrics      map[string]json.RawMessage `json:"metrics"`
+	Sections     map[string]json.RawMessage `json:"sections"`
+	Model        json.RawMessage            `json:"model"`
 }
 
 // samplePath is a concrete URL for a registered page (parameters filled

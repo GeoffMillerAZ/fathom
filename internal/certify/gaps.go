@@ -17,7 +17,9 @@ package certify
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -84,10 +86,15 @@ type GapSummary struct {
 	Cases       int
 }
 
-// GapReport is Gaps' full return.
+// GapReport is Gaps' full return. Unreadable names every target source
+// that exists and could not be read — an intent corpus file, the incidents
+// record, the port scan — as "path: reason". When it is non-empty the
+// targets and the summary are a lower bound, and a caller must say so:
+// an unreadable corpus is never "declares none" (I38, ADR-027).
 type GapReport struct {
-	Targets []GapTarget
-	Summary GapSummary
+	Targets    []GapTarget
+	Summary    GapSummary
+	Unreadable []string
 }
 
 // incidentHeadingPath is docs/intent/incidents.md's own repo-relative
@@ -106,15 +113,18 @@ type incidentHeading struct {
 // present) and returns every "### INC-N" heading's id and line, sorted by
 // id — the SAME incidentHeadingRe resolveIncident (resolve.go) already
 // uses to resolve one id, walked here for every id the file names. A
-// missing or unreadable file yields none — the SAME "nothing to report"
-// honesty an absent docs/intent/ already carries throughout this package
-// (intent.Load itself never treats absence as an error). The line is
-// derived from the match's own byte offset (bytes.Count of newlines
-// before it) — free given the file is already read and matched here.
-func incidentHeadings(corpusRoot string) []incidentHeading {
+// missing file yields none (intent.Load itself never treats absence as an
+// error); a file that exists and cannot be read yields none AND its error,
+// which Gaps names — never a silently shorter list. The line is derived
+// from the match's own byte offset (bytes.Count of newlines before it) —
+// free given the file is already read and matched here.
+func incidentHeadings(corpusRoot string) ([]incidentHeading, error) {
 	body, err := os.ReadFile(filepath.Join(corpusRoot, "docs", "intent", "incidents.md"))
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
+	}
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	var out []incidentHeading
 	for _, m := range incidentHeadingRe.FindAllSubmatchIndex(body, -1) {
@@ -123,7 +133,7 @@ func incidentHeadings(corpusRoot string) []incidentHeading {
 		out = append(out, incidentHeading{id: id, line: line})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].id < out[j].id })
-	return out
+	return out, nil
 }
 
 // markerRemedy is the remedy line for a target with NO certificate
@@ -180,13 +190,34 @@ func Gaps(ctx context.Context, st store.Store, service, corpusRoot string, kinds
 	for _, d := range decls {
 		add(d.Kind, d.TargetID, Source{File: d.File, Line: d.Line})
 	}
+	// Every source that exists and could not be read, once per path: the
+	// report is then a lower bound, and says so.
+	var unreadable []string
+	unread := map[string]bool{}
+	noteUnread := func(path, why string) {
+		if unread[path] {
+			return
+		}
+		unread[path] = true
+		unreadable = append(unreadable, path+": "+why)
+	}
 	if corpusRoot != "" {
-		if corpus, cerr := intent.Load(corpusRoot); cerr == nil {
+		corpus, cerr := intent.Load(corpusRoot)
+		if cerr != nil {
+			noteUnread("docs/intent", cerr.Error())
+		} else {
 			for _, inv := range corpus.Invariants {
 				add("invariant", inv.ID, Source{File: inv.File, Line: inv.Line})
 			}
+			for _, e := range corpus.Coverage.Unreadable() {
+				noteUnread(filepath.ToSlash(e.Path), e.Outcome.Detail)
+			}
 		}
-		for _, h := range incidentHeadings(corpusRoot) {
+		heads, herr := incidentHeadings(corpusRoot)
+		if herr != nil {
+			noteUnread(incidentHeadingPath, errnoText(herr))
+		}
+		for _, h := range heads {
 			add("incident", h.id, Source{File: incidentHeadingPath, Line: h.line})
 		}
 	}
@@ -199,11 +230,12 @@ func Gaps(ctx context.Context, st store.Store, service, corpusRoot string, kinds
 	portImpls := map[string][]PortImplementation{}
 	if corpusRoot != "" && include("port") {
 		ports, perr := PortGaps(ctx, st, service, corpusRoot)
-		if perr == nil {
-			for _, p := range ports {
-				add("port", p.ID, Source{File: p.File, Line: p.Line})
-				portImpls[p.ID] = p.Implementations
-			}
+		if perr != nil {
+			noteUnread("port targets", perr.Error())
+		}
+		for _, p := range ports {
+			add("port", p.ID, Source{File: p.File, Line: p.Line})
+			portImpls[p.ID] = p.Implementations
 		}
 	}
 
@@ -309,11 +341,24 @@ func Gaps(ctx context.Context, st store.Store, service, corpusRoot string, kinds
 		}
 	}
 
+	sort.Strings(unreadable)
 	return GapReport{
 		Targets: targets,
 		Summary: GapSummary{
 			Declared: len(targets), Live: live, Gaps: gaps,
 			JoinedCases: casesJoined, Cases: casesTotal,
 		},
+		Unreadable: unreadable,
 	}, nil
+}
+
+// errnoText is an error's operating-system wording ("operation not
+// permitted"), its *fs.PathError wrapper stripped: the path is named
+// beside it.
+func errnoText(err error) string {
+	var pe *fs.PathError
+	if errors.As(err, &pe) {
+		return pe.Err.Error()
+	}
+	return err.Error()
 }

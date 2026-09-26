@@ -5,8 +5,12 @@ package console
 // that shows it and the exact command that fixes it. The queue is ordered
 // by what blocks proof first:
 //
-//  1. gate failures — claimed plan rows the verify gate proves false;
-//  2. unproven claims — claimed rows the gate cannot prove (verify --strict);
+//  1. gate failures — claimed plan rows the verify gate proves false at
+//     HEAD;
+//  2. unproven claims — claimed rows the gate cannot prove (verify
+//     --strict), plans whose newest run proved an older commit (history,
+//     stated in the past tense with its commit and date), and plans no
+//     recorded run ever checked;
 //  3. stale or failed indexes — answers that no longer match HEAD;
 //  4. certificate gaps — targets with no live certificate;
 //  5. uncompiled governing guides — rules served raw, not compiled;
@@ -14,13 +18,15 @@ package console
 //
 // Nothing here runs a verify, a compile or a doctor: every item reads a
 // recorded instrument and names when it was true. A source that could not
-// be read makes the queue a named lower bound, never a shorter list (I38).
+// be read makes the queue a named lower bound, never a shorter list (I38),
+// and an item whose count nobody knows carries its state and no count.
 
 import (
 	"fmt"
 	"path"
 	"sort"
 	"strings"
+	"time"
 )
 
 // AttentionKind is an item's kind; the order of the kinds is the queue's.
@@ -78,10 +84,20 @@ type AttentionItem struct {
 	Area    string        `json:"area"`
 	Service string        `json:"service"`
 	// Subject names what inside the project: a plan, a guide, a file.
-	Subject  string `json:"subject,omitempty"`
-	Title    string `json:"title"`
-	Detail   string `json:"detail"`
-	Count    int    `json:"count"`
+	Subject string `json:"subject,omitempty"`
+	Title   string `json:"title"`
+	Detail  string `json:"detail"`
+	// Count is how many (rows, plans, targets, observations); omitted when
+	// the source could not be read and nobody knows — never a 0 standing
+	// in for "unknown" (doctrine rule 6).
+	Count int `json:"count,omitempty"`
+	// State is the item's truth state: present (what the instrument
+	// recorded of the code as it is), stale (recorded of an older commit),
+	// partial (a lower bound: part of the source was unreadable) or error
+	// (the source could not be read; Count is then unknown). Reason says
+	// why for any state but present.
+	State    State  `json:"state"`
+	Reason   string `json:"reason,omitempty"`
 	Evidence Link   `json:"evidence"`
 	Remedy   string `json:"remedy"`
 	// AsOf is when the instrument behind the item recorded it.
@@ -108,8 +124,9 @@ type Attention struct {
 // first, each with its area, evidence link and remedy.
 func AttentionQueue(p Projects) Attention {
 	var items []AttentionItem
+	ledgerRead := p.Ledger.State != StateError
 	for _, r := range p.Rows {
-		items = append(items, gateItems(r)...)
+		items = append(items, gateItems(r, ledgerRead, p.Now)...)
 		items = append(items, indexItems(r)...)
 		items = append(items, certificateItems(r)...)
 		items = append(items, guideItems(r)...)
@@ -119,6 +136,11 @@ func AttentionQueue(p Projects) Attention {
 		a, b := items[i], items[j]
 		if ra, rb := a.Kind.Rank(), b.Kind.Rank(); ra != rb {
 			return ra < rb
+		}
+		// Within a kind, what is known of the code as it is before
+		// history and unknowns.
+		if sa, sb := itemStateRank(a.State), itemStateRank(b.State); sa != sb {
+			return sa < sb
 		}
 		if a.weight != b.weight {
 			return a.weight > b.weight
@@ -132,6 +154,9 @@ func AttentionQueue(p Projects) Attention {
 	for i := range items {
 		items[i].Rank = i + 1
 		items[i].Area = items[i].Kind.Area()
+		if items[i].State == "" {
+			items[i].State = StatePresent
+		}
 		by[items[i].Kind]++
 	}
 	a := Attention{Items: items, ByKind: by, Projects: len(p.Rows)}
@@ -161,6 +186,20 @@ func AttentionQueue(p Projects) Attention {
 	return a
 }
 
+// itemStateRank orders items of one kind: present, then partial, then
+// stale history, then unread.
+func itemStateRank(s State) int {
+	switch s {
+	case StatePresent, "":
+		return 0
+	case StatePartial:
+		return 1
+	case StateStale:
+		return 2
+	}
+	return 3
+}
+
 // attentionSources names what the queue read.
 func attentionSources(p Projects) []SourceRead {
 	registry := SourceRead{Name: SourceRegistry, State: StatePresent}
@@ -171,33 +210,78 @@ func attentionSources(p Projects) []SourceRead {
 		}
 	}
 	out := []SourceRead{registry, p.Ledger, p.Store}
-	var obsFailed []string
+	var obsFailed, certsFailed, certsPartial, plansFailed []string
 	for _, r := range p.Rows {
 		if r.ObservationsErr != "" {
 			obsFailed = append(obsFailed, r.Service)
 		}
+		switch r.Certs.State {
+		case StateError:
+			certsFailed = append(certsFailed, r.Service)
+		case StatePartial:
+			certsPartial = append(certsPartial, r.Service)
+		}
+		if r.PlansErr != "" {
+			plansFailed = append(plansFailed, r.Service)
+		}
 	}
+	plans := SourceRead{Name: SourcePlanFiles, State: StatePresent}
+	if len(plansFailed) > 0 {
+		plans.State, plans.Reason = StateError, "unreadable in "+shortList(plansFailed, 3)
+	}
+	certs := SourceRead{Name: SourceCertTargets, State: StatePresent}
+	var why []string
+	if len(certsFailed) > 0 {
+		why = append(why, "unreadable in "+shortList(certsFailed, 3))
+	}
+	if len(certsPartial) > 0 {
+		why = append(why, "read in part in "+shortList(certsPartial, 3))
+	}
+	switch {
+	case len(certsFailed) > 0:
+		certs.State = StateError
+	case len(certsPartial) > 0:
+		certs.State = StatePartial
+	}
+	certs.Reason = strings.Join(why, "; ")
 	obs := SourceRead{Name: SourceObservations, State: StatePresent}
 	if len(obsFailed) > 0 {
 		obs.State, obs.Reason = StateError, "unreadable in "+shortList(obsFailed, 3)
 	}
-	return append(out, obs)
+	return append(out, plans, certs, obs)
 }
 
-// gateItems are a project's gate failures, one item per plan whose newest
-// recorded run carries them, and its unproven claims: one item per plan when
-// a single plan has them, else one item for the project (a dozen plans of
-// rows without contracts is one piece of work, not a dozen alarms).
-func gateItems(r ProjectFacts) []AttentionItem {
+// gateItems are a project's proof problems, each read from the plan's
+// recorded proof (PlanRuns):
+//
+//   - a gate failure per plan whose run at HEAD fails claimed rows;
+//   - its unproven claims at HEAD: one item per plan when a single plan has
+//     them, else one for the project (a dozen plans of rows without
+//     contracts is one piece of work, not a dozen alarms);
+//   - plans whose newest run proved an older commit: history, stated in the
+//     past tense with the commit and date, never a present-tense failure —
+//     one item per plan, or one for the project when several;
+//   - plans no recorded run ever checked (and a plans directory that could
+//     not be read: unknown, never "no plans").
+//
+// ledgerRead is false when the verify ledger could not be read: no run is
+// then known either way, and the queue's partial state says so instead of
+// calling every plan unverified.
+func gateItems(r ProjectFacts, ledgerRead bool, now time.Time) []AttentionItem {
 	var out []AttentionItem
-	var unproven []VerifyRun
+	var unproven, stale []VerifyRun
+	evidence := Link{Label: "Plans · " + r.Service, Href: ProjectHref(r.Service, "plans")}
 	for _, run := range r.Runs {
+		if !run.Current() {
+			stale = append(stale, run)
+			continue
+		}
 		if run.Failing > 0 {
 			out = append(out, AttentionItem{
 				Kind: AttentionGate, Service: r.Service, Subject: run.Plan, Count: run.Failing, weight: run.Failing,
 				Title:    fmt.Sprintf("%s in %s %s the gate", countNoun(run.Failing, "claimed row"), path.Base(run.Plan), pluralVerb(run.Failing, "fails", "fail")),
-				Detail:   fmt.Sprintf("%s · the newest verify run (%s): %d claimed, %d verified, %d failing — `fathom verify` exits 1", r.Service, runWhen(run), run.Claimed, run.Verified, run.Failing),
-				Evidence: Link{Label: "Plans · " + r.Service, Href: ProjectHref(r.Service, "plans")},
+				Detail:   fmt.Sprintf("%s · the verify run at HEAD (%s): %d claimed, %d verified, %d failing — `fathom verify` exits 1", r.Service, runWhen(run), run.Claimed, run.Verified, run.Failing),
+				Evidence: evidence,
 				Remedy:   inRoot(r.Path, "fathom verify --service "+r.Service+" --plan "+run.Plan),
 				AsOf:     run.At,
 			})
@@ -206,7 +290,6 @@ func gateItems(r ProjectFacts) []AttentionItem {
 			unproven = append(unproven, run)
 		}
 	}
-	evidence := Link{Label: "Plans · " + r.Service, Href: ProjectHref(r.Service, "plans")}
 	switch len(unproven) {
 	case 0:
 	case 1:
@@ -215,7 +298,7 @@ func gateItems(r ProjectFacts) []AttentionItem {
 		out = append(out, AttentionItem{
 			Kind: AttentionUnproven, Service: r.Service, Subject: run.Plan, Count: n, weight: n,
 			Title:    fmt.Sprintf("%s in %s %s checked done, but the gate cannot prove %s", countNoun(n, "row"), path.Base(run.Plan), pluralVerb(n, "is", "are"), pluralVerb(n, "it", "them")),
-			Detail:   fmt.Sprintf("%s · the newest verify run (%s): %d claimed, %d verified — `fathom verify --strict` exits 1 on a claimed row with no contract the gate can test", r.Service, runWhen(run), run.Claimed, run.Verified),
+			Detail:   fmt.Sprintf("%s · the verify run at HEAD (%s): %d claimed, %d verified — `fathom verify --strict` exits 1 on a claimed row with no contract the gate can test", r.Service, runWhen(run), run.Claimed, run.Verified),
 			Evidence: evidence,
 			Remedy:   inRoot(r.Path, "fathom verify --strict --service "+r.Service+" --plan "+run.Plan),
 			AsOf:     run.At,
@@ -246,13 +329,143 @@ func gateItems(r ProjectFacts) []AttentionItem {
 		out = append(out, AttentionItem{
 			Kind: AttentionUnproven, Service: r.Service, Count: total, weight: total,
 			Title:    fmt.Sprintf("%s across %d plans in %s %s checked done, but the gate cannot prove %s", thousandsNoun(total, "row"), len(unproven), r.Service, pluralVerb(total, "is", "are"), pluralVerb(total, "it", "them")),
-			Detail:   fmt.Sprintf("%s · the newest run of each plan (%s): %s — `fathom verify --strict` exits 1 on each", r.Service, when, shortList(named, 4)),
+			Detail:   fmt.Sprintf("%s · the verify runs at HEAD (%s): %s — `fathom verify --strict` exits 1 on each", r.Service, when, shortList(named, 4)),
 			Evidence: evidence,
 			Remedy:   inRoot(r.Path, "fathom plans status --service "+r.Service),
 			AsOf:     newest,
 		})
 	}
+	if item, ok := staleProofItem(r, stale, evidence, now); ok {
+		out = append(out, item)
+	}
+	if !ledgerRead {
+		return out
+	}
+	switch unrun := UnrunPlans(r); {
+	case r.PlansErr != "":
+		out = append(out, AttentionItem{
+			Kind: AttentionUnproven, Service: r.Service, Subject: "docs/plans", weight: 1 << 30,
+			State: StateError, Reason: r.PlansErr,
+			Title:    r.Service + "'s plans cannot be read",
+			Detail:   r.Service + " · " + r.PlansErr + " — its proof state is unknown, never none",
+			Evidence: evidence, Remedy: inRoot(r.Path, "fathom doctor"),
+		})
+	case len(unrun) == 1:
+		out = append(out, AttentionItem{
+			Kind: AttentionUnproven, Service: r.Service, Subject: unrun[0], Count: 1, weight: 1,
+			Title:    path.Base(unrun[0]) + " in " + r.Service + " has no recorded verify run",
+			Detail:   r.Service + " · no `fathom verify` run of " + unrun[0] + " is recorded, at HEAD or at the registered root — its claimed rows are unchecked",
+			Evidence: evidence, Remedy: inRoot(r.Path, "fathom verify --service "+r.Service+" --plan "+unrun[0]),
+		})
+	case len(unrun) > 1:
+		names := make([]string, len(unrun))
+		for i, u := range unrun {
+			names[i] = path.Base(u)
+		}
+		out = append(out, AttentionItem{
+			Kind: AttentionUnproven, Service: r.Service, Count: len(unrun), weight: len(unrun),
+			Title:    fmt.Sprintf("%d plans in %s have no recorded verify run", len(unrun), r.Service),
+			Detail:   r.Service + " · no `fathom verify` run of " + shortList(names, 4) + " is recorded, at HEAD or at the registered root — their claimed rows are unchecked",
+			Evidence: evidence, Remedy: inRoot(r.Path, "fathom plans status --service "+r.Service),
+		})
+	case len(r.Runs) == 0 && r.HasPlans:
+		// Plans exist but their files were not listed: one item for the
+		// project, the count unknown.
+		out = append(out, AttentionItem{
+			Kind: AttentionUnproven, Service: r.Service, Subject: "docs/plans", weight: 1,
+			Title:    r.Service + "'s plans have no recorded verify run",
+			Detail:   r.Service + " · no `fathom verify` run is recorded, at HEAD or at the registered root — their claimed rows are unchecked",
+			Evidence: evidence, Remedy: inRoot(r.Path, "fathom plans status --service "+r.Service),
+		})
+	}
 	return out
+}
+
+// staleProofItem is a project's plans whose newest recorded run proved an
+// older commit: what those runs found, in the past tense, and the command
+// that asks the gate about HEAD.
+func staleProofItem(r ProjectFacts, stale []VerifyRun, evidence Link, now time.Time) (AttentionItem, bool) {
+	if len(stale) == 0 {
+		return AttentionItem{}, false
+	}
+	sort.SliceStable(stale, func(i, j int) bool {
+		if a, b := stale[i].Failing+stale[i].Unproven(), stale[j].Failing+stale[j].Unproven(); a != b {
+			return a > b
+		}
+		return stale[i].Plan < stale[j].Plan
+	})
+	failing, unproven, oldest := 0, 0, ""
+	for _, run := range stale {
+		failing += run.Failing
+		unproven += run.Unproven()
+		if oldest == "" || run.At < oldest {
+			oldest = run.At
+		}
+	}
+	found := "it proved every claimed row then"
+	if failing > 0 || unproven > 0 {
+		var parts []string
+		if failing > 0 {
+			parts = append(parts, fmt.Sprintf("failed %d", failing))
+		}
+		if unproven > 0 {
+			parts = append(parts, fmt.Sprintf("could not prove %d", unproven))
+		}
+		found = "it " + strings.Join(parts, " and ") + " of its claimed rows then"
+	}
+	head := "HEAD"
+	if r.RepoHead != "" {
+		head = "HEAD " + shortCommit(r.RepoHead)
+	}
+	it := AttentionItem{
+		Kind: AttentionUnproven, Service: r.Service, Count: len(stale), weight: failing + unproven,
+		State: StateStale, Reason: StaleProofReason(stale, r.RepoHead, now),
+		Evidence: evidence, AsOf: oldest,
+	}
+	if len(stale) == 1 {
+		run := stale[0]
+		it.Subject = run.Plan
+		it.Title = path.Base(run.Plan) + " in " + r.Service + " was last verified before " + head
+		it.Detail = fmt.Sprintf("%s · the newest verify run (%s): %d claimed, %d verified — %s; %s has no recorded run", r.Service, runWhen(run), run.Claimed, run.Verified, found, head)
+		if run.StaleReason != "" && r.RepoHead == "" {
+			it.Detail += " (" + run.StaleReason + ")"
+		}
+		it.Remedy = inRoot(r.Path, "fathom verify --service "+r.Service+" --plan "+run.Plan)
+		return it, true
+	}
+	named := make([]string, 0, len(stale))
+	commits := map[string]bool{}
+	var commitList []string
+	for _, run := range stale {
+		named = append(named, path.Base(run.Plan))
+		if c := shortCommit(run.Commit); c != "" && !commits[c] {
+			commits[c] = true
+			commitList = append(commitList, c)
+		}
+	}
+	sort.Strings(commitList)
+	when := dayOf(oldest)
+	if d := dayOf(maxAt(stale)); d != when {
+		when += " to " + d
+	}
+	at := ""
+	if len(commitList) > 0 {
+		at = " at " + shortList(commitList, 3)
+	}
+	it.Title = fmt.Sprintf("%d plans in %s were last verified before %s", len(stale), r.Service, head)
+	it.Detail = fmt.Sprintf("%s · their newest verify runs (%s%s): %s; %s has no recorded run of %s", r.Service, when, at, strings.Replace(found, "it ", "they ", 1), head, shortList(named, 4))
+	it.Remedy = inRoot(r.Path, "fathom plans status --service "+r.Service)
+	return it, true
+}
+
+func maxAt(runs []VerifyRun) string {
+	m := ""
+	for _, r := range runs {
+		if r.At > m {
+			m = r.At
+		}
+	}
+	return m
 }
 
 // indexItems are a stale index, a failed typed-edge pass and an index whose
@@ -294,18 +507,37 @@ func indexItems(r ProjectFacts) []AttentionItem {
 	return out
 }
 
-// certificateItems is one item per project with certification gaps.
+// certificateItems is one item per project with certification gaps. A
+// project whose targets could be read only in part is a named lower bound
+// (partial); one whose targets could not be read at all is unknown (error,
+// no count) — never "declares none".
 func certificateItems(r ProjectFacts) []AttentionItem {
+	evidence := Link{Label: "Proof · " + r.Service, Href: ProjectHref(r.Service, "proof")}
 	if r.Certs.State == StateError {
 		return []AttentionItem{{
 			Kind: AttentionCertificates, Service: r.Service, Subject: "certificates", weight: 1 << 30,
+			State: StateError, Reason: r.Certs.Reason,
 			Title:    r.Service + "'s certificates cannot be read",
 			Detail:   r.Service + " · " + r.Certs.Reason + " — gaps here are unknown, not absent",
-			Evidence: Link{Label: "Proof · " + r.Service, Href: ProjectHref(r.Service, "proof")},
+			Evidence: evidence,
 			Remedy:   r.CertRemedy,
 		}}
 	}
 	c := r.Certs.V
+	if r.Certs.State == StatePartial {
+		it := AttentionItem{
+			Kind: AttentionCertificates, Service: r.Service, Subject: "certificates", Count: c.Gaps, weight: 1 << 29,
+			State: StatePartial, Reason: r.Certs.Reason,
+			Title:    fmt.Sprintf("at least %d of %s+ certification targets in %s %s no live certificate", c.Gaps, thousands(c.Declared), r.Service, pluralVerb(c.Gaps, "has", "have")),
+			Detail:   fmt.Sprintf("%s · certify status read in part: %d live, %d gaps — %s", r.Service, c.Live, c.Gaps, r.Certs.Reason),
+			Evidence: evidence,
+			Remedy:   r.CertRemedy,
+		}
+		if c.Gaps == 0 {
+			it.Title = r.Service + "'s certification targets could be read only in part"
+		}
+		return []AttentionItem{it}
+	}
 	if r.Certs.State != StatePresent || c.Gaps == 0 {
 		return nil
 	}
@@ -313,7 +545,7 @@ func certificateItems(r ProjectFacts) []AttentionItem {
 		Kind: AttentionCertificates, Service: r.Service, Subject: "certificates", Count: c.Gaps, weight: c.Gaps,
 		Title:    fmt.Sprintf("%d of %s in %s %s no live certificate", c.Gaps, thousandsNoun(c.Declared, "certification target"), r.Service, pluralVerb(c.Gaps, "has", "have")),
 		Detail:   fmt.Sprintf("%s · certify status: %d live, %d gaps — each gap names the marker or manifest field that would certify it", r.Service, c.Live, c.Gaps),
-		Evidence: Link{Label: "Proof · " + r.Service, Href: ProjectHref(r.Service, "proof")},
+		Evidence: evidence,
 		Remedy:   r.CertRemedy,
 	}}
 }
@@ -328,6 +560,7 @@ func guideItems(r ProjectFacts) []AttentionItem {
 	case StateError:
 		return []AttentionItem{{
 			Kind: AttentionGuides, Service: r.Service, Subject: "obligations", weight: 1 << 30,
+			State: StateError, Reason: g.Reason,
 			Title:    r.Service + "'s compile record cannot be read",
 			Detail:   r.Service + " · " + g.Reason + " — uncompiled guides here are unknown, not absent",
 			Evidence: evidence, Remedy: inRoot(r.Path, "fathom doctor"),
@@ -378,6 +611,7 @@ func observationItems(r ProjectFacts) []AttentionItem {
 	if r.ObservationsErr != "" {
 		return []AttentionItem{{
 			Kind: AttentionObservations, Service: r.Service, Subject: file, weight: 1 << 30,
+			State: StateError, Reason: r.ObservationsErr,
 			Title:    r.Service + "'s observations file cannot be read",
 			Detail:   r.Service + " · " + r.ObservationsErr + " — its open defects are unknown, never none",
 			Evidence: overview, Remedy: inRoot(r.Path, "fathom doctor"),

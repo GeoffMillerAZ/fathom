@@ -111,18 +111,22 @@ func renderPanel(p consolePanel) string {
 }
 
 // truthStateLine renders a non-plain truth state in words, each state drawn
-// differently; present and zero render nothing (the number speaks).
+// differently; present and zero render nothing (the number speaks). A
+// reason can carry long paths with no break point, so the line wraps
+// anywhere rather than running off its card (FATHOM-UI-01: long
+// diagnostics stay left-aligned and wrapping).
 func truthStateLine(s console.State, reason string) string {
 	r := html.EscapeString(reason)
+	const wrap = ` min-w-0 [overflow-wrap:anywhere]`
 	switch s {
 	case console.StateAbsent:
-		return `<p class="mb-2 italic text-ink-muted" data-truth-line="absent">not measured — ` + r + `</p>`
+		return `<p class="mb-2 italic text-ink-muted` + wrap + `" data-truth-line="absent">not measured — ` + r + `</p>`
 	case console.StateError:
-		return `<p class="mb-2 font-medium text-danger" data-truth-line="error">could not be read — ` + r + `</p>`
+		return `<p class="mb-2 font-medium text-danger` + wrap + `" data-truth-line="error">could not be read — ` + r + `</p>`
 	case console.StateStale:
-		return `<p class="mb-2 text-caution" data-truth-line="stale">stale — ` + r + `</p>`
+		return `<p class="mb-2 text-caution` + wrap + `" data-truth-line="stale">stale — ` + r + `</p>`
 	case console.StatePartial:
-		return `<p class="mb-2 text-ink-muted" data-truth-line="partial">lower bound — ` + r + `</p>`
+		return `<p class="mb-2 text-ink-muted` + wrap + `" data-truth-line="partial">lower bound — ` + r + `</p>`
 	}
 	return ""
 }

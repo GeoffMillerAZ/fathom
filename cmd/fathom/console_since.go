@@ -10,7 +10,10 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
+	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -29,11 +32,12 @@ type sinceSources struct {
 	viewsLog string // the console's page-view log (the last look)
 	model    observatoryModel
 	now      time.Time
+	page     int // the list's page (?since_page=), 1 when unset
 }
 
 // gatherSince reads every ledger and projects the list.
 func gatherSince(ctx context.Context, src sinceSources) console.Since {
-	in := console.SinceInputs{Now: src.now, Limit: 50}
+	in := console.SinceInputs{Now: src.now, Limit: 50, Page: src.page}
 
 	// The last look: the previous view of Now.
 	views := console.SourceRead{Name: "page views", Path: src.viewsLog}
@@ -91,7 +95,7 @@ func gatherSince(ctx context.Context, src sinceSources) console.Since {
 	// Pushes and measurements, per project root.
 	pushes := console.SourceRead{Name: "git reflogs", State: console.StateAbsent, Reason: "no project has a remote-tracking reflog"}
 	readings := console.SourceRead{Name: "bench readings", State: console.StateAbsent, Reason: "no project records bench readings"}
-	var pushErrs, readErrs []string
+	var pushErrs, readErrs unreadRepos
 	since := src.now.Add(-console.SinceMaxWindow - 24*time.Hour)
 	for _, s := range src.model.Services {
 		_, commonDir, ok := gitDirs(s.Path)
@@ -101,7 +105,7 @@ func gatherSince(ctx context.Context, src sinceSources) console.Since {
 		ref, data, err := remoteTrackingReflog(commonDir)
 		switch {
 		case err != nil && !os.IsNotExist(err):
-			pushErrs = append(pushErrs, s.Service+": "+err.Error())
+			pushErrs.add(s.Service, err, s.Path)
 		case err == nil:
 			pushes.State, pushes.Reason = console.StatePresent, ""
 			entries := recentReflog(console.ParseReflog(data), since)
@@ -109,20 +113,69 @@ func gatherSince(ctx context.Context, src sinceSources) console.Since {
 			in.Changes = append(in.Changes, console.PushChanges(s.Service, ref, entries, func(c string) string { return subjects[c] })...)
 		}
 		if changes, found, err := readingChanges(ctx, s.Service, s.Path, s.RepoHead, since); err != nil {
-			readErrs = append(readErrs, s.Service+": "+err.Error())
+			readErrs.add(s.Service, err, s.Path)
 		} else if found {
 			readings.State, readings.Reason = console.StatePresent, ""
 			in.Changes = append(in.Changes, changes...)
 		}
 	}
 	if len(pushErrs) > 0 {
-		pushes.State, pushes.Reason = console.StateError, strings.Join(pushErrs, "; ")
+		pushes.State, pushes.Reason = console.StateError, pushErrs.reason()
 	}
 	if len(readErrs) > 0 {
-		readings.State, readings.Reason = console.StateError, strings.Join(readErrs, "; ")
+		readings.State, readings.Reason = console.StateError, readErrs.reason()
 	}
 	in.Sources = append(in.Sources, pushes, readings)
 	return console.SinceLastLook(in)
+}
+
+// unreadRepos collects the projects a ledger read failed in, for a reason
+// that stays one bounded line however many fail: up to three projects by
+// name and how many more, and the distinct failures with each path made
+// relative to its repository (a wedged volume fails every repo the same
+// way, and a list of eighteen absolute paths helps nobody).
+type unreadRepos []unreadRepo
+
+type unreadRepo struct {
+	service, why string
+}
+
+func (u *unreadRepos) add(service string, err error, root string) {
+	why := err.Error()
+	var pe *fs.PathError
+	if errors.As(err, &pe) {
+		p := pe.Path
+		if rel, rerr := filepath.Rel(root, p); rerr == nil && !strings.HasPrefix(rel, "..") {
+			p = rel
+		}
+		why = p + ": " + pe.Err.Error()
+	}
+	*u = append(*u, unreadRepo{service: service, why: why})
+}
+
+func (u unreadRepos) reason() string {
+	var names, whys []string
+	seen := map[string]bool{}
+	for _, r := range u {
+		names = append(names, r.service)
+		if !seen[r.why] {
+			seen[r.why] = true
+			whys = append(whys, r.why)
+		}
+	}
+	s := "unreadable in " + boundedNames(names, 3)
+	if len(whys) > 0 {
+		s += " (" + boundedNames(whys, 2) + ")"
+	}
+	return s
+}
+
+// boundedNames names up to max items, then how many more.
+func boundedNames(items []string, max int) string {
+	if len(items) <= max {
+		return strings.Join(items, ", ")
+	}
+	return strings.Join(items[:max], ", ") + fmt.Sprintf(" and %d more", len(items)-max)
 }
 
 // ─── deploys: an incremental scan of the call log ──────────────────────

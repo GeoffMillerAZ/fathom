@@ -64,21 +64,29 @@ type SinceInputs struct {
 	LastLookNote string
 	Changes      []Change
 	Sources      []SourceRead
-	// Limit bounds the list (default 50).
+	// Limit is one page's length (default 50) and Page the 1-based page
+	// to return: the list is paged, never cut — every change in the window
+	// is on some page (design §2: pagination over 50 rows).
 	Limit int
+	Page  int
 }
 
 // Since is the "since you last looked" projection.
 type Since struct {
-	LastLook     string       `json:"last_look,omitempty"`
-	LastLookNote string       `json:"last_look_note"`
-	From         string       `json:"from"`
-	Items        []Change     `json:"items"`
-	New          int          `json:"new"`
-	Total        int          `json:"total"`
-	State        State        `json:"state"`
-	Reason       string       `json:"reason,omitempty"`
-	Sources      []SourceRead `json:"sources"`
+	LastLook     string `json:"last_look,omitempty"`
+	LastLookNote string `json:"last_look_note"`
+	From         string `json:"from"`
+	// Items is this page of the changes, newest first; Total and New
+	// count every change in the window, on every page.
+	Items   []Change     `json:"items"`
+	New     int          `json:"new"`
+	Total   int          `json:"total"`
+	Page    int          `json:"page"`
+	Pages   int          `json:"pages"`
+	PerPage int          `json:"per_page"`
+	State   State        `json:"state"`
+	Reason  string       `json:"reason,omitempty"`
+	Sources []SourceRead `json:"sources"`
 }
 
 // SinceWindow is how far back the list reaches when the last look is
@@ -128,17 +136,35 @@ func SinceLastLook(in SinceInputs) Since {
 		return items[i].Service+items[i].Ref < items[j].Service+items[j].Ref
 	})
 	s.Total = len(items)
-	limit := in.Limit
-	if limit <= 0 {
-		limit = 50
-	}
-	if len(items) > limit {
-		items = items[:limit]
-	}
 	for _, c := range items {
 		if c.New {
 			s.New++
 		}
+	}
+	s.PerPage = in.Limit
+	if s.PerPage <= 0 {
+		s.PerPage = 50
+	}
+	s.Pages = (len(items) + s.PerPage - 1) / s.PerPage
+	if s.Pages == 0 {
+		s.Pages = 1
+	}
+	s.Page = in.Page
+	if s.Page < 1 {
+		s.Page = 1
+	}
+	if s.Page > s.Pages {
+		s.Page = s.Pages
+	}
+	lo := (s.Page - 1) * s.PerPage
+	hi := lo + s.PerPage
+	if hi > len(items) {
+		hi = len(items)
+	}
+	if lo < hi {
+		items = items[lo:hi]
+	} else {
+		items = nil
 	}
 	s.Items = items
 	if s.Items == nil {

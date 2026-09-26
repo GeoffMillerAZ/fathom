@@ -143,3 +143,32 @@ func unix(ts string) string {
 	t, _ := time.Parse(time.RFC3339, ts)
 	return strconv.FormatInt(t.Unix(), 10)
 }
+
+// TestSinceLastLook_PagesEveryChangeAndCountsEveryNew: the list is paged,
+// never cut — every change in the window is on some page (Page, Pages), the
+// new count covers every change and not only the first page's, and a page
+// past the end lands on the last one.
+func TestSinceLastLook_PagesEveryChangeAndCountsEveryNew(t *testing.T) {
+	now := time.Date(2026, 9, 25, 20, 0, 0, 0, time.UTC)
+	var changes []Change
+	for i := 0; i < 136; i++ {
+		changes = append(changes, Change{Kind: ChangePush, At: now.Add(-time.Duration(i+1) * time.Hour).Format(time.RFC3339), Service: "svc", Title: "Pushed", Ref: strconv.Itoa(i)})
+	}
+	src := []SourceRead{{Name: "git reflogs", State: StatePresent}}
+	never := SinceLastLook(SinceInputs{Now: now, Changes: changes, Sources: src, Limit: 50})
+	if never.Total != 136 || never.New != 136 || len(never.Items) != 50 || never.Page != 1 || never.Pages != 3 || never.PerPage != 50 {
+		t.Errorf("no last look: total %d, new %d, %d items, page %d of %d (per %d)", never.Total, never.New, len(never.Items), never.Page, never.Pages, never.PerPage)
+	}
+	// A last look 60 h ago: 59 changes are newer, wherever they are listed.
+	looked := SinceLastLook(SinceInputs{Now: now, LastLook: now.Add(-60 * time.Hour), Changes: changes, Sources: src, Limit: 50})
+	if looked.New != 59 {
+		t.Errorf("last look 60 h ago: %d new, want 59 (every newer change, not only the first page's)", looked.New)
+	}
+	last := SinceLastLook(SinceInputs{Now: now, Changes: changes, Sources: src, Limit: 50, Page: 3})
+	if last.Page != 3 || len(last.Items) != 36 || last.Items[0].Ref != "100" || last.Items[35].Ref != "135" {
+		t.Errorf("page 3 = page %d, %d items from %s", last.Page, len(last.Items), last.Items[0].Ref)
+	}
+	if past := SinceLastLook(SinceInputs{Now: now, Changes: changes, Sources: src, Limit: 50, Page: 9}); past.Page != 3 || len(past.Items) != 36 {
+		t.Errorf("a page past the end = page %d with %d items", past.Page, len(past.Items))
+	}
+}

@@ -45,6 +45,14 @@ type consolePage struct {
 	// sections (P10); TestConsolePagesRenderTheirVerbs holds each page to
 	// them. A page not yet rebuilt declares none.
 	Verbs []string
+	// ProjectVerbs are per-project verbs whose answers the page renders
+	// from a recorded instrument rather than by running them (the verify
+	// ledger's run at HEAD for `plans status`, the store for `certify
+	// status`): "{svc}" is each project. The page's JSON carries a section
+	// per template, keyed by service, in the verb's own JSON shape, and
+	// TestConsolePagesRenderTheirVerbs runs each concrete verb and holds
+	// the page to it.
+	ProjectVerbs []string
 	// Shows are the shared metrics the page renders (OC-9).
 	Shows []console.MetricID
 	// Live are the live-freshness sources the page's body follows when it
@@ -131,6 +139,11 @@ func registerPage(reg *consoleRegistry, p consolePage) error {
 	for _, v := range p.Verbs {
 		if !strings.HasPrefix(v, "fathom ") {
 			return fmt.Errorf("console: page %q verb %q is not an exact fathom command", p.ID, v)
+		}
+	}
+	for _, v := range p.ProjectVerbs {
+		if !strings.HasPrefix(v, "fathom ") || !strings.Contains(v, "{svc}") {
+			return fmt.Errorf("console: page %q project verb %q must be a fathom command naming {svc}", p.ID, v)
 		}
 	}
 	for _, a := range p.Aliases {
@@ -244,14 +257,15 @@ func (reg *consoleRegistry) searchDocs() []console.SearchDoc {
 	return docs
 }
 
-// pageRendering returns the first page whose Verbs include the command
-// (verb results in the palette link to the page that renders them).
+// pageRendering returns the first page whose Verbs (or per-project verbs)
+// include the command (verb results in the palette link to the page that
+// renders them).
 func (reg *consoleRegistry) pageRendering(verbName string) (*consolePage, bool) {
 	for _, p := range reg.pages {
 		if p.Href == "" {
 			continue
 		}
-		for _, v := range p.Verbs {
+		for _, v := range append(append([]string{}, p.Verbs...), p.ProjectVerbs...) {
 			if v == "fathom "+verbName || strings.HasPrefix(v, "fathom "+verbName+" ") {
 				return p, true
 			}

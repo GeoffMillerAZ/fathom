@@ -61,18 +61,21 @@ const consolePageJSONSchema = "fathom.console.page/v1"
 // the shared metrics it shows, each verb's --json as a section, and the
 // page's own projection.
 type consolePageJSON struct {
-	Schema      string          `json:"schema"`
-	Page        string          `json:"page"`
-	Route       string          `json:"route"`
-	Path        string          `json:"path"`
-	Title       string          `json:"title"`
-	Group       string          `json:"group"`
-	Question    string          `json:"question"`
-	GeneratedAt string          `json:"generated_at"`
-	Verbs       []string        `json:"verbs"`
-	Metrics     console.Metrics `json:"metrics,omitempty"`
-	Sections    map[string]any  `json:"sections,omitempty"`
-	Model       any             `json:"model,omitempty"`
+	Schema      string   `json:"schema"`
+	Page        string   `json:"page"`
+	Route       string   `json:"route"`
+	Path        string   `json:"path"`
+	Title       string   `json:"title"`
+	Group       string   `json:"group"`
+	Question    string   `json:"question"`
+	GeneratedAt string   `json:"generated_at"`
+	Verbs       []string `json:"verbs"`
+	// ProjectVerbs are the per-project verbs the page renders ("{svc}" is
+	// each project); each one's section is keyed by service.
+	ProjectVerbs []string        `json:"project_verbs,omitempty"`
+	Metrics      console.Metrics `json:"metrics,omitempty"`
+	Sections     map[string]any  `json:"sections,omitempty"`
+	Model        any             `json:"model,omitempty"`
 }
 
 func consolePageJSONFor(p *consolePage, r *http.Request, out consoleOut, now time.Time) consolePageJSON {
@@ -87,7 +90,7 @@ func consolePageJSONFor(p *consolePage, r *http.Request, out consoleOut, now tim
 	return consolePageJSON{
 		Schema: consolePageJSONSchema, Page: p.ID, Route: p.Route, Path: r.URL.Path,
 		Title: title, Group: p.Group, Question: p.Question,
-		GeneratedAt: now.UTC().Format(time.RFC3339), Verbs: verbs,
+		GeneratedAt: now.UTC().Format(time.RFC3339), Verbs: verbs, ProjectVerbs: p.ProjectVerbs,
 		Metrics: out.Metrics, Sections: out.Sections, Model: out.Model,
 	}
 }

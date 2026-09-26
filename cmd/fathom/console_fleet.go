@@ -117,7 +117,7 @@ func renderFleetHealth(t console.FleetTableModel, m observatoryModel) string {
 	// FATHOM-B-KIT-02, docs/app-kit.md).
 	body := `<div class="[&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center [&_a]:focus-visible:outline-2 [&_a]:focus-visible:outline-offset-2 [&_a]:focus-visible:outline-focus [&_summary]:min-h-11 [&_summary]:focus-visible:outline-2 [&_summary]:focus-visible:outline-focus [&_[role=treeitem]]:min-w-0 [&_.ml-auto]:min-w-0 [&_.ml-auto]:[overflow-wrap:anywhere] [&_.ml-auto]:text-right" data-fleet-health>` +
 		topology.Render(nodes, topology.Options{AriaLabel: "projects by health", Collapsed: true}) + `</div>` +
-		`<p class="mt-2 text-xs text-ink-muted">Open a state to see its projects and why each is there; its name filters the table below. Failed: a claimed plan row fails the gate, or the typed call-edge pass failed. Degraded: a stale index, missing wiring, unproven claims or an unreadable observations file. Unknown: freshness or the gate state cannot be determined — never shown as healthy.</p>`
+		`<p class="mt-2 text-xs text-ink-muted">Open a state to see its projects and why each is there; its name filters the table below. Failed: a claimed plan row fails the gate at HEAD, or the typed call-edge pass failed. Degraded: a stale index, missing wiring, unproven claims at HEAD or an unreadable observations file. Unknown: freshness or the gate state at HEAD cannot be determined — a plan never verified, or verified only at an older commit — never shown as healthy.</p>`
 	state, reason := console.StatePresent, ""
 	if m.DegradedNote != "" {
 		state, reason = console.StatePartial, "registry read incompletely: "+m.DegradedNote
@@ -152,7 +152,7 @@ func healthLabel(h console.Health) string {
 func renderFleetTablePanel(t console.FleetTableModel, m observatoryModel) string {
 	var body strings.Builder
 	body.WriteString(renderFleetFilters(t))
-	shown := fmt.Sprintf("Showing %d of %s", t.Matched, plural(t.Total, "project"))
+	shown := "Showing " + fleetShownRange(t)
 	if t.Query.Filtered() {
 		var f []string
 		if t.Query.Health != "" {
@@ -205,12 +205,26 @@ func renderFleetTablePanel(t console.FleetTableModel, m observatoryModel) string
 		Question:    "How is each project doing — wired, fresh, proven, used — sorted and filtered your way?",
 		Verb:        "fathom fleet report --json",
 		Source:      "the fleet report's registry, freshness, wiring and observations; the realization ladder and calls per day from the observatory model's call-log fold; plans from the verify ledger; claims and certify status from the daemon's store",
-		Denominator: fmt.Sprintf("%d of %s", t.Matched, plural(t.Total, "project")),
+		Denominator: fleetShownRange(t),
 		Freshness:   "as of " + m.GeneratedAt,
 		State:       state, Reason: reason,
 		SourceKey: "index layers sessions plans",
 		Body:      body.String(),
 	})
+}
+
+// fleetShownRange names the rows on this page against every match and the
+// fleet: "18 of 18 projects", or, once the table pages, "51–100 of 120
+// matching, of 200 projects".
+func fleetShownRange(t console.FleetTableModel) string {
+	if t.Pages <= 1 {
+		return fmt.Sprintf("%d of %s", t.Matched, plural(t.Total, "project"))
+	}
+	s := fmt.Sprintf("%d–%d of %d", t.ShownFrom, t.ShownTo, t.Matched)
+	if t.Matched != t.Total {
+		return s + " matching, of " + plural(t.Total, "project")
+	}
+	return s + " projects"
 }
 
 // renderFleetFilters is the table's GET form: health, name and language,
@@ -348,6 +362,17 @@ func fleetRowCells(r console.FleetRow) fleetCells {
 		}
 		if p.Unproven > 0 {
 			extra = append(extra, `<span class="text-caution">`+fmtThousands(p.Unproven)+` unproven</span>`)
+		}
+		if p.Stale > 0 {
+			// A stale run's findings are history: named as such, never red.
+			then := ""
+			if n := p.StaleFailing + p.StaleUnproven; n > 0 {
+				then = fmt.Sprintf(" (%s not proven then)", fmtThousands(n))
+			}
+			extra = append(extra, `<span class="text-caution">`+plural(p.Stale, "plan")+` verified before HEAD`+then+`</span>`)
+		}
+		if len(p.Unrun) > 0 {
+			extra = append(extra, plural(len(p.Unrun), "plan")+` never verified`)
 		}
 		if p.Unclaimed > 0 {
 			extra = append(extra, fmtThousands(p.Unclaimed)+` open or skipped`)

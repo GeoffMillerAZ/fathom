@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 )
 
 func fleetFixture() Projects {
@@ -139,6 +140,20 @@ func TestFleetTable_SortFilterAndUnknownNotGreen(t *testing.T) {
 	if s.Query.Dir != "desc" || s.Rows[0].Service != "busy" {
 		t.Errorf("symbols default = %s first (dir %s)", s.Rows[0].Service, s.Query.Dir)
 	}
+	// Sort by name, both directions — by the name, never by calls. Make the
+	// last name the busiest so calls order and name order differ.
+	named := fleetFixture()
+	named.Rows[len(named.Rows)-1].Traffic = []int{9000, 0, 0, 0, 0, 0, 0}
+	for dir, want := range map[string]string{"asc": "busy,failing,quiet,remote,stale,unrun", "desc": "unrun,stale,remote,quiet,failing,busy"} {
+		n := FleetTable(named, ParseFleetQuery(url.Values{"sort": {"service"}, "dir": {dir}}))
+		var got []string
+		for _, r := range n.Rows {
+			got = append(got, r.Service)
+		}
+		if strings.Join(got, ",") != want {
+			t.Errorf("sort=service dir=%s = %s, want %s", dir, strings.Join(got, ","), want)
+		}
+	}
 	// Certificates: a project with none declared is not measured, and
 	// sorts after every measured one in both directions.
 	for _, dir := range []string{"asc", "desc"} {
@@ -171,8 +186,14 @@ func TestFleetTable_SortFilterAndUnknownNotGreen(t *testing.T) {
 		many.Rows = append(many.Rows, ProjectFacts{Service: "svc-" + string(rune('a'+i%26)) + string(rune('a'+i/26)), Freshness: "fresh"})
 	}
 	pg := FleetTable(many, ParseFleetQuery(url.Values{"page": {"3"}}))
-	if pg.Pages != 3 || len(pg.Rows) != 20 || pg.Query.Page != 3 {
-		t.Errorf("paging = %d pages, %d rows on page %d", pg.Pages, len(pg.Rows), pg.Query.Page)
+	if pg.Pages != 3 || len(pg.Rows) != 20 || pg.Query.Page != 3 || pg.ShownFrom != 101 || pg.ShownTo != 120 || pg.Matched != 120 {
+		t.Errorf("paging = %d pages, %d rows (%d–%d of %d) on page %d", pg.Pages, len(pg.Rows), pg.ShownFrom, pg.ShownTo, pg.Matched, pg.Query.Page)
+	}
+	if first := FleetTable(many, ParseFleetQuery(url.Values{})); first.ShownFrom != 1 || first.ShownTo != 50 {
+		t.Errorf("page 1 shows rows %d–%d", first.ShownFrom, first.ShownTo)
+	}
+	if none := FleetTable(many, ParseFleetQuery(url.Values{"q": {"no-such-project"}})); none.ShownFrom != 0 || none.ShownTo != 0 {
+		t.Errorf("no match shows rows %d–%d", none.ShownFrom, none.ShownTo)
 	}
 	// The shared metrics over the same facts.
 	if v := WiredAndFresh(p); v.State != StatePartial || v.V != 4 || !strings.Contains(v.Reason, "1 of 6") {
@@ -191,6 +212,56 @@ func TestFleetTable_SortFilterAndUnknownNotGreen(t *testing.T) {
 	q.Store = SourceRead{Name: SourceStore, State: StateAbsent, Reason: "no store recorded for this daemon"}
 	if v := ClaimsFresh(q); v.State != StateAbsent || v.Reason != "no store recorded for this daemon" {
 		t.Errorf("claims with no store = %+v", v)
+	}
+}
+
+// TestFleetTable_StaleProofIsNeverFailedOrHealthy: a gate failure recorded
+// at a commit the project has moved past is history. The project is not
+// "failed" on it (the gate has not spoken of HEAD) and not healthy either
+// (unknown is never green); its plans value is stale, carrying the commit
+// and age; the shared metric over it is stale too; and a failure at HEAD
+// still fails.
+func TestFleetTable_StaleProofIsNeverFailedOrHealthy(t *testing.T) {
+	p := fleetFixture()
+	p.Now = time.Date(2026, 9, 26, 5, 0, 0, 0, time.UTC)
+	for i := range p.Rows {
+		switch p.Rows[i].Service {
+		case "failing":
+			p.Rows[i].RepoHead = "3d58a0db490552d76bd15876f6b12cbbacd492c2"
+			p.Rows[i].Runs[0].At, p.Rows[i].Runs[0].Commit = "2026-09-19T21:00:33Z", "d8770983"
+			p.Rows[i].Runs[0].StaleReason = "recorded at d8770983; HEAD is 3d58a0db"
+		case "busy":
+			p.Rows[i].PlanFiles = []string{"p.md", "q.md"} // q.md: no run ever
+		}
+	}
+	m := FleetTable(p, FleetQuery{})
+	f := rowByName(m.Rows, "failing")
+	if f.Health != HealthUnknown || !strings.Contains(f.HealthWhy, "before HEAD") || !strings.Contains(f.HealthWhy, "3 failing then") {
+		t.Errorf("stale failure: health %s (%s); want unknown, naming the older run", f.Health, f.HealthWhy)
+	}
+	if f.PlansVerified.State != StateStale || f.PlansVerified.V != 6 || !strings.Contains(f.PlansVerified.Reason, "d8770983") ||
+		!strings.Contains(f.PlansVerified.Reason, "6 d old") || f.PlansVerified.AsOf.IsZero() {
+		t.Errorf("stale plans value = %+v", f.PlansVerified)
+	}
+	if f.Plans == nil || f.Plans.Failing != 0 || f.Plans.StaleFailing != 3 {
+		t.Errorf("stale proof = %+v", f.Plans)
+	}
+	for _, g := range m.Rollup {
+		if g.Health == HealthFailed && g.Count != 0 {
+			t.Errorf("nothing fails at HEAD, yet the rollup lists failed: %v", g.Services)
+		}
+	}
+	b := rowByName(m.Rows, "busy")
+	if b.Health != HealthUnknown || !strings.Contains(b.HealthWhy, "1 plan with no recorded verify run") || b.PlansVerified.State != StatePartial {
+		t.Errorf("a plan no run checked: health %s (%s), plans %+v", b.Health, b.HealthWhy, b.PlansVerified)
+	}
+	if v := PlanRowsVerified(p); v.State != StateStale || !strings.Contains(v.Reason, "before HEAD (failing)") || !strings.Contains(v.Reason, "unrun") {
+		t.Errorf("plans.verified over stale runs = %+v", v)
+	}
+	// The same run at HEAD fails.
+	p.Rows[2].Runs[0].StaleReason = ""
+	if f := rowByName(FleetTable(p, FleetQuery{}).Rows, "failing"); f.Health != HealthFailed || f.PlansVerified.State != StatePresent {
+		t.Errorf("a failure at HEAD: %s %+v", f.Health, f.PlansVerified)
 	}
 }
 

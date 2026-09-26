@@ -204,6 +204,9 @@ func shortValue(v console.Value[int], short string) string {
 		return `<span class="text-danger" title="` + html.EscapeString(v.Reason) + `" data-truth-state="error">unreadable</span>`
 	case console.StatePartial:
 		return `<span class="tabular-nums" title="` + html.EscapeString(v.Reason) + `">≥ ` + fmtThousands(v.V) + `</span>`
+	case console.StateStale:
+		// Stale carries its age in words, never color alone.
+		return `<span class="tabular-nums text-caution" title="stale: ` + html.EscapeString(v.Reason) + `" data-truth-state="stale">` + fmtThousands(v.V) + ` <span class="text-xs">stale</span></span>`
 	}
 	return `<span class="tabular-nums">` + fmtThousands(v.V) + `</span>`
 }

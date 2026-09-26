@@ -18,6 +18,14 @@ func resetObsCache() {
 	obsCache.Lock()
 	obsCache.at = time.Time{}
 	obsCache.Unlock()
+	// The console's project set and the reads behind it: every fixture
+	// starts from its own inputs.
+	consoleProjectsCache.Lock()
+	consoleProjectsCache.key = ""
+	consoleProjectsCache.Unlock()
+	consoleGatherCache.mu.Lock()
+	consoleGatherCache.ledgerKey, consoleGatherCache.typedKey, consoleGatherCache.facts = "", "", nil
+	consoleGatherCache.mu.Unlock()
 }
 
 // hermeticObsEnv points every user-central input at an empty temp dir so a

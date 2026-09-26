@@ -7,9 +7,11 @@ package console
 // Two honesty rules shape it:
 //
 //   - Unknown is never green. A project whose index freshness nobody can
-//     determine, or whose plans have no recorded verify run, is "unknown" —
-//     never "healthy". Known problems outrank unknowns: a project failing
-//     its gate is "failed" whatever else is unknown about it.
+//     determine, whose plans have no recorded verify run, or whose newest
+//     runs proved an older commit than HEAD, is "unknown" — never
+//     "healthy". Known problems outrank unknowns: a project failing its
+//     gate at HEAD is "failed" whatever else is unknown about it; a failure
+//     recorded at an older commit is history, named, never "failed".
 //   - A sparkline never draws across an absent day. A day the call log holds
 //     no row at all is absent for every project (the daemon may have been
 //     down; nobody can tell), while a day with rows elsewhere and none here
@@ -27,6 +29,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Health is a project's rollup state.
@@ -235,12 +238,16 @@ func (q FleetQuery) Filtered() bool { return q.Health != "" || q.Q != "" || q.La
 // FleetTableModel is the fleet page's projection.
 type FleetTableModel struct {
 	Rows []FleetRow `json:"rows"`
-	// Total is every project; Matched those the filters keep.
-	Total   int           `json:"total"`
-	Matched int           `json:"matched"`
-	Pages   int           `json:"pages"`
-	Query   FleetQuery    `json:"query"`
-	Rollup  []HealthGroup `json:"rollup"`
+	// Total is every project; Matched those the filters keep; ShownFrom
+	// and ShownTo the 1-based range of matches on this page (0 and 0 when
+	// nothing matches).
+	Total     int           `json:"total"`
+	Matched   int           `json:"matched"`
+	ShownFrom int           `json:"shown_from"`
+	ShownTo   int           `json:"shown_to"`
+	Pages     int           `json:"pages"`
+	Query     FleetQuery    `json:"query"`
+	Rollup    []HealthGroup `json:"rollup"`
 	// Days is the traffic window; AbsentDays the days the call log holds
 	// no row at all; ScaleMax the shared sparkline scale's top.
 	Days        []string `json:"days"`
@@ -329,6 +336,9 @@ func FleetTable(p Projects, q FleetQuery) FleetTableModel {
 		to = len(kept)
 	}
 	m.Rows = append([]FleetRow{}, kept[from:to]...)
+	if len(m.Rows) > 0 {
+		m.ShownFrom, m.ShownTo = from+1, to
+	}
 	return m
 }
 
@@ -358,16 +368,37 @@ func fleetRow(r ProjectFacts, p Projects, scaleMax int, logged func(int) bool) F
 			row.LadderOf++
 		}
 	}
-	// Plans: the newest recorded run of each plan.
+	// Plans: each plan's recorded proof (PlanRuns) — at HEAD, else stale.
 	switch {
 	case p.Ledger.State == StateError:
 		row.PlansVerified = Errored[int]("verify ledger unreadable: " + p.Ledger.Reason)
 	case len(r.Runs) > 0:
-		proof := SumPlanProof(r.Runs)
+		proof := ProjectProof(r)
 		row.Plans = &proof
-		row.PlansVerified = Measured(proof.Verified, verifyLedgerSource).WithDenominator(fmt.Sprintf("of %d claimed in %s", proof.Claimed, countNoun(proof.Plans, "plan")))
+		denom := fmt.Sprintf("of %d claimed in %s", proof.Claimed, countNoun(proof.Plans, "plan"))
+		switch {
+		case proof.Stale > 0:
+			reason := StaleProofReason(r.Runs, r.RepoHead, p.Now)
+			if len(proof.Unrun) > 0 {
+				reason += fmt.Sprintf("; %s with no recorded verify run", countNoun(len(proof.Unrun), "plan"))
+			}
+			row.PlansVerified = Stale(proof.Verified, reason, time.Time{}).WithSource(verifyLedgerSource).WithDenominator(denom)
+			if t, err := time.Parse(time.RFC3339Nano, proof.StaleOldest); err == nil {
+				row.PlansVerified = row.PlansVerified.WithAsOf(t)
+			}
+		case len(proof.Unrun) > 0 || r.PlansErr != "":
+			reason := fmt.Sprintf("%s with no recorded verify run (%s); lower bound", countNoun(len(proof.Unrun), "plan"), shortList(proof.Unrun, 3))
+			if r.PlansErr != "" {
+				reason = "plans unreadable: " + r.PlansErr + "; lower bound"
+			}
+			row.PlansVerified = Partial(proof.Verified, reason).WithSource(verifyLedgerSource).WithDenominator(denom)
+		default:
+			row.PlansVerified = Measured(proof.Verified, verifyLedgerSource).WithDenominator(denom)
+		}
+	case r.PlansErr != "":
+		row.PlansVerified = Errored[int]("plans unreadable: " + r.PlansErr)
 	case r.HasPlans:
-		row.PlansVerified = Absent[int]("plans here, but no verify run is recorded at " + nonEmpty(r.Path, "this root"))
+		row.PlansVerified = Absent[int]("plans here, but no verify run is recorded at " + nonEmpty(r.Path, "this root") + " or at its HEAD")
 	default:
 		row.PlansVerified = Absent[int]("no plans here for the gate to check")
 	}
@@ -452,7 +483,7 @@ func sparkFor(traffic []int, p Projects, scaleMax int, logged func(int) bool) (S
 func projectHealth(r ProjectFacts, p Projects, row FleetRow) (Health, string) {
 	var failed, degraded, unknown []string
 	if row.Plans != nil && row.Plans.Failing > 0 {
-		failed = append(failed, fmt.Sprintf("%s the gate", countNoun(row.Plans.Failing, "claimed plan row")+" "+pluralVerb(row.Plans.Failing, "fails", "fail")))
+		failed = append(failed, fmt.Sprintf("%s the gate at HEAD", countNoun(row.Plans.Failing, "claimed plan row")+" "+pluralVerb(row.Plans.Failing, "fails", "fail")))
 	}
 	if r.TypedEdgesFailed != "" {
 		failed = append(failed, "typed call-edge pass failed")
@@ -475,12 +506,31 @@ func projectHealth(r ProjectFacts, p Projects, row FleetRow) (Health, string) {
 	if r.ObservationsErr != "" {
 		degraded = append(degraded, "observations file unreadable")
 	}
-	if row.Plans == nil && r.HasPlans {
+	if pr := row.Plans; pr != nil && pr.Stale > 0 {
+		why := StaleProofReason(r.Runs, r.RepoHead, p.Now)
+		var then []string
+		if pr.StaleFailing > 0 {
+			then = append(then, fmt.Sprintf("%d failing then", pr.StaleFailing))
+		}
+		if pr.StaleUnproven > 0 {
+			then = append(then, fmt.Sprintf("%d unproven then", pr.StaleUnproven))
+		}
+		if len(then) > 0 {
+			why += "; " + strings.Join(then, ", ")
+		}
+		unknown = append(unknown, why)
+	}
+	switch {
+	case r.PlansErr != "":
+		unknown = append(unknown, "plans unreadable")
+	case row.Plans == nil && r.HasPlans:
 		if p.Ledger.State == StateError {
 			unknown = append(unknown, "verify ledger unreadable")
 		} else {
 			unknown = append(unknown, "no verify run recorded for its plans")
 		}
+	case row.Plans != nil && len(row.Plans.Unrun) > 0:
+		unknown = append(unknown, countNoun(len(row.Plans.Unrun), "plan")+" with no recorded verify run")
 	}
 	if p.RegistryNote != "" {
 		unknown = append(unknown, "registry read incompletely")
@@ -495,7 +545,7 @@ func projectHealth(r ProjectFacts, p Projects, row FleetRow) (Health, string) {
 		return HealthUnknown, why
 	}
 	if r.HasPlans {
-		return HealthHealthy, "fresh, wired, and every claimed plan row proven"
+		return HealthHealthy, "fresh, wired, and every claimed plan row proven at HEAD"
 	}
 	return HealthHealthy, "fresh and wired; no plans here to gate"
 }
@@ -521,8 +571,22 @@ func rollup(rows []FleetRow) []HealthGroup {
 // sortFleetRows orders rows by the query's column. A value that is not
 // measured sorts after every measured one in both directions, by name.
 func sortFleetRows(rows []FleetRow, q FleetQuery) {
-	key := fleetSortKey(q.Sort)
 	desc := q.Dir == "desc"
+	if q.Sort == "service" {
+		// The name is the key itself, in the query's direction.
+		sort.SliceStable(rows, func(i, j int) bool {
+			a, b := strings.ToLower(rows[i].Service), strings.ToLower(rows[j].Service)
+			if a == b {
+				return rows[i].Service < rows[j].Service
+			}
+			if desc {
+				return a > b
+			}
+			return a < b
+		})
+		return
+	}
+	key := fleetSortKey(q.Sort)
 	sort.SliceStable(rows, func(i, j int) bool {
 		a, b := rows[i], rows[j]
 		ka, oka := key(a)
@@ -549,8 +613,6 @@ func sortFleetRows(rows []FleetRow, q FleetQuery) {
 
 func fleetSortKey(key string) func(FleetRow) (float64, bool) {
 	switch key {
-	case "service":
-		return func(FleetRow) (float64, bool) { return 0, true } // ties fall to the name
 	case "symbols":
 		return func(r FleetRow) (float64, bool) { return valueOK(r.Symbols) }
 	case "freshness":
