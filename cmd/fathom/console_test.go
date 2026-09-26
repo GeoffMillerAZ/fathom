@@ -222,12 +222,23 @@ func TestConsoleShell_GroupsBreadcrumbsThemeSkipLink(t *testing.T) {
 	if !strings.Contains(got, `data-appkit-appearance data-appearance-storage-key="fathom-theme"`) {
 		t.Error("the shell must offer the appearance control")
 	}
-	// Search: a real GET form (no-JS path of the palette).
-	if !strings.Contains(got, `<form role="search" action="/search" method="get"`) || !strings.Contains(got, `name="q"`) {
-		t.Error("the top bar must carry the search form")
+	// Search: the top bar's palette trigger is a real link to the search
+	// page (the no-JS path), and the page carries the palette's dialog with
+	// its GET form (OC-12).
+	if !strings.Contains(got, `<a href="/search" data-palette-open="console-palette"`) {
+		t.Error("the top bar must carry the palette trigger, a link to /search")
+	}
+	if !strings.Contains(got, `<form role="search" action="/search" method="get" data-palette-form>`) || !strings.Contains(got, `name="q"`) {
+		t.Error("the page must carry the palette dialog's search form")
 	}
 	assertRoleUtilitiesOnly(t, got)
 }
+
+// kitOwnedPaletteColors are palette-color utilities inside kit markup that
+// fathom composes but does not author: the overlay dialog's scrim. Doctrine
+// rule 2 binds fathom's own markup; a kit exception is returned upstream
+// (docs/app-kit.md, FATHOM-S0-KIT-02) rather than patched here.
+var kitOwnedPaletteColors = []string{"backdrop:bg-black/40"}
 
 // assertRoleUtilitiesOnly fails on literal palette colors or dark: color
 // variants in rendered classes (UI doctrine rule 2).
@@ -235,7 +246,11 @@ func assertRoleUtilitiesOnly(t *testing.T, doc string) {
 	t.Helper()
 	palette := regexp.MustCompile(`\b(?:bg|text|border|ring|fill|stroke)-(?:red|blue|green|yellow|gray|slate|zinc|neutral|stone|orange|amber|lime|emerald|teal|cyan|sky|indigo|violet|purple|fuchsia|pink|rose|white|black)(?:-\d+)?\b`)
 	for _, m := range regexp.MustCompile(`class="([^"]*)"`).FindAllStringSubmatch(doc, -1) {
-		if palette.MatchString(m[1]) || strings.Contains(m[1], "dark:") {
+		class := m[1]
+		for _, k := range kitOwnedPaletteColors {
+			class = strings.ReplaceAll(class, k, "")
+		}
+		if palette.MatchString(class) || strings.Contains(class, "dark:") {
 			t.Errorf("class uses a palette color or dark: variant: %q", m[1])
 		}
 	}
@@ -875,8 +890,10 @@ func TestConsoleSearch_PageFragmentAndJSON(t *testing.T) {
 	if code != http.StatusOK || !strings.Contains(page, `<main id="observatory-main"`) || !strings.Contains(page, `id="search-symbols"`) {
 		t.Fatalf("search page = %d:\n%.500s", code, page)
 	}
+	// The fragment is the ⌘K palette's (OC-12): one kit results fragment
+	// answering exactly this query.
 	code, _, frag := f.get(t, "/search?q=charge&format=fragment")
-	if code != http.StatusOK || strings.Contains(frag, "<html") || !strings.Contains(frag, "data-console-search-results") || !strings.Contains(frag, "validateCharge") {
+	if code != http.StatusOK || strings.Contains(frag, "<html") || !strings.Contains(frag, `data-palette-fragment data-palette-state="results" data-palette-query="charge"`) || !strings.Contains(frag, "validateCharge") {
 		t.Errorf("fragment = %d:\n%.500s", code, frag)
 	}
 	env := f.pageJSON(t, "/search?q="+url.QueryEscape("payment"))

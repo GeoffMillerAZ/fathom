@@ -7,8 +7,10 @@ package main
 // trail (chrome.Breadcrumbs) and the theme (appearance: a bootstrap script
 // before the stylesheet plus the native control, storage key fathom-theme).
 // The page heading's meta-and-actions block is composed here from role
-// utilities: it is FATHOM-KIT-07, which fathom builds just in time as the
-// originating consumer and returns to the kit (vision 35 §6).
+// utilities (FATHOM-KIT-07: the kit's chrome.RenderPageHeading writes its
+// own h1, and the kit shell's top bar already writes one — see
+// docs/app-kit.md, FATHOM-S0-KIT-01). The top bar carries the ⌘K palette
+// trigger and every page carries its dialog (console_palette.go, OC-12).
 
 import (
 	_ "embed"
@@ -20,7 +22,6 @@ import (
 	"github.com/geoffmilleraz/app-kit/appkit/ui/appearance"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/chrome"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/dashboard"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/form"
 )
 
 // consoleThemeKey is the appearance storage key (design §2).
@@ -34,17 +35,16 @@ var consoleJS []byte
 
 // consoleShell is one page's frame.
 type consoleShell struct {
-	PageID      string         // the registered page (nav highlight); "" for none
-	Title       string         // the h1
-	DocTitle    string         // <title>; defaults to Title · fathom observatory
-	Crumbs      []chrome.Crumb // the full trail, Observatory first; current page last
-	Question    string         // what the page answers
-	Meta        []string       // heading meta line
-	Verbs       []string       // the verbs the page renders, as copyable chips
-	Actions     string         // trusted heading actions HTML
-	Body        string         // trusted page content
-	Footer      string         // trusted footer HTML; a default is used when empty
-	SearchQuery string         // prefills the top-bar search field
+	PageID   string         // the registered page (nav highlight); "" for none
+	Title    string         // the h1
+	DocTitle string         // <title>; defaults to Title · fathom observatory
+	Crumbs   []chrome.Crumb // the full trail, Observatory first; current page last
+	Question string         // what the page answers
+	Meta     []string       // heading meta line
+	Verbs    []string       // the verbs the page renders, as copyable chips
+	Actions  string         // trusted heading actions HTML
+	Body     string         // trusted page content
+	Footer   string         // trusted footer HTML; a default is used when empty
 }
 
 // renderConsoleShell renders a complete HTML document on the console shell.
@@ -68,7 +68,7 @@ func renderConsoleShell(reg *consoleRegistry, s consoleShell) string {
 		Title:     s.Title,
 		Brand:     template.HTML(`<a href="/" class="text-base font-semibold text-ink hover:text-accent">fathom observatory</a>`),
 		Nav:       template.HTML(consoleNav(reg, reg.navCurrentPath(s.PageID))),
-		Actions:   template.HTML(consoleSearchForm(s.SearchQuery)),
+		Actions:   template.HTML(consolePaletteTrigger()),
 		Content:   template.HTML(content.String()),
 		Footer:    template.HTML(footer),
 		ContentID: consoleContentID,
@@ -82,8 +82,12 @@ func renderConsoleShell(reg *consoleRegistry, s consoleShell) string {
 	// light preference never flashes the other theme.
 	b.WriteString(`<script>` + appearance.BootstrapScript(appearance.Options{StorageKey: consoleThemeKey}) + `</script>`)
 	b.WriteString(`<link rel="stylesheet" href="/assets/app.css"><script src="/assets/console.js" defer></script>`)
+	b.WriteString(`<script src="` + consolePaletteScriptPath + `" defer></script>`)
 	b.WriteString(`</head><body class="min-h-screen bg-surface font-sans text-sm text-ink">`)
 	b.WriteString(shell)
+	// The palette's dialog, once per page (OC-12): Mod+K or the top bar's
+	// trigger opens it; without JavaScript the trigger is a link to /search.
+	b.WriteString(consolePaletteDialog())
 	b.WriteString(`</body></html>`)
 	return b.String()
 }
@@ -92,16 +96,6 @@ func renderConsoleShell(reg *consoleRegistry, s consoleShell) string {
 func consoleNav(reg *consoleRegistry, currentPath string) string {
 	return dashboard.RenderNav(reg.navGroups(), currentPath) +
 		`<div class="mt-4 border-t border-line px-3 pt-4">` + appearance.RenderControl(appearance.Options{StorageKey: consoleThemeKey}) + `</div>`
-}
-
-// consoleSearchForm is the top bar's search: a real GET form to /search, so
-// every palette result is also a page without JavaScript (design §2).
-func consoleSearchForm(q string) string {
-	return `<form role="search" action="/search" method="get" class="flex min-w-0 items-center">` +
-		`<label for="console-search-q" class="sr-only">Search projects, plans, symbols, rules, verbs and pages</label>` +
-		`<div class="w-36 sm:w-64 [&>input]:min-h-11">` +
-		form.RenderInput(form.Input{ID: "console-search-q", Name: "q", Type: "search", Value: q, Placeholder: "Search…", Autocomplete: "off"}) +
-		`</div></form>`
 }
 
 // renderConsoleHeading is the page heading block under the top bar's h1:

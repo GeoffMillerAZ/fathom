@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/geoffmilleraz/app-kit/appkit/ui/palette"
 	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
@@ -144,7 +145,7 @@ func (d *consoleDeps) pageHandler(p *consolePage) http.HandlerFunc {
 		page := renderConsoleShell(d.reg, consoleShell{
 			PageID: p.ID, Title: title, Crumbs: consoleCrumbs(d.reg, p.ID, title),
 			Question: p.Question, Meta: out.Meta, Verbs: p.Verbs, Actions: out.Actions,
-			Body: body, SearchQuery: r.URL.Query().Get("q"),
+			Body: body,
 		})
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		_, _ = w.Write([]byte(page))
@@ -158,6 +159,7 @@ func mountConsole(mux *http.ServeMux, d *consoleDeps, wiring http.Handler) {
 	}
 	mux.Handle("/", consoleNotFound(d.reg))
 	mux.Handle("/assets/console.js", consoleAssetsJSHandler())
+	mux.Handle(consolePaletteScriptPath, palette.Handler())
 	// GET /events (OC-13): the live-freshness stream — names and IDs only.
 	mux.Handle("/events", d.bus)
 	mountLegacyObservatory(mux, d.selfURL, wiring)

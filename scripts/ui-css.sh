@@ -40,6 +40,8 @@ SOURCE_DECLARATIONS=(
   "../../../third_party/app-kit/appkit/ui/dashboard/*.go"
   "../../../third_party/app-kit/appkit/ui/form/*.go"
   "../../../third_party/app-kit/appkit/ui/hitl/*.go"
+  "../../../third_party/app-kit/appkit/ui/overlay/*.go"
+  "../../../third_party/app-kit/appkit/ui/palette/*.go"
   "../../../third_party/app-kit/appkit/ui/stat/*.go"
   "../../../third_party/app-kit/appkit/ui/table/*.go"
   "../../../third_party/app-kit/appkit/ui/viz/*.go"
@@ -72,6 +74,8 @@ render_expected_input() {
 @source "../../../third_party/app-kit/appkit/ui/dashboard/*.go";
 @source "../../../third_party/app-kit/appkit/ui/form/*.go";
 @source "../../../third_party/app-kit/appkit/ui/hitl/*.go";
+@source "../../../third_party/app-kit/appkit/ui/overlay/*.go";
+@source "../../../third_party/app-kit/appkit/ui/palette/*.go";
 @source "../../../third_party/app-kit/appkit/ui/stat/*.go";
 @source "../../../third_party/app-kit/appkit/ui/table/*.go";
 @source "../../../third_party/app-kit/appkit/ui/viz/*.go";

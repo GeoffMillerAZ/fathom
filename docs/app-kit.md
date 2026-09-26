@@ -66,6 +66,33 @@ can omit its top-bar title (returned as FATHOM-S0-KIT-01 below). `analytics.grap
 `viz.heatmap` truth states, `content.code-excerpt` and `work.unified-diff` wait for the
 pages that need them (waves C–E); none is imported yet, so none is scanned.
 
+## Console stage 0: the ⌘K palette (2026-09-25)
+
+OC-12 adopts `interaction.command-palette` (FATHOM-KIT-01) at mirror `d9dd789`, pinned in
+`appkit.adoption.json` (layer L2 added for its script; `palette.go` and `palette.js`
+pinned as artifacts). `cmd/fathom/console_palette.go` configures one palette
+(`console-palette`, Action `/search`, ResultsURL `/search?format=fragment`, Mod+K):
+
+- The shell's top bar carries `palette.RenderTrigger` in place of the F0 search field;
+  every page (error pages included) renders `palette.RenderDialog` once and loads the
+  kit script from `/assets/palette.js` (`palette.Handler`). The dialog's title is an
+  `h2`, so each page keeps one `h1`.
+- `GET /search` answers the palette's fragment for `?format=fragment` or the script's
+  `X-AppKit-Palette` header with `palette.RenderResults` (`Vary: X-AppKit-Palette`): the
+  same `console.SearchWith` groups and order as the page and the JSON; a capped group
+  names its exact total and ends with a "Show all N" link to its group page; a result with
+  no page of its own (a verb) opens its search page; index notes become the kit's partial
+  notice; a query past the bounds gets the kit's error state naming the bound.
+- Without JavaScript the trigger is a link to `/search`, whose page now leads with
+  `palette.RenderSearchForm`. The full page keeps fathom's richer rendering (verb chips,
+  group pages, pagination) over the same results.
+
+`cmd/fathom/ui/input.css` and `scripts/ui-css.sh` add `overlay/*.go` and `palette/*.go`.
+Tests: `TestConsolePalette_OverEveryPageWithFragmentAndNoJSFallback`,
+`TestConsolePalette_ResultsNameTotalsAndRealDestinations`. The keyboard contract is
+the kit's (its script tests and Gallery run); fathom's browser run is in
+`docs/bench/readings/console-stage0-proof-2026-09-25.md`.
+
 ## Observatory console wave F0 (2026-09-25)
 
 Vision 35 / ADR-045 moves every Observatory page onto one console shell
@@ -132,10 +159,10 @@ existing dashboard/stat/viz/vizframe/callout/form/hitl set:
   notes, the not-recorded column): they now use `text-ink-muted`, as `stat.Absent`
   does for its reason; only a bare decorative "—" stays ink-faint.
 
-**Waiting on contributions:** the ⌘K palette dialog (OC-12, FATHOM-KIT-01 over
+**Waiting on contributions (then):** the ⌘K palette dialog (OC-12, FATHOM-KIT-01 over
 `overlay`) and the live "updated — refresh this panel" affordance (OC-14,
-FATHOM-KIT-06). Their server sides shipped: `/search` answers a full page, an HTML
-fragment and JSON, and `/events` streams names-and-IDs events.
+FATHOM-KIT-06). Their server sides shipped in F0; both landed in the kit and are
+integrated in stage 0 (above).
 
 **Proof (2026-09-25):** `go test -race` over `internal/console`, `cmd/fathom`,
 `internal/mcp`, `internal/metrics`, `internal/scope`; `task ui:css`,
@@ -414,6 +441,18 @@ inside mirror `d9dd789`:
 - **Disposition:** `candidate` — a shell option to render the title as non-heading text
   (or omit it) and to show the brand in the mobile top bar. Next action: app-kit
   maintainer; revisit when a second consumer composes the page heading inside the shell.
+
+**FATHOM-S0-KIT-02 — the overlay dialog's scrim is a palette color (candidate)**
+
+- **Origin / task:** console stage 0 composing `palette.RenderDialog` (over
+  `overlay.RenderDialog`) on every page.
+- **Observed / expected:** the dialog's class list carries `backdrop:bg-black/40`, the
+  one palette-color utility in the console's rendered markup; Fathom's doctrine and its
+  `assertRoleUtilitiesOnly` check expect role utilities only. Expected: a scrim role
+  token (or a documented exception in the kit's theming hazards). The dialog's close
+  button is also a 24 px target (already listed in the kit's palette record).
+- **Disposition:** `candidate`, not patched locally; the check names the kit-owned
+  utility as its one exception. Next action: app-kit maintainer.
 
 **FATHOM-ADOPT-01 — selected metadata migration**
 

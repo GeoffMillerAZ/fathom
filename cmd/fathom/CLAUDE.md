@@ -10,7 +10,8 @@ the one table drives routing, the grouped sidebar, search and the JSON parity
 test.** Page projections that a CLI verb also shows live in `internal/console`
 (no UI imports; values carry a truth state). Kit parts: `appkit/ui/dashboard`
 for the shell and grouped nav, `chrome` for breadcrumbs/description lists,
-`appearance` for the theme (key `fathom-theme`), `table` for tables, `stat` for
+`appearance` for the theme (key `fathom-theme`), `palette` for the ⌘K palette
+over `/search` (`console_palette.go`), `table` for tables, `stat` for
 KPIs (`stat.Absent` for uninstrumented metrics — law 3; `valueStat` maps a
 projected value), `viz` for charts; a panel is `renderPanel` (question, verb
 chip, source/denominator/freshness footer). The doctrine, binding:
