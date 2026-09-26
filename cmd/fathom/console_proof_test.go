@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/geoffmilleraz/app-kit/appkit/ui/chrome"
 	"github.com/geoffmilleraz/fathom/internal/console"
 )
 
@@ -157,7 +158,7 @@ func TestConsolePlanPage_BoardDrawerAndBurnup(t *testing.T) {
 		`data-kanban-col="remaining"`, `data-kanban-col="claimed"`, `data-kanban-col="proven"`,
 		`data-kanban-col="op-measured"`, `data-kanban-col="op-waiting"`, `data-kanban-col="deferred"`,
 		`href="/plans/proof-service/settlement/rows/S-2"`, "symbol + test reach", "lexical oracle",
-		"Every row as a table", `id="row-drawer"`, `data-row-drawer-body`, "dlg.showModal()",
+		"Every row as a table", `id="row-drawer"`, `data-row-drawer-body`, "dlg.showModal()", `new CustomEvent("console:content",{bubbles:true})`,
 		`id="burnup"`, `data-table-row="rev-`, "Proven by the gate over time", "data-cross-check",
 	)
 	// The ledger is read-only: nothing on the board looks draggable.
@@ -210,6 +211,33 @@ func TestConsolePlanBoard_LanesAreBounded(t *testing.T) {
 	mustContain(t, "empty lanes", out, `data-kanban-col="remaining"`, `data-kanban-col="claimed"`, "data-board-empty", "No rows are measured (op)")
 	if strings.Contains(out, `data-kanban-col="op-measured"`) {
 		t.Error("an empty lane other than claimed-not-proven must not be drawn")
+	}
+
+	// Lanes share the row from md up (FATHOM-C-KIT-05): five fixed 16rem
+	// lanes overflowed a 1440 content column and hid the last behind the
+	// board's scroll. A kit change that renames the classes this rewrites
+	// must fail here, not silently bring the scroll back.
+	var five []console.BoardColumn
+	for _, id := range []string{"remaining", "claimed", "proven", "op-waiting", "deferred"} {
+		five = append(five, console.BoardColumn{ID: id, Label: id, Cards: cards[:1]})
+	}
+	out = renderPlanBoard(console.PlanLedgerView{Columns: five})
+	if n := strings.Count(out, laneClass+" "+laneFitClass); n != 5 || !strings.Contains(out, boardClass+" "+boardFitClass) {
+		t.Errorf("the board must fit its lanes to the column from md up (%d of 5 lanes fitted)", n)
+	}
+	// Each card's title link, the keyboard path into the drawer, is a 44 px
+	// target with a visible focus ring.
+	if !strings.Contains(out, "inline-flex min-h-11 items-center focus-visible:outline-2") {
+		t.Error("a card's link must be a 44 px target with a focus ring")
+	}
+}
+
+// Every console pager lifts the kit's ~30 px page links to 44 px targets.
+func TestConsolePager_FortyFourPixelTargets(t *testing.T) {
+	out := consolePager(chrome.Pagination{Page: 2, TotalPages: 3, AriaLabel: "Plans pages", HrefFor: func(n int) string { return fmt.Sprintf("/plans?page=%d", n) }})
+	mustContain(t, "pager", out, "data-console-pager", "[&_a]:min-h-11", "[&_span]:min-h-11", `href="/plans?page=3"`)
+	if consolePager(chrome.Pagination{Page: 1, TotalPages: 1}) != "" {
+		t.Error("one page needs no pager")
 	}
 }
 
@@ -307,6 +335,8 @@ func TestConsoleRefactors_PlanesNeverConservedByDefault(t *testing.T) {
 	if code != http.StatusOK || h1Count(page) != 1 {
 		t.Fatalf("refactor page = %d", code)
 	}
+	// The kit's form controls are 36–38 px: the form lifts them to 44.
+	mustContain(t, "refactor form", page, "[&_select]:min-h-11", "[&_input]:min-h-11", "[&_button]:min-h-11")
 	mustContain(t, "refactor", page,
 		`data-plane="generated" data-verdict="not run"`, "no plane by this name is registered",
 		`data-plane="integrity" data-verdict="conserved"`,
@@ -569,5 +599,47 @@ func TestConsoleStoreArg_NamesTheDaemonsStore(t *testing.T) {
 	}
 	if got := (&consoleDeps{}).storeArg(); got != "" {
 		t.Errorf("no store path = %q", got)
+	}
+}
+
+// A row's evidence opened in the plan page's drawer is a person's view of
+// the row page (its ?format=fragment is what the drawer fetches), so it is
+// counted for UX-M4 like the page itself; the palette's fragment reads are
+// keystrokes, not views, and a JSON read never is.
+func TestConsolePageViews_DrawerFragmentIsAView(t *testing.T) {
+	f := newConsoleFixture(t)
+	route := "/plans/{svc}/{plan}/rows/{id}"
+	for i := 0; i < 2; i++ {
+		if code, _, frag := f.get(t, "/plans/proof-service/settlement/rows/S-1?format=fragment"); code != http.StatusOK || !strings.Contains(frag, "data-row-evidence") {
+			t.Fatalf("drawer fragment = %d", code)
+		}
+	}
+	f.pageJSON(t, "/plans/proof-service/settlement/rows/S-1")
+	f.get(t, "/search?q=settle&format=fragment")
+	_, _, metrics := f.get(t, "/metrics")
+	if !strings.Contains(metrics, `fathom_console_page_views_total{route="`+route+`"} 2`) {
+		t.Errorf("two drawer opens must count two views of %s:\n%s", route, metrics)
+	}
+	if strings.Contains(metrics, `fathom_console_page_views_total{route="/search"}`) {
+		t.Error("a palette fragment read is not a page view")
+	}
+	logged, _ := os.ReadFile(f.viewsLog)
+	if n := strings.Count(string(logged), `"route":"`+route+`"`); n != 2 {
+		t.Errorf("durable log holds %d row-evidence views, want 2:\n%s", n, logged)
+	}
+}
+
+// The drawer's inserted evidence gets its Copy buttons: console.js reveals
+// the chips of any content announced with 'console:content', which the
+// drawer script dispatches once the row's fragment is in place.
+func TestConsoleJS_RevealsAnnouncedContent(t *testing.T) {
+	f := newConsoleFixture(t)
+	code, _, js := f.get(t, "/assets/console.js")
+	if code != http.StatusOK || !strings.Contains(js, "d.addEventListener('console:content'") || !strings.Contains(js, "reveal(e.target)") {
+		t.Errorf("console.js must reveal announced content's chips (%d)", code)
+	}
+	_, _, frag := f.get(t, "/plans/proof-service/settlement/rows/S-1?format=fragment")
+	if !strings.Contains(frag, "data-console-copy=") {
+		t.Error("the drawer's fragment carries the verdict's verb chip")
 	}
 }

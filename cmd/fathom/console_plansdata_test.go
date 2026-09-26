@@ -176,3 +176,83 @@ func TestTruthStateLine_ReasonWrapsAnywhere(t *testing.T) {
 		}
 	}
 }
+
+// TestConsolePlans_VerifyEventsOnlyWhenVerdictsChange pins the plans'
+// /events traffic to design §4 and "live, gently": a background check
+// tells the plans panels when a plan's verdicts land or change, never on a
+// recomputation that changed nothing. One commit to a busy checkout
+// re-keyed its 64 plans and published 64 verify events, turning over the
+// whole 64-event replay ring and marking every open panel "Updated" with
+// nothing new to show.
+func TestConsolePlans_VerifyEventsOnlyWhenVerdictsChange(t *testing.T) {
+	root := t.TempDir()
+	plans := filepath.Join(root, "docs", "plans")
+	if err := os.MkdirAll(plans, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	planPath := filepath.Join(plans, "window.md")
+	plan := "# Window\n\n- [x] The runbook names the window {id: W-1, oracle: lexical, path: README.md, pattern: \"^## Window$\"}\n"
+	if err := os.WriteFile(planPath, []byte(plan), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	readme := filepath.Join(root, "README.md")
+	if err := os.WriteFile(readme, []byte("# Runbook\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	bus := console.NewEventBus(console.BusOptions{})
+	deps := &consoleDeps{selfURL: "http://127.0.0.1:1", now: time.Now, bus: bus}
+	p := &consolePlans{deps: deps, entries: map[string]*planEntry{}, wake: make(chan struct{}, 1),
+		heads: map[string]plansStamp{}, stale: map[string]plansStamp{}, graphs: map[string]*graphEntry{},
+		hist: map[string]historyEntry{}}
+	sum := sha256.Sum256([]byte(plan))
+	rawKey := hex.EncodeToString(sum[:8]) + "|"
+	daemonSaid := &verify.Report{Service: "svc", Tasks: []verify.TaskVerdict{{
+		TaskID: "W-1", Title: "The runbook names the window", Status: verify.Unknown, Label: "oracle-unevaluated", Claimed: true,
+	}}}
+	// The first verdicts, as a cold verification would leave them.
+	first := &planEntry{service: "svc", root: root, path: planPath, key: rawKey + "|head-0", rawKey: rawKey, done: make(chan struct{})}
+	p.entries[planPath] = first
+	sr := serviceRoot{Service: "svc", Root: root}
+	moveHead := func(v string) {
+		p.mu.Lock()
+		p.heads[root] = plansStamp{value: v, at: time.Now()}
+		p.stale["svc"] = plansStamp{at: time.Now()}
+		p.mu.Unlock()
+	}
+	run := func(head string) *planEntry {
+		t.Helper()
+		moveHead(head)
+		_, e := p.plan(context.Background(), sr, planPath)
+		select {
+		case <-e.done:
+		case <-time.After(30 * time.Second):
+			t.Fatal("the plan never settled")
+		}
+		return e
+	}
+	// Seed the landed verdicts through the same path: a HEAD-only change
+	// over the daemon's report (no daemon is reachable here).
+	first.finished, first.raw = true, daemonSaid
+	close(first.done)
+	run("head-1")
+	landed := bus.LastID()
+	if landed == 0 {
+		t.Fatal("verdicts landing for a plan must be announced")
+	}
+
+	// HEAD moves twice more, the tree does not: the same verdicts, no event.
+	run("head-2")
+	run("head-3")
+	if got := bus.LastID(); got != landed {
+		t.Errorf("a recomputation that changed nothing published %d verify event(s)", got-landed)
+	}
+
+	// The tree gains the heading: W-1's verdict changes, one event.
+	if err := os.WriteFile(readme, []byte("# Runbook\n\n## Window\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	run("head-4")
+	if got := bus.LastID(); got != landed+1 {
+		t.Errorf("a changed verdict published %d event(s), want 1", got-landed)
+	}
+}

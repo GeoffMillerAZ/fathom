@@ -236,7 +236,9 @@ func renderRefactorChooser(names []string, current, since string) string {
 	sel := form.RenderField(form.Field{Label: "Repository", For: "refactor-svc", Control: template.HTML(form.RenderSelect(form.Select{ID: "refactor-svc", Name: "svc", Value: current, Placeholder: "Choose a repository", Options: opts, Required: true}))})
 	ref := form.RenderField(form.Field{Label: "Base ref", For: "refactor-since", Help: "A git revision: HEAD~1 is the last commit; a tag or a SHA works too.", Control: template.HTML(form.RenderInput(form.Input{ID: "refactor-since", Name: "since", Value: since, Required: true, HasHelp: true}))})
 	btn := form.RenderButton(form.Button{Label: "Compare", Variant: form.ButtonPrimary})
-	return `<form method="get" action="/refactors" class="mb-4 grid max-w-3xl gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-start" data-refactor-form>` + sel + ref + `<div class="sm:pt-7">` + btn + `</div></form>`
+	// The kit's select, input and button are 36–38 px tall: the form lifts
+	// them to 44 px targets (design §2; FATHOM-C-KIT-05).
+	return `<form method="get" action="/refactors" class="mb-4 grid max-w-3xl gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-start [&_select]:min-h-11 [&_input]:min-h-11 [&_button]:min-h-11" data-refactor-form>` + sel + ref + `<div class="sm:pt-7">` + btn + `</div></form>`
 }
 
 func renderRefactorPage(v console.RefactorPage, names []string, sr serviceRoot, since, verb string) string {

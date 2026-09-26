@@ -1,7 +1,8 @@
 // fathom observatory console — the small L2 layer (vision 35 §5: works
 // without JavaScript; better with it). Today it only makes verb chips
-// copyable: every chip's command is selectable text without it. Classic
-// script, no dependencies, no network.
+// copyable — the page's own, and any a script inserts later and announces
+// with a 'console:content' event: every chip's command is selectable text
+// without it. Classic script, no dependencies, no network.
 //
 // A chip's accessible name is its aria-label ("Copy the command …"), which a
 // changed button text never reaches, so the outcome is also announced
@@ -46,4 +47,10 @@
   }
   if (d.readyState === 'loading') d.addEventListener('DOMContentLoaded', function () { reveal(d); });
   else reveal(d);
+  // Content inserted after load (the plan page's evidence drawer) announces
+  // itself with a bubbling 'console:content' event; its chips get their
+  // Copy buttons like the page's own.
+  d.addEventListener('console:content', function (e) {
+    if (e.target && e.target.querySelectorAll) reveal(e.target);
+  });
 })(window, document);

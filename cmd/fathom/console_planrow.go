@@ -92,6 +92,9 @@ func buildPlanRowPage(cr *consoleRequest) (consoleOut, error) {
 		Meta:  []string{fmt.Sprintf("%s:%d", plan.Rel, row.Line), stateBadge[view.State].Label, view.Contract.Kind},
 		Model: view, Sections: sections, Verbs: []string{verb},
 		Body: body,
+		// The drawer's fragment is a person opening this row's evidence
+		// over the plan page: a view of this page (UX-M4 reads it).
+		RawIsView: true,
 		Raw: func(w http.ResponseWriter) bool {
 			if cr.r.URL.Query().Get("format") != "fragment" {
 				return false

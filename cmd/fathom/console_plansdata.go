@@ -65,6 +65,14 @@ type planEntry struct {
 	rawKey  string
 	raw     *verify.Report
 	prevRaw *verify.Report
+	// digest is what the plans panels show of this entry — every row's
+	// verdict, the daemon's staleness, the failure — and prevDigest the
+	// last finished predecessor's (hasPrev). A recomputation that yields
+	// the predecessor's digest publishes no verify event (design §4: an
+	// event means something moved, as a no-op re-ingest is no ingest).
+	digest     string
+	prevDigest string
+	hasPrev    bool
 }
 
 type plansStamp struct {
@@ -200,6 +208,14 @@ func (p *consolePlans) plan(ctx context.Context, sr serviceRoot, path string) (c
 	if e == nil || e.key != key || (e.finished && e.err != "" && p.deps.now().Sub(e.at) >= consolePlansRetry) {
 		old := e
 		e = &planEntry{service: sr.Service, root: sr.Root, path: path, key: key, rawKey: rawKey, done: make(chan struct{})}
+		switch {
+		case old != nil && old.finished:
+			e.prevDigest, e.hasPrev = old.digest, true
+		case old != nil && old.hasPrev:
+			// Replaced before it finished: it never published, so the
+			// last result a panel was told of is still its predecessor's.
+			e.prevDigest, e.hasPrev = old.prevDigest, true
+		}
 		p.entries[path] = e
 		if old != nil && old.finished && old.err == "" && old.rawKey == rawKey && old.raw != nil {
 			// Only HEAD moved: the local overlays are cheap, so this plan
@@ -339,17 +355,33 @@ func (p *consolePlans) verify(e *planEntry) {
 	}
 	e.storeCommit = strings.SplitN(wm, "@", 2)[0]
 	e.at = p.deps.now()
+	e.digest = verdictDigest(e.result.Report, e.daemonStale, e.err)
 	e.finished = true
-	close(e.done)
 	current := p.entries[e.path] == e
+	changed := !e.hasPrev || e.digest != e.prevDigest
 	p.mu.Unlock()
-	if current && p.deps.bus != nil {
+	if current && changed && p.deps.bus != nil {
 		ref := "pass"
 		if err != nil || verifyGateFailures([]verify.Report{e.result.Report}, false, false) != nil {
 			ref = "fail"
 		}
 		_, _ = p.deps.bus.Publish(console.Event{Kind: console.EventVerify, Service: e.service, Name: filepath.Base(e.path), Ref: ref})
 	}
+	// Waiters are released once the event is out: a page rendered from
+	// these verdicts starts its /events cursor after the event that
+	// announced them, so it is never told "Updated" about itself.
+	close(e.done)
+}
+
+// verdictDigest is what the plans panels draw of one verification: each
+// row's verdict and label, the daemon's staleness, and the failure.
+func verdictDigest(rep verify.Report, stale bool, errText string) string {
+	h := sha256.New()
+	fmt.Fprintf(h, "stale=%v\x00err=%s\x00", stale, errText)
+	for _, t := range rep.Tasks {
+		fmt.Fprintf(h, "%s\x00%s\x00%s\x00", t.TaskID, t.Status, t.Label)
+	}
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 // compute verifies one plan the way `plans status` does — the plan parsed

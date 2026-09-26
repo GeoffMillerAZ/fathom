@@ -364,7 +364,7 @@ func renderCertGaps(m certificationsModel, scope string) string {
 				{Term: "remedy", DetailHTML: template.HTML(remedy)},
 			}) + `</li>`)
 	}
-	pager := chrome.RenderPagination(chrome.Pagination{
+	pager := consolePager(chrome.Pagination{
 		Page: m.Page, TotalPages: m.Pages, AriaLabel: "Gap pages",
 		HrefFor: func(page int) string {
 			q := url.Values{}

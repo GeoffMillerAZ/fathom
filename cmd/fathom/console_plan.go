@@ -268,13 +268,33 @@ func renderPlanBoard(v console.PlanLedgerView) string {
 // title link hovers to a token the base theme does not define. A read-only
 // ledger must not look movable. Local workaround, returned as
 // FATHOM-C-KIT-01 (docs/app-kit.md).
+//
+// It also lets the lanes share the row (FATHOM-C-KIT-05): the kit's lanes
+// are a fixed w-64 that cannot shrink, so five lanes (1,344 px) overflowed
+// a 1,094 px content column at 1440 and the last one sat behind the board's
+// own scroll. From md up the board is a grid of lanes at least 12rem wide
+// that wraps to a second row rather than scroll; below md it keeps the
+// kit's own horizontal scroll (the table under it lists every row). And it
+// makes the card's title link — the board's keyboard path into the drawer
+// — a 44 px target with a visible focus ring.
 func readOnlyBoard(s string) string {
 	return strings.NewReplacer(
 		` draggable="true"`, "",
 		`cursor-grab active:cursor-grabbing`, "",
-		`hover:text-neon-pink`, "hover:text-accent",
+		`hover:text-neon-pink`, "hover:text-accent inline-flex min-h-11 items-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
+		boardClass, boardClass+" "+boardFitClass,
+		laneClass, laneClass+" "+laneFitClass,
 	).Replace(s)
 }
+
+// The kit board's and lane's classes, and what fits them to the content
+// column from md up (complete literals for the CSS build).
+const (
+	boardClass    = `flex gap-4 overflow-x-auto pb-2`
+	boardFitClass = `md:grid md:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] md:overflow-x-visible`
+	laneClass     = `flex flex-col gap-2 min-w-[16rem] w-64 flex-shrink-0`
+	laneFitClass  = `md:w-auto md:min-w-0`
+)
 
 func renderPlanRowsTable(v console.PlanLedgerView) string {
 	rows := make([]table.Row, 0, len(v.Rows))
@@ -359,7 +379,9 @@ func renderRowDrawer() string {
 
 // rowDrawerScript opens a card's evidence in the drawer: a plain click on a
 // board card fetches the row page's fragment, checks it is that row's, and
-// shows it; Escape or Close returns focus to the card. A modified click, a
+// shows it — announcing it with 'console:content' so console.js gives its
+// verb chip a Copy button, as on the row's own page; Escape or Close
+// returns focus to the card. A modified click, a
 // failed fetch or no dialog support leaves the link to do its job.
 const rowDrawerScript = `(function(){
 var board=document.querySelector("[data-plan-board]"),dlg=document.getElementById("` + rowDrawerID + `");
@@ -375,6 +397,7 @@ if(!dlg.open)dlg.showModal();
 fetch(href+"?format=fragment",{headers:{"Accept":"text/html"},credentials:"same-origin"}).then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);return r.text();}).then(function(t){
 if(mine!==seq)return;var tpl=document.createElement("template");tpl.innerHTML=t;var f=tpl.content.querySelector("[data-row-evidence]");
 if(!f||f.getAttribute("data-row-id")!==id)throw new Error("the answer was not this row's evidence");body.replaceChildren(f);
+f.dispatchEvent(new CustomEvent("console:content",{bubbles:true}));
 }).catch(function(err){if(mine===seq)show("The evidence could not be loaded here ("+err.message+") — open it as a page.");});
 });
 dlg.addEventListener("click",function(e){if(e.target.closest("[data-overlay-dismiss],[data-row-drawer-close]"))dlg.close();});

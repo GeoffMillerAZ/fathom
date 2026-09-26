@@ -157,6 +157,9 @@ func (d *consoleDeps) pageHandler(p *consolePage) http.HandlerFunc {
 			return
 		}
 		if out.Raw != nil && out.Raw(w) {
+			if out.RawIsView && r.Method == http.MethodGet {
+				countPageView(d.views, p, now)
+			}
 			return
 		}
 		if wantsJSON(r) {

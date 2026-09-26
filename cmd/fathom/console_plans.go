@@ -477,7 +477,7 @@ func renderPlansTable(m plansPortfolioModel) string {
 }
 
 func renderPlansPager(m plansPortfolioModel, scope string) string {
-	return chrome.RenderPagination(chrome.Pagination{
+	return consolePager(chrome.Pagination{
 		Page: m.Page, TotalPages: m.Pages, AriaLabel: "Plans pages",
 		HrefFor: func(page int) string {
 			q := url.Values{}

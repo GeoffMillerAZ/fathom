@@ -16,6 +16,7 @@ import (
 	"html/template"
 	"strings"
 
+	"github.com/geoffmilleraz/app-kit/appkit/ui/chrome"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/dashboard"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/stat"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/table"
@@ -138,6 +139,18 @@ func renderVerbChip(cmd string) string {
 		`<code class="min-w-0 [overflow-wrap:anywhere]">` + c + `</code>` +
 		`<button type="button" hidden data-console-copy="` + c + `" aria-label="Copy the command ` + c + `" class="inline-flex min-h-11 min-w-11 items-center justify-center rounded px-2 font-sans text-xs font-medium text-accent hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">Copy</button>` +
 		`</span>`
+}
+
+// consolePager is the kit's pagination with 44 px targets (design §2
+// Accessibility): its links are about 30 px tall (FATHOM-C-KIT-05,
+// docs/app-kit.md), so every console pager wraps them. "" when there is one
+// page.
+func consolePager(p chrome.Pagination) string {
+	nav := chrome.RenderPagination(p)
+	if nav == "" {
+		return ""
+	}
+	return `<div class="mt-2 [&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center [&_span]:inline-flex [&_span]:min-h-11 [&_span]:items-center" data-console-pager>` + nav + `</div>`
 }
 
 // valueStat maps a projected value onto a kit stat tile without losing its

@@ -529,8 +529,8 @@ inside mirror `d9dd789`:
 - **Also observed (browser proof):** lanes are a fixed `w-64`, so a six-lane board is
   wider than a 1440 px content column and its last lanes sit behind the board's own
   horizontal scroll. Fathom draws a lane only when it has rows (claimed-not-proven
-  always) and names the empty ones under the board. Expected: a lane width option or
-  lanes that share the row.
+  always) and names the empty ones under the board — which still left five lanes
+  (1,344 px) in a 1,094 px column; the lane layout is now FATHOM-C-KIT-05.
 
 **FATHOM-C-KIT-02 — no multi-series or time-axis chart (candidate)**
 
@@ -561,6 +561,27 @@ inside mirror `d9dd789`:
   Nothing overflows; it reads badly.
 - **Disposition:** `candidate`; no local workaround (the header is the kit's). Next
   action: app-kit maintainer.
+
+**FATHOM-C-KIT-05 — controls under 44 px, and fixed-width kanban lanes (candidate)**
+
+- **Origin / task:** console wave C's review (defects 14 and 15): the Proof pages'
+  pagers, the `/refactors` chooser and a plan's board.
+- **Observed / expected:** `chrome.RenderPagination`'s links are `px-2.5 py-1` (about
+  30 px tall; the kit's F0 record already noted it for `/search`), `form.RenderSelect`
+  and `RenderInput` are `py-2` with a border (38 px) and `RenderButton` 36 px, and a
+  kanban card's title link is `text-sm` with no minimum height or focus ring — under
+  the 44 px targets fathom's design requires. `kanban.Board`'s lanes are `min-w-[16rem]
+  w-64 flex-shrink-0`, so lanes never share a row: five need 1,344 px, and at 1440 the
+  fifth sat 6 px into view behind the board's own scroll. Expected: 44 px targets (or a
+  size option) on the pager, the form controls and the card link, and a lane layout
+  that fits the container (lanes that share the row, or wrap).
+- **Disposition:** `candidate`; local workarounds, each pinned by a test:
+  `consolePager` wraps every console pager with `[&_a]:min-h-11`
+  (`TestConsolePager_FortyFourPixelTargets`), the refactor form lifts its controls with
+  `[&_select|input|button]:min-h-11`, and `readOnlyBoard` makes the card link a 44 px
+  target with a focus ring and, from `md` up, turns the board into a grid of lanes at
+  least 12rem wide that wraps instead of scrolling (`TestConsolePlanBoard_LanesAreBounded`
+  fails if the kit renames the classes it rewrites). Next action: app-kit maintainer.
 
 **FATHOM-ADOPT-01 — selected metadata migration**
 

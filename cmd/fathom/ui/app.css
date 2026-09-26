@@ -1705,9 +1705,19 @@
       display: flex;
     }
   }
+  .md\:grid {
+    @media (width >= 48rem) {
+      display: grid;
+    }
+  }
   .md\:hidden {
     @media (width >= 48rem) {
       display: none;
+    }
+  }
+  .md\:w-auto {
+    @media (width >= 48rem) {
+      width: auto;
     }
   }
   .md\:min-w-0 {
@@ -1728,6 +1738,16 @@
   .md\:grid-cols-3 {
     @media (width >= 48rem) {
       grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+  .md\:grid-cols-\[repeat\(auto-fit\,minmax\(12rem\,1fr\)\)\] {
+    @media (width >= 48rem) {
+      grid-template-columns: repeat(auto-fit,minmax(12rem,1fr));
+    }
+  }
+  .md\:overflow-x-visible {
+    @media (width >= 48rem) {
+      overflow-x: visible;
     }
   }
   .md\:p-6 {
@@ -1818,6 +1838,21 @@
   .\[\&_a\]\:rounded-sm {
     & a {
       border-radius: var(--ak-radius-sm);
+    }
+  }
+  .\[\&_button\]\:min-h-11 {
+    & button {
+      min-height: calc(var(--spacing) * 11);
+    }
+  }
+  .\[\&_input\]\:min-h-11 {
+    & input {
+      min-height: calc(var(--spacing) * 11);
+    }
+  }
+  .\[\&_select\]\:min-h-11 {
+    & select {
+      min-height: calc(var(--spacing) * 11);
     }
   }
   .\[\&_span\]\:inline-flex {

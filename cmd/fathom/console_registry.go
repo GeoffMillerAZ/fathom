@@ -81,6 +81,11 @@ type consoleOut struct {
 	Body  func() string // HTML, rendered only for an HTML request
 	// Raw, when set, answers the request itself (a download, a fragment).
 	Raw func(w http.ResponseWriter) bool
+	// RawIsView says Raw's answer is a person opening the page's content
+	// elsewhere — the plan page's drawer showing a row's evidence — so it
+	// counts as a view of this page (UX-M4); a palette keystroke or a
+	// download is not.
+	RawIsView bool
 }
 
 // consoleRequest is one request to a page.
