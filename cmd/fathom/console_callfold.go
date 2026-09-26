@@ -152,6 +152,21 @@ func (f *callLogFold) add(e *adoptionCallEntry) {
 	}
 }
 
+// unregistered folds the rows whose service r does not list (OC-H2) over
+// every row the fold counted, in service order.
+func (f *callLogFold) unregistered(r console.Registry) console.Unregistered {
+	if !r.Read {
+		return console.Unregistered{RegistryNote: r.Note}
+	}
+	u := console.Unregistered{}
+	for _, k := range slices.Sorted(maps.Keys(f.services)) {
+		if r.Excludes(k) {
+			u.Merge(console.Unregistered{Rows: f.services[k].total, Services: []string{k}})
+		}
+	}
+	return u
+}
+
 // clone is a copy a reader owns while the tail keeps folding.
 func (f *callLogFold) clone() *callLogFold {
 	c := *f

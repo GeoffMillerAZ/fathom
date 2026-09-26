@@ -338,12 +338,23 @@ func renderFleetTablePanel(t console.FleetTableModel, m observatoryModel) string
 		Question:    "How is each project doing — wired, fresh, proven, used — sorted and filtered your way?",
 		Verb:        "fathom fleet report --json",
 		Source:      "the fleet report's registry, freshness, wiring and observations; the realization ladder and calls per day from the observatory model's call-log fold; plans from the verify ledger; claims and certify status from the daemon's store",
-		Denominator: fleetShownRange(t),
+		Denominator: fleetTableDenominator(t, m),
 		Freshness:   "as of " + m.GeneratedAt,
 		State:       state, Reason: reason,
 		SourceKey: "index layers sessions plans",
 		Body:      body.String(),
 	})
+}
+
+// fleetTableDenominator is the table's range, and the call-log rows no
+// project's calls count because their service is not in the registry
+// (OC-H2), named.
+func fleetTableDenominator(t console.FleetTableModel, m observatoryModel) string {
+	d := fleetShownRange(t)
+	if p := modelCallFacts(m).Unregistered.Phrase("call-log row"); p != "" {
+		d += " · calls: " + p
+	}
+	return d
 }
 
 // fleetShownRange names the rows on this page against every match and the

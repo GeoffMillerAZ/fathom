@@ -63,6 +63,9 @@ type fleetReport struct {
 	// CallLog names the rule that chose CallLogPath (OC-2), additively.
 	CallLog    console.ResolvedCallLog `json:"call_log"`
 	LedgerNote string                  `json:"ledger_note,omitempty"`
+	// Unregistered names the call-log rows whose service the registry does
+	// not list (OC-H2): no service row counts them.
+	Unregistered console.Unregistered `json:"unregistered_calls"`
 
 	Services []fleetServiceRow `json:"services"`
 }
@@ -190,6 +193,9 @@ func buildFleetReport(hc *http.Client, url string, now time.Time) (fleetReport, 
 	type traffic struct {
 		total, agent int
 		last         string
+	}
+	if callLogErr == nil {
+		rep.Unregistered = unregisteredCalls(entries, registryOf(svcs, nil))
 	}
 	perSvc := map[string]*traffic{}
 	for _, e := range entries {

@@ -88,7 +88,7 @@ func impactCatchSources(m observatoryModel, facts console.CallLogFacts, labelKey
 	impactReads.Lock()
 	if impactReads.guardKey != key || now.Sub(impactReads.guardAt) >= obsCacheTTL || now.Before(impactReads.guardAt) {
 		impactReads.Unlock()
-		src := freshCatchSources(m.reviews, facts, labelKey)
+		src := freshCatchSources(m.reviews, facts, labelKey, m.registry)
 		impactReads.Lock()
 		impactReads.guard, impactReads.guardKey, impactReads.guardAt = src, key, now
 	}
@@ -120,7 +120,7 @@ func buildImpactPage(cr *consoleRequest) (consoleOut, error) {
 	}
 	catchIn := catchInputsFrom(impactCatchSources(m, facts, sessionLabelKey(roots), cr.now))
 	if _, registered := roots[service]; service != "" && !registered && !catchIn.NamesService(service) {
-		return consoleOut{}, unknownCatchProjectError(service, cr)
+		return consoleOut{}, unknownCatchProjectError(service, catchIn.ExcludesNamedService(service), cr)
 	}
 	cm := console.CatchTimeline(catchIn, catchFilterFrom(kinds, service, days, cr.now), evPage(q), catchPageSize)
 	catchVerb := catchCommand(cm.Filter, days, cm.Page)
@@ -141,10 +141,15 @@ func buildImpactPage(cr *consoleRequest) (consoleOut, error) {
 // names nothing: no registered project and no instrument's row (design §2:
 // an unknown service renders on the shell with the reason and the remedy),
 // never a timeline of lanes that each read "not instrumented".
-func unknownCatchProjectError(service string, cr *consoleRequest) *consoleError {
+func unknownCatchProjectError(service string, excluded bool, cr *consoleRequest) *consoleError {
+	reason := "No indexed project is named " + service + ", and no verify run, review run or guard beat names it — there is nothing to show for it."
+	if excluded {
+		// OC-H2: rows name it, but the registry does not list it.
+		reason = "No indexed project is named " + service + ". Rows name it, but the daemon's registry does not list it, so they are not the fleet's: every lane leaves them out, and the unfiltered timeline names them."
+	}
 	return &consoleError{
 		Status: http.StatusNotFound, Title: "Unknown project",
-		Reason:      "No indexed project is named " + service + ", and no verify run, review run or guard beat names it — there is nothing to show for it.",
+		Reason:      reason,
 		Remedy:      "clear the project filter to see every project's catches",
 		RemedyHref:  evHref(cr.r.URL.Path, cr.r.URL.Query(), "svc", ""),
 		RemedyLabel: "Show every project",

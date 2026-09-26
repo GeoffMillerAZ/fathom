@@ -149,6 +149,9 @@ type CallLogFacts struct {
 	Log          ResolvedCallLog
 	Rows         int
 	Unattributed int // rows naming no service
+	// Unregistered are the rows naming a service the registry does not
+	// list (OC-H2): part of the total, split out of the attributed rows.
+	Unregistered Unregistered
 	// ReadErr is non-empty when the log exists and could not be read;
 	// Missing is true when there is no log at the path yet.
 	ReadErr string
@@ -182,6 +185,12 @@ func CallTotal(c CallLogFacts) Value[int] {
 		return Errored[int]("call log unreadable: " + c.ReadErr).WithSource(source)
 	}
 	denom := "every row in the log; " + thousands(c.Rows-c.Unattributed) + " attributed to a service, " + thousands(c.Unattributed) + " unattributed"
+	if u := c.Unregistered; u.Rows > 0 {
+		// OC-H2: rows naming a service the registry does not list are still
+		// rows in the log, but not any registered service's calls.
+		denom = "every row in the log; " + thousands(c.Rows-c.Unattributed-u.Rows) + " attributed to a registered service, " +
+			strings.TrimSuffix(u.Phrase("row"), " excluded") + ", " + thousands(c.Unattributed) + " unattributed"
+	}
 	if c.ConsoleReads > 0 {
 		denom += "; " + thousands(c.ConsoleReads) + " console page reads excluded (not usage)"
 	}

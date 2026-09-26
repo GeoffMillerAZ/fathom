@@ -87,6 +87,10 @@ wave is called done.
 - [ ] (op) OC-53: FATHOM-KIT-05..08 unified diff, live freshness, page heading and catalog entries land in app-kit {id: OC-53, skip: "cross-repo: app-kit"}
 - [x] Fathom's mirror is pinned to the app-kit revision carrying its contributions, and each contribution record in docs/app-kit.md names its delivery {id: OC-54, oracle: lexical, path: docs/app-kit.md, pattern: "FATHOM-KIT-01"}
 
+## J. Honesty (after integration)
+
+- [ ] A row naming a service the registry does not list is left out of the catches timeline and every per-service call figure, and named — its count and service ids — on the timeline, in each lane, in the fleet report and in calls.total's denominator {id: OC-H2, symbol: unregisteredCalls, package: cmd/fathom, reachable_from: TestCatches_ExcludeServicesTheRegistryDoesNotList}
+
 ## I. Measurements
 
 - [ ] (op) UX-M1: ten operator tasks answered in three clicks or fewer from Now, each answer equal to its verb's JSON {id: UX-M1, skip: "operator measurement 2026-09-26, HTTP-level (docs/bench/readings/ux-m1-recount-nav-2026-09-26.md): after OC-55..OC-57, 10 of 10 tasks in three clicks or fewer at 1440 px and 8 of 10 at 390 px (the serving explainer and sessions by arm take 4 there: the Menu tap plus a two-click form), all 10 answers equal their verb; the vision's scripted browser journeys are not yet run, because Chrome aborts at launch"}
