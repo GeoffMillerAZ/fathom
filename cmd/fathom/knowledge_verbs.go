@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 
@@ -103,7 +104,7 @@ func withKnowledgeSource(kf knowledgeFlags, stderr io.Writer, fn func(console.Kn
 		return 1
 	}
 	defer st.Close()
-	if err := fn(console.KnowledgeSource{Store: st}, ks); err != nil {
+	if err := fn(console.KnowledgeSource{Store: st, StorePath: absStorePath(ks.Path)}, ks); err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
 	}
@@ -167,8 +168,20 @@ func cmdLayersStrata(args []string, stdout, stderr io.Writer) int {
 				fmt.Fprintf(stdout, "  %-24s %-8s claims %s · runs %s · spent %s\n", l.Name, l.Source, valueWords(l.Claims), valueWords(l.Runs), dollarsWords(l.CostUSD))
 			}
 		}
+		if len(s.Unplaced) > 0 {
+			fmt.Fprintln(stdout, "\nNOT PLACED — the pack could not be read, so its stratum is not known")
+			for _, l := range s.Unplaced {
+				fmt.Fprintf(stdout, "  %-24s %-8s claims %s · runs %s\n", l.Name, l.Source, valueWords(l.Claims), valueWords(l.Runs))
+				if l.Note != "" {
+					fmt.Fprintf(stdout, "    %s\n", l.Note)
+				} else {
+					fmt.Fprintf(stdout, "    %s\n", l.Origin)
+				}
+			}
+		}
 		t := s.Totals
-		fmt.Fprintf(stdout, "\ntotals: %s current claims · %s real runs · spent %s · %s emitted · %s rejected · %s refused before starting\n",
+		fmt.Fprintf(stdout, "\nlayers: %s\n", valueWords(t.Layers))
+		fmt.Fprintf(stdout, "totals: %s current claims · %s real runs · spent %s · %s emitted · %s rejected · %s refused before starting\n",
 			valueWords(t.Claims), valueWords(t.Runs), dollarsWords(t.CostUSD), valueWords(t.Emitted), valueWords(t.Rejected), valueWords(t.Refused))
 		var evs []string
 		for _, v := range []string{"re-anchored", "contradicted", "corroborated", "refuted", "superseded", "annotated"} {
@@ -316,6 +329,44 @@ func cmdClaimShow(args []string, stdout, stderr io.Writer) int {
 	})
 }
 
+// cmdClaimList implements `fathom claim list`: the claims a count counts
+// (a layer, a project, a status), 50 a page — /claims's JSON section.
+func cmdClaimList(args []string, stdout, stderr io.Writer) int {
+	fs := newFlagSet("claim list", stderr)
+	kf := addKnowledgeFlags(fs)
+	layer := fs.String("layer", "", "only this layer's claims (default: every layer)")
+	service := fs.String("service", "", "only this project's claims (default: every project)")
+	status := fs.String("status", console.ClaimStatusCurrent, "current (fresh, stale, contradicted), a lifecycle status (fresh, stale, contradicted, superseded, refuted), or all")
+	page := fs.Int("page", 1, fmt.Sprintf("page of %d claims", console.ClaimsPerPage))
+	if err := fs.Parse(reorderFlagsFirst(fs, args)); err != nil {
+		return 1
+	}
+	if !console.ValidClaimStatus(*status) {
+		fmt.Fprintf(stderr, "error: --status must be one of %s, got %q\n", strings.Join(console.ClaimStatusFilters, ", "), *status)
+		return 1
+	}
+	return withKnowledgeSource(kf, stderr, func(src console.KnowledgeSource, ks knowledgeStore) error {
+		l, err := console.ListClaims(context.Background(), src, console.ClaimFilter{Layer: *layer, Service: *service, Status: *status}, *page)
+		if err != nil {
+			return err
+		}
+		if *layer != "" && !slices.Contains(l.Layers, *layer) {
+			return fmt.Errorf("no layer %q: no pack defines it and the store holds no claim or compile run for it (fathom layers strata lists them)", *layer)
+		}
+		if *service != "" && !slices.Contains(l.Services, *service) {
+			return fmt.Errorf("no project %q in store %s", *service, ks)
+		}
+		if *kf.json {
+			return writeKnowledgeJSON(stdout, l)
+		}
+		fmt.Fprintf(stdout, "store: %s\n%s %s — page %d of %d\n\n", ks, valueWords(l.Total), l.Total.Denominator, l.Page, l.Pages)
+		for _, c := range l.Claims {
+			fmt.Fprintf(stdout, "%s  %-12s %-16s %s\n    %s  %s\n", c.ClaimID, c.Status, c.Layer, c.Service, c.Statement, c.Cites)
+		}
+		return nil
+	})
+}
+
 // cmdReportPacks implements `fathom report packs`.
 func cmdReportPacks(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("report packs", stderr)
@@ -332,17 +383,24 @@ func cmdReportPacks(args []string, stdout, stderr io.Writer) int {
 			return writeKnowledgeJSON(stdout, m)
 		}
 		fmt.Fprintf(stdout, "store: %s\n\nDIALECT PACKS\n", ks)
-		fmt.Fprintf(stdout, "%-18s %-28s %-8s %8s %8s %-10s %-24s %s\n", "LANGUAGE", "ENGINE", "EDGES", "FILES", "PROJECTS", "INTEGRITY", "INVENTORY", "PRECISION/RECALL")
+		fmt.Fprintf(stdout, "%-18s %-28s %-8s %-12s %8s %8s %-10s %-24s %s\n", "LANGUAGE", "ENGINE", "EDGES", "TYPED SHARE", "FILES", "PROJECTS", "INTEGRITY", "INVENTORY", "PRECISION/RECALL")
 		for _, d := range m.Dialects {
 			pr := "unmeasured"
 			if d.Precision.Known() {
-				pr = fmt.Sprintf("%.2f / %.2f (%s tier)", d.Precision.V, d.Recall.V, strings.SplitN(d.Reading, " ", 2)[0])
+				pr = fmt.Sprintf("%.2f / %.2f (%s tier)", d.Precision.V, d.Recall.V, d.ReadingTier)
 			}
 			inv := strings.Join(d.Inventory, ",")
 			if inv == "" {
 				inv = "—"
 			}
-			fmt.Fprintf(stdout, "%-18s %-28s %-8s %8s %8s %-10s %-24s %s\n", d.Name, d.Engine, d.TypedEdges, valueWords(d.Files), valueWords(d.Projects), d.Integrity, inv, pr)
+			share := "none"
+			if d.TypedShare.Known() {
+				share = fmt.Sprintf("%.0f%%", d.TypedShare.V*100)
+				if d.TypedShare.State == console.StatePartial {
+					share = "≈ " + share
+				}
+			}
+			fmt.Fprintf(stdout, "%-18s %-28s %-8s %-12s %8s %8s %-10s %-24s %s\n", d.Name, d.Engine, d.TypedEdges, share, valueWords(d.Files), valueWords(d.Projects), d.Integrity, inv, pr)
 		}
 		fmt.Fprintln(stdout, "\nLAYER PACKS")
 		for _, l := range m.Layers {
@@ -350,7 +408,17 @@ func cmdReportPacks(args []string, stdout, stderr io.Writer) int {
 			if len(l.ActiveIn) > 0 {
 				active = strings.Join(l.ActiveIn, ", ")
 			}
-			fmt.Fprintf(stdout, "%-24s %-8s %-8s claims %s · active in %s\n", l.Name, l.Source, l.Stratum, valueWords(l.Contributes), active)
+			stratum := l.Stratum
+			if stratum == "" {
+				stratum = "unknown"
+			}
+			fmt.Fprintf(stdout, "%-24s %-8s %-8s claims %s · active in %s\n", l.Name, l.Source, stratum, valueWords(l.Contributes), active)
+			if l.Note != "" {
+				fmt.Fprintf(stdout, "  note: %s\n", l.Note)
+			}
+		}
+		for _, n := range m.Notes {
+			fmt.Fprintf(stdout, "note: %s\n", n)
 		}
 		fmt.Fprintln(stdout, "\nreadings:")
 		for _, r := range m.Readings {

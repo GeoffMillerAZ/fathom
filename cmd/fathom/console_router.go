@@ -29,6 +29,9 @@ type consoleDeps struct {
 	startTime time.Time
 	now       func() time.Time
 	search    *consoleSearchCache
+	// storePath is the daemon's store (absolute), named in the remedy
+	// commands the Knowledge pages print; "" in handler tests without one.
+	storePath string
 }
 
 // newConsoleDeps builds the default dependencies for a handler: the

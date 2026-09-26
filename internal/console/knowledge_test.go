@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -228,7 +229,7 @@ func TestStrata_BandsAndLifecycle(t *testing.T) {
 		t.Errorf("findings = %+v", find)
 	}
 	tot := s.Totals
-	if tot.Claims.V != 3 || tot.Runs.V != 3 || tot.CostUSD.V != 0.70 || tot.Emitted.V != 4 || tot.Rejected.V != 6 || tot.Refused.V != 1 || tot.Services.V != 1 || tot.Projects != 3 || tot.Layers != 5 {
+	if tot.Claims.V != 3 || tot.Runs.V != 3 || tot.CostUSD.V != 0.70 || tot.Emitted.V != 4 || tot.Rejected.V != 6 || tot.Refused.V != 1 || tot.Services.V != 1 || tot.Projects != 3 || tot.Layers.V != 5 || tot.Layers.State != StatePresent {
 		t.Errorf("totals = %+v", tot)
 	}
 	lc := s.Lifecycle
@@ -365,8 +366,20 @@ func TestLayerDetail_RunsAndRejections(t *testing.T) {
 		t.Errorf("a run that rejected without reasons is named: %q", d.RejectionsNote)
 	}
 	if len(d.Uncompiled) != 1 || d.Uncompiled[0].Service != "alpha" || strings.Join(d.Uncompiled[0].Scopes, ",") != "docs/CLAUDE.md" ||
-		d.Uncompiled[0].Resume != "fathom compile --layer obligations --service alpha --continue" {
+		d.Uncompiled[0].Resume != "fathom compile --layer obligations --service alpha --store <store> --continue --dry-run=false" {
 		t.Errorf("uncompiled = %+v", d.Uncompiled)
+	}
+	// The remedy is a command that works: --continue runs in direct --store
+	// mode only, and spending takes --dry-run=false. A known store is named.
+	withStore := f.src
+	withStore.StorePath = "/data/fleet store.sqlite"
+	if d, _ := LayerDetail(context.Background(), withStore, "obligations"); len(d.Uncompiled) != 1 ||
+		d.Uncompiled[0].Resume != "fathom compile --layer obligations --service alpha --store '/data/fleet store.sqlite' --continue --dry-run=false" {
+		t.Errorf("resume with a known store = %+v", d.Uncompiled)
+	}
+	// One of the two projects with a real compile left scopes uncompiled.
+	if u := d.UncompiledCount; u.State != StatePresent || u.V != 1 || !strings.Contains(u.Denominator, "of 2 projects with a real compile") {
+		t.Errorf("uncompiled count = %+v", u)
 	}
 	if d.DryRun != "fathom compile --layer obligations --service <project>" {
 		t.Errorf("dry run = %q", d.DryRun)
@@ -390,6 +403,31 @@ func TestLayerDetail_RunsAndRejections(t *testing.T) {
 		t.Errorf("a never-compiled layer = %+v", never)
 	}
 	noV(t, "a never-compiled layer's accepted count", never.Accepted)
+	// Nothing compiled it, so nothing measured what it left uncompiled: an
+	// empty list there is absent, never "every compile covered its corpus".
+	if u := never.UncompiledCount; u.State != StateAbsent || !strings.Contains(u.Reason, "no real compile run") {
+		t.Errorf("a never-compiled layer's uncompiled count = %+v, want absent", u)
+	}
+	noV(t, "a never-compiled layer's uncompiled count", never.UncompiledCount)
+
+	// A layer whose only runs were refused on their estimate (or were dry
+	// runs) accepted and rejected nothing because nothing compiled: absent,
+	// never a measured 0.
+	ctx := context.Background()
+	if err := f.st.RecordCompileRun(ctx, core.CompileRun{RunID: "r-sb", ServiceID: "alpha", Layer: "spec-bindings", Refused: true, CostUSD: 1.40,
+		RanAt: f.t0, RefusalReason: "estimate over budget"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.st.RecordCompileRun(ctx, core.CompileRun{RunID: "r-sb-dry", ServiceID: "beta", Layer: "spec-bindings", DryRun: true, RanAt: f.t0}); err != nil {
+		t.Fatal(err)
+	}
+	refused, _ := LayerDetail(ctx, f.src, "spec-bindings")
+	if len(refused.Runs) != 2 || refused.Accepted.State != StateAbsent || refused.Rejected.State != StateAbsent ||
+		!strings.Contains(refused.Accepted.Reason, "only dry-run estimates or refused runs") || refused.UncompiledCount.State != StateAbsent {
+		t.Errorf("a refused-only layer = accepted %+v rejected %+v uncompiled %+v", refused.Accepted, refused.Rejected, refused.UncompiledCount)
+	}
+	noV(t, "a refused-only layer's accepted count", refused.Accepted)
+	noV(t, "a refused-only layer's rejected count", refused.Rejected)
 }
 
 // TestClaimDetail_EventsAndCitation pins OC-30: the claim page carries the
@@ -441,6 +479,33 @@ func TestClaimDetail_EventsAndCitation(t *testing.T) {
 	stale, _ := ClaimDetail(ctx, f.src, "c-a2", "alpha")
 	if stale.Excerpt.V.From != "compile-time anchor text" || stale.Excerpt.V.Lines[0].Text != "Old rule, as compiled." || !strings.Contains(stale.Excerpt.V.Note, "stale") {
 		t.Errorf("a stale claim's excerpt = %+v", stale.Excerpt)
+	}
+	// A superseded or refuted claim is never re-anchored (a terminal
+	// verdict): its range freezes while the file moves on, so the kept
+	// anchor text is what it cites, and without one the current lines are
+	// shown only with a note saying they may have moved.
+	claimWith := func(id string, status core.ClaimStatus, anchor string) {
+		cl := core.SemanticClaim{ClaimID: id, ServiceID: "alpha", Layer: "obligations", Rule: "rule " + id, Status: status, Tier: core.TierDocClaimed}
+		if err := f.st.PutClaims(ctx, []core.SemanticClaim{cl}, []core.ClaimLink{{ClaimID: id, Rel: core.RelCites, TargetRef: "CLAUDE.md#L2-L2", TargetHash: "h", AnchorText: anchor}}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	claimWith("c-sup-kept", core.ClaimSuperseded, "4. Stop hook: surfaces newly claimed tasks.")
+	claimWith("c-ref-kept", core.ClaimRefuted, "A refuted rule's text.")
+	claimWith("c-sup-bare", core.ClaimSuperseded, "")
+	for id, text := range map[string]string{"c-sup-kept": "4. Stop hook: surfaces newly claimed tasks.", "c-ref-kept": "A refuted rule's text."} {
+		d, _ := ClaimDetail(ctx, f.src, id, "alpha")
+		if ex := d.Excerpt; ex.State != StatePresent || ex.V.From != "compile-time anchor text" || len(ex.V.Lines) != 1 || ex.V.Lines[0].Text != text ||
+			!ex.V.Lines[0].Cited || !strings.Contains(ex.V.Note, "never re-anchored") {
+			t.Errorf("%s (a terminal claim with kept text) excerpt = %+v, want its compile-time text", id, ex)
+		}
+	}
+	bare, _ := ClaimDetail(ctx, f.src, "c-sup-bare", "alpha")
+	if ex := bare.Excerpt; ex.State != StatePresent || ex.V.From != "current file" || !strings.Contains(ex.V.Note, "superseded") || !strings.Contains(ex.V.Note, "may have moved") {
+		t.Errorf("a superseded claim without kept text = %+v, want the current lines with a may-have-moved note", ex)
+	}
+	if fresh, _ := ClaimDetail(ctx, f.src, "c-a1", "alpha"); fresh.Excerpt.V.Note != "" {
+		t.Errorf("a fresh claim's range is kept current, so its excerpt carries no note: %q", fresh.Excerpt.V.Note)
 	}
 	missing, _ := ClaimDetail(ctx, f.src, "nope", "")
 	if missing.Found || missing.Excerpt.State != StateAbsent || missing.EventCount.State != StateAbsent {
@@ -598,8 +663,13 @@ func TestServingView_RawRowsFirstAndCoverageNote(t *testing.T) {
 	if len(v.AgentSees) != 2 || v.AgentSees[0].Rule != "raw" || v.AgentSees[1].Rule != "compiled" {
 		t.Errorf("agent sees = %+v, want the raw row first", v.AgentSees)
 	}
-	if !strings.Contains(v.CoverageNote, "internal/CLAUDE.md governs this path and was not compiled: 7/10 sections compiled") || !strings.Contains(v.CoverageNote, "--service alpha --continue") {
-		t.Errorf("coverage note = %q", v.CoverageNote)
+	if !strings.Contains(v.CoverageNote, "internal/CLAUDE.md governs this path and was not compiled: 7/10 sections compiled") ||
+		v.Resume != "fathom compile --layer obligations --service alpha --store <store> --continue --dry-run=false" || !strings.Contains(v.CoverageNote, v.Resume) {
+		t.Errorf("coverage note = %q, resume = %q", v.CoverageNote, v.Resume)
+	}
+	if named := ServingView(ServingInputs{Explanation: ex, Coverage: semantic.LayerCoverage{SectionsTotal: 10, SectionsCompiled: 7, UncompiledScopes: []string{"internal/CLAUDE.md"}},
+		CoverageFound: true, StorePath: "/data/fleet.sqlite"}); !strings.Contains(named.Resume, "--store /data/fleet.sqlite --continue --dry-run=false") {
+		t.Errorf("resume with the store named = %q", named.Resume)
 	}
 	if !strings.HasPrefix(v.Rerank, "off") {
 		t.Errorf("rerank = %q", v.Rerank)
@@ -611,5 +681,223 @@ func TestServingView_RawRowsFirstAndCoverageNote(t *testing.T) {
 	bad := ServingView(ServingInputs{Explanation: ex, CoverageErr: errFixtureRead})
 	if bad.Coverage.State != StateError || !strings.Contains(bad.Coverage.Reason, "disk I/O error") {
 		t.Errorf("unreadable coverage = %+v", bad.Coverage)
+	}
+}
+
+// An unreadable .fathom/layers is named, never read as "embedded packs
+// only": semantic's union loader falls back silently (its serve-path
+// resilience contract), so the catalog view lists the directory itself.
+// The project's packs are missing from the count, which is then a lower
+// bound naming the project, and a layer the project holds claims for is
+// "unknown", never an orphan no pack defines.
+func TestKnowledge_UnreadablePackCatalogIsNamed(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("root reads a 000 directory")
+	}
+	f := newKnowledgeFixture(t)
+	ctx := context.Background()
+	cl := core.SemanticClaim{ClaimID: "c-kit", ServiceID: "alpha", Layer: "ui-appkit", Rule: "Use the kit's table.", Status: core.ClaimFresh}
+	if err := f.st.PutClaims(ctx, []core.SemanticClaim{cl}, nil); err != nil {
+		t.Fatal(err)
+	}
+	dir := filepath.Join(f.alphaRoot, ".fathom", "layers")
+	if err := os.Chmod(dir, 0); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.Chmod(dir, 0o755) })
+
+	s, err := Strata(ctx, f.src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(s.Notes) != 1 || !strings.Contains(s.Notes[0], "alpha") || !strings.Contains(s.Notes[0], "could not be read") {
+		t.Errorf("notes = %v, want the unreadable catalog named", s.Notes)
+	}
+	if l := s.Totals.Layers; l.State != StatePartial || l.V != 5 || !strings.Contains(l.Reason, "alpha") {
+		t.Errorf("layers = %+v, want a lower bound naming alpha", l)
+	}
+	if len(s.Unplaced) != 1 || s.Unplaced[0].Name != "ui-appkit" || s.Unplaced[0].Source != PackUnknown || !strings.Contains(s.Unplaced[0].Origin, "alpha") {
+		t.Errorf("unplaced = %+v, want ui-appkit unknown (its catalog unreadable), never an orphan", s.Unplaced)
+	}
+	for _, b := range s.Bands {
+		for _, l := range b.Layers {
+			if l.Name == "ui-appkit" {
+				t.Errorf("ui-appkit guessed into the %s band", b.Stratum)
+			}
+		}
+	}
+	m, err := PackMatrix(ctx, f.src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(m.Notes) != 1 || m.LayerCount.State != StatePartial {
+		t.Errorf("packs notes = %v, layer count = %+v", m.Notes, m.LayerCount)
+	}
+	for _, l := range m.Layers {
+		if l.Name == "ui-appkit" && (l.Source != PackUnknown || l.Stratum != "" || l.Role != "") {
+			t.Errorf("ui-appkit on /packs = %+v, want unknown with no invented stratum or role", l)
+		}
+	}
+	// Readable again: the pack is back, and nothing is noted.
+	os.Chmod(dir, 0o755)
+	s, _ = Strata(ctx, f.src)
+	if len(s.Notes) != 0 || s.Totals.Layers.State != StatePresent || len(s.Unplaced) != 0 {
+		t.Errorf("a readable catalog = notes %v layers %+v unplaced %+v", s.Notes, s.Totals.Layers, s.Unplaced)
+	}
+}
+
+// A project pack that failed to load is known by name only: no stratum,
+// kind or role is invented for it, its load error travels with it, and
+// the strata list it apart instead of guessing it into a band.
+func TestPackMatrix_BrokenPackKeepsItsError(t *testing.T) {
+	f := newKnowledgeFixture(t)
+	layers := f.src.Layers
+	f.src.Layers = func(root string) ([]semantic.LayerInfo, error) {
+		out, err := layers(root)
+		if root == f.alphaRoot {
+			out = append(out, semantic.LayerInfo{LayerDef: semantic.LayerDef{Name: "resume-standards"}, Source: semantic.SourceProject,
+				LoadError: `layer.cue does not satisfy #Layer: #Layer.stratum: 2 errors in empty disjunction`})
+		}
+		return out, err
+	}
+	ctx := context.Background()
+	m, err := PackMatrix(ctx, f.src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var broken *LayerPack
+	for i := range m.Layers {
+		if m.Layers[i].Name == "resume-standards" {
+			broken = &m.Layers[i]
+		}
+	}
+	if broken == nil || broken.Stratum != "" || broken.Role != "" || broken.Kind != "" || !strings.Contains(broken.Note, "does not satisfy #Layer") {
+		t.Fatalf("broken pack = %+v, want no stratum or role and its load error", broken)
+	}
+	s, _ := Strata(ctx, f.src)
+	if len(s.Unplaced) != 1 || s.Unplaced[0].Name != "resume-standards" || !strings.Contains(s.Unplaced[0].Note, "broken project pack") {
+		t.Errorf("unplaced = %+v", s.Unplaced)
+	}
+	d, _ := LayerDetail(ctx, f.src, "resume-standards")
+	if d.Definition == nil || d.Definition.Stratum != "" || d.Definition.BrokenPackNote == "" || d.Block.Role != "" {
+		t.Errorf("broken pack's layer page = %+v / %+v", d.Definition, d.Block)
+	}
+}
+
+// The dialect matrix says what the fleet's typed edges actually are: the
+// share a resolver confirmed, by the calling file's language — a language
+// whose SCIP delegate never ran holds only heuristic rows (a measured 0),
+// one with no typed-edge row at all is absent — and a published reading
+// names the tier it measured.
+func TestPackMatrix_TypedShareFromTheStore(t *testing.T) {
+	f := newKnowledgeFixture(t)
+	ctx := context.Background()
+	if err := f.st.PutTypedEdges(ctx, "alpha", "alpha/pkg", []core.Edge{
+		{FromFile: "main.go", FromSymbol: "a", ToSymbol: "b", Kind: core.EdgeDirect},
+		{FromFile: "main.go", FromSymbol: "a", ToSymbol: "c", Kind: core.EdgeDirect},
+		{FromFile: "store.go", FromSymbol: "d", ToSymbol: "e", Kind: core.EdgeUnresolved},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.st.PutTypedEdges(ctx, "beta", "beta/py", []core.Edge{
+		{FromFile: "app.py", FromSymbol: "f", ToSymbol: "g", Kind: core.EdgeFileResolved},
+		{FromFile: "lib.py", FromSymbol: "h", ToSymbol: "i", Kind: core.EdgeFileResolved},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	m, err := PackMatrix(ctx, f.src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows := map[string]DialectPack{}
+	for _, d := range m.Dialects {
+		rows[d.Language] = d
+	}
+	if g := rows["go"]; g.TypedShare.State != StatePresent || g.TypedShare.V != 0.667 || g.EdgeKinds["direct"] != 2 || g.EdgeKinds["unresolved"] != 1 || g.ResolvedEdges() != 2 {
+		t.Errorf("go = share %+v kinds %v", g.TypedShare, g.EdgeKinds)
+	}
+	py := rows["py"]
+	if py.TypedShare.State != StateZero || py.TypedShare.V != 0 || py.EdgeKinds["file-resolved"] != 2 || !strings.Contains(py.TypedShare.Denominator, "every one heuristic") {
+		t.Errorf("py = share %+v kinds %v, want a measured 0 of 2 heuristic rows", py.TypedShare, py.EdgeKinds)
+	}
+	if py.ReadingTier != "file" || rows["go"].ReadingTier != "native" {
+		t.Errorf("reading tiers = py %q go %q", py.ReadingTier, rows["go"].ReadingTier)
+	}
+	if ts := rows["ts"]; ts.TypedShare.State != StateAbsent || len(ts.EdgeKinds) != 0 {
+		t.Errorf("ts has no typed-edge row: %+v", ts.TypedShare)
+	}
+	noV(t, "a language with no typed-edge row", rows["ts"].TypedShare)
+	if rs := rows["rust"]; rs.TypedShare.State != StateAbsent || !strings.Contains(rs.TypedShare.Reason, "no Rust file indexed") {
+		t.Errorf("rust = %+v", rs.TypedShare)
+	}
+	// A tally that cannot be read makes the share a named lower bound.
+	f.src.EdgeTally = func(ctx context.Context, svc string) (EdgeTally, error) {
+		if svc == "beta" {
+			return nil, errFixtureRead
+		}
+		return TallyTypedEdges(ctx, f.st, svc)
+	}
+	m, _ = PackMatrix(ctx, f.src)
+	for _, d := range m.Dialects {
+		if d.Language == "go" && (d.TypedShare.State != StatePartial || !strings.Contains(d.TypedShare.Reason, "beta")) {
+			t.Errorf("go with beta's edges unreadable = %+v", d.TypedShare)
+		}
+	}
+}
+
+// Every claim count drills down to its rows: the list filters by layer,
+// project and status ("current" is what the counts count), pages 50 at a
+// time, and its total equals the count that linked to it.
+func TestListClaims_CountsDrillDownToRows(t *testing.T) {
+	f := newKnowledgeFixture(t)
+	ctx := context.Background()
+	cov, err := LayerCoverage(ctx, f.src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range cov.Rows {
+		for _, c := range r.Cells {
+			if !c.Claims.Known() {
+				continue
+			}
+			l, err := ListClaims(ctx, f.src, ClaimFilter{Layer: c.Layer, Service: r.Service, Status: ClaimStatusCurrent}, 1)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if l.Total.V != c.Claims.V || len(l.Claims) != c.Claims.V {
+				t.Errorf("%s/%s: the cell counts %d, the list holds %d (%d rows)", r.Service, c.Layer, c.Claims.V, l.Total.V, len(l.Claims))
+			}
+		}
+	}
+	stale, _ := ListClaims(ctx, f.src, ClaimFilter{Layer: "obligations", Status: "stale"}, 1)
+	if stale.Total.V != 1 || len(stale.Claims) != 1 || stale.Claims[0].ClaimID != "c-a2" || stale.Claims[0].Cites != "CLAUDE.md#L4-L4" || stale.Claims[0].Service != "alpha" {
+		t.Errorf("stale obligations = %+v", stale)
+	}
+	all, _ := ListClaims(ctx, f.src, ClaimFilter{Status: ClaimStatusAll}, 1)
+	if all.Total.V != 5 || all.Claims[0].Service != "alpha" || all.Claims[len(all.Claims)-1].Service != "beta" {
+		t.Errorf("all claims = %+v", all.Total)
+	}
+	if cur, _ := ListClaims(ctx, f.src, ClaimFilter{}, 1); cur.Filter.Status != ClaimStatusCurrent || cur.Total.V != 3 {
+		t.Errorf("the default filter is current: %+v %+v", cur.Filter, cur.Total)
+	}
+	if _, err := ListClaims(ctx, f.src, ClaimFilter{Status: "nope"}, 1); err == nil {
+		t.Error("an unknown status must be refused")
+	}
+	// Paged: 120 fresh claims are three pages of 50; past the end is the last.
+	var many []core.SemanticClaim
+	for i := 0; i < 120; i++ {
+		many = append(many, core.SemanticClaim{ClaimID: fmt.Sprintf("m-%03d", i), ServiceID: "gamma", Layer: "obligations", Rule: fmt.Sprintf("Rule %03d.", i), Status: core.ClaimFresh})
+	}
+	if err := f.st.PutClaims(ctx, many, nil); err != nil {
+		t.Fatal(err)
+	}
+	p3, _ := ListClaims(ctx, f.src, ClaimFilter{Service: "gamma"}, 9)
+	if p3.Pages != 3 || p3.Page != 3 || len(p3.Claims) != 20 || p3.Claims[0].ClaimID != "m-100" || p3.Total.V != 120 {
+		t.Errorf("page 3 = page %d of %d, %d rows, first %s", p3.Page, p3.Pages, len(p3.Claims), p3.Claims[0].ClaimID)
+	}
+	broken := f.src
+	broken.Store = failingStore{Store: f.st, claimsFail: "beta"}
+	if l, _ := ListClaims(ctx, broken, ClaimFilter{Status: ClaimStatusAll}, 1); l.Total.State != StatePartial || !strings.Contains(l.Total.Reason, "beta") {
+		t.Errorf("an unreadable project = %+v", l.Total)
 	}
 }

@@ -13,6 +13,7 @@ package main
 // carry, over the daemon's own store.
 
 import (
+	"context"
 	"fmt"
 	"html"
 	"html/template"
@@ -21,9 +22,12 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 	"unicode/utf8"
 
 	"github.com/a-h/templ"
+	"github.com/geoffmilleraz/app-kit/appkit/ui/callout"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/chrome"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/form"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/stat"
@@ -64,7 +68,55 @@ func knowledgeSourceFor(cr *consoleRequest) (console.KnowledgeSource, error) {
 			Reason: "this daemon has no store open, so no governed claim can be read", Remedy: "fathom serve-http --store <path>",
 			RemedyHref: "/statusz", RemedyLabel: "Open the daemon status"}
 	}
-	return console.KnowledgeSource{Store: cr.deps.c.Store()}, nil
+	return console.KnowledgeSource{Store: cr.deps.c.Store(), StorePath: cr.deps.storePath,
+		EdgeTally: func(ctx context.Context, svc string) (console.EdgeTally, error) { return cachedEdgeTally(ctx, cr, svc) }}, nil
+}
+
+// edgeTallyCache keeps each service's typed-edge tally per daemon. Reading
+// every typed_edges row of a large fleet costs more than /packs' render
+// budget, and the rows only move when a service is ingested — which moves
+// the event bus's cursor. A tally is reused while the cursor holds, for at
+// most edgeTallyTTL (an out-of-band `ingest --store` publishes no event).
+// Bounded.
+var edgeTallyCache = struct {
+	sync.Mutex
+	entries map[string]edgeTallyEntry
+}{entries: map[string]edgeTallyEntry{}}
+
+type edgeTallyEntry struct {
+	cursor string
+	at     time.Time
+	tally  console.EdgeTally
+}
+
+const (
+	edgeTallyTTL = 2 * time.Minute
+	edgeTallyMax = 256
+)
+
+func cachedEdgeTally(ctx context.Context, cr *consoleRequest, svc string) (console.EdgeTally, error) {
+	key := fmt.Sprintf("%p\x00%s", cr.deps, svc)
+	cursor := ""
+	if cr.deps.bus != nil {
+		cursor = cr.deps.bus.Cursor()
+	}
+	edgeTallyCache.Lock()
+	if e, ok := edgeTallyCache.entries[key]; ok && e.cursor == cursor && !cr.now.Before(e.at) && cr.now.Sub(e.at) < edgeTallyTTL {
+		edgeTallyCache.Unlock()
+		return e.tally, nil
+	}
+	edgeTallyCache.Unlock()
+	tally, err := console.TallyTypedEdges(ctx, cr.deps.c.Store(), svc)
+	if err != nil {
+		return nil, err
+	}
+	edgeTallyCache.Lock()
+	if len(edgeTallyCache.entries) >= edgeTallyMax {
+		clear(edgeTallyCache.entries)
+	}
+	edgeTallyCache.entries[key] = edgeTallyEntry{cursor: cursor, at: cr.now, tally: tally}
+	edgeTallyCache.Unlock()
+	return tally, nil
 }
 
 // knowledgeFreshness is the panels' freshness: they are read per request
@@ -85,13 +137,13 @@ func buildLayersPage(cr *consoleRequest) (consoleOut, error) {
 	}
 	t := strata.Totals
 	meta := []string{
-		plural(t.Layers, "layer"),
+		pluralValue(t.Layers, "layer"),
 		valuePlain(t.Claims) + " current claims",
 		plural(t.Projects, "project") + " indexed",
 	}
 	return consoleOut{
 		Meta:     meta,
-		Actions:  knowledgeActions([][2]string{{"Explain a file", "/explain"}, {"Open packs", "/packs"}}),
+		Actions:  knowledgeActions([][2]string{{"Browse claims", claimsHref("", "", "")}, {"Explain a file", "/explain"}, {"Open packs", "/packs"}}),
 		Metrics:  pageMetrics(cr.page, console.Metrics{console.MetricClaims: t.Claims}),
 		Sections: map[string]any{verbLayersStrata: strata, verbLayersCoverage: cov},
 		Body:     func() string { return renderLayersPage(strata, cov) },
@@ -165,13 +217,30 @@ func claimsWord(v console.Value[int]) string {
 	return valueText(v)
 }
 
-// sourceBadge names where a pack comes from, in words.
+// pluralValue renders a projected count with its noun: "9 layers", a lower
+// bound "≥ 8 layers", or the named absence.
+func pluralValue(v console.Value[int], noun string) string {
+	switch v.State {
+	case console.StatePartial:
+		return "≥ " + plural(v.V, noun)
+	case console.StateAbsent, console.StateError:
+		return noun + "s " + valuePlain(v)
+	}
+	return plural(v.V, noun)
+}
+
+// sourceBadge names where a pack comes from, in words, as the kit's badge
+// (callout.Badge): neutral, except a pack that could not be looked up.
 func sourceBadge(source string) string {
-	label := map[string]string{console.PackEmbedded: "embedded", console.PackProject: "project pack", console.PackKit: "kit pack", console.PackOrphan: "no pack"}[source]
+	label := map[string]string{console.PackEmbedded: "embedded", console.PackProject: "project pack", console.PackKit: "kit pack", console.PackOrphan: "no pack", console.PackUnknown: "pack unknown"}[source]
 	if label == "" {
 		label = source
 	}
-	return `<span class="inline-flex items-center rounded-full border border-line px-2 py-0.5 text-xs text-ink-muted" data-pack-source="` + html.EscapeString(source) + `">` + html.EscapeString(label) + `</span>`
+	role := ""
+	if source == console.PackUnknown {
+		role = "caution"
+	}
+	return callout.Badge(label, role)
 }
 
 // lifecycleBar is a layer's statuses as the kit's stacked bar with the
@@ -217,7 +286,7 @@ func renderLayersPage(s console.StrataView, cov console.CoverageMatrix) string {
 		Question:    "Where does every governed claim come from? Dialects index code; platform and concern packs compile knowledge on top.",
 		Verb:        verbLayersStrata,
 		Source:      storeFooter + " — and each project's .fathom/layers",
-		Denominator: plural(t.Layers, "layer") + " across " + plural(t.Projects, "project"),
+		Denominator: pluralValue(t.Layers, "layer") + " across " + plural(t.Projects, "project"),
 		Freshness:   knowledgeFreshness,
 		Body:        renderStrataBands(s) + renderStrataTable(s),
 	}))
@@ -275,8 +344,20 @@ func renderStrataBands(s console.StrataView) string {
 		b.WriteString(`</div></li>`)
 	}
 	b.WriteString(`</ol>`)
+	if len(s.Unplaced) > 0 {
+		// A layer whose stratum is not known is listed apart, never guessed
+		// into a band: a project pack that failed to load, or one whose
+		// holder's pack catalog could not be read.
+		b.WriteString(`<div class="mt-3 rounded-md border border-line p-3" data-strata-unplaced><h3 class="text-sm font-semibold text-ink">Not placed in a stratum</h3>`)
+		b.WriteString(`<p class="mt-1 text-xs text-ink-muted">Their pack could not be read, so the stratum each declares is not known.</p>`)
+		b.WriteString(`<div class="mt-2 grid min-w-0 gap-2 sm:grid-cols-2 xl:grid-cols-3">`)
+		for _, l := range s.Unplaced {
+			b.WriteString(renderLayerBlock(l))
+		}
+		b.WriteString(`</div></div>`)
+	}
 	for _, n := range s.Notes {
-		b.WriteString(`<p class="mt-2 text-xs text-caution" data-truth-line="partial">` + html.EscapeString(n) + `</p>`)
+		b.WriteString(`<p class="mt-2 text-xs text-caution [overflow-wrap:anywhere]" data-truth-line="partial">` + html.EscapeString(n) + `</p>`)
 	}
 	return b.String()
 }
@@ -312,10 +393,13 @@ func renderLayerBlock(l console.LayerBlock) string {
 		if l.Note != "" {
 			b.WriteString(`<p class="mt-1 text-xs text-caution [overflow-wrap:anywhere]">` + html.EscapeString(l.Note) + `</p>`)
 		}
+		if l.Source == console.PackUnknown {
+			b.WriteString(`<p class="mt-1 text-xs text-caution [overflow-wrap:anywhere]">` + html.EscapeString(l.Origin) + `</p>`)
+		}
 		b.WriteString(`</div>`)
 		return b.String()
 	}
-	b.WriteString(`<p class="text-sm text-ink">` + valueText(l.Claims) + ` <span class="text-ink-muted">current claims</span></p>`)
+	b.WriteString(`<p class="text-sm text-ink">` + claimsCount(l.Claims, claimsHref(l.Name, "", "")) + ` <span class="text-ink-muted">current claims</span></p>`)
 	runs := valueText(l.Runs) + " runs · " + dollarText(l.CostUSD)
 	if l.Refusals > 0 {
 		runs += " · " + plural(l.Refusals, "refused estimate")
@@ -328,21 +412,55 @@ func renderLayerBlock(l console.LayerBlock) string {
 	if l.Note != "" {
 		b.WriteString(`<p class="mt-1 text-xs text-caution [overflow-wrap:anywhere]">` + html.EscapeString(l.Note) + `</p>`)
 	}
+	if l.Source == console.PackUnknown {
+		b.WriteString(`<p class="mt-1 text-xs text-caution [overflow-wrap:anywhere]">` + html.EscapeString(l.Origin) + `</p>`)
+	}
 	b.WriteString(`</div>`)
 	return b.String()
+}
+
+// claimsCount renders a claim count linked to the claims it counts (vision
+// 35 §5: every number drills down): a known count links, a named absence
+// does not.
+func claimsCount(v console.Value[int], href string) string {
+	if !v.Known() {
+		return valueText(v)
+	}
+	return knowledgeLink(href, valueText(v))
+}
+
+// statusCount is a lifecycle count linked to its rows; zero stays plain.
+func statusCount(n int, layer, service, status string) string {
+	if n == 0 {
+		return "0"
+	}
+	return knowledgeLink(claimsHref(layer, service, status), fmtThousands(n))
 }
 
 // renderStrataTable is the strata's table alternative.
 func renderStrataTable(s console.StrataView) string {
 	var rows []table.Row
+	row := func(stratum string, l console.LayerBlock) table.Row {
+		claims := claimsWord(l.Claims)
+		if l.Claims.Known() {
+			claims = knowledgeLink(claimsHref(l.Name, "", ""), valueText(l.Claims))
+		}
+		return table.Row{
+			ID:    "layer-" + l.Name,
+			Cells: []string{stratum, l.Name, l.Source, "", fmtThousands(l.Statuses.Fresh), fmtThousands(l.Statuses.Stale), fmtThousands(l.Statuses.Contradicted), fmtThousands(l.Statuses.Superseded), "", ""},
+			HTMLCells: []templ.Component{nil, templ.Raw(knowledgeLink(layerHref(l.Name), l.Name)), nil, templ.Raw(claims),
+				templ.Raw(statusCount(l.Statuses.Fresh, l.Name, "", "fresh")), templ.Raw(statusCount(l.Statuses.Stale, l.Name, "", "stale")),
+				templ.Raw(statusCount(l.Statuses.Contradicted, l.Name, "", "contradicted")), templ.Raw(statusCount(l.Statuses.Superseded, l.Name, "", "superseded")),
+				templ.Raw(claimsWord(l.Runs)), templ.Raw(dollarText(l.CostUSD))},
+		}
+	}
 	for _, band := range s.Bands {
 		for _, l := range band.Layers {
-			rows = append(rows, table.Row{
-				ID:        "layer-" + l.Name,
-				Cells:     []string{band.Title, l.Name, l.Source, "", fmtThousands(l.Statuses.Fresh), fmtThousands(l.Statuses.Stale), fmtThousands(l.Statuses.Contradicted), fmtThousands(l.Statuses.Superseded), "", ""},
-				HTMLCells: []templ.Component{nil, templ.Raw(knowledgeLink(layerHref(l.Name), l.Name)), nil, templ.Raw(claimsWord(l.Claims)), nil, nil, nil, nil, templ.Raw(claimsWord(l.Runs)), templ.Raw(dollarText(l.CostUSD))},
-			})
+			rows = append(rows, row(band.Title, l))
 		}
+	}
+	for _, l := range s.Unplaced {
+		rows = append(rows, row("not placed", l))
 	}
 	tbl := renderKitTable(table.TableParams{
 		TableID: "strata-layers",
@@ -359,16 +477,56 @@ func renderStrataTable(s console.StrataView) string {
 	return `<div class="mt-3">` + chrome.RenderDisclosure(chrome.Disclosure{Summary: "The strata as a table", Body: template.HTML(tbl)}) + `</div>`
 }
 
-// heatmapLabel fits a project name to the heatmap's fixed label gutter
-// (about eleven characters); the table alternative carries every name
-// whole.
+// heatmapLabelBudget is how wide a row label may run, in px at the kit
+// heatmap's 10 px label size: the kit right-aligns each label at x=62 in a
+// fixed 70 px gutter, and the SVG clips what starts left of x=0 — a label
+// cut there reads as a different name ("esume_as_…"), not a shortened one.
+// labelWidth's estimate runs about 5% over the system UI faces Chromium
+// draws (measured: "resume_as_…" 66 px drawn, 70 estimated), so the budget
+// leaves about 3 px of the 62 px before the clip edge.
+const heatmapLabelBudget = 61.0
+
+// heatmapLabel fits a project name to the heatmap's label gutter by its
+// estimated rendered width, not its rune count (an "m" is three "i"s
+// wide); the table alternative carries every name whole.
 func heatmapLabel(s string) string {
-	const max = 11
-	if utf8.RuneCountInString(s) <= max {
+	if labelWidth(s) <= heatmapLabelBudget {
 		return s
 	}
 	r := []rune(s)
-	return string(r[:max-1]) + "…"
+	for n := len(r) - 1; n > 0; n-- {
+		cut := string(r[:n]) + "…"
+		if labelWidth(cut) <= heatmapLabelBudget {
+			return cut
+		}
+	}
+	return "…"
+}
+
+// labelWidth estimates a string's advance width in px at 10 px in a
+// proportional sans-serif (the system UI faces agree to within a few
+// percent on these classes).
+func labelWidth(s string) float64 {
+	w := 0.0
+	for _, c := range s {
+		switch {
+		case strings.ContainsRune("il.,:;|!'", c):
+			w += 2.6
+		case strings.ContainsRune("jftr() -", c):
+			w += 3.6
+		case c == '…':
+			w += 10
+		case c == 'm' || c == 'w' || c == 'M' || c == 'W':
+			w += 8.8
+		case c >= 'A' && c <= 'Z':
+			w += 7.0
+		case c == '_':
+			w += 5.8
+		default:
+			w += 6.0
+		}
+	}
+	return w
 }
 
 // renderCoverage is the matrix: the kit heatmap with truth states and its
@@ -468,7 +626,7 @@ func renderCoverageTable(m console.CoverageMatrix) string {
 	var rows []table.Row
 	for _, r := range m.Rows {
 		cells := []string{r.Service}
-		htmlCells := []templ.Component{templ.Raw(knowledgeLink(projectHref(r.Service), r.Service))}
+		htmlCells := []templ.Component{templ.Raw(`<a href="` + html.EscapeString(projectHref(r.Service)) + `" class="inline-flex min-h-11 items-center rounded-sm font-medium text-accent underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">` + html.EscapeString(r.Service) + `</a>`)}
 		for _, c := range r.Cells {
 			cells = append(cells, "")
 			htmlCells = append(htmlCells, templ.Raw(coverageCellHTML(c, r.Service)))
@@ -479,9 +637,10 @@ func renderCoverageTable(m console.CoverageMatrix) string {
 }
 
 // coverageCellHTML renders one cell in words: the count, a measured zero,
-// or the absence named — linked to the layer page's row for the project.
+// or the absence named — a count linked to the claims it counts (a zero to
+// every claim the compile left, superseded or refuted).
 func coverageCellHTML(c console.CoverageCell, service string) string {
-	href := layerHref(c.Layer) + "#project-" + url.PathEscape(service)
+	href := claimsHref(c.Layer, service, "")
 	switch c.Claims.State {
 	case console.StateAbsent:
 		word := "not compiled"
@@ -492,7 +651,7 @@ func coverageCellHTML(c console.CoverageCell, service string) string {
 	case console.StateError:
 		return `<span class="text-danger" data-truth-state="error">unreadable — ` + html.EscapeString(c.Claims.Reason) + `</span>`
 	case console.StateZero:
-		return knowledgeLink(href, "0") + ` <span class="text-xs text-ink-muted">compiled, none current</span>`
+		return knowledgeLink(claimsHref(c.Layer, service, console.ClaimStatusAll), "0") + ` <span class="text-xs text-ink-muted">compiled, none current</span>`
 	}
 	return knowledgeLink(href, fmtThousands(c.Claims.V))
 }
@@ -544,13 +703,26 @@ func buildLayerPage(cr *consoleRequest) (consoleOut, error) {
 	if p, perr := strconv.Atoi(cr.r.URL.Query().Get("page")); perr == nil && p > 1 {
 		page = p
 	}
-	meta := []string{d.Block.Source + " pack", "role " + d.Block.Role}
+	role := d.Block.Role
+	if role == "" {
+		role = "unknown"
+	}
+	meta := []string{d.Block.Source + " pack", "role " + role}
 	if d.Definition != nil {
-		meta = append(meta, "stratum "+d.Definition.Stratum)
+		stratum := d.Definition.Stratum
+		if stratum == "" {
+			stratum = "unknown"
+		}
+		meta = append(meta, "stratum "+stratum)
+	}
+	var actions string
+	if d.Block.Claims.Known() {
+		actions = knowledgeActions([][2]string{{"Browse its claims", claimsHref(name, "", "")}})
 	}
 	return consoleOut{
 		Title:    name,
 		Meta:     meta,
+		Actions:  actions,
 		Verbs:    []string{verb},
 		Sections: map[string]any{verb: d},
 		Body:     func() string { return renderLayerPage(d, verb, page) },
@@ -607,14 +779,20 @@ func renderLayerPage(d console.LayerPage, verb string, page int) string {
 		Freshness:   knowledgeFreshness,
 		Body:        renderLayerProjects(d),
 	}))
+	unc := d.UncompiledCount
+	uncDenom := valuePlain(unc) + " " + unc.Denominator
+	if !unc.Known() {
+		uncDenom = ""
+	}
 	b.WriteString(renderPanel(consolePanel{
 		ID: "uncompiled", Title: "Uncompiled scopes", SourceKey: "layers",
 		Question:    "What did each project's latest compile leave uncompiled, and how is it resumed?",
 		Verb:        verb,
 		Source:      "the latest real compile_runs row per project (uncompiled_scopes, sections)",
-		Denominator: plural(len(d.Uncompiled), "project") + " with an incomplete latest compile",
+		Denominator: uncDenom,
 		Freshness:   knowledgeFreshness,
-		Body:        renderUncompiled(d),
+		State:       unc.State, Reason: unc.Reason,
+		Body: renderUncompiled(d),
 	}))
 	b.WriteString(`</div>`)
 	return b.String()
@@ -623,10 +801,14 @@ func renderLayerPage(d console.LayerPage, verb string, page int) string {
 func renderLayerDefinition(d console.LayerPage) string {
 	items := []chrome.DescItem{{Term: "source", Detail: d.Block.Origin}}
 	if def := d.Definition; def != nil {
+		stratum, kindRole := def.Stratum, d.Block.Kind+" · "+d.Block.Role
+		if def.BrokenPackNote != "" && stratum == "" {
+			stratum, kindRole = "unknown — the pack failed to load", "unknown — the pack failed to load"
+		}
 		items = append(items,
 			chrome.DescItem{Term: "version", Detail: def.Version},
-			chrome.DescItem{Term: "stratum", Detail: def.Stratum},
-			chrome.DescItem{Term: "kind · role", Detail: d.Block.Kind + " · " + d.Block.Role},
+			chrome.DescItem{Term: "stratum", Detail: stratum},
+			chrome.DescItem{Term: "kind · role", Detail: kindRole},
 			chrome.DescItem{Term: "evidence tier", Detail: def.Tier},
 			chrome.DescItem{Term: "eval gate", Detail: map[bool]string{true: "passed (eval/RESULTS.md on record)", false: "not gated — compile refuses without --unsafe-skip-eval-gate"}[d.Block.Evaled]},
 			chrome.DescItem{Term: "corpus", DetailHTML: template.HTML(`<span class="font-mono text-xs [overflow-wrap:anywhere]">` + html.EscapeString(strings.Join(def.CorpusInclude, ", ")) + `</span>`)},
@@ -741,12 +923,14 @@ func renderLayerProjects(d console.LayerPage) string {
 	for _, p := range d.Projects {
 		b.WriteString(`<li id="project-` + html.EscapeString(p.Service) + `" class="scroll-mt-4 py-2">`)
 		b.WriteString(`<div class="flex flex-wrap items-baseline justify-between gap-2">` + knowledgeLink(projectHref(p.Service), p.Service) +
-			`<span class="text-sm">` + valueText(p.Claims) + ` <span class="text-ink-muted">current</span></span></div>`)
+			`<span class="text-sm">` + claimsCount(p.Claims, claimsHref(d.Layer, p.Service, "")) + ` <span class="text-ink-muted">current</span></span></div>`)
 		last := "never compiled"
 		if p.LastRun != "" {
 			last = "last compiled " + p.LastRun
 		}
-		b.WriteString(`<p class="text-xs text-ink-muted">` + html.EscapeString(fmt.Sprintf("%s · %s · %d fresh, %d stale, %d superseded", plural(p.Runs, "real run"), last, p.Statuses.Fresh, p.Statuses.Stale, p.Statuses.Superseded)) + `</p>`)
+		b.WriteString(`<p class="flex flex-wrap items-center gap-x-1 text-xs text-ink-muted">` + html.EscapeString(plural(p.Runs, "real run")+" · "+last+" · ") +
+			statusCount(p.Statuses.Fresh, d.Layer, p.Service, "fresh") + ` fresh, ` + statusCount(p.Statuses.Stale, d.Layer, p.Service, "stale") + ` stale, ` +
+			statusCount(p.Statuses.Superseded, d.Layer, p.Service, "superseded") + ` superseded</p>`)
 		b.WriteString(remedy(p.DryRun))
 		b.WriteString(`</li>`)
 	}
@@ -756,7 +940,16 @@ func renderLayerProjects(d console.LayerPage) string {
 
 func renderUncompiled(d console.LayerPage) string {
 	if len(d.Uncompiled) == 0 {
-		return `<p class="text-sm text-ink-muted">Every project's latest compile covered its whole corpus.</p>`
+		// Nothing compiled measures nothing: the panel's truth line says
+		// so, and no "all covered" sentence is read off an empty list.
+		if !d.UncompiledCount.Known() {
+			return ""
+		}
+		msg := fmt.Sprintf("The latest real compile in each of the %d projects that compiled this layer covered its whole corpus.", d.CompiledProjects)
+		if d.CompiledProjects == 1 {
+			msg = "The latest real compile in the one project that compiled this layer covered its whole corpus."
+		}
+		return `<p class="text-sm text-ink-muted">` + html.EscapeString(msg) + `</p>`
 	}
 	var b strings.Builder
 	b.WriteString(`<ul class="flex flex-col gap-3" data-uncompiled>`)

@@ -21,6 +21,7 @@ import (
 	"html/template"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -66,7 +67,7 @@ func (e *unknownKnowledgeService) Error() string {
 // obligations tool adds around the compiled rules (the same enrichments,
 // under the same conditions, renderObligationReceipt applies). It never
 // calls a decision-port provider.
-func servingExplanation(ctx context.Context, c *client.Client, svc, file string, layer semantic.ObligationLayerFilter) (console.ServingExplanation, error) {
+func servingExplanation(ctx context.Context, c *client.Client, svc, file string, layer semantic.ObligationLayerFilter, storePath string) (console.ServingExplanation, error) {
 	st := c.Store()
 	known, all, err := knowledgeServiceKnown(ctx, st, svc)
 	if err != nil {
@@ -79,7 +80,7 @@ func servingExplanation(ctx context.Context, c *client.Client, svc, file string,
 	if err != nil {
 		return console.ServingExplanation{}, err
 	}
-	in := console.ServingInputs{Explanation: ex, RerankProvider: rerankProvider()}
+	in := console.ServingInputs{Explanation: ex, RerankProvider: rerankProvider(), StorePath: storePath}
 	if file != "" && ex.Layer != string(semantic.ObligationLayerClaims) {
 		if rows, why, ok, rerr := c.RawFallbackObligations(ctx, svc, file, semantic.RawFallbackReserve); rerr == nil && ok {
 			in.Raw, in.RawWhy, in.RawOK = rows, why, true
@@ -123,7 +124,7 @@ func cachedServingExplanation(cr *consoleRequest, svc, file string, layer semant
 		return e.se, nil
 	}
 	explainCache.Unlock()
-	se, err := servingExplanation(cr.r.Context(), cr.deps.c, svc, file, layer)
+	se, err := servingExplanation(cr.r.Context(), cr.deps.c, svc, file, layer, cr.deps.storePath)
 	if err != nil {
 		return se, err
 	}
@@ -219,7 +220,21 @@ func buildExplainPage(cr *consoleRequest) (consoleOut, error) {
 	}
 	out.Title = "Serving explainer"
 	out.Meta = []string{svc, subject, "layer " + layer}
-	out.Body = func() string { return renderExplainForm(model) + renderExplanation(se, verb) }
+	page := 1
+	if p, perr := strconv.Atoi(q.Get("page")); perr == nil && p > 1 {
+		page = p
+	}
+	pageHref := func(p int) string {
+		v := url.Values{}
+		v.Set("svc", svc)
+		if file != "" {
+			v.Set("file", file)
+		}
+		v.Set("layer", layer)
+		v.Set("page", strconv.Itoa(p))
+		return "/explain?" + v.Encode() + "#candidates"
+	}
+	out.Body = func() string { return renderExplainForm(model) + renderExplanation(se, verb, page, pageHref) }
 	return out, nil
 }
 
@@ -279,10 +294,11 @@ func scopeTierTitle(tier string) string {
 // this many displaced ones; the table below lists the rest.
 const explainColumnShown = 5
 
-// explainTableMax bounds the candidates table; the verb lists every one.
-const explainTableMax = 150
+// explainTablePerPage pages the candidates table (design §2: tables over
+// 50 rows are paged), so every candidate is on some page of it.
+const explainTablePerPage = 50
 
-func renderExplanation(se console.ServingExplanation, verb string) string {
+func renderExplanation(se console.ServingExplanation, verb string, page int, pageHref func(int) string) string {
 	var b strings.Builder
 	served := len(se.Served.Rules)
 	subject := se.File
@@ -302,7 +318,7 @@ func renderExplanation(se console.ServingExplanation, verb string) string {
 		Denominator: fmt.Sprintf("%s scope-matched claims for %s; cap %d, %d reserved for the nearest tier",
 			fmtThousands(se.Eligible), subject, se.Cap, se.ReservedSlots),
 		Freshness: knowledgeFreshness,
-		Body:      renderExplainColumns(se) + `<p class="mt-3 text-sm text-ink" data-explain-summary>` + html.EscapeString(summary) + `</p>` + renderExplainRanking(se) + renderExplainTable(se),
+		Body:      renderExplainColumns(se) + `<p class="mt-3 text-sm text-ink" data-explain-summary>` + html.EscapeString(summary) + `</p>` + renderExplainRanking(se) + renderExplainTable(se, page, pageHref),
 	}))
 	b.WriteString(renderPanel(consolePanel{
 		ID: "served", Title: "What the agent saw at the edit", SourceKey: "layers:" + se.Service,
@@ -364,7 +380,7 @@ func renderExplainColumns(se console.ServingExplanation) string {
 		}
 		b.WriteString(`</ul>`)
 		if hidden > 0 {
-			b.WriteString(`<p class="mt-2 text-xs text-ink-muted">+` + fmtThousands(hidden) + ` more displaced — every candidate is in the table below</p>`)
+			b.WriteString(`<p class="mt-2 text-xs text-ink-muted">+` + fmtThousands(hidden) + ` more displaced — every candidate is in the paged table below</p>`)
 		}
 		b.WriteString(`</li>`)
 	}
@@ -419,16 +435,17 @@ func renderExplainRanking(se console.ServingExplanation) string {
 }
 
 // renderExplainTable is every candidate as a table (the columns' table
-// alternative), bounded; the verb lists every one.
-func renderExplainTable(se console.ServingExplanation) string {
+// alternative), paged 50 at a time so every candidate is on a page.
+func renderExplainTable(se console.ServingExplanation, page int, pageHref func(int) string) string {
 	if len(se.Candidates) == 0 {
 		return `<p class="mt-3 text-sm text-ink-muted">No compiled claim's scope reaches ` + html.EscapeString(se.File) + ` — nothing competed for the cap.</p>`
 	}
+	pages := (len(se.Candidates) + explainTablePerPage - 1) / explainTablePerPage
+	page = min(max(page, 1), pages)
+	lo := (page - 1) * explainTablePerPage
+	hi := min(lo+explainTablePerPage, len(se.Candidates))
 	var rows []table.Row
-	for i, c := range se.Candidates {
-		if i >= explainTableMax {
-			break
-		}
+	for _, c := range se.Candidates[lo:hi] {
 		outcome := fmt.Sprintf("served #%d", c.Position)
 		if c.Displaced != nil {
 			outcome = c.Displaced.Reason + " — " + c.Displaced.Why
@@ -440,15 +457,23 @@ func renderExplainTable(se console.ServingExplanation) string {
 		})
 	}
 	caption := fmt.Sprintf("All %d candidates in ranking order", len(se.Candidates))
-	if len(se.Candidates) > explainTableMax {
-		caption = fmt.Sprintf("The first %d of %d candidates in ranking order — the verb lists every one", explainTableMax, len(se.Candidates))
+	if pages > 1 {
+		caption = fmt.Sprintf("Candidates %d–%d of %d in ranking order", lo+1, hi, len(se.Candidates))
 	}
 	tbl := renderKitTable(table.TableParams{
 		TableID: "explain-candidates", Caption: caption,
 		Columns: []table.Column{{Key: "rank", Label: "Rank", Align: "right"}, {Key: "tier", Label: "Scope"}, {Key: "rule", Label: "Rule"}, {Key: "layer", Label: "Layer"}, {Key: "status", Label: "Status"}, {Key: "outcome", Label: "Outcome"}},
 		Rows:    rows,
 	})
-	return `<div class="mt-3">` + chrome.RenderDisclosure(chrome.Disclosure{Summary: "Every candidate as a table", Body: template.HTML(tbl)}) + `</div>`
+	if pages > 1 {
+		// The kit's pagination links are ~28 px (docs/app-kit.md); the
+		// wrapper raises them to 44 px, as /search does.
+		tbl += `<div class="mt-3 [&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center [&_span]:inline-flex [&_span]:min-h-11 [&_span]:items-center">` + chrome.RenderPagination(chrome.Pagination{
+			Page: page, TotalPages: pages, AriaLabel: "candidate pages", HrefFor: pageHref,
+		}) + `</div>`
+	}
+	// A later page is opened for reading: the disclosure starts open there.
+	return `<div class="mt-3">` + chrome.RenderDisclosure(chrome.Disclosure{Summary: "Every candidate as a table", Body: template.HTML(tbl), Open: page > 1}) + `</div>`
 }
 
 // renderAgentSees is the injected list, raw rows flagged.
@@ -467,9 +492,15 @@ func renderAgentSees(se console.ServingExplanation) string {
 	var stacked strings.Builder
 	raw := len(se.RawFallback)
 	for i, r := range se.AgentSees {
+		// The agent reads the raw rows first, then the compiled rules; a
+		// compiled rule keeps its served number (#1…) — the one its
+		// candidate card shows — and a raw row is numbered apart, so no
+		// rule carries two numbers on one page.
 		scope := "nearest uncompiled guide"
 		ruleHTML := html.EscapeString(r.Rule)
+		num := fmt.Sprintf("raw %d", i+1)
 		if i >= raw {
+			num = "#" + fmtThousands(i-raw+1)
 			if c, ok := byPos[i-raw+1]; ok {
 				scope = scopeTierTitle(c.ScopeTier)
 				ruleHTML = knowledgeLink(claimHref(c.ClaimID, se.Service), r.Rule)
@@ -483,18 +514,22 @@ func renderAgentSees(se console.ServingExplanation) string {
 		}
 		rows = append(rows, table.Row{
 			ID:        fmt.Sprintf("seen-%d", i+1),
-			Cells:     []string{fmtThousands(i + 1), r.Tier, r.Rule, r.Src, scope},
+			Cells:     []string{num, r.Tier, r.Rule, r.Src, scope},
 			HTMLCells: []templ.Component{nil, nil, templ.Raw(ruleHTML), templ.Raw(`<span class="font-mono text-xs">` + html.EscapeString(r.Src) + `</span>`)},
 		})
-		stacked.WriteString(`<li class="min-w-0 rounded-lg border border-line bg-surface-raised p-3"><p class="text-xs text-ink-muted">#` + fmtThousands(i+1) + ` · ` + html.EscapeString(r.Tier) + ` · ` + html.EscapeString(scope) + `</p>` +
+		stacked.WriteString(`<li class="min-w-0 rounded-lg border border-line bg-surface-raised p-3"><p class="text-xs text-ink-muted">` + html.EscapeString(num) + ` · ` + html.EscapeString(r.Tier) + ` · ` + html.EscapeString(scope) + `</p>` +
 			`<p class="mt-1 text-sm text-ink [overflow-wrap:anywhere]">` + ruleHTML + `</p>` +
 			`<p class="mt-1 font-mono text-xs text-ink-muted [overflow-wrap:anywhere]">` + html.EscapeString(r.Src) + `</p></li>`)
 	}
 	// From lg up the list is the kit table; below lg, where five columns
 	// squeeze a rule to a word per line, the same rows stack (as /statusz's
 	// services do). One is displayed at a width.
+	caption := "Injected at the edit, in order"
+	if raw > 0 {
+		caption = "Injected at the edit, in order: the raw rows first, then the compiled rules by their served number"
+	}
 	tbl := `<div class="hidden lg:block" data-explain-served-table>` + renderKitTable(table.TableParams{
-		TableID: "explain-served", Caption: "Injected at the edit, in order",
+		TableID: "explain-served", Caption: caption,
 		Columns: []table.Column{{Key: "n", Label: "#", Align: "right"}, {Key: "tier", Label: "Tier"}, {Key: "rule", Label: "Rule"}, {Key: "src", Label: "Source"}, {Key: "scope", Label: "Scope"}},
 		Rows:    rows,
 	}) + `</div><ol class="flex flex-col gap-3 lg:hidden" aria-label="injected at the edit, in order" data-explain-served-list>` + stacked.String() + `</ol>`
@@ -522,7 +557,7 @@ func renderExplainCoverage(se console.ServingExplanation) string {
 	}
 	if se.CoverageNote != "" {
 		b.WriteString(`<p class="mt-2 text-sm text-caution">` + html.EscapeString(se.CoverageNote) + `</p>`)
-		b.WriteString(remedy("fathom compile --layer obligations --service " + shellWord(se.Service) + " --continue"))
+		b.WriteString(remedy(se.Resume))
 	}
 	b.WriteString(`<p class="mt-2 text-xs text-ink-muted">Raw rows are served so a governing guide is never silently missing when the compiled layer did not reach it (ADR-037). ` +
 		knowledgeLink(layerHref(semantic.LayerObligations)+"#uncompiled", "The obligations layer's uncompiled scopes") + `</p>`)

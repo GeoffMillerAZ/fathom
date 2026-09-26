@@ -32,6 +32,10 @@ type StrataView struct {
 	Bands     []StrataBand `json:"bands"`
 	Totals    LayerTotals  `json:"totals"`
 	Lifecycle Lifecycle    `json:"lifecycle"`
+	// Unplaced are layers whose stratum is not known — a project pack that
+	// failed to load, or a layer whose holder's pack catalog could not be
+	// read — listed apart rather than guessed into a band.
+	Unplaced []LayerBlock `json:"unplaced,omitempty"`
 	// Notes name what could not be read (a pack catalog, claim events).
 	Notes []string `json:"notes,omitempty"`
 }
@@ -61,7 +65,7 @@ type DialectLevel struct {
 // LayerBlock is one layer in its band.
 type LayerBlock struct {
 	Name   string `json:"name"`
-	Source string `json:"source"` // embedded | project | kit | orphan
+	Source string `json:"source"` // embedded | project | kit | orphan | unknown
 	Origin string `json:"origin"`
 	Kind   string `json:"kind,omitempty"`
 	Role   string `json:"role,omitempty"`
@@ -87,7 +91,9 @@ type LayerBlock struct {
 
 // LayerTotals is the fleet's semantic-layer totals.
 type LayerTotals struct {
-	Layers   int            `json:"layers"`
+	// Layers counts the layers the fleet knows: a lower bound when a
+	// project's pack catalog could not be read.
+	Layers   Value[int]     `json:"layers"`
 	Claims   Value[int]     `json:"claims"`
 	Runs     Value[int]     `json:"runs"`
 	CostUSD  Value[float64] `json:"cost_usd"`
@@ -153,6 +159,7 @@ func strataFrom(k knowledge) StrataView {
 			readErrs = append(readErrs, s.Service)
 		}
 	}
+	layers := 0
 	for _, name := range k.layerNames() {
 		b := layerBlock(k, name)
 		total.Fresh += b.Statuses.Fresh
@@ -168,8 +175,14 @@ func strataFrom(k knowledge) StrataView {
 			rejected += c.Rejected
 			refused += c.Refusals
 		}
+		layers++
+		p := k.Packs[name]
+		if p.broken() || b.Source == PackUnknown {
+			out.Unplaced = append(out.Unplaced, b)
+			continue
+		}
 		band := StratumConcern
-		if p := k.Packs[name]; p != nil && p.Stratum == StratumPlatform {
+		if p != nil && p.Stratum == StratumPlatform {
 			band = StratumPlatform
 		}
 		for i := range out.Bands {
@@ -177,8 +190,8 @@ func strataFrom(k knowledge) StrataView {
 				out.Bands[i].Layers = append(out.Bands[i].Layers, b)
 			}
 		}
-		out.Totals.Layers++
 	}
+	out.Totals.Layers = layerCount(k, layers)
 	for i := range out.Bands {
 		if out.Bands[i].Stratum == StratumPlatform && len(out.Bands[i].Layers) == 0 {
 			out.Bands[i].Reason = "no platform packs installed in any indexed repository"
@@ -217,6 +230,27 @@ func strataFrom(k knowledge) StrataView {
 	}
 	out.Lifecycle = lifecycle(k, total)
 	return out
+}
+
+// layerCount is the fleet's layer count: every pack in a readable catalog
+// and every layer the store holds claims or runs for — a lower bound naming
+// the unreadable catalogs when any could not be listed.
+func layerCount(k knowledge, n int) Value[int] {
+	const src = "the pack catalog each project root resolves, and the store's claims and compile runs"
+	if len(k.PackErr) > 0 {
+		var svcs []string
+		for _, s := range k.Services {
+			if k.PackUnreadable[s.Service] {
+				svcs = append(svcs, s.Service)
+			}
+		}
+		why := "lower bound; a pack catalog could not be read"
+		if len(svcs) > 0 {
+			why = "lower bound; the pack catalog of " + strings.Join(svcs, ", ") + " could not be read"
+		}
+		return Partial(n, why).WithSource(src)
+	}
+	return Measured(n, src).WithDenominator("layers in the pack catalogs or the store")
 }
 
 // MetricClaims is the fleet's current governed claims — shown on /layers
@@ -272,13 +306,17 @@ func lifecycle(k knowledge, statuses StatusCounts) Lifecycle {
 // layerBlock folds one layer across the fleet.
 func layerBlock(k knowledge, name string) LayerBlock {
 	p := k.Packs[name]
-	src, origin := packSourceOf(p)
+	src, origin := k.packSource(name)
 	b := LayerBlock{Name: name, Source: src, Origin: origin, Services: []string{}}
 	if p != nil {
-		// LayerRole's normalization: anything but claims governs.
-		b.Kind, b.Role, b.Evaled = p.Kind, semantic.RoleGoverns, p.Evaled
-		if p.Role == semantic.RoleClaims {
-			b.Role = semantic.RoleClaims
+		// LayerRole's normalization: anything but claims governs. A broken
+		// project pack has no definition to normalize: its kind and role
+		// stay unknown (empty), never a default.
+		if !p.broken() {
+			b.Kind, b.Role, b.Evaled = p.Kind, semantic.RoleGoverns, p.Evaled
+			if p.Role == semantic.RoleClaims {
+				b.Role = semantic.RoleClaims
+			}
 		}
 		b.InstalledIn = p.InstalledIn
 		if p.LoadError != "" {
@@ -494,12 +532,22 @@ type LayerPage struct {
 	Projects       []LayerProject  `json:"projects"`
 	DryRun         string          `json:"dry_run"`
 	Uncompiled     []UncompiledRun `json:"uncompiled"`
+	// UncompiledCount is how many projects' latest real compile left scopes
+	// uncompiled, of those with a real compile — absent when no real compile
+	// ran, so "nothing uncompiled" is never read off a layer nothing
+	// compiled.
+	UncompiledCount Value[int] `json:"uncompiled_count"`
+	// CompiledProjects is how many projects have a real compile of the
+	// layer — UncompiledCount's denominator.
+	CompiledProjects int `json:"compiled_projects"`
 }
 
 // LayerDefinition is the pack as the fleet resolves it.
 type LayerDefinition struct {
-	Version        string   `json:"version,omitempty"`
-	Stratum        string   `json:"stratum"`
+	Version string `json:"version,omitempty"`
+	// Stratum is empty for a project pack that failed to load: what it
+	// declares is not known.
+	Stratum        string   `json:"stratum,omitempty"`
 	Tier           string   `json:"tier,omitempty"`
 	PromptFile     string   `json:"prompt_file,omitempty"`
 	CorpusInclude  []string `json:"corpus_include,omitempty"`
@@ -592,7 +640,7 @@ func LayerDetail(ctx context.Context, src KnowledgeSource, layer string) (LayerP
 			ServingMax: p.Serving.MaxRules, DriftTracked: p.Serving.DriftTracked,
 			BrokenPackNote: p.LoadError,
 		}
-		if d.Stratum == "" {
+		if d.Stratum == "" && !p.broken() {
 			d.Stratum = StratumConcern
 		}
 		if p.Source == semantic.SourceEmbedded {
@@ -603,7 +651,7 @@ func LayerDetail(ctx context.Context, src KnowledgeSource, layer string) (LayerP
 		out.Definition = d
 	}
 	causes := map[string]*RejectionCause{}
-	accepted, rejected, reasonedRuns, rejectingRuns := 0, 0, 0, 0
+	accepted, rejected, reasonedRuns, rejectingRuns, realRuns, compiledProjects := 0, 0, 0, 0, 0, 0
 	var errs []string
 	for _, s := range k.Services {
 		if s.Err != "" {
@@ -625,6 +673,7 @@ func LayerDetail(ctx context.Context, src KnowledgeSource, layer string) (LayerP
 			if !realRun(r) {
 				continue
 			}
+			realRuns++
 			accepted += r.ClaimsEmitted
 			rejected += r.ClaimsRejected
 			if r.ClaimsRejected > 0 {
@@ -648,12 +697,13 @@ func LayerDetail(ctx context.Context, src KnowledgeSource, layer string) (LayerP
 			}
 			if !latestSeen {
 				latestSeen = true
+				compiledProjects++
 				if len(r.UncompiledScopes) > 0 || r.BudgetStopped || r.SectionsCompiled < r.SectionsTotal {
 					out.Uncompiled = append(out.Uncompiled, UncompiledRun{
 						Service: s.Service, RunID: r.RunID, RanAt: rfc3339(r.RanAt),
 						Sections: r.SectionsTotal, Compiled: r.SectionsCompiled, Stopped: r.BudgetStopped,
 						Scopes: append([]string{}, r.UncompiledScopes...),
-						Resume: "fathom compile --layer " + layer + " --service " + s.Service + " --continue",
+						Resume: ResumeCompile(layer, s.Service, src.StorePath),
 					})
 				}
 			}
@@ -677,8 +727,14 @@ func LayerDetail(ctx context.Context, src KnowledgeSource, layer string) (LayerP
 	if rejectingRuns > reasonedRuns {
 		out.RejectionsNote = fmt.Sprintf("%d of %s with rejections predate rejection reasons (O19) and carry only a count", rejectingRuns-reasonedRuns, countNoun(rejectingRuns, "run"))
 	}
-	if len(out.Runs) == 0 {
+	// Accepted and rejected are sums over real runs: with none, they were
+	// never measured — a refused estimate or a dry run accepts nothing
+	// because it compiles nothing, not because verification kept zero.
+	if realRuns == 0 {
 		why := "no compile run recorded for this layer"
+		if len(out.Runs) > 0 {
+			why = "no real compile run recorded for this layer — only dry-run estimates or refused runs"
+		}
 		out.Accepted = Absent[int](why).WithSource(storeSource)
 		out.Rejected = Absent[int](why).WithSource(storeSource)
 	} else {
@@ -689,6 +745,22 @@ func LayerDetail(ctx context.Context, src KnowledgeSource, layer string) (LayerP
 			out.Accepted = Partial(accepted, reason).WithSource(storeSource)
 			out.Rejected = Partial(rejected, reason).WithSource(storeSource)
 		}
+	}
+	out.CompiledProjects = compiledProjects
+	const uncSource = "the latest real compile_runs row per project"
+	switch {
+	case compiledProjects == 0 && len(errs) > 0:
+		out.UncompiledCount = Partial(0, "lower bound; unreadable: "+strings.Join(errs, ", ")).WithSource(uncSource)
+	case compiledProjects == 0:
+		why := "no real compile run recorded for this layer, so nothing measured what is left uncompiled"
+		if layer == semantic.LayerFindings {
+			why = "findings are imported, not compiled, so no compile leaves scopes uncompiled"
+		}
+		out.UncompiledCount = Absent[int](why).WithSource(uncSource)
+	case len(errs) > 0:
+		out.UncompiledCount = Partial(len(out.Uncompiled), "lower bound; unreadable: "+strings.Join(errs, ", ")).WithSource(uncSource)
+	default:
+		out.UncompiledCount = Measured(len(out.Uncompiled), uncSource).WithDenominator(fmt.Sprintf("projects whose latest real compile left scopes uncompiled, of %s with a real compile", countNoun(compiledProjects, "project")))
 	}
 	return out, nil
 }

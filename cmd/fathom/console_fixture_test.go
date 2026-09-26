@@ -139,6 +139,7 @@ func newConsoleFixtureOpts(t *testing.T, o consoleFixtureOpts) *consoleFixture {
 	t.Cleanup(f.ts.Close)
 	f.deps = newConsoleDeps(c, f.ts.URL, f.now)
 	f.deps.now = func() time.Time { return f.now }
+	f.deps.storePath = consoleFixtureStorePath(t)
 	// serve-http's own server shape: the fleet backend answers list_services.
 	var logger *mcp.CallLogger
 	if o.LogCalls {
@@ -222,6 +223,13 @@ type consolePageJSONWire struct {
 	Model    json.RawMessage            `json:"model"`
 }
 
+// extraSamplePaths are further URLs of a page whose verb changes with its
+// query (filters, paging), each held to its verb like samplePath's.
+var extraSamplePaths = map[string][]string{
+	"claims": {"/claims", "/claims?layer=obligations&status=all", "/claims?svc=checkout-service&status=superseded", "/claims?status=stale&page=2"},
+	"layer":  {"/layers/spec-bindings", "/layers/adr-rules"},
+}
+
 // samplePath is a concrete URL for a registered page (parameters filled
 // from the fixture fleet).
 func samplePath(p *consolePage) string {
@@ -238,6 +246,8 @@ func samplePath(p *consolePage) string {
 		return "/layers/obligations"
 	case "/claims/{id}":
 		return "/claims/" + consoleFixtureClaimID
+	case "/claims":
+		return "/claims?layer=obligations&svc=payment-service"
 	case "/explain":
 		return "/explain?svc=payment-service&file=payment.go"
 	}

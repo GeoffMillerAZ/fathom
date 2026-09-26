@@ -14,6 +14,8 @@ package console
 
 import (
 	"context"
+	"errors"
+	"io/fs"
 	"math"
 	"os"
 	"path/filepath"
@@ -34,6 +36,14 @@ type KnowledgeSource struct {
 	// Layers lists the layer packs a repository root resolves (embedded ∪
 	// root/.fathom/layers). nil is semantic.ListLayersIn.
 	Layers func(root string) ([]semantic.LayerInfo, error)
+	// EdgeTally tallies one service's typed call edges; nil is
+	// TallyTypedEdges over Store. The daemon caches it between ingests.
+	EdgeTally func(ctx context.Context, svc string) (EdgeTally, error)
+	// StorePath is the store's file path, named in the remedy commands the
+	// projections print: resuming a compile runs in direct --store mode
+	// (`fathom compile --continue` refuses without --store). "" prints a
+	// placeholder the reader fills in.
+	StorePath string
 }
 
 func (k KnowledgeSource) layers(root string) ([]semantic.LayerInfo, error) {
@@ -41,6 +51,13 @@ func (k KnowledgeSource) layers(root string) ([]semantic.LayerInfo, error) {
 		return k.Layers(root)
 	}
 	return semantic.ListLayersIn(root)
+}
+
+func (k KnowledgeSource) edgeTally(ctx context.Context, svc string) (EdgeTally, error) {
+	if k.EdgeTally != nil {
+		return k.EdgeTally(ctx, svc)
+	}
+	return TallyTypedEdges(ctx, k.Store, svc)
 }
 
 // storeSource names the store a knowledge figure was read from.
@@ -68,9 +85,11 @@ type packInfo struct {
 type knowledge struct {
 	Services []serviceKnowledge
 	Packs    map[string]*packInfo
-	// PackErr names roots whose pack catalog could not be listed.
-	PackErr []string
-	Events  []core.ClaimEvent
+	// PackErr names roots whose pack catalog could not be listed;
+	// PackUnreadable is the services those roots belong to.
+	PackErr        []string
+	PackUnreadable map[string]bool
+	Events         []core.ClaimEvent
 	// EventsErr is non-empty when claim_events could not be read.
 	EventsErr string
 }
@@ -126,15 +145,25 @@ func readKnowledge(ctx context.Context, src KnowledgeSource) (knowledge, error) 
 	} else {
 		k.Events = evs
 	}
-	k.Packs, k.PackErr = readPacks(src, k.Services)
+	k.Packs, k.PackErr, k.PackUnreadable = readPacks(src, k.Services)
 	return k, nil
 }
 
 // readPacks resolves the pack catalog: the embedded catalog once, plus the
 // project packs of every service root that has a .fathom/layers directory.
-func readPacks(src KnowledgeSource, svcs []serviceKnowledge) (map[string]*packInfo, []string) {
+//
+// semantic's union loader treats an unreadable .fathom/layers directory as
+// "embedded packs only" with nothing but a once-per-process stderr warning
+// (its serve-path resilience contract: one bad directory must not disable
+// serving). A catalog view cannot take that silence: the root's project
+// packs would vanish from every band, count and table while each read as
+// complete. So readPacks lists the directory itself first, and an
+// unreadable one is a named error — the service's catalog is unknown, never
+// "embedded only".
+func readPacks(src KnowledgeSource, svcs []serviceKnowledge) (map[string]*packInfo, []string, map[string]bool) {
 	packs := map[string]*packInfo{}
 	var errs []string
+	unreadable := map[string]bool{}
 	embedded, err := src.layers("")
 	if err != nil {
 		errs = append(errs, "embedded catalog: "+err.Error())
@@ -146,12 +175,27 @@ func readPacks(src KnowledgeSource, svcs []serviceKnowledge) (map[string]*packIn
 		if s.Root == "" {
 			continue
 		}
-		if fi, serr := os.Stat(filepath.Join(s.Root, filepath.FromSlash(semantic.ProjectLayersDir))); serr != nil || !fi.IsDir() {
+		dir := filepath.Join(s.Root, filepath.FromSlash(semantic.ProjectLayersDir))
+		fi, serr := os.Stat(dir)
+		switch {
+		case errors.Is(serr, fs.ErrNotExist):
+			continue // no .fathom/layers: embedded packs only, by design
+		case serr != nil:
+			errs = append(errs, s.Service+": "+dir+" could not be read ("+serr.Error()+"); its project packs are not listed")
+			unreadable[s.Service] = true
+			continue
+		case !fi.IsDir():
+			continue
+		}
+		if _, rerr := os.ReadDir(dir); rerr != nil {
+			errs = append(errs, s.Service+": "+dir+" could not be read ("+rerr.Error()+"); its project packs are not listed")
+			unreadable[s.Service] = true
 			continue
 		}
 		infos, lerr := src.layers(s.Root)
 		if lerr != nil {
 			errs = append(errs, s.Service+": "+lerr.Error())
+			unreadable[s.Service] = true
 			continue
 		}
 		for _, li := range infos {
@@ -169,7 +213,7 @@ func readPacks(src KnowledgeSource, svcs []serviceKnowledge) (map[string]*packIn
 			p.InstalledIn = append(p.InstalledIn, s.Service)
 		}
 	}
-	return packs, errs
+	return packs, errs, unreadable
 }
 
 // PackSource names where a layer pack comes from.
@@ -178,7 +222,58 @@ const (
 	PackProject  = "project"  // a repository's .fathom/layers
 	PackKit      = "kit"      // a project pack installed from a kit's fathom-pack
 	PackOrphan   = "orphan"   // claims in the store, no pack defines the layer
+	// PackUnknown is a layer with claims or runs in the store whose pack
+	// could not be looked up: the catalog of a project holding it was
+	// unreadable, so whether a pack defines it is not known.
+	PackUnknown = "unknown"
 )
+
+// broken reports a project-only pack that failed to load: its name is all
+// that is known — no kind, stratum or role.
+func (p *packInfo) broken() bool {
+	return p != nil && p.LoadError != "" && p.Source == semantic.SourceProject
+}
+
+// packSource classifies layer name's pack. A layer no readable catalog
+// defines is an orphan only when every project holding it had its catalog
+// read; otherwise it is unknown, naming the unreadable catalogs.
+func (k knowledge) packSource(name string) (source, origin string) {
+	p := k.Packs[name]
+	if p == nil {
+		if holders := k.unreadableHolders(name); len(holders) > 0 {
+			return PackUnknown, "no readable pack defines this layer, but the pack catalog of " + strings.Join(holders, ", ") + " could not be read — a project pack there may define it"
+		}
+	}
+	return packSourceOf(p)
+}
+
+// unreadableHolders names the projects holding claims or compile runs of
+// layer whose pack catalog could not be read.
+func (k knowledge) unreadableHolders(layer string) []string {
+	var out []string
+	for _, s := range k.Services {
+		if !k.PackUnreadable[s.Service] {
+			continue
+		}
+		held := false
+		for _, c := range s.Claims {
+			if c.Layer == layer {
+				held = true
+				break
+			}
+		}
+		for _, r := range s.Runs {
+			if held {
+				break
+			}
+			held = r.Layer == layer
+		}
+		if held {
+			out = append(out, s.Service)
+		}
+	}
+	return out
+}
 
 // packSourceOf classifies a resolved pack.
 func packSourceOf(p *packInfo) (source, origin string) {
@@ -337,4 +432,25 @@ func roundCents(v float64) float64 {
 		return -roundCents(-v)
 	}
 	return float64(int64(v*100+0.5)) / 100
+}
+
+// ResumeCompile is the command that resumes layer's budget-stopped or
+// incomplete compile for service from its first uncompiled section.
+// `fathom compile --continue` runs in direct --store mode only (it refuses
+// without --store), and compile only estimates unless --dry-run=false, so
+// the remedy names both; an unknown store path is a placeholder.
+func ResumeCompile(layer, service, storePath string) string {
+	st := "<store>"
+	if storePath != "" {
+		st = shellQuote(storePath)
+	}
+	return "fathom compile --layer " + shellQuote(layer) + " --service " + shellQuote(service) + " --store " + st + " --continue --dry-run=false"
+}
+
+// shellQuote quotes a value for a copyable command when it needs it.
+func shellQuote(s string) string {
+	if s != "" && !strings.ContainsAny(s, " \t\n'\"\\$`*?[]{}()<>|&;#~!") {
+		return s
+	}
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }

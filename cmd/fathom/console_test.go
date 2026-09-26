@@ -570,11 +570,23 @@ func jsonFieldNames(t reflect.Type) map[string]bool {
 func TestConsolePagesRenderTheirVerbs(t *testing.T) {
 	f := newConsoleFixture(t)
 	withVerbs := 0
+	type sample struct {
+		p    *consolePage
+		path string
+	}
+	var samples []sample
 	for _, p := range defaultConsoleRegistry().pages {
+		samples = append(samples, sample{p, samplePath(p)})
+		for _, extra := range extraSamplePaths[p.ID] {
+			samples = append(samples, sample{p, extra})
+		}
+	}
+	for _, s := range samples {
+		p := s.p
 		if p.ID == "statusz" {
 			continue // ?format=json is the v3 report (OC-6), not the envelope
 		}
-		env := f.pageJSON(t, samplePath(p))
+		env := f.pageJSON(t, s.path)
 		if env.Schema != consolePageJSONSchema || env.Page != p.ID || env.Group != p.Group || env.Question != p.Question {
 			t.Errorf("page %s: envelope = %+v", p.ID, env)
 		}

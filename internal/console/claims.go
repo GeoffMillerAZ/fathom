@@ -11,7 +11,11 @@ package console
 // contradicted claim's cited range in the CURRENT file may now hold
 // unrelated lines, so when the compile-time anchor text was kept, that is
 // what is shown, labeled as such — never the current lines passed off as
-// the rule's source.
+// the rule's source. A superseded or refuted claim is the same case, only
+// more so: those verdicts are terminal, so the sweep never re-anchors its
+// citation (internal/semantic/sweep.go) and the range freezes while the
+// file moves on. Only a fresh claim's range is kept current, so only a
+// fresh claim's current lines are shown as what it cites.
 
 import (
 	"context"
@@ -223,14 +227,29 @@ func ClaimDetail(ctx context.Context, src KnowledgeSource, claimID, service stri
 	return out, nil
 }
 
-// citationExcerpt reads the cited lines with context. A stale or
-// contradicted claim with kept anchor text shows that text instead (J2).
+// citationMayHaveMoved reports whether a claim's cited range may no longer
+// hold what it restates, and why: stale and contradicted claims drifted
+// from their text; superseded and refuted ones are never re-anchored.
+func citationMayHaveMoved(status core.ClaimStatus) (bool, string) {
+	switch status {
+	case core.ClaimStale, core.ClaimContradicted:
+		return true, "the claim is " + string(status)
+	case core.ClaimSuperseded, core.ClaimRefuted:
+		return true, "the claim is " + string(status) + ", a terminal verdict whose citation is never re-anchored as the file changes"
+	}
+	return false, ""
+}
+
+// citationExcerpt reads the cited lines with context. A claim whose range
+// may have moved (stale, contradicted, superseded, refuted) and whose
+// anchor text was kept shows that text instead (J2); without it, the
+// current lines are shown with a note saying they may not be the source.
 func citationExcerpt(root string, c Citation, status core.ClaimStatus, anchor string) Value[Excerpt] {
 	const src = "the cited file under the service's recorded root"
-	drifted := status == core.ClaimStale || status == core.ClaimContradicted
+	drifted, why := citationMayHaveMoved(status)
 	if drifted && anchor != "" {
 		ex := Excerpt{Path: c.Path, Start: c.Start, End: c.End, From: "compile-time anchor text",
-			Note: "cited text at compile — the claim is " + string(status) + ", so the current file's lines here may no longer be what it restates"}
+			Note: "cited text at compile — " + why + ", so the current file's lines here may no longer be what it restates"}
 		for i, line := range strings.Split(strings.TrimRight(anchor, "\n"), "\n") {
 			if i >= excerptMaxLines {
 				ex.Note += fmt.Sprintf("; first %d lines shown", excerptMaxLines)
@@ -262,7 +281,7 @@ func citationExcerpt(root string, c Citation, status core.ClaimStatus, anchor st
 	to := min(len(lines), end+excerptContext)
 	ex := Excerpt{Path: c.Path, Start: c.Start, End: end, From: "current file"}
 	if drifted {
-		ex.Note = "the claim is " + string(status) + " and its compile-time text was not kept: these are the current lines at the cited range, which may have moved"
+		ex.Note = why + ", and its compile-time text was not kept: these are the current lines at the cited range, which may have moved"
 	}
 	for n := from; n <= to; n++ {
 		if len(ex.Lines) >= excerptMaxLines {

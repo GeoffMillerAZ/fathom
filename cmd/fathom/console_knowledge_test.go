@@ -153,7 +153,7 @@ func TestConsoleKnowledgePages_OnShellWithVerbsAndTruthStates(t *testing.T) {
 		}},
 		{"/layers/obligations", []string{"fathom layers show obligations --json"}, []string{
 			`id="project-payment-service"`, "anchor-missing", "cited L40 does not exist", "docs/CLAUDE.md",
-			"fathom compile --layer obligations --service payment-service --continue", "budget stopped",
+			"fathom compile --layer obligations --service payment-service --store " + consoleFixtureStorePath(t) + " --continue --dry-run=false", "budget stopped",
 		}},
 		// The fixture's faux roots are not on disk: a fresh claim's excerpt
 		// is named absent, never an empty viewer.
@@ -366,21 +366,24 @@ func TestKnowledgeVerbs_ReadTheDaemonsStoreReadOnly(t *testing.T) {
 }
 
 // verbsFillTemplates reports whether every rendered verb fills one of the
-// registry's verbs — a "{name}" token matches one word — and a page with
-// no parameters renders exactly its registry verbs.
+// registry's verbs — a "{name}" token matches one word, and a bracketed
+// group ("[--layer {layer}]") is present or absent — and a page with no
+// parameters renders exactly its registry verbs.
 func verbsFillTemplates(rendered, registry []string) bool {
 	templated := false
+	var expanded []string
 	for _, r := range registry {
 		if strings.Contains(r, "{") {
 			templated = true
 		}
+		expanded = append(expanded, expandOptionalGroups(r)...)
 	}
 	if !templated {
 		return strings.Join(rendered, "\n") == strings.Join(registry, "\n")
 	}
 	for _, v := range rendered {
 		ok := false
-		for _, tmpl := range registry {
+		for _, tmpl := range expanded {
 			vt, tt := strings.Fields(v), strings.Fields(tmpl)
 			if len(vt) != len(tt) {
 				continue
@@ -402,6 +405,38 @@ func verbsFillTemplates(rendered, registry []string) bool {
 		}
 	}
 	return true
+}
+
+// expandOptionalGroups expands a verb template's bracketed groups into
+// every combination of present and absent.
+func expandOptionalGroups(tmpl string) []string {
+	out := [][]string{{}}
+	toks := strings.Fields(tmpl)
+	for i := 0; i < len(toks); i++ {
+		if !strings.HasPrefix(toks[i], "[") {
+			for j := range out {
+				out[j] = append(out[j], toks[i])
+			}
+			continue
+		}
+		var group []string
+		for ; i < len(toks); i++ {
+			group = append(group, strings.Trim(toks[i], "[]"))
+			if strings.HasSuffix(toks[i], "]") {
+				break
+			}
+		}
+		n := len(out)
+		for j := 0; j < n; j++ {
+			with := append(append([]string{}, out[j]...), group...)
+			out = append(out, with)
+		}
+	}
+	res := make([]string, 0, len(out))
+	for _, o := range out {
+		res = append(res, strings.Join(o, " "))
+	}
+	return res
 }
 
 // assertKnowledgeMetricsAgree extends OC-9 to the Knowledge pages: /layers
@@ -434,5 +469,30 @@ func assertKnowledgeMetricsAgree(t *testing.T, f *consoleFixture, services, clai
 	_, _, page := f.get(t, "/layers")
 	if got := tileValue(t, page, "current claims"); got != fmtThousands(claims.V) {
 		t.Errorf("/layers tile shows %q current claims, the metric says %d", got, claims.V)
+	}
+	// A count and its rows agree: the claim list behind the metric holds
+	// exactly the claims it counts, fleet-wide and per layer.
+	list := f.pageJSON(t, "/claims")
+	var l console.ClaimList
+	if err := json.Unmarshal(list.Sections["fathom claim list --status current --json"], &l); err != nil {
+		t.Fatal(err)
+	}
+	if l.Total.V != claims.V || l.Total.State != claims.State {
+		t.Errorf("/claims lists %+v current claims, the metric counts %+v", l.Total, claims)
+	}
+	for _, band := range strata.Bands {
+		for _, b := range band.Layers {
+			if !b.Claims.Known() {
+				continue
+			}
+			env := f.pageJSON(t, claimsHref(b.Name, "", ""))
+			var bl console.ClaimList
+			if err := json.Unmarshal(env.Sections[env.Verbs[0]], &bl); err != nil {
+				t.Fatal(err)
+			}
+			if bl.Total.V != b.Claims.V {
+				t.Errorf("layer %s counts %d current claims, its list holds %d", b.Name, b.Claims.V, bl.Total.V)
+			}
+		}
 	}
 }

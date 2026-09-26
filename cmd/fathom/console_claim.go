@@ -6,8 +6,10 @@ package main
 // cited range marked in words as well as tint, line anchors, a
 // keyboard-scrollable viewport), scope, tier, status, provenance and every
 // verdict recorded against it. The page's JSON section is `fathom claim
-// show <id> --json`. A stale claim shows its compile-time anchor text,
-// labeled, never the current lines as if they were its source (J2).
+// show <id> --json`. A stale, contradicted, superseded or refuted claim
+// shows its compile-time anchor text, labeled, never the current lines as
+// if they were its source (J2); without kept text, the current lines at
+// its range are marked "at the cited range", not "cited".
 
 import (
 	"fmt"
@@ -209,9 +211,16 @@ func renderClaimExcerpt(d console.ClaimPage) string {
 		lines = append(lines, code.Line{Number: l.Number, Text: l.Text, State: state})
 	}
 	label := fmt.Sprintf("%s, lines %d to %d (%s)", ex.V.Path, ex.V.Start, ex.V.End, ex.V.From)
+	// Only a fresh claim's range is kept current by the sweep: another
+	// claim's current lines are where its citation points, not what it
+	// cited.
+	marked := "Cited"
+	if ex.V.From == "current file" && d.Status != "fresh" {
+		marked = "At the cited range"
+	}
 	excerpt, err := code.RenderExcerpt(code.Excerpt{
 		Label: label, Caption: ex.V.Path + " · " + ex.V.From, AnchorPrefix: "cite-",
-		Lines: lines, Labels: code.StateLabels{Highlighted: "Cited"},
+		Lines: lines, Labels: code.StateLabels{Highlighted: marked},
 	})
 	if err != nil {
 		b.WriteString(`<p class="text-sm text-danger" data-truth-line="error">the excerpt could not be drawn — ` + html.EscapeString(err.Error()) + `</p>`)

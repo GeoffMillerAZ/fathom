@@ -77,7 +77,7 @@ func cmdObligations(args []string, stdout, stderr io.Writer) int {
 	}
 	c := knowledgeClient(st)
 	defer c.Close()
-	se, err := servingExplanation(context.Background(), c, *service, *file, semantic.ObligationLayerFilter(*layer))
+	se, err := servingExplanation(context.Background(), c, *service, *file, semantic.ObligationLayerFilter(*layer), absStorePath(ks.Path))
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1

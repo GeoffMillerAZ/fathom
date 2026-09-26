@@ -33,6 +33,8 @@ type ServingInputs struct {
 	// RerankProvider is the decision-port provider serving re-ranks within
 	// tiers with ([decide] rank_within_tier), "" when that is off.
 	RerankProvider string
+	// StorePath names the store in the resume command (ResumeCompile).
+	StorePath string
 }
 
 // ServingExplanation is the serving explainer.
@@ -44,10 +46,11 @@ type ServingExplanation struct {
 	RawFallback []semantic.Obligation `json:"raw_fallback"`
 	RawWhy      string                `json:"raw_why,omitempty"`
 	// Coverage is the obligations layer's coverage of its corpus;
-	// CoverageNote names the uncompiled guide governing this file, with
-	// the resume command.
+	// CoverageNote names the uncompiled guide governing this file, and
+	// Resume is the command that compiles the rest (ResumeCompile).
 	Coverage     Value[semantic.LayerCoverage] `json:"coverage"`
 	CoverageNote string                        `json:"coverage_note,omitempty"`
+	Resume       string                        `json:"resume,omitempty"`
 	// Rerank says whether serving re-orders rules within a tier with a
 	// decision-port provider; the explanation never calls one.
 	Rerank string `json:"rerank"`
@@ -75,7 +78,8 @@ func ServingView(in ServingInputs) ServingExplanation {
 			if cov.BudgetStopped {
 				coverage = fmt.Sprintf("budget stopped at %d/%d sections", cov.SectionsCompiled, cov.SectionsTotal)
 			}
-			out.CoverageNote = fmt.Sprintf("%s governs this path and was not compiled: %s; run `fathom compile --layer obligations --service %s --continue`", guide, coverage, in.Explanation.Service)
+			out.Resume = ResumeCompile(semantic.LayerObligations, in.Explanation.Service, in.StorePath)
+			out.CoverageNote = fmt.Sprintf("%s governs this path and was not compiled: %s; resume with `%s`", guide, coverage, out.Resume)
 		}
 	}
 	out.Rerank = "off — serving orders rules deterministically, as shown"

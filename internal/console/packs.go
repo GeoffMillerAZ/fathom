@@ -9,7 +9,12 @@ package console
 //
 // A capability no reading measured says "unmeasured", never 0: the
 // precision and recall columns are absent values naming why, and the
-// readings that do exist carry the document they were published in.
+// readings that do exist carry the document they were published in and the
+// tier they measured. The typed-edge column says what the fleet actually
+// holds, not only what could produce it: its share of resolver-confirmed
+// call edges is read from the store's typed_edges rows, so a language whose
+// SCIP delegate was never run reads "no SCIP index imported", never as if
+// its edges were typed.
 
 import (
 	"context"
@@ -18,7 +23,9 @@ import (
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
 // PacksView is the packs view.
@@ -31,7 +38,10 @@ type PacksView struct {
 	// Claims is the fleet's current governed claims (MetricClaims), the sum
 	// the layer packs contribute.
 	Claims Value[int] `json:"claims"`
-	Notes  []string   `json:"notes,omitempty"`
+	// LayerCount is how many layers are listed — a lower bound when a pack
+	// catalog could not be read.
+	LayerCount Value[int] `json:"layer_count"`
+	Notes      []string   `json:"notes,omitempty"`
 }
 
 // DialectPack is one language's row.
@@ -56,19 +66,73 @@ type DialectPack struct {
 	// Inventory is the capability-inventory kinds extracted from this
 	// language's files (api, cli, env, json, route, rpc).
 	Inventory []string `json:"inventory"`
+	// EdgeKinds counts the fleet's typed_edges rows whose calling file is
+	// in this language, by kind: direct, iface-dispatch and func-value come
+	// from a resolver (fathom's type checker, or an imported SCIP index);
+	// file-resolved and unresolved are heuristic.
+	EdgeKinds map[string]int `json:"edge_kinds"`
+	// TypedShare is the share of those rows a resolver confirmed — absent
+	// when the language's files carry no typed-edge row (call edges by
+	// syntax only), a measured 0 when every row is heuristic.
+	TypedShare Value[float64] `json:"typed_share"`
 	// Precision and Recall are absent — "unmeasured" — unless a published
-	// reading measured this language; Reading names it.
-	Precision Value[float64] `json:"precision"`
-	Recall    Value[float64] `json:"recall"`
-	Reading   string         `json:"reading,omitempty"`
+	// reading measured this language; Reading names it and ReadingTier is
+	// the edge tier it measured (native, file), which may differ from the
+	// language's best producer.
+	Precision   Value[float64] `json:"precision"`
+	Recall      Value[float64] `json:"recall"`
+	Reading     string         `json:"reading,omitempty"`
+	ReadingTier string         `json:"reading_tier,omitempty"`
+}
+
+// ResolvedEdges is how many of the language's typed-edge rows a resolver
+// confirmed.
+func (d DialectPack) ResolvedEdges() int {
+	n := 0
+	for kind, c := range d.EdgeKinds {
+		if core.EdgeConfidenceOf(core.Edge{Kind: core.EdgeKind(kind)}) == core.EdgeConfidenceResolved {
+			n += c
+		}
+	}
+	return n
+}
+
+// EdgeTally counts one service's typed_edges rows by the language of the
+// calling file (a registry tag) and by edge kind.
+type EdgeTally map[string]map[string]int
+
+// TallyTypedEdges reads svc's typed call edges and tallies them.
+func TallyTypedEdges(ctx context.Context, st store.Store, svc string) (EdgeTally, error) {
+	edges, err := st.TypedEdges(ctx, svc)
+	if err != nil {
+		return nil, err
+	}
+	out := EdgeTally{}
+	for _, e := range edges {
+		tag := connector.LanguageForPath(e.FromFile)
+		if tag == "" {
+			continue
+		}
+		if out[tag] == nil {
+			out[tag] = map[string]int{}
+		}
+		kind := string(e.Kind)
+		if kind == "" {
+			kind = "syntax"
+		}
+		out[tag][kind]++
+	}
+	return out, nil
 }
 
 // LayerPack is one layer pack.
 type LayerPack struct {
-	Name    string `json:"name"`
-	Source  string `json:"source"` // embedded | project | kit | orphan
-	Origin  string `json:"origin"`
-	Stratum string `json:"stratum"`
+	Name   string `json:"name"`
+	Source string `json:"source"` // embedded | project | kit | orphan | unknown
+	Origin string `json:"origin"`
+	// Stratum is empty when it is not known: a project pack that failed to
+	// load, or a layer whose pack catalog could not be read.
+	Stratum string `json:"stratum,omitempty"`
 	Kind    string `json:"kind,omitempty"`
 	Role    string `json:"role,omitempty"`
 	Evaled  bool   `json:"evaled"`
@@ -189,8 +253,21 @@ func PackMatrix(ctx context.Context, src KnowledgeSource) (PacksView, error) {
 	// fingerprinted source refs.
 	files := map[string]int{}
 	projects := map[string]map[string]bool{}
-	var unreadable []string
+	edgeKinds := map[string]map[string]int{}
+	var unreadable, edgesUnreadable []string
 	for _, s := range k.Services {
+		if tally, terr := src.edgeTally(ctx, s.Service); terr != nil {
+			edgesUnreadable = append(edgesUnreadable, s.Service)
+		} else {
+			for tag, kinds := range tally {
+				if edgeKinds[tag] == nil {
+					edgeKinds[tag] = map[string]int{}
+				}
+				for kind, n := range kinds {
+					edgeKinds[tag][kind] += n
+				}
+			}
+		}
 		refs, rerr := src.Store.ListSourceRefs(ctx, s.Service)
 		if rerr != nil {
 			unreadable = append(unreadable, s.Service)
@@ -232,10 +309,16 @@ func PackMatrix(ctx context.Context, src KnowledgeSource) (PacksView, error) {
 			row.Files = Measured(files[tag], useSource).WithDenominator(denom)
 			row.Projects = Measured(len(projects[tag]), useSource).WithDenominator(denom)
 		}
+		row.EdgeKinds = map[string]int{}
+		for kind, n := range edgeKinds[tag] {
+			row.EdgeKinds[kind] = n
+		}
+		row.TypedShare = typedShare(row, edgesUnreadable)
 		if r, ok := readings[tag]; ok {
 			row.Precision = Present(r.Precision, r.Source).WithDenominator(r.Measure)
 			row.Recall = Present(r.Recall, r.Source).WithDenominator(r.Measure)
 			row.Reading = r.Tier + " tier: " + r.Measure + " — " + r.Source + " (" + r.Date + ")"
+			row.ReadingTier = r.Tier
 		} else {
 			why := "unmeasured — no published precision/recall reading for " + row.Name
 			row.Precision = Absent[float64](why)
@@ -258,12 +341,50 @@ func PackMatrix(ctx context.Context, src KnowledgeSource) (PacksView, error) {
 		lp := LayerPack{
 			Name: name, Source: b.Source, Origin: b.Origin, Kind: b.Kind, Role: b.Role, Evaled: b.Evaled,
 			ActiveIn: b.Services, InstalledIn: b.InstalledIn, Contributes: b.Claims, Note: b.Note,
-			Stratum: StratumConcern,
 		}
-		if p := k.Packs[name]; p != nil && p.Stratum != "" {
+		// The stratum is the pack's own; a layer with no pack (an orphan) is
+		// the concern catalog's by origin. A broken pack or an unreadable
+		// catalog leaves it unknown — never a default.
+		p := k.Packs[name]
+		switch {
+		case p.broken() || b.Source == PackUnknown:
+		case p != nil && p.Stratum != "":
 			lp.Stratum = p.Stratum
+		default:
+			lp.Stratum = StratumConcern
 		}
 		out.Layers = append(out.Layers, lp)
 	}
+	out.LayerCount = layerCount(k, len(out.Layers))
 	return out, nil
+}
+
+// typedShare is the share of a language's typed-edge rows a resolver
+// confirmed.
+func typedShare(d DialectPack, unreadable []string) Value[float64] {
+	const src = "the store's typed_edges rows, by the calling file's language"
+	total := 0
+	for _, n := range d.EdgeKinds {
+		total += n
+	}
+	resolved := d.ResolvedEdges()
+	share := 0.0
+	if total > 0 {
+		share = float64(int64(float64(resolved)/float64(total)*1000+0.5)) / 1000
+	}
+	if len(unreadable) > 0 {
+		return Partial(share, "typed edges unreadable for: "+strings.Join(unreadable, ", ")).WithSource(src)
+	}
+	if total == 0 {
+		why := "no typed-edge row for " + d.Name + " files — call edges by syntax only"
+		if d.Files.V == 0 {
+			why = "no " + d.Name + " file indexed in this fleet"
+		}
+		return Absent[float64](why).WithSource(src)
+	}
+	denom := fmt.Sprintf("%s of %s call edges confirmed by a resolver", thousands(resolved), thousands(total))
+	if resolved == 0 {
+		denom = fmt.Sprintf("0 of %s call edges confirmed by a resolver — every one heuristic", thousands(total))
+	}
+	return Measured(share, src).WithDenominator(denom)
 }
