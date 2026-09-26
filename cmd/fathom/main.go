@@ -249,6 +249,8 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return cmdPurge(args[1:], stdout, stderr)
 	case "memory":
 		return cmdMemory(args[1:], stdout, stderr)
+	case "decide":
+		return cmdDecide(args[1:], stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "error: unknown subcommand %q\n", args[0])
 		printUsage(stderr)

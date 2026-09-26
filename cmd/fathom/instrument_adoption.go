@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/config"
+	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/pkg/client"
@@ -182,17 +183,51 @@ func cmdInstrumentAdoption(args []string, stdout, stderr io.Writer) int {
 	storePath := fs.String("store", "", "optional store path — builds the registered-tool list the same way serve-http constructs its server; omit to use a backend-independent registry (tool registration never depends on the backend, see registeredToolNames)")
 	root := fs.String("root", ".", "project root for .fathom/observations.md")
 	serviceFlag := fs.String("service", "", "scope the report to one service's call-log rows (unattributed rows are excluded and counted) — answers \"is fathom helping in repo X\" from anywhere (IO-10)")
+	url := fs.String("url", defaultFathomURL(), "the daemon whose record names the call log")
 	jsonOut := fs.Bool("json", false, "machine-readable JSON output")
 	if err := fs.Parse(args); err != nil {
 		return 0
 	}
+	report, resolved := instrumentAdoption(adoptionQuery{CallLog: *callLogFlag, Store: *storePath, Root: *root, Service: *serviceFlag, BaseURL: *url}, stderr)
 
+	if *jsonOut {
+		enc := json.NewEncoder(stdout)
+		enc.SetIndent("", "  ")
+		_ = enc.Encode(withCallLog(report, resolved))
+	} else {
+		renderAdoptionReport(stdout, report)
+		fmt.Fprintln(stdout, callLogLine(resolved))
+	}
+	return 0
+}
+
+// adoptionQuery parameterizes instrumentAdoption: the invocation's
+// --call-log, --store, --root and --service, and the daemon whose record
+// names the call log (--url).
+type adoptionQuery struct {
+	CallLog, Store, Root, Service, BaseURL string
+	// preread, when set, is a read of the resolved log the caller already
+	// made (the console's Operate page reads it once for every section).
+	preread *adoptionPreread
+}
+
+// adoptionPreread is one read of the call log: its usage entries, the
+// malformed lines skipped, and the read error.
+type adoptionPreread struct {
+	entries []adoptionCallEntry
+	skipped int
+	err     error
+}
+
+// instrumentAdoption is `fathom instrument --adoption`'s whole computation;
+// the console's Operate page calls it for its section (P10).
+func instrumentAdoption(q adoptionQuery, stderr io.Writer) (AdoptionReport, console.ResolvedCallLog) {
 	// OC-2 (console_calllog.go): the one call-log resolution — the
 	// daemon's record first (the log the daemon actually writes), then J5's
 	// named-service identity (its recorded root, that root's config, its
 	// default), then config and the legacy default with doctor's
 	// daemon-workspace probes rooted at --root (IO-10's cwd-independence).
-	resolved := resolveConsoleCallLogFor(callLogQuery{Flag: *callLogFlag, Service: *serviceFlag, ProbeRoot: *root})
+	resolved := resolveConsoleCallLogFor(callLogQuery{Flag: q.CallLog, Service: q.Service, ProbeRoot: q.Root, BaseURL: q.BaseURL})
 	callLogPath := resolved.Path
 
 	// IT-1 read-error classification (observation O17, filed 2026-08-23):
@@ -205,7 +240,16 @@ func cmdInstrumentAdoption(args []string, stdout, stderr io.Writer) int {
 	// never actually happened. classifyCallLogRead (flywheel.go's own
 	// classification, mirrored here per SP-B3) tells "no log yet" (ENOENT)
 	// apart from a real defect.
-	entries, skippedMalformed, callLogErr := classifyCallLogRead(callLogPath)
+	var (
+		entries          []adoptionCallEntry
+		skippedMalformed int
+		callLogErr       error
+	)
+	if q.preread != nil {
+		entries, skippedMalformed, callLogErr = append([]adoptionCallEntry(nil), q.preread.entries...), q.preread.skipped, q.preread.err
+	} else {
+		entries, skippedMalformed, callLogErr = classifyCallLogRead(callLogPath)
+	}
 	read := callLogErr == nil
 	realReadErr := callLogErr != nil && !os.IsNotExist(callLogErr)
 	callLogReadError := ""
@@ -214,11 +258,11 @@ func cmdInstrumentAdoption(args []string, stdout, stderr io.Writer) int {
 	}
 
 	unattributedExcluded := 0
-	if *serviceFlag != "" {
-		entries, unattributedExcluded = filterEntriesByService(entries, *serviceFlag)
+	if q.Service != "" {
+		entries, unattributedExcluded = filterEntriesByService(entries, q.Service)
 	}
 
-	toolNames, toolErr := registeredToolNames(*storePath)
+	toolNames, toolErr := registeredToolNames(q.Store)
 	toolNote := ""
 	if toolErr != nil {
 		toolNote = fmt.Sprintf("could not resolve the registered-tool list: %v", toolErr)
@@ -226,11 +270,11 @@ func cmdInstrumentAdoption(args []string, stdout, stderr io.Writer) int {
 	}
 
 	var openObs *int
-	if content, existed, obsErr := readObservations(*root); obsErr == nil && existed {
+	if content, existed, obsErr := readObservations(q.Root); obsErr == nil && existed {
 		n := countOpenObservations(content)
 		openObs = &n
 	} else if obsErr != nil {
-		fmt.Fprintf(stderr, "warn: instrument --adoption: reading %s: %v\n", observationsPath(*root), obsErr)
+		fmt.Fprintf(stderr, "warn: instrument --adoption: reading %s: %v\n", observationsPath(q.Root), obsErr)
 	}
 
 	// J5: one identical headline across all three instruments (J5(d)) —
@@ -243,8 +287,8 @@ func cmdInstrumentAdoption(args []string, stdout, stderr io.Writer) int {
 	// IT-11: the verify-gate figure sources from the verify ledger, never
 	// the call log — readVerifyLedger() already honors FATHOM_VERIFY_LEDGER
 	// (verifyledger.go), the "path injectable" this row asks for.
-	report := buildAdoptionReport(callLogPath, read, callLogReadError, entries, skippedMalformed, toolNames, toolNote, openObs, observationsPath(*root), readVerifyLedger())
-	report.ServiceFilter = *serviceFlag
+	report := buildAdoptionReport(callLogPath, read, callLogReadError, entries, skippedMalformed, toolNames, toolNote, openObs, observationsPath(q.Root), readVerifyLedger())
+	report.ServiceFilter = q.Service
 	report.UnattributedExcluded = unattributedExcluded
 	// O17: same fabrication risk as buildAdoptionReport's zeroCall — the
 	// agent-surface partition is equally derived from adoptionToolCounts
@@ -254,15 +298,7 @@ func cmdInstrumentAdoption(args []string, stdout, stderr io.Writer) int {
 		report.ZeroCallAgentTools, report.RegisteredNotOnAgent = partitionZeroCalls(toolNames, mcp.AgentSurfaceTools(), adoptionToolCounts(entries))
 	}
 
-	if *jsonOut {
-		enc := json.NewEncoder(stdout)
-		enc.SetIndent("", "  ")
-		_ = enc.Encode(withCallLog(report, resolved))
-	} else {
-		renderAdoptionReport(stdout, report)
-		fmt.Fprintln(stdout, callLogLine(resolved))
-	}
-	return 0
+	return report, resolved
 }
 
 // resolveCallLogPath mirrors runServeHTTP's own --call-log default

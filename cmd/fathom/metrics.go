@@ -15,7 +15,7 @@ import (
 
 func cmdMetrics(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "error: metrics requires a verb: spend | traffic | channels | interventions | series | rollup | rotate")
+		fmt.Fprintln(stderr, "error: metrics requires a verb: spend | traffic | channels | interventions | series | rollup | rotate | impact | catches | sessions")
 		printMetricsUsage(stderr)
 		return 1
 	}
@@ -34,8 +34,14 @@ func cmdMetrics(args []string, stdout, stderr io.Writer) int {
 		return cmdMetricsRollupBuild(args[1:], stdout, stderr)
 	case "rotate":
 		return cmdMetricsRotate(args[1:], stdout, stderr)
+	case "impact":
+		return cmdMetricsImpact(args[1:], stdout, stderr)
+	case "catches":
+		return cmdMetricsCatches(args[1:], stdout, stderr)
+	case "sessions":
+		return cmdMetricsSessions(args[1:], stdout, stderr)
 	default:
-		fmt.Fprintf(stderr, "error: unknown metrics verb %q (want spend | traffic | channels | interventions | series | rollup | rotate)\n", args[0])
+		fmt.Fprintf(stderr, "error: unknown metrics verb %q (want spend | traffic | channels | interventions | series | rollup | rotate | impact | catches | sessions)\n", args[0])
 		printMetricsUsage(stderr)
 		return 1
 	}
@@ -44,12 +50,16 @@ func cmdMetrics(args []string, stdout, stderr io.Writer) int {
 func printMetricsUsage(w io.Writer) {
 	fmt.Fprintln(w, "Usage:")
 	fmt.Fprintln(w, "  fathom metrics spend         --store PATH [--service NAME] [--module LAYER] [--by layer|day|model] [--since DUR | --from RFC3339 --to RFC3339] [--root DIR] [--json]")
-	fmt.Fprintln(w, "  fathom metrics traffic       [--service NAME] [--by surface|tool|hour] [--since DUR | --from RFC3339 --to RFC3339] [--call-log PATH] [--json]")
+	fmt.Fprintln(w, "  fathom metrics traffic       [--service NAME] [--by surface|tool|hour|day|caller] [--since DUR | --from RFC3339 --to RFC3339] [--call-log PATH] [--url U] [--json]")
 	fmt.Fprintln(w, "  fathom metrics channels      [--since DUR | --from RFC3339 --to RFC3339] [--hooks-log PATH] [--json]")
 	fmt.Fprintln(w, "  fathom metrics interventions [--since DUR | --from RFC3339 --to RFC3339] [--store PATH] [--call-log PATH] [--hooks-log PATH] [--json]")
 	fmt.Fprintln(w, "  fathom metrics series        <metric> --bucket hour|day [--since DUR] [--root DIR] [--json]  (<metric> may also come after the flags)")
 	fmt.Fprintln(w, "  fathom metrics rollup        [--date YYYY-MM-DD] [--root DIR] [--store PATH] [--call-log PATH] [--hooks-log PATH] [--json]")
 	fmt.Fprintln(w, "  fathom metrics rotate        [--call-log PATH] [--keep-days N] [--apply]")
+	fmt.Fprintln(w, "  fathom metrics impact        [--call-log PATH] [--url U] [--json]")
+	fmt.Fprintln(w, "  fathom metrics catches       [--kind K]... [--service S] [--days N] [--page N] [--per-page N] [--call-log PATH] [--url U] [--json]")
+	fmt.Fprintln(w, "  fathom metrics sessions      [--arm on|off] [--repo R] [--q TEXT] [--sort KEY] [--asc] [--page N] [--per-page N] [--json]")
+	fmt.Fprintln(w, "  fathom metrics sessions      --id SESSION [--channel C]... [--page N] [--per-page N] [--json]")
 }
 
 // resolveMetricsWindow is every metrics verb's shared --since/--from/--to

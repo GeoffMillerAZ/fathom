@@ -131,14 +131,21 @@ func flywheelExit(checks []flywheelCheck) int {
 }
 
 func runFlywheelChecks(baseURL, service string, now time.Time) []flywheelCheck {
-	ledger := readLedgerRows(sessionLedgerPath())
-	imp := buildImpactModel(now)
 	// Obligation traffic lives in the CALL LOG, not the impact model —
 	// buildObservatoryModel folds it separately. Reading the wrong source
 	// here produced a false IDLE on a loop carrying 6,992 injections, which
 	// is precisely the class of error this verb exists to catch. Every
 	// check must read the same source the surface it mirrors reads.
 	entries, callLogErr := flywheelCallLog(baseURL, service)
+	return flywheelChecksFrom(buildImpactModel(now), entries, callLogErr, now)
+}
+
+// flywheelChecksFrom is runFlywheelChecks over an impact model and call-log
+// entries already read — the console's Operate page passes the observatory
+// model's impact fold and its own read of the log instead of re-reading
+// both (the impact fold alone reads the whole hooks log).
+func flywheelChecksFrom(imp obsImpact, entries []adoptionCallEntry, callLogErr error, now time.Time) []flywheelCheck {
+	ledger := readLedgerRows(sessionLedgerPath())
 	obligationCalls := 0
 	for _, e := range entries {
 		if e.Tool == "obligations" {

@@ -15,6 +15,7 @@ import (
 	"time"
 
 	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
+	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/metrics"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
@@ -56,6 +57,12 @@ func spendBudgetLookup(root string) metrics.CompileRunBudgetLookup {
 // and (optionally) one service.
 func readCallDataFor(callLogPath, service string, since, until time.Time) (entries []metrics.CallEntry, verdicts []metrics.CallVerdictOutcome) {
 	rawEntries, _, _ := readCallLog(callLogPath)
+	return callDataFrom(rawEntries, service, since, until)
+}
+
+// callDataFrom is readCallDataFor over entries already read (the console's
+// Operate page reads the log once for every section it shows).
+func callDataFrom(rawEntries []adoptionCallEntry, service string, since, until time.Time) (entries []metrics.CallEntry, verdicts []metrics.CallVerdictOutcome) {
 	for _, e := range rawEntries {
 		ts, ok := parseCallLogTS(e.TS)
 		if !ok || ts.Before(since) || ts.After(until) {
@@ -67,6 +74,7 @@ func readCallDataFor(callLogPath, service string, since, until time.Time) (entri
 		entries = append(entries, metrics.CallEntry{
 			TS: e.TS, Tool: e.Tool, Service: e.Service, Surface: e.Surface,
 			LatencyMS: e.LatencyMS, Error: e.Error,
+			Caller: string(console.ClassifyCaller(e.Tool, e.Surface, e.Origin)),
 		})
 		if e.VerdictOutcome != nil {
 			verdicts = append(verdicts, metrics.CallVerdictOutcome{Tool: e.Tool, Outcome: e.VerdictOutcome})
