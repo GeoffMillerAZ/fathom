@@ -37,7 +37,7 @@ func LintPlan(p Plan) []string {
 		if t.Expect.SkipTest && t.Expect.SkipReason == "" {
 			out = append(out, fmt.Sprintf("%s: skip_test without a skip: justification", t.ID))
 		}
-		if msg := skipOnlyClaim(t); msg != "" {
+		if msg := uncontractedClaim(t); msg != "" {
 			out = append(out, fmt.Sprintf("%s: %s", t.ID, msg))
 		}
 		if t.AnnotationSuspect != "" {
@@ -59,24 +59,35 @@ func LintPlan(p Plan) []string {
 	return out
 }
 
-// skipOnlyClaim reports a claimed ([x]) row whose only annotation is a skip
-// waiver — `skip_test: true` and/or `skip: "…"` with no symbol:, oracle:,
-// gone:, or spec ID. A waiver exempts a symbol from test_reaches; it is not a
-// contract, so verifyTask reads such a row no-contract (Unknown), which the
-// default gate lets through and only --strict blocks. Twenty-eight rows sat
-// claimed in that state (2026-09-25) because a detailed `skip:` naming the
-// evidence reads like a proof to its author. Only claimed rows are named: the
-// claim is the moment the mistake bites, and an open "(op)" row carrying its
-// waiver early is not yet wrong. "" when the row is not that shape.
-func skipOnlyClaim(t Task) string {
-	e := t.Expect
-	if !t.Claimed || (!e.SkipTest && e.SkipReason == "") {
+// uncontractedClaim reports a claimed ([x]) row that carries no contract
+// (claimedWithoutContract): verifyTask reads it no-contract (Unknown), which
+// the default gate lets through and only --strict blocks. Two shapes, one
+// message each. A skip waiver — `skip_test: true` and/or `skip: "…"` — only
+// exempts a symbol from test_reaches; twenty-eight rows sat claimed carrying
+// nothing else (2026-09-25) because a detailed `skip:` naming the evidence
+// reads like a proof to its author. A bare row carries no annotation beyond
+// its id. Only claimed rows are named: the claim is the moment the mistake
+// bites, and an open "(op)" row carrying its waiver early is not yet wrong. A
+// row whose annotation block did not parse, or that carries a disposition on
+// an [x] box, is left to its own lint line, which names the real fix. "" when
+// the row is not that shape. Advisory like every lint: what fails a push on
+// one of this repository's plans is
+// TestRepoPlans_EveryClaimedRowCarriesAContract under `task validate`.
+func uncontractedClaim(t Task) string {
+	if !claimedWithoutContract(t) || t.AnnotationSuspect != "" || t.Disposition != "" {
 		return ""
 	}
-	if e.Symbol != "" || t.Oracle != "" || t.Gone != "" || len(t.SpecIDs) > 0 {
-		return ""
+	const remedy = "give it symbol:, oracle: lexical|ledger (path + pattern or run_id naming the evidence), or gone:"
+	if t.Expect.SkipTest || t.Expect.SkipReason != "" {
+		return "skip_test/skip is a waiver, not a contract — this claimed row verifies as no-contract (Unknown; --strict blocks it); " + remedy
 	}
-	return "skip_test/skip is a waiver, not a contract — this claimed row verifies as no-contract (Unknown; --strict blocks it); give it symbol:, oracle: lexical|ledger (path + pattern or run_id naming the evidence), or gone:"
+	return "claimed with no contract — this row verifies as no-contract (Unknown; --strict blocks it); " + remedy
+}
+
+// claimedWithoutContract reports whether verifyTask will read t as a claimed
+// no-contract row: [x] with none of symbol:, oracle:, gone:, or a spec ID.
+func claimedWithoutContract(t Task) bool {
+	return t.Claimed && t.Expect.Symbol == "" && t.Oracle == "" && t.Gone == "" && len(t.SpecIDs) == 0
 }
 
 // lintNeeds validates the needs: eligibility DAG (WF-3): an unknown id, a

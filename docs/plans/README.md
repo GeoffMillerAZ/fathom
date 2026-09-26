@@ -129,7 +129,10 @@ carries nothing else — no `symbol:`, `oracle:`, `gone:`, or spec ID — verifi
 `no-contract` (Unknown): the default pre-push gate lets it through and only
 `--strict` blocks it, however well its `skip:` text names the evidence. Lint
 names that shape on every claimed row (`skip_test/skip is a waiver, not a
-contract`). An `(op)` measurement row closes with the evidence as its
+contract`), and a claimed row with no annotation beyond its id too (`claimed
+with no contract`). The lint is advisory; in this repository what fails a push
+on either shape is `TestRepoPlans_EveryClaimedRowCarriesAContract` under `task
+validate`, over every top-level plan. An `(op)` measurement row closes with the evidence as its
 contract: `oracle: lexical` on the reading (a distinctive `pattern:` in the
 committed file — never the plan row itself), or `oracle: ledger` on the run.
 

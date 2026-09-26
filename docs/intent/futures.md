@@ -120,7 +120,8 @@ futures may justify a free option today. The repo's own sequence is
 - Do not build: a CI service or runner config before the claims are reconciled.
 - Preserve: `verify --store <tmp>` keeps working; ambient-fathom's claimed-Unknown rows
   are reconciled first (`th-c214dd26`).
-- Promote when: `th-c214dd26` is decided and scope G6 is done.
+- Promote when: `th-c214dd26` is decided and scope G6 is done. Fired 2026-09-25: G6 held
+  and left `scope.md` (PC-20); promotion is the owner's decision, not yet made.
 - Drop if: the repo stays without a CI runner by decision.
 
 ## F11. Adopt the kit's `mcp-server` under `internal/mcp`

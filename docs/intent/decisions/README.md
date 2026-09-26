@@ -77,7 +77,7 @@ Pass the threshold, were not written as ADR sections; point, do not duplicate.
 | `docs/handoff/repo-strategy.md` | Monorepo now, split on an enforced boundary; the CI/forge repo trigger | first non-fleet consumer |
 | `CHANGELOG.md` 2026-08-12 (MI-5), `docs/design/production-tokenomics.md` | The A/B unit is arm-homogeneous; ≥10 turns, ≥20 units per arm | never after data exists |
 | `docs/design/scope-and-purge.md` | Six purge/scope defects made structural (V1–V6) | a seventh defect class |
-| `docs/design/evidence-plane.md` §4 (D2), ADR-026 | Claimed rows with no contract are honesty debt, listed with a remedy; CI `--strict` follows scope G6 (closes thread `th-c214dd26`) | G6 done |
+| `docs/design/evidence-plane.md` §4 (D2), ADR-026 | Claimed rows with no contract are honesty debt, listed with a remedy; CI `--strict` follows scope G6 (closes thread `th-c214dd26`) | G6 done. **Fired 2026-09-25:** G6 (0 claimed-unproven, `verify --strict` exit 0 on every top-level plan) held and left `scope.md`; `task validate` now fails on a claimed no-contract row (`proof-credibility.md` PC-20), but the pre-push `verify` step still runs without `--strict`. Wiring CI `--strict` is futures F10, whose promotion trigger fired with it: the owner decides |
 
 Session-scale rejections live in plans as `[-]` rows with `disposition: refused|deferred`
 and a `trigger:`; they die with the plan.
