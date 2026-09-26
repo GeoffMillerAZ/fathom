@@ -1021,6 +1021,12 @@ func TestConsoleEvents_FeedersPublishNamesAndIDs(t *testing.T) {
 	if e := events[2]; e.Kind != console.EventDaemon || e.Name != "adopt" {
 		t.Errorf("daemon event = %+v", e)
 	}
+	// The row's content (tokens_in: 900) must not ride along. Zero the
+	// clock and the epoch first: a timestamp like "…43.900529Z" or a
+	// base-36 epoch can contain "900" by chance, which made this flaky.
+	for i := range events {
+		events[i].At, events[i].Epoch = time.Time{}, ""
+	}
 	raw, _ := json.Marshal(events)
 	if strings.Contains(string(raw), "900") || strings.Contains(string(raw), "tokens") {
 		t.Errorf("events must carry names and IDs only: %s", raw)

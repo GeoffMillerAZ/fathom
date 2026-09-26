@@ -627,7 +627,7 @@ func renderWiringIndex(all []registeredService, err error) string {
 		if s.Root == "" {
 			body.WriteString(kv("root", `<span class="italic text-ink-muted">no local path — a remote corpus; nothing to wire</span>`))
 		} else {
-			body.WriteString(kv("root", `<span class="font-mono text-xs break-all">`+html.EscapeString(s.Root)+`</span>`))
+			body.WriteString(kv("root", pathHTML(s.Root)))
 			body.WriteString(`<form method="post" action="/observatory/wiring/preview" class="mt-2 [&>button]:min-h-11"><input type="hidden" name="service" value="` + html.EscapeString(s.Service) + `">` +
 				form.RenderButton(form.Button{Label: "Preview changes", Variant: form.ButtonGhost}) + `</form>`)
 		}
@@ -648,7 +648,7 @@ func wiringBackLink() string {
 func renderWiringPreview(pv wiringPreview) string {
 	var b strings.Builder
 	b.WriteString(sectionHeading("preview · " + pv.Service))
-	b.WriteString(kv("root", `<span class="font-mono text-xs break-all">`+html.EscapeString(pv.Root)+`</span>`))
+	b.WriteString(kv("root", pathHTML(pv.Root)))
 	if pv.Plan.LedgerNote != "" {
 		b.WriteString(callout.Render(callout.Callout{Kind: callout.Caution, Title: "ownership ledger", Body: pv.Plan.LedgerNote}))
 	}

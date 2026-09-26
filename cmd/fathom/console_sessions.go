@@ -56,10 +56,22 @@ func buildSessionsPage(cr *consoleRequest) (consoleOut, error) {
 func buildSessionPage(cr *consoleRequest) (consoleOut, error) {
 	id := cr.r.PathValue("id")
 	st := buildSessionStory(id)
+	// The top bar's h1 truncates, so it names the session by its short id;
+	// the meta line carries the full id as selectable text. The law-14
+	// caveat is the body's callout, stated once (F0 proof, item 7).
 	return consoleOut{
-		Title: "Session " + id,
-		Meta:  []string{"a replay is a lens over mechanism-labeled events, never evidence (law 14)"},
+		Title: "Session " + shortSessionID(id),
+		Meta:  []string{"session id " + id},
 		Model: st,
 		Body:  func() string { return renderSessionStory(st) },
 	}, nil
+}
+
+// shortSessionID is a session id's first eight characters (a UUID's first
+// group), or the whole id when it is short.
+func shortSessionID(id string) string {
+	if r := []rune(id); len(r) > 8 {
+		return string(r[:8])
+	}
+	return id
 }

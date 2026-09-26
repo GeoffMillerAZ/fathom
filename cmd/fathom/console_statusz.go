@@ -30,7 +30,6 @@ func init() {
 	declarePage(consolePage{
 		ID: "statusz", Route: "/statusz", Href: "/statusz", Group: "System", Order: 0, Nav: true,
 		Title:    "Daemon status",
-		NavLabel: "Statusz",
 		Question: "Is this daemon healthy, which binary is it, and is every service's index fresh?",
 		Build:    buildStatuszPage,
 	})
@@ -93,7 +92,7 @@ func renderStatusz(report StatuszReport, selfURL string) string {
 	}))
 
 	services := statuszServiceCount(report)
-	unknownTyped := 0
+	unknownTyped, replayed := 0, 0
 	rows := make([]table.Row, 0, len(report.Services))
 	for _, s := range report.Services {
 		commit := shortCommit(s.IndexedCommit)
@@ -104,12 +103,19 @@ func renderStatusz(report StatuszReport, selfURL string) string {
 		if !known {
 			unknownTyped++
 		}
+		if s.TypedEdges != nil && s.TypedEdges.Persisted {
+			replayed++
+		}
+		// The service name is the row's drill-down link: a separate
+		// "Open →" column cost a column's width at 390 px and wrapped its
+		// arrow at 1440 px (F0 proof, item 5).
 		rows = append(rows, table.Row{
-			ID:        "svc-" + s.Service,
-			Href:      projectHref(s.Service),
-			Label:     "Open " + s.Service,
-			Cells:     []string{s.Service, commit, "", ""},
-			HTMLCells: []templ.Component{nil, nil, templ.Raw(typed), templ.Raw(statuszCompileCell(s.LastCompilePerLayer))},
+			ID:    "svc-" + s.Service,
+			Cells: []string{s.Service, commit, "", ""},
+			HTMLCells: []templ.Component{
+				templ.Raw(`<a href="` + html.EscapeString(projectHref(s.Service)) + `" class="inline-flex min-h-11 items-center font-medium text-accent underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">` + html.EscapeString(s.Service) + `</a>`),
+				nil, templ.Raw(typed), templ.Raw(statuszCompileCell(s.LastCompilePerLayer)),
+			},
 		})
 	}
 	tbl := renderKitTable(table.TableParams{
@@ -138,9 +144,10 @@ func renderStatusz(report StatuszReport, selfURL string) string {
 		Denominator: valuePlain(services) + " services",
 		Freshness:   "live — computed for this request",
 		State:       state, Reason: reason,
-		// The kit table scrolls inside its own positioned wrapper at 390 px
-		// (FATHOM-F0-KIT-02); the page never pans sideways.
-		Body: tbl,
+		// Cells wrap (no minimum widths), so the table fits a 390 px
+		// screen; anything wider scrolls inside the kit's own positioned
+		// wrapper (FATHOM-F0-KIT-02), never the page.
+		Body: tbl + statuszLegend(replayed),
 	}))
 	b.WriteString(`</div>`)
 	return b.String()
@@ -153,22 +160,32 @@ func renderStatusz(report StatuszReport, selfURL string) string {
 func statuszTypedEdgesCell(te *StatuszTypedEdges, absence statuszTypedAbsence) (cell string, known bool) {
 	if te == nil {
 		if absence.NotApplicable {
-			return `<span class="inline-block min-w-48 text-ink-muted" data-truth-state="absent">` + html.EscapeString(absence.Reason) + `</span>`, true
+			return `<span class="text-ink-muted" data-truth-state="absent">` + html.EscapeString(absence.Reason) + `</span>`, true
 		}
 		reason := absence.Reason
 		if reason == "" {
 			reason = "no typed-edge pass is recorded for this service"
 		}
-		return `<span class="inline-block min-w-48 italic text-ink-muted" data-truth-state="absent">unknown — ` + html.EscapeString(reason) + `; never read as a pass</span>`, false
+		return `<span class="italic text-ink-muted" data-truth-state="absent">unknown — ` + html.EscapeString(reason) + `; never read as a pass</span>`, false
 	}
 	if te.Failed {
-		return `<span class="font-medium text-danger" data-truth-state="error">FAILED — ` + html.EscapeString(te.Reason) + `</span>`, true
+		return `<span class="font-medium text-danger [overflow-wrap:anywhere]" data-truth-state="error">FAILED — ` + html.EscapeString(te.Reason) + `</span>`, true
 	}
 	cell = html.EscapeString(plural(te.Packages, "package"))
 	if te.Persisted {
-		cell += ` <span class="text-ink-muted">(recorded ` + html.EscapeString(te.RecordedAt) + ` by an earlier daemon process, replayed from the store — this daemon has not run the pass since it started)</span>`
+		// The table's legend says what "replayed" means, once.
+		cell += ` <span class="text-ink-muted">· replayed, recorded ` + html.EscapeString(te.RecordedAt) + `</span>`
 	}
 	return cell, true
+}
+
+// statuszLegend explains the typed-edge column's "replayed" once, under
+// the table, instead of in every row.
+func statuszLegend(replayed int) string {
+	if replayed == 0 {
+		return ""
+	}
+	return `<p class="mt-2 text-xs text-ink-muted" data-statusz-legend>replayed: the pass was recorded by an earlier daemon process, replayed from the store — this daemon has not run it since it started (` + html.EscapeString(plural(replayed, "service")) + `).</p>`
 }
 
 // statuszCompileCell renders the last compile per layer, one line per layer.
@@ -183,7 +200,7 @@ func statuszCompileCell(per map[string]string) string {
 	sort.Strings(layers)
 	var b strings.Builder
 	for _, l := range layers {
-		b.WriteString(`<div class="min-w-64 font-mono text-xs [overflow-wrap:anywhere]"><span class="font-semibold text-ink">` + html.EscapeString(l) + `</span> <span class="text-ink-muted">` + html.EscapeString(per[l]) + `</span></div>`)
+		b.WriteString(`<div class="font-mono text-xs [overflow-wrap:anywhere]"><span class="font-semibold text-ink">` + html.EscapeString(l) + `</span> <span class="text-ink-muted">` + html.EscapeString(per[l]) + `</span></div>`)
 	}
 	return b.String()
 }

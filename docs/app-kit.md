@@ -475,6 +475,15 @@ inside mirror `d9dd789`:
 - **Disposition:** `candidate`, not patched locally; the check names the kit-owned
   utility as its one exception. Next action: app-kit maintainer.
 
+**FATHOM-S0-KIT-03 — `table.Table`'s "Open →" action wraps its arrow (candidate)**
+
+- **Origin / task:** `/statusz`'s services table at 1440 px (F0 proof, item 5).
+- **Observed / expected:** in a squeezed action column the row link's text wraps, the
+  arrow on its own line; expected `whitespace-nowrap` on the action. Fathom now makes the
+  service name the row's drill-down link and renders no action column, which also frees a
+  column's width at 390 px.
+- **Disposition:** `candidate`. Next action: app-kit maintainer.
+
 **FATHOM-ADOPT-01 — selected metadata migration**
 
 - **Origin / task:** Fathom; retain the reviewed responsive shell selection without

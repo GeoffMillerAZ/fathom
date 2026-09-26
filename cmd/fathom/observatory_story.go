@@ -84,8 +84,9 @@ func beatRole(channel, kind string) string {
 
 func renderSessionStory(st sessionStory) string {
 	var b strings.Builder
-	b.WriteString(sectionHeading("session " + st.SessionID))
-	b.WriteString(`<div class="mb-3 rounded-md border border-dashed border-caution px-3 py-2 text-ink-muted">a session replay is a lens over mechanism-labeled events, never evidence (law 14)</div>`)
+	// The page heading names the session; an uppercased section label
+	// repeated the id in a case that no longer matched it (F0 proof).
+	b.WriteString(`<div class="mb-3 rounded-md border border-dashed border-caution px-3 py-2 text-ink-muted" data-law14>a session replay is a lens over mechanism-labeled events, never evidence (law 14)</div>`)
 
 	if len(st.Beats) > 0 {
 		events := make([]viz.Event, 0, len(st.Beats))

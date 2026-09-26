@@ -132,7 +132,21 @@ func agentCallsTip(n int) string {
 // remedy renders the exact command that fixes a warning — the page is a
 // to-do list, not a mood board.
 func remedy(cmd string) string {
-	return `<div class="mt-2 rounded-md bg-surface-sunken px-2 py-1 font-mono text-xs text-caution break-all">$ ` + html.EscapeString(cmd) + `</div>`
+	// Wrap at the command's spaces and only then inside a token too long for
+	// the line: break-all split "--timeout" as "--timeou" / "t" (F0 proof).
+	return `<div class="mt-2 rounded-md bg-surface-sunken px-2 py-1 font-mono text-xs text-caution [overflow-wrap:anywhere]">$ ` + html.EscapeString(cmd) + `</div>`
+}
+
+// pathHTML renders a filesystem path that wraps after its separators — a
+// <wbr> after each "/" — and only breaks inside a name longer than the
+// line, left-aligned in its cell. break-all and a right-aligned value cell
+// once printed a root as "…/sextan" with a lone "t" pushed right (F0 proof).
+func pathHTML(p string) string {
+	parts := strings.Split(p, "/")
+	for i := range parts {
+		parts[i] = html.EscapeString(parts[i])
+	}
+	return `<span class="block text-left font-mono text-xs [overflow-wrap:anywhere]" data-path>` + strings.Join(parts, "/<wbr>") + `</span>`
 }
 
 // obsLead is a page's plain-English framing (EX-5): one sentence a
@@ -445,7 +459,7 @@ func renderObsService(m observatoryModel, id string) (string, bool) {
 			continue
 		}
 		var body strings.Builder
-		body.WriteString(kv("path", `<span class="font-mono text-xs">`+html.EscapeString(s.Path)+`</span>`))
+		body.WriteString(kv("path", pathHTML(s.Path)))
 		if s.SymbolsNote != "" {
 			body.WriteString(kv("symbols", absentCell(s.SymbolsNote)))
 		} else {

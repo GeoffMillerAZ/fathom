@@ -72,7 +72,7 @@ func renderConsoleShell(reg *consoleRegistry, s consoleShell) string {
 		Title:     s.Title,
 		Brand:     template.HTML(`<a href="/" class="text-base font-semibold text-ink hover:text-accent">fathom observatory</a>`),
 		Nav:       template.HTML(consoleNav(reg, reg.navCurrentPath(s.PageID))),
-		Actions:   template.HTML(consolePaletteTrigger()),
+		Actions:   template.HTML(consoleMobileBrand + consolePaletteTrigger()),
 		Content:   template.HTML(content.String()),
 		Footer:    template.HTML(footer),
 		ContentID: consoleContentID,
@@ -98,6 +98,11 @@ func renderConsoleShell(reg *consoleRegistry, s consoleShell) string {
 	b.WriteString(`</body></html>`)
 	return b.String()
 }
+
+// consoleMobileBrand is the brand in the top bar below md, where the kit
+// shell hides the sidebar that carries it (F0 proof, item 8; returned as
+// FATHOM-S0-KIT-01 — the shell has no mobile brand slot).
+const consoleMobileBrand = `<a href="/" class="inline-flex min-h-11 items-center rounded-sm text-base font-semibold text-ink hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus md:hidden" data-console-mobile-brand>fathom</a>`
 
 // consoleNav is the grouped sidebar plus the theme control beneath it.
 func consoleNav(reg *consoleRegistry, currentPath string) string {

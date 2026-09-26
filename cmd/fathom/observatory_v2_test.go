@@ -164,7 +164,9 @@ func TestObservatorySessionPage(t *testing.T) {
 		t.Fatalf("ledger row not resolved: %+v", st.Ledger)
 	}
 	body := renderSessionStory(st)
-	for _, want := range []string{"session s1", "law 14", "timeline", "first edit at turn"} {
+	// The page heading names the session (the console's h1); the body
+	// states law 14 once and carries the timeline and the ledger row.
+	for _, want := range []string{"law 14", "timeline", "first edit at turn"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("session page missing %q", want)
 		}
