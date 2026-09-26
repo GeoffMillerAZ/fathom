@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/capability"
+	"github.com/geoffmilleraz/fathom/internal/custodian"
 	"github.com/geoffmilleraz/fathom/internal/intent"
 )
 
@@ -176,18 +177,16 @@ func localLayerPacks(root string) []string {
 	return out
 }
 
-// lefthookRunsVerify reuses doctor's own matcher so the capability table
-// and the doctor check can never disagree about what "the gate is wired"
-// means.
+// lefthookRunsVerify reads the lefthook pack's lefthook_pre_push_verify —
+// the entry doctor's lefthook_gates row renders — so the capability table
+// and the doctor row can never disagree about what "the gate is wired"
+// means: a verify on a non-comment line of the pre-push hook. The pack's
+// corpus is lefthook.yml / lefthook.yaml; `.lefthook.yml`, which it does
+// not resolve yet (corpus.go names the gap), keeps the raw-line matcher.
 func lefthookRunsVerify(root string) bool {
-	for _, name := range []string{"lefthook.yml", "lefthook.yaml", ".lefthook.yml"} {
-		data, err := os.ReadFile(filepath.Join(root, name))
-		if err != nil {
-			continue
-		}
-		if lefthookInvokes(string(data), "verify") {
-			return true
-		}
+	if fs, err := doctorPackFindings(root, []packRef{{"lefthook", "lefthook_pre_push_verify"}}); err == nil && len(fs[0].Files) > 0 {
+		return fs[0].Status == custodian.StatusHolds
 	}
-	return false
+	data, err := os.ReadFile(filepath.Join(root, ".lefthook.yml"))
+	return err == nil && lefthookInvokes(string(data), "verify")
 }

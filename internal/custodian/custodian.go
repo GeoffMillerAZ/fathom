@@ -21,6 +21,11 @@ type Scope string
 const (
 	ScopeUser    Scope = "user"
 	ScopeProject Scope = "project"
+	// ScopePack (CC-12) is a concern that came from a shipped pack a scope
+	// enabled; Concern.Pack names which. It ranks BELOW both files: a
+	// same-ID user or project entry replaces it wholesale, and `off: true`
+	// there disables it (law 13, unchanged).
+	ScopePack Scope = "pack"
 )
 
 // UserFileName and ProjectFileName are the two configuration locations,
@@ -75,6 +80,31 @@ const (
 	// since fathom recorded it. Files only; the evaluator is injected
 	// (WithWiringDrift) and its absence is unable-to-check.
 	KindWiringCurrent CheckKind = "wiring_current"
+
+	// KindRequiredPattern (CC-12): the dual of forbidden_pattern — at least
+	// one line of the corpus matches. An empty corpus is a violation: when
+	// nothing is there, nothing does the required thing. The lefthook
+	// pack's "pre-push runs fathom verify" is this kind (and doctor's
+	// lefthook_gates row renders it, CC-13).
+	KindRequiredPattern CheckKind = "required_pattern"
+
+	// KindStanzaPresent (CC-12): `file` carries a well-formed fathom stanza
+	// region — begin marker before end marker. Absent markers read "never
+	// wired", a lone marker "corrupted"; an absent file is a violation and
+	// an unreadable one unable-to-check (I38). Doctor's stanza_present row
+	// renders the claude-code and codex packs' entries (CC-13).
+	KindStanzaPresent CheckKind = "stanza_present"
+
+	// KindMaxBytes (CC-12): `file` exists and is at most `bytes` bytes —
+	// for the harness limits that are counted in bytes, not lines (Codex
+	// reads at most project_doc_max_bytes of AGENTS.md and silently drops
+	// the rest).
+	KindMaxBytes CheckKind = "max_bytes"
+
+	// KindCommandsResolve (CC-12, the chain checks): every command a
+	// corpus invokes that points into the repo — a `task X` target, a
+	// repo script — exists (commands.go).
+	KindCommandsResolve CheckKind = "commands_resolve"
 )
 
 // KnownKinds lists the accepted kinds in sorted order, for refusal
@@ -82,10 +112,14 @@ const (
 var KnownKinds = []CheckKind{
 	KindADRReferencesResolve,
 	KindCommandDocumentedAndExists,
+	KindCommandsResolve,
 	KindForbiddenPattern,
 	KindHandoffCitesInstruments,
+	KindMaxBytes,
 	KindMaxLines,
 	KindPointersResolve,
+	KindRequiredPattern,
+	KindStanzaPresent,
 	KindStanzaToolsServed,
 	KindWiringCurrent,
 }
@@ -94,12 +128,11 @@ var KnownKinds = []CheckKind{
 // concern does not set `days`.
 const DefaultHandoffDays = 7
 
-// CorpusAgentConfig is v1's only `where` corpus: the repo's agent
+// CorpusAgentConfig is the default `where` corpus: the repo's agent
 // configuration files (CLAUDE.md / AGENTS.md at any depth, on git's
-// authority of what belongs to the repo). The corpus is a named seam —
-// packs for other deterministic-validation configs (lefthook, Taskfile)
-// arrive as new corpus resolvers behind the same engine (CC-11/CC-12),
-// never as a parallel system.
+// authority of what belongs to the repo). It is one entry in the corpus
+// registry (corpus.go, CC-11) beside lefthook, taskfile and ci — resolvers
+// behind the same engine, never a parallel system.
 const CorpusAgentConfig = "agent-config"
 
 // Check is the machine-evaluable half of a concern. Which fields are
@@ -107,11 +140,13 @@ const CorpusAgentConfig = "agent-config"
 // than letting the audit discover the hole later.
 type Check struct {
 	Kind    CheckKind `json:"kind"`
-	Pattern string    `json:"pattern,omitempty"` // forbidden_pattern (Go regexp)
-	Where   string    `json:"where,omitempty"`   // corpus name; v1: agent-config
+	Pattern string    `json:"pattern,omitempty"` // forbidden_pattern / required_pattern (Go regexp)
+	Where   string    `json:"where,omitempty"`   // corpus name (corpus.go registry); default agent-config
+	Under   string    `json:"under,omitempty"`   // required_pattern over a YAML corpus: only lines under this top-level key
 	Command string    `json:"command,omitempty"` // command_documented_and_exists
-	File    string    `json:"file,omitempty"`    // max_lines (repo-relative)
+	File    string    `json:"file,omitempty"`    // max_lines / max_bytes / stanza_present (repo-relative)
 	Lines   int       `json:"lines,omitempty"`   // max_lines budget
+	Bytes   int       `json:"bytes,omitempty"`   // max_bytes budget
 	Days    int       `json:"days,omitempty"`    // handoff_cites_instruments window (default 7)
 }
 
@@ -122,7 +157,19 @@ type Concern struct {
 	Why   string `json:"why,omitempty"`
 	Off   bool   `json:"off,omitempty"`
 	Scope Scope  `json:"scope"`
+	// Pack names the shipped pack(s) a ScopePack concern came from ("+"
+	// joined when two enabled packs ship the identical entry).
+	Pack  string `json:"pack,omitempty"`
 	Check Check  `json:"check"`
+}
+
+// Provenance renders where a concern came from: "project scope", "user
+// scope", or "pack lefthook".
+func (c Concern) Provenance() string {
+	if c.Scope == ScopePack {
+		return "pack " + c.Pack
+	}
+	return string(c.Scope) + " scope"
 }
 
 // Status is a finding's outcome. There is no silent state: a concern that
@@ -143,4 +190,9 @@ type Finding struct {
 	Status   Status   `json:"status"`
 	Detail   string   `json:"detail"`             // one line: what held, or what broke, with numbers
 	Evidence []string `json:"evidence,omitempty"` // "file:line" (or "file:line → target") per hit
+	// Files is the corpus a corpus-reading check examined, repo-relative
+	// and sorted — what "across N file(s)" counted, so a surface that
+	// renders a finding (doctor, CC-13) names the file without resolving
+	// the corpus a second time.
+	Files []string `json:"files,omitempty"`
 }

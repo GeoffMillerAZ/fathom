@@ -26,6 +26,11 @@ func cmdConfig(args []string, stdout, stderr io.Writer) int {
 	if len(args) > 0 && args[0] == "audit" {
 		return cmdConfigAudit(args[1:], stdout, stderr)
 	}
+	// ...and its diff-offering twin (CC-9): `fathom config propose` offers
+	// what the audit's violations would take to mend, and writes nothing.
+	if len(args) > 0 && args[0] == "propose" {
+		return cmdConfigPropose(args[1:], stdout, stderr)
+	}
 	fs := newFlagSet("config", stderr)
 	profileFlag := fs.String("profile", "", "show this named profile instead of the resolved default")
 	explain := fs.Bool("explain", false, "annotate every key with its provenance (flag/env/project/user/default) and source file/env-var")
