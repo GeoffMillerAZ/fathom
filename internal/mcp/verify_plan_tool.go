@@ -8,6 +8,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/sdd"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
@@ -155,6 +156,7 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 		var (
 			matrix  sdd.Matrix
 			haveMat bool
+			specCov corpus.Coverage
 		)
 		var allSpecs []string
 		for _, t := range plan.Tasks {
@@ -162,7 +164,7 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 		}
 		if len(allSpecs) > 0 {
 			var merr error
-			matrix, merr = buildSpecMatrix(ctx, backend, p.Service, nodes, allSpecs)
+			matrix, specCov, merr = buildSpecMatrix(ctx, backend, p.Service, nodes, allSpecs)
 			if merr != nil {
 				// RT-146 / I38: a hook's whole-tree read was skipped. An
 				// empty matrix would fail every spec-backed row falsely, so
@@ -178,7 +180,13 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 			graph: graph, contras: contras, matrix: matrix, haveMat: haveMat,
 		}
 
-		return verifyReportToMap(verify.VerifyPlan(plan, ev)), nil
+		out := verifyReportToMap(verify.VerifyPlan(plan, ev))
+		if specCov.LowerBound() {
+			// I38: the spec matrix is a lower bound — an "uncovered" spec
+			// may sit in a file the budgeted scan never reached.
+			out["partial"] = "spec matrix " + partialNote(specCov) + " (an uncovered spec may be in an unscanned file)"
+		}
+		return out, nil
 	})
 }
 
@@ -271,26 +279,29 @@ var (
 //
 // A skipped whole-tree read (core.ErrSourcesBusy, RT-146) is returned, never
 // folded into a symbol-only matrix; any other Sources error keeps the old
-// best-effort behaviour.
-func buildSpecMatrix(ctx context.Context, backend QueryInterface, service string, nodes []core.SymbolNode, specs []string) (sdd.Matrix, error) {
+// best-effort behaviour. The returned coverage names a scan that stopped
+// early (the matrix is then a lower bound, I38).
+func buildSpecMatrix(ctx context.Context, backend QueryInterface, service string, nodes []core.SymbolNode, specs []string) (sdd.Matrix, corpus.Coverage, error) {
 	codeRefs := map[string][]string{}
 	for _, n := range nodes {
 		if refs := sdd.ExtractRefs(n.Signature + " " + n.Name); len(refs) > 0 {
 			codeRefs[n.Name] = refs
 		}
 	}
-	files, _, err := collectSources(ctx, backend, service)
+	files, cov, err := collectSources(ctx, backend, service)
 	if errors.Is(err, core.ErrSourcesBusy) {
-		return sdd.Matrix{}, err
+		return sdd.Matrix{}, corpus.Coverage{}, err
 	}
-	if err == nil {
+	if err != nil {
+		cov = corpus.Coverage{}
+	} else {
 		for _, f := range files {
 			if refs := sdd.ExtractRefs(string(f.Content)); len(refs) > 0 {
 				codeRefs[f.Path] = append(codeRefs[f.Path], refs...)
 			}
 		}
 	}
-	return sdd.BuildMatrix(specs, codeRefs), nil
+	return sdd.BuildMatrix(specs, codeRefs), cov, nil
 }
 
 // verifyReportToMap renders a verify.Report as a deterministic JSON-friendly map.

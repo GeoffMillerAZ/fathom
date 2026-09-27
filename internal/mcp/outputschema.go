@@ -319,6 +319,7 @@ type verifyPlanResult struct {
 	Service string            `json:"service"`
 	Summary verifyPlanSummary `json:"summary"`
 	Tasks   []verifyPlanTask  `json:"tasks"`
+	Partial string            `json:"partial,omitempty"`
 }
 
 type verifyPlanSummary struct {
