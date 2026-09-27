@@ -92,3 +92,27 @@ func TestRefreshPatchesSnapshotWithNoGraphCached(t *testing.T) {
 		t.Fatalf("snapshot after refresh = %+v", nodes)
 	}
 }
+
+// TestIngestEvictsTheServiceCachesEagerly (review finding, §5): a
+// completed ingest evicts the service's snapshot and graphs at once
+// (WatermarkBumped), instead of leaving the superseded ones resident until
+// someone next reads the service at its new watermark.
+func TestIngestEvictsTheServiceCachesEagerly(t *testing.T) {
+	f := &patchFake{nodes: []core.SymbolNode{{Service: "svc", Package: "main", Name: "A", FilePath: "a.go", Line: 1}}}
+	s := NewServer(f)
+	ctx := context.Background()
+	if g := s.loadNavGraphs(ctx, f, "svc"); g == nil {
+		t.Fatal("priming load failed")
+	}
+	if !s.HasCachedGraph("svc") {
+		t.Fatal("nothing cached after priming")
+	}
+	raw := []byte(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"ingest","arguments":{"service":"svc"}}}`)
+	resp, _ := s.HandleRequest(ctx, raw)
+	if f.ingests != 1 {
+		t.Fatalf("ingest did not run: %s", resp)
+	}
+	if s.HasCachedGraph("svc") {
+		t.Fatal("the service's snapshot and graphs stayed resident after its ingest completed")
+	}
+}

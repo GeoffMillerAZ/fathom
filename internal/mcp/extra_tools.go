@@ -1158,6 +1158,7 @@ func registerIngest(s *Server, backend QueryInterface) {
 		var readErr *fusion.ReadFailuresError
 		if !(errors.As(ingestErr, &readErr) && readErr.Refused) {
 			hookcache.BustIdent()
+			evictServiceCaches(backend, svc)
 		}
 		// RT-155: the explicit ingest ran to completion (a degraded one
 		// included: it indexed every readable file within budget) — lift

@@ -396,6 +396,17 @@ func PatchPackage(sc Scope, pkg string, nodes []core.SymbolNode, typed []core.Ed
 	}
 }
 
+// EvictStoreService drops every entry of service in store — its snapshot,
+// typed edges and graphs at any watermark, and entries keyed by the
+// service alone (layer coverage) — the moment an ingest of it completes
+// (§5: eager eviction on WatermarkBumped), instead of leaving superseded
+// ones resident until the service is next read at its new watermark.
+func EvictStoreService(store, service string) {
+	reg := graphGroup.reg
+	reg.EvictService(store + "\x00" + service)
+	reg.EvictService(service)
+}
+
 // DropScope forgets sc's snapshot, typed edges and graphs — the honest
 // fallback when a refresh cannot name the package to patch.
 func DropScope(sc Scope) {

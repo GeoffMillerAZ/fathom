@@ -47,3 +47,12 @@ func (s *Server) PatchPackageGraph(service, pkg string, nodes []core.SymbolNode,
 func (s *Server) DropCachedGraphs(service string) {
 	memo.DropScope(s.patchScope(service))
 }
+
+// evictServiceCaches drops service's memo entries once an ingest of it may
+// have written (§5: eager eviction on WatermarkBumped). A backend that
+// names no store caches nothing to evict.
+func evictServiceCaches(backend any, service string) {
+	if id, ok := backend.(storeIdentifier); ok && id.StoreID() != "" {
+		memo.EvictStoreService(id.StoreID(), service)
+	}
+}

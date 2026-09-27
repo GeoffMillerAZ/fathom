@@ -336,6 +336,9 @@ func (a *autoRefreshBackend) runInlineIngest(ctx context.Context, service string
 	// ingest above succeeded or failed (a failed ingest may still have
 	// changed on-disk state worth invalidating against).
 	hookcache.BustIdent()
+	// §5: the superseded snapshot and graphs leave now, not when the
+	// service is next read at its new watermark.
+	evictServiceCaches(a, service)
 
 	a.mu.Lock()
 	if err == nil {
