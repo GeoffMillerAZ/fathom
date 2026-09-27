@@ -38,6 +38,9 @@ type unsupportedCall struct {
 	done        chan struct{}
 	langs       map[string]int
 	rootMissing bool
+	// cut marks a walk its owner's ctx ended (RT-58): not an answer, so
+	// a live waiter computes its own instead of inheriting it.
+	cut bool
 }
 
 // unsupportedLangCacheEntry is UnsupportedLanguagesFor's per-service memo
@@ -170,6 +173,7 @@ func (f *fleetAdapter) RootMissingCtx(ctx context.Context, service string) (miss
 // os.Stat (not a full Discover) and cached as rootMissing=true rather than
 // ever calling Sources/Discover for it at all.
 func (f *fleetAdapter) unsupportedLanguagesCached(ctx context.Context, service string) (langs map[string]int, rootMissing bool) {
+retry:
 	watermark, wmErr := f.c.StoreWatermark(ctx, service)
 
 	f.unsupportedMu.Lock()
@@ -187,6 +191,9 @@ func (f *fleetAdapter) unsupportedLanguagesCached(ctx context.Context, service s
 		f.unsupportedMu.Unlock()
 		select {
 		case <-call.done:
+			if call.cut && ctx.Err() == nil {
+				goto retry // the owner left mid-walk; this caller has not
+			}
 			return call.langs, call.rootMissing
 		case <-ctx.Done():
 			return nil, false
@@ -205,6 +212,7 @@ func (f *fleetAdapter) unsupportedLanguagesCached(ctx context.Context, service s
 		close(call.done)
 	}()
 	call.langs, call.rootMissing = f.unsupportedLanguagesCompute(ctx, service, watermark, wmErr)
+	call.cut = ctx.Err() != nil
 	return call.langs, call.rootMissing
 }
 
@@ -214,6 +222,9 @@ func (f *fleetAdapter) unsupportedLanguagesCached(ctx context.Context, service s
 func (f *fleetAdapter) unsupportedLanguagesCompute(ctx context.Context, service, watermark string, wmErr error) (langs map[string]int, rootMissing bool) {
 
 	path, _, found, metaErr := f.c.ServiceMeta(ctx, service)
+	if metaErr != nil && ctx.Err() != nil {
+		return nil, false // the caller left: not a store error, not an answer
+	}
 	if metaErr != nil {
 		f.log.Dedupe(dlog.LevelWarn, "fleet:sources:"+service, "fleet: sources for %s: %s", service, classifyStoreError(metaErr))
 		return nil, false
@@ -239,6 +250,13 @@ func (f *fleetAdapter) unsupportedLanguagesCompute(ctx context.Context, service,
 	}
 
 	paths, err := f.c.SourcePaths(ctx, service)
+	if err != nil && ctx.Err() != nil {
+		// RT-58: the request's ctx ended mid-walk (a departing client).
+		// A cut walk is not "no unsupported languages": never cached
+		// under the watermark (I38 — it would look healthier until the
+		// next ingest), never logged as a store error.
+		return nil, false
+	}
 	if err != nil {
 		f.log.Dedupe(dlog.LevelWarn, "fleet:sources:"+service, "fleet: sources for %s: %s", service, classifyStoreError(err))
 		// Cache the failure too (nil langs), keyed on the SAME watermark:

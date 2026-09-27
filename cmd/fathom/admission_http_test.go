@@ -315,3 +315,54 @@ func waitUntil(t *testing.T, cond func() bool) {
 		time.Sleep(time.Millisecond)
 	}
 }
+
+// TestUnsupportedWalkCancelledIsNeverCached (review finding, RT-58/I38): a
+// walk cut short by a departing client is not an answer — it is neither
+// cached as "no unsupported languages" under the watermark nor handed to a
+// waiter as one; the next live caller walks again and sees the truth.
+func TestUnsupportedWalkCancelledIsNeverCached(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	conn := newCountingConnector()
+	conn.honourCtx = true
+	if err := st.SetServiceMeta(ctx, store.ServiceMeta{ServiceID: "demo", Path: t.TempDir(), IndexedCommit: "c1", IndexedAt: 1}); err != nil {
+		t.Fatal(err)
+	}
+	conn.addSwiftFile("demo", "demo/a.swift")
+	fa := newTestFleetAdapter(conn, st)
+
+	gone, cancel := context.WithCancel(ctx)
+	cancel()
+	fa.UnsupportedLanguagesForCtx(gone, "demo")
+	if got := fa.UnsupportedLanguagesForCtx(ctx, "demo"); got["swift"] != 1 {
+		t.Fatalf("a cancelled walk was cached as the answer: %v, want swift:1", got)
+	}
+
+	// A live waiter on a flight whose owner left does not inherit the
+	// owner's cancellation: it computes its own answer.
+	st2 := store.NewMemoryStore()
+	conn2 := newCountingConnector()
+	conn2.honourCtx = true
+	conn2.gate = make(chan struct{})
+	if err := st2.SetServiceMeta(ctx, store.ServiceMeta{ServiceID: "demo", Path: t.TempDir(), IndexedCommit: "c1", IndexedAt: 1}); err != nil {
+		t.Fatal(err)
+	}
+	conn2.addSwiftFile("demo", "demo/a.swift")
+	fa2 := newTestFleetAdapter(conn2, st2)
+	octx, ocancel := context.WithCancel(ctx)
+	ownerDone := make(chan struct{})
+	go func() { fa2.UnsupportedLanguagesForCtx(octx, "demo"); close(ownerDone) }()
+	waitUntil(t, func() bool {
+		fa2.unsupportedMu.Lock()
+		defer fa2.unsupportedMu.Unlock()
+		return fa2.unsupportedFlight["demo"] != nil
+	})
+	waiter := make(chan map[string]int, 1)
+	go func() { waiter <- fa2.UnsupportedLanguagesForCtx(ctx, "demo") }()
+	ocancel()
+	close(conn2.gate)
+	<-ownerDone
+	if got := <-waiter; got["swift"] != 1 {
+		t.Fatalf("a live waiter got the departed owner's cancelled walk: %v, want swift:1", got)
+	}
+}
