@@ -41,6 +41,19 @@ func (m *MemoryStore) WriteServiceSummary(_ context.Context, meta ServiceMeta, s
 	return nil
 }
 
+// RecountServiceSummary recounts the summary's symbols in place.
+func (m *MemoryStore) RecountServiceSummary(_ context.Context, serviceID string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	sum, ok := m.summaries[serviceID]
+	if !ok {
+		return nil
+	}
+	sum.SymbolCount, sum.SourceKinds = m.symbolAggregateLocked(serviceID)
+	m.summaries[serviceID] = sum
+	return nil
+}
+
 func (m *MemoryStore) putSummaryLocked(sum ServiceSummary) {
 	if m.summaries == nil {
 		m.summaries = map[string]ServiceSummary{}

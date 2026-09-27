@@ -328,6 +328,35 @@ SELECT EXISTS(SELECT 1 FROM observation_calls_state WHERE service_id = ?),
 	return nil
 }
 
+// RecountServiceSummary recounts serviceID's summary symbol count and
+// source kinds in one transaction (a single-file refresh: same watermark,
+// new rows). A no-op when no row exists.
+func (s *SQLiteStore) RecountServiceSummary(ctx context.Context, serviceID string) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("RecountServiceSummary begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	count, kinds, err := symbolAggregateTx(ctx, tx, serviceID)
+	if err != nil {
+		return err
+	}
+	if kinds == nil {
+		kinds = []core.SourceKind{}
+	}
+	kj, _ := json.Marshal(kinds)
+	if _, err := tx.ExecContext(ctx, `UPDATE service_summary SET symbol_count = ?, source_kinds_json = ? WHERE service_id = ?`, count, string(kj), serviceID); err != nil {
+		if isNoSuchTable(err) {
+			return nil
+		}
+		return fmt.Errorf("RecountServiceSummary: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("RecountServiceSummary commit: %w", err)
+	}
+	return nil
+}
+
 // symbolAggregateTx counts the service's observations and their distinct
 // source kinds (sorted) — the RT-144 aggregate, unfiltered.
 func symbolAggregateTx(ctx context.Context, q queryer, serviceID string) (int, []core.SourceKind, error) {

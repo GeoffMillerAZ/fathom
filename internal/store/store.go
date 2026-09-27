@@ -646,6 +646,12 @@ type Store interface {
 	// the same transaction, watermark WatermarkOf(meta).
 	WriteServiceSummary(ctx context.Context, meta ServiceMeta, sum ServiceSummary, files []FileStat) error
 
+	// RecountServiceSummary recounts the symbol count and source kinds of
+	// serviceID's summary row in place, in one transaction — a
+	// single-file refresh replaces rows without moving the watermark the
+	// row is keyed by. A no-op when the service has no row.
+	RecountServiceSummary(ctx context.Context, serviceID string) error
+
 	// ServiceSummary returns serviceID's service_summary row; found is
 	// false when neither an ingest nor a backfill has written one (a named
 	// absence: callers never fall back to a whole-tree or whole-table
