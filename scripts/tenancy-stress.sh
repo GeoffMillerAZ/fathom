@@ -111,6 +111,71 @@ preflight() {
   return 0
 }
 
+# ledger_start_of LEDGER PATTERN — the start number (1-based count of
+# start rows so far) at the first ledger line matching PATTERN; "" when
+# none matches.
+ledger_start_of() {
+  local ledger="$1" pattern="$2"
+  [ -f "$ledger" ] || return 0
+  awk -v pat="$pattern" '/"row":"start"/ {n++} $0 ~ pat {print n+0; exit}' "$ledger"
+}
+
+# stress_verdict MAX_FP EXIT_MARK DIAG SAFE_START STOP_START — RT-M3's
+# seatbelt contract (docs/plans/responsible-tenant.md): max own footprint
+# ≤ exit mark + 1 GiB, a diag capture, safe mode by start 3, the breaker's
+# stop by start 5. Prints PASS or FAIL and, for FAIL, each criterion missed.
+stress_verdict() {
+  local max_fp="$1" exit_mark="$2" diag="$3" safe_start="$4" stop_start="$5" why=()
+  if [ -z "$exit_mark" ]; then
+    why+=("the exit mark is unknown")
+  elif [ "$max_fp" -gt $(( exit_mark + 1073741824 )) ]; then
+    why+=("max footprint ${max_fp} B is over the exit mark + 1 GiB")
+  fi
+  [ -n "$diag" ] || why+=("no diag capture")
+  if [ -z "$safe_start" ]; then
+    why+=("no safe mode")
+  elif [ "$safe_start" -gt 3 ]; then
+    why+=("safe mode first at start ${safe_start}, not by start 3")
+  fi
+  if [ -z "$stop_start" ]; then
+    why+=("the breaker never stopped it")
+  elif [ "$stop_start" -gt 5 ]; then
+    why+=("stopped at start ${stop_start}, not by start 5")
+  fi
+  if [ "${#why[@]}" -eq 0 ]; then
+    echo "PASS"
+  else
+    local IFS=';'
+    echo "FAIL (${why[*]})"
+  fi
+}
+
+verdict_self_check() {
+  local dir="$1" ok=0 got
+  local l="${dir}/lifecycle.jsonl"
+  check() {
+    local label="$1" want="$2"; shift 2
+    got="$(stress_verdict "$@")"
+    if [ "${got%% *}" = "$want" ]; then
+      echo "self-check: verdict: ${label} reads ${want}"
+    else
+      echo "self-check: FAILED — verdict: ${label} read ${got}" >&2; ok=1
+    fi
+  }
+  printf '%s\n' '{"row":"start","mode":"normal"}' '{"row":"exit"}' '{"row":"start","mode":"normal"}' '{"row":"exit"}' \
+    '{"row":"start","mode":"safe"}' '{"row":"exit"}' '{"row":"start","mode":"safe"}' '{"row":"breaker"}' >"$l"
+  local safe stop
+  safe="$(ledger_start_of "$l" '"mode":"safe"|"to":"safe"')"
+  stop="$(ledger_start_of "$l" '"row":"breaker"|"row":"stop"')"
+  check "the seatbelt held (safe mode by start 3, stop by start 5)" PASS 100 4294967296 /diag "$safe" "$stop"
+  check "no safe mode" FAIL 100 4294967296 /diag "" "$stop"
+  printf '%s\n' '{"row":"start"}' '{"row":"start"}' '{"row":"start"}' '{"row":"start","mode":"safe"}' '{"row":"stop"}' >"$l"
+  check "safe mode first at start $(ledger_start_of "$l" '"mode":"safe"')" FAIL 100 4294967296 /diag "$(ledger_start_of "$l" '"mode":"safe"')" "$(ledger_start_of "$l" '"row":"stop"')"
+  check "no stop" FAIL 100 4294967296 /diag 3 ""
+  check "no diag capture" FAIL 100 4294967296 "" 3 5
+  return "$ok"
+}
+
 self_check() {
   local scratch
   scratch="$(mktemp -d "${TMPDIR:-/tmp}/fathom-stress-selfcheck.XXXXXX")"
@@ -153,6 +218,7 @@ self_check() {
   else
     echo "self-check: FAILED — a run without the go-ahead was not refused (rc=$rc)" >&2; ok=1
   fi
+  verdict_self_check "$scratch" || ok=1
   return "$ok"
 }
 
@@ -325,21 +391,21 @@ main() {
   total="$(wc -l <"$samples" | tr -d ' ')"
   reach="$(awk -F'\t' '$2=="200"' "$samples" | wc -l | tr -d ' ')"
   diag="$(ls -d "${home}/.fathom/daemon/${lifecycle_id}/diag/"* 2>/dev/null | head -1 || true)"
-  safe_at="$(grep -n '"mode":"safe"\|"to":"safe"' "$ledger" 2>/dev/null | head -1 | cut -d: -f1 || true)"
-  stop_at="$(grep -n '"row":"breaker"\|"row":"stop"' "$ledger" 2>/dev/null | head -1 | cut -d: -f1 || true)"
+  # The start number (not the ledger line) each first appeared at.
+  safe_at="$(ledger_start_of "$ledger" '"mode":"safe"|"to":"safe"')"
+  stop_at="$(ledger_start_of "$ledger" '"row":"breaker"|"row":"stop"')"
   local refused ok503
   refused="$(grep -c '^503$' "${run_dir}/codes.txt" 2>/dev/null || true)"
   ok503="$(grep -c '^200$' "${run_dir}/codes.txt" 2>/dev/null || true)"
-  local exit_mark_bytes verdict="FAIL"
+  local exit_mark_bytes verdict_line verdict
   exit_mark_bytes="$(HOME="$home" FATHOM_TENANCY_BUDGET="$budget" "$binary" resources --id "$lifecycle_id" --json 2>/dev/null | sed -n 's/.*"exit_mark": *\([0-9]*\).*/\1/p' | head -1)"
-  if [ -n "$exit_mark_bytes" ] && [ "$max_fp" -le $(( exit_mark_bytes + 1073741824 )) ] && [ -n "$diag" ]; then
-    verdict="PASS"
-  fi
+  verdict_line="$(stress_verdict "$max_fp" "$exit_mark_bytes" "$diag" "$safe_at" "$stop_at")"
+  verdict="${verdict_line%% *}"
   [ -n "$reading" ] || reading="${REPO_ROOT}/docs/bench/readings/tenancy-stress-$(date -u +%Y-%m-%d).md"
   {
     echo "# Tenancy stress reading — $(date -u +%Y-%m-%d)"
     echo
-    echo "**Verdict: ${verdict}.** The daemon under a ${budget} budget peaked at $(( max_fp / 1048576 )) MiB of its own footprint (exit mark $(( ${exit_mark_bytes:-0} / 1048576 )) MiB), /metrics answered ${reach} of ${total} one-second samples, ${refused} calls were refused with 503 and ${ok503} answered 200; a diagnostic capture ${diag:+exists}${diag:-does not exist}; safe mode ${safe_at:+appeared (ledger line ${safe_at})}${safe_at:-did not appear}; the breaker ${stop_at:+stopped it (ledger line ${stop_at})}${stop_at:-did not stop it} over ${starts} starts."
+    echo "**Verdict: ${verdict_line}.** The daemon under a ${budget} budget peaked at $(( max_fp / 1048576 )) MiB of its own footprint (exit mark $(( ${exit_mark_bytes:-0} / 1048576 )) MiB), /metrics answered ${reach} of ${total} one-second samples, ${refused} calls were refused with 503 and ${ok503} answered 200; a diagnostic capture ${diag:+exists}${diag:-does not exist}; safe mode ${safe_at:+appeared at start ${safe_at}}${safe_at:-did not appear}; the breaker ${stop_at:+stopped it at start ${stop_at}}${stop_at:-did not stop it} over ${starts} starts (RT-M3: safe mode by start 3, stop by start 5)."
     echo
     echo "| Measure | Value | Instrument |"
     echo "|---|---|---|"
@@ -350,8 +416,8 @@ main() {
     echo "| /metrics reachability | ${reach}/${total} | curl, 1 s (RT-D7 trigger when < total) |"
     echo "| calls 200 / 503 | ${ok503} / ${refused} | curl status codes |"
     echo "| starts | ${starts} (${cycles} SIGKILL cycles, ${throttle} s throttle) | harness |"
-    echo "| first safe-mode row | ${safe_at:-none} | ${ledger} |"
-    echo "| first breaker/stop row | ${stop_at:-none} | ${ledger} |"
+    echo "| start of the first safe-mode row | ${safe_at:-none} | ${ledger} |"
+    echo "| start of the first breaker/stop row | ${stop_at:-none} | ${ledger} |"
     echo "| diag capture | ${diag:-none} | ~/.fathom/daemon/<id>/diag (scratch HOME) |"
     echo "| fixture | ${files} files, ${gib} GiB, ${big} over 2 MiB | gen_fixture |"
   } >"$reading"

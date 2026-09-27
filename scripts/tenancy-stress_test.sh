@@ -22,7 +22,12 @@ for want in \
   "refused the managed call log" \
   "refused a fixture on the internal disk" \
   "a scratch port, store copy, call log and external fixture pass" \
-  "a run without --i-have-the-operators-go-ahead is refused"; do
+  "a run without --i-have-the-operators-go-ahead is refused" \
+  "verdict: the seatbelt held (safe mode by start 3, stop by start 5) reads PASS" \
+  "verdict: no safe mode reads FAIL" \
+  "verdict: safe mode first at start 4 reads FAIL" \
+  "verdict: no stop reads FAIL" \
+  "verdict: no diag capture reads FAIL"; do
   printf '%s\n' "$out" | grep -qF "$want" || fail "self-check output lacks \"$want\":
 $out"
 done
