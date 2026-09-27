@@ -1021,6 +1021,26 @@ func (m *MemoryStore) RecordCompileRun(_ context.Context, run core.CompileRun) e
 	return nil
 }
 
+// CompileRunRefsSince returns every compile run at or after since, oldest
+// first then by run_id (SQLiteStore.CompileRunRefsSince).
+func (m *MemoryStore) CompileRunRefsSince(_ context.Context, since time.Time) ([]CompileRunRef, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	var out []CompileRunRef
+	for _, r := range m.compileRuns {
+		if !r.RanAt.Before(since) {
+			out = append(out, CompileRunRef{RunID: r.RunID, ServiceID: r.ServiceID, Layer: r.Layer, RanAt: r.RanAt.UTC()})
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if !out[i].RanAt.Equal(out[j].RanAt) {
+			return out[i].RanAt.Before(out[j].RanAt)
+		}
+		return out[i].RunID < out[j].RunID
+	})
+	return out, nil
+}
+
 // CompileRuns returns compile runs for serviceID (optionally filtered by
 // layer; layer "" returns all), newest-first by RanAt then run_id.
 func (m *MemoryStore) CompileRuns(_ context.Context, serviceID, layer string) ([]core.CompileRun, error) {

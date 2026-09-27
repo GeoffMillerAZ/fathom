@@ -137,6 +137,22 @@ type EventBus struct {
 	// lastBySource is, per panel source key, the ID of the newest event
 	// naming it (SourceGeneration).
 	lastBySource map[string]uint64
+	// onSubs is told the subscriber count whenever it changes (RT-119:
+	// the feeders run only while someone listens). Called with the bus's
+	// lock held: it must not call back into the bus.
+	onSubs func(n int)
+}
+
+// OnSubscribers registers fn to be told the live subscriber count now and
+// whenever it changes. fn runs with the bus's lock held, so it must be
+// quick and must not call the bus.
+func (b *EventBus) OnSubscribers(fn func(n int)) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.onSubs = fn
+	if fn != nil {
+		fn(len(b.subs))
+	}
 }
 
 // NewEventBus builds a bus.
@@ -192,6 +208,9 @@ func (s *Subscription) closeLocked() {
 	s.once.Do(func() {
 		delete(s.bus.subs, s)
 		close(s.ch)
+		if s.bus.onSubs != nil {
+			s.bus.onSubs(len(s.bus.subs))
+		}
 	})
 }
 
@@ -288,6 +307,9 @@ func (b *EventBus) subscribeLocked(lastID uint64, foreign bool) (*Subscription, 
 	}
 	s := &Subscription{bus: b, ch: make(chan Event, subscriberBuffer)}
 	b.subs[s] = struct{}{}
+	if b.onSubs != nil {
+		b.onSubs(len(b.subs))
+	}
 	var replay []Event
 	for _, e := range b.ring {
 		if foreign || e.ID > lastID {

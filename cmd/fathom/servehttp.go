@@ -710,12 +710,11 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	publishDaemonEvent(consoleDeps.bus, prevRecord, hadPrev, commit)
 	eventSources := newConsoleEventSources(consoleDeps.bus, c, verifyLedgerPath(), sessionLedgerPath())
 	eventSources.warn = func(msg string) { flog.Warn(msg) }
-	startFeeders := func() { go runConsoleEventSources(context.Background(), eventSources) }
-	if managed {
-		startFeeders()
-	} else {
-		handler = lazyFeeders(handler, startFeeders) // §10.1: feeders lazy
-	}
+	// RT-119 (§14, §10.1): the feeders run only while GET /events has a
+	// subscriber — managed or not, an unwatched console polls nothing.
+	feeders := newFeederSwitch(eventSources)
+	consoleDeps.bus.OnSubscribers(feeders.subscribers)
+	defer consoleDeps.bus.OnSubscribers(nil)
 
 	swap.set(handler)
 	if err := <-serveErr; err != nil && !errors.Is(err, http.ErrServerClosed) {

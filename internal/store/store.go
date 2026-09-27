@@ -654,3 +654,11 @@ type SourceKindCount struct {
 	Kind      core.SourceKind
 	Count     int
 }
+
+// CompileRunRef is one compile run's identity and time: what the console's
+// compile-event cursor reads (RT-119). SQLiteStore and MemoryStore answer
+// CompileRunRefsSince; it is an optional capability, not part of Store.
+type CompileRunRef struct {
+	RunID, ServiceID, Layer string
+	RanAt                   time.Time
+}

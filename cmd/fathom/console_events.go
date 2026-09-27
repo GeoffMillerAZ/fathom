@@ -23,6 +23,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -53,6 +54,15 @@ type consoleEventSources struct {
 	// store poll: a session row's repo label resolves through it.
 	roots  map[string]string
 	primed bool
+	// ledgersPrimed is set once the ledgers' baseline is taken: a restart
+	// of the feeders (RT-119) keeps their read positions, so what changed
+	// while nobody listened is published when someone does.
+	ledgersPrimed bool
+	// compileCursor is the newest compile run's time seen, and
+	// compileAtCursor the run ids at exactly that time (RT-119): the poll
+	// reads only runs at or after it.
+	compileCursor   time.Time
+	compileAtCursor map[string]bool
 	// warn reports an event the bus refused (serve-http's log).
 	warn func(string)
 }
@@ -171,6 +181,10 @@ func (s *consoleEventSources) pollStore(ctx context.Context) {
 	sort.Strings(services)
 	first := !s.primed
 	s.primed = true
+	// RT-119: the compile runs newer than the cursor, one read for every
+	// service; a store without the capability is read per service.
+	refs, rerr := compileRunRefsSince(ctx, s.c, s.compileCursor)
+	haveRefs := rerr == nil
 	roots := make(map[string]string, len(services))
 	for _, svc := range services {
 		if meta, key, found, kerr := s.keys.key(ctx, s.c.Store(), svc); kerr == nil && found {
@@ -180,28 +194,86 @@ func (s *consoleEventSources) pollStore(ctx context.Context) {
 			}
 			s.ingest[svc] = key
 		}
-		if runs, rerr := s.c.CompileRunsFor(ctx, svc); rerr == nil {
-			seen := s.compile[svc]
-			now := make(map[string]bool, len(runs))
-			// runs is newest first (Store.CompileRuns' contract): publish
-			// the unseen ones oldest first.
-			for i := len(runs) - 1; i >= 0; i-- {
-				run := runs[i]
-				now[run.RunID] = true
-				if !first && !seen[run.RunID] {
-					s.publish(console.Event{Kind: console.EventCompile, Service: svc, Name: run.Layer, Ref: run.RunID})
-				}
-			}
-			s.compile[svc] = now
+		if !haveRefs {
+			s.pollCompileRunsOf(ctx, svc, first)
 		}
+	}
+	if haveRefs {
+		s.publishCompileRefs(refs, first)
 	}
 	s.roots = roots
 }
 
-// runConsoleEventSources polls until ctx ends.
+// errNoCompileCursor is a store that cannot read compile runs by time.
+var errNoCompileCursor = errors.New("the store cannot read compile runs since a cursor")
+
+// compileRunRefsSince is the store's compile runs at or after since
+// (store.CompileRunRefsSince), when the store can answer it.
+func compileRunRefsSince(ctx context.Context, c *client.Client, since time.Time) ([]store.CompileRunRef, error) {
+	r, ok := c.Store().(interface {
+		CompileRunRefsSince(context.Context, time.Time) ([]store.CompileRunRef, error)
+	})
+	if !ok {
+		return nil, errNoCompileCursor
+	}
+	return r.CompileRunRefsSince(ctx, since)
+}
+
+// publishCompileRefs publishes one compile event per run not seen before,
+// oldest first, and moves the cursor to the newest run.
+func (s *consoleEventSources) publishCompileRefs(refs []store.CompileRunRef, first bool) {
+	for _, r := range refs {
+		switch {
+		case r.RanAt.Before(s.compileCursor):
+			continue
+		case r.RanAt.Equal(s.compileCursor) && s.compileAtCursor[r.RunID]:
+			continue
+		}
+		if !first {
+			s.publish(console.Event{Kind: console.EventCompile, Service: r.ServiceID, Name: r.Layer, Ref: r.RunID})
+		}
+		if r.RanAt.After(s.compileCursor) {
+			s.compileCursor, s.compileAtCursor = r.RanAt, map[string]bool{}
+		}
+		if s.compileAtCursor == nil {
+			s.compileAtCursor = map[string]bool{}
+		}
+		s.compileAtCursor[r.RunID] = true
+	}
+}
+
+// pollCompileRunsOf is the per-service compile poll for a store without
+// the cursor capability.
+func (s *consoleEventSources) pollCompileRunsOf(ctx context.Context, svc string, first bool) {
+	runs, rerr := s.c.CompileRunsFor(ctx, svc)
+	if rerr != nil {
+		return
+	}
+	seen := s.compile[svc]
+	now := make(map[string]bool, len(runs))
+	// runs is newest first (Store.CompileRuns' contract): publish the
+	// unseen ones oldest first.
+	for i := len(runs) - 1; i >= 0; i-- {
+		run := runs[i]
+		now[run.RunID] = true
+		if !first && !seen[run.RunID] {
+			s.publish(console.Event{Kind: console.EventCompile, Service: svc, Name: run.Layer, Ref: run.RunID})
+		}
+	}
+	s.compile[svc] = now
+}
+
+// runConsoleEventSources polls until ctx ends. The ledgers' baseline is
+// taken on the first run only: a restart (RT-119) resumes from where the
+// last run stopped.
 func runConsoleEventSources(ctx context.Context, s *consoleEventSources) {
-	s.verify.Prime()
-	s.session.Prime()
+	if !s.ledgersPrimed {
+		s.verify.Prime()
+		s.session.Prime()
+		s.ledgersPrimed = true
+	} else {
+		s.pollLedgers()
+	}
 	s.pollStore(ctx)
 	ledgers := time.NewTicker(consoleLedgerPoll)
 	store := time.NewTicker(consoleStorePoll)
@@ -220,6 +292,73 @@ func runConsoleEventSources(ctx context.Context, s *consoleEventSources) {
 				s.pollStore(ctx)
 			}
 		}
+	}
+}
+
+// feederSwitch runs the event feeders only while GET /events has a
+// subscriber (RT-119, design §14): the first subscriber starts them, the
+// last one leaving stops them. An idle console polls nothing.
+type feederSwitch struct {
+	src *consoleEventSources
+	run func(context.Context, *consoleEventSources)
+
+	mu     sync.Mutex
+	cancel context.CancelFunc
+	done   chan struct{}
+}
+
+func newFeederSwitch(src *consoleEventSources) *feederSwitch {
+	return &feederSwitch{src: src, run: runConsoleEventSources}
+}
+
+// subscribers is the bus's OnSubscribers callback: it only starts or
+// cancels, never waits (it runs under the bus's lock).
+func (f *feederSwitch) subscribers(n int) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	switch {
+	case n > 0 && f.cancel == nil:
+		ctx, cancel := context.WithCancel(context.Background())
+		prev := f.done
+		done := make(chan struct{})
+		f.cancel, f.done = cancel, done
+		go func() {
+			defer close(done)
+			if prev != nil {
+				<-prev // one feeder at a time: the last run has returned
+			}
+			f.run(ctx, f.src)
+		}()
+	case n == 0 && f.cancel != nil:
+		f.cancel()
+		f.cancel = nil
+	}
+}
+
+// running reports whether the feeders are on.
+func (f *feederSwitch) running() bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.cancel != nil
+}
+
+// stoppedCleanly reports whether the last run has returned.
+func (f *feederSwitch) stoppedCleanly() bool {
+	f.mu.Lock()
+	done := f.done
+	on := f.cancel != nil
+	f.mu.Unlock()
+	if on {
+		return false
+	}
+	if done == nil {
+		return true
+	}
+	select {
+	case <-done:
+		return true
+	default:
+		return false
 	}
 }
 

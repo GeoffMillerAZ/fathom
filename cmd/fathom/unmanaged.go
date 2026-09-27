@@ -136,18 +136,6 @@ func (a *activity) snapshot() (inFlight int, last time.Time) {
 	return int(a.inFlight.Load()), time.Unix(0, a.last.Load()).UTC()
 }
 
-// lazyFeeders starts the console event feeders on the first /events
-// request (an unmanaged daemon polls no ledger nobody watches).
-func lazyFeeders(next http.Handler, start func()) http.Handler {
-	var once sync.Once
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/events" {
-			once.Do(start)
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
 // daemonLifetime is the 60 s tick every serve-http runs: it refreshes the
 // record's heartbeat and, for an unmanaged daemon, evaluates the exit
 // bounds.
