@@ -64,6 +64,7 @@ func servingLadderActions(srv *mcp.Server, c *client.Client, fleet *fleetAdapter
 			{"memo registry", func() { memo.Drop(memo.ReasonRefuse) }},
 			{"graph and navigation caches", srv.DropCaches},
 			{"obligations memos", c.DropHotPathMemos},
+			{"ingest stat records", c.DropIngestStats},
 		},
 		dropIdle: []namedDrop{
 			{"memo registry", func() { memo.Drop(memo.ReasonIdle) }},

@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -40,6 +41,7 @@ func cmdPostCommitHook(args []string, stdout, stderr io.Writer) int {
 	service := fs.String("service", "", "service id (default: resolved from the repo)")
 	timeout := fs.Duration("timeout", 10*time.Second, "daemon timeout for the refresh request (on failure nothing is ingested)")
 	quiet := fs.Bool("quiet", false, "print nothing on success")
+	wait := fs.Bool("wait", false, "re-index now: run the daemon's ingest tool (an explicit request on its refresh queue) and wait up to --timeout for it, instead of queueing a background refresh")
 	if err := fs.Parse(args); err != nil {
 		return 0 // never block a commit on our own flag parsing
 	}
@@ -115,9 +117,17 @@ func cmdPostCommitHook(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
-	if err := ingestViaDaemon(*url, svc, root, *timeout); err == nil {
+	how, err := "", error(nil)
+	if *wait {
+		// I38: a remedy that says "re-index" must re-index — the ingest
+		// tool waits for its run on the queue and returns its error.
+		how, err = "refreshed", ingestToolViaDaemon(*url, svc, root, *timeout)
+	} else {
+		how, err = ingestViaDaemon(*url, svc, root, *timeout)
+	}
+	if err == nil {
 		if !*quiet {
-			fmt.Fprintf(stdout, "post-commit: refreshed %q through the daemon\n", svc)
+			fmt.Fprintf(stdout, "post-commit: %s %q through the daemon\n", how, svc)
 		}
 		return 0
 	} else {
@@ -138,13 +148,95 @@ func cmdPostCommitHook(args []string, stdout, stderr io.Writer) int {
 // prints (RT-170): what failed, that nothing was ingested, and the refresh
 // to run through the daemon when it is back.
 func postCommitFailureLine(service, root string, err error) string {
+	if errors.Is(err, errServiceNotIndexed) {
+		// RT-111: the hook queues a refresh of a service the daemon
+		// indexes; it never onboards one (the ingest tool with a path did,
+		// before the refresh queue). Say how to onboard it once.
+		return fmt.Sprintf("post-commit: %q is not indexed by the daemon — nothing was ingested; a commit hook never onboards a service. Onboard it once through the daemon: the ingest MCP tool with {\"service\": %q, \"path\": %q} (then each commit queues its refresh)", service, service, root)
+	}
 	return fmt.Sprintf("post-commit: daemon refresh failed (%v) — nothing was ingested; %q stays at its previously indexed commit. When the daemon is back, refresh through it: fathom post-commit-hook --dir %s (or the ingest MCP tool for service %q)", err, service, root, service)
 }
 
-// ingestViaDaemon calls the daemon's `ingest` tool for service. A JSON-RPC
+// ingestViaDaemon asks the daemon to refresh service (RT-111, design §12.3):
+// POST /refresh-request queues it (202, coalesced with a queued job or the
+// running ingest's one follow-up) and returns at once — the ingest runs on
+// the daemon's refresh queue, never inside this hook's request. It answers
+// what it did ("queued a refresh of"). A daemon that refuses (503: refuse,
+// store distress, safe mode, a quarantine) or does not index the service
+// (404 with its JSON answer) is an error naming why. Only a daemon that
+// predates the route (any other answer) is asked through the `ingest` tool,
+// as before ("refreshed").
+func ingestViaDaemon(baseURL, service, path string, timeout time.Duration) (string, error) {
+	queued, handled, err := enqueueViaDaemon(baseURL, service, timeout)
+	if handled {
+		if err != nil {
+			return "", err
+		}
+		return queued, nil
+	}
+	if err := ingestToolViaDaemon(baseURL, service, path, timeout); err != nil {
+		return "", err
+	}
+	return "refreshed", nil
+}
+
+// enqueueViaDaemon is POST /refresh-request. handled is false when the
+// daemon has no such route (an older binary) — the caller falls back.
+func enqueueViaDaemon(baseURL, service string, timeout time.Duration) (what string, handled bool, err error) {
+	body, err := json.Marshal(map[string]string{"service": service})
+	if err != nil {
+		return "", true, err
+	}
+	req, err := http.NewRequest(http.MethodPost, baseURL+"/refresh-request", bytes.NewReader(body))
+	if err != nil {
+		return "", true, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if rpcOrigin != "" {
+		req.Header.Set(originHeaderName, rpcOrigin)
+	}
+	resp, err := (&http.Client{Timeout: timeout}).Do(req)
+	if err != nil {
+		return "", true, err
+	}
+	defer resp.Body.Close()
+	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<16))
+	var ans refreshRequestResponse
+	isAnswer := json.Unmarshal(raw, &ans) == nil && ans.State != ""
+	switch {
+	case resp.StatusCode == http.StatusAccepted && isAnswer:
+		what := "queued a refresh of"
+		switch {
+		case ans.FollowUp:
+			what = "queued a follow-up refresh (after the running one) of"
+		case ans.Coalesced:
+			what = "joined the queued refresh of"
+		}
+		if ans.Paused != "" {
+			what += " (" + ans.Paused + ")"
+		}
+		return what, true, nil
+	case isAnswer && resp.StatusCode == http.StatusNotFound:
+		return "", true, fmt.Errorf("%w (HTTP 404): %s", errServiceNotIndexed, ans.Error)
+	case isAnswer:
+		why := ans.Refused
+		if why == "" {
+			why = ans.Error
+		}
+		return "", true, fmt.Errorf("refresh refused (HTTP %d): %s", resp.StatusCode, why)
+	}
+	return "", false, nil
+}
+
+// errServiceNotIndexed is enqueueViaDaemon's error for a service the daemon
+// does not index (POST /refresh-request's 404): the hook never onboards one.
+var errServiceNotIndexed = errors.New("service not indexed by the daemon")
+
+// ingestToolViaDaemon calls the daemon's `ingest` tool for service — the
+// fallback for a daemon that predates POST /refresh-request. A JSON-RPC
 // error (including IT-15's refusal) is returned as an error so the caller
 // reports it rather than treating a refusal as success.
-func ingestViaDaemon(baseURL, service, path string, timeout time.Duration) error {
+func ingestToolViaDaemon(baseURL, service, path string, timeout time.Duration) error {
 	body, err := json.Marshal(map[string]any{
 		"jsonrpc": "2.0",
 		"id":      1,

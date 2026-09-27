@@ -707,7 +707,17 @@ previous row back.
 
 ADR-017 amendment: a service whose stored watermark is a git SHA never takes the content
 manifest path — a git failure is `freshness: unknown`, disclosed. Genuine non-git corpora
-use a stat manifest (paths, sizes, mtimes from `file_stats`), capped and cached with a TTL.
+use a stat manifest (paths, sizes, mtimes from `file_stats`), capped and cached with a TTL. (As built, RT-110:
+`Client.ServiceWatermark` reads a git-SHA service's HEAD with `gitro.Head` only, and
+`LocalConnector.Watermark` answers an unreadable HEAD in a git work tree with
+`gitro.ErrFreshnessUnknown`. A non-git corpus keeps the portable content manifest an
+ingest records, gated by a stat manifest (paths, sizes, mtimes; no reads): the ingest's
+`Watermark` recomputes it only when the stats move; over 20,000 files it is
+`ErrManifestTooLarge`, remembered for 30 s. The request path never computes it: auto-refresh
+asks `Client.ServiceFreshnessProbe` → `LocalConnector.FreshnessProbe`, which walks the stats
+at most once per 5 s per root and answers the recorded manifest while they stand, or a
+`stat:` drift token that queues a refresh — the ingest then computes the manifest off the
+request path. `file_stats` can replace the walk once the storage lane lands it.)
 
 ---
 
@@ -728,12 +738,21 @@ whole-service case.
   one service at a time (warm-up). The ordering function is an interface (the decision-port
   option stays free, §vision 8).
 - Paused at `shed`, refused at `refuse`, in safe mode and for a quarantined service;
-  `store_distress` refuses.
+  `store_distress` refuses. (As built, RT-100: pause, safe mode and quarantine apply to
+  background requests — auto-refresh, post-commit, `/refresh-file`; an explicit `ingest`
+  call is not paused at shed (admission admitted it in its class), passes safe mode
+  (which refuses tree and fleet, never ingest — RT-39) and a quarantine (only it lifts
+  one). Explicit requests start first and are not held by the post-start wait or the
+  stagger. `/refresh-file` has no whole-service case: while the queue holds the
+  service it leaves the file to that refresh and says so.)
 - The ingest runs under the worker's daemon-lifetime ctx; `wait: true` callers wait under
   their own ctx and never cancel the shared job; drain on shutdown stops at a batch boundary.
 - HEAD without a fork: `gitro.Head(root)` reads `.git/HEAD`, `refs/…` or `packed-refs`
   (worktree `gitdir:` handled), cached per root, invalidated by mtime; fallback
-  `CommandContext` with a 2 s timeout; timeout = `freshness: unknown`.
+  `CommandContext` with a 2 s timeout; timeout = `freshness: unknown`. The fallback's
+  answer is cached against the files it was asked about for at most 30 s, so an
+  unreadable layout forks once per TTL, not per read; a branch git confirms has no
+  commit (`ErrUnbornHead`) is freshness by content manifest, as a non-git corpus.
 - Reads answer at once with `staleness{index_stale: true, refreshing|queued: true,
   indexed_commit, head}` (I4).
 
@@ -746,10 +765,36 @@ whole-service case.
   semaphore (`[ingest] inflight_bytes = 64 MiB`); each file is hashed, extracted and written
   in batches of 256 observations per transaction, then released. Files > 2 MiB are never
   read; binaries sniffed on 8 KiB. Peak content memory ≤ 64 MiB regardless of corpus.
+- (As built, RT-102/RT-103, `internal/fusion/stream.go`: pass 1 stats through the
+  connector's optional `Stater` and reads a file only when its `(size, mtime_ns, ino)`
+  moved, its stored fingerprint no longer equals the recorded hash, or the record was
+  written under another `ExtractorEpoch` (the `file_stats` row must carry the epoch, or an
+  epoch bump never reaches unchanged files — O9); a file whose mtime is within 2 s of its
+  stat is racily clean and never vouched for by it (git's rule). The prior record is
+  `Pipeline.WithStatSource` when wired — the seam for the storage lane's `file_stats` —
+  else the pipeline's own record of its last successful ingest of the service (so the
+  long-lived daemon is stat-gated from its second ingest; a one-shot CLI ingest reads
+  everything until `file_stats` is wired, RT-180). That in-memory record holds at most
+  250,000 files across the fleet (least recently ingested service evicted first), is
+  forgotten on a remove or rename and dropped at refuse; losing it costs one full read,
+  never a wrong answer. Each successful ingest hands its live records
+  to `WithStatSink` at the final commit. `Config.Rehash` (`ingest --rehash`) reads
+  everything. Pass 2 reserves the 2 MiB read cap per read and settles to the bytes read,
+  so content held never exceeds the window; results reach the consumer in input order;
+  observations are written 256 at a time and a file's fingerprint only after its
+  observations. The legacy-anchor rebuild and oversize fingerprints wait for the first
+  write, so a wedge that reads nothing still writes nothing. `Report.StatSkipped` and
+  `Report.PeakInflightBytes` are the instruments. The window is `Config.InflightBytes`;
+  no `[ingest]` config key yet.)
 - **Typed/CUE gate:** the typed pass runs only if a `.go`/`go.mod`/`go.sum`/`go.work` file is
   in the changed set since the last successful pass (`typed_pass_state`); it loads only the
   changed packages plus reverse dependencies from the stored import graph. The CUE pass
-  likewise on `.cue`, and under the same heavy slot. Children: `GOFLAGS=-p=2`,
+  likewise on `.cue`, and under the same heavy slot. (As built, RT-104/RT-105: the
+  changed set is this ingest's new, changed and deleted paths; `typed_pass_state` is a
+  row per pass in the typed-edge fingerprint table under `typed-pass-state:go|cue`,
+  removed when a pass starts and written only when it processed every package; the Go
+  reconcile never touches another pass's namespaced rows. The narrowed load is deferred,
+  RT-D9: implementer candidates come from every loaded package.) Children: `GOFLAGS=-p=2`,
   `GOMAXPROCS=2`, `nice 10` via `SysProcAttr`, `taskpolicy -b` on darwin when present.
 - **File-resolve pass:** reuses the pipeline's extractors (`p.exts`) instead of two new
   `TSExtractor`s per language per ingest; `TSExtractor.Close()` exists and is deferred;
@@ -757,6 +802,13 @@ whole-service case.
   unchanged hashes; `MaxExtractSize`, `IsBinary` and the known-fault fingerprint applied;
   faults counted and disclosed (the `_ =` drops at `fileresolve.go` removed). A regression
   test counts wazero modules before and after 3 ingests.
+  (As built, RT-107/RT-108: `file_imports(service_id, path, content_hash, imports_json,
+  fault)` — no `resolved_json`, since a file's resolution depends on the whole file set;
+  a fault is recorded against the bytes' fingerprint so the same bytes are not re-parsed
+  and stay disclosed. The pass takes its symbols from the rows this ingest stored
+  (`FileImportsStore.SourceObservations`), not a second extraction, and runs only when a
+  TS/JS/Python file changed since its last successful pass (`typed-pass-state:file-resolved`).
+  The module memory cap is the runtime's `WithMemoryLimitPages(1024)`.)
 - `/refresh-file` stats before reading (2 MiB cap) and finds the file's packages with
   `WHERE source_ref = ?`, not `ListAllSymbols`.
 

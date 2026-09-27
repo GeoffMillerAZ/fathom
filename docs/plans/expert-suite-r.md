@@ -143,7 +143,7 @@ precedent item 2's vocabulary mirrors), `docs/design/product-vision.md` §3
 
 ### B — typed failure classes (docs/design/findings-as-evidence.md §6 item 2)
 
-- [x] The closed finding-class vocabulary: Go-authoritative (`core.ValidFindingClasses`), CUE-derived (`or()` over the same list), cross-checked by a test that fails the moment the two diverge {id: R-4, symbol: verifyDraft, package: internal/semantic, reachable_from: TestCompile_RejectsBadAnchorsAndScopes}
+- [x] The closed finding-class vocabulary: Go-authoritative (`core.ValidFindingClasses`), CUE-derived (`or()` over the same list), cross-checked by a test that fails the moment the two diverge {id: R-4, symbol: verifyDraft, package: internal/semantic, reachable_from: TestCompile_FindingClass_Unknown_Rejected}
   - `internal/core/findingclass.go`: `FindingClass` + 10 consts +
     `ValidFindingClasses` + `Valid() bool`.
   - `schema/semantic/findingclass.cue`: `FindingClasses` list,

@@ -39,12 +39,12 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-	"unsafe"
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/dlog"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/gitro"
 	"github.com/geoffmilleraz/fathom/internal/llm"
 	"github.com/geoffmilleraz/fathom/internal/sdd"
 	"github.com/geoffmilleraz/fathom/internal/store"
@@ -70,6 +70,12 @@ type Config struct {
 	// environments (no go toolchain on PATH) and for measuring a true
 	// syntax-only ingest baseline (the CT-5 performance gate).
 	DisableTypedEdges bool
+	// InflightBytes is pass 2's window (RT-103): content bytes read and not
+	// yet written. 0 → DefaultInflightBytes (64 MiB).
+	InflightBytes int64
+	// Rehash turns pass 1's stat gate off (RT-102): every file is read and
+	// hashed (`fathom ingest --rehash`).
+	Rehash bool
 }
 
 // Report summarises a completed Ingest run.
@@ -81,9 +87,15 @@ type Report struct {
 	// to an extractor.
 	Extracted int
 	// Skipped is the number of files whose fingerprint matched the stored hash
-	// (hash-gate hits). Skipped + Extracted + ReadFailed == Discovered
-	// (ignoring budget aborts).
+	// (hash-gate hits), including StatSkipped. Skipped + Extracted +
+	// ReadFailed + Oversize == Discovered (ignoring budget aborts).
 	Skipped int
+	// StatSkipped is how many of Skipped were never read (RT-102): their
+	// (size, mtime, inode) and stored fingerprint matched the last ingest's.
+	StatSkipped int
+	// PeakInflightBytes is the most file content this ingest held at once
+	// (RT-103) — bounded by Config.InflightBytes whatever the corpus.
+	PeakInflightBytes int64
 	// ReadFailed is the number of discovered files whose bytes the connector
 	// could not read this run (readfailures.go, IT-14): recorded, named in
 	// ReadFailures, skipped — their stored evidence left exactly as it was.
@@ -171,6 +183,10 @@ type Report struct {
 	TypedFailed       bool
 	TypedFailReason   string
 	TypedFallback     string
+	// TypedSkipped names why the typed Go pass did not run this ingest
+	// (RT-104: no Go input changed since its last successful pass); the
+	// stored typed edges stand. "" when it ran (or the service has no Go).
+	TypedSkipped string
 
 	// CUE typed-edge pass counters (ADR-041 decision 5 / SU-10; zero for
 	// services with no .cue sources or no cue.mod, or when
@@ -181,6 +197,8 @@ type Report struct {
 	CUEPackagesFailed  int
 	CUEEdgesDirect     int
 	CUEEdgesUnresolved int
+	// CUESkipped is TypedSkipped for the CUE pass (RT-105).
+	CUESkipped string
 
 	// FileResolvedEdges is the number of core.EdgeFileResolved edges the
 	// per-file TypeScript/JavaScript/Python resolver produced this run
@@ -190,6 +208,14 @@ type Report struct {
 	// folded into the Typed*/CUE* counters above. See
 	// internal/fusion/fileresolve.go.
 	FileResolvedEdges int
+	// RT-108: FileResolveReused counts files whose imports came from
+	// file_imports (not read, not parsed); FileResolveFaults counts files
+	// whose import parse faulted, FileResolveFaultFiles names up to five;
+	// FileResolveSkipped names why the pass did not run ("" when it ran).
+	FileResolveReused     int
+	FileResolveFaults     int
+	FileResolveFaultFiles []string
+	FileResolveSkipped    string
 
 	// TSEngineFaults is the number of files this ingest whose tree-sitter
 	// wasm extraction faulted (parse deadline on pathological input, wasm
@@ -242,6 +268,9 @@ type Pipeline struct {
 	// inflate it. Process-lifetime, like unclassifiedTotal/oversizeTotal.
 	typedPassTotal int64 // atomic
 
+	// cuePassTotal counts CUE passes that ran past the RT-105 gate.
+	cuePassTotal int64 // atomic
+
 	// classifiedZero counts, per ToolKind, files that classified as that
 	// tool but whose extractor emitted zero symbols (critic F5) — the
 	// remaining silent-zero class after the Unclassified counter. Guarded
@@ -255,6 +284,18 @@ type Pipeline struct {
 	// read. Guarded by teMu.
 	teMu            sync.Mutex
 	typedEdgeStatus map[string]TypedEdgeStatus
+
+	// RT-102 (stream.go): pass 1's prior stats — statSource when the store's
+	// file_stats is wired, else statMemo (service → path → record, this
+	// pipeline's last successful ingest; guarded by mu); statSink receives
+	// each successful ingest's live stats.
+	statSource func(ctx context.Context, service string) (map[string]StatRecord, bool)
+	statSink   func(ctx context.Context, service string, recs []StatRecord) error
+	statMemo   map[string]map[string]StatRecord
+	// statOrder is statMemo's services, least recently ingested first, and
+	// statRecords their record count (bounded by statMemoMax). Guarded by mu.
+	statOrder   []string
+	statRecords int
 }
 
 // pendingFile holds a fetched, hash-gated file waiting for extraction.
@@ -264,20 +305,19 @@ type pendingFile struct {
 	hash    string
 }
 
-// realGitHead shells out to git to resolve HEAD for the given directory path.
-// Returns an empty string when git is unavailable, the directory is not a repo,
-// or any other error occurs.  Never panics, never returns an error.
+// realGitHead resolves HEAD for the given directory path from the ref files
+// (RT-101: gitro.Head, no fork for a readable layout). Returns an empty
+// string when the path is in no work tree or HEAD cannot be read. Never
+// panics, never returns an error.
 func realGitHead(path string) string {
 	if path == "" {
 		return ""
 	}
-	var out bytes.Buffer
-	cmd := exec.Command("git", "-C", path, "rev-parse", "HEAD")
-	cmd.Stdout = &out
-	if err := cmd.Run(); err != nil {
+	sha, err := gitro.Head(context.Background(), path)
+	if err != nil {
 		return ""
 	}
-	return strings.TrimSpace(out.String())
+	return sha
 }
 
 // realGitLog shells out to git to get the last 500 commits for the given
@@ -468,6 +508,9 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	if cfg.Concurrency <= 0 {
 		cfg.Concurrency = 1
 	}
+	if cfg.InflightBytes <= 0 {
+		cfg.InflightBytes = DefaultInflightBytes
+	}
 	p := &Pipeline{
 		conn:           conn,
 		st:             st,
@@ -655,6 +698,18 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	return p
 }
 
+// Close releases the pipeline's tree-sitter grammar modules (RT-107). The
+// pipeline stays usable: the next extraction instantiates afresh.
+func (p *Pipeline) Close() {
+	seen := map[*extractor.TSExtractor]bool{}
+	for _, e := range p.exts {
+		if ts, ok := e.(*extractor.TSExtractor); ok && !seen[ts] {
+			seen[ts] = true
+			ts.Close()
+		}
+	}
+}
+
 // RegisterExtractor registers an extractor for the given file extension
 // (including leading dot, e.g. ".py"). It replaces any existing extractor for
 // that extension.
@@ -761,60 +816,190 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 		return report, nil
 	}
 
-	// ── Pass 2: Fetch ────────────────────────────────────────────────────────
-	// Pre-allocate indexed result slots — one per ref. Workers write into their
-	// own slot without contention. A per-file READ failure (readfailures.go)
-	// stays in its slot and the file is skipped below; any other error is
-	// fatal — the first one is captured via atomic pointer swap and aborts
-	// before a single write.
-	type fetchResult struct {
-		content []byte
-		err     error
+	// ADR-017 self-heal: stores written before repo-relative anchors keyed
+	// fingerprints and observations by absolute path. Once the connector
+	// emits relative refs, those legacy rows would never match the hash-gate
+	// again and every symbol would exist twice (old absolute + new relative
+	// anchor). Detect the mix and rebuild this service's content wholesale,
+	// once — right before the first write, so a wedge (nothing readable)
+	// cannot trigger a rebuild it cannot complete. A rebuild reads every
+	// file: the stat gate is off for it.
+	legacy := false
+	if !filepath.IsAbs(refs[0].Path) {
+		if n, cErr := p.st.CountAbsoluteSourceRefs(ctx, svc.ID); cErr == nil && n > 0 {
+			legacy = true
+		}
 	}
-	fetched := make([]fetchResult, len(refs))
-
-	// firstErr stores the first FATAL fetch error via atomic pointer swap.
-	// Using unsafe.Pointer so we can do a compare-and-swap on an error interface.
-	var firstErrPtr unsafe.Pointer // *error
-
-	sem := make(chan struct{}, p.cfg.Concurrency)
-	var wg sync.WaitGroup
-	for i, ref := range refs {
-		wg.Add(1)
-		sem <- struct{}{}
-		go func(idx int, r core.SourceRef) {
-			defer wg.Done()
-			defer func() { <-sem }()
-
-			content, fetchErr := p.conn.Fetch(ctx, r)
-			fetched[idx] = fetchResult{content: content, err: fetchErr}
-			if fetchErr != nil && !isReadFailure(fetchErr) && !isOversize(fetchErr) {
-				var nilPtr unsafe.Pointer
-				heapErr := fetchErr // capture on heap
-				atomic.CompareAndSwapPointer(&firstErrPtr, nilPtr, unsafe.Pointer(&heapErr))
+	wrote := false
+	beforeWrite := func() error {
+		if wrote {
+			return nil
+		}
+		wrote = true
+		if legacy {
+			if pErr := p.st.PurgeService(ctx, svc.ID); pErr != nil {
+				return fmt.Errorf("fusion: purge legacy-anchored service %q: %w", svc.ID, pErr)
 			}
-		}(i, ref)
+			report.PurgedLegacyAnchors = true
+		}
+		return nil
 	}
-	wg.Wait()
+	// A failure before the first write puts the previous ingest_state row
+	// back (RT-109); after it, the ingest stays in_progress for the next
+	// start to resume.
+	abandon := func(err error) (Report, error) {
+		if !wrote {
+			p.abandonIngestState(context.WithoutCancel(ctx), run)
+		}
+		return report, err
+	}
 
-	if firstErrPtr != nil {
-		p.abandonIngestState(ctx, run) // before the first write
-		return report, fmt.Errorf("fusion: fetch: %w", *(*error)(firstErrPtr))
+	// ── Pass 1: stat gate (RT-102) ───────────────────────────────────────────
+	// RT-89: a service whose extracted routes and client calls are not yet
+	// complete extracts them from every readable file, so this ingest reads
+	// every file (the stat gate is off for it, once).
+	svcRefs, err := p.beginServiceRefs(ctx, svc.ID)
+	if err != nil {
+		return abandon(err)
 	}
-	if ctxErr := ctx.Err(); ctxErr != nil {
-		p.abandonIngestState(context.WithoutCancel(ctx), run) // before the first write
-		return report, fmt.Errorf("fusion: fetch: %w", ctxErr)
+	if legacy {
+		svcRefs.complete = false // the rebuild purges the rows with the rest
+	}
+	gate := p.statChangedFiles(ctx, svc.ID, refs, legacy || !svcRefs.complete)
+	report.Skipped += gate.skipped
+	report.StatSkipped = gate.skipped
+	// RT-76: a stat-skipped file's facts are the stat and the hash the gate
+	// vouched for; it is never read.
+	for i, ref := range refs {
+		if gate.live[i].ContentHash != "" {
+			run.noteFact(ref.Path, fileFact{size: gate.live[i].Size, hash: gate.live[i].ContentHash})
+		}
+	}
+
+	// ── Pass 2 + 3: streamed read, hash-gate, extract, write (RT-103) ────────
+	// Up to cfg.Concurrency reads run at once through the in-flight byte
+	// window; results reach this consumer in input order (determinism), which
+	// hash-gates, purges, extracts and writes each file and then releases its
+	// bytes. A per-file READ failure (readfailures.go) is recorded and the
+	// file skipped; any other fetch error is fatal and stops the reads.
+	var failures []ReadFailure
+	type oversizeRef struct {
+		path string
+		size int64
+	}
+	var oversize []oversizeRef
+	var pending []pendingFile // lazy mode only
+	var tokenAccum int64
+	// changed collects every path this ingest found new, changed or
+	// deleted — the typed and CUE passes' gate (RT-104, RT-105).
+	var changed []string
+	sink := p.newExtractSink(svc.ID)
+	// A pass input's new fingerprint is written only after that pass's
+	// success record is gone (design §7.2), so a run that fails between the
+	// two cannot hide the change from the next ingest's gate.
+	inv := newPassInvalidator(p.st, svc.ID)
+
+	peak, streamErr := p.fetchWindowed(ctx, refs, gate.toRead, p.cfg.InflightBytes, p.cfg.Concurrency, func(i int, content []byte, ferr error) error {
+		ref := refs[i]
+		if over := asOversize(ferr); over != nil {
+			// RT-69: over the read cap, decided from the stat — never read;
+			// recorded after the refusal check below.
+			oversize = append(oversize, oversizeRef{ref.Path, over.Size})
+			run.noteFact(ref.Path, fileFact{size: over.Size, excluded: "oversize"})
+			return nil
+		}
+		if ferr != nil {
+			if isReadFailure(ferr) {
+				// Unreadable this run: no hash-gate, no purge, no
+				// fingerprint — the stored evidence stays until the file
+				// can be read again.
+				failures = append(failures, ReadFailure{Path: ref.Path, Err: ferr.Error()})
+				run.noteFact(ref.Path, fileFact{size: -1, excluded: "unreadable"})
+				return nil
+			}
+			return fmt.Errorf("fusion: fetch: %w", ferr)
+		}
+
+		// Epoch-salted content hash (see FingerprintHash / ExtractorEpoch):
+		// an extractor-semantics change must invalidate every stored
+		// fingerprint, or improved extraction never reaches unchanged files —
+		// the stale-observation class dogfood O9 caught.
+		hash := FingerprintHash(content)
+		run.noteFact(ref.Path, fileFact{size: int64(len(content)), hash: hash})
+		gate.live[i].ContentHash = hash
+
+		// RT-89: an incomplete service extracts every readable file's
+		// routes and client calls; a complete one only the changed files'.
+		if !svcRefs.complete {
+			svcRefs.add(ref.Path, content)
+		}
+
+		// Hash-gate: compare against stored fingerprint.
+		storedHash, found, fpErr := p.st.Fingerprint(ctx, svc.ID, ref.Path)
+		if fpErr != nil {
+			return fmt.Errorf("fusion: fingerprint lookup %q: %w", ref.Path, fpErr)
+		}
+		if found && storedHash == hash && !legacy {
+			report.Skipped++ // file unchanged
+			return nil
+		}
+		if err := beforeWrite(); err != nil {
+			return err
+		}
+		if err := inv.note(ctx, ref.Path); err != nil {
+			return err
+		}
+		if legacy {
+			found = false // the rebuild purged every row
+		}
+
+		// File is new or changed: purge stale observations first.
+		if found {
+			if purgeErr := p.st.PurgeSource(ctx, svc.ID, ref.Path); purgeErr != nil {
+				return fmt.Errorf("fusion: purge %q: %w", ref.Path, purgeErr)
+			}
+		}
+
+		// Budget gate (token count heuristic: bytes / 4).
+		if p.cfg.MaxTokens > 0 {
+			tokenAccum += int64(len(content)) / 4
+			if tokenAccum > p.cfg.MaxTokens {
+				return fmt.Errorf("fusion: token budget exceeded at %q (%d tokens)",
+					ref.Path, tokenAccum)
+			}
+		}
+		if p.cfg.MaxCostUSD > 0 {
+			// Cost estimate: $0.00003 per 1000 tokens (ballpark).
+			costEst := float64(tokenAccum) / 1000.0 * 0.00003
+			if costEst > p.cfg.MaxCostUSD {
+				return fmt.Errorf("fusion: cost budget exceeded at %q ($%.6f)",
+					ref.Path, costEst)
+			}
+		}
+
+		changed = append(changed, ref.Path)
+		report.Extracted++
+		if svcRefs.complete {
+			svcRefs.add(ref.Path, content)
+		}
+		pf := pendingFile{ref: ref, content: content, hash: hash}
+		if p.cfg.Lazy {
+			pending = append(pending, pf)
+			return nil
+		}
+		return sink.add(ctx, pf)
+	})
+	report.PeakInflightBytes = peak
+	if streamErr == nil {
+		streamErr = sink.flush(ctx)
+	}
+	if streamErr != nil {
+		return abandon(streamErr)
 	}
 
 	// Read failures (IT-14): counted, named, sorted by path — never a silent
 	// zero and never fatal on their own. refs keeps every discovered file,
 	// so the orphan purge below cannot mistake "unreadable" for "deleted".
-	var failures []ReadFailure
-	for i, ref := range refs {
-		if fetched[i].err != nil && !isOversize(fetched[i].err) {
-			failures = append(failures, ReadFailure{Path: ref.Path, Err: fetched[i].err.Error()})
-		}
-	}
 	sort.Slice(failures, func(i, j int) bool { return failures[i].Path < failures[j].Path })
 	report.ReadFailed = len(failures)
 	report.ReadFailures = failures
@@ -826,6 +1011,10 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	// err-only caller still sees the purge abort in the text, and an
 	// errors.As caller still finds the read failures it must name.
 	finish := func(err error) (Report, error) {
+		if err == nil {
+			// RT-102: the next ingest's pass 1 compares against these.
+			p.rememberStats(ctx, svc.ID, gate)
+		}
 		if len(failures) == 0 {
 			return report, err
 		}
@@ -840,135 +1029,52 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	// symbols by construction; if the store already holds observations for
 	// this service, replacing them — or even advancing the freshness
 	// watermark over them — would let a wedged reader pass off an empty
-	// index as a fresh one. Refuse before the first write. A store with no
-	// evidence has nothing to protect and falls through (the failures are
-	// still returned loudly). A PARTIAL wedge is not refused: the readable
-	// files are honest progress and the unreadable ones keep their evidence;
-	// refusing there would also make a repo with one permanently unreadable
-	// file un-ingestable forever.
+	// index as a fresh one. Refuse before the first write (nothing has been
+	// written: every read failed). A store with no evidence has nothing to
+	// protect and falls through (the failures are still returned loudly). A
+	// PARTIAL wedge is not refused: the readable files are honest progress
+	// and the unreadable ones keep their evidence; refusing there would also
+	// make a repo with one permanently unreadable file un-ingestable forever.
 	if len(failures) > 0 && len(failures) == len(refs) {
-		existing, qErr := p.st.QueryObservations(ctx, svc.ID, "")
+		existing, qErr := p.existingObservations(ctx, svc.ID)
 		if qErr != nil {
-			p.abandonIngestState(ctx, run) // before the first write
-			return report, fmt.Errorf("fusion: count observations %q: %w", svc.ID, qErr)
+			return abandon(fmt.Errorf("fusion: count observations %q: %w", svc.ID, qErr))
 		}
-		if len(existing) > 0 {
+		if existing > 0 {
 			// Refused before the first write: the index is untouched and
 			// still the one its watermark describes.
-			p.abandonIngestState(ctx, run)
-			return report, &ReadFailuresError{Service: svc.ID, Failures: failures, Refused: true, Existing: len(existing)}
+			return abandon(&ReadFailuresError{Service: svc.ID, Failures: failures, Refused: true, Existing: existing})
 		}
 	}
 
-	// ADR-017 self-heal: stores written before repo-relative anchors keyed
-	// fingerprints and observations by absolute path. Once the connector
-	// emits relative refs, those legacy rows would never match the hash-gate
-	// again and every symbol would exist twice (old absolute + new relative
-	// anchor). Detect the mix and rebuild this service's content wholesale,
-	// once. Runs after the fetch so a wedge cannot trigger a rebuild it
-	// cannot complete.
-	if !filepath.IsAbs(refs[0].Path) {
-		if n, cErr := p.st.CountAbsoluteSourceRefs(ctx, svc.ID); cErr == nil && n > 0 {
-			if pErr := p.st.PurgeService(ctx, svc.ID); pErr != nil {
-				return report, fmt.Errorf("fusion: purge legacy-anchored service %q: %w", svc.ID, pErr)
-			}
-			report.PurgedLegacyAnchors = true
+	// Oversize files (RT-69): fingerprinted by size so an unchanged one is
+	// skipped next time; what one held when it was small is purged, since
+	// it now contributes no observations. Counted under Oversize on every
+	// ingest, changed or not: the file stays unindexed, so the summary names
+	// it (I38) instead of folding it into the unchanged-and-skipped count.
+	for _, o := range oversize {
+		if err := beforeWrite(); err != nil {
+			return abandon(err)
 		}
+		unchanged, err := p.recordOversize(ctx, inv, svc.ID, o.path, o.size)
+		if err != nil {
+			return report, err
+		}
+		if !unchanged {
+			changed = append(changed, o.path)
+		}
+		report.Oversize++
 	}
 
-	// ── Pass 3: PostFetch (sequential, input order) ──────────────────────────
-	var pending []pendingFile
-	var tokenAccum int64
-
-	for i, ref := range refs {
-		if over := asOversize(fetched[i].err); over != nil {
-			// RT-69: over the read cap, decided from the stat — never read.
-			// Fingerprinted by size so an unchanged one is skipped next
-			// time; what it held when it was small is purged, since it
-			// now contributes no observations.
-			// Counted under Oversize on every ingest, changed or not: the
-			// file stays unindexed, so the summary names it (I38) instead
-			// of folding it into the unchanged-and-skipped count.
-			if _, err := p.recordOversize(ctx, svc.ID, ref.Path, over.Size); err != nil {
-				return report, err
-			}
-			report.Oversize++
-			run.noteFact(ref.Path, fileFact{size: over.Size, excluded: "oversize"})
-			continue
-		}
-		if fetched[i].err != nil {
-			// Unreadable this run: no hash-gate, no purge, no fingerprint —
-			// the stored evidence stays until the file can be read again.
-			run.noteFact(ref.Path, fileFact{size: -1, excluded: "unreadable"})
-			continue
-		}
-		content := fetched[i].content
-
-		// Epoch-salted content hash (see FingerprintHash / ExtractorEpoch):
-		// an extractor-semantics change must invalidate every stored
-		// fingerprint, or improved extraction never reaches unchanged files —
-		// the stale-observation class dogfood O9 caught.
-		hash := FingerprintHash(content)
-		run.noteFact(ref.Path, fileFact{size: int64(len(content)), hash: hash})
-
-		// Hash-gate: compare against stored fingerprint.
-		storedHash, found, fpErr := p.st.Fingerprint(ctx, svc.ID, ref.Path)
-		if fpErr != nil {
-			return report, fmt.Errorf("fusion: fingerprint lookup %q: %w", ref.Path, fpErr)
-		}
-		if found && storedHash == hash {
-			// File unchanged — skip.
-			report.Skipped++
-			continue
-		}
-
-		// File is new or changed: purge stale observations first.
-		if found {
-			if purgeErr := p.st.PurgeSource(ctx, svc.ID, ref.Path); purgeErr != nil {
-				return report, fmt.Errorf("fusion: purge %q: %w", ref.Path, purgeErr)
-			}
-		}
-
-		// Budget gate (token count heuristic: bytes / 4).
-		if p.cfg.MaxTokens > 0 {
-			tokenAccum += int64(len(content)) / 4
-			if tokenAccum > p.cfg.MaxTokens {
-				return report, fmt.Errorf("fusion: token budget exceeded at %q (%d tokens)",
-					ref.Path, tokenAccum)
-			}
-		}
-		if p.cfg.MaxCostUSD > 0 {
-			// Cost estimate: $0.00003 per 1000 tokens (ballpark).
-			costEst := float64(tokenAccum) / 1000.0 * 0.00003
-			if costEst > p.cfg.MaxCostUSD {
-				return report, fmt.Errorf("fusion: cost budget exceeded at %q ($%.6f)",
-					ref.Path, costEst)
-			}
-		}
-
-		pending = append(pending, pendingFile{ref: ref, content: content, hash: hash})
+	// RT-89 (§6): routes and outbound HTTP client calls were extracted in
+	// pass 2, from the content it held — never per call. They are written
+	// just before the final commit, so an ingest halted anywhere before it
+	// leaves the previous commit's rows.
+	oversizePaths := make(map[string]bool, len(oversize))
+	for _, o := range oversize {
+		oversizePaths[o.path] = true
 	}
-
-	// RT-89 (§6): routes and outbound HTTP client calls are extracted here,
-	// at ingest, from the content this pass already holds — never per call.
-	contents := make(map[string][]byte, len(refs))
-	unreadable := map[string]bool{}
-	for i, r := range refs {
-		switch {
-		case fetched[i].err == nil:
-			contents[r.Path] = fetched[i].content
-		case !isOversize(fetched[i].err):
-			unreadable[r.Path] = true
-		}
-	}
-	// Extracted now, while the content is in hand (the rows are small);
-	// written just before the final commit, so an ingest halted anywhere
-	// before it leaves the previous commit's rows.
-	writeRefs, err := p.extractServiceRefs(ctx, svc.ID, refs, contents, unreadable, pending)
-	if err != nil {
-		return report, err
-	}
-	contents = nil
+	writeRefs := svcRefs.writer(ctx, p.st, refs, oversizePaths, len(failures) > 0)
 
 	// ── Dispatch ─────────────────────────────────────────────────────────────
 	if p.cfg.Lazy {
@@ -985,11 +1091,7 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 		return finish(p.finalCommit(ctx, svc, run, refs))
 	}
 
-	stats, err := p.extractAndStore(ctx, svc.ID, pending)
-	if err != nil {
-		return report, err
-	}
-	report.Extracted = len(pending)
+	stats := sink.stats
 	report.Symbols = stats.symbols
 	report.Unclassified = stats.unclassified
 	report.Oversize += stats.oversize
@@ -997,9 +1099,17 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	report.TSEngineFaults = stats.tsFaults
 	report.UnsupportedLanguages = stats.unsupportedLang
 
+	// Deleted files change the typed inputs too (a removed .go file).
+	deleted, delErr := p.deletedRefs(ctx, svc.ID, refs)
+	if delErr != nil {
+		return finish(delErr)
+	}
+	changed = append(changed, deleted...)
+
 	// Typed Go call-edge enrichment (ADR-021 §3): additive, per-package,
-	// never blocks ingest. See internal/fusion/typedcalls.go.
-	typedRep, typedErr := p.enrichTypedEdges(ctx, svc, refs)
+	// never blocks ingest. See internal/fusion/typedcalls.go. RT-104: only
+	// when a Go input changed since the last successful pass.
+	typedRep, typedErr := p.enrichTypedEdges(ctx, svc, refs, changed)
 	if typedErr != nil {
 		// RT-178: the typed pass was halted (the producer governor at
 		// refuse, or a cancelled ctx) — fail before the final commit so the
@@ -1017,7 +1127,8 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	// straight onto this Report — one source of truth, so the ingest
 	// response can never disagree with staleness_report/doctor about
 	// whether this service's typed pass is trustworthy.
-	if st, known := p.TypedEdgeStatus(svc.ID); known {
+	report.TypedSkipped = typedRep.Skipped
+	if st, known := p.TypedEdgeStatus(svc.ID); known && typedRep.Skipped == "" {
 		report.TypedPackagesSeen = st.PackagesSeen
 		report.TypedFailed = st.Failed
 		report.TypedFailReason = st.Reason
@@ -1026,7 +1137,13 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 
 	// CUE typed-edge enrichment (ADR-041 decision 5 / SU-10): additive,
 	// per-package, never blocks ingest. See internal/fusion/typedcue.go.
-	cueRep := p.enrichCUEEdges(ctx, svc, refs)
+	cueRep, cueErr := p.enrichCUEEdges(ctx, svc, refs, changed)
+	if cueErr != nil {
+		// Halted (the governor, a cancelled ctx) before the final commit:
+		// the watermark never moves (RT-109).
+		return finish(fmt.Errorf("fusion: CUE typed-edge pass %q: %w", svc.ID, cueErr))
+	}
+	report.CUESkipped = cueRep.Skipped
 	report.CUEPackages = cueRep.PackagesLoaded
 	report.CUEPackagesFailed = cueRep.PackagesFailed
 	report.CUEEdgesDirect = cueRep.EdgesDirect
@@ -1039,8 +1156,14 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	// re-fetches and re-parses the service's full TS/JS/Python corpus, the
 	// same "whole tree, every run" shape those passes use, just without
 	// their cache. See internal/fusion.ResolveFileEdges.
-	fileRep, fileErr := p.enrichFileResolvedEdges(ctx, svc, refs)
+	fileRep, fileErr := p.enrichFileResolvedEdges(ctx, svc, refs, changed)
 	report.FileResolvedEdges = fileRep.EdgesResolved
+	report.FileResolveReused = fileRep.Reused
+	report.FileResolveFaults = fileRep.Faults
+	report.FileResolveFaultFiles = fileRep.FaultFiles
+	if fileRep.Skipped {
+		report.FileResolveSkipped = fileRep.SkipReason
+	}
 	if fileErr != nil {
 		// RT-153 (I38): halted before the final commit — the watermark
 		// never moved (RT-109), so the halted run never reads as fresh; fail
@@ -1105,6 +1228,30 @@ func (p *Pipeline) recordIngestMeta(ctx context.Context, svc core.ServiceRef, co
 	}
 }
 
+// deletedRefs lists the source_refs stored for serviceID that are absent
+// from the just-Discovered refs — the files this ingest found deleted (or
+// newly ignored), sorted (Store contract).
+func (p *Pipeline) deletedRefs(ctx context.Context, serviceID string, refs []core.SourceRef) ([]string, error) {
+	stored, err := p.st.ListSourceRefs(ctx, serviceID)
+	if err != nil {
+		return nil, fmt.Errorf("fusion: list source refs %q: %w", serviceID, err)
+	}
+	if len(stored) == 0 {
+		return nil, nil
+	}
+	discovered := make(map[string]struct{}, len(refs))
+	for _, r := range refs {
+		discovered[r.Path] = struct{}{}
+	}
+	var out []string
+	for _, ref := range stored {
+		if _, ok := discovered[ref]; !ok {
+			out = append(out, ref)
+		}
+	}
+	return out, nil
+}
+
 // purgeOrphans removes observations and fingerprints for source_refs that are
 // stored for serviceID but absent from the just-Discovered set — files that
 // were deleted from disk or newly ignored since the previous ingest.
@@ -1145,61 +1292,72 @@ func (p *Pipeline) purgeOrphans(ctx context.Context, serviceID string, refs []co
 		if err := p.st.DeleteFingerprint(ctx, serviceID, ref); err != nil {
 			return fmt.Errorf("fusion: delete orphan fingerprint %q: %w", ref, err)
 		}
+		// RT-108: and its recorded imports.
+		if fis, ok := p.st.(store.FileImportsStore); ok {
+			if err := fis.DeleteFileImports(ctx, serviceID, ref); err != nil {
+				return fmt.Errorf("fusion: delete orphan file imports %q: %w", ref, err)
+			}
+		}
 	}
 	return nil
 }
 
-// extractServiceRefs replaces the service's extracted routes and client
-// calls (RT-89): the changed files' when the service's rows are complete,
-// every readable file's when they are not (its first ingest since RT-89,
-// or after a purge); rows of files no longer discovered, or no longer
-// readable as source (oversize), are dropped.
+// serviceRefsRun accumulates one ingest's extracted routes and client calls
+// (RT-89): the changed files' when the service's rows are complete, every
+// readable file's when they are not (its first ingest since RT-89, after a
+// purge, or a legacy rebuild) — the ingest then turns its stat gate off so
+// every file is read. Pass 2 hands it each file's content while it holds
+// it (add); the rows are small, the content is not kept.
+type serviceRefsRun struct {
+	serviceID string
+	stored    store.ServiceRefs
+	complete  bool
+	paths     []string
+	out       store.ServiceRefs
+}
+
+// beginServiceRefs reads what the store holds for the service.
+func (p *Pipeline) beginServiceRefs(ctx context.Context, serviceID string) (*serviceRefsRun, error) {
+	stored, complete, err := p.st.ServiceRefsFor(ctx, serviceID)
+	if err != nil {
+		return nil, fmt.Errorf("fusion: service refs %q: %w", serviceID, err)
+	}
+	return &serviceRefsRun{serviceID: serviceID, stored: stored, complete: complete}, nil
+}
+
+// add extracts one file's routes and client calls.
+func (r *serviceRefsRun) add(path string, content []byte) {
+	r.paths = append(r.paths, path)
+	x := serviceref.ExtractFile(path, content)
+	r.out.Routes = append(r.out.Routes, x.Routes...)
+	r.out.Calls = append(r.out.Calls, x.Calls...)
+}
+
+// writer returns the replacement write, which the caller runs just before
+// the final commit (§6): an ingest halted in between writes nothing. Rows
+// of files no longer discovered, or no longer readable as source
+// (oversize), are dropped.
 //
 // A file unreadable this run (a read failure, not oversize) keeps its rows,
 // as pass 3 keeps its observations: when it reads again unchanged it is
-// never pending, so dropped rows would never return. For the same reason a
-// first extraction with any unreadable file is not marked complete — the
-// next ingest extracts every readable file again.
-//
-// It extracts now and returns the write, which the caller runs just before
-// the final commit (§6): an ingest halted in between writes nothing.
-func (p *Pipeline) extractServiceRefs(ctx context.Context, serviceID string, refs []core.SourceRef, contents map[string][]byte, unreadable map[string]bool, pending []pendingFile) (write func() error, err error) {
-	noWrite := func() error { return nil }
-	stored, complete, err := p.st.ServiceRefsFor(ctx, serviceID)
-	if err != nil {
-		return noWrite, fmt.Errorf("fusion: service refs %q: %w", serviceID, err)
-	}
-	var paths []string
-	if complete {
-		for _, pf := range pending {
-			paths = append(paths, pf.ref.Path)
-		}
-	} else {
-		for _, r := range refs {
-			if _, ok := contents[r.Path]; ok {
-				paths = append(paths, r.Path)
-			}
-		}
-	}
-	files := append([]string(nil), paths...)
+// never re-extracted, so dropped rows would never return. So does a file
+// the stat gate vouched for unchanged. For the same reason a first
+// extraction with any unreadable file is not marked complete — the next
+// ingest extracts every readable file again.
+func (r *serviceRefsRun) writer(ctx context.Context, st store.Store, refs []core.SourceRef, oversize map[string]bool, anyUnreadable bool) func() error {
+	files := append([]string(nil), r.paths...)
 	discovered := make(map[string]bool, len(refs))
-	for _, r := range refs {
-		discovered[r.Path] = true
+	for _, ref := range refs {
+		discovered[ref.Path] = true
 	}
 	gone := map[string]bool{}
-	dropped := func(file string) bool {
-		if !discovered[file] {
-			return true
-		}
-		_, readable := contents[file]
-		return !readable && !unreadable[file]
-	}
-	for _, r := range stored.Routes {
-		if dropped(r.File) {
-			gone[r.File] = true
+	dropped := func(file string) bool { return !discovered[file] || oversize[file] }
+	for _, x := range r.stored.Routes {
+		if dropped(x.File) {
+			gone[x.File] = true
 		}
 	}
-	for _, c := range stored.Calls {
+	for _, c := range r.stored.Calls {
 		if dropped(c.File) {
 			gone[c.File] = true
 		}
@@ -1208,22 +1366,17 @@ func (p *Pipeline) extractServiceRefs(ctx context.Context, serviceID string, ref
 		files = append(files, f)
 	}
 	sort.Strings(files)
-	var out store.ServiceRefs
-	for _, path := range paths {
-		r := serviceref.ExtractFile(path, contents[path])
-		out.Routes = append(out.Routes, r.Routes...)
-		out.Calls = append(out.Calls, r.Calls...)
+	if len(files) == 0 && r.complete {
+		return func() error { return nil }
 	}
-	if len(files) == 0 && complete {
-		return noWrite, nil
-	}
-	markComplete := complete || len(unreadable) == 0
+	markComplete := r.complete || !anyUnreadable
+	out, serviceID := r.out, r.serviceID
 	return func() error {
-		if err := p.st.ReplaceServiceRefs(ctx, serviceID, files, out, markComplete); err != nil {
+		if err := st.ReplaceServiceRefs(ctx, serviceID, files, out, markComplete); err != nil {
 			return fmt.Errorf("fusion: write service refs %q: %w", serviceID, err)
 		}
 		return nil
-	}, nil
+	}
 }
 
 // ExtractPending drains the lazy queue for serviceID, extracts all pending
@@ -1316,201 +1469,243 @@ func (p *Pipeline) noteClassifiedZero(stats *extractStats, tool ToolKind) {
 // TAG recorded on the resulting observations. Every other extension keeps
 // the original basename-then-extension lookup, unchanged.
 func (p *Pipeline) extractAndStore(ctx context.Context, serviceID string, batch []pendingFile) (extractStats, error) {
-	var stats extractStats
+	sink := p.newExtractSink(serviceID)
+	for _, pf := range batch {
+		if err := sink.add(ctx, pf); err != nil {
+			return sink.stats, err
+		}
+	}
+	return sink.stats, sink.flush(ctx)
+}
 
+// extractSink extracts one file at a time (input order) and writes in
+// batches (RT-103): observations accumulate to obsBatch before one write,
+// and a file's fingerprint is written only after its observations are — a
+// run stopped mid-batch leaves those files unfingerprinted, so the next
+// ingest re-extracts them.
+type extractSink struct {
+	p         *Pipeline
+	serviceID string
+	idx       *siblingIndex
+	stats     extractStats
+	obs       []core.Observation
+	fps       []pendingFingerprint
+}
+
+type pendingFingerprint struct{ path, hash string }
+
+func (p *Pipeline) newExtractSink(serviceID string) *extractSink {
 	p.mu.Lock()
 	idx := p.siblingIdx[serviceID]
 	p.mu.Unlock()
+	return &extractSink{p: p, serviceID: serviceID, idx: idx}
+}
 
-	// Process file-by-file in batch (input) order for determinism.
-	for _, pf := range batch {
-		// RT-178: extraction is an ingest-class producer — asked of the
-		// governor before each file, like the fetch that fed it.
-		if err := tenancy.ProducerAllowsCtx(ctx, tenancy.ClassIngest); err != nil {
-			return stats, fmt.Errorf("fusion: extract %q halted before %s: %w", serviceID, pf.ref.Path, err)
+// flush writes the buffered observations, then their files' fingerprints.
+func (s *extractSink) flush(ctx context.Context) error {
+	if len(s.obs) > 0 {
+		if err := s.p.st.PutObservations(ctx, s.obs); err != nil {
+			return fmt.Errorf("fusion: put observations %q: %w", s.serviceID, err)
 		}
-		if err := ctx.Err(); err != nil {
-			return stats, fmt.Errorf("fusion: extract %q: %w", serviceID, err)
+		s.obs = s.obs[:0]
+	}
+	for _, f := range s.fps {
+		if err := s.p.st.SetFingerprint(ctx, s.serviceID, f.path, f.hash); err != nil {
+			return fmt.Errorf("fusion: set fingerprint %q: %w", f.path, err)
 		}
-		// Binary content never carries extractable symbols, regardless of
-		// whether its path happens to match a registered extension (ADR-021
-		// §1 / LT-2). Record the fingerprint so it isn't re-sniffed on every
-		// ingest, but never hand binary bytes to an extractor.
-		if connector.IsBinary(pf.content) {
-			if err := p.st.SetFingerprint(ctx, serviceID, pf.ref.Path, pf.hash); err != nil {
-				return stats, fmt.Errorf("fusion: set fingerprint %q: %w", pf.ref.Path, err)
-			}
-			continue
-		}
+	}
+	s.fps = s.fps[:0]
+	return nil
+}
 
-		// Size cap (ADR-021 §2 / TI-6): huge/minified files are never handed
-		// to an extractor. Still fingerprinted and counted, never silent.
-		if len(pf.content) > MaxExtractSize {
-			stats.oversize++
-			atomic.AddInt64(&p.oversizeTotal, 1)
-			if err := p.st.SetFingerprint(ctx, serviceID, pf.ref.Path, pf.hash); err != nil {
-				return stats, fmt.Errorf("fusion: set fingerprint %q: %w", pf.ref.Path, err)
-			}
-			continue
-		}
-
-		base := filepath.Base(pf.ref.Path)
-		ext := filepath.Ext(pf.ref.Path)
-
-		var extExtractor extractor.Extractor
-		var toolKind ToolKind
-		ok := false
-
-		switch {
-		case ext == ".yaml" || ext == ".yml":
-			switch {
-			case strings.Contains(filepath.ToSlash(pf.ref.Path), ".github/workflows/"):
-				// GHA dispatch was never the grounded defect — keep the
-				// existing YAMLExtractor wrapper unchanged.
-				extExtractor, ok = p.exts[ext]
-				toolKind = ToolGHA
-			default:
-				if e, hit := p.exts[base]; hit {
-					// Already unambiguous by basename (Chart.yaml,
-					// values.yaml, kustomization.*, compose.*,
-					// docker-compose.*) — no content sniff needed.
-					extExtractor, ok = e, true
-					toolKind = toolKindForBasename(base)
-				} else {
-					kind := Classify(pf.ref.Path, pf.content, idx)
-					toolKind = kind
-					if kind == ToolUnclassified {
-						stats.unclassified++
-						atomic.AddInt64(&p.unclassifiedTotal, 1)
-						if err := p.st.SetFingerprint(ctx, serviceID, pf.ref.Path, pf.hash); err != nil {
-							return stats, fmt.Errorf("fusion: set fingerprint %q: %w", pf.ref.Path, err)
-						}
-						continue
-					}
-					extExtractor, ok = p.toolExts[kind]
-				}
-			}
-		case ext == ".cue":
-			// Classify never changes which extractor runs for .cue files —
-			// only the ToolKind tag recorded on the resulting observations.
-			extExtractor, ok = p.exts[ext]
-			toolKind = Classify(pf.ref.Path, pf.content, idx)
-		default:
-			// Unchanged fast path: try full basename first (e.g. "go.mod"),
-			// then extension.
-			extExtractor, ok = p.exts[base]
-			if !ok {
-				extExtractor, ok = p.exts[ext]
-			}
-		}
-
-		if !ok {
-			// No extractor registered/resolved — write fingerprint only. When
-			// the extension names a known programming language fathom simply
-			// has no extractor for (O69), count it by name instead of letting
-			// it vanish indistinguishably among lockfiles, images, and other
-			// genuinely non-code paths — see Report.UnsupportedLanguages.
-			if lang, known := connector.UnsupportedLanguageForPath(pf.ref.Path); known {
-				if stats.unsupportedLang == nil {
-					stats.unsupportedLang = make(map[string]int)
-				}
-				stats.unsupportedLang[lang]++
-			}
-			if err := p.st.SetFingerprint(ctx, serviceID, pf.ref.Path, pf.hash); err != nil {
-				return stats, fmt.Errorf("fusion: set fingerprint %q: %w", pf.ref.Path, err)
-			}
-			continue
-		}
-
-		nodes, extractErr := extExtractor.Extract(serviceID, pf.ref.Path, pf.content)
-		if extractErr != nil {
-			// Non-fatal: record the fingerprint so we don't retry on next ingest,
-			// but don't abort the whole pipeline. A classified file erroring
-			// out is a zero-symbol outcome too — count it (critic F5).
-			if toolKind != "" && toolKind != ToolUnclassified {
-				p.noteClassifiedZero(&stats, toolKind)
-			}
-			// Tree-sitter engine faults (critic M1) are counted per ingest
-			// on Report.TSEngineFaults and get one stderr line each — never
-			// a silent skip. The extractor has already dropped its poisoned
-			// parser; the next file of the language rebuilds it.
-			if errors.Is(extractErr, extractor.ErrTSEngineFault) {
-				stats.tsFaults++
-				fmt.Fprintf(os.Stderr, "fathom: fusion: tree-sitter engine fault on %s/%s (file fingerprinted, parser re-created): %v\n",
-					serviceID, pf.ref.Path, extractErr)
-			}
-			_ = p.st.SetFingerprint(ctx, serviceID, pf.ref.Path, pf.hash)
-			continue
-		}
-
-		// Classified-but-zero visibility (critic F5): a file the classifier
-		// DID identify (e.g. a CI config whose top-level `services:` list
-		// matches the compose signal) whose extractor then emits nothing is
-		// the last surviving silent-zero path — count it per tool.
-		if len(nodes) == 0 && toolKind != "" && toolKind != ToolUnclassified {
-			p.noteClassifiedZero(&stats, toolKind)
-		}
-
-		// Cross-refs, cheap tier (ADR-021 §2 / TI-7): safe to call
-		// unconditionally — a no-op when idx has no Dockerfiles or nodes
-		// carries no image-bearing kind.
-		if len(nodes) > 0 {
-			nodes = append(nodes, crossRefImageToDockerfile(serviceID, pf.ref.Path, nodes, idx)...)
-		}
-
-		if len(nodes) > 0 {
-			generated := connector.IsGenerated(pf.ref.Path, pf.content)
-			obs := make([]core.Observation, 0, len(nodes))
-			now := time.Now().UTC()
-			for _, node := range nodes {
-				// Tool identity: an extractor's per-symbol verdict (set for
-				// multi-document formats where identity is per-document,
-				// e.g. a CRD beside a Deployment in one YAML stream —
-				// critic P15) overrides the classifier's per-file verdict.
-				nodeToolKind := string(toolKind)
-				if node.ToolKind != "" {
-					nodeToolKind = node.ToolKind
-				}
-				obs = append(obs, core.Observation{
-					ServiceID:    serviceID,
-					SourceRef:    pf.ref.Path,
-					SourceKind:   node.Kind,
-					EvidenceTier: node.Tier,
-					Symbol:       node.Name,
-					Package:      node.Package,
-					Claim:        node.Signature,
-					ContentHash:  pf.hash,
-					Calls:        node.Calls,
-					Complexity:   node.Complexity,
-					Line:         node.Line,
-					EndLine:      node.EndLine,
-					IngestedAt:   now,
-					ToolKind:     nodeToolKind,
-					Generated:    generated,
-				})
-			}
-			if err := p.st.PutObservations(ctx, obs); err != nil {
-				return stats, fmt.Errorf("fusion: put observations %q: %w", pf.ref.Path, err)
-			}
-			stats.symbols += len(nodes)
-
-			// Enrichment step: run only when enabled and an enricher is wired.
-			// Files reaching this point have already passed the hash-gate (they
-			// are new or changed), so no additional per-symbol hash check is
-			// required here — the file-level hash is the gate.
-			if p.cfg.Enrich && p.enricher != nil {
-				if err := p.runEnrichment(ctx, serviceID, pf.ref.Path, nodes); err != nil {
-					return stats, err
-				}
-			}
-		}
-
+// add extracts one file and buffers its writes.
+func (s *extractSink) add(ctx context.Context, pf pendingFile) error {
+	p, serviceID, idx, stats := s.p, s.serviceID, s.idx, &s.stats
+	// RT-178: extraction is an ingest-class producer — asked of the
+	// governor before each file, like the fetch that fed it.
+	if err := tenancy.ProducerAllowsCtx(ctx, tenancy.ClassIngest); err != nil {
+		return fmt.Errorf("fusion: extract %q halted before %s: %w", serviceID, pf.ref.Path, err)
+	}
+	if err := ctx.Err(); err != nil {
+		return fmt.Errorf("fusion: extract %q: %w", serviceID, err)
+	}
+	// Binary content never carries extractable symbols, regardless of
+	// whether its path happens to match a registered extension (ADR-021
+	// §1 / LT-2). Record the fingerprint so it isn't re-sniffed on every
+	// ingest, but never hand binary bytes to an extractor.
+	if connector.IsBinary(pf.content) {
 		if err := p.st.SetFingerprint(ctx, serviceID, pf.ref.Path, pf.hash); err != nil {
-			return stats, fmt.Errorf("fusion: set fingerprint %q: %w", pf.ref.Path, err)
+			return fmt.Errorf("fusion: set fingerprint %q: %w", pf.ref.Path, err)
+		}
+		return nil
+	}
+
+	// Size cap (ADR-021 §2 / TI-6): huge/minified files are never handed
+	// to an extractor. Still fingerprinted and counted, never silent.
+	if len(pf.content) > MaxExtractSize {
+		stats.oversize++
+		atomic.AddInt64(&p.oversizeTotal, 1)
+		if err := p.st.SetFingerprint(ctx, serviceID, pf.ref.Path, pf.hash); err != nil {
+			return fmt.Errorf("fusion: set fingerprint %q: %w", pf.ref.Path, err)
+		}
+		return nil
+	}
+
+	base := filepath.Base(pf.ref.Path)
+	ext := filepath.Ext(pf.ref.Path)
+
+	var extExtractor extractor.Extractor
+	var toolKind ToolKind
+	ok := false
+
+	switch {
+	case ext == ".yaml" || ext == ".yml":
+		switch {
+		case strings.Contains(filepath.ToSlash(pf.ref.Path), ".github/workflows/"):
+			// GHA dispatch was never the grounded defect — keep the
+			// existing YAMLExtractor wrapper unchanged.
+			extExtractor, ok = p.exts[ext]
+			toolKind = ToolGHA
+		default:
+			if e, hit := p.exts[base]; hit {
+				// Already unambiguous by basename (Chart.yaml,
+				// values.yaml, kustomization.*, compose.*,
+				// docker-compose.*) — no content sniff needed.
+				extExtractor, ok = e, true
+				toolKind = toolKindForBasename(base)
+			} else {
+				kind := Classify(pf.ref.Path, pf.content, idx)
+				toolKind = kind
+				if kind == ToolUnclassified {
+					stats.unclassified++
+					atomic.AddInt64(&p.unclassifiedTotal, 1)
+					if err := p.st.SetFingerprint(ctx, serviceID, pf.ref.Path, pf.hash); err != nil {
+						return fmt.Errorf("fusion: set fingerprint %q: %w", pf.ref.Path, err)
+					}
+					return nil
+				}
+				extExtractor, ok = p.toolExts[kind]
+			}
+		}
+	case ext == ".cue":
+		// Classify never changes which extractor runs for .cue files —
+		// only the ToolKind tag recorded on the resulting observations.
+		extExtractor, ok = p.exts[ext]
+		toolKind = Classify(pf.ref.Path, pf.content, idx)
+	default:
+		// Unchanged fast path: try full basename first (e.g. "go.mod"),
+		// then extension.
+		extExtractor, ok = p.exts[base]
+		if !ok {
+			extExtractor, ok = p.exts[ext]
 		}
 	}
 
-	return stats, nil
+	if !ok {
+		// No extractor registered/resolved — write fingerprint only. When
+		// the extension names a known programming language fathom simply
+		// has no extractor for (O69), count it by name instead of letting
+		// it vanish indistinguishably among lockfiles, images, and other
+		// genuinely non-code paths — see Report.UnsupportedLanguages.
+		if lang, known := connector.UnsupportedLanguageForPath(pf.ref.Path); known {
+			if stats.unsupportedLang == nil {
+				stats.unsupportedLang = make(map[string]int)
+			}
+			stats.unsupportedLang[lang]++
+		}
+		if err := p.st.SetFingerprint(ctx, serviceID, pf.ref.Path, pf.hash); err != nil {
+			return fmt.Errorf("fusion: set fingerprint %q: %w", pf.ref.Path, err)
+		}
+		return nil
+	}
+
+	nodes, extractErr := extExtractor.Extract(serviceID, pf.ref.Path, pf.content)
+	if extractErr != nil {
+		// Non-fatal: record the fingerprint so we don't retry on next ingest,
+		// but don't abort the whole pipeline. A classified file erroring
+		// out is a zero-symbol outcome too — count it (critic F5).
+		if toolKind != "" && toolKind != ToolUnclassified {
+			p.noteClassifiedZero(stats, toolKind)
+		}
+		// Tree-sitter engine faults (critic M1) are counted per ingest
+		// on Report.TSEngineFaults and get one stderr line each — never
+		// a silent skip. The extractor has already dropped its poisoned
+		// parser; the next file of the language rebuilds it.
+		if errors.Is(extractErr, extractor.ErrTSEngineFault) {
+			stats.tsFaults++
+			fmt.Fprintf(os.Stderr, "fathom: fusion: tree-sitter engine fault on %s/%s (file fingerprinted, parser re-created): %v\n",
+				serviceID, pf.ref.Path, extractErr)
+		}
+		_ = p.st.SetFingerprint(ctx, serviceID, pf.ref.Path, pf.hash)
+		return nil
+	}
+
+	// Classified-but-zero visibility (critic F5): a file the classifier
+	// DID identify (e.g. a CI config whose top-level `services:` list
+	// matches the compose signal) whose extractor then emits nothing is
+	// the last surviving silent-zero path — count it per tool.
+	if len(nodes) == 0 && toolKind != "" && toolKind != ToolUnclassified {
+		p.noteClassifiedZero(stats, toolKind)
+	}
+
+	// Cross-refs, cheap tier (ADR-021 §2 / TI-7): safe to call
+	// unconditionally — a no-op when idx has no Dockerfiles or nodes
+	// carries no image-bearing kind.
+	if len(nodes) > 0 {
+		nodes = append(nodes, crossRefImageToDockerfile(serviceID, pf.ref.Path, nodes, idx)...)
+	}
+
+	if len(nodes) > 0 {
+		generated := connector.IsGenerated(pf.ref.Path, pf.content)
+		obs := make([]core.Observation, 0, len(nodes))
+		now := time.Now().UTC()
+		for _, node := range nodes {
+			// Tool identity: an extractor's per-symbol verdict (set for
+			// multi-document formats where identity is per-document,
+			// e.g. a CRD beside a Deployment in one YAML stream —
+			// critic P15) overrides the classifier's per-file verdict.
+			nodeToolKind := string(toolKind)
+			if node.ToolKind != "" {
+				nodeToolKind = node.ToolKind
+			}
+			obs = append(obs, core.Observation{
+				ServiceID:    serviceID,
+				SourceRef:    pf.ref.Path,
+				SourceKind:   node.Kind,
+				EvidenceTier: node.Tier,
+				Symbol:       node.Name,
+				Package:      node.Package,
+				Claim:        node.Signature,
+				ContentHash:  pf.hash,
+				Calls:        node.Calls,
+				Complexity:   node.Complexity,
+				Line:         node.Line,
+				EndLine:      node.EndLine,
+				IngestedAt:   now,
+				ToolKind:     nodeToolKind,
+				Generated:    generated,
+			})
+		}
+		s.obs = append(s.obs, obs...)
+		stats.symbols += len(nodes)
+
+		// Enrichment step: run only when enabled and an enricher is wired.
+		// Files reaching this point have already passed the hash-gate (they
+		// are new or changed), so no additional per-symbol hash check is
+		// required here — the file-level hash is the gate.
+		if p.cfg.Enrich && p.enricher != nil {
+			if err := p.runEnrichment(ctx, serviceID, pf.ref.Path, nodes); err != nil {
+				return err
+			}
+		}
+	}
+
+	// The fingerprint follows the observations it vouches for.
+	s.fps = append(s.fps, pendingFingerprint{pf.ref.Path, pf.hash})
+	if len(s.obs) >= obsBatch {
+		return s.flush(ctx)
+	}
+	return nil
 }
 
 // runEnrichment generates and stores KnowledgeCards for non-doc symbols and

@@ -16,11 +16,13 @@ import (
 	"io"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/memo"
+	"github.com/geoffmilleraz/fathom/internal/refresh"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
@@ -132,6 +134,10 @@ type Server struct {
 	// convention as strictSurfaces; no separate mutex.
 	hostedModules bool
 
+	// refreshQ is the daemon's refresh queue (RT-97): when set, the ingest
+	// tool's ingests run on it. Nil (stdio, tests) runs them in the call.
+	refreshQ atomic.Pointer[refresh.Queue]
+
 	// Stats for server_stats meta-tool.
 	startTime  time.Time
 	reqCount   int64
@@ -204,6 +210,14 @@ func newServer(backend QueryInterface, fleet FleetBackend, logger *CallLogger, m
 		backend:    backend,
 		startTime:  time.Now(),
 		callLogger: logger,
+	}
+	// RT-97/I50: a backend that runs its re-ingests on a refresh queue
+	// (the auto-refresh wrapper) lends that queue to the ingest tool and
+	// the routes, whatever the surface — serve-mcp never calls
+	// SetRefreshQueue, and an ingest-tool call must never run beside the
+	// queue's worker. The daemon's SetRefreshQueue installs the same queue.
+	if qb, ok := backend.(interface{ RefreshQueue() *refresh.Queue }); ok && qb.RefreshQueue() != nil {
+		s.refreshQ.Store(qb.RefreshQueue())
 	}
 	registerBuiltins(s)
 	registerTools(s, backend, fleet, modules)
@@ -422,3 +436,11 @@ func (s *Server) activeProfile() string {
 	defer s.profileMu.RUnlock()
 	return s.profile
 }
+
+// SetRefreshQueue routes the ingest tool's ingests through q (RT-97, design
+// §7.1) — the same queue auto-refresh, POST /refresh-request and
+// /refresh-file use.
+func (s *Server) SetRefreshQueue(q *refresh.Queue) { s.refreshQ.Store(q) }
+
+// RefreshQueue is the queue SetRefreshQueue installed, or nil.
+func (s *Server) RefreshQueue() *refresh.Queue { return s.refreshQ.Load() }

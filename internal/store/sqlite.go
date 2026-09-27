@@ -423,6 +423,12 @@ CREATE INDEX IF NOT EXISTS idx_observations_service_id
 		return err
 	}
 
+	// file_imports (RT-108) — same additive-table convention
+	// (fileimports.go).
+	if err := s.createFileImportsSchema(); err != nil {
+		return err
+	}
+
 	// Conditional migrations for SQLite stores created before a column
 	// existed. The "no ALTER cruft" stance above holds for the fleet store
 	// (freshly migrated), but scratch/workspace SQLite stores created by
@@ -777,6 +783,7 @@ func (s *SQLiteStore) PurgeService(ctx context.Context, serviceID string) error 
 		`DELETE FROM service_routes WHERE service_id = ?`,
 		`DELETE FROM service_http_calls WHERE service_id = ?`,
 		`DELETE FROM service_refs_state WHERE service_id = ?`,
+		`DELETE FROM file_imports WHERE service_id = ?`,
 	} {
 		if _, err := s.db.ExecContext(ctx, q, serviceID); err != nil {
 			return fmt.Errorf("PurgeService: %w", err)
@@ -810,6 +817,7 @@ var serviceIDTables = []string{
 	"service_routes",
 	"service_http_calls",
 	"service_refs_state",
+	"file_imports",
 }
 
 // RemoveService deletes every row for serviceID in one transaction — see the

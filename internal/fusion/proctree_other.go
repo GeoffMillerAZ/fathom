@@ -15,3 +15,7 @@ func commandTree(ctx context.Context, name string, args ...string) *exec.Cmd {
 	cmd.WaitDelay = 2 * time.Second
 	return cmd
 }
+
+// processAlive is conservative where it cannot probe: every pid is live,
+// so nothing is scavenged.
+func processAlive(int) bool { return true }

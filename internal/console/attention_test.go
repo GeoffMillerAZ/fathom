@@ -29,7 +29,7 @@ func attentionFixture() Projects {
 			},
 			{
 				Service: "stale", Path: "/src/stale", Freshness: "stale: indexed aaaaaaaaaaaa vs HEAD bbbbbbbbbbbb",
-				IndexedCommit: "aaaaaaaaaaaa", RepoHead: "bbbbbbbbbbbb", RefreshRemedy: "fathom post-commit-hook --dir /src/stale --service stale --timeout 2m",
+				IndexedCommit: "aaaaaaaaaaaa", RepoHead: "bbbbbbbbbbbb", RefreshRemedy: "fathom post-commit-hook --dir /src/stale --service stale --wait --timeout 2m",
 			},
 			{
 				Service: "remote", Freshness: "unknown: no recorded corpus path",
@@ -86,7 +86,7 @@ func TestAttentionQueue_OrdersByProofBlockingFirst(t *testing.T) {
 	}
 	// A stale index outranks one whose freshness nobody can determine, and
 	// the unknown one is listed — unknown is never read as fresh.
-	if a.Items[2].Service != "stale" || a.Items[2].Remedy != "fathom post-commit-hook --dir /src/stale --service stale --timeout 2m" || a.Items[3].Service != "remote" || !strings.Contains(a.Items[3].Title, "cannot be determined") {
+	if a.Items[2].Service != "stale" || a.Items[2].Remedy != "fathom post-commit-hook --dir /src/stale --service stale --wait --timeout 2m" || a.Items[3].Service != "remote" || !strings.Contains(a.Items[3].Title, "cannot be determined") {
 		t.Errorf("index items = %+v / %+v", a.Items[2], a.Items[3])
 	}
 	if c := a.Items[4]; c.Count != 45 || c.Area != "Proof" || c.Evidence.Href != "/certifications?svc=guides" || c.Remedy != "fathom certify gaps --service guides" {

@@ -287,9 +287,10 @@ func unrealizedScore(s obsServiceRow) int {
 
 // daemonRefreshRemedy is the command that re-indexes a registered service
 // through the daemon that owns the store (the post-commit hook's own path,
-// HF-2): never a shell `fathom ingest`, whose default store is
+// HF-2), waiting for the ingest (--wait: the ingest tool on the refresh
+// queue) — a bare post-commit-hook only queues one (RT-111): never a shell `fathom ingest`, whose default store is
 // <repo>/workspace/db/fathom.sqlite — one the daemon never reads — and which
 // against the shared store is the write INC-3 forbids.
 func daemonRefreshRemedy(root, service string) string {
-	return "fathom post-commit-hook --dir " + orDash(root) + " --service " + service + " --timeout 2m"
+	return "fathom post-commit-hook --dir " + orDash(root) + " --service " + service + " --wait --timeout 2m"
 }

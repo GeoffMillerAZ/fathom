@@ -8,7 +8,7 @@ no hosted anything — the reserved slot gets its first real consumer.
 
 ## The findings layer
 
-- [x] A findings #Layer instance lands in the manifest (corpus: findings/**; kind finding; tier sme-stated) and compiles through the same engine — layer selection reaches the compiler so a non-obligations layer uses its own prompt and kind {id: FT-1, symbol: LoadLayer, package: internal/semantic, reachable_from: TestCompile_RefusesToStartWhenEstimatedCostExceedsBudget}
+- [x] A findings #Layer instance lands in the manifest (corpus: findings/**; kind finding; tier sme-stated) and compiles through the same engine — layer selection reaches the compiler so a non-obligations layer uses its own prompt and kind {id: FT-1, symbol: LoadLayer, package: internal/semantic, reachable_from: TestLoadLayer_Findings}
 - [x] Kind-aware serving: rules payloads carry kind, and finding-kind claims served for a file are labeled as findings, not obligations {id: FT-2, symbol: ObligationsFor, package: internal/semantic, reachable_from: TestAdoptionServiceScoped}
 
 ## Triage (the dead machinery lives)

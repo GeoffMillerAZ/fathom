@@ -43,6 +43,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/hookcache"
 	"github.com/geoffmilleraz/fathom/internal/memo"
 	"github.com/geoffmilleraz/fathom/internal/projectrules"
+	"github.com/geoffmilleraz/fathom/internal/refresh"
 	"github.com/geoffmilleraz/fathom/internal/sdd"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
@@ -1156,27 +1157,42 @@ func registerIngest(s *Server, backend QueryInterface) {
 			}
 		}
 
-		// RT-160: the ingest runs under tenancy's one ingest slot, as the
-		// inline ingest does, so a derived-table backfill (serving
-		// start-up, list_services' first read) never runs beside it and
-		// writes a summary with a mixed count. A caller whose request ends
-		// while another ingest or backfill holds the slot leaves, named.
-		releaseSlot, slotErr := tenancy.AcquireIngestSlot(ctx)
-		if slotErr != nil {
-			return nil, &rpcError{Code: ErrCodeBusy, Message: "ingest: " + svc + " not ingested — the wait for the one ingest slot (held by another ingest or a derived-table backfill) ended: " + slotErr.Error()}
-		}
 		var ingestErr error
+		var queued *refresh.Status
 		if p.Path != "" {
-			ia, ok := backend.(ingestAtBackend)
-			if !ok {
-				releaseSlot()
+			if _, ok := backend.(ingestAtBackend); !ok {
 				return nil, &rpcError{Code: ErrCodeInvalid, Message: "ingest: this backend does not support onboarding by path"}
 			}
-			ingestErr = ia.IngestServiceAt(ctx, svc, p.Path)
-		} else {
-			ingestErr = backend.IngestService(ctx, svc)
 		}
-		releaseSlot()
+		if q := s.RefreshQueue(); q != nil {
+			// RT-97/RT-98 (design §7.1): the daemon's ingests share one
+			// queue — one per service, one heavy slot. This call waits
+			// for the run that serves it (the one follow-up, when the
+			// service's ingest was already running); the job runs under
+			// the queue's context, so a disconnect never cancels it. The
+			// queue's job holds tenancy's ingest slot (RT-160).
+			st := q.RequestRefresh(ctx, refresh.Request{Service: svc, Path: p.Path, Reason: refresh.ReasonIngestTool}, true)
+			if st.State == refresh.StateRefused {
+				return nil, &rpcError{Code: ErrCodeInvalid, Message: "ingest: " + st.Refused}
+			}
+			ingestErr = st.Err
+			queued = &st
+		} else {
+			// RT-160: without a queue the ingest runs here, under
+			// tenancy's one ingest slot, so a derived-table backfill never
+			// runs beside it. A caller whose request ends while another
+			// ingest or backfill holds the slot leaves, named.
+			releaseSlot, slotErr := tenancy.AcquireIngestSlot(ctx)
+			if slotErr != nil {
+				return nil, &rpcError{Code: ErrCodeBusy, Message: "ingest: " + svc + " not ingested — the wait for the one ingest slot (held by another ingest or a derived-table backfill) ended: " + slotErr.Error()}
+			}
+			if p.Path != "" {
+				ingestErr = backend.(ingestAtBackend).IngestServiceAt(ctx, svc, p.Path)
+			} else {
+				ingestErr = backend.IngestService(ctx, svc)
+			}
+			releaseSlot()
+		}
 		// RT-41 (§2.1): an ingest that failed writing the store with
 		// SQLITE_FULL or SQLITE_IOERR is store distress — the next ingest
 		// and refresh are refused, named, instead of admitted to fail.
@@ -1209,6 +1225,11 @@ func registerIngest(s *Server, backend QueryInterface) {
 		}
 
 		result := map[string]any{"service": svc, "ok": true}
+		if queued != nil && queued.Coalesced {
+			// The ingest this call waited for was shared with other
+			// requests for the service (RT-98) — said, never hidden.
+			result["coalesced"] = true
+		}
 		if quarantineCleared {
 			result["quarantine_cleared"] = true
 		}

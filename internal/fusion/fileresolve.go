@@ -40,6 +40,7 @@ package fusion
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -47,8 +48,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
@@ -61,10 +64,20 @@ type FileResolveReport struct {
 	// EdgesResolved is the number of core.EdgeFileResolved edges emitted.
 	EdgesResolved int
 	// Skipped is true when the resolver did not run at all — a SCIP index
-	// is present (SU-9 is authoritative) or lang has no registered
-	// tree-sitter extractor. SkipReason names why; never a silent empty.
+	// is present (SU-9 is authoritative), lang has no registered
+	// tree-sitter extractor, or (RT-108) no TS/JS/Python file changed since
+	// its last successful pass. SkipReason names why; never a silent empty.
 	Skipped    bool
 	SkipReason string
+	// RT-108 (design §7.2): Reused counts files whose imports came from
+	// file_imports (unchanged fingerprint: not read, not parsed); Faults
+	// counts files whose import parse faulted (this run or recorded for
+	// the same bytes), FaultFiles names up to five; Gated counts files the
+	// size and binary gates kept out of the parse.
+	Reused     int
+	Faults     int
+	FaultFiles []string
+	Gated      int
 }
 
 // hasScipIndex reports whether repoPath already carries a SCIP index this
@@ -107,25 +120,56 @@ func hasScipIndex(repoPath string) bool {
 // ctx is accepted for signature parity with the other Enrich* passes and
 // future cancellation; nothing here currently blocks on it.
 func ResolveFileEdges(ctx context.Context, lang, repoPath string, files []core.SourceFile, symbols []core.SymbolNode) ([]core.Edge, FileResolveReport) {
-	_ = ctx
-	var report FileResolveReport
-
 	if hasScipIndex(repoPath) {
-		report.Skipped = true
-		report.SkipReason = "a SCIP index is present for this repo; the typed importer (SU-9) is authoritative"
-		return nil, report
+		return nil, FileResolveReport{Skipped: true, SkipReason: "a SCIP index is present for this repo; the typed importer (SU-9) is authoritative"}
 	}
-
 	ext, err := extractor.NewTSExtractor(lang)
 	if err != nil {
-		report.Skipped = true
-		report.SkipReason = err.Error()
-		return nil, report
+		return nil, FileResolveReport{Skipped: true, SkipReason: err.Error()}
 	}
+	defer ext.Close() // RT-107: its grammar modules are released, never leaked
+	return resolveFileEdgesWith(ctx, ext, lang, repoPath, files, symbols)
+}
 
-	fileSet := make(map[string]bool, len(files))
+// resolveFileEdgesWith is ResolveFileEdges over an extractor the caller
+// owns — the pipeline passes its own (RT-107), so an ingest instantiates no
+// new grammar module for the pass.
+func resolveFileEdgesWith(ctx context.Context, ext *extractor.TSExtractor, lang, repoPath string, files []core.SourceFile, symbols []core.SymbolNode) ([]core.Edge, FileResolveReport) {
+	_ = ctx
+	paths := make([]string, 0, len(files))
+	specs := make(map[string][]extractor.ImportSpec, len(files))
+	var faults []string
 	for _, f := range files {
-		fileSet[f.Path] = true
+		paths = append(paths, f.Path)
+		sp, ierr := ext.ExtractImports(f.Path, f.Content)
+		if ierr != nil {
+			faults = append(faults, f.Path) // counted and named, never a silent skip
+			continue
+		}
+		specs[f.Path] = sp
+	}
+	edges, report := resolveImports(lang, paths, specs, symbols)
+	report.Faults = len(faults)
+	report.FaultFiles = firstN(faults, 5)
+	return edges, report
+}
+
+func firstN(xs []string, n int) []string {
+	if len(xs) > n {
+		return append([]string(nil), xs[:n]...)
+	}
+	return xs
+}
+
+// resolveImports resolves every file's call sites through its parsed import
+// specifiers. paths is the resolution universe, in order; a file absent from
+// specs (a parse fault, or a gated file — counted by the caller) resolves
+// nothing and is not counted as scanned.
+func resolveImports(lang string, paths []string, specs map[string][]extractor.ImportSpec, symbols []core.SymbolNode) ([]core.Edge, FileResolveReport) {
+	var report FileResolveReport
+	fileSet := make(map[string]bool, len(paths))
+	for _, p := range paths {
+		fileSet[p] = true
 	}
 
 	// topLevel[file][name] = that symbol's full SymbolKey — the only
@@ -133,7 +177,7 @@ func ResolveFileEdges(ctx context.Context, lang, repoPath string, files []core.S
 	// unqualified Name (no "."): TSExtractor's qualifyTSDefs only dots a
 	// callable's name when its immediate parent is a container, so a
 	// module-scope function/class/variable always has a bare Name.
-	topLevel := make(map[string]map[string]string, len(files))
+	topLevel := make(map[string]map[string]string, len(paths))
 	for _, s := range symbols {
 		if strings.Contains(s.Name, ".") {
 			continue
@@ -147,23 +191,23 @@ func ResolveFileEdges(ctx context.Context, lang, repoPath string, files []core.S
 	}
 
 	var edges []core.Edge
-	for _, f := range files {
-		specs, ierr := ext.ExtractImports(f.Path, f.Content)
-		if ierr != nil {
-			continue // best-effort, matching the Go/CUE typed passes' per-file honesty
+	for _, path := range paths {
+		fileSpecs, parsed := specs[path]
+		if !parsed {
+			continue // a fault or a gated file: counted by the caller
 		}
 		report.FilesScanned++
-		report.ImportsParsed += len(specs)
+		report.ImportsParsed += len(fileSpecs)
 
 		named := map[string]string{} // LocalName -> resolved target SymbolKey
 		whole := map[string]string{} // LocalName -> resolved target FILE path
-		for _, spec := range specs {
+		for _, spec := range fileSpecs {
 			if spec.LocalName == "" {
 				continue // side-effect-only import: no bound name to attribute a call to
 			}
 			switch spec.Kind {
 			case extractor.ImportNamed:
-				target, ok := resolveModule(lang, f.Path, spec.Module, fileSet)
+				target, ok := resolveModule(lang, path, spec.Module, fileSet)
 				if ok {
 					if key, ok2 := topLevel[target][spec.ExportedName]; ok2 {
 						named[spec.LocalName] = key
@@ -174,34 +218,34 @@ func ResolveFileEdges(ctx context.Context, lang, repoPath string, files []core.S
 				// (X/Y.py or X/Y/__init__.py), not a symbol X defines —
 				// retry as a whole-module binding one level deeper.
 				if lang == "python" {
-					if t2, ok2 := resolveModule(lang, f.Path, spec.Module+"."+spec.ExportedName, fileSet); ok2 {
+					if t2, ok2 := resolveModule(lang, path, spec.Module+"."+spec.ExportedName, fileSet); ok2 {
 						whole[spec.LocalName] = t2
 					}
 				}
 			case extractor.ImportWhole:
-				if target, ok := resolveModule(lang, f.Path, spec.Module, fileSet); ok {
+				if target, ok := resolveModule(lang, path, spec.Module, fileSet); ok {
 					whole[spec.LocalName] = target
 				}
 			}
 		}
-		if len(named) == 0 && len(whole) == 0 && len(topLevel[f.Path]) == 0 {
+		if len(named) == 0 && len(whole) == 0 && len(topLevel[path]) == 0 {
 			continue
 		}
 
 		for _, s := range symbols {
-			if s.FilePath != f.Path || len(s.Calls) == 0 {
+			if s.FilePath != path || len(s.Calls) == 0 {
 				continue
 			}
 			fromKey := s.Key()
 			seen := map[string]bool{}
 			for _, call := range s.Calls {
-				toKey, ok := matchFileResolvedCall(call, named, whole, topLevel, topLevel[f.Path])
+				toKey, ok := matchFileResolvedCall(call, named, whole, topLevel, topLevel[path])
 				if !ok || toKey == fromKey || seen[toKey] {
 					continue
 				}
 				seen[toKey] = true
 				edges = append(edges, core.Edge{
-					FromFile: f.Path, FromSymbol: fromKey, ToSymbol: toKey,
+					FromFile: path, FromSymbol: fromKey, ToSymbol: toKey,
 					Kind: core.EdgeFileResolved,
 				})
 			}
@@ -347,7 +391,7 @@ func resolveTSModule(importerPath, spec string, fileSet map[string]bool) (string
 // cancelled ctx is not a read failure — the pass stops before its store
 // write and returns the error, so a halt is a named failure and never a
 // wholesale replacement of the language's edges by a shorter set.
-func (p *Pipeline) enrichFileResolvedEdges(ctx context.Context, svc core.ServiceRef, refs []core.SourceRef) (FileResolveReport, error) {
+func (p *Pipeline) enrichFileResolvedEdges(ctx context.Context, svc core.ServiceRef, refs []core.SourceRef, changed []string) (FileResolveReport, error) {
 	var total FileResolveReport
 	if p.cfg.DisableTypedEdges {
 		return total, nil
@@ -367,43 +411,165 @@ func (p *Pipeline) enrichFileResolvedEdges(ctx context.Context, svc core.Service
 	if len(langFiles) == 0 {
 		return total, nil
 	}
+	// RT-108: the resolution depends only on the TS/JS/Python files — when
+	// none changed (new, changed, deleted) since the last successful pass,
+	// the stored edges are the answer.
+	if !passNeeded(changed, p.passStateOK(ctx, svc.ID, fileResolveStateKey), func(path string) bool { return fileResolveLangFor(path) != "" }) {
+		total.Skipped = true
+		total.SkipReason = SkippedPassReason
+		return total, nil
+	}
+	p.beginPassState(ctx, svc.ID, fileResolveStateKey)
 
 	for _, lang := range []string{"javascript", "python"} { // deterministic order
 		lrefs, ok := langFiles[lang]
 		if !ok {
 			continue
 		}
-		ext, err := extractor.NewTSExtractor(lang)
+		// RT-107: the pipeline's own extractor for the language — never a
+		// fresh one per ingest (two per language per ingest, never closed,
+		// was the audit's wazero-module-leak-per-ingest hazard).
+		ext, done, err := p.fileResolveExtractor(lang)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "fusion: file-resolved edge pass %q (%s): %v\n", svc.ID, lang, err)
 			continue
 		}
-		files := make([]core.SourceFile, 0, len(lrefs))
-		var symbols []core.SymbolNode
-		for _, r := range lrefs {
-			content, ferr := p.conn.Fetch(ctx, r)
-			if ferr != nil {
-				if haltErr := haltError(ctx, ferr); haltErr != nil {
-					return total, haltErr
-				}
-				continue
+		edges, rep, err := p.resolveLang(ctx, svc, lang, ext, lrefs)
+		done()
+		if err != nil {
+			return total, err
+		}
+		total.FilesScanned += rep.FilesScanned
+		total.ImportsParsed += rep.ImportsParsed
+		total.EdgesResolved += len(edges)
+		total.Reused += rep.Reused
+		total.Gated += rep.Gated
+		total.Faults += rep.Faults
+		total.FaultFiles = firstN(append(total.FaultFiles, rep.FaultFiles...), 5)
+		if putErr := p.st.PutTypedEdges(ctx, svc.ID, fileResolvedPackageKey(lang), edges); putErr != nil {
+			return total, fmt.Errorf("file-resolved edges (%s): store: %w", lang, putErr)
+		}
+	}
+	if total.Faults > 0 {
+		p.diagWarn("fusion: file-resolved edge pass %q: %d file(s) whose imports could not be parsed (%s) — their calls resolve no import edges\n", svc.ID, total.Faults, strings.Join(total.FaultFiles, ", "))
+	}
+	p.commitPassState(ctx, svc.ID, fileResolveStateKey)
+	return total, nil
+}
+
+// extractImports parses one file's imports (a var so a test can fault it).
+var extractImports = func(ext *extractor.TSExtractor, path string, src []byte) ([]extractor.ImportSpec, error) {
+	return ext.ExtractImports(path, src)
+}
+
+// fileResolveStateKey is the file resolver's pass-state row (typedgate.go).
+const fileResolveStateKey = typedPassStatePrefix + "file-resolved"
+
+// resolveLang resolves one language's files (RT-108, design §7.2): the
+// symbols come from the rows this ingest already stored (no re-extraction);
+// each file's imports come from file_imports when its fingerprint is
+// unchanged (not read, not parsed) and are otherwise read — under the 2 MiB
+// cap, the binary sniff and the size gate — parsed once and recorded. A
+// parse fault is recorded against the bytes, so it is not retried until
+// they change, and is counted and named on every run.
+func (p *Pipeline) resolveLang(ctx context.Context, svc core.ServiceRef, lang string, ext *extractor.TSExtractor, lrefs []core.SourceRef) ([]core.Edge, FileResolveReport, error) {
+	var rep FileResolveReport
+	fis, _ := p.st.(store.FileImportsStore)
+	paths := make([]string, 0, len(lrefs))
+	for _, r := range lrefs {
+		paths = append(paths, r.Path)
+	}
+	var symbols []core.SymbolNode
+	if fis != nil {
+		obs, err := fis.SourceObservations(ctx, svc.ID, paths)
+		if err != nil {
+			if h := haltError(ctx, err); h != nil {
+				return nil, rep, h
 			}
-			files = append(files, core.SourceFile{Path: r.Path, Content: content, Lang: lang})
+			return nil, rep, fmt.Errorf("file-resolved edges (%s): symbols: %w", lang, err)
+		}
+		symbols = make([]core.SymbolNode, 0, len(obs))
+		for _, o := range obs {
+			symbols = append(symbols, o.ToSymbolNode())
+		}
+	}
+	specs := make(map[string][]extractor.ImportSpec, len(lrefs))
+	var faults []string
+	for _, r := range lrefs {
+		if err := tenancy.ProducerAllowsCtx(ctx, tenancy.ClassIngest); err != nil {
+			return nil, rep, err
+		}
+		fp, fpFound, _ := p.st.Fingerprint(ctx, svc.ID, r.Path)
+		if fis != nil && fpFound {
+			if row, ok, _ := fis.GetFileImports(ctx, svc.ID, r.Path); ok && row.ContentHash == fp {
+				if row.Fault != "" {
+					faults = append(faults, r.Path)
+					continue
+				}
+				var sp []extractor.ImportSpec
+				if json.Unmarshal([]byte(row.ImportsJSON), &sp) == nil {
+					specs[r.Path] = sp
+					rep.Reused++
+					continue
+				}
+			}
+		}
+		content, ferr := p.conn.Fetch(ctx, r)
+		if ferr != nil {
+			if h := haltError(ctx, ferr); h != nil {
+				return nil, rep, h
+			}
+			rep.Gated++ // over the read cap, or unreadable this run
+			continue
+		}
+		if len(content) > MaxExtractSize || connector.IsBinary(content) {
+			rep.Gated++
+			continue
+		}
+		hash := FingerprintHash(content)
+		if fis == nil {
 			nodes, eerr := ext.Extract(svc.ID, r.Path, content)
 			if eerr == nil {
 				symbols = append(symbols, nodes...)
 			}
 		}
-
-		edges, rep := ResolveFileEdges(ctx, lang, svc.Path, files, symbols)
-		total.FilesScanned += rep.FilesScanned
-		total.ImportsParsed += rep.ImportsParsed
-		total.EdgesResolved += len(edges)
-		if putErr := p.st.PutTypedEdges(ctx, svc.ID, fileResolvedPackageKey(lang), edges); putErr != nil {
-			fmt.Fprintf(os.Stderr, "fusion: file-resolved edge pass %q (%s): store: %v\n", svc.ID, lang, putErr)
+		sp, ierr := extractImports(ext, r.Path, content)
+		if ierr != nil {
+			faults = append(faults, r.Path)
+			if fis != nil {
+				_ = fis.SetFileImports(ctx, store.FileImports{ServiceID: svc.ID, Path: r.Path, ContentHash: hash, Fault: ierr.Error()})
+			}
+			continue
+		}
+		specs[r.Path] = sp
+		if fis != nil {
+			if b, err := json.Marshal(sp); err == nil {
+				_ = fis.SetFileImports(ctx, store.FileImports{ServiceID: svc.ID, Path: r.Path, ContentHash: hash, ImportsJSON: string(b)})
+			}
 		}
 	}
-	return total, nil
+	edges, res := resolveImports(lang, paths, specs, symbols)
+	res.Reused, res.Gated = rep.Reused, rep.Gated
+	res.Faults, res.FaultFiles = len(faults), firstN(faults, 5)
+	return edges, res, nil
+}
+
+// fileResolveExtractorKey is the p.exts key whose extractor the file
+// resolver shares for each language.
+var fileResolveExtractorKey = map[string]string{"javascript": ".js", "python": ".py"}
+
+// fileResolveExtractor returns the pipeline's tree-sitter extractor for
+// lang and a no-op release; when a test replaced it with another kind, a
+// fresh one released by the returned func.
+func (p *Pipeline) fileResolveExtractor(lang string) (*extractor.TSExtractor, func(), error) {
+	if e, ok := p.exts[fileResolveExtractorKey[lang]].(*extractor.TSExtractor); ok {
+		return e, func() {}, nil
+	}
+	e, err := extractor.NewTSExtractor(lang)
+	if err != nil {
+		return nil, func() {}, err
+	}
+	return e, e.Close, nil
 }
 
 // haltError is err when it (or ctx) says the ingest must stop — the
@@ -439,7 +605,10 @@ func fileResolveLangFor(relPath string) string {
 // pipeline hook replaces wholesale each run for one language — namespaced
 // so it can never collide with a Go pkg.ID or a CUE "cue:"-prefixed key
 // sharing the same service.
-func fileResolvedPackageKey(lang string) string { return "file-resolved:" + lang }
+// fileResolvedKeyPrefix namespaces the file resolver's typed-edge rows.
+const fileResolvedKeyPrefix = "file-resolved:"
+
+func fileResolvedPackageKey(lang string) string { return fileResolvedKeyPrefix + lang }
 
 // resolvePyModule handles Python's dotted-path resolution: an absolute
 // `pkg.mod` resolves from repoPath's own root (importerPath's root, since

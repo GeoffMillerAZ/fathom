@@ -75,7 +75,7 @@ daemon-side `ingest` handler now refuses ANY `path` that differs from a
 service's recorded root unless `remap:true` is also passed (the deliberate-
 move escape hatch, parallel to the store-direct `fathom remap` verb), and the
 lefthook `fathom-refresh` post-commit step (`post-commit-hook` verb) checks
-the registered root via `list_services` BEFORE calling `ingest` and skips
+the registered root via `list_services` BEFORE queueing a refresh and skips
 with a plain message on a mismatch — never stumbling into that refusal and
 reporting a confusing "daemon refresh failed" line for what is really "this
 hook is running inside the wrong checkout".
@@ -265,14 +265,17 @@ resolves it FRESH against the live index and marks what no longer holds.
 
 ## Staleness — two kinds
 
-- **Data staleness** is handled automatically: `serve-http` re-ingests a
-  service on git-HEAD drift before answering (`--auto-refresh`, default on),
-  and you can force it via the `ingest` MCP tool. The inline re-ingest runs
-  detached from its requester, inline auto-refresh ingests run one at a time
-  (the `ingest` tool does not share that ticket yet), other reads of the
-  service meanwhile answer from the index as it stands, and one that fails
-  before recording the new commit is retried after a backoff (30 s doubling
-  to 30 min). When the daemon is down, the post-commit hook
+- **Data staleness** is handled automatically: `serve-http` queues a
+  re-ingest of a service on git-HEAD drift (`--auto-refresh`, default on;
+  HEAD read from the ref files, no `git` fork), and you can force one via the
+  `ingest` MCP tool. Reads never wait for it: they answer from the index as
+  it stands with `refresh: queued (index_stale) …` in the envelope. The
+  daemon's one refresh queue runs every whole-service ingest — auto-refresh,
+  the `ingest` tool, the post-commit hook's `POST /refresh-request` — one per
+  service and one at a time, under the daemon's lifetime (RT-97..RT-100);
+  one that fails before recording the new commit is retried after a backoff
+  (30 s doubling to 30 min). The post-commit hook only queues a refresh
+  (`202`, coalesced) and returns; when the daemon is down or refuses, it
   ingests nothing and says so; re-run `fathom post-commit-hook --dir <repo>`
   (or the `ingest` MCP tool) once it is back.
 - **Binary staleness** is the one to watch — the daemon runs an **installed

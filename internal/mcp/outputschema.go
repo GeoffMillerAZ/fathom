@@ -103,6 +103,10 @@ type ingestResult struct {
 	// typed-edge outcome for the service; a failed pass also flips OK to
 	// false. Absent for a non-Go tree or a backend that cannot report it.
 	TypedEdges any `json:"typed_edges,omitempty"`
+	// Coalesced (RT-98): the ingest this call waited for was shared with
+	// other requests for the service (a queued job, or the one follow-up
+	// of a running one).
+	Coalesced bool `json:"coalesced,omitempty"`
 }
 
 type listServicesResult struct {
@@ -283,6 +287,9 @@ type stalenessReportResult struct {
 	TypedEdges any `json:"typed_edges,omitempty"`
 	// Elision (RC-19): present only when fitToolBudget cut "sources".
 	Elision string `json:"elision,omitempty"`
+	// Refresh (RT-99): "queued" or "refreshing" while the daemon's refresh
+	// queue holds a re-ingest of the service; absent when idle.
+	Refresh string `json:"refresh,omitempty"`
 }
 
 type symbolContextResult struct {

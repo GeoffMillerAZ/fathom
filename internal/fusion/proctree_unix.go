@@ -26,3 +26,13 @@ func commandTree(ctx context.Context, name string, args ...string) *exec.Cmd {
 	cmd.WaitDelay = 2 * time.Second
 	return cmd
 }
+
+// processAlive reports whether pid names a running process (EPERM: it
+// runs, as another user).
+func processAlive(pid int) bool {
+	if pid <= 0 {
+		return false
+	}
+	err := syscall.Kill(pid, 0)
+	return err == nil || err == syscall.EPERM
+}

@@ -12,6 +12,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/hookcache"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/testevidence"
@@ -51,6 +52,7 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	mode := fs.String("mode", "local", "connector mode: local or faux")
 	jsonOut := fs.Bool("json", false, "emit the run as JSON (counts, read_failures with errno, outcome ok|degraded|refused) — docs/usage.md §ingest")
 	dryRun := fs.Bool("dry-run", false, "discover and stat only: report files, bytes, oversize files and pruned directories without reading a file or opening the store (RT-70)")
+	rehash := fs.Bool("rehash", false, "read and hash every file, ignoring the stat gate (RT-102)")
 	statsFlag := fs.Bool("stats", false, "with --dry-run: print the discovery statistics (the default output of --dry-run)")
 	respectGitignore := fs.Bool("respect-gitignore", false, "with --dry-run: discover a git work tree through `git ls-files` as [connector] respect_gitignore would (RT-68) — run with and without to measure the delta (RT-M11)")
 	var scipPaths stringList
@@ -109,6 +111,14 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 		svcPath = *service
 	}
 
+	c.SetRehash(*rehash)
+	// RT-106: the typed pass's toolchain children run capped and niced in
+	// a CLI ingest too, not only inside serve-http.
+	if undo, terr := fusion.InstallProcessToolchain(""); terr != nil {
+		fmt.Fprintf(stderr, "warn: toolchain children run at normal priority: %v\n", terr)
+	} else {
+		defer undo()
+	}
 	report, err := c.Ingest(context.Background(), client.ServiceRef{
 		ID:   *service,
 		Path: svcPath,
@@ -189,6 +199,12 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	fmt.Fprintf(stdout, "discovered: %d\n", report.Discovered)
 	fmt.Fprintf(stdout, "extracted:  %d\n", report.Extracted)
 	fmt.Fprintf(stdout, "skipped:    %d\n", report.Skipped)
+	if report.StatSkipped > 0 {
+		fmt.Fprintf(stdout, "stat-skipped: %d (not read: size, mtime and inode unchanged)\n", report.StatSkipped)
+	}
+	if report.PeakInflightBytes > 0 {
+		fmt.Fprintf(stdout, "peak-inflight: %d bytes of file content held at once\n", report.PeakInflightBytes)
+	}
 	fmt.Fprintf(stdout, "symbols:    %d\n", report.Symbols)
 	// The failed column (IT-14): every file the connector could not read,
 	// with its errno text — a wedged reader must never print a clean
@@ -249,6 +265,13 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintf(stderr, "warning: typed-edge pass failed: %s — test_impact/verify test_reaches read a syntax-only graph for this service until it is fixed\n", report.TypedFailReason)
 		}
 	}
+	// RT-104/RT-105: a gated-off pass is named, never silent.
+	if report.TypedSkipped != "" {
+		fmt.Fprintf(stdout, "typed-edges: skipped — %s (stored typed edges kept)\n", report.TypedSkipped)
+	}
+	if report.CUESkipped != "" {
+		fmt.Fprintf(stdout, "cue-typed-edges: skipped — %s (stored CUE edges kept)\n", report.CUESkipped)
+	}
 	// SCIP-imported typed edges (ADR-041 decision 5, SU-9): one line per
 	// index, naming the producer so a reader can tell a native Go pass
 	// (the block above) from an imported one at a glance.
@@ -275,7 +298,16 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	// when it produced at least one edge — always heuristic tier, never
 	// presented as typed (core.EdgeConfidenceOf).
 	if report.FileResolvedEdges > 0 {
-		fmt.Fprintf(stdout, "file_resolved: %d\n", report.FileResolvedEdges)
+		fmt.Fprintf(stdout, "file_resolved: %d (%d file(s) reused their recorded imports)\n", report.FileResolvedEdges, report.FileResolveReused)
+	}
+	// RT-108: import-parse faults are named, never a silent skip; a skipped
+	// pass says why.
+	if report.FileResolveFaults > 0 {
+		fmt.Fprintf(stderr, "warning: file_resolved: %d file(s) whose imports could not be parsed (%s) — their calls resolve no import edges until their bytes change\n",
+			report.FileResolveFaults, strings.Join(report.FileResolveFaultFiles, ", "))
+	}
+	if report.FileResolveSkipped != "" {
+		fmt.Fprintf(stdout, "file_resolved: skipped — %s (stored edges kept)\n", report.FileResolveSkipped)
 	}
 	// Scoped config (docs/design/scoped-config.md §4 disclosure): report the
 	// project/user pattern-count split that governed this ingest. Ingest has

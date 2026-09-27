@@ -201,7 +201,7 @@ All subcommands share the convention:
 Ingest a service into the knowledge store.
 
 ```sh
-fathom ingest --service <id> [--path <dir>] [--store <path>] [--mode local|faux] [--scip <path>]... [--json]
+fathom ingest --service <id> [--path <dir>] [--store <path>] [--mode local|faux] [--scip <path>]... [--rehash] [--json]
 fathom ingest --service <id> --path <dir> --dry-run [--stats] [--json]
 ```
 
@@ -215,12 +215,18 @@ fathom ingest --service <id> --path <dir> --dry-run [--stats] [--json]
 | `--dry-run` | off | Discover and stat only (RT-70): report files, bytes, files over the 2 MiB read cap, the default-ignored and always-skipped directories, and the five largest files — without reading a file or opening the store. `--json` emits `{service, path, dry_run, files, bytes, oversize_files, oversize_bytes, read_cap_bytes, default_ignored_dirs, skipped_dirs, ignored_dirs, stat_failed, largest: [{path, size}]}`; `stat_failed > 0` makes `bytes` a lower bound |
 | `--stats` | off | With `--dry-run`: the discovery statistics (what `--dry-run` prints) |
 | `--respect-gitignore` | off | With `--dry-run`: discover a git work tree through `git ls-files -co --exclude-standard`, as `[connector] respect_gitignore = true` would (RT-68); `--json` adds `git` and `gitignored`. Run with and without it to measure the delta (RT-M11) |
+| `--rehash` | off | Read and hash every file (RT-102). Without it an ingest reads only files whose size, mtime or inode moved since the last ingest the same process (the daemon) ran, or the store's recorded stats once `file_stats` exists; a one-shot CLI ingest reads everything today |
 | `--json` | off | Emit the run as JSON: `{service, outcome: ok|degraded|refused, exit_code, discovered, extracted, skipped, symbols, read_failed, read_failures: [{path, err, errno?}], unclassified, oversize, classified_zero, unsupported_languages?, typed_edges?, scip_imports?, excluded?, default_ignored_dirs?, error?, hint?}` — `errno` is the class (`EPERM`, `EACCES`, `ENOENT`, `EIO`, `EISDIR`) derived from the connector's text, so CI can assert `read_failed == 0`. `unsupported_languages` (O69, present only when non-empty) is `{language: file_count}` — e.g. `{"swift": 412}` — for source in a KNOWN programming language fathom has no registered extractor for; see "Unsupported languages" below. `scip_imports` (present only when at least one SCIP index was imported) is `[{path, producer, language?, documents, edges, direct, unresolved, unmapped}]` — see "Typed edges by import" below |
 
 Output: `discovered`, `extracted`, `skipped`, `symbols` counts, plus non-zero-only rows
 (`unclassified`, `oversize`, `classified-but-zero-symbols`, `unsupported languages (no extractor)`,
 `typed-edges`, `typed_edges: … via <producer>` per imported SCIP index, `excluded:` pattern
-counts, and `read-failed`).
+counts, and `read-failed`), `stat-skipped` (files not read: stat and fingerprint unchanged)
+and `peak-inflight` (the most file content held at once — at most 64 MiB, RT-103); the
+`typed-edges`, `cue-typed-edges` and `file_resolved` rows say `skipped — no input changed
+since the last successful pass` when their input files did not change (RT-104, RT-105,
+RT-108), and a `file_resolved` import-parse fault is a stderr warning naming the files.
+`--json` adds `stat_skipped` and `peak_inflight_bytes`.
 
 **Typed edges by import (ADR-041 decision 5, SU-9).** Go gets typed call edges natively
 (`internal/fusion.EnrichTypedEdges`, type-checking the source directly); every other
@@ -456,7 +462,7 @@ fathom serve-http --store <path> [--addr <host:port>] [--managed] [--idle-exit 2
 |---|---|---|
 | `--store` | (required, or `[daemon].store` in config.toml) | store path (.sqlite/.db) |
 | `--addr` | `127.0.0.1:7575` | Listen address — loopback by default; surfaces are not a security boundary (ADR-014 amendment) |
-| `--auto-refresh` | `true` managed; `false` unmanaged | Re-ingest a service on git-HEAD drift before answering; an explicit flag wins either way. The inline re-ingest runs detached from the request (a caller that disconnects returns at once; the ingest completes); only the read that starts it waits, and other reads of that service meanwhile answer from the index as it stands. Inline auto-refresh ingests run one at a time process-wide (the `ingest` tool and `/refresh-file` do not share that ticket yet). One that fails before recording the new commit is retried after 30 s, doubling to at most 30 min |
+| `--auto-refresh` | `true` managed; `false` unmanaged | Queue a re-ingest of a service on git-HEAD drift (HEAD read from the ref files, no `git` fork); an explicit flag wins either way. The read never waits: it answers from the index as it stands with `refresh: queued (index_stale) …` in the envelope. Every whole-service ingest the daemon runs — auto-refresh, the `ingest` tool, `POST /refresh-request` (post-commit) — shares one refresh queue: one ingest per service (a request mid-run becomes one follow-up), one at a time machine-wide, the most recently queried service first, background work held 60 s after a start and staggered one per 30 s during warm-up, paused at shed and refused at refuse; `/refresh-file` leaves a file to a queued or running service refresh. One that fails before recording the new commit is retried after 30 s, doubling to at most 30 min; a read inside that wait says `index_stale`, the failure and the retry time in its `refresh` note |
 | `--managed` | `false` | This is the supervised daemon (ADR-047 §10.1; plist schema 2 passes it). A launchd job whose label is the default `dev.fathom.serve-http` or the `Label` of an installed fathom agent (`XPC_SERVICE_NAME`) is detected as managed without it; a systemd unit passes it. Only the managed daemon obeys `~/.fathom/daemon/disabled.json`/`paused.json` and watches its own binary: it stats it every 20 s, hashes only on a (size, mtime, inode) change, adopts a verified new binary by exiting **75**, and keeps a 5-minute cooldown between adoptions across restarts in `~/.fathom/daemon/<label>/lifecycle.jsonl` (`FATHOM_SELF_RESTART=off` still pins the binary). Every other serve-http is **unmanaged** (a scratch daemon) and bounded by the four flags below; it also runs no self-restart watcher or scavenger tick and starts the console feeders only when `/events` is first requested |
 | `--exit-with-parent` | `true` | Unmanaged: exit within 10 s of the parent process's death, SIGKILL included (kqueue `NOTE_EXIT` on macOS, a `getppid` poll everywhere); a daemon started by pid 1 has no parent to watch |
 | `--idle-exit` | `20m` | Unmanaged: exit after this long with no request in flight (an open `/events` stream counts as one); `0` disables |
@@ -850,7 +856,10 @@ Every hook verb (`session-hook` and its `--event`s, `edit-hook [--pre]`, `prompt
 - **One deadline per invocation**: the harness descriptor's timeout minus max(1 s, 20%)
   (Claude Code's 5 s hooks get 4 s, 10 s hooks 8 s, Codex's 3 s SessionEnd 2 s). Every
   RPC's context ends at it and carries `X-Fathom-Deadline: <ms left>`. `post-commit-hook`
-  is a git hook with no descriptor: its `--timeout` bounds each call.
+  is a git hook with no descriptor: its `--timeout` bounds each call. It queues a
+  refresh of a service the daemon already indexes (`POST /refresh-request`) and never
+  onboards one: in a repository the daemon does not index it prints the `ingest` MCP
+  tool call (`{"service", "path"}`) that onboards it once.
 - **Retries**: the service enumeration retries once, only on a refused or reset
   connection and only while the deadline has time left; a timeout or 5xx is never retried.
 - **Shared breaker**: `$TMPDIR/fathom-hook-health/daemon-health-<sha8(url)>.json`, shared

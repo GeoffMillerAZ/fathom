@@ -79,7 +79,8 @@ const (
 	LocClaimEvents           PurgeLocation = "claim_events"
 	// LocFileStats is file_stats.path (RT-76): every discovered file,
 	// including an oversize or unreadable one that has no fingerprint.
-	LocFileStats PurgeLocation = "file_stats"
+	LocFileStats   PurgeLocation = "file_stats"
+	LocFileImports PurgeLocation = "file_imports"
 )
 
 // The non-SQL locations, reported separately because they have no row
@@ -97,7 +98,7 @@ func PurgeLocations() []PurgeLocation {
 	return []PurgeLocation{
 		LocObservations, LocFingerprints, LocDocSummaries, LocKnowledgeCards,
 		LocTypedEdges, LocTypedEdgeFingerprints, LocSemanticClaims,
-		LocClaimLinks, LocClaimEvents, LocFileStats,
+		LocClaimLinks, LocClaimEvents, LocFileStats, LocFileImports,
 	}
 }
 
@@ -522,6 +523,7 @@ func resolvePurgeTargets(ctx context.Context, db *sql.DB, serviceID string, m Pa
 		{LocDocSummaries, `SELECT source_ref FROM doc_summaries WHERE service_id = ?`},
 		{LocKnowledgeCards, `SELECT file FROM knowledge_cards WHERE service_id = ? AND file <> ''`},
 		{LocFileStats, `SELECT path FROM file_stats WHERE service_id = ?`},
+		{LocFileImports, `SELECT path FROM file_imports WHERE service_id = ?`},
 	} {
 		vals, err := queryStrings(ctx, db, q.query, serviceID)
 		if err != nil {
@@ -719,6 +721,9 @@ func (s *SQLiteStore) executePurge(ctx context.Context, serviceID string, plan *
 		return out, err
 	}
 	if err := del(`DELETE FROM knowledge_cards WHERE service_id = ? AND file IN (%s)`, plan.byLocation[LocKnowledgeCards], true); err != nil {
+		return out, err
+	}
+	if err := del(`DELETE FROM file_imports WHERE service_id = ? AND path IN (%s)`, plan.byLocation[LocFileImports], true); err != nil {
 		return out, err
 	}
 	if err := del(`DELETE FROM typed_edges WHERE service_id = ? AND from_file IN (%s)`, plan.byLocation[LocTypedEdges], true); err != nil {

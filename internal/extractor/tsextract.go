@@ -224,6 +224,21 @@ func (e *TSExtractor) noteFault(variant tsVariant) {
 	delete(e.tsQueries, key)
 }
 
+// Close releases every grammar module this extractor instantiated (RT-107):
+// its cached parsers and the queries compiled inside them. The extractor
+// stays usable — the next Extract instantiates afresh.
+func (e *TSExtractor) Close() {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	for key, p := range e.parsers {
+		_ = p.Close()
+		delete(e.parsers, key)
+	}
+	for key := range e.tsQueries {
+		delete(e.tsQueries, key) // lived inside the closed module
+	}
+}
+
 // variantKey identifies one (blob, entry point) pair for the parser/query
 // caches — two variants sharing a blob but different entry points (the
 // "typescript" grammar's tree_sitter_typescript vs tree_sitter_tsx) need

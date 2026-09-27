@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/refresh"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
@@ -54,8 +55,17 @@ type graphPatcher interface {
 	DropCachedGraphs(service string)
 }
 
-// refreshFileHandler serves POST /refresh-file.
-func refreshFileHandler(c *client.Client, patcher graphPatcher) http.HandlerFunc {
+// refreshFileHandler serves POST /refresh-file. q is the daemon's refresh
+// queue (RT-97): while a whole-service refresh of the service is queued or
+// running, the file is left to the queue, which is asked for the refresh
+// covering the edit (a running ingest may have read the file before it, so
+// the request becomes its one follow-up), and the answer says so. The check
+// is not a reservation: a job can start between it and the per-file write,
+// and the two then overlap — so a job found queued or running after the
+// write is asked for the follow-up, whose read of the file is the one that
+// stands (and the write has already cleared the pass-state rows the gate
+// needs, RT-104). queue (nil, or returning nil): no queue.
+func refreshFileHandler(c *client.Client, patcher graphPatcher, queue func() *refresh.Queue) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -77,7 +87,24 @@ func refreshFileHandler(c *client.Client, patcher graphPatcher) http.HandlerFunc
 			http.Error(w, why+" — /refresh-file writes are refused until it clears", http.StatusServiceUnavailable)
 			return
 		}
+		q := refreshQueueOf(queue)
+		if q != nil {
+			if st := q.StateOf(req.Service); st == refresh.StateQueued || st == refresh.StateRunning {
+				w.Header().Set("Content-Type", "application/json")
+				_ = json.NewEncoder(w).Encode(refreshFileResponse{Skipped: deferToServiceRefresh(r.Context(), q, req.Service, st)})
+				return
+			}
+		}
 		out := buildRefreshFileResponse(r.Context(), c, patcher, req.Service, req.File)
+		// Check-then-act: a queued job may have started between the check
+		// and the write, and read the file before the edit. Any service
+		// refresh now queued or running is asked for the follow-up that
+		// reads the file after this write (coalesced: at most one).
+		if q != nil {
+			if st := q.StateOf(req.Service); st == refresh.StateQueued || st == refresh.StateRunning {
+				q.RequestRefresh(r.Context(), refresh.Request{Service: req.Service, Reason: refresh.ReasonRefreshFile}, false)
+			}
+		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(out)
 	}
@@ -160,4 +187,22 @@ func patchGraphForFile(ctx context.Context, c *client.Client, patcher graphPatch
 		patcher.PatchPackageGraph(service, pkg, byPkg[pkg], nil)
 	}
 	return true
+}
+
+// deferToServiceRefresh asks q for the service refresh that covers an edited
+// file (I48: an edit is never left to a run that may have read the file
+// before it) and names the outcome: coalesced into the queued job, the
+// running job's follow-up, paused, or refused (the file is then not
+// refreshed at all, and the answer says so).
+func deferToServiceRefresh(ctx context.Context, q *refresh.Queue, service string, was refresh.State) string {
+	st := q.RequestRefresh(ctx, refresh.Request{Service: service, Reason: refresh.ReasonRefreshFile}, false)
+	switch {
+	case st.State == refresh.StateRefused:
+		return "whole-service refresh " + string(was) + ", and the follow-up for this edit was refused (" + st.Refused + ") — the file is not refreshed; the index is stale"
+	case st.FollowUp:
+		return "whole-service refresh running — it may have read this file before the edit, so a follow-up refresh is queued after it; the index is stale until that completes"
+	case st.Paused != "":
+		return "whole-service refresh " + string(st.State) + ", " + st.Paused + " — it covers this file; the index is stale until it runs"
+	}
+	return "whole-service refresh " + string(st.State) + " — it covers this file; the index is stale until it completes"
 }

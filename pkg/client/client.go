@@ -29,6 +29,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/decide"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
+	"github.com/geoffmilleraz/fathom/internal/gitro"
 	"github.com/geoffmilleraz/fathom/internal/query"
 	"github.com/geoffmilleraz/fathom/internal/scip"
 	"github.com/geoffmilleraz/fathom/internal/store"
@@ -182,6 +183,10 @@ func (c *Client) Ingest(ctx context.Context, svc ServiceRef) (Report, error) {
 	}
 	return c.pipe.Ingest(ctx, svc)
 }
+
+// SetRehash makes the next ingests read and hash every file, ignoring the
+// stat gate (RT-102; `fathom ingest --rehash`).
+func (c *Client) SetRehash(on bool) { c.pipe.SetRehash(on) }
 
 // ReingestFile (SU-5/SU-6, docs/plans/substrate.md §A, ADR-041 decisions 3
 // and 4) re-extracts ONE file's observations/syntax edges and fingerprint
@@ -708,14 +713,22 @@ func (c *Client) IngestServiceAt(ctx context.Context, service, path string) erro
 // remove_service verb reaches it through the same delegation chain every
 // other capability uses.
 func (c *Client) RemoveService(ctx context.Context, serviceID string) (bool, error) {
+	c.pipe.ForgetStats(serviceID)
 	return c.st.RemoveService(ctx, serviceID)
 }
 
 // RenameService atomically re-keys every service_id-scoped row
 // (store.Store.RenameService) — typed refusals pass through verbatim.
 func (c *Client) RenameService(ctx context.Context, oldID, newID string) error {
+	c.pipe.ForgetStats(oldID)
+	c.pipe.ForgetStats(newID)
 	return c.st.RenameService(ctx, oldID, newID)
 }
+
+// DropIngestStats drops the pipeline's in-memory stat records (RT-102) at
+// the tenancy ladder's refuse rung: each service's next ingest reads every
+// file once.
+func (c *Client) DropIngestStats() { c.pipe.DropStatMemo() }
 
 // DefaultIgnoredDirs names, repo-relative and sorted, each directory the
 // connector's default cache list pruned from its most recent discovery of
@@ -787,12 +800,52 @@ func (c *Client) TypedPassWaitedTotal() int64 {
 // non-git corpora — ADR-017), resolved from the path recorded in service_meta
 // at the last ingest. Comparing it against the stored IndexedCommit detects
 // corpus drift without assuming git. Empty string means freshness is unknown.
+//
+// RT-110 (design §6, ADR-017 amended): a service whose stored watermark is a
+// git SHA is compared only against its HEAD, read from the ref files
+// (gitro.Head); when HEAD cannot be read the answer is "" with an error
+// naming freshness as unknown — never the connector's content manifest,
+// which reads the whole corpus on the request path.
 func (c *Client) ServiceWatermark(ctx context.Context, service string) (string, error) {
 	svcRef := core.ServiceRef{ID: service, Path: service}
-	if meta, found, err := c.st.GetServiceMeta(ctx, service); err == nil && found && meta.Path != "" {
+	meta, found, err := c.st.GetServiceMeta(ctx, service)
+	if err == nil && found && meta.Path != "" {
 		svcRef.Path = meta.Path
 	}
+	if err == nil && found && gitro.IsObjectName(meta.IndexedCommit) {
+		head, herr := gitro.Head(ctx, svcRef.Path)
+		if herr != nil {
+			return "", fmt.Errorf("service %q: %w", service, herr)
+		}
+		return head, nil
+	}
 	return c.conn.Watermark(ctx, svcRef)
+}
+
+// ServiceFreshnessProbe is ServiceWatermark for the request path (RT-110,
+// I48): a git-SHA service compares HEAD exactly as ServiceWatermark does;
+// any other service asks the connector's FreshnessProbe, which answers the
+// recorded content manifest while the corpus's stats stand and a drift
+// token once they move — never a whole-corpus read inside a request. A
+// connector without the capability falls back to ServiceWatermark.
+func (c *Client) ServiceFreshnessProbe(ctx context.Context, service string) (string, error) {
+	fp, ok := c.conn.(connector.FreshnessProber)
+	if !ok {
+		return c.ServiceWatermark(ctx, service)
+	}
+	svcRef := core.ServiceRef{ID: service, Path: service}
+	meta, found, err := c.st.GetServiceMeta(ctx, service)
+	if err == nil && found && meta.Path != "" {
+		svcRef.Path = meta.Path
+	}
+	if err == nil && found && gitro.IsObjectName(meta.IndexedCommit) {
+		head, herr := gitro.Head(ctx, svcRef.Path)
+		if herr != nil {
+			return "", fmt.Errorf("service %q: %w", service, herr)
+		}
+		return head, nil
+	}
+	return fp.FreshnessProbe(ctx, svcRef)
 }
 
 // Store returns the underlying store.Store Client was constructed over —
@@ -871,5 +924,6 @@ func (c *Client) ListCommits(ctx context.Context, serviceID string) ([]store.Com
 
 // Close releases all resources held by the client (including the store).
 func (c *Client) Close() error {
+	c.pipe.Close() // RT-107: the pipeline's grammar modules
 	return c.st.Close()
 }

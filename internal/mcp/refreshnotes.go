@@ -11,6 +11,8 @@ import (
 	"context"
 	"sort"
 	"sync"
+
+	"github.com/geoffmilleraz/fathom/internal/refresh"
 )
 
 type refreshNotesKey struct{}
@@ -62,4 +64,16 @@ func (n *refreshNotes) render() map[string]string {
 		out[k] = n.m[k]
 	}
 	return out
+}
+
+// noteRefreshQueued records that service's re-ingest is queued or running
+// (RT-99, design §7.1): the read was answered from the index at indexed
+// while HEAD is head — index_stale, disclosed, never a stale answer that
+// looks fresh.
+func noteRefreshQueued(ctx context.Context, service string, state refresh.State, indexed, head string) {
+	verb := "queued"
+	if state == refresh.StateRunning {
+		verb = "refreshing"
+	}
+	noteRefreshDeferred(ctx, service, verb+" (index_stale) — served from the index at "+shortSHA(indexed)+"; HEAD is "+shortSHA(head)+"; the refresh runs in the background")
 }

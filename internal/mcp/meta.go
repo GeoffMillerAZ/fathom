@@ -9,33 +9,32 @@
 package mcp
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"os/exec"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/extractor"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
+	"github.com/geoffmilleraz/fathom/internal/gitro"
+	"github.com/geoffmilleraz/fathom/internal/refresh"
 )
 
-// currentGitHead shells out to git to return HEAD for path.
-// Returns "" when git is unavailable, the path is not a repo, or any error.
-// Only called at query time (not hot path).
+// currentGitHead returns HEAD for path, or "" when path is in no work tree
+// or HEAD cannot be read. RT-101: read from the ref files without a fork
+// (gitro.Head, cached per root by mtime) — this runs on every per-service
+// read through auto-refresh.
 func currentGitHead(path string) string {
 	if path == "" {
 		return ""
 	}
-	var out bytes.Buffer
-	cmd := exec.Command("git", "-C", path, "rev-parse", "HEAD")
-	cmd.Stdout = &out
-	if err := cmd.Run(); err != nil {
+	sha, err := gitro.Head(context.Background(), path)
+	if err != nil {
 		return ""
 	}
-	return strings.TrimSpace(out.String())
+	return sha
 }
 
 // ─── registerMeta ─────────────────────────────────────────────────────────────
@@ -289,6 +288,21 @@ func registerStalenessReport(s *Server, backend QueryInterface) {
 		}
 		if line := elisionLine(elidedCount, "read_source or outline on the file you doubt (source_count is the full total)"); line != "" {
 			resp["elision"] = line
+		}
+		// RT-99 (§7.1): a re-ingest the refresh queue holds is named, so
+		// reingest_recommended is read beside "it is already on its way".
+		if q := s.RefreshQueue(); q != nil {
+			switch q.StateOf(p.Service) {
+			case refresh.StateQueued:
+				resp["refresh"] = "queued"
+			case refresh.StateRunning:
+				resp["refresh"] = "refreshing"
+			}
+			// I38: a queued refresh's failure (a post-commit request has
+			// no caller to hear it) is named until a success clears it.
+			if f, failed := q.LastFailure(p.Service); failed {
+				resp["refresh_failure"] = fmt.Sprintf("%s refresh failed at %s: %s", joinReasons(f.Reasons), f.At.UTC().Format(time.RFC3339), f.Err)
+			}
 		}
 		// BP-35: the typed-edge pass outcome for this service, when the
 		// backend can report it. `known: false` is the honest "no ingest

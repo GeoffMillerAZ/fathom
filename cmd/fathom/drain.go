@@ -40,8 +40,11 @@ type drainer struct {
 	logf         func(string)
 	shutdown     func(ctx context.Context) error // http.Server.Shutdown: in-flight requests finish
 	removeRecord func()
-	exit         func(code int)
-	once         sync.Once
+	// stopRefresh stops the refresh queue's worker (RT-97): no queued
+	// ingest starts once the drain begins. Nil: none.
+	stopRefresh func()
+	exit        func(code int)
+	once        sync.Once
 }
 
 // drainAndExit runs the drain once, whatever signalled it.
@@ -68,6 +71,9 @@ func (d *drainer) drain(signal string) {
 		}
 	}
 	draining.Store(true)
+	if d.stopRefresh != nil {
+		d.stopRefresh()
+	}
 	var cancelled []tenancy.InFlightEntry
 	if d.inflight != nil {
 		cancelled = d.inflight.Cancel(errDraining, tenancy.ClassTree, tenancy.ClassFleet, tenancy.ClassIngest)

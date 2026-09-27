@@ -376,6 +376,29 @@ names the corpus root — unless the service is quarantined. An ingest that
 fails before its first write (Discover, fetch, or the IT-15 refusal) puts the
 previous row back.
 
+**Refresh queue (RT-97..RT-100).** Every whole-service ingest the daemon runs
+— auto-refresh after drift, the `ingest` tool, the post-commit hook's `POST
+/refresh-request` — is a request on one queue: one ingest per service (a request
+while it runs becomes exactly one follow-up), one at a time, the most recently
+queried service first. After a start, background requests wait 60 s and, during
+the warm-up, start one per 30 s; they pause at `shed` and are refused at
+`refuse`, in store distress, in safe mode and for a quarantined service (an
+explicit `ingest` passes safe mode and a quarantine). A read never waits for an
+ingest: it answers from the index and says `refresh: queued (index_stale) …`.
+No setting; the knobs are the ladder's.
+
+**Incremental ingest (RT-102..RT-108).** An ingest stats every file and reads
+only those whose size, mtime or inode moved since the daemon's last ingest of the
+service (`fathom ingest --rehash` reads everything), through a 64 MiB in-flight
+window of file content. The typed Go pass runs only when a
+`.go`, `go.mod`, `go.sum` or `go.work` file changed since its last successful
+pass, the CUE pass only for `.cue`, and the TS/JS/Python import resolver only
+for those files (reusing each unchanged file's recorded imports from the store's
+`file_imports` table and recording a parse fault against the bytes, disclosed on
+every ingest); each pass's success is recorded as a `typed-pass-state:*` row, so a
+halted pass runs again. The typed pass's `go` children run with `GOFLAGS=… -p=2`,
+`GOMAXPROCS=2`, `nice -n 10` and, on macOS, `taskpolicy -b`.
+
 **Disk writes.** The sampler reads the daemon's cumulative bytes written
 (rusage) and each live child's (`go list -export`, git, rg — rusage has no
 children's disk-I/O field, so a child is read while it lives: its last

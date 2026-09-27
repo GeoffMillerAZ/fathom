@@ -8,7 +8,7 @@ import (
 func wiredFacts() LadderFacts {
 	return LadderFacts{
 		Service: "svc", StanzaNote: "present", HooksNote: "3 fathom hook reference(s) in project settings",
-		Freshness: "fresh", FreshRemedy: "fathom post-commit-hook --dir /r --service svc --timeout 2m",
+		Freshness: "fresh", FreshRemedy: "fathom post-commit-hook --dir /r --service svc --wait --timeout 2m",
 		WindowDays: 14, HasPlans: true,
 	}
 }

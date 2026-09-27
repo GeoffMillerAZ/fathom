@@ -107,6 +107,20 @@ const (
 	queryCaptureSize = 28 // TSQueryCapture: TSNode(24) + index(4)
 )
 
+// MemoryLimitPages caps every grammar module's linear memory (RT-107,
+// docs/design/responsible-tenant.md §7.2): 1024 pages of 64 KiB = 64 MiB.
+// A parse that would grow past it fails inside the guest — an engine fault,
+// counted and disclosed like any other — instead of growing without bound.
+const MemoryLimitPages = 1024
+
+// liveModules counts instantiated grammar modules not yet closed (RT-107):
+// the regression test's instrument for a module leak.
+var liveModules atomic.Int64
+
+// LiveModules is the number of grammar modules instantiated and not yet
+// closed in this process.
+func LiveModules() int64 { return liveModules.Load() }
+
 var (
 	runtimeOnce sync.Once
 	rt          wazero.Runtime
@@ -134,6 +148,7 @@ func ensureRuntime(ctx context.Context) (wazero.Runtime, error) {
 		// budget.c) via tree-sitter's own progress callback, so wazero's
 		// loop-back-edge termination checks — measured ~3x slower corpus-
 		// wide when tried — are not needed. See DefaultParseTimeout's doc.
+		cfg = cfg.WithMemoryLimitPages(MemoryLimitPages)
 		rt = wazero.NewRuntimeWithConfig(ctx, cfg)
 		if _, err := wasi_snapshot_preview1.Instantiate(ctx, rt); err != nil {
 			rtErr = fmt.Errorf("tsengine: instantiate WASI shim: %w", err)
@@ -208,6 +223,14 @@ type Parser struct {
 	langPtr   uint32
 	parserPtr uint32
 	closed    atomic.Bool
+	released  atomic.Bool // the module has been closed and uncounted
+}
+
+// release uncounts the module once it is closed (RT-107).
+func (p *Parser) release() {
+	if !p.released.Swap(true) {
+		liveModules.Add(-1)
+	}
 }
 
 // requiredExports is every C function build.sh exports and this package
@@ -245,44 +268,44 @@ func NewParser(ctx context.Context, grammar, entryPoint string) (*Parser, error)
 	if err != nil {
 		return nil, fmt.Errorf("tsengine: instantiate %q: %w", grammar, err)
 	}
+	liveModules.Add(1)
+	fail := func(err error) (*Parser, error) {
+		mod.Close(ctx)
+		liveModules.Add(-1)
+		return nil, err
+	}
 
 	p := &Parser{ctx: ctx, mod: mod, fns: make(map[string]*api.Function, len(requiredExports))}
 	for _, name := range requiredExports {
 		fn := mod.ExportedFunction(name)
 		if fn == nil {
-			mod.Close(ctx)
-			return nil, fmt.Errorf("tsengine: grammar %q missing required export %q", grammar, name)
+			return fail(fmt.Errorf("tsengine: grammar %q missing required export %q", grammar, name))
 		}
 		p.fns[name] = &fn
 	}
 
 	entryFn := mod.ExportedFunction(entryPoint)
 	if entryFn == nil {
-		mod.Close(ctx)
-		return nil, fmt.Errorf("tsengine: grammar %q missing entry point %q", grammar, entryPoint)
+		return fail(fmt.Errorf("tsengine: grammar %q missing entry point %q", grammar, entryPoint))
 	}
 	langRes, err := entryFn.Call(ctx)
 	if err != nil {
-		mod.Close(ctx)
-		return nil, fmt.Errorf("tsengine: call %q: %w", entryPoint, err)
+		return fail(fmt.Errorf("tsengine: call %q: %w", entryPoint, err))
 	}
 	p.langPtr = uint32(langRes[0])
 
 	parserRes, err := p.call("ts_parser_new")
 	if err != nil {
-		mod.Close(ctx)
-		return nil, err
+		return fail(err)
 	}
 	p.parserPtr = uint32(parserRes[0])
 
 	ok, err := p.call("ts_parser_set_language", uint64(p.parserPtr), uint64(p.langPtr))
 	if err != nil {
-		mod.Close(ctx)
-		return nil, err
+		return fail(err)
 	}
 	if ok[0] == 0 {
-		mod.Close(ctx)
-		return nil, fmt.Errorf("tsengine: grammar %q: incompatible language ABI version", grammar)
+		return fail(fmt.Errorf("tsengine: grammar %q: incompatible language ABI version", grammar))
 	}
 	return p, nil
 }
@@ -294,7 +317,9 @@ func (p *Parser) Close() error {
 	if p.closed.Swap(true) {
 		return nil
 	}
-	return p.mod.Close(p.ctx)
+	err := p.mod.Close(p.ctx)
+	p.release()
+	return err
 }
 
 func (p *Parser) call(name string, args ...uint64) ([]uint64, error) {
@@ -357,6 +382,7 @@ func (p *Parser) bounded(what string, op func() (any, error)) (any, error) {
 		go func() {
 			<-ch
 			_ = p.mod.Close(context.Background())
+			p.release()
 		}()
 		return nil, fmt.Errorf("tsengine: %s abandoned at %v hard backstop (guest %v budget did not fire — progress-check-free phase); parser must be re-created", what, backstop, ParseTimeout)
 	}

@@ -1004,7 +1004,7 @@ func TestSemanticTools_ThroughAutoRefreshWrapper(t *testing.T) {
 		compileRun:    core.CompileRun{ServiceID: "svc", Layer: "obligations", SectionsTotal: 3},
 		claimsSummary: map[string]any{"obligations": map[string]any{"fresh": 1}},
 	}
-	srv := mcp.NewServer(mcp.NewAutoRefresh(fake, nil))
+	srv := mcp.NewServer(mcp.NewAutoRefreshForTest(t, fake))
 
 	// obligations
 	resp := roundtrip(t, srv, request{
@@ -1068,7 +1068,7 @@ func (f *ingestAtFake) IngestServiceAt(_ context.Context, service, path string) 
 // semantic capabilities).
 func TestIngestTool_WithPath_ThroughWrapper(t *testing.T) {
 	fake := &ingestAtFake{}
-	srv := mcp.NewServer(mcp.NewAutoRefresh(fake, nil))
+	srv := mcp.NewServer(mcp.NewAutoRefreshForTest(t, fake))
 	// IO-2: onboarding paths must exist and are canonicalized at the door,
 	// so the fixture is a real directory (resolved through macOS's
 	// /var→/private/var symlink to match what the handler forwards).
