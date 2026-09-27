@@ -362,6 +362,8 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 			}
 			if indexStale {
 				sb.WriteString("\n⚠️ index is behind your working tree for this file")
+			} else if obl.IndexUnchecked != "" {
+				sb.WriteString("\n⚠️ " + indexUncheckedLine(obl.IndexUnchecked))
 			}
 		}
 		// Platform-modules.md §3.3: a bound-but-unmounted module is an
@@ -721,6 +723,7 @@ func fetchObligations(baseURL, service, file string, maxRules int, timeout time.
 		Rules               []semantic.Obligation `json:"rules"`
 		CompiledAtWatermark string                `json:"compiled_at_watermark"`
 		IndexStale          bool                  `json:"index_stale"`
+		IndexUnchecked      string                `json:"index_unchecked"`
 		Displaced           int                   `json:"displaced"`
 		DisplacedRepo       int                   `json:"displaced_repo"`
 		DisplacedModule     int                   `json:"displaced_module"`
@@ -739,6 +742,7 @@ func fetchObligations(baseURL, service, file string, maxRules int, timeout time.
 		DisplacedRepo:   payload.DisplacedRepo,
 		DisplacedModule: payload.DisplacedModule,
 		ModuleNotes:     payload.ModuleNotes,
+		IndexUnchecked:  payload.IndexUnchecked,
 	}
 	return obl, payload.IndexStale, true, nil
 }
@@ -918,4 +922,11 @@ func fetchMemories(baseURL, service, file string, timeout time.Duration) ([]memo
 		out = append(out, e)
 	}
 	return out, payload.Displaced, true
+}
+
+// indexUncheckedLine (RT-26, I38) is the freshness line for an edited file
+// the daemon did not read for its index check (over the hot-path read
+// cap): named as unchecked, never left silent — silence reads as current.
+func indexUncheckedLine(reason string) string {
+	return "index freshness not checked for this file (" + reason + ")"
 }

@@ -29,16 +29,17 @@ and the operator can switch the daemon off with nothing else working.
 
 - [ ] `list_services` classifies unsupported languages by file NAME, never contents, with one in-flight walk per service (hotfix 4200482a) {id: RT-1, symbol: unsupportedLanguagesCompute, package: cmd/fathom, reachable_from: TestFleetAdapter_UnsupportedLanguagesFor_NeverReadsFileContents}
 - [ ] `client.SourcePaths` discovers names only, reached from the list_services path (hotfix 4200482a) {id: RT-2, symbol: SourcePaths, package: pkg/client, reachable_from: TestFleetAdapter_UnsupportedLanguagesFor_NeverReadsFileContents}
-- [ ] Obligations' raw fallback reads only the edited file under the cap (§4.3) {id: RT-81, symbol: RawFallbackObligations, package: pkg/client, reachable_from: TestRawFallbackReadsOnlyEditedFile}
-- [ ] Obligations' layer coverage takes corpus paths from `SourcePaths`, memoized per (service, watermark, layer digest) and single-flighted, and never reads file contents; RT-82 replaces the walk with `file_stats` (§4.3) {id: RT-143, symbol: layerCoveragePaths, package: pkg/client, reachable_from: TestLayerCoverageFromSourcePathsSingleFlightNeverReadsContents}
-- [ ] The CUE pack union is compiled once per (root, layer digest) (§4.3) {id: RT-83, symbol: loadUnion, package: internal/semantic, reachable_from: TestLoadUnionMemoizedPerDigest}
+- [x] Obligations' raw fallback reads only the edited file under the cap (§4.3) {id: RT-81, symbol: RawFallbackObligations, package: pkg/client, reachable_from: TestRawFallbackReadsOnlyEditedFile}
+- [x] Obligations' layer coverage takes corpus paths from `SourcePaths`, memoized per (service, watermark, layer digest) and single-flighted, and reads no file outside the layer's selected guides (each stat'ed, capped at 2 MiB, kept until its stat moves); RT-82 replaces the walk with `file_stats` (§4.3) {id: RT-143, symbol: layerCoveragePaths, package: pkg/client, reachable_from: TestLayerCoverageFromSourcePathsSingleFlightNeverReadsContents}
+- [x] The CUE pack union is compiled once per (root, layer digest) (§4.3) {id: RT-83, symbol: loadUnion, package: internal/semantic, reachable_from: TestLoadUnionMemoizedPerDigest}
+- [ ] Obligations' rules path resolves a symbol-only plan-row contract by reading only the cited names' rows, never the service's whole observation set, and re-reads a legacy citation only after a stat (regular file, ≤ 1 MiB) (§4.3) {id: RT-174, symbol: symbolFileLookup, package: internal/semantic, reachable_from: TestObligationsSymbolOnlyContractNeverLoadsService}
 - [ ] `list_services` computes symbol counts and languages from SQL aggregates (`count(*) GROUP BY service_id`, distinct source paths streamed into an extension set), cached per watermark and single-flighted, never a symbol load; RT-79 replaces it with `service_summary` (§4.4) {id: RT-144, symbol: ServiceSymbolAggregates, package: pkg/client, reachable_from: TestServiceSummaries_AggregatesNeverLoadSymbols}
 - [ ] "Is service X indexed" is a meta-only probe used by verify, the stop and edit hooks, plans and the console (§4.4) {id: RT-80, symbol: IsIndexed, package: pkg/client, reachable_from: TestDaemonServiceIndexedUsesMetaProbe}
 - [ ] The connector never reads a file over 2 MiB and honours ctx in discovery and fetch (§4.2) {id: RT-69, symbol: fetchCapped, package: internal/connector, reachable_from: TestFetch_NeverReadsOversize}
 - [ ] Discovery skips the default cache directories (`.cache`, `.tools`, `target`, `dist`, `build`, `__pycache__`, `.venv`, `.gradle`, `.next`, `.turbo`, `coverage`) on top of `skipDir`, `[connector] include` re-includes, and every exclusion is counted (§4.2) {id: RT-145, symbol: defaultIgnoredDir, package: internal/connector, reachable_from: TestDiscover_DefaultCacheIgnoresKeepSkipDir}
 - [ ] `fathom ingest --dry-run --stats` reports discovered files and bytes, stat only (§4.2) {id: RT-70, symbol: runIngestDryRunStats, package: cmd/fathom, reachable_from: TestIngestDryRunStatsReadsNoContent}
 - [ ] At most two `client.Sources` reads run at once process-wide; a hook-origin caller never waits for a slot and gets a named skip (§4.6) {id: RT-146, symbol: acquireSourcesSlot, package: pkg/client, reachable_from: TestSourcesSlotHooksNeverWait}
-- [ ] Obligations' index-stale check stats before reading and skips files over 2 MiB, reported as not refreshed (§4.3) {id: RT-26, symbol: ObligationsIndexStale, package: pkg/client, reachable_from: TestObligationsIndexStaleSkipsOversize}
+- [x] Obligations' index-stale check stats before reading and skips files over 2 MiB, reported as not refreshed (§4.3) {id: RT-26, symbol: ObligationsIndexStale, package: pkg/client, reachable_from: TestObligationsIndexStaleSkipsOversize}
 - [ ] `/refresh-file` stats before reading (2 MiB cap) and finds the file's packages by `source_ref`, not a full symbol load (§7.2) {id: RT-27, symbol: ReingestFile, package: internal/fusion, reachable_from: TestRefreshFileStatCapAndPackageLookup}
 - [ ] `ensure()` runs its inline ingest under `context.WithoutCancel`, holding one process-wide ingest ticket, so a requester's disconnect never cancels an ingest midway and two services never ingest inline at once (§3.5, §7.1) {id: RT-149, symbol: ensure, package: internal/mcp, reachable_from: TestEnsureIngestSurvivesRequestCancelAndSerializes}
 - [ ] `ensure()` records `seen[service]` only after a successful ingest, so a failed ingest is retried (§7.1) {id: RT-151, symbol: ensure, package: internal/mcp, reachable_from: TestEnsureSeenOnlyAfterSuccess}
@@ -264,7 +265,7 @@ appears in two classes and once here).
 
 | Hazard | Rows |
 |---|---|
-| obligations-whole-tree-reads | RT-26, RT-55, RT-81, RT-143, RT-83, RT-82, RT-146 |
+| obligations-whole-tree-reads | RT-26, RT-55, RT-81, RT-143, RT-83, RT-174, RT-82, RT-146 |
 | connector-discovery-unbounded | RT-66, RT-67, RT-68, RT-69, RT-70, RT-145, RT-M11 |
 | list-services-full-symbol-loads | RT-1, RT-2, RT-144, RT-76, RT-79, RT-80, RT-160 |
 | references-fleet-wide-default | RT-86, RT-159, RT-87, RT-56 |

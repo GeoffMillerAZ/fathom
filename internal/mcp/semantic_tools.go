@@ -23,6 +23,26 @@ type obligationsBackend interface {
 	ObligationsIndexStale(ctx context.Context, service, file string) bool
 }
 
+// obligationsIndexCheckBackend is obligationsBackend.ObligationsIndexStale
+// with the skip named (RT-26, docs/design/responsible-tenant.md §4.3): a
+// file over the hot-path read cap is never read, so its freshness is
+// unknown, and unchecked says so. The obligations tool carries it as
+// index_unchecked (I38: a skipped read is reported, never passed off as
+// fresh). pkg/client implements it; a backend that omits it serves the
+// bool alone, as before.
+type obligationsIndexCheckBackend interface {
+	ObligationsIndexCheck(ctx context.Context, service, file string) (stale bool, unchecked string)
+}
+
+// obligationsIndexFreshness asks the backend for file's index freshness,
+// preferring the check that names a skipped read.
+func obligationsIndexFreshness(ctx context.Context, backend any, ob obligationsBackend, service, file string) (bool, string) {
+	if cb, ok := backend.(obligationsIndexCheckBackend); ok {
+		return cb.ObligationsIndexCheck(ctx, service, file)
+	}
+	return ob.ObligationsIndexStale(ctx, service, file), ""
+}
+
 // obligationsAsOfBackend is the optional backend capability for SU-19's
 // bi-temporal read (ADR-041 decision 7): "what governed file AT asOf"
 // instead of "what governs it now". pkg/client implements it via
@@ -417,10 +437,16 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 			// left exactly as before: no layer_coverage key. Distinct from
 			// found:false, which is an honest answer, not a failure.
 		case !found:
-			result["layer_coverage"] = map[string]any{
+			placeholder := map[string]any{
 				"status": "unknown",
 				"note":   "layer compiled before coverage was recorded; recompile to record coverage",
 			}
+			// I38: a guide the live coverage could not read is named even
+			// when the numbers are unknown — never dropped with them.
+			if len(cov.UnreadCorpus) > 0 {
+				placeholder["unread_corpus"] = cov.UnreadCorpus
+			}
+			result["layer_coverage"] = placeholder
 		default:
 			result["layer_coverage"] = cov
 			// The queried file's nearest guide was never compiled: name it,
@@ -623,11 +649,15 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 				return nil, &rpcError{Code: ErrCodeInternal, Message: oerr.Error()}
 			}
 			var indexStale bool
+			var indexUnchecked string
 			if ob, ok := backend.(obligationsBackend); ok {
-				indexStale = ob.ObligationsIndexStale(ctx, p.Service, p.File)
+				indexStale, indexUnchecked = obligationsIndexFreshness(ctx, backend, ob, p.Service, p.File)
 			}
 			includeSnippets := p.IncludeSnippets == nil || *p.IncludeSnippets
 			body, summary := renderObligationReceipt(ctx, backend, p.Service, obl, false, string(semantic.ObligationLayerAll), includeSnippets, indexStale)
+			if indexUnchecked != "" {
+				body["index_unchecked"] = indexUnchecked
+			}
 			return withSummary(summary, body), nil
 		}
 
@@ -675,9 +705,12 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 		if rootScope {
 			staleFile = rootObligationsProbe
 		}
-		indexStale := ob.ObligationsIndexStale(ctx, p.Service, staleFile)
+		indexStale, indexUnchecked := obligationsIndexFreshness(ctx, backend, ob, p.Service, staleFile)
 		includeSnippets := p.IncludeSnippets == nil || *p.IncludeSnippets
 		body, summary := renderObligationReceipt(ctx, backend, p.Service, obl, rootScope, servedLayer, includeSnippets, indexStale)
+		if indexUnchecked != "" {
+			body["index_unchecked"] = indexUnchecked
+		}
 		return withSummary(summary, body), nil
 	})
 

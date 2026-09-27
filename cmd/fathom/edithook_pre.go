@@ -249,6 +249,10 @@ func renderPreEdit(url, projDir, filePath, sessionID string) (preEditResult, boo
 		} else {
 			staleLine = fmt.Sprintf("index is behind your working tree (refresh failed: %s)", refreshErr)
 		}
+	} else if obl.IndexUnchecked != "" {
+		// RT-26: the daemon skipped this file's freshness check (over the
+		// read cap) — nothing to refresh, but say so (I38).
+		staleLine = indexUncheckedLine(obl.IndexUnchecked)
 	}
 
 	// FL-20 (ADR-040 decision 5): split finding-kind rows out before the

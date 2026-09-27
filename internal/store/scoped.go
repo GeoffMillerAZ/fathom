@@ -88,6 +88,21 @@ func (s *SQLiteStore) QueryObservations(ctx context.Context, serviceID, concernI
 	return filterScoped(ctx, s.gate, serviceID, obs, err, func(o core.Observation) string { return o.SourceRef })
 }
 
+// SymbolNamesForSource filters by observations.source_ref, like
+// QueryObservations: a suppressed file declares nothing.
+func (s *SQLiteStore) SymbolNamesForSource(ctx context.Context, serviceID, file string) ([]string, error) {
+	rows, err := s.symbolRowsForSourceRaw(ctx, serviceID, file)
+	rows, err = filterScoped(ctx, s.gate, serviceID, rows, err, func(r symbolRow) string { return r.ref })
+	return distinctSymbolNames(rows), err
+}
+
+// SymbolSourcesForNames filters by observations.source_ref, like
+// QueryObservations: a suppressed file declares nothing.
+func (s *SQLiteStore) SymbolSourcesForNames(ctx context.Context, serviceID string, names []string) ([]SymbolSource, error) {
+	rows, err := s.symbolSourcesForNamesRaw(ctx, serviceID, names)
+	return filterScoped(ctx, s.gate, serviceID, rows, err, func(r SymbolSource) string { return r.SourceRef })
+}
+
 // ListSourceRefs filters the ref list itself. fusion's orphan reconcile
 // reads this; filtering can only make it MORE conservative — a suppressed
 // ref is never considered an orphan, and a reversible hide must never
@@ -137,6 +152,19 @@ func (s *SQLiteStore) CertifyDeclarationsForService(ctx context.Context, service
 func (m *MemoryStore) QueryObservations(ctx context.Context, serviceID, concernID string) ([]core.Observation, error) {
 	obs, err := m.queryObservationsRaw(ctx, serviceID, concernID)
 	return filterScoped(ctx, m.gate, serviceID, obs, err, func(o core.Observation) string { return o.SourceRef })
+}
+
+// SymbolNamesForSource filters by observations.source_ref.
+func (m *MemoryStore) SymbolNamesForSource(ctx context.Context, serviceID, file string) ([]string, error) {
+	rows, err := m.symbolRowsForSourceRaw(ctx, serviceID, file)
+	rows, err = filterScoped(ctx, m.gate, serviceID, rows, err, func(r symbolRow) string { return r.ref })
+	return distinctSymbolNames(rows), err
+}
+
+// SymbolSourcesForNames filters by observations.source_ref.
+func (m *MemoryStore) SymbolSourcesForNames(ctx context.Context, serviceID string, names []string) ([]SymbolSource, error) {
+	rows, err := m.symbolSourcesForNamesRaw(ctx, serviceID, names)
+	return filterScoped(ctx, m.gate, serviceID, rows, err, func(r SymbolSource) string { return r.SourceRef })
 }
 
 // ListSourceRefs filters the ref list itself.

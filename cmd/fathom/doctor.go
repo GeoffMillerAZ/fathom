@@ -1524,6 +1524,10 @@ type doctorLayerCoverage struct {
 	// produced this coverage, or every section passed.
 	PrefilterSkipped int    `json:"prefilter_skipped"`
 	Status           string `json:"status"`
+	// UnreadCorpus (RT-143, I38) mirrors semantic.LayerCoverage's
+	// unread_corpus: guides the live count could not read (over the read
+	// cap, unreadable), which make every count above a lower bound.
+	UnreadCorpus []string `json:"unread_corpus"`
 }
 
 // fetchObligationsProbe calls the obligations MCP tool for one
@@ -1745,6 +1749,13 @@ func checkObligationsServed(hc *http.Client, baseURL, root, explicitSvc string, 
 			}
 			reason += fmt.Sprintf(" — WARN: the obligations layer is PARTIALLY compiled (%d/%d sections, budget_stopped=%v%s%s) — some governing guides may not be compiled yet; resume with `fathom compile --service %s --layer obligations --dry-run=false --continue`",
 				res.coverage.SectionsCompiled, res.coverage.SectionsTotal, res.coverage.BudgetStopped, corpusGrewNote, prefilterNote, svc)
+		}
+		// RT-143 / I38: an unread guide makes the coverage above a lower
+		// bound — never a clean "fully compiled" PASS, and named.
+		if res.hasCovered && len(res.coverage.UnreadCorpus) > 0 {
+			status = doctorWarn
+			reason += fmt.Sprintf(" — WARN: %d governing guide(s) could not be read, so coverage is a lower bound: %s",
+				len(res.coverage.UnreadCorpus), strings.Join(res.coverage.UnreadCorpus, "; "))
 		}
 		return doctorCheck{Name: name, Status: status, Reason: reason + hookMismatchNote}
 	}

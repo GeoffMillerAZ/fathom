@@ -273,6 +273,19 @@ func (a *autoRefreshBackend) ObligationsIndexStale(ctx context.Context, service,
 	return ob.ObligationsIndexStale(ctx, service, file)
 }
 
+// ObligationsIndexCheck forwards RT-26's named-skip freshness check — the
+// same O7 forwarding class as every optional capability in this file:
+// without it the wrapper would strip index_unchecked on every real daemon.
+func (a *autoRefreshBackend) ObligationsIndexCheck(ctx context.Context, service, file string) (bool, string) {
+	if cb, ok := a.QueryInterface.(obligationsIndexCheckBackend); ok {
+		return cb.ObligationsIndexCheck(ctx, service, file)
+	}
+	if ob, ok := a.QueryInterface.(obligationsBackend); ok {
+		return ob.ObligationsIndexStale(ctx, service, file), ""
+	}
+	return false, ""
+}
+
 // ObligationsAsOf forwards SU-19's bi-temporal read (ADR-041 decision 7) —
 // same O7 forwarding class as every other optional capability in this file:
 // without it, wrapping the client in auto-refresh would silently make the

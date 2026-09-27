@@ -179,8 +179,11 @@ func TestObligationsIndexStale(t *testing.T) {
 // row's own sections_total goes stale the moment a NEW governing doc is
 // added to disk — Client.ObligationsLayerCoverage must read the LIVE
 // corpus (the same way a real compile resolves it), not the possibly
-// stale recorded numbers, and no re-ingest is needed for it to notice —
-// Sources() already reads straight off disk.
+// stale recorded numbers. Since RT-143 the corpus PATHS are memoized per
+// store watermark (a names-only walk shared by every call between ingests),
+// so a NEW guide is noticed at the next ingest — which is all it takes; no
+// recompile. An edit to a guide already known is noticed on the next call
+// (TestLayerCoverageFromSourcePathsSingleFlightNeverReadsContents).
 func TestObligationsLayerCoverage_LiveCorpusReflectsGrowth(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
@@ -219,12 +222,15 @@ func TestObligationsLayerCoverage_LiveCorpusReflectsGrowth(t *testing.T) {
 	}
 
 	// Add a nested guide to disk AFTER the compile — deliberately no
-	// re-ingest.
+	// recompile; the next ingest moves the watermark.
 	if err := os.MkdirAll(filepath.Join(dir, "internal"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "internal", "CLAUDE.md"), []byte("# internal\n\n- Register every extractor.\n"), 0o644); err != nil {
 		t.Fatal(err)
+	}
+	if _, err := c.Ingest(ctx, client.ServiceRef{ID: "svc", Path: dir}); err != nil {
+		t.Fatal("re-Ingest:", err)
 	}
 
 	cov2, found, err := c.ObligationsLayerCoverage(ctx, "svc")

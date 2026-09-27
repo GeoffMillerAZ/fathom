@@ -54,6 +54,12 @@ type LayerCoverage struct {
 	// here is also folded into UncompiledScopes — ADR-037's raw fallback
 	// still serves it.
 	PrefilterSkipped int `json:"prefilter_skipped,omitempty"`
+	// UnreadCorpus (RT-143, I38) names each corpus file the live count
+	// could not read — "path: reason", over the hot-path read cap or
+	// unreadable — sorted. Their sections are not counted, so
+	// SectionsTotal is a lower bound whenever this is non-empty. Omitted
+	// when every corpus file was read.
+	UnreadCorpus []string `json:"unread_corpus,omitempty"`
 }
 
 // ObligationsLayerCoverage reports layer's LATEST compile run completeness

@@ -47,6 +47,8 @@ var fixedTime = time.Date(2026, 8, 13, 12, 0, 0, 0, time.UTC)
 var storeMethodDisposition = map[string]string{
 	// --- filtered: path-anchored content leaves the store here ---
 	"QueryObservations":             "",
+	"SymbolNamesForSource":          "",
+	"SymbolSourcesForNames":         "",
 	"DocSummaries":                  "",
 	"KnowledgeCards":                "",
 	"TypedEdges":                    "",
@@ -292,6 +294,26 @@ func TestSuppressionCoversEverySurface(t *testing.T) {
 					t.Fatal(err)
 				}
 				assertRefs(t, refsOf(got, func(o core.Observation) string { return o.SourceRef }))
+			})
+			t.Run("SymbolNamesForSource", func(t *testing.T) {
+				hidden, err := g.SymbolNamesForSource(ctx, svc, hiddenRef)
+				if err != nil {
+					t.Fatal(err)
+				}
+				visible, err := g.SymbolNamesForSource(ctx, svc, visibleRef)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if len(hidden) != 0 || len(visible) != 1 || visible[0] != "Ok" {
+					t.Errorf("hidden=%v visible=%v, want the suppressed file to declare nothing and the visible one [Ok]", hidden, visible)
+				}
+			})
+			t.Run("SymbolSourcesForNames", func(t *testing.T) {
+				got, err := g.SymbolSourcesForNames(ctx, svc, []string{"Secret", "Ok"})
+				if err != nil {
+					t.Fatal(err)
+				}
+				assertRefs(t, refsOf(got, func(r store.SymbolSource) string { return r.SourceRef }))
 			})
 			t.Run("DocSummaries", func(t *testing.T) {
 				got, err := g.DocSummaries(ctx, svc)

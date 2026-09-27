@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
@@ -221,31 +222,69 @@ func (c *Client) RootObligationsLayer(ctx context.Context, service string, maxRu
 // only when both the disk file and the stored fingerprint exist AND they
 // disagree. Any error (disk, store, missing meta) returns false — the caller
 // should treat the index as authoritative when freshness cannot be determined.
+// A file over HotPathReadCap is never read and returns false; callers that
+// can carry the skip use ObligationsIndexCheck, which names it.
 //
 // Fingerprint formula matches the fusion pipeline (Pass 3) exactly via
 // fusion.FingerprintHash — the epoch-salted content hash.
 func (c *Client) ObligationsIndexStale(ctx context.Context, service, file string) bool {
+	stale, _ := c.ObligationsIndexCheck(ctx, service, file)
+	return stale
+}
+
+// ObligationsIndexCheck is ObligationsIndexStale with the skip named (RT-26,
+// docs/design/responsible-tenant.md §4.3): it stats the file before reading
+// it, and a file over HotPathReadCap (or not a regular file) is never read.
+// Such a file is reported not stale — nothing was compared, so nothing may
+// claim the index is behind or trigger a refresh — and unchecked names why,
+// so a caller reports the freshness as unknown rather than as current
+// (invariant I38). The stored fingerprint is looked up before the read, so
+// a file the index never fingerprinted is not read either. unchecked is ""
+// whenever the comparison ran or could not run for an ordinary reason
+// (missing file, no metadata, no fingerprint).
+func (c *Client) ObligationsIndexCheck(ctx context.Context, service, file string) (stale bool, unchecked string) {
 	// Resolve disk path: absolute passthrough; otherwise join with meta root.
 	diskPath := file
 	if !filepath.IsAbs(diskPath) {
 		meta, found, err := c.st.GetServiceMeta(ctx, service)
 		if err != nil || !found || meta.Path == "" {
-			return false
+			return false, ""
 		}
 		diskPath = filepath.Join(meta.Path, file)
 	}
 
-	data, err := os.ReadFile(diskPath)
+	info, err := os.Stat(diskPath)
 	if err != nil {
-		return false
+		return false, ""
 	}
-	diskHash := fusion.FingerprintHash(data)
+	if !info.Mode().IsRegular() || info.Size() > HotPathReadCap {
+		why := "not a regular file"
+		if info.Mode().IsRegular() {
+			why = oversizeNote(info.Size(), HotPathReadCap)
+		}
+		return false, "index freshness not checked: " + why + "; not refreshed"
+	}
 
 	stored, found, err := c.st.Fingerprint(ctx, service, file)
 	if err != nil || !found {
-		return false
+		return false, ""
 	}
-	return diskHash != stored
+	// Design §4.3: hash only when the stat moved since the last hash. The
+	// memo keeps the hash, never the verdict, so a stored fingerprint that
+	// moved (a re-ingest) is compared afresh without a read.
+	if e, ok := c.editedLookup(diskPath, info); ok && e.hashOK {
+		return e.hash != stored, ""
+	}
+	data, rinfo, skipped, err := readFileCapped(diskPath, HotPathReadCap)
+	if err != nil {
+		return false, ""
+	}
+	if skipped != "" {
+		return false, "index freshness not checked: " + skipped + "; not refreshed"
+	}
+	hash := fusion.FingerprintHash(data)
+	c.editedStore(diskPath, rinfo, func(e *editedEntry) { e.hash, e.hashOK = hash, true })
+	return hash != stored, ""
 }
 
 // CompileLayer runs the compile for the named manifest layer against
@@ -307,27 +346,32 @@ func (c *Client) CompileLayerResume(ctx context.Context, service, layerName stri
 // ObligationsLayerCoverage reports the obligations layer's LIVE compile
 // completeness for service (O54 deliverable 2, second review round): the
 // CURRENT corpus, not the possibly-stale numbers the latest compile_runs
-// row recorded — see semantic.LiveLayerCoverage. Resolves the layer
-// definition and its corpus the same way a real compile does
-// (compileLayer); a resolution failure at either step degrades to the
-// store-only semantic.ObligationsLayerCoverage rather than failing
+// row recorded — see semantic.LiveLayerCoverage. The layer definition
+// resolves through the memoized pack union; the corpus is the layer's own
+// guides only (layerCorpus, RT-143: paths from one names-only walk per
+// store watermark, each guide stat'ed and read under the hot-path cap), never
+// the tree's contents. A guide it could not read is named in UnreadCorpus,
+// making the counts a lower bound (I38). A resolution failure degrades to
+// the store-only semantic.ObligationsLayerCoverage rather than failing
 // obligations serving outright — this is a serve-time enrichment, never a
 // hard dependency.
 func (c *Client) ObligationsLayerCoverage(ctx context.Context, service string) (semantic.LayerCoverage, bool, error) {
-	root := ""
-	if meta, found, merr := c.st.GetServiceMeta(ctx, service); merr == nil && found {
-		root = meta.Path
-	}
-	layerDef, err := semantic.LoadLayerIn(root, semantic.LayerObligations)
+	layerDef, err := semantic.LoadLayerIn(c.serviceRoot(ctx, service), semantic.LayerObligations)
 	if err != nil {
 		return semantic.ObligationsLayerCoverage(ctx, c.st, service, semantic.LayerObligations)
 	}
-	files, err := c.Sources(ctx, service)
+	corpus, unread, err := c.layerCorpus(ctx, service, layerDef)
 	if err != nil {
 		return semantic.ObligationsLayerCoverage(ctx, c.st, service, semantic.LayerObligations)
 	}
-	corpus := semantic.SelectCorpus(files, layerDef.CorpusInclude, layerDef.CorpusExclude)
-	return semantic.LiveLayerCoverage(ctx, c.st, service, layerDef, corpus)
+	cov, found, err := semantic.LiveLayerCoverage(ctx, c.st, service, layerDef, corpus)
+	if err == nil && len(unread) > 0 {
+		// Carried whether or not a compile run was recorded: with found
+		// false the caller renders a "coverage unknown" placeholder, and
+		// an unread guide must be named there too, never dropped (I38).
+		cov.UnreadCorpus = skipStrings(unread)
+	}
+	return cov, found, err
 }
 
 // RawFallbackObligations is wave O1's fix (ADR-037) for the product defect
@@ -340,6 +384,13 @@ func (c *Client) ObligationsLayerCoverage(ctx context.Context, service string) (
 // VB-8) and returns up to max of the nearest as raw rows, alongside why —
 // the shared coverage-defect note every returned row also carries
 // individually.
+//
+// RT-81 (docs/design/responsible-tenant.md §4.3): the corpus is the
+// layer's own guides (layerCorpus — never the tree's contents), and the
+// only other file read is the edited one, stat'ed first and capped at
+// HotPathReadCap. An edited file over the cap is not read: its behaviour
+// tokens are simply absent (ranking falls back to path and symbol
+// signals) and why says so.
 //
 // ok=false is an honest "nothing to add here", covering four cases: file is
 // empty (root-scope calls are out of this mechanism's scope — kept small),
@@ -358,19 +409,15 @@ func (c *Client) RawFallbackObligations(ctx context.Context, service, file strin
 	if file == "" || max <= 0 {
 		return nil, "", false, nil
 	}
-	root := ""
-	if meta, found, merr := c.st.GetServiceMeta(ctx, service); merr == nil && found {
-		root = meta.Path
-	}
+	root := c.serviceRoot(ctx, service)
 	layerDef, err := semantic.LoadLayerIn(root, semantic.LayerObligations)
 	if err != nil {
 		return nil, "", false, nil
 	}
-	files, err := c.Sources(ctx, service)
+	corpus, unread, err := c.layerCorpus(ctx, service, layerDef)
 	if err != nil {
 		return nil, "", false, nil
 	}
-	corpus := semantic.SelectCorpus(files, layerDef.CorpusInclude, layerDef.CorpusExclude)
 	claims, err := c.st.ClaimsForService(ctx, service, layerDef.Name)
 	if err != nil {
 		return nil, "", false, nil
@@ -395,7 +442,15 @@ func (c *Client) RawFallbackObligations(ctx context.Context, service, file strin
 		status = "no compile_runs row"
 	default:
 		if _, gok := semantic.NearestUncompiledGuide(cov, file); !gok {
-			return nil, "", false, nil // this file's own governing guide is already fully compiled
+			// Coverage was computed without the unread guides, so "fully
+			// compiled" is only known for the guides that were read. An
+			// unread guide that governs file is not known compiled (I38):
+			// fire, and name it below.
+			if _, uok := semantic.NearestUncompiledGuide(semantic.LayerCoverage{UncompiledScopes: skipPaths(unread)}, file); !uok {
+				return nil, "", false, nil // this file's own governing guide is already fully compiled
+			}
+			status = "governing guide not read"
+			break
 		}
 		if cov.BudgetStopped {
 			status = "budget_stopped"
@@ -405,6 +460,12 @@ func (c *Client) RawFallbackObligations(ctx context.Context, service, file strin
 	}
 
 	why := fmt.Sprintf("compiled layer incomplete: %s; raw nearest guide served", status)
+	if len(unread) > 0 {
+		// I38: a guide the corpus read skipped (over the cap, EPERM) is
+		// named, and the served rows are a lower bound — never a silent
+		// absence.
+		why += fmt.Sprintf("; %d guide(s) not read, rows are a lower bound (%s)", len(unread), strings.Join(skipStrings(unread), "; "))
+	}
 	// wave O2, item 1: the file's own declared symbol names, when the index
 	// has them, are as strong a relevance signal as its stem — resolved
 	// here (the only place in this call chain that already holds a store
@@ -414,22 +475,58 @@ func (c *Client) RawFallbackObligations(ctx context.Context, service, file strin
 	// wave O3, item 2: a root-wide convention (workspace/, the gate) names
 	// no file/package/symbol of its own, so it can never earn a "strong"
 	// lexical tie via the above — what DOES tie it to file is file's own
-	// BEHAVIOUR. files was already fetched (Sources) to build corpus above;
-	// find the edited file's own content in it (a Faux/synthetic file, or
-	// one connector.Fetch skipped, simply isn't there — degrade to no
-	// signal, never an error) and fold semantic.BehaviorTokens' verdict
-	// into the same extraTokens path a resolved symbol name already uses.
-	for _, sf := range files {
-		if sf.Path == file {
-			extraTokens = append(extraTokens, semantic.BehaviorTokens(string(sf.Content))...)
-			break
-		}
+	// BEHAVIOUR. Read the edited file alone, under the cap (RT-81); a file
+	// that is missing or unreadable simply isn't a signal, and one over the
+	// cap is named in why rather than read.
+	if tokens, skipped := c.editedFileTokens(ctx, root, service, file); skipped != "" {
+		why += "; edited file not read for relevance (" + skipped + ")"
+	} else {
+		extraTokens = append(extraTokens, tokens...)
 	}
 	rows, rerr := semantic.RawFallbackRules(claims, layerDef, corpus, file, max, why, extraTokens)
 	if rerr != nil || len(rows) == 0 {
 		return nil, "", false, nil
 	}
 	return rows, why, true, nil
+}
+
+// editedFileTokens derives the raw fallback's behaviour signal from the one
+// edited file: from the service root on disk, stat'ed and capped at
+// HotPathReadCap, and kept against the file's stat so an unchanged file is
+// not read again (design §4.3); for a connector with no on-disk root,
+// through the connector, capped after the fetch. tokens is nil (and
+// skipped "") when the file is simply not there.
+func (c *Client) editedFileTokens(ctx context.Context, root, service, file string) (tokens []string, skipped string) {
+	if root != "" {
+		if st, err := os.Stat(root); err == nil && st.IsDir() {
+			path := file
+			if !filepath.IsAbs(path) {
+				path = filepath.Join(root, filepath.FromSlash(file))
+			}
+			info, serr := os.Stat(path)
+			if serr != nil {
+				return nil, ""
+			}
+			if e, ok := c.editedLookup(path, info); ok && e.tokensOK {
+				return e.tokens, ""
+			}
+			data, rinfo, why, rerr := readFileCapped(path, HotPathReadCap)
+			if rerr != nil || why != "" {
+				return nil, why
+			}
+			tokens = semantic.BehaviorTokens(string(data))
+			c.editedStore(path, rinfo, func(e *editedEntry) { e.tokens, e.tokensOK = tokens, true })
+			return tokens, ""
+		}
+	}
+	data, err := c.conn.Fetch(ctx, core.SourceRef{Service: service, Path: file})
+	if err != nil {
+		return nil, ""
+	}
+	if int64(len(data)) > HotPathReadCap {
+		return nil, oversizeNote(int64(len(data)), HotPathReadCap)
+	}
+	return semantic.BehaviorTokens(string(data)), ""
 }
 
 func (c *Client) compileLayer(ctx context.Context, service, layerName string, dryRun bool, escape string, resume bool, budget *semantic.BudgetOverride) (core.CompileRun, error) {

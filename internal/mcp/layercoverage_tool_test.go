@@ -199,3 +199,34 @@ func TestObligationsTool_LayerCoverage_RootScopeNeverGetsAFileNote(t *testing.T)
 		t.Errorf("payload[note] = %v, want the root-scope note %q unchanged", payload["note"], wantRootNote)
 	}
 }
+
+// TestObligationsTool_LayerCoverage_UnknownCarriesUnreadCorpus (I38): with
+// no compile_runs row the placeholder still names every guide the live
+// coverage could not read — an unread guide never disappears just because
+// the coverage numbers are unknown.
+func TestObligationsTool_LayerCoverage_UnknownCarriesUnreadCorpus(t *testing.T) {
+	fake := &coverageFakeBackend{
+		semanticFakeBackend: semanticFakeBackend{obligations: semantic.Obligations{Service: "svc", File: "main.go"}},
+		coverage:            semantic.LayerCoverage{UnreadCorpus: []string{"CLAUDE.md: over the read cap"}},
+		coverageFound:       false,
+	}
+	srv := mcp.NewServer(fake)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "obligations",
+			"arguments": map[string]any{"service": "svc", "file": "main.go"},
+		},
+	})
+	if resp["error"] != nil {
+		t.Fatalf("unexpected error: %v", resp["error"])
+	}
+	cov, ok := extractPayload(t, resp)["layer_coverage"].(map[string]any)
+	if !ok {
+		t.Fatal("layer_coverage missing")
+	}
+	unread, _ := cov["unread_corpus"].([]any)
+	if len(unread) != 1 || unread[0] != "CLAUDE.md: over the read cap" {
+		t.Errorf("layer_coverage[unread_corpus] = %v, want the unread CLAUDE.md", cov["unread_corpus"])
+	}
+}

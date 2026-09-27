@@ -248,6 +248,22 @@ type Store interface {
 	// when concernID is "" all observations for the service are returned.
 	QueryObservations(ctx context.Context, serviceID, concernID string) ([]core.Observation, error)
 
+	// SymbolNamesForSource returns the distinct, sorted symbol names the
+	// service's observations declare in file — a source_ref equal to file
+	// or file followed by ":<line>". It reads only that file's rows (the
+	// (service_id, source_ref) index), never the service's whole
+	// observation set: the obligations raw fallback's per-edit relevance
+	// signal (RT-81, docs/design/responsible-tenant.md §4.3).
+	SymbolNamesForSource(ctx context.Context, serviceID, file string) ([]string, error)
+
+	// SymbolSourcesForNames returns the (package, symbol, source_ref) rows
+	// of the service's observations that declare any of names, sorted by
+	// (symbol, package, source_ref) — only those rows and columns, never
+	// the service's whole observation set: the resolution a symbol-only
+	// plan-row contract needs at obligations serve time (RT-174,
+	// docs/design/responsible-tenant.md §4.3).
+	SymbolSourcesForNames(ctx context.Context, serviceID string, names []string) ([]SymbolSource, error)
+
 	// Fingerprint returns the stored content hash for (serviceID, sourceRef).
 	// The boolean is false when no fingerprint has been recorded yet.
 	Fingerprint(ctx context.Context, serviceID, sourceRef string) (hash string, found bool, err error)
