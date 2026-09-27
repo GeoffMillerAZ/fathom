@@ -12,6 +12,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/hookcache"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/testevidence"
@@ -104,6 +105,13 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	}
 
 	c.SetRehash(*rehash)
+	// RT-106: the typed pass's toolchain children run capped and niced in
+	// a CLI ingest too, not only inside serve-http.
+	if undo, terr := fusion.InstallProcessToolchain(""); terr != nil {
+		fmt.Fprintf(stderr, "warn: toolchain children run at normal priority: %v\n", terr)
+	} else {
+		defer undo()
+	}
 	report, err := c.Ingest(context.Background(), client.ServiceRef{
 		ID:   *service,
 		Path: svcPath,

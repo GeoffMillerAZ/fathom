@@ -19,6 +19,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 )
 
@@ -113,4 +114,39 @@ func InstallBackgroundToolchain(dir string) (func(), error) {
 		_ = os.Setenv("PATH", prev)
 		_ = os.RemoveAll(dir)
 	}, nil
+}
+
+// toolchainDirPrefix names a process's shim directory:
+// <tmp>/fathom-toolchain-<pid>.
+const toolchainDirPrefix = "fathom-toolchain-"
+
+// InstallProcessToolchain is InstallBackgroundToolchain at this process's
+// own shim directory, <tmpRoot>/fathom-toolchain-<pid> (tmpRoot "" =
+// os.TempDir()), for every process that runs the typed pass — the daemon
+// and a CLI ingest alike (RT-106). It first removes the shim directories of
+// processes no longer running: one killed (SIGKILL, the exit-mark ladder's
+// os.Exit) never ran its cleanup.
+func InstallProcessToolchain(tmpRoot string) (func(), error) {
+	if tmpRoot == "" {
+		tmpRoot = os.TempDir()
+	}
+	if entries, err := os.ReadDir(tmpRoot); err == nil {
+		for _, e := range entries {
+			name := e.Name()
+			if !e.IsDir() || !strings.HasPrefix(name, toolchainDirPrefix) {
+				continue
+			}
+			pid, perr := strconv.Atoi(strings.TrimPrefix(name, toolchainDirPrefix))
+			if perr != nil || pid == os.Getpid() || processAlive(pid) {
+				continue
+			}
+			_ = os.RemoveAll(filepath.Join(tmpRoot, name))
+		}
+	}
+	dir := filepath.Join(tmpRoot, toolchainDirPrefix+strconv.Itoa(os.Getpid()))
+	undo, err := InstallBackgroundToolchain(dir)
+	if err != nil {
+		_ = os.RemoveAll(dir)
+	}
+	return undo, err
 }

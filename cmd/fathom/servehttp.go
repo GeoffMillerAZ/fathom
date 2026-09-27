@@ -572,13 +572,12 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// RT-106 (§7.2): every `go` this daemon execs (the typed pass's go
 	// list, go env) runs through a shim at background priority with
 	// GOFLAGS=-p=2 and GOMAXPROCS=2.
-	if shimDir, err := os.MkdirTemp("", "fathom-toolchain-"); err == nil {
-		if undo, ierr := fusion.InstallBackgroundToolchain(shimDir); ierr != nil {
-			flog.Warn(fmt.Sprintf("serve-http: toolchain children run at normal priority: %v", ierr))
-			_ = os.RemoveAll(shimDir)
-		} else {
-			defer undo()
-		}
+	// RT-106: <tmp>/fathom-toolchain-<pid>; a killed predecessor's is
+	// scavenged here.
+	if undo, ierr := fusion.InstallProcessToolchain(""); ierr != nil {
+		flog.Warn(fmt.Sprintf("serve-http: toolchain children run at normal priority: %v", ierr))
+	} else {
+		defer undo()
 	}
 	refreshQ := mcp.NewRefreshQueueLogged(c, refresh.Config{Started: startedAt}, flog)
 	refreshQ.Start(refreshCtx)
