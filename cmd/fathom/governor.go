@@ -77,6 +77,7 @@ type governor struct {
 	halted    bool // an ingest was halted at the exit mark; the next exit sample exits
 	exited    bool
 	cancelled []string // the last refuse cancellation, in order
+	abandoned int64    // calls cancelled as abandoned-by-governor, process lifetime
 }
 
 // freeEvery bounds debug.FreeOSMemory while shed (§2.1).
@@ -188,6 +189,7 @@ func (g *governor) scavenge(at time.Time, force bool) {
 // first, as abandoned-by-governor (RT-172).
 func (g *governor) cancelHeavy() {
 	got := g.inflight.Cancel(tenancy.ErrAbandonedByGovernor, tenancy.ClassTree, tenancy.ClassFleet)
+	g.abandoned += int64(len(got))
 	g.cancelled = g.cancelled[:0]
 	for _, e := range got {
 		g.cancelled = append(g.cancelled, e.Tool)
@@ -395,6 +397,7 @@ type governorSnapshot struct {
 	Unknowns       []string `json:"unknowns,omitempty"`
 	LastTransition string   `json:"last_transition,omitempty"`
 	Quarantined    []string `json:"quarantined,omitempty"`
+	Abandoned      int64    `json:"abandoned_by_governor"`
 }
 
 func (g *governor) snapshot() governorSnapshot {
@@ -404,7 +407,7 @@ func (g *governor) snapshot() governorSnapshot {
 		Level: g.st.Level.String(), LadderOff: g.st.Off,
 		Budget: g.budget.Budget, Shed: g.budget.Shed, Refuse: g.budget.Refuse, Exit: g.budget.Exit, ExitEnabled: g.budget.ExitEnabled,
 		Footprint: tenancy.Unknown, Children: tenancy.Unknown, SwapUsed: tenancy.Unknown, DiskWritten: tenancy.Unknown,
-		Pressure: tenancy.PressureUnknown.String(),
+		Pressure: tenancy.PressureUnknown.String(), Abandoned: g.abandoned,
 	}
 	if !g.st.Since.IsZero() {
 		s.Since = g.st.Since.UTC().Format(time.RFC3339)
@@ -484,6 +487,7 @@ func governorMetricLines() string {
 	}
 	fmt.Fprintf(&b, "fathom_gc_cpu_fraction %g\n", s.GCCPUFraction)
 	fmt.Fprintf(&b, "fathom_quarantined_services %d\n", len(s.Quarantined))
+	fmt.Fprintf(&b, "fathom_governor_abandoned_total %d\n", s.Abandoned)
 	return b.String()
 }
 

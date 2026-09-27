@@ -205,6 +205,15 @@ func TestRefuseCancelsAllHeavyTicketsYoungestFirst(t *testing.T) {
 	if got != "obligations,list_services,search" {
 		t.Fatalf("cancelled youngest first: %q", got)
 	}
+	// The abandoned outcome is counted where /metrics reads it.
+	if n := r.g.snapshot().Abandoned; n != 3 {
+		t.Fatalf("snapshot abandoned = %d, want 3", n)
+	}
+	activeGovernor.Store(r.g)
+	defer activeGovernor.Store(nil)
+	if m := governorMetricLines(); !strings.Contains(m, "fathom_governor_abandoned_total 3\n") {
+		t.Fatalf("/metrics lacks the abandoned count:\n%s", m)
+	}
 
 	// The provisional class table the /rpc registration uses until the
 	// admission gate (RT-55) declares classes on the tools.

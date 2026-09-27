@@ -87,6 +87,9 @@ type rpcResponse struct {
 type rpcError struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
+	// Data is JSON-RPC's optional structured error detail (the governor's
+	// {"outcome": "abandoned-by-governor"}, RT-172); omitted when nil.
+	Data any `json:"data,omitempty"`
 }
 
 // Handler is the function signature for an MCP method handler. It receives the
