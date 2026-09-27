@@ -57,11 +57,14 @@ type graphPatcher interface {
 
 // refreshFileHandler serves POST /refresh-file. q is the daemon's refresh
 // queue (RT-97): while a whole-service refresh of the service is queued or
-// running, the file is left to the queue — no per-file write races the
-// ingest — which is asked for the refresh covering the edit (a running
-// ingest may have read the file before it, so the request becomes its one
-// follow-up), and the answer says so. queue (nil, or returning nil): no
-// queue.
+// running, the file is left to the queue, which is asked for the refresh
+// covering the edit (a running ingest may have read the file before it, so
+// the request becomes its one follow-up), and the answer says so. The check
+// is not a reservation: a job can start between it and the per-file write,
+// and the two then overlap — so a job found queued or running after the
+// write is asked for the follow-up, whose read of the file is the one that
+// stands (and the write has already cleared the pass-state rows the gate
+// needs, RT-104). queue (nil, or returning nil): no queue.
 func refreshFileHandler(c *client.Client, patcher graphPatcher, queue func() *refresh.Queue) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {

@@ -136,7 +136,7 @@ func TestPostCommitEnqueuesRefresh(t *testing.T) {
 
 // TestRefreshFileDefersToQueuedServiceRefresh (RT-97, I48): while a
 // whole-service refresh of the service is queued or running, /refresh-file
-// leaves the file to the queue — no per-file write races the ingest — and
+// leaves the file to the queue (no per-file write while it is queued or running) and
 // asks it for the refresh that covers the edit: a running ingest may have
 // read the file before the edit, so the request becomes its one follow-up.
 func TestRefreshFileDefersToQueuedServiceRefresh(t *testing.T) {
