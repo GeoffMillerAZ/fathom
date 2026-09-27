@@ -144,6 +144,9 @@ func cmdPluginRender(args []string, stdout, stderr io.Writer) int {
 			"command": "fathom " + spec.sub,
 			"timeout": spec.timeout,
 		}
+		if spec.async {
+			entry["async"] = true // RT-169
+		}
 		group := map[string]any{"hooks": []any{entry}}
 		if spec.matcher != "" {
 			group["matcher"] = spec.matcher

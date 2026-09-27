@@ -40,3 +40,9 @@ func BustIdent() {
 // per-user temp dir, like IdentDir, so concurrent sessions see the same
 // breaker. A package var so tests can redirect it.
 var HealthDir = filepath.Join(os.TempDir(), "fathom-hook-health")
+
+// ToplevelDir is os.TempDir()/fathom-toplevel-cache — the per-cwd git
+// toplevel cache every hook process shares (cmd/fathom gitToplevelCached,
+// docs/design/responsible-tenant.md §11.3). A package var so tests can
+// redirect it.
+var ToplevelDir = filepath.Join(os.TempDir(), "fathom-toplevel-cache")

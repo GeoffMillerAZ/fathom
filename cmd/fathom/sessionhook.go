@@ -121,10 +121,12 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 	// resolution reuses the same daemon-backed lookup the advisory events
 	// already make, so this costs one extra round trip only when a
 	// session id exists to tag it with.
+	var stampIdentity *identityResult
 	if sessionID != "" {
 		svc := ""
-		if name, _, ok := indexedServiceFor(&http.Client{Timeout: 2 * time.Second}, *url, projDir); ok {
+		if name, info, ok := indexedServiceFor(&http.Client{Timeout: 2 * time.Second}, *url, projDir); ok {
 			svc = name
+			stampIdentity = &identityResult{Schema: 1, Service: name, Symbols: info.symbols, CountErr: info.countErr, Langs: info.langs, Path: info.path}
 		}
 		recordSessionWindow(projDir, sessionWindowRow{
 			SchemaVersion: 1, SessionID: sessionID, Cwd: projDir, Service: svc,
@@ -163,6 +165,8 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 		BriefBytes:    briefBytes,
 		IntentLine:    intentLine,
 		At:            time.Now().UTC().Format(time.RFC3339),
+		Cwd:           projDir,
+		Identity:      stampIdentity,
 	})
 
 	// EP-24: the attention line's bytes as a COMPONENT of the primer, so

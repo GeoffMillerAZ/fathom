@@ -151,6 +151,13 @@ outside the tool registry — hooks call these directly rather than through
   meta-only "is X indexed" probe `fathom verify`, the stop and edit hooks,
   `fathom plans`, `fathom init` and the console ask; they fall back to
   `list_services` only against a daemon that answers this route 4xx.
+- `GET /identity?path=DIR[&path=TOPLEVEL]` (RT-133) — which indexed service a
+  directory is, from the daemon's in-process registry: `{"identity_schema": 1,
+  "service", "root", "matched_by": "root"|"basename", "symbols", "count_error",
+  "languages", "path"}` (`service` empty when nothing matches; 400 for a relative
+  path, 503 + `Retry-After` when the registry cannot be read). The hooks' cached
+  identity resolver asks it instead of listing every service; a daemon without
+  the route (any 4xx) falls back to `list_services`.
 - `GET /findings/summary?service=NAME` — repo-wide open finding-kind claim
   count plus the oldest compiled-at (FL-21, `docs/vision/30-findings-loop.md`
   §3.4).

@@ -13,6 +13,7 @@ package main
 // return a string, so a test pins the text without a hook envelope.
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -53,8 +54,7 @@ const subagentPrimerCut = " …[cut at the subagent primer's byte cap]"
 // recorded start (sessionStartFor) so the discoveries brief covers
 // exactly what the parent had established, not an arbitrary window.
 func subagentPrimer(baseURL, projDir, parentSessionID string) string {
-	hc := &http.Client{Timeout: 2 * time.Second}
-	name, info, ok := indexedServiceFor(hc, baseURL, projDir)
+	name, info, ok := subagentIdentity(baseURL, projDir, parentSessionID)
 	if !ok {
 		return ""
 	}
@@ -203,6 +203,14 @@ func indexedServiceFor(hc *http.Client, baseURL, dir string) (string, svcInfo, b
 	if dir == "" {
 		return "", svcInfo{}, false
 	}
+	// RT-133: one GET /identity (the same resolution, done where the
+	// registry lives), else the full list from a daemon that predates it.
+	if id, err := lookupIdentity(hc, baseURL, dir); !errors.Is(err, errIdentityRouteMissing) {
+		if err != nil || id.Service == "" {
+			return "", svcInfo{}, false
+		}
+		return id.Service, id.info(), true
+	}
 	svcs, err := fetchServices(hc, baseURL)
 	if err != nil || len(svcs) == 0 {
 		return "", svcInfo{}, false
@@ -291,4 +299,17 @@ func isWorktreeDir(dir string) bool {
 	}
 	st, err := os.Stat(filepath.Join(dir, ".git"))
 	return err == nil && !st.IsDir()
+}
+
+// subagentIdentity is the service a SubagentStart primes for (RT-133,
+// §11.3): the parent session's SessionStart resolution from its stamp when
+// the subagent runs in the same directory — zero RPCs — else the cached
+// resolver's lookup.
+func subagentIdentity(baseURL, projDir, parentSessionID string) (string, svcInfo, bool) {
+	if st := readSessionStamp(parentSessionID); st.Identity != nil && st.Identity.Service != "" && st.Cwd != "" &&
+		strings.TrimRight(st.Cwd, "/") == strings.TrimRight(projDir, "/") {
+		emitBeat("ident-cache", "parent-stamp", nil)
+		return st.Identity.Service, st.Identity.info(), true
+	}
+	return indexedServiceFor(&http.Client{Timeout: 2 * time.Second}, baseURL, projDir)
 }

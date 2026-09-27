@@ -36,6 +36,10 @@ type sessionStamp struct {
 	// acted on it; without the cohort label the question is unanswerable.
 	IntentLine bool   `json:"intent_line,omitempty"`
 	At         string `json:"at"`
+	// The session's identity resolution at SessionStart (RT-133): a
+	// SubagentStart in the same directory reuses it — zero RPCs.
+	Cwd      string          `json:"cwd,omitempty"`
+	Identity *identityResult `json:"identity,omitempty"`
 }
 
 func sessionStampDir() string {

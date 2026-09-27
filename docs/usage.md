@@ -846,6 +846,24 @@ edit hook's claim-moment rows carry `origin: claim-moment` — the PostToolUse
 `[x]` to a depth-1 `docs/plans/*.md` and injects the refusal (silent on a
 clean claim or any operational failure).
 
+### Hook fan-out: what a hook does per tool call
+
+Hooks fire on a large share of every agent's tool calls, so each one does the least it
+can (RT-130..RT-133, RT-169, design §11.3):
+
+- `gitToplevel` is memoized in process and cached per working directory across hook
+  processes (`$TMPDIR/fathom-toplevel-cache`, 10 min, keyed by the cwd and `<top>/.git`'s
+  mtime; a `git init` under a cached "not a repository" misses) — no git fork per hook.
+- The Read|Grep|Glob observer and a post-Bash call with no write targets are observe-only:
+  they exit before any git fork or daemon request (the observer finds its repository root
+  by stat). `fathom init` registers the observer `"async": true` on Claude Code, so a Read
+  never waits on it.
+- The Stop hook folds only what the transcript gained since the session's last Stop (a
+  per-session offset stamp beside the session stamps), not up to 16 MB every turn.
+- Identity lookups ask the daemon's `GET /identity` through the cached resolver instead of
+  listing every service, and `SubagentStart` reuses its parent's SessionStart resolution
+  from the session stamp — zero RPCs.
+
 ### Hook deadlines, the shared breaker and the kill switch
 
 Every hook verb (`session-hook` and its `--event`s, `edit-hook [--pre]`, `prompt-hook`,

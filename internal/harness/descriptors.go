@@ -48,6 +48,9 @@ var claudeCode = Descriptor{
 	Label:   "claude",
 	Tier:    "A",
 	Detect:  []string{".claude/settings.json", "~/.claude.json"},
+	// Claude Code runs a command hook marked "async": true in the
+	// background (RT-169).
+	AsyncHooks: true,
 	Instructions: []InstructionFile{
 		{Path: "CLAUDE.md", Mode: "native"},
 		{Path: "AGENTS.md", Mode: "mirror", Note: "the same stanza body, so every harness that reads AGENTS.md sees one contract"},
@@ -90,8 +93,9 @@ var claudeCode = Descriptor{
 		},
 		{
 			Capability: CapDiscoveryObserve, Event: EventPreTool, Harness: "PreToolUse", Matcher: "Grep|Glob|Read", Verb: "edit-hook --pre", Marker: "fathom edit-hook --pre", TimeoutSec: 5, Vehicle: VehicleHookSilent,
-			Input: claudeToolIn,
-			Note:  "counting only: zero daemon calls, zero stdout",
+			Input:       claudeToolIn,
+			Note:        "counting only: zero daemon calls, zero git forks, zero stdout; registered async so the Read never waits on it (RT-131, RT-169)",
+			ObserveOnly: true,
 		},
 		{
 			Capability: CapStopVerify, Event: EventStop, Harness: "Stop", Matcher: "", Verb: "stop-hook", Marker: "fathom stop-hook", TimeoutSec: 10, Vehicle: VehicleHookInject,

@@ -113,6 +113,13 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	}
 	sessionID := hook.SessionID
 
+	// RT-131 (§11.3): an observe-only call (the Read|Grep|Glob observer, a
+	// Bash call with no write targets) exits here, before any git or
+	// daemon work.
+	if observeOnlyExit(ev, hook, armOff) {
+		return 0
+	}
+
 	if *pre {
 		return cmdEditHookPre(codec, hook, url, armOff, stdout)
 	}

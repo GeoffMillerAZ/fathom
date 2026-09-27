@@ -616,6 +616,7 @@ type hookSpec struct {
 	marker  string
 	sub     string
 	timeout int
+	async   bool // registered non-blocking (RT-169: an observe-only binding on a harness that runs async hooks)
 }
 
 // fathomHookSpecs is the Claude Code hook table, derived from the harness
@@ -926,6 +927,9 @@ func ensureHookEntry(hooksObj map[string]any, spec hookSpec, command string) boo
 		"type":    "command",
 		"command": command,
 		"timeout": spec.timeout,
+	}
+	if spec.async {
+		newHook["async"] = true // RT-169: the agent's tool call never waits on it
 	}
 
 	for i, g := range arr {

@@ -168,7 +168,9 @@ func recordSessionLedgerEntry(sessionID, transcriptPath, projDir string, now tim
 	if cands := serviceCandidates(projDir); len(cands) > 0 {
 		repo = strings.ToLower(cands[0].name)
 	}
-	ts := transcriptSummaryFrom(transcriptPath)
+	// RT-132 (§11.3): only what the transcript gained since this session's
+	// last Stop is read; the stamp carries the fold.
+	ts := readTranscriptFromOffset(sessionID, transcriptPath)
 	beats, _ := readBeatLogTail(beatLogPath(), sessionLedgerBeatTailBytes)
 	e := buildSessionLedgerEntry(sessionID, repo, ts, beats, now)
 	e.VerifyCatches = verifyCatches
