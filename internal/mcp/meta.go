@@ -298,6 +298,11 @@ func registerStalenessReport(s *Server, backend QueryInterface) {
 			case refresh.StateRunning:
 				resp["refresh"] = "refreshing"
 			}
+			// I38: a queued refresh's failure (a post-commit request has
+			// no caller to hear it) is named until a success clears it.
+			if f, failed := q.LastFailure(p.Service); failed {
+				resp["refresh_failure"] = fmt.Sprintf("%s refresh failed at %s: %s", joinReasons(f.Reasons), f.At.UTC().Format(time.RFC3339), f.Err)
+			}
 		}
 		// BP-35: the typed-edge pass outcome for this service, when the
 		// backend can report it. `known: false` is the honest "no ingest

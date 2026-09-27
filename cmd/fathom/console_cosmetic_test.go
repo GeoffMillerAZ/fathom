@@ -19,7 +19,7 @@ func TestConsoleCosmetics_F0ProofMinorItems(t *testing.T) {
 	if !strings.Contains(p, "/<wbr>code/<wbr>geoffmilleraz/<wbr>sextant") || !strings.Contains(p, "text-left") || strings.Contains(p, "break-all") {
 		t.Errorf("pathHTML = %s", p)
 	}
-	if r := remedy("fathom post-commit-hook --dir /x --service y --timeout 2m"); strings.Contains(r, "break-all") || !strings.Contains(r, "[overflow-wrap:anywhere]") {
+	if r := remedy("fathom post-commit-hook --dir /x --service y --wait --timeout 2m"); strings.Contains(r, "break-all") || !strings.Contains(r, "[overflow-wrap:anywhere]") {
 		t.Errorf("remedy = %s", r)
 	}
 	wiring := renderWiringIndex([]registeredService{{Service: "fathom", Root: "/Volumes/m2ext/code/geoffmilleraz/sextant"}}, nil)

@@ -40,6 +40,7 @@ func cmdPostCommitHook(args []string, stdout, stderr io.Writer) int {
 	service := fs.String("service", "", "service id (default: resolved from the repo)")
 	timeout := fs.Duration("timeout", 10*time.Second, "daemon timeout for the refresh request (on failure nothing is ingested)")
 	quiet := fs.Bool("quiet", false, "print nothing on success")
+	wait := fs.Bool("wait", false, "re-index now: run the daemon's ingest tool (an explicit request on its refresh queue) and wait up to --timeout for it, instead of queueing a background refresh")
 	if err := fs.Parse(args); err != nil {
 		return 0 // never block a commit on our own flag parsing
 	}
@@ -115,7 +116,15 @@ func cmdPostCommitHook(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
-	if how, err := ingestViaDaemon(*url, svc, root, *timeout); err == nil {
+	how, err := "", error(nil)
+	if *wait {
+		// I38: a remedy that says "re-index" must re-index — the ingest
+		// tool waits for its run on the queue and returns its error.
+		how, err = "refreshed", ingestToolViaDaemon(*url, svc, root, *timeout)
+	} else {
+		how, err = ingestViaDaemon(*url, svc, root, *timeout)
+	}
+	if err == nil {
 		if !*quiet {
 			fmt.Fprintf(stdout, "post-commit: %s %q through the daemon\n", how, svc)
 		}

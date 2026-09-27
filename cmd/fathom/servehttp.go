@@ -580,7 +580,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 			defer undo()
 		}
 	}
-	refreshQ := mcp.NewRefreshQueue(c, refresh.Config{Started: startedAt})
+	refreshQ := mcp.NewRefreshQueueLogged(c, refresh.Config{Started: startedAt}, flog)
 	refreshQ.Start(refreshCtx)
 	var backend mcp.QueryInterface = c
 	if *autoRefresh {

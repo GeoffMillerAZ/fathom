@@ -249,6 +249,23 @@ type Queue struct {
 	kick    chan struct{}
 	stopped chan struct{}
 	started bool
+	failed  map[string]Failure // service -> its last job's failure (cleared by a success)
+}
+
+// Failure is a service's last failed job (I38): recorded whether or not
+// anyone waited on it, so a queued job's failure is never silent.
+type Failure struct {
+	At      time.Time
+	Err     string
+	Reasons []Reason
+}
+
+// LastFailure is service's last failed job, if its most recent job failed.
+func (q *Queue) LastFailure(service string) (Failure, bool) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	f, ok := q.failed[service]
+	return f, ok
 }
 
 // New returns a queue; Start runs its worker.
@@ -281,6 +298,7 @@ func New(cfg Config) *Queue {
 		cfg:     cfg,
 		entries: map[string]*entry{},
 		queried: map[string]time.Time{},
+		failed:  map[string]Failure{},
 		kick:    make(chan struct{}, 1),
 		stopped: make(chan struct{}),
 	}
@@ -504,6 +522,12 @@ func (q *Queue) complete(job Job, ws []*waiter, err error) {
 	q.mu.Lock()
 	e := q.entries[job.Service]
 	q.running = ""
+	switch {
+	case err == nil:
+		delete(q.failed, job.Service)
+	case !errors.Is(err, ErrRefused):
+		q.failed[job.Service] = Failure{At: now, Err: err.Error(), Reasons: job.Reasons}
+	}
 	if e != nil {
 		if e.dirty {
 			e.state = StateQueued

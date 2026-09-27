@@ -396,3 +396,44 @@ func TestRefresh_DemandOrderAndStartupStagger(t *testing.T) {
 		}
 	})
 }
+
+// TestRefresh_FailureRecordedWithoutWaiter (I38): a job nobody waits on (a
+// post-commit /refresh-request) that fails leaves its failure on the queue
+// for staleness_report and the log; the next success clears it.
+func TestRefresh_FailureRecordedWithoutWaiter(t *testing.T) {
+	var fail atomic.Bool
+	fail.Store(true)
+	ran := make(chan struct{}, 4)
+	q := New(Config{
+		Run: func(context.Context, Job) error {
+			defer func() { ran <- struct{}{} }()
+			if fail.Load() {
+				return errors.New("database or disk is full")
+			}
+			return nil
+		},
+		Gate:      func(string, bool, time.Time) Verdict { return Verdict{} },
+		StartWait: -1, Stagger: -1, Warmup: func(time.Time) bool { return false },
+	})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	q.Start(ctx)
+	q.RequestRefresh(ctx, Request{Service: "svc", Reason: ReasonPostCommit}, false)
+	<-ran
+	var f Failure
+	var ok bool
+	for i := 0; i < 200; i++ {
+		if f, ok = q.LastFailure("svc"); ok {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	if !ok || !strings.Contains(f.Err, "disk is full") || len(f.Reasons) != 1 || f.Reasons[0] != ReasonPostCommit {
+		t.Fatalf("LastFailure = %+v, %v; want the post-commit job's error", f, ok)
+	}
+	fail.Store(false)
+	q.RequestRefresh(ctx, Request{Service: "svc", Reason: ReasonPostCommit}, true)
+	if _, ok := q.LastFailure("svc"); ok {
+		t.Fatal("a success left the failure recorded")
+	}
+}

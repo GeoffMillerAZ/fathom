@@ -127,7 +127,10 @@ envelope says so — `"refresh": {"<service>": "queued (index_stale) — served 
 the index at <indexed>; HEAD is <head>; …"}` (`refreshing` once the queue runs
 it; `queued, paused (shed) …` while the ladder holds background work).
 `staleness_report` adds `refresh: "queued" | "refreshing"` beside
-`reingest_recommended` while the queue holds the service.
+`reingest_recommended` while the queue holds the service, and
+`refresh_failure: "<reasons> refresh failed at <RFC 3339>: <error>"` when the
+service's last queued ingest failed (cleared by the next success) — a
+post-commit request has no caller to hear its failure.
 
 ### Plain HTTP endpoints (non-MCP)
 

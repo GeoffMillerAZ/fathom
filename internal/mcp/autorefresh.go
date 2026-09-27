@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -69,7 +70,7 @@ type autoRefreshBackend struct {
 // to silence it. The daemon shares one queue with the ingest tool and its
 // routes: NewAutoRefreshQueued.
 func NewAutoRefresh(backend QueryInterface, log *dlog.Logger) QueryInterface {
-	q := NewRefreshQueue(backend, refresh.Config{StartWait: -1})
+	q := NewRefreshQueueLogged(backend, refresh.Config{StartWait: -1}, log)
 	q.Start(context.Background())
 	return NewAutoRefreshQueued(backend, log, q)
 }
@@ -93,17 +94,52 @@ func NewAutoRefreshQueued(backend QueryInterface, log *dlog.Logger, q *refresh.Q
 // (its IngestServiceAt for a job carrying an onboarding path). cfg.Run is
 // set here; the caller starts it under the daemon's lifetime context.
 func NewRefreshQueue(backend QueryInterface, cfg refresh.Config) *refresh.Queue {
+	return NewRefreshQueueLogged(backend, cfg, nil)
+}
+
+// NewRefreshQueueLogged is NewRefreshQueue with every job's bookkeeping
+// done on the queue's worker, whoever asked and whether or not anyone waits
+// (I38): SQLITE_FULL/SQLITE_IOERR is noted as store distress (RT-41), the
+// CLI's service-identity cache is busted (the O15 class), and a failure is
+// logged to log (nil = silent) and left on the queue (Queue.LastFailure,
+// staleness_report's refresh_failure) — a post-commit /refresh-request
+// answers 202 before its ingest runs, so its failure has no caller to
+// return to.
+func NewRefreshQueueLogged(backend QueryInterface, cfg refresh.Config, log *dlog.Logger) *refresh.Queue {
 	cfg.Run = func(ctx context.Context, job refresh.Job) error {
+		var err error
 		if job.Path != "" {
 			ia, ok := backend.(ingestAtBackend)
 			if !ok {
 				return fmt.Errorf("backend does not support onboarding by path")
 			}
-			return ia.IngestServiceAt(ctx, job.Service, job.Path)
+			err = ia.IngestServiceAt(ctx, job.Service, job.Path)
+		} else {
+			err = backend.IngestService(ctx, job.Service)
 		}
-		return backend.IngestService(ctx, job.Service)
+		tenancy.NoteStoreError(err, time.Now())
+		hookcache.BustIdent()
+		if err != nil && log != nil && !onlyAuto(job.Reasons) {
+			// An auto-refresh failure is logged by refreshDone with its
+			// backoff; every other job's failure is logged here.
+			log.Warn(fmt.Sprintf("refresh: %s ingest failed (%s); reads serve the index as it stands: %v", job.Service, joinReasons(job.Reasons), err))
+		}
+		return err
 	}
 	return refresh.New(cfg)
+}
+
+// onlyAuto reports whether a job serves auto-refresh alone.
+func onlyAuto(rs []refresh.Reason) bool {
+	return len(rs) == 1 && rs[0] == refresh.ReasonAuto
+}
+
+func joinReasons(rs []refresh.Reason) string {
+	out := make([]string, len(rs))
+	for i, r := range rs {
+		out[i] = string(r)
+	}
+	return strings.Join(out, ", ")
 }
 
 // RefreshQueue is the queue this backend's re-ingests run on.
@@ -366,15 +402,9 @@ func pidRunning(pid int, _ time.Time) bool {
 // backoff after a failure, never for a refusal (the gate said "not now",
 // not "failed"). Called on the queue's worker.
 func (a *autoRefreshBackend) refreshDone(service, head string, err error) {
-	// RT-41 (§2.1): SQLITE_FULL or SQLITE_IOERR from the write is store
-	// distress.
-	tenancy.NoteStoreError(err, time.Now())
-	// Critic finding F2 (BLOCKING, phase-P fix round): bust the CLI's
-	// service-identity cache (cmd/fathom/identcache.go) on every
-	// auto-refresh re-ingest too — best-effort regardless of whether the
-	// ingest succeeded (a failed ingest may still have changed on-disk
-	// state worth invalidating against).
-	hookcache.BustIdent()
+	// Store distress (RT-41) and the identity-cache bust (critic finding
+	// F2) are the queue's own per-job bookkeeping (NewRefreshQueueLogged),
+	// done for every job whoever requested it.
 
 	a.mu.Lock()
 	defer a.mu.Unlock()
