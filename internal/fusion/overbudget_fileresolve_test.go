@@ -67,11 +67,24 @@ func fileResolvedCount(t *testing.T, st store.Store, svc string) int {
 
 func TestIngestRefusedMidPassFailsAndKeepsFileResolvedEdges(t *testing.T) {
 	t.Cleanup(func() { tenancy.PublishLevel(tenancy.LevelNormal) })
-	dir, err := filepath.Abs(filepath.Join("testdata", "tsfixture"))
+	src, err := filepath.Abs(filepath.Join("testdata", "tsfixture"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	files := []string{"index.ts", "util.ts", "wrapper.ts"}
+	// A copy, so the second run can change a file: since RT-104/RT-108 an
+	// ingest with nothing changed runs no file-resolved pass at all (and so
+	// has nothing left to halt).
+	dir := t.TempDir()
+	for _, f := range files {
+		b, rerr := os.ReadFile(filepath.Join(src, f))
+		if rerr != nil {
+			t.Fatal(rerr)
+		}
+		if werr := os.WriteFile(filepath.Join(dir, f), b, 0o644); werr != nil {
+			t.Fatal(werr)
+		}
+	}
 	st := store.NewMemoryStore()
 	svc := core.ServiceRef{ID: "ts", Path: dir}
 	ctx := context.Background()
@@ -92,6 +105,12 @@ func TestIngestRefusedMidPassFailsAndKeepsFileResolvedEdges(t *testing.T) {
 	}
 
 	// The main pass fetches every file once; the flip lands on its last one.
+	uf, err := os.OpenFile(filepath.Join(dir, "util.ts"), os.O_APPEND|os.O_WRONLY, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _ = uf.WriteString("\n// changed\n")
+	_ = uf.Close()
 	_, err = newPipe(&flipConn{dir: dir, files: files, flipAfter: int64(len(files))}, heads[1]).Ingest(ctx, svc)
 	if !errors.Is(err, tenancy.ErrOverBudget) {
 		t.Fatalf("ingest halted at refuse returned %v, want an error wrapping ErrOverBudget", err)

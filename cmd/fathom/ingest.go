@@ -275,7 +275,16 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	// when it produced at least one edge — always heuristic tier, never
 	// presented as typed (core.EdgeConfidenceOf).
 	if report.FileResolvedEdges > 0 {
-		fmt.Fprintf(stdout, "file_resolved: %d\n", report.FileResolvedEdges)
+		fmt.Fprintf(stdout, "file_resolved: %d (%d file(s) reused their recorded imports)\n", report.FileResolvedEdges, report.FileResolveReused)
+	}
+	// RT-108: import-parse faults are named, never a silent skip; a skipped
+	// pass says why.
+	if report.FileResolveFaults > 0 {
+		fmt.Fprintf(stderr, "warning: file_resolved: %d file(s) whose imports could not be parsed (%s) — their calls resolve no import edges until their bytes change\n",
+			report.FileResolveFaults, strings.Join(report.FileResolveFaultFiles, ", "))
+	}
+	if report.FileResolveSkipped != "" {
+		fmt.Fprintf(stdout, "file_resolved: skipped — %s (stored edges kept)\n", report.FileResolveSkipped)
 	}
 	// Scoped config (docs/design/scoped-config.md §4 disclosure): report the
 	// project/user pattern-count split that governed this ingest. Ingest has

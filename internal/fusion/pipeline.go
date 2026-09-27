@@ -196,6 +196,14 @@ type Report struct {
 	// folded into the Typed*/CUE* counters above. See
 	// internal/fusion/fileresolve.go.
 	FileResolvedEdges int
+	// RT-108: FileResolveReused counts files whose imports came from
+	// file_imports (not read, not parsed); FileResolveFaults counts files
+	// whose import parse faulted, FileResolveFaultFiles names up to five;
+	// FileResolveSkipped names why the pass did not run ("" when it ran).
+	FileResolveReused     int
+	FileResolveFaults     int
+	FileResolveFaultFiles []string
+	FileResolveSkipped    string
 
 	// TSEngineFaults is the number of files this ingest whose tree-sitter
 	// wasm extraction faulted (parse deadline on pathological input, wasm
@@ -1053,8 +1061,14 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	// re-fetches and re-parses the service's full TS/JS/Python corpus, the
 	// same "whole tree, every run" shape those passes use, just without
 	// their cache. See internal/fusion.ResolveFileEdges.
-	fileRep, fileErr := p.enrichFileResolvedEdges(ctx, svc, refs)
+	fileRep, fileErr := p.enrichFileResolvedEdges(ctx, svc, refs, changed)
 	report.FileResolvedEdges = fileRep.EdgesResolved
+	report.FileResolveReused = fileRep.Reused
+	report.FileResolveFaults = fileRep.Faults
+	report.FileResolveFaultFiles = fileRep.FaultFiles
+	if fileRep.Skipped {
+		report.FileResolveSkipped = fileRep.SkipReason
+	}
 	if fileErr != nil {
 		// RT-153 (I38): halted before the final commit — the watermark
 		// never moved (RT-109), so the halted run never reads as fresh; fail
@@ -1172,6 +1186,12 @@ func (p *Pipeline) purgeOrphans(ctx context.Context, serviceID string, refs []co
 		// would never be re-extracted.
 		if err := p.st.DeleteFingerprint(ctx, serviceID, ref); err != nil {
 			return fmt.Errorf("fusion: delete orphan fingerprint %q: %w", ref, err)
+		}
+		// RT-108: and its recorded imports.
+		if fis, ok := p.st.(store.FileImportsStore); ok {
+			if err := fis.DeleteFileImports(ctx, serviceID, ref); err != nil {
+				return fmt.Errorf("fusion: delete orphan file imports %q: %w", ref, err)
+			}
 		}
 	}
 	return nil

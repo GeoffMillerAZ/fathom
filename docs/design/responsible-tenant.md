@@ -737,6 +737,13 @@ whole-service case.
   unchanged hashes; `MaxExtractSize`, `IsBinary` and the known-fault fingerprint applied;
   faults counted and disclosed (the `_ =` drops at `fileresolve.go` removed). A regression
   test counts wazero modules before and after 3 ingests.
+  (As built, RT-107/RT-108: `file_imports(service_id, path, content_hash, imports_json,
+  fault)` — no `resolved_json`, since a file's resolution depends on the whole file set;
+  a fault is recorded against the bytes' fingerprint so the same bytes are not re-parsed
+  and stay disclosed. The pass takes its symbols from the rows this ingest stored
+  (`FileImportsStore.SourceObservations`), not a second extraction, and runs only when a
+  TS/JS/Python file changed since its last successful pass (`typed-pass-state:file-resolved`).
+  The module memory cap is the runtime's `WithMemoryLimitPages(1024)`.)
 - `/refresh-file` stats before reading (2 MiB cap) and finds the file's packages with
   `WHERE source_ref = ?`, not `ListAllSymbols`.
 
