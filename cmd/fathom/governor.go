@@ -239,7 +239,15 @@ func (g *governor) exitOverBudget(tr tenancy.Transition) {
 			g.drop(g.actions.dropShed)
 			g.drop(g.actions.dropRefuse)
 			g.scavenge(g.sample.At, true)
-			g.logf(fmt.Sprintf("tenancy: exit mark (%s): halted the in-flight ingest of %s and quarantined it; the next sample decides", tr.Reason, strings.Join(names, ", ")))
+			var tools []string
+			for _, e := range ingests {
+				tools = append(tools, e.Tool+"("+firstNonEmpty(e.Service, "-")+")")
+			}
+			quarantined := "none quarantined"
+			if len(names) > 0 {
+				quarantined = "quarantined " + strings.Join(names, ", ")
+			}
+			g.logf(fmt.Sprintf("tenancy: exit mark (%s): halted in-flight ingest-class work %s; %s; the next sample decides", tr.Reason, strings.Join(tools, ", "), quarantined))
 			return
 		}
 	}
@@ -303,7 +311,7 @@ func (g *governor) quarantine(ingests []tenancy.InFlightEntry, footprint int64) 
 	var names []string
 	seen := map[string]bool{}
 	for _, e := range ingests {
-		if e.Service == "" || seen[e.Service] {
+		if e.Service == "" || seen[e.Service] || !quarantinesOnHalt(e.Tool) {
 			continue
 		}
 		seen[e.Service] = true
@@ -316,6 +324,14 @@ func (g *governor) quarantine(ingests []tenancy.InFlightEntry, footprint int64) 
 	}
 	sort.Strings(names)
 	return names
+}
+
+// quarantinesOnHalt reports whether halting ingest-class work named tool
+// quarantines its service: an ingest does (the MCP ingest tool, pkg/client's
+// BeginIngest, onboard_service); other ingest-class work — compile_layer —
+// is halted but is not an ingest, so its service keeps auto-refreshing.
+func quarantinesOnHalt(tool string) bool {
+	return tool == "ingest" || tool == "onboard_service"
 }
 
 // topInFlight names the oldest n in-flight entries: tool(class, service, age).

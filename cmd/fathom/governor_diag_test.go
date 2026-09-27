@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -91,5 +93,28 @@ func TestDiagCaptureRetention(t *testing.T) {
 			n = append(n, e.Name())
 		}
 		t.Fatalf("byte retention kept %v; want the newest two (180 MiB)", n)
+	}
+}
+
+// Review finding 10: compile_layer is ingest-class work the exit rung
+// halts, but it is not an ingest — its service is not quarantined as
+// "exceeded budget during ingest" (auto-refresh keeps serving it). An
+// onboard_service call is an ingest and is quarantined.
+func TestExitHaltQuarantinesOnlyIngests(t *testing.T) {
+	r := newGovRig(t)
+	cctx, done1 := r.g.inflight.Begin(context.Background(), tenancy.ClassIngest, "compile_layer", "layers-svc", "agent")
+	defer done1()
+	_, done2 := r.g.inflight.Begin(context.Background(), tenancy.ClassIngest, "onboard_service", "new-svc", "agent")
+	defer done2()
+	r.host.set(9*tenancy.GiB, 0)
+	r.ticks(2)
+	if !errors.Is(context.Cause(cctx), tenancy.ErrHaltedOverBudget) {
+		t.Fatalf("compile_layer is halted at the exit mark: cause %v", context.Cause(cctx))
+	}
+	if tenancy.IsQuarantined("layers-svc") {
+		t.Fatal("a halted compile_layer quarantined its service as an ingest")
+	}
+	if !tenancy.IsQuarantined("new-svc") {
+		t.Fatal("a halted onboard_service (an ingest) is quarantined")
 	}
 }
