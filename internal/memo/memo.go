@@ -346,6 +346,7 @@ type Group[K comparable, V any] struct {
 type entry[V any] struct {
 	val V
 	ref *entryRef
+	gen uint64 // bumped by each Update commit (Update's compare-and-swap)
 }
 
 type flight[V any] struct {
@@ -355,6 +356,10 @@ type flight[V any] struct {
 	waiters int
 	cancel  context.CancelFunc
 	started time.Time
+	// stale is set when Update or Remove invalidated the key while this
+	// flight was building: its waiters get its value, but it is never
+	// cached — it may predate the refresh that invalidated the key.
+	stale bool
 }
 
 // NewGroup registers a group in the Default registry.
@@ -560,7 +565,7 @@ func (g *Group[K, V]) run(ctx context.Context, key K, f *flight[V], build func(c
 		delete(g.flights, key)
 	}
 	stored := false
-	if err == nil && cacheable {
+	if err == nil && cacheable && !f.stale {
 		stored = g.insertLocked(key, val, size, service, mark)
 	}
 	if !stored {
@@ -676,34 +681,74 @@ func (g *Group[K, V]) Len() int {
 
 // Update replaces the cached value for key with fn's result and size (a
 // negative size keeps the entry's recorded size), keeping its LRU
-// position; it reports whether key was cached. fn runs under the group's
-// lock and must not call back into the registry.
+// position; it reports whether key was cached. A flight in progress for
+// key is invalidated (never cached: it may predate the change Update
+// applies). fn runs with no lock held — a patch may re-index a whole
+// snapshot, and every Get in the process would wait on the registry lock
+// meanwhile — and its result is committed only if the entry it read is
+// still the one cached, unchanged; otherwise fn runs again on the entry
+// that replaced it. fn must be safe to run more than once.
 func (g *Group[K, V]) Update(key K, fn func(V) (V, int64)) bool {
-	g.reg.mu.Lock()
-	defer g.reg.mu.Unlock()
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	e, ok := g.entries[key]
-	if !ok {
-		return false
+	for {
+		g.mu.Lock()
+		g.invalidateFlightLocked(key)
+		e, ok := g.entries[key]
+		if !ok {
+			g.mu.Unlock()
+			return false
+		}
+		old, gen := e.val, e.gen
+		g.mu.Unlock()
+
+		v, size := fn(old)
+
+		g.reg.mu.Lock()
+		g.mu.Lock()
+		cur, ok := g.entries[key]
+		if !ok {
+			g.invalidateFlightLocked(key)
+			g.mu.Unlock()
+			g.reg.mu.Unlock()
+			return false // evicted meanwhile: the next reader loads afresh
+		}
+		if cur != e || cur.gen != gen {
+			g.mu.Unlock()
+			g.reg.mu.Unlock()
+			continue // replaced or patched meanwhile: patch what is cached now
+		}
+		g.invalidateFlightLocked(key)
+		if size < 0 {
+			size = e.ref.bytes
+		}
+		if e.ref.elem != nil {
+			g.reg.total += size - e.ref.bytes
+		}
+		e.ref.bytes = size
+		e.val = v
+		e.gen++
+		g.mu.Unlock()
+		g.reg.mu.Unlock()
+		return true
 	}
-	v, size := fn(e.val)
-	if size < 0 {
-		size = e.ref.bytes
-	}
-	if e.ref.elem != nil {
-		g.reg.total += size - e.ref.bytes
-	}
-	e.ref.bytes = size
-	e.val = v
-	return true
 }
 
-// Remove drops key from the group (a no-op when it is not cached).
+// invalidateFlightLocked marks key's flight in progress, if any, stale and
+// detaches it: its waiters still get its value, a new caller starts a
+// fresh build, and it is never cached. Group lock held.
+func (g *Group[K, V]) invalidateFlightLocked(key K) {
+	if f, ok := g.flights[key]; ok {
+		f.stale = true
+		delete(g.flights, key)
+	}
+}
+
+// Remove drops key from the group (a no-op when it is not cached) and
+// invalidates a flight in progress for it (Update).
 func (g *Group[K, V]) Remove(key K, reason DropReason) {
 	g.reg.mu.Lock()
 	defer g.reg.mu.Unlock()
 	g.mu.Lock()
+	g.invalidateFlightLocked(key)
 	e, ok := g.entries[key]
 	g.mu.Unlock()
 	if !ok {
