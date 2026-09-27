@@ -243,6 +243,21 @@ Served by `serve-http` and `serve-mcp` alike; the contract lives in
   handler computed under the cancelled context. The call-log row carries
   `outcome: "abandoned-by-governor"`; `/metrics` counts
   `fathom_governor_abandoned_total`.
+- **Admission (RT-53..RT-65, ADR-047 §3; "Cost classes" below).** Under
+  `[tenancy].admission = "enforce"` a refused call answers HTTP 503 with
+  `Retry-After` and JSON-RPC error `-32050`, message `fathom busy: <reason>`,
+  `data: {reason, class, level, retry_after_ms, in_flight, outcome:
+  "refused"}` (a `batch` sub-call's refusal is that entry's `error`, the batch
+  itself answers 200). A call whose context ended — its client left, or its
+  class deadline or `X-Fathom-Deadline` passed — answers `-32603` with
+  `data: {outcome: "abandoned", cause}`, never what the handler computed. A
+  call whose producers passed the class's per-call byte ceiling carries
+  `budget: {partial: true, bytes_read, reason}` in its envelope. The managed
+  daemon answers a test caller (`X-Fathom-Caller … test=1`) 409 `{reason:
+  "test binary reached the operator daemon"}`. Call-log rows are
+  `schema_version` 3: `outcome` on every row (`ok`, `partial`, `refused`,
+  `abandoned`, `abandoned-by-governor`, `error`), `class`, `queued_ms`,
+  `bytes_read` and `caller {pid, ppid, session, test}`.
 - **Descriptions (RP-9, diet O101).** Every agent-surface description
   carries a "Reach for it when …" sentence and a `Required: a, b.` sentence
   naming exactly the arguments its own `inputSchema` marks required —

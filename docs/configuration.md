@@ -293,6 +293,7 @@ exit_at      = 2.00      # × budget, capped at RAM/4, raised to the refuse mark
 exit_enabled = true      # false keeps shed and refuse only (disclosed)
 gc_hint      = "exit"    # SetMemoryLimit target: "exit" | "budget" | "off" | an IEC size (anything else is refused at start)
 gomaxprocs   = "auto"    # managed daemons: max(2, NumCPU/2) unless GOMAXPROCS is in the env
+admission    = "observe" # "observe" (default) | "enforce" | "off"; env FATHOM_TENANCY_ADMISSION
 
 [tenancy.host]
 shed_on_pressure      = "warn"      # "warn" | "critical" | "off"
@@ -326,6 +327,39 @@ carries `fathom_tenancy_level`, `fathom_budget_bytes`,
 `fathom_footprint_bytes`, `fathom_children_footprint_bytes`,
 `fathom_host_pressure_level`, `fathom_swap_used_bytes`,
 `fathom_gc_cpu_fraction` and `fathom_quarantined_services`.
+
+**Admission** (`admission`, design §3; RT-53..RT-65). Every MCP tool declares a
+cost class (`docs/mcp-tools.md`, "Cost classes"), and the gate admits each
+`tools/call` in its class before the handler runs. Slots are derived from the
+budget, not configured: at 4 GiB, `point` 64, `index` max(2, min(NumCPU−2, 8)),
+`tree` 2, `fleet` 1, `ingest` 1, `egress` 2 (the startup line prints them). A
+waiter queues for at most its origin's wait — a hook 100 ms for `point`/`index`
+and never for `tree`/`fleet`; the console 2 s (never for `fleet`); an agent
+5 s (20 s for `fleet`); a CLI 30 s — and leaves when its request ends. A
+request whose remaining `X-Fathom-Deadline` is below the class's observed
+median is refused at once. Each call runs under its request's context and the
+class deadline (`point` 10 s, `index` 30 s, `tree` 60 s, `fleet` 120 s), so a
+client that disconnects cancels it (counted abandoned); an ingest runs
+detached. The refuse rung refuses `tree`, `fleet`, `ingest` and `egress`
+(decision-port calls: `/route`, the obligations re-rank); safe mode refuses
+`tree`, `fleet` and `egress`.
+
+| Mode | What it does |
+|---|---|
+| `observe` (default until RT-96) | runs the whole decision, logs every would-refuse (`admission (observe): would refuse …`) and counts it (`fathom_would_refuse_total{class,reason,origin}`), and admits; the per-call byte meter records but never stops a producer |
+| `enforce` | refuses with HTTP 503, `Retry-After` and JSON-RPC `-32050` (`fathom busy: <reason>`); a producer stopped at its per-call ceiling answers `budget: {partial: true, …}` |
+| `off` | admits without deciding; a loud startup line (the escape hatch: `FATHOM_TENANCY_ADMISSION=off`) |
+
+`GET /metrics` adds `fathom_inflight{class,origin}`, `fathom_queue{class}`,
+`fathom_slots{class}`, `fathom_rejected_total{class,reason,origin}`,
+`fathom_calls_total{class,outcome}`, `fathom_admission_mode` and
+`fathom_test_callers_rejected_total`. The daemon's own in-process console
+reads are admitted as `console-inprocess`. serve-http's HTTP server has a 5 s
+header timeout, 120 s idle timeout, 64 KiB header cap and a 150 s write
+deadline per route (none for `/events`), and every route requires a loopback
+`Host` (and a same-origin `Origin` when sent) unless `--modules-token-env`
+makes it a hosted deployment. The managed daemon answers a test binary
+(`X-Fathom-Caller: …;test=1`) 409.
 
 **Quarantine.** A service whose ingest was halted at the exit mark (or was in
 flight at an over-budget exit) is recorded in the daemon's lifecycle ledger;
