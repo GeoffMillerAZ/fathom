@@ -9,6 +9,7 @@ package main
 // another project's audit while one global lock was held across it.
 
 import (
+	"context"
 	"os"
 	"strconv"
 	"sync"
@@ -50,15 +51,28 @@ type consoleMemoFlight[V any] struct {
 // with the wedge that caused it), < 0 is kept until evicted. at is when
 // the returned value was computed.
 func (m *consoleMemo[V]) do(key string, now time.Time, compute func() (V, time.Duration)) (V, time.Time) {
+	v, at, _ := m.doCtx(context.Background(), key, now, compute)
+	return v, at
+}
+
+// doCtx is do for a request: a waiter on another request's computation
+// leaves when ctx ends (RT-62, §3.5), with ok false and the zero value —
+// the computation itself runs on for the requests still waiting.
+func (m *consoleMemo[V]) doCtx(ctx context.Context, key string, now time.Time, compute func() (V, time.Duration)) (V, time.Time, bool) {
 	m.mu.Lock()
 	if e, ok := m.entries[key]; ok && e.fresh(now) {
 		m.mu.Unlock()
-		return e.v, e.at
+		return e.v, e.at, true
 	}
 	if fl, ok := m.flights[key]; ok {
 		m.mu.Unlock()
-		<-fl.done
-		return fl.v, fl.at
+		select {
+		case <-fl.done:
+			return fl.v, fl.at, true
+		case <-ctx.Done():
+			var zero V
+			return zero, time.Time{}, false
+		}
 	}
 	fl := &consoleMemoFlight[V]{done: make(chan struct{}), at: now}
 	if m.flights == nil {
@@ -79,7 +93,7 @@ func (m *consoleMemo[V]) do(key string, now time.Time, compute func() (V, time.D
 		close(fl.done)
 	}()
 	fl.v, keep = compute()
-	return fl.v, now
+	return fl.v, now, true
 }
 
 // storeLocked stores e under key as the newest entry, evicting the oldest

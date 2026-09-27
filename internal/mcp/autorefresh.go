@@ -130,6 +130,11 @@ func (a *autoRefreshBackend) ensure(ctx context.Context, service string) {
 	if tenancy.CurrentLevel() >= tenancy.LevelShed || tenancy.IsQuarantined(service) {
 		return
 	}
+	// RT-61 (design §3.3): a console-origin read — the page over HTTP or
+	// the daemon's own in-process call — never triggers an auto-refresh.
+	if IsConsoleRead(originFrom(ctx)) {
+		return
+	}
 	path, indexed, found, err := a.QueryInterface.ServiceMeta(ctx, service)
 	if err != nil || !found || path == "" {
 		return

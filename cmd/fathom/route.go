@@ -159,7 +159,17 @@ func routeHandler(ports *decide.Ports) http.Handler {
 			return
 		}
 
-		ctx, cancel := context.WithTimeout(r.Context(), routeDecideTimeout(ports))
+		// RT-65 (vision 36 §8): the call is admitted as egress; at the
+		// refuse rung and in safe mode it is skipped, disclosed, never made.
+		dctx, release, skip := admitDecisionCall(r.Context(), decide.SiteRoute)
+		defer release()
+		if skip != "" {
+			out := noneRouteResponse()
+			out.Error = skip
+			writeRouteResponse(w, out)
+			return
+		}
+		ctx, cancel := context.WithTimeout(dctx, routeDecideTimeout(ports))
 		defer cancel()
 
 		callStart := time.Now()

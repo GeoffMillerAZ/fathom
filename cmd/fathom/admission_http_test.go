@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/mcp"
+	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
@@ -246,6 +247,62 @@ func TestInProcessCallsMeteredAsConsole(t *testing.T) {
 	if err := inProcessToolCall(context.Background(), "list_services", tenancy.ClassFleet, func(context.Context) error { return nil }); err != nil {
 		t.Fatal(err)
 	}
+}
+
+// TestUnsupportedWaiterHonoursContext (RT-62, §3.5): a list_services
+// caller waiting on the hotfix's in-flight walk, and a console memo
+// waiter, leave when their context ends instead of parking behind the
+// computation.
+func TestUnsupportedWaiterHonoursContext(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	conn := newCountingConnector()
+	if err := st.SetServiceMeta(ctx, store.ServiceMeta{ServiceID: "demo", Path: t.TempDir(), IndexedCommit: "c1", IndexedAt: 1}); err != nil {
+		t.Fatal(err)
+	}
+	conn.addSwiftFile("demo", "demo/a.swift")
+	conn.gate = make(chan struct{})
+	fa := newTestFleetAdapter(conn, st)
+
+	first := make(chan map[string]int, 1)
+	go func() { langs, _ := fa.unsupportedLanguagesCached(ctx, "demo"); first <- langs }()
+	waitUntil(t, func() bool {
+		fa.unsupportedMu.Lock()
+		defer fa.unsupportedMu.Unlock()
+		return fa.unsupportedFlight["demo"] != nil
+	})
+	wctx, cancel := context.WithTimeout(ctx, 30*time.Millisecond)
+	defer cancel()
+	start := time.Now()
+	fa.UnsupportedLanguagesForCtx(wctx, "demo")
+	if el := time.Since(start); el > time.Second {
+		t.Fatalf("the waiter stayed %s behind the walk after its ctx ended", el)
+	}
+	close(conn.gate)
+	if got := <-first; got["swift"] != 1 {
+		t.Fatalf("the walk's own caller: %v", got)
+	}
+
+	// The console memo: a waiter on another request's computation leaves
+	// with its ctx.
+	var m consoleMemo[int]
+	release := make(chan struct{})
+	go m.do("k", time.Now(), func() (int, time.Duration) { <-release; return 1, -1 })
+	waitUntil(t, func() bool {
+		m.mu.Lock()
+		defer m.mu.Unlock()
+		return m.flights["k"] != nil
+	})
+	mctx, mcancel := context.WithTimeout(ctx, 30*time.Millisecond)
+	defer mcancel()
+	start = time.Now()
+	if _, _, ok := m.doCtx(mctx, "k", time.Now(), func() (int, time.Duration) { return 2, -1 }); ok {
+		t.Fatal("a waiter whose ctx ended reported a value")
+	}
+	if el := time.Since(start); el > time.Second {
+		t.Fatalf("memo waiter stayed %s after its ctx ended", el)
+	}
+	close(release)
 }
 
 func waitUntil(t *testing.T, cond func() bool) {

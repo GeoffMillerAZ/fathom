@@ -35,6 +35,7 @@ import (
 	"github.com/geoffmilleraz/app-kit/appkit/ui/table"
 	"github.com/geoffmilleraz/fathom/internal/conserve"
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
@@ -109,7 +110,13 @@ func computeRefactorReport(pc *consolePlans, sr serviceRoot, since string, e *co
 	if pc.deps.c == nil {
 		err = errNoStore
 	} else {
-		rep, err = conserveReportFor(context.Background(), pc.deps.c.Store(), sr.Root, since, sr.Service, discoverPlanPaths(sr.Root), "", conserve.DefaultResidueMax)
+		// RT-61 (§3.3): conserve is an in-process console call, admitted
+		// and metered as console-inprocess.
+		err = inProcessToolCall(context.Background(), "console:conserve", tenancy.ClassTree, func(ctx context.Context) error {
+			var cerr error
+			rep, cerr = conserveReportFor(ctx, pc.deps.c.Store(), sr.Root, since, sr.Service, discoverPlanPaths(sr.Root), "", conserve.DefaultResidueMax)
+			return cerr
+		})
 	}
 	conserveCache.Lock()
 	if err != nil {

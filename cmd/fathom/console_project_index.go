@@ -47,6 +47,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/filter"
 	"github.com/geoffmilleraz/fathom/internal/scope"
 	"github.com/geoffmilleraz/fathom/internal/store"
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
@@ -167,8 +168,16 @@ var projectIndexMemo = consoleMemo[projectIndexData]{max: 6}
 func projectIndexFor(ctx context.Context, c *client.Client, pc projectContext) projectIndexData {
 	wm, _ := c.StoreWatermark(ctx, pc.svc)
 	key := pc.svc + "@" + wm + "@" + pc.root + "@" + pc.rootNote
-	d, _ := projectIndexMemo.do(key, time.Now(), func() (projectIndexData, time.Duration) {
-		d := computeProjectIndex(context.WithoutCancel(ctx), c, pc)
+	d, _, _ := projectIndexMemo.doCtx(ctx, key, time.Now(), func() (projectIndexData, time.Duration) {
+		var d projectIndexData
+		// RT-61 (§3.3): the project index is an in-process console call,
+		// admitted and metered as console-inprocess.
+		if err := inProcessToolCall(context.WithoutCancel(ctx), "console:project-index", tenancy.ClassIndex, func(ctx context.Context) error {
+			d = computeProjectIndex(ctx, c, pc)
+			return nil
+		}); err != nil {
+			d = projectIndexData{facts: console.IndexFacts{Service: pc.svc, Source: "the daemon's store (" + pc.svc + ")", InventoryErr: err.Error()}}
+		}
 		// A read that failed is never memoized: the next view retries it (an
 		// EPERM wedge on the volume clears; a memoized error would not).
 		failed := d.facts.LanguagesErr != "" || d.facts.EdgesErr != "" || d.facts.InventoryErr != ""
