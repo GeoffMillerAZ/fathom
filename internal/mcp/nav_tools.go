@@ -166,11 +166,23 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 		if p.Symbol == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "symbol_context: symbol required"}
 		}
-		nodes, err := backend.ListAllSymbols(ctx, p.Service)
-		if err != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
+		// The service's symbols and graphs come from the navigation memo —
+		// one load and build per (service, watermark), shared by concurrent
+		// callers. Building them per call cost 2.45–9.78 GB of allocation and
+		// ~6 GiB of footprint under a 20-call burst (wave-A incident replay).
+		var nodes []core.SymbolNode
+		var g *callgraph.Graph
+		ng := s.loadNavGraphs(ctx, backend, p.Service)
+		if ng != nil {
+			nodes, g = ng.Nodes, ng.Syntax
+		} else {
+			var err error
+			nodes, err = backend.ListAllSymbols(ctx, p.Service)
+			if err != nil {
+				return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
+			}
+			g = callgraph.Build(nodes)
 		}
-		g := callgraph.Build(nodes)
 
 		// J3(a) (app-kit O12): resolve BEFORE building any neighbourhood.
 		// symbolnav.ResolveTiered mirrors the internal resolution
@@ -224,13 +236,21 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 		// or one with no typed edges tallies every row heuristic). typed
 		// is fetched ONCE and reused below for typed_edges too (review F5
 		// — this handler previously called backend.TypedEdges twice).
-		typedEdges, typedErr := backend.TypedEdges(ctx, p.Service)
+		var typedEdges []core.Edge
+		var typedErr error
+		if ng != nil {
+			typedEdges = ng.Typed
+		} else {
+			typedEdges, typedErr = backend.TypedEdges(ctx, p.Service)
+		}
 		var mix resolutionMix
 		var tg *callgraph.Graph
-		if typedErr == nil && len(typedEdges) > 0 {
-			tg = callgraph.Build(nodes)
-			callgraph.AddTypedEdges(tg, typedEdges)
-		} else {
+		switch {
+		case typedErr == nil && len(typedEdges) > 0 && ng != nil:
+			tg = ng.Both // shared and read-only: never AddTypedEdges on it
+		case typedErr == nil && len(typedEdges) > 0:
+			tg = callgraph.BuildBoth(nodes, typedEdges)
+		default:
 			tg = g
 		}
 		kindOf := func(details []callgraph.EdgeInfo) map[string]core.EdgeKind {

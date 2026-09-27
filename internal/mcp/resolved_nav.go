@@ -68,6 +68,9 @@ func serviceWatermark(ctx context.Context, backend QueryInterface, service strin
 type navGraphs struct {
 	Nodes []core.SymbolNode
 	Typed []core.Edge
+	// Syntax is the syntax-only graph (no typed edges) — what
+	// symbol_context's "callers"/"callees" read.
+	Syntax *callgraph.Graph
 	// Resolved carries only typed-pass edges; Both adds the syntax edges.
 	Resolved *callgraph.Graph
 	Both     *callgraph.Graph
@@ -163,6 +166,9 @@ func buildNavGraphs(ctx context.Context, s *Server, backend QueryInterface, serv
 	}
 	typed, _ := backend.TypedEdges(ctx, service)
 	g := &navGraphs{Nodes: nodes, Typed: typed}
+	g.Syntax = s.graphCache.Graph(service+"\x00syntax", mark, func() *callgraph.Graph {
+		return callgraph.Build(nodes)
+	})
 	g.Both = s.graphCache.Graph(service+"\x00both", mark, func() *callgraph.Graph {
 		return callgraph.BuildBoth(nodes, typed)
 	})
