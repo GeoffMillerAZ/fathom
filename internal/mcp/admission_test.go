@@ -55,6 +55,9 @@ func newAdmissionRig(t *testing.T, mode tenancy.Mode) *admissionRig {
 			read := 0
 			for range 4 {
 				if err := tenancy.Charge(ctx, 3*tenancy.MiB); err != nil {
+					if tk := tenancy.TicketFrom(ctx); tk != nil {
+						tk.Elide(4 - read) // the file that tripped the ceiling and the rest
+					}
 					break
 				}
 				read++
@@ -394,5 +397,77 @@ func TestPanickingHandlerReleasesItsSlot(t *testing.T) {
 	}
 	if n := len(r.reg.Snapshot()); n != 0 {
 		t.Fatalf("%d in-flight entries left behind", n)
+	}
+}
+
+// TestPartialOnlyWhenStoppedAndNamedInBatch (review finding, RT-54/RT-57):
+// observe mode's meter never stops a producer, so an over-ceiling call's
+// complete answer is not labelled partial; under enforce a stopped call is
+// partial with its elided lower bound — in a batch sub-call too, never an
+// entry that looks complete.
+func TestPartialOnlyWhenStoppedAndNamedInBatch(t *testing.T) {
+	o := newAdmissionRig(t, tenancy.ModeObserve)
+	got := o.call(t, context.Background(), "zz_hungry", nil)
+	if got.Error != nil {
+		t.Fatal(got.Error.Message)
+	}
+	if b, has := got.Result["budget"]; has {
+		t.Fatalf("observe labelled a complete answer partial: %v", b)
+	}
+
+	e := newAdmissionRig(t, tenancy.ModeEnforce)
+	got = e.call(t, context.Background(), "zz_hungry", nil)
+	b, _ := got.Result["budget"].(map[string]any)
+	if b["partial"] != true || b["elided"] != float64(2) {
+		t.Fatalf("enforce partial block %+v, want partial with elided 2", b)
+	}
+	got = e.call(t, context.Background(), "batch", map[string]any{"calls": []any{map[string]any{"name": "zz_hungry"}}})
+	if got.Error != nil {
+		t.Fatal(got.Error.Message)
+	}
+	res := batchResults(t, got)
+	sb, _ := res[0]["budget"].(map[string]any)
+	if sb["partial"] != true || sb["elided"] != float64(2) {
+		t.Fatalf("batch sub-call dropped its partial block: %+v", res[0])
+	}
+}
+
+// TestDisconnectStopsTheHandler (review finding, RT-58/I49): a caller
+// already gone is never run; a caller that leaves mid-call cancels the
+// handler's ctx, the handler stops, and the answer is the named
+// abandonment — the work stops, not only the label.
+func TestDisconnectStopsTheHandler(t *testing.T) {
+	r := newAdmissionRig(t, tenancy.ModeObserve)
+	gone, cancel := context.WithCancel(context.Background())
+	cancel()
+	got := r.call(t, gone, "zz_tree", nil)
+	if r.treeRuns.Load() != 0 {
+		t.Fatal("a gone caller's handler ran")
+	}
+	if got.Error == nil || got.Error.Code != ErrCodeBusy || !strings.Contains(got.Error.Message, "went away") {
+		t.Fatalf("gone caller: %+v", got)
+	}
+
+	ctx, leave := context.WithCancel(context.Background())
+	done := make(chan rpcResp, 1)
+	go func() { done <- r.call(t, ctx, "zz_slow", nil) }()
+	deadline := time.Now().Add(2 * time.Second)
+	for len(r.reg.Snapshot()) == 0 {
+		if time.Now().After(deadline) {
+			t.Fatal("zz_slow never started")
+		}
+		time.Sleep(time.Millisecond)
+	}
+	leave()
+	select {
+	case got := <-done:
+		if got.Error == nil || got.Error.Data["outcome"] != "abandoned" {
+			t.Fatalf("mid-call disconnect: %+v", got)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("the handler kept running after its caller left")
+	}
+	if n := len(r.reg.Snapshot()); n != 0 {
+		t.Fatalf("%d in-flight entries after the disconnect", n)
 	}
 }

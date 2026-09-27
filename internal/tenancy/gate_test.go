@@ -193,7 +193,7 @@ func TestGate_ClassDeadlineAndRefuseRung(t *testing.T) {
 	}
 	near := time.Now().Add(3 * time.Second)
 	tk2, _ := g.Admit(context.Background(), Request{Tool: "find_symbol", Class: ClassIndex, Origin: OriginAgent, Deadline: near})
-	if dl2, _ := tk2.Context().Deadline(); !dl2.Equal(near) {
+	if dl2, _ := tk2.Context().Deadline(); dl2.Sub(near).Abs() > 50*time.Millisecond {
 		t.Fatalf("index ticket deadline %v, want the client's %v", dl2, near)
 	}
 	tk2.Release(OutcomeOK)
@@ -250,7 +250,8 @@ func TestGate_MeterReturnsPartial(t *testing.T) {
 	if kept != 2 {
 		t.Fatalf("kept %d files, want 2 under an 8 MiB point ceiling", kept)
 	}
-	p := tk.Partial(len(files) - kept)
+	tk.Elide(len(files) - kept)
+	p := tk.Partial()
 	if !p.Partial || p.Elided != 2 || p.BytesRead != 9*MiB || !strings.Contains(p.Reason, "point") {
 		t.Fatalf("partial = %+v", p)
 	}

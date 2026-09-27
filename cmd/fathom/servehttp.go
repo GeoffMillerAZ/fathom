@@ -775,6 +775,10 @@ func newHTTPHandlerDeps(srv *mcp.Server, c *client.Client, selfAddr string, port
 		// request's tools/list back into outputSchema.
 		ctx, cancelRPC := rpcContext(r, surface)
 		defer cancelRPC()
+		// An ingest-class call runs detached with no class deadline; the
+		// route's 150 s write deadline would cut its client off mid-ingest
+		// (the work completes, the answer is lost), so it lifts it.
+		ctx = mcp.WithDetachHook(ctx, func() { _ = http.NewResponseController(w).SetWriteDeadline(time.Time{}) })
 		ctx, doneSources := rpcSourcesScope(ctx, r)
 		defer doneSources()
 		// RT-56 (§3.4): a top-level refusal answers 503 + Retry-After.

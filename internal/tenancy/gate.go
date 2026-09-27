@@ -179,6 +179,10 @@ type GateConfig struct {
 	SafeMode func() bool      // nil: never
 	InFlight *InFlight        // nil: DefaultInFlight
 	Log      func(string)     // would-refuse and refusal lines; nil: none
+	// Timer is the queue-wait timer: a channel that fires after d, and its
+	// stop. nil: time.NewTimer. Tests inject it with Now so queue waits
+	// never depend on the wall clock (determinism contract).
+	Timer func(d time.Duration) (<-chan time.Time, func() bool)
 }
 
 // Gate is the admission gate.
@@ -190,6 +194,7 @@ type Gate struct {
 	queued      [numClasses]int
 	running     [numClasses][numOrigins]int
 	durations   [numClasses]*durationRing
+	toolDur     map[string]*durationRing
 	rejected    map[counterKey]int64
 	wouldRefuse map[counterKey]int64
 	outcomes    map[outcomeKey]int64
@@ -217,7 +222,13 @@ func NewGate(cfg GateConfig) *Gate {
 	if cfg.InFlight == nil {
 		cfg.InFlight = DefaultInFlight
 	}
-	g := &Gate{cfg: cfg, rejected: map[counterKey]int64{}, wouldRefuse: map[counterKey]int64{}, outcomes: map[outcomeKey]int64{}}
+	if cfg.Timer == nil {
+		cfg.Timer = func(d time.Duration) (<-chan time.Time, func() bool) {
+			t := time.NewTimer(d)
+			return t.C, t.Stop
+		}
+	}
+	g := &Gate{cfg: cfg, rejected: map[counterKey]int64{}, wouldRefuse: map[counterKey]int64{}, outcomes: map[outcomeKey]int64{}, toolDur: map[string]*durationRing{}}
 	for _, c := range Classes {
 		n := cfg.Budget.Slots[c]
 		if n <= 0 {
@@ -239,13 +250,25 @@ func (g *Gate) Budget() Budget { return g.cfg.Budget }
 func (g *Gate) Admit(ctx context.Context, r Request) (*Ticket, *Refusal) {
 	now := g.cfg.Now()
 	deadline := r.Deadline
-	if dl, ok := ctx.Deadline(); ok && (deadline.IsZero() || dl.Before(deadline)) {
-		deadline = dl
+	// The ctx's deadline is on the wall clock; carry it into the gate's
+	// (injected) frame so every comparison below uses one clock.
+	if dl, ok := ctx.Deadline(); ok {
+		if d := now.Add(time.Until(dl)); deadline.IsZero() || d.Before(deadline) {
+			deadline = d
+		}
 	}
 	if g.cfg.Mode == ModeOff {
 		return g.issue(ctx, r, deadline, 0, false), nil
 	}
 	observe := g.cfg.Mode == ModeObserve
+
+	// A caller already gone is never admitted, in either mode: nobody is
+	// there to serve, so running its handler (and holding a slot for it)
+	// is work for nobody (RT-58, I49). Not a resource decision, so observe
+	// refuses it too.
+	if ctx.Err() != nil {
+		return nil, g.refuse(r, g.callerGone(r, "before admission"))
+	}
 
 	if ref := g.decideLevel(r); ref != nil {
 		if !observe {
@@ -288,9 +311,9 @@ func (g *Gate) Admit(ctx context.Context, r Request) (*Ticket, *Refusal) {
 	g.mu.Lock()
 	g.queued[r.Class]++
 	g.mu.Unlock()
-	start := time.Now()
-	timer := time.NewTimer(wait)
-	defer timer.Stop()
+	start := g.cfg.Now()
+	fire, stop := g.cfg.Timer(wait)
+	defer stop()
 	defer func() {
 		g.mu.Lock()
 		g.queued[r.Class]--
@@ -298,14 +321,18 @@ func (g *Gate) Admit(ctx context.Context, r Request) (*Ticket, *Refusal) {
 	}()
 	select {
 	case g.slots[r.Class] <- struct{}{}:
-		return g.issue(ctx, r, deadline, time.Since(start), true), nil
-	case <-timer.C:
+		return g.issue(ctx, r, deadline, g.cfg.Now().Sub(start), true), nil
+	case <-fire:
 		ref := g.slotsRefusal(r)
 		ref.Reason += fmt.Sprintf(" after waiting %s", wait.Round(time.Millisecond))
 		return nil, g.refuse(r, ref)
 	case <-ctx.Done():
-		return nil, g.refuse(r, &Refusal{Code: RefusalCallerGone, Reason: "caller went away while queued for a " + r.Class.String() + "-class slot", Class: r.Class.String(), Level: g.cfg.Level().String()})
+		return nil, g.refuse(r, g.callerGone(r, "while queued for a "+r.Class.String()+"-class slot"))
 	}
+}
+
+func (g *Gate) callerGone(r Request, when string) *Refusal {
+	return &Refusal{Code: RefusalCallerGone, Reason: "caller went away " + when, Class: r.Class.String(), Level: g.cfg.Level().String()}
 }
 
 func (g *Gate) decideLevel(r Request) *Refusal {
@@ -336,7 +363,9 @@ func (g *Gate) decideDeadline(r Request, now, deadline time.Time) *Refusal {
 	if deadline.IsZero() {
 		return nil
 	}
-	p50 := g.P50(r.Class)
+	// The tool's own recent median: a class median would let a whole-tree
+	// search set the bar for a hook's obligations call.
+	p50 := g.P50Tool(r.Tool)
 	if p50 <= 0 {
 		return nil
 	}
@@ -346,7 +375,7 @@ func (g *Gate) decideDeadline(r Request, now, deadline time.Time) *Refusal {
 	}
 	return &Refusal{
 		Code:       RefusalDeadline,
-		Reason:     fmt.Sprintf("cannot finish before your deadline: %s left, %s-class calls take %s (p50)", max(left, 0).Round(time.Millisecond), r.Class, p50.Round(time.Millisecond)),
+		Reason:     fmt.Sprintf("cannot finish before your deadline: %s left, %s calls take %s (recent p50)", max(left, 0).Round(time.Millisecond), r.Tool, p50.Round(time.Millisecond)),
 		Class:      r.Class.String(),
 		Level:      g.cfg.Level().String(),
 		RetryAfter: p50,
@@ -408,19 +437,22 @@ func (g *Gate) runningLocked(c Class) int {
 // issue builds a ticket: the class deadline, the in-flight registration and
 // the meter.
 func (g *Gate) issue(ctx context.Context, r Request, deadline time.Time, queued time.Duration, holdsSlot bool) *Ticket {
+	now := g.cfg.Now()
 	if d := g.cfg.Budget.Deadline[r.Class]; d > 0 {
-		if cd := time.Now().Add(d); deadline.IsZero() || cd.Before(deadline) {
+		if cd := now.Add(d); deadline.IsZero() || cd.Before(deadline) {
 			deadline = cd
 		}
 	}
 	ictx, endInflight := g.cfg.InFlight.Begin(ctx, r.Class, r.Tool, r.Service, r.Origin.String())
 	cancel := context.CancelFunc(func() {})
 	if !deadline.IsZero() {
-		ictx, cancel = context.WithDeadline(ictx, deadline)
+		// deadline is in the gate's frame; the context timer runs on the
+		// wall clock, so it gets the time left, not the instant.
+		ictx, cancel = context.WithTimeout(ictx, deadline.Sub(now))
 	}
 	t := &Ticket{
 		g: g, req: r, queued: queued, holdsSlot: holdsSlot,
-		start:   g.cfg.Now(),
+		start:   now,
 		ceiling: g.cfg.Budget.PerCall[r.Class],
 		enforce: g.cfg.Mode == ModeEnforce,
 		release: func() { cancel(); endInflight() },
@@ -444,6 +476,7 @@ type Ticket struct {
 	enforce   bool
 	release   func()
 	bytes     atomic.Int64
+	elided    atomic.Int64
 	over      atomic.Bool
 	once      sync.Once
 }
@@ -468,6 +501,19 @@ func (t *Ticket) BytesRead() int64 { return t.bytes.Load() }
 // ceiling (in observe mode, would have been stopped).
 func (t *Ticket) OverBudget() bool { return t.over.Load() }
 
+// Stopped reports whether the meter stopped a producer: over the ceiling
+// under an enforcing gate. Only a stopped call's answer is partial; an
+// observe-mode call that passed the ceiling ran to completion.
+func (t *Ticket) Stopped() bool { return t.enforce && t.over.Load() }
+
+// Elide records n items a stopped producer did not reach; the budget
+// block reports their sum as a lower bound.
+func (t *Ticket) Elide(n int) {
+	if n > 0 {
+		t.elided.Add(int64(n))
+	}
+}
+
 // Charge records n bytes read. At the class ceiling it returns an
 // ErrOverBudget error in enforce mode (the producer stops and returns what
 // it has, named partial); observe mode records it and returns nil.
@@ -491,19 +537,21 @@ type PartialBudget struct {
 	Reason    string `json:"reason"`
 }
 
-// Partial names a partial answer: elided is what the producer did not
-// reach, a lower bound.
-func (t *Ticket) Partial(elided int) PartialBudget {
+// Partial names a partial answer: elided is what the producers reported
+// they did not reach (Elide), a lower bound.
+func (t *Ticket) Partial() PartialBudget {
 	return PartialBudget{
 		Partial:   true,
-		Elided:    elided,
+		Elided:    int(t.elided.Load()),
 		BytesRead: t.BytesRead(),
 		Reason:    fmt.Sprintf("stopped at the %s-class per-call ceiling of %s", t.req.Class, FormatBytes(t.ceiling)),
 	}
 }
 
 // Release ends the ticket: the slot, the registration and the deadline go,
-// and an ok call's duration feeds the class p50. Idempotent.
+// and the call's duration feeds the class and tool medians — an ok or
+// partial call's as measured, an abandoned call's as the lower bound it is
+// (the slow calls are exactly the ones that get abandoned). Idempotent.
 func (t *Ticket) Release(o Outcome) {
 	t.once.Do(func() {
 		t.release()
@@ -511,8 +559,17 @@ func (t *Ticket) Release(o Outcome) {
 		g.mu.Lock()
 		g.running[t.req.Class][t.req.Origin]--
 		g.outcomes[outcomeKey{t.req.Class, o}]++
-		if o == OutcomeOK {
-			g.durations[t.req.Class].add(g.cfg.Now().Sub(t.start))
+		switch o {
+		case OutcomeOK, OutcomePartial, OutcomeAbandoned:
+			now := g.cfg.Now()
+			took := now.Sub(t.start)
+			g.durations[t.req.Class].add(took, now)
+			ring := g.toolDur[t.req.Tool]
+			if ring == nil {
+				ring = &durationRing{}
+				g.toolDur[t.req.Tool] = ring
+			}
+			ring.add(took, now)
 		}
 		g.mu.Unlock()
 		if t.holdsSlot {
@@ -542,6 +599,16 @@ func TicketFrom(ctx context.Context) *Ticket {
 	return t
 }
 
+// Detach is ctx for work that outlives its request (an auto-refresh or
+// explicit ingest, §3.5): never cancelled with the request, stripped of the
+// request's admission ticket (whose per-call ceiling and release belong to
+// the read) and marked as the ingest producer class. Other values (scope,
+// origin, caller) are kept.
+func Detach(ctx context.Context) context.Context {
+	ctx = context.WithValue(context.WithoutCancel(ctx), ticketKey{}, (*Ticket)(nil))
+	return WithProducerClass(ctx, ClassIngest)
+}
+
 // Charge charges ctx's ticket n bytes; no ticket, no charge.
 func Charge(ctx context.Context, n int64) error {
 	if t := TicketFrom(ctx); t != nil {
@@ -550,12 +617,23 @@ func Charge(ctx context.Context, n int64) error {
 	return nil
 }
 
-// P50 is the class's observed median duration over its recent ok calls;
-// 0 until eight have finished.
+// P50 is the class's observed median duration over its calls of the last
+// p50Window; 0 until eight have finished in it.
 func (g *Gate) P50(c Class) time.Duration {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	return g.durations[c].p50()
+	return g.durations[c].p50(g.cfg.Now())
+}
+
+// P50Tool is the tool's own median over the last p50Window (the deadline
+// feasibility bar); 0 until eight of its calls have finished in it.
+func (g *Gate) P50Tool(tool string) time.Duration {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if r := g.toolDur[tool]; r != nil {
+		return r.p50(g.cfg.Now())
+	}
+	return 0
 }
 
 // Queued is how many callers wait for a class slot now.
@@ -607,24 +685,40 @@ func (g *Gate) MetricLines() string {
 	return strings.Join(lines, "\n") + "\n"
 }
 
-// durationRing keeps the last 64 ok durations of a class.
+// p50Window is how long a duration sample counts. Refused callers never
+// sample the median, so without a window a slow spell would hold its
+// refusals for as long as the refused traffic continued.
+const p50Window = 15 * time.Minute
+
+// durationRing keeps the last 64 durations (with when they ended).
 type durationRing struct {
-	buf [64]time.Duration
+	buf [64]durationSample
 	n   int
 }
 
-func (r *durationRing) add(d time.Duration) {
-	r.buf[r.n%len(r.buf)] = d
+type durationSample struct {
+	d  time.Duration
+	at time.Time
+}
+
+func (r *durationRing) add(d time.Duration, at time.Time) {
+	r.buf[r.n%len(r.buf)] = durationSample{d, at}
 	r.n++
 }
 
-func (r *durationRing) p50() time.Duration {
+// p50 is the median of the samples no older than p50Window at now; 0 with
+// fewer than eight.
+func (r *durationRing) p50(now time.Time) time.Duration {
 	n := min(r.n, len(r.buf))
-	if n < 8 {
+	s := make([]time.Duration, 0, n)
+	for _, x := range r.buf[:n] {
+		if now.Sub(x.at) <= p50Window {
+			s = append(s, x.d)
+		}
+	}
+	if len(s) < 8 {
 		return 0
 	}
-	s := make([]time.Duration, n)
-	copy(s, r.buf[:n])
 	sort.Slice(s, func(i, j int) bool { return s[i] < s[j] })
-	return s[n/2]
+	return s[len(s)/2]
 }

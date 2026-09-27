@@ -172,7 +172,7 @@ func (a *autoRefreshBackend) ensure(ctx context.Context, service string) {
 	}
 	// RT-149 (design §3.5): detached from the requester, so a disconnect
 	// never cancels an ingest midway under a watermark that claims HEAD.
-	go a.runInlineIngest(context.WithoutCancel(ctx), service, fl)
+	go a.runInlineIngest(tenancy.Detach(ctx), service, fl) // not the read's ticket or class
 	a.mu.Unlock()
 	select {
 	case <-fl.done:

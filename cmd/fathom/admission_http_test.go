@@ -44,9 +44,11 @@ func toolsCall(tool string) string {
 }
 
 // TestClientDisconnectCancelsReadWork (RT-58, design §3.5): /rpc work runs
-// under the request's context, so a client that has gone away cancels it
-// and the call is counted abandoned — never computed on for nobody; and
-// X-Fathom-Deadline bounds the call's context.
+// under the request's context, so a client that has gone away is never
+// computed on — a caller already gone is refused by name before its
+// handler runs (a mid-call disconnect stopping the handler is
+// internal/mcp's TestDisconnectStopsTheHandler) — and X-Fathom-Deadline
+// bounds the call's context.
 func TestClientDisconnectCancelsReadWork(t *testing.T) {
 	h, g := gatedTestHandler(t, tenancy.ModeObserve)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -54,11 +56,11 @@ func TestClientDisconnectCancelsReadWork(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/rpc", strings.NewReader(toolsCall("capabilities"))).WithContext(ctx)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
-	if !strings.Contains(rec.Body.String(), `"outcome":"abandoned"`) {
-		t.Fatalf("a disconnected client's call was not abandoned: %s", rec.Body.String())
+	if !strings.Contains(rec.Body.String(), "caller went away") {
+		t.Fatalf("a disconnected client's call was computed on: %s", rec.Body.String())
 	}
-	if m := g.MetricLines(); !strings.Contains(m, `fathom_calls_total{class="point",outcome="abandoned"} 1`) {
-		t.Fatalf("abandoned not counted:\n%s", m)
+	if m := g.MetricLines(); !strings.Contains(m, `fathom_rejected_total{class="point",reason="caller_gone",origin="agent"} 1`) {
+		t.Fatalf("caller_gone not counted:\n%s", m)
 	}
 
 	// rpcContext: the request's ctx, bounded by X-Fathom-Deadline.
@@ -391,5 +393,32 @@ func TestInProcessPanicReleasesItsSlot(t *testing.T) {
 	}
 	if err := inProcessToolCall(context.Background(), "list_services", tenancy.ClassFleet, func(context.Context) error { return nil }); err != nil {
 		t.Fatalf("the panicked call kept its fleet slot: %v", err)
+	}
+}
+
+// TestIngestClassLiftsTheWriteDeadline (review finding, RT-59/§3.4): an
+// ingest-class /rpc call runs detached with no class deadline, so the
+// route's 150 s write deadline must not cut its client off mid-ingest: the
+// call lifts it. A read keeps it.
+func TestIngestClassLiftsTheWriteDeadline(t *testing.T) {
+	h, _ := gatedTestHandler(t, tenancy.ModeEnforce)
+	h = routeWriteDeadline(h)
+	serve := func(body string) []time.Time {
+		var mu sync.Mutex
+		var seen []time.Time
+		r := httptest.NewRequest(http.MethodPost, "/rpc", strings.NewReader(body))
+		w := &deadlineRecorder{ResponseRecorder: httptest.NewRecorder(), mu: &mu, seen: &seen}
+		h.ServeHTTP(w, r)
+		return seen
+	}
+	b, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+		"params": map[string]any{"name": "remove_service", "arguments": map[string]any{"service": "nope"}}})
+	seen := serve(string(b))
+	if len(seen) < 2 || !seen[len(seen)-1].IsZero() {
+		t.Fatalf("ingest-class call: write deadlines %v, want the route's then none", seen)
+	}
+	seen = serve(toolsCall("capabilities"))
+	if len(seen) != 1 || seen[0].IsZero() {
+		t.Fatalf("read call: write deadlines %v, want the route's 150 s only", seen)
 	}
 }

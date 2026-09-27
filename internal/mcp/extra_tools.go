@@ -1489,6 +1489,9 @@ type batchResult struct {
 	Name   string `json:"name"`
 	Result any    `json:"result,omitempty"`
 	Error  string `json:"error,omitempty"`
+	// Budget is a stopped sub-call's partial block (RT-57): an entry
+	// never looks complete when its producer was stopped.
+	Budget map[string]any `json:"budget,omitempty"`
 }
 
 func registerBatch(s *Server) {
@@ -1607,14 +1610,14 @@ func registerBatch(s *Server) {
 				continue
 			}
 			result, rpcErr := runHandler(subCtx, te, argsRaw)
-			result, rpcErr, _, meta := s.settleCall(subCtx, call.Name, tk, result, rpcErr)
+			result, rpcErr, partial, meta := s.settleCall(subCtx, call.Name, tk, result, rpcErr)
 			meta.class = costClassOf(te, argsRaw)
 			logSub(call.Name, string(te.desc.group), argsRaw, subOff, claimsAttachedFrom(result), verdictOutcomeFrom(result), result, time.Since(start), rpcErr, meta)
 			if rpcErr != nil {
 				results[i] = batchResult{Name: call.Name, Error: rpcErr.Message}
 				continue
 			}
-			results[i] = batchResult{Name: call.Name, Result: result}
+			results[i] = batchResult{Name: call.Name, Result: result, Budget: partial}
 		}
 		return map[string]any{"results": results, "count": len(results)}, nil
 	})

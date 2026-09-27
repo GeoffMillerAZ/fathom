@@ -98,6 +98,15 @@ func busyError(ref *tenancy.Refusal) *rpcError {
 	}}
 }
 
+type detachHookKey struct{}
+
+// WithDetachHook returns ctx whose ingest-class tools/call (top level or
+// batch sub-call) runs hook before its handler: the HTTP layer lifts the
+// /rpc write deadline for work that runs detached and may outlast it.
+func WithDetachHook(ctx context.Context, hook func()) context.Context {
+	return context.WithValue(ctx, detachHookKey{}, hook)
+}
+
 // callMeta is what the call log records of one admission.
 type callMeta struct {
 	class     tenancy.Class
@@ -117,7 +126,10 @@ func (s *Server) admitToolCall(ctx context.Context, te toolEntry, args json.RawM
 	class := costClassOf(te, args)
 	actx := ctx
 	if class == tenancy.ClassIngest {
-		actx = context.WithoutCancel(ctx)
+		actx = tenancy.Detach(ctx)
+		if hook, ok := ctx.Value(detachHookKey{}).(func()); ok {
+			hook()
+		}
 	}
 	if s.gate == nil || te.desc.Name == "batch" {
 		return actx, nil, nil
@@ -166,9 +178,12 @@ func (s *Server) settleCall(ctx context.Context, tool string, tk *tenancy.Ticket
 		meta.outcome, release = string(tenancy.OutcomeAbandoned), tenancy.OutcomeAbandoned
 	case rpcErr != nil:
 		meta.outcome, release = string(tenancy.OutcomeError), tenancy.OutcomeError
-	case tk != nil && tk.OverBudget():
-		p := tk.Partial(0)
-		partial = map[string]any{"partial": true, "bytes_read": p.BytesRead, "reason": p.Reason}
+	case tk != nil && tk.Stopped():
+		// Only a producer the meter stopped makes a partial answer; in
+		// observe mode an over-ceiling call ran to completion.
+		p := tk.Partial()
+		partial = map[string]any{"partial": true, "elided": p.Elided, "bytes_read": p.BytesRead,
+			"reason": fmt.Sprintf("%s; at least %d item(s) not reached (a lower bound)", p.Reason, p.Elided)}
 		meta.outcome, release = string(tenancy.OutcomePartial), tenancy.OutcomePartial
 	}
 	if tk != nil {
