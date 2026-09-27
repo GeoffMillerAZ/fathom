@@ -62,6 +62,7 @@ type resourcesReport struct {
 	Lifecycle   resourcesLifecycle `json:"lifecycle"`
 	Quarantined []string           `json:"quarantined,omitempty"`
 	Host        resourcesHost      `json:"host"`
+	Triggers    resourcesTriggers  `json:"host_triggers"`
 	Hooks       resourcesHooks     `json:"hooks"`
 	Scratch     resourcesScratch   `json:"scratch"`
 	Disk        resourcesDisk      `json:"disk"`
@@ -98,6 +99,7 @@ type resourcesFootprint struct {
 	Children   int64  `json:"children"`
 	SampleAt   string `json:"sample_at,omitempty"`
 	SampleAge  string `json:"sample_age,omitempty"`
+	Stale      bool   `json:"stale,omitempty"` // a ring sample older than tenancySampleFresh: shown, never judged as now
 	Window     string `json:"window"`
 	Samples    int    `json:"samples"`
 	Max        int64  `json:"max"` // footprint + children, the ladder's measure
@@ -112,6 +114,8 @@ type resourcesFootprint struct {
 type resourcesLifecycle struct {
 	Ledger          string `json:"ledger"`
 	Uptime          string `json:"uptime,omitempty"`
+	StartsRecorded  bool   `json:"starts_recorded"`        // the ledger holds start rows: starts and unclean exits are counted
+	NotRecorded     string `json:"not_recorded,omitempty"` // when not: what this ledger cannot tell (I38)
 	Starts24h       int    `json:"starts_24h"`
 	Unclean24h      int    `json:"unclean_24h"`
 	OverBudget24h   int    `json:"over_budget_24h"`
@@ -133,6 +137,29 @@ type resourcesHost struct {
 	Unknowns       []string `json:"unknowns,omitempty"`
 }
 
+// resourcesTriggers are the host-side rung triggers ([tenancy.host],
+// resolved) host_pressure judges against — never literals.
+type resourcesTriggers struct {
+	ShedOnPressure    string `json:"shed_on_pressure"`   // warn | critical | off
+	RefuseOnPressure  string `json:"refuse_on_pressure"` // warn | critical | off
+	MinSwapVolumeFree int64  `json:"min_swap_volume_free"`
+	Source            string `json:"source"`
+
+	shed, refuse tenancy.PressureLevel
+}
+
+// triggersOf projects resolved host triggers.
+func triggersOf(h tenancy.HostTriggers, source string) resourcesTriggers {
+	name := func(p tenancy.PressureLevel) string {
+		if p == tenancy.PressureUnknown {
+			return "off"
+		}
+		return p.String()
+	}
+	return resourcesTriggers{ShedOnPressure: name(h.ShedOnPressure), RefuseOnPressure: name(h.RefuseOnPressure),
+		MinSwapVolumeFree: h.MinSwapVolumeFree, Source: source, shed: h.ShedOnPressure, refuse: h.RefuseOnPressure}
+}
+
 type resourcesHooks struct {
 	URL     string `json:"url"`
 	Breaker string `json:"breaker"` // allow | breaker_open | busy | half_open | disabled | paused | not read
@@ -143,6 +170,7 @@ type resourcesHooks struct {
 
 type resourcesScratch struct {
 	Taken     bool     `json:"taken"`
+	Kept      int      `json:"kept"` // unmanaged, not ok, and kept by reap (its record lives under another HOME)
 	Error     string   `json:"error,omitempty"`
 	Unmanaged int      `json:"unmanaged"`
 	Leaked    int      `json:"leaked"`
@@ -159,6 +187,13 @@ type resourcesDisk struct {
 
 // hookLatencyNote: hook p99 is not measured by this build; disclosed.
 const hookLatencyNote = "p99 not measured by this build (hook beats carry outcomes, not latency)"
+
+// lifecycleNotRecorded discloses a ledger with no start row: the build
+// that wrote it records over-budget exits (and operator resets, adoptions)
+// but not starts, and an unclean exit is only named at the next start
+// (RT-37) — so starts, unclean exits and a crash loop of panics or jetsam
+// kills are not counted, never rendered as zero (I38).
+const lifecycleNotRecorded = "starts and unclean exits not recorded (the ledger has no start rows: RT-37 is not in the build that wrote it) — crash-loop detection sees over-budget exits only"
 
 // countedExitReasons are the exits the breaker counts (§2.3).
 var countedExitReasons = map[string]bool{"over_budget": true, "unclean": true, "port_held": true, "panic": true}
@@ -295,25 +330,40 @@ func buildResources(env resourcesEnv, id, url string, since time.Duration) resou
 	rep.Tenancy = blk
 
 	// Budget: the daemon's own marks (live, else the ring header), else
-	// what config resolves to on this machine today.
+	// what config resolves to on this machine today. The host triggers
+	// are config's (the ring header does not carry them), else defaults.
+	var cfgBudget *tenancy.Budget
+	var cfgHow string
+	var cfgErr error
+	if env.budget != nil {
+		if b, notes, err := env.budget(); err == nil {
+			cfgBudget, cfgHow = &b, "config"
+			for _, n := range notes {
+				if n.Key == "budget" {
+					cfgHow = n.Derivation
+				}
+			}
+		} else {
+			cfgErr = err
+		}
+	}
+	if cfgBudget != nil {
+		rep.Triggers = triggersOf(cfgBudget.Host, "[tenancy.host] resolved on this machine")
+	} else {
+		def, _ := tenancy.ResolveBudget(tenancy.Config{}, tenancy.HostFacts{})
+		rep.Triggers = triggersOf(def.Host, "defaults ([tenancy] config not read)")
+	}
 	switch {
 	case live != nil && live.Budget > 0:
 		rep.Budget = resourcesBudget{live.Budget, live.Shed, live.Refuse, live.Exit, live.ExitEnabled, "live daemon (/statusz)"}
 	case haveRing && rd.HasMeta:
 		m := rd.Meta
 		rep.Budget = resourcesBudget{m.Budget, m.Shed, m.Refuse, m.Exit, m.ExitEnabled, "the daemon's ring header (the marks it ran under)"}
-	case env.budget != nil:
-		if b, notes, err := env.budget(); err == nil {
-			how := "config"
-			for _, n := range notes {
-				if n.Key == "budget" {
-					how = n.Derivation
-				}
-			}
-			rep.Budget = resourcesBudget{b.Budget, b.Shed, b.Refuse, b.Exit, b.ExitEnabled, "resolved from config on this machine (" + how + ")"}
-		} else {
-			unreadable("[tenancy] config", err)
-		}
+	case cfgBudget != nil:
+		b := cfgBudget
+		rep.Budget = resourcesBudget{b.Budget, b.Shed, b.Refuse, b.Exit, b.ExitEnabled, "resolved from config on this machine (" + cfgHow + ")"}
+	case cfgErr != nil:
+		unreadable("[tenancy] config", cfgErr)
 	}
 
 	// Footprint: now, and the window's history.
@@ -321,6 +371,7 @@ func buildResources(env resourcesEnv, id, url string, since time.Duration) resou
 		rep.Footprint.Now, rep.Footprint.Children, rep.Footprint.SampleAt = blk.Footprint, blk.Children, blk.SampleAt
 		if at, err := time.Parse(time.RFC3339, blk.SampleAt); err == nil {
 			rep.Footprint.SampleAge = now.Sub(at).Round(time.Second).String()
+			rep.Footprint.Stale = blk.Source == "ring" && now.Sub(at) > tenancySampleFresh
 		}
 		rep.Host = resourcesHost{Pressure: blk.Pressure, SwapUsed: blk.SwapUsed, SwapTotal: blk.SwapTotal, Unknowns: blk.Unknowns,
 			StoreFree: tenancy.Unknown, TmpFree: tenancy.Unknown, SwapVolumeFree: tenancy.Unknown}
@@ -396,9 +447,13 @@ func buildResources(env resourcesEnv, id, url string, since time.Duration) resou
 				rep.Scratch.Stale++
 			case !r.Managed:
 				rep.Scratch.Unmanaged++
-				if r.Verdict != "ok" {
+				// Leaked is exactly reap's kill set, so its remedy clears it.
+				switch d := reapDisposition(r, 0, 0); {
+				case d.kill:
 					rep.Scratch.Leaked++
 					rep.Scratch.Rows = append(rep.Scratch.Rows, fmt.Sprintf("pid %d %s %s (age %s)", r.PID, firstNonEmpty(r.Addr, "-"), r.Verdict, shortDur(r.Age)))
+				case r.Verdict != "ok":
+					rep.Scratch.Kept++
 				}
 			}
 		}
@@ -446,7 +501,7 @@ func resourcesVerdict(rep *resourcesReport, haveSample bool) (int, []string) {
 	if len(reasons) > 0 {
 		return 2, reasons
 	}
-	if t := rep.Tenancy; t != nil {
+	if t := rep.Tenancy; t != nil && !rep.Footprint.Stale {
 		combined := t.Footprint
 		if t.Children > 0 {
 			combined += t.Children
@@ -511,6 +566,7 @@ func summarizeLifecycle(rows []lifecycleEntry, ledger string, now time.Time) res
 		age := now.Sub(at)
 		switch r.Row {
 		case "start":
+			l.StartsRecorded = true
 			if age <= 24*time.Hour {
 				l.Starts24h++
 			}
@@ -533,7 +589,19 @@ func summarizeLifecycle(rows []lifecycleEntry, ledger string, now time.Time) res
 		}
 	}
 	l.CrashLooping = l.CountedExits30m >= 3
+	if !l.StartsRecorded {
+		l.NotRecorded = lifecycleNotRecorded
+	}
 	return l
+}
+
+// lifecycleStartsText is "N starts/24h · N unclean" when the ledger
+// records starts, else the disclosure's short form.
+func lifecycleStartsText(l resourcesLifecycle) string {
+	if !l.StartsRecorded {
+		return "starts/unclean not recorded"
+	}
+	return fmt.Sprintf("%d starts/24h · %d unclean", l.Starts24h, l.Unclean24h)
 }
 
 // fmtWindow renders a window without trailing zero units (24h, 90m, 1h30m).
@@ -689,8 +757,11 @@ func renderResources(w io.Writer, rep resourcesReport, now time.Time) {
 	if l.Uptime != "" {
 		up = "up " + l.Uptime + " · "
 	}
-	fmt.Fprintf(w, "lifecycle  %s%d starts/24h · %d unclean · %d over-budget exits/24h · %d counted exits/30m · switch %s · %d quarantined\n",
-		up, l.Starts24h, l.Unclean24h, l.OverBudget24h, l.CountedExits30m, l.Switch, len(rep.Quarantined))
+	fmt.Fprintf(w, "lifecycle  %s%s · %d over-budget exits/24h · %d counted exits/30m · switch %s · %d quarantined\n",
+		up, lifecycleStartsText(l), l.OverBudget24h, l.CountedExits30m, l.Switch, len(rep.Quarantined))
+	if l.NotRecorded != "" {
+		fmt.Fprintf(w, "           %s\n", l.NotRecorded)
+	}
 	if l.LastExit != "" {
 		fmt.Fprintf(w, "           last exit %s\n", l.LastExit)
 	}
@@ -728,7 +799,11 @@ func renderResources(w io.Writer, rep resourcesReport, now time.Time) {
 	case s.Error != "":
 		fmt.Fprintf(w, "scratch    census failed: %s\n", s.Error)
 	default:
-		fmt.Fprintf(w, "scratch    %d unmanaged daemon(s), %d leaked, %d stale record(s) [ps + daemon records]\n", s.Unmanaged, s.Leaked, s.Stale)
+		fmt.Fprintf(w, "scratch    %d unmanaged daemon(s), %d leaked, %d stale record(s) [ps + daemon records]", s.Unmanaged, s.Leaked, s.Stale)
+		if s.Kept > 0 {
+			fmt.Fprintf(w, " · %d kept by reap (no record under this HOME, parent alive)", s.Kept)
+		}
+		fmt.Fprintln(w)
 		for _, r := range s.Rows {
 			fmt.Fprintf(w, "           %s\n", r)
 		}
@@ -747,9 +822,12 @@ func renderResources(w io.Writer, rep resourcesReport, now time.Time) {
 	for _, u := range rep.Unreadable {
 		fmt.Fprintf(w, "UNREADABLE %s\n", u)
 	}
-	if len(rep.Reasons) == 0 {
+	switch {
+	case len(rep.Reasons) == 0 && rep.Footprint.Stale:
+		fmt.Fprintf(w, "verdict    no current sample to judge the budget against (the ring's last sample is %s old: the daemon is not sampling) — nothing else flagged (exit 0)\n", rep.Footprint.SampleAge)
+	case len(rep.Reasons) == 0:
 		fmt.Fprintln(w, "verdict    within budget (exit 0)")
-	} else {
+	default:
 		fmt.Fprintf(w, "verdict    exit %d: %s\n", rep.Exit, strings.Join(rep.Reasons, "; "))
 	}
 }

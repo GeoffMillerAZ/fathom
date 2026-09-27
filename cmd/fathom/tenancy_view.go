@@ -52,8 +52,8 @@ func tenancyStatus(g *governor) *governorSnapshot {
 	if g == nil {
 		return nil
 	}
-	s := g.snapshot()
-	g.mu.Lock()
+	g.mu.Lock() // one lock: every sample-derived field is one sample's
+	s := g.snapshotLocked()
 	now := g.now()
 	s.Source = "live"
 	if g.haveSmp {

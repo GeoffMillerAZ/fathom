@@ -21,7 +21,7 @@ func TestPrimerTenancyLineOnlyWhenNotNormal(t *testing.T) {
 		}
 		return l
 	}
-	fresh := func(f *resourcesFixture) { f.now = f.now.Add(-8 * time.Minute) } // the ring's last sample is 2 min old
+	fresh := func(*resourcesFixture) {} // the fixture's last ring sample is already 2 min old
 
 	t.Run("normal: no line", func(t *testing.T) {
 		f := newResourcesFixture(t)
@@ -50,7 +50,8 @@ func TestPrimerTenancyLineOnlyWhenNotNormal(t *testing.T) {
 	})
 	t.Run("a stale ring does not claim a level", func(t *testing.T) {
 		f := newResourcesFixture(t)
-		f.writeRing(t, 3400*tenancy.MiB, tenancy.LevelShed, false) // last sample 10 min old
+		f.writeRing(t, 3400*tenancy.MiB, tenancy.LevelShed, false)
+		f.now = f.now.Add(8 * time.Minute) // last sample 10 min old
 		if l := line(t, f, f.env()); l != "" {
 			t.Fatalf("a 10-minute-old sample claimed a level: %q", l)
 		}

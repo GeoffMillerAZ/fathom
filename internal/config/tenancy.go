@@ -28,17 +28,46 @@ func recordTenancyProvenance(prov Provenance, m map[string]any, prefix, path str
 	}
 }
 
+// TenancyNoteKind types a resolution note, so a reader (doctor's
+// tenancy_scope) judges by kind, never by matching the note's words.
+type TenancyNoteKind string
+
+const (
+	NoteProjectIgnored TenancyNoteKind = "project_ignored" // a repository's [tenancy] was ignored
+	NoteEnvOverride    TenancyNoteKind = "env_override"    // an env variable overrides a key
+	NoteMigration      TenancyNoteKind = "migration"       // [daemon].memory_limit is the GC hint
+	NoteConflict       TenancyNoteKind = "conflict"        // memory_limit and gc_hint both set
+	NoteAdmissionOff   TenancyNoteKind = "admission_off"   // admission is off (the escape hatch, §1)
+)
+
+// TenancyNote is one typed resolution note.
+type TenancyNote struct {
+	Kind TenancyNoteKind
+	Text string
+}
+
 // ResolveTenancyConfig resolves [tenancy] from the loaded user layer and
 // env (getenv; nil = os.Getenv). notes name every non-default source: the
 // ignored repository table, the memory_limit migration, an env override.
 // An env value that does not parse is an error naming the variable, never
 // a silent default.
 func ResolveTenancyConfig(l Loaded, getenv func(string) string) (tenancy.Config, []string, error) {
+	cfg, typed, err := ResolveTenancyConfigNotes(l, getenv)
+	var notes []string
+	for _, n := range typed {
+		notes = append(notes, n.Text)
+	}
+	return cfg, notes, err
+}
+
+// ResolveTenancyConfigNotes is ResolveTenancyConfig with typed notes.
+func ResolveTenancyConfigNotes(l Loaded, getenv func(string) string) (tenancy.Config, []TenancyNote, error) {
 	if getenv == nil {
 		getenv = os.Getenv
 	}
 	var cfg tenancy.Config
-	var notes []string
+	var notes []TenancyNote
+	note := func(k TenancyNoteKind, text string) { notes = append(notes, TenancyNote{k, text}) }
 	t := l.userTenancy
 	var errs []string
 	size := func(m map[string]any, key string, dst *int64) {
@@ -122,7 +151,7 @@ func ResolveTenancyConfig(l Loaded, getenv func(string) string) (tenancy.Config,
 	dur(c, "idle_drop", &cfg.Caches.IdleDrop)
 
 	if l.ProjectTenancyIgnored {
-		notes = append(notes, fmt.Sprintf("[tenancy] in %s ignored: budgets are read at user scope only (~/.fathom/config.toml); a repository cannot raise this machine's ceiling", l.ProjectPath))
+		note(NoteProjectIgnored, fmt.Sprintf("[tenancy] in %s ignored: budgets are read at user scope only (~/.fathom/config.toml); a repository cannot raise this machine's ceiling", l.ProjectPath))
 	}
 
 	if v := strings.TrimSpace(getenv("FATHOM_TENANCY_BUDGET")); v != "" {
@@ -131,7 +160,7 @@ func ResolveTenancyConfig(l Loaded, getenv func(string) string) (tenancy.Config,
 			errs = append(errs, fmt.Sprintf("FATHOM_TENANCY_BUDGET: %v", err))
 		} else {
 			cfg.EnvBudget = n
-			notes = append(notes, "FATHOM_TENANCY_BUDGET = "+v+" overrides the configured budget")
+			note(NoteEnvOverride, "FATHOM_TENANCY_BUDGET = "+v+" overrides the configured budget")
 		}
 	}
 	// Migration (§1): the old soft limit keeps its meaning — the GC hint.
@@ -162,9 +191,9 @@ func ResolveTenancyConfig(l Loaded, getenv func(string) string) (tenancy.Config,
 	if oldKey != "" {
 		if cfg.GCHint == "" {
 			cfg.GCHint = oldKey
-			notes = append(notes, fmt.Sprintf("%s = %s is the GC hint, superseded by [tenancy].gc_hint; the budget stays %s", oldSrc, oldKey, budgetWord(max(cfg.EnvBudget, cfg.Budget))))
+			note(NoteMigration, fmt.Sprintf("%s = %s is the GC hint, superseded by [tenancy].gc_hint; the budget stays %s", oldSrc, oldKey, budgetWord(max(cfg.EnvBudget, cfg.Budget))))
 		} else {
-			notes = append(notes, fmt.Sprintf("conflict: %s = %s and [tenancy].gc_hint = %s are both set — [tenancy] wins; remove memory_limit", oldSrc, oldKey, cfg.GCHint))
+			note(NoteConflict, fmt.Sprintf("conflict: %s = %s and [tenancy].gc_hint = %s are both set — [tenancy] wins; remove memory_limit", oldSrc, oldKey, cfg.GCHint))
 		}
 	}
 
@@ -172,7 +201,7 @@ func ResolveTenancyConfig(l Loaded, getenv func(string) string) (tenancy.Config,
 		switch v {
 		case "observe", "enforce", "off":
 			cfg.Admission = v
-			notes = append(notes, "FATHOM_TENANCY_ADMISSION = "+v)
+			note(NoteEnvOverride, "FATHOM_TENANCY_ADMISSION = "+v)
 		default:
 			errs = append(errs, fmt.Sprintf("FATHOM_TENANCY_ADMISSION %q: want observe, enforce or off", v))
 		}
@@ -180,10 +209,13 @@ func ResolveTenancyConfig(l Loaded, getenv func(string) string) (tenancy.Config,
 	if v := strings.TrimSpace(getenv("FATHOM_TENANCY_EXIT")); v != "" {
 		if strings.EqualFold(v, "off") {
 			cfg.ExitDisabled = true
-			notes = append(notes, "FATHOM_TENANCY_EXIT = off: the exit rung is disabled (shed and refuse only)")
+			note(NoteEnvOverride, "FATHOM_TENANCY_EXIT = off: the exit rung is disabled (shed and refuse only)")
 		} else {
 			errs = append(errs, fmt.Sprintf("FATHOM_TENANCY_EXIT %q: the only value is off", v))
 		}
+	}
+	if strings.EqualFold(strings.TrimSpace(cfg.Admission), "off") {
+		note(NoteAdmissionOff, "admission is off: no call is admitted by cost class (FATHOM_TENANCY_ADMISSION / [tenancy].admission is the escape hatch, §1)")
 	}
 	if len(errs) > 0 {
 		sort.Strings(errs)

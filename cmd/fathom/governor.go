@@ -511,6 +511,12 @@ type governorSnapshot struct {
 func (g *governor) snapshot() governorSnapshot {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	return g.snapshotLocked()
+}
+
+// snapshotLocked is snapshot under a held g.mu, so a caller that adds
+// fields from the same sample (tenancyStatus) reads one sample.
+func (g *governor) snapshotLocked() governorSnapshot {
 	s := governorSnapshot{
 		Level: g.st.Level.String(), LadderOff: g.st.Off,
 		Budget: g.budget.Budget, Shed: g.budget.Shed, Refuse: g.budget.Refuse, Exit: g.budget.Exit, ExitEnabled: g.budget.ExitEnabled,

@@ -1334,10 +1334,15 @@ resource ring and lifecycle ledger — and WARN, never FAIL: `daemon_footprint`
 does not answer is a WARN naming the ring's last sample and its age, never a SKIP, and
 the remedy names the level, the top in-flight tool and `fathom resources`, never a
 restart), `daemon_lifecycle` (starts, unclean and over-budget exits, crash-looping at 3
-counted exits in 30 min, the switch files, quarantined services), `host_pressure`
-(pressure, swap, swap-volume free; unknown pressure is disclosed), `scratch_daemons`
-(leaked unmanaged daemons and stale records; remedy `fathom daemon reap --apply`) and
-`tenancy_scope` (a repository `[tenancy]` is ignored and named; env overrides disclosed).
+counted exits in 30 min, the switch files, quarantined services; a ledger with no start
+rows — every build before RT-37 — says starts and unclean exits are not recorded and that
+crash-loop detection sees over-budget exits only, never "0"), `host_pressure` (pressure,
+swap, swap-volume free against the resolved `[tenancy.host]` triggers; unknown pressure is
+disclosed, and a ring sample older than 5 min is SKIPped with its age, never judged as
+now), `scratch_daemons` (leaked unmanaged daemons — exactly the set `fathom daemon reap
+--apply` kills, so its remedy clears the row — and stale records) and `tenancy_scope`
+(WARNs on a repository `[tenancy]`, which is ignored and named, on admission `off`, and on
+a `memory_limit` / `gc_hint` conflict; env overrides disclosed).
 
 Exit `0` every check passed; `1` at least one check failed; `2` doctor itself could not
 run (bad flags, unresolvable `--path`) — an operational error, not a verdict on the
@@ -1618,12 +1623,15 @@ One report, rendered from files so it works when the daemon is down, wedged or
 crash-looping (RT-48, design §13.2): the budget and marks the daemon runs under (from
 its ring header, else config), its phys_footprint and its children's now and over the
 window (peak with its level, an hourly sparkline), lifecycle (starts, unclean and
-over-budget exits, counted exits in 30 min, the kill switch), quarantined services, host
+over-budget exits, counted exits in 30 min, the kill switch — a ledger with no start rows
+is disclosed as not recording starts and unclean exits, never "0"), quarantined services, host
 pressure, swap and volume free space, in-flight work by class with the oldest call,
 the hooks' shared breaker, scratch daemons (the `daemon ps` census), disk, and the last
 diagnostic capture. When the daemon answers, the figures come from its `/statusz`
 tenancy block (the same projection); when it does not, the report says so and shows the
-ring's last sample with its age — never nothing. Every line names its instrument.
+ring's last sample with its age — never nothing. A ring sample older than 5 min (the
+daemon stopped sampling) is shown with its age but never judged as the daemon's state
+now. Every line names its instrument.
 
 The ring is `~/.fathom/daemon/<id>/resources.ring`: one fixed-size file (271,520 B)
 the governor writes in place — a sample a minute for 24 h plus every ladder transition,
@@ -1631,7 +1639,9 @@ each slot checksummed (a torn slot is skipped and counted). A scratch daemon's r
 removed with its record.
 
 Exit `0` within budget; `1` over budget, the ladder at refuse or exit, crash-looping
-(3 counted exits in 30 min), stopped by the breaker, or scratch daemons leaked; `2` a
+(3 counted exits in 30 min), stopped by the breaker, or scratch daemons leaked (the
+daemons `daemon reap --apply` would kill; a record-less daemon whose parent is alive is
+listed as kept, not leaked); `2` a
 ring, ledger or config is unreadable, or there is no sample at all to judge. `--id`
 picks another state directory (a scratch daemon's `addr-<port>-<pid>`); the default is
 the record serving `--url`, else the managed daemon.

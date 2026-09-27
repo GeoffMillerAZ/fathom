@@ -54,7 +54,7 @@ func TestDoctorDaemonBudgetNeverSkipsWhenDown(t *testing.T) {
 	for _, c := range []tc{
 		{"down with a ring: WARN with the last sample and its age", func(t *testing.T, f *resourcesFixture) {
 			f.writeRing(t, 3400*tenancy.MiB, tenancy.LevelNormal, false)
-		}, doctorWarn, []string{"did not answer", "last ring sample 10m0s old", "phys_footprint 1.2 GiB (+100 MiB children)", "budget 4 GiB"}, []string{"fathom resources"}},
+		}, doctorWarn, []string{"did not answer", "last ring sample 2m0s old", "phys_footprint 1.2 GiB (+100 MiB children)", "budget 4 GiB"}, []string{"fathom resources"}},
 		{"down with no ring: WARN, no instrument named", func(t *testing.T, f *resourcesFixture) {}, doctorWarn,
 			[]string{"did not answer", "no resource ring", "no footprint instrument"}, []string{"fathom resources"}},
 		{"live, within budget: PASS", func(t *testing.T, f *resourcesFixture) {

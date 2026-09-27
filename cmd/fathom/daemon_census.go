@@ -370,21 +370,14 @@ func runDaemonReap(args []string, stdout, stderr io.Writer, env reapEnv) int {
 	}
 	var kills, prunes []censusRow
 	for _, r := range rows {
+		d := reapDisposition(r, env.self, env.selfParent)
 		switch {
-		case r.Verdict == "stale-record":
+		case d.prune:
 			prunes = append(prunes, r)
-		case r.Verdict == "ok":
-		case r.Managed:
-			fmt.Fprintf(stdout, "keep pid %d: the managed daemon (%s) is never reaped\n", r.PID, r.Verdict)
-		case r.PID == env.self || r.PID == env.selfParent:
-			fmt.Fprintf(stdout, "keep pid %d: this reap's own process tree\n", r.PID)
-		case r.Verdict == "no-record" && r.ParentAlive:
-			// Its record lives under another HOME (stranger-check, a
-			// testisolate'd suite): its parent is alive and its own
-			// bounds are in force. Not a kill target on the record alone.
-			fmt.Fprintf(stdout, "keep pid %d: no record under this HOME, but its parent (pid %d) is alive and its own bounds apply\n", r.PID, r.PPID)
-		default:
+		case d.kill:
 			kills = append(kills, r)
+		case d.keep != "":
+			fmt.Fprintf(stdout, "keep pid %d: %s\n", r.PID, d.keep)
 		}
 	}
 	if !*apply {
@@ -447,4 +440,33 @@ func runDaemonReap(args []string, stdout, stderr io.Writer, env reapEnv) int {
 	}
 	fmt.Fprintf(stdout, "reaped %d daemon(s), pruned %d stale record(s)\n", killed, pruned)
 	return 0
+}
+
+// reapPlan is what reap does with one census row: prune its stale record,
+// kill it, or keep it (keep names why; "" is an ok daemon, kept silently).
+type reapPlan struct {
+	prune, kill bool
+	keep        string
+}
+
+// reapDisposition is reap's one predicate; `fathom resources` and
+// doctor's scratch_daemons count "leaked" with it, so reap's remedy clears
+// exactly what they flag. self and selfParent are never reaped (0: none).
+func reapDisposition(r censusRow, self, selfParent int) reapPlan {
+	switch {
+	case r.Verdict == "stale-record":
+		return reapPlan{prune: true}
+	case r.Verdict == "ok":
+		return reapPlan{}
+	case r.Managed:
+		return reapPlan{keep: fmt.Sprintf("the managed daemon (%s) is never reaped", r.Verdict)}
+	case self != 0 && r.PID == self, selfParent != 0 && r.PID == selfParent:
+		return reapPlan{keep: "this reap's own process tree"}
+	case r.Verdict == "no-record" && r.ParentAlive:
+		// Its record lives under another HOME (stranger-check, a
+		// testisolate'd suite): its parent is alive and its own bounds
+		// are in force. Not a kill target on the record alone.
+		return reapPlan{keep: fmt.Sprintf("no record under this HOME, but its parent (pid %d) is alive and its own bounds apply", r.PPID)}
+	}
+	return reapPlan{kill: true}
 }

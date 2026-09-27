@@ -6,7 +6,7 @@ package main
 // or refusing, in safe mode, crash-looping, stopped by the breaker, or
 // holding a quarantined service. It reads files only (the ring, the
 // lifecycle ledger, the switch files) — no RPC on the session-start path —
-// and a ring sample older than tenancyLineFresh claims no level: a daemon
+// and a ring sample older than tenancySampleFresh claims no level: a daemon
 // that stopped writing is the identity line's to report.
 
 import (
@@ -21,10 +21,12 @@ import (
 // tenancyAttentionBudget caps the line (§13.3).
 const tenancyAttentionBudget = 160
 
-// tenancyLineFresh is how recent a ring sample must be to claim a level:
-// the ring is written every minute, so an older one means the daemon
-// stopped writing.
-const tenancyLineFresh = 5 * time.Minute
+// tenancySampleFresh is how recent a ring sample must be to be judged as
+// the daemon's current state (the primer's level, resources' verdict,
+// doctor's host_pressure): the ring is written every minute, so an older
+// one means the daemon stopped writing — it is shown with its age, never
+// judged as now.
+const tenancySampleFresh = 5 * time.Minute
 
 // primerTenancyLine is what the primer appends (a var so tests replace it).
 var primerTenancyLine = func(now time.Time) string {
@@ -55,7 +57,7 @@ func tenancyAttentionLine(rep resourcesReport, now time.Time) string {
 	t := rep.Tenancy
 	fresh := false
 	if t != nil {
-		if at, err := time.Parse(time.RFC3339, t.SampleAt); err == nil && now.Sub(at) <= tenancyLineFresh {
+		if at, err := time.Parse(time.RFC3339, t.SampleAt); err == nil && now.Sub(at) <= tenancySampleFresh {
 			fresh = true
 		}
 	}

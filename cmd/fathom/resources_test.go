@@ -37,8 +37,9 @@ func newResourcesFixture(t *testing.T) *resourcesFixture {
 	return f
 }
 
-// writeRing writes minutes of samples ending 10 minutes before now, with
-// a shed transition at the peak.
+// writeRing writes minutes of samples ending 2 minutes before now (inside
+// tenancySampleFresh: a daemon that just stopped answering), with a shed
+// transition at the peak.
 func (f *resourcesFixture) writeRing(t *testing.T, peak int64, lastLevel tenancy.Level, safe bool) {
 	t.Helper()
 	r, err := tenancy.OpenRing(filepath.Join(f.dir, tenancy.RingFileName))
@@ -49,7 +50,7 @@ func (f *resourcesFixture) writeRing(t *testing.T, peak int64, lastLevel tenancy
 	if err := r.WriteMeta(tenancy.RingMeta{PID: 777, Managed: true, StartedAt: f.now.Add(-5 * time.Hour), Budget: 4 * tenancy.GiB, Shed: 3 * tenancy.GiB, Refuse: 4 * tenancy.GiB, Exit: 8 * tenancy.GiB, ExitEnabled: true}); err != nil {
 		t.Fatal(err)
 	}
-	end := f.now.Add(-10 * time.Minute)
+	end := f.now.Add(-2 * time.Minute)
 	for i := 0; i < 300; i++ {
 		at := end.Add(-time.Duration(299-i) * time.Minute)
 		rec := tenancy.RingRecord{At: at, Level: tenancy.LevelNormal, Footprint: 1200 * tenancy.MiB, Children: 100 * tenancy.MiB,
@@ -94,7 +95,8 @@ func (f *resourcesFixture) env() resourcesEnv {
 		census: func() ([]censusRow, error) { return f.census, nil },
 		hooks:  func(string) hookguard.Decision { return hookguard.Decision{Verdict: hookguard.Allow} },
 		budget: func() (tenancy.Budget, []tenancy.Note, error) {
-			return tenancy.Budget{Budget: 2 * tenancy.GiB}, nil, nil
+			def, _ := tenancy.ResolveBudget(tenancy.Config{}, tenancy.HostFacts{}) // the default host triggers
+			return tenancy.Budget{Budget: 2 * tenancy.GiB, Host: def.Host}, nil, nil
 		},
 		killSw: func(string, time.Time) tenancy.KillSwitchVerdict {
 			return tenancy.KillSwitchVerdict{Action: tenancy.ActionRun}
@@ -135,7 +137,7 @@ func TestResourcesRendersFromRingWhenDaemonDown(t *testing.T) {
 		}
 		for _, want := range []string{
 			"fathom resources — " + fixtureLabel + " (managed)",
-			"NOT answering at http://", "connection refused", "showing the ring's last sample, 10m0s old",
+			"NOT answering at http://", "connection refused", "showing the ring's last sample, 2m0s old",
 			"state      normal · mode normal · budget 4 GiB", "the daemon's ring header",
 			"footprint  1.2 GiB now (+100 MiB children) [phys_footprint]", "24h max 3.4 GiB", "shed)",
 			"2 starts/24h", "0 unclean", "quarantine quarantined: app-kit exceeded budget during ingest",
