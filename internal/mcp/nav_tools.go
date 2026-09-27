@@ -313,12 +313,12 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 		// runs AFTER cross_service_callees/callers below are computed so
 		// the mix always matches every row this response actually returns.
 		if sctx.Def.Name != "" {
-			if callees := crossServiceCallees(fleet, p.Service, sctx.Def); len(callees) > 0 {
+			if callees := crossServiceCallees(ctx, fleet, p.Service, sctx.Def); len(callees) > 0 {
 				result["cross_service_callees"] = callees
 				mix.Heuristic += len(callees)
 			}
 		}
-		if callers := crossServiceCallers(fleet, p.Service, p.Symbol); len(callers) > 0 {
+		if callers := crossServiceCallers(ctx, fleet, p.Service, p.Symbol); len(callers) > 0 {
 			result["cross_service_callers"] = callers
 			mix.Heuristic += len(callers)
 		}

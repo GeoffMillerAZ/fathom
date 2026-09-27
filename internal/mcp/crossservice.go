@@ -16,10 +16,12 @@
 package mcp
 
 import (
+	"context"
 	"sort"
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
 // crossServiceScope is the label attached to every cross-service hit
@@ -56,67 +58,119 @@ func crossServiceHitsToAny(hits []crossServiceHit) []any {
 	return out
 }
 
-// fleetCallers returns every symbol, anywhere in the fleet, whose stored
-// Calls (or observation Calls) list contains a callee matching symbol —
-// cross_repo_callers' (platform_tools.go registerCrossRepoCallers) OWN
-// matching logic, extracted here so it has exactly one implementation:
-// the cross_repo_callers tool and symbol_context/find_callers's
-// cross-service stitching both call this, rather than two copies drifting
-// apart. Sorted by (service, symbol) for determinism. nil fleet or empty
-// symbol return nil.
-// fleetScanSlot admits one fleetCallers scan process-wide.
-var fleetScanSlot = make(chan struct{}, 1)
+// fleetCallIndex is the OPTIONAL FleetBackend capability that answers
+// "who calls X, anywhere?" from the store's call index (RT-77's
+// observation_calls) instead of loading every service whole — the
+// wave-B proof measured ~3.8 GiB allocated per symbol_context call through
+// the scan below (RT-84, docs/design/responsible-tenant.md §4.5).
+// CallsIndexed names the services whose index is complete; CallersOfKeys
+// skips the rest, so those keep the scan, one service at a time.
+type fleetCallIndex interface {
+	CallersOfKeys(ctx context.Context, keys []string) ([]store.CallerRow, error)
+	CallsIndexed(ctx context.Context, service string) bool
+}
 
-func fleetCallers(fleet FleetBackend, symbol string) []crossServiceHit {
+// fleetNameLookup is the OPTIONAL FleetBackend capability resolving
+// declarations by exact name over the (service_id, symbol) index.
+type fleetNameLookup interface {
+	SymbolSourcesForNames(ctx context.Context, service string, names []string) ([]store.SymbolSource, error)
+}
+
+// fleetCallers returns every symbol, anywhere in the fleet, whose stored
+// Calls list contains a callee matching symbol (matchesSymbol) —
+// cross_repo_callers' (platform_tools.go registerCrossRepoCallers) OWN
+// matching logic, in one place: the cross_repo_callers tool and
+// symbol_context/find_callers's cross-service stitching both call this.
+// Sorted by (service, symbol) for determinism. nil fleet or empty symbol
+// return nil.
+//
+// RT-84: against a call-indexed store it is ONE indexed query
+// (CallersOfKeys on the symbol and its final name segment — a candidate
+// superset narrowed here by matchesSymbol); only a service whose call index
+// is not complete is still scanned.
+func fleetCallers(ctx context.Context, fleet FleetBackend, symbol string) []crossServiceHit {
 	if fleet == nil || symbol == "" {
 		return nil
 	}
-	// One fleet-wide scan at a time: each scan loads every service's
-	// symbols and observations, and concurrent callers multiplied that into
-	// the wave-A replay's ~6 GiB. Serializing bounds the peak until wave C
-	// replaces the scan with a stored reverse index (RT-84).
-	fleetScanSlot <- struct{}{}
-	defer func() { <-fleetScanSlot }()
-	var hits []crossServiceHit
 	seen := make(map[string]bool)
-	for _, svc := range fleet.Services() {
+	var hits []crossServiceHit
+	add := func(svc, name, file string) {
+		key := svc + "\x00" + name
+		if !seen[key] {
+			seen[key] = true
+			hits = append(hits, crossServiceHit{Service: svc, Symbol: name, FilePath: file})
+		}
+	}
+	scan := fleet.Services()
+	if idx, ok := fleet.(fleetCallIndex); ok {
+		rows, err := idx.CallersOfKeys(ctx, []string{symbol, store.CalleeName(symbol)})
+		if err == nil {
+			for _, r := range rows {
+				if matchesSymbol(r.CalleeKey, symbol) {
+					add(r.ServiceID, r.Symbol, r.SourceRef)
+				}
+			}
+			var rest []string
+			for _, svc := range scan {
+				if !idx.CallsIndexed(ctx, svc) {
+					rest = append(rest, svc)
+				}
+			}
+			scan = rest
+		}
+	}
+	if len(scan) > 0 {
+		scanFleetCallers(ctx, fleet, scan, symbol, add)
+	}
+	sortCrossServiceHits(hits)
+	return hits
+}
+
+// fleetScanSlot admits one legacy fleetCallers scan process-wide.
+var fleetScanSlot = make(chan struct{}, 1)
+
+// scanFleetCallers is the scan for services without a complete call
+// index: each one's symbols and observations are loaded whole. One scan at a time —
+// concurrent scans multiplied into the wave-A replay's ~6 GiB.
+func scanFleetCallers(ctx context.Context, fleet FleetBackend, services []string, symbol string, add func(svc, name, file string)) {
+	select {
+	case fleetScanSlot <- struct{}{}:
+	case <-ctx.Done():
+		return
+	}
+	defer func() { <-fleetScanSlot }()
+	for _, svc := range services {
+		if ctx.Err() != nil {
+			return
+		}
 		for _, n := range fleet.SymbolsFor(svc) {
 			for _, callee := range n.Calls {
 				if matchesSymbol(callee, symbol) {
-					key := svc + "\x00" + n.Name
-					if !seen[key] {
-						seen[key] = true
-						hits = append(hits, crossServiceHit{Service: svc, Symbol: n.Name, FilePath: n.FilePath})
-					}
+					add(svc, n.Name, n.FilePath)
 					break
 				}
 			}
 		}
-	}
-	// Also search observation Calls for backends whose symbol view is
-	// narrower than their observation set (mirrors registerCrossRepoCallers).
-	for _, svc := range fleet.Services() {
+		// Observation Calls too, for backends whose symbol view is
+		// narrower than their observation set.
 		for _, obs := range fleet.ObservationsFor(svc) {
-			key := svc + "\x00" + obs.Symbol
-			if seen[key] {
-				continue
-			}
 			for _, callee := range obs.Calls {
 				if matchesSymbol(callee, symbol) {
-					seen[key] = true
-					hits = append(hits, crossServiceHit{Service: svc, Symbol: obs.Symbol})
+					add(svc, obs.Symbol, obs.SourceRef)
 					break
 				}
 			}
 		}
 	}
+}
+
+func sortCrossServiceHits(hits []crossServiceHit) {
 	sort.Slice(hits, func(i, j int) bool {
 		if hits[i].Service != hits[j].Service {
 			return hits[i].Service < hits[j].Service
 		}
 		return hits[i].Symbol < hits[j].Symbol
 	})
-	return hits
 }
 
 // crossServiceCallers returns fleetCallers(fleet, symbol) filtered to hits
@@ -124,8 +178,8 @@ func fleetCallers(fleet FleetBackend, symbol string) []crossServiceHit {
 // per-service QueryInterface backend's own "callers" field, so this only
 // ever ADDS new (cross-service) information — never a duplicate of what's
 // already there. nil fleet yields nil (the field is simply omitted).
-func crossServiceCallers(fleet FleetBackend, homeService, symbol string) []any {
-	all := fleetCallers(fleet, symbol)
+func crossServiceCallers(ctx context.Context, fleet FleetBackend, homeService, symbol string) []any {
+	all := fleetCallers(ctx, fleet, symbol)
 	var out []crossServiceHit
 	for _, h := range all {
 		if h.Service != homeService {
@@ -148,38 +202,76 @@ func crossServiceCallers(fleet FleetBackend, homeService, symbol string) []any {
 // one function; platformlink's file-level granularity would attribute
 // another function's cross-service call to this one). nil fleet, or a def
 // with no Calls, returns nil.
-func crossServiceCallees(fleet FleetBackend, homeService string, def core.SymbolNode) []any {
+func crossServiceCallees(ctx context.Context, fleet FleetBackend, homeService string, def core.SymbolNode) []any {
 	if fleet == nil || len(def.Calls) == 0 {
+		return nil
+	}
+	// Each qualifying key once (RT-84), split into every (package, name)
+	// reading — a name may itself carry a dot ("T.Method").
+	type pkgName struct{ pkg, name string }
+	want := map[pkgName]bool{}
+	var names []string
+	for _, callKey := range dedupeStrings(def.Calls) {
+		if strings.Contains(callKey, "::") || !strings.Contains(callKey, ".") {
+			continue
+		}
+		for i := 0; i < len(callKey); i++ {
+			if callKey[i] == '.' && i > 0 && i < len(callKey)-1 {
+				pn := pkgName{callKey[:i], callKey[i+1:]}
+				if !want[pn] {
+					want[pn] = true
+					names = append(names, pn.name)
+				}
+			}
+		}
+	}
+	if len(want) == 0 {
 		return nil
 	}
 	var out []crossServiceHit
 	seen := make(map[string]bool)
-	for _, callKey := range def.Calls {
-		if strings.Contains(callKey, "::") || !strings.Contains(callKey, ".") {
+	add := func(svc, pkg, name, file string) {
+		if pkg == "" || name == "" || !want[pkgName{pkg, name}] {
+			return
+		}
+		key := svc + "\x00" + name
+		if seen[key] {
+			return
+		}
+		seen[key] = true
+		out = append(out, crossServiceHit{Service: svc, Symbol: name, FilePath: file})
+	}
+	lookup, indexed := fleet.(fleetNameLookup)
+	for _, svc := range fleet.Services() {
+		if svc == homeService || ctx.Err() != nil {
 			continue
 		}
-		for _, svc := range fleet.Services() {
-			if svc == homeService {
+		if indexed {
+			rows, err := lookup.SymbolSourcesForNames(ctx, svc, names)
+			if err == nil {
+				for _, r := range rows {
+					add(svc, r.Package, r.Symbol, r.SourceRef)
+				}
 				continue
 			}
-			for _, n := range fleet.SymbolsFor(svc) {
-				if n.Package == "" || n.Name == "" || n.Package+"."+n.Name != callKey {
-					continue
-				}
-				key := svc + "\x00" + n.Name
-				if seen[key] {
-					continue
-				}
-				seen[key] = true
-				out = append(out, crossServiceHit{Service: svc, Symbol: n.Name, FilePath: n.FilePath})
-			}
+		}
+		for _, n := range fleet.SymbolsFor(svc) {
+			add(svc, n.Package, n.Name, n.FilePath)
 		}
 	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].Service != out[j].Service {
-			return out[i].Service < out[j].Service
-		}
-		return out[i].Symbol < out[j].Symbol
-	})
+	sortCrossServiceHits(out)
 	return crossServiceHitsToAny(out)
+}
+
+// dedupeStrings returns ss's distinct values in first-seen order.
+func dedupeStrings(ss []string) []string {
+	seen := make(map[string]bool, len(ss))
+	out := make([]string, 0, len(ss))
+	for _, s := range ss {
+		if !seen[s] {
+			seen[s] = true
+			out = append(out, s)
+		}
+	}
+	return out
 }
