@@ -4,117 +4,76 @@ import (
 	"runtime/debug"
 	"strings"
 	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
-// TestMemoryLimitFromEnvOrConfig pins Task 2's precedence: FATHOM_MEMORY_LIMIT
-// always wins over [daemon].memory_limit, which wins over defaultMemoryLimit
-// — the same env-wins-over-config rule FATHOM_CALL_LOG already follows.
-func TestMemoryLimitFromEnvOrConfig(t *testing.T) {
-	t.Run("unset env and config falls back to the default", func(t *testing.T) {
-		t.Setenv("FATHOM_MEMORY_LIMIT", "")
-		if got := memoryLimitFromEnvOrConfig(""); got != defaultMemoryLimit {
-			t.Errorf("got %q, want default %q", got, defaultMemoryLimit)
-		}
-	})
-	t.Run("config wins over the default", func(t *testing.T) {
-		t.Setenv("FATHOM_MEMORY_LIMIT", "")
-		if got := memoryLimitFromEnvOrConfig("1GiB"); got != "1GiB" {
-			t.Errorf("got %q, want %q", got, "1GiB")
-		}
-	})
-	t.Run("env wins over config", func(t *testing.T) {
-		t.Setenv("FATHOM_MEMORY_LIMIT", "2GiB")
-		if got := memoryLimitFromEnvOrConfig("1GiB"); got != "2GiB" {
-			t.Errorf("got %q, want %q (env must win)", got, "2GiB")
-		}
-	})
-	t.Run("env wins even over an unset config", func(t *testing.T) {
-		t.Setenv("FATHOM_MEMORY_LIMIT", "2GiB")
-		if got := memoryLimitFromEnvOrConfig(""); got != "2GiB" {
-			t.Errorf("got %q, want %q", got, "2GiB")
-		}
-	})
-}
-
-// TestApplyMemoryLimit_Applies proves the resolved value is actually
-// applied through setLimit (never called for "off"), and that the
-// startup line matches Task 2's exact wording.
-func TestApplyMemoryLimit_Applies(t *testing.T) {
-	t.Setenv("FATHOM_MEMORY_LIMIT", "")
-
-	t.Run("a concrete size calls setLimit and prints the soft-limit line", func(t *testing.T) {
-		var applied int64 = -999
-		var calls int
-		setLimit := func(b int64) int64 {
-			calls++
-			applied = b
-			return 0
-		}
-		var buf syncBuffer
-		if err := applyMemoryLimit("3GiB", &buf, setLimit); err != nil {
-			t.Fatalf("applyMemoryLimit: %v", err)
-		}
-		if calls != 1 {
-			t.Fatalf("setLimit called %d times, want 1", calls)
-		}
-		if want := int64(3) << 30; applied != want {
-			t.Errorf("applied = %d, want %d", applied, want)
-		}
-		if got := buf.String(); got != "serve-http: memory limit 3 GiB (soft, runtime.SetMemoryLimit)\n" {
-			t.Errorf("startup line = %q", got)
-		}
-	})
-
-	t.Run(`"off" disables the limit and never calls setLimit`, func(t *testing.T) {
-		called := false
-		setLimit := func(b int64) int64 {
-			called = true
-			return 0
-		}
-		var buf syncBuffer
-		if err := applyMemoryLimit("off", &buf, setLimit); err != nil {
-			t.Fatalf("applyMemoryLimit: %v", err)
-		}
-		if called {
-			t.Error("setLimit was called with memory_limit = off, want it left untouched")
-		}
-		if got := buf.String(); got != "serve-http: memory limit off\n" {
-			t.Errorf("startup line = %q", got)
-		}
-	})
-
-	t.Run("garbage is refused and setLimit is never called", func(t *testing.T) {
-		called := false
-		setLimit := func(b int64) int64 {
-			called = true
-			return 0
-		}
-		var buf syncBuffer
-		err := applyMemoryLimit("3 gigs", &buf, setLimit)
-		if err == nil {
-			t.Fatal("applyMemoryLimit(garbage): want error, got none")
-		}
-		if called {
-			t.Error("setLimit was called despite a parse failure")
-		}
-	})
-}
-
-// TestApplyMemoryLimit_ActuallyAppliesToRuntime uses the REAL
-// runtime/debug.SetMemoryLimit (Task 2's own test instruction: "the limit
-// applied — read it back with debug.SetMemoryLimit(-1)"), restoring
-// whatever this process's limit was before the test so it never leaks
-// into another test in this binary.
-func TestApplyMemoryLimit_ActuallyAppliesToRuntime(t *testing.T) {
-	prev := debug.SetMemoryLimit(-1) // query only — a negative input changes nothing
-	t.Cleanup(func() { debug.SetMemoryLimit(prev) })
-
-	var buf syncBuffer
-	if err := applyMemoryLimit("512MiB", &buf, debug.SetMemoryLimit); err != nil {
-		t.Fatalf("applyMemoryLimit: %v", err)
+// RT-36 (design §2.2): the GC hint is the budget's — the exit mark by
+// default, never a fixed 3 GiB — and a managed daemon runs with
+// GOMAXPROCS = max(2, NumCPU/2) unless GOMAXPROCS is in its env. The hint
+// only keeps the heap from outrunning the exit mark; the ladder bounds.
+func TestMemoryLimitDerivedFromBudget(t *testing.T) {
+	type call struct {
+		limit int64
+		procs int
 	}
-	got := debug.SetMemoryLimit(-1)
-	if want := int64(512) << 20; got != want {
+	run := func(b tenancy.Budget, env map[string]string) (call, string) {
+		var got call
+		var buf syncBuffer
+		applyMemoryLimit(b, &buf,
+			func(n int64) int64 { got.limit = n; return 0 },
+			func(n int) int { got.procs = n; return 0 },
+			func(k string) string { return env[k] })
+		return got, buf.String()
+	}
+	managed, _ := tenancy.ResolveBudget(tenancy.Config{}, tenancy.HostFacts{RAM: 32 * tenancy.GiB, NumCPU: 12, Managed: true})
+	got, line := run(managed, nil)
+	if got.limit != 8*tenancy.GiB {
+		t.Fatalf("the GC hint defaults to the exit mark (8 GiB on 32 GiB RAM), got %d", got.limit)
+	}
+	if got.procs != 6 {
+		t.Fatalf("managed GOMAXPROCS max(2, 12/2) = 6, got %d", got.procs)
+	}
+	if !strings.Contains(line, "8 GiB") || !strings.Contains(line, "exit mark") || !strings.Contains(line, "GOMAXPROCS 6") {
+		t.Fatalf("the startup line names the hint, its derivation and GOMAXPROCS: %q", line)
+	}
+	// GOMAXPROCS in the env wins: left alone.
+	got, _ = run(managed, map[string]string{"GOMAXPROCS": "3"})
+	if got.procs != 0 {
+		t.Fatalf("GOMAXPROCS in the env is left to the runtime, got a set to %d", got.procs)
+	}
+	// gc_hint = budget.
+	b, _ := tenancy.ResolveBudget(tenancy.Config{GCHint: "budget"}, tenancy.HostFacts{RAM: 32 * tenancy.GiB, NumCPU: 12, Managed: true})
+	if got, _ = run(b, nil); got.limit != 4*tenancy.GiB {
+		t.Fatalf("gc_hint = budget: %d", got.limit)
+	}
+	// gc_hint = off: never applied.
+	b, _ = tenancy.ResolveBudget(tenancy.Config{GCHint: "off"}, tenancy.HostFacts{RAM: 32 * tenancy.GiB, NumCPU: 12, Managed: true})
+	if got, line = run(b, nil); got.limit != 0 || !strings.Contains(line, "off") {
+		t.Fatalf("gc_hint = off: limit %d, line %q", got.limit, line)
+	}
+	// A migrated [daemon].memory_limit arrives as the configured hint.
+	b, _ = tenancy.ResolveBudget(tenancy.Config{GCHint: "3GiB"}, tenancy.HostFacts{RAM: 32 * tenancy.GiB, NumCPU: 12, Managed: true})
+	if got, _ = run(b, nil); got.limit != 3*tenancy.GiB {
+		t.Fatalf("migrated memory_limit: %d", got.limit)
+	}
+	// Unmanaged: the hint follows its own (512 MiB) budget's exit mark; the
+	// runtime's GOMAXPROCS stands.
+	u, _ := tenancy.ResolveBudget(tenancy.Config{}, tenancy.HostFacts{RAM: 32 * tenancy.GiB, NumCPU: 12})
+	if got, _ = run(u, nil); got.limit != tenancy.GiB || got.procs != 0 {
+		t.Fatalf("unmanaged: %+v", got)
+	}
+}
+
+// TestApplyMemoryLimit_ActuallyAppliesToRuntime proves the production
+// setter reaches the runtime.
+func TestApplyMemoryLimit_ActuallyAppliesToRuntime(t *testing.T) {
+	prev := debug.SetMemoryLimit(-1)
+	t.Cleanup(func() { debug.SetMemoryLimit(prev) })
+	b, _ := tenancy.ResolveBudget(tenancy.Config{GCHint: "512MiB"}, tenancy.HostFacts{RAM: 32 * tenancy.GiB, NumCPU: 12})
+	var buf syncBuffer
+	applyMemoryLimit(b, &buf, debug.SetMemoryLimit, func(int) int { return 0 }, func(string) string { return "" })
+	if got, want := debug.SetMemoryLimit(-1), int64(512)<<20; got != want {
 		t.Errorf("runtime memory limit after applyMemoryLimit = %d, want %d", got, want)
 	}
 }

@@ -151,6 +151,17 @@ type Server struct {
 	navFlight map[string]*navCall
 }
 
+// DropCaches drops the server's derived caches — the call graphs and the
+// navigation memo — at the tenancy ladder's refuse rung (RT-34). Loads in
+// flight finish for their callers and are not stored past the next one.
+func (s *Server) DropCaches() {
+	s.graphCache.Clear()
+	s.navMu.Lock()
+	s.navMemo = make(map[string]navMemoEntry) // never nil: a flight in progress stores into it
+	s.navOrder = nil
+	s.navMu.Unlock()
+}
+
 // NewServer constructs a Server wired to backend. If backend is nil the server
 // can still serve initialize / ping / tools/list / set_profile; tool calls
 // that require the backend will return ErrCodeInternal.

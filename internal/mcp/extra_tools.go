@@ -44,6 +44,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/projectrules"
 	"github.com/geoffmilleraz/fathom/internal/sdd"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 	"github.com/geoffmilleraz/fathom/internal/worktree"
 )
 
@@ -1105,6 +1106,10 @@ func registerIngest(s *Server, backend QueryInterface) {
 		if hasStats {
 			before.unclassified, before.oversize = sb.IngestStats()
 		}
+
+		// RT-155: an explicit ingest lifts the service's over-budget
+		// quarantine (recorded in the daemon's lifecycle ledger).
+		tenancy.ClearQuarantine(svc, "ingest tool")
 
 		var ingestErr error
 		if p.Path != "" {

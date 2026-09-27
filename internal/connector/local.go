@@ -11,8 +11,8 @@ import (
 	"sync"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
-	"github.com/geoffmilleraz/fathom/internal/tenancy"
 	"github.com/geoffmilleraz/fathom/internal/filter"
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
 // IgnoreFileName is the per-repo ignore file read from the service root.

@@ -142,6 +142,20 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 		outLog.Info(fmt.Sprintf("serve-http: unmanaged (idle-exit %s, ttl %s, exit-with-parent %v, auto-refresh %v) — pass --managed for a supervised daemon", *idleExit, *ttl, *exitWithParent, *autoRefresh))
 	}
 
+	// RT-29/RT-30/RT-177 (design §1, §2): the budget — user-scope
+	// [tenancy] and env only; an unmanaged daemon takes its own
+	// [tenancy.unmanaged] budget. Every mark is derived and named.
+	tenancyCfg, tenancyNotes, tenancyErr := config.ResolveTenancyConfig(loaded, os.Getenv)
+	if tenancyErr != nil {
+		flog.Error(tenancyErr.Error())
+		return 1
+	}
+	for _, n := range tenancyNotes {
+		flog.Warn("tenancy: " + n)
+	}
+	budget, budgetNotes := tenancy.ResolveBudget(tenancyCfg, tenancy.HostFacts{RAM: hostRAM(), NumCPU: runtime.NumCPU(), Managed: managed})
+	outLog.Info(tenancyStartupLine(budget, budgetNotes))
+
 	// GKE-MH-7: resolve the modules bearer token BEFORE opening anything —
 	// a --modules-token-env naming an empty/unset environment variable is a
 	// misconfiguration that must fail loudly, never silently leave auth
@@ -329,10 +343,9 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// bounds how hard the runtime lets the heap grow toward a ceiling in
 	// the first place, complementing the scavenger above (which bounds how
 	// long a peak's OS-visible footprint survives AFTER the fact).
-	if memLimitErr := applyMemoryLimit(loaded.Config.Daemon.MemoryLimit, stdout, debug.SetMemoryLimit); memLimitErr != nil {
-		flog.Error(memLimitErr.Error())
-		return 1
-	}
+	// RT-36: the GC hint is the budget's (the exit mark by default) and a
+	// managed daemon's GOMAXPROCS is max(2, NumCPU/2).
+	applyMemoryLimit(budget, stdout, debug.SetMemoryLimit, runtime.GOMAXPROCS, os.Getenv)
 
 	// DG-19 (owner amendment c): a self-restart or `task deploy` exits the
 	// OLD daemon so launchd starts the new one — if the old process is
@@ -364,6 +377,9 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	} else {
 		outLog.Info(fmt.Sprintf("serve-http: daemon record: %s (call log %s)", recordPath, rec.CallLog))
 	}
+	// RT-33..RT-36, RT-155, RT-161, RT-172, RT-173: the governor samples
+	// every 2 s and bounds memory whatever the cause.
+	startGovernor(budget, budgetNotes, absStorePath(*storePath), recordPath, managedLabel, servingLadderActions(srv, c, fleet), flog)
 	publishDaemonEvent(consoleDeps.bus, prevRecord, hadPrev, commit)
 	eventSources := newConsoleEventSources(consoleDeps.bus, c, verifyLedgerPath(), sessionLedgerPath())
 	eventSources.warn = func(msg string) { flog.Warn(msg) }
@@ -720,6 +736,9 @@ func newHTTPHandlerDeps(srv *mcp.Server, c *client.Client, selfAddr string, port
 		ctx = markHookOrigin(ctx, r.Header.Get("X-Fathom-Origin"))
 		ctx, doneSources := rpcSourcesScope(ctx, r)
 		defer doneSources()
+		// RT-172: registered by class so the refuse rung can cancel it.
+		ctx, endTicket := governorTicket(ctx, raw, r.Header.Get("X-Fathom-Origin"))
+		defer endTicket()
 		// MCP-Protocol-Version (2025-06-18+ Streamable HTTP): clients send
 		// the negotiated revision on every post-initialize request. It is
 		// TOLERATED here (RP-12) — never a 400 — and answered with the
@@ -839,6 +858,7 @@ func newHTTPHandlerDeps(srv *mcp.Server, c *client.Client, selfAddr string, port
 		// (memorylimit.go's currentMemoryLimitBytes). A value at
 		// math.MaxInt64's scale means no limit is set ("off").
 		fmt.Fprint(w, memoryLimitMetricLine())
+		fmt.Fprint(w, governorMetricLines()) // RT-161, RT-155: the ladder, footprint, children, quarantine
 
 		// fathom_graph_memo_entries: the watermark-keyed call-graph memo
 		// (BP-28, I21, internal/analysis/callgraph/cache.go) — one entry

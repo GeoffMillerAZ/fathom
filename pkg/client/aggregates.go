@@ -41,6 +41,14 @@ type aggregateMemo struct {
 	flight map[string]*aggregateCall
 }
 
+// DropCaches drops the client's fleet memo (the per-service symbol
+// aggregates) at the tenancy ladder's shed rung (RT-34).
+func (c *Client) DropCaches() {
+	c.aggregates.mu.Lock()
+	c.aggregates.cache = nil
+	c.aggregates.mu.Unlock()
+}
+
 // ServiceSymbolAggregates returns service's symbol count and source kinds
 // from an aggregate query — never loading an observation row. The answer
 // is memoized per StoreWatermark(service); concurrent callers that miss

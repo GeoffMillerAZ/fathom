@@ -1,65 +1,52 @@
 package main
 
-// memorylimit.go — W-N (docs/plans/daemon-footprint.md): applies
-// [daemon].memory_limit at daemon startup as a SOFT limit
-// (runtime/debug.SetMemoryLimit) — the runtime GCs and scavenges harder as
-// total memory use approaches it, but never kills the process, unlike a
-// hard OS/container limit. Companion to memscavenge.go's periodic
-// FreeOSMemory: that bounds how long an idle peak's OS-visible footprint
-// survives; this bounds the runtime's own eagerness to grow the heap in
-// the first place as usage climbs toward the ceiling.
-//
-// defaultMemoryLimit ("3GiB") is generous headroom above any legitimate
-// single-service typed-edge pass (production evidence: a 390-package
-// service peaked well under this) while still catching a runaway before it
-// fills swap the way O108's incident did.
+// memorylimit.go — the GC hint and GOMAXPROCS (docs/design/
+// responsible-tenant.md §2.2, RT-36). runtime/debug.SetMemoryLimit is a
+// SOFT limit: the runtime GCs and scavenges harder as total memory use
+// approaches it and never kills the process. It is not protection — the
+// daemon reached ~30 GB under a 3 GiB one (INC-23). The ladder (governor.go)
+// bounds memory; the hint only keeps the heap from outrunning the exit
+// mark, so it defaults to the exit mark (a limit at the budget would make
+// the band between the refuse and exit marks a GC-thrash band). A managed
+// daemon runs with GOMAXPROCS = max(2, NumCPU/2) unless GOMAXPROCS is in
+// its env. [daemon].memory_limit / FATHOM_MEMORY_LIMIT migrate to the hint
+// (internal/config.ResolveTenancyConfig).
 
 import (
 	"fmt"
 	"io"
-	"os"
 	"runtime/debug"
 
-	"github.com/geoffmilleraz/fathom/internal/config"
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
-const defaultMemoryLimit = "3GiB"
-
-// memoryLimitFromEnvOrConfig resolves the memory-limit string serve-http
-// applies: FATHOM_MEMORY_LIMIT (an env var, not a config key) ALWAYS wins
-// outright over configured ([daemon].memory_limit) — the same
-// env-wins-over-config precedence documented at runServeHTTP's own doc
-// comment (flags > env > project > user > defaults) and applied ad hoc for
-// FATHOM_CALL_LOG (calllogidentity.go, defaultpaths.go). configured empty
-// (unset at every config layer) falls back to defaultMemoryLimit.
-func memoryLimitFromEnvOrConfig(configured string) string {
-	if v := os.Getenv("FATHOM_MEMORY_LIMIT"); v != "" {
-		return v
+// applyMemoryLimit applies the budget's GC hint and, for a managed daemon,
+// its GOMAXPROCS, printing the startup line. setLimit, setProcs and getenv
+// are injectable (production: debug.SetMemoryLimit, runtime.GOMAXPROCS,
+// os.Getenv) so tests never change this process's runtime.
+func applyMemoryLimit(b tenancy.Budget, stdout io.Writer, setLimit func(int64) int64, setProcs func(int) int, getenv func(string) string) {
+	hint := "gc hint off"
+	if !b.GCHintOff && b.GCHint > 0 {
+		setLimit(b.GCHint)
+		how := "configured"
+		switch b.GCHint {
+		case b.Exit:
+			how = "the exit mark"
+		case b.Budget:
+			how = "the budget"
+		}
+		hint = fmt.Sprintf("gc hint %s (%s; soft, runtime.SetMemoryLimit — the ladder bounds, not this)", formatMemoryLimit(b.GCHint), how)
 	}
-	return firstNonEmpty(configured, defaultMemoryLimit)
-}
-
-// applyMemoryLimit resolves and applies the daemon's soft memory limit,
-// printing the startup line runServeHTTP emits either way. Returns a
-// non-nil error only when the resolved string fails ParseMemoryLimit
-// (shape-valid TOML can still be semantically wrong — e.g. "0GiB" — and an
-// env override is never CUE-validated at all, so this is the one gate
-// every source must pass through before SetMemoryLimit is ever called).
-// setLimit is injectable (production: debug.SetMemoryLimit) so tests never
-// have to mutate this process's own real runtime limit.
-func applyMemoryLimit(configured string, stdout io.Writer, setLimit func(int64) int64) error {
-	resolved := memoryLimitFromEnvOrConfig(configured)
-	bytes, off, err := config.ParseMemoryLimit(resolved)
-	if err != nil {
-		return fmt.Errorf("[daemon].memory_limit / FATHOM_MEMORY_LIMIT: %w", err)
+	procs := "GOMAXPROCS runtime default"
+	if b.GOMAXPROCS > 0 {
+		if v := getenv("GOMAXPROCS"); v != "" {
+			procs = "GOMAXPROCS " + v + " (env)"
+		} else {
+			setProcs(b.GOMAXPROCS)
+			procs = fmt.Sprintf("GOMAXPROCS %d", b.GOMAXPROCS)
+		}
 	}
-	if off {
-		fmt.Fprintln(stdout, "serve-http: memory limit off")
-		return nil
-	}
-	setLimit(bytes)
-	fmt.Fprintf(stdout, "serve-http: memory limit %s (soft, runtime.SetMemoryLimit)\n", formatMemoryLimit(bytes))
-	return nil
+	fmt.Fprintf(stdout, "serve-http: memory %s; %s\n", hint, procs)
 }
 
 // formatMemoryLimit renders bytes back into the largest IEC unit it
