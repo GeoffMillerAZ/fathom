@@ -61,6 +61,7 @@ var verbTable = []verb{
 	{Name: "intent", Summary: "The intent corpus (ADR-026): audit — conditions, invariant rungs, unproven claims | doctrine — the vision promotion pipeline and goals as pre-registered bets | export --guard"},
 	{Name: "export", Summary: "export scip --service <s> [--store PATH] [-o index.scip]: write the symbol and typed-edge tables as a SCIP index (VB-32)"},
 	{Name: "daemon", Summary: "The serve-http launchd agent: install (writes the plist with YOUR paths and starts it; --reconcile migrates an installed one) | status | stop (the kill switch) | start | pause | resume | uninstall"},
+	{Name: "resources", Summary: "What the daemon takes from this machine, from files (works when it is down): budget, footprint history, lifecycle, quarantine, host, in-flight, hooks, scratch daemons, disk, last capture; exit 0 within budget, 1 over/crash-looping/stopped/leaked, 2 unreadable [--json] [--since 24h] [--id ID]"},
 	{Name: "gen-plan-cue", Summary: "Emit the generated CUE shadow of a Markdown plan (round-trip verified)"},
 	{Name: "instrument", Summary: "Channel-health report: injection coverage, rollup, liveness alarms (--adoption: the flywheel gauge)"},
 	{Name: "observe", Summary: "File a structured friction observation into .fathom/observations.md"},

@@ -121,7 +121,7 @@ func (g *governor) ringRecord(at time.Time, transition bool) tenancy.RingRecord 
 	rec := tenancy.RingRecord{
 		At: at, Transition: transition, Level: g.st.Level, SafeMode: g.safeMode(), LadderOff: g.st.Off,
 		Footprint: s.Footprint, Children: s.Children, GoTotalMinusReleased: s.GoTotalMinusReleased,
-		HeapLive: s.HeapLive, GCCPUFraction: s.GCCPUFraction, Pressure: s.Pressure, SwapUsed: s.SwapUsed,
+		HeapLive: s.HeapLive, GCCPUFraction: s.GCCPUFraction, Pressure: s.Pressure, SwapUsed: s.SwapUsed, SwapTotal: s.SwapTotal,
 		StoreFree: s.StoreFree, TmpFree: s.TmpFree, SwapVolumeFree: s.SwapVolumeFree, DiskWritten: s.DiskWritten,
 		Abandoned: uint32(min(g.abandoned, int64(^uint32(0)))),
 	}
@@ -493,6 +493,19 @@ type governorSnapshot struct {
 	LastTransition string   `json:"last_transition,omitempty"`
 	Quarantined    []string `json:"quarantined,omitempty"`
 	Abandoned      int64    `json:"abandoned_by_governor"`
+
+	// The projection's remaining fields (tenancy_view.go, RT-52): filled
+	// by tenancyStatus (live) and tenancyFromRing (the ring), not by
+	// snapshot (the /metrics read).
+	Source          string         `json:"source,omitempty"` // live | ring
+	SampleAt        string         `json:"sample_at,omitempty"`
+	SwapTotal       int64          `json:"swap_total,omitempty"`
+	Mode            string         `json:"mode,omitempty"` // normal | safe
+	InFlightByClass map[string]int `json:"in_flight_by_class,omitempty"`
+	InFlight        []inflightView `json:"in_flight,omitempty"` // live only
+	Oldest          *inflightView  `json:"oldest_in_flight,omitempty"`
+	Refusals        string         `json:"refusals,omitempty"`
+	LastDiag        *diagView      `json:"last_diag,omitempty"`
 }
 
 func (g *governor) snapshot() governorSnapshot {

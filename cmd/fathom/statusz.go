@@ -99,10 +99,12 @@ type StatuszReport struct {
 	// Quarantined names every service the exit rung quarantined (RT-155):
 	// tenancy.Quarantine.Attention's line. Omitted when none is.
 	Quarantined []string `json:"quarantined,omitempty"`
-	// Tenancy is the serving daemon's ladder (design §2, §13.3; RT-32):
-	// level, marks, the last sample and every reading that is unknown —
-	// "footprint unknown (ladder off)" included. Omitted where no governor
-	// runs (a CLI verb).
+	// Tenancy is the serving daemon's tenancy block (design §2, §13.3;
+	// RT-32, RT-52): level and since, marks, the last sample and every
+	// reading that is unknown ("footprint unknown (ladder off)" included),
+	// mode, in-flight work by class with tool and origin, refusals and the
+	// last diagnostic capture — the projection `fathom resources` renders
+	// (tenancy_view.go). Omitted where no governor runs (a CLI verb).
 	Tenancy *governorSnapshot `json:"tenancy,omitempty"`
 }
 
@@ -122,8 +124,7 @@ func buildStatuszReport(ctx context.Context, c *client.Client, startTime, now ti
 		Quarantined:      statuszQuarantined(),
 	}
 	if g := activeGovernor.Load(); g != nil {
-		snap := g.snapshot()
-		r.Tenancy = &snap
+		r.Tenancy = tenancyStatus(g)
 	}
 	if fathomChannelsDisabled() {
 		r.ChannelsNote = "FATHOM_CHANNELS=off in this SERVER process's own environment — this does not necessarily reflect the harness's own hook environment"

@@ -20,6 +20,10 @@ func TestRing_FixedSizeAndWrap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	meta := RingMeta{PID: 4242, Managed: true, StartedAt: time.Date(2026, 9, 25, 23, 0, 0, 0, time.UTC), Budget: 4 * GiB, Shed: 3 * GiB, Refuse: 4 * GiB, Exit: 8 * GiB, ExitEnabled: true}
+	if err := r.WriteMeta(meta); err != nil {
+		t.Fatal(err)
+	}
 	fi, err := os.Stat(path)
 	if err != nil {
 		t.Fatal(err)
@@ -37,7 +41,7 @@ func TestRing_FixedSizeAndWrap(t *testing.T) {
 		rec := RingRecord{
 			At: base.Add(time.Duration(i) * time.Minute), Level: LevelNormal,
 			Footprint: int64(i) * MiB, Children: 7 * MiB, HeapLive: 3 * MiB, GoTotalMinusReleased: 5 * MiB,
-			GCCPUFraction: 0.01, Pressure: PressureNormal, SwapUsed: 3 * GiB, StoreFree: 40 * GiB,
+			GCCPUFraction: 0.01, Pressure: PressureNormal, SwapUsed: 3 * GiB, SwapTotal: 6 * GiB, StoreFree: 40 * GiB,
 			TmpFree: 41 * GiB, SwapVolumeFree: 42 * GiB, DiskWritten: int64(i) * 1000,
 			OldestTool: "find_symbol", OldestClass: ClassPoint, OldestAge: 1500 * time.Millisecond,
 			Abandoned: 2,
@@ -73,6 +77,9 @@ func TestRing_FixedSizeAndWrap(t *testing.T) {
 	if rd.Torn != 0 {
 		t.Fatalf("clean ring read %d torn slots", rd.Torn)
 	}
+	if !rd.HasMeta || rd.Meta != meta {
+		t.Fatalf("header meta = %+v (%v), want %+v", rd.Meta, rd.HasMeta, meta)
+	}
 	var mins, trans []RingRecord
 	for i, rec := range rd.Records {
 		if i > 0 && rec.At.Before(rd.Records[i-1].At) {
@@ -100,7 +107,7 @@ func TestRing_FixedSizeAndWrap(t *testing.T) {
 	want := RingRecord{
 		At: base.Add((minutes - 1) * time.Minute), Level: LevelNormal,
 		Footprint: (minutes - 1) * MiB, Children: 7 * MiB, HeapLive: 3 * MiB, GoTotalMinusReleased: 5 * MiB,
-		GCCPUFraction: 0.01, Pressure: PressureNormal, SwapUsed: 3 * GiB, StoreFree: 40 * GiB,
+		GCCPUFraction: 0.01, Pressure: PressureNormal, SwapUsed: 3 * GiB, SwapTotal: 6 * GiB, StoreFree: 40 * GiB,
 		TmpFree: 41 * GiB, SwapVolumeFree: 42 * GiB, DiskWritten: (minutes - 1) * 1000,
 		OldestTool: "find_symbol", OldestClass: ClassPoint, OldestAge: 1500 * time.Millisecond,
 		Abandoned: 2,

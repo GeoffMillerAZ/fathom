@@ -40,7 +40,7 @@ const (
 	RingFileSize = ringHeaderSize + (RingMinuteSlots+RingTransitionSlots)*RingRecordSize
 
 	ringVersion   = 1
-	ringToolBytes = 32
+	ringToolBytes = 24
 )
 
 // RingFileName is the ring's name inside a daemon's state directory.
@@ -63,7 +63,7 @@ type RingRecord struct {
 	HeapLive             int64
 	GCCPUFraction        float64
 	Pressure             PressureLevel
-	SwapUsed             int64
+	SwapUsed, SwapTotal  int64
 	StoreFree, TmpFree   int64
 	SwapVolumeFree       int64
 	DiskWritten          int64
@@ -145,6 +145,7 @@ func encodeRecord(buf *[RingRecordSize]byte, r *RingRecord) {
 	buf[115] = flags
 	n := copy(buf[120:120+ringToolBytes], r.OldestTool)
 	buf[116] = byte(n)
+	le.PutUint64(buf[144:], uint64(r.SwapTotal))
 	le.PutUint16(buf[152:], ringVersion)
 	le.PutUint32(buf[156:], crc32.ChecksumIEEE(buf[:156]))
 }
@@ -188,7 +189,60 @@ func decodeRecord(buf []byte) (r RingRecord, ok, torn bool) {
 		n = ringToolBytes
 	}
 	r.OldestTool = string(buf[120 : 120+n])
+	r.SwapTotal = int64(le.Uint64(buf[144:]))
 	return r, true, false
+}
+
+// RingMeta is the writing daemon's identity and budget, kept in the ring's
+// header so a reader judges the samples against the marks the daemon
+// actually ran under, not ones re-derived from today's config.
+type RingMeta struct {
+	PID                        int
+	Managed                    bool
+	StartedAt                  time.Time
+	Budget, Shed, Refuse, Exit int64
+	ExitEnabled                bool
+}
+
+func encodeMeta(h []byte, m RingMeta) {
+	le := binary.LittleEndian
+	le.PutUint64(h[24:], uint64(m.Budget))
+	le.PutUint64(h[32:], uint64(m.Shed))
+	le.PutUint64(h[40:], uint64(m.Refuse))
+	le.PutUint64(h[48:], uint64(m.Exit))
+	le.PutUint64(h[56:], uint64(m.StartedAt.UnixNano()))
+	le.PutUint32(h[64:], uint32(m.PID))
+	var f byte
+	if m.ExitEnabled {
+		f |= 1
+	}
+	if m.Managed {
+		f |= 2
+	}
+	h[68] = f
+	h[69] = 1 // meta present
+}
+
+func decodeMeta(h []byte) (RingMeta, bool) {
+	if h[69] != 1 {
+		return RingMeta{}, false
+	}
+	le := binary.LittleEndian
+	return RingMeta{
+		Budget: int64(le.Uint64(h[24:])), Shed: int64(le.Uint64(h[32:])),
+		Refuse: int64(le.Uint64(h[40:])), Exit: int64(le.Uint64(h[48:])),
+		StartedAt: time.Unix(0, int64(le.Uint64(h[56:]))).UTC(),
+		PID:       int(le.Uint32(h[64:])), ExitEnabled: h[68]&1 != 0, Managed: h[68]&2 != 0,
+	}, true
+}
+
+// WriteMeta records the writing daemon's identity and budget in the
+// header (once, at start).
+func (r *Ring) WriteMeta(m RingMeta) error {
+	h := ringHeader()
+	encodeMeta(h, m)
+	_, err := r.f.WriteAt(h, 0)
+	return err
 }
 
 func ringHeader() []byte {
@@ -298,6 +352,8 @@ func (r *Ring) Close() error { return r.f.Close() }
 // RingRead is a ring's readable records, in time order, and how many slots
 // were torn.
 type RingRead struct {
+	Meta    RingMeta
+	HasMeta bool
 	Records []RingRecord
 	Torn    int
 }
@@ -321,6 +377,7 @@ func ReadRing(raw []byte) (RingRead, error) {
 		return RingRead{}, fmt.Errorf("resource ring unreadable: %d B, want %d B", len(raw), RingFileSize)
 	}
 	var out RingRead
+	out.Meta, out.HasMeta = decodeMeta(raw[:ringHeaderSize])
 	for off := ringHeaderSize; off+RingRecordSize <= len(raw); off += RingRecordSize {
 		rec, ok, torn := decodeRecord(raw[off : off+RingRecordSize])
 		if torn {
@@ -343,7 +400,7 @@ func ReadRing(raw []byte) (RingRead, error) {
 // Since keeps the records at or after cutoff.
 func (rd RingRead) Since(cutoff time.Time) RingRead {
 	i := sort.Search(len(rd.Records), func(i int) bool { return !rd.Records[i].At.Before(cutoff) })
-	return RingRead{Records: rd.Records[i:], Torn: rd.Torn}
+	return RingRead{Meta: rd.Meta, HasMeta: rd.HasMeta, Records: rd.Records[i:], Torn: rd.Torn}
 }
 
 // Last is the newest record.

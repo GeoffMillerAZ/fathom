@@ -108,6 +108,9 @@ func startGovernor(b tenancy.Budget, notes []tenancy.Note, storePath, recordPath
 		g.captureDiag = nil
 	} else if ring, err := tenancy.OpenRing(filepath.Join(dir, tenancy.RingFileName)); err == nil {
 		g.ring = ring
+		if err := ring.WriteMeta(tenancy.RingMeta{PID: pid, Managed: b.Managed, StartedAt: time.Now(), Budget: b.Budget, Shed: b.Shed, Refuse: b.Refuse, Exit: b.Exit, ExitEnabled: b.ExitEnabled}); err != nil {
+			flog.Warn(fmt.Sprintf("tenancy: resource ring header not written (%v)", err))
+		}
 	} else {
 		flog.Warn(fmt.Sprintf("tenancy: resource ring unavailable (%v) — `fathom resources` and doctor will read no history for this daemon", err))
 	}
