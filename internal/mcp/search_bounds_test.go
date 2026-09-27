@@ -95,3 +95,36 @@ func TestSearchRipgrep_ByteCapKillsAndRootRestricted(t *testing.T) {
 		}
 	}
 }
+
+// A file with exactly limit+1 matches was read whole, so no per-file cap
+// is claimed (a lower bound that is not one); a file with more is capped,
+// and both engines agree.
+func TestSearch_PerFileCapOnlyWhenMatchesWereCut(t *testing.T) {
+	const limit = 3
+	for _, tc := range []struct {
+		matches int
+		capped  bool
+	}{{limit + 1, false}, {limit + 2, true}, {limit + 5, true}} {
+		root := t.TempDir()
+		writeFlagFixture(t, root, "f.txt", strings.Repeat("needle\n", tc.matches))
+		o := searchOpts{pattern: "needle", caseSensitive: true, limit: limit}
+		engines := map[string]func() ([]searchRawHit, string, error){
+			"walk": func() ([]searchRawHit, string, error) { return searchWalk(context.Background(), root, o) },
+		}
+		if _, err := exec.LookPath("rg"); err == nil {
+			engines["ripgrep"] = func() ([]searchRawHit, string, error) { return searchRipgrep(context.Background(), root, o) }
+		}
+		for name, run := range engines {
+			hits, capped, err := run()
+			if err != nil {
+				t.Fatalf("%s: %v", name, err)
+			}
+			if (capped != "") != tc.capped {
+				t.Errorf("%s with %d matches: capped=%q, want capped=%v", name, tc.matches, capped, tc.capped)
+			}
+			if len(hits) > limit+1 {
+				t.Errorf("%s with %d matches: %d hits, want at most %d", name, tc.matches, len(hits), limit+1)
+			}
+		}
+	}
+}

@@ -444,10 +444,12 @@ func searchRipgrep(ctx context.Context, root string, o searchOpts) ([]searchRawH
 		// engine alone depending on which one answered a given call.
 		"-g", "!*.env", "-g", "!.env", "-g", "!.env.*",
 	}
+	// perFile matches are kept per file; rg reads one more, so a file it
+	// cut is told apart from one that had exactly perFile matches.
 	perFile := 0
 	if o.limit > 0 {
 		perFile = o.limit + 1
-		args = append(args, "--max-count="+strconv.Itoa(perFile))
+		args = append(args, "--max-count="+strconv.Itoa(perFile+1))
 	}
 	for _, p := range o.ignorePatterns {
 		if g := ignorePatternToRipgrepGlob(p); g != "" {
@@ -502,13 +504,20 @@ func searchRipgrep(ctx context.Context, root string, o searchOpts) ([]searchRawH
 		}
 	}
 	hits := parseRipgrepOutput(string(out), contextN)
-	if capped == "" && perFile > 0 {
+	if perFile > 0 {
 		per := map[string]int{}
+		kept := hits[:0]
+		cut := false
 		for _, h := range hits {
-			if per[h.File]++; per[h.File] >= perFile {
-				capped = fmt.Sprintf("at most %d matches read per file", perFile)
-				break
+			if per[h.File]++; per[h.File] > perFile {
+				cut = true
+				continue
 			}
+			kept = append(kept, h)
+		}
+		hits = kept
+		if cut && capped == "" {
+			capped = fmt.Sprintf("at most %d matches read per file", perFile)
 		}
 	}
 	return hits, capped, nil
