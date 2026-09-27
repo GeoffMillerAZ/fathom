@@ -664,7 +664,10 @@ func TestIngest_OversizeNeverReadStableAcrossIngests(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rep.Oversize != 0 || rep.Skipped != 2 {
-		t.Fatalf("an unchanged oversize file was reprocessed: Oversize=%d Skipped=%d, want 0 and 2", rep.Oversize, rep.Skipped)
+	// Unchanged: not re-fingerprinted or purged, but still counted under
+	// Oversize on every ingest — it stays unindexed, so the summary names it
+	// as the lower bound it is (I38), never "oversize: 0".
+	if rep.Oversize != 1 || rep.Skipped != 1 {
+		t.Fatalf("second ingest: Oversize=%d Skipped=%d, want 1 (still named) and 1 (small.go unchanged)", rep.Oversize, rep.Skipped)
 	}
 }

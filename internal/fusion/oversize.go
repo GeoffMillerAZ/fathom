@@ -40,6 +40,10 @@ func (p *Pipeline) recordOversize(ctx context.Context, serviceID, ref string, si
 	if err != nil {
 		return false, fmt.Errorf("fusion: fingerprint lookup %q: %w", ref, err)
 	}
+	// Counted whether or not it changed: the process-lifetime oversize
+	// counter (the MCP ingest tool's before/after delta) names every
+	// never-read file an ingest met, like Report.Oversize.
+	atomic.AddInt64(&p.oversizeTotal, 1)
 	if found && stored == fp {
 		return true, nil
 	}
@@ -51,6 +55,5 @@ func (p *Pipeline) recordOversize(ctx context.Context, serviceID, ref string, si
 	if err := p.st.SetFingerprint(ctx, serviceID, ref, fp); err != nil {
 		return false, fmt.Errorf("fusion: set fingerprint %q: %w", ref, err)
 	}
-	atomic.AddInt64(&p.oversizeTotal, 1)
 	return false, nil
 }

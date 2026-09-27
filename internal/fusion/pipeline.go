@@ -873,15 +873,13 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 			// Fingerprinted by size so an unchanged one is skipped next
 			// time; what it held when it was small is purged, since it
 			// now contributes no observations.
-			skipped, err := p.recordOversize(ctx, svc.ID, ref.Path, over.Size)
-			if err != nil {
+			// Counted under Oversize on every ingest, changed or not: the
+			// file stays unindexed, so the summary names it (I38) instead
+			// of folding it into the unchanged-and-skipped count.
+			if _, err := p.recordOversize(ctx, svc.ID, ref.Path, over.Size); err != nil {
 				return report, err
 			}
-			if skipped {
-				report.Skipped++
-			} else {
-				report.Oversize++
-			}
+			report.Oversize++
 			continue
 		}
 		if fetched[i].err != nil {
