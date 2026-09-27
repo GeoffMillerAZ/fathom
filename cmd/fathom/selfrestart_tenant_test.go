@@ -25,16 +25,15 @@ func TestSelfRestartExitCodeMatchesPlistSchema(t *testing.T) {
 	if adoptionExitCode() != 75 {
 		t.Fatalf("adoptionExitCode() = %d, want 75 (EX_TEMPFAIL)", adoptionExitCode())
 	}
-	v1 := plistBody("dev.fathom.serve-http", "/usr/local/bin/fathom", "/s.sqlite", ":7575", "/logs", "/c.jsonl", "/usr/bin", nil)
-	const v1KeepAlive = "<key>KeepAlive</key><true/>"
-	if !strings.Contains(v1, v1KeepAlive) {
-		t.Fatalf("rendered plist no longer carries %q; update this test to the schema it renders:\n%s", v1KeepAlive, v1)
+	// Schema 2 is the plist fathom actually writes (RT-13's plistBody).
+	v2 := plistBody("dev.fathom.serve-http", "/usr/local/bin/fathom", "/s.sqlite", ":7575", "/logs", "/c.jsonl", "/usr/bin", nil)
+	const v2KeepAlive = "<key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>"
+	if !strings.Contains(v2, v2KeepAlive) {
+		t.Fatalf("rendered plist no longer carries %q; update this test to the schema it renders:\n%s", v2KeepAlive, v2)
 	}
-	// No schema-2 renderer exists yet (RT-13); until it does, schema 2 is the
-	// schema-1 render with the design's KeepAlive dict (§8.1) swapped in.
-	// RT-13 replaces this line with its own render, so the row is then
-	// proven against the plist fathom actually writes.
-	v2 := strings.Replace(v1, v1KeepAlive, "<key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>", 1)
+	// Schema 1 is what installed daemons still run until reconciled
+	// (KeepAlive true): the render with the unconditional KeepAlive back.
+	v1 := strings.Replace(v2, v2KeepAlive, "<key>KeepAlive</key><true/>", 1)
 
 	for _, tc := range []struct {
 		name  string

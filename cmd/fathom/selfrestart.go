@@ -14,9 +14,10 @@ package main
 // three counterfactual sessions collected nothing. The fix existed. The
 // daemon kept running the old code because one command needed hands.
 //
-// launchd's KeepAlive is already true for this job, so the daemon exiting
-// IS a restart. It therefore watches its own executable and, when the bytes
-// on disk change, verifies the replacement and steps aside.
+// launchd relaunches this job on a non-zero exit (KeepAlive true under
+// plist schema 1, {SuccessfulExit: false} under schema 2), so the daemon
+// exiting 75 IS a restart. It therefore watches its own executable and,
+// when the bytes on disk change, verifies the replacement and steps aside.
 //
 // Four safety properties, because a self-restarting daemon that gets this
 // wrong is a crash loop that takes the whole fleet's tooling down:
@@ -46,6 +47,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/buildinfo"
 	"github.com/geoffmilleraz/fathom/internal/dlog"
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
 const (
@@ -65,7 +67,7 @@ const (
 // schema 2 KeepAlive is {SuccessfulExit: false}, so exit 0 means "stay
 // down" (the kill switch, a breaker stop) and an adoption must be non-zero
 // to be relaunched; under schema 1 (KeepAlive true) any exit relaunches.
-func adoptionExitCode() int { return 75 }
+func adoptionExitCode() int { return tenancy.ExitRetryLater }
 
 // selfRestartDisabled lets an operator switch the behaviour off without a
 // rebuild. Off is a legitimate choice — some deployments want the binary

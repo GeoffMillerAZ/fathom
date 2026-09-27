@@ -61,7 +61,7 @@ func binaryStatChanged(prev, cur binaryStat) bool {
 func selfRestartManaged(managedFlag bool, xpcServiceName string, installedLabels func() []string) (bool, string) {
 	installed := installedLabels()
 	label := ""
-	if xpcServiceName != "" && xpcServiceName != "0" && slices.Contains(installed, xpcServiceName) {
+	if xpcServiceName != "" && xpcServiceName != "0" && (xpcServiceName == defaultDaemonLabel || slices.Contains(installed, xpcServiceName)) {
 		label = xpcServiceName
 	}
 	if managedFlag {
@@ -127,9 +127,10 @@ func lifecycleLedgerPath(label string) string {
 // lifecycleSchemaVersion versions the ledger rows (I32's pattern).
 const lifecycleSchemaVersion = 1
 
-// lifecycleRow is one ledger line. Only the `adopt` row is written here
-// (wave A); wave B's ledger (RT-37) adds start/exit/mode/breaker rows in
-// the same file and shape.
+// lifecycleRow is one ledger line. Wave A writes the `adopt` row (here)
+// and `operator_reset` (`fathom daemon start`, daemon_lifecycle.go); wave
+// B's ledger (RT-37) adds start/exit/mode/breaker rows in the same file and
+// shape.
 type lifecycleRow struct {
 	SchemaVersion int    `json:"schema_version"`
 	FathomVersion string `json:"fathom_version,omitempty"`
@@ -139,6 +140,7 @@ type lifecycleRow struct {
 	OldBinary     string `json:"old_binary,omitempty"`
 	NewBinary     string `json:"new_binary,omitempty"`
 	OldCommit     string `json:"old_binary_commit,omitempty"`
+	By            string `json:"by,omitempty"`
 }
 
 // ledgerTailBytes bounds how much of the ledger lastAdoption reads: the
@@ -210,9 +212,6 @@ func readLedgerLine(rd *bufio.Reader) ([]byte, error) {
 
 // appendAdoptRow appends an `adopt` row (old and new binary) to the ledger.
 func appendAdoptRow(ledger string, at time.Time, oldHash, newHash string) error {
-	if err := os.MkdirAll(filepath.Dir(ledger), 0o700); err != nil {
-		return err
-	}
 	row := lifecycleRow{
 		SchemaVersion: lifecycleSchemaVersion,
 		FathomVersion: buildinfo.Version(),
@@ -222,6 +221,15 @@ func appendAdoptRow(ledger string, at time.Time, oldHash, newHash string) error 
 		OldBinary:     shortHash(oldHash),
 		NewBinary:     shortHash(newHash),
 		OldCommit:     buildinfo.Read().Revision,
+	}
+	return appendLedgerRow(ledger, row)
+}
+
+// appendLedgerRow appends one JSON row to a lifecycle ledger, creating its
+// directory (0700) and file (0600).
+func appendLedgerRow(ledger string, row lifecycleRow) error {
+	if err := os.MkdirAll(filepath.Dir(ledger), 0o700); err != nil {
+		return err
 	}
 	b, err := json.Marshal(row)
 	if err != nil {

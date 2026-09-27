@@ -273,14 +273,31 @@ tasks:
       # live process's text pages.
       - mkdir -p "$HOME/.local/libexec/fathom"
       - cp -f bin/fathom "$HOME/.local/libexec/fathom/fathom.new"
-      # Sign with the stable "fathom-dev" identity when it exists (O10 reopened
-      # 2026-08-08): an AD-HOC binary's TCC/FDA grant pins the cdhash recorded
-      # at grant time, so every rebuild silently voids it and the launchd
-      # daemon hangs in an unpromptable tccd consult. A persistent identity
-      # makes the code requirement identity-based — grant once, keep forever.
-      # No identity → no-op (the || true), and the grant stays per-hash.
-      - security find-identity -p codesigning -v | grep -q fathom-dev && codesign -s fathom-dev --force --timestamp=none "$HOME/.local/libexec/fathom/fathom.new" || true
+      # Sign with the stable "fathom-dev" identity (O10 reopened 2026-08-08):
+      # an AD-HOC binary's TCC/FDA grant pins the cdhash recorded at grant
+      # time, so every rebuild silently voids it and the launchd daemon hangs
+      # in an unpromptable tccd consult. A persistent identity makes the code
+      # requirement identity-based — grant once, keep forever.
+      # RT-147 (docs/design/responsible-tenant.md §8.4): no identity is a
+      # FAILED deploy, never an ad-hoc install (the old `|| true` shipped a
+      # binary whose grant was void — INC-23's EPERM wedge). The staged
+      # binary is removed and the running daemon is left untouched.
+      - |
+        if ! security find-identity -p codesigning -v | grep -q fathom-dev; then
+          rm -f "$HOME/.local/libexec/fathom/fathom.new"
+          echo "deploy FAILED: fathom-dev signing identity missing — refusing to install an ad-hoc binary (its TCC grant would be void). Create a 'fathom-dev' code-signing certificate in your login keychain (Keychain Access → Certificate Assistant → Create a Certificate, type Code Signing), then re-run task deploy. The running daemon is untouched." >&2
+          exit 1
+        fi
+        codesign -s fathom-dev --force --timestamp=none "$HOME/.local/libexec/fathom/fathom.new"
       - mv -f "$HOME/.local/libexec/fathom/fathom.new" "$HOME/.local/libexec/fathom/fathom"
+      # The operator's kill switch (`fathom daemon stop`) keeps the daemon
+      # down on purpose: a kickstart would exit 0 at once and the health
+      # check below would wait 60 s for nothing. Installed, not started.
+      - |
+        if [ -e "$HOME/.fathom/daemon/disabled.json" ]; then
+          echo "deploy: installed the new binary, but the kill switch is set ($HOME/.fathom/daemon/disabled.json) — the daemon stays stopped on purpose. Run 'fathom daemon start' to start it on the new binary, then 'task deploy' again to assert it is serving." >&2
+          exit 1
+        fi
       # The label is this machine's, resolved — not assumed. `fathom daemon
       # status` prints it; an adopter with no agent gets `fathom daemon install`.
       - 'label=$(bin/fathom daemon status 2>/dev/null | awk "/^launchd agent:/ {print \$3}"); [ -n "$label" ] && launchctl kickstart -k gui/$(id -u)/"$label" || echo "no launchd agent installed — run: fathom daemon install"'

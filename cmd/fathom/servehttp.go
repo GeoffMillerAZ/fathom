@@ -48,6 +48,14 @@ func (f *stringSliceFlag) Set(v string) error {
 // DISABLED" gap the file's grounding names. Restart-to-apply: this load
 // happens once, at process start.
 func runServeHTTP(args []string, stdout, stderr io.Writer) int {
+	// RT-3 (design §9): the kill switch is the FIRST action — before the
+	// loggers, config, store or bind — so a disabled managed daemon exits in
+	// under 50 ms and launchd's relaunch costs nothing. Unmanaged daemons
+	// ignore it (RT-167).
+	if code, stop := checkKillSwitch(args, os.Getenv, time.Now(), stderr); stop {
+		return code
+	}
+
 	// DG-4 (diagnostics sweep): one logger per stream, constructed FIRST so
 	// every diagnostic below — including the ones that can fire before a
 	// store or client exists — is timestamped and leveled instead of a bare
@@ -71,11 +79,20 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	callLogPath := fs.String("call-log", firstNonEmpty(loaded.Config.Daemon.CallLog, defaultCallLogPath()), "JSONL tool-call log path, resolved against the daemon working directory; empty to disable")
 	var modulePaths stringSliceFlag
 	fs.Var(&modulePaths, "module", "path to a conforming expert-module store (.sqlite/.db, docs/spec/expert-module-v0.md), mounted READ-ONLY on POST /rpc/modules; repeatable. A non-conforming or unreadable store aborts startup loudly (docs/plans/gke-module-host.md GKE-MH-1) rather than starting up silently degraded.")
-	managed := fs.Bool("managed", false, "this is the operator's managed daemon (the launchd agent; plist schema 2 passes it): only a managed daemon watches its own binary for self-restart. Also inferred when launchd starts this process under the installed fathom agent's label (XPC_SERVICE_NAME)")
+	managed := fs.Bool("managed", false, "this is the operator's managed daemon (the launchd agent; plist schema 2 passes it): it obeys ~/.fathom/daemon/disabled.json and paused.json (`fathom daemon stop|pause`) and is the only daemon that watches its own binary for self-restart. Also inferred when launchd starts this process under the installed fathom agent's label (XPC_SERVICE_NAME); a scratch daemon omits it and ignores the switch files")
 	modulesTokenEnv := fs.String("modules-token-env", "", "name of an environment variable holding the bearer token required for POST /rpc/modules (GKE-MH-7); unset = auth disabled (default — matches the loopback-only daemon's existing unauthenticated trust boundary). The token itself is never a flag or config value, only this env var's NAME.")
 
 	if err := fs.Parse(args); err != nil {
 		return 1
+	}
+
+	// RT-6: the managed daemon re-reads paused.json every 2 s and moves to
+	// and from safe mode. XPC_SERVICE_NAME covers a schema-1 plist that
+	// predates --managed.
+	if *managed || isManagedInvocation(nil, os.Getenv) {
+		if dir, dirErr := daemonStateDir(); dirErr == nil {
+			go watchPauseSwitch(dir, 2*time.Second, time.Now, flog, nil)
+		}
 	}
 
 	if *storePath == "" {
@@ -235,7 +252,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	startSelfRestart(outLog, selfRestartStart{
 		managedFlag:     *managed,
 		xpcServiceName:  os.Getenv("XPC_SERVICE_NAME"),
-		installedLabels: labelsInstalled,
+		installedLabels: installedAgentLabels,
 		disabled:        selfRestartDisabled(),
 		executable:      os.Executable,
 		watch: func(path string, cfg selfRestartConfig) {
