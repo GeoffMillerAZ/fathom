@@ -23,6 +23,7 @@ package fusion
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -41,7 +42,18 @@ type StatRecord struct {
 	Path string
 	connector.FileStat
 	ContentHash string // FingerprintHash of the bytes last read at this stat
+	// Epoch is the ExtractorEpoch the record was written under. A record
+	// from another epoch never vouches for a file (O9): its hash and the
+	// stored fingerprint both carry the old salt and would still agree.
+	Epoch string
 }
+
+// racyWindow is how close to its stat a file's mtime may be and still be
+// vouched for by that stat (RT-102): a write within one mtime tick of the
+// stat (1–2 s on coarse filesystems) can leave size and mtime unchanged, so
+// such a record is kept without its hash and the file is read next time —
+// git's racy-clean rule. Var for tests.
+var racyWindow = 2 * time.Second
 
 // WithStatSource installs where pass 1's prior stats come from (the store's
 // file_stats once the storage lane lands it): a map by path, or ok=false
@@ -83,8 +95,9 @@ func (p *Pipeline) priorStats(ctx context.Context, service string) map[string]St
 type statGate struct {
 	live    []StatRecord // per ref: its stat (when statted) and, once known, its content hash
 	statted []bool
-	toRead  []int // indexes into refs, in order
-	skipped int   // files whose stat and fingerprint both matched: not read
+	statAt  time.Time // when pass 1 began statting
+	toRead  []int     // indexes into refs, in order
+	skipped int       // files whose stat and fingerprint both matched: not read
 }
 
 // statChangedFiles is pass 1 (RT-102): stat every ref and keep for reading
@@ -92,7 +105,7 @@ type statGate struct {
 // whose stored fingerprint no longer matches the recorded hash. disabled
 // (legacy anchors about to be rebuilt, or Config.Rehash) reads everything.
 func (p *Pipeline) statChangedFiles(ctx context.Context, serviceID string, refs []core.SourceRef, disabled bool) statGate {
-	g := statGate{live: make([]StatRecord, len(refs)), statted: make([]bool, len(refs))}
+	g := statGate{live: make([]StatRecord, len(refs)), statted: make([]bool, len(refs)), statAt: time.Now()}
 	stater, canStat := p.conn.(connector.Stater)
 	var prior map[string]StatRecord
 	p.mu.Lock()
@@ -107,7 +120,7 @@ func (p *Pipeline) statChangedFiles(ctx context.Context, serviceID string, refs 
 			if st, err := stater.Stat(ctx, ref); err == nil {
 				g.live[i].FileStat = st
 				g.statted[i] = true
-				if pr, ok := prior[ref.Path]; ok && pr.FileStat == st && pr.ContentHash != "" && st.Size <= connector.MaxFetchSize {
+				if pr, ok := prior[ref.Path]; ok && pr.FileStat == st && pr.ContentHash != "" && pr.Epoch == ExtractorEpoch && st.Size <= connector.MaxFetchSize {
 					if stored, found, ferr := p.st.Fingerprint(ctx, serviceID, ref.Path); ferr == nil && found && stored == pr.ContentHash {
 						g.live[i].ContentHash = pr.ContentHash
 						g.skipped++
@@ -127,10 +140,13 @@ func (p *Pipeline) statChangedFiles(ctx context.Context, serviceID string, refs 
 func (p *Pipeline) rememberStats(ctx context.Context, service string, g statGate) {
 	recs := make([]StatRecord, 0, len(g.live))
 	m := make(map[string]StatRecord, len(g.live))
+	racyFrom := g.statAt.Add(-racyWindow).UnixNano()
 	for i, r := range g.live {
-		if !g.statted[i] || r.ContentHash == "" {
+		if !g.statted[i] || r.ContentHash == "" || r.MtimeNS >= racyFrom {
+			// Unstatted, unread, or racily clean: read again next time.
 			continue
 		}
+		r.Epoch = ExtractorEpoch
 		recs = append(recs, r)
 		m[r.Path] = r
 	}

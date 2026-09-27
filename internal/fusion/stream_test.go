@@ -57,6 +57,7 @@ func TestIngest_ReadsOnlyStatChangedFiles(t *testing.T) {
 	}
 	files["README.md"] = "# r\n"
 	writeCorpus(t, dir, files)
+	backdate(t, dir) // outside the racy window: a stat may vouch for them
 	conn := newCountingConn()
 	st := store.NewMemoryStore()
 	p := New(conn, st, Config{Concurrency: 4, DisableTypedEdges: true})
@@ -83,9 +84,11 @@ func TestIngest_ReadsOnlyStatChangedFiles(t *testing.T) {
 	}
 
 	writeCorpus(t, dir, map[string]string{"pkg/f03.go": "package pkg\n\nfunc F03() int { return 333 }\n"})
-	later := time.Now().Add(time.Hour)
-	if err := os.Chtimes(filepath.Join(dir, "pkg/f07.go"), later, later); err != nil {
-		t.Fatal(err)
+	later := time.Now().Add(-30 * time.Minute) // moved, and outside the racy window
+	for _, f := range []string{"pkg/f03.go", "pkg/f07.go"} {
+		if err := os.Chtimes(filepath.Join(dir, f), later, later); err != nil {
+			t.Fatal(err)
+		}
 	}
 	r = ingest()
 	got := conn.take()

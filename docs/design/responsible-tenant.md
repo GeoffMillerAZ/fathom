@@ -733,7 +733,10 @@ whole-service case.
   read; binaries sniffed on 8 KiB. Peak content memory ≤ 64 MiB regardless of corpus.
 - (As built, RT-102/RT-103, `internal/fusion/stream.go`: pass 1 stats through the
   connector's optional `Stater` and reads a file only when its `(size, mtime_ns, ino)`
-  moved or its stored fingerprint no longer equals the recorded hash. The prior record is
+  moved, its stored fingerprint no longer equals the recorded hash, or the record was
+  written under another `ExtractorEpoch` (the `file_stats` row must carry the epoch, or an
+  epoch bump never reaches unchanged files — O9); a file whose mtime is within 2 s of its
+  stat is racily clean and never vouched for by it (git's rule). The prior record is
   `Pipeline.WithStatSource` when wired — the seam for the storage lane's `file_stats` —
   else the pipeline's own record of its last successful ingest of the service (so the
   long-lived daemon is stat-gated from its second ingest; a one-shot CLI ingest reads
