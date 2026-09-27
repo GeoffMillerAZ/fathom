@@ -465,6 +465,22 @@ fathom serve-http --store <path> [--addr <host:port>] [--managed] [--idle-exit 2
 | `--module` | — | Path to a conforming expert-module store, mounted READ-ONLY on `POST /rpc/modules`; repeatable; a non-conforming store aborts startup |
 | `--modules-token-env` | unset | NAME of an env var holding the bearer token for `POST /rpc/modules` (hosted mode); unset = no auth |
 
+**The memory budget (ADR-047, RT-29..RT-36).** Every serve-http samples its
+own `phys_footprint` and its child processes every 2 s and steps a ladder
+against a budget from `~/.fathom/config.toml` `[tenancy]` (auto: RAM/8,
+1–4 GiB; an unmanaged daemon takes `[tenancy.unmanaged].budget`, 512 MiB):
+**shed** at 0.75× drops the console and fleet memos and pauses background
+work; **refuse** at 1× drops every cache, cancels in-flight tree and fleet
+calls and stops whole-tree reads; the **exit mark** (2×, capped at RAM/4)
+halts an in-flight ingest and quarantines its service, then — if still over
+— exits **70** with an `over_budget` row in `lifecycle.jsonl` and a heap
+profile under `~/.fathom/daemon/<id>/diag/`. The startup line names the
+budget and its derivation; `/metrics` carries `fathom_tenancy_level` and the
+footprints; `/statusz` lists quarantined services, which only a completed
+explicit call of the daemon's `ingest` tool lifts (never a hook's refresh
+or a shell `fathom ingest`). A scratch daemon that needs more sets
+`FATHOM_TENANCY_BUDGET`. See [configuration.md](configuration.md#the-budget-tenancy-user-scope-only).
+
 The daemon also reads the `budgets` block of `.fathom/capabilities.cue` /
 `~/.fathom/capabilities.cue` (project → user → built-in) for class-budgeted answers
 (`list` = `query_symbols`/`references`, `composite` = `pack_context`, `map` = `repo_map`;
@@ -479,8 +495,8 @@ HTTP endpoints:
 | `POST` | `/rpc/{surface}` | Same protocol scoped to a named surface (`agent`, `companion`, `coding`, `investigation`, `shared`, `platform`, `modules`): filters `tools/list`; an off-surface `tools/call` still **executes** and is logged `off_surface:true` (execute-and-flag, ADR-014 amendment) — the hard gate exists only behind `Server.strictSurfaces` and on hosted `/rpc/modules` |
 | `GET` | `/healthz` | Liveness probe — returns `ok` |
 | `GET` | `/events` | Live freshness (OC-13): SSE with an `id:` per event (`<epoch>-<n>`: the epoch is this daemon process's boot ID, named in the opening `hello` event), a `: keepalive` every 25 s, replay of the last 64 events after `Last-Event-ID` (or `?last_event_id=`) — an id from another epoch (a reconnect across a daemon restart) replays the whole ring, the restart event first — at most 16 subscribers (the 17th gets 503 + `Retry-After`). Kinds: `ingest` (a service's indexed content moved; a hash-gated no-op re-ingest is not one), `compile` (one per new run), `verify` (the verify ledger, polled every 2 s), `session` (the row's repo label mapped to the service whose root it names; a label that is not a name fires only the unscoped `sessions` source), `daemon`. Events carry names and IDs only, never content |
-| `GET` | `/metrics` | Text metrics: `fathom_uptime_seconds`, `fathom_requests_total`, memory and memo gauges, `fathom_console_page_views_total{route=…}` (OC-15: HTML views per console route pattern since start; the durable 30-day record is `~/.fathom/console-views.jsonl`, `FATHOM_CONSOLE_VIEWS` overrides) and `fathom_console_event_subscribers` |
-| `GET` | `/statusz` | Daemon health, per-service index freshness, channel liveness, last compile per layer, and (schema 2) the daemon's own build stamp `binary_commit` / `binary_dirty` / `built_at` — JSON (schema 3, unchanged) via `Accept: application/json`/`?format=json`; HTML on the console shell otherwise, where every service names its typed-edge state — run by this daemon, recorded by an earlier daemon process (replayed from the store), failed with its reason, **does not apply** (no `go.mod` at the service root), or **unknown** (a Go module with no pass recorded anywhere), never blank (OC-6; `docs/design/observability-surfaces.md` §8 item 6). Gated inside the `/rpc/modules` bearer-token allowlist when `--modules-token-env` is configured; open on the default loopback-only daemon |
+| `GET` | `/metrics` | Text metrics: `fathom_uptime_seconds`, `fathom_requests_total`, memory and memo gauges, the ladder (`fathom_tenancy_level`, `fathom_budget_bytes`, `fathom_footprint_bytes`, `fathom_children_footprint_bytes`, `fathom_host_pressure_level`, `fathom_swap_used_bytes`, `fathom_gc_cpu_fraction`, `fathom_quarantined_services`), `fathom_console_page_views_total{route=…}` (OC-15: HTML views per console route pattern since start; the durable 30-day record is `~/.fathom/console-views.jsonl`, `FATHOM_CONSOLE_VIEWS` overrides) and `fathom_console_event_subscribers` |
+| `GET` | `/statusz` | Daemon health, per-service index freshness, channel liveness, last compile per layer, (schema 2) the daemon's own build stamp `binary_commit` / `binary_dirty` / `built_at`, and (additive) the ladder's `tenancy` block — level, marks, the last sample and every unknown reading (`footprint unknown (ladder off)`), plus `quarantined` — JSON (schema 3, unchanged) via `Accept: application/json`/`?format=json`; HTML on the console shell otherwise, where every service names its typed-edge state — run by this daemon, recorded by an earlier daemon process (replayed from the store), failed with its reason, **does not apply** (no `go.mod` at the service root), or **unknown** (a Go module with no pass recorded anywhere), never blank (OC-6; `docs/design/observability-surfaces.md` §8 item 6). Gated inside the `/rpc/modules` bearer-token allowlist when `--modules-token-env` is configured; open on the default loopback-only daemon |
 | `POST` | `/reload` | Reload the store (PlatformStore re-scan in platform mode) |
 | `GET` | `/`, `/fleet`, `/projects/{svc}`, `/layers`, `/layers/{layer}`, `/claims`, `/claims/{id}`, `/packs`, `/explain`, `/impact`, `/sessions`, `/sessions/{id}`, `/brief`, `/wiring`, `/statusz`, `/search`, `/operate`, `/decide`, `/learn`, `/learn/ask`, `/learn/guides`, `/learn/guides/{slug}`, `/plans`, `/plans/{svc}/{plan}`, `/plans/{svc}/{plan}/rows/{id}`, `/certifications`, `/refactors` | The Observatory console (see below): every page on one shell; `?format=json` returns the page's envelope (`fathom.console.page/v1`) |
 | `GET` | `/observatory`, `/observatory/service`, `/observatory/impact`, `/observatory/story`, `/observatory/brief`, `/observatory/session`, `/observatory/wiring/` | Legacy routes (OC-7): an HTML request is a **308** to the page's new home; `?format=json` still returns the old JSON unchanged (`observatoryModel` v1 and its per-page slices) |

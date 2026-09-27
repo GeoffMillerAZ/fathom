@@ -13,6 +13,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -29,6 +30,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/query"
 	"github.com/geoffmilleraz/fathom/internal/scip"
 	"github.com/geoffmilleraz/fathom/internal/store"
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 	"github.com/geoffmilleraz/fathom/internal/worktree"
 )
 
@@ -523,7 +525,15 @@ func (c *Client) Sources(ctx context.Context, service string) ([]core.SourceFile
 		if cerr := ctx.Err(); cerr != nil {
 			return nil, cerr
 		}
+		// RT-153: the producer governor, before each file. A halted walk is
+		// an error, never a silently shorter corpus.
+		if err := tenancy.ProducerAllowsCtx(ctx, tenancy.ClassTree); err != nil {
+			return nil, fmt.Errorf("client.Sources %q: %w", service, err)
+		}
 		data, err := c.conn.Fetch(ctx, ref)
+		if errors.Is(err, tenancy.ErrOverBudget) {
+			return nil, fmt.Errorf("client.Sources %q: %w", service, err)
+		}
 		if err != nil {
 			// Skip files that cannot be fetched (e.g. permission errors).
 			continue
@@ -563,6 +573,10 @@ func (c *Client) Sources(ctx context.Context, service string) ([]core.SourceFile
 // compiled claims, SweepClaims is run best-effort (error ignored). This is the
 // $0-token citation-freshness pass — status flips happen without any LLM call.
 func (c *Client) IngestService(ctx context.Context, service string) error {
+	// RT-153/RT-173: an ingest is ingest-class work the producer governor
+	// halts at refuse and the exit rung can halt and quarantine.
+	ctx, done := tenancy.BeginIngest(ctx, service)
+	defer done()
 	ref := ServiceRef{ID: service, Path: service}
 	if meta, found, err := c.st.GetServiceMeta(ctx, service); err == nil && found && meta.Path != "" {
 		ref.Path = meta.Path
@@ -597,6 +611,8 @@ func (c *Client) IngestServiceAt(ctx context.Context, service, path string) erro
 	if err := c.refuseWorktreeReroot(ctx, service, path); err != nil {
 		return fmt.Errorf("ingest at: %w", err)
 	}
+	ctx, done := tenancy.BeginIngest(ctx, service) // RT-153/RT-173
+	defer done()
 	if _, err := c.pipe.Ingest(ctx, ServiceRef{ID: service, Path: path}); err != nil {
 		return err
 	}

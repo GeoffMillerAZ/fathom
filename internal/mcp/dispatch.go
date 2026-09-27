@@ -8,10 +8,12 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"sort"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/scope"
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
 // ToolGroup classifies a tool so the active profile filter can include/exclude
@@ -175,9 +177,30 @@ func (s *Server) toolsListBytes(ctx context.Context) int {
 	return len(b)
 }
 
+// outcomeAbandonedByGovernor is the call outcome of work the tenancy
+// ladder's refuse rung cancelled (RT-172, design §2.1).
+const outcomeAbandonedByGovernor = "abandoned-by-governor"
+
+// abandonedByGovernor is the error a tools/call answers with when the
+// refuse rung cancelled its context (cause tenancy.ErrAbandonedByGovernor):
+// whatever the handler returned was computed under a cancelled context and
+// may be partial, so it is replaced by the named outcome (I38). nil for
+// any other context state.
+func abandonedByGovernor(ctx context.Context) *rpcError {
+	cause := context.Cause(ctx)
+	if cause == nil || !errors.Is(cause, tenancy.ErrAbandonedByGovernor) {
+		return nil
+	}
+	return &rpcError{Code: ErrCodeInternal, Message: cause.Error(), Data: map[string]any{"outcome": outcomeAbandonedByGovernor}}
+}
+
 func (s *Server) handleToolsCall(ctx context.Context, params json.RawMessage) (any, *rpcError) {
 	if s.callLogger == nil {
-		return s.handleToolsCallWithCtx(ctx, params)
+		result, rpcErr := s.handleToolsCallWithCtx(ctx, params)
+		if ab := abandonedByGovernor(ctx); ab != nil {
+			return nil, ab
+		}
+		return result, rpcErr
 	}
 	// Extract tool name for logging before dispatching.
 	var nameOnly struct {
@@ -200,6 +223,10 @@ func (s *Server) loggedToolsCall(ctx context.Context, toolName string, params js
 	start := time.Now()
 	result, rpcErr := s.handleToolsCallWithCtx(ctx, params)
 	latency := time.Since(start)
+	outcomeName := ""
+	if ab := abandonedByGovernor(ctx); ab != nil {
+		result, rpcErr, outcomeName = nil, ab, outcomeAbandonedByGovernor
+	}
 
 	// Determine group + off-surface flag from the tool descriptor. The flag is
 	// recomputed here (pure: scope + descriptor) rather than threaded through
@@ -245,7 +272,7 @@ func (s *Server) loggedToolsCall(ctx context.Context, toolName string, params js
 	_ = json.Unmarshal(params, &rawArgs)
 	pointers := resultPointers(toolName, rawArgs.Arguments, result)
 	s.callLogger.log(toolName, args.Arguments.Service, group, s.effectiveSurface(ctx), "", originFrom(ctx), offSurface, claimsAttached, verdictOutcome,
-		callOutcome{ResultCount: resultCount, MatchedVia: matchedVia, ResponseBytes: responseBytes, ElidedCount: elidedCount, Pointers: pointers}, latency, logErr)
+		callOutcome{ResultCount: resultCount, MatchedVia: matchedVia, ResponseBytes: responseBytes, ElidedCount: elidedCount, Pointers: pointers, Outcome: outcomeName}, latency, logErr)
 	return result, rpcErr
 }
 

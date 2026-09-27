@@ -87,6 +87,9 @@ type rpcResponse struct {
 type rpcError struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
+	// Data is JSON-RPC's optional structured error detail (the governor's
+	// {"outcome": "abandoned-by-governor"}, RT-172); omitted when nil.
+	Data any `json:"data,omitempty"`
 }
 
 // Handler is the function signature for an MCP method handler. It receives the
@@ -149,6 +152,17 @@ type Server struct {
 	navMemo   map[string]navMemoEntry
 	navOrder  []string
 	navFlight map[string]*navCall
+}
+
+// DropCaches drops the server's derived caches — the call graphs and the
+// navigation memo — at the tenancy ladder's refuse rung (RT-34). Loads in
+// flight finish for their callers and are not stored past the next one.
+func (s *Server) DropCaches() {
+	s.graphCache.Clear()
+	s.navMu.Lock()
+	s.navMemo = make(map[string]navMemoEntry) // never nil: a flight in progress stores into it
+	s.navOrder = nil
+	s.navMu.Unlock()
 }
 
 // NewServer constructs a Server wired to backend. If backend is nil the server

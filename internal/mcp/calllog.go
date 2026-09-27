@@ -86,6 +86,10 @@ type callLogEntry struct {
 
 	LatencyMS float64 `json:"latency_ms"`
 	Error     string  `json:"error,omitempty"`
+	// Outcome names a call that ended other than by its handler's own
+	// answer — "abandoned-by-governor" when the tenancy ladder's refuse
+	// rung cancelled it (RT-172). Omitted for every ordinary call.
+	Outcome string `json:"outcome,omitempty"`
 
 	// Pointers (RC-25, docs/vision/28-receipts.md §4) are this call's top
 	// discovery pointers — symbol ids ("pkgDir.Name") and repo-relative
@@ -169,6 +173,8 @@ type callOutcome struct {
 	// this call's result — computed by dispatch.go's pointer-extraction
 	// hook (resultPointers) before the call is logged.
 	Pointers []string
+	// Outcome is the call-log row's outcome name (RT-172), "" for none.
+	Outcome string
 }
 
 func (l *CallLogger) log(tool, service, group, surface, via, origin string, offSurface bool, claimsAttached int, verdictOutcome map[string]int, outcome callOutcome, latency time.Duration, callErr error) {
@@ -195,6 +201,7 @@ func (l *CallLogger) log(tool, service, group, surface, via, origin string, offS
 		ElidedCount:    outcome.ElidedCount,
 		LatencyMS:      float64(latency.Milliseconds()),
 		Pointers:       outcome.Pointers,
+		Outcome:        outcome.Outcome,
 	}
 	if callErr != nil {
 		entry.Error = callErr.Error()

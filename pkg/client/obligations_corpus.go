@@ -36,6 +36,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
 // obligationsMemo is Client's per-process memo for the obligations hot
@@ -274,6 +275,14 @@ func (c *Client) layerCorpus(ctx context.Context, service string, def semantic.L
 	var unread []corpusSkip
 	for _, p := range paths {
 		doc, cached := c.cachedCorpusDoc(service, p)
+		// RT-153: the corpus read is a tree producer. Before any file it
+		// has to read (a memoized copy costs nothing), ask the producer
+		// governor; a halt is the named error, never a shorter corpus.
+		if !cached || onDisk {
+			if gErr := tenancy.ProducerAllowsCtx(ctx, tenancy.ClassTree); gErr != nil {
+				return nil, nil, gErr
+			}
+		}
 		switch {
 		case onDisk:
 			abs := filepath.Join(root, filepath.FromSlash(p))

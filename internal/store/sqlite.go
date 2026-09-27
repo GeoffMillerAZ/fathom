@@ -18,6 +18,7 @@ import (
 	_ "modernc.org/sqlite"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
 // openStoreCount is the process-lifetime count of SQLiteStore handles
@@ -677,7 +678,7 @@ ORDER BY ingested_at
 	}
 	defer rows.Close()
 
-	return scanObservations(rows)
+	return scanObservations(ctx, rows)
 }
 
 // Fingerprint returns the stored content hash for (serviceID, sourceRef).
@@ -952,7 +953,7 @@ ORDER BY source_ref, line, symbol
 		return nil, fmt.Errorf("PackageObservations: %w", err)
 	}
 	defer rows.Close()
-	return scanObservations(rows)
+	return scanObservations(ctx, rows)
 }
 
 // sourceKindCountsRaw is SourceKindCounts before the suppression filter:
@@ -1883,7 +1884,11 @@ ORDER BY from_symbol, to_symbol, kind
 	defer rows.Close()
 
 	var result []core.Edge
+	gov := tenancy.NewRowGovernor(ctx, tenancy.ClassIndex) // RT-153
 	for rows.Next() {
+		if err := gov.Row(); err != nil {
+			return nil, err
+		}
 		var e core.Edge
 		var kind string
 		if err := rows.Scan(&e.FromService, &e.FromFile, &e.FromSymbol, &e.ToSymbol, &kind); err != nil {
@@ -1975,9 +1980,16 @@ func (s *SQLiteStore) Close() error {
 // order QueryObservations/ListSourceRefs' callers rely on). Backend-agnostic
 // (operates on *sql.Rows only) — kept here as SQLiteStore's sole consumer
 // since SS-8 deleted the DuckStore backend that used to share it.
-func scanObservations(rows *sql.Rows) ([]core.Observation, error) {
+// scanObservations decodes observation rows, asking the producer governor
+// every 1,000 rows (RT-153): a tree- or fleet-class scan halts at refuse,
+// any scan at the exit mark.
+func scanObservations(ctx context.Context, rows *sql.Rows) ([]core.Observation, error) {
 	var result []core.Observation
+	gov := tenancy.NewRowGovernor(ctx, tenancy.ClassIndex)
 	for rows.Next() {
+		if err := gov.Row(); err != nil {
+			return nil, err
+		}
 		var (
 			o          core.Observation
 			callsJSON  string

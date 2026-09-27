@@ -212,9 +212,13 @@ func runConsoleEventSources(ctx context.Context, s *consoleEventSources) {
 		case <-ctx.Done():
 			return
 		case <-ledgers.C:
-			s.pollLedgers()
+			if !backgroundPaused.Load() { // RT-34: paused at shed and above
+				s.pollLedgers()
+			}
 		case <-store.C:
-			s.pollStore(ctx)
+			if !backgroundPaused.Load() {
+				s.pollStore(ctx)
+			}
 		}
 	}
 }

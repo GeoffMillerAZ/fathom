@@ -1,0 +1,138 @@
+package main
+
+// governor_wiring.go — what serve-http's governor acts on (design §2.1,
+// RT-34): the caches each rung drops and the background work shed pauses.
+// Before wave C's internal/memo, shed drops the console and fleet memos and
+// keeps the graph and symbol caches; refuse drops every cache.
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"path/filepath"
+	"runtime"
+	"runtime/debug"
+	"sync/atomic"
+	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/internal/dlog"
+	"github.com/geoffmilleraz/fathom/internal/mcp"
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
+	"github.com/geoffmilleraz/fathom/pkg/client"
+)
+
+// backgroundPaused is true at shed and above: the console feeders skip
+// their polls (auto-refresh reads the published level itself, in ensure).
+var backgroundPaused atomic.Bool
+
+// reset forgets the gather caches.
+func (c *projectsCaches) reset() {
+	c.mu.Lock()
+	c.ledgerKey, c.runs, c.ledgerRd = "", nil, console.SourceRead{}
+	c.typedKey, c.typed, c.facts = "", nil, nil
+	c.mu.Unlock()
+}
+
+// consoleMemoDrops are the console's derived page caches (shed).
+func consoleMemoDrops() {
+	projectWiringMemo.reset()
+	projectIndexMemo.reset()
+	projectActivityMemo.reset()
+	intentAuditMemo.reset()
+	consoleGatherCache.reset()
+	consoleProjectsCache.Lock()
+	consoleProjectsCache.key, consoleProjectsCache.read = "", projectsRead{}
+	consoleProjectsCache.Unlock()
+	obsCache.Lock()
+	obsCache.model, obsCache.at = observatoryModel{}, time.Time{}
+	obsCache.Unlock()
+}
+
+// dropCaches forgets the unsupported-languages memo (a fleet memo).
+func (f *fleetAdapter) dropCaches() {
+	f.unsupportedMu.Lock()
+	f.unsupportedCache = nil
+	f.unsupportedMu.Unlock()
+}
+
+// servingLadderActions wires the rungs to the serving daemon's caches.
+func servingLadderActions(srv *mcp.Server, c *client.Client, fleet *fleetAdapter) ladderActions {
+	return ladderActions{
+		dropShed: []namedDrop{
+			{"console memos", consoleMemoDrops},
+			{"fleet memos", func() { fleet.dropCaches(); c.DropCaches() }},
+		},
+		dropRefuse: []namedDrop{
+			{"graph and navigation caches", srv.DropCaches},
+			{"obligations memos", c.DropHotPathMemos},
+		},
+		pauseBackground: func(p bool) { backgroundPaused.Store(p) },
+	}
+}
+
+// startGovernor resolves nothing itself: it builds the serving daemon's
+// governor over the platform host, loads the quarantine from the ledger
+// beside the daemon record, and starts sampling. stop ends the sampling
+// goroutine, unpublishes the governor and the level (serve-http defers it:
+// an in-process serve-http that returns leaves nothing running).
+func startGovernor(b tenancy.Budget, notes []tenancy.Note, storePath, recordPath, managedLabel string, actions ladderActions, flog *dlog.Logger) (g *governor, stop func()) {
+	dir := ""
+	if recordPath != "" {
+		dir = filepath.Dir(recordPath)
+	} else if p := lifecycleLedgerPath(managedLabel); p != "" {
+		dir = filepath.Dir(p)
+	}
+	ledger := ""
+	if dir != "" {
+		ledger = filepath.Join(dir, "lifecycle.jsonl")
+	}
+	pid := os.Getpid()
+	g = newGovernor(governorConfig{
+		budget:       b,
+		notes:        notes,
+		host:         newTenancyHost(filepath.Dir(storePath)),
+		now:          time.Now,
+		inflight:     tenancy.DefaultInFlight,
+		ledger:       ledger,
+		pid:          pid,
+		version:      Version,
+		logf:         func(m string) { flog.Warn(m) },
+		actions:      actions,
+		freeOSMemory: debug.FreeOSMemory,
+		killChildren: func() int { return killChildTree(pid) },
+		captureDiag:  captureExitDiag(filepath.Join(dir, "diag"), tenancy.DefaultInFlight, time.Now),
+		exit:         os.Exit,
+	})
+	if dir == "" {
+		g.captureDiag = nil
+	}
+	if err := g.loadQuarantine(); err != nil {
+		flog.Warn(fmt.Sprintf("tenancy: quarantine unreadable (%v) — the lifecycle ledger %s could not be read; no service is treated as quarantined", err, ledger))
+	}
+	activeGovernor.Store(g)
+	ctx, cancel := context.WithCancel(context.Background())
+	go g.run(ctx)
+	return g, func() {
+		cancel()
+		if activeGovernor.CompareAndSwap(g, nil) {
+			tenancy.PublishLevel(tenancy.LevelNormal)
+		}
+	}
+}
+
+// tenancyStartupLine names the budget and its derivation (P22).
+func tenancyStartupLine(b tenancy.Budget, notes []tenancy.Note) string {
+	how := ""
+	for _, n := range notes {
+		if n.Key == "budget" {
+			how = n.Derivation
+		}
+	}
+	exit := tenancy.FormatBytes(b.Exit)
+	if !b.ExitEnabled {
+		exit += " (exit rung disabled)"
+	}
+	return fmt.Sprintf("tenancy: budget %s (%s) · shed %s · refuse %s · exit %s · sampled every %s, %d CPUs",
+		tenancy.FormatBytes(b.Budget), how, tenancy.FormatBytes(b.Shed), tenancy.FormatBytes(b.Refuse), exit, tenancy.SampleEvery, runtime.NumCPU())
+}

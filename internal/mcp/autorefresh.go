@@ -12,6 +12,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/hookcache"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
 // autoRefreshBackend wraps a QueryInterface and, before each per-service read,
@@ -121,6 +122,12 @@ type serviceWatermarker interface {
 // every read.
 func (a *autoRefreshBackend) ensure(ctx context.Context, service string) {
 	if service == "" {
+		return
+	}
+	// RT-34/RT-155 (design §2.1, §2.3): background work pauses at shed and
+	// above, and a quarantined service is never re-queued until an
+	// explicit ingest — the read answers from the index as it stands.
+	if tenancy.CurrentLevel() >= tenancy.LevelShed || tenancy.IsQuarantined(service) {
 		return
 	}
 	path, indexed, found, err := a.QueryInterface.ServiceMeta(ctx, service)

@@ -41,6 +41,27 @@ type aggregateMemo struct {
 	flight map[string]*aggregateCall
 }
 
+// DropHotPathMemos drops the obligations hot path's memo — the layer
+// corpus's paths and guide contents, and what was derived from each edited
+// file (hash, behaviour tokens) — at the tenancy ladder's refuse rung
+// (RT-34: refuse drops every cache). In-flight walks keep their flight
+// entries and store into the fresh maps; the next call re-reads.
+func (c *Client) DropHotPathMemos() {
+	m := &c.oblMemo
+	m.mu.Lock()
+	m.paths = nil
+	m.edited = nil
+	m.mu.Unlock()
+}
+
+// DropCaches drops the client's fleet memo (the per-service symbol
+// aggregates) at the tenancy ladder's shed rung (RT-34).
+func (c *Client) DropCaches() {
+	c.aggregates.mu.Lock()
+	c.aggregates.cache = nil
+	c.aggregates.mu.Unlock()
+}
+
 // ServiceSymbolAggregates returns service's symbol count and source kinds
 // from an aggregate query — never loading an observation row. The answer
 // is memoized per StoreWatermark(service); concurrent callers that miss

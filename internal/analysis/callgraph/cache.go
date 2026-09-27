@@ -124,6 +124,17 @@ func (c *CachedCallGraph) Invalidate(service string) {
 	c.entries = kept
 }
 
+// Clear drops every memoized graph (the tenancy ladder's refuse rung,
+// RT-34). A build in flight still returns its graph to its caller.
+func (c *CachedCallGraph) Clear() {
+	if c == nil {
+		return
+	}
+	c.mu.Lock()
+	c.entries = nil
+	c.mu.Unlock()
+}
+
 // InvalidatePackage (SU-4, docs/plans/substrate.md §A, ADR-041 decision 3)
 // is Invalidate's package-granular sibling: when service's watermark
 // changed for a reason that only ever touches ONE Go package's worth of

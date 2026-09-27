@@ -546,7 +546,9 @@ if [ "$SCRATCH_DAEMON" -eq 1 ] && { echo "$ARMS" | grep -qw fathom || echo "$ARM
 
   SCRATCH_PORT="$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1]); s.close()')"
   FATHOM_HTTP_URL="http://127.0.0.1:$SCRATCH_PORT"
-  ( cd "$ROOT" && exec "$SCRATCH_BIN" serve-http -store "$SCRATCH_STORE" -addr "127.0.0.1:$SCRATCH_PORT" -auto-refresh=false -call-log "" ) > "$RUN_DIR/scratch-daemon.log" 2>&1 &
+  # The bench measures the daemon an agent meets: the managed ceiling (4 GiB,
+  # ADR-047 §2), not the 512 MiB unmanaged budget; an explicit env wins.
+  ( cd "$ROOT" && FATHOM_TENANCY_BUDGET="${FATHOM_TENANCY_BUDGET:-4GiB}" exec "$SCRATCH_BIN" serve-http -store "$SCRATCH_STORE" -addr "127.0.0.1:$SCRATCH_PORT" -auto-refresh=false -call-log "" ) > "$RUN_DIR/scratch-daemon.log" 2>&1 &
   SCRATCH_PID=$!
   ready=0
   for _ in $(seq 1 60); do

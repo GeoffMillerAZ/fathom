@@ -860,7 +860,9 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	}
 
 	// Freshness watermark + commit history — only once the ingest is going
-	// to write (a refused ingest above must not look fresh).
+	// to write (a refused ingest above must not look fresh). The prior meta
+	// is kept so a later halt can put it back (RT-153).
+	prevMeta, hadPrevMeta, _ := p.st.GetServiceMeta(ctx, svc.ID)
 	p.recordIngestMeta(ctx, svc)
 
 	// ── Pass 3: PostFetch (sequential, input order) ──────────────────────────
@@ -993,13 +995,37 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	// re-fetches and re-parses the service's full TS/JS/Python corpus, the
 	// same "whole tree, every run" shape those passes use, just without
 	// their cache. See internal/fusion.ResolveFileEdges.
-	fileRep := p.enrichFileResolvedEdges(ctx, svc, refs)
+	fileRep, fileErr := p.enrichFileResolvedEdges(ctx, svc, refs)
 	report.FileResolvedEdges = fileRep.EdgesResolved
+	if fileErr != nil {
+		// RT-153 (I38): halted after the watermark was recorded — put the
+		// prior freshness back so the halted run never reads as fresh, and
+		// fail with the named cause instead of a shorter index.
+		p.restoreIngestMeta(ctx, svc.ID, prevMeta, hadPrevMeta)
+		return finish(fmt.Errorf("fusion: file-resolved edge pass %q: %w", svc.ID, fileErr))
+	}
 
 	// ── Orphan purge ─────────────────────────────────────────────────────────
 	// refs still holds every discovered file, unreadable ones included, so an
 	// unreadable file is never mistaken for a deleted one.
 	return finish(p.purgeOrphans(ctx, svc.ID, refs))
+}
+
+// restoreIngestMeta undoes recordIngestMeta's watermark for an ingest that
+// halted after it (RT-153): the prior meta comes back, or — for a service
+// that had none — the watermark is blanked so the next freshness check sees
+// drift and retries. Best-effort, like recordIngestMeta.
+func (p *Pipeline) restoreIngestMeta(ctx context.Context, serviceID string, prev store.ServiceMeta, had bool) {
+	if had {
+		_ = p.st.SetServiceMeta(ctx, prev)
+		return
+	}
+	cur, found, err := p.st.GetServiceMeta(ctx, serviceID)
+	if err != nil || !found {
+		return
+	}
+	cur.IndexedCommit = ""
+	_ = p.st.SetServiceMeta(ctx, cur)
 }
 
 // recordIngestMeta records the ingest metadata (freshness watermark + corpus

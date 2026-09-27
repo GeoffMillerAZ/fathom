@@ -65,3 +65,54 @@ exampleTypeSafe: #Config & {
 		api_key_env: "TYPESAFE_API_KEY"
 	}
 }
+
+// The responsible-tenant [tenancy] table (ADR-047, design §1) as an
+// operator's ~/.fathom/config.toml carries it.
+exampleTenancy: #Config & {
+	tenancy: {
+		budget:            "auto"
+		shed_at:           0.75
+		refuse_at:         1.0
+		exit_at:           2.0
+		exit_enabled:      true
+		gc_hint:           "exit"
+		admission:         "observe"
+		gomaxprocs:        "auto"
+		child_parallelism: 2
+		notify:            true
+		host: {
+			shed_on_pressure:      "warn"
+			refuse_on_pressure:    "critical"
+			refuse_on_swap_growth: "2GiB"
+			swap_growth_window:    "5m"
+			min_swap_volume_free:  "5GiB"
+			min_store_volume_free: "2GiB"
+		}
+		breaker: {
+			safe_after:  3
+			safe_window: "30m"
+			stop_after:  5
+			stop_window: "60m"
+			warmup:      "120s"
+		}
+		unmanaged: {
+			idle_exit: "20m"
+			ttl:       "8h"
+			budget:    "512MiB"
+		}
+		caches: {
+			fraction:  0.25
+			shed_trim: 0.5
+			idle_drop: "30m"
+		}
+	}
+}
+
+// An explicit budget, a sized GC hint and a fixed GOMAXPROCS.
+exampleTenancySized: #Config & {
+	tenancy: {
+		budget:     "3GiB"
+		gc_hint:    "6GiB"
+		gomaxprocs: 4
+	}
+}

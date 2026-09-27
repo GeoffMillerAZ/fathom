@@ -242,24 +242,13 @@ default_profile = "work"
 memory_limit    = "3GiB"
 ```
 
-`memory_limit` (O108, `docs/plans/daemon-footprint.md`) is a SOFT ceiling —
-Go size syntax (IEC units only: `"3GiB"`, `"512MiB"`, `"1.5GiB"`) or the
-literal `"off"` — applied at startup with `runtime/debug.SetMemoryLimit`: the
-runtime GCs and scavenges harder as total memory use approaches it, but it
-never kills the process, unlike a hard OS/container limit. Unset defaults to
-`"3GiB"`; `FATHOM_MEMORY_LIMIT` (an env var, not a config key) always wins
-over the config value, matching every other daemon key's env-wins-over-config
-precedence. The startup line reads `serve-http: memory limit 3 GiB (soft,
-runtime.SetMemoryLimit)` or `serve-http: memory limit off`; the live value is
-also on `GET /metrics` as `go_memory_limit_bytes` and named in `fathom
-doctor`'s `daemon_footprint` row. This bounds how large a single typed-edge
-pass's peak heap is allowed to grow — complementary to a process-wide
-semaphore that serializes typed-edge passes (so two large services never
-type-check concurrently; `fathom_typed_pass_inflight`/`_waited_total` on
-`/metrics`) and to the periodic scavenger (`FATHOM_SCAVENGE_INTERVAL`,
-`FATHOM_SCAVENGE=off`, `docs/guides/fleet-index.md`) that bounds how long a
-peak's OS-visible footprint survives after the fact — three independent
-bounds on the same O108 growth pattern, not alternatives to each other.
+`memory_limit` (O108) is **superseded by `[tenancy].gc_hint`** (below). Set
+alone — or as `FATHOM_MEMORY_LIMIT` — it keeps its meaning, the GC hint, and
+serve-http names the migration at startup; set beside `[tenancy].gc_hint`,
+`[tenancy]` wins and the conflict is named. It is a SOFT limit
+(`runtime/debug.SetMemoryLimit`): the runtime GCs harder near it and never
+stops the process. It is not protection — the daemon reached ~30 GB under a
+3 GiB one (INC-23). The ladder below is the bound.
 
 This is a **read-once** load: a change to `config.toml` reaches the daemon
 only after a restart —
@@ -284,6 +273,80 @@ sets the daemon's leveled `internal/dlog` output: `debug` / `info` / `warn`
 never a startup error, an operational tuning knob like `FATHOM_SCAVENGE_INTERVAL`
 above. See `docs/guides/fleet-index.md`'s "Daemon logging" section for the
 log format, rotation and dedupe-summary behavior this controls.
+
+## The budget: `[tenancy]` (user scope only)
+
+What the daemon may cost the machine it shares (ADR-047,
+`docs/design/responsible-tenant.md` §1–§2). Budgets are machine contracts:
+`[tenancy]` is read from `~/.fathom/config.toml` and env only. A `[tenancy]`
+table in a repository's `.fathom/config.toml` validates but is **ignored**,
+and serve-http names it at startup — a cloned repository cannot raise a
+laptop's ceiling. Precedence: env > user > defaults.
+
+```toml
+# ~/.fathom/config.toml
+[tenancy]
+budget       = "auto"    # phys_footprint; auto = clamp(RAM/8, 1GiB, 4GiB)
+shed_at      = 0.75      # × budget
+refuse_at    = 1.00      # × budget; never below shed_at (a misordered ladder is refused at start)
+exit_at      = 2.00      # × budget, capped at RAM/4, raised to the refuse mark
+exit_enabled = true      # false keeps shed and refuse only (disclosed)
+gc_hint      = "exit"    # SetMemoryLimit target: "exit" | "budget" | "off" | an IEC size (anything else is refused at start)
+gomaxprocs   = "auto"    # managed daemons: max(2, NumCPU/2) unless GOMAXPROCS is in the env
+
+[tenancy.host]
+shed_on_pressure      = "warn"      # "warn" | "critical" | "off"
+refuse_on_pressure    = "critical"
+refuse_on_swap_growth = "2GiB"      # swap grew this much in the window while fathom ≥ the shed mark
+swap_growth_window    = "5m"
+min_swap_volume_free  = "5GiB"      # /System/Volumes/VM
+
+[tenancy.unmanaged]
+budget = "512MiB"                   # an unmanaged serve-http's own budget
+```
+
+Every 2 s the daemon samples its own `phys_footprint`, the footprint of its
+child processes (`go list`, git, rg), host memory pressure, swap and volume
+free space, and steps a ladder:
+
+| Level | Entered when (two consecutive samples; a sample ≥ 6 s late counts twice) | What happens |
+|---|---|---|
+| `shed` | footprint + children ≥ `shed_at`, or host pressure warn | console and fleet memos dropped, console feeders and auto-refresh paused (reads answer from the index as it stands), memory returned to the OS |
+| `refuse` | footprint + children ≥ `refuse_at`; pressure critical; swap grew > 2 GiB in 5 min while fathom ≥ the shed mark; swap volume < 5 GiB free | every cache dropped; every in-flight tree and fleet tool call cancelled, youngest first (`abandoned-by-governor`); whole-tree, fleet and ingest reads stop within one file or 1,000 rows; a heap profile captured |
+| `exit` | own footprint ≥ the exit mark, or pressure critical for 60 s with footprint over budget | an in-flight ingest is halted first and its service **quarantined**; if the next sample is still over (or nothing was in flight), the child tree is killed, `heap.pb.gz` and `inflight.json` written under `~/.fathom/daemon/<id>/diag/`, an `exit` row (`reason: over_budget`) appended to `lifecycle.jsonl`, and the process exits **70** at once |
+
+Step-down: 60 s below 0.6 × the current rung's mark with its host triggers
+clear, one rung at a time. The swap-used fraction is never a trigger (macOS
+grows swap on demand; 80% used is routine at normal pressure), and an
+unreadable pressure or swap reading is disclosed, never a trigger; an
+unreadable footprint turns the ladder off, disclosed. The startup line names
+the budget and its derivation (`tenancy: budget 4 GiB (auto: clamp(RAM 32 GiB
+/ 8, 1 GiB, 4 GiB)) · shed 3 GiB · refuse 4 GiB · exit 8 GiB`); `GET /metrics`
+carries `fathom_tenancy_level`, `fathom_budget_bytes`,
+`fathom_footprint_bytes`, `fathom_children_footprint_bytes`,
+`fathom_host_pressure_level`, `fathom_swap_used_bytes`,
+`fathom_gc_cpu_fraction` and `fathom_quarantined_services`.
+
+**Quarantine.** A service whose ingest was halted at the exit mark (or was in
+flight at an over-budget exit) is recorded in the daemon's lifecycle ledger;
+the next start reads it, `/statusz` lists it (`quarantined: app-kit exceeded
+budget during ingest — retry with the daemon's `ingest` tool (service
+"app-kit"); a completed explicit ingest lifts it`), and auto-refresh never
+re-ingests it. Only the daemon's `ingest` tool, called explicitly and
+completing, lifts it (the response carries `quarantine_cleared: true`); a
+hook's refresh (post-commit, edit) is refused with the quarantine named, a
+failed or halted ingest leaves it, and a shell `fathom ingest` writes the
+store directly and never reaches the daemon's quarantine.
+
+**Unmanaged daemons** (no `--managed`: tests, scripts, benches) take
+`[tenancy.unmanaged].budget` (512 MiB; exit mark 1 GiB), never the managed
+budget. A scratch daemon that needs more names it:
+`FATHOM_TENANCY_BUDGET=2GiB fathom serve-http …`.
+
+Env: `FATHOM_TENANCY_BUDGET` (an IEC size; wins for managed and unmanaged
+alike), `FATHOM_TENANCY_ADMISSION` (`observe` | `enforce` | `off`),
+`FATHOM_TENANCY_EXIT=off` (disable the exit rung). An unparseable value is a
+startup error naming the variable.
 
 ## The decision port: `[decide]`
 

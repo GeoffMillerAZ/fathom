@@ -40,6 +40,7 @@ package fusion
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -48,6 +49,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
 // FileResolveReport summarises one ResolveFileEdges run.
@@ -340,15 +342,20 @@ func resolveTSModule(importerPath, spec string, fileSet map[string]bool) (string
 // A read failure fetching one file here is best-effort skipped (already
 // surfaced, if fatal, by the main ingest pass above) rather than aborting
 // the whole language's resolution.
-func (p *Pipeline) enrichFileResolvedEdges(ctx context.Context, svc core.ServiceRef, refs []core.SourceRef) FileResolveReport {
+//
+// RT-153 (I38): a fetch the producer governor refuses (ErrOverBudget) or a
+// cancelled ctx is not a read failure — the pass stops before its store
+// write and returns the error, so a halt is a named failure and never a
+// wholesale replacement of the language's edges by a shorter set.
+func (p *Pipeline) enrichFileResolvedEdges(ctx context.Context, svc core.ServiceRef, refs []core.SourceRef) (FileResolveReport, error) {
 	var total FileResolveReport
 	if p.cfg.DisableTypedEdges {
-		return total
+		return total, nil
 	}
 	if hasScipIndex(svc.Path) {
 		total.Skipped = true
 		total.SkipReason = "a SCIP index is present for this repo; the typed importer (SU-9) is authoritative"
-		return total
+		return total, nil
 	}
 
 	langFiles := map[string][]core.SourceRef{}
@@ -358,7 +365,7 @@ func (p *Pipeline) enrichFileResolvedEdges(ctx context.Context, svc core.Service
 		}
 	}
 	if len(langFiles) == 0 {
-		return total
+		return total, nil
 	}
 
 	for _, lang := range []string{"javascript", "python"} { // deterministic order
@@ -376,6 +383,9 @@ func (p *Pipeline) enrichFileResolvedEdges(ctx context.Context, svc core.Service
 		for _, r := range lrefs {
 			content, ferr := p.conn.Fetch(ctx, r)
 			if ferr != nil {
+				if haltErr := haltError(ctx, ferr); haltErr != nil {
+					return total, haltErr
+				}
 				continue
 			}
 			files = append(files, core.SourceFile{Path: r.Path, Content: content, Lang: lang})
@@ -393,7 +403,20 @@ func (p *Pipeline) enrichFileResolvedEdges(ctx context.Context, svc core.Service
 			fmt.Fprintf(os.Stderr, "fusion: file-resolved edge pass %q (%s): store: %v\n", svc.ID, lang, putErr)
 		}
 	}
-	return total
+	return total, nil
+}
+
+// haltError is err when it (or ctx) says the ingest must stop — the
+// producer governor's ErrOverBudget or a cancelled/expired ctx — and nil
+// for an ordinary per-file read failure a best-effort pass may skip.
+func haltError(ctx context.Context, err error) error {
+	if errors.Is(err, tenancy.ErrOverBudget) || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return err
+	}
+	if cErr := ctx.Err(); cErr != nil {
+		return cErr
+	}
+	return nil
 }
 
 // fileResolveLangFor maps a repo-relative path's extension to the
