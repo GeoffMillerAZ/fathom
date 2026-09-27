@@ -67,7 +67,7 @@ func markMeasuredStale(rows []intent.PlanRowState, newest map[string]verifyLedge
 // one-line reason for the table footer; false with "" when the daemon is
 // current or its stamp is unknown.
 func liveDaemonStale(hc *http.Client, baseURL, root string) (bool, string) {
-	st, err := fetchStatusz(hc, baseURL)
+	st, err := fetchDaemonBuild(hc, baseURL)
 	if err != nil || st.BinaryCommit == "" {
 		return false, ""
 	}

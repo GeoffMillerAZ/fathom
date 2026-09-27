@@ -152,3 +152,24 @@ func TestConsolePlanVerifyPanicFinishes(t *testing.T) {
 		t.Fatalf("finished=%v err=%q flights=%d; want a finished failure naming the panic and no flight left", finished, errText, flights)
 	}
 }
+
+// TestLiveDaemonStaleReadsOwnBuildInProcess (RT-115): inside the daemon,
+// the plans page's measured-stale reading is this process's own build
+// stamp — never a full-fleet statusz (every service's meta, typed-edge
+// status and compile runs) per service per headTTL.
+func TestLiveDaemonStaleReadsOwnBuildInProcess(t *testing.T) {
+	prev := inProcessReg.Load()
+	t.Cleanup(func() { inProcessReg.Store(prev) })
+	var built atomic.Int32
+	self := "http://127.0.0.1:1/"
+	inProcessReg.Store(&inProcessRegistry{self: self,
+		services: func(context.Context) (map[string]svcInfo, error) { return nil, nil },
+		statusz: func(context.Context) StatuszReport {
+			built.Add(1)
+			return StatuszReport{}
+		}})
+	liveDaemonStale(nil, self, t.TempDir())
+	if n := built.Load(); n != 0 {
+		t.Fatalf("the measured-stale reading built the full statusz %d time(s); want the daemon's own build stamp", n)
+	}
+}
