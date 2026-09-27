@@ -294,7 +294,7 @@ func TestEveryTruncatingToolDiscloses(t *testing.T) {
 	}
 
 	assertElided(t, "query_symbols", callTool(t, srv, "query_symbols", map[string]any{"service": "svc", "concern": "handler", "top": 60}))
-	refResp := callTool(t, srv, "references", map[string]any{"query": "Needle"})
+	refResp := callTool(t, srv, "references", map[string]any{"services": []any{"*"}, "query": "Needle"})
 	assertElided(t, "references", refResp)
 	// wave L1: summary survives the same fitToBudget cut that produced the
 	// elided block above.

@@ -614,6 +614,41 @@ func (c *Client) ScanSources(ctx context.Context, service string, b corpus.Budge
 	})
 }
 
+// ReadSourceFiles reads the named files of service (paths relative to its
+// recorded root) through the connector — the fetch cap, the meter and the
+// producer governor — for a handler that needs a few files' text, never
+// the tree (RT-71). A path that is not local to the root, missing, oversize
+// or unreadable is left out.
+func (c *Client) ReadSourceFiles(ctx context.Context, service string, paths []string) ([]SourceFile, error) {
+	root := ""
+	if meta, found, err := c.st.GetServiceMeta(ctx, service); err == nil && found {
+		root = meta.Path
+	}
+	out := make([]SourceFile, 0, len(paths))
+	for _, p := range paths {
+		if err := ctx.Err(); err != nil {
+			return out, err
+		}
+		if !filepath.IsLocal(filepath.FromSlash(p)) {
+			continue
+		}
+		ref := core.SourceRef{Service: service, Path: p}
+		if filepath.IsAbs(root) {
+			ref.Path = filepath.Join(root, filepath.FromSlash(p))
+		}
+		data, err := c.conn.Fetch(ctx, ref)
+		if err != nil {
+			continue
+		}
+		lang := connector.LanguageForPath(p)
+		if connector.IsBinary(data) {
+			lang = core.LangBinary
+		}
+		out = append(out, SourceFile{Path: p, Content: data, Lang: lang, Generated: connector.IsGenerated(p, data)})
+	}
+	return out, nil
+}
+
 // IngestService re-ingests the named service and satisfies the
 // mcp.QueryInterface.IngestService contract (used by the ingest MCP tool and by
 // auto-refresh). It re-ingests from the filesystem path recorded in

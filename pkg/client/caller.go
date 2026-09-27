@@ -1,6 +1,7 @@
 package client
 
 import (
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -19,6 +20,9 @@ type Caller struct {
 	PID, PPID       int
 	Origin, Session string
 	Test            bool
+	// Cwd is the caller's working directory (RT-86: references defaults
+	// to the service whose root holds it). Percent-encoded on the wire.
+	Cwd string
 }
 
 // CallerHeader renders this process's X-Fathom-Caller value:
@@ -36,7 +40,37 @@ func CallerHeader(origin, session string) string {
 		";ppid=" + strconv.Itoa(os.Getppid()) +
 		";origin=" + callerField(origin) +
 		";session=" + callerField(session) +
-		";test=" + test
+		";test=" + test +
+		";cwd=" + callerCwd()
+}
+
+// callerCwd is this process's working directory, percent-encoded so no
+// byte outside callerField's set reaches the wire ("" when unknown).
+func callerCwd() string {
+	wd, err := os.Getwd()
+	if err != nil || len(wd) > 4096 {
+		return ""
+	}
+	return encodeCallerValue(wd)
+}
+
+// encodeCallerValue percent-encodes every byte outside [A-Za-z0-9._/-]
+// (':' too, so decoding is unambiguous).
+func encodeCallerValue(v string) string {
+	const hex = "0123456789ABCDEF"
+	var b strings.Builder
+	for i := 0; i < len(v); i++ {
+		c := v[i]
+		switch {
+		case c >= 'a' && c <= 'z', c >= 'A' && c <= 'Z', c >= '0' && c <= '9', c == '.', c == '_', c == '/', c == '-':
+			b.WriteByte(c)
+		default:
+			b.WriteByte('%')
+			b.WriteByte(hex[c>>4])
+			b.WriteByte(hex[c&15])
+		}
+	}
+	return b.String()
 }
 
 func callerTestFlag(inTestBinary bool, envTest string) bool {
@@ -86,6 +120,11 @@ func ParseCallerHeader(v string) (Caller, bool) {
 			ok = true
 		case "test":
 			c.Test = val == "1"
+			ok = true
+		case "cwd":
+			if d, err := url.PathUnescape(val); err == nil {
+				c.Cwd = d
+			}
 			ok = true
 		}
 	}

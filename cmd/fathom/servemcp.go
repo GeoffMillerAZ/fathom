@@ -109,7 +109,14 @@ func runServeMCP(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 
 	srv := mcp.NewServerWithFleet(backend, &fleetAdapter{c: c, log: flog})
 
-	if err := srv.Serve(context.Background(), stdin, stdout); err != nil {
+	// RT-86: a stdio server runs in its agent's working directory, so its
+	// calls carry that as the caller's cwd — references then defaults to
+	// the agent's own service instead of refusing.
+	serveCtx := context.Background()
+	if wd, err := os.Getwd(); err == nil {
+		serveCtx = mcp.WithCaller(serveCtx, mcp.CallerInfo{PID: os.Getpid(), PPID: os.Getppid(), Cwd: wd})
+	}
+	if err := srv.Serve(serveCtx, stdin, stdout); err != nil {
 		// EOF / context cancel are expected end-of-stream signals; only
 		// surface genuine errors.
 		fmt.Fprintf(stderr, "error: mcp serve: %v\n", err)

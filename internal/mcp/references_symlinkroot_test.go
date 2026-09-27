@@ -90,7 +90,7 @@ func TestReferences_RecordedRootThroughSymlinkStillFindsCallers(t *testing.T) {
 
 	srv := NewServer(c)
 	for _, exact := range []bool{true, false} {
-		payload := callToolArgs(t, srv, "references", map[string]any{"service": "o39", "query": "Target", "exact": exact})
+		payload := callToolArgs(t, srv, "references", map[string]any{"services": []any{"*"}, "service": "o39", "query": "Target", "exact": exact})
 		occs, _ := payload["occurrences"].([]any)
 		if len(occs) == 0 {
 			t.Errorf("exact=%v: references found no occurrence of Target through the symlinked recorded root: %v", exact, payload["summary"])

@@ -8,10 +8,12 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/references"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/corpus"
 )
 
 // referencesDefaultMax is the default occurrence cap (SB-1,
@@ -208,7 +210,7 @@ func renderReferenceOccurrence(o occEntry, includeService bool) referenceOccurre
 func registerReferences(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "references",
-		Description: "Fleet-wide occurrence search: identifier, dotted path, or regex. Returns matches plus definitions. Reach for it when you need every place a name appears. Required: query.",
+		Description: "Occurrence search: identifier, dotted path, or regex, in your own service (services: [\"*\"] for the fleet). Returns matches plus definitions. Reach for it when you need every place a name appears. Required: query.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -223,7 +225,7 @@ func registerReferences(s *Server, backend QueryInterface) {
 				"services": map[string]any{
 					"type":        "array",
 					"items":       map[string]any{"type": "string"},
-					"description": "Service IDs to search (default: all)",
+					"description": "Service IDs; [\"*\"] = fleet. Default: your cwd's service; unresolvable = -32602 listing services",
 				},
 				"word": map[string]any{
 					"type": "boolean",
@@ -299,16 +301,11 @@ func registerReferences(s *Server, backend QueryInterface) {
 			maxOccs = referencesDefaultMax
 		}
 
-		// Resolve service list.
-		svcs := p.Services
-		if len(svcs) == 0 {
-			all, err := backend.Services(ctx)
-			if err != nil {
-				return nil, &rpcError{Code: ErrCodeInternal, Message: "references: list services: " + err.Error()}
-			}
-			svcs = all
+		// Resolve service list (RT-86, RT-159).
+		svcs, scope, scopeErr := referencesScope(ctx, backend, p.Services)
+		if scopeErr != nil {
+			return nil, scopeErr
 		}
-		sort.Strings(svcs)
 
 		opts := references.Options{
 			Word:            p.Word,
@@ -356,6 +353,19 @@ func registerReferences(s *Server, backend QueryInterface) {
 		// summarized instead of listed, without a second pass over nodes.
 		byPkg := make(map[string]int)
 
+		// RT-86/RT-87 (§4.5): occurrences stream one file at a time under
+		// one budget for the whole call (referencesScanBytes, referencesScanWall)
+		// and stop once more than maxOccs are kept — so the count past max
+		// is a lower bound, and a scan the budget stopped is named in
+		// "partial", never a silently shorter answer (I38).
+		matcher, mErr := references.NewMatcher(p.Query, opts)
+		if mErr != nil {
+			return nil, &rpcError{Code: ErrCodeParams, Message: "references: " + mErr.Error()}
+		}
+		scanStart := time.Now()
+		var scanBytes int64
+		var scanned, scanTotal, unscanned int
+		scanStop := ""
 		for _, svc := range svcs {
 			// ── definitions: symbol index lookup ─────────────────────────────
 			nodes, err := serviceSymbols(ctx, backend, svc)
@@ -404,15 +414,75 @@ func registerReferences(s *Server, backend QueryInterface) {
 				}
 			}
 
-			// ── occurrences: source file scan ─────────────────────────────────
-			if truncated {
-				// Already at cap; skip further source scans.
+			// RC-21: query names an interface method (typed edges know the
+			// receiver is an interface, but the method itself is never
+			// indexed as its own symbol — see interfaceMethodQuery) — list
+			// the implementing types first, ahead of the occurrences below.
+			// Only the candidate interfaces' own files are read.
+			if implRows == nil {
+				if files := interfaceSourceFiles(ctx, backend, svc, nodes, p.Query); len(files) > 0 {
+					if iface, method, ok := interfaceMethodQuery(files, nodes, p.Query); ok {
+						if rows := implementationsForMethod(ctx, backend, svc, iface, method, nodes); len(rows) > 0 {
+							implRows = rows
+						}
+					}
+				}
+			}
+
+			// ── occurrences: budgeted source stream ──────────────────────────
+			if truncated || scanStop != "" {
+				// At the occurrence cap or out of budget: this service's
+				// text is not read, and the answer says so.
+				unscanned++
 				continue
 			}
-			sources, srcCov, err := collectSources(ctx, backend, svc)
-			if err == nil && srcCov.LowerBound() {
-				degraded = append(degraded, degradedEntry{Service: svc, Reason: partialNote(srcCov)})
+			// Typed-edge confirmation for mentions (BD-2), when this
+			// service has both definitions of the query and typed edges.
+			typed := typedByService[svc]
+			var mentionConf func(file string, line int) core.EdgeConfidence
+			if len(defKeys) > 0 && len(typed) > 0 {
+				mentionConf = mentionConfidence(nodes, typed, defKeys)
 			}
+			// SB-45: exact mode keeps only occurrences mentionConf marks
+			// resolved. A service that cannot even attempt confirmation
+			// falls back to its unfiltered occurrences and says so.
+			serviceExact := exact && mentionConf != nil
+			foundAny := false
+			b := corpus.Budget{Bytes: referencesScanBytes - scanBytes, Wall: referencesScanWall - time.Since(scanStart)}
+			if b.Bytes <= 0 || b.Wall <= 0 {
+				scanStop = map[bool]string{true: corpus.StopBytes, false: corpus.StopTime}[b.Bytes <= 0]
+				unscanned++
+				continue
+			}
+			cov, err := backend.ScanSources(ctx, svc, b, func(f core.SourceFile) bool {
+				if f.Lang == core.LangBinary {
+					return false
+				}
+				found, _ := matcher.FindInFile(f.Path, f.Content, 0)
+				for _, occ := range found {
+					foundAny = true
+					conf := core.EdgeConfidenceHeuristic
+					if mentionConf != nil {
+						conf = mentionConf(occ.File, occ.Line)
+					}
+					if serviceExact && conf != core.EdgeConfidenceResolved && !p.IncludeHeuristic {
+						continue
+					}
+					occs = append(occs, occEntry{
+						Service:        svc,
+						File:           occ.File,
+						Line:           occ.Line,
+						Text:           occ.Text,
+						Tier:           string(core.TierPreScan),
+						Depth:          1,
+						EdgeConfidence: string(conf),
+					})
+				}
+				return len(occs) > maxOccs
+			})
+			scanBytes += cov.BytesRead
+			scanned += cov.Scanned
+			scanTotal += cov.Total
 			if err != nil {
 				// O36: same doctrine as ListAllSymbols above — a service
 				// whose sources cannot be discovered degrades, never
@@ -420,39 +490,14 @@ func registerReferences(s *Server, backend QueryInterface) {
 				degraded = append(degraded, degradedEntry{Service: svc, Reason: "sources: " + err.Error()})
 				continue
 			}
-
-			// RC-21: query names an interface method (typed edges know the
-			// receiver is an interface, but the method itself is never
-			// indexed as its own symbol — see interfaceMethodQuery) — list
-			// the implementing types first, ahead of the occurrences below.
-			if implRows == nil {
-				if iface, method, ok := interfaceMethodQuery(sources, nodes, p.Query); ok {
-					if rows := implementationsForMethod(ctx, backend, svc, iface, method, nodes); len(rows) > 0 {
-						implRows = rows
-					}
-				}
+			switch cov.Stopped {
+			case "":
+			case corpus.StopHits:
+				truncated = true
+			default:
+				scanStop = cov.Stopped
 			}
-
-			found, err := references.Find(p.Query, sources, opts)
-			if err != nil {
-				return nil, &rpcError{Code: ErrCodeParams, Message: "references: " + err.Error()}
-			}
-			// Typed-edge confirmation for mentions (BD-2): built lazily,
-			// only when this service has both definitions of the query and
-			// typed edges to confirm a mention against.
-			typed := typedByService[svc]
-			var mentionConf func(file string, line int) core.EdgeConfidence
-			if len(defKeys) > 0 && len(typed) > 0 && len(found) > 0 {
-				mentionConf = mentionConfidence(nodes, typed, defKeys)
-			}
-			// SB-45: exact mode keeps only occurrences mentionConf marks
-			// resolved. A service that cannot even attempt confirmation
-			// (no typed edges, or no indexed definition of the query here)
-			// has no typed reference sites to filter to — fall back to its
-			// unfiltered occurrences and say so, rather than silently
-			// returning none for it (execute-and-flag, ADR-014).
-			serviceExact := exact && mentionConf != nil
-			if exact && mentionConf == nil && len(found) > 0 {
+			if exact && mentionConf == nil && foundAny {
 				exactAvailable = false
 				reason := fmt.Sprintf("no typed reference sites for %q in %s", p.Query, svc)
 				switch {
@@ -463,35 +508,31 @@ func registerReferences(s *Server, backend QueryInterface) {
 				}
 				degraded = append(degraded, degradedEntry{Service: svc, Reason: reason})
 			}
-			// Append the WHOLE service's matches — never break mid-service —
-			// so totalOccs below is an honest count of what was actually
-			// found in every service the scan reached, not a moving target
-			// frozen mid-scan (a count over an incomplete manifest must be
-			// reported as a lower bound, never silently rounded down further
-			// than the scan itself already stopped).
-			for _, occ := range found {
-				conf := core.EdgeConfidenceHeuristic
-				if mentionConf != nil {
-					conf = mentionConf(occ.File, occ.Line)
-				}
-				if serviceExact && conf != core.EdgeConfidenceResolved && !p.IncludeHeuristic {
-					// Exact mode: drop the bare text hit unless the caller
-					// explicitly asked for heuristic occurrences back too.
-					continue
-				}
-				occs = append(occs, occEntry{
-					Service:        svc,
-					File:           occ.File,
-					Line:           occ.Line,
-					Text:           occ.Text,
-					Tier:           string(core.TierPreScan),
-					Depth:          1,
-					EdgeConfidence: string(conf),
-				})
+		}
+		// Occurrences in (service, file, line) order: a stream may hand
+		// files over in any discovery order.
+		sort.SliceStable(occs, func(i, j int) bool {
+			if occs[i].Service != occs[j].Service {
+				return occs[i].Service < occs[j].Service
 			}
-			if len(occs) >= maxOccs {
-				truncated = true
+			if occs[i].File != occs[j].File {
+				return occs[i].File < occs[j].File
 			}
+			return occs[i].Line < occs[j].Line
+		})
+		partial := ""
+		if truncated || scanStop != "" || unscanned > 0 {
+			partial = fmt.Sprintf("≥ %d occurrences (scanned %d/%d files", len(occs), scanned, scanTotal)
+			switch {
+			case scanStop != "":
+				partial += ": budget " + scanStop
+			case truncated:
+				partial += fmt.Sprintf(": stopped past max %d", maxOccs)
+			}
+			if unscanned > 0 {
+				partial += fmt.Sprintf("; %d service(s) not scanned", unscanned)
+			}
+			partial += ")"
 		}
 
 		// RC-20: a definition fan-in this large (a generic name matched
@@ -621,6 +662,10 @@ func registerReferences(s *Server, backend QueryInterface) {
 		if el != nil {
 			resp["elided"] = el
 		}
+		if partial != "" {
+			resp["partial"] = partial
+		}
+		resp["scope"] = scope
 		return withSummary(referencesSummary(p.Query, defs, wireOccs), resp), nil
 	})
 }

@@ -174,10 +174,12 @@ const (
 // Coverage is what a scan covered: Scanned of Total files, the files it
 // excluded by name, and why it stopped early ("" = it did not).
 type Coverage struct {
-	Scanned  int
-	Total    int
-	Excluded []Excluded
-	Stopped  string
+	Scanned int
+	Total   int
+	// BytesRead is what the scan handed on (the sum of the files' sizes).
+	BytesRead int64
+	Excluded  []Excluded
+	Stopped   string
 }
 
 // LowerBound reports whether the scan stopped early, so any count it
@@ -260,6 +262,7 @@ func ScanBudgeted(ctx context.Context, root string, paths []string, b Budget, fn
 			continue
 		}
 		read += int64(len(data))
+		cov.BytesRead = read
 		cov.Scanned++
 		if fn(p, data) {
 			cov.Stopped = StopHits
@@ -323,6 +326,7 @@ func ScanFetch(ctx context.Context, paths []string, b Budget, fetch func(ctx con
 			return cov, nil
 		}
 		read += int64(len(data))
+		cov.BytesRead = read
 		cov.Scanned++
 		if fn(p, data) {
 			cov.Stopped = StopHits

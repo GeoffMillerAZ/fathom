@@ -20,7 +20,7 @@ Answer "if I change X, what breaks — here and in every other service?" across 
 | `rename_impact` | MCP tool (coding) | Every call site that must be updated if the symbol is renamed |
 | `reachable` | MCP tool (coding) | Boolean: is there any directed call path from symbol A to symbol B? |
 | `cross_repo_callers` | MCP tool (platform) | All callers of a symbol **across every ingested service** via stored call edges (its `platform_callers` alias was deleted, SW-1) |
-| `references` | MCP tool (investigation) | Fleet-wide occurrence search for an identifier or string across every service's source, evidence-tiered — catches string/config mentions no call edge records |
+| `references` | MCP tool (investigation) | Occurrence search for an identifier or string — across every service's source with `services: ["*"]`, evidence-tiered — catches string/config mentions no call edge records |
 | `cross_repo_blast_radius` | MCP tool (platform) | Blast radius of a **symbol across all services**: the symbol plus every cross-service caller |
 | `list_services` | MCP tool (platform) | All services in the fleet with detected languages and symbol counts |
 | `staleness_report` | MCP tool (shared) | Whether the index is out of date vs. current HEAD |

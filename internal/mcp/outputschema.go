@@ -200,6 +200,13 @@ type referencesResult struct {
 	// confirm against one (false when any fell back — see Degraded).
 	Exact          bool `json:"exact"`
 	ExactAvailable bool `json:"exact_available,omitempty"`
+	// Scope (RT-86): which services were searched — "caller-service" (the
+	// default: the caller's own), "services" (named) or "fleet" (["*"]).
+	Scope string `json:"scope"`
+	// Partial (RT-86, I38): the scan stopped past max, at its byte or time
+	// budget, or left services unread — "≥ N occurrences (scanned x/y
+	// files: budget bytes)"; absent for a complete scan.
+	Partial string `json:"partial,omitempty"`
 	// Degraded (SB-45, O36 — ADR-014 execute-and-flag): services this call
 	// could not fully answer for — an unreadable root, or no typed
 	// reference sites to confirm exact mode against — named with why,

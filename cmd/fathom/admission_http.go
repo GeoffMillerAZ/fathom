@@ -41,7 +41,7 @@ func rpcContext(r *http.Request, surface string) (context.Context, context.Cance
 	ctx := mcp.WithContracts(mcp.WithOrigin(mcp.WithRequestScope(r.Context(), surface, true), origin), r.URL.Query().Get("contracts") == "true")
 	ctx = markHookOrigin(ctx, origin)
 	if c, ok := client.ParseCallerHeader(r.Header.Get(client.CallerHeaderName)); ok {
-		ctx = mcp.WithCaller(ctx, mcp.CallerInfo{PID: c.PID, PPID: c.PPID, Session: c.Session, Test: c.Test})
+		ctx = mcp.WithCaller(ctx, mcp.CallerInfo{PID: c.PID, PPID: c.PPID, Session: c.Session, Test: c.Test, Cwd: c.Cwd})
 	}
 	if v := strings.TrimSpace(r.Header.Get(hookguard.DeadlineHeader)); v != "" {
 		if ms, err := strconv.ParseInt(v, 10, 64); err == nil && ms > 0 {

@@ -46,8 +46,9 @@ type implementationEntry struct {
 // indexed type's method set covers them. iface must be a core.KindGoInterface
 // node from the SAME service as allNodes.
 func implementationsOf(ctx context.Context, backend QueryInterface, service string, iface core.SymbolNode, allNodes []core.SymbolNode) []implementationEntry {
-	sources, _, err := collectSources(ctx, backend, service)
-	if err != nil || len(sources) == 0 {
+	// Only the interface's own file is read (RT-71).
+	sources := sourceFiles(ctx, backend, service, []string{iface.FilePath})
+	if len(sources) == 0 {
 		return nil
 	}
 	methods := interfaceMethodNames(sources, iface)

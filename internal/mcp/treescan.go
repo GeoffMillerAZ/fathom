@@ -8,6 +8,8 @@ package mcp
 
 import (
 	"context"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -69,4 +71,63 @@ func sourcePaths(ctx context.Context, backend QueryInterface, service string) ([
 		return false
 	})
 	return out, err
+}
+
+// sourceFileReader is the OPTIONAL backend capability reading named files
+// of a service (client.ReadSourceFiles): a handler that needs one file's
+// text reads that file, not the tree.
+type sourceFileReader interface {
+	ReadSourceFiles(ctx context.Context, service string, paths []string) ([]core.SourceFile, error)
+}
+
+// sourceFiles reads paths of service: through the backend's file reader
+// when it has one, else by a budgeted scan keeping only those paths.
+func sourceFiles(ctx context.Context, backend QueryInterface, service string, paths []string) []core.SourceFile {
+	if len(paths) == 0 {
+		return nil
+	}
+	if r, ok := backend.(sourceFileReader); ok {
+		files, err := r.ReadSourceFiles(ctx, service, paths)
+		if err != nil {
+			return nil
+		}
+		return files
+	}
+	want := make(map[string]bool, len(paths))
+	for _, p := range paths {
+		want[p] = true
+	}
+	var out []core.SourceFile
+	_, _ = backend.ScanSources(ctx, service, treeBudget, func(f core.SourceFile) bool {
+		if want[f.Path] {
+			out = append(out, f)
+			delete(want, f.Path)
+		}
+		return len(want) == 0
+	})
+	return out
+}
+
+// interfaceSourceFiles reads the files declaring the Go interfaces query
+// could name a method of (the interface named before the last dot, or
+// every interface for a bare name) — interfaceMethodQuery's only input
+// beyond the index.
+func interfaceSourceFiles(ctx context.Context, backend QueryInterface, service string, nodes []core.SymbolNode, query string) []core.SourceFile {
+	ifaceName := ""
+	if i := strings.LastIndexByte(query, '.'); i >= 0 {
+		ifaceName = query[:i]
+	}
+	seen := map[string]bool{}
+	var paths []string
+	for _, n := range nodes {
+		if n.Kind != core.KindGoInterface || n.FilePath == "" || (ifaceName != "" && n.Name != ifaceName) {
+			continue
+		}
+		if !seen[n.FilePath] {
+			seen[n.FilePath] = true
+			paths = append(paths, n.FilePath)
+		}
+	}
+	sort.Strings(paths)
+	return sourceFiles(ctx, backend, service, paths)
 }

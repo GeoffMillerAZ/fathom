@@ -181,7 +181,7 @@ func TestBlastRadiusByDepthField(t *testing.T) {
 // — its own default behavior is pinned by TestReferencesExactModeDefault.
 func TestReferencesDepthAndConfidence(t *testing.T) {
 	srv := mcp.NewServer(newGraphBackend())
-	payload := callTool(t, srv, "references", map[string]any{"query": "Target", "word": true, "exact": false})
+	payload := callTool(t, srv, "references", map[string]any{"services": []any{"*"}, "query": "Target", "word": true, "exact": false})
 	defs := payload["definitions"].([]any)
 	if len(defs) != 1 || defs[0].(map[string]any)["depth"] != float64(0) || defs[0].(map[string]any)["edge_confidence"] != "resolved" {
 		t.Fatalf("definitions = %v: want Target at depth 0, resolved (verified tier)", defs)
