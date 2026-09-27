@@ -380,6 +380,11 @@ func NewGroupIn[K comparable, V any](reg *Registry, name string, opts Options) *
 	reg.mu.Lock()
 	reg.groups = append(reg.groups, g)
 	reg.mu.Unlock()
+	if reg == Default {
+		// RT-124: /metrics reads the group's bytes as
+		// fathom_cache_bytes{group}.
+		tenancy.RegisterCacheBytes(name, func() int64 { return g.stats().Bytes })
+	}
 	return g
 }
 
