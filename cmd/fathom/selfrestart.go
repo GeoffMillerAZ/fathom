@@ -227,6 +227,14 @@ func watchOwnBinary(path string, log *dlog.Logger, cfg selfRestartConfig) {
 			refusedAt = now
 			continue
 		}
+		// (3) again: the file may have changed while the candidate ran —
+		// between this poll's stat and the verify. Adopting then would
+		// yield to bytes that were never hashed or settled (a copy still
+		// being written) and record the wrong hash in the ledger. Re-stat;
+		// a change goes back through hash and settle on the next poll.
+		if after, aerr := statBinary(path); aerr != nil || after != seen {
+			continue
+		}
 
 		if cfg.ledger != "" {
 			if werr := appendAdoptRow(cfg.ledger, now, start, pending); werr != nil {

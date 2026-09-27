@@ -94,11 +94,17 @@ func TestWatchOwnBinaryHashesOnlyOnStatChange(t *testing.T) {
 			})
 			close(done)
 		}()
+		waitHashes(t, &hashes, 1)
 		time.Sleep(80 * time.Millisecond) // ~40 polls of an unchanged file
 		if got := hashes.Load(); got != 1 {
 			t.Fatalf("hashes of an unchanged binary over ~40 polls = %d, want 1 (the baseline)", got)
 		}
-		fakeBinary(t, bin, "fathom v0.1.0 @ bbbbbbbbbbbbbbbb", 0)
+		// One change, as `task deploy` makes it: written aside and renamed
+		// into place. (os.WriteFile over the file is TWO observable changes
+		// — the truncate, then the bytes — and a 2 ms poll under load sees
+		// the empty file in between and rightly hashes it; see the
+		// next subtest.)
+		replaceBinary(t, bin, "fathom v0.1.0 @ bbbbbbbbbbbbbbbb")
 		select {
 		case <-done:
 		case <-time.After(5 * time.Second):
@@ -109,6 +115,55 @@ func TestWatchOwnBinaryHashesOnlyOnStatChange(t *testing.T) {
 		}
 		if got := hashes.Load(); got != 2 {
 			t.Errorf("hashes = %d, want 2 (baseline + the one change)", got)
+		}
+	})
+
+	t.Run("each distinct stat is hashed once, a half-written file never adopted", func(t *testing.T) {
+		dir := t.TempDir()
+		bin := filepath.Join(dir, "fathom")
+		fakeBinary(t, bin, "fathom v0.1.0 @ aaaaaaaaaaaa", 0)
+		var hashes atomic.Int32
+		var exited atomic.Int32
+		exited.Store(-1)
+		var out syncBuffer
+		done := make(chan struct{})
+		go func() {
+			watchOwnBinary(bin, dlogOver(&out), selfRestartConfig{
+				poll: 2 * time.Millisecond, exit: func(c int) { exited.Store(int32(c)) },
+				hash: countingHash(&hashes),
+			})
+			close(done)
+		}()
+		waitHashes(t, &hashes, 1)
+		// A copy caught mid-write: truncated in place, held there for many
+		// polls. The empty file is a new stat, hashed once and not again.
+		if err := os.Truncate(bin, 0); err != nil {
+			t.Fatal(err)
+		}
+		waitHashes(t, &hashes, 2) // a loaded machine may take a while to poll
+		time.Sleep(80 * time.Millisecond)
+		if got := hashes.Load(); got != 2 {
+			t.Fatalf("hashes after the truncate held for ~40 polls = %d, want 2 (baseline + the truncated stat, once)", got)
+		}
+		select {
+		case <-done:
+			t.Fatalf("adopted a half-written (empty) binary; log:\n%s", out.String())
+		default:
+		}
+		fakeBinary(t, bin, "fathom v0.1.0 @ bbbbbbbbbbbbbbbb", 0)
+		select {
+		case <-done:
+		case <-time.After(5 * time.Second):
+			t.Fatalf("never adopted; log:\n%s", out.String())
+		}
+		if got := exited.Load(); got != int32(adoptionExitCode()) {
+			t.Errorf("exit = %d, want %d", got, adoptionExitCode())
+		}
+		// Baseline, the empty file, the finished file — and, if a poll landed
+		// between fakeBinary's own truncate and write, one more for that
+		// stat. Never a hash per poll.
+		if got := hashes.Load(); got < 3 || got > 4 {
+			t.Errorf("hashes = %d, want 3 (or 4 if a poll saw fakeBinary mid-write)", got)
 		}
 	})
 
@@ -406,5 +461,31 @@ func TestStartSelfRestartOnlyWhenManaged(t *testing.T) {
 		if tc.want && len(got) == 2 && !strings.Contains(got[1], filepath.Join("daemon", tc.label, "lifecycle.jsonl")) {
 			t.Errorf("%s: ledger = %q, want one under label %s", tc.name, got[1], tc.label)
 		}
+	}
+}
+
+// replaceBinary installs a new fake binary the way `task deploy` does:
+// written to a sibling path and renamed over the old one, so the watcher can
+// only ever observe the old file or the whole new one.
+func replaceBinary(t *testing.T, path, prints string) {
+	t.Helper()
+	tmp := path + ".new"
+	fakeBinary(t, tmp, prints, 0)
+	if err := os.Rename(tmp, path); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// waitHashes waits (up to 10 s) until the watcher has hashed at least n
+// times, so an assertion about what happens AFTER a hash never races the
+// watcher goroutine's first polls on a loaded machine.
+func waitHashes(t *testing.T, hashes *atomic.Int32, n int32) {
+	t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for hashes.Load() < n {
+		if time.Now().After(deadline) {
+			t.Fatalf("watcher hashed %d times in 10s, want at least %d", hashes.Load(), n)
+		}
+		time.Sleep(time.Millisecond)
 	}
 }
