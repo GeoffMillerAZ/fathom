@@ -365,7 +365,7 @@ budget, a per-call byte ceiling and a server deadline (`point` 10 s, `index` 30 
 the daemon's one ingest slot — never beside another ingest or a summary backfill). A class is the tool's cost
 **today** (`internal/mcp/testdata/toolcost.json`, held by
 `TestCostClassMatchesMeasuredCost`); a tool moves to a cheaper class only in the commit
-that rewrites it. `references` with `services: ["*"]` is `fleet`. `batch` holds no
+that rewrites it. `references` with `services: ["*"]`, or naming more than one service, is `fleet`. `batch` holds no
 ticket: at most 16 calls, each admitted in its own class.
 
 Admission defaults to `observe` (`[tenancy].admission`, `docs/configuration.md`):

@@ -128,4 +128,13 @@ func TestCostClassMatchesMeasuredCost(t *testing.T) {
 	if got := srv.CostClassOfForTest("references", `{"query":"x"}`); got != "tree" {
 		t.Fatalf("references (one service) = %s, want tree", got)
 	}
+	// An explicit list naming several services does the same fleet work as
+	// ["*"] (each one's symbols, typed edges and text): it takes the fleet
+	// slot too; one named service (even repeated) stays tree.
+	if got := srv.CostClassOfForTest("references", `{"query":"x","services":["a","b"]}`); got != "fleet" {
+		t.Fatalf(`references services ["a","b"] = %s, want fleet`, got)
+	}
+	if got := srv.CostClassOfForTest("references", `{"query":"x","services":["a","a"]}`); got != "tree" {
+		t.Fatalf(`references services ["a","a"] = %s, want tree`, got)
+	}
 }

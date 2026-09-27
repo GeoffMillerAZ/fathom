@@ -76,17 +76,24 @@ func resolveCostClass(desc toolDescriptor) (tenancy.Class, bool) {
 }
 
 // costClassOf is a call's class: the tool's declared class, raised by its
-// arguments where §3.1 says so (`references` over services ["*"] is fleet).
+// arguments where §3.1 says so (`references` over services ["*"], or over
+// an explicit list naming more than one service, is fleet: the same
+// per-service work, so the same slot).
 func costClassOf(te toolEntry, args json.RawMessage) tenancy.Class {
 	if te.desc.Name == "references" && len(args) > 0 {
 		var a struct {
 			Services []string `json:"services"`
 		}
 		if json.Unmarshal(args, &a) == nil {
+			distinct := map[string]bool{}
 			for _, s := range a.Services {
 				if s == "*" {
 					return tenancy.ClassFleet
 				}
+				distinct[s] = true
+			}
+			if len(distinct) > 1 {
+				return tenancy.ClassFleet
 			}
 		}
 	}

@@ -306,7 +306,8 @@ In wave A the cause fixes and the `Sources` slot bound the known paths; in wave 
 ladder and the producer governor bound memory whatever the cause.
 
 Argument-dependent classes: `references` without `services` is `tree` on the caller's own
-service (when an identity resolves, §4.5); with `["*"]` it is `fleet`.
+service (when an identity resolves, §4.5); with `["*"]`, or an explicit list naming more
+than one service (the same per-service work), it is `fleet`.
 
 ### 3.2 The gate
 
