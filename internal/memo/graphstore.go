@@ -278,7 +278,7 @@ func itoa(n int) string {
 // snapshotBytes estimates a snapshot's resident size: the node structs and
 // their strings, the lowered fields and both indexes.
 func snapshotBytes(s *Snapshot) int64 {
-	const nodeOverhead, indexEntry = 256, 48
+	const nodeOverhead, indexEntry = 320, 64 // calibrated: TestByteEstimatesTrackTheHeap
 	var n int64
 	for i := range s.Nodes {
 		nd := &s.Nodes[i]
@@ -336,9 +336,10 @@ func GraphFor(ctx context.Context, snap *Snapshot, kind GraphKind, typed TypedLo
 		default:
 			g = callgraph.Build(snap.Nodes)
 		}
-		// A graph holds a node map, forward and reverse adjacency and
-		// name indexes: roughly 2× the snapshot's node cost plus edges.
-		return g, int64(len(snap.Nodes))*512 + int64(len(edges))*96, nil
+		// The graph's own maps, summed (callgraph.EstimatedBytes): a flat
+		// per-node guess undercounted about 3× and let the cache fraction
+		// admit several times its budget.
+		return g, g.EstimatedBytes(), nil
 	})
 }
 
@@ -381,7 +382,8 @@ func PatchPackage(sc Scope, pkg string, nodes []core.SymbolNode, typed []core.Ed
 			t = nil
 		}
 		graphGroup.Update(graphKey{sc, k}, func(old *callgraph.Graph) (*callgraph.Graph, int64) {
-			return old.ReplacePackage(pkg, nodes, t), -1
+			ng := old.ReplacePackage(pkg, nodes, t)
+			return ng, ng.EstimatedBytes()
 		})
 	}
 	graphGroup.Remove(graphKey{sc, GraphResolved}, ReasonWatermark)

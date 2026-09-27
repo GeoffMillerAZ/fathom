@@ -5,12 +5,15 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"strings"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/dlog"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
+	"github.com/geoffmilleraz/fathom/internal/memo"
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
@@ -77,6 +80,13 @@ func runServeMCP(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		c.WithDecision(ports.Decider, ports.Cfg, ports.Recorder)
 	}
 
+	// I51: the MCP tools here share the same memo registry as serve-http's,
+	// so it takes the same byte budget — the cache fraction of an
+	// unmanaged daemon's tenancy budget ([tenancy.unmanaged], or
+	// FATHOM_TENANCY_BUDGET). Without one the registry held every service
+	// a session touched until its watermark moved.
+	boundServeMCPMemo(loaded, cfgErr, stderr)
+
 	// Announce build identity at startup. A long-running serve-mcp process can
 	// outlive several commits; logging the embedded VCS revision makes a stale
 	// server self-evident (compare against `git rev-parse HEAD`). See
@@ -115,4 +125,21 @@ func runServeMCP(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 func isStoreLockConflict(err error) bool {
 	s := err.Error()
 	return strings.Contains(s, "SQLITE_BUSY") || strings.Contains(s, "SQLITE_LOCKED") || strings.Contains(s, "database is locked")
+}
+
+// boundServeMCPMemo sets the memo registry's byte budget for a stdio
+// server: serve-mcp is never supervised, so it resolves the unmanaged
+// budget. An unreadable config still bounds the registry (the unmanaged
+// default).
+func boundServeMCPMemo(loaded config.Loaded, cfgErr error, stderr io.Writer) {
+	if cfgErr != nil {
+		loaded = config.Loaded{}
+	}
+	tcfg, _, err := config.ResolveTenancyConfig(loaded, os.Getenv)
+	if err != nil {
+		fmt.Fprintf(stderr, "warn: tenancy config: %v — the memo registry takes the unmanaged default budget\n", err)
+		tcfg, _, _ = config.ResolveTenancyConfig(config.Loaded{}, os.Getenv)
+	}
+	b, _ := tenancy.ResolveBudget(tcfg, tenancy.HostFacts{RAM: hostRAM(), NumCPU: runtime.NumCPU()})
+	memo.Default.SetBudget(b.Caches, b.CacheShedTrim)
 }

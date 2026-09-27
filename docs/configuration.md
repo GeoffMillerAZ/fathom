@@ -326,7 +326,10 @@ the console), the layer-coverage paths — is a group in one registry
 waiters that leave at their own deadline, every entry's bytes counted under
 `caches.fraction`, a service's entries evicted the moment its watermark
 moves. `shed` trims the registry to `shed_trim` of its budget and admits one
-rebuild at a time while shed; `refuse` and `idle_drop` drop it.
+rebuild at a time while shed; `refuse` drops it and cancels the builds in
+flight; `idle_drop` drops it. `fathom serve-mcp` bounds the same registry by
+the cache fraction of the unmanaged budget (`[tenancy.unmanaged].budget`, or
+`FATHOM_TENANCY_BUDGET`).
 
 Every 2 s the daemon samples its own `phys_footprint`, the footprint of its
 child processes (`go list`, git, rg), host memory pressure, swap and volume
