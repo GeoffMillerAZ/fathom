@@ -471,7 +471,7 @@ func readSessionEvents(path, sessionID string) (events []console.ReplayEvent, pa
 	if sessionID == "" {
 		return nil, nil, nil
 	}
-	lines, partial, err := hooksBeatIndex.lines(path, sessionID)
+	lines, partial, err := sessionBeatIndex(path, sessionID)
 	if err != nil {
 		return nil, nil, err
 	}

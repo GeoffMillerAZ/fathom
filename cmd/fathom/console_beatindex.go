@@ -39,8 +39,8 @@ type beatGen struct {
 	offsets map[string][]int64 // session → offsets of its complete lines
 }
 
-// sessionBeatIndex indexes the hooks log's generations by session.
-type sessionBeatIndex struct {
+// beatOffsetIndex indexes the hooks log's generations by session.
+type beatOffsetIndex struct {
 	mu   sync.Mutex
 	gens map[string]*beatGen // by file path
 	lru  map[string]beatLRUEntry
@@ -56,12 +56,19 @@ type beatLRUEntry struct {
 }
 
 // hooksBeatIndex is the daemon's one index of the hooks log.
-var hooksBeatIndex = &sessionBeatIndex{}
+var hooksBeatIndex = &beatOffsetIndex{}
+
+// sessionBeatIndex is one session's beat lines from the hooks log at path
+// and its rotated generation, read by offset through the daemon's index —
+// what every session page reads (the replay, the legacy story).
+func sessionBeatIndex(path, session string) (lines [][]byte, partial, err error) {
+	return hooksBeatIndex.lines(path, session)
+}
 
 // lines returns session's beat lines from path's rotated generation
 // (older) and then path, each in file order. partial names a rotated
 // generation that could not be read while the current one was.
-func (ix *sessionBeatIndex) lines(path, session string) (out [][]byte, partial, err error) {
+func (ix *beatOffsetIndex) lines(path, session string) (out [][]byte, partial, err error) {
 	if path == "" {
 		return nil, nil, os.ErrNotExist
 	}
@@ -141,7 +148,7 @@ func (ix *sessionBeatIndex) lines(path, session string) (out [][]byte, partial, 
 // extend opens p and indexes what was appended since its last read. A
 // rotated generation that is the file the current path named before is
 // that file's index, moved.
-func (ix *sessionBeatIndex) extend(p, current string) (*os.File, *beatGen, []byte, error) {
+func (ix *beatOffsetIndex) extend(p, current string) (*os.File, *beatGen, []byte, error) {
 	g := ix.gens[p]
 	if g == nil {
 		g = &beatGen{offsets: map[string][]int64{}}
@@ -203,7 +210,7 @@ func (ix *sessionBeatIndex) extend(p, current string) (*os.File, *beatGen, []byt
 
 // remember caches a session's lines, evicting the least recently read
 // past beatIndexSessions.
-func (ix *sessionBeatIndex) remember(session, mark string, lines [][]byte) {
+func (ix *beatOffsetIndex) remember(session, mark string, lines [][]byte) {
 	ix.lru[session] = beatLRUEntry{mark: mark, lines: lines, used: ix.tick}
 	for len(ix.lru) > beatIndexSessions {
 		oldest, at := "", ^uint64(0)
@@ -217,7 +224,7 @@ func (ix *sessionBeatIndex) remember(session, mark string, lines [][]byte) {
 }
 
 // reset forgets the index (tests; the governor's drops).
-func (ix *sessionBeatIndex) reset() {
+func (ix *beatOffsetIndex) reset() {
 	ix.mu.Lock()
 	ix.gens, ix.lru = nil, nil
 	ix.mu.Unlock()

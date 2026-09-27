@@ -24,7 +24,7 @@ func TestSessionPageSeeksIndexedBeats(t *testing.T) {
 	}
 	mustWrite(t, path+".1", beat("s-a", "2026-09-26T10:00:00Z", "seen")+beat("s-b", "2026-09-26T10:01:00Z", "seen"))
 	mustWrite(t, path, beat("s-a", "2026-09-27T10:00:00Z", "emitted")+"not json\n"+beat("s-b", "2026-09-27T10:01:00Z", "seen"))
-	ix := &sessionBeatIndex{}
+	ix := &beatOffsetIndex{}
 
 	lines, partial, err := ix.lines(path, "s-a")
 	if err != nil || partial != nil || len(lines) != 2 || !strings.Contains(string(lines[0]), "2026-09-26") || !strings.Contains(string(lines[1]), "2026-09-27") {

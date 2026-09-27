@@ -54,7 +54,7 @@ func buildSessionStory(sessionID string) sessionStory {
 	}
 
 	// The session's lines by offset (RT-114), never the whole beat log.
-	lines, _, berr := hooksBeatIndex.lines(beatLogPath(), sessionID)
+	lines, _, berr := sessionBeatIndex(beatLogPath(), sessionID)
 	for _, line := range lines {
 		var b heartbeat.Beat
 		if json.Unmarshal(line, &b) == nil && b.Meta["session"] == sessionID {
