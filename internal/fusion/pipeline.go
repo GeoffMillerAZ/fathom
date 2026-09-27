@@ -171,6 +171,10 @@ type Report struct {
 	TypedFailed       bool
 	TypedFailReason   string
 	TypedFallback     string
+	// TypedSkipped names why the typed Go pass did not run this ingest
+	// (RT-104: no Go input changed since its last successful pass); the
+	// stored typed edges stand. "" when it ran (or the service has no Go).
+	TypedSkipped string
 
 	// CUE typed-edge pass counters (ADR-041 decision 5 / SU-10; zero for
 	// services with no .cue sources or no cue.mod, or when
@@ -181,6 +185,8 @@ type Report struct {
 	CUEPackagesFailed  int
 	CUEEdgesDirect     int
 	CUEEdgesUnresolved int
+	// CUESkipped is TypedSkipped for the CUE pass (RT-105).
+	CUESkipped string
 
 	// FileResolvedEdges is the number of core.EdgeFileResolved edges the
 	// per-file TypeScript/JavaScript/Python resolver produced this run
@@ -241,6 +247,9 @@ type Pipeline struct {
 	// in internal/fusion/typedcalls.go, so a non-Go service's ingests never
 	// inflate it. Process-lifetime, like unclassifiedTotal/oversizeTotal.
 	typedPassTotal int64 // atomic
+
+	// cuePassTotal counts CUE passes that ran past the RT-105 gate.
+	cuePassTotal int64 // atomic
 
 	// classifiedZero counts, per ToolKind, files that classified as that
 	// tool but whose extractor emitted zero symbols (critic F5) — the
@@ -876,6 +885,9 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	// ── Pass 3: PostFetch (sequential, input order) ──────────────────────────
 	var pending []pendingFile
 	var tokenAccum int64
+	// changed collects every path this ingest found new, changed or
+	// deleted — the typed and CUE passes' gate (RT-104, RT-105).
+	var changed []string
 
 	for i, ref := range refs {
 		if over := asOversize(fetched[i].err); over != nil {
@@ -886,8 +898,12 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 			// Counted under Oversize on every ingest, changed or not: the
 			// file stays unindexed, so the summary names it (I38) instead
 			// of folding it into the unchanged-and-skipped count.
-			if _, err := p.recordOversize(ctx, svc.ID, ref.Path, over.Size); err != nil {
+			unchanged, err := p.recordOversize(ctx, svc.ID, ref.Path, over.Size)
+			if err != nil {
 				return report, err
+			}
+			if !unchanged {
+				changed = append(changed, ref.Path)
 			}
 			report.Oversize++
 			continue
@@ -941,6 +957,7 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 		}
 
 		pending = append(pending, pendingFile{ref: ref, content: content, hash: hash})
+		changed = append(changed, ref.Path)
 	}
 
 	// ── Dispatch ─────────────────────────────────────────────────────────────
@@ -967,9 +984,17 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	report.TSEngineFaults = stats.tsFaults
 	report.UnsupportedLanguages = stats.unsupportedLang
 
+	// Deleted files change the typed inputs too (a removed .go file).
+	deleted, delErr := p.deletedRefs(ctx, svc.ID, refs)
+	if delErr != nil {
+		return finish(delErr)
+	}
+	changed = append(changed, deleted...)
+
 	// Typed Go call-edge enrichment (ADR-021 §3): additive, per-package,
-	// never blocks ingest. See internal/fusion/typedcalls.go.
-	typedRep, typedErr := p.enrichTypedEdges(ctx, svc, refs)
+	// never blocks ingest. See internal/fusion/typedcalls.go. RT-104: only
+	// when a Go input changed since the last successful pass.
+	typedRep, typedErr := p.enrichTypedEdges(ctx, svc, refs, changed)
 	if typedErr != nil {
 		// RT-178: the typed pass was halted (the producer governor at
 		// refuse, or a cancelled ctx) — fail before the final commit so the
@@ -987,7 +1012,8 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	// straight onto this Report — one source of truth, so the ingest
 	// response can never disagree with staleness_report/doctor about
 	// whether this service's typed pass is trustworthy.
-	if st, known := p.TypedEdgeStatus(svc.ID); known {
+	report.TypedSkipped = typedRep.Skipped
+	if st, known := p.TypedEdgeStatus(svc.ID); known && typedRep.Skipped == "" {
 		report.TypedPackagesSeen = st.PackagesSeen
 		report.TypedFailed = st.Failed
 		report.TypedFailReason = st.Reason
@@ -996,7 +1022,13 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 
 	// CUE typed-edge enrichment (ADR-041 decision 5 / SU-10): additive,
 	// per-package, never blocks ingest. See internal/fusion/typedcue.go.
-	cueRep := p.enrichCUEEdges(ctx, svc, refs)
+	cueRep, cueErr := p.enrichCUEEdges(ctx, svc, refs, changed)
+	if cueErr != nil {
+		// Halted (the governor, a cancelled ctx) before the final commit:
+		// the watermark never moves (RT-109).
+		return finish(fmt.Errorf("fusion: CUE typed-edge pass %q: %w", svc.ID, cueErr))
+	}
+	report.CUESkipped = cueRep.Skipped
 	report.CUEPackages = cueRep.PackagesLoaded
 	report.CUEPackagesFailed = cueRep.PackagesFailed
 	report.CUEEdgesDirect = cueRep.EdgesDirect
@@ -1063,6 +1095,30 @@ func (p *Pipeline) recordIngestMeta(ctx context.Context, svc core.ServiceRef, co
 			_ = p.st.SetCommits(ctx, svc.ID, cs)
 		}
 	}
+}
+
+// deletedRefs lists the source_refs stored for serviceID that are absent
+// from the just-Discovered refs — the files this ingest found deleted (or
+// newly ignored), sorted (Store contract).
+func (p *Pipeline) deletedRefs(ctx context.Context, serviceID string, refs []core.SourceRef) ([]string, error) {
+	stored, err := p.st.ListSourceRefs(ctx, serviceID)
+	if err != nil {
+		return nil, fmt.Errorf("fusion: list source refs %q: %w", serviceID, err)
+	}
+	if len(stored) == 0 {
+		return nil, nil
+	}
+	discovered := make(map[string]struct{}, len(refs))
+	for _, r := range refs {
+		discovered[r.Path] = struct{}{}
+	}
+	var out []string
+	for _, ref := range stored {
+		if _, ok := discovered[ref]; !ok {
+			out = append(out, ref)
+		}
+	}
+	return out, nil
 }
 
 // purgeOrphans removes observations and fingerprints for source_refs that are

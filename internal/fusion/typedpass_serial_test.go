@@ -212,7 +212,7 @@ func TestEnrichTypedEdges_ServiceSkipsSemaphoreGate(t *testing.T) {
 	refs := []core.SourceRef{{Service: svc.ID, Path: "direct.go"}}
 
 	before := TypedPassInflight()
-	rep, _ := p.enrichTypedEdges(context.Background(), svc, refs)
+	rep, _ := p.enrichTypedEdges(context.Background(), svc, refs, nil)
 	if rep.PackagesTotal != 0 || rep.PackagesLoaded != 0 || rep.Duration != 0 {
 		t.Errorf("enrichTypedEdges with DisableTypedEdges = %+v, want a zero-value report (the semaphore path never ran)", rep)
 	}

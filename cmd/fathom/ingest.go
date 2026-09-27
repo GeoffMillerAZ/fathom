@@ -242,6 +242,13 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintf(stderr, "warning: typed-edge pass failed: %s — test_impact/verify test_reaches read a syntax-only graph for this service until it is fixed\n", report.TypedFailReason)
 		}
 	}
+	// RT-104/RT-105: a gated-off pass is named, never silent.
+	if report.TypedSkipped != "" {
+		fmt.Fprintf(stdout, "typed-edges: skipped — %s (stored typed edges kept)\n", report.TypedSkipped)
+	}
+	if report.CUESkipped != "" {
+		fmt.Fprintf(stdout, "cue-typed-edges: skipped — %s (stored CUE edges kept)\n", report.CUESkipped)
+	}
 	// SCIP-imported typed edges (ADR-041 decision 5, SU-9): one line per
 	// index, naming the producer so a reader can tell a native Go pass
 	// (the block above) from an imported one at a glance.

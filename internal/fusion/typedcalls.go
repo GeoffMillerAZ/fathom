@@ -137,6 +137,9 @@ func (p *Pipeline) diagInfo(format string, args ...any) {
 // edges WRITTEN this run (cache-hit packages' stored edges are not
 // recounted).
 type TypedEdgeReport struct {
+	// Skipped names why the pass did not run this ingest (RT-104/RT-105:
+	// no input changed since its last successful pass); "" when it ran.
+	Skipped         string
 	PackagesTotal   int // packages returned by the go/packages load (all variants)
 	PackagesLoaded  int // packages actually re-resolved this run (cache miss)
 	PackagesCached  int // packages skipped: content hash unchanged since last run
@@ -224,9 +227,18 @@ func hasGoModule(repoPath string) bool {
 // The connector's Discover result (refs) becomes the typed pass's
 // allowed-file set: only .go files the connector actually surfaced (i.e.
 // after .fathomignore and skip-dir filtering) may contribute edges.
-func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, refs []core.SourceRef) (TypedEdgeReport, error) {
+//
+// RT-104 (typedgate.go): it runs only when a Go input is in changed (this
+// ingest's new, changed and deleted paths) or no successful pass is
+// recorded; otherwise the report says Skipped and the stored typed edges
+// stand. The success record is removed as the pass starts and written only
+// when every package was processed.
+func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, refs []core.SourceRef, changed []string) (TypedEdgeReport, error) {
 	if p.cfg.DisableTypedEdges || !hasGoSource(refs) || !hasGoModule(svc.Path) {
 		return TypedEdgeReport{}, nil
+	}
+	if !typedPassNeeded(changed, p.passStateOK(ctx, svc.ID, goPassStateKey)) {
+		return TypedEdgeReport{Skipped: SkippedPassReason}, nil
 	}
 	atomic.AddInt64(&p.typedPassTotal, 1)
 	allowed := make(map[string]bool)
@@ -255,6 +267,7 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 		return TypedEdgeReport{}, haltError(ctx, acquireErr)
 	}
 	defer release()
+	p.beginPassState(ctx, svc.ID, goPassStateKey)
 
 	var rep TypedEdgeReport
 	var err error
@@ -334,6 +347,9 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 			DiscoveryGapFiles:      rep.DiscoveryGapFiles,
 			EdgesDroppedOutOfScope: rep.EdgesDroppedOutOfScope,
 		})
+		// RT-104: only a pass that processed every package records
+		// success; the next ingest skips it until a Go input changes.
+		p.commitPassState(ctx, svc.ID, goPassStateKey)
 	}
 	return rep, nil
 }
@@ -618,7 +634,11 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 	if !wholesaleFailure {
 		if stored, listErr := st.ListTypedEdgePackages(ctx, serviceID); listErr == nil {
 			for _, id := range stored {
-				if keep[id] {
+				// RT-105: another pass's rows ("cue:", "file-resolved:")
+				// and the pass-state rows are never a Go package — now
+				// that those passes are gated, a Go pass that purged them
+				// would leave them gone.
+				if keep[id] || isNamespacedTypedKey(id) {
 					continue
 				}
 				if delErr := st.DeleteTypedEdgePackage(ctx, serviceID, id); delErr != nil {

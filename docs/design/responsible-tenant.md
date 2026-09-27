@@ -724,7 +724,12 @@ whole-service case.
 - **Typed/CUE gate:** the typed pass runs only if a `.go`/`go.mod`/`go.sum`/`go.work` file is
   in the changed set since the last successful pass (`typed_pass_state`); it loads only the
   changed packages plus reverse dependencies from the stored import graph. The CUE pass
-  likewise on `.cue`, and under the same heavy slot. Children: `GOFLAGS=-p=2`,
+  likewise on `.cue`, and under the same heavy slot. (As built, RT-104/RT-105: the
+  changed set is this ingest's new, changed and deleted paths; `typed_pass_state` is a
+  row per pass in the typed-edge fingerprint table under `typed-pass-state:go|cue`,
+  removed when a pass starts and written only when it processed every package; the Go
+  reconcile never touches another pass's namespaced rows. The narrowed load is deferred,
+  RT-D9: implementer candidates come from every loaded package.) Children: `GOFLAGS=-p=2`,
   `GOMAXPROCS=2`, `nice 10` via `SysProcAttr`, `taskpolicy -b` on darwin when present.
 - **File-resolve pass:** reuses the pipeline's extractors (`p.exts`) instead of two new
   `TSExtractor`s per language per ingest; `TSExtractor.Close()` exists and is deferred;

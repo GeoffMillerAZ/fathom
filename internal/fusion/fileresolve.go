@@ -439,7 +439,10 @@ func fileResolveLangFor(relPath string) string {
 // pipeline hook replaces wholesale each run for one language — namespaced
 // so it can never collide with a Go pkg.ID or a CUE "cue:"-prefixed key
 // sharing the same service.
-func fileResolvedPackageKey(lang string) string { return "file-resolved:" + lang }
+// fileResolvedKeyPrefix namespaces the file resolver's typed-edge rows.
+const fileResolvedKeyPrefix = "file-resolved:"
+
+func fileResolvedPackageKey(lang string) string { return fileResolvedKeyPrefix + lang }
 
 // resolvePyModule handles Python's dotted-path resolution: an absolute
 // `pkg.mod` resolves from repoPath's own root (importerPath's root, since

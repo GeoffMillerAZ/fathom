@@ -53,6 +53,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"cuelang.org/go/cue/ast"
@@ -93,10 +94,26 @@ func hasCUEModule(repoPath string) bool {
 // enrichCUEEdges is the fusion.Pipeline.Ingest call-site hook, the CUE
 // sibling of enrichTypedEdges: best-effort, never aborts or fails the
 // surrounding Ingest.
-func (p *Pipeline) enrichCUEEdges(ctx context.Context, svc core.ServiceRef, refs []core.SourceRef) TypedEdgeReport {
+//
+// RT-105 (typedgate.go): it runs only when a .cue input is in changed or no
+// successful CUE pass is recorded, and under the process-wide heavy
+// toolchain slot the typed Go pass holds (typedPassSem), so the two never
+// load at once.
+func (p *Pipeline) enrichCUEEdges(ctx context.Context, svc core.ServiceRef, refs []core.SourceRef, changed []string) (TypedEdgeReport, error) {
 	if p.cfg.DisableTypedEdges || !hasCUESource(refs) || !hasCUEModule(svc.Path) {
-		return TypedEdgeReport{}
+		return TypedEdgeReport{}, nil
 	}
+	if !cuePassNeeded(changed, p.passStateOK(ctx, svc.ID, cuePassStateKey)) {
+		return TypedEdgeReport{Skipped: SkippedPassReason}, nil
+	}
+	release, err := acquireTypedPassSlot(ctx)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "fusion: CUE typed-edge pass %q: %v while waiting for the process-wide typed-pass slot — syntax-only CUE edges remain the baseline\n", svc.ID, err)
+		return TypedEdgeReport{}, haltError(ctx, err)
+	}
+	defer release()
+	atomic.AddInt64(&p.cuePassTotal, 1)
+	p.beginPassState(ctx, svc.ID, cuePassStateKey)
 	allowed := make(map[string]bool)
 	for _, r := range refs {
 		if strings.HasSuffix(r.Path, ".cue") {
@@ -107,11 +124,20 @@ func (p *Pipeline) enrichCUEEdges(ctx context.Context, svc core.ServiceRef, refs
 	switch {
 	case err != nil:
 		fmt.Fprintf(os.Stderr, "fusion: CUE typed-edge pass %q failed to load: %v — syntax-only CUE edges remain the baseline\n", svc.ID, err)
+		if hErr := haltError(ctx, err); hErr != nil {
+			return rep, hErr
+		}
 	case rep.PackagesFailed > 0:
 		fmt.Fprintf(os.Stderr, "fusion: CUE typed-edge pass %q: %d/%d package(s) failed typed loading\n", svc.ID, rep.PackagesFailed, rep.PackagesTotal)
+	default:
+		p.commitPassState(ctx, svc.ID, cuePassStateKey)
 	}
-	return rep
+	return rep, nil
 }
+
+// CUEPassTotal returns the process-lifetime count of CUE passes this
+// Pipeline actually ran (past the RT-105 gate).
+func (p *Pipeline) CUEPassTotal() int64 { return atomic.LoadInt64(&p.cuePassTotal) }
 
 // cuePkgInfo is one loaded CUE package's typed-edge working state.
 type cuePkgInfo struct {

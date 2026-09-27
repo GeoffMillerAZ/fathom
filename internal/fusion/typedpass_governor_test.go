@@ -80,7 +80,7 @@ func TestIngestFailsWhenTypedPassHaltsBetweenPackages(t *testing.T) {
 	p := &Pipeline{st: st}
 	svc := core.ServiceRef{ID: "typed-between", Path: dir}
 	refs := []core.SourceRef{{Service: svc.ID, Path: "direct.go"}}
-	_, err := p.enrichTypedEdges(context.Background(), svc, refs)
+	_, err := p.enrichTypedEdges(context.Background(), svc, refs, nil)
 	if !errors.Is(err, tenancy.ErrOverBudget) {
 		t.Fatalf("enrichTypedEdges halted between packages returned %v, want ErrOverBudget", err)
 	}
