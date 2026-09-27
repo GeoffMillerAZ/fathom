@@ -536,7 +536,7 @@ func readLearnTraffic(cr *consoleRequest, svc string) learnTraffic {
 	}
 	// The read itself decides, not a stat: on the external-volume wedge
 	// stat succeeds and the read fails, and an unread log is never 0.
-	rows, err := callLogRows(resolved.Path)
+	rotated, live, err := callLogRowSegments(resolved.Path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			t.Total = console.Absent[int]("no call log at " + resolved.Path + " — nothing recorded yet; traffic is not measured, never zero").WithSource(source)
@@ -547,7 +547,7 @@ func readLearnTraffic(cr *consoleRequest, svc string) learnTraffic {
 	}
 	until := cr.now.UTC()
 	since := until.Add(-learnTrafficWindow)
-	entries := callEntriesFor(rows, svc, since, until)
+	entries := callEntriesFor(svc, since, until, rotated, live)
 	rep := metrics.AggregateTraffic(entries, metrics.TrafficOptions{Since: since, Until: until, GroupBy: metrics.TrafficGroupByTool})
 	t.ByTool = map[string]int{}
 	for _, r := range rep.Rows {

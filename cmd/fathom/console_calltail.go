@@ -65,39 +65,39 @@ func resetCallLogTail() {
 	callLogTail.path, callLogTail.info, callLogTail.offset, callLogTail.tail, callLogTail.rows, callLogTail.intern = "", nil, 0, false, nil, nil
 	callLogTail.Unlock()
 	rotatedTail.Lock()
-	rotatedTail.path, rotatedTail.info, rotatedTail.rows, rotatedTail.live, rotatedTail.merged = "", nil, nil, nil, nil
+	rotatedTail.path, rotatedTail.info, rotatedTail.rows = "", nil, nil
 	rotatedTail.Unlock()
 }
 
 // rotatedTail caches the rotated generation (<log>.1, RT-126): it is
-// written once, at rotation, so it is parsed once per rotation.
+// written once, at rotation, so it is parsed once per rotation, and
+// returned as its own segment — never copied when a live row arrives.
 var rotatedTail struct {
 	sync.Mutex
-	path   string
-	info   os.FileInfo
-	rows   []callLogRow
-	live   []callLogRow // the live rows the merged slice was built from
-	merged []callLogRow
+	path string
+	info os.FileInfo
+	rows []callLogRow
 }
 
-// callLogRows returns every counted row of the log at path, the rotated
-// generation <path>.1 first (RT-126, §12.1: console tails read it, so a
-// rotation never empties the console's traffic). The returned slice is
-// shared and must not be modified. A missing log is an error satisfying
+// callLogRowSegments returns every counted row of the log at path as two
+// segments, oldest first: the rotated generation <path>.1 (RT-126, §12.1:
+// console tails read it, so a rotation never empties the console's
+// traffic) and the live log. Both slices are shared and must not be
+// modified. A missing live log is an error satisfying
 // errors.Is(err, os.ErrNotExist); any other failure to read is its own
 // error — with the external-volume remedy when that is the tell.
-func callLogRows(path string) ([]callLogRow, error) {
-	live, err := liveCallLogRows(path)
+func callLogRowSegments(path string) (rotated, live []callLogRow, err error) {
+	live, err = liveCallLogRows(path)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	gen := path + ".1"
 	info, serr := os.Stat(gen)
 	if serr != nil {
 		if os.IsNotExist(serr) {
-			return live, nil
+			return nil, live, nil
 		}
-		return nil, fmt.Errorf("%w%s", serr, tccWedgeHint(gen))
+		return nil, nil, fmt.Errorf("%w%s", serr, tccWedgeHint(gen))
 	}
 	rt := &rotatedTail
 	rt.Lock()
@@ -105,26 +105,19 @@ func callLogRows(path string) ([]callLogRow, error) {
 	if rt.path != gen || rt.info == nil || !os.SameFile(rt.info, info) || info.Size() != rt.info.Size() || !info.ModTime().Equal(rt.info.ModTime()) {
 		fh, err := os.Open(gen)
 		if err != nil {
-			return nil, fmt.Errorf("%w%s", err, tccWedgeHint(gen))
+			return nil, nil, fmt.Errorf("%w%s", err, tccWedgeHint(gen))
 		}
 		rows, _, tail, err := scanCallLogRows(fh, map[string]string{})
 		fh.Close()
 		if err != nil {
-			return nil, fmt.Errorf("read rotated call log %s: %w", gen, err)
+			return nil, nil, fmt.Errorf("read rotated call log %s: %w", gen, err)
 		}
 		if row, ok := callLogRowOf(tail, map[string]string{}); ok {
 			rows = append(rows, row)
 		}
-		rt.path, rt.info, rt.rows, rt.live, rt.merged = gen, info, rows, nil, nil
+		rt.path, rt.info, rt.rows = gen, info, slices.Clip(rows)
 	}
-	if len(rt.rows) == 0 {
-		return live, nil
-	}
-	if rt.merged == nil || len(rt.live) != len(live) || (len(live) > 0 && &rt.live[0] != &live[0]) {
-		rt.merged = append(slices.Clip(rt.rows), live...)
-		rt.live = live
-	}
-	return rt.merged, nil
+	return rt.rows, live, nil
 }
 
 // liveCallLogRows parses the live log incrementally.
@@ -230,16 +223,18 @@ func internString(m map[string]string, s string) string {
 
 // callEntriesFor is one service's rows in [since, until], in
 // internal/metrics' shape — readCallDataFor's window and service filter.
-func callEntriesFor(rows []callLogRow, service string, since, until time.Time) []metrics.CallEntry {
+func callEntriesFor(service string, since, until time.Time, segments ...[]callLogRow) []metrics.CallEntry {
 	var out []metrics.CallEntry
-	for _, r := range rows {
-		if r.at.IsZero() || r.at.Before(since) || r.at.After(until) {
-			continue
+	for _, rows := range segments {
+		for _, r := range rows {
+			if r.at.IsZero() || r.at.Before(since) || r.at.After(until) {
+				continue
+			}
+			if service != "" && r.service != service {
+				continue
+			}
+			out = append(out, r.callEntry())
 		}
-		if service != "" && r.service != service {
-			continue
-		}
-		out = append(out, r.callEntry())
 	}
 	return out
 }

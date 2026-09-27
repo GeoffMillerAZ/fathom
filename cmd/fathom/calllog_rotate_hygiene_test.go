@@ -198,3 +198,38 @@ func TestCallLogReadersReadEveryGeneration(t *testing.T) {
 		t.Fatalf("no generation at all = %v, want ENOENT", err)
 	}
 }
+
+// RT-126 hygiene: the console's tail never copies the rotated generation
+// when a live row arrives — the rotated rows are parsed once per rotation
+// and returned as their own segment, shared, beside the live rows.
+func TestConsoleTailSharesRotatedGeneration(t *testing.T) {
+	resetCallLogTail()
+	t.Cleanup(resetCallLogTail)
+	path := filepath.Join(t.TempDir(), "mcp-calls.jsonl")
+	line := func(i int) string {
+		return fmt.Sprintf(`{"ts":"2026-09-27T04:00:%02dZ","tool":"search","service":"svc"}`+"\n", i%60)
+	}
+	var gen string
+	for i := 0; i < 50; i++ {
+		gen += line(i)
+	}
+	mustWrite(t, path+".1", gen)
+	mustWrite(t, path, line(0))
+	rot1, live1, err := callLogRowSegments(path)
+	if err != nil || len(rot1) != 50 || len(live1) != 1 {
+		t.Fatalf("segments = %d rotated, %d live, %v", len(rot1), len(live1), err)
+	}
+	fh, _ := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0o644)
+	_, _ = fh.WriteString(line(1))
+	fh.Close()
+	rot2, live2, err := callLogRowSegments(path)
+	if err != nil || len(live2) != 2 {
+		t.Fatalf("after a live append: %d live, %v", len(live2), err)
+	}
+	if &rot2[0] != &rot1[0] {
+		t.Fatal("a live append copied the rotated generation")
+	}
+	if got := callEntriesFor("svc", time.Time{}, time.Date(2030, 1, 1, 0, 0, 0, 0, time.UTC), rot2, live2); len(got) != 52 {
+		t.Fatalf("callEntriesFor over both segments = %d, want 52", len(got))
+	}
+}
