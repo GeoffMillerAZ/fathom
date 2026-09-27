@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -22,7 +23,8 @@ func TestCallLogRotationArchivesNeverDeletes(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "mcp-calls.jsonl")
 	var logs []string
-	w, err := openRotatingCallLog(path, 4096, func(m string) { logs = append(logs, m) })
+	var logMu sync.Mutex // the archive pass logs from its own goroutine
+	w, err := openRotatingCallLog(path, 4096, func(m string) { logMu.Lock(); logs = append(logs, m); logMu.Unlock() })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +107,10 @@ func TestCallLogRotationArchivesNeverDeletes(t *testing.T) {
 	_ = bf.Truncate(callLogArchiveWarnBytes + 1)
 	bf.Close()
 	before := len(callLogArchives(path))
-	rot, err := rotateCallLog(path, time.Date(2026, 9, 28, 0, 0, 0, 0, time.UTC))
+	if _, err := rotateCallLog(path, time.Date(2026, 9, 28, 0, 0, 0, 0, time.UTC)); err != nil {
+		t.Fatal(err)
+	}
+	rot, err := archiveCallLogGenerations(path)
 	if err != nil {
 		t.Fatal(err)
 	}
