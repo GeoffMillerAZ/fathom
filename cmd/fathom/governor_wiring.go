@@ -73,8 +73,10 @@ func servingLadderActions(srv *mcp.Server, c *client.Client, fleet *fleetAdapter
 
 // startGovernor resolves nothing itself: it builds the serving daemon's
 // governor over the platform host, loads the quarantine from the ledger
-// beside the daemon record, and starts sampling.
-func startGovernor(b tenancy.Budget, notes []tenancy.Note, storePath, recordPath, managedLabel string, actions ladderActions, flog *dlog.Logger) *governor {
+// beside the daemon record, and starts sampling. stop ends the sampling
+// goroutine, unpublishes the governor and the level (serve-http defers it:
+// an in-process serve-http that returns leaves nothing running).
+func startGovernor(b tenancy.Budget, notes []tenancy.Note, storePath, recordPath, managedLabel string, actions ladderActions, flog *dlog.Logger) (g *governor, stop func()) {
 	dir := ""
 	if recordPath != "" {
 		dir = filepath.Dir(recordPath)
@@ -86,7 +88,7 @@ func startGovernor(b tenancy.Budget, notes []tenancy.Note, storePath, recordPath
 		ledger = filepath.Join(dir, "lifecycle.jsonl")
 	}
 	pid := os.Getpid()
-	g := newGovernor(governorConfig{
+	g = newGovernor(governorConfig{
 		budget:       b,
 		notes:        notes,
 		host:         newTenancyHost(filepath.Dir(storePath)),
@@ -109,8 +111,14 @@ func startGovernor(b tenancy.Budget, notes []tenancy.Note, storePath, recordPath
 		flog.Warn(fmt.Sprintf("tenancy: quarantine unreadable (%v) — the lifecycle ledger %s could not be read; no service is treated as quarantined", err, ledger))
 	}
 	activeGovernor.Store(g)
-	go g.run(context.Background())
-	return g
+	ctx, cancel := context.WithCancel(context.Background())
+	go g.run(ctx)
+	return g, func() {
+		cancel()
+		if activeGovernor.CompareAndSwap(g, nil) {
+			tenancy.PublishLevel(tenancy.LevelNormal)
+		}
+	}
 }
 
 // tenancyStartupLine names the budget and its derivation (P22).

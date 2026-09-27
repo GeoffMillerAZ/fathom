@@ -455,11 +455,12 @@ func (g *governor) snapshot() governorSnapshot {
 }
 
 // run samples every tenancy.SampleEvery until ctx ends, recording each
-// sample's lateness against its tick (RT-171).
+// sample's lateness against its schedule (RT-171).
 func (g *governor) run(ctx context.Context) {
 	t := time.NewTicker(tenancy.SampleEvery)
 	defer t.Stop()
-	prev := g.now()
+	prevStart := g.now()
+	prevEnd := prevStart
 	for {
 		select {
 		case <-ctx.Done():
@@ -467,13 +468,25 @@ func (g *governor) run(ctx context.Context) {
 		case <-t.C:
 		}
 		at := g.now()
-		late := at.Sub(prev) - tenancy.SampleEvery
-		if late < 0 {
-			late = 0
-		}
-		prev = at
-		g.tick(at, late)
+		g.tick(at, sampleLateness(prevStart, prevEnd, at))
+		prevStart, prevEnd = at, g.now()
 	}
+}
+
+// sampleLateness is how far a sample taken at `at` is behind schedule: the
+// later of the previous tick's start plus the period and the previous
+// tick's end. A stall of the host (the process not scheduled) shows; the
+// governor's own slow tick — FreeOSMemory, a heap capture, cache drops,
+// after which the ticker's buffered tick is received at once — does not.
+func sampleLateness(prevStart, prevEnd, at time.Time) time.Duration {
+	due := prevStart.Add(tenancy.SampleEvery)
+	if prevEnd.After(due) {
+		due = prevEnd
+	}
+	if late := at.Sub(due); late > 0 {
+		return late
+	}
+	return 0
 }
 
 // activeGovernor is the serving daemon's governor (nil in CLI verbs), read

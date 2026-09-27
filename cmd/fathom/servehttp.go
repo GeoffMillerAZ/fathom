@@ -345,6 +345,14 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// long a peak's OS-visible footprint survives AFTER the fact).
 	// RT-36: the GC hint is the budget's (the exit mark by default) and a
 	// managed daemon's GOMAXPROCS is max(2, NumCPU/2).
+	// Restored when serve-http returns (review finding 11): the process
+	// exits then in production, but an in-process caller (a test) must
+	// never inherit the daemon's GC hint or GOMAXPROCS.
+	prevLimit, prevProcs := debug.SetMemoryLimit(-1), runtime.GOMAXPROCS(0)
+	defer func() {
+		debug.SetMemoryLimit(prevLimit)
+		runtime.GOMAXPROCS(prevProcs)
+	}()
 	applyMemoryLimit(budget, stdout, debug.SetMemoryLimit, runtime.GOMAXPROCS, os.Getenv)
 
 	// DG-19 (owner amendment c): a self-restart or `task deploy` exits the
@@ -379,7 +387,8 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	}
 	// RT-33..RT-36, RT-155, RT-161, RT-172, RT-173: the governor samples
 	// every 2 s and bounds memory whatever the cause.
-	startGovernor(budget, budgetNotes, absStorePath(*storePath), recordPath, managedLabel, servingLadderActions(srv, c, fleet), flog)
+	_, stopGovernor := startGovernor(budget, budgetNotes, absStorePath(*storePath), recordPath, managedLabel, servingLadderActions(srv, c, fleet), flog)
+	defer stopGovernor()
 	publishDaemonEvent(consoleDeps.bus, prevRecord, hadPrev, commit)
 	eventSources := newConsoleEventSources(consoleDeps.bus, c, verifyLedgerPath(), sessionLedgerPath())
 	eventSources.warn = func(msg string) { flog.Warn(msg) }
