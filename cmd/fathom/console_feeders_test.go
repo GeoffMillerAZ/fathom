@@ -60,7 +60,9 @@ func TestFeedersIdleWithoutSubscribers(t *testing.T) {
 		t.Fatal("a change made while the feeders were stopped was never published")
 	}
 
-	// The compile cursor: only runs newer than the last poll are read.
+	// The compile cursor: only runs recorded since the last poll are read,
+	// in the order they were recorded — a long compile that started first
+	// and finished last (its ran_at is its start) is still published.
 	at := time.Date(2026, 9, 27, 10, 0, 0, 0, time.UTC)
 	rec := func(id string, when time.Time) {
 		t.Helper()
@@ -71,25 +73,27 @@ func TestFeedersIdleWithoutSubscribers(t *testing.T) {
 	src2 := newConsoleEventSources(console.NewEventBus(console.BusOptions{}), c, "", "")
 	rec("run-1", at)
 	src2.pollStore(ctx) // baseline: nothing published
-	if !src2.compileCursor.Equal(at) {
-		t.Fatalf("cursor = %s, want %s", src2.compileCursor, at)
+	base := src2.compileCursor
+	if base == 0 {
+		t.Fatal("the baseline poll left the cursor at zero")
 	}
 	rec("run-2", at) // same instant: still new
 	rec("run-3", at.Add(time.Second))
 	src2.pollStore(ctx)
-	evs := src2.bus.LastID()
-	if evs != 2 {
+	if evs := src2.bus.LastID(); evs != 2 {
 		t.Fatalf("%d compile events, want run-2 and run-3", evs)
 	}
-	if !src2.compileCursor.Equal(at.Add(time.Second)) {
-		t.Errorf("cursor = %s", src2.compileCursor)
+	rec("run-long", at.Add(-time.Hour)) // started before run-3, recorded after
+	src2.pollStore(ctx)
+	if evs := src2.bus.LastID(); evs != 3 {
+		t.Fatalf("%d compile events; the run that started earlier but finished later was missed", evs)
 	}
 	src2.pollStore(ctx)
-	if src2.bus.LastID() != 2 {
+	if src2.bus.LastID() != 3 {
 		t.Error("an unchanged store published again")
 	}
-	refs, err := compileRunRefsSince(ctx, c, src2.compileCursor)
-	if err != nil || len(refs) != 1 || refs[0].RunID != "run-3" {
-		t.Errorf("runs since the cursor = %+v, %v; want run-3 only", refs, err)
+	refs, err := compileRunRefsAfter(ctx, c, base)
+	if err != nil || len(refs) != 3 || refs[0].RunID != "run-2" || refs[2].RunID != "run-long" {
+		t.Errorf("runs after the baseline = %+v, %v; want run-2, run-3, run-long in record order", refs, err)
 	}
 }

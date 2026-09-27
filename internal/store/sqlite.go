@@ -1772,27 +1772,28 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
 	return nil
 }
 
-// CompileRunRefsSince returns every compile run whose RanAt is at or after
-// since, oldest first (then by run_id), as identities only — the console's
-// event cursor (RT-119) reads what is new, never every run of every
-// service on every poll.
-func (s *SQLiteStore) CompileRunRefsSince(ctx context.Context, since time.Time) ([]CompileRunRef, error) {
+// CompileRunRefsAfter returns every compile run recorded after the one
+// whose Seq is after (0: all), in record order (the table's rowid, an
+// index range, never a scan) — the console's event cursor (RT-119) reads
+// what is new, never every run of every service on every poll, and never
+// misses a run recorded after a newer-started one.
+func (s *SQLiteStore) CompileRunRefsAfter(ctx context.Context, after int64) ([]CompileRunRef, error) {
 	rows, err := s.db.QueryContext(ctx, `
-SELECT run_id, service_id, layer, ran_at
+SELECT rowid, run_id, service_id, layer, ran_at
 FROM compile_runs
-WHERE ran_at >= ?
-ORDER BY ran_at, run_id
-`, since.UnixNano())
+WHERE rowid > ?
+ORDER BY rowid
+`, after)
 	if err != nil {
-		return nil, fmt.Errorf("CompileRunRefsSince query: %w", err)
+		return nil, fmt.Errorf("CompileRunRefsAfter query: %w", err)
 	}
 	defer rows.Close()
 	var out []CompileRunRef
 	for rows.Next() {
 		var r CompileRunRef
 		var ranAt int64
-		if err := rows.Scan(&r.RunID, &r.ServiceID, &r.Layer, &ranAt); err != nil {
-			return nil, fmt.Errorf("CompileRunRefsSince scan: %w", err)
+		if err := rows.Scan(&r.Seq, &r.RunID, &r.ServiceID, &r.Layer, &ranAt); err != nil {
+			return nil, fmt.Errorf("CompileRunRefsAfter scan: %w", err)
 		}
 		r.RanAt = time.Unix(0, ranAt).UTC()
 		out = append(out, r)

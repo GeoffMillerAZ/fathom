@@ -655,10 +655,14 @@ type SourceKindCount struct {
 	Count     int
 }
 
-// CompileRunRef is one compile run's identity and time: what the console's
-// compile-event cursor reads (RT-119). SQLiteStore and MemoryStore answer
-// CompileRunRefsSince; it is an optional capability, not part of Store.
+// CompileRunRef is one compile run's identity, time and record order: what
+// the console's compile-event cursor reads (RT-119). Seq orders runs as
+// they were recorded (a run's RanAt is when it started, so a long run
+// recorded after a short one can carry the older time). SQLiteStore and
+// MemoryStore answer CompileRunRefsAfter; it is an optional capability,
+// not part of Store.
 type CompileRunRef struct {
+	Seq                     int64
 	RunID, ServiceID, Layer string
 	RanAt                   time.Time
 }

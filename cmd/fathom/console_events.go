@@ -58,11 +58,14 @@ type consoleEventSources struct {
 	// of the feeders (RT-119) keeps their read positions, so what changed
 	// while nobody listened is published when someone does.
 	ledgersPrimed bool
-	// compileCursor is the newest compile run's time seen, and
-	// compileAtCursor the run ids at exactly that time (RT-119): the poll
-	// reads only runs at or after it.
-	compileCursor   time.Time
-	compileAtCursor map[string]bool
+	// compileCursor is the record order (store.CompileRunRef.Seq) of the
+	// last compile run seen (RT-119): the poll reads only runs recorded
+	// after it.
+	compileCursor int64
+	// compileCursorRun is that run's id: a purge's VACUUM renumbers the
+	// record order, and a cursor whose run is no longer at its position
+	// is re-based instead of skipping the runs recorded after the purge.
+	compileCursorRun string
 	// warn reports an event the bus refused (serve-http's log).
 	warn func(string)
 }
@@ -183,7 +186,16 @@ func (s *consoleEventSources) pollStore(ctx context.Context) {
 	s.primed = true
 	// RT-119: the compile runs newer than the cursor, one read for every
 	// service; a store without the capability is read per service.
-	refs, rerr := compileRunRefsSince(ctx, s.c, s.compileCursor)
+	refs, rerr := compileRunRefsAfter(ctx, s.c, max(s.compileCursor-1, 0))
+	compileFirst := first
+	if rerr == nil && s.compileCursor > 0 {
+		if len(refs) == 0 || refs[0].Seq != s.compileCursor || refs[0].RunID != s.compileCursorRun {
+			// Renumbered (a purge's VACUUM): re-base on the whole record
+			// without publishing it again.
+			s.compileCursor, s.compileCursorRun, compileFirst = 0, "", true
+			refs, rerr = compileRunRefsAfter(ctx, s.c, 0)
+		}
+	}
 	haveRefs := rerr == nil
 	roots := make(map[string]string, len(services))
 	for _, svc := range services {
@@ -199,46 +211,41 @@ func (s *consoleEventSources) pollStore(ctx context.Context) {
 		}
 	}
 	if haveRefs {
-		s.publishCompileRefs(refs, first)
+		s.publishCompileRefs(refs, compileFirst)
 	}
 	s.roots = roots
 }
 
-// errNoCompileCursor is a store that cannot read compile runs by time.
-var errNoCompileCursor = errors.New("the store cannot read compile runs since a cursor")
+// errNoCompileCursor is a store that cannot read compile runs by record
+// order.
+var errNoCompileCursor = errors.New("the store cannot read compile runs after a cursor")
 
-// compileRunRefsSince is the store's compile runs at or after since
-// (store.CompileRunRefsSince), when the store can answer it.
-func compileRunRefsSince(ctx context.Context, c *client.Client, since time.Time) ([]store.CompileRunRef, error) {
+// compileRunRefsAfter is the store's compile runs recorded after the
+// cursor (store.CompileRunRefsAfter), when the store can answer it.
+func compileRunRefsAfter(ctx context.Context, c *client.Client, after int64) ([]store.CompileRunRef, error) {
 	r, ok := c.Store().(interface {
-		CompileRunRefsSince(context.Context, time.Time) ([]store.CompileRunRef, error)
+		CompileRunRefsAfter(context.Context, int64) ([]store.CompileRunRef, error)
 	})
 	if !ok {
 		return nil, errNoCompileCursor
 	}
-	return r.CompileRunRefsSince(ctx, since)
+	return r.CompileRunRefsAfter(ctx, after)
 }
 
-// publishCompileRefs publishes one compile event per run not seen before,
-// oldest first, and moves the cursor to the newest run.
+// publishCompileRefs publishes one compile event per run recorded since
+// the cursor, in record order, and moves the cursor to the last one. The
+// cursor is the record order, never ran_at: a run's ran_at is when it
+// started, so a long run recorded after a shorter, later-started one would
+// fall behind a time cursor and never be published.
 func (s *consoleEventSources) publishCompileRefs(refs []store.CompileRunRef, first bool) {
 	for _, r := range refs {
-		switch {
-		case r.RanAt.Before(s.compileCursor):
-			continue
-		case r.RanAt.Equal(s.compileCursor) && s.compileAtCursor[r.RunID]:
+		if r.Seq <= s.compileCursor {
 			continue
 		}
 		if !first {
 			s.publish(console.Event{Kind: console.EventCompile, Service: r.ServiceID, Name: r.Layer, Ref: r.RunID})
 		}
-		if r.RanAt.After(s.compileCursor) {
-			s.compileCursor, s.compileAtCursor = r.RanAt, map[string]bool{}
-		}
-		if s.compileAtCursor == nil {
-			s.compileAtCursor = map[string]bool{}
-		}
-		s.compileAtCursor[r.RunID] = true
+		s.compileCursor, s.compileCursorRun = r.Seq, r.RunID
 	}
 }
 
