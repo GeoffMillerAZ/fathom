@@ -57,6 +57,9 @@ const (
 	operateRemedyVerb  = "fathom fleet remedy --json"
 	operateConfigVerb  = "fathom config --explain --json"
 	operateHarnessVerb = "fathom harness matrix --json"
+	// operateToolHourVerb is the Tenancy panel's per-tool per-hour p95
+	// (RT-121, design §14), beside the resources panel.
+	operateToolHourVerb = "fathom metrics traffic --by tool-hour --since 24h --json"
 )
 
 func init() {
@@ -64,7 +67,7 @@ func init() {
 		ID: "operate", Route: "/operate", Href: "/operate", Group: "System", Order: -10, Nav: true,
 		Title:    "Operate",
 		Question: "Is the daemon healthy, what does it answer, for whom, and are the loops that improve fathom turning?",
-		Verbs:    []string{operateLoadVerb, operateTrafficVerb, operateCallerVerb, operateAdoptVerb, operateRemedyVerb, operateConfigVerb, operateHarnessVerb, operateResourcesVerb},
+		Verbs:    []string{operateLoadVerb, operateTrafficVerb, operateCallerVerb, operateAdoptVerb, operateRemedyVerb, operateConfigVerb, operateHarnessVerb, operateResourcesVerb, operateToolHourVerb},
 		Shows:    []console.MetricID{console.MetricServices, console.MetricCalls, console.MetricAgentTools},
 		Build:    buildOperatePage,
 	})
@@ -75,6 +78,7 @@ type operateProjection struct {
 	View         console.OperateModel
 	Traffic      trafficResult
 	Callers      trafficResult
+	ToolHours    trafficResult
 	Adoption     AdoptionReport
 	Harnesses    []harness.AdoptionRow
 	Remedy       remedyReport
@@ -219,6 +223,7 @@ func buildOperateProjection(d *consoleDeps, m observatoryModel, resolved console
 	week := now.Add(-7 * 24 * time.Hour)
 	p.Traffic = trafficResultFrom(entries, reason, isErr, "", metrics.TrafficGroupBySurface, week, now)
 	p.Callers = trafficResultFrom(entries, reason, isErr, "", metrics.TrafficGroupByCaller, week, now)
+	p.ToolHours = trafficResultFrom(entries, reason, isErr, "", metrics.TrafficGroupByToolHour, now.Add(-24*time.Hour), now)
 	p.Harnesses = harness.AdoptionRows(d.selfURL, now)
 	p.Resources = operateResourcesCached(d.selfURL, now) // RT-121: kept, refreshed off the request path
 	pre := &adoptionPreread{fold: fold, skipped: snap.skipped, err: readErr}
@@ -361,6 +366,7 @@ func buildOperatePage(cr *consoleRequest) (consoleOut, error) {
 			operateConfigVerb:    p.Config,
 			operateHarnessVerb:   p.Harnesses,
 			operateResourcesVerb: p.Resources,
+			operateToolHourVerb:  withCallLog(p.ToolHours, p.CallLog),
 		},
 		Body: func() string { return renderOperate(cr, p, caps, svc, names, rem, metricsAll, ten) },
 	}
@@ -438,6 +444,23 @@ func renderOperate(cr *consoleRequest, p operateProjection, caps *capabilityMode
 		Denominator: "the last " + p.Resources.Footprint.Window + "; " + plural(p.Resources.Footprint.Samples, "ring sample"), Freshness: fresh,
 		State: tenState, Reason: tenReason,
 		Body: renderTenancyPanel(p.Resources),
+	}) + `</div>`)
+	// The Tenancy panel's per-tool per-hour p95 (design §14): its own verb,
+	// so the chip is the command that prints it.
+	thState, thReason := console.StatePresent, ""
+	if p.ToolHours.Reason != "" {
+		thState, thReason = console.StateAbsent, p.ToolHours.Reason
+		if p.ToolHours.Error {
+			thState = console.StateError
+		}
+	}
+	b.WriteString(`<div class="min-w-0 xl:col-span-2">` + renderPanel(consolePanel{
+		ID: "tenancy-latency", Title: "Latency per tool, per hour", SourceKey: "sessions",
+		Question: "Which tools got slow, and when, over the last day? A hatched hour had no call of that tool — absent, not fast.",
+		Verb:     operateToolHourVerb, Source: p.CallLog.Path + " (rule " + string(p.CallLog.Rule) + ")",
+		Denominator: "p95 per UTC hour, the last 24 h, the busiest tools; console reads excluded", Freshness: fresh,
+		State: thState, Reason: thReason,
+		Body: renderToolHourLatency(p.ToolHours),
 	}) + `</div>`)
 	// Traffic per day and surface: a truth-state heatmap, then its table.
 	// The panels that read the call log carry its read state: an unreadable

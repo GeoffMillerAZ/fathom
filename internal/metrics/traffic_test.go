@@ -159,3 +159,29 @@ func TestAggregateTraffic_MalformedTimestamp_Skipped(t *testing.T) {
 		t.Fatalf("TotalCalls = %d, want 1 (malformed timestamp skipped)", report.TotalCalls)
 	}
 }
+
+// TestAggregateTraffic_GroupByToolHour (RT-121, design §14 "per-tool
+// per-hour p95"): one group per UTC hour and tool, "<hour> <tool>", in hour
+// then tool order, each with its own p95.
+func TestAggregateTraffic_GroupByToolHour(t *testing.T) {
+	since, until := trafficWindow()
+	entries := []CallEntry{
+		{TS: "2026-07-30T10:15:00Z", Tool: "references", LatencyMS: 300},
+		{TS: "2026-07-30T10:45:00Z", Tool: "find_symbol", LatencyMS: 100},
+		{TS: "2026-07-30T10:50:00Z", Tool: "find_symbol", LatencyMS: 200},
+		{TS: "2026-07-30T11:05:00Z", Tool: "find_symbol", LatencyMS: 50},
+	}
+	report := AggregateTraffic(entries, TrafficOptions{Since: since, Until: until, GroupBy: TrafficGroupByToolHour})
+	want := []string{"2026-07-30T10:00 find_symbol", "2026-07-30T10:00 references", "2026-07-30T11:00 find_symbol"}
+	if len(report.Rows) != len(want) {
+		t.Fatalf("rows = %+v", report.Rows)
+	}
+	for i, w := range want {
+		if report.Rows[i].Group != w || report.Rows[i].P95MS == nil {
+			t.Errorf("row %d = %+v, want group %q with a p95", i, report.Rows[i], w)
+		}
+	}
+	if report.Rows[0].Calls != 2 {
+		t.Errorf("find_symbol at 10:00 = %d calls", report.Rows[0].Calls)
+	}
+}

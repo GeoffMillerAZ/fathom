@@ -2736,7 +2736,7 @@ by `serve-http --module`; no external consumer exists yet.
 
 ```sh
 fathom metrics spend         --store P [--service S] [--module LAYER] [--by layer|day|model] [--since DUR | --from RFC3339 --to RFC3339] [--root D] [--json]
-fathom metrics traffic       [--service S] [--by surface|tool|hour|day|caller] [--since DUR | --from … --to …] [--call-log P] [--url U] [--json]
+fathom metrics traffic       [--service S] [--by surface|tool|hour|day|caller|tool-hour] [--since DUR | --from … --to …] [--call-log P] [--url U] [--json]
 fathom metrics channels      [--since DUR | --from … --to …] [--hooks-log P] [--json]
 fathom metrics interventions [--since DUR | --from … --to …] [--store P] [--call-log P] [--hooks-log P] [--json]
 fathom metrics series        <metric> --bucket hour|day [--since DUR] [--root D] [--json]
@@ -2752,7 +2752,8 @@ fathom metrics load          [--call-log P] [--url U] [--json]
 Design: `docs/design/observability-surfaces.md`. `traffic --by day` groups by UTC
 day and `--by caller` by caller class — agent, edit hook, gate, refresh, plumbing or
 unattributed, from each row's origin and surface — so plumbing never passes for
-adoption. `impact`, `catches` and `sessions` print the console's Evidence projections
+adoption; `--by tool-hour` groups by UTC hour and tool (`"<hour> <tool>"`), the Operate
+page's per-tool per-hour p95 beside its Tenancy panel. `impact`, `catches` and `sessions` print the console's Evidence projections
 (vision 35, `internal/console`): the four questions with each arm as a range and "not
 instrumented" instead of a zero; one timeline of verify refusals (the verify ledger),
 conserve losses and integrity catches (`fathom review` rows in the call log) and guard

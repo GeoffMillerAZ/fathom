@@ -127,6 +127,95 @@ func resetOperateResources() {
 	c.Unlock()
 }
 
+// toolHourTools bounds the tools the per-hour latency heatmap draws (the
+// busiest; the table lists every row of the report).
+const toolHourTools = 8
+
+// renderToolHourLatency renders `metrics traffic --by tool-hour`: the
+// busiest tools' p95 per UTC hour across the report's window, an hour with
+// no call of a tool hatched (absent, never a fast zero), and every row as
+// a table.
+func renderToolHourLatency(r trafficResult) string {
+	if r.Reason != "" {
+		return `<p class="italic text-ink-muted">` + html.EscapeString(r.Reason) + `</p>`
+	}
+	type cell struct {
+		calls int
+		p95   *float64
+	}
+	byTool := map[string]map[string]cell{}
+	calls := map[string]int{}
+	for _, row := range r.Report.Rows {
+		hour, tool, ok := strings.Cut(row.Group, " ")
+		if !ok {
+			continue
+		}
+		if byTool[tool] == nil {
+			byTool[tool] = map[string]cell{}
+		}
+		byTool[tool][hour] = cell{calls: row.Calls, p95: row.P95MS}
+		calls[tool] += row.Calls
+	}
+	if len(byTool) == 0 {
+		return `<p class="italic text-ink-muted">no call in the last 24 h — the daemon answered none, or its log holds none</p>`
+	}
+	tools := make([]string, 0, len(byTool))
+	for t := range byTool {
+		tools = append(tools, t)
+	}
+	sort.Slice(tools, func(i, j int) bool {
+		if calls[tools[i]] != calls[tools[j]] {
+			return calls[tools[i]] > calls[tools[j]]
+		}
+		return tools[i] < tools[j]
+	})
+	if len(tools) > toolHourTools {
+		tools = tools[:toolHourTools]
+	}
+	since, serr := time.Parse(time.RFC3339, r.Report.Since)
+	until, uerr := time.Parse(time.RFC3339, r.Report.Until)
+	var hours []string
+	if serr == nil && uerr == nil {
+		for h := since.UTC().Truncate(time.Hour); !h.After(until); h = h.Add(time.Hour) {
+			hours = append(hours, h.Format("2006-01-02T15:00"))
+		}
+	}
+	grid := make([][]float64, len(tools))
+	states := make([][]viz.HeatmapCell, len(tools))
+	var tRows []table.Row
+	for i, tool := range tools {
+		grid[i] = make([]float64, len(hours))
+		states[i] = make([]viz.HeatmapCell, len(hours))
+		for j, h := range hours {
+			c, ok := byTool[tool][h]
+			if !ok || c.p95 == nil {
+				states[i][j] = viz.HeatmapCell{State: viz.CellMissing, Reason: "no call of this tool this hour"}
+				continue
+			}
+			grid[i][j] = *c.p95
+		}
+	}
+	for _, row := range r.Report.Rows {
+		hour, tool, _ := strings.Cut(row.Group, " ")
+		p95 := "—"
+		if row.P95MS != nil {
+			p95 = evMS(*row.P95MS)
+		}
+		tRows = append(tRows, table.Row{ID: "th-" + row.Group, Cells: []string{hour, tool, fmtThousands(row.Calls), p95}})
+	}
+	labels := make([]string, len(hours))
+	for i, h := range hours {
+		labels[i] = h[11:13]
+	}
+	svg := viz.Heatmap(grid, viz.HeatmapOptions{XLabels: labels, YLabels: tools, States: states, Cell: 22,
+		AriaLabel: "p95 per tool per hour; hatched: no call of this tool this hour"})
+	tbl := renderKitTable(table.TableParams{TableID: "operate-tool-hours", Caption: "calls and p95 per UTC hour and tool",
+		Columns: []table.Column{{Key: "hour", Label: "Hour (UTC)"}, {Key: "tool", Label: "Tool"}, {Key: "calls", Label: "Calls", Align: "right"}, {Key: "p95", Label: "p95", Align: "right"}},
+		Rows:    tRows})
+	return `<p class="mb-1 text-sm text-ink-muted">p95 per tool per hour (UTC), the ` + strconv.Itoa(len(tools)) + ` busiest tools; hatched: no call of this tool this hour</p>` +
+		evChart("p95 per tool per hour", svg, "min-w-[600px]", "every hour and tool as a table", tbl)
+}
+
 // renderTenancyPanel renders one resources report.
 func renderTenancyPanel(rep resourcesReport) string {
 	var b strings.Builder
