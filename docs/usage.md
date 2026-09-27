@@ -1700,6 +1700,14 @@ ring's last sample with its age — never nothing. A ring sample older than 5 mi
 daemon stopped sampling) is shown with its age but never judged as the daemon's state
 now. Every line names its instrument.
 
+`--json` also carries `footprint.hourly` (the window's peak footprint per hour, oldest
+first, `-1` for an hour with no sample — never `0`) and `ladder` (each transition in the
+window with its time and level). The console's Operate page renders this report as its
+**Tenancy** panel (RT-121): the budget and its marks, the footprint per hour as a share
+of the budget (an hour with no sample hatched), the ladder's transitions on a timeline,
+lifecycle, in-flight work by class, the scratch census and the disk classes; the page's
+JSON carries the verb's output as the `fathom resources --json` section.
+
 The ring is `~/.fathom/daemon/<id>/resources.ring`: one fixed-size file (271,520 B)
 the governor writes in place — a sample a minute for 24 h plus every ladder transition,
 each slot checksummed (a torn slot is skipped and counted). A scratch daemon's ring is

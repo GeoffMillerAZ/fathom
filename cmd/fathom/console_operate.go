@@ -64,7 +64,7 @@ func init() {
 		ID: "operate", Route: "/operate", Href: "/operate", Group: "System", Order: -10, Nav: true,
 		Title:    "Operate",
 		Question: "Is the daemon healthy, what does it answer, for whom, and are the loops that improve fathom turning?",
-		Verbs:    []string{operateLoadVerb, operateTrafficVerb, operateCallerVerb, operateAdoptVerb, operateRemedyVerb, operateConfigVerb, operateHarnessVerb},
+		Verbs:    []string{operateLoadVerb, operateTrafficVerb, operateCallerVerb, operateAdoptVerb, operateRemedyVerb, operateConfigVerb, operateHarnessVerb, operateResourcesVerb},
 		Shows:    []console.MetricID{console.MetricServices, console.MetricCalls, console.MetricAgentTools},
 		Build:    buildOperatePage,
 	})
@@ -80,6 +80,7 @@ type operateProjection struct {
 	Remedy       remedyReport
 	Config       map[string]any
 	Flywheel     []flywheelCheck
+	Resources    resourcesReport
 	CallLog      console.ResolvedCallLog
 	GeneratedAt  time.Time
 	computedFrom string
@@ -174,6 +175,7 @@ func buildOperateProjection(d *consoleDeps, m observatoryModel, resolved console
 	p.Traffic = trafficResultFrom(entries, reason, isErr, "", metrics.TrafficGroupBySurface, week, now)
 	p.Callers = trafficResultFrom(entries, reason, isErr, "", metrics.TrafficGroupByCaller, week, now)
 	p.Harnesses = harness.AdoptionRows(d.selfURL, now)
+	p.Resources = operateResources(d.selfURL) // RT-121
 	pre := &adoptionPreread{entries: entries, skipped: skipped, err: readErr}
 	if resolved.Path == "" {
 		pre = nil
@@ -306,13 +308,14 @@ func buildOperatePage(cr *consoleRequest) (consoleOut, error) {
 		Model:   operatePageModel{Operate: p.View, Flywheel: p.Flywheel, Capabilities: caps, RemedyNow: rem, Tenancy: ten},
 		Metrics: pageMetrics(cr.page, metricsAll),
 		Sections: map[string]any{
-			operateLoadVerb:    p.View.LoadModel,
-			operateTrafficVerb: withCallLog(p.Traffic, p.CallLog),
-			operateCallerVerb:  withCallLog(p.Callers, p.CallLog),
-			operateAdoptVerb:   withCallLog(p.Adoption, p.CallLog),
-			operateRemedyVerb:  p.Remedy,
-			operateConfigVerb:  p.Config,
-			operateHarnessVerb: p.Harnesses,
+			operateLoadVerb:      p.View.LoadModel,
+			operateTrafficVerb:   withCallLog(p.Traffic, p.CallLog),
+			operateCallerVerb:    withCallLog(p.Callers, p.CallLog),
+			operateAdoptVerb:     withCallLog(p.Adoption, p.CallLog),
+			operateRemedyVerb:    p.Remedy,
+			operateConfigVerb:    p.Config,
+			operateHarnessVerb:   p.Harnesses,
+			operateResourcesVerb: p.Resources,
 		},
 		Body: func() string { return renderOperate(cr, p, caps, svc, names, rem, metricsAll, ten) },
 	}
@@ -378,6 +381,19 @@ func renderOperate(cr *consoleRequest, p operateProjection, caps *capabilityMode
 	}, stat.BandOptions{AriaLabel: "the daemon"}))
 
 	b.WriteString(`<div class="mt-4 grid gap-4 xl:grid-cols-2">`)
+	// Tenancy (RT-121): `fathom resources --json`, full width.
+	tenState, tenReason := console.StatePresent, ""
+	if !p.Resources.Daemon.Reachable && p.Resources.Tenancy == nil {
+		tenState, tenReason = console.StateAbsent, "the daemon did not answer and its ring holds no sample: "+p.Resources.Daemon.Unreachable
+	}
+	b.WriteString(`<div class="min-w-0 xl:col-span-2">` + renderPanel(consolePanel{
+		ID: "tenancy", Title: "Tenancy", SourceKey: "daemon",
+		Question: "How much memory does the daemon hold against its budget, did the ladder move, and is anything leaking — processes or disk?",
+		Verb:     operateResourcesVerb, Source: p.Resources.Footprint.Ring + " · " + firstNonEmpty(p.Resources.Budget.Source, "no budget read") + " · the lifecycle ledger",
+		Denominator: "the last " + p.Resources.Footprint.Window + "; " + plural(p.Resources.Footprint.Samples, "ring sample"), Freshness: fresh,
+		State: tenState, Reason: tenReason,
+		Body: renderTenancyPanel(p.Resources),
+	}) + `</div>`)
 	// Traffic per day and surface: a truth-state heatmap, then its table.
 	// The panels that read the call log carry its read state: an unreadable
 	// log is an error on each of them, never an idle daemon.
