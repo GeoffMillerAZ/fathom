@@ -136,8 +136,12 @@ type Budget struct {
 	GCHint                     int64 // SetMemoryLimit target; meaningless when GCHintOff
 	GCHintOff                  bool
 	Caches                     int64
-	ExitEnabled                bool
-	Managed                    bool
+	// CacheShedTrim is the fraction of Caches the memo registry trims to
+	// at shed; CacheIdleDrop the idle time after which it drops (§5).
+	CacheShedTrim float64
+	CacheIdleDrop time.Duration
+	ExitEnabled   bool
+	Managed       bool
 
 	Slots    map[Class]int
 	PerCall  map[Class]int64 // byte ceiling per ticket; 0 = streamed (ingest)
@@ -166,6 +170,8 @@ const (
 	defaultMinSwapVolumeFree = 5 * GiB
 	defaultMinStoreFree      = 2 * GiB
 	defaultCacheFraction     = 0.25
+	defaultCacheShedTrim     = 0.50
+	defaultCacheIdleDrop     = 30 * time.Minute
 	defaultChildParallelism  = 2
 	budgetFloor              = 1 * GiB
 	budgetCeiling            = 4 * GiB
@@ -245,6 +251,8 @@ func ResolveBudget(cfg Config, host HostFacts) (Budget, []Note) {
 	frac := orF(cfg.Caches.Fraction, defaultCacheFraction)
 	b.Caches = int64(float64(b.Budget) * frac)
 	note("caches", FormatBytes(b.Caches), fmt.Sprintf("%.2f × budget", frac))
+	b.CacheShedTrim = orF(cfg.Caches.ShedTrim, defaultCacheShedTrim)
+	b.CacheIdleDrop = orD(cfg.Caches.IdleDrop, defaultCacheIdleDrop)
 
 	// §3.1: slots and ceilings are derived, not configured.
 	perGiB := float64(b.Budget) / float64(GiB)
