@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/geoffmilleraz/app-kit/appkit/ui/chrome"
@@ -37,6 +38,27 @@ type consoleDeps struct {
 	// <repo>/workspace/db/fathom.sqlite — another store, other numbers.
 	// The Knowledge pages name it in the remedy commands they print.
 	storePath string
+	// jobs is the console's one bounded background pool (RT-117): plan
+	// verification and conserve run in it (jobPool).
+	jobsOnce sync.Once
+	jobs     *console.Jobs
+}
+
+// Console job pool bounds (design §14): two workers, a queue of 32.
+const (
+	consoleJobWorkers = 2
+	consoleJobQueue   = 32
+)
+
+// jobPool is the deps' background pool, made on first use (handler tests
+// build consoleDeps literals).
+func (d *consoleDeps) jobPool() *console.Jobs {
+	d.jobsOnce.Do(func() {
+		if d.jobs == nil {
+			d.jobs = console.NewJobs(consoleJobWorkers, consoleJobQueue)
+		}
+	})
+	return d.jobs
 }
 
 // storeArg is the " --store <path>" a store-direct verb's chip carries, so

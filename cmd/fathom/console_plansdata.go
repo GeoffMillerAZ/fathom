@@ -43,9 +43,6 @@ var (
 	consolePlansPlanWait      = 12 * time.Second
 )
 
-// consolePlansWorkers bounds concurrent verify_plan calls the console makes.
-const consolePlansWorkers = 2
-
 // planEntry is one plan's cached verification.
 type planEntry struct {
 	service, root, path string
@@ -73,6 +70,22 @@ type planEntry struct {
 	digest     string
 	prevDigest string
 	hasPrev    bool
+	// job is the pool's flight verifying this entry (RT-117).
+	job *console.Job
+}
+
+// dropped reports whether the pool dropped this entry's job unrun: a newer
+// key of the same plan superseded it while it was queued.
+func (e *planEntry) dropped() bool {
+	if e.job == nil {
+		return false
+	}
+	select {
+	case <-e.job.Done():
+		return e.job.Dropped()
+	default:
+		return false
+	}
 }
 
 type plansStamp struct {
@@ -85,9 +98,11 @@ type consolePlans struct {
 	deps    *consoleDeps
 	mu      sync.Mutex
 	entries map[string]*planEntry
-	queue   []*planEntry
-	wake    chan struct{}
-	started bool
+	// flights are the entries submitted and not yet finished, by path and
+	// key: a key still running is never queued again (RT-116) — a plan
+	// whose key moves away and back while its first verification runs
+	// rejoins that verification.
+	flights map[string]*planEntry
 	heads   map[string]plansStamp
 	stale   map[string]plansStamp
 	graphs  map[string]*graphEntry
@@ -116,7 +131,7 @@ func plansFor(d *consoleDeps) *consolePlans {
 	defer consolePlansMu.Unlock()
 	p := consolePlansFor[d]
 	if p == nil {
-		p = &consolePlans{deps: d, entries: map[string]*planEntry{}, wake: make(chan struct{}, 1),
+		p = &consolePlans{deps: d, entries: map[string]*planEntry{}, flights: map[string]*planEntry{},
 			heads: map[string]plansStamp{}, stale: map[string]plansStamp{}, graphs: map[string]*graphEntry{},
 			hist: map[string]historyEntry{}}
 		consolePlansFor[d] = p
@@ -207,28 +222,42 @@ func (p *consolePlans) plan(ctx context.Context, sr serviceRoot, path string) (c
 	e := p.entries[path]
 	if e == nil || e.key != key || (e.finished && e.err != "" && p.deps.now().Sub(e.at) >= consolePlansRetry) {
 		old := e
-		e = &planEntry{service: sr.Service, root: sr.Root, path: path, key: key, rawKey: rawKey, done: make(chan struct{})}
-		switch {
-		case old != nil && old.finished:
-			e.prevDigest, e.hasPrev = old.digest, true
-		case old != nil && old.hasPrev:
-			// Replaced before it finished: it never published, so the
-			// last result a panel was told of is still its predecessor's.
-			e.prevDigest, e.hasPrev = old.prevDigest, true
-		}
-		p.entries[path] = e
-		if old != nil && old.finished && old.err == "" && old.rawKey == rawKey && old.raw != nil {
-			// Only HEAD moved: the local overlays are cheap, so this plan
-			// goes ahead of the ones waiting on the daemon.
-			e.prevRaw = old.raw
-			p.queue = append([]*planEntry{e}, p.queue...)
+		flightKey := path + "|" + key
+		p.pruneDroppedLocked()
+		if running := p.flights[flightKey]; running != nil && !running.finished {
+			// The key is still being verified (it moved away and back):
+			// rejoin that flight, never queue it again (RT-116).
+			e = running
+			p.entries[path] = e
 		} else {
-			p.queue = append(p.queue, e)
-		}
-		p.startLocked()
-		select {
-		case p.wake <- struct{}{}:
-		default:
+			e = &planEntry{service: sr.Service, root: sr.Root, path: path, key: key, rawKey: rawKey, done: make(chan struct{})}
+			switch {
+			case old != nil && old.finished:
+				e.prevDigest, e.hasPrev = old.digest, true
+			case old != nil && old.hasPrev:
+				// Replaced before it finished: it never published, so the
+				// last result a panel was told of is still its predecessor's.
+				e.prevDigest, e.hasPrev = old.prevDigest, true
+			}
+			if old != nil && old.finished && old.err == "" && old.rawKey == rawKey && old.raw != nil {
+				// Only HEAD moved: the daemon's verdicts are reused and only
+				// the cheap local overlays run again.
+				e.prevRaw = old.raw
+			}
+			// RT-117: one bounded pool; a newer key of this plan drops a
+			// queued older one (the group), and a full queue leaves the
+			// plan "not yet verified" for the next read to submit again.
+			ne := e
+			job, err := p.deps.jobPool().SubmitJob("plan:"+path, flightKey, func() { p.verify(ne) })
+			if err != nil {
+				p.mu.Unlock()
+				facts.Rows = authoredRows(sr.Service, raw)
+				facts.Pending = true
+				return facts, nil
+			}
+			e.job = job
+			p.flights[flightKey] = e
+			p.entries[path] = e
 		}
 	}
 	finished, result, stale, errText, storeCommit, at := e.finished, e.result, e.daemonStale, e.err, e.storeCommit, e.at
@@ -246,6 +275,18 @@ func (p *consolePlans) plan(ctx context.Context, sr serviceRoot, path string) (c
 		facts.Pending = true
 	}
 	return facts, e
+}
+
+// pruneDroppedLocked forgets flights the pool dropped unrun, releasing
+// anyone still waiting on them: a dropped key asked for again is a new
+// flight, never a join of one that will not run.
+func (p *consolePlans) pruneDroppedLocked() {
+	for k, e := range p.flights {
+		if e.dropped() {
+			delete(p.flights, k)
+			close(e.done)
+		}
+	}
 }
 
 // authoredRows are a plan's rows before any verdict.
@@ -279,45 +320,6 @@ func (p *consolePlans) wait(entries []*planEntry, budget time.Duration) {
 		case <-timer.C:
 			return
 		}
-	}
-}
-
-// startLocked starts the workers once.
-func (p *consolePlans) startLocked() {
-	if p.started {
-		return
-	}
-	p.started = true
-	for i := 0; i < consolePlansWorkers; i++ {
-		go p.work()
-	}
-}
-
-// work verifies queued plans until the process ends.
-func (p *consolePlans) work() {
-	for {
-		p.mu.Lock()
-		var e *planEntry
-		for len(p.queue) > 0 {
-			next := p.queue[0]
-			p.queue = p.queue[1:]
-			if p.entries[next.path] == next && !next.finished {
-				e = next
-				break
-			}
-		}
-		if e != nil && len(p.queue) > 0 {
-			select { // more work queued: let an idle worker take it
-			case p.wake <- struct{}{}:
-			default:
-			}
-		}
-		p.mu.Unlock()
-		if e == nil {
-			<-p.wake
-			continue
-		}
-		p.verify(e)
 	}
 }
 
@@ -357,6 +359,7 @@ func (p *consolePlans) verify(e *planEntry) {
 	e.at = p.deps.now()
 	e.digest = verdictDigest(e.result.Report, e.daemonStale, e.err)
 	e.finished = true
+	delete(p.flights, e.path+"|"+e.key)
 	current := p.entries[e.path] == e
 	changed := !e.hasPrev || e.digest != e.prevDigest
 	p.mu.Unlock()
