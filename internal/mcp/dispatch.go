@@ -277,13 +277,13 @@ func (s *Server) loggedToolsCall(ctx context.Context, toolName string, params js
 	_ = json.Unmarshal(params, &rawArgs)
 	pointers := resultPointers(toolName, rawArgs.Arguments, result)
 	s.callLogger.log(toolName, args.Arguments.Service, group, s.effectiveSurface(ctx), "", originFrom(ctx), offSurface, claimsAttached, verdictOutcome,
-		s.callOutcomeOf(ctx, meta, callOutcome{ResultCount: resultCount, MatchedVia: matchedVia, ResponseBytes: responseBytes, ElidedCount: elidedCount, Pointers: pointers}), latency, logErr)
+		s.recordCallOutcome(ctx, meta, callOutcome{ResultCount: resultCount, MatchedVia: matchedVia, ResponseBytes: responseBytes, ElidedCount: elidedCount, Pointers: pointers}), latency, logErr)
 	return result, rpcErr
 }
 
-// callOutcomeOf completes a call-log outcome bundle with the admission
+// recordCallOutcome completes a call-log outcome bundle with the admission
 // columns (RT-64): class, queued_ms, bytes_read, outcome and the caller.
-func (s *Server) callOutcomeOf(ctx context.Context, meta callMeta, out callOutcome) callOutcome {
+func (s *Server) recordCallOutcome(ctx context.Context, meta callMeta, out callOutcome) callOutcome {
 	out.Class = meta.class.String()
 	if meta.outcome == "" {
 		out.Class = ""

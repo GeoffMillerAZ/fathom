@@ -1545,7 +1545,7 @@ func registerBatch(s *Server) {
 				subErr = &rpcErrWrapper{rpcErr}
 			}
 			subCount, subVia := outcomeFrom(subResult)
-			s.callLogger.log(name, sa.Service, group, s.effectiveSurface(ctx), "batch", originFrom(ctx), offSurface, claimsAttached, verdictOutcome, s.callOutcomeOf(ctx, meta, callOutcome{ResultCount: subCount, MatchedVia: subVia}), latency, subErr)
+			s.callLogger.log(name, sa.Service, group, s.effectiveSurface(ctx), "batch", originFrom(ctx), offSurface, claimsAttached, verdictOutcome, s.recordCallOutcome(ctx, meta, callOutcome{ResultCount: subCount, MatchedVia: subVia}), latency, subErr)
 		}
 		for i, call := range p.Calls {
 			// RT-60: the batch stops when its context ends — nothing after
