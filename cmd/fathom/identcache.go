@@ -63,10 +63,13 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -144,26 +147,8 @@ func readIdentCache(projDir, baseURL string, now time.Time) (cand serviceCandida
 // WITHOUT judging its age — the shared parse step both the fresh
 // (TTL-bounded) read above and the DG-12 stale-served read below build on.
 func readIdentCacheEntry(projDir, baseURL string) (identCacheEntry, bool) {
-	path := identCacheKey(projDir, baseURL)
-	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
-	if err != nil {
-		return identCacheEntry{}, false
-	}
-	defer f.Close()
-	fi, err := f.Stat()
-	if err != nil || !fi.Mode().IsRegular() {
-		return identCacheEntry{}, false
-	}
-	if st, ok := fi.Sys().(*syscall.Stat_t); ok {
-		if int(st.Uid) != os.Getuid() {
-			return identCacheEntry{}, false
-		}
-	}
-	if fi.Mode().Perm()&0o022 != 0 {
-		return identCacheEntry{}, false
-	}
-	data, err := io.ReadAll(io.LimitReader(f, 1<<16))
-	if err != nil {
+	data, ok := readOwnedCacheFile(identCacheKey(projDir, baseURL))
+	if !ok {
 		return identCacheEntry{}, false
 	}
 	var e identCacheEntry
@@ -210,9 +195,6 @@ func readIdentCacheStale(projDir, baseURL string, now time.Time) (cand serviceCa
 // are swallowed (this is a pure optimization — worst case, the next call
 // pays a full daemon round trip again).
 func writeIdentCache(projDir, baseURL string, cand serviceCandidate, found bool, now time.Time) {
-	if err := os.MkdirAll(identCacheDir, 0o700); err != nil {
-		return
-	}
 	data, err := json.Marshal(identCacheEntry{
 		Name: cand.name, Root: cand.root, Found: found,
 		WrittenAt: now.UTC().Format(time.RFC3339),
@@ -220,14 +202,7 @@ func writeIdentCache(projDir, baseURL string, cand serviceCandidate, found bool,
 	if err != nil {
 		return
 	}
-	path := identCacheKey(projDir, baseURL)
-	_ = os.Remove(path) // never write through a pre-existing entry (planted symlink or stale stamp)
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY|syscall.O_NOFOLLOW, 0o600)
-	if err != nil {
-		return
-	}
-	defer f.Close()
-	_, _ = f.Write(data)
+	writeOwnedCacheFile(identCacheKey(projDir, baseURL), data)
 }
 
 // resolveIndexedCandidateCached wraps resolveIndexedCandidate with the
@@ -275,4 +250,126 @@ func resolveIndexedCandidateCached(hc *http.Client, baseURL, projDir string) (ca
 		writeIdentCache(projDir, baseURL, resolved, found, time.Now())
 	}
 	return resolved, found, false
+}
+
+// ─── the full identity, cached (RT-133, §11.3) ───────────────────────────
+
+// identityMemo is this process's identity answers by (daemon, directory):
+// SessionStart's stamp and its primer, or a hook's two lookups of one
+// directory, share one round trip.
+var identityMemo sync.Map // string → identityResult
+
+// resetIdentityMemo forgets this process's identity answers (tests).
+func resetIdentityMemo() {
+	identityMemo.Range(func(k, _ any) bool { identityMemo.Delete(k); return true })
+}
+
+// identityCacheEntry is lookupIdentityCached's on-disk entry.
+type identityCacheEntry struct {
+	Result    identityResult `json:"result"`
+	WrittenAt string         `json:"written_at"`
+}
+
+func identityCacheKey(dir, baseURL string) string { return identCacheKey(dir+"\x1fidentity", baseURL) }
+
+// lookupIdentityCached is lookupIdentity behind the in-process memo and the
+// on-disk ident cache (identCacheTTL for a match, identCacheNegativeTTL
+// for none; a match up to identCacheStaleServeMax old answers when the
+// daemon cannot). errIdentityRouteMissing is returned, never cached, so a
+// caller facing an older daemon falls back to the full list.
+// FATHOM_IDENT_NO_CACHE disables both layers.
+func lookupIdentityCached(hc *http.Client, baseURL, dir string) (identityResult, error) {
+	dir = strings.TrimRight(dir, "/")
+	key := baseURL + "\x1f" + dir
+	noCache := identCacheDisabled()
+	if !noCache {
+		if v, ok := identityMemo.Load(key); ok {
+			return v.(identityResult), nil
+		}
+		if e, ok := readIdentityCacheEntry(dir, baseURL); ok {
+			if at, err := time.Parse(time.RFC3339, e.WrittenAt); err == nil {
+				ttl := identCacheTTL
+				if e.Result.Service == "" {
+					ttl = identCacheNegativeTTL
+				}
+				if time.Since(at) <= ttl {
+					emitBeat("ident-cache", "hit", nil)
+					identityMemo.Store(key, e.Result)
+					return e.Result, nil
+				}
+			}
+		}
+		emitBeat("ident-cache", "miss", nil)
+	}
+	id, err := lookupIdentity(hc, baseURL, dir)
+	if err != nil {
+		if !noCache && !errors.Is(err, errIdentityRouteMissing) {
+			if e, ok := readIdentityCacheEntry(dir, baseURL); ok && e.Result.Service != "" {
+				if at, perr := time.Parse(time.RFC3339, e.WrittenAt); perr == nil && time.Since(at) <= identCacheStaleServeMax {
+					emitBeat("ident-cache", "stale-served", nil)
+					return e.Result, nil
+				}
+			}
+		}
+		return identityResult{}, err
+	}
+	if !noCache {
+		identityMemo.Store(key, id)
+		writeIdentityCacheEntry(dir, baseURL, id, time.Now())
+	}
+	return id, nil
+}
+
+func readIdentityCacheEntry(dir, baseURL string) (identityCacheEntry, bool) {
+	data, ok := readOwnedCacheFile(identityCacheKey(dir, baseURL))
+	if !ok {
+		return identityCacheEntry{}, false
+	}
+	var e identityCacheEntry
+	if json.Unmarshal(data, &e) != nil || e.Result.Schema != 1 {
+		return identityCacheEntry{}, false
+	}
+	return e, true
+}
+
+func writeIdentityCacheEntry(dir, baseURL string, id identityResult, now time.Time) {
+	data, err := json.Marshal(identityCacheEntry{Result: id, WrittenAt: now.UTC().Format(time.RFC3339)})
+	if err != nil {
+		return
+	}
+	writeOwnedCacheFile(identityCacheKey(dir, baseURL), data)
+}
+
+// readOwnedCacheFile reads a cache file only when it is a regular file this
+// user owns and nobody else can write (never through a planted symlink).
+func readOwnedCacheFile(path string) ([]byte, bool) {
+	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
+	if err != nil {
+		return nil, false
+	}
+	defer f.Close()
+	fi, err := f.Stat()
+	if err != nil || !fi.Mode().IsRegular() || fi.Mode().Perm()&0o022 != 0 {
+		return nil, false
+	}
+	if st, ok := fi.Sys().(*syscall.Stat_t); ok && int(st.Uid) != os.Getuid() {
+		return nil, false
+	}
+	data, err := io.ReadAll(io.LimitReader(f, 1<<16))
+	return data, err == nil
+}
+
+// writeOwnedCacheFile replaces path with data (0600, O_EXCL after a remove,
+// never writing through a pre-existing entry).
+func writeOwnedCacheFile(path string, data []byte) {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return
+	}
+	_ = os.Remove(path)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY|syscall.O_NOFOLLOW, 0o600)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	_, _ = f.Write(data)
 }

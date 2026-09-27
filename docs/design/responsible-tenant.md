@@ -968,8 +968,13 @@ written by rename.
 ### 11.3 Less fan-out
 
 - Every identity lookup (`subagentPrimer`, `worktreeAdvice`/`indexedServiceFor`,
-  `cwdChangedPrimer`, post-commit, `daemonServiceIndexed`, `doctor_languages`) goes through
-  `resolveIndexedCandidateCached`, backed by `GET /identity`.
+  `cwdChangedPrimer`, the SessionStart stamp and primer, post-commit) goes through the
+  cached resolver (`resolveIndexedCandidateCached`, `lookupIdentityCached`: an in-process
+  memo plus the on-disk ident cache), backed by `GET /identity`; SessionStart makes one
+  lookup, and reads `list_services` only when nothing matched (to name the indexed
+  services). Doctor's rows that need the registry's payload rather than one directory's
+  identity (`doctor_languages`' unsupported-language breakdown, the indexed-service list,
+  the `fathom` service's path) keep `list_services`; they run outside hooks.
 - `SubagentStart` reuses the parent session's SessionStart resolution from the session
   stamp (zero RPCs).
 - `gitToplevel` memoized in-process and cached per cwd (keyed by cwd and `.git` mtime, 10

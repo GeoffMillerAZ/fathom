@@ -204,8 +204,9 @@ func indexedServiceFor(hc *http.Client, baseURL, dir string) (string, svcInfo, b
 		return "", svcInfo{}, false
 	}
 	// RT-133: one GET /identity (the same resolution, done where the
-	// registry lives), else the full list from a daemon that predates it.
-	if id, err := lookupIdentity(hc, baseURL, dir); !errors.Is(err, errIdentityRouteMissing) {
+	// registry lives) behind the cached resolver, else the full list from
+	// a daemon that predates it.
+	if id, err := lookupIdentityCached(hc, baseURL, dir); !errors.Is(err, errIdentityRouteMissing) {
 		if err != nil || id.Service == "" {
 			return "", svcInfo{}, false
 		}
