@@ -305,7 +305,7 @@ min_swap_volume_free  = "5GiB"      # /System/Volumes/VM
 budget = "512MiB"                   # an unmanaged serve-http's own budget
 
 [tenancy.breaker]
-warmup = "120s"                     # after a managed start, auto-refresh runs no inline ingest for this long
+warmup = "120s"                     # after any start with auto-refresh on, it runs no inline ingest for this long
 ```
 
 Every 2 s the daemon samples its own `phys_footprint`, the footprint of its

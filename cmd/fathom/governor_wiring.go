@@ -137,12 +137,13 @@ func tenancyStartupLine(b tenancy.Budget, notes []tenancy.Note) string {
 		tenancy.FormatBytes(b.Budget), how, tenancy.FormatBytes(b.Shed), tenancy.FormatBytes(b.Refuse), exit, tenancy.SampleEvery, runtime.NumCPU())
 }
 
-// startRefreshWarmup opens auto-refresh's warm-up window for a managed
-// daemon (RT-150, design §2.3) and returns what closes it. A scratch
-// daemon gets none: its auto-refresh is off unless asked for, and a proof
-// agent that asks wants it at once.
-func startRefreshWarmup(managed bool, d time.Duration, now time.Time, logf func(string, ...any)) (stop func()) {
-	if !managed || d <= 0 {
+// startRefreshWarmup opens auto-refresh's warm-up window (RT-150, design
+// §2.3: "after any start") when on — serve-http passes whether auto-refresh
+// is on, managed or not, since an unmanaged daemon's empty seen map
+// stampedes too — and returns what closes it. A proof agent that wants
+// auto-refresh at once sets [tenancy.breaker].warmup to a second.
+func startRefreshWarmup(on bool, d time.Duration, now time.Time, logf func(string, ...any)) (stop func()) {
+	if !on || d <= 0 {
 		return func() {}
 	}
 	tenancy.StartWarmup(now, d)
