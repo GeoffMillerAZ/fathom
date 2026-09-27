@@ -115,6 +115,12 @@ func (g *governor) tick(at time.Time, late time.Duration) tenancy.Transition {
 	}
 	if g.st.Level == tenancy.LevelExit {
 		g.exitOverBudget(tr)
+		return tr
+	}
+	// While shed or refusing, memory freed by finished work goes back to
+	// the OS at most once per freeEvery, so the ladder can step down.
+	if g.st.Level >= tenancy.LevelShed {
+		g.scavenge(at, false)
 	}
 	return tr
 }

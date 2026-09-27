@@ -125,21 +125,6 @@ func ResolveTenancyConfig(l Loaded, getenv func(string) string) (tenancy.Config,
 		notes = append(notes, fmt.Sprintf("[tenancy] in %s ignored: budgets are read at user scope only (~/.fathom/config.toml); a repository cannot raise this machine's ceiling", l.ProjectPath))
 	}
 
-	// Migration (§1): the old soft limit keeps its meaning — the GC hint.
-	oldKey := l.Config.Daemon.MemoryLimit
-	oldSrc := "[daemon].memory_limit"
-	if v := getenv("FATHOM_MEMORY_LIMIT"); v != "" {
-		oldKey, oldSrc = v, "FATHOM_MEMORY_LIMIT"
-	}
-	if oldKey != "" {
-		if cfg.GCHint == "" {
-			cfg.GCHint = oldKey
-			notes = append(notes, fmt.Sprintf("%s = %s is the GC hint, superseded by [tenancy].gc_hint; the budget stays %s", oldSrc, oldKey, budgetWord(cfg.Budget)))
-		} else {
-			notes = append(notes, fmt.Sprintf("conflict: %s = %s and [tenancy].gc_hint = %s are both set — [tenancy] wins; remove memory_limit", oldSrc, oldKey, cfg.GCHint))
-		}
-	}
-
 	if v := strings.TrimSpace(getenv("FATHOM_TENANCY_BUDGET")); v != "" {
 		n, err := tenancy.ParseSize(v)
 		if err != nil {
@@ -149,6 +134,21 @@ func ResolveTenancyConfig(l Loaded, getenv func(string) string) (tenancy.Config,
 			notes = append(notes, "FATHOM_TENANCY_BUDGET = "+v+" overrides the configured budget")
 		}
 	}
+	// Migration (§1): the old soft limit keeps its meaning — the GC hint.
+	oldKey := l.Config.Daemon.MemoryLimit
+	oldSrc := "[daemon].memory_limit"
+	if v := getenv("FATHOM_MEMORY_LIMIT"); v != "" {
+		oldKey, oldSrc = v, "FATHOM_MEMORY_LIMIT"
+	}
+	if oldKey != "" {
+		if cfg.GCHint == "" {
+			cfg.GCHint = oldKey
+			notes = append(notes, fmt.Sprintf("%s = %s is the GC hint, superseded by [tenancy].gc_hint; the budget stays %s", oldSrc, oldKey, budgetWord(max(cfg.EnvBudget, cfg.Budget))))
+		} else {
+			notes = append(notes, fmt.Sprintf("conflict: %s = %s and [tenancy].gc_hint = %s are both set — [tenancy] wins; remove memory_limit", oldSrc, oldKey, cfg.GCHint))
+		}
+	}
+
 	if v := strings.TrimSpace(getenv("FATHOM_TENANCY_ADMISSION")); v != "" {
 		switch v {
 		case "observe", "enforce", "off":
