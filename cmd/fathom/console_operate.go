@@ -114,26 +114,66 @@ var operateCache struct {
 	key string
 	at  time.Time
 	p   operateProjection
+	// flight is the build in progress (nil when none): the projection is
+	// built outside the lock, once, and every reader past the TTL waits
+	// for that one build instead of queueing on the lock (RT-121, RT-113's
+	// rule).
+	flight *operateFlight
 }
+
+type operateFlight struct {
+	key  string
+	done chan struct{}
+	p    operateProjection
+	ok   bool
+}
+
+// operateProjectionBuilder builds the projection (tests hold it).
+var operateProjectionBuilder = buildOperateProjection
 
 // operateNow reads (or reuses, within the model's TTL) the projection.
 func operateNow(d *consoleDeps, m observatoryModel, now time.Time) operateProjection {
 	resolved := d.sources().CallLog
 	key := d.selfURL + "|" + resolved.Path
 	operateCache.Lock()
-	defer operateCache.Unlock()
 	if operateCache.key == key && !operateCache.at.IsZero() && now.Sub(operateCache.at) < obsCacheTTL && !now.Before(operateCache.at) {
-		return operateCache.p
+		p := operateCache.p
+		operateCache.Unlock()
+		return p
 	}
-	p := buildOperateProjection(d, m, resolved, now)
-	operateCache.key, operateCache.at, operateCache.p = key, now, p
-	return p
+	if fl := operateCache.flight; fl != nil && fl.key == key {
+		operateCache.Unlock()
+		<-fl.done
+		if fl.ok {
+			return fl.p
+		}
+		// The flight failed: build this reader's own.
+		return operateProjectionBuilder(d, m, resolved, now)
+	}
+	fl := &operateFlight{key: key, done: make(chan struct{})}
+	operateCache.flight = fl
+	operateCache.Unlock()
+	defer func() {
+		operateCache.Lock()
+		if fl.ok {
+			operateCache.key, operateCache.at, operateCache.p = key, now, fl.p
+		}
+		if operateCache.flight == fl {
+			operateCache.flight = nil
+		}
+		operateCache.Unlock()
+		close(fl.done)
+	}()
+	fl.p = operateProjectionBuilder(d, m, resolved, now)
+	fl.ok = true
+	return fl.p
 }
 
 func resetOperateCache() {
 	operateCache.Lock()
 	operateCache.key, operateCache.at = "", time.Time{}
 	operateCache.Unlock()
+	resetOperateResources()
 }
 
 // daemonFacts is what this process knows about itself.
@@ -180,7 +220,7 @@ func buildOperateProjection(d *consoleDeps, m observatoryModel, resolved console
 	p.Traffic = trafficResultFrom(entries, reason, isErr, "", metrics.TrafficGroupBySurface, week, now)
 	p.Callers = trafficResultFrom(entries, reason, isErr, "", metrics.TrafficGroupByCaller, week, now)
 	p.Harnesses = harness.AdoptionRows(d.selfURL, now)
-	p.Resources = operateResources(d.selfURL) // RT-121
+	p.Resources = operateResourcesCached(d.selfURL, now) // RT-121: kept, refreshed off the request path
 	pre := &adoptionPreread{fold: fold, skipped: snap.skipped, err: readErr}
 	if resolved.Path == "" {
 		pre = nil

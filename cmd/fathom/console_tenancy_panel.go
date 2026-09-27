@@ -19,6 +19,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/geoffmilleraz/app-kit/appkit/ui/chrome"
@@ -45,6 +46,85 @@ func operateResources(selfURL string) resourcesReport {
 		}
 	}
 	return buildResources(env, "", selfURL, 24*time.Hour)
+}
+
+// operateResourcesTTL is how long the Tenancy panel's report is served
+// before one flight refreshes it: the report forks a process census and
+// walks ~/.fathom, whose cost grows with the files there, so it is kept
+// longer than the model's TTL (its generated_at is shown with it).
+const operateResourcesTTL = 2 * time.Minute
+
+// operateResourcesBuilder builds the panel's report (tests hold it).
+var operateResourcesBuilder = operateResources
+
+var operateResourcesCache struct {
+	sync.Mutex
+	key      string
+	rep      resourcesReport
+	at       time.Time
+	building bool
+	done     chan struct{}
+	gen      uint64 // bumped by a reset: an older flight stores nothing
+}
+
+// operateResourcesCached is operateResources kept for operateResourcesTTL:
+// past it the last report is served while one flight, outside every lock,
+// builds the next; only a cold cache waits for that flight.
+func operateResourcesCached(selfURL string, now time.Time) resourcesReport {
+	c := &operateResourcesCache
+	c.Lock()
+	defer c.Unlock()
+	for attempt := 0; attempt < 3; attempt++ {
+		warm := c.key == selfURL && !c.at.IsZero()
+		if warm && now.Sub(c.at) < operateResourcesTTL && !now.Before(c.at) {
+			return c.rep
+		}
+		if !c.building {
+			c.building, c.done = true, make(chan struct{})
+			go refreshOperateResources(selfURL, now, c.gen, c.done)
+		}
+		if warm {
+			return c.rep
+		}
+		done := c.done
+		c.Unlock()
+		<-done
+		c.Lock()
+		if c.key == selfURL && !c.at.IsZero() {
+			return c.rep
+		}
+	}
+	return resourcesReport{SchemaVersion: resourcesSchemaVersion, GeneratedAt: now.UTC().Format(time.RFC3339),
+		Unreadable: []string{"the resources report could not be built in this process"}}
+}
+
+// refreshOperateResources is the one flight; a panicking build stores
+// nothing and never takes the daemon down.
+func refreshOperateResources(selfURL string, now time.Time, gen uint64, done chan struct{}) {
+	var rep resourcesReport
+	built := false
+	defer func() {
+		_ = recover()
+		c := &operateResourcesCache
+		c.Lock()
+		if built && gen == c.gen {
+			c.key, c.rep, c.at = selfURL, rep, now
+		}
+		c.building = false
+		close(done)
+		c.Unlock()
+	}()
+	rep = operateResourcesBuilder(selfURL)
+	built = true
+}
+
+// resetOperateResources forgets the kept report (tests; the operate reset).
+func resetOperateResources() {
+	c := &operateResourcesCache
+	c.Lock()
+	c.key, c.at = "", time.Time{}
+	c.gen++
+	c.Unlock()
 }
 
 // renderTenancyPanel renders one resources report.
