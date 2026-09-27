@@ -329,6 +329,16 @@ type Loaded struct {
 	UserFound    bool
 	ProjectPath  string
 	ProjectFound bool
+
+	// ProjectTenancyIgnored is true when the project layer carries a
+	// [tenancy] table (RT-30, design §1): budgets are machine contracts,
+	// read at user scope only, so it is ignored and doctor's tenancy_scope
+	// names it.
+	ProjectTenancyIgnored bool
+
+	// userTenancy is the user layer's raw [tenancy] table, the only one
+	// ResolveTenancyConfig reads.
+	userTenancy map[string]any
 }
 
 // Load reads the user config layer then the project config layer (either
@@ -362,6 +372,10 @@ func Load(userPath, projectPath string) (Loaded, error) {
 				}
 			}
 			mergeLayer(&out.Config, out.Provenance, raw, SourceUser, userPath)
+			if tm, ok := raw["tenancy"].(map[string]any); ok {
+				out.userTenancy = tm
+				recordTenancyProvenance(out.Provenance, tm, "tenancy", userPath)
+			}
 		}
 	}
 
@@ -373,6 +387,10 @@ func Load(userPath, projectPath string) (Loaded, error) {
 		out.ProjectFound = found
 		if found {
 			mergeLayer(&out.Config, out.Provenance, raw, SourceProject, projectPath)
+			// RT-30: a repository's [tenancy] validates but is never merged.
+			if _, ok := raw["tenancy"]; ok {
+				out.ProjectTenancyIgnored = true
+			}
 		}
 	}
 

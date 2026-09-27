@@ -118,6 +118,22 @@ bad10: #Config & {
 bad11: #Config & {
 	surface: pattern: [{kind: "tool"}]
 }`},
+		{"[tenancy] budget neither auto nor an IEC size", `
+bad12: #Config & {
+	tenancy: budget: "4 gigs"
+}`},
+		{"[tenancy] shed_at above 1", `
+bad13: #Config & {
+	tenancy: shed_at: 1.5
+}`},
+		{"[tenancy.host] has no swap-used fraction trigger", `
+bad14: #Config & {
+	tenancy: host: swap_used_fraction: 0.8
+}`},
+		{"unknown [tenancy] admission mode", `
+bad15: #Config & {
+	tenancy: admission: "strict"
+}`},
 	}
 
 	cctx := cuecontext.New()

@@ -283,6 +283,67 @@ package config
 	include?: [...string]
 }
 
+// #Tenancy is the responsible-tenant budget (ADR-047,
+// docs/design/responsible-tenant.md §1): what the daemon may cost the
+// machine it shares. It is a MACHINE contract, read from the user layer
+// (~/.fathom/config.toml) and env only: a [tenancy] table in a repository's
+// .fathom/config.toml validates here (so a copied block is not a load
+// failure) but is ignored and named (internal/config.ResolveTenancyConfig,
+// doctor's tenancy_scope) — a cloned repository must not raise a laptop's
+// ceiling (P13).
+#Tenancy: {
+	// budget is phys_footprint: "auto" = clamp(RAM/8, 1GiB, 4GiB).
+	budget?: "auto" | #Size
+	// The ladder's marks, × budget (§2.1). exit is capped at RAM/4.
+	shed_at?:   number & >0 & <=1
+	refuse_at?: number & >0 & <=2
+	exit_at?:   number & >=1 & <=8
+	// false keeps shed/refuse only (disclosed); an in-flight ingest is
+	// always halted before any exit.
+	exit_enabled?: bool
+	// The runtime.SetMemoryLimit target: the exit mark by default.
+	gc_hint?:           "exit" | "budget" | "off" | #Size
+	admission?:         "observe" | "enforce" | "off"
+	gomaxprocs?:        "auto" | (int & >=1)
+	child_parallelism?: int & >=1
+	notify?:            bool
+
+	host?: {
+		shed_on_pressure?:      #Pressure
+		refuse_on_pressure?:    #Pressure
+		refuse_on_swap_growth?: #Size
+		swap_growth_window?:    #Duration
+		min_swap_volume_free?:  #Size
+		min_store_volume_free?: #Size
+	}
+	breaker?: {
+		safe_after?:  int & >=1
+		safe_window?: #Duration
+		stop_after?:  int & >=1
+		stop_window?: #Duration
+		warmup?:      #Duration
+	}
+	unmanaged?: {
+		idle_exit?: #Duration
+		ttl?:       #Duration
+		budget?:    #Size
+	}
+	caches?: {
+		fraction?:  number & >0 & <=1
+		shed_trim?: number & >0 & <=1
+		idle_drop?: #Duration
+	}
+}
+
+// #Size is an IEC byte size ("512MiB", "4GiB"), GOMEMLIMIT's syntax.
+#Size: string & =~"^[0-9]+(\\.[0-9]+)?(B|KiB|MiB|GiB|TiB)$"
+
+// #Duration is a Go duration ("30m", "120s", "1h30m").
+#Duration: string & =~"^([0-9]+(\\.[0-9]+)?(ns|us|ms|s|m|h))+$"
+
+// #Pressure names a host memory-pressure level; "off" never triggers.
+#Pressure: "warn" | "critical" | "off"
+
 // #Config is the top-level shape of one config.toml layer (user or
 // project). Both layers validate against the same schema; internal/config
 // merges them field-by-field per docs/plans/config-experience.md's stated
@@ -303,4 +364,5 @@ package config
 	tests?:     #Tests
 	surface?:   #Surface
 	connector?: #Connector
+	tenancy?:   #Tenancy
 }

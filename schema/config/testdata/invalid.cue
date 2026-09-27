@@ -80,3 +80,26 @@ package config
 // bad10: #Config & {
 // 	decide: sites: ["route", "made_up_site"]
 // }
+//
+// 12. A [tenancy] budget that is neither "auto" nor an IEC size (ADR-047,
+//     design §1):
+// bad12: #Config & {
+// 	tenancy: budget: "4 gigs"
+// }
+//
+// 13. A [tenancy] shed mark above the budget (shed_at is a fraction ≤ 1):
+// bad13: #Config & {
+// 	tenancy: shed_at: 1.5
+// }
+//
+// 14. A swap-used FRACTION trigger: there is none (design §2.1, RT-154 —
+//     macOS grows swap on demand, so used/total is routinely 80% at normal
+//     pressure); the closed [tenancy.host] table refuses it:
+// bad14: #Config & {
+// 	tenancy: host: swap_used_fraction: 0.8
+// }
+//
+// 15. An unknown [tenancy] admission mode:
+// bad15: #Config & {
+// 	tenancy: admission: "strict"
+// }
