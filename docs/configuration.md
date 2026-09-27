@@ -312,7 +312,21 @@ warmup      = "120s"                # after any start: one slot per heavy class 
 
 [tenancy.unmanaged]
 budget = "512MiB"                   # an unmanaged serve-http's own budget
+
+[tenancy.caches]
+fraction  = 0.25                    # × budget: the memo registry's byte budget (graphs, snapshots, derived caches)
+shed_trim = 0.50                    # at shed the registry trims by LRU to this × its budget, and stays under it while shed
+idle_drop = "30m"                   # no in-flight call this long: every memo cache dropped, memory returned to the OS
 ```
+
+Every derived in-memory cache — each service's symbol snapshot and call
+graphs (one per service and store watermark, shared by the MCP tools and
+the console), the layer-coverage paths — is a group in one registry
+(`internal/memo`, RT-72..RT-75, RT-163): one build per key however many ask,
+waiters that leave at their own deadline, every entry's bytes counted under
+`caches.fraction`, a service's entries evicted the moment its watermark
+moves. `shed` trims the registry to `shed_trim` of its budget and admits one
+rebuild at a time while shed; `refuse` and `idle_drop` drop it.
 
 Every 2 s the daemon samples its own `phys_footprint`, the footprint of its
 child processes (`go list`, git, rg), host memory pressure, swap and volume
@@ -720,6 +734,16 @@ in the user layer (`~/.fathom/config.toml`): a load error names the file,
 since a user-wide list would change nothing. Measure the
 effect first with `fathom ingest --path <root> --service <id> --dry-run
 --json` (stat only; `default_ignored_dirs` names each pruned directory).
+
+`respect_gitignore = true` (RT-68, default **off** until RT-M11 has measured
+every registered service) discovers a git work tree through `git ls-files -co
+--exclude-standard` instead of walking it: what `.gitignore` excludes never
+enters the corpus. The always-skipped names, the default cache list and the
+ignore files still apply to every path git returns (a committed `vendor/` or
+`testdata/` stays out), `include` also re-includes a gitignored directory,
+`/refresh-file` refuses a gitignored file, and the ingest summary counts
+`gitignored` entries. Compare `fathom ingest --dry-run --stats` with and
+without `--respect-gitignore` before turning it on.
 
 ## Capability-inventory patterns: `[[surface.pattern]]`
 
