@@ -44,30 +44,27 @@ func consoleSnapshot(ctx context.Context, c *client.Client, service string) (*me
 	return snap, nil
 }
 
-// consoleTypedLoader loads service's typed edges (an error reads as none,
-// as the MCP tools read it).
+// consoleTypedLoader loads service's typed edges. A read failure is
+// returned, never read as "none" (the graph store never caches a failure,
+// so it cannot stand for the watermark — I38).
 func consoleTypedLoader(c *client.Client, service string) memo.TypedLoader {
 	return func(l context.Context) ([]core.Edge, error) {
-		edges, _ := c.TypedEdges(l, service)
-		return edges, nil
+		return c.TypedEdges(l, service)
 	}
 }
 
 // consoleBothGraph is service's snapshot, typed edges and syntax+typed
-// graph — the graph find_callers and the verify engine walk.
-func consoleBothGraph(ctx context.Context, c *client.Client, service string) (*memo.Snapshot, []core.Edge, *callgraph.Graph, error) {
-	snap, err := consoleSnapshot(ctx, c, service)
-	if err != nil {
-		return nil, nil, nil, err
+// graph — the graph find_callers and the verify engine walk. typedErr is
+// set when the typed edges could not be read: the graph is then the
+// syntax edges only, for this call (memo.GraphForTyped), and the caller
+// names the failure.
+func consoleBothGraph(ctx context.Context, c *client.Client, service string) (snap *memo.Snapshot, edges []core.Edge, g *callgraph.Graph, typedErr, err error) {
+	if snap, err = consoleSnapshot(ctx, c, service); err != nil {
+		return nil, nil, nil, nil, err
 	}
-	typed := consoleTypedLoader(c, service)
-	edges, err := memo.TypedFor(ctx, snap.Scope, typed)
+	g, edges, typedErr, err = memo.GraphForTyped(ctx, snap, memo.GraphBoth, consoleTypedLoader(c, service))
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
-	g, err := memo.GraphFor(ctx, snap, memo.GraphBoth, typed)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	return snap, edges, g, nil
+	return snap, edges, g, typedErr, nil
 }

@@ -192,7 +192,9 @@ func reviewTestGap(ctx context.Context, backend QueryInterface, in review.Input)
 	if err != nil {
 		return impact.TestGapOn(nil, nil, in.ChangedFiles)
 	}
-	g, err := memo.GraphFor(ctx, snap, memo.GraphBoth, typedLoader(backend, in.Service))
+	// A typed-edge read failure degrades this review to the syntax graph
+	// and is never cached (GraphForTyped).
+	g, _, _, err := memo.GraphForTyped(ctx, snap, memo.GraphBoth, typedLoader(backend, in.Service))
 	if err != nil {
 		return impact.TestGapOn(nil, nil, in.ChangedFiles)
 	}

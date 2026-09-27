@@ -525,7 +525,7 @@ func (p *consolePlans) graph(ctx context.Context, service string) (*callgraph.Gr
 	if p.deps.c == nil {
 		return nil, errNoStore
 	}
-	_, _, g, err := consoleBothGraph(ctx, p.deps.c, service)
+	_, _, g, _, err := consoleBothGraph(ctx, p.deps.c, service) // a typed read failure degrades to the syntax edges
 	return g, err
 }
 

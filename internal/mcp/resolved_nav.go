@@ -86,6 +86,9 @@ type navGraphs struct {
 	// callers, and silently returning it would trade bad precision for
 	// invented recall.
 	TypedAvailable bool
+	// TypedErr is set when this call could not read the typed edges: the
+	// graphs are the syntax edges only, for this call alone (never cached).
+	TypedErr error
 }
 
 // storeIdentifier is the OPTIONAL backend capability naming the store a
@@ -174,11 +177,13 @@ func serviceSymbols(ctx context.Context, backend QueryInterface, service string)
 	return snap.NodesCopy(), nil
 }
 
-// typedLoader loads the service's typed edges through the backend.
+// typedLoader loads the service's typed edges through the backend. A read
+// failure is returned, never read as "none": the graph store does not
+// cache a failure, so it cannot stand for the whole watermark (I38); the
+// callers degrade that one call (memo.GraphForTyped).
 func typedLoader(backend QueryInterface, service string) memo.TypedLoader {
 	return func(ctx context.Context) ([]core.Edge, error) {
-		edges, _ := backend.TypedEdges(ctx, service)
-		return edges, nil
+		return backend.TypedEdges(ctx, service)
 	}
 }
 
@@ -203,17 +208,22 @@ func loadNavGraphsErr(ctx context.Context, backend QueryInterface, service strin
 	}
 	typed := typedLoader(backend, service)
 	g := &navGraphs{Nodes: snap.Nodes, Snapshot: snap}
-	if g.Typed, err = memo.TypedFor(ctx, snap.Scope, typed); err != nil {
+	if g.Syntax, err = memo.GraphFor(ctx, snap, memo.GraphSyntax, nil); err != nil {
 		return nil, err
 	}
-	if g.Syntax, err = memo.GraphFor(ctx, snap, memo.GraphSyntax, typed); err != nil {
+	// A typed-edge read failure degrades this call to the syntax edges
+	// (TypedAvailable false, TypedErr naming it) and is never cached: the
+	// next call reads the typed edges again (I38).
+	if g.Both, g.Typed, g.TypedErr, err = memo.GraphForTyped(ctx, snap, memo.GraphBoth, typed); err != nil {
 		return nil, err
 	}
-	if g.Both, err = memo.GraphFor(ctx, snap, memo.GraphBoth, typed); err != nil {
-		return nil, err
+	if g.TypedErr == nil {
+		if g.Resolved, _, g.TypedErr, err = memo.GraphForTyped(ctx, snap, memo.GraphResolved, typed); err != nil {
+			return nil, err
+		}
 	}
-	if g.Resolved, err = memo.GraphFor(ctx, snap, memo.GraphResolved, typed); err != nil {
-		return nil, err
+	if g.TypedErr != nil {
+		g.Typed, g.Both, g.Resolved = nil, g.Syntax, memo.EmptyGraph()
 	}
 	g.TypedAvailable = g.Resolved.HasEdges()
 	return g, nil

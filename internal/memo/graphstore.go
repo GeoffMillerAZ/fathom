@@ -416,3 +416,35 @@ func DropScope(sc Scope) {
 		graphGroup.Remove(graphKey{sc, k}, ReasonWatermark)
 	}
 }
+
+// GraphForTyped is GraphFor that also returns the typed edges and never
+// caches a typed-edge read failure as "no typed edges" (I38). When the
+// read fails for any reason but the caller's end, this call degrades — the
+// syntax graph for GraphSyntax and GraphBoth (both with no typed edges is
+// the syntax graph), an empty graph for GraphResolved — and typedErr names
+// the failure; nothing built without the typed edges is cached, so the
+// next call reads them again. err is the snapshot's graph build failing or
+// the caller's ctx ending.
+func GraphForTyped(ctx context.Context, snap *Snapshot, kind GraphKind, typed TypedLoader) (g *callgraph.Graph, edges []core.Edge, typedErr, err error) {
+	if kind == GraphSyntax {
+		g, err = GraphFor(ctx, snap, GraphSyntax, nil)
+		return g, nil, nil, err
+	}
+	edges, terr := TypedFor(ctx, snap.Scope, typed)
+	if terr != nil {
+		if ctx.Err() != nil {
+			return nil, nil, nil, ctx.Err()
+		}
+		if kind == GraphResolved {
+			return EmptyGraph(), nil, terr, nil
+		}
+		g, err = GraphFor(ctx, snap, GraphSyntax, nil)
+		return g, nil, terr, err
+	}
+	g, err = GraphFor(ctx, snap, kind, typed)
+	return g, edges, nil, err
+}
+
+// EmptyGraph is a graph with no nodes and no edges: the resolved graph of
+// a call that could not read the typed edges (GraphForTyped).
+func EmptyGraph() *callgraph.Graph { return callgraph.BuildResolved(nil, nil) }
