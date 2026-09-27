@@ -538,6 +538,16 @@ time before each is rewritten.
 `Corpus(service) corpus.Reader`. Code that tries to read a whole tree in a handler does not
 compile.
 
+**Status (wave C).** Built: `Sources` is gone from `mcp.QueryInterface` and
+`autoRefreshBackend` (RT-71); `internal/mcp` handlers stream `ScanSources` under a budget or
+read named files (`ReadSourceFiles`). Not yet built: the `SourcesForIngest` rename and the
+`Corpus` reader. `(*Client).Sources` keeps its name and still serves `cmd/fathom` readers —
+CLI verbs (`report`, `review`, `verify`'s gone evidence, `refactor-plan`, `gen-status-cue`),
+the console's project index, the evidence report and `CompileLayer` — each still bounded by
+the RT-146 slot. The rename and the "does not compile" guarantee for `cmd/fathom` land with
+the lint's `sources` rule (RT-91, RT-137), which makes each remaining handler reader either
+move to `ScanSources` or carry an allowlist reason.
+
 ### 4.7 `internal/lint/tenancy` — the rule enforced in the gate
 
 A Go test (`TestTenancyRules`, run by `go test ./...` inside `task validate`; no vet tool,
