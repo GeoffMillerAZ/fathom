@@ -657,6 +657,20 @@ func (g *Gate) WouldRefuse(c Class, code string, o Origin) int64 {
 	return g.wouldRefuse[counterKey{c, code, o}]
 }
 
+// RefusalTotals sums the refusal and would-refuse counters over every
+// class, code and origin.
+func (g *Gate) RefusalTotals() (refused, would int64) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	for _, n := range g.rejected {
+		refused += n
+	}
+	for _, n := range g.wouldRefuse {
+		would += n
+	}
+	return refused, would
+}
+
 // MetricLines is the gate's /metrics exposition, sorted.
 func (g *Gate) MetricLines() string {
 	g.mu.Lock()

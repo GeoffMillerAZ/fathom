@@ -449,7 +449,10 @@ budget. A scratch daemon that needs more names it:
 Env: `FATHOM_TENANCY_BUDGET` (an IEC size; wins for managed and unmanaged
 alike), `FATHOM_TENANCY_ADMISSION` (`observe` | `enforce` | `off`),
 `FATHOM_TENANCY_EXIT=off` (disable the exit rung). An unparseable value is a
-startup error naming the variable.
+startup error naming the variable. Admission `off` (env or `[tenancy].admission`) is the
+escape hatch: serve-http names it at startup and doctor's `tenancy_scope` WARNs on every
+run, as it does when `[daemon].memory_limit` / `FATHOM_MEMORY_LIMIT` and
+`[tenancy].gc_hint` are both set (`[tenancy]` wins).
 
 ## The decision port: `[decide]`
 

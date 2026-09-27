@@ -91,6 +91,9 @@ type operatePageModel struct {
 	Flywheel     []flywheelCheck      `json:"flywheel"`
 	Capabilities *capabilityModel     `json:"capabilities,omitempty"`
 	RemedyNow    remedyNow            `json:"remedy_now"`
+	// Tenancy is /statusz's tenancy block (tenancyStatus, RT-52), read at
+	// render and never cached: nil where no governor runs in this process.
+	Tenancy *governorSnapshot `json:"tenancy,omitempty"`
 }
 
 // remedyNow is time-to-remedy's headline with its truth state: the median
@@ -295,11 +298,12 @@ func buildOperatePage(cr *consoleRequest) (consoleOut, error) {
 	caps, svc, names := operateCapabilities(cr, m)
 	rem := remedyHeadline(p.Remedy, cr.now)
 	metricsAll := consoleModelMetrics(m)
+	ten := tenancyStatus(activeGovernor.Load())
 	out := consoleOut{
 		Meta: []string{"generated " + p.GeneratedAt.UTC().Format(time.RFC3339), "fathom " + buildinfo.Version(), callLogLine(p.CallLog)},
 		Actions: `<span class="flex flex-wrap gap-2 [&>a]:min-h-11">` + form.RenderButton(form.Button{Label: "Open /metrics", Href: "/metrics", Variant: form.ButtonGhost}) +
 			form.RenderButton(form.Button{Label: "Daemon status", Href: "/statusz", Variant: form.ButtonGhost}) + `</span>`,
-		Model:   operatePageModel{Operate: p.View, Flywheel: p.Flywheel, Capabilities: caps, RemedyNow: rem},
+		Model:   operatePageModel{Operate: p.View, Flywheel: p.Flywheel, Capabilities: caps, RemedyNow: rem, Tenancy: ten},
 		Metrics: pageMetrics(cr.page, metricsAll),
 		Sections: map[string]any{
 			operateLoadVerb:    p.View.LoadModel,
@@ -310,12 +314,12 @@ func buildOperatePage(cr *consoleRequest) (consoleOut, error) {
 			operateConfigVerb:  p.Config,
 			operateHarnessVerb: p.Harnesses,
 		},
-		Body: func() string { return renderOperate(cr, p, caps, svc, names, rem, metricsAll) },
+		Body: func() string { return renderOperate(cr, p, caps, svc, names, rem, metricsAll, ten) },
 	}
 	return out, nil
 }
 
-func renderOperate(cr *consoleRequest, p operateProjection, caps *capabilityModel, svc string, names []string, rem remedyNow, mets console.Metrics) string {
+func renderOperate(cr *consoleRequest, p operateProjection, caps *capabilityModel, svc string, names []string, rem remedyNow, mets console.Metrics, ten *governorSnapshot) string {
 	v := p.View
 	fresh := "computed " + p.GeneratedAt.UTC().Format("15:04:05 UTC") + ", reused for 30 s"
 	var b strings.Builder
@@ -370,6 +374,7 @@ func renderOperate(cr *consoleRequest, p operateProjection, caps *capabilityMode
 		calls,
 		latencyStat("agent surface p95", "agent"),
 		latencyStat("unscoped p95", "(unscoped)"),
+		operateTenancyStat(ten),
 	}, stat.BandOptions{AriaLabel: "the daemon"}))
 
 	b.WriteString(`<div class="mt-4 grid gap-4 xl:grid-cols-2">`)
@@ -939,4 +944,31 @@ func renderConfigExplain(cfg map[string]any) string {
 		items = append(items, chrome.DescItem{Term: "profile " + k, DetailHTML: template.HTML(html.EscapeString(str(prof[k])) + ` <span class="text-xs text-ink-muted">← ` + html.EscapeString(explain[k]) + `</span>`)})
 	}
 	return `<div class="[overflow-wrap:anywhere]">` + chrome.RenderDescriptionList(items) + `</div>`
+}
+
+// operateTenancyStat is the band's tenancy tile: the ladder level with
+// footprint (self + children) against the budget and the mode, from the
+// same block /statusz serves (RT-52). No governor is said in words, and
+// an unknown footprint is named, never drawn as zero (I38).
+func operateTenancyStat(t *governorSnapshot) stat.Stat {
+	if t == nil {
+		return stat.Absent("tenancy", "no governor runs in this process — fathom resources reads the ring")
+	}
+	level := t.Level
+	if t.LadderOff {
+		level += " (ladder off)"
+	}
+	used := "footprint unknown"
+	if t.Footprint >= 0 {
+		total := t.Footprint
+		if t.Children > 0 {
+			total += t.Children
+		}
+		used = humanBytes(total) + " of " + humanBytes(t.Budget)
+	}
+	sub := used + " · mode " + t.Mode
+	if n := len(t.InFlight); n > 0 {
+		sub += " · " + plural(n, "call") + " in flight"
+	}
+	return stat.Stat{Label: "tenancy", Value: level, Sub: sub + " · fathom resources for history"}
 }
