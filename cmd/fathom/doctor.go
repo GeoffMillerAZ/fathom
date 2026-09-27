@@ -243,8 +243,12 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		daemonCheck,
 		checkBinaryFresh(root),
 		checkDaemonFresh(hc, baseURL, daemonUp), // PC-4: the daemon's stamp vs this binary (doctor_provenance.go)
-		checkDaemonFootprint(tenancyRep, daemonMetrics), // RT-49: phys_footprint vs the budget, live or from the ring (doctor_footprint.go)
-		checkDaemonPosture(""),                          // RT-15: the installed plist's launchd posture vs schema 2 (daemon_signing.go)
+		checkDaemonFootprint(tenancyRep, daemonMetrics),              // RT-49: phys_footprint vs the budget, live or from the ring (doctor_footprint.go)
+		checkDaemonPosture(""),                                       // RT-15: the installed plist's launchd posture vs schema 2 (daemon_signing.go)
+		checkDaemonLifecycle(tenancyRep),                             // RT-50: starts, exits, breaker, quarantine (doctor_tenancy.go)
+		checkHostPressure(tenancyRep),                                // RT-50: pressure, swap, swap-volume free
+		checkScratchDaemons(tenancyRep),                              // RT-50: leaked unmanaged daemons and stale records
+		checkTenancyScope(root, config.DefaultUserPath(), os.Getenv), // RT-50: [tenancy] is user scope only
 		checkHooksInstalled(root, harness),
 		checkLefthookGates(root),
 		checkHooksFiring(hc, baseURL, daemonUp, root, harness),
