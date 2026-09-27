@@ -160,7 +160,7 @@ func buildOperateProjection(d *consoleDeps, m observatoryModel, resolved console
 	var skipped, consoleReads int
 	var readErr error
 	if resolved.Path != "" {
-		entries, skipped, consoleReads, readErr = callLogReadCounting(resolved.Path)
+		entries, skipped, consoleReads, readErr = consoleCallLogTail.read(resolved.Path) // a tail (RT-113)
 	}
 	facts := callLogFactsFor(resolved, entries, readErr)
 	if readErr == nil {

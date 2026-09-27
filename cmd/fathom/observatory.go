@@ -283,7 +283,7 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 	// OC-9: the shared sessions metric, from the one dedupe rule every page
 	// uses (console.SessionCount) — read once per model build.
 	ledgerPath := sessionLedgerPath()
-	ledgerData, ledgerErr := os.ReadFile(ledgerPath)
+	ledgerData, ledgerErr := sessionLedgerTail.read(ledgerPath) // a tail (RT-113)
 	m.sessions = console.SessionCount(ledgerPath, ledgerData, ledgerErr).WithAsOf(now)
 	m.ledger, m.ledgerErr = ledgerData, ledgerErr
 
@@ -312,7 +312,7 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 		// (ENOENT) apart from a log that is right there and unreadable (a
 		// wedged TCC verdict, a permission defect); both are absences the
 		// tiles must name, but only the second is a defect worth a remedy.
-		entries, _, consoleReads, callLogErr := callLogReadCounting(callLogPath)
+		entries, _, consoleReads, callLogErr := consoleCallLogTail.read(callLogPath) // a tail (RT-113)
 		callLogRead := callLogErr == nil
 		m.callFacts = callLogFactsFor(resolvedLog, entries, callLogErr)
 		if callLogRead {
@@ -519,7 +519,7 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 func buildImpactModel(now time.Time) obsImpact {
 	imp := obsImpact{}
 	path := sessionLedgerPath()
-	data, err := os.ReadFile(path)
+	data, err := sessionLedgerTail.read(path) // a tail (RT-113)
 	if err != nil {
 		imp.LedgerNote = "session ledger not readable at " + path + " — impact figures are not measured, never zero"
 		imp.VerifyCatchesNote = "no ledger — verify catches unknown"
@@ -862,23 +862,78 @@ func narrateBannerDetail(st narrateState) string {
 
 // obsCache keeps one built model for a short TTL: the fleet fold walks
 // every service's repo, and a browser refresh should not re-walk the fleet.
+//
+// RT-113 (design §14): past the TTL the last model is served at once while
+// ONE flight rebuilds it outside the lock — every request used to wait on
+// a rebuild under it (the proof measured 3.6–4.4 s stalls). Only a cold
+// cache (no model yet, or one the governor dropped) waits, for that same
+// flight. gen changes whenever the cache is dropped, so a flight started
+// before a drop never stores its result over it.
 var obsCache struct {
 	sync.Mutex
-	model observatoryModel
-	at    time.Time
+	model    observatoryModel
+	at       time.Time
+	building bool
+	done     chan struct{} // closed when the flight in progress ends
+	gen      uint64
 }
 
 const obsCacheTTL = 30 * time.Second
 
+// obsModelBuilder builds the model (tests hold it to observe a rebuild).
+var obsModelBuilder = buildObservatoryModel
+
+// dropObsCacheLocked forgets the model; the caller holds obsCache.
+func dropObsCacheLocked() {
+	obsCache.model, obsCache.at = observatoryModel{}, time.Time{}
+	obsCache.gen++
+}
+
 func cachedObservatoryModel(baseURL string, now time.Time) observatoryModel {
 	obsCache.Lock()
-	defer obsCache.Unlock()
 	if !obsCache.at.IsZero() && now.Sub(obsCache.at) < obsCacheTTL {
-		return obsCache.model
+		m := obsCache.model
+		obsCache.Unlock()
+		return m
 	}
-	m := buildObservatoryModel(baseURL, now)
-	obsCache.model, obsCache.at = m, now
-	return m
+	if !obsCache.building {
+		obsCache.building = true
+		obsCache.done = make(chan struct{})
+		go rebuildObservatoryModel(baseURL, now, obsCache.gen, obsCache.done)
+	}
+	if !obsCache.at.IsZero() {
+		m := obsCache.model // stale: served while the flight rebuilds
+		obsCache.Unlock()
+		return m
+	}
+	done := obsCache.done
+	obsCache.Unlock()
+	<-done
+	obsCache.Lock()
+	defer obsCache.Unlock()
+	return obsCache.model
+}
+
+// rebuildObservatoryModel is the one flight: the model is built outside
+// the lock and stored only if the cache was not dropped meanwhile.
+func rebuildObservatoryModel(baseURL string, now time.Time, gen uint64, done chan struct{}) {
+	var m observatoryModel
+	built := false
+	defer func() {
+		// A panicking build (no request goroutine to recover it here)
+		// stores nothing and never takes the daemon down; the next read
+		// starts another flight.
+		_ = recover()
+		obsCache.Lock()
+		if built && gen == obsCache.gen {
+			obsCache.model, obsCache.at = m, now
+		}
+		obsCache.building = false
+		close(done)
+		obsCache.Unlock()
+	}()
+	m = obsModelBuilder(baseURL, now)
+	built = true
 }
 
 // ─── IQ-3: the miss fold ─────────────────────────────────────────────────
