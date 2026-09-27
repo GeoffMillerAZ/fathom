@@ -52,6 +52,7 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	jsonOut := fs.Bool("json", false, "emit the run as JSON (counts, read_failures with errno, outcome ok|degraded|refused) — docs/usage.md §ingest")
 	dryRun := fs.Bool("dry-run", false, "discover and stat only: report files, bytes, oversize files and pruned directories without reading a file or opening the store (RT-70)")
 	statsFlag := fs.Bool("stats", false, "with --dry-run: print the discovery statistics (the default output of --dry-run)")
+	respectGitignore := fs.Bool("respect-gitignore", false, "with --dry-run: discover a git work tree through `git ls-files` as [connector] respect_gitignore would (RT-68) — run with and without to measure the delta (RT-M11)")
 	var scipPaths stringList
 	fs.Var(&scipPaths, "scip", "SCIP index file to import as typed edges (ADR-041 decision 5, SU-9; repeatable). Unset: auto-detects index.scip at the repo root and .fathom/scip/*.scip")
 
@@ -71,6 +72,10 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
+	if *respectGitignore && !*dryRun {
+		fmt.Fprintln(stderr, "error: --respect-gitignore needs --dry-run (an ingest reads [connector] respect_gitignore from the corpus)")
+		return 1
+	}
 	if *statsFlag && !*dryRun {
 		fmt.Fprintln(stderr, "error: --stats needs --dry-run")
 		return 1
@@ -85,7 +90,9 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintf(stderr, "error: resolve --path: %v\n", aerr)
 			return 1
 		}
-		return runIngestDryRunStats(context.Background(), connector.NewLocalConnector(), client.ServiceRef{ID: *service, Path: abs}, stdout, *jsonOut)
+		lc := connector.NewLocalConnector()
+		lc.RespectGitignore = *respectGitignore
+		return runIngestDryRunStats(context.Background(), lc, client.ServiceRef{ID: *service, Path: abs}, stdout, *jsonOut)
 	}
 
 	c, err := newIngestClient(m, *storePath)

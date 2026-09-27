@@ -60,6 +60,12 @@ type Exclusions struct {
 	DefaultIgnored []string
 	SkippedDirs    int
 	IgnoredDirs    int
+	// GitIgnored counts the untracked entries .gitignore excluded
+	// (directories collapsed, as `git ls-files -o -i --directory` lists
+	// them) when discovery went through git (RT-68); Git reports that it
+	// did.
+	GitIgnored int
+	Git        bool
 }
 
 // ExclusionReporter is implemented by connectors that record what their
@@ -76,6 +82,7 @@ type includeMemo struct {
 	size    int64
 	mtimeNS int64
 	include map[string]bool
+	gitMode bool
 }
 
 var includeCache sync.Map // abs config path -> includeMemo
@@ -87,26 +94,37 @@ var includeCache sync.Map // abs config path -> includeMemo
 // costs a stat, not a parse. A malformed file includes nothing (the narrower
 // default stands; `fathom config` is the loud surface for a broken file).
 func loadConnectorInclude(root string) map[string]bool {
+	inc, _ := loadConnectorConfig(root)
+	return inc
+}
+
+// loadConnectorConfig is the corpus's `[connector]` table: include, and
+// whether discovery respects .gitignore (RT-68).
+func loadConnectorConfig(root string) (map[string]bool, bool) {
 	p := filepath.Join(root, connectorConfigName)
 	fi, err := os.Stat(p)
 	if err != nil {
-		return nil
+		return nil, false
 	}
 	if v, ok := includeCache.Load(p); ok {
 		m := v.(includeMemo)
 		if m.size == fi.Size() && m.mtimeNS == fi.ModTime().UnixNano() {
-			return m.include
+			return m.include, m.gitMode
 		}
 	}
 	var include map[string]bool
+	gitMode := false
 	if fi.Size() <= 1<<20 {
 		if data, rerr := os.ReadFile(p); rerr == nil {
 			var doc struct {
 				Connector struct {
-					Include []string `toml:"include"`
+					Include          []string `toml:"include"`
+					RespectGitignore bool     `toml:"respect_gitignore"`
 				} `toml:"connector"`
 			}
-			if toml.Unmarshal(data, &doc) == nil && len(doc.Connector.Include) > 0 {
+			perr := toml.Unmarshal(data, &doc)
+			gitMode = perr == nil && doc.Connector.RespectGitignore
+			if perr == nil && len(doc.Connector.Include) > 0 {
 				include = make(map[string]bool, len(doc.Connector.Include))
 				for _, e := range doc.Connector.Include {
 					e = path.Clean(filepath.ToSlash(e))
@@ -117,8 +135,8 @@ func loadConnectorInclude(root string) map[string]bool {
 			}
 		}
 	}
-	includeCache.Store(p, includeMemo{size: fi.Size(), mtimeNS: fi.ModTime().UnixNano(), include: include})
-	return include
+	includeCache.Store(p, includeMemo{size: fi.Size(), mtimeNS: fi.ModTime().UnixNano(), include: include, gitMode: gitMode})
+	return include, gitMode
 }
 
 // ExcludedFromCorpus reports whether the repo-relative file rel under root
@@ -134,7 +152,7 @@ func ExcludedFromCorpus(root, serviceID, rel string) (reason string, excluded bo
 	if err != nil {
 		return "", false, err
 	}
-	include := loadConnectorInclude(root)
+	include, gitMode := loadConnectorConfig(root)
 	segs := strings.Split(rel, "/")
 	for i := 0; i < len(segs)-1; i++ {
 		name := segs[i]
@@ -151,5 +169,25 @@ func ExcludedFromCorpus(root, serviceID, rel string) (reason string, excluded bo
 	if ignore != nil && ignore.Match(rel) {
 		return "matched by an ignore file", true, nil
 	}
+	// RT-68: a corpus discovered through git excludes what .gitignore
+	// does (unless include re-includes its directory), so a refresh must
+	// not index it either.
+	if gitMode && !underInclude(rel, include) {
+		if gitIgnored(root, rel) {
+			return "ignored by .gitignore ([connector] respect_gitignore)", true, nil
+		}
+	}
 	return "", false, nil
+}
+
+// underInclude reports whether rel lies under a `[connector] include`
+// directory (a bare name anywhere, or a repo-relative path).
+func underInclude(rel string, include map[string]bool) bool {
+	segs := strings.Split(rel, "/")
+	for i := 0; i < len(segs)-1; i++ {
+		if include[segs[i]] || include[strings.Join(segs[:i+1], "/")] {
+			return true
+		}
+	}
+	return false
 }

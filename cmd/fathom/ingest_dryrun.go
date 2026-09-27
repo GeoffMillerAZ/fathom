@@ -43,6 +43,10 @@ type ingestDryRunStats struct {
 	DefaultIgnoredDirs []string `json:"default_ignored_dirs"`
 	SkippedDirs        int      `json:"skipped_dirs"`
 	IgnoredDirs        int      `json:"ignored_dirs"`
+	// Git reports discovery went through git (RT-68); GitIgnored counts
+	// the untracked entries .gitignore excluded (directories collapsed).
+	Git        bool `json:"git"`
+	GitIgnored int  `json:"gitignored"`
 	// StatFailed counts discovered files whose stat failed; their size is
 	// not in Bytes, so Bytes is then a lower bound (I38).
 	StatFailed int                    `json:"stat_failed"`
@@ -77,6 +81,7 @@ func runIngestDryRunStats(ctx context.Context, conn connector.Connector, svc cor
 		}
 		out.SkippedDirs = ex.SkippedDirs
 		out.IgnoredDirs = ex.IgnoredDirs
+		out.Git, out.GitIgnored = ex.Git, ex.GitIgnored
 	}
 	var sized []ingestDryRunFileJSON
 	for _, ref := range refs {
@@ -124,6 +129,9 @@ func runIngestDryRunStats(ctx context.Context, conn connector.Connector, svc cor
 		out.OversizeFiles, humanBytes(out.OversizeBytes), humanBytes(out.ReadCapBytes))
 	printDefaultIgnoredDirs(stdout, out.DefaultIgnoredDirs)
 	fmt.Fprintf(stdout, "pruned:     %d always-skipped dir(s) (vendor, .git, testdata, …), %d by ignore files\n", out.SkippedDirs, out.IgnoredDirs)
+	if out.Git {
+		fmt.Fprintf(stdout, "gitignored: %d untracked entr(ies) excluded by .gitignore (discovered through git)\n", out.GitIgnored)
+	}
 	if out.StatFailed > 0 {
 		fmt.Fprintf(stdout, "stat-failed: %d file(s) — bytes is a lower bound\n", out.StatFailed)
 	}

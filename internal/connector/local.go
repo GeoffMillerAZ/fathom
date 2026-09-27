@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -33,6 +34,11 @@ const IgnoreFileName = ".fathomignore"
 // for that service; an absolute ref.Path (stores written before ADR-017) is
 // read as-is for back-compat.
 type LocalConnector struct {
+	// RespectGitignore lists every git work-tree corpus through git
+	// (RT-68) whatever its own [connector] respect_gitignore says; the
+	// default (false) leaves the choice to the corpus.
+	RespectGitignore bool
+
 	// roots remembers, per service ID, the root directory of the most recent
 	// Discover, so Fetch can resolve the repo-relative paths Discover emits.
 	roots sync.Map // service ID (string) -> root dir (string)
@@ -99,8 +105,24 @@ func (c *LocalConnector) Discover(ctx context.Context, svc core.ServiceRef) ([]c
 		}
 	}
 
+	include, gitMode := loadConnectorConfig(svc.Path)
+	// RT-68: a corpus that opts in is listed through git in a work tree.
+	if gitMode || c.RespectGitignore {
+		if paths, gex, ok, gerr := discoverViaGit(ctx, walkRoot, ignore, include); ok {
+			if gerr != nil {
+				return nil, gerr
+			}
+			refs = make([]core.SourceRef, 0, len(paths))
+			for _, rel := range paths {
+				base := path.Base(rel)
+				refs = append(refs, core.SourceRef{Service: svc.ID, Path: rel, Kind: kindForFile(base, path.Ext(base))})
+			}
+			c.exclusions.Store(svc.ID, gex)
+			return refs, nil
+		}
+	}
+
 	entries := 0
-	include := loadConnectorInclude(svc.Path)
 	var ex Exclusions
 	err = filepath.WalkDir(walkRoot, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
