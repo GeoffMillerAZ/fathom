@@ -254,3 +254,43 @@ func TestProductionDiagCaptureDoesNotDeadlockGovernor(t *testing.T) {
 		t.Fatalf("metrics.txt carries the governor's own lines: %v %s", err, b)
 	}
 }
+
+// A footprint crossing the rate limit suppressed is deferred, not spent: a
+// fast 1 → 4 GiB climb inside one window keeps the 1 GiB capture, and when
+// the window reopens with the footprint still over 4 GiB, the 4 GiB
+// capture is taken — the more informative heap is never lost to the limit.
+// A footprint that fell back below every uncaptured power takes nothing.
+func TestDiagFootprintCrossingDeferredNotDropped(t *testing.T) {
+	r := newGovRig(t)
+	r.g.budget.Exit = 64 * tenancy.GiB // keep the exit rung out of this test
+	r.host.set(1500*tenancy.MiB, 0)
+	r.ticks(1)
+	r.host.set(4500*tenancy.MiB, 0)
+	r.ticks(2)
+	if r.saw("diag footprint-1GiB") != 1 || r.saw("diag footprint-4GiB") != 0 {
+		t.Fatalf("inside the window only the first capture: %v", r.events)
+	}
+	r.now = r.now.Add(diagEvery)
+	r.ticks(1)
+	if r.saw("diag footprint-4GiB") != 1 {
+		t.Fatalf("the window reopened over 4 GiB: the deferred crossing is captured: %v", r.events)
+	}
+	r.ticks(3)
+	if r.saw("diag footprint-4GiB") != 1 {
+		t.Fatalf("a deferred crossing is captured once: %v", r.events)
+	}
+
+	// Fell back before the window reopened: nothing is captured late.
+	r2 := newGovRig(t)
+	r2.g.budget.Exit = 64 * tenancy.GiB
+	r2.host.set(1500*tenancy.MiB, 0)
+	r2.ticks(1)
+	r2.host.set(2500*tenancy.MiB, 0)
+	r2.ticks(1)
+	r2.host.set(900*tenancy.MiB, 0)
+	r2.now = r2.now.Add(diagEvery)
+	r2.ticks(2)
+	if r2.saw("diag footprint-2GiB") != 0 {
+		t.Fatalf("a crossing the footprint fell back from is not captured late: %v", r2.events)
+	}
+}

@@ -94,7 +94,7 @@ type governor struct {
 	cancelled []string              // the last refuse cancellation, in order
 	abandoned int64                 // calls cancelled as abandoned-by-governor, process lifetime
 	lastDiag  map[string]time.Time  // the last capture per trigger kind (§13.4 rate)
-	crossed   int                   // powers of two of the footprint crossed this process: 1 GiB → 1, 2 → 2, 4 → 3, 8 → 4
+	crossed   int                   // the highest power of two of the footprint captured this process: 1 GiB → 1, 2 → 2, 4 → 3, 8 → 4
 	critical  bool                  // the last sample's pressure was critical
 	disk      tenancy.DiskWriteRing // RT-162: bytes written per minute, 24 h
 	// childWritten is the children's last known bytes-written total: a
@@ -309,17 +309,21 @@ func (g *governor) applyLadderLevel(tr tenancy.Transition) {
 // captureCrossings takes the threshold captures a sample can trigger
 // (§13.4, RT-122): the first crossing of each power of two of the
 // process's own footprint (1, 2, 4, 8 GiB — one capture, named for the
-// highest power newly crossed) and entry to pressure critical. Called
-// under g.mu.
+// highest power newly crossed; one the rate limit suppressed is taken
+// when the window reopens if the footprint is still over it) and entry to
+// pressure critical. Called under g.mu.
 func (g *governor) captureCrossings(at time.Time) {
 	if fp := g.sample.Footprint; fp > 0 {
 		p := 0
 		for p < 4 && fp > tenancy.GiB<<p {
 			p++
 		}
-		if p > g.crossed {
+		// A crossing the rate limit suppressed is deferred, not spent:
+		// g.crossed moves only when a capture is queued, so the window
+		// reopening with the footprint still over a higher power takes
+		// that (more informative) capture then.
+		if p > g.crossed && g.captureRateLimited("footprint", fmt.Sprintf("footprint-%dGiB", 1<<(p-1)), at) {
 			g.crossed = p
-			g.captureRateLimited("footprint", fmt.Sprintf("footprint-%dGiB", 1<<(p-1)), at)
 		}
 	}
 	critical := g.sample.Pressure == tenancy.PressureCritical
@@ -334,19 +338,20 @@ func (g *governor) captureCrossings(at time.Time) {
 // that crosses 1 GiB, then enters refuse a minute later, keeps both
 // captures (the refuse one is the one that matters); the exit rung is
 // never limited. Called under g.mu: it only queues the capture, which
-// tick takes once the lock is released.
-func (g *governor) captureRateLimited(kind, trigger string, at time.Time) {
+// tick takes once the lock is released. It reports whether it queued one.
+func (g *governor) captureRateLimited(kind, trigger string, at time.Time) bool {
 	if g.captureDiag == nil {
-		return
+		return false
 	}
 	if last, ok := g.lastDiag[kind]; ok && at.Sub(last) < diagEvery {
-		return
+		return false
 	}
 	if g.lastDiag == nil {
 		g.lastDiag = map[string]time.Time{}
 	}
 	g.lastDiag[kind] = at
 	g.pendingDiag = append(g.pendingDiag, pendingCapture{trigger: trigger, at: at})
+	return true
 }
 
 func (g *governor) drop(ds []namedDrop) {
