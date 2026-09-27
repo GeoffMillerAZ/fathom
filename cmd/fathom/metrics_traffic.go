@@ -18,7 +18,7 @@ import (
 func cmdMetricsTraffic(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("metrics traffic", stderr)
 	service := fs.String("service", "", "optional service filter (matches the call log's service field)")
-	by := fs.String("by", metrics.TrafficGroupBySurface, "group by: surface | tool | hour | day | caller (agent, edit hook, gate, refresh, plumbing, unattributed)")
+	by := fs.String("by", metrics.TrafficGroupBySurface, "group by: surface | tool | hour | day | caller (agent, edit hook, gate, refresh, plumbing, unattributed) | tool-hour (\"<UTC hour> <tool>\")")
 	since := fs.Duration("since", 7*24*time.Hour, "report window, measured back from now (ignored if --from/--to given)")
 	from := fs.String("from", "", "window start, RFC3339 (must be given with --to)")
 	to := fs.String("to", "", "window end, RFC3339 (must be given with --from)")
@@ -29,9 +29,9 @@ func cmdMetricsTraffic(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	switch *by {
-	case metrics.TrafficGroupBySurface, metrics.TrafficGroupByTool, metrics.TrafficGroupByHour, metrics.TrafficGroupByDay, metrics.TrafficGroupByCaller:
+	case metrics.TrafficGroupBySurface, metrics.TrafficGroupByTool, metrics.TrafficGroupByHour, metrics.TrafficGroupByDay, metrics.TrafficGroupByCaller, metrics.TrafficGroupByToolHour:
 	default:
-		fmt.Fprintf(stderr, "error: --by must be surface, tool, hour, day or caller (got %q)\n", *by)
+		fmt.Fprintf(stderr, "error: --by must be surface, tool, hour, day, caller or tool-hour (got %q)\n", *by)
 		return 1
 	}
 

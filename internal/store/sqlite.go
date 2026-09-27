@@ -1826,6 +1826,35 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
 	return nil
 }
 
+// CompileRunRefsAfter returns every compile run recorded after the one
+// whose Seq is after (0: all), in record order (the table's rowid, an
+// index range, never a scan) — the console's event cursor (RT-119) reads
+// what is new, never every run of every service on every poll, and never
+// misses a run recorded after a newer-started one.
+func (s *SQLiteStore) CompileRunRefsAfter(ctx context.Context, after int64) ([]CompileRunRef, error) {
+	rows, err := s.db.QueryContext(ctx, `
+SELECT rowid, run_id, service_id, layer, ran_at
+FROM compile_runs
+WHERE rowid > ?
+ORDER BY rowid
+`, after)
+	if err != nil {
+		return nil, fmt.Errorf("CompileRunRefsAfter query: %w", err)
+	}
+	defer rows.Close()
+	var out []CompileRunRef
+	for rows.Next() {
+		var r CompileRunRef
+		var ranAt int64
+		if err := rows.Scan(&r.Seq, &r.RunID, &r.ServiceID, &r.Layer, &ranAt); err != nil {
+			return nil, fmt.Errorf("CompileRunRefsAfter scan: %w", err)
+		}
+		r.RanAt = time.Unix(0, ranAt).UTC()
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}
+
 // CompileRuns returns compile runs for serviceID, optionally filtered by layer
 // (layer "" returns all), newest-first by RanAt then run_id.
 func (s *SQLiteStore) CompileRuns(ctx context.Context, serviceID, layer string) ([]core.CompileRun, error) {

@@ -38,10 +38,34 @@ type daemonStatusz struct {
 	} `json:"services"`
 }
 
+// fetchDaemonBuild is the daemon binary's build stamp: inside the daemon,
+// this process's own (the value its statusz would report, without building
+// the full-fleet report — every service's meta, typed-edge status and
+// compile runs — RT-115); otherwise /statusz's.
+func fetchDaemonBuild(hc *http.Client, baseURL string) (StatuszBuildInfo, error) {
+	if r := inProcessDaemon(baseURL); r != nil && r.statusz != nil {
+		if r.build != nil {
+			return r.build(), nil
+		}
+		return statuszBuildInfo(), nil
+	}
+	st, err := fetchStatusz(hc, baseURL)
+	return StatuszBuildInfo{BinaryCommit: st.BinaryCommit, BinaryDirty: st.BinaryDirty, BuiltAt: st.BuiltAt}, err
+}
+
 // fetchStatusz GETs baseURL/statusz as JSON. Any failure is returned, not
 // swallowed: the caller decides whether provenance is best-effort.
 func fetchStatusz(hc *http.Client, baseURL string) (daemonStatusz, error) {
 	var out daemonStatusz
+	if r := inProcessDaemon(baseURL); r != nil && r.statusz != nil {
+		// Inside the daemon: its own report, never a loopback (RT-115).
+		raw, err := json.Marshal(r.statusz(context.Background()))
+		if err != nil {
+			return out, err
+		}
+		err = json.Unmarshal(raw, &out)
+		return out, err
+	}
 	req, err := http.NewRequest(http.MethodGet, strings.TrimRight(baseURL, "/")+"/statusz?format=json", nil)
 	if err != nil {
 		return out, err

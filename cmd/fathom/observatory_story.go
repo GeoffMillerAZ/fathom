@@ -7,6 +7,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"html"
 	"html/template"
 	"net/http"
@@ -52,12 +53,18 @@ func buildSessionStory(sessionID string) sessionStory {
 		st.LedgerNote = "no ledger row for this session (the stop hook writes one at session end)"
 	}
 
-	for _, b := range readBeatsFor(beatLogPath()) {
-		if b.Meta["session"] == sessionID {
+	// The session's lines by offset (RT-114), never the whole beat log.
+	lines, _, berr := sessionBeatIndex(beatLogPath(), sessionID)
+	for _, line := range lines {
+		var b heartbeat.Beat
+		if json.Unmarshal(line, &b) == nil && b.Meta["session"] == sessionID {
 			st.Beats = append(st.Beats, b)
 		}
 	}
-	if len(st.Beats) == 0 {
+	switch {
+	case berr != nil && !errors.Is(berr, os.ErrNotExist):
+		st.BeatsNote = "the hooks log could not be read (" + berr.Error() + ") — beats are not measured, never none"
+	case len(st.Beats) == 0:
 		st.BeatsNote = "no beats recorded for this session id"
 	}
 	sort.Slice(st.Beats, func(i, j int) bool { return st.Beats[i].At.Before(st.Beats[j].At) })

@@ -670,7 +670,14 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// event feeders below publish to the same bus GET /events streams.
 	consoleDeps := newConsoleDeps(c, "http://"+*addr, time.Now())
 	consoleDeps.storePath = absStorePath(*storePath)
-	inProcessReg.Store(&inProcessRegistry{self: "http://" + *addr, services: registry.services, stale: registry.staleNote})
+	if n := loaded.Config.Console.ConserveMaxFiles; n > 0 {
+		consoleConserveMaxFiles = n // [console] conserve_max_files (RT-118)
+	}
+	inProcessReg.Store(&inProcessRegistry{self: "http://" + *addr, services: registry.services, stale: registry.staleNote,
+		statusz: func(ctx context.Context) StatuszReport {
+			return buildStatuszReport(ctx, c, consoleDeps.startTime, time.Now())
+		},
+		rpc: srv.HandleRequest})
 	handler := newHTTPHandlerWithAuthDeps(srv, c, modulesToken, *addr, ports, flog, consoleDeps)
 
 	// Adopt a new binary without a human (selfrestart.go). launchd
@@ -733,12 +740,12 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	publishDaemonEvent(consoleDeps.bus, prevRecord, hadPrev, commit)
 	eventSources := newConsoleEventSources(consoleDeps.bus, c, verifyLedgerPath(), sessionLedgerPath())
 	eventSources.warn = func(msg string) { flog.Warn(msg) }
-	startFeeders := func() { go runConsoleEventSources(context.Background(), eventSources) }
-	if managed {
-		startFeeders()
-	} else {
-		handler = lazyFeeders(handler, startFeeders) // §10.1: feeders lazy
-	}
+	// RT-119 (§14, §10.1): the feeders run only while GET /events has a
+	// subscriber — managed or not, an unwatched console polls nothing.
+	feeders := newFeederSwitch(eventSources)
+	consoleDeps.feeders = feeders
+	consoleDeps.bus.OnSubscribers(feeders.subscribers)
+	defer consoleDeps.bus.OnSubscribers(nil)
 
 	swap.set(handler)
 	if err := <-serveErr; err != nil && !errors.Is(err, http.ErrServerClosed) {

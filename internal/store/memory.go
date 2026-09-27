@@ -1038,6 +1038,21 @@ func (m *MemoryStore) RecordCompileRun(_ context.Context, run core.CompileRun) e
 	return nil
 }
 
+// CompileRunRefsAfter returns every compile run recorded after the one
+// whose Seq is after, in record order (SQLiteStore.CompileRunRefsAfter;
+// Seq is the run's 1-based position in the record).
+func (m *MemoryStore) CompileRunRefsAfter(_ context.Context, after int64) ([]CompileRunRef, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	var out []CompileRunRef
+	for i, r := range m.compileRuns {
+		if seq := int64(i + 1); seq > after {
+			out = append(out, CompileRunRef{Seq: seq, RunID: r.RunID, ServiceID: r.ServiceID, Layer: r.Layer, RanAt: r.RanAt.UTC()})
+		}
+	}
+	return out, nil
+}
+
 // CompileRuns returns compile runs for serviceID (optionally filtered by
 // layer; layer "" returns all), newest-first by RanAt then run_id.
 func (m *MemoryStore) CompileRuns(_ context.Context, serviceID, layer string) ([]core.CompileRun, error) {

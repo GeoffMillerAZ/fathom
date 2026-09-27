@@ -96,6 +96,13 @@ func mergeLayer(cfg *Config, prov Provenance, raw map[string]any, source Source,
 	if sm, ok := raw["surface"].(map[string]any); ok {
 		mergeSurfaceFields(&cfg.Surface, sm, source, path, prov)
 	}
+
+	if cm, ok := raw["console"].(map[string]any); ok {
+		if v, ok := numberField(cm, "conserve_max_files"); ok {
+			cfg.Console.ConserveMaxFiles = int(v)
+			prov["console.conserve_max_files"] = SourceInfo{source, path}
+		}
+	}
 }
 
 // mergeSurfaceFields merges the `[surface]` table's `pattern` array-of-

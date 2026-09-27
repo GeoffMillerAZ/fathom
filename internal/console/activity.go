@@ -43,6 +43,9 @@ type ActivityInput struct {
 	// sessions listed are folded from them, by the one dedupe rule, so the
 	// list and the count are one read.
 	Ledger []byte
+	// LedgerFold is that read already folded (a tail's); when set, Ledger
+	// is not read.
+	LedgerFold *LedgerFold
 }
 
 // ActivityCall is one logged tool call.
@@ -205,18 +208,23 @@ func ProjectActivity(src Sources, in ActivityInput) ProjectActivityModel {
 		m.Sessions = Absent[int]("the session ledger was not read for this snapshot")
 	}
 	if m.Sessions.Known() {
-		m.SessionRows = append(m.SessionRows, sessionRows(in.Ledger, in.Service, in.LabelKey, limit)...)
+		m.SessionRows = append(m.SessionRows, sessionRowsFold(in.LedgerFold, in.Ledger, in.Service, in.LabelKey, limit)...)
 	}
 	return m
 }
 
 // sessionRows folds ledger bytes into the project's distinct sessions,
 // newest first, at most limit of them — keyed by the one dedupe rule every
-// count shares (eachLedgerRow: one per session id; a row with none counts
+// count shares (LedgerFold: one per session id; a row with none counts
 // once on its own), so the rows are exactly the sessions the shared count
 // counted. A row whose optional fields do not decode still names its
 // session; those fields are then not recorded.
 func sessionRows(data []byte, service string, labelKey func(string) string, limit int) []ActivitySession {
+	return sessionRowsFold(nil, data, service, labelKey, limit)
+}
+
+// sessionRowsFold is sessionRows over a folded ledger, or data folded now.
+func sessionRowsFold(f *LedgerFold, data []byte, service string, labelKey func(string) string, limit int) []ActivitySession {
 	if labelKey == nil {
 		labelKey = func(l string) string {
 			if strings.EqualFold(strings.TrimSpace(l), service) {
@@ -225,46 +233,10 @@ func sessionRows(data []byte, service string, labelKey func(string) string, limi
 			return strings.ToLower(l)
 		}
 	}
-	byKey := map[string]*ActivitySession{}
-	eachLedgerRow(data, func(key, repo string, line []byte) {
-		if repo == "" || labelKey(repo) != service {
-			return
-		}
-		var r struct {
-			SessionID     string          `json:"session_id"`
-			Arm           json.RawMessage `json:"arm"`
-			At            string          `json:"at"`
-			TurnCount     json.RawMessage `json:"turn_count"`
-			FirstEditTurn json.RawMessage `json:"first_edit_turn"`
-			FathomCalls   json.RawMessage `json:"fathom_calls"`
-		}
-		_ = json.Unmarshal(line, &r) // the key fields decoded in eachLedgerRow
-		s := byKey[key]
-		if s == nil {
-			s = &ActivitySession{ID: r.SessionID}
-			byKey[key] = s
-		}
-		s.Rows++
-		if r.At >= s.At {
-			var arm string
-			_ = json.Unmarshal(r.Arm, &arm)
-			s.At, s.Arm, s.Turns, s.FirstEditTurn, s.FathomCalls = r.At, arm, optionalCount(r.TurnCount), optionalCount(r.FirstEditTurn), optionalCount(r.FathomCalls)
-		}
-	})
-	out := make([]ActivitySession, 0, len(byKey))
-	for _, s := range byKey {
-		out = append(out, *s)
+	if f == nil {
+		f = FoldLedger(data)
 	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].At != out[j].At {
-			return out[i].At > out[j].At
-		}
-		return out[i].ID < out[j].ID
-	})
-	if len(out) > limit {
-		out = out[:limit]
-	}
-	return out
+	return f.activitySessions(service, labelKey, limit)
 }
 
 // optionalCount decodes an optional count field: nil when it is missing or

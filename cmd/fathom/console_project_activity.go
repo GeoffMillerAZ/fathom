@@ -100,9 +100,9 @@ var projectActivityMemo = consoleMemo[projectActivityData]{max: 32}
 // generations of the panels' live sources (index:{svc}, sessions:{svc}),
 // so a refresh the "updated" affordance offers reads again.
 func projectActivityKey(cr *consoleRequest, pc projectContext, src console.Sources) string {
-	bus := cr.deps.bus
+	ctx := cr.r.Context()
 	return strings.Join([]string{pc.svc, cr.now.UTC().Format("2006-01-02"), src.CallLog.Path, src.SessionLedger, pc.m.GeneratedAt,
-		strconv.FormatUint(bus.SourceGeneration("index:"+pc.svc), 10), strconv.FormatUint(bus.SourceGeneration("sessions:"+pc.svc), 10)}, "\x00")
+		strconv.FormatUint(cr.deps.sourceGeneration(ctx, "index:"+pc.svc), 10), strconv.FormatUint(cr.deps.sourceGeneration(ctx, "sessions:"+pc.svc), 10)}, "\x00")
 }
 
 func projectActivityFor(cr *consoleRequest, pc projectContext) projectActivityData {
@@ -125,7 +125,7 @@ func readProjectActivity(cr *consoleRequest, pc projectContext, src console.Sour
 	d := projectActivityData{at: cr.now, resolved: src.CallLog}
 	d.act = console.ProjectActivity(src, console.ActivityInput{
 		Service: pc.svc, LabelKey: sessionLabelKey(roots),
-		Sessions: console.ProjectSessions(pc.facts()), Ledger: pc.m.sessionLedgerRead(),
+		Sessions: console.ProjectSessions(pc.facts()), LedgerFold: pc.m.sessionLedgerRead(),
 	})
 	since, _ := time.Parse("2006-01-02", d.act.From)
 	until, _ := time.Parse("2006-01-02", d.act.To)

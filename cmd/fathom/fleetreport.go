@@ -1,12 +1,12 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -14,6 +14,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/buildinfo"
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/internal/gitro"
 	"github.com/geoffmilleraz/fathom/internal/intent"
 )
 
@@ -238,10 +239,11 @@ func buildFleetReport(hc *http.Client, url string, now time.Time) (fleetReport, 
 		names = append(names, name)
 	}
 	sort.Strings(names)
+	st := daemonStatuszRead(hc, url) // one statusz read for the fleet (RT-115)
 	for _, name := range names {
 		info := svcs[name]
 		row := fleetServiceRow{Service: name, Path: info.path, Symbols: info.symbols}
-		row.Freshness, row.IndexedCommit, row.RepoHead = fleetFreshness(hc, url, name, info.path)
+		row.Freshness, row.IndexedCommit, row.RepoHead = fleetFreshnessFrom(st, name, info.path)
 		row.HooksNote, row.StanzaNote = fleetWiringNotes(info.path)
 		row.OpenObservations, row.ObservationsError = serviceOpenObservations(info.path)
 		if info.path != "" {
@@ -262,52 +264,104 @@ func buildFleetReport(hc *http.Client, url string, now time.Time) (fleetReport, 
 	return rep, nil
 }
 
+// statuszRead is one read of the daemon's /statusz: each service's
+// indexed commit and compile summary, or why it could not be read.
+type statuszRead struct {
+	indexed map[string]string // lower-cased service → indexed commit
+	compile map[string]string // lower-cased service → compile summary
+	err     string            // "" when read: "statusz unreachable" / "statusz unparsable"
+}
+
+// daemonStatuszRead reads the daemon's /statusz once: in process when
+// baseURL is this daemon (RT-115: no loopback request), else over HTTP.
+func daemonStatuszRead(hc *http.Client, baseURL string) statuszRead {
+	var rep struct {
+		Services []struct {
+			Service             string            `json:"service"`
+			IndexedCommit       string            `json:"indexed_commit"`
+			LastCompilePerLayer map[string]string `json:"last_compile_per_layer"`
+		} `json:"services"`
+	}
+	raw, err := daemonStatuszJSON(hc, baseURL)
+	if err != nil {
+		return statuszRead{err: "statusz unreachable"}
+	}
+	if json.Unmarshal(raw, &rep) != nil {
+		return statuszRead{err: "statusz unparsable"}
+	}
+	out := statuszRead{indexed: map[string]string{}, compile: map[string]string{}}
+	for _, s := range rep.Services {
+		k := strings.ToLower(s.Service)
+		out.indexed[k] = s.IndexedCommit
+		if len(s.LastCompilePerLayer) == 0 {
+			continue
+		}
+		parts := make([]string, 0, len(s.LastCompilePerLayer))
+		for layer, sum := range s.LastCompilePerLayer {
+			parts = append(parts, layer+": "+sum)
+		}
+		sort.Strings(parts)
+		out.compile[k] = strings.Join(parts, " · ")
+	}
+	return out
+}
+
+// daemonStatuszJSON is the daemon's /statusz JSON: built in process when
+// baseURL is this daemon, else fetched.
+func daemonStatuszJSON(hc *http.Client, baseURL string) ([]byte, error) {
+	if r := inProcessDaemon(baseURL); r != nil && r.statusz != nil {
+		return json.Marshal(r.statusz(context.Background()))
+	}
+	if hc == nil {
+		hc = &http.Client{Timeout: 5 * time.Second}
+	}
+	resp, err := hc.Get(strings.TrimRight(baseURL, "/") + "/statusz?format=json")
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("GET /statusz: HTTP %d", resp.StatusCode)
+	}
+	return io.ReadAll(io.LimitReader(resp.Body, 8<<20))
+}
+
 // fleetFreshness compares the daemon's indexed commit against the repo's
-// HEAD when the corpus root is locally readable. Honest three-state.
+// HEAD when the corpus root is locally readable. Honest three-state. The
+// HEAD is read from the repository's files (gitro.Head: no git process)
+// and the indexed commit from the daemon's statusz — in process inside the
+// daemon (RT-115). A caller walking many services reads statusz once
+// (daemonStatuszRead) and calls fleetFreshnessFrom.
 func fleetFreshness(hc *http.Client, baseURL, service, path string) (freshness, indexed, head string) {
-	req, err := originHeader(baseURL, strings.NewReader(fmt.Sprintf(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"server_stats","arguments":{}}}`)))
-	_ = req
-	_ = err
-	// The recorded indexed commit comes from ServiceMeta via the daemon;
-	// fetchServices doesn't carry it, so resolve locally: git HEAD vs the
-	// daemon's own auto-refresh makes "fresh" the overwhelmingly common
-	// state — report unknown honestly when either side is unreadable.
 	if path == "" {
 		return "unknown: no recorded corpus path", "", ""
 	}
-	out, gerr := exec.Command("git", "-C", path, "rev-parse", "HEAD").Output()
+	return fleetFreshnessFrom(daemonStatuszRead(hc, baseURL), service, path)
+}
+
+// fleetFreshnessFrom is fleetFreshness over one statusz read.
+func fleetFreshnessFrom(st statuszRead, service, path string) (freshness, indexed, head string) {
+	if path == "" {
+		return "unknown: no recorded corpus path", "", ""
+	}
+	head, gerr := gitro.Head(context.Background(), path)
 	if gerr != nil {
 		return "unknown: repo HEAD unreadable (" + gerr.Error() + ")", "", ""
 	}
-	head = strings.TrimSpace(string(out))
-	// Daemon-side indexed commit via the statusz JSON (loopback).
-	resp, herr := hc.Get(baseURL + "/statusz?format=json")
-	if herr != nil {
-		return "unknown: statusz unreachable", "", head
+	if st.err != "" {
+		return "unknown: " + st.err, "", head
 	}
-	defer resp.Body.Close()
-	var st struct {
-		Services []struct {
-			Service       string `json:"service"`
-			IndexedCommit string `json:"indexed_commit"`
-		} `json:"services"`
+	indexed, ok := st.indexed[strings.ToLower(service)]
+	if !ok {
+		return "unknown: service not in statusz", "", head
 	}
-	if jerr := json.NewDecoder(resp.Body).Decode(&st); jerr != nil {
-		return "unknown: statusz unparsable", "", head
+	if indexed == "" {
+		return "unknown: no indexed commit recorded", indexed, head
 	}
-	for _, s := range st.Services {
-		if strings.EqualFold(s.Service, service) {
-			indexed = s.IndexedCommit
-			if indexed != "" && (strings.HasPrefix(head, indexed) || strings.HasPrefix(indexed, head)) {
-				return "fresh", indexed, head
-			}
-			if indexed == "" {
-				return "unknown: no indexed commit recorded", indexed, head
-			}
-			return "stale: indexed " + shortSHA(indexed) + " vs HEAD " + shortSHA(head), indexed, head
-		}
+	if strings.HasPrefix(head, indexed) || strings.HasPrefix(indexed, head) {
+		return "fresh", indexed, head
 	}
-	return "unknown: service not in statusz", "", head
+	return "stale: indexed " + shortSHA(indexed) + " vs HEAD " + shortSHA(head), indexed, head
 }
 
 // fleetWiringNotes reports hook + stanza state for a locally readable root.

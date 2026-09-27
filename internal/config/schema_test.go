@@ -141,6 +141,10 @@ bad16: #Config & {
 		refuse_at: 0.5
 	}
 }`},
+		{"[console] conserve_max_files below 1", `
+bad17: #Config & {
+	console: conserve_max_files: 0
+}`},
 	}
 
 	cctx := cuecontext.New()

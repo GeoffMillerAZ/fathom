@@ -14,6 +14,7 @@ package main
 // trend panel renders this verb's JSON, at the page's own ?svc= scope.
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -129,7 +130,7 @@ func planBurnupFor(service, root, path, rel string, ledger *ledgerRead) console.
 	if base == "" {
 		base = verifyRepoRoot()
 	}
-	revs, older, note := planGitHistory(base, rel)
+	revs, older, note := planGitHistory(context.Background(), base, rel)
 	return planBurnupFrom(service, path, revs, older, note, ledger)
 }
 

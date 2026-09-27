@@ -1236,7 +1236,9 @@ unreachable under load.
   a verb; JSON parity test), app-kit role utilities only, CSS via `task ui:css`
   (`cmd/fathom/CLAUDE.md`): a 24 h footprint sparkline with budget, refuse and exit marks;
   the ladder timeline; lifecycle events; in-flight by class; the scratch census; disk
-  classes; per-tool per-hour p95.
+  classes; per-tool per-hour p95 (the resources report carries no call-log latency, so
+  this one is the adjoining panel over its own verb, `fathom metrics traffic --by
+  tool-hour --since 24h --json`, read from the call-log tail's ring).
 
 ---
 

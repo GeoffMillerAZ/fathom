@@ -34,7 +34,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"net/http"
 	"os"
 	"path"
 	"path/filepath"
@@ -409,19 +408,16 @@ func sameRootMatcher() func(recorded, root string) bool {
 	}
 }
 
-// statuszTypedFailures reads the daemon's /statusz once: each service
+// statuszTypedFailures reads the daemon's statusz once: each service
 // whose typed call-edge pass failed, with the reason.
 func statuszTypedFailures(baseURL string) map[string]string {
 	out := map[string]string{}
 	if baseURL == "" {
 		return out
 	}
-	resp, err := consoleRPCClient(5 * time.Second).Get(baseURL + "/statusz?format=json")
+	// In process inside the daemon, never a loopback (RT-115).
+	raw, err := daemonStatuszJSON(consoleRPCClient(5*time.Second), baseURL)
 	if err != nil {
-		return out
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
 		return out
 	}
 	var rep struct {
@@ -430,7 +426,7 @@ func statuszTypedFailures(baseURL string) map[string]string {
 			TypedEdges *StatuszTypedEdges `json:"typed_edges"`
 		} `json:"services"`
 	}
-	if json.NewDecoder(resp.Body).Decode(&rep) != nil {
+	if json.Unmarshal(raw, &rep) != nil {
 		return out
 	}
 	for _, s := range rep.Services {

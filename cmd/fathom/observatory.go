@@ -9,7 +9,10 @@ package main
 // loopback (law 13 — `fathom brief` writes a LOCAL file a human sends).
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -236,19 +239,19 @@ type observatoryModel struct {
 	// — so a page's table never comes from a read its metrics did not: a
 	// page that lists sessions (the activity tab, the sessions pages) lists
 	// the ones that were counted.
-	ledger    []byte
+	ledger    *sessionLedgerSnap
 	ledgerErr error
 	toolClass map[string]console.CallerClass
 	reviews   []console.ReviewRun
 }
 
-// sessionLedgerRead is the session ledger's bytes as this build read them,
-// nil when the read failed (m.sessions then carries the error).
-func (m observatoryModel) sessionLedgerRead() []byte {
-	if m.ledgerErr != nil {
+// sessionLedgerRead is the session ledger as this build folded it, nil
+// when the read failed (m.sessions then carries the error).
+func (m observatoryModel) sessionLedgerRead() *console.LedgerFold {
+	if m.ledgerErr != nil || m.ledger == nil {
 		return nil
 	}
-	return m.ledger
+	return m.ledger.fold
 }
 
 // obsTrafficDay is one day of call-log traffic.
@@ -282,9 +285,13 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 	// OC-9: the shared sessions metric, from the one dedupe rule every page
 	// uses (console.SessionCount) — read once per model build.
 	ledgerPath := sessionLedgerPath()
-	ledgerData, ledgerErr := os.ReadFile(ledgerPath)
-	m.sessions = console.SessionCount(ledgerPath, ledgerData, ledgerErr).WithAsOf(now)
-	m.ledger, m.ledgerErr = ledgerData, ledgerErr
+	ledgerSnap, ledgerErr := consoleSessionLedger.read(ledgerPath) // a folded tail (RT-113)
+	var ledgerFold *console.LedgerFold
+	if ledgerErr == nil {
+		ledgerFold = ledgerSnap.fold
+	}
+	m.sessions = console.SessionCountFold(ledgerPath, ledgerFold, ledgerErr).WithAsOf(now)
+	m.ledger, m.ledgerErr = ledgerSnap, ledgerErr
 
 	// The model's reads of the daemon (list_services) carry the console's
 	// origin: the console reading itself is never usage (mcp.OriginConsole).
@@ -297,11 +304,6 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 		// §3.4: a registry read refused while the daemon sheds answers
 		// the last good projection; the page names it stale.
 		m.RegistryStale = registryStaleNote(baseURL)
-		// Traffic fold, same resolution the adoption gauge uses.
-		perSvc := map[string]*struct {
-			total, agent int
-			last         string
-		}{}
 		// OC-2: the one call-log resolution (console_calllog.go). Inside
 		// the daemon this is the daemon's own --call-log — the survey found
 		// the pages rendering from a different log than the daemon writes.
@@ -311,11 +313,17 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 		// (ENOENT) apart from a log that is right there and unreadable (a
 		// wedged TCC verdict, a permission defect); both are absences the
 		// tiles must name, but only the second is a defect worth a remedy.
-		entries, _, consoleReads, callLogErr := callLogReadCounting(callLogPath)
+		// A tail (RT-113): the all-time figures come from its fold, the
+		// windowed ones (14 and 30 days) from its 35-day ring (RT-112).
+		snap, callLogErr := consoleCallLogTail.read(callLogPath)
+		fold, entries := snap.fold, snap.ring
+		if fold == nil {
+			fold = newCallLogFold()
+		}
 		callLogRead := callLogErr == nil
-		m.callFacts = callLogFactsFor(resolvedLog, entries, callLogErr)
+		m.callFacts = fold.facts(resolvedLog, callLogErr)
 		if callLogRead {
-			m.callFacts.ConsoleReads = consoleReads
+			m.callFacts.ConsoleReads = snap.consoleReads
 		}
 		switch {
 		case callLogRead:
@@ -326,8 +334,8 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 		default:
 			m.CallLogNote = "call log unreadable: " + callLogErr.Error() + " — traffic figures are not measured, never zero"
 		}
-		m.Misses = buildMissModel(entries)
-		m.toolClass, m.reviews = toolClassesOf(entries), reviewRunsOf(entries)
+		m.Misses = fold.missModel()
+		m.toolClass, m.reviews = fold.toolClasses(), fold.reviewRuns()
 
 		// Ledger sessions per repo (mirrors fleetreport.go's own fold): the
 		// index-only distinction needs to know whether ANYONE runs coding
@@ -353,8 +361,8 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 		winFromDay, winToDay := winFrom.Format("2006-01-02"), winTo.Format("2006-01-02")
 		windowSessions := map[string]int{}
 		if ledgerReadable {
-			sessionsByRepo = console.DistinctSessionsBy(ledgerData, labelKey)
-			windowSessions = console.DistinctSessionsIn(ledgerData, labelKey, winFrom, winTo)
+			sessionsByRepo = ledgerFold.DistinctBy(labelKey)
+			windowSessions = ledgerFold.DistinctIn(labelKey, winFrom, winTo)
 		}
 		// The gating rung reads the verify ledger (SD-1): every `fathom
 		// verify` run appends to it, a pre-push hook's included — the
@@ -365,19 +373,19 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 
 		obligationsBySvc := map[string]int{}
 		windowObligations := map[string]int{}
-		compileBySvc := fetchCompileStates(hc, baseURL)
-		obligationCalls := 0
+		// One statusz read for the whole model (RT-115): in process inside
+		// the daemon, and it serves every service's freshness too.
+		statusz := daemonStatuszRead(hc, baseURL)
+		compileBySvc := statusz.compile
+		if compileBySvc == nil {
+			compileBySvc = map[string]string{}
+		}
+		// The 14-day series and the realization window read the ring.
 		byDay := map[string]int{}
 		svcByDay := map[string]map[string]int{}
 		for _, e := range entries {
-			if e.Tool == "obligations" {
-				obligationCalls++
-				if e.Service != "" {
-					obligationsBySvc[strings.ToLower(e.Service)]++
-					if inRealizationWindow(e.TS, winFromDay, winToDay) {
-						windowObligations[strings.ToLower(e.Service)]++
-					}
-				}
+			if e.Tool == "obligations" && e.Service != "" && inRealizationWindow(e.TS, winFromDay, winToDay) {
+				windowObligations[strings.ToLower(e.Service)]++
 			}
 			if len(e.TS) >= 10 {
 				byDay[e.TS[:10]]++
@@ -389,25 +397,11 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 					svcByDay[k][e.TS[:10]]++
 				}
 			}
-			if e.Service == "" {
-				continue
-			}
-			k := strings.ToLower(e.Service)
-			tr := perSvc[k]
-			if tr == nil {
-				tr = &struct {
-					total, agent int
-					last         string
-				}{}
-				perSvc[k] = tr
-			}
-			tr.total++
-			if e.Surface == "agent" || e.Surface == "companion" {
-				tr.agent++
-			}
-			if e.TS > tr.last {
-				tr.last = e.TS
-			}
+		}
+		// All-time per-service traffic and obligations read the fold.
+		obligationCalls := fold.obligations
+		for k, sf := range fold.services {
+			obligationsBySvc[k] = sf.obligations
 		}
 
 		names := make([]string, 0, len(svcs))
@@ -418,7 +412,7 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 		for _, name := range names {
 			info := svcs[name]
 			row := obsServiceRow{fleetServiceRow: fleetServiceRow{Service: name, Path: info.path, Symbols: info.symbols}, languages: splitLangs(info.langs)}
-			row.Freshness, row.IndexedCommit, row.RepoHead = fleetFreshness(hc, baseURL, name, info.path)
+			row.Freshness, row.IndexedCommit, row.RepoHead = fleetFreshnessFrom(statusz, name, info.path)
 			if strings.HasPrefix(row.Freshness, "stale") {
 				row.FreshnessRemedy = daemonRefreshRemedy(info.path, name)
 			}
@@ -427,7 +421,7 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 				row.WiringRemedy = "fathom fleet reconcile --apply (or: cd " + info.path + " && fathom init)"
 			}
 			row.OpenObservations, row.ObservationsError = serviceOpenObservations(info.path)
-			if tr := perSvc[name]; tr != nil {
+			if tr, ok := fold.services[name]; ok {
 				row.CallsTotal, row.CallsAgent, row.LastCallTS = tr.total, tr.agent, tr.last
 			}
 			if ledgerReadable {
@@ -498,7 +492,7 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 		m.AgentSurfaceTools, m.AgentSchemaBytes = surfaceSchemaTax(hc, baseURL)
 		m.Impact = buildImpactModel(now)
 		m.Impact.ObligationCalls = obligationCalls
-		m.Cost = observatoryCostPanel(entries, m.AgentSurfaceTools, m.AgentSchemaBytes, m.Impact.DiscoveryTotal)
+		m.Cost = fold.costPanel(m.AgentSurfaceTools, m.AgentSchemaBytes, m.Impact.DiscoveryTotal)
 		return m
 	}
 
@@ -512,7 +506,7 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 func buildImpactModel(now time.Time) obsImpact {
 	imp := obsImpact{}
 	path := sessionLedgerPath()
-	data, err := os.ReadFile(path)
+	snap, err := consoleSessionLedger.read(path) // a folded tail (RT-113)
 	if err != nil {
 		imp.LedgerNote = "session ledger not readable at " + path + " — impact figures are not measured, never zero"
 		imp.VerifyCatchesNote = "no ledger — verify catches unknown"
@@ -553,29 +547,10 @@ func buildImpactModel(now time.Time) obsImpact {
 	// are the complete ones. Read-time rather than a rewrite, because the
 	// ledger is append-only evidence and the superseded rows are history,
 	// not garbage.
-	latest := map[string]sessionLedgerEntry{}
-	var order []string
-	for _, line := range strings.Split(string(data), "\n") {
-		if line == "" {
-			continue
-		}
-		var e sessionLedgerEntry
-		if json.Unmarshal([]byte(line), &e) != nil {
-			continue
-		}
-		key := e.SessionID
-		if key == "" {
-			// A row with no session id cannot be deduped, so it counts once
-			// on its own terms rather than being dropped or merged with
-			// every other anonymous row.
-			key = "\x00anon:" + e.At + ":" + e.Repo
-		}
-		if _, seen := latest[key]; !seen {
-			order = append(order, key)
-		}
-		latest[key] = e
-	}
-	imp.LedgerStops = len(strings.Split(strings.TrimRight(string(data), "\n"), "\n"))
+	// The tail keeps exactly that: each session's last row, in first-seen
+	// order (sessionLedgerSnap.add).
+	latest, order := snap.latest, snap.order
+	imp.LedgerStops = snap.stops
 
 	for _, key := range order {
 		e := latest[key]
@@ -745,7 +720,9 @@ func buildImpactModel(now time.Time) obsImpact {
 	// landed in each unit's own beat-window. Same admissibility rule as
 	// the token medians; ratings, when present, remain the human override
 	// (DO-4).
-	doBeats, _ := readRetroBeats(beatLogPath())
+	// Each unit's beat-window comes from the hooks-log index (RT-114),
+	// never a whole read of the log per model build.
+	beatPath := beatLogPath()
 	var onC, offC []int
 	for _, key := range order {
 		e := latest[key]
@@ -755,7 +732,11 @@ func buildImpactModel(now time.Time) obsImpact {
 		if _, ok := armUnitFor(e); !ok {
 			continue
 		}
-		c, ok := derivedCommitsForSession(doBeats, e.SessionID, e.Repo)
+		start, end, spanned := hooksBeatIndex.sessionSpan(beatPath, e.SessionID, e.Repo)
+		if !spanned {
+			continue
+		}
+		c, ok := derivedCommitsInSpan(e.Repo, start, end)
 		if !ok {
 			continue
 		}
@@ -855,23 +836,130 @@ func narrateBannerDetail(st narrateState) string {
 
 // obsCache keeps one built model for a short TTL: the fleet fold walks
 // every service's repo, and a browser refresh should not re-walk the fleet.
+//
+// RT-113 (design §14): past the TTL the last model is served at once while
+// ONE flight rebuilds it outside the lock — every request used to wait on
+// a rebuild under it (the proof measured 3.6–4.4 s stalls). Only a cold
+// cache (no model yet, or one the governor dropped) waits, for that same
+// flight. gen changes whenever the cache is dropped, so a flight started
+// before a drop never stores its result over it.
 var obsCache struct {
 	sync.Mutex
-	model observatoryModel
-	at    time.Time
+	model    observatoryModel
+	at       time.Time
+	building bool
+	done     chan struct{} // closed when the flight in progress ends
+	gen      uint64
+	// failed is the last flight that panicked and why (its done channel
+	// identifies it to the readers that waited on it).
+	failedDone chan struct{}
+	failedWhy  string
 }
 
 const obsCacheTTL = 30 * time.Second
 
+// obsColdRetries bounds how often a cold reader starts another flight when
+// the one it waited on stored nothing because the cache was dropped.
+const obsColdRetries = 3
+
+// obsModelBuilder builds the model (tests hold it to observe a rebuild).
+var obsModelBuilder = buildObservatoryModel
+
+// dropObsCacheLocked forgets the model; the caller holds obsCache.
+func dropObsCacheLocked() {
+	obsCache.model, obsCache.at = observatoryModel{}, time.Time{}
+	obsCache.gen++
+}
+
+// cachedObservatoryModel serves the last model and rebuilds it in one
+// flight outside the lock (RT-113). Only a cold cache waits, and a cold
+// reader never gets the zero model — zero services and zero traffic
+// rendered as measured: a flight that stored nothing because the cache was
+// dropped meanwhile is followed by another, and a flight that failed
+// answers a model naming the failure.
 func cachedObservatoryModel(baseURL string, now time.Time) observatoryModel {
+	return cachedObservatoryModelCtx(context.Background(), baseURL, now)
+}
+
+// cachedObservatoryModelCtx is cachedObservatoryModel for a request: a
+// cold reader whose request ends leaves at once with a model naming why
+// (RT-62) — the flight runs on and stores its model for the next read.
+func cachedObservatoryModelCtx(ctx context.Context, baseURL string, now time.Time) observatoryModel {
 	obsCache.Lock()
 	defer obsCache.Unlock()
-	if !obsCache.at.IsZero() && now.Sub(obsCache.at) < obsCacheTTL {
-		return obsCache.model
+	for attempt := 0; ; attempt++ {
+		if !obsCache.at.IsZero() && now.Sub(obsCache.at) < obsCacheTTL {
+			return obsCache.model
+		}
+		if !obsCache.building {
+			obsCache.building = true
+			obsCache.done = make(chan struct{})
+			go rebuildObservatoryModel(baseURL, now, obsCache.gen, obsCache.done)
+		}
+		if !obsCache.at.IsZero() {
+			return obsCache.model // stale: served while the flight rebuilds
+		}
+		done := obsCache.done
+		obsCache.Unlock()
+		select {
+		case <-done:
+		case <-ctx.Done():
+			obsCache.Lock() // the deferred Unlock releases it
+			return failedObservatoryModel(now, "the request ended before the console model was built (it is still being built for the next read)")
+		}
+		obsCache.Lock()
+		if !obsCache.at.IsZero() {
+			return obsCache.model
+		}
+		if obsCache.failedDone == done {
+			return failedObservatoryModel(now, "the console model could not be built ("+obsCache.failedWhy+")")
+		}
+		if attempt+1 >= obsColdRetries {
+			return failedObservatoryModel(now, "the console model could not be built (dropped under memory pressure while it rebuilt, "+fmt.Sprint(obsColdRetries)+" times)")
+		}
 	}
-	m := buildObservatoryModel(baseURL, now)
-	obsCache.model, obsCache.at = m, now
-	return m
+}
+
+// failedObservatoryModel is the model a cold reader gets when no build
+// stored one: it names why, and every figure is not measured, never zero.
+func failedObservatoryModel(now time.Time, why string) observatoryModel {
+	note := why + " — nothing on this page is measured, never empty-as-healthy"
+	return observatoryModel{
+		SchemaVersion: observatorySchemaVersion,
+		FathomVersion: buildinfo.Version(),
+		GeneratedAt:   now.UTC().Format(time.RFC3339),
+		DegradedNote:  note,
+		CallLogNote:   note,
+		callFacts:     console.CallLogFacts{Log: console.ResolvedCallLog{Rule: console.RuleNone, Note: "not read"}, AbsentReason: "call log not read: " + note},
+		sessions:      console.SessionCount(sessionLedgerPath(), nil, errors.New(why)).WithAsOf(now),
+		ledgerErr:     errors.New(why),
+	}
+}
+
+// rebuildObservatoryModel is the one flight: the model is built outside
+// the lock and stored only if the cache was not dropped meanwhile.
+func rebuildObservatoryModel(baseURL string, now time.Time, gen uint64, done chan struct{}) {
+	var m observatoryModel
+	built := false
+	defer func() {
+		// A panicking build (no request goroutine to recover it here)
+		// stores nothing and never takes the daemon down; its waiters get
+		// a model naming the failure and the next read starts another
+		// flight.
+		r := recover()
+		obsCache.Lock()
+		if built && gen == obsCache.gen {
+			obsCache.model, obsCache.at = m, now
+		}
+		if r != nil {
+			obsCache.failedDone, obsCache.failedWhy = done, fmt.Sprint("panic: ", r)
+		}
+		obsCache.building = false
+		close(done)
+		obsCache.Unlock()
+	}()
+	m = obsModelBuilder(baseURL, now)
+	built = true
 }
 
 // ─── IQ-3: the miss fold ─────────────────────────────────────────────────
@@ -889,39 +977,7 @@ type obsMissRow struct {
 // buildMissModel folds call outcomes per tool, most-called first. Rows
 // logged before IQ-1 count as NotRecorded — never as hits (law 3).
 func buildMissModel(entries []adoptionCallEntry) []obsMissRow {
-	byTool := map[string]*obsMissRow{}
-	for _, e := range entries {
-		if e.Tool == "" {
-			continue
-		}
-		r := byTool[e.Tool]
-		if r == nil {
-			r = &obsMissRow{Tool: e.Tool}
-			byTool[e.Tool] = r
-		}
-		r.Calls++
-		switch {
-		case e.ResultCount == nil:
-			r.NotRecorded++
-		case e.MatchedVia == "did_you_mean":
-			r.DidYouMean++
-		case *e.ResultCount == 0:
-			r.Misses++
-		default:
-			r.Hits++
-		}
-	}
-	rows := make([]obsMissRow, 0, len(byTool))
-	for _, r := range byTool {
-		rows = append(rows, *r)
-	}
-	sort.Slice(rows, func(i, j int) bool {
-		if rows[i].Calls != rows[j].Calls {
-			return rows[i].Calls > rows[j].Calls
-		}
-		return rows[i].Tool < rows[j].Tool
-	})
-	return rows
+	return foldCallLog(entries).missModel()
 }
 
 // ─── IQ-15: the wiring grade ─────────────────────────────────────────────
@@ -985,22 +1041,28 @@ func wiringGrade(s obsServiceRow) (grade, raise string) {
 // MCP-connected session carries before any work happens. Zeros on any
 // failure; the renderer names the absence (law 3), never charts a zero.
 func surfaceSchemaTax(hc *http.Client, baseURL string) (int, int) {
-	req, err := http.NewRequest(http.MethodPost, baseURL+"/rpc/agent", strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}`))
-	if err != nil {
-		return 0, 0
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := hc.Do(req)
-	if err != nil {
-		return 0, 0
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return 0, 0
-	}
-	raw, err := io.ReadAll(io.LimitReader(resp.Body, 1<<22))
-	if err != nil {
-		return 0, 0
+	const body = `{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}`
+	// Inside the daemon the agent surface's tools/list is answered in
+	// process (RT-115): no loopback request.
+	raw, inProc := inProcessCall(context.Background(), baseURL, "agent", []byte(body))
+	if !inProc {
+		req, err := http.NewRequest(http.MethodPost, baseURL+"/rpc/agent", strings.NewReader(body))
+		if err != nil {
+			return 0, 0
+		}
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := hc.Do(req)
+		if err != nil {
+			return 0, 0
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode < 200 || resp.StatusCode > 299 {
+			return 0, 0
+		}
+		raw, err = io.ReadAll(io.LimitReader(resp.Body, 1<<22))
+		if err != nil {
+			return 0, 0
+		}
 	}
 	var env struct {
 		Result struct {
@@ -1018,36 +1080,14 @@ func surfaceSchemaTax(hc *http.Client, baseURL string) (int, int) {
 }
 
 // fetchCompileStates maps service → a one-line summary of its most recent
-// compile per layer, from the daemon's own statusz JSON. Empty map when
-// unreachable — the caller renders the honest default.
+// compile per layer, from the daemon's own statusz (in process inside the
+// daemon, RT-115). Empty map when unreachable — the caller renders the
+// honest default.
 func fetchCompileStates(hc *http.Client, baseURL string) map[string]string {
-	out := map[string]string{}
-	resp, err := hc.Get(baseURL + "/statusz?format=json")
-	if err != nil {
-		return out
+	if st := daemonStatuszRead(hc, baseURL); st.compile != nil {
+		return st.compile
 	}
-	defer resp.Body.Close()
-	var rep struct {
-		Services []struct {
-			Service             string            `json:"service"`
-			LastCompilePerLayer map[string]string `json:"last_compile_per_layer"`
-		} `json:"services"`
-	}
-	if json.NewDecoder(resp.Body).Decode(&rep) != nil {
-		return out
-	}
-	for _, s := range rep.Services {
-		if len(s.LastCompilePerLayer) == 0 {
-			continue
-		}
-		parts := make([]string, 0, len(s.LastCompilePerLayer))
-		for layer, sum := range s.LastCompilePerLayer {
-			parts = append(parts, layer+": "+sum)
-		}
-		sort.Strings(parts)
-		out[strings.ToLower(s.Service)] = strings.Join(parts, " · ")
-	}
-	return out
+	return map[string]string{}
 }
 
 // abMinTurnsPerUnit is the amended admissibility floor (production-

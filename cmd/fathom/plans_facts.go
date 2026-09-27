@@ -9,17 +9,18 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"io/fs"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/internal/gitro"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
@@ -81,12 +82,23 @@ const maxPlanRevisions = 400
 // planGitHistory reads rel's commits in root (oldest first) with the file's
 // text at each, through one `git log` and one `git cat-file --batch`. note
 // says why there are none: not a git repository, or never committed.
-func planGitHistory(root, rel string) (revs []planRevisionText, omitted int, note string) {
-	if gitToplevel(root) == "" {
+func planGitHistory(ctx context.Context, root, rel string) (revs []planRevisionText, omitted int, note string) {
+	// Every git here runs under ctx (the console's page deadline, RT-118)
+	// and through gitro, which never writes the repository it reads.
+	stopped := func(what string) string {
+		return "git " + what + " did not answer in time and was stopped — the plan's history is not drawn"
+	}
+	if top, err := gitro.Output(ctx, root, "rev-parse", "--show-toplevel"); err != nil || strings.TrimSpace(string(top)) == "" {
+		if ctx.Err() != nil {
+			return nil, 0, stopped("rev-parse")
+		}
 		return nil, 0, "not a git repository — the plan has no history to draw"
 	}
-	out, err := exec.Command("git", "-C", root, "log", "--format=%H %cI", "--", rel).Output()
+	out, err := gitro.Output(ctx, root, "log", "--format=%H %cI", "--", rel)
 	if err != nil {
+		if ctx.Err() != nil {
+			return nil, 0, stopped("log")
+		}
 		return nil, 0, "git log failed: " + err.Error()
 	}
 	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
@@ -107,10 +119,18 @@ func planGitHistory(root, rel string) (revs []planRevisionText, omitted int, not
 		revs = append(revs, planRevisionText{Commit: sha, At: when})
 		fmt.Fprintf(&in, "%s:%s\n", sha, filepath.ToSlash(rel))
 	}
-	cmd := exec.Command("git", "-C", root, "cat-file", "--batch")
+	cmd, cleanup, err := gitro.Command(ctx, root, "cat-file", "--batch")
+	if err != nil {
+		cleanup()
+		return nil, 0, "git cat-file failed: " + err.Error()
+	}
 	cmd.Stdin = &in
 	raw, err := cmd.Output()
+	cleanup()
 	if err != nil {
+		if ctx.Err() != nil {
+			return nil, 0, stopped("cat-file")
+		}
 		return nil, 0, "git cat-file failed: " + err.Error()
 	}
 	r := bufio.NewReader(bytes.NewReader(raw))

@@ -67,7 +67,7 @@ func markMeasuredStale(rows []intent.PlanRowState, newest map[string]verifyLedge
 // one-line reason for the table footer; false with "" when the daemon is
 // current or its stamp is unknown.
 func liveDaemonStale(hc *http.Client, baseURL, root string) (bool, string) {
-	st, err := fetchStatusz(hc, baseURL)
+	st, err := fetchDaemonBuild(hc, baseURL)
 	if err != nil || st.BinaryCommit == "" {
 		return false, ""
 	}
@@ -77,7 +77,7 @@ func liveDaemonStale(hc *http.Client, baseURL, root string) (bool, string) {
 		BinaryCommit: buildinfo.Version(),
 	}
 	if fathomTree {
-		row.Commit = gitHeadShort(root)
+		row.Commit = repoHeadNoFork(root) // from the repository's files (RT-115)
 	}
 	if !measuredStaleReading(row, fathomTree) {
 		return false, ""

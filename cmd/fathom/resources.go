@@ -67,9 +67,11 @@ type resourcesReport struct {
 	Scratch     resourcesScratch   `json:"scratch"`
 	Disk        resourcesDisk      `json:"disk"`
 	Diag        *diagView          `json:"diag,omitempty"`
-	Unreadable  []string           `json:"unreadable,omitempty"`
-	Exit        int                `json:"exit"`
-	Reasons     []string           `json:"reasons,omitempty"`
+	// Ladder is the window's ladder transitions, oldest first (RT-121).
+	Ladder     []resourcesLadderStep `json:"ladder,omitempty"`
+	Unreadable []string              `json:"unreadable,omitempty"`
+	Exit       int                   `json:"exit"`
+	Reasons    []string              `json:"reasons,omitempty"`
 
 	quarantine []tenancy.Quarantine // the ledger's, for the primer's line
 }
@@ -109,6 +111,16 @@ type resourcesFootprint struct {
 	Torn       int    `json:"torn_slots,omitempty"`
 	Transition int    `json:"transitions"`
 	Ring       string `json:"ring"`
+	// Hourly is the window's peak footprint (self + children) per hour,
+	// oldest first; -1 is an hour with no sample (never 0). The Operate
+	// Tenancy panel draws it against the budget and its marks (RT-121).
+	Hourly []int64 `json:"hourly,omitempty"`
+}
+
+// resourcesLadderStep is one ladder transition in the window (RT-121).
+type resourcesLadderStep struct {
+	At    string `json:"at"`
+	Level string `json:"level"`
 }
 
 type resourcesLifecycle struct {
@@ -424,8 +436,10 @@ func buildResources(env resourcesEnv, id, url string, since time.Duration) resou
 		for _, r := range w.Records {
 			if r.Transition {
 				rep.Footprint.Transition++
+				rep.Ladder = append(rep.Ladder, resourcesLadderStep{At: r.At.UTC().Format(time.RFC3339), Level: r.Level.String()})
 			}
 		}
+		rep.Footprint.Hourly = hourlyPeaks(w.Records, now, since)
 		if pk, ok := w.Peak(); ok {
 			rep.Footprint.Max, rep.Footprint.MaxAt, rep.Footprint.MaxLevel = pk.Combined(), pk.At.UTC().Format(time.RFC3339), pk.Level.String()
 		}
@@ -684,6 +698,33 @@ func newestDiag(dir string) *diagView {
 
 // sparkline is one glyph per hour of the window: the hour's peak
 // footprint + children against scale; '·' for an hour with no sample.
+// hourlyPeaks is the peak combined footprint per hour of the window
+// (at most 48 hours), oldest first; -1 for an hour with no sample.
+func hourlyPeaks(recs []tenancy.RingRecord, now time.Time, window time.Duration) []int64 {
+	buckets := int(window / time.Hour)
+	if buckets < 1 {
+		return nil
+	}
+	if buckets > 48 {
+		buckets = 48
+	}
+	start := now.Add(-time.Duration(buckets) * time.Hour)
+	peak := make([]int64, buckets)
+	for i := range peak {
+		peak[i] = -1
+	}
+	for _, r := range recs {
+		i := int(r.At.Sub(start) / time.Hour)
+		if i < 0 || i >= buckets {
+			continue
+		}
+		if c := r.Combined(); c > peak[i] {
+			peak[i] = c
+		}
+	}
+	return peak
+}
+
 func sparkline(recs []tenancy.RingRecord, now time.Time, window time.Duration, scale int64) string {
 	const glyphs = "▁▂▃▄▅▆▇█"
 	g := []rune(glyphs)
@@ -955,7 +996,12 @@ func resolveLocalBudget() (tenancy.Budget, []tenancy.Note, error) {
 	return b, notes, nil
 }
 
+// resourcesEnvNow is the environment `fathom resources` and the Operate
+// Tenancy panel read (tests pin one for both, so the panel's section and
+// the verb's JSON are compared over the same inputs).
+var resourcesEnvNow = liveResourcesEnv
+
 // cmdResources implements `fathom resources`.
 func cmdResources(args []string, stdout, stderr io.Writer) int {
-	return runResources(args, stdout, stderr, liveResourcesEnv())
+	return runResources(args, stdout, stderr, resourcesEnvNow())
 }

@@ -368,11 +368,11 @@ func TestGitShowFile_UnreadableBlobIsAnError(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chmod(objPath, 0o644) })
 
 	// Control: an ordinary absent-at-base path still reads ok=false, err=nil.
-	if _, ok, err := gitShowFile(repo.root, base, "pkg/never-existed.go"); ok || err != nil {
+	if _, ok, err := gitShowFile(context.Background(), repo.root, base, "pkg/never-existed.go"); ok || err != nil {
 		t.Errorf("gitShowFile(never-existed) = ok:%v err:%v, want ok:false err:nil", ok, err)
 	}
 
-	content, ok, err := gitShowFile(repo.root, base, "pkg/a.go")
+	content, ok, err := gitShowFile(context.Background(), repo.root, base, "pkg/a.go")
 	if err == nil {
 		t.Fatalf("gitShowFile(unreadable blob) = content:%q ok:%v err:nil, want a non-nil error", content, ok)
 	}

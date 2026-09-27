@@ -116,3 +116,8 @@ exampleTenancySized: #Config & {
 		gomaxprocs: 4
 	}
 }
+
+// The console's conserve cap (RT-118).
+exampleConsole: #Config & {
+	console: conserve_max_files: 200
+}

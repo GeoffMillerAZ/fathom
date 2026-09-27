@@ -46,8 +46,13 @@ func consoleMemoDrops() {
 	consoleProjectsCache.key, consoleProjectsCache.read = "", projectsRead{}
 	consoleProjectsCache.Unlock()
 	obsCache.Lock()
-	obsCache.model, obsCache.at = observatoryModel{}, time.Time{}
+	dropObsCacheLocked()
 	obsCache.Unlock()
+	// The tails' folds and read positions and the beat index's offsets
+	// stay: they are small next to the logs, and dropping them would make
+	// the next read re-read whole logs while memory is tight. Only the
+	// index's cached session lines are freed.
+	hooksBeatIndex.dropLines()
 }
 
 // servingLadderActions wires the rungs to the serving daemon's caches.

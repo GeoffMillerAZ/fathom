@@ -233,6 +233,15 @@ type Tests struct {
 	ArtifactsDir string `toml:"artifacts_dir"`
 }
 
+// Console configures the Observatory console's bounds (schema.cue
+// #Console; RT-118, docs/design/responsible-tenant.md §14):
+// conserve_max_files is the widest range, in changed files, /refactors
+// computes conserve for (0: the built-in 500); a wider one is refused by
+// name and left to the CLI verb.
+type Console struct {
+	ConserveMaxFiles int `toml:"conserve_max_files"`
+}
+
 // SurfacePattern is one `[[surface.pattern]]` entry (ADR-044 §2.1): a
 // repo-declared capability-inventory source `internal/analysis/inventory.
 // Extract` cannot derive from a built-in kind (api/json/route/env/rpc/
@@ -278,6 +287,7 @@ type Config struct {
 	Decide         Decide
 	Tests          Tests
 	Surface        Surface
+	Console        Console
 }
 
 // SurfacePatterns returns cfg's configured `[[surface.pattern]]` entries

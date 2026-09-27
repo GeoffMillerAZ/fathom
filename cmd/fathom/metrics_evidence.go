@@ -12,10 +12,7 @@ package main
 // table and its shared metrics never come from two different reads.
 
 import (
-	"bufio"
-	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -62,11 +59,7 @@ func fileState(what, path string, err error) (reason string, isErr bool) {
 
 // toolClassesOf is each tool's dominant caller class over the usage rows.
 func toolClassesOf(entries []adoptionCallEntry) map[string]console.CallerClass {
-	out := map[string]console.CallerClass{}
-	for _, tl := range console.ToolLoads(callRowsOf(entries)) {
-		out[tl.Tool] = tl.Class
-	}
-	return out
+	return foldCallLog(entries).toolClasses()
 }
 
 // callRowsOf converts call-log entries to the console's row shape.
@@ -81,14 +74,7 @@ func callRowsOf(entries []adoptionCallEntry) []console.CallRow {
 // reviewRunsOf keeps the `fathom review` rows that carry per-dimension
 // finding counts (review.go's forced-channel row, T5-7).
 func reviewRunsOf(entries []adoptionCallEntry) []console.ReviewRun {
-	var out []console.ReviewRun
-	for _, e := range entries {
-		if e.Tool != "review" || e.VerdictOutcome == nil {
-			continue
-		}
-		out = append(out, console.ReviewRun{At: e.TS, Service: e.Service, Outcome: e.VerdictOutcome})
-	}
-	return out
+	return foldCallLog(entries).reviewRuns()
 }
 
 // ─── impact ──────────────────────────────────────────────────────────────
@@ -272,87 +258,15 @@ func hooksLogSource(path string) string {
 	return "hooks log " + path + " and its rotated generation " + path + ".1"
 }
 
-// readHooksGenerations streams every line of the hooks log's rotated
-// generation (path.1, older) and then the log itself to fn. err is non-nil
-// when nothing could be read: os.ErrNotExist (wrapped with the path) when
-// neither file exists, else the current log's open or read failure.
-// partial names a generation that failed while the other was read — the
-// caller's counts are then lower bounds, never complete ones.
-func readHooksGenerations(path string, fn func(line []byte)) (partial, err error) {
-	if path == "" {
-		return nil, os.ErrNotExist
-	}
-	missing := 0
-	for i, p := range []string{path + ".1", path} {
-		ferr := scanHooksFile(p, fn)
-		switch {
-		case ferr == nil:
-		case os.IsNotExist(ferr):
-			missing++
-		case i == 0:
-			partial = fmt.Errorf("the rotated hooks log could not be read: %w", ferr)
-		default:
-			err = ferr
-		}
-	}
-	if err != nil {
-		return nil, err
-	}
-	if missing == 2 {
-		return nil, &os.PathError{Op: "open", Path: path, Err: os.ErrNotExist}
-	}
-	if partial != nil && missing == 1 {
-		// Only the rotated generation existed, and it failed: nothing read.
-		return nil, errors.Unwrap(partial)
-	}
-	return partial, nil
-}
-
-// scanHooksFile streams one hooks-log file's lines to fn.
-func scanHooksFile(path string, fn func(line []byte)) error {
-	f, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	sc := bufio.NewScanner(f)
-	sc.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
-	for sc.Scan() {
-		fn(sc.Bytes())
-	}
-	return sc.Err()
-}
-
 // readGuardBeats reads the PreToolUse edit-hook beats (the guard hook's)
 // from the hooks log and its rotated generation, naming each beat's service
 // through labelKey (the project directory's base name mapped to the service
-// whose root it is). A line is decoded only when it carries the pre phase.
-// partial is a generation that could not be read while the other was.
+// whose root it is). It reads through the daemon's hooks-log index (RT-114:
+// nothing reads hooks.jsonl whole — only what was appended since the last
+// read is decoded). partial is a generation that could not be read while
+// the other was.
 func readGuardBeats(path string, labelKey func(string) string) (beats []console.GuardBeat, partial, err error) {
-	needle := []byte(`"phase":"pre"`)
-	partial, err = readHooksGenerations(path, func(line []byte) {
-		if !bytes.Contains(line, needle) || !bytes.Contains(line, []byte(`"edit-hook"`)) {
-			return
-		}
-		var b struct {
-			Channel string            `json:"channel"`
-			Kind    string            `json:"kind"`
-			At      time.Time         `json:"at"`
-			Meta    map[string]string `json:"meta"`
-		}
-		if json.Unmarshal(line, &b) != nil || b.Channel != "edit-hook" || b.Meta["phase"] != "pre" {
-			return
-		}
-		svc := ""
-		if dir := b.Meta["project_dir"]; dir != "" && labelKey != nil {
-			svc = labelKey(filepath.Base(dir))
-		}
-		beats = append(beats, console.GuardBeat{At: b.At, Kind: b.Kind, Target: b.Meta["target"], Service: svc, Session: b.Meta["session"]})
-	})
-	if err != nil {
-		return nil, nil, err
-	}
-	return beats, partial, nil
+	return hooksBeatIndex.guardBeats(path, labelKey)
 }
 
 // catchFilterFrom builds the timeline filter from query values: kinds
@@ -462,19 +376,20 @@ type sessionReplay struct {
 var replayHiddenMeta = map[string]bool{"session": true, "fathom_version": true, "schema_version": true, "harness": true, "project_dir": true, "service": true}
 
 // readSessionEvents reads one session's beats from the hooks log and its
-// one rotated generation (hooks.jsonl.1, older), decoding only the lines
-// that name the session — the survey's replay re-decoded the whole log. err
-// and partial are readHooksGenerations': nothing could be read, or one
-// generation could not.
+// one rotated generation (hooks.jsonl.1, older) through the per-session
+// offset index (RT-114: hooksBeatIndex) — only this session's lines are
+// read and decoded, and the log is never read whole per page. err and
+// partial are the index's (beatOffsetIndex.refresh): nothing could be
+// read, or one generation could not.
 func readSessionEvents(path, sessionID string) (events []console.ReplayEvent, partial, err error) {
 	if sessionID == "" {
 		return nil, nil, nil
 	}
-	needle := []byte(`"session":"` + sessionID + `"`)
-	partial, err = readHooksGenerations(path, func(line []byte) {
-		if !bytes.Contains(line, needle) {
-			return
-		}
+	lines, partial, err := sessionBeatIndex(path, sessionID)
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, line := range lines {
 		var b struct {
 			Channel string            `json:"channel"`
 			Kind    string            `json:"kind"`
@@ -482,12 +397,9 @@ func readSessionEvents(path, sessionID string) (events []console.ReplayEvent, pa
 			Meta    map[string]string `json:"meta"`
 		}
 		if json.Unmarshal(line, &b) != nil || b.Meta["session"] != sessionID {
-			return
+			continue
 		}
 		events = append(events, console.ReplayEvent{At: b.At.UTC(), Channel: b.Channel, Kind: b.Kind, Service: b.Meta["service"], Detail: replayDetail(b.Meta)})
-	})
-	if err != nil {
-		return nil, nil, err
 	}
 	return events, partial, nil
 }
@@ -565,28 +477,11 @@ func replayDetail(meta map[string]string) string {
 	return strings.Join(parts, " ")
 }
 
-// lastLedgerRow is a session's last ledger row in ledger bytes.
-func lastLedgerRow(ledger []byte, sessionID string) *sessionLedgerEntry {
-	var last *sessionLedgerEntry
-	needle := []byte(`"` + sessionID + `"`)
-	for _, line := range bytes.Split(ledger, []byte{'\n'}) {
-		if !bytes.Contains(line, needle) {
-			continue
-		}
-		var e sessionLedgerEntry
-		if json.Unmarshal(line, &e) == nil && e.SessionID == sessionID {
-			cp := e
-			last = &cp
-		}
-	}
-	return last
-}
-
 // buildSessionReplay is `fathom metrics sessions --id S --json`'s whole
 // computation; the session page calls it with the model's read of the
 // ledger (ledgerErr is that read's error: the ledger row is then absent or
 // an error naming the ledger, never "no row for this session").
-func buildSessionReplay(ledgerPath string, ledger []byte, ledgerErr error, sessionID string, channels []string, page, perPage int) sessionReplay {
+func buildSessionReplay(ledgerPath string, ledger *sessionLedgerSnap, ledgerErr error, sessionID string, channels []string, page, perPage int) sessionReplay {
 	src := cachedSessionEvents(beatLogPath(), sessionID)
 	r := sessionReplay{Window: console.SessionWindow(sessionID, src, channels, page, perPage), LedgerState: console.StatePresent}
 	if reason, isErr := fileState("session ledger", ledgerPath, ledgerErr); reason != "" {
@@ -596,7 +491,7 @@ func buildSessionReplay(ledgerPath string, ledger []byte, ledgerErr error, sessi
 		}
 		return r
 	}
-	if r.Ledger = lastLedgerRow(ledger, sessionID); r.Ledger == nil {
+	if r.Ledger = ledger.lastRow(sessionID); r.Ledger == nil {
 		r.LedgerState = console.StateAbsent
 		r.LedgerNote = "no ledger row for this session (the stop hook writes one at each turn's end)"
 	}
@@ -629,7 +524,7 @@ func cmdMetricsSessions(args []string, stdout, stderr io.Writer) int {
 		for _, c := range channels {
 			chans = append(chans, strings.Split(c, ",")...)
 		}
-		r := buildSessionReplay(ledgerPath, ledger, lerr, *id, chans, *page, *perPage)
+		r := buildSessionReplay(ledgerPath, foldSessionLedger(ledger), lerr, *id, chans, *page, *perPage)
 		if *jsonOut {
 			jsonPrint(stdout, r)
 			return 0

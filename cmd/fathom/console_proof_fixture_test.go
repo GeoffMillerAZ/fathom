@@ -16,6 +16,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -25,6 +26,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
 const proofServiceName = "proof-service"
@@ -358,13 +360,35 @@ func pinConsoleVerbClocks(t *testing.T, f *consoleFixture) {
 	prev := certifyGapsNow
 	certifyGapsNow = func() time.Time { return f.now }
 	t.Cleanup(func() { certifyGapsNow = prev })
+	// `fathom resources` (the Operate Tenancy panel, RT-121) over the same
+	// fixed inputs for the page and the verb: no live census, host or
+	// hooks read.
+	prevRes := resourcesEnvNow
+	home := os.Getenv("HOME")
+	resourcesEnvNow = func() resourcesEnv {
+		return resourcesEnv{
+			home:   home,
+			now:    func() time.Time { return f.now },
+			fetch:  func(string) (*StatuszReport, error) { return nil, errors.New("not asked in the console fixture") },
+			census: func() ([]censusRow, error) { return nil, nil },
+			budget: func() (tenancy.Budget, []tenancy.Note, error) {
+				return tenancy.Budget{Budget: 2 * tenancy.GiB}, nil, nil
+			},
+			killSw: func(string, time.Time) tenancy.KillSwitchVerdict {
+				return tenancy.KillSwitchVerdict{Action: tenancy.ActionRun}
+			},
+			size: func(string) int64 { return 1 << 20 },
+		}
+	}
+	t.Cleanup(func() { resourcesEnvNow = prevRes })
+	resetOperateCache()
 }
 
 // runVerbJSON runs a chip's exact command as consoleVerbArgs reads it —
 // with the fixture's --url unless the chip runs as shown, and without it
 // when the verb defines no --url (the Evidence pages' store and ledger
 // verbs) — and returns its decoded JSON. doctor's exit 1 is its verdict (a
-// check failed), not a failure to run.
+// check failed), not a failure to run; so are resources' 1 and 2.
 func runVerbJSON(t *testing.T, f *consoleFixture, verb string) any {
 	t.Helper()
 	args, dir := consoleVerbArgs(t, f, verb)
@@ -375,7 +399,9 @@ func runVerbJSON(t *testing.T, f *consoleFixture, verb string) any {
 		errb.Reset()
 		code = runIn(t, dir, args[:n-2], &out, &errb)
 	}
-	if code != 0 && !(code == 1 && strings.HasPrefix(verb, "fathom doctor ")) {
+	verdict := code == 1 && strings.HasPrefix(verb, "fathom doctor ") ||
+		(code == 1 || code == 2) && strings.HasPrefix(verb, "fathom resources ") // resources' exit is its verdict (§13.2)
+	if code != 0 && !verdict {
 		t.Fatalf("%s exited %d: %s", verb, code, errb.String())
 	}
 	var v any

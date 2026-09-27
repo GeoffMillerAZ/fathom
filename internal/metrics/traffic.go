@@ -26,6 +26,10 @@ const (
 	// plumbing, unattributed — console.ClassifyCaller), so plumbing never
 	// passes for adoption (OC-44).
 	TrafficGroupByCaller = "caller"
+	// TrafficGroupByToolHour groups by UTC hour and tool, "<hour> <tool>"
+	// (the hour as TrafficGroupByHour writes it) — the Operate page's
+	// per-tool per-hour p95 (RT-121, design §14).
+	TrafficGroupByToolHour = "tool-hour"
 )
 
 // CallEntry is the minimal call-log shape AggregateTraffic needs — decoupled
@@ -169,6 +173,8 @@ func trafficGroupKey(e CallEntry, groupBy string, ts time.Time) string {
 		return e.Tool
 	case TrafficGroupByHour:
 		return ts.UTC().Format("2006-01-02T15:00")
+	case TrafficGroupByToolHour:
+		return ts.UTC().Format("2006-01-02T15:00") + " " + e.Tool
 	case TrafficGroupByDay:
 		return ts.UTC().Format("2006-01-02")
 	case TrafficGroupByCaller:

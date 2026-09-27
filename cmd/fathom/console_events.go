@@ -23,10 +23,12 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/console"
@@ -53,8 +55,31 @@ type consoleEventSources struct {
 	// store poll: a session row's repo label resolves through it.
 	roots  map[string]string
 	primed bool
+	// ledgersPrimed is set once the ledgers' baseline is taken: a restart
+	// of the feeders (RT-119) keeps their read positions, so what changed
+	// while nobody listened is published when someone does.
+	ledgersPrimed bool
+	// compileCursor is the record order (store.CompileRunRef.Seq) of the
+	// last compile run seen (RT-119): the poll reads only runs recorded
+	// after it.
+	compileCursor int64
+	// compileCursorRun is that run's id: a purge's VACUUM renumbers the
+	// record order, and a cursor whose run is no longer at its position
+	// is re-based instead of skipping the runs recorded after the purge.
+	compileCursorRun string
 	// warn reports an event the bus refused (serve-http's log).
 	warn func(string)
+
+	// pollMu serializes the polls: the feeders' loop and a page's
+	// catch-up (catchUp) never poll at once. ledgerAt and storeAt are when
+	// each was last polled (by now, the clock tests pin); storePolls
+	// counts the store polls run (tests); storeKicked is a catch-up's
+	// store poll in flight.
+	pollMu            sync.Mutex
+	now               func() time.Time
+	ledgerAt, storeAt time.Time
+	storePolls        int
+	storeKicked       atomic.Bool
 }
 
 func newConsoleEventSources(bus *console.EventBus, c *client.Client, verifyLedger, sessionLedger string) *consoleEventSources {
@@ -171,6 +196,19 @@ func (s *consoleEventSources) pollStore(ctx context.Context) {
 	sort.Strings(services)
 	first := !s.primed
 	s.primed = true
+	// RT-119: the compile runs newer than the cursor, one read for every
+	// service; a store without the capability is read per service.
+	refs, rerr := compileRunRefsAfter(ctx, s.c, max(s.compileCursor-1, 0))
+	compileFirst := first
+	if rerr == nil && s.compileCursor > 0 {
+		if len(refs) == 0 || refs[0].Seq != s.compileCursor || refs[0].RunID != s.compileCursorRun {
+			// Renumbered (a purge's VACUUM): re-base on the whole record
+			// without publishing it again.
+			s.compileCursor, s.compileCursorRun, compileFirst = 0, "", true
+			refs, rerr = compileRunRefsAfter(ctx, s.c, 0)
+		}
+	}
+	haveRefs := rerr == nil
 	roots := make(map[string]string, len(services))
 	for _, svc := range services {
 		if meta, key, found, kerr := s.keys.key(ctx, s.c.Store(), svc); kerr == nil && found {
@@ -180,29 +218,144 @@ func (s *consoleEventSources) pollStore(ctx context.Context) {
 			}
 			s.ingest[svc] = key
 		}
-		if runs, rerr := s.c.CompileRunsFor(ctx, svc); rerr == nil {
-			seen := s.compile[svc]
-			now := make(map[string]bool, len(runs))
-			// runs is newest first (Store.CompileRuns' contract): publish
-			// the unseen ones oldest first.
-			for i := len(runs) - 1; i >= 0; i-- {
-				run := runs[i]
-				now[run.RunID] = true
-				if !first && !seen[run.RunID] {
-					s.publish(console.Event{Kind: console.EventCompile, Service: svc, Name: run.Layer, Ref: run.RunID})
-				}
-			}
-			s.compile[svc] = now
+		if !haveRefs {
+			s.pollCompileRunsOf(ctx, svc, first)
 		}
+	}
+	if haveRefs {
+		s.publishCompileRefs(refs, compileFirst)
 	}
 	s.roots = roots
 }
 
-// runConsoleEventSources polls until ctx ends.
-func runConsoleEventSources(ctx context.Context, s *consoleEventSources) {
-	s.verify.Prime()
-	s.session.Prime()
+// errNoCompileCursor is a store that cannot read compile runs by record
+// order.
+var errNoCompileCursor = errors.New("the store cannot read compile runs after a cursor")
+
+// compileRunRefsAfter is the store's compile runs recorded after the
+// cursor (store.CompileRunRefsAfter), when the store can answer it.
+func compileRunRefsAfter(ctx context.Context, c *client.Client, after int64) ([]store.CompileRunRef, error) {
+	r, ok := c.Store().(interface {
+		CompileRunRefsAfter(context.Context, int64) ([]store.CompileRunRef, error)
+	})
+	if !ok {
+		return nil, errNoCompileCursor
+	}
+	return r.CompileRunRefsAfter(ctx, after)
+}
+
+// publishCompileRefs publishes one compile event per run recorded since
+// the cursor, in record order, and moves the cursor to the last one. The
+// cursor is the record order, never ran_at: a run's ran_at is when it
+// started, so a long run recorded after a shorter, later-started one would
+// fall behind a time cursor and never be published.
+func (s *consoleEventSources) publishCompileRefs(refs []store.CompileRunRef, first bool) {
+	for _, r := range refs {
+		if r.Seq <= s.compileCursor {
+			continue
+		}
+		if !first {
+			s.publish(console.Event{Kind: console.EventCompile, Service: r.ServiceID, Name: r.Layer, Ref: r.RunID})
+		}
+		s.compileCursor, s.compileCursorRun = r.Seq, r.RunID
+	}
+}
+
+// pollCompileRunsOf is the per-service compile poll for a store without
+// the cursor capability.
+func (s *consoleEventSources) pollCompileRunsOf(ctx context.Context, svc string, first bool) {
+	runs, rerr := s.c.CompileRunsFor(ctx, svc)
+	if rerr != nil {
+		return
+	}
+	seen := s.compile[svc]
+	now := make(map[string]bool, len(runs))
+	// runs is newest first (Store.CompileRuns' contract): publish the
+	// unseen ones oldest first.
+	for i := len(runs) - 1; i >= 0; i-- {
+		run := runs[i]
+		now[run.RunID] = true
+		if !first && !seen[run.RunID] {
+			s.publish(console.Event{Kind: console.EventCompile, Service: svc, Name: run.Layer, Ref: run.RunID})
+		}
+	}
+	s.compile[svc] = now
+}
+
+// clock is the sources' now.
+func (s *consoleEventSources) clock() time.Time {
+	if s.now != nil {
+		return s.now()
+	}
+	return time.Now()
+}
+
+// pollLedgersDue polls the ledgers — the first time, takes their baseline
+// instead — unless they were polled within consoleLedgerPoll (force: the
+// feeders' ticker or a restart polls regardless; a ledger poll reads only
+// appended bytes).
+func (s *consoleEventSources) pollLedgersDue(force bool) {
+	s.pollMu.Lock()
+	defer s.pollMu.Unlock()
+	now := s.clock()
+	switch {
+	case !s.ledgersPrimed:
+		s.verify.Prime()
+		s.session.Prime()
+		s.ledgersPrimed = true
+	case force || now.Sub(s.ledgerAt) >= consoleLedgerPoll:
+		s.pollLedgers()
+	default:
+		return
+	}
+	s.ledgerAt = now
+}
+
+// pollStoreDue polls the store unless it was polled within
+// consoleStorePoll (force: the feeders' ticker): a navigation that closes
+// and reopens /events restarts the feeders, and must not run a
+// full-fleet poll each time.
+func (s *consoleEventSources) pollStoreDue(ctx context.Context, force bool) {
+	s.pollMu.Lock()
+	defer s.pollMu.Unlock()
+	now := s.clock()
+	if !force && !s.storeAt.IsZero() && now.Sub(s.storeAt) < consoleStorePoll {
+		return
+	}
 	s.pollStore(ctx)
+	s.storePolls++
+	s.storeAt = now
+}
+
+// catchUp is a page's read of the sources while the feeders are off
+// (RT-119: they run only while /events has a subscriber): the ledgers are
+// polled now, so a generation a memo keys on reflects what they gained;
+// the store poll, a full-fleet read, is started off the request path at
+// most once per consoleStorePoll, and the next view sees what it found.
+// Paused like the feeders at shed and in safe mode.
+func (s *consoleEventSources) catchUp() {
+	if !backgroundAllowed() {
+		return
+	}
+	s.pollLedgersDue(false)
+	s.pollMu.Lock()
+	due := s.storeAt.IsZero() || s.clock().Sub(s.storeAt) >= consoleStorePoll
+	s.pollMu.Unlock()
+	if due && s.storeKicked.CompareAndSwap(false, true) {
+		go func() {
+			defer s.storeKicked.Store(false)
+			s.pollStoreDue(context.Background(), false)
+		}()
+	}
+}
+
+// runConsoleEventSources polls until ctx ends. The ledgers' baseline is
+// taken on the first run only: a restart (RT-119) resumes from where the
+// last run stopped, and polls the store only when consoleStorePoll has
+// passed since the last store poll.
+func runConsoleEventSources(ctx context.Context, s *consoleEventSources) {
+	s.pollLedgersDue(true)
+	s.pollStoreDue(ctx, false)
 	ledgers := time.NewTicker(consoleLedgerPoll)
 	store := time.NewTicker(consoleStorePoll)
 	defer ledgers.Stop()
@@ -213,13 +366,89 @@ func runConsoleEventSources(ctx context.Context, s *consoleEventSources) {
 			return
 		case <-ledgers.C:
 			if backgroundAllowed() { // RT-34: paused at shed and above; RT-39: off in safe mode
-				s.pollLedgers()
+				s.pollLedgersDue(true)
 			}
 		case <-store.C:
 			if backgroundAllowed() {
-				s.pollStore(ctx)
+				s.pollStoreDue(ctx, true)
 			}
 		}
+	}
+}
+
+// feederSwitch runs the event feeders only while GET /events has a
+// subscriber (RT-119, design §14): the first subscriber starts them, the
+// last one leaving stops them. An idle console polls nothing.
+type feederSwitch struct {
+	src *consoleEventSources
+	run func(context.Context, *consoleEventSources)
+
+	mu     sync.Mutex
+	cancel context.CancelFunc
+	done   chan struct{}
+}
+
+func newFeederSwitch(src *consoleEventSources) *feederSwitch {
+	return &feederSwitch{src: src, run: runConsoleEventSources}
+}
+
+// subscribers is the bus's OnSubscribers callback: it only starts or
+// cancels, never waits (it runs under the bus's lock).
+func (f *feederSwitch) subscribers(n int) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	switch {
+	case n > 0 && f.cancel == nil:
+		ctx, cancel := context.WithCancel(context.Background())
+		prev := f.done
+		done := make(chan struct{})
+		f.cancel, f.done = cancel, done
+		go func() {
+			defer close(done)
+			if prev != nil {
+				<-prev // one feeder at a time: the last run has returned
+			}
+			f.run(ctx, f.src)
+		}()
+	case n == 0 && f.cancel != nil:
+		f.cancel()
+		f.cancel = nil
+	}
+}
+
+// catchUp brings the sources up to date for a page when the feeders are
+// off (consoleEventSources.catchUp); while they run they keep it current.
+func (f *feederSwitch) catchUp() {
+	if f == nil || f.running() {
+		return
+	}
+	f.src.catchUp()
+}
+
+// running reports whether the feeders are on.
+func (f *feederSwitch) running() bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.cancel != nil
+}
+
+// stoppedCleanly reports whether the last run has returned.
+func (f *feederSwitch) stoppedCleanly() bool {
+	f.mu.Lock()
+	done := f.done
+	on := f.cancel != nil
+	f.mu.Unlock()
+	if on {
+		return false
+	}
+	if done == nil {
+		return true
+	}
+	select {
+	case <-done:
+		return true
+	default:
+		return false
 	}
 }
 

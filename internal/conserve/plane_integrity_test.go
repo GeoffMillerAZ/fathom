@@ -379,8 +379,10 @@ suites: unit: {
 		Root:         repo.root,
 		Base:         base,
 		ChangedFiles: []string{"pkg/x_test.go", "tests/cart.cue"},
-		BaseFile:     func(path string) ([]byte, bool, error) { return gitShowFile(repo.root, base, path) },
-		HeadFile:     func(path string) ([]byte, bool, error) { return worktreeFile(repo.root, path) },
+		BaseFile: func(path string) ([]byte, bool, error) {
+			return gitShowFile(context.Background(), repo.root, base, path)
+		},
+		HeadFile: func(path string) ([]byte, bool, error) { return worktreeFile(repo.root, path) },
 	})
 	if len(missing) != 0 {
 		t.Fatalf("missing = %v, want none", missing)

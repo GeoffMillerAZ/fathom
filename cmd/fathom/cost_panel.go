@@ -70,26 +70,17 @@ type costPanel struct {
 // panel: no new read (entries is the exact slice buildObservatoryModel
 // already loaded for the Q3 misses table).
 func observatoryCostPanel(entries []adoptionCallEntry, schemaTools, schemaBytes int, discoveryTotal *int) costPanel {
+	return foldCallLog(entries).costPanel(schemaTools, schemaBytes, discoveryTotal)
+}
+
+// costPanel is observatoryCostPanel over the call log's fold.
+func (f *callLogFold) costPanel(schemaTools, schemaBytes int, discoveryTotal *int) costPanel {
 	byTool := map[string]*costToolRow{}
-	for _, e := range entries {
-		if e.Tool == "" {
+	for tool, t := range f.tools {
+		if tool == "" {
 			continue
 		}
-		r := byTool[e.Tool]
-		if r == nil {
-			r = &costToolRow{Tool: e.Tool}
-			byTool[e.Tool] = r
-		}
-		r.Calls++
-		if e.ResponseBytes > 0 {
-			r.TotalBytes += e.ResponseBytes
-		}
-		if e.ElidedCount != nil {
-			r.TruncatingCalls++
-			if *e.ElidedCount > 0 {
-				r.ElidedCalls++
-			}
-		}
+		byTool[tool] = &costToolRow{Tool: tool, Calls: t.calls, TotalBytes: t.totalBytes, TruncatingCalls: t.truncating, ElidedCalls: t.elided}
 	}
 
 	cp := costPanel{

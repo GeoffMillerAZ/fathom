@@ -7,10 +7,12 @@ package main
 // application/json, its projection in one envelope (consolePageJSON).
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/geoffmilleraz/app-kit/appkit/ui/chrome"
@@ -37,6 +39,40 @@ type consoleDeps struct {
 	// <repo>/workspace/db/fathom.sqlite — another store, other numbers.
 	// The Knowledge pages name it in the remedy commands they print.
 	storePath string
+	// jobs is the console's one bounded background pool (RT-117): plan
+	// verification and conserve run in it (jobPool).
+	jobsOnce sync.Once
+	jobs     *console.Jobs
+	// feeders is serve-http's event feeder switch (nil in handler tests):
+	// a page reading a source generation catches the sources up first
+	// while no /events subscriber keeps them running (sourceGeneration).
+	feeders *feederSwitch
+}
+
+// sourceGeneration is the bus's generation for a panel source key, after
+// catching the event sources up when the feeders are off (RT-119): a memo
+// keyed on it is never served past a change only a stopped feeder would
+// have published.
+func (d *consoleDeps) sourceGeneration(_ context.Context, key string) uint64 {
+	d.feeders.catchUp()
+	return d.bus.SourceGeneration(key)
+}
+
+// Console job pool bounds (design §14): two workers, a queue of 32.
+const (
+	consoleJobWorkers = 2
+	consoleJobQueue   = 32
+)
+
+// jobPool is the deps' background pool, made on first use (handler tests
+// build consoleDeps literals).
+func (d *consoleDeps) jobPool() *console.Jobs {
+	d.jobsOnce.Do(func() {
+		if d.jobs == nil {
+			d.jobs = console.NewJobs(consoleJobWorkers, consoleJobQueue)
+		}
+	})
+	return d.jobs
 }
 
 // storeArg is the " --store <path>" a store-direct verb's chip carries, so
@@ -220,7 +256,11 @@ func mountConsole(mux *http.ServeMux, d *consoleDeps, wiring http.Handler) {
 
 // model is the request's observatory model (cached, 30 s TTL).
 func (cr *consoleRequest) model() observatoryModel {
-	return cachedObservatoryModel(cr.deps.selfURL, cr.now)
+	ctx := context.Background()
+	if cr.r != nil {
+		ctx = cr.r.Context()
+	}
+	return cachedObservatoryModelCtx(ctx, cr.deps.selfURL, cr.now)
 }
 
 // modelMeta is the heading meta line every model-backed page shares.

@@ -12,8 +12,7 @@ package console
 // response, whatever the session's length, and pages the rest.
 
 import (
-	"bytes"
-	"encoding/json"
+	"errors"
 	"sort"
 	"strings"
 	"time"
@@ -89,84 +88,32 @@ type ledgerSessionRow struct {
 // unreadable one an error — SessionCount's own classification, so the table
 // and the shared sessions metric never disagree about the ledger.
 func SessionTable(ledgerPath string, ledger []byte, readErr error, f SessionFilter, page, perPage int) SessionTableModel {
+	var fold *LedgerFold
+	if readErr == nil {
+		fold = FoldLedger(ledger)
+	}
+	return SessionTableFold(ledgerPath, fold, readErr, f, page, perPage)
+}
+
+// SessionTableFold is SessionTable over a folded ledger (a tail's).
+func SessionTableFold(ledgerPath string, fold *LedgerFold, readErr error, f SessionFilter, page, perPage int) SessionTableModel {
 	if perPage <= 0 {
 		perPage = 50
 	}
 	m := SessionTableModel{Filter: f, PerPage: perPage, Page: 1, Pages: 1, Rows: []SessionRow{}, Repos: []string{}, Arms: []string{}}
-	if readErr != nil {
+	if readErr != nil || fold == nil {
+		if readErr == nil {
+			readErr = errNoLedgerFold
+		}
 		v := SessionCount(ledgerPath, nil, readErr)
 		m.Sessions, m.Matching, m.LedgerRows, m.Anonymous = v, v, v, v
 		return m
 	}
-	source := "session ledger " + ledgerPath
-	var ledgerRows, anonymous int
-	latest := map[string]*SessionRow{}
-	var order []string
-	repos, arms := map[string]bool{}, map[string]bool{}
-	for _, line := range bytes.Split(ledger, []byte{'\n'}) {
-		if len(bytes.TrimSpace(line)) == 0 {
-			continue
-		}
-		var r ledgerSessionRow
-		if json.Unmarshal(line, &r) != nil {
-			continue
-		}
-		ledgerRows++
-		key := r.SessionID
-		if key == "" {
-			key = "\x00anon:" + r.At + ":" + r.Repo
-			anonymous++
-		}
-		row, seen := latest[key]
-		if !seen {
-			row = &SessionRow{}
-			latest[key] = row
-			order = append(order, key)
-		}
-		n := row.Rows + 1
-		*row = SessionRow{ID: r.SessionID, Repo: r.Repo, Arm: r.Arm, At: r.At, Rows: n,
-			Turns: r.TurnCount, FirstEditTurn: r.FirstEditTurn, FathomCalls: fathomCalls(r), VerifyCatches: r.VerifyCatches}
-		if r.TokensIn != nil && r.TokensOut != nil {
-			t := *r.TokensIn + *r.TokensOut
-			row.Tokens = &t
-		}
-		if r.Repo != "" {
-			repos[r.Repo] = true
-		}
-		if r.Arm != "" {
-			arms[r.Arm] = true
-		}
-	}
-	m.Sessions = sessionCountValue(source, len(order), ledgerRows)
-	m.LedgerRows = Measured(ledgerRows, source).WithDenominator("parseable ledger rows (the Stop hook appends one per turn)")
-	m.Anonymous = Measured(anonymous, source).WithDenominator("rows with no session id, each counted as its own session")
-	var rows []SessionRow
-	q := strings.ToLower(strings.TrimSpace(f.Query))
-	for _, key := range order {
-		r := *latest[key]
-		if f.Arm != "" && r.Arm != f.Arm {
-			continue
-		}
-		if f.Repo != "" && !strings.EqualFold(r.Repo, f.Repo) {
-			continue
-		}
-		if q != "" && !strings.Contains(strings.ToLower(r.ID), q) && !strings.Contains(strings.ToLower(r.Repo), q) {
-			continue
-		}
-		rows = append(rows, r)
-	}
-	sortSessions(rows, f.Sort, f.Asc)
-	matching := len(rows)
-	m.Matching = Measured(matching, source).WithDenominator("of " + countNoun(len(order), "session") + " after the filter")
-	m.Pages = max(1, (matching+perPage-1)/perPage)
-	page = min(max(page, 1), m.Pages)
-	m.Page = page
-	start := (page - 1) * perPage
-	m.Rows = append([]SessionRow{}, rows[start:min(start+perPage, matching)]...)
-	m.Repos = sortedKeys(repos)
-	m.Arms = sortedKeys(arms)
-	return m
+	return fold.table("session ledger "+ledgerPath, f, page, perPage, m)
 }
+
+// errNoLedgerFold names a table asked of no ledger read at all.
+var errNoLedgerFold = errors.New("the session ledger was not read")
 
 // fathomCalls is a row's fathom call count: recorded, a measured zero when
 // the exploration ledger measured the row (the writer omits a zero), or

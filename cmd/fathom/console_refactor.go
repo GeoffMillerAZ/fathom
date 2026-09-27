@@ -20,9 +20,9 @@ import (
 	"html/template"
 	"net/http"
 	"net/url"
-	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -35,6 +35,7 @@ import (
 	"github.com/geoffmilleraz/app-kit/appkit/ui/table"
 	"github.com/geoffmilleraz/fathom/internal/conserve"
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/internal/gitro"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
@@ -60,6 +61,24 @@ const defaultRefactorSince = "HEAD~1"
 // option (a leading "-") and never a shell word.
 var refactorRefRe = regexp.MustCompile(`^[A-Za-z0-9._/~^@{}+-]{1,100}$`)
 
+// The console's bounds on conserve (RT-118, design §14): each git read
+// the page makes answers within consoleGitTimeout or is killed and named;
+// a computation has consoleConserveDeadline; and a range changing more
+// than consoleConserveMaxFiles files (`[console] conserve_max_files`) is
+// refused by name — the CLI verb still runs it — never computed here.
+var (
+	consoleGitTimeout       = 10 * time.Second
+	consoleConserveDeadline = 2 * time.Minute
+	consoleConserveMaxFiles = defaultConserveMaxFiles
+)
+
+// defaultConserveMaxFiles is `[console] conserve_max_files`' default.
+const defaultConserveMaxFiles = 500
+
+// conserveCacheKeep bounds the finished reports kept (oldest dropped
+// first); a report still being computed is never dropped.
+const conserveCacheKeep = 16
+
 // conserveEntry is one range's cached report.
 type conserveEntry struct {
 	key      string
@@ -68,6 +87,7 @@ type conserveEntry struct {
 	report   conserve.Report
 	err      string
 	at       time.Time
+	job      *console.Job
 }
 
 var conserveCache = struct {
@@ -75,23 +95,52 @@ var conserveCache = struct {
 	m map[string]*conserveEntry
 }{m: map[string]*conserveEntry{}}
 
+// resetConserveCache forgets every report (tests).
+func resetConserveCache() {
+	conserveCache.Lock()
+	conserveCache.m = map[string]*conserveEntry{}
+	conserveCache.Unlock()
+}
+
+// consoleGit runs one git read for a page under consoleGitTimeout; a git
+// that does not answer in time is killed and named.
+func consoleGit(root string, args ...string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), consoleGitTimeout)
+	defer cancel()
+	out, err := gitro.Output(ctx, root, args...)
+	if ctx.Err() == context.DeadlineExceeded {
+		return "", fmt.Errorf("git %s in %s did not answer within %s and was stopped", args[0], root, consoleGitTimeout)
+	}
+	return strings.TrimSpace(string(out)), err
+}
+
 // refactorReport returns the range's report, computing it in the
-// background and waiting up to budget; ok is false while it is pending.
+// console's job pool (RT-118) and waiting up to budget; ok is false while
+// it is pending. The range is one flight per key (its resolved commits
+// and the index watermark); a newer key for the same service and base
+// drops a queued older one.
 func refactorReport(pc *consolePlans, sr serviceRoot, since string, budget time.Duration) (*conserveEntry, bool) {
-	base, _ := exec.Command("git", "-C", sr.Root, "rev-parse", "--verify", "--quiet", since+"^{commit}").Output()
+	base, gerr := consoleGit(sr.Root, "rev-parse", "--verify", "--quiet", since+"^{commit}")
+	if gerr != nil && strings.Contains(gerr.Error(), "did not answer") {
+		return &conserveEntry{finished: true, err: gerr.Error(), at: time.Now()}, true
+	}
 	ctx := context.Background()
-	key := strings.Join([]string{fmt.Sprintf("%p", pc.deps), sr.Service, sr.Root, since, strings.TrimSpace(string(base)), pc.head(sr.Root), pc.storeWatermark(ctx, sr.Service)}, "|")
+	key := strings.Join([]string{fmt.Sprintf("%p", pc.deps), sr.Service, sr.Root, since, base, pc.head(sr.Root), pc.storeWatermark(ctx, sr.Service)}, "|")
 	conserveCache.Lock()
 	e := conserveCache.m[key]
-	if e == nil || (e.finished && e.err != "" && time.Since(e.at) >= consolePlansRetry) {
+	if e == nil || (e.finished && e.err != "" && time.Since(e.at) >= consolePlansRetry) || conserveDropped(e) {
 		// A failed report stands, with its reason, for consolePlansRetry;
 		// then the next read computes it again.
 		e = &conserveEntry{key: key, done: make(chan struct{})}
-		if len(conserveCache.m) > 64 {
-			conserveCache.m = map[string]*conserveEntry{}
+		ne := e
+		job, err := pc.deps.jobPool().SubmitJob("conserve:"+sr.Service+"|"+since, key, func() { computeRefactorReport(pc, sr, since, ne) })
+		if err != nil {
+			conserveCache.Unlock()
+			return &conserveEntry{finished: true, err: err.Error(), at: time.Now()}, true
 		}
+		e.job = job
 		conserveCache.m[key] = e
-		go computeRefactorReport(pc, sr, since, e)
+		trimConserveCacheLocked()
 	}
 	conserveCache.Unlock()
 	timer := time.NewTimer(budget)
@@ -104,29 +153,86 @@ func refactorReport(pc *consolePlans, sr serviceRoot, since string, budget time.
 	}
 }
 
+// conserveDropped reports whether the pool dropped e's job unrun (a newer
+// key for the same range superseded it while queued).
+func conserveDropped(e *conserveEntry) bool {
+	if e == nil || e.job == nil || e.finished {
+		return false
+	}
+	select {
+	case <-e.job.Done():
+		return e.job.Dropped()
+	default:
+		return false
+	}
+}
+
+// trimConserveCacheLocked drops dropped flights and the oldest finished
+// reports past conserveCacheKeep; a report being computed stays.
+func trimConserveCacheLocked() {
+	var finished []*conserveEntry
+	for k, e := range conserveCache.m {
+		switch {
+		case conserveDropped(e):
+			delete(conserveCache.m, k)
+		case e.finished:
+			finished = append(finished, e)
+		}
+	}
+	if len(finished) <= conserveCacheKeep {
+		return
+	}
+	sort.Slice(finished, func(i, j int) bool {
+		if !finished[i].at.Equal(finished[j].at) {
+			return finished[i].at.Before(finished[j].at)
+		}
+		return finished[i].key < finished[j].key
+	})
+	for _, e := range finished[:len(finished)-conserveCacheKeep] {
+		delete(conserveCache.m, e.key)
+	}
+}
+
 func computeRefactorReport(pc *consolePlans, sr serviceRoot, since string, e *conserveEntry) {
 	var rep conserve.Report
 	var err error
+	// A report that panics finishes as a failure the page names, its
+	// waiters released — never a range stuck pending (the pool recovers
+	// the panic but cannot finish the entry).
+	defer func() {
+		if v := recover(); v != nil {
+			err = fmt.Errorf("the conserve report panicked: %v", v)
+		}
+		conserveCache.Lock()
+		if err != nil {
+			e.err = err.Error()
+		} else {
+			e.report = rep
+		}
+		e.finished, e.at = true, time.Now()
+		close(e.done)
+		conserveCache.Unlock()
+	}()
 	if pc.deps.c == nil {
 		err = errNoStore
 	} else {
+		ctx, cancel := context.WithTimeout(context.Background(), consoleConserveDeadline)
+		defer cancel()
 		// RT-61 (§3.3): conserve is an in-process console call, admitted
 		// and metered as console-inprocess.
-		err = inProcessToolCall(context.Background(), "console:conserve", tenancy.ClassTree, func(ctx context.Context) error {
+		err = inProcessToolCall(ctx, "console:conserve", tenancy.ClassTree, func(ctx context.Context) error {
 			var cerr error
-			rep, cerr = conserveReportFor(ctx, pc.deps.c.Store(), sr.Root, since, sr.Service, discoverPlanPaths(sr.Root), "", conserve.DefaultResidueMax)
+			rep, cerr = conserveReportCapped(ctx, pc.deps.c.Store(), sr.Root, since, sr.Service, discoverPlanPaths(sr.Root), "", conserve.DefaultResidueMax, consoleConserveMaxFiles)
 			return cerr
 		})
+		// conserve's planes do not all check ctx: a computation cut off
+		// by its deadline is a named failure (retried after
+		// consolePlansRetry), never a report whose unfinished planes
+		// read clean (I38, I9).
+		if ctx.Err() != nil {
+			err = fmt.Errorf("not computed within %s: the conserve report since %s was stopped at the console's deadline; run fathom conserve --since %s --service %s", consoleConserveDeadline, since, since, sr.Service)
+		}
 	}
-	conserveCache.Lock()
-	if err != nil {
-		e.err = err.Error()
-	} else {
-		e.report = rep
-	}
-	e.finished, e.at = true, time.Now()
-	close(e.done)
-	conserveCache.Unlock()
 }
 
 // refactorInput is a report as the projection reads it.

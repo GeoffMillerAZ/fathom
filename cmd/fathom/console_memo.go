@@ -96,6 +96,24 @@ func (m *consoleMemo[V]) doCtx(ctx context.Context, key string, now time.Time, c
 	return fl.v, now, true
 }
 
+// get returns the value stored under key while it is fresh at now.
+func (m *consoleMemo[V]) get(key string, now time.Time) (V, bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if e, ok := m.entries[key]; ok && e.fresh(now) {
+		return e.v, true
+	}
+	var zero V
+	return zero, false
+}
+
+// put stores v under key, computed at, kept until evicted.
+func (m *consoleMemo[V]) put(key string, v V, at time.Time) {
+	m.mu.Lock()
+	m.storeLocked(key, consoleMemoEntry[V]{v: v, at: at, keep: -1})
+	m.mu.Unlock()
+}
+
 // storeLocked stores e under key as the newest entry, evicting the oldest
 // past the bound.
 func (m *consoleMemo[V]) storeLocked(key string, e consoleMemoEntry[V]) {

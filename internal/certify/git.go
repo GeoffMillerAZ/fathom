@@ -31,11 +31,20 @@ type GitRunner func(dir string, args ...string) ([]byte, error)
 // refresh and rewrite the repository's .git/index as a side effect — from a
 // console page view, in a checkout an agent is committing in.
 func ExecGit(dir string, args ...string) ([]byte, error) {
-	out, err := gitro.CombinedOutput(context.Background(), dir, args...)
-	if err != nil {
-		return out, fmt.Errorf("git %s (in %s): %w\n%s", strings.Join(args, " "), dir, err, out)
+	return ExecGitContext(context.Background())(dir, args...)
+}
+
+// ExecGitContext is ExecGit under ctx: git is stopped when ctx ends, so a
+// caller's deadline (the console's conserve report, RT-118) reaches every
+// git its reads spawn.
+func ExecGitContext(ctx context.Context) GitRunner {
+	return func(dir string, args ...string) ([]byte, error) {
+		out, err := gitro.CombinedOutput(ctx, dir, args...)
+		if err != nil {
+			return out, fmt.Errorf("git %s (in %s): %w\n%s", strings.Join(args, " "), dir, err, out)
+		}
+		return out, nil
 	}
-	return out, nil
 }
 
 // reachUnchangedSince (CV-4, design doc §1.1) reports whether none of

@@ -376,4 +376,14 @@ package config
 	surface?:   #Surface
 	connector?: #Connector
 	tenancy?:   #Tenancy
+	console?:   #Console
+}
+
+// #Console bounds the Observatory console's own work (RT-118,
+// docs/design/responsible-tenant.md §14).
+#Console: {
+	// conserve_max_files is the widest range, in changed files, /refactors
+	// computes conserve for (default 500); a wider one is refused by name
+	// and left to `fathom conserve --since`.
+	conserve_max_files?: int & >=1
 }

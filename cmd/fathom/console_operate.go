@@ -57,6 +57,9 @@ const (
 	operateRemedyVerb  = "fathom fleet remedy --json"
 	operateConfigVerb  = "fathom config --explain --json"
 	operateHarnessVerb = "fathom harness matrix --json"
+	// operateToolHourVerb is the Tenancy panel's per-tool per-hour p95
+	// (RT-121, design §14), beside the resources panel.
+	operateToolHourVerb = "fathom metrics traffic --by tool-hour --since 24h --json"
 )
 
 func init() {
@@ -64,7 +67,7 @@ func init() {
 		ID: "operate", Route: "/operate", Href: "/operate", Group: "System", Order: -10, Nav: true,
 		Title:    "Operate",
 		Question: "Is the daemon healthy, what does it answer, for whom, and are the loops that improve fathom turning?",
-		Verbs:    []string{operateLoadVerb, operateTrafficVerb, operateCallerVerb, operateAdoptVerb, operateRemedyVerb, operateConfigVerb, operateHarnessVerb},
+		Verbs:    []string{operateLoadVerb, operateTrafficVerb, operateCallerVerb, operateAdoptVerb, operateRemedyVerb, operateConfigVerb, operateHarnessVerb, operateResourcesVerb, operateToolHourVerb},
 		Shows:    []console.MetricID{console.MetricServices, console.MetricCalls, console.MetricAgentTools},
 		Build:    buildOperatePage,
 	})
@@ -75,11 +78,13 @@ type operateProjection struct {
 	View         console.OperateModel
 	Traffic      trafficResult
 	Callers      trafficResult
+	ToolHours    trafficResult
 	Adoption     AdoptionReport
 	Harnesses    []harness.AdoptionRow
 	Remedy       remedyReport
 	Config       map[string]any
 	Flywheel     []flywheelCheck
+	Resources    resourcesReport
 	CallLog      console.ResolvedCallLog
 	GeneratedAt  time.Time
 	computedFrom string
@@ -113,26 +118,66 @@ var operateCache struct {
 	key string
 	at  time.Time
 	p   operateProjection
+	// flight is the build in progress (nil when none): the projection is
+	// built outside the lock, once, and every reader past the TTL waits
+	// for that one build instead of queueing on the lock (RT-121, RT-113's
+	// rule).
+	flight *operateFlight
 }
+
+type operateFlight struct {
+	key  string
+	done chan struct{}
+	p    operateProjection
+	ok   bool
+}
+
+// operateProjectionBuilder builds the projection (tests hold it).
+var operateProjectionBuilder = buildOperateProjection
 
 // operateNow reads (or reuses, within the model's TTL) the projection.
 func operateNow(d *consoleDeps, m observatoryModel, now time.Time) operateProjection {
 	resolved := d.sources().CallLog
 	key := d.selfURL + "|" + resolved.Path
 	operateCache.Lock()
-	defer operateCache.Unlock()
 	if operateCache.key == key && !operateCache.at.IsZero() && now.Sub(operateCache.at) < obsCacheTTL && !now.Before(operateCache.at) {
-		return operateCache.p
+		p := operateCache.p
+		operateCache.Unlock()
+		return p
 	}
-	p := buildOperateProjection(d, m, resolved, now)
-	operateCache.key, operateCache.at, operateCache.p = key, now, p
-	return p
+	if fl := operateCache.flight; fl != nil && fl.key == key {
+		operateCache.Unlock()
+		<-fl.done
+		if fl.ok {
+			return fl.p
+		}
+		// The flight failed: build this reader's own.
+		return operateProjectionBuilder(d, m, resolved, now)
+	}
+	fl := &operateFlight{key: key, done: make(chan struct{})}
+	operateCache.flight = fl
+	operateCache.Unlock()
+	defer func() {
+		operateCache.Lock()
+		if fl.ok {
+			operateCache.key, operateCache.at, operateCache.p = key, now, fl.p
+		}
+		if operateCache.flight == fl {
+			operateCache.flight = nil
+		}
+		operateCache.Unlock()
+		close(fl.done)
+	}()
+	fl.p = operateProjectionBuilder(d, m, resolved, now)
+	fl.ok = true
+	return fl.p
 }
 
 func resetOperateCache() {
 	operateCache.Lock()
 	operateCache.key, operateCache.at = "", time.Time{}
 	operateCache.Unlock()
+	resetOperateResources()
 }
 
 // daemonFacts is what this process knows about itself.
@@ -156,15 +201,20 @@ func daemonFacts(d *consoleDeps) console.DaemonFacts {
 
 func buildOperateProjection(d *consoleDeps, m observatoryModel, resolved console.ResolvedCallLog, now time.Time) operateProjection {
 	p := operateProjection{CallLog: resolved, GeneratedAt: now}
-	var entries []adoptionCallEntry
-	var skipped, consoleReads int
+	// A tail (RT-113): all-time figures from its fold, the 14-day load
+	// and the week's traffic from its 35-day ring (RT-112).
+	var snap callLogSnapshot
 	var readErr error
 	if resolved.Path != "" {
-		entries, skipped, consoleReads, readErr = callLogReadCounting(resolved.Path)
+		snap, readErr = consoleCallLogTail.read(resolved.Path)
 	}
-	facts := callLogFactsFor(resolved, entries, readErr)
+	fold, entries := snap.fold, snap.ring
+	if fold == nil {
+		fold = newCallLogFold()
+	}
+	facts := fold.facts(resolved, readErr)
 	if readErr == nil {
-		facts.ConsoleReads = consoleReads
+		facts.ConsoleReads = snap.consoleReads
 	}
 	reason, isErr, _ := callLogState(facts)
 	in := operateLoadInputs(entries, resolved, reason, isErr, now)
@@ -173,8 +223,10 @@ func buildOperateProjection(d *consoleDeps, m observatoryModel, resolved console
 	week := now.Add(-7 * 24 * time.Hour)
 	p.Traffic = trafficResultFrom(entries, reason, isErr, "", metrics.TrafficGroupBySurface, week, now)
 	p.Callers = trafficResultFrom(entries, reason, isErr, "", metrics.TrafficGroupByCaller, week, now)
+	p.ToolHours = trafficResultFrom(entries, reason, isErr, "", metrics.TrafficGroupByToolHour, now.Add(-24*time.Hour), now)
 	p.Harnesses = harness.AdoptionRows(d.selfURL, now)
-	pre := &adoptionPreread{entries: entries, skipped: skipped, err: readErr}
+	p.Resources = operateResourcesCached(d.selfURL, now) // RT-121: kept, refreshed off the request path
+	pre := &adoptionPreread{fold: fold, skipped: snap.skipped, err: readErr}
 	if resolved.Path == "" {
 		pre = nil
 	}
@@ -198,7 +250,7 @@ func buildOperateProjection(d *consoleDeps, m observatoryModel, resolved console
 	} else if facts.Missing {
 		logErr = os.ErrNotExist
 	}
-	p.Flywheel = flywheelChecksFrom(m.Impact, entries, logErr, now)
+	p.Flywheel = flywheelChecksFold(m.Impact, fold, logErr, now)
 	return p
 }
 
@@ -306,13 +358,15 @@ func buildOperatePage(cr *consoleRequest) (consoleOut, error) {
 		Model:   operatePageModel{Operate: p.View, Flywheel: p.Flywheel, Capabilities: caps, RemedyNow: rem, Tenancy: ten},
 		Metrics: pageMetrics(cr.page, metricsAll),
 		Sections: map[string]any{
-			operateLoadVerb:    p.View.LoadModel,
-			operateTrafficVerb: withCallLog(p.Traffic, p.CallLog),
-			operateCallerVerb:  withCallLog(p.Callers, p.CallLog),
-			operateAdoptVerb:   withCallLog(p.Adoption, p.CallLog),
-			operateRemedyVerb:  p.Remedy,
-			operateConfigVerb:  p.Config,
-			operateHarnessVerb: p.Harnesses,
+			operateLoadVerb:      p.View.LoadModel,
+			operateTrafficVerb:   withCallLog(p.Traffic, p.CallLog),
+			operateCallerVerb:    withCallLog(p.Callers, p.CallLog),
+			operateAdoptVerb:     withCallLog(p.Adoption, p.CallLog),
+			operateRemedyVerb:    p.Remedy,
+			operateConfigVerb:    p.Config,
+			operateHarnessVerb:   p.Harnesses,
+			operateResourcesVerb: p.Resources,
+			operateToolHourVerb:  withCallLog(p.ToolHours, p.CallLog),
 		},
 		Body: func() string { return renderOperate(cr, p, caps, svc, names, rem, metricsAll, ten) },
 	}
@@ -378,6 +432,36 @@ func renderOperate(cr *consoleRequest, p operateProjection, caps *capabilityMode
 	}, stat.BandOptions{AriaLabel: "the daemon"}))
 
 	b.WriteString(`<div class="mt-4 grid gap-4 xl:grid-cols-2">`)
+	// Tenancy (RT-121): `fathom resources --json`, full width.
+	tenState, tenReason := console.StatePresent, ""
+	if !p.Resources.Daemon.Reachable && p.Resources.Tenancy == nil {
+		tenState, tenReason = console.StateAbsent, "the daemon did not answer and its ring holds no sample: "+p.Resources.Daemon.Unreachable
+	}
+	b.WriteString(`<div class="min-w-0 xl:col-span-2">` + renderPanel(consolePanel{
+		ID: "tenancy", Title: "Tenancy", SourceKey: "daemon",
+		Question: "How much memory does the daemon hold against its budget, did the ladder move, and is anything leaking — processes or disk?",
+		Verb:     operateResourcesVerb, Source: p.Resources.Footprint.Ring + " · " + firstNonEmpty(p.Resources.Budget.Source, "no budget read") + " · the lifecycle ledger",
+		Denominator: "the last " + p.Resources.Footprint.Window + "; " + plural(p.Resources.Footprint.Samples, "ring sample"), Freshness: fresh,
+		State: tenState, Reason: tenReason,
+		Body: renderTenancyPanel(p.Resources),
+	}) + `</div>`)
+	// The Tenancy panel's per-tool per-hour p95 (design §14): its own verb,
+	// so the chip is the command that prints it.
+	thState, thReason := console.StatePresent, ""
+	if p.ToolHours.Reason != "" {
+		thState, thReason = console.StateAbsent, p.ToolHours.Reason
+		if p.ToolHours.Error {
+			thState = console.StateError
+		}
+	}
+	b.WriteString(`<div class="min-w-0 xl:col-span-2">` + renderPanel(consolePanel{
+		ID: "tenancy-latency", Title: "Latency per tool, per hour", SourceKey: "sessions",
+		Question: "Which tools got slow, and when, over the last day? A hatched hour had no call of that tool — absent, not fast.",
+		Verb:     operateToolHourVerb, Source: p.CallLog.Path + " (rule " + string(p.CallLog.Rule) + ")",
+		Denominator: "p95 per UTC hour, the last 24 h, the busiest tools; console reads excluded", Freshness: fresh,
+		State: thState, Reason: thReason,
+		Body: renderToolHourLatency(p.ToolHours),
+	}) + `</div>`)
 	// Traffic per day and surface: a truth-state heatmap, then its table.
 	// The panels that read the call log carry its read state: an unreadable
 	// log is an error on each of them, never an idle daemon.

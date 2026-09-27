@@ -20,6 +20,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/gitro"
@@ -331,7 +332,7 @@ func NewInput(ctx context.Context, root, baseRef string, st store.Store, service
 	var basePlans, headPlans []verify.Plan
 	for _, raw := range planPaths {
 		rel := planPathRelativeTo(root, raw)
-		if b, ok, _ := gitShowFile(root, base, rel); ok {
+		if b, ok, _ := gitShowFile(ctx, root, base, rel); ok {
 			basePlans = append(basePlans, verify.ParseMarkdownPlan(service, b))
 		}
 		if b, ok, _ := worktreeFile(root, rel); ok {
@@ -347,7 +348,7 @@ func NewInput(ctx context.Context, root, baseRef string, st store.Store, service
 		Base:                base,
 		Head:                HeadWorktree,
 		ChangedFiles:        changed,
-		BaseFile:            func(path string) ([]byte, bool, error) { return gitShowFile(root, base, path) },
+		BaseFile:            func(path string) ([]byte, bool, error) { return gitShowFile(ctx, root, base, path) },
 		HeadFile:            func(path string) ([]byte, bool, error) { return worktreeFile(root, path) },
 		Store:               st,
 		Declarations:        NewDeclarations(basePlans, headPlans),
@@ -356,7 +357,9 @@ func NewInput(ctx context.Context, root, baseRef string, st store.Store, service
 		IndexAtHeadReason:   indexAtHeadReason,
 		FailedTypedPackages: resolveFailedTypedPackages(ctx, st, service),
 		ReachUnchangedSince: func(commit string, files []string) (bool, error) {
-			return certify.ReachUnchangedSince(certify.ExecGit, root, commit, files)
+			// Under the report's context: a caller's deadline stops this
+			// git too (RT-118).
+			return certify.ReachUnchangedSince(certify.ExecGitContext(ctx), root, commit, files)
 		},
 		ChangedLines: func(path string) ([]LineRange, error) {
 			return gitChangedLines(ctx, root, base, path)
@@ -546,7 +549,9 @@ func planPathRelativeTo(root, p string) string {
 
 // resolveRef resolves ref to a commit sha via `git rev-parse`.
 func resolveRef(ctx context.Context, root, ref string) (string, error) {
-	out, err := exec.CommandContext(ctx, "git", "-C", root, "rev-parse", ref).Output()
+	rp := exec.CommandContext(ctx, "git", "-C", root, "rev-parse", ref)
+	rp.WaitDelay = gitWaitDelay
+	out, err := rp.Output()
 	if err != nil {
 		return "", err
 	}
@@ -579,7 +584,9 @@ func changedFilesSinceBase(ctx context.Context, root, base string) ([]string, er
 	if err != nil {
 		return nil, fmt.Errorf("git diff --name-only %s: %w", base, err)
 	}
-	untrackedOut, err := exec.CommandContext(ctx, "git", "-C", root, "ls-files", "--others", "--exclude-standard").Output()
+	ls := exec.CommandContext(ctx, "git", "-C", root, "ls-files", "--others", "--exclude-standard")
+	ls.WaitDelay = gitWaitDelay
+	untrackedOut, err := ls.Output()
 	if err != nil {
 		return nil, fmt.Errorf("git ls-files --others --exclude-standard: %w", err)
 	}
@@ -614,14 +621,19 @@ func changedFilesSinceBase(ctx context.Context, root, base string) ([]string, er
 // Missing entry rather than silently treating the file as new — never
 // possible when every such failure came back ok=false, err=nil
 // indistinguishably from "did not exist".
-func gitShowFile(root, ref, path string) ([]byte, bool, error) {
+// gitWaitDelay bounds how long a killed git's pipes are waited on after
+// its context ends (a child holding stdout must not hold the caller).
+const gitWaitDelay = 2 * time.Second
+
+func gitShowFile(ctx context.Context, root, ref, path string) ([]byte, bool, error) {
 	// git's own "<rev>:<path>" syntax resolves path against the REPO
 	// TOPLEVEL, never "-C root", unless path is prefixed "./" or "../" —
 	// without the prefix, a service rooted at a subdirectory (root !=
 	// toplevel) would look up the wrong object entirely (or none at all)
 	// for every ordinary, root-relative path this package otherwise uses
 	// throughout (worktreeFile, ChangedFiles via --relative).
-	cmd := exec.Command("git", "-C", root, "show", ref+":./"+filepath.ToSlash(path))
+	cmd := exec.CommandContext(ctx, "git", "-C", root, "show", ref+":./"+filepath.ToSlash(path))
+	cmd.WaitDelay = gitWaitDelay
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()

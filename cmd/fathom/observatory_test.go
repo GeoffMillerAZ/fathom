@@ -16,8 +16,10 @@ import (
 // resetObsCache forces the next cachedObservatoryModel call to rebuild.
 func resetObsCache() {
 	obsCache.Lock()
-	obsCache.at = time.Time{}
+	dropObsCacheLocked()
 	obsCache.Unlock()
+	resetConsoleTails()
+	hooksBeatIndex.reset()
 	// The console's project set and the reads behind it: every fixture
 	// starts from its own inputs.
 	consoleProjectsCache.Lock()

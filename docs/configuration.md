@@ -738,6 +738,26 @@ is (project layer over user layer, `fathom config --explain` for
 provenance) — see `internal/config`'s `Tests` struct and
 `schema/config/schema.cue`'s `#Tests`.
 
+## The console: `[console]`
+
+The Observatory console bounds its own background work
+(`docs/design/responsible-tenant.md` §14, RT-117/RT-118): plan verification
+and `/refactors`' conserve run in one pool of two workers with a queue of
+32, and each git read a page makes is stopped after 10 s.
+
+```toml
+# ~/.fathom/config.toml (or the daemon's working repo's .fathom/config.toml)
+[console]
+conserve_max_files = 500   # default; an integer ≥ 1
+```
+
+- `conserve_max_files` (optional, default 500): the widest range, in
+  changed files, `/refactors` computes conserve for. A wider range is
+  refused by name ("not computed here: the range since … has N changed
+  files, over [console] conserve_max_files = …") with the verb that still
+  computes it — `fathom conserve --since <ref> --service <svc>` — never a
+  partial report. Read by `serve-http` at start (restart to apply).
+
 ## Discovery: `[connector]`
 
 Discovery skips the default cache directories (`.cache`, `.tools`, `target`,

@@ -343,6 +343,37 @@ default_profile = "work"
 	}
 }
 
+// TestLoad_ConsoleTable pins `[console] conserve_max_files` (RT-118): it
+// decodes, records its provenance, and a project layer overrides the user's.
+func TestLoad_ConsoleTable(t *testing.T) {
+	dir := t.TempDir()
+	userPath := filepath.Join(dir, "user.toml")
+	projectPath := filepath.Join(dir, "project.toml")
+	writeTOML(t, userPath, "[console]\nconserve_max_files = 200\n")
+	loaded, err := Load(userPath, "")
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if got := loaded.Config.Console.ConserveMaxFiles; got != 200 {
+		t.Errorf("conserve_max_files = %d, want 200", got)
+	}
+	if _, ok := loaded.Provenance["console.conserve_max_files"]; !ok {
+		t.Error("no provenance for console.conserve_max_files")
+	}
+	writeTOML(t, projectPath, "[console]\nconserve_max_files = 50\n")
+	loaded, err = Load(userPath, projectPath)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if got := loaded.Config.Console.ConserveMaxFiles; got != 50 {
+		t.Errorf("project conserve_max_files = %d, want 50", got)
+	}
+	writeTOML(t, projectPath, "[console]\nconserve_max_files = 0\n")
+	if _, err := Load(userPath, projectPath); err == nil {
+		t.Error("conserve_max_files = 0 must be rejected by the schema")
+	}
+}
+
 // TestLoad_GuardsTable pins ADR-038's escape hatch config field: `[guards]
 // enforce = false` decodes to an explicit *bool, provenance is recorded,
 // and project overrides user like every other field.

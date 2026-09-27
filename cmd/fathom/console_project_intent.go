@@ -84,7 +84,7 @@ const intentAuditRetryTTL = 30 * time.Second
 // and mtime (the debt over time and the fired conditions). A refresh the
 // affordance offers therefore re-runs the audit; nothing else does.
 func intentAuditKey(root, svc string, plansGeneration uint64) string {
-	return strings.Join([]string{root, svc, gitHeadShort(root), strconv.FormatUint(plansGeneration, 10), fileWatermark(intent.LedgerPath())}, "\x00")
+	return strings.Join([]string{root, svc, repoHeadNoFork(root), strconv.FormatUint(plansGeneration, 10), fileWatermark(intent.LedgerPath())}, "\x00")
 }
 
 // readOnlyIntentAudit runs (or recalls) the read-only audit for root.
@@ -122,7 +122,7 @@ func buildProjectIntentPage(cr *consoleRequest) (consoleOut, error) {
 		}
 		return out, nil
 	}
-	run, at, aerr := readOnlyIntentAudit(pc.root, pc.svc, cr.deps.selfURL, cr.deps.bus.SourceGeneration("plans:"+pc.svc), cr.now)
+	run, at, aerr := readOnlyIntentAudit(pc.root, pc.svc, cr.deps.selfURL, cr.deps.sourceGeneration(cr.r.Context(), "plans:"+pc.svc), cr.now)
 	if aerr != nil {
 		model.Error = aerr.Error()
 		out.Model = model

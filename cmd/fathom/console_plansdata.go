@@ -23,7 +23,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -32,6 +31,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/internal/gitro"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
@@ -42,9 +42,6 @@ var (
 	consolePlansPortfolioWait = 1500 * time.Millisecond
 	consolePlansPlanWait      = 12 * time.Second
 )
-
-// consolePlansWorkers bounds concurrent verify_plan calls the console makes.
-const consolePlansWorkers = 2
 
 // planEntry is one plan's cached verification.
 type planEntry struct {
@@ -73,6 +70,22 @@ type planEntry struct {
 	digest     string
 	prevDigest string
 	hasPrev    bool
+	// job is the pool's flight verifying this entry (RT-117).
+	job *console.Job
+}
+
+// dropped reports whether the pool dropped this entry's job unrun: a newer
+// key of the same plan superseded it while it was queued.
+func (e *planEntry) dropped() bool {
+	if e.job == nil {
+		return false
+	}
+	select {
+	case <-e.job.Done():
+		return e.job.Dropped()
+	default:
+		return false
+	}
 }
 
 type plansStamp struct {
@@ -85,9 +98,11 @@ type consolePlans struct {
 	deps    *consoleDeps
 	mu      sync.Mutex
 	entries map[string]*planEntry
-	queue   []*planEntry
-	wake    chan struct{}
-	started bool
+	// flights are the entries submitted and not yet finished, by path and
+	// key: a key still running is never queued again (RT-116) — a plan
+	// whose key moves away and back while its first verification runs
+	// rejoins that verification.
+	flights map[string]*planEntry
 	heads   map[string]plansStamp
 	stale   map[string]plansStamp
 	hist    map[string]historyEntry
@@ -109,7 +124,7 @@ func plansFor(d *consoleDeps) *consolePlans {
 	defer consolePlansMu.Unlock()
 	p := consolePlansFor[d]
 	if p == nil {
-		p = &consolePlans{deps: d, entries: map[string]*planEntry{}, wake: make(chan struct{}, 1),
+		p = &consolePlans{deps: d, entries: map[string]*planEntry{}, flights: map[string]*planEntry{},
 			heads: map[string]plansStamp{}, stale: map[string]plansStamp{},
 			hist: map[string]historyEntry{}}
 		consolePlansFor[d] = p
@@ -200,28 +215,42 @@ func (p *consolePlans) plan(ctx context.Context, sr serviceRoot, path string) (c
 	e := p.entries[path]
 	if e == nil || e.key != key || (e.finished && e.err != "" && p.deps.now().Sub(e.at) >= consolePlansRetry) {
 		old := e
-		e = &planEntry{service: sr.Service, root: sr.Root, path: path, key: key, rawKey: rawKey, done: make(chan struct{})}
-		switch {
-		case old != nil && old.finished:
-			e.prevDigest, e.hasPrev = old.digest, true
-		case old != nil && old.hasPrev:
-			// Replaced before it finished: it never published, so the
-			// last result a panel was told of is still its predecessor's.
-			e.prevDigest, e.hasPrev = old.prevDigest, true
-		}
-		p.entries[path] = e
-		if old != nil && old.finished && old.err == "" && old.rawKey == rawKey && old.raw != nil {
-			// Only HEAD moved: the local overlays are cheap, so this plan
-			// goes ahead of the ones waiting on the daemon.
-			e.prevRaw = old.raw
-			p.queue = append([]*planEntry{e}, p.queue...)
+		flightKey := path + "|" + key
+		p.pruneDroppedLocked()
+		if running := p.flights[flightKey]; running != nil && !running.finished {
+			// The key is still being verified (it moved away and back):
+			// rejoin that flight, never queue it again (RT-116).
+			e = running
+			p.entries[path] = e
 		} else {
-			p.queue = append(p.queue, e)
-		}
-		p.startLocked()
-		select {
-		case p.wake <- struct{}{}:
-		default:
+			e = &planEntry{service: sr.Service, root: sr.Root, path: path, key: key, rawKey: rawKey, done: make(chan struct{})}
+			switch {
+			case old != nil && old.finished:
+				e.prevDigest, e.hasPrev = old.digest, true
+			case old != nil && old.hasPrev:
+				// Replaced before it finished: it never published, so the
+				// last result a panel was told of is still its predecessor's.
+				e.prevDigest, e.hasPrev = old.prevDigest, true
+			}
+			if old != nil && old.finished && old.err == "" && old.rawKey == rawKey && old.raw != nil {
+				// Only HEAD moved: the daemon's verdicts are reused and only
+				// the cheap local overlays run again.
+				e.prevRaw = old.raw
+			}
+			// RT-117: one bounded pool; a newer key of this plan drops a
+			// queued older one (the group), and a full queue leaves the
+			// plan "not yet verified" for the next read to submit again.
+			ne := e
+			job, err := p.deps.jobPool().SubmitJob("plan:"+path, flightKey, func() { p.verify(ne) })
+			if err != nil {
+				p.mu.Unlock()
+				facts.Rows = authoredRows(sr.Service, raw)
+				facts.Pending = true
+				return facts, nil
+			}
+			e.job = job
+			p.flights[flightKey] = e
+			p.entries[path] = e
 		}
 	}
 	finished, result, stale, errText, storeCommit, at := e.finished, e.result, e.daemonStale, e.err, e.storeCommit, e.at
@@ -239,6 +268,18 @@ func (p *consolePlans) plan(ctx context.Context, sr serviceRoot, path string) (c
 		facts.Pending = true
 	}
 	return facts, e
+}
+
+// pruneDroppedLocked forgets flights the pool dropped unrun, releasing
+// anyone still waiting on them: a dropped key asked for again is a new
+// flight, never a join of one that will not run.
+func (p *consolePlans) pruneDroppedLocked() {
+	for k, e := range p.flights {
+		if e.dropped() {
+			delete(p.flights, k)
+			close(e.done)
+		}
+	}
 }
 
 // authoredRows are a plan's rows before any verdict.
@@ -275,45 +316,6 @@ func (p *consolePlans) wait(entries []*planEntry, budget time.Duration) {
 	}
 }
 
-// startLocked starts the workers once.
-func (p *consolePlans) startLocked() {
-	if p.started {
-		return
-	}
-	p.started = true
-	for i := 0; i < consolePlansWorkers; i++ {
-		go p.work()
-	}
-}
-
-// work verifies queued plans until the process ends.
-func (p *consolePlans) work() {
-	for {
-		p.mu.Lock()
-		var e *planEntry
-		for len(p.queue) > 0 {
-			next := p.queue[0]
-			p.queue = p.queue[1:]
-			if p.entries[next.path] == next && !next.finished {
-				e = next
-				break
-			}
-		}
-		if e != nil && len(p.queue) > 0 {
-			select { // more work queued: let an idle worker take it
-			case p.wake <- struct{}{}:
-			default:
-			}
-		}
-		p.mu.Unlock()
-		if e == nil {
-			<-p.wake
-			continue
-		}
-		p.verify(e)
-	}
-}
-
 // consolePlansGate, when set, holds every verification until it is closed:
 // a test hook that makes "still verifying" observable.
 var consolePlansGate struct {
@@ -329,16 +331,34 @@ func setConsolePlansGate(ch chan struct{}) {
 
 // verify computes one plan through the verb's own path.
 func (p *consolePlans) verify(e *planEntry) {
-	consolePlansGate.Lock()
-	gate := consolePlansGate.ch
-	consolePlansGate.Unlock()
-	if gate != nil {
-		<-gate
-	}
-	ctx := context.Background()
-	wm := p.storeWatermark(ctx, e.service)
-	computed, rawRep, err := p.compute(e)
-	stale := p.daemonStale(e.service, e.root)
+	var (
+		wm       string
+		computed planComputed
+		rawRep   *verify.Report
+		err      error
+		stale    bool
+	)
+	// A verification that panics finishes as a failure the page names:
+	// the job pool recovers the panic, but the entry must still be
+	// finished, its flight deleted and its waiters released, or every
+	// later render rejoins a flight that never ends.
+	func() {
+		defer func() {
+			if v := recover(); v != nil {
+				err = fmt.Errorf("the verification panicked: %v", v)
+			}
+		}()
+		consolePlansGate.Lock()
+		gate := consolePlansGate.ch
+		consolePlansGate.Unlock()
+		if gate != nil {
+			<-gate
+		}
+		ctx := context.Background()
+		wm = p.storeWatermark(ctx, e.service)
+		computed, rawRep, err = p.compute(e)
+		stale = p.daemonStale(e.service, e.root)
+	}()
 	p.mu.Lock()
 	if err != nil {
 		e.err = err.Error()
@@ -350,6 +370,7 @@ func (p *consolePlans) verify(e *planEntry) {
 	e.at = p.deps.now()
 	e.digest = verdictDigest(e.result.Report, e.daemonStale, e.err)
 	e.finished = true
+	delete(p.flights, e.path+"|"+e.key)
 	current := p.entries[e.path] == e
 	changed := !e.hasPrev || e.digest != e.prevDigest
 	p.mu.Unlock()
@@ -388,9 +409,17 @@ func (p *consolePlans) compute(e *planEntry) (planComputed, *verify.Report, erro
 	}
 	lp := parsePlanForVerify(e.service, e.root, e.path, raw)
 	var rep verify.Report
-	if e.prevRaw != nil {
+	switch {
+	case e.prevRaw != nil:
 		rep = cloneReport(*e.prevRaw)
-	} else {
+	case p.deps.c != nil && inProcessDaemon(p.deps.selfURL) != nil:
+		// Inside the daemon: its own verify_plan handler, in process and
+		// under a deadline — never a loopback request (RT-116).
+		rep, err = verifyPlanInProcess(p.deps, e.service, raw, lp)
+		if err != nil {
+			return planComputed{}, nil, err
+		}
+	default:
 		hc := consoleRPCClient(90 * time.Second)
 		indexed, ierr := daemonServiceIndexed(hc, p.deps.selfURL, e.service)
 		switch {
@@ -407,6 +436,44 @@ func (p *consolePlans) compute(e *planEntry) (planComputed, *verify.Report, erro
 	rawRep := cloneReport(rep)
 	overlayPlanReport(&rep, lp, verify.DirFiles(e.root))
 	return planComputed{File: e.path, Plan: lp, Report: rep}, &rawRep, nil
+}
+
+// consolePlanVerifyDeadline bounds one plan's in-process verification,
+// follow-up calls included.
+var consolePlanVerifyDeadline = 90 * time.Second
+
+// verifyPlanInProcess verifies one plan through this daemon's own
+// verify_plan handler in process (RT-116): admitted by the server's gate
+// as a console call like any request, under consolePlanVerifyDeadline, the
+// service's index probed in the store rather than over /indexed. The
+// verdicts are the ones `fathom plans status` merges (verifyWithCaller).
+func verifyPlanInProcess(d *consoleDeps, service string, raw []byte, lp verify.Plan) (verify.Report, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), consolePlanVerifyDeadline)
+	defer cancel()
+	if d.c != nil {
+		indexed, _, err := d.c.IsIndexed(ctx, service)
+		switch {
+		case err != nil:
+			return verify.Report{}, fmt.Errorf("probing the store for service %q: %w", service, err)
+		case !indexed:
+			return verify.Report{}, fmt.Errorf("service %q is not indexed on the daemon at %s — ingest it and retry", service, d.selfURL)
+		}
+	}
+	rep, err := verifyWithCaller(func(md []byte) (httpVerifyResult, error) {
+		body, err := verifyPlanRequest(service, "", md)
+		if err != nil {
+			return httpVerifyResult{}, err
+		}
+		resp, ok := inProcessCall(ctx, d.selfURL, "", body)
+		if ctx.Err() != nil {
+			return httpVerifyResult{}, fmt.Errorf("verify_plan did not answer within the console's %s deadline", consolePlanVerifyDeadline)
+		}
+		if !ok {
+			return httpVerifyResult{}, fmt.Errorf("verify_plan: this daemon's handler is not available in process")
+		}
+		return parseVerifyPlanResponse(resp)
+	}, raw, lp)
+	return rep, err
 }
 
 // cloneReport deep-copies a report, so the overlays can never write into a
@@ -442,8 +509,8 @@ func (p *consolePlans) head(root string) string {
 	if ok && now.Sub(st.at) < headTTL {
 		return st.value
 	}
-	out, _ := exec.Command("git", "-C", root, "rev-parse", "HEAD").Output()
-	v := strings.TrimSpace(string(out))
+	// Read from the repository's files, never a git process (RT-115).
+	v, _ := gitro.Head(context.Background(), root)
 	p.mu.Lock()
 	p.heads[root] = plansStamp{value: v, at: now}
 	p.mu.Unlock()
@@ -508,7 +575,13 @@ func (p *consolePlans) history(root, rel string) ([]planRevisionText, int, strin
 	if ok {
 		return h.revs, h.older, h.note
 	}
-	revs, older, note := planGitHistory(root, rel)
+	ctx, cancel := context.WithTimeout(context.Background(), consoleGitTimeout)
+	revs, older, note := planGitHistory(ctx, root, rel)
+	timedOut := ctx.Err() != nil
+	cancel()
+	if timedOut {
+		return revs, older, note // not kept: the next render asks again
+	}
 	p.mu.Lock()
 	if len(p.hist) > 256 {
 		p.hist = map[string]historyEntry{}
