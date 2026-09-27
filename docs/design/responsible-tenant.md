@@ -1196,9 +1196,11 @@ unreachable under load.
 
 Runnable by anyone, heavy, run only on a quiet machine with the operator's go-ahead.
 
-- Builds the binary under test into `workspace/tmp/`, copies the fleet store into a
-  `mktemp -d` under `workspace/tmp/` on the external volume (never the 91%-full internal
-  disk), starts an **unmanaged** daemon on a free port with `--parent-pid $$` and
+- Builds the binary under test into `workspace/tmp/`, copies the fleet store (sqlite3
+  `.backup`) into a `mktemp -d` under `workspace/tmp/` on the external volume (never the
+  91%-full internal disk), starts an **unmanaged** daemon on a free port as the harness's
+  own child with `--exit-with-parent` (serve-http has no `--parent-pid`; its parent is the
+  harness), a scratch `HOME` under the run dir, and
   `--lifecycle-id tenancy-stress-<run>` (so the breaker sees every simulated relaunch in one
   ledger; the default unmanaged id `addr-<port>-<pid>` would start a fresh ledger each time),
   `[tenancy] budget` forced to 1 GiB and `exit_enabled = true` (so the ladder is exercised

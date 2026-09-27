@@ -178,6 +178,7 @@ tasks:
         [ "$rc" -eq 0 ] || exit "$rc"
         bash scripts/build-cache_test.sh
         bash scripts/gate-lease_test.sh
+        bash scripts/tenancy-stress_test.sh
         bash third_party/agentic-kit/fathom-pack/scripts/push-check_test.sh
         bash third_party/agentic-kit/fathom-pack/scripts/push-http_test.sh
 

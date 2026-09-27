@@ -221,8 +221,8 @@ bound memory here.
 - [x] Identity comes from a cheap /identity endpoint through the cached resolver; SubagentStart reuses the parent's resolution (§11.3) {id: RT-133, symbol: handleIdentity, package: cmd/fathom, reachable_from: TestIdentityEndpointAndSubagentReuse}
 - [x] The custodian's config walk is capped in depth, entries and time, refuses non-git roots, and debounces FileChanged audits across sessions (§11.3) {id: RT-134, symbol: walkAgentConfigFiles, package: internal/custodian, reachable_from: TestWalkAgentConfigFilesCappedAndDeadlined}
 - [x] Doctor gains hook_budget (with breaker-open edits counted) and disk_retention rows (§11.3, §12.1) {id: RT-135, symbol: checkHookBudget, package: cmd/fathom, reachable_from: TestDoctorHookBudgetAndDiskRetention}
-- [ ] `scripts/tenancy-stress.sh` exists, runs against a scratch unmanaged daemon on a store copy with `--lifecycle-id`, and writes a reading with the verdict first (§15.2) {id: RT-136, oracle: lexical, path: scripts/tenancy-stress.sh, pattern: "lifecycle-id"}
-- [ ] `scripts/tenancy-stress_test.sh` (run by `task scripts-check`) proves the harness refuses the managed daemon's port, store and call log and a fixture dir on the internal disk, in `--self-check` mode (§15.2) {id: RT-168, oracle: lexical, path: Taskfile.yml, pattern: "bash scripts/tenancy-stress_test\.sh"}
+- [x] `scripts/tenancy-stress.sh` exists, runs against a scratch unmanaged daemon on a store copy with `--lifecycle-id`, and writes a reading with the verdict first (§15.2) {id: RT-136, oracle: lexical, path: scripts/tenancy-stress.sh, pattern: "lifecycle-id"}
+- [x] `scripts/tenancy-stress_test.sh` (run by `task scripts-check`) proves the harness refuses the managed daemon's port, store and call log and a fixture dir on the internal disk, in `--self-check` mode (§15.2) {id: RT-168, oracle: lexical, path: Taskfile.yml, pattern: "bash scripts/tenancy-stress_test\.sh"}
 
 ## F. Close — honesty debt paid
 
