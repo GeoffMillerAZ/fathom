@@ -451,7 +451,10 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 			// RT-146 / RT-153 / I38: coverage could not be measured this
 			// call (a busy tree read, or the governor halted it) — named,
 			// never omitted as if there were nothing to report.
-			coverageSkipped = cerr.Error()
+			coverageSkipped = core.ErrSourcesBusy.Error()
+			if errors.Is(cerr, tenancy.ErrOverBudget) {
+				coverageSkipped = cerr.Error()
+			}
 			result["layer_coverage"] = map[string]any{"status": "skipped", "note": coverageSkipped}
 		case cerr != nil:
 			// An actual RPC/store error answering the coverage question is
