@@ -107,21 +107,23 @@ func hasScipIndex(repoPath string) bool {
 // ctx is accepted for signature parity with the other Enrich* passes and
 // future cancellation; nothing here currently blocks on it.
 func ResolveFileEdges(ctx context.Context, lang, repoPath string, files []core.SourceFile, symbols []core.SymbolNode) ([]core.Edge, FileResolveReport) {
-	_ = ctx
-	var report FileResolveReport
-
 	if hasScipIndex(repoPath) {
-		report.Skipped = true
-		report.SkipReason = "a SCIP index is present for this repo; the typed importer (SU-9) is authoritative"
-		return nil, report
+		return nil, FileResolveReport{Skipped: true, SkipReason: "a SCIP index is present for this repo; the typed importer (SU-9) is authoritative"}
 	}
-
 	ext, err := extractor.NewTSExtractor(lang)
 	if err != nil {
-		report.Skipped = true
-		report.SkipReason = err.Error()
-		return nil, report
+		return nil, FileResolveReport{Skipped: true, SkipReason: err.Error()}
 	}
+	defer ext.Close() // RT-107: its grammar modules are released, never leaked
+	return resolveFileEdgesWith(ctx, ext, lang, repoPath, files, symbols)
+}
+
+// resolveFileEdgesWith is ResolveFileEdges over an extractor the caller
+// owns — the pipeline passes its own (RT-107), so an ingest instantiates no
+// new grammar module for the pass.
+func resolveFileEdgesWith(ctx context.Context, ext *extractor.TSExtractor, lang, repoPath string, files []core.SourceFile, symbols []core.SymbolNode) ([]core.Edge, FileResolveReport) {
+	_ = ctx
+	var report FileResolveReport
 
 	fileSet := make(map[string]bool, len(files))
 	for _, f := range files {
@@ -373,7 +375,10 @@ func (p *Pipeline) enrichFileResolvedEdges(ctx context.Context, svc core.Service
 		if !ok {
 			continue
 		}
-		ext, err := extractor.NewTSExtractor(lang)
+		// RT-107: the pipeline's own extractor for the language — never a
+		// fresh one per ingest (two per language per ingest, never closed,
+		// was the audit's wazero-module-leak-per-ingest hazard).
+		ext, done, err := p.fileResolveExtractor(lang)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "fusion: file-resolved edge pass %q (%s): %v\n", svc.ID, lang, err)
 			continue
@@ -395,7 +400,8 @@ func (p *Pipeline) enrichFileResolvedEdges(ctx context.Context, svc core.Service
 			}
 		}
 
-		edges, rep := ResolveFileEdges(ctx, lang, svc.Path, files, symbols)
+		edges, rep := resolveFileEdgesWith(ctx, ext, lang, svc.Path, files, symbols)
+		done()
 		total.FilesScanned += rep.FilesScanned
 		total.ImportsParsed += rep.ImportsParsed
 		total.EdgesResolved += len(edges)
@@ -404,6 +410,24 @@ func (p *Pipeline) enrichFileResolvedEdges(ctx context.Context, svc core.Service
 		}
 	}
 	return total, nil
+}
+
+// fileResolveExtractorKey is the p.exts key whose extractor the file
+// resolver shares for each language.
+var fileResolveExtractorKey = map[string]string{"javascript": ".js", "python": ".py"}
+
+// fileResolveExtractor returns the pipeline's tree-sitter extractor for
+// lang and a no-op release; when a test replaced it with another kind, a
+// fresh one released by the returned func.
+func (p *Pipeline) fileResolveExtractor(lang string) (*extractor.TSExtractor, func(), error) {
+	if e, ok := p.exts[fileResolveExtractorKey[lang]].(*extractor.TSExtractor); ok {
+		return e, func() {}, nil
+	}
+	e, err := extractor.NewTSExtractor(lang)
+	if err != nil {
+		return nil, func() {}, err
+	}
+	return e, e.Close, nil
 }
 
 // haltError is err when it (or ctx) says the ingest must stop — the

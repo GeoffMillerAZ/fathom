@@ -663,6 +663,18 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	return p
 }
 
+// Close releases the pipeline's tree-sitter grammar modules (RT-107). The
+// pipeline stays usable: the next extraction instantiates afresh.
+func (p *Pipeline) Close() {
+	seen := map[*extractor.TSExtractor]bool{}
+	for _, e := range p.exts {
+		if ts, ok := e.(*extractor.TSExtractor); ok && !seen[ts] {
+			seen[ts] = true
+			ts.Close()
+		}
+	}
+}
+
 // RegisterExtractor registers an extractor for the given file extension
 // (including leading dot, e.g. ".py"). It replaces any existing extractor for
 // that extension.

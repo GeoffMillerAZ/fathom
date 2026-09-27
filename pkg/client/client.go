@@ -791,5 +791,6 @@ func (c *Client) ListCommits(ctx context.Context, serviceID string) ([]store.Com
 
 // Close releases all resources held by the client (including the store).
 func (c *Client) Close() error {
+	c.pipe.Close() // RT-107: the pipeline's grammar modules
 	return c.st.Close()
 }
