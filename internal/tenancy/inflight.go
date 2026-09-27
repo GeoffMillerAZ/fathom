@@ -80,6 +80,13 @@ func (r *InFlight) Begin(ctx context.Context, c Class, tool, service, origin str
 	}
 }
 
+// Len is how much work is registered now (no allocation).
+func (r *InFlight) Len() int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return len(r.entries)
+}
+
 // Snapshot lists the registered work, oldest first (ties by id).
 func (r *InFlight) Snapshot() []InFlightEntry {
 	r.mu.Lock()

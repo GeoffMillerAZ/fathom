@@ -18,7 +18,8 @@ package fusion
 
 import (
 	"context"
-	"runtime"
+	"fmt"
+	"runtime/metrics"
 	"sync/atomic"
 	"time"
 )
@@ -89,29 +90,43 @@ func releaseTypedPassSlot() {
 	<-typedPassSem
 }
 
-// samplePeakHeapInuse runs fn while sampling runtime.MemStats.HeapInuse on
-// a short ticker, returning the highest value observed across the call —
-// including a sample taken immediately before fn starts and one taken
-// immediately after it returns. Sampling DURING fn, not only before and
-// after, is what makes the result meaningful: O108's own production
-// evidence is that heap_inuse can already be back down to ~10 MiB by the
-// time a typed-edge pass returns (a GC ran before the caller got to
-// sample), while the pass's transient peak — the thing that actually
-// inflates heap_sys/RSS — happened somewhere in the middle. A before/after
-// sample alone would report that 10 MiB as "the peak" and hide exactly the
-// signal this metric exists to show.
+// passHeap is what sampleProcessHeapDuringPass saw.
+type passHeap struct {
+	Peak        uint64 // the process's heap in use (objects + unused spans), highest seen
+	MaxInFlight int    // the most in-flight tickets registered at once during the pass
+}
+
+// sampleProcessHeapDuringPass runs fn while sampling the PROCESS's heap in
+// use from runtime/metrics (/memory/classes/heap/objects + …/heap/unused —
+// the old HeapInuse, read without ReadMemStats' stop-the-world) and the
+// number of in-flight tickets (inflight; nil = none) on a 100 ms ticker,
+// including a sample just before fn starts and one just after it returns.
 //
-// The 100ms ticker is cheap relative to a typed-edge pass, which for a
-// service of any real size runs for at least hundreds of milliseconds
-// (go/packages.Load shells out to the go toolchain) and for a large one
-// (app-kit's ~390 packages) for seconds.
-func samplePeakHeapInuse(fn func()) uint64 {
-	var peak uint64
-	var ms runtime.MemStats
+// RT-46 (design §2.2; hazard typed-pass-peak-misattributes-process-heap):
+// this is the whole process's heap while the pass ran — every concurrent
+// request's allocation is in it — so the typed-pass line labels it
+// "process heap during pass" with the in-flight tickets beside it, never as
+// the pass's own cost. Sampling DURING fn is still what makes it
+// meaningful (O108: heap can be back to ~10 MiB by the time a pass returns,
+// while the transient peak happened in the middle).
+func sampleProcessHeapDuringPass(fn func(), inflight func() int) passHeap {
+	var h passHeap
+	ms := [2]metrics.Sample{{Name: "/memory/classes/heap/objects:bytes"}, {Name: "/memory/classes/heap/unused:bytes"}}
 	sample := func() {
-		runtime.ReadMemStats(&ms)
-		if ms.HeapInuse > peak {
-			peak = ms.HeapInuse
+		metrics.Read(ms[:])
+		var heap uint64
+		for _, m := range ms {
+			if m.Value.Kind() == metrics.KindUint64 {
+				heap += m.Value.Uint64()
+			}
+		}
+		if heap > h.Peak {
+			h.Peak = heap
+		}
+		if inflight != nil {
+			if n := inflight(); n > h.MaxInFlight {
+				h.MaxInFlight = n
+			}
 		}
 	}
 	sample()
@@ -135,7 +150,19 @@ func samplePeakHeapInuse(fn func()) uint64 {
 	fn()
 
 	close(stop)
-	<-done // synchronizes-before the final sample: no concurrent access to ms/peak
+	<-done // synchronizes-before the final sample: no concurrent access to ms/h
 	sample()
-	return peak
+	return h
+}
+
+// typedPassLine is the typed-edge pass's summary line (RT-46).
+func typedPassLine(service string, rep TypedEdgeReport, h passHeap) string {
+	packages := rep.PackagesLoaded + rep.PackagesCached
+	edges := rep.EdgesDirect + rep.EdgesIfaceDispatch + rep.EdgesUnresolved + rep.EdgesFuncValue
+	// "edges" is what this pass WROTE: a package whose content hash is
+	// unchanged keeps its stored edges and contributes none here, so an
+	// all-cached pass reads "0 edges written", never a bare "0 edges" over
+	// a graph that still holds every edge.
+	return fmt.Sprintf("fusion: typed-edge pass %q: %d packages (%d re-resolved, %d unchanged and reused), %d edges written, process heap during pass %.1f MiB with up to %d in-flight tickets (the whole process, not the pass's own cost), %s\n",
+		service, packages, rep.PackagesLoaded, rep.PackagesCached, edges, float64(h.Peak)/(1024*1024), h.MaxInFlight, rep.Duration)
 }
