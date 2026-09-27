@@ -94,8 +94,14 @@ func (c *LocalConnector) Discover(ctx context.Context, svc core.ServiceRef) ([]c
 	if err != nil {
 		return nil, err
 	}
-	c.roots.Store(svc.ID, svc.Path)
-
+	// F1 (docs/bench/readings/rt-waves-c-f-2026-09-27.md §6): the root is
+	// recorded only by a Discover that succeeded (at each return below). This
+	// map is process-wide and keyed by service, and Stat and Fetch of an
+	// in-flight ingest resolve through it: a concurrent read that
+	// Discovers a root that is not there — a service still being
+	// onboarded has no service_meta path, so pkg/client falls back to the
+	// bare service ID — used to replace the ingest's root before its walk
+	// failed, and every file of the ingest failed to stat.
 	var refs []core.SourceRef
 
 	// O39: filepath.WalkDir Lstat's its root and never follows a symlink,
@@ -126,6 +132,7 @@ func (c *LocalConnector) Discover(ctx context.Context, svc core.ServiceRef) ([]c
 				refs = append(refs, core.SourceRef{Service: svc.ID, Path: rel, Kind: kindForFile(base, path.Ext(base))})
 			}
 			c.exclusions.Store(svc.ID, gex)
+			c.roots.Store(svc.ID, svc.Path)
 			return refs, nil
 		}
 	}
@@ -198,6 +205,7 @@ func (c *LocalConnector) Discover(ctx context.Context, svc core.ServiceRef) ([]c
 	})
 	sort.Strings(ex.DefaultIgnored)
 	c.exclusions.Store(svc.ID, ex)
+	c.roots.Store(svc.ID, svc.Path)
 	return refs, nil
 }
 
