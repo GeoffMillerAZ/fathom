@@ -153,6 +153,9 @@ commit that creates the table:
 | `claim_links` | claim → evidence edges | cascade with the claims |
 | `claim_events` | append-only claim history | **see §3.4 — not deleted by default** |
 | `compile_runs` | layer compile metadata | retain (metadata, no content) |
+| `file_stats` (RT-76) | one row per discovered file: path, size, language, exclusion — an oversize or unreadable file has a row and no fingerprint | delete by `(service_id, path)`, resolved from its own `path` column |
+| `service_summary` (RT-76) | per-service counts and languages | delete the service's row; derived again at first use |
+| `observation_calls` (RT-77) | callee keys of each observation's calls | cascades with `observations` (delete trigger); cleared wholly after a VACUUM and re-derived |
 | result cache (`internal/resultcache`) | recent tool answers | **invalidate wholly** — it is keyed by query, not by ref, so selective removal is not possible and a full flush is the only sound option |
 | call log | tool name, service, outcome | retain — query text is never logged, so no content is present |
 | session ledger | counts only | retain — no content |

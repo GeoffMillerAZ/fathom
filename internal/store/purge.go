@@ -77,6 +77,9 @@ const (
 	LocSemanticClaims        PurgeLocation = "semantic_claims"
 	LocClaimLinks            PurgeLocation = "claim_links"
 	LocClaimEvents           PurgeLocation = "claim_events"
+	// LocFileStats is file_stats.path (RT-76): every discovered file,
+	// including an oversize or unreadable one that has no fingerprint.
+	LocFileStats PurgeLocation = "file_stats"
 )
 
 // The non-SQL locations, reported separately because they have no row
@@ -94,7 +97,7 @@ func PurgeLocations() []PurgeLocation {
 	return []PurgeLocation{
 		LocObservations, LocFingerprints, LocDocSummaries, LocKnowledgeCards,
 		LocTypedEdges, LocTypedEdgeFingerprints, LocSemanticClaims,
-		LocClaimLinks, LocClaimEvents,
+		LocClaimLinks, LocClaimEvents, LocFileStats,
 	}
 }
 
@@ -518,6 +521,7 @@ func resolvePurgeTargets(ctx context.Context, db *sql.DB, serviceID string, m Pa
 		{LocFingerprints, `SELECT source_ref FROM fingerprints WHERE service_id = ?`},
 		{LocDocSummaries, `SELECT source_ref FROM doc_summaries WHERE service_id = ?`},
 		{LocKnowledgeCards, `SELECT file FROM knowledge_cards WHERE service_id = ? AND file <> ''`},
+		{LocFileStats, `SELECT path FROM file_stats WHERE service_id = ?`},
 	} {
 		vals, err := queryStrings(ctx, db, q.query, serviceID)
 		if err != nil {
@@ -697,9 +701,10 @@ func (s *SQLiteStore) executePurge(ctx context.Context, serviceID string, plan *
 	if err := del(`DELETE FROM fingerprints WHERE service_id = ? AND source_ref IN (%s)`, plan.byLocation[LocFingerprints], true); err != nil {
 		return out, err
 	}
-	// file_stats names the purged paths too (RT-76); the summary's counts
-	// included them and is rebuilt by backfill at first use.
-	if err := del(`DELETE FROM file_stats WHERE service_id = ? AND path IN (%s)`, plan.byLocation[LocFingerprints], true); err != nil {
+	// file_stats names the purged paths too (RT-76), resolved by its own
+	// path column — an oversize file has a row but no fingerprint; the
+	// summary's counts included them and is rebuilt by backfill at first use.
+	if err := del(`DELETE FROM file_stats WHERE service_id = ? AND path IN (%s)`, plan.byLocation[LocFileStats], true); err != nil {
 		return out, err
 	}
 	if _, err := tx.ExecContext(ctx, `DELETE FROM service_summary WHERE service_id = ?`, serviceID); err != nil {
