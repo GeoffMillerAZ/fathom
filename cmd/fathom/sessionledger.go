@@ -540,7 +540,7 @@ type transcriptFold struct {
 	LastTS            *time.Time         `json:"last_ts,omitempty"`
 	Timestamps        int                `json:"timestamps"`
 	FirstEditTurn     *int               `json:"first_edit_turn,omitempty"`
-	Uses              map[string]foldUse `json:"uses"` // EX-1 pairing: tool_use id → class, Read path
+	Uses              map[string]foldUse `json:"uses"` // EX-1 pairing: an unanswered tool_use id → class, Read path (dropped once paired)
 	ResultsSeen       map[string]int     `json:"results_seen"`
 	RawCalls          int                `json:"raw_calls"`
 	FathomCalls       int                `json:"fathom_calls"`
@@ -635,6 +635,11 @@ func (f *transcriptFold) add(l []byte, since *time.Time) {
 			if !ok {
 				continue
 			}
+			// Paired: the entry is spent. Dropping it keeps the persisted
+			// fold (RT-132's per-session stamp, rewritten every Stop) to the
+			// unanswered uses plus ResultsSeen's per-path counts, never
+			// growing with the session's tool calls.
+			delete(f.Uses, c.ToolUseID)
 			if tl.IsSidechain {
 				f.SidechainResults++
 			}

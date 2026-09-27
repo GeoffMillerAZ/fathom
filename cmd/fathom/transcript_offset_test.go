@@ -81,3 +81,43 @@ func TestStopHookReadsTranscriptIncrementally(t *testing.T) {
 		t.Fatal("stamps are per session")
 	}
 }
+
+// The persisted fold stays bounded as a session grows: a tool_use's
+// pairing entry is dropped once its result is folded (only unanswered
+// uses and the per-path repeat counts are kept), so the stamp rewritten
+// every Stop does not grow with the session's tool calls.
+func TestTranscriptFoldDropsPairedUses(t *testing.T) {
+	t.Setenv("FATHOM_SESSION_STAMPS", t.TempDir())
+	path := filepath.Join(t.TempDir(), "transcript.jsonl")
+	var b strings.Builder
+	for i := 0; i < 500; i++ {
+		fmt.Fprintf(&b, `{"type":"assistant","timestamp":"2026-09-27T07:00:00Z","message":{"content":[{"type":"tool_use","name":"Read","id":"u%d","input":{"file_path":"/r/f%d.go"}},{"type":"tool_use","name":"mcp__fathom__search","id":"m%d"}]}}`+"\n", i, i%3, i)
+		fmt.Fprintf(&b, `{"type":"user","timestamp":"2026-09-27T07:00:01Z","message":{"content":[{"type":"tool_result","tool_use_id":"u%d","content":"xxxx"},{"type":"tool_result","tool_use_id":"m%d","content":"yyyy"}]}}`+"\n", i, i)
+	}
+	// One use still awaiting its result.
+	b.WriteString(`{"type":"assistant","timestamp":"2026-09-27T07:00:02Z","message":{"content":[{"type":"tool_use","name":"Read","id":"open","input":{"file_path":"/r/f0.go"}}]}}` + "\n")
+	if err := os.WriteFile(path, []byte(b.String()), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got := readTranscriptFromOffset("sess-big", path)
+	if want := summarizeTranscriptBytes([]byte(b.String())); !reflect.DeepEqual(got, want) {
+		t.Fatalf("incremental differs from whole:\n got %+v\nwant %+v", got, want)
+	}
+	if got.RepeatedReadFiles != 3 {
+		t.Fatalf("repeat detection lost with paired uses dropped: %+v", got)
+	}
+	raw, err := os.ReadFile(transcriptStampPath("sess-big"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var st transcriptOffsetStamp
+	if err := json.Unmarshal(raw, &st); err != nil {
+		t.Fatal(err)
+	}
+	if len(st.Fold.Uses) != 1 {
+		t.Fatalf("the stamp keeps %d tool_use entries after 1,000 paired results; want only the 1 unanswered", len(st.Fold.Uses))
+	}
+	if len(raw) > 4096 {
+		t.Fatalf("the stamp is %d bytes after 1,000 paired calls; it must not grow with the session", len(raw))
+	}
+}
