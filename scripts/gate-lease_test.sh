@@ -68,4 +68,12 @@ bash "${SCRIPT_DIR}/gate-lease.sh" true || fail "the lease after a killed holder
 [ $(( $(date +%s) - start )) -lt 5 ] || fail "a killed holder's lease was not released"
 pkill -f "$hold" 2>/dev/null || true
 
+# The pre-push gate's heavy steps (the scratch ingest and the verify runs)
+# take the lease too, not only `task validate` (§12.3).
+hooks="${SCRIPT_DIR}/../lefthook.yml"
+grep -q 'lease="bash scripts/gate-lease.sh"' "$hooks" || fail "the pre-push verify step defines no gate lease"
+if grep -E 'bin/fathom (ingest|verify)' "$hooks" | grep -v '^ *#' | grep -vq '\$lease bin/fathom'; then
+  fail "lefthook.yml runs an ingest or verify outside the gate lease: $(grep -E 'bin/fathom (ingest|verify)' "$hooks" | grep -v '^ *#' | grep -v '\$lease bin/fathom')"
+fi
+
 echo "gate-lease test: ok (two holders serialized, holder named, status passed, killed holder released)"
