@@ -21,6 +21,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/conserve"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/memo"
 	"github.com/geoffmilleraz/fathom/internal/projectrules"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
@@ -145,7 +146,7 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 		if vo := reviewVerdictOutcome(v, resolutions); vo != nil {
 			payload["verdict_outcome"] = vo
 		}
-		payload["test_impact"] = reviewTestGap(in).Payload()
+		payload["test_impact"] = reviewTestGap(ctx, backend, in).Payload()
 
 		// resolution/index_commit (VB-19, docs/vision/29-verbs-not-lookups.md
 		// §3 wave E): the typed/heuristic mix behind the impact dimension's
@@ -182,8 +183,20 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 // review_diff names the tests to run and the unprotected code in the same
 // verdict instead of sending the agent back for N test_impact calls.
 // Additive: every existing payload field is unchanged (law 4).
-func reviewTestGap(in review.Input) impact.TestGapResult {
-	return impact.TestGap(in.Nodes, in.ChangedFiles, in.TypedEdges)
+//
+// The walk runs on the shared syntax+typed graph (RT-74) — the same
+// graph BuildBoth(in.Nodes, in.TypedEdges) would build, once per (service,
+// watermark) instead of once per review.
+func reviewTestGap(ctx context.Context, backend QueryInterface, in review.Input) impact.TestGapResult {
+	snap, err := serviceSnapshot(ctx, backend, in.Service)
+	if err != nil {
+		return impact.TestGapOn(nil, nil, in.ChangedFiles)
+	}
+	g, err := memo.GraphFor(ctx, snap, memo.GraphBoth, typedLoader(backend, in.Service))
+	if err != nil {
+		return impact.TestGapOn(nil, nil, in.ChangedFiles)
+	}
+	return impact.TestGapOn(g, snap.Nodes, in.ChangedFiles)
 }
 
 // reviewVerdictOutcome computes review_diff's gate-shaped result summary

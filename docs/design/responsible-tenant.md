@@ -624,8 +624,12 @@ func Stats() []GroupStats                      // entries, bytes, hits, misses, 
   client in the daemon — share entries and two stores never do; a backend that names no
   store is never cached. `callgraph.Build`/`BuildBoth`/`BuildResolved` have no caller in
   `internal/mcp` or the console but `memo.GraphFor` (pinned by
-  `TestGraphStore_OneGraphPerServiceWatermark`); batch CLI verbs and analysis packages
-  (`impact`, `review`, `certify`) still build their own for one-shot work. SU-4's
+  `TestGraphStore_OneGraphPerServiceWatermark`, which also refuses the node-slice helpers
+  that build one — `impact.BlastRadius`/`TestGap`, `findings.FileNeighborhood`; the serving
+  paths call their graph-taking `…On` forms); batch CLI verbs and analysis packages
+  (`impact`, `review`, `certify`) still build their own for one-shot work, and so does
+  `review_diff`'s conservation dimension (`conserve.Run`/`Residue` read the store directly
+  and build per review) — open. SU-4's
   single-file refresh patches the snapshot and graphs copy-on-write (`memo.PatchPackage`).
 - Groups (migrations): `graphstore` keyed `(service, watermark, kind)` — replaces
   `callgraph.CachedCallGraph`, `projectIndexMemo`'s graph, the console plans graphs;

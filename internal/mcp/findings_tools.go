@@ -13,6 +13,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/findings"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/memo"
 )
 
 // findingsBackend is the optional backend capability findings_near needs:
@@ -60,11 +61,16 @@ func registerFindingsNear(s *Server, backend QueryInterface) {
 			p.Hops = 2
 		}
 
-		nodes, err := serviceSymbols(ctx, backend, p.Service)
+		// The shared snapshot and syntax+typed graph (RT-74): one build
+		// per (service, watermark), never one per call.
+		snap, err := serviceSnapshot(ctx, backend, p.Service)
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: "findings_near: " + err.Error()}
 		}
-		typed, _ := backend.TypedEdges(ctx, p.Service)
+		graph, err := memo.GraphFor(ctx, snap, memo.GraphBoth, typedLoader(backend, p.Service))
+		if err != nil {
+			return nil, &rpcError{Code: ErrCodeInternal, Message: "findings_near: " + err.Error()}
+		}
 
 		var claims []core.SemanticClaim
 		fb, ok := backend.(findingsBackend)
@@ -84,7 +90,7 @@ func registerFindingsNear(s *Server, backend QueryInterface) {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: "findings_near: " + err.Error()}
 		}
 
-		fileHops := findings.FileNeighborhood(nodes, typed, p.Subject, p.Hops)
+		fileHops := findings.FileNeighborhoodOn(graph, snap.Nodes, p.Subject, p.Hops)
 		if fileHops == nil {
 			return map[string]any{
 				"subject": p.Subject, "hops": p.Hops, "include_superseded": p.IncludeSuperseded,

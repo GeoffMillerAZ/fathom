@@ -103,8 +103,14 @@ func TestGraphStore_OneGraphPerServiceWatermark(t *testing.T) {
 		t.Fatal("a scope without a watermark was cached")
 	}
 
-	// The serving paths build no graph themselves.
-	build := regexp.MustCompile(`callgraph\.(Build|BuildBoth|BuildResolved)\(`)
+	// The serving paths build no graph themselves — directly, or through
+	// an analysis helper that builds one from a node slice (review
+	// finding: the lexical scan once missed these). The graph-taking
+	// variants (BlastRadiusOn, TestGapOn, FileNeighborhoodOn) are the
+	// serving paths' form. conserve.Run/Residue, which read the store
+	// directly, are the named exception (docs/plans/responsible-tenant.md
+	// RT-74).
+	build := regexp.MustCompile(`callgraph\.(Build|BuildBoth|BuildResolved)\(|impact\.(BlastRadius|BlastRadiusWithTypedEdges|TestGap)\(|findings\.FileNeighborhood\(`)
 	var files []string
 	mcpFiles, _ := filepath.Glob(filepath.Join("..", "mcp", "*.go"))
 	consoleFiles, _ := filepath.Glob(filepath.Join("..", "..", "cmd", "fathom", "console_*.go"))

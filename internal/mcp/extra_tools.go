@@ -41,6 +41,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/graph"
 	"github.com/geoffmilleraz/fathom/internal/hookcache"
+	"github.com/geoffmilleraz/fathom/internal/memo"
 	"github.com/geoffmilleraz/fathom/internal/projectrules"
 	"github.com/geoffmilleraz/fathom/internal/sdd"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
@@ -1281,10 +1282,13 @@ func registerCrossRepoBlastRadius(s *Server, backend QueryInterface) {
 		}
 		var hits []hit
 		for _, svc := range services {
-			nodes, err := serviceSymbols(ctx, backend, svc)
+			// The shared snapshot, read in place (RT-75): no per-call
+			// copy of every service's symbols.
+			snap, err := serviceSnapshot(ctx, backend, svc)
 			if err != nil {
 				continue
 			}
+			nodes := snap.Nodes
 			// Find the symbol in this service.
 			var seed []string
 			for _, n := range nodes {
@@ -1294,8 +1298,14 @@ func registerCrossRepoBlastRadius(s *Server, backend QueryInterface) {
 				}
 			}
 			if len(seed) > 0 {
-				// Also compute callers in this service.
-				result := impact.BlastRadius(nodes, seed)
+				// Also compute callers in this service, on its shared
+				// syntax graph (RT-74) — built once per (service,
+				// watermark), not once per call per service.
+				g, gerr := memo.GraphFor(ctx, snap, memo.GraphSyntax, nil)
+				if gerr != nil {
+					continue
+				}
+				result := impact.BlastRadiusOn(g, nodes, seed)
 				for _, sym := range result.Symbols {
 					if sym != p.Symbol {
 						hits = append(hits, hit{Service: svc, Symbol: sym})
