@@ -60,10 +60,24 @@ func (c *Client) ServiceSummary(ctx context.Context, service string) (store.Serv
 	if !got {
 		return store.ServiceSummary{}, &SummaryAbsentError{Service: service, Reason: "an ingest or backfill holds the ingest slot; it is derived at the next read"}
 	}
-	_, berr := c.st.BackfillDerivedTables(ctx, service, store.BackfillOptions{Summary: true, Classify: connector.UnsupportedLanguageForPath})
+	opts := store.BackfillOptions{Summary: true, Classify: connector.UnsupportedLanguageForPath}
+	rep, berr := c.st.BackfillDerivedTables(ctx, service, opts)
 	release()
 	if berr != nil {
-		return store.ServiceSummary{}, fmt.Errorf("client.ServiceSummary backfill: %w", berr)
+		// The row could not be written (a read-only mount, a busy
+		// writer): derive it without writing and serve that — the count at
+		// this watermark all the same, derived again at the next read.
+		opts.NoWrite = true
+		if ro, rerr := c.st.BackfillDerivedTables(ctx, service, opts); rerr == nil && ro.Derived != nil {
+			return *ro.Derived, nil
+		} else if rerr == nil && ro.IngestInProgress {
+			rep = ro
+		} else {
+			return store.ServiceSummary{}, fmt.Errorf("client.ServiceSummary backfill: %w", berr)
+		}
+	}
+	if rep.IngestInProgress {
+		return store.ServiceSummary{}, &SummaryAbsentError{Service: service, Reason: "an ingest of this service is in progress (or was interrupted); it is derived at that ingest's final commit"}
 	}
 	sum, ok, err = c.st.ServiceSummary(ctx, service)
 	if err != nil {

@@ -144,6 +144,10 @@ func (m *MemoryStore) BackfillDerivedTables(_ context.Context, serviceID string,
 	if !opts.Summary {
 		return rep, nil
 	}
+	if is, ok := m.ingestState[serviceID]; ok && is.State == IngestInProgress {
+		rep.IngestInProgress = true
+		return rep, nil
+	}
 	meta, found := m.serviceMeta[serviceID]
 	if !found {
 		return rep, nil
@@ -167,6 +171,10 @@ func (m *MemoryStore) BackfillDerivedTables(_ context.Context, serviceID string,
 				sum.UnsupportedLangs[lang]++
 			}
 		}
+	}
+	rep.Derived = &sum
+	if opts.NoWrite {
+		return rep, nil
 	}
 	m.putSummaryLocked(sum)
 	rep.Summary = true

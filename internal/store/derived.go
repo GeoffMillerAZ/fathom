@@ -28,6 +28,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -115,12 +116,22 @@ type BackfillOptions struct {
 	Summary  bool
 	Calls    bool
 	Classify func(path string) (lang string, ok bool)
+	// NoWrite derives the summary into BackfillReport.Derived and writes
+	// nothing (a read-only mount); Calls is ignored.
+	NoWrite bool
 }
 
 // BackfillReport is what one backfill wrote.
 type BackfillReport struct {
 	Summary  bool // a summary row was (re)written
 	CallRows int  // observation_calls rows written (0 when already indexed)
+	// Derived is the summary derived (written or, under NoWrite, not);
+	// nil when the row was current or none was derived.
+	Derived *ServiceSummary
+	// IngestInProgress is set when the service's ingest_state is
+	// in_progress: its rows may be between an ingest's commits (in any
+	// process), so no summary is derived for it.
+	IngestInProgress bool
 }
 
 // WatermarkOf is the store watermark of a service's meta row: the token
@@ -612,14 +623,31 @@ SELECT (SELECT watermark FROM service_summary WHERE service_id = ?),
 // the call index by json_each over its observations' calls — one
 // transaction, no file read. A current summary and an indexed service are
 // left alone. Callers hold the ingest slot (one backfill or ingest at a
-// time).
+// time in this process); a service whose ingest_state is in_progress —
+// an ingest between its commits in any process, or one that was killed —
+// gets no summary (IngestInProgress), never a count over half its rows.
 func (s *SQLiteStore) BackfillDerivedTables(ctx context.Context, serviceID string, opts BackfillOptions) (BackfillReport, error) {
 	var rep BackfillReport
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{ReadOnly: opts.NoWrite})
 	if err != nil {
 		return rep, fmt.Errorf("BackfillDerivedTables begin: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
+
+	if opts.Summary {
+		var state sql.NullString
+		err := tx.QueryRowContext(ctx, `SELECT state FROM ingest_state WHERE service_id = ?`, serviceID).Scan(&state)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) && !isNoSuchTable(err) {
+			return rep, fmt.Errorf("BackfillDerivedTables ingest state: %w", err)
+		}
+		if state.String == IngestInProgress {
+			rep.IngestInProgress = true
+			opts.Summary = false
+		}
+	}
+	if opts.NoWrite {
+		opts.Calls = false
+	}
 
 	if opts.Summary {
 		var (
@@ -662,6 +690,10 @@ SELECT (SELECT watermark FROM service_summary WHERE service_id = ?),
 			_ = rows.Close()
 			if err != nil {
 				return rep, err
+			}
+			rep.Derived = &sum
+			if opts.NoWrite {
+				return rep, nil
 			}
 			if err := upsertSummaryTx(ctx, tx, sum); err != nil {
 				return rep, err
