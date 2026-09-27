@@ -582,7 +582,13 @@ func (p *consolePlans) history(root, rel string) ([]planRevisionText, int, strin
 	if ok {
 		return h.revs, h.older, h.note
 	}
-	revs, older, note := planGitHistory(root, rel)
+	ctx, cancel := context.WithTimeout(context.Background(), consoleGitTimeout)
+	revs, older, note := planGitHistory(ctx, root, rel)
+	timedOut := ctx.Err() != nil
+	cancel()
+	if timedOut {
+		return revs, older, note // not kept: the next render asks again
+	}
 	p.mu.Lock()
 	if len(p.hist) > 256 {
 		p.hist = map[string]historyEntry{}

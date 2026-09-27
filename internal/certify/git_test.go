@@ -9,6 +9,7 @@ package certify
 // more honest than proving a fake matches real git's behaviour.
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -99,4 +100,21 @@ func TestReachUnchangedSince_CommittedAndWorktreeEdits(t *testing.T) {
 			t.Error("want an error for an empty commit")
 		}
 	})
+}
+
+// TestExecGitContextStopsAtItsContext (RT-118, design §14 "git via
+// CommandContext"): the runner a caller builds from its context stops git
+// when that context ends — a console deadline reaches the git a conserve
+// plane spawns.
+func TestExecGitContextStopsAtItsContext(t *testing.T) {
+	dir := t.TempDir()
+	mustGit(t, ExecGit, dir, "init", "-q")
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := ExecGitContext(ctx)(dir, "rev-parse", "--git-dir"); err == nil {
+		t.Fatal("a git run under an ended context answered")
+	}
+	if out, err := ExecGitContext(context.Background())(dir, "rev-parse", "--git-dir"); err != nil || !strings.Contains(string(out), ".git") {
+		t.Fatalf("a live context: %q, %v", out, err)
+	}
 }

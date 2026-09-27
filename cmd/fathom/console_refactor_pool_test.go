@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -82,5 +83,26 @@ func TestRefactorReportBoundedPool(t *testing.T) {
 	}
 	if !ok || !strings.Contains(e.err, "git") {
 		t.Fatalf("a hung git = ok %v err %q; want a named git failure", ok, e.err)
+	}
+}
+
+// TestPlanGitHistoryHonoursItsContext (RT-118): the plan history panel's
+// git reads run under the page's context — a git that does not answer in
+// time is stopped and named, and the console does not keep that answer.
+func TestPlanGitHistoryHonoursItsContext(t *testing.T) {
+	root := t.TempDir()
+	gitInitTempRepo(t, root)
+	mustWrite(t, filepath.Join(root, "docs", "plans", "p.md"), "# P\n")
+	runGitFootprint(t, root, "add", ".")
+	runGitFootprint(t, root, "-c", "user.email=t@example.com", "-c", "user.name=t", "commit", "-q", "-m", "one")
+	revs, _, note := planGitHistory(context.Background(), root, "docs/plans/p.md")
+	if len(revs) != 1 || note != "" {
+		t.Fatalf("history = %d revisions, note %q", len(revs), note)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	revs, _, note = planGitHistory(ctx, root, "docs/plans/p.md")
+	if len(revs) != 0 || !strings.Contains(note, "stopped") {
+		t.Fatalf("under an ended context = %d revisions, note %q; want none and the stop named", len(revs), note)
 	}
 }

@@ -357,7 +357,9 @@ func NewInput(ctx context.Context, root, baseRef string, st store.Store, service
 		IndexAtHeadReason:   indexAtHeadReason,
 		FailedTypedPackages: resolveFailedTypedPackages(ctx, st, service),
 		ReachUnchangedSince: func(commit string, files []string) (bool, error) {
-			return certify.ReachUnchangedSince(certify.ExecGit, root, commit, files)
+			// Under the report's context: a caller's deadline stops this
+			// git too (RT-118).
+			return certify.ReachUnchangedSince(certify.ExecGitContext(ctx), root, commit, files)
 		},
 		ChangedLines: func(path string) ([]LineRange, error) {
 			return gitChangedLines(ctx, root, base, path)
