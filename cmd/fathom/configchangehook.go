@@ -40,18 +40,13 @@ func cmdConfigAuditHook(harnessFlag, event string, stderr io.Writer) int {
 	if event == "file-changed" {
 		marker += " --event file-changed"
 	}
-	start := time.Now()
 	endGuard, silent := beginHookGuard("config-change-hook", marker, codec.ID(), defaultFathomURL())
 	if silent {
 		return 0 // §9: the managed daemon is disabled or paused — no RPC, no output
 	}
 	defer endGuard()
-	// RT-134 (§11.3): the config walk ends 2 s before the harness would
-	// kill this hook, and a directory that is not a repository is refused.
-	if t := hookTimeoutSec(codec.ID(), marker); t > 0 {
-		custodian.SetWalkPolicy(&custodian.WalkPolicy{Deadline: start.Add(time.Duration(t)*time.Second - 2*time.Second), RefuseNonGit: true})
-		defer custodian.SetWalkPolicy(nil)
-	}
+	// RT-134 (§11.3): beginHookGuard bounds the config walk by this hook's
+	// deadline and refuses a non-git root, as in every hook.
 	if event == "file-changed" {
 		return fileChangedHook(codec, os.Stdin)
 	}

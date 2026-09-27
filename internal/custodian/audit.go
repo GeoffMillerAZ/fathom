@@ -647,13 +647,14 @@ func skipPointerTarget(target string) bool {
 // AgentConfigFiles discovers the agent-config corpus (CLAUDE.md and
 // AGENTS.md at any depth), repo-relative and sorted.
 //
-// Inside a git work tree (a .git at root), git's ignore rules are the
+// Inside a git work tree (a .git at root or at any ancestor — a harness
+// root may be a subdirectory of a repository), git's ignore rules are the
 // authority on what belongs to the repo — that is what keeps `ref/` clones
 // and `workspace/` out without this package growing its own ignore
 // engine. Elsewhere (tests, bare directories) a walk with a fixed skip
 // list stands in.
 func AgentConfigFiles(root string) ([]string, error) {
-	if fi, err := os.Stat(filepath.Join(root, ".git")); err == nil && (fi.IsDir() || fi.Mode().IsRegular()) {
+	if insideGitWorkTree(root) {
 		if out, err := gitAgentConfigFiles(root); err == nil {
 			return out, nil
 		}
@@ -665,6 +666,25 @@ func AgentConfigFiles(root string) ([]string, error) {
 		return nil, &NotGitRootError{Root: root}
 	}
 	return walkAgentConfigFiles(root, currentWalkPolicy().limits())
+}
+
+// insideGitWorkTree reports whether root or one of its ancestors holds a
+// .git (a directory, or a worktree's file) — stat calls only, no git fork.
+func insideGitWorkTree(root string) bool {
+	dir, err := filepath.Abs(root)
+	if err != nil {
+		return false
+	}
+	for {
+		if fi, err := os.Stat(filepath.Join(dir, ".git")); err == nil && (fi.IsDir() || fi.Mode().IsRegular()) {
+			return true
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return false
+		}
+		dir = parent
+	}
 }
 
 func gitAgentConfigFiles(root string) ([]string, error) {
@@ -822,8 +842,8 @@ type WalkPolicy struct {
 var walkPolicy atomic.Pointer[WalkPolicy]
 
 // SetWalkPolicy sets this process's walk policy (nil: the CLI default —
-// capped, no deadline, non-git roots walked).
-func SetWalkPolicy(p *WalkPolicy) { walkPolicy.Store(p) }
+// capped, no deadline, non-git roots walked) and returns the previous one.
+func SetWalkPolicy(p *WalkPolicy) (prev *WalkPolicy) { return walkPolicy.Swap(p) }
 
 func currentWalkPolicy() WalkPolicy {
 	if p := walkPolicy.Load(); p != nil {

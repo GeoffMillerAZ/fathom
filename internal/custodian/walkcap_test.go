@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -108,5 +109,37 @@ func writeFile(t *testing.T, p string) {
 	}
 	if err := os.WriteFile(p, []byte("x\n"), 0o644); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// RT-134 hygiene: under a hook's policy, a root that is a subdirectory of
+// a git work tree is a repository, not "not a git work tree": it is read
+// through git (the ignore rules), never refused.
+func TestHookPolicyReadsASubdirectoryOfARepo(t *testing.T) {
+	repo := t.TempDir()
+	if out, err := exec.Command("git", "init", "-q", repo).CombinedOutput(); err != nil {
+		t.Skipf("git init: %v %s", err, out)
+	}
+	sub := filepath.Join(repo, "deploy")
+	if err := os.MkdirAll(filepath.Join(sub, "svc"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range []string{filepath.Join(sub, "CLAUDE.md"), filepath.Join(sub, "svc", "AGENTS.md")} {
+		if err := os.WriteFile(p, []byte("x\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	SetWalkPolicy(&WalkPolicy{Deadline: time.Now().Add(time.Minute), RefuseNonGit: true})
+	t.Cleanup(func() { SetWalkPolicy(nil) })
+	got, err := AgentConfigFiles(sub)
+	if err != nil {
+		t.Fatalf("a subdirectory of a repository was refused: %v", err)
+	}
+	if strings.Join(got, ",") != "CLAUDE.md,svc/AGENTS.md" {
+		t.Fatalf("files = %v", got)
+	}
+	var ng *NotGitRootError
+	if _, err := AgentConfigFiles(t.TempDir()); !errors.As(err, &ng) {
+		t.Fatalf("a directory outside any repository is still refused: %v", err)
 	}
 }
